@@ -29,8 +29,9 @@ Product scope: [docs/en/product/specification.md](docs/en/product/specification.
   editable with the host's own formatting tools. Use a vector picture only where a host cannot express the geometry,
   and say so in the host capability matrix.
 - No fake functionality: no placeholder buttons, no claims of standards compliance without a cited source.
-- Clean room: the maintainer's proprietary product "Slidemax" is an architectural reference only. Do not copy its
-  code into this public repository unless the maintainer explicitly approves a specific transfer in writing.
+- Slidemax reuse: the maintainer (copyright holder of the proprietary product "Slidemax") approved on 2026-11-20 that
+  Slidemax components may be transferred into this repository under the Apache License 2.0. When porting, rename
+  product identifiers, translate identifiers/comments to English and note the origin in the commit message.
 - Third-party symbols/assets only with a compatible licence recorded in `THIRD-PARTY-NOTICES.md`. ISO/IEC/DIN symbol
   shapes are drawn independently; never copy standard texts, tables or database content.
 
