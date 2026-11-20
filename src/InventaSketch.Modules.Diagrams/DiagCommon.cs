@@ -579,20 +579,7 @@ namespace InventaSketch.Modules.Diagrams
         }
 
         /// <summary>Returns a copy with points (and attachments) in reverse order.</summary>
-        public static SketchObject Reverse(SketchObject o)
-        {
-            if (o.Points is null) return o;
-            var pts = o.Points.Reverse().ToList();
-            IReadOnlyList<Attachment?>? att = null;
-            if (o.Attach is not null)
-            {
-                var a = o.Attach.ToList();
-                while (a.Count < o.Points.Count) a.Add(null);
-                a.Reverse();
-                att = a;
-            }
-            return o with { Points = pts, Attach = att };
-        }
+        public static SketchObject Reverse(SketchObject o) => Edits.ReversePoints(o);
 
         /// <summary>Swaps the values of two parameters (missing values stay missing).</summary>
         public static SketchObject SwapParams(SketchObject o, string a, string b)
@@ -612,12 +599,7 @@ namespace InventaSketch.Modules.Diagrams
         /// port). The attachment is stored in normalised box coordinates so it follows the target.
         /// </summary>
         public static SketchDocument AttachPoint(SketchDocument doc, string objectId, int index, string targetId, Vec2 pagePoint)
-        {
-            var target = doc.Get(targetId) ?? throw new KeyNotFoundException(targetId);
-            if (target.IsPointGeometry) throw new ArgumentException("Attachments target box objects only.", nameof(targetId));
-            var (u, v) = target.ToBox(pagePoint);
-            return Edits.SetPoint(doc, objectId, index, pagePoint, new Attachment(targetId, u, v));
-        }
+            => Edits.AttachPoint(doc, objectId, index, targetId, pagePoint);
 
         internal static string Inv(int i) => i.ToString(CultureInfo.InvariantCulture);
     }

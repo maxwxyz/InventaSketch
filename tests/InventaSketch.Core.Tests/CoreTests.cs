@@ -190,6 +190,22 @@ namespace InventaSketch.Core.Tests
 
     public class EditingTests
     {
+        [Fact]
+        public void AttachPointFollowsTargetAndReverseKeepsAttachments()
+        {
+            var (_, doc, box, line) = Setup();
+            var corner = box.BoxPoint(-0.5, 0.5);
+            doc = Edits.AttachPoint(doc, line.Id, 1, box.Id, corner, "pin1");
+            var att = doc.Get(line.Id)!.Attach![1]!;
+            Assert.Equal("pin1", att.AnchorId);
+            Assert.Equal(-0.5, att.U, 6);
+            doc = Edits.Move(doc, new[] { box.Id }, new Vec2(10, 0));
+            Assert.Equal(corner.X + 10, doc.ResolvePoints(doc.Get(line.Id)!)[1].X, 6);
+            var reversed = Edits.ReversePoints(doc.Get(line.Id)!);
+            Assert.Equal("pin1", reversed.Attach![0]!.AnchorId);
+            Assert.Equal(box.Id, reversed.Attach[1]!.ObjectId); // the original first point was attached to the box
+        }
+
         private static (Registry R, SketchDocument Doc, SketchObject Box, SketchObject Line) Setup()
         {
             var r = new Registry().Register(new TestModule());

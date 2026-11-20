@@ -143,6 +143,35 @@ namespace InventaSketch.Core
                 return o with { Points = pts, Attach = att.Any(a => a is not null) ? att : null };
             });
 
+        /// <summary>
+        /// Attaches point <paramref name="index"/> of a point object to a box object at a page position (e.g. a snapped
+        /// port). The attachment is stored in normalised box coordinates so it follows moving, rotating and scaling of
+        /// the target; <paramref name="anchorId"/> optionally names the target anchor (pin/port id) it belongs to.
+        /// </summary>
+        public static SketchDocument AttachPoint(SketchDocument doc, string objectId, int index, string targetId, Vec2 pagePoint, string? anchorId = null)
+        {
+            var target = doc.Get(targetId) ?? throw new KeyNotFoundException(targetId);
+            if (target.IsPointGeometry) throw new ArgumentException("Attachments target box objects only.", nameof(targetId));
+            var (u, v) = target.ToBox(pagePoint);
+            return SetPoint(doc, objectId, index, pagePoint, new Attachment(targetId, u, v) { AnchorId = anchorId });
+        }
+
+        /// <summary>Returns a copy with points (and attachments) in reverse order (swap direction of a point object).</summary>
+        public static SketchObject ReversePoints(SketchObject o)
+        {
+            if (o.Points is null) return o;
+            var pts = o.Points.Reverse().ToList();
+            IReadOnlyList<Attachment?>? att = null;
+            if (o.Attach is not null)
+            {
+                var a = o.Attach.ToList();
+                while (a.Count < o.Points.Count) a.Add(null);
+                a.Reverse();
+                att = a;
+            }
+            return o with { Points = pts, Attach = att };
+        }
+
         /// <summary>Duplicates objects with new ids (groups get a new group id, attachments are remapped).</summary>
         public static (SketchDocument Doc, IReadOnlyList<string> NewIds) Duplicate(SketchDocument doc, string pageId, IEnumerable<string> ids, Vec2 offset)
         {

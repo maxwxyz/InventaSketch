@@ -58,7 +58,11 @@ namespace InventaSketch.Core
     /// coordinates of the target in [-0.5, 0.5], so the attachment follows moving, rotating and free
     /// scaling of the target.
     /// </summary>
-    public sealed record Attachment(string ObjectId, double U, double V);
+    public sealed record Attachment(string ObjectId, double U, double V)
+    {
+        /// <summary>Optional id of the target anchor (pin/port) this point is docked to.</summary>
+        public string? AnchorId { get; init; }
+    }
 
     public sealed record SketchObject
     {
