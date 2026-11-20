@@ -255,6 +255,7 @@ namespace InventaSketch.AddIn
             Item("IskMenuSend", T("Send slides \u2026", "Folien senden \u2026"), "FileSendAsAttachment");
             Item("IskMenuSave", T("Save slides \u2026", "Folien speichern \u2026"), "FileSaveAs");
             sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
+            Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
             Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
             sb.Append("</menu>");
         }
@@ -282,6 +283,7 @@ namespace InventaSketch.AddIn
                     case "IskLangMore": Tools.LanguageDialog(_app); break;
                     case "IskMenuSend": Tools.SendSlides(_app, german); break;
                     case "IskMenuSave": Tools.SaveSlides(_app, german); break;
+                    case "IskMenuPlanScale": SetPlanScale(); break;
                     case "IskMenuModules":
                         var modules = (_registry?.Modules ?? Array.Empty<IModule>()).Where(mod => _categories.Any(c => c.ModuleId == mod.Id))
                             .Select(mod => (mod.Id, mod.Name.Get(_lang))).ToList();
@@ -297,6 +299,32 @@ namespace InventaSketch.AddIn
             {
                 Log.Error("OnToolsMenu " + control.Id, ex);
             }
+        }
+
+        /// <summary>
+        /// Asks for the plan scale (1:n) of the current slide and sets it on every InventaSketch unit there
+        /// (<see cref="DocumentSettings.PlanScale"/>; objects with an own scale keep it). One undo step.
+        /// </summary>
+        private void SetPlanScale()
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return;
+            var units = OnSlide.SketchUnits.All(slide);
+            if (units.Count == 0) return;
+            var current = units.Select(u => u.Doc.Settings.PlanScale).FirstOrDefault(v => v is not null) ?? 100;
+            var entered = OnSlide.TextPrompt.Ask(T("Plan scale 1:", "Planma\u00dfstab 1:"), current.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), IntPtr.Zero);
+            if (entered is null) return;
+            if (!double.TryParse(entered.Replace(",", "."), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var value) || value <= 0)
+            {
+                OnSlide.TextPrompt.Warn(T("Please enter a positive number, e.g. 50 or 100.", "Bitte eine positive Zahl eingeben, z. B. 50 oder 100."), IntPtr.Zero);
+                return;
+            }
+            _app.StartNewUndoEntry();
+            foreach (var u in units)
+            {
+                var doc = u.Doc with { Settings = u.Doc.Settings with { PlanScale = value } };
+                OnSlide.SketchUnits.Replace(slide, u, doc, _registry, _lang);
+            }
+            Log.Info($"Plan scale 1:{value} for {units.Count} unit(s)");
         }
 
         /// <summary>Hidden modules ("Show and hide modules") disappear from the ribbon: their menus and galleries.</summary>
