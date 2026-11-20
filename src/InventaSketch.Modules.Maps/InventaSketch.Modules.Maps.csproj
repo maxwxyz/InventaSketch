@@ -6,4 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="..\InventaSketch.Core\InventaSketch.Core.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="InventaSketch.Modules.Maps.Tests" />
+  </ItemGroup>
 </Project>
