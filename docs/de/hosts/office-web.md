@@ -38,7 +38,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `move`, `scale`, `resize`, `rotate`, `flip` | `dx`/`dy`; `pivotX`/`pivotY`, `sx`/`sy`; `id`, `w`, `h`, `x`, `y`; `degrees`; `horizontal` | Zustand |
 | `duplicate`, `delete`, `group`, `ungroup`, `reorder` | `ids`, `dx`/`dy`, `to` (front, back, forward, backward) | Zustand |
 | `setView` | `view` | Zustand; Größe verzerrungsfrei angepasst (`Registry.WithView`) |
-| `setParam`, `setStyle`, `setText`, `setPoint` | `key`/`value`; `style`/`replace`; `text`; `id`/`index`/`x`/`y`/`snap` | Zustand |
+| `setParam`, `setStyle`, `setText`, `setPoint` | `key`/`value`; `style`/`replace`; `text`; `id`/`index`/`x`/`y`/`snap`/`anchor` (false: einrasten ohne anzuhängen) | Zustand |
 | `setMainText` | `id` (Standard: erstes ausgewähltes Objekt mit Haupttext), `text` | Zustand; setzt den Haupttext des Objekts (unten) |
 | `setPlanScale` | `value` (> 0 setzt, null löscht den Planmaßstab des Dokuments, 100 = 1:100) | Zustand |
 | `setMonochrome` | `value` (true/false) | Zustand; Schwarz-Weiß für das Dokument, jedes Objekt gilt als geändert |
@@ -84,6 +84,10 @@ Folie behalten.
 - **Skalieren**: zentrierte Teile (Zahnräder, Lager, Räder: `centred`) skalieren standardmäßig um ihre Mitte, mit Strg
   von der Gegenkante; andere Objekte umgekehrt. Eine Beschriftung neben dem Mauszeiger zeigt Größe (oder Faktor) und den
   aktiven Modus mit der Strg-Alternative.
+- **Verankern** (Einstellungen, standardmäßig an, wie der Menüband-Schalter des COM-Add-ins): Ein auf ein Fangziel
+  gezogenes Linienende hängt daran und folgt, wenn das Ziel verschoben wird. Aus: Das Ende rastet ein, bleibt aber stehen.
+- **Kreismenü „Beschriftung ▸“** für Linien, Pfeile, Maße und Hinweislinien: Einträge aus den Typparametern
+  (Texteingabe, Schalter, Auswahl, Textgröße), wie im COM-Add-in.
 
 ## Bauen und starten
 

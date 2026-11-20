@@ -601,7 +601,7 @@ namespace InventaSketch.Engine
             {
                 var sp = SnapPointAt(s, p, new[] { o.Id }, r.Tolerance);
                 p = new Vec2(sp.X, sp.Y);
-                attach = sp.Attach;
+                attach = r.Anchor == false ? null : sp.Attach;
             }
             s.Apply("Point", d => Edits.SetPoint(d, o.Id, r.Index ?? 0, p, attach));
             return StateOf(s, r);

@@ -120,11 +120,10 @@ Export-Erweiterungspunkte der Module.
     bewusst als Ganzes.
   - Web-Host: dieselbe UX am 20.11.2026 erledigt (Kreismenü-Layout, Text bearbeiten, Einfügen ▸ über `suggestions`,
     Schwarz-Weiß über `setMonochrome`, Skalieren um die Mitte). Typ ▸ für Linientypen (Registry.Convert, Engine
-    conversions/convert) und ausgeblendete Module in der Seitenleisten-Bibliothek ebenfalls erledigt. Beschriftung ▸ im Web-Kreismenü erledigt 2026-11-20. Offen: Verankern auf der Web-Bühne.
+    conversions/convert) und ausgeblendete Module in der Seitenleisten-Bibliothek ebenfalls erledigt. Beschriftung ▸ im Web-Kreismenü und die Einstellung Verankern erledigt 2026-11-20.
   - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout: am 20.11.2026 erledigt (native Formatierung wird ins Modell übernommen).
   - Werkzeuge-Menü wie Slidemax (Extras: Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern) und
-    Ausblenden von Modulen im Menüband: am 20.11.2026 erledigt. Offen: Module auch in der Seitenleisten-Bibliothek
-    ausblenden.
+    Ausblenden von Modulen im Menüband und in der Seitenleisten-Bibliothek: am 20.11.2026 erledigt.
   - Rahmenauswahl einzelner Punkte (Alt + Ziehen neben einer ausgewählten Linie): am 20.11.2026 in COM erledigt.
   - Mehr Bearbeitungseinträge in der schwebenden Leiste (Text, wichtige Parameter), dabei kurz halten.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).

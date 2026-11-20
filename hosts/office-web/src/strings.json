@@ -109,6 +109,7 @@
   "set.lang.en": { "en": "English", "de": "Englisch" },
   "set.drawing": { "en": "Drawing", "de": "Zeichnen" },
   "set.snap": { "en": "Snapping and guides", "de": "Fangen und Hilfslinien" },
+  "set.anchor": { "en": "Anchor: snapped line ends follow", "de": "Verankern: eingerastete Linienenden folgen" },
   "set.grid": { "en": "Grid", "de": "Raster" },
   "set.gridOff": { "en": "off", "de": "aus" },
   "set.mono": { "en": "Black and white (patent drawings)", "de": "Schwarz-Weiß (Patentzeichnungen)" },

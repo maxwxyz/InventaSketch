@@ -46,6 +46,8 @@ namespace InventaSketch.Engine
         public SketchObject? Object { get; set; }
         public DrawCapabilities? Capabilities { get; set; }
         public bool? Snap { get; set; }
+        /// <summary>setPoint: false snaps the point without attaching it to the target ("Anchor" off); default true.</summary>
+        public bool? Anchor { get; set; }
         /// <summary>Marquee mode: "enclosed" (left to right) or "touching" (right to left).</summary>
         public string? Mode { get; set; }
         public bool? Add { get; set; }

@@ -78,6 +78,7 @@ export class App {
       pendingInsert: () => this.pending ?? this.dragging,
       finishInsert: () => this.cancelInsert(),
       snapEnabled: () => this.settings.snap,
+      anchorEnabled: () => this.settings.anchor,
       pointerMoved: (x, y) => this.bar.pointerMoved(x, y),
       report: (e) => this.report(e),
     });
@@ -250,6 +251,7 @@ export class App {
         ...(["auto", "de", "en"] as const).map((v) => radio("isk-lang", v, this.settings.lang, t(`set.lang.${v}`), () => { this.settings.lang = v; saveSettings(this.settings); this.relocalise(); }))),
       h("fieldset", {}, h("legend", {}, t("set.drawing")),
         check(this.settings.snap, t("set.snap"), (v) => { this.settings.snap = v; saveSettings(this.settings); this.stage.render(); }),
+        check(this.settings.anchor, t("set.anchor"), (v) => { this.settings.anchor = v; saveSettings(this.settings); }),
         h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("set.grid")), grid),
         check(!!this.st.monochrome, t("set.mono"), (v) => this.setMonochrome(v))),
       h("fieldset", {}, h("legend", {}, t("set.file")), h("div", { class: "isk-row" }, openBtn, saveBtn), open),

@@ -7,6 +7,8 @@ export interface Settings {
   theme: ThemeSetting;
   lang: LangSetting;
   snap: boolean;
+  /** Snapped line ends attach to their target and follow it (like "Anchor" in the COM add-in). */
+  anchor: boolean;
   grid: number;
   liveSync: boolean;
   favourites: string[];
@@ -20,6 +22,7 @@ export const defaults: Settings = {
   theme: "auto",
   lang: "auto",
   snap: true,
+  anchor: true,
   grid: 5,
   liveSync: true,
   favourites: [],

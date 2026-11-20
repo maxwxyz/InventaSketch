@@ -16,6 +16,8 @@ export interface StageHost {
   pendingInsert(): CatalogItem | undefined;
   finishInsert(placed: boolean): void;
   snapEnabled(): boolean;
+  /** Snapped line ends attach to their target ("Anchor"). */
+  anchorEnabled(): boolean;
   pointerMoved(clientX: number, clientY: number): void;
   report(error: unknown): void;
 }
@@ -616,7 +618,7 @@ export class Stage {
           else this.resetPreview(d.ids);
           break;
         case "point":
-          this.host.apply(session.setPoint(d.obj.id, d.index, d.pos.x, d.pos.y, this.host.snapEnabled() && !e.altKey, this.tolerance()), true);
+          this.host.apply(session.setPoint(d.obj.id, d.index, d.pos.x, d.pos.y, this.host.snapEnabled() && !e.altKey, this.tolerance(), this.host.anchorEnabled()), true);
           break;
         case "marquee": {
           const w = d.cur.x - d.start.x, h = d.cur.y - d.start.y;

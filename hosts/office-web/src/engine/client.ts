@@ -58,8 +58,9 @@ export class Session {
   setParam(ids: string[], key: string, value: ParamValue): EditorState { return this.c("setParam", { ids, key, value }); }
   setStyle(ids: string[], style: StyleInfo, replace = false): EditorState { return this.c("setStyle", { ids, style, replace }); }
   setText(ids: string[], text: string): EditorState { return this.c("setText", { ids, text }); }
-  setPoint(id: string, index: number, x: number, y: number, snap: boolean, tolerance?: number): EditorState {
-    return this.c("setPoint", { id, index, x, y, snap, tolerance });
+  /** Moves point `index`; with `snap` it snaps and (unless `anchor` is false) attaches to the target. */
+  setPoint(id: string, index: number, x: number, y: number, snap: boolean, tolerance?: number, anchor = true): EditorState {
+    return this.c("setPoint", { id, index, x, y, snap, tolerance, anchor });
   }
   /** Runs a context action; actions whose info carries `input` need the entered text. */
   applyAction(ids: string[], action: string, input?: string): EditorState { return this.c("applyAction", { ids, action, input }); }

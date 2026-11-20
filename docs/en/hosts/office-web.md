@@ -36,7 +36,7 @@ undo step each (no step when nothing changes).
 | `move`, `scale`, `resize`, `rotate`, `flip` | `dx`/`dy`; `pivotX`/`pivotY`, `sx`/`sy`; `id`, `w`, `h`, `x`, `y`; `degrees`; `horizontal` | state |
 | `duplicate`, `delete`, `group`, `ungroup`, `reorder` | `ids`, `dx`/`dy`, `to` (front, back, forward, backward) | state |
 | `setView` | `view` | state; size adapted without distortion (`Registry.WithView`) |
-| `setParam`, `setStyle`, `setText`, `setPoint` | `key`/`value`; `style`/`replace`; `text`; `id`/`index`/`x`/`y`/`snap` | state |
+| `setParam`, `setStyle`, `setText`, `setPoint` | `key`/`value`; `style`/`replace`; `text`; `id`/`index`/`x`/`y`/`snap`/`anchor` (false: snap without attaching) | state |
 | `setMainText` | `id` (default: first selected object with one), `text` | state; sets the object's main text (below) |
 | `setPlanScale` | `value` (> 0 sets, null clears the document plan scale, 100 = 1:100) | state |
 | `setMonochrome` | `value` (true/false) | state; document black and white, every object counts as changed |
@@ -79,6 +79,10 @@ the units on the slide.
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.
+- **Anchor** (settings, on by default, like the COM add-in's ribbon toggle): a line end dragged onto a snap target
+  attaches to it and follows when the target moves. Off: the end still snaps but stays where it is.
+- **Pie menu "Label ▸"** for lines, arrows, dimensions and lead lines: entries generated from the type parameters
+  (text prompts, switches, choices, text size), like the COM add-in.
 
 ## Build and run
 

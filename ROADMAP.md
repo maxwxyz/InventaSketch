@@ -109,10 +109,10 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     1.4 mm; stand-alone symbols (joints, bearings, electrical symbols) scale as a whole on purpose.
   - Web host: same UX done 2026-11-20 (pie layout, text editing, Insert ▸ via `suggestions`, black and white via
     `setMonochrome`, centred resize). Type ▸ for line types (Registry.Convert, engine conversions/convert) and hidden
-    modules in the sidebar library done too. Label ▸ in the web pie menu done 2026-11-20. Open: anchoring on the web stage.
+    modules in the sidebar library done too. Label ▸ in the web pie menu and the Anchor setting done 2026-11-20.
   - Ribbon groups like Slidemax: Structure, Colour, Text, Layout: done 2026-11-20 (native formatting is folded into the model).
   - Tools menu like Slidemax (Extras: symbol, decimal separator, proofing language, send/save slides) and hiding
-    modules in the ribbon: done 2026-11-20. Open: hide modules in the sidebar library too.
+    modules in the ribbon and the sidebar library: done 2026-11-20.
   - Box selection of single points (Alt + drag beside a selected line): done 2026-11-20 in COM.
   - More edit entries in the floating bar (text, key parameters), keeping it short.
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).

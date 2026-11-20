@@ -239,6 +239,11 @@ namespace InventaSketch.Engine.Tests
             var st = Call(api, "move", new { session = s, ids = new[] { box }, dx = 10, dy = 0 });
             var p0 = Obj(st, wire).GetProperty("points")[0];
             Assert.Equal(70, p0.GetProperty("x").GetDouble(), 6);
+            // "Anchor" off: the end still snaps to the corner, but no longer follows the box.
+            Call(api, "setPoint", new { session = s, id = wire, index = 0, x = 70.4, y = 35.3, snap = true, anchor = false });
+            st = Call(api, "move", new { session = s, ids = new[] { box }, dx = 10, dy = 0 });
+            p0 = Obj(st, wire).GetProperty("points")[0];
+            Assert.Equal(70, p0.GetProperty("x").GetDouble(), 6);
             // Grid snap when nothing else is near.
             var g = Call(api, "snapPoint", new { session = s, x = 151.2, y = 148.9, exclude = new[] { wire } });
             Assert.Equal("grid", g.GetProperty("kind").GetString());
