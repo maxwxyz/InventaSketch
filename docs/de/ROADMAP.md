@@ -88,8 +88,8 @@ Export-Erweiterungspunkte der Module.
   konzentrische Passung, Anbindung über Pin-ID; hohle Spitzen und Krähenfüße, Unterstreichung; Aktionen mit Eingabe und
   Dokumentzugriff, Änderungsmengen mit abhängigen Objekten, Planmaßstab, Größen je Ansicht; gemeinsamer
   AttachPoint/ReversePoints; ADR-0009). Nacharbeiten:
-  - COM: mit PowerPoint-eigenen Ziehpunkten oder Pfeiltasten verschobene Einheiten zeichnen abhängige Einheiten erst bei
-    der nächsten InventaSketch-Bearbeitung neu; der Planmaßstab hat auf der Folie kein Bedienelement (nur Seitenleiste);
+  - COM: native Verschiebungen (PowerPoint-Ziehpunkte, Pfeiltasten) zeichnen verankerte und abhängige Einheiten jetzt neu
+    (20.11.2026); der Planmaßstab hat auf der Folie kein Bedienelement (nur Seitenleiste);
     Dokumentaktionen ändern nur die eigenen Objekte der Einheit; die schwebende Leiste zeigt keine Typaktionen
     (Eingabeaktionen im Kreismenü).
   - Web: `combridge.ts` nutzt `changed`/`dependents` noch nicht; Methodenvertrag in der Web-Host-Doku ergänzen

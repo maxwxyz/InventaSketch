@@ -79,8 +79,7 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
 - Core/engine requests from the module work: done 2026-11-20 (rails, mount and port priority, concentric fit,
   pin-id attachments; hollow and crow's-foot heads, underline; input and document actions, change sets with dependents,
   plan scale, view sizes; shared AttachPoint/ReversePoints; ADR-0009). Follow-ups:
-  - COM: units moved with PowerPoint's own handles or arrow keys redraw their dependents only at the next InventaSketch
-    edit; the plan scale has no on-slide control (sidebar only); document actions only change the unit's own objects;
+  - COM: native moves (PowerPoint handles, arrow keys) now redraw anchored and dependent units (2026-11-20); the plan scale has no on-slide control (sidebar only); document actions only change the unit's own objects;
     the floating bar shows no type actions (input actions are in the pie menu).
   - Web: `combridge.ts` does not use `changed`/`dependents` yet; method contract in the web host docs to extend
     (`setPlanScale`, `input`, `changed`, `dependents`).

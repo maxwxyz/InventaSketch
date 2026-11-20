@@ -270,8 +270,24 @@ namespace InventaSketch.AddIn.OnSlide
                     var b = _unit.BoundsPt;
                     if (Math.Abs(s.Left - b.X) > 0.01 || Math.Abs(s.Top - b.Y) > 0.01 || Math.Abs(s.Width - b.Width) > 0.01 || Math.Abs(s.Height - b.Height) > 0.01)
                     {
+                        var before = _unit.Doc;
                         var fresh = SketchUnits.Read(s);
-                        if (fresh is not null) Arm(fresh);
+                        if (fresh is not null)
+                        {
+                            // Anchored line ends and neighbour-dependent units (walls) follow native moves too.
+                            if (CurrentSlide() is PowerPoint.Slide slide)
+                            {
+                                var registry = _registry();
+                                if (SketchUnits.NeedsContext(registry, fresh.Doc))
+                                {
+                                    var shape = SketchUnits.Replace(slide, fresh, fresh.Doc, registry, _lang());
+                                    SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before }, new[] { fresh.Doc });
+                                    if (shape is not null) { shape.Select(Office.MsoTriState.msoTrue); fresh = SketchUnits.Read(shape) ?? fresh; }
+                                }
+                                else SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before }, new[] { fresh.Doc });
+                            }
+                            Arm(fresh);
+                        }
                     }
                 }
             }
