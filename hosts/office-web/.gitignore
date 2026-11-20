@@ -5,3 +5,5 @@ engine/bin/
 engine/obj/
 test-results/
 *.local.png
+public/assets/
+manifest.xml

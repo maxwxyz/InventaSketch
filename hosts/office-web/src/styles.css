@@ -80,7 +80,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .isk-library { display: flex; flex-direction: column; min-height: 0; padding: 0 8px 8px; gap: 6px; }
 .isk-search-row { display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--muted); }
 .isk-search { flex: 1; border: 0; background: transparent; padding: 6px 0; outline: none; color: var(--text); min-width: 0; }
-.isk-chips { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.isk-chips { display: flex; flex: none; min-height: 28px; gap: 4px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
 .isk-chip { flex: none; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel); cursor: pointer; white-space: nowrap; }
 .isk-chip.is-active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
 .isk-lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; overflow-y: auto; min-height: 0; }

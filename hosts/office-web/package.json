@@ -12,12 +12,12 @@
     "engine": "node scripts/engine.mjs",
     "icons": "node scripts/icons.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "dev": "node scripts/engine.mjs --if-missing && vite",
-    "build": "node scripts/engine.mjs && tsc -p tsconfig.json --noEmit && vite build && node scripts/manifest.mjs",
+    "dev": "node scripts/engine.mjs --if-missing && node scripts/icons.mjs && vite",
+    "build": "node scripts/engine.mjs && node scripts/icons.mjs && tsc -p tsconfig.json --noEmit && vite build && node scripts/manifest.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "certs": "office-addin-dev-certs install",
-    "screenshot": "node scripts/screenshot.mjs"
+    "manifest": "node scripts/manifest.mjs"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",

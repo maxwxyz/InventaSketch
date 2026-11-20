@@ -72,18 +72,8 @@ namespace InventaSketch.Engine
                 Keywords = new[] { "hatch", "section", "schraffur", "schnitt" },
             },
             new LibraryItem("basic.ellipse", "basic.ellipse", new I18nText("Circle", "Kreis"), "basic") { Keywords = new[] { "ellipse", "round", "rund" } },
-            new LibraryItem("basic.line", "basic.line", new I18nText("Line", "Linie"), "basic") { Keywords = new[] { "stroke", "strich" } },
-            new LibraryItem("basic.arrow", "basic.line", new I18nText("Arrow", "Pfeil"), "basic")
-            {
-                Style = new Style { ArrowEnd = ArrowHead.Triangle },
-                Keywords = new[] { "arrow", "pfeil", "direction", "richtung" },
-            },
-            new LibraryItem("basic.centerline", "basic.line", new I18nText("Centre line", "Mittellinie"), "basic")
-            {
-                Style = new Style { Role = LineRole.Center },
-                Keywords = new[] { "axis", "achse", "center", "mitte" },
-            },
-            new LibraryItem("basic.text", "basic.text", new I18nText("Text", "Text"), "basic") { Text = "Text", Keywords = new[] { "label", "beschriftung" } },
+            // Lines, arrows, centre lines and text come from the Annotation module; the basic line/text types stay
+            // registered so older documents keep rendering, but they are no longer offered in the library.
         };
 
         private static Style Merge(Style baseStyle, SketchObject o) => baseStyle.Merge(o.Style);

@@ -9,7 +9,7 @@ namespace InventaSketch.Engine.Tests
 {
     public class EngineApiTests
     {
-        internal static EngineApi NewApi() => new(ModuleCatalog.Create(new IModule[] { new BasicShapesModule(), new EngineTestModule() }));
+        internal static EngineApi NewApi() => new(ModuleCatalog.Create(new IModule[] { new BasicShapesModule(), new BasicTextItemModule(), new EngineTestModule() }));
 
         internal static JsonElement Call(EngineApi api, string method, object args)
         {
