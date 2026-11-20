@@ -83,8 +83,8 @@ Bibliothekselement startet das Einfügen am Mauszeiger auf der Folie.
 ## Installation (pro Benutzer, ohne Administratorrechte)
 
 **Für Anwender:** `scripts\package-com.ps1` (läuft auch in `scripts\build.ps1`) baut `dist\InventaSketch-AddIn` und
-`dist\InventaSketch-AddIn-<version>.zip`: entpacken, PowerPoint schließen, `Installieren.cmd` doppelklicken; Entfernen
-mit `Deinstallieren.cmd`. Das Paket enthält die Release-Binärdateien, den Seitenleisten-Editor (`AddIn\App`) und die
+`dist\InventaSketch-AddIn-<version>.zip`: entpacken, PowerPoint schließen, `Install.cmd` doppelklicken; Entfernen
+mit `Uninstall.cmd`. Das Paket enthält die Release-Binärdateien, den Seitenleisten-Editor (`AddIn\App`) und die
 Registrierungsskripte.
 
 **Für Entwickler:**

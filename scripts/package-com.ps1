@@ -4,8 +4,8 @@
 .DESCRIPTION
   Layout:
     AddIn\                       add-in binaries (Release, net48) incl. App\ (sidebar editor + WebAssembly engine)
-    Installieren.cmd             per-user install without administrator rights (double-click)
-    Deinstallieren.cmd           remove the add-in for the current user
+    Install.cmd             per-user install without administrator rights (double-click)
+    Uninstall.cmd           remove the add-in for the current user
     install.ps1, register-com.ps1, unregister-com.ps1
     LICENSE, README.txt
   The sidebar needs the built web UI (hosts\office-web\dist with sidebar.html); build it first (npm run build) or the
@@ -55,22 +55,24 @@ $install = @'
 $ErrorActionPreference = 'Stop'
 $here = Split-Path $MyInvocation.MyCommand.Path -Parent
 $target = Join-Path $env:LOCALAPPDATA 'InventaSketch\AddIn'
-if (Get-Process POWERPNT -ErrorAction SilentlyContinue) { Write-Warning 'PowerPoint is running. Please close PowerPoint and run the installer again.'; exit 1 }
+$de = (Get-UICulture).TwoLetterISOLanguageName -eq 'de'
+function T([string]$en, [string]$deText) { if ($de) { $deText } else { $en } }
+if (Get-Process POWERPNT -ErrorAction SilentlyContinue) { Write-Warning (T 'PowerPoint is running. Please close PowerPoint and run the installer again.' 'PowerPoint läuft. Bitte PowerPoint schließen und die Installation erneut starten.'); exit 1 }
 if (Test-Path $target) { Remove-Item $target -Recurse -Force }
 New-Item -ItemType Directory -Force $target | Out-Null
 Copy-Item (Join-Path $here 'AddIn\*') $target -Recurse -Force
 Get-ChildItem $target -Recurse | Unblock-File
 & (Join-Path $here 'register-com.ps1') -AddInPath (Join-Path $target 'InventaSketch.AddIn.dll')
 Write-Host ''
-Write-Host 'InventaSketch is installed. Start PowerPoint: tab "InventaSketch".'
+Write-Host (T 'InventaSketch is installed. Start PowerPoint: tab "InventaSketch".' 'InventaSketch ist installiert. PowerPoint starten: Register "InventaSketch".')
 '@
 Set-Content -Path (Join-Path $out 'install.ps1') -Value $install -Encoding UTF8
 
 $cmdInstall = "@echo off`r`nrem Installs InventaSketch for PowerPoint for the current user (no administrator rights). Close PowerPoint first.`r`npowershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0install.ps1`"`r`necho.`r`npause`r`n"
 $cmdRemove = "@echo off`r`nrem Removes InventaSketch from PowerPoint for the current user.`r`npowershell -NoProfile -ExecutionPolicy Bypass -File `"%~dp0unregister-com.ps1`"`r`nif exist `"%LOCALAPPDATA%\InventaSketch\AddIn`" rmdir /s /q `"%LOCALAPPDATA%\InventaSketch\AddIn`"`r`necho.`r`npause`r`n"
-[IO.File]::WriteAllText((Join-Path $out 'Installieren.cmd'), $cmdInstall)
-[IO.File]::WriteAllText((Join-Path $out 'Deinstallieren.cmd'), $cmdRemove)
-$readme = "InventaSketch $Version - PowerPoint add-in (Windows)`r`n`r`nInstall: close PowerPoint, double-click Installieren.cmd (no administrator rights needed).`r`nUninstall: Deinstallieren.cmd.`r`nLog: %LOCALAPPDATA%\InventaSketch\addin.log`r`nSource and documentation: https://github.com/maxwxyz/InventaSketch`r`n`r`nDeutsch: PowerPoint schliessen, Installieren.cmd doppelklicken (keine Administratorrechte noetig).`r`nEntfernen: Deinstallieren.cmd.`r`n"
+[IO.File]::WriteAllText((Join-Path $out 'Install.cmd'), $cmdInstall)
+[IO.File]::WriteAllText((Join-Path $out 'Uninstall.cmd'), $cmdRemove)
+$readme = "InventaSketch $Version - PowerPoint add-in (Windows)`r`n`r`nInstall: close PowerPoint, double-click Install.cmd (no administrator rights needed).`r`nUninstall: Uninstall.cmd.`r`nLog: %LOCALAPPDATA%\InventaSketch\addin.log`r`nSource and documentation: https://github.com/maxwxyz/InventaSketch`r`n`r`nDeutsch: PowerPoint schliessen, Install.cmd doppelklicken (keine Administratorrechte noetig).`r`nEntfernen: Uninstall.cmd doppelklicken.`r`n"
 [IO.File]::WriteAllText((Join-Path $out 'README.txt'), $readme)
 
 $zip = Join-Path $root "dist\InventaSketch-AddIn-$Version.zip"

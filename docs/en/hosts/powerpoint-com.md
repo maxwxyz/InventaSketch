@@ -96,8 +96,8 @@ loads it into the sidebar with its views; rotating it in the sidebar (`rotate90`
 ## Install (per user, no administrator rights)
 
 **For users:** `scripts\package-com.ps1` (also run by `scripts\build.ps1`) builds `dist\InventaSketch-AddIn` and
-`dist\InventaSketch-AddIn-<version>.zip`: unzip, close PowerPoint, double-click `Installieren.cmd`; remove with
-`Deinstallieren.cmd`. The package contains the Release binaries, the sidebar editor (`AddIn\App`) and the
+`dist\InventaSketch-AddIn-<version>.zip`: unzip, close PowerPoint, double-click `Install.cmd`; remove with
+`Uninstall.cmd`. The package contains the Release binaries, the sidebar editor (`AddIn\App`) and the
 registration scripts.
 
 **For developers:**
