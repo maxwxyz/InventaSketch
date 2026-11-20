@@ -58,6 +58,10 @@ PDF/TIFF export profiles, user libraries, automation. Status: **proposed**.
 
 ## Open items
 
+- **Status 2026-11-20:** engine core, Annotation, Patent, Mechanical modules and Engine API merged (162 tests green).
+  The web add-in is work in progress on branch `feature/office-web` (build scripts `icons.mjs`, `manifest.mjs`,
+  `screenshot.mjs` still missing; WebAssembly publish and UI not yet verified). Module docs (`docs/*/modules/`) still to write.
+
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.
 - Clarify with the maintainer whether specific Slidemax components may be relicensed into this repository.
