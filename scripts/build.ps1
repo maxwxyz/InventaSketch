@@ -92,4 +92,7 @@ if (-not $SkipWeb -and (Test-Path $web)) {
     }
 }
 
+Step 'Package PowerPoint COM add-in (dist\InventaSketch-AddIn)'
+& (Join-Path $PSScriptRoot 'package-com.ps1')
+
 Step 'Done'
