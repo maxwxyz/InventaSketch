@@ -235,6 +235,13 @@ logistics, agriculture, marine & aerospace. Each becomes a module when a concret
 - **Layers:** mechanics, electrics, sensors, dimensions, numerals, helpers. In progress (model).
 - **Import & recognition:** SVG, PDF, PNG/JPEG, TIFF, DXF, CSV; contour detection on images to hatch closed regions,
   assistive vectorisation and OCR of numerals — always confirmable, original kept. Planned.
+- **Domain exports (proposed):** depending on the selection and object types, export the semantic content in common
+  engineering formats, not only as graphics. Examples: gear sets and gearbox topologies (gear data tables, power-flow
+  topology, REXS where feasible), kinematic chains and linkages (joint/link tables, URDF-like descriptions), electrical
+  schematics and E/E wiring (netlists such as KiCad/SPICE, connection lists, wiring/harness lists, ratsnest/airwire
+  views of unrouted connections), PCB sketches (component placement lists), bills of materials (BOM as CSV/Excel with
+  reference numerals, names, quantities and optional parameters), reference sign lists and flow/diagram structures
+  (e.g. GraphML, Mermaid). Each exporter is a module extension point and states exactly which semantics it preserves.
 - **Export:** native shapes, SVG, PDF (vector), PNG/TIFF (300–600 dpi, 1-bit option), reference sign list.
   SVG shipped in core; others planned.
 - **Libraries:** user libraries, reusable assemblies, import/export of library packages. Planned.

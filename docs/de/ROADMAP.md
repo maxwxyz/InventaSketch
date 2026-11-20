@@ -59,6 +59,11 @@ Automotive/ADAS/HMI, Architektur/Grundrisse, UML/ER/Ablauf, Karten und Routen, D
 Varianten und Vergleich (Diff), Synchronisation mehrerer Ansichten, Konturerkennung in Bildern und Schraffur
 importierter Bilder, PDF/TIFF-Exportprofile, Benutzerbibliotheken, Automatisierung. Status: **vorgeschlagen**.
 
+Fachexporte je nach Auswahl/Typ (vorgeschlagen): Zahnrad- und Getriebetopologiedaten (REXS wo machbar), kinematische
+Ketten, Netz- und Verbindungslisten für Schaltpläne und E/E-Verschaltung (KiCad/SPICE), Ratsnest/Airwires,
+Kabelbaumlisten, Stücklisten (CSV/Excel), Bezugszeichenlisten, Diagrammstrukturen (GraphML/Mermaid) – als
+Export-Erweiterungspunkte der Module.
+
 ## Offene Punkte
 
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).

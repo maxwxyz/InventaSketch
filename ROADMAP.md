@@ -29,7 +29,7 @@ inserted into PowerPoint (web) and exported as SVG; all tests green.
 
 Per-user registration without admin; ribbon; native shapes via COM (freeform, arrowheads, pattern fill, connectors);
 on-slide interaction (input hooks + layered overlay window): insert at pointer, snapping guides, floating bar,
-pie menu; sidebar task pane; metadata in tags + document properties; COM precedence verified. Status: **in progress** - slice 1 shipped 2026-11-20: per-user registration, ribbon library menus, native insertion (shapes, freeforms, arrowheads, groups, tags) verified in PowerPoint 16.0; slice 2: on-slide insert at pointer, drag with semantic snapping, pie menu and fading floating bar verified. Next: snapped resize/rotate, dark mode, task pane editor.
+pie menu; sidebar task pane; metadata in tags + document properties; COM precedence verified. Status: **in progress** - slice 1 shipped 2026-11-20: per-user registration, ribbon library menus, native insertion (shapes, freeforms, arrowheads, groups, tags) verified in PowerPoint 16.0; slice 2: on-slide insert at pointer, drag with semantic snapping, pie menu, fading floating bar, snapped resize (gear mesh), two-point tool and point editing verified. Next: snapped rotation, dark mode, task pane editor.
 
 ## Phase 3 – LibreOffice extension
 
@@ -55,6 +55,10 @@ Automotive/ADAS/HMI, architecture/floor plans, UML/ER/flow, maps and routes, cha
 
 Variants and diff, multi-view synchronisation, image contour recognition and hatching of imported pictures,
 PDF/TIFF export profiles, user libraries, automation. Status: **proposed**.
+
+Domain exports by selection/type (proposed): gear and gearbox topology data (REXS where feasible), kinematic chains,
+netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsnest/airwires, harness lists, BOM
+(CSV/Excel), reference sign lists, diagram structures (GraphML/Mermaid) — as module export extension points.
 
 ## Open items
 

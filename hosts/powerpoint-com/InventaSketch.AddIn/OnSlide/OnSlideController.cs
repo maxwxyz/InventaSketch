@@ -23,7 +23,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal sealed class OnSlideController : IDisposable
     {
-        private enum Mode { Idle, Armed, Place, Drag, Pie }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -55,6 +55,18 @@ namespace InventaSketch.AddIn.OnSlide
 
         // Pie menu
         private PieMenu? _pie;
+
+        // Two-point tool (lines, arrows, dimensions, lead lines) and point editing
+        private Vec2? _twoStart;
+        private int _pointIndex = -1;
+        private Vec2 _pointAt;
+
+        // Resize with snapping
+        private int _handle = -1;
+        private Rect _startRect;
+        private Vec2 _pivot;
+        private double _sx = 1, _sy = 1;
+        private bool _resizeMeshed;
 
         // Floating context bar
         private readonly OverlayWindow _barWindow;
@@ -113,6 +125,7 @@ namespace InventaSketch.AddIn.OnSlide
             _targets = CollectTargets(slide, exceptId: null);
             _mode = Mode.Place;
             _placePressed = false;
+            _twoStart = null;
             _loggedPlaceMessage = false;
             _hooks.Install();
             Log.Info("Place hooks installed=" + _hooks.Installed + " thread=" + GetCurrentThreadId());
@@ -127,7 +140,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Place or Mode.Drag or Mode.Pie) return;
+                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint) return;
                 using var dpi = DpiScope.PerMonitor();
                 SketchUnit? unit = null;
                 if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count == 1)
@@ -163,6 +176,7 @@ namespace InventaSketch.AddIn.OnSlide
             _timer.Start();
             _overlay.Clear();
             ShowBar(view);
+            DrawPointHandles(view);
             Log.Info($"Armed {unit.Shape.Name}: {_unitAnchors.Count} anchors, {_targets.Count} targets, pane {view.PaneRect}, {view.PixelsPerPoint:0.###} px/pt, hooks {_hooks.Installed}");
         }
 
@@ -187,10 +201,10 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie)
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint)
             {
                 _mode = Mode.Armed;
-                if (_view is not null) ShowBar(_view);
+                if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
                 return;
             }
             HideBar();
@@ -203,7 +217,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Drag or Mode.Pie) return;
+                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint) return;
                 using var dpi = DpiScope.PerMonitor();
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
@@ -235,6 +249,32 @@ namespace InventaSketch.AddIn.OnSlide
             if (_mode == Mode.Place && !_loggedPlaceMessage) { _loggedPlaceMessage = true; Log.Info("Place: first mouse message 0x" + message.ToString("X4") + " at " + pt.X + "," + pt.Y); }
             switch (_mode)
             {
+                case Mode.Place when IsTwoPoint(_item):
+                    if (message == WM_MOUSEMOVE) { UpdatePlacement(pt); return false; }
+                    if (message == WM_LBUTTONDOWN)
+                    {
+                        if (!view.Contains(pt)) { Cancel("click outside"); return false; }
+                        UpdatePlacement(pt);
+                        if (_twoStart is null) { _twoStart = _placeAt; _down = pt; }
+                        _placePressed = true;
+                        return true;
+                    }
+                    if (message == WM_LBUTTONUP && _placePressed)
+                    {
+                        _placePressed = false;
+                        UpdatePlacement(pt);
+                        var start = _twoStart;
+                        var end = _placeAt;
+                        // Click-click: the first release only fixes the start; press-drag-release sets both ends.
+                        if (start is null || (start.Value - end).Length < view.Mm(4)) return true;
+                        var item = _item;
+                        Cancel("placed");
+                        if (item is not null) Post(() => InsertPoints(item, start.Value, end));
+                        return true;
+                    }
+                    if (message == WM_RBUTTONDOWN) { Cancel("right click"); return true; }
+                    return false;
+
                 case Mode.Place:
                     if (message == WM_MOUSEMOVE) { UpdatePlacement(pt); return false; }
                     if (message == WM_LBUTTONDOWN)
@@ -259,6 +299,28 @@ namespace InventaSketch.AddIn.OnSlide
                 case Mode.Armed:
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
+                    if (message == WM_LBUTTONDOWN && PointHandleAt(pt, view) is int pointIndex and >= 0)
+                    {
+                        HideBar();
+                        _mode = Mode.EditPoint;
+                        _pointIndex = pointIndex;
+                        _pointAt = PointObject()!.Points![pointIndex];
+                        _moved = false;
+                        _down = pt;
+                        return true;
+                    }
+                    if (message == WM_LBUTTONDOWN && HandleAt(pt, view) is int handle and >= 0)
+                    {
+                        HideBar();
+                        _mode = Mode.Resize;
+                        _handle = handle;
+                        _startRect = UnitRectMm();
+                        _sx = _sy = 1;
+                        _moved = false;
+                        _down = pt;
+                        Log.Info("Resize start, handle " + handle);
+                        return true;
+                    }
                     if (message == WM_LBUTTONDOWN && Inside(pt, view, inset: 6))
                     {
                         Log.Info("Drag start at " + pt.X + "," + pt.Y);
@@ -276,6 +338,51 @@ namespace InventaSketch.AddIn.OnSlide
                         return true;
                     }
                     return false;
+
+                case Mode.EditPoint:
+                    if (message == WM_MOUSEMOVE)
+                    {
+                        if (!_moved && Math.Abs(pt.X - _down.X) + Math.Abs(pt.Y - _down.Y) < 3 * view.DeviceScale) return true;
+                        _moved = true;
+                        UpdatePointEdit(pt, view);
+                        return true;
+                    }
+                    if (message == WM_LBUTTONUP)
+                    {
+                        var unit = _unit;
+                        var index = _pointIndex;
+                        var at = _pointAt;
+                        var moved = _moved;
+                        _mode = Mode.Armed;
+                        _overlay.Clear();
+                        if (moved && unit is not null) Post(() => ApplyPoint(unit, index, at));
+                        else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+                        return true;
+                    }
+                    return message is WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_RBUTTONUP;
+
+                case Mode.Resize:
+                    if (message == WM_MOUSEMOVE)
+                    {
+                        if (!_moved && Math.Abs(pt.X - _down.X) + Math.Abs(pt.Y - _down.Y) < 3 * view.DeviceScale) return true;
+                        _moved = true;
+                        UpdateResize(pt, view);
+                        return true;
+                    }
+                    if (message == WM_LBUTTONUP)
+                    {
+                        var unit = _unit;
+                        double sx = _sx, sy = _sy;
+                        var pivot = _pivot;
+                        var moved = _moved;
+                        _mode = Mode.Armed;
+                        _overlay.Clear();
+                        Log.Info($"Resize end: moved={moved}, scale=({sx:0.###}, {sy:0.###}), gear mesh snap={_resizeMeshed}");
+                        if (moved && unit is not null && (Math.Abs(sx - 1) > 1e-4 || Math.Abs(sy - 1) > 1e-4)) Post(() => ApplyResize(unit, pivot, sx, sy));
+                        else if (_view is not null) ShowBar(_view);
+                        return true;
+                    }
+                    return message is WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_RBUTTONUP;
 
                 case Mode.Drag:
                     if (message == WM_MOUSEMOVE)
@@ -347,7 +454,7 @@ namespace InventaSketch.AddIn.OnSlide
                 _fade.Dismiss();
                 HideBar();
             }
-            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie)
+            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint)
             {
                 Cancel("escape");
                 return true;
@@ -385,6 +492,34 @@ namespace InventaSketch.AddIn.OnSlide
             if (view is null || item is null) return;
             var registry = _registry();
             var raw = view.ToMm(pt);
+            if (IsTwoPoint(item))
+            {
+                var snapped = KeyDown(VK_MENU) ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+                _placeAt = raw + snapped.Delta;
+                var marker = (float)view.Mm(5);
+                if (_twoStart is null)
+                {
+                    var at0 = _placeAt;
+                    Present(view, g =>
+                    {
+                        using var pen = new Pen(Ghost, (float)view.Mm(1.6));
+                        g.DrawLine(pen, (float)at0.X - marker, (float)at0.Y, (float)at0.X + marker, (float)at0.Y);
+                        g.DrawLine(pen, (float)at0.X, (float)at0.Y - marker, (float)at0.X, (float)at0.Y + marker);
+                        DrawGuides(g, view, snapped.Guides);
+                    });
+                    return;
+                }
+                var line = CreateBetween(registry, item, _twoStart.Value, _placeAt);
+                var ldoc = SketchDocument.Create(new Size2(view.SlideWidth / Geo.PtPerMm, view.SlideHeight / Geo.PtPerMm));
+                ldoc = Edits.Add(ldoc, ldoc.Pages[0].Id, line);
+                var lprims = registry.Render(line, new RenderContext(ldoc, _lang()));
+                Present(view, g =>
+                {
+                    ThumbnailRenderer.DrawAll(g, lprims, Ghost, (float)view.Mm(1.6));
+                    DrawGuides(g, view, snapped.Guides);
+                });
+                return;
+            }
             var probe = registry.Create(item, raw);
             var doc = SketchDocument.Create(new Size2(view.SlideWidth / Geo.PtPerMm, view.SlideHeight / Geo.PtPerMm));
             doc = Edits.Add(doc, doc.Pages[0].Id, probe);
@@ -650,6 +785,290 @@ namespace InventaSketch.AddIn.OnSlide
             var shape = SketchUnits.Draw(slide, registry, doc, _lang());
             shape?.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Inserted {item.Id} at ({at.X:0.#}, {at.Y:0.#}) mm");
+        }
+
+        // ------------------------------------------------------------------ two-point tool and point editing
+
+        private bool IsTwoPoint(LibraryItem? item)
+            => item is not null && _registry().Type(item.TypeId)?.Geometry == GeometryKind.Points;
+
+        /// <summary>
+        /// Creates a point-geometry object whose first and last points are <paramref name="start"/> and
+        /// <paramref name="end"/>; intermediate default points (curve control points) keep their relative position.
+        /// </summary>
+        private static SketchObject CreateBetween(Registry registry, LibraryItem item, Vec2 start, Vec2 end)
+        {
+            var obj = registry.Create(item, start);
+            var pts = obj.Points ?? new[] { start, end };
+            if (pts.Count < 2) return obj with { Points = new[] { start, end } };
+            Vec2 a = pts[0], b = pts[pts.Count - 1];
+            var axis = b - a;
+            var l2 = axis.Dot(axis);
+            var target = end - start;
+            var mapped = pts.Select((q, i) =>
+            {
+                if (i == 0) return start;
+                if (i == pts.Count - 1) return end;
+                if (l2 < Geo.Eps) return Vec2.Lerp(start, end, (double)i / (pts.Count - 1));
+                var u = (q - a).Dot(axis) / l2;
+                var v = (q - a).Cross(axis) / l2;
+                return start + target * u - target.Perp * v;
+            }).ToList();
+            return obj with { Points = mapped };
+        }
+
+        private void InsertPoints(LibraryItem item, Vec2 start, Vec2 end)
+        {
+            var slide = CurrentSlide();
+            if (slide is null) return;
+            var registry = _registry();
+            var setup = _app.ActivePresentation.PageSetup;
+            var doc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
+            doc = Edits.Add(doc, doc.Pages[0].Id, CreateBetween(registry, item, start, end));
+            _app.StartNewUndoEntry();
+            SketchUnits.Draw(slide, registry, doc, _lang())?.Select(Office.MsoTriState.msoTrue);
+            Log.Info($"Inserted {item.Id} from ({start.X:0.#}, {start.Y:0.#}) to ({end.X:0.#}, {end.Y:0.#}) mm");
+        }
+
+        /// <summary>The single point-geometry object of the armed unit (lines, arrows, dimensions, lead lines), or null.</summary>
+        private SketchObject? PointObject()
+        {
+            var objs = _unit?.Objects.ToList();
+            return objs is { Count: 1 } && objs[0].IsPointGeometry && objs[0].Points is { Count: >= 2 } ? objs[0] : null;
+        }
+
+        private int PointHandleAt(POINT pt, SlideView view)
+        {
+            var o = PointObject();
+            if (o is null) return -1;
+            var tol = 9 * view.DeviceScale;
+            var pts = _unit!.Doc.ResolvePoints(o);
+            var best = -1;
+            var bestD = double.MaxValue;
+            for (var i = 0; i < pts.Count; i++)
+            {
+                var sp = view.ToScreen(pts[i]);
+                var d = Math.Sqrt((sp.X - pt.X) * (sp.X - pt.X) + (sp.Y - pt.Y) * (sp.Y - pt.Y));
+                if (d <= tol && d < bestD) { best = i; bestD = d; }
+            }
+            return best;
+        }
+
+        /// <summary>Small diamond handles on the points of a selected line/arrow/dimension/lead line.</summary>
+        private void DrawPointHandles(SlideView view)
+        {
+            var o = PointObject();
+            if (o is null) return;
+            var pts = _unit!.Doc.ResolvePoints(o);
+            Present(view, _ => { }, g =>
+            {
+                var r = (float)(5 * view.DeviceScale);
+                using var fill = new SolidBrush(Color.White);
+                using var pen = new Pen(Ghost, (float)(1.6 * view.DeviceScale));
+                foreach (var p in pts)
+                {
+                    var c = view.ToScreen(p);
+                    var diamond = new[] { new PointF(c.X, c.Y - r), new PointF(c.X + r, c.Y), new PointF(c.X, c.Y + r), new PointF(c.X - r, c.Y) };
+                    g.FillPolygon(fill, diamond);
+                    g.DrawPolygon(pen, diamond);
+                }
+            });
+        }
+
+        private void UpdatePointEdit(POINT pt, SlideView view)
+        {
+            var o = PointObject();
+            if (o is null) return;
+            var raw = view.ToMm(pt);
+            var snap = KeyDown(VK_MENU) ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+            _pointAt = raw + snap.Delta;
+            var doc = Edits.SetPoint(_unit!.Doc, o.Id, _pointIndex, _pointAt);
+            var prims = _registry().Render(doc.Get(o.Id)!, new RenderContext(doc, _lang()));
+            Present(view, g =>
+            {
+                ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6));
+                DrawGuides(g, view, snap.Guides);
+            });
+        }
+
+        private void ApplyPoint(SketchUnit stale, int index, Vec2 at)
+        {
+            var slide = CurrentSlide();
+            var unit = SketchUnits.Read(stale.Shape);
+            if (slide is null || unit is null) return;
+            var o = unit.Objects.FirstOrDefault(x => x.IsPointGeometry);
+            if (o is null) return;
+            _app.StartNewUndoEntry();
+            var doc = Edits.SetPoint(unit.Doc, o.Id, index, at);
+            SketchUnits.Replace(slide, unit, doc, _registry(), _lang())?.Select(Office.MsoTriState.msoTrue);
+        }
+
+        // ------------------------------------------------------------------ resize with snapping
+
+        /// <summary>Unit bounds in page millimetres.</summary>
+        private Rect UnitRectMm()
+        {
+            var b = _unit!.BoundsPt;
+            return new Rect(b.X / Geo.PtPerMm, b.Y / Geo.PtPerMm, b.Width / Geo.PtPerMm, b.Height / Geo.PtPerMm);
+        }
+
+        /// <summary>Handle positions 0..7: top-left, top, top-right, right, bottom-right, bottom, bottom-left, left.</summary>
+        private static Vec2 HandlePoint(Rect r, int h) => h switch
+        {
+            0 => new Vec2(r.X, r.Y),
+            1 => new Vec2(r.X + r.W / 2, r.Y),
+            2 => new Vec2(r.Right, r.Y),
+            3 => new Vec2(r.Right, r.Y + r.H / 2),
+            4 => new Vec2(r.Right, r.Bottom),
+            5 => new Vec2(r.X + r.W / 2, r.Bottom),
+            6 => new Vec2(r.X, r.Bottom),
+            _ => new Vec2(r.X, r.Y + r.H / 2),
+        };
+
+        private static bool IsCorner(int h) => h % 2 == 0;
+
+        /// <summary>PowerPoint's resize handle under the pointer, or -1.</summary>
+        private int HandleAt(POINT pt, SlideView view)
+        {
+            if (_unit is null) return -1;
+            var r = UnitRectMm();
+            var tol = 9 * view.DeviceScale;
+            var best = -1;
+            var bestD = double.MaxValue;
+            for (var h = 0; h < 8; h++)
+            {
+                // Edge handles of very thin units coincide with corners; PowerPoint hides them, so do we.
+                if (!IsCorner(h) && ((h is 1 or 5 && r.W * view.PixelsPerMm < 30) || (h is 3 or 7 && r.H * view.PixelsPerMm < 30))) continue;
+                var s = view.ToScreen(HandlePoint(r, h));
+                var d = Math.Sqrt((s.X - pt.X) * (s.X - pt.X) + (s.Y - pt.Y) * (s.Y - pt.Y));
+                if (d <= tol && d < bestD) { best = h; bestD = d; }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Computes the scale for the dragged handle. Corner handles scale uniformly (Shift: free), edge handles stretch one
+        /// axis; Ctrl scales about the centre. Snapping (unless Alt): the handle point snaps to points and alignment
+        /// guides of other objects; with uniform scaling, gear pitch circles snap into mesh with neighbouring gears.
+        /// </summary>
+        private void UpdateResize(POINT pt, SlideView view)
+        {
+            var r = _startRect;
+            var h = _handle;
+            var h0 = HandlePoint(r, h);
+            var centre = new Vec2(r.X + r.W / 2, r.Y + r.H / 2);
+            _pivot = KeyDown(VK_CONTROL) ? centre : HandlePoint(r, (h + 4) % 8);
+            var p = view.ToMm(pt);
+            var snap = !KeyDown(VK_MENU);
+            var guides = new List<SnapGuide>();
+            if (snap)
+            {
+                var res = Snapper.SnapPoint(p, _targets, Options(view) with { Semantic = false });
+                p += res.Delta;
+                guides.AddRange(res.Guides);
+            }
+            var uniform = IsCorner(h) && !KeyDown(VK_SHIFT);
+            _resizeMeshed = false;
+            var arm = h0 - _pivot;
+            double sx = 1, sy = 1;
+            if (uniform)
+            {
+                var l2 = arm.Dot(arm);
+                var s = l2 < Geo.Eps ? 1 : (p - _pivot).Dot(arm) / l2;
+                s = Math.Max(0.05, s);
+                if (snap && TryMeshScale(s, view, out var meshed, out var guide))
+                {
+                    s = meshed;
+                    _resizeMeshed = true;
+                    guides.Clear();
+                    guides.Add(guide);
+                }
+                sx = sy = s;
+            }
+            else
+            {
+                if (h is 0 or 2 or 3 or 4 or 6 or 7 && Math.Abs(arm.X) > Geo.Eps) sx = Math.Max(0.05, (p.X - _pivot.X) / arm.X);
+                if (h is 0 or 1 or 2 or 4 or 5 or 6 && Math.Abs(arm.Y) > Geo.Eps) sy = Math.Max(0.05, (p.Y - _pivot.Y) / arm.Y);
+            }
+            _sx = sx;
+            _sy = sy;
+            var registry = _registry();
+            var unit = _unit!;
+            var doc = Edits.Scale(unit.Doc, unit.Doc.Objects.Keys.ToList(), _pivot, sx, sy);
+            var ctx = new RenderContext(doc, _lang());
+            var prims = doc.ObjectsOn(doc.Pages[0]).Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
+            var label = uniform ? $"×{sx:0.00}" : $"×{sx:0.00} / {sy:0.00}";
+            var at = view.ToScreen(p);
+            Present(view, g =>
+            {
+                ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6));
+                DrawGuides(g, view, guides);
+            }, g =>
+            {
+                using var font = new Font("Segoe UI", (float)(11 * view.DeviceScale), FontStyle.Bold, GraphicsUnit.Pixel);
+                using var bg = new SolidBrush(Color.FromArgb(230, 255, 255, 255));
+                using var fg = new SolidBrush(Ghost);
+                var size = g.MeasureString(label, font);
+                var box = new RectangleF(at.X + 14 * (float)view.DeviceScale, at.Y + 14 * (float)view.DeviceScale, size.Width + 8, size.Height + 4);
+                g.FillRectangle(bg, box);
+                g.DrawString(label, font, fg, box.X + 4, box.Y + 2);
+            });
+        }
+
+        /// <summary>
+        /// Uniform scale near <paramref name="s"/> at which a pitch circle of the unit touches a pitch circle of another
+        /// gear (external mesh) or a ring gear (internal mesh). Newton iteration on the centre-distance condition.
+        /// </summary>
+        private bool TryMeshScale(double s, SlideView view, out double result, out SnapGuide guide)
+        {
+            result = s;
+            guide = new SnapGuide(GuideKind.Point, Vec2.Zero, Vec2.Zero);
+            var tolMm = view.Mm(8);
+            var armLength = (HandlePoint(_startRect, _handle) - _pivot).Length;
+            var best = double.MaxValue;
+            var found = false;
+            foreach (var m in _unitAnchors.Where(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch))
+            {
+                foreach (var t in _targets.Where(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner))
+                {
+                    var internalMesh = t.Role == AnchorRole.PitchInner;
+                    double F(double k)
+                    {
+                        var c = _pivot + (m.P - _pivot) * k;
+                        var d = (c - t.P).Length;
+                        return internalMesh ? d - (t.Radius - m.Radius * k) : d - (m.Radius * k + t.Radius);
+                    }
+                    var x = s;
+                    for (var i = 0; i < 12; i++)
+                    {
+                        var f = F(x);
+                        var df = (F(x + 1e-5) - f) / 1e-5;
+                        if (Math.Abs(df) < 1e-12) break;
+                        var nx = x - f / df;
+                        if (Math.Abs(nx - x) < 1e-9) { x = nx; break; }
+                        x = nx;
+                    }
+                    if (x <= 0.05 || Math.Abs(F(x)) > 1e-3) continue;
+                    var handleShift = Math.Abs(x - s) * armLength;
+                    if (handleShift > tolMm || handleShift >= best) continue;
+                    best = handleShift;
+                    found = true;
+                    result = x;
+                    guide = new SnapGuide(GuideKind.Circle, t.P, t.P, t.Radius);
+                }
+            }
+            return found;
+        }
+
+        private void ApplyResize(SketchUnit stale, Vec2 pivot, double sx, double sy)
+        {
+            var slide = CurrentSlide();
+            var unit = SketchUnits.Read(stale.Shape);
+            if (slide is null || unit is null) return;
+            _app.StartNewUndoEntry();
+            var doc = Edits.Scale(unit.Doc, unit.Doc.Objects.Keys.ToList(), pivot, sx, sy);
+            var shape = SketchUnits.Replace(slide, unit, doc, _registry(), _lang());
+            shape?.Select(Office.MsoTriState.msoTrue);
         }
 
         private void ApplyMove(SketchUnit unit, Vec2 deltaMm)

@@ -35,6 +35,16 @@
   hub on shaft axis, points, alignment guides); click inserts, `Esc` cancels, `Alt` suspends snapping.
 - **Drag with snapping:** pressing inside a selected unit (PowerPoint keeps the handles on the border) moves it with
   the same snapping and red guides; one undo step on release.
+- **Resize with snapping:** PowerPoint's resize handles of a selected unit are taken over. Corner handles scale
+  uniformly (`Shift`: free), edge handles stretch one axis, `Ctrl` scales about the centre, `Alt` disables snapping.
+  The dragged handle snaps to points and alignment guides; with uniform scaling a gear's pitch circle snaps into mesh
+  with a neighbouring gear or ring gear. The preview shows the scale factor; on release the unit is re-rendered from
+  its model (parameters unchanged, only sizes).
+- **Two-point tool:** lines, arrows, dimensions and lead lines are placed like connectors: press at the start point
+  and drag to the end point (or click start, click end). Both ends snap to centres, corners, ends and ports of other
+  units; curve control points keep their relative position.
+- **Point editing:** a selected line/arrow/dimension/lead line shows diamond handles on its points; dragging one
+  moves it with the same magnetic snapping (`Alt`: free). These handles take precedence over the resize handles.
 - **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle, below if there is no
   room): its views, mirror horizontally/vertically, rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
   otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
@@ -64,6 +74,10 @@ Slice 2 (same environment, simulated mouse input with PowerPoint in the foregrou
 - Drag: gear released 3 pt off the shaft axis snapped exactly onto it (centre y = 270.0 pt).
 - Insert at pointer: gear placed 4 pt off the axis snapped onto it.
 - Pie menu: right-click + top entry deleted the unit.
+- Resize: dragging a gear's corner handle near the mesh position snapped to a uniform scale of 1.429 at which its
+  pitch circle touches the neighbouring gear (`gear mesh snap=True` in the log, preview captured).
+- Two-point arrow: start pressed 3 pt off a gear centre snapped exactly onto it (162.52 / 102.52 pt).
+- Point editing: the arrow tip dragged 2–3 pt off the shaft end snapped exactly onto it (309.92 / 270.0 pt).
 - Floating bar: appears above the selected gear (screen capture checked), the view button switched the gear to the stick
   symbol, moving the pointer 900 px away dismissed the bar.
 

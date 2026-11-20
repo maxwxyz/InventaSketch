@@ -263,6 +263,14 @@ sowie Luft- und Raumfahrt. Jedes davon wird zum Modul, sobald ein konkreter Umfa
 - **Import & Erkennung:** SVG, PDF, PNG/JPEG, TIFF, DXF, CSV; Konturerkennung in Bildern, um geschlossene Bereiche zu
   schraffieren, unterstützte Vektorisierung und OCR von Bezugszeichen – stets bestätigbar, das Original bleibt erhalten.
   Geplant.
+- **Fachexporte (vorgeschlagen):** je nach Auswahl und Objekttypen den semantischen Inhalt in gängige
+  Ingenieursformate exportieren, nicht nur als Grafik. Beispiele: Zahnradsätze und Getriebetopologien (Verzahnungs-
+  datentabellen, Leistungsfluss-Topologie, REXS wo machbar), kinematische Ketten und Koppelgetriebe (Gelenk-/Glied-
+  tabellen, URDF-ähnliche Beschreibungen), Schaltpläne und E/E-Verschaltung (Netzlisten z. B. KiCad/SPICE,
+  Verbindungslisten, Leitungs-/Kabelbaumlisten, Ratsnest/Airwires für ungeroutete Verbindungen), Platinenskizzen
+  (Bestückungslisten), Stücklisten (BOM als CSV/Excel mit Bezugszeichen, Benennung, Menge und optionalen Parametern),
+  Bezugszeichenlisten sowie Ablauf-/Diagrammstrukturen (z. B. GraphML, Mermaid). Jeder Exporter ist ein
+  Erweiterungspunkt der Module und gibt genau an, welche Semantik er erhält.
 - **Export:** native Formen, SVG, PDF (Vektor), PNG/TIFF (300–600 dpi, 1-Bit-Option), Bezugszeichenliste.
   SVG im Kern ausgeliefert; übrige geplant.
 - **Bibliotheken:** Benutzerbibliotheken, wiederverwendbare Baugruppen, Import/Export von Bibliothekspaketen. Geplant.
