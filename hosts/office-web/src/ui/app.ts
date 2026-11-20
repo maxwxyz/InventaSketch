@@ -16,7 +16,7 @@ import { icon } from "./icons";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
 import { PieMenu } from "./piemenu";
-import { buildPieEntries, MAX_PIE_ITEMS, pieSplit, submenu, type PieEntry } from "./pielogic";
+import { buildPieEntries, labelEntries, MAX_PIE_ITEMS, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
 import { Stage } from "./stage";
 
 export interface AppOptions {
@@ -403,6 +403,7 @@ export class App {
   private pieOverflow: PieEntry[] = [];
   private pieSuggestions: SuggestionInfo[] = [];
   private pieConversions: ActionInfo[] = [];
+  private pieLabels: { entry: PieEntry; change: LabelChange }[] = [];
 
   private textAction(): ActionInfo {
     return { id: "text", label: t("ctx.text"), icon: "cmd-text", enabled: true, active: false, group: "edit", kind: "generic" };
@@ -447,7 +448,18 @@ export class App {
       this.report(e);
     }
     const type = this.pieConversions.length ? this.menuEntry("menu:type", t("pie.type"), "cmd-cycle") : undefined;
-    const { main, overflow } = pieSplit(buildPieEntries(actions, { text, insert, type }), this.menuEntry("menu:more", t("pie.more"), "more"));
+    // "Label ▸" belongs to the convertible point types (lines, arrows, dimensions, lead lines), like in the COM add-in.
+    this.pieLabels = [];
+    if (type) {
+      try {
+        const info = this.sessionObj.inspector(sel, lang());
+        this.pieLabels = labelEntries(info.params, { larger: t("pie.textLarger"), smaller: t("pie.textSmaller") });
+      } catch (e) {
+        this.report(e);
+      }
+    }
+    const label = this.pieLabels.length ? this.menuEntry("menu:label", t("pie.label"), "cmd-text") : undefined;
+    const { main, overflow } = pieSplit(buildPieEntries(actions, { text, insert, type, label }), this.menuEntry("menu:more", t("pie.more"), "more"));
     this.pieOverflow = overflow;
     this.bar.hide();
     this.pie.show(main, clientX, clientY);
@@ -477,6 +489,24 @@ export class App {
       const page = submenu(back, entries, more);
       this.pieOverflow = page.overflow;
       return this.pie.show(page.main, at.x, at.y);
+    }
+    if (e.id === "menu:label") {
+      const page = submenu(back, this.pieLabels.map((l) => l.entry), more);
+      this.pieOverflow = page.overflow;
+      return this.pie.show(page.main, at.x, at.y);
+    }
+    if (e.id.startsWith("lbl:")) {
+      const change = this.pieLabels.find((l) => l.entry.id === e.id)?.change;
+      if (!change) return;
+      const sel = this.st.selection;
+      if (change.prompt) {
+        const prompt = change.prompt;
+        this.prompt.show({ title: t("pie.label"), label: prompt.label, value: prompt.value }, this.promptAnchor(), (value) => {
+          this.edit((s) => s.setParam(sel, change.key, value));
+        });
+        return;
+      }
+      return this.edit((s) => s.setParam(sel, change.key, change.value ?? null));
     }
     if (e.id.startsWith("conv:")) {
       const sel = this.st.selection;

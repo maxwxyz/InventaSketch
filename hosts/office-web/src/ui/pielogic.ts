@@ -1,7 +1,7 @@
 // Pure layout logic of the pie menu (no DOM, unit-tested): which entries go into the ring, which into "More ▸", where
 // they sit and how their labels wrap. Same priority rules as the COM add-in's on-slide pie menu (PieLayout).
 
-import type { ActionInfo } from "../engine/types";
+import type { ActionInfo, ParamInfo, ParamValue } from "../engine/types";
 
 /** More entries than this make the ring unreadable; the rest goes into "More ▸". */
 export const MAX_PIE_ITEMS = 8;
@@ -38,13 +38,14 @@ const SECONDARY = ["numeral", "flipH", "flipV", "group", "ungroup", "front", "ba
  * The rest (type actions, further views, numeral, mirror, order, grouping) may overflow into "More ▸"; among them
  * available entries come before unavailable ones.
  */
-export function buildPieEntries(actions: ActionInfo[], extra: { text?: PieEntry; insert?: PieEntry; type?: PieEntry } = {}): PieCandidate[] {
+export function buildPieEntries(actions: ActionInfo[], extra: { text?: PieEntry; insert?: PieEntry; type?: PieEntry; label?: PieEntry } = {}): PieCandidate[] {
   const out: PieCandidate[] = [];
   const by = (id: string) => actions.find((a) => a.id === id);
   const del = by("delete");
   if (del) out.push({ entry: entryOf(del), essential: true });
   // Line types: "Type ▸" right after delete (like the COM add-in).
   if (extra.type) out.push({ entry: extra.type, essential: true });
+  if (extra.label) out.push({ entry: extra.label, essential: true });
   const views = actions.filter((a) => a.kind === "view");
   if (views.length > 1) views.slice(0, 4).forEach((v) => out.push({ entry: entryOf(v), essential: true }));
   if (extra.text) out.push({ entry: extra.text, essential: true });
@@ -83,6 +84,41 @@ export function pieSplit(all: PieCandidate[], more: PieEntry, max = MAX_PIE_ITEM
 /** A submenu ("More ▸", "Insert ▸"): Back first, paged with a further "More ▸" when it does not fit the ring. */
 export function submenu(back: PieEntry, entries: PieEntry[], more: PieEntry, max = MAX_PIE_ITEMS): { main: PieEntry[]; overflow: PieEntry[] } {
   return pieSplit([{ entry: back, essential: true }, ...entries.map((entry) => ({ entry, essential: false }))], more, max);
+}
+
+/** A pie entry of the label menu: what it changes when picked. */
+export interface LabelChange { key: string; value?: ParamValue; prompt?: { label: string; value: string } }
+
+/**
+ * "Label ▸" submenu of lines, arrows, dimensions and lead lines, generated from the type's optional parameters
+ * (module-agnostic, same rules as the COM add-in): text parameters open a prompt, switches toggle, choices cycle to the
+ * next option, a text size offers larger/smaller. At most ten entries.
+ */
+export function labelEntries(params: ParamInfo[], text: { larger: string; smaller: string }): { entry: PieEntry; change: LabelChange }[] {
+  const out: { entry: PieEntry; change: LabelChange }[] = [];
+  for (const p of params) {
+    if (out.length >= 10) break;
+    const id = (s: string) => `lbl:${p.key}:${s}`;
+    if (p.kind === "text") {
+      const cur = typeof p.value === "string" ? p.value : typeof p.default === "string" ? p.default : "";
+      out.push({ entry: { id: id("edit"), label: `${p.label} …`, icon: "cmd-text", enabled: true, active: false }, change: { key: p.key, prompt: { label: p.label, value: cur } } });
+    } else if (p.kind === "boolean") {
+      const cur = typeof p.value === "boolean" ? p.value : p.default === true;
+      out.push({ entry: { id: id("toggle"), label: p.label, enabled: true, active: cur }, change: { key: p.key, value: !cur } });
+    } else if (p.kind === "choice" && p.options && p.options.length > 1) {
+      const cur = String(p.value ?? p.default ?? p.options[0].id);
+      const i = p.options.findIndex((o) => o.id === cur);
+      const next = p.options[(i + 1 + p.options.length) % p.options.length];
+      const curLabel = i >= 0 ? p.options[i].label : cur;
+      out.push({ entry: { id: id("cycle"), label: `${p.label}: ${curLabel}`, enabled: true, active: false }, change: { key: p.key, value: next.id } });
+    } else if (p.kind === "number" && p.key === "textSize") {
+      const cur = typeof p.value === "number" ? p.value : typeof p.default === "number" ? p.default : 3.5;
+      const clamp = (v: number) => Math.round(Math.min(p.max ?? 1e9, Math.max(p.min ?? 0, v)) * 100) / 100;
+      out.push({ entry: { id: id("larger"), label: text.larger, icon: "cmd-increase", enabled: true, active: false }, change: { key: p.key, value: clamp(cur * 1.2) } });
+      out.push({ entry: { id: id("smaller"), label: text.smaller, icon: "cmd-decrease", enabled: true, active: false }, change: { key: p.key, value: clamp(cur / 1.2) } });
+    }
+  }
+  return out;
 }
 
 // ------------------------------------------------------------------ geometry

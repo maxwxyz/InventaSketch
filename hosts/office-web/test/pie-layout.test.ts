@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ActionInfo } from "../src/engine/types";
 import {
-  approxMeasure, buildPieEntries, ellipsize, fitLabel, MAX_PIE_ITEMS, pieGeometry, pieSplit, submenu, wrapLabel, type PieEntry,
+  approxMeasure, buildPieEntries, ellipsize, labelEntries, fitLabel, MAX_PIE_ITEMS, pieGeometry, pieSplit, submenu, wrapLabel, type PieEntry,
 } from "../src/ui/pielogic";
 import { resizeFrame, scaleLabel } from "../src/ui/stage";
 import strings from "../src/strings.json";
@@ -193,5 +193,34 @@ describe("resize on the stage", () => {
       expect(table[key]?.en).toBeTruthy();
       expect(table[key]?.de).toBeTruthy();
     }
+  });
+});
+
+describe("label submenu", () => {
+  const param = (p: Partial<import("../src/engine/types").ParamInfo>) => ({ key: "k", label: "K", kind: "text", advanced: false, ...p }) as import("../src/engine/types").ParamInfo;
+  const text = { larger: "Larger", smaller: "Smaller" };
+
+  it("offers Label ▸ right after Type ▸", () => {
+    const ids = buildPieEntries([a("delete"), a("duplicate")], { type: entry("menu:type"), label: entry("menu:label") }).map((c) => c.entry.id);
+    expect(ids.slice(0, 3)).toEqual(["delete", "menu:type", "menu:label"]);
+  });
+
+  it("maps parameters to prompts, toggles, cycles and size steps", () => {
+    const list = labelEntries([
+      param({ key: "text", label: "Text", kind: "text", value: "A" }),
+      param({ key: "box", label: "Box", kind: "boolean", value: true }),
+      param({ key: "pos", label: "Position", kind: "choice", value: "above", options: [a("above", "generic", true, "Above"), a("below", "generic", true, "Below")] }),
+      param({ key: "textSize", label: "Size", kind: "number", value: 3, min: 1, max: 20 }),
+      param({ key: "width", label: "Width", kind: "number", value: 3 }),
+    ], text);
+    expect(list.map((l) => l.change)).toEqual([
+      { key: "text", prompt: { label: "Text", value: "A" } },
+      { key: "box", value: false },
+      { key: "pos", value: "below" },
+      { key: "textSize", value: 3.6 },
+      { key: "textSize", value: 2.5 },
+    ]);
+    expect(list[2].entry.label).toBe("Position: Above");
+    expect(list[1].entry.active).toBe(true);
   });
 });
