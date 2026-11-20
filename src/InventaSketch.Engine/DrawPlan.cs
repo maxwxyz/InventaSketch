@@ -30,6 +30,12 @@ namespace InventaSketch.Engine
 
         /// <summary>Office.js with PowerPointApi 1.10: rects, ellipses, lines, text, rotation, groups.</summary>
         public static readonly DrawCapabilities OfficeJs = new() { Freeform = false, Arrowheads = false, PatternFill = false, Rotation = true };
+
+        /// <summary>
+        /// LibreOffice (UNO drawing API): PolyPolygonBezier freeforms, line-end markers (LineStart/LineEnd), scalable
+        /// FillHatch, rotation, groups and text. The LibreOffice engine process uses it for drawPlan by default.
+        /// </summary>
+        public static readonly DrawCapabilities LibreOffice = new() { Freeform = true, Arrowheads = true, PatternFill = true, Rotation = true };
     }
 
     public sealed class PlanStroke

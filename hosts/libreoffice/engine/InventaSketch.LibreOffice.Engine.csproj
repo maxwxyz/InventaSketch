@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Engine process of the LibreOffice extension: the same engine (src/InventaSketch.Engine + modules) as the COM add-in
+    and the web add-in, as a child process of LibreOffice. The Python-UNO component starts it once per LibreOffice
+    session and talks to it over stdin/stdout, one JSON object per line (Program.cs).
+
+    Build: hosts/libreoffice/scripts/package.py (calls dotnet publish), locally also
+      dotnet publish hosts/libreoffice/engine -c Release -o <dir> -p:UseAppHost=false   (portable, needs .NET 10)
+      dotnet publish hosts/libreoffice/engine -c Release -r win-x64 -o <dir>            (self-contained single file)
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>InventaSketch.LibreOffice.Engine</RootNamespace>
+    <AssemblyName>InventaSketch.LibreOffice.Engine</AssemblyName>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <!-- Only German and English UI texts; no culture data is needed (number formatting is invariant). -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- A machine with only a newer .NET (11, ...) can still run the portable engine. -->
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <!-- Per-platform package: self-contained single file, no .NET installation needed. The InventaSketch libraries use
+         System.Text.Json reflection, so nothing is trimmed. -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\InventaSketch.Engine\InventaSketch.Engine.csproj" />
+  </ItemGroup>
+</Project>
