@@ -112,7 +112,7 @@ Export-Erweiterungspunkte der Module.
   - Skalieren von Schemadarstellungen: für die Nabensymbole erledigt (sie behalten ihre Größe); weitere Schemadetails
     der Module prüfen.
   - Web-Host: dieselbe UX (Einfügen-Vorschläge über eine Engine-Methode, Verankern, Text bearbeiten, Schwarz-Weiß).
-  - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout (Formatierung nativer Formen; aus Slidemax übernehmen).
+  - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout: am 20.11.2026 erledigt (native Formatierung wird ins Modell übernommen).
   - Werkzeuge-Menü wie Slidemax: Symbol einfügen, Dezimaltrennzeichen ändern, Korrektursprache, Folien senden, Folien
     speichern (aus Slidemax übernehmen).
   - Einstellung zum Ausblenden nicht benötigter Module (Menüband-Gruppen, Galerien, Seitenleisten-Bibliothek).

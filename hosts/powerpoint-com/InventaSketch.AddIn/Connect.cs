@@ -168,6 +168,7 @@ namespace InventaSketch.AddIn
             var sb = new StringBuilder();
             sb.Append("<customUI xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\" onLoad=\"OnRibbonLoad\"><ribbon><tabs>");
             sb.Append("<tab id=\"IskTab\" label=\"InventaSketch\">");
+            AppendStructureGroup(sb);
             sb.Append("<group id=\"IskTools\" getImage=\"GetLogoImage\" label=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\">");
             sb.Append("<toggleButton id=\"IskEditor\" label=\"").Append(L(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
               .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
@@ -184,33 +185,218 @@ namespace InventaSketch.AddIn
             if (_registry is not null)
             {
                 var m = 0;
+                var elementsOpen = false;
+                void Gallery(LibraryCategory c, int i, bool inMenu, bool compact)
+                {
+                    // Inside a menu, galleries take no size/showLabel attributes (the menu shows their labels).
+                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(c.Name.Get(_lang))).Append('"');
+                    if (!inMenu) sb.Append(" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append('"');
+                    sb.Append(" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
+                      .Append(" screentip=\"").Append(X(c.Name.Get(_lang))).Append("\" supertip=\"")
+                      .Append(X(T("Pick an element, then click on the slide to place it (snaps to other elements). Esc cancels.",
+                          "Element wählen, dann auf die Folie klicken (rastet an anderen Elementen ein). Esc bricht ab."))).Append('"')
+                      .Append(" getItemCount=\"GetItemCount\" getItemImage=\"GetGalleryItemImage\" getItemScreentip=\"GetItemScreentip\"")
+                      .Append(" getItemID=\"GetGalleryItemId\" onAction=\"OnGalleryAction\" />");
+                }
                 foreach (var (label, mods) in RibbonGroups())
                 {
                     var ids = mods.Select(mod => mod.Id).ToList();
                     var cats = _categories.Select((c, i) => (c, i)).Where(x => ids.Contains(x.c.ModuleId))
                         .OrderBy(x => ids.IndexOf(x.c.ModuleId)).ToList();
                     if (cats.Count == 0) continue;
-                    // Groups with many categories show icons only (name in the tooltip) so the tab fits on laptop screens.
-                    var compact = cats.Count > 4;
-                    sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(L(label)).Append("\">");
-                    foreach (var (c, i) in cats)
+                    if (m == 0)
                     {
-                        sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(c.Name.Get(_lang)))
-                          .Append("\" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append("\" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
-                          .Append(" screentip=\"").Append(X(c.Name.Get(_lang))).Append("\" supertip=\"")
-                          .Append(X(T("Pick an element, then click on the slide to place it (snaps to other elements). Esc cancels.",
-                              "Element wählen, dann auf die Folie klicken (rastet an anderen Elementen ein). Esc bricht ab."))).Append('"')
-                          .Append(" getItemCount=\"GetItemCount\" getItemImage=\"GetGalleryItemImage\" getItemScreentip=\"GetItemScreentip\"")
-                          .Append(" getItemID=\"GetGalleryItemId\" onAction=\"OnGalleryAction\" />");
+                        // "Annotate" stays open as a group; many categories show icons only (name in the tooltip).
+                        sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(L(label)).Append("\">");
+                        foreach (var (c, i) in cats) Gallery(c, i, inMenu: false, compact: cats.Count > 4);
+                        sb.Append("</group>");
+                        // Formatting groups (like Slidemax) right after "Annotate", before the domain modules.
+                        AppendFormattingGroups(sb);
+                        continue;
                     }
-                    sb.Append("</group>");
+                    // Domain modules: one large menu each in the "Elements" group, so the tab fits on laptop screens.
+                    if (!elementsOpen)
+                    {
+                        sb.Append("<group id=\"IskElements\" getImage=\"GetLogoImage\" label=\"").Append(L(T("Elements", "Elemente"))).Append("\">");
+                        elementsOpen = true;
+                    }
+                    sb.Append("<menu id=\"IskMod_").Append(m++).Append("\" label=\"").Append(L(label)).Append("\" size=\"large\" itemSize=\"normal\" getImage=\"GetGroupImage\">");
+                    foreach (var (c, i) in cats) Gallery(c, i, inMenu: true, compact: false);
+                    sb.Append("</menu>");
                 }
+                if (elementsOpen) sb.Append("</group>");
+                if (m == 0) AppendFormattingGroups(sb);
             }
+            else AppendFormattingGroups(sb);
             sb.Append("</tab></tabs></ribbon></customUI>");
             return sb.ToString();
         }
 
+        /// <summary>Structure group like Slidemax: new slide, paste, format painter (Office's own controls).</summary>
+        private void AppendStructureGroup(StringBuilder sb)
+        {
+            sb.Append("<group id=\"IskStructure\" label=\"").Append(L(T("Structure", "Struktur"))).Append("\" imageMso=\"SlideNewGallery\">");
+            sb.Append("<box id=\"IskBoxStructure\" boxStyle=\"vertical\">");
+            sb.Append("<control idMso=\"SlideNewGallery\" /><control idMso=\"PasteMenu\" /><control idMso=\"FormatPainter\" />");
+            sb.Append("</box></group>");
+        }
+
+        /// <summary>
+        /// Colour, text and layout groups like Slidemax: Office's own controls (they format native shapes; on InventaSketch
+        /// units the changes are folded into the model, see NativeFormat) plus own buttons for align, distribute, same size
+        /// and swap that work relative to the selection (one shape: relative to the slide).
+        /// </summary>
+        private void AppendFormattingGroups(StringBuilder sb)
+        {
+            sb.Append("<group id=\"IskColor\" label=\"").Append(L(T("Colour", "Farbe"))).Append("\" imageMso=\"ShapeFillColorPicker\">");
+            sb.Append("<box id=\"IskBoxColor\" boxStyle=\"vertical\"><control idMso=\"FontColorPicker\" /><control idMso=\"ShapeFillColorPicker\" /><control idMso=\"ShapeOutlineColorPicker\" /></box>");
+            sb.Append("</group>");
+
+            sb.Append("<group id=\"IskText\" label=\"").Append(L(T("Text", "Text"))).Append("\" imageMso=\"Font\">");
+            sb.Append("<box id=\"IskBoxFont\"><control idMso=\"Font\" showLabel=\"false\" /><control idMso=\"FontSize\" showLabel=\"false\" />")
+              .Append("<control idMso=\"FontSizeIncrease\" showLabel=\"false\" /><control idMso=\"FontSizeDecrease\" showLabel=\"false\" />");
+            LayoutButton(sb, "IskInsertSymbol", T("Insert symbol", "Symbol einf\u00fcgen"), "SymbolInsert");
+            sb.Append("</box>");
+            sb.Append("<box id=\"IskBoxFontStyle\"><control idMso=\"Bold\" showLabel=\"false\" /><control idMso=\"Italic\" showLabel=\"false\" />")
+              .Append("<control idMso=\"Underline\" showLabel=\"false\" /><control idMso=\"Strikethrough\" showLabel=\"false\" />")
+              .Append("<control idMso=\"Subscript\" showLabel=\"false\" /><control idMso=\"Superscript\" showLabel=\"false\" />")
+              .Append("<control idMso=\"TextAlignGallery\" showLabel=\"false\" /></box>");
+            sb.Append("<box id=\"IskBoxParagraph\"><control idMso=\"AlignLeft\" showLabel=\"false\" /><control idMso=\"AlignCenter\" showLabel=\"false\" />")
+              .Append("<control idMso=\"AlignRight\" showLabel=\"false\" /><control idMso=\"IndentDecrease\" showLabel=\"false\" />")
+              .Append("<control idMso=\"IndentIncrease\" showLabel=\"false\" /><control idMso=\"BulletsGallery\" showLabel=\"false\" />")
+              .Append("<control idMso=\"NumberingGallery\" showLabel=\"false\" /></box>");
+            sb.Append("</group>");
+
+            sb.Append("<group id=\"IskLayout\" label=\"").Append(L(T("Layout", "Layout"))).Append("\" imageMso=\"ObjectsAlignLeft\">");
+            sb.Append("<box id=\"IskBoxArrange\"><control idMso=\"ObjectBringToFrontMenu\" showLabel=\"false\" /><control idMso=\"ObjectSendToBackMenu\" showLabel=\"false\" /><control idMso=\"SelectionPane\" showLabel=\"false\" /></box>");
+            sb.Append("<box id=\"IskBoxGroup\"><control idMso=\"ObjectsGroup\" showLabel=\"false\" /><control idMso=\"ObjectsUngroup\" showLabel=\"false\" /><control idMso=\"ObjectsRegroup\" showLabel=\"false\" /></box>");
+            sb.Append("<box id=\"IskBoxSize\">");
+            LayoutButton(sb, "IskSameHeight", T("Same height", "Gleiche H\u00f6he"), null);
+            LayoutButton(sb, "IskSameWidth", T("Same width", "Gleiche Breite"), null);
+            LayoutButton(sb, "IskSameSize", T("Same size", "Gleiche Gr\u00f6\u00dfe"), null);
+            sb.Append("</box>");
+            sb.Append("<box id=\"IskBoxDimensions\"><control idMso=\"ShapeHeight\" showLabel=\"false\" /><control idMso=\"ShapeWidth\" showLabel=\"false\" /></box>");
+            sb.Append("<separator id=\"IskSepAlign\" />");
+            sb.Append("<box id=\"IskBoxAlignH\">");
+            LayoutButton(sb, "IskAlignLeft", T("Align left", "Linksb\u00fcndig ausrichten"), "ObjectsAlignLeft");
+            LayoutButton(sb, "IskAlignCenter", T("Align centre", "Horizontal zentrieren"), "ObjectsAlignCenterHorizontal");
+            LayoutButton(sb, "IskAlignRight", T("Align right", "Rechtsb\u00fcndig ausrichten"), "ObjectsAlignRight");
+            LayoutButton(sb, "IskDistributeH", T("Distribute horizontally", "Horizontal verteilen"), "AlignDistributeHorizontally");
+            sb.Append("</box><box id=\"IskBoxAlignV\">");
+            LayoutButton(sb, "IskAlignTop", T("Align top", "Oben ausrichten"), "ObjectsAlignTop");
+            LayoutButton(sb, "IskAlignMiddle", T("Align middle", "Vertikal zentrieren"), "ObjectsAlignMiddleVertical");
+            LayoutButton(sb, "IskAlignBottom", T("Align bottom", "Unten ausrichten"), "ObjectsAlignBottom");
+            LayoutButton(sb, "IskDistributeV", T("Distribute vertically", "Vertikal verteilen"), "AlignDistributeVertically");
+            sb.Append("</box><box id=\"IskBoxSwap\">");
+            LayoutButton(sb, "IskSwap", T("Swap positions", "Positionen tauschen"), null);
+            sb.Append("</box></group>");
+        }
+
+        private void LayoutButton(StringBuilder sb, string id, string label, string? imageMso)
+        {
+            sb.Append("<button id=\"").Append(id).Append("\" showLabel=\"false\" label=\"").Append(L(label)).Append("\" screentip=\"").Append(X(label)).Append("\" ")
+              .Append(imageMso is null ? "getImage=\"GetLayoutImage\"" : "imageMso=\"" + imageMso + "\"").Append(" onAction=\"OnLayout\" />");
+        }
+
         public void OnRibbonLoad(Office.IRibbonUI ribbon) => _ribbon = ribbon;
+
+        /// <summary>
+        /// Layout buttons (ported from Slidemax's layout group): align and distribute relative to the selection (a single
+        /// shape: relative to the slide), same height/width/size as the first selected shape, swap the positions of two
+        /// shapes. One undo step each; moved InventaSketch units keep their model (bounds are folded in on the next read).
+        /// </summary>
+        public void OnLayout(Office.IRibbonControl control)
+        {
+            try
+            {
+                if (control.Id == "IskInsertSymbol") { _app?.CommandBars.ExecuteMso("SymbolInsert"); return; }
+                var sel = _app?.ActiveWindow?.Selection;
+                if (sel is null || sel.Type is not (PowerPoint.PpSelectionType.ppSelectionShapes or PowerPoint.PpSelectionType.ppSelectionText)) return;
+                var range = sel.HasChildShapeRange ? sel.ChildShapeRange : sel.ShapeRange;
+                var count = range.Count;
+                if (count == 0) return;
+                var toSlide = count == 1 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse;
+                _app!.StartNewUndoEntry();
+                switch (control.Id)
+                {
+                    case "IskAlignLeft": range.Align(Office.MsoAlignCmd.msoAlignLefts, toSlide); break;
+                    case "IskAlignCenter": range.Align(Office.MsoAlignCmd.msoAlignCenters, toSlide); break;
+                    case "IskAlignRight": range.Align(Office.MsoAlignCmd.msoAlignRights, toSlide); break;
+                    case "IskAlignTop": range.Align(Office.MsoAlignCmd.msoAlignTops, toSlide); break;
+                    case "IskAlignMiddle": range.Align(Office.MsoAlignCmd.msoAlignMiddles, toSlide); break;
+                    case "IskAlignBottom": range.Align(Office.MsoAlignCmd.msoAlignBottoms, toSlide); break;
+                    case "IskDistributeH": range.Distribute(Office.MsoDistributeCmd.msoDistributeHorizontally, count < 3 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse); break;
+                    case "IskDistributeV": range.Distribute(Office.MsoDistributeCmd.msoDistributeVertically, count < 3 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse); break;
+                    case "IskSameHeight": SameSize(range, width: false, height: true); break;
+                    case "IskSameWidth": SameSize(range, width: true, height: false); break;
+                    case "IskSameSize": SameSize(range, width: true, height: true); break;
+                    case "IskSwap":
+                        if (count != 2) break;
+                        PowerPoint.Shape a = range[1], b = range[2];
+                        float ax = a.Left + a.Width / 2, ay = a.Top + a.Height / 2, bx = b.Left + b.Width / 2, by = b.Top + b.Height / 2;
+                        a.Left = bx - a.Width / 2; a.Top = by - a.Height / 2;
+                        b.Left = ax - b.Width / 2; b.Top = ay - b.Height / 2;
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnLayout " + control.Id, ex);
+            }
+        }
+
+        /// <summary>Gives every shape of the range the width and/or height of the first one (about each shape's centre).</summary>
+        private static void SameSize(PowerPoint.ShapeRange range, bool width, bool height)
+        {
+            if (range.Count < 2) return;
+            var first = range[1];
+            for (var i = 2; i <= range.Count; i++)
+            {
+                var s = range[i];
+                var lockRatio = s.LockAspectRatio;
+                s.LockAspectRatio = Office.MsoTriState.msoFalse;
+                float cx = s.Left + s.Width / 2, cy = s.Top + s.Height / 2;
+                if (width) s.Width = first.Width;
+                if (height) s.Height = first.Height;
+                s.Left = cx - s.Width / 2;
+                s.Top = cy - s.Height / 2;
+                s.LockAspectRatio = lockRatio;
+            }
+        }
+
+        /// <summary>Own layout pictograms (same height/width/size, swap) in the Office theme ink.</summary>
+        public object? GetLayoutImage(Office.IRibbonControl control)
+        {
+            try
+            {
+                var size = (int)Math.Round(16 * DeviceScale());
+                using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    var k = size / 16f;
+                    g.ScaleTransform(k, k);
+                    var ink = OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
+                    using var pen = new Pen(ink, 1.3f);
+                    using var accent = new Pen(Color.FromArgb(31, 95, 191), 1.3f);
+                    switch (control.Id)
+                    {
+                        case "IskSameHeight":
+                            g.DrawRectangle(pen, 2, 3, 5, 10); g.DrawRectangle(pen, 9, 6, 5, 7); g.DrawLine(accent, 9, 3, 14, 3); break;
+                        case "IskSameWidth":
+                            g.DrawRectangle(pen, 3, 2, 10, 5); g.DrawRectangle(pen, 3, 9, 7, 5); g.DrawLine(accent, 13, 9, 13, 14); break;
+                        case "IskSameSize":
+                            g.DrawRectangle(pen, 1.5f, 2, 6, 6); g.DrawRectangle(pen, 8.5f, 8, 6, 6); g.DrawLine(accent, 8.5f, 2, 14.5f, 2); g.DrawLine(accent, 14.5f, 2, 14.5f, 6); break;
+                        case "IskSwap":
+                            g.DrawRectangle(pen, 1.5f, 5, 4, 6); g.DrawRectangle(pen, 10.5f, 5, 4, 6);
+                            g.DrawLine(accent, 6.5f, 6, 9.5f, 6); g.DrawLine(accent, 8.5f, 5, 9.5f, 6);
+                            g.DrawLine(accent, 9.5f, 10, 6.5f, 10); g.DrawLine(accent, 7.5f, 11, 6.5f, 10); break;
+                    }
+                }
+                return PictureConverter.ToPicture(bmp);
+            }
+            catch (Exception ex) { Log.Error("GetLayoutImage", ex); return null; }
+        }
 
         private string T(string en, string de) => _lang == Lang.De ? de : en;
 

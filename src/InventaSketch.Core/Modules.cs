@@ -579,7 +579,7 @@ namespace InventaSketch.Core
             foreach (var p in local)
             {
                 var q = o.IsPointGeometry ? p : Prim.Transform(p, m);
-                if (o.Style is not null) q = type.ApplyOverride(q, o.Style);
+                if (o.Style is not null) q = Prim.TextOverride(type.ApplyOverride(q, o.Style), o.Style);
                 result.Add(q);
             }
             return result;

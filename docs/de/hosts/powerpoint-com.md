@@ -154,6 +154,17 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   Mitte (Strg: gegenüberliegende Kante). Nabensymbole im Schema behalten beim Vergrößern ihre Größe.
 - Der Seitenleisten-Editor entfernt auf der Folie gelöschte Einheiten (Nachricht `present` bei jedem Auswahlwechsel).
 
+Formatierungsgruppen (2026-11-20): Das Register lautet Struktur | Werkzeuge | Beschriftung | Farbe | Text | Layout |
+Elemente, wie in Slidemax. Struktur, Farbe und Text nutzen Office-eigene Steuerelemente (neue Folie, Einfügen, Format
+übertragen, Schrift-/Füll-/Konturfarbe, Schrift, Größe, fett … Aufzählungen); Layout ergänzt Anordnen, Gruppieren,
+eigene Knöpfe für gleiche Höhe/Breite/Größe, Formgröße, Ausrichten und Verteilen (zur Auswahl, eine einzelne Form zur
+Folie) und Tauschen (aus Slidemax übernommen). Die Fachmodule sind je ein großes Menü in „Elemente“, damit das Register
+auf Laptop-Bildschirme passt (schmale Fenster klappen Layout und Elemente zu Menüs zusammen). Formatierungen mit diesen
+Steuerelementen an InventaSketch-Einheiten bleiben erhalten: jede gezeichnete Form merkt sich ihr gerendertes Aussehen
+(Tag `ISK_FMT`), beim Einlesen werden Abweichungen (Linienfarbe und -stärke, Füllung, Textfarbe, Schrift,
+Größenfaktor, fett/kursiv/unterstrichen) in den Objektstil übernommen (`NativeFormat`). Geprüft: ein rot gefärbtes
+Zahnrad mit 2,5-pt-Linien blieb so, nachdem eine Drehung es neu gezeichnet hatte.
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in

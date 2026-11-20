@@ -89,6 +89,20 @@ namespace InventaSketch.Core
         public ArrowSize? ArrowSize { get; init; }
         public double? Opacity { get; init; }
         public LineRole? Role { get; init; }
+        // Text overrides of an object (e.g. taken over from PowerPoint's own text formatting); applied to all its text.
+        /// <summary>Text colour (#rrggbb).</summary>
+        public string? TextColor { get; init; }
+        /// <summary>Font family.</summary>
+        public string? Font { get; init; }
+        /// <summary>Factor on every text size of the object (1 = as designed).</summary>
+        public double? FontScale { get; init; }
+        public bool? Bold { get; init; }
+        public bool? Italic { get; init; }
+        public bool? Underline { get; init; }
+
+        /// <summary>True if any text override is set.</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public bool HasTextOverride => TextColor is not null || Font is not null || FontScale is not null || Bold is not null || Italic is not null || Underline is not null;
 
         public static readonly Style Default = new();
 
@@ -104,6 +118,12 @@ namespace InventaSketch.Core
             ArrowSize = over.ArrowSize ?? ArrowSize,
             Opacity = over.Opacity ?? Opacity,
             Role = over.Role ?? Role,
+            TextColor = over.TextColor ?? TextColor,
+            Font = over.Font ?? Font,
+            FontScale = over.FontScale ?? FontScale,
+            Bold = over.Bold ?? Bold,
+            Italic = over.Italic ?? Italic,
+            Underline = over.Underline ?? Underline,
         };
 
         public static Style Of(LineRole role) => new() { Role = role };
@@ -252,6 +272,29 @@ namespace InventaSketch.Core
         }
 
         /// <summary>Applies an affine transform exactly (rotated rectangles/ellipses become paths).</summary>
+        /// <summary>Applies the text overrides of an object style (<see cref="Style.TextColor"/> ...) to every text primitive.</summary>
+        public static Primitive TextOverride(Primitive p, Style? s)
+        {
+            if (s is null || !s.HasTextOverride) return p;
+            return p switch
+            {
+                TextPrim t => t with
+                {
+                    TextStyle = t.TextStyle with
+                    {
+                        Color = s.TextColor ?? t.TextStyle.Color,
+                        Font = s.Font ?? t.TextStyle.Font,
+                        Size = t.TextStyle.Size * (s.FontScale ?? 1),
+                        Bold = s.Bold ?? t.TextStyle.Bold,
+                        Italic = s.Italic ?? t.TextStyle.Italic,
+                        Underline = s.Underline ?? t.TextStyle.Underline,
+                    },
+                },
+                GroupPrim g => g with { Children = g.Children.Select(c => TextOverride(c, s)).ToList() },
+                _ => p,
+            };
+        }
+
         public static Primitive Transform(Primitive p, Matrix2D m)
         {
             switch (p)

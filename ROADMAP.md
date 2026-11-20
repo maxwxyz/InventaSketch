@@ -96,7 +96,7 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     snapping; "Anchor" toggle next to Snap: attached line ends follow moved units across units.
   - Schematic scaling: done for the hub symbols (they keep their size); other schematic details of the modules to review.
   - Web host: the same UX (insert suggestions via an engine method, anchor, text editing, black and white).
-  - Ribbon groups like Slidemax: Structure, Colour, Text, Layout (formatting of native shapes; port from Slidemax).
+  - Ribbon groups like Slidemax: Structure, Colour, Text, Layout: done 2026-11-20 (native formatting is folded into the model).
   - Tools menu button like Slidemax: insert symbol, change decimal separator, proofing language, send slides, save
     slides (port from Slidemax).
   - Setting to hide modules that are not needed (ribbon groups, galleries, sidebar library).

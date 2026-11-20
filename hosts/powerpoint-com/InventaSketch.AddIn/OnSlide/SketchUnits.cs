@@ -62,6 +62,8 @@ namespace InventaSketch.AddIn.OnSlide
                     var delta = new Vec2((cur.X - o[0]) / Geo.PtPerMm, (cur.Y - o[1]) / Geo.PtPerMm);
                     if (delta.Length > 1e-6) doc = Edits.Move(doc, ids, delta);
                 }
+                // Formatting done with PowerPoint's own tools (colours, line weight, fonts) becomes part of the model.
+                doc = NativeFormat.Fold(s, doc);
                 return new SketchUnit(s, s.Tags["ISK_ID"], doc, cur);
             }
             catch (Exception ex)
@@ -107,6 +109,7 @@ namespace InventaSketch.AddIn.OnSlide
                 // The context only shapes the drawing; the stored model holds the unit's own objects.
                 if (!ReferenceEquals(context, doc)) result.Tags.Add("ISK_MODEL", EngineApi.CompactOf(doc, doc.Pages[0], unit.ObjectIds));
                 result.Tags.Add(BoundsTag, FormatBounds(result));
+                NativeFormat.Snapshot(result);
             }
             return result;
         }
