@@ -4,7 +4,7 @@ const paths: Record<string, string> = {
   undo: "M9 14L4 9l5-5M4 9h10a6 6 0 0 1 0 12h-3",
   redo: "M15 14l5-5-5-5M20 9H10a6 6 0 0 0 0 12h3",
   insert: "M3 5h18v12H3zM12 8v6M9 11h6M8 21h8",
-  live: "M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3M18 3v4h-4M6 21v-4h4",
+  live: "M4.95 9.43A7.5 7.5 0 0 1 17.56 6.96M19.8 10.5L19.95 5.56 15.45 8.16ZM19.05 14.57A7.5 7.5 0 0 1 6.44 17.04M4.2 13.5L4.05 18.44 8.55 15.84Z",
   load: "M3 5h18v12H3zM12 14V8M9 11l3 3 3-3M8 21h8",
   svg: "M12 3v12M7 10l5 5 5-5M4 19h16",
   png: "M4 5h16v14H4zM4 15l5-5 4 4 3-3 4 4M15 9h.01",
@@ -16,7 +16,7 @@ const paths: Record<string, string> = {
   star: "M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z",
   delete: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
   duplicate: "M8 8h12v12H8zM4 16V4h12",
-  rotate: "M17.3 6.7A7.5 7.5 0 1 1 8.83 5.2M11.37 4.02L5.97 3.33 8.43 8.59Z",
+  rotate: "M17.3 6.7A7.5 7.5 0 1 1 7.31 6.15M11.37 4.02L5.97 3.33 8.43 8.59Z",
   flipH: "M12 3v18M9 6L3 18h6zM15 6l6 12h-6z",
   flipV: "M3 12h18M6 9L18 3v6zM6 15l12 6v-6z",
   front: "M9 9h11v11H9zM4 4h11v3M4 4v11h3",
@@ -57,8 +57,8 @@ const paths: Record<string, string> = {
   "cmd-duplicate": "M4 4h11v11H4zM9 9h11v11H9z",
   "cmd-mirror-h": "M12 3v3M12 9v3M12 15v3M12 21v0M9 6v12H3zM15 6v12h6z",
   "cmd-mirror-v": "M3 12h3M9 12h3M15 12h3M21 12h0M6 9h12V3zM6 15h12v6z",
-  "cmd-rotate": "M17.3 6.7A7.5 7.5 0 1 1 8.83 5.2M11.37 4.02L5.97 3.33 8.43 8.59Z",
-  "cmd-rotate-ccw": "M6.7 6.7A7.5 7.5 0 1 0 15.17 5.2M12.63 4.02L18.03 3.33 15.57 8.59Z",
+  "cmd-rotate": "M17.3 6.7A7.5 7.5 0 1 1 7.31 6.15M11.37 4.02L5.97 3.33 8.43 8.59Z",
+  "cmd-rotate-ccw": "M6.7 6.7A7.5 7.5 0 1 0 16.69 6.15M12.63 4.02L18.03 3.33 15.57 8.59Z",
   "cmd-increase": "M12 5v14M5 12h14",
   "cmd-decrease": "M5 12h14",
   "cmd-swap": "M4 9h16M16 5l4 4-4 4M20 15H4M8 11l-4 4 4 4",
@@ -66,14 +66,17 @@ const paths: Record<string, string> = {
   "cmd-arrow-end": "M3 12h18M16 8l5 4-5 4",
   "cmd-text": "M5 5h14M12 5v15",
   "cmd-toggle": "M8 7h8a5 5 0 0 1 0 10H8A5 5 0 0 1 8 7zM16 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4z",
-  "cmd-cycle": "M4.5 9A8 8 0 0 1 18 6M19.5 15A8 8 0 0 1 6 18M17 3l1.5 4-4 1M7 21l-1.5-4 4-1",
+  "cmd-cycle": "M4.95 9.43A7.5 7.5 0 0 1 17.56 6.96M19.8 10.5L19.95 5.56 15.45 8.16ZM19.05 14.57A7.5 7.5 0 0 1 6.44 17.04M4.2 13.5L4.05 18.44 8.55 15.84Z",
   "cmd-connect": "M5 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM5 18c7 0 7-12 14-12",
   "cmd-animate": "M7 4l12 8-12 8z",
 };
 
 export function icon(name: string, size = 18): string {
   const d = paths[name] ?? paths.type;
-  return `<svg class="isk-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+  // Sub-paths closed with an uppercase "Z" (arrowheads) are filled; everything else is a line drawing.
+  const filled = d.split(/(?=M)/).filter((part) => /Z\s*$/.test(part)).join("");
+  const fill = filled ? `<path d="${filled}" fill="currentColor" stroke-width="1"/>` : "";
+  return `<svg class="isk-icon" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/>${fill}</svg>`;
 }
 
 export function hasIcon(name: string): boolean {

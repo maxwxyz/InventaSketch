@@ -135,9 +135,9 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawEllipse(pen, 3, 7, 18, 10); g.FillEllipse(brush, 13, 9, 6, 6);
                     break;
                 case IconIds.Cycle:
-                    g.DrawArc(pen, 4, 4, 16, 16, 200, 140); g.DrawArc(pen, 4, 4, 16, 16, 20, 140);
-                    g.DrawLines(pen, new[] { new PointF(17, 3), new PointF(18.5f, 7), new PointF(14.5f, 8) });
-                    g.DrawLines(pen, new[] { new PointF(7, 21), new PointF(5.5f, 17), new PointF(9.5f, 16) });
+                    // Two arcs chasing each other clockwise, each ending in a tangent arrowhead.
+                    ArcArrow(g, pen, brush, 200, 130, 2.6f, 1.6f, 2.6f);
+                    ArcArrow(g, pen, brush, 20, 130, 2.6f, 1.6f, 2.6f);
                     break;
                 case IconIds.Connect:
                     g.FillEllipse(brush, 2, 15, 6, 6); g.FillEllipse(brush, 16, 3, 6, 6); g.DrawBezier(pen, 5, 18, 12, 18, 12, 6, 19, 6);
@@ -157,23 +157,28 @@ namespace InventaSketch.AddIn.OnSlide
         /// tangent, pointing into the gap in the direction of rotation. Mirrored for counter-clockwise.
         /// </summary>
         private static void RotateArrow(Graphics g, Pen pen, Brush brush, bool clockwise)
+            => ArcArrow(g, pen, brush, clockwise ? -45f : 225f, clockwise ? 290f : -290f, 2.8f, 1.8f, 2.9f);
+
+        /// <summary>
+        /// Arc of radius 7.5 around the icon centre (GDI+ angles: degrees clockwise from 3 o'clock; a negative sweep runs
+        /// counter-clockwise) ending in a filled arrowhead that follows the arc's tangent in the direction of travel.
+        /// </summary>
+        private static void ArcArrow(Graphics g, Pen pen, Brush brush, float start, float sweep, float ahead, float back, float half)
         {
-            const float cx = 12, cy = 12, r = 7.5f, sweep = 290;
-            // GDI+ angles: degrees clockwise from 3 o'clock. Clockwise: start at -45° (upper right), end at 245°.
-            var start = clockwise ? -45f : 225f;
-            var signed = clockwise ? sweep : -sweep;
-            g.DrawArc(pen, cx - r, cy - r, 2 * r, 2 * r, start, signed);
-            var end = (start + signed) * Math.PI / 180;
+            const float cx = 12, cy = 12, r = 7.5f;
+            g.DrawArc(pen, cx - r, cy - r, 2 * r, 2 * r, start, sweep);
+            var end = (start + sweep) * Math.PI / 180;
             var e = new PointF(cx + r * (float)Math.Cos(end), cy + r * (float)Math.Sin(end));
             // Unit tangent in the direction of travel and the radial normal.
             float tx = (float)-Math.Sin(end), ty = (float)Math.Cos(end);
-            if (!clockwise) { tx = -tx; ty = -ty; }
+            if (sweep < 0) { tx = -tx; ty = -ty; }
             float nx = (float)Math.Cos(end), ny = (float)Math.Sin(end);
-            const float ahead = 2.8f, back = 1.8f, half = 2.9f;
-            var tip = new PointF(e.X + tx * ahead, e.Y + ty * ahead);
-            var b1 = new PointF(e.X - tx * back + nx * half, e.Y - ty * back + ny * half);
-            var b2 = new PointF(e.X - tx * back - nx * half, e.Y - ty * back - ny * half);
-            var head = new[] { tip, b1, b2 };
+            var head = new[]
+            {
+                new PointF(e.X + tx * ahead, e.Y + ty * ahead),
+                new PointF(e.X - tx * back + nx * half, e.Y - ty * back + ny * half),
+                new PointF(e.X - tx * back - nx * half, e.Y - ty * back - ny * half),
+            };
             g.FillPolygon(brush, head);
             using var edge = new Pen(brush, 0.8f) { LineJoin = LineJoin.Round };
             g.DrawPolygon(edge, head);
