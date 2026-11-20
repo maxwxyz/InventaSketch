@@ -271,6 +271,11 @@ Shape creation **[K]** unless marked **[V]**:
 
 ### C.1 Shared engine language: TypeScript core, thin native adapters
 
+> **Project decision (2026-11-20):** this recommendation was weighed and **not adopted**. InventaSketch uses one
+> C# engine (in-process in COM, WebAssembly in the task pane, .NET process for LibreOffice) because on-slide and
+> on-canvas interaction needs synchronous snapping in the host process and the pattern is proven in production.
+> See [ADR-0002](../../adr/0002-csharp-engine.md). The analysis below is kept for reference.
+
 Structure the TypeScript core as a monorepo:
 
 - `core-model`: document model with symbols and parameters, plus a constraint graph.
