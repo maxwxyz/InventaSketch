@@ -109,8 +109,9 @@ Export-Erweiterungspunkte der Module.
     zentrierten Teilen; Kreismenü „Einfügen ▸“ mit passenden Elementen zur Auswahl (Welle → Zahnräder und Lager,
     Leitung → Schaltzeichen, immer Beschriftung/Pfeile/Bezugszeichen), am Mauszeiger mit Fangen platziert; Schalter
     „Verankern“ neben „Einrasten“: angebundene Linienenden folgen verschobenen Einheiten, auch einheitenübergreifend.
-  - Skalieren von Schemadarstellungen: für die Nabensymbole erledigt (sie behalten ihre Größe); weitere Schemadetails
-    der Module prüfen.
+  - Skalieren von Schemadarstellungen: erledigt (20.11.2026). Nabensymbole der Zahnräder behalten ihre Größe;
+    Gelenke in Mechanismen sind bereits auf 1,4 mm begrenzt; Einzelsymbole (Gelenke, Lager, Schaltzeichen) skalieren
+    bewusst als Ganzes.
   - Web-Host: dieselbe UX (Einfügen-Vorschläge über eine Engine-Methode, Verankern, Text bearbeiten, Schwarz-Weiß).
   - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout: am 20.11.2026 erledigt (native Formatierung wird ins Modell übernommen).
   - Werkzeuge-Menü wie Slidemax (Extras: Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern) und

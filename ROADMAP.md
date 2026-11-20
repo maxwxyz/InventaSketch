@@ -94,7 +94,8 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     proportions; resize about the centre for centred parts; pie menu "Insert ▸" with elements that fit the selection
     (shaft → gears and bearings, wire → electrical symbols, always labels/arrows/numerals), placed at the pointer with
     snapping; "Anchor" toggle next to Snap: attached line ends follow moved units across units.
-  - Schematic scaling: done for the hub symbols (they keep their size); other schematic details of the modules to review.
+  - Schematic scaling: done (2026-11-20). Gear hub symbols keep their size; mechanism joints are already capped at
+    1.4 mm; stand-alone symbols (joints, bearings, electrical symbols) scale as a whole on purpose.
   - Web host: the same UX (insert suggestions via an engine method, anchor, text editing, black and white).
   - Ribbon groups like Slidemax: Structure, Colour, Text, Layout: done 2026-11-20 (native formatting is folded into the model).
   - Tools menu like Slidemax (Extras: symbol, decimal separator, proofing language, send/save slides) and hiding
