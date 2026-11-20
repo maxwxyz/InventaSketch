@@ -104,6 +104,18 @@ Siehe die englische Fassung (Abschnitt „Verified“) für die vollständige Li
 Zweipunkt-Pfeil, Punktbearbeitung, Typumwandlung, schwebende Leiste, Kreismenü, Seitenleisten-Synchronisation,
 Tastatur.
 
+Zehn Module (gleiche Umgebung, aus dem Paket mit `install.ps1` installiert, 2026-11-20 abends):
+
+- Das Add-in lädt mit 681 Bibliothekselementen in 59 Kategorien (ca. 0,9–1,1 s); das Menüband zeigt eine Gruppe je
+  Modul, die bei geringerer Breite zu Gruppenmenüs mit kompakten Kategorie-Galerien zusammenklappt; Beschriftungen mit
+  „&“ werden richtig angezeigt.
+- Je ein Element aus Kinematik, Elektro, Maschinen, Fahrzeuge, Architektur und Diagramme nativ eingefügt
+  (Folienexport geprüft). Ein Auto aus der Galerie wurde am Mauszeiger platziert; die Leiste zeigt eigene abstrakte
+  Symbole für Draufsicht, Seiten-, Vorder- und Rückansicht.
+- Dabei behoben: Mittig ausgerichteter Text in nativen Textfeldern lag um eine halbe Feldbreite zu weit links (neue
+  Textfelder passten sich an ihren leeren Text an, bevor die automatische Größe abgeschaltet war) – Titel von UML/ER,
+  Maßzahlen und Unterstreichungen sitzen jetzt richtig.
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in

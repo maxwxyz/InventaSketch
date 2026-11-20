@@ -136,6 +136,17 @@ Slice 2 (same environment, simulated mouse input with PowerPoint in the foregrou
 - Floating bar: appears above the selected gear (screen capture checked), the view button switched the gear to the stick
   symbol, moving the pointer 900 px away dismissed the bar.
 
+Ten modules (same environment, installed from the package with `install.ps1`, 2026-11-20 evening):
+
+- Add-in loads with 681 library items in 59 categories (about 0.9–1.1 s); the ribbon shows one group per module,
+  collapsing into group menus with compact category galleries at narrower widths; labels with "&" display correctly.
+- One item each of kinematics, electrical, machines, automotive, architecture and diagrams inserted natively
+  (slide export checked). A car picked from the gallery was placed at the pointer; the bar shows distinct abstract
+  icons for top, side, front and rear view.
+- Fixed during this check: centred text in native text boxes was shifted half a box to the left (new text boxes
+  auto-fit to their empty text before AutoSize was switched off) — UML/ER titles, dimension values and underlines
+  are now placed correctly.
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in
