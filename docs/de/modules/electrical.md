@@ -8,8 +8,19 @@ Installationsplan-Symbole der Hausinstallation, Elemente für einpolige Übersic
 Leistungselektronik und illustrative Leiterplatten-Objekte. Alle Symbole sind **eigenständig gezeichnet**; es werden
 keine Normtexte, Tabellen oder Inhalte von Symboldatenbanken übernommen und keine Normkonformität behauptet.
 
-Es ist ein **Skizzier**-Modul für Folien und Patentzeichnungen, **kein** ECAD-Werkzeug: Netzliste, elektrische
-Regelprüfung (ERC), Simulation und Fertigungsdaten gibt es noch nicht.
+Es ist ein **Skizzier**-Modul für Folien und Patentzeichnungen, **kein** ECAD-Werkzeug: Es bietet eine
+Verbindungsliste (Netzliste als CSV) und eine Grundprüfung, aber keine Simulation und keine Fertigungsdaten.
+
+## Datenexporte
+
+- **Netzliste / Verbindungsliste (CSV)** (`elec.netlist`): an Pins angedockte Leitungsenden verbinden Pins zu Netzen;
+  Verbindungspunkte führen Netze zusammen. Eine Zeile je Netz mit seinen Pins (`R1.1 C1.2`). Erhält Verbindungen und
+  Kennzeichen, nicht die Leitungsführung.
+- **Elektrische Regelprüfung (CSV-Bericht)** (`elec.erc`): eine Zeile je Befund – `pin.unconnected` (keine Leitung am
+  Pin angedockt oder darauf liegend), `wire.open` (ein Leitungsende weder angedockt noch auf Pin, Verbindungspunkt oder
+  anderer Leitung), `part.shorted` (eine Leitung verbindet zwei Pins desselben Bauteils). Eine Grundprüfung für
+  illustrative Schaltpläne: keine Pin-Typen, Treiber oder Versorgungsnetze. Beide Exporte stehen bereit, sobald
+  mindestens ein Leitungsende an einem Pin angedockt ist.
 
 ## Konventionen
 
@@ -102,8 +113,8 @@ versteckten Modulzustand. Ein JSON-Round-Trip reproduziert Dokument und gerender
 
 ## Grenzen und nächste Schritte
 
-- Noch keine Netzlisten-Extraktion, keine ERC (offene Anschlüsse, nicht verbundene Netze), keine automatischen
-  Verbindungspunkte und keine Kreuzungsbögen.
+- Noch keine automatischen Verbindungspunkte und keine Kreuzungsbögen; die Regelprüfung kennt keine Pin-Typen (Ausgang
+  gegen Ausgang, unversorgte Netze).
 - Ein an einer anderen Leitung oder einem Bus (Schiene) angedocktes Leitungsende ist nicht daran gebunden (Anbindungen
   zielen nur auf Box-Objekte); es bleibt stehen, wenn die andere Leitung verschoben wird.
 - Beschriftungen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.

@@ -8,8 +8,17 @@ floor-plan symbols, single-line diagram elements, power electronics blocks and i
 are **drawn independently**; no standard texts, tables or symbol database content are copied, and no claim of
 standards compliance is made.
 
-It is a **sketching** module for slides and patent drawings. It is **not** an ECAD tool: there is no netlist, no
-electrical rule check (ERC), no simulation and no manufacturing output yet.
+It is a **sketching** module for slides and patent drawings. It is **not** an ECAD tool: it offers a connection list
+(netlist CSV) and a basic rule check, but no simulation and no manufacturing output.
+
+## Data exports
+
+- **Netlist / connection list (CSV)** (`elec.netlist`): wire ends docked to pins join pins into nets; junction dots
+  merge nets. One row per net with its pins (`R1.1 C1.2`). Keeps connectivity and designators, not the routing.
+- **Electrical rule check (CSV report)** (`elec.erc`): one row per finding — `pin.unconnected` (no wire docked to or
+  lying on the pin), `wire.open` (a wire end neither docked nor on a pin, junction or other wire), `part.shorted` (one
+  wire joins two pins of the same component). A basic check for illustrative schematics: no pin types, drivers or power
+  nets. Both exports apply when at least one wire end is docked to a pin.
 
 ## Conventions
 
@@ -98,7 +107,7 @@ module state. A JSON round trip reproduces the document and the rendered SVG exa
 
 ## Limits and next steps
 
-- No netlist extraction, ERC (open pins, unconnected nets), auto-junctions or crossing jumps yet.
+- No auto-junctions or crossing jumps yet; the rule check knows no pin types (output against output, unpowered nets).
 - A wire end docked on another wire or a bus (rail) is not attached to it (attachments target box objects only); it keeps
   its position when the other wire moves.
 - Labels lie outside the object box, so host selection frames do not include them.

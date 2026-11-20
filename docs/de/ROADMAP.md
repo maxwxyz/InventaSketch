@@ -59,7 +59,7 @@ Freiheitsgrad); offen: interaktives Ziehen zur Simulation, Animation als Folienf
 
 Symbole, Leitungen mit Pins/Verbindungspunkten, Netze, Busse, ERC-Grundlagen, Hausinstallation, Leiterplatten-Illustration,
 Maschinenquerschnitte (PMSM, EESM, ASM, SRM, Axial-/Radialfluss). Status: **weitgehend fertig** – Elektro- und
-Maschinen-Modul am 20.11.2026 ausgeliefert, inkl. Netzlisten-Export; offen: ERC-Grundlagen.
+Maschinen-Modul am 20.11.2026 ausgeliefert, inkl. Netzlisten-Export und einer Grundprüfung (offene Pins, lose Leitungsenden, Kurzschlüsse).
 
 ## Phase 6 – Systeme und Erweiterung der Fachgebiete
 
@@ -74,7 +74,7 @@ Varianten und Vergleich (Diff), Synchronisation mehrerer Ansichten, Konturerkenn
 importierter Bilder, PDF/TIFF-Exportprofile, Benutzerbibliotheken, Automatisierung. Status: **vorgeschlagen**.
 
 Fachexporte je nach Auswahl/Typ (erste Exporter am 20.11.2026: Stückliste CSV, Verbindungsgraph Mermaid/GraphML,
-Netzliste CSV, Bezugszeichenliste; als Nächstes): Zahnrad- und Getriebetopologiedaten (REXS wo machbar), kinematische
+Netzliste CSV, Bericht der elektrischen Regelprüfung, Bezugszeichenliste; als Nächstes): Zahnrad- und Getriebetopologiedaten (REXS wo machbar), kinematische
 Ketten, Netz- und Verbindungslisten für Schaltpläne und E/E-Verschaltung (KiCad/SPICE), Ratsnest/Airwires,
 Kabelbaumlisten, Stücklisten (CSV/Excel), Bezugszeichenlisten, Diagrammstrukturen (GraphML/Mermaid) – als
 Export-Erweiterungspunkte der Module.

@@ -48,7 +48,7 @@ namespace InventaSketch.Modules.Electrical
         };
 
         /// <summary>Domain exports of this module (<see cref="IExportProvider"/>).</summary>
-        public IEnumerable<IExporter> Exporters => new IExporter[] { new NetlistExporter() };
+        public IEnumerable<IExporter> Exporters => new IExporter[] { new NetlistExporter(), new ErcExporter() };
 
         public IEnumerable<LibraryItem> Library => Items.Value;
 

@@ -54,7 +54,7 @@ linkages with closed-loop solution, ghosts, paths, DOF); open: interactive drag-
 
 Symbols, wires with pins/junctions, nets, buses, ERC basics, house installation, PCB illustration, machine
 cross-sections (PMSM, EESM, ASM, SRM, axial/radial flux). Status: **largely done** — electrical and machines modules
-shipped 2026-11-20 incl. netlist export; open: ERC basics.
+shipped 2026-11-20 incl. netlist export and a basic rule check (open pins, open wire ends, shorts).
 
 ## Phase 6 – Systems and domain expansion
 
@@ -69,7 +69,7 @@ Variants and diff, multi-view synchronisation, image contour recognition and hat
 PDF/TIFF export profiles, user libraries, automation. Status: **proposed**.
 
 Domain exports by selection/type (first exporters shipped 2026-11-20: BOM CSV, connection graph Mermaid/GraphML,
-netlist CSV, reference sign list; next): gear and gearbox topology data (REXS where feasible), kinematic chains,
+netlist CSV, electrical rule check report, reference sign list; next): gear and gearbox topology data (REXS where feasible), kinematic chains,
 netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsnest/airwires, harness lists, BOM
 (CSV/Excel), reference sign lists, diagram structures (GraphML/Mermaid) — as module export extension points.
 
