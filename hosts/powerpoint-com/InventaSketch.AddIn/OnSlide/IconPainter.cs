@@ -91,7 +91,7 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawRectangle(pen, 4, 5, 16, 14); g.DrawLine(thin, 4, 9.5f, 20, 9.5f); g.DrawLine(thin, 4, 14, 20, 14); g.DrawLine(thin, 10, 9.5f, 10, 19);
                     break;
                 case IconIds.RotateCcw:
-                    g.DrawArc(pen, 4, 4, 16, 16, 200, -290); g.DrawLines(pen, new[] { new PointF(15, 1), new PointF(12, 4), new PointF(15, 7) });
+                    RotateArrow(g, pen, brush, clockwise: false);
                     break;
                 case IconIds.Increase:
                     g.DrawLine(pen, 12, 5, 12, 19); g.DrawLine(pen, 5, 12, 19, 12);
@@ -116,7 +116,7 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawPolygon(pen, new[] { new PointF(6, 15), new PointF(18, 15), new PointF(18, 21) });
                     break;
                 case IconIds.Rotate:
-                    g.DrawArc(pen, 4, 4, 16, 16, -20, 290); g.DrawLines(pen, new[] { new PointF(9, 1), new PointF(12, 4), new PointF(9, 7) });
+                    RotateArrow(g, pen, brush, clockwise: true);
                     break;
                 case IconIds.Swap:
                     g.DrawLine(pen, 4, 9, 20, 9); g.DrawLines(pen, new[] { new PointF(16, 5), new PointF(20, 9), new PointF(16, 13) });
@@ -150,6 +150,33 @@ namespace InventaSketch.AddIn.OnSlide
                     break;
             }
             g.Restore(state);
+        }
+
+        /// <summary>
+        /// Rotation pictogram: an open arc (290°, gap at the top right) ending in a filled arrowhead aligned with the arc's
+        /// tangent, pointing into the gap in the direction of rotation. Mirrored for counter-clockwise.
+        /// </summary>
+        private static void RotateArrow(Graphics g, Pen pen, Brush brush, bool clockwise)
+        {
+            const float cx = 12, cy = 12, r = 7.5f, sweep = 290;
+            // GDI+ angles: degrees clockwise from 3 o'clock. Clockwise: start at -45° (upper right), end at 245°.
+            var start = clockwise ? -45f : 225f;
+            var signed = clockwise ? sweep : -sweep;
+            g.DrawArc(pen, cx - r, cy - r, 2 * r, 2 * r, start, signed);
+            var end = (start + signed) * Math.PI / 180;
+            var e = new PointF(cx + r * (float)Math.Cos(end), cy + r * (float)Math.Sin(end));
+            // Unit tangent in the direction of travel and the radial normal.
+            float tx = (float)-Math.Sin(end), ty = (float)Math.Cos(end);
+            if (!clockwise) { tx = -tx; ty = -ty; }
+            float nx = (float)Math.Cos(end), ny = (float)Math.Sin(end);
+            const float ahead = 2.8f, back = 1.8f, half = 2.9f;
+            var tip = new PointF(e.X + tx * ahead, e.Y + ty * ahead);
+            var b1 = new PointF(e.X - tx * back + nx * half, e.Y - ty * back + ny * half);
+            var b2 = new PointF(e.X - tx * back - nx * half, e.Y - ty * back - ny * half);
+            var head = new[] { tip, b1, b2 };
+            g.FillPolygon(brush, head);
+            using var edge = new Pen(brush, 0.8f) { LineJoin = LineJoin.Round };
+            g.DrawPolygon(edge, head);
         }
     }
 }

@@ -18,7 +18,9 @@ namespace InventaSketch.AddIn.OnSlide
 
     /// <summary>
     /// Radial (pie) menu layout, hit test and drawing. Unavailable commands are greyed instead of hidden so every command
-    /// keeps its place; the first item (delete) is at 12 o'clock (Slidemax conventions).
+    /// keeps its place; the first item (delete) is at 12 o'clock (Slidemax conventions). Each sector shows an abstract
+    /// pictogram above a label that is wrapped (two lines at most) to the sector's chord, shrunk or shortened with "…";
+    /// the full label of the hovered entry then appears in a pill below the ring.
     /// </summary>
     internal sealed class PieMenu
     {
@@ -30,8 +32,9 @@ namespace InventaSketch.AddIn.OnSlide
         public PointF Centre { get; }
         public IReadOnlyList<PieItem> Items { get; }
         public float Scale { get; }
-        public float Inner => 22 * Scale;
-        public float Outer => 104 * Scale;
+        public float Inner => 28 * Scale;
+        /// <summary>The ring grows with the number of entries so labels keep their room.</summary>
+        public float Outer => (Items.Count <= 6 ? 112 : Items.Count <= 8 ? 124 : 138) * Scale;
         public int Hover { get; set; } = -1;
 
         private double Sweep => 2 * Math.PI / Math.Max(1, Items.Count);
@@ -55,53 +58,129 @@ namespace InventaSketch.AddIn.OnSlide
             return Math.Sqrt(dx * dx + dy * dy) <= Outer + 30 * Scale;
         }
 
+        private static bool HasIcon(PieItem item) => item.IconId is not null || item.Icon is not null || item.Glyph is not null;
+
+        /// <summary>Annular sector of entry <paramref name="i"/> (GDI+ angles: 0° = 3 o'clock, clockwise).</summary>
+        private GraphicsPath Sector(int i, float inner, float outer)
+        {
+            var sweep = 360f / Math.Max(1, Items.Count);
+            var start = -90 - sweep / 2 + i * sweep;
+            var path = new GraphicsPath();
+            path.AddArc(Centre.X - outer, Centre.Y - outer, 2 * outer, 2 * outer, start, sweep);
+            path.AddArc(Centre.X - inner, Centre.Y - inner, 2 * inner, 2 * inner, start + sweep, -sweep);
+            path.CloseFigure();
+            return path;
+        }
+
+        /// <summary>Wraps <paramref name="text"/> to <paramref name="width"/>; true if it fits completely in two lines.</summary>
+        private static bool Fits(Graphics g, string text, Font font, float width, out SizeF size)
+        {
+            using var fmt = new StringFormat { Alignment = StringAlignment.Center, Trimming = StringTrimming.None };
+            size = g.MeasureString(text, font, new SizeF(width, 1000), fmt, out var chars, out var lines);
+            return chars >= text.Length && lines <= 2;
+        }
+
         public void Draw(Graphics g, bool dark)
         {
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            var bg = dark ? Color.FromArgb(240, 38, 40, 44) : Color.FromArgb(245, 252, 252, 253);
-            var fg = dark ? Color.FromArgb(235, 235, 235) : Color.FromArgb(32, 33, 36);
-            var muted = dark ? Color.FromArgb(110, 110, 115) : Color.FromArgb(170, 170, 175);
-            var accent = Color.FromArgb(31, 95, 191);
-            var rect = new RectangleF(Centre.X - Outer, Centre.Y - Outer, 2 * Outer, 2 * Outer);
-            using (var shadow = new SolidBrush(Color.FromArgb(40, 0, 0, 0))) g.FillEllipse(shadow, RectangleF.Inflate(rect, 3 * Scale, 3 * Scale));
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            var bg = dark ? Color.FromArgb(246, 36, 38, 42) : Color.FromArgb(248, 252, 252, 253);
+            var fg = dark ? Color.FromArgb(232, 232, 236) : Color.FromArgb(36, 37, 40);
+            var muted = dark ? Color.FromArgb(105, 105, 112) : Color.FromArgb(168, 168, 174);
+            var accent = dark ? Color.FromArgb(110, 160, 255) : Color.FromArgb(31, 95, 191);
+            var danger = dark ? Color.FromArgb(255, 110, 100) : Color.FromArgb(200, 40, 40);
+            float inner = Inner, outer = Outer;
+            var rect = new RectangleF(Centre.X - outer, Centre.Y - outer, 2 * outer, 2 * outer);
+
+            // Soft shadow, body and a hairline border.
+            for (var k = 3; k >= 1; k--)
+                using (var shadow = new SolidBrush(Color.FromArgb(dark ? 28 : 16, 0, 0, 0)))
+                    g.FillEllipse(shadow, RectangleF.Inflate(new RectangleF(rect.X, rect.Y + 2 * Scale, rect.Width, rect.Height), k * 2 * Scale, k * 2 * Scale));
             using (var b = new SolidBrush(bg)) g.FillEllipse(b, rect);
+            using (var border = new Pen(Color.FromArgb(dark ? 70 : 40, fg), 1f)) g.DrawEllipse(border, rect);
+
             var sweepDeg = 360f / Math.Max(1, Items.Count);
-            using var font = new Font("Segoe UI", 8.5f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            var sweepRad = sweepDeg * Math.PI / 180;
+            using var font = new Font("Segoe UI", 9f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            using var small = new Font("Segoe UI", 8f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            using var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near, Trimming = StringTrimming.EllipsisCharacter };
+            string? hoverFull = null;
             for (var i = 0; i < Items.Count; i++)
             {
                 var item = Items[i];
-                // GDI+ angles: 0° = 3 o'clock, clockwise. Entry i is centred at -90 + i*sweep.
                 var start = -90 - sweepDeg / 2 + i * sweepDeg;
+                var color = !item.Enabled ? muted : item.Danger ? danger : item.Active ? accent : fg;
                 if (i == Hover && item.Enabled)
-                    using (var hb = new SolidBrush(Color.FromArgb(item.Danger ? 70 : 50, item.Danger ? Color.Red : accent)))
-                        g.FillPie(hb, rect.X, rect.Y, rect.Width, rect.Height, start, sweepDeg);
-                using (var sep = new Pen(Color.FromArgb(40, fg), 1)) g.DrawPie(sep, rect.X, rect.Y, rect.Width, rect.Height, start, sweepDeg);
+                    using (var path = Sector(i, inner + 2 * Scale, outer - 2 * Scale))
+                    using (var hb = new SolidBrush(Color.FromArgb(dark ? 60 : 34, item.Danger ? danger : accent)))
+                        g.FillPath(hb, path);
+                if (item.Active)
+                    using (var mark = new Pen(accent, 3 * Scale))
+                        g.DrawArc(mark, rect.X + 3 * Scale, rect.Y + 3 * Scale, rect.Width - 6 * Scale, rect.Height - 6 * Scale, start + 4, sweepDeg - 8);
+                // Short separators between sectors.
+                var sepA = start * Math.PI / 180;
+                using (var sep = new Pen(Color.FromArgb(dark ? 45 : 28, fg), 1f))
+                    g.DrawLine(sep,
+                        Centre.X + (float)Math.Cos(sepA) * (inner + 8 * Scale), Centre.Y + (float)Math.Sin(sepA) * (inner + 8 * Scale),
+                        Centre.X + (float)Math.Cos(sepA) * (outer - 8 * Scale), Centre.Y + (float)Math.Sin(sepA) * (outer - 8 * Scale));
+
+                // Content block (pictogram over label) centred in the sector.
                 var mid = (start + sweepDeg / 2) * Math.PI / 180;
-                var rr = (Inner + Outer) / 2 + 4 * Scale;
-                var pos = new PointF(Centre.X + (float)(Math.Cos(mid) * rr), Centre.Y + (float)(Math.Sin(mid) * rr));
-                var color = !item.Enabled ? muted : item.Danger ? Color.FromArgb(200, 40, 40) : item.Active ? accent : fg;
-                using var tb = new SolidBrush(color);
-                var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                var box = new RectangleF(pos.X - 34 * Scale, pos.Y - 16 * Scale, 68 * Scale, 32 * Scale);
-                var label = item.Active ? "● " + item.Label : item.Label;
-                if (item.IconId is not null || item.Icon is not null || item.Glyph is not null)
+                var rc = inner + (outer - inner) * 0.55f;
+                var chord = (float)(2 * rc * Math.Sin(Math.Min(sweepRad, Math.PI) / 2));
+                var width = Math.Max(44 * Scale, Math.Min(chord - 6 * Scale, 96 * Scale));
+                var useFont = font;
+                var full = Fits(g, item.Label, font, width, out var textSize);
+                if (!full && Fits(g, item.Label, small, width, out var smallSize)) { useFont = small; textSize = smallSize; full = true; }
+                else if (!full) { useFont = small; textSize = new SizeF(width, 2 * small.GetHeight(g)); }
+                if (!full && i == Hover) hoverFull = item.Label;
+                var icon = HasIcon(item) ? 18 * Scale : 0;
+                var gap = icon > 0 ? 3 * Scale : 0;
+                var blockH = icon + gap + textSize.Height;
+                var cx = Centre.X + (float)(Math.Cos(mid) * rc);
+                var cy = Centre.Y + (float)(Math.Sin(mid) * rc);
+                var top = cy - blockH / 2;
+                if (icon > 0)
                 {
-                    var icon = 20 * Scale;
-                    var iconRect = new RectangleF(pos.X - icon / 2, pos.Y - icon - 2 * Scale, icon, icon);
+                    var iconRect = new RectangleF(cx - icon / 2, top, icon, icon);
                     if (item.IconId is not null) IconPainter.Draw(g, item.IconId, iconRect, color);
                     else if (item.Icon is not null) g.DrawImage(item.Icon, iconRect);
                     else
-                    {
-                        using var glyphFont = new Font("Segoe UI Symbol", 13f * Scale, GraphicsUnit.Pixel);
-                        g.DrawString(item.Glyph, glyphFont, tb, iconRect, fmt);
-                    }
-                    box = new RectangleF(pos.X - 34 * Scale, pos.Y, 68 * Scale, 24 * Scale);
+                        using (var glyphFont = new Font("Segoe UI Symbol", 13f * Scale, GraphicsUnit.Pixel))
+                        using (var gb = new SolidBrush(color))
+                        using (var gf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center })
+                            g.DrawString(item.Glyph, glyphFont, gb, iconRect, gf);
                 }
-                g.DrawString(label, font, tb, box, fmt);
+                using var tb = new SolidBrush(color);
+                g.DrawString(item.Label, useFont, tb, new RectangleF(cx - width / 2, top + icon + gap, width, textSize.Height + 1), fmt);
             }
-            using (var c = new SolidBrush(bg)) g.FillEllipse(c, Centre.X - Inner, Centre.Y - Inner, 2 * Inner, 2 * Inner);
-            using (var p = new Pen(Color.FromArgb(60, fg), 1)) g.DrawEllipse(p, Centre.X - Inner, Centre.Y - Inner, 2 * Inner, 2 * Inner);
+
+            // Centre: a quiet cap with a close mark (clicking there or outside closes the menu).
+            using (var c = new SolidBrush(bg)) g.FillEllipse(c, Centre.X - inner, Centre.Y - inner, 2 * inner, 2 * inner);
+            using (var p = new Pen(Color.FromArgb(dark ? 70 : 45, fg), 1f)) g.DrawEllipse(p, Centre.X - inner, Centre.Y - inner, 2 * inner, 2 * inner);
+            using (var x = new Pen(Color.FromArgb(dark ? 120 : 110, fg), 1.4f * Scale) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            {
+                var d = 5 * Scale;
+                g.DrawLine(x, Centre.X - d, Centre.Y - d, Centre.X + d, Centre.Y + d);
+                g.DrawLine(x, Centre.X + d, Centre.Y - d, Centre.X - d, Centre.Y + d);
+            }
+
+            // Full label of a shortened entry under the pointer.
+            if (hoverFull is not null)
+            {
+                var size = g.MeasureString(hoverFull, font);
+                var pill = new RectangleF(Centre.X - size.Width / 2 - 8 * Scale, Centre.Y + outer + 8 * Scale, size.Width + 16 * Scale, size.Height + 6 * Scale);
+                using var path = new GraphicsPath();
+                var rr = pill.Height;
+                path.AddArc(pill.X, pill.Y, rr, rr, 90, 180);
+                path.AddArc(pill.Right - rr, pill.Y, rr, rr, 270, 180);
+                path.CloseFigure();
+                using (var pb = new SolidBrush(dark ? Color.FromArgb(240, 60, 62, 68) : Color.FromArgb(240, 40, 42, 46))) g.FillPath(pb, path);
+                using var pt = new SolidBrush(Color.White);
+                using var pf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                g.DrawString(hoverFull, font, pt, pill, pf);
+            }
         }
     }
 }

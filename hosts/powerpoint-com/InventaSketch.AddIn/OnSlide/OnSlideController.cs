@@ -35,6 +35,7 @@ namespace InventaSketch.AddIn.OnSlide
         private readonly OverlayWindow _overlay;
         private readonly Timer _timer;
         private Mode _mode;
+        private bool _rightDownOnUnit;
         private SlideView? _view;
         private List<Anchor> _targets = new();
 
@@ -373,9 +374,16 @@ namespace InventaSketch.AddIn.OnSlide
                         _moved = false;
                         return true;
                     }
-                    if (message == WM_RBUTTONDOWN && Inside(pt, view, inset: 0)) return true;
-                    if (message == WM_RBUTTONUP && Inside(pt, view, inset: 0))
+                    // Right-click on the selected unit (with a small margin, so PowerPoint's own menu does not appear
+                    // when the click lands just beside a thin unit) opens the pie menu; the release is paired by the hook.
+                    if (message == WM_RBUTTONDOWN && Inside(pt, view, inset: -4))
                     {
+                        _rightDownOnUnit = true;
+                        return true;
+                    }
+                    if (message == WM_RBUTTONUP && _rightDownOnUnit)
+                    {
+                        _rightDownOnUnit = false;
                         OpenPie(pt, view);
                         return true;
                     }
@@ -568,9 +576,10 @@ namespace InventaSketch.AddIn.OnSlide
             var c = view.ToScreen(new Vec2(b.Right / Geo.PtPerMm, b.Bottom / Geo.PtPerMm));
             var d = (float)(inset * view.DeviceScale);
             var r = RectangleF.FromLTRB(a.X + d, a.Y + d, c.X - d, c.Y - d);
-            // Thin units (lines, shafts): keep a minimum grab height around the centre line.
-            if (r.Height < 8 * view.DeviceScale) r = RectangleF.FromLTRB(r.Left, (a.Y + c.Y) / 2 - 5, r.Right, (a.Y + c.Y) / 2 + 5);
-            if (r.Width < 8 * view.DeviceScale) r = RectangleF.FromLTRB((a.X + c.X) / 2 - 5, r.Top, (a.X + c.X) / 2 + 5, r.Bottom);
+            // Thin units (lines, walls, shafts): keep a minimum grab band around the centre line (logical pixels).
+            var band = (float)(6 * view.DeviceScale);
+            if (r.Height < 2 * band) r = RectangleF.FromLTRB(r.Left, (a.Y + c.Y) / 2 - band, r.Right, (a.Y + c.Y) / 2 + band);
+            if (r.Width < 2 * band) r = RectangleF.FromLTRB((a.X + c.X) / 2 - band, r.Top, (a.X + c.X) / 2 + band, r.Bottom);
             return r.Contains(pt.X, pt.Y);
         }
 
@@ -883,43 +892,70 @@ namespace InventaSketch.AddIn.OnSlide
             if (_unit is null) return;
             var registry = _registry();
             var pointObject = PointObject();
-            if (submenu == "actions")
+            if (submenu == "more")
             {
                 var sub = new List<PieItem> { new("menu:back", T("← Back", "← Zurück")) };
-                sub.AddRange(UnitActions(out _).Take(11).Select(ActionItem));
-                _pie = new PieMenu(new PointF(pt.X, pt.Y), sub, (float)view.DeviceScale);
-                _mode = Mode.Pie;
-                DrawPie(view);
+                sub.AddRange(_pieOverflow.Take(MaxPieItems + 3));
+                ShowPie(pt, view, sub);
                 return;
             }
             if (submenu is not null && pointObject is not null)
             {
-                _pie = new PieMenu(new PointF(pt.X, pt.Y), SubMenu(submenu, pointObject), (float)view.DeviceScale);
-                _mode = Mode.Pie;
-                DrawPie(view);
+                ShowPie(pt, view, SubMenu(submenu, pointObject));
                 return;
             }
-            var items = new List<PieItem> { new("delete", T("Delete", "L\u00f6schen"), Danger: true) { IconId = IconIds.Delete } };
-            if (pointObject is not null)
+            var (main, overflow) = PieLayout(BuildPieItems(pointObject, registry), T("More ▸", "Mehr ▸"));
+            _pieOverflow = overflow;
+            HideBar();
+            ShowPie(pt, view, main);
+        }
+
+        /// <summary>More entries than this make the ring unreadable; the rest goes into "More".</summary>
+        internal const int MaxPieItems = 8;
+
+        private List<PieItem> _pieOverflow = new();
+
+        /// <summary>All entries of the main pie in priority order (essential entries first, see <see cref="PieLayout"/>).</summary>
+        private List<(PieItem Item, bool Essential)> BuildPieItems(SketchObject? pointObject, Registry registry)
+        {
+            var items = new List<(PieItem, bool)> { (new PieItem("delete", T("Delete", "Löschen"), Danger: true) { IconId = IconIds.Delete }, true) };
+            // Type conversion and the label menu belong to lines, arrows, dimensions and lead lines only.
+            if (pointObject is not null && Array.IndexOf(ConvertTargets, pointObject.Type) >= 0)
             {
-                items.Add(new PieItem("menu:type", T("Type \u25B8", "Typ \u25B8")) { IconId = IconIds.Cycle });
-                items.Add(new PieItem("menu:label", T("Label \u25B8", "Beschriftung \u25B8")) { IconId = IconIds.Text });
+                items.Add((new PieItem("menu:type", T("Type ▸", "Typ ▸")) { IconId = IconIds.Cycle }, true));
+                items.Add((new PieItem("menu:label", T("Label ▸", "Beschriftung ▸")) { IconId = IconIds.Text }, true));
             }
             var actions = UnitActions(out var first);
             var type = first is null ? null : registry.Type(first.Type);
             if (type is not null && first is not null)
-            {
-                foreach (var v in type.Views.Take(5))
-                    items.Add(new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
-                // Up to three type actions directly; more go into a sub-menu.
-                items.AddRange(actions.Take(actions.Count > 3 ? 2 : 3).Select(ActionItem));
-                if (actions.Count > 3) items.Add(new PieItem("menu:actions", T("More ▸", "Mehr ▸")) { IconId = IconIds.Cycle });
-            }
-            items.Add(new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate });
-            items.Add(new PieItem("flipH", T("Mirror", "Spiegeln")) { IconId = IconIds.MirrorH });
-            items.Add(new PieItem("flipV", T("Mirror", "Spiegeln")) { IconId = IconIds.MirrorV });
-            items.Add(new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate });
-            HideBar();
+                foreach (var v in type.Views.Take(4))
+                    items.Add((new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) }, true));
+            items.Add((new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate }, true));
+            items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
+            items.AddRange(actions.Select(a => (ActionItem(a), false)));
+            items.Add((new PieItem("flipH", T("Mirror ↔", "Spiegeln ↔")) { IconId = IconIds.MirrorH }, false));
+            items.Add((new PieItem("flipV", T("Mirror ↕", "Spiegeln ↕")) { IconId = IconIds.MirrorV }, false));
+            return items;
+        }
+
+        /// <summary>
+        /// Splits the entries into the main ring (at most <see cref="MaxPieItems"/>: essential entries first, then the
+        /// others in order) and the "More" overflow, so no entry appears twice.
+        /// </summary>
+        internal static (List<PieItem> Main, List<PieItem> Overflow) PieLayout(IReadOnlyList<(PieItem Item, bool Essential)> all, string moreLabel)
+        {
+            if (all.Count <= MaxPieItems) return (all.Select(e => e.Item).ToList(), new List<PieItem>());
+            var essential = all.Where(e => e.Essential).Select(e => e.Item).Take(MaxPieItems - 1).ToList();
+            var rest = all.Where(e => !e.Essential).Select(e => e.Item)
+                .Concat(all.Where(e => e.Essential).Select(e => e.Item).Skip(MaxPieItems - 1)).ToList();
+            var room = MaxPieItems - 1 - essential.Count;
+            var main = essential.Concat(rest.Take(room)).ToList();
+            main.Add(new PieItem("menu:more", moreLabel) { IconId = IconIds.Cycle });
+            return (main, rest.Skip(room).ToList());
+        }
+
+        private void ShowPie(POINT pt, SlideView view, List<PieItem> items)
+        {
             _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale);
             _mode = Mode.Pie;
             DrawPie(view);

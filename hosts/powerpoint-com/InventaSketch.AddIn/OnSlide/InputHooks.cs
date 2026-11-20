@@ -20,6 +20,11 @@ namespace InventaSketch.AddIn.OnSlide
         private IntPtr _keyboardHook;
         private bool _hostOwnsLeft;
         private bool _hostOwnsRight;
+        // The add-in swallowed the press: the release must be swallowed too, or PowerPoint gets an unpaired release
+        // (an unpaired right-button release makes Windows open PowerPoint's own context menu).
+        private bool _addinOwnsLeft;
+        private bool _addinOwnsRight;
+        private bool _uninstallPending;
 
         public InputHooks()
         {
@@ -40,11 +45,14 @@ namespace InventaSketch.AddIn.OnSlide
 
         public void Install()
         {
+            // A pending uninstall (waiting for a release) is cancelled when the hooks are wanted again.
+            _uninstallPending = false;
             if (Installed) return;
             uint thread = GetCurrentThreadId();
             // A button already held while installing was pressed for PowerPoint: its release belongs to PowerPoint.
             _hostOwnsLeft = GetAsyncKeyState(VK_LBUTTON) < 0;
             _hostOwnsRight = GetAsyncKeyState(VK_RBUTTON) < 0;
+            _addinOwnsLeft = _addinOwnsRight = false;
             _mouseHook = SetWindowsHookEx(WH_MOUSE, _mouseProc, IntPtr.Zero, thread);
             _keyboardHook = SetWindowsHookEx(WH_KEYBOARD, _keyboardProc, IntPtr.Zero, thread);
             if (_mouseHook == IntPtr.Zero || _keyboardHook == IntPtr.Zero) Log.Info("Hook could not be installed, error " + Marshal.GetLastWin32Error());
@@ -52,6 +60,13 @@ namespace InventaSketch.AddIn.OnSlide
 
         public void Uninstall()
         {
+            // Keep the mouse hook until a button pressed for the add-in is released.
+            if (_mouseHook != IntPtr.Zero && (_addinOwnsLeft || _addinOwnsRight))
+            {
+                _uninstallPending = true;
+                return;
+            }
+            _uninstallPending = false;
             if (_mouseHook != IntPtr.Zero) UnhookWindowsHookEx(_mouseHook);
             if (_keyboardHook != IntPtr.Zero) UnhookWindowsHookEx(_keyboardHook);
             _mouseHook = _keyboardHook = IntPtr.Zero;
@@ -82,16 +97,22 @@ namespace InventaSketch.AddIn.OnSlide
                 // Press/release pairing: whoever got the press also gets the release.
                 switch (message)
                 {
-                    case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK: _hostOwnsLeft = !swallow; break;
-                    case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK: _hostOwnsRight = !swallow; break;
+                    case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK: _hostOwnsLeft = !swallow; _addinOwnsLeft = swallow; break;
+                    case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK: _hostOwnsRight = !swallow; _addinOwnsRight = swallow; break;
                     case WM_LBUTTONUP:
-                        if (_hostOwnsLeft) swallow = false;
-                        _hostOwnsLeft = false;
+                        swallow = !_hostOwnsLeft && (swallow || _addinOwnsLeft);
+                        _hostOwnsLeft = _addinOwnsLeft = false;
                         break;
                     case WM_RBUTTONUP:
-                        if (_hostOwnsRight) swallow = false;
-                        _hostOwnsRight = false;
+                        swallow = !_hostOwnsRight && (swallow || _addinOwnsRight);
+                        _hostOwnsRight = _addinOwnsRight = false;
                         break;
+                }
+                if (_uninstallPending && !_addinOwnsLeft && !_addinOwnsRight && message is WM_LBUTTONUP or WM_RBUTTONUP)
+                {
+                    var result = swallow ? new IntPtr(1) : CallNextHookEx(_mouseHook, nCode, wParam, lParam);
+                    Uninstall();
+                    return result;
                 }
                 if (swallow) return new IntPtr(1);
             }

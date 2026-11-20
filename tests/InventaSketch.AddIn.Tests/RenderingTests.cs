@@ -68,15 +68,15 @@ namespace InventaSketch.AddIn.Tests
             var items = new[]
             {
                 new PieItem("delete", "Löschen", Danger: true) { IconId = IconIds.Delete },
-                new PieItem("view:stick", "Schema") { IconId = IconIds.Schematic },
-                new PieItem("view:axial", "Stirnansicht", Active: true) { IconId = IconIds.Axial },
-                new PieItem("view:teeth", "Mit Zähnen") { IconId = IconIds.Teeth },
+                new PieItem("view:plan", "Grundriss", Active: true) { IconId = IconIds.Plan },
+                new PieItem("view:elevation", "Ansicht") { IconId = IconIds.Front },
                 new PieItem("dup", "Duplizieren") { IconId = IconIds.Duplicate },
-                new PieItem("flipH", "Spiegeln") { IconId = IconIds.MirrorH },
                 new PieItem("rot90", "Drehen 90°") { IconId = IconIds.Rotate },
-                new PieItem("menu:type", "Typ ▸", Enabled: false) { IconId = IconIds.Cycle },
+                new PieItem("act:thicker", "Dickere Wand (300 mm)") { IconId = IconIds.Increase },
+                new PieItem("act:kind", "Wandart: Innenwand (tragend, verputzt)", Enabled: false) { IconId = IconIds.Cycle },
+                new PieItem("menu:more", "Mehr ▸") { IconId = IconIds.Cycle },
             };
-            var pie = new PieMenu(new PointF(300, 300), items, 2f) { Hover = 1 };
+            var pie = new PieMenu(new PointF(300, 300), items, 2f) { Hover = 6 };
             using var bmp = new Bitmap(600, 600);
             using (var g = Graphics.FromImage(bmp))
             {
