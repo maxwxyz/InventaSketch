@@ -1,0 +1,66 @@
+# Roadmap
+
+> Deutsche Übersetzung. Maßgeblich ist die englische Fassung: [ROADMAP.md](../../ROADMAP.md).
+
+> Statuswerte: **ausgeliefert** (getestet und dokumentiert), **in Arbeit**, **geplant**, **vorgeschlagen**, **blockiert**.
+> Detaillierter Umfang je Modul: [Spezifikation](product/specification.md). Englisch: [ROADMAP.md](../../ROADMAP.md).
+
+## Phase 0 – Grundlagen (in Arbeit)
+
+| Punkt | Ergebnis | Status |
+|---|---|---|
+| Recherche | Zeichnungsvorschriften für Patente (DPMA/EPA/PCT/USPTO), Werkzeuglandschaft, Host-APIs | ausgeliefert ([docs/en/research](../en/research/); deutsche Kurzfassung: [research/README.md](research/README.md)) |
+| Repository & Governance | README EN/DE, Lizenz, ADRs, Regeln für Beiträge, CI | in Arbeit |
+| Engine-Kern | Modell, Geometrie, Primitive, Einrasten, Schraffur, Bearbeitungen/Rückgängig, JSON, SVG | in Arbeit (26 Tests) |
+| Modulvertrag | `IModule`, `ObjectType`, Ansichten, Parameter, Ankerpunkte, Aktionen, Bibliothek | in Arbeit |
+
+## Phase 1 – Quick-Sketch-MVP
+
+| Punkt | Ergebnis | Status |
+|---|---|---|
+| Annotation-Modul | Pfeile, Bezugslinien, Bemaßungen, Text, Schraffur, Klammern, Mechanik-Symbole, Flussdiagramm-Grundformen | in Arbeit |
+| Mechanical-Modul | Zahnräder (Stirnrad/Hohlrad/Kegelrad/Schnecke/Zahnstange/Planetensatz/Differenzial), Wellen, Wälzlager, Kupplungen, Verbindungselemente, Federn; Ansichten Getriebeschema/Seite/Schnitt/axial/Verzahnung | in Arbeit |
+| Patent-Modul | Bezugszeichen, Nummerierungsschema, Bezugszeichenliste, Amtsprofile, Vorabprüfung (Preflight), monochromer Export | in Arbeit |
+| Engine-API | JSON-Fassade, Sitzungen, Treffertest, Einrasten, Kontextaktionen, Host-Zeichenpläne | in Arbeit |
+| Web-Add-in | WebAssembly-Engine, Vorschau-Editor in der Seitenleiste, Bibliothek, Eigenschaftenbereich, Kreismenü, schwebende Leiste, Schreiber für native Formen | in Arbeit |
+
+**Abschlusskriterien:** Ein zweistufiges Getriebe und eine Patentfigur lassen sich im Seitenleisten-Editor ohne
+Zahleneingabe erstellen, in PowerPoint (Web) einfügen und als SVG exportieren; alle Tests grün.
+
+## Phase 2 – PowerPoint-COM-Add-in (Windows)
+
+Registrierung pro Benutzer ohne Administratorrechte; Menüband; native Formen über COM (Freiform, Pfeilspitzen,
+Musterfüllung, Verbinder); Interaktion auf der Folie (Eingabe-Hooks + geschichtetes Overlay-Fenster): Einfügen am
+Mauszeiger, Einrast-Hilfslinien, schwebende Leiste, Kreismenü; Aufgabenbereich in der Seitenleiste; Metadaten in Tags +
+Dokumenteigenschaften; COM-Vorrang verifiziert. Status: **geplant**.
+
+## Phase 3 – LibreOffice-Erweiterung
+
+Python-UNO-`.oxt` + .NET-Engine-Prozess; Impress/Draw/Calc; native Formen und Schraffuren; Seitenleisten-Panel;
+Interaktion auf der Zeichenfläche; Pakete für Windows/Linux/macOS. Status: **geplant**.
+
+## Phase 4 – Kinematik und erweiterte Mechanik
+
+2D-Constraint-Solver, Koppelgetriebe, Gelenkgrenzen, Simulation durch Ziehen, Geisterbilder (Ghosting), Animation als
+Folienfolge; Modul Technische Mechanik; verknüpfte Mehrfachansichten. Status: **geplant**.
+
+## Phase 5 – Elektrotechnik, Elektronik, elektrische Maschinen
+
+Symbole, Leitungen mit Pins/Verbindungspunkten, Netze, Busse, ERC-Grundlagen, Hausinstallation, Leiterplatten-Illustration,
+Maschinenquerschnitte (PMSM, EESM, ASM, SRM, Axial-/Radialfluss). Status: **geplant**.
+
+## Phase 6 – Systeme und Erweiterung der Fachgebiete
+
+Automotive/ADAS/HMI, Architektur/Grundrisse, UML/ER/Ablauf, Karten und Routen, Diagramme; weitere Module nach Bedarf
+(Fluidtechnik, Thermodynamik, Robotik, Chemie, …). Status: **geplant / vorgeschlagen**.
+
+## Phase 7 – Erweiterte Plattform
+
+Varianten und Vergleich (Diff), Synchronisation mehrerer Ansichten, Konturerkennung in Bildern und Schraffur
+importierter Bilder, PDF/TIFF-Exportprofile, Benutzerbibliotheken, Automatisierung. Status: **vorgeschlagen**.
+
+## Offene Punkte
+
+- Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
+- Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.
+- Mit dem Maintainer klären, ob bestimmte Slidemax-Komponenten für dieses Repository neu lizenziert werden dürfen.
