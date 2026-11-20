@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    PowerPoint COM add-in (Windows, .NET Framework 4.8, AnyCPU). Hosts the InventaSketch engine in-process and writes
+    engine draw plans as native PowerPoint shapes. Office interop types come from NuGet and are embedded, so no interop
+    assemblies ship and the project builds with "dotnet build" (no Visual Studio needed).
+    Registration per user without admin rights: scripts/register-com.ps1.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>InventaSketch.AddIn</RootNamespace>
+    <AssemblyName>InventaSketch.AddIn</AssemblyName>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <ComVisible>false</ComVisible>
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Ribbon.xml" LogicalName="InventaSketch.AddIn.Ribbon.xml" />
+    <ProjectReference Include="..\..\..\src\InventaSketch.Engine\InventaSketch.Engine.csproj" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="Microsoft.CSharp" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Office.Interop.PowerPoint" Version="15.0.4420.1018" />
+    <PackageReference Include="MicrosoftOfficeCore" Version="15.0.0" />
+  </ItemGroup>
+
+  <!-- Embed the interop types (NuGet does not apply EmbedInteropTypes) and do not copy the interop assemblies. -->
+  <Target Name="IskEmbedOfficeInterop" AfterTargets="ResolveLockFileReferences">
+    <ItemGroup>
+      <Reference Condition="'%(Reference.NuGetPackageId)' == 'Microsoft.Office.Interop.PowerPoint' Or '%(Reference.NuGetPackageId)' == 'MicrosoftOfficeCore'">
+        <EmbedInteropTypes>true</EmbedInteropTypes>
+      </Reference>
+    </ItemGroup>
+  </Target>
+  <Target Name="IskSkipOfficeInteropCopy" AfterTargets="ResolveLockFileCopyLocalFiles">
+    <ItemGroup>
+      <ReferenceCopyLocalPaths Remove="@(ReferenceCopyLocalPaths)"
+          Condition="'%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'Microsoft.Office.Interop.PowerPoint' Or '%(ReferenceCopyLocalPaths.NuGetPackageId)' == 'MicrosoftOfficeCore'" />
+    </ItemGroup>
+  </Target>
+</Project>
