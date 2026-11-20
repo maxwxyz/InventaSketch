@@ -76,6 +76,15 @@ namespace InventaSketch.AddIn
                 _onSlide = new OnSlide.OnSlideController(_app, () => _registry!, () => _lang);
                 _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang, BeginPlacement);
                 _onSlide.UnitArmed += u => _bridge.UnitSelected(u);
+                // Units deleted on the slide (Delete key, cut, undo) also leave the sidebar editor.
+                _app.WindowSelectionChange += _ =>
+                {
+                    try
+                    {
+                        if (_pane?.Visible == true && CurrentSlide(_app) is PowerPoint.Slide slide) _bridge.SlideUnits(slide);
+                    }
+                    catch (Exception ex) { Log.Error("Sidebar slide units", ex); }
+                };
                 Log.Info($"Connected: InventaSketch {typeof(Connect).Assembly.GetName().Version}, PowerPoint {_app.Version}, "
                     + $"{(Environment.Is64BitProcess ? 64 : 32)} bit, CLR {Environment.Version}, language {_lang}, "
                     + $"{_registry.Library.Count} library items in {_categories.Count} categories, {watch.ElapsedMilliseconds} ms");

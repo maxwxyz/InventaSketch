@@ -252,13 +252,13 @@ namespace InventaSketch.Engine
         {
             foreach (var op in ops)
             {
-                if (op.Stroke is { Color: not null } s) s.Color = MonoInk(s.Color);
+                if (op.Stroke is { } s) s.Color = MonoInk(s.Color);
                 if (op.Color is not null) op.Color = MonoInk(op.Color);
                 if (op.Fill is { } f)
                 {
                     if (f.Hatch is { } h)
                     {
-                        h.Color = h.Color is null ? null : MonoInk(h.Color);
+                        h.Color = MonoInk(h.Color);
                         f.Color = f.Color is null || op.Opacity is < 1 ? null : MonoFill(f.Color);
                     }
                     else if (f.Kind == "solid" && f.Color is not null)

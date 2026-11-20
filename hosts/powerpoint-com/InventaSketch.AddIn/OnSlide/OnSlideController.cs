@@ -364,6 +364,15 @@ namespace InventaSketch.AddIn.OnSlide
                         Log.Info("Resize start, handle " + handle);
                         return true;
                     }
+                    // Double-click on the selected unit edits its text (like PowerPoint text boxes).
+                    if (message == WM_LBUTTONDBLCLK && Inside(pt, view, inset: 0) && _unit is { } dblUnit
+                        && dblUnit.Objects.FirstOrDefault(o => _registry().Type(o.Type) is not null) is { } dblFirst
+                        && EditableText(_registry(), dblFirst) is not null)
+                    {
+                        HideBar();
+                        Post(() => ApplyAction(dblUnit, "text"));
+                        return true;
+                    }
                     if (message == WM_LBUTTONDOWN && Inside(pt, view, inset: 6))
                     {
                         Log.Info("Drag start at " + pt.X + "," + pt.Y);
@@ -720,6 +729,8 @@ namespace InventaSketch.AddIn.OnSlide
                     list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
                 list.Add(new BarButton("", "", "", Separator: true));
             }
+            if (first is not null && EditableText(registry, first) is not null)
+                list.Add(new BarButton("text", "", T("Edit text (double-click)", "Text bearbeiten (Doppelklick)")) { IconId = IconIds.Text });
             list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
             list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
             list.Add(new BarButton("rot90", "", T("Rotate 90 degrees", "Um 90 Grad drehen")) { IconId = IconIds.Rotate });
@@ -869,6 +880,26 @@ namespace InventaSketch.AddIn.OnSlide
             return items;
         }
 
+        /// <summary>
+        /// The main text of an object for quick editing (double-click, bar, pie): the object text of text types, else the
+        /// first text parameter among numeral, text, label, name and title. Null if the type has no such text.
+        /// </summary>
+        internal (string Label, string Current, Func<SketchObject, string, SketchObject> Apply)? EditableText(Registry registry, SketchObject o)
+        {
+            var type = registry.Type(o.Type);
+            if (type is null) return null;
+            if (type.HasText) return (T("Text", "Text"), o.Text ?? "", (x, t) => x with { Text = t });
+            foreach (var key in new[] { "numeral", "text", "label", "name", "title" })
+            {
+                var pd = type.Parameters.FirstOrDefault(p => p.Key == key && p.Kind == ParamKind.Text);
+                if (pd is null) continue;
+                if (key == "numeral")
+                    return (pd.Label.Get(_lang()), o.Ref ?? o.Str(key, pd.Default?.Text ?? ""), (x, t) => x.WithParam(key, t) with { Text = null, Ref = t });
+                return (pd.Label.Get(_lang()), o.Str(key, pd.Default?.Text ?? ""), (x, t) => x.WithParam(key, t));
+            }
+            return null;
+        }
+
         /// <summary>Type actions of the armed unit's first object, evaluated with the neighbouring units as document context.</summary>
         private List<ContextAction> UnitActions(out SketchObject? first)
         {
@@ -930,6 +961,8 @@ namespace InventaSketch.AddIn.OnSlide
             if (type is not null && first is not null)
                 foreach (var v in type.Views.Take(4))
                     items.Add((new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) }, true));
+            if (first is not null && EditableText(registry, first) is not null)
+                items.Add((new PieItem("text", T("Text \u2026", "Text \u2026")) { IconId = IconIds.Text }, true));
             items.Add((new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate }, true));
             items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
             items.AddRange(actions.Select(a => (ActionItem(a), false)));
@@ -1486,6 +1519,14 @@ namespace InventaSketch.AddIn.OnSlide
                     var cur = o.Num(parts[1], pd.Default?.Number ?? 3.5);
                     return o.WithParam(parts[1], Math.Round(Math.Max(pd.Min ?? 0.5, Math.Min(pd.Max ?? 100, cur * factor)), 2));
                 });
+            }
+            else if (id == "text")
+            {
+                var first = doc.ObjectsOn(doc.Pages[0]).FirstOrDefault(o => registry.Type(o.Type) is not null);
+                if (first is null || EditableText(registry, first) is not { } edit) return;
+                var entered = TextPrompt.Ask(edit.Label, edit.Current, _view?.MainWindow ?? IntPtr.Zero);
+                if (entered is null || entered == edit.Current) return;
+                doc = Edits.Update(doc, new[] { first.Id }, o => edit.Apply(o, entered));
             }
             else if (id.StartsWith("edit:", StringComparison.Ordinal))
             {

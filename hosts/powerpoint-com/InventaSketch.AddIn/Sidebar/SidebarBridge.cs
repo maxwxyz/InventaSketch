@@ -12,7 +12,8 @@ namespace InventaSketch.AddIn.Sidebar
     /// <summary>
     /// Message protocol between the sidebar editor (TypeScript, combridge.ts) and the COM add-in:
     /// editor → add-in: {type:"ready"}, {type:"place", itemId} and {type:"units", id, units:[{id, payload}], remove:[unitId]};
-    /// add-in → editor: {type:"ack", id, ok, error?} and {type:"selection", unitId, payload}.
+    /// add-in → editor: {type:"ack", id, ok, error?}, {type:"selection", unitId, payload} and {type:"present", unitIds}
+    /// (the units on the current slide, sent on every selection change so units deleted on the slide leave the editor).
     /// Payloads are compact InventaSketch documents; the add-in draws them natively with the full C# engine.
     /// </summary>
     internal sealed class SidebarBridge
@@ -42,6 +43,19 @@ namespace InventaSketch.AddIn.Sidebar
             if (_pane is null || _applying) return;
             var json = JsonSerializer.Serialize(new { type = "selection", unitId = unit.Id, payload = DocumentJson.ToCompact(unit.Doc) });
             _pane.Post(json);
+        }
+
+        /// <summary>Tells the editor which units are on the current slide (cheap: reads only the ISK_ID tags).</summary>
+        public void SlideUnits(PowerPoint.Slide slide)
+        {
+            if (_pane is null || _applying) return;
+            var ids = new List<string>();
+            foreach (PowerPoint.Shape s in slide.Shapes)
+            {
+                var id = s.Tags["ISK_ID"];
+                if (!string.IsNullOrEmpty(id)) ids.Add(id);
+            }
+            _pane.Post(JsonSerializer.Serialize(new { type = "present", unitIds = ids }));
         }
 
         private void OnMessage(string json)

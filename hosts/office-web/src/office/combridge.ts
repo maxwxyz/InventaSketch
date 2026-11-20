@@ -34,10 +34,13 @@ export interface ComSyncHost {
 /** Messages from the COM add-in. */
 type FromHost =
   | { type: "selection"; unitId: string; payload: string }
+  | { type: "present"; unitIds: string[] }
   | { type: "ack"; id: number; ok: boolean; error?: string };
 
 export class ComSync {
   readonly units = new Map<string, string[]>();
+  /** Every unit that came from or went to the slide, with its objects in the editor (for removals on the slide). */
+  private readonly known = new Map<string, string[]>();
   lastNotes: string[] = [];
   private next = 1;
   private readonly waiting = new Map<number, { resolve: () => void; reject: (e: Error) => void }>();
@@ -55,7 +58,7 @@ export class ComSync {
   /** Draws the given objects (default: all) on the current slide as new units. */
   async insert(ids?: string[]): Promise<PlanUnit[]> {
     const plan = this.h.session().drawPlan(ids && ids.length ? ids : undefined, comDraw);
-    for (const u of plan.units) this.units.set(u.id, u.objectIds);
+    for (const u of plan.units) { this.units.set(u.id, u.objectIds); this.known.set(u.id, u.objectIds); }
     await this.send({ type: "units", units: plan.units.map((u) => ({ id: u.id, payload: u.payload })), remove: [] });
     this.lastNotes = plan.units.flatMap((u) => u.notes);
     return plan.units;
@@ -70,7 +73,7 @@ export class ComSync {
     const fresh = new Set(plan.units.map((u) => u.id));
     const remove = [...this.units.keys()].filter((u) => !fresh.has(u));
     for (const r of remove) this.units.delete(r);
-    for (const u of plan.units) this.units.set(u.id, u.objectIds);
+    for (const u of plan.units) { this.units.set(u.id, u.objectIds); this.known.set(u.id, u.objectIds); }
     await this.send({ type: "units", units: plan.units.map((u) => ({ id: u.id, payload: u.payload })), remove });
   }
 
@@ -96,11 +99,27 @@ export class ComSync {
         const st = this.h.session().importCompact(msg.payload);
         this.units.clear();
         this.units.set(msg.unitId, st.selection);
+        this.known.set(msg.unitId, st.selection);
         this.h.adopt(st, "loaded");
+        return;
       }
+      if (msg.type === "present" && !this.writing) this.dropMissing(new Set(msg.unitIds));
     } catch (e) {
       this.h.report(e);
     }
+  }
+
+  /**
+   * Units deleted on the slide (PowerPoint's own Delete, cut, undo) leave the editor too. Only objects that came from
+   * or went to the slide are affected; drafts that were never placed stay.
+   */
+  private dropMissing(present: Set<string>): void {
+    const missing = [...this.known.keys()].filter((id) => !present.has(id));
+    if (missing.length === 0) return;
+    const existing = new Set(this.h.session().state(false).objects.map((o) => o.id));
+    const objects = missing.flatMap((id) => this.known.get(id) ?? []).filter((id) => existing.has(id));
+    for (const id of missing) { this.known.delete(id); this.units.delete(id); }
+    if (objects.length > 0) this.h.adopt(this.h.session().remove(objects), "native-edit");
   }
 
   private send(message: Record<string, unknown>): Promise<void> {
