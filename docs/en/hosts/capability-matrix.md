@@ -10,14 +10,14 @@
 | Native rectangles, ellipses, lines, text | verified (2026-11-20, PowerPoint 16.0.20527, smoke test) | not tested (PowerPointApi 1.4) | not tested (UNO shapes) |
 | Native freeform / Bézier | verified (BuildFreeform, smoke test) | unsupported in Office.js → SVG picture or slide injection | not tested (PolyPolygonBezierShape) |
 | Native arrowheads | verified (curved arrow, smoke test); native for triangle, open, stealth, diamond, oval (tick → open, half → triangle); native heads scale with the line weight only, so the engine uses them only where they reach at least 65 % of its own head size (`DrawPlanBuilder.NativeHeadFits`) and otherwise draws the head as shapes — thin diagram lines and diamonds therefore get drawn heads that match the hollow ones | unsupported in Office.js → explicit geometry | not tested (LineStart/LineEnd) |
-| Hollow UML heads (`triangleOpen`, `diamondOpen`) | partial: no msoArrowhead equivalent → lowered to a closed freeform without fill, line shortened to its base (draw plan unit-tested, not tested on the host) | partial: rotated Triangle/Diamond geometric shape without fill (PowerPointApi 1.10 rotation; unit-tested plan, not tested on the host) | not tested |
-| Crow's-foot ends (`crowOne`, `crowOneOnly`, `crowZeroOne`, `crowMany`, `crowOneMany`, `crowZeroMany`) | partial: lines, open freeform foot and unfilled ovals; a circle interrupts the line (unit-tested plan, not tested on the host) | partial: lines and unfilled ellipses (unit-tested plan, not tested on the host) | not tested |
-| Text underline | not tested (`Font.Underline`) | not tested (`ShapeFont.underline`, PowerPointApi 1.4; no drawn fallback needed) | not tested (CharUnderline) |
+| Hollow UML heads (`triangleOpen`, `diamondOpen`) | partial: no msoArrowhead equivalent → lowered to a closed freeform without fill, line shortened to its base (verified 2026-11-20: UML generalisation, realisation, aggregation; hollow and filled diamonds equal in size) | partial: rotated Triangle/Diamond geometric shape without fill (PowerPointApi 1.10 rotation; unit-tested plan, not tested on the host) | not tested |
+| Crow's-foot ends (`crowOne`, `crowOneOnly`, `crowZeroOne`, `crowMany`, `crowOneMany`, `crowZeroMany`) | partial: lines, open freeform foot and unfilled ovals; a circle interrupts the line (verified 2026-11-20 on ER connectors) | partial: lines and unfilled ellipses (unit-tested plan, not tested on the host) | not tested |
+| Text underline | verified 2026-11-20 (`Font.Underline`, ER primary key) | not tested (`ShapeFont.underline`, PowerPointApi 1.4; no drawn fallback needed) | not tested (CharUnderline) |
 | Native pattern/hatch fill | partial: explicit hatch lines (verified); patterned fill not used | unsupported → explicit hatch lines | not tested (FillHatch) |
 | Grouping | verified | not tested (PowerPointApi 1.8) | not tested (XShapeGrouper) |
-| Rotation | not tested | not tested (PowerPointApi 1.10) | not tested |
+| Rotation | verified 2026-11-20 (snapped rotation re-renders from the model) | not tested (PowerPointApi 1.10) | not tested |
 | Shape tags / metadata | verified (ISK_ID, ISK_TYPE, ISK_MODEL written) | not tested (tags, 1.3) | not tested (shape name + document properties) |
-| Selection read/write | not tested | not tested (1.5/1.6) | not tested |
+| Selection read/write | verified 2026-11-20 (selection loads into the sidebar, pasted copies get new ids) | not tested (1.5/1.6) | not tested |
 | On-slide overlay, floating bar, pie menu | partial: insert at pointer, drag and resize with snapping, two-point tool, point editing, pie menu and fading floating bar verified 2026-11-20 | unsupported → sidebar stage | planned (UNO handlers + overlay layer) |
 | Sidebar / task pane editor | verified 2026-11-20 (WebView2 task pane, live sync both ways) | in progress | planned (sidebar panel) |
 | SVG insert | n/a | not tested (XmlSvg coercion; not on iPad) | not tested |

@@ -86,6 +86,6 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     (`setPlanScale`, `input`, `changed`, `dependents`).
   - Modules: use `ViewDef.Size` where views differ in aspect (automotive top/side); annotation text and lead-line types
     still draw their own underline lines (switch to `TextStyle.Underline`); electrical designator/value as input actions.
-  - Not yet checked in real PowerPoint: drawn hollow/crow's-foot heads, `Font.Underline`, input prompt, dependent redraw.
+  - Not yet checked in real PowerPoint: input prompt dialog, dependent redraw of walls (drawn heads and underline verified 2026-11-20).
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.
