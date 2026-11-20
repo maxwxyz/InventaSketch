@@ -9,12 +9,20 @@ namespace InventaSketch.Modules.Automotive
     /// <summary>
     /// Road environment in top view: straight segment, curved segment, intersection, roundabout, crosswalk and lane
     /// markings. Lane centrelines are exposed as <see cref="AnchorRole.Axis"/> segments so vehicles (Hub anchors)
-    /// snap onto lanes. Scale 1:100 like the vehicles (a lane is 35 mm wide by default).
+    /// snap onto lanes, and as <see cref="AnchorRole.Rail"/> segments so trajectory and line points (End anchors)
+    /// dock anywhere on a lane centre. Scale 1:100 like the vehicles (a lane is 35 mm wide by default).
     /// </summary>
     internal static class Road
     {
         public const string Cat = AutoCategories.Road;
         public const double LaneWidth = 35;
+
+        /// <summary>A lane centreline: the Axis segment (vehicle hubs) plus the same segment as a Rail (points dock on it).</summary>
+        private static IEnumerable<Anchor> LaneCentre(Anchor axis)
+        {
+            yield return axis;
+            yield return axis with { Role = AnchorRole.Rail, Id = axis.Id is null ? null : axis.Id + ".rail" };
+        }
 
         private static I18nText T(string en, string de) => new(en, de);
 
@@ -110,7 +118,7 @@ namespace InventaSketch.Modules.Automotive
                 for (var i = 0; i < n; i++)
                 {
                     var y = -hh + (i + 0.5) * lw;
-                    yield return Anchor.Segment(AnchorRole.Axis, new Vec2(-hw, y), new Vec2(hw, y)) with { Id = "lane" + I(i) };
+                    foreach (var a in LaneCentre(Anchor.Segment(AnchorRole.Axis, new Vec2(-hw, y), new Vec2(hw, y)) with { Id = "lane" + I(i) })) yield return a;
                     yield return Anchor.Point(AnchorRole.End, new Vec2(-hw, y), "lane" + I(i) + ".start");
                     yield return Anchor.Point(AnchorRole.End, new Vec2(hw, y), "lane" + I(i) + ".end");
                 }
@@ -158,7 +166,7 @@ namespace InventaSketch.Modules.Automotive
                 for (var i = 0; i < n; i++)
                 {
                     var pts = ArcAt(p, ri + (i + 0.5) * lw);
-                    foreach (var a in Shapes.AxisChords(pts, 8)) yield return a with { Id = "lane" + I(i) };
+                    foreach (var c in Shapes.AxisChords(pts, 8)) foreach (var a in LaneCentre(c with { Id = "lane" + I(i) })) yield return a;
                     yield return Anchor.Point(AnchorRole.End, pts[0], "lane" + I(i) + ".start");
                     yield return Anchor.Point(AnchorRole.End, pts[pts.Count - 1], "lane" + I(i) + ".end");
                 }
@@ -256,7 +264,7 @@ namespace InventaSketch.Modules.Automotive
                     for (var i = 0; i < n; i++, j++)
                     {
                         var off = -hw + (i + 0.5) * lw;
-                        yield return Anchor.Segment(AnchorRole.Axis, p.V(d * hw + nrm * off), p.V(d * E + nrm * off)) with { Id = "lane" + I(j) };
+                        foreach (var a in LaneCentre(Anchor.Segment(AnchorRole.Axis, p.V(d * hw + nrm * off), p.V(d * E + nrm * off)) with { Id = "lane" + I(j) })) yield return a;
                         yield return Anchor.Point(AnchorRole.End, p.V(d * E + nrm * off), "lane" + I(j) + ".end");
                     }
                 }
@@ -306,13 +314,13 @@ namespace InventaSketch.Modules.Automotive
             {
                 var rc = (Ro + Ri + 4) / 2;
                 var ring = Geo.ArcPoints(Vec2.Zero, rc, rc, 0, 2 * Math.PI, 64).Select(p.V).ToList();
-                foreach (var a in Shapes.AxisChords(ring, 16)) yield return a with { Id = "ring" };
+                foreach (var c in Shapes.AxisChords(ring, 16)) foreach (var a in LaneCentre(c with { Id = "ring" })) yield return a;
                 var j = 0;
                 foreach (var d in ArmDirs)
                     foreach (var s in new[] { -1.0, 1.0 })
                     {
                         var off = d.Perp * s * ha / 2;
-                        yield return Anchor.Segment(AnchorRole.Axis, p.V(d * xint + off), p.V(d * E + off)) with { Id = "lane" + I(j) };
+                        foreach (var a in LaneCentre(Anchor.Segment(AnchorRole.Axis, p.V(d * xint + off), p.V(d * E + off)) with { Id = "lane" + I(j) })) yield return a;
                         yield return Anchor.Point(AnchorRole.End, p.V(d * E + off), "lane" + I(j++) + ".end");
                     }
             }

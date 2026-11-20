@@ -85,9 +85,13 @@ Mittellinie, Einmündung, Ladeparkplatz, prädizierte Trajektorie, …). Die Suc
   `axle.rear`) sowie `Mount`-Punkte (`mount.front`, `mount.rear`, `mount.roof`, `mount.windshield`,
   `mount.mirror.left/right`, Ecken in der Draufsicht).
 - **Straßen** stellen jede Fahrstreifenmitte als `Axis`-Segment bereit (Kurven und Kreisverkehrsring als Sehnen), so
-  dass der Hub eines Fahrzeugs auf den Fahrstreifen schnappt. Fahrstreifenenden sind `End`-Punkte zum Verketten von
-  Straßen und Trajektorien.
-- **Sensoren** haben hinten einen `Mount`-Punkt (schnappt auf Anbaupunkte des Fahrzeugs) und an der Öffnung einen `Port`.
+  dass der Hub eines Fahrzeugs auf den Fahrstreifen schnappt, und zusätzlich als `Rail` mit derselben Geometrie
+  (`lane0.rail`, …), so dass Trajektorienpunkte, Fahrstreifenpolynome und andere Linienenden an beliebiger Stelle der
+  Fahrstreifenmitte andocken (Fangart `rail`). Fahrstreifenenden sind `End`-Punkte zum Verketten von Straßen und
+  Trajektorien.
+- **Sensoren** haben hinten einen `Mount`-Punkt und an der Öffnung einen `Port`. `Mount` auf `Mount` ist ein semantischer
+  Fang (Fangart `mount`, Priorität wie ein Port): Der Anbaupunkt des Sensors gewinnt gegen nähere allgemeine Ecken- oder
+  Mittelpunktfänge.
 - **Sichtbereich:** Punkt 0 ist der Scheitel, Punkt 1 eine Richtungsreferenz; die Sektorachse zeigt von Punkt 0 zu
   Punkt 1, gedreht um `heading`. `Fov.AttachTo(doc, fovId, sensorId)` hängt beide Punkte an den Sensor (Öffnung und
   eine Boxlänge davor), so dass der Sichtbereich beim Verschieben, Drehen und Skalieren des Sensors mitgeht. Ohne

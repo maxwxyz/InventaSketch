@@ -7,13 +7,13 @@ namespace InventaSketch.Modules.Diagrams
 {
     /// <summary>
     /// Sequence diagram lifeline: head (box or actor figure) of fixed height with a dashed tail down to the bottom of the
-    /// object box. Stretching the box lengthens the tail; the head keeps its height. Ports run along the tail every 5 mm
-    /// so messages and activation bars snap onto the lifeline.
+    /// object box. Stretching the box lengthens the tail; the head keeps its height. The tail is a
+    /// <see cref="AnchorRole.Rail"/>: message ends and activation bars dock anywhere on it, not only on a fixed raster.
     /// </summary>
     public sealed class LifelineType : DiagBoxType
     {
-        /// <summary>Spacing of the tail ports (mm).</summary>
-        public const double PortPitch = 5;
+        /// <summary>Anchor id of the tail rail.</summary>
+        public const string TailId = "tail";
 
         public LifelineType() : base("diag.seq.lifeline", new I18nText("Lifeline", "Lebenslinie"), DiagCategories.Sequence,
             "uml", "sequence", "sequenz", "sequenzdiagramm", "lifeline", "lebenslinie", "object", "objekt", "participant", "teilnehmer") { }
@@ -70,9 +70,18 @@ namespace InventaSketch.Modules.Diagrams
             yield return ("top", new Vec2(0, -hh));
             yield return ("head.left", new Vec2(-hw, -hh + head / 2));
             yield return ("head.right", new Vec2(hw, -hh + head / 2));
-            var i = 0;
-            for (var y = -hh + head + PortPitch; y <= hh + 1e-9; y += PortPitch, i++) yield return ("tail." + D.Inv(i), new Vec2(0, y));
             yield return ("bottom", new Vec2(0, hh));
+        }
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            foreach (var a in base.Anchors(o, ctx)) yield return a;
+            var hh = o.Size.H / 2;
+            var top = -hh + HeadHeight(o);
+            if (hh - top <= Geo.Eps) yield break;
+            yield return Anchor.Rail(new Vec2(0, top), new Vec2(0, hh), TailId);
+            // The same line as an axis centres activation bars (their Hub) on the tail.
+            yield return Anchor.Segment(AnchorRole.Axis, new Vec2(0, top), new Vec2(0, hh)) with { Id = TailId + ".axis" };
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
@@ -84,7 +93,10 @@ namespace InventaSketch.Modules.Diagrams
         }
     }
 
-    /// <summary>Activation (execution specification) bar on a lifeline. Ports along both sides every 2.5 mm.</summary>
+    /// <summary>
+    /// Activation (execution specification) bar on a lifeline. Ports along both sides every 2.5 mm; its centre is a
+    /// <see cref="AnchorRole.Hub"/>, so it snaps centred onto a lifeline tail.
+    /// </summary>
     public sealed class ActivationType : DiagBoxType
     {
         public ActivationType() : base("diag.seq.activation", new I18nText("Activation bar", "Aktivierungsbalken"), DiagCategories.Sequence,
@@ -108,6 +120,9 @@ namespace InventaSketch.Modules.Diagrams
                 yield return ("right." + D.Inv(i), new Vec2(hw, y));
             }
         }
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+            => base.Anchors(o, ctx).Append(Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub"));
     }
 
     /// <summary>Message kinds of sequence diagrams.</summary>

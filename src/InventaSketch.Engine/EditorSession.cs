@@ -47,11 +47,18 @@ namespace InventaSketch.Engine
             _selection = doc.ExpandGroups(list).Where(id => doc.Objects.ContainsKey(id)).Distinct().ToList();
         }
 
-        /// <summary>Applies an undoable edit. Returns true if the document changed.</summary>
+        /// <summary>
+        /// Applies an undoable edit. Returns true if the document changed. Attachments bound to a pin/port id are
+        /// re-resolved afterwards (<see cref="Attachments.Refresh"/>), in the same undo step.
+        /// </summary>
         public bool Apply(string label, Func<SketchDocument, SketchDocument> edit)
         {
             var before = History.Current;
-            var after = History.Apply(label, edit);
+            var after = History.Apply(label, d =>
+            {
+                var next = edit(d);
+                return ReferenceEquals(next, d) ? d : Attachments.Refresh(Registry, next, new RenderContext(next, Lang));
+            });
             if (ReferenceEquals(before, after)) return false;
             Revision++;
             Select(_selection);

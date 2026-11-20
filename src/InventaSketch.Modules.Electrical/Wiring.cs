@@ -97,6 +97,16 @@ namespace InventaSketch.Modules.Electrical
             return result;
         }
 
+        /// <summary>
+        /// <see cref="AnchorRole.Rail"/> anchors along a polyline (ids <c>rail0</c>, <c>rail1</c>, ...): other wire ends,
+        /// junction dots and pins dock anywhere on it.
+        /// </summary>
+        public static IEnumerable<Anchor> Rails(IReadOnlyList<Vec2> p)
+        {
+            for (var i = 0; i + 1 < p.Count; i++)
+                if (p[i].DistanceTo(p[i + 1]) > Geo.Eps) yield return Anchor.Rail(p[i], p[i + 1], "rail" + i.ToString(CultureInfo.InvariantCulture));
+        }
+
         /// <summary>Midpoint and direction of the longest segment (label placement).</summary>
         public static (Vec2 Mid, Vec2 Dir) LongestSegment(IReadOnlyList<Vec2> p)
         {
@@ -129,16 +139,26 @@ namespace InventaSketch.Modules.Electrical
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal") };
 
+        private static List<Vec2> RouteOf(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
+            => Routing.Route(p, o.Str("route", "orthogonal"), Routing.ExitHorizontal(ctx.Doc, o, 0), Routing.ExitHorizontal(ctx.Doc, o, p.Count - 1));
+
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
+            => new Primitive[] { Prim.Polyline(RouteOf(o, p, ctx), S.Wire) with { Tag = "wire" } };
+
+        /// <summary>The routed path is a rail: other wire ends and junction dots dock anywhere on it (T junctions).</summary>
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
-            var route = Routing.Route(p, o.Str("route", "orthogonal"), Routing.ExitHorizontal(ctx.Doc, o, 0), Routing.ExitHorizontal(ctx.Doc, o, p.Count - 1));
-            return new Primitive[] { Prim.Polyline(route, S.Wire) with { Tag = "wire" } };
+            var p = ctx.Doc.ResolvePoints(o);
+            return p.Count < 2 ? Array.Empty<Anchor>() : Routing.Rails(RouteOf(o, p, ctx));
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[] { Routing.CycleAction(o, "orthogonal") };
     }
 
-    /// <summary>Bus line (CAN, LIN, Ethernet, FlexRay or generic) with its protocol label; taps every 10 mm are ports.</summary>
+    /// <summary>
+    /// Bus line (CAN, LIN, Ethernet, FlexRay or generic) with its protocol label; taps every 10 mm are ports and the line
+    /// itself is a rail, so stubs dock on a tap or anywhere in between.
+    /// </summary>
     internal sealed class BusType : ElecPointType
     {
         public const double TapSpacing = 10;
@@ -181,6 +201,7 @@ namespace InventaSketch.Modules.Electrical
                 for (var s = 0.0; s <= len + 1e-9; s += TapSpacing)
                     yield return Anchor.Point(AnchorRole.Port, Vec2.Lerp(p[i], p[i + 1], len < Geo.Eps ? 0 : s / len), "tap" + (k++).ToString(CultureInfo.InvariantCulture));
             }
+            foreach (var rail in Routing.Rails(p)) yield return rail;
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)

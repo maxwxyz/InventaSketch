@@ -369,17 +369,51 @@ namespace InventaSketch.Modules.Diagrams.Tests
         }
 
         [Fact]
-        public void MessagesSnapOntoLifelineTails()
+        public void MessagesDockAnywhereOnLifelineTails()
         {
             var r = T.Reg();
             var (doc, life) = T.Insert(r, "diag.seq.lifeline", new Vec2(60, 80));
-            var tail = Ports(r, doc, life.Id).Where(p => p.Id!.StartsWith("tail.", StringComparison.Ordinal)).ToList();
-            Assert.True(tail.Count >= 10);
-            Assert.All(tail, p => Assert.Equal(60, p.P.X, 9));
-            var targets = Snapper.Targets(r, doc, doc.Pages[0], Array.Empty<string>(), new RenderContext(doc), new SnapOptions { Grid = null });
-            var raw = new Vec2(60.8, tail[4].P.Y + 0.9);
-            var snapped = raw + Snapper.SnapPoint(raw, targets, new SnapOptions { Grid = null }).Delta;
-            Assert.Equal(tail[4].P, snapped);
+            // The tail is one rail (no port raster any more); head and bottom ports stay.
+            Assert.DoesNotContain(Ports(r, doc, life.Id), p => p.Id!.StartsWith("tail.", StringComparison.Ordinal));
+            var tail = Assert.Single(r.PageAnchors(doc.Get(life.Id)!, new RenderContext(doc)), a => a.Role == AnchorRole.Rail);
+            Assert.Equal(LifelineType.TailId, tail.Id);
+            Assert.Equal(60, tail.P.X, 9);
+            Assert.Equal(60, tail.Q.X, 9);
+            Assert.Equal(80 + life.Size.H / 2, Math.Max(tail.P.Y, tail.Q.Y), 9);
+
+            var opts = new SnapOptions { Grid = null };
+            var targets = Snapper.Targets(r, doc, doc.Pages[0], Array.Empty<string>(), new RenderContext(doc), opts);
+            var raw = new Vec2(60.8, 93.3);
+            var res = Snapper.SnapPoint(raw, targets, opts);
+            Assert.Equal("rail", res.Kind);
+            var snapped = raw + res.Delta;
+            Assert.Equal(60, snapped.X, 9);
+            Assert.Equal(93.3, snapped.Y, 9);
+
+            // The docked message end is attached to the lifeline and follows it.
+            (doc, var msg) = T.Insert(r, "diag.seq.message", new Vec2(100, 93.3), doc);
+            var att = Attachments.FromSnap(doc, snapped, res)!;
+            Assert.Equal(life.Id, att.ObjectId);
+            doc = Edits.SetPoint(doc, msg.Id, 0, snapped, att);
+            doc = Edits.Move(doc, new[] { life.Id }, new Vec2(15, 0));
+            var end = doc.ResolvePoints(doc.Get(msg.Id)!)[0];
+            Assert.Equal(75, end.X, 9);
+            Assert.Equal(93.3, end.Y, 9);
+        }
+
+        [Fact]
+        public void ActivationBarDocksOntoLifelineTail()
+        {
+            var r = T.Reg();
+            var (doc, life) = T.Insert(r, "diag.seq.lifeline", new Vec2(60, 80));
+            (doc, var bar) = T.Insert(r, "diag.seq.activation", new Vec2(61.1, 90.4), doc);
+            var ctx = new RenderContext(doc);
+            var opts = new SnapOptions { Grid = null, Alignment = false, Page = false };
+            var res = Snapper.SnapMove(r.PageAnchors(bar, ctx).ToList(), Vec2.Zero, Snapper.Targets(r, doc, doc.Pages[0], new[] { bar.Id }, ctx, opts), opts);
+            // Centred by its hub on the tail axis (a side port docking on the rail would put an edge on the line).
+            Assert.Equal("axis", res.Kind);
+            Assert.Equal(60, 61.1 + res.Delta.X, 9);
+            Assert.Equal(0, res.Delta.Y, 9);
         }
 
         [Fact]

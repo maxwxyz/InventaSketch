@@ -364,7 +364,11 @@ namespace InventaSketch.Modules.Machines.Tests
             Assert.Equal(AnchorKind.Circle, bore.Kind);
             var rotor = r.PageAnchors(r.Create(r.Item("machines.rotor.spm")!, new Vec2(50, 40)), Fx.Ctx()).ToList();
             var outer = Assert.Single(rotor, a => a.Role == AnchorRole.Pitch);
-            Assert.Equal(bore.Radius, outer.Radius, 9); // both on the air-gap centre circle
+            // Real radii (no longer both on the air-gap centre circle): the rotor is about 1 mm smaller than the bore,
+            // close enough to count as a fit for the snapper (concentric, not an internal gear mesh).
+            Assert.Equal(24, bore.Radius, 9);
+            Assert.Equal(23.03, outer.Radius, 9);
+            Assert.True(outer.Radius >= Snapper.InternalMeshMaxRatio * bore.Radius);
             Assert.Contains(rotor, a => a.Role == AnchorRole.Hub);
             foreach (var id in new[] { "machines.radial.spm", "machines.airgap", "machines.housing", "machines.cooling.jacket", "machines.resolver", "machines.axial.face" })
                 Assert.Contains(r.PageAnchors(r.Create(r.Item(id)!, Vec2.Zero), Fx.Ctx()), a => a.Role == AnchorRole.Hub);
@@ -384,6 +388,38 @@ namespace InventaSketch.Modules.Machines.Tests
             Assert.Equal("concentric", res.Kind);
             Assert.Equal(-dx, res.Delta.X, 9);
             Assert.Equal(-dy, res.Delta.Y, 9);
+        }
+
+        [Theory]
+        [InlineData(0.95, 1.0, -0.6)]   // rotor scaled down: offset to the internal-mesh position would be within reach
+        [InlineData(1.03, -0.7, 0.4)]   // rotor scaled up, slightly larger than the bore
+        public void FreelyScaledRotorStillSnapsConcentricIntoStator(double scale, double dx, double dy)
+        {
+            var r0 = Fx.Reg();
+            var stator = r0.Create(r0.Item("machines.stator")!, new Vec2(100, 90));
+            var rotor = r0.Create(r0.Item("machines.rotor.spm")!, new Vec2(100 + dx, 90 + dy));
+            rotor = rotor with { Size = new Size2(rotor.Size.W * scale, rotor.Size.H * scale) };
+            var (r, doc) = Doc(stator, rotor);
+            var res = SnapOf(r, doc, rotor, Fx.Snap);
+            Assert.Equal("concentric", res.Kind);
+            Assert.Equal(-dx, res.Delta.X, 9);
+            Assert.Equal(-dy, res.Delta.Y, 9);
+        }
+
+        [Fact]
+        public void RadialMachineExposesRealAirGapRadii()
+        {
+            var r = Fx.Reg();
+            foreach (var (item, outerRotor) in new[] { ("machines.radial.spm", false), ("machines.radial.outer", true) })
+            {
+                var anchors = r.PageAnchors(r.Create(r.Item(item)!, Vec2.Zero), Fx.Ctx()).Where(a => a.Kind == AnchorKind.Circle).ToList();
+                var stator = anchors.Single(a => a.Id == "stator");
+                var rotor = anchors.Single(a => a.Id == "rotor");
+                Assert.Equal(outerRotor ? AnchorRole.Pitch : AnchorRole.PitchInner, stator.Role);
+                var (inner, ring) = outerRotor ? (stator, rotor) : (rotor, stator);
+                Assert.True(inner.Radius < ring.Radius, item + ": air gap between the circles");
+                Assert.True(inner.Radius >= Snapper.InternalMeshMaxRatio * ring.Radius, item + ": treated as a fit");
+            }
         }
 
         [Fact]

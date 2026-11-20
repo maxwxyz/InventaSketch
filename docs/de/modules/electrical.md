@@ -45,15 +45,21 @@ Regelprüfung (ERC), Simulation und Fertigungsdaten gibt es noch nicht.
 - Jedes anschließbare Symbol stellt seine Anschlüsse als `Anchor.Point(AnchorRole.Port, …)` mit stabiler ID bereit
   (`1`/`2`, `A`/`K`, `B`/`C`/`E`, `G`/`D`/`S`, `+`/`-`, `in1…`/`out`, `U`/`V`/`W`, …). Anschlüsse sind in normierten
   Boxkoordinaten (−0,5…0,5) gespeichert und bleiben bei jedem Skalieren, Drehen und Spiegeln am Symbol.
-- Leitungsenden sind Punktanker (`AnchorRole.End`); der allgemeine Snapper zieht ein gezogenes Leitungsende auf einen
-  Anschluss (`Snapper.SnapPoint`) und die Ports eines bewegten Symbols auf Leitungsenden oder andere Anschlüsse
-  (semantische Fangart `port`).
+- Leitungsenden sind Punktanker (`AnchorRole.End`); der Snapper zieht ein gezogenes Leitungsende auf einen Anschluss
+  (`Snapper.SnapPoint`, Fangart `port`) und die Ports eines bewegten Symbols auf Leitungsenden oder andere Anschlüsse.
+  Anschlüsse gewinnen immer gegen den allgemeinen Ecken- und Mittelpunktfang, auch bei einem 2 × 2 mm großen
+  Verbindungspunkt, dessen Ecke näher am Leitungsende liegt als sein Anschluss.
+- Leitungen und Busse sind **Schienen** (`AnchorRole.Rail` entlang des geführten Verlaufs, IDs `rail0`, `rail1`, …): Ein
+  anderes Leitungsende, ein Verbindungspunkt oder ein Anschluss dockt an beliebiger Stelle an (Fangart `rail`,
+  T-Abzweig). Schienenenden und Leitungsknicke ziehen wie Anschlüsse an; dazwischen rangiert eine Schiene hinter
+  einzelnen Anschlüssen und Abgriffen.
 - `ElectricalModule.ConnectToPin(registry, doc, wireId, index, tolerance)` setzt ein Leitungsende auf den nächsten
-  Anschluss innerhalb der Toleranz und speichert eine `Attachment`; die Leitung folgt dann beim Verschieben, Drehen und
-  Skalieren des Symbols.
+  Anschluss innerhalb der Toleranz und speichert eine `Attachment` mit der **Anschluss-ID** (`AnchorId`); die Leitung
+  folgt dann beim Verschieben, Drehen und Skalieren des Symbols, und `Attachments.Refresh` (läuft in der Engine nach
+  jeder Bearbeitung) führt sie mit, wenn der Anschluss im Symbol wandert (Polaritätsumkehr, Anschlusszahl, Ansicht).
 - Orthogonale Leitungen verlassen bzw. erreichen angedockte Anschlüsse senkrecht zur Boxkante, auf der der Anschluss
   liegt (unter Berücksichtigung der Symboldrehung).
-- Busleitungen bieten alle 10 mm `Port`-Abgriffe, die Sammelschiene fünf Abgriffe.
+- Busleitungen bieten alle 10 mm `Port`-Abgriffe und dazwischen eine Schiene, die Sammelschiene fünf Abgriffe.
 - Objekte ohne Anschlüsse: Leiterplattenkontur, Kupferfläche, Befestigungsbohrung, Bestückungsdruck-Text.
 
 ## Kontextaktionen
@@ -98,9 +104,8 @@ versteckten Modulzustand. Ein JSON-Round-Trip reproduziert Dokument und gerender
 
 - Noch keine Netzlisten-Extraktion, keine ERC (offene Anschlüsse, nicht verbundene Netze), keine automatischen
   Verbindungspunkte und keine Kreuzungsbögen.
-- Leitungen docken über die Boxposition an, nicht über die Anschluss-ID: Nach einer Polaritätsumkehr bleibt eine
-  angedockte Leitung an der alten Position.
-- Leitungen fangen an Bus-Abgriffen (alle 10 mm), nicht an beliebigen Punkten eines Busses.
+- Ein an einer anderen Leitung oder einem Bus (Schiene) angedocktes Leitungsende ist nicht daran gebunden (Anbindungen
+  zielen nur auf Box-Objekte); es bleibt stehen, wenn die andere Leitung verschoben wird.
 - Beschriftungen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
 - Sichtprüfung: `dotnet test` schreibt eine SVG-Galerie nach
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (Ports als rote Kreise, dazu ein
