@@ -83,13 +83,10 @@ namespace InventaSketch.Modules.Annotation
             }
             if (hasText)
             {
-                list.Add(Ann.Text(textCenter, text, textSize, textTag));
-                if (underline)
-                {
-                    var e = Ann.TextExtent(text, textSize);
-                    var y = textCenter.Y + e.Y / 2 + 0.6;
-                    list.Add(new LinePrim(new Vec2(textCenter.X - e.X / 2, y), new Vec2(textCenter.X + e.X / 2, y), Style.ThinLine));
-                }
+                var numeral = Ann.Text(textCenter, text, textSize, textTag);
+                // Underlined numeral (no lead line) as a font attribute, placed by the real font on every host.
+                if (underline) numeral = numeral with { TextStyle = numeral.TextStyle with { Underline = true } };
+                list.Add(numeral);
             }
             return list;
         }

@@ -114,13 +114,10 @@ namespace InventaSketch.Modules.Annotation
         {
             var text = LabelOf(o);
             var size = TextSizeOf(o, DefaultTextSize);
-            var list = new List<Primitive> { Ann.Text(Vec2.Zero, text, size, AnnTags.FigLabel, bold: true) };
-            if (o.Flag("underline", false))
-            {
-                var e = Ann.TextExtent(text, size);
-                list.Add(Prim.Line(-e.X / 2, e.Y / 2 + 0.8, e.X / 2, e.Y / 2 + 0.8, Style.Visible with { StrokeWidth = 0.35 }));
-            }
-            return list;
+            var label = Ann.Text(Vec2.Zero, text, size, AnnTags.FigLabel, bold: true);
+            // Underline as a font attribute (hosts use their native underline, placed by the real font).
+            if (o.Flag("underline", false)) label = label with { TextStyle = label.TextStyle with { Underline = true } };
+            return new List<Primitive> { label };
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
