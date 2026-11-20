@@ -22,6 +22,8 @@ namespace InventaSketch.Engine
         public bool Rotation { get; init; } = true;
         /// <summary>Host can insert an SVG picture as fallback.</summary>
         public bool Svg { get; init; } = true;
+        /// <summary>Host can create shapes at all (Office.js PowerPointApi 1.4). False turns every unit into an SVG op.</summary>
+        public bool Shapes { get; init; } = true;
 
         /// <summary>PowerPoint COM: everything except scalable hatch fills.</summary>
         public static readonly DrawCapabilities Full = new() { Freeform = true, Arrowheads = true, PatternFill = false, Rotation = true };
@@ -196,7 +198,8 @@ namespace InventaSketch.Engine
                 Payload = EngineApi.CompactOf(session.Doc, session.Page, members.Select(m => m.Id)),
             };
             unit.Name = "ISK:" + unit.Type + ":" + unit.Id;
-            var needSvg = false;
+            var needSvg = !caps.Shapes;
+            if (needSvg) unit.Notes.Add("host has no shape API");
             var groups = new List<PlanOp>();
             var allPrims = new List<Primitive>();
             foreach (var o in members)

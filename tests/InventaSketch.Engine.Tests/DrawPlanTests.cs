@@ -64,6 +64,8 @@ namespace InventaSketch.Engine.Tests
 
             var old = Plan(api, s, id, new { rotation = false }).GetProperty("units")[0];
             Assert.Equal("svg", old.GetProperty("mode").GetString());
+            var noShapes = Plan(api, s, id, new { shapes = false }).GetProperty("units")[0];
+            Assert.Equal("svg", noShapes.GetProperty("mode").GetString());
             var full = Plan(api, s, id, new { freeform = true, arrowheads = true, rotation = false }).GetProperty("units")[0];
             Assert.Equal("polyline", Ops(full).Single().GetProperty("op").GetString());
         }
