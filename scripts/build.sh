@@ -28,4 +28,11 @@ if [ "${SKIP_TESTS:-0}" != "1" ]; then "$DOTNET" test InventaSketch.sln -c "$CON
 if [ "${SKIP_WEB:-0}" != "1" ] && [ -f hosts/office-web/package.json ] && command -v npm >/dev/null; then
   (cd hosts/office-web && npm ci && { [ "${SKIP_TESTS:-0}" = "1" ] || npm test; } && npm run build)
 fi
+if [ "${SKIP_WEB:-0}" != "1" ]; then
+  if [ -f hosts/office-web/dist/taskpane.html ] && command -v node >/dev/null; then
+    bash scripts/package-webspace.sh
+  else
+    echo "warning: web add-in not built (hosts/office-web/dist missing): webspace package skipped." >&2
+  fi
+fi
 echo "Done"

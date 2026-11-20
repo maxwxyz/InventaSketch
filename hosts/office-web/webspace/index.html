@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="color-scheme" content="light dark">
+  <title>Set up InventaSketch</title>
+  <link rel="icon" href="assets/icon-32.png">
+  <style>
+    :root { --fg: #1f2328; --muted: #59636e; --bg: #ffffff; --panel: #f6f8fa; --border: #d1d9e0; --accent: #0b5cad; --error: #b3261e; }
+    @media (prefers-color-scheme: dark) {
+      :root { --fg: #e6edf3; --muted: #9198a1; --bg: #0d1117; --panel: #161b22; --border: #3d444d; --accent: #4493f8; --error: #f47067; }
+    }
+    body { max-width: 780px; margin: 0 auto; padding: 16px; line-height: 1.45; color: var(--fg); background: var(--bg);
+           font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+    header { display: flex; align-items: center; gap: 12px; }
+    header img { width: 40px; height: 40px; }
+    header h1 { flex: 1; font-size: 1.4em; margin: 0.4em 0; }
+    h2 { font-size: 1.15em; margin: 1.6em 0 0.4em; border-bottom: 1px solid var(--border); padding-bottom: 0.2em; }
+    h3 { font-size: 1em; margin: 1.1em 0 0.3em; }
+    a { color: var(--accent); }
+    ol, ul { padding-left: 1.3em; }
+    li { margin: 0.35em 0; }
+    code, pre, #address { font-family: Consolas, "Courier New", monospace; overflow-wrap: anywhere; }
+    .small { font-size: 0.9em; color: var(--muted); }
+    .error, .hint { color: var(--error); }
+    #address.error { font-family: inherit; }
+    .hint { margin: 0.2em 0; }
+    .hint:empty { display: none; }
+    button { padding: 6px 14px; font: inherit; cursor: pointer; }
+    button:disabled { cursor: not-allowed; }
+    button.primary { background: var(--accent); color: #fff; border: 0; border-radius: 4px; padding: 8px 18px; }
+    button.primary:disabled { opacity: 0.5; }
+    .path-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0.4em 0; }
+    .path-row input { flex: 1 1 16em; min-width: 0; padding: 4px 6px; font-family: Consolas, "Courier New", monospace;
+                      color: var(--fg); background: var(--bg); border: 1px solid var(--border); border-radius: 4px; }
+    .path-row button, p > button:not(.primary) { padding: 3px 10px; font-size: 0.9em; }
+    details { margin: 0.2em 0 0.8em; font-size: 0.9em; }
+    details code, details pre { display: block; white-space: pre-wrap; padding: 6px 8px; margin: 4px 0 0;
+                                background: var(--panel); border: 1px solid var(--border); border-radius: 4px; }
+    details pre { max-height: 22em; overflow: auto; }
+    [data-lang][hidden] { display: none; }
+    footer { margin-top: 2.5em; }
+  </style>
+  <script type="module" src="setup.js"></script>
+</head>
+<body>
+  <!-- English and German: sections with data-lang, short texts with data-en/data-de; the language follows the browser
+       (German for "de..."), the button at the top right switches it (setup.js applyLanguage). -->
+  <header>
+    <img src="assets/icon-64.png" alt="">
+    <h1 data-en="Set up InventaSketch" data-de="InventaSketch einrichten">Set up InventaSketch</h1>
+    <button id="language" type="button" data-en="Deutsch" data-de="English">Deutsch</button>
+  </header>
+  <p class="small" id="version"></p>
+  <noscript><p class="error">This page needs JavaScript. / Diese Seite braucht JavaScript.</p></noscript>
+
+  <h2 data-en="PowerPoint on Windows, on the Mac and on the web" data-de="PowerPoint unter Windows, auf dem Mac und im Web">PowerPoint on Windows, on the Mac and on the web</h2>
+  <p><span data-en="Address of this add-in:" data-de="Adresse dieses Add-ins:">Address of this add-in:</span> <span id="address"></span></p>
+  <p><button id="download-manifest" class="primary" type="button" data-en="Download manifest" data-de="Manifest herunterladen">Download manifest</button></p>
+  <p class="hint" id="hint-manifest" role="status"></p>
+  <div data-lang="en">
+    <ol>
+      <li>Download the manifest (it already contains the address above).</li>
+      <li>Open PowerPoint (Windows, Mac, or PowerPoint on the web in any browser, also on Linux) and open a presentation.</li>
+      <li>Home &gt; Add-ins &gt; More Add-ins &gt; My Add-ins &gt; <b>Upload My Add-in</b>, choose the downloaded file.</li>
+      <li>The "InventaSketch" tab appears; "Open editor" opens the task pane.</li>
+    </ol>
+    <p class="small">If the InventaSketch COM add-in is installed on Windows, PowerPoint hides this add-in; use the COM add-in
+    there. If the local web add-in (InventaSketch-Web, server on your own computer) is installed, uninstall it first, otherwise
+    both registrations compete. Presentation data is not sent to this server; it only serves the program files.</p>
+  </div>
+  <div data-lang="de" hidden>
+    <ol>
+      <li>Manifest herunterladen (es enthält bereits die Adresse oben).</li>
+      <li>PowerPoint öffnen (Windows, Mac oder PowerPoint im Web in jedem Browser, auch unter Linux), eine Präsentation öffnen.</li>
+      <li>Start &gt; Add-Ins &gt; Weitere Add-Ins &gt; Meine Add-Ins &gt; <b>Mein Add-In hochladen</b>, die heruntergeladene Datei wählen.</li>
+      <li>Der Reiter "InventaSketch" erscheint; "Editor öffnen" öffnet den Aufgabenbereich.</li>
+    </ol>
+    <p class="small">Ist unter Windows das COM-Add-in von InventaSketch installiert, blendet PowerPoint dieses Add-in aus; dort
+    das COM-Add-in verwenden. Ist das lokale Web-Add-in (InventaSketch-Web, Server auf dem eigenen Rechner) installiert, es
+    zuerst deinstallieren, sonst konkurrieren beide Einträge. Präsentationsdaten werden nicht an diesen Server gesendet; er
+    liefert nur die Programmdateien aus.</p>
+  </div>
+  <details>
+    <summary data-en="Show manifest (for IT: Microsoft 365 admin center > Integrated apps)" data-de="Manifest ansehen (für die IT: Microsoft 365 Admin Center > Integrierte Apps)">Show manifest (for IT: Microsoft 365 admin center &gt; Integrated apps)</summary>
+    <pre id="manifest-xml"></pre>
+  </details>
+
+  <h2 data-en="Without &quot;Upload My Add-in&quot;" data-de="Ohne &quot;Mein Add-In hochladen&quot;">Without "Upload My Add-in"</h2>
+  <p data-lang="en">If "Upload My Add-in" is missing (older version, not signed in to Microsoft 365) or the upload fails, PowerPoint
+  also reads the manifest from a fixed folder. First download the manifest above (<code class="manifest-file">manifest.xml</code>,
+  saved to the "Downloads" folder).</p>
+  <p data-lang="de" hidden>Fehlt der Eintrag "Mein Add-In hochladen" (ältere Fassung, ohne Anmeldung bei Microsoft 365) oder
+  klappt das Hochladen nicht, liest PowerPoint das Manifest auch aus einem festen Ordner. Zuerst oben das Manifest
+  herunterladen (<code class="manifest-file">manifest.xml</code>, landet im Ordner "Downloads").</p>
+
+  <h3>Mac</h3>
+  <div data-lang="en">
+    <ol>
+      <li>Quit PowerPoint.</li>
+      <li>In the Finder choose Go &gt; Go to Folder (Shift+Command+G) and enter:
+        <code>~/Library/Containers/com.microsoft.Powerpoint/Data/Documents</code></li>
+      <li>Create a folder <code>wef</code> there if it is missing and copy the file <code class="manifest-file">manifest.xml</code> into it.</li>
+      <li>Start PowerPoint and open a presentation: Home &gt; Add-ins (or Insert &gt; Add-ins &gt; My Add-ins), InventaSketch is
+        listed under the developer add-ins.</li>
+    </ol>
+    <p>Or do steps 2 and 3 in Terminal (Applications &gt; Utilities &gt; Terminal): check the location of the downloaded file
+    (select the file in the Finder, Option+Command+C copies its path, paste it here), copy the command and paste it into Terminal.</p>
+  </div>
+  <div data-lang="de" hidden>
+    <ol>
+      <li>PowerPoint beenden.</li>
+      <li>Im Finder Gehe zu &gt; Gehe zum Ordner (Umschalt+Befehl+G) und eingeben:
+        <code>~/Library/Containers/com.microsoft.Powerpoint/Data/Documents</code></li>
+      <li>Dort einen Ordner <code>wef</code> anlegen, falls er fehlt, und die Datei <code class="manifest-file">manifest.xml</code> hineinkopieren.</li>
+      <li>PowerPoint starten, eine Präsentation öffnen: Start &gt; Add-Ins (bzw. Einfügen &gt; Add-Ins &gt; Meine Add-Ins),
+        InventaSketch steht unter den Entwickler-Add-Ins.</li>
+    </ol>
+    <p>Oder Schritt 2 und 3 im Terminal (Programme &gt; Dienstprogramme &gt; Terminal): Ort der heruntergeladenen Datei prüfen
+    (im Finder die Datei wählen, Wahl+Befehl+C kopiert ihren Pfad, hier einfügen), Befehl kopieren und im Terminal einfügen.</p>
+  </div>
+  <div class="path-row">
+    <label for="path-mac" data-en="Downloaded file" data-de="Heruntergeladene Datei">Downloaded file</label>
+    <input id="path-mac" type="text" spellcheck="false" autocomplete="off">
+    <button type="button" data-copy="mac" data-en="Copy command" data-de="Befehl kopieren">Copy command</button>
+  </div>
+  <p class="hint" id="hint-mac" role="status"></p>
+  <details><summary data-en="Show command" data-de="Befehl ansehen">Show command</summary><code id="command-mac"></code></details>
+
+  <h3>Windows</h3>
+  <div data-lang="en">
+    <ol>
+      <li>Close PowerPoint.</li>
+      <li>Check the location of the downloaded file (in Explorer, Shift+right-click "Copy as path" and paste it below), copy the
+        command, open Windows PowerShell (Start, type "PowerShell"; no administrator rights needed) and paste it. It copies the
+        manifest to <code>%LOCALAPPDATA%\InventaSketch\Manifest</code> and registers it for PowerPoint (for your own user only);
+        if the copy fails, nothing is registered.</li>
+      <li>Start PowerPoint and open a presentation: Home &gt; Add-ins, InventaSketch is listed under the developer add-ins.</li>
+    </ol>
+  </div>
+  <div data-lang="de" hidden>
+    <ol>
+      <li>PowerPoint schließen.</li>
+      <li>Ort der heruntergeladenen Datei prüfen (im Explorer mit Umschalt+Rechtsklick "Als Pfad kopieren" und unten einfügen),
+        Befehl kopieren, Windows PowerShell öffnen (Start, "PowerShell" eingeben; keine Administratorrechte nötig) und einfügen.
+        Er kopiert das Manifest nach <code>%LOCALAPPDATA%\InventaSketch\Manifest</code> und trägt es für PowerPoint ein (nur für
+        den eigenen Benutzer); scheitert das Kopieren, trägt er nichts ein.</li>
+      <li>PowerPoint starten, eine Präsentation öffnen: Start &gt; Add-Ins, InventaSketch steht unter den Entwickler-Add-Ins.</li>
+    </ol>
+  </div>
+  <div class="path-row">
+    <label for="path-win" data-en="Downloaded file" data-de="Heruntergeladene Datei">Downloaded file</label>
+    <input id="path-win" type="text" spellcheck="false" autocomplete="off">
+    <button type="button" data-copy="win" data-en="Copy command" data-de="Befehl kopieren">Copy command</button>
+  </div>
+  <p class="hint" id="hint-win" role="status"></p>
+  <details><summary data-en="Show command" data-de="Befehl ansehen">Show command</summary><code id="command-win"></code></details>
+  <p><span data-en="Remove again:" data-de="Wieder entfernen:">Remove again:</span>
+    <button type="button" data-copy="win-remove" data-en="Copy removal command" data-de="Befehl zum Entfernen kopieren">Copy removal command</button></p>
+  <p class="hint" id="hint-win-remove" role="status"></p>
+  <details><summary data-en="Show command" data-de="Befehl ansehen">Show command</summary><code id="command-win-remove"></code></details>
+  <div data-lang="en">
+    <p>Without PowerShell: put the manifest into a shared network folder; in PowerPoint File &gt; Options &gt; Trust Center &gt;
+    Trust Center Settings &gt; Trusted Add-in Catalogs add the folder address (<code>\\Computer\Share</code>), tick "Show in Menu"
+    and restart PowerPoint; then Home &gt; Add-ins &gt; More Add-ins &gt; Shared Folder.</p>
+    <p class="small">If your organization blocks add-ins by policy, these ways do not work either. Ask your IT to deploy
+    InventaSketch centrally with this manifest (Microsoft 365 admin center &gt; Integrated apps).</p>
+  </div>
+  <div data-lang="de" hidden>
+    <p>Ohne PowerShell: das Manifest in einen freigegebenen Netzwerkordner legen, in PowerPoint Datei &gt; Optionen &gt;
+    Trust Center &gt; Einstellungen für das Trust Center &gt; Kataloge vertrauenswürdiger Add-Ins die Adresse des Ordners
+    (<code>\\Rechner\Freigabe</code>) hinzufügen, "Im Menü anzeigen" ankreuzen, PowerPoint neu starten; danach
+    Start &gt; Add-Ins &gt; Weitere Add-Ins &gt; Freigegebener Ordner.</p>
+    <p class="small">Hat die Organisation Add-ins per Richtlinie gesperrt, gelten diese Wege ebenfalls nicht. Dann die IT bitten,
+    InventaSketch mit diesem Manifest zentral bereitzustellen (Microsoft 365 Admin Center &gt; Integrierte Apps).</p>
+  </div>
+
+  <h2 data-en="Other editions" data-de="Weitere Fassungen">Other editions</h2>
+  <ul id="downloads"></ul>
+
+  <footer class="small">
+    <span data-en="InventaSketch is open source (Apache License 2.0):" data-de="InventaSketch ist Open Source (Apache License 2.0):">InventaSketch is open source (Apache License 2.0):</span>
+    <a href="https://github.com/maxwxyz/InventaSketch" rel="noreferrer">github.com/maxwxyz/InventaSketch</a>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,5 @@
+# InventaSketch web add-in: nothing here is meant for search engines.
+# Crawlers only read robots.txt at the root of a host; in a subfolder the X-Robots-Tag header (.htaccess, web.config) and the
+# robots meta tag of the setup page keep the files out of the index.
+User-agent: *
+Disallow: /
