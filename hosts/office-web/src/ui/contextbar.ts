@@ -1,0 +1,112 @@
+// Floating context bar near the selection (view switcher, flip, numeral, type actions, style, more). It becomes
+// semi-transparent and fades out as the pointer moves away; once faded out it stays hidden until the selection changes.
+
+import type { ActionInfo } from "../engine/types";
+import { t } from "../i18n";
+import { clamp, h } from "./dom";
+import { hasIcon, icon } from "./icons";
+
+export interface BarBox { left: number; top: number; right: number; bottom: number }
+
+/** Opacity for a pointer at distance d (px) from the bar: 1 near it, fading to 0 at `far`. */
+export function fadeOpacity(d: number, near = 28, far = 240): number {
+  if (d <= near) return 1;
+  if (d >= far) return 0;
+  return clamp(1 - (d - near) / (far - near), 0, 1);
+}
+
+export function distanceToRect(x: number, y: number, r: { left: number; top: number; right: number; bottom: number }): number {
+  const dx = Math.max(r.left - x, 0, x - r.right);
+  const dy = Math.max(r.top - y, 0, y - r.bottom);
+  return Math.hypot(dx, dy);
+}
+
+const BAR_IDS = ["flipH", "flipV", "rotate90", "numeral"];
+
+export class ContextBar {
+  readonly el: HTMLDivElement;
+  private key = "";
+  private dismissed = false;
+
+  constructor(
+    private readonly root: HTMLElement,
+    private readonly onAction: (a: ActionInfo) => void,
+    private readonly onStyle: () => void,
+    private readonly onMore: (clientX: number, clientY: number) => void,
+  ) {
+    this.el = h("div", { class: "isk-ctxbar", role: "toolbar", "aria-label": t("ctx.title") });
+    this.el.hidden = true;
+    this.el.addEventListener("pointerenter", () => (this.el.style.opacity = "1"));
+    root.append(this.el);
+  }
+
+  /** Rebuilds and positions the bar; selectionKey identifies the selection (new selection → bar reappears). */
+  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean): void {
+    if (selectionKey !== this.key) {
+      this.key = selectionKey;
+      this.dismissed = false;
+    }
+    if (!box || !selectionKey || this.dismissed || suppressed) {
+      this.el.hidden = true;
+      return;
+    }
+    this.el.replaceChildren();
+    const views = actions.filter((a) => a.kind === "view");
+    if (views.length > 1) {
+      const seg = h("div", { class: "isk-seg", role: "group", "aria-label": t("ctx.view") });
+      for (const v of views) seg.append(this.button(v, v.label, v.active));
+      this.el.append(seg);
+    }
+    for (const id of BAR_IDS) {
+      const a = actions.find((x) => x.id === id);
+      if (a) this.el.append(this.button(a));
+    }
+    for (const a of actions.filter((x) => x.kind === "type").slice(0, 3)) this.el.append(this.button(a));
+    const style = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.style"), "aria-label": t("ctx.style"), html: icon("style") });
+    style.addEventListener("click", () => this.onStyle());
+    const more = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.more"), "aria-label": t("ctx.more"), html: icon("more") });
+    more.addEventListener("click", (e) => this.onMore(e.clientX, e.clientY));
+    this.el.append(style, more);
+    this.el.hidden = false;
+    this.el.style.opacity = "1";
+    // Position above the selection, or below if there is no room; clamp into the pane.
+    const rr = this.root.getBoundingClientRect();
+    const bw = this.el.offsetWidth, bh = this.el.offsetHeight;
+    const cx = (box.left + box.right) / 2 - rr.left;
+    let top = box.top - rr.top - bh - 14;
+    if (top < 4) top = box.bottom - rr.top + 14;
+    this.el.style.left = `${clamp(cx - bw / 2, 4, Math.max(4, rr.width - bw - 4))}px`;
+    this.el.style.top = `${clamp(top, 4, Math.max(4, rr.height - bh - 4))}px`;
+  }
+
+  private button(a: ActionInfo, text?: string, pressed?: boolean): HTMLButtonElement {
+    const b = h("button", {
+      class: `isk-btn ${text ? "isk-seg-btn" : "isk-icon-btn"} ${a.active ? "is-active" : ""}`,
+      type: "button",
+      title: a.label,
+      "aria-label": a.label,
+      "aria-pressed": pressed !== undefined || a.kind === "type" ? String(!!(pressed ?? a.active)) : undefined,
+      disabled: !a.enabled,
+      html: text ? undefined : hasIcon(a.icon) ? icon(a.icon) : icon("type"),
+    }, text ?? "");
+    b.addEventListener("click", () => this.onAction(a));
+    return b;
+  }
+
+  /** Fades with the pointer distance; fully faded → hidden until the next selection. */
+  pointerMoved(clientX: number, clientY: number): void {
+    if (this.el.hidden) return;
+    const r = this.el.getBoundingClientRect();
+    const o = fadeOpacity(distanceToRect(clientX, clientY, r));
+    if (o <= 0) {
+      this.dismissed = true;
+      this.el.hidden = true;
+      return;
+    }
+    this.el.style.opacity = String(Math.max(0.12, o));
+  }
+
+  hide(): void {
+    this.el.hidden = true;
+  }
+}

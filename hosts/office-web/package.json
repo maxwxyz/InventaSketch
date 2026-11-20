@@ -1,0 +1,30 @@
+{
+  "name": "inventasketch-office-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "InventaSketch PowerPoint web add-in (Office.js task pane, engine as .NET WebAssembly)",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "engine": "node scripts/engine.mjs",
+    "icons": "node scripts/icons.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "dev": "node scripts/engine.mjs --if-missing && vite",
+    "build": "node scripts/engine.mjs && tsc -p tsconfig.json --noEmit && vite build && node scripts/manifest.mjs",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "certs": "office-addin-dev-certs install",
+    "screenshot": "node scripts/screenshot.mjs"
+  },
+  "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
+    "@types/office-js": "^1.0.617",
+    "office-addin-dev-certs": "^3.0.1",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}

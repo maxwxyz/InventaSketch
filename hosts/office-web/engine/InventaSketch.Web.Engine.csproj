@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.WebAssembly">
+  <!--
+    The InventaSketch engine (src/InventaSketch.Engine + modules) as .NET WebAssembly for the Office web add-in.
+    No Blazor, no workload: the interpreter runtime from the browser-wasm runtime pack is enough (no AOT, no native relink).
+    TypeScript calls EngineExports.Call(method, json) via [JSExport]; see hosts/office-web/src/engine/wasm.ts.
+
+    Build: dotnet publish -c Release (npm run engine does this) → bin/Release/net10.0/publish/wwwroot/_framework.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <RootNamespace>InventaSketch.Web.Engine</RootNamespace>
+    <!-- Trim only the framework; the InventaSketch libraries stay complete because System.Text.Json uses reflection. -->
+    <PublishTrimmed>true</PublishTrimmed>
+    <TrimMode>partial</TrimMode>
+    <JsonSerializerIsReflectionEnabledByDefault>true</JsonSerializerIsReflectionEnabledByDefault>
+    <SuppressTrimAnalysisWarnings>true</SuppressTrimAnalysisWarnings>
+    <!-- Only German and English UI; texts come from our own resources, so no ICU data is needed. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <WasmEnableWebcil>true</WasmEnableWebcil>
+    <!-- Stable file names: the task pane loads _framework/dotnet.js from a fixed path. -->
+    <WasmFingerprintAssets>false</WasmFingerprintAssets>
+    <CompressionEnabled>true</CompressionEnabled>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\InventaSketch.Engine\InventaSketch.Engine.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,170 @@
+/* InventaSketch task pane. Tokens on :root, dark theme via [data-theme="dark"] (resolved in theme.ts). */
+:root {
+  --bg: #f6f7f9;
+  --panel: #ffffff;
+  --panel-2: #f0f2f5;
+  --text: #1d232b;
+  --muted: #5b6573;
+  --border: #d5dae1;
+  --accent: #1f6feb;
+  --accent-text: #ffffff;
+  --accent-soft: rgba(31, 111, 235, 0.12);
+  --danger: #c9372c;
+  --stage: #e6e9ee;
+  --page-shadow: rgba(16, 24, 40, 0.18);
+  --guide: #e5197f;
+  --sel: #1f6feb;
+  --grid: #b9c1cc;
+  --shadow: 0 6px 24px rgba(16, 24, 40, 0.18);
+  --radius: 8px;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --bg: #1b1e23;
+  --panel: #23272e;
+  --panel-2: #2b3038;
+  --text: #e6e9ee;
+  --muted: #a3acb9;
+  --border: #3a414b;
+  --accent: #4c94ff;
+  --accent-text: #0b1220;
+  --accent-soft: rgba(76, 148, 255, 0.18);
+  --danger: #ff6b5f;
+  --stage: #15171b;
+  --page-shadow: rgba(0, 0, 0, 0.6);
+  --guide: #ff4fa8;
+  --sel: #4c94ff;
+  --grid: #c3cad4;
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 13px/1.35 "Segoe UI", system-ui, -apple-system, sans-serif; }
+button, input, select, textarea { font: inherit; color: inherit; }
+
+.isk-app { position: relative; display: flex; flex-direction: column; height: 100vh; min-width: 300px; overflow: hidden; background: var(--bg); }
+.isk-loading, .isk-fatal { padding: 16px; color: var(--muted); }
+.isk-fatal { color: var(--danger); }
+
+/* Top bar */
+.isk-topbar { display: flex; align-items: center; gap: 2px; padding: 4px 6px; background: var(--panel); border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.isk-sep { width: 1px; height: 20px; background: var(--border); margin: 0 4px; }
+.isk-grow { flex: 1; }
+.isk-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; padding: 4px 10px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; }
+.isk-btn:hover:not(:disabled) { background: var(--panel-2); }
+.isk-btn:focus-visible, .isk-stage:focus-visible, .isk-lib-item:focus-visible, .isk-chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.isk-btn:disabled { opacity: 0.4; cursor: default; }
+.isk-icon-btn { width: 32px; padding: 0; }
+.isk-btn.is-active { background: var(--accent-soft); color: var(--accent); }
+.isk-primary { background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.isk-primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.08); }
+.isk-link { color: var(--accent); padding: 2px 0; min-height: 0; }
+.isk-icon { display: block; flex: none; }
+
+/* Main area: narrow = stacked, wide = three columns */
+.isk-main { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.isk-app[data-layout="wide"] .isk-main { flex-direction: row; }
+.isk-panel { background: var(--panel); display: flex; flex-direction: column; min-height: 0; }
+.isk-lib-panel { border-bottom: 1px solid var(--border); max-height: 38%; }
+.isk-insp-panel { border-top: 1px solid var(--border); max-height: 42%; order: 3; }
+.isk-app[data-layout="wide"] .isk-lib-panel { width: 250px; max-height: none; border-bottom: 0; border-right: 1px solid var(--border); }
+.isk-app[data-layout="wide"] .isk-insp-panel { width: 260px; max-height: none; border-top: 0; border-left: 1px solid var(--border); }
+.isk-panel.is-collapsed > :not(.isk-panel-head) { display: none; }
+.isk-app[data-layout="wide"] .isk-panel.is-collapsed { width: auto; }
+.isk-panel-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 6px 10px; border: 0; background: transparent; cursor: pointer; font-weight: 600; text-align: left; }
+.isk-panel-head .isk-chev { margin-left: auto; color: var(--muted); }
+.isk-panel-head:hover { background: var(--panel-2); }
+
+/* Library */
+.isk-library { display: flex; flex-direction: column; min-height: 0; padding: 0 8px 8px; gap: 6px; }
+.isk-search-row { display: flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: var(--muted); }
+.isk-search { flex: 1; border: 0; background: transparent; padding: 6px 0; outline: none; color: var(--text); min-width: 0; }
+.isk-chips { display: flex; gap: 4px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.isk-chip { flex: none; padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px; background: var(--panel); cursor: pointer; white-space: nowrap; }
+.isk-chip.is-active { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.isk-lib-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; overflow-y: auto; min-height: 0; }
+.isk-lib-item { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); cursor: grab; }
+.isk-lib-item:hover { border-color: var(--accent); }
+.isk-lib-item.is-pending { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.isk-thumb { display: flex; align-items: center; justify-content: center; width: 100%; height: 44px; border-radius: 4px; background: #ffffff; }
+.isk-thumb img { max-width: 90%; max-height: 40px; }
+.isk-lib-name { font-size: 11px; text-align: center; line-height: 1.2; max-width: 100%; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.isk-star { position: absolute; top: 2px; right: 2px; color: var(--muted); opacity: 0; cursor: pointer; }
+.isk-lib-item:hover .isk-star, .isk-star.is-on { opacity: 1; }
+.isk-star.is-on { color: #e3a008; }
+.isk-star.is-on svg { fill: currentColor; }
+.isk-empty { color: var(--muted); padding: 8px; margin: 0; }
+
+/* Stage */
+.isk-stage-wrap { position: relative; flex: 1; min-height: 200px; min-width: 0; order: 2; }
+.isk-stage { position: absolute; inset: 0; background: var(--stage); overflow: hidden; touch-action: none; outline: none; }
+.isk-stage-svg { display: block; width: 100%; height: 100%; user-select: none; }
+.isk-page { fill: #ffffff; filter: drop-shadow(0 1px 3px var(--page-shadow)); }
+.isk-grid-dot { fill: var(--grid); }
+.isk-grid { pointer-events: none; }
+.isk-content { pointer-events: none; }
+.isk-sel-frame, .isk-sel-path { fill: none; stroke: var(--sel); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.isk-sel-path { stroke-dasharray: 4 3; }
+.isk-sel-member { fill: none; stroke: var(--sel); stroke-width: 1px; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: 0.7; }
+.isk-sel-stem { stroke: var(--sel); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.isk-handle { fill: #ffffff; stroke: var(--sel); stroke-width: 1.4px; vector-effect: non-scaling-stroke; }
+.isk-handle-corner { cursor: nwse-resize; }
+.isk-handle-side { cursor: move; }
+.isk-handle-rotate { cursor: grab; fill: var(--sel); }
+.isk-handle-point { cursor: crosshair; fill: var(--sel); stroke: #ffffff; }
+.isk-guides line, .isk-guides circle, .isk-guides path { fill: none; stroke: var(--guide); stroke-width: 1px; vector-effect: non-scaling-stroke; stroke-dasharray: 5 3; pointer-events: none; }
+.isk-guides .isk-guide-point { stroke-dasharray: none; stroke-width: 1.5px; }
+.isk-marquee { fill: var(--accent-soft); stroke: var(--sel); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.isk-marquee-touch { stroke-dasharray: 4 3; fill: rgba(229, 25, 127, 0.08); stroke: var(--guide); }
+.isk-ghost { pointer-events: none; }
+.isk-ghost-outline { fill: none; stroke: var(--accent); stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.isk-zoom { position: absolute; right: 6px; bottom: 6px; display: flex; gap: 2px; padding: 2px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow); }
+.isk-status { position: absolute; left: 8px; bottom: 8px; right: 120px; color: var(--muted); font-size: 11px; pointer-events: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Floating context bar */
+.isk-ctxbar { position: absolute; z-index: 20; display: flex; align-items: center; gap: 2px; padding: 3px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); transition: opacity 120ms linear; }
+.isk-ctxbar[hidden] { display: none; }
+.isk-seg { display: flex; border: 1px solid var(--border); border-radius: 7px; overflow: hidden; margin-right: 2px; }
+.isk-seg-btn { border-radius: 0; min-height: 28px; padding: 2px 8px; }
+.isk-seg-btn.is-active { background: var(--accent); color: var(--accent-text); }
+
+/* Pie menu */
+.isk-pie-layer { position: absolute; inset: 0; z-index: 40; }
+.isk-pie-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.04); }
+.isk-pie { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
+.isk-pie-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow); opacity: 0.96; pointer-events: auto; }
+.isk-pie-item { position: absolute; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
+.isk-pie-item:hover:not(.is-disabled), .isk-pie-item:focus-visible { background: var(--accent); color: var(--accent-text); outline: none; border-color: var(--accent); }
+.isk-pie-item.is-danger { color: var(--danger); }
+.isk-pie-item.is-danger:hover, .isk-pie-item.is-danger:focus-visible { background: var(--danger); color: #fff; border-color: var(--danger); }
+.isk-pie-item.is-active { box-shadow: 0 0 0 2px var(--accent); }
+.isk-pie-item.is-disabled { opacity: 0.35; cursor: not-allowed; }
+.isk-pie-text { font-weight: 700; font-size: 12px; }
+.isk-pie-label { position: absolute; left: 50%; top: calc(50% + 26px); transform: translateX(-50%); max-width: 120px; text-align: center; font-size: 11px; color: var(--muted); pointer-events: none; }
+.isk-pie-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel); cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+
+/* Inspector */
+.isk-inspector { overflow-y: auto; min-height: 0; padding: 0 10px 10px; }
+.isk-insp-head { display: flex; align-items: center; gap: 8px; padding: 4px 0 6px; }
+.isk-badge { padding: 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.isk-insp-section { margin: 10px 0 4px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.isk-insp-adv summary { cursor: pointer; color: var(--muted); margin: 8px 0 4px; }
+.isk-field { display: grid; grid-template-columns: minmax(90px, 40%) 1fr; align-items: center; gap: 6px; margin: 4px 0; }
+.isk-field-label { color: var(--muted); }
+.isk-check { display: flex; align-items: center; gap: 6px; margin: 4px 0; cursor: pointer; }
+.isk-input { width: 100%; min-width: 0; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+textarea.isk-input { resize: vertical; }
+.isk-color { width: 40px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.isk-row { display: flex; gap: 6px; align-items: center; }
+
+/* Popover, toast */
+.isk-popover { position: absolute; z-index: 50; top: 42px; right: 6px; width: min(320px, calc(100% - 12px)); max-height: calc(100% - 50px); overflow-y: auto; padding: 8px 12px 12px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.isk-pop-head { display: flex; align-items: center; justify-content: space-between; }
+.isk-popover fieldset { border: 0; padding: 0; margin: 8px 0; }
+.isk-popover legend { font-weight: 600; margin-bottom: 2px; }
+.isk-muted { color: var(--muted); font-size: 11px; }
+.isk-toast { position: absolute; z-index: 60; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 8px 12px; border-radius: 8px; background: var(--text); color: var(--bg); box-shadow: var(--shadow); }
+.isk-toast[hidden] { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .isk-ctxbar { transition: none; } }

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+public/_framework/
+engine/bin/
+engine/obj/
+test-results/
+*.local.png
