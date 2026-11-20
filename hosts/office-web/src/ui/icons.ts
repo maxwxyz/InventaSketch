@@ -44,6 +44,7 @@ const paths: Record<string, string> = {
   "view-teeth": "M12 6a6 6 0 1 0 0 12 6 6 0 0 0 0-12zM12 6V2.5M12 18v3.5M6 12H2.5M18 12h3.5M7.8 7.8L5.3 5.3M16.2 16.2l2.5 2.5M16.2 7.8l2.5-2.5M7.8 16.2l-2.5 2.5",
   "view-top": "M5 9h14v12H5zM12 2v5M9.5 4.5L12 7l2.5-2.5",
   "view-front": "M9 5h12v14H9zM2 12h5M4.5 9.5L7 12l-2.5 2.5",
+  "view-rear": "M3 5h12v14H3zM22 12h-5M19.5 9.5L17 12l2.5 2.5",
   "view-iso": "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12v9M12 12L4 7.5M12 12l8-4.5",
   "view-detailed": "M4 5h16v14H4zM7 9h10M7 12h7M7 15h9",
   "view-simplified": "M5 5h14v14H5zM5 5l14 14M19 5L5 19",

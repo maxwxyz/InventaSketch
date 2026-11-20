@@ -130,6 +130,8 @@ namespace InventaSketch.AddIn
         }
 
         private static string X(string s) => SecurityElement.Escape(s) ?? "";
+        /// <summary>Ribbon label: "&" marks an access key in Office labels, so a literal ampersand is doubled.</summary>
+        private static string L(string s) => X(s.Replace("&", "&&"));
 
         /// <summary>
         /// One group per module, one gallery per library category (thumbnail grid, tooltip = name), then the tools group.
@@ -150,16 +152,16 @@ namespace InventaSketch.AddIn
             var sb = new StringBuilder();
             sb.Append("<customUI xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\" onLoad=\"OnRibbonLoad\"><ribbon><tabs>");
             sb.Append("<tab id=\"IskTab\" label=\"InventaSketch\">");
-            sb.Append("<group id=\"IskTools\" imageMso=\"ControlsGallery\" label=\"").Append(X(T("Tools", "Werkzeuge"))).Append("\">");
-            sb.Append("<toggleButton id=\"IskEditor\" label=\"").Append(X(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
+            sb.Append("<group id=\"IskTools\" imageMso=\"ControlsGallery\" label=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\">");
+            sb.Append("<toggleButton id=\"IskEditor\" label=\"").Append(L(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
               .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
-            sb.Append("<toggleButton id=\"IskSnap\" label=\"").Append(X(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+            sb.Append("<toggleButton id=\"IskSnap\" label=\"").Append(L(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Magnetic snapping: gear mesh, axes, points and alignment. Hold Alt to move freely.", "Magnetisches Einrasten: Zahneingriff, Achsen, Punkte und Fluchtlinien. Alt gedrückt halten für freies Bewegen."))).Append("\" />");
-            sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(X(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+            sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
-            sb.Append("<button id=\"IskMonochrome\" label=\"").Append(X(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
+            sb.Append("<button id=\"IskMonochrome\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
               .Append(X(T("Recolour the InventaSketch elements of this slide in black and white (patent style).", "InventaSketch-Elemente dieser Folie schwarz-weiß umfärben (Patentstil)."))).Append("\" />");
-            sb.Append("<button id=\"IskAbout\" label=\"").Append(X(T("About", "Info"))).Append("\" imageMso=\"Info\" onAction=\"OnAbout\" />");
+            sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" imageMso=\"Info\" onAction=\"OnAbout\" />");
             sb.Append("</group>");
             if (_registry is not null)
             {
@@ -170,10 +172,10 @@ namespace InventaSketch.AddIn
                     if (cats.Count == 0) continue;
                     // Groups with many categories show icons only (name in the tooltip) so the tab fits on laptop screens.
                     var compact = cats.Count > 4;
-                    sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(X(module.Name.Get(_lang))).Append("\">");
+                    sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(L(module.Name.Get(_lang))).Append("\">");
                     foreach (var (c, i) in cats)
                     {
-                        sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(X(c.Name.Get(_lang)))
+                        sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(c.Name.Get(_lang)))
                           .Append("\" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append("\" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
                           .Append(" screentip=\"").Append(X(c.Name.Get(_lang))).Append("\" supertip=\"")
                           .Append(X(T("Pick an element, then click on the slide to place it (snaps to other elements). Esc cancels.",

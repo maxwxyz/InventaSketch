@@ -109,10 +109,13 @@ namespace InventaSketch.AddIn
                     {
                         var s = Named(_shapes.AddTextbox(Office.MsoTextOrientation.msoTextOrientationHorizontal, F(op.X), F(op.Y), Math.Max(1f, F(op.W)), Math.Max(1f, F(op.H))));
                         var tf = s.TextFrame;
+                        // AutoSize first: a new text box fits itself to its (empty) text, so switching off word wrap
+                        // while AutoSize is on shrinks it, and centred text would end up half a box too far left.
+                        tf.AutoSize = PowerPoint.PpAutoSize.ppAutoSizeNone;
                         tf.MarginLeft = tf.MarginRight = tf.MarginTop = tf.MarginBottom = 0;
                         tf.WordWrap = Office.MsoTriState.msoFalse;
-                        tf.AutoSize = PowerPoint.PpAutoSize.ppAutoSizeNone;
                         tf.VerticalAnchor = Office.MsoVerticalAnchor.msoAnchorMiddle;
+                        s.Left = F(op.X); s.Top = F(op.Y); s.Width = Math.Max(1f, F(op.W)); s.Height = Math.Max(1f, F(op.H));
                         var range = tf.TextRange;
                         range.Text = op.Text ?? "";
                         range.Font.Size = (float)Math.Max(1, op.FontSize ?? 10);

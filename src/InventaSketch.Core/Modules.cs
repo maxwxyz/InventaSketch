@@ -73,6 +73,7 @@ namespace InventaSketch.Core
         public const string Teeth = "view-teeth";           // simplified toothing
         public const string Top = "view-top";
         public const string Front = "view-front";
+        public const string Rear = "view-rear";
         public const string Iso = "view-iso";
         public const string Detailed = "view-detailed";
         public const string Simplified = "view-simplified";
@@ -102,7 +103,7 @@ namespace InventaSketch.Core
         /// <summary>Every icon id, for hosts and tests that must provide a pictogram for each.</summary>
         public static IReadOnlyList<string> All { get; } = new[]
         {
-            Schematic, Side, Section, Axial, Teeth, Top, Front, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table,
+            Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate,
         };
 
@@ -112,7 +113,7 @@ namespace InventaSketch.Core
             ["side"] = Side, ["body"] = Side, ["stepped"] = Side, ["elevation"] = Front,
             ["section"] = Section, ["hollow"] = Section, ["cut"] = Section,
             ["axial"] = Axial, ["face"] = Axial, ["teeth"] = Teeth,
-            ["top"] = Top, ["front"] = Front, ["rear"] = Front, ["iso"] = Iso,
+            ["top"] = Top, ["front"] = Front, ["rear"] = Rear, ["iso"] = Iso,
             ["detailed"] = Detailed, ["simplified"] = Simplified, ["ansi"] = Simplified, ["full"] = Detailed, ["compact"] = Simplified,
             ["symbol"] = Symbol, ["block"] = Block, ["diagram"] = Block, ["plan"] = Plan, ["exploded"] = Exploded,
             ["table"] = Table, ["list"] = Table,

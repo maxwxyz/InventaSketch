@@ -253,7 +253,7 @@ namespace InventaSketch.Modules.Automotive.Tests
         public void ViewsUseTheSharedIconVocabulary()
         {
             var t = Fx.Reg().Type("auto.vehicle.truck")!;
-            Assert.Equal(new[] { IconIds.Top, IconIds.Side, IconIds.Front, IconIds.Front }, t.Views.Select(v => v.Icon));
+            Assert.Equal(new[] { IconIds.Top, IconIds.Side, IconIds.Front, IconIds.Rear }, t.Views.Select(v => v.Icon));
         }
 
         [Theory]

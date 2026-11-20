@@ -42,7 +42,7 @@ namespace InventaSketch.Modules.Automotive
         public static AutoView TopV(double w, double h, Action<Pen, SketchObject> d) => new("top", Top, IconIds.Top, w, h, d);
         public static AutoView SideV(double w, double h, Action<Pen, SketchObject> d) => new("side", Side, IconIds.Side, w, h, d);
         public static AutoView FrontV(double w, double h, Action<Pen, SketchObject> d) => new("front", Front, IconIds.Front, w, h, d);
-        public static AutoView RearV(double w, double h, Action<Pen, SketchObject> d) => new("rear", Rear, IconIds.Front, w, h, d);
+        public static AutoView RearV(double w, double h, Action<Pen, SketchObject> d) => new("rear", Rear, IconIds.Rear, w, h, d);
         public static AutoView SymbolV(double w, double h, Action<Pen, SketchObject> d) => new("symbol", Symbol, IconIds.Symbol, w, h, d);
     }
 

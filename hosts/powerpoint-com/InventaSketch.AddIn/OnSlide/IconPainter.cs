@@ -61,6 +61,9 @@ namespace InventaSketch.AddIn.OnSlide
                 case IconIds.Front:
                     g.DrawRectangle(pen, 9, 5, 12, 14); g.DrawLine(pen, 2, 12, 7, 12); g.DrawLine(pen, 4.5f, 9.5f, 7, 12); g.DrawLine(pen, 4.5f, 14.5f, 7, 12);
                     break;
+                case IconIds.Rear:
+                    g.DrawRectangle(pen, 3, 5, 12, 14); g.DrawLine(pen, 22, 12, 17, 12); g.DrawLine(pen, 19.5f, 9.5f, 17, 12); g.DrawLine(pen, 19.5f, 14.5f, 17, 12);
+                    break;
                 case IconIds.Iso:
                     g.DrawPolygon(pen, new[] { new PointF(12, 3), new PointF(20, 7.5f), new PointF(20, 16.5f), new PointF(12, 21), new PointF(4, 16.5f), new PointF(4, 7.5f) });
                     g.DrawLine(thin, 12, 12, 12, 21); g.DrawLine(thin, 12, 12, 4, 7.5f); g.DrawLine(thin, 12, 12, 20, 7.5f);
