@@ -84,18 +84,21 @@ Export-Erweiterungspunkte der Module.
   legen; enthält das Web-Add-in, eine Einrichtungsseite (`index.html`), die das Manifest für die eigene Adresse erzeugt,
   `.htaccess`/`web.config` (Dateitypen der Engine, keine Indizierung) und Downloads der anderen Fassungen (COM-Add-in-ZIP,
   LibreOffice-`.oxt`) laut `downloads.json`.
-- Wünsche an Core/Engine aus der Modularbeit (20.11.2026):
-  - Fangen: an beliebiger Stelle eines Segments (Leitungen, Busse, Lebenslinien); bei fast gleichen Radien konzentrisch
-    vor Hohlrad-Eingriff (Maschinen: Läufer im Ständer nach freiem Skalieren); bei sehr kleinen Objekten Ports vor
-    Ecken; eine Regel `Mount` zu `Mount`; Leitungsenden über die Pin-ID statt über die Boxposition andocken.
-  - Zeichnen: hohle Pfeilspitzen (`TriangleOpen`, `DiamondOpen`) und Krähenfuß-Enden in `ArrowHead`, damit
-    Benutzer-Pfeilstile auch für UML-/ER-Verbinder gelten; Unterstreichung in `TextStyle`.
-  - Kontextaktionen mit Texteingabe und mit Dokumentzugriff (z. B. Öffnung an der Wand ausrichten).
-  - Abhängiges Neuzeichnen: Wände und Öffnungen hängen von Nachbarn ab; die Engine soll Hosts melden, welche Einheiten
-    neu zu zeichnen sind.
-  - Planmaßstab in `DocumentSettings` statt als Objektparameter; Größenanpassung beim Ansichtswechsel.
-  - Gemeinsamer Helfer `AttachPoint`/`Reverse` (Beschriftung und Diagramme haben eigene Kopien); Helfer, um Punktobjekte
-    drehend an eine Box zu hängen (Sichtbereich im Fahrzeugmodul).
+- Wünsche an Core/Engine aus der Modularbeit: am 20.11.2026 erledigt (Rails, Vorrang für Befestigungs- und Pin-Fang,
+  konzentrische Passung, Anbindung über Pin-ID; hohle Spitzen und Krähenfüße, Unterstreichung; Aktionen mit Eingabe und
+  Dokumentzugriff, Änderungsmengen mit abhängigen Objekten, Planmaßstab, Größen je Ansicht; gemeinsamer
+  AttachPoint/ReversePoints; ADR-0009). Nacharbeiten:
+  - COM: mit PowerPoint-eigenen Ziehpunkten oder Pfeiltasten verschobene Einheiten zeichnen abhängige Einheiten erst bei
+    der nächsten InventaSketch-Bearbeitung neu; der Planmaßstab hat auf der Folie kein Bedienelement (nur Seitenleiste);
+    Dokumentaktionen ändern nur die eigenen Objekte der Einheit; die schwebende Leiste zeigt keine Typaktionen
+    (Eingabeaktionen im Kreismenü).
+  - Web: `combridge.ts` nutzt `changed`/`dependents` noch nicht; Methodenvertrag in der Web-Host-Doku ergänzen
+    (`setPlanScale`, `input`, `changed`, `dependents`).
+  - Module: `ViewDef.Size` nutzen, wo Ansichten im Seitenverhältnis abweichen (Fahrzeug Drauf-/Seitenansicht);
+    Beschriftungs-Text- und Bezugslinientypen zeichnen noch eigene Unterstreichungslinien (auf `TextStyle.Underline`
+    umstellen); Kennzeichen/Wert der Elektro-Symbole als Eingabeaktionen.
+  - Noch nicht in echtem PowerPoint geprüft: gezeichnete hohle/Krähenfuß-Spitzen, `Font.Underline`, Eingabedialog,
+    abhängiges Neuzeichnen.
 - Web-Installer (aus Slidemax übernommen, am 20.11.2026 ins Englische übersetzt, Meldungen deutsch/englisch): echte
   Installation und Laden des Add-ins in PowerPoint (Windows ohne COM-Add-in, Mac, Web) stehen aus.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).

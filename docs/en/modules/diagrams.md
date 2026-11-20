@@ -11,7 +11,7 @@ symbol is insertable without parameters; free scaling changes only the box size.
 
 - **Box symbols** render in local coordinates and expose **Port anchors** at the edge midpoints and quarter points
   (12 per rectangle). Ellipses expose 8 ports on the outline, diamonds their vertices and edge midpoints, blocks
-  their port squares, lifelines a port every 5 mm along the tail, activation bars a port every 2.5 mm per side.
+  their port squares, activation bars a port every 2.5 mm per side. A lifeline tail is a `Rail` (message ends dock anywhere on it and stay attached) and an `Axis` that centres activation bars (their `Hub`).
 - **Connectors** are point objects (relationships, crow's-foot connectors, sequence messages). Their ends snap to
   ports and are stored as attachments, so they follow moved, rotated and stretched boxes. With two points a
   connector is straight or, with `route = orthogonal`, routed with right angles (ends attached to a box edge leave it

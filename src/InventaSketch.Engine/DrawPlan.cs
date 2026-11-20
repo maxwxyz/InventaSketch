@@ -253,6 +253,19 @@ namespace InventaSketch.Engine
         public static bool HasNativeLineEnd(ArrowHead head) => head is ArrowHead.Triangle or ArrowHead.Open or ArrowHead.Stealth
             or ArrowHead.Diamond or ArrowHead.Oval or ArrowHead.Tick or ArrowHead.Half;
 
+        /// <summary>
+        /// Native line-end length per line weight as hosts map the plan sizes (COM: small → medium, medium and large →
+        /// long). PowerPoint's line ends are about 3× (medium) and 5× (long) the line weight.
+        /// </summary>
+        public static double NativeHeadLength(ArrowSize size, double strokeWidth) => strokeWidth * (size == ArrowSize.Small ? 3 : 5);
+
+        /// <summary>
+        /// True if a native line end is at least 65 % of the engine's head length. Thin lines (where the engine keeps a
+        /// minimum head size) and diamonds (1.5× longer) therefore get drawn heads.
+        /// </summary>
+        public static bool NativeHeadFits(ArrowHead head, ArrowSize size, double strokeWidth)
+            => NativeHeadLength(size, strokeWidth) >= 0.65 * ArrowHeads.Extent(head, size, strokeWidth);
+
         internal static Style? StyleOf(Primitive p) => p switch
         {
             LinePrim l => l.Style,
@@ -413,20 +426,25 @@ namespace InventaSketch.Engine
                 Vec2 a0 = a, b0 = b;
                 if (end != ArrowHead.None)
                 {
-                    if (Native(end)) stroke.ArrowEnd = Camel(end.ToString());
+                    if (Native(end, s)) stroke.ArrowEnd = Camel(end.ToString());
                     else b = Head(end, b0, (b0 - a0).Normalized(), s, "arrowEnd");
                 }
                 if (start != ArrowHead.None)
                 {
-                    if (Native(start)) stroke.ArrowStart = Camel(start.ToString());
+                    if (Native(start, s)) stroke.ArrowStart = Camel(start.ToString());
                     else a = Head(start, a0, (a0 - b0).Normalized(), s, "arrowStart");
                 }
                 if (stroke.ArrowStart is not null || stroke.ArrowEnd is not null) stroke.ArrowSize = Camel((s.ArrowSize ?? ArrowSize.Medium).ToString());
                 Ops.Add(LineOp(a, b, stroke, tag));
             }
 
-            /// <summary>True if the host draws this head as a line-end attribute.</summary>
-            private bool Native(ArrowHead head) => _caps.Arrowheads && HasNativeLineEnd(head);
+            /// <summary>
+            /// True if the host draws this head as a line-end attribute. Native heads scale with the line weight only, so
+            /// they are used only where they reach the engine's head size (see <see cref="NativeHeadFits"/>); otherwise
+            /// the head is drawn as shapes and matches the other heads of the drawing.
+            /// </summary>
+            private bool Native(ArrowHead head, Style s) => _caps.Arrowheads && HasNativeLineEnd(head)
+                && NativeHeadFits(head, s.ArrowSize ?? ArrowSize.Medium, s.EffectiveWidth);
 
             private static PlanFill SimpleFill(Style s)
                 => s.EffectiveFill is { Kind: FillKind.Solid, Color: not null } f ? new PlanFill { Kind = "solid", Color = f.Color } : new PlanFill();
@@ -443,7 +461,7 @@ namespace InventaSketch.Engine
                 var color = s.EffectiveStroke;
                 var (prims, inset) = ArrowHeads.Build(head, tip, dir, size, color, width);
                 var shaftEnd = tip - dir * inset;
-                if (_caps.Arrowheads) Note($"arrowhead '{Camel(head.ToString())}' has no native line end: drawn as shapes");
+                if (_caps.Arrowheads) Note(HasNativeLineEnd(head) ? $"arrowhead '{Camel(head.ToString())}' drawn as shapes: the native line end would be smaller at this line weight" : $"arrowhead '{Camel(head.ToString())}' has no native line end: drawn as shapes");
                 if (!_caps.Freeform && head is ArrowHead.Triangle or ArrowHead.Stealth or ArrowHead.Half or ArrowHead.Diamond or ArrowHead.TriangleOpen or ArrowHead.DiamondOpen
                     && prims.Count == 1 && prims[0] is PathPrim poly)
                 {
@@ -557,8 +575,8 @@ namespace InventaSketch.Engine
                 var start = s.ArrowStart ?? ArrowHead.None;
                 if (nativeStroke is not null)
                 {
-                    if (end != ArrowHead.None && Native(end)) { nativeStroke.ArrowEnd = Camel(end.ToString()); end = ArrowHead.None; }
-                    if (start != ArrowHead.None && Native(start)) { nativeStroke.ArrowStart = Camel(start.ToString()); start = ArrowHead.None; }
+                    if (end != ArrowHead.None && Native(end, s)) { nativeStroke.ArrowEnd = Camel(end.ToString()); end = ArrowHead.None; }
+                    if (start != ArrowHead.None && Native(start, s)) { nativeStroke.ArrowStart = Camel(start.ToString()); start = ArrowHead.None; }
                     if (nativeStroke.ArrowStart is not null || nativeStroke.ArrowEnd is not null) nativeStroke.ArrowSize = Camel((s.ArrowSize ?? ArrowSize.Medium).ToString());
                 }
                 if (end != ArrowHead.None)

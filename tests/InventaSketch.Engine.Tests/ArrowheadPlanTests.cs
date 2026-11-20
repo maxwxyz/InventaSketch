@@ -105,7 +105,8 @@ namespace InventaSketch.Engine.Tests
             Assert.Equal("native", unit.Mode);
             var ops = Flat(unit.Ops).ToList();
             var line = ops.Single(o => o.Op == "line" && o.Tag is null);
-            if (DrawPlanBuilder.HasNativeLineEnd(head))
+            // Diamonds are 1.5x longer than the other heads, so at the default weight the native line end is too small.
+            if (DrawPlanBuilder.HasNativeLineEnd(head) && head != ArrowHead.Diamond)
             {
                 Assert.Contains(line.Stroke!.ArrowEnd, NativeNames);
                 Assert.Equal(115 * Pt, line.X2!.Value, 2);
@@ -116,9 +117,22 @@ namespace InventaSketch.Engine.Tests
                 Assert.Null(line.Stroke!.ArrowEnd);
                 Assert.Null(line.Stroke.ArrowSize);
                 Assert.Contains(ops, o => o.Tag == "arrowEnd");
-                Assert.Contains(unit.Notes, n => n.Contains("no native line end", StringComparison.Ordinal));
+                Assert.Contains(unit.Notes, n => n.Contains("drawn as shapes", StringComparison.Ordinal));
                 Assert.DoesNotContain(ops, o => o.Op == "shape"); // freeform host: exact geometry
             }
+        }
+
+        [Fact]
+        public void NativeLineEndsAreUsedOnlyWhereTheyReachTheHeadSize()
+        {
+            // 0.5 mm line: native medium/long heads are as long as the engine's heads.
+            Assert.True(DrawPlanBuilder.NativeHeadFits(ArrowHead.Triangle, ArrowSize.Medium, 0.5));
+            Assert.True(DrawPlanBuilder.NativeHeadFits(ArrowHead.Triangle, ArrowSize.Large, 0.5));
+            // Thin diagram lines keep a 1.6 mm minimum head: native heads would be much smaller.
+            Assert.False(DrawPlanBuilder.NativeHeadFits(ArrowHead.Triangle, ArrowSize.Large, 0.3));
+            Assert.False(DrawPlanBuilder.NativeHeadFits(ArrowHead.Diamond, ArrowSize.Large, 0.3));
+            // Thick lines: native everywhere, diamonds too.
+            Assert.True(DrawPlanBuilder.NativeHeadFits(ArrowHead.Diamond, ArrowSize.Medium, 1.0));
         }
 
         [Fact]

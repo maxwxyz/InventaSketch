@@ -235,8 +235,10 @@ namespace InventaSketch.AddIn
 
         private static void Size(PowerPoint.LineFormat line, string? size, bool begin)
         {
-            var len = size switch { "small" => Office.MsoArrowheadLength.msoArrowheadShort, "large" => Office.MsoArrowheadLength.msoArrowheadLong, _ => Office.MsoArrowheadLength.msoArrowheadLengthMedium };
-            var wid = size switch { "small" => Office.MsoArrowheadWidth.msoArrowheadNarrow, "large" => Office.MsoArrowheadWidth.msoArrowheadWide, _ => Office.MsoArrowheadWidth.msoArrowheadWidthMedium };
+            // One step larger than the names suggest: PowerPoint's line ends are about 3× (medium) and 5× (long) the line
+            // weight, the engine's heads about 3.5×, 5× and 7.5× (DrawPlanBuilder.NativeHeadLength).
+            var len = size switch { "small" => Office.MsoArrowheadLength.msoArrowheadLengthMedium, _ => Office.MsoArrowheadLength.msoArrowheadLong };
+            var wid = size switch { "small" => Office.MsoArrowheadWidth.msoArrowheadWidthMedium, "large" => Office.MsoArrowheadWidth.msoArrowheadWide, _ => Office.MsoArrowheadWidth.msoArrowheadWide };
             if (begin) { line.BeginArrowheadLength = len; line.BeginArrowheadWidth = wid; }
             else { line.EndArrowheadLength = len; line.EndArrowheadWidth = wid; }
         }

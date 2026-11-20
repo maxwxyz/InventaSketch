@@ -11,7 +11,7 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
 
 - **Box-Symbole** werden in lokalen Koordinaten gezeichnet und bieten **Port-Anker** an den Kantenmitten und
   Viertelpunkten (12 je Rechteck). Ellipsen bieten 8 Ports auf dem Umriss, Rauten ihre Ecken und Kantenmitten, Blöcke
-  ihre Port-Quadrate, Lebenslinien alle 5 mm einen Port entlang der Linie, Aktivierungsbalken alle 2,5 mm je Seite.
+  ihre Port-Quadrate, Aktivierungsbalken alle 2,5 mm je Seite. Die Linie einer Lebenslinie ist eine `Rail` (Nachrichtenenden docken an beliebiger Stelle an und bleiben angebunden) und eine `Axis`, die Aktivierungsbalken mittig ausrichtet (über deren `Hub`).
 - **Verbinder** sind Punktobjekte (Beziehungen, Krähenfuß-Verbinder, Sequenznachrichten). Ihre Enden rasten an Ports
   ein und werden als Anbindung gespeichert, folgen also verschobenen, gedrehten und gestreckten Boxen. Mit zwei Punkten
   ist ein Verbinder gerade oder mit `route = orthogonal` rechtwinklig geführt (an eine Boxkante gebundene Enden

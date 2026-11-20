@@ -13,7 +13,8 @@ export interface InspectorHost {
 }
 
 const DASHES: DashStyle[] = ["solid", "dash", "dot", "dashDot", "dashDotDot", "longDash"];
-const ARROWS: ArrowHead[] = ["none", "triangle", "open", "stealth", "diamond", "oval", "tick"];
+const ARROWS: ArrowHead[] = ["none", "triangle", "triangleOpen", "open", "stealth", "half", "diamond", "diamondOpen", "oval", "tick",
+  "crowOne", "crowMany", "crowZeroOne", "crowOneOnly", "crowZeroMany", "crowOneMany"];
 
 export class Inspector {
   readonly el: HTMLElement;

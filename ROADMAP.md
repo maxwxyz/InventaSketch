@@ -76,16 +76,16 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   `web.config` (engine MIME types, no indexing/crawlers) and downloads of the other editions (COM add-in ZIP, LibreOffice
   `.oxt`) listed in `downloads.json`.
 - Web installer (ported from Slidemax, translated to English with German/English messages 2026-11-20): run a real install and load the add-in in PowerPoint (Windows without COM add-in, Mac, web).
-- Core/engine requests collected from the module work (2026-11-20):
-  - Snapping: snap to any point on a segment (wires, buses, lifelines); prefer concentric over ring-gear mesh when radii
-    are almost equal (machines: rotor in stator after free scaling); ports before box corners on very small objects;
-    a `Mount`-to-`Mount` rule; attach wire ends by pin id instead of box position.
-  - Drawing: hollow arrowheads (`TriangleOpen`, `DiamondOpen`) and crow's-foot ends in `ArrowHead`, so user arrowhead
-    styles also apply to UML/ER connectors; underline in `TextStyle`.
-  - Context actions with text input and with document access (e.g. align an opening to its wall).
-  - Dependent redraw: walls and openings depend on neighbours; the engine should tell hosts which units to redraw.
-  - Plan scale in `DocumentSettings` instead of a per-object parameter; size adaptation when switching views.
-  - A shared `AttachPoint`/`Reverse` helper (annotation and diagrams have their own copies); a helper to attach point
-    objects rotating with a box (automotive field of view).
+- Core/engine requests from the module work: done 2026-11-20 (rails, mount and port priority, concentric fit,
+  pin-id attachments; hollow and crow's-foot heads, underline; input and document actions, change sets with dependents,
+  plan scale, view sizes; shared AttachPoint/ReversePoints; ADR-0009). Follow-ups:
+  - COM: units moved with PowerPoint's own handles or arrow keys redraw their dependents only at the next InventaSketch
+    edit; the plan scale has no on-slide control (sidebar only); document actions only change the unit's own objects;
+    the floating bar shows no type actions (input actions are in the pie menu).
+  - Web: `combridge.ts` does not use `changed`/`dependents` yet; method contract in the web host docs to extend
+    (`setPlanScale`, `input`, `changed`, `dependents`).
+  - Modules: use `ViewDef.Size` where views differ in aspect (automotive top/side); annotation text and lead-line types
+    still draw their own underline lines (switch to `TextStyle.Underline`); electrical designator/value as input actions.
+  - Not yet checked in real PowerPoint: drawn hollow/crow's-foot heads, `Font.Underline`, input prompt, dependent redraw.
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.
