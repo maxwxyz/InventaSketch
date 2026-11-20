@@ -23,7 +23,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal sealed class OnSlideController : IDisposable
     {
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -67,6 +67,10 @@ namespace InventaSketch.AddIn.OnSlide
         // Two-point tool (lines, arrows, dimensions, lead lines) and point editing
         private Vec2? _twoStart;
         private int _pointIndex = -1;
+        // Box selection of points (Alt + drag beside a selected line): selected indices, band corners, original points.
+        private readonly HashSet<int> _selectedPoints = new();
+        private POINT _bandStart;
+        private IReadOnlyList<Vec2>? _pointOrigin;
         private Vec2 _pointAt;
 
         // Rotate with snapping
@@ -163,7 +167,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate) return;
+                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band) return;
                 using var dpi = DpiScope.PerMonitor();
                 SketchUnit? unit = null;
                 if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count == 1)
@@ -193,6 +197,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void Arm(SketchUnit unit)
         {
+            if (_unit?.Id != unit.Id) _selectedPoints.Clear();
             var slide = CurrentSlide();
             var view = SlideView.Current(_app);
             if (slide is null || view is null) { Disarm(); return; }
@@ -218,6 +223,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             if (_mode is Mode.Place) return;
             _mode = Mode.Idle;
+            _selectedPoints.Clear();
             _unit = null;
             _unitContext = null;
             _pie = null;
@@ -341,6 +347,8 @@ namespace InventaSketch.AddIn.OnSlide
                         HideBar();
                         _mode = Mode.EditPoint;
                         _pointIndex = pointIndex;
+                        _pointOrigin = _unit.Doc.ResolvePoints(PointObject()!);
+                        if (!_selectedPoints.Contains(pointIndex)) _selectedPoints.Clear();
                         _pointAt = PointObject()!.Points![pointIndex];
                         _moved = false;
                         _down = pt;
@@ -370,6 +378,15 @@ namespace InventaSketch.AddIn.OnSlide
                         _down = pt;
                         _centredResize = IsCentredUnit();
                         Log.Info("Resize start, handle " + handle + (_centredResize ? " (about the centre)" : ""));
+                        return true;
+                    }
+                    // Alt + drag beside a selected line, wire or wall draws a box that selects its points (moved together).
+                    if (message == WM_LBUTTONDOWN && KeyDown(VK_MENU) && PointObject() is not null && !Inside(pt, view, inset: -4))
+                    {
+                        HideBar();
+                        _mode = Mode.Band;
+                        _bandStart = pt;
+                        _down = pt;
                         return true;
                     }
                     // Double-click on the selected unit edits its text (like PowerPoint text boxes).
@@ -406,6 +423,21 @@ namespace InventaSketch.AddIn.OnSlide
                     }
                     return false;
 
+                case Mode.Band:
+                    if (message == WM_MOUSEMOVE) { DrawBand(view, pt); return true; }
+                    if (message == WM_LBUTTONUP)
+                    {
+                        _mode = Mode.Armed;
+                        _selectedPoints.Clear();
+                        foreach (var i in PointsInBand(view, pt)) _selectedPoints.Add(i);
+                        Log.Info($"Box selection: {_selectedPoints.Count} point(s)");
+                        _overlay.Clear();
+                        ShowBar(view);
+                        DrawPointHandles(view);
+                        return true;
+                    }
+                    return true;
+
                 case Mode.EditPoint:
                     if (message == WM_MOUSEMOVE)
                     {
@@ -423,7 +455,8 @@ namespace InventaSketch.AddIn.OnSlide
                         _mode = Mode.Armed;
                         _overlay.Clear();
                         var pointAttach = AnchorFor(at, _lastPointSnap);
-                        if (moved && unit is not null) Post(() => ApplyPoint(unit, index, at, pointAttach));
+                        var group = MovedGroup(index, at);
+                        if (moved && unit is not null) Post(() => ApplyPoint(unit, index, at, pointAttach, group));
                         else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
                         return true;
                     }
@@ -551,7 +584,7 @@ namespace InventaSketch.AddIn.OnSlide
                 _fade.Dismiss();
                 HideBar();
             }
-            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate)
+            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band)
             {
                 Cancel("escape");
                 return true;
@@ -1165,19 +1198,23 @@ namespace InventaSketch.AddIn.OnSlide
             var o = PointObject();
             if (o is null) return;
             var pts = _unit!.Doc.ResolvePoints(o);
-            Present(view, _ => { }, g =>
+            Present(view, _ => { }, g => DrawHandleSet(g, view, pts, _selectedPoints));
+        }
+
+        /// <summary>Diamond handles; selected points (box selection) are filled with the accent colour.</summary>
+        private void DrawHandleSet(Graphics g, SlideView view, IReadOnlyList<Vec2> pts, ICollection<int> selected)
+        {
+            var r = (float)(5 * view.DeviceScale);
+            using var fill = new SolidBrush(Color.White);
+            using var chosen = new SolidBrush(Color.FromArgb(31, 95, 191));
+            using var pen = new Pen(Ghost, (float)(1.6 * view.DeviceScale));
+            for (var i = 0; i < pts.Count; i++)
             {
-                var r = (float)(5 * view.DeviceScale);
-                using var fill = new SolidBrush(Color.White);
-                using var pen = new Pen(Ghost, (float)(1.6 * view.DeviceScale));
-                foreach (var p in pts)
-                {
-                    var c = view.ToScreen(p);
-                    var diamond = new[] { new PointF(c.X, c.Y - r), new PointF(c.X + r, c.Y), new PointF(c.X, c.Y + r), new PointF(c.X - r, c.Y) };
-                    g.FillPolygon(fill, diamond);
-                    g.DrawPolygon(pen, diamond);
-                }
-            });
+                var c = view.ToScreen(pts[i]);
+                var diamond = new[] { new PointF(c.X, c.Y - r), new PointF(c.X + r, c.Y), new PointF(c.X, c.Y + r), new PointF(c.X - r, c.Y) };
+                g.FillPolygon(selected.Contains(i) ? chosen : fill, diamond);
+                g.DrawPolygon(pen, diamond);
+            }
         }
 
         private void UpdatePointEdit(POINT pt, SlideView view)
@@ -1189,6 +1226,7 @@ namespace InventaSketch.AddIn.OnSlide
             _pointAt = raw + snap.Delta;
             _lastPointSnap = snap;
             var doc = Edits.SetPoint(_unit!.Doc, o.Id, _pointIndex, _pointAt);
+            foreach (var kv in MovedGroup(_pointIndex, _pointAt)) doc = Edits.SetPoint(doc, o.Id, kv.Key, kv.Value);
             var prims = _registry().Render(doc.Get(o.Id)!, new RenderContext(doc, _lang()));
             Present(view, g =>
             {
@@ -1209,7 +1247,46 @@ namespace InventaSketch.AddIn.OnSlide
             return new Attachment(owner.Id, u, v) { AnchorId = target.Kind == AnchorKind.Point && target.P.DistanceTo(at) < 1e-6 ? target.Id : null };
         }
 
-        private void ApplyPoint(SketchUnit stale, int index, Vec2 at, Attachment? attach = null)
+        /// <summary>The other selected points (box selection) moved by the same offset as the dragged one.</summary>
+        private Dictionary<int, Vec2> MovedGroup(int dragged, Vec2 at)
+        {
+            var result = new Dictionary<int, Vec2>();
+            if (_pointOrigin is null || !_selectedPoints.Contains(dragged) || _selectedPoints.Count < 2 || dragged >= _pointOrigin.Count) return result;
+            var delta = at - _pointOrigin[dragged];
+            foreach (var i in _selectedPoints)
+                if (i != dragged && i < _pointOrigin.Count) result[i] = _pointOrigin[i] + delta;
+            return result;
+        }
+
+        private IEnumerable<int> PointsInBand(SlideView view, POINT end)
+        {
+            var o = PointObject();
+            if (o is null) yield break;
+            var rect = RectangleF.FromLTRB(Math.Min(_bandStart.X, end.X), Math.Min(_bandStart.Y, end.Y), Math.Max(_bandStart.X, end.X), Math.Max(_bandStart.Y, end.Y));
+            var pts = _unit!.Doc.ResolvePoints(o);
+            for (var i = 0; i < pts.Count; i++)
+            {
+                var sp = view.ToScreen(pts[i]);
+                if (rect.Contains(sp.X, sp.Y)) yield return i;
+            }
+        }
+
+        private void DrawBand(SlideView view, POINT end)
+        {
+            var rect = RectangleF.FromLTRB(Math.Min(_bandStart.X, end.X), Math.Min(_bandStart.Y, end.Y), Math.Max(_bandStart.X, end.X), Math.Max(_bandStart.Y, end.Y));
+            var inside = new HashSet<int>(PointsInBand(view, end));
+            var pts = PointObject() is { } o ? _unit!.Doc.ResolvePoints(o) : Array.Empty<Vec2>();
+            Present(view, _ => { }, g =>
+            {
+                using var fill = new SolidBrush(Color.FromArgb(30, 31, 95, 191));
+                using var pen = new Pen(Color.FromArgb(31, 95, 191), (float)(1.2 * view.DeviceScale)) { DashPattern = new[] { 4f, 3f } };
+                g.FillRectangle(fill, rect);
+                g.DrawRectangle(pen, rect.X, rect.Y, rect.Width, rect.Height);
+                DrawHandleSet(g, view, pts, inside);
+            });
+        }
+
+        private void ApplyPoint(SketchUnit stale, int index, Vec2 at, Attachment? attach = null, IReadOnlyDictionary<int, Vec2>? group = null)
         {
             var slide = CurrentSlide();
             var unit = SketchUnits.Read(stale.Shape);
@@ -1218,6 +1295,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (o is null) return;
             _app.StartNewUndoEntry();
             var doc = Edits.SetPoint(unit.Doc, o.Id, index, at, attach);
+            if (group is not null) foreach (var kv in group) doc = Edits.SetPoint(doc, o.Id, kv.Key, kv.Value);
             ReplaceWithDependents(slide, unit, doc);
         }
 

@@ -116,8 +116,7 @@ Export-Erweiterungspunkte der Module.
   - Werkzeuge-Menü wie Slidemax (Extras: Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern) und
     Ausblenden von Modulen im Menüband: am 20.11.2026 erledigt. Offen: Module auch in der Seitenleisten-Bibliothek
     ausblenden.
-  - Rahmenauswahl einzelner Punkte: ein Auswahlrahmen über einer Linie wählt ihre Punkte, die dann gemeinsam verschoben
-    werden.
+  - Rahmenauswahl einzelner Punkte (Alt + Ziehen neben einer ausgewählten Linie): am 20.11.2026 in COM erledigt.
   - Mehr Bearbeitungseinträge in der schwebenden Leiste (Text, wichtige Parameter), dabei kurz halten.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.

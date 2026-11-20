@@ -199,6 +199,10 @@ language (German, English UK/US, more via Office's dialog; selection or all slid
 afterwards), show and hide modules (stored in settings.json as `HiddenModules`; hidden modules disappear from the
 ribbon). Verified: the menu appears, hidden modules are missing from "Elements".
 
+Box selection of points: with a line, polyline, wire or wall selected, Alt + drag beside it draws a box; the points
+inside are selected (filled handles) and move together when one of them is dragged (one undo step). Verified: two of
+four polyline points moved up 40 pt together.
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in

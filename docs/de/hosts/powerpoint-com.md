@@ -173,6 +173,10 @@ Dateien in der Zwischenablage), Folien speichern (.pptx/.pdf, danach geöffnet),
 settings.json als `HiddenModules`; ausgeblendete Module verschwinden aus dem Menüband). Geprüft: das Menü erscheint,
 ausgeblendete Module fehlen in „Elemente“.
 
+Rahmenauswahl von Punkten: Ist eine Linie, Polylinie, Leitung oder Wand ausgewählt, zieht Alt + Ziehen daneben einen
+Rahmen; die Punkte darin werden ausgewählt (gefüllte Griffe) und bewegen sich gemeinsam, wenn einer davon gezogen wird
+(ein Rückgängig-Schritt). Geprüft: zwei von vier Polylinienpunkten wanderten gemeinsam 40 pt nach oben.
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in
