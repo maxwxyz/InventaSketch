@@ -71,10 +71,9 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   renders of the concrete element, so they stay recognisable at small sizes. Modules name an icon per view/action
   (`ViewDef`/`ContextAction` icon id); hosts draw it from the shared icon set. Library galleries may keep real previews.
 - Order agreed with the maintainer (2026-11-20): finish the COM add-in first, then the web add-in, then LibreOffice.
-- Web: webspace package like Slidemax-Webspace (`dist/InventaSketch-Webspace`): upload the folder to any HTTPS webspace;
-  it contains the web add-in, a setup page (`index.html`) that generates the manifest for its own URL, `.htaccess` /
-  `web.config` (engine MIME types, no indexing/crawlers) and downloads of the other editions (COM add-in ZIP, LibreOffice
-  `.oxt`) listed in `downloads.json`.
+- Web: webspace package (`scripts/package-webspace.ps1` → `dist/InventaSketch-Webspace` + ZIP): done 2026-11-20 —
+  setup page generating the manifest for its own HTTPS address, `.htaccess`/`web.config`/robots, downloads of the
+  other editions that exist. Open: test on a real Apache/IIS webspace and load the add-in from there.
 - Web installer (ported from Slidemax, translated to English with German/English messages 2026-11-20): run a real install and load the add-in in PowerPoint (Windows without COM add-in, Mac, web).
 - Core/engine requests from the module work: done 2026-11-20 (rails, mount and port priority, concentric fit,
   pin-id attachments; hollow and crow's-foot heads, underline; input and document actions, change sets with dependents,

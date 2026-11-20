@@ -80,10 +80,9 @@ Export-Erweiterungspunkte der Module.
   Aktion eine Symbol-ID (`ViewDef`/`ContextAction`); die Hosts zeichnen sie aus dem gemeinsamen Symbolsatz. Die
   Bibliotheks-Galerien dürfen echte Vorschaubilder behalten.
 - Reihenfolge mit dem Maintainer abgestimmt (20.11.2026): erst das COM-Add-in fertigstellen, dann das Web-Add-in, dann LibreOffice.
-- Web: Webspace-Paket wie Slidemax-Webspace (`dist/InventaSketch-Webspace`): den Ordner auf einen beliebigen HTTPS-Webspace
-  legen; enthält das Web-Add-in, eine Einrichtungsseite (`index.html`), die das Manifest für die eigene Adresse erzeugt,
-  `.htaccess`/`web.config` (Dateitypen der Engine, keine Indizierung) und Downloads der anderen Fassungen (COM-Add-in-ZIP,
-  LibreOffice-`.oxt`) laut `downloads.json`.
+- Web: Webspace-Paket (`scripts/package-webspace.ps1` → `dist/InventaSketch-Webspace` + ZIP): am 20.11.2026 erledigt –
+  Einrichtungsseite erzeugt das Manifest für die eigene HTTPS-Adresse, `.htaccess`/`web.config`/robots, Downloads der
+  vorhandenen anderen Fassungen. Offen: Test auf echtem Apache-/IIS-Webspace und Laden des Add-ins von dort.
 - Wünsche an Core/Engine aus der Modularbeit: am 20.11.2026 erledigt (Rails, Vorrang für Befestigungs- und Pin-Fang,
   konzentrische Passung, Anbindung über Pin-ID; hohle Spitzen und Krähenfüße, Unterstreichung; Aktionen mit Eingabe und
   Dokumentzugriff, Änderungsmengen mit abhängigen Objekten, Planmaßstab, Größen je Ansicht; gemeinsamer
