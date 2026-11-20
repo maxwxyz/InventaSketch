@@ -28,6 +28,8 @@ if [ "${SKIP_TESTS:-0}" != "1" ]; then "$DOTNET" test InventaSketch.sln -c "$CON
 if [ "${SKIP_WEB:-0}" != "1" ] && [ -f hosts/office-web/package.json ] && command -v npm >/dev/null; then
   (cd hosts/office-web && npm ci && { [ "${SKIP_TESTS:-0}" = "1" ] || npm test; } && npm run build)
 fi
+# LibreOffice extension (.oxt); before the webspace so its download page lists it.
+if command -v python3 >/dev/null; then python3 hosts/libreoffice/scripts/package.py; else echo "warning: python3 missing: LibreOffice extension not packaged." >&2; fi
 if [ "${SKIP_WEB:-0}" != "1" ]; then
   if [ -f hosts/office-web/dist/taskpane.html ] && command -v node >/dev/null; then
     bash scripts/package-webspace.sh

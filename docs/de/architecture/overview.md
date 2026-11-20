@@ -73,7 +73,7 @@ Dokumentebene spiegelt das Modell.
 |---|---|---|
 | PowerPoint COM | `Shape.Tags` (`ISK_ID`, `ISK_TYPE`, `ISK_MODEL`) | benutzerdefinierte Dokumenteigenschaften (in Teilstücken) |
 | Office.js | `shape.tags` (PowerPointApi 1.3+) | benutzerdefinierte Eigenschaften / Custom XML Parts (noch zu prüfen, siehe Recherche) |
-| LibreOffice | Formname `isk:<id>`, `UserDefinedAttributes` (nur ODF) | benutzerdefinierte Dokumenteigenschaften (in Teilstücken) |
+| LibreOffice | Formname `ISK:<typ>:<id>`, `UserDefinedAttributes` an der Form (Gruppen: an ihrer ersten Einzelform; nur ODF) | benutzerdefinierte Dokumenteigenschaften (in Teilstücken) |
 
 ## 6. Teststrategie
 

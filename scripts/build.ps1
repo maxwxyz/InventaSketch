@@ -95,6 +95,16 @@ if (-not $SkipWeb -and (Test-Path $web)) {
 Step 'Package PowerPoint COM add-in (dist\InventaSketch-AddIn)'
 & (Join-Path $PSScriptRoot 'package-com.ps1')
 
+# LibreOffice extension (.oxt with the engine process); before the webspace so its download page lists it.
+$python = @('python', 'py') | ForEach-Object { Get-Command $_ -ErrorAction SilentlyContinue } | Select-Object -First 1
+if ($python) {
+    Step 'Package LibreOffice extension (dist\InventaSketch-LibreOffice-<version>.oxt)'
+    & $python.Source (Join-Path $root 'hosts\libreoffice\scripts\package.py')
+    if ($LASTEXITCODE -ne 0) { throw 'LibreOffice packaging failed.' }
+} else {
+    Write-Warning 'Python not found: LibreOffice extension not packaged.'
+}
+
 # After package-web and package-com: the webspace offers the COM add-in ZIP built just before.
 if (-not $SkipWeb -and (Test-Path (Join-Path $root 'hosts\office-web\dist\taskpane.html')) -and (Get-Command node -ErrorAction SilentlyContinue)) {
     Step 'Package webspace (dist\InventaSketch-Webspace)'

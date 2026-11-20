@@ -66,7 +66,7 @@ and a compressed model payload; the document-level store mirrors the model.
 |---|---|---|
 | PowerPoint COM | `Shape.Tags` (`ISK_ID`, `ISK_TYPE`, `ISK_MODEL`) | custom document properties (chunked) |
 | Office.js | `shape.tags` (PowerPointApi 1.3+) | custom properties / custom XML parts (to be verified, see research) |
-| LibreOffice | shape name `isk:<id>`, `UserDefinedAttributes` (ODF only) | document user-defined properties (chunked) |
+| LibreOffice | shape name `ISK:<type>:<id>`, `UserDefinedAttributes` on the shape (groups: on their first single shape; ODF only) | document user-defined properties (chunked) |
 
 ## 6. Testing strategy
 
