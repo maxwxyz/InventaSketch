@@ -3,7 +3,8 @@
     Local HTTPS host for the web add-in on Windows: serves the "App" folder of the InventaSketch-Web package on
     https://localhost:3217 (loopback only) with an own certificate in the user's store. Installs and uninstalls per user
     without administrator rights (autostart, manifest registration for PowerPoint).
-    Ported from Slidemax with the copyright holder's approval (identifiers and messages are still German; see roadmap).
+    Ported from Slidemax with the copyright holder's approval and translated to English; user-facing messages are German
+    or English depending on the Windows UI language (Text.T).
     Ships as net48 (part of Windows, no Node, no extra runtime); window-less (WinExe); output goes to the calling console
     and to %LOCALAPPDATA%\InventaSketch\webhost.log.
   -->

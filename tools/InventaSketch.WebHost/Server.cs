@@ -13,64 +13,64 @@ using System.Threading.Tasks;
 namespace InventaSketch.WebHost
 {
     /// <summary>
-    /// HTTPS-Server für einen Ordner mit statischen Dateien. Hört nur auf 127.0.0.1 und ::1 (TcpListener mit SslStream:
-    /// ohne Administratorrechte und ohne URL-Reservierung, anders als HttpListener mit https). HTTP/1.1 mit offenen
-    /// Verbindungen, nur GET und HEAD.
+    /// HTTPS server for a folder of static files. Listens on 127.0.0.1 and ::1 only (TcpListener with SslStream: no
+    /// administrator rights and no URL reservation, unlike HttpListener with https). HTTP/1.1 with persistent
+    /// connections, GET and HEAD only.
     /// </summary>
     public sealed class Server : IDisposable
     {
-        private readonly string wurzel;
-        private readonly X509Certificate2 zertifikat;
-        private readonly List<TcpListener> lauscher = new List<TcpListener>();
-        private volatile bool beendet;
-        private int anfragen;
+        private readonly string root;
+        private readonly X509Certificate2 certificate;
+        private readonly List<TcpListener> listeners = new List<TcpListener>();
+        private volatile bool stopped;
+        private int requests;
 
-        public Server(string wurzel, X509Certificate2 zertifikat, int port)
+        public Server(string root, X509Certificate2 certificate, int port)
         {
-            this.wurzel = Path.GetFullPath(wurzel);
-            this.zertifikat = zertifikat;
+            this.root = Path.GetFullPath(root);
+            this.certificate = certificate;
             Port = port;
         }
 
-        /// <summary>Port; nach dem Start der tatsächlich belegte (bei 0 vom System vergeben).</summary>
+        /// <summary>Port; after the start the one actually bound (assigned by the system for 0).</summary>
         public int Port { get; private set; }
 
-        /// <summary>Zeitlimit für Handshake und Lesen je Verbindung.</summary>
-        public int Zeitlimit { get; set; } = 30000;
+        /// <summary>Timeout for handshake and reads per connection.</summary>
+        public int Timeout { get; set; } = 30000;
 
-        public int Anfragen => anfragen;
+        public int Requests => requests;
 
-        /// <summary>Beginnt zu lauschen; wirft SocketException, wenn der Port auf 127.0.0.1 belegt ist.</summary>
-        public void Starten()
+        /// <summary>Starts listening; throws SocketException if the port is in use on 127.0.0.1.</summary>
+        public void Start()
         {
             var v4 = new TcpListener(IPAddress.Loopback, Port);
-            Exklusiv(v4);
+            MakeExclusive(v4);
             v4.Start();
-            lauscher.Add(v4);
+            listeners.Add(v4);
             Port = ((IPEndPoint)v4.LocalEndpoint).Port;
             if (Socket.OSSupportsIPv6)
             {
                 try
                 {
                     var v6 = new TcpListener(IPAddress.IPv6Loopback, Port);
-                    Exklusiv(v6);
+                    MakeExclusive(v6);
                     v6.Start();
-                    lauscher.Add(v6);
+                    listeners.Add(v6);
                 }
                 catch (SocketException e)
                 {
-                    Protokoll.Schreiben("IPv6 (::1) nicht verfügbar: " + e.Message);
+                    Log.Write("IPv6 (::1) not available: " + e.Message);
                 }
             }
-            foreach (TcpListener l in lauscher)
+            foreach (TcpListener l in listeners)
             {
-                TcpListener eigener = l;
-                Task.Run(() => Annehmen(eigener));
+                TcpListener own = l;
+                Task.Run(() => Accept(own));
             }
         }
 
-        /// <summary>Unter Windows darf kein anderer Prozess denselben Port mitbenutzen (SO_EXCLUSIVEADDRUSE).</summary>
-        private static void Exklusiv(TcpListener l)
+        /// <summary>On Windows no other process may share the same port (SO_EXCLUSIVEADDRUSE).</summary>
+        private static void MakeExclusive(TcpListener l)
         {
             if (Environment.OSVersion.Platform != PlatformID.Win32NT) return;
             try { l.ExclusiveAddressUse = true; }
@@ -78,91 +78,91 @@ namespace InventaSketch.WebHost
             catch (PlatformNotSupportedException) { }
         }
 
-        private async Task Annehmen(TcpListener l)
+        private async Task Accept(TcpListener l)
         {
-            while (!beendet)
+            while (!stopped)
             {
                 TcpClient client;
                 try { client = await l.AcceptTcpClientAsync().ConfigureAwait(false); }
                 catch (ObjectDisposedException) { return; }
                 catch (SocketException e)
                 {
-                    if (beendet) return;
-                    Protokoll.Schreiben("Annehmen: " + e.Message);
+                    if (stopped) return;
+                    Log.Write("Accept: " + e.Message);
                     continue;
                 }
                 catch (InvalidOperationException) { return; }
-                _ = Task.Run(() => Bedienen(client));
+                _ = Task.Run(() => Serve(client));
             }
         }
 
-        private void Bedienen(TcpClient client)
+        private void Serve(TcpClient client)
         {
             try
             {
                 using (client)
                 {
                     client.NoDelay = true;
-                    client.ReceiveTimeout = Zeitlimit;
-                    client.SendTimeout = Zeitlimit;
+                    client.ReceiveTimeout = Timeout;
+                    client.SendTimeout = Timeout;
                     using (var ssl = new SslStream(client.GetStream(), false))
                     {
-                        ssl.ReadTimeout = Zeitlimit;
-                        ssl.WriteTimeout = Zeitlimit;
-                        // SslProtocols.None: das Betriebssystem wählt (TLS 1.2 oder 1.3).
-                        ssl.AuthenticateAsServer(zertifikat, false, SslProtocols.None, false);
-                        while (!beendet)
+                        ssl.ReadTimeout = Timeout;
+                        ssl.WriteTimeout = Timeout;
+                        // SslProtocols.None: the operating system chooses (TLS 1.2 or 1.3).
+                        ssl.AuthenticateAsServer(certificate, false, SslProtocols.None, false);
+                        while (!stopped)
                         {
-                            string? kopf = KopfLesen(ssl, out bool zuGross);
-                            if (kopf == null)
+                            string? head = ReadHead(ssl, out bool tooLarge);
+                            if (head == null)
                             {
-                                if (zuGross) Senden(ssl, null, true);
+                                if (tooLarge) Send(ssl, null, true);
                                 return;
                             }
-                            HttpAnfrage? anfrage = HttpAnfrage.Lesen(kopf, out string? fehler);
-                            if (anfrage == null) Protokoll.Schreiben("Ungültige Anfrage: " + fehler);
-                            HttpAntwort antwort = HttpAntwort.Bestimmen(anfrage, wurzel, Port);
-                            Interlocked.Increment(ref anfragen);
-                            if (antwort.Status != 200 && anfrage != null)
-                                Protokoll.Schreiben(anfrage.Methode + " " + anfrage.Ziel + " -> " + antwort);
-                            Senden(ssl, antwort, false);
-                            if (antwort.Schliessen) return;
+                            HttpRequest? request = HttpRequest.Parse(head, out string? error);
+                            if (request == null) Log.Write("Invalid request: " + error);
+                            HttpResponse response = HttpResponse.Decide(request, root, Port);
+                            Interlocked.Increment(ref requests);
+                            if (response.Status != 200 && request != null)
+                                Log.Write(request.Method + " " + request.Target + " -> " + response);
+                            Send(ssl, response, false);
+                            if (response.Close) return;
                         }
                     }
                 }
             }
             catch (IOException) { }
-            catch (AuthenticationException e) { Protokoll.Schreiben("TLS: " + e.Message); }
+            catch (AuthenticationException e) { Log.Write("TLS: " + e.Message); }
             catch (ObjectDisposedException) { }
-            catch (Exception e) { Protokoll.Schreiben("Verbindung: " + e); }
+            catch (Exception e) { Log.Write("Connection: " + e); }
         }
 
-        /// <summary>Liest bis zur Leerzeile; null bei Ende der Verbindung oder wenn der Kopf zu groß ist.</summary>
-        private static string? KopfLesen(Stream s, out bool zuGross)
+        /// <summary>Reads up to the empty line; null at the end of the connection or if the head is too large.</summary>
+        private static string? ReadHead(Stream s, out bool tooLarge)
         {
-            zuGross = false;
-            var puffer = new MemoryStream();
-            var ein = new byte[1];
+            tooLarge = false;
+            var buffer = new MemoryStream();
+            var one = new byte[1];
             while (true)
             {
-                int n = s.Read(ein, 0, 1);
+                int n = s.Read(one, 0, 1);
                 if (n == 0) return null;
-                byte b = ein[0];
-                // Leere Zeilen vor der Anfragezeile übergehen (RFC 9112, 2.2).
-                if (puffer.Length == 0 && (b == '\r' || b == '\n')) continue;
-                puffer.WriteByte(b);
-                if (b == '\n' && KopfEnde(puffer)) break;
-                if (puffer.Length > HttpAnfrage.MaxKopf)
+                byte b = one[0];
+                // Skip empty lines before the request line (RFC 9112, 2.2).
+                if (buffer.Length == 0 && (b == '\r' || b == '\n')) continue;
+                buffer.WriteByte(b);
+                if (b == '\n' && EndsWithEmptyLine(buffer)) break;
+                if (buffer.Length > HttpRequest.MaxHeadSize)
                 {
-                    zuGross = true;
+                    tooLarge = true;
                     return null;
                 }
             }
-            return Encoding.ASCII.GetString(puffer.ToArray()).TrimEnd('\r', '\n');
+            return Encoding.ASCII.GetString(buffer.ToArray()).TrimEnd('\r', '\n');
         }
 
-        /// <summary>Puffer endet mit einer Leerzeile ("\r\n\r\n" oder "\n\n").</summary>
-        private static bool KopfEnde(MemoryStream m)
+        /// <summary>Buffer ends with an empty line ("\r\n\r\n" or "\n\n").</summary>
+        private static bool EndsWithEmptyLine(MemoryStream m)
         {
             byte[] b = m.GetBuffer();
             long n = m.Length;
@@ -170,43 +170,43 @@ namespace InventaSketch.WebHost
             return n >= 4 && b[n - 2] == '\r' && b[n - 3] == '\n' && b[n - 4] == '\r';
         }
 
-        private static void Senden(Stream s, HttpAntwort? antwort, bool zuGross)
+        private static void Send(Stream s, HttpResponse? response, bool tooLarge)
         {
-            if (zuGross)
+            if (tooLarge)
             {
-                byte[] k = Encoding.ASCII.GetBytes("HTTP/1.1 431 Request Header Fields Too Large\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
-                s.Write(k, 0, k.Length);
+                byte[] h = Encoding.ASCII.GetBytes("HTTP/1.1 431 Request Header Fields Too Large\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                s.Write(h, 0, h.Length);
                 s.Flush();
                 return;
             }
-            if (antwort == null) return;
-            if (antwort.Datei == null)
+            if (response == null) return;
+            if (response.File == null)
             {
-                byte[] text = antwort.TextBytes();
-                byte[] kopf = Encoding.ASCII.GetBytes(antwort.Kopf(text.Length));
-                s.Write(kopf, 0, kopf.Length);
-                if (antwort.MitInhalt) s.Write(text, 0, text.Length);
+                byte[] body = response.BodyBytes();
+                byte[] head = Encoding.ASCII.GetBytes(response.Head(body.Length));
+                s.Write(head, 0, head.Length);
+                if (response.WithBody) s.Write(body, 0, body.Length);
                 s.Flush();
                 return;
             }
-            using (var datei = new FileStream(antwort.Datei, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 65536))
+            using (var file = new FileStream(response.File, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete, 65536))
             {
-                byte[] kopf = Encoding.ASCII.GetBytes(antwort.Kopf(datei.Length));
-                s.Write(kopf, 0, kopf.Length);
-                if (antwort.MitInhalt) datei.CopyTo(s, 65536);
+                byte[] head = Encoding.ASCII.GetBytes(response.Head(file.Length));
+                s.Write(head, 0, head.Length);
+                if (response.WithBody) file.CopyTo(s, 65536);
                 s.Flush();
             }
         }
 
         public void Dispose()
         {
-            beendet = true;
-            foreach (TcpListener l in lauscher)
+            stopped = true;
+            foreach (TcpListener l in listeners)
             {
                 try { l.Stop(); }
                 catch (SocketException) { }
             }
-            lauscher.Clear();
+            listeners.Clear();
         }
     }
 }

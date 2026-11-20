@@ -1,33 +1,38 @@
 # InventaSketch-Web @VERSION@
 
+> English: [README.md](README.md)
+
 InventaSketch als Web-Add-in für PowerPoint unter Windows, auf dem Mac und in PowerPoint im Web. Das Add-in besteht aus
 statischen Dateien (Ordner `App`), die PowerPoint über HTTPS lädt. Dieses Paket bringt dafür einen kleinen Server für den
 eigenen Rechner mit (`https://localhost:3217`). Für den Einsatz in einer Firma ist der bessere Weg, dass die IT den Ordner
 `App` auf einem HTTPS-Server bereitstellt (unten, "Für die IT").
 
-Vorher: die ZIP-Datei ganz entpacken, am besten an einen festen Ort. Administratorrechte sind nicht nötig.
+Vorher: die ZIP-Datei ganz entpacken, am besten an einen festen Ort. Administratorrechte sind nicht nötig. Die Meldungen
+der Installationsskripte erscheinen auf Deutsch, wenn Windows bzw. die Spracheinstellung (`LANG`) deutsch ist, sonst auf
+Englisch.
 
 ## Installieren mit einem Doppelklick
 
 ### Windows (PowerPoint für Microsoft 365)
 
 1. PowerPoint schließen.
-2. `Web-Add-in installieren.cmd` doppelklicken.
+2. `Install web add-in.cmd` doppelklicken.
 3. Windows fragt einmal "Sicherheitswarnung: Zertifikat installieren ... localhost": mit **Ja** bestätigen.
 4. PowerPoint starten: InventaSketch erscheint im Reiter **InventaSketch** (sonst Start > Add-Ins).
 
 Das Skript kopiert InventaSketch nach `%LOCALAPPDATA%\InventaSketch\Web`, legt ein Zertifikat für `localhost` im Zertifikatspeicher
 des Benutzers an und vertraut ihm, trägt den Server in den Autostart des Benutzers ein, startet ihn und trägt das Add-in
 für PowerPoint ein (Seitenladen für Entwickler, `HKCU\Software\Microsoft\Office\16.0\WEF\Developer`). Ohne Autostart:
-`Web-Add-in installieren.cmd -OhneAutostart`; nur anzeigen, was geschähe: `-Probelauf`.
+`"Install web add-in.cmd" --no-autostart`; nur anzeigen, was geschähe: `--dry-run`. Die früheren deutschen Namen
+(`-OhneAutostart`, `-OhneManifest`, `-Probelauf`) gelten weiterhin.
 
-Entfernen: `Web-Add-in deinstallieren.cmd` (im Paket oder in `%LOCALAPPDATA%\InventaSketch\Web`). Es beendet den Server und
+Entfernen: `Uninstall web add-in.cmd` (im Paket oder in `%LOCALAPPDATA%\InventaSketch\Web`). Es beendet den Server und
 entfernt Autostart, Eintrag in PowerPoint, Zertifikat (Windows fragt nach) und Ordner.
 
 ### macOS (PowerPoint für Mac)
 
 1. PowerPoint beenden.
-2. `installieren.command` im Finder mit Rechtsklick > **Öffnen** starten (beim ersten Mal fragt macOS, ob die Datei aus
+2. `install.command` im Finder mit Rechtsklick > **Öffnen** starten (beim ersten Mal fragt macOS, ob die Datei aus
    dem Internet geöffnet werden soll).
 3. macOS fragt nach dem Kennwort, um dem Zertifikat `localhost` zu vertrauen.
 4. PowerPoint starten: Start > Add-Ins (bzw. Einfügen > Add-Ins > Meine Add-Ins), Bereich Entwickler-Add-Ins.
@@ -35,21 +40,21 @@ entfernt Autostart, Eintrag in PowerPoint, Zertifikat (Windows fragt nach) und O
 Das Skript kopiert InventaSketch nach `~/Library/Application Support/InventaSketch/Web`, legt das Zertifikat unter `~/.inventasketch/web`
 an und vertraut ihm im Schlüsselbund, startet den Server als LaunchAgent (auch nach der Anmeldung) und legt das Manifest
 in den Ordner `wef` von PowerPoint. Braucht Python 3 (fehlt es, bietet macOS beim ersten Aufruf von `python3` die
-Befehlszeilenwerkzeuge an). Entfernen: `deinstallieren.command`.
+Befehlszeilenwerkzeuge an). Entfernen: `uninstall.command`.
 
 ### Linux (PowerPoint im Web im Browser)
 
 Im Terminal im entpackten Ordner:
 
 ```
-sh installieren.sh
+sh install.sh
 ```
 
 Das Skript kopiert InventaSketch nach `~/.local/share/inventasketch/web`, legt das Zertifikat an, trägt es für Chrome und Chromium ein
 (wenn `certutil` aus `libnss3-tools` vorhanden ist), startet den Server über `systemd --user` (sonst Autostart der
 Arbeitsumgebung) und nennt den Pfad des Manifests. Dann PowerPoint im Web öffnen und das Manifest hochladen (wie unten).
 Ohne `certutil`: einmal `https://localhost:3217/taskpane.html` im Browser öffnen und die Ausnahme bestätigen (Firefox
-immer so). Entfernen: `sh deinstallieren.sh`.
+immer so). Optionen: `--no-autostart`, `--dry-run` (auch `--ohne-autostart`, `--probelauf`). Entfernen: `sh uninstall.sh`.
 
 ### PowerPoint im Web (alle Systeme)
 
@@ -58,6 +63,9 @@ Meine Add-Ins > **Mein Add-In hochladen**, `manifest.xml` aus dem installierten 
 Seite auf Geräte im lokalen Netzwerk zugreifen darf: zulassen (gemeint ist `localhost`).
 
 ## Auf eigenen Webspace legen (Windows, macOS, Linux, Browser)
+
+Hinweis: das Webspace-Paket ist geplant und wird noch nicht gebaut. Bis dahin geht derselbe Weg mit dem Ordner `App` dieses
+Pakets und `create-manifest` (unten, "Für die IT").
 
 Statt des Servers auf dem eigenen Rechner: einen Ordner einmal auf einen Webspace legen; danach bekommt jeder alles über die
 Webseite, ohne dass ein ZIP verschickt werden muss.
@@ -79,7 +87,7 @@ Die LibreOffice-Erweiterung für macOS (ARM) entsteht nur auf einem Mac: die Sei
 `InventaSketch-LibreOffice-<Version>-osx-arm64.oxt` in den Ordner `downloads` des Webspace legen, dann erscheint der Link.
 
 Die Adresse weitergeben genügt. Präsentationsdaten gehen nicht an den Webspace, er liefert nur Programmdateien aus. Ohne
-Webspace-Ordner geht es auch mit dem Ordner `App` dieses Pakets und `manifest-erzeugen` (gleiche Einstellungen, ohne Seite).
+Webspace-Ordner geht es auch mit dem Ordner `App` dieses Pakets und `create-manifest` (gleiche Einstellungen, ohne Seite).
 Wurde der Server auf dem eigenen Rechner installiert, ihn mit dem Deinstallieren-Skript entfernen, sonst erscheint InventaSketch doppelt.
 
 ## Aktualisieren
@@ -97,7 +105,7 @@ Wurde der Server auf dem eigenen Rechner installiert, ihn mit dem Deinstallieren
 
 | Zeichen | Ursache und Abhilfe |
 |---|---|
-| Reiter "InventaSketch" ohne Symbole, Schaltflächen ohne Wirkung | Server läuft nicht oder sein Zertifikat ist nicht vertraut. Im Browser `https://localhost:3217/taskpane.html` öffnen: muss ohne Warnung laden. Sonst Windows: `Web-Add-in starten.cmd`; macOS und Linux: `sh starten.sh`; danach erneut installieren. |
+| Reiter "InventaSketch" ohne Symbole, Schaltflächen ohne Wirkung | Server läuft nicht oder sein Zertifikat ist nicht vertraut. Im Browser `https://localhost:3217/taskpane.html` öffnen: muss ohne Warnung laden. Sonst Windows: `Start web add-in.cmd`; macOS und Linux: `sh start.sh`; danach erneut installieren. |
 | Seite lädt mit Zertifikatwarnung | Zertifikat nicht vertraut (Rückfrage abgelehnt). Erneut installieren und die Rückfrage bestätigen. |
 | Installation meldet ABBRUCH wegen einer Richtlinie | Die IT erlaubt eigene Stammzertifikate oder Web-Add-ins nicht. InventaSketch umgeht keine Richtlinie: Weg über die IT (unten). |
 | Port 3217 belegt | Ein anderer Server läuft (z. B. eine Entwicklungsumgebung). Diesen beenden. |
@@ -112,13 +120,13 @@ Protokoll: Windows `%LOCALAPPDATA%\InventaSketch\webhost.log`, macOS und Linux `
 Der Server auf dem eigenen Rechner ist für Einzelplätze gedacht. In einer Firma:
 
 1. Den Ordner `App` unverändert auf einen HTTPS-Server legen (statische Dateien; `.wasm` mit `application/wasm`, `.dat`
-   mit `application/octet-stream` ausliefern, für Apache und IIS liegen `.htaccess` und `web.config` bei), z. B.
-   `https://addins.firma.de/inventasketch`.
-2. Manifest für diese Adresse schreiben: Windows `.\manifest-erzeugen.ps1 -Adresse https://addins.firma.de/inventasketch`,
-   macOS und Linux `sh manifest-erzeugen.sh https://addins.firma.de/inventasketch`. Ergebnis: `manifest-<host>.xml`.
+   mit `application/octet-stream` ausliefern), z. B. `https://addins.example.com/inventasketch`.
+2. Manifest für diese Adresse schreiben: Windows `.\create-manifest.ps1 -Address https://addins.example.com/inventasketch`
+   (auch `-Adresse`), macOS und Linux `sh create-manifest.sh https://addins.example.com/inventasketch`. Ergebnis:
+   `manifest-<host>.xml`.
 3. Das Manifest im Microsoft 365 Admin Center unter Einstellungen > Integrierte Apps für Benutzer oder Gruppen bereitstellen.
 
 Was der lokale Server unter Windows tut (Server\InventaSketch.WebHost.exe, .NET Framework 4.8): hört nur auf `127.0.0.1` und
 `::1`, Port 3217, liefert nur Dateien aus `App` (GET und HEAD); eigenes Zertifikat für `localhost` in `CurrentUser\My`, vertraut in
 `CurrentUser\Root` (Rückfrage von Windows); Autostart über `HKCU\...\Run`; keine Administratorrechte, keine Dienste, keine
-Firewall-Regeln, keine Änderung an Richtlinien. Einzelheiten in `IT-DATENBLATT.md` des COM-Pakets bzw. `docs/IT-DATENBLATT.md`.
+Firewall-Regeln, keine Änderung an Richtlinien. Befehlszeile: `Server\InventaSketch.WebHost.exe --help`.
