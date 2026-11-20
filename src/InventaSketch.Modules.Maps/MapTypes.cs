@@ -33,7 +33,7 @@ namespace InventaSketch.Modules.Maps
         public static MapView Plan(double w, double h, Action<Pen, SketchObject, RenderContext> d) => new("plan", PlanLabel, IconIds.Plan, w, h, d);
         public static MapView Symbol(double w, double h, Action<Pen, SketchObject, RenderContext> d) => new("symbol", SymbolLabel, IconIds.Symbol, w, h, d);
         /// <summary>Map pin: <see cref="IconIds"/> has no pin pictogram yet, the "detailed" view icon stands in for it.</summary>
-        public static MapView Pin(double w, double h, Action<Pen, SketchObject, RenderContext> d) => new("pin", PinLabel, IconIds.Detailed, w, h, d);
+        public static MapView Pin(double w, double h, Action<Pen, SketchObject, RenderContext> d) => new("pin", PinLabel, IconIds.Pin, w, h, d);
     }
 
     /// <summary>Shared behaviour of all map types.</summary>
@@ -71,6 +71,9 @@ namespace InventaSketch.Modules.Maps
     /// </summary>
     internal class MapBoxType : ObjectType
     {
+        /// <summary>Symbols, not physical parts: never in the bill of materials.</summary>
+        public override bool IsPart => false;
+
         private readonly string _id;
         private readonly I18nText _name;
         private readonly string _category;

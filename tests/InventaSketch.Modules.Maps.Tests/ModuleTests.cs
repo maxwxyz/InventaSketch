@@ -129,7 +129,7 @@ namespace InventaSketch.Modules.Maps.Tests
         {
             var r = Fx.Reg();
             var poi = r.Type("map.poi")!;
-            Assert.Equal(new[] { IconIds.Symbol, IconIds.Detailed }, poi.Views.Select(v => v.Icon));
+            Assert.Equal(new[] { IconIds.Symbol, IconIds.Pin }, poi.Views.Select(v => v.Icon));
             Assert.All(r.Types.Where(t => t.Geometry == GeometryKind.Points), t => Assert.Equal(IconIds.Plan, t.Views.Single().Icon));
         }
 

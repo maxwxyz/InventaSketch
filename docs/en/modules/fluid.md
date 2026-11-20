@@ -60,11 +60,11 @@ Switching the FRL view keeps the visual scale and takes the proportions of the t
 | Action id | Icon | Effect |
 |---|---|---|
 | `view.<id>` | view icon | FRL detailed / simplified |
-| `fluid.medium` | `Toggle` | hydraulic ↔ pneumatic |
+| `fluid.medium` | `Medium` | hydraulic ↔ pneumatic |
 | `fluid.valve.ways.next` | `Cycle` | 2/2 → 3/2 → 4/2 → 4/3 → 5/2 → 5/3 (the size follows the design box) |
 | `fluid.valve.centre.next` | `Cycle` | centre position (4/3: closed, tandem, float, open, pressurised; 5/3: closed, exhausted, pressurised) |
 | `fluid.valve.normal` | `Toggle` | normally closed / open (2/2, 3/2) |
-| `fluid.valve.actLeft.next`, `fluid.valve.actRight.next` | `Cycle` | actuation per side |
+| `fluid.valve.actLeft.next`, `fluid.valve.actRight.next` | `Actuation` | actuation per side |
 | `fluid.valve.flip` | `Swap` | flip the spring side (swap the actuations; the normal position follows) |
 | `fluid.valve.detent`, `fluid.valve.centring` | `Toggle` | detent; spring centring of 3-position valves |
 | `fluid.variable`, `fluid.flow.next` | `Toggle`/`Cycle` | pumps/motors: variable displacement, one/two flow directions |

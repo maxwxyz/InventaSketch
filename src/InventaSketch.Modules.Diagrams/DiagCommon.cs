@@ -569,6 +569,9 @@ namespace InventaSketch.Modules.Diagrams
     /// <summary>Base class of all diagram object types.</summary>
     public abstract class DiagType : ObjectType
     {
+        /// <summary>Symbols, not physical parts: never in the bill of materials.</summary>
+        public override bool IsPart => false;
+
         private readonly string _id;
         private readonly I18nText _name;
         private readonly string _category;

@@ -62,11 +62,11 @@ Beim Umschalten der FRL-Ansicht bleibt der optische Maßstab erhalten, die Propo
 | Aktion | Symbol | Wirkung |
 |---|---|---|
 | `view.<id>` | Ansichtssymbol | FRL ausführlich / vereinfacht |
-| `fluid.medium` | `Toggle` | Hydraulik ↔ Pneumatik |
+| `fluid.medium` | `Medium` | Hydraulik ↔ Pneumatik |
 | `fluid.valve.ways.next` | `Cycle` | 2/2 → 3/2 → 4/2 → 4/3 → 5/2 → 5/3 (die Größe folgt der Entwurfsbox) |
 | `fluid.valve.centre.next` | `Cycle` | Mittelstellung (4/3: gesperrt, Umlauf, Schwimm, offen, belüftet; 5/3: gesperrt, entlüftet, belüftet) |
 | `fluid.valve.normal` | `Toggle` | Ruhestellung gesperrt / offen (2/2, 3/2) |
-| `fluid.valve.actLeft.next`, `fluid.valve.actRight.next` | `Cycle` | Betätigung je Seite |
+| `fluid.valve.actLeft.next`, `fluid.valve.actRight.next` | `Actuation` | Betätigung je Seite |
 | `fluid.valve.flip` | `Swap` | Federseite tauschen (Betätigungen tauschen; die Grundstellung folgt) |
 | `fluid.valve.detent`, `fluid.valve.centring` | `Toggle` | Rastung; Federzentrierung bei 3 Stellungen |
 | `fluid.variable`, `fluid.flow.next` | `Toggle`/`Cycle` | Pumpen/Motoren: verstellbar, eine/zwei Stromrichtungen |

@@ -30,8 +30,7 @@ drawn length). Lines (roads, rail, rivers, routes, regions) are point objects in
 | `map.compass` | Compass rose / Windrose | box | plan | `points` 8 / 4, `labels` (German: N, O, S, W) |
 | `map.legend` | Legend / Legende | box | plan | `title` (default "Legend" / "Legende"), `auto`; entries see below |
 
-Views carry abstract icons: `plan` uses `IconIds.Plan`, `symbol` uses `IconIds.Symbol`. `IconIds` has no map-pin
-pictogram yet, so the `pin` view uses `IconIds.Detailed` until a dedicated pin icon exists.
+Views carry abstract icons: `plan` uses `IconIds.Plan`, `symbol` uses `IconIds.Symbol`. the `pin` view uses `IconIds.Pin`.
 
 Pictograms (POIs, markers, transport modes) are drawn independently from simple primitives; no third-party icon set
 is used. The hospital uses an "H" sign, deliberately not the Red Cross emblem (protected under the Geneva

@@ -89,6 +89,7 @@ namespace InventaSketch.Core
         public const string Plan = "view-plan";             // floor plan / map
         public const string Exploded = "view-exploded";
         public const string Table = "view-table";           // tabular / list form (ER table, BOM)
+        public const string Pin = "view-pin";               // map pin / location marker
         // Commands
         public const string Delete = "cmd-delete";
         public const string Duplicate = "cmd-duplicate";
@@ -106,12 +107,14 @@ namespace InventaSketch.Core
         public const string Cycle = "cmd-cycle";
         public const string Connect = "cmd-connect";
         public const string Animate = "cmd-animate";
+        public const string Medium = "cmd-medium";          // switch the medium (hydraulic/pneumatic: a drop)
+        public const string Actuation = "cmd-actuation";    // change how something is operated (push button)
 
         /// <summary>Every icon id, for hosts and tests that must provide a pictogram for each.</summary>
         public static IReadOnlyList<string> All { get; } = new[]
         {
-            Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table,
-            Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate,
+            Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin,
+            Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -123,7 +126,7 @@ namespace InventaSketch.Core
             ["top"] = Top, ["front"] = Front, ["rear"] = Rear, ["iso"] = Iso,
             ["detailed"] = Detailed, ["simplified"] = Simplified, ["ansi"] = Simplified, ["full"] = Detailed, ["compact"] = Simplified,
             ["symbol"] = Symbol, ["block"] = Block, ["diagram"] = Block, ["plan"] = Plan, ["exploded"] = Exploded,
-            ["table"] = Table, ["list"] = Table,
+            ["table"] = Table, ["list"] = Table, ["pin"] = Pin, ["marker"] = Pin,
         };
 
         /// <summary>The pictogram of a view: <see cref="ViewDef.Icon"/>, else derived from the view id, else <see cref="Detailed"/>.</summary>
@@ -332,6 +335,12 @@ namespace InventaSketch.Core
 
         /// <summary>True if the rendering uses the document plan scale (<see cref="DocumentSettings.PlanScale"/>).</summary>
         public virtual bool UsesPlanScale => false;
+
+        /// <summary>
+        /// True if objects of this type are parts of a product and count in the bill of materials (box objects only).
+        /// Map symbols, diagram shapes and other non-physical symbols return false.
+        /// </summary>
+        public virtual bool IsPart => true;
 
         /// <summary>
         /// Motion frames for an animation as a slide sequence (mechanisms: the input angle stepped through its range):

@@ -35,6 +35,19 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void BillOfMaterialsSkipsSymbolsThatAreNoParts()
+        {
+            var gear = Reg.Create(Reg.Item("mech.spur.axial")!, new Vec2(50, 50));
+            var poi = Reg.Create(Reg.Library.First(i => i.TypeId == "map.poi"), new Vec2(90, 50));
+            var uml = Reg.Create(Reg.Item("diag.uml.class")!, new Vec2(120, 50));
+            var doc = Doc(gear, poi, uml);
+            var csv = Run("core.bom", doc).Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Length > 0).ToList();
+            Assert.Equal(2, csv.Count); // header and the gear
+            var onlySymbols = Doc(Reg.Create(Reg.Library.First(i => i.TypeId == "map.poi"), new Vec2(10, 10)));
+            Assert.DoesNotContain(Exports.For(Reg, onlySymbols, onlySymbols.ObjectsOn(onlySymbols.Pages[0]).ToList()), e => e.Id == "core.bom");
+        }
+
+        [Fact]
         public void ConnectionGraphFollowsAttachedConnectors()
         {
             var a = Reg.Create(Reg.Item("diag.uml.class")!, new Vec2(40, 40)) with { Text = "Order" };

@@ -82,13 +82,16 @@ namespace InventaSketch.Core
         public string MimeType => "text/csv";
         public I18nText Preserves => new("Part types, names, reference numerals, quantities, parameters.", "Teiletypen, Bezeichnungen, Bezugszeichen, Mengen, Parameter.");
 
-        private static bool IsPart(SketchObject o) => !o.IsPointGeometry && !o.Type.StartsWith("ann.", StringComparison.Ordinal) && !o.Type.StartsWith("patent.", StringComparison.Ordinal);
+        /// <summary>Box objects of part types (<see cref="ObjectType.IsPart"/>); annotations and patent marks never count.</summary>
+        private static bool IsPart(Registry registry, SketchObject o)
+            => !o.IsPointGeometry && registry.Type(o.Type)?.IsPart != false
+               && !o.Type.StartsWith("ann.", StringComparison.Ordinal) && !o.Type.StartsWith("patent.", StringComparison.Ordinal);
 
-        public bool Applies(Registry registry, SketchDocument doc, IReadOnlyList<SketchObject> objects) => objects.Any(IsPart);
+        public bool Applies(Registry registry, SketchDocument doc, IReadOnlyList<SketchObject> objects) => objects.Any(o => IsPart(registry, o));
 
         public string Export(Registry registry, SketchDocument doc, IReadOnlyList<SketchObject> objects, Lang lang)
         {
-            var rows = objects.Where(IsPart).Select(o => new
+            var rows = objects.Where(o => IsPart(registry, o)).Select(o => new
             {
                 Numeral = o.Ref ?? "",
                 Name = Exports.Label(registry, o, lang),

@@ -253,7 +253,7 @@ namespace InventaSketch.Modules.Fluid
                 }
             if (MediumDefault is not null)
             {
-                                yield return new ContextAction("fluid.medium", Common.T("Hydraulic ↔ pneumatic", "Hydraulik ↔ Pneumatik"), IconIds.Toggle,
+                                yield return new ContextAction("fluid.medium", Common.T("Hydraulic ↔ pneumatic", "Hydraulik ↔ Pneumatik"), IconIds.Medium,
                     x => Adapt(x, x.WithParam("medium", Common.Pneumatic(Normalize(x)) ? "hydraulic" : "pneumatic"))) { IsActive = Common.Pneumatic(n), Group = "medium" };
             }
             if (Extra is not null)
@@ -326,11 +326,11 @@ namespace InventaSketch.Modules.Fluid
         public static ParamDef Flag(string key, I18nText label, bool def) => new(key, label, ParamKind.Boolean) { Default = def };
 
         /// <summary>Cycles a choice parameter through its options (or the given subset).</summary>
-        public static ContextAction Cycle(string id, I18nText label, ParamDef def, IReadOnlyList<string>? subset = null, string group = "param")
+        public static ContextAction Cycle(string id, I18nText label, ParamDef def, IReadOnlyList<string>? subset = null, string group = "param", string icon = IconIds.Cycle)
         {
             var options = subset ?? def.Options!.Select(x => x.Value).ToList();
             var fallback = def.Default?.Text ?? options[0];
-            return new ContextAction(id, label, IconIds.Cycle, x =>
+            return new ContextAction(id, label, icon, x =>
             {
                 var i = -1;
                 var cur = x.Str(def.Key, fallback);

@@ -145,6 +145,29 @@ namespace InventaSketch.AddIn.OnSlide
                 case IconIds.Animate:
                     g.DrawPolygon(pen, new[] { new PointF(7, 4), new PointF(19, 12), new PointF(7, 20) });
                     break;
+                case IconIds.Pin:
+                    {
+                        using var pinPath = new GraphicsPath();
+                        pinPath.AddArc(6, 3, 12, 12, 150, 240);
+                        pinPath.AddLine(17.2f, 12, 12, 21);
+                        pinPath.AddLine(12, 21, 6.8f, 12);
+                        pinPath.CloseFigure();
+                        g.DrawPath(pen, pinPath);
+                        g.FillEllipse(brush, 10, 7, 4, 4);
+                        break;
+                    }
+                case IconIds.Medium:
+                    {
+                        using var drop = new GraphicsPath();
+                        drop.AddBezier(12, 3, 9, 8, 6, 11, 6, 14.5f);
+                        drop.AddArc(6, 8.5f, 12, 12, 180, -180);
+                        drop.AddBezier(18, 14.5f, 18, 11, 15, 8, 12, 3);
+                        g.DrawPath(pen, drop);
+                        break;
+                    }
+                case IconIds.Actuation:
+                    g.DrawLine(pen, 8, 4, 16, 4); g.DrawLine(pen, 12, 4, 12, 11); g.DrawRectangle(pen, 5, 11, 14, 9);
+                    break;
                 default:
                     g.DrawEllipse(pen, 5, 5, 14, 14); g.FillEllipse(brush, 10.5f, 10.5f, 3, 3);
                     break;

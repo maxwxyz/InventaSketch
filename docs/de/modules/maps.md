@@ -31,8 +31,8 @@ Seitenkoordinaten.
 | `map.compass` | Compass rose / Windrose | Box | Karte | `points` 8 / 4, `labels` (Deutsch: N, O, S, W) |
 | `map.legend` | Legend / Legende | Box | Karte | `title` (Standard „Legend“ / „Legende“), `auto`; Einträge siehe unten |
 
-Ansichten tragen abstrakte Icons: `plan` verwendet `IconIds.Plan`, `symbol` `IconIds.Symbol`. `IconIds` hat noch
-kein Stecknadel-Piktogramm; die Ansicht `pin` verwendet daher `IconIds.Detailed`, bis es ein eigenes Icon gibt.
+Ansichten tragen abstrakte Icons: `plan` verwendet `IconIds.Plan`, `symbol` `IconIds.Symbol`. die Ansicht `pin`
+`IconIds.Pin`.
 
 Piktogramme (POIs, Marker, Verkehrsmittel) sind eigenständig aus einfachen Primitiven gezeichnet; es wird kein
 Icon-Satz Dritter verwendet. Das Krankenhaus zeigt ein „H“, bewusst nicht das Rote-Kreuz-Zeichen (nach den Genfer

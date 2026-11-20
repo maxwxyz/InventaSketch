@@ -56,6 +56,7 @@ const paths: Record<string, string> = {
   "view-plan": "M4 20V4h16v9M4 20h9M13 20a7 7 0 0 1 7-7",
   "view-exploded": "M3 9h4v6H3zM10 7h4v10h-4zM17 9h4v6h-4z",
   "view-table": "M4 5h16v14H4zM4 9.5h16M4 14h16M10 9.5V19",
+  "view-pin": "M12 21l-5.2-9A6 6 0 1 1 17.2 12zM12 7a2 2 0 1 0 0 4a2 2 0 1 0 0-4Z",
   "cmd-delete": "M6 6l12 12M18 6L6 18",
   "cmd-duplicate": "M4 4h11v11H4zM9 9h11v11H9z",
   "cmd-mirror-h": "M12 3v3M12 9v3M12 15v3M12 21v0M9 6v12H3zM15 6v12h6z",
@@ -72,6 +73,8 @@ const paths: Record<string, string> = {
   "cmd-cycle": "M4.95 9.43A7.5 7.5 0 0 1 17.56 6.96M19.8 10.5L19.95 5.56 15.45 8.16ZM19.05 14.57A7.5 7.5 0 0 1 6.44 17.04M4.2 13.5L4.05 18.44 8.55 15.84Z",
   "cmd-connect": "M5 15a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM19 3a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM5 18c7 0 7-12 14-12",
   "cmd-animate": "M7 4l12 8-12 8z",
+  "cmd-medium": "M12 3c-3 5-6 8-6 11.5a6 6 0 0 0 12 0C18 11 15 8 12 3z",
+  "cmd-actuation": "M8 4h8M12 4v7M5 11h14v9H5z",
 };
 
 export function icon(name: string, size = 18): string {
