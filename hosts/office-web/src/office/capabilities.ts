@@ -47,7 +47,9 @@ function safe(f: () => boolean): boolean {
 
 /**
  * What the engine may emit as native ops for this host. Office.js has no freeform shapes, no arrowheads and no
- * pattern fills on shapes (research note B.1), so those are lowered or drawn as SVG by the engine.
+ * pattern fills on shapes (research note B.1), so those are lowered or drawn as SVG by the engine. Arrowheads become
+ * rotated triangle/diamond shapes (hollow heads without fill), lines and ellipses (open heads, ticks, crow's-foot ends).
+ * Text underline is native (ShapeFont.underline, PowerPointApi 1.4).
  */
 export function drawCapabilities(c: HostCapabilities): DrawCapabilities {
   return { freeform: false, arrowheads: false, patternFill: false, rotation: c.rotation, svg: c.svg, shapes: c.shapes };

@@ -20,9 +20,17 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
   pro Eintrag. Jede Zeile wird als eigenes Textprimitiv gezeichnet.
 - **Textanpassung:** Text nutzt den Parameter `textSize` (Standard 3,5 mm ≈ 10 pt). Passt der Inhalt nicht in die Box,
   wird der Text automatisch verkleinert (nicht unter 1,8 mm); der Parameter selbst ändert sich nie.
-- **Endnotationen** (Pfeilspitzen, Rauten, Krähenfüße) werden als explizite Primitive gezeichnet, damit hohle Dreiecke
-  und Rauten in jedem Host gleich aussehen. Eine Linienfarbe des Benutzers färbt auch gefüllte Spitzen und Texte;
-  Breiten- und Strichart-Überschreibungen gelten nur für Umriss bzw. Verbinderlinie.
+- **Endnotationen** sind Core-Pfeilspitzen im Stil der Verbinderlinie (`ArrowStart`/`ArrowEnd`, Größe `large`):
+  offener Pfeil (`open`), gefülltes Dreieck (`triangle`), hohles Dreieck (`triangleOpen`), gefüllte und hohle Raute
+  (`diamond`, `diamondOpen`) sowie die Krähenfuß-Enden `crowOne`, `crowOneOnly`, `crowZeroOne`, `crowMany`,
+  `crowOneMany`, `crowZeroMany`. Pfeilspitzen-Überschreibungen des Benutzers (Anfang, Ende, Größe) ersetzen sie daher,
+  und jeder Host zeichnet sie: nativ, wo er ein passendes Linienende hat, sonst als explizite Formen (siehe
+  [Fähigkeitsmatrix](../hosts/capability-matrix.md)). Hohle Spitzen sind ungefüllte Umrisse, die Linie endet an ihrer
+  Basis; ein Krähenfuß-Kreis unterbricht die Linie. Beides sieht auf jedem Hintergrund und in Schwarzweiß-Ausgabe
+  richtig aus. Eine Linienfarbe des Benutzers färbt Linien, Spitzen und Texte; Breiten- und Strichart-Überschreibungen
+  gelten nur für Umriss bzw. Verbinderlinie (die Spitze wächst mit der Linienbreite).
+- **Unterstreichungen** (statische Mitglieder, Schlüsselattribute) nutzen die native Schrift-Unterstreichung des
+  Textes statt gezeichneter Linien und passen so in jedem Host zur tatsächlichen Textbreite.
 
 ## Objekttypen
 
@@ -42,7 +50,8 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
 
 - **Klassenmitglieder:** ein Mitglied pro Zeile, Sichtbarkeit als Teil der Zeile (`+ - # ~`). Ein führendes `_`
   kennzeichnet ein statisches Mitglied, das ohne Unterstrich-Zeichen unterstrichen dargestellt wird.
-- **Entitätsattribute:** `*` Primärschlüssel (unterstrichen), `#` Fremdschlüssel (`(FK)` in der Diagrammansicht,
+- **Entitätsattribute:** `*` Primärschlüssel (unterstrichen: in der Diagrammansicht die ganze Zeile, in der
+  Tabellenansicht die Namenszelle, in der Chen-Ansicht der Text der Attributellipse), `#` Fremdschlüssel (`(FK)` in der Diagrammansicht,
   Spalte `FK` in der Tabellenansicht); kombinierbar (`*#order_id`). Ein Typ folgt nach Doppelpunkt: `id: int`.
 - **Stereotypen** werden ohne Guillemets eingegeben; sie werden automatisch ergänzt (`interface` → `«interface»`).
 - **Beziehungsrichtung:** die Markierung sitzt am Endpunkt, also vom Teil/Kind/Client zum Ganzen/Elternteil/Anbieter

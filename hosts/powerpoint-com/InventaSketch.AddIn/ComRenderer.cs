@@ -122,6 +122,7 @@ namespace InventaSketch.AddIn
                         if (!string.IsNullOrEmpty(op.Font)) range.Font.Name = op.Font!.Split(',')[0].Trim();
                         range.Font.Bold = op.Bold == true ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse;
                         range.Font.Italic = op.Italic == true ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse;
+                        range.Font.Underline = op.Underline == true ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse;
                         range.Font.Color.RGB = Rgb(op.Color ?? "#000000");
                         range.ParagraphFormat.Alignment = op.Align switch
                         {
@@ -240,6 +241,10 @@ namespace InventaSketch.AddIn
             else { line.EndArrowheadLength = len; line.EndArrowheadWidth = wid; }
         }
 
+        /// <summary>
+        /// Native line ends. Hollow triangle/diamond and crow's-foot ends never arrive here: PowerPoint has no such
+        /// arrowheads, so the engine lowers them to explicit shapes (DrawPlanBuilder.HasNativeLineEnd).
+        /// </summary>
         private static Office.MsoArrowheadStyle Arrow(string name) => name switch
         {
             "triangle" or "half" => Office.MsoArrowheadStyle.msoArrowheadTriangle,

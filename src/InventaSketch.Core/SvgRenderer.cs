@@ -6,12 +6,32 @@ using System.Text;
 
 namespace InventaSketch.Core
 {
-    /// <summary>Arrowhead geometry (explicit, so output is identical in every SVG consumer and host fallback).</summary>
+    /// <summary>
+    /// Arrowhead geometry (explicit, so output is identical in every SVG consumer and host fallback). All sizes derive
+    /// from <see cref="Length"/>. Hollow heads are stroked outlines without fill and the line stops at their base, so
+    /// they look right on any background and in monochrome output.
+    /// </summary>
     public static class ArrowHeads
     {
+        // Crow's-foot proportions relative to the head length (foot length, toe spread, bar half length, circle radius).
+        private const double FootLength = 1.25, FootSpread = 0.7, BarHalf = 0.6, CircleRadius = 0.4;
+
         /// <summary>Head length in mm for a given size and stroke width.</summary>
         public static double Length(ArrowSize size, double strokeWidth) =>
             Math.Max(1.6, strokeWidth * 5) * size switch { ArrowSize.Small => 0.7, ArrowSize.Large => 1.5, _ => 1.0 };
+
+        /// <summary>True for the crow's-foot (ER cardinality) ends.</summary>
+        public static bool IsCrowsFoot(ArrowHead head) => head >= ArrowHead.CrowOne;
+
+        /// <summary>True for arrow-like heads (every head except <see cref="ArrowHead.None"/> and the crow's-foot ends).</summary>
+        public static bool IsArrow(ArrowHead head) => head != ArrowHead.None && !IsCrowsFoot(head);
+
+        /// <summary>How far the head reaches back from the tip along the line (mm), e.g. to keep labels clear of it.</summary>
+        public static double Extent(ArrowHead head, ArrowSize size, double strokeWidth)
+        {
+            var (prims, _) = Build(head, Vec2.Zero, new Vec2(1, 0), size, "#000000", strokeWidth);
+            return Prim.Flatten(prims).SelectMany(Prim.Points).Select(p => -p.X).DefaultIfEmpty(0).Max();
+        }
 
         /// <summary>
         /// Builds the head at <paramref name="tip"/> pointing along <paramref name="dir"/> (unit vector from the line towards the tip).
@@ -19,10 +39,10 @@ namespace InventaSketch.Core
         /// </summary>
         public static (IReadOnlyList<Primitive> Prims, double Inset) Build(ArrowHead head, Vec2 tip, Vec2 dir, ArrowSize size, string color, double strokeWidth)
         {
-            if (head == ArrowHead.None) return (Array.Empty<Primitive>(), 0);
+            var d = dir.Normalized();
+            if (head == ArrowHead.None || d == Vec2.Zero) return (Array.Empty<Primitive>(), 0);
             var l = Length(size, strokeWidth);
             var w = l * 0.38;
-            var d = dir.Normalized();
             var n = d.Perp;
             var back = tip - d * l;
             var solid = new Style { Stroke = color, StrokeWidth = strokeWidth, Fill = Fill.Solid(color), Dash = DashStyle.Solid };
@@ -31,6 +51,12 @@ namespace InventaSketch.Core
             {
                 case ArrowHead.Triangle:
                     return (new Primitive[] { Prim.Polygon(new[] { tip, back + n * w, back - n * w }, solid) }, l * 0.9);
+                case ArrowHead.TriangleOpen:
+                    {
+                        // Wider than the filled triangle so the hollow interior stays visible on thin lines.
+                        var wo = l * 0.5;
+                        return (new Primitive[] { Prim.Polygon(new[] { tip, back + n * wo, back - n * wo }, open) }, l);
+                    }
                 case ArrowHead.Stealth:
                     return (new Primitive[] { Prim.Polygon(new[] { tip, back + n * w, tip - d * (l * 0.65), back - n * w }, solid) }, l * 0.6);
                 case ArrowHead.Open:
@@ -38,9 +64,14 @@ namespace InventaSketch.Core
                 case ArrowHead.Half:
                     return (new Primitive[] { Prim.Polygon(new[] { tip, back + n * w, back }, solid) }, l * 0.9);
                 case ArrowHead.Diamond:
+                case ArrowHead.DiamondOpen:
                     {
-                        var m = tip - d * (l / 2);
-                        return (new Primitive[] { Prim.Polygon(new[] { tip, m + n * w, tip - d * l, m - n * w }, solid) }, l);
+                        // A diamond is widest at its middle, so it is 1.5 head lengths long to match the visual weight
+                        // of a triangle (UML aggregation/composition diamonds are commonly longer than arrowheads).
+                        var ld = l * 1.5;
+                        var m = tip - d * (ld / 2);
+                        var style = head == ArrowHead.Diamond ? solid : open;
+                        return (new Primitive[] { Prim.Polygon(new[] { tip, m + n * (l * 0.45), tip - d * ld, m - n * (l * 0.45) }, style) }, ld);
                     }
                 case ArrowHead.Oval:
                     {
@@ -55,8 +86,133 @@ namespace InventaSketch.Core
                         return (new Primitive[] { Prim.Line(tip - t, tip + t, open with { StrokeWidth = strokeWidth * 1.6 }) }, 0);
                     }
                 default:
-                    return (Array.Empty<Primitive>(), 0);
+                    return Crow(head, tip, d, n, l, open);
             }
+        }
+
+        /// <summary>
+        /// Crow's-foot ends: the mark nearest the entity (at the tip) is the maximum, the one further away the minimum
+        /// (bar = one, circle = zero, foot = many). A circle interrupts the line: the line stops behind the circle and the
+        /// head draws the short piece between circle and tip itself, so no fill is needed to hide the line.
+        /// </summary>
+        private static (IReadOnlyList<Primitive> Prims, double Inset) Crow(ArrowHead head, Vec2 tip, Vec2 d, Vec2 n, double l, Style open)
+        {
+            var list = new List<Primitive>();
+            var inset = 0.0;
+            var footEnd = l * FootLength;
+            var r = l * CircleRadius;
+            void Bar(double x) => list.Add(Prim.Line(tip - d * x + n * (l * BarHalf), tip - d * x - n * (l * BarHalf), open));
+            void Foot() => list.Add(Prim.Polyline(new[] { tip + n * (l * FootSpread), tip - d * footEnd, tip - n * (l * FootSpread) }, open));
+            void Circle(double x)
+            {
+                var c = tip - d * x;
+                list.Add(Prim.Circle(c.X, c.Y, r, open));
+                list.Add(Prim.Line(tip - d * (x - r), tip, open));
+                inset = x + r;
+            }
+            switch (head)
+            {
+                case ArrowHead.CrowOne:
+                    Bar(l * 0.95);
+                    break;
+                case ArrowHead.CrowOneOnly:
+                    Bar(l * 0.75); Bar(l * 1.3);
+                    break;
+                case ArrowHead.CrowZeroOne:
+                    Bar(l * 0.75); Circle(l * 1.55);
+                    break;
+                case ArrowHead.CrowMany:
+                    Foot();
+                    break;
+                case ArrowHead.CrowOneMany:
+                    Foot(); Bar(footEnd + l * 0.375);
+                    break;
+                case ArrowHead.CrowZeroMany:
+                    Foot(); Circle(footEnd + r + l * 0.125);
+                    break;
+            }
+            return (list, inset);
+        }
+
+        /// <summary>
+        /// Splits a line or an open path with arrowheads into the shortened shaft (without arrowhead attributes) and the
+        /// explicit head primitives. Other primitives are returned unchanged. <paramref name="color"/> overrides the head colour.
+        /// </summary>
+        public static (Primitive Shaft, IReadOnlyList<Primitive> Heads) Explode(Primitive p, string? color = null)
+        {
+            switch (p)
+            {
+                case LinePrim l when HasHeads(l.Style):
+                    {
+                        var (a, b, heads) = ExplodeLine(l.A, l.B, l.Style, color ?? l.Style.EffectiveStroke);
+                        return (l with { A = a, B = b, Style = l.Style with { ArrowStart = null, ArrowEnd = null } }, heads);
+                    }
+                case PathPrim path when !path.IsClosed && path.Segments.Count >= 2 && HasHeads(path.Style):
+                    {
+                        var segs = path.Segments.ToList();
+                        var heads = ExplodePath(segs, path.Style, color ?? path.Style.EffectiveStroke);
+                        return (path with { Segments = segs, Style = path.Style with { ArrowStart = null, ArrowEnd = null } }, heads);
+                    }
+                default:
+                    return (p, Array.Empty<Primitive>());
+            }
+        }
+
+        /// <summary>True if the style has a head at either end.</summary>
+        public static bool HasHeads(Style s) => (s.ArrowStart ?? ArrowHead.None) != ArrowHead.None || (s.ArrowEnd ?? ArrowHead.None) != ArrowHead.None;
+
+        internal static (Vec2 A, Vec2 B, List<Primitive> Heads) ExplodeLine(Vec2 a, Vec2 b, Style style, string color)
+        {
+            var heads = new List<Primitive>();
+            var size = style.ArrowSize ?? ArrowSize.Medium;
+            var w = style.EffectiveWidth;
+            Vec2 a0 = a, b0 = b;
+            if ((style.ArrowEnd ?? ArrowHead.None) != ArrowHead.None)
+            {
+                var dir = (b0 - a0).Normalized();
+                var (prims, inset) = Build(style.ArrowEnd!.Value, b0, dir, size, color, w);
+                heads.AddRange(prims);
+                b -= dir * inset;
+            }
+            if ((style.ArrowStart ?? ArrowHead.None) != ArrowHead.None)
+            {
+                var dir = (a0 - b0).Normalized();
+                var (prims, inset) = Build(style.ArrowStart!.Value, a0, dir, size, color, w);
+                heads.AddRange(prims);
+                a -= dir * inset;
+            }
+            return (a, b, heads);
+        }
+
+        /// <summary>Builds the heads of an open path and shortens its first/last segment in place.</summary>
+        internal static List<Primitive> ExplodePath(List<PathSeg> segs, Style style, string color)
+        {
+            var heads = new List<Primitive>();
+            var size = style.ArrowSize ?? ArrowSize.Medium;
+            var w = style.EffectiveWidth;
+            if ((style.ArrowEnd ?? ArrowHead.None) != ArrowHead.None)
+            {
+                var last = segs[segs.Count - 1];
+                var prev = segs[segs.Count - 2].P;
+                var from = last.Op switch { SegOp.C => last.C2, SegOp.Q => last.C1, _ => prev };
+                if ((last.P - from).Length < Geo.Eps) from = prev;
+                var dir = (last.P - from).Normalized();
+                var (prims, inset) = Build(style.ArrowEnd!.Value, last.P, dir, size, color, w);
+                heads.AddRange(prims);
+                segs[segs.Count - 1] = last with { P = last.P - dir * inset };
+            }
+            if ((style.ArrowStart ?? ArrowHead.None) != ArrowHead.None)
+            {
+                var first = segs[0];
+                var next = segs[1];
+                var to = next.Op is SegOp.C or SegOp.Q ? next.C1 : next.P;
+                if ((to - first.P).Length < Geo.Eps) to = next.P;
+                var dir = (first.P - to).Normalized();
+                var (prims, inset) = Build(style.ArrowStart!.Value, first.P, dir, size, color, w);
+                heads.AddRange(prims);
+                segs[0] = first with { P = first.P - dir * inset };
+            }
+            return heads;
         }
     }
 
@@ -188,7 +344,9 @@ namespace InventaSketch.Core
             {
                 case LinePrim l:
                     {
-                        var (a, b, heads) = includeArrows ? WithArrows(l.A, l.B, l.A, l.B, style, o) : (l.A, l.B, new List<Primitive>());
+                        var (a, b, heads) = includeArrows && ArrowHeads.HasHeads(style)
+                            ? ArrowHeads.ExplodeLine(l.A, l.B, style, Col(style.EffectiveStroke, o))
+                            : (l.A, l.B, new List<Primitive>());
                         sb.Append(indent).Append("<line x1=\"").Append(F(a.X)).Append("\" y1=\"").Append(F(a.Y)).Append("\" x2=\"").Append(F(b.X)).Append("\" y2=\"").Append(F(b.Y)).Append('"').Append(attrs).Append("/>\n");
                         foreach (var h in heads) Write(sb, h, o, indent);
                         break;
@@ -205,67 +363,13 @@ namespace InventaSketch.Core
                     {
                         var segs = path.Segments.ToList();
                         var heads = new List<Primitive>();
-                        if (includeArrows && !path.IsClosed && segs.Count >= 2 && (style.ArrowStart ?? ArrowHead.None) != ArrowHead.None | (style.ArrowEnd ?? ArrowHead.None) != ArrowHead.None)
-                            heads = ApplyPathArrows(segs, style, o);
+                        if (includeArrows && !path.IsClosed && segs.Count >= 2 && ArrowHeads.HasHeads(style))
+                            heads = ArrowHeads.ExplodePath(segs, style, Col(style.EffectiveStroke, o));
                         sb.Append(indent).Append("<path d=\"").Append(PathData(segs)).Append('"').Append(attrs).Append("/>\n");
                         foreach (var h in heads) Write(sb, h, o, indent);
                         break;
                     }
             }
-        }
-
-        private static (Vec2 A, Vec2 B, List<Primitive> Heads) WithArrows(Vec2 a, Vec2 b, Vec2 dirFromA, Vec2 dirFromB, Style style, SvgOptions o)
-        {
-            var heads = new List<Primitive>();
-            var color = Col(style.EffectiveStroke, o);
-            var size = style.ArrowSize ?? ArrowSize.Medium;
-            var w = style.EffectiveWidth;
-            if ((style.ArrowEnd ?? ArrowHead.None) != ArrowHead.None)
-            {
-                var dir = (b - dirFromA).Normalized();
-                var (prims, inset) = ArrowHeads.Build(style.ArrowEnd!.Value, b, dir, size, color, w);
-                heads.AddRange(prims);
-                b -= dir * inset;
-            }
-            if ((style.ArrowStart ?? ArrowHead.None) != ArrowHead.None)
-            {
-                var dir = (a - dirFromB).Normalized();
-                var (prims, inset) = ArrowHeads.Build(style.ArrowStart!.Value, a, dir, size, color, w);
-                heads.AddRange(prims);
-                a -= dir * inset;
-            }
-            return (a, b, heads);
-        }
-
-        private static List<Primitive> ApplyPathArrows(List<PathSeg> segs, Style style, SvgOptions o)
-        {
-            var heads = new List<Primitive>();
-            var color = Col(style.EffectiveStroke, o);
-            var size = style.ArrowSize ?? ArrowSize.Medium;
-            var w = style.EffectiveWidth;
-            if ((style.ArrowEnd ?? ArrowHead.None) != ArrowHead.None)
-            {
-                var last = segs[segs.Count - 1];
-                var prev = segs[segs.Count - 2].P;
-                var from = last.Op switch { SegOp.C => last.C2, SegOp.Q => last.C1, _ => prev };
-                if ((last.P - from).Length < Geo.Eps) from = prev;
-                var dir = (last.P - from).Normalized();
-                var (prims, inset) = ArrowHeads.Build(style.ArrowEnd!.Value, last.P, dir, size, color, w);
-                heads.AddRange(prims);
-                segs[segs.Count - 1] = last with { P = last.P - dir * inset };
-            }
-            if ((style.ArrowStart ?? ArrowHead.None) != ArrowHead.None)
-            {
-                var first = segs[0];
-                var next = segs[1];
-                var to = next.Op is SegOp.C or SegOp.Q ? next.C1 : next.P;
-                if ((to - first.P).Length < Geo.Eps) to = next.P;
-                var dir = (first.P - to).Normalized();
-                var (prims, inset) = ArrowHeads.Build(style.ArrowStart!.Value, first.P, dir, size, color, w);
-                heads.AddRange(prims);
-                segs[0] = first with { P = first.P - dir * inset };
-            }
-            return heads;
         }
 
         private static void WriteText(StringBuilder sb, TextPrim t, SvgOptions o, string indent)
@@ -282,6 +386,7 @@ namespace InventaSketch.Core
               .Append(" fill=\"").Append(Col(ts.Color ?? "#000000", o)).Append('"');
             if (ts.Bold) sb.Append(" font-weight=\"bold\"");
             if (ts.Italic) sb.Append(" font-style=\"italic\"");
+            if (ts.Underline) sb.Append(" text-decoration=\"underline\"");
             if (Math.Abs(t.Rotation) > 1e-9) sb.Append(" transform=\"rotate(").Append(F(t.Rotation)).Append(' ').Append(F(t.Position.X)).Append(' ').Append(F(t.Position.Y)).Append(")\"");
             sb.Append('>');
             for (var i = 0; i < lines.Length; i++)

@@ -175,7 +175,7 @@ namespace InventaSketch.Modules.Diagrams.Tests
             var prims = T.Local(r, doc, o.Id);
             var rows = T.All<TextPrim>(prims).Where(t => t.Tag == DiagTags.Row).Select(t => t.Text).ToList();
             Assert.Equal(new[] { "+ a: int", "count: int", "- b: String", "+ f(): void", "# g(x: int)" }, rows);
-            Assert.Single(T.All<LinePrim>(prims), l => l.Tag == DiagTags.Underline); // static member
+            Assert.Equal("count: int", Assert.Single(T.All<TextPrim>(prims), t => t.TextStyle.Underline).Text); // static member
             Assert.Equal(2, T.All<LinePrim>(prims).Count(l => l.Tag == DiagTags.Divider));
             var name = T.All<TextPrim>(prims).Single(t => t.Tag == DiagTags.Name);
             Assert.Equal("Order", name.Text);
@@ -228,19 +228,24 @@ namespace InventaSketch.Modules.Diagrams.Tests
             var diagram = T.Local(r, doc, o.Id);
             var rows = T.All<TextPrim>(diagram).Where(t => t.Tag == DiagTags.Row).Select(t => t.Text).ToList();
             Assert.Equal(new[] { "id: int", "name: varchar", "customer_id: int (FK)", "region_id: int (FK)" }, rows);
-            var underlines = T.All<LinePrim>(diagram).Where(l => l.Tag == DiagTags.Underline).ToList();
-            Assert.Equal(2, underlines.Count);
-            // Only the name part is underlined ("id", not "id: int").
-            Assert.True(underlines[0].B.X - underlines[0].A.X < D.Width("id: int", D.TextSize) / 2);
+            // Key rows use the native font underline (the whole row; no estimated underline lines any more).
+            Assert.Equal(new[] { "id: int", "region_id: int (FK)" }, T.All<TextPrim>(diagram).Where(t => t.TextStyle.Underline).Select(t => t.Text));
+            Assert.DoesNotContain(T.All<LinePrim>(diagram), l => l.Tag != DiagTags.Divider);
 
             var table = T.Local(r, Edits.Replace(doc, e with { View = "table" }), o.Id);
             Assert.Equal(new[] { "PK", "FK", "PK, FK" }, T.All<TextPrim>(table).Where(t => t.Tag == DiagTags.Marker).Select(t => t.Text));
             Assert.Equal(new[] { "id", "int", "name", "varchar", "customer_id", "int", "region_id", "int" }, T.All<TextPrim>(table).Where(t => t.Tag == DiagTags.Row).Select(t => t.Text));
-            Assert.Equal(2, T.All<LinePrim>(table).Count(l => l.Tag == DiagTags.Underline));
+            Assert.Equal(new[] { "id", "region_id" }, T.All<TextPrim>(table).Where(t => t.TextStyle.Underline).Select(t => t.Text));
 
             var chen = T.Local(r, Edits.Replace(doc, e with { View = "chen", Size = new Size2(90, 50) }), o.Id);
             Assert.Equal(4, T.All<EllipsePrim>(chen).Count());
-            Assert.Equal(2, T.All<LinePrim>(chen).Count(l => l.Tag == DiagTags.Underline));
+            Assert.Equal(new[] { "id", "region_id" }, T.All<TextPrim>(chen).Where(t => t.TextStyle.Underline).Select(t => t.Text));
+
+            var (d2, key) = T.Insert(r, "diag.er.attribute", new Vec2(40, 40));
+            Assert.DoesNotContain(T.All<TextPrim>(T.Local(r, d2, key.Id)), t => t.TextStyle.Underline);
+            d2 = Edits.Replace(d2, key.WithParam("key", true));
+            Assert.All(T.All<TextPrim>(T.Local(r, d2, key.Id)), t => Assert.True(t.TextStyle.Underline));
+            Assert.Contains("text-decoration=\"underline\"", SvgRenderer.RenderPage(r, d2, d2.Pages[0]));
 
             var weak = T.Local(r, Edits.Replace(doc, e.WithParam("weak", true)), o.Id);
             Assert.Equal(2, weak.Count(p => p.Tag == DiagTags.Outline));
@@ -282,12 +287,35 @@ namespace InventaSketch.Modules.Diagrams.Tests
             var (doc, o) = T.Insert(r, "diag.uml.relation.composition", new Vec2(80, 60));
             doc = Edits.Replace(doc, o with { Text = "owns", Style = new Style { Stroke = "#0000ff", StrokeWidth = 0.7 } });
             var prims = T.Render(r, doc, o.Id);
-            var head = prims.Single(p => p.Tag == DiagTags.Head);
+            var main = T.StyleOf(prims.Single(p => p.Tag == DiagTags.Main));
+            Assert.Equal("#0000ff", main.Stroke);
+            Assert.Equal(0.7, main.StrokeWidth);
+            Assert.Equal(ArrowHead.Diamond, main.ArrowEnd);
+            // The head is drawn from the line style: same colour, filled in the stroke colour.
+            var head = Assert.Single(ArrowHeads.Explode(prims.Single(p => p.Tag == DiagTags.Main)).Heads);
             Assert.Equal("#0000ff", T.FillOf(head)!.Color);
             Assert.Equal("#0000ff", T.StyleOf(head).Stroke);
-            Assert.Equal(0.7, T.StyleOf(prims.Single(p => p.Tag == DiagTags.Main)).StrokeWidth);
-            Assert.Equal(D.LineWidth, T.StyleOf(head).StrokeWidth);
             Assert.All(T.All<TextPrim>(prims), t => Assert.Equal("#0000ff", t.TextStyle.Color));
+        }
+
+        [Fact]
+        public void UserArrowheadOverridesApplyToConnectors()
+        {
+            var r = T.Reg();
+            var (doc, o) = T.Insert(r, "diag.uml.relation.generalization", new Vec2(80, 60));
+            Style Main(SketchObject x) => T.StyleOf(T.Render(r, Edits.Replace(doc, x), o.Id).Single(p => p.Tag == DiagTags.Main));
+            Assert.Equal(ArrowHead.TriangleOpen, Main(o).ArrowEnd);
+            Assert.Equal(D.HeadSize, Main(o).ArrowSize);
+            var over = Main(o with { Style = new Style { ArrowEnd = ArrowHead.Stealth, ArrowStart = ArrowHead.Oval, ArrowSize = ArrowSize.Small } });
+            Assert.Equal(ArrowHead.Stealth, over.ArrowEnd);
+            Assert.Equal(ArrowHead.Oval, over.ArrowStart);
+            Assert.Equal(ArrowSize.Small, over.ArrowSize);
+            Assert.Equal(ArrowHead.None, Main(o with { Style = new Style { ArrowEnd = ArrowHead.None } }).ArrowEnd);
+
+            var (d2, er) = T.Insert(r, "diag.er.connector", new Vec2(80, 60));
+            var erMain = T.StyleOf(T.Render(r, Edits.Replace(d2, er with { Style = new Style { ArrowStart = ArrowHead.CrowMany } }), er.Id).Single(p => p.Tag == DiagTags.Main));
+            Assert.Equal(ArrowHead.CrowMany, erMain.ArrowStart);
+            Assert.Equal(ArrowHead.CrowZeroMany, erMain.ArrowEnd);
         }
     }
 
@@ -342,14 +370,16 @@ namespace InventaSketch.Modules.Diagrams.Tests
             var prims = T.Render(r, doc, rel.Id);
             var main = prims.Single(p => p.Tag == DiagTags.Main);
             Assert.True(T.StartOf(main).DistanceTo(portA) < 1e-9);
-            var head = prims.Single(p => p.Tag == DiagTags.Head);
-            Assert.Contains(Prim.Points(head), v => v.DistanceTo(portB) < 1e-9); // triangle tip on the port
-            Assert.True(T.EndOf(main).DistanceTo(portB) > 2); // line stops at the hollow triangle's base
+            Assert.True(T.EndOf(main).DistanceTo(portB) < 1e-9);
+            Assert.Equal(ArrowHead.TriangleOpen, T.StyleOf(main).ArrowEnd);
+            var (shaft, heads) = ArrowHeads.Explode(main);
+            Assert.Contains(Prim.Points(Assert.Single(heads)), v => v.DistanceTo(portB) < 1e-9); // triangle tip on the port
+            Assert.True(T.EndOf(shaft).DistanceTo(portB) > 2); // line stops at the hollow triangle's base
 
             doc = Edits.Move(doc, new[] { b.Id }, new Vec2(10, 20));
             var moved = doc.ResolvePoints(doc.Get(rel.Id)!)[1];
             Assert.True(moved.DistanceTo(portB + new Vec2(10, 20)) < 1e-9);
-            Assert.Contains(Prim.Points(T.Render(r, doc, rel.Id).Single(p => p.Tag == DiagTags.Head)), v => v.DistanceTo(moved) < 1e-9);
+            Assert.True(T.EndOf(T.Render(r, doc, rel.Id).Single(p => p.Tag == DiagTags.Main)).DistanceTo(moved) < 1e-9);
         }
 
         [Fact]
@@ -421,21 +451,24 @@ namespace InventaSketch.Modules.Diagrams.Tests
         {
             var r = T.Reg();
             var (doc, o) = T.Insert(r, "diag.er.connector", new Vec2(100, 100));
+            IReadOnlyList<Primitive> Heads(string v)
+                => ArrowHeads.Explode(T.Render(r, Edits.Replace(doc, o.WithParam("endEnd", v).WithParam("startEnd", "none")), o.Id).Single(p => p.Tag == DiagTags.Main)).Heads;
             var sigs = new Dictionary<string, string>();
             foreach (var (value, _, _) in new[] { ("none", "", "") }.Concat(D.CrowCycle.Select(e => (D.EndName(e), "", ""))))
             {
-                var d = Edits.Replace(doc, o.WithParam("endEnd", value).WithParam("startEnd", "none"));
-                var heads = T.Render(r, d, o.Id).Where(p => p.Tag == DiagTags.Head).ToList();
+                var heads = Heads(value);
                 sigs[value] = T.Sig(heads);
                 // The notation sits at the end point and never sticks out more than 7 mm along the line.
                 var end = o.Points![1];
                 Assert.All(heads.SelectMany(Prim.Points), p => Assert.True(p.DistanceTo(end) < 7.5, value));
+                Assert.All(heads, h => Assert.NotEqual(FillKind.Solid, T.StyleOf(h).EffectiveFill.Kind)); // background independent
             }
             Assert.Equal(7, sigs.Values.Distinct().Count());
             Assert.Equal("", sigs["none"]);
+            Assert.Equal(ArrowHead.CrowZeroMany, T.StyleOf(T.Render(r, doc, o.Id).Single(p => p.Tag == DiagTags.Main)).ArrowEnd);
+            Assert.Equal(ArrowHead.CrowOneOnly, T.StyleOf(T.Render(r, doc, o.Id).Single(p => p.Tag == DiagTags.Main)).ArrowStart);
 
-            int Count<TP>(string v) where TP : Primitive
-                => T.All<TP>(T.Render(r, Edits.Replace(doc, o.WithParam("endEnd", v).WithParam("startEnd", "none")), o.Id).Where(p => p.Tag == DiagTags.Head)).Count();
+            int Count<TP>(string v) where TP : Primitive => T.All<TP>(Heads(v)).Count();
             Assert.Equal(1, Count<LinePrim>("one"));
             Assert.Equal(2, Count<LinePrim>("onlyOne"));
             Assert.Equal(1, Count<EllipsePrim>("zeroOrOne"));
@@ -469,14 +502,24 @@ namespace InventaSketch.Modules.Diagrams.Tests
             var r = T.Reg();
             var (doc, o) = T.Insert(r, "diag.uml.relation", new Vec2(100, 100));
             IReadOnlyList<Primitive> R(string kind) => T.Render(r, Edits.Replace(doc, o.WithParam("kind", kind)), o.Id);
-            Primitive Head(string kind) => R(kind).Single(p => p.Tag == DiagTags.Head);
-            DashStyle Dash(string kind) => T.StyleOf(R(kind).Single(p => p.Tag == DiagTags.Main)).EffectiveDash;
+            Primitive Main(string kind) => R(kind).Single(p => p.Tag == DiagTags.Main);
+            ArrowHead? End(string kind) => T.StyleOf(Main(kind)).ArrowEnd;
+            Primitive Head(string kind) => ArrowHeads.Explode(Main(kind)).Heads.Single();
+            DashStyle Dash(string kind) => T.StyleOf(Main(kind)).EffectiveDash;
 
-            Assert.DoesNotContain(R("association"), p => p.Tag == DiagTags.Head);
-            Assert.Equal(D.Paper, T.FillOf(Head("generalization"))!.Color);
+            Assert.Null(End("association"));
+            Assert.Equal(ArrowHead.Open, End("directed"));
+            Assert.Equal(ArrowHead.Open, End("dependency"));
+            Assert.Equal(ArrowHead.TriangleOpen, End("generalization"));
+            Assert.Equal(ArrowHead.TriangleOpen, End("realization"));
+            Assert.Equal(ArrowHead.Diamond, End("composition"));
+            Assert.Equal(ArrowHead.DiamondOpen, End("aggregation"));
+            Assert.Null(End("link"));
+            // Hollow heads are unfilled outlines; the line stops at their base (no paper fill needed).
+            Assert.Equal(FillKind.None, T.StyleOf(Head("generalization")).EffectiveFill.Kind);
             Assert.Equal(4, ((PathPrim)Head("generalization")).Segments.Count); // triangle: M L L Z
             Assert.Equal(D.Ink, T.FillOf(Head("composition"))!.Color);
-            Assert.Equal(D.Paper, T.FillOf(Head("aggregation"))!.Color);
+            Assert.Equal(FillKind.None, T.StyleOf(Head("aggregation")).EffectiveFill.Kind);
             Assert.Equal(5, ((PathPrim)Head("aggregation")).Segments.Count); // diamond: M L L L Z
             Assert.False(((PathPrim)Head("directed")).IsClosed);
             Assert.Equal(DashStyle.Solid, Dash("generalization"));
@@ -503,8 +546,9 @@ namespace InventaSketch.Modules.Diagrams.Tests
             Assert.True(Pos(d2, "1").DistanceTo(one) < 3);
             Assert.True(Pos(d2, "0..*").DistanceTo(many) < 3);
             // The diamond moved to the other end.
-            var head = T.Render(r, d2, o.Id).Single(p => p.Tag == DiagTags.Head);
-            Assert.Contains(Prim.Points(head), p => p.DistanceTo(swapped.Points[1]) < 1e-9);
+            var main = T.Render(r, d2, o.Id).Single(p => p.Tag == DiagTags.Main);
+            Assert.Equal(ArrowHead.DiamondOpen, T.StyleOf(main).ArrowEnd);
+            Assert.True(T.EndOf(main).DistanceTo(swapped.Points[1]) < 1e-9);
         }
 
         [Fact]
@@ -533,7 +577,7 @@ namespace InventaSketch.Modules.Diagrams.Tests
             var main = Assert.IsType<PathPrim>(prims.Single(p => p.Tag == DiagTags.Main));
             Assert.Equal(4, main.Segments.Count);
             Assert.True(main.Segments[1].P.X > 105);
-            Assert.Equal(D.Ink, T.FillOf(prims.Single(p => p.Tag == DiagTags.Head))!.Color); // synchronous: filled head
+            Assert.Equal(ArrowHead.Triangle, main.Style.ArrowEnd); // synchronous: filled head
         }
     }
 

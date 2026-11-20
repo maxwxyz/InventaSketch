@@ -87,5 +87,44 @@ namespace InventaSketch.AddIn.Tests
             Assert.Equal(0, pie.HitTest(new PointF(300, 300 - 60)));
             Assert.Equal(-1, pie.HitTest(new PointF(300, 300)));
         }
+
+        private static int Ink(Bitmap bmp) => Enumerable.Range(0, bmp.Width).Sum(x => Enumerable.Range(0, bmp.Height).Count(y => bmp.GetPixel(x, y).R < 128));
+
+        private static Bitmap Thumb(params Primitive[] prims) => ThumbnailRenderer.Render(prims, 200, Color.Black, Color.White);
+
+        private static Primitive Arrow(ArrowHead end, double y = 0)
+            => Prim.Line(0, y, 20, y, Core.Style.Visible with { StrokeWidth = 0.3, ArrowEnd = end, ArrowSize = ArrowSize.Large });
+
+        [Fact]
+        public void ThumbnailsDrawEveryArrowheadIncludingHollowAndCrowsFootEnds()
+        {
+            Directory.CreateDirectory(Out);
+            var heads = System.Enum.GetValues(typeof(ArrowHead)).Cast<ArrowHead>().ToList();
+            using (var gallery = ThumbnailRenderer.Render(heads.Select((h, i) => Arrow(h, i * 6)).ToArray(), 600, Color.Black, Color.White))
+                gallery.Save(Path.Combine(Out, "arrowheads.png"));
+
+            // Each head adds ink to the bare line; a fixed reference square keeps the scale identical for every image.
+            var frame = Prim.Rect(-2, -8, 26, 16, Core.Style.Visible with { StrokeWidth = 0.1 });
+            using var bare = Thumb(frame, Arrow(ArrowHead.None));
+            var baseInk = Ink(bare);
+            foreach (var h in heads.Where(h => h != ArrowHead.None))
+            {
+                using var bmp = Thumb(frame, Arrow(h));
+                Assert.True(Ink(bmp) > baseInk + 3, h + " draws nothing");
+            }
+            // Hollow heads leave their interior blank.
+            using var filled = Thumb(frame, Arrow(ArrowHead.Diamond));
+            using var hollow = Thumb(frame, Arrow(ArrowHead.DiamondOpen));
+            Assert.True(Ink(hollow) < Ink(filled));
+        }
+
+        [Fact]
+        public void ThumbnailsUnderlineText()
+        {
+            var frame = Prim.Rect(-12, -6, 24, 12, Core.Style.Visible with { StrokeWidth = 0.1 });
+            using var plain = Thumb(frame, Prim.Text(0, 0, "Key"));
+            using var under = Thumb(frame, Prim.Text(0, 0, "Key", new TextStyle { Underline = true }));
+            Assert.True(Ink(under) > Ink(plain) + 10);
+        }
     }
 }

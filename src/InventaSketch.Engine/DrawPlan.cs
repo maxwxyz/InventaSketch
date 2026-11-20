@@ -108,6 +108,8 @@ namespace InventaSketch.Engine
         public string? Font { get; set; }
         public bool? Bold { get; set; }
         public bool? Italic { get; set; }
+        /// <summary>Single underline of the whole text (native font attribute on every host).</summary>
+        public bool? Underline { get; set; }
         public string? Color { get; set; }
         /// <summary>left, center, right.</summary>
         public string? Align { get; set; }
@@ -241,6 +243,15 @@ namespace InventaSketch.Engine
         }
 
         private static string F(double v) => Math.Round(v, 3).ToString("0.###", CultureInfo.InvariantCulture);
+
+        /// <summary>
+        /// Heads a host with <see cref="DrawCapabilities.Arrowheads"/> draws as a line-end attribute (PowerPoint
+        /// msoArrowhead*, OOXML a:headEnd/a:tailEnd): triangle, open, stealth, diamond and oval exist natively, tick and
+        /// half are approximated by open and triangle. Hollow triangle/diamond and crow's-foot ends have no native line
+        /// end and are always lowered to explicit shapes.
+        /// </summary>
+        public static bool HasNativeLineEnd(ArrowHead head) => head is ArrowHead.Triangle or ArrowHead.Open or ArrowHead.Stealth
+            or ArrowHead.Diamond or ArrowHead.Oval or ArrowHead.Tick or ArrowHead.Half;
 
         internal static Style? StyleOf(Primitive p) => p switch
         {
@@ -386,6 +397,7 @@ namespace InventaSketch.Engine
                     Op = "text", X = R(x * Pt), Y = R(y * Pt), W = R(w * Pt), H = R(h * Pt),
                     Rotation = Math.Abs(t.Rotation) > 1e-6 ? R(Geo.NormDeg(t.Rotation)) : null,
                     Text = t.Text, FontSize = R(ts.Size * Pt), Font = ts.Font, Bold = ts.Bold ? true : null, Italic = ts.Italic ? true : null,
+                    Underline = ts.Underline ? true : null,
                     Color = ts.Color ?? "#000000",
                     Align = ts.Anchor switch { TextAnchor.Start => "left", TextAnchor.End => "right", _ => "center" },
                     Tag = t.Tag,
@@ -398,71 +410,93 @@ namespace InventaSketch.Engine
                 if (stroke is null) return;
                 var start = s.ArrowStart ?? ArrowHead.None;
                 var end = s.ArrowEnd ?? ArrowHead.None;
-                if (_caps.Arrowheads || (start == ArrowHead.None && end == ArrowHead.None))
+                Vec2 a0 = a, b0 = b;
+                if (end != ArrowHead.None)
                 {
-                    if (start != ArrowHead.None) stroke.ArrowStart = Camel(start.ToString());
-                    if (end != ArrowHead.None) stroke.ArrowEnd = Camel(end.ToString());
-                    if (start != ArrowHead.None || end != ArrowHead.None) stroke.ArrowSize = Camel((s.ArrowSize ?? ArrowSize.Medium).ToString());
-                    Ops.Add(LineOp(a, b, stroke, tag));
-                    return;
+                    if (Native(end)) stroke.ArrowEnd = Camel(end.ToString());
+                    else b = Head(end, b0, (b0 - a0).Normalized(), s, "arrowEnd");
                 }
-                if (end != ArrowHead.None) b = Head(end, b, (b - a).Normalized(), s, "arrowEnd");
-                if (start != ArrowHead.None) a = Head(start, a, (a - b).Normalized(), s, "arrowStart");
+                if (start != ArrowHead.None)
+                {
+                    if (Native(start)) stroke.ArrowStart = Camel(start.ToString());
+                    else a = Head(start, a0, (a0 - b0).Normalized(), s, "arrowStart");
+                }
+                if (stroke.ArrowStart is not null || stroke.ArrowEnd is not null) stroke.ArrowSize = Camel((s.ArrowSize ?? ArrowSize.Medium).ToString());
                 Ops.Add(LineOp(a, b, stroke, tag));
             }
 
-            /// <summary>Emits an arrowhead as separate shapes; returns the shortened line end.</summary>
+            /// <summary>True if the host draws this head as a line-end attribute.</summary>
+            private bool Native(ArrowHead head) => _caps.Arrowheads && HasNativeLineEnd(head);
+
+            private static PlanFill SimpleFill(Style s)
+                => s.EffectiveFill is { Kind: FillKind.Solid, Color: not null } f ? new PlanFill { Kind = "solid", Color = f.Color } : new PlanFill();
+
+            /// <summary>
+            /// Emits an arrowhead as separate shapes; returns the shortened line end. With freeform shapes the head is drawn
+            /// with its exact geometry; otherwise triangles and diamonds become rotated geometric shapes and everything else
+            /// (open heads, ticks, crow's feet) lines and ellipses.
+            /// </summary>
             private Vec2 Head(ArrowHead head, Vec2 tip, Vec2 dir, Style s, string tag)
             {
                 var size = s.ArrowSize ?? ArrowSize.Medium;
                 var width = s.EffectiveWidth;
                 var color = s.EffectiveStroke;
                 var (prims, inset) = ArrowHeads.Build(head, tip, dir, size, color, width);
-                var l = ArrowHeads.Length(size, width);
-                var hw = l * 0.38;
-                switch (head)
+                var shaftEnd = tip - dir * inset;
+                if (_caps.Arrowheads) Note($"arrowhead '{Camel(head.ToString())}' has no native line end: drawn as shapes");
+                if (!_caps.Freeform && head is ArrowHead.Triangle or ArrowHead.Stealth or ArrowHead.Half or ArrowHead.Diamond or ArrowHead.TriangleOpen or ArrowHead.DiamondOpen
+                    && prims.Count == 1 && prims[0] is PathPrim poly)
                 {
-                    case ArrowHead.Triangle:
-                    case ArrowHead.Stealth:
-                    case ArrowHead.Half:
-                    case ArrowHead.Diamond:
-                        {
-                            if (head is ArrowHead.Stealth or ArrowHead.Half) Note($"arrowhead '{Camel(head.ToString())}' approximated by a triangle");
-                            // Office "triangle"/"diamond": apex at the top centre; rotate so the apex points along dir.
-                            var deg = Geo.NormDeg(Geo.RadToDeg(Math.Atan2(dir.X, -dir.Y)));
-                            if (Math.Abs(deg) > 1e-6 && !_caps.Rotation) { Fail("arrowheads need shape rotation or a picture"); return tip - dir * inset; }
-                            var c = tip - dir * (l / 2);
-                            var fill = new PlanFill { Kind = "solid", Color = color };
+                    if (head is ArrowHead.Stealth or ArrowHead.Half) Note($"arrowhead '{Camel(head.ToString())}' approximated by a triangle");
+                    // Office "triangle"/"diamond": apex at the top centre; rotate so the apex points along dir.
+                    var deg = Geo.NormDeg(Geo.RadToDeg(Math.Atan2(dir.X, -dir.Y)));
+                    if (Math.Abs(deg) > 1e-6 && !_caps.Rotation) { Fail("arrowheads need shape rotation or a picture"); return shaftEnd; }
+                    // Box of the head: length along dir, half width across it (from the exact polygon).
+                    var n = dir.Perp;
+                    var pts = poly.Segments.Where(x => x.Op != SegOp.Z).Select(x => x.P).ToList();
+                    var l = pts.Max(p => (tip - p).Dot(dir));
+                    var hw = pts.Max(p => Math.Abs((p - tip).Dot(n)));
+                    var c = tip - dir * (l / 2);
+                    var diamond = head is ArrowHead.Diamond or ArrowHead.DiamondOpen;
+                    Ops.Add(new PlanOp
+                    {
+                        Op = "shape", Shape = diamond ? "diamond" : "triangle",
+                        X = R((c.X - hw) * Pt), Y = R((c.Y - l / 2) * Pt), W = R(2 * hw * Pt), H = R(l * Pt),
+                        Rotation = Math.Abs(deg) > 1e-6 ? R(deg) : null,
+                        Stroke = new PlanStroke { Color = color, Weight = R(width * Pt), Dash = "solid" }, Fill = SimpleFill(poly.Style), Tag = tag,
+                    });
+                    return diamond ? tip - dir * l : shaftEnd;
+                }
+                foreach (var p in prims)
+                {
+                    switch (p)
+                    {
+                        case LinePrim ln: Ops.Add(LineOp(ln.A, ln.B, Stroke(ln.Style), tag)); break;
+                        case EllipsePrim e:
                             Ops.Add(new PlanOp
                             {
-                                Op = "shape", Shape = head == ArrowHead.Diamond ? "diamond" : "triangle",
-                                X = R((c.X - hw) * Pt), Y = R((c.Y - l / 2) * Pt), W = R(2 * hw * Pt), H = R(l * Pt),
-                                Rotation = Math.Abs(deg) > 1e-6 ? R(deg) : null,
-                                Stroke = new PlanStroke { Color = color, Weight = R(width * Pt), Dash = "solid" }, Fill = fill, Tag = tag,
+                                Op = "ellipse", X = R((e.Center.X - e.Rx) * Pt), Y = R((e.Center.Y - e.Ry) * Pt), W = R(2 * e.Rx * Pt), H = R(2 * e.Ry * Pt),
+                                Stroke = Stroke(e.Style), Fill = SimpleFill(e.Style), Tag = tag,
                             });
-                            return tip - dir * (head == ArrowHead.Diamond ? l : inset);
-                        }
-                    default:
-                        foreach (var p in prims)
-                        {
-                            switch (p)
+                            break;
+                        case PathPrim pa when _caps.Freeform:
+                            Ops.Add(new PlanOp
                             {
-                                case LinePrim ln: Ops.Add(LineOp(ln.A, ln.B, Stroke(ln.Style), tag)); break;
-                                case EllipsePrim e:
-                                    Ops.Add(new PlanOp
-                                    {
-                                        Op = "ellipse", X = R((e.Center.X - e.Rx) * Pt), Y = R((e.Center.Y - e.Ry) * Pt), W = R(2 * e.Rx * Pt), H = R(2 * e.Ry * Pt),
-                                        Stroke = Stroke(e.Style), Fill = new PlanFill { Kind = "solid", Color = color }, Tag = tag,
-                                    });
-                                    break;
-                                case PathPrim pa:
-                                    for (var i = 1; i < pa.Segments.Count; i++)
-                                        if (pa.Segments[i].Op == SegOp.L) Ops.Add(LineOp(pa.Segments[i - 1].P, pa.Segments[i].P, Stroke(pa.Style), tag));
-                                    break;
+                                Op = "polyline", Points = pa.Segments.Where(x => x.Op != SegOp.Z).Select(x => new[] { R(x.P.X * Pt), R(x.P.Y * Pt) }).ToList(),
+                                Closed = pa.IsClosed, Stroke = Stroke(pa.Style), Fill = SimpleFill(pa.Style), Tag = tag,
+                            });
+                            break;
+                        case PathPrim pa:
+                            for (var i = 1; i < pa.Segments.Count; i++)
+                            {
+                                var seg = pa.Segments[i];
+                                if (seg.Op == SegOp.L) Ops.Add(LineOp(pa.Segments[i - 1].P, seg.P, Stroke(pa.Style), tag));
+                                else if (seg.Op == SegOp.Z) Ops.Add(LineOp(pa.Segments[i - 1].P, pa.Segments[0].P, Stroke(pa.Style), tag));
                             }
-                        }
-                        return tip - dir * inset;
+                            break;
+                    }
                 }
+                return shaftEnd;
             }
 
             private void AddPath(PathPrim p)
@@ -477,13 +511,7 @@ namespace InventaSketch.Engine
                 {
                     var stroke = Stroke(s);
                     var segs = p.Segments.ToList();
-                    if (arrows && !_caps.Arrowheads) segs = LowerPathArrows(segs, s);
-                    else if (arrows && stroke is not null)
-                    {
-                        if (start != ArrowHead.None) stroke.ArrowStart = Camel(start.ToString());
-                        if (end != ArrowHead.None) stroke.ArrowEnd = Camel(end.ToString());
-                        stroke.ArrowSize = Camel((s.ArrowSize ?? ArrowSize.Medium).ToString());
-                    }
+                    if (arrows && stroke is not null) segs = LowerPathArrows(segs, s, stroke);
                     if (!hasCurves && segs.Count(x => x.Op == SegOp.M) == 1)
                         Ops.Add(new PlanOp { Op = "polyline", Points = segs.Where(x => x.Op != SegOp.Z).Select(x => new[] { R(x.P.X * Pt), R(x.P.Y * Pt) }).ToList(), Closed = p.IsClosed, Stroke = stroke, Fill = fill, Opacity = s.Opacity, Tag = p.Tag });
                     else
@@ -495,7 +523,7 @@ namespace InventaSketch.Engine
                 var st = Stroke(s);
                 if (st is null) return;
                 var list = p.Segments.ToList();
-                if (arrows) list = LowerPathArrows(list, s);
+                if (arrows) list = LowerPathArrows(list, s, null);
                 // Open/closed polyline as straight line shapes (dash phase restarts per segment).
                 Vec2? subStart = null, prev = null;
                 foreach (var seg in list)
@@ -518,11 +546,21 @@ namespace InventaSketch.Engine
 
             private static PlanStroke Clone(PlanStroke s) => new() { Color = s.Color, Weight = s.Weight, Dash = s.Dash };
 
-            private List<PathSeg> LowerPathArrows(List<PathSeg> segs, Style s)
+            /// <summary>
+            /// Lowers path arrowheads into shapes. Heads with a native line end are set on <paramref name="nativeStroke"/>
+            /// instead (when given and the host supports arrowheads).
+            /// </summary>
+            private List<PathSeg> LowerPathArrows(List<PathSeg> segs, Style s, PlanStroke? nativeStroke)
             {
                 if (segs.Count < 2) return segs;
                 var end = s.ArrowEnd ?? ArrowHead.None;
                 var start = s.ArrowStart ?? ArrowHead.None;
+                if (nativeStroke is not null)
+                {
+                    if (end != ArrowHead.None && Native(end)) { nativeStroke.ArrowEnd = Camel(end.ToString()); end = ArrowHead.None; }
+                    if (start != ArrowHead.None && Native(start)) { nativeStroke.ArrowStart = Camel(start.ToString()); start = ArrowHead.None; }
+                    if (nativeStroke.ArrowStart is not null || nativeStroke.ArrowEnd is not null) nativeStroke.ArrowSize = Camel((s.ArrowSize ?? ArrowSize.Medium).ToString());
+                }
                 if (end != ArrowHead.None)
                 {
                     var last = segs[segs.Count - 1];

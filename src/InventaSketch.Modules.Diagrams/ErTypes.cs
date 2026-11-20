@@ -82,7 +82,7 @@ namespace InventaSketch.Modules.Diagrams
             const double inset = 1.0;
             if (weak) list.Add(Prim.Rect(-w / 2 + inset, -h / 2 + inset, w - 2 * inset, h - 2 * inset, D.OutlineOpen) with { Tag = DiagTags.Outline });
             var rows = attrs.Select(a => new DiagRow(a.Name + (a.DataType is null ? "" : ": " + a.DataType) + (a.ForeignKey ? " (FK)" : ""))
-            { Underline = a.PrimaryKey, UnderlineChars = a.Name.Length }).ToList();
+            { Underline = a.PrimaryKey }).ToList();
             var pad = weak ? inset : 0;
             var prims = D.Compartments(w - 2 * pad, h - 2 * pad, new IReadOnlyList<DiagRow>[] { D.Header(null, name), rows }, TextSizeOf(o));
             list.AddRange(prims.Select(p => p is LinePrim l && l.Tag == DiagTags.Divider ? l with { A = new Vec2(-w / 2, l.A.Y), B = new Vec2(w / 2, l.B.Y) } : p));
@@ -115,9 +115,7 @@ namespace InventaSketch.Modules.Diagrams
                 var a = attrs[i - 1];
                 var cy = y + rowH / 2;
                 if (hasKey && a.KeyText.Length > 0) list.Add(D.Text(new Vec2(-hw + pad, cy), a.KeyText, size, DiagTags.Marker, TextAnchor.Start, bold: true));
-                var nt = D.Text(new Vec2(-hw + keyW + pad, cy), a.Name, size, DiagTags.Row, TextAnchor.Start);
-                list.Add(nt);
-                if (a.PrimaryKey && a.Name.Length > 0) list.Add(D.UnderlineFor(nt));
+                list.Add(D.Text(new Vec2(-hw + keyW + pad, cy), a.Name, size, DiagTags.Row, TextAnchor.Start, underline: a.PrimaryKey && a.Name.Length > 0));
                 if (hasType && a.DataType is not null) list.Add(D.Text(new Vec2(hw - typeW + pad, cy), a.DataType, size, DiagTags.Row, TextAnchor.Start));
             }
             if (attrs.Count > 0)
@@ -152,9 +150,7 @@ namespace InventaSketch.Modules.Diagrams
                 var a = attrs[i];
                 ovals.Add(Prim.Ellipse(cx, cy, ow / 2, oh / 2, D.Outline) with { Tag = DiagTags.Outline });
                 var size = D.Fit(textSize, new[] { a.Name }, ow * 0.72, oh * 0.7, 1);
-                var t = D.Text(new Vec2(cx, cy), a.Name, size, DiagTags.Row);
-                ovals.Add(t);
-                if (a.PrimaryKey && a.Name.Length > 0) ovals.Add(D.UnderlineFor(t));
+                ovals.Add(D.Text(new Vec2(cx, cy), a.Name, size, DiagTags.Row, underline: a.PrimaryKey && a.Name.Length > 0));
                 // Line from the entity edge (spread along it) to the ellipse.
                 var ex = Geo.Clamp(cx * 0.6, -ew / 2 + 1, ew / 2 - 1);
                 lines.Add(new LinePrim(new Vec2(ex, upper ? -eh / 2 : eh / 2), new Vec2(cx, upper ? cy + oh / 2 : cy - oh / 2), D.Thin) { Tag = DiagTags.Divider });
@@ -200,10 +196,7 @@ namespace InventaSketch.Modules.Diagrams
             var style = o.Flag("derived", false) ? D.Dashed(D.Outline) : D.Outline;
             var list = new List<Primitive> { Prim.Ellipse(0, 0, rx, ry, style) with { Tag = DiagTags.Outline } };
             if (o.Flag("multivalued", false)) list.Add(Prim.Ellipse(0, 0, Math.Max(0.1, rx - 1), Math.Max(0.1, ry - 1), D.OutlineOpen) with { Tag = DiagTags.Outline });
-            var start = list.Count;
-            D.CenterText(list, Label(o, ctx), TextSizeOf(o), Vec2.Zero, o.Size.W * 0.7, o.Size.H * 0.7, DiagTags.Row);
-            if (o.Flag("key", false))
-                foreach (var t in list.Skip(start).OfType<TextPrim>().ToList()) list.Add(D.UnderlineFor(t));
+            D.CenterText(list, Label(o, ctx), TextSizeOf(o), Vec2.Zero, o.Size.W * 0.7, o.Size.H * 0.7, DiagTags.Row, underline: o.Flag("key", false));
             return list;
         }
 

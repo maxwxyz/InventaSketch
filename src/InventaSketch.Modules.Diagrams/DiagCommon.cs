@@ -33,10 +33,11 @@ namespace InventaSketch.Modules.Diagrams
     {
         /// <summary>The outline of a box symbol; user fill/width/dash overrides apply to it.</summary>
         public const string Outline = "outline";
-        /// <summary>The line of a connector; user width/dash overrides apply to it.</summary>
+        /// <summary>
+        /// The line of a connector; user width/dash overrides apply to it. Its end notations are Core arrowheads on its
+        /// style (<see cref="Style.ArrowStart"/>/<see cref="Style.ArrowEnd"/>), so user arrowhead overrides apply too.
+        /// </summary>
         public const string Main = "main";
-        /// <summary>A connector end decoration (arrowhead, diamond, crow's foot, bar, circle).</summary>
-        public const string Head = "head";
         /// <summary>The name/title text of a symbol (one primitive per text line).</summary>
         public const string Name = "name";
         /// <summary>A stereotype line («interface»).</summary>
@@ -47,15 +48,16 @@ namespace InventaSketch.Modules.Diagrams
         public const string Label = "label";
         /// <summary>Compartment or lane divider lines.</summary>
         public const string Divider = "divider";
-        /// <summary>Underline of a key attribute or static member.</summary>
-        public const string Underline = "underline";
         /// <summary>Port square of a block.</summary>
         public const string Port = "port";
         /// <summary>Inner marker of a symbol (gateway sign, component icon, decoration).</summary>
         public const string Marker = "marker";
     }
 
-    /// <summary>Connector end notations: UML arrowheads and crow's-foot cardinalities.</summary>
+    /// <summary>
+    /// Connector end notations: UML arrowheads and crow's-foot cardinalities. Each maps to a Core
+    /// <see cref="ArrowHead"/> (<see cref="D.Head"/>); the names are the stored parameter values of the ER connector.
+    /// </summary>
     public enum DiagEnd
     {
         None, Open, Filled, Hollow, FilledDiamond, HollowDiamond,
@@ -161,18 +163,9 @@ namespace InventaSketch.Modules.Diagrams
             return Math.Max(MinTextSize, s);
         }
 
-        public static TextPrim Text(Vec2 at, string text, double size, string tag, TextAnchor anchor = TextAnchor.Middle, bool bold = false, bool italic = false, double rotation = 0)
-            => new(at, text, new TextStyle { Size = size, Anchor = anchor, Bold = bold, Italic = italic }, rotation) { Tag = tag };
-
-        /// <summary>Underline below a (non-rotated) text primitive.</summary>
-        public static LinePrim UnderlineFor(TextPrim t, int? chars = null)
-        {
-            var size = t.TextStyle.Size;
-            var w = Math.Max(1, Math.Min(chars ?? t.Text.Length, t.Text.Length)) * size * 0.5;
-            var x0 = t.TextStyle.Anchor switch { TextAnchor.Middle => t.Position.X - w / 2, TextAnchor.End => t.Position.X - w, _ => t.Position.X };
-            var y = t.Position.Y + size * 0.45;
-            return new LinePrim(new Vec2(x0, y), new Vec2(x0 + w, y), Thin with { StrokeWidth = Math.Max(0.18, size * 0.06) }) { Tag = DiagTags.Underline };
-        }
+        /// <summary>Text primitive; <paramref name="underline"/> uses the host's native font underline (key attributes, static members).</summary>
+        public static TextPrim Text(Vec2 at, string text, double size, string tag, TextAnchor anchor = TextAnchor.Middle, bool bold = false, bool italic = false, double rotation = 0, bool underline = false)
+            => new(at, text, new TextStyle { Size = size, Anchor = anchor, Bold = bold, Italic = italic, Underline = underline }, rotation) { Tag = tag };
 
         /// <summary>Puts guillemets around a stereotype unless the user already typed them.</summary>
         public static string Guillemets(string s)
@@ -186,7 +179,7 @@ namespace InventaSketch.Modules.Diagrams
         /// <summary>
         /// Centred multi-line text inside an area (one <see cref="TextPrim"/> per line), fitted to the area.
         /// </summary>
-        public static void CenterText(List<Primitive> list, string? text, double size, Vec2 center, double availW, double availH, string tag = DiagTags.Name, bool bold = false, bool italic = false)
+        public static void CenterText(List<Primitive> list, string? text, double size, Vec2 center, double availW, double availH, string tag = DiagTags.Name, bool bold = false, bool italic = false, bool underline = false)
         {
             var lines = Lines(text);
             if (lines.Count == 0) return;
@@ -194,7 +187,7 @@ namespace InventaSketch.Modules.Diagrams
             var rowH = s * LineFactor;
             var y0 = center.Y - (lines.Count - 1) * rowH / 2;
             for (var i = 0; i < lines.Count; i++)
-                list.Add(Text(new Vec2(center.X, y0 + i * rowH), lines[i], s, tag, TextAnchor.Middle, bold, italic));
+                list.Add(Text(new Vec2(center.X, y0 + i * rowH), lines[i], s, tag, TextAnchor.Middle, bold, italic, underline: underline && lines[i].Length > 0));
         }
 
         // ------------------------------------------------------------------ compartments
@@ -230,9 +223,8 @@ namespace InventaSketch.Modules.Diagrams
                 {
                     var r = rows[i];
                     var at = new Vec2(header ? 0 : -hw + pad, ry + (i + 0.5) * rowH);
-                    var t = Text(at, r.Text, size, r.Tag ?? (header ? DiagTags.Name : DiagTags.Row), header ? TextAnchor.Middle : TextAnchor.Start, r.Bold, r.Italic);
-                    list.Add(t);
-                    if (r.Underline && r.Text.Length > 0) list.Add(UnderlineFor(t, r.UnderlineChars));
+                    list.Add(Text(at, r.Text, size, r.Tag ?? (header ? DiagTags.Name : DiagTags.Row), header ? TextAnchor.Middle : TextAnchor.Start, r.Bold, r.Italic,
+                        underline: r.Underline && r.Text.Length > 0));
                 }
                 y += secH;
             }
@@ -356,76 +348,30 @@ namespace InventaSketch.Modules.Diagrams
         public static readonly DiagEnd[] CrowCycle = { DiagEnd.One, DiagEnd.OnlyOne, DiagEnd.ZeroOrOne, DiagEnd.Many, DiagEnd.OneOrMany, DiagEnd.ZeroOrMany };
 
         /// <summary>
-        /// Builds an end notation at <paramref name="tip"/>; <paramref name="dir"/> points from the line towards the tip.
-        /// Returns the primitives (tagged <see cref="DiagTags.Head"/>) and how far the line must stop before the tip.
+        /// Arrowhead size of connector ends. Large keeps the hollow UML heads and crow's feet readable on the thin
+        /// (<see cref="LineWidth"/>) connector lines.
         /// </summary>
-        public static (List<Primitive> Prims, double Inset) End(DiagEnd end, Vec2 tip, Vec2 dir, double lineWidth, string color = Ink)
-        {
-            var list = new List<Primitive>();
-            var d = dir.Normalized();
-            if (d == Vec2.Zero || end == DiagEnd.None) return (list, 0);
-            var n = d.Perp;
-            var line = Style.Visible with { Stroke = color, StrokeWidth = lineWidth, Dash = DashStyle.Solid };
-            var paper = line with { Fill = Fill.Solid(Paper) };
-            var ink = line with { Fill = Fill.Solid(color) };
-            const double L = 3.2, W = 1.4, Ld = 4.6, Wd = 1.6, Lf = 4.0, Wf = 2.2, Bar = 1.9, R = 1.25;
-            void Add(Primitive p) => list.Add(p with { Tag = DiagTags.Head });
-            void BarAt(double x) => Add(new LinePrim(tip - d * x + n * Bar, tip - d * x - n * Bar, line));
-            void CircleAt(double x) { var c = tip - d * x; Add(new EllipsePrim(c, R, R, paper)); }
-            void Foot() => Add(Prim.Polyline(new[] { tip + n * Wf, tip - d * Lf, tip - n * Wf }, line));
-            var back = tip - d * L;
-            switch (end)
-            {
-                case DiagEnd.Open:
-                    Add(Prim.Polyline(new[] { back + n * W, tip, back - n * W }, line));
-                    return (list, 0);
-                case DiagEnd.Filled:
-                    Add(Prim.Polygon(new[] { tip, back + n * W, back - n * W }, ink));
-                    return (list, L * 0.9);
-                case DiagEnd.Hollow:
-                    Add(Prim.Polygon(new[] { tip, back + n * (W * 1.15), back - n * (W * 1.15) }, paper));
-                    return (list, L);
-                case DiagEnd.FilledDiamond:
-                case DiagEnd.HollowDiamond:
-                    {
-                        var m = tip - d * (Ld / 2);
-                        Add(Prim.Polygon(new[] { tip, m + n * Wd, tip - d * Ld, m - n * Wd }, end == DiagEnd.FilledDiamond ? ink : paper));
-                        return (list, Ld);
-                    }
-                case DiagEnd.One:
-                    BarAt(3.0);
-                    return (list, 0);
-                case DiagEnd.OnlyOne:
-                    BarAt(2.4); BarAt(4.2);
-                    return (list, 0);
-                case DiagEnd.ZeroOrOne:
-                    BarAt(2.4); CircleAt(5.0);
-                    return (list, 0);
-                case DiagEnd.Many:
-                    Foot();
-                    return (list, 0);
-                case DiagEnd.OneOrMany:
-                    Foot(); BarAt(Lf + 1.2);
-                    return (list, 0);
-                case DiagEnd.ZeroOrMany:
-                    Foot(); CircleAt(Lf + R + 0.4);
-                    return (list, 0);
-                default:
-                    return (list, 0);
-            }
-        }
+        public const ArrowSize HeadSize = ArrowSize.Large;
 
-        /// <summary>Length of the end notation along the line (used to keep labels clear of it).</summary>
-        public static double EndLength(DiagEnd e) => e switch
+        /// <summary>The Core arrowhead that draws an end notation.</summary>
+        public static ArrowHead Head(DiagEnd e) => e switch
         {
-            DiagEnd.None => 0,
-            DiagEnd.FilledDiamond or DiagEnd.HollowDiamond => 4.6,
-            DiagEnd.ZeroOrOne => 6.3,
-            DiagEnd.OneOrMany => 5.4,
-            DiagEnd.ZeroOrMany => 6.9,
-            DiagEnd.OnlyOne => 4.2,
-            _ => 4.0,
+            DiagEnd.Open => ArrowHead.Open,
+            DiagEnd.Filled => ArrowHead.Triangle,
+            DiagEnd.Hollow => ArrowHead.TriangleOpen,
+            DiagEnd.FilledDiamond => ArrowHead.Diamond,
+            DiagEnd.HollowDiamond => ArrowHead.DiamondOpen,
+            DiagEnd.One => ArrowHead.CrowOne,
+            DiagEnd.OnlyOne => ArrowHead.CrowOneOnly,
+            DiagEnd.ZeroOrOne => ArrowHead.CrowZeroOne,
+            DiagEnd.Many => ArrowHead.CrowMany,
+            DiagEnd.OneOrMany => ArrowHead.CrowOneMany,
+            DiagEnd.ZeroOrMany => ArrowHead.CrowZeroMany,
+            _ => ArrowHead.None,
         };
+
+        /// <summary>Length of the end notation along the line at the default connector width (used to keep labels clear of it).</summary>
+        public static double EndLength(DiagEnd e) => ArrowHeads.Extent(Head(e), HeadSize, LineWidth);
 
         /// <summary>
         /// Orthogonal route between two points. Ends attached to a box edge leave/enter perpendicular to that edge.
@@ -501,8 +447,9 @@ namespace InventaSketch.Modules.Diagrams
         // ------------------------------------------------------------------ style overrides
 
         /// <summary>
-        /// Applies a user style override: the stroke colour recolours lines, texts and solid (ink) fills such as filled
-        /// heads; fill, width and dash overrides apply only to outlines and connector lines.
+        /// Applies a user style override: the stroke colour recolours lines, texts, arrowheads and solid (ink) fills;
+        /// fill, width and dash overrides apply only to outlines and connector lines; arrowhead overrides
+        /// (start, end, size) only to connector lines.
         /// </summary>
         public static Primitive Override(Primitive p, Style over)
         {
@@ -516,6 +463,7 @@ namespace InventaSketch.Modules.Diagrams
                         : t;
             }
             var main = p.Tag is DiagTags.Outline or DiagTags.Main;
+            var connector = p.Tag == DiagTags.Main;
             var color = over.Stroke is string c && !string.Equals(c, "none", StringComparison.OrdinalIgnoreCase) ? c : null;
             return Prim.Restyle(p, s =>
             {
@@ -532,6 +480,9 @@ namespace InventaSketch.Modules.Diagrams
                     StrokeWidth = over.StrokeWidth is double w && main ? w : s.StrokeWidth,
                     Fill = fill,
                     Dash = main ? over.Dash ?? s.Dash : s.Dash,
+                    ArrowStart = connector ? over.ArrowStart ?? s.ArrowStart : s.ArrowStart,
+                    ArrowEnd = connector ? over.ArrowEnd ?? s.ArrowEnd : s.ArrowEnd,
+                    ArrowSize = connector ? over.ArrowSize ?? s.ArrowSize : s.ArrowSize,
                 };
             });
         }
@@ -607,9 +558,8 @@ namespace InventaSketch.Modules.Diagrams
     /// <summary>One rendered text row of a compartment.</summary>
     public sealed record DiagRow(string Text)
     {
+        /// <summary>Underlines the whole row (native font underline).</summary>
         public bool Underline { get; init; }
-        /// <summary>Number of leading characters to underline (null = the whole row).</summary>
-        public int? UnderlineChars { get; init; }
         public bool Italic { get; init; }
         public bool Bold { get; init; }
         /// <summary>Tag override (defaults to name for header rows and row otherwise).</summary>
@@ -714,24 +664,35 @@ namespace InventaSketch.Modules.Diagrams
         {
             var path = Path(o, p);
             var list = new List<Primitive>();
-            var heads = new List<Primitive>();
             var n = path.Count;
-            var style = Style.ThinLine with { StrokeWidth = D.LineWidth, Dash = IsDashed(o) ? DashStyle.Dash : DashStyle.Solid };
             if (path[0].DistanceTo(path[n - 1]) > 1e-9 || n > 2)
             {
-                var se = StartEnd(o);
-                var ee = EndEnd(o);
-                var (sp, sInset) = D.End(se, path[0], (path[0] - path[1]).Normalized(), D.LineWidth);
-                var (ep, eInset) = D.End(ee, path[n - 1], (path[n - 1] - path[n - 2]).Normalized(), D.LineWidth);
-                heads.AddRange(sp); heads.AddRange(ep);
-                var line = path.ToList();
-                if (line[0].DistanceTo(line[1]) > sInset) line[0] += (line[1] - line[0]).Normalized() * sInset;
-                if (line[n - 1].DistanceTo(line[n - 2]) > eInset) line[n - 1] += (line[n - 2] - line[n - 1]).Normalized() * eInset;
-                list.Add(n == 2 ? new LinePrim(line[0], line[1], style) { Tag = DiagTags.Main } : Prim.Polyline(line, style) with { Tag = DiagTags.Main });
+                // End notations are Core arrowheads on the line style: every host draws them (natively where possible),
+                // and user arrowhead overrides replace them.
+                var se = D.Head(StartEnd(o));
+                var ee = D.Head(EndEnd(o));
+                var style = Style.ThinLine with
+                {
+                    StrokeWidth = D.LineWidth,
+                    Dash = IsDashed(o) ? DashStyle.Dash : DashStyle.Solid,
+                    ArrowStart = se == ArrowHead.None ? null : se,
+                    ArrowEnd = ee == ArrowHead.None ? null : ee,
+                    ArrowSize = se == ArrowHead.None && ee == ArrowHead.None ? null : D.HeadSize,
+                };
+                list.Add(n == 2 ? new LinePrim(path[0], path[1], style) { Tag = DiagTags.Main } : Prim.Polyline(path, style) with { Tag = DiagTags.Main });
             }
-            list.AddRange(heads);
             Labels(list, o, ctx, path);
             return list;
+        }
+
+        /// <summary>
+        /// How far an end notation reaches along the line, honouring the user's arrowhead, size and width overrides
+        /// (labels are placed behind it).
+        /// </summary>
+        protected double EndClearance(SketchObject o, bool atStart)
+        {
+            var head = (atStart ? o.Style?.ArrowStart : o.Style?.ArrowEnd) ?? D.Head(atStart ? StartEnd(o) : EndEnd(o));
+            return ArrowHeads.Extent(head, o.Style?.ArrowSize ?? D.HeadSize, o.Style?.StrokeWidth ?? D.LineWidth);
         }
 
         /// <summary>Adds the middle label (object text). Subclasses add end labels.</summary>
@@ -741,8 +702,11 @@ namespace InventaSketch.Modules.Diagrams
             list.AddRange(D.SideLabel(o.Text, mid, D.LabelSide(dir), LabelSize(o)));
         }
 
-        /// <summary>Text near one end: <paramref name="above"/> on the label side, otherwise on the opposite side.</summary>
-        protected static IEnumerable<Primitive> EndLabel(string? text, List<Vec2> path, bool atStart, DiagEnd end, bool above, double size)
+        /// <summary>
+        /// Text near one end: <paramref name="above"/> on the label side, otherwise on the opposite side;
+        /// <paramref name="clearance"/> is the length of the end notation along the line (<see cref="EndClearance"/>).
+        /// </summary>
+        protected static IEnumerable<Primitive> EndLabel(string? text, List<Vec2> path, bool atStart, double clearance, bool above, double size)
         {
             if (string.IsNullOrEmpty(text)) return Array.Empty<Primitive>();
             var n = path.Count;
@@ -750,7 +714,7 @@ namespace InventaSketch.Modules.Diagrams
             var inward = atStart ? (path[1] - path[0]).Normalized() : (path[n - 2] - path[n - 1]).Normalized();
             var side = D.LabelSide(inward);
             if (!above) side = -side;
-            var along = D.EndLength(end) * 0.5 + 2.0 + D.HalfExtentAlong(text!, size, inward);
+            var along = clearance * 0.5 + 2.0 + D.HalfExtentAlong(text!, size, inward);
             return D.SideLabel(text, tip + inward * along, side, size);
         }
 

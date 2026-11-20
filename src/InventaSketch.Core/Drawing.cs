@@ -14,8 +14,33 @@ namespace InventaSketch.Core
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum DashStyle { Solid, Dash, DashDot, DashDotDot, Dot, LongDash }
 
+    /// <summary>
+    /// Line end decorations. Members are persisted by name; new members are appended at the end.
+    /// <see cref="TriangleOpen"/> and <see cref="DiamondOpen"/> are hollow (UML generalisation/realisation and
+    /// aggregation). The <c>Crow*</c> members are crow's-foot (information engineering) cardinality ends for ER
+    /// diagrams; the tip is the point where the line meets the entity.
+    /// </summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
-    public enum ArrowHead { None, Triangle, Open, Stealth, Diamond, Oval, Tick, Half }
+    public enum ArrowHead
+    {
+        None, Triangle, Open, Stealth, Diamond, Oval, Tick, Half,
+        /// <summary>Hollow triangle (UML generalisation, realisation).</summary>
+        TriangleOpen,
+        /// <summary>Hollow diamond (UML aggregation).</summary>
+        DiamondOpen,
+        /// <summary>Crow's foot: one (single bar).</summary>
+        CrowOne,
+        /// <summary>Crow's foot: many (foot).</summary>
+        CrowMany,
+        /// <summary>Crow's foot: zero or one (circle and bar).</summary>
+        CrowZeroOne,
+        /// <summary>Crow's foot: one and only one (double bar).</summary>
+        CrowOneOnly,
+        /// <summary>Crow's foot: zero or many (circle and foot).</summary>
+        CrowZeroMany,
+        /// <summary>Crow's foot: one or many (bar and foot).</summary>
+        CrowOneMany,
+    }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ArrowSize { Small, Medium, Large }
@@ -137,6 +162,8 @@ namespace InventaSketch.Core
         public string? Font { get; init; }
         public bool Bold { get; init; }
         public bool Italic { get; init; }
+        /// <summary>Underlines the whole text (all lines); hosts use their native font underline.</summary>
+        public bool Underline { get; init; }
         public string? Color { get; init; }
         public TextAnchor Anchor { get; init; } = TextAnchor.Middle;
         public TextBaseline Baseline { get; init; } = TextBaseline.Middle;
