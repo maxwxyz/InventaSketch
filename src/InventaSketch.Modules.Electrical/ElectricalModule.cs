@@ -12,7 +12,7 @@ namespace InventaSketch.Modules.Electrical
     /// parameters, drawn inside its box and exposes its pins as <see cref="AnchorRole.Port"/> anchors.
     /// This is a sketching module, not an ECAD/ERC tool.
     /// </summary>
-    public sealed class ElectricalModule : IModule
+    public sealed class ElectricalModule : IModule, IExportProvider
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
             Passive.Types().Cast<ObjectType>()
@@ -46,6 +46,9 @@ namespace InventaSketch.Modules.Electrical
             new LibraryCategory(Power.Cat, new I18nText("Power electronics", "Leistungselektronik"), Id, 80),
             new LibraryCategory(Pcb.Cat, new I18nText("PCB (illustrative)", "Leiterplatte (illustrativ)"), Id, 90),
         };
+
+        /// <summary>Domain exports of this module (<see cref="IExportProvider"/>).</summary>
+        public IEnumerable<IExporter> Exporters => new IExporter[] { new NetlistExporter() };
 
         public IEnumerable<LibraryItem> Library => Items.Value;
 

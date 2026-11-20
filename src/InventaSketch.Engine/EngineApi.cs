@@ -56,6 +56,8 @@ namespace InventaSketch.Engine
                 ["setMainText"] = SetMainTextCore,
                 ["suggestions"] = SuggestionsCore,
                 ["conversions"] = ConversionsCore,
+                ["exporters"] = ExportersCore,
+                ["export"] = ExportCore,
                 ["convert"] = ConvertCore,
                 ["applyAction"] = ApplyActionCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
@@ -475,6 +477,34 @@ namespace InventaSketch.Engine
             return Registry.ConversionTargets.Where(id => Registry.Type(id) is { Geometry: GeometryKind.Points })
                 .Select(id => new ActionInfo { Id = id, Label = Registry.Type(id)!.Name.Get(lang), Kind = "convert", Group = "type", Active = first.Type == id })
                 .ToList();
+        }
+
+        /// <summary>Objects an export works on: the selection (with its groups), else every object of the page.</summary>
+        private static IReadOnlyList<SketchObject> ExportObjects(EditorSession s, IList<string>? ids)
+        {
+            var chosen = ids is { Count: > 0 } ? s.Resolve(ids) : s.Doc.ObjectsOn(s.Page).Select(o => o.Id).ToList();
+            var set = new HashSet<string>(s.Doc.ExpandGroups(chosen));
+            return s.Doc.ObjectsOn(s.Page).Where(o => set.Contains(o.Id)).ToList();
+        }
+
+        /// <summary>Domain exports that apply to the selection (or the page): id, name, extension, mime type, what they keep.</summary>
+        private object ExportersCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            return Exports.For(Registry, s.Doc, ExportObjects(s, r.Ids))
+                .Select(e => new { id = e.Id, name = e.Name.Get(lang), extension = e.Extension, mime = e.MimeType, preserves = e.Preserves.Get(lang) })
+                .ToList();
+        }
+
+        /// <summary>Runs the domain export <c>itemId</c> on the selection (or the page) and returns its text.</summary>
+        private object ExportCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var exporter = Exports.All(Registry).FirstOrDefault(e => e.Id == r.ItemId) ?? throw new ArgumentException("Unknown exporter: " + r.ItemId);
+            var text = exporter.Export(Registry, s.Doc, ExportObjects(s, r.Ids), lang);
+            return new { id = exporter.Id, name = exporter.Name.Get(lang), extension = exporter.Extension, mime = exporter.MimeType, text };
         }
 
         /// <summary>Converts the selected line-like objects into the type <c>itemId</c> (end points, numeral, colour kept); one undo step.</summary>

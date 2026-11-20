@@ -203,6 +203,10 @@ Box selection of points: with a line, polyline, wire or wall selected, Alt + dra
 inside are selected (filled handles) and move together when one of them is dragged (one undo step). Verified: two of
 four polyline points moved up 40 pt together.
 
+Data export (Extras ▸ Export data, 2026-11-20): offers the domain exports that apply to the selected units or the
+slide (bill of materials, connection graph as Mermaid/GraphML, netlist, reference sign list), saves the file and copies
+the text to the clipboard. Verified: two equal spur gears and a shaft gave a bill of materials with quantity 2.
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in

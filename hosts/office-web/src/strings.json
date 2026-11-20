@@ -122,5 +122,7 @@
   "office.inserted": { "en": "{0} object(s) inserted ({1} as picture)", "de": "{0} Objekt(e) eingefügt ({1} als Bild)" },
   "office.svgNote": { "en": "Curves, dot fills and some rotated parts are inserted as pictures (Office.js has no freeform shapes).", "de": "Kurven, Punktfüllungen und manche gedrehten Teile werden als Bild eingefügt (Office.js kennt keine Freiformen)." },
   "office.loaded": { "en": "Drawing loaded from the slide", "de": "Zeichnung von der Folie geladen" },
-  "office.adoptedEdit": { "en": "Move/resize on the slide adopted", "de": "Verschieben/Skalieren auf der Folie übernommen" }
+  "office.adoptedEdit": { "en": "Move/resize on the slide adopted", "de": "Verschieben/Skalieren auf der Folie übernommen" },
+  "set.export": { "en": "Export data", "de": "Daten exportieren" },
+  "set.exportNone": { "en": "Nothing to export for the selection or page.", "de": "Für die Auswahl bzw. die Seite gibt es nichts zu exportieren." }
 }

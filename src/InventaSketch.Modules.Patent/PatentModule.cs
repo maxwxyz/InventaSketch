@@ -166,7 +166,7 @@ namespace InventaSketch.Modules.Patent
     }
 
     /// <summary>Patent drawing module: reference numerals, sheet helper, sheet numbers, profiles, preflight and export.</summary>
-    public sealed class PatentModule : IModule
+    public sealed class PatentModule : IModule, IExportProvider
     {
         private static readonly ObjectType[] AllTypes = { new NumeralType(), new SheetType(), new PageNumberType() };
 
@@ -179,6 +179,9 @@ namespace InventaSketch.Modules.Patent
         {
             new LibraryCategory(PatentIds.Category, new I18nText("Patent drawing", "Patentzeichnung"), Id, 55),
         };
+
+        /// <summary>Domain exports of this module (<see cref="IExportProvider"/>).</summary>
+        public IEnumerable<IExporter> Exporters => new IExporter[] { new ReferenceListExporter() };
 
         public IEnumerable<LibraryItem> Library => new[]
         {

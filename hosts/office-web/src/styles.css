@@ -183,3 +183,6 @@ textarea.isk-input { resize: vertical; }
 .isk-toast[hidden] { display: none; }
 
 @media (prefers-reduced-motion: reduce) { .isk-ctxbar { transition: none; } }
+
+/* Vertical button list (data export). */
+.isk-col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }

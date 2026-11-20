@@ -65,6 +65,10 @@ export interface CatalogCategory { id: string; name: string; module: string; ord
 export interface CatalogItem { id: string; typeId: string; name: string; category: string; keywords: string[]; thumbnail: string; points: boolean }
 export interface Catalog { lang: string; categories: CatalogCategory[]; items: CatalogItem[] }
 
+/** A domain export (bill of materials, connection graph, netlist, reference sign list) that applies to the selection. */
+export interface ExporterInfo { id: string; name: string; extension: string; mime: string; preserves: string }
+export interface ExportResult { id: string; name: string; extension: string; mime: string; text: string }
+
 export interface ActionInfo {
   id: string;
   label: string;

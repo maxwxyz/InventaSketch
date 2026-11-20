@@ -2,7 +2,7 @@
 // session. Runs inside PowerPoint (Office.js present) and standalone in a browser (dev.html).
 
 import { Engine, Session } from "../engine/client";
-import type { ActionInfo, Catalog, CatalogItem, EditorState, ObjectInfo, SuggestionInfo } from "../engine/types";
+import type { ActionInfo, Catalog, CatalogItem, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo } from "../engine/types";
 import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
@@ -253,6 +253,7 @@ export class App {
         h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("set.grid")), grid),
         check(!!this.st.monochrome, t("set.mono"), (v) => this.setMonochrome(v))),
       h("fieldset", {}, h("legend", {}, t("set.file")), h("div", { class: "isk-row" }, openBtn, saveBtn), open),
+      this.exportFieldset(),
       h("p", { class: "isk-muted" }, this.versionLine()),
     );
     close.addEventListener("click", () => { panel.remove(); this.settingsEl = undefined; anchor.focus(); });
@@ -260,6 +261,28 @@ export class App {
     this.root.append(panel);
     this.settingsEl = panel;
     panel.querySelector<HTMLInputElement>("input")?.focus();
+  }
+
+  /** "Export data": one button per domain export that applies to the selection (or the page); downloads the file. */
+  private exportFieldset(): HTMLElement {
+    const sel = this.st.selection;
+    let list: ExporterInfo[] = [];
+    try {
+      list = this.sessionObj.exporters(sel, lang());
+    } catch (e) {
+      this.report(e);
+    }
+    const buttons = list.map((x) => {
+      const b = h("button", { class: "isk-btn", type: "button", title: x.preserves }, x.name);
+      b.addEventListener("click", () => this.guard(() => {
+        const r = this.sessionObj.exportData(sel, x.id, lang());
+        const bom = r.extension === "csv" ? "\ufeff" : "";
+        download(`sketch.${r.extension}`, new Blob([bom + r.text], { type: `${r.mime};charset=utf-8` }));
+      }));
+      return b;
+    });
+    return h("fieldset", {}, h("legend", {}, t("set.export")),
+      ...(buttons.length ? [h("div", { class: "isk-col" }, ...buttons)] : [h("p", { class: "isk-muted" }, t("set.exportNone"))]));
   }
 
   private versionLine(): string {

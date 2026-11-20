@@ -56,7 +56,8 @@ Automotive/ADAS/HMI, architecture/floor plans, UML/ER/flow, maps and routes, cha
 Variants and diff, multi-view synchronisation, image contour recognition and hatching of imported pictures,
 PDF/TIFF export profiles, user libraries, automation. Status: **proposed**.
 
-Domain exports by selection/type (proposed): gear and gearbox topology data (REXS where feasible), kinematic chains,
+Domain exports by selection/type (first exporters shipped 2026-11-20: BOM CSV, connection graph Mermaid/GraphML,
+netlist CSV, reference sign list; next): gear and gearbox topology data (REXS where feasible), kinematic chains,
 netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsnest/airwires, harness lists, BOM
 (CSV/Excel), reference sign lists, diagram structures (GraphML/Mermaid) — as module export extension points.
 

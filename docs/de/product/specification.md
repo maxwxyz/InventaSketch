@@ -266,7 +266,9 @@ sowie Luft- und Raumfahrt. Jedes davon wird zum Modul, sobald ein konkreter Umfa
 - **Import & Erkennung:** SVG, PDF, PNG/JPEG, TIFF, DXF, CSV; Konturerkennung in Bildern, um geschlossene Bereiche zu
   schraffieren, unterstützte Vektorisierung und OCR von Bezugszeichen – stets bestätigbar, das Original bleibt erhalten.
   Geplant.
-- **Fachexporte (vorgeschlagen):** je nach Auswahl und Objekttypen den semantischen Inhalt in gängige
+- **Fachexporte (erste Exporter am 20.11.2026 ausgeliefert: Stückliste CSV, Verbindungsgraph als Mermaid und GraphML,
+  Elektro-Netzliste CSV, Bezugszeichenliste; Erweiterungspunkt `IExportProvider`; COM: Extras ▸ Daten exportieren;
+  Web: Einstellungen ▸ Daten exportieren):** je nach Auswahl und Objekttypen den semantischen Inhalt in gängige
   Ingenieursformate exportieren, nicht nur als Grafik. Beispiele: Zahnradsätze und Getriebetopologien (Verzahnungs-
   datentabellen, Leistungsfluss-Topologie, REXS wo machbar), kinematische Ketten und Koppelgetriebe (Gelenk-/Glied-
   tabellen, URDF-ähnliche Beschreibungen), Schaltpläne und E/E-Verschaltung (Netzlisten z. B. KiCad/SPICE,

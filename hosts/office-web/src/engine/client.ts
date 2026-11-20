@@ -3,7 +3,7 @@
 
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
-  SuggestionInfo,
+  SuggestionInfo, ExporterInfo, ExportResult,
 } from "./types";
 
 export interface EngineBackend {
@@ -73,6 +73,9 @@ export class Session {
   suggestions(ids: string[], lang: string, max?: number): SuggestionInfo[] { return this.c("suggestions", { ids, lang, max }); }
   /** "Type ▸": line types the selected line/arrow/dimension/lead line can become (empty for other objects). */
   conversions(ids: string[], lang: string): ActionInfo[] { return this.c("conversions", { ids, lang }); }
+  /** Domain exports that apply to the selection (all objects of the page without a selection). */
+  exporters(ids: string[], lang: string): ExporterInfo[] { return this.c("exporters", { ids, lang }); }
+  exportData(ids: string[], exporter: string, lang: string): ExportResult { return this.c("export", { ids, itemId: exporter, lang }); }
   /** Converts the selected line-like objects into another line type (end points, numeral and colour kept). */
   convert(ids: string[], typeId: string): EditorState { return this.c("convert", { ids, itemId: typeId }); }
   undo(): EditorState { return this.c("undo"); }

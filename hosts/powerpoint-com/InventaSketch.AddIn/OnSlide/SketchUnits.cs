@@ -142,6 +142,19 @@ namespace InventaSketch.AddIn.OnSlide
             return extra.Length == 0 ? own : Edits.Add(own, own.Pages[0].Id, extra);
         }
 
+        /// <summary>The models of the given units as one document (objects, groups, attachments across units and reference lists) for exports.</summary>
+        public static SketchDocument Combined(IEnumerable<SketchUnit> units)
+        {
+            var list = units.ToList();
+            var doc = SketchDocument.Create();
+            if (list.Count > 0) doc = doc with { Settings = list[0].Doc.Settings };
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var objs = list.SelectMany(u => u.Objects).Where(o => seen.Add(o.Id)).ToArray();
+            if (objs.Length > 0) doc = Edits.Add(doc, doc.Pages[0].Id, objs);
+            var refs = doc.References.ToDictionary(kv => kv.Key, kv => kv.Value);
+            foreach (var u in list) foreach (var kv in u.Doc.References) refs[kv.Key] = kv.Value;
+            return doc with { References = refs };
+        }
         /// <summary>Models of several units merged into one document (first model's settings) for dependency queries.</summary>
         private static SketchDocument Merge(IEnumerable<SketchDocument> models, IEnumerable<SketchUnit> others)
         {

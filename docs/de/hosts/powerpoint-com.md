@@ -177,6 +177,11 @@ Rahmenauswahl von Punkten: Ist eine Linie, Polylinie, Leitung oder Wand ausgewä
 Rahmen; die Punkte darin werden ausgewählt (gefüllte Griffe) und bewegen sich gemeinsam, wenn einer davon gezogen wird
 (ein Rückgängig-Schritt). Geprüft: zwei von vier Polylinienpunkten wanderten gemeinsam 40 pt nach oben.
 
+Datenexport (Extras ▸ Daten exportieren, 2026-11-20): bietet die Fachexporte an, die zu den ausgewählten Einheiten
+oder der Folie passen (Stückliste, Verbindungsgraph als Mermaid/GraphML, Netzliste, Bezugszeichenliste), speichert die
+Datei und legt den Text in die Zwischenablage. Geprüft: zwei gleiche Stirnräder und eine Welle ergaben eine Stückliste
+mit Menge 2.
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in

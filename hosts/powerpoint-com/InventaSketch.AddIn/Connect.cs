@@ -254,6 +254,7 @@ namespace InventaSketch.AddIn
             sb.Append("<menuSeparator id=\"IskMenuSep1\" />");
             Item("IskMenuSend", T("Send slides \u2026", "Folien senden \u2026"), "FileSendAsAttachment");
             Item("IskMenuSave", T("Save slides \u2026", "Folien speichern \u2026"), "FileSaveAs");
+            sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" />");
             sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
             Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
             Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
@@ -326,6 +327,72 @@ namespace InventaSketch.AddIn
                 OnSlide.SketchUnits.Replace(slide, u, doc, _registry, _lang);
             }
             Log.Info($"Plan scale 1:{value} for {units.Count} unit(s)");
+        }
+
+        /// <summary>Units the export works on: the selected InventaSketch units, else all units of the current slide.</summary>
+        private List<OnSlide.SketchUnit> ExportUnits()
+        {
+            var units = new List<OnSlide.SketchUnit>();
+            if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return units;
+            try
+            {
+                var sel = _app.ActiveWindow.Selection;
+                if (sel.Type is PowerPoint.PpSelectionType.ppSelectionShapes)
+                    foreach (PowerPoint.Shape s in sel.ShapeRange)
+                        if (OnSlide.SketchUnits.Read(s) is { } u) units.Add(u);
+            }
+            catch (Exception ex) { Log.Error("Export selection", ex); }
+            return units.Count > 0 ? units : OnSlide.SketchUnits.All(slide);
+        }
+
+        /// <summary>"Export data ▸": the domain exports that apply to the selection or the slide (built when the menu opens).</summary>
+        public string GetExportMenu(Office.IRibbonControl control)
+        {
+            var sb = new StringBuilder("<menu xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\">");
+            try
+            {
+                var doc = OnSlide.SketchUnits.Combined(ExportUnits());
+                var objects = doc.ObjectsOn(doc.Pages[0]).ToList();
+                var exporters = _registry is null ? new List<IExporter>() : Exports.For(_registry, doc, objects).ToList();
+                if (exporters.Count == 0)
+                    sb.Append("<button id=\"IskExportNone\" label=\"").Append(L(T("Nothing to export on this slide", "Auf dieser Folie gibt es nichts zu exportieren"))).Append("\" enabled=\"false\" />");
+                var i = 0;
+                foreach (var e in exporters)
+                    sb.Append("<button id=\"IskExport_").Append(i++).Append("\" tag=\"").Append(X(e.Id)).Append("\" label=\"").Append(L(e.Name.Get(_lang)))
+                      .Append("\" supertip=\"").Append(X(e.Preserves.Get(_lang))).Append("\" onAction=\"OnExport\" />");
+            }
+            catch (Exception ex) { Log.Error("GetExportMenu", ex); }
+            return sb.Append("</menu>").ToString();
+        }
+
+        /// <summary>Runs a domain export: saves the file (UTF-8; CSV with BOM for Excel) and copies the text to the clipboard.</summary>
+        public void OnExport(Office.IRibbonControl control)
+        {
+            try
+            {
+                if (_registry is null || _app is null) return;
+                var exporter = Exports.All(_registry).FirstOrDefault(e => e.Id == control.Tag);
+                if (exporter is null) return;
+                var doc = OnSlide.SketchUnits.Combined(ExportUnits());
+                var text = exporter.Export(_registry, doc, doc.ObjectsOn(doc.Pages[0]).ToList(), _lang);
+                Clipboard.SetText(text.Length == 0 ? " " : text);
+                var presentation = _app.ActivePresentation;
+                using var dialog = new SaveFileDialog
+                {
+                    Filter = $"{exporter.Name.Get(_lang)}|*.{exporter.Extension}|{T("All files", "Alle Dateien")}|*.*",
+                    FileName = System.IO.Path.GetFileNameWithoutExtension(presentation.Name) + " - " + exporter.Name.Get(_lang).Split('(')[0].Trim() + "." + exporter.Extension,
+                    InitialDirectory = string.IsNullOrEmpty(presentation.Path) ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) : presentation.Path,
+                    OverwritePrompt = true,
+                };
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+                var encoding = new UTF8Encoding(exporter.Extension == "csv");
+                System.IO.File.WriteAllText(dialog.FileName, text, encoding);
+                Log.Info($"Exported {exporter.Id} to {dialog.FileName} ({text.Length} chars, also on the clipboard)");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnExport " + control.Tag, ex);
+            }
         }
 
         /// <summary>Hidden modules ("Show and hide modules") disappear from the ribbon: their menus and galleries.</summary>
