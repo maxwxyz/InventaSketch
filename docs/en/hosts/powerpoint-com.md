@@ -49,6 +49,10 @@
 - **Rotate with snapping:** PowerPoint's rotation handle is taken over; the unit rotates about its centre and snaps to
   multiples of 15° within 4° (`Shift`: strict 15° steps, `Alt`: free). The preview shows the angle; on release the
   rotation is applied to the model (box objects rotate, point objects rotate their points) and re-rendered.
+- **Keyboard (selected unit, slide focused):** `R` rotate 90° (`Shift+R` back), `X` / `Y` mirror horizontally /
+  vertically, `Ctrl+D` duplicate with new ids, `Shift+F10` or the context-menu key open the pie menu. Arrow keys, `Del`,
+  `Ctrl+C/X/V` stay with PowerPoint; a pasted copy gets new ids automatically when it is selected (no two units ever
+  share an id).
 - **Theme:** floating bar and pie menu follow the Office theme (dark grey/black, or "use system setting" with a dark
   Windows app theme → dark).
 - **Two-point tool:** lines, arrows, dimensions and lead lines are placed like connectors: press at the start point
@@ -77,7 +81,13 @@ its own user data folder (`%LOCALAPPDATA%\InventaSketch\WebView2`); the pane wid
 The editor talks to the add-in through `window.chrome.webview` (`combridge.ts` ↔ `SidebarBridge`):
 `units` messages carry compact model payloads that the add-in draws natively with the full C# engine (new units are
 drawn, existing ISK_IDs replaced, removed units deleted — one undo step); the add-in pushes the selected unit back as
-`selection`. Live sync is on by default, so edits in the sidebar update the slide immediately.
+`selection`. Live sync is on by default, so edits in the sidebar update the slide immediately. A click on a library
+item in the sidebar starts insert-at-pointer on the slide (snapping, `Esc` cancels), exactly like the ribbon galleries;
+dragging an item into the sidebar stage adds it to the editor instead.
+
+Verified 2026-11-20 (keyboard and placement): `R` rotated a shaft (340 × 0 → 0 × 340 pt), `Ctrl+D` produced a copy with
+a new id, a PowerPoint `Ctrl+C/V` copy was given new ids on selection, and a sidebar library click followed by a click
+on the slide inserted a gear.
 
 Verified 2026-11-20: pane opens (WebView2 157, engine ready in about 0.5 s, German UI); selecting a shaft on the slide
 loads it into the sidebar with its views; rotating it in the sidebar (`rotate90`) rotated it on the slide

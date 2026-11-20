@@ -74,6 +74,11 @@ export class ComSync {
     await this.send({ type: "units", units: plan.units.map((u) => ({ id: u.id, payload: u.payload })), remove });
   }
 
+  /** Starts insert-at-pointer on the slide for a library item (handled by the COM add-in). */
+  place(itemId: string): void {
+    this.bridge.postMessage({ type: "place", itemId });
+  }
+
   /** The COM add-in pushes the selection; nothing to poll. */
   loadSelection(): Promise<void> {
     return Promise.resolve();

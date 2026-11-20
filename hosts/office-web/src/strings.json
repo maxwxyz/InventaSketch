@@ -24,6 +24,7 @@
   "lib.hint": { "en": "click: place with pointer, double click: insert, drag onto the page", "de": "Klick: mit dem Zeiger platzieren, Doppelklick: einfügen, auf die Seite ziehen" },
   "lib.noMatch": { "en": "No matching symbols.", "de": "Keine passenden Symbole." },
   "lib.empty": { "en": "No symbols available.", "de": "Keine Symbole vorhanden." },
+  "com.placing": { "en": "Click on the slide to place “{0}” (snaps to other elements, Esc cancels)", "de": "Auf die Folie klicken, um „{0}“ zu platzieren (rastet ein, Esc bricht ab)" },
   "lib.placing": { "en": "Place “{0}”: click on the page, Esc cancels", "de": "„{0}“ platzieren: auf die Seite klicken, Esc bricht ab" },
 
   "insp.title": { "en": "Inspector", "de": "Eigenschaften" },

@@ -103,6 +103,26 @@ namespace InventaSketch.AddIn.OnSlide
             return result;
         }
 
+        /// <summary>The same model with new object/group ids (copies must never share ids), optionally moved.</summary>
+        public static SketchDocument WithNewIds(SketchDocument doc, Vec2 offset)
+        {
+            var page = doc.Pages[0];
+            var ids = page.Order.ToList();
+            var (dup, _) = Edits.Duplicate(doc, page.Id, ids, offset);
+            return Edits.Remove(dup, ids);
+        }
+
+        /// <summary>True if another shape on the slide carries the same unit id (PowerPoint copy/paste or Ctrl+drag).</summary>
+        public static bool HasTwin(PowerPoint.Slide slide, SketchUnit unit)
+        {
+            foreach (PowerPoint.Shape s in slide.Shapes)
+            {
+                if (!IsUnit(s) || s.Tags["ISK_ID"] != unit.Id) continue;
+                if (s.Name != unit.Shape.Name || s.Id != unit.Shape.Id) return true;
+            }
+            return false;
+        }
+
         /// <summary>Replaces a unit by a re-rendered model at the same z-position (one undo step for the caller).</summary>
         public static PowerPoint.Shape? Replace(PowerPoint.Slide slide, SketchUnit unit, SketchDocument doc, Registry registry, Lang lang)
         {

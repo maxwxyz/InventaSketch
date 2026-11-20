@@ -395,6 +395,13 @@ export class App {
   // ------------------------------------------------------------------ insert
 
   private startInsert(item: CatalogItem): void {
+    // Inside the COM add-in: a library click places the element directly on the slide (insert at pointer with
+    // snapping, like the ribbon galleries); dragging into the stage still adds it to the editor.
+    if (this.sync instanceof ComSync) {
+      this.sync.place(item.id);
+      this.setStatus(t("com.placing", item.name));
+      return;
+    }
     this.pending = this.pending?.id === item.id ? undefined : item;
     this.library.renderItems();
     this.setStatus(this.pending ? t("lib.placing", item.name) : "");

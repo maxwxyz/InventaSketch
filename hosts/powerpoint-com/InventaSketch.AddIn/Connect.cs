@@ -74,7 +74,7 @@ namespace InventaSketch.AddIn
                 _categories = _registry.Categories.Where(c => used.Contains(c.Id)).OrderBy(c => c.Order).ToList();
                 if (addInInst is Office.COMAddIn comAddIn) comAddIn.Object = new Automation(this);
                 _onSlide = new OnSlide.OnSlideController(_app, () => _registry!, () => _lang);
-                _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang);
+                _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang, BeginPlacement);
                 _onSlide.UnitArmed += u => _bridge.UnitSelected(u);
                 Log.Info($"Connected: InventaSketch {typeof(Connect).Assembly.GetName().Version}, PowerPoint {_app.Version}, "
                     + $"{(Environment.Is64BitProcess ? 64 : 32)} bit, CLR {Environment.Version}, language {_lang}, "

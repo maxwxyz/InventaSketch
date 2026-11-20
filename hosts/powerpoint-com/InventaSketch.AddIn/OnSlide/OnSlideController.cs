@@ -164,6 +164,14 @@ namespace InventaSketch.AddIn.OnSlide
                     if (SketchUnits.IsUnit(shape)) unit = SketchUnits.Read(shape);
                 }
                 if (unit is null) { Disarm(); return; }
+                if (CurrentSlide() is PowerPoint.Slide slide && SketchUnits.HasTwin(slide, unit))
+                {
+                    _app.StartNewUndoEntry();
+                    var renamed = SketchUnits.Replace(slide, unit, SketchUnits.WithNewIds(unit.Doc, Vec2.Zero), _registry(), _lang());
+                    Log.Info("Copied unit got new ids: " + unit.Id + " -> " + renamed?.Tags["ISK_ID"]);
+                    renamed?.Select(Office.MsoTriState.msoTrue);
+                    return; // the new selection arms it
+                }
                 Log.Info("Selection: InventaSketch unit " + unit.Shape.Name);
                 Arm(unit);
                 UnitArmed?.Invoke(unit);
@@ -517,6 +525,33 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 Cancel("escape");
                 return true;
+            }
+            if (_mode == Mode.Armed && _unit is not null && !alt)
+            {
+                var unit = _unit;
+                string? command = vk switch
+                {
+                    0x52 when !ctrl => shift ? "rotm90" : "rot90",   // R / Shift+R
+                    0x58 when !ctrl && !shift => "flipH",             // X (Ctrl+X stays "cut")
+                    0x59 when !ctrl && !shift => "flipV",             // Y
+                    0x44 when ctrl && !shift => "dup",                // Ctrl+D: duplicate with new ids
+                    _ => null,
+                };
+                if (command is not null)
+                {
+                    Log.Info("Key: " + command);
+                    Post(() => ApplyAction(unit, command));
+                    return true;
+                }
+                // Shift+F10 or the context-menu key: pie menu at the unit centre.
+                if ((vk == 0x79 && shift && !ctrl) || vk == 0x5D)
+                {
+                    var view = _view;
+                    if (view is null) return false;
+                    var b = UnitScreenRect(view);
+                    OpenPie(new POINT { X = (int)(b.X + b.Width / 2), Y = (int)(b.Y + b.Height / 2) }, view);
+                    return true;
+                }
             }
             return false;
         }
@@ -1344,7 +1379,7 @@ namespace InventaSketch.AddIn.OnSlide
             }
             if (id == "dup")
             {
-                var copy = Edits.Move(doc, ids, new Vec2(5, 5));
+                var copy = SketchUnits.WithNewIds(doc, new Vec2(5, 5));
                 SketchUnits.Draw(slide, registry, copy, _lang())?.Select(Office.MsoTriState.msoTrue);
                 return;
             }
@@ -1401,6 +1436,7 @@ namespace InventaSketch.AddIn.OnSlide
             else if (id == "flipH") doc = Edits.Flip(doc, ids, centre, horizontal: true);
             else if (id == "flipV") doc = Edits.Flip(doc, ids, centre, horizontal: false);
             else if (id == "rot90") doc = Edits.Rotate(doc, ids, centre, 90);
+            else if (id == "rotm90") doc = Edits.Rotate(doc, ids, centre, -90);
             var shape = SketchUnits.Replace(slide, unit, doc, registry, _lang());
             shape?.Select(Office.MsoTriState.msoTrue);
         }

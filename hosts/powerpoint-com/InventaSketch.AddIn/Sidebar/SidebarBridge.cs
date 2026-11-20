@@ -11,7 +11,7 @@ namespace InventaSketch.AddIn.Sidebar
 {
     /// <summary>
     /// Message protocol between the sidebar editor (TypeScript, combridge.ts) and the COM add-in:
-    /// editor → add-in: {type:"ready"} and {type:"units", id, units:[{id, payload}], remove:[unitId]};
+    /// editor → add-in: {type:"ready"}, {type:"place", itemId} and {type:"units", id, units:[{id, payload}], remove:[unitId]};
     /// add-in → editor: {type:"ack", id, ok, error?} and {type:"selection", unitId, payload}.
     /// Payloads are compact InventaSketch documents; the add-in draws them natively with the full C# engine.
     /// </summary>
@@ -20,12 +20,13 @@ namespace InventaSketch.AddIn.Sidebar
         private readonly PowerPoint.Application _app;
         private readonly Func<Registry> _registry;
         private readonly Func<Lang> _lang;
+        private readonly Func<string, bool> _place;
         private TaskPaneControl? _pane;
         private bool _applying;
 
-        public SidebarBridge(PowerPoint.Application app, Func<Registry> registry, Func<Lang> lang)
+        public SidebarBridge(PowerPoint.Application app, Func<Registry> registry, Func<Lang> lang, Func<string, bool> place)
         {
-            _app = app; _registry = registry; _lang = lang;
+            _app = app; _registry = registry; _lang = lang; _place = place;
         }
 
         public void Attach(TaskPaneControl pane)
@@ -54,6 +55,13 @@ namespace InventaSketch.AddIn.Sidebar
                     Log.Info("Sidebar ready");
                     PushCurrentSelection();
                     break;
+                case "place":
+                    {
+                        // Library click in the sidebar: insert at pointer on the slide (snapping, Esc cancels).
+                        var itemId = root.TryGetProperty("itemId", out var it) ? it.GetString() : null;
+                        Log.Info("Sidebar place " + itemId + ": " + (itemId is not null && _place(itemId)));
+                        break;
+                    }
                 case "units":
                     {
                         var id = root.GetProperty("id").GetInt32();
