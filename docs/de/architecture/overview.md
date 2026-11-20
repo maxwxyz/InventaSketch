@@ -83,3 +83,34 @@ Dokumentebene spiegelt das Modell.
   Python-Adapters mit einem UNO-Stub.
 - Host-Integrationstests (PowerPoint per COM-Automatisierung, LibreOffice headless), dokumentiert in der
   Fähigkeitsmatrix.
+
+## 7. Engine-API: Aktionen, Änderungsmengen und Dokumenteinstellungen
+
+Alle Hosts rufen dieselben JSON-Methoden auf ([`EngineApi`](../../../src/InventaSketch.Engine/EngineApi.cs)); die
+Vertragstypen stehen in `Contracts.cs` und `hosts/office-web/src/engine/types.ts`. Entscheidung:
+[ADR-0009](../../adr/0009-actions-change-sets-plan-scale.md).
+
+- **Kontextaktionen** (`contextActions`, `applyAction`): Typaktionen erscheinen als `t:<id>` mit `enabled` und, wenn
+  sie einen Textwert brauchen, mit `input: {label, value, unit?}`. Hosts fragen den Wert ab (COM: Eingabedialog;
+  Web: Inline-Feld neben der Auswahl) und rufen `applyAction {action, input}` auf; ohne `input` lehnt die Engine
+  solche Aktionen ab. Typen können außerdem **dokumentbezogene** Aktionen beitragen (`ContextAction.InDocument`), die
+  das ganze Dokument erhalten (z. B. „An Wand ausrichten“ der Architektur). `ContextActions.Run` im Kern führt alle
+  drei Formen aus, sodass sich COM-Add-in und Engine gleich verhalten. `ObjectType.Actions(o, RenderContext)` erlaubt
+  dokumentabhängige Beschriftungen und Aktivzustände.
+- **Änderungsmengen** (`EditorState.changed`, `EditorState.dependents`): Nach jeder Bearbeitung, jedem Rückgängig
+  und Wiederholen nennt der Zustand die von dieser Änderung hinzugefügten oder geänderten Objekte und die weiteren
+  Objekte, deren Darstellung von den berührten abhängt (`ObjectType.Dependents`, vor und nach der Änderung
+  ausgewertet, z. B. an eine bearbeitete Wand angeschlossene Wände und die Türen darin). Hosts zeichnen genau diese
+  Einheiten in einem Rückgängig-Schritt neu. Typen, deren Darstellung Nachbarn liest, setzen
+  `ObjectType.DependsOnNeighbours`; Hosts mit einem Modell pro Form (PowerPoint-COM) rendern solche Einheiten mit den
+  übrigen Einheiten der Folie als Kontext.
+- **Dokumenteinstellungen:** `DocumentSettings.PlanScale` (Maßstabszahl, 100 = 1:100, optional) wird mit dem Dokument
+  und jeder kompakten Folien-Nutzlast gespeichert. `setPlanScale {value}` setzt oder löscht ihn (ein
+  Rückgängig-Schritt, alle Objekte mit `ObjectType.UsesPlanScale` gelten als geändert); `EditorState.planScale` und
+  `inspector.planScale` / `usesPlanScale` geben ihn aus. `importCompact` übernimmt den Planmaßstab der Nutzlast, wenn
+  das Editordokument keinen hat.
+- **Größen je Ansicht:** `ViewDef.Size` gibt die bevorzugte Boxgröße einer Ansicht an. `setView` (und die
+  COM-Ansichtsknöpfe) rufen `ObjectType.WithView` auf, das `Size` mit `ObjectType.SizeForView` anpasst: Standardmäßig
+  behält das Objekt seinen visuellen Maßstab (geometrisches Mittel seiner Skalierungsfaktoren gegenüber der
+  bevorzugten Größe der aktuellen Ansicht) und übernimmt das Seitenverhältnis der Zielansicht; Typen können das
+  überschreiben (Architektur-Öffnungen behalten ihre reale Breite).

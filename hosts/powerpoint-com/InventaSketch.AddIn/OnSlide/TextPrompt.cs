@@ -34,6 +34,17 @@ namespace InventaSketch.AddIn.OnSlide
             return result == DialogResult.OK ? box.Text : null;
         }
 
+        /// <summary>Asks for the value of an input context action (label plus unit, prefilled with the current value).</summary>
+        public static string? AskInput(string label, string? unit, string current, IntPtr owner)
+            => Ask(string.IsNullOrEmpty(unit) || label.Contains("(" + unit + ")") ? label : label + " (" + unit + ")", current, owner);
+
+        /// <summary>Shows a warning (e.g. a value the action could not read), owned by PowerPoint's window.</summary>
+        public static void Warn(string message, IntPtr owner)
+        {
+            if (owner != IntPtr.Zero) MessageBox.Show(new Owner(owner), message, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            else MessageBox.Show(message, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
         private static string Language() => System.Globalization.CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
 
         private sealed class Owner : IWin32Window

@@ -110,3 +110,76 @@ export class ContextBar {
     this.el.hidden = true;
   }
 }
+
+export interface PromptRequest {
+  /** Action label (title of the prompt). */
+  title: string;
+  /** Field label and prefilled value from the action's `input`. */
+  label: string;
+  value: string;
+  unit?: string;
+}
+
+/**
+ * Inline prompt for context actions that need a text value (bar or pie menu). It opens next to the selection inside the
+ * pane; Enter applies, Esc or Cancel closes without a change.
+ */
+export class InlinePrompt {
+  private el?: HTMLFormElement;
+  private restoreFocus?: HTMLElement | null;
+
+  constructor(private readonly root: HTMLElement) {}
+
+  get open(): boolean {
+    return !!this.el;
+  }
+
+  /** Shows the prompt near `at` (client coordinates); `onSubmit` receives the entered text. */
+  show(req: PromptRequest, at: { x: number; y: number }, onSubmit: (value: string) => void): void {
+    this.close();
+    this.restoreFocus = document.activeElement as HTMLElement | null;
+    const input = h("input", { class: "isk-input", type: "text", "aria-label": req.label, autocomplete: "off", spellcheck: "false" });
+    input.value = req.value;
+    const ok = h("button", { class: "isk-btn isk-primary", type: "submit" }, t("prompt.ok"));
+    const cancel = h("button", { class: "isk-btn", type: "button" }, t("prompt.cancel"));
+    const form = h("form", { class: "isk-popover isk-prompt", role: "dialog", "aria-label": req.title },
+      h("div", { class: "isk-pop-head" }, h("strong", {}, req.title)),
+      h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, req.label),
+        h("div", { class: "isk-row" }, input, req.unit ? h("span", { class: "isk-muted" }, req.unit) : false)),
+      h("div", { class: "isk-row", style: "justify-content:flex-end" }, cancel, ok)) as HTMLFormElement;
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const value = input.value;
+      this.close();
+      onSubmit(value);
+    });
+    cancel.addEventListener("click", () => this.close());
+    form.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); this.close(); }
+    });
+    this.root.append(form);
+    this.el = form;
+    const rr = this.root.getBoundingClientRect();
+    const pos = promptPosition(at.x - rr.left, at.y - rr.top, form.offsetWidth, form.offsetHeight, rr.width, rr.height);
+    form.style.left = `${pos.left}px`;
+    form.style.top = `${pos.top}px`;
+    form.style.right = "auto";
+    input.focus();
+    input.select();
+  }
+
+  close(): void {
+    if (!this.el) return;
+    this.el.remove();
+    this.el = undefined;
+    this.restoreFocus?.focus?.();
+  }
+}
+
+/** Top-left of a w×h prompt centred below the point (x, y) of a pane of size pw×ph, kept inside the pane. */
+export function promptPosition(x: number, y: number, w: number, h: number, pw: number, ph: number): { left: number; top: number } {
+  const left = clamp(x - w / 2, 4, Math.max(4, pw - w - 4));
+  let top = y + 12;
+  if (top + h > ph - 4) top = y - h - 12;
+  return { left, top: clamp(top, 4, Math.max(4, ph - h - 4)) };
+}

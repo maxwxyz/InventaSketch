@@ -22,14 +22,18 @@ namespace InventaSketch.Modules.Architecture
 
         public static IEnumerable<ObjectType> Types()
         {
-            yield return Door("arch.door.single", "Door (single swing)", "Tür (einflügelig)", new Size2(9, 20.4), DoorSingle, ElevDoorSingle, 2, "single", "einflügelig", "drehflügeltür", "swing");
-            yield return Door("arch.door.double", "Double door", "Tür (zweiflügelig)", new Size2(16, 18.4), DoorDouble, ElevDoorDouble, 1, "double", "zweiflügelig", "doppeltür", "swing");
-            yield return Door("arch.door.sliding", "Sliding door", "Schiebetür", new Size2(10, 6), DoorSliding, ElevDoorSliding, 0, "sliding", "schiebetür", "slide");
-            yield return Door("arch.door.opening", "Opening (no door)", "Öffnung / Durchgang", new Size2(10, 4), DoorOpening, ElevOpening, 0, "opening", "durchgang", "passage", "doorway", "wandöffnung");
-            yield return Window("arch.window.single", "Window (single casement)", "Fenster (einflügelig)", new Size2(10, 5), WindowSingle, ElevWindowSingle, 0, "single", "einflügelig", "casement", "flügel");
-            yield return Window("arch.window.double", "Window (double casement)", "Fenster (zweiflügelig)", new Size2(16, 5), WindowDouble, ElevWindowDouble, 0, "double", "zweiflügelig", "casement", "flügel");
-            yield return Window("arch.window.french", "French window", "Fenstertür (zweiflügelig)", new Size2(16, 18.4), WindowFrench, ElevWindowFrench, 1, "french", "fenstertür", "balcony door", "balkontür", "terrace", "terrasse");
+            // Elevation sizes at 1:100: doors 2.10 m high, windows 1.25 m (sash), French windows 2.20 m.
+            yield return Door("arch.door.single", "Door (single swing)", "Tür (einflügelig)", new Size2(9, 20.4), new Size2(9, 21), DoorSingle, ElevDoorSingle, 2, "single", "einflügelig", "drehflügeltür", "swing");
+            yield return Door("arch.door.double", "Double door", "Tür (zweiflügelig)", new Size2(16, 18.4), new Size2(16, 21), DoorDouble, ElevDoorDouble, 1, "double", "zweiflügelig", "doppeltür", "swing");
+            yield return Door("arch.door.sliding", "Sliding door", "Schiebetür", new Size2(10, 6), new Size2(10, 21), DoorSliding, ElevDoorSliding, 0, "sliding", "schiebetür", "slide");
+            yield return Door("arch.door.opening", "Opening (no door)", "Öffnung / Durchgang", new Size2(10, 4), new Size2(10, 21), DoorOpening, ElevOpening, 0, "opening", "durchgang", "passage", "doorway", "wandöffnung");
+            yield return Window("arch.window.single", "Window (single casement)", "Fenster (einflügelig)", new Size2(10, 5), new Size2(10, 12.5), WindowSingle, ElevWindowSingle, 0, "single", "einflügelig", "casement", "flügel");
+            yield return Window("arch.window.double", "Window (double casement)", "Fenster (zweiflügelig)", new Size2(16, 5), new Size2(16, 12.5), WindowDouble, ElevWindowDouble, 0, "double", "zweiflügelig", "casement", "flügel");
+            yield return Window("arch.window.french", "French window", "Fenstertür (zweiflügelig)", new Size2(16, 18.4), new Size2(16, 22), WindowFrench, ElevWindowFrench, 1, "french", "fenstertür", "balcony door", "balkontür", "terrace", "terrasse");
         }
+
+        /// <summary>True for door and window type ids (objects that cut a wall band).</summary>
+        public static bool IsOpening(string typeId) => typeId.StartsWith("arch.door.", StringComparison.Ordinal) || typeId.StartsWith("arch.window.", StringComparison.Ordinal);
 
         private static IReadOnlyList<ParamDef> CommonParams(bool window) => new[]
         {
@@ -39,30 +43,80 @@ namespace InventaSketch.Modules.Architecture
             Pm.Scale,
         };
 
-        private static BoxType Door(string id, string en, string de, Size2 size, DrawFn plan, DrawFn elev, int leafFactor, params string[] kw)
+        private static BoxType Door(string id, string en, string de, Size2 size, Size2 elevSize, DrawFn plan, DrawFn elev, int leafFactor, params string[] kw)
             => new(id, new I18nText(en, de), ArchCategories.Openings, size, plan, DoorKw.Concat(kw).ToArray())
             {
                 Elevation = elev,
+                ElevationSize = elevSize,
+                LeafFactor = leafFactor,
                 Hub = true,
+                NeighbourAware = true,
                 Params = CommonParams(false),
-                Extra = o => DoorActions(o, id, leafFactor, false),
+                ExtraInDocument = (o, ctx) => DoorActions(o, ctx, id, leafFactor, false),
             };
 
-        private static BoxType Window(string id, string en, string de, Size2 size, DrawFn plan, DrawFn elev, int leafFactor, params string[] kw)
+        private static BoxType Window(string id, string en, string de, Size2 size, Size2 elevSize, DrawFn plan, DrawFn elev, int leafFactor, params string[] kw)
             => new(id, new I18nText(en, de), ArchCategories.Openings, size, plan, WindowKw.Concat(kw).ToArray())
             {
                 Elevation = elev,
+                ElevationSize = elevSize,
+                LeafFactor = leafFactor,
                 Hub = true,
+                NeighbourAware = true,
                 Params = CommonParams(true),
-                Extra = o => DoorActions(o, id, leafFactor, true),
+                ExtraInDocument = (o, ctx) => DoorActions(o, ctx, id, leafFactor, true),
             };
 
         /// <summary>Real width in mm of an opening (box width times plan scale).</summary>
-        public static double RealWidth(SketchObject o) => o.Size.W * Arch.ScaleOf(o);
+        public static double RealWidth(SketchObject o, SketchDocument? doc) => o.Size.W * Arch.ScaleOf(o, doc);
 
-        /// <summary>Hinge/swing flips and width steps of 125 mm (leaf depth grows with hinged leaves).</summary>
-        private static IEnumerable<ContextAction> DoorActions(SketchObject o, string id, int leafFactor, bool window)
+        /// <summary>Sets the real width (mm) of an opening; hinged leaves deepen the plan box by the same amount.</summary>
+        private static SketchObject WithWidth(SketchObject x, double realMm, int leafFactor, SketchDocument? doc)
         {
+            var dw = realMm / Arch.ScaleOf(x, doc) - x.Size.W;
+            var depth = x.View == BoxType.ElevationView.Id ? x.Size.H : Math.Max(0.5, x.Size.H + leafFactor * dw);
+            return x with { Size = new Size2(Math.Max(0.5, x.Size.W + dw), depth) };
+        }
+
+        /// <summary>The wall segment nearest to the opening centre within reach (wall half thickness plus half the smaller box side).</summary>
+        internal static (Vec2 A, Vec2 B)? HostSegment(SketchObject o, SketchDocument doc)
+        {
+            if (o.IsPointGeometry) return null;
+            var c = new Vec2(o.Transform.X, o.Transform.Y);
+            var slack = Math.Min(o.Size.W, o.Size.H) / 2;
+            (Vec2 A, Vec2 B)? best = null;
+            var bestD = double.MaxValue;
+            foreach (var w in WallLine.OnPageOf(o, doc))
+                for (var k = 0; k < w.SegCount; k++)
+                {
+                    var d = Arch.DistanceToSegment(c, w.A(k), w.B(k));
+                    if (d <= Math.Max(w.Half, WallBuilder.JoinTolerance) + slack && d < bestD && w.A(k).DistanceTo(w.B(k)) > Geo.Eps) { bestD = d; best = (w.A(k), w.B(k)); }
+                }
+            return best;
+        }
+
+        /// <summary>
+        /// Rotates the opening to the direction of the wall segment it sits on (keeping the side it opens to as far as
+        /// possible: of the two wall directions the one closer to the current rotation wins) and centres it on the wall axis.
+        /// </summary>
+        public static SketchDocument AlignToWall(SketchDocument doc, SketchObject o)
+        {
+            if (HostSegment(o, doc) is not (Vec2 a, Vec2 b)) return doc;
+            var dir = b - a;
+            var angle = Geo.RadToDeg(Math.Atan2(dir.Y, dir.X));
+            double Diff(double x) { var d = (x - o.Transform.Rotation) % 360; if (d > 180) d -= 360; if (d <= -180) d += 360; return Math.Abs(d); }
+            if (Diff(angle + 180) < Diff(angle)) angle += 180;
+            angle %= 360;
+            if (angle > 180) angle -= 360;
+            if (angle <= -180) angle += 360;
+            var p = Geo.ClosestOnSegment(new Vec2(o.Transform.X, o.Transform.Y), a, b).Point;
+            return Edits.Replace(doc, o with { Transform = o.Transform with { X = p.X, Y = p.Y, Rotation = Math.Round(angle, 9) } });
+        }
+
+        /// <summary>Hinge/swing flips, width steps of 125 mm and width input (leaf depth grows with hinged leaves), align to wall.</summary>
+        private static IEnumerable<ContextAction> DoorActions(SketchObject o, RenderContext ctx, string id, int leafFactor, bool window)
+        {
+            var doc = ctx.Doc;
             var sliding = id == "arch.door.sliding";
             if (id != "arch.door.opening" && id != "arch.door.double")
                 yield return Arch.Toggle(o, "arch.hinge", sliding ? new I18nText("Flip sliding direction", "Schieberichtung wechseln") : new I18nText("Flip hinge side", "Anschlagseite wechseln"),
@@ -71,27 +125,27 @@ namespace InventaSketch.Modules.Architecture
                 yield return Arch.Toggle(o, "arch.side", new I18nText("Swap inside/outside", "Innen/außen tauschen"), IconIds.MirrorV, "flip", false, "flip");
             else if (id != "arch.door.opening")
                 yield return Arch.Toggle(o, "arch.swing", new I18nText("Flip swing direction", "Aufschlagrichtung wechseln"), IconIds.MirrorV, "swingOut", false, "flip");
-            var scale = Arch.ScaleOf(o);
-            var w = RealWidth(o);
+            var w = RealWidth(o, doc);
             foreach (var dir in new[] { 1, -1 })
             {
                 var next = Math.Max(250, Math.Round((w + dir * 125) / 5) * 5);
                 var label = next.ToString("0", CultureInfo.InvariantCulture) + " mm";
                 yield return new ContextAction(dir > 0 ? "arch.width.inc" : "arch.width.dec",
                     dir > 0 ? new I18nText("Wider (" + label + ")", "Breiter (" + label + ")") : new I18nText("Narrower (" + label + ")", "Schmaler (" + label + ")"),
-                    dir > 0 ? IconIds.Increase : IconIds.Decrease, x =>
-                    {
-                        var dw = next / Arch.ScaleOf(x) - x.Size.W;
-                        return x with { Size = new Size2(x.Size.W + dw, Math.Max(0.5, x.Size.H + leafFactor * dw)) };
-                    }) { Group = "width" };
+                    dir > 0 ? IconIds.Increase : IconIds.Decrease, x => WithWidth(x, next, leafFactor, doc)) { Group = "width" };
             }
+            yield return ContextAction.WithInput("arch.width.set", new I18nText("Width…", "Breite…"), IconIds.Text,
+                new I18nText("Opening width (mm)", "Öffnungsbreite (mm)"), w.ToString("0", CultureInfo.InvariantCulture),
+                (x, text) => WithWidth(x, Math.Max(10, Arch.ParseMm(text, ctx.Lang)), leafFactor, doc), "mm") with { Group = "width" };
+            yield return ContextAction.InDocument("arch.align", new I18nText("Align to wall", "An Wand ausrichten"), IconIds.Rotate,
+                (d, x, _) => AlignToWall(d, x)) with { Group = "wall", IsEnabled = HostSegment(o, doc) is not null };
         }
 
         /// <summary>Thickness (page mm) of the wall under the opening centre, else the fallback parameter.</summary>
         public static double BandThickness(SketchObject o, RenderContext ctx, double maxH)
         {
             var c = new Vec2(o.Transform.X, o.Transform.Y);
-            double best = double.MaxValue, t = Math.Max(0.05, o.Num("wallThickness", 240)) / Arch.ScaleOf(o);
+            double best = double.MaxValue, t = Math.Max(0.05, o.Num("wallThickness", 240)) / Arch.ScaleOf(o, ctx.Doc);
             if (!o.IsPointGeometry)
                 foreach (var w in WallLine.OnPageOf(o, ctx.Doc))
                     for (var k = 0; k < w.SegCount; k++)

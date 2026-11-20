@@ -30,6 +30,10 @@ namespace InventaSketch.Engine
         public SnapOptions Snap { get; set; } = new();
         /// <summary>Incremented on every document change (edits, undo, redo, open).</summary>
         public int Revision { get; private set; }
+        /// <summary>Objects added or modified by the last document change (edit, undo, redo); empty after open/new.</summary>
+        public IReadOnlyList<string> LastChanged { get; private set; } = Array.Empty<string>();
+        /// <summary>Existing objects whose rendering depends on the objects touched by the last change (<see cref="ObjectType.Dependents"/>).</summary>
+        public IReadOnlyList<string> LastDependents { get; private set; } = Array.Empty<string>();
 
         public SketchDocument Doc => History.Current;
 
@@ -54,6 +58,7 @@ namespace InventaSketch.Engine
             var after = History.Apply(label, edit);
             if (ReferenceEquals(before, after)) return false;
             Revision++;
+            Track(before, after);
             Select(_selection);
             return true;
         }
@@ -61,8 +66,10 @@ namespace InventaSketch.Engine
         public bool Undo()
         {
             if (!History.CanUndo) return false;
+            var before = History.Current;
             History.Undo();
             Revision++;
+            Track(before, History.Current);
             Select(_selection);
             return true;
         }
@@ -70,8 +77,10 @@ namespace InventaSketch.Engine
         public bool Redo()
         {
             if (!History.CanRedo) return false;
+            var before = History.Current;
             History.Redo();
             Revision++;
+            Track(before, History.Current);
             Select(_selection);
             return true;
         }
@@ -84,6 +93,15 @@ namespace InventaSketch.Engine
             PageId = doc.Pages[0].Id;
             Revision++;
             _selection = new List<string>();
+            LastChanged = Array.Empty<string>();
+            LastDependents = Array.Empty<string>();
+        }
+
+        private void Track(SketchDocument before, SketchDocument after)
+        {
+            var set = ChangeSet.Compute(Registry, before, after, Lang);
+            LastChanged = set.Changed;
+            LastDependents = set.Dependents;
         }
 
         /// <summary>Ids on the current page, filtered to existing objects (null/empty = current selection).</summary>

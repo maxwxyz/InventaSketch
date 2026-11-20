@@ -60,7 +60,10 @@ export class Session {
   setPoint(id: string, index: number, x: number, y: number, snap: boolean, tolerance?: number): EditorState {
     return this.c("setPoint", { id, index, x, y, snap, tolerance });
   }
-  applyAction(ids: string[], action: string): EditorState { return this.c("applyAction", { ids, action }); }
+  /** Runs a context action; actions whose info carries `input` need the entered text. */
+  applyAction(ids: string[], action: string, input?: string): EditorState { return this.c("applyAction", { ids, action, input }); }
+  /** Sets the document plan scale denominator (100 = 1:100); null clears it. One undo step. */
+  setPlanScale(value: number | null): EditorState { return this.c("setPlanScale", { value }); }
   undo(): EditorState { return this.c("undo"); }
   redo(): EditorState { return this.c("redo"); }
   select(ids: string[]): EditorState { return this.c("select", { ids, includeSvg: false }); }

@@ -107,19 +107,34 @@ namespace InventaSketch.AddIn.Sidebar
             try
             {
                 _app.StartNewUndoEntry();
+                // Models before/after this change, so units depending on them (wall joints, openings) are redrawn as well.
+                var before = new List<SketchDocument?>();
+                var after = new List<SketchDocument?>();
+                var sent = new HashSet<string>(StringComparer.Ordinal);
                 if (root.TryGetProperty("remove", out var remove))
                     foreach (var r in remove.EnumerateArray())
-                        if (r.GetString() is string rid && existing.TryGetValue(rid, out var gone)) { gone.Delete(); existing.Remove(rid); }
+                        if (r.GetString() is string rid && existing.TryGetValue(rid, out var gone))
+                        {
+                            before.Add(SketchUnits.Read(gone)?.Doc);
+                            gone.Delete();
+                            existing.Remove(rid);
+                        }
                 PowerPoint.Shape? last = null;
                 foreach (var u in root.GetProperty("units").EnumerateArray())
                 {
                     var unitId = u.GetProperty("id").GetString() ?? "";
                     var model = DocumentJson.FromCompact(u.GetProperty("payload").GetString() ?? "");
+                    sent.Add(unitId);
+                    after.Add(model);
                     if (existing.TryGetValue(unitId, out var shape) && SketchUnits.Read(shape) is SketchUnit unit)
+                    {
+                        before.Add(unit.Doc);
                         last = SketchUnits.Replace(slide, unit, model, registry, _lang());
+                    }
                     else
                         last = SketchUnits.Draw(slide, registry, model, _lang());
                 }
+                SketchUnits.RedrawDependents(slide, registry, _lang(), before, after, sent);
                 last?.Select(Office.MsoTriState.msoTrue);
             }
             finally

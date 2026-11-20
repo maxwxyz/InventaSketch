@@ -74,3 +74,30 @@ and a compressed model payload; the document-level store mirrors the model.
 - SVG gallery of all library items × views for visual review (headless browser screenshots).
 - Engine API contract tests; TypeScript adapter tests with a fake Office.js; Python adapter tests with a UNO stub.
 - Host integration tests (PowerPoint via COM automation, LibreOffice headless) recorded in the capability matrix.
+
+## 7. Engine API: actions, change sets and document settings
+
+All hosts call the same JSON methods ([`EngineApi`](../../../src/InventaSketch.Engine/EngineApi.cs)); the contract types
+live in `Contracts.cs` and `hosts/office-web/src/engine/types.ts`. Decision record: [ADR-0009](../../adr/0009-actions-change-sets-plan-scale.md).
+
+- **Context actions** (`contextActions`, `applyAction`): type actions are listed as `t:<id>` with `enabled` and, for
+  actions that need a text value, `input: {label, value, unit?}`. Hosts prompt for the value (COM: prompt dialog;
+  web: inline field next to the selection) and call `applyAction {action, input}`; without `input` the engine
+  rejects such an action. Types may also contribute **document-aware** actions (`ContextAction.InDocument`), which
+  receive the whole document (e.g. architecture "align to wall"). `ContextActions.Run` in Core executes all three
+  forms, so the COM add-in and the engine behave the same. `ObjectType.Actions(o, RenderContext)` lets labels and
+  enabled states depend on the document.
+- **Change sets** (`EditorState.changed`, `EditorState.dependents`): after every edit, undo or redo the state lists
+  the objects added or modified by that change and the further objects whose rendering depends on the touched ones
+  (`ObjectType.Dependents`, evaluated before and after the change, e.g. walls joined to an edited wall and the doors
+  in it). Hosts redraw exactly these units in one undo step. Types whose rendering reads neighbours declare
+  `ObjectType.DependsOnNeighbours`; hosts with one model per shape (PowerPoint COM) render such units with the other
+  units of the slide as context.
+- **Document settings:** `DocumentSettings.PlanScale` (denominator, 100 = 1:100, optional) is persisted with the
+  document and every compact slide payload. `setPlanScale {value}` sets or clears it (one undo step, all objects with
+  `ObjectType.UsesPlanScale` are reported as changed); `EditorState.planScale` and `inspector.planScale` /
+  `usesPlanScale` expose it. `importCompact` adopts the payload's plan scale when the editor document has none.
+- **View sizes:** `ViewDef.Size` gives a view's preferred box size. `setView` (and the COM view buttons) call
+  `ObjectType.WithView`, which adapts `Size` with `ObjectType.SizeForView`: by default the object keeps its visual
+  scale (geometric mean of its scale factors against the current view's preferred size) and takes the target view's
+  aspect; types may override it (architecture openings keep their real width).

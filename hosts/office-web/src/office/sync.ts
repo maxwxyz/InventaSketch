@@ -18,11 +18,28 @@ export interface SyncHost {
 
 const rect = (b: BoxPt) => ({ x: b.left, y: b.top, w: b.width, h: b.height });
 
+/**
+ * Object ids to redraw after edits: with `touched` (changed objects plus their dependents, e.g. walls joined to an edited
+ * wall and the doors in it) only the tracked units containing one of them, otherwise every tracked unit. Ids that no
+ * longer exist are dropped.
+ */
+export function liveRedrawIds(units: Map<string, string[]>, existing: Set<string>, touched?: Set<string>): string[] {
+  const out = new Set<string>();
+  for (const objs of units.values()) {
+    if (touched && !objs.some((id) => touched.has(id))) continue;
+    for (const id of objs) if (existing.has(id)) out.add(id);
+  }
+  return [...out];
+}
+
 export class SlideSync {
   /** Units on the slide that this editor owns: unit id → object ids. */
   readonly units = new Map<string, string[]>();
   readonly queue = new WorkQueue();
   private writing = 0;
+  /** Objects touched by edits since the last live write (coalesced writes must not lose earlier edits). */
+  private touched = new Set<string>();
+  private touchedAll = false;
   lastNotes: string[] = [];
 
   constructor(private readonly h: SyncHost) {}
@@ -42,12 +59,20 @@ export class SlideSync {
     });
   }
 
-  /** After an edit: redraw tracked units with the newest state (coalesced; at most one pending write). */
+  /**
+   * After an edit: redraw the tracked units touched by it (changed objects and their dependents, in one write) with the
+   * newest state (coalesced; at most one pending write). Without change information every tracked unit is redrawn.
+   */
   scheduleLive(state: EditorState): Promise<void> {
     if (this.units.size === 0) return Promise.resolve();
+    if (state.changed === undefined) this.touchedAll = true;
+    else for (const id of [...state.changed, ...(state.dependents ?? [])]) this.touched.add(id);
     return this.queue.latest("live", async () => {
+      const touched = this.touchedAll ? undefined : new Set(this.touched);
+      this.touched.clear();
+      this.touchedAll = false;
       const existing = new Set(state.objects.map((o) => o.id));
-      const ids = [...new Set([...this.units.values()].flat())].filter((id) => existing.has(id));
+      const ids = liveRedrawIds(this.units, existing, touched);
       const gone = [...this.units.keys()].filter((u) => !(this.units.get(u) ?? []).some((id) => existing.has(id)));
       const plan = ids.length ? this.h.session().drawPlan(ids, this.h.draw) : { units: [] as PlanUnit[] };
       const stale = [...new Set([...gone, ...this.staleFor(plan.units)])];
