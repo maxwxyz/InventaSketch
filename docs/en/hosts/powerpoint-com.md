@@ -147,6 +147,17 @@ Ten modules (same environment, installed from the package with `install.ps1`, 20
   auto-fit to their empty text before AutoSize was switched off) — UML/ER titles, dimension values and underlines
   are now placed correctly.
 
+Pie menu, input prompt and dependents (same environment, 2026-11-20 evening):
+
+- Pie menu: at most eight entries in the ring (essential entries first: delete, type/label for line types only, views,
+  duplicate, rotate), everything else under "More ▸" without duplicates; labels wrap to the sector chord (two lines,
+  smaller font or "…"), a pill below the ring shows the full label of a shortened entry; the active view is marked
+  at the rim.
+- Right-click within 6 logical px of a selected thin unit opens the pie menu; the mouse hook swallows the release of
+  every press it swallowed (and stays installed until then), so PowerPoint's own context menu no longer appears.
+- Input actions: "More ▸ → Thickness…" on a wall opened the prompt (layout from font metrics, correct at 200 % DPI);
+  365 mm made the wall 10.3 pt thick and redrew the joined wall ("Redrew 1 dependent unit(s)"); one Ctrl+Z undid both.
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in

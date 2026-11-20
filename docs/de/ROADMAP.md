@@ -97,8 +97,8 @@ Export-Erweiterungspunkte der Module.
   - Module: `ViewDef.Size` nutzen, wo Ansichten im Seitenverhältnis abweichen (Fahrzeug Drauf-/Seitenansicht);
     Beschriftungs-Text- und Bezugslinientypen zeichnen noch eigene Unterstreichungslinien (auf `TextStyle.Underline`
     umstellen); Kennzeichen/Wert der Elektro-Symbole als Eingabeaktionen.
-  - Noch nicht in echtem PowerPoint geprüft: Eingabedialog und abhängiges Neuzeichnen von Wänden (gezeichnete Spitzen und
-    Unterstreichung am 20.11.2026 geprüft).
+  - In PowerPoint am 20.11.2026 geprüft: gezeichnete Spitzen, Unterstreichung, Eingabedialog, abhängiges Neuzeichnen von
+    Wänden mit einem Rückgängig-Schritt.
 - Web-Installer (aus Slidemax übernommen, am 20.11.2026 ins Englische übersetzt, Meldungen deutsch/englisch): echte
   Installation und Laden des Add-ins in PowerPoint (Windows ohne COM-Add-in, Mac, Web) stehen aus.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).

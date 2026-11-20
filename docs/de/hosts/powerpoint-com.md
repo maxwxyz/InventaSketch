@@ -116,6 +116,19 @@ Zehn Module (gleiche Umgebung, aus dem Paket mit `install.ps1` installiert, 2026
   Textfelder passten sich an ihren leeren Text an, bevor die automatische Größe abgeschaltet war) – Titel von UML/ER,
   Maßzahlen und Unterstreichungen sitzen jetzt richtig.
 
+Kreismenü, Eingabedialog und abhängige Einheiten (gleiche Umgebung, 2026-11-20 abends):
+
+- Kreismenü: höchstens acht Einträge im Ring (wichtige zuerst: Löschen, Typ/Beschriftung nur für Linientypen,
+  Ansichten, Duplizieren, Drehen), alles Weitere ohne Dopplungen unter „Mehr ▸“; Beschriftungen brechen auf die
+  Sehnenbreite des Sektors um (zwei Zeilen, kleinere Schrift oder „…“), eine Pille unter dem Ring zeigt den vollen
+  Text eines gekürzten Eintrags; die aktive Ansicht ist am Rand markiert.
+- Ein Rechtsklick bis 6 logische Pixel neben einer ausgewählten dünnen Einheit öffnet das Kreismenü; der Maus-Hook
+  schluckt die Freigabe jedes von ihm geschluckten Drückens (und bleibt bis dahin installiert), daher erscheint das
+  native PowerPoint-Kontextmenü nicht mehr.
+- Eingabeaktionen: „Mehr ▸ → Dicke…“ an einer Wand öffnete den Dialog (Layout aus Schriftmaßen, korrekt bei 200 % DPI);
+  365 mm machten die Wand 10,3 pt dick und zeichneten die angeschlossene Wand neu („Redrew 1 dependent unit(s)“); ein
+  Strg+Z nahm beides zurück.
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in
