@@ -351,7 +351,7 @@ namespace InventaSketch.Modules.Architecture.Tests
             var targets = Snapper.Targets(r, doc, doc.Pages[0], new[] { b.Id }, ctx, Opt);
             Assert.Contains(targets, t => t.Role == AnchorRole.Mount && t.P == new Vec2(60, 0));
             var res = Snapper.SnapMove(moving, Vec2.Zero, targets, Opt);
-            Assert.Equal("point", res.Kind);
+            Assert.Equal("mount", res.Kind); // wall ends are Mount points: Mount-to-Mount rule
             Assert.Equal(new Vec2(-1.5, -1.2).X, res.Delta.X, 6);
             Assert.Equal(-1.2, res.Delta.Y, 6);
 

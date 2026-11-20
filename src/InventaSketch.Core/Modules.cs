@@ -139,8 +139,17 @@ namespace InventaSketch.Core
         PitchInner,
         /// <summary>Point that wants to sit on an axis (gear/bearing/hub centre in side view).</summary>
         Hub,
-        /// <summary>Wall/structure connection point.</summary>
+        /// <summary>
+        /// Wall/structure/vehicle connection point. A moving <c>Mount</c> point snaps onto a <c>Mount</c> point of
+        /// another object (sensor onto vehicle, wall end onto wall end) with the priority of a port.
+        /// </summary>
         Mount,
+        /// <summary>
+        /// Segment along which moving <see cref="End"/> and <see cref="Port"/> points may dock anywhere (wires, buses,
+        /// sequence lifelines, lane centres). Its two end points are docking points with port priority; in between it
+        /// ranks below discrete ports. Unlike <see cref="Axis"/> it never attracts hubs.
+        /// </summary>
+        Rail,
     }
 
     /// <summary>
@@ -150,10 +159,18 @@ namespace InventaSketch.Core
     /// </summary>
     public sealed record Anchor(AnchorKind Kind, AnchorRole Role, Vec2 P, Vec2 Q = default, double Radius = 0)
     {
+        /// <summary>
+        /// Optional id, unique per object (pins, ports, mounts). Attachments refer to it via
+        /// <see cref="Attachment.AnchorId"/>, so ids of connection points must be stable across parameter changes.
+        /// </summary>
         public string? Id { get; init; }
+        /// <summary>Id of the object that contributed the anchor (set by <see cref="Snapper.Targets"/>; null for page anchors).</summary>
+        public string? Owner { get; init; }
         public static Anchor Point(AnchorRole role, Vec2 p, string? id = null) => new(AnchorKind.Point, role, p) { Id = id };
         public static Anchor Circle(AnchorRole role, Vec2 c, double r) => new(AnchorKind.Circle, role, c, default, r);
         public static Anchor Segment(AnchorRole role, Vec2 a, Vec2 b) => new(AnchorKind.Segment, role, a, b);
+        /// <summary>A <see cref="AnchorRole.Rail"/> segment from <paramref name="a"/> to <paramref name="b"/>.</summary>
+        public static Anchor Rail(Vec2 a, Vec2 b, string? id = null) => new(AnchorKind.Segment, AnchorRole.Rail, a, b) { Id = id };
 
         public Anchor Transform(Matrix2D m) => Kind switch
         {

@@ -205,7 +205,8 @@ namespace InventaSketch.Modules.Electrical
         /// <summary>
         /// Connects an end point of a wire (or any point object) to the nearest pin (<see cref="AnchorRole.Port"/>) of a
         /// box object on the same page within <paramref name="tolerance"/> mm: the point is moved onto the pin and
-        /// attached (normalised box coordinates), so it follows when the symbol is moved, rotated or scaled.
+        /// attached (normalised box coordinates plus the pin id), so it follows when the symbol is moved, rotated or scaled
+        /// and, via <see cref="Attachments.Refresh"/>, when the pin moves inside the symbol (polarity flip, pin count).
         /// Returns the document unchanged if no pin is in reach.
         /// </summary>
         public static SketchDocument ConnectToPin(Registry registry, SketchDocument doc, string pointObjectId, int index, double tolerance = 2.0)
@@ -216,7 +217,7 @@ namespace InventaSketch.Modules.Electrical
             var at = doc.ResolvePoints(wire)[index];
             var ctx = new RenderContext(doc);
             SketchObject? best = null;
-            Vec2 bestPoint = default;
+            Anchor? pin = null;
             var bestDist = tolerance;
             foreach (var o in doc.ObjectsOn(page))
             {
@@ -225,12 +226,11 @@ namespace InventaSketch.Modules.Electrical
                 {
                     if (a.Kind != AnchorKind.Point || a.Role != AnchorRole.Port) continue;
                     var d = a.P.DistanceTo(at);
-                    if (d <= bestDist) { bestDist = d; best = o; bestPoint = a.P; }
+                    if (d <= bestDist) { bestDist = d; best = o; pin = a; }
                 }
             }
-            if (best is null) return doc;
-            var (u, v) = best.ToBox(bestPoint);
-            return Edits.SetPoint(doc, pointObjectId, index, bestPoint, new Attachment(best.Id, u, v));
+            if (best is null || pin is null) return doc;
+            return Edits.AttachPoint(doc, pointObjectId, index, best.Id, pin.P, pin.Id);
         }
     }
 }

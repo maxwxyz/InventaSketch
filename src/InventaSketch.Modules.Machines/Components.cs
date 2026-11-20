@@ -26,8 +26,9 @@ namespace InventaSketch.Modules.Machines
         /// <summary>Rotor scale so that the rotor radius is the stator bore minus about 1 mm.</summary>
         public const double RotorScale = 0.47;
         /// <summary>
-        /// Air-gap centre radius (mm) of the default stator/rotor pair. The stator exposes it as PitchInner, the rotor as Pitch:
-        /// like the pitch circles of an internal gear pair they coincide, so the snapper centres the rotor in the stator.
+        /// Air-gap centre radius (mm) of the default stator/rotor pair (size of the air-gap ring). Stator and rotor expose their
+        /// real bore and outer radius as PitchInner/Pitch circles: their radii are almost equal, so the snapper treats the pair
+        /// as a fit and centres the rotor in the stator instead of meshing it like a planet (<see cref="Snapper.InternalMeshMaxRatio"/>).
         /// </summary>
         public const double AirGapMid = (StatorBore * StatorScale + RotorOut * RotorScale) / 2;
 
@@ -55,7 +56,7 @@ namespace InventaSketch.Modules.Machines
             new ViewSpec("axial", VAxial, IconIds.Axial, 100, 100, StatorAxial)
             {
                 Hub = true,
-                Anchors = (p, o) => new[] { Common.Outer(o) ? Circle(AnchorRole.Pitch, p, 49.5, "airgap") : Circle(AnchorRole.PitchInner, p, AirGapMid / StatorScale, "airgap") },
+                Anchors = (p, o) => new[] { Common.Outer(o) ? Circle(AnchorRole.Pitch, p, 49, "outer") : Circle(AnchorRole.PitchInner, p, StatorBore, "bore") },
             },
             new ViewSpec("side", VSide, IconIds.Section, 50, 100, StatorSide) { Hub = true, Anchors = (p, o) => new[] { Anchor.Segment(AnchorRole.Axis, p.V(-25, 0), p.V(25, 0)) } })
         {
@@ -118,7 +119,7 @@ namespace InventaSketch.Modules.Machines
             new ViewSpec("axial", VAxial, IconIds.Axial, 100, 100, RotorAxial)
             {
                 Hub = true,
-                Anchors = (p, o) => new[] { Common.Outer(o) ? Circle(AnchorRole.PitchInner, p, 35.5, "airgap") : Circle(AnchorRole.Pitch, p, AirGapMid / RotorScale, "airgap") },
+                Anchors = (p, o) => new[] { Common.Outer(o) ? Circle(AnchorRole.PitchInner, p, 36, "bore") : Circle(AnchorRole.Pitch, p, RotorOut, "outer") },
             },
             new ViewSpec("side", VSide, IconIds.Section, 70, 100, RotorSideView) { Hub = true, Anchors = (p, o) => new[] { Anchor.Segment(AnchorRole.Axis, p.V(-35, 0), p.V(35, 0)) } })
         {

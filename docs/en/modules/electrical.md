@@ -44,13 +44,19 @@ electrical rule check (ERC), no simulation and no manufacturing output yet.
 - Every connectable symbol exposes its pins as `Anchor.Point(AnchorRole.Port, …)` with a stable id (`1`/`2`, `A`/`K`,
   `B`/`C`/`E`, `G`/`D`/`S`, `+`/`-`, `in1…`/`out`, `U`/`V`/`W`, …). Pins are stored in normalised box coordinates
   (−0.5…0.5), so they stay on the symbol for any scaling, rotation and mirroring.
-- Wire ends are point anchors (`AnchorRole.End`); the generic snapper pulls a dragged wire end onto a pin (`Snapper.SnapPoint`)
-  and a moving symbol's ports onto wire ends or other pins (semantic snap kind `port`).
+- Wire ends are point anchors (`AnchorRole.End`); the snapper pulls a dragged wire end onto a pin (`Snapper.SnapPoint`,
+  snap kind `port`) and a moving symbol's ports onto wire ends or other pins. Pins always beat the generic corner and
+  centre snaps, even on a 2 × 2 mm junction dot whose corner is closer to the wire end than its pin.
+- Wires and buses are **rails** (`AnchorRole.Rail` along the routed path, ids `rail0`, `rail1`, …): another wire end,
+  a junction dot or a pin docks anywhere on them (snap kind `rail`, T junctions). Rail end points and wire corners attract
+  like pins; in between a rail ranks below discrete pins and taps.
 - `ElectricalModule.ConnectToPin(registry, doc, wireId, index, tolerance)` moves a wire end onto the nearest pin within the
-  tolerance and stores an `Attachment`, so the wire follows when the symbol is moved, rotated or scaled.
+  tolerance and stores an `Attachment` with the **pin id** (`AnchorId`), so the wire follows when the symbol is moved,
+  rotated or scaled, and `Attachments.Refresh` (run by the engine after every edit) moves it with the pin when the pin
+  moves inside the symbol (polarity flip, pin count or view change).
 - Orthogonal wires leave and enter attached pins perpendicular to the box edge the pin sits on (honouring the
   symbol's rotation).
-- Bus lines expose `Port` taps every 10 mm along their length; the busbar exposes five taps.
+- Bus lines expose `Port` taps every 10 mm along their length and are rails in between; the busbar exposes five taps.
 - Objects without connection points: board outline, copper area, mounting hole, silkscreen label.
 
 ## Context actions
@@ -93,8 +99,8 @@ module state. A JSON round trip reproduces the document and the rendered SVG exa
 ## Limits and next steps
 
 - No netlist extraction, ERC (open pins, unconnected nets), auto-junctions or crossing jumps yet.
-- Wires attach to pins by box position, not by pin id: after a polarity flip an attached wire stays at the old position.
-- Wires snap to bus taps (every 10 mm), not to arbitrary points on a bus.
+- A wire end docked on another wire or a bus (rail) is not attached to it (attachments target box objects only); it keeps
+  its position when the other wire moves.
 - Labels lie outside the object box, so host selection frames do not include them.
 - Visual review: `dotnet test` writes an SVG gallery to
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (ports shown as red circles,

@@ -119,9 +119,12 @@ Beim Wechsel zwischen runder Ansicht und Längsschnitt wird die Boxbreite angepa
 ## Fanganker
 
 - Alle runden Teile bieten einen **Hub**-Punkt in der Mitte (konzentrisches Fangen, Nabe auf Wellenachse).
-- Der **Ständer** (Innenläufer) bietet seinen Luftspaltkreis als **PitchInner**, der **Läufer** als **Pitch** an. Wie die
-  Teilkreise eines Hohlradpaars liegen beide auf dem Luftspalt-Mittenkreis, daher fängt der Läufer **konzentrisch** im
-  Ständer (und der Ständer um den Läufer). Der Luftspaltring bietet denselben Kreis. Gehäuse und Kühlmantel bieten ihre
+- Der **Ständer** (Innenläufer) bietet seine tatsächliche Bohrung als **PitchInner**, der **Läufer** seinen tatsächlichen
+  Außenradius als **Pitch** an (Außenläufer: Ständer-Außenradius als Pitch, Läufer-Innenradius als PitchInner; die
+  vollständige Radialflussmaschine bietet beide). Die Radien sind nahezu gleich, daher behandelt der Core-Snapper das Paar
+  als Passung und fängt den Läufer **konzentrisch** im Ständer (und den Ständer um den Läufer) statt ihn wie ein Planetenrad
+  im Hohlrad eingreifen zu lassen – auch nach freiem Skalieren (Regel: Hohlrad-Eingriff nur unter 90 % des Hohlradradius,
+  `Snapper.InternalMeshMaxRatio`). Der Luftspaltring bietet seinen Mittenkreis als PitchInner. Gehäuse und Kühlmantel bieten ihre
   Bohrung als PitchInner an (konzentrisch zum Ständer). Magnetsegmente bieten ihren Innenbogen als PitchInner an, sodass
   der Bogenmittelpunkt auf den Läufermittelpunkt fängt.
 - Längsschnitte (`side`) bieten das **Axis**-Segment der Welle an; Drehgeber, Schleifringe und andere Teile fangen mit
@@ -133,8 +136,6 @@ Beim Wechsel zwischen runder Ansicht und Längsschnitt wird die Boxbreite angepa
 ## Bekannte Grenzen
 
 - Nur illustrative Geometrie (siehe oben); keine Wicklungsschemata, keine Prüfung von Nut-/Polzahlkombinationen.
-- Wenn Läufer und Ständer vom Benutzer so skaliert werden, dass ihre Luftspaltkreise nicht mehr übereinstimmen, kann der
-  Core-Fangmechanismus bei kleinen Versätzen das Hohlrad-Eingriffsfangen dem konzentrischen Fangen vorziehen.
 - Außenläufer-Komponenten sind standardmäßig nicht größengleich abgestimmt (Läuferring passend um den Ständer skalieren).
 - Hosts: Die gesamte Ausgabe besteht aus Linien, Polylinien/Polygonen, Rechtecken, Ellipsen und Text; Schraffuren und
   Kupfer-Kreuzschraffuren werden als explizite Linien ausgegeben, wo ein Host keine Musterfüllung kennt (siehe

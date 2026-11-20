@@ -119,9 +119,12 @@ view and a longitudinal section adapts the box width so the proportions are kept
 ## Snapping anchors
 
 - All round parts expose a **Hub** point at the centre (concentric snapping, hub onto shaft axis).
-- **Stator** (inner-rotor layout) exposes its air-gap circle as **PitchInner**, the **rotor** as **Pitch**. Like the pitch
-  circles of an internal gear pair, both lie on the air-gap centre circle, so the rotor snaps **concentrically** into the
-  stator (and the stator around the rotor). The air-gap ring exposes the same circle. Housing and cooling jacket expose
+- **Stator** (inner-rotor layout) exposes its real bore as **PitchInner**, the **rotor** its real outer radius as **Pitch**
+  (outer-rotor layout: stator outer radius as Pitch, rotor inner radius as PitchInner; the full radial machine exposes both).
+  Their radii are almost equal, so the core snapper treats the pair as a fit and snaps the rotor **concentrically** into
+  the stator (and the stator around the rotor) instead of meshing it like a planet in a ring gear — also after free
+  scaling (rule: internal mesh only below 90 % of the ring radius, `Snapper.InternalMeshMaxRatio`). The air-gap ring
+  exposes its centre circle as PitchInner. Housing and cooling jacket expose
   their bore as PitchInner (concentric with the stator). Magnet segments expose their inner arc as PitchInner, so the arc
   centre snaps onto the rotor centre.
 - Longitudinal sections (`side`) expose the shaft **Axis** segment; encoders, slip rings and other parts snap their hub
@@ -133,8 +136,6 @@ view and a longitudinal section adapts the box width so the proportions are kept
 ## Known limits
 
 - Illustrative geometry only (see above); no winding schemes, no slot/pole combination checks.
-- With user-scaled rotors and stators whose air-gap circles no longer coincide, the core snapper may prefer its
-  internal-gear "mesh" snap over the concentric snap for small offsets.
 - Outer-rotor components are not size-matched by default (scale the rotor ring to fit around the stator).
 - Hosts: all output consists of lines, polylines/polygons, rectangles, ellipses and text; hatches and copper cross hatches
   are explicit hatch lines where a host has no pattern fill (see the host capability matrix).

@@ -12,7 +12,7 @@ namespace InventaSketch.Core
         /// <summary>Grid spacing in mm; null disables grid snapping.</summary>
         public double? Grid { get; init; } = 5;
         public bool Objects { get; init; } = true;
-        /// <summary>Semantic snapping: gear meshing, hubs on axes, concentric circles, ports.</summary>
+        /// <summary>Semantic snapping: gear meshing, hubs on axes, concentric circles, ports, mounts, rails.</summary>
         public bool Semantic { get; init; } = true;
         /// <summary>Smart alignment guides (equal x/y with other objects and the page).</summary>
         public bool Alignment { get; init; } = true;
@@ -25,20 +25,55 @@ namespace InventaSketch.Core
     /// <summary>Visual feedback for the UI (page coordinates).</summary>
     public sealed record SnapGuide(GuideKind Kind, Vec2 A, Vec2 B, double Radius = 0);
 
-    /// <summary>Kind of the winning snap: mesh, axis, concentric, port, point, align, grid or none.</summary>
+    /// <summary>
+    /// Kind of the winning snap: mesh, axis, concentric, port, mount, rail, point, align, grid or none.
+    /// </summary>
     public sealed record SnapResult(Vec2 Delta, IReadOnlyList<SnapGuide> Guides, string Kind)
     {
+        /// <summary>
+        /// Target anchor of the winning object snap (semantic or point), carrying its <see cref="Anchor.Owner"/> and
+        /// <see cref="Anchor.Id"/>; null for alignment, grid and no snap. See <see cref="Attachments.FromSnap"/>.
+        /// </summary>
+        public Anchor? Target { get; init; }
+
         public static SnapResult None(Vec2 delta) => new(delta, Array.Empty<SnapGuide>(), "none");
     }
 
     /// <summary>
     /// Snapping engine. Works on anchors in page coordinates, so it is identical for the sidebar preview,
-    /// PowerPoint COM overlays and LibreOffice. Semantic snaps (gear mesh, hub on axis) win over generic
-    /// point snaps, which win over alignment guides, which win over the grid.
+    /// PowerPoint COM overlays and LibreOffice.
+    /// <para>
+    /// Ranking: every candidate within the tolerance belongs to a tier; a lower tier always wins, inside a tier the
+    /// lower score (rule weight + distance / tolerance) wins. Tier 0 are the semantic rules (gear mesh, hub on axis,
+    /// concentric, port, mount, rail), tier 1 the generic point snaps (centre, corners, edge midpoints, ends). So a pin
+    /// of a 2 mm junction dot beats the dot's own corners even if a corner is closer. Without an object snap, alignment
+    /// guides apply, then the grid.
+    /// </para>
+    /// <list type="table">
+    /// <item><term>mesh (0)</term><description>Pitch circle touching a Pitch circle, or inside a PitchInner circle of clearly larger radius.</description></item>
+    /// <item><term>axis (0.1 / 0.2)</term><description>Hub point onto an Axis segment, Axis onto a Hub, collinear Axis segments (0.2).</description></item>
+    /// <item><term>concentric (0.15)</term><description>Pitch/PitchInner/Hub centre onto a circle centre or Hub (also a rotor in a stator: see <see cref="InternalMeshMaxRatio"/>).</description></item>
+    /// <item><term>port (0.15)</term><description>Port onto Port/End; End onto Port.</description></item>
+    /// <item><term>mount (0.15)</term><description>Mount point onto Mount point.</description></item>
+    /// <item><term>rail (0.15 / 0.45)</term><description>End/Port onto a Rail segment: its end points like ports (0.15), anywhere in between (0.45).</description></item>
+    /// <item><term>point (0.3 / 0.4)</term><description>Generic point onto point; centre onto centre is preferred (0.3).</description></item>
+    /// </list>
     /// </summary>
     public static class Snapper
     {
-        /// <summary>Collects snap targets on a page, excluding the moving objects.</summary>
+        /// <summary>
+        /// A Pitch circle inside a PitchInner circle meshes as an internal gear pair only if its radius is below this
+        /// fraction of the ring radius. An internal gear pair needs a clear tooth-count difference between ring and
+        /// pinion; nearly equal radii describe a fit (rotor in a stator bore, part in a bore) and snap concentric.
+        /// The criterion is a ratio, so it does not depend on the zoom-dependent tolerance.
+        /// </summary>
+        public const double InternalMeshMaxRatio = 0.9;
+
+        private const int SemanticTier = 0, PointTier = 1;
+        private const double MeshWeight = 0, AxisWeight = 0.1, ConcentricWeight = 0.15, PortWeight = 0.15, MountWeight = 0.15,
+            CollinearWeight = 0.2, RailWeight = 0.45, CenterWeight = 0.3, PointWeight = 0.4;
+
+        /// <summary>Collects snap targets on a page, excluding the moving objects. Object anchors carry their <see cref="Anchor.Owner"/>.</summary>
         public static List<Anchor> Targets(Registry registry, SketchDocument doc, Page page, ICollection<string> exclude, RenderContext ctx, SnapOptions options)
         {
             var list = new List<Anchor>();
@@ -46,7 +81,7 @@ namespace InventaSketch.Core
                 foreach (var o in doc.ObjectsOn(page))
                 {
                     if (exclude.Contains(o.Id) || registry.Type(o.Type) is null) continue;
-                    list.AddRange(registry.PageAnchors(o, ctx));
+                    foreach (var a in registry.PageAnchors(o, ctx)) list.Add(a with { Owner = o.Id });
                 }
             if (options.Page)
             {
@@ -60,7 +95,9 @@ namespace InventaSketch.Core
             return list;
         }
 
-        private sealed record Candidate(Vec2 Shift, double Score, string Kind, SnapGuide Guide);
+        private sealed record Candidate(Vec2 Shift, int Tier, double Score, string Kind, IReadOnlyList<SnapGuide> Guides, Anchor Target);
+
+        private static bool IsDocking(Anchor m) => m.Kind == AnchorKind.Point && m.Role is AnchorRole.End or AnchorRole.Port;
 
         /// <summary>
         /// Snaps a move. <paramref name="moving"/> are the anchors of the moving selection at the drag start;
@@ -71,7 +108,14 @@ namespace InventaSketch.Core
             var tol = options.Tolerance;
             var moved = moving.Select(a => a.Transform(Matrix2D.Translation(delta.X, delta.Y))).ToList();
             var best = (Candidate?)null;
-            void Consider(Candidate c) { if (c.Shift.Length <= tol * 1.0001 && (best is null || c.Score < best.Score)) best = c; }
+            void Consider(Vec2 shift, int tier, double weight, string kind, Anchor target, params SnapGuide[] guides)
+            {
+                if (shift.Length > tol * 1.0001) return;
+                var score = weight + shift.Length / tol;
+                if (best is null || tier < best.Tier || (tier == best.Tier && score < best.Score))
+                    best = new Candidate(shift, tier, score, kind, guides, target);
+            }
+            SnapGuide PointGuide(Vec2 p) => new(GuideKind.Point, p, p);
 
             if (options.Semantic)
             {
@@ -79,52 +123,56 @@ namespace InventaSketch.Core
                 {
                     foreach (var t in targets)
                     {
-                        // Gear meshing: pitch circles touch (external) or planet inside ring (internal).
+                        // Gear meshing: pitch circles touch (external) or a clearly smaller planet inside a ring (internal).
                         if (m.Kind == AnchorKind.Circle && m.Role == AnchorRole.Pitch && t.Kind == AnchorKind.Circle && t.Role is AnchorRole.Pitch or AnchorRole.PitchInner)
                         {
-                            var required = t.Role == AnchorRole.Pitch ? m.Radius + t.Radius : t.Radius - m.Radius;
-                            if (required <= Geo.Eps) continue;
-                            var d = m.P - t.P;
-                            var dist = d.Length;
-                            var dir = dist < Geo.Eps ? new Vec2(1, 0) : d / dist;
-                            var shift = dir * (required - dist);
-                            Consider(new Candidate(shift, shift.Length / tol, "mesh", new SnapGuide(GuideKind.Circle, t.P, t.P + dir * required, required)));
+                            var external = t.Role == AnchorRole.Pitch;
+                            // Nearly equal radii inside a ring are a fit (rotor in stator), handled by the concentric rule.
+                            var fit = !external && m.Radius >= InternalMeshMaxRatio * t.Radius;
+                            var required = external ? m.Radius + t.Radius : t.Radius - m.Radius;
+                            if (!fit && required > Geo.Eps)
+                            {
+                                var d = m.P - t.P;
+                                var dist = d.Length;
+                                var dir = dist < Geo.Eps ? new Vec2(1, 0) : d / dist;
+                                Consider(dir * (required - dist), SemanticTier, MeshWeight, "mesh", t, new SnapGuide(GuideKind.Circle, t.P, t.P + dir * required, required));
+                            }
                         }
                         // Hub/centre onto a shaft axis.
                         if (m.Kind == AnchorKind.Point && m.Role is AnchorRole.Hub && t.Kind == AnchorKind.Segment && t.Role == AnchorRole.Axis)
-                        {
-                            var proj = Geo.ProjectOnLine(m.P, t.P, t.Q);
-                            var shift = proj - m.P;
-                            Consider(new Candidate(shift, 0.1 + shift.Length / tol, "axis", new SnapGuide(GuideKind.Segment, t.P, t.Q)));
-                        }
+                            Consider(Geo.ProjectOnLine(m.P, t.P, t.Q) - m.P, SemanticTier, AxisWeight, "axis", t, new SnapGuide(GuideKind.Segment, t.P, t.Q));
                         // Moving shaft axis onto a hub (dragging a shaft through gears).
                         if (m.Kind == AnchorKind.Segment && m.Role == AnchorRole.Axis && t.Kind == AnchorKind.Point && t.Role is AnchorRole.Hub)
                         {
-                            var proj = Geo.ProjectOnLine(t.P, m.P, m.Q);
-                            var shift = t.P - proj;
-                            Consider(new Candidate(shift, 0.1 + shift.Length / tol, "axis", new SnapGuide(GuideKind.Segment, m.P + shift, m.Q + shift)));
+                            var shift = t.P - Geo.ProjectOnLine(t.P, m.P, m.Q);
+                            Consider(shift, SemanticTier, AxisWeight, "axis", t, new SnapGuide(GuideKind.Segment, m.P + shift, m.Q + shift));
                         }
                         // Collinear axes (shaft continues another shaft).
                         if (m.Kind == AnchorKind.Segment && m.Role == AnchorRole.Axis && t.Kind == AnchorKind.Segment && t.Role == AnchorRole.Axis)
                         {
                             var dm = (m.Q - m.P).Normalized(); var dt = (t.Q - t.P).Normalized();
-                            if (Math.Abs(dm.Cross(dt)) > 0.02) continue;
-                            var proj = Geo.ProjectOnLine(m.P, t.P, t.Q);
-                            var shift = proj - m.P;
-                            Consider(new Candidate(shift, 0.2 + shift.Length / tol, "axis", new SnapGuide(GuideKind.Segment, t.P, t.Q)));
+                            if (Math.Abs(dm.Cross(dt)) <= 0.02)
+                                Consider(Geo.ProjectOnLine(m.P, t.P, t.Q) - m.P, SemanticTier, CollinearWeight, "axis", t, new SnapGuide(GuideKind.Segment, t.P, t.Q));
                         }
                         // Concentric: circle centres / hubs / centres.
-                        if (m.Role is AnchorRole.Pitch or AnchorRole.PitchInner or AnchorRole.Hub && (t.Kind == AnchorKind.Circle || t.Role is AnchorRole.Hub))
+                        if (m.Role is AnchorRole.Pitch or AnchorRole.PitchInner or AnchorRole.Hub && (t.Kind == AnchorKind.Circle || t.Role is AnchorRole.Hub)
+                            && m.Kind != AnchorKind.Segment && t.Kind != AnchorKind.Segment)
+                            Consider(t.P - m.P, SemanticTier, ConcentricWeight, "concentric", t, PointGuide(t.P));
+                        if (m.Kind != AnchorKind.Point) continue;
+                        // Ports (electrical pins, diagram connection points): Port onto Port/End, End onto Port.
+                        if (t.Kind == AnchorKind.Point && (m.Role == AnchorRole.Port && t.Role is AnchorRole.Port or AnchorRole.End || m.Role == AnchorRole.End && t.Role == AnchorRole.Port))
+                            Consider(t.P - m.P, SemanticTier, PortWeight, "port", t, PointGuide(t.P));
+                        // Mounts (sensor onto vehicle, wall end onto wall end).
+                        if (m.Role == AnchorRole.Mount && t.Kind == AnchorKind.Point && t.Role == AnchorRole.Mount)
+                            Consider(t.P - m.P, SemanticTier, MountWeight, "mount", t, PointGuide(t.P));
+                        // Rails: end points like ports, anywhere in between with a lower priority.
+                        if (IsDocking(m) && t.Kind == AnchorKind.Segment && t.Role == AnchorRole.Rail)
                         {
-                            if (m.Kind == AnchorKind.Segment || t.Kind == AnchorKind.Segment) continue;
-                            var shift = t.P - m.P;
-                            Consider(new Candidate(shift, 0.15 + shift.Length / tol, "concentric", new SnapGuide(GuideKind.Point, t.P, t.P)));
-                        }
-                        // Ports (electrical pins, diagram connection points).
-                        if (m.Kind == AnchorKind.Point && m.Role == AnchorRole.Port && t.Kind == AnchorKind.Point && t.Role is AnchorRole.Port or AnchorRole.End)
-                        {
-                            var shift = t.P - m.P;
-                            Consider(new Candidate(shift, 0.15 + shift.Length / tol, "port", new SnapGuide(GuideKind.Point, t.P, t.P)));
+                            var rail = new SnapGuide(GuideKind.Segment, t.P, t.Q);
+                            Consider(t.P - m.P, SemanticTier, PortWeight, "rail", t, rail, PointGuide(t.P));
+                            Consider(t.Q - m.P, SemanticTier, PortWeight, "rail", t, rail, PointGuide(t.Q));
+                            var (on, _) = Geo.ClosestOnSegment(m.P, t.P, t.Q);
+                            Consider(on - m.P, SemanticTier, RailWeight, "rail", t, rail, PointGuide(on));
                         }
                     }
                 }
@@ -137,14 +185,13 @@ namespace InventaSketch.Core
                 foreach (var t in targets)
                 {
                     if (t.Kind != AnchorKind.Point) continue;
-                    var shift = t.P - m.P;
-                    var weight = m.Role == AnchorRole.Center && t.Role == AnchorRole.Center ? 0.3 : 0.4;
-                    Consider(new Candidate(shift, weight + shift.Length / tol, "point", new SnapGuide(GuideKind.Point, t.P, t.P)));
+                    var weight = m.Role == AnchorRole.Center && t.Role == AnchorRole.Center ? CenterWeight : PointWeight;
+                    Consider(t.P - m.P, PointTier, weight, "point", t, PointGuide(t.P));
                 }
             }
 
             if (best is not null)
-                return new SnapResult(delta + best.Shift, new[] { best.Guide }, best.Kind);
+                return new SnapResult(delta + best.Shift, best.Guides, best.Kind) { Target = best.Target };
 
             // Alignment (independent per axis), then grid.
             var guides = new List<SnapGuide>();
@@ -178,7 +225,7 @@ namespace InventaSketch.Core
             return new SnapResult(delta + new Vec2(dx ?? 0, dy ?? 0), guides, kind);
         }
 
-        /// <summary>Snaps a single free point (endpoint/handle drag, insertion point).</summary>
+        /// <summary>Snaps a single free point (endpoint/handle drag, insertion point). It docks like an <see cref="AnchorRole.End"/>.</summary>
         /// <returns>The correction to add to <paramref name="p"/>.</returns>
         public static SnapResult SnapPoint(Vec2 p, IReadOnlyList<Anchor> targets, SnapOptions options)
             => SnapMove(new[] { Anchor.Point(AnchorRole.End, p) }, Vec2.Zero, targets, options);

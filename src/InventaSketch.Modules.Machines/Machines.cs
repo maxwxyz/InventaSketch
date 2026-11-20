@@ -114,17 +114,17 @@ namespace InventaSketch.Modules.Machines
 
         private static IEnumerable<Anchor> RadialAxialAnchors(Pen p, SketchObject o)
         {
-            // Stator and rotor circles sit on the air-gap centre circle (like coinciding pitch circles of an internal gear pair).
-            var mid = (Common.Outer(o) ? (RI.OStatorOut + RI.ORotorIn) : (RI.Bore + RI.RotorOut)) / 2 * p.K;
+            // Real air-gap radii: stator bore and rotor outer radius (outer rotor: stator outer and rotor inner radius). Their
+            // radii are almost equal, so separate rotor/stator parts snap concentric, not like an internal gear mesh.
             if (!Common.Outer(o))
             {
-                yield return Anchor.Circle(AnchorRole.PitchInner, Vec2.Zero, mid) with { Id = "stator" };
-                yield return Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, mid) with { Id = "rotor" };
+                yield return Anchor.Circle(AnchorRole.PitchInner, Vec2.Zero, RI.Bore * p.K) with { Id = "stator" };
+                yield return Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, RI.RotorOut * p.K) with { Id = "rotor" };
             }
             else
             {
-                yield return Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, mid) with { Id = "stator" };
-                yield return Anchor.Circle(AnchorRole.PitchInner, Vec2.Zero, mid) with { Id = "rotor" };
+                yield return Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, RI.OStatorOut * p.K) with { Id = "stator" };
+                yield return Anchor.Circle(AnchorRole.PitchInner, Vec2.Zero, RI.ORotorIn * p.K) with { Id = "rotor" };
             }
         }
 

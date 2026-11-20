@@ -450,7 +450,7 @@ namespace InventaSketch.Modules.Electrical.Tests
             var targets = Snapper.Targets(r, doc, doc.Pages[0], new[] { wire.Id }, ctx, Opt);
             var drag = pin + new Vec2(1.2, -0.9);
             var res1 = Snapper.SnapPoint(drag, targets, Opt);
-            Assert.Equal("point", res1.Kind);
+            Assert.Equal("port", res1.Kind); // a free end docks on pins with port priority (was a generic "point" snap)
             Assert.Equal(pin.X, (drag + res1.Delta).X, 6);
             Assert.Equal(pin.Y, (drag + res1.Delta).Y, 6);
         }

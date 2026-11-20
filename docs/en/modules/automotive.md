@@ -83,8 +83,11 @@ T-junction, charging slot, predicted trajectory, …). Search works in English a
   plus `Mount` points (`mount.front`, `mount.rear`, `mount.roof`, `mount.windshield`, `mount.mirror.left/right`,
   corners in the top view).
 - **Roads** expose every lane centreline as an `Axis` segment (curves and the roundabout ring as chords), so a
-  vehicle's hub snaps onto the lane. Lane ends are `End` points for chaining roads and trajectories.
-- **Sensors** have a `Mount` point at the back (snaps to a vehicle mount point) and a `Port` at the aperture.
+  vehicle's hub snaps onto the lane, and as a `Rail` with the same geometry (`lane0.rail`, …), so trajectory points,
+  lane polynomials and other line ends dock anywhere on a lane centre (snap kind `rail`). Lane ends are `End` points for
+  chaining roads and trajectories.
+- **Sensors** have a `Mount` point at the back and a `Port` at the aperture. `Mount` onto `Mount` is a semantic snap
+  (kind `mount`, priority of a port): the sensor's mount wins over closer generic corner or centre snaps.
 - **Field of view:** point 0 is the apex, point 1 a direction reference; the sector axis points from point 0 to
   point 1, rotated by `heading`. `Fov.AttachTo(doc, fovId, sensorId)` attaches both points to the sensor (aperture
   and one box length ahead), so the FoV follows moving, rotating and scaling the sensor. Without attachment the FoV is
