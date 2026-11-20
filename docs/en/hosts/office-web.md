@@ -28,6 +28,28 @@ npm run dev         # dev server on port 3000 (https if office-addin-dev-certs a
 
 `dev.html` runs the same app without Office (engine in WebAssembly, slide commands hidden) for UI work in any browser.
 
+## Install for users (no administrator rights)
+
+`scripts\package-web.ps1` builds `dist\InventaSketch-Web` (and a ZIP): `App\` (task pane + WebAssembly engine),
+`Server\InventaSketch.WebHost.exe`, `manifest.xml` for `https://localhost:3217/` (Slidemax-Web uses 3000) and the
+install scripts. The local host and scripts were ported from Slidemax with the copyright holder's approval.
+
+- **Windows:** close PowerPoint, double-click `Web-Add-in installieren.cmd`, confirm Windows' certificate prompt once.
+  It copies to `%LOCALAPPDATA%\InventaSketch\Web`, creates and trusts a `localhost` certificate in the user store, adds
+  an autostart entry, starts the loopback-only HTTPS host and registers the manifest for sideloading
+  (`HKCU\Software\Microsoft\Office\16.0\WEF\Developer`). Options: `-OhneAutostart`, `-OhneManifest`, `-Probelauf`
+  (dry run). Uninstall: `Web-Add-in deinstallieren.cmd`. While the COM add-in is installed, Office hides the web add-in.
+- **macOS:** `installieren.command` (Python 3): copies to `~/Library/Application Support/InventaSketch/Web`, trusts the
+  certificate in the keychain, LaunchAgent, manifest in PowerPoint's `wef` folder.
+- **Linux / PowerPoint on the web:** `sh installieren.sh`, then upload `manifest.xml` via *Add-ins › My add-ins ›
+  Upload my add-in*.
+
+Verified 2026-11-20 on Windows: package build, dry run of the installer (plan incl. COM detection), host with a
+temporary in-memory certificate served `taskpane.html` and the engine over HTTPS, rejected `../` traversal, status and
+stop worked; Linux dry run of the Python installer. Not yet done: a real install with certificate trust (needs the
+user's confirmation), macOS run, loading the add-in in PowerPoint. Messages and identifiers of the ported host are still
+German (to be translated, English fallback for non-German users).
+
 ## Sideloading (development)
 
 Windows: `npm run certs` once (trusted localhost certificate), `npm run dev`, then add the manifest path as a value under

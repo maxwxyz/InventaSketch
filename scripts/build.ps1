@@ -81,6 +81,8 @@ if (-not $SkipWeb -and (Test-Path $web)) {
             npm run build
             if ($LASTEXITCODE -ne 0) { throw 'Web build failed.' }
         } finally { Pop-Location }
+        Step 'Package web add-in (dist\InventaSketch-Web)'
+        & (Join-Path $PSScriptRoot 'package-web.ps1') -SkipWebBuild
     } else {
         Write-Warning 'Node.js not found: web add-in skipped.'
     }

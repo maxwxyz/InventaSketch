@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Local HTTPS host for the web add-in on Windows: serves the "App" folder of the InventaSketch-Web package on
+    https://localhost:3217 (loopback only) with an own certificate in the user's store. Installs and uninstalls per user
+    without administrator rights (autostart, manifest registration for PowerPoint).
+    Ported from Slidemax with the copyright holder's approval (identifiers and messages are still German; see roadmap).
+    Ships as net48 (part of Windows, no Node, no extra runtime); window-less (WinExe); output goes to the calling console
+    and to %LOCALAPPDATA%\InventaSketch\webhost.log.
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <RootNamespace>InventaSketch.WebHost</RootNamespace>
+    <AssemblyName>InventaSketch.WebHost</AssemblyName>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <Nullable>enable</Nullable>
+    <NoWarn>$(NoWarn);CA1416;CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

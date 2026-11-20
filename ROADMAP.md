@@ -66,6 +66,7 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   The web add-in is work in progress on branch `feature/office-web` (build scripts `icons.mjs`, `manifest.mjs`,
   `screenshot.mjs` still missing; WebAssembly publish and UI not yet verified). Module docs (`docs/*/modules/`) still to write.
 
+- Web installer (ported from Slidemax, 2026-11-20): translate identifiers, comments and console messages of tools/InventaSketch.WebHost and hosts/office-web/local to English with German/English messages; run a real install and load the add-in in PowerPoint (Windows without COM add-in, Mac, web).
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.
 - Clarify with the maintainer whether specific Slidemax components may be relicensed into this repository.
