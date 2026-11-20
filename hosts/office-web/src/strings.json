@@ -82,6 +82,7 @@
   "pie.more": { "en": "More ▸", "de": "Mehr ▸" },
   "pie.back": { "en": "Back", "de": "Zurück" },
   "pie.insert": { "en": "Insert ▸", "de": "Einfügen ▸" },
+  "pie.type": { "en": "Type ▸", "de": "Typ ▸" },
   "pie.text": { "en": "Text …", "de": "Text …" },
   "text.title": { "en": "Edit text", "de": "Text bearbeiten" },
   "scale.centre": { "en": "about the centre (Ctrl: from the opposite edge)", "de": "um die Mitte (Strg: von der Gegenkante)" },

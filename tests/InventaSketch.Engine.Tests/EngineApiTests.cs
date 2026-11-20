@@ -30,7 +30,7 @@ namespace InventaSketch.Engine.Tests
             return st.GetProperty("selection")[0].GetString()!;
         }
 
-        private static JsonElement Obj(JsonElement state, string id) => state.GetProperty("objects").EnumerateArray().First(o => o.GetProperty("id").GetString() == id);
+        internal static JsonElement Obj(JsonElement state, string id) => state.GetProperty("objects").EnumerateArray().First(o => o.GetProperty("id").GetString() == id);
 
         [Fact]
         public void DefaultCatalogRegistersAllModulesThroughTheInterface()

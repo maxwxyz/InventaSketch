@@ -38,11 +38,13 @@ const SECONDARY = ["numeral", "flipH", "flipV", "group", "ungroup", "front", "ba
  * The rest (type actions, further views, numeral, mirror, order, grouping) may overflow into "More ▸"; among them
  * available entries come before unavailable ones.
  */
-export function buildPieEntries(actions: ActionInfo[], extra: { text?: PieEntry; insert?: PieEntry } = {}): PieCandidate[] {
+export function buildPieEntries(actions: ActionInfo[], extra: { text?: PieEntry; insert?: PieEntry; type?: PieEntry } = {}): PieCandidate[] {
   const out: PieCandidate[] = [];
   const by = (id: string) => actions.find((a) => a.id === id);
   const del = by("delete");
   if (del) out.push({ entry: entryOf(del), essential: true });
+  // Line types: "Type ▸" right after delete (like the COM add-in).
+  if (extra.type) out.push({ entry: extra.type, essential: true });
   const views = actions.filter((a) => a.kind === "view");
   if (views.length > 1) views.slice(0, 4).forEach((v) => out.push({ entry: entryOf(v), essential: true }));
   if (extra.text) out.push({ entry: extra.text, essential: true });

@@ -45,6 +45,13 @@ namespace InventaSketch.AddIn.Sidebar
             _pane.Post(json);
         }
 
+        /// <summary>Modules hidden in the ribbon ("Show and hide modules") are hidden in the sidebar library too.</summary>
+        public void PushHiddenModules()
+        {
+            if (_pane is null) return;
+            _pane.Post(JsonSerializer.Serialize(new { type = "hiddenModules", ids = AddInSettings.HiddenModules.ToArray() }));
+        }
+
         /// <summary>Tells the editor which units are on the current slide (cheap: reads only the ISK_ID tags).</summary>
         public void SlideUnits(PowerPoint.Slide slide)
         {
@@ -67,6 +74,7 @@ namespace InventaSketch.AddIn.Sidebar
             {
                 case "ready":
                     Log.Info("Sidebar ready");
+                    PushHiddenModules();
                     PushCurrentSelection();
                     break;
                 case "place":

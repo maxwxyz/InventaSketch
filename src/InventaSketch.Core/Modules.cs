@@ -501,6 +501,74 @@ namespace InventaSketch.Core
             return o with { View = view, Size = new Size2(b.W * k, b.H * k) };
         }
 
+        /// <summary>Point-geometry types a line, arrow, dimension or lead line can be converted into ("Type ▸").</summary>
+        public static readonly IReadOnlyList<string> ConversionTargets = new[]
+        {
+            "ann.line", "ann.arrow", "ann.arrow.double", "ann.arrow.curved", "ann.arrow.elbow", "ann.leader",
+            "patent.numeral", "ann.dimension.linear", "ann.dimension.aligned",
+        };
+
+        /// <summary>True if the object is one of the convertible line types.</summary>
+        public static bool IsConvertible(SketchObject o) => o.IsPointGeometry && ConversionTargets.Contains(o.Type);
+
+        /// <summary>
+        /// Creates a point object of the item between two points: the item's points are mapped so that its first point is
+        /// <paramref name="start"/> and its last <paramref name="end"/> (curve control points keep their relative position).
+        /// </summary>
+        public SketchObject CreateBetween(LibraryItem item, Vec2 start, Vec2 end)
+        {
+            var obj = Create(item, start);
+            var pts = obj.Points ?? new[] { start, end };
+            if (pts.Count < 2) return obj with { Points = new[] { start, end } };
+            Vec2 a = pts[0], b = pts[pts.Count - 1];
+            var axis = b - a;
+            var l2 = axis.Dot(axis);
+            var target = end - start;
+            var mapped = pts.Select((q, i) =>
+            {
+                if (i == 0) return start;
+                if (i == pts.Count - 1) return end;
+                if (l2 < Geo.Eps) return Vec2.Lerp(start, end, (double)i / (pts.Count - 1));
+                var u = (q - a).Dot(axis) / l2;
+                var v = (q - a).Cross(axis) / l2;
+                return start + target * u - target.Perp * v;
+            }).ToList();
+            return obj with { Points = mapped };
+        }
+
+        /// <summary>
+        /// Converts a line-like object into another point type between the same end points; id, group, layer, numeral
+        /// and stroke colour/width/opacity are kept. Unchanged if the target is unknown or the same.
+        /// </summary>
+        public SketchObject Convert(SketchObject o, string targetType)
+        {
+            var target = Type(targetType);
+            if (target is null || o.Points is not { Count: >= 2 } || o.Type == targetType) return o;
+            var item = _library.FirstOrDefault(i => i.Id == targetType && i.TypeId == targetType)
+                ?? new LibraryItem(targetType, targetType, target.Name, "convert");
+            var created = CreateBetween(item, o.Points[0], o.Points[o.Points.Count - 1]);
+            var numeral = o.Type is "ann.leader" or "patent.numeral" ? (o.Text ?? o.Str("numeral", o.Ref ?? "")) : o.Ref;
+            var result = created with
+            {
+                Id = o.Id,
+                GroupId = o.GroupId,
+                Layer = o.Layer,
+                Ref = numeral,
+                Attach = o.Attach,
+                Style = o.Style is null ? null : new Style { Stroke = o.Style.Stroke, StrokeWidth = o.Style.StrokeWidth, Opacity = o.Style.Opacity },
+            };
+            if (result.Attach is not null && result.Points is { } rp && result.Attach.Count != rp.Count)
+            {
+                // Keep the end attachments on the end points when the point count changes.
+                var att = new Attachment?[rp.Count];
+                att[0] = o.Attach![0];
+                att[rp.Count - 1] = o.Attach[o.Attach.Count - 1];
+                result = result with { Attach = att };
+            }
+            if (!string.IsNullOrEmpty(numeral) && target.Parameters.Any(pd => pd.Key == "numeral")) result = result.WithParam("numeral", numeral!) with { Text = numeral };
+            return result;
+        }
+
         /// <summary>Annotation items every drawing needs; offered after the companions of a selection.</summary>
         public static readonly IReadOnlyList<string> AnnotationSuggestions = new[] { "patent.numeral", "ann.leader", "ann.arrow", "ann.text", "ann.dimension.linear" };
 

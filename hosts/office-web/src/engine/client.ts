@@ -71,6 +71,10 @@ export class Session {
   setMainText(id: string, text: string): EditorState { return this.c("setMainText", { id, text }); }
   /** Library items that fit the first of `ids` ("Insert ▸"), at most `max`. */
   suggestions(ids: string[], lang: string, max?: number): SuggestionInfo[] { return this.c("suggestions", { ids, lang, max }); }
+  /** "Type ▸": line types the selected line/arrow/dimension/lead line can become (empty for other objects). */
+  conversions(ids: string[], lang: string): ActionInfo[] { return this.c("conversions", { ids, lang }); }
+  /** Converts the selected line-like objects into another line type (end points, numeral and colour kept). */
+  convert(ids: string[], typeId: string): EditorState { return this.c("convert", { ids, itemId: typeId }); }
   undo(): EditorState { return this.c("undo"); }
   redo(): EditorState { return this.c("redo"); }
   select(ids: string[]): EditorState { return this.c("select", { ids, includeSvg: false }); }

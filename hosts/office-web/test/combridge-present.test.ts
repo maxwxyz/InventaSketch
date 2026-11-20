@@ -15,10 +15,11 @@ describe("ComSync present", () => {
       importCompact: (payload: string) => ({ ...state(), selection: payload.split(",") }),
       remove: (ids: string[]) => { removed.push(ids); objects = objects.filter((o) => !ids.includes(o)); return state(); },
     };
-    const host = { session: () => session, adopt: (_s: unknown, reason: string) => adopted.push(reason), report: (e: unknown) => { throw e; } } as unknown as ComSyncHost;
+    const hidden: string[][] = [];
+    const host = { session: () => session, adopt: (_s: unknown, reason: string) => adopted.push(reason), report: (e: unknown) => { throw e; }, hideModules: (ids: string[]) => hidden.push(ids) } as unknown as ComSyncHost;
     new ComSync(host, bridge);
     const send = (data: unknown) => listener({ data });
-    return { send, removed, adopted };
+    return { send, removed, adopted, hidden };
   }
 
   it("removes objects of units that disappeared from the slide", () => {
@@ -35,5 +36,11 @@ describe("ComSync present", () => {
     t.send({ type: "selection", unitId: "B", payload: "b1" });
     t.send({ type: "present", unitIds: ["B"] });
     expect(t.removed).toEqual([]);
+  });
+
+  it("passes hidden modules to the library", () => {
+    const t = setup();
+    t.send({ type: "hiddenModules", ids: ["automotive"] });
+    expect(t.hidden).toEqual([["automotive"]]);
   });
 });

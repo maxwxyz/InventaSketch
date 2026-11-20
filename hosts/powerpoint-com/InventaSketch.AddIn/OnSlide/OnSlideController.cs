@@ -684,7 +684,7 @@ namespace InventaSketch.AddIn.OnSlide
                     });
                     return;
                 }
-                var line = CreateBetween(registry, item, _twoStart.Value, _placeAt);
+                var line = registry.CreateBetween(item, _twoStart.Value, _placeAt);
                 var ldoc = SketchDocument.Create(new Size2(view.SlideWidth / Geo.PtPerMm, view.SlideHeight / Geo.PtPerMm));
                 ldoc = Edits.Add(ldoc, ldoc.Pages[0].Id, line);
                 var lprims = registry.Render(line, new RenderContext(ldoc, _lang()));
@@ -881,13 +881,6 @@ namespace InventaSketch.AddIn.OnSlide
             return true; // right button and other messages over the bar never reach the slide
         }
 
-        /// <summary>Point-geometry types a selected line/arrow/dimension/lead line can be converted to.</summary>
-        private static readonly string[] ConvertTargets =
-        {
-            "ann.line", "ann.arrow", "ann.arrow.double", "ann.arrow.curved", "ann.arrow.elbow", "ann.leader",
-            "patent.numeral", "ann.dimension.linear", "ann.dimension.aligned",
-        };
-
         private List<PieItem> SubMenu(string menu, SketchObject o)
         {
             var registry = _registry();
@@ -895,7 +888,7 @@ namespace InventaSketch.AddIn.OnSlide
             var items = new List<PieItem> { new("menu:back", T("\u2190 Back", "\u2190 Zur\u00fcck")) };
             if (menu == "type")
             {
-                foreach (var id in ConvertTargets)
+                foreach (var id in Registry.ConversionTargets)
                 {
                     var t = registry.Type(id);
                     if (t is null || t.Geometry != GeometryKind.Points) continue;
@@ -1023,7 +1016,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var items = new List<(PieItem, bool)> { (new PieItem("delete", T("Delete", "Löschen"), Danger: true) { IconId = IconIds.Delete }, true) };
             // Type conversion and the label menu belong to lines, arrows, dimensions and lead lines only.
-            if (pointObject is not null && Array.IndexOf(ConvertTargets, pointObject.Type) >= 0)
+            if (pointObject is not null && Registry.IsConvertible(pointObject))
             {
                 items.Add((new PieItem("menu:type", T("Type ▸", "Typ ▸")) { IconId = IconIds.Cycle }, true));
                 items.Add((new PieItem("menu:label", T("Label ▸", "Beschriftung ▸")) { IconId = IconIds.Text }, true));
@@ -1140,31 +1133,6 @@ namespace InventaSketch.AddIn.OnSlide
         private bool IsTwoPoint(LibraryItem? item)
             => item is not null && _registry().Type(item.TypeId)?.Geometry == GeometryKind.Points;
 
-        /// <summary>
-        /// Creates a point-geometry object whose first and last points are <paramref name="start"/> and
-        /// <paramref name="end"/>; intermediate default points (curve control points) keep their relative position.
-        /// </summary>
-        private static SketchObject CreateBetween(Registry registry, LibraryItem item, Vec2 start, Vec2 end)
-        {
-            var obj = registry.Create(item, start);
-            var pts = obj.Points ?? new[] { start, end };
-            if (pts.Count < 2) return obj with { Points = new[] { start, end } };
-            Vec2 a = pts[0], b = pts[pts.Count - 1];
-            var axis = b - a;
-            var l2 = axis.Dot(axis);
-            var target = end - start;
-            var mapped = pts.Select((q, i) =>
-            {
-                if (i == 0) return start;
-                if (i == pts.Count - 1) return end;
-                if (l2 < Geo.Eps) return Vec2.Lerp(start, end, (double)i / (pts.Count - 1));
-                var u = (q - a).Dot(axis) / l2;
-                var v = (q - a).Cross(axis) / l2;
-                return start + target * u - target.Perp * v;
-            }).ToList();
-            return obj with { Points = mapped };
-        }
-
         private void InsertPoints(LibraryItem item, Vec2 start, Vec2 end, Attachment? startAttach = null, Attachment? endAttach = null)
         {
             var slide = CurrentSlide();
@@ -1172,7 +1140,7 @@ namespace InventaSketch.AddIn.OnSlide
             var registry = _registry();
             var setup = _app.ActivePresentation.PageSetup;
             var doc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
-            var line = CreateBetween(registry, item, start, end);
+            var line = registry.CreateBetween(item, start, end);
             if ((startAttach ?? endAttach) is not null && line.Points is { Count: > 1 } pts)
             {
                 var att = new Attachment?[pts.Count];
@@ -1330,30 +1298,6 @@ namespace InventaSketch.AddIn.OnSlide
             SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before ?? unit.Doc }, new[] { doc });
             shape?.Select(Office.MsoTriState.msoTrue);
             return shape;
-        }
-
-        /// <summary>
-        /// Converts a line/arrow/dimension/lead line into another point-geometry type: first and last points stay,
-        /// curve control points come from the target's defaults, text/numeral, layer, group and colour are kept.
-        /// </summary>
-        private static SketchObject Convert(Registry registry, SketchObject o, string targetType)
-        {
-            var target = registry.Type(targetType);
-            if (target is null || o.Points is not { Count: >= 2 } || o.Type == targetType) return o;
-            var item = registry.Library.FirstOrDefault(i => i.Id == targetType && i.TypeId == targetType)
-                ?? new LibraryItem(targetType, targetType, target.Name, "convert");
-            var created = CreateBetween(registry, item, o.Points[0], o.Points[o.Points.Count - 1]);
-            var numeral = o.Type is "ann.leader" or "patent.numeral" ? (o.Text ?? o.Str("numeral", o.Ref ?? "")) : o.Ref;
-            var result = created with
-            {
-                Id = o.Id,
-                GroupId = o.GroupId,
-                Layer = o.Layer,
-                Ref = numeral,
-                Style = o.Style is null ? null : new Style { Stroke = o.Style.Stroke, StrokeWidth = o.Style.StrokeWidth, Opacity = o.Style.Opacity },
-            };
-            if (!string.IsNullOrEmpty(numeral) && target.Parameters.Any(pd => pd.Key == "numeral")) result = result.WithParam("numeral", numeral!) with { Text = numeral };
-            return result;
         }
 
         // ------------------------------------------------------------------ rotate with snapping
@@ -1672,7 +1616,7 @@ namespace InventaSketch.AddIn.OnSlide
             else if (id.StartsWith("conv:", StringComparison.Ordinal))
             {
                 var target = id.Substring(5);
-                doc = Edits.Update(doc, ids, o => o.IsPointGeometry ? Convert(registry, o, target) : o);
+                doc = Edits.Update(doc, ids, o => o.IsPointGeometry ? registry.Convert(o, target) : o);
             }
             else if (id.StartsWith("param:", StringComparison.Ordinal))
             {

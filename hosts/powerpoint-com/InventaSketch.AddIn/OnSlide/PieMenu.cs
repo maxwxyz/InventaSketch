@@ -35,7 +35,7 @@ namespace InventaSketch.AddIn.OnSlide
         public float Scale { get; }
         public float Inner => 28 * Scale;
         /// <summary>The ring grows with the number of entries so labels keep their room.</summary>
-        public float Outer => (Items.Count <= 6 ? 112 : Items.Count <= 8 ? 124 : 138) * Scale;
+        public float Outer => (Items.Count <= 6 ? 112 : Items.Count <= 8 ? 124 : 152) * Scale;
         public int Hover { get; set; } = -1;
 
         private double Sweep => 2 * Math.PI / Math.Max(1, Items.Count);
@@ -133,7 +133,8 @@ namespace InventaSketch.AddIn.OnSlide
 
                 // Content block (pictogram over label) centred in the sector.
                 var mid = (start + sweepDeg / 2) * Math.PI / 180;
-                var rc = inner + (outer - inner) * 0.55f;
+                // Text-only entries (sub-menus) sit further out, where the sector is wider.
+                var rc = inner + (outer - inner) * (HasIcon(item) ? 0.55f : 0.64f);
                 var chord = (float)(2 * rc * Math.Sin(Math.Min(sweepRad, Math.PI) / 2));
                 var width = Math.Max(44 * Scale, Math.Min(chord - 6 * Scale, 96 * Scale));
                 var useFont = font;

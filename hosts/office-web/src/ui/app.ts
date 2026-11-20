@@ -107,6 +107,7 @@ export class App {
         session: () => this.sessionObj,
         adopt: (s) => { this.apply(s, false); this.toast(t("office.loaded")); },
         report: (e) => this.report(e),
+        hideModules: (ids) => this.hideModules(ids),
       }, opts.comBridge);
     } else if (this.office.office && this.office.shapes) {
       this.sync = new SlideSync({
@@ -295,7 +296,7 @@ export class App {
   private loadCatalog(): void {
     try {
       this.catalog = this.engine.catalog(lang() as Lang);
-      this.library.setCatalog(this.catalog);
+      this.library.setCatalog(this.visibleCatalog(this.catalog));
     } catch (e) {
       this.report(e);
     }
@@ -378,6 +379,7 @@ export class App {
 
   private pieOverflow: PieEntry[] = [];
   private pieSuggestions: SuggestionInfo[] = [];
+  private pieConversions: ActionInfo[] = [];
 
   private textAction(): ActionInfo {
     return { id: "text", label: t("ctx.text"), icon: "cmd-text", enabled: true, active: false, group: "edit", kind: "generic" };
@@ -415,7 +417,14 @@ export class App {
     }
     const text = this.mainTextTarget() ? this.menuEntry("text", t("pie.text"), "cmd-text") : undefined;
     const insert = this.pieSuggestions.length ? this.menuEntry("menu:insert", t("pie.insert"), "cmd-increase") : undefined;
-    const { main, overflow } = pieSplit(buildPieEntries(actions, { text, insert }), this.menuEntry("menu:more", t("pie.more"), "more"));
+    this.pieConversions = [];
+    try {
+      this.pieConversions = this.sessionObj.conversions(sel, lang());
+    } catch (e) {
+      this.report(e);
+    }
+    const type = this.pieConversions.length ? this.menuEntry("menu:type", t("pie.type"), "cmd-cycle") : undefined;
+    const { main, overflow } = pieSplit(buildPieEntries(actions, { text, insert, type }), this.menuEntry("menu:more", t("pie.more"), "more"));
     this.pieOverflow = overflow;
     this.bar.hide();
     this.pie.show(main, clientX, clientY);
@@ -440,6 +449,16 @@ export class App {
       this.pieOverflow = page.overflow;
       return this.pie.show(page.main, at.x, at.y);
     }
+    if (e.id === "menu:type") {
+      const entries = this.pieConversions.map((c): PieEntry => ({ id: `conv:${c.id}`, label: c.label, icon: "cmd-cycle", enabled: true, active: !!c.active }));
+      const page = submenu(back, entries, more);
+      this.pieOverflow = page.overflow;
+      return this.pie.show(page.main, at.x, at.y);
+    }
+    if (e.id.startsWith("conv:")) {
+      const sel = this.st.selection;
+      return this.edit((s) => s.convert(sel, e.id.slice(5)));
+    }
     if (e.id === "text") return this.editText();
     if (e.id.startsWith("ins:")) {
       // Insert at the pointer with snapping (in the COM sidebar: on the slide, like the COM pie menu).
@@ -450,6 +469,20 @@ export class App {
     if (e.action) this.runAction(e.action);
   }
 
+  /** Hidden modules (set in the COM add-in): their categories and items leave the library. */
+  private hiddenModules = new Set<string>();
+
+  private hideModules(ids: string[]): void {
+    this.hiddenModules = new Set(ids);
+    if (this.catalog) this.library.setCatalog(this.visibleCatalog(this.catalog));
+  }
+
+  private visibleCatalog(c: Catalog): Catalog {
+    if (this.hiddenModules.size === 0) return c;
+    const categories = c.categories.filter((cat) => !this.hiddenModules.has(cat.module));
+    const keep = new Set(categories.map((cat) => cat.id));
+    return { ...c, categories, items: c.items.filter((i) => keep.has(i.category)) };
+  }
   private openInspectorStyle(): void {
     this.settings.inspectorOpen = true;
     saveSettings(this.settings);

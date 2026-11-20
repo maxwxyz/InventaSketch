@@ -88,6 +88,22 @@ namespace InventaSketch.AddIn.Tests
             Assert.Equal(-1, pie.HitTest(new PointF(300, 300)));
         }
 
+        [Fact]
+        public void TextOnlySubmenuKeepsLongWordsReadable()
+        {
+            Directory.CreateDirectory(Out);
+            var names = new[] { "← Zurück", "Linie", "Pfeil", "Doppelpfeil", "Bogenpfeil", "Winkelverbinder", "Bezugslinie", "Bezugszeichen", "Lineares Maß", "Paralleles Maß" };
+            var pie = new PieMenu(new PointF(320, 320), names.Select((n, i) => new PieItem("i" + i, n, Active: i == 2)).ToArray(), 2f);
+            using var bmp = new Bitmap(640, 640);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.White);
+                pie.Draw(g, dark: false);
+            }
+            bmp.Save(Path.Combine(Out, "pie-submenu.png"));
+            Assert.Equal(0, pie.HitTest(new PointF(320, 320 - 100)));
+        }
+
         private static int Ink(Bitmap bmp) => Enumerable.Range(0, bmp.Width).Sum(x => Enumerable.Range(0, bmp.Height).Count(y => bmp.GetPixel(x, y).R < 128));
 
         private static Bitmap Thumb(params Primitive[] prims) => ThumbnailRenderer.Render(prims, 200, Color.Black, Color.White);

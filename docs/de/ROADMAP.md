@@ -111,7 +111,10 @@ Export-Erweiterungspunkte der Module.
   - Skalieren von Schemadarstellungen: erledigt (20.11.2026). Nabensymbole der Zahnräder behalten ihre Größe;
     Gelenke in Mechanismen sind bereits auf 1,4 mm begrenzt; Einzelsymbole (Gelenke, Lager, Schaltzeichen) skalieren
     bewusst als Ganzes.
-  - Web-Host: dieselbe UX (Einfügen-Vorschläge über eine Engine-Methode, Verankern, Text bearbeiten, Schwarz-Weiß).
+  - Web-Host: dieselbe UX am 20.11.2026 erledigt (Kreismenü-Layout, Text bearbeiten, Einfügen ▸ über `suggestions`,
+    Schwarz-Weiß über `setMonochrome`, Skalieren um die Mitte). Typ ▸ für Linientypen (Registry.Convert, Engine
+    conversions/convert) und ausgeblendete Module in der Seitenleisten-Bibliothek ebenfalls erledigt. Offen: Verankern
+    auf der Web-Bühne; Beschriftung ▸ (der Inspektor deckt es ab).
   - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout: am 20.11.2026 erledigt (native Formatierung wird ins Modell übernommen).
   - Werkzeuge-Menü wie Slidemax (Extras: Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern) und
     Ausblenden von Modulen im Menüband: am 20.11.2026 erledigt. Offen: Module auch in der Seitenleisten-Bibliothek

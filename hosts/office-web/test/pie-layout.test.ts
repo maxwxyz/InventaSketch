@@ -20,6 +20,12 @@ const entry = (id: string): PieEntry => ({ id, label: id, enabled: true, active:
 const more = entry("menu:more");
 
 describe("pie entries", () => {
+  it("offers Type ▸ right after delete for line types", () => {
+    const lineActions = [a("delete"), a("duplicate"), a("rotate90"), a("flipH")];
+    const ids = buildPieEntries(lineActions, { text: entry("text"), type: entry("menu:type") }).map((c) => c.entry.id);
+    expect(ids.slice(0, 3)).toEqual(["delete", "menu:type", "text"]);
+  });
+
   it("puts delete first and keeps the COM priority order", () => {
     const ids = buildPieEntries(gearActions, { text: entry("text"), insert: entry("menu:insert") }).map((c) => c.entry.id);
     expect(ids.slice(0, 8)).toEqual(["delete", "view:stick", "view:axial", "view:side", "text", "menu:insert", "duplicate", "rotate90"]);

@@ -291,6 +291,7 @@ namespace InventaSketch.AddIn
                         {
                             AddInSettings.HiddenModules = hidden;
                             _ribbon?.Invalidate();
+                            _bridge?.PushHiddenModules();
                         }
                         break;
                 }

@@ -29,12 +29,15 @@ export interface ComSyncHost {
   session(): Session;
   adopt(state: EditorState, reason: "loaded" | "native-edit"): void;
   report(error: unknown): void;
+  /** Modules hidden in the COM add-in ("Show and hide modules"): the sidebar library hides them too. */
+  hideModules?(moduleIds: string[]): void;
 }
 
 /** Messages from the COM add-in. */
 type FromHost =
   | { type: "selection"; unitId: string; payload: string }
   | { type: "present"; unitIds: string[] }
+  | { type: "hiddenModules"; ids: string[] }
   | { type: "ack"; id: number; ok: boolean; error?: string };
 
 export class ComSync {
@@ -104,6 +107,7 @@ export class ComSync {
         return;
       }
       if (msg.type === "present" && !this.writing) this.dropMissing(new Set(msg.unitIds));
+      if (msg.type === "hiddenModules") this.h.hideModules?.(msg.ids);
     } catch (e) {
       this.h.report(e);
     }

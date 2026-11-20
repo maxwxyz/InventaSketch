@@ -55,6 +55,8 @@ namespace InventaSketch.Engine
                 ["setMonochrome"] = SetMonochromeCore,
                 ["setMainText"] = SetMainTextCore,
                 ["suggestions"] = SuggestionsCore,
+                ["conversions"] = ConversionsCore,
+                ["convert"] = ConvertCore,
                 ["applyAction"] = ApplyActionCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
                 ["redo"] = r => { var s = S(r); s.Redo(); return StateOf(s, r); },
@@ -458,7 +460,26 @@ namespace InventaSketch.Engine
             }).ToList();
         }
 
-        private static readonly string[] MainTextKeys = { "text", "label", "name", "title" };
+        private static readonly string[] MainTextKeys = { "text", "label", "name", "title", "ref" };
+
+        /// <summary>
+        /// "Type ▸": the line types the selected line, arrow, dimension or lead line can be converted into (empty for other
+        /// objects); the current type is marked active.
+        /// </summary>
+        private object ConversionsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var first = s.Resolve(r.Ids).Select(s.Doc.Get).FirstOrDefault(o => o is not null);
+            if (first is null || !Registry.IsConvertible(first)) return new List<ActionInfo>();
+            return Registry.ConversionTargets.Where(id => Registry.Type(id) is { Geometry: GeometryKind.Points })
+                .Select(id => new ActionInfo { Id = id, Label = Registry.Type(id)!.Name.Get(lang), Kind = "convert", Group = "type", Active = first.Type == id })
+                .ToList();
+        }
+
+        /// <summary>Converts the selected line-like objects into the type <c>itemId</c> (end points, numeral, colour kept); one undo step.</summary>
+        private object ConvertCore(EngineRequest r)
+            => Edit(r, "Type", (s, ids) => Edits.Update(s.Doc, ids, o => Registry.IsConvertible(o) && r.ItemId is not null ? Registry.Convert(o, r.ItemId) : o));
 
         /// <summary>
         /// The main text of an object for quick editing (double-click, bar, pie): the numeral of reference numerals and lead
