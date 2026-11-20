@@ -82,8 +82,8 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     the floating bar shows no type actions (input actions are in the pie menu).
   - Web: `combridge.ts` does not use `changed`/`dependents` yet; method contract in the web host docs to extend
     (`setPlanScale`, `input`, `changed`, `dependents`).
-  - Modules: use `ViewDef.Size` where views differ in aspect (automotive top/side); annotation text and lead-line types
-    still draw their own underline lines (switch to `TextStyle.Underline`); electrical designator/value as input actions.
+  - Modules: done 2026-11-20 — view switches take proportions from library presets (Registry.WithView), annotation
+    underlines use `TextStyle.Underline`, electrical designator/value are input actions.
   - Checked in PowerPoint 2026-11-20: drawn heads, underline, input prompt, dependent wall redraw with one undo step.
 - UX feedback from the maintainer (2026-11-20), COM first, then web:
   - Done 2026-11-20 (COM, verified in PowerPoint where noted in the host docs): black and white as a reversible document setting (fills, text, highlighters); ribbon order (Annotate =

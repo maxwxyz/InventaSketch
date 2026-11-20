@@ -93,9 +93,9 @@ Export-Erweiterungspunkte der Module.
     (Eingabeaktionen im Kreismenü).
   - Web: `combridge.ts` nutzt `changed`/`dependents` noch nicht; Methodenvertrag in der Web-Host-Doku ergänzen
     (`setPlanScale`, `input`, `changed`, `dependents`).
-  - Module: `ViewDef.Size` nutzen, wo Ansichten im Seitenverhältnis abweichen (Fahrzeug Drauf-/Seitenansicht);
-    Beschriftungs-Text- und Bezugslinientypen zeichnen noch eigene Unterstreichungslinien (auf `TextStyle.Underline`
-    umstellen); Kennzeichen/Wert der Elektro-Symbole als Eingabeaktionen.
+  - Module: am 20.11.2026 erledigt – Ansichtswechsel nehmen die Proportionen aus den Bibliotheksvorlagen
+    (Registry.WithView), Unterstreichungen der Beschriftung nutzen `TextStyle.Underline`, Kennzeichen/Wert der
+    Elektro-Symbole sind Eingabeaktionen.
   - In PowerPoint am 20.11.2026 geprüft: gezeichnete Spitzen, Unterstreichung, Eingabedialog, abhängiges Neuzeichnen von
     Wänden mit einem Rückgängig-Schritt.
 - Web-Installer (aus Slidemax übernommen, am 20.11.2026 ins Englische übersetzt, Meldungen deutsch/englisch): echte
