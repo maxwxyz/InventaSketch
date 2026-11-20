@@ -5,5 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\InventaSketch.Core\InventaSketch.Core.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Annotation\InventaSketch.Modules.Annotation.csproj" />
   </ItemGroup>
 </Project>
