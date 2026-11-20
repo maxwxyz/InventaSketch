@@ -32,35 +32,39 @@ Zahleneingabe erstellen, in PowerPoint (Web) einfügen und als SVG exportieren; 
 Registrierung pro Benutzer ohne Administratorrechte; Menüband; native Formen über COM (Freiform, Pfeilspitzen,
 Musterfüllung, Verbinder); Interaktion auf der Folie (Eingabe-Hooks + geschichtetes Overlay-Fenster): Einfügen am
 Mauszeiger, Einrast-Hilfslinien, schwebende Leiste, Kreismenü; Aufgabenbereich in der Seitenleiste; Metadaten in Tags +
-Dokumenteigenschaften; COM-Vorrang verifiziert. Status: **in Arbeit** – Stufe 1 am 2026-11-20 ausgeliefert:
-Registrierung pro Benutzer, Menüband, natives Einfügen (Formen, Freiformen, Pfeilspitzen, Gruppen, Tags) in
-PowerPoint 16.0 geprüft; Stufe 2: Einfügen am Mauszeiger, Ziehen mit semantischem Fangen, Kreismenü, ausblendende
-Leiste, Skalieren mit Fangen (Zahneingriff), Zweipunkt-Werkzeug, Punktbearbeitung, Typumwandlung,
-Beschriftungsmenü und Drehen mit Fangen geprüft; Leiste und Kreismenü folgen dem Office-Design. Seitenleisten-Editor
-(WebView2 mit Live-Synchronisation) geprüft. Menüband mit Vorschau-Galerien je Kategorie, Einstellungsschalter,
-abstrakte Piktogramme in Leiste und Kreismenü, Tastaturkürzel, eindeutige IDs für Kopien, Installationspaket
-(`scripts\package-com.ps1`). Deutsche Host-Dokumentation ergänzt. Als Nächstes: Übersetzung des übernommenen Web-Hosts,
-LibreOffice-Phase.
+Dokumenteigenschaften; COM-Vorrang verifiziert. Status: **weitgehend fertig** (20.11.2026, alles in PowerPoint 16.0 geprüft): natives Einfügen,
+Einfügen am Mauszeiger, semantisches Fangen (Verschieben, Skalieren um die Mitte, Drehen), Zweipunkt-Werkzeug,
+Punktbearbeitung und Rahmenauswahl von Punkten, Verankern, Kreismenü (8 Einträge, Einfügen/Typ/Beschriftung/Mehr) und
+schwebende Leiste mit abstrakten Symbolen, Text bearbeiten, Menüband wie Slidemax (Struktur, Werkzeuge, Beschriftung,
+Farbe, Text, Layout, Elemente, Extras), native Formatierung im Modell, Schwarz-Weiß, Datenexporte,
+Seitenleisten-Editor mit Live-Synchronisation, Installationspaket. Offen: Prüfung im dunklen Office, COM-Vorrang vor
+dem Web-Add-in (`EquivalentAddins`) ungetestet.
 
 ## Phase 3 – LibreOffice-Erweiterung
 
 Python-UNO-`.oxt` + .NET-Engine-Prozess; Impress/Draw/Calc; native Formen und Schraffuren; Seitenleisten-Panel;
-Interaktion auf der Zeichenfläche; Pakete für Windows/Linux/macOS. Status: **geplant**.
+Interaktion auf der Zeichenfläche; Pakete für Windows/Linux/macOS. Status: **in Arbeit** (Phase 1: Einfügen nativer
+Formen aus dem Engine-Prozess; aus dem LibreOffice-Host von Slidemax übernommen).
 
 ## Phase 4 – Kinematik und erweiterte Mechanik
 
 2D-Constraint-Solver, Koppelgetriebe, Gelenkgrenzen, Simulation durch Ziehen, Geisterbilder (Ghosting), Animation als
-Folienfolge; Modul Technische Mechanik; verknüpfte Mehrfachansichten. Status: **geplant**.
+Folienfolge; Modul Technische Mechanik; verknüpfte Mehrfachansichten. Status: **in Arbeit** – Kinematik-Modul am
+20.11.2026 ausgeliefert (Gelenke, Glieder, Mechanismen mit geschlossener Schleifenlösung, Zwischenlagen, Bahnen,
+Freiheitsgrad); offen: interaktives Ziehen zur Simulation, Animation als Folienfolge.
 
 ## Phase 5 – Elektrotechnik, Elektronik, elektrische Maschinen
 
 Symbole, Leitungen mit Pins/Verbindungspunkten, Netze, Busse, ERC-Grundlagen, Hausinstallation, Leiterplatten-Illustration,
-Maschinenquerschnitte (PMSM, EESM, ASM, SRM, Axial-/Radialfluss). Status: **geplant**.
+Maschinenquerschnitte (PMSM, EESM, ASM, SRM, Axial-/Radialfluss). Status: **weitgehend fertig** – Elektro- und
+Maschinen-Modul am 20.11.2026 ausgeliefert, inkl. Netzlisten-Export; offen: ERC-Grundlagen.
 
 ## Phase 6 – Systeme und Erweiterung der Fachgebiete
 
 Automotive/ADAS/HMI, Architektur/Grundrisse, UML/ER/Ablauf, Karten und Routen, Diagramme; weitere Module nach Bedarf
-(Fluidtechnik, Thermodynamik, Robotik, Chemie, …). Status: **geplant / vorgeschlagen**.
+(Fluidtechnik, Thermodynamik, Robotik, Chemie, …). Status: **in Arbeit** – Fahrzeuge/ADAS/HMI, Architektur und
+Diagramme am 20.11.2026 ausgeliefert; Karten und Routen sowie Fluidtechnik in Arbeit; Diagramme/Charts,
+Thermodynamik, Robotik, Chemie vorgeschlagen.
 
 ## Phase 7 – Erweiterte Plattform
 

@@ -29,27 +29,37 @@ inserted into PowerPoint (web) and exported as SVG; all tests green.
 
 Per-user registration without admin; ribbon; native shapes via COM (freeform, arrowheads, pattern fill, connectors);
 on-slide interaction (input hooks + layered overlay window): insert at pointer, snapping guides, floating bar,
-pie menu; sidebar task pane; metadata in tags + document properties; COM precedence verified. Status: **in progress** - slice 1 shipped 2026-11-20: per-user registration, ribbon library menus, native insertion (shapes, freeforms, arrowheads, groups, tags) verified in PowerPoint 16.0; slice 2: on-slide insert at pointer, drag with semantic snapping, pie menu, fading floating bar, snapped resize (gear mesh), two-point tool, point editing, type conversion, label pie menu and snapped rotation verified; theme-aware bar and pie menu. Sidebar editor (WebView2 task pane with live sync) verified. UI polish shipped: generated ribbon with thumbnail galleries per category, settings toggles, view pictures and tooltips in bar and pie, light/dark rendering tests. Keyboard shortcuts on the slide, unique ids for copies and sidebar library placement verified. German host docs added. Next: translation of the ported web host, LibreOffice phase.
+pie menu; sidebar task pane; metadata in tags + document properties; COM precedence verified. Status: **largely done** (2026-11-20, all checked in PowerPoint 16.0): native insertion, insert at
+pointer, semantic snapping (move, resize about the centre, rotate), two-point tool, point editing and box selection of
+points, anchoring, pie menu (8 entries, Insert/Type/Label/More) and floating bar with abstract icons, text editing,
+Slidemax-like ribbon (Structure, Tools, Annotate, Colour, Text, Layout, Elements, Extras), native formatting kept in the
+model, black and white, data exports, sidebar editor with live sync, installer package. Open: dark Office check,
+COM precedence over the web add-in (`EquivalentAddins`) not tested.
 
 ## Phase 3 – LibreOffice extension
 
 Python-UNO `.oxt` + .NET engine process; Impress/Draw/Calc; native shapes and hatches; sidebar panel; on-canvas
-interaction; Windows/Linux/macOS packages. Status: **planned**.
+interaction; Windows/Linux/macOS packages. Status: **in progress** (phase 1: insertion of native shapes from the
+engine process; ported from Slidemax's LibreOffice host).
 
 ## Phase 4 – Kinematics and expanded mechanics
 
 2D constraint solver, linkages, joint limits, drag-to-simulate, ghosting, animation as slide sequence; technical
-mechanics module; multi-view links. Status: **planned**.
+mechanics module; multi-view links. Status: **in progress** — kinematics module shipped 2026-11-20 (joints, links,
+linkages with closed-loop solution, ghosts, paths, DOF); open: interactive drag-to-simulate, animation as slide sequence.
 
 ## Phase 5 – Electrical, electronics, electric machines
 
 Symbols, wires with pins/junctions, nets, buses, ERC basics, house installation, PCB illustration, machine
-cross-sections (PMSM, EESM, ASM, SRM, axial/radial flux). Status: **planned**.
+cross-sections (PMSM, EESM, ASM, SRM, axial/radial flux). Status: **largely done** — electrical and machines modules
+shipped 2026-11-20 incl. netlist export; open: ERC basics.
 
 ## Phase 6 – Systems and domain expansion
 
 Automotive/ADAS/HMI, architecture/floor plans, UML/ER/flow, maps and routes, charts; further modules on demand
-(fluid power, thermodynamics, robotics, chemistry, …). Status: **planned / proposed**.
+(fluid power, thermodynamics, robotics, chemistry, …). Status: **in progress** — automotive/ADAS/HMI, architecture and
+diagrams shipped 2026-11-20; maps and routes and fluid power in progress; charts, thermodynamics, robotics, chemistry
+proposed.
 
 ## Phase 7 – Advanced platform
 
