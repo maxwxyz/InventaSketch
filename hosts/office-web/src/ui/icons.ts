@@ -35,6 +35,9 @@ const paths: Record<string, string> = {
   inspector: "M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0M16 4v4M10 10v4M18 16v4",
   more: "M5 12h.01M12 12h.01M19 12h.01",
   type: "M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z",
+  menuBack: "M19 12H5M11 6l-6 6 6 6",
+  // Black and white: a circle, right half filled.
+  mono: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 3A9 9 0 0 1 12 21Z",
   // Abstract pictograms of the engine's IconIds (same shapes as the COM add-in's IconPainter). Centre lines are drawn
   // as short dashes because one path shares one stroke style.
   "view-schematic": "M12 4v16M8 4h8M8 20h8M3 12h4M10 12h4M17 12h4",

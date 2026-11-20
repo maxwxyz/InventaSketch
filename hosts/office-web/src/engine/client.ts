@@ -3,6 +3,7 @@
 
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
+  SuggestionInfo,
 } from "./types";
 
 export interface EngineBackend {
@@ -64,6 +65,12 @@ export class Session {
   applyAction(ids: string[], action: string, input?: string): EditorState { return this.c("applyAction", { ids, action, input }); }
   /** Sets the document plan scale denominator (100 = 1:100); null clears it. One undo step. */
   setPlanScale(value: number | null): EditorState { return this.c("setPlanScale", { value }); }
+  /** Switches the document's black-and-white setting; one undo step, every object counts as changed. */
+  setMonochrome(value: boolean): EditorState { return this.c("setMonochrome", { value }); }
+  /** Sets the main text (ObjectInfo.mainText) of one object; one undo step. */
+  setMainText(id: string, text: string): EditorState { return this.c("setMainText", { id, text }); }
+  /** Library items that fit the first of `ids` ("Insert ▸"), at most `max`. */
+  suggestions(ids: string[], lang: string, max?: number): SuggestionInfo[] { return this.c("suggestions", { ids, lang, max }); }
   undo(): EditorState { return this.c("undo"); }
   redo(): EditorState { return this.c("redo"); }
   select(ids: string[]): EditorState { return this.c("select", { ids, includeSvg: false }); }

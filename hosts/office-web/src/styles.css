@@ -133,16 +133,31 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .isk-pie-layer { position: absolute; inset: 0; z-index: 40; }
 .isk-pie-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.04); }
 .isk-pie { position: absolute; transform: translate(-50%, -50%); pointer-events: none; }
-.isk-pie-ring { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; background: var(--panel); border: 1px solid var(--border); box-shadow: var(--shadow); opacity: 0.96; pointer-events: auto; }
-.isk-pie-item { position: absolute; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel-2); cursor: pointer; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
-.isk-pie-item:hover:not(.is-disabled), .isk-pie-item:focus-visible { background: var(--accent); color: var(--accent-text); outline: none; border-color: var(--accent); }
+.isk-pie-ring { position: absolute; left: 0; top: 0; overflow: visible; filter: drop-shadow(0 4px 12px rgba(16, 24, 40, 0.2)); }
+.isk-pie-disc { fill: var(--panel); stroke: var(--border); stroke-width: 1; opacity: 0.97; pointer-events: auto; }
+.isk-pie-sector { fill: transparent; cursor: pointer; pointer-events: auto; }
+.isk-pie-sector.is-hover:not(.is-disabled) { fill: var(--accent-soft); }
+.isk-pie-sector.is-danger.is-hover { fill: color-mix(in srgb, var(--danger) 16%, transparent); }
+.isk-pie-sector.is-disabled { cursor: not-allowed; }
+.isk-pie-sep { stroke: var(--border); stroke-width: 1; pointer-events: none; }
+.isk-pie-mark { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; pointer-events: none; }
+.isk-pie-hub { fill: var(--panel); stroke: var(--border); stroke-width: 1; pointer-events: none; }
+.isk-pie-item { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 2px 0; border: 0; border-radius: 6px; background: transparent; color: var(--text); cursor: pointer; pointer-events: none; text-align: center; line-height: 1.15; }
+.isk-pie-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.isk-pie-item.is-active { color: var(--accent); }
 .isk-pie-item.is-danger { color: var(--danger); }
-.isk-pie-item.is-danger:hover, .isk-pie-item.is-danger:focus-visible { background: var(--danger); color: #fff; border-color: var(--danger); }
-.isk-pie-item.is-active { box-shadow: 0 0 0 2px var(--accent); }
-.isk-pie-item.is-disabled { opacity: 0.35; cursor: not-allowed; }
-.isk-pie-text { font-weight: 700; font-size: 12px; }
-.isk-pie-label { position: absolute; left: 50%; top: calc(50% + 26px); transform: translateX(-50%); max-width: 120px; text-align: center; font-size: 11px; color: var(--muted); pointer-events: none; }
-.isk-pie-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border); background: var(--panel); cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+.isk-pie-item.is-disabled { opacity: 0.4; }
+.isk-pie-lbl { display: block; max-width: 100%; white-space: nowrap; }
+.isk-pie-img { width: 26px; height: 20px; object-fit: contain; }
+:root[data-theme="dark"] .isk-pie-img { filter: invert(1) hue-rotate(180deg); }
+.isk-pie-pill { position: absolute; left: 50%; transform: translateX(-50%); max-width: 260px; padding: 3px 10px; border-radius: 999px; background: var(--text); color: var(--bg); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.isk-pie-pill[hidden] { display: none; }
+.isk-pie-centre { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); cursor: pointer; pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+.isk-pie-centre:hover, .isk-pie-centre:focus-visible { color: var(--text); background: var(--panel-2); outline: none; }
+
+/* Scale label while resizing on the stage */
+.isk-scale-label { position: absolute; z-index: 15; padding: 2px 8px; border-radius: 6px; background: var(--text); color: var(--bg); font-size: 11px; white-space: nowrap; pointer-events: none; opacity: 0.92; }
+.isk-scale-label[hidden] { display: none; }
 
 /* Inspector */
 .isk-inspector { overflow-y: auto; min-height: 0; padding: 0 10px 10px; }

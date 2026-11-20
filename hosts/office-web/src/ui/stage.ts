@@ -4,6 +4,7 @@
 
 import type { Session } from "../engine/client";
 import type { CatalogItem, EditorState, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
+import { t } from "../i18n";
 import { clamp, s, svgChildren, svgDataUrl, viewBoxOf } from "./dom";
 
 export interface StageHost {
@@ -25,7 +26,7 @@ type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" }
 
 type Drag =
   | { kind: "move"; ids: string[]; start: Vec2; dx: number; dy: number; moved: boolean; startClient: Vec2 }
-  | { kind: "scale"; ids: string[]; frame: Frame; sx: number; sy: number; single?: ObjectInfo; result?: { w: number; h: number; cx: number; cy: number; fx: number; fy: number; pivot: Vec2 } }
+  | { kind: "scale"; ids: string[]; frame: Frame; sx: number; sy: number; single?: ObjectInfo; centred: boolean; last?: { p: Vec2; client: Vec2; free: boolean }; result?: ResizeResult }
   | { kind: "rotate"; ids: string[]; frame: Frame; startAngle: number; delta: number }
   | { kind: "point"; obj: ObjectInfo; index: number; pos: Vec2 }
   | { kind: "marquee"; start: Vec2; cur: Vec2; add: boolean }
@@ -43,6 +44,44 @@ function rotateVec(v: Vec2, deg: number): Vec2 {
   return { x: v.x * c - v.y * si, y: v.x * si + v.y * c };
 }
 
+export interface ResizeFrame { cx: number; cy: number; w: number; h: number; rot: number }
+export interface ResizeResult { w: number; h: number; cx: number; cy: number; fx: number; fy: number; pivot: Vec2 }
+
+/**
+ * New frame for dragging handle (hx, hy) ∈ {-1, 0, 1}² to page point p. Corner handles scale uniformly unless `free`;
+ * edge handles stretch one axis. `aboutCentre` keeps the frame centre fixed, otherwise the opposite handle stays.
+ */
+export function resizeFrame(f: ResizeFrame, hx: number, hy: number, p: Vec2, free: boolean, aboutCentre: boolean): ResizeResult {
+  // Pointer in the frame's local (unrotated) coordinates, origin at the frame centre.
+  const local = rotateVec({ x: p.x - f.cx, y: p.y - f.cy }, -f.rot);
+  const ax = aboutCentre ? 0 : (-hx * f.w) / 2, ay = aboutCentre ? 0 : (-hy * f.h) / 2; // fixed point
+  const span = aboutCentre ? 2 : 1;
+  let w = f.w, h = f.h;
+  if (hx !== 0 && hy !== 0 && !free) {
+    const dir = { x: (hx * f.w) / 2 - ax, y: (hy * f.h) / 2 - ay };
+    const k = Math.max(0.02, ((local.x - ax) * dir.x + (local.y - ay) * dir.y) / (dir.x * dir.x + dir.y * dir.y || 1));
+    w = f.w * k; h = f.h * k;
+  } else {
+    if (hx !== 0) w = Math.max(0.5, (local.x - ax) * hx * span);
+    if (hy !== 0) h = Math.max(0.5, (local.y - ay) * hy * span);
+  }
+  const cl = aboutCentre ? { x: 0, y: 0 } : { x: hx !== 0 ? ax + (hx * w) / 2 : 0, y: hy !== 0 ? ay + (hy * h) / 2 : 0 };
+  const c = rotateVec(cl, f.rot);
+  const pivotLocal = rotateVec({ x: ax, y: ay }, f.rot);
+  return {
+    w, h, cx: f.cx + c.x, cy: f.cy + c.y,
+    fx: w / Math.max(1e-6, f.w), fy: h / Math.max(1e-6, f.h),
+    pivot: { x: f.cx + pivotLocal.x, y: f.cy + pivotLocal.y },
+  };
+}
+
+/** Text of the scale label: size (one object) or factor, and the active mode with its Ctrl alternative. */
+export function scaleLabel(r: ResizeResult, single: boolean, aboutCentre: boolean): string {
+  const f = (v: number) => (Math.round(v * 10) / 10).toString();
+  const size = single ? `${f(r.w)} × ${f(r.h)} mm` : Math.abs(r.fx - r.fy) < 1e-3 ? `${Math.round(r.fx * 100)} %` : `${Math.round(r.fx * 100)} × ${Math.round(r.fy * 100)} %`;
+  return `${size} · ${t(aboutCentre ? "scale.centre" : "scale.edge")}`;
+}
+
 export class Stage {
   readonly el: HTMLDivElement;
   readonly svg: SVGSVGElement;
@@ -52,6 +91,7 @@ export class Stage {
   private readonly overlay: SVGGElement;
   private readonly guides: SVGGElement;
   private readonly ghost: SVGGElement;
+  private readonly scaleLabelEl: HTMLDivElement;
   private scale = 2; // px per mm
   private ox = -10;
   private oy = -10;
@@ -62,6 +102,7 @@ export class Stage {
   private fitted = false;
   private spaceDown = false;
   private lastPointer?: Vec2;
+  private lastDown?: { time: number; x: number; y: number; id?: string };
 
   constructor(private readonly host: StageHost) {
     this.el = document.createElement("div");
@@ -80,7 +121,12 @@ export class Stage {
     this.overlay = s("g", { class: "isk-overlay" });
     this.ghost = s("g", { class: "isk-ghost" });
     this.svg.append(defs, this.pageRect, this.gridRect, this.content, this.guides, this.overlay, this.ghost);
-    this.el.append(this.svg);
+    this.scaleLabelEl = document.createElement("div");
+    this.scaleLabelEl.className = "isk-scale-label";
+    this.scaleLabelEl.hidden = true;
+    this.el.append(this.svg, this.scaleLabelEl);
+    window.addEventListener("keydown", (e) => this.onModifier(e));
+    window.addEventListener("keyup", (e) => this.onModifier(e));
 
     new ResizeObserver(() => this.resize()).observe(this.el);
     this.svg.addEventListener("pointerdown", (e) => this.onDown(e));
@@ -90,12 +136,11 @@ export class Stage {
     this.svg.addEventListener("pointerleave", () => { if (!this.drag) this.clearGhost(); });
     this.svg.addEventListener("contextmenu", (e) => e.preventDefault());
     this.svg.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
-    this.svg.addEventListener("dblclick", (e) => this.onDoubleClick(e));
     window.addEventListener("keydown", (e) => { if (e.code === "Space" && document.activeElement === this.el) { this.spaceDown = true; e.preventDefault(); } });
     window.addEventListener("keyup", (e) => { if (e.code === "Space") this.spaceDown = false; });
   }
 
-  /** Text edit request on double click (objects with text); set by the app. */
+  /** Text edit request on double click; set by the app. */
   onEditText?: (obj: ObjectInfo) => void;
 
   // ------------------------------------------------------------------ coordinates
@@ -382,6 +427,16 @@ export class Stage {
         return;
       }
       const hit = session.hitTest(p.x, p.y, 6 / this.scale);
+      // Double-click detected here: pointer capture and the re-rendered overlay keep browsers from sending dblclick.
+      const now = performance.now();
+      const last = this.lastDown;
+      this.lastDown = { time: now, x: e.clientX, y: e.clientY, id: hit.id };
+      if (hit.id && last && last.id === hit.id && now - last.time < 450 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6
+          && !(e.shiftKey || e.ctrlKey || e.metaKey)) {
+        this.lastDown = undefined;
+        this.editTextAt(hit.id, hit.ids);
+        return;
+      }
       if (hit.id) {
         const toggle = e.shiftKey || e.ctrlKey || e.metaKey;
         let selection = st.selection;
@@ -421,7 +476,9 @@ export class Stage {
     }
     if (h.kind === "scale") {
       const single = objs.length === 1 && objs[0].kind === "box" ? objs[0] : undefined;
-      this.drag = { kind: "scale", ids, frame: f, sx: h.sx, sy: h.sy, single };
+      // Centred parts scale about their centre by default (the engine marks them, see ObjectInfo.centred).
+      const centred = objs.some((o) => o.centred);
+      this.drag = { kind: "scale", ids, frame: f, sx: h.sx, sy: h.sy, single, centred };
     }
   }
 
@@ -458,7 +515,7 @@ export class Stage {
           break;
         }
         case "scale":
-          this.dragScale(d, p, e.shiftKey);
+          this.dragScale(d, p, e.shiftKey, e.ctrlKey || e.metaKey, { x: e.clientX, y: e.clientY });
           break;
         case "rotate": {
           const f = d.frame;
@@ -495,31 +552,42 @@ export class Stage {
     }
   }
 
-  private dragScale(d: Extract<Drag, { kind: "scale" }>, p: Vec2, free: boolean): void {
+  /**
+   * Resize preview. Centred parts (gears, bearings, wheels: pitch circle or hub, engine flag `centred`) scale about their
+   * centre by default and Ctrl switches to the opposite edge; other objects scale from the opposite edge, Ctrl about the
+   * centre (same as the COM add-in). The label next to the pointer shows the size and the active mode.
+   */
+  private dragScale(d: Extract<Drag, { kind: "scale" }>, p: Vec2, free: boolean, ctrl: boolean, client: Vec2): void {
     const f = d.frame;
-    // Pointer in the frame's local (unrotated) coordinates, origin at the frame centre.
-    const local = rotateVec({ x: p.x - f.cx, y: p.y - f.cy }, -f.rot);
-    const ax = (-d.sx * f.w) / 2, ay = (-d.sy * f.h) / 2; // fixed opposite handle
-    let w = f.w, h = f.h;
-    const corner = d.sx !== 0 && d.sy !== 0;
-    if (corner && !free) {
-      const dir = { x: d.sx * f.w, y: d.sy * f.h };
-      const k = Math.max(0.02, ((local.x - ax) * dir.x + (local.y - ay) * dir.y) / (dir.x * dir.x + dir.y * dir.y));
-      w = f.w * k; h = f.h * k;
-    } else {
-      if (d.sx !== 0) w = Math.max(0.5, (local.x - ax) * d.sx);
-      if (d.sy !== 0) h = Math.max(0.5, (local.y - ay) * d.sy);
-    }
-    const cl = { x: d.sx !== 0 ? ax + (d.sx * w) / 2 : 0, y: d.sy !== 0 ? ay + (d.sy * h) / 2 : 0 };
-    const c = rotateVec(cl, f.rot);
-    const cx = f.cx + c.x, cy = f.cy + c.y;
-    const fx = w / Math.max(1e-6, f.w), fy = h / Math.max(1e-6, f.h);
-    const pivotLocal = rotateVec({ x: ax, y: ay }, f.rot);
-    d.result = { w, h, cx, cy, fx, fy, pivot: { x: f.cx + pivotLocal.x, y: f.cy + pivotLocal.y } };
+    d.last = { p, client, free };
+    const aboutCentre = ctrl !== d.centred;
+    const r = resizeFrame(f, d.sx, d.sy, p, free, aboutCentre);
+    d.result = r;
     // Preview: old frame → new frame in the frame's rotated axes.
-    const t = `translate(${cx} ${cy}) rotate(${f.rot}) scale(${fx} ${fy}) rotate(${-f.rot}) translate(${-f.cx} ${-f.cy})`;
-    this.previewTransform(d.ids, t);
-    this.drawOverlay({ cx, cy, w, h, rot: f.rot });
+    const tr = `translate(${r.cx} ${r.cy}) rotate(${f.rot}) scale(${r.fx} ${r.fy}) rotate(${-f.rot}) translate(${-f.cx} ${-f.cy})`;
+    this.previewTransform(d.ids, tr);
+    this.drawOverlay({ cx: r.cx, cy: r.cy, w: r.w, h: r.h, rot: f.rot });
+    this.showScaleLabel(scaleLabel(r, !!d.single, aboutCentre), client);
+  }
+
+  private showScaleLabel(text: string, client: Vec2): void {
+    const er = this.el.getBoundingClientRect();
+    this.scaleLabelEl.textContent = text;
+    this.scaleLabelEl.hidden = false;
+    const w = this.scaleLabelEl.offsetWidth, h = this.scaleLabelEl.offsetHeight;
+    this.scaleLabelEl.style.left = `${clamp(client.x - er.left + 14, 4, Math.max(4, er.width - w - 4))}px`;
+    this.scaleLabelEl.style.top = `${clamp(client.y - er.top + 18, 4, Math.max(4, er.height - h - 4))}px`;
+  }
+
+  private hideScaleLabel(): void {
+    this.scaleLabelEl.hidden = true;
+  }
+
+  /** Ctrl pressed or released during a resize switches the mode without moving the pointer. */
+  private onModifier(e: KeyboardEvent): void {
+    const d = this.drag;
+    if (d?.kind !== "scale" || !d.last || (e.key !== "Control" && e.key !== "Meta")) return;
+    this.dragScale(d, d.last.p, d.last.free, e.ctrlKey || e.metaKey, d.last.client);
   }
 
   private onUp(e: PointerEvent): void {
@@ -527,6 +595,7 @@ export class Stage {
     this.drag = undefined;
     if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
     this.guides.replaceChildren();
+    this.hideScaleLabel();
     if (!d) return;
     const session = this.host.session();
     try {
@@ -574,6 +643,7 @@ export class Stage {
     const d = this.drag;
     this.drag = undefined;
     this.guides.replaceChildren();
+    this.hideScaleLabel();
     if (d && "ids" in d) this.resetPreview(d.ids);
     else this.drawOverlay();
   }
@@ -592,14 +662,10 @@ export class Stage {
     }
   }
 
-  private onDoubleClick(e: MouseEvent): void {
-    const p = this.toPage(e.clientX, e.clientY);
-    try {
-      const hit = this.host.session().hitTest(p.x, p.y, 6 / this.scale);
-      const o = hit.id ? this.host.state().objects.find((x) => x.id === hit.id) : undefined;
-      if (o?.hasText) this.onEditText?.(o);
-    } catch (err) {
-      this.host.report(err);
-    }
+  /** Double-click on an object edits its main text (the first click selected it; the app decides what is editable). */
+  private editTextAt(id: string, ids: string[]): void {
+    if (!this.host.state().selection.includes(id)) this.host.apply(this.host.session().select(ids));
+    const o = this.host.state().objects.find((x) => x.id === id);
+    if (o) this.onEditText?.(o);
   }
 }
