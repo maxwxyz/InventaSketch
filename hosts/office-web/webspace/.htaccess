@@ -1,0 +1,80 @@
+# InventaSketch web add-in on your own webspace (Apache). Lies in the uploaded folder.
+# Only effective if the host allows .htaccess files (AllowOverride); otherwise set the file types in the host's control panel.
+# Office add-ins cannot sign in to the server, so access cannot be restricted to the add-in: use a folder with a name that
+# cannot be guessed, keep it out of search engines and reject crawlers and tools.
+# Ported from Slidemax (same copyright holder, Apache-2.0 transfer approved 2026-11-20).
+
+# File types: without application/wasm the engine does not load.
+AddType application/wasm .wasm
+AddType application/octet-stream .dll .dat .blat .pdb
+AddType application/json .json
+AddType text/javascript .js .mjs
+AddType text/css .css
+AddType application/xml .xml
+AddCharset utf-8 .html .js .mjs .css .json .xml .txt
+# Precompressed copies (*.br, *.gz) are never served under their own type (see the rewrite rules below).
+RemoveType .br .gz
+RemoveEncoding .br .gz
+
+# No directory listing, no server details on error pages.
+Options -Indexes
+ServerSignature Off
+DirectoryIndex index.html
+
+<IfModule mod_headers.c>
+    # Not in search engines, no preview, no archive.
+    Header always set X-Robots-Tag "noindex, nofollow, noarchive, nosnippet, noimageindex, notranslate"
+    # Do not pass the address on to other sites.
+    Header always set Referrer-Policy "no-referrer"
+    Header always set X-Content-Type-Options "nosniff"
+    # Office shows the add-in in an embedded frame: do not send a frame block.
+    Header always unset X-Frame-Options
+    Header unset X-Powered-By
+    # Updates: revalidate every file before use (304 if unchanged), so a new version arrives right after the upload and old
+    # and new files are never mixed.
+    Header set Cache-Control "no-cache"
+</IfModule>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    # No user agent: reject (Office, browsers and the Office web view always send one).
+    RewriteCond %{HTTP_USER_AGENT} ^-?$
+    RewriteRule ^ - [F,L]
+    # Crawlers, link preview services of chat and mail programs, AI collectors and tools: reject. Not "Teams", "Office" or
+    # browser names: Office also loads the add-in in Teams and in the web view of the desktop programs.
+    RewriteCond %{HTTP_USER_AGENT} (bot|crawl|spider|slurp|archiver|scrapy|facebookexternalhit|facebot|embedly|skypeuripreview|microsoftpreview|bingpreview|whatsapp|semrush|ahrefs|mj12|petalbot|yandex|baidu|sogou|exabot|seznam|bytespider|gptbot|chatgpt|oai-searchbot|ccbot|anthropic|perplexity|cohere|diffbot|google-extended|headless|phantomjs|selenium|puppeteer|playwright|curl|wget|python|java/|go-http|okhttp|libwww|httpclient|httpie|postman|insomnia|nmap|nikto|sqlmap|masscan|zgrab|censys|shodan) [NC]
+    RewriteRule ^ - [F,L]
+    # Never serve files starting with a dot (.htaccess, .git and so on).
+    RewriteRule (^|/)\. - [F,L]
+
+    # Precompressed files of the WebAssembly engine (_framework/*.br, *.gz from the .NET publish): serve the copy if the
+    # browser accepts it and it exists, with the type of the original file. Without mod_rewrite the originals are served.
+    RewriteCond %{HTTP:Accept-Encoding} \bbr\b
+    RewriteCond %{REQUEST_FILENAME}.br -s
+    RewriteRule ^(.+)$ $1.br [L]
+    RewriteCond %{HTTP:Accept-Encoding} \bgzip\b
+    RewriteCond %{REQUEST_FILENAME}.gz -s
+    RewriteRule ^(.+)$ $1.gz [L]
+    RewriteRule \.wasm\.(br|gz)$ - [T=application/wasm]
+    RewriteRule \.(dll|dat|blat|pdb)\.(br|gz)$ - [T=application/octet-stream]
+    RewriteRule \.m?js\.(br|gz)$ - [T=text/javascript]
+    RewriteRule \.json\.(br|gz)$ - [T=application/json]
+    RewriteRule \.css\.(br|gz)$ - [T=text/css]
+    RewriteRule \.html\.(br|gz)$ - [T=text/html]
+    RewriteRule \.(br|gz)$ - [E=no-gzip:1,E=no-brotli:1]
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.br$">
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.gz$">
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/css text/javascript application/json application/wasm application/xml
+</IfModule>

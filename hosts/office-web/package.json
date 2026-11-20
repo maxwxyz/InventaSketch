@@ -17,7 +17,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "certs": "office-addin-dev-certs install",
-    "manifest": "node scripts/manifest.mjs"
+    "manifest": "node scripts/manifest.mjs",
+    "webspace": "node webspace/package.mjs"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",

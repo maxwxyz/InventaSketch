@@ -95,4 +95,12 @@ if (-not $SkipWeb -and (Test-Path $web)) {
 Step 'Package PowerPoint COM add-in (dist\InventaSketch-AddIn)'
 & (Join-Path $PSScriptRoot 'package-com.ps1')
 
+# After package-web and package-com: the webspace offers the COM add-in ZIP built just before.
+if (-not $SkipWeb -and (Test-Path (Join-Path $root 'hosts\office-web\dist\taskpane.html')) -and (Get-Command node -ErrorAction SilentlyContinue)) {
+    Step 'Package webspace (dist\InventaSketch-Webspace)'
+    & (Join-Path $PSScriptRoot 'package-webspace.ps1')
+} elseif (-not $SkipWeb) {
+    Write-Warning 'Web add-in not built (hosts\office-web\dist or Node.js missing): webspace package skipped.'
+}
+
 Step 'Done'

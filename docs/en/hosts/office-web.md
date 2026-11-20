@@ -77,3 +77,53 @@ For end users, use the local installer described above.
 
 Office.js limits (see [capability matrix](capability-matrix.md)): no freeform, arrowheads or pattern fills on
 shapes; no overlay on the slide; iPad only PowerPointApi 1.1.
+
+## Webspace package
+
+`dist/InventaSketch-Webspace` (and `dist/InventaSketch-Webspace-<version>.zip`, which contains the folder) offers the web
+add-in from any HTTPS webspace, without a server on the user's computer. Build it with `scripts/package-webspace.ps1`
+(Windows) or `scripts/package-webspace.sh` (Linux/macOS); `scripts/build.ps1` and `scripts/build.sh` run it after the web
+and COM packages and only warn if the web build is missing. The work is done by `hosts/office-web/webspace/package.mjs`
+(`npm run webspace`).
+
+Contents:
+
+- the built web add-in (`hosts/office-web/dist` without `dev.html`, source maps and the localhost manifest), including the
+  precompressed engine files (`_framework/*.br`, `*.gz`);
+- `index.html` with `setup.js`: the setup page. It takes the folder of its own address (`location`, without file name,
+  query and fragment) as the add-in address, checks it with the rules of `create-manifest.ps1` (HTTPS only, no query or
+  special characters), shows it and offers the manifest as `manifest-<host>[-<port>].xml` on a button. It also explains
+  "Upload My Add-in" for PowerPoint on Windows, Mac and the web, the Mac `wef` folder and the Windows registry
+  (`HKCU\Software\Microsoft\Office\16.0\WEF\Developer`) with copyable commands for when the upload is missing, the shared
+  folder catalog and central deployment by IT. Texts are German if the browser language starts with `de`, otherwise
+  English; a button switches the language;
+- `manifest-template.js`, generated from `scripts/manifest.mjs` (`manifestTemplateModule`): the manifest template and
+  `fillManifest`, so the page and `node scripts/manifest.mjs <url>` produce the same XML for the same address
+  (`test/webspace.test.ts`);
+- `.htaccess` (Apache) and `web.config` (IIS): MIME types for `.wasm`, `.dll`, `.dat`, `.blat`, `.json`, `.js`, `.br`,
+  `.gz`; no directory listing; `X-Robots-Tag: noindex`, `Referrer-Policy: no-referrer`, `Cache-Control: no-cache` (a new
+  upload arrives at once); crawlers, preview services and tools are rejected by user agent. Apache serves the `.br`/`.gz`
+  copies with `Content-Encoding` when the browser accepts them (needs `mod_rewrite` and `mod_headers`, otherwise the
+  originals are served). IIS serves the originals and compresses itself; precompressed files would need the optional URL
+  Rewrite module, whose absence breaks the whole folder;
+- `robots.txt` (`Disallow: /`; crawlers only read it at the root of a host, in a subfolder the header and the robots meta
+  tag apply);
+- `version.json` (version line on the page) and `downloads.json` with `downloads/`: the other editions found next to the
+  package in `dist`: `InventaSketch-AddIn-<version>.zip` (COM add-in) and `InventaSketch-LibreOffice-<version>[-<rid>].oxt`.
+  Only existing files are listed, never expected ones; without them the page says that there are no other editions.
+
+Use: upload the folder with all files (FTP programs show `.htaccess` only with hidden files enabled) to a folder with a
+name that cannot be guessed, e.g. `https://example.com/isk-7k2q9x/`. Requirements: HTTPS with a valid certificate and no
+password protection (Office add-ins cannot sign in). Open the address in the browser, download the manifest and upload it
+in PowerPoint (Home > Add-ins > More Add-ins > My Add-ins > Upload My Add-in). Presentation data is not sent to the
+webspace. Updates: upload the new folder and replace the old content; a new manifest is only needed when the manifest
+changed.
+
+Origin: setup page, server settings and packaging were ported from Slidemax-Webspace (same copyright holder) and
+translated to English.
+
+Verified 2026-11-20 on Windows: package build (111 files, COM add-in ZIP listed); the folder served by a local static
+server in a subfolder over HTTPS (temporary self-signed certificate) and HTTP; the page loaded in headless Edge in German
+and English: address `https://localhost:<port>/isk-test`, generated manifest well-formed XML with this address and
+identical to `scripts/manifest.mjs`; over HTTP the page refuses the address and disables the button. Not yet verified:
+`.htaccess` on a real Apache and `web.config` on IIS, loading the add-in in PowerPoint from a webspace.
