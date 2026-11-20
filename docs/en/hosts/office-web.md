@@ -54,8 +54,7 @@ German (to be translated, English fallback for non-German users).
 
 Windows: `npm run certs` once (trusted localhost certificate), `npm run dev`, then add the manifest path as a value under
 `HKCU\Software\Microsoft\Office\16.0\WEF\Developer` (name = add-in id) and restart PowerPoint.
-A per-user local installer (HTTPS loopback host with certificate, autostart and sideload registration on Windows,
-macOS and Linux) is the next step (`tools/InventaSketch.WebHost`, see roadmap).
+For end users, use the local installer described above.
 
 ## Status (2026-11-20)
 
@@ -64,7 +63,8 @@ macOS and Linux) is the next step (`tools/InventaSketch.WebHost`, see roadmap).
 | Engine in WebAssembly, catalog, insert at pointer, search | verified in browser (dev.html) |
 | Stage interaction (move, scale, snap, pie menu, floating bar) | implemented, browser check partial |
 | Writing native shapes into PowerPoint | implemented, **not yet tested in PowerPoint** |
-| Local installer like the COM add-in (no admin) | planned |
+| Local installer like the COM add-in (no admin) | implemented, dry run verified; real install pending |
+| Webspace package (download page, manifest for own URL) | planned |
 
 Office.js limits (see [capability matrix](capability-matrix.md)): no freeform, arrowheads or pattern fills on
 shapes; no overlay on the slide; iPad only PowerPointApi 1.1.

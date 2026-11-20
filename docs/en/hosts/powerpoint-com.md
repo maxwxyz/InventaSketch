@@ -18,12 +18,12 @@
   (mechanics, annotation, patent, basic shapes) with one thumbnail gallery per library category (6 columns, name in the
   tooltip; groups with many categories show icons only so the tab fits on laptop screens). New modules appear without
   ribbon changes. Thumbnails are rendered with GDI+ from the engine primitives and follow the Office theme.
-- Floating bar and pie menu show each view as a small picture of the selected object in that view, plus symbols for
-  mirror, rotate, duplicate and delete; the bar shows a tooltip for the hovered button. Rendering tests
+- Floating bar and pie menu show abstract line pictograms (`IconIds`, drawn by `OnSlide/IconPainter`) for views,
+  mirror, rotate, duplicate, delete, type and label menus — deliberately not renders of the concrete element; the bar shows a tooltip for the hovered button. Rendering tests
   (`tests/InventaSketch.AddIn.Tests`, Windows) write light and dark PNGs of bar and pie menu for visual review. UI language follows the Office UI language (German if
   the LCID is German, otherwise English).
 - Automation object for scripts and tests: `Application.COMAddIns("InventaSketch.AddIn.Connect").Object` with
-  `Insert(itemId)`, `LibraryItems()`, `Version()`.
+  `Insert(itemId)`, `Place(itemId)`, `Editor(visible)`, `LibraryItems()`, `Version()`.
 - Log: `%LOCALAPPDATA%\InventaSketch\addin.log`.
 
 ## On-slide interaction (slice 2)
@@ -139,7 +139,7 @@ Slice 2 (same environment, simulated mouse input with PowerPoint in the foregrou
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in
   this test; a normally started PowerPoint did. To be investigated for automated tests.
-- The ribbon shows 16 category menus; with more categories the remaining ones are not reachable yet (gallery planned).
 - Automation calls from other processes arrive on RPC threads; `BeginPlacement` marshals itself to the UI thread.
-- Next: resize/rotate with snapping, dark mode for bar and pie menu (Office theme), style controls (line, fill,
-  arrowheads) on the bar, sidebar task pane with the shared editor.
+- Dark theme of bar and pie menu is checked only through rendering tests, not yet in a dark Office.
+- Not yet verified on the slide: text prompt dialog, `X`/`Y`/`Shift+R`, pie menu via keyboard.
+- Next: style controls (line, fill, arrowheads) on the bar, domain exports (BOM, netlists, topologies).

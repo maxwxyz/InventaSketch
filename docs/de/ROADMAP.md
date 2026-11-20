@@ -32,7 +32,15 @@ Zahleneingabe erstellen, in PowerPoint (Web) einfügen und als SVG exportieren; 
 Registrierung pro Benutzer ohne Administratorrechte; Menüband; native Formen über COM (Freiform, Pfeilspitzen,
 Musterfüllung, Verbinder); Interaktion auf der Folie (Eingabe-Hooks + geschichtetes Overlay-Fenster): Einfügen am
 Mauszeiger, Einrast-Hilfslinien, schwebende Leiste, Kreismenü; Aufgabenbereich in der Seitenleiste; Metadaten in Tags +
-Dokumenteigenschaften; COM-Vorrang verifiziert. Status: **geplant**.
+Dokumenteigenschaften; COM-Vorrang verifiziert. Status: **in Arbeit** – Stufe 1 am 2026-11-20 ausgeliefert:
+Registrierung pro Benutzer, Menüband, natives Einfügen (Formen, Freiformen, Pfeilspitzen, Gruppen, Tags) in
+PowerPoint 16.0 geprüft; Stufe 2: Einfügen am Mauszeiger, Ziehen mit semantischem Fangen, Kreismenü, ausblendende
+Leiste, Skalieren mit Fangen (Zahneingriff), Zweipunkt-Werkzeug, Punktbearbeitung, Typumwandlung,
+Beschriftungsmenü und Drehen mit Fangen geprüft; Leiste und Kreismenü folgen dem Office-Design. Seitenleisten-Editor
+(WebView2 mit Live-Synchronisation) geprüft. Menüband mit Vorschau-Galerien je Kategorie, Einstellungsschalter,
+abstrakte Piktogramme in Leiste und Kreismenü, Tastaturkürzel, eindeutige IDs für Kopien, Installationspaket
+(`scripts\package-com.ps1`). Deutsche Host-Dokumentation ergänzt. Als Nächstes: Übersetzung des übernommenen Web-Hosts,
+LibreOffice-Phase.
 
 ## Phase 3 – LibreOffice-Erweiterung
 
