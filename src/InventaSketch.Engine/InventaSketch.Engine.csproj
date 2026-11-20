@@ -15,5 +15,11 @@
     <ProjectReference Include="..\InventaSketch.Modules.Annotation\InventaSketch.Modules.Annotation.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Mechanical\InventaSketch.Modules.Mechanical.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Patent\InventaSketch.Modules.Patent.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Electrical\InventaSketch.Modules.Electrical.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Machines\InventaSketch.Modules.Machines.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Kinematics\InventaSketch.Modules.Kinematics.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Automotive\InventaSketch.Modules.Automotive.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Architecture\InventaSketch.Modules.Architecture.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Diagrams\InventaSketch.Modules.Diagrams.csproj" />
   </ItemGroup>
 </Project>

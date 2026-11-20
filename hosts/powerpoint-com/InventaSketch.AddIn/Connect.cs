@@ -138,7 +138,7 @@ namespace InventaSketch.AddIn
         /// <summary>Modules with library categories in ribbon order: mechanics first, basic shapes last.</summary>
         private List<IModule> RibbonModules()
         {
-            var order = new[] { "mechanical", "annotation", "patent" };
+            var order = new[] { "mechanical", "kinematics", "annotation", "patent", "electrical", "machines", "automotive", "architecture", "diagrams" };
             return (_registry?.Modules ?? Array.Empty<IModule>())
                 .Where(mod => _categories.Any(c => c.ModuleId == mod.Id))
                 .OrderBy(mod => Array.IndexOf(order, mod.Id) is var i && i >= 0 ? i : order.Length + (mod.Id == "basic" ? 1 : 0))

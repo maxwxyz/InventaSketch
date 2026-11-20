@@ -66,6 +66,12 @@ Export-Erweiterungspunkte der Module.
 
 ## Offene Punkte
 
+- Reihenfolge mit dem Maintainer abgestimmt (20.11.2026): erst das COM-Add-in fertigstellen, dann das Web-Add-in, dann LibreOffice.
+- Web: Webspace-Paket wie Slidemax-Webspace (`dist/InventaSketch-Webspace`): den Ordner auf einen beliebigen HTTPS-Webspace
+  legen; enthält das Web-Add-in, eine Einrichtungsseite (`index.html`), die das Manifest für die eigene Adresse erzeugt,
+  `.htaccess`/`web.config` (Dateitypen der Engine, keine Indizierung) und Downloads der anderen Fassungen (COM-Add-in-ZIP,
+  LibreOffice-`.oxt`) laut `downloads.json`.
+
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.
 - Mit dem Maintainer klären, ob bestimmte Slidemax-Komponenten für dieses Repository neu lizenziert werden dürfen.

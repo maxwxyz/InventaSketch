@@ -19,6 +19,12 @@ namespace InventaSketch.Engine
             modules.Add(new InventaSketch.Modules.Annotation.AnnotationModule());
             modules.Add(new InventaSketch.Modules.Mechanical.MechanicalModule());
             modules.Add(new InventaSketch.Modules.Patent.PatentModule());
+            modules.Add(new InventaSketch.Modules.Kinematics.KinematicsModule());
+            modules.Add(new InventaSketch.Modules.Electrical.ElectricalModule());
+            modules.Add(new InventaSketch.Modules.Machines.MachinesModule());
+            modules.Add(new InventaSketch.Modules.Automotive.AutomotiveModule());
+            modules.Add(new InventaSketch.Modules.Architecture.ArchitectureModule());
+            modules.Add(new InventaSketch.Modules.Diagrams.DiagramsModule());
             return Create(modules);
         }
 
