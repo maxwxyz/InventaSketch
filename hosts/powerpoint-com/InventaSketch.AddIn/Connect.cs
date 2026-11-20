@@ -137,16 +137,23 @@ namespace InventaSketch.AddIn
         /// One group per module, one gallery per library category (thumbnail grid, tooltip = name), then the tools group.
         /// New modules and categories appear without changing this code.
         /// </summary>
-        /// <summary>Modules with library categories in ribbon order: mechanics first, basic shapes last.</summary>
-        private List<IModule> RibbonModules()
+        /// <summary>
+        /// Ribbon groups in order: one "Annotate" group right after the tools (annotation, patent figures and basic
+        /// shapes: the things every sketch needs), then one group per domain module. New modules appear automatically.
+        /// </summary>
+        private List<(string Label, List<IModule> Modules)> RibbonGroups()
         {
-            var order = new[] { "mechanical", "kinematics", "annotation", "patent", "electrical", "machines", "automotive", "architecture", "diagrams" };
-            return (_registry?.Modules ?? Array.Empty<IModule>())
-                .Where(mod => _categories.Any(c => c.ModuleId == mod.Id))
-                .OrderBy(mod => Array.IndexOf(order, mod.Id) is var i && i >= 0 ? i : order.Length + (mod.Id == "basic" ? 1 : 0))
-                .ToList();
+            var modules = (_registry?.Modules ?? Array.Empty<IModule>()).Where(mod => _categories.Any(c => c.ModuleId == mod.Id)).ToList();
+            var annotate = new[] { "annotation", "patent", "basic" };
+            var order = new[] { "mechanical", "kinematics", "electrical", "machines", "automotive", "architecture", "diagrams" };
+            var groups = new List<(string, List<IModule>)>();
+            var first = modules.Where(mod => Array.IndexOf(annotate, mod.Id) >= 0).OrderBy(mod => Array.IndexOf(annotate, mod.Id)).ToList();
+            if (first.Count > 0) groups.Add((T("Annotate", "Beschriftung"), first));
+            foreach (var mod in modules.Where(mod => Array.IndexOf(annotate, mod.Id) < 0)
+                         .OrderBy(mod => Array.IndexOf(order, mod.Id) is var i && i >= 0 ? i : order.Length))
+                groups.Add((mod.Name.Get(_lang), new List<IModule> { mod }));
+            return groups;
         }
-
         private string RibbonXml()
         {
             var sb = new StringBuilder();
@@ -160,19 +167,21 @@ namespace InventaSketch.AddIn
             sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
             sb.Append("<button id=\"IskMonochrome\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
-              .Append(X(T("Recolour the InventaSketch elements of this slide in black and white (patent style).", "InventaSketch-Elemente dieser Folie schwarz-weiß umfärben (Patentstil)."))).Append("\" />");
-            sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" size=\"large\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
+              .Append(X(T("Shows the InventaSketch elements of this slide in black and white (patent style): fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß (Patentstil), einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
+            sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
             sb.Append("</group>");
             if (_registry is not null)
             {
                 var m = 0;
-                foreach (var module in RibbonModules())
+                foreach (var (label, mods) in RibbonGroups())
                 {
-                    var cats = _categories.Select((c, i) => (c, i)).Where(x => x.c.ModuleId == module.Id).ToList();
+                    var ids = mods.Select(mod => mod.Id).ToList();
+                    var cats = _categories.Select((c, i) => (c, i)).Where(x => ids.Contains(x.c.ModuleId))
+                        .OrderBy(x => ids.IndexOf(x.c.ModuleId)).ToList();
                     if (cats.Count == 0) continue;
                     // Groups with many categories show icons only (name in the tooltip) so the tab fits on laptop screens.
                     var compact = cats.Count > 4;
-                    sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(L(module.Name.Get(_lang))).Append("\">");
+                    sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(L(label)).Append("\">");
                     foreach (var (c, i) in cats)
                     {
                         sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(c.Name.Get(_lang)))
@@ -234,9 +243,9 @@ namespace InventaSketch.AddIn
             {
                 var idx = control.Id.LastIndexOf('_');
                 if (_registry is null || idx < 0 || !int.TryParse(control.Id.Substring(idx + 1), out var n)) return null;
-                var modules = RibbonModules();
-                if (n >= modules.Count) return null;
-                var cat = _categories.FirstOrDefault(c => c.ModuleId == modules[n].Id);
+                var groups = RibbonGroups();
+                if (n >= groups.Count) return null;
+                var cat = _categories.FirstOrDefault(c => c.ModuleId == groups[n].Modules[0].Id);
                 var item = cat is null ? null : _registry.Library.FirstOrDefault(i => i.Category == cat.Id);
                 return item is null ? null : PictureConverter.ToPicture(Thumbnail(item, 32));
             }
@@ -368,38 +377,33 @@ namespace InventaSketch.AddIn
         }
 
         /// <summary>Recolours the InventaSketch shapes of the current slide to black/white (patent style).</summary>
+        /// <summary>
+        /// Switches the InventaSketch elements of the slide to black and white (patent style) or back: every unit's model
+        /// gets <see cref="DocumentSettings.Monochrome"/> and is re-rendered, so all colours (fills, text, highlighters)
+        /// are mapped by the engine, stay black and white after later edits and come back when switched off.
+        /// </summary>
         public void OnMonochrome(Office.IRibbonControl control)
         {
             try
             {
-                if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return;
+                if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return;
+                var units = OnSlide.SketchUnits.All(slide);
+                if (units.Count == 0) return;
+                var on = units.Any(u => !u.Doc.Settings.Monochrome);
                 _app.StartNewUndoEntry();
-                foreach (PowerPoint.Shape s in slide.Shapes)
-                    if (!string.IsNullOrEmpty(s.Tags["ISK_ID"])) Monochrome(s);
+                foreach (var u in units)
+                {
+                    if (u.Doc.Settings.Monochrome == on) continue;
+                    var doc = u.Doc with { Settings = u.Doc.Settings with { Monochrome = on } };
+                    OnSlide.SketchUnits.Replace(slide, u, doc, _registry, _lang);
+                }
+                Log.Info($"Black and white {(on ? "on" : "off")} for {units.Count} unit(s)");
             }
             catch (Exception ex)
             {
                 Log.Error("OnMonochrome", ex);
             }
         }
-
-        private static void Monochrome(PowerPoint.Shape s)
-        {
-            if (s.Type == Office.MsoShapeType.msoGroup)
-            {
-                foreach (PowerPoint.Shape c in s.GroupItems) Monochrome(c);
-                return;
-            }
-            if (s.Line.Visible == Office.MsoTriState.msoTrue) s.Line.ForeColor.RGB = 0;
-            if (s.Fill.Visible == Office.MsoTriState.msoTrue && s.Fill.Type == Office.MsoFillType.msoFillSolid)
-            {
-                var rgb = s.Fill.ForeColor.RGB;
-                int r = rgb & 255, g = (rgb >> 8) & 255, b = (rgb >> 16) & 255;
-                s.Fill.ForeColor.RGB = (0.2126 * r + 0.7152 * g + 0.0722 * b) < 90 ? 0 : 0xFFFFFF;
-            }
-            if (s.HasTextFrame == Office.MsoTriState.msoTrue) s.TextFrame.TextRange.Font.Color.RGB = 0;
-        }
-
         // ------------------------------------------------------------------ sidebar editor (custom task pane)
 
         /// <summary>Shows or hides the sidebar editor (ribbon toggle and automation).</summary>
@@ -490,11 +494,82 @@ namespace InventaSketch.AddIn
         }
     }
 
-    /// <summary>Converts a bitmap to IPictureDisp for ribbon images (AxHost exposes the protected converter).</summary>
-    internal sealed class PictureConverter : AxHost
+    /// <summary>
+    /// Converts a bitmap to IPictureDisp for ribbon images as a 32-bit top-down DIB with premultiplied alpha
+    /// (PICTYPE_BITMAP), so thumbnails stay transparent on light and dark Office themes (AxHost's converter drops the
+    /// alpha channel and leaves a white box). Ported from Slidemax (Brand.PictureConverter) with the copyright holder's
+    /// approval. The picture owns the bitmap handle.
+    /// </summary>
+    internal static class PictureConverter
     {
-        private PictureConverter() : base("") { }
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct PictDesc
+        {
+            public int Size;
+            public int Type;
+            public IntPtr Handle;
+            public IntPtr Palette;
+        }
 
-        public static object ToPicture(Image image) => GetIPictureDispFromPicture(image);
-    }
-}
+        [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+        private struct BitmapInfoHeader
+        {
+            public int Size;
+            public int Width;
+            public int Height;
+            public short Planes;
+            public short BitCount;
+            public int Compression;
+            public int SizeImage;
+            public int XPelsPerMeter;
+            public int YPelsPerMeter;
+            public int ClrUsed;
+            public int ClrImportant;
+        }
+
+        [System.Runtime.InteropServices.DllImport("oleaut32.dll")]
+        private static extern int OleCreatePictureIndirect(ref PictDesc desc, ref Guid iid, bool own, [System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.IDispatch)] out object picture);
+
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern IntPtr CreateDIBSection(IntPtr hdc, ref BitmapInfoHeader header, uint usage, out IntPtr bits, IntPtr section, uint offset);
+
+        [System.Runtime.InteropServices.DllImport("gdi32.dll")]
+        private static extern bool DeleteObject(IntPtr handle);
+
+        private static Guid _pictureDisp = new("7BF80981-BF32-101A-8BBB-00AA00300CAB");
+
+        public static object ToPicture(Image image)
+        {
+            using var bmp = new Bitmap(image);
+            int w = bmp.Width, h = bmp.Height;
+            // Top-down (negative height), BI_RGB, pixels premultiplied as GDI+ delivers them in PArgb.
+            var header = new BitmapInfoHeader { Size = System.Runtime.InteropServices.Marshal.SizeOf(typeof(BitmapInfoHeader)), Width = w, Height = -h, Planes = 1, BitCount = 32 };
+            var hbitmap = CreateDIBSection(IntPtr.Zero, ref header, 0, out var bits, IntPtr.Zero, 0);
+            if (hbitmap == IntPtr.Zero) throw new InvalidOperationException("CreateDIBSection failed");
+            try
+            {
+                var data = bmp.LockBits(new Rectangle(0, 0, w, h), System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+                try
+                {
+                    var row = new byte[w * 4];
+                    for (var y = 0; y < h; y++)
+                    {
+                        System.Runtime.InteropServices.Marshal.Copy(data.Scan0 + y * data.Stride, row, 0, row.Length);
+                        System.Runtime.InteropServices.Marshal.Copy(row, 0, bits + y * w * 4, row.Length);
+                    }
+                }
+                finally
+                {
+                    bmp.UnlockBits(data);
+                }
+                var desc = new PictDesc { Size = System.Runtime.InteropServices.Marshal.SizeOf(typeof(PictDesc)), Type = 1, Handle = hbitmap };
+                System.Runtime.InteropServices.Marshal.ThrowExceptionForHR(OleCreatePictureIndirect(ref desc, ref _pictureDisp, true, out var picture));
+                return picture;
+            }
+            catch
+            {
+                DeleteObject(hbitmap);
+                throw;
+            }
+        }
+    }}

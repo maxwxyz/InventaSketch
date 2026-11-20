@@ -159,6 +159,11 @@ namespace InventaSketch.Core
         /// <summary>Active patent/export profile id.</summary>
         public string? Profile { get; init; }
         /// <summary>
+        /// Black-and-white output (patent style): renderers map every colour to black or white and drop translucent
+        /// fills (highlighters); the objects keep their colours, so switching it off restores them.
+        /// </summary>
+        public bool Monochrome { get; init; }
+        /// <summary>
         /// Plan scale denominator of the document (100 means 1:100), used by types with <see cref="ObjectType.UsesPlanScale"/>
         /// when an object has no scale of its own. Null: each module's default.
         /// </summary>

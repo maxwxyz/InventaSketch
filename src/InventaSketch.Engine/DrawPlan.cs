@@ -225,10 +225,11 @@ namespace InventaSketch.Engine
             var pad = maxStroke / 2 + (hasArrows ? ArrowHeads.Length(ArrowSize.Large, maxStroke) : 0) + 0.5;
             var padded = bounds.Inflate(pad);
 
+            var mono = session.Doc.Settings.Monochrome;
             if (needSvg && caps.Svg)
             {
                 unit.Mode = "svg";
-                var svg = SvgRenderer.RenderPrimitives(allPrims, new SvgOptions { Background = null, ViewBox = padded });
+                var svg = SvgRenderer.RenderPrimitives(allPrims, new SvgOptions { Background = null, ViewBox = padded, Monochrome = mono });
                 svg = svg.Replace("<svg xmlns=\"http://www.w3.org/2000/svg\" ",
                     "<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"" + F(padded.W) + "mm\" height=\"" + F(padded.H) + "mm\" ");
                 unit.Ops.Add(new PlanOp { Op = "svg", X = R(padded.X * Pt), Y = R(padded.Y * Pt), W = R(padded.W * Pt), H = R(padded.H * Pt), Svg = svg });
@@ -238,9 +239,49 @@ namespace InventaSketch.Engine
             {
                 unit.Ops.AddRange(groups.Count == 1 ? groups[0].Children! : groups);
                 unit.Bounds = new PlanRect { X = R(bounds.X * Pt), Y = R(bounds.Y * Pt), W = R(bounds.W * Pt), H = R(bounds.H * Pt) };
+                if (mono) Monochrome(unit.Ops);
             }
             return unit;
         }
+
+        /// <summary>
+        /// Black-and-white plan (<see cref="DocumentSettings.Monochrome"/>): lines, hatches and text become black (white
+        /// stays white), opaque fills black or white by luminance, translucent fills (highlighters, tints) are dropped.
+        /// </summary>
+        public static void Monochrome(IEnumerable<PlanOp> ops)
+        {
+            foreach (var op in ops)
+            {
+                if (op.Stroke is { Color: not null } s) s.Color = MonoInk(s.Color);
+                if (op.Color is not null) op.Color = MonoInk(op.Color);
+                if (op.Fill is { } f)
+                {
+                    if (f.Hatch is { } h)
+                    {
+                        h.Color = h.Color is null ? null : MonoInk(h.Color);
+                        f.Color = f.Color is null || op.Opacity is < 1 ? null : MonoFill(f.Color);
+                    }
+                    else if (f.Kind == "solid" && f.Color is not null)
+                    {
+                        if (op.Opacity is < 1) op.Fill = new PlanFill();
+                        else f.Color = MonoFill(f.Color);
+                    }
+                }
+                if (op.Opacity is < 1) op.Opacity = null;
+                if (op.Children is not null) Monochrome(op.Children);
+            }
+        }
+
+        private static double Luminance(string color)
+        {
+            var hex = color.TrimStart('#');
+            if (hex.Length == 3) hex = string.Concat(hex.Select(c => new string(c, 2)));
+            if (hex.Length < 6 || !int.TryParse(hex.Substring(0, 6), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var v)) return 0;
+            return 0.2126 * ((v >> 16) & 255) + 0.7152 * ((v >> 8) & 255) + 0.0722 * (v & 255);
+        }
+
+        private static string MonoInk(string color) => Luminance(color) > 245 ? "#FFFFFF" : "#000000";
+        private static string MonoFill(string color) => Luminance(color) < 90 ? "#000000" : "#FFFFFF";
 
         private static string F(double v) => Math.Round(v, 3).ToString("0.###", CultureInfo.InvariantCulture);
 

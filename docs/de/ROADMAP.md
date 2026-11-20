@@ -101,5 +101,22 @@ Export-Erweiterungspunkte der Module.
     Wänden mit einem Rückgängig-Schritt.
 - Web-Installer (aus Slidemax übernommen, am 20.11.2026 ins Englische übersetzt, Meldungen deutsch/englisch): echte
   Installation und Laden des Add-ins in PowerPoint (Windows ohne COM-Add-in, Mac, Web) stehen aus.
+- UX-Rückmeldungen des Maintainers (20.11.2026), erst COM, dann Web:
+  - In Arbeit: Schwarz-Weiß als umkehrbare Dokumenteinstellung (Füllungen, Text, Markierungen); Menüband-Reihenfolge
+    (Beschriftung = Beschriftung + Patent + Grundformen direkt nach Werkzeuge, kleiner Info-Button); transparente
+    Menüband-Vorschaubilder für dunkles Office; Seitenleisten-Vorschau entfernt auf der Folie gelöschte Einheiten;
+    Text bearbeiten per Doppelklick und Leistenknopf; Ansichtswechsel behält Proportionen; Größe ändern um die Mitte bei
+    zentrierten Teilen; Kreismenü „Einfügen ▸“ mit passenden Elementen zur Auswahl (Welle → Zahnräder und Lager,
+    Leitung → Schaltzeichen, immer Beschriftung/Pfeile/Bezugszeichen), am Mauszeiger mit Fangen platziert; Schalter
+    „Verankern“ neben „Einrasten“: angebundene Linienenden folgen verschobenen Einheiten, auch einheitenübergreifend.
+  - Skalieren von Schemadarstellungen: Skalieren ändert nur, was sinnvoll ist (z. B. Zahnradbreite entlang der Achse,
+    Teilkreis), Symboldetails (Nabenkreuz, Endstriche, Linienstärken) behalten ihre Größe.
+  - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout (Formatierung nativer Formen; aus Slidemax übernehmen).
+  - Werkzeuge-Menü wie Slidemax: Symbol einfügen, Dezimaltrennzeichen ändern, Korrektursprache, Folien senden, Folien
+    speichern (aus Slidemax übernehmen).
+  - Einstellung zum Ausblenden nicht benötigter Module (Menüband-Gruppen, Galerien, Seitenleisten-Bibliothek).
+  - Rahmenauswahl einzelner Punkte: ein Auswahlrahmen über einer Linie wählt ihre Punkte, die dann gemeinsam verschoben
+    werden.
+  - Mehr Bearbeitungseinträge in der schwebenden Leiste (Text, wichtige Parameter), dabei kurz halten.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.
