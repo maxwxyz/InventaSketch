@@ -130,6 +130,8 @@ export function drawOp(shapes: PowerPoint.ShapeCollection, op: PlanOp, caps: Hos
       if (op.font) font.name = op.font.split(",")[0].trim();
       font.bold = !!op.bold;
       font.italic = !!op.italic;
+      // ShapeFont.underline is part of PowerPointApi 1.4 (the same set as addTextBox), so no line fallback is needed.
+      font.underline = (op.underline ? "Single" : "None") as PowerPoint.ShapeFontUnderlineStyle;
       tf.textRange.paragraphFormat.horizontalAlignment = (op.align === "left" ? "Left" : op.align === "right" ? "Right" : "Center") as PowerPoint.ParagraphHorizontalAlignment;
       s.fill.clear();
       s.lineFormat.visible = false;

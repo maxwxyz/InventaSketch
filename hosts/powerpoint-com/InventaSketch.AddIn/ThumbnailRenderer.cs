@@ -37,6 +37,17 @@ namespace InventaSketch.AddIn
 
         private static void Draw(Graphics g, Primitive p, Color ink, float px)
         {
+            if (p is LinePrim or PathPrim)
+            {
+                // Arrowheads (including hollow and crow's-foot ends) as explicit geometry from the engine.
+                var (shaft, heads) = ArrowHeads.Explode(p, Hex(ink));
+                if (heads.Count > 0)
+                {
+                    Draw(g, shaft, ink, px);
+                    foreach (var h in Prim.Flatten(heads)) Draw(g, h, ink, px);
+                    return;
+                }
+            }
             switch (p)
             {
                 case LinePrim l:
@@ -64,7 +75,8 @@ namespace InventaSketch.AddIn
                     }
                 case TextPrim t:
                     {
-                        using var font = new Font("Arial", (float)Math.Max(0.5, t.TextStyle.Size * 0.75), GraphicsUnit.World);
+                        var fs = (t.TextStyle.Bold ? FontStyle.Bold : FontStyle.Regular) | (t.TextStyle.Italic ? FontStyle.Italic : 0) | (t.TextStyle.Underline ? FontStyle.Underline : 0);
+                        using var font = new Font("Arial", (float)Math.Max(0.5, t.TextStyle.Size * 0.75), fs, GraphicsUnit.World);
                         using var brush = new SolidBrush(ink);
                         var fmt = new StringFormat { Alignment = t.TextStyle.Anchor switch { TextAnchor.Start => StringAlignment.Near, TextAnchor.End => StringAlignment.Far, _ => StringAlignment.Center }, LineAlignment = StringAlignment.Center };
                         g.DrawString(t.Text, font, brush, (float)t.Position.X, (float)t.Position.Y, fmt);
@@ -118,6 +130,8 @@ namespace InventaSketch.AddIn
             }
             return gp;
         }
+
+        private static string Hex(Color c) => "#" + c.R.ToString("x2", CultureInfo.InvariantCulture) + c.G.ToString("x2", CultureInfo.InvariantCulture) + c.B.ToString("x2", CultureInfo.InvariantCulture);
 
         public static Color ParseColor(string? hex, Color fallback)
         {

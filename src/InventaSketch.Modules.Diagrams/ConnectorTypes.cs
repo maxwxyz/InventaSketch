@@ -61,10 +61,11 @@ namespace InventaSketch.Modules.Diagrams
         {
             base.Labels(list, o, ctx, path);
             var size = LabelSize(o);
-            list.AddRange(EndLabel(o.Str("startMult", ""), path, true, StartEnd(o), true, size));
-            list.AddRange(EndLabel(o.Str("startRole", ""), path, true, StartEnd(o), false, size));
-            list.AddRange(EndLabel(o.Str("endMult", ""), path, false, EndEnd(o), true, size));
-            list.AddRange(EndLabel(o.Str("endRole", ""), path, false, EndEnd(o), false, size));
+            double sc = EndClearance(o, true), ec = EndClearance(o, false);
+            list.AddRange(EndLabel(o.Str("startMult", ""), path, true, sc, true, size));
+            list.AddRange(EndLabel(o.Str("startRole", ""), path, true, sc, false, size));
+            list.AddRange(EndLabel(o.Str("endMult", ""), path, false, ec, true, size));
+            list.AddRange(EndLabel(o.Str("endRole", ""), path, false, ec, false, size));
         }
 
         /// <summary>Reverses the direction; multiplicities and roles stay at their (geometric) class ends.</summary>

@@ -20,9 +20,17 @@ symbol is insertable without parameters; free scaling changes only the box size.
   line per row. Each line renders as its own text primitive.
 - **Text fitting:** text uses the `textSize` parameter (default 3.5 mm ≈ 10 pt). If the content does not fit the
   box, the text is reduced automatically (not below 1.8 mm); the parameter itself never changes.
-- **End notations** (arrowheads, diamonds, crow's feet) are drawn as explicit primitives, so hollow triangles and
-  diamonds look identical in every host. A user stroke colour also recolours filled heads and texts; width and dash
-  overrides apply to the outline or connector line only.
+- **End notations** are Core arrowheads on the connector line's style (`ArrowStart`/`ArrowEnd`, size `large`):
+  open arrow (`open`), filled triangle (`triangle`), hollow triangle (`triangleOpen`), filled and hollow diamond
+  (`diamond`, `diamondOpen`) and the crow's-foot ends `crowOne`, `crowOneOnly`, `crowZeroOne`, `crowMany`,
+  `crowOneMany`, `crowZeroMany`. User arrowhead overrides (start, end, size) therefore replace them, and every host
+  draws them: natively where it has a matching line end, otherwise as explicit shapes (see the
+  [capability matrix](../hosts/capability-matrix.md)). Hollow heads are unfilled outlines and the line stops at their
+  base; a crow's-foot circle interrupts the line. Both look right on any background and in monochrome output. A user
+  stroke colour recolours lines, heads and texts; width and dash overrides apply to the outline or connector line
+  only (the head grows with the line width).
+- **Underlines** (static members, key attributes) use the native font underline of the text, not drawn lines, so they
+  match the real text width in every host.
 
 ## Object types
 
@@ -42,7 +50,8 @@ symbol is insertable without parameters; free scaling changes only the box size.
 
 - **Class members:** one member per line, visibility written as part of the line (`+ - # ~`). A leading `_` marks a
   static member, which is shown underlined without the underscore.
-- **Entity attributes:** `*` primary key (underlined), `#` foreign key (`(FK)` in the diagram view, `FK` column in
+- **Entity attributes:** `*` primary key (underlined: the whole row in the diagram view, the name cell in the table
+  view, the attribute ellipse text in the Chen view), `#` foreign key (`(FK)` in the diagram view, `FK` column in
   the table view); both can be combined (`*#order_id`). A type follows a colon: `id: int`.
 - **Stereotypes** are written without guillemets; they are added automatically (`interface` → `«interface»`).
 - **Relationship direction:** the decoration sits at the end point, i.e. draw from the part/child/client to the

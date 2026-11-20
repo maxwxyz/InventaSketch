@@ -74,7 +74,11 @@ export interface ParamInfo {
 }
 
 export type DashStyle = "solid" | "dash" | "dashDot" | "dashDotDot" | "dot" | "longDash";
-export type ArrowHead = "none" | "triangle" | "open" | "stealth" | "diamond" | "oval" | "tick" | "half";
+export type ArrowHead =
+  | "none" | "triangle" | "open" | "stealth" | "diamond" | "oval" | "tick" | "half"
+  // Hollow UML heads and crow's-foot (ER) ends: never native line ends, the engine lowers them to shapes.
+  | "triangleOpen" | "diamondOpen"
+  | "crowOne" | "crowMany" | "crowZeroOne" | "crowOneOnly" | "crowZeroMany" | "crowOneMany";
 
 export interface StyleInfo {
   stroke?: string;
@@ -143,6 +147,7 @@ export interface PlanOp {
   font?: string;
   bold?: boolean;
   italic?: boolean;
+  underline?: boolean;
   color?: string;
   align?: "left" | "center" | "right";
   children?: PlanOp[];

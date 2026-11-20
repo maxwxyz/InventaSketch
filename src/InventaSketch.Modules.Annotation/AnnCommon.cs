@@ -71,6 +71,7 @@ namespace InventaSketch.Modules.Annotation
         {
             ("none", "None", "Keine"), ("triangle", "Triangle", "Dreieck"), ("open", "Open", "Offen"), ("stealth", "Stealth", "Pfeilspitze"),
             ("diamond", "Diamond", "Raute"), ("oval", "Dot", "Punkt"), ("tick", "Tick", "Schrägstrich"), ("half", "Half", "Halbpfeil"),
+            ("triangleOpen", "Hollow triangle", "Dreieck hohl"), ("diamondOpen", "Hollow diamond", "Raute hohl"),
         };
 
         public static readonly (string, string, string)[] SizeOptions = { ("small", "Small", "Klein"), ("medium", "Medium", "Mittel"), ("large", "Large", "Groß") };
@@ -93,7 +94,25 @@ namespace InventaSketch.Modules.Annotation
         /// <summary>Approximate advance width per character relative to the em size (Arial-like fonts).</summary>
         public const double CharWidth = 0.6;
 
-        public static string HeadName(ArrowHead h) => h.ToString().ToLowerInvariant();
+        /// <summary>Parameter value of a head (camelCase like the JSON enum names, e.g. "triangleOpen").</summary>
+        public static string HeadName(ArrowHead h)
+        {
+            var s = h.ToString();
+            return char.ToLowerInvariant(s[0]) + s.Substring(1);
+        }
+
+        /// <summary>
+        /// Order of the "next arrowhead style" action: arrow-like heads only, hollow variants next to their filled
+        /// counterparts. Crow's-foot ends are ER cardinalities, not arrowheads, and are left out.
+        /// </summary>
+        public static readonly ArrowHead[] HeadCycle =
+        {
+            ArrowHead.Triangle, ArrowHead.TriangleOpen, ArrowHead.Open, ArrowHead.Stealth, ArrowHead.Half,
+            ArrowHead.Diamond, ArrowHead.DiamondOpen, ArrowHead.Oval, ArrowHead.Tick,
+        };
+
+        /// <summary>Next head of <see cref="HeadCycle"/> (none and crow's-foot ends restart the cycle).</summary>
+        public static ArrowHead NextHead(ArrowHead current) => HeadCycle[(Array.IndexOf(HeadCycle, current) + 1) % HeadCycle.Length];
 
         public static ArrowHead Head(SketchObject o, string key, ArrowHead fallback)
             => Enum.TryParse<ArrowHead>(o.Str(key, ""), true, out var h) ? h : fallback;
@@ -297,14 +316,8 @@ namespace InventaSketch.Modules.Annotation
                 x => x.WithParam("headStart", Head(x, "headStart", defStart) == ArrowHead.None ? "triangle" : "none")) { IsActive = s != ArrowHead.None, Group = "heads" };
             yield return new ContextAction("ann.head.end", new I18nText("Arrowhead at end", "Pfeilspitze am Ende"), "arrow-end",
                 x => x.WithParam("headEnd", Head(x, "headEnd", defEnd) == ArrowHead.None ? "triangle" : "none")) { IsActive = e != ArrowHead.None, Group = "heads" };
-            yield return new ContextAction("ann.head.style", new I18nText("Next arrowhead style", "Nächste Pfeilspitzenform"), "arrow-style", x =>
-            {
-                var cur = Head(x, "headEnd", defEnd);
-                var all = (ArrowHead[])Enum.GetValues(typeof(ArrowHead));
-                var next = all[(Array.IndexOf(all, cur) + 1) % all.Length];
-                if (next == ArrowHead.None) next = all[1];
-                return x.WithParam("headEnd", HeadName(next));
-            }) { Group = "heads" };
+            yield return new ContextAction("ann.head.style", new I18nText("Next arrowhead style", "Nächste Pfeilspitzenform"), "arrow-style",
+                x => x.WithParam("headEnd", HeadName(NextHead(Head(x, "headEnd", defEnd))))) { Group = "heads" };
             yield return new ContextAction("ann.head.size", new I18nText("Next arrowhead size", "Nächste Pfeilspitzengröße"), "arrow-size",
                 x => x.WithParam("headSize", ((ArrowSize)(((int)HeadSize(x) + 1) % 3)).ToString().ToLowerInvariant())) { Group = "heads" };
             yield return SwapAction();
