@@ -1,17 +1,236 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Electrical
 {
-    /// <summary>Module skeleton; object types are added in the module implementation slice.</summary>
+    /// <summary>
+    /// Electrical &amp; electronics module: IEC 60617-style circuit symbols (drawn independently), wires with
+    /// free/orthogonal/45 degree routing, junction dots and net labels, house installation plan symbols, single-line
+    /// diagram elements, power electronics blocks and illustrative PCB objects. Every symbol is insertable without
+    /// parameters, drawn inside its box and exposes its pins as <see cref="AnchorRole.Port"/> anchors.
+    /// This is a sketching module, not an ECAD/ERC tool.
+    /// </summary>
     public sealed class ElectricalModule : IModule
     {
+        private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
+            Passive.Types().Cast<ObjectType>()
+                .Concat(Semiconductors.Types())
+                .Concat(Switching.Types())
+                .Concat(Sources.Types())
+                .Concat(Logic.Types())
+                .Concat(Connectors.Types())
+                .Concat(new ObjectType[] { new WireType(), new BusType() })
+                .Concat(House.Types())
+                .Concat(Power.Types())
+                .Concat(Pcb.Types())
+                .ToList());
+
+        private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
+
         public string Id => "electrical";
         public I18nText Name => new("Electrical & electronics", "Elektrotechnik & Elektronik");
-        public string Version => "0.1.0";
-        public IEnumerable<ObjectType> Types => Array.Empty<ObjectType>();
-        public IEnumerable<LibraryCategory> Categories => Array.Empty<LibraryCategory>();
-        public IEnumerable<LibraryItem> Library => Array.Empty<LibraryItem>();
+        public string Version => "0.2.0";
+        public IEnumerable<ObjectType> Types => AllTypes.Value;
+
+        public IEnumerable<LibraryCategory> Categories => new[]
+        {
+            new LibraryCategory(Passive.Cat, new I18nText("Passive components", "Passive Bauelemente"), Id, 10),
+            new LibraryCategory(Semiconductors.Cat, new I18nText("Semiconductors", "Halbleiter"), Id, 20),
+            new LibraryCategory(Switching.Cat, new I18nText("Switching & protection", "Schalten & Schützen"), Id, 30),
+            new LibraryCategory(Sources.Cat, new I18nText("Sources & loads", "Quellen & Verbraucher"), Id, 40),
+            new LibraryCategory(Logic.Cat, new I18nText("Logic & ICs", "Logik & ICs"), Id, 50),
+            new LibraryCategory(Connectors.Cat, new I18nText("Wires, connectors & buses", "Leitungen, Steckverbinder & Busse"), Id, 60),
+            new LibraryCategory(House.Cat, new I18nText("House installation", "Hausinstallation"), Id, 70),
+            new LibraryCategory(Power.Cat, new I18nText("Power electronics", "Leistungselektronik"), Id, 80),
+            new LibraryCategory(Pcb.Cat, new I18nText("PCB (illustrative)", "Leiterplatte (illustrativ)"), Id, 90),
+        };
+
+        public IEnumerable<LibraryItem> Library => Items.Value;
+
+        private static IReadOnlyList<LibraryItem> BuildLibrary()
+        {
+            var types = AllTypes.Value.ToDictionary(t => t.Id);
+            var list = new List<LibraryItem>();
+
+            void Add(string id, string type, string en, string de, string? view = null, IReadOnlyDictionary<string, ParamValue>? ps = null, string? text = null, Size2? size = null, params string[] kw)
+            {
+                var t = types[type];
+                var item = new LibraryItem("elec." + id, type, new I18nText(en, de), t.Category) { Params = ps, Text = text, Keywords = kw };
+                if (t is ElecType et)
+                {
+                    var spec = et.Spec(view);
+                    item = item with { View = spec.Id, Size = size ?? spec.Design };
+                }
+                list.Add(item);
+            }
+
+            IReadOnlyDictionary<string, ParamValue> P(params (string Key, ParamValue Value)[] kv) => kv.ToDictionary(x => x.Key, x => x.Value);
+
+            // passive
+            Add("resistor", "elec.resistor", "Resistor", "Widerstand");
+            Add("resistor.ansi", "elec.resistor", "Resistor (ANSI zigzag)", "Widerstand (ANSI-Zickzack)", "ansi", null, null, null, "zigzag", "ansi", "us");
+            Add("potentiometer", "elec.potentiometer", "Potentiometer", "Potentiometer");
+            Add("capacitor", "elec.capacitor", "Capacitor", "Kondensator");
+            Add("capacitor.polarized", "elec.capacitor.polarized", "Electrolytic capacitor", "Elektrolytkondensator");
+            Add("inductor", "elec.inductor", "Inductor", "Spule");
+            Add("inductor.iron", "elec.inductor", "Inductor with iron core", "Spule mit Eisenkern", null, P(("core", "iron")), null, null, "choke", "drossel");
+            Add("transformer", "elec.transformer", "Transformer", "Transformator");
+            Add("transformer.circles", "elec.transformer", "Transformer (single-line)", "Transformator (einpolig)", "circles", null, null, null, "single-line", "einpolig");
+
+            // semiconductors
+            Add("diode", "elec.diode", "Diode", "Diode");
+            Add("led", "elec.diode.led", "LED", "Leuchtdiode (LED)");
+            Add("zener", "elec.diode.zener", "Zener diode", "Z-Diode");
+            Add("photodiode", "elec.diode.photo", "Photodiode", "Fotodiode");
+            Add("npn", "elec.transistor.bjt", "NPN transistor", "NPN-Transistor", null, P(("polarity", "npn")), null, null, "npn");
+            Add("pnp", "elec.transistor.bjt", "PNP transistor", "PNP-Transistor", null, P(("polarity", "pnp")), null, null, "pnp");
+            Add("nmos", "elec.transistor.mosfet", "N-channel MOSFET", "N-Kanal-MOSFET", null, P(("channel", "n")), null, null, "nmos", "n-channel");
+            Add("pmos", "elec.transistor.mosfet", "P-channel MOSFET", "P-Kanal-MOSFET", null, P(("channel", "p")), null, null, "pmos", "p-channel");
+            Add("igbt", "elec.transistor.igbt", "IGBT", "IGBT");
+            Add("thyristor", "elec.thyristor", "Thyristor", "Thyristor");
+
+            // switching & protection
+            Add("switch.no", "elec.switch", "Switch (normally open)", "Schalter (Schließer)", null, P(("contact", "no")), null, null, "make", "schließer");
+            Add("switch.nc", "elec.switch", "Switch (normally closed)", "Schalter (Öffner)", null, P(("contact", "nc")), null, null, "break", "öffner");
+            Add("switch.changeover", "elec.switch", "Changeover switch", "Umschalter (Wechsler)", null, P(("contact", "changeover")), null, null, "changeover", "wechsler", "umschalter");
+            Add("pushbutton", "elec.pushbutton", "Push button (NO)", "Taster (Schließer)");
+            Add("pushbutton.nc", "elec.pushbutton", "Push button (NC)", "Taster (Öffner)", null, P(("contact", "nc")));
+            Add("relay.coil", "elec.relay.coil", "Relay coil", "Relaisspule");
+            Add("relay.contact.no", "elec.switch", "Relay contact (NO)", "Relaiskontakt (Schließer)", null, P(("contact", "no")), null, null, "relay", "relais");
+            Add("relay.contact.nc", "elec.switch", "Relay contact (NC)", "Relaiskontakt (Öffner)", null, P(("contact", "nc")), null, null, "relay", "relais");
+            Add("contactor", "elec.contactor", "Contactor, 3-pole", "Schütz, 3-polig");
+            Add("fuse", "elec.fuse", "Fuse", "Sicherung");
+            Add("breaker", "elec.breaker", "Circuit breaker", "Leitungsschutzschalter");
+            Add("rcd", "elec.rcd", "RCD (residual current device)", "FI-Schutzschalter (RCD)");
+
+            // sources & loads
+            Add("ground", "elec.ground", "Ground / earth", "Erde / Masse");
+            Add("ground.pe", "elec.ground", "Protective earth (PE)", "Schutzerde (PE)", null, P(("kind", "pe")), null, null, "pe", "schutzleiter");
+            Add("ground.chassis", "elec.ground", "Chassis ground", "Gehäusemasse", null, P(("kind", "chassis")), null, null, "chassis", "frame", "karosserie");
+            Add("source.dc", "elec.source", "DC voltage source", "Gleichspannungsquelle", null, P(("kind", "dc")));
+            Add("source.ac", "elec.source", "AC voltage source", "Wechselspannungsquelle", null, P(("kind", "ac")));
+            Add("source.current", "elec.source", "Current source", "Stromquelle", null, P(("kind", "current")));
+            Add("battery.cell", "elec.battery", "Battery cell", "Batteriezelle", null, P(("cells", 1)));
+            Add("battery.pack", "elec.battery", "Battery pack", "Batteriepack", null, P(("cells", 3)), null, null, "pack", "hv", "traction battery", "traktionsbatterie");
+            Add("lamp", "elec.lamp", "Lamp", "Lampe");
+            Add("motor", "elec.motor", "Motor", "Motor");
+            Add("motor.dc", "elec.motor", "DC motor", "Gleichstrommotor", null, P(("supply", "dc")));
+            Add("motor.ac", "elec.motor", "AC motor", "Wechselstrommotor", null, P(("supply", "ac")));
+            Add("motor.3ph", "elec.motor", "Three-phase motor", "Drehstrommotor", null, P(("supply", "ac3")), null, null, "3~", "three-phase", "drehstrom");
+            Add("generator", "elec.generator", "Generator", "Generator");
+            Add("generator.3ph", "elec.generator", "Three-phase generator", "Drehstromgenerator", null, P(("supply", "ac3")), null, null, "3~", "alternator", "drehstrom");
+            Add("sensor", "elec.sensor", "Sensor", "Sensor");
+            Add("sensor.temperature", "elec.sensor", "Temperature sensor", "Temperatursensor", null, P(("label", "T")), null, null, "temperature", "temperatur", "ntc");
+            Add("actuator", "elec.actuator", "Actuator (solenoid)", "Aktor (Hubmagnet)");
+            Add("speaker", "elec.speaker", "Loudspeaker", "Lautsprecher");
+            Add("microphone", "elec.microphone", "Microphone", "Mikrofon");
+            Add("antenna", "elec.antenna", "Antenna", "Antenne");
+
+            // logic & ICs
+            foreach (var (g, en, de) in new[] { ("and", "AND", "UND"), ("or", "OR", "ODER"), ("not", "NOT", "NICHT"), ("nand", "NAND", "NAND"), ("nor", "NOR", "NOR"), ("xor", "XOR", "XOR") })
+            {
+                Add("gate." + g, "elec.gate", $"{en} gate (IEC)", $"{de}-Gatter (IEC)", "symbol", P(("gate", g)), null, null, g);
+                Add("gate." + g + ".ansi", "elec.gate", $"{en} gate (ANSI)", $"{de}-Gatter (ANSI)", "ansi", P(("gate", g)), null, null, g, "ansi", "distinctive");
+            }
+            Add("flipflop.d", "elec.flipflop", "D flip-flop", "D-Flipflop", null, P(("kind", "d")));
+            Add("flipflop.jk", "elec.flipflop", "JK flip-flop", "JK-Flipflop", null, P(("kind", "jk")));
+            Add("flipflop.sr", "elec.flipflop", "SR latch", "RS-Flipflop", null, P(("kind", "sr")));
+            Add("opamp", "elec.opamp", "Op-amp (IEC)", "Operationsverstärker (IEC)");
+            Add("opamp.ansi", "elec.opamp", "Op-amp (triangle)", "Operationsverstärker (Dreieck)", "ansi", null, null, null, "triangle", "dreieck");
+            Add("ecu", "elec.block.ecu", "Control unit (ECU)", "Steuergerät (ECU)");
+            Add("ic", "elec.block.ecu", "IC (8 pins)", "IC (8 Pins)", null, P(("label", "IC"), ("pinsLeft", 4), ("pinsRight", 4)), null, new Size2(30, 25), "chip", "ic");
+            Add("mcu", "elec.block.ecu", "Microcontroller", "Mikrocontroller", null, P(("label", "MCU"), ("pinsLeft", 6), ("pinsRight", 6)), null, new Size2(30, 35), "mcu", "µc");
+
+            // wires, connectors & buses
+            Add("wire", "elec.wire", "Wire", "Leitung");
+            Add("wire.free", "elec.wire", "Wire (straight)", "Leitung (gerade)", null, P(("route", "free")));
+            Add("junction", "elec.junction", "Junction dot", "Verbindungspunkt");
+            Add("netlabel", "elec.netlabel", "Net label", "Netzname");
+            Add("netlabel.vcc", "elec.netlabel", "Net label VCC", "Netzname VCC", null, null, "VCC", null, "supply", "versorgung");
+            Add("netlabel.gnd", "elec.netlabel", "Net label GND", "Netzname GND", null, null, "GND", null, "ground", "masse");
+            Add("connector", "elec.connector", "Plug and socket", "Steckverbindung");
+            Add("connector.plug", "elec.connector", "Plug", "Stecker", null, P(("gender", "plug")));
+            Add("connector.socket", "elec.connector", "Socket", "Buchse", null, P(("gender", "socket")));
+            Add("connector.4", "elec.connector", "Connector, 4-pole", "Steckverbinder, 4-polig", null, P(("poles", 4)), null, new Size2(20, 20), "multi-pole", "mehrpolig");
+            Add("terminal", "elec.terminal", "Terminal", "Anschlussklemme");
+            Add("testpoint", "elec.testpoint", "Test point", "Messpunkt");
+            Add("bus.can", "elec.bus", "CAN bus", "CAN-Bus", null, P(("protocol", "can")), null, null, "can");
+            Add("bus.lin", "elec.bus", "LIN bus", "LIN-Bus", null, P(("protocol", "lin")), null, null, "lin");
+            Add("bus.ethernet", "elec.bus", "Automotive Ethernet", "Automotive Ethernet", null, P(("protocol", "ethernet")), null, null, "ethernet");
+
+            // house installation & single-line
+            Add("house.socket", "elec.house.socket", "Socket outlet (earthed)", "Schutzkontaktsteckdose");
+            Add("house.socket.double", "elec.house.socket", "Double socket outlet", "Doppelsteckdose", null, P(("gangs", 2)), null, null, "double", "doppel");
+            Add("house.socket.plain", "elec.house.socket", "Socket outlet (no earth)", "Steckdose ohne Schutzkontakt", null, P(("protected", false)));
+            Add("house.switch", "elec.house.switch", "One-way switch", "Ausschalter");
+            Add("house.switch.twoway", "elec.house.switch", "Two-way switch", "Wechselschalter", null, P(("kind", "twoway")), null, null, "two-way", "wechsel");
+            Add("house.switch.push", "elec.house.switch", "Push button (plan)", "Taster (Installationsplan)", null, P(("kind", "push")), null, null, "push", "taster");
+            Add("house.light", "elec.house.light", "Luminaire", "Leuchte");
+            Add("house.junction", "elec.house.junction", "Junction box", "Abzweigdose");
+            Add("house.board", "elec.house.board", "Distribution board", "Verteiler");
+            Add("house.cable", "elec.house.cable", "Cable route", "Leitungsführung");
+            Add("sld.busbar", "elec.sld.busbar", "Busbar", "Sammelschiene");
+            Add("sld.feeder", "elec.sld.feeder", "Feeder with circuit breaker", "Abgang mit Leistungsschalter");
+            Add("sld.feeder.fuse", "elec.sld.feeder", "Feeder with fuse", "Abgang mit Sicherung", null, P(("device", "fuse")));
+            Add("sld.meter", "elec.sld.meter", "Energy meter", "Energiezähler");
+
+            // power electronics
+            Add("pe.inverter", "elec.pe.inverter", "Inverter (3-phase)", "Wechselrichter (3-phasig)");
+            Add("pe.rectifier", "elec.pe.rectifier", "Rectifier", "Gleichrichter");
+            Add("pe.dcdc", "elec.pe.dcdc", "DC/DC converter", "DC/DC-Wandler");
+            Add("pe.dclink", "elec.pe.dclink", "DC link capacitor", "Zwischenkreiskondensator");
+            Add("pe.gatedriver", "elec.pe.gatedriver", "Gate driver", "Gate-Treiber");
+            Add("pe.module", "elec.pe.module", "Power module (half bridge)", "Leistungsmodul (Halbbrücke)");
+
+            // PCB
+            Add("pcb.board", "elec.pcb.board", "Board outline", "Leiterplattenkontur");
+            Add("pcb.pad", "elec.pcb.pad", "SMD pad", "SMD-Pad");
+            Add("pcb.pad.tht", "elec.pcb.pad", "Through-hole pad", "THT-Pad", null, P(("shape", "round"), ("tht", true)), null, null, "tht", "through hole");
+            Add("pcb.via", "elec.pcb.via", "Via", "Via");
+            Add("pcb.track", "elec.pcb.track", "Track", "Leiterbahn");
+            Add("pcb.copper", "elec.pcb.copper", "Copper area", "Kupferfläche");
+            Add("pcb.soic8", "elec.pcb.footprint", "SOIC-8 footprint", "SOIC-8-Footprint", null, P(("package", "soic8")), null, new Size2(20, 16), "soic");
+            Add("pcb.qfp32", "elec.pcb.footprint", "QFP-32 footprint", "QFP-32-Footprint", null, P(("package", "qfp32")), null, new Size2(24, 24), "qfp");
+            Add("pcb.sot23", "elec.pcb.footprint", "SOT-23 footprint", "SOT-23-Footprint", null, P(("package", "sot23")), null, new Size2(12, 12), "sot");
+            Add("pcb.r0603", "elec.pcb.footprint", "0603 chip footprint", "0603-Chip-Footprint", null, P(("package", "r0603")), null, new Size2(12, 6), "0603", "chip resistor");
+            Add("pcb.dip8", "elec.pcb.footprint", "DIP-8 footprint", "DIP-8-Footprint", null, P(("package", "dip8")), null, new Size2(20, 16), "dip", "tht");
+            Add("pcb.hole", "elec.pcb.hole", "Mounting hole", "Befestigungsbohrung");
+            Add("pcb.silk", "elec.pcb.silk", "Silkscreen label", "Bestückungsdruck-Text", null, null, "U1");
+
+            return list;
+        }
+
+        /// <summary>
+        /// Connects an end point of a wire (or any point object) to the nearest pin (<see cref="AnchorRole.Port"/>) of a
+        /// box object on the same page within <paramref name="tolerance"/> mm: the point is moved onto the pin and
+        /// attached (normalised box coordinates), so it follows when the symbol is moved, rotated or scaled.
+        /// Returns the document unchanged if no pin is in reach.
+        /// </summary>
+        public static SketchDocument ConnectToPin(Registry registry, SketchDocument doc, string pointObjectId, int index, double tolerance = 2.0)
+        {
+            var wire = doc.Get(pointObjectId);
+            var page = doc.PageOf(pointObjectId);
+            if (wire?.Points is null || page is null || index < 0 || index >= wire.Points.Count) return doc;
+            var at = doc.ResolvePoints(wire)[index];
+            var ctx = new RenderContext(doc);
+            SketchObject? best = null;
+            Vec2 bestPoint = default;
+            var bestDist = tolerance;
+            foreach (var o in doc.ObjectsOn(page))
+            {
+                if (o.Id == pointObjectId || o.IsPointGeometry || registry.Type(o.Type) is null) continue;
+                foreach (var a in registry.PageAnchors(o, ctx))
+                {
+                    if (a.Kind != AnchorKind.Point || a.Role != AnchorRole.Port) continue;
+                    var d = a.P.DistanceTo(at);
+                    if (d <= bestDist) { bestDist = d; best = o; bestPoint = a.P; }
+                }
+            }
+            if (best is null) return doc;
+            var (u, v) = best.ToBox(bestPoint);
+            return Edits.SetPoint(doc, pointObjectId, index, bestPoint, new Attachment(best.Id, u, v));
+        }
     }
 }
