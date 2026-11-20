@@ -112,6 +112,8 @@ concentric centres, electrical ports) → points (centre, corners, edge midpoint
 (equal x/y with other objects and the page) → grid (metric/imperial). Visual guides for every snap.
 
 ### 4.8 Look and feel
+Icons in overlays, the floating bar and the pie menu are abstract, consistent line pictograms (not miniature renders of
+the element) so they remain recognisable at small sizes; library galleries show real previews.
 Clean, quiet, modern UI; light/dark/auto theme (auto follows Office/OS); German UI when the host language starts
 with `de`, otherwise English; manual override remembered; compact layout for narrow task panes; keyboard
 accessible; tooltips with previews.

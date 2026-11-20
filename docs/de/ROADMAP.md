@@ -66,6 +66,11 @@ Export-Erweiterungspunkte der Module.
 
 ## Offene Punkte
 
+- UI-Symbole (Vorgabe des Maintainers, 20.11.2026): Symbole in Overlays, schwebender Leiste und Kreismenü sind abstrakte,
+  saubere Piktogramme (ein einheitlicher Linien-Symbolsatz, z. B. „Strich-Schema“, „Schnitt“, „Stirnansicht“, „Spiegeln“),
+  keine verkleinerten Abbilder des konkreten Elements, damit sie auch klein erkennbar bleiben. Module benennen je Ansicht/
+  Aktion eine Symbol-ID (`ViewDef`/`ContextAction`); die Hosts zeichnen sie aus dem gemeinsamen Symbolsatz. Die
+  Bibliotheks-Galerien dürfen echte Vorschaubilder behalten.
 - Reihenfolge mit dem Maintainer abgestimmt (20.11.2026): erst das COM-Add-in fertigstellen, dann das Web-Add-in, dann LibreOffice.
 - Web: Webspace-Paket wie Slidemax-Webspace (`dist/InventaSketch-Webspace`): den Ordner auf einen beliebigen HTTPS-Webspace
   legen; enthält das Web-Add-in, eine Einrichtungsseite (`index.html`), die das Manifest für die eigene Adresse erzeugt,

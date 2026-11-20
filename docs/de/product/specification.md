@@ -125,6 +125,9 @@ Kantenmittelpunkte, Enden) → Ausrichtungshilfslinien (gleiches x/y wie andere 
 (metrisch/zöllig). Für jedes Einrasten gibt es visuelle Hilfslinien.
 
 ### 4.8 Erscheinungsbild
+Symbole in Overlays, schwebender Leiste und Kreismenü sind abstrakte, einheitliche Linien-Piktogramme (keine
+verkleinerten Abbilder des Elements), damit sie auch klein erkennbar bleiben; die Bibliotheks-Galerien zeigen echte
+Vorschaubilder.
 Aufgeräumte, ruhige, moderne Oberfläche; helles/dunkles/automatisches Design (automatisch folgt Office/Betriebssystem);
 deutsche Oberfläche, wenn die Host-Sprache mit `de` beginnt, sonst Englisch; manuelle Auswahl wird gespeichert;
 kompaktes Layout für schmale Aufgabenbereiche; per Tastatur bedienbar; Tooltips mit Vorschau.

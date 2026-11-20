@@ -66,6 +66,10 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   The web add-in is work in progress on branch `feature/office-web` (build scripts `icons.mjs`, `manifest.mjs`,
   `screenshot.mjs` still missing; WebAssembly publish and UI not yet verified). Module docs (`docs/*/modules/`) still to write.
 
+- UI icons (maintainer requirement 2026-11-20): icons in overlays, floating bar and pie menu must be abstract, clean
+  pictograms (one consistent line-icon set, e.g. "stick view", "section", "axial view", "mirror"), not scaled-down
+  renders of the concrete element, so they stay recognisable at small sizes. Modules name an icon per view/action
+  (`ViewDef`/`ContextAction` icon id); hosts draw it from the shared icon set. Library galleries may keep real previews.
 - Order agreed with the maintainer (2026-11-20): finish the COM add-in first, then the web add-in, then LibreOffice.
 - Web: webspace package like Slidemax-Webspace (`dist/InventaSketch-Webspace`): upload the folder to any HTTPS webspace;
   it contains the web add-in, a setup page (`index.html`) that generates the manifest for its own URL, `.htaccess` /
