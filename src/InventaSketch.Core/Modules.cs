@@ -52,7 +52,49 @@ namespace InventaSketch.Core
         public bool Advanced { get; init; }
     }
 
-    public sealed record ViewDef(string Id, I18nText Label);
+    public sealed record ViewDef(string Id, I18nText Label)
+    {
+        /// <summary>Abstract pictogram for bars and pie menus (one of <see cref="IconIds"/>); null = derived from the id.</summary>
+        public string? Icon { get; init; }
+    }
+
+    /// <summary>
+    /// Shared vocabulary of abstract UI pictograms. Hosts draw these as one consistent line-icon set in floating bars and
+    /// pie menus (never as miniature renders of the element). Modules reference them from <see cref="ViewDef.Icon"/> and
+    /// <see cref="ContextAction.Icon"/>; unknown ids fall back to a neutral icon.
+    /// </summary>
+    public static class IconIds
+    {
+        // Representations / views
+        public const string Schematic = "view-schematic";   // stick/kinematic symbol
+        public const string Side = "view-side";
+        public const string Section = "view-section";       // hatched cut
+        public const string Axial = "view-axial";           // circle with centre cross
+        public const string Teeth = "view-teeth";           // simplified toothing
+        public const string Top = "view-top";
+        public const string Front = "view-front";
+        public const string Iso = "view-iso";
+        public const string Detailed = "view-detailed";
+        public const string Simplified = "view-simplified";
+        public const string Symbol = "view-symbol";         // standard graphical symbol (IEC/ISO)
+        public const string Block = "view-block";           // block diagram
+        public const string Plan = "view-plan";             // floor plan / map
+        public const string Exploded = "view-exploded";
+        // Commands
+        public const string Delete = "cmd-delete";
+        public const string Duplicate = "cmd-duplicate";
+        public const string MirrorH = "cmd-mirror-h";
+        public const string MirrorV = "cmd-mirror-v";
+        public const string Rotate = "cmd-rotate";
+        public const string Swap = "cmd-swap";
+        public const string ArrowStart = "cmd-arrow-start";
+        public const string ArrowEnd = "cmd-arrow-end";
+        public const string Text = "cmd-text";
+        public const string Toggle = "cmd-toggle";
+        public const string Cycle = "cmd-cycle";
+        public const string Connect = "cmd-connect";
+        public const string Animate = "cmd-animate";
+    }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum AnchorKind { Point, Circle, Segment }
