@@ -66,6 +66,10 @@ if (-not $SkipTests) {
 Step 'Build PowerPoint COM add-in (Windows, net48)'
 & $dotnet build (Join-Path $root 'hosts\powerpoint-com\InventaSketch.AddIn\InventaSketch.AddIn.csproj') -c $Configuration
 if ($LASTEXITCODE -ne 0) { throw 'COM add-in build failed.' }
+if (-not $SkipTests) {
+    & $dotnet test (Join-Path $root 'tests\InventaSketch.AddIn.Tests\InventaSketch.AddIn.Tests.csproj') -c $Configuration
+    if ($LASTEXITCODE -ne 0) { throw 'COM add-in tests failed.' }
+}
 
 $web = Join-Path $root 'hosts\office-web\package.json'
 if (-not $SkipWeb -and (Test-Path $web)) {

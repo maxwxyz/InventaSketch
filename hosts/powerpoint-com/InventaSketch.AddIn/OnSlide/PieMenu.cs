@@ -6,7 +6,13 @@ using System.Drawing.Drawing2D;
 namespace InventaSketch.AddIn.OnSlide
 {
     /// <summary>One radial menu entry. Delete is always the first entry and sits at the top.</summary>
-    internal sealed record PieItem(string Id, string Label, bool Enabled = true, bool Active = false, bool Danger = false);
+    internal sealed record PieItem(string Id, string Label, bool Enabled = true, bool Active = false, bool Danger = false)
+    {
+        /// <summary>Optional picture shown above the label (views: the object rendered in that view).</summary>
+        public Bitmap? Icon { get; init; }
+        /// <summary>Optional symbol shown above the label.</summary>
+        public string? Glyph { get; init; }
+    }
 
     /// <summary>
     /// Radial (pie) menu layout, hit test and drawing. Unavailable commands are greyed instead of hidden so every command
@@ -77,6 +83,18 @@ namespace InventaSketch.AddIn.OnSlide
                 var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                 var box = new RectangleF(pos.X - 34 * Scale, pos.Y - 16 * Scale, 68 * Scale, 32 * Scale);
                 var label = item.Active ? "● " + item.Label : item.Label;
+                if (item.Icon is not null || item.Glyph is not null)
+                {
+                    var icon = 20 * Scale;
+                    var iconRect = new RectangleF(pos.X - icon / 2, pos.Y - icon - 2 * Scale, icon, icon);
+                    if (item.Icon is not null) g.DrawImage(item.Icon, iconRect);
+                    else
+                    {
+                        using var glyphFont = new Font("Segoe UI Symbol", 13f * Scale, GraphicsUnit.Pixel);
+                        g.DrawString(item.Glyph, glyphFont, tb, iconRect, fmt);
+                    }
+                    box = new RectangleF(pos.X - 34 * Scale, pos.Y, 68 * Scale, 24 * Scale);
+                }
                 g.DrawString(label, font, tb, box, fmt);
             }
             using (var c = new SolidBrush(bg)) g.FillEllipse(c, Centre.X - Inner, Centre.Y - Inner, 2 * Inner, 2 * Inner);

@@ -114,30 +114,83 @@ namespace InventaSketch.AddIn
             }
         }
 
-        // ------------------------------------------------------------------ Ribbon
+        // ------------------------------------------------------------------ Ribbon (generated from the module library)
 
         public string GetCustomUI(string ribbonId)
         {
-            using var stream = typeof(Connect).Assembly.GetManifestResourceStream("InventaSketch.AddIn.Ribbon.xml")!;
-            using var reader = new StreamReader(stream, Encoding.UTF8);
-            return reader.ReadToEnd();
+            try
+            {
+                return RibbonXml();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("GetCustomUI", ex);
+                return "<customUI xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\"/>";
+            }
+        }
+
+        private static string X(string s) => SecurityElement.Escape(s) ?? "";
+
+        /// <summary>
+        /// One group per module, one gallery per library category (thumbnail grid, tooltip = name), then the tools group.
+        /// New modules and categories appear without changing this code.
+        /// </summary>
+        /// <summary>Modules with library categories in ribbon order: mechanics first, basic shapes last.</summary>
+        private List<IModule> RibbonModules()
+        {
+            var order = new[] { "mechanical", "annotation", "patent" };
+            return (_registry?.Modules ?? Array.Empty<IModule>())
+                .Where(mod => _categories.Any(c => c.ModuleId == mod.Id))
+                .OrderBy(mod => Array.IndexOf(order, mod.Id) is var i && i >= 0 ? i : order.Length + (mod.Id == "basic" ? 1 : 0))
+                .ToList();
+        }
+
+        private string RibbonXml()
+        {
+            var sb = new StringBuilder();
+            sb.Append("<customUI xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\" onLoad=\"OnRibbonLoad\"><ribbon><tabs>");
+            sb.Append("<tab id=\"IskTab\" label=\"InventaSketch\">");
+            sb.Append("<group id=\"IskTools\" imageMso=\"ControlsGallery\" label=\"").Append(X(T("Tools", "Werkzeuge"))).Append("\">");
+            sb.Append("<toggleButton id=\"IskEditor\" label=\"").Append(X(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
+              .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
+            sb.Append("<toggleButton id=\"IskSnap\" label=\"").Append(X(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+              .Append(X(T("Magnetic snapping: gear mesh, axes, points and alignment. Hold Alt to move freely.", "Magnetisches Einrasten: Zahneingriff, Achsen, Punkte und Fluchtlinien. Alt gedrückt halten für freies Bewegen."))).Append("\" />");
+            sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(X(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+              .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
+            sb.Append("<button id=\"IskMonochrome\" label=\"").Append(X(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
+              .Append(X(T("Recolour the InventaSketch elements of this slide in black and white (patent style).", "InventaSketch-Elemente dieser Folie schwarz-weiß umfärben (Patentstil)."))).Append("\" />");
+            sb.Append("<button id=\"IskAbout\" label=\"").Append(X(T("About", "Info"))).Append("\" imageMso=\"Info\" onAction=\"OnAbout\" />");
+            sb.Append("</group>");
+            if (_registry is not null)
+            {
+                var m = 0;
+                foreach (var module in RibbonModules())
+                {
+                    var cats = _categories.Select((c, i) => (c, i)).Where(x => x.c.ModuleId == module.Id).ToList();
+                    if (cats.Count == 0) continue;
+                    // Groups with many categories show icons only (name in the tooltip) so the tab fits on laptop screens.
+                    var compact = cats.Count > 4;
+                    sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(X(module.Name.Get(_lang))).Append("\">");
+                    foreach (var (c, i) in cats)
+                    {
+                        sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(X(c.Name.Get(_lang)))
+                          .Append("\" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append("\" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
+                          .Append(" screentip=\"").Append(X(c.Name.Get(_lang))).Append("\" supertip=\"")
+                          .Append(X(T("Pick an element, then click on the slide to place it (snaps to other elements). Esc cancels.",
+                              "Element wählen, dann auf die Folie klicken (rastet an anderen Elementen ein). Esc bricht ab."))).Append('"')
+                          .Append(" getItemCount=\"GetItemCount\" getItemImage=\"GetGalleryItemImage\" getItemScreentip=\"GetItemScreentip\"")
+                          .Append(" getItemID=\"GetGalleryItemId\" onAction=\"OnGalleryAction\" />");
+                    }
+                    sb.Append("</group>");
+                }
+            }
+            sb.Append("</tab></tabs></ribbon></customUI>");
+            return sb.ToString();
         }
 
         public void OnRibbonLoad(Office.IRibbonUI ribbon) => _ribbon = ribbon;
 
         private string T(string en, string de) => _lang == Lang.De ? de : en;
-
-        public string GetLabel(Office.IRibbonControl control) => control.Id switch
-        {
-            "IskTab" => "InventaSketch",
-            "IskLibrary" => T("Library", "Bibliothek"),
-            "IskMore" => T("More elements", "Weitere Elemente"),
-            "IskTools" => T("Tools", "Werkzeuge"),
-            "IskMonochrome" => T("Black & white", "Schwarz-Weiß"),
-            "IskAbout" => T("About", "Info"),
-            "IskEditor" => T("Editor", "Editor"),
-            _ => control.Id,
-        };
 
         private LibraryCategory? CategoryOf(Office.IRibbonControl control)
         {
@@ -145,16 +198,17 @@ namespace InventaSketch.AddIn
             return idx >= 0 && int.TryParse(control.Id.Substring(idx + 1), out var n) && n < _categories.Count ? _categories[n] : null;
         }
 
-        public bool GetCategoryVisible(Office.IRibbonControl control) => CategoryOf(control) is not null;
-
-        public string GetCategoryLabel(Office.IRibbonControl control) => CategoryOf(control)?.Name.Get(_lang) ?? "";
+        private List<LibraryItem> ItemsOf(Office.IRibbonControl control)
+        {
+            var cat = CategoryOf(control);
+            return cat is null || _registry is null ? new List<LibraryItem>() : _registry.Library.Where(i => i.Category == cat.Id).ToList();
+        }
 
         public object? GetCategoryImage(Office.IRibbonControl control)
         {
             try
             {
-                var cat = CategoryOf(control);
-                var item = cat is null ? null : _registry?.Library.FirstOrDefault(i => i.Category == cat.Id);
+                var item = ItemsOf(control).FirstOrDefault();
                 return item is null ? null : PictureConverter.ToPicture(Thumbnail(item, 32));
             }
             catch (Exception ex)
@@ -164,72 +218,100 @@ namespace InventaSketch.AddIn
             }
         }
 
-        public object? GetItemImage(Office.IRibbonControl control)
+        /// <summary>Icon of a module group when the ribbon collapses it: its first library item.</summary>
+        public object? GetGroupImage(Office.IRibbonControl control)
         {
             try
             {
-                var item = _registry?.Item(control.Tag);
+                var idx = control.Id.LastIndexOf('_');
+                if (_registry is null || idx < 0 || !int.TryParse(control.Id.Substring(idx + 1), out var n)) return null;
+                var modules = RibbonModules();
+                if (n >= modules.Count) return null;
+                var cat = _categories.FirstOrDefault(c => c.ModuleId == modules[n].Id);
+                var item = cat is null ? null : _registry.Library.FirstOrDefault(i => i.Category == cat.Id);
                 return item is null ? null : PictureConverter.ToPicture(Thumbnail(item, 32));
             }
             catch (Exception ex)
             {
-                Log.Error("GetItemImage", ex);
+                Log.Error("GetGroupImage", ex);
                 return null;
             }
         }
 
-        public string GetCategoryContent(Office.IRibbonControl control)
+        public int GetItemCount(Office.IRibbonControl control) => ItemsOf(control).Count;
+
+        public string GetGalleryItemId(Office.IRibbonControl control, int index)
         {
-            var sb = new StringBuilder("<menu xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\" itemSize=\"large\">");
+            var items = ItemsOf(control);
+            return index >= 0 && index < items.Count ? items[index].Id : "";
+        }
+
+        public string GetItemScreentip(Office.IRibbonControl control, int index)
+        {
+            var items = ItemsOf(control);
+            return index >= 0 && index < items.Count ? items[index].Name.Get(_lang) : "";
+        }
+
+        public object? GetGalleryItemImage(Office.IRibbonControl control, int index)
+        {
             try
             {
-                var cat = CategoryOf(control);
-                if (cat is not null && _registry is not null)
-                {
-                    var n = 0;
-                    foreach (var item in _registry.Library.Where(i => i.Category == cat.Id))
-                    {
-                        sb.Append("<button id=\"IskItem_").Append(control.Id).Append('_').Append(n++.ToString(CultureInfo.InvariantCulture))
-                          .Append("\" label=\"").Append(SecurityElement.Escape(item.Name.Get(_lang)))
-                          .Append("\" tag=\"").Append(SecurityElement.Escape(item.Id))
-                          .Append("\" getImage=\"GetItemImage\" onAction=\"OnInsertItem\" />");
-                    }
-                }
+                var items = ItemsOf(control);
+                return index >= 0 && index < items.Count ? PictureConverter.ToPicture(Thumbnail(items[index], 40)) : null;
             }
             catch (Exception ex)
             {
-                Log.Error("GetCategoryContent", ex);
+                Log.Error("GetGalleryItemImage", ex);
+                return null;
             }
-            return sb.Append("</menu>").ToString();
         }
 
-        private Bitmap Thumbnail(LibraryItem item, int size)
+        public void OnGalleryAction(Office.IRibbonControl control, string selectedId, int selectedIndex)
         {
-            if (_images.TryGetValue(item.Id, out var cached)) return cached;
+            try
+            {
+                var item = _registry?.Item(selectedId);
+                if (item is null) return;
+                if (_onSlide?.BeginPlacement(item) == true) return;
+                InsertItem(item.Id);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnGalleryAction " + selectedId, ex);
+                MessageBox.Show(T("The element could not be inserted. Details are in the log: ", "Das Element konnte nicht eingefügt werden. Details im Protokoll: ") + Log.File,
+                    "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+        }
+
+        public bool GetTogglePressed(Office.IRibbonControl control) => control.Id switch
+        {
+            "IskSnap" => AddInSettings.Snap,
+            "IskBar" => AddInSettings.Bar,
+            _ => false,
+        };
+
+        public void OnToggle(Office.IRibbonControl control, bool pressed)
+        {
+            if (control.Id == "IskSnap") AddInSettings.Snap = pressed;
+            else if (control.Id == "IskBar") AddInSettings.Bar = pressed;
+        }
+
+        /// <summary>Thumbnail of a library item (cached per item, size and theme); ink follows the Office theme.</summary>
+        private Bitmap Thumbnail(LibraryItem item, int logicalSize)
+        {
+            var dark = OfficeTheme.IsDark();
+            var size = (int)Math.Round(logicalSize * DeviceScale());
+            var key = item.Id + "|" + size + "|" + (dark ? "d" : "l");
+            if (_images.TryGetValue(key, out var cached)) return cached;
             var registry = _registry!;
             var doc = SketchDocument.Create();
             var obj = registry.Create(item, new Vec2(100, 100));
             doc = Edits.Add(doc, doc.Pages[0].Id, obj);
             var prims = registry.Render(obj, new RenderContext(doc, _lang));
-            var bmp = ThumbnailRenderer.Render(prims, size, Color.FromArgb(40, 40, 40), Color.Transparent);
-            _images[item.Id] = bmp;
+            var ink = dark ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
+            var bmp = ThumbnailRenderer.Render(prims, size, ink, Color.Transparent);
+            _images[key] = bmp;
             return bmp;
-        }
-
-        public void OnInsertItem(Office.IRibbonControl control)
-        {
-            try
-            {
-                var item = _registry?.Item(control.Tag);
-                if (item is not null && _onSlide?.BeginPlacement(item) == true) return;
-                InsertItem(control.Tag);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("OnInsertItem " + control.Tag, ex);
-                MessageBox.Show(T("The element could not be inserted. Details are in the log: ", "Das Element konnte nicht eingefügt werden. Details im Protokoll: ") + Log.File,
-                    "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            }
         }
 
         /// <summary>Inserts a library item as native shapes in the middle of the current slide (one undo step).</summary>
@@ -321,6 +403,12 @@ namespace InventaSketch.AddIn
                 _ribbon?.InvalidateControl("IskEditor");
                 return _pane?.Visible == true;
             });
+        }
+
+        internal bool ActivateTab()
+        {
+            if (_onSlide is null || _ribbon is null) return false;
+            return _onSlide.OnUi(() => { _ribbon.ActivateTab("IskTab"); return true; });
         }
 
         internal bool RunSidebarScript(string script)

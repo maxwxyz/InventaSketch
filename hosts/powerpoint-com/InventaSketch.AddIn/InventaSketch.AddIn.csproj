@@ -16,9 +16,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="Ribbon.xml" LogicalName="InventaSketch.AddIn.Ribbon.xml" />
     <ProjectReference Include="..\..\..\src\InventaSketch.Engine\InventaSketch.Engine.csproj" />
     <Reference Include="System.Windows.Forms" />
+    <InternalsVisibleTo Include="InventaSketch.AddIn.Tests" />
     <Reference Include="System.Drawing" />
     <Reference Include="Microsoft.CSharp" />
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />

@@ -116,6 +116,9 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Runs a function on PowerPoint's UI thread (automation calls arrive on RPC threads).</summary>
         public T OnUi<T>(Func<T> f) => _overlay.InvokeRequired ? (T)_overlay.Invoke(f) : f();
 
+        /// <summary>Snapping is off (ribbon toggle) or suspended (Alt held).</summary>
+        private static bool NoSnap() => !AddInSettings.Snap || KeyDown(VK_MENU);
+
         private bool German => _lang() == Lang.De;
         private string T(string en, string de) => German ? de : en;
 
@@ -440,7 +443,7 @@ namespace InventaSketch.AddIn.OnSlide
                         if (!_moved && Math.Abs(pt.X - _down.X) + Math.Abs(pt.Y - _down.Y) < 3 * view.DeviceScale) return true;
                         _moved = true;
                         var raw = view.ToMm(pt) - view.ToMm(_down);
-                        var snap = KeyDown(VK_MENU)
+                        var snap = NoSnap()
                             ? SnapResult.None(raw)
                             : Snapper.SnapMove(_unitAnchors, raw, _targets, Options(view));
                         _delta = snap.Delta;
@@ -550,7 +553,7 @@ namespace InventaSketch.AddIn.OnSlide
             var raw = view.ToMm(pt);
             if (IsTwoPoint(item))
             {
-                var snapped = KeyDown(VK_MENU) ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+                var snapped = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
                 _placeAt = raw + snapped.Delta;
                 var marker = (float)view.Mm(5);
                 if (_twoStart is null)
@@ -580,7 +583,7 @@ namespace InventaSketch.AddIn.OnSlide
             var doc = SketchDocument.Create(new Size2(view.SlideWidth / Geo.PtPerMm, view.SlideHeight / Geo.PtPerMm));
             doc = Edits.Add(doc, doc.Pages[0].Id, probe);
             var ctx = new RenderContext(doc, _lang());
-            var snap = KeyDown(VK_MENU)
+            var snap = NoSnap()
                 ? SnapResult.None(Vec2.Zero)
                 : Snapper.SnapMove(registry.PageAnchors(probe, ctx).ToList(), Vec2.Zero, _targets, Options(view));
             _placeAt = raw + snap.Delta;
@@ -665,8 +668,8 @@ namespace InventaSketch.AddIn.OnSlide
             var type = first is null ? null : registry.Type(first.Type);
             if (type is not null && first is not null && type.Views.Count > 1)
             {
-                foreach (var v in type.Views.Take(5))
-                    list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id));
+                foreach (var v in type.Views.Take(6))
+                    list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { Icon = ViewIcon(first, v.Id, 22) });
                 list.Add(new BarButton("", "", "", Separator: true));
             }
             list.Add(new BarButton("flipH", "\u21C6", T("Mirror horizontally", "Horizontal spiegeln")));
@@ -676,6 +679,31 @@ namespace InventaSketch.AddIn.OnSlide
             list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("delete", "\u2715", T("Delete", "L\u00f6schen"), Danger: true));
             return list;
+        }
+
+        /// <summary>The object rendered in another view, as a small picture (bar and pie menu).</summary>
+        private Bitmap? ViewIcon(SketchObject o, string view, int logicalSize)
+        {
+            try
+            {
+                var registry = _registry();
+                // Use the natural proportions of that view (library preset), not the current box: a stick symbol is narrow,
+                // an axial view round.
+                var preset = registry.Library.FirstOrDefault(i => i.TypeId == o.Type && i.View == view && i.Size is not null)?.Size;
+                var side = Math.Max(o.Size.W, o.Size.H);
+                var probe = o with { View = view, Transform = o.Transform with { Rotation = 0 }, Style = null, Size = preset ?? new Size2(side, side) };
+                var doc = SketchDocument.Create();
+                doc = Edits.Add(doc, doc.Pages[0].Id, probe);
+                var prims = registry.Render(probe, new RenderContext(doc, _lang()));
+                var size = (int)Math.Round(logicalSize * (_view?.DeviceScale ?? 1));
+                var ink = _dark ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
+                return ThumbnailRenderer.Render(prims, size, ink, Color.Transparent);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("View icon", ex);
+                return null;
+            }
         }
 
         private RectangleF UnitScreenRect(SlideView view)
@@ -690,6 +718,7 @@ namespace InventaSketch.AddIn.OnSlide
         private void ShowBar(SlideView view)
         {
             if (_unit is null) return;
+            if (!AddInSettings.Bar) { HideBar(); return; }
             if (_bar is null || _fade.Dismissed) _fade.Reset();
             _bar = new FloatingBar(BarButtons(), (float)view.DeviceScale);
             _bar.Place(UnitScreenRect(view), view.PaneRect);
@@ -712,7 +741,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (bar is null || opacity <= 0) { HideBar(); return; }
             _barAlpha = (byte)Math.Round(255 * Math.Max(0, Math.Min(1, opacity)));
             using var bmp = bar.Render(_dark);
-            _barWindow.Present(bmp, bar.Bounds, view.MainWindow, _barAlpha);
+            _barWindow.Present(bmp, bar.WindowBounds, view.MainWindow, _barAlpha);
         }
 
         /// <summary>Bar input while armed. Returns true if the message concerns the bar; swallow tells whether to eat it.</summary>
@@ -829,7 +858,7 @@ namespace InventaSketch.AddIn.OnSlide
                 DrawPie(view);
                 return;
             }
-            var items = new List<PieItem> { new("delete", T("Delete", "L\u00f6schen"), Danger: true) };
+            var items = new List<PieItem> { new("delete", T("Delete", "L\u00f6schen"), Danger: true) { Glyph = "\u2715" } };
             if (pointObject is not null)
             {
                 items.Add(new PieItem("menu:type", T("Type \u25B8", "Typ \u25B8")));
@@ -840,14 +869,14 @@ namespace InventaSketch.AddIn.OnSlide
             if (type is not null && first is not null)
             {
                 foreach (var v in type.Views.Take(5))
-                    items.Add(new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id));
+                    items.Add(new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { Icon = ViewIcon(first, v.Id, 20) });
                 foreach (var a in type.Actions(first, _lang()).Where(a => a.Group != "view").Take(3))
                     items.Add(new PieItem("act:" + a.Id, a.Label.Get(_lang()), Active: a.IsActive));
             }
-            items.Add(new PieItem("dup", T("Duplicate", "Duplizieren")));
-            items.Add(new PieItem("flipH", T("Mirror ↔", "Spiegeln ↔")));
-            items.Add(new PieItem("flipV", T("Mirror ↕", "Spiegeln ↕")));
-            items.Add(new PieItem("rot90", T("Rotate 90°", "Drehen 90°")));
+            items.Add(new PieItem("dup", T("Duplicate", "Duplizieren")) { Glyph = "\u29C9" });
+            items.Add(new PieItem("flipH", T("Mirror", "Spiegeln")) { Glyph = "\u21C6" });
+            items.Add(new PieItem("flipV", T("Mirror", "Spiegeln")) { Glyph = "\u21C5" });
+            items.Add(new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { Glyph = "\u21BB" });
             HideBar();
             _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale);
             _mode = Mode.Pie;
@@ -1007,7 +1036,7 @@ namespace InventaSketch.AddIn.OnSlide
             var o = PointObject();
             if (o is null) return;
             var raw = view.ToMm(pt);
-            var snap = KeyDown(VK_MENU) ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+            var snap = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
             _pointAt = raw + snap.Delta;
             var doc = Edits.SetPoint(_unit!.Doc, o.Id, _pointIndex, _pointAt);
             var prims = _registry().Render(doc.Get(o.Id)!, new RenderContext(doc, _lang()));
@@ -1079,7 +1108,7 @@ namespace InventaSketch.AddIn.OnSlide
             while (a <= -180) a += 360;
             while (a > 180) a -= 360;
             var step = Math.Round(a / 15) * 15;
-            var snapped = KeyDown(VK_SHIFT) || (!KeyDown(VK_MENU) && Math.Abs(a - step) <= 4);
+            var snapped = KeyDown(VK_SHIFT) || (!NoSnap() && Math.Abs(a - step) <= 4);
             if (snapped) a = step;
             _rotAngle = a;
             var registry = _registry();
@@ -1174,7 +1203,7 @@ namespace InventaSketch.AddIn.OnSlide
             var centre = new Vec2(r.X + r.W / 2, r.Y + r.H / 2);
             _pivot = KeyDown(VK_CONTROL) ? centre : HandlePoint(r, (h + 4) % 8);
             var p = view.ToMm(pt);
-            var snap = !KeyDown(VK_MENU);
+            var snap = !NoSnap();
             var guides = new List<SnapGuide>();
             if (snap)
             {

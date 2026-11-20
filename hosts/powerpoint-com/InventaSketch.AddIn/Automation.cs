@@ -72,6 +72,20 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Activates the InventaSketch ribbon tab.</summary>
+        public bool ShowTab()
+        {
+            try
+            {
+                return _connect.ActivateTab();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.ShowTab", ex);
+                return false;
+            }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

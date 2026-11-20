@@ -24,7 +24,7 @@ namespace InventaSketch.AddIn
             g.TranslateTransform((float)(size / 2.0 - (b.X + b.W / 2) * scale), (float)(size / 2.0 - (b.Y + b.H / 2) * scale));
             g.ScaleTransform(scale, scale);
             // Thumbnails use a fixed pixel line width so tiny and large symbols stay readable.
-            var px = 1.2f / scale;
+            var px = (size <= 36 ? 1.7f : 1.2f) / scale;
             foreach (var p in Prim.Flatten(prims)) Draw(g, p, ink, px);
             return bmp;
         }

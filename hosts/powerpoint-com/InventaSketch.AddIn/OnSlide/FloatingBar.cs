@@ -7,7 +7,11 @@ using System.Drawing.Text;
 namespace InventaSketch.AddIn.OnSlide
 {
     /// <summary>One button of the floating context bar.</summary>
-    internal sealed record BarButton(string Id, string Glyph, string Tip, bool Active = false, bool Danger = false, bool Separator = false);
+    internal sealed record BarButton(string Id, string Glyph, string Tip, bool Active = false, bool Danger = false, bool Separator = false)
+    {
+        /// <summary>Optional picture (e.g. the object rendered in that view); replaces the glyph.</summary>
+        public Bitmap? Icon { get; init; }
+    }
 
     /// <summary>
     /// Fade rule of the floating bar (behaviour as in Slidemax): fully opaque within 12 logical px of the bar, otherwise a
@@ -57,12 +61,19 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 if (b.Separator) { _cells.Add(new Rectangle(x, pad, sep, size)); x += sep; continue; }
                 // Text buttons (view names) get a width that fits the label; symbol buttons are square.
-                var width = b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale)) : size;
+                var width = b.Icon is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale)) : size;
                 _cells.Add(new Rectangle(x, pad, width, size));
                 x += width + gap;
             }
             Size = new Size(x - gap + pad, size + 2 * pad);
+            TipHeight = (int)Math.Round(26 * scale);
         }
+
+        /// <summary>Height of the tooltip strip below the bar (part of the window, never hit-tested).</summary>
+        public int TipHeight { get; }
+
+        /// <summary>Window rectangle: bar plus tooltip strip.</summary>
+        public Rectangle WindowBounds => new(Bounds.X, Bounds.Y, Math.Max(Bounds.Width, (int)(260 * Scale)), Bounds.Height + TipHeight);
 
         public IReadOnlyList<BarButton> Buttons { get; }
         public float Scale { get; }
@@ -107,7 +118,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         public Bitmap Render(bool dark)
         {
-            var bmp = OverlayWindow.Canvas(Size);
+            var bmp = OverlayWindow.Canvas(WindowBounds.Size);
             using var g = Graphics.FromImage(bmp);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
@@ -144,9 +155,31 @@ namespace InventaSketch.AddIn.OnSlide
                     using var hp = Rounded(cell, 5 * Scale);
                     g.FillPath(hb, hp);
                 }
+                if (btn.Icon is not null)
+                {
+                    var inset = (int)Math.Round(4 * Scale);
+                    g.DrawImage(btn.Icon, Rectangle.Inflate(cell, -inset, -inset));
+                    continue;
+                }
                 var color = btn.Danger ? Color.FromArgb(200, 40, 40) : btn.Active ? accent : fg;
                 using var tb = new SolidBrush(color);
                 g.DrawString(btn.Glyph, btn.Glyph.Length > 1 ? small : font, tb, cell, fmt);
+            }
+            // Tooltip for the hovered button, below the bar.
+            if (Hover >= 0 && Hover < Buttons.Count && !string.IsNullOrEmpty(Buttons[Hover].Tip))
+            {
+                using var tipFont = new Font("Segoe UI", 9f * Scale, GraphicsUnit.Pixel);
+                var text = Buttons[Hover].Tip;
+                var sz = g.MeasureString(text, tipFont);
+                var cell = _cells[Hover];
+                var tw = sz.Width + 12 * Scale;
+                var tx = Math.Max(0, Math.Min(WindowBounds.Width - tw - 1, cell.X + cell.Width / 2f - tw / 2));
+                var tr = new RectangleF(tx, Size.Height + 3 * Scale, tw, sz.Height + 6 * Scale);
+                using var tp = Rounded(tr, 4 * Scale);
+                using var tbg = new SolidBrush(dark ? Color.FromArgb(245, 60, 62, 66) : Color.FromArgb(245, 50, 50, 54));
+                g.FillPath(tbg, tp);
+                using var tfg = new SolidBrush(Color.White);
+                g.DrawString(text, tipFont, tfg, tr.X + 6 * Scale, tr.Y + 3 * Scale);
             }
             return bmp;
         }

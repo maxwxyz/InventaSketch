@@ -13,8 +13,14 @@
   `BuildFreeform` for polylines and Bézier paths, `AddTextbox`, grouping via `Shapes.Range(...).Group()`.
 - Each inserted unit is a group (or single shape) named `ISK:<type>:<id>` with tags `ISK_ID`, `ISK_TYPE` and
   `ISK_MODEL` (compressed model payload, ADR-0006). One undo step per insertion (`StartNewUndoEntry`).
-- Ribbon tab **InventaSketch** with one menu per library category (thumbnails rendered with GDI+ from the engine
-  primitives), a black-and-white command and an info dialog. UI language follows the Office UI language (German if
+- Ribbon tab **InventaSketch**, generated from the module library: a tools group (Editor, Snap and Context bar
+  toggles stored in `%LOCALAPPDATA%\InventaSketch\settings.json`, black-and-white, info), then one group per module
+  (mechanics, annotation, patent, basic shapes) with one thumbnail gallery per library category (6 columns, name in the
+  tooltip; groups with many categories show icons only so the tab fits on laptop screens). New modules appear without
+  ribbon changes. Thumbnails are rendered with GDI+ from the engine primitives and follow the Office theme.
+- Floating bar and pie menu show each view as a small picture of the selected object in that view, plus symbols for
+  mirror, rotate, duplicate and delete; the bar shows a tooltip for the hovered button. Rendering tests
+  (`tests/InventaSketch.AddIn.Tests`, Windows) write light and dark PNGs of bar and pie menu for visual review. UI language follows the Office UI language (German if
   the LCID is German, otherwise English).
 - Automation object for scripts and tests: `Application.COMAddIns("InventaSketch.AddIn.Connect").Object` with
   `Insert(itemId)`, `LibraryItems()`, `Version()`.
