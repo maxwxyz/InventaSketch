@@ -5,6 +5,7 @@
 import type { Session } from "../engine/client";
 import type { DrawCapabilities, EditorState, PlanUnit } from "../engine/types";
 import type { HostCapabilities } from "./capabilities";
+import { liveRedrawIds } from "./sync";
 
 export interface ComSyncBridge {
   postMessage(message: unknown): void;
@@ -67,14 +68,23 @@ export class ComSync {
     return plan.units;
   }
 
-  /** After an edit: replace the tracked units on the slide with the newest state. */
+  /**
+   * After an edit: redraw the tracked units touched by it (changed objects and their dependents, like SlideSync) with the
+   * newest state; without change information every tracked unit. Units whose objects are all gone leave the slide.
+   */
   async scheduleLive(state: EditorState): Promise<void> {
     if (this.units.size === 0) return;
     const existing = new Set(state.objects.map((o) => o.id));
-    const ids = [...new Set([...this.units.values()].flat())].filter((id) => existing.has(id));
+    const touched = state.changed === undefined ? undefined : new Set([...state.changed, ...(state.dependents ?? [])]);
+    const ids = liveRedrawIds(this.units, existing, touched);
     const plan = ids.length ? this.h.session().drawPlan(ids, comDraw) : { units: [] as PlanUnit[] };
+    if (touched && plan.units.length === 0 && [...this.units.values()].every((objs) => objs.some((id) => existing.has(id)))) return;
     const fresh = new Set(plan.units.map((u) => u.id));
-    const remove = [...this.units.keys()].filter((u) => !fresh.has(u));
+    const redrawn = new Set(ids);
+    // Replaced: units that were redrawn under another id, and units without any remaining object.
+    const remove = [...this.units.entries()]
+      .filter(([u, objs]) => !fresh.has(u) && (objs.some((id) => redrawn.has(id)) || !objs.some((id) => existing.has(id))))
+      .map(([u]) => u);
     for (const r of remove) this.units.delete(r);
     for (const u of plan.units) { this.units.set(u.id, u.objectIds); this.known.set(u.id, u.objectIds); }
     await this.send({ type: "units", units: plan.units.map((u) => ({ id: u.id, payload: u.payload })), remove });

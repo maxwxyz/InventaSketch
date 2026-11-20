@@ -93,8 +93,8 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   plan scale, view sizes; shared AttachPoint/ReversePoints; ADR-0009). Follow-ups:
   - COM: native moves (PowerPoint handles, arrow keys) now redraw anchored and dependent units (2026-11-20); the plan scale has no on-slide control (sidebar only); document actions only change the unit's own objects;
     the floating bar shows up to three key type actions with telling pictograms (the rest is in the pie menu).
-  - Web: `combridge.ts` does not use `changed`/`dependents` yet; method contract in the web host docs to extend
-    (`setPlanScale`, `input`, `changed`, `dependents`).
+  - Web: done 2026-11-20 — `combridge.ts` redraws only units touched by `changed`/`dependents`; the method contract in
+    the web host docs covers `setPlanScale`, `input`, `changed`, `dependents`, conversions and exports.
   - Modules: done 2026-11-20 — view switches take proportions from library presets (Registry.WithView), annotation
     underlines use `TextStyle.Underline`, electrical designator/value are input actions.
   - Checked in PowerPoint 2026-11-20: drawn heads, underline, input prompt, dependent wall redraw with one undo step.

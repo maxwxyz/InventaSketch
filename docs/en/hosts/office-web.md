@@ -46,6 +46,8 @@ undo step each (no step when nothing changes).
 | `snapMove`, `snapPoint`, `snapInsert`, `setSnap` | `dx`/`dy`; `x`/`y`/`exclude`; `itemId`; `snapOptions` | snap result `{ dx, dy, x, y, kind, guides, attach }` |
 | `contextActions`, `inspector` | `ids`, `lang` | actions (generic, views, type actions); inspector info |
 | `suggestions` | `ids`, `lang`, `max` (default 9) | library items `{ id, typeId, name, view, category, points }` that fit the first selected object ("Insert ▸": companions, same category, annotations, in its kind of view); empty without a selection |
+| `conversions`, `convert` | `ids`, `lang`; `ids`, `itemId` (target type) | line types the first selected line, arrow, dimension or lead line can become ("Type ▸", `{ id, label, active }`); state (points, ends and attachments kept) |
+| `exporters`, `export` | `ids` (selection with its groups, else the page), `lang`; `itemId` (exporter id) | domain exports that apply `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (default: document setting), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | draw plan in pt (black and white when the document is) |
 | `exportCompact`, `importCompact`, `hostTransform` | `ids`; `payload`, `add`; `from`, `target`, `rotation` | payload; state |

@@ -98,8 +98,9 @@ Export-Erweiterungspunkte der Module.
     (20.11.2026); der Planmaßstab hat auf der Folie kein Bedienelement (nur Seitenleiste);
     Dokumentaktionen ändern nur die eigenen Objekte der Einheit; die schwebende Leiste zeigt bis zu drei wichtige Typaktionen mit
     aussagekräftigem Piktogramm (der Rest im Kreismenü).
-  - Web: `combridge.ts` nutzt `changed`/`dependents` noch nicht; Methodenvertrag in der Web-Host-Doku ergänzen
-    (`setPlanScale`, `input`, `changed`, `dependents`).
+  - Web: am 20.11.2026 erledigt – `combridge.ts` zeichnet nur die von `changed`/`dependents` betroffenen Einheiten neu;
+    der Methodenvertrag in der Web-Host-Doku deckt `setPlanScale`, `input`, `changed`, `dependents`, Umwandlungen und
+    Exporte ab.
   - Module: am 20.11.2026 erledigt – Ansichtswechsel nehmen die Proportionen aus den Bibliotheksvorlagen
     (Registry.WithView), Unterstreichungen der Beschriftung nutzen `TextStyle.Underline`, Kennzeichen/Wert der
     Elektro-Symbole sind Eingabeaktionen.
