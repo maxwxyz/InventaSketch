@@ -29,8 +29,11 @@ lassen sich gegen die Zeichnungsvorschriften der Patentämter prüfen und monoch
   Schnitt- und Bruchlinien, Textfelder, Legenden, Symbole der Technischen Mechanik, Flussdiagramm-Formen.
 - **Native Objekte zuerst:** Eingefügte Figuren sind native, bearbeitbare PowerPoint-/LibreOffice-Formen, wo immer der
   Host dies zulässt; Export als SVG/PDF/PNG.
-- **Modulare Fachgebiete:** Mechanik, Kinematik, Elektrotechnik und Elektronik, elektrische Maschinen,
-  Automotive/ADAS/HMI, Architektur und Grundrisse, UML/ER/Ablauf, Karten und Routen, Diagramme – Modul für Modul ergänzt.
+- **Modulare Fachgebiete (verfügbar):** Mechanik und Getriebe, Kinematik (Gelenke, Koppelgetriebe, Kurven, Bewegung),
+  Elektrotechnik (Schaltzeichen, Leitungen, Hausinstallation, Leistungselektronik, illustrative Leiterplatte),
+  elektrische Maschinen (Radial- und Axialfluss, Komponenten, Antriebsblöcke), Automotive/ADAS/HMI (Fahrzeuge,
+  Personen, Straßen, Sensoren, Anzeigen), Architektur und Grundrisse (Wände, Öffnungen, Räume, Treppen, Möbel),
+  Diagramme (UML, ER, Sequenz, Aktivität, System, BPMN). Geplant: Karten und Routen, Diagramme/Charts – Modul für Modul.
 - **Aufgeräumte Oberfläche:** helles/dunkles/automatisches Design, Deutsch/Englisch (automatisch), schwebende
   Kontextleiste, Kreismenü per Rechtsklick, interaktiver Seitenleisten-Editor dort, wo der Host keine Interaktion auf
   der Folie erlaubt.

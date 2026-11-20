@@ -15,7 +15,8 @@
   `ISK_MODEL` (compressed model payload, ADR-0006). One undo step per insertion (`StartNewUndoEntry`).
 - Ribbon tab **InventaSketch**, generated from the module library: a tools group (Editor, Snap and Context bar
   toggles stored in `%LOCALAPPDATA%\InventaSketch\settings.json`, black-and-white, info), then one group per module
-  (mechanics, annotation, patent, basic shapes) with one thumbnail gallery per library category (6 columns, name in the
+  (basic shapes, annotation, patent, mechanics, kinematics, electrical, machines, automotive, architecture, diagrams)
+  with one thumbnail gallery per library category (6 columns, name in the
   tooltip; groups with many categories show icons only so the tab fits on laptop screens). New modules appear without
   ribbon changes. Thumbnails are rendered with GDI+ from the engine primitives and follow the Office theme.
 - Floating bar and pie menu show abstract line pictograms (`IconIds`, drawn by `OnSlide/IconPainter`) for views,

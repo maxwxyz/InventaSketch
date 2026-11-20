@@ -88,7 +88,7 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawRectangle(pen, 4, 5, 16, 14); g.DrawLine(thin, 4, 9.5f, 20, 9.5f); g.DrawLine(thin, 4, 14, 20, 14); g.DrawLine(thin, 10, 9.5f, 10, 19);
                     break;
                 case IconIds.RotateCcw:
-                    g.DrawArc(pen, 4, 4, 16, 16, 187, -317); g.DrawLines(pen, new[] { new PointF(4, 4), new PointF(4, 9), new PointF(9, 9) });
+                    g.DrawArc(pen, 4, 4, 16, 16, 200, -290); g.DrawLines(pen, new[] { new PointF(15, 1), new PointF(12, 4), new PointF(15, 7) });
                     break;
                 case IconIds.Increase:
                     g.DrawLine(pen, 12, 5, 12, 19); g.DrawLine(pen, 5, 12, 19, 12);
@@ -113,7 +113,7 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawPolygon(pen, new[] { new PointF(6, 15), new PointF(18, 15), new PointF(18, 21) });
                     break;
                 case IconIds.Rotate:
-                    g.DrawArc(pen, 4, 4, 16, 16, -7, 317); g.DrawLines(pen, new[] { new PointF(20, 4), new PointF(20, 9), new PointF(15, 9) });
+                    g.DrawArc(pen, 4, 4, 16, 16, -20, 290); g.DrawLines(pen, new[] { new PointF(9, 1), new PointF(12, 4), new PointF(9, 7) });
                     break;
                 case IconIds.Swap:
                     g.DrawLine(pen, 4, 9, 20, 9); g.DrawLines(pen, new[] { new PointF(16, 5), new PointF(20, 9), new PointF(16, 13) });
