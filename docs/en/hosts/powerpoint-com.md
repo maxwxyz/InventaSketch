@@ -40,6 +40,11 @@
   The dragged handle snaps to points and alignment guides; with uniform scaling a gear's pitch circle snaps into mesh
   with a neighbouring gear or ring gear. The preview shows the scale factor; on release the unit is re-rendered from
   its model (parameters unchanged, only sizes).
+- **Rotate with snapping:** PowerPoint's rotation handle is taken over; the unit rotates about its centre and snaps to
+  multiples of 15° within 4° (`Shift`: strict 15° steps, `Alt`: free). The preview shows the angle; on release the
+  rotation is applied to the model (box objects rotate, point objects rotate their points) and re-rendered.
+- **Theme:** floating bar and pie menu follow the Office theme (dark grey/black, or "use system setting" with a dark
+  Windows app theme → dark).
 - **Two-point tool:** lines, arrows, dimensions and lead lines are placed like connectors: press at the start point
   and drag to the end point (or click start, click end). Both ends snap to centres, corners, ends and ports of other
   units; curve control points keep their relative position.
@@ -83,8 +88,12 @@ Slice 2 (same environment, simulated mouse input with PowerPoint in the foregrou
   pitch circle touches the neighbouring gear (`gear mesh snap=True` in the log, preview captured).
 - Two-point arrow: start pressed 3 pt off a gear centre snapped exactly onto it (162.52 / 102.52 pt).
 - Point editing: the arrow tip dragged 2–3 pt off the shaft end snapped exactly onto it (309.92 / 270.0 pt).
+- Rotate: a shaft dragged by about 32° at the rotation handle snapped to exactly 30° (new bounds 294.6 × 170.1 pt =
+  340 · cos 30° × 340 · sin 30°). Dark theme: implemented, not yet checked visually (Office runs in a light theme here).
+- Lead-line numerals never overlap the line: 72 automated cases (straight/curved/wavy × bend × 12 directions) keep at
+  least 0.8 mm between line and a realistic glyph box.
 - Type and label menus: an arrow converted to a lead line with numeral "10"; "Line course" switched it to curved
-  (slide export checked). Known cosmetic issue: the curved lead line touches the numeral (annotation module).
+  (slide export checked).
 - Floating bar: appears above the selected gear (screen capture checked), the view button switched the gear to the stick
   symbol, moving the pointer 900 px away dismissed the bar.
 

@@ -91,7 +91,7 @@ namespace InventaSketch.Modules.Annotation
         /// <summary>Default text height (em, mm). 5 mm em gives ≈3.6 mm cap height, above the 3.2 mm patent minimum.</summary>
         public const double TextSize = 5.0;
         /// <summary>Approximate advance width per character relative to the em size (Arial-like fonts).</summary>
-        public const double CharWidth = 0.55;
+        public const double CharWidth = 0.6;
 
         public static string HeadName(ArrowHead h) => h.ToString().ToLowerInvariant();
 
@@ -115,7 +115,7 @@ namespace InventaSketch.Modules.Annotation
         {
             var lines = (text ?? "").Replace("\r", "").Split('\n');
             var w = Math.Max(1, lines.Max(l => l.Length)) * size * CharWidth;
-            var h = size * (0.8 + 1.2 * (lines.Length - 1));
+            var h = size * (1.0 + 1.2 * (lines.Length - 1));
             return new Vec2(w, h);
         }
 

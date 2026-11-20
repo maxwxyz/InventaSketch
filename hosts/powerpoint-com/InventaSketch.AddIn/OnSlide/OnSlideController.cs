@@ -23,7 +23,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal sealed class OnSlideController : IDisposable
     {
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -60,6 +60,12 @@ namespace InventaSketch.AddIn.OnSlide
         private Vec2? _twoStart;
         private int _pointIndex = -1;
         private Vec2 _pointAt;
+
+        // Rotate with snapping
+        private Vec2 _rotCentre;
+        private double _rotStart;
+        private double _rotAngle;
+        private bool _dark;
 
         // Resize with snapping
         private int _handle = -1;
@@ -140,7 +146,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint) return;
+                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate) return;
                 using var dpi = DpiScope.PerMonitor();
                 SketchUnit? unit = null;
                 if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count == 1)
@@ -166,6 +172,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (slide is null || view is null) { Disarm(); return; }
             _view = view;
             _unit = unit;
+            _dark = OfficeTheme.IsDark();
             var registry = _registry();
             var ctx = new RenderContext(unit.Doc, _lang());
             _unitPrims = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
@@ -201,7 +208,7 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint)
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate)
             {
                 _mode = Mode.Armed;
                 if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
@@ -217,7 +224,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint) return;
+                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate) return;
                 using var dpi = DpiScope.PerMonitor();
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
@@ -309,6 +316,19 @@ namespace InventaSketch.AddIn.OnSlide
                         _down = pt;
                         return true;
                     }
+                    if (message == WM_LBUTTONDOWN && OnRotationHandle(pt, view))
+                    {
+                        HideBar();
+                        var r = UnitRectMm();
+                        _rotCentre = new Vec2(r.X + r.W / 2, r.Y + r.H / 2);
+                        var start = view.ToMm(pt) - _rotCentre;
+                        _rotStart = Math.Atan2(start.Y, start.X);
+                        _rotAngle = 0;
+                        _moved = false;
+                        _down = pt;
+                        _mode = Mode.Rotate;
+                        return true;
+                    }
                     if (message == WM_LBUTTONDOWN && HandleAt(pt, view) is int handle and >= 0)
                     {
                         HideBar();
@@ -356,6 +376,29 @@ namespace InventaSketch.AddIn.OnSlide
                         _mode = Mode.Armed;
                         _overlay.Clear();
                         if (moved && unit is not null) Post(() => ApplyPoint(unit, index, at));
+                        else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+                        return true;
+                    }
+                    return message is WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_RBUTTONUP;
+
+                case Mode.Rotate:
+                    if (message == WM_MOUSEMOVE)
+                    {
+                        if (!_moved && Math.Abs(pt.X - _down.X) + Math.Abs(pt.Y - _down.Y) < 3 * view.DeviceScale) return true;
+                        _moved = true;
+                        UpdateRotate(pt, view);
+                        return true;
+                    }
+                    if (message == WM_LBUTTONUP)
+                    {
+                        var unit = _unit;
+                        var angle = _rotAngle;
+                        var centre = _rotCentre;
+                        var moved = _moved;
+                        _mode = Mode.Armed;
+                        _overlay.Clear();
+                        Log.Info($"Rotate end: {angle:0.##} degrees");
+                        if (moved && unit is not null && Math.Abs(angle) > 1e-3) Post(() => ApplyRotate(unit, centre, angle));
                         else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
                         return true;
                     }
@@ -460,7 +503,7 @@ namespace InventaSketch.AddIn.OnSlide
                 _fade.Dismiss();
                 HideBar();
             }
-            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint)
+            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate)
             {
                 Cancel("escape");
                 return true;
@@ -661,7 +704,7 @@ namespace InventaSketch.AddIn.OnSlide
             var bar = _bar;
             if (bar is null || opacity <= 0) { HideBar(); return; }
             _barAlpha = (byte)Math.Round(255 * Math.Max(0, Math.Min(1, opacity)));
-            using var bmp = bar.Render(dark: false);
+            using var bmp = bar.Render(_dark);
             _barWindow.Present(bmp, bar.Bounds, view.MainWindow, _barAlpha);
         }
 
@@ -808,7 +851,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var pie = _pie;
             if (pie is null) return;
-            Present(view, _ => { }, g => pie.Draw(g, dark: false));
+            Present(view, _ => { }, g => pie.Draw(g, _dark));
         }
 
         // ------------------------------------------------------------------ commands (UI thread, outside the hook)
@@ -1002,6 +1045,70 @@ namespace InventaSketch.AddIn.OnSlide
             };
             if (!string.IsNullOrEmpty(numeral) && target.Parameters.Any(pd => pd.Key == "numeral")) result = result.WithParam("numeral", numeral!) with { Text = numeral };
             return result;
+        }
+
+        // ------------------------------------------------------------------ rotate with snapping
+
+        /// <summary>PowerPoint's rotation handle: about 35 logical px above the top centre of the selection frame.</summary>
+        private bool OnRotationHandle(POINT pt, SlideView view)
+        {
+            if (_unit is null) return false;
+            var r = UnitRectMm();
+            var top = view.ToScreen(new Vec2(r.X + r.W / 2, r.Y));
+            var cy = top.Y - 35 * view.DeviceScale;
+            var dx = pt.X - top.X;
+            var dy = pt.Y - cy;
+            return Math.Sqrt(dx * dx + dy * dy) <= 13 * view.DeviceScale;
+        }
+
+        /// <summary>
+        /// Rotation about the unit centre. Snapping (unless Alt) pulls the angle to multiples of 15° within 4°;
+        /// Shift rotates in strict 15° steps.
+        /// </summary>
+        private void UpdateRotate(POINT pt, SlideView view)
+        {
+            var v = view.ToMm(pt) - _rotCentre;
+            var a = (Math.Atan2(v.Y, v.X) - _rotStart) * 180 / Math.PI;
+            while (a <= -180) a += 360;
+            while (a > 180) a -= 360;
+            var step = Math.Round(a / 15) * 15;
+            var snapped = KeyDown(VK_SHIFT) || (!KeyDown(VK_MENU) && Math.Abs(a - step) <= 4);
+            if (snapped) a = step;
+            _rotAngle = a;
+            var registry = _registry();
+            var unit = _unit!;
+            var doc = Edits.Rotate(unit.Doc, unit.Doc.Objects.Keys.ToList(), _rotCentre, a);
+            var ctx = new RenderContext(doc, _lang());
+            var prims = doc.ObjectsOn(doc.Pages[0]).Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
+            var label = $"{a:0.#}\u00b0";
+            var at = view.ToScreen(view.ToMm(pt));
+            var centre = _rotCentre;
+            Present(view, g =>
+            {
+                ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6));
+                using var pen = new Pen(snapped ? GuideColor : Ghost, (float)view.Mm(1.2)) { DashPattern = new[] { 4f, 3f } };
+                var tip = view.ToMm(pt);
+                g.DrawLine(pen, (float)centre.X, (float)centre.Y, (float)tip.X, (float)tip.Y);
+            }, g =>
+            {
+                using var font = new Font("Segoe UI", (float)(11 * view.DeviceScale), FontStyle.Bold, GraphicsUnit.Pixel);
+                using var bg = new SolidBrush(Color.FromArgb(230, 255, 255, 255));
+                using var fg = new SolidBrush(snapped ? GuideColor : Ghost);
+                var size = g.MeasureString(label, font);
+                var box = new RectangleF(at.X + 14 * (float)view.DeviceScale, at.Y + 14 * (float)view.DeviceScale, size.Width + 8, size.Height + 4);
+                g.FillRectangle(bg, box);
+                g.DrawString(label, font, fg, box.X + 4, box.Y + 2);
+            });
+        }
+
+        private void ApplyRotate(SketchUnit stale, Vec2 centre, double degrees)
+        {
+            var slide = CurrentSlide();
+            var unit = SketchUnits.Read(stale.Shape);
+            if (slide is null || unit is null) return;
+            _app.StartNewUndoEntry();
+            var doc = Edits.Rotate(unit.Doc, unit.Doc.Objects.Keys.ToList(), centre, degrees);
+            SketchUnits.Replace(slide, unit, doc, _registry(), _lang())?.Select(Office.MsoTriState.msoTrue);
         }
 
         // ------------------------------------------------------------------ resize with snapping

@@ -19,7 +19,7 @@ namespace InventaSketch.Modules.Annotation
     public static class LeaderGeometry
     {
         /// <summary>Gap between line end and numeral text in mm.</summary>
-        public const double TextGap = 1.0;
+        public const double TextGap = 1.2;
 
         public static LeaderCurve ParseCurve(string? s) => s?.ToLowerInvariant() switch
         {
@@ -72,7 +72,13 @@ namespace InventaSketch.Modules.Annotation
             if (!underline && len > Geo.Eps)
             {
                 var u = dir / len;
-                var cut = hasText ? Ann.HalfExtentAlong(text, textSize, u) + TextGap : 0;
+                // Curved and wavy lines arrive at an angle to the chord, so keep clear of the whole text box
+                // (half diagonal) instead of its extent along the chord.
+                var extent = Ann.TextExtent(text, textSize);
+                var clearance = curve == LeaderCurve.Straight
+                    ? Ann.HalfExtentAlong(text, textSize, u)
+                    : Math.Sqrt(extent.X * extent.X + extent.Y * extent.Y) / 2 + TextGap;
+                var cut = hasText ? clearance + TextGap : 0;
                 if (len - cut > 0.5) list.Add(Line(objectEnd, textCenter - u * cut, curve, end, bend));
             }
             if (hasText)
