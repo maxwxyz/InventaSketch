@@ -41,6 +41,12 @@ export interface EditorState {
   undoLabel?: string;
   objects: ObjectInfo[];
   svg?: string;
+  /** Document plan scale denominator (100 = 1:100); absent if unset. */
+  planScale?: number;
+  /** Objects added or modified by the change that produced this revision (edit, undo, redo). */
+  changed?: string[];
+  /** Further objects whose rendering depends on the changed or removed ones (wall joints, openings): redraw them too. */
+  dependents?: string[];
 }
 
 export interface CatalogCategory { id: string; name: string; module: string; order: number }
@@ -55,6 +61,8 @@ export interface ActionInfo {
   active: boolean;
   group: string;
   kind: "generic" | "view" | "type" | "option";
+  /** Present for actions that need a text value: prompt for it and pass it to applyAction. */
+  input?: { label: string; value: string; unit?: string };
 }
 
 export type ParamValue = number | string | boolean | null;
@@ -98,6 +106,9 @@ export interface InspectorInfo {
   hasText: boolean;
   text?: string;
   ref?: string;
+  /** The selected type uses the document plan scale (offer it in the inspector). */
+  usesPlanScale?: boolean;
+  planScale?: number;
 }
 
 export interface HitResult { id?: string; ids: string[]; stack: string[] }

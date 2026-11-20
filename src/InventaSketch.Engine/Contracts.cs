@@ -39,6 +39,8 @@ namespace InventaSketch.Engine
         public bool? Replace { get; set; }
         public string? Text { get; set; }
         public string? Action { get; set; }
+        /// <summary>Text entered for an input action (applyAction with an action whose info carries <c>input</c>).</summary>
+        public string? Input { get; set; }
         public string? Json { get; set; }
         public string? Payload { get; set; }
         public SketchObject? Object { get; set; }
@@ -107,6 +109,18 @@ namespace InventaSketch.Engine
         public List<ObjectInfo> Objects { get; set; } = new();
         /// <summary>Page SVG (mm user units), unless the request set includeSvg=false.</summary>
         public string? Svg { get; set; }
+        /// <summary>Document plan scale denominator (100 = 1:100), null if unset.</summary>
+        public double? PlanScale { get; set; }
+        /// <summary>
+        /// Objects added or modified by the document change that produced <see cref="Revision"/> (edit, undo or redo);
+        /// empty after open/new. Hosts redraw these units.
+        /// </summary>
+        public List<string> Changed { get; set; } = new();
+        /// <summary>
+        /// Further existing objects whose rendering depends on the changed or removed ones (wall joints, openings in walls,
+        /// see <see cref="InventaSketch.Core.ObjectType.Dependents"/>); hosts redraw their units in the same undo step.
+        /// </summary>
+        public List<string> Dependents { get; set; } = new();
     }
 
     public sealed class CatalogCategory
@@ -145,6 +159,17 @@ namespace InventaSketch.Engine
         public string Group { get; set; } = "";
         /// <summary>generic, view or type.</summary>
         public string Kind { get; set; } = "generic";
+        /// <summary>Set for actions that need a text value: hosts prompt for it and pass it as <c>input</c> to applyAction.</summary>
+        public ActionInputInfo? Input { get; set; }
+    }
+
+    public sealed class ActionInputInfo
+    {
+        /// <summary>Prompt label (localised).</summary>
+        public string Label { get; set; } = "";
+        /// <summary>Current value, prefilled in the prompt.</summary>
+        public string Value { get; set; } = "";
+        public string? Unit { get; set; }
     }
 
     public sealed class ParamInfo
@@ -175,6 +200,10 @@ namespace InventaSketch.Engine
         public bool HasText { get; set; }
         public string? Text { get; set; }
         public string? Ref { get; set; }
+        /// <summary>True if the selected type uses the document plan scale (the inspector then offers it).</summary>
+        public bool UsesPlanScale { get; set; }
+        /// <summary>Document plan scale denominator, null if unset.</summary>
+        public double? PlanScale { get; set; }
     }
 
     public sealed class HitResult

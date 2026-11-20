@@ -10,14 +10,21 @@ does not duplicate them.
 ## Plan scale
 
 Every object can be inserted without parameters. Library sizes are authored for **1:100** (1 mm on the page is
-100 mm in reality). Objects that use real dimensions have an optional advanced parameter `scale` (the
-denominator, default 100):
+100 mm in reality). The scale denominator of an object is resolved in this order:
+
+1. its own optional advanced parameter `scale` (unset for new objects; older documents may carry `scale = 100`),
+2. the **document plan scale** `DocumentSettings.PlanScale` (engine method `setPlanScale`, shown in the inspector
+   as "Plan scale (document) 1:" whenever a selected type uses it),
+3. 1:100.
+
+Changing the document plan scale redraws every object that uses it (walls, rooms, beams, doors, windows) in one
+undo step.
 
 | Quantity | Conversion |
 |---|---|
 | Wall thickness, beam width | `thickness / scale` page mm (240 mm at 1:100 = 2.4 mm) |
 | Room area | polygon area in page mm² x `scale²`, shown in m² |
-| Door/window width | box width x `scale` (shown in the width actions) |
+| Door/window width | box width x `scale` (shown in the width actions and the "Width…" prompt) |
 
 Free scaling of box objects changes `Size` only, never parameters.
 
@@ -61,6 +68,11 @@ Joints between separate walls on the same page are resolved at render time:
 - **Several walls** at one point: ends stay open (no end line).
 - **Free end**: closed with an end line.
 
+Because joints are computed from the neighbours, walls declare `DependsOnNeighbours` and report their
+**dependents** (`ObjectType.Dependents`): the walls joined to them (L/T joints in both directions) and the doors and
+windows whose centre sits on them. The engine returns these ids with every edit (`dependents` in the editor state),
+so hosts redraw them in the same undo step (see [overview](../architecture/overview.md#7-engine-api-actions-change-sets-and-document-settings)).
+
 Snapping anchors: every point is an `End` (from the registry) and a `Mount`; every segment is an `Axis`.
 Wall ends therefore snap onto other wall ends/vertices, and openings snap onto wall axes.
 
@@ -71,6 +83,16 @@ wall `Axis` (rotate the opening to match vertical walls). Inside the opening an 
 wall; its thickness is taken from the wall under the centre or, off a wall, from the optional `wallThickness`
 parameter. The opening must therefore lie above the wall in z-order (inserted later). On coloured slide
 backgrounds the white band is visible outside the wall.
+
+**Align to wall** (document-aware context action): rotates the opening to the direction of the nearest wall
+segment within reach (wall half thickness plus half the smaller box side) and centres it on the wall axis. Of the
+two wall directions the one closer to the current rotation wins, so the side the door opens to is kept. Without a
+wall in reach the action is offered but greyed out.
+
+**Views and size:** plan and elevation have their own preferred sizes (doors 2.10 m high, windows 1.25 m, French
+windows 2.20 m in elevation). Switching the view keeps the real width; the other side takes the preferred size of
+the target view at the object's plan scale (in plan, hinged leaves add their extra width as depth, like the width
+steps).
 
 - Single door: leaf + quarter swing arc (elliptical when the box is stretched); hinge side and swing side
   are flags.
@@ -83,27 +105,35 @@ backgrounds the white band is visible outside the wall.
 
 | Type | Actions |
 |---|---|
-| Wall | thicker/thinner (standard thicknesses 75 ... 490 mm), cycle kind, closed loop |
-| Doors | flip hinge side, flip swing direction, wider/narrower (±125 mm; hinged leaves grow with the width) |
-| Windows | flip hinge side, swap inside/outside, wider/narrower |
+| Wall | thicker/thinner (standard thicknesses 75 ... 490 mm), "Thickness…" (input, mm), cycle kind, closed loop |
+| Doors | flip hinge side, flip swing direction, wider/narrower (±125 mm; hinged leaves grow with the width), "Width…" (input, mm), align to wall |
+| Windows | flip hinge side, swap inside/outside, wider/narrower, "Width…" (input, mm), align to wall |
 | Stairs | reverse walking direction, more/fewer steps |
-| Room | show area, tinted floor |
+| Room | "Name…" (input), show area, tinted floor |
 | Column, tree, pipe | cycle shape/material, kind, medium; pipe flow arrow |
 | Section marker, site boundary | flip view direction; closed, boundary markers |
 
-The width/thickness actions use the icon ids `cmd-plus` / `cmd-minus`, which are not yet part of `IconIds`
-(hosts fall back to the neutral icon).
+Input actions ("…") ask for a value: the COM add-in opens its prompt dialog, the web task pane an inline field.
+Lengths accept `1010`, `1010 mm`, `101 cm`, `1,01 m` or `1.01 m`; anything else is rejected with a message and
+changes nothing. The width/thickness steps use `IconIds.Increase` / `IconIds.Decrease`, the inputs `IconIds.Text`
+and align to wall `IconIds.Rotate`.
 
 ## Host notes
 
 All output uses native primitives (lines, polylines, polygons, rectangles, ellipses, cubic paths, text) and
 explicit hatch lines, so every host can draw it natively. Walls and openings render context-dependently
-(neighbouring walls, host wall thickness): when a wall or opening changes, hosts should redraw the walls and
-openings on the same page, not only the changed object.
+(neighbouring walls, host wall thickness):
+
+- **Web task pane:** the live sync redraws the changed units plus the engine's `dependents`.
+- **PowerPoint COM:** every unit keeps its own model; units containing walls or openings are rendered with the
+  other units of the slide as context (only the unit's own objects are stored), and after an edit, insert, move or
+  delete the dependent units are redrawn in the same undo entry. Native PowerPoint moves (handles, arrow keys) do
+  not redraw dependents until the next InventaSketch edit.
 
 ## Tests and gallery
 
 `tests/InventaSketch.Modules.Architecture.Tests` covers registration, bilingual names, every box item inside
 its box (also stretched) and point items near their points, wall joints (L, T, closed), endpoint snapping of
-walls, opening hubs on wall axes, room area, level texts, context actions and the JSON round trip. The gallery
+walls, opening hubs on wall axes, room area, level texts, context actions and the JSON round trip;
+`DocumentAwareTests` covers align to wall, dependents, the document plan scale, input actions and view sizes. The gallery
 test writes `gallery/*.html` (all types, presets, joint study and a sample house in English and German).

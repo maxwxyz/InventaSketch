@@ -83,24 +83,79 @@ namespace InventaSketch.AddIn.OnSlide
             return list;
         }
 
-        /// <summary>Draws a model as one new unit on the slide (native shapes, tags, bounds) and returns it.</summary>
+        /// <summary>
+        /// Draws a model as one new unit on the slide (native shapes, tags, bounds) and returns it. Models with
+        /// neighbour-dependent objects (<see cref="ObjectType.DependsOnNeighbours"/>: wall joints, openings in walls) are
+        /// rendered with the other units of the slide as context; the stored model stays the unit's own.
+        /// </summary>
         public static PowerPoint.Shape? Draw(PowerPoint.Slide slide, Registry registry, SketchDocument doc, Lang lang)
         {
-            var session = new EditorSession("com", registry, doc, lang);
             var ids = doc.ObjectsOn(doc.Pages[0]).Select(o => o.Id).ToList();
             if (ids.Count == 0) return null;
             // One unit: all objects of the model belong together (make them an assembly if there are several).
             if (ids.Count > 1 && doc.Objects.Values.Select(o => o.GroupId).Distinct().Count() != 1)
-                session.Apply("group", d => Edits.Group(d, ids));
+                doc = Edits.Group(doc, ids);
+            var context = NeedsContext(registry, doc) ? WithContext(doc, All(slide)) : doc;
+            var session = new EditorSession("com", registry, context, lang);
             var plan = DrawPlanBuilder.Build(session, ids, DrawCapabilities.Full);
             var renderer = new ComRenderer(slide);
             PowerPoint.Shape? result = null;
             foreach (var unit in plan.Units)
             {
                 result = renderer.DrawUnit(unit);
-                if (result is not null) result.Tags.Add(BoundsTag, FormatBounds(result));
+                if (result is null) continue;
+                // The context only shapes the drawing; the stored model holds the unit's own objects.
+                if (!ReferenceEquals(context, doc)) result.Tags.Add("ISK_MODEL", EngineApi.CompactOf(doc, doc.Pages[0], unit.ObjectIds));
+                result.Tags.Add(BoundsTag, FormatBounds(result));
             }
             return result;
+        }
+
+        /// <summary>True if any object of the model renders from its neighbours.</summary>
+        public static bool NeedsContext(Registry registry, SketchDocument? doc)
+            => doc is not null && doc.Objects.Values.Any(o => registry.Type(o.Type)?.DependsOnNeighbours == true);
+
+        /// <summary>The unit model plus the objects of the other units (on the model's page, same settings) for rendering.</summary>
+        public static SketchDocument WithContext(SketchDocument own, IEnumerable<SketchUnit> others)
+        {
+            var extra = others.SelectMany(u => u.Objects).Where(o => !own.Objects.ContainsKey(o.Id)).GroupBy(o => o.Id).Select(g => g.First()).ToArray();
+            return extra.Length == 0 ? own : Edits.Add(own, own.Pages[0].Id, extra);
+        }
+
+        /// <summary>Models of several units merged into one document (first model's settings) for dependency queries.</summary>
+        private static SketchDocument Merge(IEnumerable<SketchDocument> models, IEnumerable<SketchUnit> others)
+        {
+            var list = models.ToList();
+            var doc = SketchDocument.Create();
+            if (list.Count > 0) doc = doc with { Settings = list[0].Settings };
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var objs = list.SelectMany(m => m.ObjectsOn(m.Pages[0])).Concat(others.SelectMany(u => u.Objects)).Where(o => seen.Add(o.Id)).ToArray();
+            return objs.Length == 0 ? doc : Edits.Add(doc, doc.Pages[0].Id, objs);
+        }
+
+        /// <summary>
+        /// Redraws the other units whose objects depend on an edited unit (<see cref="ObjectType.Dependents"/>, evaluated with
+        /// the slide before and after the edit), e.g. joined walls and doors in a wall whose thickness changed. Runs inside the
+        /// caller's undo entry. <paramref name="before"/>/<paramref name="after"/> are the edited models (empty when inserted or
+        /// deleted); units with ids in <paramref name="skip"/> are not redrawn. Returns the number of redrawn units.
+        /// </summary>
+        public static int RedrawDependents(PowerPoint.Slide slide, Registry registry, Lang lang, IEnumerable<SketchDocument?> before, IEnumerable<SketchDocument?> after, ICollection<string>? skip = null)
+        {
+            var b = before.Where(d => d is not null).Cast<SketchDocument>().ToList();
+            var a = after.Where(d => d is not null).Cast<SketchDocument>().ToList();
+            if (!b.Concat(a).Any(d => NeedsContext(registry, d))) return 0;
+            var touched = new HashSet<string>(b.Concat(a).SelectMany(d => d.Objects.Keys), StringComparer.Ordinal);
+            var others = All(slide).Where(u => (skip is null || !skip.Contains(u.Id)) && !u.Objects.Any(o => touched.Contains(o.Id))).ToList();
+            var deps = new HashSet<string>(ChangeSet.DependentsOf(registry, Merge(b, others), Merge(a, others), touched.ToList(), lang), StringComparer.Ordinal);
+            var count = 0;
+            foreach (var unit in others)
+            {
+                if (!unit.Objects.Any(o => deps.Contains(o.Id))) continue;
+                Replace(slide, unit, unit.Doc, registry, lang);
+                count++;
+            }
+            if (count > 0) Log.Info("Redrew " + count + " dependent unit(s)");
+            return count;
         }
 
         /// <summary>The same model with new object/group ids (copies must never share ids), optionally moved.</summary>

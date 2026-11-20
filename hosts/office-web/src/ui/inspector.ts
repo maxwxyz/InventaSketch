@@ -84,6 +84,7 @@ export class Inspector {
     const basic = info.params.filter((p) => !p.advanced);
     const adv = info.params.filter((p) => p.advanced);
     if (basic.length) out.push(h("h3", { class: "isk-insp-section" }, t("insp.params")), ...basic.map((p) => this.param(p)));
+    if (info.usesPlanScale) out.push(this.planScale(info.planScale));
     if (adv.length) {
       const d = h("details", { class: "isk-insp-adv" }, h("summary", {}, t("insp.advanced")), ...adv.map((p) => this.param(p)));
       out.push(d);
@@ -91,6 +92,24 @@ export class Inspector {
 
     out.push(h("h3", { class: "isk-insp-section" }, t("insp.style")), ...this.style(info.style ?? {}, info.points));
     return out;
+  }
+
+  /** Document plan scale (1:n) for types that use it; objects with an own scale parameter keep theirs. */
+  private planScale(value: number | undefined): HTMLElement {
+    const label = t("insp.planScale");
+    const inp = h("input", { class: "isk-input", type: "number", min: 1, max: 10000, step: 5, placeholder: "100", "aria-label": label, title: t("insp.planScaleHint") });
+    inp.value = value === undefined ? "" : String(value);
+    inp.addEventListener("change", () => {
+      const n = Number(inp.value);
+      const next = inp.value.trim() === "" ? null : Number.isFinite(n) && n > 0 ? n : undefined;
+      if (next === undefined) return;
+      try {
+        this.host.apply(this.host.session().setPlanScale(next), true);
+      } catch (e) {
+        this.host.report(e);
+      }
+    });
+    return field(label, inp);
   }
 
   private param(p: ParamInfo): HTMLElement {

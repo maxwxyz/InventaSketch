@@ -97,8 +97,14 @@ namespace InventaSketch.Modules.Architecture
                 Options = options.Select(x => new ParamOption(x.Value, new I18nText(x.En, x.De))).ToList(),
             };
 
-        /// <summary>Plan scale denominator (100 means 1:100). Converts real millimetres into drawing millimetres.</summary>
-        public static readonly ParamDef Scale = Num("scale", "Plan scale 1:", "Planmaßstab 1:", Arch.DefaultScale, 1, 10000, null, 5, advanced: true);
+        /// <summary>
+        /// Plan scale denominator of one object (100 means 1:100). Converts real millimetres into drawing millimetres. It has no
+        /// default on purpose: unset, the document plan scale applies (<see cref="DocumentSettings.PlanScale"/>, else 1:100).
+        /// </summary>
+        public static readonly ParamDef Scale = new("scale", new I18nText("Plan scale 1: (this object)", "Planmaßstab 1: (dieses Objekt)"), ParamKind.Number)
+        {
+            Min = 1, Max = 10000, Step = 5, Advanced = true,
+        };
     }
 
     /// <summary>Shared helpers of the architecture module.</summary>
@@ -110,18 +116,41 @@ namespace InventaSketch.Modules.Architecture
         /// <summary>Approximate advance width per character relative to the em size (matches <see cref="Prim.Points"/>).</summary>
         internal const double CharWidth = 0.55;
 
-        /// <summary>Plan scale denominator of an object (falls back to 1:100).</summary>
-        public static double ScaleOf(SketchObject o)
+        /// <summary>Plan scale denominator of an object without document context (own scale, else 1:100).</summary>
+        public static double ScaleOf(SketchObject o) => ScaleOf(o, null);
+
+        /// <summary>
+        /// Plan scale denominator of an object: its own "scale" parameter, else the document plan scale
+        /// (<see cref="DocumentSettings.PlanScale"/>), else 1:100.
+        /// </summary>
+        public static double ScaleOf(SketchObject o, SketchDocument? doc)
         {
-            var s = o.Num("scale", DefaultScale);
-            return s > Geo.Eps ? s : DefaultScale;
+            var own = o.Num("scale", 0);
+            if (own > Geo.Eps) return own;
+            return doc?.Settings.PlanScale is double s && s > Geo.Eps ? s : DefaultScale;
         }
 
         /// <summary>Area in square metres of a polygon given in page millimetres at plan scale 1:<paramref name="scale"/>.</summary>
         public static double RoomArea(IReadOnlyList<Vec2> pagePoints, double scale) => RoomType.AreaM2(pagePoints, scale);
 
         /// <summary>Real width in millimetres of a door or window (box width times plan scale).</summary>
-        public static double OpeningWidth(SketchObject o) => Openings.RealWidth(o);
+        public static double OpeningWidth(SketchObject o) => Openings.RealWidth(o, null);
+
+        /// <summary>Real width in millimetres of a door or window, honouring the document plan scale.</summary>
+        public static double OpeningWidth(SketchObject o, SketchDocument? doc) => Openings.RealWidth(o, doc);
+
+        /// <summary>Reads a length in millimetres typed by the user ("1010", "1010 mm", "1,01 m", "101 cm").</summary>
+        internal static double ParseMm(string text, Lang lang)
+        {
+            var t = (text ?? "").Trim().ToLowerInvariant().Replace(" ", "");
+            var factor = 1.0;
+            if (t.EndsWith("mm", StringComparison.Ordinal)) t = t.Substring(0, t.Length - 2);
+            else if (t.EndsWith("cm", StringComparison.Ordinal)) { t = t.Substring(0, t.Length - 2); factor = 10; }
+            else if (t.EndsWith("m", StringComparison.Ordinal)) { t = t.Substring(0, t.Length - 1); factor = 1000; }
+            if (!double.TryParse(t.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) || v <= 0 || double.IsInfinity(v))
+                throw new FormatException(lang == Lang.De ? "Keine gültige Länge: „" + text + "“" : "Not a valid length: “" + text + "”");
+            return v * factor;
+        }
 
         /// <summary>Formats a number with fixed decimals, using a decimal comma in German.</summary>
         public static string Format(double v, int decimals, Lang lang)
@@ -300,10 +329,14 @@ namespace InventaSketch.Modules.Architecture
         public override string Category => _category;
         public override IReadOnlyList<string> Keywords => _keywords;
         public override Size2 DefaultSize => _size;
-        public override IReadOnlyList<ViewDef> Views => Elevation is null ? new[] { PlanView } : new[] { PlanView, ElevationView };
+        public override IReadOnlyList<ViewDef> Views => Elevation is null
+            ? new[] { PlanView }
+            : ElevationSize is null ? new[] { PlanView, ElevationView } : new[] { PlanView with { Size = _size }, ElevationView with { Size = ElevationSize } };
         public override IReadOnlyList<ParamDef> Parameters => Params;
         public override bool PreferUniformScale => Uniform;
         public override bool HasText => TextEditable;
+        public override bool UsesPlanScale => Params.Any(p => p.Key == Pm.Scale.Key);
+        public override bool DependsOnNeighbours => NeighbourAware;
 
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();
         public DrawFn? Elevation { get; init; }
@@ -312,6 +345,14 @@ namespace InventaSketch.Modules.Architecture
         public bool Uniform { get; init; }
         public bool TextEditable { get; init; }
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
+        /// <summary>Document-aware actions (plan scale, neighbouring walls).</summary>
+        public Func<SketchObject, RenderContext, IEnumerable<ContextAction>>? ExtraInDocument { get; init; }
+        /// <summary>Rendering reads neighbouring objects (openings take the band thickness from the wall under them).</summary>
+        public bool NeighbourAware { get; init; }
+        /// <summary>Box size of the elevation view at 1:100 (openings); enables size adaptation when switching views.</summary>
+        public Size2? ElevationSize { get; init; }
+        /// <summary>Plan depth growth per width growth (door leaves swing as deep as they are wide).</summary>
+        public int LeafFactor { get; init; }
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -327,7 +368,24 @@ namespace InventaSketch.Modules.Architecture
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
-            => Extra is null ? Array.Empty<ContextAction>() : Extra(o);
+            => Actions(o, new RenderContext(new SketchDocument(), lang));
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx)
+            => (Extra?.Invoke(o) ?? Array.Empty<ContextAction>()).Concat(ExtraInDocument?.Invoke(o, ctx) ?? Array.Empty<ContextAction>());
+
+        /// <summary>
+        /// Openings keep their real width when the view changes; the other side takes the preferred size of the target view
+        /// at the object's plan scale (in plan, door leaves add their extra width as depth, as the width steps do).
+        /// </summary>
+        public override Size2 SizeForView(SketchObject o, string toView, RenderContext ctx)
+        {
+            if (ElevationSize is null) return base.SizeForView(o, toView, ctx);
+            var k = Arch.DefaultScale / Arch.ScaleOf(o, ctx.Doc);
+            var plan = toView == PlanView.Id;
+            var pref = plan ? _size : ElevationSize;
+            var h = pref.H * k + (plan ? LeafFactor * (o.Size.W - pref.W * k) : 0);
+            return new Size2(o.Size.W, Math.Max(0.5, h));
+        }
 
         public override Primitive ApplyOverride(Primitive p, Style over) => Arch.Override(p, over);
     }
@@ -351,6 +409,7 @@ namespace InventaSketch.Modules.Architecture
         public override IReadOnlyList<string> Keywords => _keywords;
         public override GeometryKind Geometry => GeometryKind.Points;
         public override IReadOnlyList<ViewDef> Views => new[] { BoxType.PlanView };
+        public override bool UsesPlanScale => Parameters.Any(p => p.Key == Pm.Scale.Key);
 
         protected virtual int MinPoints => 2;
 

@@ -10,5 +10,6 @@
 | [0006](0006-metadata-persistence.md) | Metadata in shape tags plus document-level mirror | accepted |
 | [0007](0007-module-contract.md) | Module contract and versioning | accepted |
 | [0008](0008-license.md) | Apache License 2.0 | accepted |
+| [0009](0009-actions-change-sets-plan-scale.md) | Input and document actions, change sets, plan scale and view sizes | accepted |
 
 Template: Context · Options · Decision · Consequences · Validation · Date.

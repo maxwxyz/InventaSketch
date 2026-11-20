@@ -10,7 +10,7 @@ import { SlideSync } from "../office/sync";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
-import { ContextBar } from "./contextbar";
+import { ContextBar, InlinePrompt } from "./contextbar";
 import { h } from "./dom";
 import { icon } from "./icons";
 import { Inspector } from "./inspector";
@@ -44,6 +44,7 @@ export class App {
   private readonly inspector: Inspector;
   private readonly pie: PieMenu;
   private readonly bar: ContextBar;
+  private readonly prompt: InlinePrompt;
   private readonly sync?: SlideSync | ComSync;
   private pending?: CatalogItem;
   private dragging?: CatalogItem;
@@ -95,6 +96,7 @@ export class App {
     });
     this.inspector = new Inspector({ session: () => this.sessionObj, state: () => this.st, apply: (s, live) => this.apply(s, live), report: (e) => this.report(e) });
     this.pie = new PieMenu(this.root, (a) => this.runAction(a));
+    this.prompt = new InlinePrompt(this.root);
     this.status = h("div", { class: "isk-status", "aria-live": "polite" });
     this.toastEl = h("div", { class: "isk-toast", role: "status", hidden: true });
     this.topbar = h("header", { class: "isk-topbar" });
@@ -326,7 +328,7 @@ export class App {
         this.report(e);
       }
     }
-    this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open);
+    this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open || this.prompt.open);
   }
 
   private edit(f: (s: Session) => EditorState, live = true): void {
@@ -344,6 +346,19 @@ export class App {
   runAction(a: ActionInfo): void {
     if (!a.enabled) return;
     const sel = this.st.selection;
+    if (a.input) {
+      // Input actions ask for their value inline next to the selection (Esc cancels without a change).
+      const input = a.input;
+      const box = this.stage.selectionScreenBox();
+      const r = this.stage.el.getBoundingClientRect();
+      const at = box ? { x: (box.left + box.right) / 2, y: box.bottom } : { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      this.bar.hide();
+      this.prompt.show({ title: a.label, label: input.label, value: input.value, unit: input.unit }, at, (value) => {
+        this.edit((s) => s.applyAction(sel, a.id, value));
+        this.stage.el.focus({ preventScroll: true });
+      });
+      return;
+    }
     this.edit((s) => s.applyAction(sel, a.id));
     this.stage.el.focus({ preventScroll: true });
   }
@@ -471,13 +486,13 @@ export class App {
       const target = e.target as HTMLElement;
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable;
       if (e.key === "Escape") {
-        if (this.pie.open) return;
+        if (this.pie.open || this.prompt.open) return;
         if (this.pending) { this.cancelInsert(); e.preventDefault(); return; }
         if (this.stage.dragging) { this.stage.cancelDrag(); e.preventDefault(); return; }
         if (!typing && this.st.selection.length) { this.apply(this.sessionObj.select([])); e.preventDefault(); }
         return;
       }
-      if (typing || this.pie.open) return;
+      if (typing || this.pie.open || this.prompt.open) return;
       const sel = this.st.selection;
       const ctrl = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();

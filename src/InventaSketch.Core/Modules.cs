@@ -56,6 +56,13 @@ namespace InventaSketch.Core
     {
         /// <summary>Abstract pictogram for bars and pie menus (one of <see cref="IconIds"/>); null = derived from the id.</summary>
         public string? Icon { get; init; }
+
+        /// <summary>
+        /// Preferred box size (mm, at the type's default scale) of an object shown in this view; null = the type's
+        /// <see cref="ObjectType.DefaultSize"/>. Used to adapt the size when switching between views with very different
+        /// aspects (for example a vehicle seen from the top and from the side), see <see cref="ObjectType.SizeForView"/>.
+        /// </summary>
+        public Size2? Size { get; init; }
     }
 
     /// <summary>
@@ -181,11 +188,80 @@ namespace InventaSketch.Core
         };
     }
 
-    /// <summary>Context (pie menu / floating bar) action contributed by an object type.</summary>
+    /// <summary>
+    /// Context (pie menu / floating bar) action contributed by an object type. Plain actions map one object to a new
+    /// object (<see cref="Apply"/>). An action may instead ask the user for a text value (<see cref="Input"/>) or work on
+    /// the whole document (<see cref="ApplyInDocument"/>, for example aligning a door to the wall it sits on). Hosts run
+    /// actions through <see cref="ContextActions.Run"/> so all three forms behave the same everywhere.
+    /// </summary>
     public sealed record ContextAction(string Id, I18nText Label, string Icon, Func<SketchObject, SketchObject> Apply)
     {
         public bool IsActive { get; init; }
         public string? Group { get; init; }
+        /// <summary>False greys the action out (offered but not applicable, e.g. "align to wall" without a wall).</summary>
+        public bool IsEnabled { get; init; } = true;
+        /// <summary>Text value the host asks for before running the action (prompt dialog or inline field).</summary>
+        public ActionInput? Input { get; init; }
+        /// <summary>
+        /// Document-aware apply: receives the current document, the object and a render context of that document and
+        /// returns the new document (it may change the object and, where a host supports it, other objects).
+        /// </summary>
+        public Func<SketchDocument, SketchObject, RenderContext, SketchDocument>? ApplyInDocument { get; init; }
+
+        /// <summary>Action that asks for a text value; <paramref name="apply"/> receives the object and the entered text.</summary>
+        public static ContextAction WithInput(string id, I18nText label, string icon, I18nText prompt, string current, Func<SketchObject, string, SketchObject> apply, string? unit = null)
+            => new(id, label, icon, o => o) { Input = new ActionInput(prompt, current, apply) { Unit = unit } };
+
+        /// <summary>Action that needs the document (neighbouring objects) to compute its result.</summary>
+        public static ContextAction InDocument(string id, I18nText label, string icon, Func<SketchDocument, SketchObject, RenderContext, SketchDocument> apply)
+            => new(id, label, icon, o => o) { ApplyInDocument = apply };
+
+        /// <summary>
+        /// Runs the action on <paramref name="o"/> inside <paramref name="doc"/>. Input actions need <paramref name="input"/>
+        /// (<see cref="ArgumentException"/> otherwise); their apply function may throw <see cref="FormatException"/> for
+        /// values it cannot read.
+        /// </summary>
+        public SketchDocument Run(SketchDocument doc, SketchObject o, RenderContext ctx, string? input = null)
+        {
+            if (ApplyInDocument is not null) return ApplyInDocument(doc, o, ctx);
+            if (Input is not null)
+            {
+                if (input is null) throw new ArgumentException($"Action '{Id}' needs an input value.");
+                return Edits.Replace(doc, Input.Apply(o, input));
+            }
+            return Edits.Replace(doc, Apply(o));
+        }
+    }
+
+    /// <summary>Text input of a <see cref="ContextAction"/>: prompt label, current value and the apply function.</summary>
+    public sealed record ActionInput(I18nText Label, string Value, Func<SketchObject, string, SketchObject> Apply)
+    {
+        /// <summary>Optional unit shown next to the field (e.g. "mm").</summary>
+        public string? Unit { get; init; }
+    }
+
+    /// <summary>Host-independent execution of context actions (engine, COM add-in and LibreOffice share it).</summary>
+    public static class ContextActions
+    {
+        /// <summary>
+        /// Applies the type action <paramref name="actionId"/> to every listed object that offers it (enabled). Each object
+        /// gets its own action instance (labels and steps may depend on the object), evaluated against the document as
+        /// changed by the objects before it.
+        /// </summary>
+        public static SketchDocument Run(Registry registry, SketchDocument doc, IEnumerable<string> ids, string actionId, string? input, Lang lang)
+        {
+            foreach (var id in ids.ToList())
+            {
+                var o = doc.Get(id);
+                var type = o is null ? null : registry.Type(o.Type);
+                if (o is null || type is null) continue;
+                var ctx = new RenderContext(doc, lang);
+                var a = type.Actions(o, ctx).FirstOrDefault(x => x.Id == actionId);
+                if (a is null || !a.IsEnabled) continue;
+                doc = a.Run(doc, o, ctx, input);
+            }
+            return doc;
+        }
     }
 
     public sealed class RenderContext
@@ -227,6 +303,71 @@ namespace InventaSketch.Core
         public virtual IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx) => Array.Empty<Anchor>();
 
         public virtual IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Array.Empty<ContextAction>();
+
+        /// <summary>
+        /// Document-aware action list (hosts call this one). Defaults to <see cref="Actions(SketchObject, Lang)"/>; types
+        /// override it when labels, enabled states or document-aware actions depend on other objects or document settings.
+        /// </summary>
+        public virtual IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx) => Actions(o, ctx.Lang);
+
+        /// <summary>
+        /// True if the rendering reads other objects of the document (wall joints, openings cutting walls). Hosts that keep
+        /// objects in separate units (PowerPoint COM) render such objects with the neighbouring units as context. Types that
+        /// return <see cref="Dependents"/> must set this flag as well.
+        /// </summary>
+        public virtual bool DependsOnNeighbours => false;
+
+        /// <summary>
+        /// Ids of other objects whose rendering depends on <paramref name="o"/> and must be redrawn when it is added, changed
+        /// or removed (for example the walls joined to a wall and the doors sitting in it). Evaluated by the engine before and
+        /// after every edit; the default is none.
+        /// </summary>
+        public virtual IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => Array.Empty<string>();
+
+        /// <summary>True if the rendering uses the document plan scale (<see cref="DocumentSettings.PlanScale"/>).</summary>
+        public virtual bool UsesPlanScale => false;
+
+        /// <summary>
+        /// Size of <paramref name="o"/> after switching to <paramref name="toView"/>. Default: when either view declares a
+        /// preferred <see cref="ViewDef.Size"/>, the object keeps its visual scale (geometric mean of its scale factors
+        /// relative to the preferred size of the current view) and takes the aspect of the target view; otherwise the size
+        /// is kept.
+        /// </summary>
+        public virtual Size2 SizeForView(SketchObject o, string toView, RenderContext ctx)
+        {
+            var fromDef = Views.FirstOrDefault(v => v.Id == ViewOf(o));
+            var toDef = Views.FirstOrDefault(v => v.Id == toView);
+            if (fromDef?.Size is null && toDef?.Size is null) return o.Size;
+            var a = fromDef?.Size ?? DefaultSize;
+            var b = toDef?.Size ?? DefaultSize;
+            if (a.W < Geo.Eps || a.H < Geo.Eps || o.Size.W < Geo.Eps || o.Size.H < Geo.Eps) return o.Size;
+            var k = Math.Sqrt(o.Size.W / a.W * (o.Size.H / a.H));
+            return new Size2(b.W * k, b.H * k);
+        }
+
+        /// <summary>The object switched to <paramref name="view"/> (unknown or current view: unchanged), size adapted for box objects.</summary>
+        public SketchObject WithView(SketchObject o, string? view, RenderContext ctx)
+        {
+            if (view is null || Views.All(v => v.Id != view) || ViewOf(o) == view) return o;
+            return o.IsPointGeometry ? o with { View = view } : o with { View = view, Size = SizeForView(o, view, ctx) };
+        }
+
+        /// <summary>
+        /// Other objects on the page of <paramref name="o"/> whose rough page bounds (box corners or raw points) come closer
+        /// than <paramref name="margin"/> to the rough bounds of <paramref name="o"/>. Cheap neighbourhood query for
+        /// <see cref="Dependents"/>.
+        /// </summary>
+        public static IEnumerable<SketchObject> ObjectsNear(SketchDocument doc, SketchObject o, double margin)
+        {
+            var page = doc.PageOf(o.Id);
+            if (page is null) yield break;
+            var area = RoughBounds(doc, o).Inflate(margin);
+            foreach (var other in doc.ObjectsOn(page))
+                if (other.Id != o.Id && area.Intersects(RoughBounds(doc, other))) yield return other;
+        }
+
+        private static Rect RoughBounds(SketchDocument doc, SketchObject o)
+            => o.IsPointGeometry ? Rect.FromPoints(doc.ResolvePoints(o)) : o.Bounds();
 
         public string ViewOf(SketchObject o) => o.View ?? DefaultView ?? "";
 

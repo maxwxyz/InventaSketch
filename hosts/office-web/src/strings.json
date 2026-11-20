@@ -36,6 +36,8 @@
   "insp.advanced": { "en": "Engineering details", "de": "Technische Details" },
   "insp.optional": { "en": "optional", "de": "optional" },
   "insp.style": { "en": "Style", "de": "Stil" },
+  "insp.planScale": { "en": "Plan scale (document) 1:", "de": "Planmaßstab (Dokument) 1:" },
+  "insp.planScaleHint": { "en": "Applies to all objects without their own scale; empty = 1:100", "de": "Gilt für alle Objekte ohne eigenen Maßstab; leer = 1:100" },
 
   "style.stroke": { "en": "Line colour", "de": "Linienfarbe" },
   "style.width": { "en": "Line width (mm)", "de": "Linienbreite (mm)" },
@@ -68,6 +70,8 @@
 
   "pie.title": { "en": "Actions", "de": "Aktionen" },
   "pie.unavailable": { "en": "not available", "de": "nicht verfügbar" },
+  "prompt.ok": { "en": "Apply", "de": "Übernehmen" },
+  "prompt.cancel": { "en": "Cancel", "de": "Abbrechen" },
 
   "ctx.title": { "en": "Object actions", "de": "Objektaktionen" },
   "ctx.view": { "en": "View", "de": "Ansicht" },

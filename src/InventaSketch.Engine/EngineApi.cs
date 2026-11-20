@@ -51,6 +51,7 @@ namespace InventaSketch.Engine
                 ["setStyle"] = SetStyleCore,
                 ["setText"] = SetTextCore,
                 ["setPoint"] = SetPointCore,
+                ["setPlanScale"] = SetPlanScaleCore,
                 ["applyAction"] = ApplyActionCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
                 ["redo"] = r => { var s = S(r); s.Redo(); return StateOf(s, r); },
@@ -125,6 +126,7 @@ namespace InventaSketch.Engine
         public string SetStyle(string json) => Invoke("setStyle", json);
         public string SetText(string json) => Invoke("setText", json);
         public string ApplyAction(string json) => Invoke("applyAction", json);
+        public string SetPlanScale(string json) => Invoke("setPlanScale", json);
         public string Undo(string json) => Invoke("undo", json);
         public string Redo(string json) => Invoke("redo", json);
         public string HitTest(string json) => Invoke("hitTest", json);
@@ -172,6 +174,9 @@ namespace InventaSketch.Engine
                 CanUndo = s.History.CanUndo,
                 CanRedo = s.History.CanRedo,
                 UndoLabel = s.History.UndoLabel,
+                PlanScale = doc.Settings.PlanScale,
+                Changed = s.LastChanged.ToList(),
+                Dependents = s.LastDependents.ToList(),
             };
             foreach (var o in doc.ObjectsOn(s.Page))
             {
@@ -378,12 +383,23 @@ namespace InventaSketch.Engine
             return Edit(r, "Order", (s, ids) => Edits.Reorder(s.Doc, s.PageId, ids, step));
         }
 
+        /// <summary>Switches the view; box objects adapt their size to the new view (<see cref="ObjectType.SizeForView"/>).</summary>
         private object SetViewCore(EngineRequest r)
-            => Edit(r, "View", (s, ids) => Edits.Update(s.Doc, ids, o =>
+            => Edit(r, "View", (s, ids) =>
             {
-                var type = Registry.Type(o.Type);
-                return type is not null && type.Views.Any(v => v.Id == r.View) ? o with { View = r.View } : o;
-            }));
+                var ctx = s.Context();
+                return Edits.Update(s.Doc, ids, o => Registry.Type(o.Type)?.WithView(o, r.View, ctx) ?? o);
+            });
+
+        /// <summary>Sets (value &gt; 0) or clears (null, absent or &lt;= 0) the document plan scale; one undo step.</summary>
+        private object SetPlanScaleCore(EngineRequest r)
+        {
+            var s = S(r);
+            double? scale = r.Value is { ValueKind: JsonValueKind.Number } v && v.GetDouble() > 0 ? v.GetDouble() : null;
+            if (s.Doc.Settings.PlanScale != scale)
+                s.Apply("Plan scale", d => d with { Settings = d.Settings with { PlanScale = scale } });
+            return StateOf(s, r);
+        }
 
         private static ParamValue? ToParam(JsonElement? v) => v?.ValueKind switch
         {
@@ -668,6 +684,7 @@ namespace InventaSketch.Engine
 
         public List<ActionInfo> ActionsFor(EditorSession s, IReadOnlyList<string> ids, Lang lang)
         {
+            var ctx = new RenderContext(s.Doc, lang);
             var objs = ids.Select(s.Doc.Get).Where(o => o is not null).Cast<SketchObject>().ToList();
             var any = objs.Count > 0;
             var groups = new HashSet<string?>(objs.Select(o => o.GroupId));
@@ -693,8 +710,12 @@ namespace InventaSketch.Engine
                 var current = type.ViewOf(objs[0]);
                 foreach (var v in type.Views)
                     list.Add(new ActionInfo { Id = "view:" + v.Id, Label = v.Label.Get(lang), Icon = IconIds.ForView(v), Group = "view", Kind = "view", Active = v.Id == current });
-                foreach (var a in type.Actions(objs[0], lang))
-                    list.Add(new ActionInfo { Id = "t:" + a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "type", Kind = "type", Active = a.IsActive });
+                foreach (var a in type.Actions(objs[0], ctx))
+                    list.Add(new ActionInfo
+                    {
+                        Id = "t:" + a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "type", Kind = "type", Active = a.IsActive, Enabled = a.IsEnabled,
+                        Input = a.Input is null ? null : new ActionInputInfo { Label = a.Input.Label.Get(lang), Value = a.Input.Value, Unit = a.Input.Unit },
+                    });
             }
             return list;
         }
@@ -727,12 +748,7 @@ namespace InventaSketch.Engine
             if (action.StartsWith("t:", StringComparison.Ordinal))
             {
                 var id = action.Substring(2);
-                s.Apply("Action", d => Edits.Update(d, ids, o =>
-                {
-                    var type = Registry.Type(o.Type);
-                    var a = type?.Actions(o, s.Lang).FirstOrDefault(x => x.Id == id);
-                    return a is null ? o : a.Apply(o);
-                }));
+                s.Apply("Action", d => InventaSketch.Core.ContextActions.Run(Registry, d, ids, id, r.Input, s.Lang));
                 return StateOf(s, r);
             }
             throw new ArgumentException($"Unknown action '{action}'.");
@@ -786,6 +802,8 @@ namespace InventaSketch.Engine
             info.HasText = type.HasText;
             info.Text = first.Text;
             info.Ref = first.Ref;
+            info.UsesPlanScale = type.UsesPlanScale;
+            info.PlanScale = s.Doc.Settings.PlanScale;
             foreach (var p in type.Parameters)
             {
                 info.Params.Add(new ParamInfo
@@ -860,10 +878,76 @@ namespace InventaSketch.Engine
                 foreach (var o in existing) d = Edits.Replace(d, o);
                 if (fresh.Length > 0) d = Edits.Add(d, s.PageId, fresh);
                 foreach (var kv in src.References) if (!d.References.ContainsKey(kv.Key)) d = Edits.SetReference(d, kv.Key, kv.Value.Label);
+                // A plan scale stored with the slide model is adopted when the editor document has none.
+                if (d.Settings.PlanScale is null && src.Settings.PlanScale is double ps) d = d with { Settings = d.Settings with { PlanScale = ps } };
                 return d;
             });
             if (r.Add != false) s.Select(objs.Select(o => o.Id));
             return StateOf(s, r);
+        }
+    }
+
+    /// <summary>
+    /// What a document change touched: the added/modified objects and the existing objects whose rendering depends on the
+    /// touched ones (<see cref="ObjectType.Dependents"/>, evaluated in the document before and after the change). Hosts use
+    /// it to redraw exactly the affected units in one undo step.
+    /// </summary>
+    public static class ChangeSet
+    {
+        public sealed class Result
+        {
+            public List<string> Changed { get; } = new();
+            public List<string> Removed { get; } = new();
+            public List<string> Dependents { get; } = new();
+        }
+
+        public static Result Compute(Registry registry, SketchDocument before, SketchDocument after, Lang lang)
+        {
+            var res = new Result();
+            var changed = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var kv in after.Objects)
+                if (!before.Objects.TryGetValue(kv.Key, out var old) || !ReferenceEquals(old, kv.Value)) changed.Add(kv.Key);
+            // A new plan scale changes the rendering of every object that uses it.
+            if (before.Settings.PlanScale != after.Settings.PlanScale)
+                foreach (var o in after.Objects.Values)
+                    if (registry.Type(o.Type)?.UsesPlanScale == true) changed.Add(o.Id);
+            res.Changed.AddRange(InPageOrder(after, changed));
+            foreach (var id in before.Objects.Keys) if (!after.Objects.ContainsKey(id)) res.Removed.Add(id);
+            res.Dependents.AddRange(DependentsOf(registry, before, after, res.Changed.Concat(res.Removed).ToList(), lang));
+            return res;
+        }
+
+        /// <summary>
+        /// Existing objects (in <paramref name="after"/>) that depend on any of <paramref name="touched"/> before or after the
+        /// change, excluding the touched objects themselves.
+        /// </summary>
+        public static List<string> DependentsOf(Registry registry, SketchDocument before, SketchDocument after, IReadOnlyCollection<string> touched, Lang lang)
+        {
+            var seen = new HashSet<string>(touched, StringComparer.Ordinal);
+            var found = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var doc in new[] { before, after })
+            {
+                var ctx = new RenderContext(doc, lang);
+                foreach (var id in touched)
+                {
+                    var o = doc.Get(id);
+                    var type = o is null ? null : registry.Type(o.Type);
+                    if (o is null || type is null) continue;
+                    foreach (var dep in type.Dependents(o, ctx))
+                        if (after.Objects.ContainsKey(dep) && !seen.Contains(dep)) found.Add(dep);
+                }
+            }
+            return InPageOrder(after, found).ToList();
+        }
+
+        private static IEnumerable<string> InPageOrder(SketchDocument doc, ICollection<string> ids)
+        {
+            var emitted = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var p in doc.Pages)
+                foreach (var id in p.Order)
+                    if (ids.Contains(id) && emitted.Add(id)) yield return id;
+            foreach (var id in ids.OrderBy(x => x, StringComparer.Ordinal))
+                if (emitted.Add(id)) yield return id;
         }
     }
 }

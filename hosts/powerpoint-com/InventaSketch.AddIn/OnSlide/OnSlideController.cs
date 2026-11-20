@@ -46,6 +46,8 @@ namespace InventaSketch.AddIn.OnSlide
 
         // Armed / drag
         private SketchUnit? _unit;
+        /// <summary>The armed unit's model plus the other units of the slide when its objects render from neighbours.</summary>
+        private SketchDocument? _unitContext;
         private IReadOnlyList<Primitive> _unitPrims = Array.Empty<Primitive>();
         private List<Anchor> _unitAnchors = new();
         private POINT _down;
@@ -196,6 +198,7 @@ namespace InventaSketch.AddIn.OnSlide
             _unitPrims = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
             _unitAnchors = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.PageAnchors(o, ctx)).ToList();
             _targets = CollectTargets(slide, unit.Id);
+            _unitContext = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
             _mode = Mode.Armed;
             _hooks.Install();
             _timer.Start();
@@ -210,6 +213,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (_mode is Mode.Place) return;
             _mode = Mode.Idle;
             _unit = null;
+            _unitContext = null;
             _pie = null;
             HideBar();
             _hooks.Uninstall();
@@ -856,11 +860,38 @@ namespace InventaSketch.AddIn.OnSlide
             return items;
         }
 
+        /// <summary>Type actions of the armed unit's first object, evaluated with the neighbouring units as document context.</summary>
+        private List<ContextAction> UnitActions(out SketchObject? first)
+        {
+            var registry = _registry();
+            first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+            if (first is null || _unit is null) return new List<ContextAction>();
+            var ctx = new RenderContext(_unitContext ?? _unit.Doc, _lang());
+            return registry.Type(first.Type)!.Actions(first, ctx).Where(a => a.Group != "view").ToList();
+        }
+
+        /// <summary>Pie entry of a type action: input actions open a prompt ("…"), unavailable ones are greyed.</summary>
+        private PieItem ActionItem(ContextAction a)
+        {
+            var label = a.Label.Get(_lang());
+            if (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal)) label += " …";
+            return new PieItem("act:" + a.Id, label, Enabled: a.IsEnabled, Active: a.IsActive);
+        }
+
         private void OpenPie(POINT pt, SlideView view, string? submenu = null)
         {
             if (_unit is null) return;
             var registry = _registry();
             var pointObject = PointObject();
+            if (submenu == "actions")
+            {
+                var sub = new List<PieItem> { new("menu:back", T("← Back", "← Zurück")) };
+                sub.AddRange(UnitActions(out _).Take(11).Select(ActionItem));
+                _pie = new PieMenu(new PointF(pt.X, pt.Y), sub, (float)view.DeviceScale);
+                _mode = Mode.Pie;
+                DrawPie(view);
+                return;
+            }
             if (submenu is not null && pointObject is not null)
             {
                 _pie = new PieMenu(new PointF(pt.X, pt.Y), SubMenu(submenu, pointObject), (float)view.DeviceScale);
@@ -874,14 +905,15 @@ namespace InventaSketch.AddIn.OnSlide
                 items.Add(new PieItem("menu:type", T("Type \u25B8", "Typ \u25B8")) { IconId = IconIds.Cycle });
                 items.Add(new PieItem("menu:label", T("Label \u25B8", "Beschriftung \u25B8")) { IconId = IconIds.Text });
             }
-            var first = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+            var actions = UnitActions(out var first);
             var type = first is null ? null : registry.Type(first.Type);
             if (type is not null && first is not null)
             {
                 foreach (var v in type.Views.Take(5))
                     items.Add(new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
-                foreach (var a in type.Actions(first, _lang()).Where(a => a.Group != "view").Take(3))
-                    items.Add(new PieItem("act:" + a.Id, a.Label.Get(_lang()), Active: a.IsActive));
+                // Up to three type actions directly; more go into a sub-menu.
+                items.AddRange(actions.Take(actions.Count > 3 ? 2 : 3).Select(ActionItem));
+                if (actions.Count > 3) items.Add(new PieItem("menu:actions", T("More ▸", "Mehr ▸")) { IconId = IconIds.Cycle });
             }
             items.Add(new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate });
             items.Add(new PieItem("flipH", T("Mirror", "Spiegeln")) { IconId = IconIds.MirrorH });
@@ -949,6 +981,7 @@ namespace InventaSketch.AddIn.OnSlide
             doc = Edits.Add(doc, doc.Pages[0].Id, registry.Create(item, at));
             _app.StartNewUndoEntry();
             var shape = SketchUnits.Draw(slide, registry, doc, _lang());
+            SketchUnits.RedrawDependents(slide, registry, _lang(), Array.Empty<SketchDocument>(), new[] { doc });
             shape?.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Inserted {item.Id} at ({at.X:0.#}, {at.Y:0.#}) mm");
         }
@@ -992,7 +1025,9 @@ namespace InventaSketch.AddIn.OnSlide
             var doc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
             doc = Edits.Add(doc, doc.Pages[0].Id, CreateBetween(registry, item, start, end));
             _app.StartNewUndoEntry();
-            SketchUnits.Draw(slide, registry, doc, _lang())?.Select(Office.MsoTriState.msoTrue);
+            var shape = SketchUnits.Draw(slide, registry, doc, _lang());
+            SketchUnits.RedrawDependents(slide, registry, _lang(), Array.Empty<SketchDocument>(), new[] { doc });
+            shape?.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Inserted {item.Id} from ({start.X:0.#}, {start.Y:0.#}) to ({end.X:0.#}, {end.Y:0.#}) mm");
         }
 
@@ -1066,7 +1101,20 @@ namespace InventaSketch.AddIn.OnSlide
             if (o is null) return;
             _app.StartNewUndoEntry();
             var doc = Edits.SetPoint(unit.Doc, o.Id, index, at);
-            SketchUnits.Replace(slide, unit, doc, _registry(), _lang())?.Select(Office.MsoTriState.msoTrue);
+            ReplaceWithDependents(slide, unit, doc);
+        }
+
+        /// <summary>
+        /// Re-renders the edited unit and then the units depending on it (wall joints, openings), selects the edited unit.
+        /// Runs inside the caller's undo entry.
+        /// </summary>
+        private PowerPoint.Shape? ReplaceWithDependents(PowerPoint.Slide slide, SketchUnit unit, SketchDocument doc, SketchDocument? before = null)
+        {
+            var registry = _registry();
+            var shape = SketchUnits.Replace(slide, unit, doc, registry, _lang());
+            SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before ?? unit.Doc }, new[] { doc });
+            shape?.Select(Office.MsoTriState.msoTrue);
+            return shape;
         }
 
         /// <summary>
@@ -1154,7 +1202,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (slide is null || unit is null) return;
             _app.StartNewUndoEntry();
             var doc = Edits.Rotate(unit.Doc, unit.Doc.Objects.Keys.ToList(), centre, degrees);
-            SketchUnits.Replace(slide, unit, doc, _registry(), _lang())?.Select(Office.MsoTriState.msoTrue);
+            ReplaceWithDependents(slide, unit, doc);
         }
 
         // ------------------------------------------------------------------ resize with snapping
@@ -1321,8 +1369,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (slide is null || unit is null) return;
             _app.StartNewUndoEntry();
             var doc = Edits.Scale(unit.Doc, unit.Doc.Objects.Keys.ToList(), pivot, sx, sy);
-            var shape = SketchUnits.Replace(slide, unit, doc, _registry(), _lang());
-            shape?.Select(Office.MsoTriState.msoTrue);
+            ReplaceWithDependents(slide, unit, doc);
         }
 
         private void ApplyMove(SketchUnit unit, Vec2 deltaMm)
@@ -1332,6 +1379,13 @@ namespace InventaSketch.AddIn.OnSlide
             unit.Shape.Top += (float)(deltaMm.Y * Geo.PtPerMm);
             unit.Shape.Select(Office.MsoTriState.msoTrue);
             var fresh = SketchUnits.Read(unit.Shape);
+            // Neighbour-dependent objects (walls) re-render at the new place (joints open or close) together with the
+            // units that depend on them; everything else just keeps the natively moved shapes.
+            if (fresh is not null && CurrentSlide() is PowerPoint.Slide slide && SketchUnits.NeedsContext(_registry(), fresh.Doc))
+            {
+                var shape = ReplaceWithDependents(slide, fresh, fresh.Doc, before: unit.Doc);
+                fresh = shape is null ? null : SketchUnits.Read(shape);
+            }
             if (fresh is not null) Arm(fresh);
         }
 
@@ -1349,28 +1403,30 @@ namespace InventaSketch.AddIn.OnSlide
             if (id == "delete")
             {
                 unit.Shape.Delete();
+                SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { doc }, Array.Empty<SketchDocument>());
                 Disarm();
                 return;
             }
             if (id == "dup")
             {
                 var copy = SketchUnits.WithNewIds(doc, new Vec2(5, 5));
-                SketchUnits.Draw(slide, registry, copy, _lang())?.Select(Office.MsoTriState.msoTrue);
+                var drawn = SketchUnits.Draw(slide, registry, copy, _lang());
+                SketchUnits.RedrawDependents(slide, registry, _lang(), Array.Empty<SketchDocument>(), new[] { copy });
+                drawn?.Select(Office.MsoTriState.msoTrue);
                 return;
             }
             if (id.StartsWith("view:", StringComparison.Ordinal))
             {
+                // View switch with size adaptation to the view's aspect (ObjectType.WithView).
                 var view = id.Substring(5);
-                doc = Edits.Update(doc, ids, o => registry.Type(o.Type)?.Views.Any(v => v.Id == view) == true ? o with { View = view } : o);
+                var ctx = new RenderContext(doc, _lang());
+                doc = Edits.Update(doc, ids, o => registry.Type(o.Type)?.WithView(o, view, ctx) ?? o);
             }
             else if (id.StartsWith("act:", StringComparison.Ordinal))
             {
-                var actionId = id.Substring(4);
-                doc = Edits.Update(doc, ids, o =>
-                {
-                    var action = registry.Type(o.Type)?.Actions(o, _lang()).FirstOrDefault(a => a.Id == actionId);
-                    return action is null ? o : action.Apply(o);
-                });
+                var ran = RunTypeAction(slide, unit, id.Substring(4));
+                if (ran is null) return;
+                doc = ran;
             }
             else if (id.StartsWith("conv:", StringComparison.Ordinal))
             {
@@ -1412,8 +1468,40 @@ namespace InventaSketch.AddIn.OnSlide
             else if (id == "flipV") doc = Edits.Flip(doc, ids, centre, horizontal: false);
             else if (id == "rot90") doc = Edits.Rotate(doc, ids, centre, 90);
             else if (id == "rotm90") doc = Edits.Rotate(doc, ids, centre, -90);
-            var shape = SketchUnits.Replace(slide, unit, doc, registry, _lang());
-            shape?.Select(Office.MsoTriState.msoTrue);
+            ReplaceWithDependents(slide, unit, doc);
+        }
+
+        /// <summary>
+        /// Runs a type context action on the unit's objects with the shared engine runner: input actions ask for their value
+        /// first (cancel = no change), document-aware actions see the neighbouring units. Only the unit's own objects take the
+        /// result. Returns null if nothing is to be applied.
+        /// </summary>
+        private SketchDocument? RunTypeAction(PowerPoint.Slide slide, SketchUnit unit, string actionId)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var own = unit.Doc;
+            var full = SketchUnits.NeedsContext(registry, own) ? SketchUnits.WithContext(own, SketchUnits.All(slide, unit.Id)) : own;
+            var first = own.ObjectsOn(own.Pages[0]).FirstOrDefault(o => registry.Type(o.Type) is not null);
+            var action = first is null ? null : registry.Type(first.Type)!.Actions(first, new RenderContext(full, lang)).FirstOrDefault(a => a.Id == actionId);
+            if (action is null || !action.IsEnabled) return null;
+            var owner = _view?.MainWindow ?? IntPtr.Zero;
+            string? input = null;
+            if (action.Input is not null)
+            {
+                input = TextPrompt.AskInput(action.Input.Label.Get(lang), action.Input.Unit, action.Input.Value, owner);
+                if (input is null) return null;
+            }
+            try
+            {
+                var ran = ContextActions.Run(registry, full, own.Objects.Keys.ToList(), actionId, input, lang);
+                return Edits.Update(own, own.Objects.Keys.ToList(), o => ran.Get(o.Id) ?? o);
+            }
+            catch (FormatException ex)
+            {
+                TextPrompt.Warn(ex.Message, owner);
+                return null;
+            }
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]

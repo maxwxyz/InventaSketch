@@ -23,9 +23,9 @@ namespace InventaSketch.Modules.Architecture
         public Vec2 B(int k) => Pts[(k + 1) % Pts.Count];
 
         /// <summary>Builds the wall line of a wall object (null if it has fewer than two distinct points).</summary>
-        public static WallLine? Of(SketchObject o, SketchDocument doc) => Of(o, doc.ResolvePoints(o));
+        public static WallLine? Of(SketchObject o, SketchDocument doc) => Of(o, doc.ResolvePoints(o), doc);
 
-        public static WallLine? Of(SketchObject o, IReadOnlyList<Vec2> raw)
+        public static WallLine? Of(SketchObject o, IReadOnlyList<Vec2> raw, SketchDocument? doc)
         {
             var pts = new List<Vec2>(raw.Count);
             foreach (var p in raw) if (pts.Count == 0 || pts[pts.Count - 1].DistanceTo(p) > 1e-6) pts.Add(p);
@@ -35,7 +35,7 @@ namespace InventaSketch.Modules.Architecture
             if (closed && pts.Count >= 2 && pts[0].DistanceTo(pts[pts.Count - 1]) < 1e-6) pts.RemoveAt(pts.Count - 1);
             if (pts.Count < 2) return null;
             if (closed && pts.Count < 3) closed = false;
-            return new WallLine(o.Id, pts, WallType.ThicknessOnPage(o) / 2, closed);
+            return new WallLine(o.Id, pts, WallType.ThicknessOnPage(o, doc) / 2, closed);
         }
 
         /// <summary>The other walls on the page of <paramref name="o"/> (empty if the object is not placed on a page).</summary>
@@ -324,7 +324,7 @@ namespace InventaSketch.Modules.Architecture
         };
 
         /// <summary>Wall thickness in page millimetres (real thickness divided by the plan scale).</summary>
-        public static double ThicknessOnPage(SketchObject o) => Math.Max(0.05, o.Num("thickness", 240)) / Arch.ScaleOf(o);
+        public static double ThicknessOnPage(SketchObject o, SketchDocument? doc) => Math.Max(0.05, o.Num("thickness", 240)) / Arch.ScaleOf(o, doc);
 
         /// <summary>Hatch or fill of the wall core per kind.</summary>
         public static Style CoreStyle(string kind) => kind switch
@@ -338,9 +338,9 @@ namespace InventaSketch.Modules.Architecture
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {
-            var w = WallLine.Of(o, p);
+            var w = WallLine.Of(o, p, ctx.Doc);
             if (w is null) return Array.Empty<Primitive>();
-            return ViewOf(o) == BoxType.ElevationView.Id ? Elevation(o, w) : Plan(o, w, WallLine.Neighbours(o, ctx.Doc));
+            return ViewOf(o) == BoxType.ElevationView.Id ? Elevation(o, w, ctx.Doc) : Plan(o, w, WallLine.Neighbours(o, ctx.Doc));
         }
 
         private static IReadOnlyList<Primitive> Plan(SketchObject o, WallLine w, List<WallLine> others)
@@ -370,9 +370,9 @@ namespace InventaSketch.Modules.Architecture
         }
 
         /// <summary>Simple front elevation (viewed from below on the page): outline over the plan extent and corner edges.</summary>
-        private static IReadOnlyList<Primitive> Elevation(SketchObject o, WallLine w)
+        private static IReadOnlyList<Primitive> Elevation(SketchObject o, WallLine w, SketchDocument doc)
         {
-            var h = Math.Max(0.1, o.Num("height", 2750) / Arch.ScaleOf(o));
+            var h = Math.Max(0.1, o.Num("height", 2750) / Arch.ScaleOf(o, doc));
             var x0 = w.Pts.Min(q => q.X); var x1 = w.Pts.Max(q => q.X);
             var y = w.Pts.Max(q => q.Y);
             if (x1 - x0 < 1e-6) x1 = x0 + 2 * w.Half;
@@ -384,6 +384,44 @@ namespace InventaSketch.Modules.Architecture
             foreach (var x in w.Pts.Select(q => q.X).Where(x => x > x0 + 1e-6 && x < x1 - 1e-6).Distinct())
                 list.Add(Prim.Line(new Vec2(x, y), new Vec2(x, y - h), St.Fine) with { Tag = "edge" });
             return list;
+        }
+
+        /// <summary>Walls render their joints and face breaks from the neighbouring walls.</summary>
+        public override bool DependsOnNeighbours => true;
+
+        /// <summary>
+        /// Walls whose end touches this wall or which this wall's end touches (L and T joints, face breaks), and doors and
+        /// windows whose centre sits on this wall (their band thickness comes from it).
+        /// </summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+        {
+            var doc = ctx.Doc;
+            var w = WallLine.Of(o, doc);
+            if (w is null) yield break;
+            foreach (var other in ObjectsNear(doc, o, w.Half + WallBuilder.JoinTolerance))
+            {
+                if (other.Type == TypeId && other.Points is not null)
+                {
+                    var ow = WallLine.Of(other, doc);
+                    if (ow is not null && (EndTouches(w, ow) || EndTouches(ow, w))) yield return other.Id;
+                }
+                else if (!other.IsPointGeometry && Openings.IsOpening(other.Type))
+                {
+                    var c = new Vec2(other.Transform.X, other.Transform.Y);
+                    for (var k = 0; k < w.SegCount; k++)
+                        if (Arch.DistanceToSegment(c, w.A(k), w.B(k)) <= Math.Max(w.Half, WallBuilder.JoinTolerance)) { yield return other.Id; break; }
+                }
+            }
+        }
+
+        /// <summary>True if a free end of <paramref name="a"/> lies on a segment of <paramref name="b"/> (joint or butt).</summary>
+        private static bool EndTouches(WallLine a, WallLine b)
+        {
+            if (a.Closed) return false;
+            foreach (var e in new[] { a.Pts[0], a.Pts[a.Pts.Count - 1] })
+                for (var k = 0; k < b.SegCount; k++)
+                    if (Arch.DistanceToSegment(e, b.A(k), b.B(k)) <= WallBuilder.JoinTolerance) return true;
+            return false;
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
@@ -410,6 +448,9 @@ namespace InventaSketch.Modules.Architecture
             string Mm(double v) => v.ToString("0", CultureInfo.InvariantCulture) + " mm";
             yield return new ContextAction("arch.thickness.inc", new I18nText("Thicker wall (" + Mm(up) + ")", "Dickere Wand (" + Mm(up) + ")"), IconIds.Increase, x => x.WithParam("thickness", up)) { Group = "thickness" };
             yield return new ContextAction("arch.thickness.dec", new I18nText("Thinner wall (" + Mm(down) + ")", "Dünnere Wand (" + Mm(down) + ")"), IconIds.Decrease, x => x.WithParam("thickness", down)) { Group = "thickness" };
+            yield return ContextAction.WithInput("arch.thickness.set", new I18nText("Thickness…", "Dicke…"), IconIds.Text,
+                new I18nText("Wall thickness (mm)", "Wanddicke (mm)"), t.ToString("0.#", CultureInfo.InvariantCulture),
+                (x, text) => x.WithParam("thickness", Math.Min(2000, Math.Max(10, Arch.ParseMm(text, lang)))), "mm") with { Group = "thickness" };
             yield return Arch.Cycle(o, "arch.kind", "kind", "exterior", Kinds);
             yield return Arch.Toggle(o, "arch.closed", new I18nText("Closed loop", "Geschlossen"), IconIds.Toggle, "closed", false);
         }
@@ -477,7 +518,7 @@ namespace InventaSketch.Modules.Architecture
             var name = NameOf(o, ctx.Lang);
             var size = Arch.FitText(name, o.Num("textSize", 3.5), b.W * 0.9, b.H * 0.35);
             var showArea = o.Flag("showArea", true);
-            var area = Arch.Format(AreaM2(p, Arch.ScaleOf(o)), 2, ctx.Lang) + " m²";
+            var area = Arch.Format(AreaM2(p, Arch.ScaleOf(o, ctx.Doc)), 2, ctx.Lang) + " m²";
             var areaSize = Arch.FitText(area, size * 0.8, b.W * 0.9, b.H * 0.3);
             var dy = showArea ? (size + areaSize) * 0.6 / 2 : 0;
             list.Add(Arch.Text(new Vec2(c.X, c.Y - dy), name, size, ArchTags.RoomName, bold: true));
@@ -493,6 +534,8 @@ namespace InventaSketch.Modules.Architecture
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
+            yield return ContextAction.WithInput("arch.room.name", new I18nText("Name…", "Name…"), IconIds.Text,
+                new I18nText("Room name", "Raumname"), NameOf(o, lang), (x, text) => x with { Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim() });
             yield return Arch.Toggle(o, "arch.room.area", new I18nText("Show area", "Fläche anzeigen"), IconIds.Text, "showArea", true);
             yield return Arch.Toggle(o, "arch.room.fill", new I18nText("Tinted floor", "Boden getönt"), IconIds.Toggle, "fill", false);
         }
@@ -513,7 +556,7 @@ namespace InventaSketch.Modules.Architecture
             var a = p[0]; var b = p[p.Count - 1];
             var d = (b - a).Normalized();
             if (d == Vec2.Zero) return Array.Empty<Primitive>();
-            var n = d.Perp * (Math.Max(0.05, o.Num("width", 240)) / Arch.ScaleOf(o) / 2);
+            var n = d.Perp * (Math.Max(0.05, o.Num("width", 240)) / Arch.ScaleOf(o, ctx.Doc) / 2);
             return new Primitive[]
             {
                 Prim.Polygon(new[] { a + n, b + n, b - n, a - n }, St.Hidden) with { Tag = ArchTags.Outline },
