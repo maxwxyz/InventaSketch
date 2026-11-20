@@ -191,6 +191,13 @@ namespace InventaSketch.Modules.Electrical
                     var y = x.WithParam("showLabel", true);
                     return y.Str("ref", "").Trim().Length == 0 ? y.WithParam("ref", prefix + "1") : y;
                 }) { IsActive = Common.LabelVisible(o), Group = "label" };
+                // Designator and value typed directly (pie menu / bar), showing the label when set.
+                yield return ContextAction.WithInput("elec.ref.set", new I18nText("Designator …", "Kennzeichen …"), IconIds.Text,
+                    new I18nText("Designator", "Kennzeichen"), o.Str("ref", ""),
+                    (x, t) => x.WithParam("ref", t.Trim()).WithParam("showLabel", true)) with { Group = "label" };
+                yield return ContextAction.WithInput("elec.value.set", new I18nText("Value …", "Wert …"), IconIds.Text,
+                    new I18nText("Value", "Wert"), o.Str("value", ""),
+                    (x, t) => x.WithParam("value", t.Trim()).WithParam("showLabel", true)) with { Group = "label" };
             }
         }
 

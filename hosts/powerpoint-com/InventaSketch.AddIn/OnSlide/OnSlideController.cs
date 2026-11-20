@@ -941,14 +941,14 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>
         /// The main text of an object for quick editing (double-click, bar, pie): the object text of text types, else the
-        /// first text parameter among numeral, text, label, name and title. Null if the type has no such text.
+        /// first text parameter among numeral, text, label, name, title and ref (electrical designator). Null if the type has no such text.
         /// </summary>
         internal (string Label, string Current, Func<SketchObject, string, SketchObject> Apply)? EditableText(Registry registry, SketchObject o)
         {
             var type = registry.Type(o.Type);
             if (type is null) return null;
             if (type.HasText) return (T("Text", "Text"), o.Text ?? "", (x, t) => x with { Text = t });
-            foreach (var key in new[] { "numeral", "text", "label", "name", "title" })
+            foreach (var key in new[] { "numeral", "text", "label", "name", "title", "ref" })
             {
                 var pd = type.Parameters.FirstOrDefault(p => p.Key == key && p.Kind == ParamKind.Text);
                 if (pd is null) continue;
