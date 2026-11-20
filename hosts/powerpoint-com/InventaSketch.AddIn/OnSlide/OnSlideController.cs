@@ -56,6 +56,13 @@ namespace InventaSketch.AddIn.OnSlide
         // Pie menu
         private PieMenu? _pie;
 
+        // Floating context bar
+        private readonly OverlayWindow _barWindow;
+        private FloatingBar? _bar;
+        private readonly BarFade _fade = new();
+        private bool _barPressed;
+        private byte _barAlpha;
+
         public OnSlideController(PowerPoint.Application app, Func<Registry> registry, Func<Lang> lang)
         {
             _app = app; _registry = registry; _lang = lang;
@@ -64,6 +71,9 @@ namespace InventaSketch.AddIn.OnSlide
                 _overlay = new OverlayWindow();
                 _overlay.CreateControl();
                 var _ = _overlay.Handle;
+                _barWindow = new OverlayWindow();
+                _barWindow.CreateControl();
+                _ = _barWindow.Handle;
             }
             _hooks.Mouse = OnMouse;
             _hooks.KeyDown = OnKey;
@@ -79,6 +89,7 @@ namespace InventaSketch.AddIn.OnSlide
             _timer.Dispose();
             _hooks.Dispose();
             _overlay.Dispose();
+            _barWindow.Dispose();
         }
 
         private bool German => _lang() == Lang.De;
@@ -151,6 +162,7 @@ namespace InventaSketch.AddIn.OnSlide
             _hooks.Install();
             _timer.Start();
             _overlay.Clear();
+            ShowBar(view);
             Log.Info($"Armed {unit.Shape.Name}: {_unitAnchors.Count} anchors, {_targets.Count} targets, pane {view.PaneRect}, {view.PixelsPerPoint:0.###} px/pt, hooks {_hooks.Installed}");
         }
 
@@ -160,6 +172,7 @@ namespace InventaSketch.AddIn.OnSlide
             _mode = Mode.Idle;
             _unit = null;
             _pie = null;
+            HideBar();
             _hooks.Uninstall();
             _timer.Stop();
             _overlay.Clear();
@@ -174,7 +187,13 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie) { _mode = Mode.Armed; return; }
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie)
+            {
+                _mode = Mode.Armed;
+                if (_view is not null) ShowBar(_view);
+                return;
+            }
+            HideBar();
             _mode = Mode.Idle;
             _hooks.Uninstall();
             _timer.Stop();
@@ -238,10 +257,12 @@ namespace InventaSketch.AddIn.OnSlide
                     return false;
 
                 case Mode.Armed:
+                    if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
                     if (message == WM_LBUTTONDOWN && Inside(pt, view, inset: 6))
                     {
                         Log.Info("Drag start at " + pt.X + "," + pt.Y);
+                        HideBar();
                         _mode = Mode.Drag;
                         _down = pt;
                         _delta = Vec2.Zero;
@@ -320,6 +341,12 @@ namespace InventaSketch.AddIn.OnSlide
 
         private bool OnKey(int vk, bool shift, bool ctrl, bool alt)
         {
+            // Typing (text, shortcuts) hides the bar until the next selection, as in Slidemax.
+            if (_mode == Mode.Armed && vk is not (VK_SHIFT or VK_CONTROL or VK_MENU) && _bar is not null)
+            {
+                _fade.Dismiss();
+                HideBar();
+            }
             if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie)
             {
                 Cancel("escape");
@@ -437,6 +464,110 @@ namespace InventaSketch.AddIn.OnSlide
             _overlay.Present(bmp, view.PaneRect, view.MainWindow);
         }
 
+        // ------------------------------------------------------------------ floating bar
+
+        private List<BarButton> BarButtons()
+        {
+            var registry = _registry();
+            var list = new List<BarButton>();
+            var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+            var type = first is null ? null : registry.Type(first.Type);
+            if (type is not null && first is not null && type.Views.Count > 1)
+            {
+                foreach (var v in type.Views.Take(5))
+                    list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id));
+                list.Add(new BarButton("", "", "", Separator: true));
+            }
+            list.Add(new BarButton("flipH", "\u21C6", T("Mirror horizontally", "Horizontal spiegeln")));
+            list.Add(new BarButton("flipV", "\u21C5", T("Mirror vertically", "Vertikal spiegeln")));
+            list.Add(new BarButton("rot90", "\u21BB", T("Rotate 90 degrees", "Um 90 Grad drehen")));
+            list.Add(new BarButton("dup", "\u29C9", T("Duplicate", "Duplizieren")));
+            list.Add(new BarButton("", "", "", Separator: true));
+            list.Add(new BarButton("delete", "\u2715", T("Delete", "L\u00f6schen"), Danger: true));
+            return list;
+        }
+
+        private RectangleF UnitScreenRect(SlideView view)
+        {
+            var b = _unit!.BoundsPt;
+            var a = view.ToScreen(new Vec2(b.X / Geo.PtPerMm, b.Y / Geo.PtPerMm));
+            var c = view.ToScreen(new Vec2(b.Right / Geo.PtPerMm, b.Bottom / Geo.PtPerMm));
+            return RectangleF.FromLTRB(a.X, a.Y, c.X, c.Y);
+        }
+
+        /// <summary>Shows the bar next to the selection (a dismissed bar comes back only with the next selection).</summary>
+        private void ShowBar(SlideView view)
+        {
+            if (_unit is null) return;
+            if (_bar is null || _fade.Dismissed) _fade.Reset();
+            _bar = new FloatingBar(BarButtons(), (float)view.DeviceScale);
+            _bar.Place(UnitScreenRect(view), view.PaneRect);
+            GetCursorPos(out var p);
+            var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
+            Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
+            DrawBar(view, opacity);
+        }
+
+        private void HideBar()
+        {
+            _barPressed = false;
+            _barAlpha = 0;
+            _barWindow.Clear();
+        }
+
+        private void DrawBar(SlideView view, double opacity)
+        {
+            var bar = _bar;
+            if (bar is null || opacity <= 0) { HideBar(); return; }
+            _barAlpha = (byte)Math.Round(255 * Math.Max(0, Math.Min(1, opacity)));
+            using var bmp = bar.Render(dark: false);
+            _barWindow.Present(bmp, bar.Bounds, view.MainWindow, _barAlpha);
+        }
+
+        /// <summary>Bar input while armed. Returns true if the message concerns the bar; swallow tells whether to eat it.</summary>
+        private bool HandleBar(int message, POINT pt, SlideView view, out bool swallow)
+        {
+            swallow = false;
+            var bar = _bar;
+            if (bar is null || _fade.Dismissed) return false;
+            var p = new Point(pt.X, pt.Y);
+            var inside = bar.Contains(p);
+            if (message == WM_MOUSEMOVE)
+            {
+                var hover = inside ? bar.HitTest(p) : -1;
+                var opacity = _fade.Update(bar.Distance(p));
+                var alpha = (byte)Math.Round(255 * opacity);
+                if (hover != bar.Hover || Math.Abs(alpha - _barAlpha) >= 6 || opacity <= 0)
+                {
+                    bar.Hover = hover;
+                    DrawBar(view, opacity);
+                }
+                return inside;
+            }
+            if (!inside)
+            {
+                if (_barPressed && message == WM_LBUTTONUP) { _barPressed = false; swallow = true; return true; }
+                return false;
+            }
+            swallow = true;
+            if (message == WM_LBUTTONDOWN || message == WM_LBUTTONDBLCLK) { _barPressed = true; return true; }
+            if (message == WM_LBUTTONUP)
+            {
+                var idx = bar.HitTest(p);
+                var unit = _unit;
+                var pressed = _barPressed;
+                _barPressed = false;
+                if (pressed && idx >= 0 && unit is not null)
+                {
+                    var id = bar.Buttons[idx].Id;
+                    Log.Info("Bar: " + id);
+                    Post(() => ApplyAction(unit, id));
+                }
+                return true;
+            }
+            return true; // right button and other messages over the bar never reach the slide
+        }
+
         private void OpenPie(POINT pt, SlideView view)
         {
             if (_unit is null) return;
@@ -455,6 +586,7 @@ namespace InventaSketch.AddIn.OnSlide
             items.Add(new PieItem("flipH", T("Mirror ↔", "Spiegeln ↔")));
             items.Add(new PieItem("flipV", T("Mirror ↕", "Spiegeln ↕")));
             items.Add(new PieItem("rot90", T("Rotate 90°", "Drehen 90°")));
+            HideBar();
             _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale);
             _mode = Mode.Pie;
             DrawPie(view);

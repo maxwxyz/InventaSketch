@@ -35,6 +35,10 @@
   hub on shaft axis, points, alignment guides); click inserts, `Esc` cancels, `Alt` suspends snapping.
 - **Drag with snapping:** pressing inside a selected unit (PowerPoint keeps the handles on the border) moves it with
   the same snapping and red guides; one undo step on release.
+- **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle, below if there is no
+  room): its views, mirror horizontally/vertically, rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
+  otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
+  selection; typing hides it. Clicks on the bar never reach the slide.
 - **Pie menu:** right-click on a selected unit: delete (top), views, type actions, duplicate, mirror, rotate 90°. The unit
   is re-rendered from its model; native moves and resizes are folded into the model first (`SketchUnits.Read`).
 
@@ -60,6 +64,8 @@ Slice 2 (same environment, simulated mouse input with PowerPoint in the foregrou
 - Drag: gear released 3 pt off the shaft axis snapped exactly onto it (centre y = 270.0 pt).
 - Insert at pointer: gear placed 4 pt off the axis snapped onto it.
 - Pie menu: right-click + top entry deleted the unit.
+- Floating bar: appears above the selected gear (screen capture checked), the view button switched the gear to the stick
+  symbol, moving the pointer 900 px away dismissed the bar.
 
 ## Known limits / next steps
 
@@ -67,5 +73,5 @@ Slice 2 (same environment, simulated mouse input with PowerPoint in the foregrou
   this test; a normally started PowerPoint did. To be investigated for automated tests.
 - The ribbon shows 16 category menus; with more categories the remaining ones are not reachable yet (gallery planned).
 - Automation calls from other processes arrive on RPC threads; `BeginPlacement` marshals itself to the UI thread.
-- Next: floating context bar (fading with pointer distance), resize/rotate with snapping, dark-mode pie menu,
-  sidebar task pane with the shared editor.
+- Next: resize/rotate with snapping, dark mode for bar and pie menu (Office theme), style controls (line, fill,
+  arrowheads) on the bar, sidebar task pane with the shared editor.

@@ -33,7 +33,7 @@ namespace InventaSketch.AddIn.OnSlide
         protected override bool ShowWithoutActivation => true;
 
         /// <summary>Shows the bitmap (32bpp ARGB) at the given screen rectangle above the owner.</summary>
-        public void Present(Bitmap bitmap, Rectangle screen, IntPtr owner)
+        public void Present(Bitmap bitmap, Rectangle screen, IntPtr owner, byte alpha = 255)
         {
             if (!IsHandleCreated) CreateHandle();
             SetOwner(Handle, owner);
@@ -46,7 +46,7 @@ namespace InventaSketch.AddIn.OnSlide
                 var size = new SIZE { Cx = bitmap.Width, Cy = bitmap.Height };
                 var src = new POINT { X = 0, Y = 0 };
                 var dst = new POINT { X = screen.X, Y = screen.Y };
-                var blend = new BLENDFUNCTION { BlendOp = 0, BlendFlags = 0, SourceConstantAlpha = 255, AlphaFormat = 1 };
+                var blend = new BLENDFUNCTION { BlendOp = 0, BlendFlags = 0, SourceConstantAlpha = alpha, AlphaFormat = 1 };
                 UpdateLayeredWindow(Handle, screenDc, ref dst, ref size, memDc, ref src, 0, ref blend, ULW_ALPHA);
                 if (!Visible) Show();
                 SetWindowPos(Handle, HWND_TOP, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010 /* NOSIZE | NOMOVE | NOACTIVATE */);
