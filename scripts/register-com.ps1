@@ -61,6 +61,8 @@ function Register-ComClass([string]$path, [string]$clsid, [string]$progId, [stri
 $clsid = '{1D58D258-A932-4753-9EAA-309C5736FE34}'
 $progId = 'InventaSketch.AddIn.Connect'
 Register-ComClass $AddInPath $clsid $progId 'InventaSketch.AddIn.Connect'
+# Content of the sidebar editor (custom task pane), created by Office through its ProgId.
+Register-ComClass $AddInPath '{3E4B8064-5C25-452F-8F79-22581212A547}' 'InventaSketch.AddIn.TaskPane' 'InventaSketch.AddIn.Sidebar.TaskPaneControl'
 foreach ($office in $officeRoots) {
     Set-Key "$office\PowerPoint\Addins\$progId" @{
         'FriendlyName' = 'InventaSketch'

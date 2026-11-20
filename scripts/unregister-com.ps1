@@ -10,6 +10,9 @@ $clsid = '{1D58D258-A932-4753-9EAA-309C5736FE34}'
 $progId = 'InventaSketch.AddIn.Connect'
 $paths = @(
     "$hive\Software\Classes\$progId",
+    "$hive\Software\Classes\InventaSketch.AddIn.TaskPane",
+    "$hive\Software\Classes\CLSID\{3E4B8064-5C25-452F-8F79-22581212A547}",
+    "$hive\Software\Classes\WOW6432Node\CLSID\{3E4B8064-5C25-452F-8F79-22581212A547}",
     "$hive\Software\Classes\CLSID\$clsid",
     "$hive\Software\Classes\WOW6432Node\CLSID\$clsid",
     "$hive\Software\Microsoft\Office\PowerPoint\Addins\$progId",

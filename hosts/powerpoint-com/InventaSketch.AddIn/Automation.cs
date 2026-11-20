@@ -44,6 +44,34 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Shows or hides the sidebar editor; returns whether it is visible.</summary>
+        public bool Editor(bool visible)
+        {
+            try
+            {
+                return _connect.ShowEditor(visible);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.Editor", ex);
+                return false;
+            }
+        }
+
+        /// <summary>Runs a script in the sidebar editor (tests); false if the sidebar is not open.</summary>
+        public bool SidebarScript(string script)
+        {
+            try
+            {
+                return _connect.RunSidebarScript(script);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.SidebarScript", ex);
+                return false;
+            }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

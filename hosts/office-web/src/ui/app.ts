@@ -7,6 +7,7 @@ import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
 import { SlideSync } from "../office/sync";
+import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
 import { ContextBar } from "./contextbar";
@@ -26,6 +27,8 @@ export interface AppOptions {
   /** Slide size in mm (Office, PowerPointApi 1.10). */
   pageSize?: { w: number; h: number };
   loadMillis?: number;
+  /** Running inside the COM add-in's WebView2 task pane: slide work goes through the COM bridge. */
+  comBridge?: ComSyncBridge;
 }
 
 export class App {
@@ -41,7 +44,7 @@ export class App {
   private readonly inspector: Inspector;
   private readonly pie: PieMenu;
   private readonly bar: ContextBar;
-  private readonly sync?: SlideSync;
+  private readonly sync?: SlideSync | ComSync;
   private pending?: CatalogItem;
   private dragging?: CatalogItem;
   private toastTimer?: number;
@@ -96,7 +99,13 @@ export class App {
     this.toastEl = h("div", { class: "isk-toast", role: "status", hidden: true });
     this.topbar = h("header", { class: "isk-topbar" });
 
-    if (this.office.office && this.office.shapes) {
+    if (opts.comBridge) {
+      this.sync = new ComSync({
+        session: () => this.sessionObj,
+        adopt: (s) => { this.apply(s, false); this.toast(t("office.loaded")); },
+        report: (e) => this.report(e),
+      }, opts.comBridge);
+    } else if (this.office.office && this.office.shapes) {
       this.sync = new SlideSync({
         session: () => this.sessionObj,
         host: this.office,

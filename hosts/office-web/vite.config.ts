@@ -25,6 +25,7 @@ export default defineConfig({
       input: {
         taskpane: resolve(__dirname, "taskpane.html"),
         dev: resolve(__dirname, "dev.html"),
+        sidebar: resolve(__dirname, "sidebar.html"),
       },
     },
   },

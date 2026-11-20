@@ -62,6 +62,21 @@
 - **Pie menu:** right-click on a selected unit: delete (top), views, type actions, duplicate, mirror, rotate 90°. The unit
   is re-rendered from its model; native moves and resizes are folded into the model first (`SketchUnits.Read`).
 
+## Sidebar editor (custom task pane)
+
+The ribbon toggle **Editor** opens a docked task pane (`Sidebar/TaskPaneControl`, ProgId `InventaSketch.AddIn.TaskPane`,
+created through `ICustomTaskPaneConsumer`) with a WebView2 that loads the same editor as the web add-in
+(`sidebar.html`: library, stage, inspector, pie menu, floating bar) from `AddIn\App` via a virtual host. WebView2 uses
+its own user data folder (`%LOCALAPPDATA%\InventaSketch\WebView2`); the pane width is scaled by the display DPI.
+The editor talks to the add-in through `window.chrome.webview` (`combridge.ts` ↔ `SidebarBridge`):
+`units` messages carry compact model payloads that the add-in draws natively with the full C# engine (new units are
+drawn, existing ISK_IDs replaced, removed units deleted — one undo step); the add-in pushes the selected unit back as
+`selection`. Live sync is on by default, so edits in the sidebar update the slide immediately.
+
+Verified 2026-11-20: pane opens (WebView2 157, engine ready in about 0.5 s, German UI); selecting a shaft on the slide
+loads it into the sidebar with its views; rotating it in the sidebar (`rotate90`) rotated it on the slide
+(340 × 0 → 0 × 340 pt).
+
 ## Install (per user, no administrator rights)
 
 ```powershell

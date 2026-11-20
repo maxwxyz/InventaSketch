@@ -20,5 +20,14 @@ if (-not $SkipBuild) {
 if (Get-Process POWERPNT -ErrorAction SilentlyContinue) { Write-Warning 'PowerPoint is running: copying may fail for loaded files. Close PowerPoint first.' }
 New-Item -ItemType Directory -Force $target | Out-Null
 Copy-Item (Join-Path $out '*') $target -Recurse -Force
+# Sidebar editor: the built web UI (hosts\office-web\dist incl. sidebar.html and the WebAssembly engine).
+$webDist = Join-Path $root 'hosts\office-web\dist'
+if (Test-Path (Join-Path $webDist 'sidebar.html')) {
+    $app = Join-Path $target 'App'
+    if (Test-Path $app) { Remove-Item $app -Recurse -Force }
+    Copy-Item $webDist $app -Recurse -Force
+} else {
+    Write-Warning 'hosts\office-web\dist\sidebar.html missing: build the web UI first (npm run build in hosts\office-web); the sidebar editor shows a hint until then.'
+}
 Get-ChildItem $target -Recurse | Unblock-File
 & (Join-Path $PSScriptRoot 'register-com.ps1') -AddInPath (Join-Path $target 'InventaSketch.AddIn.dll')

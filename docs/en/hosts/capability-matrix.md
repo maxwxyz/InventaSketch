@@ -16,7 +16,7 @@
 | Shape tags / metadata | verified (ISK_ID, ISK_TYPE, ISK_MODEL written) | not tested (tags, 1.3) | not tested (shape name + document properties) |
 | Selection read/write | not tested | not tested (1.5/1.6) | not tested |
 | On-slide overlay, floating bar, pie menu | partial: insert at pointer, drag and resize with snapping, two-point tool, point editing, pie menu and fading floating bar verified 2026-11-20 | unsupported → sidebar stage | planned (UNO handlers + overlay layer) |
-| Sidebar / task pane editor | planned | in progress | planned (sidebar panel) |
+| Sidebar / task pane editor | verified 2026-11-20 (WebView2 task pane, live sync both ways) | in progress | planned (sidebar panel) |
 | SVG insert | n/a | not tested (XmlSvg coercion; not on iPad) | not tested |
 | COM precedence over web add-in | not tested (`EquivalentAddins`) | not tested | n/a |
 | Light/dark auto detection | planned | in progress | planned |

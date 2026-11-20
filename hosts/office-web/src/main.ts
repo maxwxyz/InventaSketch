@@ -6,6 +6,7 @@ import { loadWasmEngine } from "./engine/wasm";
 import { detectLang, setLang, t } from "./i18n";
 import { detectCapabilities, noOffice, type HostCapabilities } from "./office/capabilities";
 import { App } from "./ui/app";
+import { comBridge, comCapabilities } from "./office/combridge";
 
 declare global {
   interface Window {
@@ -38,11 +39,26 @@ async function initOffice(): Promise<OfficeInfo> {
   return out;
 }
 
+/** sidebar.html inside the COM add-in's WebView2: language, theme and slide size come as query parameters. */
+function initCom(): OfficeInfo | undefined {
+  const bridge = comBridge();
+  if (!bridge || document.getElementById("app")?.dataset.host !== "com") return undefined;
+  const q = new URLSearchParams(location.search);
+  const w = Number(q.get("w")), h = Number(q.get("h"));
+  return {
+    caps: comCapabilities,
+    language: q.get("lang") ?? undefined,
+    background: q.get("theme") === "dark" ? "#262626" : undefined,
+    pageSize: w > 0 && h > 0 ? { w, h } : undefined,
+  };
+}
+
 async function boot(): Promise<void> {
   const root = document.getElementById("app")!;
   setLang(detectLang(navigator.language));
   try {
-    const [office, loaded] = await Promise.all([initOffice(), loadWasmEngine()]);
+    const com = initCom();
+    const [office, loaded] = await Promise.all([com ? Promise.resolve(com) : initOffice(), loadWasmEngine()]);
     const app = new App({
       engine: new Engine(loaded.backend),
       root,
@@ -51,9 +67,10 @@ async function boot(): Promise<void> {
       officeBackground: office.background,
       pageSize: office.pageSize,
       loadMillis: loaded.millis,
+      comBridge: com ? comBridge() : undefined,
     });
     window.inventaSketch = app;
-    if (office.caps.selection) {
+    if (office.caps.selection && !com) {
       Office.context.document.addHandlerAsync(Office.EventType.DocumentSelectionChanged, () => app.onOfficeSelectionChanged());
     }
   } catch (e) {

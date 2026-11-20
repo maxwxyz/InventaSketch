@@ -26,7 +26,7 @@ namespace InventaSketch.AddIn
     [Guid("1D58D258-A932-4753-9EAA-309C5736FE34")]
     [ProgId("InventaSketch.AddIn.Connect")]
     [ClassInterface(ClassInterfaceType.AutoDispatch)]
-    public sealed class Connect : IDTExtensibility2, Office.IRibbonExtensibility
+    public sealed class Connect : IDTExtensibility2, Office.IRibbonExtensibility, Office.ICustomTaskPaneConsumer
     {
         private PowerPoint.Application? _app;
         private Office.IRibbonUI? _ribbon;
@@ -35,6 +35,9 @@ namespace InventaSketch.AddIn
         private List<LibraryCategory> _categories = new();
         private readonly Dictionary<string, Bitmap> _images = new();
         private OnSlide.OnSlideController? _onSlide;
+        private Office.ICTPFactory? _ctpFactory;
+        private Office.CustomTaskPane? _pane;
+        private Sidebar.SidebarBridge? _bridge;
 
         static Connect()
         {
@@ -71,6 +74,8 @@ namespace InventaSketch.AddIn
                 _categories = _registry.Categories.Where(c => used.Contains(c.Id)).OrderBy(c => c.Order).ToList();
                 if (addInInst is Office.COMAddIn comAddIn) comAddIn.Object = new Automation(this);
                 _onSlide = new OnSlide.OnSlideController(_app, () => _registry!, () => _lang);
+                _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang);
+                _onSlide.UnitArmed += u => _bridge.UnitSelected(u);
                 Log.Info($"Connected: InventaSketch {typeof(Connect).Assembly.GetName().Version}, PowerPoint {_app.Version}, "
                     + $"{(Environment.Is64BitProcess ? 64 : 32)} bit, CLR {Environment.Version}, language {_lang}, "
                     + $"{_registry.Library.Count} library items in {_categories.Count} categories, {watch.ElapsedMilliseconds} ms");
@@ -130,6 +135,7 @@ namespace InventaSketch.AddIn
             "IskTools" => T("Tools", "Werkzeuge"),
             "IskMonochrome" => T("Black & white", "Schwarz-Weiß"),
             "IskAbout" => T("About", "Info"),
+            "IskEditor" => T("Editor", "Editor"),
             _ => control.Id,
         };
 
@@ -301,6 +307,83 @@ namespace InventaSketch.AddIn
                 s.Fill.ForeColor.RGB = (0.2126 * r + 0.7152 * g + 0.0722 * b) < 90 ? 0 : 0xFFFFFF;
             }
             if (s.HasTextFrame == Office.MsoTriState.msoTrue) s.TextFrame.TextRange.Font.Color.RGB = 0;
+        }
+
+        // ------------------------------------------------------------------ sidebar editor (custom task pane)
+
+        /// <summary>Shows or hides the sidebar editor (ribbon toggle and automation).</summary>
+        internal bool ShowEditor(bool visible)
+        {
+            if (_onSlide is null) return false;
+            return _onSlide.OnUi(() =>
+            {
+                OnEditorToggle(null!, visible);
+                _ribbon?.InvalidateControl("IskEditor");
+                return _pane?.Visible == true;
+            });
+        }
+
+        internal bool RunSidebarScript(string script)
+        {
+            if (_onSlide is null) return false;
+            return _onSlide.OnUi(() =>
+            {
+                var pane = Sidebar.TaskPaneControl.Current;
+                if (pane is null) return false;
+                pane.Run(script);
+                return true;
+            });
+        }
+
+        private static double DeviceScale()
+        {
+            try
+            {
+                using var g = Graphics.FromHwnd(IntPtr.Zero);
+                return Math.Max(1, g.DpiX / 96.0);
+            }
+            catch
+            {
+                return 1;
+            }
+        }
+
+        public void CTPFactoryAvailable(Office.ICTPFactory CTPFactoryInst) => _ctpFactory = CTPFactoryInst;
+
+        public bool GetEditorPressed(Office.IRibbonControl control)
+        {
+            try { return _pane?.Visible == true; }
+            catch { return false; }
+        }
+
+        public void OnEditorToggle(Office.IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                if (_pane is null)
+                {
+                    if (!pressed || _ctpFactory is null || _app is null) return;
+                    var setup = _app.Presentations.Count > 0 ? _app.ActivePresentation.PageSetup : null;
+                    var w = setup is null ? 338.667 : setup.SlideWidth / Geo.PtPerMm;
+                    var h = setup is null ? 190.5 : setup.SlideHeight / Geo.PtPerMm;
+                    Sidebar.TaskPaneControl.Query = string.Format(CultureInfo.InvariantCulture, "?lang={0}&theme={1}&w={2:0.###}&h={3:0.###}",
+                        _lang == Lang.De ? "de" : "en", OfficeTheme.IsDark() ? "dark" : "light", w, h);
+                    _pane = _ctpFactory.CreateCTP("InventaSketch.AddIn.TaskPane", "InventaSketch", Type.Missing);
+                    _pane.DockPosition = Office.MsoCTPDockPosition.msoCTPDockPositionRight;
+                    // CTP width is in device pixels: scale the 400 logical px the editor needs (compact layout).
+                    _pane.Width = (int)Math.Round(400 * DeviceScale());
+                    _pane.VisibleStateChange += p => _ribbon?.InvalidateControl("IskEditor");
+                    if (_pane.ContentControl is Sidebar.TaskPaneControl content) _bridge?.Attach(content);
+                    else Log.Info("Task pane content is " + (_pane.ContentControl?.GetType().FullName ?? "null"));
+                }
+                _pane.Visible = pressed;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnEditorToggle", ex);
+                MessageBox.Show(T("The editor could not be opened. Details are in the log: ", "Der Editor konnte nicht geöffnet werden. Details im Protokoll: ") + Log.File,
+                    "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         public void OnAbout(Office.IRibbonControl control)

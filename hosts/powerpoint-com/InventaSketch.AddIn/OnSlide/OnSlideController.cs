@@ -110,6 +110,12 @@ namespace InventaSketch.AddIn.OnSlide
             _barWindow.Dispose();
         }
 
+        /// <summary>Raised when an InventaSketch unit becomes the selection (sidebar editor follows it).</summary>
+        public event Action<SketchUnit>? UnitArmed;
+
+        /// <summary>Runs a function on PowerPoint's UI thread (automation calls arrive on RPC threads).</summary>
+        public T OnUi<T>(Func<T> f) => _overlay.InvokeRequired ? (T)_overlay.Invoke(f) : f();
+
         private bool German => _lang() == Lang.De;
         private string T(string en, string de) => German ? de : en;
 
@@ -157,6 +163,7 @@ namespace InventaSketch.AddIn.OnSlide
                 if (unit is null) { Disarm(); return; }
                 Log.Info("Selection: InventaSketch unit " + unit.Shape.Name);
                 Arm(unit);
+                UnitArmed?.Invoke(unit);
             }
             catch (Exception ex)
             {
