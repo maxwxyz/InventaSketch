@@ -192,6 +192,13 @@ remembers its rendered look (tag `ISK_FMT`), and reading a unit folds the differ
 text colour, font, size factor, bold/italic/underline) into the objects' style (`NativeFormat`). Verified: a gear
 recoloured red with 2.5 pt lines stayed so after a rotation re-rendered it.
 
+Extras menu (tools group, like Slidemax's tools menu, ported in a lean form): insert symbol, change decimal separator
+(comma/point in numbers of the current slide or the whole presentation; InventaSketch units are skipped), proofing
+language (German, English UK/US, more via Office's dialog; selection or all slides), send slides (selected slides as
+.pptx/.pdf/both, Outlook mail with attachment, otherwise files on the clipboard), save slides (.pptx/.pdf, opened
+afterwards), show and hide modules (stored in settings.json as `HiddenModules`; hidden modules disappear from the
+ribbon). Verified: the menu appears, hidden modules are missing from "Elements".
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in

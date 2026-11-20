@@ -113,9 +113,9 @@ Export-Erweiterungspunkte der Module.
     der Module prüfen.
   - Web-Host: dieselbe UX (Einfügen-Vorschläge über eine Engine-Methode, Verankern, Text bearbeiten, Schwarz-Weiß).
   - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout: am 20.11.2026 erledigt (native Formatierung wird ins Modell übernommen).
-  - Werkzeuge-Menü wie Slidemax: Symbol einfügen, Dezimaltrennzeichen ändern, Korrektursprache, Folien senden, Folien
-    speichern (aus Slidemax übernehmen).
-  - Einstellung zum Ausblenden nicht benötigter Module (Menüband-Gruppen, Galerien, Seitenleisten-Bibliothek).
+  - Werkzeuge-Menü wie Slidemax (Extras: Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern) und
+    Ausblenden von Modulen im Menüband: am 20.11.2026 erledigt. Offen: Module auch in der Seitenleisten-Bibliothek
+    ausblenden.
   - Rahmenauswahl einzelner Punkte: ein Auswahlrahmen über einer Linie wählt ihre Punkte, die dann gemeinsam verschoben
     werden.
   - Mehr Bearbeitungseinträge in der schwebenden Leiste (Text, wichtige Parameter), dabei kurz halten.

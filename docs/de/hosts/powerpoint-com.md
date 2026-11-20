@@ -165,6 +165,14 @@ Steuerelementen an InventaSketch-Einheiten bleiben erhalten: jede gezeichnete Fo
 Größenfaktor, fett/kursiv/unterstrichen) in den Objektstil übernommen (`NativeFormat`). Geprüft: ein rot gefärbtes
 Zahnrad mit 2,5-pt-Linien blieb so, nachdem eine Drehung es neu gezeichnet hatte.
 
+Menü „Extras“ (Werkzeuge-Gruppe, wie das Werkzeuge-Menü von Slidemax, schlank übernommen): Symbol einfügen,
+Dezimaltrennzeichen ändern (Komma/Punkt in Zahlen der aktuellen Folie oder der ganzen Präsentation;
+InventaSketch-Einheiten bleiben unberührt), Korrektursprache (Deutsch, Englisch UK/USA, weitere über den Office-Dialog;
+Auswahl oder alle Folien), Folien senden (ausgewählte Folien als .pptx/.pdf/beides, Outlook-Mail mit Anlage, sonst
+Dateien in der Zwischenablage), Folien speichern (.pptx/.pdf, danach geöffnet), Module ein- und ausblenden (in
+settings.json als `HiddenModules`; ausgeblendete Module verschwinden aus dem Menüband). Geprüft: das Menü erscheint,
+ausgeblendete Module fehlen in „Elemente“.
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in

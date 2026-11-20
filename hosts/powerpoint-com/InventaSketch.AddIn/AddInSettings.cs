@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Text.Json;
 
@@ -12,6 +14,7 @@ namespace InventaSketch.AddIn
             public bool Snap { get; set; } = true;
             public bool Bar { get; set; } = true;
             public bool Anchor { get; set; } = true;
+            public List<string> HiddenModules { get; set; } = new();
         }
 
         private static Data _data = Load();
@@ -30,6 +33,13 @@ namespace InventaSketch.AddIn
         {
             get => _data.Bar;
             set { _data.Bar = value; Save(); }
+        }
+
+        /// <summary>Module ids hidden in the ribbon ("Show and hide modules").</summary>
+        public static IReadOnlyCollection<string> HiddenModules
+        {
+            get => _data.HiddenModules ??= new List<string>();
+            set { _data.HiddenModules = value.ToList(); Save(); }
         }
 
         /// <summary>Line ends snapped to another element stay attached to it and follow when it moves.</summary>

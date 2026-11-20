@@ -180,6 +180,7 @@ namespace InventaSketch.AddIn
               .Append(X(T("Shows the InventaSketch elements of this slide in black and white (patent style): fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß (Patentstil), einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskAnchor\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
+            AppendToolsMenu(sb);
             sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
             sb.Append("</group>");
             if (_registry is not null)
@@ -189,7 +190,7 @@ namespace InventaSketch.AddIn
                 void Gallery(LibraryCategory c, int i, bool inMenu, bool compact)
                 {
                     // Inside a menu, galleries take no size/showLabel attributes (the menu shows their labels).
-                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(c.Name.Get(_lang))).Append('"');
+                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(c.Name.Get(_lang))).Append('"').Append(" getVisible=\"GetModuleVisible\"");
                     if (!inMenu) sb.Append(" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append('"');
                     sb.Append(" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
                       .Append(" screentip=\"").Append(X(c.Name.Get(_lang))).Append("\" supertip=\"")
@@ -220,7 +221,7 @@ namespace InventaSketch.AddIn
                         sb.Append("<group id=\"IskElements\" getImage=\"GetLogoImage\" label=\"").Append(L(T("Elements", "Elemente"))).Append("\">");
                         elementsOpen = true;
                     }
-                    sb.Append("<menu id=\"IskMod_").Append(m++).Append("\" label=\"").Append(L(label)).Append("\" size=\"large\" itemSize=\"normal\" getImage=\"GetGroupImage\">");
+                    sb.Append("<menu id=\"IskMod_").Append(m++).Append("\" label=\"").Append(L(label)).Append("\" size=\"large\" itemSize=\"normal\" getImage=\"GetGroupImage\" getVisible=\"GetModuleVisible\">");
                     foreach (var (c, i) in cats) Gallery(c, i, inMenu: true, compact: false);
                     sb.Append("</menu>");
                 }
@@ -230,6 +231,113 @@ namespace InventaSketch.AddIn
             else AppendFormattingGroups(sb);
             sb.Append("</tab></tabs></ribbon></customUI>");
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// The "Extras" menu of the tools group (like Slidemax's tools menu): insert symbol, decimal separator, proofing
+        /// language, send and save slides, show/hide modules.
+        /// </summary>
+        private void AppendToolsMenu(StringBuilder sb)
+        {
+            void Item(string id, string label, string? imageMso)
+                => sb.Append("<button id=\"").Append(id).Append("\" label=\"").Append(L(label)).Append('"')
+                     .Append(imageMso is null ? "" : " imageMso=\"" + imageMso + "\"").Append(" onAction=\"OnToolsMenu\" />");
+            sb.Append("<menu id=\"IskToolsMenu\" label=\"").Append(L(T("Extras", "Extras"))).Append("\" getImage=\"GetToolsMenuImage\" itemSize=\"normal\">");
+            Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
+            Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
+            sb.Append("<menu id=\"IskMenuLanguage\" label=\"").Append(L(T("Proofing language", "Korrektursprache"))).Append("\" imageMso=\"SetLanguage\">");
+            Item("IskLangDe", T("German", "Deutsch"), null);
+            Item("IskLangGb", T("English (UK)", "Englisch (UK)"), null);
+            Item("IskLangUs", T("English (US)", "Englisch (USA)"), null);
+            Item("IskLangMore", T("More languages \u2026", "Weitere Sprachen \u2026"), null);
+            sb.Append("</menu>");
+            sb.Append("<menuSeparator id=\"IskMenuSep1\" />");
+            Item("IskMenuSend", T("Send slides \u2026", "Folien senden \u2026"), "FileSendAsAttachment");
+            Item("IskMenuSave", T("Save slides \u2026", "Folien speichern \u2026"), "FileSaveAs");
+            sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
+            Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
+            sb.Append("</menu>");
+        }
+
+        public void OnToolsMenu(Office.IRibbonControl control)
+        {
+            if (_app is null) return;
+            var german = _lang == Lang.De;
+            try
+            {
+                switch (control.Id)
+                {
+                    case "IskMenuSymbol": Tools.InsertSymbol(_app); break;
+                    case "IskMenuDecimals":
+                        if (Tools.AskDecimals(german) is { } d)
+                        {
+                            _app.StartNewUndoEntry();
+                            var n = Tools.SwitchDecimals(_app, d.Separator, d.WholePresentation);
+                            MessageBox.Show(T($"{n} text(s) changed.", $"{n} Text(e) geändert."), "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
+                        break;
+                    case "IskLangDe": _app.StartNewUndoEntry(); Tools.SetLanguage(_app, Tools.German); break;
+                    case "IskLangGb": _app.StartNewUndoEntry(); Tools.SetLanguage(_app, Tools.EnglishUk); break;
+                    case "IskLangUs": _app.StartNewUndoEntry(); Tools.SetLanguage(_app, Tools.EnglishUs); break;
+                    case "IskLangMore": Tools.LanguageDialog(_app); break;
+                    case "IskMenuSend": Tools.SendSlides(_app, german); break;
+                    case "IskMenuSave": Tools.SaveSlides(_app, german); break;
+                    case "IskMenuModules":
+                        var modules = (_registry?.Modules ?? Array.Empty<IModule>()).Where(mod => _categories.Any(c => c.ModuleId == mod.Id))
+                            .Select(mod => (mod.Id, mod.Name.Get(_lang))).ToList();
+                        if (Tools.AskModules(modules, new HashSet<string>(AddInSettings.HiddenModules), german) is { } hidden)
+                        {
+                            AddInSettings.HiddenModules = hidden;
+                            _ribbon?.Invalidate();
+                        }
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnToolsMenu " + control.Id, ex);
+            }
+        }
+
+        /// <summary>Hidden modules ("Show and hide modules") disappear from the ribbon: their menus and galleries.</summary>
+        public bool GetModuleVisible(Office.IRibbonControl control)
+        {
+            try
+            {
+                var hidden = AddInSettings.HiddenModules;
+                if (hidden.Count == 0) return true;
+                var idx = control.Id.LastIndexOf('_');
+                if (idx < 0 || !int.TryParse(control.Id.Substring(idx + 1), out var n)) return true;
+                if (control.Id.StartsWith("IskCat_", StringComparison.Ordinal))
+                    return n >= _categories.Count || !hidden.Contains(_categories[n].ModuleId);
+                var groups = RibbonGroups();
+                return n >= groups.Count || !groups[n].Modules.All(mod => hidden.Contains(mod.Id));
+            }
+            catch (Exception ex)
+            {
+                Log.Error("GetModuleVisible", ex);
+                return true;
+            }
+        }
+
+        /// <summary>The "Extras" menu pictogram: three lines (like the Slidemax tools menu) in the Office theme ink.</summary>
+        public object? GetToolsMenuImage(Office.IRibbonControl control)
+        {
+            try
+            {
+                var size = (int)Math.Round(16 * DeviceScale());
+                using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    var k = size / 16f;
+                    g.ScaleTransform(k, k);
+                    using var pen = new Pen(OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40), 1.5f) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round };
+                    g.DrawLine(pen, 2.5f, 4, 13.5f, 4); g.DrawLine(pen, 2.5f, 8, 13.5f, 8); g.DrawLine(pen, 2.5f, 12, 13.5f, 12);
+                }
+                return PictureConverter.ToPicture(bmp);
+            }
+            catch (Exception ex) { Log.Error("GetToolsMenuImage", ex); return null; }
         }
 
         /// <summary>Structure group like Slidemax: new slide, paste, format painter (Office's own controls).</summary>

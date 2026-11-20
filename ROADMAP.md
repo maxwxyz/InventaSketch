@@ -97,9 +97,8 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   - Schematic scaling: done for the hub symbols (they keep their size); other schematic details of the modules to review.
   - Web host: the same UX (insert suggestions via an engine method, anchor, text editing, black and white).
   - Ribbon groups like Slidemax: Structure, Colour, Text, Layout: done 2026-11-20 (native formatting is folded into the model).
-  - Tools menu button like Slidemax: insert symbol, change decimal separator, proofing language, send slides, save
-    slides (port from Slidemax).
-  - Setting to hide modules that are not needed (ribbon groups, galleries, sidebar library).
+  - Tools menu like Slidemax (Extras: symbol, decimal separator, proofing language, send/save slides) and hiding
+    modules in the ribbon: done 2026-11-20. Open: hide modules in the sidebar library too.
   - Box selection of single points: a rubber band over a line selects its points so they can be moved together.
   - More edit entries in the floating bar (text, key parameters), keeping it short.
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
