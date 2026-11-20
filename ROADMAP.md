@@ -29,7 +29,7 @@ inserted into PowerPoint (web) and exported as SVG; all tests green.
 
 Per-user registration without admin; ribbon; native shapes via COM (freeform, arrowheads, pattern fill, connectors);
 on-slide interaction (input hooks + layered overlay window): insert at pointer, snapping guides, floating bar,
-pie menu; sidebar task pane; metadata in tags + document properties; COM precedence verified. Status: **in progress** - slice 1 shipped 2026-11-20: per-user registration, ribbon library menus, native insertion (shapes, freeforms, arrowheads, groups, tags) verified in PowerPoint 16.0.
+pie menu; sidebar task pane; metadata in tags + document properties; COM precedence verified. Status: **in progress** - slice 1 shipped 2026-11-20: per-user registration, ribbon library menus, native insertion (shapes, freeforms, arrowheads, groups, tags) verified in PowerPoint 16.0; slice 2: on-slide insert at pointer, drag with semantic snapping and pie menu verified. Next: floating bar, snapped resize/rotate, task pane editor.
 
 ## Phase 3 – LibreOffice extension
 

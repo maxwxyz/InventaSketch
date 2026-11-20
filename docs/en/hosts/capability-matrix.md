@@ -15,7 +15,7 @@
 | Rotation | not tested | not tested (PowerPointApi 1.10) | not tested |
 | Shape tags / metadata | verified (ISK_ID, ISK_TYPE, ISK_MODEL written) | not tested (tags, 1.3) | not tested (shape name + document properties) |
 | Selection read/write | not tested | not tested (1.5/1.6) | not tested |
-| On-slide overlay, floating bar, pie menu | planned (hooks + layered window) | unsupported → sidebar stage | planned (UNO handlers + overlay layer) |
+| On-slide overlay, floating bar, pie menu | partial: insert at pointer, drag with snapping, pie menu verified 2026-11-20; floating bar planned | unsupported → sidebar stage | planned (UNO handlers + overlay layer) |
 | Sidebar / task pane editor | planned | in progress | planned (sidebar panel) |
 | SVG insert | n/a | not tested (XmlSvg coercion; not on iPad) | not tested |
 | COM precedence over web add-in | not tested (`EquivalentAddins`) | not tested | n/a |

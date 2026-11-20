@@ -29,6 +29,12 @@ namespace InventaSketch.AddIn
             return bmp;
         }
 
+        /// <summary>Draws primitives with the current Graphics transform; <paramref name="px"/> is the line width in world units.</summary>
+        public static void DrawAll(Graphics g, IEnumerable<Primitive> prims, Color ink, float px)
+        {
+            foreach (var p in Prim.Flatten(prims)) Draw(g, p, ink, px);
+        }
+
         private static void Draw(Graphics g, Primitive p, Color ink, float px)
         {
             switch (p)
@@ -84,7 +90,7 @@ namespace InventaSketch.AddIn
 
         private static Pen PenFor(Core.Style s, Color ink, float px)
         {
-            var pen = new Pen(s.Stroke is null || s.Stroke == "#000000" ? ink : ParseColor(s.Stroke, ink), px);
+            var pen = new Pen(ink, px);
             if (s.EffectiveDash != Core.DashStyle.Solid) pen.DashPattern = new[] { 4f, 2f };
             return pen;
         }

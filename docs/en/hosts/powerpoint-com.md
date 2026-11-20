@@ -20,6 +20,24 @@
   `Insert(itemId)`, `LibraryItems()`, `Version()`.
 - Log: `%LOCALAPPDATA%\InventaSketch\addin.log`.
 
+## On-slide interaction (slice 2)
+
+`OnSlide/OnSlideController` adds interaction directly on the slide, following patterns proven in Slidemax:
+
+- **Mapping:** `SlideView` samples `DocumentWindow.PointsToScreenPixelsX/Y` over a wide span (the API rounds) and finds
+  the slide pane under the slide centre (`paneClassDC`, or `mdiClass` in Microsoft 365 minus thumbnails, notes and
+  scroll bar). Everything runs per-monitor DPI aware (`DpiScope`).
+- **Input:** thread-local `WH_MOUSE`/`WH_KEYBOARD` hooks on PowerPoint's UI thread, installed only while a mode is active
+  or an InventaSketch unit is selected. Hooks only compute and draw; object-model calls run via `BeginInvoke`.
+  Press/release pairs are never split between PowerPoint and the add-in.
+- **Overlay:** a click-through layered window over the slide pane (`UpdateLayeredWindow`, per-pixel alpha).
+- **Insert at pointer:** picking a ribbon item shows an orange outline that follows the pointer and snaps (gear mesh,
+  hub on shaft axis, points, alignment guides); click inserts, `Esc` cancels, `Alt` suspends snapping.
+- **Drag with snapping:** pressing inside a selected unit (PowerPoint keeps the handles on the border) moves it with
+  the same snapping and red guides; one undo step on release.
+- **Pie menu:** right-click on a selected unit: delete (top), views, type actions, duplicate, mirror, rotate 90°. The unit
+  is re-rendered from its model; native moves and resizes are folded into the model first (`SketchUnits.Read`).
+
 ## Install (per user, no administrator rights)
 
 ```powershell
@@ -37,10 +55,17 @@ Close PowerPoint before installing. The web add-in is hidden automatically while
   hatched region (explicit hatch lines), curved arrow (native arrowhead) and lead line with numeral: all native
   groups/shapes with tags and payload; slide export checked visually.
 
+Slice 2 (same environment, simulated mouse input with PowerPoint in the foreground):
+
+- Drag: gear released 3 pt off the shaft axis snapped exactly onto it (centre y = 270.0 pt).
+- Insert at pointer: gear placed 4 pt off the axis snapped onto it.
+- Pie menu: right-click + top entry deleted the unit.
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in
   this test; a normally started PowerPoint did. To be investigated for automated tests.
 - The ribbon shows 16 category menus; with more categories the remaining ones are not reachable yet (gallery planned).
-- Next: on-slide interaction (input hooks + layered overlay window: insert at pointer, snapping guides, floating bar,
-  pie menu), editing existing units from their payload, sidebar task pane.
+- Automation calls from other processes arrive on RPC threads; `BeginPlacement` marshals itself to the UI thread.
+- Next: floating context bar (fading with pointer distance), resize/rotate with snapping, dark-mode pie menu,
+  sidebar task pane with the shared editor.

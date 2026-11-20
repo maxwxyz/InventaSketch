@@ -30,6 +30,20 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Starts insert-at-pointer for a library item (as the ribbon does); false if no slide is visible.</summary>
+        public bool Place(string itemId)
+        {
+            try
+            {
+                return _connect.BeginPlacement(itemId);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.Place " + itemId, ex);
+                return false;
+            }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

@@ -34,6 +34,7 @@ namespace InventaSketch.AddIn
         private Lang _lang = Lang.En;
         private List<LibraryCategory> _categories = new();
         private readonly Dictionary<string, Bitmap> _images = new();
+        private OnSlide.OnSlideController? _onSlide;
 
         static Connect()
         {
@@ -69,6 +70,7 @@ namespace InventaSketch.AddIn
                 var used = new HashSet<string>(_registry.Library.Select(i => i.Category));
                 _categories = _registry.Categories.Where(c => used.Contains(c.Id)).OrderBy(c => c.Order).ToList();
                 if (addInInst is Office.COMAddIn comAddIn) comAddIn.Object = new Automation(this);
+                _onSlide = new OnSlide.OnSlideController(_app, () => _registry!, () => _lang);
                 Log.Info($"Connected: InventaSketch {typeof(Connect).Assembly.GetName().Version}, PowerPoint {_app.Version}, "
                     + $"{(Environment.Is64BitProcess ? 64 : 32)} bit, CLR {Environment.Version}, language {_lang}, "
                     + $"{_registry.Library.Count} library items in {_categories.Count} categories, {watch.ElapsedMilliseconds} ms");
@@ -81,6 +83,8 @@ namespace InventaSketch.AddIn
 
         public void OnDisconnection(int removeMode, ref Array custom)
         {
+            try { _onSlide?.Dispose(); } catch (Exception ex) { Log.Error("OnSlide dispose", ex); }
+            _onSlide = null;
             foreach (var b in _images.Values) b.Dispose();
             _images.Clear();
             _app = null;
@@ -210,6 +214,8 @@ namespace InventaSketch.AddIn
         {
             try
             {
+                var item = _registry?.Item(control.Tag);
+                if (item is not null && _onSlide?.BeginPlacement(item) == true) return;
                 InsertItem(control.Tag);
             }
             catch (Exception ex)
@@ -236,19 +242,17 @@ namespace InventaSketch.AddIn
             var doc = SketchDocument.Create(pageMm);
             var obj = _registry.Create(item, new Vec2(pageMm.W / 2, pageMm.H / 2));
             doc = Edits.Add(doc, doc.Pages[0].Id, obj);
-            var session = new EditorSession("com", _registry, doc, _lang);
-            var plan = DrawPlanBuilder.Build(session, new[] { obj.Id }, DrawCapabilities.Full);
             _app.StartNewUndoEntry();
-            var renderer = new ComRenderer(slide);
-            PowerPoint.Shape? last = null;
-            foreach (var unit in plan.Units)
-            {
-                last = renderer.DrawUnit(unit);
-                if (unit.Notes.Count > 0) Log.Info($"{unit.Type}: {string.Join("; ", unit.Notes)}");
-            }
+            var last = OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang);
             last?.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Inserted {item.Id} ({obj.Type}) as {(last?.Type == Office.MsoShapeType.msoGroup ? "group" : "shape")}");
             return last;
+        }
+
+        internal bool BeginPlacement(string itemId)
+        {
+            var item = _registry?.Item(itemId);
+            return item is not null && _onSlide?.BeginPlacement(item) == true;
         }
 
         internal System.Collections.Generic.IEnumerable<string> LibraryItemIds() => _registry?.Library.Select(i => i.Id) ?? Enumerable.Empty<string>();
