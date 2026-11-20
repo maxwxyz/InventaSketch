@@ -431,6 +431,12 @@ namespace InventaSketch.AddIn.OnSlide
                         if (message is WM_LBUTTONUP or WM_RBUTTONUP)
                         {
                             var idx = pie.HitTest(p);
+                            if (idx >= 0 && pie.Items[idx].Enabled && pie.Items[idx].Id.StartsWith("menu:", StringComparison.Ordinal))
+                            {
+                                var sub = pie.Items[idx].Id.Substring(5);
+                                OpenPie(new POINT { X = (int)pie.Centre.X, Y = (int)pie.Centre.Y }, view, sub == "back" ? null : sub);
+                                return true;
+                            }
                             var unit = _unit;
                             Cancel("pie closed");
                             if (idx >= 0 && pie.Items[idx].Enabled && unit is not null)
@@ -703,11 +709,82 @@ namespace InventaSketch.AddIn.OnSlide
             return true; // right button and other messages over the bar never reach the slide
         }
 
-        private void OpenPie(POINT pt, SlideView view)
+        /// <summary>Point-geometry types a selected line/arrow/dimension/lead line can be converted to.</summary>
+        private static readonly string[] ConvertTargets =
+        {
+            "ann.line", "ann.arrow", "ann.arrow.double", "ann.arrow.curved", "ann.arrow.elbow", "ann.leader",
+            "patent.numeral", "ann.dimension.linear", "ann.dimension.aligned",
+        };
+
+        private List<PieItem> SubMenu(string menu, SketchObject o)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var items = new List<PieItem> { new("menu:back", T("\u2190 Back", "\u2190 Zur\u00fcck")) };
+            if (menu == "type")
+            {
+                foreach (var id in ConvertTargets)
+                {
+                    var t = registry.Type(id);
+                    if (t is null || t.Geometry != GeometryKind.Points) continue;
+                    items.Add(new PieItem("conv:" + id, t.Name.Get(lang), Active: o.Type == id));
+                }
+                return items;
+            }
+            // Label menu, generated from the type's optional parameters (module-agnostic).
+            var type = registry.Type(o.Type);
+            if (type is null) return items;
+            foreach (var pd in type.Parameters)
+            {
+                if (items.Count >= 11) break;
+                var label = pd.Label.Get(lang);
+                switch (pd.Kind)
+                {
+                    case ParamKind.Text:
+                        items.Add(new PieItem("edit:" + pd.Key, label + " \u2026"));
+                        break;
+                    case ParamKind.Boolean:
+                        {
+                            var cur = o.Flag(pd.Key, pd.Default?.Bool ?? false);
+                            items.Add(new PieItem("param:" + pd.Key + ":" + (cur ? "false" : "true"), label, Active: cur));
+                            break;
+                        }
+                    case ParamKind.Choice when pd.Options is { Count: > 1 }:
+                        {
+                            var cur = o.Str(pd.Key, pd.Default?.Text ?? pd.Options[0].Value);
+                            var i = pd.Options.ToList().FindIndex(x => x.Value == cur);
+                            var curLabel = i >= 0 ? pd.Options[i].Label.Get(lang) : cur;
+                            var next = pd.Options[(i + 1 + pd.Options.Count) % pd.Options.Count].Value;
+                            items.Add(new PieItem("param:" + pd.Key + ":" + next, label + ": " + curLabel));
+                            break;
+                        }
+                    case ParamKind.Number when pd.Key == "textSize":
+                        items.Add(new PieItem("size:" + pd.Key + ":1.2", T("Text larger", "Text gr\u00f6\u00dfer")));
+                        items.Add(new PieItem("size:" + pd.Key + ":0.8333", T("Text smaller", "Text kleiner")));
+                        break;
+                }
+            }
+            return items;
+        }
+
+        private void OpenPie(POINT pt, SlideView view, string? submenu = null)
         {
             if (_unit is null) return;
             var registry = _registry();
-            var items = new List<PieItem> { new("delete", T("Delete", "Löschen"), Danger: true) };
+            var pointObject = PointObject();
+            if (submenu is not null && pointObject is not null)
+            {
+                _pie = new PieMenu(new PointF(pt.X, pt.Y), SubMenu(submenu, pointObject), (float)view.DeviceScale);
+                _mode = Mode.Pie;
+                DrawPie(view);
+                return;
+            }
+            var items = new List<PieItem> { new("delete", T("Delete", "L\u00f6schen"), Danger: true) };
+            if (pointObject is not null)
+            {
+                items.Add(new PieItem("menu:type", T("Type \u25B8", "Typ \u25B8")));
+                items.Add(new PieItem("menu:label", T("Label \u25B8", "Beschriftung \u25B8")));
+            }
             var first = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             var type = first is null ? null : registry.Type(first.Type);
             if (type is not null && first is not null)
@@ -901,6 +978,30 @@ namespace InventaSketch.AddIn.OnSlide
             _app.StartNewUndoEntry();
             var doc = Edits.SetPoint(unit.Doc, o.Id, index, at);
             SketchUnits.Replace(slide, unit, doc, _registry(), _lang())?.Select(Office.MsoTriState.msoTrue);
+        }
+
+        /// <summary>
+        /// Converts a line/arrow/dimension/lead line into another point-geometry type: first and last points stay,
+        /// curve control points come from the target's defaults, text/numeral, layer, group and colour are kept.
+        /// </summary>
+        private static SketchObject Convert(Registry registry, SketchObject o, string targetType)
+        {
+            var target = registry.Type(targetType);
+            if (target is null || o.Points is not { Count: >= 2 } || o.Type == targetType) return o;
+            var item = registry.Library.FirstOrDefault(i => i.Id == targetType && i.TypeId == targetType)
+                ?? new LibraryItem(targetType, targetType, target.Name, "convert");
+            var created = CreateBetween(registry, item, o.Points[0], o.Points[o.Points.Count - 1]);
+            var numeral = o.Type is "ann.leader" or "patent.numeral" ? (o.Text ?? o.Str("numeral", o.Ref ?? "")) : o.Ref;
+            var result = created with
+            {
+                Id = o.Id,
+                GroupId = o.GroupId,
+                Layer = o.Layer,
+                Ref = numeral,
+                Style = o.Style is null ? null : new Style { Stroke = o.Style.Stroke, StrokeWidth = o.Style.StrokeWidth, Opacity = o.Style.Opacity },
+            };
+            if (!string.IsNullOrEmpty(numeral) && target.Parameters.Any(pd => pd.Key == "numeral")) result = result.WithParam("numeral", numeral!) with { Text = numeral };
+            return result;
         }
 
         // ------------------------------------------------------------------ resize with snapping
@@ -1117,6 +1218,42 @@ namespace InventaSketch.AddIn.OnSlide
                     var action = registry.Type(o.Type)?.Actions(o, _lang()).FirstOrDefault(a => a.Id == actionId);
                     return action is null ? o : action.Apply(o);
                 });
+            }
+            else if (id.StartsWith("conv:", StringComparison.Ordinal))
+            {
+                var target = id.Substring(5);
+                doc = Edits.Update(doc, ids, o => o.IsPointGeometry ? Convert(registry, o, target) : o);
+            }
+            else if (id.StartsWith("param:", StringComparison.Ordinal))
+            {
+                var parts = id.Split(new[] { ':' }, 3);
+                ParamValue value = parts[2] == "true" ? true : parts[2] == "false" ? false : (ParamValue)parts[2];
+                doc = Edits.Update(doc, ids, o => registry.Type(o.Type)?.Parameters.Any(pd => pd.Key == parts[1]) == true ? o.WithParam(parts[1], value) : o);
+            }
+            else if (id.StartsWith("size:", StringComparison.Ordinal))
+            {
+                var parts = id.Split(':');
+                var factor = double.Parse(parts[2], System.Globalization.CultureInfo.InvariantCulture);
+                doc = Edits.Update(doc, ids, o =>
+                {
+                    var pd = registry.Type(o.Type)?.Parameters.FirstOrDefault(x => x.Key == parts[1]);
+                    if (pd is null) return o;
+                    var cur = o.Num(parts[1], pd.Default?.Number ?? 3.5);
+                    return o.WithParam(parts[1], Math.Round(Math.Max(pd.Min ?? 0.5, Math.Min(pd.Max ?? 100, cur * factor)), 2));
+                });
+            }
+            else if (id.StartsWith("edit:", StringComparison.Ordinal))
+            {
+                var key = id.Substring(5);
+                var first = doc.Objects.Values.FirstOrDefault(o => registry.Type(o.Type)?.Parameters.Any(pd => pd.Key == key) == true);
+                if (first is null) return;
+                var pdef = registry.Type(first.Type)!.Parameters.First(pd => pd.Key == key);
+                var current = key == "numeral" && !string.IsNullOrEmpty(first.Text) ? first.Text! : first.Str(key, pdef.Default?.Text ?? "");
+                var entered = TextPrompt.Ask(pdef.Label.Get(_lang()), current, _view?.MainWindow ?? IntPtr.Zero);
+                if (entered is null) return;
+                doc = Edits.Update(doc, ids, o => o.Id == first.Id
+                    ? (key == "numeral" ? o.WithParam(key, entered) with { Text = null, Ref = entered } : o.WithParam(key, entered))
+                    : o);
             }
             else if (id == "flipH") doc = Edits.Flip(doc, ids, centre, horizontal: true);
             else if (id == "flipV") doc = Edits.Flip(doc, ids, centre, horizontal: false);

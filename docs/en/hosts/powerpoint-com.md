@@ -45,6 +45,11 @@
   units; curve control points keep their relative position.
 - **Point editing:** a selected line/arrow/dimension/lead line shows diamond handles on its points; dragging one
   moves it with the same magnetic snapping (`Alt`: free). These handles take precedence over the resize handles.
+- **Convert type and control labels (pie menu):** for lines, arrows, dimensions and lead lines the pie menu has
+  "Type ▸" (line, arrow, double arrow, curved arrow, elbow connector, lead line, reference numeral, linear and aligned
+  dimension; end points stay, numeral/text, layer, group and colour are kept) and "Label ▸", generated from the type's
+  optional parameters: edit texts (numeral, dimension text, prefix/unit), cycle choices (line course straight/curved/
+  wavy, object end, terminator, direction), toggles and text size. "← Back" returns to the main menu.
 - **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle, below if there is no
   room): its views, mirror horizontally/vertically, rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
   otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
@@ -78,6 +83,8 @@ Slice 2 (same environment, simulated mouse input with PowerPoint in the foregrou
   pitch circle touches the neighbouring gear (`gear mesh snap=True` in the log, preview captured).
 - Two-point arrow: start pressed 3 pt off a gear centre snapped exactly onto it (162.52 / 102.52 pt).
 - Point editing: the arrow tip dragged 2–3 pt off the shaft end snapped exactly onto it (309.92 / 270.0 pt).
+- Type and label menus: an arrow converted to a lead line with numeral "10"; "Line course" switched it to curved
+  (slide export checked). Known cosmetic issue: the curved lead line touches the numeral (annotation module).
 - Floating bar: appears above the selected gear (screen capture checked), the view button switched the gear to the stick
   symbol, moving the pointer 900 px away dismissed the bar.
 
