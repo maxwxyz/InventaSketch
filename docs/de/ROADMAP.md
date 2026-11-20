@@ -96,8 +96,8 @@ Export-Erweiterungspunkte der Module.
   AttachPoint/ReversePoints; ADR-0009). Nacharbeiten:
   - COM: native Verschiebungen (PowerPoint-Ziehpunkte, Pfeiltasten) zeichnen verankerte und abhängige Einheiten jetzt neu
     (20.11.2026); der Planmaßstab hat auf der Folie kein Bedienelement (nur Seitenleiste);
-    Dokumentaktionen ändern nur die eigenen Objekte der Einheit; die schwebende Leiste zeigt keine Typaktionen
-    (Eingabeaktionen im Kreismenü).
+    Dokumentaktionen ändern nur die eigenen Objekte der Einheit; die schwebende Leiste zeigt bis zu drei wichtige Typaktionen mit
+    aussagekräftigem Piktogramm (der Rest im Kreismenü).
   - Web: `combridge.ts` nutzt `changed`/`dependents` noch nicht; Methodenvertrag in der Web-Host-Doku ergänzen
     (`setPlanScale`, `input`, `changed`, `dependents`).
   - Module: am 20.11.2026 erledigt – Ansichtswechsel nehmen die Proportionen aus den Bibliotheksvorlagen
@@ -125,6 +125,6 @@ Export-Erweiterungspunkte der Module.
   - Werkzeuge-Menü wie Slidemax (Extras: Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern) und
     Ausblenden von Modulen im Menüband und in der Seitenleisten-Bibliothek: am 20.11.2026 erledigt.
   - Rahmenauswahl einzelner Punkte (Alt + Ziehen neben einer ausgewählten Linie): am 20.11.2026 in COM erledigt.
-  - Mehr Bearbeitungseinträge in der schwebenden Leiste (Text, wichtige Parameter), dabei kurz halten.
+  - Mehr Bearbeitungseinträge in der schwebenden Leiste (Text, wichtige Parameter), dabei kurz halten: am 20.11.2026 im COM-Add-in erledigt.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.

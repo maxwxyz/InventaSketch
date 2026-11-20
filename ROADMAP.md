@@ -92,7 +92,7 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   pin-id attachments; hollow and crow's-foot heads, underline; input and document actions, change sets with dependents,
   plan scale, view sizes; shared AttachPoint/ReversePoints; ADR-0009). Follow-ups:
   - COM: native moves (PowerPoint handles, arrow keys) now redraw anchored and dependent units (2026-11-20); the plan scale has no on-slide control (sidebar only); document actions only change the unit's own objects;
-    the floating bar shows no type actions (input actions are in the pie menu).
+    the floating bar shows up to three key type actions with telling pictograms (the rest is in the pie menu).
   - Web: `combridge.ts` does not use `changed`/`dependents` yet; method contract in the web host docs to extend
     (`setPlanScale`, `input`, `changed`, `dependents`).
   - Modules: done 2026-11-20 — view switches take proportions from library presets (Registry.WithView), annotation
@@ -114,6 +114,6 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   - Tools menu like Slidemax (Extras: symbol, decimal separator, proofing language, send/save slides) and hiding
     modules in the ribbon and the sidebar library: done 2026-11-20.
   - Box selection of single points (Alt + drag beside a selected line): done 2026-11-20 in COM.
-  - More edit entries in the floating bar (text, key parameters), keeping it short.
+  - More edit entries in the floating bar (text, key parameters), keeping it short: done 2026-11-20 in COM.
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.

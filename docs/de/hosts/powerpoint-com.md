@@ -76,7 +76,9 @@
   Winkelverbinder, Bezugslinie, Bezugszeichen, lineare und schräge Bemaßung; Endpunkte, Zeichen/Text, Ebene, Gruppe und
   Farbe bleiben erhalten) und „Beschriftung ▸“ aus den optionalen Parametern des Typs.
 - **Schwebende Leiste:** über der ausgewählten Einheit (abseits des Drehgriffs, darunter wenn oben kein Platz ist):
-  Ansichten, Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
+  Ansichten, Text bearbeiten, bis zu drei wichtige Typaktionen mit aussagekräftigem Piktogramm aus dem gemeinsamen Satz
+  (Wand dicker/dünner, mehr/weniger Stufen, Pfeilart, Richtung tauschen; allgemeine Schalter und Zyklen bleiben im
+  Kreismenü), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
   über 180 px ausblendend; unter 0,1 bis zur nächsten Auswahl verborgen; Tippen blendet sie aus.
 - **Kreismenü:** Rechtsklick auf eine ausgewählte Einheit: Löschen (oben), Ansichten, Typaktionen, Duplizieren,
   Spiegeln, 90° drehen.

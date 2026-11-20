@@ -788,8 +788,17 @@ namespace InventaSketch.AddIn.OnSlide
                     list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
                 list.Add(new BarButton("", "", "", Separator: true));
             }
-            if (first is not null && EditableText(registry, first) is not null)
+            var hasText = first is not null && EditableText(registry, first) is not null;
+            if (hasText)
                 list.Add(new BarButton("text", "", T("Edit text (double-click)", "Text bearbeiten (Doppelklick)")) { IconId = IconIds.Text });
+            // Key parameters: the first type actions with a pictogram of the shared set (teeth +/-, flip polarity …).
+            var keyActions = BarActions(UnitActions(out _), hasText);
+            foreach (var a in keyActions)
+            {
+                var tip = a.Label.Get(_lang()) + (a.Input is not null && !a.Label.Get(_lang()).EndsWith("…", StringComparison.Ordinal) ? " …" : "");
+                list.Add(new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon });
+            }
+            if (keyActions.Count > 0) list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
             list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
             list.Add(new BarButton("rot90", "", T("Rotate 90 degrees", "Um 90 Grad drehen")) { IconId = IconIds.Rotate });
@@ -797,6 +806,28 @@ namespace InventaSketch.AddIn.OnSlide
             list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("delete", "", T("Delete", "L\u00f6schen"), Danger: true) { IconId = IconIds.Delete });
             return list;
+        }
+
+        /// <summary>At most this many type actions in the floating bar; the pie menu has all of them.</summary>
+        internal const int MaxBarActions = 3;
+
+        /// <summary>Pictograms that say nothing without a label, or that the bar already has as its own buttons.</summary>
+        private static readonly HashSet<string> NotInBar = new()
+        {
+            IconIds.Toggle, IconIds.Cycle, IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate,
+        };
+
+        /// <summary>
+        /// Type actions for the floating bar (key parameters such as thicker/thinner, more/fewer, swap direction): available
+        /// ones whose icon is a telling pictogram of the shared set, so the bar stays readable without labels; each icon
+        /// once, text actions only when the bar has no text button yet, at most <see cref="MaxBarActions"/>.
+        /// </summary>
+        internal static List<ContextAction> BarActions(IEnumerable<ContextAction> actions, bool hasTextButton)
+        {
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            return actions.Where(a => a.IsEnabled && IconIds.All.Contains(a.Icon) && !NotInBar.Contains(a.Icon)
+                    && !(hasTextButton && a.Icon == IconIds.Text) && seen.Add(a.Icon))
+                .Take(MaxBarActions).ToList();
         }
 
         private RectangleF UnitScreenRect(SlideView view)

@@ -42,5 +42,21 @@ namespace InventaSketch.AddIn.Tests
             Assert.Equal(8, main.Count);
             Assert.Equal(new[] { "e7", "e8", "e9" }, overflow.Select(i => i.Id));
         }
+
+        [Fact]
+        public void BarShowsAtMostThreeKeyActionsWithSharedIcons()
+        {
+            static InventaSketch.Core.ContextAction A(string id, string icon, bool enabled = true)
+                => new(id, new InventaSketch.Core.I18nText(id, id), icon, o => o) { IsEnabled = enabled };
+            var actions = new[]
+            {
+                A("custom", "true-size"), A("off", InventaSketch.Core.IconIds.Increase, enabled: false),
+                A("ref", InventaSketch.Core.IconIds.Text), A("more", InventaSketch.Core.IconIds.Increase),
+                A("toggle", InventaSketch.Core.IconIds.Toggle), A("more2", InventaSketch.Core.IconIds.Increase),
+                A("less", InventaSketch.Core.IconIds.Decrease), A("flip", InventaSketch.Core.IconIds.Swap), A("fourth", InventaSketch.Core.IconIds.ArrowEnd),
+            };
+            Assert.Equal(new[] { "more", "less", "flip" }, OnSlideController.BarActions(actions, hasTextButton: true).Select(a => a.Id));
+            Assert.Equal(new[] { "ref", "more", "less" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(a => a.Id));
+        }
     }
 }

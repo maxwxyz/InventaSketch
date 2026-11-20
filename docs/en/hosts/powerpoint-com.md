@@ -77,7 +77,9 @@
   optional parameters: edit texts (numeral, dimension text, prefix/unit), cycle choices (line course straight/curved/
   wavy, object end, terminator, direction), toggles and text size. "← Back" returns to the main menu.
 - **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle, below if there is no
-  room): its views, mirror horizontally/vertically, rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
+  room): its views, edit text, up to three key type actions with a telling pictogram of the shared set (thicker/thinner
+  wall, more/fewer steps, arrow kind, swap direction; generic toggles and cycles stay in the pie menu), mirror
+  horizontally/vertically, rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
   otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
   selection; typing hides it. Clicks on the bar never reach the slide.
 - **Pie menu:** right-click on a selected unit: delete (top), views, type actions, duplicate, mirror, rotate 90°. The unit
