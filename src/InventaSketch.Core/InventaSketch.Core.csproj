@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Host-independent core: document model, geometry, drawing primitives, module registry,
+    snapping, hatching, SVG rendering, commands and persistence. No Office/UNO references allowed.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>$(IskLibTargets)</TargetFrameworks>
+    <RootNamespace>InventaSketch.Core</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Text.Json" Version="9.0.11" />
+  </ItemGroup>
+</Project>

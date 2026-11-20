@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+*.log
+.vite/
+local-resources/
+bin/
+obj/
+.vs/
+*.user
+TestResults/
+__pycache__/
+*.pyc
+hosts/libreoffice/build/
+*.oxt
+.DS_Store
+Thumbs.db

@@ -1,0 +1,26 @@
+<Project>
+  <!--
+    Shared build settings.
+    Libraries: netstandard2.0 (loadable by the .NET Framework 4.8 COM add-in) + net10.0 (WebAssembly engine,
+    LibreOffice engine process, tests). Set -p:IskOffline=true to build net10.0 only.
+  -->
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <WarningLevel>5</WarningLevel>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <IskOffline Condition="'$(IskOffline)' == ''">false</IskOffline>
+    <IskLibTargets Condition="'$(IskOffline)' == 'true'">net10.0</IskLibTargets>
+    <IskLibTargets Condition="'$(IskOffline)' != 'true'">netstandard2.0;net10.0</IskLibTargets>
+    <Company>InventaSketch contributors</Company>
+    <Product>InventaSketch</Product>
+    <Copyright>Copyright (c) 2026 InventaSketch contributors. Licensed under the Apache License 2.0.</Copyright>
+    <Version>0.1.0</Version>
+    <NeutralLanguage>en</NeutralLanguage>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <NoWarn>$(NoWarn);NU1903</NoWarn>
+  </PropertyGroup>
+</Project>

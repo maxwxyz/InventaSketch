@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(IskLibTargets)</TargetFrameworks>
+    <RootNamespace>InventaSketch.Modules.Annotation</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\InventaSketch.Core\InventaSketch.Core.csproj" />
+  </ItemGroup>
+</Project>
