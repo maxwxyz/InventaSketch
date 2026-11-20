@@ -48,7 +48,7 @@ add-in (presentation tags) are not exchanged yet.
 
 2D constraint solver, linkages, joint limits, drag-to-simulate, ghosting, animation as slide sequence; technical
 mechanics module; multi-view links. Status: **in progress** — kinematics module shipped 2026-11-20 (joints, links,
-linkages with closed-loop solution, ghosts, paths, DOF); open: interactive drag-to-simulate, animation as slide sequence.
+linkages with closed-loop solution, ghosts, paths, DOF); animation as slide sequence with Morph done 2026-11-20 (COM); open: interactive drag-to-simulate, animation in the web add-in.
 
 ## Phase 5 – Electrical, electronics, electric machines
 

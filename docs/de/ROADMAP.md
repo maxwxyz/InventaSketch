@@ -53,7 +53,7 @@ verifiziert (.pptx); Einheiten des Web-Add-ins (Präsentations-Tags) werden noch
 2D-Constraint-Solver, Koppelgetriebe, Gelenkgrenzen, Simulation durch Ziehen, Geisterbilder (Ghosting), Animation als
 Folienfolge; Modul Technische Mechanik; verknüpfte Mehrfachansichten. Status: **in Arbeit** – Kinematik-Modul am
 20.11.2026 ausgeliefert (Gelenke, Glieder, Mechanismen mit geschlossener Schleifenlösung, Zwischenlagen, Bahnen,
-Freiheitsgrad); offen: interaktives Ziehen zur Simulation, Animation als Folienfolge.
+Freiheitsgrad); Animation als Folienfolge mit Morph am 20.11.2026 erledigt (COM); offen: interaktives Ziehen zur Simulation, Animation im Web-Add-in.
 
 ## Phase 5 – Elektrotechnik, Elektronik, elektrische Maschinen
 

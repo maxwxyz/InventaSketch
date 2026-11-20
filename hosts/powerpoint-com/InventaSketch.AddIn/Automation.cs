@@ -86,6 +86,23 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>
+        /// Runs a floating-bar or pie-menu command on the selected unit ("dup", "rot90", "flipH", "view:&lt;id&gt;",
+        /// "act:&lt;action id&gt;", "anim" …); false if no InventaSketch unit is selected. Runs asynchronously on the UI thread.
+        /// </summary>
+        public bool Command(string commandId)
+        {
+            try
+            {
+                return _connect.RunUnitCommand(commandId);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.Command " + commandId, ex);
+                return false;
+            }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

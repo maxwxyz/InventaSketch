@@ -867,6 +867,9 @@ namespace InventaSketch.AddIn
             });
         }
 
+        /// <summary>Runs a bar/pie command on the selected unit (automation).</summary>
+        internal bool RunUnitCommand(string commandId) => _onSlide?.RunCommand(commandId) ?? false;
+
         internal bool ActivateTab()
         {
             if (_onSlide is null || _ribbon is null) return false;

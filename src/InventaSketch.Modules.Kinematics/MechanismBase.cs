@@ -183,6 +183,17 @@ namespace InventaSketch.Modules.Kinematics
 
         public double AngleOf(SketchObject o) => o.Num("angle", DefaultAngle);
 
+        /// <summary>Frames of the input motion: the current angle, then the ghost angles (a full turn, or the mechanism's range).</summary>
+        public override IReadOnlyList<SketchObject> AnimationFrames(SketchObject o, int count)
+        {
+            if (count < 2) return Array.Empty<SketchObject>();
+            var angle = AngleOf(o);
+            var frames = new List<SketchObject> { o };
+            foreach (var a in GhostAngles(o, angle, count - 1).Take(count - 1))
+                frames.Add(o.WithParam("angle", Math.Round(KA.NormAngle(a), 6)));
+            return frames;
+        }
+
         /// <summary>Input angles for framing and the motion path (ordered, consecutive samples are joined).</summary>
         protected virtual IEnumerable<double> Sweep(SketchObject o)
         {

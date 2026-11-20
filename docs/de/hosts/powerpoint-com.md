@@ -32,7 +32,13 @@
   Rendertests (`tests/InventaSketch.AddIn.Tests`, Windows) schreiben helle und dunkle PNGs von Leiste und Kreismenü zur
   Sichtprüfung. Die Sprache folgt der Office-Oberflächensprache (Deutsch bei deutscher LCID, sonst Englisch).
 - Automatisierungsobjekt für Skripte und Tests: `Application.COMAddIns("InventaSketch.AddIn.Connect").Object` mit
-  `Insert(itemId)`, `Place(itemId)`, `Editor(visible)`, `LibraryItems()`, `Version()`.
+  `Insert(itemId)`, `Place(itemId)`, `Editor(visible)`, `Command(commandId)`, `LibraryItems()`, `Version()`.
+  `Command` führt einen Leisten- oder Kreismenü-Befehl auf der ausgewählten Einheit aus (`dup`, `rot90`, `view:<id>`,
+  `act:<aktion>`, `anim`).
+- **Als Folien animieren** (Kreismenü von Mechanismen, `ObjectType.AnimationFrames`): Die Folie wird 11-mal dupliziert,
+  jede Kopie zeigt die Einheit beim nächsten Antriebswinkel (gleicher Name, gleiche Stapelposition) und erhält einen
+  Morph-Übergang (`ppEffectMorphByObject` = 3954, aus der installierten Typbibliothek gelesen), der nach 0,4 s
+  weiterschaltet. Ein Rückgängig-Schritt. Am 2026-11-20 mit einem Viergelenkgetriebe verifiziert.
 - Protokoll: `%LOCALAPPDATA%\InventaSketch\addin.log`.
 - Logo: `assets/branding/logo.svg` ist die einzige Quelle; `hosts/office-web/scripts/icons.mjs` rastert daraus die
   Manifest-PNGs und `assets/branding/inventasketch.ico` (16–256 px). Die .ico ist im Add-in eingebettet (`Branding`) und

@@ -658,3 +658,38 @@ namespace InventaSketch.Modules.Kinematics.Tests
         }
     }
 }
+
+namespace InventaSketch.Modules.Kinematics.Tests
+{
+    /// <summary>Animation as a slide sequence: mechanisms step their input angle, keep their box and stay inside it.</summary>
+    public class AnimationTests
+    {
+        [Fact]
+        public void MechanismsYieldFramesThatStayInTheirBox()
+        {
+            var r = Fx.Reg();
+            var mechanisms = 0;
+            foreach (var item in r.Library)
+            {
+                var o = r.Create(item, new Vec2(50, 50));
+                var frames = r.TypeOf(o).AnimationFrames(o, 12);
+                if (frames.Count == 0) continue;
+                mechanisms++;
+                Assert.Equal(12, frames.Count);
+                Assert.Same(o, frames[0]);
+                Assert.All(frames, f => Assert.Equal(o.Size, f.Size));
+                Assert.True(frames.Select(f => Math.Round(f.Num("angle", double.NaN), 3)).Distinct().Count() > 1, item.Id + ": angle must change");
+                foreach (var f in frames) Fx.AssertInsideBox(Fx.Render(r, f), f.Size, item.Id + " @ " + f.Num("angle", 0));
+            }
+            Assert.True(mechanisms >= 3, "expected several animatable mechanisms, found " + mechanisms);
+        }
+
+        [Fact]
+        public void SymbolsHaveNoFrames()
+        {
+            var r = Fx.Reg();
+            var joint = r.Library.Select(i => r.Create(i, Vec2.Zero)).First(o => r.TypeOf(o).AnimationFrames(o, 12).Count == 0);
+            Assert.Empty(r.TypeOf(joint).AnimationFrames(joint, 1));
+        }
+    }
+}

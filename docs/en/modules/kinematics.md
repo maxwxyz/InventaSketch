@@ -131,3 +131,7 @@ View switching (`schematic`, `detailed`) is offered by the host from `ViewDef` w
 All output uses native primitives (lines, polylines, circles, rectangles, text, groups); hatching is explicit
 line segments where hosts lack pattern fills. Ghost positions are `GroupPrim`s. No vector-picture fallback is
 needed.
+
+Mechanisms provide `AnimationFrames(o, count)`: the current state, then the input angle stepped like the ghost
+positions (a full turn, or the toggle range). Hosts turn them into a slide sequence (PowerPoint COM: "Animate as
+slides" with Morph transitions); every frame keeps the box.

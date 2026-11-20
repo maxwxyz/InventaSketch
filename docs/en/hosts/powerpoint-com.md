@@ -30,7 +30,12 @@
   (`tests/InventaSketch.AddIn.Tests`, Windows) write light and dark PNGs of bar and pie menu for visual review. UI language follows the Office UI language (German if
   the LCID is German, otherwise English).
 - Automation object for scripts and tests: `Application.COMAddIns("InventaSketch.AddIn.Connect").Object` with
-  `Insert(itemId)`, `Place(itemId)`, `Editor(visible)`, `LibraryItems()`, `Version()`.
+  `Insert(itemId)`, `Place(itemId)`, `Editor(visible)`, `Command(commandId)`, `LibraryItems()`, `Version()`.
+  `Command` runs a bar or pie command on the selected unit (`dup`, `rot90`, `view:<id>`, `act:<action>`, `anim`).
+- **Animate as slides** (pie menu of mechanisms, `ObjectType.AnimationFrames`): the slide is duplicated 11 times, each
+  copy shows the unit at the next input angle (same name, same stacking position) and gets a Morph transition
+  (`ppEffectMorphByObject` = 3954, read from the installed type library) that advances after 0.4 s. One undo step.
+  Verified 2026-11-20 with a four-bar linkage.
 - Log: `%LOCALAPPDATA%\InventaSketch\addin.log`.
 - Logo: `assets/branding/logo.svg` is the single source; `hosts/office-web/scripts/icons.mjs` rasterises it into the
   manifest PNGs and `assets/branding/inventasketch.ico` (16–256 px), which is embedded in the add-in (`Branding`) for the

@@ -134,3 +134,7 @@ und `view-detailed` an.
 Alle Ausgaben verwenden native Grundelemente (Linien, Polylinien, Kreise, Rechtecke, Text, Gruppen); Schraffuren
 werden als explizite Linien ausgegeben, wo Hosts keine Musterfüllung haben. Zwischenlagen sind `GroupPrim`s.
 Ein Vektorbild-Rückfall ist nicht nötig.
+
+Mechanismen liefern `AnimationFrames(o, count)`: den aktuellen Zustand, dann den Antriebswinkel in Schritten wie die
+Zwischenlagen (eine volle Umdrehung oder den Bereich des Kniehebels). Hosts machen daraus eine Folienfolge (PowerPoint
+COM: „Als Folien animieren“ mit Morph-Übergängen); jedes Bild behält die Box.

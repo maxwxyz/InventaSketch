@@ -334,6 +334,13 @@ namespace InventaSketch.Core
         public virtual bool UsesPlanScale => false;
 
         /// <summary>
+        /// Motion frames for an animation as a slide sequence (mechanisms: the input angle stepped through its range):
+        /// <paramref name="count"/> copies of <paramref name="o"/> in playing order, the first one the current state, all
+        /// with the same box so hosts can morph between them. Empty for types without motion.
+        /// </summary>
+        public virtual IReadOnlyList<SketchObject> AnimationFrames(SketchObject o, int count) => Array.Empty<SketchObject>();
+
+        /// <summary>
         /// Size of <paramref name="o"/> after switching to <paramref name="toView"/>. Default: when either view declares a
         /// preferred <see cref="ViewDef.Size"/>, the object keeps its visual scale (geometric mean of its scale factors
         /// relative to the preferred size of the current view) and takes the aspect of the target view; otherwise the size

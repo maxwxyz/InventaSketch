@@ -1064,6 +1064,9 @@ namespace InventaSketch.AddIn.OnSlide
                 items.Add((new PieItem("menu:insert", T("Insert \u25B8", "Einf\u00fcgen \u25B8")) { IconId = IconIds.Increase }, true));
             items.Add((new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate }, true));
             items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
+            // Mechanisms: the input motion as a slide sequence with Morph transitions.
+            if (type is not null && first is not null && type.AnimationFrames(first, 2).Count > 0)
+                items.Add((new PieItem("anim", T("Animate as slides", "Als Folien animieren")) { IconId = IconIds.Animate }, false));
             items.AddRange(actions.Select(a => (ActionItem(a), false)));
             items.Add((new PieItem("flipH", T("Mirror ↔", "Spiegeln ↔")) { IconId = IconIds.MirrorH }, false));
             items.Add((new PieItem("flipV", T("Mirror ↕", "Spiegeln ↕")) { IconId = IconIds.MirrorV }, false));
@@ -1599,6 +1602,77 @@ namespace InventaSketch.AddIn.OnSlide
             if (fresh is not null) Arm(fresh);
         }
 
+        /// <summary>Frames of an animation as a slide sequence (one slide each, the first is the current slide).</summary>
+        internal const int AnimationFrameCount = 12;
+
+        /// <summary>PpEntryEffect.ppEffectMorphByObject (PowerPoint 2016+, read from the installed type library).</summary>
+        private const int MorphByObject = 3954;
+
+        /// <summary>
+        /// The unit models of an animation: per frame the unit with every animatable object replaced by its frame
+        /// (<see cref="ObjectType.AnimationFrames"/>); empty if nothing in the unit moves.
+        /// </summary>
+        internal static List<SketchDocument> AnimationDocs(Registry registry, SketchDocument doc, int count)
+        {
+            var frames = new Dictionary<string, IReadOnlyList<SketchObject>>(StringComparer.Ordinal);
+            foreach (var o in doc.Objects.Values)
+                if (registry.Type(o.Type)?.AnimationFrames(o, count) is { Count: > 1 } f) frames[o.Id] = f;
+            if (frames.Count == 0) return new List<SketchDocument>();
+            var n = frames.Values.Min(f => f.Count);
+            var docs = new List<SketchDocument>();
+            for (var k = 0; k < n; k++)
+            {
+                var frame = k;
+                docs.Add(k == 0 ? doc : Edits.Update(doc, frames.Keys.ToList(), o => frames[o.Id][frame]));
+            }
+            return docs;
+        }
+
+        /// <summary>
+        /// Duplicates the slide once per further frame and redraws the unit there in that frame (same name, same stacking
+        /// position), with Morph transitions that advance on their own: the slide show plays the motion. One undo step.
+        /// </summary>
+        private void AnimateAsSlides(PowerPoint.Slide slide, SketchUnit unit, Registry registry)
+        {
+            var docs = AnimationDocs(registry, unit.Doc, AnimationFrameCount);
+            if (docs.Count < 2) return;
+            var previous = slide;
+            for (var k = 1; k < docs.Count; k++)
+            {
+                var copy = previous.Duplicate()[1];
+                PowerPoint.Shape? old = null;
+                foreach (PowerPoint.Shape s in copy.Shapes)
+                {
+                    try { if (s.Tags["ISK_ID"] == unit.Id) { old = s; break; } } catch { }
+                }
+                if (old is null) break;
+                var z = old.ZOrderPosition;
+                old.Delete();
+                var drawn = SketchUnits.Draw(copy, registry, docs[k], _lang());
+                for (var guard = 0; drawn is not null && drawn.ZOrderPosition > z && guard < 500; guard++)
+                    drawn.ZOrder(Office.MsoZOrderCmd.msoSendBackward);
+                var t = copy.SlideShowTransition;
+                t.EntryEffect = (PowerPoint.PpEntryEffect)MorphByObject;
+                t.Duration = 0.4f;
+                t.AdvanceOnClick = Office.MsoTriState.msoTrue;
+                t.AdvanceOnTime = Office.MsoTriState.msoTrue;
+                t.AdvanceTime = 0;
+                previous = copy;
+            }
+            Log.Info($"Animated {unit.Shape.Name} as {docs.Count} slides");
+            try { _app.ActiveWindow.View.GotoSlide(slide.SlideIndex); unit.Shape.Select(Office.MsoTriState.msoTrue); } catch { }
+        }
+
+        /// <summary>Runs a bar/pie command on the armed unit (automation); false if no unit is armed.</summary>
+        public bool RunCommand(string id)
+        {
+            var unit = _unit;
+            if (unit is null) return false;
+            Log.Info("Command: " + id);
+            Post(() => ApplyAction(unit, id));
+            return true;
+        }
+
         private void ApplyAction(SketchUnit stale, string id)
         {
             var slide = CurrentSlide();
@@ -1621,6 +1695,11 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 // Insert at the pointer with snapping (onto the axis, ports and mounts of the selection).
                 if (registry.Item(id.Substring(4)) is { } item) BeginPlacement(item);
+                return;
+            }
+            if (id == "anim")
+            {
+                AnimateAsSlides(slide, unit, registry);
                 return;
             }
             if (id == "dup")
