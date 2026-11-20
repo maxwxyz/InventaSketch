@@ -15,7 +15,9 @@ prüft keine Schaltungen.
 
 - **Schnellskizze zuerst:** Jedes Bibliothekselement wird ohne Parameter eingefügt. Freies (gleichmäßiges oder
   ungleichmäßiges) Skalieren ändert nur `Size`; Symbole sind für eine Entwurfsbox gezeichnet und werden auf die
-  Objektbox gestreckt. Kleine Details (Dreiecke, Pfeilspitzen, Punkte, Text) behalten ihre Proportionen.
+  Objektbox gestreckt. Kleine Details (Dreiecke, Pfeilspitzen, Punkte, Text) behalten ihre Proportionen. Ändert ein
+  Parameter die Entwurfsbox (Schaltstellungen, Betätigungen) – per Aktion oder im Inspektor (`ObjectType.OnParamChanged`)
+  –, folgt `Size`, sodass der Zeichnungsmaßstab bleibt.
 - **Hydraulik oder Pneumatik** ist der optionale Parameter `medium` (`hydraulic` / `pneumatic`) bei den Typen, deren
   Zeichnung sich unterscheidet: Pumpen/Verdichter, Motoren, Schwenkantrieb, Druckquellen, Wegeventile und
   Betätigungssymbole (volle Dreiecke = Hydraulik, hohle = Pneumatik). Die Kontextaktion `fluid.medium` schaltet um.

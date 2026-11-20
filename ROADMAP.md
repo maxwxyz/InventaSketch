@@ -82,9 +82,10 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   PowerPoint).
 - Core wishes from the maps and fluid modules (2026-11-20): attachments to point objects and rails (T-branches without a
   junction dot); shared helpers for port routing/`ConnectToPort` (electrical and fluid duplicate them) and multi-subpath
-  freeforms; a hook to resize when a parameter changes in the inspector (`ObjectType.OnParamChanged`); multi-line text
-  bounds in `Prim.Bounds`; the selected point index for "remove waypoint". Done 2026-11-20: `IconIds.Pin`, `Medium`,
-  `Actuation` (COM and web pictograms); `ObjectType.IsPart` (the BOM skips map symbols and diagram shapes). COM add-in feature-complete for slice 2; web add-in builds and runs in the browser.
+  freeforms; multi-line text bounds in `Prim.Bounds`; the selected point index for "remove waypoint". Done 2026-11-20:
+  `IconIds.Pin`, `Medium`, `Actuation` (COM and web pictograms); `ObjectType.IsPart` (the BOM skips map symbols and
+  diagram shapes); `ObjectType.OnParamChanged` with `Registry.SetParam` (engine `setParam`, COM label menu; fluid
+  valves keep their drawing scale). COM add-in feature-complete for slice 2; web add-in builds and runs in the browser.
 
 - UI icons (maintainer requirement 2026-11-20): icons in overlays, floating bar and pie menu must be abstract, clean
   pictograms (one consistent line-icon set, e.g. "stick view", "section", "axial view", "mirror"), not scaled-down

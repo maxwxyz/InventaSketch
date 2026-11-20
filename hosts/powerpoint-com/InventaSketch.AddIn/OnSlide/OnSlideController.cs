@@ -1732,7 +1732,7 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 var parts = id.Split(new[] { ':' }, 3);
                 ParamValue value = parts[2] == "true" ? true : parts[2] == "false" ? false : (ParamValue)parts[2];
-                doc = Edits.Update(doc, ids, o => registry.Type(o.Type)?.Parameters.Any(pd => pd.Key == parts[1]) == true ? o.WithParam(parts[1], value) : o);
+                doc = Edits.Update(doc, ids, o => registry.Type(o.Type)?.Parameters.Any(pd => pd.Key == parts[1]) == true ? registry.SetParam(o, parts[1], value) : o);
             }
             else if (id.StartsWith("size:", StringComparison.Ordinal))
             {

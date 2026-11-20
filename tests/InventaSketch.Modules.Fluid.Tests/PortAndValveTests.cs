@@ -162,6 +162,21 @@ namespace InventaSketch.Modules.Fluid.Tests
         }
 
         [Fact]
+        public void InspectorParameterChangesKeepTheDrawingScale()
+        {
+            var r = Fx.Reg();
+            var v = Fx.Item(r, "fluid.valve.42");
+            var t = (FluidType)r.TypeOf(v);
+            var scale = v.Size.W / t.Design(v).W;
+            var wide = r.SetParam(v, "ways", "5/3");
+            Assert.Equal("5/3", wide.Str("ways", ""));
+            Assert.True(wide.Size.W > v.Size.W * 1.2, "a third position widens the valve");
+            Assert.Equal(scale, wide.Size.W / t.Design(wide).W, 6);
+            Assert.Equal(scale, wide.Size.H / t.Design(wide).H, 6);
+            Assert.Equal(v.Size, r.SetParam(wide, "ways", "4/2").Size);
+        }
+
+        [Fact]
         public void CyclingWaysKeepsTheDrawingScale()
         {
             var r = Fx.Reg();

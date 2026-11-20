@@ -73,6 +73,9 @@ namespace InventaSketch.Modules.Fluid
         public override IReadOnlyList<string> Keywords => _keywords;
         public override IReadOnlyList<ViewDef> Views => _viewDefs;
         public override Size2 DefaultSize => _views[0].DesignOf(Normalize(new SketchObject { Type = _id }));
+
+        /// <summary>Inspector edits keep the drawing scale like the type's own actions (<see cref="Adapt"/>).</summary>
+        public override SketchObject OnParamChanged(SketchObject before, SketchObject after, string key) => Adapt(before, after);
         public override bool PreferUniformScale => Uniform;
         public override IReadOnlyList<string> Companions => CompanionIds;
 

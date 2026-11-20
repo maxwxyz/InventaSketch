@@ -567,12 +567,7 @@ namespace InventaSketch.Engine
         {
             if (string.IsNullOrEmpty(r.Key)) throw new ArgumentException("Missing 'key'.");
             var value = ToParam(r.Value);
-            return Edit(r, "Parameter", (s, ids) => Edits.Update(s.Doc, ids, o =>
-            {
-                if (value is ParamValue pv) return o.WithParam(r.Key!, pv);
-                var d = o.Params.Where(kv => kv.Key != r.Key).ToDictionary(kv => kv.Key, kv => kv.Value);
-                return o with { Params = d };
-            }));
+            return Edit(r, "Parameter", (s, ids) => Edits.Update(s.Doc, ids, o => Registry.SetParam(o, r.Key!, value)));
         }
 
         private object SetStyleCore(EngineRequest r)

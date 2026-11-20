@@ -343,6 +343,13 @@ namespace InventaSketch.Core
         public virtual bool IsPart => true;
 
         /// <summary>
+        /// Called when a parameter was set from outside the type's own actions (inspector, label menu): returns the object
+        /// to keep, for example with <see cref="SketchObject.Size"/> following a design box that grew (a valve with more
+        /// positions keeps its drawing scale instead of being squeezed). Default: <paramref name="after"/> unchanged.
+        /// </summary>
+        public virtual SketchObject OnParamChanged(SketchObject before, SketchObject after, string key) => after;
+
+        /// <summary>
         /// Motion frames for an animation as a slide sequence (mechanisms: the input angle stepped through its range):
         /// <paramref name="count"/> copies of <paramref name="o"/> in playing order, the first one the current state, all
         /// with the same box so hosts can morph between them. Empty for types without motion.
@@ -492,6 +499,18 @@ namespace InventaSketch.Core
         public ObjectType TypeOf(SketchObject o) => Type(o.Type) ?? throw new KeyNotFoundException($"Unknown object type '{o.Type}'.");
 
         public LibraryItem? Item(string id) => _library.FirstOrDefault(i => i.Id == id);
+
+        /// <summary>
+        /// The object with parameter <paramref name="key"/> set to <paramref name="value"/> (null removes it), passed through
+        /// <see cref="ObjectType.OnParamChanged"/> so the type can keep its proportions. Hosts set parameters through this.
+        /// </summary>
+        public SketchObject SetParam(SketchObject o, string key, ParamValue? value)
+        {
+            SketchObject next;
+            if (value is ParamValue pv) next = o.WithParam(key, pv);
+            else next = o with { Params = o.Params.Where(kv => kv.Key != key).ToDictionary(kv => kv.Key, kv => kv.Value) };
+            return Type(o.Type)?.OnParamChanged(o, next, key) ?? next;
+        }
 
         /// <summary>
         /// The object switched to <paramref name="view"/> without distortion. Types that declare view sizes

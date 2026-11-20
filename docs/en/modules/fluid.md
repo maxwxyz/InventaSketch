@@ -15,7 +15,8 @@ circuits.
 
 - **Quick sketch first:** every library item is inserted without parameters. Free (uniform or non-uniform) scaling
   changes `Size` only; symbols are authored for a design box and stretched to the object box. Small details (triangles,
-  arrow heads, dots, text) keep their proportions.
+  arrow heads, dots, text) keep their proportions. When a parameter changes the design box (positions, actuators) —
+  through an action or the inspector (`ObjectType.OnParamChanged`) — `Size` follows, so the drawing scale stays.
 - **Hydraulic vs pneumatic** is the optional `medium` parameter (`hydraulic` / `pneumatic`) on the types where the
   drawing differs: pumps/compressors, motors, the rotary actuator, pressure sources, directional valves and actuation
   symbols (filled triangles = hydraulic, hollow = pneumatic). The context action `fluid.medium` toggles it.
