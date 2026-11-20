@@ -1,0 +1,153 @@
+using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Drawing2D;
+using InventaSketch.Core;
+
+namespace InventaSketch.AddIn.OnSlide
+{
+    /// <summary>
+    /// The shared set of abstract line pictograms (<see cref="IconIds"/>) for the floating bar and the pie menu: one stroke
+    /// weight, square 24-unit grid, no element-specific detail, so icons stay recognisable at 16–24 px.
+    /// </summary>
+    internal static class IconPainter
+    {
+        /// <summary>Maps legacy view ids (modules without <see cref="ViewDef.Icon"/>) to icon ids.</summary>
+        private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["stick"] = IconIds.Schematic, ["schematic"] = IconIds.Schematic, ["line"] = IconIds.Schematic, ["schema"] = IconIds.Schematic,
+            ["side"] = IconIds.Side, ["body"] = IconIds.Side, ["stepped"] = IconIds.Side, ["elevation"] = IconIds.Front,
+            ["section"] = IconIds.Section, ["hollow"] = IconIds.Section, ["cut"] = IconIds.Section,
+            ["axial"] = IconIds.Axial, ["face"] = IconIds.Axial, ["teeth"] = IconIds.Teeth,
+            ["top"] = IconIds.Top, ["front"] = IconIds.Front, ["rear"] = IconIds.Front, ["iso"] = IconIds.Iso,
+            ["detailed"] = IconIds.Detailed, ["simplified"] = IconIds.Simplified, ["ansi"] = IconIds.Simplified,
+            ["symbol"] = IconIds.Symbol, ["block"] = IconIds.Block, ["plan"] = IconIds.Plan, ["exploded"] = IconIds.Exploded,
+            ["table"] = IconIds.Block, ["diagram"] = IconIds.Block, ["full"] = IconIds.Detailed, ["compact"] = IconIds.Simplified,
+        };
+
+        public static string ForView(ViewDef v) => v.Icon ?? (ViewAliases.TryGetValue(v.Id, out var id) ? id : IconIds.Detailed);
+
+        /// <summary>Draws the icon into <paramref name="r"/> with the given ink.</summary>
+        public static void Draw(Graphics g, string iconId, RectangleF r, Color ink)
+        {
+            var s = Math.Min(r.Width, r.Height) / 24f;
+            var state = g.Save();
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.TranslateTransform(r.X + (r.Width - 24 * s) / 2, r.Y + (r.Height - 24 * s) / 2);
+            g.ScaleTransform(s, s);
+            using var pen = new Pen(ink, 1.7f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+            using var thin = new Pen(ink, 1.1f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+            using var dash = new Pen(ink, 1.1f) { DashPattern = new[] { 3.5f, 1.6f, 1f, 1.6f } };
+            using var brush = new SolidBrush(ink);
+            switch (iconId)
+            {
+                case IconIds.Schematic:
+                    g.DrawLine(pen, 12, 4, 12, 20); g.DrawLine(pen, 8, 4, 16, 4); g.DrawLine(pen, 8, 20, 16, 20);
+                    g.DrawLine(dash, 3, 12, 21, 12); g.DrawLine(thin, 10, 10, 14, 14); g.DrawLine(thin, 14, 10, 10, 14);
+                    break;
+                case IconIds.Side:
+                    g.DrawRectangle(pen, 8, 3, 8, 18); g.DrawLine(dash, 3, 12, 21, 12);
+                    break;
+                case IconIds.Section:
+                    g.DrawRectangle(pen, 8, 3, 8, 18);
+                    for (var y = 5; y < 21; y += 4) g.DrawLine(thin, 9, y + 3, 15, y - 1);
+                    g.DrawLine(dash, 3, 12, 21, 12);
+                    break;
+                case IconIds.Axial:
+                    g.DrawEllipse(pen, 4, 4, 16, 16); g.DrawLine(dash, 2, 12, 22, 12); g.DrawLine(dash, 12, 2, 12, 22);
+                    break;
+                case IconIds.Teeth:
+                    {
+                        g.DrawEllipse(pen, 6, 6, 12, 12);
+                        for (var i = 0; i < 8; i++)
+                        {
+                            var a = i * Math.PI / 4;
+                            float c = (float)Math.Cos(a), sn = (float)Math.Sin(a);
+                            g.DrawLine(pen, 12 + 6 * c, 12 + 6 * sn, 12 + 9.5f * c, 12 + 9.5f * sn);
+                        }
+                        g.FillEllipse(brush, 10.5f, 10.5f, 3, 3);
+                        break;
+                    }
+                case IconIds.Top:
+                    g.DrawRectangle(pen, 5, 9, 14, 12); g.DrawLine(pen, 12, 2, 12, 7); g.DrawLine(pen, 9.5f, 4.5f, 12, 7); g.DrawLine(pen, 14.5f, 4.5f, 12, 7);
+                    break;
+                case IconIds.Front:
+                    g.DrawRectangle(pen, 9, 5, 12, 14); g.DrawLine(pen, 2, 12, 7, 12); g.DrawLine(pen, 4.5f, 9.5f, 7, 12); g.DrawLine(pen, 4.5f, 14.5f, 7, 12);
+                    break;
+                case IconIds.Iso:
+                    g.DrawPolygon(pen, new[] { new PointF(12, 3), new PointF(20, 7.5f), new PointF(20, 16.5f), new PointF(12, 21), new PointF(4, 16.5f), new PointF(4, 7.5f) });
+                    g.DrawLine(thin, 12, 12, 12, 21); g.DrawLine(thin, 12, 12, 4, 7.5f); g.DrawLine(thin, 12, 12, 20, 7.5f);
+                    break;
+                case IconIds.Detailed:
+                    g.DrawRectangle(pen, 4, 5, 16, 14); g.DrawLine(thin, 7, 9, 17, 9); g.DrawLine(thin, 7, 12, 14, 12); g.DrawLine(thin, 7, 15, 16, 15);
+                    break;
+                case IconIds.Simplified:
+                    g.DrawRectangle(pen, 5, 5, 14, 14); g.DrawLine(thin, 5, 5, 19, 19); g.DrawLine(thin, 19, 5, 5, 19);
+                    break;
+                case IconIds.Symbol:
+                    g.DrawRectangle(pen, 8, 8, 8, 8); g.DrawLine(pen, 2, 12, 8, 12); g.DrawLine(pen, 16, 12, 22, 12);
+                    break;
+                case IconIds.Block:
+                    g.DrawRectangle(pen, 2, 8, 7, 8); g.DrawRectangle(pen, 15, 8, 7, 8); g.DrawLine(thin, 9, 12, 15, 12);
+                    break;
+                case IconIds.Plan:
+                    g.DrawLines(pen, new[] { new PointF(4, 20), new PointF(4, 4), new PointF(20, 4), new PointF(20, 13) });
+                    g.DrawLine(pen, 4, 20, 13, 20); g.DrawArc(thin, 13, 13, 14, 14, 180, 90);
+                    break;
+                case IconIds.Exploded:
+                    g.DrawRectangle(pen, 3, 9, 4, 6); g.DrawRectangle(pen, 10, 7, 4, 10); g.DrawRectangle(pen, 17, 9, 4, 6);
+                    break;
+                case IconIds.Delete:
+                    g.DrawLine(pen, 6, 6, 18, 18); g.DrawLine(pen, 18, 6, 6, 18);
+                    break;
+                case IconIds.Duplicate:
+                    g.DrawRectangle(pen, 4, 4, 11, 11); g.DrawRectangle(pen, 9, 9, 11, 11);
+                    break;
+                case IconIds.MirrorH:
+                    g.DrawLine(dash, 12, 3, 12, 21);
+                    g.DrawPolygon(pen, new[] { new PointF(9, 6), new PointF(9, 18), new PointF(3, 18) });
+                    g.DrawPolygon(pen, new[] { new PointF(15, 6), new PointF(15, 18), new PointF(21, 18) });
+                    break;
+                case IconIds.MirrorV:
+                    g.DrawLine(dash, 3, 12, 21, 12);
+                    g.DrawPolygon(pen, new[] { new PointF(6, 9), new PointF(18, 9), new PointF(18, 3) });
+                    g.DrawPolygon(pen, new[] { new PointF(6, 15), new PointF(18, 15), new PointF(18, 21) });
+                    break;
+                case IconIds.Rotate:
+                    g.DrawArc(pen, 5, 5, 14, 14, -60, 300); g.DrawLines(pen, new[] { new PointF(15.5f, 2.5f), new PointF(16, 6.5f), new PointF(12, 7) });
+                    break;
+                case IconIds.Swap:
+                    g.DrawLine(pen, 4, 9, 20, 9); g.DrawLines(pen, new[] { new PointF(16, 5), new PointF(20, 9), new PointF(16, 13) });
+                    g.DrawLine(pen, 20, 15, 4, 15); g.DrawLines(pen, new[] { new PointF(8, 11), new PointF(4, 15), new PointF(8, 19) });
+                    break;
+                case IconIds.ArrowStart:
+                    g.DrawLine(pen, 6, 12, 21, 12); g.FillPolygon(brush, new[] { new PointF(3, 12), new PointF(9, 8), new PointF(9, 16) });
+                    break;
+                case IconIds.ArrowEnd:
+                    g.DrawLine(pen, 3, 12, 18, 12); g.FillPolygon(brush, new[] { new PointF(21, 12), new PointF(15, 8), new PointF(15, 16) });
+                    break;
+                case IconIds.Text:
+                    g.DrawLine(pen, 5, 5, 19, 5); g.DrawLine(pen, 12, 5, 12, 20);
+                    break;
+                case IconIds.Toggle:
+                    g.DrawEllipse(pen, 3, 7, 18, 10); g.FillEllipse(brush, 13, 9, 6, 6);
+                    break;
+                case IconIds.Cycle:
+                    g.DrawArc(pen, 4, 4, 16, 16, 200, 140); g.DrawArc(pen, 4, 4, 16, 16, 20, 140);
+                    g.DrawLines(pen, new[] { new PointF(17, 3), new PointF(18.5f, 7), new PointF(14.5f, 8) });
+                    g.DrawLines(pen, new[] { new PointF(7, 21), new PointF(5.5f, 17), new PointF(9.5f, 16) });
+                    break;
+                case IconIds.Connect:
+                    g.FillEllipse(brush, 2, 15, 6, 6); g.FillEllipse(brush, 16, 3, 6, 6); g.DrawBezier(pen, 5, 18, 12, 18, 12, 6, 19, 6);
+                    break;
+                case IconIds.Animate:
+                    g.DrawPolygon(pen, new[] { new PointF(7, 4), new PointF(19, 12), new PointF(7, 20) });
+                    break;
+                default:
+                    g.DrawEllipse(pen, 5, 5, 14, 14); g.FillEllipse(brush, 10.5f, 10.5f, 3, 3);
+                    break;
+            }
+            g.Restore(state);
+        }
+    }
+}

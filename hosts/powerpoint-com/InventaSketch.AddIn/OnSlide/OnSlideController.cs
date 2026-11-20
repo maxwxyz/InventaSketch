@@ -704,41 +704,16 @@ namespace InventaSketch.AddIn.OnSlide
             if (type is not null && first is not null && type.Views.Count > 1)
             {
                 foreach (var v in type.Views.Take(6))
-                    list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { Icon = ViewIcon(first, v.Id, 22) });
+                    list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
                 list.Add(new BarButton("", "", "", Separator: true));
             }
-            list.Add(new BarButton("flipH", "\u21C6", T("Mirror horizontally", "Horizontal spiegeln")));
-            list.Add(new BarButton("flipV", "\u21C5", T("Mirror vertically", "Vertikal spiegeln")));
-            list.Add(new BarButton("rot90", "\u21BB", T("Rotate 90 degrees", "Um 90 Grad drehen")));
-            list.Add(new BarButton("dup", "\u29C9", T("Duplicate", "Duplizieren")));
+            list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
+            list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
+            list.Add(new BarButton("rot90", "", T("Rotate 90 degrees", "Um 90 Grad drehen")) { IconId = IconIds.Rotate });
+            list.Add(new BarButton("dup", "", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate });
             list.Add(new BarButton("", "", "", Separator: true));
-            list.Add(new BarButton("delete", "\u2715", T("Delete", "L\u00f6schen"), Danger: true));
+            list.Add(new BarButton("delete", "", T("Delete", "L\u00f6schen"), Danger: true) { IconId = IconIds.Delete });
             return list;
-        }
-
-        /// <summary>The object rendered in another view, as a small picture (bar and pie menu).</summary>
-        private Bitmap? ViewIcon(SketchObject o, string view, int logicalSize)
-        {
-            try
-            {
-                var registry = _registry();
-                // Use the natural proportions of that view (library preset), not the current box: a stick symbol is narrow,
-                // an axial view round.
-                var preset = registry.Library.FirstOrDefault(i => i.TypeId == o.Type && i.View == view && i.Size is not null)?.Size;
-                var side = Math.Max(o.Size.W, o.Size.H);
-                var probe = o with { View = view, Transform = o.Transform with { Rotation = 0 }, Style = null, Size = preset ?? new Size2(side, side) };
-                var doc = SketchDocument.Create();
-                doc = Edits.Add(doc, doc.Pages[0].Id, probe);
-                var prims = registry.Render(probe, new RenderContext(doc, _lang()));
-                var size = (int)Math.Round(logicalSize * (_view?.DeviceScale ?? 1));
-                var ink = _dark ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
-                return ThumbnailRenderer.Render(prims, size, ink, Color.Transparent);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("View icon", ex);
-                return null;
-            }
         }
 
         private RectangleF UnitScreenRect(SlideView view)
@@ -893,25 +868,25 @@ namespace InventaSketch.AddIn.OnSlide
                 DrawPie(view);
                 return;
             }
-            var items = new List<PieItem> { new("delete", T("Delete", "L\u00f6schen"), Danger: true) { Glyph = "\u2715" } };
+            var items = new List<PieItem> { new("delete", T("Delete", "L\u00f6schen"), Danger: true) { IconId = IconIds.Delete } };
             if (pointObject is not null)
             {
-                items.Add(new PieItem("menu:type", T("Type \u25B8", "Typ \u25B8")));
-                items.Add(new PieItem("menu:label", T("Label \u25B8", "Beschriftung \u25B8")));
+                items.Add(new PieItem("menu:type", T("Type \u25B8", "Typ \u25B8")) { IconId = IconIds.Cycle });
+                items.Add(new PieItem("menu:label", T("Label \u25B8", "Beschriftung \u25B8")) { IconId = IconIds.Text });
             }
             var first = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             var type = first is null ? null : registry.Type(first.Type);
             if (type is not null && first is not null)
             {
                 foreach (var v in type.Views.Take(5))
-                    items.Add(new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { Icon = ViewIcon(first, v.Id, 20) });
+                    items.Add(new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
                 foreach (var a in type.Actions(first, _lang()).Where(a => a.Group != "view").Take(3))
                     items.Add(new PieItem("act:" + a.Id, a.Label.Get(_lang()), Active: a.IsActive));
             }
-            items.Add(new PieItem("dup", T("Duplicate", "Duplizieren")) { Glyph = "\u29C9" });
-            items.Add(new PieItem("flipH", T("Mirror", "Spiegeln")) { Glyph = "\u21C6" });
-            items.Add(new PieItem("flipV", T("Mirror", "Spiegeln")) { Glyph = "\u21C5" });
-            items.Add(new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { Glyph = "\u21BB" });
+            items.Add(new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate });
+            items.Add(new PieItem("flipH", T("Mirror", "Spiegeln")) { IconId = IconIds.MirrorH });
+            items.Add(new PieItem("flipV", T("Mirror", "Spiegeln")) { IconId = IconIds.MirrorV });
+            items.Add(new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate });
             HideBar();
             _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale);
             _mode = Mode.Pie;

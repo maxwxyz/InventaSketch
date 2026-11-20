@@ -12,6 +12,8 @@ namespace InventaSketch.AddIn.OnSlide
         public Bitmap? Icon { get; init; }
         /// <summary>Optional symbol shown above the label.</summary>
         public string? Glyph { get; init; }
+        /// <summary>Abstract pictogram id (<see cref="InventaSketch.Core.IconIds"/>); preferred over Icon and Glyph.</summary>
+        public string? IconId { get; init; }
     }
 
     /// <summary>
@@ -83,11 +85,12 @@ namespace InventaSketch.AddIn.OnSlide
                 var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
                 var box = new RectangleF(pos.X - 34 * Scale, pos.Y - 16 * Scale, 68 * Scale, 32 * Scale);
                 var label = item.Active ? "● " + item.Label : item.Label;
-                if (item.Icon is not null || item.Glyph is not null)
+                if (item.IconId is not null || item.Icon is not null || item.Glyph is not null)
                 {
                     var icon = 20 * Scale;
                     var iconRect = new RectangleF(pos.X - icon / 2, pos.Y - icon - 2 * Scale, icon, icon);
-                    if (item.Icon is not null) g.DrawImage(item.Icon, iconRect);
+                    if (item.IconId is not null) IconPainter.Draw(g, item.IconId, iconRect, color);
+                    else if (item.Icon is not null) g.DrawImage(item.Icon, iconRect);
                     else
                     {
                         using var glyphFont = new Font("Segoe UI Symbol", 13f * Scale, GraphicsUnit.Pixel);

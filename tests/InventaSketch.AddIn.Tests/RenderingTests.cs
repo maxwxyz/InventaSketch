@@ -36,16 +36,16 @@ namespace InventaSketch.AddIn.Tests
         {
             Directory.CreateDirectory(Out);
             var buttons = new[] { "stick", "side", "section", "axial", "teeth" }
-                .Select(v => new BarButton("view:" + v, v, "Ansicht " + v, Active: v == "axial") { Icon = GearIcon(v, dark) })
+                .Select(v => new BarButton("view:" + v, v, "Ansicht " + v, Active: v == "axial") { IconId = IconPainter.ForView(new ViewDef(v, v)) })
                 .Concat(new[]
                 {
                     new BarButton("", "", "", Separator: true),
-                    new BarButton("flipH", "⇆", "Horizontal spiegeln"),
-                    new BarButton("flipV", "⇅", "Vertikal spiegeln"),
-                    new BarButton("rot90", "↻", "Um 90 Grad drehen"),
-                    new BarButton("dup", "⧉", "Duplizieren"),
+                    new BarButton("flipH", "", "Horizontal spiegeln") { IconId = IconIds.MirrorH },
+                    new BarButton("flipV", "", "Vertikal spiegeln") { IconId = IconIds.MirrorV },
+                    new BarButton("rot90", "", "Um 90 Grad drehen") { IconId = IconIds.Rotate },
+                    new BarButton("dup", "", "Duplizieren") { IconId = IconIds.Duplicate },
                     new BarButton("", "", "", Separator: true),
-                    new BarButton("delete", "✕", "Löschen", Danger: true),
+                    new BarButton("delete", "", "Löschen", Danger: true) { IconId = IconIds.Delete },
                 }).ToList();
             var bar = new FloatingBar(buttons, 2f);
             bar.Place(new RectangleF(400, 400, 200, 200), new Rectangle(0, 0, 1600, 1200));
@@ -67,14 +67,14 @@ namespace InventaSketch.AddIn.Tests
             Directory.CreateDirectory(Out);
             var items = new[]
             {
-                new PieItem("delete", "Löschen", Danger: true) { Glyph = "✕" },
-                new PieItem("view:stick", "Schema") { Icon = GearIcon("stick", dark) },
-                new PieItem("view:axial", "Stirnansicht", Active: true) { Icon = GearIcon("axial", dark) },
-                new PieItem("view:teeth", "Mit Zähnen") { Icon = GearIcon("teeth", dark) },
-                new PieItem("dup", "Duplizieren") { Glyph = "⧉" },
-                new PieItem("flipH", "Spiegeln") { Glyph = "⇆" },
-                new PieItem("rot90", "Drehen 90°") { Glyph = "↻" },
-                new PieItem("menu:type", "Typ ▸", Enabled: false),
+                new PieItem("delete", "Löschen", Danger: true) { IconId = IconIds.Delete },
+                new PieItem("view:stick", "Schema") { IconId = IconIds.Schematic },
+                new PieItem("view:axial", "Stirnansicht", Active: true) { IconId = IconIds.Axial },
+                new PieItem("view:teeth", "Mit Zähnen") { IconId = IconIds.Teeth },
+                new PieItem("dup", "Duplizieren") { IconId = IconIds.Duplicate },
+                new PieItem("flipH", "Spiegeln") { IconId = IconIds.MirrorH },
+                new PieItem("rot90", "Drehen 90°") { IconId = IconIds.Rotate },
+                new PieItem("menu:type", "Typ ▸", Enabled: false) { IconId = IconIds.Cycle },
             };
             var pie = new PieMenu(new PointF(300, 300), items, 2f) { Hover = 1 };
             using var bmp = new Bitmap(600, 600);

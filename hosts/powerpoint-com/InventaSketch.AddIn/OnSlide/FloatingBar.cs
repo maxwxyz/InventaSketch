@@ -11,6 +11,8 @@ namespace InventaSketch.AddIn.OnSlide
     {
         /// <summary>Optional picture (e.g. the object rendered in that view); replaces the glyph.</summary>
         public Bitmap? Icon { get; init; }
+        /// <summary>Abstract pictogram id (<see cref="InventaSketch.Core.IconIds"/>); preferred over Icon and Glyph.</summary>
+        public string? IconId { get; init; }
     }
 
     /// <summary>
@@ -61,7 +63,7 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 if (b.Separator) { _cells.Add(new Rectangle(x, pad, sep, size)); x += sep; continue; }
                 // Text buttons (view names) get a width that fits the label; symbol buttons are square.
-                var width = b.Icon is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale)) : size;
+                var width = b.Icon is null && b.IconId is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale)) : size;
                 _cells.Add(new Rectangle(x, pad, width, size));
                 x += width + gap;
             }
@@ -154,6 +156,13 @@ namespace InventaSketch.AddIn.OnSlide
                     using var hb = new SolidBrush(Color.FromArgb(i == Hover ? 45 : 28, btn.Danger && i == Hover ? Color.Red : accent));
                     using var hp = Rounded(cell, 5 * Scale);
                     g.FillPath(hb, hp);
+                }
+                if (btn.IconId is not null)
+                {
+                    var ink = btn.Danger ? Color.FromArgb(200, 40, 40) : btn.Active ? accent : fg;
+                    var pad = (int)Math.Round(5 * Scale);
+                    IconPainter.Draw(g, btn.IconId, Rectangle.Inflate(cell, -pad, -pad), ink);
+                    continue;
                 }
                 if (btn.Icon is not null)
                 {
