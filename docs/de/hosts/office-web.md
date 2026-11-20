@@ -148,7 +148,7 @@ starten. Für Anwender den oben beschriebenen lokalen Installer verwenden.
 | Kreismenü mit „Mehr ▸“/„Einfügen ▸“, Textbearbeitung, Schwarz-Weiß, Skalieren um die Mitte | im Browser geprüft (dev.html, 2026-11-20) |
 | Schreiben nativer Formen in PowerPoint | umgesetzt, **noch nicht in PowerPoint getestet** |
 | Lokaler Installer wie beim COM-Add-in (ohne Admin) | umgesetzt, Probelauf geprüft; echte Installation offen |
-| Webspace-Paket (Downloadseite, Manifest für eigene URL) | geplant |
+| Webspace-Paket (Downloadseite, Manifest für eigene URL) | umgesetzt; über lokales HTTPS geprüft, echter Webspace offen |
 
 Grenzen von Office.js (siehe [Host-Fähigkeiten](capability-matrix.md)): keine Freiformen, Pfeilspitzen oder
 Musterfüllungen auf Formen; kein Overlay auf der Folie; iPad nur PowerPointApi 1.1.

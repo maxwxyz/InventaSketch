@@ -947,8 +947,12 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var type = registry.Type(o.Type);
             if (type is null) return null;
+            // Same rule as the engine (EngineApi.MainTextOf): a reference numeral first (its object text would not show),
+            // then the object text of text types, then the first text parameter.
+            if (type.Parameters.FirstOrDefault(p => p.Key == "numeral" && p.Kind == ParamKind.Text) is { } numeralDef)
+                return (numeralDef.Label.Get(_lang()), o.Ref ?? o.Str("numeral", numeralDef.Default?.Text ?? ""), (x, t) => x.WithParam("numeral", t) with { Text = null, Ref = t });
             if (type.HasText) return (T("Text", "Text"), o.Text ?? "", (x, t) => x with { Text = t });
-            foreach (var key in new[] { "numeral", "text", "label", "name", "title", "ref" })
+            foreach (var key in new[] { "text", "label", "name", "title", "ref" })
             {
                 var pd = type.Parameters.FirstOrDefault(p => p.Key == key && p.Kind == ParamKind.Text);
                 if (pd is null) continue;

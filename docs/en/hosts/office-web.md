@@ -138,7 +138,7 @@ For end users, use the local installer described above.
 | Pie menu with "More ▸"/"Insert ▸", text editing, black and white, centred resize | verified in browser (dev.html, 2026-11-20) |
 | Writing native shapes into PowerPoint | implemented, **not yet tested in PowerPoint** |
 | Local installer like the COM add-in (no admin) | implemented, dry run verified; real install pending |
-| Webspace package (download page, manifest for own URL) | planned |
+| Webspace package (download page, manifest for own URL) | implemented; checked over local HTTPS, real webspace pending |
 
 Office.js limits (see [capability matrix](capability-matrix.md)): no freeform, arrowheads or pattern fills on
 shapes; no overlay on the slide; iPad only PowerPointApi 1.1.
