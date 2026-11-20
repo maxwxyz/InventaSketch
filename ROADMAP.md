@@ -88,14 +88,14 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     still draw their own underline lines (switch to `TextStyle.Underline`); electrical designator/value as input actions.
   - Checked in PowerPoint 2026-11-20: drawn heads, underline, input prompt, dependent wall redraw with one undo step.
 - UX feedback from the maintainer (2026-11-20), COM first, then web:
-  - In progress: black and white as a reversible document setting (fills, text, highlighters); ribbon order (Annotate =
+  - Done 2026-11-20 (COM, verified in PowerPoint where noted in the host docs): black and white as a reversible document setting (fills, text, highlighters); ribbon order (Annotate =
     annotation + patent + basic shapes right after Tools, small About); transparent ribbon thumbnails for dark Office;
     sidebar preview drops units deleted on the slide; text editing by double-click and a bar button; view switch keeps
     proportions; resize about the centre for centred parts; pie menu "Insert ▸" with elements that fit the selection
     (shaft → gears and bearings, wire → electrical symbols, always labels/arrows/numerals), placed at the pointer with
     snapping; "Anchor" toggle next to Snap: attached line ends follow moved units across units.
-  - Schematic scaling: scaling a stick/schematic view changes what makes sense (e.g. gear width along the axis, pitch
-    diameter) while symbol details (hub cross, end ticks, line weights) keep their size.
+  - Schematic scaling: done for the hub symbols (they keep their size); other schematic details of the modules to review.
+  - Web host: the same UX (insert suggestions via an engine method, anchor, text editing, black and white).
   - Ribbon groups like Slidemax: Structure, Colour, Text, Layout (formatting of native shapes; port from Slidemax).
   - Tools menu button like Slidemax: insert symbol, change decimal separator, proofing language, send slides, save
     slides (port from Slidemax).

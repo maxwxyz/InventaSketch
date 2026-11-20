@@ -388,7 +388,7 @@ namespace InventaSketch.Engine
             => Edit(r, "View", (s, ids) =>
             {
                 var ctx = s.Context();
-                return Edits.Update(s.Doc, ids, o => Registry.Type(o.Type)?.WithView(o, r.View, ctx) ?? o);
+                return Edits.Update(s.Doc, ids, o => Registry.WithView(o, r.View, ctx));
             });
 
         /// <summary>Sets (value &gt; 0) or clears (null, absent or &lt;= 0) the document plan scale; one undo step.</summary>

@@ -55,6 +55,9 @@ namespace InventaSketch.Modules.Mechanical
         public override bool PreferUniformScale => Uniform;
 
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();
+        /// <summary>Types offered by "Insert ▸" next to this one (see <see cref="ObjectType.Companions"/>).</summary>
+        public IReadOnlyList<string> CompanionTypes { get; init; } = Array.Empty<string>();
+        public override IReadOnlyList<string> Companions => CompanionTypes;
         public bool Uniform { get; init; }
         /// <summary>Rotating elements expose a Hub anchor at the box centre (snaps onto shaft axes).</summary>
         public bool Rotating { get; init; } = true;

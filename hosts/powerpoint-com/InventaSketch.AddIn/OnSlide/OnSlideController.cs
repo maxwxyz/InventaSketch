@@ -36,6 +36,11 @@ namespace InventaSketch.AddIn.OnSlide
         private readonly Timer _timer;
         private Mode _mode;
         private bool _rightDownOnUnit;
+        private bool _centredResize;
+        // Anchoring: owners of the snap targets (objects of other units) and the last point snap.
+        private readonly Dictionary<string, SketchObject> _targetOwners = new(StringComparer.Ordinal);
+        private SnapResult? _lastPointSnap;
+        private Attachment? _twoStartAttach;
         private SlideView? _view;
         private List<Anchor> _targets = new();
 
@@ -285,7 +290,7 @@ namespace InventaSketch.AddIn.OnSlide
                     {
                         if (!view.Contains(pt)) { Cancel("click outside"); return false; }
                         UpdatePlacement(pt);
-                        if (_twoStart is null) { _twoStart = _placeAt; _down = pt; }
+                        if (_twoStart is null) { _twoStart = _placeAt; _down = pt; _twoStartAttach = AnchorFor(_placeAt, _lastPointSnap); }
                         _placePressed = true;
                         return true;
                     }
@@ -298,8 +303,10 @@ namespace InventaSketch.AddIn.OnSlide
                         // Click-click: the first release only fixes the start; press-drag-release sets both ends.
                         if (start is null || (start.Value - end).Length < view.Mm(4)) return true;
                         var item = _item;
+                        var startAttach = _twoStartAttach;
+                        var endAttach = AnchorFor(end, _lastPointSnap);
                         Cancel("placed");
-                        if (item is not null) Post(() => InsertPoints(item, start.Value, end));
+                        if (item is not null) Post(() => InsertPoints(item, start.Value, end, startAttach, endAttach));
                         return true;
                     }
                     if (message == WM_RBUTTONDOWN) { Cancel("right click"); return true; }
@@ -361,7 +368,8 @@ namespace InventaSketch.AddIn.OnSlide
                         _sx = _sy = 1;
                         _moved = false;
                         _down = pt;
-                        Log.Info("Resize start, handle " + handle);
+                        _centredResize = IsCentredUnit();
+                        Log.Info("Resize start, handle " + handle + (_centredResize ? " (about the centre)" : ""));
                         return true;
                     }
                     // Double-click on the selected unit edits its text (like PowerPoint text boxes).
@@ -414,7 +422,8 @@ namespace InventaSketch.AddIn.OnSlide
                         var moved = _moved;
                         _mode = Mode.Armed;
                         _overlay.Clear();
-                        if (moved && unit is not null) Post(() => ApplyPoint(unit, index, at));
+                        var pointAttach = AnchorFor(at, _lastPointSnap);
+                        if (moved && unit is not null) Post(() => ApplyPoint(unit, index, at, pointAttach));
                         else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
                         return true;
                     }
@@ -612,6 +621,7 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 var snapped = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
                 _placeAt = raw + snapped.Delta;
+                _lastPointSnap = snapped;
                 var marker = (float)view.Mm(5);
                 if (_twoStart is null)
                 {
@@ -923,6 +933,15 @@ namespace InventaSketch.AddIn.OnSlide
             if (_unit is null) return;
             var registry = _registry();
             var pointObject = PointObject();
+            if (submenu == "insert")
+            {
+                var sub = new List<PieItem> { new("menu:back", T("\u2190 Back", "\u2190 Zur\u00fcck")) };
+                var anchor = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+                if (anchor is not null)
+                    sub.AddRange(registry.Suggestions(anchor, MaxPieItems + 1).Select(i => new PieItem("ins:" + i.Id, i.Name.Get(_lang()))));
+                ShowPie(pt, view, sub);
+                return;
+            }
             if (submenu == "more")
             {
                 var sub = new List<PieItem> { new("menu:back", T("← Back", "← Zurück")) };
@@ -963,6 +982,9 @@ namespace InventaSketch.AddIn.OnSlide
                     items.Add((new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) }, true));
             if (first is not null && EditableText(registry, first) is not null)
                 items.Add((new PieItem("text", T("Text \u2026", "Text \u2026")) { IconId = IconIds.Text }, true));
+            // Insert elements that fit the selection (shaft: gears, bearings; wire: symbols; always annotations).
+            if (first is not null)
+                items.Add((new PieItem("menu:insert", T("Insert \u25B8", "Einf\u00fcgen \u25B8")) { IconId = IconIds.Increase }, true));
             items.Add((new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate }, true));
             items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
             items.AddRange(actions.Select(a => (ActionItem(a), false)));
@@ -1028,11 +1050,16 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var registry = _registry();
             var list = new List<Anchor>();
+            _targetOwners.Clear();
             foreach (var unit in SketchUnits.All(slide, exceptId))
             {
                 var ctx = new RenderContext(unit.Doc, _lang());
                 foreach (var o in unit.Objects)
-                    if (registry.Type(o.Type) is not null) list.AddRange(registry.PageAnchors(o, ctx));
+                {
+                    if (registry.Type(o.Type) is null) continue;
+                    _targetOwners[o.Id] = o;
+                    list.AddRange(registry.PageAnchors(o, ctx).Select(a => a with { Owner = o.Id }));
+                }
             }
             var w = (_view?.SlideWidth ?? 960) / Geo.PtPerMm;
             var h = (_view?.SlideHeight ?? 540) / Geo.PtPerMm;
@@ -1085,14 +1112,22 @@ namespace InventaSketch.AddIn.OnSlide
             return obj with { Points = mapped };
         }
 
-        private void InsertPoints(LibraryItem item, Vec2 start, Vec2 end)
+        private void InsertPoints(LibraryItem item, Vec2 start, Vec2 end, Attachment? startAttach = null, Attachment? endAttach = null)
         {
             var slide = CurrentSlide();
             if (slide is null) return;
             var registry = _registry();
             var setup = _app.ActivePresentation.PageSetup;
             var doc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
-            doc = Edits.Add(doc, doc.Pages[0].Id, CreateBetween(registry, item, start, end));
+            var line = CreateBetween(registry, item, start, end);
+            if ((startAttach ?? endAttach) is not null && line.Points is { Count: > 1 } pts)
+            {
+                var att = new Attachment?[pts.Count];
+                att[0] = startAttach;
+                att[pts.Count - 1] = endAttach;
+                line = line with { Attach = att };
+            }
+            doc = Edits.Add(doc, doc.Pages[0].Id, line);
             _app.StartNewUndoEntry();
             var shape = SketchUnits.Draw(slide, registry, doc, _lang());
             SketchUnits.RedrawDependents(slide, registry, _lang(), Array.Empty<SketchDocument>(), new[] { doc });
@@ -1152,6 +1187,7 @@ namespace InventaSketch.AddIn.OnSlide
             var raw = view.ToMm(pt);
             var snap = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
             _pointAt = raw + snap.Delta;
+            _lastPointSnap = snap;
             var doc = Edits.SetPoint(_unit!.Doc, o.Id, _pointIndex, _pointAt);
             var prims = _registry().Render(doc.Get(o.Id)!, new RenderContext(doc, _lang()));
             Present(view, g =>
@@ -1161,7 +1197,19 @@ namespace InventaSketch.AddIn.OnSlide
             });
         }
 
-        private void ApplyPoint(SketchUnit stale, int index, Vec2 at)
+        /// <summary>
+        /// Attachment of a snapped point to the element of another unit that owns the snap target (with "Anchor" on): the
+        /// point then follows that element (moved, rotated, resized). Pins keep their anchor id. Null if not anchoring.
+        /// </summary>
+        private Attachment? AnchorFor(Vec2 at, SnapResult? snap)
+        {
+            if (!AddInSettings.Anchor || snap?.Target is not { Owner: { } ownerId } target) return null;
+            if (!_targetOwners.TryGetValue(ownerId, out var owner) || owner.IsPointGeometry) return null;
+            var (u, v) = owner.ToBox(at);
+            return new Attachment(owner.Id, u, v) { AnchorId = target.Kind == AnchorKind.Point && target.P.DistanceTo(at) < 1e-6 ? target.Id : null };
+        }
+
+        private void ApplyPoint(SketchUnit stale, int index, Vec2 at, Attachment? attach = null)
         {
             var slide = CurrentSlide();
             var unit = SketchUnits.Read(stale.Shape);
@@ -1169,7 +1217,7 @@ namespace InventaSketch.AddIn.OnSlide
             var o = unit.Objects.FirstOrDefault(x => x.IsPointGeometry);
             if (o is null) return;
             _app.StartNewUndoEntry();
-            var doc = Edits.SetPoint(unit.Doc, o.Id, index, at);
+            var doc = Edits.SetPoint(unit.Doc, o.Id, index, at, attach);
             ReplaceWithDependents(slide, unit, doc);
         }
 
@@ -1317,6 +1365,16 @@ namespace InventaSketch.AddIn.OnSlide
             return best;
         }
 
+        /// <summary>True if the armed unit is a centred part (an object with a pitch circle or hub anchor).</summary>
+        private bool IsCentredUnit()
+        {
+            if (_unit is null) return false;
+            var registry = _registry();
+            var ctx = new RenderContext(_unit.Doc, _lang());
+            return _unit.Objects.Any(o => registry.Type(o.Type) is not null && !o.IsPointGeometry
+                && registry.PageAnchors(o, ctx).Any(a => a.Role is AnchorRole.Pitch or AnchorRole.PitchInner or AnchorRole.Hub));
+        }
+
         /// <summary>
         /// Computes the scale for the dragged handle. Corner handles scale uniformly (Shift: free), edge handles stretch one
         /// axis; Ctrl scales about the centre. Snapping (unless Alt): the handle point snaps to points and alignment
@@ -1328,7 +1386,10 @@ namespace InventaSketch.AddIn.OnSlide
             var h = _handle;
             var h0 = HandlePoint(r, h);
             var centre = new Vec2(r.X + r.W / 2, r.Y + r.H / 2);
-            _pivot = KeyDown(VK_CONTROL) ? centre : HandlePoint(r, (h + 4) % 8);
+            // Centred parts (gears, bearings, wheels: pitch circle or hub) scale about their centre/axis by default; Ctrl
+            // switches to the opposite handle. Other units scale from the opposite handle; Ctrl scales about the centre.
+            var aboutCentre = KeyDown(VK_CONTROL) != _centredResize;
+            _pivot = aboutCentre ? centre : HandlePoint(r, (h + 4) % 8);
             var p = view.ToMm(pt);
             var snap = !NoSnap();
             var guides = new List<SnapGuide>();
@@ -1368,7 +1429,8 @@ namespace InventaSketch.AddIn.OnSlide
             var doc = Edits.Scale(unit.Doc, unit.Doc.Objects.Keys.ToList(), _pivot, sx, sy);
             var ctx = new RenderContext(doc, _lang());
             var prims = doc.ObjectsOn(doc.Pages[0]).Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
-            var label = uniform ? $"×{sx:0.00}" : $"×{sx:0.00} / {sy:0.00}";
+            var label = (uniform ? $"×{sx:0.00}" : $"×{sx:0.00} / {sy:0.00}")
+                + (aboutCentre ? T("  · centre (Ctrl: edge)", "  · Mitte (Strg: Kante)") : T("  · edge (Ctrl: centre)", "  · Kante (Strg: Mitte)"));
             var at = view.ToScreen(p);
             Present(view, g =>
             {
@@ -1455,6 +1517,12 @@ namespace InventaSketch.AddIn.OnSlide
                 var shape = ReplaceWithDependents(slide, fresh, fresh.Doc, before: unit.Doc);
                 fresh = shape is null ? null : SketchUnits.Read(shape);
             }
+            else if (fresh is not null && CurrentSlide() is PowerPoint.Slide s2
+                     && SketchUnits.RedrawDependents(s2, _registry(), _lang(), new[] { unit.Doc }, new[] { fresh.Doc }) > 0)
+            {
+                // Line ends anchored to the moved unit followed it ("Anchor"); keep the moved unit selected.
+                fresh.Shape.Select(Office.MsoTriState.msoTrue);
+            }
             if (fresh is not null) Arm(fresh);
         }
 
@@ -1476,6 +1544,12 @@ namespace InventaSketch.AddIn.OnSlide
                 Disarm();
                 return;
             }
+            if (id.StartsWith("ins:", StringComparison.Ordinal))
+            {
+                // Insert at the pointer with snapping (onto the axis, ports and mounts of the selection).
+                if (registry.Item(id.Substring(4)) is { } item) BeginPlacement(item);
+                return;
+            }
             if (id == "dup")
             {
                 var copy = SketchUnits.WithNewIds(doc, new Vec2(5, 5));
@@ -1489,7 +1563,7 @@ namespace InventaSketch.AddIn.OnSlide
                 // View switch with size adaptation to the view's aspect (ObjectType.WithView).
                 var view = id.Substring(5);
                 var ctx = new RenderContext(doc, _lang());
-                doc = Edits.Update(doc, ids, o => registry.Type(o.Type)?.WithView(o, view, ctx) ?? o);
+                doc = Edits.Update(doc, ids, o => registry.WithView(o, view, ctx));
             }
             else if (id.StartsWith("act:", StringComparison.Ordinal))
             {

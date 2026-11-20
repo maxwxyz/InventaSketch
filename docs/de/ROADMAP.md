@@ -102,15 +102,16 @@ Export-Erweiterungspunkte der Module.
 - Web-Installer (aus Slidemax übernommen, am 20.11.2026 ins Englische übersetzt, Meldungen deutsch/englisch): echte
   Installation und Laden des Add-ins in PowerPoint (Windows ohne COM-Add-in, Mac, Web) stehen aus.
 - UX-Rückmeldungen des Maintainers (20.11.2026), erst COM, dann Web:
-  - In Arbeit: Schwarz-Weiß als umkehrbare Dokumenteinstellung (Füllungen, Text, Markierungen); Menüband-Reihenfolge
+  - Erledigt am 20.11.2026 (COM, wo in der Host-Doku vermerkt in PowerPoint geprüft): Schwarz-Weiß als umkehrbare Dokumenteinstellung (Füllungen, Text, Markierungen); Menüband-Reihenfolge
     (Beschriftung = Beschriftung + Patent + Grundformen direkt nach Werkzeuge, kleiner Info-Button); transparente
     Menüband-Vorschaubilder für dunkles Office; Seitenleisten-Vorschau entfernt auf der Folie gelöschte Einheiten;
     Text bearbeiten per Doppelklick und Leistenknopf; Ansichtswechsel behält Proportionen; Größe ändern um die Mitte bei
     zentrierten Teilen; Kreismenü „Einfügen ▸“ mit passenden Elementen zur Auswahl (Welle → Zahnräder und Lager,
     Leitung → Schaltzeichen, immer Beschriftung/Pfeile/Bezugszeichen), am Mauszeiger mit Fangen platziert; Schalter
     „Verankern“ neben „Einrasten“: angebundene Linienenden folgen verschobenen Einheiten, auch einheitenübergreifend.
-  - Skalieren von Schemadarstellungen: Skalieren ändert nur, was sinnvoll ist (z. B. Zahnradbreite entlang der Achse,
-    Teilkreis), Symboldetails (Nabenkreuz, Endstriche, Linienstärken) behalten ihre Größe.
+  - Skalieren von Schemadarstellungen: für die Nabensymbole erledigt (sie behalten ihre Größe); weitere Schemadetails
+    der Module prüfen.
+  - Web-Host: dieselbe UX (Einfügen-Vorschläge über eine Engine-Methode, Verankern, Text bearbeiten, Schwarz-Weiß).
   - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout (Formatierung nativer Formen; aus Slidemax übernehmen).
   - Werkzeuge-Menü wie Slidemax: Symbol einfügen, Dezimaltrennzeichen ändern, Korrektursprache, Folien senden, Folien
     speichern (aus Slidemax übernehmen).

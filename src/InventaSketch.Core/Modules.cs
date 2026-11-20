@@ -284,6 +284,12 @@ namespace InventaSketch.Core
         public virtual IReadOnlyList<string> Keywords => Array.Empty<string>();
         public virtual GeometryKind Geometry => GeometryKind.Box;
         public virtual Size2 DefaultSize => new(30, 30);
+
+        /// <summary>
+        /// Types that are typically added next to this one (a shaft: gears, bearings, couplings; a wire: electrical
+        /// symbols). Offered by the hosts' "Insert ▸" menu in the selected object's view; see <see cref="Registry.Suggestions"/>.
+        /// </summary>
+        public virtual IReadOnlyList<string> Companions => Array.Empty<string>();
         /// <summary>Default points relative to the insertion point (point-geometry types).</summary>
         public virtual IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 0), new Vec2(15, 0) };
         public virtual IReadOnlyList<ViewDef> Views => Array.Empty<ViewDef>();
@@ -470,6 +476,82 @@ namespace InventaSketch.Core
         public ObjectType TypeOf(SketchObject o) => Type(o.Type) ?? throw new KeyNotFoundException($"Unknown object type '{o.Type}'.");
 
         public LibraryItem? Item(string id) => _library.FirstOrDefault(i => i.Id == id);
+
+        /// <summary>
+        /// The object switched to <paramref name="view"/> without distortion. Types that declare view sizes
+        /// (<see cref="ViewDef.Size"/>) adapt themselves (<see cref="ObjectType.WithView"/>); otherwise the library presets
+        /// of the type in both views give the aspect: a dimension both presets share (e.g. the diameter of a gear in front
+        /// and side view) keeps its current length, else the visual scale (geometric mean) is kept.
+        /// </summary>
+        public SketchObject WithView(SketchObject o, string? view, RenderContext ctx)
+        {
+            var type = Type(o.Type);
+            if (type is null || view is null || type.Views.All(v => v.Id != view) || type.ViewOf(o) == view) return o;
+            if (o.IsPointGeometry || type.Views.Any(v => v.Size is not null)) return type.WithView(o, view, ctx);
+            var from = PresetSize(type, type.ViewOf(o));
+            var to = PresetSize(type, view);
+            if (from is not Size2 a || to is not Size2 b || a.W < Geo.Eps || a.H < Geo.Eps || o.Size.W < Geo.Eps || o.Size.H < Geo.Eps)
+                return o with { View = view };
+            double k;
+            if (Math.Abs(a.H - b.H) < 1e-6 * Math.Max(1, a.H)) k = o.Size.H / a.H;
+            else if (Math.Abs(a.W - b.W) < 1e-6 * Math.Max(1, a.W)) k = o.Size.W / a.W;
+            else if (Math.Abs(a.H - b.W) < 1e-6 * Math.Max(1, a.H)) k = o.Size.H / a.H;
+            else if (Math.Abs(a.W - b.H) < 1e-6 * Math.Max(1, a.W)) k = o.Size.W / a.W;
+            else k = Math.Sqrt(o.Size.W / a.W * (o.Size.H / a.H));
+            return o with { View = view, Size = new Size2(b.W * k, b.H * k) };
+        }
+
+        /// <summary>Annotation items every drawing needs; offered after the companions of a selection.</summary>
+        public static readonly IReadOnlyList<string> AnnotationSuggestions = new[] { "patent.numeral", "ann.leader", "ann.arrow", "ann.text", "ann.dimension.linear" };
+
+        /// <summary>
+        /// Library items to insert next to <paramref name="o"/> ("Insert ▸"): the type's <see cref="ObjectType.Companions"/>
+        /// (each in the object's view when the type has it), then other types of the same category, then annotation items.
+        /// One item per type, at most <paramref name="max"/>.
+        /// </summary>
+        public IReadOnlyList<LibraryItem> Suggestions(SketchObject o, int max = 9)
+        {
+            var type = Type(o.Type);
+            var list = new List<LibraryItem>();
+            var types = new HashSet<string>(StringComparer.Ordinal) { o.Type };
+            // Same view id, else the same kind of view (shaft "line" and gear "stick" are both schematic), else the first item.
+            var viewIcon = type is null || o.View is null ? null : type.Views.FirstOrDefault(v => v.Id == o.View) is { } vd ? IconIds.ForView(vd) : null;
+            LibraryItem? ItemOf(string typeId)
+            {
+                var t = Type(typeId);
+                return _library.FirstOrDefault(i => i.TypeId == typeId && o.View is not null && i.View == o.View)
+                    ?? (viewIcon is null || t is null ? null : _library.FirstOrDefault(i => i.TypeId == typeId && i.View is not null
+                        && t.Views.FirstOrDefault(v => v.Id == i.View) is { } iv && IconIds.ForView(iv) == viewIcon))
+                    ?? _library.FirstOrDefault(i => i.TypeId == typeId);
+            }
+            void Add(LibraryItem? item)
+            {
+                if (item is null || list.Count >= max || !types.Add(item.TypeId)) return;
+                list.Add(item);
+            }
+            if (type is not null)
+            {
+                // Keep room for at least three annotation items (numeral, lead line, arrow).
+                foreach (var t in type.Companions) { if (list.Count >= max - 3) break; Add(ItemOf(t)); }
+                var annotations = Math.Max(3, AnnotationSuggestions.Count(id => _library.Any(i => i.TypeId == id)));
+                foreach (var item in _library.Where(i => i.Category == type.Category && i.TypeId != o.Type).GroupBy(i => i.TypeId).Select(g => ItemOf(g.Key)))
+                {
+                    if (list.Count >= max - annotations) break;
+                    Add(item);
+                }
+            }
+            foreach (var t in AnnotationSuggestions) Add(_library.FirstOrDefault(i => i.TypeId == t));
+            return list;
+        }
+
+        /// <summary>Preset size of a type in a view: the first library item of the type with that view (the default view also
+        /// matches items without a view) and a size, else the type's default size for the default view.</summary>
+        private Size2? PresetSize(ObjectType type, string view)
+        {
+            var isDefault = type.Views.Count == 0 || type.Views[0].Id == view;
+            var item = _library.FirstOrDefault(i => i.TypeId == type.Id && i.Size is not null && (i.View == view || isDefault && i.View is null));
+            return item?.Size ?? (isDefault ? type.DefaultSize : null);
+        }
 
         public SketchObject Create(LibraryItem item, Vec2 at) => TypeOf(new SketchObject { Type = item.TypeId }).Create(at, item);
 

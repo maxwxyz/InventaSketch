@@ -11,6 +11,7 @@ namespace InventaSketch.AddIn
         {
             public bool Snap { get; set; } = true;
             public bool Bar { get; set; } = true;
+            public bool Anchor { get; set; } = true;
         }
 
         private static Data _data = Load();
@@ -29,6 +30,13 @@ namespace InventaSketch.AddIn
         {
             get => _data.Bar;
             set { _data.Bar = value; Save(); }
+        }
+
+        /// <summary>Line ends snapped to another element stay attached to it and follow when it moves.</summary>
+        public static bool Anchor
+        {
+            get => _data.Anchor;
+            set { _data.Anchor = value; Save(); }
         }
 
         private static Data Load()

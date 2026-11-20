@@ -113,7 +113,24 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>True if any object of the model renders from its neighbours.</summary>
         public static bool NeedsContext(Registry registry, SketchDocument? doc)
-            => doc is not null && doc.Objects.Values.Any(o => registry.Type(o.Type)?.DependsOnNeighbours == true);
+            => doc is not null && (doc.Objects.Values.Any(o => registry.Type(o.Type)?.DependsOnNeighbours == true) || HasExternalAttachments(doc));
+
+        /// <summary>True if a point of the model is anchored to an object of another unit ("Anchor").</summary>
+        public static bool HasExternalAttachments(SketchDocument doc)
+            => doc.Objects.Values.Any(o => o.Attach is not null && o.Attach.Any(a => a is not null && !doc.Objects.ContainsKey(a.ObjectId)));
+
+        /// <summary>
+        /// The model with the points of anchored objects moved to where their targets (other units) now are; the
+        /// attachments stay. Keeps the stored points current, so the unit is right even when edited on its own.
+        /// </summary>
+        public static SketchDocument ResolveAnchors(Registry registry, SketchDocument own, IEnumerable<SketchUnit> others)
+        {
+            if (!HasExternalAttachments(own)) return own;
+            var full = WithContext(own, others);
+            full = Attachments.Refresh(registry, full);
+            var ids = own.Objects.Values.Where(o => o.IsPointGeometry && o.Attach is not null).Select(o => o.Id).ToList();
+            return Edits.Update(own, ids, o => full.Get(o.Id) is { } f ? o with { Points = full.ResolvePoints(f), Attach = f.Attach } : o);
+        }
 
         /// <summary>The unit model plus the objects of the other units (on the model's page, same settings) for rendering.</summary>
         public static SketchDocument WithContext(SketchDocument own, IEnumerable<SketchUnit> others)
@@ -143,15 +160,20 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var b = before.Where(d => d is not null).Cast<SketchDocument>().ToList();
             var a = after.Where(d => d is not null).Cast<SketchDocument>().ToList();
-            if (!b.Concat(a).Any(d => NeedsContext(registry, d))) return 0;
             var touched = new HashSet<string>(b.Concat(a).SelectMany(d => d.Objects.Keys), StringComparer.Ordinal);
-            var others = All(slide).Where(u => (skip is null || !skip.Contains(u.Id)) && !u.Objects.Any(o => touched.Contains(o.Id))).ToList();
+            var all = All(slide);
+            var others = all.Where(u => (skip is null || !skip.Contains(u.Id)) && !u.Objects.Any(o => touched.Contains(o.Id))).ToList();
+            // Units with line ends anchored to an edited object follow it ("Anchor").
+            var anchored = others.Where(u => u.Objects.Any(o => o.Attach is not null && o.Attach.Any(x => x is not null && touched.Contains(x.ObjectId)))).ToList();
+            if (anchored.Count == 0 && !b.Concat(a).Any(d => NeedsContext(registry, d))) return 0;
             var deps = new HashSet<string>(ChangeSet.DependentsOf(registry, Merge(b, others), Merge(a, others), touched.ToList(), lang), StringComparer.Ordinal);
             var count = 0;
             foreach (var unit in others)
             {
-                if (!unit.Objects.Any(o => deps.Contains(o.Id))) continue;
-                Replace(slide, unit, unit.Doc, registry, lang);
+                var isAnchored = anchored.Contains(unit);
+                if (!isAnchored && !unit.Objects.Any(o => deps.Contains(o.Id))) continue;
+                var doc = isAnchored ? ResolveAnchors(registry, unit.Doc, all.Where(x => x.Id != unit.Id)) : unit.Doc;
+                Replace(slide, unit, doc, registry, lang);
                 count++;
             }
             if (count > 0) Log.Info("Redrew " + count + " dependent unit(s)");

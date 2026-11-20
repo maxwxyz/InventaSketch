@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Linq;
 
 namespace InventaSketch.AddIn.OnSlide
 {
@@ -77,8 +78,13 @@ namespace InventaSketch.AddIn.OnSlide
         {
             using var fmt = new StringFormat { Alignment = StringAlignment.Center, Trimming = StringTrimming.None };
             size = g.MeasureString(text, font, new SizeF(width, 1000), fmt, out var chars, out var lines);
-            return chars >= text.Length && lines <= 2;
+            // Never break inside a word: every word must fit on a line of its own.
+            return chars >= text.Length && lines <= 2 && WordsFit(g, text, font, width);
         }
+
+        private static bool WordsFit(Graphics g, string text, Font font, float width)
+            => text.Split(new[] { (char)32 }, StringSplitOptions.RemoveEmptyEntries).All(w => g.MeasureString(w, font).Width <= width);
+
 
         public void Draw(Graphics g, bool dark)
         {
@@ -131,9 +137,16 @@ namespace InventaSketch.AddIn.OnSlide
                 var chord = (float)(2 * rc * Math.Sin(Math.Min(sweepRad, Math.PI) / 2));
                 var width = Math.Max(44 * Scale, Math.Min(chord - 6 * Scale, 96 * Scale));
                 var useFont = font;
+                var oneLine = false;
                 var full = Fits(g, item.Label, font, width, out var textSize);
                 if (!full && Fits(g, item.Label, small, width, out var smallSize)) { useFont = small; textSize = smallSize; full = true; }
-                else if (!full) { useFont = small; textSize = new SizeF(width, 2 * small.GetHeight(g)); }
+                else if (!full)
+                {
+                    useFont = small;
+                    // A word too long even in the small font: one line shortened with "…" instead of a break inside the word.
+                    oneLine = !WordsFit(g, item.Label, small, width);
+                    textSize = new SizeF(width, (oneLine ? 1 : 2) * small.GetHeight(g));
+                }
                 if (!full && i == Hover) hoverFull = item.Label;
                 var icon = HasIcon(item) ? 18 * Scale : 0;
                 var gap = icon > 0 ? 3 * Scale : 0;
@@ -153,7 +166,8 @@ namespace InventaSketch.AddIn.OnSlide
                             g.DrawString(item.Glyph, glyphFont, gb, iconRect, gf);
                 }
                 using var tb = new SolidBrush(color);
-                g.DrawString(item.Label, useFont, tb, new RectangleF(cx - width / 2, top + icon + gap, width, textSize.Height + 1), fmt);
+                using var lineFmt = new StringFormat(fmt) { FormatFlags = oneLine ? StringFormatFlags.NoWrap : 0 };
+                g.DrawString(item.Label, useFont, tb, new RectangleF(cx - width / 2, top + icon + gap, width, textSize.Height + 1), lineFmt);
             }
 
             // Centre: a quiet cap with a close mark (clicking there or outside closes the menu).

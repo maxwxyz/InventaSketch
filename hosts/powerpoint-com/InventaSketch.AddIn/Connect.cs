@@ -177,6 +177,8 @@ namespace InventaSketch.AddIn
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
             sb.Append("<button id=\"IskMonochrome\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
               .Append(X(T("Shows the InventaSketch elements of this slide in black and white (patent style): fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß (Patentstil), einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
+            sb.Append("<toggleButton id=\"IskAnchor\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+              .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
             sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
             sb.Append("</group>");
             if (_registry is not null)
@@ -244,6 +246,20 @@ namespace InventaSketch.AddIn
         {
             try { return PictureConverter.ToPicture(Branding.Image(32)); }
             catch (Exception ex) { Log.Error("GetLogoImage", ex); return null; }
+        }
+
+        /// <summary>Ribbon image of the anchor toggle: the abstract "connect" pictogram in the Office theme ink.</summary>
+        public object? GetAnchorImage(Office.IRibbonControl control)
+        {
+            try
+            {
+                var size = (int)Math.Round(16 * DeviceScale());
+                using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(bmp))
+                    OnSlide.IconPainter.Draw(g, IconIds.Connect, new RectangleF(0, 0, size, size), OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40));
+                return PictureConverter.ToPicture(bmp);
+            }
+            catch (Exception ex) { Log.Error("GetAnchorImage", ex); return null; }
         }
 
         public object? GetGroupImage(Office.IRibbonControl control)
@@ -314,6 +330,7 @@ namespace InventaSketch.AddIn
         {
             "IskSnap" => AddInSettings.Snap,
             "IskBar" => AddInSettings.Bar,
+            "IskAnchor" => AddInSettings.Anchor,
             _ => false,
         };
 
@@ -321,6 +338,7 @@ namespace InventaSketch.AddIn
         {
             if (control.Id == "IskSnap") AddInSettings.Snap = pressed;
             else if (control.Id == "IskBar") AddInSettings.Bar = pressed;
+            else if (control.Id == "IskAnchor") AddInSettings.Anchor = pressed;
         }
 
         /// <summary>Thumbnail of a library item (cached per item, size and theme); ink follows the Office theme.</summary>

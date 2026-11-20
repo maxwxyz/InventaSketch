@@ -133,6 +133,27 @@ Kreismenü, Eingabedialog und abhängige Einheiten (gleiche Umgebung, 2026-11-20
   365 mm machten die Wand 10,3 pt dick und zeichneten die angeschlossene Wand neu („Redrew 1 dependent unit(s)“); ein
   Strg+Z nahm beides zurück.
 
+UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
+
+- Menüband: Werkzeuge (Editor, Einrasten, Kontextleiste, Schwarz-Weiß, Verankern, kleines Info mit Logo), dann
+  **Beschriftung** (Beschriftung, Patentzeichnung und Grundformen), dann je Fachmodul eine Gruppe. Menüband-Bilder
+  werden als 32-Bit-DIB mit Alphakanal übergeben (aus Slidemax übernommen), daher ohne weißen Kasten im dunklen Office.
+- **Schwarz-Weiß** ist ein umkehrbarer Schalter: Er setzt `DocumentSettings.Monochrome` an jeder Einheit der Folie und
+  zeichnet neu; der Zeichenplan bildet alle Farben (Linien, Füllungen, Text, Markierungen) auf Schwarz/Weiß ab und
+  entfernt durchscheinende Füllungen. Erneutes Klicken stellt die Farben wieder her.
+- **Text**: Doppelklick auf eine ausgewählte Einheit, der Leistenknopf „Text“ oder „Text …“ im Kreismenü bearbeiten
+  ihren Haupttext (Objekttext, Bezugszeichen, Name oder Beschriftung).
+- **Einfügen ▸** im Kreismenü bietet passende Elemente zur Auswahl an (`ObjectType.Companions`, sonst dieselbe
+  Kategorie, immer Bezugszeichen/Bezugslinie/Pfeil), in derselben Art von Ansicht; die Wahl startet das Einfügen am
+  Mauszeiger mit Fangen.
+- **Verankern** (standardmäßig an): an einem anderen Element eingerastete Linienenden speichern eine Anbindung (mit
+  Pin-ID) und folgen, wenn das Element verschoben, gedreht oder skaliert wird (ein Rückgängig-Schritt); wird die Linie
+  selbst verschoben, lösen sich ihre Enden. Geprüft: ein am Zahnradrand eingerasteter Pfeil folgte dem gezogenen Zahnrad.
+- Ansichtswechsel behalten die Proportionen (Bibliotheksvorlagen beider Ansichten; eine gemeinsame Abmessung wie der
+  Zahnraddurchmesser behält ihre Länge). Zentrierte Teile (Teilkreis oder Nabe) ändern ihre Größe standardmäßig um die
+  Mitte (Strg: gegenüberliegende Kante). Nabensymbole im Schema behalten beim Vergrößern ihre Größe.
+- Der Seitenleisten-Editor entfernt auf der Folie gelöschte Einheiten (Nachricht `present` bei jedem Auswahlwechsel).
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in

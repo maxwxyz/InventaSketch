@@ -64,6 +64,13 @@ namespace InventaSketch.Modules.Mechanical
         /// <summary>Uniform detail scale (min of both stretch factors).</summary>
         public double K { get; }
 
+        /// <summary>
+        /// Scale of schematic symbol details (hub cross, loose/sliding hub marks): they shrink with a part drawn smaller
+        /// than its design size but do not grow with it, like line weights; scaling a stick symbol changes what carries
+        /// meaning (gear width, pitch diameter), not the symbols.
+        /// </summary>
+        public double D => Math.Min(1, K);
+
         public IReadOnlyList<Primitive> Items => _items;
 
         /// <summary>Design point to local (actual) point.</summary>
@@ -151,7 +158,7 @@ namespace InventaSketch.Modules.Mechanical
         /// </summary>
         public static void Hub(Pen p, Vec2 top, Vec2 hub, Vec2 bottom, string kind, Style st)
         {
-            var k = p.K;
+            var k = p.D;
             if (top.Y > bottom.Y) (top, bottom) = (bottom, top);
             switch (kind)
             {

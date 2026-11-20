@@ -37,6 +37,8 @@ namespace InventaSketch.Modules.Mechanical
         {
             Params = new[] { Common.Flag("hollow", T("Hollow", "Hohl"), false) },
             Rotating = false,
+            // On a shaft one adds gears, bearings and couplings.
+            CompanionTypes = new[] { "mech.gear.spur", "mech.gear.bevel", "mech.bearing.ball", "mech.bearing.cylroller", "mech.coupling.flexible", "mech.coupling.rigid" },
             Extra = o => new[] { HollowToggle(o) },
         };
 

@@ -162,6 +162,26 @@ Pie menu, input prompt and dependents (same environment, 2026-11-20 evening):
 - Input actions: "More ▸ → Thickness…" on a wall opened the prompt (layout from font metrics, correct at 200 % DPI);
   365 mm made the wall 10.3 pt thick and redrew the joined wall ("Redrew 1 dependent unit(s)"); one Ctrl+Z undid both.
 
+UX round (2026-11-20, from the maintainer's feedback):
+
+- Ribbon: Tools (Editor, Snap, Context bar, Black & white, Anchor, small About with logo), then **Annotate** (annotation,
+  patent figures and basic shapes), then one group per domain module. Ribbon images are passed as 32-bit DIBs with
+  alpha (ported from Slidemax), so thumbnails have no white box in a dark Office.
+- **Black & white** is a reversible switch: it sets `DocumentSettings.Monochrome` on every unit of the slide and
+  re-renders; the draw plan maps all colours (lines, fills, text, highlighters) to black/white and drops translucent
+  fills. Clicking again restores the colours.
+- **Text**: double-click on a selected unit, the "Text" bar button or "Text …" in the pie menu edit its main text
+  (object text, reference numeral, name or label).
+- **Insert ▸** in the pie menu offers elements that fit the selection (`ObjectType.Companions`, else the same category,
+  always numeral/lead line/arrow), in the selection's kind of view; picking one starts insert-at-pointer with snapping.
+- **Anchor** (on by default): line ends snapped to another element store an attachment (with pin id) and follow when
+  that element is moved, rotated or resized (one undo step); moving the line itself detaches its ends. Verified: an
+  arrow snapped to a gear's edge followed the dragged gear.
+- View switches keep proportions (library presets of both views; a shared dimension such as the gear diameter keeps its
+  length). Centred parts (pitch circle or hub) resize about their centre by default (Ctrl: opposite edge). Schematic
+  hub symbols keep their size when a stick symbol is scaled up.
+- The sidebar editor drops units deleted on the slide (`present` message on every selection change).
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in

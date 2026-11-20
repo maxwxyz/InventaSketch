@@ -139,6 +139,9 @@ namespace InventaSketch.Modules.Electrical
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal") };
 
+        /// <summary>On a wire one adds components: offered by "Insert ▸".</summary>
+        public override IReadOnlyList<string> Companions => new[] { "elec.resistor", "elec.capacitor", "elec.switch", "elec.diode", "elec.lamp", "elec.fuse", "elec.ground", "elec.junction" };
+
         private static List<Vec2> RouteOf(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
             => Routing.Route(p, o.Str("route", "orthogonal"), Routing.ExitHorizontal(ctx.Doc, o, 0), Routing.ExitHorizontal(ctx.Doc, o, p.Count - 1));
 
