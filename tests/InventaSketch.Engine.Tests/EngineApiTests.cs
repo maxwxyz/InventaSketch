@@ -246,6 +246,24 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void SnapPointDocksOnLifelineRailAndAttaches()
+        {
+            var api = new EngineApi(ModuleCatalog.CreateDefault());
+            var s = Call(api, "createSession", new { lang = "en" }).GetProperty("session").GetString()!;
+            Call(api, "setSnap", new { session = s, snapOptions = new { tolerance = 2.0, grid = (double?)null } });
+            var life = Insert(api, s, "diag.seq.lifeline", 60, 80);
+            var msg = Insert(api, s, "diag.seq.message", 120, 140);
+            var sp = Call(api, "snapPoint", new { session = s, x = 60.8, y = 93.3, exclude = new[] { msg } });
+            Assert.Equal("rail", sp.GetProperty("kind").GetString());
+            Assert.Equal(60, sp.GetProperty("x").GetDouble(), 6);
+            Assert.Equal(life, sp.GetProperty("attach").GetProperty("objectId").GetString());
+            // The docked message end follows the lifeline.
+            Call(api, "setPoint", new { session = s, id = msg, index = 0, x = 60.8, y = 93.3, snap = true });
+            var st = Call(api, "move", new { session = s, ids = new[] { life }, dx = 15, dy = 0 });
+            Assert.Equal(75, Obj(st, msg).GetProperty("points")[0].GetProperty("x").GetDouble(), 6);
+        }
+
+        [Fact]
         public void SnapInsertPreviewsWithoutInserting()
         {
             var (api, s) = NewSession();

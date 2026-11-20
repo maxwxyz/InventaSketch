@@ -637,18 +637,10 @@ namespace InventaSketch.Engine
             var res = Snapper.SnapPoint(p, targets, opts);
             var q = p + res.Delta;
             var dto = new SnapResultDto { Dx = res.Delta.X, Dy = res.Delta.Y, X = q.X, Y = q.Y, Kind = res.Kind, Guides = res.Guides };
-            if (res.Kind is "point" or "port")
-            {
-                // Attach the point to the box object that owns the snapped anchor (it then follows that object).
-                foreach (var o in s.Doc.ObjectsOn(s.Page).Reverse())
-                {
-                    if (exclude.Contains(o.Id) || o.IsPointGeometry || Registry.Type(o.Type) is null) continue;
-                    if (!Registry.PageAnchors(o, ctx).Any(a => a.Kind == AnchorKind.Point && a.P.DistanceTo(q) < 1e-6)) continue;
-                    var (u, v) = o.ToBox(q);
-                    dto.Attach = new Attachment(o.Id, u, v);
-                    break;
-                }
-            }
+            // Attach the point to the box object that owns the snapped anchor (it then follows that object); pins keep
+            // their anchor id, rails (lifelines, lanes) and mounts attach at the snapped position.
+            if (res.Kind is "point" or "port" or "rail" or "mount")
+                dto.Attach = Attachments.FromSnap(s.Doc, q, res);
             return dto;
         }
 
