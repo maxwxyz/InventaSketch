@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""InventaSketch-Web unter macOS und Linux (B152): lokaler HTTPS-Server für das Web-Add-in, Installation je Benutzer.
+"""InventaSketch-Web on macOS and Linux: local HTTPS server for the web add-in and per-user installer.
 
-Nur die Standardbibliothek von Python 3.7 oder neuer, dazu openssl (Zertifikat) und unter macOS security (Schlüsselbund).
-Der Server hört nur auf 127.0.0.1 und ::1, Port 3217, und liefert den Ordner App aus (GET und HEAD). Gegenstück unter
-Windows: Server/InventaSketch.WebHost.exe (tools/InventaSketch.WebHost); dieselben Regeln, die Tests vergleichen sie.
+Python 3.7 or newer standard library only, plus openssl (certificate) and, on macOS, security (keychain).
+The server listens on 127.0.0.1 and ::1 only, port 3217, and serves the folder App (GET and HEAD). Windows counterpart:
+Server/InventaSketch.WebHost.exe (tools/InventaSketch.WebHost), same rules.
+Ported from Slidemax with the copyright holder's approval and translated to English. Messages are German if the locale
+(LC_ALL, LC_MESSAGES or LANG) starts with "de", otherwise English.
 
-Befehle:
-  installieren [--ohne-autostart] [--probelauf]   Dateien kopieren, Zertifikat, Vertrauen, Autostart, Start, Manifest
-  deinstallieren [--probelauf]                    alles wieder entfernen
-  starten | beenden | status                      Server im Hintergrund starten, beenden, prüfen
-  dienst                                          Server im Vordergrund (für launchd, systemd und Autostart)
-  manifest <https://adresse> [--ziel ordner]      Manifest für einen eigenen HTTPS-Server schreiben
+Commands (German aliases in brackets, still accepted):
+  install [--no-autostart] [--dry-run]       copy files, certificate, trust, autostart, start, manifest  (installieren)
+  uninstall [--dry-run]                      remove everything again                                    (deinstallieren)
+  start | stop | status                      start the server in the background, stop it, check it  (starten, beenden)
+  serve                                      run the server in the foreground (launchd, systemd, autostart)  (dienst)
+  manifest <https://address> [--target dir]  write a manifest for your own HTTPS server
+Options: --no-autostart (--ohne-autostart), --dry-run (--probelauf), --folder (--ordner), --target (--ziel), --port
 """
 
 import argparse
 import datetime
 import http.server
+import locale
 import os
 import plistlib
 import re
@@ -33,16 +37,18 @@ import time
 import urllib.parse
 
 PORT = 3217
-LOKAL = "https://localhost:3217"
-ORGANISATION = "InventaSketch Web-Add-in"
-GUELTIG_TAGE = 365
-VORLAUF_TAGE = 30
-STARTSEITE = "taskpane.html"
+LOCAL = "https://localhost:3217"
+# Unchanged product label in the certificate subject, autostart entries and NSS nickname, so that earlier installs are
+# still found and removed.
+ORGANIZATION = "InventaSketch Web-Add-in"
+VALID_DAYS = 365
+RENEW_DAYS = 30
+START_PAGE = "taskpane.html"
 LAUNCH_LABEL = "de.inventasketch.web"
-SYSTEMD_DIENST = "inventasketch-web.service"
+SYSTEMD_SERVICE = "inventasketch-web.service"
 NSS_NAME = "InventaSketch localhost"
 
-TYPEN = {
+CONTENT_TYPES = {
     ".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8", ".mjs": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8", ".json": "application/json; charset=utf-8",
@@ -52,170 +58,212 @@ TYPEN = {
     ".md": "text/markdown; charset=utf-8", ".pdf": "application/pdf", ".woff": "font/woff", ".woff2": "font/woff2",
 }
 
-HIER = os.path.dirname(os.path.abspath(__file__))
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+# Command names; the German names of the original host remain accepted.
+COMMAND_ALIASES = {
+    "install": "install", "installieren": "install",
+    "uninstall": "uninstall", "deinstallieren": "uninstall",
+    "start": "start", "starten": "start",
+    "stop": "stop", "beenden": "stop",
+    "status": "status",
+    "serve": "serve", "dienst": "serve",  # "dienst" is what launchd/systemd entries of earlier installs call
+    "manifest": "manifest",
+}
 
 
-# ---------------------------------------------------------------------------------------------------- Regeln (geprüft)
+# ---------------------------------------------------------------------------------------------------- Language
 
-def typ(datei):
-    """Inhaltstyp nach der Endung (wie StatischeDateien.Typ)."""
-    return TYPEN.get(os.path.splitext(datei)[1].lower(), "application/octet-stream")
-
-
-def zerlegen(ziel):
-    """Pfadteile des Anfrageziels oder None, wenn es aus der Wurzel hinausführen könnte (wie StatischeDateien.Zerlegen)."""
-    if not ziel.startswith("/"):
-        return None
-    pfad = re.split(r"[?#]", ziel, maxsplit=1)[0]
+def _is_german(environ=None):
+    """German if the first set of LC_ALL, LC_MESSAGES, LANG starts with "de"; else the process locale."""
+    env = os.environ if environ is None else environ
+    for name in ("LC_ALL", "LC_MESSAGES", "LANG"):
+        value = env.get(name)
+        if value:
+            return value.lower().startswith("de")
     try:
-        entschluesselt = urllib.parse.unquote(pfad, errors="strict")
+        current = locale.getlocale()[0] or ""
+    except ValueError:
+        current = ""
+    return current.lower().startswith("de")
+
+
+GERMAN = _is_german()
+
+
+def T(en, de):
+    """Picks the English or the German variant of a user-facing message."""
+    return de if GERMAN else en
+
+
+# ---------------------------------------------------------------------------------------------------- Rules (tested)
+
+def content_type(file):
+    """Content type by extension (like StaticFiles.ContentType)."""
+    return CONTENT_TYPES.get(os.path.splitext(file)[1].lower(), "application/octet-stream")
+
+
+def split_target(target):
+    """Path segments of the request target, or None if it could lead outside the root (like StaticFiles.Split)."""
+    if not target.startswith("/"):
+        return None
+    path = re.split(r"[?#]", target, maxsplit=1)[0]
+    try:
+        decoded = urllib.parse.unquote(path, errors="strict")
     except UnicodeDecodeError:
         return None
-    teile = []
-    for teil in entschluesselt.split("/"):
-        if teil in ("", "."):
+    segments = []
+    for segment in decoded.split("/"):
+        if segment in ("", "."):
             continue
-        if teil == "..":
+        if segment == "..":
             return None
-        if any(ord(c) < 0x20 or ord(c) == 0x7F or c in '\\:*?"<>|' for c in teil):
+        if any(ord(c) < 0x20 or ord(c) == 0x7F or c in '\\:*?"<>|' for c in segment):
             return None
-        if teil[-1] in ". ":
+        if segment[-1] in ". ":
             return None
-        teile.append(teil)
-    return teile
+        segments.append(segment)
+    return segments
 
 
-def aufloesen(wurzel, ziel):
-    """Datei zum Anfrageziel unter der Wurzel oder None; Ordner liefern index.html, "/" die Startseite."""
-    teile = zerlegen(ziel)
-    if teile is None:
+def resolve(root, target):
+    """File for the request target below the root, or None; folders yield index.html, "/" the start page."""
+    segments = split_target(target)
+    if segments is None:
         return None
-    basis = os.path.realpath(wurzel)
-    datei = os.path.realpath(os.path.join(basis, *teile)) if teile else os.path.join(basis, STARTSEITE)
-    if not datei.startswith(basis + os.sep):
+    base = os.path.realpath(root)
+    file = os.path.realpath(os.path.join(base, *segments)) if segments else os.path.join(base, START_PAGE)
+    if not file.startswith(base + os.sep):
         return None
-    if os.path.isdir(datei):
-        datei = os.path.join(datei, "index.html")
-    return datei if os.path.isfile(datei) else None
+    if os.path.isdir(file):
+        file = os.path.join(file, "index.html")
+    return file if os.path.isfile(file) else None
 
 
-def host_zulaessig(host, port):
-    """Nur Loopback-Namen (Schutz vor DNS-Rebinding)."""
+def host_allowed(host, port):
+    """Loopback names only (protection against DNS rebinding)."""
     if not host:
         return False
     h = host.strip().lower()
     return any(h in (n, "%s:%d" % (n, port)) for n in ("localhost", "127.0.0.1", "[::1]"))
 
 
-_FORM = re.compile(r"^https://[A-Za-z0-9.\-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~\-/%]*)?$")
+_SHAPE = re.compile(r"^https://[A-Za-z0-9.\-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~\-/%]*)?$")
 
 
-def adresse_pruefen(eingabe):
-    """(adresse, None) oder (None, grund); Regeln wie ManifestAdresse.Pruefen und manifest-erzeugen.ps1."""
-    a = (eingabe or "").strip()
+def validate_address(value):
+    """(address, None) or (None, reason); same rules as ManifestAddress.Validate and create-manifest.ps1."""
+    a = (value or "").strip()
     if a.lower().startswith("https://"):
         a = "https://" + a[8:]
     a = a.rstrip("/")
     if not a.startswith("https://"):
-        return None, "Die Adresse muss mit https:// beginnen."
-    if not _FORM.match(a):
-        return None, "Ungültige Adresse (erlaubt: https://host[:port][/pfad], ohne ? # Leer- oder Sonderzeichen)."
-    autoritaet, trenner, pfad = a[8:].partition("/")
-    host, _, port = autoritaet.partition(":")
+        return None, T("The address must start with https://.", "Die Adresse muss mit https:// beginnen.")
+    if not _SHAPE.match(a):
+        return None, T("Invalid address (allowed: https://host[:port][/path], without ? # spaces or special characters).",
+                       "Ungültige Adresse (erlaubt: https://host[:port][/pfad], ohne ? # Leer- oder Sonderzeichen).")
+    authority, separator, path = a[8:].partition("/")
+    host, _, port = authority.partition(":")
     if not host or host.startswith(".") or host.endswith(".") or ".." in host:
-        return None, "Ungültiger Hostname."
-    if ":" in autoritaet and (not port.isdigit() or not 1 <= int(port) <= 65535):
-        return None, "Ungültiger Port."
-    return "https://" + autoritaet.lower() + ("/" + pfad if trenner else ""), None
+        return None, T("Invalid host name.", "Ungültiger Hostname.")
+    if ":" in authority and (not port.isdigit() or not 1 <= int(port) <= 65535):
+        return None, T("Invalid port.", "Ungültiger Port.")
+    return "https://" + authority.lower() + ("/" + path if separator else ""), None
 
 
-def manifest_umschreiben(text, adresse):
-    return text.replace(LOKAL, adresse)
+def rewrite_manifest(text, address):
+    return text.replace(LOCAL, address)
 
 
-def dateiname(adresse):
-    autoritaet = adresse[len("https://"):].split("/", 1)[0].replace(":", "-")
-    return "manifest-" + "".join(c if (c.isascii() and c.isalnum()) or c in ".-" else "-" for c in autoritaet) + ".xml"
+def manifest_file_name(address):
+    authority = address[len("https://"):].split("/", 1)[0].replace(":", "-")
+    return "manifest-" + "".join(c if (c.isascii() and c.isalnum()) or c in ".-" else "-" for c in authority) + ".xml"
 
 
-def kennung(text):
+def addin_id(text):
     m = re.search(r"<Id>\s*([0-9A-Fa-f\-]{36})\s*</Id>", text)
     return m.group(1) if m else None
 
 
-def hosts_im_manifest(text):
-    """Office-Anwendungen des Manifests (Presentation, Workbook, ...)."""
+def manifest_hosts(text):
+    """Office applications of the manifest (Presentation, Workbook, ...)."""
     return sorted(set(re.findall(r'<Host\s+Name="([A-Za-z]+)"', text)))
 
 
-_MONATE = {m: i + 1 for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split())}
+_MONTHS = {m: i + 1 for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split())}
 
 
-def ablauf_lesen(ausgabe):
-    """Ablauf aus "notAfter=Nov 18 12:00:00 2027 GMT" (openssl x509 -enddate) als UTC ohne Zeitzone, sonst None."""
-    m = re.search(r"notAfter=([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d\d):(\d\d):(\d\d)\s+(\d{4})", ausgabe or "")
-    if not m or m.group(1) not in _MONATE:
+def parse_expiry(output):
+    """Expiry from "notAfter=Nov 18 12:00:00 2027 GMT" (openssl x509 -enddate) as naive UTC, else None."""
+    m = re.search(r"notAfter=([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d\d):(\d\d):(\d\d)\s+(\d{4})", output or "")
+    if not m or m.group(1) not in _MONTHS:
         return None
-    return datetime.datetime(int(m.group(6)), _MONATE[m.group(1)], int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)))
+    return datetime.datetime(int(m.group(6)), _MONTHS[m.group(1)], int(m.group(2)), int(m.group(3)), int(m.group(4)), int(m.group(5)))
 
 
-def entscheiden(ablauf, jetzt):
-    """"neu", "erneuern" oder "wiederverwenden" (wie Zertifikate.Entscheiden)."""
-    if ablauf is None:
-        return "neu"
-    return "erneuern" if ablauf - jetzt < datetime.timedelta(days=VORLAUF_TAGE) else "wiederverwenden"
+def decide(expiry, now):
+    """"create", "renew" or "reuse" (like Certificates.Decide)."""
+    if expiry is None:
+        return "create"
+    return "renew" if expiry - now < datetime.timedelta(days=RENEW_DAYS) else "reuse"
 
 
-def dienst_entscheiden(ablauf, jetzt):
-    """Was der Dienst beim Start mit dem Zertifikat tut: "neu" (keines oder abgelaufen), "behalten" (läuft bald ab, gilt aber
-    noch) oder "wiederverwenden". Anders als die Installation erneuert der Dienst ein gültiges Zertifikat nicht: er kann das
-    Vertrauen nicht eintragen (Kennwortabfrage), und einem neuen Zertifikat ohne Vertrauen folgt Office nicht."""
-    if ablauf is None or ablauf <= jetzt:
-        return "neu"
-    return "behalten" if entscheiden(ablauf, jetzt) == "erneuern" else "wiederverwenden"
+def serve_decide(expiry, now):
+    """What the service does with the certificate at start: "create" (none or expired), "keep" (expires soon but is
+    still valid) or "reuse". Unlike the installer, the service does not renew a valid certificate: it cannot add the
+    trust (password prompt), and Office does not accept a new certificate without trust."""
+    if expiry is None or expiry <= now:
+        return "create"
+    return "keep" if decide(expiry, now) == "renew" else "reuse"
 
 
-def dienst_hinweis(entscheidung, ablauf):
-    """Meldung für das Protokoll des Dienstes oder None."""
-    if entscheidung == "behalten":
-        return ("Das Zertifikat läuft am %s ab. Bitte InventaSketch-Web erneut installieren (installieren.command bzw. "
-                "installieren.sh): dabei entsteht ein neues Zertifikat, dem der Rechner vertraut." % ablauf.strftime("%Y-%m-%d"))
-    if entscheidung == "neu":
-        return ("Neues Zertifikat angelegt, dem der Rechner noch nicht vertraut. Bitte InventaSketch-Web erneut installieren "
-                "(installieren.command bzw. installieren.sh), sonst lädt Office das Add-in nicht.")
+def serve_notice(decision, expiry):
+    """Message for the service log, or None."""
+    script = "install.command / install.sh"
+    if decision == "keep":
+        date = expiry.strftime("%Y-%m-%d")
+        return T("The certificate expires on %s. Please install InventaSketch-Web again (%s): this creates a new "
+                 "certificate that the computer trusts." % (date, script),
+                 "Das Zertifikat läuft am %s ab. Bitte InventaSketch-Web erneut installieren (%s): dabei entsteht ein "
+                 "neues Zertifikat, dem der Rechner vertraut." % (date, script))
+    if decision == "create":
+        return T("Created a new certificate that the computer does not trust yet. Please install InventaSketch-Web again "
+                 "(%s), otherwise Office does not load the add-in." % script,
+                 "Neues Zertifikat angelegt, dem der Rechner noch nicht vertraut. Bitte InventaSketch-Web erneut "
+                 "installieren (%s), sonst lädt Office das Add-in nicht." % script)
     return None
 
 
-def jetzt_utc():
-    """Jetzt in UTC ohne Zeitzone (wie ablauf_lesen)."""
+def utc_now():
+    """Now in naive UTC (like parse_expiry)."""
     return datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
 
 
-# ---------------------------------------------------------------------------------------------------- Orte
+# ---------------------------------------------------------------------------------------------------- Locations
 
-class Pfade:
-    """Orte je Plattform; in Tests mit eigenem Home und eigener Plattform."""
+class Paths:
+    """Locations per platform; tests use their own home and platform."""
 
-    def __init__(self, plattform=None, home=None, umgebung=None):
-        self.plattform = plattform or ("darwin" if sys.platform == "darwin" else "linux")
+    def __init__(self, platform=None, home=None, environ=None):
+        self.platform = platform or ("darwin" if sys.platform == "darwin" else "linux")
         self.home = home or os.path.expanduser("~")
-        env = os.environ if umgebung is None else umgebung
-        konfig = env.get("XDG_CONFIG_HOME") or os.path.join(self.home, ".config")
-        daten = env.get("XDG_DATA_HOME") or os.path.join(self.home, ".local", "share")
-        if self.plattform == "darwin":
-            self.installation = os.path.join(self.home, "Library", "Application Support", "InventaSketch", "Web")
+        env = os.environ if environ is None else environ
+        config = env.get("XDG_CONFIG_HOME") or os.path.join(self.home, ".config")
+        data = env.get("XDG_DATA_HOME") or os.path.join(self.home, ".local", "share")
+        if self.platform == "darwin":
+            self.install_dir = os.path.join(self.home, "Library", "Application Support", "InventaSketch", "Web")
         else:
-            self.installation = os.path.join(daten, "inventasketch", "web")
-        self.zustand = os.path.join(self.home, ".inventasketch", "web")
-        self.zertifikat = os.path.join(self.zustand, "localhost.crt")
-        self.schluessel = os.path.join(self.zustand, "localhost.key")
-        self.pid = os.path.join(self.zustand, "server.pid")
-        self.protokoll = os.path.join(self.zustand, "webhost.log")
-        self.launchagent = os.path.join(self.home, "Library", "LaunchAgents", LAUNCH_LABEL + ".plist")
-        self.systemd = os.path.join(konfig, "systemd", "user", SYSTEMD_DIENST)
-        self.desktop = os.path.join(konfig, "autostart", "inventasketch-web.desktop")
+            self.install_dir = os.path.join(data, "inventasketch", "web")
+        self.state_dir = os.path.join(self.home, ".inventasketch", "web")
+        self.certificate = os.path.join(self.state_dir, "localhost.crt")
+        self.key = os.path.join(self.state_dir, "localhost.key")
+        self.pid = os.path.join(self.state_dir, "server.pid")
+        self.log = os.path.join(self.state_dir, "webhost.log")
+        self.launch_agent = os.path.join(self.home, "Library", "LaunchAgents", LAUNCH_LABEL + ".plist")
+        self.systemd = os.path.join(config, "systemd", "user", SYSTEMD_SERVICE)
+        self.desktop = os.path.join(config, "autostart", "inventasketch-web.desktop")
         self.nssdb = os.path.join(self.home, ".pki", "nssdb")
-        self.schluesselbund = os.path.join(self.home, "Library", "Keychains", "login.keychain-db")
+        self.keychain = os.path.join(self.home, "Library", "Keychains", "login.keychain-db")
 
     def wef(self, host):
         container = {"Presentation": "com.microsoft.Powerpoint", "Workbook": "com.microsoft.Excel",
@@ -227,215 +275,242 @@ class Pfade:
 
 # ---------------------------------------------------------------------------------------------------- System
 
-def _ausfuehren(befehl, **kw):
-    return subprocess.run(befehl, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, **kw)
+def _run(command, **kw):
+    return subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, **kw)
 
 
 class System:
-    """Abfragen am System; Tests ersetzen sie (kein Zugriff auf den echten Rechner im Probelauf der Tests)."""
+    """Queries of the system; tests replace them (no access to the real machine in the tests' dry run)."""
 
-    def __init__(self, pfade):
-        self.p = pfade
+    def __init__(self, paths):
+        self.p = paths
 
-    def hat(self, programm):
-        return shutil.which(programm) is not None
+    def has(self, program):
+        return shutil.which(program) is not None
 
-    def zertifikat_ablauf(self):
-        if not (os.path.isfile(self.p.zertifikat) and os.path.isfile(self.p.schluessel)) or not self.hat("openssl"):
+    def certificate_expiry(self):
+        if not (os.path.isfile(self.p.certificate) and os.path.isfile(self.p.key)) or not self.has("openssl"):
             return None
-        r = _ausfuehren(["openssl", "x509", "-enddate", "-noout", "-in", self.p.zertifikat])
-        return ablauf_lesen(r.stdout) if r.returncode == 0 else None
+        r = _run(["openssl", "x509", "-enddate", "-noout", "-in", self.p.certificate])
+        return parse_expiry(r.stdout) if r.returncode == 0 else None
 
-    def vertraut(self):
-        if not os.path.isfile(self.p.zertifikat):
+    def trusted(self):
+        if not os.path.isfile(self.p.certificate):
             return False
-        if self.p.plattform == "darwin":
-            return _ausfuehren(["security", "verify-cert", "-c", self.p.zertifikat, "-p", "ssl", "-s", "localhost"]).returncode == 0
-        if self.hat("certutil") and os.path.isdir(self.p.nssdb):
-            return _ausfuehren(["certutil", "-d", "sql:" + self.p.nssdb, "-L", "-n", NSS_NAME]).returncode == 0
+        if self.p.platform == "darwin":
+            return _run(["security", "verify-cert", "-c", self.p.certificate, "-p", "ssl", "-s", "localhost"]).returncode == 0
+        if self.has("certutil") and os.path.isdir(self.p.nssdb):
+            return _run(["certutil", "-d", "sql:" + self.p.nssdb, "-L", "-n", NSS_NAME]).returncode == 0
         return False
 
-    def nss_verfuegbar(self):
-        return self.hat("certutil") and os.path.isdir(self.p.nssdb)
+    def nss_available(self):
+        return self.has("certutil") and os.path.isdir(self.p.nssdb)
 
-    def systemd_verfuegbar(self):
-        return self.hat("systemctl") and _ausfuehren(["systemctl", "--user", "show-environment"]).returncode == 0
+    def systemd_available(self):
+        return self.has("systemctl") and _run(["systemctl", "--user", "show-environment"]).returncode == 0
 
-    def server_laeuft(self, port=PORT):
-        return server_antwortet(port)
+    def server_running(self, port=PORT):
+        return server_responds(port)
 
 
-def server_antwortet(port=PORT, zeit=2.0):
-    """True, wenn auf https://localhost:port/taskpane.html ein Server mit Status 200 antwortet (ohne Zertifikatprüfung)."""
+def server_responds(port=PORT, timeout=2.0):
+    """True if a server answers https://localhost:port/taskpane.html with status 200 (without certificate check)."""
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
-        with socket.create_connection(("127.0.0.1", port), timeout=zeit) as roh:
-            with ctx.wrap_socket(roh, server_hostname="localhost") as s:
-                s.sendall(("HEAD /%s HTTP/1.1\r\nHost: localhost:%d\r\nConnection: close\r\n\r\n" % (STARTSEITE, port)).encode("ascii"))
+        with socket.create_connection(("127.0.0.1", port), timeout=timeout) as raw:
+            with ctx.wrap_socket(raw, server_hostname="localhost") as s:
+                s.sendall(("HEAD /%s HTTP/1.1\r\nHost: localhost:%d\r\nConnection: close\r\n\r\n" % (START_PAGE, port)).encode("ascii"))
                 return s.recv(64).startswith(b"HTTP/1.1 200")
     except (OSError, ssl.SSLError):
         return False
 
 
-# ---------------------------------------------------------------------------------------------------- Schritte
+# ---------------------------------------------------------------------------------------------------- Steps
 
-class Schritt:
-    def __init__(self, art, text, aktion=None):
-        self.art = art
+class Step:
+    def __init__(self, kind, text, action=None):
+        self.kind = kind
         self.text = text
-        self.aktion = aktion
+        self.action = action
 
     def __repr__(self):
-        return "%s: %s" % (self.art, self.text)
+        return "%s: %s" % (self.kind, self.text)
 
 
-def paket_fehlt(quelle):
-    for teil in ("App/" + STARTSEITE, "App/_framework", "manifest.xml", "inventasketch_web.py"):
-        if not os.path.exists(os.path.join(quelle, *teil.split("/"))):
-            return teil
+def missing_package_part(source):
+    for part in ("App/" + START_PAGE, "App/_framework", "manifest.xml", "inventasketch_web.py"):
+        if not os.path.exists(os.path.join(source, *part.split("/"))):
+            return part
     return None
 
 
-def plan_installieren(p, sy, quelle, autostart=True, starten=True, jetzt=None):
-    """Plan der Installation je Benutzer (ohne Administratorrechte); bei einem Hindernis endet er mit "abbruch"."""
-    jetzt = jetzt or jetzt_utc()
+def plan_install(p, sy, source, autostart=True, start=True, now=None):
+    """Plan of the per-user installation (no administrator rights); an obstacle ends it with "abort"."""
+    now = now or utc_now()
     plan = []
-    fehlt = paket_fehlt(quelle)
-    if fehlt:
-        return [Schritt("abbruch", "Paket unvollständig, es fehlt %s. ZIP-Datei vollständig entpacken." % fehlt)]
-    if not sy.hat("openssl"):
-        return [Schritt("abbruch", "openssl fehlt (für das Zertifikat). Unter Linux: Paket openssl installieren lassen.")]
-    if p.plattform == "darwin" and not sy.hat("security"):
-        return [Schritt("abbruch", "Das Programm security von macOS fehlt.")]
-    if sy.server_laeuft():
-        plan.append(Schritt("beenden", "Laufenden Server beenden", lambda: beenden(p)))
-    if os.path.realpath(quelle) != os.path.realpath(p.installation):
-        plan.append(Schritt("kopieren", "Dateien nach %s kopieren" % p.installation, lambda: kopieren(quelle, p.installation)))
-    entscheidung = entscheiden(sy.zertifikat_ablauf(), jetzt)
-    if entscheidung == "wiederverwenden":
-        plan.append(Schritt("zertifikat", "Vorhandenes Zertifikat weiterverwenden (%s)" % p.zertifikat))
+    missing = missing_package_part(source)
+    if missing:
+        return [Step("abort", T("Package incomplete, %s is missing. Extract the complete ZIP file." % missing,
+                                "Paket unvollständig, es fehlt %s. ZIP-Datei vollständig entpacken." % missing))]
+    if not sy.has("openssl"):
+        return [Step("abort", T("openssl is missing (needed for the certificate). On Linux: have the openssl package installed.",
+                                "openssl fehlt (für das Zertifikat). Unter Linux: Paket openssl installieren lassen."))]
+    if p.platform == "darwin" and not sy.has("security"):
+        return [Step("abort", T("The macOS program security is missing.", "Das Programm security von macOS fehlt."))]
+    if sy.server_running():
+        plan.append(Step("stop", T("Stop the running server", "Laufenden Server beenden"), lambda: stop_server(p)))
+    if os.path.realpath(source) != os.path.realpath(p.install_dir):
+        plan.append(Step("copy", T("Copy files to %s" % p.install_dir, "Dateien nach %s kopieren" % p.install_dir),
+                         lambda: copy_package(source, p.install_dir)))
+    decision = decide(sy.certificate_expiry(), now)
+    if decision == "reuse":
+        plan.append(Step("certificate", T("Keep using the existing certificate (%s)" % p.certificate,
+                                          "Vorhandenes Zertifikat weiterverwenden (%s)" % p.certificate)))
     else:
-        text = "Zertifikat für localhost anlegen" if entscheidung == "neu" else "Zertifikat läuft bald ab: neues anlegen"
-        plan.append(Schritt("zertifikat", "%s (%s)" % (text, p.zertifikat), lambda: zertifikat_anlegen(p)))
-    if entscheidung != "wiederverwenden" or not sy.vertraut():
-        if p.plattform == "darwin":
-            plan.append(Schritt("vertrauen", "Zertifikat im Schlüsselbund als vertrauenswürdig eintragen (macOS fragt nach dem "
-                                "Kennwort des Benutzers)", lambda: vertrauen(p, sy)))
-        elif sy.nss_verfuegbar():
-            plan.append(Schritt("vertrauen", "Zertifikat für Chrome und Chromium eintragen (NSS-Datenbank %s)" % p.nssdb,
-                                lambda: vertrauen(p, sy)))
+        text = (T("Create a certificate for localhost", "Zertifikat für localhost anlegen") if decision == "create"
+                else T("Certificate expires soon: create a new one", "Zertifikat läuft bald ab: neues anlegen"))
+        plan.append(Step("certificate", "%s (%s)" % (text, p.certificate), lambda: create_certificate(p)))
+    if decision != "reuse" or not sy.trusted():
+        if p.platform == "darwin":
+            plan.append(Step("trust", T("Trust the certificate in the keychain (macOS asks for the user's password)",
+                                        "Zertifikat im Schlüsselbund als vertrauenswürdig eintragen (macOS fragt nach dem "
+                                        "Kennwort des Benutzers)"), lambda: trust(p, sy)))
+        elif sy.nss_available():
+            plan.append(Step("trust", T("Trust the certificate for Chrome and Chromium (NSS database %s)" % p.nssdb,
+                                        "Zertifikat für Chrome und Chromium eintragen (NSS-Datenbank %s)" % p.nssdb),
+                             lambda: trust(p, sy)))
         else:
-            plan.append(Schritt("hinweis", "Zertifikat im Browser vertrauen: einmal https://localhost:%d/%s öffnen und die "
-                                "Ausnahme bestätigen, oder certutil (libnss3-tools) installieren lassen und erneut installieren."
-                                % (PORT, STARTSEITE)))
-    ziel = p.installation
+            plan.append(Step("note", T("Trust the certificate in the browser: open https://localhost:%d/%s once and accept "
+                                       "the exception, or have certutil (libnss3-tools) installed and install again."
+                                       % (PORT, START_PAGE),
+                                       "Zertifikat im Browser vertrauen: einmal https://localhost:%d/%s öffnen und die "
+                                       "Ausnahme bestätigen, oder certutil (libnss3-tools) installieren lassen und erneut "
+                                       "installieren." % (PORT, START_PAGE))))
+    target = p.install_dir
     if autostart:
-        if p.plattform == "darwin":
-            plan.append(Schritt("autostart", "Autostart bei der Anmeldung eintragen und Server starten (LaunchAgent %s)" % p.launchagent,
-                                lambda: launchagent_eintragen(p, ziel)))
-        elif sy.systemd_verfuegbar():
-            plan.append(Schritt("autostart", "Autostart eintragen und Server starten (systemd --user, %s)" % p.systemd,
-                                lambda: systemd_eintragen(p, ziel)))
+        if p.platform == "darwin":
+            plan.append(Step("autostart", T("Add autostart at sign-in and start the server (LaunchAgent %s)" % p.launch_agent,
+                                            "Autostart bei der Anmeldung eintragen und Server starten (LaunchAgent %s)"
+                                            % p.launch_agent),
+                             lambda: add_launch_agent(p, target)))
+        elif sy.systemd_available():
+            plan.append(Step("autostart", T("Add autostart and start the server (systemd --user, %s)" % p.systemd,
+                                            "Autostart eintragen und Server starten (systemd --user, %s)" % p.systemd),
+                             lambda: add_systemd(p, target)))
         else:
-            plan.append(Schritt("autostart", "Autostart der Arbeitsumgebung eintragen (%s)" % p.desktop,
-                                lambda: desktop_eintragen(p, ziel)))
-            if starten:
-                plan.append(Schritt("starten", "Server starten", lambda: starten_hintergrund(p, ziel)))
+            plan.append(Step("autostart", T("Add desktop autostart (%s)" % p.desktop,
+                                            "Autostart der Arbeitsumgebung eintragen (%s)" % p.desktop),
+                             lambda: add_desktop_entry(p, target)))
+            if start:
+                plan.append(Step("start", T("Start the server", "Server starten"), lambda: start_background(p, target)))
     else:
-        if any(os.path.exists(f) for f in (p.launchagent, p.systemd, p.desktop)):
-            plan.append(Schritt("autostart", "Autostart entfernen", lambda: autostart_entfernen(p, sy)))
-        if starten:
-            plan.append(Schritt("starten", "Server starten", lambda: starten_hintergrund(p, ziel)))
-    if starten or autostart:
-        plan.append(Schritt("warten", "Warten, bis https://localhost:%d antwortet" % PORT, lambda: warten_bis_bereit()))
-    manifest = os.path.join(ziel, "manifest.xml")
-    if p.plattform == "darwin":
-        with open(os.path.join(quelle, "manifest.xml"), encoding="utf-8") as f:
-            hosts = hosts_im_manifest(f.read())
+        if any(os.path.exists(f) for f in (p.launch_agent, p.systemd, p.desktop)):
+            plan.append(Step("autostart", T("Remove autostart", "Autostart entfernen"), lambda: remove_autostart(p, sy)))
+        if start:
+            plan.append(Step("start", T("Start the server", "Server starten"), lambda: start_background(p, target)))
+    if start or autostart:
+        plan.append(Step("wait", T("Wait until https://localhost:%d responds" % PORT,
+                                   "Warten, bis https://localhost:%d antwortet" % PORT), lambda: wait_until_ready()))
+    manifest = os.path.join(target, "manifest.xml")
+    if p.platform == "darwin":
+        with open(os.path.join(source, "manifest.xml"), encoding="utf-8") as f:
+            hosts = manifest_hosts(f.read())
         for host in hosts:
-            ordner = p.wef(host)
-            if ordner:
-                plan.append(Schritt("wef", "Manifest für %s eintragen (%s)" % (host, ordner),
-                                    lambda o=ordner: wef_eintragen(manifest, o)))
-        plan.append(Schritt("hinweis", "PowerPoint beenden und neu starten; InventaSketch: Start > Add-Ins (bzw. Einfügen > Add-Ins > "
-                                       "Meine Add-Ins), Bereich Entwickler-Add-Ins."))
+            folder = p.wef(host)
+            if folder:
+                plan.append(Step("wef", T("Register the manifest for %s (%s)" % (host, folder),
+                                          "Manifest für %s eintragen (%s)" % (host, folder)),
+                                 lambda o=folder: add_wef(manifest, o)))
+        plan.append(Step("note", T("Quit and restart PowerPoint; InventaSketch: Home > Add-ins (or Insert > Add-ins > "
+                                   "My Add-ins), section Developer Add-ins.",
+                                   "PowerPoint beenden und neu starten; InventaSketch: Start > Add-Ins (bzw. Einfügen > "
+                                   "Add-Ins > Meine Add-Ins), Bereich Entwickler-Add-Ins.")))
     else:
-        plan.append(Schritt("hinweis", "PowerPoint im Web im Browser öffnen: Start > Add-Ins > Weitere Add-Ins > Meine Add-Ins > "
-                                       "Mein Add-In hochladen, Datei %s." % manifest))
+        plan.append(Step("note", T("Open PowerPoint on the web in the browser: Home > Add-ins > More Add-ins > My Add-ins > "
+                                   "Upload My Add-in, file %s." % manifest,
+                                   "PowerPoint im Web im Browser öffnen: Start > Add-Ins > Weitere Add-Ins > Meine Add-Ins > "
+                                   "Mein Add-In hochladen, Datei %s." % manifest)))
     return plan
 
 
-def plan_deinstallieren(p, sy):
+def plan_uninstall(p, sy):
     plan = []
-    if sy.server_laeuft() or os.path.exists(p.pid):
-        plan.append(Schritt("beenden", "Server beenden", lambda: beenden(p)))
-    if any(os.path.exists(f) for f in (p.launchagent, p.systemd, p.desktop)):
-        plan.append(Schritt("autostart", "Autostart entfernen", lambda: autostart_entfernen(p, sy)))
-    if p.plattform == "darwin":
+    if sy.server_running() or os.path.exists(p.pid):
+        plan.append(Step("stop", T("Stop the server", "Server beenden"), lambda: stop_server(p)))
+    if any(os.path.exists(f) for f in (p.launch_agent, p.systemd, p.desktop)):
+        plan.append(Step("autostart", T("Remove autostart", "Autostart entfernen"), lambda: remove_autostart(p, sy)))
+    if p.platform == "darwin":
         for host in ("Presentation", "Workbook", "Document"):
-            datei = os.path.join(p.wef(host), "inventasketch.xml")
-            if os.path.exists(datei):
-                plan.append(Schritt("wef", "Manifest austragen (%s)" % datei, lambda d=datei: os.remove(d)))
-    if os.path.isfile(p.zertifikat):
-        if p.plattform == "darwin" or sy.nss_verfuegbar():
-            plan.append(Schritt("vertrauen", "Vertrauen des Zertifikats entfernen", lambda: vertrauen_entfernen(p, sy)))
-    if os.path.isdir(p.zustand):
-        plan.append(Schritt("zertifikat", "Zertifikat und Protokoll löschen (%s)" % p.zustand, lambda: shutil.rmtree(p.zustand)))
-    if os.path.isdir(p.installation):
-        plan.append(Schritt("ordner", "Ordner %s löschen" % p.installation, lambda: shutil.rmtree(p.installation)))
-    plan.append(Schritt("hinweis", "PowerPoint neu starten." if plan else "Nichts zu entfernen: InventaSketch-Web ist nicht installiert."))
+            file = os.path.join(p.wef(host), "inventasketch.xml")
+            if os.path.exists(file):
+                plan.append(Step("wef", T("Unregister the manifest (%s)" % file, "Manifest austragen (%s)" % file),
+                                 lambda d=file: os.remove(d)))
+    if os.path.isfile(p.certificate):
+        if p.platform == "darwin" or sy.nss_available():
+            plan.append(Step("trust", T("Remove the certificate trust", "Vertrauen des Zertifikats entfernen"),
+                             lambda: remove_trust(p, sy)))
+    if os.path.isdir(p.state_dir):
+        plan.append(Step("certificate", T("Delete certificate and log (%s)" % p.state_dir,
+                                          "Zertifikat und Protokoll löschen (%s)" % p.state_dir),
+                         lambda: shutil.rmtree(p.state_dir)))
+    if os.path.isdir(p.install_dir):
+        plan.append(Step("folder", T("Delete folder %s" % p.install_dir, "Ordner %s löschen" % p.install_dir),
+                         lambda: shutil.rmtree(p.install_dir)))
+    plan.append(Step("note", T("Restart PowerPoint.", "PowerPoint neu starten.") if plan
+                     else T("Nothing to remove: InventaSketch-Web is not installed.",
+                            "Nichts zu entfernen: InventaSketch-Web ist nicht installiert.")))
     return plan
 
 
-def ausfuehren(plan, probelauf, ausgabe=print):
-    nr = 0
+def run_plan(plan, dry_run, output=print):
+    number = 0
     for s in plan:
-        if s.art == "abbruch":
-            kennung = "ABBRUCH"
-        elif s.art == "hinweis":
-            kennung = "Hinweis"
+        if s.kind == "abort":
+            label = T("ABORT", "ABBRUCH")
+        elif s.kind == "note":
+            label = T("Note", "Hinweis")
         else:
-            nr += 1
-            kennung = str(nr)
-        ausgabe("%s%s. %s" % ("[Probelauf] " if probelauf else "", kennung, s.text))
-        if s.art == "abbruch":
+            number += 1
+            label = str(number)
+        output("%s%s. %s" % (T("[Dry run] ", "[Probelauf] ") if dry_run else "", label, s.text))
+        if s.kind == "abort":
             return 5
-        if probelauf or s.aktion is None:
+        if dry_run or s.action is None:
             continue
         try:
-            fehler = s.aktion()
+            error = s.action()
         except (OSError, subprocess.SubprocessError) as e:
-            fehler = str(e)
-        if fehler:
-            ausgabe("ABBRUCH: %s" % fehler)
+            error = str(e)
+        if error:
+            output(T("ABORT: %s", "ABBRUCH: %s") % error)
             return 5
     return 0
 
 
-# ---------------------------------------------------------------------------------------------------- Aktionen
+# ---------------------------------------------------------------------------------------------------- Actions
 
-def kopieren(quelle, ziel):
-    for teil in ("App",):
-        alt = os.path.join(ziel, teil)
-        if os.path.isdir(alt):
-            shutil.rmtree(alt)
-    os.makedirs(ziel, exist_ok=True)
-    for name in os.listdir(quelle):
-        q = os.path.join(quelle, name)
-        z = os.path.join(ziel, name)
+def copy_package(source, target):
+    for part in ("App",):
+        old = os.path.join(target, part)
+        if os.path.isdir(old):
+            shutil.rmtree(old)
+    os.makedirs(target, exist_ok=True)
+    for name in os.listdir(source):
+        s = os.path.join(source, name)
+        t = os.path.join(target, name)
         if name in ("Server", "__pycache__") or name.endswith(".cmd"):
-            continue  # Windows-Teil wird unter macOS und Linux nicht gebraucht
-        if os.path.isdir(q):
-            shutil.copytree(q, z)
+            continue  # the Windows part is not needed on macOS and Linux
+        if os.path.isdir(s):
+            shutil.copytree(s, t)
         else:
-            shutil.copy2(q, z)
+            shutil.copy2(s, t)
             if name.endswith((".sh", ".command", ".py")):
-                os.chmod(z, 0o755)
+                os.chmod(t, 0o755)
 
 
-OPENSSL_KONFIG = """[req]
+OPENSSL_CONFIG = """[req]
 distinguished_name = dn
 x509_extensions = ext
 prompt = no
@@ -448,154 +523,160 @@ keyUsage = critical, digitalSignature, keyEncipherment
 extendedKeyUsage = serverAuth
 subjectAltName = DNS:localhost, IP:127.0.0.1, IP:::1
 subjectKeyIdentifier = hash
-""" % ORGANISATION
+""" % ORGANIZATION
 
 
-def zertifikat_anlegen(p):
-    os.makedirs(p.zustand, exist_ok=True)
-    os.chmod(p.zustand, 0o700)
+def create_certificate(p):
+    os.makedirs(p.state_dir, exist_ok=True)
+    os.chmod(p.state_dir, 0o700)
     with tempfile.NamedTemporaryFile("w", suffix=".cnf", delete=False) as f:
-        f.write(OPENSSL_KONFIG)
-        konfig = f.name
+        f.write(OPENSSL_CONFIG)
+        config = f.name
     try:
-        r = _ausfuehren(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256", "-days", str(GUELTIG_TAGE),
-                         "-keyout", p.schluessel, "-out", p.zertifikat, "-config", konfig])
+        r = _run(["openssl", "req", "-x509", "-newkey", "rsa:2048", "-nodes", "-sha256", "-days", str(VALID_DAYS),
+                  "-keyout", p.key, "-out", p.certificate, "-config", config])
     finally:
-        os.remove(konfig)
+        os.remove(config)
     if r.returncode != 0:
         return "openssl: " + r.stdout.strip()
-    os.chmod(p.schluessel, 0o600)
+    os.chmod(p.key, 0o600)
     return None
 
 
 def _sha1(p):
-    r = _ausfuehren(["openssl", "x509", "-noout", "-fingerprint", "-sha1", "-in", p.zertifikat])
+    r = _run(["openssl", "x509", "-noout", "-fingerprint", "-sha1", "-in", p.certificate])
     m = re.search(r"=([0-9A-Fa-f:]+)", r.stdout)
     return m.group(1).replace(":", "") if m else None
 
 
-def vertrauen(p, sy):
-    if p.plattform == "darwin":
-        print("macOS fragt jetzt nach dem Kennwort, um dem Zertifikat \"localhost\" zu vertrauen.")
-        r = _ausfuehren(["security", "add-trusted-cert", "-p", "ssl", "-p", "basic", "-k", p.schluesselbund, p.zertifikat])
+def trust(p, sy):
+    if p.platform == "darwin":
+        print(T("macOS now asks for your password to trust the certificate \"localhost\".",
+                "macOS fragt jetzt nach dem Kennwort, um dem Zertifikat \"localhost\" zu vertrauen."))
+        r = _run(["security", "add-trusted-cert", "-p", "ssl", "-p", "basic", "-k", p.keychain, p.certificate])
         if r.returncode != 0:
-            return "Vertrauen abgelehnt oder nicht erlaubt (security: %s). Ohne vertrautes Zertifikat lädt PowerPoint das " \
-                   "Add-in nicht." % r.stdout.strip()
+            return T("Trust declined or not allowed (security: %s). Without a trusted certificate PowerPoint does not load "
+                     "the add-in.", "Vertrauen abgelehnt oder nicht erlaubt (security: %s). Ohne vertrautes Zertifikat lädt "
+                     "PowerPoint das Add-in nicht.") % r.stdout.strip()
         return None
-    _ausfuehren(["certutil", "-d", "sql:" + p.nssdb, "-D", "-n", NSS_NAME])
-    r = _ausfuehren(["certutil", "-d", "sql:" + p.nssdb, "-A", "-t", "P,,", "-n", NSS_NAME, "-i", p.zertifikat])
+    _run(["certutil", "-d", "sql:" + p.nssdb, "-D", "-n", NSS_NAME])
+    r = _run(["certutil", "-d", "sql:" + p.nssdb, "-A", "-t", "P,,", "-n", NSS_NAME, "-i", p.certificate])
     return None if r.returncode == 0 else "certutil: " + r.stdout.strip()
 
 
-def vertrauen_entfernen(p, sy):
-    if p.plattform == "darwin":
-        _ausfuehren(["security", "remove-trusted-cert", p.zertifikat])
+def remove_trust(p, sy):
+    if p.platform == "darwin":
+        _run(["security", "remove-trusted-cert", p.certificate])
         sha1 = _sha1(p)
         if sha1:
-            _ausfuehren(["security", "delete-certificate", "-Z", sha1, p.schluesselbund])
+            _run(["security", "delete-certificate", "-Z", sha1, p.keychain])
     else:
-        _ausfuehren(["certutil", "-d", "sql:" + p.nssdb, "-D", "-n", NSS_NAME])
+        _run(["certutil", "-d", "sql:" + p.nssdb, "-D", "-n", NSS_NAME])
     return None
 
 
-def _befehl(ziel):
-    return [sys.executable, os.path.join(ziel, "inventasketch_web.py"), "dienst"]
+def _serve_command(target):
+    # Autostart entries of earlier installs call the German alias "dienst"; it is still accepted (COMMAND_ALIASES).
+    return [sys.executable, os.path.join(target, "inventasketch_web.py"), "serve"]
 
 
-def launchagent_eintragen(p, ziel):
-    os.makedirs(os.path.dirname(p.launchagent), exist_ok=True)
-    os.makedirs(p.zustand, exist_ok=True)
-    with open(p.launchagent, "wb") as f:
-        plistlib.dump({"Label": LAUNCH_LABEL, "ProgramArguments": _befehl(ziel), "RunAtLoad": True, "KeepAlive": False,
-                       "StandardOutPath": p.protokoll, "StandardErrorPath": p.protokoll}, f)
+def add_launch_agent(p, target):
+    os.makedirs(os.path.dirname(p.launch_agent), exist_ok=True)
+    os.makedirs(p.state_dir, exist_ok=True)
+    with open(p.launch_agent, "wb") as f:
+        plistlib.dump({"Label": LAUNCH_LABEL, "ProgramArguments": _serve_command(target), "RunAtLoad": True,
+                       "KeepAlive": False, "StandardOutPath": p.log, "StandardErrorPath": p.log}, f)
     domain = "gui/%d" % os.getuid()
-    _ausfuehren(["launchctl", "bootout", domain + "/" + LAUNCH_LABEL])
-    r = _ausfuehren(["launchctl", "bootstrap", domain, p.launchagent])
+    _run(["launchctl", "bootout", domain + "/" + LAUNCH_LABEL])
+    r = _run(["launchctl", "bootstrap", domain, p.launch_agent])
     if r.returncode != 0:
-        r = _ausfuehren(["launchctl", "load", "-w", p.launchagent])
+        r = _run(["launchctl", "load", "-w", p.launch_agent])
     return None if r.returncode == 0 else "launchctl: " + r.stdout.strip()
 
 
-def systemd_einheit(ziel):
+def systemd_unit(target):
     return ("[Unit]\nDescription=InventaSketch Web-Add-in (https://localhost:%d)\n\n[Service]\nExecStart=%s\nRestart=on-failure\n\n"
-            "[Install]\nWantedBy=default.target\n") % (PORT, " ".join('"%s"' % t for t in _befehl(ziel)))
+            "[Install]\nWantedBy=default.target\n") % (PORT, " ".join('"%s"' % t for t in _serve_command(target)))
 
 
-def systemd_eintragen(p, ziel):
+def add_systemd(p, target):
     os.makedirs(os.path.dirname(p.systemd), exist_ok=True)
     with open(p.systemd, "w", encoding="utf-8") as f:
-        f.write(systemd_einheit(ziel))
-    _ausfuehren(["systemctl", "--user", "daemon-reload"])
-    r = _ausfuehren(["systemctl", "--user", "enable", "--now", SYSTEMD_DIENST])
+        f.write(systemd_unit(target))
+    _run(["systemctl", "--user", "daemon-reload"])
+    r = _run(["systemctl", "--user", "enable", "--now", SYSTEMD_SERVICE])
     return None if r.returncode == 0 else "systemctl: " + r.stdout.strip()
 
 
-def desktop_eintrag(ziel):
+def desktop_entry(target):
     return ("[Desktop Entry]\nType=Application\nName=InventaSketch Web-Add-in\nExec=%s\nNoDisplay=true\nTerminal=false\n"
-            "X-GNOME-Autostart-enabled=true\n") % " ".join('"%s"' % t for t in _befehl(ziel))
+            "X-GNOME-Autostart-enabled=true\n") % " ".join('"%s"' % t for t in _serve_command(target))
 
 
-def desktop_eintragen(p, ziel):
+def add_desktop_entry(p, target):
     os.makedirs(os.path.dirname(p.desktop), exist_ok=True)
     with open(p.desktop, "w", encoding="utf-8") as f:
-        f.write(desktop_eintrag(ziel))
+        f.write(desktop_entry(target))
     return None
 
 
-def autostart_entfernen(p, sy):
-    if os.path.exists(p.launchagent):
-        _ausfuehren(["launchctl", "bootout", "gui/%d/%s" % (os.getuid(), LAUNCH_LABEL)])
-        os.remove(p.launchagent)
+def remove_autostart(p, sy):
+    if os.path.exists(p.launch_agent):
+        _run(["launchctl", "bootout", "gui/%d/%s" % (os.getuid(), LAUNCH_LABEL)])
+        os.remove(p.launch_agent)
     if os.path.exists(p.systemd):
-        if sy.hat("systemctl"):
-            _ausfuehren(["systemctl", "--user", "disable", "--now", SYSTEMD_DIENST])
+        if sy.has("systemctl"):
+            _run(["systemctl", "--user", "disable", "--now", SYSTEMD_SERVICE])
         os.remove(p.systemd)
-        if sy.hat("systemctl"):
-            _ausfuehren(["systemctl", "--user", "daemon-reload"])
+        if sy.has("systemctl"):
+            _run(["systemctl", "--user", "daemon-reload"])
     if os.path.exists(p.desktop):
         os.remove(p.desktop)
     return None
 
 
-def wef_eintragen(manifest, ordner):
-    os.makedirs(ordner, exist_ok=True)
-    shutil.copy2(manifest, os.path.join(ordner, "inventasketch.xml"))
+def add_wef(manifest, folder):
+    os.makedirs(folder, exist_ok=True)
+    shutil.copy2(manifest, os.path.join(folder, "inventasketch.xml"))
     return None
 
 
-def starten_hintergrund(p, ziel=None):
-    os.makedirs(p.zustand, exist_ok=True)
-    with open(p.protokoll, "a") as log:
-        subprocess.Popen(_befehl(ziel or HIER), stdout=log, stderr=log, stdin=subprocess.DEVNULL, start_new_session=True,
-                         close_fds=True)
+def start_background(p, target=None):
+    os.makedirs(p.state_dir, exist_ok=True)
+    with open(p.log, "a") as log:
+        subprocess.Popen(_serve_command(target or HERE), stdout=log, stderr=log, stdin=subprocess.DEVNULL,
+                         start_new_session=True, close_fds=True)
     return None
 
 
-def warten_bis_bereit(port=PORT, sekunden=30):
-    ende = time.time() + sekunden
-    while time.time() < ende:
-        if server_antwortet(port, 1.0):
+def wait_until_ready(port=PORT, seconds=30):
+    end = time.time() + seconds
+    while time.time() < end:
+        if server_responds(port, 1.0):
             return None
         time.sleep(0.3)
-    return "Der Server antwortet nicht; Protokoll: %s" % Pfade().protokoll
+    return T("The server does not respond; log: %s", "Der Server antwortet nicht; Protokoll: %s") % Paths().log
 
 
-def beenden(p, port=PORT):
+def stop_server(p, port=PORT):
     if os.path.exists(p.pid):
         try:
             with open(p.pid) as f:
                 os.kill(int(f.read().strip()), signal.SIGTERM)
         except (ValueError, ProcessLookupError, PermissionError):
             pass
-        ende = time.time() + 10
-        while time.time() < ende and server_antwortet(port, 0.5):
+        end = time.time() + 10
+        while time.time() < end and server_responds(port, 0.5):
             time.sleep(0.2)
-    return None if not server_antwortet(port, 0.5) else "Der Server auf Port %d endet nicht (anderer Prozess?)." % port
+    if not server_responds(port, 0.5):
+        return None
+    return T("The server on port %d does not stop (another process?).",
+             "Der Server auf Port %d endet nicht (anderer Prozess?).") % port
 
 
 # ---------------------------------------------------------------------------------------------------- Server
 
-class Anfragen(http.server.BaseHTTPRequestHandler):
+class RequestHandler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "InventaSketch"
     sys_version = ""
@@ -604,61 +685,61 @@ class Anfragen(http.server.BaseHTTPRequestHandler):
         self.request.settimeout(30)
         try:
             self.request.do_handshake()
-            self.tls_fehler = False
+            self.tls_failed = False
         except (OSError, ssl.SSLError):
-            self.tls_fehler = True
+            self.tls_failed = True
         super().setup()
 
     def handle(self):
-        if not self.tls_fehler:
+        if not self.tls_failed:
             try:
                 super().handle()
             except (OSError, ssl.SSLError):
                 pass
 
-    def _antwort(self, status, text, schliessen=False, kopf=None):
-        daten = text.encode("utf-8")
+    def _respond(self, status, text, close=False, headers=None):
+        data = text.encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "text/plain; charset=utf-8")
-        self.send_header("Content-Length", str(len(daten)))
-        for k, v in (kopf or {}).items():
+        self.send_header("Content-Length", str(len(data)))
+        for k, v in (headers or {}).items():
             self.send_header(k, v)
-        if schliessen:
+        if close:
             self.send_header("Connection", "close")
             self.close_connection = True
         self.end_headers()
         if self.command != "HEAD":
-            self.wfile.write(daten)
+            self.wfile.write(data)
 
-    def _datei(self, mit_inhalt):
-        if not host_zulaessig(self.headers.get("Host"), self.server.server_address[1]) and self.request_version == "HTTP/1.1":
-            return self._antwort(400, "Host nicht zulässig", True)
+    def _serve_file(self, with_body):
+        if not host_allowed(self.headers.get("Host"), self.server.server_address[1]) and self.request_version == "HTTP/1.1":
+            return self._respond(400, T("Host not allowed", "Host nicht zulässig"), True)
         if self.headers.get("Transfer-Encoding") or self.headers.get("Content-Length", "0") != "0":
-            return self._antwort(400, "Anfrage mit Inhalt", True)
-        datei = aufloesen(self.server.wurzel, self.path)
-        if datei is None:
-            return self._antwort(404, "Nicht gefunden")
-        groesse = os.path.getsize(datei)
+            return self._respond(400, T("Request with body", "Anfrage mit Inhalt"), True)
+        file = resolve(self.server.root, self.path)
+        if file is None:
+            return self._respond(404, T("Not found", "Nicht gefunden"))
+        size = os.path.getsize(file)
         self.send_response(200)
-        self.send_header("Content-Type", typ(datei))
-        self.send_header("Content-Length", str(groesse))
+        self.send_header("Content-Type", content_type(file))
+        self.send_header("Content-Length", str(size))
         self.send_header("Cache-Control", "no-cache")
         self.send_header("X-Content-Type-Options", "nosniff")
         self.end_headers()
-        if mit_inhalt:
-            with open(datei, "rb") as f:
+        if with_body:
+            with open(file, "rb") as f:
                 shutil.copyfileobj(f, self.wfile, 65536)
 
     def do_GET(self):
-        self._datei(True)
+        self._serve_file(True)
 
     def do_HEAD(self):
-        self._datei(False)
+        self._serve_file(False)
 
-    def _nicht_erlaubt(self):
-        self._antwort(405, "Nur GET und HEAD", True, {"Allow": "GET, HEAD"})
+    def _not_allowed(self):
+        self._respond(405, T("Only GET and HEAD", "Nur GET und HEAD"), True, {"Allow": "GET, HEAD"})
 
-    do_POST = do_PUT = do_DELETE = do_PATCH = do_OPTIONS = do_TRACE = do_CONNECT = _nicht_erlaubt
+    do_POST = do_PUT = do_DELETE = do_PATCH = do_OPTIONS = do_TRACE = do_CONNECT = _not_allowed
 
     def log_message(self, format, *args):
         pass
@@ -671,16 +752,16 @@ class TlsServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
     daemon_threads = True
     allow_reuse_address = False
 
-    def __init__(self, adresse, wurzel, kontext, familie=socket.AF_INET):
-        self.address_family = familie
-        self.wurzel = os.path.realpath(wurzel)
-        super().__init__(adresse, Anfragen, bind_and_activate=False)
-        self.socket = kontext.wrap_socket(self.socket, server_side=True, do_handshake_on_connect=False)
+    def __init__(self, address, root, context, family=socket.AF_INET):
+        self.address_family = family
+        self.root = os.path.realpath(root)
+        super().__init__(address, RequestHandler, bind_and_activate=False)
+        self.socket = context.wrap_socket(self.socket, server_side=True, do_handshake_on_connect=False)
         self.server_bind()
         self.server_activate()
 
     def server_bind(self):
-        # Ohne Namensauflösung (HTTPServer.server_bind fragt getfqdn).
+        # Without name resolution (HTTPServer.server_bind calls getfqdn).
         socketserver.TCPServer.server_bind(self)
         self.server_name = "localhost"
         self.server_port = self.server_address[1]
@@ -689,119 +770,140 @@ class TlsServer(socketserver.ThreadingMixIn, http.server.HTTPServer):
         pass
 
 
-def server_bauen(wurzel, zertifikat, schluessel, port=PORT):
-    """Server auf 127.0.0.1 und, wenn möglich, ::1 (gleicher Port). Rückgabe: Liste der Server."""
-    kontext = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    kontext.load_cert_chain(zertifikat, schluessel)
-    server = [TlsServer(("127.0.0.1", port), wurzel, kontext)]
-    port = server[0].server_address[1]
+def build_servers(root, certificate, key, port=PORT):
+    """Servers on 127.0.0.1 and, if possible, ::1 (same port). Returns the list of servers."""
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    context.load_cert_chain(certificate, key)
+    servers = [TlsServer(("127.0.0.1", port), root, context)]
+    port = servers[0].server_address[1]
     if socket.has_ipv6:
         try:
-            server.append(TlsServer(("::1", port), wurzel, kontext, socket.AF_INET6))
+            servers.append(TlsServer(("::1", port), root, context, socket.AF_INET6))
         except OSError:
             pass
-    return server
+    return servers
 
 
-def dienst(p, wurzel, port=PORT):
-    if not os.path.isfile(os.path.join(wurzel, STARTSEITE)):
-        print("Ordner ohne %s: %s" % (STARTSEITE, wurzel), file=sys.stderr)
+def serve(p, root, port=PORT):
+    if not os.path.isfile(os.path.join(root, START_PAGE)):
+        print(T("Folder without %s: %s", "Ordner ohne %s: %s") % (START_PAGE, root), file=sys.stderr)
         return 3
-    ablauf = System(p).zertifikat_ablauf()
-    entscheidung = dienst_entscheiden(ablauf, jetzt_utc())
-    if entscheidung == "neu":
-        fehler = zertifikat_anlegen(p)
-        if fehler:
-            print(fehler, file=sys.stderr)
+    expiry = System(p).certificate_expiry()
+    decision = serve_decide(expiry, utc_now())
+    if decision == "create":
+        error = create_certificate(p)
+        if error:
+            print(error, file=sys.stderr)
             return 4
-    hinweis = dienst_hinweis(entscheidung, ablauf)
-    if hinweis:
-        print("%s %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), hinweis), file=sys.stderr, flush=True)
+    notice = serve_notice(decision, expiry)
+    if notice:
+        print("%s %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), notice), file=sys.stderr, flush=True)
     try:
-        alle = server_bauen(wurzel, p.zertifikat, p.schluessel, port)
+        servers = build_servers(root, p.certificate, p.key, port)
     except OSError as e:
-        print("Port %d ist belegt (%s)." % (port, e), file=sys.stderr)
+        print(T("Port %d is in use (%s).", "Port %d ist belegt (%s).") % (port, e), file=sys.stderr)
         return 4
-    os.makedirs(p.zustand, exist_ok=True)
+    os.makedirs(p.state_dir, exist_ok=True)
     with open(p.pid, "w") as f:
         f.write(str(os.getpid()))
-    for s in alle[1:]:
+    for s in servers[1:]:
         threading.Thread(target=s.serve_forever, daemon=True).start()
-    signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=alle[0].shutdown).start())
-    print("%s Server läuft: https://localhost:%d/ (Ordner %s)" % (time.strftime("%Y-%m-%d %H:%M:%S"), port, wurzel), flush=True)
+    signal.signal(signal.SIGTERM, lambda *_: threading.Thread(target=servers[0].shutdown).start())
+    print("%s %s" % (time.strftime("%Y-%m-%d %H:%M:%S"),
+                     T("Server running: https://localhost:%d/ (folder %s)", "Server läuft: https://localhost:%d/ (Ordner %s)")
+                     % (port, root)), flush=True)
     try:
-        alle[0].serve_forever()
+        servers[0].serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
-        for s in alle:
+        for s in servers:
             s.server_close()
         try:
             os.remove(p.pid)
         except OSError:
             pass
-    print("%s Server beendet." % time.strftime("%Y-%m-%d %H:%M:%S"), flush=True)
+    print("%s %s" % (time.strftime("%Y-%m-%d %H:%M:%S"), T("Server stopped.", "Server beendet.")), flush=True)
     return 0
 
 
-# ---------------------------------------------------------------------------------------------------- Befehle
+# ---------------------------------------------------------------------------------------------------- Commands
 
-def manifest_schreiben(adresse_roh, quelle, ziel_ordner, ausgabe=print):
-    adresse, fehler = adresse_pruefen(adresse_roh)
-    if not adresse:
-        ausgabe(fehler)
+def write_manifest(raw_address, source, target_folder, output=print):
+    address, error = validate_address(raw_address)
+    if not address:
+        output(error)
         return 2
-    with open(quelle, encoding="utf-8-sig", newline="") as f:
+    with open(source, encoding="utf-8-sig", newline="") as f:
         text = f.read()
-    ziel = os.path.join(ziel_ordner, dateiname(adresse))
-    with open(ziel, "w", encoding="utf-8", newline="") as f:
-        f.write(manifest_umschreiben(text, adresse))
-    ausgabe("Manifest für %s: %s" % (adresse, ziel))
+    target = os.path.join(target_folder, manifest_file_name(address))
+    with open(target, "w", encoding="utf-8", newline="") as f:
+        f.write(rewrite_manifest(text, address))
+    output(T("Manifest for %s: %s", "Manifest für %s: %s") % (address, target))
     return 0
+
+
+def parse_args(argv=None):
+    ap = argparse.ArgumentParser(prog="inventasketch_web.py", description=__doc__.split("\n")[0])
+    ap.add_argument("command", choices=sorted(COMMAND_ALIASES), metavar="command",
+                    help=T("install, uninstall, start, stop, status, serve or manifest (German: installieren, "
+                           "deinstallieren, starten, beenden, dienst)",
+                           "install, uninstall, start, stop, status, serve oder manifest (deutsch: installieren, "
+                           "deinstallieren, starten, beenden, dienst)"))
+    ap.add_argument("address", nargs="?", help=T("https address for manifest", "https-Adresse für manifest"))
+    ap.add_argument("--no-autostart", "--ohne-autostart", dest="no_autostart", action="store_true",
+                    help=T("install without autostart", "ohne Autostart installieren"))
+    ap.add_argument("--dry-run", "--probelauf", dest="dry_run", action="store_true",
+                    help=T("only show what would happen", "nur anzeigen, was geschähe"))
+    ap.add_argument("--folder", "--ordner", dest="folder", default=os.path.join(HERE, "App"),
+                    help=T("folder served by serve", "von serve ausgelieferter Ordner"))
+    ap.add_argument("--port", type=int, default=PORT)
+    ap.add_argument("--target", "--ziel", dest="target", default=None,
+                    help=T("target folder for manifest", "Zielordner für manifest"))
+    ap.add_argument("--platform", "--plattform", dest="platform", choices=["darwin", "linux"], default=None,
+                    help=T("for tests only (dry run)", "nur für Tests (Probelauf)"))
+    a = ap.parse_args(argv)
+    a.command = COMMAND_ALIASES[a.command]
+    return a
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(prog="inventasketch_web.py", description=__doc__.split("\n")[0])
-    ap.add_argument("befehl", choices=["installieren", "deinstallieren", "starten", "beenden", "status", "dienst", "manifest"])
-    ap.add_argument("adresse", nargs="?")
-    ap.add_argument("--ohne-autostart", action="store_true")
-    ap.add_argument("--probelauf", action="store_true")
-    ap.add_argument("--ordner", default=os.path.join(HIER, "App"))
-    ap.add_argument("--port", type=int, default=PORT)
-    ap.add_argument("--ziel", default=None, help="Zielordner für manifest")
-    ap.add_argument("--plattform", choices=["darwin", "linux"], default=None, help="nur für Tests (Probelauf)")
-    a = ap.parse_args(argv)
-    p = Pfade(a.plattform)
-    if a.befehl == "manifest":
-        return manifest_schreiben(a.adresse, os.path.join(HIER, "manifest.xml"), a.ziel or HIER)
-    if a.befehl == "dienst":
-        return dienst(p, a.ordner, a.port)
-    if a.befehl == "status":
-        ok = server_antwortet(a.port)
-        print("InventaSketch-Web läuft: https://localhost:%d/%s" % (a.port, STARTSEITE) if ok else "InventaSketch-Web läuft nicht.")
+    a = parse_args(argv)
+    p = Paths(a.platform)
+    if a.command == "manifest":
+        return write_manifest(a.address, os.path.join(HERE, "manifest.xml"), a.target or HERE)
+    if a.command == "serve":
+        return serve(p, a.folder, a.port)
+    if a.command == "status":
+        ok = server_responds(a.port)
+        print(T("InventaSketch-Web is running: https://localhost:%d/%s", "InventaSketch-Web läuft: https://localhost:%d/%s")
+              % (a.port, START_PAGE) if ok else T("InventaSketch-Web is not running.", "InventaSketch-Web läuft nicht."))
         return 0 if ok else 1
-    if a.befehl == "beenden":
-        fehler = beenden(p, a.port)
-        print(fehler or "InventaSketch-Web beendet.")
-        return 1 if fehler else 0
-    if a.befehl == "starten":
-        if server_antwortet(a.port):
-            print("InventaSketch-Web läuft bereits.")
+    if a.command == "stop":
+        error = stop_server(p, a.port)
+        print(error or T("InventaSketch-Web stopped.", "InventaSketch-Web beendet."))
+        return 1 if error else 0
+    if a.command == "start":
+        if server_responds(a.port):
+            print(T("InventaSketch-Web is already running.", "InventaSketch-Web läuft bereits."))
             return 0
-        starten_hintergrund(p, HIER)
-        fehler = warten_bis_bereit(a.port)
-        print(fehler or "InventaSketch-Web läuft: https://localhost:%d/%s" % (a.port, STARTSEITE))
-        return 1 if fehler else 0
+        start_background(p, HERE)
+        error = wait_until_ready(a.port)
+        print(error or T("InventaSketch-Web is running: https://localhost:%d/%s", "InventaSketch-Web läuft: https://localhost:%d/%s")
+              % (a.port, START_PAGE))
+        return 1 if error else 0
     sy = System(p)
-    if a.befehl == "installieren":
-        print("InventaSketch-Web installieren (je Benutzer, ohne Administratorrechte)")
-        rc = ausfuehren(plan_installieren(p, sy, HIER, not a.ohne_autostart), a.probelauf)
-        if rc == 0 and not a.probelauf:
-            print("Fertig. Prüfen im Browser: https://localhost:%d/%s; Deinstallieren: %s" % (
-                PORT, STARTSEITE, os.path.join(p.installation, "deinstallieren.command" if p.plattform == "darwin" else "deinstallieren.sh")))
+    if a.command == "install":
+        print(T("Installing InventaSketch-Web (per user, no administrator rights)",
+                "InventaSketch-Web installieren (je Benutzer, ohne Administratorrechte)"))
+        rc = run_plan(plan_install(p, sy, HERE, not a.no_autostart), a.dry_run)
+        if rc == 0 and not a.dry_run:
+            uninstall = os.path.join(p.install_dir, "uninstall.command" if p.platform == "darwin" else "uninstall.sh")
+            print(T("Done. Check in the browser: https://localhost:%d/%s; uninstall: %s",
+                    "Fertig. Prüfen im Browser: https://localhost:%d/%s; Deinstallieren: %s") % (PORT, START_PAGE, uninstall))
         return rc
-    print("InventaSketch-Web deinstallieren")
-    return ausfuehren(plan_deinstallieren(p, sy), a.probelauf)
+    print(T("Uninstalling InventaSketch-Web", "InventaSketch-Web deinstallieren"))
+    return run_plan(plan_uninstall(p, sy), a.dry_run)
 
 
 if __name__ == "__main__":

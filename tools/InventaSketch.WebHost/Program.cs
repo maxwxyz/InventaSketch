@@ -2,124 +2,134 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using static InventaSketch.WebHost.Text;
 
 namespace InventaSketch.WebHost
 {
     /// <summary>
-    /// Einstieg. Rückgabewerte: 0 erfolgreich, 1 Server läuft nicht (Status, Beenden), 2 ungültige Angaben, 3 Ordner ohne
-    /// Aufgabenbereich, 4 Port belegt, 5 Abbruch der Installation (Richtlinie, abgelehntes Zertifikat, unvollständiges Paket).
+    /// Entry point. Exit codes: 0 success, 1 server not running (status, stop), 2 invalid arguments, 3 folder without task
+    /// pane, 4 port in use, 5 installation aborted (policy, rejected certificate, incomplete package).
     /// </summary>
     public static class Program
     {
         [DllImport("kernel32.dll")]
-        private static extern bool AttachConsole(int prozess);
+        private static extern bool AttachConsole(int processId);
 
         [DllImport("kernel32.dll")]
-        private static extern IntPtr GetStdHandle(int art);
+        private static extern IntPtr GetStdHandle(int handle);
+
+        [DllImport("kernel32.dll")]
+        private static extern int GetFileType(IntPtr handle);
 
         public static int Main(string[] args)
         {
-            Optionen o = Optionen.Lesen(args);
-            Protokoll.Datei = Protokoll.StandardDatei;
-            if (o.Befehl != Befehl.Starten || o.Fehler != null) KonsoleVerbinden();
-            if (o.Fehler != null)
+            Options o = Options.Parse(args);
+            Log.FilePath = Log.DefaultFile;
+            if (o.Command != Command.Serve || o.Error != null) AttachToConsole();
+            if (o.Error != null)
             {
-                Protokoll.Melden(o.Fehler);
-                Protokoll.Melden(Optionen.Hilfetext);
+                Log.Report(o.Error);
+                Log.Report(Options.HelpText);
                 return 2;
             }
             try
             {
-                switch (o.Befehl)
+                switch (o.Command)
                 {
-                    case Befehl.Hilfe:
-                        Protokoll.Konsole = true;
-                        Console.WriteLine(Optionen.Hilfetext);
+                    case Command.Help:
+                        Log.ToConsole = true;
+                        Console.WriteLine(Options.HelpText);
                         return 0;
-                    case Befehl.Status:
-                        if (Instanz.WartenBereit(o.Port, TimeSpan.FromSeconds(o.Warten)))
+                    case Command.Status:
+                        if (SingleInstance.WaitUntilReady(o.Port, TimeSpan.FromSeconds(o.Wait)))
                         {
-                            Protokoll.Melden("InventaSketch-Web läuft: https://localhost:" + o.Port + "/taskpane.html");
+                            Log.Report(T("InventaSketch-Web is running: ", "InventaSketch-Web läuft: ")
+                                + "https://localhost:" + o.Port + "/taskpane.html");
                             return 0;
                         }
-                        Protokoll.Melden("InventaSketch-Web läuft nicht (Port " + o.Port + "). Protokoll: " + Protokoll.StandardDatei);
+                        Log.Report(T("InventaSketch-Web is not running (port ", "InventaSketch-Web läuft nicht (Port ") + o.Port
+                            + T("). Log: ", "). Protokoll: ") + Log.DefaultFile);
                         return 1;
-                    case Befehl.Beenden:
-                        if (Instanz.Beenden(o.Port, TimeSpan.FromSeconds(15)))
+                    case Command.Stop:
+                        if (SingleInstance.Stop(o.Port, TimeSpan.FromSeconds(15)))
                         {
-                            Protokoll.Melden("InventaSketch-Web beendet.");
+                            Log.Report(T("InventaSketch-Web stopped.", "InventaSketch-Web beendet."));
                             return 0;
                         }
-                        Protokoll.Melden("Kein laufender Server auf Port " + o.Port + " (oder er endet nicht).");
+                        Log.Report(T("No server running on port " + o.Port + " (or it does not stop).",
+                            "Kein laufender Server auf Port " + o.Port + " (oder er endet nicht)."));
                         return 1;
-                    case Befehl.Manifest:
-                        return ManifestSchreiben(o);
-                    case Befehl.Installieren:
+                    case Command.Manifest:
+                        return WriteManifest(o);
+                    case Command.Install:
                     {
-                        string quelle = Path.GetFullPath(o.Quelle ?? Ablauf.Paketordner);
-                        string ziel = Path.GetFullPath(o.Ziel ?? Installation.ZielStandard);
-                        Protokoll.Melden("InventaSketch-Web installieren für " + Environment.UserName + " (ohne Administratorrechte)");
-                        Zustand z = Ablauf.ZustandErmitteln(quelle, ziel, o.Port);
-                        int rc = Ablauf.Ausfuehren(Installation.Installieren(z, o.Autostart, !o.OhneManifest, !o.OhneStart), z, o.Port, o.Probelauf);
-                        if (rc == 0 && !o.Probelauf)
-                            Protokoll.Melden("Fertig. Prüfen im Browser: https://localhost:" + o.Port + "/taskpane.html; Deinstallieren: \""
-                                + Path.Combine(ziel, "Web-Add-in deinstallieren.cmd") + "\".");
+                        string source = Path.GetFullPath(o.Source ?? Setup.PackageFolder);
+                        string target = Path.GetFullPath(o.Target ?? Installer.DefaultTarget);
+                        Log.Report(T("Installing InventaSketch-Web for " + Environment.UserName + " (no administrator rights)",
+                            "InventaSketch-Web installieren für " + Environment.UserName + " (ohne Administratorrechte)"));
+                        MachineState state = Setup.DetectState(source, target, o.Port);
+                        int rc = Setup.Run(Installer.Install(state, o.Autostart, !o.NoManifest, !o.NoStart), state, o.Port, o.DryRun);
+                        if (rc == 0 && !o.DryRun)
+                        {
+                            string uninstall = "\"" + Path.Combine(target, Installer.UninstallScript) + "\"";
+                            Log.Report(T("Done. Check in the browser: https://localhost:" + o.Port + "/taskpane.html; uninstall: "
+                                    + uninstall + ".",
+                                "Fertig. Prüfen im Browser: https://localhost:" + o.Port + "/taskpane.html; Deinstallieren: "
+                                    + uninstall + "."));
+                        }
                         return rc;
                     }
-                    case Befehl.Deinstallieren:
+                    case Command.Uninstall:
                     {
-                        string ziel = Path.GetFullPath(o.Ziel ?? Installation.ZielStandard);
-                        Protokoll.Melden("InventaSketch-Web deinstallieren für " + Environment.UserName);
-                        Zustand z = Ablauf.ZustandErmitteln(ziel, ziel, o.Port);
-                        return Ablauf.Ausfuehren(Installation.Deinstallieren(z), z, o.Port, o.Probelauf);
+                        string target = Path.GetFullPath(o.Target ?? Installer.DefaultTarget);
+                        Log.Report(T("Uninstalling InventaSketch-Web for ", "InventaSketch-Web deinstallieren für ") + Environment.UserName);
+                        MachineState state = Setup.DetectState(target, target, o.Port);
+                        return Setup.Run(Installer.Uninstall(state), state, o.Port, o.DryRun);
                     }
                     default:
-                        return Ablauf.Dienst(o);
+                        return Setup.Serve(o);
                 }
             }
             catch (Exception e)
             {
-                Protokoll.Melden("Fehler: " + e.Message);
-                Protokoll.Schreiben(e.ToString());
+                Log.Report(T("Error: ", "Fehler: ") + e.Message);
+                Log.Write(e.ToString());
                 return 5;
             }
         }
 
-        private static int ManifestSchreiben(Optionen o)
+        private static int WriteManifest(Options o)
         {
-            string? adresse = ManifestAdresse.Pruefen(o.Adresse, out string? fehler);
-            if (adresse == null)
+            string? address = ManifestAddress.Validate(o.Address, out string? error);
+            if (address == null)
             {
-                Protokoll.Melden(fehler ?? "Adresse ungültig.");
+                Log.Report(error ?? T("Invalid address.", "Adresse ungültig."));
                 return 2;
             }
-            string quelle = Installation.Manifest(o.Quelle ?? Ablauf.Paketordner);
-            string ziel = Path.Combine(o.Ziel ?? Path.GetDirectoryName(quelle) ?? ".", ManifestAdresse.Dateiname(adresse));
-            File.WriteAllText(ziel, ManifestAdresse.Umschreiben(File.ReadAllText(quelle, Encoding.UTF8), adresse), new UTF8Encoding(false));
-            Protokoll.Melden("Manifest für " + adresse + ": " + ziel);
+            string source = Installer.Manifest(o.Source ?? Setup.PackageFolder);
+            string target = Path.Combine(o.Target ?? Path.GetDirectoryName(source) ?? ".", ManifestAddress.FileName(address));
+            File.WriteAllText(target, ManifestAddress.Rewrite(File.ReadAllText(source, Encoding.UTF8), address), new UTF8Encoding(false));
+            Log.Report(T("Manifest for ", "Manifest für ") + address + ": " + target);
             return 0;
         }
 
         /// <summary>
-        /// Das Programm ist fensterlos. Aus einer Konsole (cmd mit "start /wait") aufgerufen, gehen die Meldungen dorthin;
-        /// bei umgeleiteter Ausgabe (Pipe, Datei) bleibt die Umleitung.
+        /// The program has no window. Started from a console (cmd with "start /wait"), messages go there; redirected
+        /// output (pipe, file) stays redirected.
         /// </summary>
-        private static void KonsoleVerbinden()
+        private static void AttachToConsole()
         {
-            Protokoll.Konsole = true;
+            Log.ToConsole = true;
             if (Environment.OSVersion.Platform != PlatformID.Win32NT) return;
-            IntPtr aus = GetStdHandle(-11);
-            if (aus != IntPtr.Zero && aus != new IntPtr(-1) && GetFileType(aus) != 2)
+            IntPtr stdout = GetStdHandle(-11);
+            if (stdout != IntPtr.Zero && stdout != new IntPtr(-1) && GetFileType(stdout) != 2)
             {
-                // In Datei oder Pipe umgeleitet: dorthin, als UTF-8.
+                // Redirected to a file or pipe: write there, as UTF-8.
                 Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new UTF8Encoding(false)) { AutoFlush = true });
                 return;
             }
-            // Konsole (auch geerbt): anhängen, erst dann kennt der Prozess ihre Codepage (Umlaute).
+            // Console (possibly inherited): attach first, only then does the process know its code page (umlauts).
             AttachConsole(-1);
         }
-
-        [DllImport("kernel32.dll")]
-        private static extern int GetFileType(IntPtr handle);
     }
 }

@@ -32,23 +32,32 @@ npm run dev         # dev server on port 3000 (https if office-addin-dev-certs a
 
 `scripts\package-web.ps1` builds `dist\InventaSketch-Web` (and a ZIP): `App\` (task pane + WebAssembly engine),
 `Server\InventaSketch.WebHost.exe`, `manifest.xml` for `https://localhost:3217/` (Slidemax-Web uses 3000) and the
-install scripts. The local host and scripts were ported from Slidemax with the copyright holder's approval.
+install scripts with `README.md` / `README.de.md`. The local host and scripts were ported from Slidemax with the
+copyright holder's approval and translated to English; console output, message texts and help are German if the user's
+language is German (Windows UI language, or `LC_ALL`/`LC_MESSAGES`/`LANG` on macOS/Linux), otherwise English.
 
-- **Windows:** close PowerPoint, double-click `Web-Add-in installieren.cmd`, confirm Windows' certificate prompt once.
+- **Windows:** close PowerPoint, double-click `Install web add-in.cmd`, confirm Windows' certificate prompt once.
   It copies to `%LOCALAPPDATA%\InventaSketch\Web`, creates and trusts a `localhost` certificate in the user store, adds
   an autostart entry, starts the loopback-only HTTPS host and registers the manifest for sideloading
-  (`HKCU\Software\Microsoft\Office\16.0\WEF\Developer`). Options: `-OhneAutostart`, `-OhneManifest`, `-Probelauf`
-  (dry run). Uninstall: `Web-Add-in deinstallieren.cmd`. While the COM add-in is installed, Office hides the web add-in.
-- **macOS:** `installieren.command` (Python 3): copies to `~/Library/Application Support/InventaSketch/Web`, trusts the
-  certificate in the keychain, LaunchAgent, manifest in PowerPoint's `wef` folder.
-- **Linux / PowerPoint on the web:** `sh installieren.sh`, then upload `manifest.xml` via *Add-ins › My add-ins ›
-  Upload my add-in*.
+  (`HKCU\Software\Microsoft\Office\16.0\WEF\Developer`). Options: `--no-autostart`, `--no-manifest`, `--dry-run`
+  (the German names `-OhneAutostart`, `-OhneManifest`, `-Probelauf` remain accepted). Uninstall:
+  `Uninstall web add-in.cmd`; start/stop without reinstalling: `Start web add-in.cmd`, `Stop web add-in.cmd`.
+  `Server\InventaSketch.WebHost.exe --help` lists all options. While the COM add-in is installed, Office hides the web
+  add-in.
+- **macOS:** `install.command` (Python 3): copies to `~/Library/Application Support/InventaSketch/Web`, trusts the
+  certificate in the keychain, LaunchAgent, manifest in PowerPoint's `wef` folder. Uninstall: `uninstall.command`.
+- **Linux / PowerPoint on the web:** `sh install.sh`, then upload `manifest.xml` via *Add-ins › My add-ins ›
+  Upload my add-in*. Uninstall: `sh uninstall.sh`; `start.sh` / `stop.sh` control the server. Options of
+  `inventasketch_web.py`: `--no-autostart`, `--dry-run` (German aliases `--ohne-autostart`, `--probelauf`).
+- **Own HTTPS server (IT):** `create-manifest.ps1 -Address https://...` or `sh create-manifest.sh https://...` writes
+  `manifest-<host>.xml` for the folder `App` hosted elsewhere.
 
 Verified 2026-11-20 on Windows: package build, dry run of the installer (plan incl. COM detection), host with a
 temporary in-memory certificate served `taskpane.html` and the engine over HTTPS, rejected `../` traversal, status and
 stop worked; Linux dry run of the Python installer. Not yet done: a real install with certificate trust (needs the
-user's confirmation), macOS run, loading the add-in in PowerPoint. Messages and identifiers of the ported host are still
-German (to be translated, English fallback for non-German users).
+user's confirmation), macOS run, loading the add-in in PowerPoint. After the translation (2026-11-20): host build
+without warnings, package build, installer dry runs in English and German (new option names and German aliases), HTTPS
+smoke test (200, `../` 404, foreign Host 400, POST 405), Python dry runs (Linux, simulated macOS) in both languages.
 
 ## Sideloading (development)
 

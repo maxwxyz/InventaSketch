@@ -6,9 +6,14 @@
     App\          task pane (taskpane.html, assets, .NET WebAssembly engine in _framework)
     Server\       InventaSketch.WebHost.exe (Windows, .NET Framework 4.8)
     manifest.xml  add-in manifest for https://localhost:3217/
-    *.cmd         Windows install/uninstall/start/stop (double-click)
-    *.sh, *.command, inventasketch_web.py   macOS/Linux (Python 3)
-  The web host and the install scripts were ported from Slidemax with the copyright holder's approval.
+    Install web add-in.cmd, Uninstall web add-in.cmd, Start web add-in.cmd, Stop web add-in.cmd
+                  Windows (double-click)
+    install.command, uninstall.command (macOS), install.sh, uninstall.sh, start.sh, stop.sh (macOS/Linux),
+    inventasketch_web.py (Python 3)
+    create-manifest.ps1, create-manifest.sh   manifest for an own HTTPS server
+    README.md, README.de.md, LICENSE
+  The web host and the install scripts were ported from Slidemax with the copyright holder's approval and translated to
+  English; their messages are German or English depending on the user's language.
 .PARAMETER Port
   Local HTTPS port written into the manifest (default 3217; Slidemax-Web uses 3000).
 #>
@@ -52,6 +57,11 @@ Copy-Item (Join-Path $root 'tools\InventaSketch.WebHost\bin\Release\net48\*') (J
 Get-ChildItem (Join-Path $out 'Server') -Filter *.pdb | Remove-Item
 Copy-Item (Join-Path $web 'local\*') $out -Recurse -Force
 Copy-Item (Join-Path $root 'LICENSE') $out
+$version = ([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+foreach ($readme in 'README.md', 'README.de.md') {
+    $path = Join-Path $out $readme
+    [IO.File]::WriteAllText($path, [IO.File]::ReadAllText($path).Replace('@VERSION@', [string]$version), (New-Object Text.UTF8Encoding $false))
+}
 
 $zip = Join-Path $root 'dist\InventaSketch-Web.zip'
 if (Test-Path $zip) { Remove-Item $zip }

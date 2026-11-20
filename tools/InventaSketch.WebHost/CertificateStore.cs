@@ -3,35 +3,36 @@ using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Win32;
+using static InventaSketch.WebHost.Text;
 
 namespace InventaSketch.WebHost
 {
     /// <summary>
-    /// Zertifikatspeicher des Benutzers unter Windows: CurrentUser\My (Zertifikat mit Schlüssel) und CurrentUser\Root
-    /// (Vertrauen). Beim Eintragen in Root und beim Entfernen daraus zeigt Windows selbst eine Rückfrage; sie wird nicht
-    /// unterdrückt. Keine Änderungen an LocalMachine.
+    /// The user's certificate stores on Windows: CurrentUser\My (certificate with key) and CurrentUser\Root (trust).
+    /// Adding to Root and removing from it makes Windows show its own confirmation prompt; it is never suppressed.
+    /// No changes to LocalMachine.
     /// </summary>
-    public static class Zertifikatspeicher
+    public static class CertificateStore
     {
-        /// <summary>Eigene Zertifikate im Speicher des Benutzers.</summary>
-        public static List<X509Certificate2> Eigene(StoreName name)
+        /// <summary>Our certificates in the user's store.</summary>
+        public static List<X509Certificate2> Ours(StoreName name)
         {
-            var ergebnis = new List<X509Certificate2>();
+            var result = new List<X509Certificate2>();
             using (var store = new X509Store(name, StoreLocation.CurrentUser))
             {
                 store.Open(OpenFlags.ReadOnly);
                 foreach (X509Certificate2 c in store.Certificates)
                 {
-                    if (Zertifikate.IstUnseres(c)) ergebnis.Add(c);
+                    if (Certificates.IsOurs(c)) result.Add(c);
                 }
             }
-            return ergebnis;
+            return result;
         }
 
-        /// <summary>Bestes eigenes Zertifikat mit Schlüssel in CurrentUser\My.</summary>
-        public static X509Certificate2? Bestes() => Zertifikate.Auswaehlen(Eigene(StoreName.My));
+        /// <summary>Best own certificate with key in CurrentUser\My.</summary>
+        public static X509Certificate2? Best() => Certificates.SelectBest(Ours(StoreName.My));
 
-        public static void Speichern(X509Certificate2 c)
+        public static void Save(X509Certificate2 c)
         {
             using (var store = new X509Store(StoreName.My, StoreLocation.CurrentUser))
             {
@@ -40,7 +41,7 @@ namespace InventaSketch.WebHost
             }
         }
 
-        public static bool IstVertraut(X509Certificate2 c)
+        public static bool IsTrusted(X509Certificate2 c)
         {
             using (var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser))
             {
@@ -50,30 +51,32 @@ namespace InventaSketch.WebHost
         }
 
         /// <summary>
-        /// Trägt den öffentlichen Teil in CurrentUser\Root ein (Windows fragt nach). Null bei Erfolg, sonst der Grund.
+        /// Adds the public part to CurrentUser\Root (Windows asks for confirmation). Null on success, otherwise the reason.
         /// </summary>
-        public static string? Vertrauen(X509Certificate2 c)
+        public static string? Trust(X509Certificate2 c)
         {
             try
             {
                 using (var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser))
-                using (X509Certificate2 oeffentlich = Zertifikate.OeffentlicherTeil(c))
+                using (X509Certificate2 publicPart = Certificates.PublicPart(c))
                 {
                     store.Open(OpenFlags.ReadWrite);
-                    store.Add(oeffentlich);
+                    store.Add(publicPart);
                 }
             }
             catch (CryptographicException e)
             {
-                return "Eintragen abgelehnt oder nicht erlaubt (" + e.Message.Trim() + ")";
+                return T("Adding was declined or is not allowed (", "Eintragen abgelehnt oder nicht erlaubt (") + e.Message.Trim() + ")";
             }
-            return IstVertraut(c) ? null : "Zertifikat wurde nicht eingetragen (Rückfrage abgelehnt oder durch eine Richtlinie verhindert)";
+            return IsTrusted(c) ? null
+                : T("The certificate was not added (prompt declined or prevented by a policy)",
+                    "Zertifikat wurde nicht eingetragen (Rückfrage abgelehnt oder durch eine Richtlinie verhindert)");
         }
 
-        /// <summary>Entfernt das Zertifikat aus My (mit Schlüssel) und aus Root (Windows fragt nach). Gibt Fehler zurück.</summary>
-        public static List<string> Entfernen(X509Certificate2 c)
+        /// <summary>Removes the certificate from My (with key) and from Root (Windows asks). Returns errors.</summary>
+        public static List<string> Remove(X509Certificate2 c)
         {
-            var fehler = new List<string>();
+            var errors = new List<string>();
             try
             {
                 using (var store = new X509Store(StoreName.Root, StoreLocation.CurrentUser))
@@ -85,7 +88,7 @@ namespace InventaSketch.WebHost
             }
             catch (CryptographicException e)
             {
-                fehler.Add("Vertrauen nicht entfernt (" + e.Message.Trim() + ")");
+                errors.Add(T("Trust not removed (", "Vertrauen nicht entfernt (") + e.Message.Trim() + ")");
             }
             try
             {
@@ -94,19 +97,19 @@ namespace InventaSketch.WebHost
                     store.Open(OpenFlags.ReadWrite);
                     foreach (X509Certificate2 m in store.Certificates.Find(X509FindType.FindByThumbprint, c.Thumbprint, false))
                     {
-                        SchluesselLoeschen(m);
+                        DeleteKey(m);
                         store.Remove(m);
                     }
                 }
             }
             catch (CryptographicException e)
             {
-                fehler.Add("Zertifikat nicht entfernt (" + e.Message.Trim() + ")");
+                errors.Add(T("Certificate not removed (", "Zertifikat nicht entfernt (") + e.Message.Trim() + ")");
             }
-            return fehler;
+            return errors;
         }
 
-        private static void SchluesselLoeschen(X509Certificate2 c)
+        private static void DeleteKey(X509Certificate2 c)
         {
             if (!c.HasPrivateKey) return;
             try
@@ -125,11 +128,10 @@ namespace InventaSketch.WebHost
         }
 
         /// <summary>
-        /// Richtlinie "Benutzern erlauben, neuen Stammzertifizierungsstellen zu vertrauen" ausgeschaltet
-        /// (ProtectedRoots\Flags mit CERT_PROT_ROOT_DISABLE_CURRENT_USER_FLAG): dann lässt sich kein eigenes Zertifikat
-        /// vertrauen.
+        /// Policy "Allow users to select new root certification authorities (CAs) to trust" switched off
+        /// (ProtectedRoots\Flags with CERT_PROT_ROOT_DISABLE_CURRENT_USER_FLAG): then no own certificate can be trusted.
         /// </summary>
-        public static bool StammGesperrt()
+        public static bool RootTrustBlocked()
         {
             using (RegistryKey? k = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\Microsoft\SystemCertificates\Root\ProtectedRoots"))
             {
