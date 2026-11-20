@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Host-independent engine facade (EngineApi): editor sessions, catalog, editing commands, hit-testing, snapping,
+    context actions, SVG and host draw plans. All public calls take and return JSON strings so the same contract is
+    used by the WebAssembly add-in ([JSExport]), the LibreOffice engine process (stdin/stdout) and the COM add-in.
+  -->
+  <PropertyGroup>
+    <TargetFrameworks>$(IskLibTargets)</TargetFrameworks>
+    <RootNamespace>InventaSketch.Engine</RootNamespace>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\InventaSketch.Core\InventaSketch.Core.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Annotation\InventaSketch.Modules.Annotation.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Mechanical\InventaSketch.Modules.Mechanical.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Patent\InventaSketch.Modules.Patent.csproj" />
+  </ItemGroup>
+</Project>
