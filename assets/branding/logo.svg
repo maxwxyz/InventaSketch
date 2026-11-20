@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- InventaSketch mark: two meshing pitch circles (a sketched gear pair) with hubs on the accent tile.
+       Single source for every raster size (Office manifest PNGs, Windows .ico, README); keep it to these few shapes so
+       it reads at 16 px. Accent blue #1f5fbf as in the UI, hub yellow #ffd34d. -->
+  <rect x="3" y="3" width="58" height="58" rx="14" fill="#1f5fbf"/>
+  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round">
+    <circle cx="25" cy="27" r="12.5"/>
+    <circle cx="42.6" cy="42.4" r="8.4"/>
+  </g>
+  <circle cx="25" cy="27" r="3.6" fill="#ffffff"/>
+  <circle cx="42.6" cy="42.4" r="3" fill="#ffd34d"/>
+</svg>

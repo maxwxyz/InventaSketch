@@ -152,7 +152,7 @@ namespace InventaSketch.AddIn
             var sb = new StringBuilder();
             sb.Append("<customUI xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\" onLoad=\"OnRibbonLoad\"><ribbon><tabs>");
             sb.Append("<tab id=\"IskTab\" label=\"InventaSketch\">");
-            sb.Append("<group id=\"IskTools\" imageMso=\"ControlsGallery\" label=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\">");
+            sb.Append("<group id=\"IskTools\" getImage=\"GetLogoImage\" label=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\">");
             sb.Append("<toggleButton id=\"IskEditor\" label=\"").Append(L(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
               .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskSnap\" label=\"").Append(L(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
@@ -161,7 +161,7 @@ namespace InventaSketch.AddIn
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
             sb.Append("<button id=\"IskMonochrome\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
               .Append(X(T("Recolour the InventaSketch elements of this slide in black and white (patent style).", "InventaSketch-Elemente dieser Folie schwarz-weiß umfärben (Patentstil)."))).Append("\" />");
-            sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" imageMso=\"Info\" onAction=\"OnAbout\" />");
+            sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" size=\"large\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
             sb.Append("</group>");
             if (_registry is not null)
             {
@@ -221,6 +221,13 @@ namespace InventaSketch.AddIn
         }
 
         /// <summary>Icon of a module group when the ribbon collapses it: its first library item.</summary>
+        /// <summary>Ribbon image of the about button and the collapsed tools group: the InventaSketch logo.</summary>
+        public object? GetLogoImage(Office.IRibbonControl control)
+        {
+            try { return PictureConverter.ToPicture(Branding.Image(32)); }
+            catch (Exception ex) { Log.Error("GetLogoImage", ex); return null; }
+        }
+
         public object? GetGroupImage(Office.IRibbonControl control)
         {
             try
@@ -478,8 +485,8 @@ namespace InventaSketch.AddIn
 
         public void OnAbout(Office.IRibbonControl control)
         {
-            MessageBox.Show($"InventaSketch {typeof(Connect).Assembly.GetName().Version}\n{T("Licence", "Lizenz")}: Apache-2.0\nhttps://github.com/maxwxyz/InventaSketch\n\n{T("Log", "Protokoll")}: {Log.File}",
-                "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try { AboutDialog.Show(null, _lang == Lang.De); }
+            catch (Exception ex) { Log.Error("OnAbout", ex); }
         }
     }
 

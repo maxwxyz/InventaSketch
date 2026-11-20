@@ -26,6 +26,10 @@
 - Automation object for scripts and tests: `Application.COMAddIns("InventaSketch.AddIn.Connect").Object` with
   `Insert(itemId)`, `Place(itemId)`, `Editor(visible)`, `LibraryItems()`, `Version()`.
 - Log: `%LOCALAPPDATA%\InventaSketch\addin.log`.
+- Logo: `assets/branding/logo.svg` is the single source; `hosts/office-web/scripts/icons.mjs` rasterises it into the
+  manifest PNGs and `assets/branding/inventasketch.ico` (16–256 px), which is embedded in the add-in (`Branding`) for the
+  title bars of the prompt and the about dialog, the ribbon's About button and collapsed tools group, and is the web
+  host's application icon.
 
 ## On-slide interaction (slice 2)
 

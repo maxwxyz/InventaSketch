@@ -28,6 +28,10 @@
 - Automatisierungsobjekt für Skripte und Tests: `Application.COMAddIns("InventaSketch.AddIn.Connect").Object` mit
   `Insert(itemId)`, `Place(itemId)`, `Editor(visible)`, `LibraryItems()`, `Version()`.
 - Protokoll: `%LOCALAPPDATA%\InventaSketch\addin.log`.
+- Logo: `assets/branding/logo.svg` ist die einzige Quelle; `hosts/office-web/scripts/icons.mjs` rastert daraus die
+  Manifest-PNGs und `assets/branding/inventasketch.ico` (16–256 px). Die .ico ist im Add-in eingebettet (`Branding`) und
+  erscheint in den Titelleisten von Eingabe- und Info-Dialog, auf der Info-Schaltfläche und der eingeklappten
+  Werkzeuggruppe im Menüband sowie als Programmsymbol des Web-Hosts.
 
 ## Interaktion auf der Folie
 

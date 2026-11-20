@@ -1,3 +1,5 @@
+<img src="assets/branding/logo-256.png" width="96" alt="InventaSketch logo" align="right" />
+
 # InventaSketch
 
 **Quick technical sketches, schematic machine elements and patent-style drawings — directly in PowerPoint and LibreOffice.**

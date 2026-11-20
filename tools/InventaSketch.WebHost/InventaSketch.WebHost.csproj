@@ -17,6 +17,8 @@
     <Prefer32Bit>false</Prefer32Bit>
     <Nullable>enable</Nullable>
     <NoWarn>$(NoWarn);CA1416;CS1591</NoWarn>
+    <!-- Explorer, task manager and autostart show the InventaSketch logo (generated from assets/branding/logo.svg). -->
+    <ApplicationIcon>..\..\assets\branding\inventasketch.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />

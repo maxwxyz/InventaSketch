@@ -25,6 +25,8 @@
     <PackageReference Include="Microsoft.Office.Interop.PowerPoint" Version="15.0.4420.1018" />
     <PackageReference Include="MicrosoftOfficeCore" Version="15.0.0" />
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.2903.40" />
+    <!-- Logo for title bars, dialogs and the ribbon (generated from assets/branding/logo.svg). -->
+    <EmbeddedResource Include="..\..\..\assets\branding\inventasketch.ico" LogicalName="InventaSketch.AddIn.inventasketch.ico" />
   </ItemGroup>
 
   <!-- Embed the interop types (NuGet does not apply EmbedInteropTypes) and do not copy the interop assemblies. -->

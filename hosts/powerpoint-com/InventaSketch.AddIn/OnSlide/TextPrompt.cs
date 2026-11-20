@@ -17,7 +17,9 @@ namespace InventaSketch.AddIn.OnSlide
             using var form = new Form
             {
                 Text = "InventaSketch",
-                FormBorderStyle = FormBorderStyle.FixedDialog,
+                // FixedSingle (not FixedDialog): dialog frames hide the title-bar icon.
+                FormBorderStyle = FormBorderStyle.FixedSingle,
+                Icon = Branding.WindowIcon,
                 StartPosition = FormStartPosition.CenterScreen,
                 MinimizeBox = false,
                 MaximizeBox = false,

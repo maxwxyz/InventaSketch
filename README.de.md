@@ -1,3 +1,5 @@
+<img src="assets/branding/logo-256.png" width="96" alt="InventaSketch-Logo" align="right" />
+
 # InventaSketch
 
 > Deutsche Übersetzung. Maßgeblich ist die englische Fassung: [README.md](README.md).
