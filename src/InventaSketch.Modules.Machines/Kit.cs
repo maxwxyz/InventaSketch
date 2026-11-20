@@ -457,10 +457,10 @@ namespace InventaSketch.Modules.Machines
         {
             var cur = o.Int(key, def);
             if (cur + step <= max)
-                yield return new ContextAction("param." + key + ".inc", new I18nText(name.En + " +" + step, (name.De ?? name.En) + " +" + step), "cmd-increase",
+                yield return new ContextAction("param." + key + ".inc", new I18nText(name.En + " +" + step, (name.De ?? name.En) + " +" + step), IconIds.Increase,
                     x => x.WithParam(key, Math.Min(max, x.Int(key, def) + step))) { Group = "param" };
             if (cur - step >= min)
-                yield return new ContextAction("param." + key + ".dec", new I18nText(name.En + " −" + step, (name.De ?? name.En) + " −" + step), "cmd-decrease",
+                yield return new ContextAction("param." + key + ".dec", new I18nText(name.En + " −" + step, (name.De ?? name.En) + " −" + step), IconIds.Decrease,
                     x => x.WithParam(key, Math.Max(min, x.Int(key, def) - step))) { Group = "param" };
         }
 

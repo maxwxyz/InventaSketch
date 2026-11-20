@@ -12,20 +12,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal static class IconPainter
     {
-        /// <summary>Maps legacy view ids (modules without <see cref="ViewDef.Icon"/>) to icon ids.</summary>
-        private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["stick"] = IconIds.Schematic, ["schematic"] = IconIds.Schematic, ["line"] = IconIds.Schematic, ["schema"] = IconIds.Schematic,
-            ["side"] = IconIds.Side, ["body"] = IconIds.Side, ["stepped"] = IconIds.Side, ["elevation"] = IconIds.Front,
-            ["section"] = IconIds.Section, ["hollow"] = IconIds.Section, ["cut"] = IconIds.Section,
-            ["axial"] = IconIds.Axial, ["face"] = IconIds.Axial, ["teeth"] = IconIds.Teeth,
-            ["top"] = IconIds.Top, ["front"] = IconIds.Front, ["rear"] = IconIds.Front, ["iso"] = IconIds.Iso,
-            ["detailed"] = IconIds.Detailed, ["simplified"] = IconIds.Simplified, ["ansi"] = IconIds.Simplified,
-            ["symbol"] = IconIds.Symbol, ["block"] = IconIds.Block, ["plan"] = IconIds.Plan, ["exploded"] = IconIds.Exploded,
-            ["table"] = IconIds.Block, ["diagram"] = IconIds.Block, ["full"] = IconIds.Detailed, ["compact"] = IconIds.Simplified,
-        };
-
-        public static string ForView(ViewDef v) => v.Icon ?? (ViewAliases.TryGetValue(v.Id, out var id) ? id : IconIds.Detailed);
+        public static string ForView(ViewDef v) => IconIds.ForView(v);
 
         /// <summary>Draws the icon into <paramref name="r"/> with the given ink.</summary>
         public static void Draw(Graphics g, string iconId, RectangleF r, Color ink)
@@ -97,6 +84,18 @@ namespace InventaSketch.AddIn.OnSlide
                 case IconIds.Exploded:
                     g.DrawRectangle(pen, 3, 9, 4, 6); g.DrawRectangle(pen, 10, 7, 4, 10); g.DrawRectangle(pen, 17, 9, 4, 6);
                     break;
+                case IconIds.Table:
+                    g.DrawRectangle(pen, 4, 5, 16, 14); g.DrawLine(thin, 4, 9.5f, 20, 9.5f); g.DrawLine(thin, 4, 14, 20, 14); g.DrawLine(thin, 10, 9.5f, 10, 19);
+                    break;
+                case IconIds.RotateCcw:
+                    g.DrawArc(pen, 4, 4, 16, 16, 187, -317); g.DrawLines(pen, new[] { new PointF(4, 4), new PointF(4, 9), new PointF(9, 9) });
+                    break;
+                case IconIds.Increase:
+                    g.DrawLine(pen, 12, 5, 12, 19); g.DrawLine(pen, 5, 12, 19, 12);
+                    break;
+                case IconIds.Decrease:
+                    g.DrawLine(pen, 5, 12, 19, 12);
+                    break;
                 case IconIds.Delete:
                     g.DrawLine(pen, 6, 6, 18, 18); g.DrawLine(pen, 18, 6, 6, 18);
                     break;
@@ -114,7 +113,7 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawPolygon(pen, new[] { new PointF(6, 15), new PointF(18, 15), new PointF(18, 21) });
                     break;
                 case IconIds.Rotate:
-                    g.DrawArc(pen, 5, 5, 14, 14, -60, 300); g.DrawLines(pen, new[] { new PointF(15.5f, 2.5f), new PointF(16, 6.5f), new PointF(12, 7) });
+                    g.DrawArc(pen, 4, 4, 16, 16, -7, 317); g.DrawLines(pen, new[] { new PointF(20, 4), new PointF(20, 9), new PointF(15, 9) });
                     break;
                 case IconIds.Swap:
                     g.DrawLine(pen, 4, 9, 20, 9); g.DrawLines(pen, new[] { new PointF(16, 5), new PointF(20, 9), new PointF(16, 13) });

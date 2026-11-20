@@ -84,7 +84,19 @@ Export-Erweiterungspunkte der Module.
   legen; enthält das Web-Add-in, eine Einrichtungsseite (`index.html`), die das Manifest für die eigene Adresse erzeugt,
   `.htaccess`/`web.config` (Dateitypen der Engine, keine Indizierung) und Downloads der anderen Fassungen (COM-Add-in-ZIP,
   LibreOffice-`.oxt`) laut `downloads.json`.
-
+- Wünsche an Core/Engine aus der Modularbeit (20.11.2026):
+  - Fangen: an beliebiger Stelle eines Segments (Leitungen, Busse, Lebenslinien); bei fast gleichen Radien konzentrisch
+    vor Hohlrad-Eingriff (Maschinen: Läufer im Ständer nach freiem Skalieren); bei sehr kleinen Objekten Ports vor
+    Ecken; eine Regel `Mount` zu `Mount`; Leitungsenden über die Pin-ID statt über die Boxposition andocken.
+  - Zeichnen: hohle Pfeilspitzen (`TriangleOpen`, `DiamondOpen`) und Krähenfuß-Enden in `ArrowHead`, damit
+    Benutzer-Pfeilstile auch für UML-/ER-Verbinder gelten; Unterstreichung in `TextStyle`.
+  - Kontextaktionen mit Texteingabe und mit Dokumentzugriff (z. B. Öffnung an der Wand ausrichten).
+  - Abhängiges Neuzeichnen: Wände und Öffnungen hängen von Nachbarn ab; die Engine soll Hosts melden, welche Einheiten
+    neu zu zeichnen sind.
+  - Planmaßstab in `DocumentSettings` statt als Objektparameter; Größenanpassung beim Ansichtswechsel.
+  - Gemeinsamer Helfer `AttachPoint`/`Reverse` (Beschriftung und Diagramme haben eigene Kopien); Helfer, um Punktobjekte
+    drehend an eine Box zu hängen (Sichtbereich im Fahrzeugmodul).
+- Web-Installer (aus Slidemax übernommen, am 20.11.2026 ins Englische übersetzt, Meldungen deutsch/englisch): echte
+  Installation und Laden des Add-ins in PowerPoint (Windows ohne COM-Add-in, Mac, Web) stehen aus.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.
-- Mit dem Maintainer klären, ob bestimmte Slidemax-Komponenten für dieses Repository neu lizenziert werden dürfen.

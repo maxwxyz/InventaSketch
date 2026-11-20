@@ -80,12 +80,16 @@ namespace InventaSketch.Core
         public const string Block = "view-block";           // block diagram
         public const string Plan = "view-plan";             // floor plan / map
         public const string Exploded = "view-exploded";
+        public const string Table = "view-table";           // tabular / list form (ER table, BOM)
         // Commands
         public const string Delete = "cmd-delete";
         public const string Duplicate = "cmd-duplicate";
         public const string MirrorH = "cmd-mirror-h";
         public const string MirrorV = "cmd-mirror-v";
-        public const string Rotate = "cmd-rotate";
+        public const string Rotate = "cmd-rotate";          // clockwise
+        public const string RotateCcw = "cmd-rotate-ccw";   // counter-clockwise
+        public const string Increase = "cmd-increase";      // step a value up (+)
+        public const string Decrease = "cmd-decrease";      // step a value down (−)
         public const string Swap = "cmd-swap";
         public const string ArrowStart = "cmd-arrow-start";
         public const string ArrowEnd = "cmd-arrow-end";
@@ -94,6 +98,29 @@ namespace InventaSketch.Core
         public const string Cycle = "cmd-cycle";
         public const string Connect = "cmd-connect";
         public const string Animate = "cmd-animate";
+
+        /// <summary>Every icon id, for hosts and tests that must provide a pictogram for each.</summary>
+        public static IReadOnlyList<string> All { get; } = new[]
+        {
+            Schematic, Side, Section, Axial, Teeth, Top, Front, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table,
+            Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate,
+        };
+
+        private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["stick"] = Schematic, ["schematic"] = Schematic, ["line"] = Schematic, ["schema"] = Schematic, ["kinematic"] = Schematic,
+            ["side"] = Side, ["body"] = Side, ["stepped"] = Side, ["elevation"] = Front,
+            ["section"] = Section, ["hollow"] = Section, ["cut"] = Section,
+            ["axial"] = Axial, ["face"] = Axial, ["teeth"] = Teeth,
+            ["top"] = Top, ["front"] = Front, ["rear"] = Front, ["iso"] = Iso,
+            ["detailed"] = Detailed, ["simplified"] = Simplified, ["ansi"] = Simplified, ["full"] = Detailed, ["compact"] = Simplified,
+            ["symbol"] = Symbol, ["block"] = Block, ["diagram"] = Block, ["plan"] = Plan, ["exploded"] = Exploded,
+            ["table"] = Table, ["list"] = Table,
+        };
+
+        /// <summary>The pictogram of a view: <see cref="ViewDef.Icon"/>, else derived from the view id, else <see cref="Detailed"/>.</summary>
+        public static string ForView(ViewDef view) =>
+            view.Icon ?? (ViewAliases.TryGetValue(view.Id, out var id) ? id : Detailed);
     }
 
     [JsonConverter(typeof(JsonStringEnumConverter))]

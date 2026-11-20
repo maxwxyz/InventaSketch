@@ -47,9 +47,9 @@ namespace InventaSketch.Modules.Automotive
     public static class AutoIcons
     {
         /// <summary>Increase a value (not yet part of the shared <see cref="IconIds"/> vocabulary; hosts fall back to a neutral icon).</summary>
-        public const string Increase = "cmd-increase";
+        public const string Increase = IconIds.Increase;
         /// <summary>Decrease a value (see <see cref="Increase"/>).</summary>
-        public const string Decrease = "cmd-decrease";
+        public const string Decrease = IconIds.Decrease;
     }
 
     /// <summary>Shared line styles (ISO 128 line roles; patent-style monochrome drawings).</summary>

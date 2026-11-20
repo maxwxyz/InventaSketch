@@ -62,9 +62,9 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
 
 ## Open items
 
-- **Status 2026-11-20:** engine core, Annotation, Patent, Mechanical modules and Engine API merged (162 tests green).
-  The web add-in is work in progress on branch `feature/office-web` (build scripts `icons.mjs`, `manifest.mjs`,
-  `screenshot.mjs` still missing; WebAssembly publish and UI not yet verified). Module docs (`docs/*/modules/`) still to write.
+- **Status 2026-11-20:** engine core, Engine API and ten modules on `main`: basic shapes, annotation, mechanical,
+  patent, kinematics, electrical, electric machines, automotive/ADAS/HMI, architecture, diagrams (each with tests,
+  gallery and EN/DE module docs). COM add-in feature-complete for slice 2; web add-in builds and runs in the browser.
 
 - UI icons (maintainer requirement 2026-11-20): icons in overlays, floating bar and pie menu must be abstract, clean
   pictograms (one consistent line-icon set, e.g. "stick view", "section", "axial view", "mirror"), not scaled-down
@@ -75,7 +75,17 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   it contains the web add-in, a setup page (`index.html`) that generates the manifest for its own URL, `.htaccess` /
   `web.config` (engine MIME types, no indexing/crawlers) and downloads of the other editions (COM add-in ZIP, LibreOffice
   `.oxt`) listed in `downloads.json`.
-- Web installer (ported from Slidemax, 2026-11-20): translate identifiers, comments and console messages of tools/InventaSketch.WebHost and hosts/office-web/local to English with German/English messages; run a real install and load the add-in in PowerPoint (Windows without COM add-in, Mac, web).
+- Web installer (ported from Slidemax, translated to English with German/English messages 2026-11-20): run a real install and load the add-in in PowerPoint (Windows without COM add-in, Mac, web).
+- Core/engine requests collected from the module work (2026-11-20):
+  - Snapping: snap to any point on a segment (wires, buses, lifelines); prefer concentric over ring-gear mesh when radii
+    are almost equal (machines: rotor in stator after free scaling); ports before box corners on very small objects;
+    a `Mount`-to-`Mount` rule; attach wire ends by pin id instead of box position.
+  - Drawing: hollow arrowheads (`TriangleOpen`, `DiamondOpen`) and crow's-foot ends in `ArrowHead`, so user arrowhead
+    styles also apply to UML/ER connectors; underline in `TextStyle`.
+  - Context actions with text input and with document access (e.g. align an opening to its wall).
+  - Dependent redraw: walls and openings depend on neighbours; the engine should tell hosts which units to redraw.
+  - Plan scale in `DocumentSettings` instead of a per-object parameter; size adaptation when switching views.
+  - A shared `AttachPoint`/`Reverse` helper (annotation and diagrams have their own copies); a helper to attach point
+    objects rotating with a box (automotive field of view).
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.
-- Clarify with the maintainer whether specific Slidemax components may be relicensed into this repository.

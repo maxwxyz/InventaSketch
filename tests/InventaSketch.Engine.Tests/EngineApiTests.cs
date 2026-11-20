@@ -268,6 +268,8 @@ namespace InventaSketch.Engine.Tests
             Assert.False(actions.First(a => a.GetProperty("id").GetString() == "ungroup").GetProperty("enabled").GetBoolean());
             Assert.Contains(actions, a => a.GetProperty("id").GetString() == "view:side");
             Assert.True(actions.First(a => a.GetProperty("id").GetString() == "view:front").GetProperty("active").GetBoolean());
+            Assert.Equal(IconIds.Front, actions.First(a => a.GetProperty("id").GetString() == "view:front").GetProperty("icon").GetString());
+            Assert.Equal(IconIds.Side, actions.First(a => a.GetProperty("id").GetString() == "view:side").GetProperty("icon").GetString());
             var more = actions.First(a => a.GetProperty("id").GetString() == "t:etest.more");
             Assert.False(more.GetProperty("active").GetBoolean());
 

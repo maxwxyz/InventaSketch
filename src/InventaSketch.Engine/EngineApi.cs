@@ -692,7 +692,7 @@ namespace InventaSketch.Engine
             {
                 var current = type.ViewOf(objs[0]);
                 foreach (var v in type.Views)
-                    list.Add(new ActionInfo { Id = "view:" + v.Id, Label = v.Label.Get(lang), Icon = "view", Group = "view", Kind = "view", Active = v.Id == current });
+                    list.Add(new ActionInfo { Id = "view:" + v.Id, Label = v.Label.Get(lang), Icon = IconIds.ForView(v), Group = "view", Kind = "view", Active = v.Id == current });
                 foreach (var a in type.Actions(objs[0], lang))
                     list.Add(new ActionInfo { Id = "t:" + a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "type", Kind = "type", Active = a.IsActive });
             }
@@ -782,7 +782,7 @@ namespace InventaSketch.Engine
             info.TypeId = type.Id;
             info.TypeName = type.Name.Get(lang);
             info.View = type.ViewOf(first);
-            info.Views = type.Views.Select(v => new ActionInfo { Id = v.Id, Label = v.Label.Get(lang), Kind = "view", Group = "view", Active = v.Id == info.View }).ToList();
+            info.Views = type.Views.Select(v => new ActionInfo { Id = v.Id, Label = v.Label.Get(lang), Icon = IconIds.ForView(v), Kind = "view", Group = "view", Active = v.Id == info.View }).ToList();
             info.HasText = type.HasText;
             info.Text = first.Text;
             info.Ref = first.Ref;

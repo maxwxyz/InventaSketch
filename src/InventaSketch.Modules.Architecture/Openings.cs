@@ -79,7 +79,7 @@ namespace InventaSketch.Modules.Architecture
                 var label = next.ToString("0", CultureInfo.InvariantCulture) + " mm";
                 yield return new ContextAction(dir > 0 ? "arch.width.inc" : "arch.width.dec",
                     dir > 0 ? new I18nText("Wider (" + label + ")", "Breiter (" + label + ")") : new I18nText("Narrower (" + label + ")", "Schmaler (" + label + ")"),
-                    dir > 0 ? "cmd-plus" : "cmd-minus", x =>
+                    dir > 0 ? IconIds.Increase : IconIds.Decrease, x =>
                     {
                         var dw = next / Arch.ScaleOf(x) - x.Size.W;
                         return x with { Size = new Size2(x.Size.W + dw, Math.Max(0.5, x.Size.H + leafFactor * dw)) };

@@ -36,8 +36,8 @@ namespace InventaSketch.Modules.Architecture
         {
             yield return Arch.Toggle(o, "arch.stair.reverse", new I18nText("Reverse walking direction", "Laufrichtung umkehren"), IconIds.Swap, "down", false, "direction");
             var n = o.Int("steps", def);
-            yield return new ContextAction("arch.steps.inc", new I18nText("More steps (" + (n + 1) + ")", "Mehr Stufen (" + (n + 1) + ")"), "cmd-plus", x => x.WithParam("steps", Math.Min(60, x.Int("steps", def) + 1))) { Group = "steps" };
-            yield return new ContextAction("arch.steps.dec", new I18nText("Fewer steps (" + Math.Max(2, n - 1) + ")", "Weniger Stufen (" + Math.Max(2, n - 1) + ")"), "cmd-minus", x => x.WithParam("steps", Math.Max(2, x.Int("steps", def) - 1))) { Group = "steps" };
+            yield return new ContextAction("arch.steps.inc", new I18nText("More steps (" + (n + 1) + ")", "Mehr Stufen (" + (n + 1) + ")"), IconIds.Increase, x => x.WithParam("steps", Math.Min(60, x.Int("steps", def) + 1))) { Group = "steps" };
+            yield return new ContextAction("arch.steps.dec", new I18nText("Fewer steps (" + Math.Max(2, n - 1) + ")", "Weniger Stufen (" + Math.Max(2, n - 1) + ")"), IconIds.Decrease, x => x.WithParam("steps", Math.Max(2, x.Int("steps", def) - 1))) { Group = "steps" };
         }
 
         private static int Steps(SketchObject o, int def) => Math.Max(2, Math.Min(60, o.Int("steps", def)));
