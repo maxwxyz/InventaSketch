@@ -25,7 +25,17 @@ export interface ObjectInfo {
   hasText: boolean;
   text?: string;
   ref?: string;
+  /** Selected objects only: centred part (pitch circle or hub) that resizes about its centre by default. */
+  centred?: boolean;
+  /** Selected objects only: main text for quick editing (double-click, bar, pie); set it with setMainText. */
+  mainText?: MainTextInfo;
 }
+
+/** Main text of an object: object text (no key) or the text parameter `key` (numeral, text, label, name, title). */
+export interface MainTextInfo { key?: string; label: string; value: string }
+
+/** Library item offered by "Insert ▸" for the selection (engine `suggestions`). */
+export interface SuggestionInfo { id: string; typeId: string; name: string; view?: string; category: string; points: boolean }
 
 export interface EditorState {
   session: string;
@@ -43,6 +53,8 @@ export interface EditorState {
   svg?: string;
   /** Document plan scale denominator (100 = 1:100); absent if unset. */
   planScale?: number;
+  /** Document black-and-white setting (setMonochrome): page SVG, exports and draw plans are black and white. */
+  monochrome?: boolean;
   /** Objects added or modified by the change that produced this revision (edit, undo, redo). */
   changed?: string[];
   /** Further objects whose rendering depends on the changed or removed ones (wall joints, openings): redraw them too. */

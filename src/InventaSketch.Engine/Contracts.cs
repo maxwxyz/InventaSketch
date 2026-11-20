@@ -64,6 +64,8 @@ namespace InventaSketch.Engine
         public PlanRect? Target { get; set; }
         /// <summary>Host rotation change in degrees (clockwise).</summary>
         public double? Rotation { get; set; }
+        /// <summary>Maximum number of results (suggestions).</summary>
+        public int? Max { get; set; }
     }
 
     public sealed class ObjectInfo
@@ -91,6 +93,31 @@ namespace InventaSketch.Engine
         public bool HasText { get; set; }
         public string? Text { get; set; }
         public string? Ref { get; set; }
+        /// <summary>Selected objects only: a centred part (pitch circle or hub anchor) that resizes about its centre by default.</summary>
+        public bool Centred { get; set; }
+        /// <summary>Selected objects only: the main text for quick editing (double-click, bar, pie); null if none.</summary>
+        public TextEditInfo? MainText { get; set; }
+    }
+
+    /// <summary>Main text of an object (<see cref="EngineApi.MainTextOf"/>); set it with <c>setMainText</c>.</summary>
+    public sealed class TextEditInfo
+    {
+        /// <summary>Parameter key (numeral, text, label, name, title); null for the object text of text types.</summary>
+        public string? Key { get; set; }
+        /// <summary>Prompt label (localised).</summary>
+        public string Label { get; set; } = "";
+        public string Value { get; set; } = "";
+    }
+
+    /// <summary>Library item offered by "Insert ▸" (<c>suggestions</c>).</summary>
+    public sealed class SuggestionInfo
+    {
+        public string Id { get; set; } = "";
+        public string TypeId { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string? View { get; set; }
+        public string Category { get; set; } = "";
+        public bool Points { get; set; }
     }
 
     public sealed class EditorState
@@ -111,6 +138,8 @@ namespace InventaSketch.Engine
         public string? Svg { get; set; }
         /// <summary>Document plan scale denominator (100 = 1:100), null if unset.</summary>
         public double? PlanScale { get; set; }
+        /// <summary>Document black-and-white setting (<c>setMonochrome</c>).</summary>
+        public bool Monochrome { get; set; }
         /// <summary>
         /// Objects added or modified by the document change that produced <see cref="Revision"/> (edit, undo or redo);
         /// empty after open/new. Hosts redraw these units.

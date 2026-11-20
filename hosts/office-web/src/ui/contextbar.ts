@@ -1,4 +1,4 @@
-// Floating context bar near the selection (view switcher, flip, numeral, type actions, style, more). It becomes
+// Floating context bar near the selection (view switcher, text, flip, numeral, type actions, style, more). It becomes
 // semi-transparent and fades out as the pointer moves away; once faded out it stays hidden until the selection changes.
 
 import type { ActionInfo } from "../engine/types";
@@ -21,7 +21,8 @@ export function distanceToRect(x: number, y: number, r: { left: number; top: num
   return Math.hypot(dx, dy);
 }
 
-const BAR_IDS = ["flipH", "flipV", "rotate90", "numeral"];
+/** Bar buttons in order; "text" is the host's main-text command (objects with an editable main text). */
+const BAR_IDS = ["text", "flipH", "flipV", "rotate90", "numeral"];
 
 export class ContextBar {
   readonly el: HTMLDivElement;

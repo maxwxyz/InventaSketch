@@ -52,6 +52,9 @@ namespace InventaSketch.Engine
                 ["setText"] = SetTextCore,
                 ["setPoint"] = SetPointCore,
                 ["setPlanScale"] = SetPlanScaleCore,
+                ["setMonochrome"] = SetMonochromeCore,
+                ["setMainText"] = SetMainTextCore,
+                ["suggestions"] = SuggestionsCore,
                 ["applyAction"] = ApplyActionCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
                 ["redo"] = r => { var s = S(r); s.Redo(); return StateOf(s, r); },
@@ -127,6 +130,9 @@ namespace InventaSketch.Engine
         public string SetText(string json) => Invoke("setText", json);
         public string ApplyAction(string json) => Invoke("applyAction", json);
         public string SetPlanScale(string json) => Invoke("setPlanScale", json);
+        public string SetMonochrome(string json) => Invoke("setMonochrome", json);
+        public string SetMainText(string json) => Invoke("setMainText", json);
+        public string Suggestions(string json) => Invoke("suggestions", json);
         public string Undo(string json) => Invoke("undo", json);
         public string Redo(string json) => Invoke("redo", json);
         public string HitTest(string json) => Invoke("hitTest", json);
@@ -175,12 +181,17 @@ namespace InventaSketch.Engine
                 CanRedo = s.History.CanRedo,
                 UndoLabel = s.History.UndoLabel,
                 PlanScale = doc.Settings.PlanScale,
+                Monochrome = doc.Settings.Monochrome,
                 Changed = s.LastChanged.ToList(),
                 Dependents = s.LastDependents.ToList(),
             };
+            var selected = new HashSet<string>(s.Selection, StringComparer.Ordinal);
+            RenderContext? ctx = null;
             foreach (var o in doc.ObjectsOn(s.Page))
             {
                 var type = Registry.Type(o.Type);
+                var isSelected = type is not null && selected.Contains(o.Id);
+                if (isSelected) ctx ??= s.Context();
                 st.Objects.Add(new ObjectInfo
                 {
                     Id = o.Id, Type = o.Type, Name = NameOf(Registry, o, s.Lang), Kind = o.IsPointGeometry ? "points" : "box", Known = type is not null,
@@ -189,10 +200,13 @@ namespace InventaSketch.Engine
                     Points = o.IsPointGeometry ? doc.ResolvePoints(o).ToList() : null,
                     GroupId = o.GroupId, Locked = o.Locked, View = o.View ?? type?.DefaultView, Uniform = type?.PreferUniformScale ?? false,
                     HasText = type?.HasText ?? false, Text = o.Text, Ref = o.Ref,
+                    // Only for the selection: anchors are evaluated per object.
+                    Centred = isSelected && IsCentred(o, ctx!),
+                    MainText = isSelected ? MainTextOf(Registry, o, s.Lang) : null,
                 });
             }
             if (r?.IncludeSvg != false)
-                st.Svg = SvgRenderer.RenderPage(Registry, doc, s.Page, new SvgOptions { Background = null }, s.Lang);
+                st.Svg = SvgRenderer.RenderPage(Registry, doc, s.Page, new SvgOptions { Background = null, Monochrome = doc.Settings.Monochrome }, s.Lang);
             return st;
         }
 
@@ -400,6 +414,94 @@ namespace InventaSketch.Engine
                 s.Apply("Plan scale", d => d with { Settings = d.Settings with { PlanScale = scale } });
             return StateOf(s, r);
         }
+
+        /// <summary>
+        /// Switches the document's black-and-white setting (<see cref="DocumentSettings.Monochrome"/>, <c>value</c> true or
+        /// false); one undo step. Page SVG, exports and draw plans then map every colour to black or white; the objects keep
+        /// their colours, so switching it off restores them. Every object counts as changed (hosts redraw all units).
+        /// </summary>
+        private object SetMonochromeCore(EngineRequest r)
+        {
+            var s = S(r);
+            var value = r.Value is { ValueKind: JsonValueKind.True };
+            if (s.Doc.Settings.Monochrome != value)
+                s.Apply("Black and white", d => d with { Settings = d.Settings with { Monochrome = value } });
+            return StateOf(s, r);
+        }
+
+        /// <summary>Sets the main text (<see cref="MainTextOf"/>) of object <c>id</c> (default: the first selected object that has one); one undo step.</summary>
+        private object SetMainTextCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Resolve(r.Ids).FirstOrDefault(x => s.Doc.Get(x) is { } o && MainTextOf(Registry, o, s.Lang) is not null);
+            var target = id is null ? null : s.Doc.Get(id);
+            if (target is null || MainTextOf(Registry, target, s.Lang) is null) return StateOf(s, r);
+            var text = r.Text ?? "";
+            s.Apply("Text", d => Edits.Update(d, new[] { target.Id }, o => WithMainText(Registry, o, text)));
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// Library items that fit the first selected object (<see cref="Registry.Suggestions"/>: companions, same category,
+        /// annotations), in its kind of view; at most <c>max</c> (default 9). Empty without a known selected object.
+        /// </summary>
+        private object SuggestionsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var first = s.Resolve(r.Ids).Select(s.Doc.Get).FirstOrDefault(o => o is not null && Registry.Type(o.Type) is not null);
+            if (first is null) return new List<SuggestionInfo>();
+            return Registry.Suggestions(first, Math.Max(1, r.Max ?? 9)).Select(i => new SuggestionInfo
+            {
+                Id = i.Id, TypeId = i.TypeId, Name = i.Name.Get(lang), View = i.View, Category = i.Category,
+                Points = Registry.Type(i.TypeId)?.Geometry == GeometryKind.Points,
+            }).ToList();
+        }
+
+        private static readonly string[] MainTextKeys = { "text", "label", "name", "title" };
+
+        /// <summary>
+        /// The main text of an object for quick editing (double-click, bar, pie): the numeral of reference numerals and lead
+        /// lines (shown from <see cref="SketchObject.Ref"/>, object text or the "numeral" parameter), else the object text of
+        /// text types, else the first text parameter among text, label, name and title. Null if the type has no such text.
+        /// Same idea as the COM add-in's on-slide editor.
+        /// </summary>
+        public static TextEditInfo? MainTextOf(Registry registry, SketchObject o, Lang lang)
+        {
+            var type = registry.Type(o.Type);
+            if (type is null) return null;
+            var numeral = type.Parameters.FirstOrDefault(p => p.Key == "numeral" && p.Kind == ParamKind.Text);
+            if (numeral is not null)
+            {
+                var shown = !string.IsNullOrEmpty(o.Ref) ? o.Ref! : !string.IsNullOrEmpty(o.Text) ? o.Text! : o.Str("numeral", numeral.Default?.Text ?? "");
+                return new TextEditInfo { Key = "numeral", Label = numeral.Label.Get(lang), Value = shown };
+            }
+            if (type.HasText) return new TextEditInfo { Label = "Text", Value = o.Text ?? "" };
+            foreach (var key in MainTextKeys)
+            {
+                var pd = type.Parameters.FirstOrDefault(p => p.Key == key && p.Kind == ParamKind.Text);
+                if (pd is not null) return new TextEditInfo { Key = key, Label = pd.Label.Get(lang), Value = o.Str(key, pd.Default?.Text ?? "") };
+            }
+            return null;
+        }
+
+        /// <summary>The object with its main text (<see cref="MainTextOf"/>) set; a numeral also becomes the object's reference.</summary>
+        public static SketchObject WithMainText(Registry registry, SketchObject o, string text)
+        {
+            var edit = MainTextOf(registry, o, Lang.En);
+            if (edit is null) return o;
+            if (edit.Key is null) return o with { Text = text };
+            if (edit.Key == "numeral") return o.WithParam(edit.Key, text) with { Text = null, Ref = text };
+            return o.WithParam(edit.Key, text);
+        }
+
+        /// <summary>
+        /// Centred part: a box object with a pitch circle or hub anchor (gears, bearings, wheels). Hosts resize it about its
+        /// centre by default (Ctrl: from the opposite edge), like the COM add-in.
+        /// </summary>
+        private bool IsCentred(SketchObject o, RenderContext ctx)
+            => !o.IsPointGeometry && Registry.Type(o.Type) is not null
+               && Registry.PageAnchors(o, ctx).Any(a => a.Role is AnchorRole.Pitch or AnchorRole.PitchInner or AnchorRole.Hub);
 
         private static ParamValue? ToParam(JsonElement? v) => v?.ValueKind switch
         {
@@ -815,7 +917,7 @@ namespace InventaSketch.Engine
         private object RenderSvgCore(EngineRequest r)
         {
             var s = S(r);
-            var options = new SvgOptions { Monochrome = r.Monochrome ?? false, Background = r.Background ?? "#ffffff" };
+            var options = new SvgOptions { Monochrome = r.Monochrome ?? s.Doc.Settings.Monochrome, Background = r.Background ?? "#ffffff" };
             var doc = s.Doc;
             var page = s.Page;
             if (r.Ids is { Count: > 0 })
@@ -872,6 +974,9 @@ namespace InventaSketch.Engine
                 foreach (var kv in src.References) if (!d.References.ContainsKey(kv.Key)) d = Edits.SetReference(d, kv.Key, kv.Value.Label);
                 // A plan scale stored with the slide model is adopted when the editor document has none.
                 if (d.Settings.PlanScale is null && src.Settings.PlanScale is double ps) d = d with { Settings = d.Settings with { PlanScale = ps } };
+                // Black and white is a slide-wide switch (the COM add-in sets it on every unit): the slide model decides, so
+                // live redraws keep the look of the units on the slide.
+                if (d.Settings.Monochrome != src.Settings.Monochrome) d = d with { Settings = d.Settings with { Monochrome = src.Settings.Monochrome } };
                 return d;
             });
             if (r.Add != false) s.Select(objs.Select(o => o.Id));
@@ -899,6 +1004,8 @@ namespace InventaSketch.Engine
             var changed = new HashSet<string>(StringComparer.Ordinal);
             foreach (var kv in after.Objects)
                 if (!before.Objects.TryGetValue(kv.Key, out var old) || !ReferenceEquals(old, kv.Value)) changed.Add(kv.Key);
+            // Black and white changes the rendering of every object.
+            if (before.Settings.Monochrome != after.Settings.Monochrome) changed.UnionWith(after.Objects.Keys);
             // A new plan scale changes the rendering of every object that uses it.
             if (before.Settings.PlanScale != after.Settings.PlanScale)
                 foreach (var o in after.Objects.Values)

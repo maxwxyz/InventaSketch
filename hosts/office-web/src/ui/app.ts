@@ -2,7 +2,7 @@
 // session. Runs inside PowerPoint (Office.js present) and standalone in a browser (dev.html).
 
 import { Engine, Session } from "../engine/client";
-import type { ActionInfo, Catalog, CatalogItem, EditorState, ObjectInfo } from "../engine/types";
+import type { ActionInfo, Catalog, CatalogItem, EditorState, ObjectInfo, SuggestionInfo } from "../engine/types";
 import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
@@ -11,11 +11,12 @@ import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
 import { ContextBar, InlinePrompt } from "./contextbar";
-import { h } from "./dom";
+import { h, svgDataUrl } from "./dom";
 import { icon } from "./icons";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
 import { PieMenu } from "./piemenu";
+import { buildPieEntries, MAX_PIE_ITEMS, pieSplit, submenu, type PieEntry } from "./pielogic";
 import { Stage } from "./stage";
 
 export interface AppOptions {
@@ -95,7 +96,7 @@ export class App {
       pendingId: () => this.pending?.id,
     });
     this.inspector = new Inspector({ session: () => this.sessionObj, state: () => this.st, apply: (s, live) => this.apply(s, live), report: (e) => this.report(e) });
-    this.pie = new PieMenu(this.root, (a) => this.runAction(a));
+    this.pie = new PieMenu(this.root, (e) => this.pickPie(e));
     this.prompt = new InlinePrompt(this.root);
     this.status = h("div", { class: "isk-status", "aria-live": "polite" });
     this.toastEl = h("div", { class: "isk-toast", role: "status", hidden: true });
@@ -195,15 +196,21 @@ export class App {
       items.push(insert, live, this.office.selection && this.iconButton("load", t("office.loadSelection"), () => this.sync?.loadSelection()), h("span", { class: "isk-sep" }));
     }
     items.push(
-      this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, this.monochrome))),
-      this.iconButton("png", t("cmd.exportPng"), () => exportPng(this.sessionObj, sel.length ? sel : undefined, this.monochrome).catch((e) => this.report(e))),
+      this.iconButton("mono", t("cmd.mono"), () => this.setMonochrome(!st?.monochrome), {
+        class: `isk-btn isk-icon-btn${st?.monochrome ? " is-active" : ""}`, "aria-pressed": String(!!st?.monochrome), "data-cmd": "mono",
+      }),
+      this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome))),
+      this.iconButton("png", t("cmd.exportPng"), () => exportPng(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome).catch((e) => this.report(e))),
       h("span", { class: "isk-grow" }),
       this.iconButton("settings", t("cmd.settings"), (e) => this.toggleSettings(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog" }),
     );
     this.topbar.replaceChildren(...items.filter((x): x is HTMLElement => !!x));
   }
 
-  private monochrome = false;
+  /** Black and white is a document setting (one undo step); live sync redraws every unit on the slide. */
+  private setMonochrome(value: boolean): void {
+    this.edit((s) => s.setMonochrome(value));
+  }
 
   private toggleSettings(anchor: HTMLElement): void {
     if (this.settingsEl) { this.settingsEl.remove(); this.settingsEl = undefined; return; }
@@ -243,7 +250,7 @@ export class App {
       h("fieldset", {}, h("legend", {}, t("set.drawing")),
         check(this.settings.snap, t("set.snap"), (v) => { this.settings.snap = v; saveSettings(this.settings); this.stage.render(); }),
         h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("set.grid")), grid),
-        check(this.monochrome, t("set.mono"), (v) => (this.monochrome = v))),
+        check(!!this.st.monochrome, t("set.mono"), (v) => this.setMonochrome(v))),
       h("fieldset", {}, h("legend", {}, t("set.file")), h("div", { class: "isk-row" }, openBtn, saveBtn), open),
       h("p", { class: "isk-muted" }, this.versionLine()),
     );
@@ -327,6 +334,7 @@ export class App {
       } catch (e) {
         this.report(e);
       }
+      if (this.mainTextTarget()) actions = [...actions, this.textAction()];
     }
     this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open || this.prompt.open);
   }
@@ -345,15 +353,13 @@ export class App {
 
   runAction(a: ActionInfo): void {
     if (!a.enabled) return;
+    if (a.id === "text") return this.editText();
     const sel = this.st.selection;
     if (a.input) {
       // Input actions ask for their value inline next to the selection (Esc cancels without a change).
       const input = a.input;
-      const box = this.stage.selectionScreenBox();
-      const r = this.stage.el.getBoundingClientRect();
-      const at = box ? { x: (box.left + box.right) / 2, y: box.bottom } : { x: r.left + r.width / 2, y: r.top + r.height / 2 };
       this.bar.hide();
-      this.prompt.show({ title: a.label, label: input.label, value: input.value, unit: input.unit }, at, (value) => {
+      this.prompt.show({ title: a.label, label: input.label, value: input.value, unit: input.unit }, this.promptAnchor(), (value) => {
         this.edit((s) => s.applyAction(sel, a.id, value));
         this.stage.el.focus({ preventScroll: true });
       });
@@ -363,6 +369,28 @@ export class App {
     this.stage.el.focus({ preventScroll: true });
   }
 
+  /** Where inline prompts open: below the selection, else in the middle of the stage (client px). */
+  private promptAnchor(): { x: number; y: number } {
+    const box = this.stage.selectionScreenBox();
+    const r = this.stage.el.getBoundingClientRect();
+    return box ? { x: (box.left + box.right) / 2, y: box.bottom } : { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+  }
+
+  private pieOverflow: PieEntry[] = [];
+  private pieSuggestions: SuggestionInfo[] = [];
+
+  private textAction(): ActionInfo {
+    return { id: "text", label: t("ctx.text"), icon: "cmd-text", enabled: true, active: false, group: "edit", kind: "generic" };
+  }
+
+  private menuEntry(id: string, label: string, icon?: string): PieEntry {
+    return { id, label, icon, enabled: true, active: false };
+  }
+
+  /**
+   * Pie menu with at most eight entries (COM add-in rules): delete, views, "Text …", "Insert ▸", duplicate, rotate in the
+   * ring; type actions, mirror, order and grouping overflow into "More ▸".
+   */
   openPie(clientX?: number, clientY?: number): void {
     const sel = this.st.selection;
     let actions: ActionInfo[];
@@ -377,8 +405,49 @@ export class App {
       clientX = box ? (box.left + box.right) / 2 : r.left + r.width / 2;
       clientY = box ? (box.top + box.bottom) / 2 : r.top + r.height / 2;
     }
+    this.pieSuggestions = [];
+    if (sel.some((id) => this.st.objects.find((o) => o.id === id)?.known)) {
+      try {
+        this.pieSuggestions = this.sessionObj.suggestions(sel, lang(), MAX_PIE_ITEMS - 1);
+      } catch (e) {
+        this.report(e);
+      }
+    }
+    const text = this.mainTextTarget() ? this.menuEntry("text", t("pie.text"), "cmd-text") : undefined;
+    const insert = this.pieSuggestions.length ? this.menuEntry("menu:insert", t("pie.insert"), "cmd-increase") : undefined;
+    const { main, overflow } = pieSplit(buildPieEntries(actions, { text, insert }), this.menuEntry("menu:more", t("pie.more"), "more"));
+    this.pieOverflow = overflow;
     this.bar.hide();
-    this.pie.show(actions, clientX, clientY);
+    this.pie.show(main, clientX, clientY);
+  }
+
+  private pickPie(e: PieEntry): void {
+    const at = this.pie.at ?? { x: 0, y: 0 };
+    const back = this.menuEntry("menu:back", t("pie.back"), "menuBack");
+    const more = this.menuEntry("menu:more", t("pie.more"), "more");
+    if (e.id === "menu:back") return this.openPie(at.x, at.y);
+    if (e.id === "menu:more") {
+      const page = submenu(back, this.pieOverflow, more);
+      this.pieOverflow = page.overflow;
+      return this.pie.show(page.main, at.x, at.y);
+    }
+    if (e.id === "menu:insert") {
+      const entries = this.pieSuggestions.map((s): PieEntry => {
+        const item = this.catalog.items.find((i) => i.id === s.id);
+        return { id: `ins:${s.id}`, label: s.name, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined, icon: "cmd-increase", enabled: !!item, active: false };
+      });
+      const page = submenu(back, entries, more);
+      this.pieOverflow = page.overflow;
+      return this.pie.show(page.main, at.x, at.y);
+    }
+    if (e.id === "text") return this.editText();
+    if (e.id.startsWith("ins:")) {
+      // Insert at the pointer with snapping (in the COM sidebar: on the slide, like the COM pie menu).
+      const item = this.catalog.items.find((i) => i.id === e.id.slice(4));
+      if (item) this.startInsert(item, false);
+      return;
+    }
+    if (e.action) this.runAction(e.action);
   }
 
   private openInspectorStyle(): void {
@@ -399,17 +468,39 @@ export class App {
     }
   }
 
-  private editText(o: ObjectInfo): void {
-    this.apply(this.sessionObj.select([o.id]));
-    this.settings.inspectorOpen = true;
-    this.layoutPanelsAfterChange();
-    this.inspector.update(true);
-    this.inspector.focusText();
+  /** First selected object with an editable main text (engine `mainText`), preferring `prefer`. */
+  private mainTextTarget(prefer?: string): ObjectInfo | undefined {
+    const byId = new Map(this.st.objects.map((o) => [o.id, o]));
+    if (prefer && this.st.selection.includes(prefer) && byId.get(prefer)?.mainText) return byId.get(prefer);
+    return this.st.selection.map((id) => byId.get(id)).find((o) => o?.mainText);
+  }
+
+  /**
+   * Edits the main text (object text, numeral, text/label/name/title parameter) in the inline prompt: double-click on
+   * the stage, the bar's text button or "Text …" in the pie menu. Multi-line texts open the inspector's text box.
+   */
+  private editText(prefer?: ObjectInfo): void {
+    const target = this.mainTextTarget(prefer?.id);
+    const main = target?.mainText;
+    if (!target || !main) return;
+    if (main.value.includes("\n")) {
+      this.settings.inspectorOpen = true;
+      this.layoutPanelsAfterChange();
+      this.inspector.update(true);
+      this.inspector.focusText();
+      return;
+    }
+    this.bar.hide();
+    this.prompt.show({ title: t("text.title"), label: main.label, value: main.value }, this.promptAnchor(), (value) => {
+      if (value !== main.value) this.edit((s) => s.setMainText(target.id, value));
+      this.stage.el.focus({ preventScroll: true });
+    });
   }
 
   // ------------------------------------------------------------------ insert
 
-  private startInsert(item: CatalogItem): void {
+  /** Starts insert at the pointer; `toggle` (library click) cancels when the same item is already pending. */
+  private startInsert(item: CatalogItem, toggle = true): void {
     // Inside the COM add-in: a library click places the element directly on the slide (insert at pointer with
     // snapping, like the ribbon galleries); dragging into the stage still adds it to the editor.
     if (this.sync instanceof ComSync) {
@@ -417,7 +508,7 @@ export class App {
       this.setStatus(t("com.placing", item.name));
       return;
     }
-    this.pending = this.pending?.id === item.id ? undefined : item;
+    this.pending = toggle && this.pending?.id === item.id ? undefined : item;
     this.library.renderItems();
     this.setStatus(this.pending ? t("lib.placing", item.name) : "");
     this.stage.el.focus({ preventScroll: true });
