@@ -1,0 +1,1 @@
+Technical sketches, patent drawings and diagrams from the InventaSketch library as native, editable LibreOffice shapes in Impress, Draw and Calc.

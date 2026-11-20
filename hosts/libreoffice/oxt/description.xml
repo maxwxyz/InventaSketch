@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- The version is set by scripts/package.py from Directory.Build.props; the platform per package (portable: all). -->
+<description xmlns="http://openoffice.org/extensions/description/2006"
+    xmlns:d="http://openoffice.org/extensions/description/2006"
+    xmlns:l="http://libreoffice.org/extensions/description/2011"
+    xmlns:xlink="http://www.w3.org/1999/xlink">
+  <identifier value="org.inventasketch.libreoffice"/>
+  <version value="0.0.0"/>
+  <platform value="all"/>
+  <display-name>
+    <name lang="en">InventaSketch</name>
+    <name lang="de">InventaSketch</name>
+  </display-name>
+  <dependencies>
+    <l:LibreOffice-minimal-version value="7.6" d:name="LibreOffice 7.6"/>
+  </dependencies>
+  <icon>
+    <default xlink:href="icons/inventasketch-48.png"/>
+  </icon>
+  <extension-description>
+    <src lang="en" xlink:href="description/desc_en.txt"/>
+    <src lang="de" xlink:href="description/desc_de.txt"/>
+  </extension-description>
+</description>
