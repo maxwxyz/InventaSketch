@@ -65,7 +65,8 @@ Maschinen-Modul am 20.11.2026 ausgeliefert, inkl. Netzlisten-Export und einer Gr
 
 Automotive/ADAS/HMI, Architektur/Grundrisse, UML/ER/Ablauf, Karten und Routen, Diagramme; weitere Module nach Bedarf
 (Fluidtechnik, Thermodynamik, Robotik, Chemie, …). Status: **in Arbeit** – Fahrzeuge/ADAS/HMI, Architektur und
-Diagramme am 20.11.2026 ausgeliefert; Karten und Routen sowie Fluidtechnik in Arbeit; Diagramme/Charts,
+Diagramme, Karten und Routen (15 Typen, Export der Routenhalte) sowie Fluidtechnik (36 Typen, nach ISO 1219,
+Export der Verbindungsliste) am 20.11.2026 ausgeliefert; Diagramme/Charts,
 Thermodynamik, Robotik, Chemie vorgeschlagen.
 
 ## Phase 7 – Erweiterte Plattform
@@ -81,6 +82,14 @@ Export-Erweiterungspunkte der Module.
 
 ## Offene Punkte
 
+- **Stand 20.11.2026:** Engine-Kern, Engine-API und zwölf Module auf `main` (zuletzt Karten und Routen sowie
+  Fluidtechnik; 826 Bibliothekselemente in 70 Kategorien, in PowerPoint geprüft).
+- Core-Wünsche aus den Modulen Karten und Fluidtechnik (20.11.2026): Anhänge an Punktobjekte und Schienen (Abzweige ohne
+  Verbindungspunkt); gemeinsame Helfer für Anschluss-Routing/`ConnectToPort` (Elektro und Fluid doppeln sie) und
+  Freiformen mit mehreren Teilpfaden; ein Haken zum Anpassen der Größe bei Parameteränderung im Inspektor
+  (`ObjectType.OnParamChanged`); `IconIds` für Stecknadel, Medium und Betätigung; Grenzen mehrzeiliger Texte in
+  `Prim.Bounds`; ein Merkmal `ObjectType.IsPart`, damit die Stückliste Kartensymbole auslässt; der gewählte Punkt für
+  „Wegpunkt entfernen“.
 - UI-Symbole (Vorgabe des Maintainers, 20.11.2026): Symbole in Overlays, schwebender Leiste und Kreismenü sind abstrakte,
   saubere Piktogramme (ein einheitlicher Linien-Symbolsatz, z. B. „Strich-Schema“, „Schnitt“, „Stirnansicht“, „Spiegeln“),
   keine verkleinerten Abbilder des konkreten Elements, damit sie auch klein erkennbar bleiben. Module benennen je Ansicht/

@@ -60,7 +60,8 @@ shipped 2026-11-20 incl. netlist export and a basic rule check (open pins, open 
 
 Automotive/ADAS/HMI, architecture/floor plans, UML/ER/flow, maps and routes, charts; further modules on demand
 (fluid power, thermodynamics, robotics, chemistry, …). Status: **in progress** — automotive/ADAS/HMI, architecture and
-diagrams shipped 2026-11-20; maps and routes and fluid power in progress; charts, thermodynamics, robotics, chemistry
+diagrams, maps and routes (15 types, route stop export) and fluid power (36 types, ISO 1219-style, connection list
+export) shipped 2026-11-20; charts, thermodynamics, robotics, chemistry
 proposed.
 
 ## Phase 7 – Advanced platform
@@ -75,9 +76,15 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
 
 ## Open items
 
-- **Status 2026-11-20:** engine core, Engine API and ten modules on `main`: basic shapes, annotation, mechanical,
-  patent, kinematics, electrical, electric machines, automotive/ADAS/HMI, architecture, diagrams (each with tests,
-  gallery and EN/DE module docs). COM add-in feature-complete for slice 2; web add-in builds and runs in the browser.
+- **Status 2026-11-20:** engine core, Engine API and twelve modules on `main`: basic shapes, annotation, mechanical,
+  patent, kinematics, electrical, electric machines, automotive/ADAS/HMI, architecture, diagrams, maps and routes,
+  fluid power (each with tests, gallery and EN/DE module docs; 826 library items in 70 categories, verified in
+  PowerPoint).
+- Core wishes from the maps and fluid modules (2026-11-20): attachments to point objects and rails (T-branches without a
+  junction dot); shared helpers for port routing/`ConnectToPort` (electrical and fluid duplicate them) and multi-subpath
+  freeforms; a hook to resize when a parameter changes in the inspector (`ObjectType.OnParamChanged`); `IconIds` for
+  pin, medium and actuation; multi-line text bounds in `Prim.Bounds`; an `ObjectType.IsPart` flag so the BOM skips map
+  symbols; the selected point index for "remove waypoint". COM add-in feature-complete for slice 2; web add-in builds and runs in the browser.
 
 - UI icons (maintainer requirement 2026-11-20): icons in overlays, floating bar and pie menu must be abstract, clean
   pictograms (one consistent line-icon set, e.g. "stick view", "section", "axial view", "mirror"), not scaled-down
