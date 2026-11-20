@@ -9,6 +9,9 @@ soffice):
 2. Save as .odp and .pptx, reload both and check unit names, stored models (UserDefinedAttributes in .odp, document
    properties in both) and that a unit loaded from each file can be re-rendered from its stored model.
 3. Export the slide as PNG for visual review; Draw and Calc: insert one item each.
+4. Optional (``--from-powerpoint <file.pptx>``): a presentation saved by the PowerPoint COM add-in (units with the
+   ``ISK_MODEL_<id>`` document mirror) is recognised and editable; the edited file is saved as
+   ``<out>/from-powerpoint-edited.pptx`` for the reverse check in PowerPoint.
 
 Never touches the user's profile or files: everything lives in a temporary folder that is removed afterwards
 (``--keep`` keeps it, ``--out`` writes the results elsewhere). Every document is closed without saving to its
@@ -355,6 +358,33 @@ def reload_phase(office, path, names, label, expect_attributes):
     office.close(doc)
 
 
+def powerpoint_phase(office, path, out):
+    """Units drawn by the PowerPoint COM add-in: names, document mirror, and an edit from the mirrored model."""
+    doc = office.load(path)
+    page = doc.getDrawPages().getByIndex(0)
+    units = units_of(page)
+    props = doc_props(doc)
+    check("fromPowerPoint.units", len(units) > 0, ", ".join(sorted(units)))
+    mirrored = [n for n in units if props.get("ISK_MODEL_" + n.split(":")[2], "").startswith("isk1:")]
+    check("fromPowerPoint.docProperties", units and len(mirrored) == len(units), "%d of %d mirrored" % (len(mirrored), len(units)))
+    gear = unit_by_type(page, "mech.gear.spur")
+    if gear is not None:
+        name = gear.Name
+        before = gear.Size
+        doc.getCurrentController().select(gear)
+        office.run(doc, "setView?view=side")
+        again = units_of(page).get(name)
+        after = again.Size if again is not None else None
+        # Axial view 30 x 30 mm, side view 10 x 30 mm: the unit gets narrower at the same height.
+        check("fromPowerPoint.editAfterLoad", after is not None and after.Width < before.Width * 0.6,
+              "spur gear axial -> side: %d x %d -> %s (1/100 mm)" % (before.Width, before.Height,
+                                                                   "%d x %d" % (after.Width, after.Height) if after else "none"))
+    edited = os.path.join(out, "from-powerpoint-edited.pptx")
+    doc.storeToURL(uno.systemPathToFileUrl(edited), (pv("FilterName", "Impress Office Open XML"),))
+    check("fromPowerPoint.saved", os.path.isfile(edited), edited)
+    office.close(doc)
+
+
 def draw_calc_phase(office, out):
     for factory, label in (("sdraw", "draw"), ("scalc", "calc")):
         doc = office.new(factory)
@@ -380,6 +410,7 @@ def main():
     ap.add_argument("--soffice")
     ap.add_argument("--out")
     ap.add_argument("--keep", action="store_true")
+    ap.add_argument("--from-powerpoint", help="a .pptx saved by the PowerPoint COM add-in (exchange check)")
     args = ap.parse_args()
     soffice = find_soffice(args.soffice)
     work = tempfile.mkdtemp(prefix="isk-lo-")
@@ -400,6 +431,8 @@ def main():
         reload_phase(office, odp, names, "odp", expect_attributes=True)
         reload_phase(office, pptx, names, "pptx", expect_attributes=False)
         draw_calc_phase(office, out)
+        if args.from_powerpoint:
+            powerpoint_phase(office, os.path.abspath(args.from_powerpoint), out)
     except Exception:
         check("exception", False, traceback.format_exc())
     finally:

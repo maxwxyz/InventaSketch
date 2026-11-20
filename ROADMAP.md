@@ -40,7 +40,9 @@ COM precedence over the web add-in (`EquivalentAddins`) not tested.
 
 Python-UNO `.oxt` + .NET engine process; Impress/Draw/Calc; native shapes and hatches; sidebar panel; on-canvas
 interaction; Windows/Linux/macOS packages. Status: **in progress** (phase 1: insertion of native shapes from the
-engine process; ported from Slidemax's LibreOffice host).
+engine process; ported from Slidemax's LibreOffice host). Model exchange with the PowerPoint COM add-in via the
+document mirror `ISK_MODEL_<id>`/`ISK_BOUNDS_<id>` verified in both directions 2026-11-20 (.pptx); units of the web
+add-in (presentation tags) are not exchanged yet.
 
 ## Phase 4 – Kinematics and expanded mechanics
 
@@ -107,7 +109,7 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     1.4 mm; stand-alone symbols (joints, bearings, electrical symbols) scale as a whole on purpose.
   - Web host: same UX done 2026-11-20 (pie layout, text editing, Insert ▸ via `suggestions`, black and white via
     `setMonochrome`, centred resize). Type ▸ for line types (Registry.Convert, engine conversions/convert) and hidden
-    modules in the sidebar library done too. Open: anchoring on the web stage; Label ▸ (the inspector covers it).
+    modules in the sidebar library done too. Label ▸ in the web pie menu done 2026-11-20. Open: anchoring on the web stage.
   - Ribbon groups like Slidemax: Structure, Colour, Text, Layout: done 2026-11-20 (native formatting is folded into the model).
   - Tools menu like Slidemax (Extras: symbol, decimal separator, proofing language, send/save slides) and hiding
     modules in the ribbon: done 2026-11-20. Open: hide modules in the sidebar library too.

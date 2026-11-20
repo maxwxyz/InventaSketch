@@ -85,6 +85,10 @@ namespace InventaSketch.AddIn
                     }
                     catch (Exception ex) { Log.Error("Sidebar slide units", ex); }
                 };
+                // Model exchange with LibreOffice: mirror the models into document properties on save, adopt
+                // LibreOffice-drawn units on open.
+                _app.PresentationBeforeSave += (PowerPoint.Presentation pres, ref bool cancel) => MirrorModels(pres);
+                _app.AfterPresentationOpen += AdoptUnits;
                 Log.Info($"Connected: InventaSketch {typeof(Connect).Assembly.GetName().Version}, PowerPoint {_app.Version}, "
                     + $"{(Environment.Is64BitProcess ? 64 : 32)} bit, CLR {Environment.Version}, language {_lang}, "
                     + $"{_registry.Library.Count} library items in {_categories.Count} categories, {watch.ElapsedMilliseconds} ms");
@@ -106,7 +110,35 @@ namespace InventaSketch.AddIn
 
         public void OnAddInsUpdate(ref Array custom) { }
 
-        public void OnStartupComplete(ref Array custom) { }
+        public void OnStartupComplete(ref Array custom)
+        {
+            try
+            {
+                if (_app is null) return;
+                foreach (PowerPoint.Presentation pres in _app.Presentations) AdoptUnits(pres);
+            }
+            catch (Exception ex) { Log.Error("Adopt units at startup", ex); }
+        }
+
+        private static void MirrorModels(PowerPoint.Presentation pres)
+        {
+            try
+            {
+                var n = OnSlide.DocumentMirror.Write(pres);
+                if (n > 0) Log.Info($"Mirrored {n} unit models into document properties");
+            }
+            catch (Exception ex) { Log.Error("Mirror unit models", ex); }
+        }
+
+        private static void AdoptUnits(PowerPoint.Presentation pres)
+        {
+            try
+            {
+                var n = OnSlide.DocumentMirror.Adopt(pres);
+                if (n > 0) Log.Info($"Adopted {n} units drawn by LibreOffice");
+            }
+            catch (Exception ex) { Log.Error("Adopt units", ex); }
+        }
 
         public void OnBeginShutdown(ref Array custom) { }
 

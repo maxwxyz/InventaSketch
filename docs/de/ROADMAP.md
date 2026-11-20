@@ -44,7 +44,9 @@ dem Web-Add-in (`EquivalentAddins`) ungetestet.
 
 Python-UNO-`.oxt` + .NET-Engine-Prozess; Impress/Draw/Calc; native Formen und Schraffuren; Seitenleisten-Panel;
 Interaktion auf der Zeichenfläche; Pakete für Windows/Linux/macOS. Status: **in Arbeit** (Phase 1: Einfügen nativer
-Formen aus dem Engine-Prozess; aus dem LibreOffice-Host von Slidemax übernommen).
+Formen aus dem Engine-Prozess; aus dem LibreOffice-Host von Slidemax übernommen). Modellaustausch mit dem
+PowerPoint-COM-Add-in über den Dokumentspiegel `ISK_MODEL_<id>`/`ISK_BOUNDS_<id>` am 2026-11-20 in beide Richtungen
+verifiziert (.pptx); Einheiten des Web-Add-ins (Präsentations-Tags) werden noch nicht ausgetauscht.
 
 ## Phase 4 – Kinematik und erweiterte Mechanik
 
@@ -118,8 +120,7 @@ Export-Erweiterungspunkte der Module.
     bewusst als Ganzes.
   - Web-Host: dieselbe UX am 20.11.2026 erledigt (Kreismenü-Layout, Text bearbeiten, Einfügen ▸ über `suggestions`,
     Schwarz-Weiß über `setMonochrome`, Skalieren um die Mitte). Typ ▸ für Linientypen (Registry.Convert, Engine
-    conversions/convert) und ausgeblendete Module in der Seitenleisten-Bibliothek ebenfalls erledigt. Offen: Verankern
-    auf der Web-Bühne; Beschriftung ▸ (der Inspektor deckt es ab).
+    conversions/convert) und ausgeblendete Module in der Seitenleisten-Bibliothek ebenfalls erledigt. Beschriftung ▸ im Web-Kreismenü erledigt 2026-11-20. Offen: Verankern auf der Web-Bühne.
   - Menüband-Gruppen wie Slidemax: Struktur, Farbe, Text, Layout: am 20.11.2026 erledigt (native Formatierung wird ins Modell übernommen).
   - Werkzeuge-Menü wie Slidemax (Extras: Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern) und
     Ausblenden von Modulen im Menüband: am 20.11.2026 erledigt. Offen: Module auch in der Seitenleisten-Bibliothek

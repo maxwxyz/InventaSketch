@@ -13,6 +13,12 @@
   `BuildFreeform` for polylines and Bézier paths, `AddTextbox`, grouping via `Shapes.Range(...).Group()`.
 - Each inserted unit is a group (or single shape) named `ISK:<type>:<id>` with tags `ISK_ID`, `ISK_TYPE` and
   `ISK_MODEL` (compressed model payload, ADR-0006). One undo step per insertion (`StartNewUndoEntry`).
+- Exchange with LibreOffice (`OnSlide/DocumentMirror`): before saving, every unit's model is mirrored into the custom
+  document properties `ISK_MODEL_<id>` (chunks `_1`, `_2` … of 60 000 characters) and its drawn bounds into
+  `ISK_BOUNDS_<id>` (LibreOffice format, points); mirrors of deleted units are removed. After opening, shapes named
+  `ISK:<type>:<id>` without tags but with a mirrored model (drawn by LibreOffice) get their tags back and are units
+  again; the presentation's saved state is kept. Verified 2026-11-20 in both directions with PowerPoint 16 and
+  LibreOffice 26.8 (.pptx).
 - Ribbon tab **InventaSketch**, generated from the module library: a tools group (Editor, Snap and Context bar
   toggles stored in `%LOCALAPPDATA%\InventaSketch\settings.json`, black-and-white, info), then one group per module
   (basic shapes, annotation, patent, mechanics, kinematics, electrical, machines, automotive, architecture, diagrams)

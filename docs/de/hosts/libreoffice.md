@@ -166,7 +166,9 @@ Linux/macOS läuft er mit einem Python, das `uno` importieren kann.
 - Ein natives Skalieren zusammen mit einer Drehung wird nicht erkannt (nur die Drehung und das Verschieben der Mitte
   werden übernommen). Eine in LibreOffice eingefügte Kopie behält die ID ihres Originals (noch kein Abgleich von
   Duplikaten).
-- Vom PowerPoint-COM-Add-in eingefügte Einheiten sind in LibreOffice noch nicht bearbeitbar: LibreOffice verwirft
-  PowerPoint-Tags, und das COM-Add-in schreibt die Dokumenteigenschaften `ISK_MODEL_<id>` nicht.
+- Der Austausch mit dem PowerPoint-COM-Add-in läuft über den Spiegel im Dokument (das COM-Add-in schreibt
+  `ISK_MODEL_<id>` und `ISK_BOUNDS_<id>` vor dem Speichern und übernimmt LibreOffice-Einheiten nach dem Öffnen).
+  Am 2026-11-20 in beide Richtungen verifiziert (`integration_test.py --from-powerpoint`). Einheiten des Office-Web-Add-ins
+  halten ihr Modell in Präsentations-Tags, die LibreOffice verwirft; sie sind hier noch nicht bearbeitbar.
 - Nur unter Windows verifiziert; Pakete für Linux und macOS (eigenständig, `--rid linux-x64`, `osx-arm64` …) baut
   dasselbe Skript, sie sind aber nicht getestet (macOS-Pakete müssen auf macOS gebaut werden, ADR-0005).

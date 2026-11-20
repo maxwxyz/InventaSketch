@@ -154,7 +154,9 @@ headless and never touches the user's profile or files; Linux/macOS run it with 
   overflow the box (no word wrap).
 - A native resize combined with a rotation is not detected (only the rotation and the move of the centre are taken
   over). A copy pasted inside LibreOffice keeps the unit id of its original (no reconciliation of duplicates yet).
-- Units inserted by the PowerPoint COM add-in are not editable in LibreOffice yet: LibreOffice drops PowerPoint tags and
-  the COM add-in does not write the `ISK_MODEL_<id>` document properties.
+- Exchange with the PowerPoint COM add-in goes through the document mirror (the COM add-in writes `ISK_MODEL_<id>` and
+  `ISK_BOUNDS_<id>` before saving and adopts LibreOffice units after opening). Verified 2026-11-20 in both directions
+  (`integration_test.py --from-powerpoint`). Units of the Office web add-in keep their model in presentation tags, which
+  LibreOffice drops, so they are not editable here yet.
 - Verified on Windows only; Linux and macOS packages (self-contained, `--rid linux-x64`, `osx-arm64` …) are built by the
   same script but not tested (macOS packages must be built on macOS, ADR-0005).

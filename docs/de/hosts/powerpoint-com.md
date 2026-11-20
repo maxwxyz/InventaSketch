@@ -15,6 +15,12 @@
   `Shapes.Range(...).Group()`.
 - Jede eingefügte Einheit ist eine Gruppe (oder Einzelform) namens `ISK:<typ>:<id>` mit den Tags `ISK_ID`, `ISK_TYPE`
   und `ISK_MODEL` (komprimiertes Modell, ADR-0006). Ein Rückgängig-Schritt pro Einfügen (`StartNewUndoEntry`).
+- Austausch mit LibreOffice (`OnSlide/DocumentMirror`): Vor dem Speichern wird das Modell jeder Einheit in die
+  benutzerdefinierten Dokumenteigenschaften `ISK_MODEL_<id>` gespiegelt (Teilstücke `_1`, `_2` … zu 60 000 Zeichen),
+  die gezeichneten Grenzen in `ISK_BOUNDS_<id>` (LibreOffice-Format, Punkt); Spiegel gelöschter Einheiten werden
+  entfernt. Nach dem Öffnen erhalten Formen namens `ISK:<typ>:<id>` ohne Tags, aber mit gespiegeltem Modell (von
+  LibreOffice gezeichnet) ihre Tags zurück und sind wieder Einheiten; der Gespeichert-Status bleibt erhalten. Am
+  2026-11-20 in beide Richtungen mit PowerPoint 16 und LibreOffice 26.8 (.pptx) verifiziert.
 - Menüband-Register **InventaSketch**, aus der Modulbibliothek erzeugt: eine Werkzeuggruppe (Editor, Fangen und
   Kontextleiste – gespeichert in `%LOCALAPPDATA%\InventaSketch\settings.json` –, Schwarzweiß, Info), danach eine Gruppe
   je Modul mit einer Vorschau-Galerie je Bibliothekskategorie (6 Spalten, Name im Tooltip; Gruppen mit vielen
