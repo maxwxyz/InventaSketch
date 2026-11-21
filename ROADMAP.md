@@ -130,6 +130,6 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   more of the pie menu visible in the floating bar (key actions, insert palette), ribbon Annotate group in two columns,
   mechanical coupling (`Coupling`: gears stay in mesh when the centre distance or a gear changes, shafts carry their
   gears) — done in Core, engine and COM. Next: coupling for side/stick views of gears (pitch lines), belts and chains,
-  drivetrains and wheels; quick add and coupling in the web stage; Alt-free move in the web host.
+  drivetrains and wheels; quick add, coupling and Alt-free edits in the web stage done 2026-11-21 (port drags and connect-to-port still COM only).
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.

@@ -18,13 +18,17 @@ export interface StageHost {
   snapEnabled(): boolean;
   /** Snapped line ends attach to their target ("Anchor"). */
   anchorEnabled(): boolean;
+  /** "+" quick add (click on a triangle, or drag and drop at `at`). */
+  quickAdd?(id: string, side: ChainSide, at?: Vec2): void;
   pointerMoved(clientX: number, clientY: number): void;
   report(error: unknown): void;
 }
 
 interface Frame { cx: number; cy: number; w: number; h: number; rot: number }
 
-type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number };
+export type ChainSide = "left" | "top" | "right" | "bottom";
+
+type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide };
 
 type Drag =
   | { kind: "move"; ids: string[]; start: Vec2; dx: number; dy: number; moved: boolean; startClient: Vec2 }
@@ -32,9 +36,12 @@ type Drag =
   | { kind: "rotate"; ids: string[]; frame: Frame; startAngle: number; delta: number }
   | { kind: "point"; obj: ObjectInfo; index: number; pos: Vec2 }
   | { kind: "marquee"; start: Vec2; cur: Vec2; add: boolean }
-  | { kind: "pan"; startClient: Vec2; ox: number; oy: number };
+  | { kind: "pan"; startClient: Vec2; ox: number; oy: number }
+  | { kind: "chain"; id: string; side: ChainSide; from: Vec2; cur: Vec2; moved: boolean; centre: Vec2 };
 
 const HANDLE_PX = 9;
+/** Quick-add triangles: distance outside the frame and size (px); the top one sits beyond the rotate handle. */
+const CHAIN_PX = 14, CHAIN_SIZE_PX = 11;
 const ROTATE_PX = 26;
 const MOVE_THRESHOLD_PX = 3;
 const SNAP_PX = 8;
@@ -294,6 +301,23 @@ export class Stage {
     rot.dataset.handle = JSON.stringify({ kind: "rotate" } satisfies HandleSpec);
     this.overlay.append(rot);
     const size = HANDLE_PX * px;
+    // Quick add: blue triangles outside each side of a chainable element (click: connected copy; drag: drop it there).
+    if (single?.chain && !previewFrame && !f.rot) {
+      const sides: [ChainSide, number, number][] = [["left", -1, 0], ["top", 0, -1], ["right", 1, 0], ["bottom", 0, 1]];
+      for (const [side, u, v] of sides) {
+        const edge = this.framePoint(f, u, v);
+        const off = (side === "top" ? ROTATE_PX + CHAIN_PX : CHAIN_PX) * px;
+        const c = { x: edge.x + u * off, y: edge.y + v * off };
+        const hs = (CHAIN_SIZE_PX / 2) * px;
+        const tip = { x: c.x + u * hs, y: c.y + v * hs };
+        const b1 = { x: c.x - u * hs - v * hs, y: c.y - v * hs - u * hs };
+        const b2 = { x: c.x - u * hs + v * hs, y: c.y - v * hs + u * hs };
+        const tri = s("polygon", { class: "isk-chain", points: `${tip.x},${tip.y} ${b1.x},${b1.y} ${b2.x},${b2.y}` });
+        tri.dataset.handle = JSON.stringify({ kind: "chain", side } satisfies HandleSpec);
+        tri.append(s("title", {}));
+        this.overlay.append(tri);
+      }
+    }
     for (const [u, v] of [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]) {
       const p = this.framePoint(f, u, v);
       const corner = u !== 0 && v !== 0;
@@ -472,6 +496,12 @@ export class Stage {
       return;
     }
     if (!f) return;
+    if (h.kind === "chain" && objs.length === 1) {
+      const u = h.side === "left" ? -1 : h.side === "right" ? 1 : 0;
+      const v = h.side === "top" ? -1 : h.side === "bottom" ? 1 : 0;
+      this.drag = { kind: "chain", id: objs[0].id, side: h.side, from: this.framePoint(f, u, v), cur: p, moved: false, centre: { x: f.cx, y: f.cy } };
+      return;
+    }
     if (h.kind === "rotate") {
       this.drag = { kind: "rotate", ids, frame: f, startAngle: Math.atan2(p.y - f.cy, p.x - f.cx), delta: 0 };
       return;
@@ -496,6 +526,14 @@ export class Stage {
     }
     try {
       switch (d.kind) {
+        case "chain": {
+          d.cur = p;
+          if (!d.moved && Math.hypot(p.x - d.from.x, p.y - d.from.y) * this.scale < 6) return;
+          d.moved = true;
+          // Preview: dashed line from the side to the pointer, where the new element will be added.
+          this.guides.replaceChildren(s("line", { class: "isk-chain-preview", x1: d.from.x, y1: d.from.y, x2: p.x, y2: p.y }));
+          return;
+        }
         case "pan":
           this.ox = d.ox - (e.clientX - d.startClient.x) / this.scale;
           this.oy = d.oy - (e.clientY - d.startClient.y) / this.scale;
@@ -595,6 +633,8 @@ export class Stage {
   private onUp(e: PointerEvent): void {
     const d = this.drag;
     this.drag = undefined;
+    // Alt edits freely: no mechanical coupling (gears in mesh, gears on shafts) for this edit.
+    this.host.session().couple = !e.altKey;
     if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
     this.guides.replaceChildren();
     this.hideScaleLabel();
@@ -629,10 +669,19 @@ export class Stage {
         }
         case "pan":
           break;
+        case "chain": {
+          if (!d.moved) { this.host.quickAdd?.(d.id, d.side); break; }
+          const dx = d.cur.x - d.centre.x, dy = d.cur.y - d.centre.y;
+          const side: ChainSide = Math.abs(dx) >= Math.abs(dy) ? (dx < 0 ? "left" : "right") : (dy < 0 ? "top" : "bottom");
+          this.host.quickAdd?.(d.id, side, d.cur);
+          break;
+        }
       }
     } catch (err) {
       this.host.report(err);
       this.render();
+    } finally {
+      this.host.session().couple = true;
     }
   }
 

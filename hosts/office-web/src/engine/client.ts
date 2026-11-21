@@ -40,8 +40,11 @@ export class Engine {
 export class Session {
   constructor(readonly engine: Engine, readonly id: string) {}
 
+  /** Mechanical coupling for edits (gears in mesh, gears on shafts); the stage clears it while Alt is held. */
+  couple = true;
+
   private c<T>(method: string, args: object = {}): T {
-    return this.engine.call<T>(method, { session: this.id, ...args });
+    return this.engine.call<T>(method, { session: this.id, couple: this.couple, ...args });
   }
 
   state(includeSvg = true): EditorState { return this.c("state", { includeSvg }); }
@@ -72,6 +75,12 @@ export class Session {
   setMainText(id: string, text: string): EditorState { return this.c("setMainText", { id, text }); }
   /** Library items that fit the first of `ids` ("Insert ▸"), at most `max`. */
   suggestions(ids: string[], lang: string, max?: number): SuggestionInfo[] { return this.c("suggestions", { ids, lang, max }); }
+  /** "+" quick add: a connected copy of `id` on `side`, or at x/y when dropped; the new element is selected. */
+  quickAdd(id: string, side: "left" | "top" | "right" | "bottom", x?: number, y?: number): EditorState { return this.c("quickAdd", { id, side, x, y }); }
+  /** Library items offered as the next element after a quick add. */
+  nextItems(id: string, lang: string, max?: number): SuggestionInfo[] { return this.c("nextItems", { id, lang, max }); }
+  /** Turns `id` into library item `itemId`; its connectors stay attached. */
+  replaceItem(id: string, itemId: string): EditorState { return this.c("replaceItem", { id, itemId }); }
   /** "Type ▸": line types the selected line/arrow/dimension/lead line can become (empty for other objects). */
   conversions(ids: string[], lang: string): ActionInfo[] { return this.c("conversions", { ids, lang }); }
   /** Domain exports that apply to the selection (all objects of the page without a selection). */

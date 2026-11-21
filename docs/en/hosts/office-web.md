@@ -82,6 +82,11 @@ the units on the slide.
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.
+- **Quick add** (like the COM add-in): a selected flowchart, UML, ER, BPMN or basic element (`chain`) shows blue
+  triangles outside its sides; click adds a connected copy (`quickAdd`), drag and drop adds it at the drop point. The
+  context bar then starts with the next-element palette (`nextItems`; one click calls `replaceItem`).
+- **Coupling:** moves, resizes and parameter edits keep gears in mesh and gears on their shafts (engine `Coupling`);
+  holding Alt while releasing edits freely (`couple: false`, `Session.couple`).
 - **Anchor** (settings, on by default, like the COM add-in's ribbon toggle): a line end dragged onto a snap target
   attaches to it and follows when the target moves. Off: the end still snaps but stays where it is.
 - **Pie menu "Label ▸"** for lines, arrows, dimensions and lead lines: entries generated from the type parameters

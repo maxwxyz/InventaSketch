@@ -143,7 +143,8 @@ Export-Erweiterungspunkte der Module.
   „nächstes Element“ (`Flow`), mehr vom Kreismenü sichtbar in der schwebenden Leiste (wichtige Aktionen, Einfügen-Palette),
   Menüband-Gruppe Beschriftung in zwei Spalten, mechanische Kopplung (`Coupling`: Zahnräder bleiben im Eingriff, wenn sich
   Achsabstand oder ein Rad ändert, Wellen tragen ihre Räder) – in Core, Engine und COM erledigt. Als Nächstes: Kopplung für
-  Seiten-/Schemaansichten von Zahnrädern (Teilkreislinien), Riemen und Ketten, Antriebsstränge und Räder; Schnell-Anfügen
-  und Kopplung auf der Web-Bühne; freies Verschieben mit Alt im Web-Host.
+  Seiten-/Schemaansichten von Zahnrädern (Teilkreislinien), Riemen und Ketten, Antriebsstränge und Räder; Schnell-Anfügen,
+  Kopplung und freies Bearbeiten mit Alt auf der Web-Bühne am 21.11.2026 erledigt (Ziehen aus Anschlüssen und Verbinden
+  mit Anschlüssen noch nur im COM-Add-in).
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.

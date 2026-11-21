@@ -8,6 +8,9 @@ import { hasIcon, icon } from "./icons";
 
 export interface BarBox { left: number; top: number; right: number; bottom: number }
 
+/** "Next element" after a quick add: library items as thumbnails at the start of the bar (one click replaces). */
+export interface PaletteEntry { id: string; label: string; image?: string; active: boolean }
+
 /** Opacity for a pointer at distance d (px) from the bar: 1 near it, fading to 0 at `far`. */
 export function fadeOpacity(d: number, near = 28, far = 240): number {
   if (d <= near) return 1;
@@ -34,6 +37,7 @@ export class ContextBar {
     private readonly onAction: (a: ActionInfo) => void,
     private readonly onStyle: () => void,
     private readonly onMore: (clientX: number, clientY: number) => void,
+    private readonly onPalette: (itemId: string) => void = () => {},
   ) {
     this.el = h("div", { class: "isk-ctxbar", role: "toolbar", "aria-label": t("ctx.title") });
     this.el.hidden = true;
@@ -42,7 +46,7 @@ export class ContextBar {
   }
 
   /** Rebuilds and positions the bar; selectionKey identifies the selection (new selection → bar reappears). */
-  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean): void {
+  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean, palette: PaletteEntry[] = []): void {
     if (selectionKey !== this.key) {
       this.key = selectionKey;
       this.dismissed = false;
@@ -52,6 +56,17 @@ export class ContextBar {
       return;
     }
     this.el.replaceChildren();
+    if (palette.length) {
+      const row = h("div", { class: "isk-palette", role: "group", "aria-label": t("ctx.next") });
+      for (const p of palette) {
+        const b = h("button", { class: `isk-btn isk-icon-btn${p.active ? " is-active" : ""}`, type: "button", title: p.label, "aria-label": p.label });
+        if (p.image) b.append(h("img", { src: p.image, alt: "" }));
+        else b.textContent = p.label.slice(0, 2);
+        b.addEventListener("click", () => this.onPalette(p.id));
+        row.append(b);
+      }
+      this.el.append(row);
+    }
     const views = actions.filter((a) => a.kind === "view");
     if (views.length > 1) {
       const seg = h("div", { class: "isk-seg", role: "group", "aria-label": t("ctx.view") });

@@ -10,14 +10,14 @@ import { SlideSync } from "../office/sync";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
-import { ContextBar, InlinePrompt } from "./contextbar";
+import { ContextBar, InlinePrompt, type PaletteEntry } from "./contextbar";
 import { h, svgDataUrl } from "./dom";
 import { icon } from "./icons";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
 import { PieMenu } from "./piemenu";
 import { buildPieEntries, labelEntries, MAX_PIE_ITEMS, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
-import { Stage } from "./stage";
+import { Stage, type ChainSide } from "./stage";
 
 export interface AppOptions {
   engine: Engine;
@@ -79,6 +79,7 @@ export class App {
       finishInsert: () => this.cancelInsert(),
       snapEnabled: () => this.settings.snap,
       anchorEnabled: () => this.settings.anchor,
+      quickAdd: (id, side, at) => this.quickAdd(id, side, at),
       pointerMoved: (x, y) => this.bar.pointerMoved(x, y),
       report: (e) => this.report(e),
     });
@@ -121,7 +122,13 @@ export class App {
     }
 
     this.layout();
-    this.bar = new ContextBar(this.root, (a) => this.runAction(a), () => this.openInspectorStyle(), (x, y) => this.openPie(x, y));
+    this.bar = new ContextBar(this.root, (a) => this.runAction(a), () => this.openInspectorStyle(), (x, y) => this.openPie(x, y), (itemId) => {
+      const id = this.nextFor;
+      if (!id) return;
+      this.edit((s) => s.replaceItem(id, itemId));
+      this.nextFor = id;
+      this.updateBar();
+    });
     this.loadCatalog();
     this.bindKeys();
     this.bindDrop();
@@ -362,7 +369,29 @@ export class App {
       }
       if (this.mainTextTarget()) actions = [...actions, this.textAction()];
     }
-    this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open || this.prompt.open);
+    // Just added with "+": the next element is one click away (thumbnails at the start of the bar).
+    let palette: PaletteEntry[] = [];
+    if (this.nextFor && sel.length === 1 && sel[0] === this.nextFor) {
+      try {
+        const current = this.st.objects.find((o) => o.id === this.nextFor);
+        palette = this.sessionObj.nextItems(this.nextFor, lang()).map((s) => {
+          const item = this.catalog.items.find((i) => i.id === s.id);
+          return { id: s.id, label: s.name, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined, active: s.typeId === current?.type && s.view === current?.view };
+        });
+      } catch (e) {
+        this.report(e);
+      }
+    } else if (sel.length !== 1 || sel[0] !== this.nextFor) this.nextFor = undefined;
+    this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open || this.prompt.open, palette);
+  }
+
+  /** Element just added by quick add: the bar offers the next-element palette for it. */
+  private nextFor?: string;
+
+  private quickAdd(id: string, side: ChainSide, at?: { x: number; y: number }): void {
+    this.edit((s) => s.quickAdd(id, side, at?.x, at?.y));
+    this.nextFor = this.st.selection.length === 1 ? this.st.selection[0] : undefined;
+    this.updateBar();
   }
 
   private edit(f: (s: Session) => EditorState, live = true): void {

@@ -29,6 +29,8 @@ export interface ObjectInfo {
   centred?: boolean;
   /** Selected objects only: main text for quick editing (double-click, bar, pie); set it with setMainText. */
   mainText?: MainTextInfo;
+  /** Selected objects only: quick-add "+" arrows apply (flowchart, UML, ER, BPMN, basic shapes). */
+  chain?: boolean;
 }
 
 /** Main text of an object: object text (no key) or the text parameter `key` (numeral, text, label, name, title). */

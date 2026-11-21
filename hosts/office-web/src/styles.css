@@ -186,3 +186,10 @@ textarea.isk-input { resize: vertical; }
 
 /* Vertical button list (data export). */
 .isk-col { display: flex; flex-direction: column; gap: 6px; align-items: stretch; }
+
+/* Quick add: blue "+" triangles beside a chainable element and the drag preview. */
+.isk-chain { fill: #1f5fbf; cursor: pointer; }
+.isk-chain:hover { fill: #3c82e6; }
+.isk-chain-preview { stroke: #1f5fbf; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; fill: none; }
+.isk-palette { display: flex; gap: 2px; padding-right: 4px; margin-right: 4px; border-right: 1px solid var(--border); }
+.isk-palette img { width: 26px; height: 26px; display: block; }

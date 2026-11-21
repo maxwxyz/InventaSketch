@@ -87,6 +87,12 @@ Folie behalten.
 - **Skalieren**: zentrierte Teile (Zahnräder, Lager, Räder: `centred`) skalieren standardmäßig um ihre Mitte, mit Strg
   von der Gegenkante; andere Objekte umgekehrt. Eine Beschriftung neben dem Mauszeiger zeigt Größe (oder Faktor) und den
   aktiven Modus mit der Strg-Alternative.
+- **Schnell-Anfügen** (wie im COM-Add-in): Ein ausgewähltes Ablaufdiagramm-, UML-, ER-, BPMN- oder Grundform-Element
+  (`chain`) zeigt blaue Dreiecke außerhalb seiner Seiten; ein Klick fügt eine verbundene Kopie an (`quickAdd`), Ziehen und
+  Loslassen fügt sie an der Ablagestelle ein. Die Kontextleiste beginnt dann mit der Palette „nächstes Element“
+  (`nextItems`; ein Klick ruft `replaceItem`).
+- **Kopplung:** Verschieben, Skalieren und Parameteränderungen halten Zahnräder im Eingriff und Räder auf ihren Wellen
+  (Engine `Coupling`); mit gedrückter Alt-Taste beim Loslassen wird frei bearbeitet (`couple: false`, `Session.couple`).
 - **Verankern** (Einstellungen, standardmäßig an, wie der Menüband-Schalter des COM-Add-ins): Ein auf ein Fangziel
   gezogenes Linienende hängt daran und folgt, wenn das Ziel verschoben wird. Aus: Das Ende rastet ein, bleibt aber stehen.
 - **Kreismenü „Beschriftung ▸“** für Linien, Pfeile, Maße und Hinweislinien: Einträge aus den Typparametern
