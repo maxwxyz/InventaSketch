@@ -114,7 +114,8 @@ picture fallback is needed. Rounded rectangles (closed reservoir, accumulator) u
 ## Limits and next steps
 
 - No numeric port identification (`1`, `2`, `3`, `12`, `14` …), no servo/proportional valves, no logic-element blocks.
-- A line end docked on another line (rail) is not attached to it; use a junction dot for branches.
+- A line end docked on another line (its rail) is attached to it (a branch): it follows the line and the connection
+  list joins both lines; a junction dot is optional.
 - Labels and port names lie outside the object box, so host selection frames do not include them.
 - Visual review: `dotnet test` writes an SVG gallery (ports as red circles, valve variants, sample circuit) to
   `tests/InventaSketch.Modules.Fluid.Tests/bin/Debug/net10.0/gallery/index.html`.

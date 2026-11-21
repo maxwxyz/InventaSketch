@@ -115,8 +115,9 @@ versteckten Modulzustand. Ein JSON-Round-Trip reproduziert Dokument und gerender
 
 - Noch keine automatischen Verbindungspunkte und keine Kreuzungsbögen; die Regelprüfung kennt keine Pin-Typen (Ausgang
   gegen Ausgang, unversorgte Netze).
-- Ein an einer anderen Leitung oder einem Bus (Schiene) angedocktes Leitungsende ist nicht daran gebunden (Anbindungen
-  zielen nur auf Box-Objekte); es bleibt stehen, wenn die andere Leitung verschoben wird.
+- Ein an einer anderen Leitung oder einem Bus (deren Schiene) angedocktes Leitungsende hängt an dieser Schiene
+  (Abzweig): Es folgt, wenn die andere Leitung verschoben oder geändert wird, und die Netzliste fasst beide Leitungen
+  zu einem Netz zusammen.
 - Beschriftungen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
 - Sichtprüfung: `dotnet test` schreibt eine SVG-Galerie nach
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (Ports als rote Kreise, dazu ein

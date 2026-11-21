@@ -5,10 +5,13 @@ using System.Linq;
 namespace InventaSketch.Core
 {
     /// <summary>
-    /// Attachments of points to box objects. An <see cref="Attachment"/> stores normalised box coordinates, so it follows
-    /// moving, rotating and free scaling of the target. When it also names a target anchor
+    /// Attachments of points to other objects. To a box object an <see cref="Attachment"/> stores normalised box
+    /// coordinates, so it follows moving, rotating and free scaling of the target. When it also names a target anchor
     /// (<see cref="Attachment.AnchorId"/>, e.g. an electrical pin), <see cref="Refresh"/> re-resolves it to that anchor
-    /// after edits that move the anchor inside the box (polarity flip, parameter or view change).
+    /// after edits that move the anchor inside the box (polarity flip, parameter or view change). To a line (point
+    /// object) it names one of the line's rails (<c>rail0</c>, <c>rail1</c> …, see <see cref="Registry.PageAnchors"/>) and
+    /// stores the position along it in <see cref="Attachment.U"/> (0 = start, 1 = end): a branch wire, pipe or road
+    /// follows the line it joins, and connection exports count it as connected.
     /// </summary>
     public static class Attachments
     {
@@ -25,10 +28,24 @@ namespace InventaSketch.Core
             var t = result.Target;
             if (t?.Owner is null) return null;
             var owner = doc.Get(t.Owner);
-            if (owner is null || owner.IsPointGeometry) return null;
-            var (u, v) = owner.ToBox(snapped);
-            var anchorId = t.Kind == AnchorKind.Point && t.P.DistanceTo(snapped) < 1e-6 ? t.Id : null;
-            return new Attachment(owner.Id, u, v) { AnchorId = anchorId };
+            return owner is null ? null : For(owner, snapped, t);
+        }
+
+        /// <summary>
+        /// Attachment of a point at <paramref name="at"/> snapped to <paramref name="target"/> of <paramref name="owner"/>:
+        /// box owners give normalised box coordinates (plus the anchor id of named point anchors), lines give their rail
+        /// id and the position along it. Null for a line target that is not a rail.
+        /// </summary>
+        public static Attachment? For(SketchObject owner, Vec2 at, Anchor target)
+        {
+            if (owner.IsPointGeometry)
+            {
+                if (target.Kind != AnchorKind.Segment || target.Role != AnchorRole.Rail || target.Id is null) return null;
+                var (_, t) = Geo.ClosestOnSegment(at, target.P, target.Q);
+                return new Attachment(owner.Id, t, 0) { AnchorId = target.Id };
+            }
+            var (u, v) = owner.ToBox(at);
+            return new Attachment(owner.Id, u, v) { AnchorId = target.Kind == AnchorKind.Point && target.P.DistanceTo(at) < 1e-6 ? target.Id : null };
         }
 
         /// <summary>
@@ -40,6 +57,18 @@ namespace InventaSketch.Core
         public static SketchDocument Refresh(Registry registry, SketchDocument doc, RenderContext? ctx = null)
         {
             if (!doc.Objects.Values.Any(o => o.Attach is not null && o.Attach.Any(a => a?.AnchorId is not null))) return doc;
+            // Branches of branches follow in turn: one pass per level (bounded, cycles stop there).
+            for (var pass = 0; pass < 4; pass++)
+            {
+                var next = RefreshOnce(registry, doc, pass == 0 ? ctx : null);
+                if (ReferenceEquals(next, doc)) return doc;
+                doc = next;
+            }
+            return doc;
+        }
+
+        private static SketchDocument RefreshOnce(Registry registry, SketchDocument doc, RenderContext? ctx)
+        {
             var context = ctx is not null && ReferenceEquals(ctx.Doc, doc) ? ctx : new RenderContext(doc, ctx?.Lang ?? Lang.En, ctx?.Monochrome ?? false);
             var cache = new Dictionary<string, List<Anchor>>(StringComparer.Ordinal);
             Dictionary<string, SketchObject>? changed = null;
@@ -53,10 +82,22 @@ namespace InventaSketch.Core
                     var a = o.Attach[i];
                     if (a?.AnchorId is null) continue;
                     var target = doc.Get(a.ObjectId);
-                    if (target is null || target.IsPointGeometry || registry.Type(target.Type) is null) continue;
+                    if (target is null || target.Id == o.Id || registry.Type(target.Type) is null) continue;
                     if (!cache.TryGetValue(target.Id, out var anchors))
-                        cache[target.Id] = anchors = registry.PageAnchors(target, context).Where(x => x.Kind == AnchorKind.Point && x.Id is not null).ToList();
-                    var anchor = anchors.FirstOrDefault(x => x.Id == a.AnchorId);
+                        cache[target.Id] = anchors = registry.PageAnchors(target, context).Where(x => x.Id is not null).ToList();
+                    if (target.IsPointGeometry)
+                    {
+                        // Branch: the point sits at its fraction along the named rail of the line.
+                        var rail = anchors.FirstOrDefault(x => x.Kind == AnchorKind.Segment && x.Id == a.AnchorId);
+                        if (rail is null) continue;
+                        var on = Vec2.Lerp(rail.P, rail.Q, Math.Max(0, Math.Min(1, a.U)));
+                        if (on.DistanceTo(o.Points[i]) < Same) continue;
+                        attach ??= o.Attach.ToList();
+                        points ??= o.Points.ToList();
+                        points[i] = on;
+                        continue;
+                    }
+                    var anchor = anchors.FirstOrDefault(x => x.Kind == AnchorKind.Point && x.Id == a.AnchorId);
                     if (anchor is null) continue;
                     var (u, v) = target.ToBox(anchor.P);
                     if (Math.Abs(u - a.U) < Same && Math.Abs(v - a.V) < Same) continue;

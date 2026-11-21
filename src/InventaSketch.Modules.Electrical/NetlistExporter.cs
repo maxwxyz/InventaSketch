@@ -9,9 +9,10 @@ namespace InventaSketch.Modules.Electrical
 {
     /// <summary>
     /// Netlist / connection list (CSV): wire ends docked to component pins (attachments with a pin id) join pins into
-    /// nets; junction dots and wires sharing a pin merge nets. One row per net with its pins "R1.1", "C1.2".
+    /// nets; junction dots, wires sharing a pin and branch wires attached to another wire (a T-joint docked onto its rail)
+    /// merge nets. One row per net with its pins "R1.1", "C1.2".
     /// Preserves: electrical connectivity between pins and component designators; not the wire routing.
-    /// Wires that only touch other wires (no pin) are not connected (illustrative schematics have no ERC).
+    /// Wires that only touch other wires without being attached are not connected.
     /// </summary>
     internal sealed class NetlistExporter : IExporter
     {
@@ -40,12 +41,17 @@ namespace InventaSketch.Modules.Electrical
             }
             void Union(string a, string b) => parent[Find(a)] = Find(b);
 
+            // Every wire is a node: the pins it is docked to join it, and so does a wire it branches off (attached to it).
             foreach (var w in objects.Where(IsWire))
             {
-                var pins = (w.Attach ?? Array.Empty<Attachment?>()).Where(a => a?.AnchorId is not null && byId.ContainsKey(a.ObjectId))
-                    .Select(a => a!.ObjectId + "\u0001" + a.AnchorId).ToList();
-                foreach (var p in pins) Find(p);
-                for (var i = 1; i < pins.Count; i++) Union(pins[0], pins[i]);
+                var node = "\u0002" + w.Id;
+                Find(node);
+                foreach (var a in w.Attach ?? Array.Empty<Attachment?>())
+                {
+                    if (a is null || !byId.TryGetValue(a.ObjectId, out var target)) continue;
+                    if (IsWire(target)) Union(node, "\u0002" + target.Id);
+                    else if (a.AnchorId is not null) Union(a.ObjectId + "\u0001" + a.AnchorId, node);
+                }
             }
             // A junction dot connects all wires docked to any of its pins.
             foreach (var j in objects.Where(o => o.Type == "elec.junction"))
@@ -63,8 +69,8 @@ namespace InventaSketch.Modules.Electrical
                 return name + "." + parts[1];
             }
 
-            var nets = parent.Keys.GroupBy(Find)
-                .Select(g => g.Where(k => byId[k.Split('\u0001')[0]].Type != "elec.junction").Select(PinName).OrderBy(n => n, StringComparer.Ordinal).ToList())
+            var nets = parent.Keys.ToList().GroupBy(Find)
+                .Select(g => g.Where(k => k[0] != '\u0002' && byId[k.Split('\u0001')[0]].Type != "elec.junction").Select(PinName).OrderBy(n => n, StringComparer.Ordinal).ToList())
                 .Where(n => n.Count > 1)
                 .OrderBy(n => n[0], StringComparer.Ordinal)
                 .ToList();

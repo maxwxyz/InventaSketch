@@ -84,12 +84,13 @@ Export-Erweiterungspunkte der Module.
 
 - **Stand 20.11.2026:** Engine-Kern, Engine-API und zwölf Module auf `main` (zuletzt Karten und Routen sowie
   Fluidtechnik; 826 Bibliothekselemente in 70 Kategorien, in PowerPoint geprüft).
-- Core-Wünsche aus den Modulen Karten und Fluidtechnik (20.11.2026): Anhänge an Punktobjekte und Schienen (Abzweige ohne
-  Verbindungspunkt); gemeinsame Helfer für Anschluss-Routing/`ConnectToPort` (Elektro und Fluid doppeln sie) und
+- Core-Wünsche aus den Modulen Karten und Fluidtechnik (20.11.2026): gemeinsame Helfer für Anschluss-Routing/`ConnectToPort` (Elektro und Fluid doppeln sie) und
   Freiformen mit mehreren Teilpfaden; Grenzen mehrzeiliger Texte in `Prim.Bounds`; der gewählte Punkt für „Wegpunkt entfernen“. Erledigt am 20.11.2026:
   `IconIds.Pin`, `Medium`, `Actuation` (Piktogramme in COM und Web); `ObjectType.IsPart` (die Stückliste lässt
   Kartensymbole und Diagrammformen aus); `ObjectType.OnParamChanged` mit `Registry.SetParam` (Engine `setParam`,
-  COM-Beschriftungsmenü; Fluid-Ventile behalten ihren Zeichnungsmaßstab).
+  COM-Beschriftungsmenü; Fluid-Ventile behalten ihren Zeichnungsmaßstab). Erledigt am 21.11.2026: Leitungsabzweige – ein auf die Schiene einer
+  anderen Leitung gezogenes Leitungsende hängt daran (`Attachments.For`, Schienen-Ids aus `Registry.PageAnchors`), folgt
+  ihr (auch über COM-Einheiten hinweg), und Netzliste sowie Fluid-Verbindungsliste zählen es.
 - UI-Symbole (Vorgabe des Maintainers, 20.11.2026): Symbole in Overlays, schwebender Leiste und Kreismenü sind abstrakte,
   saubere Piktogramme (ein einheitlicher Linien-Symbolsatz, z. B. „Strich-Schema“, „Schnitt“, „Stirnansicht“, „Spiegeln“),
   keine verkleinerten Abbilder des konkreten Elements, damit sie auch klein erkennbar bleiben. Module benennen je Ansicht/

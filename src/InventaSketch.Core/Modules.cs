@@ -708,7 +708,14 @@ namespace InventaSketch.Core
             {
                 var pts = ctx.Doc.ResolvePoints(o);
                 for (var i = 0; i < pts.Count; i++) yield return Anchor.Point(AnchorRole.End, pts[i], "p" + i.ToString(CultureInfo.InvariantCulture));
-                if (type is not null) foreach (var a in type.Anchors(o, ctx)) yield return a;
+                if (type is null) yield break;
+                // Rails of lines get ids in their order ("rail0", "rail1" …), so a line end docked onto them (a branch)
+                // can be attached to the rail and follow it (Attachments.For / Refresh).
+                var rail = 0;
+                foreach (var a in type.Anchors(o, ctx))
+                    yield return a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Rail && a.Id is null
+                        ? a with { Id = "rail" + (rail++).ToString(CultureInfo.InvariantCulture) }
+                        : a;
                 yield break;
             }
             var m = o.Matrix();

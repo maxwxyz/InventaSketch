@@ -119,8 +119,8 @@ Speicher) nutzen den Eckenradius des Rechtecks.
 
 - Keine numerische Anschlusskennzeichnung (`1`, `2`, `3`, `12`, `14` …), keine Servo-/Proportionalventile, keine
   Logikbausteine.
-- Ein auf einer anderen Leitung (Schiene) angedocktes Leitungsende ist nicht an sie gebunden; für Abzweige einen
-  Verbindungspunkt verwenden.
+- Ein auf einer anderen Leitung (deren Schiene) angedocktes Leitungsende hängt an ihr (Abzweig): Es folgt der Leitung,
+  und die Verbindungsliste fasst beide Leitungen zusammen; ein Verbindungspunkt ist optional.
 - Kennzeichen und Anschlussnamen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
 - Sichtprüfung: `dotnet test` schreibt eine SVG-Galerie (Anschlüsse als rote Kreise, Ventilvarianten, Beispielschaltung)
   nach `tests/InventaSketch.Modules.Fluid.Tests/bin/Debug/net10.0/gallery/index.html`.

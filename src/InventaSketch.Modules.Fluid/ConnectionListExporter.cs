@@ -12,7 +12,8 @@ namespace InventaSketch.Modules.Fluid
     /// with a port id) join ports into connections; permanent passages (junction dot, crossing, coupled quick coupling)
     /// merge or keep apart connections as drawn. One row per connection with the line types used and its ports
     /// ("0P1.P; 1V1.P"). Preserves: which ports are joined by which kind of line, component designators and displayed port
-    /// names; not the line routing, not the switching paths inside valves and not line ends that only touch other lines.
+    /// names; a branch line attached to another line (docked onto its rail) joins its connection. Not preserved: the line
+    /// routing, the switching paths inside valves and line ends that only touch other lines without being attached.
     /// </summary>
     internal sealed class ConnectionListExporter : IExporter
     {
@@ -50,16 +51,19 @@ namespace InventaSketch.Modules.Fluid
             }
             static string Key(string objectId, string portId) => objectId + "\u0001" + portId;
 
+            // Every line is a node: the ports it is docked to join it, and so does a line it branches off (attached to it).
+            static string Node(string lineId) => "\u0002" + lineId;
             foreach (var line in objects.Where(IsLine))
             {
-                var ports = (line.Attach ?? Array.Empty<Attachment?>())
-                    .Where(a => a?.AnchorId is not null && byId.ContainsKey(a.ObjectId))
-                    .Select(a => Key(a!.ObjectId, a.AnchorId!)).ToList();
-                if (ports.Count == 0) continue;
-                foreach (var p in ports) Find(p);
-                for (var i = 1; i < ports.Count; i++) Union(ports[0], ports[i]);
-                if (!kinds.TryGetValue(ports[0], out var set)) kinds[ports[0]] = set = new SortedSet<string>(StringComparer.Ordinal);
-                set.Add(FluidLineType.KindOf(line));
+                var node = Node(line.Id);
+                Find(node);
+                kinds[node] = new SortedSet<string>(StringComparer.Ordinal) { FluidLineType.KindOf(line) };
+                foreach (var a in line.Attach ?? Array.Empty<Attachment?>())
+                {
+                    if (a is null || !byId.TryGetValue(a.ObjectId, out var target)) continue;
+                    if (IsLine(target)) Union(node, Node(target.Id));
+                    else if (a.AnchorId is not null) Union(Key(a.ObjectId, a.AnchorId), node);
+                }
             }
             // Permanent passages inside objects (junction dots join everything docked to them; crossings keep W-E and N-S apart).
             foreach (var o in objects)
@@ -73,6 +77,7 @@ namespace InventaSketch.Modules.Fluid
             }
 
             // Junction dots and crossings are part of the lines, not components: they are not listed as ports.
+            bool IsNode(string key) => key[0] == '\u0002';
             bool IsPassage(string key) => byId[key.Split('\u0001')[0]].Type is "fluid.junction" or "fluid.crossing";
             string PortName(string key)
             {
@@ -88,9 +93,9 @@ namespace InventaSketch.Modules.Fluid
                 ? kind switch { "pilot" => "Steuerleitung", "drain" => "Leckölleitung", "hose" => "Schlauch", _ => "Arbeitsleitung" }
                 : kind switch { "pilot" => "pilot", "drain" => "drain", "hose" => "hose", _ => "working" };
 
-            var groups = parent.Keys.GroupBy(Find).Select(g =>
+            var groups = parent.Keys.ToList().GroupBy(Find).Select(g =>
             {
-                var ports = g.Where(k => !IsPassage(k)).Select(PortName).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
+                var ports = g.Where(k => !IsNode(k) && !IsPassage(k)).Select(PortName).Distinct().OrderBy(n => n, StringComparer.Ordinal).ToList();
                 var lineKinds = g.SelectMany(k => kinds.TryGetValue(k, out var s) ? s : Enumerable.Empty<string>()).Distinct().OrderBy(k => k, StringComparer.Ordinal).Select(Kind).ToList();
                 return (Ports: ports, Kinds: lineKinds);
             })

@@ -1264,9 +1264,8 @@ namespace InventaSketch.AddIn.OnSlide
         private Attachment? AnchorFor(Vec2 at, SnapResult? snap)
         {
             if (!AddInSettings.Anchor || snap?.Target is not { Owner: { } ownerId } target) return null;
-            if (!_targetOwners.TryGetValue(ownerId, out var owner) || owner.IsPointGeometry) return null;
-            var (u, v) = owner.ToBox(at);
-            return new Attachment(owner.Id, u, v) { AnchorId = target.Kind == AnchorKind.Point && target.P.DistanceTo(at) < 1e-6 ? target.Id : null };
+            // Box targets: normalised position (and pin id); lines: their rail and the position along it (a branch).
+            return _targetOwners.TryGetValue(ownerId, out var owner) ? Attachments.For(owner, at, target) : null;
         }
 
         /// <summary>The other selected points (box selection) moved by the same offset as the dragged one.</summary>

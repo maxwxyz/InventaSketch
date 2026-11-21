@@ -43,5 +43,26 @@ namespace InventaSketch.AddIn.Tests
             Assert.False(SketchUnits.HasExternalAttachments(free));
             Assert.Same(free, SketchUnits.ResolveAnchors(registry, free, new[] { gearUnit }));
         }
+
+        [Fact]
+        public void BranchWireInAnotherUnitFollowsTheMainWire()
+        {
+            var registry = ModuleCatalog.CreateDefault();
+            var wireItem = System.Linq.Enumerable.First(registry.Library, i => i.TypeId == "elec.wire");
+            var main = registry.Create(wireItem, Vec2.Zero) with { Points = new[] { new Vec2(20, 40), new Vec2(120, 40) } };
+            var branch = registry.Create(wireItem, Vec2.Zero) with
+            {
+                Points = new[] { new Vec2(70, 90), new Vec2(70, 40) },
+                Attach = new Attachment?[] { null, new Attachment(main.Id, 0.5, 0) { AnchorId = "rail0" } },
+            };
+            var branchUnit = Unit(branch);
+            Assert.True(SketchUnits.HasExternalAttachments(branchUnit));
+            // The main wire (another unit) is moved 10 mm down: the branch end follows along its rail.
+            var moved = main with { Points = new[] { new Vec2(20, 50), new Vec2(120, 50) } };
+            var resolved = SketchUnits.ResolveAnchors(registry, branchUnit, new[] { new SketchUnit(null!, moved.Id, Unit(moved), default) });
+            var pts = resolved.Get(branch.Id)!.Points!;
+            Assert.Equal(new Vec2(70, 50), pts[1]);
+            Assert.Equal(new Vec2(70, 90), pts[0]);
+        }
     }
 }

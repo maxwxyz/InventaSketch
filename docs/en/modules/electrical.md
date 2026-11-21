@@ -108,8 +108,8 @@ module state. A JSON round trip reproduces the document and the rendered SVG exa
 ## Limits and next steps
 
 - No auto-junctions or crossing jumps yet; the rule check knows no pin types (output against output, unpowered nets).
-- A wire end docked on another wire or a bus (rail) is not attached to it (attachments target box objects only); it keeps
-  its position when the other wire moves.
+- A wire end docked on another wire or a bus (its rail) is attached to that rail (a branch): it follows when the
+  other wire moves or changes, and the netlist joins both wires into one net.
 - Labels lie outside the object box, so host selection frames do not include them.
 - Visual review: `dotnet test` writes an SVG gallery to
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (ports shown as red circles,
