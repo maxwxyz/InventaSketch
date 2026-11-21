@@ -173,6 +173,7 @@ namespace InventaSketch.Core
         public const string Split = "cmd-split";
         public const string Hop = "cmd-hop";
         public const string Explode = "cmd-explode";
+        public const string Motion = "cmd-motion";
         public const string Junction = "cmd-junction";
         public const string RemovePoint = "cmd-point-remove";
         public const string ShapeSquare = "shape-square";
@@ -254,7 +255,7 @@ namespace InventaSketch.Core
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
             MachInner, MachOuter, MachAxial, MachAxialDoubleRotor, MachAxialDoubleStator, MachMagnet, MachWound, MachCage, MachReluctance,
             HubNone, HubFixed, HubSliding, HubLoose, Helix, ShaftEnds, Ground,
-            Split, RemovePoint, Hop, Junction, Explode,
+            Split, RemovePoint, Hop, Junction, Explode, Motion,
             ShapeSquare, ShapeCircle, ShapeTriangle, FillTint, FillHatch, FillDots, FillNone, RouteFree, RouteOrthogonal, Route45,
             WallThick, WallMedium, WallThin,
         };

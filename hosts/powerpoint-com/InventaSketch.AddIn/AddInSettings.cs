@@ -42,6 +42,12 @@ namespace InventaSketch.AddIn
             set { _data.HiddenModules = value.ToList(); Save(); }
         }
 
+        /// <summary>
+        /// Motion mode: dragging turns gear trains and linkages the way they can move instead of editing them. Not saved:
+        /// PowerPoint always starts in edit mode.
+        /// </summary>
+        public static bool Motion { get; set; }
+
         /// <summary>Line ends snapped to another element stay attached to it and follow when it moves.</summary>
         public static bool Anchor
         {

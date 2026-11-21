@@ -100,6 +100,18 @@ namespace InventaSketch.Core
                 .Select(o => o.Id).ToList();
             if (changed.Count == 0) return after;
 
+            // Turning a part seen along its axis (gear, carrier, pulley in axial view) about its centre drives its train.
+            if (changed.Count == 1 && before.Get(changed[0]) is { } t0 && after.Get(changed[0]) is { } t1 && t0.Size == t1.Size
+                && t0.Transform with { Rotation = 0 } == t1.Transform with { Rotation = 0 } && Math.Abs(t1.Transform.Rotation - t0.Transform.Rotation) > Eps
+                && GearTrain.Spins(registry, t1))
+            {
+                var turned = GearTrain.Turn(registry, before, t1.Id, t1.Transform.Rotation - t0.Transform.Rotation, lang);
+                // Objects only in the new state (none for a pure turn) stay as they are.
+                foreach (var o in after.Objects.Values.Where(o => turned.Get(o.Id) is null))
+                    turned = Edits.Add(turned, turned.Pages[0].Id, o);
+                return Edits.Update(turned, new[] { t1.Id }, o => o with { Transform = t1.Transform });
+            }
+
             var ctx0 = new RenderContext(before, lang);
             var f0 = new Dictionary<string, Features>(StringComparer.Ordinal);
             foreach (var o in before.Objects.Values.Where(o => !o.IsPointGeometry && after.Get(o.Id) is not null))

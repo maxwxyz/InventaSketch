@@ -120,6 +120,16 @@ namespace InventaSketch.Core
             return att is null ? doc : Edits.SetPoint(doc, line.Id, link.Index, p, att);
         }
 
+        /// <summary>Gear ratio i = n_self / n_other of two meshing gears (pitch radius of the other over the own).</summary>
+        private static double? Ratio(Registry registry, SketchDocument doc, string self, string other)
+        {
+            var ctx = new RenderContext(doc, Lang.En);
+            double? R(string id) => doc.Get(id) is { } o
+                ? registry.PageAnchors(o, ctx).FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner)?.Radius
+                : null;
+            return R(self) is double a && R(other) is double b && a > 1e-9 ? b / a : null;
+        }
+
         /// <summary>Tooltip of a link marker, seen from the selected object <paramref name="self"/>: what it is and what a click does.</summary>
         public static string Describe(Registry registry, SketchDocument doc, Link link, string self, Lang lang = Lang.En)
         {
@@ -137,6 +147,8 @@ namespace InventaSketch.Core
                 _ when self == link.A => (de ? "Linienende an " : "Line end at ") + other,
                 _ => other + (de ? " an diesem Punkt" : " at this point"),
             };
+            if (link.Kind == LinkKind.Mesh && Ratio(registry, doc, self, link.Other(self)) is double i)
+                what += " (i = " + i.ToString("0.##", de ? System.Globalization.CultureInfo.GetCultureInfo("de-DE") : System.Globalization.CultureInfo.InvariantCulture) + ")";
             var state = link.Kind == LinkKind.Attached
                 ? link.Released ? (de ? "frei – Klick dockt an" : "free – click docks it") : (de ? "angedockt – Klick löst" : "docked – click releases")
                 : link.Released ? (de ? "gelöst – Klick koppelt" : "released – click couples") : (de ? "gekoppelt – Klick löst" : "coupled – click releases");

@@ -167,6 +167,9 @@ Differentials, Getriebe bewegen (P2).
   Kette bewegt sich bei konstanten Gliedlängen (allgemeiner 2D-Zwangsbedingungslöser statt der geschlossenen Lösungen je
   Getriebe); Grenzen, Zwischenlagen, Koppelkurven und Animation als Folien für jede Kette; vordefinierte Getriebe werden
   Start-Baugruppen, die sich in ihre Glieder zerlegen lassen.
+- **Erledigt 21.11.2026 (Core + COM): Getriebe live per Ziehen im Bewegungsmodus bewegen** (siehe Host-Doku);
+  Koppelgetriebe drehen ihre Antriebskurbel. Offen: Folien-Animation von Getrieben als Extra für alles Bewegliche
+  (Maintainer: Live-Ziehen zuerst), Ziehen zum Simulieren für selbst gebaute Koppelgetriebe.
 - **P2 – Getriebe bewegen:** den Antrieb drehen (Zahnrad oder Welle auf der Folie ziehen), und jedes Rad dreht sich mit
   seiner Übersetzung (Zähne bleiben im Eingriff, Stege laufen um, Planeten wälzen ab); Übersetzungen auf Wunsch
   angezeigt; Animation als Morph-Folien wie bei den Koppelgetrieben (`ObjectType.AnimationFrames` für Getriebe). Heute
