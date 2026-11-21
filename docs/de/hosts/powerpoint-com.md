@@ -189,9 +189,13 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   entfernt durchscheinende Füllungen. Erneutes Klicken stellt die Farben wieder her.
 - **Text**: Doppelklick auf eine ausgewählte Einheit, der Leistenknopf „Text“ oder „Text …“ im Kreismenü bearbeiten
   ihren Haupttext (Objekttext, Bezugszeichen, Name oder Beschriftung).
-- **Einfügen ▸** im Kreismenü bietet passende Elemente zur Auswahl an (`ObjectType.Companions`, sonst dieselbe
-  Kategorie, immer Bezugszeichen/Bezugslinie/Pfeil), in derselben Art von Ansicht; die Wahl startet das Einfügen am
-  Mauszeiger mit Fangen.
+- **Einfügen ▸** im Kreismenü (und die Einfüge-Palette der Leiste) bietet passende Elemente zur Auswahl an
+  (`ObjectType.Companions`, sonst dieselbe Kategorie, immer Bezugszeichen/Bezugslinie/Pfeil), in derselben Art von
+  Ansicht. Die Wahl setzt das Element dorthin, wo es hingehört (`Fitting.Place`), gekoppelt und ausgewählt: Zahnrad, Lager
+  oder Rad auf die gewählte Welle (Nabe auf der Achse, an einer freien Stelle), Zahnrad neben Zahnrad im Eingriff (unten,
+  oben, rechts oder links, wo es nichts überdeckt), Welle durch die Nabe eines Teils, Lager neben einem Zahnrad auf dessen
+  Welle. Seine Auswahlen (Welle-Nabe-Verbindung fest / schiebend / lose …) stehen dann in der Leiste. Elemente ohne solche
+  Regel starten das Einfügen am Mauszeiger mit Fangen.
 - **Verankern** (standardmäßig an): an einem anderen Element eingerastete Linienenden speichern eine Anbindung (mit
   Pin-ID) und folgen, wenn das Element verschoben, gedreht oder skaliert wird (ein Rückgängig-Schritt); wird die Linie
   selbst verschoben, lösen sich ihre Enden. Geprüft: ein am Zahnradrand eingerasteter Pfeil folgte dem gezogenen Zahnrad.
@@ -203,6 +207,22 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   einer Wellenachse liegt, folgen der Welle (verschieben, drehen, strecken); das Rad allein verschoben gleitet. Rad und
   Welle mit gleicher Nabe (Stirnansicht) bewegen sich gemeinsam. Beim Skalieren eines Rads im Eingriff rastet es nicht
   mehr am Partner ein. Geprüft am 21.11.2026: ein um 9,35 mm weggezogenes Rad skalierte beide Räder um 1,37 im Eingriff.
+- **Was verbunden ist (Schloss-Marker):** Eine ausgewählte Einheit zeigt neben jeder Stelle, an der sie ein anderes
+  Element berührt und ihm folgt (`Links.For`), ein kleines Schloss: Zahnräder im Eingriff (auf der Mittenlinie), Teile auf
+  einer Welle (an der Nabe), konzentrische Teile, angedockte Linienenden. Geschlossenes blaues Schloss: gekoppelt, bewegt
+  oder skaliert sich mit. Offenes graues Schloss: berührt, aber gelöst, oder ein Linienende liegt auf einem Anschluss,
+  ohne angedockt zu sein. Beim Überfahren steht da, was es ist und was ein Klick tut („Eingriff mit Stirnrad: gekoppelt –
+  Klick löst“); ein Klick schaltet um (`Links.Toggle`, ein Rückgängig-Schritt). Ein gelöstes Paar wird an beiden Objekten
+  gespeichert (`SketchObject.Released`) und vergessen, sobald sie sich nicht mehr berühren; wieder zusammengefangene Teile
+  sind also wieder gekoppelt. Die Marker sitzen neben dem Berührpunkt, damit man ein Zahnrad weiter an seiner Mitte und
+  eine Linie an ihrem Ende ziehen kann. Nur bei eingeschaltetem Verankern.
+- **Ecken und Abzweige von Linien:** Eine ausgewählte Leitung, Fluidleitung, Straße, Bahnlinie, Fluss, Route, Fläche oder
+  Polylinie (`ObjectType.InsertablePoints`) zeigt in der Mitte jedes Abschnitts ein „+“ (bei geführten Leitungen auf dem
+  gezeichneten Pfad). Klick setzt eine neue Ecke, Ziehen knickt die Linie in einem Zug. Linien mit Abzweigen (benannte
+  Schienen) zeigen daneben einen Abzweig-Griff: zu einem Anschluss oder frei ziehen, dann beginnt dort eine neue Linie
+  derselben Art (`Polylines.Branch`); ein Klick setzt einen kurzen Stich. Leitungen und Fluidleitungen zeichnen am
+  Abzweig einen Verbindungspunkt, Straßen münden ein. Doppelklick auf eine Ecke entfernt sie. Bereits angedockte Abzweige
+  bleiben, wo sie sind (`Polylines.InsertCorner` dockt sie neu an).
 - Ansichtswechsel behalten die Proportionen (Bibliotheksvorlagen beider Ansichten; eine gemeinsame Abmessung wie der
   Zahnraddurchmesser behält ihre Länge). Zentrierte Teile (Teilkreis oder Nabe) ändern ihre Größe standardmäßig um die
   Mitte (Strg: gegenüberliegende Kante). Nabensymbole im Schema behalten beim Vergrößern ihre Größe.

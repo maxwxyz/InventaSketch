@@ -108,4 +108,8 @@ live in `Contracts.cs` and `hosts/office-web/src/engine/types.ts`. Decision reco
 parts are recognised from their anchors (pitch circles, hub points, axis segments) before the edit and follow it. Hosts
 call it through `EditorSession.Apply` (engine, `couple: false` for free edits) or across units (COM). `Flow` builds
 diagrams: `QuickAdd` adds a connected copy on a side (`ObjectType.ChainConnector`), `Replace` swaps the element and
-keeps its connectors. Line branches attach to rails of other lines (`Attachments.For`).
+keeps its connectors. Line branches attach to rails of other lines (`Attachments.For`). `Links` lists where objects
+touch and follow each other (mechanical pairs and docked line ends) for lock markers and releases or couples a pair
+(`SketchObject.Released`, pruned by `Coupling` once the pair no longer touches). `Fitting.Place` puts an inserted part
+where it fits the selection (on the shaft, in mesh, through the hub). `Polylines` inserts and removes corners and adds
+branches, keeping docked branches in place.

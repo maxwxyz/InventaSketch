@@ -131,5 +131,12 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   mechanical coupling (`Coupling`: gears stay in mesh when the centre distance or a gear changes, shafts carry their
   gears) — done in Core, engine and COM. Next: coupling for side/stick views of gears (pitch lines), belts and chains,
   drivetrains and wheels; quick add, coupling and Alt-free edits in the web stage done 2026-11-21 (port drags and connect-to-port still COM only).
+- UX round 2026-11-21, part 2 (maintainer), COM: lock badges at every place where the selection touches and follows
+  another element, a click releases or couples (`Links`, `SketchObject.Released`); insert palette places fitting parts
+  right away (`Fitting.Place`: gear/bearing on the shaft, gear in mesh, shaft through the hub, bearing beside a gear);
+  "+" corner and branch handles on wires, pipes, roads and polylines with junction dots at branch ends (`Polylines`),
+  double-click removes a corner. Open: the same in the web stage (engine methods for links, fitting and polylines);
+  verify all three in PowerPoint with the maintainer; road crossings as a dedicated element where two roads cross
+  without a branch.
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.

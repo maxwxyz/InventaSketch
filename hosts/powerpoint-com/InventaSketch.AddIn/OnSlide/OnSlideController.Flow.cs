@@ -122,6 +122,7 @@ namespace InventaSketch.AddIn.OnSlide
         private void DrawChainOverlay(Graphics g, SlideView view)
         {
             var s = (float)view.DeviceScale;
+            DrawLinks(g, view);
             g.SmoothingMode = SmoothingMode.AntiAlias;
             using var blue = new SolidBrush(FlowBlue);
             using var hover = new SolidBrush(Color.FromArgb(60, 130, 230));
@@ -398,6 +399,30 @@ namespace InventaSketch.AddIn.OnSlide
             }
             shape?.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Replaced {obj.Type} by {itemId}");
+        }
+
+        /// <summary>
+        /// Inserts <paramref name="item"/> where it fits the selected element (<see cref="Fitting"/>): coupled right away and
+        /// selected, so its choices (shaft connection: fixed, sliding, loose …) are in the bar. False if no rule applies.
+        /// Runs inside the caller's undo entry.
+        /// </summary>
+        private bool InsertFitting(PowerPoint.Slide slide, SketchUnit unit, LibraryItem item)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var fresh = SketchUnits.Read(unit.Shape) ?? unit;
+            var first = fresh.Objects.FirstOrDefault(o => !o.IsPointGeometry && registry.Type(o.Type) is not null);
+            if (first is null) return false;
+            var full = SketchUnits.WithContext(fresh.Doc, SketchUnits.All(slide, fresh.Id));
+            var placed = Fitting.Place(registry, full, first.Id, item, lang);
+            if (placed is null) return false;
+            var doc = SingleUnitDoc(placed);
+            SketchUnits.Draw(slide, registry, doc, lang);
+            // Coupling of the insert (teeth interlock with the partner) may redraw the new unit: select the live one.
+            SketchUnits.RedrawDependents(slide, registry, lang, Array.Empty<SketchDocument>(), new[] { doc });
+            SketchUnits.All(slide).FirstOrDefault(u => u.Objects.Any(o => o.Id == placed.Id))?.Shape.Select(Office.MsoTriState.msoTrue);
+            Log.Info($"Inserted {item.Id} fitting {first.Type}");
+            return true;
         }
 
         /// <summary>Palette buttons of the "next element" (thumbnails) for the bar, while the element was just added.</summary>

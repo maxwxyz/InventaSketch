@@ -146,5 +146,12 @@ Export-Erweiterungspunkte der Module.
   Seiten-/Schemaansichten von Zahnrädern (Teilkreislinien), Riemen und Ketten, Antriebsstränge und Räder; Schnell-Anfügen,
   Kopplung und freies Bearbeiten mit Alt auf der Web-Bühne am 21.11.2026 erledigt (Ziehen aus Anschlüssen und Verbinden
   mit Anschlüssen noch nur im COM-Add-in).
+- UX-Runde 21.11.2026, Teil 2 (Maintainer), COM: Schloss-Marker an jeder Stelle, an der die Auswahl ein anderes Element
+  berührt und ihm folgt, ein Klick löst oder koppelt (`Links`, `SketchObject.Released`); die Einfüge-Palette setzt passende
+  Teile sofort richtig (`Fitting.Place`: Rad/Lager auf die Welle, Rad in Eingriff, Welle durch die Nabe, Lager neben ein
+  Rad); „+“-Griffe für Ecken und Abzweige an Leitungen, Rohren, Straßen und Polylinien mit Verbindungspunkt am Abzweig
+  (`Polylines`), Doppelklick entfernt eine Ecke. Offen: dasselbe auf der Web-Bühne (Engine-Methoden für Links, Fitting und
+  Polylines); alle drei mit dem Maintainer in PowerPoint prüfen; Straßenkreuzung als eigenes Element, wo sich zwei Straßen
+  ohne Abzweig kreuzen.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.

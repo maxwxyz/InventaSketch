@@ -14,6 +14,7 @@ namespace InventaSketch.Modules.Maps
     internal sealed class RoadType : MapPointType
     {
         public const string TypeId = "map.road";
+        public override bool InsertablePoints => true;
 
         public static readonly ParamDef KindDef = Prm.Choice("kind", "Road type", "Straßenart", "main",
             ("motorway", "Motorway", "Autobahn"), ("main", "Main road", "Hauptstraße"), ("side", "Side road", "Nebenstraße"), ("path", "Path", "Weg"));
@@ -147,6 +148,7 @@ namespace InventaSketch.Modules.Maps
     internal sealed class RailType : MapPointType
     {
         public const string TypeId = "map.rail";
+        public override bool InsertablePoints => true;
 
         public static readonly ParamDef KindDef = Prm.Choice("kind", "Line type", "Linienart", "rail",
             ("rail", "Railway", "Eisenbahn"), ("tram", "Tram / light rail", "Straßenbahn / Stadtbahn"));
@@ -213,6 +215,7 @@ namespace InventaSketch.Modules.Maps
     internal sealed class RiverType : MapPointType
     {
         public const string TypeId = "map.river";
+        public override bool InsertablePoints => true;
 
         public static readonly ParamDef KindDef = Prm.Choice("kind", "Water type", "Gewässerart", "river",
             ("river", "River", "Fluss"), ("stream", "Stream", "Bach"), ("canal", "Canal", "Kanal"));
@@ -293,6 +296,7 @@ namespace InventaSketch.Modules.Maps
     internal sealed class RouteType : MapPointType
     {
         public const string TypeId = "map.route";
+        public override bool InsertablePoints => true;
 
         public static readonly ParamDef StyleDef = Prm.Choice("style", "Line style", "Linienstil", "solid",
             ("solid", "Solid", "Durchgezogen"), ("dashed", "Dashed (alternative)", "Gestrichelt (Alternative)"), ("dotted", "Dotted (walk)", "Gepunktet (Fußweg)"));

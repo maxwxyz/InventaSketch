@@ -448,6 +448,12 @@ namespace InventaSketch.Core
         public virtual string? ChainConnector(SketchObject o) => null;
 
         /// <summary>
+        /// Point objects whose corners can be inserted and removed freely (wires, pipes, roads, polylines): hosts show "+"
+        /// handles on the segments (<see cref="Polylines"/>). Lines with a fixed number of points (dimensions, arrows) say no.
+        /// </summary>
+        public virtual bool InsertablePoints => false;
+
+        /// <summary>
         /// Coupling (<see cref="Coupling"/>): the object scaled so its pitch radius grows by <paramref name="k"/>. Default: the
         /// whole box. Side and schematic views of gears scale only the diameter, not the gear width.
         /// </summary>
@@ -733,7 +739,8 @@ namespace InventaSketch.Core
         {
             var type = Type(o.Type);
             var list = new List<LibraryItem>();
-            var types = new HashSet<string>(StringComparer.Ordinal) { o.Type };
+            // The own type only when it is a companion (a gear next to a gear).
+            var types = new HashSet<string>(StringComparer.Ordinal);
             // Same view id, else the same kind of view (shaft "line" and gear "stick" are both schematic), else the first item.
             var viewIcon = type is null || o.View is null ? null : type.Views.FirstOrDefault(v => v.Id == o.View) is { } vd ? IconIds.ForView(vd) : null;
             LibraryItem? ItemOf(string typeId)
@@ -760,7 +767,7 @@ namespace InventaSketch.Core
                     Add(item);
                 }
             }
-            foreach (var t in AnnotationSuggestions) Add(_library.FirstOrDefault(i => i.TypeId == t));
+            foreach (var t in AnnotationSuggestions.Where(t => t != o.Type)) Add(_library.FirstOrDefault(i => i.TypeId == t));
             return list;
         }
 

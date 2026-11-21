@@ -199,6 +199,7 @@ namespace InventaSketch.Modules.Fluid
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 0), new Vec2(15, 0) };
         public override IReadOnlyList<ViewDef> Views => ViewList;
         public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Routing.Param() };
+        public override bool InsertablePoints => true;
 
         /// <summary>On a line one adds valves, cylinders and gauges ("Insert ▸").</summary>
         public override IReadOnlyList<string> Companions => new[]
@@ -228,7 +229,13 @@ namespace InventaSketch.Modules.Fluid
             if (p.Count < 2) return Array.Empty<Primitive>();
             var kind = KindOf(o);
             if (kind == "hose") return new Primitive[] { Prim.Path(Hose(p), S.Line) with { Tag = "hose" } };
-            return new Primitive[] { Prim.Polyline(Path(o, p, ctx), StyleOf(kind)) with { Tag = "line" } };
+            var list = new List<Primitive> { Prim.Polyline(Path(o, p, ctx), StyleOf(kind)) with { Tag = "line" } };
+            // Junction dot where an end is docked onto another line (a tee, Polylines.Branch).
+            if (o.Attach is not null)
+                foreach (var i in new[] { 0, p.Count - 1 })
+                    if (i < o.Attach.Count && o.Attach[i]?.AnchorId is { } id && id.StartsWith("rail", StringComparison.Ordinal))
+                        list.Add(Prim.Circle(p[i].X, p[i].Y, 0.8, S.Black) with { Tag = "junction" });
+            return list;
         }
 
         /// <summary>Flexible hose: an arc-like curve bulging to one side between consecutive points.</summary>
