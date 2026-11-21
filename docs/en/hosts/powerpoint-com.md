@@ -210,6 +210,13 @@ UX round (2026-11-20, from the maintainer's feedback):
 - **Anchor** (on by default): line ends snapped to another element store an attachment (with pin id) and follow when
   that element is moved, rotated or resized (one undo step); moving the line itself detaches its ends. Verified: an
   arrow snapped to a gear's edge followed the dragged gear.
+- **Coupling** (with Anchor on; Alt edits freely; `Coupling.Propagate` in Core, applied across units by
+  `SketchUnits.RedrawDependents`): gears whose pitch circles touch stay in mesh. Pulling a gear away from its partner
+  (or pushing it closer) scales both by the same factor, so the ratio stays and the partner keeps its centre; a gear
+  that grows (resize, teeth) pushes its partners with their shafts and the rest of the train along the centre line.
+  Gears, bearings and hubs whose hub lies on a shaft axis follow the shaft (move, rotate, stretch); moving the gear
+  alone slides it. A gear and a shaft with the same hub (axial view) move together. Resizing a meshed gear no longer
+  snaps against its partner. Verified 2026-11-21: a gear pulled 9.35 mm away scaled both gears by 1.37 in mesh.
 - View switches keep proportions (library presets of both views; a shared dimension such as the gear diameter keeps its
   length). Centred parts (pitch circle or hub) resize about their centre by default (Ctrl: opposite edge). Schematic
   hub symbols keep their size when a stick symbol is scaled up.

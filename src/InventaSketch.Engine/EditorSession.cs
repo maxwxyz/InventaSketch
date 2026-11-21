@@ -43,6 +43,9 @@ namespace InventaSketch.Engine
 
         public RenderContext Context(bool monochrome = false) => new(Doc, Lang, monochrome);
 
+        /// <summary>Mechanical coupling for the next edits (<see cref="Coupling"/>); hosts switch it off for free moves (Alt).</summary>
+        public bool Couple { get; set; } = true;
+
         /// <summary>Sets the selection (unknown ids dropped, groups expanded).</summary>
         public void Select(IEnumerable<string>? ids)
         {
@@ -61,7 +64,10 @@ namespace InventaSketch.Engine
             var after = History.Apply(label, d =>
             {
                 var next = edit(d);
-                return ReferenceEquals(next, d) ? d : Attachments.Refresh(Registry, next, new RenderContext(next, Lang));
+                if (ReferenceEquals(next, d)) return d;
+                // Gears stay in mesh, shafts carry their gears (Coupling), in the same undo step.
+                if (Couple) next = Coupling.Propagate(Registry, d, next, Lang);
+                return Attachments.Refresh(Registry, next, new RenderContext(next, Lang));
             });
             if (ReferenceEquals(before, after)) return false;
             Revision++;

@@ -137,5 +137,11 @@ Export-Erweiterungspunkte der Module.
     Ausblenden von Modulen im Menüband und in der Seitenleisten-Bibliothek: am 20.11.2026 erledigt.
   - Rahmenauswahl einzelner Punkte (Alt + Ziehen neben einer ausgewählten Linie): am 20.11.2026 in COM erledigt.
   - Mehr Bearbeitungseinträge in der schwebenden Leiste (Text, wichtige Parameter), dabei kurz halten: am 20.11.2026 im COM-Add-in erledigt.
+- UX-Runde 21.11.2026 (Maintainer): Schnell-Anfügen-Pfeile und Ziehen aus Anschlüssen für Diagramme mit Palette
+  „nächstes Element“ (`Flow`), mehr vom Kreismenü sichtbar in der schwebenden Leiste (wichtige Aktionen, Einfügen-Palette),
+  Menüband-Gruppe Beschriftung in zwei Spalten, mechanische Kopplung (`Coupling`: Zahnräder bleiben im Eingriff, wenn sich
+  Achsabstand oder ein Rad ändert, Wellen tragen ihre Räder) – in Core, Engine und COM erledigt. Als Nächstes: Kopplung für
+  Seiten-/Schemaansichten von Zahnrädern (Teilkreislinien), Riemen und Ketten, Antriebsstränge und Räder; Schnell-Anfügen
+  und Kopplung auf der Web-Bühne; freies Verschieben mit Alt im Web-Host.
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.

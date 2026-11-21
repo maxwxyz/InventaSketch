@@ -66,6 +66,8 @@ namespace InventaSketch.Engine
         public PlanRect? Target { get; set; }
         /// <summary>Host rotation change in degrees (clockwise).</summary>
         public double? Rotation { get; set; }
+        /// <summary>Edits: false moves or scales without mechanical coupling (gears in mesh, gears on shafts); default true.</summary>
+        public bool? Couple { get; set; }
         /// <summary>quickAdd: side of the "+" arrow ("left", "top", "right", "bottom").</summary>
         public string? Side { get; set; }
         /// <summary>Maximum number of results (suggestions).</summary>

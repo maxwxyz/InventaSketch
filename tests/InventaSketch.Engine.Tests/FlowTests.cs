@@ -84,6 +84,8 @@ namespace InventaSketch.Engine.Tests
             Assert.Equal(add.ObjectId, line.Attach![1]!.ObjectId);
             var end = doc.ResolvePoints(line)[1];
             Assert.True(end.DistanceTo(new Vec2(replaced.Transform.X, replaced.Bounds().Y)) < 0.5, "end on the top of the decision: " + end);
+            // The top edge (facing the step above) stays; the taller decision grows downwards.
+            Assert.Equal(add.Doc.Get(add.ObjectId)!.Bounds().Y, replaced.Bounds().Y, 6);
         }
 
         [Fact]

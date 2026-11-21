@@ -101,3 +101,11 @@ live in `Contracts.cs` and `hosts/office-web/src/engine/types.ts`. Decision reco
   `ObjectType.WithView`, which adapts `Size` with `ObjectType.SizeForView`: by default the object keeps its visual
   scale (geometric mean of its scale factors against the current view's preferred size) and takes the target view's
   aspect; types may override it (architecture openings keep their real width).
+
+## Coupling and quick add
+
+`Coupling` (Core) keeps mechanical assemblies consistent after edits: meshing gears, gears on shafts and concentric
+parts are recognised from their anchors (pitch circles, hub points, axis segments) before the edit and follow it. Hosts
+call it through `EditorSession.Apply` (engine, `couple: false` for free edits) or across units (COM). `Flow` builds
+diagrams: `QuickAdd` adds a connected copy on a side (`ObjectType.ChainConnector`), `Replace` swaps the element and
+keeps its connectors. Line branches attach to rails of other lines (`Attachments.For`).

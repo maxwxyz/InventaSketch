@@ -124,5 +124,10 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
     modules in the ribbon and the sidebar library: done 2026-11-20.
   - Box selection of single points (Alt + drag beside a selected line): done 2026-11-20 in COM.
   - More edit entries in the floating bar (text, key parameters), keeping it short: done 2026-11-20 in COM.
+- UX round 2026-11-21 (maintainer): quick-add arrows and port drags for diagrams with a next-element palette (`Flow`),
+  more of the pie menu visible in the floating bar (key actions, insert palette), ribbon Annotate group in two columns,
+  mechanical coupling (`Coupling`: gears stay in mesh when the centre distance or a gear changes, shafts carry their
+  gears) — done in Core, engine and COM. Next: coupling for side/stick views of gears (pitch lines), belts and chains,
+  drivetrains and wheels; quick add and coupling in the web stage; Alt-free move in the web host.
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.

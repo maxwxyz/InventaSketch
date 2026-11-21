@@ -151,7 +151,12 @@ namespace InventaSketch.Engine
 
         // ------------------------------------------------------------------ helpers
 
-        private EditorSession S(EngineRequest r) => Sessions.Get(r.Session);
+        private EditorSession S(EngineRequest r)
+        {
+            var s = Sessions.Get(r.Session);
+            s.Couple = r.Couple != false;
+            return s;
+        }
 
         private static Vec2 Pivot(EngineRequest r, EditorSession s, IReadOnlyList<string> ids)
         {

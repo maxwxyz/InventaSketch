@@ -20,7 +20,7 @@ namespace InventaSketch.Core
     public static class Flow
     {
         /// <summary>Gap between an element and the one added next to it (mm), unless the element is very small or large.</summary>
-        public const double MinGap = 8, MaxGap = 20;
+        public const double MinGap = 12, MaxGap = 25;
 
         public static Vec2 Direction(FlowSide side) => side switch
         {
@@ -66,7 +66,7 @@ namespace InventaSketch.Core
             var size = added.Bounds();
             var along = Math.Abs(dir.X) > 0 ? (srcBox.W + size.W) / 2 : (srcBox.H + size.H) / 2;
             var extent = Math.Abs(dir.X) > 0 ? size.W : size.H;
-            var gap = Math.Max(MinGap, Math.Min(MaxGap, 0.75 * extent));
+            var gap = Math.Max(MinGap, Math.Min(MaxGap, extent));
             Vec2 centre;
             if (at is Vec2 drop) centre = drop;
             else
@@ -112,6 +112,19 @@ namespace InventaSketch.Core
             var old = doc.Get(objectId) ?? throw new KeyNotFoundException("Unknown object " + objectId);
             var item = registry.Item(itemId) ?? throw new KeyNotFoundException("Unknown library item " + itemId);
             var fresh = registry.Create(item, new Vec2(old.Transform.X, old.Transform.Y)) with { Id = old.Id, GroupId = old.GroupId, Ref = old.Ref };
+            // The edge facing the element it is connected to stays where it was (a taller decision grows away from it).
+            var link = doc.Objects.Values.FirstOrDefault(o => o.Attach is not null && o.Attach.Any(a => a?.ObjectId == old.Id));
+            if (link is not null)
+            {
+                var pts = doc.ResolvePoints(link);
+                var i = link.Attach!.ToList().FindIndex(a => a?.ObjectId == old.Id);
+                var other = pts[i == 0 ? pts.Count - 1 : 0];
+                var oc = new Vec2(old.Transform.X, old.Transform.Y);
+                var d = Direction(SideOf(other - oc));
+                double Half(SketchObject x) => Math.Abs(d.X) > 0 ? x.Bounds().W / 2 : x.Bounds().H / 2;
+                var c = oc + d * (Half(old) - Half(fresh));
+                fresh = fresh with { Transform = fresh.Transform with { X = c.X, Y = c.Y } };
+            }
             doc = Edits.Update(doc, new[] { old.Id }, _ => fresh);
             var ctx = new RenderContext(doc);
             var anchors = registry.PageAnchors(fresh, ctx).ToList();

@@ -103,6 +103,20 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Screen rectangle "x,y,w,h" (device pixels) of a shape on the current slide, for UI tests; "" if not visible.</summary>
+        public string ScreenRect(string shapeName)
+        {
+            try
+            {
+                return _connect.ScreenRectOf(shapeName);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.ScreenRect " + shapeName, ex);
+                return "";
+            }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

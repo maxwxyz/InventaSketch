@@ -22,8 +22,11 @@ namespace InventaSketch.AddIn.OnSlide
         private static readonly Color FlowBlue = Color.FromArgb(31, 95, 191);
         private static readonly Color FlowGreen = Color.FromArgb(30, 150, 70);
 
-        /// <summary>Distance of the triangles from the selection frame and their size (logical pixels, as in Slidemax).</summary>
-        private const double TriangleOffsetPx = 13, TrianglePx = 12;
+        /// <summary>
+        /// Distance of the triangles from the selection frame and their size (logical pixels, as in Slidemax); the top one sits
+        /// beyond PowerPoint's rotation handle (Slidemax: 41 px).
+        /// </summary>
+        private const double TriangleOffsetPx = 13, TopTriangleOffsetPx = 44, TrianglePx = 12;
         private const double PortHitPx = 7, PortShowPx = 18, ConnectSnapPx = 14;
 
         private SketchObject? _chainSource;
@@ -61,7 +64,7 @@ namespace InventaSketch.AddIn.OnSlide
             return side switch
             {
                 FlowSide.Left => new PointF(r.Left - d, r.Top + r.Height / 2),
-                FlowSide.Top => new PointF(r.Left + r.Width / 2, r.Top - d),
+                FlowSide.Top => new PointF(r.Left + r.Width / 2, r.Top - (float)(TopTriangleOffsetPx * view.DeviceScale)),
                 FlowSide.Right => new PointF(r.Right + d, r.Top + r.Height / 2),
                 _ => new PointF(r.Left + r.Width / 2, r.Bottom + d),
             };

@@ -177,11 +177,15 @@ namespace InventaSketch.AddIn.OnSlide
             var b = before.Where(d => d is not null).Cast<SketchDocument>().ToList();
             var a = after.Where(d => d is not null).Cast<SketchDocument>().ToList();
             var touched = new HashSet<string>(b.Concat(a).SelectMany(d => d.Objects.Keys), StringComparer.Ordinal);
+            var coupledIds = CouplingEnabled() ? Couple(slide, registry, lang, b, a, touched) : new HashSet<string>();
+            var coupled = coupledIds.Count;
+            // Line ends anchored to coupled gears follow too.
+            touched.UnionWith(coupledIds);
             var all = All(slide);
             var others = all.Where(u => (skip is null || !skip.Contains(u.Id)) && !u.Objects.Any(o => touched.Contains(o.Id))).ToList();
             // Units with line ends anchored to an edited object follow it ("Anchor").
             var anchored = others.Where(u => u.Objects.Any(o => o.Attach is not null && o.Attach.Any(x => x is not null && touched.Contains(x.ObjectId)))).ToList();
-            if (anchored.Count == 0 && !b.Concat(a).Any(d => NeedsContext(registry, d))) return 0;
+            if (anchored.Count == 0 && !b.Concat(a).Any(d => NeedsContext(registry, d))) return coupled;
             var deps = new HashSet<string>(ChangeSet.DependentsOf(registry, Merge(b, others), Merge(a, others), touched.ToList(), lang), StringComparer.Ordinal);
             var count = 0;
             foreach (var unit in others)
@@ -193,7 +197,43 @@ namespace InventaSketch.AddIn.OnSlide
                 count++;
             }
             if (count > 0) Log.Info("Redrew " + count + " dependent unit(s)");
-            return count;
+            return count + coupled;
+        }
+
+        /// <summary>
+        /// Mechanical coupling across units (<see cref="Coupling"/>): gears in mesh with an edited gear scale or move, gears on
+        /// an edited shaft follow it. Off while "Anchor" is off or the edit was made with Alt (free move).
+        /// </summary>
+        public static Func<bool> CouplingEnabled { get; set; } = () => true;
+
+        /// <summary>
+        /// Applies the coupling of an edit to the other units of the slide (and to the edited unit itself when it has to
+        /// scale): every unit whose objects change is replaced. Returns the ids of changed objects in other units.
+        /// </summary>
+        private static HashSet<string> Couple(PowerPoint.Slide slide, Registry registry, Lang lang, List<SketchDocument> before, List<SketchDocument> after, HashSet<string> touched)
+        {
+            var changed = new HashSet<string>(StringComparer.Ordinal);
+            if (before.Count == 0 || after.Count == 0) return changed;
+            var all = All(slide);
+            var others = all.Where(u => !u.Objects.Any(o => touched.Contains(o.Id))).ToList();
+            var fullBefore = Merge(before, others);
+            var fullAfter = Merge(after, others);
+            var result = Coupling.Propagate(registry, fullBefore, fullAfter, lang);
+            if (ReferenceEquals(result, fullAfter)) return changed;
+            var count = 0;
+            foreach (var unit in all)
+            {
+                // Edited units compare with their new model, the others with what is on the slide.
+                var basis = unit.Objects.Any(o => touched.Contains(o.Id)) ? fullAfter : unit.Doc;
+                var ids = unit.Objects.Where(o => result.Get(o.Id) is { } r && basis.Get(o.Id) is { } x && !ReferenceEquals(r, x)
+                    && (r.Transform != x.Transform || r.Size != x.Size)).Select(o => o.Id).ToList();
+                if (ids.Count == 0) continue;
+                Replace(slide, unit, Edits.Update(unit.Doc, ids, o => o with { Transform = result.Get(o.Id)!.Transform, Size = result.Get(o.Id)!.Size }), registry, lang);
+                if (!unit.Objects.Any(o => touched.Contains(o.Id))) changed.UnionWith(ids);
+                count++;
+            }
+            if (count > 0) Log.Info("Coupling: redrew " + count + " unit(s)");
+            return changed;
         }
 
         /// <summary>The same model with new object/group ids (copies must never share ids), optionally moved.</summary>

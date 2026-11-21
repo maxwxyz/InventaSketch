@@ -111,6 +111,8 @@ namespace InventaSketch.AddIn.OnSlide
             _timer = new Timer { Interval = 250 };
             _timer.Tick += (_, _) => RefreshView();
             _app.WindowSelectionChange += OnSelectionChange;
+            // Gears stay in mesh and shafts carry their gears while "Anchor" is on; Alt edits freely.
+            SketchUnits.CouplingEnabled = () => AddInSettings.Anchor && !KeyDown(VK_MENU);
         }
 
         public void Dispose()
@@ -282,10 +284,13 @@ namespace InventaSketch.AddIn.OnSlide
                                 if (SketchUnits.NeedsContext(registry, fresh.Doc))
                                 {
                                     var shape = SketchUnits.Replace(slide, fresh, fresh.Doc, registry, _lang());
+                                    if (shape is not null) fresh = SketchUnits.Read(shape) ?? fresh;
                                     SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before }, new[] { fresh.Doc });
-                                    if (shape is not null) { shape.Select(Office.MsoTriState.msoTrue); fresh = SketchUnits.Read(shape) ?? fresh; }
                                 }
                                 else SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before }, new[] { fresh.Doc });
+                                // Coupling may have redrawn this unit (a gear scaled with its partner).
+                                fresh = Live(fresh) ?? fresh;
+                                fresh.Shape.Select(Office.MsoTriState.msoTrue);
                             }
                             Arm(fresh);
                         }
@@ -884,7 +889,10 @@ namespace InventaSketch.AddIn.OnSlide
             if (!AddInSettings.Bar) { HideBar(); return; }
             if (_bar is null || _fade.Dismissed) _fade.Reset();
             _bar = new FloatingBar(BarButtons(), (float)view.DeviceScale);
-            _bar.Place(UnitScreenRect(view), view.PaneRect);
+            var frame = UnitScreenRect(view);
+            // Room for the top quick-add triangle beyond the rotation handle.
+            if (_chainSource is not null) { var up = (float)(14 * view.DeviceScale); frame = RectangleF.FromLTRB(frame.Left, frame.Top - up, frame.Right, frame.Bottom); }
+            _bar.Place(frame, view.PaneRect);
             GetCursorPos(out var p);
             var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
             Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
@@ -1367,7 +1375,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var registry = _registry();
             var shape = SketchUnits.Replace(slide, unit, doc, registry, _lang());
-            SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before ?? unit.Doc }, new[] { doc });
+            if (SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { before ?? unit.Doc }, new[] { doc }) > 0)
+                shape = SketchUnits.All(slide).FirstOrDefault(u => u.Id == unit.Id)?.Shape ?? shape; // coupling may have redrawn it
             shape?.Select(Office.MsoTriState.msoTrue);
             return shape;
         }
@@ -1585,6 +1594,8 @@ namespace InventaSketch.AddIn.OnSlide
                         var d = (c - t.P).Length;
                         return internalMesh ? d - (t.Radius - m.Radius * k) : d - (m.Radius * k + t.Radius);
                     }
+                    // Already in mesh: with coupling the partner follows the resize, so no snapping against it.
+                    if (SketchUnits.CouplingEnabled() && Math.Abs(F(1)) <= 0.3) continue;
                     var x = s;
                     for (var i = 0; i < 12; i++)
                     {
@@ -1634,8 +1645,10 @@ namespace InventaSketch.AddIn.OnSlide
             else if (fresh is not null && CurrentSlide() is PowerPoint.Slide s2
                      && SketchUnits.RedrawDependents(s2, _registry(), _lang(), new[] { unit.Doc }, new[] { fresh.Doc }) > 0)
             {
-                // Line ends anchored to the moved unit followed it ("Anchor"); keep the moved unit selected.
-                fresh.Shape.Select(Office.MsoTriState.msoTrue);
+                // Line ends anchored to the moved unit followed it ("Anchor") and coupled gears moved or scaled (which
+                // may have redrawn this unit too); keep the moved unit selected.
+                fresh = Live(fresh);
+                fresh?.Shape.Select(Office.MsoTriState.msoTrue);
             }
             if (fresh is not null) Arm(fresh);
         }
@@ -1700,6 +1713,35 @@ namespace InventaSketch.AddIn.OnSlide
             Log.Info($"Animated {unit.Shape.Name} as {docs.Count} slides");
             try { _app.ActiveWindow.View.GotoSlide(slide.SlideIndex); unit.Shape.Select(Office.MsoTriState.msoTrue); } catch { }
         }
+
+        /// <summary>The unit as it is on the slide now (re-read by id when coupling or dependents replaced its shape).</summary>
+        private SketchUnit? Live(SketchUnit unit)
+        {
+            try
+            {
+                _ = unit.Shape.Name;
+                return SketchUnits.Read(unit.Shape) ?? unit;
+            }
+            catch
+            {
+                return CurrentSlide() is PowerPoint.Slide slide ? SketchUnits.All(slide).FirstOrDefault(u => u.Id == unit.Id) : null;
+            }
+        }
+
+        /// <summary>"x,y,w,h" in device pixels of a shape on the current slide (automation); "" if there is no slide view.</summary>
+        public string ScreenRectOf(string shapeName) => OnUi(() =>
+        {
+            using (DpiScope.PerMonitor())
+            {
+                var view = SlideView.Current(_app);
+                var slide = CurrentSlide();
+                if (view is null || slide is null) return "";
+                var s = slide.Shapes[shapeName];
+                var a = view.ToScreen(new Vec2(s.Left / Geo.PtPerMm, s.Top / Geo.PtPerMm));
+                var b = view.ToScreen(new Vec2((s.Left + s.Width) / Geo.PtPerMm, (s.Top + s.Height) / Geo.PtPerMm));
+                return string.Join(",", new[] { a.X, a.Y, b.X - a.X, b.Y - a.Y }.Select(v => Math.Round(v).ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            }
+        });
 
         /// <summary>Runs a bar/pie command on the armed unit (automation); false if no unit is armed.</summary>
         public bool RunCommand(string id)

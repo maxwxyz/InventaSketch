@@ -925,6 +925,9 @@ namespace InventaSketch.AddIn
             });
         }
 
+        /// <summary>Screen rectangle of a shape of the current slide (automation, UI tests).</summary>
+        internal string ScreenRectOf(string shapeName) => _onSlide?.ScreenRectOf(shapeName) ?? "";
+
         /// <summary>Runs a bar/pie command on the selected unit (automation).</summary>
         internal bool RunUnitCommand(string commandId) => _onSlide?.RunCommand(commandId) ?? false;
 

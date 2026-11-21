@@ -184,6 +184,14 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
 - **Verankern** (standardmäßig an): an einem anderen Element eingerastete Linienenden speichern eine Anbindung (mit
   Pin-ID) und folgen, wenn das Element verschoben, gedreht oder skaliert wird (ein Rückgängig-Schritt); wird die Linie
   selbst verschoben, lösen sich ihre Enden. Geprüft: ein am Zahnradrand eingerasteter Pfeil folgte dem gezogenen Zahnrad.
+- **Kopplung** (bei eingeschaltetem Verankern; mit Alt frei bearbeiten; `Coupling.Propagate` in Core, über Einheiten
+  hinweg angewendet von `SketchUnits.RedrawDependents`): Zahnräder, deren Teilkreise sich berühren, bleiben im Eingriff.
+  Wird ein Rad vom Partner weggezogen (oder herangeschoben), skalieren beide um denselben Faktor, das Übersetzungs-
+  verhältnis bleibt und der Partner behält seinen Mittelpunkt; ein wachsendes Rad (Größe, Zähnezahl) schiebt seine
+  Partner samt Wellen und restlichem Getriebezug entlang der Mittenlinie. Zahnräder, Lager und Naben, deren Nabe auf
+  einer Wellenachse liegt, folgen der Welle (verschieben, drehen, strecken); das Rad allein verschoben gleitet. Rad und
+  Welle mit gleicher Nabe (Stirnansicht) bewegen sich gemeinsam. Beim Skalieren eines Rads im Eingriff rastet es nicht
+  mehr am Partner ein. Geprüft am 21.11.2026: ein um 9,35 mm weggezogenes Rad skalierte beide Räder um 1,37 im Eingriff.
 - Ansichtswechsel behalten die Proportionen (Bibliotheksvorlagen beider Ansichten; eine gemeinsame Abmessung wie der
   Zahnraddurchmesser behält ihre Länge). Zentrierte Teile (Teilkreis oder Nabe) ändern ihre Größe standardmäßig um die
   Mitte (Strg: gegenüberliegende Kante). Nabensymbole im Schema behalten beim Vergrößern ihre Größe.

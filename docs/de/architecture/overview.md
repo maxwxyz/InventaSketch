@@ -114,3 +114,12 @@ Vertragstypen stehen in `Contracts.cs` und `hosts/office-web/src/engine/types.ts
   behält das Objekt seinen visuellen Maßstab (geometrisches Mittel seiner Skalierungsfaktoren gegenüber der
   bevorzugten Größe der aktuellen Ansicht) und übernimmt das Seitenverhältnis der Zielansicht; Typen können das
   überschreiben (Architektur-Öffnungen behalten ihre reale Breite).
+
+## Kopplung und Schnell-Anfügen
+
+`Coupling` (Core) hält mechanische Baugruppen nach Änderungen stimmig: Zahnräder im Eingriff, Räder auf Wellen und
+konzentrische Teile werden vor der Änderung aus ihren Ankern erkannt (Teilkreise, Nabenpunkte, Achsabschnitte) und folgen
+ihr. Hosts rufen sie über `EditorSession.Apply` (Engine, `couple: false` für freie Bearbeitung) oder über Einheiten hinweg
+(COM) auf. `Flow` baut Diagramme: `QuickAdd` fügt auf einer Seite eine verbundene Kopie an (`ObjectType.ChainConnector`),
+`Replace` tauscht das Element und behält seine Verbinder. Leitungsabzweige hängen an Schienen anderer Leitungen
+(`Attachments.For`).
