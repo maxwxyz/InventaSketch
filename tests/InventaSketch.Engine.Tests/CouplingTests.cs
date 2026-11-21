@@ -103,6 +103,13 @@ namespace InventaSketch.Engine.Tests
             var moved = Coupling.Propagate(Reg, doc, Edits.Move(doc, new[] { shaft.Id }, new Vec2(5, 12)));
             Assert.Equal(gear.Transform.X + 5, moved.Get(gear.Id)!.Transform.X, 6);
             Assert.Equal(gear.Transform.Y + 12, moved.Get(gear.Id)!.Transform.Y, 6);
+            // Rotating the shaft turns the gear with it (position and orientation).
+            var turned = Coupling.Propagate(Reg, doc, Edits.Rotate(doc, new[] { shaft.Id }, new Vec2(100, 80), 90));
+            var g = turned.Get(gear.Id)!;
+            Assert.Equal(gear.Transform.Rotation + 90, g.Transform.Rotation, 6);
+            var expected = new Vec2(onAxis.X, onAxis.Y).RotateAround(new Vec2(100, 80), System.Math.PI / 2);
+            Assert.Equal(expected.X, g.Transform.X, 3);
+            Assert.Equal(expected.Y, g.Transform.Y, 3);
             // Moving the gear alone leaves the shaft where it is.
             var slid = Coupling.Propagate(Reg, doc, Edits.Move(doc, new[] { gear.Id }, new Vec2(8, 0)));
             Assert.Equal(shaft.Transform, slid.Get(shaft.Id)!.Transform);

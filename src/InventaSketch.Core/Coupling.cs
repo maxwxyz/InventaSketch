@@ -129,10 +129,12 @@ namespace InventaSketch.Core
             void Translate(string id, Vec2 delta)
                 => doc = Edits.Update(doc, new[] { id }, o => o with { Transform = o.Transform with { X = o.Transform.X + delta.X, Y = o.Transform.Y + delta.Y } });
 
-            // Everything connected to the start (except what is already handled) moves by the same offset.
-            void RigidMove(string start, Vec2 delta)
+            // Everything connected to the start (except what is already handled) moves by the same offset and, when a
+            // rotating shaft carries it, turns with it about the pivot (the new hub point).
+            void RigidMove(string start, Vec2 delta, Vec2? pivot = null, double degrees = 0)
             {
-                if (delta.Length < Eps) return;
+                var turn = pivot is not null && Math.Abs(degrees) > Eps;
+                if (delta.Length < Eps && !turn) return;
                 var queue = new Queue<string>();
                 queue.Enqueue(start);
                 visited.Add(start);
@@ -140,6 +142,7 @@ namespace InventaSketch.Core
                 {
                     var id = queue.Dequeue();
                     Translate(id, delta);
+                    if (turn) doc = Edits.Rotate(doc, new[] { id }, pivot!.Value, degrees);
                     foreach (var next in Of(mesh, id).Concat(Of(carried, id)).Concat(Of(carrier, id)).Concat(Of(bonded, id)))
                         if (visited.Add(next)) queue.Enqueue(next);
                 }
@@ -194,12 +197,14 @@ namespace InventaSketch.Core
                 {
                     var before0 = before.Get(id)!;
                     var after1 = doc.Get(id)!;
+                    var turned = after1.Transform.Rotation - before0.Transform.Rotation;
                     foreach (var child in Of(carried, id))
                     {
                         if (visited.Contains(child)) continue;
                         var hub = f0[child].Hubs.FirstOrDefault(h => f0[id].Axes.Any(x => Geo.ClosestOnSegment(h, x.A, x.B).Point.DistanceTo(h) <= 0.3));
                         var (u, v) = before0.ToBox(hub);
-                        RigidMove(child, after1.BoxPoint(u, v) - hub);
+                        var target = after1.BoxPoint(u, v);
+                        RigidMove(child, target - hub, target, turned);
                     }
                 }
 
