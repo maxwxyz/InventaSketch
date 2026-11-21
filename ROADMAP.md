@@ -145,8 +145,9 @@ moving gear trains (P2).
   more spider bevels, also as a starter assembly.
 - **Done 2026-11-21 (Core + COM): building linkages yourself** — links dock on joints, pivots, joint symbols and sliders,
   build "+" at free joints, degree of freedom in the bar, drag in motion mode with constant lengths (see the host docs).
-  Open: exploding predefined mechanisms into links, limits/ghosts/coupler curves for self-built chains, cam followers and
-  gear joints in chains, the engine/web side.
+  Four-bar and slider-crank explode into a self-built linkage (2026-11-21). Open: exploding scotch yoke, toggle,
+  quick-return and cam mechanisms, limits/ghosts/coupler curves for self-built chains, cam followers and gear joints in
+  chains, the engine/web side.
 - **P1 – Building linkages yourself (maintainer 2026-11-21: "only predefined ones exist"):** links, joints and fixed
   pivots exist as parts, but link ends do not dock onto each other and only the predefined mechanisms (four-bar,
   slider-crank, …) move. Plan: link ends dock onto the joints of other links (attachment to a point of a point object,

@@ -279,6 +279,12 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   auf der Box-Mitte). Geprüft in PowerPoint am 21.11.2026: ein mit den „+“ gebautes Viergelenk (Gestell, Kurbel, Koppel,
   Schwinge, Gestell), F = 1, Kurbel gezogen: alle Gliedlängen gleich geblieben (30,10 / 30,10 / 32,38 mm), Gestellpunkte am
   Platz.
+- **Vordefinierte Koppelgetriebe zerlegen:** Viergelenk und Schubkurbel zeigen ebenfalls „In Einzelteile zerlegen“ in der
+  Leiste: sie werden zu Gestelldrehpunkten, Gliedern und einem Schieber in der aktuellen Stellung, aneinander angedockt
+  (Teile-Rezepte mit Punkten, Andockungen und Ausrichtungsanker, `PartSpec.Points`, `PartSpec.Docks`,
+  `PartSpec.AlignAnchor`), also ein selbst gebautes Koppelgetriebe mit F = 1, das sich Teil für Teil bearbeiten und im
+  Bewegungsmodus ziehen lässt. Geprüft in PowerPoint am 21.11.2026. Kreuzschubkurbel, Kniehebel, Schnellrücklauf- und
+  Kurvengetriebe werden noch nicht zerlegt.
 - **Getriebe selbst bauen:** Ein Planetenträger (`mech.carrier`, Stirn- und Schemaansicht, 2–8 Bolzen, Scheibe oder
   Arme, „fester Steg“ mit Gestellsymbol) ist ein eigenes Teil. Seine Bau-„+“ bieten an jedem freien Bolzen einen Planeten
   (so groß, dass er mit vorhandener Sonne oder vorhandenem Hohlrad kämmt) und in der Mitte Sonnenrad, Hohlrad (passend zu

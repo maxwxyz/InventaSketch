@@ -160,8 +160,9 @@ Differentials, Getriebe bewegen (P2).
   Achswellenrädern und zwei oder mehr Ausgleichsrädern, auch als Start-Baugruppe.
 - **Erledigt 21.11.2026 (Core + COM): Koppelgetriebe selbst bauen** — Glieder docken an Gelenken, Gestellpunkten,
   Gelenksymbolen und Schiebern an, Bau-„+“ an freien Gelenken, Freiheitsgrad in der Leiste, Ziehen im Bewegungsmodus bei
-  konstanten Längen (siehe Host-Doku). Offen: vordefinierte Getriebe in Glieder zerlegen, Grenzen/Zwischenlagen/
-  Koppelkurven für selbst gebaute Ketten, Kurvenstößel und Zahnradgelenke in Ketten, Engine/Web.
+  konstanten Längen (siehe Host-Doku). Viergelenk und Schubkurbel lassen sich in ein selbst gebautes Koppelgetriebe
+  zerlegen (21.11.2026). Offen: Kreuzschubkurbel, Kniehebel, Schnellrücklauf- und Kurvengetriebe zerlegen,
+  Grenzen/Zwischenlagen/Koppelkurven für selbst gebaute Ketten, Kurvenstößel und Zahnradgelenke in Ketten, Engine/Web.
 - **P1 – Koppelgetriebe selbst bauen (Maintainer 21.11.2026: „es gibt nur vordefinierte“):** Glieder, Gelenke und
   Gestelldrehpunkte gibt es als Einzelteile, aber Gliedenden docken nicht aneinander an, und nur die vordefinierten
   Getriebe (Viergelenk, Schubkurbel …) bewegen sich. Plan: Gliedenden docken an Gelenken anderer Glieder an (Anbindung an

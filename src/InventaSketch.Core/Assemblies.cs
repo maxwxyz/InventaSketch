@@ -11,6 +11,14 @@ namespace InventaSketch.Core
     /// </summary>
     public sealed record PartSpec(string TypeId, string? View, Vec2 Local)
     {
+        /// <summary>Points of a line part (link, wire …) in the assembly's local mm; <see cref="Local"/> is then ignored.</summary>
+        public IReadOnlyList<Vec2>? Points { get; init; }
+        /// <summary>Per point of a line part: the part (index in the list) and its anchor id the point docks onto, or null.</summary>
+        public IReadOnlyList<PartDock?>? Docks { get; init; }
+        /// <summary>Anchor id of a box part that goes to <see cref="Local"/> (e.g. the pivot point "c"), instead of its hub/centre.</summary>
+        public string? AlignAnchor { get; init; }
+        /// <summary>Box size in mm (else the library size).</summary>
+        public Size2? Size { get; init; }
         public double? Pitch { get; init; }
         public double? InnerPitch { get; init; }
         /// <summary>Distance of the first pin from the hub (carriers).</summary>
@@ -18,6 +26,9 @@ namespace InventaSketch.Core
         public double Rotation { get; init; }
         public IReadOnlyDictionary<string, ParamValue>? Params { get; init; }
     }
+
+    /// <summary>A point of a line part docked onto anchor <paramref name="AnchorId"/> of part <paramref name="Part"/> (index in the part list).</summary>
+    public sealed record PartDock(int Part, string AnchorId);
 
     /// <summary>
     /// Exploding a predefined assembly (planetary set, differential …) into its parts: each part becomes an element of its
@@ -40,7 +51,16 @@ namespace InventaSketch.Core
                 var item = registry.Library.FirstOrDefault(i => i.TypeId == spec.TypeId && i.View == spec.View) ?? registry.Library.FirstOrDefault(i => i.TypeId == spec.TypeId);
                 if (item is null || registry.Type(spec.TypeId) is not { } type) continue;
                 var at = m.Apply(spec.Local);
+                if (spec.Points is { Count: >= 2 } local)
+                {
+                    // Line part (link): page points; docks are set once all parts exist.
+                    var line = registry.Create(item, at);
+                    if (spec.Params is not null) foreach (var kv in spec.Params) line = line.WithParam(kv.Key, kv.Value);
+                    list.Add(line with { Points = local.Select(m.Apply).Select(q => new Vec2(Math.Round(q.X, 6), Math.Round(q.Y, 6))).ToList(), Attach = null });
+                    continue;
+                }
                 var part = registry.Create(item, at);
+                if (spec.Size is { } sz) part = part with { Size = sz };
                 if (spec.View is not null && part.View != spec.View) part = part with { View = spec.View };
                 if (spec.Params is not null) foreach (var kv in spec.Params) part = part.WithParam(kv.Key, kv.Value);
                 part = part with { Transform = part.Transform with { Rotation = Math.Round(o.Transform.Rotation + spec.Rotation, 6), FlipX = o.Transform.FlipX, FlipY = o.Transform.FlipY } };
@@ -56,12 +76,39 @@ namespace InventaSketch.Core
                 }
                 // Sizes in the assembly's local mm are page mm (the assembly box is not scaled further).
                 if (have is double h && want is double w && h > 1e-9) part = type.ScalePitch(part, w / h);
-                // The part's hub (or centre) goes to the given point.
-                var hubNow = AnchorsOf(registry, doc, part, lang).FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && (a.Id == "hub" || a.Id is null))?.P
+                // The part's hub (or centre, or the named anchor) goes to the given point.
+                var now = AnchorsOf(registry, doc, part, lang);
+                var hubNow = (spec.AlignAnchor is { } align ? now.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Id == align && a.Role != AnchorRole.Center)?.P : null)
+                    ?? now.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && (a.Id == "hub" || a.Id is null))?.P
                     ?? new Vec2(part.Transform.X, part.Transform.Y);
                 var d = at - hubNow;
                 part = part with { Transform = part.Transform with { X = Math.Round(part.Transform.X + d.X, 6), Y = Math.Round(part.Transform.Y + d.Y, 6) } };
                 list.Add(part);
+            }
+            // Docks of line parts onto the other parts (pivot points, joints of links).
+            if (specs.Any(sp => sp.Docks is not null) && list.Count == specs.Count)
+            {
+                var all = SketchDocument.Create();
+                all = Edits.Add(all, all.Pages[0].Id, list.ToArray());
+                var ctx = new RenderContext(all, lang);
+                for (var i = 0; i < specs.Count; i++)
+                {
+                    if (specs[i].Docks is not { } docks || list[i].Points is not { } pts) continue;
+                    var attach = new Attachment?[pts.Count];
+                    var points = pts.ToList();
+                    for (var k = 0; k < pts.Count && k < docks.Count; k++)
+                    {
+                        if (docks[k] is not { } d || d.Part < 0 || d.Part >= list.Count) continue;
+                        var target = list[d.Part];
+                        var anchor = registry.PageAnchors(target, ctx).Where(a => a.Kind == AnchorKind.Point && a.Id == d.AnchorId).OrderBy(a => a.Role == AnchorRole.Center ? 1 : 0).FirstOrDefault();
+                        if (anchor is null) continue;
+                        points[k] = anchor.P;
+                        attach[k] = Attachments.For(target, anchor.P, anchor);
+                    }
+                    list[i] = list[i] with { Points = points, Attach = attach.Any(a => a is not null) ? attach : null };
+                    all = Edits.Update(all, new[] { list[i].Id }, _ => list[i]);
+                    ctx = new RenderContext(all, lang);
+                }
             }
             return list;
         }

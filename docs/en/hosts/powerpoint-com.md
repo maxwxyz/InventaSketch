@@ -297,6 +297,11 @@ UX round (2026-11-20, from the maintainer's feedback):
   when attachments are refreshed (a link on a fixed pivot stayed on the box centre before). Verified in PowerPoint
   2026-11-21: a four-bar built with the "+" (pivot, crank, coupler, rocker, pivot), F = 1, crank dragged: all link
   lengths kept (30.10 / 30.10 / 32.38 mm), pivots in place.
+- **Exploding predefined linkages:** the four-bar and the slider-crank show "Explode into parts" in the bar too: they
+  become fixed pivots, links and a slider at the current position, docked onto each other (part recipes with points,
+  docks and an align anchor, `PartSpec.Points`, `PartSpec.Docks`, `PartSpec.AlignAnchor`), i.e. a self-built linkage
+  with F = 1 that can be edited part by part and dragged in motion mode. Verified in PowerPoint 2026-11-21. Scotch yoke,
+  toggle, quick-return and cam mechanisms are not exploded yet.
 - **Building gear trains yourself:** a planet carrier (`mech.carrier`, axial and schematic, 2–8 pins, disc or arms,
   "fixed carrier" with a ground symbol) is a part of its own. Its build "+" offer a planet on every free pin (sized to
   mesh with the sun or ring already there) and, in the centre, a sun gear, a ring gear (sized to the planets) or a shaft;

@@ -65,6 +65,20 @@ namespace InventaSketch.Modules.Kinematics
             if (p.Has("B")) s.Joint(p["B"]);
         }
 
+        /// <summary>Pivots O2 and O4, crank O2-A, coupler A-B, rocker O4-B.</summary>
+        protected override IReadOnlyList<PartSpec>? PartsOf(SketchObject o, Pose p, Scene s)
+        {
+            if (!p.Has("B")) return null;
+            return new[]
+            {
+                PivotPart(s, p["O2"]),                                                     // 0
+                PivotPart(s, p["O4"]),                                                     // 1
+                LinkPart(s, p["O2"], p["A"], new PartDock(0, "c"), null),                 // 2 crank
+                LinkPart(s, p["A"], p["B"], new PartDock(2, "j1"), null),                 // 3 coupler
+                LinkPart(s, p["O4"], p["B"], new PartDock(1, "c"), new PartDock(3, "j1")), // 4 rocker
+            };
+        }
+
         protected override IEnumerable<Anchor> PoseAnchors(Scene s, SketchObject o, Pose p, Rect model)
         {
             yield return Mount(s, p["O2"], "O2");
@@ -140,6 +154,19 @@ namespace InventaSketch.Modules.Kinematics
             if (!s.Ghost) s.Joint(p["O"]);
             s.Joint(p["A"]);
             if (p.Has("B")) s.Joint(p["B"]);
+        }
+
+        /// <summary>Pivot O, crank O-A, connecting rod A-B, slider on a horizontal guide at B.</summary>
+        protected override IReadOnlyList<PartSpec>? PartsOf(SketchObject o, Pose p, Scene s)
+        {
+            if (!p.Has("B")) return null;
+            return new[]
+            {
+                PivotPart(s, p["O"]),                                                       // 0
+                new PartSpec("kin.joint.prismatic", null, s.L(p["B"])) { AlignAnchor = "c" }, // 1 slider
+                LinkPart(s, p["O"], p["A"], new PartDock(0, "c"), null),                    // 2 crank
+                LinkPart(s, p["A"], p["B"], new PartDock(2, "j1"), new PartDock(1, "c")),   // 3 connecting rod
+            };
         }
 
         protected override IEnumerable<Anchor> PoseAnchors(Scene s, SketchObject o, Pose p, Rect model)
