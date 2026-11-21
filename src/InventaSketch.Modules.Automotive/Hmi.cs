@@ -258,7 +258,7 @@ namespace InventaSketch.Modules.Automotive
 
         private static AutoType Warning()
         {
-            var shape = Prm.Choice("shape", "Shape", "Form", "triangle", ("triangle", "Triangle", "Dreieck"), ("circle", "Circle", "Kreis"), ("square", "Square", "Quadrat"));
+            var shape = Prm.Choice("shape", "Shape", "Form", "triangle", ("triangle", "Triangle", "Dreieck"), ("circle", "Circle", "Kreis"), ("square", "Square", "Quadrat")).WithOptionIcons(IconIds.ForShape);
             void Draw(Pen p, SketchObject o)
             {
                 double barTop = -2.6, barBottom = 1.6, dotY = 3.3;

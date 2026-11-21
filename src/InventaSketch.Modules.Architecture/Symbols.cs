@@ -17,7 +17,7 @@ namespace InventaSketch.Modules.Architecture
                 Uniform = true,
                 Params = new[]
                 {
-                    Pm.Choice("shape", "Shape", "Form", "square", ("square", "Square", "Rechteckig"), ("round", "Round", "Rund")),
+                    Pm.Choice("shape", "Shape", "Form", "square", ("square", "Square", "Rechteckig"), ("round", "Round", "Rund")).WithOptionIcons(IconIds.ForShape),
                     Pm.Choice("material", "Material", "Material", "concrete", ("concrete", "Reinforced concrete (solid)", "Stahlbeton (schwarz)"), ("masonry", "Masonry (hatched)", "Mauerwerk (schraffiert)"), ("steel", "Steel (outline)", "Stahl (Umriss)")),
                 },
                 Extra = o => new[]

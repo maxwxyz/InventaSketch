@@ -503,7 +503,8 @@ namespace InventaSketch.AddIn.OnSlide
                         var moved = _moved;
                         _mode = Mode.Armed;
                         _overlay.Clear();
-                        var pointAttach = AnchorFor(at, _lastPointSnap);
+                        // Corners inside a wire, pipe, road or polyline snap but do not dock (only its ends do).
+                        var pointAttach = InnerCorner(index) ? null : AnchorFor(at, _lastPointSnap);
                         var group = MovedGroup(index, at);
                         var insertAt = _insertAt;
                         var cornerSeg = EndCornerInsert();
@@ -861,13 +862,17 @@ namespace InventaSketch.AddIn.OnSlide
             // "Insert": elements that fit the selection as thumbnails right in the bar (shaft: gears, bearings …).
             if (first is not null)
             {
+                // Parts that snap into place (gear on the shaft, gear in mesh, bearing beside a gear) are in the bar right
+                // away; the insert button opens the rest.
+                var scale = _view?.DeviceScale ?? 1;
+                var suggestions = registry.Suggestions(first, 8);
+                var direct = DirectInserts(first, suggestions);
+                foreach (var item in direct)
+                    list.Add(new BarButton("ins:" + item.Id, "", T("Add: ", "Anfügen: ") + item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
                 list.Add(new BarButton("insert", "", T("Insert a fitting element", "Passendes Element einfügen"), Active: _barInsertOpen) { IconId = IconIds.Insert });
                 if (_barInsertOpen)
-                {
-                    var scale = _view?.DeviceScale ?? 1;
-                    foreach (var item in registry.Suggestions(first, 8))
+                    foreach (var item in suggestions.Where(i => !direct.Contains(i)))
                         list.Add(new BarButton("ins:" + item.Id, "", item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
-                }
             }
             list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
@@ -876,6 +881,31 @@ namespace InventaSketch.AddIn.OnSlide
             list.Add(new BarButton("dup", "", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate });
             list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("delete", "", T("Delete", "L\u00f6schen"), Danger: true) { IconId = IconIds.Delete });
+            return list;
+        }
+
+        /// <summary>At most this many suggestions with a fitting place (<see cref="Fitting"/>) right in the bar.</summary>
+        internal const int MaxDirectInserts = 3;
+
+        /// <summary>Suggestions that <see cref="Fitting.Place"/> puts in place relative to <paramref name="first"/> (first ones only).</summary>
+        private List<LibraryItem> DirectInserts(SketchObject first, IReadOnlyList<LibraryItem> suggestions)
+        {
+            var list = new List<LibraryItem>();
+            if (_unit is null || first.IsPointGeometry) return list;
+            try
+            {
+                var registry = _registry();
+                var full = SketchUnits.WithContext(_unit.Doc, _otherUnits);
+                foreach (var item in suggestions)
+                {
+                    if (list.Count >= MaxDirectInserts) break;
+                    if (Fitting.Place(registry, full, first.Id, item, _lang()) is not null) list.Add(item);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Direct inserts", ex);
+            }
             return list;
         }
 
@@ -935,6 +965,22 @@ namespace InventaSketch.AddIn.OnSlide
             return RectangleF.FromLTRB(a.X, a.Y, c.X, c.Y);
         }
 
+        /// <summary>Screen rectangles of the other units of the slide (the bar avoids covering them).</summary>
+        private List<RectangleF> OtherUnitScreenRects(SlideView view)
+        {
+            var list = new List<RectangleF>();
+            foreach (var u in _otherUnits)
+            {
+                var b = u.BoundsPt;
+                var a = view.ToScreen(new Vec2(b.X / Geo.PtPerMm, b.Y / Geo.PtPerMm));
+                var c = view.ToScreen(new Vec2(b.Right / Geo.PtPerMm, b.Bottom / Geo.PtPerMm));
+                // Lines have no height: give them a little so a bar lying on them counts.
+                var pad = (float)(4 * view.DeviceScale);
+                list.Add(RectangleF.FromLTRB(Math.Min(a.X, c.X) - pad, Math.Min(a.Y, c.Y) - pad, Math.Max(a.X, c.X) + pad, Math.Max(a.Y, c.Y) + pad));
+            }
+            return list;
+        }
+
         /// <summary>Shows the bar next to the selection (a dismissed bar comes back only with the next selection).</summary>
         private void ShowBar(SlideView view)
         {
@@ -946,7 +992,7 @@ namespace InventaSketch.AddIn.OnSlide
             var frame = UnitScreenRect(view);
             // Room for the top quick-add triangle beyond the rotation handle.
             if (_chainSource is not null) { var up = (float)(14 * view.DeviceScale); frame = RectangleF.FromLTRB(frame.Left, frame.Top - up, frame.Right, frame.Bottom); }
-            _bar.Place(frame, view.PaneRect);
+            _bar.Place(frame, view.PaneRect, OtherUnitScreenRects(view));
             GetCursorPos(out var p);
             var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
             Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
@@ -1319,6 +1365,10 @@ namespace InventaSketch.AddIn.OnSlide
             }
             return best;
         }
+
+        /// <summary>True if point <paramref name="index"/> of the armed line is a corner between its ends of a line with free corners.</summary>
+        private bool InnerCorner(int index)
+            => PointObject() is { } o && index > 0 && index < o.Points!.Count - 1 && _registry().Type(o.Type)?.InsertablePoints == true;
 
         /// <summary>Small diamond handles on the points of a selected line/arrow/dimension/lead line.</summary>
         private void DrawPointHandles(SlideView view)

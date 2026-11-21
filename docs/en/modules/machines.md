@@ -189,7 +189,8 @@ view and a longitudinal section adapts the box width so the proportions are kept
   crankcase; wheel top and schematic views expose the wheel **Axis**. A hub lying on a `mech.shaft` axis makes the part
   follow the shaft through the core coupling (`Coupling`, "carried"): moving, rotating or stretching the shaft takes the
   e-machine, the wheels and an engine whose output sits on the shaft end along (stretching keeps the relative position on
-  the axis); moving the part alone slides it along the shaft. The wheel side view moves together with a concentric part in
+  the axis). Moving a wheel alone slides it along the shaft; moving the e-machine, the engine or the e-motor takes the
+  shaft and everything on it along (`ObjectType.DrivesShaft`: a drive leads its shaft). The wheel side view moves together with a concentric part in
   axial view (e.g. a gear on the same axle).
 - Drive blocks expose **Port** anchors on the four edge midpoints (block view) or on the symbol terminals (battery +/−,
   inverter DC+/DC−/U/V/W, motor phase leads, gearbox input/output, differential input/left/right), so arrows and wires

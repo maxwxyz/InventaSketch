@@ -120,7 +120,7 @@ namespace InventaSketch.Modules.Fluid
         public static readonly string[] Modes = { "orthogonal", "free" };
 
         public static ParamDef Param() => Choice("route", T("Routing", "Leitungsführung"), "orthogonal",
-            ("orthogonal", "Orthogonal", "Orthogonal"), ("free", "Free (straight)", "Frei (gerade)"));
+            ("orthogonal", "Orthogonal", "Orthogonal"), ("free", "Free (straight)", "Frei (gerade)")).WithOptionIcons(IconIds.ForRoute);
 
         /// <summary>
         /// Exit direction (on the page) of an attached end: perpendicular to the box edge of the target the port sits on,
@@ -183,7 +183,14 @@ namespace InventaSketch.Modules.Fluid
 
         public static readonly ParamDef Kind = Choice("kind", T("Line type", "Leitungsart"), "working",
             ("working", "Working line", "Arbeitsleitung"), ("pilot", "Pilot (control) line", "Steuerleitung"),
-            ("drain", "Drain / leakage line", "Leckölleitung / Entlüftungsleitung"), ("hose", "Flexible hose", "Schlauchleitung"));
+            ("drain", "Drain / leakage line", "Leckölleitung / Entlüftungsleitung"), ("hose", "Flexible hose", "Schlauchleitung")).WithOptionIcons(v => v switch
+        {
+            "working" => IconIds.LineSolid,
+            "pilot" => IconIds.LineLongDash,
+            "drain" => IconIds.LineDash,
+            "hose" => IconIds.CourseWavy,
+            _ => null,
+        });
 
         private static readonly IReadOnlyList<ViewDef> ViewList = new[] { new ViewDef("symbol", T("Circuit symbol", "Schaltzeichen")) { Icon = IconIds.Symbol } };
 

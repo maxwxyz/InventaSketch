@@ -317,7 +317,8 @@ namespace InventaSketch.Modules.Architecture
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             Pm.Num("thickness", "Thickness", "Dicke", 240, 10, 2000, "mm", 5),
-            Pm.Choice("kind", "Kind", "Art", "exterior", ("exterior", "Exterior wall", "Außenwand"), ("interior", "Interior wall (load-bearing)", "Innenwand (tragend)"), ("partition", "Partition wall", "Trennwand (leicht)")),
+            Pm.Choice("kind", "Kind", "Art", "exterior", ("exterior", "Exterior wall", "Außenwand"), ("interior", "Interior wall (load-bearing)", "Innenwand (tragend)"), ("partition", "Partition wall", "Trennwand (leicht)"))
+                .WithOptionIcons(v => v switch { "exterior" => IconIds.WallThick, "interior" => IconIds.WallMedium, "partition" => IconIds.WallThin, _ => null }),
             Pm.Bool("closed", "Closed loop", "Geschlossen", false),
             Pm.Num("height", "Height (elevation)", "Höhe (Ansicht)", 2750, 100, 20000, "mm", 25, advanced: true),
             Pm.Scale,

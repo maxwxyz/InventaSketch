@@ -136,7 +136,10 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
   right away (`Fitting.Place`: gear/bearing on the shaft, gear in mesh, shaft through the hub, bearing beside a gear);
   "+" corner and branch handles on wires, pipes, roads and polylines with junction dots at branch ends (`Polylines`),
   double-click removes a corner. Open: the same in the web stage (engine methods for links, fitting and polylines);
-  verify all three in PowerPoint with the maintainer; road crossings as a dedicated element where two roads cross
-  without a branch.
+  verify all three in PowerPoint with the maintainer. Map roads already form junctions where they cross.
+- COM polish 2026-11-21 (maintainer: "bring the COM add-in up to date"): the bar avoids covering other elements, up to
+  three fitting parts right in the bar, inner corners do not dock, drives take their shaft along, belts and chains follow
+  their pulleys, pictograms for shapes, fills, routing, wall kinds and fluid line types. Open for COM: further exporters;
+  `EquivalentAddins` precedence test (needs the web add-in with the maintainer's certificate).
 - Verify which Office.js metadata store survives copy/paste and reopen on Windows/Mac/web (ADR-0006).
 - Decide the PDF writer (vector) for engine-side export.

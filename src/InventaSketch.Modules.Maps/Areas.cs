@@ -106,7 +106,7 @@ namespace InventaSketch.Modules.Maps
         public static readonly ParamDef KindDef = Prm.Choice("kind", "Area type", "Flächenart", "area",
             ("area", "Area", "Gebiet"), ("forest", "Forest", "Wald"), ("water", "Lake / water", "See / Gewässer"), ("park", "Park / green space", "Park / Grünfläche"),
             ("urban", "Built-up area", "Bebaute Fläche"), ("restricted", "Restricted zone / geofence", "Sperrzone / Geofence"));
-        public static readonly ParamDef FillDef = Prm.Choice("fill", "Fill", "Füllung", "tint", ("tint", "Tint", "Farbton"), ("hatch", "Hatch", "Schraffur"), ("none", "None", "Keine"));
+        public static readonly ParamDef FillDef = Prm.Choice("fill", "Fill", "Füllung", "tint", ("tint", "Tint", "Farbton"), ("hatch", "Hatch", "Schraffur"), ("none", "None", "Keine")).WithOptionIcons(IconIds.ForFill);
         private static readonly ParamDef SmoothDef = Prm.Bool("smooth", "Smooth outline", "Glatter Umriss", false);
 
         private sealed record KindSpec(string Tint, string Stroke, DashStyle Dash, double Width, Fill Hatch);

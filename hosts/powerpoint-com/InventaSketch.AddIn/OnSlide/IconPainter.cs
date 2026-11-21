@@ -289,6 +289,52 @@ namespace InventaSketch.AddIn.OnSlide
                 case IconIds.MachReluctance:
                     g.DrawLines(pen, new[] { new PointF(3, 17), new PointF(5, 17), new PointF(5, 8), new PointF(9, 8), new PointF(9, 17), new PointF(15, 17), new PointF(15, 8), new PointF(19, 8), new PointF(19, 17), new PointF(21, 17) });
                     break;
+                case IconIds.ShapeSquare:
+                    g.DrawRectangle(pen, 5, 5, 14, 14);
+                    break;
+                case IconIds.ShapeCircle:
+                    g.DrawEllipse(pen, 5, 5, 14, 14);
+                    break;
+                case IconIds.ShapeTriangle:
+                    g.DrawPolygon(pen, new[] { new PointF(12, 4.5f), new PointF(20, 19), new PointF(4, 19) });
+                    break;
+                case IconIds.FillTint:
+                    g.DrawRectangle(pen, 4, 5, 16, 14);
+                    g.FillPolygon(brush, new[] { new PointF(12, 7.5f), new PointF(15.5f, 13), new PointF(12, 16.5f), new PointF(8.5f, 13) });
+                    break;
+                case IconIds.FillHatch:
+                    g.DrawRectangle(pen, 4, 5, 16, 14);
+                    g.DrawLine(thin, 4, 12, 11, 5); g.DrawLine(thin, 4, 19, 18, 5); g.DrawLine(thin, 11, 19, 20, 10);
+                    break;
+                case IconIds.FillDots:
+                    g.DrawRectangle(pen, 4, 5, 16, 14);
+                    foreach (var (dx, dy) in new[] { (8f, 9f), (12f, 9f), (16f, 9f), (8f, 15f), (12f, 15f), (16f, 15f) })
+                        g.FillEllipse(brush, dx - 1, dy - 1, 2, 2);
+                    break;
+                case IconIds.FillNone:
+                    g.DrawRectangle(pen, 4, 5, 16, 14);
+                    break;
+                case IconIds.RouteFree:
+                    g.DrawLine(pen, 4.5f, 18.5f, 19.5f, 5.5f);
+                    g.FillEllipse(brush, 2.5f, 16.5f, 4, 4); g.FillEllipse(brush, 17.5f, 3.5f, 4, 4);
+                    break;
+                case IconIds.RouteOrthogonal:
+                    g.DrawLines(pen, new[] { new PointF(4.5f, 18.5f), new PointF(12, 18.5f), new PointF(12, 5.5f), new PointF(19.5f, 5.5f) });
+                    g.FillEllipse(brush, 2.5f, 16.5f, 4, 4); g.FillEllipse(brush, 17.5f, 3.5f, 4, 4);
+                    break;
+                case IconIds.Route45:
+                    g.DrawLines(pen, new[] { new PointF(4.5f, 18.5f), new PointF(8, 18.5f), new PointF(16, 10.5f), new PointF(16, 5.5f), new PointF(19.5f, 5.5f) });
+                    g.FillEllipse(brush, 2.5f, 16.5f, 4, 4); g.FillEllipse(brush, 17.5f, 3.5f, 4, 4);
+                    break;
+                case IconIds.WallThick:
+                    g.FillRectangle(brush, 3, 7, 18, 10);
+                    break;
+                case IconIds.WallMedium:
+                    g.FillRectangle(brush, 3, 9, 18, 6);
+                    break;
+                case IconIds.WallThin:
+                    g.DrawRectangle(pen, 3, 10.5f, 18, 3);
+                    break;
                 case IconIds.HubNone:
                     g.DrawLine(pen, 12, 5, 12, 19); g.DrawLine(pen, 9.5f, 5, 14.5f, 5); g.DrawLine(pen, 9.5f, 19, 14.5f, 19);
                     break;

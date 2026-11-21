@@ -15,6 +15,8 @@ namespace InventaSketch.Core
         Bonded,
         /// <summary>Point <see cref="Link.Index"/> of line <see cref="Link.A"/> docked to <see cref="Link.B"/> (<see cref="Attachment"/>).</summary>
         Attached,
+        /// <summary>Belt or chain <see cref="Link.A"/> running over pulley or sprocket <see cref="Link.B"/> (<see cref="ObjectType.SpansHubs"/>).</summary>
+        Spanned,
     }
 
     /// <summary>
@@ -130,6 +132,8 @@ namespace InventaSketch.Core
                 LinkKind.Carried when self == link.A => (de ? "Trägt " : "Carries ") + other,
                 LinkKind.Carried => (de ? "Sitzt auf " : "Sits on ") + other,
                 LinkKind.Bonded => (de ? "Fest mit " : "Fixed to ") + other,
+                LinkKind.Spanned when self == link.A => (de ? "Läuft über " : "Runs over ") + other,
+                LinkKind.Spanned => other + (de ? " läuft hierüber" : " runs over this"),
                 _ when self == link.A => (de ? "Linienende an " : "Line end at ") + other,
                 _ => other + (de ? " an diesem Punkt" : " at this point"),
             };

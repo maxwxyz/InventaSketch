@@ -81,11 +81,13 @@
 - **Typ umwandeln und Beschriftung steuern (Kreismenü):** „Typ ▸“ (Linie, Pfeil, Doppelpfeil, gebogener Pfeil,
   Winkelverbinder, Bezugslinie, Bezugszeichen, lineare und schräge Bemaßung; Endpunkte, Zeichen/Text, Ebene, Gruppe und
   Farbe bleiben erhalten) und „Beschriftung ▸“ aus den optionalen Parametern des Typs.
-- **Schwebende Leiste:** über der ausgewählten Einheit (abseits des Drehgriffs, darunter wenn oben kein Platz ist):
-  die Palette „nächstes Element“ nach dem Schnell-Anfügen, Ansichten, Text bearbeiten, bis zu fünf wichtige Typaktionen
-  (aussagekräftige Piktogramme wie dicker/dünner, mehr/weniger, Richtung tauschen zuerst, dann Schalter und Zyklen wie
-  Nabe oder Schrägverzahnung als kurze Textknöpfe), „Einfügen“ (öffnet die passenden Elemente als Vorschaubilder in der
-  Leiste), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
+- **Schwebende Leiste:** über der ausgewählten Einheit (abseits des Drehgriffs); verdeckt sie dort andere Elemente der
+  Folie (ein gekoppeltes Zahnrad, die Welle), wandert sie nach unten, rechts oder links, wo sie am wenigsten verdeckt
+  (`FloatingBar.Placement`). Inhalt: die Palette „nächstes Element“ nach dem Schnell-Anfügen, Ansichten, Text bearbeiten,
+  bis zu fünf wichtige Typaktionen (aussagekräftige Piktogramme wie dicker/dünner, mehr/weniger, Richtung tauschen zuerst,
+  dann Schalter und Zyklen wie Nabe oder Schrägverzahnung als kurze Textknöpfe), bis zu drei passende Teile, die sofort
+  richtig sitzen (Rad auf der Welle, Rad im Eingriff, Lager neben dem Rad: `Fitting.Place`), „Einfügen“ (öffnet die übrigen
+  passenden Elemente als Vorschaubilder in der Leiste), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
   über 180 px ausblendend; unter 0,1 bis zur nächsten Auswahl verborgen; Tippen blendet sie aus.
 - **Auswahlen als Dropdowns:** Jede Auswahl des gewählten Elements (Linientyp, Pfeilspitzen, Spitzengröße, Linienart,
   Linienverlauf, Bauform und Art der E-Maschine, Welle-Nabe-Verbindung …) ist ein Leistenknopf mit dem aktuellen Wert als
@@ -93,7 +95,9 @@
   darunter eine Liste mit Piktogramm und Beschriftung jeder Option, die aktuelle markiert; ein Klick auf eine Zeile wählt,
   ein Klick daneben schließt. Durchschalt-Aktionen über dieselben Parameter (`ContextAction.ParamKeys`) bleiben nur im
   Kreismenü; Schalter mit aussagekräftigem Piktogramm (Wellenstümpfe, Gehäuseanbindung, Schrägverzahnung) sind
-  Symbol-Schalter. Keine Textknöpfe, wo es ein Piktogramm gibt.
+  Symbol-Schalter. Keine Textknöpfe, wo es ein Piktogramm gibt. Piktogramme gibt es für Formen (eckig, rund, Dreieck),
+  Füllungen (Farbton, Schraffur, Punkte, keine), Führung von Leitungen und Rohren (frei, orthogonal, 45°), Wandarten und
+  Fluid-Leitungsarten; Einheiten, Signalfarben und ähnliche Auswahlen bleiben kurzer Text.
 - **Planmaßstab auf der Folie:** Planelemente (`ObjectType.UsesPlanScale`: Wände, Räume, Öffnungen) zeigen den
   Planmaßstab der Folie als Leistenknopf („1:50“) und im Kreismenü; beide öffnen die Eingabe und zeichnen die Folie neu.
 - **Einheiten des Web-Add-ins:** vom Web-Add-in aufgeteilte Modell-Tags (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`)
@@ -216,12 +220,18 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   gespeichert (`SketchObject.Released`) und vergessen, sobald sie sich nicht mehr berühren; wieder zusammengefangene Teile
   sind also wieder gekoppelt. Die Marker sitzen neben dem Berührpunkt, damit man ein Zahnrad weiter an seiner Mitte und
   eine Linie an ihrem Ende ziehen kann. Nur bei eingeschaltetem Verankern.
+- **Antriebe, Riemen und Ketten:** Ein Motor, eine E-Maschine oder ein Verbrennungsmotor auf einer Welle nimmt die Welle
+  (samt ihren Teilen) mit, wenn man ihn verschiebt (`ObjectType.DrivesShaft`); ein Zahnrad gleitet weiter auf seiner Welle.
+  Riemen und Ketten, deren Endnaben auf zwei Scheiben oder Kettenrädern liegen (`ObjectType.SpansHubs`), folgen einer
+  verschobenen Scheibe: der Trum streckt und dreht sich, die andere Scheibe bleibt; ihr Schloss-Marker sagt „Läuft über
+  Riemenscheibe“.
 - **Ecken und Abzweige von Linien:** Eine ausgewählte Leitung, Fluidleitung, Straße, Bahnlinie, Fluss, Route, Fläche oder
   Polylinie (`ObjectType.InsertablePoints`) zeigt in der Mitte jedes Abschnitts ein „+“ (bei geführten Leitungen auf dem
   gezeichneten Pfad). Klick setzt eine neue Ecke, Ziehen knickt die Linie in einem Zug. Linien mit Abzweigen (benannte
   Schienen) zeigen daneben einen Abzweig-Griff: zu einem Anschluss oder frei ziehen, dann beginnt dort eine neue Linie
   derselben Art (`Polylines.Branch`); ein Klick setzt einen kurzen Stich. Leitungen und Fluidleitungen zeichnen am
-  Abzweig einen Verbindungspunkt, Straßen münden ein. Doppelklick auf eine Ecke entfernt sie. Bereits angedockte Abzweige
+  Abzweig einen Verbindungspunkt, Straßen münden ein. Ecken zwischen den Enden rasten ein, docken aber nie an andere
+  Elemente an (nur Linienenden). Doppelklick auf eine Ecke entfernt sie. Bereits angedockte Abzweige
   bleiben, wo sie sind (`Polylines.InsertCorner` dockt sie neu an).
 - Ansichtswechsel behalten die Proportionen (Bibliotheksvorlagen beider Ansichten; eine gemeinsame Abmessung wie der
   Zahnraddurchmesser behält ihre Länge). Zentrierte Teile (Teilkreis oder Nabe) ändern ihre Größe standardmäßig um die

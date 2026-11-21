@@ -170,6 +170,47 @@ namespace InventaSketch.Core
         public const string Helix = "cmd-helix";
         public const string ShaftEnds = "cmd-shaft-ends";
         public const string Ground = "cmd-ground";
+        public const string ShapeSquare = "shape-square";
+        public const string ShapeCircle = "shape-circle";
+        public const string ShapeTriangle = "shape-triangle";
+        public const string FillTint = "fill-tint";
+        public const string FillHatch = "fill-hatch";
+        public const string FillDots = "fill-dots";
+        public const string FillNone = "fill-none";
+        public const string RouteFree = "route-free";
+        public const string RouteOrthogonal = "route-ortho";
+        public const string Route45 = "route-45";
+        public const string WallThick = "wall-thick";
+        public const string WallMedium = "wall-medium";
+        public const string WallThin = "wall-thin";
+
+        /// <summary>Pictogram of a shape choice ("square", "round"/"circle", "triangle"); null if unknown.</summary>
+        public static string? ForShape(string value) => value switch
+        {
+            "square" or "rect" or "box" => ShapeSquare,
+            "round" or "circle" => ShapeCircle,
+            "triangle" => ShapeTriangle,
+            _ => null,
+        };
+
+        /// <summary>Pictogram of a fill choice ("tint", "hatch", "dots", "none"); null if unknown.</summary>
+        public static string? ForFill(string value) => value switch
+        {
+            "tint" or "solid" => FillTint,
+            "hatch" => FillHatch,
+            "dots" => FillDots,
+            "none" => FillNone,
+            _ => null,
+        };
+
+        /// <summary>Pictogram of a line routing ("free", "orthogonal", "45"); null if unknown.</summary>
+        public static string? ForRoute(string value) => value switch
+        {
+            "free" => RouteFree,
+            "orthogonal" => RouteOrthogonal,
+            "45" => Route45,
+            _ => null,
+        };
 
         /// <summary>Pictogram of an arrowhead or line-end name ("triangle", "open", "oval"/"dot" ...); null if unknown.</summary>
         public static string? ForHead(string name) => name switch
@@ -452,6 +493,19 @@ namespace InventaSketch.Core
         /// handles on the segments (<see cref="Polylines"/>). Lines with a fixed number of points (dimensions, arrows) say no.
         /// </summary>
         public virtual bool InsertablePoints => false;
+
+        /// <summary>
+        /// Coupling: a drive (e-machine, engine, motor) whose hub sits on a shaft takes the shaft along when it is moved,
+        /// instead of sliding along it like a gear (<see cref="Coupling"/>).
+        /// </summary>
+        public virtual bool DrivesShaft => false;
+
+        /// <summary>
+        /// Coupling: a belt or chain whose two end hubs (first and second <see cref="AnchorRole.Hub"/> anchor) lie on the hubs
+        /// of two pulleys or sprockets. When a pulley moves, the strand follows: its length and angle change, the other pulley
+        /// stays (<see cref="Coupling"/>).
+        /// </summary>
+        public virtual bool SpansHubs => false;
 
         /// <summary>
         /// Coupling (<see cref="Coupling"/>): the object scaled so its pitch radius grows by <paramref name="k"/>. Default: the

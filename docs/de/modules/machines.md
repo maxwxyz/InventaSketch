@@ -190,8 +190,9 @@ Beim Wechsel zwischen runder Ansicht und Längsschnitt wird die Boxbreite angepa
   Motorschema einen **Mount** unter dem Kurbelgehäuse; Draufsicht und Schema des Rads bieten die Radachse als **Axis**.
   Liegt eine Nabe auf der Achse einer `mech.shaft`, folgt das Teil der Welle über die Core-Kopplung (`Coupling`,
   „mitgenommen“): Verschieben, Drehen oder Strecken der Welle nimmt E-Maschine, Räder und einen Verbrennungsmotor, dessen
-  Abtrieb auf dem Wellenende sitzt, mit (beim Strecken bleibt die relative Lage auf der Achse erhalten); verschiebt man
-  das Teil allein, gleitet es auf der Welle. Die Seitenansicht des Rads bewegt sich mit einem konzentrischen Teil in
+  Abtrieb auf dem Wellenende sitzt, mit (beim Strecken bleibt die relative Lage auf der Achse erhalten). Ein Rad allein
+  verschoben gleitet auf der Welle; E-Maschine, Verbrennungsmotor oder E-Motor verschoben nehmen die Welle samt allem,
+  was darauf sitzt, mit (`ObjectType.DrivesShaft`: ein Antrieb führt seine Welle). Die Seitenansicht des Rads bewegt sich mit einem konzentrischen Teil in
   Stirnansicht (z. B. einem Zahnrad auf derselben Achse).
 - Antriebsblöcke bieten **Port**-Anker an den vier Kantenmitten (Blockansicht) bzw. an den Symbolklemmen (Batterie +/−,
   Wechselrichter DC+/DC−/U/V/W, Motor-Phasenanschlüsse, Getriebe-Ein-/Ausgang, Differential Eingang/links/rechts), sodass

@@ -81,10 +81,13 @@
   dimension; end points stay, numeral/text, layer, group and colour are kept) and "Label ▸", generated from the type's
   optional parameters: edit texts (numeral, dimension text, prefix/unit), cycle choices (line course straight/curved/
   wavy, object end, terminator, direction), toggles and text size. "← Back" returns to the main menu.
-- **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle, below if there is no
-  room): the "next element" palette after a quick add, its views, edit text, up to five key type actions (telling
-  pictograms such as thicker/thinner, more/fewer, swap direction first, then switches and cycles such as hub or helix as
-  short text buttons), "Insert" (opens the fitting elements as thumbnails in the bar), mirror horizontally/vertically,
+- **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle); when that would cover
+  other elements of the slide (a coupled gear, the shaft) it goes below, right or left, wherever it hides the least
+  (`FloatingBar.Placement`). Content: the "next element" palette after a quick add, its views, edit text, up to five key
+  type actions (telling pictograms such as thicker/thinner, more/fewer, swap direction first, then switches and cycles
+  such as hub or helix as short text buttons), up to three fitting parts that snap into place right away (gear on the
+  shaft, gear in mesh, bearing beside a gear: `Fitting.Place`), "Insert" (opens the other fitting elements as thumbnails
+  in the bar), mirror horizontally/vertically,
   rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
   otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
   selection; typing hides it. Clicks on the bar never reach the slide.
@@ -94,6 +97,8 @@
   it with pictogram and label of every option, the current one marked; a click on a row picks, a click elsewhere
   closes. Cycle actions over the same parameters (`ContextAction.ParamKeys`) stay in the pie menu only; switches with
   a telling pictogram (shaft stubs, housing connection, helix) are icon toggles. No text buttons where a pictogram exists.
+  Pictograms exist for shapes (square, round, triangle), fills (tint, hatch, dots, none), routing of wires and pipes
+  (free, orthogonal, 45°), wall kinds and fluid line types; units, signal colours and similar choices stay short text.
 - **Plan scale on the slide:** plan elements (`ObjectType.UsesPlanScale`: walls, rooms, openings) show the slide's plan
   scale as a bar button ("1:50") and a pie entry; both open the plan-scale prompt and re-render the slide.
 - **Web add-in units:** model tags split by the web add-in into chunks (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`) are
@@ -240,11 +245,16 @@ UX round (2026-11-20, from the maintainer's feedback):
   pair is stored on both objects (`SketchObject.Released`) and forgotten once they no longer touch, so parts snapped
   together again are coupled again. The badges sit beside the contact point, so dragging a gear by its centre or a line by
   its end still works. Shown only while Anchor is on.
+- **Drives, belts and chains:** a motor, e-machine or engine on a shaft takes the shaft (and the parts on it) along when
+  it is moved (`ObjectType.DrivesShaft`); a gear still slides along its shaft. Belts and chains whose end hubs lie on two
+  pulleys or sprockets (`ObjectType.SpansHubs`) follow a moved pulley: the strand stretches and turns, the other pulley
+  stays; their lock badges read "Runs over Belt pulley".
 - **Corners and branches of lines:** a selected wire, pipe, road, river, route, region or polyline
   (`ObjectType.InsertablePoints`) shows a "+" in the middle of each segment (on the drawn path of routed wires). Click
   it for a new corner, or drag it to bend the line in one go. Lines that take branches (named rails) also show a branch
   handle beside it: drag it to a pin or anywhere and a new line of the same kind starts on the line (`Polylines.Branch`);
-  a click adds a short stub. Wires and pipes draw a junction dot at a branch end, roads join. A double-click on a corner
+  a click adds a short stub. Wires and pipes draw a junction dot at a branch end, roads join. Corners between the ends
+  snap but never dock to other elements (only line ends do). A double-click on a corner
   removes it. Branches already docked on the line stay where they are (`Polylines.InsertCorner` docks them again).
 - View switches keep proportions (library presets of both views; a shared dimension such as the gear diameter keeps its
   length). Centred parts (pitch circle or hub) resize about their centre by default (Ctrl: opposite edge). Schematic

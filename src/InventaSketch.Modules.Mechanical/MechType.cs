@@ -61,6 +61,9 @@ namespace InventaSketch.Modules.Mechanical
         public bool Uniform { get; init; }
         /// <summary>Rotating elements expose a Hub anchor at the box centre (snaps onto shaft axes).</summary>
         public bool Rotating { get; init; } = true;
+        /// <summary>Belt or chain between two hubs (<see cref="ObjectType.SpansHubs"/>).</summary>
+        public bool Spans { get; init; }
+        public override bool SpansHubs => Spans;
         /// <summary>Type-specific context actions in addition to the view switches.</summary>
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
 
