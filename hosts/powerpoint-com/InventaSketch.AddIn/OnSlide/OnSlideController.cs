@@ -216,6 +216,7 @@ namespace InventaSketch.AddIn.OnSlide
             UpdateChainSource(unit);
             _targets = CollectTargets(slide, unit.Id);
             _unitContext = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
+            PrepareFollowers(unit);
             _mode = Mode.Armed;
             _hooks.Install();
             _timer.Start();
@@ -544,9 +545,12 @@ namespace InventaSketch.AddIn.OnSlide
                         if (!_moved && Math.Abs(pt.X - _down.X) + Math.Abs(pt.Y - _down.Y) < 3 * view.DeviceScale) return true;
                         _moved = true;
                         var raw = view.ToMm(pt) - view.ToMm(_down);
+                        // Coupled parts (gears on a dragged shaft) move along and snap too, unless Alt moves freely.
+                        var coupled = !KeyDown(VK_MENU) && AddInSettings.Anchor && _followerIds.Count > 0;
                         var snap = NoSnap()
                             ? SnapResult.None(raw)
-                            : Snapper.SnapMove(_unitAnchors, raw, _targets, Options(view));
+                            : Snapper.SnapMove(coupled ? _dragAnchors : _unitAnchors, raw, coupled ? _dragTargets : _targets, Options(view));
+                        _dragCoupled = coupled;
                         _delta = snap.Delta;
                         _guides = snap.Guides;
                         DrawDrag(view);
@@ -730,7 +734,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var delta = _delta;
             var m = Matrix2D.Translation(delta.X, delta.Y);
-            var moved = _unitPrims.Select(p => Prim.Transform(p, m)).ToList();
+            var moved = (_dragCoupled ? _dragPrims : _unitPrims).Select(p => Prim.Transform(p, m)).ToList();
             Present(view, g =>
             {
                 ThumbnailRenderer.DrawAll(g, moved, Ghost, (float)view.Mm(1.6));
@@ -1211,7 +1215,8 @@ namespace InventaSketch.AddIn.OnSlide
             var registry = _registry();
             var list = new List<Anchor>();
             _targetOwners.Clear();
-            foreach (var unit in SketchUnits.All(slide, exceptId))
+            _otherUnits = SketchUnits.All(slide, exceptId);
+            foreach (var unit in _otherUnits)
             {
                 var ctx = new RenderContext(unit.Doc, _lang());
                 foreach (var o in unit.Objects)

@@ -31,7 +31,7 @@ export type ChainSide = "left" | "top" | "right" | "bottom";
 type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide };
 
 type Drag =
-  | { kind: "move"; ids: string[]; start: Vec2; dx: number; dy: number; moved: boolean; startClient: Vec2 }
+  | { kind: "move"; ids: string[]; start: Vec2; dx: number; dy: number; moved: boolean; startClient: Vec2; followers?: string[] }
   | { kind: "scale"; ids: string[]; frame: Frame; sx: number; sy: number; single?: ObjectInfo; centred: boolean; last?: { p: Vec2; client: Vec2; free: boolean }; result?: ResizeResult }
   | { kind: "rotate"; ids: string[]; frame: Frame; startAngle: number; delta: number }
   | { kind: "point"; obj: ObjectInfo; index: number; pos: Vec2 }
@@ -543,13 +543,20 @@ export class Stage {
           if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < MOVE_THRESHOLD_PX) return;
           d.moved = true;
           let dx = p.x - d.start.x, dy = p.y - d.start.y;
+          // Coupled parts (gears on a dragged shaft) move along in the preview and snap too; Alt moves freely.
+          const session = this.host.session();
+          session.couple = !e.altKey;
+          if (d.followers === undefined) d.followers = session.couple ? session.followers(d.ids) : [];
+          const shown = session.couple ? [...d.ids, ...d.followers] : d.ids;
+          if (!session.couple && d.followers.length) this.previewTransform(d.followers, null);
           if (this.host.snapEnabled() && !e.altKey) {
-            const r = this.host.session().snapMove(d.ids, dx, dy, this.tolerance());
+            const r = session.snapMove(d.ids, dx, dy, this.tolerance());
             dx = r.dx; dy = r.dy;
             this.drawGuides(r.guides);
           } else this.guides.replaceChildren();
+          session.couple = true;
           d.dx = dx; d.dy = dy;
-          this.previewTransform(d.ids, `translate(${dx} ${dy})`);
+          this.previewTransform(shown, `translate(${dx} ${dy})`);
           const f = this.frameOf(d.ids);
           if (f) this.drawOverlay({ ...f, cx: f.cx + dx, cy: f.cy + dy });
           break;
@@ -644,7 +651,7 @@ export class Stage {
       switch (d.kind) {
         case "move":
           if (d.moved && (Math.abs(d.dx) > 1e-9 || Math.abs(d.dy) > 1e-9)) this.host.apply(session.move(d.ids, d.dx, d.dy), true);
-          else this.resetPreview(d.ids);
+          else this.resetPreview([...d.ids, ...(d.followers ?? [])]);
           break;
         case "scale": {
           const r = d.result;

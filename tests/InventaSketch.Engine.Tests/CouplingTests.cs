@@ -115,6 +115,83 @@ namespace InventaSketch.Engine.Tests
             Assert.Equal(shaft.Transform, slid.Get(shaft.Id)!.Transform);
         }
 
+        private static SketchObject Item(string id, Vec2 at) => Reg.Create(Reg.Item(id)!, at);
+
+        /// <summary>Two schematic shafts (horizontal) with a schematic gear each; gear B sits <paramref name="gap"/> mm beyond mesh.</summary>
+        private static (SketchDocument Doc, string ShaftA, string GearA, string ShaftB, string GearB) SchematicPair(double gap = 0)
+        {
+            var shaftA = Item("mech.shaft.line", new Vec2(80, 40));
+            var gearA = Item("mech.spur.stick", new Vec2(70, 40));
+            var probe = Doc(gearA);
+            var r = Pitch(probe, gearA.Id).R;
+            var y = 40 + 2 * r + gap;
+            var shaftB = Item("mech.shaft.line", new Vec2(80, y));
+            var gearB = Item("mech.spur.stick", new Vec2(70, y));
+            return (Doc(shaftA, gearA, shaftB, gearB), shaftA.Id, gearA.Id, shaftB.Id, gearB.Id);
+        }
+
+        [Fact]
+        public void SchematicGearsMeshAndScaleOnlyTheirDiameter()
+        {
+            var (doc, _, ga, shaftB, gb) = SchematicPair();
+            AssertMeshed(doc, ga, gb);
+            // Pulling shaft B away: its gear follows (carried), the centre distance grows, both gears grow in diameter only.
+            var after = Coupling.Propagate(Reg, doc, Edits.Move(doc, new[] { shaftB }, new Vec2(0, 6)));
+            AssertMeshed(after, ga, gb);
+            Assert.Equal(doc.Get(ga)!.Size.W, after.Get(ga)!.Size.W, 6);
+            Assert.True(after.Get(ga)!.Size.H > doc.Get(ga)!.Size.H + 1, "diameter grew");
+            Assert.Equal(doc.Get(gb)!.Transform.Y + 6, after.Get(gb)!.Transform.Y, 6);
+        }
+
+        [Fact]
+        public void AShaftsRigidFollowersAreTheGearsOnIt()
+        {
+            var (doc, shaftA, ga, _, gb) = SchematicPair();
+            var followers = Coupling.RigidFollowers(Reg, doc, new[] { shaftA });
+            Assert.Equal(new[] { ga }, followers);
+            Assert.DoesNotContain(gb, followers);
+        }
+
+        [Fact]
+        public void DraggingAShaftSnapsItsGearIntoMesh()
+        {
+            var api = new EngineApi(Reg);
+            var s = EngineApiTests.Call(api, "createSession", new { lang = "en" }).GetProperty("session").GetString()!;
+            var (doc, _, _, _, _) = SchematicPair(gap: 3);
+            var ids = doc.Objects.Keys.ToList();
+            EngineApiTests.Call(api, "openDocument", new { session = s, json = DocumentJson.Serialize(doc) });
+            var shaftB = doc.Objects.Values.Where(o => o.Type == "mech.shaft").OrderBy(o => o.Transform.Y).Last().Id;
+            var snap = EngineApiTests.Call(api, "snapMove", new { session = s, ids = new[] { shaftB }, dx = 0.0, dy = -2.4, tolerance = 2.0 });
+            Assert.Equal(-3, snap.GetProperty("dy").GetDouble(), 3);
+            // Without coupling (Alt) only the shaft's own anchors snap.
+            var free = EngineApiTests.Call(api, "snapMove", new { session = s, ids = new[] { shaftB }, dx = 0.0, dy = -2.4, tolerance = 2.0, couple = false });
+            Assert.NotEqual(-3, free.GetProperty("dy").GetDouble(), 3);
+        }
+
+        [Fact]
+        public void MeshingGearsWithTeethInterlock()
+        {
+            var a = Reg.Create(Reg.Item("mech.spur.teeth")!, new Vec2(60, 60)) with { Transform = new Transform(60, 60, 7) };
+            var doc = Doc(a);
+            var (ca, ra) = Pitch(doc, a.Id);
+            var b = Reg.Create(Reg.Item("mech.spur.teeth")!, Vec2.Zero) with { Size = new Size2(20, 20) };
+            var rb = Pitch(Edits.Add(doc, doc.Pages[0].Id, b), b.Id).R;
+            var theta = 30.0;
+            var t = theta * System.Math.PI / 180;
+            var at = ca + new Vec2(System.Math.Cos(t), System.Math.Sin(t)) * (ra + rb);
+            var after = Coupling.Propagate(Reg, doc, Edits.Add(doc, doc.Pages[0].Id, b with { Transform = b.Transform with { X = at.X, Y = at.Y } }));
+            var phi = after.Get(b.Id)!.Transform.Rotation;
+            var (za, ta) = Reg.Type("mech.gear.spur")!.ToothPhase(a)!.Value;
+            var zb = za; // same default teeth count
+            double pa = 360.0 / za, pb = 360.0 / zb;
+            double Mod(double x, double m) => ((x % m) + m) % m;
+            var u = Mod((theta - 7 - ta) / pa, 1);
+            // B has a gap where A has a tooth: B's tooth fraction at the contact line is u + 1/2 turned the other way.
+            var v = Mod((theta + 180 - phi - ta) / pb, 1);
+            Assert.Equal(Mod(-(u + 0.5), 1), v, 4);
+            Assert.True(System.Math.Abs(phi) <= pb / 2 + 1e-6, "turned by less than half a tooth pitch");
+        }
+
         [Fact]
         public void GearsLyingOnTopOfEachOtherAreNotCoupled()
         {

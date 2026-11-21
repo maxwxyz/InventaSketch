@@ -279,6 +279,47 @@ namespace InventaSketch.AddIn.OnSlide
             });
         }
 
+        // ------------------------------------------------------------------ coupled drag
+
+        /// <summary>The other units of the slide (read when arming).</summary>
+        private List<SketchUnit> _otherUnits = new();
+        /// <summary>Objects of other units that move rigidly with the armed unit (gears on its shaft …).</summary>
+        private HashSet<string> _followerIds = new(StringComparer.Ordinal);
+        private IReadOnlyList<Primitive> _dragPrims = Array.Empty<Primitive>();
+        private List<Anchor> _dragAnchors = new();
+        private List<Anchor> _dragTargets = new();
+        private bool _dragCoupled;
+
+        /// <summary>
+        /// Followers of the armed unit for a drag (<see cref="Coupling.RigidFollowers"/>): their shapes are previewed with
+        /// the unit, their anchors snap as well (a gear on a dragged shaft meshes with a gear on another shaft) and they are
+        /// no snap targets themselves.
+        /// </summary>
+        private void PrepareFollowers(SketchUnit unit)
+        {
+            _followerIds = new HashSet<string>(StringComparer.Ordinal);
+            _dragPrims = _unitPrims;
+            _dragAnchors = _unitAnchors;
+            _dragTargets = _targets;
+            try
+            {
+                var registry = _registry();
+                var full = SketchUnits.WithContext(unit.Doc, _otherUnits);
+                foreach (var id in Coupling.RigidFollowers(registry, full, unit.Doc.Objects.Keys, _lang())) _followerIds.Add(id);
+                if (_followerIds.Count == 0) return;
+                var ctx = new RenderContext(full, _lang());
+                var followers = _followerIds.Select(full.Get).Where(o => o is not null && registry.Type(o.Type) is not null).Cast<SketchObject>().ToList();
+                _dragPrims = _unitPrims.Concat(followers.SelectMany(o => registry.Render(o, ctx))).ToList();
+                _dragAnchors = _unitAnchors.Concat(followers.SelectMany(o => registry.PageAnchors(o, ctx))).ToList();
+                _dragTargets = _targets.Where(a => a.Owner is null || !_followerIds.Contains(a.Owner)).ToList();
+                Log.Info($"Drag followers: {_followerIds.Count} coupled object(s)");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Drag followers", ex);
+            }
+        }
+
         // ------------------------------------------------------------------ commands (UI thread)
 
         private SketchDocument SingleUnitDoc(SketchObject o)

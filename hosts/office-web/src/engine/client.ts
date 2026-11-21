@@ -77,6 +77,8 @@ export class Session {
   suggestions(ids: string[], lang: string, max?: number): SuggestionInfo[] { return this.c("suggestions", { ids, lang, max }); }
   /** "+" quick add: a connected copy of `id` on `side`, or at x/y when dropped; the new element is selected. */
   quickAdd(id: string, side: "left" | "top" | "right" | "bottom", x?: number, y?: number): EditorState { return this.c("quickAdd", { id, side, x, y }); }
+  /** Objects that move rigidly with `ids` (gears on a dragged shaft); previewed with the drag. */
+  followers(ids: string[]): string[] { return this.c("followers", { ids }); }
   /** Library items offered as the next element after a quick add. */
   nextItems(id: string, lang: string, max?: number): SuggestionInfo[] { return this.c("nextItems", { id, lang, max }); }
   /** Turns `id` into library item `itemId`; its connectors stay attached. */

@@ -28,6 +28,13 @@ namespace InventaSketch.Modules.Mechanical
         private static Anchor Pitch(Pen p, double r) => Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, r * p.K);
         private static Anchor PitchIn(Pen p, double r) => Anchor.Circle(AnchorRole.PitchInner, Vec2.Zero, r * p.K);
 
+        /// <summary>
+        /// Pitch circle of a gear seen from the side or as a schematic stick (axis horizontal in the box): the radius is the
+        /// vertical half extent of the pitch lines (stick: the symbol height), so gears on parallel shafts mesh, snap and
+        /// stay coupled in these views as in the axial view.
+        /// </summary>
+        private static Anchor SidePitch(Pen p, double halfHeight) => Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, halfHeight * p.Sy);
+
         public static IEnumerable<MechType> Types()
         {
             yield return Spur();
@@ -47,14 +54,16 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Spur() => new(
             "mech.gear.spur", T("Spur gear", "Stirnrad"), Cat,
             new[] { "gear", "spur", "cog", "toothed wheel", "pinion", "zahnrad", "stirnrad", "ritzel", "verzahnung", "getriebe", "gearbox", "transmission", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
-            new ViewSpec("stick", VStick, 8, 30, (p, o) => GearStick(p, o, 4, 15)),
-            new ViewSpec("side", VSide, 10, 30, SpurSide),
-            new ViewSpec("section", VSection, 10, 30, SpurSection),
+            new ViewSpec("stick", VStick, 8, 30, (p, o) => GearStick(p, o, 4, 15)) { Anchors = (p, o) => new[] { SidePitch(p, 15) } },
+            new ViewSpec("side", VSide, 10, 30, SpurSide) { Anchors = (p, o) => new[] { SidePitch(p, 15 * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } },
+            new ViewSpec("section", VSection, 10, 30, SpurSection) { Anchors = (p, o) => new[] { SidePitch(p, 15 * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } },
             new ViewSpec("axial", VAxial, 30, 30, SpurAxial) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } },
             new ViewSpec("teeth", VTeeth, 30, 30, SpurTeeth) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } })
         {
             Params = new[] { Common.Hub, Common.Teeth(18), Common.Module, Common.Helix, Common.Bore, Common.Keyway },
             Extra = o => GearActions(o, true, 18, true),
+            // Teeth view: tooth 0 points up (GearMath.Outline phase -90 deg).
+            Teeth = o => o.View == "teeth" ? (GearMath.Teeth(o, 18), -90.0) : null,
         };
 
         /// <summary>Hub cycle, helix toggle and (if a module is set) true size from module.</summary>

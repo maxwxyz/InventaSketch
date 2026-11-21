@@ -64,6 +64,17 @@ namespace InventaSketch.Modules.Mechanical
         /// <summary>Type-specific context actions in addition to the view switches.</summary>
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
 
+        /// <summary>Teeth shown in the current view (number, local angle of a tooth centre); null when none are drawn.</summary>
+        public Func<SketchObject, (int Teeth, double ToothDeg)?>? Teeth { get; init; }
+
+        public override (int Teeth, double ToothDeg)? ToothPhase(SketchObject o) => Teeth?.Invoke(o);
+
+        /// <summary>Views with the rotation axis horizontal in the box (schematic, side, section): coupling scales only the diameter.</summary>
+        private static readonly HashSet<string> AxisViews = new(StringComparer.Ordinal) { "stick", "side", "section", "line", "body" };
+
+        public override SketchObject ScalePitch(SketchObject o, double k)
+            => AxisViews.Contains(ViewOf(o)) ? o with { Size = new Size2(o.Size.W, o.Size.H * k) } : base.ScalePitch(o, k);
+
         public IReadOnlyList<ViewSpec> ViewSpecs => _views;
 
         public ViewSpec Spec(string? view) => _views.FirstOrDefault(v => v.Id == view) ?? _views[0];

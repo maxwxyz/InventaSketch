@@ -69,6 +69,9 @@ namespace InventaSketch.Core
         /// drag along are moved or scaled.
         /// </summary>
         public static SketchDocument Propagate(Registry registry, SketchDocument before, SketchDocument after, Lang lang = Lang.En)
+            => AlignTeeth(registry, before, PropagateCore(registry, before, after, lang), lang);
+
+        private static SketchDocument PropagateCore(Registry registry, SketchDocument before, SketchDocument after, Lang lang)
         {
             var changed = after.Objects.Values
                 .Where(o => !o.IsPointGeometry && before.Get(o.Id) is { } b && !SameState(b, o))
@@ -85,6 +88,14 @@ namespace InventaSketch.Core
             if (!changed.Any(f0.ContainsKey)) return after;
 
             // Relations before the edit.
+            var (mesh, carried, carrier, bonded) = Relations(f0);
+            if (mesh.Count == 0 && carried.Count == 0 && bonded.Count == 0) return after;
+            return Apply(registry, before, after, lang, changed, f0, mesh, carried, carrier, bonded);
+        }
+
+        private static (Dictionary<string, List<string>> Mesh, Dictionary<string, List<string>> Carried, Dictionary<string, List<string>> Carrier, Dictionary<string, List<string>> Bonded)
+            Relations(Dictionary<string, Features> f0)
+        {
             var mesh = new Dictionary<string, List<string>>(StringComparer.Ordinal);
             var carried = new Dictionary<string, List<string>>(StringComparer.Ordinal); // shaft → hubs on it
             var carrier = new Dictionary<string, List<string>>(StringComparer.Ordinal); // hub → shafts it sits on
@@ -119,8 +130,44 @@ namespace InventaSketch.Core
                         Link(bonded, ids[j], ids[i]);
                     }
                 }
-            if (mesh.Count == 0 && carried.Count == 0 && bonded.Count == 0) return after;
+            return (mesh, carried, carrier, bonded);
+        }
 
+        /// <summary>
+        /// Objects that move rigidly along when <paramref name="ids"/> are moved (dragged): gears, bearings and hubs on a moved
+        /// shaft (and what sits on those), concentric parts. Meshing partners are not included: a changed centre distance
+        /// scales them after the move (<see cref="Propagate"/>). Hosts show these followers during a drag and let their
+        /// anchors snap as well, so a gear on a dragged shaft meshes with a gear on another shaft.
+        /// </summary>
+        public static IReadOnlyList<string> RigidFollowers(Registry registry, SketchDocument doc, IEnumerable<string> ids, Lang lang = Lang.En)
+        {
+            var start = new HashSet<string>(ids, StringComparer.Ordinal);
+            var ctx = new RenderContext(doc, lang);
+            var f0 = new Dictionary<string, Features>(StringComparer.Ordinal);
+            foreach (var o in doc.Objects.Values.Where(o => !o.IsPointGeometry))
+            {
+                var f = Read(registry, o, ctx);
+                if (f.Any) f0[o.Id] = f;
+            }
+            if (!start.Any(f0.ContainsKey)) return Array.Empty<string>();
+            var (_, carried, _, bonded) = Relations(f0);
+            var result = new List<string>();
+            var seen = new HashSet<string>(start, StringComparer.Ordinal);
+            var queue = new Queue<string>(start);
+            while (queue.Count > 0)
+            {
+                var id = queue.Dequeue();
+                var next = (carried.TryGetValue(id, out var c) ? c : new List<string>()).Concat(bonded.TryGetValue(id, out var b) ? b : new List<string>());
+                foreach (var n in next)
+                    if (seen.Add(n)) { result.Add(n); queue.Enqueue(n); }
+            }
+            return result;
+        }
+
+        private static SketchDocument Apply(Registry registry, SketchDocument before, SketchDocument after, Lang lang, List<string> changed,
+            Dictionary<string, Features> f0, Dictionary<string, List<string>> mesh, Dictionary<string, List<string>> carried,
+            Dictionary<string, List<string>> carrier, Dictionary<string, List<string>> bonded)
+        {
             var doc = after;
             var visited = new HashSet<string>(changed, StringComparer.Ordinal);
             List<string> Of(Dictionary<string, List<string>> map, string id) => map.TryGetValue(id, out var l) ? l : new List<string>();
@@ -129,9 +176,12 @@ namespace InventaSketch.Core
             void Translate(string id, Vec2 delta)
                 => doc = Edits.Update(doc, new[] { id }, o => o with { Transform = o.Transform with { X = o.Transform.X + delta.X, Y = o.Transform.Y + delta.Y } });
 
+            var work = new Queue<string>(changed.Where(f0.ContainsKey));
+
             // Everything connected to the start (except what is already handled) moves by the same offset and, when a
-            // rotating shaft carries it, turns with it about the pivot (the new hub point).
-            void RigidMove(string start, Vec2 delta, Vec2? pivot = null, double degrees = 0)
+            // rotating shaft carries it, turns with it about the pivot. withMesh: a pushed gear takes its whole train
+            // along; without it (parts carried by a moved shaft) the moved gears' meshes follow the centre-distance rule.
+            void RigidMove(string start, Vec2 delta, Vec2? pivot = null, double degrees = 0, bool withMesh = true)
             {
                 var turn = pivot is not null && Math.Abs(degrees) > Eps;
                 if (delta.Length < Eps && !turn) return;
@@ -143,15 +193,17 @@ namespace InventaSketch.Core
                     var id = queue.Dequeue();
                     Translate(id, delta);
                     if (turn) doc = Edits.Rotate(doc, new[] { id }, pivot!.Value, degrees);
-                    foreach (var next in Of(mesh, id).Concat(Of(carried, id)).Concat(Of(carrier, id)).Concat(Of(bonded, id)))
-                        if (visited.Add(next)) queue.Enqueue(next);
+                    if (!withMesh && mesh.ContainsKey(id) && f0.ContainsKey(id)) work.Enqueue(id);
+                    var next = withMesh ? Of(mesh, id).Concat(Of(carried, id)).Concat(Of(carrier, id)).Concat(Of(bonded, id))
+                                        : Of(carried, id).Concat(Of(carrier, id)).Concat(Of(bonded, id));
+                    foreach (var n in next)
+                        if (visited.Add(n)) queue.Enqueue(n);
                 }
             }
 
             void Scale(string id, double k)
-                => doc = Edits.Update(doc, new[] { id }, o => o with { Size = new Size2(o.Size.W * k, o.Size.H * k) });
+                => doc = Edits.Update(doc, new[] { id }, o => registry.Type(o.Type)?.ScalePitch(o, k) ?? o with { Size = new Size2(o.Size.W * k, o.Size.H * k) });
 
-            var work = new Queue<string>(changed.Where(f0.ContainsKey));
             while (work.Count > 0)
             {
                 var id = work.Dequeue();
@@ -204,16 +256,64 @@ namespace InventaSketch.Core
                         var hub = f0[child].Hubs.FirstOrDefault(h => f0[id].Axes.Any(x => Geo.ClosestOnSegment(h, x.A, x.B).Point.DistanceTo(h) <= 0.3));
                         var (u, v) = before0.ToBox(hub);
                         var target = after1.BoxPoint(u, v);
-                        RigidMove(child, target - hub, target, turned);
+                        RigidMove(child, target - hub, target, turned, withMesh: false);
                     }
                 }
 
                 // Concentric parts move together.
                 if (moved.Length > Eps)
                     foreach (var other in Of(bonded, id))
-                        if (!visited.Contains(other)) RigidMove(other, moved);
+                        if (!visited.Contains(other)) RigidMove(other, moved, withMesh: false);
             }
             return doc;
         }
-    }
+    
+        /// <summary>
+        /// Turns gears that show teeth (<see cref="ObjectType.ToothPhase"/>) so teeth meet gaps where they mesh: every gear the
+        /// edit added, moved, scaled or changed is turned to fit a meshing partner (preferably one the edit left alone);
+        /// the partner keeps its angle. External meshes only.
+        /// </summary>
+        public static SketchDocument AlignTeeth(Registry registry, SketchDocument before, SketchDocument after, Lang lang = Lang.En)
+        {
+            var moved = after.Objects.Values.Where(o => !o.IsPointGeometry && (before.Get(o.Id) is not { } b || !SameState(b, o))).Select(o => o.Id).ToList();
+            if (moved.Count == 0) return after;
+            var gears = new Dictionary<string, (Features F, int Z, double Tooth)>(StringComparer.Ordinal);
+            var ctx = new RenderContext(after, lang);
+            foreach (var o in after.Objects.Values.Where(o => !o.IsPointGeometry))
+            {
+                if (registry.Type(o.Type)?.ToothPhase(o) is not { } tp || tp.Teeth < 3) continue;
+                var f = Read(registry, o, ctx);
+                if (f.Pitch is null || f.Inner) continue;
+                gears[o.Id] = (f, tp.Teeth, tp.ToothDeg);
+            }
+            if (gears.Count < 2) return after;
+            var doc = after;
+            var done = new HashSet<string>(StringComparer.Ordinal);
+            var movedSet = new HashSet<string>(moved, StringComparer.Ordinal);
+            foreach (var id in moved)
+            {
+                if (!gears.TryGetValue(id, out var b)) continue;
+                var partners = gears.Where(g => g.Key != id && Math.Abs(g.Value.F.Centre.DistanceTo(b.F.Centre) - (g.Value.F.Pitch!.Value + b.F.Pitch!.Value)) <= Math.Max(0.3, 0.02 * (g.Value.F.Pitch!.Value + b.F.Pitch!.Value)))
+                    .OrderBy(g => movedSet.Contains(g.Key) && !done.Contains(g.Key) ? 1 : 0).ToList();
+                if (partners.Count == 0) continue;
+                var aId = partners[0].Key;
+                var a = partners[0].Value;
+                var oa = doc.Get(aId)!;
+                var ob = doc.Get(id)!;
+                var d = b.F.Centre - a.F.Centre;
+                var theta = Math.Atan2(d.Y, d.X) * 180 / Math.PI;
+                double pa = 360.0 / a.Z, pb = 360.0 / b.Z;
+                var u = Mod((theta - oa.Transform.Rotation - a.Tooth) / pa, 1);
+                var target = theta + 180 + (u + 0.5) * pb - b.Tooth;
+                var current = ob.Transform.Rotation;
+                var step = Mod(target - current + pb / 2, pb) - pb / 2;
+                if (Math.Abs(step) > 1e-6)
+                    doc = Edits.Update(doc, new[] { id }, o => o with { Transform = o.Transform with { Rotation = Math.Round(o.Transform.Rotation + step, 6) } });
+                done.Add(id);
+            }
+            return doc;
+        }
+
+        private static double Mod(double x, double m) => ((x % m) + m) % m;
+}
 }

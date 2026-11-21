@@ -448,6 +448,18 @@ namespace InventaSketch.Core
         public virtual string? ChainConnector(SketchObject o) => null;
 
         /// <summary>
+        /// Coupling (<see cref="Coupling"/>): the object scaled so its pitch radius grows by <paramref name="k"/>. Default: the
+        /// whole box. Side and schematic views of gears scale only the diameter, not the gear width.
+        /// </summary>
+        public virtual SketchObject ScalePitch(SketchObject o, double k) => o with { Size = new Size2(o.Size.W * k, o.Size.H * k) };
+
+        /// <summary>
+        /// Teeth drawn by the object (number, and local angle of a tooth centre in degrees, clockwise on screen); null when the
+        /// current view shows no teeth. Meshing gears with teeth are turned so teeth meet gaps (<see cref="Coupling"/>).
+        /// </summary>
+        public virtual (int Teeth, double ToothDeg)? ToothPhase(SketchObject o) => null;
+
+        /// <summary>
         /// Called when a parameter was set from outside the type's own actions (inspector, label menu): returns the object
         /// to keep, for example with <see cref="SketchObject.Size"/> following a design box that grew (a valve with more
         /// positions keeps its drawing scale instead of being squeezed). Default: <paramref name="after"/> unchanged.

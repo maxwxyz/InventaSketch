@@ -230,7 +230,8 @@ namespace InventaSketch.AddIn.OnSlide
         private static HashSet<string> Couple(PowerPoint.Slide slide, Registry registry, Lang lang, List<SketchDocument> before, List<SketchDocument> after, HashSet<string> touched)
         {
             var changed = new HashSet<string>(StringComparer.Ordinal);
-            if (before.Count == 0 || after.Count == 0) return changed;
+            // Inserted units have no earlier model: everything is new, so their teeth still interlock with what they mesh with.
+            if (after.Count == 0) return changed;
             var all = All(slide);
             var others = all.Where(u => !u.Objects.Any(o => touched.Contains(o.Id))).ToList();
             var fullBefore = Merge(before, others);

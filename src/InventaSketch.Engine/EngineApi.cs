@@ -56,6 +56,7 @@ namespace InventaSketch.Engine
                 ["setMainText"] = SetMainTextCore,
                 ["suggestions"] = SuggestionsCore,
                 ["quickAdd"] = QuickAddCore,
+                ["followers"] = FollowersCore,
                 ["nextItems"] = NextItemsCore,
                 ["replaceItem"] = ReplaceItemCore,
                 ["conversions"] = ConversionsCore,
@@ -495,6 +496,13 @@ namespace InventaSketch.Engine
             return StateOf(s, r);
         }
 
+        /// <summary>Objects that move rigidly along with <c>ids</c> (gears on a dragged shaft): hosts preview them during a drag.</summary>
+        private object FollowersCore(EngineRequest r)
+        {
+            var s = S(r);
+            return Coupling.RigidFollowers(Registry, s.Doc, s.Resolve(r.Ids), s.Lang).ToList();
+        }
+
         /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>
         private object NextItemsCore(EngineRequest r)
         {
@@ -816,7 +824,9 @@ namespace InventaSketch.Engine
         private object SnapMoveCore(EngineRequest r)
         {
             var s = S(r);
-            var ids = s.Resolve(r.Ids);
+            var ids = s.Resolve(r.Ids).ToList();
+            // Coupled parts (gears on a dragged shaft) move along: their anchors snap too and they are no targets.
+            if (s.Couple) ids.AddRange(Coupling.RigidFollowers(Registry, s.Doc, ids, s.Lang).Where(id => !ids.Contains(id)));
             var ctx = s.Context();
             var opts = Options(s, r.Tolerance);
             var moving = ids.Select(s.Doc.Get).Where(o => o is not null && Registry.Type(o.Type) is not null)
