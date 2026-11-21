@@ -178,6 +178,11 @@ namespace InventaSketch.Modules.Kinematics
         protected virtual int MinPoints => 2;
         /// <summary>Whether the points are joint centres (exposed as <see cref="AnchorRole.Port"/>).</summary>
         protected virtual bool PortsAtPoints => true;
+        /// <summary>
+        /// Slots along the edges (rails "slot0" …, <see cref="Linkage.SlotPrefix"/>): a joint docked there slides along the
+        /// link (pin in slot). 0 = none, 1 = open chain of edges, 2 = closed outline (plates).
+        /// </summary>
+        protected virtual int Slots => 0;
 
         public sealed override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -194,6 +199,10 @@ namespace InventaSketch.Modules.Kinematics
             if (PortsAtPoints)
                 for (var i = 0; i < p.Count; i++) yield return Anchor.Point(AnchorRole.Port, p[i], "j" + i.ToString(CultureInfo.InvariantCulture));
             for (var i = 0; i + 1 < p.Count; i++) yield return Anchor.Point(AnchorRole.Mid, Vec2.Lerp(p[i], p[i + 1], 0.5), "m" + i.ToString(CultureInfo.InvariantCulture));
+            if (Slots == 0) yield break;
+            var edges = Slots == 2 && p.Count > 2 ? p.Count : p.Count - 1;
+            for (var i = 0; i < edges; i++)
+                yield return Anchor.Rail(p[i], p[(i + 1) % p.Count], Linkage.SlotPrefix + i.ToString(CultureInfo.InvariantCulture));
         }
 
         /// <summary>Joint radius of point elements (mm), optional parameter "joint".</summary>

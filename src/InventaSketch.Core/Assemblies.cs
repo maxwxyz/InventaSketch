@@ -100,8 +100,18 @@ namespace InventaSketch.Core
                     {
                         if (docks[k] is not { } d || d.Part < 0 || d.Part >= list.Count) continue;
                         var target = list[d.Part];
-                        var anchor = registry.PageAnchors(target, ctx).Where(a => a.Kind == AnchorKind.Point && a.Id == d.AnchorId).OrderBy(a => a.Role == AnchorRole.Center ? 1 : 0).FirstOrDefault();
-                        if (anchor is null) continue;
+                        var anchors = registry.PageAnchors(target, ctx).Where(a => a.Id == d.AnchorId).ToList();
+                        var anchor = anchors.Where(a => a.Kind == AnchorKind.Point).OrderBy(a => a.Role == AnchorRole.Center ? 1 : 0).FirstOrDefault();
+                        if (anchor is null)
+                        {
+                            // A rail (slot of a link, line): the point stays and docks at its place along the rail.
+                            var rail = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Rail);
+                            if (rail is null) continue;
+                            var on = Geo.ClosestOnSegment(points[k], rail.P, rail.Q).Point;
+                            points[k] = on;
+                            attach[k] = Attachments.For(target, on, rail);
+                            continue;
+                        }
                         points[k] = anchor.P;
                         attach[k] = Attachments.For(target, anchor.P, anchor);
                     }

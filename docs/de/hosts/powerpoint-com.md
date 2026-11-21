@@ -283,8 +283,14 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   Leiste: sie werden zu Gestelldrehpunkten, Gliedern und einem Schieber in der aktuellen Stellung, aneinander angedockt
   (Teile-Rezepte mit Punkten, Andockungen und Ausrichtungsanker, `PartSpec.Points`, `PartSpec.Docks`,
   `PartSpec.AlignAnchor`), also ein selbst gebautes Koppelgetriebe mit F = 1, das sich Teil für Teil bearbeiten und im
-  Bewegungsmodus ziehen lässt. Geprüft in PowerPoint am 21.11.2026. Kreuzschubkurbel, Kniehebel, Schnellrücklauf- und
-  Kurvengetriebe werden noch nicht zerlegt.
+  Bewegungsmodus ziehen lässt. Geprüft in PowerPoint am 21.11.2026. Ebenfalls zerlegbar sind der Kniehebel
+  (Gestelldrehpunkt, zwei Glieder, Schieber auf der senkrechten Führung), das Schnellrücklaufgetriebe (zwei
+  Gestelldrehpunkte, Kulissenschwinge, Kurbel mit Gleitstein im Schlitz der Schwinge, Koppel, Stößelschieber) und die
+  Kreuzschubkurbel (Gestelldrehpunkt, Kurbel mit Gleitstein im Schlitz der Jochplatte, Schieber am Schlitzende und am
+  Stangenende). **Kulissen:** Zweigelenkglieder und Platten bieten Schlitze entlang ihrer Kanten an (Rails `slot0` …);
+  ein dort angedocktes Gliedende gleitet im Bewegungsmodus am Glied entlang (Gleitstein im Schlitz, im Freiheitsgrad als
+  höheres Paar gezählt). Das Kurvengetriebe wird nicht zerlegt: kein Einzelteil bewahrt die Kurvenkontur, und der
+  Kurvenkontakt gehört noch nicht zu selbst gebauten Ketten.
 - **Getriebe selbst bauen:** Ein Planetenträger (`mech.carrier`, Stirn- und Schemaansicht, 2–8 Bolzen, Scheibe oder
   Arme, „fester Steg“ mit Gestellsymbol) ist ein eigenes Teil. Seine Bau-„+“ bieten an jedem freien Bolzen einen Planeten
   (so groß, dass er mit vorhandener Sonne oder vorhandenem Hohlrad kämmt) und in der Mitte Sonnenrad, Hohlrad (passend zu

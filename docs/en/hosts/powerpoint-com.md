@@ -300,8 +300,13 @@ UX round (2026-11-20, from the maintainer's feedback):
 - **Exploding predefined linkages:** the four-bar and the slider-crank show "Explode into parts" in the bar too: they
   become fixed pivots, links and a slider at the current position, docked onto each other (part recipes with points,
   docks and an align anchor, `PartSpec.Points`, `PartSpec.Docks`, `PartSpec.AlignAnchor`), i.e. a self-built linkage
-  with F = 1 that can be edited part by part and dragged in motion mode. Verified in PowerPoint 2026-11-21. Scotch yoke,
-  toggle, quick-return and cam mechanisms are not exploded yet.
+  with F = 1 that can be edited part by part and dragged in motion mode. Verified in PowerPoint 2026-11-21. The toggle
+  (pivot, two links, slider on the vertical guide), the quick-return mechanism (two pivots, slotted lever, crank with its
+  pin in the lever's slot, link, ram slider) and the scotch yoke (pivot, crank with its pin in the slot of the yoke plate,
+  sliders at the slot end and the rod end) explode too. **Slots:** binary links and plates offer slots along their edges
+  (rails `slot0` …); a link end docked there slides along the link in motion mode (pin in slot, counted as a higher pair
+  in F). The cam mechanism is not exploded: no single part keeps the cam profile and the cam contact is not part of
+  self-built chains yet.
 - **Building gear trains yourself:** a planet carrier (`mech.carrier`, axial and schematic, 2–8 pins, disc or arms,
   "fixed carrier" with a ground symbol) is a part of its own. Its build "+" offer a planet on every free pin (sized to
   mesh with the sun or ring already there) and, in the centre, a sun gear, a ring gear (sized to the planets) or a shaft;

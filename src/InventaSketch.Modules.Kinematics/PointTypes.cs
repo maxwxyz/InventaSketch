@@ -28,6 +28,7 @@ namespace InventaSketch.Modules.Kinematics
         public override IReadOnlyList<ViewDef> Views => PointViews.Two;
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 0), new Vec2(15, 0) };
         public override LinkageRole LinkageRole(SketchObject o) => InventaSketch.Core.LinkageRole.Link;
+        protected override int Slots => 1;
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
@@ -66,6 +67,7 @@ namespace InventaSketch.Modules.Kinematics
         public override IReadOnlyList<ViewDef> Views => PointViews.Two;
         protected override int MinPoints => 3;
         public override LinkageRole LinkageRole(SketchObject o) => InventaSketch.Core.LinkageRole.Link;
+        protected override int Slots => 2;
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-14, 8), new Vec2(14, 8), new Vec2(0, -12) };
         public override IReadOnlyList<ParamDef> Parameters => new[] { JointParam };
 

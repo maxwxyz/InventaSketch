@@ -20,12 +20,23 @@ namespace InventaSketch.Core
 
     /// <summary>
     /// Self-built linkages: rigid links whose joints are docked onto each other, onto fixed pivots, free joints and sliders
-    /// form a chain. Dragging one joint moves the chain while every link keeps its length, fixed pivots stay and sliders
+    /// form a chain. A joint docked onto a slot of another link (<see cref="SlotPrefix"/>, a rail along one of its edges)
+    /// slides along that link (pin in slot, a sliding block in a slotted link). Dragging one joint moves the chain while every link keeps its length, fixed pivots stay and sliders
     /// stay on their guide (position-based constraint solving, started from the current position so the chain keeps its
     /// assembly mode). The degree of freedom follows Grübler's formula.
     /// </summary>
     public static class Linkage
     {
+        /// <summary>Anchor id prefix of the slots of links ("slot0" = the edge from point 0 to point 1).</summary>
+        public const string SlotPrefix = "slot";
+
+        /// <summary>Edge index of a slot anchor id ("slot2" → 2), else null.</summary>
+        public static int? SlotIndex(string? anchorId)
+        {
+            if (anchorId is null || !anchorId.StartsWith(SlotPrefix, StringComparison.Ordinal) || anchorId.Length == SlotPrefix.Length) return null;
+            return int.TryParse(anchorId.Substring(SlotPrefix.Length), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var i) ? i : null;
+        }
+
         private sealed class Node
         {
             public string Key = "";
@@ -44,6 +55,8 @@ namespace InventaSketch.Core
             public readonly List<string> Links = new();
             public readonly List<(string A, string B, double L)> Bars = new();
             public readonly Dictionary<(string Link, int Index), string> NodeOf = new();
+            /// <summary>Pin-in-slot pairs: joint <c>P</c> stays on the line through the joints <c>A</c> and <c>B</c>.</summary>
+            public readonly List<(string P, string A, string B)> Slots = new();
         }
 
         /// <summary>True if <paramref name="o"/> takes part in self-built linkages.</summary>
@@ -57,6 +70,8 @@ namespace InventaSketch.Core
             var frame = chain.Nodes.Values.Any(n => n.Fixed || n.Guide is not null) ? 1 : 0;
             var sliders = chain.Nodes.Values.Count(n => n.Guide is not null);
             var n = chain.Links.Count + frame + sliders;
+            // A pin in a slot is a higher pair: it removes one degree of freedom.
+            var h = chain.Slots.Count;
             var j = 0;
             foreach (var node in chain.Nodes.Values)
             {
@@ -65,7 +80,7 @@ namespace InventaSketch.Core
                 j += node.Fixed || node.Guide is not null ? m : Math.Max(0, m - 1);
                 if (node.Guide is not null) j += 1; // the prismatic pair of the slider with the frame
             }
-            return (n, j, 3 * (n - 1) - 2 * j);
+            return (n, j + h, 3 * (n - 1) - 2 * j - h);
         }
 
         /// <summary>
@@ -86,6 +101,7 @@ namespace InventaSketch.Core
                 if (n.Fixed) pos[key] = n.P;
                 else if (n.Guide is { } g) pos[key] = Geo.ProjectOnLine(pos[key], g.A, g.B);
             }
+            double Weight(string key, int phase) => chain.Nodes[key].Fixed || phase == 0 && key == drag ? 0 : 1;
             // 1) Pull the dragged joint to the target while the bars hold the rest; 2) let it go to restore exact lengths.
             for (var phase = 0; phase < 2; phase++)
             {
@@ -106,6 +122,28 @@ namespace InventaSketch.Core
                         Project(a);
                         Project(b);
                     }
+                    // Pins in slots: distance of the pin to the slot line → 0, shared by the pin and the slot's two joints.
+                    foreach (var (sp, sa, sb) in chain.Slots)
+                    {
+                        double wp = Weight(sp, phase), wa = Weight(sa, phase), wb = Weight(sb, phase);
+                        var a = pos[sa];
+                        var d = pos[sb] - a;
+                        var len = d.Length;
+                        if (len < 1e-9) continue;
+                        var u = d * (1 / len);
+                        var nrm = u.Perp;
+                        var t = (pos[sp] - a).Dot(u) / len;
+                        var dist = (pos[sp] - a).Dot(nrm);
+                        var denom = wp + wa * (1 - t) * (1 - t) + wb * t * t;
+                        if (denom < 1e-12) continue;
+                        var lam = dist / denom;
+                        pos[sp] -= nrm * (wp * lam);
+                        pos[sa] += nrm * (wa * lam * (1 - t));
+                        pos[sb] += nrm * (wb * lam * t);
+                        Project(sp);
+                        Project(sa);
+                        Project(sb);
+                    }
                 }
             }
             return Apply(doc, chain, pos);
@@ -115,12 +153,14 @@ namespace InventaSketch.Core
         private static SketchDocument Apply(SketchDocument doc, Chain chain, Dictionary<string, Vec2> pos)
         {
             var result = doc;
+            var slotOf = chain.Slots.GroupBy(s => s.P).ToDictionary(g => g.Key, g => g.First(), StringComparer.Ordinal);
             foreach (var kv in chain.Nodes)
             {
                 var key = kv.Key;
                 var node = kv.Value;
                 var p = pos[key];
-                if (p.DistanceTo(node.P) < 1e-9) continue;
+                var inSlot = slotOf.TryGetValue(key, out var slot);
+                if (!inSlot && p.DistanceTo(node.P) < 1e-9) continue;
                 if (node.Box is { } box)
                 {
                     if (node.Fixed) continue;
@@ -132,8 +172,22 @@ namespace InventaSketch.Core
                 foreach (var (link, i) in node.Members)
                 {
                     var o = result.Get(link)!;
-                    var docked = o.Attach is not null && i < o.Attach.Count && o.Attach[i] is not null;
-                    if (docked) continue;
+                    var at = o.Attach is not null && i < o.Attach.Count ? o.Attach[i] : null;
+                    if (inSlot && at is not null && SlotIndex(at.AnchorId) is not null)
+                    {
+                        // The pin slides: its point and its position along the slot (the attachment's fraction) move.
+                        var (_, t) = Geo.ClosestOnSegment(p, pos[slot.A], pos[slot.B]);
+                        result = Edits.Update(result, new[] { link }, x =>
+                        {
+                            var pts = x.Points!.ToList();
+                            pts[i] = new Vec2(Math.Round(p.X, 6), Math.Round(p.Y, 6));
+                            var att = x.Attach!.ToList();
+                            att[i] = at with { U = Math.Round(t, 9) };
+                            return x with { Points = pts, Attach = att };
+                        });
+                        continue;
+                    }
+                    if (at is not null) continue;
                     result = Edits.Update(result, new[] { link }, x =>
                     {
                         var pts = x.Points!.ToList();
@@ -164,6 +218,7 @@ namespace InventaSketch.Core
                 return link.Id + "#" + i;
             }
             var all = new Chain();
+            var slotDocks = new List<(string Link, int Index, string Target, int Edge)>();
             foreach (var link in links)
             {
                 var pts = doc.ResolvePoints(link);
@@ -171,6 +226,9 @@ namespace InventaSketch.Core
                 for (var i = 0; i < pts.Count; i++)
                 {
                     var key = KeyOf(link, i);
+                    var dock = link.Attach is not null && i < link.Attach.Count ? link.Attach[i] : null;
+                    if (dock is not null && SlotIndex(dock.AnchorId) is int edge && doc.Get(dock.ObjectId) is { } slotted && slotted.IsPointGeometry && RoleOf(slotted) == LinkageRole.Link)
+                        slotDocks.Add((link.Id, i, slotted.Id, edge));
                     if (!all.Nodes.TryGetValue(key, out var node))
                     {
                         node = new Node { Key = key, P = pts[i] };
@@ -193,6 +251,15 @@ namespace InventaSketch.Core
                     for (var j = i + 1; j < keys.Count; j++)
                         if (keys[i] != keys[j]) all.Bars.Add((keys[i], keys[j], pts[i].DistanceTo(pts[j])));
             }
+            // Pins in slots: the slot runs between the joints of its edge (the last edge of a plate closes it).
+            foreach (var (link, i, target, edge) in slotDocks)
+            {
+                var count = doc.Get(target)!.Points!.Count;
+                if (edge >= count || !all.NodeOf.TryGetValue((link, i), out var pin)
+                    || !all.NodeOf.TryGetValue((target, edge), out var sa) || !all.NodeOf.TryGetValue((target, (edge + 1) % count), out var sb)) continue;
+                if (pin == sa || pin == sb || sa == sb) continue;
+                all.Slots.Add((pin, sa, sb));
+            }
             // The connected chain of id (id may be a link or a joint element).
             var start = all.NodeOf.Where(kv => kv.Key.Link == id).Select(kv => kv.Value).FirstOrDefault() ?? (all.Nodes.ContainsKey("box:" + id) ? "box:" + id : null);
             if (start is null) return null;
@@ -206,11 +273,18 @@ namespace InventaSketch.Core
                     if (a == k && keep.Add(b)) queue.Enqueue(b);
                     if (b == k && keep.Add(a)) queue.Enqueue(a);
                 }
+                foreach (var (sp, sa, sb) in all.Slots)
+                {
+                    if (sp != k && sa != k && sb != k) continue;
+                    foreach (var x in new[] { sp, sa, sb })
+                        if (keep.Add(x)) queue.Enqueue(x);
+                }
             }
             var chain = new Chain();
             foreach (var k in keep) chain.Nodes[k] = all.Nodes[k];
             foreach (var bar in all.Bars.Where(b => keep.Contains(b.A))) chain.Bars.Add(bar);
             foreach (var kv in all.NodeOf.Where(kv => keep.Contains(kv.Value))) chain.NodeOf[kv.Key] = kv.Value;
+            chain.Slots.AddRange(all.Slots.Where(s => keep.Contains(s.P)));
             chain.Links.AddRange(chain.NodeOf.Keys.Select(k => k.Link).Distinct());
             return chain;
         }

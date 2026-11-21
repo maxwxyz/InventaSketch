@@ -246,7 +246,8 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     var ids = u.Objects.Where(o => state.Get(o.Id) is { } t && before.Get(o.Id) is { } f && !ReferenceEquals(t, f)).Select(o => o.Id).ToList();
                     if (ids.Count == 0) continue;
-                    var doc = Edits.Update(u.Doc, ids, o => o with { Points = state.Get(o.Id)!.Points, Transform = state.Get(o.Id)!.Transform });
+                    // Attachments too: a pin sliding in a slot changes its position along the slot.
+                    var doc = Edits.Update(u.Doc, ids, o => o with { Points = state.Get(o.Id)!.Points, Transform = state.Get(o.Id)!.Transform, Attach = state.Get(o.Id)!.Attach });
                     SketchUnits.Replace(slide, u, doc, registry, lang);
                 }
                 // Links docked on moved joints follow (their points resolve through the attachments).
