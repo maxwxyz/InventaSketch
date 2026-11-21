@@ -278,9 +278,12 @@ namespace InventaSketch.Modules.Machines.Tests
             var after = Coupling.Propagate(r, before, Edits.Move(before, new[] { shaft }, new Vec2(10, 0)));
             Assert.Equal(Pos(before, part), Pos(after, part));
 
+            // A wheel slides along its shaft; a drive (e-machine, engine) leads its shaft (ObjectType.DrivesShaft).
             var (r2, on, part2, shaft2, _) = OnShaft(partItem, shaftItem);
             var slid = Coupling.Propagate(r2, on, Edits.Move(on, new[] { part2 }, new Vec2(-6, 0)));
-            Assert.Equal(Pos(on, shaft2), Pos(slid, shaft2));
+            var drives = r2.Type(on.Get(part2)!.Type)!.DrivesShaft;
+            Assert.Equal(partItem.StartsWith("machines.emachine") || partItem.StartsWith("machines.engine"), drives);
+            Assert.Equal(drives ? Pos(on, shaft2) + new Vec2(-6, 0) : Pos(on, shaft2), Pos(slid, shaft2));
         }
 
         [Fact]

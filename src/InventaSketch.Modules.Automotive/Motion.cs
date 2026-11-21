@@ -20,7 +20,7 @@ namespace InventaSketch.Modules.Automotive
         public static readonly ParamDef Range = Prm.Num("range", "Range", "Reichweite", 60, 1, 2000, "mm", 5);
         public static readonly ParamDef Angle = Prm.Num("angle", "Opening angle", "Öffnungswinkel", 50, 1, 360, "°", 5);
         public static readonly ParamDef Heading = Prm.Num("heading", "Heading offset", "Ausrichtung (Versatz)", 0, -180, 180, "°", 5);
-        private static readonly ParamDef FillDef = Prm.Choice("fill", "Fill", "Füllung", "dots", ("dots", "Dotted", "Punktiert"), ("hatch", "Hatched", "Schraffiert"), ("none", "None", "Keine"));
+        private static readonly ParamDef FillDef = Prm.Choice("fill", "Fill", "Füllung", "dots", ("dots", "Dotted", "Punktiert"), ("hatch", "Hatched", "Schraffiert"), ("none", "None", "Keine")).WithOptionIcons(IconIds.ForFill);
         private static readonly ParamDef Rings = Prm.Int("rings", "Range rings", "Entfernungsringe", 0, 0, 6);
         private static readonly ParamDef Axis = Prm.Bool("axis", "Show axis", "Achse zeigen", true);
         private static readonly ParamDef Label = Prm.Text("label", "Label", "Beschriftung", "");

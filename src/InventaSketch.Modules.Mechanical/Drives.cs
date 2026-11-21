@@ -41,6 +41,7 @@ namespace InventaSketch.Modules.Mechanical
             {
                 Params = new[] { new ParamDef("ratio", T("Diameter ratio right/left", "Durchmesserverhältnis rechts/links"), ParamKind.Number) { Min = 0.1, Max = 10, Step = 0.1 } },
                 Rotating = false,
+                Spans = true,
             };
             yield return new MechType("mech.sprocket", T("Chain sprocket", "Kettenrad"), Cat,
                 new[] { "sprocket", "chain wheel", "kettenrad", "ritzel", "kettentrieb" },
@@ -58,6 +59,7 @@ namespace InventaSketch.Modules.Mechanical
                 new ViewSpec("line", T("Pitch line", "Teilungslinie"), 60, 24, ChainLine) { Fluid = true, Anchors = EndHubs })
             {
                 Rotating = false,
+                Spans = true,
             };
         }
 

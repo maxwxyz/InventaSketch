@@ -270,7 +270,7 @@ namespace InventaSketch.Modules.Maps
         public const string TypeId = "map.stop";
 
         private static readonly ParamDef NumberDef = Prm.Int("number", "Number", "Nummer", 1, 0, 999);
-        private static readonly ParamDef ShapeDef = Prm.Choice("shape", "Shape", "Form", "circle", ("circle", "Circle", "Kreis"), ("square", "Square", "Quadrat"));
+        private static readonly ParamDef ShapeDef = Prm.Choice("shape", "Shape", "Form", "circle", ("circle", "Circle", "Kreis"), ("square", "Square", "Quadrat")).WithOptionIcons(IconIds.ForShape);
 
         public static string Label(SketchObject o) => !string.IsNullOrWhiteSpace(o.Text) ? o.Text!.Trim() : Geom.I(o.Int("number", 1));
 

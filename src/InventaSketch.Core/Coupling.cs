@@ -28,6 +28,10 @@ namespace InventaSketch.Core
             public Vec2 Centre;
             public double? Pitch;
             public bool Inner;
+            /// <summary><see cref="ObjectType.DrivesShaft"/>.</summary>
+            public bool Drives;
+            /// <summary><see cref="ObjectType.SpansHubs"/>.</summary>
+            public bool Span;
             public readonly List<Vec2> Hubs = new();
             public readonly List<(Vec2 A, Vec2 B)> Axes = new();
             public bool Any => Pitch is not null || Hubs.Count > 0 || Axes.Count > 0;
@@ -36,7 +40,9 @@ namespace InventaSketch.Core
         private static Features Read(Registry registry, SketchObject o, RenderContext ctx)
         {
             var f = new Features { Centre = new Vec2(o.Transform.X, o.Transform.Y) };
-            if (o.IsPointGeometry || registry.Type(o.Type) is null) return f;
+            if (o.IsPointGeometry || registry.Type(o.Type) is not { } type) return f;
+            f.Drives = type.DrivesShaft;
+            f.Span = type.SpansHubs;
             foreach (var a in registry.PageAnchors(o, ctx))
             {
                 if (a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner && f.Pitch is null)
@@ -89,8 +95,10 @@ namespace InventaSketch.Core
 
             // Relations before the edit (pairs the user released do not couple).
             var (mesh, carried, carrier, bonded) = Relations(f0, (a, b) => IsReleased(before, a, b));
-            if (mesh.Count == 0 && carried.Count == 0 && bonded.Count == 0) return after;
-            return Apply(registry, before, after, lang, changed, f0, mesh, carried, carrier, bonded);
+            var spans = Pairs(f0).Where(p => p.Kind == LinkKind.Spanned && !IsReleased(before, p.A, p.B)).ToList();
+            if (mesh.Count == 0 && carried.Count == 0 && bonded.Count == 0 && spans.Count == 0) return after;
+            var doc = Apply(registry, before, after, lang, changed, f0, mesh, carried, carrier, bonded);
+            return spans.Count == 0 ? doc : FollowSpans(registry, before, doc, lang, f0, spans, changed);
         }
 
         /// <summary>True if the user released the pair (<see cref="SketchObject.Released"/> on either object).</summary>
@@ -117,6 +125,16 @@ namespace InventaSketch.Core
                     if (i == j) continue;
                     var a = f0[ids[i]];
                     var b = f0[ids[j]];
+                    // A belt or chain runs over the parts whose hubs lie on its end hubs (no other relation).
+                    if (a.Span || b.Span)
+                    {
+                        if (a.Span && !b.Span)
+                        {
+                            var end = a.Hubs.Take(2).Where(h => b.Hubs.Any(k => h.DistanceTo(k) <= 0.3)).Select(h => (Vec2?)h).FirstOrDefault();
+                            if (end is not null) list.Add(new Pair(LinkKind.Spanned, ids[i], ids[j], end.Value));
+                        }
+                        continue;
+                    }
                     if (j > i && a.Pitch is double ra && b.Pitch is double rb)
                     {
                         var d = a.Centre.DistanceTo(b.Centre);
@@ -161,6 +179,7 @@ namespace InventaSketch.Core
                 {
                     case LinkKind.Mesh: Link(mesh, p.A, p.B); Link(mesh, p.B, p.A); break;
                     case LinkKind.Carried: Link(carried, p.A, p.B); Link(carrier, p.B, p.A); break;
+                    case LinkKind.Spanned: break; // see Spans
                     default: Link(bonded, p.A, p.B); Link(bonded, p.B, p.A); break;
                 }
             }
@@ -193,6 +212,47 @@ namespace InventaSketch.Core
                     yield return new Link(p.Kind, p.A, p.B, p.At, IsReleased(doc, p.A, p.B));
         }
 
+        /// <summary>
+        /// Belts and chains follow the pulleys and sprockets they run over: each end goes to where its part's hub is now, so the
+        /// strand stretches and turns; a strand the edit moved itself is left alone.
+        /// </summary>
+        private static SketchDocument FollowSpans(Registry registry, SketchDocument before, SketchDocument doc, Lang lang, Dictionary<string, Features> f0, List<Pair> spans, List<string> changed)
+        {
+            var ctx = new RenderContext(doc, lang);
+            foreach (var group in spans.GroupBy(p => p.A))
+            {
+                var id = group.Key;
+                if (changed.Contains(id) || !f0.TryGetValue(id, out var fs) || fs.Hubs.Count < 2) continue;
+                Vec2 l0 = fs.Hubs[0], r0 = fs.Hubs[1], l1 = l0, r1 = r0;
+                foreach (var p in group)
+                {
+                    if (doc.Get(p.B) is not { } part || !f0.TryGetValue(p.B, out var fb)) continue;
+                    var k = fb.Hubs.FindIndex(h => h.DistanceTo(p.At) <= 0.3);
+                    var now = Read(registry, part, ctx);
+                    if (k < 0 || k >= now.Hubs.Count) continue;
+                    if (p.At.DistanceTo(l0) <= 0.3) l1 = now.Hubs[k];
+                    else if (p.At.DistanceTo(r0) <= 0.3) r1 = now.Hubs[k];
+                }
+                if (l1.DistanceTo(l0) < Eps && r1.DistanceTo(r0) < Eps) continue;
+                double d0 = l0.DistanceTo(r0), d1 = l1.DistanceTo(r1);
+                if (d1 < 1) continue;
+                var o = doc.Get(id)!;
+                var (u, v) = o.ToBox(Vec2.Lerp(l0, r0, 0.5));
+                var mid = new Vec2(u * o.Size.W, v * o.Size.H);
+                var turn = (Math.Atan2(r1.Y - l1.Y, r1.X - l1.X) - Math.Atan2(r0.Y - l0.Y, r0.X - l0.X)) * 180 / Math.PI;
+                var rot = o.Transform.Rotation + turn;
+                var w = Math.Max(1, o.Size.W + d1 - d0);
+                var offset = (o with { Transform = new Transform(0, 0, rot, o.Transform.FlipX, o.Transform.FlipY) }).Matrix().ApplyLinear(mid);
+                var centre = Vec2.Lerp(l1, r1, 0.5) - offset;
+                doc = Edits.Update(doc, new[] { id }, x => x with
+                {
+                    Transform = x.Transform with { X = Math.Round(centre.X, 6), Y = Math.Round(centre.Y, 6), Rotation = Math.Round(rot, 6) },
+                    Size = new Size2(Math.Round(w, 6), x.Size.H),
+                });
+            }
+            return doc;
+        }
+
         /// <summary>Drops released entries of pairs that no longer touch, so parts snapped together again are coupled again.</summary>
         public static SketchDocument PruneReleased(Registry registry, SketchDocument doc, Lang lang = Lang.En)
         {
@@ -218,7 +278,7 @@ namespace InventaSketch.Core
             var start = new HashSet<string>(ids, StringComparer.Ordinal);
             var f0 = FeaturesOf(registry, doc, lang);
             if (!start.Any(f0.ContainsKey)) return Array.Empty<string>();
-            var (_, carried, _, bonded) = Relations(f0, (a, b) => IsReleased(doc, a, b));
+            var (_, carried, carrier, bonded) = Relations(f0, (a, b) => IsReleased(doc, a, b));
             var result = new List<string>();
             var seen = new HashSet<string>(start, StringComparer.Ordinal);
             var queue = new Queue<string>(start);
@@ -226,6 +286,8 @@ namespace InventaSketch.Core
             {
                 var id = queue.Dequeue();
                 var next = (carried.TryGetValue(id, out var c) ? c : new List<string>()).Concat(bonded.TryGetValue(id, out var b) ? b : new List<string>());
+                // A dragged motor or engine takes its shaft (and what sits on it) along.
+                if (start.Contains(id) && f0.TryGetValue(id, out var fd) && fd.Drives && carrier.TryGetValue(id, out var shafts)) next = next.Concat(shafts);
                 foreach (var n in next)
                     if (seen.Add(n)) { result.Add(n); queue.Enqueue(n); }
             }
@@ -327,6 +389,11 @@ namespace InventaSketch.Core
                         RigidMove(child, target - hub, target, turned, withMesh: false);
                     }
                 }
+
+                // A moved motor or engine takes its shaft (and the rest of the shaft's parts) along.
+                if (a0.Drives && moved.Length > Eps)
+                    foreach (var shaft in Of(carrier, id))
+                        if (!visited.Contains(shaft)) RigidMove(shaft, moved, withMesh: false);
 
                 // Concentric parts move together.
                 if (moved.Length > Eps)

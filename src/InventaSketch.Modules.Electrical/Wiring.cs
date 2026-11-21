@@ -53,7 +53,7 @@ namespace InventaSketch.Modules.Electrical
         }
 
         public static ParamDef Param(string def) => Choice("route", T("Routing", "Leitungsführung"), def,
-            ("free", "Free (straight)", "Frei (gerade)"), ("orthogonal", "Orthogonal", "Orthogonal"), ("45", "45°", "45°"));
+            ("free", "Free (straight)", "Frei (gerade)"), ("orthogonal", "Orthogonal", "Orthogonal"), ("45", "45°", "45°")).WithOptionIcons(IconIds.ForRoute);
 
         public static ContextAction CycleAction(SketchObject o, string def) => new("elec.route.next",
             T("Next routing (free / orthogonal / 45°)", "Nächste Führung (frei / orthogonal / 45°)"), IconIds.Cycle, x =>

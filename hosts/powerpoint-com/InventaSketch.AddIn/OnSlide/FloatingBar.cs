@@ -123,18 +123,63 @@ namespace InventaSketch.AddIn.OnSlide
         public int Hover { get; set; } = -1;
 
         /// <summary>Centres the bar above the selection, or below it if there is no room; clamped to the pane.</summary>
-        public void Place(RectangleF selection, Rectangle pane)
+        public void Place(RectangleF selection, Rectangle pane, IReadOnlyList<RectangleF>? obstacles = null)
+            => Bounds = Placement(Size, Scale, selection, pane, obstacles);
+
+        /// <summary>
+        /// Where the bar goes: above the selection (clear of PowerPoint's rotation handle, about 35 logical px above the
+        /// frame), else below, else beside it, inside the pane. With <paramref name="obstacles"/> (other elements on the
+        /// slide) the place that covers the least of them wins, so the bar does not hide parts coupled to the selection;
+        /// on a tie the order above, below, right, left decides.
+        /// </summary>
+        internal static Rectangle Placement(Size size, float scale, RectangleF selection, Rectangle pane, IReadOnlyList<RectangleF>? obstacles = null)
         {
-            // Above the selection, clear of PowerPoint's rotation handle (about 35 logical px above the frame).
-            var gapAbove = (int)Math.Round(46 * Scale);
-            var gapBelow = (int)Math.Round(14 * Scale);
-            int x = (int)Math.Round(selection.X + selection.Width / 2 - Size.Width / 2.0);
-            int y = (int)Math.Round(selection.Y) - gapAbove - Size.Height;
-            if (y < pane.Top + 2) y = (int)Math.Round(selection.Bottom) + gapBelow;
-            var gap = gapBelow;
-            if (y + Size.Height > pane.Bottom - 2) y = Math.Max(pane.Top + 2, (int)Math.Round(selection.Y) + gap);
-            x = Math.Max(pane.Left + 2, Math.Min(pane.Right - Size.Width - 2, x));
-            Bounds = new Rectangle(x, y, Size.Width, Size.Height);
+            var gapAbove = (int)Math.Round(46 * scale);
+            var gapBelow = (int)Math.Round(14 * scale);
+            var gapSide = (int)Math.Round(22 * scale);
+            int cx = (int)Math.Round(selection.X + selection.Width / 2 - size.Width / 2.0);
+            int cy = (int)Math.Round(selection.Y + selection.Height / 2 - size.Height / 2.0);
+            var candidates = new[]
+            {
+                new Point(cx, (int)Math.Round(selection.Y) - gapAbove - size.Height),
+                new Point(cx, (int)Math.Round(selection.Bottom) + gapBelow),
+                new Point((int)Math.Round(selection.Right) + gapSide, cy),
+                new Point((int)Math.Round(selection.X) - gapSide - size.Width, cy),
+            };
+            Rectangle Clamp(Point p)
+            {
+                var x = Math.Max(pane.Left + 2, Math.Min(pane.Right - size.Width - 2, p.X));
+                var y = Math.Max(pane.Top + 2, Math.Min(pane.Bottom - size.Height - 2, p.Y));
+                return new Rectangle(x, y, size.Width, size.Height);
+            }
+            bool Fits(Point p) => p.X >= pane.Left + 2 && p.X + size.Width <= pane.Right - 2 && p.Y >= pane.Top + 2 && p.Y + size.Height <= pane.Bottom - 2;
+            double Covered(Rectangle r)
+            {
+                double sum = 0;
+                // Covering the selection itself is worst; then other elements.
+                var own = RectangleF.Intersect(r, selection);
+                if (!own.IsEmpty) sum += 4 * own.Width * own.Height;
+                if (obstacles is null) return sum;
+                foreach (var o in obstacles)
+                {
+                    var i = RectangleF.Intersect(r, o);
+                    if (!i.IsEmpty) sum += i.Width * i.Height;
+                }
+                return sum;
+            }
+            Rectangle? best = null;
+            var bestScore = double.MaxValue;
+            for (var k = 0; k < candidates.Length; k++)
+            {
+                // The horizontal position may be clamped into the pane; a place outside it vertically is skipped.
+                var c = candidates[k];
+                var shifted = new Point(Math.Max(pane.Left + 2, Math.Min(pane.Right - size.Width - 2, c.X)), c.Y);
+                if (!Fits(shifted)) continue;
+                var r = new Rectangle(shifted, size);
+                var score = Covered(r) + k * 0.5;
+                if (score < bestScore) { bestScore = score; best = r; }
+            }
+            return best ?? Clamp(candidates[0].Y < pane.Top + 2 ? candidates[1] : candidates[0]);
         }
 
         public bool Contains(Point p) => Bounds.Contains(p) || (DropAnchor >= 0 && DropScreen.Contains(p));

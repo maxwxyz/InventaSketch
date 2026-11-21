@@ -97,6 +97,14 @@ namespace InventaSketch.Modules.Machines
         public override IReadOnlyList<ParamDef> Parameters => Params;
         public override bool PreferUniformScale => Uniform;
 
+        /// <summary>Drives that take their shaft along when moved (<see cref="ObjectType.DrivesShaft"/>).</summary>
+        private static readonly HashSet<string> Drives = new(StringComparer.Ordinal)
+        {
+            "machines.drivetrain.emachine", "machines.drivetrain.engine", "machines.drive.motor",
+        };
+
+        public override bool DrivesShaft => Drives.Contains(_id);
+
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();
         /// <summary>Types offered by "Insert ▸" next to this one (see <see cref="ObjectType.Companions"/>); ids of other
         /// modules are allowed and simply skipped when that module is not loaded.</summary>

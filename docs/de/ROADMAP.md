@@ -151,7 +151,12 @@ Export-Erweiterungspunkte der Module.
   Teile sofort richtig (`Fitting.Place`: Rad/Lager auf die Welle, Rad in Eingriff, Welle durch die Nabe, Lager neben ein
   Rad); „+“-Griffe für Ecken und Abzweige an Leitungen, Rohren, Straßen und Polylinien mit Verbindungspunkt am Abzweig
   (`Polylines`), Doppelklick entfernt eine Ecke. Offen: dasselbe auf der Web-Bühne (Engine-Methoden für Links, Fitting und
-  Polylines); alle drei mit dem Maintainer in PowerPoint prüfen; Straßenkreuzung als eigenes Element, wo sich zwei Straßen
-  ohne Abzweig kreuzen.
+  Polylines); alle drei mit dem Maintainer in PowerPoint prüfen. Kartenstraßen bilden dort, wo sie sich kreuzen, bereits
+  Kreuzungen.
+- COM-Feinschliff 21.11.2026 (Maintainer: „bringe COM-Add-in auf Stand“): Die Leiste verdeckt keine anderen Elemente mehr,
+  bis zu drei passende Teile direkt in der Leiste, innere Ecken docken nicht an, Antriebe nehmen ihre Welle mit, Riemen
+  und Ketten folgen ihren Scheiben, Piktogramme für Formen, Füllungen, Leitungsführung, Wandarten und Fluid-Leitungsarten.
+  Offen für COM: weitere Exporte; Vorrang-Test `EquivalentAddins` (braucht das Web-Add-in mit dem Zertifikat des
+  Maintainers).
 - Prüfen, welcher Office.js-Metadatenspeicher Kopieren/Einfügen und erneutes Öffnen unter Windows/Mac/Web übersteht (ADR-0006).
 - Den (Vektor-)PDF-Writer für den Export auf Engine-Seite festlegen.
