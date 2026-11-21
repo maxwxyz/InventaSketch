@@ -208,6 +208,28 @@ namespace InventaSketch.Modules.Kinematics
 
         public abstract Pose Solve(SketchObject o, double angle);
 
+        /// <summary>
+        /// Parts for "explode" (<see cref="ObjectType.Parts"/>): fixed pivots, links and sliders at the current position,
+        /// docked onto each other, so the result is a self-built linkage that moves the same way (<see cref="Linkage"/>).
+        /// </summary>
+        public override IReadOnlyList<PartSpec>? Parts(SketchObject o)
+        {
+            var pose = Solve(o, AngleOf(o));
+            if (!pose.Ok) return null;
+            var s = SceneFor(o, pose, ModelBounds(o));
+            return PartsOf(o, pose, s);
+        }
+
+        /// <summary>The mechanism's parts in local mm (via <see cref="Scene.L"/>); null if it cannot be exploded.</summary>
+        protected virtual IReadOnlyList<PartSpec>? PartsOf(SketchObject o, Pose p, Scene s) => null;
+
+        /// <summary>A fixed pivot with its pivot point at a model point.</summary>
+        protected static PartSpec PivotPart(Scene s, Vec2 model) => new("kin.joint.ground", null, s.L(model)) { AlignAnchor = "c" };
+
+        /// <summary>A binary link between two model points, with optional docks of its ends.</summary>
+        protected static PartSpec LinkPart(Scene s, Vec2 a, Vec2 b, PartDock? atA, PartDock? atB)
+            => new("kin.link.binary", null, Vec2.Zero) { Points = new[] { s.L(a), s.L(b) }, Docks = new[] { atA, atB } };
+
         /// <summary>Fixed parts (ground pivots, guides).</summary>
         protected abstract void DrawFixed(Scene s, SketchObject o, Rect model);
 
