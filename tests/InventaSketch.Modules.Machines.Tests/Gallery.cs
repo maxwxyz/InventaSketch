@@ -94,6 +94,21 @@ namespace InventaSketch.Modules.Machines.Tests
             var page = SvgRenderer.RenderPage(er, doc, doc.Pages[0]);
             page = page.Replace("width=\"338.667mm\" height=\"190.5mm\"", "width=\"1354\" height=\"762\"");
             index.Append("<h2>E-drive example</h2>").Append(page);
+            // drivetrain sample with mechanical shafts and gears (engine, clutch, e-machine, gear pairs, differential, wheels)
+            var (dr, ddoc, _) = DrivetrainTests.SampleDrivetrain();
+            var dpage = SvgRenderer.RenderPage(dr, ddoc, ddoc.Pages[0]);
+            dpage = dpage.Replace("width=\"338.667mm\" height=\"190.5mm\"", "width=\"1354\" height=\"762\"");
+            File.WriteAllText(Path.Combine(dir, "drivetrain-sample.html"), Page("Drivetrain sample", dpage), Encoding.UTF8);
+            index.Append("<p><a href=\"drivetrain-sample.html\">Drivetrain sample</a></p>\n");
+            // e-machine schematic variants on shafts next to a gear pair (columns: PMSM, EESM, ASM, SRM)
+            var vbody = new StringBuilder();
+            foreach (var (layout, vr, vdoc) in DrivetrainTests.VariantPages())
+            {
+                var vsvg = SvgRenderer.RenderPage(vr, vdoc, vdoc.Pages[0]).Replace("width=\"340mm\" height=\"190mm\"", "width=\"1360\" height=\"760\"");
+                vbody.Append("<h2>").Append(SvgRenderer.Esc(layout + ": PMSM | EESM | ASM | SRM (schematic, side view)")).Append("</h2>\n").Append(vsvg);
+            }
+            File.WriteAllText(Path.Combine(dir, "emachine-variants.html"), Page("E-machine schematic variants", vbody.ToString()), Encoding.UTF8);
+            index.Append("<p><a href=\"emachine-variants.html\">E-machine schematic variants</a></p>\n");
             File.WriteAllText(Path.Combine(dir, "index.html"), Page("InventaSketch machines gallery", index.ToString()), Encoding.UTF8);
             Assert.True(File.Exists(Path.Combine(dir, "index.html")));
         }

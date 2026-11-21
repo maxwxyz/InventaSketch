@@ -45,11 +45,12 @@ namespace InventaSketch.Modules.Machines
                     Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Port, p.V(0, -15), "plus"), Anchor.Point(AnchorRole.Port, p.V(0, 15), "minus") },
                 });
             yield return Block("machines.drive.motor", T("E-motor", "E-Motor"),
-                new[] { "e-motor", "electric motor", "traction motor", "drive unit", "e-machine", "e-motor", "elektromotor", "antriebsmaschine", "fahrmotor" },
+                new[] { "e-motor", "electric motor", "traction motor", "drive unit", "e-machine", "e-motor", "elektromotor", "antriebsmaschine", "fahrmotor", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
                 MotorGlyph, new ViewSpec("symbol", VSymbol, IconIds.Symbol, 50, 50, (p, o) => Mag.MotorSymbol(p, o)) { Anchors = (p, o) => Mag.MotorSymbolAnchors(p, o) },
-                extraParams: new[] { Common.Mode, Common.Phases });
+                extraParams: new[] { Common.Mode, Common.Phases },
+                companions: new[] { "machines.drive.inverter", "machines.drive.battery", "machines.drive.gearbox", "machines.drivetrain.emachine" });
             yield return Block("machines.drive.gearbox", T("Gearbox", "Getriebe"),
-                new[] { "gearbox", "transmission", "reduction gear", "reducer", "getriebe", "untersetzung", "übersetzung", "reduktionsgetriebe" },
+                new[] { "gearbox", "transmission", "reduction gear", "reducer", "getriebe", "untersetzung", "übersetzung", "reduktionsgetriebe", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
                 GearboxGlyph, new ViewSpec("symbol", T("Schematic", "Schema"), IconIds.Schematic, 40, 30, GearboxSymbol)
                 {
                     Anchors = (p, o) => new[]
@@ -57,9 +58,9 @@ namespace InventaSketch.Modules.Machines
                         Anchor.Point(AnchorRole.Port, p.V(-20, -6), "in"), Anchor.Point(AnchorRole.Port, p.V(20, 8), "out"),
                         Anchor.Segment(AnchorRole.Axis, p.V(-20, -6), p.V(4, -6)), Anchor.Segment(AnchorRole.Axis, p.V(-4, 8), p.V(20, 8)),
                     },
-                });
+                }, companions: new[] { "machines.drive.motor", "machines.drive.differential", "machines.drivetrain.engine", "mech.clutch.disc" });
             yield return Block("machines.drive.differential", T("Differential", "Differential"),
-                new[] { "differential", "final drive", "axle drive", "differential", "achsgetriebe", "ausgleichsgetriebe" },
+                new[] { "differential", "final drive", "axle drive", "differential", "achsgetriebe", "ausgleichsgetriebe", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
                 DifferentialGlyph, new ViewSpec("symbol", T("Schematic", "Schema"), IconIds.Schematic, 40, 30, DifferentialSymbol)
                 {
                     Anchors = (p, o) => new[]
@@ -67,7 +68,7 @@ namespace InventaSketch.Modules.Machines
                         Anchor.Point(AnchorRole.Port, p.V(0, -15), "in"), Anchor.Point(AnchorRole.Port, p.V(-20, 4), "left"), Anchor.Point(AnchorRole.Port, p.V(20, 4), "right"),
                         Anchor.Segment(AnchorRole.Axis, p.V(-20, 4), p.V(20, 4)),
                     },
-                });
+                }, companions: new[] { "machines.drive.wheel", "mech.shaft", "machines.drive.gearbox" });
             yield return Wheel();
         }
 
@@ -81,21 +82,30 @@ namespace InventaSketch.Modules.Machines
             Anchor.Point(AnchorRole.Port, p.V(0, -10), "n"), Anchor.Point(AnchorRole.Port, p.V(0, 10), "s"),
         };
 
-        private static MachType Block(string id, I18nText name, string[] keywords, Action<Pen, SketchObject>? glyph, ViewSpec symbol, ParamDef[]? extraParams = null)
+        /// <summary>
+        /// Block-diagram type: rounded box with a glyph and the (host-language) label, edge ports, plus a symbol view.
+        /// <paramref name="label"/> replaces the type name as block label; <paramref name="blockAnchors"/> adds anchors
+        /// to the block view (e.g. an output hub).
+        /// </summary>
+        internal static MachType Block(string id, I18nText name, string[] keywords, Action<Pen, SketchObject>? glyph, ViewSpec symbol,
+            ParamDef[]? extraParams = null, string[]? companions = null, string category = Cat, I18nText? label = null,
+            Func<Pen, SketchObject, IEnumerable<Anchor>>? blockAnchors = null)
         {
+            var text = label ?? name;
             var block = new ViewSpec("block", VBlock, IconIds.Block, 30, 20, (p, o) =>
             {
                 if (glyph is null) { InverterBlock(p, o); return; }
                 p.RoundBox(-14.6, -9.6, 14.6, 9.6, 1.2, S.Vis, "block");
                 glyph(p, o);
-                var label = string.IsNullOrWhiteSpace(o.Text) ? Common.L(p, name.En, name.De ?? name.En) : o.Text!;
-                var size = Math.Min(3.0, 26.0 / Math.Max(1, label.Length) / 0.55);
-                p.Text(0, 5.6, label, size, "label");
+                var shown = string.IsNullOrWhiteSpace(o.Text) ? Common.L(p, text.En, text.De ?? text.En) : o.Text!;
+                var size = Math.Min(3.0, 26.0 / Math.Max(1, shown.Length) / 0.55);
+                p.Text(0, 5.6, shown, size, "label");
             })
-            { Anchors = (p, o) => EdgePorts(p) };
-            var t = new MachType(id, name, Cat, keywords, block, symbol)
+            { Anchors = (p, o) => blockAnchors is null ? EdgePorts(p) : EdgePorts(p).Concat(blockAnchors(p, o)) };
+            var t = new MachType(id, name, category, keywords, block, symbol)
             {
                 Params = extraParams ?? Array.Empty<ParamDef>(),
+                CompanionTypes = companions ?? Array.Empty<string>(),
                 Extra = o => o.Type == "machines.drive.motor" && o.View == "symbol" ? new[] { Common.ModeSwap(o) } : Array.Empty<ContextAction>(),
             };
             return t;
@@ -133,13 +143,13 @@ namespace InventaSketch.Modules.Machines
         }
 
         // Glyphs are drawn at the uniform detail scale around an anchor point, so they keep their shape when the block is stretched.
-        private static void GlyphCircle(Pen p, Vec2 at, double dx, double dy, double r)
+        internal static void GlyphCircle(Pen p, Vec2 at, double dx, double dy, double r)
         {
             var c = p.V(at) + new Vec2(dx * p.K, dy * p.K);
             p.Add(Prim.Circle(c.X, c.Y, r * p.K, S.Sym), "glyph");
         }
 
-        private static void GlyphLine(Pen p, Vec2 at, double x1, double y1, double x2, double y2)
+        internal static void GlyphLine(Pen p, Vec2 at, double x1, double y1, double x2, double y2)
             => p.LineP(p.V(at) + new Vec2(x1 * p.K, y1 * p.K), p.V(at) + new Vec2(x2 * p.K, y2 * p.K), S.Sym, "glyph");
 
         private static void GearboxGlyph(Pen p, SketchObject o)
@@ -254,9 +264,13 @@ namespace InventaSketch.Modules.Machines
 
         // ------------------------------------------------------------------ wheel
 
+        /// <summary>
+        /// Wheel with tyre. Every view exposes a Hub at the wheel centre, so the wheel snaps onto an axle shaft and follows
+        /// it (core <see cref="Coupling"/>, "carried"); top and schematic views also expose the wheel axis.
+        /// </summary>
         private static MachType Wheel() => new(
             "machines.drive.wheel", T("Wheel", "Rad"), Cat,
-            new[] { "wheel", "tyre", "tire", "rim", "drive wheel", "rad", "reifen", "felge", "antriebsrad" },
+            new[] { "wheel", "tyre", "tire", "rim", "drive wheel", "axle", "rad", "reifen", "felge", "antriebsrad", "achse", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
             new ViewSpec("side", T("Side view", "Seitenansicht"), IconIds.Side, 30, 30, (p, o) =>
             {
                 p.Circle(0, 0, 15, S.Vis, "tyre");
@@ -278,14 +292,29 @@ namespace InventaSketch.Modules.Machines
             })
             {
                 Hub = true,
-                Anchors = (p, o) => new[]
-                {
-                    Anchor.Point(AnchorRole.Port, p.V(-6, 0), "w"), Anchor.Point(AnchorRole.Port, p.V(6, 0), "e"),
-                    Anchor.Segment(AnchorRole.Axis, p.V(-6, 0), p.V(6, 0)),
-                },
+                Anchors = (p, o) => WheelAxisAnchors(p, 6),
+            },
+            new ViewSpec("schematic", T("Drivetrain schematic", "Antriebsstrangschema"), IconIds.Schematic, 8, 30, WheelSchematic)
+            {
+                Hub = true,
+                Anchors = (p, o) => WheelAxisAnchors(p, 4),
             })
         {
             Scale = 1.0,
+            CompanionTypes = new[] { "mech.shaft", "mech.gearset.differential", "machines.drive.differential", "mech.bearing.ball", "mech.brake" },
         };
+
+        private static IEnumerable<Anchor> WheelAxisAnchors(Pen p, double hw) => new[]
+        {
+            Anchor.Point(AnchorRole.Port, p.V(-hw, 0), "w"), Anchor.Point(AnchorRole.Port, p.V(hw, 0), "e"),
+            Anchor.Segment(AnchorRole.Axis, p.V(-hw, 0), p.V(hw, 0)),
+        };
+
+        /// <summary>Wheel in a drivetrain (top-view) schematic: dark tyre bar on the axle, as in powertrain layout sketches.</summary>
+        private static void WheelSchematic(Pen p, SketchObject o)
+        {
+            p.RoundBox(-4, -15, 4, 15, 1.5, S.Vis with { Fill = Fill.Solid("#404040") }, "tyre");
+            p.Line(-4, 0, 4, 0, S.Thin with { Stroke = "#ffffff" }, "axis");
+        }
     }
 }

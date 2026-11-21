@@ -2,7 +2,8 @@
 
 Schnellskizzen elektrischer Maschinen und elektrischer Antriebsstränge für Präsentationen und Patentzeichnungen:
 Quer- und Längsschnitte von Radial- und Axialflussmaschinen, einzelne Maschinenkomponenten zum freien Zusammensetzen,
-Antriebsstrang-Blöcke mit Ports sowie Fluss-, Drehrichtungs- und Drehmomentkennzeichnungen.
+Antriebsstrang-Blöcke mit Ports, Antriebsstrangteile für Getriebeschemata, die auf mechanischen Wellen sitzen (E-Maschine,
+Verbrennungsmotor, Rad), sowie Fluss-, Drehrichtungs- und Drehmomentkennzeichnungen.
 
 > **Grenzen.** Alle Darstellungen sind *illustrativ*. Nutformen, Magnetlagen, Luftspalt, Jochdicke, Wicklung und
 > Strombild folgen plausiblen Proportionen, sind aber **nicht** das Ergebnis einer elektromagnetischen Auslegung oder
@@ -76,9 +77,62 @@ Standardständer.
 | `machines.drive.motor` | E-motor / E-Motor | `block`, `symbol` (M/G mit Phasenanschlüssen) |
 | `machines.drive.gearbox` | Gearbox / Getriebe | `block`, `symbol` (Zahnradpaar als Schema) |
 | `machines.drive.differential` | Differential / Differential | `block`, `symbol` (Schema) |
-| `machines.drive.wheel` | Wheel / Rad | `side`, `top` |
+| `machines.drive.wheel` | Wheel / Rad | `side`, `top`, `schematic` (siehe „Antriebsstrang“) |
 
 Die Blockbeschriftung folgt der Sprache des Hosts; ein Objekttext ersetzt die Beschriftung (z. B. „HV-Batterie“).
+
+### Antriebsstrang (Kategorie „Antriebsstrang (Schema)“)
+
+Teile, um Antriebsstränge und Getriebe zusammen mit Wellen, Zahnrädern, Lagern, Kupplungen und dem Differential des
+Mechanik-Moduls (`mech.*`) schnell auf einer Folie aufzubauen. Sie sitzen auf einer `mech.shaft` und **folgen ihr**
+(Core-Kopplung, siehe „Fanganker“).
+
+| Typ-ID | Name (EN / DE) | Ansichten |
+|---|---|---|
+| `machines.drivetrain.emachine` | E-machine (gearbox schematic) / E-Maschine (Getriebeschema) | (Standard: Radialfluss, Innenläufer, PMSM; Varianten unten) `stick` Schema (`view-schematic`): Läuferbalken auf einem Läuferträger mit drehfestem Nabenkreuz, schraffierte Ständerbalken über dem Luftspalt, Ständer am Gehäuse; `side` vereinfachter Längsschnitt (`view-side`): Ständerpaket mit Wickelköpfen, Läuferpaket, Welle, Gehäuse; `axial` Stirnansicht (`view-axial`): Ständerring, Läuferscheibe, Welle |
+| `machines.drivetrain.engine` | Internal combustion engine / Verbrennungsmotor | `block` (`view-block`, Beschriftung „Engine (ICE)“ / „Verbrennungsmotor“ oder der Objekttext), `schematic` Kurbelwellenschema (`view-schematic`): Kurbelgehäuse, Zylinder mit Kolben und Pleueln, Kurbelwelle mit Kröpfungen, Abtriebswelle rechts |
+| `machines.drive.wheel` | Wheel / Rad | zusätzliche Ansicht `schematic` (`view-schematic`): dunkler Reifenbalken für Antriebsstrang-Draufsichten (Bibliothekseintrag „Rad (Antriebsstrangschema)“ in dieser Kategorie) |
+
+**Varianten der E-Maschine.** Ein Typ mit zwei optionalen Parametern; jede Variante gibt es auch als Bibliothekseintrag
+(Schema und Seitenansicht):
+
+| `layout` (Bauform) | Schema / Seitenansicht |
+|---|---|
+| `inner` (Standard) | Radialfluss, Innenläufer: Läuferbalken auf einem Läuferträger, Ständerbalken darum, Ständer am Gehäuse |
+| `outer` | Radialfluss, Außenläufer: Läuferglocke von der Welle um den Ständer, Ständer auf einer feststehenden Hülse am Gehäuse |
+| `axial` | Axialfluss, eine Läuferscheibe neben einem Ständer (axialer Luftspalt) |
+| `axial-2r` | Axialfluss, Doppelläufer (YASA-Bauart): ein Ständer zwischen zwei Läuferscheiben |
+| `axial-2s` | Axialfluss, Doppelständer: eine Läuferscheibe zwischen zwei Ständern |
+
+| `kind` (Maschinenart) | Kennzeichen am Läufer (Luftspaltseite) |
+|---|---|
+| `pmsm` (Standard) | Magnete, rot (N) / blau (S) |
+| `eesm` | Erregerwicklung (Kupfer) und zwei Schleifringe mit Bürsten auf der Welle |
+| `asm` | Käfigstäbe (grau) mit Kurzschlussringen |
+| `srm` | ausgeprägte Läuferzähne (ohne Magnete, ohne Wicklung) |
+
+Die Stirnansicht zeigt den Läufer im Querschnitt (Radialfluss) bzw. die Stirnfläche der Läuferscheibe (Axialfluss) mit
+denselben Kennzeichen (Magnetsektoren, Erregerpole, Käfigstäbe, Nuten zwischen den Zähnen).
+
+Weitere Parameter (optional): E-Maschine `shaft` (Wellenstümpfe; aus, wenn die Maschine in der Seitenansicht auf einem
+gezeichneten Wellenkörper `mech.shaft` sitzt, standardmäßig an), `ground` (Gehäuseanbindung: Gestellstriche im Schema,
+Gehäusekontur in Seiten- und Stirnansicht, an), `hatch`; Verbrennungsmotor `cylinders` (1-6, Standard 4; das Schema zeigt
+einen Reihenmotor, äußere Kröpfungen gegenüber den inneren). Kontextaktionen: nächste Bauform, nächste Maschinenart
+(`cmd-cycle`), Wellenstümpfe an/aus, Gehäuseanbindung an/aus.
+
+Die Darstellungen sind Schemasymbole im Stil kinematischer Getriebeschemata, kein genormtes Schaltzeichen.
+
+**Suche.** Alle Antriebsstrangteile tragen die Suchwörter `drivetrain`, `powertrain` und `antriebsstrang`: Die Suche nach
+„Antriebsstrang“ findet E-Maschine, Verbrennungsmotor, E-Motor, Getriebe, Differential (Block und Kegelraddifferential),
+Rad, Wellen, Stirnräder, Scheiben- und Lamellenkupplung und das Kardangelenk (bei geladenem Mechanik-Modul).
+
+**„Einfügen ▸“-Vorschläge.** Eine Welle bietet Stirnrad, Kugellager, E-Maschine (in der Ansichtsart der Welle:
+Schema-Welle → E-Maschine als Schema, Wellenkörper → Seitenansicht), Rad, Scheibenkupplung und elastische Kupplung an
+(danach Kegelrad, Zylinderrollenlager, starre Kupplung); die E-Maschine bietet Wechselrichter- und Batterieblock, Welle,
+Zahnrad, Lager und Zwischenkreis; der Verbrennungsmotor Kupplung, Schwungrad, Welle, Getriebe, E-Maschine; das Rad Welle
+und Differential; das Kegelraddifferential Welle, Rad und Zahnräder; die Scheibenkupplung Welle, Verbrennungsmotor,
+Schwungrad und E-Maschine; der E-Motor-Block Wechselrichter, Batterie, Getriebe und die E-Maschine. IDs des jeweils
+anderen Moduls werden übersprungen, wenn es nicht geladen ist.
 
 ### Kennzeichnungen (Kategorie „Fluss, Drehrichtung & Drehmoment“)
 
@@ -129,12 +183,24 @@ Beim Wechsel zwischen runder Ansicht und Längsschnitt wird die Boxbreite angepa
   der Bogenmittelpunkt auf den Läufermittelpunkt fängt.
 - Längsschnitte (`side`) bieten das **Axis**-Segment der Welle an; Drehgeber, Schleifringe und andere Teile fangen mit
   ihrer Nabe darauf, Maschinenachsen fluchten mit mechanischen Wellen.
+- **Antriebsstrangteile und Kopplung.** E-Maschine (jede Ansicht) und Rad (jede Ansicht) bieten einen **Hub** in der
+  Mitte; der Verbrennungsmotor bietet seinen **Hub** und einen `out`-**Port** am Ende der Abtriebswelle (Schema: rechtes
+  Ende der Kurbelwellenachse, die zugleich ein **Axis**-Segment für Schwungrad oder Riemenscheibe ist; Block: Mitte der
+  rechten Kante). Die E-Maschine hat `w`/`e`-**Ports** an den Wellenenden und einen **Mount** unter dem Ständer, das
+  Motorschema einen **Mount** unter dem Kurbelgehäuse; Draufsicht und Schema des Rads bieten die Radachse als **Axis**.
+  Liegt eine Nabe auf der Achse einer `mech.shaft`, folgt das Teil der Welle über die Core-Kopplung (`Coupling`,
+  „mitgenommen“): Verschieben, Drehen oder Strecken der Welle nimmt E-Maschine, Räder und einen Verbrennungsmotor, dessen
+  Abtrieb auf dem Wellenende sitzt, mit (beim Strecken bleibt die relative Lage auf der Achse erhalten); verschiebt man
+  das Teil allein, gleitet es auf der Welle. Die Seitenansicht des Rads bewegt sich mit einem konzentrischen Teil in
+  Stirnansicht (z. B. einem Zahnrad auf derselben Achse).
 - Antriebsblöcke bieten **Port**-Anker an den vier Kantenmitten (Blockansicht) bzw. an den Symbolklemmen (Batterie +/−,
   Wechselrichter DC+/DC−/U/V/W, Motor-Phasenanschlüsse, Getriebe-Ein-/Ausgang, Differential Eingang/links/rechts), sodass
   Pfeile und Leitungen andocken.
 
 ## Bekannte Grenzen
 
+- Antriebsstrangteile werden mit ihrer Welle nur verschoben (die Core-Kopplung verschiebt Teile, sie dreht sie nicht):
+  Nach dem Drehen einer Welle die Teile darauf ebenfalls drehen (oder gemeinsam drehen).
 - Nur illustrative Geometrie (siehe oben); keine Wicklungsschemata, keine Prüfung von Nut-/Polzahlkombinationen.
 - Außenläufer-Komponenten sind standardmäßig nicht größengleich abgestimmt (Läuferring passend um den Ständer skalieren).
 - Hosts: Die gesamte Ausgabe besteht aus Linien, Polylinien/Polygonen, Rechtecken, Ellipsen und Text; Schraffuren und

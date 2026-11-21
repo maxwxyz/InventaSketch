@@ -26,14 +26,17 @@ namespace InventaSketch.Modules.Mechanical
                 new ViewSpec("stick", VStick, 12, 20, FlexibleStick),
                 new ViewSpec("side", VSide, 20, 24, (p, o) => CouplingSide(p, true)));
             yield return new MechType("mech.joint.universal", T("Universal joint", "Kardangelenk"), Cat,
-                new[] { "universal joint", "cardan", "u-joint", "hooke", "kardangelenk", "kreuzgelenk", "gelenkwelle" },
+                new[] { "universal joint", "cardan", "u-joint", "hooke", "kardangelenk", "kreuzgelenk", "gelenkwelle", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
                 new ViewSpec("stick", VStick, 12, 20, UniversalStick));
             yield return new MechType("mech.clutch.disc", T("Disc clutch", "Scheibenkupplung (schaltbar)"), Cat,
-                new[] { "clutch", "disc clutch", "friction clutch", "kupplung", "schaltkupplung", "reibungskupplung", "einscheibenkupplung" },
+                new[] { "clutch", "disc clutch", "friction clutch", "kupplung", "schaltkupplung", "reibungskupplung", "einscheibenkupplung", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
                 new ViewSpec("stick", VStick, 12, 20, DiscClutchStick),
-                new ViewSpec("side", VSide, 16, 24, DiscClutchSide));
+                new ViewSpec("side", VSide, 16, 24, DiscClutchSide))
+            {
+                CompanionTypes = new[] { "mech.shaft", Drivetrain.Engine, "mech.flywheel", Drivetrain.EMachine, "mech.gear.spur" },
+            };
             yield return new MechType("mech.clutch.multidisc", T("Multi-disc clutch", "Lamellenkupplung"), Cat,
-                new[] { "clutch", "multi-disc", "multiplate", "wet clutch", "lamellenkupplung", "lamellen", "schaltkupplung" },
+                new[] { "clutch", "multi-disc", "multiplate", "wet clutch", "lamellenkupplung", "lamellen", "schaltkupplung", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
                 new ViewSpec("stick", VStick, 20, 24, MultiDiscStick));
             yield return new MechType("mech.brake", T("Brake", "Bremse"), Cat,
                 new[] { "brake", "disc brake", "holding brake", "bremse", "scheibenbremse", "lamellenbremse" },

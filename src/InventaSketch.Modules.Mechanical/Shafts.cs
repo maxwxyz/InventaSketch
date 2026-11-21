@@ -29,7 +29,7 @@ namespace InventaSketch.Modules.Mechanical
 
         private static MechType Shaft() => new(
             "mech.shaft", T("Shaft", "Welle"), Cat,
-            new[] { "shaft", "axle", "spindle", "welle", "achse", "antriebswelle", "getriebewelle", "hohlwelle" },
+            new[] { "shaft", "axle", "spindle", "drive shaft", "propeller shaft", "half shaft", "welle", "achse", "antriebswelle", "getriebewelle", "hohlwelle", "gelenkwelle", "seitenwelle", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
             new ViewSpec("line", T("Schematic line", "Schema-Linie"), 120, 8, ShaftLine) { Fluid = true, Anchors = AxisAnchors },
             new ViewSpec("body", T("Body", "Körper"), 120, 8, (p, o) => ShaftBody(p, o, false, Hollow(o, false))) { Fluid = true, Anchors = AxisAnchors },
             new ViewSpec("hollow", T("Hollow shaft", "Hohlwelle"), 120, 8, (p, o) => ShaftBody(p, o, false, true)) { Fluid = true, Anchors = AxisAnchors },
@@ -37,8 +37,13 @@ namespace InventaSketch.Modules.Mechanical
         {
             Params = new[] { Common.Flag("hollow", T("Hollow", "Hohl"), false) },
             Rotating = false,
-            // On a shaft one adds gears, bearings and couplings.
-            CompanionTypes = new[] { "mech.gear.spur", "mech.gear.bevel", "mech.bearing.ball", "mech.bearing.cylroller", "mech.coupling.flexible", "mech.coupling.rigid" },
+            // On a shaft one adds gears, bearings, an e-machine, wheels and couplings/clutches (the first six fit the
+            // "Insert ▸" menu next to the annotation items; machines.* ids come from the machines module when it is loaded).
+            CompanionTypes = new[]
+            {
+                "mech.gear.spur", "mech.bearing.ball", Drivetrain.EMachine, Drivetrain.Wheel, "mech.clutch.disc", "mech.coupling.flexible",
+                "mech.gear.bevel", "mech.bearing.cylroller", "mech.coupling.rigid",
+            },
             Extra = o => new[] { HollowToggle(o) },
         };
 

@@ -8,13 +8,14 @@ namespace InventaSketch.Modules.Machines
     /// <summary>
     /// Electric machines &amp; drives: radial-flux machines (SPM, IPM V-shape and spoke, EESM, induction, switched
     /// reluctance; inner and outer rotor), axial-flux machines, separate machine components for free assembly, drive system
-    /// blocks with ports and flux/rotation/torque annotations. All symbols are insertable without parameters and are drawn
+    /// blocks with ports, drivetrain schematic parts that sit on mechanical shafts (e-machine, combustion engine, wheel) and
+    /// flux/rotation/torque annotations. All symbols are insertable without parameters and are drawn
     /// inside their box. The drawings are illustrative sketches, not the result of an electromagnetic design.
     /// </summary>
     public sealed class MachinesModule : IModule
     {
         private static readonly Lazy<IReadOnlyList<MachType>> AllTypes = new(() =>
-            MachineTypes.Types().Concat(Components.Types()).Concat(DriveBlocks.Types()).Concat(Annotations.Types()).ToList());
+            MachineTypes.Types().Concat(Components.Types()).Concat(DriveBlocks.Types()).Concat(Drivetrain.Types()).Concat(Annotations.Types()).ToList());
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
 
@@ -28,6 +29,7 @@ namespace InventaSketch.Modules.Machines
             new LibraryCategory(MachineTypes.Cat, new I18nText("Electric machines", "Elektrische Maschinen"), Id, 10),
             new LibraryCategory(Components.Cat, new I18nText("Machine components", "Maschinenkomponenten"), Id, 20),
             new LibraryCategory(DriveBlocks.Cat, new I18nText("Drive system blocks", "Antriebsstrang-Blöcke"), Id, 30),
+            new LibraryCategory(Drivetrain.Cat, new I18nText("Drivetrain schematic", "Antriebsstrang (Schema)"), Id, 35),
             new LibraryCategory(Annotations.Cat, new I18nText("Flux, rotation & torque", "Fluss, Drehrichtung & Drehmoment"), Id, 40),
         };
 
@@ -39,10 +41,13 @@ namespace InventaSketch.Modules.Machines
             var list = new List<LibraryItem>();
 
             void Add(string id, string type, string en, string de, string? view = null, IReadOnlyDictionary<string, ParamValue>? ps = null, params string[] kw)
+                => AddIn(null, id, type, en, de, view, ps, kw);
+
+            void AddIn(string? category, string id, string type, string en, string de, string? view = null, IReadOnlyDictionary<string, ParamValue>? ps = null, params string[] kw)
             {
                 var t = types[type];
                 var spec = t.Spec(view);
-                list.Add(new LibraryItem("machines." + id, type, new I18nText(en, de), t.Category)
+                list.Add(new LibraryItem("machines." + id, type, new I18nText(en, de), category ?? t.Category)
                 {
                     View = spec.Id,
                     Params = ps,
@@ -113,6 +118,33 @@ namespace InventaSketch.Modules.Machines
             Add("block.differential.symbol", "machines.drive.differential", "Differential (schematic)", "Differential (Schema)", "symbol");
             Add("wheel", "machines.drive.wheel", "Wheel (side view)", "Rad (Seitenansicht)", "side");
             Add("wheel.top", "machines.drive.wheel", "Wheel (top view)", "Rad (Draufsicht)", "top");
+
+            // drivetrain schematic: parts that sit on mechanical shafts (mech.shaft) and follow them
+            const string D = Drivetrain.Cat;
+            Add("emachine.stick", Drivetrain.EMachineId, "E-machine (gearbox schematic)", "E-Maschine (Getriebeschema)", "stick", null, "em", "p2 hybrid");
+            Add("emachine.side", Drivetrain.EMachineId, "E-machine (side view, sectioned)", "E-Maschine (Seitenansicht, geschnitten)", "side");
+            Add("emachine.axial", Drivetrain.EMachineId, "E-machine (axial view)", "E-Maschine (Stirnansicht)", "axial");
+            // e-machine variants: arrangement (radial inner/outer rotor, axial flux) and machine kind, schematic and side view
+            var variants = new (string Id, string Layout, string Kind, string En, string De)[]
+            {
+                ("outer", "outer", "pmsm", "Outer-rotor e-machine", "Außenläufer-E-Maschine"),
+                ("axialflux", "axial", "pmsm", "Axial-flux e-machine", "Axialfluss-E-Maschine"),
+                ("yasa", "axial-2r", "pmsm", "Axial-flux e-machine, double rotor (YASA)", "Axialfluss-E-Maschine mit Doppelläufer (YASA)"),
+                ("doublestator", "axial-2s", "pmsm", "Axial-flux e-machine, double stator", "Axialfluss-E-Maschine mit Doppelständer"),
+                ("eesm", "inner", "eesm", "Wound-field synchronous machine", "Fremderregte Synchronmaschine"),
+                ("asm", "inner", "asm", "Induction machine", "Asynchronmaschine"),
+                ("srm", "inner", "srm", "Switched reluctance machine", "Geschaltete Reluktanzmaschine"),
+            };
+            foreach (var v in variants)
+            {
+                var ps = P(("layout", v.Layout), ("kind", v.Kind));
+                Add("emachine." + v.Id + ".stick", Drivetrain.EMachineId, v.En + " (gearbox schematic)", v.De + " (Getriebeschema)", "stick", ps);
+                Add("emachine." + v.Id + ".side", Drivetrain.EMachineId, v.En + " (side view)", v.De + " (Seitenansicht)", "side", ps);
+            }
+            Add("engine.block", Drivetrain.EngineId, "Combustion engine (block)", "Verbrennungsmotor (Block)", "block");
+            Add("engine.schematic", Drivetrain.EngineId, "Combustion engine (crankshaft schematic)", "Verbrennungsmotor (Kurbelwellenschema)", "schematic");
+            Add("engine.schematic.3cyl", Drivetrain.EngineId, "Three-cylinder engine (schematic)", "Dreizylindermotor (Schema)", "schematic", P(("cylinders", 3)), "3-cylinder", "dreizylinder");
+            AddIn(D, "wheel.schematic", "machines.drive.wheel", "Wheel (drivetrain schematic)", "Rad (Antriebsstrangschema)", "schematic");
 
             // annotations
             Add("flux.arc", "machines.ann.flux", "Flux line between poles", "Feldlinie zwischen Polen", "arc");

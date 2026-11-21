@@ -46,7 +46,7 @@ namespace InventaSketch.Modules.Mechanical
 
         private static MechType Spur() => new(
             "mech.gear.spur", T("Spur gear", "Stirnrad"), Cat,
-            new[] { "gear", "spur", "cog", "toothed wheel", "pinion", "zahnrad", "stirnrad", "ritzel", "verzahnung", "getriebe" },
+            new[] { "gear", "spur", "cog", "toothed wheel", "pinion", "zahnrad", "stirnrad", "ritzel", "verzahnung", "getriebe", "gearbox", "transmission", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
             new ViewSpec("stick", VStick, 8, 30, (p, o) => GearStick(p, o, 4, 15)),
             new ViewSpec("side", VSide, 10, 30, SpurSide),
             new ViewSpec("section", VSection, 10, 30, SpurSection),
@@ -493,9 +493,13 @@ namespace InventaSketch.Modules.Mechanical
 
         private static MechType Differential() => new(
             "mech.gearset.differential", T("Bevel differential", "Kegelraddifferential"), Cat,
-            new[] { "differential", "diff", "axle", "spider gear", "side gear", "crown wheel", "differential", "ausgleichsgetriebe", "achsgetriebe", "tellerrad", "ausgleichsrad" },
+            new[] { "differential", "diff", "axle", "spider gear", "side gear", "crown wheel", "differential", "ausgleichsgetriebe", "achsgetriebe", "tellerrad", "ausgleichsrad", "final drive", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
             new ViewSpec("stick", VStick, 40, 40, DiffStick),
-            new ViewSpec("section", VSection, 40, 40, DiffSection));
+            new ViewSpec("section", VSection, 40, 40, DiffSection))
+        {
+            // The differential sits on the axle shaft; the wheels sit on its half shafts.
+            CompanionTypes = new[] { "mech.shaft", Drivetrain.Wheel, "mech.gear.bevel", "mech.gear.spur", "mech.bearing.taperroller" },
+        };
 
         /// <summary>Classic stick schematic: side gears and spider gears form a closed chamfered square inside the cage.</summary>
         private static void DiffStick(Pen p, SketchObject o)
