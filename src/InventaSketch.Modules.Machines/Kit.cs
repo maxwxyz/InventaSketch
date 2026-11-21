@@ -100,7 +100,7 @@ namespace InventaSketch.Modules.Machines
         /// <summary>Drives that take their shaft along when moved (<see cref="ObjectType.DrivesShaft"/>).</summary>
         private static readonly HashSet<string> Drives = new(StringComparer.Ordinal)
         {
-            "machines.drivetrain.emachine", "machines.drivetrain.engine", "machines.drive.motor",
+            "machines.drivetrain.emachine", "machines.drivetrain.engine", "machines.drive.motor", "machines.radial", "machines.axial",
         };
 
         public override bool DrivesShaft => Drives.Contains(_id);

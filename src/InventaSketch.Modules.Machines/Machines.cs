@@ -46,8 +46,8 @@ namespace InventaSketch.Modules.Machines
                 "ständer", "läufer", "querschnitt", "außenläufer", "innenläufer", "fremderregt",
             },
             new ViewSpec("axial", VAxial, IconIds.Axial, 100, 100, RadialAxial) { Hub = true, Anchors = RadialAxialAnchors },
-            new ViewSpec("side", VSide, IconIds.Section, 120, 100, RadialSide) { Anchors = (p, o) => new[] { Anchor.Segment(AnchorRole.Axis, p.V(-60, 0), p.V(60, 0)) } },
-            new ViewSpec("schematic", VSchematic, IconIds.Schematic, 50, 50, (p, o) => Mag.MotorSymbol(p, o)) { Anchors = (p, o) => Mag.MotorSymbolAnchors(p, o) })
+            new ViewSpec("side", VSide, IconIds.Section, 120, 100, RadialSide) { Hub = true, Anchors = (p, o) => new[] { Anchor.Segment(AnchorRole.Axis, p.V(-60, 0), p.V(60, 0)) } },
+            new ViewSpec("schematic", VSchematic, IconIds.Schematic, 50, 50, (p, o) => Mag.MotorSymbol(p, o)) { Hub = true, Anchors = (p, o) => Mag.MotorSymbolAnchors(p, o) })
         {
             Scale = 0.6,
             Uniform = true,
@@ -206,9 +206,9 @@ namespace InventaSketch.Modules.Machines
                 "axial flux", "afpm", "yasa", "pancake motor", "disc motor", "double rotor", "magnet disc", "in-wheel",
                 "axialfluss", "scheibenläufer", "doppelrotor", "magnetscheibe", "radnabenmotor", "elektromotor",
             },
-            new ViewSpec("side", VSide, IconIds.Section, 80, 100, AxialSide) { Anchors = (p, o) => new[] { Anchor.Segment(AnchorRole.Axis, p.V(-40, 0), p.V(40, 0)) } },
+            new ViewSpec("side", VSide, IconIds.Section, 80, 100, AxialSide) { Hub = true, Anchors = (p, o) => new[] { Anchor.Segment(AnchorRole.Axis, p.V(-40, 0), p.V(40, 0)) } },
             new ViewSpec("face", T("Face view of disc", "Stirnansicht Scheibe"), IconIds.Axial, 100, 100, AxialFace) { Hub = true, Anchors = (p, o) => new[] { Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, 46 * p.K) } },
-            new ViewSpec("schematic", VSchematic, IconIds.Schematic, 50, 50, (p, o) => Mag.MotorSymbol(p, o)) { Anchors = (p, o) => Mag.MotorSymbolAnchors(p, o) })
+            new ViewSpec("schematic", VSchematic, IconIds.Schematic, 50, 50, (p, o) => Mag.MotorSymbol(p, o)) { Hub = true, Anchors = (p, o) => Mag.MotorSymbolAnchors(p, o) })
         {
             Scale = 0.6,
             Params = new[]

@@ -85,7 +85,10 @@ item lands in Core/engine first, then COM, then web, then LibreOffice (host orde
 Status 2026-11-21 (COM): the one line language (extend, draw on, corners, branches incl. wall T joints, split, join),
 build handles for gears, shafts and machines (incl. shaft stretch) and free docking of annotations on surfaces are done
 and verified in PowerPoint; so are Shift 15° steps for lines and crossings of wires and pipes (automatic hop,
-connect icon). Engine/web follow. Next: the audit of anchors, contacts, constraints and connections per element and view.
+connect icon). Engine/web follow. Anchor audit done 2026-11-21 (report from `AnchorAuditTests`): machine cross-sections
+get hubs in side and schematic views and lead their shaft, heating and sanitary symbols get pipe connections, plan pipes
+take the line language, side-view gears mesh only with side views on a parallel axis across it (pitch circle carries the
+axis, `Anchor.SidePitch`).
 
 - **P1 – One line language for everything line-like.** What wires already do (corners, branches) works wherever it makes
   sense, with the same handles and the same rules:
@@ -123,6 +126,30 @@ connect icon). Engine/web follow. Next: the audit of anchors, contacts, constrai
 - **P3 – Patent workflow in the hosts:** numbering assistant across figures, preflight panel with navigation to the
   finding (preflight rules exist in the patent module), figure-sheet layout.
 - **P3 – Import:** SVG/DXF outlines as hatchable regions, GeoJSON/GPX for maps, CSV for charts.
+
+### Building gear trains yourself (maintainer 2026-11-21)
+
+- **P1 – Planet carrier (Steg) as its own part:** axial view with 2–8 arms or a disc and planet pins at a radius, side
+  view with the pins as axes; planets dock on the pins and are carried; build "+" on free pins (planet) and the centre
+  (shaft); option "fixed carrier" (grounded, housing symbol), carriers that are no shafts.
+- **P1 – Planetary sets you can edit:** number of planets 2–8 (today 3–6), several planet rows, stepped planets (two
+  gear stages on one planet pin, sun side and ring side), planet pairs (Ravigneaux-like), compound sets; "explode" a set
+  into sun, planets, ring and carrier so each part can be edited and coupled.
+- **P1 – Bevel gears and differentials built from parts:** bevel pairs mesh across perpendicular axes in side view;
+  build "+" on a bevel gear offers the mating bevel at 90°; a differential from case/carrier, two side bevels and two or
+  more spider bevels, also as a starter assembly.
+- **P1 – Building linkages yourself (maintainer 2026-11-21: "only predefined ones exist"):** links, joints and fixed
+  pivots exist as parts, but link ends do not dock onto each other and only the predefined mechanisms (four-bar,
+  slider-crank, …) move. Plan: link ends dock onto the joints of other links (attachment to a point of a point object,
+  follows it); links, joints, sliders and fixed pivots form a chain the engine recognises (graph), with the degree of
+  freedom shown live (Grübler); build "+" at a link's free joint (next link, fixed pivot, slider, cam follower); drag a
+  joint or crank on the slide and the chain moves with constant link lengths (general 2D constraint solver instead of
+  the per-mechanism closed forms); limits, ghost positions, coupler curves and animation as slides for any chain;
+  predefined mechanisms become starter assemblies that can be exploded into their links.
+- **P2 – Moving gear trains:** turn the input (drag a gear or shaft on the slide) and every gear turns with its ratio
+  (teeth stay in mesh, carriers revolve, planets roll); ratios shown on request; animation as Morph slides like the
+  linkages (`ObjectType.AnimationFrames` for gear trains). Today only linkages of the kinematics module animate as slides
+  (pie menu), and drag-to-simulate is open for both.
 
 ### New modules
 

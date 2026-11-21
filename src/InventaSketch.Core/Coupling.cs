@@ -28,6 +28,8 @@ namespace InventaSketch.Core
             public Vec2 Centre;
             public double? Pitch;
             public bool Inner;
+            /// <summary>Axis direction of a gear seen from the side (axis in the drawing plane), null in axial view.</summary>
+            public Vec2? Axis;
             /// <summary><see cref="ObjectType.DrivesShaft"/>.</summary>
             public bool Drives;
             /// <summary><see cref="ObjectType.SpansHubs"/>.</summary>
@@ -50,11 +52,25 @@ namespace InventaSketch.Core
                     f.Pitch = a.Radius;
                     f.Inner = a.Role == AnchorRole.PitchInner;
                     f.Centre = a.P;
+                    f.Axis = a.AxisOf();
                 }
                 else if (a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub) f.Hubs.Add(a.P);
                 else if (a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis) f.Axes.Add((a.P, a.Q));
             }
             return f;
+        }
+
+        /// <summary>
+        /// Gears mesh only within the same kind of view: both axial, or both seen from the side with parallel axes and the
+        /// partner across the axis (one above the other), never an axial gear with a side view.
+        /// </summary>
+        private static bool SameMeshKind(Features a, Features b)
+        {
+            if (a.Axis is null && b.Axis is null) return true;
+            if (a.Axis is not { } ax || b.Axis is not { } bx) return false;
+            if (Math.Abs(ax.Cross(bx)) > 0.05) return false;
+            var d = b.Centre - a.Centre;
+            return d.Length < Eps || Math.Abs(d.Dot(ax)) <= 0.2 * d.Length;
         }
 
         /// <summary>Centre distance at which two pitch circles mesh (external pair, or a gear inside a ring gear).</summary>
@@ -135,7 +151,7 @@ namespace InventaSketch.Core
                         }
                         continue;
                     }
-                    if (j > i && a.Pitch is double ra && b.Pitch is double rb)
+                    if (j > i && a.Pitch is double ra && b.Pitch is double rb && SameMeshKind(a, b))
                     {
                         var d = a.Centre.DistanceTo(b.Centre);
                         var need = MeshDistance(ra, a.Inner, rb, b.Inner);

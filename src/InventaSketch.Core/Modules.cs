@@ -323,12 +323,23 @@ namespace InventaSketch.Core
         /// <summary>A <see cref="AnchorRole.Rail"/> segment from <paramref name="a"/> to <paramref name="b"/>.</summary>
         public static Anchor Rail(Vec2 a, Vec2 b, string? id = null) => new(AnchorKind.Segment, AnchorRole.Rail, a, b) { Id = id };
 
+        /// <summary>
+        /// Pitch circle of a gear whose axis lies in the drawing plane (side or schematic view): the radius is the half height,
+        /// <see cref="Q"/> a point one unit along the axis. Such gears mesh only with gears of the same kind on a parallel
+        /// axis, across the axis (<see cref="Coupling"/>, <see cref="Snapper"/>).
+        /// </summary>
+        public static Anchor SidePitch(Vec2 centre, double radius, Vec2 axisPoint) => new(AnchorKind.Circle, AnchorRole.Pitch, centre, axisPoint, radius) { Id = "pitch-side" };
+
+        /// <summary>Unit axis direction of a side-view pitch circle (<see cref="SidePitch"/>), else null.</summary>
+        public Vec2? AxisOf() => Kind == AnchorKind.Circle && Q != default && Q.DistanceTo(P) > 1e-9 ? (Q - P) * (1 / Q.DistanceTo(P)) : null;
+
         public Anchor Transform(Matrix2D m) => Kind switch
         {
             AnchorKind.Point => this with { P = m.Apply(P) },
             AnchorKind.Segment => this with { P = m.Apply(P), Q = m.Apply(Q) },
-            // Circles: radius scales with the mean linear scale (free scaling may make it an ellipse visually).
-            _ => this with { P = m.Apply(P), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) },
+            // Circles: radius scales with the mean linear scale (free scaling may make it an ellipse visually). A circle with Q
+            // set carries an axis direction (pitch circle of a gear seen from the side, see AxisOf).
+            _ => this with { P = m.Apply(P), Q = Q == default ? Q : m.Apply(Q), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) },
         };
     }
 
