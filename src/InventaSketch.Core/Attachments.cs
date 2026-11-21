@@ -40,12 +40,24 @@ namespace InventaSketch.Core
         {
             if (owner.IsPointGeometry)
             {
+                // A named point of a line (a joint of a link, a line end): the point follows it (ResolvePoints).
+                if (target.Kind == AnchorKind.Point && PointIndex(target.Id) is not null) return new Attachment(owner.Id, 0, 0) { AnchorId = target.Id };
                 if (target.Kind != AnchorKind.Segment || target.Role != AnchorRole.Rail || target.Id is null) return null;
                 var (_, t) = Geo.ClosestOnSegment(at, target.P, target.Q);
                 return new Attachment(owner.Id, t, 0) { AnchorId = target.Id };
             }
             var (u, v) = owner.ToBox(at);
             return new Attachment(owner.Id, u, v) { AnchorId = target.Kind == AnchorKind.Point && target.P.DistanceTo(at) < 1e-6 ? target.Id : null };
+        }
+
+        /// <summary>
+        /// Index of a named point of a line ("p3" = point 3, "j3" = joint 3 of a link), else null. Attachments with such an
+        /// anchor id follow that point of the target line.
+        /// </summary>
+        public static int? PointIndex(string? anchorId)
+        {
+            if (anchorId is null || anchorId.Length < 2 || anchorId[0] is not ('p' or 'j')) return null;
+            return int.TryParse(anchorId.Substring(1), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var i) ? i : null;
         }
 
         /// <summary>
@@ -119,7 +131,8 @@ namespace InventaSketch.Core
                         points[i] = on;
                         continue;
                     }
-                    var anchor = anchors.FirstOrDefault(x => x.Kind == AnchorKind.Point && x.Id == a.AnchorId);
+                    // A type's own anchor wins over the generic box centre that may carry the same id ("c").
+                    var anchor = anchors.Where(x => x.Kind == AnchorKind.Point && x.Id == a.AnchorId).OrderBy(x => x.Role == AnchorRole.Center ? 1 : 0).FirstOrDefault();
                     if (anchor is null) continue;
                     var (u, v) = target.ToBox(anchor.P);
                     if (Math.Abs(u - a.U) < Same && Math.Abs(v - a.V) < Same) continue;

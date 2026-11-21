@@ -393,6 +393,8 @@ namespace InventaSketch.AddIn.OnSlide
                     // Quick add: blue triangles and connection ports of flowchart, UML, ER, BPMN and basic elements.
                     if (ChainMouse(message, pt, view, out var chainSwallow)) return chainSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
+                    // Motion mode: gears, carriers and linkages move the way they can instead of being edited (also on a joint).
+                    if (message == WM_LBUTTONDOWN && AddInSettings.Motion && (Inside(pt, view, inset: -6) || PointHandleAt(pt, view) >= 0) && BeginTurn(pt, view)) return true;
                     if (message == WM_LBUTTONDOWN && PointHandleAt(pt, view) is int pointIndex and >= 0)
                     {
                         HideBar();
@@ -459,8 +461,6 @@ namespace InventaSketch.AddIn.OnSlide
                         Post(() => ApplyAction(dblUnit, "text"));
                         return true;
                     }
-                    // Motion mode: gears, carriers and linkages turn the way they can move instead of being dragged.
-                    if (message == WM_LBUTTONDOWN && AddInSettings.Motion && Inside(pt, view, inset: 6) && BeginTurn(pt, view)) return true;
                     if (message == WM_LBUTTONDOWN && Inside(pt, view, inset: 6))
                     {
                         Log.Info("Drag start at " + pt.X + "," + pt.Y);
@@ -902,6 +902,10 @@ namespace InventaSketch.AddIn.OnSlide
                     foreach (var item in suggestions.Where(i => !direct.Contains(i)))
                         list.Add(new BarButton("ins:" + item.Id, "", item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
             }
+            // Self-built linkage: its degree of freedom (Grübler) at a glance.
+            if (first is not null && first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
+                && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
+                list.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom (Grübler): ", "Freiheitsgrad (Grübler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke")));
             // Motion mode for parts that can move (gear train, linkage): drag turns them instead of moving them.
             if (MovablePart() is not null)
                 list.Add(new BarButton("motion", "", T("Move: drag turns the gears / linkage", "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
@@ -1955,6 +1959,7 @@ namespace InventaSketch.AddIn.OnSlide
                 Disarm();
                 return;
             }
+            if (id.StartsWith("info:", StringComparison.Ordinal)) return;
             if (id == "motion")
             {
                 ToggleMotion();

@@ -242,7 +242,7 @@ namespace InventaSketch.Core
             {
                 var pts = doc.ResolvePoints(o);
                 for (var i = 0; i < o.Attach!.Count && i < pts.Count; i++)
-                    if (o.Attach[i] is { } a && a.ObjectId == id && a.AnchorId is not null) list.Add((o.Id, i, pts[i]));
+                    if (o.Attach[i] is { } a && a.ObjectId == id && a.AnchorId is { } aid && aid.StartsWith("rail", StringComparison.Ordinal)) list.Add((o.Id, i, pts[i]));
             }
             return list;
         }

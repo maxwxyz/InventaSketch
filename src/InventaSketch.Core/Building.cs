@@ -19,6 +19,8 @@ namespace InventaSketch.Core
         Pin,
         /// <summary>Cone apex of a bevel gear: a mating bevel gear at 90° (or facing it on the same axis) shares it.</summary>
         Bevel,
+        /// <summary>Free joint of a link (linkage): the next link, a fixed pivot, a joint or a slider goes here.</summary>
+        Joint,
     }
 
     /// <summary>A place on an element where a fitting part can be docked: page point, outward direction, kind.</summary>
@@ -44,6 +46,7 @@ namespace InventaSketch.Core
         {
             var list = new List<BuildPort>();
             var o = doc.Get(id);
+            if (o is not null && o.IsPointGeometry && registry.Type(o.Type)?.LinkageRole(o) == LinkageRole.Link) return JointPorts(registry, doc, o);
             if (o is null || o.IsPointGeometry || registry.Type(o.Type) is null) return list;
             var ctx = new RenderContext(doc, lang);
             var own = registry.PageAnchors(o, ctx).ToList();
@@ -132,6 +135,41 @@ namespace InventaSketch.Core
             return list;
         }
 
+        /// <summary>Free joints of a link: points docked nowhere that no other link or joint element is docked on.</summary>
+        private static List<BuildPort> JointPorts(Registry registry, SketchDocument doc, SketchObject link)
+        {
+            var list = new List<BuildPort>();
+            var pts = doc.ResolvePoints(link);
+            if (pts.Count < 2) return list;
+            var centre = new Vec2(pts.Average(q => q.X), pts.Average(q => q.Y));
+            for (var i = 0; i < pts.Count; i++)
+            {
+                var docked = link.Attach is not null && i < link.Attach.Count && link.Attach[i] is not null;
+                if (docked) continue;
+                var jid = "j" + i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var taken = doc.Objects.Values.Any(x => x.Id != link.Id && x.Attach is not null && x.Attach.Any(a => a?.ObjectId == link.Id && a.AnchorId == jid));
+                if (taken) continue;
+                var d = pts[i] - centre;
+                list.Add(new BuildPort("joint" + i.ToString(System.Globalization.CultureInfo.InvariantCulture), PortKind.Joint, pts[i], d.Length > 1e-6 ? d * (1 / d.Length) : new Vec2(1, 0))
+                {
+                    AxisFrom = pts[i == 0 ? 1 : i - 1],
+                });
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// After a joint element (fixed pivot, joint, slider) was placed at a free joint of a link: the link's point docked onto
+        /// it, so the link turns about it. Null if nothing changes.
+        /// </summary>
+        public static SketchDocument? DockBack(Registry registry, SketchDocument doc, string linkId, BuildPort port, string placedId, Lang lang = Lang.En)
+        {
+            if (port.Kind != PortKind.Joint || doc.Get(placedId) is not { IsPointGeometry: false } box || doc.Get(linkId) is not { } link) return null;
+            var c = registry.PageAnchors(box, new RenderContext(doc, lang)).FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Port);
+            if (c is null || !int.TryParse(port.Id.Substring("joint".Length), out var i)) return null;
+            return Edits.SetPoint(doc, link.Id, i, c.P, Attachments.For(box, c.P, c));
+        }
+
         private static bool IsPin(Anchor a) => a.Id is { } id && id.StartsWith("pin", StringComparison.Ordinal)
             && (a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub || a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis);
 
@@ -153,6 +191,15 @@ namespace InventaSketch.Core
         {
             var o = doc.Get(id);
             if (o is null) return Array.Empty<LibraryItem>();
+            if (port.Kind == PortKind.Joint)
+            {
+                // The next link (same kind and view), a fixed pivot, a joint symbol, a slider.
+                var parts = registry.Library.Where(i => registry.Type(i.TypeId) is { } t && t.LinkageRole(registry.Create(i, Vec2.Zero)) != LinkageRole.None)
+                    .GroupBy(i => i.TypeId)
+                    .Select(g => g.FirstOrDefault(i => i.View == o.View) ?? g.First())
+                    .OrderBy(i => i.TypeId == o.Type ? 0 : 1).ToList();
+                return parts.Where(i => Place(registry, doc, id, port, i, lang) is not null).Take(max).ToList();
+            }
             var candidates = registry.Suggestions(o, 14).ToList();
             // The element's own type in its view (a gear next to a gear, the next shaft section).
             var same = registry.Library.FirstOrDefault(i => i.TypeId == o.Type && i.View == o.View);
@@ -180,6 +227,7 @@ namespace InventaSketch.Core
         {
             var sel = doc.Get(id);
             if (sel is null || registry.Type(item.TypeId) is null) return null;
+            if (port.Kind == PortKind.Joint) return PlaceAtJoint(registry, doc, sel, port, item, lang);
             var probe = registry.Create(item, port.At);
             if (probe.IsPointGeometry) return null;
             probe = probe with { Transform = probe.Transform with { Rotation = sel.Transform.Rotation } };
@@ -241,6 +289,33 @@ namespace InventaSketch.Core
                     }
             }
             return null;
+        }
+
+        /// <summary>
+        /// At a free joint of a link: the next link of the same length continuing outwards, docked on the joint; or a joint
+        /// element (fixed pivot, joint, slider) with its joint point on the link's joint.
+        /// </summary>
+        private static SketchObject? PlaceAtJoint(Registry registry, SketchDocument doc, SketchObject link, BuildPort port, LibraryItem item, Lang lang)
+        {
+            var type = registry.Type(item.TypeId)!;
+            var probe = registry.Create(item, port.At);
+            var role = type.LinkageRole(probe);
+            if (role == LinkageRole.None) return null;
+            var index = int.Parse(port.Id.Substring("joint".Length), System.Globalization.CultureInfo.InvariantCulture);
+            if (probe.IsPointGeometry)
+            {
+                if (role != LinkageRole.Link || probe.Points is not { Count: 2 }) return null;
+                var len = Math.Max(5, port.At.DistanceTo(port.AxisFrom));
+                // Bent by 60° (clockwise on screen): three links between two pivots form a chain that can move.
+                var c60 = Math.Cos(Math.PI / 3);
+                var s60 = Math.Sin(Math.PI / 3);
+                var dir = new Vec2(port.Dir.X * c60 - port.Dir.Y * s60, port.Dir.X * s60 + port.Dir.Y * c60);
+                var end = port.At + dir * len;
+                var next = registry.CreateBetween(item, port.At, end);
+                return next with { Attach = new Attachment?[] { new Attachment(link.Id, 0, 0) { AnchorId = "j" + index.ToString(System.Globalization.CultureInfo.InvariantCulture) }, null } };
+            }
+            var c = Anchors(registry, doc, probe, lang).FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Port);
+            return c is null ? null : Translate(probe, port.At - c.P);
         }
 
         /// <summary>

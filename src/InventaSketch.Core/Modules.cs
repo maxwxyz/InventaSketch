@@ -547,6 +547,9 @@ namespace InventaSketch.Core
         /// </summary>
         public virtual IReadOnlyList<PartSpec>? Parts(SketchObject o) => null;
 
+        /// <summary>Role in self-built linkages (<see cref="Linkage"/>): rigid link, fixed pivot, free joint, slider, or none.</summary>
+        public virtual LinkageRole LinkageRole(SketchObject o) => Core.LinkageRole.None;
+
         /// <summary>
         /// Directions (local, before rotation) in which a meshing gear can be docked (<see cref="Building"/>): all four sides
         /// in axial views; only across the axis (up, down) where the axis lies in the drawing plane (schematic, side view).
