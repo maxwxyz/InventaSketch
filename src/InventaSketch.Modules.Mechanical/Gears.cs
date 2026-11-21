@@ -33,7 +33,7 @@ namespace InventaSketch.Modules.Mechanical
         /// vertical half extent of the pitch lines (stick: the symbol height), so gears on parallel shafts mesh, snap and
         /// stay coupled in these views as in the axial view.
         /// </summary>
-        private static Anchor SidePitch(Pen p, double halfHeight) => Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, halfHeight * p.Sy);
+        private static Anchor SidePitch(Pen p, double halfHeight) => Anchor.SidePitch(Vec2.Zero, halfHeight * p.Sy, new Vec2(1, 0));
 
         public static IEnumerable<MechType> Types()
         {

@@ -342,6 +342,11 @@ namespace InventaSketch.Modules.Architecture
         public DrawFn? Elevation { get; init; }
         /// <summary>Exposes a Hub anchor at the box centre (snaps onto wall and beam axes).</summary>
         public bool Hub { get; init; }
+        /// <summary>
+        /// Pipe connections in normalised box coordinates (-0.5 … 0.5) with their ids: pipes snap and dock there (flow and
+        /// return of a radiator, waste of a washbasin).
+        /// </summary>
+        public IReadOnlyList<(double U, double V, string Id)> Ports { get; init; } = Array.Empty<(double, double, string)>();
         public bool Uniform { get; init; }
         public bool TextEditable { get; init; }
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
@@ -365,6 +370,7 @@ namespace InventaSketch.Modules.Architecture
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
             if (Hub) yield return Anchor.Point(AnchorRole.Hub, Vec2.Zero, "wall");
+            foreach (var (u, v, id) in Ports) yield return Anchor.Point(AnchorRole.Port, new Vec2(u * o.Size.W, v * o.Size.H), id);
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)

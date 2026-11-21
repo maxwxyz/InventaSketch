@@ -38,10 +38,14 @@ namespace InventaSketch.Modules.Architecture
             yield return new BoxType("arch.furniture.fridge", new I18nText("Fridge", "Kühlschrank"), f, new Size2(6, 6), Fridge, "fridge", "refrigerator", "kühlschrank", "kitchen", "küche");
 
             var s = ArchCategories.Sanitary;
-            yield return new BoxType("arch.sanitary.wc", new I18nText("WC", "WC"), s, new Size2(4, 7), Wc, "wc", "toilet", "toilette", "klosett", "bathroom", "bad");
-            yield return new BoxType("arch.sanitary.washbasin", new I18nText("Washbasin", "Waschbecken"), s, new Size2(6, 4.5), Washbasin, "washbasin", "basin", "lavatory", "waschbecken", "waschtisch", "bathroom", "bad");
-            yield return new BoxType("arch.sanitary.shower", new I18nText("Shower", "Dusche"), s, new Size2(9, 9), Shower, "shower", "dusche", "duschwanne", "bathroom", "bad");
-            yield return new BoxType("arch.sanitary.bathtub", new I18nText("Bathtub", "Badewanne"), s, new Size2(17, 7.5), Bathtub, "bathtub", "bath", "tub", "badewanne", "wanne", "bathroom", "bad");
+            yield return new BoxType("arch.sanitary.wc", new I18nText("WC", "WC"), s, new Size2(4, 7), Wc, "wc", "toilet", "toilette", "klosett", "bathroom", "bad")
+            { Ports = new[] { (0.0, -0.5, "waste") } };
+            yield return new BoxType("arch.sanitary.washbasin", new I18nText("Washbasin", "Waschbecken"), s, new Size2(6, 4.5), Washbasin, "washbasin", "basin", "lavatory", "waschbecken", "waschtisch", "bathroom", "bad")
+            { Ports = new[] { (0.0, -0.5, "waste") } };
+            yield return new BoxType("arch.sanitary.shower", new I18nText("Shower", "Dusche"), s, new Size2(9, 9), Shower, "shower", "dusche", "duschwanne", "bathroom", "bad")
+            { Ports = new[] { (0.0, 0.0, "waste") } };
+            yield return new BoxType("arch.sanitary.bathtub", new I18nText("Bathtub", "Badewanne"), s, new Size2(17, 7.5), Bathtub, "bathtub", "bath", "tub", "badewanne", "wanne", "bathroom", "bad")
+            { Ports = new[] { (-0.4, 0.0, "waste") } };
         }
 
         private static void Bed(Canvas c, SketchObject o, RenderContext ctx)

@@ -91,8 +91,11 @@ später. Jeder Punkt kommt zuerst in Core/Engine, dann COM, dann Web, dann Libre
 Stand 21.11.2026 (COM): Die einheitliche Liniensprache (verlängern, weiterzeichnen, Ecken, Abzweige inkl. Wand-T-Stöße,
 teilen, verbinden), Bau-Griffe für Zahnräder, Wellen und Maschinen (inkl. Welle strecken) und freies Andocken von
 Beschriftungen auf Flächen sind erledigt und in PowerPoint geprüft, ebenso Umschalt-15°-Schritte für Linien und Kreuzungen
-von Leitungen und Rohren (automatische Brücke, Verbinden-Symbol). Engine/Web folgen. Als Nächstes: die Prüfung von Ankern,
-Kontakten, Randbedingungen und Verbindungen je Element und Ansicht.
+von Leitungen und Rohren (automatische Brücke, Verbinden-Symbol). Engine/Web folgen. Prüfung von Ankern, Kontakten,
+Randbedingungen und Verbindungen je Element und Ansicht am 21.11.2026 erledigt (Bericht aus
+`AnchorAuditTests`): Maschinenschnitte bekommen Naben in Seiten- und Schemaansicht und führen ihre Welle, Heizungs- und
+Sanitärsymbole bekommen Rohranschlüsse, Rohrleitungen im Grundriss die Liniensprache, Zahnräder in Seitenansicht kämmen
+nur mit Seitenansichten auf paralleler Achse quer zur Achse (der Teilkreis trägt die Achse, `Anchor.SidePitch`).
 
 - **P1 – Eine Liniensprache für alles Linienartige.** Was Leitungen schon können (Ecken, Abzweige), geht überall, wo es
   sinnvoll ist, mit denselben Griffen und Regeln:
@@ -136,6 +139,33 @@ Kontakten, Randbedingungen und Verbindungen je Element und Ansicht.
 - **P3 – Patent-Ablauf in den Hosts:** Nummerierungsassistent über Figuren, Preflight-Bereich mit Sprung zum Befund
   (Preflight-Regeln gibt es im Patentmodul), Blattlayout für Figuren.
 - **P3 – Import:** SVG/DXF-Umrisse als schraffierbare Flächen, GeoJSON/GPX für Karten, CSV für Diagramme.
+
+### Getriebe selbst bauen (Maintainer 21.11.2026)
+
+- **P1 – Planetenträger (Steg) als eigenes Teil:** Stirnansicht mit 2–8 Armen oder Scheibe und Planetenbolzen auf einem
+  Radius, Seitenansicht mit den Bolzen als Achsen; Planeten docken an den Bolzen an und werden mitgenommen; Bau-„+“ an
+  freien Bolzen (Planet) und in der Mitte (Welle); Option „fester Steg“ (gestellfest, Gehäusesymbol), Stege, die keine
+  Wellen sind.
+- **P1 – Planetensätze frei gestalten:** Planetenanzahl 2–8 (heute 3–6), mehrere Planetenreihen, Stufenplaneten (zwei
+  Verzahnungen auf einem Planetenbolzen, sonnen- und hohlradseitig), Planetenpaare (Ravigneaux-artig), zusammengesetzte
+  Sätze; einen Satz in Sonne, Planeten, Hohlrad und Steg „zerlegen“, damit jedes Teil einzeln bearbeitet und gekoppelt
+  werden kann.
+- **P1 – Kegelräder und Differentiale aus Einzelteilen:** Kegelradpaare kämmen in der Seitenansicht über rechtwinklige
+  Achsen; das Bau-„+“ an einem Kegelrad bietet das Gegenrad unter 90°; ein Differential aus Gehäuse/Steg, zwei
+  Achswellenrädern und zwei oder mehr Ausgleichsrädern, auch als Start-Baugruppe.
+- **P1 – Koppelgetriebe selbst bauen (Maintainer 21.11.2026: „es gibt nur vordefinierte“):** Glieder, Gelenke und
+  Gestelldrehpunkte gibt es als Einzelteile, aber Gliedenden docken nicht aneinander an, und nur die vordefinierten
+  Getriebe (Viergelenk, Schubkurbel …) bewegen sich. Plan: Gliedenden docken an Gelenken anderer Glieder an (Anbindung an
+  einen Punkt eines Punktobjekts, folgt ihm); Glieder, Gelenke, Gleitsteine und Gestelldrehpunkte bilden eine Kette, die
+  die Engine erkennt (Graph), mit live angezeigtem Freiheitsgrad (Grübler); Bau-„+“ am freien Gelenk eines Glieds
+  (nächstes Glied, Gestelldrehpunkt, Gleitstein, Kurvenstößel); ein Gelenk oder eine Kurbel auf der Folie ziehen, und die
+  Kette bewegt sich bei konstanten Gliedlängen (allgemeiner 2D-Zwangsbedingungslöser statt der geschlossenen Lösungen je
+  Getriebe); Grenzen, Zwischenlagen, Koppelkurven und Animation als Folien für jede Kette; vordefinierte Getriebe werden
+  Start-Baugruppen, die sich in ihre Glieder zerlegen lassen.
+- **P2 – Getriebe bewegen:** den Antrieb drehen (Zahnrad oder Welle auf der Folie ziehen), und jedes Rad dreht sich mit
+  seiner Übersetzung (Zähne bleiben im Eingriff, Stege laufen um, Planeten wälzen ab); Übersetzungen auf Wunsch
+  angezeigt; Animation als Morph-Folien wie bei den Koppelgetrieben (`ObjectType.AnimationFrames` für Getriebe). Heute
+  animieren nur die Koppelgetriebe des Kinematikmoduls als Folien (Kreismenü); Ziehen zum Simulieren ist für beide offen.
 
 ### Neue Module
 

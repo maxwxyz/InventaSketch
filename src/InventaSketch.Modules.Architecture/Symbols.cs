@@ -31,10 +31,14 @@ namespace InventaSketch.Modules.Architecture
             };
 
             var sv = ArchCategories.Services;
-            yield return new BoxType("arch.hvac.radiator", new I18nText("Radiator", "Heizkörper"), sv, new Size2(10, 1.5), Radiator, "radiator", "heizkörper", "heater", "heizung", "heating");
+            // Flow and return connections: pipes snap and dock there.
+            yield return new BoxType("arch.hvac.radiator", new I18nText("Radiator", "Heizkörper"), sv, new Size2(10, 1.5), Radiator, "radiator", "heizkörper", "heater", "heizung", "heating")
+            { Ports = new[] { (-0.5, 0.0, "flow"), (0.5, 0.0, "return") } };
             yield return new BoxType("arch.hvac.heatpump", new I18nText("Heat pump (outdoor unit)", "Wärmepumpe (Außeneinheit)"), sv, new Size2(10, 5), HeatPump,
-                "heat pump", "wärmepumpe", "outdoor unit", "außeneinheit", "hvac", "heating", "heizung");
-            yield return new BoxType("arch.hvac.boiler", new I18nText("Boiler", "Heizkessel / Therme"), sv, new Size2(6, 6), Boiler, "boiler", "heizkessel", "therme", "furnace", "gas", "heating", "heizung");
+                "heat pump", "wärmepumpe", "outdoor unit", "außeneinheit", "hvac", "heating", "heizung")
+            { Ports = new[] { (-0.5, -0.2, "flow"), (-0.5, 0.2, "return") } };
+            yield return new BoxType("arch.hvac.boiler", new I18nText("Boiler", "Heizkessel / Therme"), sv, new Size2(6, 6), Boiler, "boiler", "heizkessel", "therme", "furnace", "gas", "heating", "heizung")
+            { Ports = new[] { (-0.25, 0.5, "flow"), (0.25, 0.5, "return") } };
             yield return new PipeType();
 
             var st = ArchCategories.Site;
@@ -235,6 +239,16 @@ namespace InventaSketch.Modules.Architecture
             "pipe", "rohr", "leitung", "rohrleitung", "plumbing", "sanitär", "heating", "heizung", "water", "wasser", "flow", "return", "vorlauf", "rücklauf", "waste", "abwasser", "gas") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-20, 0), new Vec2(20, 0) };
+
+        /// <summary>Corners, extending, drawing on and branches (tees docked on the rail).</summary>
+        public override bool InsertablePoints => true;
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            for (var i = 0; i + 1 < p.Count; i++)
+                if (p[i].DistanceTo(p[i + 1]) > 1e-6) yield return Anchor.Rail(p[i], p[i + 1], "rail" + i.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        }
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {

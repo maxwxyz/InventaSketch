@@ -130,12 +130,21 @@ namespace InventaSketch.Core
                             // Nearly equal radii inside a ring are a fit (rotor in stator), handled by the concentric rule.
                             var fit = !external && m.Radius >= InternalMeshMaxRatio * t.Radius;
                             var required = external ? m.Radius + t.Radius : t.Radius - m.Radius;
-                            if (!fit && required > Geo.Eps)
+                            // Side views (axis in the drawing plane) mesh only with side views on a parallel axis, across it.
+                            var ma = m.AxisOf();
+                            var ta = t.AxisOf();
+                            var sameKind = ma is null && ta is null || ma is { } mx && ta is { } tx && Math.Abs(mx.Cross(tx)) <= 0.05;
+                            if (!fit && required > Geo.Eps && sameKind)
                             {
                                 var d = m.P - t.P;
                                 var dist = d.Length;
                                 var dir = dist < Geo.Eps ? new Vec2(1, 0) : d / dist;
-                                Consider(dir * (required - dist), SemanticTier, MeshWeight, "mesh", t, new SnapGuide(GuideKind.Circle, t.P, t.P + dir * required, required));
+                                if (ta is { } axis)
+                                {
+                                    var n = new Vec2(-axis.Y, axis.X);
+                                    dir = d.Dot(n) >= 0 ? n : n * -1;
+                                }
+                                Consider(t.P + dir * required - m.P, SemanticTier, MeshWeight, "mesh", t, new SnapGuide(GuideKind.Circle, t.P, t.P + dir * required, required));
                             }
                         }
                         // Hub/centre onto a shaft axis.
