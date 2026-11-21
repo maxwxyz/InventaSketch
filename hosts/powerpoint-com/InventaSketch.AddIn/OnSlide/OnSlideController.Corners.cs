@@ -48,6 +48,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             _segHandles = new List<(int, Vec2, Vec2)>();
             _endHandles = new List<(bool, Vec2, Vec2)>();
+            _crossings = new List<Crossing>();
             _canBranch = false;
             _hoverSeg = -1;
             var o = PointObject();
@@ -69,6 +70,9 @@ namespace InventaSketch.AddIn.OnSlide
                     _segHandles.Add((i, Polylines.SegmentHandle(registry, doc, doc.Get(o.Id) ?? o, i, _lang()), n));
                 }
                 _canBranch = Polylines.CanBranch(registry, doc, doc.Get(o.Id) ?? o, _lang());
+                // Crossings with other wires or pipes: a connect icon at each.
+                var full = _unitContext ?? SketchUnits.WithContext(unit.Doc, _otherUnits);
+                _crossings = Crossings.Find(registry, full, full.Get(o.Id) ?? o, _lang()).ToList();
                 // Free ends (not docked) of open lines: "+" to extend or keep drawing.
                 if (Polylines.CanExtend(registry, o))
                     foreach (var atStart in new[] { true, false })
@@ -91,9 +95,15 @@ namespace InventaSketch.AddIn.OnSlide
         private IEnumerable<(int Code, PointF At)> SegmentHandlesOnScreen(SlideView view)
         {
             var o = PointObject();
-            if (o is null || _segHandles.Count == 0 || _unit is null) yield break;
+            if (o is null || _unit is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0)) yield break;
             var pts = (_unitContext ?? _unit.Doc).ResolvePoints(o);
             var off = (float)(BranchOffsetPx * view.DeviceScale);
+            for (var i = 0; i < _crossings.Count; i++)
+            {
+                // Connect icon a little above and right of the crossing (the line stays clickable there).
+                var x = view.ToScreen(_crossings[i].At);
+                yield return (CrossCode + i, new PointF(x.X + off * 0.8f, x.Y - off * 0.8f));
+            }
             foreach (var (atStart, end, dir) in _endHandles)
             {
                 var e = view.ToScreen(end);
@@ -137,7 +147,15 @@ namespace InventaSketch.AddIn.OnSlide
                 g.FillEllipse(hover ? hot : fill, c.X - r, c.Y - r, 2 * r, 2 * r);
                 g.DrawEllipse(ring, c.X - r, c.Y - r, 2 * r, 2 * r);
                 var k = r * 0.55f;
-                if (code >= EndCode)
+                if (code >= CrossCode)
+                {
+                    // Junction: two crossing strokes and a dot.
+                    g.DrawLine(glyph, c.X - k, c.Y, c.X + k, c.Y);
+                    g.DrawLine(glyph, c.X, c.Y - k, c.X, c.Y + k);
+                    var d = 1.5f * s;
+                    g.FillEllipse(blue, c.X - d, c.Y - d, 2 * d, 2 * d);
+                }
+                else if (code >= EndCode)
                 {
                     g.FillEllipse(hover ? new SolidBrush(Color.FromArgb(60, 130, 230)) : blue, c.X - r, c.Y - r, 2 * r, 2 * r);
                     using var white = new Pen(Color.White, 1.5f * s);
@@ -159,7 +177,9 @@ namespace InventaSketch.AddIn.OnSlide
                 if (hover)
                 {
                     tipAt = new PointF(c.X + r + 4 * s, c.Y);
-                    tip = code >= EndCode
+                    tip = code >= CrossCode
+                        ? T("Connect here (junction)", "Hier verbinden (Knotenpunkt)")
+                        : code >= EndCode
                         ? T("Extend: drag, or click to keep drawing", "Verlängern: ziehen, oder klicken zum Weiterzeichnen")
                         : code % 2 == 0
                         ? T("Corner: click, or drag to bend", "Ecke: klicken oder ziehen zum Knicken")
@@ -172,11 +192,19 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Segment handles while armed: start of a corner drag (with the new corner) or of a branch drag.</summary>
         private bool SegmentMouse(int message, POINT pt, SlideView view)
         {
-            if (message != WM_LBUTTONDOWN || _unit is null || _segHandles.Count == 0) return false;
+            if (message != WM_LBUTTONDOWN || _unit is null) return false;
             var code = SegmentHandleAt(pt, view);
             if (code < 0) return false;
             var o = PointObject();
             if (o is null) return false;
+            if (code >= CrossCode)
+            {
+                var unit = _unit;
+                var crossing = _crossings[code - CrossCode];
+                HideBar();
+                Post(() => ApplyConnectCrossing(unit, crossing));
+                return true;
+            }
             if (code >= EndCode)
             {
                 HideBar();
@@ -273,7 +301,30 @@ namespace InventaSketch.AddIn.OnSlide
 
         // ------------------------------------------------------------------ extend and keep drawing
 
-        private const int EndCode = 100000;
+        private const int EndCode = 100000, CrossCode = 200000;
+
+        /// <summary>Crossings of the armed wire or pipe with others (connect icons).</summary>
+        private List<Crossing> _crossings = new();
+
+        /// <summary>Connects the armed line to the line it crosses (split and docked on both sides); one undo step.</summary>
+        private void ApplyConnectCrossing(SketchUnit stale, Crossing crossing)
+        {
+            var slide = CurrentSlide();
+            var unit = SketchUnits.Read(stale.Shape);
+            if (slide is null || unit is null) return;
+            var registry = _registry();
+            var line = unit.Objects.FirstOrDefault(x => x.IsPointGeometry);
+            if (line is null) return;
+            var others = SketchUnits.All(slide, unit.Id);
+            var full = SketchUnits.WithContext(unit.Doc, others);
+            var doc = Crossings.Connect(registry, full, line.Id, crossing, _lang());
+            if (ReferenceEquals(doc, full)) return;
+            _app.StartNewUndoEntry();
+            foreach (var part in doc.Objects.Values.Where(o => full.Get(o.Id) is null))
+                SketchUnits.Draw(slide, registry, SingleUnitDoc(part), _lang());
+            CommitLineEdit(slide, unit, others, full, doc, line.Id, startUndo: false);
+            Log.Info($"Connected {line.Type} at a crossing with {crossing.Other}");
+        }
 
         /// <summary>Free ends of the armed line: start or end, position and outward direction (mm).</summary>
         private List<(bool AtStart, Vec2 End, Vec2 Dir)> _endHandles = new();

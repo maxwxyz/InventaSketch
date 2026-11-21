@@ -114,4 +114,5 @@ touch and follow each other (mechanical pairs and docked line ends) for lock mar
 where it fits the selection (on the shaft, in mesh, through the hub). `Polylines` inserts and removes corners and adds
 branches, extends, splits and joins lines, keeping docked branches in place. `Building` lists the build ports of an
 element (mesh sides, ring inside, free axis ends, free hub), the library items that fit a port and places them coupled;
-`Attachments.OnSurface` docks annotation ends anywhere on the element below them.
+`Attachments.OnSurface` docks annotation ends anywhere on the element below them. `Crossings` finds where wires or pipes
+cross (the upper one hops) and connects them at a crossing.

@@ -236,6 +236,15 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   Art fallen lassen verbindet beide. Wände bekommen T-Stöße als Abzweig (die abzweigende Wand dockt an der Mittellinie an
   und folgt ihr). `Polylines.Extend`, `Split`, `Join`, `ObjectType.IsClosed`, `ObjectType.CornerType`. Geprüft in
   PowerPoint am 21.11.2026: Verlängern durch Ziehen, Weiterzeichnen mit zwei Klicks und Esc, Teilen an einer Ecke.
+- **Umschalt: 15°-Schritte.** Beim Setzen des zweiten Linienpunkts, Verlängern, Weiterzeichnen, Abzweigen oder Ziehen
+  eines Linienpunkts rastet mit Umschalt die Richtung vom vorigen Punkt in 15°-Schritten ein (anderes Fangen ist dabei aus).
+- **Kreuzungen von Leitungen und Rohren:** Wo eine Leitung oder ein Rohr eine andere derselben Art kreuzt, zeichnet die
+  obere (später gezeichnet, weiter vorn auf der Folie) eine kleine Brücke (`ObjectType.HopsAtCrossings`, `Crossings`;
+  je Linie abschaltbar: Leisten-Piktogramm „Brücken“). Eine ausgewählte Leitung zeigt neben jeder Kreuzung ein
+  Knotenpunkt-Symbol (Tooltip „Hier verbinden“); ein Klick teilt die Linie dort und dockt beide Teile an der anderen an
+  (`Crossings.Connect`): Verbindungspunkte, und Verbindungsexporte zählen es. Einheiten rendern mit den anderen Einheiten in
+  der Stapelreihenfolge der Folie (`SketchUnits.WithContext(own, others, z)`). Geprüft in PowerPoint am 21.11.2026: die obere
+  Leitung springt, Verbinden ergibt drei Leitungen mit angedockten Enden, Rückgängig stellt her.
 - **Bau-Griffe für Baugruppen (Getriebe, Antriebsstränge, E-Antriebe):** Ein ausgewähltes Zahnrad, Hohlrad, eine Welle,
   E-Maschine oder ein Verbrennungsmotor zeigt an jedem freien Andockpunkt ein blaues „+“ (`Building.Ports`): die Seiten
   eines Zahnrads (alle vier in Stirnansicht, oben und unten, wo die Achse in der Zeichenebene liegt,

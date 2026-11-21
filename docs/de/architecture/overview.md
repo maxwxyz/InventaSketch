@@ -128,4 +128,5 @@ sobald sich das Paar nicht mehr berührt). `Fitting.Place` setzt ein eingefügte
 in Eingriff, durch die Nabe). `Polylines` fügt Ecken ein, entfernt sie und setzt Abzweige,
 verlängert, teilt und verbindet Linien; angedockte Abzweige bleiben an ihrem Platz. `Building` liefert die Andockpunkte
 eines Elements (Eingriffsseiten, Hohlrad innen, freie Achsenden, freie Nabe), die dazu passenden Bibliothekselemente und
-setzt sie gekoppelt; `Attachments.OnSurface` dockt Beschriftungsenden irgendwo auf dem Element darunter an.
+setzt sie gekoppelt; `Attachments.OnSurface` dockt Beschriftungsenden irgendwo auf dem Element darunter an. `Crossings` findet Kreuzungen
+von Leitungen und Rohren (die obere springt) und verbindet sie an einer Kreuzung.

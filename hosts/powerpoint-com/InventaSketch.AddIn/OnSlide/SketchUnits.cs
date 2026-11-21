@@ -107,14 +107,15 @@ namespace InventaSketch.AddIn.OnSlide
         /// neighbour-dependent objects (<see cref="ObjectType.DependsOnNeighbours"/>: wall joints, openings in walls) are
         /// rendered with the other units of the slide as context; the stored model stays the unit's own.
         /// </summary>
-        public static PowerPoint.Shape? Draw(PowerPoint.Slide slide, Registry registry, SketchDocument doc, Lang lang)
+        public static PowerPoint.Shape? Draw(PowerPoint.Slide slide, Registry registry, SketchDocument doc, Lang lang, int? zOrder = null)
         {
             var ids = doc.ObjectsOn(doc.Pages[0]).Select(o => o.Id).ToList();
             if (ids.Count == 0) return null;
             // One unit: all objects of the model belong together (make them an assembly if there are several).
             if (ids.Count > 1 && doc.Objects.Values.Select(o => o.GroupId).Distinct().Count() != 1)
                 doc = Edits.Group(doc, ids);
-            var context = NeedsContext(registry, doc) ? WithContext(doc, All(slide)) : doc;
+            // The context keeps the slide's stacking order (a new unit is on top): wires drawn later hop over earlier ones.
+            var context = NeedsContext(registry, doc) ? WithContext(doc, All(slide), zOrder ?? int.MaxValue) : doc;
             var session = new EditorSession("com", registry, context, lang);
             var plan = DrawPlanBuilder.Build(session, ids, DrawCapabilities.Full);
             var renderer = new ComRenderer(slide);
@@ -153,6 +154,28 @@ namespace InventaSketch.AddIn.OnSlide
         }
 
         /// <summary>The unit model plus the objects of the other units (on the model's page, same settings) for rendering.</summary>
+        /// <summary>
+        /// The unit model plus the objects of the other units in the slide's stacking order, the unit's own objects at
+        /// <paramref name="ownZ"/> (its z-order position; on top when larger than all). Rendering that depends on the
+        /// order (wire hops: the upper line hops) then matches the slide.
+        /// </summary>
+        public static SketchDocument WithContext(SketchDocument own, IEnumerable<SketchUnit> others, int ownZ)
+        {
+            var doc = WithContext(own, others);
+            if (ReferenceEquals(doc, own)) return doc;
+            var page = doc.Pages[0];
+            var z = new Dictionary<string, int>(StringComparer.Ordinal);
+            foreach (var u in others)
+            {
+                int pos;
+                try { pos = u.Shape.ZOrderPosition; } catch { continue; }
+                foreach (var o in u.Objects) z[o.Id] = pos;
+            }
+            foreach (var o in own.Objects.Values) z[o.Id] = ownZ;
+            var ordered = page.Order.Select((id, i) => (id, i)).OrderBy(t => z.TryGetValue(t.id, out var v) ? v : int.MaxValue).ThenBy(t => t.i).Select(t => t.id).ToList();
+            return doc with { Pages = doc.Pages.Select((p, i) => i == 0 ? p with { Order = ordered } : p).ToList() };
+        }
+
         public static SketchDocument WithContext(SketchDocument own, IEnumerable<SketchUnit> others)
         {
             var extra = others.SelectMany(u => u.Objects).Where(o => !own.Objects.ContainsKey(o.Id)).GroupBy(o => o.Id).Select(g => g.First()).ToArray();
@@ -286,7 +309,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var z = unit.Shape.ZOrderPosition;
             unit.Shape.Delete();
-            var shape = Draw(slide, registry, doc, lang);
+            var shape = Draw(slide, registry, doc, lang, z);
             if (shape is not null)
                 while (shape.ZOrderPosition > z) shape.ZOrder(Office.MsoZOrderCmd.msoSendBackward);
             return shape;

@@ -171,6 +171,8 @@ namespace InventaSketch.Core
         public const string ShaftEnds = "cmd-shaft-ends";
         public const string Ground = "cmd-ground";
         public const string Split = "cmd-split";
+        public const string Hop = "cmd-hop";
+        public const string Junction = "cmd-junction";
         public const string RemovePoint = "cmd-point-remove";
         public const string ShapeSquare = "shape-square";
         public const string ShapeCircle = "shape-circle";
@@ -251,6 +253,9 @@ namespace InventaSketch.Core
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
             MachInner, MachOuter, MachAxial, MachAxialDoubleRotor, MachAxialDoubleStator, MachMagnet, MachWound, MachCage, MachReluctance,
             HubNone, HubFixed, HubSliding, HubLoose, Helix, ShaftEnds, Ground,
+            Split, RemovePoint, Hop, Junction,
+            ShapeSquare, ShapeCircle, ShapeTriangle, FillTint, FillHatch, FillDots, FillNone, RouteFree, RouteOrthogonal, Route45,
+            WallThick, WallMedium, WallThin,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -514,6 +519,12 @@ namespace InventaSketch.Core
         /// (<see cref="Attachments.OnSurface"/>).
         /// </summary>
         public virtual bool DocksOnSurface => false;
+
+        /// <summary>
+        /// Wires and pipes: where this line crosses an earlier line of the same type it draws a hop (bridge), and hosts offer
+        /// to connect the two there (<see cref="Crossings"/>).
+        /// </summary>
+        public virtual bool HopsAtCrossings => false;
 
         /// <summary>
         /// Directions (local, before rotation) in which a meshing gear can be docked (<see cref="Building"/>): all four sides

@@ -259,6 +259,14 @@ UX round (2026-11-20, from the maintainer's feedback):
   T joints as branches (the branch wall docks onto the wall's centre line and follows it). `Polylines.Extend`, `Split`,
   `Join`, `ObjectType.IsClosed`, `ObjectType.CornerType`. Verified in PowerPoint 2026-11-21: extend by dragging,
   drawing on with two clicks and Esc, split at a corner.
+- **Shift: 15° steps.** While placing the second point of a line, extending, drawing on, branching or dragging a line
+  point, Shift snaps the direction from the previous point to 15° steps (other snapping is off meanwhile).
+- **Crossings of wires and pipes:** where a wire or pipe crosses another one of the same kind, the one on top (drawn
+  later, higher in the slide's stacking order) draws a small hop (`ObjectType.HopsAtCrossings`, `Crossings`; switch per
+  line: bar pictogram "hops"). A selected wire or pipe shows a junction icon beside each crossing (tooltip "Connect here");
+  a click splits the line there and docks both parts onto the other line (`Crossings.Connect`): junction dots, and
+  connection exports count it. Units render with the other units in slide z-order (`SketchUnits.WithContext(own, others,
+  z)`). Verified in PowerPoint 2026-11-21: the upper wire hops, connect makes three wires with docked ends, undo restores.
 - **Build handles for assemblies (gearboxes, drivetrains, e-drives):** a selected gear, ring gear, shaft, e-machine or
   engine shows a blue "+" at every free build port (`Building.Ports`): the sides of a gear (all four in axial view,
   above and below where the axis lies in the drawing, `ObjectType.MeshDirections`), inside a ring gear (planet), the

@@ -84,8 +84,8 @@ item lands in Core/engine first, then COM, then web, then LibreOffice (host orde
 
 Status 2026-11-21 (COM): the one line language (extend, draw on, corners, branches incl. wall T joints, split, join),
 build handles for gears, shafts and machines (incl. shaft stretch) and free docking of annotations on surfaces are done
-and verified in PowerPoint; engine/web follow. Next: crossings of wires and pipes (automatic hop, connect icon at the
-crossing), then the audit of anchors, contacts, constraints and connections per element and view.
+and verified in PowerPoint; so are Shift 15° steps for lines and crossings of wires and pipes (automatic hop,
+connect icon). Engine/web follow. Next: the audit of anchors, contacts, constraints and connections per element and view.
 
 - **P1 – One line language for everything line-like.** What wires already do (corners, branches) works wherever it makes
   sense, with the same handles and the same rules:

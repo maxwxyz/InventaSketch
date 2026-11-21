@@ -205,8 +205,28 @@ namespace InventaSketch.Modules.Fluid
         public override GeometryKind Geometry => GeometryKind.Points;
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 0), new Vec2(15, 0) };
         public override IReadOnlyList<ViewDef> Views => ViewList;
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Routing.Param() };
+        private static readonly ParamDef Hops = Flag("hops", T("Hops at crossings", "Brücken an Kreuzungen"), true);
+
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Routing.Param(), Hops };
         public override bool InsertablePoints => true;
+
+        /// <summary>A line drawn over an earlier line hops over it (unless switched off); hosts offer to connect there.</summary>
+        public override bool HopsAtCrossings => true;
+        public override bool DependsOnNeighbours => true;
+
+        private static IReadOnlyList<Vec2> PathOf(SketchObject x, RenderContext ctx)
+        {
+            var q = ctx.Doc.ResolvePoints(x);
+            return q.Count < 2 ? q : Path(x, q, ctx);
+        }
+
+        /// <summary>Lines crossing this one (their hops depend on where this one runs).</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 2) return Array.Empty<string>();
+            return Crossings.Find(ctx.Doc, o, Path(o, p, ctx), x => PathOf(x, ctx)).Select(c => c.Other).Distinct();
+        }
 
         /// <summary>On a line one adds valves, cylinders and gauges ("Insert ▸").</summary>
         public override IReadOnlyList<string> Companions => new[]
@@ -236,7 +256,10 @@ namespace InventaSketch.Modules.Fluid
             if (p.Count < 2) return Array.Empty<Primitive>();
             var kind = KindOf(o);
             if (kind == "hose") return new Primitive[] { Prim.Path(Hose(p), S.Line) with { Tag = "hose" } };
-            var list = new List<Primitive> { Prim.Polyline(Path(o, p, ctx), StyleOf(kind)) with { Tag = "line" } };
+            var route = Path(o, p, ctx);
+            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx)).Where(c => c.Above).ToList() : new List<Crossing>();
+            Primitive main = hops.Count == 0 ? Prim.Polyline(route, StyleOf(kind)) : Prim.Path(Crossings.HopPath(route, hops), StyleOf(kind));
+            var list = new List<Primitive> { main with { Tag = "line" } };
             // Junction dot where an end is docked onto another line (a tee, Polylines.Branch).
             if (o.Attach is not null)
                 foreach (var i in new[] { 0, p.Count - 1 })
@@ -272,6 +295,7 @@ namespace InventaSketch.Modules.Fluid
             new ContextAction("fluid.line.route", T("Orthogonal / straight", "Orthogonal / gerade"), IconIds.Toggle,
                 x => x.WithParam("route", x.Str("route", "orthogonal") == "free" ? "orthogonal" : "free"))
             { IsActive = o.Str("route", "orthogonal") == "orthogonal", Group = "route" },
+            Toggle(o, "fluid.line.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop),
         };
     }
 }
