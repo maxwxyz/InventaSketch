@@ -81,6 +81,92 @@ Ketten, Netz- und Verbindungslisten für Schaltpläne und E/E-Verschaltung (KiCa
 Kabelbaumlisten, Stücklisten (CSV/Excel), Bezugszeichenlisten, Diagrammstrukturen (GraphML/Mermaid) – als
 Export-Erweiterungspunkte der Module.
 
+## Plan 21.11.2026: Interaktion, Module und Elemente
+
+Mit dem Maintainer nach der COM-Feinschliff-Runde vereinbart. Prioritäten: **P1** als Nächstes, **P2** danach, **P3**
+später. Jeder Punkt kommt zuerst in Core/Engine, dann COM, dann Web, dann LibreOffice (Host-Reihenfolge unverändert).
+
+### Interaktionsmechanismen und UX-Konzepte
+
+- **P1 – Eine Liniensprache für alles Linienartige.** Was Leitungen schon können (Ecken, Abzweige), geht überall, wo es
+  sinnvoll ist, mit denselben Griffen und Regeln:
+  - *Verlängern / Weiterzeichnen:* ein „+“ an jedem freien Ende; Ziehen verlängert die Linie, Klick zeichnet weiter
+    (Klick-Klick setzt Ecken, Esc oder Doppelklick beendet, Fangen und Andocken wie gewohnt). Leitungen, Rohre, Straßen
+    (Karten und Fahrzeug), Flüsse, Bahnlinien, Routen, Trajektorien, Polylinien, Wände, Schnittlinien.
+  - *Abzweigen:* Leitungen, Rohre, Straßen, Bahnlinien (für Leitungen, Rohre, Kartenstraßen erledigt); Wände bekommen
+    T-Stöße (eine abzweigende Wand schließt an die Wand an, an der sie beginnt); Riemen und Ketten eine dritte Scheibe
+    (umschlingen).
+  - *Ecken:* einfügen, ziehen, entfernen für Wände (eine Ecke = zwei verbundene Wände), Schraffurflächen,
+    Kartenflächen, Fahrstreifen.
+  - *Wellen:* Ende ziehen streckt (Teile bleiben an ihrem Platz), „+“ am Ende setzt den nächsten Wellenabschnitt
+    (abgesetzte Welle, Kupplung oder Lager am Stoß); Welle teilen; ein Zahnrad am Wellenende verlängert sie.
+  - *Verbinden und Teilen:* ein Ende auf ein Ende derselben Art ziehen verbindet beide Linien; eine Linie an einer Ecke
+    teilen (Schere in der Leiste).
+- **P1 – Live-Vorschau der Kopplung beim Ziehen:** Eingriffspartner skalieren und Riemen strecken sich schon im
+  Geisterbild (heute erst beim Loslassen); mitlaufende Teile werden hervorgehoben.
+- **P1 – Einfügen per Tippen:** ein Suchfeld am Mauszeiger (Strg+Leertaste oder Leistenknopf), das das gewählte Element
+  am Zeiger in der Ansicht der Auswahl einfügt; zuletzt benutzte und Favoriten zuerst.
+- **P2 – Baugruppen als Bibliothekselemente:** Auswahl (mit Kopplungen, Bezugszeichen, Ansichten) als eigenes
+  Bibliothekselement speichern; Start-Baugruppen: zweistufiges Getriebe, Planetenstufe, E-Antrieb (Batterie –
+  Wechselrichter – E-Maschine – Getriebe – Räder), Riementrieb, Hydraulikzylinder-Kreis, Raum mit Tür und Fenster,
+  Kreuzung mit Fahrstreifen.
+- **P2 – Mehransichten-Verknüpfung:** dasselbe Teil in Schema-, Seiten- und Stirnansicht auf verschiedenen Folien oder
+  Einheiten teilt seine Identität; Zähnezahl oder Größe in einer Ansicht ändert die anderen mit.
+- **P2 – Ziehen zum Simulieren:** einen Antrieb (Kurbel, Welle, Zahnrad) auf der Folie ziehen, und Getriebe bzw.
+  Koppelgetriebe bewegen sich mit der richtigen Übersetzung; Stellungen als Geisterbilder oder Morph-Folien festhalten
+  (COM-Animation vorhanden).
+- **P2 – Fang-Beschriftungen und Maße:** kleines Etikett am Fangziel („Teilkreis“, „Achse“, „Pin 2“) und Live-Abstand
+  und -Winkel zu Nachbarn beim Ziehen (wie in Design-Werkzeugen).
+- **P2 – Format übertragen für Semantik:** Ansicht, Parameter und Stil von einem Element auf andere desselben Typs
+  übertragen.
+- **P2 – Operationen über die Auswahl:** bei mehreren Einheiten: Mitten auf einer Achse ausrichten, gleiche Abstände
+  entlang einer Linie, gleiche Größe, Bezugszeichen in Leserichtung neu nummerieren, alle Verbindungen lösen/koppeln.
+- **P2 – Tastatur:** Tab springt durch verbundene Elemente, Pfeiltasten verschieben mit Kopplung, Umschalt+Klick auf
+  ein Schloss löst alle Verbindungen der Auswahl.
+- **P3 – Varianten und Zustände** (Spezifikation §7): vorher/nachher, Betriebszustände; Sichtbarkeit je Variante; Folie
+  je Variante.
+- **P3 – Automatisches Layout und Routing für Diagramme:** Schichtenlayout, das manuelle Platzierung respektiert;
+  Verbinder, die Formen ausweichen; Brücken an Kreuzungen.
+- **P3 – Patent-Ablauf in den Hosts:** Nummerierungsassistent über Figuren, Preflight-Bereich mit Sprung zum Befund
+  (Preflight-Regeln gibt es im Patentmodul), Blattlayout für Figuren.
+- **P3 – Import:** SVG/DXF-Umrisse als schraffierbare Flächen, GeoJSON/GPX für Karten, CSV für Diagramme.
+
+### Neue Module
+
+- **P1 – Diagramme/Kennlinien (`chart.*`, Spezifikation §6.12):** XY/Linie/Punkte/Balken, Kennlinien
+  (Drehmoment–Drehzahl, Wirkungsgradkennfeld), Bode-Diagramm, Toleranzbänder; Daten eintippen oder aus Excel einfügen;
+  schwarz-weiß-tauglich.
+- **P2 – Verfahrens- und Wärmetechnik (`process.*`):** R&I-Fließbild über die Fluidtechnik hinaus (Behälter, Kolonnen,
+  Wärmetauscher, Pumpen, Messstellen mit Kennzeichnung), thermodynamische Kreisprozesse (T-s-, p-v-, p-h-Diagramme),
+  Klimatechnik.
+- **P2 – Energiesysteme (`energy.*`):** PV, Wind, Batteriespeicher, Ladegerät/Wallbox, Netzanschluss, Wasserstoff,
+  Übersichtsschaltpläne über Spannungsebenen.
+- **P2 – Robotik (`robot.*`):** Arme aus Kinematik-Gelenken, Koordinatensysteme, Greifer, Arbeitszellen,
+  Reichweitenhüllen, Schutzbereiche.
+- **P3 – Netzwerke & IT (`net.*`):** Server, Cloud, Router, Switches, Topologien, C4-Kontext-/Container-Diagramme.
+- **P3 – Optik & Physik (`optics.*`):** Strahlen, Linsen, Spiegel, Prismen, Wellen, Felder.
+- **P3 – Zuverlässigkeit & Systems Engineering:** Fehlerbäume, FMEA-Blöcke, SysML-artige Blöcke und
+  Anforderungsverknüpfungen.
+- **P3 – Projektdiagramme:** Gantt/Zeitstrahl, Mindmap, Organigramm.
+
+### Fehlende Elemente in bestehenden Modulen
+
+- **Mechanik (P1):** Kugel- und Trapezgewindetrieb (Mutter folgt der Spindelachse), Freilauf, Drehmomentwandler,
+  CVT-Variator, Wellgetriebe (Harmonic Drive), Zykloidgetriebe, Getriebegehäuse-Umriss, Ölsumpf und Ölstand, Parksperre.
+- **Maschinen (P2):** Batteriepack aus Modulen/Zellen, Bordlader, Stromschienen, Kabel/Phasenleitungen,
+  Wechselrichter-Topologie im Detail (Halbbrücken), Kühlkreislauf um den E-Antrieb.
+- **Elektrik (P2):** SPS mit E/A-Karten, Motorstarter, Sensorfamilie (Temperatur, Druck, Hall, Position),
+  Steckerbelegung, Kabelbaumsegmente mit Längen.
+- **Fluid (P2):** Einbauventile, Proportional- und Servoventile, Ventilblock, Schnellkupplungen, Filter mit Bypass und
+  Verschmutzungsanzeige.
+- **Architektur (P2):** Dächer (Grundriss und Schnitt), Maßketten für Wände, Elektro-/HLK-Ebene an Räume gebunden,
+  Garten und Landschaft.
+- **Fahrzeug (P3):** Manöver-Vorlagen (Spurwechsel, Überholen, Abbiegen, Einparken), V2X, weitere Verkehrszeichen,
+  Innenraum (Sitze, Anzeigen, Bedienelemente).
+- **Kinematik (P3):** Zahnrad- und Riemengelenke, Kurvenscheiben-Generator, Parallelroboter (Delta), Malteserkreuz.
+- **Diagramme (P3):** Sequenz-Fragmente (alt/loop/opt), Verteilungsknoten, C4 (oder in `net.*`).
+- **Beschriftung (P3):** Tabellen, vergrößerte Einzelheit mit Verknüpfung zur Quelle, Revisionswolken.
+
 ## Offene Punkte
 
 - **Stand 20.11.2026:** Engine-Kern, Engine-API und zwölf Module auf `main` (zuletzt Karten und Routen sowie

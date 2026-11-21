@@ -75,6 +75,82 @@ netlist CSV, electrical rule check report, reference sign list; next): gear and 
 netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsnest/airwires, harness lists, BOM
 (CSV/Excel), reference sign lists, diagram structures (GraphML/Mermaid) — as module export extension points.
 
+## Plan 2026-11-21: interaction, modules and elements
+
+Agreed with the maintainer after the COM polish round. Priorities: **P1** next, **P2** after that, **P3** later. Each
+item lands in Core/engine first, then COM, then web, then LibreOffice (host order unchanged).
+
+### Interaction mechanisms and UX concepts
+
+- **P1 – One line language for everything line-like.** What wires already do (corners, branches) works wherever it makes
+  sense, with the same handles and the same rules:
+  - *Extend / continue drawing:* a "+" at every free end; drag it to lengthen the line, click it to keep drawing
+    (click-click adds corners, Esc or double-click ends, snapping and docking as usual). Wires, pipes, roads (maps and
+    automotive), rivers, rails, routes, trajectories, polylines, walls, section lines.
+  - *Branch:* wires, pipes, roads, rails (done for wires, pipes, map roads); walls get T-joints (a branch wall joins
+    the wall it starts on); belts and chains get a third pulley (wrap around).
+  - *Corners:* insert, drag, remove for walls (a corner = two joined walls), hatch regions, map regions, lanes.
+  - *Shafts:* drag an end to stretch (parts keep their place), "+" at the end adds the next shaft section (stepped
+    shaft, coupling or bearing at the joint); split a shaft; a gear on the end of a shaft extends it.
+  - *Join and split:* drop an end onto another end of the same kind to merge the two lines; split a line at a corner
+    (scissors in the bar).
+- **P1 – Live coupling preview while dragging:** meshing partners scale and belts stretch in the ghost (today the
+  result appears on release); followers are highlighted.
+- **P1 – Insert by typing:** a search box at the pointer (Ctrl+Space or a bar button) that inserts the chosen item
+  where the pointer is, in the selection's view; recent and favourite items first.
+- **P2 – Assemblies as library items:** save the selection (with couplings, numerals, views) as a user library item;
+  starter assemblies: two-stage gearbox, planetary stage, e-drive (battery – inverter – e-machine – gearbox – wheels),
+  belt drive, hydraulic cylinder circuit, room with door and window, junction with lanes.
+- **P2 – Multi-view links:** the same part in stick, side and axial view on different slides or units shares its
+  identity; changing teeth or size in one view updates the others.
+- **P2 – Drag to simulate:** drag an input (crank, shaft, gear) on the slide and the linkage or gear train moves
+  with the right ratio; capture positions as ghosts or as Morph slides (COM animation exists).
+- **P2 – Snap labels and measurements:** a small label at the snap target ("pitch circle", "axis", "pin 2") and live
+  distance/angle to neighbours while dragging (like design tools).
+- **P2 – Format painter for semantics:** copy view, parameters and style from one element to others of the same type.
+- **P2 – Selection-wide operations:** with several units selected: align centres on an axis, equal spacing along a
+  line, same size, renumber reference numerals in reading order, release/couple all links.
+- **P2 – Keyboard:** Tab cycles through connected elements, arrow keys nudge with coupling, Shift+click on a lock
+  badge releases all links of the selection.
+- **P3 – Variants and states** (spec §7): before/after, operating modes; visibility per variant; slide per variant.
+- **P3 – Diagram auto-layout and routing:** layered layout that keeps manual placement, connectors that avoid shapes,
+  jump-overs at crossings.
+- **P3 – Patent workflow in the hosts:** numbering assistant across figures, preflight panel with navigation to the
+  finding (preflight rules exist in the patent module), figure-sheet layout.
+- **P3 – Import:** SVG/DXF outlines as hatchable regions, GeoJSON/GPX for maps, CSV for charts.
+
+### New modules
+
+- **P1 – Charts (`chart.*`, spec §6.12):** XY/line/scatter/bar, characteristic curves (torque–speed, efficiency map),
+  Bode plot, tolerance bands; data typed in or pasted from Excel; monochrome-safe.
+- **P2 – Process & thermal (`process.*`):** P&ID beyond fluid power (vessels, columns, heat exchangers, pumps,
+  instrumentation bubbles with tags), thermodynamic cycles (T-s, p-v, p-h diagrams), HVAC.
+- **P2 – Energy systems (`energy.*`):** PV, wind, battery storage, charger/wallbox, grid connection, hydrogen,
+  single-line diagrams across voltage levels.
+- **P2 – Robotics (`robot.*`):** arms from kinematic joints, frames, grippers, work cells, reach envelopes, safety zones.
+- **P3 – Networks & IT (`net.*`):** servers, cloud, routers, switches, topologies, C4 context/container diagrams.
+- **P3 – Optics & physics (`optics.*`):** rays, lenses, mirrors, prisms, waves, fields.
+- **P3 – Reliability & systems engineering:** fault trees, FMEA blocks, SysML-style blocks and requirement links.
+- **P3 – Project diagrams:** Gantt/timeline, mind map, org chart.
+
+### Missing elements in existing modules
+
+- **Mechanical (P1):** ball and lead screw (with nut that follows the screw axis), freewheel, torque converter, CVT
+  variator, harmonic drive, cycloidal drive, gearbox housing outline, oil sump and level, park lock.
+- **Machines (P2):** battery pack from modules/cells, on-board charger, busbars, cable/phase leads, inverter topology
+  detail (half-bridges), cooling circuit around the e-drive.
+- **Electrical (P2):** PLC with I/O cards, motor starter, sensor family (temperature, pressure, Hall, position),
+  connector pinout, harness segments with lengths.
+- **Fluid (P2):** cartridge valves, proportional and servo valves, valve manifold/block, quick couplings, filter with
+  bypass and clogging indicator.
+- **Architecture (P2):** roofs (plan and section), dimension chains for walls, electrical/HVAC layer tied to rooms,
+  garden and landscape.
+- **Automotive (P3):** manoeuvre templates (lane change, overtaking, turning, parking), V2X, more signs, interior
+  layout (seats, displays, controls).
+- **Kinematics (P3):** gear and belt joints, cam profile generator, parallel robots (delta), Geneva drive.
+- **Diagrams (P3):** sequence fragments (alt/loop/opt), deployment nodes, C4 (or in `net.*`).
+- **Annotation (P3):** tables, magnified detail view linked to its source, revision clouds.
+
 ## Open items
 
 - **Status 2026-11-20:** engine core, Engine API and twelve modules on `main`: basic shapes, annotation, mechanical,
