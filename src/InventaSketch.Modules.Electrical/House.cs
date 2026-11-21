@@ -139,6 +139,9 @@ namespace InventaSketch.Modules.Electrical
     /// <summary>Cable route in a floor plan with optional conductor count marks (oblique strokes).</summary>
     internal sealed class CableRouteType : ElecPointType
     {
+        /// <summary>Corners can be inserted, ends extended and drawn on (<see cref="Polylines"/>).</summary>
+        public override bool InsertablePoints => true;
+
         private static readonly ParamDef Conductors = Int("conductors", T("Conductors", "Adern"), 3, 0, 12);
 
         public CableRouteType() : base("elec.house.cable", T("Cable route", "Leitungsführung"), House.Cat, new ViewDef("plan", T("Floor plan", "Installationsplan")) { Icon = IconIds.Plan },

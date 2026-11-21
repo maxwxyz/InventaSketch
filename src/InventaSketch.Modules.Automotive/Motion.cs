@@ -147,6 +147,7 @@ namespace InventaSketch.Modules.Automotive
             "trajectory", "path", "planned path", "prediction", "corridor", "trajektorie", "bahn", "fahrweg", "prädiktion", "fahrschlauch") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-30, 8), new Vec2(-10, 6), new Vec2(10, -2), new Vec2(30, -10) };
+        public override bool InsertablePoints => true;
         public override IReadOnlyList<ParamDef> Parameters => new[] { Ticks, Labels, Prefix, Corridor, Width, Arrow, Dashed, TextSize };
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
@@ -217,6 +218,7 @@ namespace InventaSketch.Modules.Automotive
             "lane polynomial", "lane detection", "lane model", "clothoid", "fahrstreifenpolynom", "spurerkennung", "fahrstreifenerkennung", "spurmodell") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-40, 6), new Vec2(-15, 4), new Vec2(15, -1), new Vec2(40, -8) };
+        public override bool InsertablePoints => true;
         public override IReadOnlyList<ParamDef> Parameters => new[] { ShowPoints, Label };
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)

@@ -149,8 +149,29 @@ namespace InventaSketch.Modules.Electrical
         public WireType() : base(TypeId, T("Wire", "Leitung"), Connectors.Cat, new ViewDef("symbol", T("Wire", "Leitung")) { Icon = IconIds.Symbol },
             "wire", "connection", "conductor", "net", "leitung", "verbindung", "draht", "verdrahtung") { }
 
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal") };
+        private static readonly ParamDef Hops = Flag("hops", T("Hops at crossings", "Brücken an Kreuzungen"), true);
+
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal"), Hops };
         public override bool InsertablePoints => true;
+
+        /// <summary>Drawn path of a wire (routed).</summary>
+        private static IReadOnlyList<Vec2> PathOf(SketchObject x, RenderContext ctx)
+        {
+            var q = ctx.Doc.ResolvePoints(x);
+            return q.Count < 2 ? q : RouteOf(x, q, ctx);
+        }
+
+        /// <summary>A wire drawn over an earlier wire hops over it (unless switched off); hosts offer to connect there.</summary>
+        public override bool HopsAtCrossings => true;
+        public override bool DependsOnNeighbours => true;
+
+        /// <summary>Wires crossing this one (their hops depend on where this one runs).</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 2) return Array.Empty<string>();
+            return Crossings.Find(ctx.Doc, o, RouteOf(o, p, ctx), x => PathOf(x, ctx)).Select(c => c.Other).Distinct();
+        }
 
         /// <summary>On a wire one adds components: offered by "Insert ▸".</summary>
         public override IReadOnlyList<string> Companions => new[] { "elec.resistor", "elec.capacitor", "elec.switch", "elec.diode", "elec.lamp", "elec.fuse", "elec.ground", "elec.junction" };
@@ -159,7 +180,12 @@ namespace InventaSketch.Modules.Electrical
             => Routing.Route(p, o.Str("route", "orthogonal"), Routing.ExitHorizontal(ctx.Doc, o, 0), Routing.ExitHorizontal(ctx.Doc, o, p.Count - 1));
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
-            => new Primitive[] { Prim.Polyline(RouteOf(o, p, ctx), S.Wire) with { Tag = "wire" } }.Concat(Routing.BranchDots(o, p)).ToList();
+        {
+            var route = RouteOf(o, p, ctx);
+            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx)).Where(c => c.Above).ToList() : new List<Crossing>();
+            Primitive main = hops.Count == 0 ? Prim.Polyline(route, S.Wire) : Prim.Path(Crossings.HopPath(route, hops), S.Wire);
+            return new[] { main with { Tag = "wire" } }.Concat(Routing.BranchDots(o, p)).ToList();
+        }
 
         /// <summary>The routed path is a rail: other wire ends and junction dots dock anywhere on it (T junctions).</summary>
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
@@ -168,7 +194,11 @@ namespace InventaSketch.Modules.Electrical
             return p.Count < 2 ? Array.Empty<Anchor>() : Routing.Rails(RouteOf(o, p, ctx));
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[] { Routing.CycleAction(o, "orthogonal") };
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
+        {
+            Routing.CycleAction(o, "orthogonal"),
+            Toggle(o, "elec.wire.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop),
+        };
     }
 
     /// <summary>
@@ -187,6 +217,7 @@ namespace InventaSketch.Modules.Electrical
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-30, 0), new Vec2(30, 0) };
         public override IReadOnlyList<ParamDef> Parameters => new[] { Protocol };
+        public override bool InsertablePoints => true;
         public override bool HasText => true;
 
         public static string Label(SketchObject o) => !string.IsNullOrEmpty(o.Text) ? o.Text! : o.Str("protocol", "can") switch

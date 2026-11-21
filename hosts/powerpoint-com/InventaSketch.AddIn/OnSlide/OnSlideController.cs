@@ -23,7 +23,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal sealed partial class OnSlideController : IDisposable
     {
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -112,7 +112,7 @@ namespace InventaSketch.AddIn.OnSlide
             _timer.Tick += (_, _) => RefreshView();
             _app.WindowSelectionChange += OnSelectionChange;
             // Gears stay in mesh and shafts carry their gears while "Anchor" is on; Alt edits freely.
-            SketchUnits.CouplingEnabled = () => AddInSettings.Anchor && !KeyDown(VK_MENU);
+            SketchUnits.CouplingEnabled = () => AddInSettings.Anchor && !KeyDown(VK_MENU) && !_noCouple;
         }
 
         public void Dispose()
@@ -172,7 +172,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch) return;
+                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch or Mode.Draw or Mode.Port) return;
                 using var dpi = DpiScope.PerMonitor();
                 SketchUnit? unit = null;
                 if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count == 1)
@@ -219,6 +219,7 @@ namespace InventaSketch.AddIn.OnSlide
             PrepareFollowers(unit);
             PrepareLinks(unit);
             PrepareSegments(unit);
+            PreparePorts(unit);
             _mode = Mode.Armed;
             _hooks.Install();
             _timer.Start();
@@ -252,7 +253,7 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch)
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port)
             {
                 _mode = Mode.Armed;
                 if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
@@ -268,7 +269,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch) return;
+                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port) return;
                 using var dpi = DpiScope.PerMonitor();
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
@@ -325,7 +326,7 @@ namespace InventaSketch.AddIn.OnSlide
                     {
                         if (!view.Contains(pt)) { Cancel("click outside"); return false; }
                         UpdatePlacement(pt);
-                        if (_twoStart is null) { _twoStart = _placeAt; _down = pt; _twoStartAttach = AnchorFor(_placeAt, _lastPointSnap); }
+                        if (_twoStart is null) { _twoStart = _placeAt; _down = pt; _twoStartAttach = AnchorFor(_placeAt, _lastPointSnap, _item?.TypeId); }
                         _placePressed = true;
                         return true;
                     }
@@ -339,7 +340,7 @@ namespace InventaSketch.AddIn.OnSlide
                         if (start is null || (start.Value - end).Length < view.Mm(4)) return true;
                         var item = _item;
                         var startAttach = _twoStartAttach;
-                        var endAttach = AnchorFor(end, _lastPointSnap);
+                        var endAttach = AnchorFor(end, _lastPointSnap, item?.TypeId);
                         Cancel("placed");
                         if (item is not null) Post(() => InsertPoints(item, start.Value, end, startAttach, endAttach));
                         return true;
@@ -374,10 +375,18 @@ namespace InventaSketch.AddIn.OnSlide
                 case Mode.Branch:
                     return BranchMouse(message, pt, view);
 
+                case Mode.Draw:
+                    return DrawMouse(message, pt, view);
+
+                case Mode.Port:
+                    return PortDragMouse(message, pt, view);
+
                 case Mode.Armed:
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
                     // Lock badges where the unit touches and follows other elements: a click releases or couples.
                     if (LinkMouse(message, pt, view, out var linkSwallow)) return linkSwallow;
+                    // Build "+" on gears, shafts and machines: what fits there, or stretch a shaft.
+                    if (PortMouse(message, pt, view, out var portSwallow)) return portSwallow;
                     // Quick add: blue triangles and connection ports of flowchart, UML, ER, BPMN and basic elements.
                     if (ChainMouse(message, pt, view, out var chainSwallow)) return chainSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
@@ -397,7 +406,7 @@ namespace InventaSketch.AddIn.OnSlide
                     if (SegmentMouse(message, pt, view)) return true;
                     // Double-click on a corner of a wire, pipe, road or polyline removes it.
                     if (message == WM_LBUTTONDBLCLK && PointObject() is { } cornerLine && Polylines.CanInsert(_registry(), cornerLine)
-                        && PointHandleAt(pt, view) is int corner and > 0 && corner < cornerLine.Points!.Count - 1 && _unit is { } cornerUnit)
+                        && PointHandleAt(pt, view) is int corner and >= 0 && (Polylines.IsClosed(_registry(), cornerLine) || (corner > 0 && corner < cornerLine.Points!.Count - 1)) && _unit is { } cornerUnit)
                     {
                         HideBar();
                         Post(() => ApplyRemoveCorner(cornerUnit, corner));
@@ -504,12 +513,15 @@ namespace InventaSketch.AddIn.OnSlide
                         _mode = Mode.Armed;
                         _overlay.Clear();
                         // Corners inside a wire, pipe, road or polyline snap but do not dock (only its ends do).
-                        var pointAttach = InnerCorner(index) ? null : AnchorFor(at, _lastPointSnap);
+                        var pointAttach = InnerCorner(index) ? null : AnchorFor(at, _lastPointSnap, PointObject()?.Type);
                         var group = MovedGroup(index, at);
                         var insertAt = _insertAt;
                         var cornerSeg = EndCornerInsert();
+                        var join = moved && cornerSeg < 0 ? JoinTarget(index, at) : null;
                         if (cornerSeg >= 0 && unit is not null) Post(() => ApplyCorner(unit, cornerSeg, insertAt, moved ? at : insertAt, moved ? pointAttach : null));
+                        else if (join is { } j && unit is not null) Post(() => ApplyJoin(unit, index, at, j.Unit, j.LineId, j.AtStart));
                         else if (moved && unit is not null) Post(() => ApplyPoint(unit, index, at, pointAttach, group));
+                        else if (unit is not null && SelectCorner(index) && _view is not null) { ShowBar(_view); DrawPointHandles(_view); }
                         else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
                         return true;
                     }
@@ -640,6 +652,12 @@ namespace InventaSketch.AddIn.OnSlide
                 _fade.Dismiss();
                 HideBar();
             }
+            // Esc or Enter while drawing a line on: the corners drawn so far are kept.
+            if (vk is VK_ESCAPE or 0x0D && _mode == Mode.Draw)
+            {
+                FinishDraw();
+                return true;
+            }
             if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band)
             {
                 Cancel("escape");
@@ -708,8 +726,10 @@ namespace InventaSketch.AddIn.OnSlide
             var raw = view.ToMm(pt);
             if (IsTwoPoint(item))
             {
-                var snapped = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
-                _placeAt = raw + snapped.Delta;
+                // Shift: the second point in 15 degree steps from the first (no other snapping).
+                var angled = _twoStart is not null && KeyDown(VK_SHIFT);
+                var snapped = NoSnap() || angled ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+                _placeAt = angled ? AngleStep(_twoStart!.Value, raw) : raw + snapped.Delta;
                 _lastPointSnap = snapped;
                 var marker = (float)view.Mm(5);
                 if (_twoStart is null)
@@ -837,6 +857,9 @@ namespace InventaSketch.AddIn.OnSlide
                 list.AddRange(chips);
                 if (chips.Count > 0) list.Add(new BarButton("", "", "", Separator: true));
             }
+            // A selected corner of a wire, pipe, road, wall …: split there or remove it.
+            list.AddRange(CornerButtons());
+            list.AddRange(PortButtons());
             var hasText = first is not null && EditableText(registry, first) is not null;
             if (hasText)
                 list.Add(new BarButton("text", "", T("Edit text (double-click)", "Text bearbeiten (Doppelklick)")) { IconId = IconIds.Text });
@@ -1375,12 +1398,13 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var o = PointObject();
             if (o is null && _chainSource is not null) { DrawChainTools(view); return; }
-            if (o is null && _links.Count == 0) return;
+            if (o is null && _links.Count == 0 && _ports.Count == 0) return;
             var pts = o is null ? null : _unit!.Doc.ResolvePoints(o);
             Present(view, _ => { }, g =>
             {
                 if (pts is not null) DrawHandleSet(g, view, pts, _selectedPoints);
                 if (pts is not null) DrawSegmentHandles(g, view);
+                DrawPorts(g, view);
                 DrawLinks(g, view);
             });
         }
@@ -1401,13 +1425,30 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
+        /// <summary>
+        /// Shift while drawing or editing a line: the direction from <paramref name="from"/> snaps to 15 degree steps, the
+        /// length follows the pointer.
+        /// </summary>
+        internal static Vec2 AngleStep(Vec2 from, Vec2 to, double stepDegrees = 15)
+        {
+            var d = to - from;
+            var len = d.Length;
+            if (len < 1e-9) return to;
+            var step = stepDegrees * Math.PI / 180;
+            var a = Math.Round(Math.Atan2(d.Y, d.X) / step) * step;
+            return new Vec2(from.X + Math.Cos(a) * len, from.Y + Math.Sin(a) * len);
+        }
+
         private void UpdatePointEdit(POINT pt, SlideView view)
         {
             var o = PointObject();
             if (o is null) return;
             var raw = view.ToMm(pt);
-            var snap = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
-            _pointAt = raw + snap.Delta;
+            // Shift: 15 degree steps from the neighbouring point.
+            var neighbour = _pointOrigin is { Count: > 1 } po ? po[_pointIndex == 0 ? 1 : _pointIndex - 1] : (Vec2?)null;
+            var angled = neighbour is not null && KeyDown(VK_SHIFT);
+            var snap = NoSnap() || angled ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+            _pointAt = angled ? AngleStep(neighbour!.Value, raw) : raw + snap.Delta;
             _lastPointSnap = snap;
             var doc = Edits.SetPoint(_unit!.Doc, o.Id, _pointIndex, _pointAt);
             foreach (var kv in MovedGroup(_pointIndex, _pointAt)) doc = Edits.SetPoint(doc, o.Id, kv.Key, kv.Value);
@@ -1421,13 +1462,17 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>
         /// Attachment of a snapped point to the element of another unit that owns the snap target (with "Anchor" on): the
-        /// point then follows that element (moved, rotated, resized). Pins keep their anchor id. Null if not anchoring.
+        /// point then follows that element (moved, rotated, resized). Pins keep their anchor id. Annotation lines
+        /// (<paramref name="typeId"/> with <see cref="ObjectType.DocksOnSurface"/>) also dock where no snap point is, on the
+        /// surface of the element below the point. Null if not anchoring.
         /// </summary>
-        private Attachment? AnchorFor(Vec2 at, SnapResult? snap)
+        private Attachment? AnchorFor(Vec2 at, SnapResult? snap, string? typeId = null)
         {
-            if (!AddInSettings.Anchor || snap?.Target is not { Owner: { } ownerId } target) return null;
+            if (!AddInSettings.Anchor) return null;
             // Box targets: normalised position (and pin id); lines: their rail and the position along it (a branch).
-            return _targetOwners.TryGetValue(ownerId, out var owner) ? Attachments.For(owner, at, target) : null;
+            if (snap?.Target is { Owner: { } ownerId } target && _targetOwners.TryGetValue(ownerId, out var owner))
+                return Attachments.For(owner, at, target);
+            return typeId is not null && _registry().Type(typeId)?.DocksOnSurface == true ? Attachments.OnSurface(at, _targetOwners.Values) : null;
         }
 
         /// <summary>The other selected points (box selection) moved by the same offset as the dragged one.</summary>
@@ -1876,6 +1921,16 @@ namespace InventaSketch.AddIn.OnSlide
             var slide = CurrentSlide();
             var unit = SketchUnits.Read(stale.Shape);
             if (slide is null || unit is null) return;
+            if (id.StartsWith("port:", StringComparison.Ordinal))
+            {
+                PortCommand(unit, id);
+                return;
+            }
+            if (id.StartsWith("pt:", StringComparison.Ordinal))
+            {
+                CornerCommand(unit, id);
+                return;
+            }
             var registry = _registry();
             var doc = unit.Doc;
             var ids = doc.Objects.Keys.ToList();

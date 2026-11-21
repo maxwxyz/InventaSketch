@@ -75,6 +75,9 @@ namespace InventaSketch.Modules.Mechanical
         /// <summary>Views with the rotation axis horizontal in the box (schematic, side, section): coupling scales only the diameter.</summary>
         private static readonly HashSet<string> AxisViews = new(StringComparer.Ordinal) { "stick", "side", "section", "line", "body" };
 
+        public override IReadOnlyList<Vec2> MeshDirections(SketchObject o)
+            => AxisViews.Contains(ViewOf(o)) ? new[] { new Vec2(0, 1), new Vec2(0, -1) } : base.MeshDirections(o);
+
         public override SketchObject ScalePitch(SketchObject o, double k)
             => AxisViews.Contains(ViewOf(o)) ? o with { Size = new Size2(o.Size.W, o.Size.H * k) } : base.ScalePitch(o, k);
 

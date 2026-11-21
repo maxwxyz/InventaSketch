@@ -289,6 +289,27 @@ namespace InventaSketch.AddIn.OnSlide
                 case IconIds.MachReluctance:
                     g.DrawLines(pen, new[] { new PointF(3, 17), new PointF(5, 17), new PointF(5, 8), new PointF(9, 8), new PointF(9, 17), new PointF(15, 17), new PointF(15, 8), new PointF(19, 8), new PointF(19, 17), new PointF(21, 17) });
                     break;
+                case IconIds.Hop:
+                    // A line hopping over a crossing line.
+                    g.DrawLine(thin, 12, 4, 12, 20);
+                    g.DrawLine(pen, 3, 13, 8.5f, 13); g.DrawLine(pen, 15.5f, 13, 21, 13);
+                    g.DrawBezier(pen, 8.5f, 13, 8.5f, 8.3f, 15.5f, 8.3f, 15.5f, 13);
+                    break;
+                case IconIds.Junction:
+                    // Two lines crossing with a junction dot.
+                    g.DrawLine(pen, 12, 4, 12, 20); g.DrawLine(pen, 4, 12, 20, 12);
+                    g.FillEllipse(brush, 9, 9, 6, 6);
+                    break;
+                case IconIds.Split:
+                    // Scissors: two blades crossing, two finger rings.
+                    g.DrawLine(pen, 8, 15, 19, 4); g.DrawLine(pen, 16, 15, 5, 4);
+                    g.DrawEllipse(pen, 4, 15, 5, 5); g.DrawEllipse(pen, 15, 15, 5, 5);
+                    break;
+                case IconIds.RemovePoint:
+                    g.DrawLine(thin, 2, 15, 22, 15);
+                    g.DrawPolygon(pen, new[] { new PointF(12, 10.5f), new PointF(16.5f, 15), new PointF(12, 19.5f), new PointF(7.5f, 15) });
+                    g.DrawLine(pen, 8, 5, 16, 5);
+                    break;
                 case IconIds.ShapeSquare:
                     g.DrawRectangle(pen, 5, 5, 14, 14);
                     break;

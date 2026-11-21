@@ -12,6 +12,9 @@ namespace InventaSketch.Modules.Annotation
 
         public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.None).ToList();
 
+        /// <summary>Drawn on with corners, a line becomes a polyline.</summary>
+        public override string? CornerType => "ann.polyline";
+
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
             => new Primitive[] { new LinePrim(p[0], p[p.Count - 1], Style.Visible with { ArrowStart = Ann.Head(o, "headStart", ArrowHead.None), ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.None), ArrowSize = Ann.HeadSize(o) }) { Tag = AnnTags.Main } };
 
@@ -25,6 +28,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 8), new Vec2(-5, -8), new Vec2(5, 8), new Vec2(15, -8) };
         public override bool InsertablePoints => true;
+        public override bool IsClosed(SketchObject o) => o.Flag("closed", false) && o.Points is { Count: > 2 };
 
         public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.None).Append(P.Bool("closed", "Closed", "Geschlossen", false)).ToList();
 
@@ -58,6 +62,9 @@ namespace InventaSketch.Modules.Annotation
         }
 
         public override IReadOnlyList<ParamDef> Parameters => P.Heads(_start, ArrowHead.Triangle).ToList();
+
+        /// <summary>Drawn on with corners, an arrow becomes a polyline with the same heads.</summary>
+        public override string? CornerType => "ann.polyline";
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
             => new Primitive[]

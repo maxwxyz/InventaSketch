@@ -189,6 +189,9 @@ namespace InventaSketch.Modules.Electrical
     /// <summary>PCB track: copper trace of adjustable width, routed free or at 45 degrees.</summary>
     internal sealed class TrackType : ElecPointType
     {
+        /// <summary>Corners can be inserted, ends extended and drawn on (<see cref="Polylines"/>).</summary>
+        public override bool InsertablePoints => true;
+
         private static readonly ParamDef Width = new("width", T("Track width", "Leiterbahnbreite"), ParamKind.Number) { Default = 0.6, Min = 0.1, Max = 5, Step = 0.1, Unit = "mm" };
 
         public TrackType() : base("elec.pcb.track", T("Track", "Leiterbahn"), Pcb.Cat, new ViewDef("top", T("Top view (illustrative)", "Draufsicht (illustrativ)")) { Icon = IconIds.Top },

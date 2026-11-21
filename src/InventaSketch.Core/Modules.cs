@@ -170,6 +170,10 @@ namespace InventaSketch.Core
         public const string Helix = "cmd-helix";
         public const string ShaftEnds = "cmd-shaft-ends";
         public const string Ground = "cmd-ground";
+        public const string Split = "cmd-split";
+        public const string Hop = "cmd-hop";
+        public const string Junction = "cmd-junction";
+        public const string RemovePoint = "cmd-point-remove";
         public const string ShapeSquare = "shape-square";
         public const string ShapeCircle = "shape-circle";
         public const string ShapeTriangle = "shape-triangle";
@@ -249,6 +253,9 @@ namespace InventaSketch.Core
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
             MachInner, MachOuter, MachAxial, MachAxialDoubleRotor, MachAxialDoubleStator, MachMagnet, MachWound, MachCage, MachReluctance,
             HubNone, HubFixed, HubSliding, HubLoose, Helix, ShaftEnds, Ground,
+            Split, RemovePoint, Hop, Junction,
+            ShapeSquare, ShapeCircle, ShapeTriangle, FillTint, FillHatch, FillDots, FillNone, RouteFree, RouteOrthogonal, Route45,
+            WallThick, WallMedium, WallThin,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -493,6 +500,37 @@ namespace InventaSketch.Core
         /// handles on the segments (<see cref="Polylines"/>). Lines with a fixed number of points (dimensions, arrows) say no.
         /// </summary>
         public virtual bool InsertablePoints => false;
+
+        /// <summary>
+        /// A closed outline (room, region, hatched polygon, closed wall loop or polyline): its points form a loop, so it has
+        /// no free ends to extend and its last segment runs back to the first point (<see cref="Polylines"/>).
+        /// </summary>
+        public virtual bool IsClosed(SketchObject o) => false;
+
+        /// <summary>
+        /// Type a straight two-point line becomes when it is drawn on with corners (line and arrow: polyline, keeping the
+        /// arrowheads); null when it cannot get corners (<see cref="Polylines.Extend"/>).
+        /// </summary>
+        public virtual string? CornerType => null;
+
+        /// <summary>
+        /// Annotation lines (lead lines, reference arrows, numerals, dimensions): an end dropped anywhere on another element
+        /// (inside its box, also away from any snap point, e.g. on a surface) docks there and follows it
+        /// (<see cref="Attachments.OnSurface"/>).
+        /// </summary>
+        public virtual bool DocksOnSurface => false;
+
+        /// <summary>
+        /// Wires and pipes: where this line crosses an earlier line of the same type it draws a hop (bridge), and hosts offer
+        /// to connect the two there (<see cref="Crossings"/>).
+        /// </summary>
+        public virtual bool HopsAtCrossings => false;
+
+        /// <summary>
+        /// Directions (local, before rotation) in which a meshing gear can be docked (<see cref="Building"/>): all four sides
+        /// in axial views; only across the axis (up, down) where the axis lies in the drawing plane (schematic, side view).
+        /// </summary>
+        public virtual IReadOnlyList<Vec2> MeshDirections(SketchObject o) => new[] { new Vec2(0, 1), new Vec2(0, -1), new Vec2(1, 0), new Vec2(-1, 0) };
 
         /// <summary>
         /// Coupling: a drive (e-machine, engine, motor) whose hub sits on a shaft takes the shaft along when it is moved,

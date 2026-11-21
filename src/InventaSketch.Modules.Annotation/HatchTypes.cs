@@ -148,6 +148,10 @@ namespace InventaSketch.Modules.Annotation
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, -8), new Vec2(8, -12), new Vec2(16, 2), new Vec2(4, 12), new Vec2(-13, 8) };
         protected override int MinPoints => 3;
+        public override bool InsertablePoints => true;
+        public override bool IsClosed(SketchObject o) => true;
+        /// <summary>A hatched region is drawn, not docked.</summary>
+        public override bool DocksOnSurface => false;
         public override IReadOnlyList<ParamDef> Parameters => HatchPresets.Params;
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)

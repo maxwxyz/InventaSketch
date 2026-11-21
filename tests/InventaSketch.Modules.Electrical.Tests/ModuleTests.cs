@@ -532,7 +532,7 @@ namespace InventaSketch.Modules.Electrical.Tests
             Assert.Equal(new[] { new Vec2(0, 0), new Vec2(20, 0), new Vec2(30, 10) }, pts);
             var free = wire.WithParam("route", "free");
             Assert.Equal(2, ((PathPrim)Fx.Render(r, free).Single()).Segments.Count);
-            var cycle = r.TypeOf(wire).Actions(wire, Lang.En).Single();
+            var cycle = r.TypeOf(wire).Actions(wire, Lang.En).Single(a => a.Id == "elec.route.next");
             Assert.Equal("orthogonal", cycle.Apply(free).Str("route", ""));
         }
 

@@ -182,6 +182,7 @@ namespace InventaSketch.Modules.Maps
         protected virtual int MinPoints => 2;
         /// <summary>True for closed outlines (regions): point editing considers the closing segment.</summary>
         protected virtual bool ClosedOutline => false;
+        public override bool IsClosed(SketchObject o) => ClosedOutline;
 
         public sealed override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {

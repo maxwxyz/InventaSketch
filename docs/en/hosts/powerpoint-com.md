@@ -249,6 +249,37 @@ UX round (2026-11-20, from the maintainer's feedback):
   it is moved (`ObjectType.DrivesShaft`); a gear still slides along its shaft. Belts and chains whose end hubs lie on two
   pulleys or sprockets (`ObjectType.SpansHubs`) follow a moved pulley: the strand stretches and turns, the other pulley
   stays; their lock badges read "Runs over Belt pulley".
+- **One line language (extend, draw on, corners, branches, split, join):** every line-like element works the same way:
+  wires, buses, cable routes, PCB tracks, pipes, roads, rails, rivers, routes, lane markings, trajectories, lane models,
+  walls, polylines, and straight lines and arrows (drawn on, they become a polyline with the same heads). A free end
+  shows a blue "+": drag it to lengthen the line, click it to keep drawing (each click adds a corner; double-click,
+  Enter, Esc or right-click ends; the last point docks like a line end). A click on a corner selects it: the bar offers
+  split here and remove (pictograms with tooltips); a closed outline (room, region, hatched polygon, closed wall) is
+  opened at that corner instead. Dropping an end on a free end of a line of the same kind joins both lines. Walls get
+  T joints as branches (the branch wall docks onto the wall's centre line and follows it). `Polylines.Extend`, `Split`,
+  `Join`, `ObjectType.IsClosed`, `ObjectType.CornerType`. Verified in PowerPoint 2026-11-21: extend by dragging,
+  drawing on with two clicks and Esc, split at a corner.
+- **Shift: 15° steps.** While placing the second point of a line, extending, drawing on, branching or dragging a line
+  point, Shift snaps the direction from the previous point to 15° steps (other snapping is off meanwhile).
+- **Crossings of wires and pipes:** where a wire or pipe crosses another one of the same kind, the one on top (drawn
+  later, higher in the slide's stacking order) draws a small hop (`ObjectType.HopsAtCrossings`, `Crossings`; switch per
+  line: bar pictogram "hops"). A selected wire or pipe shows a junction icon beside each crossing (tooltip "Connect here");
+  a click splits the line there and docks both parts onto the other line (`Crossings.Connect`): junction dots, and
+  connection exports count it. Units render with the other units in slide z-order (`SketchUnits.WithContext(own, others,
+  z)`). Verified in PowerPoint 2026-11-21: the upper wire hops, connect makes three wires with docked ends, undo restores.
+- **Build handles for assemblies (gearboxes, drivetrains, e-drives):** a selected gear, ring gear, shaft, e-machine or
+  engine shows a blue "+" at every free build port (`Building.Ports`): the sides of a gear (all four in axial view,
+  above and below where the axis lies in the drawing, `ObjectType.MeshDirections`), inside a ring gear (planet), the
+  free ends of an axis (next shaft section, coupling, bearing, e-machine, wheel …), a free hub (shaft; its "+" sits
+  beyond the top right corner). A click on a "+" puts what fits there into the bar as thumbnails; a click on one docks
+  it, coupled and selected (`Building.Place`). Dragging the "+" at a shaft end stretches the shaft while the parts on it
+  keep their place (`Building.StretchEnd`, no coupling for that edit). The "+" keep clear of PowerPoint's resize and
+  rotation handles. Verified in PowerPoint 2026-11-21: meshing gear docked at a port, bearing at a shaft end, shaft
+  lengthened by dragging with the bearing in place.
+- **Free docking of annotations on surfaces:** lead lines, reference arrows, numerals and dimensions
+  (`ObjectType.DocksOnSurface`) dock an end that is dropped anywhere on another element, not only on a snap point
+  (`Attachments.OnSurface`: the smallest box below the point); the end then follows that element. Verified in
+  PowerPoint 2026-11-21: a lead line tip on a rectangle followed it.
 - **Corners and branches of lines:** a selected wire, pipe, road, river, route, region or polyline
   (`ObjectType.InsertablePoints`) shows a "+" in the middle of each segment (on the drawn path of routed wires). Click
   it for a new corner, or drag it to bend the line in one go. Lines that take branches (named rails) also show a branch
