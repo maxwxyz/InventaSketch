@@ -289,7 +289,8 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   Kreuzschubkurbel (Gestelldrehpunkt, Kurbel mit Gleitstein im Schlitz der Jochplatte, Schieber am Schlitzende und am
   Stangenende). **Kulissen:** Zweigelenkglieder und Platten bieten Schlitze entlang ihrer Kanten an (Rails `slot0` …);
   ein dort angedocktes Gliedende gleitet im Bewegungsmodus am Glied entlang (Gleitstein im Schlitz, im Freiheitsgrad als
-  höheres Paar gezählt). Das Kurvengetriebe wird nicht zerlegt: kein Einzelteil bewahrt die Kurvenkontur, und der
+  höheres Paar gezählt). Geprüft in PowerPoint am 21.11.2026: alle drei werden zerlegt, und das Ziehen der Kurbel des
+  zerlegten Schnellrücklaufgetriebes im Bewegungsmodus hält die Gliedlängen und den Gleitstein im Schlitz. Das Kurvengetriebe wird nicht zerlegt: kein Einzelteil bewahrt die Kurvenkontur, und der
   Kurvenkontakt gehört noch nicht zu selbst gebauten Ketten.
 - **Getriebe selbst bauen:** Ein Planetenträger (`mech.carrier`, Stirn- und Schemaansicht, 2–8 Bolzen, Scheibe oder
   Arme, „fester Steg“ mit Gestellsymbol) ist ein eigenes Teil. Seine Bau-„+“ bieten an jedem freien Bolzen einen Planeten
