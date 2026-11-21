@@ -266,6 +266,19 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   seinen Zug ebenfalls an (`Coupling.Propagate`). Der Schloss-Tooltip eines Eingriffs zeigt die Übersetzung („Eingriff mit
   Stirnrad (i = 1,8)“). Geprüft in PowerPoint am 21.11.2026: eine um 90° gedrehte Sonne drehte Steg und Planeten um 24,9°
   (Hohlrad fest), wie berechnet.
+- **Koppelgetriebe selbst bauen:** Ein Gliedende, das auf einem Gelenk eines anderen Glieds losgelassen wird, dockt dort an
+  und folgt ihm (`Attachments.For` mit der Punkt-Id, `SketchDocument.ResolvePoints`); Glieder docken auch an
+  Gestelldrehpunkten, Gelenksymbolen und Schiebern an. Ein ausgewähltes Glied zeigt an jedem freien Gelenk ein blaues „+“:
+  das nächste Glied (gleiche Länge, um 60° abgeknickt, damit eine Kette zwischen zwei Gestellpunkten beweglich ist), einen
+  Gestelldrehpunkt (das Glied dockt an seinem Drehpunkt an), ein Gelenk oder einen Schieber. Die Leiste zeigt den
+  Freiheitsgrad der Kette („F = 1“, Grübler, Tooltip mit Gliedern und Gelenken). Im Bewegungsmodus zieht Ziehen an einem
+  Glied dessen nächstgelegenes Gelenk: die Kette folgt live bei konstanten Gliedlängen, Gestellpunkte bleiben, Schieber
+  bleiben auf ihrer Führung (`Linkage.Drag`, positionsbasiertes Lösen der Zwangsbedingungen ab der aktuellen Lage, damit
+  die Einbaulage erhalten bleibt); Loslassen übernimmt in einem Rückgängig-Schritt. Beim Nachführen von Anbindungen gewinnt
+  jetzt ein typeigener Box-Anker vor der allgemeinen Box-Mitte mit gleicher Id (ein Glied am Gestelldrehpunkt landete vorher
+  auf der Box-Mitte). Geprüft in PowerPoint am 21.11.2026: ein mit den „+“ gebautes Viergelenk (Gestell, Kurbel, Koppel,
+  Schwinge, Gestell), F = 1, Kurbel gezogen: alle Gliedlängen gleich geblieben (30,10 / 30,10 / 32,38 mm), Gestellpunkte am
+  Platz.
 - **Getriebe selbst bauen:** Ein Planetenträger (`mech.carrier`, Stirn- und Schemaansicht, 2–8 Bolzen, Scheibe oder
   Arme, „fester Steg“ mit Gestellsymbol) ist ein eigenes Teil. Seine Bau-„+“ bieten an jedem freien Bolzen einen Planeten
   (so groß, dass er mit vorhandener Sonne oder vorhandenem Hohlrad kämmt) und in der Mitte Sonnenrad, Hohlrad (passend zu

@@ -286,6 +286,17 @@ UX round (2026-11-20, from the maintainer's feedback):
   part in axial view with the rotation handle (edit mode) also drives its train (`Coupling.Propagate`). The lock tooltip
   of a mesh shows the ratio ("Meshes with Spur gear (i = 1.8)"). Verified in PowerPoint 2026-11-21: a sun turned by 90°
   moved carrier and planets by 24.9° (ring fixed), as computed.
+- **Building linkages yourself:** a link end dropped on a joint of another link docks there and follows it
+  (`Attachments.For` with the point id, `SketchDocument.ResolvePoints`); links also dock on fixed pivots, joint symbols
+  and sliders. A selected link shows a blue "+" at every free joint: the next link (same length, bent by 60° so a chain
+  between two pivots can move), a fixed pivot (the link docks onto its pivot point), a joint or a slider. The bar shows
+  the chain's degree of freedom ("F = 1", Grübler, tooltip with links and joints). In motion mode, dragging a link
+  pulls its nearest joint: the chain follows live with constant link lengths, fixed pivots stay, sliders stay on their
+  guide (`Linkage.Drag`, position-based constraint solving from the current position, so the assembly mode is kept);
+  release applies it in one undo step. A box anchor of a type now wins over the generic box centre with the same id
+  when attachments are refreshed (a link on a fixed pivot stayed on the box centre before). Verified in PowerPoint
+  2026-11-21: a four-bar built with the "+" (pivot, crank, coupler, rocker, pivot), F = 1, crank dragged: all link
+  lengths kept (30.10 / 30.10 / 32.38 mm), pivots in place.
 - **Building gear trains yourself:** a planet carrier (`mech.carrier`, axial and schematic, 2–8 pins, disc or arms,
   "fixed carrier" with a ground symbol) is a part of its own. Its build "+" offer a planet on every free pin (sized to
   mesh with the sun or ring already there) and, in the centre, a sun gear, a ring gear (sized to the planets) or a shaft;

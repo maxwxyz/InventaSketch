@@ -217,16 +217,27 @@ namespace InventaSketch.Core
         }
 
         /// <summary>Effective page points of a point-geometry object, honouring attachments.</summary>
-        public IReadOnlyList<Vec2> ResolvePoints(SketchObject o)
+        public IReadOnlyList<Vec2> ResolvePoints(SketchObject o) => ResolvePoints(o, 0);
+
+        /// <summary>
+        /// Points with attachments resolved: box targets at their normalised position, named points of other lines
+        /// ("j…"/"p…", a link docked on another link's joint) at that point (followed up to a few links deep).
+        /// </summary>
+        private IReadOnlyList<Vec2> ResolvePoints(SketchObject o, int depth)
         {
             var pts = o.Points ?? Array.Empty<Vec2>();
             var result = new Vec2[pts.Count];
             for (var i = 0; i < pts.Count; i++)
             {
                 var a = o.Attach is not null && i < o.Attach.Count ? o.Attach[i] : null;
-                result[i] = a is not null && Objects.TryGetValue(a.ObjectId, out var target) && !target.IsPointGeometry
-                    ? target.BoxPoint(a.U, a.V)
-                    : pts[i];
+                result[i] = pts[i];
+                if (a is null || !Objects.TryGetValue(a.ObjectId, out var target)) continue;
+                if (!target.IsPointGeometry) result[i] = target.BoxPoint(a.U, a.V);
+                else if (depth < 8 && Attachments.PointIndex(a.AnchorId) is int k && target.Id != o.Id)
+                {
+                    var tp = ResolvePoints(target, depth + 1);
+                    if (k < tp.Count) result[i] = tp[k];
+                }
             }
             return result;
         }

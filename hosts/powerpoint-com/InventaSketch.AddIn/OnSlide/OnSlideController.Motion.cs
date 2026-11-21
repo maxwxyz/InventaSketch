@@ -24,6 +24,10 @@ namespace InventaSketch.AddIn.OnSlide
 
         private string? _turnId;
         private bool _turnMechanism;
+        /// <summary>Dragging a joint of a self-built linkage: link, joint index, current state of the chain.</summary>
+        private bool _turnLinkage;
+        private int _turnJoint;
+        private SketchDocument? _turnState;
         private Vec2 _turnPivot;
         private double _turnLast;
         private double _turnAngle;
@@ -34,6 +38,9 @@ namespace InventaSketch.AddIn.OnSlide
         private SketchObject? MovablePart()
         {
             var registry = _registry();
+            if (_unit?.Objects.Count() == 1 && _unit.Objects.First() is { IsPointGeometry: true } link && Linkage.IsPart(registry, link)
+                && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), link.Id, _lang()) is { Dof: >= 1 })
+                return link;
             var o = _unit?.Objects.FirstOrDefault(x => !x.IsPointGeometry && registry.Type(x.Type) is not null);
             if (o is null || _unit!.Objects.Count() != 1) return null;
             if (registry.Type(o.Type)!.Parameters.Any(p => p.Key == "angle") && registry.Type(o.Type)!.AnimationFrames(o, 2).Count > 1) return o;
@@ -47,6 +54,22 @@ namespace InventaSketch.AddIn.OnSlide
             if (o is null || _unit is null) return false;
             var registry = _registry();
             var full = SketchUnits.WithContext(_unit.Doc, _otherUnits);
+            _turnLinkage = o.IsPointGeometry;
+            if (_turnLinkage)
+            {
+                // The joint of the link nearest to the pointer is dragged; the chain follows.
+                var pts = full.ResolvePoints(full.Get(o.Id) ?? o);
+                var at = view.ToMm(pt);
+                _turnJoint = Enumerable.Range(0, pts.Count).OrderBy(i => pts[i].DistanceTo(at)).First();
+                _turnId = o.Id;
+                _turnDoc = full;
+                _turnState = full;
+                HideBar();
+                _down = pt;
+                _moved = false;
+                _mode = Mode.Turn;
+                return true;
+            }
             var anchors = registry.PageAnchors(o, new RenderContext(full, _lang())).ToList();
             _turnMechanism = !GearTrain.Spins(registry, o);
             _turnPivot = _turnMechanism
@@ -72,6 +95,14 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 if (!_moved && Math.Abs(pt.X - _down.X) + Math.Abs(pt.Y - _down.Y) < 3 * view.DeviceScale) return true;
                 _moved = true;
+                if (_turnLinkage)
+                {
+                    // Solve from the last position, so the chain keeps its assembly mode.
+                    if (_turnState is not null && _turnId is not null)
+                        _turnState = Linkage.Drag(_registry(), _turnState, _turnId, _turnJoint, view.ToMm(pt), _lang());
+                    DrawLinkage(view);
+                    return true;
+                }
                 var p = view.ToMm(pt) - _turnPivot;
                 if (p.Length < 0.5) return true;
                 var a = Math.Atan2(p.Y, p.X) * 180 / Math.PI;
@@ -90,6 +121,13 @@ namespace InventaSketch.AddIn.OnSlide
                 var moved = _moved;
                 _mode = Mode.Armed;
                 _overlay.Clear();
+                if (_turnLinkage)
+                {
+                    var state = _turnState;
+                    if (moved && unit is not null && state is not null && _turnDoc is not null) { var before = _turnDoc; Post(() => ApplyLinkage(unit, before, state)); }
+                    else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+                    return true;
+                }
                 if (moved && unit is not null && Math.Abs(angle) > 1e-6) Post(() => ApplyTurn(unit, angle));
                 else if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
                 return true;
@@ -175,6 +213,52 @@ namespace InventaSketch.AddIn.OnSlide
             }
             SketchUnits.All(slide).FirstOrDefault(u => u.Id == unit.Id)?.Shape.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Turned gear train by {angle:0.#}° at {id}");
+        }
+
+        /// <summary>Live preview of a linkage being dragged: every link and joint element in its new place.</summary>
+        private void DrawLinkage(SlideView view)
+        {
+            if (_turnState is null || _turnDoc is null) return;
+            var registry = _registry();
+            var ctx = new RenderContext(_turnState, _lang());
+            var prims = new List<Primitive>();
+            foreach (var o in _turnState.Objects.Values.Where(o => Linkage.IsPart(registry, o)))
+            {
+                var before = _turnDoc.Get(o.Id);
+                var moved = !ReferenceEquals(o, before) || o.IsPointGeometry && before is not null && !_turnDoc.ResolvePoints(before).SequenceEqual(_turnState.ResolvePoints(o));
+                if (moved) prims.AddRange(registry.Render(o, ctx));
+            }
+            Present(view, g => ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6)));
+        }
+
+        /// <summary>Applies a dragged linkage: the units whose links or joint elements moved are redrawn (one undo step).</summary>
+        private void ApplyLinkage(SketchUnit stale, SketchDocument before, SketchDocument state)
+        {
+            var slide = CurrentSlide();
+            if (slide is null) return;
+            var registry = _registry();
+            var lang = _lang();
+            _app.StartNewUndoEntry();
+            _noCouple = true;
+            try
+            {
+                foreach (var u in SketchUnits.All(slide))
+                {
+                    var ids = u.Objects.Where(o => state.Get(o.Id) is { } t && before.Get(o.Id) is { } f && !ReferenceEquals(t, f)).Select(o => o.Id).ToList();
+                    if (ids.Count == 0) continue;
+                    var doc = Edits.Update(u.Doc, ids, o => o with { Points = state.Get(o.Id)!.Points, Transform = state.Get(o.Id)!.Transform });
+                    SketchUnits.Replace(slide, u, doc, registry, lang);
+                }
+                // Links docked on moved joints follow (their points resolve through the attachments).
+                foreach (var u in SketchUnits.All(slide).Where(u => u.Objects.Any(o => o.Attach is not null && o.Attach.Any(a => a is not null && state.Get(a.ObjectId) is { } t && before.Get(a.ObjectId) is { } f && !ReferenceEquals(t, f)))))
+                    SketchUnits.Replace(slide, u, SketchUnits.ResolveAnchors(registry, u.Doc, SketchUnits.All(slide).Where(x => x.Id != u.Id)), registry, lang);
+            }
+            finally
+            {
+                _noCouple = false;
+            }
+            SketchUnits.All(slide).FirstOrDefault(u => u.Id == stale.Id)?.Shape.Select(Office.MsoTriState.msoTrue);
+            Log.Info("Moved linkage");
         }
 
         /// <summary>Switches motion mode (bar button) and tells the ribbon.</summary>

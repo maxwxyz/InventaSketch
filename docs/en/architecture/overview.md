@@ -117,4 +117,5 @@ element (mesh sides, ring inside, free axis ends, free hub), the library items t
 `Attachments.OnSurface` docks annotation ends anywhere on the element below them. `Crossings` finds where wires or pipes
 cross (the upper one hops) and connects them at a crossing. `GearTrain` solves the angular speeds of a gear train
 (linear system over mesh, Willis, shaft, compound, belt and fixed constraints) and turns it; `Assemblies` explodes
-predefined assemblies into coupled parts.
+predefined assemblies into coupled parts. `Linkage` recognises self-built linkages (links docked on joints, fixed pivots,
+sliders), computes their degree of freedom and drags them with constant link lengths.

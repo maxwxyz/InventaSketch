@@ -49,6 +49,7 @@ namespace InventaSketch.Modules.Kinematics
         {
             Uniform = true,
             AnchorsFn = (p, o) => new[] { PortAt(p.V(0, 0), "c") },
+            Role = LinkageRole.Joint,
         };
 
         private const double PivotY = -2.5, PivotR = 1.5;
@@ -63,6 +64,7 @@ namespace InventaSketch.Modules.Kinematics
                 PortAt(p.V(0, PivotY), "c"),
                 MountAt(p.V(0, PivotY) + new Vec2(0, 3 * PivotR * p.K), "base"),
             },
+            Role = LinkageRole.FixedPivot,
         };
 
         private static KinType Prismatic() => new("kin.joint.prismatic", new I18nText("Prismatic joint (slider on guide)", "Schubgelenk (Gleitstein auf Führung)"), KinCategories.Joints, new Size2(30, 10),
@@ -89,6 +91,7 @@ namespace InventaSketch.Modules.Kinematics
                 Anchor.Segment(AnchorRole.Axis, p.V(-15, 0), p.V(15, 0)) with { Id = "axis" },
                 MountAt(p.V(0, 2.6), "guide"),
             },
+            Role = LinkageRole.Slider,
         };
 
         private static KinType CamJoint() => new("kin.joint.cam", new I18nText("Cam joint (higher pair)", "Kurvengelenk (höheres Paar)"), KinCategories.Joints, new Size2(22, 16),

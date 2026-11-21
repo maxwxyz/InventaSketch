@@ -37,7 +37,7 @@ namespace InventaSketch.AddIn.OnSlide
             _ports = new List<BuildPort>();
             _hoverPort2 = -1;
             var registry = _registry();
-            var first = unit.Objects.FirstOrDefault(o => !o.IsPointGeometry && registry.Type(o.Type) is not null);
+            var first = unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null && (!o.IsPointGeometry || registry.Type(o.Type)!.LinkageRole(o) == LinkageRole.Link));
             if (first is null || unit.Objects.Count() != 1) { _portOwner = null; _portFocus = null; return; }
             if (_portOwner != first.Id) _portFocus = null;
             _portOwner = first.Id;
@@ -130,6 +130,7 @@ namespace InventaSketch.AddIn.OnSlide
             PortKind.Mesh => T("Add a meshing gear here", "Gegenrad hier anfügen"),
             PortKind.InnerMesh => T("Add a planet here", "Planet hier einsetzen"),
             PortKind.Hub => T("Add a shaft through the hub", "Welle durch die Nabe"),
+            PortKind.Joint => T("Add the next link, a fixed pivot or a slider here", "Nächstes Glied, Gestelldrehpunkt oder Schieber anfügen"),
             _ => StretchablePort(p)
                 ? T("Add at the shaft end (click) · lengthen the shaft (drag)", "Am Wellenende anfügen (Klick) · Welle verlängern (ziehen)")
                 : T("Add at the shaft end", "Am Wellenende anfügen"),
@@ -240,7 +241,7 @@ namespace InventaSketch.AddIn.OnSlide
             var slide = CurrentSlide();
             var registry = _registry();
             var lang = _lang();
-            var owner = unit.Objects.FirstOrDefault(o => !o.IsPointGeometry && registry.Type(o.Type) is not null);
+            var owner = unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             if (slide is null || owner is null || registry.Item(parts[2]) is not { } item) return;
             var full = SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
             var port = Building.Ports(registry, full, owner.Id, lang).FirstOrDefault(p => p.Id == parts[1]);
@@ -250,6 +251,11 @@ namespace InventaSketch.AddIn.OnSlide
             _app.StartNewUndoEntry();
             var doc = SingleUnitDoc(placed);
             SketchUnits.Draw(slide, registry, doc, lang);
+            // A pivot, joint or slider placed at a link's joint: the link docks onto it.
+            if (port.Kind == PortKind.Joint && !placed.IsPointGeometry && Building.DockBack(registry, Edits.Add(full, full.Pages[0].Id, placed), owner.Id, port, placed.Id, lang) is { } docked)
+            {
+                SketchUnits.Replace(slide, unit, Edits.Update(unit.Doc, new[] { owner.Id }, o => o with { Points = docked.Get(owner.Id)!.Points, Attach = docked.Get(owner.Id)!.Attach }), registry, lang);
+            }
             SketchUnits.RedrawDependents(slide, registry, lang, Array.Empty<SketchDocument>(), new[] { doc });
             _portFocus = null;
             SketchUnits.All(slide).FirstOrDefault(u => u.Objects.Any(o => o.Id == placed.Id))?.Shape.Select(Office.MsoTriState.msoTrue);

@@ -58,8 +58,10 @@ namespace InventaSketch.Engine.Tests
         public void AttachingToALineNeedsARail()
         {
             var arrow = Reg.Create(Reg.Item("ann.arrow")!, new Vec2(50, 50));
+            // A named point of a line (its end, a joint of a link) is docked to that point; other segments need a rail.
             var end = Anchor.Point(AnchorRole.End, new Vec2(40, 50), "p0");
-            Assert.Null(Attachments.For(arrow, new Vec2(40, 50), end));
+            Assert.Equal("p0", Attachments.For(arrow, new Vec2(40, 50), end)!.AnchorId);
+            Assert.Null(Attachments.For(arrow, new Vec2(40, 50), Anchor.Segment(AnchorRole.Axis, new Vec2(0, 0), new Vec2(10, 0))));
             var rail = Anchor.Segment(AnchorRole.Rail, new Vec2(0, 0), new Vec2(10, 0)) with { Id = "rail3" };
             var a = Attachments.For(arrow, new Vec2(2.5, 1), rail)!;
             Assert.Equal("rail3", a.AnchorId);

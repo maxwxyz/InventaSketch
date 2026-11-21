@@ -133,6 +133,9 @@ namespace InventaSketch.Modules.Kinematics
         public bool Uniform { get; init; }
         /// <summary>Anchors in local coordinates (computed with the object's pen).</summary>
         public Func<Pen, SketchObject, IEnumerable<Anchor>>? AnchorsFn { get; init; }
+        /// <summary>Role in self-built linkages (fixed pivot, free joint, slider).</summary>
+        public LinkageRole Role { get; init; }
+        public override LinkageRole LinkageRole(SketchObject o) => Role;
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
 
         public ViewSpec Spec(SketchObject o) => _views.FirstOrDefault(v => v.Id == ViewOf(o)) ?? _views[0];

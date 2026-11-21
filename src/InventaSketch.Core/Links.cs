@@ -70,6 +70,9 @@ namespace InventaSketch.Core
                         continue;
                     }
                     if (i != 0 && i != pts.Count - 1) continue;
+                    // Another line is docked on this point (a link on this joint): connected from the other side.
+                    var index = i;
+                    if (doc.Objects.Values.Any(x => x.Attach is not null && x.Attach.Any(at => at?.ObjectId == o.Id && Attachments.PointIndex(at.AnchorId) == index))) continue;
                     anchors ??= doc.Objects.Values.Where(x => registry.Type(x.Type) is not null)
                         .SelectMany(x => registry.PageAnchors(x, ctx).Where(Dockable).Select(y => (x, y))).ToList();
                     var hit = anchors.Where(t => t.Owner.Id != o.Id && (set.Contains(o.Id) || set.Contains(t.Owner.Id)))
