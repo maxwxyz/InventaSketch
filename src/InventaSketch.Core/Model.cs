@@ -91,6 +91,11 @@ namespace InventaSketch.Core
         public string? GroupId { get; init; }
         public string? Layer { get; init; }
         public bool Locked { get; init; }
+        /// <summary>
+        /// Coupling partners the user released (<see cref="Links"/>): the pair touches but does not move or scale together.
+        /// Stored on both objects; an entry is dropped once the pair no longer touches.
+        /// </summary>
+        public IReadOnlyList<string>? Released { get; init; }
         /// <summary>Provenance and extension data (module-namespaced keys).</summary>
         public IReadOnlyDictionary<string, string>? Meta { get; init; }
 

@@ -62,6 +62,8 @@ namespace InventaSketch.Modules.Mechanical
         {
             Params = new[] { Common.Hub, Common.Teeth(18), Common.Module, Common.Helix, Common.Bore, Common.Keyway },
             Extra = o => GearActions(o, true, 18, true),
+            // Inserted from the bar in the gear's view: a meshing gear, its shaft, bearings beside it on the shaft.
+            CompanionTypes = new[] { "mech.gear.spur", "mech.shaft", "mech.bearing.ball", "mech.bearing.cylroller" },
             // Teeth view: tooth 0 points up (GearMath.Outline phase -90 deg).
             Teeth = o => o.View == "teeth" ? (GearMath.Teeth(o, 18), -90.0) : null,
         };

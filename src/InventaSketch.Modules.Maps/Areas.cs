@@ -101,6 +101,7 @@ namespace InventaSketch.Modules.Maps
     internal sealed class RegionType : MapPointType
     {
         public const string TypeId = "map.region";
+        public override bool InsertablePoints => true;
 
         public static readonly ParamDef KindDef = Prm.Choice("kind", "Area type", "Flächenart", "area",
             ("area", "Area", "Gebiet"), ("forest", "Forest", "Wald"), ("water", "Lake / water", "See / Gewässer"), ("park", "Park / green space", "Park / Grünfläche"),

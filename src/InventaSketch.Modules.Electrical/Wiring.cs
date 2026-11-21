@@ -40,6 +40,18 @@ namespace InventaSketch.Modules.Electrical
     {
         public static readonly string[] Modes = { "free", "orthogonal", "45" };
 
+        /// <summary>
+        /// Junction dots where an end of the line is docked onto another line (a T junction, <see cref="Polylines.Branch"/>):
+        /// the connection is drawn with a dot, as is usual in circuit diagrams.
+        /// </summary>
+        public static IEnumerable<Primitive> BranchDots(SketchObject o, IReadOnlyList<Vec2> p)
+        {
+            if (o.Attach is null) yield break;
+            foreach (var i in new[] { 0, p.Count - 1 })
+                if (i < o.Attach.Count && o.Attach[i]?.AnchorId is { } id && id.StartsWith("rail", StringComparison.Ordinal))
+                    yield return Prim.Circle(p[i].X, p[i].Y, 0.8, S.Black) with { Tag = "junction" };
+        }
+
         public static ParamDef Param(string def) => Choice("route", T("Routing", "Leitungsführung"), def,
             ("free", "Free (straight)", "Frei (gerade)"), ("orthogonal", "Orthogonal", "Orthogonal"), ("45", "45°", "45°"));
 
@@ -138,6 +150,7 @@ namespace InventaSketch.Modules.Electrical
             "wire", "connection", "conductor", "net", "leitung", "verbindung", "draht", "verdrahtung") { }
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal") };
+        public override bool InsertablePoints => true;
 
         /// <summary>On a wire one adds components: offered by "Insert ▸".</summary>
         public override IReadOnlyList<string> Companions => new[] { "elec.resistor", "elec.capacitor", "elec.switch", "elec.diode", "elec.lamp", "elec.fuse", "elec.ground", "elec.junction" };
@@ -146,7 +159,7 @@ namespace InventaSketch.Modules.Electrical
             => Routing.Route(p, o.Str("route", "orthogonal"), Routing.ExitHorizontal(ctx.Doc, o, 0), Routing.ExitHorizontal(ctx.Doc, o, p.Count - 1));
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
-            => new Primitive[] { Prim.Polyline(RouteOf(o, p, ctx), S.Wire) with { Tag = "wire" } };
+            => new Primitive[] { Prim.Polyline(RouteOf(o, p, ctx), S.Wire) with { Tag = "wire" } }.Concat(Routing.BranchDots(o, p)).ToList();
 
         /// <summary>The routed path is a rail: other wire ends and junction dots dock anywhere on it (T junctions).</summary>
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)

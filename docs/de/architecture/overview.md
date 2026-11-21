@@ -122,4 +122,8 @@ konzentrische Teile werden vor der Änderung aus ihren Ankern erkannt (Teilkreis
 ihr. Hosts rufen sie über `EditorSession.Apply` (Engine, `couple: false` für freie Bearbeitung) oder über Einheiten hinweg
 (COM) auf. `Flow` baut Diagramme: `QuickAdd` fügt auf einer Seite eine verbundene Kopie an (`ObjectType.ChainConnector`),
 `Replace` tauscht das Element und behält seine Verbinder. Leitungsabzweige hängen an Schienen anderer Leitungen
-(`Attachments.For`).
+(`Attachments.For`). `Links` listet, wo sich Objekte berühren und einander folgen (mechanische Paare und angedockte
+Linienenden), für Schloss-Marker, und löst oder koppelt ein Paar (`SketchObject.Released`, von `Coupling` bereinigt,
+sobald sich das Paar nicht mehr berührt). `Fitting.Place` setzt ein eingefügtes Teil passend zur Auswahl (auf die Welle,
+in Eingriff, durch die Nabe). `Polylines` fügt Ecken ein, entfernt sie und setzt Abzweige; angedockte Abzweige bleiben
+an ihrem Platz.

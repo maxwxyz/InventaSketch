@@ -69,7 +69,7 @@ namespace InventaSketch.Core
         /// drag along are moved or scaled.
         /// </summary>
         public static SketchDocument Propagate(Registry registry, SketchDocument before, SketchDocument after, Lang lang = Lang.En)
-            => AlignTeeth(registry, before, PropagateCore(registry, before, after, lang), lang);
+            => PruneReleased(registry, AlignTeeth(registry, before, PropagateCore(registry, before, after, lang), lang), lang);
 
         private static SketchDocument PropagateCore(Registry registry, SketchDocument before, SketchDocument after, Lang lang)
         {
@@ -87,24 +87,29 @@ namespace InventaSketch.Core
             }
             if (!changed.Any(f0.ContainsKey)) return after;
 
-            // Relations before the edit.
-            var (mesh, carried, carrier, bonded) = Relations(f0);
+            // Relations before the edit (pairs the user released do not couple).
+            var (mesh, carried, carrier, bonded) = Relations(f0, (a, b) => IsReleased(before, a, b));
             if (mesh.Count == 0 && carried.Count == 0 && bonded.Count == 0) return after;
             return Apply(registry, before, after, lang, changed, f0, mesh, carried, carrier, bonded);
         }
 
-        private static (Dictionary<string, List<string>> Mesh, Dictionary<string, List<string>> Carried, Dictionary<string, List<string>> Carrier, Dictionary<string, List<string>> Bonded)
-            Relations(Dictionary<string, Features> f0)
+        /// <summary>True if the user released the pair (<see cref="SketchObject.Released"/> on either object).</summary>
+        public static bool IsReleased(SketchDocument doc, string a, string b)
+            => doc.Get(a)?.Released?.Contains(b) == true || doc.Get(b)?.Released?.Contains(a) == true;
+
+        /// <summary>A geometric relation: mesh (A, B gears), carried (shaft A carries B) or bonded (concentric); At = contact point.</summary>
+        private readonly struct Pair
         {
-            var mesh = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-            var carried = new Dictionary<string, List<string>>(StringComparer.Ordinal); // shaft → hubs on it
-            var carrier = new Dictionary<string, List<string>>(StringComparer.Ordinal); // hub → shafts it sits on
-            var bonded = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-            void Link(Dictionary<string, List<string>> map, string a, string b)
-            {
-                if (!map.TryGetValue(a, out var l)) map[a] = l = new List<string>();
-                if (!l.Contains(b)) l.Add(b);
-            }
+            public Pair(LinkKind kind, string a, string b, Vec2 at) { Kind = kind; A = a; B = b; At = at; }
+            public LinkKind Kind { get; }
+            public string A { get; }
+            public string B { get; }
+            public Vec2 At { get; }
+        }
+
+        private static List<Pair> Pairs(Dictionary<string, Features> f0)
+        {
+            var list = new List<Pair>();
             var ids = f0.Keys.ToList();
             for (var i = 0; i < ids.Count; i++)
                 for (var j = 0; j < ids.Count; j++)
@@ -116,21 +121,90 @@ namespace InventaSketch.Core
                     {
                         var d = a.Centre.DistanceTo(b.Centre);
                         var need = MeshDistance(ra, a.Inner, rb, b.Inner);
-                        if (Math.Abs(d - need) <= Math.Max(0.3, 0.02 * (ra + rb)) && d > Eps) { Link(mesh, ids[i], ids[j]); Link(mesh, ids[j], ids[i]); }
+                        if (Math.Abs(d - need) <= Math.Max(0.3, 0.02 * (ra + rb)) && d > Eps)
+                        {
+                            // Contact on the centre line: on a's pitch circle (b's when b is the ring gear around a).
+                            var at = b.Inner && !a.Inner ? b.Centre + (a.Centre - b.Centre) * (rb / d) : a.Centre + (b.Centre - a.Centre) * (ra / d);
+                            list.Add(new Pair(LinkKind.Mesh, ids[i], ids[j], at));
+                        }
                     }
                     // a's hub on b's axis: b carries a.
-                    var onAxis = a.Hubs.Any(h => b.Axes.Any(x => Geo.ClosestOnSegment(h, x.A, x.B).Point.DistanceTo(h) <= 0.3));
-                    if (onAxis) { Link(carried, ids[j], ids[i]); Link(carrier, ids[i], ids[j]); continue; }
+                    var hub = a.Hubs.Where(h => b.Axes.Any(x => Geo.ClosestOnSegment(h, x.A, x.B).Point.DistanceTo(h) <= 0.3)).Select(h => (Vec2?)h).FirstOrDefault();
+                    if (hub is not null) { list.Add(new Pair(LinkKind.Carried, ids[j], ids[i], hub.Value)); continue; }
                     // Concentric hubs bond a gear to its shaft or hub (not two gears that merely lie on top of each other).
                     if (j > i && (a.Pitch is null || b.Pitch is null)
-                        && !b.Hubs.Any(h => a.Axes.Any(x => Geo.ClosestOnSegment(h, x.A, x.B).Point.DistanceTo(h) <= 0.3))
-                        && a.Hubs.Any(h => b.Hubs.Any(k => h.DistanceTo(k) <= 0.3)))
+                        && !b.Hubs.Any(h => a.Axes.Any(x => Geo.ClosestOnSegment(h, x.A, x.B).Point.DistanceTo(h) <= 0.3)))
                     {
-                        Link(bonded, ids[i], ids[j]);
-                        Link(bonded, ids[j], ids[i]);
+                        var c = a.Hubs.Where(h => b.Hubs.Any(k => h.DistanceTo(k) <= 0.3)).Select(h => (Vec2?)h).FirstOrDefault();
+                        if (c is not null) list.Add(new Pair(LinkKind.Bonded, ids[i], ids[j], c.Value));
                     }
                 }
+            return list;
+        }
+
+        private static (Dictionary<string, List<string>> Mesh, Dictionary<string, List<string>> Carried, Dictionary<string, List<string>> Carrier, Dictionary<string, List<string>> Bonded)
+            Relations(Dictionary<string, Features> f0, Func<string, string, bool>? released = null)
+        {
+            var mesh = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            var carried = new Dictionary<string, List<string>>(StringComparer.Ordinal); // shaft → hubs on it
+            var carrier = new Dictionary<string, List<string>>(StringComparer.Ordinal); // hub → shafts it sits on
+            var bonded = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            void Link(Dictionary<string, List<string>> map, string a, string b)
+            {
+                if (!map.TryGetValue(a, out var l)) map[a] = l = new List<string>();
+                if (!l.Contains(b)) l.Add(b);
+            }
+            foreach (var p in Pairs(f0))
+            {
+                if (released?.Invoke(p.A, p.B) == true) continue;
+                switch (p.Kind)
+                {
+                    case LinkKind.Mesh: Link(mesh, p.A, p.B); Link(mesh, p.B, p.A); break;
+                    case LinkKind.Carried: Link(carried, p.A, p.B); Link(carrier, p.B, p.A); break;
+                    default: Link(bonded, p.A, p.B); Link(bonded, p.B, p.A); break;
+                }
+            }
             return (mesh, carried, carrier, bonded);
+        }
+
+        /// <summary>Features of all box objects of a document that take part in coupling.</summary>
+        private static Dictionary<string, Features> FeaturesOf(Registry registry, SketchDocument doc, Lang lang)
+        {
+            var ctx = new RenderContext(doc, lang);
+            var f0 = new Dictionary<string, Features>(StringComparer.Ordinal);
+            foreach (var o in doc.Objects.Values.Where(o => !o.IsPointGeometry))
+            {
+                var f = Read(registry, o, ctx);
+                if (f.Any) f0[o.Id] = f;
+            }
+            return f0;
+        }
+
+        /// <summary>
+        /// Mechanical links between box objects (mesh, carried, bonded) with their contact point, released or not, where
+        /// one side is in <paramref name="ids"/> (all links when null).
+        /// </summary>
+        internal static IEnumerable<Link> MechanicalLinks(Registry registry, SketchDocument doc, ISet<string>? ids, Lang lang)
+        {
+            var f0 = FeaturesOf(registry, doc, lang);
+            if (ids is not null && !ids.Any(f0.ContainsKey)) yield break;
+            foreach (var p in Pairs(f0))
+                if (ids is null || ids.Contains(p.A) || ids.Contains(p.B))
+                    yield return new Link(p.Kind, p.A, p.B, p.At, IsReleased(doc, p.A, p.B));
+        }
+
+        /// <summary>Drops released entries of pairs that no longer touch, so parts snapped together again are coupled again.</summary>
+        public static SketchDocument PruneReleased(Registry registry, SketchDocument doc, Lang lang = Lang.En)
+        {
+            if (!doc.Objects.Values.Any(o => o.Released is { Count: > 0 })) return doc;
+            var touching = new HashSet<(string, string)>(Pairs(FeaturesOf(registry, doc, lang)).SelectMany(p => new[] { (p.A, p.B), (p.B, p.A) }));
+            var stale = doc.Objects.Values.Where(o => o.Released is { Count: > 0 } r && r.Any(x => !touching.Contains((o.Id, x)))).Select(o => o.Id).ToList();
+            if (stale.Count == 0) return doc;
+            return Edits.Update(doc, stale, o =>
+            {
+                var keep = o.Released!.Where(x => touching.Contains((o.Id, x))).ToList();
+                return o with { Released = keep.Count > 0 ? keep : null };
+            });
         }
 
         /// <summary>
@@ -142,15 +216,9 @@ namespace InventaSketch.Core
         public static IReadOnlyList<string> RigidFollowers(Registry registry, SketchDocument doc, IEnumerable<string> ids, Lang lang = Lang.En)
         {
             var start = new HashSet<string>(ids, StringComparer.Ordinal);
-            var ctx = new RenderContext(doc, lang);
-            var f0 = new Dictionary<string, Features>(StringComparer.Ordinal);
-            foreach (var o in doc.Objects.Values.Where(o => !o.IsPointGeometry))
-            {
-                var f = Read(registry, o, ctx);
-                if (f.Any) f0[o.Id] = f;
-            }
+            var f0 = FeaturesOf(registry, doc, lang);
             if (!start.Any(f0.ContainsKey)) return Array.Empty<string>();
-            var (_, carried, _, bonded) = Relations(f0);
+            var (_, carried, _, bonded) = Relations(f0, (a, b) => IsReleased(doc, a, b));
             var result = new List<string>();
             var seen = new HashSet<string>(start, StringComparer.Ordinal);
             var queue = new Queue<string>(start);
@@ -293,7 +361,7 @@ namespace InventaSketch.Core
             foreach (var id in moved)
             {
                 if (!gears.TryGetValue(id, out var b)) continue;
-                var partners = gears.Where(g => g.Key != id && Math.Abs(g.Value.F.Centre.DistanceTo(b.F.Centre) - (g.Value.F.Pitch!.Value + b.F.Pitch!.Value)) <= Math.Max(0.3, 0.02 * (g.Value.F.Pitch!.Value + b.F.Pitch!.Value)))
+                var partners = gears.Where(g => g.Key != id && !IsReleased(after, g.Key, id) && Math.Abs(g.Value.F.Centre.DistanceTo(b.F.Centre) - (g.Value.F.Pitch!.Value + b.F.Pitch!.Value)) <= Math.Max(0.3, 0.02 * (g.Value.F.Pitch!.Value + b.F.Pitch!.Value)))
                     .OrderBy(g => movedSet.Contains(g.Key) && !done.Contains(g.Key) ? 1 : 0).ToList();
                 if (partners.Count == 0) continue;
                 var aId = partners[0].Key;

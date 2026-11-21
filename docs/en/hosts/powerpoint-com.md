@@ -215,8 +215,13 @@ UX round (2026-11-20, from the maintainer's feedback):
   fills. Clicking again restores the colours.
 - **Text**: double-click on a selected unit, the "Text" bar button or "Text …" in the pie menu edit its main text
   (object text, reference numeral, name or label).
-- **Insert ▸** in the pie menu offers elements that fit the selection (`ObjectType.Companions`, else the same category,
-  always numeral/lead line/arrow), in the selection's kind of view; picking one starts insert-at-pointer with snapping.
+- **Insert ▸** in the pie menu (and the insert palette of the bar) offers elements that fit the selection
+  (`ObjectType.Companions`, else the same category, always numeral/lead line/arrow), in the selection's kind of view.
+  Picking one places it where it belongs (`Fitting.Place`), coupled and selected: a gear, bearing or wheel onto the
+  selected shaft (hub on the axis, at a free place along it), a gear next to a gear in mesh (below, above, right or left,
+  wherever it does not overlap), a shaft through the hub of a part, a bearing beside a gear onto the gear's shaft. Its
+  choices (shaft connection fixed / sliding / loose …) are then in the bar. Items without such a rule start
+  insert-at-pointer with snapping.
 - **Anchor** (on by default): line ends snapped to another element store an attachment (with pin id) and follow when
   that element is moved, rotated or resized (one undo step); moving the line itself detaches its ends. Verified: an
   arrow snapped to a gear's edge followed the dragged gear.
@@ -227,6 +232,20 @@ UX round (2026-11-20, from the maintainer's feedback):
   Gears, bearings and hubs whose hub lies on a shaft axis follow the shaft (move, rotate, stretch); moving the gear
   alone slides it. A gear and a shaft with the same hub (axial view) move together. Resizing a meshed gear no longer
   snaps against its partner. Verified 2026-11-21: a gear pulled 9.35 mm away scaled both gears by 1.37 in mesh.
+- **What is connected (lock badges):** a selected unit shows a small lock badge beside every place where it touches
+  another element and follows it (`Links.For`): meshing gears (on the centre line), parts on a shaft (at the hub),
+  concentric parts, docked line ends. Closed blue lock: coupled, moves or scales along. Open grey lock: touching but
+  released, or a line end lying on a pin without being docked. Hovering shows what it is and what a click does
+  ("Meshes with Spur gear: coupled – click releases"); a click toggles it (`Links.Toggle`, one undo step). A released
+  pair is stored on both objects (`SketchObject.Released`) and forgotten once they no longer touch, so parts snapped
+  together again are coupled again. The badges sit beside the contact point, so dragging a gear by its centre or a line by
+  its end still works. Shown only while Anchor is on.
+- **Corners and branches of lines:** a selected wire, pipe, road, river, route, region or polyline
+  (`ObjectType.InsertablePoints`) shows a "+" in the middle of each segment (on the drawn path of routed wires). Click
+  it for a new corner, or drag it to bend the line in one go. Lines that take branches (named rails) also show a branch
+  handle beside it: drag it to a pin or anywhere and a new line of the same kind starts on the line (`Polylines.Branch`);
+  a click adds a short stub. Wires and pipes draw a junction dot at a branch end, roads join. A double-click on a corner
+  removes it. Branches already docked on the line stay where they are (`Polylines.InsertCorner` docks them again).
 - View switches keep proportions (library presets of both views; a shared dimension such as the gear diameter keeps its
   length). Centred parts (pitch circle or hub) resize about their centre by default (Ctrl: opposite edge). Schematic
   hub symbols keep their size when a stick symbol is scaled up.

@@ -132,6 +132,20 @@ namespace InventaSketch.Core
             });
         }
 
+        /// <summary>Inserts a free point at <paramref name="index"/> (0 … count) of a point object; later points shift by one.</summary>
+        public static SketchDocument InsertPoint(SketchDocument doc, string id, int index, Vec2 p)
+            => Update(doc, new[] { id }, o =>
+            {
+                if (o.Points is null || index < 0 || index > o.Points.Count) return o;
+                var pts = doc.ResolvePoints(o).ToList();
+                pts.Insert(index, p);
+                if (o.Attach is null) return o with { Points = pts };
+                var att = o.Attach.ToList();
+                while (att.Count < o.Points.Count) att.Add(null);
+                att.Insert(index, null);
+                return o with { Points = pts, Attach = att };
+            });
+
         public static SketchDocument SetPoint(SketchDocument doc, string id, int index, Vec2 p, Attachment? attach = null)
             => Update(doc, new[] { id }, o =>
             {
@@ -182,7 +196,11 @@ namespace InventaSketch.Core
             {
                 string? gid = null;
                 if (o.GroupId is not null && !groupMap.TryGetValue(o.GroupId, out gid)) { gid = Ids.New("g"); groupMap[o.GroupId] = gid; }
-                var c = o with { Id = map[o.Id], GroupId = gid, Ref = null };
+                var c = o with
+                {
+                    Id = map[o.Id], GroupId = gid, Ref = null,
+                    Released = o.Released?.Where(map.ContainsKey).Select(r => map[r]).ToList() is { Count: > 0 } rel ? rel : null,
+                };
                 if (c.IsPointGeometry)
                     c = c with
                     {

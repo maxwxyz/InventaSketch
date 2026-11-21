@@ -244,15 +244,22 @@ namespace InventaSketch.AddIn.OnSlide
                 // Edited units compare with their new model, the others with what is on the slide.
                 var basis = unit.Objects.Any(o => touched.Contains(o.Id)) ? fullAfter : unit.Doc;
                 var ids = unit.Objects.Where(o => result.Get(o.Id) is { } r && basis.Get(o.Id) is { } x && !ReferenceEquals(r, x)
-                    && (r.Transform != x.Transform || r.Size != x.Size)).Select(o => o.Id).ToList();
+                    && (r.Transform != x.Transform || r.Size != x.Size || !SameIds(r.Released, x.Released))).Select(o => o.Id).ToList();
                 if (ids.Count == 0) continue;
-                Replace(slide, unit, Edits.Update(unit.Doc, ids, o => o with { Transform = result.Get(o.Id)!.Transform, Size = result.Get(o.Id)!.Size }), registry, lang);
+                // Position and size follow; released pairs that no longer touch are forgotten (Coupling.PruneReleased).
+                Replace(slide, unit, Edits.Update(unit.Doc, ids, o => o with
+                {
+                    Transform = result.Get(o.Id)!.Transform, Size = result.Get(o.Id)!.Size, Released = result.Get(o.Id)!.Released,
+                }), registry, lang);
                 if (!unit.Objects.Any(o => touched.Contains(o.Id))) changed.UnionWith(ids);
                 count++;
             }
             if (count > 0) Log.Info("Coupling: redrew " + count + " unit(s)");
             return changed;
         }
+
+        private static bool SameIds(IReadOnlyList<string>? a, IReadOnlyList<string>? b)
+            => (a is null || a.Count == 0) ? (b is null || b.Count == 0) : b is not null && a.SequenceEqual(b);
 
         /// <summary>The same model with new object/group ids (copies must never share ids), optionally moved.</summary>
         public static SketchDocument WithNewIds(SketchDocument doc, Vec2 offset)

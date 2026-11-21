@@ -39,10 +39,12 @@ namespace InventaSketch.Engine.Tests
         [Fact]
         public void TypesWithoutCompanionsSuggestTheirCategory()
         {
-            var gear = Create("mech.spur.stick");
+            // The ring gear names no companions (the spur gear does: a meshing gear, its shaft, bearings).
+            var gear = Create(Reg.Library.First(i => i.TypeId == "mech.gear.internal").Id);
             var s = Reg.Suggestions(gear);
-            var category = Reg.Type("mech.gear.spur")!.Category;
-            Assert.Contains(s, i => i.Category == category && i.TypeId != "mech.gear.spur");
+            var category = Reg.Type("mech.gear.internal")!.Category;
+            Assert.Contains(s, i => i.Category == category && i.TypeId != "mech.gear.internal");
+            Assert.DoesNotContain(s, i => i.TypeId == "mech.gear.internal");
             Assert.Contains(s, i => i.TypeId == "patent.numeral");
         }
     }

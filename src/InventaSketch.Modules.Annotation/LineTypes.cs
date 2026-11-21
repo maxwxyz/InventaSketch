@@ -24,6 +24,7 @@ namespace InventaSketch.Modules.Annotation
         public PolylineType() : base("ann.polyline", new I18nText("Polyline", "Polylinie"), AnnCategories.Lines, "polyline", "linienzug") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 8), new Vec2(-5, -8), new Vec2(5, 8), new Vec2(15, -8) };
+        public override bool InsertablePoints => true;
 
         public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.None).Append(P.Bool("closed", "Closed", "Geschlossen", false)).ToList();
 
