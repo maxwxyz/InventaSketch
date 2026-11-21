@@ -50,7 +50,7 @@ namespace InventaSketch.Engine.Tests
             var next = Building.Place(Reg, doc, shaft.Id, end, items.First(i => i.TypeId == "mech.shaft"))!;
             var withNext = Add(doc, next);
             var axis = Reg.PageAnchors(withNext.Get(next.Id)!, new RenderContext(withNext)).First(a => a.Role == AnchorRole.Axis);
-            Assert.True(new[] { axis.P, axis.Q }.Any(q => q.DistanceTo(end.At) < 1e-6));
+            Assert.Contains(new[] { axis.P, axis.Q }, q => q.DistanceTo(end.At) < 1e-6);
             Assert.Equal(end.At.Y, axis.P.Y, 6);
             Assert.Equal(end.At.Y, axis.Q.Y, 6);
             Assert.DoesNotContain(Building.Ports(Reg, withNext, shaft.Id), p => p.Id == end.Id);

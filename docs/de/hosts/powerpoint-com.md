@@ -255,6 +255,18 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   (`Building.StretchEnd`, ohne Kopplung für diese Änderung). Die „+“ halten Abstand zu PowerPoints Größen- und Drehgriffen.
   Geprüft in PowerPoint am 21.11.2026: Gegenrad an einem Griff angedockt, Lager am Wellenende, Welle durch Ziehen
   verlängert, Lager blieb an seinem Platz.
+- **Getriebe selbst bauen:** Ein Planetenträger (`mech.carrier`, Stirn- und Schemaansicht, 2–8 Bolzen, Scheibe oder
+  Arme, „fester Steg“ mit Gestellsymbol) ist ein eigenes Teil. Seine Bau-„+“ bieten an jedem freien Bolzen einen Planeten
+  (so groß, dass er mit vorhandener Sonne oder vorhandenem Hohlrad kämmt) und in der Mitte Sonnenrad, Hohlrad (passend zu
+  den Planeten) oder Welle; das „+“ in der Mitte eines Sonnenrads bietet einen Steg mit Platz für Planeten
+  (Bolzenradius 1,8 × Sonne). Planeten auf den Bolzen fahren mit dem Steg mit und kämmen mit Sonne und Hohlrad.
+  Planetensätze haben 2–8 Planeten und Stufenplaneten (Schema- und Stirnansicht); in den Stirnansichten zerlegt das
+  Leisten-Piktogramm „In Einzelteile zerlegen“ einen Satz in Sonne, Planeten, Hohlrad und Steg (`Assemblies.Explode`,
+  `ObjectType.Parts`), gekoppelt wie zuvor. Kegelräder haben ihre Kegelspitze als Anker: ihre „+“ bieten ein Gegenrad
+  oben oder unten (Achsen unter 90°) und ein gegenüberliegendes auf derselben Achse, sodass ein Differential aus
+  Achswellenrad, gegenüberliegendem Achswellenrad und Ausgleichsrädern entsteht. Bau-Griffe an Zahnrädern bieten nur
+  Teile in derselben Art von Ansicht (keine Seitenansichts-Welle für ein Stirnansichts-Rad). Kegelradpaare sind noch
+  nicht gekoppelt (ein Rad zu verschieben verschiebt das andere nicht).
 - **Freies Andocken von Beschriftungen auf Flächen:** Bezugslinien, Bezugspfeile, Bezugszeichen und Maße
   (`ObjectType.DocksOnSurface`) docken ein Ende, das irgendwo auf einem anderen Element losgelassen wird, auch abseits der
   Fangpunkte an (`Attachments.OnSurface`: die kleinste Box unter dem Punkt); das Ende folgt dann diesem Element. Geprüft in

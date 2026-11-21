@@ -276,6 +276,17 @@ UX round (2026-11-20, from the maintainer's feedback):
   keep their place (`Building.StretchEnd`, no coupling for that edit). The "+" keep clear of PowerPoint's resize and
   rotation handles. Verified in PowerPoint 2026-11-21: meshing gear docked at a port, bearing at a shaft end, shaft
   lengthened by dragging with the bearing in place.
+- **Building gear trains yourself:** a planet carrier (`mech.carrier`, axial and schematic, 2–8 pins, disc or arms,
+  "fixed carrier" with a ground symbol) is a part of its own. Its build "+" offer a planet on every free pin (sized to
+  mesh with the sun or ring already there) and, in the centre, a sun gear, a ring gear (sized to the planets) or a shaft;
+  a sun gear's "+" in the centre offers a carrier with room for planets (pin radius 1.8 × the sun). Planets on the pins
+  ride on the carrier (they move with it) and mesh with sun and ring. Planetary sets have 2–8 planets and stepped
+  planets (schematic and axial view); in the axial views a set explodes into sun, planets, ring gear and carrier with
+  the bar pictogram "Explode into parts" (`Assemblies.Explode`, `ObjectType.Parts`), coupled as before. Bevel gears have
+  their cone apex as an anchor: their "+" offer a mating bevel gear above or below (axes at 90°) and one facing it on
+  the same axis, so a differential is built from a side gear, the opposite side gear and spider gears. Gear ports only
+  offer parts in the same kind of view (no side-view shaft for an axial gear). Bevel pairs are not coupled yet (moving
+  one does not move the other).
 - **Free docking of annotations on surfaces:** lead lines, reference arrows, numerals and dimensions
   (`ObjectType.DocksOnSurface`) dock an end that is dropped anywhere on another element, not only on a snap point
   (`Attachments.OnSurface`: the smallest box below the point); the end then follows that element. Verified in

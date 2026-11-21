@@ -897,6 +897,9 @@ namespace InventaSketch.AddIn.OnSlide
                     foreach (var item in suggestions.Where(i => !direct.Contains(i)))
                         list.Add(new BarButton("ins:" + item.Id, "", item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
             }
+            // Predefined assemblies (planetary set …) explode into coupled parts that can be edited one by one.
+            if (first is not null && Assemblies.CanExplode(registry, first))
+                list.Add(new BarButton("explode", "", T("Explode into parts", "In Einzelteile zerlegen")) { IconId = IconIds.Explode });
             list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
             list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
@@ -1942,6 +1945,11 @@ namespace InventaSketch.AddIn.OnSlide
                 unit.Shape.Delete();
                 SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { doc }, Array.Empty<SketchDocument>());
                 Disarm();
+                return;
+            }
+            if (id == "explode")
+            {
+                ApplyExplode(slide, unit);
                 return;
             }
             if (id.StartsWith("ins:", StringComparison.Ordinal))

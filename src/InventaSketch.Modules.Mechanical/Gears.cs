@@ -44,6 +44,7 @@ namespace InventaSketch.Modules.Mechanical
             yield return WormWheel();
             yield return Rack();
             yield return Planetary();
+            yield return Carrier();
             yield return Differential();
         }
 
@@ -63,7 +64,7 @@ namespace InventaSketch.Modules.Mechanical
             Params = new[] { Common.Hub, Common.Teeth(18), Common.Module, Common.Helix, Common.Bore, Common.Keyway },
             Extra = o => GearActions(o, true, 18, true),
             // Inserted from the bar in the gear's view: a meshing gear, its shaft, bearings beside it on the shaft.
-            CompanionTypes = new[] { "mech.gear.spur", "mech.shaft", "mech.bearing.ball", "mech.bearing.cylroller" },
+            CompanionTypes = new[] { "mech.gear.spur", "mech.shaft", "mech.carrier", "mech.gear.internal", "mech.bearing.ball" },
             // Teeth view: tooth 0 points up (GearMath.Outline phase -90 deg).
             Teeth = o => o.View == "teeth" ? (GearMath.Teeth(o, 18), -90.0) : null,
         };
@@ -165,6 +166,7 @@ namespace InventaSketch.Modules.Mechanical
         {
             Params = new[] { Common.Teeth(48), Common.Module },
             Extra = o => GearActions(o, false, 48, false),
+            CompanionTypes = new[] { "mech.gear.spur", "mech.carrier" },
         };
 
         /// <summary>Ring gear schematic: opposing brackets, tooth bar facing the axis.</summary>
@@ -213,12 +215,14 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Bevel() => new(
             "mech.gear.bevel", T("Bevel gear", "Kegelrad"), Cat,
             new[] { "bevel", "bevel gear", "mitre", "angle drive", "kegelrad", "kegelradgetriebe", "winkelgetriebe" },
-            new ViewSpec("stick", VStick, 12, 30, BevelStick),
-            new ViewSpec("side", VSide, 24, 30, (p, o) => BevelBody(p, o, false)),
-            new ViewSpec("section", VSection, 24, 30, (p, o) => BevelBody(p, o, true)))
+            new ViewSpec("stick", VStick, 12, 30, BevelStick) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(10.6, 0), "apex") } },
+            new ViewSpec("side", VSide, 24, 30, (p, o) => BevelBody(p, o, false)) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(11.5, 0), "apex") } },
+            new ViewSpec("section", VSection, 24, 30, (p, o) => BevelBody(p, o, true)) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(11.5, 0), "apex") } })
         {
             Params = new[] { Common.Hub, Common.Teeth(24), Common.Module, Common.Bore },
             Extra = o => GearActions(o, true, 24, false),
+            // Mating bevel gears (angle drive, differential side and spider gears), the shaft, a carrier as the cage.
+            CompanionTypes = new[] { "mech.gear.bevel", "mech.shaft", "mech.carrier", "mech.bearing.taperroller" },
         };
 
         /// <summary>Bevel gear schematic: gear line with slanted tooth bars pointing to the cone apex on the axis.</summary>
@@ -409,8 +413,41 @@ namespace InventaSketch.Modules.Mechanical
             new ViewSpec("axial", VAxial, 50, 50, (p, o) => PlanetAxial(p, o, false)) { Anchors = PlanetAnchors },
             new ViewSpec("teeth", VTeeth, 50, 50, (p, o) => PlanetAxial(p, o, true)) { Anchors = PlanetAnchors })
         {
-            Params = new[] { Common.Count("planets", T("Number of planets", "Anzahl Planeten"), 3, 3, 6) },
+            Params = new[]
+            {
+                Common.Count("planets", T("Number of planets", "Anzahl Planeten"), 3, 2, 8),
+                Common.Flag("stepped", T("Stepped planets", "Stufenplaneten"), false),
+            },
+            Extra = o => Common.Stepper(o, "planets", T("Planets", "Planeten"), 3, 1, 2, 8)
+                .Append(Common.Toggle(o, "stepped", false, T("Stepped planets on/off", "Stufenplaneten an/aus"), IconIds.Toggle)),
+            // Built from parts (sun, planets, ring, carrier) with "Explode" in the hosts.
+            CompanionTypes = new[] { "mech.shaft", "mech.carrier", "mech.gear.spur", "mech.gear.internal" },
+            PartsOf = PlanetaryParts,
         };
+
+        /// <summary>
+        /// The set as parts in the axial views: sun (20 teeth), planets (16) on a carrier with as many pins, ring gear (52);
+        /// sizes from the set's box (design 50 x 50). Stepped planets and the schematic view are not exploded.
+        /// </summary>
+        private static IReadOnlyList<PartSpec>? PlanetaryParts(SketchObject o)
+        {
+            var view = o.View ?? "stick";
+            if (view is not ("axial" or "teeth") || Stepped(o)) return null;
+            var k = Math.Min(o.Size.W, o.Size.H) / 50;
+            var n = Planets(o);
+            var list = new List<PartSpec>
+            {
+                new("mech.carrier", "axial", Vec2.Zero) { PinRadius = PCarrier * k, Params = new Dictionary<string, ParamValue> { ["arms"] = n } },
+                new("mech.gear.spur", view, Vec2.Zero) { Pitch = PSun * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 20 } },
+                new("mech.gear.internal", view, Vec2.Zero) { InnerPitch = PRing * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 52 } },
+            };
+            for (var i = 0; i < n; i++)
+            {
+                var c = Frag.Polar(PCarrier * k, -Math.PI / 2 + i * 2 * Math.PI / n);
+                list.Add(new("mech.gear.spur", view, c) { Pitch = PPlanet * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 16 } });
+            }
+            return list;
+        }
 
         private static IEnumerable<Anchor> PlanetAnchors(Pen p, SketchObject o)
         {
@@ -418,7 +455,13 @@ namespace InventaSketch.Modules.Mechanical
             yield return Pitch(p, PSun);
         }
 
-        private static int Planets(SketchObject o) => Math.Max(3, Math.Min(6, o.Int("planets", 3)));
+        private static int Planets(SketchObject o) => Math.Max(2, Math.Min(8, o.Int("planets", 3)));
+
+        /// <summary>Stepped planets: a second, smaller gear stage on each planet pin meshes with a smaller ring.</summary>
+        private static bool Stepped(SketchObject o) => o.Flag("stepped", false);
+
+        /// <summary>Pitch radius of the second planet stage and the ring radius it meshes with (stepped planets).</summary>
+        private const double PStep = PPlanet * 0.6, PRingStep = PCarrier + PStep;
 
         /// <summary>Stick schematic of a simple planetary set: sun on the central shaft, planets on a U-shaped carrier, ring brackets.</summary>
         private static void PlanetStick(Pen p, SketchObject o)
@@ -436,6 +479,18 @@ namespace InventaSketch.Modules.Mechanical
             {
                 var yc = s * PCarrier;
                 p.Line(carrierX, yc, x + fw * 0.5, yc, S.Stick, "carrier");
+                if (Stepped(o))
+                {
+                    // Stage 1 (big) meshes with the sun, stage 2 (small) with the ring, both on one pin.
+                    p.Line(x - fw, s * PSun, x, s * PSun, S.Stick, "planet");
+                    p.Line(x - fw, s * PRing, x, s * PRing, S.Stick, "planet");
+                    Frag.Hub(p, p.V(x - fw * 0.5, s * PSun), p.V(x - fw * 0.5, yc), p.V(x - fw * 0.5, s * PRing), "loose", S.Stick);
+                    p.Line(x + 0.6, s * (PCarrier - PStep), x + fw + 1.2, s * (PCarrier - PStep), S.Stick, "planet");
+                    p.Line(x + 0.6, s * PRingStep, x + fw + 1.2, s * PRingStep, S.Stick, "planet");
+                    p.Line(x + fw * 0.6 + 0.6, s * (PCarrier - PStep), x + fw * 0.6 + 0.6, s * PRingStep, S.Stick, "planet");
+                    p.Poly(S.Stick, false, x, s * PRim, x, s * (PRingStep + 0.9), x + fw + 2, s * (PRingStep + 0.9), x + fw + 2, s * PRim);
+                    continue;
+                }
                 p.Line(x - fw, s * PSun, x + fw, s * PSun, S.Stick, "planet");
                 p.Line(x - fw, s * PRing, x + fw, s * PRing, S.Stick, "planet");
                 Frag.Hub(p, p.V(x, s * PSun), p.V(x, yc), p.V(x, s * PRing), "loose", S.Stick);
@@ -491,6 +546,7 @@ namespace InventaSketch.Modules.Mechanical
                     var c = Frag.Polar(PCarrier, phi);
                     p.Circle(c.X, c.Y, PPlanet + PM, S.Vis, "planet");
                     p.Circle(c.X, c.Y, PPlanet, S.Ctr, "pitch");
+                    if (Stepped(o)) p.Circle(c.X, c.Y, PStep + PM, S.Hid, "planet");
                     p.Circle(c.X, c.Y, 1.6, S.Vis, "pin");
                 }
             }
@@ -499,6 +555,76 @@ namespace InventaSketch.Modules.Mechanical
             p.Circle(0, 0, 2.6, S.Vis, "bore");
             p.CenterCross(0, 0, 25, 25);
         }
+
+        // ------------------------------------------------------------------ planet carrier
+
+        // Axial design 50 x 50: pins on a circle of radius 18; schematic 20 x 50 with the pins at +-18.
+        private const double CarrierR = 18;
+
+        private static MechType Carrier() => new(
+            "mech.carrier", T("Planet carrier", "Planetenträger (Steg)"), Cat,
+            new[] { "carrier", "planet carrier", "spider", "arm", "steg", "planetenträger", "planetensteg", "umlaufgetriebe" },
+            new ViewSpec("stick", VStick, 20, 50, CarrierStick) { Anchors = CarrierStickAnchors },
+            new ViewSpec("axial", VAxial, 50, 50, CarrierAxial) { Anchors = CarrierAxialAnchors })
+        {
+            Params = new[]
+            {
+                Common.Count("arms", T("Planet pins", "Planetenbolzen"), 3, 2, 8),
+                Common.Flag("disc", T("Disc instead of arms", "Scheibe statt Arme"), false),
+                Common.Flag("fixed", T("Fixed carrier (grounded)", "Fester Steg (gestellfest)"), false),
+            },
+            Extra = o => Common.Stepper(o, "arms", T("Pins", "Bolzen"), 3, 1, 2, 8)
+                .Append(Common.Toggle(o, "fixed", false, T("Fixed carrier on/off", "Fester Steg an/aus"), IconIds.Ground)),
+            // A sun gear goes in the centre, planets on the pins, a ring gear around them.
+            CompanionTypes = new[] { "mech.gear.spur", "mech.gear.internal", "mech.shaft", "mech.bearing.ball" },
+        };
+
+        private static int Arms(SketchObject o) => Math.Max(2, Math.Min(8, o.Int("arms", 3)));
+
+        private static List<double> ArmAngles(SketchObject o) => Enumerable.Range(0, Arms(o)).Select(i => -Math.PI / 2 + i * 2 * Math.PI / Arms(o)).ToList();
+
+        private static void CarrierAxial(Pen p, SketchObject o)
+        {
+            if (o.Flag("disc", false)) p.Circle(0, 0, CarrierR + 3.5, S.Vis, "disc");
+            foreach (var a in ArmAngles(o))
+            {
+                var c = Frag.Polar(CarrierR, a);
+                var n = Frag.Polar(1, a + Math.PI / 2);
+                if (!o.Flag("disc", false))
+                {
+                    // Arm: two lines from the hub to the pin boss.
+                    p.Line(n.X * 2.2, n.Y * 2.2, c.X + n.X * 2.2, c.Y + n.Y * 2.2, S.Vis, "arm");
+                    p.Line(-n.X * 2.2, -n.Y * 2.2, c.X - n.X * 2.2, c.Y - n.Y * 2.2, S.Vis, "arm");
+                }
+                p.Circle(c.X, c.Y, 2.6, S.Vis, "boss");
+                p.Circle(c.X, c.Y, 1.2, S.Vis, "pin");
+            }
+            p.Circle(0, 0, 4.2, S.Vis, "hub");
+            p.Circle(0, 0, 2.2, S.Vis, "bore");
+            p.Circle(0, 0, CarrierR, S.Ctr, "pitch");
+            if (o.Flag("fixed", false)) Frag.GroundStrokes(p, p.V(-6, 8), p.V(6, 8), new Vec2(0, 1), 1.6, 1.6);
+        }
+
+        private static IEnumerable<Anchor> CarrierAxialAnchors(Pen p, SketchObject o)
+            => ArmAngles(o).Select((a, i) => Anchor.Point(AnchorRole.Hub, p.V(Frag.Polar(CarrierR, a)), "pin" + i));
+
+        private static void CarrierStick(Pen p, SketchObject o)
+        {
+            // Carrier: vertical bar, pins to the right, stub shaft to the left.
+            p.Line(-6, -CarrierR, -6, CarrierR, S.Stick, "carrier");
+            foreach (var s in new[] { -1.0, 1.0 })
+                p.Line(-6, s * CarrierR, 8, s * CarrierR, S.Stick, "pin");
+            p.Line(-10, 0, -6, 0, S.Heavy, "shaft");
+            if (o.Flag("fixed", false)) Frag.GroundStrokes(p, p.V(-10, 0), p.V(-10, 6), new Vec2(-1, 0), 1.6, 1.6);
+            p.Axis(10);
+        }
+
+        /// <summary>Schematic carrier: the two pins are axes (planets sit on them).</summary>
+        private static IEnumerable<Anchor> CarrierStickAnchors(Pen p, SketchObject o) => new[]
+        {
+            Anchor.Segment(AnchorRole.Axis, p.V(-6, -CarrierR), p.V(8, -CarrierR)) with { Id = "pin0" },
+            Anchor.Segment(AnchorRole.Axis, p.V(-6, CarrierR), p.V(8, CarrierR)) with { Id = "pin1" },
+        };
 
         // ------------------------------------------------------------------ differential
 

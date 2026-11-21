@@ -13,8 +13,12 @@ namespace InventaSketch.Core
         InnerMesh,
         /// <summary>Free end of an axis (shaft end, e-machine or engine output): the next shaft section or a part goes here; dragging stretches a shaft.</summary>
         AxisEnd,
-        /// <summary>Hub of a part that sits on no shaft: a shaft goes through it.</summary>
+        /// <summary>Hub of a part that sits on no shaft: a shaft goes through it (or a concentric sun, ring gear or carrier).</summary>
         Hub,
+        /// <summary>Free planet pin of a carrier: a planet goes here, sized to mesh with the sun or ring around.</summary>
+        Pin,
+        /// <summary>Cone apex of a bevel gear: a mating bevel gear at 90° (or facing it on the same axis) shares it.</summary>
+        Bevel,
     }
 
     /// <summary>A place on an element where a fitting part can be docked: page point, outward direction, kind.</summary>
@@ -72,8 +76,36 @@ namespace InventaSketch.Core
                     list.Add(new BuildPort("inner." + name, PortKind.InnerMesh, at, dir * -1));
                 }
 
+            // Bevel gears: mating gears share the cone apex: above and below (axes at 90°) and facing on the same axis.
+            var apex = own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex);
+            if (apex is not null)
+            {
+                var toApex = apex.P - new Vec2(o.Transform.X, o.Transform.Y);
+                var ax = toApex.Length > 1e-6 ? toApex * (1 / toApex.Length) : Turn(new Vec2(1, 0));
+                var up = new Vec2(ax.Y, -ax.X);
+                if (up.Y > 1e-9) up = up * -1;
+                foreach (var (name, dir) in new[] { ("bevel.up", up), ("bevel.down", up * -1), ("bevel.across", ax) })
+                {
+                    var taken = others.Any(x => x.Anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex && a.P.DistanceTo(apex.P) <= 0.5)
+                        && (new Vec2(x.Obj.Transform.X, x.Obj.Transform.Y) - apex.P).Dot(dir) > 0.5);
+                    if (!taken) list.Add(new BuildPort(name, PortKind.Bevel, apex.P, dir));
+                }
+            }
+
+            // Carrier pins (hub points or axes with ids "pin…"): a planet on each free pin.
+            var centre = (own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == "hub")?.P) ?? new Vec2(o.Transform.X, o.Transform.Y);
+            foreach (var pin in own.Where(IsPin))
+            {
+                var at = pin.Kind == AnchorKind.Point ? pin.P : Vec2.Lerp(pin.P, pin.Q, 0.5);
+                var taken = others.Any(x => x.Anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub
+                    && (pin.Kind == AnchorKind.Point ? a.P.DistanceTo(pin.P) <= 0.5 : Geo.ClosestOnSegment(a.P, pin.P, pin.Q).Point.DistanceTo(a.P) <= 0.3)));
+                if (taken) continue;
+                var d = at - centre;
+                list.Add(new BuildPort(pin.Id!, PortKind.Pin, at, d.Length > 1e-6 ? d * (1 / d.Length) : Turn(new Vec2(0, -1))) { AxisFrom = centre });
+            }
+
             // Free axis ends: the next shaft section or a part.
-            var axes = own.Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis).ToList();
+            var axes = own.Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && !IsPin(a)).ToList();
             for (var k = 0; k < axes.Count; k++)
             {
                 var ax = axes[k];
@@ -91,13 +123,17 @@ namespace InventaSketch.Core
                 }
             }
 
-            // A hub on no shaft (and no axis of its own): a shaft through it.
-            var hub = own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub);
+            // A hub on no shaft (and no axis of its own): a shaft through it, or a concentric gear or carrier.
+            var hub = own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == "hub")
+                ?? own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && !IsPin(a));
             if (hub is not null && axes.Count == 0
                 && !others.Any(x => x.Anchors.Any(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && Geo.ClosestOnSegment(hub.P, a.P, a.Q).Point.DistanceTo(hub.P) <= 0.3)))
                 list.Add(new BuildPort("hub", PortKind.Hub, hub.P, Turn(new Vec2(1, 0))));
             return list;
         }
+
+        private static bool IsPin(Anchor a) => a.Id is { } id && id.StartsWith("pin", StringComparison.Ordinal)
+            && (a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub || a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis);
 
         /// <summary>True if the point lies on another element: inside its pitch circle, or inside its box (not for lines).</summary>
         private static bool Covers(SketchObject x, List<Anchor> anchors, Vec2 p)
@@ -127,10 +163,13 @@ namespace InventaSketch.Core
                 if (shaft is not null && !candidates.Contains(shaft)) candidates.Insert(0, shaft);
             }
             var list = new List<LibraryItem>();
+            var selKind = registry.Type(o.Type)!.MeshDirections(o).Count;
             foreach (var item in candidates)
             {
                 if (list.Count >= max) break;
                 if (list.Any(i => i.TypeId == item.TypeId)) continue;
+                // Gears, carriers and hubs only take parts in the same kind of view (axial with axial, side with side).
+                if (port.Kind is not PortKind.AxisEnd && registry.Type(item.TypeId) is { } it && it.MeshDirections(registry.Create(item, Vec2.Zero)).Count != selKind) continue;
                 if (Place(registry, doc, id, port, item, lang) is not null) list.Add(item);
             }
             return list;
@@ -155,8 +194,29 @@ namespace InventaSketch.Core
                     if (pitch is null) return null;
                     return Translate(probe, port.At + port.Dir * pitch.Radius - pitch.P);
                 case PortKind.Hub:
-                    if (axis is null) return null;
-                    return Translate(probe, port.At - Vec2.Lerp(axis.P, axis.Q, 0.5));
+                    if (axis is not null && hub is null) return Translate(probe, port.At - Vec2.Lerp(axis.P, axis.Q, 0.5));
+                    return Concentric(registry, doc, sel, probe, port, lang);
+                case PortKind.Bevel:
+                    {
+                        var apexP = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex);
+                        if (apexP is null) return null;
+                        // The mating gear sits on the port's side and points back at the shared apex.
+                        var theta = Math.Atan2(-port.Dir.Y, -port.Dir.X) * 180 / Math.PI;
+                        var turned = probe with { Transform = probe.Transform with { Rotation = Math.Round(theta, 6) } };
+                        var ta = Anchors(registry, doc, turned, lang).First(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex);
+                        return Translate(turned, port.At - ta.P);
+                    }
+                case PortKind.Pin:
+                    if (pitch is null || hub is null) return null;
+                    {
+                        // Planet size: it meshes with the sun inside or the ring outside (whichever is there).
+                        var (sun, ring) = Around(registry, doc, sel, port.AxisFrom, lang);
+                        var r = port.At.DistanceTo(port.AxisFrom);
+                        double? want = sun is double rs && r > rs ? r - rs : ring is double rr && rr > r ? rr - r : null;
+                        var sized = want is double w ? registry.Type(probe.Type)!.ScalePitch(probe, w / pitch.Radius) : probe;
+                        var h = Anchors(registry, doc, sized, lang).First(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub);
+                        return Translate(sized, port.At - h.P);
+                    }
                 case PortKind.AxisEnd:
                     if (axis is not null && hub is null)
                     {
@@ -181,6 +241,77 @@ namespace InventaSketch.Core
                     }
             }
             return null;
+        }
+
+        /// <summary>
+        /// A part placed concentric with the selection's hub: a sun or ring gear sized to the planets on a carrier, a carrier
+        /// sized to a sun gear (planets of 0.8 × the sun), a ring gear around a sun. Null if the item is none of these.
+        /// </summary>
+        private static SketchObject? Concentric(Registry registry, SketchDocument doc, SketchObject sel, SketchObject probe, BuildPort port, Lang lang)
+        {
+            var pa = Anchors(registry, doc, probe, lang);
+            var pPitch = pa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
+            var pRing = pa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.PitchInner);
+            var pPins = pa.Where(IsPin).ToList();
+            var sa = registry.PageAnchors(sel, new RenderContext(doc, lang)).ToList();
+            var selPitch = sa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
+            var selPin = sa.FirstOrDefault(IsPin);
+            var type = registry.Type(probe.Type)!;
+            SketchObject sized;
+            if (selPin is not null)
+            {
+                // On a carrier: pin radius R, planet radius from a planet already on a pin (else 0.45 R).
+                var R = (selPin.Kind == AnchorKind.Point ? selPin.P : Vec2.Lerp(selPin.P, selPin.Q, 0.5)).DistanceTo(port.At);
+                var planet = PlanetOn(registry, doc, sel, lang) ?? R * 0.45;
+                if (pPitch is not null) sized = type.ScalePitch(probe, (R - planet) / pPitch.Radius);
+                else if (pRing is not null) sized = type.ScalePitch(probe, (R + planet) / pRing.Radius);
+                else return null;
+            }
+            else if (selPitch is not null && pPins.Count > 0)
+            {
+                // A carrier on a sun gear: planets of 0.8 × the sun fit on its pins.
+                var hubP = pa.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == "hub")?.P ?? new Vec2(probe.Transform.X, probe.Transform.Y);
+                var pinR = (pPins[0].Kind == AnchorKind.Point ? pPins[0].P : Vec2.Lerp(pPins[0].P, pPins[0].Q, 0.5)).DistanceTo(hubP);
+                if (pinR < 1e-6) return null;
+                sized = type.ScalePitch(probe, selPitch.Radius * 1.8 / pinR);
+            }
+            else if (selPitch is not null && pRing is not null)
+                sized = type.ScalePitch(probe, selPitch.Radius * 2.6 / pRing.Radius);
+            else return null;
+            var h = Anchors(registry, doc, sized, lang).FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == "hub")
+                ?? Anchors(registry, doc, sized, lang).FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub);
+            return h is null ? null : Translate(sized, port.At - h.P);
+        }
+
+        /// <summary>Pitch radius of a gear sitting on one of the carrier's pins, else null.</summary>
+        private static double? PlanetOn(Registry registry, SketchDocument doc, SketchObject carrier, Lang lang)
+        {
+            var ctx = new RenderContext(doc, lang);
+            var pins = registry.PageAnchors(carrier, ctx).Where(IsPin).ToList();
+            foreach (var x in doc.Objects.Values.Where(x => x.Id != carrier.Id && !x.IsPointGeometry && registry.Type(x.Type) is not null))
+            {
+                var xa = registry.PageAnchors(x, ctx).ToList();
+                var h = xa.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub);
+                var pc = xa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
+                if (h is null || pc is null) continue;
+                if (pins.Any(pin => pin.Kind == AnchorKind.Point ? pin.P.DistanceTo(h.P) <= 0.5 : Geo.ClosestOnSegment(h.P, pin.P, pin.Q).Point.DistanceTo(h.P) <= 0.3))
+                    return pc.Radius;
+            }
+            return null;
+        }
+
+        /// <summary>Pitch radii of a sun (external) and a ring gear (internal) concentric with <paramref name="centre"/>.</summary>
+        private static (double? Sun, double? Ring) Around(Registry registry, SketchDocument doc, SketchObject except, Vec2 centre, Lang lang)
+        {
+            var ctx = new RenderContext(doc, lang);
+            double? sun = null, ring = null;
+            foreach (var x in doc.Objects.Values.Where(x => x.Id != except.Id && !x.IsPointGeometry && registry.Type(x.Type) is not null))
+                foreach (var a in registry.PageAnchors(x, ctx).Where(a => a.Kind == AnchorKind.Circle && a.P.DistanceTo(centre) <= 0.5))
+                {
+                    if (a.Role == AnchorRole.Pitch) sun ??= a.Radius;
+                    else if (a.Role == AnchorRole.PitchInner) ring ??= a.Radius;
+                }
+            return (sun, ring);
         }
 
         /// <summary>
