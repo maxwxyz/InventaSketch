@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Builds the installable PowerPoint COM add-in package dist\InventaSketch-AddIn and a versioned ZIP.
 .DESCRIPTION
@@ -63,6 +63,11 @@ New-Item -ItemType Directory -Force $target | Out-Null
 Copy-Item (Join-Path $here 'AddIn\*') $target -Recurse -Force
 Get-ChildItem $target -Recurse | Unblock-File
 & (Join-Path $here 'register-com.ps1') -AddInPath (Join-Path $target 'InventaSketch.AddIn.dll')
+# Ribbon cache for the first start: PowerPoint then gets the ribbon without waiting for the module library (Office
+# disables add-ins that start slowly). Runs in its own process so no file stays locked; failure only slows the first start.
+$dll = (Join-Path $target 'InventaSketch.AddIn.dll').Replace("'", "''")
+$warm = & powershell -NoProfile -ExecutionPolicy Bypass -Command "try { [void][Reflection.Assembly]::LoadFrom('$dll'); [InventaSketch.AddIn.Connect]::WarmRibbonCache() } catch { 0 }"
+if ("$warm".Trim() -ne '2') { Write-Warning (T 'Ribbon cache not prepared; the first start of PowerPoint may take a little longer.' 'Menüband-Cache nicht vorbereitet; der erste Start von PowerPoint kann etwas länger dauern.') }
 Write-Host ''
 Write-Host (T 'InventaSketch is installed. Start PowerPoint: tab "InventaSketch".' 'InventaSketch ist installiert. PowerPoint starten: Register "InventaSketch".')
 '@

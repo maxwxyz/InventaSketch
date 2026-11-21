@@ -30,9 +30,23 @@ namespace InventaSketch.AddIn
     {
         private PowerPoint.Application? _app;
         private Office.IRibbonUI? _ribbon;
-        private Registry? _registry;
+        /// <summary>
+        /// Module library, built on a worker thread from <see cref="OnConnection"/> (about 0.7 s of cold JIT): Office measures
+        /// the start time of add-ins and disables slow ones. Readers wait for it; at startup only a stale ribbon cache does.
+        /// </summary>
+        private System.Threading.Tasks.Task<Catalog>? _catalog;
+        private Registry? _registry => _catalog?.Result.Registry;
+        private List<LibraryCategory> _categories => _catalog?.Result.Categories ?? new List<LibraryCategory>();
         private Lang _lang = Lang.En;
-        private List<LibraryCategory> _categories = new();
+
+        internal sealed record Catalog(Registry Registry, List<LibraryCategory> Categories);
+
+        internal static Catalog BuildCatalog()
+        {
+            var registry = ModuleCatalog.CreateDefault();
+            var used = new HashSet<string>(registry.Library.Select(i => i.Category));
+            return new Catalog(registry, registry.Categories.Where(c => used.Contains(c.Id)).OrderBy(c => c.Order).ToList());
+        }
         private readonly Dictionary<string, Bitmap> _images = new();
         private OnSlide.OnSlideController? _onSlide;
         private Office.ICTPFactory? _ctpFactory;
@@ -69,9 +83,15 @@ namespace InventaSketch.AddIn
             {
                 _app = (PowerPoint.Application)application;
                 _lang = DetectLanguage(_app);
-                _registry = ModuleCatalog.CreateDefault();
-                var used = new HashSet<string>(_registry.Library.Select(i => i.Category));
-                _categories = _registry.Categories.Where(c => used.Contains(c.Id)).OrderBy(c => c.Order).ToList();
+                _catalog = System.Threading.Tasks.Task.Run(BuildCatalog);
+                // After startup: refresh the ribbon cache and keep Office from disabling the add-in (Slidemax B80).
+                _catalog.ContinueWith(t =>
+                {
+                    if (t.Status != System.Threading.Tasks.TaskStatus.RanToCompletion) { Log.Error("Library", t.Exception); return; }
+                    RibbonCache.Store(_lang, () => RibbonXml());
+                    Resilience.Apply("startup");
+                    Log.Info($"Library ready: {t.Result.Registry.Library.Count} items in {t.Result.Categories.Count} categories, {watch.ElapsedMilliseconds} ms after connect");
+                });
                 if (addInInst is Office.COMAddIn comAddIn) comAddIn.Object = new Automation(this);
                 _onSlide = new OnSlide.OnSlideController(_app, () => _registry!, () => _lang);
                 _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang, BeginPlacement);
@@ -91,7 +111,7 @@ namespace InventaSketch.AddIn
                 _app.AfterPresentationOpen += AdoptUnits;
                 Log.Info($"Connected: InventaSketch {typeof(Connect).Assembly.GetName().Version}, PowerPoint {_app.Version}, "
                     + $"{(Environment.Is64BitProcess ? 64 : 32)} bit, CLR {Environment.Version}, language {_lang}, "
-                    + $"{_registry.Library.Count} library items in {_categories.Count} categories, {watch.ElapsedMilliseconds} ms");
+                    + $"mode {connectMode}, {watch.ElapsedMilliseconds} ms");
             }
             catch (Exception ex)
             {
@@ -140,7 +160,23 @@ namespace InventaSketch.AddIn
             catch (Exception ex) { Log.Error("Adopt units", ex); }
         }
 
-        public void OnBeginShutdown(ref Array custom) { }
+        public void OnBeginShutdown(ref Array custom) => Resilience.Apply("shutdown");
+
+        /// <summary>
+        /// Writes the ribbon cache for both languages (called by install.ps1 right after registering, so even the first
+        /// start after an install does not wait for the library). Returns the number of files written.
+        /// </summary>
+        public static int WarmRibbonCache()
+        {
+            var connect = new Connect { _catalog = System.Threading.Tasks.Task.FromResult(BuildCatalog()) };
+            var n = 0;
+            foreach (var lang in new[] { Lang.De, Lang.En })
+            {
+                connect._lang = lang;
+                if (RibbonCache.Store(lang, () => connect.RibbonXml(), force: true)) n++;
+            }
+            return n;
+        }
 
         private static Lang DetectLanguage(PowerPoint.Application app)
         {
@@ -161,7 +197,8 @@ namespace InventaSketch.AddIn
         {
             try
             {
-                return RibbonXml();
+                // Startup: the cached ribbon of this build and language, so PowerPoint does not wait for the library.
+                return RibbonCache.Load(_lang) ?? RibbonXml();
             }
             catch (Exception ex)
             {

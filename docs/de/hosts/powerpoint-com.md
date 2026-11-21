@@ -105,6 +105,19 @@ Bibliothekselement startet das Einfügen am Mauszeiger auf der Folie.
 mit `Uninstall.cmd`. Das Paket enthält die Release-Binärdateien, den Seitenleisten-Editor (`AddIn\App`) und die
 Registrierungsskripte.
 
+**Startzeit und Schutz vor Deaktivieren.** Office misst die Startzeit von Add-ins, deaktiviert langsame und setzt dabei
+ihre Registrierung zurück. Die Modulbibliothek (etwa 0,7 s kaltes JIT) entsteht deshalb in einem Hintergrund-Thread;
+PowerPoint erhält das Menüband aus `%LOCALAPPDATA%\InventaSketch\ribbon-<de|en>.xml`, einem an den installierten Build
+gebundenen Cache (Modulversions-Id sowie Name, Größe und Zeit jeder InventaSketch-Assembly), den `install.ps1` direkt
+nach dem Registrieren vorwärmt und das Add-in auffrischt, sobald die Bibliothek bereit ist. Wie Slidemax (B80) schreibt
+`Resilience` nach dem Start und beim Beenden den Eintrag in `DoNotDisableAddinList` und `LoadBehavior = 3` und hebt eine
+harte Deaktivierung nach einem Absturz auf (nur eigener Benutzer; Gruppenrichtlinien bleiben unberührt).
+
+**Installieren aus einer Automatisierung:** Registry-Schreibzugriffe aus einem Prozess in einem App-Container (zum
+Beispiel einer Shell der Claude-Desktop-App) werden virtualisiert und sind für ein aus dem Startmenü gestartetes
+PowerPoint unsichtbar. `Install.cmd` (oder `install.ps1`) über `explorer.exe` starten, damit es im normalen
+Benutzerkontext läuft, und mit einem ebenso gestarteten PowerPoint prüfen.
+
 **Für Entwickler:**
 
 ```powershell

@@ -118,6 +118,19 @@ loads it into the sidebar with its views; rotating it in the sidebar (`rotate90`
 `Uninstall.cmd`. The package contains the Release binaries, the sidebar editor (`AddIn\App`) and the
 registration scripts.
 
+**Start time and protection against disabling.** Office measures the start time of add-ins and disables slow ones,
+resetting their registration on the way. The module library (about 0.7 s of cold JIT) is therefore built on a worker
+thread; PowerPoint gets the ribbon from `%LOCALAPPDATA%\InventaSketch\ribbon-<de|en>.xml`, a cache bound to the
+installed build (module version id plus name, size and time of every InventaSketch assembly) that `install.ps1` warms
+right after registering and the add-in refreshes once the library is ready. Like Slidemax (B80), `Resilience` writes the
+`DoNotDisableAddinList` entry and `LoadBehavior = 3` after startup and at shutdown and clears a hard disable after a
+crash (current user only; group policies are never touched).
+
+**Installing from automation:** registry writes from a process inside an app container (for example a shell of the
+Claude desktop app) are virtualised and invisible to a PowerPoint started from the Start menu. Run `Install.cmd` (or
+`install.ps1`) through `explorer.exe` so it runs in the normal user context, and verify with a PowerPoint started the
+same way.
+
 **For developers:**
 
 ```powershell
