@@ -78,9 +78,10 @@ namespace InventaSketch.Modules.Annotation
 
         public static IEnumerable<ParamDef> Heads(ArrowHead start, ArrowHead end, ArrowSize size = ArrowSize.Medium)
         {
-            yield return Choice("headStart", "Start head", "Spitze Anfang", Ann.HeadName(start), HeadOptions);
-            yield return Choice("headEnd", "End head", "Spitze Ende", Ann.HeadName(end), HeadOptions);
-            yield return Choice("headSize", "Head size", "Spitzengröße", size.ToString().ToLowerInvariant(), SizeOptions);
+            yield return Choice("headStart", "Start head", "Spitze Anfang", Ann.HeadName(start), HeadOptions).WithOptionIcons(IconIds.ForHead, mirrored: true);
+            yield return Choice("headEnd", "End head", "Spitze Ende", Ann.HeadName(end), HeadOptions).WithOptionIcons(IconIds.ForHead);
+            yield return Choice("headSize", "Head size", "Spitzengröße", size.ToString().ToLowerInvariant(), SizeOptions)
+                .WithOptionIcons(v => v switch { "small" => IconIds.SizeSmall, "large" => IconIds.SizeLarge, _ => IconIds.SizeMedium });
         }
 
         public static ParamDef TextSize(double def) => Num("textSize", "Text height", "Schrifthöhe", def, 1, 50, "mm", 0.5);
@@ -313,13 +314,13 @@ namespace InventaSketch.Modules.Annotation
             var s = Head(o, "headStart", defStart);
             var e = Head(o, "headEnd", defEnd);
             yield return new ContextAction("ann.head.start", new I18nText("Arrowhead at start", "Pfeilspitze am Anfang"), "arrow-start",
-                x => x.WithParam("headStart", Head(x, "headStart", defStart) == ArrowHead.None ? "triangle" : "none")) { IsActive = s != ArrowHead.None, Group = "heads" };
+                x => x.WithParam("headStart", Head(x, "headStart", defStart) == ArrowHead.None ? "triangle" : "none")) { IsActive = s != ArrowHead.None, Group = "heads", ParamKeys = new[] { "headStart" } };
             yield return new ContextAction("ann.head.end", new I18nText("Arrowhead at end", "Pfeilspitze am Ende"), "arrow-end",
-                x => x.WithParam("headEnd", Head(x, "headEnd", defEnd) == ArrowHead.None ? "triangle" : "none")) { IsActive = e != ArrowHead.None, Group = "heads" };
+                x => x.WithParam("headEnd", Head(x, "headEnd", defEnd) == ArrowHead.None ? "triangle" : "none")) { IsActive = e != ArrowHead.None, Group = "heads", ParamKeys = new[] { "headEnd" } };
             yield return new ContextAction("ann.head.style", new I18nText("Next arrowhead style", "Nächste Pfeilspitzenform"), "arrow-style",
-                x => x.WithParam("headEnd", HeadName(NextHead(Head(x, "headEnd", defEnd))))) { Group = "heads" };
+                x => x.WithParam("headEnd", HeadName(NextHead(Head(x, "headEnd", defEnd))))) { Group = "heads", ParamKeys = new[] { "headEnd" } };
             yield return new ContextAction("ann.head.size", new I18nText("Next arrowhead size", "Nächste Pfeilspitzengröße"), "arrow-size",
-                x => x.WithParam("headSize", ((ArrowSize)(((int)HeadSize(x) + 1) % 3)).ToString().ToLowerInvariant())) { Group = "heads" };
+                x => x.WithParam("headSize", ((ArrowSize)(((int)HeadSize(x) + 1) % 3)).ToString().ToLowerInvariant())) { Group = "heads", ParamKeys = new[] { "headSize" } };
             yield return SwapAction();
         }
 

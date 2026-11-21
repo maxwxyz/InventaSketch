@@ -220,6 +220,8 @@ namespace InventaSketch.Engine
         public string? Unit { get; set; }
         public bool Advanced { get; set; }
         public List<ActionInfo>? Options { get; set; }
+        /// <summary>Option icons are drawn mirrored (start arrowheads).</summary>
+        public bool MirrorIcons { get; set; }
         public ParamValue? Value { get; set; }
         public ParamValue? Default { get; set; }
     }

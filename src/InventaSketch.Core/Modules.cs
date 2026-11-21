@@ -37,7 +37,14 @@ namespace InventaSketch.Core
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ParamKind { Number, Integer, Boolean, Choice, Text }
 
-    public sealed record ParamOption(string Value, I18nText Label);
+    public sealed record ParamOption(string Value, I18nText Label)
+    {
+        /// <summary>
+        /// Pictogram of the option (<see cref="IconIds"/>). When every option of a choice has one, hosts show the choice right
+        /// in the floating bar as an icon button with the options as an icon row (no text, no submenu).
+        /// </summary>
+        public string? Icon { get; init; }
+    }
 
     /// <summary>Inspector parameter definition. All parameters are optional by design.</summary>
     public sealed record ParamDef(string Key, I18nText Label, ParamKind Kind)
@@ -50,6 +57,15 @@ namespace InventaSketch.Core
         public IReadOnlyList<ParamOption>? Options { get; init; }
         /// <summary>Shown only in the "engineering" section of the inspector.</summary>
         public bool Advanced { get; init; }
+        /// <summary>Option pictograms are drawn mirrored (start arrowheads point left).</summary>
+        public bool MirrorIcons { get; init; }
+
+        /// <summary>True if every option has a pictogram of the shared set: the choice belongs in the floating bar.</summary>
+        public bool HasOptionIcons => Kind == ParamKind.Choice && Options is { Count: > 1 } && Options.All(o => o.Icon is not null && IconIds.All.Contains(o.Icon));
+
+        /// <summary>The same choice with option pictograms from <paramref name="iconOf"/> (value to icon id, null = none).</summary>
+        public ParamDef WithOptionIcons(Func<string, string?> iconOf, bool mirrored = false)
+            => this with { Options = Options?.Select(o => o with { Icon = iconOf(o.Value) }).ToList(), MirrorIcons = mirrored };
     }
 
     public sealed record ViewDef(string Id, I18nText Label)
@@ -111,11 +127,67 @@ namespace InventaSketch.Core
         public const string Actuation = "cmd-actuation";    // change how something is operated (push button)
         public const string Insert = "cmd-insert";          // insert a fitting element (frame with plus)
 
+        // Option pictograms (line ends, line styles, line courses): a short line with the feature on the right.
+        public const string HeadNone = "head-none";
+        public const string HeadTriangle = "head-triangle";
+        public const string HeadOpen = "head-open";
+        public const string HeadStealth = "head-stealth";
+        public const string HeadDiamond = "head-diamond";
+        public const string HeadDot = "head-dot";
+        public const string HeadTick = "head-tick";
+        public const string HeadHalf = "head-half";
+        public const string HeadTriangleHollow = "head-triangle-hollow";
+        public const string HeadDiamondHollow = "head-diamond-hollow";
+        public const string SizeSmall = "size-small";
+        public const string SizeMedium = "size-medium";
+        public const string SizeLarge = "size-large";
+        public const string LineSolid = "line-solid";
+        public const string LineDash = "line-dash";
+        public const string LineDot = "line-dot";
+        public const string LineDashDot = "line-dashdot";
+        public const string LineDashDotDot = "line-dashdotdot";
+        public const string LineLongDash = "line-longdash";
+        public const string CourseStraight = "course-straight";
+        public const string CourseCurved = "course-curved";
+        public const string CourseWavy = "course-wavy";
+        public const string CourseZigzag = "course-zigzag";
+        public const string CourseElbow = "course-elbow";
+
+        /// <summary>Pictogram of an arrowhead or line-end name ("triangle", "open", "oval"/"dot" ...); null if unknown.</summary>
+        public static string? ForHead(string name) => name switch
+        {
+            "none" or "plain" => HeadNone,
+            "triangle" or "arrow" => HeadTriangle,
+            "open" => HeadOpen,
+            "stealth" => HeadStealth,
+            "diamond" => HeadDiamond,
+            "oval" or "dot" => HeadDot,
+            "tick" => HeadTick,
+            "half" => HeadHalf,
+            "triangleOpen" => HeadTriangleHollow,
+            "diamondOpen" => HeadDiamondHollow,
+            _ => null,
+        };
+
+        /// <summary>Pictogram of a line style.</summary>
+        public static string ForDash(DashStyle dash) => dash switch
+        {
+            DashStyle.Dash => LineDash,
+            DashStyle.Dot => LineDot,
+            DashStyle.DashDot => LineDashDot,
+            DashStyle.DashDotDot => LineDashDotDot,
+            DashStyle.LongDash => LineLongDash,
+            _ => LineSolid,
+        };
+
         /// <summary>Every icon id, for hosts and tests that must provide a pictogram for each.</summary>
         public static IReadOnlyList<string> All { get; } = new[]
         {
             Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
+            HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
+            SizeSmall, SizeMedium, SizeLarge, LineSolid, LineDash, LineDot, LineDashDot, LineDashDotDot, LineLongDash,
+            CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)
@@ -204,6 +276,11 @@ namespace InventaSketch.Core
         public string? Group { get; init; }
         /// <summary>False greys the action out (offered but not applicable, e.g. "align to wall" without a wall).</summary>
         public bool IsEnabled { get; init; } = true;
+        /// <summary>
+        /// Parameters this action sets. Hosts that show those parameters as choices (option pictograms in the bar) leave the
+        /// action out of the bar, so nothing appears twice; the pie menu keeps it.
+        /// </summary>
+        public IReadOnlyList<string>? ParamKeys { get; init; }
         /// <summary>Text value the host asks for before running the action (prompt dialog or inline field).</summary>
         public ActionInput? Input { get; init; }
         /// <summary>

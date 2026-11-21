@@ -15,13 +15,15 @@ namespace InventaSketch.AddIn.OnSlide
         public static string ForView(ViewDef v) => IconIds.ForView(v);
 
         /// <summary>Draws the icon into <paramref name="r"/> with the given ink.</summary>
-        public static void Draw(Graphics g, string iconId, RectangleF r, Color ink)
+        public static void Draw(Graphics g, string iconId, RectangleF r, Color ink, bool mirror = false)
         {
             var s = Math.Min(r.Width, r.Height) / 24f;
             var state = g.Save();
             g.SmoothingMode = SmoothingMode.AntiAlias;
             g.TranslateTransform(r.X + (r.Width - 24 * s) / 2, r.Y + (r.Height - 24 * s) / 2);
             g.ScaleTransform(s, s);
+            // Mirrored option pictograms (start arrowheads point left).
+            if (mirror) { g.TranslateTransform(24, 0); g.ScaleTransform(-1, 1); }
             using var pen = new Pen(ink, 1.7f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
             using var thin = new Pen(ink, 1.1f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
             using var dash = new Pen(ink, 1.1f) { DashPattern = new[] { 3.5f, 1.6f, 1f, 1.6f } };
@@ -170,6 +172,88 @@ namespace InventaSketch.AddIn.OnSlide
                     break;
                 case IconIds.Actuation:
                     g.DrawLine(pen, 8, 4, 16, 4); g.DrawLine(pen, 12, 4, 12, 11); g.DrawRectangle(pen, 5, 11, 14, 9);
+                    break;
+                // ---- option pictograms: a short line with the feature on the right
+                case IconIds.HeadNone:
+                    g.DrawLine(pen, 3, 12, 21, 12);
+                    break;
+                case IconIds.HeadTriangle:
+                    g.DrawLine(pen, 3, 12, 14, 12);
+                    g.FillPolygon(brush, new[] { new PointF(13, 7), new PointF(21.5f, 12), new PointF(13, 17) });
+                    break;
+                case IconIds.HeadOpen:
+                    g.DrawLine(pen, 3, 12, 20.5f, 12);
+                    g.DrawLines(pen, new[] { new PointF(14, 7), new PointF(20.5f, 12), new PointF(14, 17) });
+                    break;
+                case IconIds.HeadStealth:
+                    g.DrawLine(pen, 3, 12, 16, 12);
+                    g.FillPolygon(brush, new[] { new PointF(12.5f, 6.5f), new PointF(21.5f, 12), new PointF(12.5f, 17.5f), new PointF(15.5f, 12) });
+                    break;
+                case IconIds.HeadDiamond:
+                    g.DrawLine(pen, 3, 12, 12, 12);
+                    g.FillPolygon(brush, new[] { new PointF(11.5f, 12), new PointF(16.5f, 8), new PointF(21.5f, 12), new PointF(16.5f, 16) });
+                    break;
+                case IconIds.HeadDiamondHollow:
+                    g.DrawLine(pen, 3, 12, 11.5f, 12);
+                    g.DrawPolygon(pen, new[] { new PointF(11.5f, 12), new PointF(16.5f, 8), new PointF(21, 12), new PointF(16.5f, 16) });
+                    break;
+                case IconIds.HeadDot:
+                    g.DrawLine(pen, 3, 12, 15, 12);
+                    g.FillEllipse(brush, 14.5f, 8.5f, 7, 7);
+                    break;
+                case IconIds.HeadTick:
+                    g.DrawLine(pen, 3, 12, 21, 12);
+                    g.DrawLine(pen, 15, 17, 21, 7);
+                    break;
+                case IconIds.HeadHalf:
+                    g.DrawLine(pen, 3, 12, 21, 12);
+                    g.FillPolygon(brush, new[] { new PointF(13, 6.5f), new PointF(21.5f, 12), new PointF(13, 12) });
+                    break;
+                case IconIds.HeadTriangleHollow:
+                    g.DrawLine(pen, 3, 12, 13.5f, 12);
+                    g.DrawPolygon(pen, new[] { new PointF(13.5f, 7.5f), new PointF(21, 12), new PointF(13.5f, 16.5f) });
+                    break;
+                case IconIds.SizeSmall:
+                case IconIds.SizeMedium:
+                case IconIds.SizeLarge:
+                    {
+                        var h = iconId == IconIds.SizeSmall ? 2.6f : iconId == IconIds.SizeMedium ? 4.4f : 6.4f;
+                        g.DrawLine(pen, 3, 12, 21.5f - 1.6f * h, 12);
+                        g.FillPolygon(brush, new[] { new PointF(21.5f - 1.8f * h, 12 - h), new PointF(21.5f, 12), new PointF(21.5f - 1.8f * h, 12 + h) });
+                        break;
+                    }
+                case IconIds.LineSolid:
+                    g.DrawLine(pen, 3, 12, 21, 12);
+                    break;
+                case IconIds.LineDash:
+                    g.DrawLine(pen, 3, 12, 7, 12); g.DrawLine(pen, 10, 12, 14, 12); g.DrawLine(pen, 17, 12, 21, 12);
+                    break;
+                case IconIds.LineDot:
+                    for (var x = 3.5f; x <= 21; x += 4.3f) g.FillEllipse(brush, x - 1.2f, 10.8f, 2.4f, 2.4f);
+                    break;
+                case IconIds.LineDashDot:
+                    g.DrawLine(pen, 3, 12, 8, 12); g.FillEllipse(brush, 10, 10.8f, 2.4f, 2.4f); g.DrawLine(pen, 14.5f, 12, 21, 12);
+                    break;
+                case IconIds.LineDashDotDot:
+                    g.DrawLine(pen, 3, 12, 7, 12); g.FillEllipse(brush, 8.8f, 10.8f, 2.4f, 2.4f); g.FillEllipse(brush, 12.6f, 10.8f, 2.4f, 2.4f); g.DrawLine(pen, 17, 12, 21, 12);
+                    break;
+                case IconIds.LineLongDash:
+                    g.DrawLine(pen, 3, 12, 10, 12); g.DrawLine(pen, 14, 12, 21, 12);
+                    break;
+                case IconIds.CourseStraight:
+                    g.DrawLine(pen, 3, 18, 21, 6);
+                    break;
+                case IconIds.CourseCurved:
+                    g.DrawBezier(pen, 3, 18, 6, 7, 13, 5, 21, 6);
+                    break;
+                case IconIds.CourseWavy:
+                    g.DrawBezier(pen, 3, 17, 10, 2, 14, 22, 21, 7);
+                    break;
+                case IconIds.CourseZigzag:
+                    g.DrawLines(pen, new[] { new PointF(3, 12), new PointF(6.5f, 7), new PointF(10, 17), new PointF(14, 7), new PointF(17.5f, 17), new PointF(21, 12) });
+                    break;
+                case IconIds.CourseElbow:
+                    g.DrawLines(pen, new[] { new PointF(3, 18), new PointF(12, 18), new PointF(12, 6), new PointF(21, 6) });
                     break;
                 default:
                     g.DrawEllipse(pen, 5, 5, 14, 14); g.FillEllipse(brush, 10.5f, 10.5f, 3, 3);

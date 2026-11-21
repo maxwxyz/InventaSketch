@@ -1007,7 +1007,8 @@ namespace InventaSketch.Engine
                 {
                     Key = p.Key, Label = p.Label.Get(lang), Kind = char.ToLowerInvariant(p.Kind.ToString()[0]) + p.Kind.ToString().Substring(1),
                     Min = p.Min, Max = p.Max, Step = p.Step, Unit = p.Unit, Advanced = p.Advanced,
-                    Options = p.Options?.Select(o => new ActionInfo { Id = o.Value, Label = o.Label.Get(lang), Kind = "option" }).ToList(),
+                    Options = p.Options?.Select(o => new ActionInfo { Id = o.Value, Label = o.Label.Get(lang), Kind = "option", Icon = o.Icon ?? "" }).ToList(),
+                    MirrorIcons = p.MirrorIcons,
                     Value = first.Params.TryGetValue(p.Key, out var v) ? v : (ParamValue?)null,
                     Default = p.Default,
                 });

@@ -202,7 +202,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void Arm(SketchUnit unit)
         {
-            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barInsertOpen = false; }
+            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barInsertOpen = false; _barChoice = null; }
             var slide = CurrentSlide();
             var view = SlideView.Current(_app);
             if (slide is null || view is null) { Disarm(); return; }
@@ -796,6 +796,8 @@ namespace InventaSketch.AddIn.OnSlide
             var list = new List<BarButton>();
             var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             var type = first is null ? null : registry.Type(first.Type);
+            // An open choice (arrowheads, line style ...) fills the bar with its icon row.
+            if (first is not null && OpenChoiceButtons(first) is { } open) return open;
             // Just added with "+": the next element is one click away (no submenu).
             if (first is not null) list.AddRange(NextButtons(first));
             if (type is not null && first is not null && type.Views.Count > 1)
@@ -804,12 +806,21 @@ namespace InventaSketch.AddIn.OnSlide
                     list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
                 list.Add(new BarButton("", "", "", Separator: true));
             }
+            // Choices with pictograms (line type, arrowheads, line style, line course): icon button plus caret.
+            if (first is not null)
+            {
+                var chips = ChoiceButtons(first).ToList();
+                list.AddRange(chips);
+                if (chips.Count > 0) list.Add(new BarButton("", "", "", Separator: true));
+            }
             var hasText = first is not null && EditableText(registry, first) is not null;
             if (hasText)
                 list.Add(new BarButton("text", "", T("Edit text (double-click)", "Text bearbeiten (Doppelklick)")) { IconId = IconIds.Text });
             // Key parameters straight in the bar (no submenu): actions with a telling pictogram as icons, switches and
             // cycles (hub, helix, kind …) as short text buttons; the pie menu keeps the complete list.
-            var keyActions = BarActions(UnitActions(out _), hasText);
+            // Actions that only set a parameter already shown as a choice button stay in the pie menu.
+            var choiceKeys = first is null ? new HashSet<string>() : new HashSet<string>(BarChoices(first).Select(c => c.Key));
+            var keyActions = BarActions(UnitActions(out _).Where(a => a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains)), hasText);
             foreach (var a in keyActions)
             {
                 var label = a.Label.Get(_lang());
@@ -1776,6 +1787,9 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void ApplyAction(SketchUnit stale, string id)
         {
+            // Opening or closing a bar choice is no edit; picking an option becomes the edit command.
+            if (ChoiceCommand(id) is not { } command) return;
+            id = command;
             var slide = CurrentSlide();
             var unit = SketchUnits.Read(stale.Shape);
             if (slide is null || unit is null) return;
@@ -1851,6 +1865,11 @@ namespace InventaSketch.AddIn.OnSlide
                 var parts = id.Split(new[] { ':' }, 3);
                 ParamValue value = parts[2] == "true" ? true : parts[2] == "false" ? false : (ParamValue)parts[2];
                 doc = Edits.Update(doc, ids, o => registry.Type(o.Type)?.Parameters.Any(pd => pd.Key == parts[1]) == true ? registry.SetParam(o, parts[1], value) : o);
+            }
+            else if (id.StartsWith("dash:", StringComparison.Ordinal))
+            {
+                if (!Enum.TryParse<InventaSketch.Core.DashStyle>(id.Substring(5), out var dash)) return;
+                doc = Edits.Update(doc, ids, o => o with { Style = (o.Style ?? new Style()) with { Dash = dash } });
             }
             else if (id.StartsWith("size:", StringComparison.Ordinal))
             {

@@ -177,7 +177,8 @@ namespace InventaSketch.Modules.Annotation
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
-            P.Choice("form", "Form", "Form", "zigzag", ("zigzag", "Zig-zag", "Zickzack"), ("wavy", "Freehand (wavy)", "Freihand (wellig)")),
+            P.Choice("form", "Form", "Form", "zigzag", ("zigzag", "Zig-zag", "Zickzack"), ("wavy", "Freehand (wavy)", "Freihand (wellig)"))
+                .WithOptionIcons(v => v == "wavy" ? IconIds.CourseWavy : IconIds.CourseZigzag),
             P.Num("amplitude", "Amplitude", "Amplitude", 2.5, 0.5, 20),
         };
 

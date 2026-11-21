@@ -13,6 +13,10 @@ namespace InventaSketch.AddIn.OnSlide
         public Bitmap? Icon { get; init; }
         /// <summary>Abstract pictogram id (<see cref="InventaSketch.Core.IconIds"/>); preferred over Icon and Glyph.</summary>
         public string? IconId { get; init; }
+        /// <summary>The button opens a choice (icon row) in the bar: a small caret marks it.</summary>
+        public bool Menu { get; init; }
+        /// <summary>Draw the pictogram mirrored (start arrowheads point left).</summary>
+        public bool Mirror { get; init; }
     }
 
     /// <summary>
@@ -64,6 +68,7 @@ namespace InventaSketch.AddIn.OnSlide
                 if (b.Separator) { _cells.Add(new Rectangle(x, pad, sep, size)); x += sep; continue; }
                 // Text buttons (view names) get a width that fits the label; symbol buttons are square.
                 var width = b.Icon is null && b.IconId is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale)) : size;
+                if (b.Menu) width += (int)Math.Round(7 * scale);
                 _cells.Add(new Rectangle(x, pad, width, size));
                 x += width + gap;
             }
@@ -157,17 +162,29 @@ namespace InventaSketch.AddIn.OnSlide
                     using var hp = Rounded(cell, 5 * Scale);
                     g.FillPath(hb, hp);
                 }
+                var content = cell;
+                if (btn.Menu)
+                {
+                    // Caret of a choice button (opens the options as an icon row).
+                    var caretW = (int)Math.Round(7 * Scale);
+                    content = new Rectangle(cell.X, cell.Y, cell.Width - caretW, cell.Height);
+                    using var cb = new SolidBrush(Color.FromArgb(150, fg));
+                    float cx = cell.Right - caretW / 2f - 1 * Scale, cy = cell.Y + cell.Height / 2f + 1 * Scale, h = 2.2f * Scale;
+                    g.FillPolygon(cb, new[] { new PointF(cx - h, cy - h * 0.6f), new PointF(cx + h, cy - h * 0.6f), new PointF(cx, cy + h * 0.8f) });
+                }
                 if (btn.IconId is not null)
                 {
                     var ink = btn.Danger ? Color.FromArgb(200, 40, 40) : btn.Active ? accent : fg;
                     var pad = (int)Math.Round(5 * Scale);
-                    IconPainter.Draw(g, btn.IconId, Rectangle.Inflate(cell, -pad, -pad), ink);
+                    IconPainter.Draw(g, btn.IconId, Rectangle.Inflate(content, -pad, -pad), ink, btn.Mirror);
                     continue;
                 }
                 if (btn.Icon is not null)
                 {
                     var inset = (int)Math.Round(4 * Scale);
-                    g.DrawImage(btn.Icon, Rectangle.Inflate(cell, -inset, -inset));
+                    var box = Rectangle.Inflate(content, -inset, -inset);
+                    var side = Math.Min(box.Width, box.Height);
+                    g.DrawImage(btn.Icon, new Rectangle(box.X + (box.Width - side) / 2, box.Y + (box.Height - side) / 2, side, side));
                     continue;
                 }
                 var color = btn.Danger ? Color.FromArgb(200, 40, 40) : btn.Active ? accent : fg;

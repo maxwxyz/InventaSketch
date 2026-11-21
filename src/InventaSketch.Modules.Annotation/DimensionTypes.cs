@@ -14,7 +14,7 @@ namespace InventaSketch.Modules.Annotation
 
         public static IEnumerable<ParamDef> Common()
         {
-            yield return P.Choice("terminator", "Terminator", "Begrenzung", "arrow", ("arrow", "Arrow", "Pfeil"), ("open", "Open arrow", "Offener Pfeil"), ("tick", "Oblique tick", "Schrägstrich"), ("dot", "Dot", "Punkt"));
+            yield return P.Choice("terminator", "Terminator", "Begrenzung", "arrow", ("arrow", "Arrow", "Pfeil"), ("open", "Open arrow", "Offener Pfeil"), ("tick", "Oblique tick", "Schrägstrich"), ("dot", "Dot", "Punkt")).WithOptionIcons(IconIds.ForHead);
             yield return P.Text("text", "Override text", "Ersatztext", null);
             yield return P.Text("prefix", "Prefix", "Präfix", null);
             yield return P.Text("unit", "Unit suffix", "Einheit", null);

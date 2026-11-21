@@ -106,8 +106,9 @@ namespace InventaSketch.Modules.Annotation
 
         public static IReadOnlyList<ParamDef> LeaderParams(string defaultCurve) => new[]
         {
-            P.Choice("curve", "Line course", "Linienverlauf", defaultCurve, ("straight", "Straight", "Gerade"), ("curved", "Curved", "Gebogen"), ("wavy", "Wavy (S-curve)", "Wellig (S-Kurve)")),
-            P.Choice("end", "Object end", "Objektende", "none", ("none", "Plain", "Ohne"), ("arrow", "Arrow", "Pfeil"), ("dot", "Dot", "Punkt")),
+            P.Choice("curve", "Line course", "Linienverlauf", defaultCurve, ("straight", "Straight", "Gerade"), ("curved", "Curved", "Gebogen"), ("wavy", "Wavy (S-curve)", "Wellig (S-Kurve)"))
+                .WithOptionIcons(v => v switch { "curved" => IconIds.CourseCurved, "wavy" => IconIds.CourseWavy, _ => IconIds.CourseStraight }),
+            P.Choice("end", "Object end", "Objektende", "none", ("none", "Plain", "Ohne"), ("arrow", "Arrow", "Pfeil"), ("dot", "Dot", "Punkt")).WithOptionIcons(IconIds.ForHead),
             P.Bool("bend", "Bend to other side", "Zur anderen Seite biegen", false),
             P.TextSize(Ann.TextSize),
         };
