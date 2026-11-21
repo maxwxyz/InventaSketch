@@ -87,6 +87,10 @@
   Nabe oder Schrägverzahnung als kurze Textknöpfe), „Einfügen“ (öffnet die passenden Elemente als Vorschaubilder in der
   Leiste), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
   über 180 px ausblendend; unter 0,1 bis zur nächsten Auswahl verborgen; Tippen blendet sie aus.
+- **Planmaßstab auf der Folie:** Planelemente (`ObjectType.UsesPlanScale`: Wände, Räume, Öffnungen) zeigen den
+  Planmaßstab der Folie als Leistenknopf („1:50“) und im Kreismenü; beide öffnen die Eingabe und zeichnen die Folie neu.
+- **Einheiten des Web-Add-ins:** vom Web-Add-in aufgeteilte Modell-Tags (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`)
+  werden beim Lesen zusammengesetzt (`SketchUnits.ModelTag`).
 - **Schnell-Anfügen (Diagramme):** Ablaufdiagramm-, UML-, ER-, BPMN-, System- und Grundform-Elemente
   (`ObjectType.ChainConnector`) zeigen blaue Dreiecke 13 logische Pixel außerhalb jeder Seite und, wenn der Mauszeiger
   nahe ist, ihre Anschlusspunkte (blaue Kreise). Klick auf ein Dreieck: Eine Kopie entsteht auf dieser Seite (hinter

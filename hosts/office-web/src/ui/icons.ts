@@ -75,6 +75,7 @@ const paths: Record<string, string> = {
   "cmd-animate": "M7 4l12 8-12 8z",
   "cmd-medium": "M12 3c-3 5-6 8-6 11.5a6 6 0 0 0 12 0C18 11 15 8 12 3z",
   "cmd-actuation": "M8 4h8M12 4v7M5 11h14v9H5z",
+  "cmd-insert": "M4 4h16v16H4zM12 8v8M8 12h8",
 };
 
 export function icon(name: string, size = 18): string {

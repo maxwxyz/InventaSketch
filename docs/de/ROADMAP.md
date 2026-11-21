@@ -37,8 +37,9 @@ Einfügen am Mauszeiger, semantisches Fangen (Verschieben, Skalieren um die Mitt
 Punktbearbeitung und Rahmenauswahl von Punkten, Verankern, Kreismenü (8 Einträge, Einfügen/Typ/Beschriftung/Mehr) und
 schwebende Leiste mit abstrakten Symbolen, Text bearbeiten, Menüband wie Slidemax (Struktur, Werkzeuge, Beschriftung,
 Farbe, Text, Layout, Elemente, Extras), native Formatierung im Modell, Schwarz-Weiß, Datenexporte,
-Seitenleisten-Editor mit Live-Synchronisation, Installationspaket. Offen: Prüfung im dunklen Office, COM-Vorrang vor
-dem Web-Add-in (`EquivalentAddins`) ungetestet.
+Seitenleisten-Editor mit Live-Synchronisation, Installationspaket. Dunkles Office: Leiste, Kreismenü und
+Piktogramme in beiden Designs gerendert und geprüft (21.11.2026). Offen: COM-Vorrang vor dem Web-Add-in
+(`EquivalentAddins`) ungetestet (braucht das mit dem Zertifikat des Maintainers installierte Web-Add-in).
 
 ## Phase 3 – LibreOffice-Erweiterung
 
@@ -105,7 +106,8 @@ Export-Erweiterungspunkte der Module.
   Dokumentzugriff, Änderungsmengen mit abhängigen Objekten, Planmaßstab, Größen je Ansicht; gemeinsamer
   AttachPoint/ReversePoints; ADR-0009). Nacharbeiten:
   - COM: native Verschiebungen (PowerPoint-Ziehpunkte, Pfeiltasten) zeichnen verankerte und abhängige Einheiten jetzt neu
-    (20.11.2026); der Planmaßstab hat auf der Folie kein Bedienelement (nur Seitenleiste);
+    (20.11.2026); der Planmaßstab steht in schwebender Leiste und Kreismenü von Planelementen (21.11.2026); Einheiten des Web-Add-ins
+    mit aufgeteilten Modell-Tags (`ISK_MODEL_2` … `ISK_MODEL_N`) werden gelesen (21.11.2026);
     Dokumentaktionen ändern nur die eigenen Objekte der Einheit; die schwebende Leiste zeigt bis zu drei wichtige Typaktionen mit
     aussagekräftigem Piktogramm (der Rest im Kreismenü).
   - Web: am 20.11.2026 erledigt – `combridge.ts` zeichnet nur die von `changed`/`dependents` betroffenen Einheiten neu;

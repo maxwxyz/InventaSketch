@@ -45,5 +45,15 @@ namespace InventaSketch.AddIn.Tests
             var names = new[] { "ISK_MODEL_a", "ISK_MODEL_a_1", "ISK_BOUNDS_a", "ISK_MODEL_b", "ISK_MODEL_b_1", "ISK_BOUNDS_b", "Other" };
             Assert.Equal(new[] { "ISK_MODEL_b", "ISK_MODEL_b_1", "ISK_BOUNDS_b" }, DocumentMirror.Orphans(names, new HashSet<string> { "a" }));
         }
+
+        [Fact]
+        public void TagsChunkedByTheWebAddInAreJoined()
+        {
+            var tags = new Dictionary<string, string> { ["ISK_MODEL"] = "isk1:abc", ["ISK_MODEL_2"] = "def", ["ISK_MODEL_3"] = "gh", ["ISK_MODEL_N"] = "3" };
+            string? Read(string k) => tags.TryGetValue(k, out var v) ? v : "";
+            Assert.Equal("isk1:abcdefgh", SketchUnits.JoinChunks(Read, "ISK_MODEL"));
+            tags.Remove("ISK_MODEL_N");
+            Assert.Equal("isk1:abc", SketchUnits.JoinChunks(Read, "ISK_MODEL"));
+        }
     }
 }

@@ -189,7 +189,7 @@ namespace InventaSketch.AddIn.OnSlide
                         continue;
                     }
                     id = s.Tags["ISK_ID"];
-                    model = s.Tags["ISK_MODEL"];
+                    model = SketchUnits.ModelTag(s);
                 }
                 catch { continue; }
                 alive.Add(id);

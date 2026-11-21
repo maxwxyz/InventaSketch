@@ -109,12 +109,13 @@ namespace InventaSketch.Core
         public const string Animate = "cmd-animate";
         public const string Medium = "cmd-medium";          // switch the medium (hydraulic/pneumatic: a drop)
         public const string Actuation = "cmd-actuation";    // change how something is operated (push button)
+        public const string Insert = "cmd-insert";          // insert a fitting element (frame with plus)
 
         /// <summary>Every icon id, for hosts and tests that must provide a pictogram for each.</summary>
         public static IReadOnlyList<string> All { get; } = new[]
         {
             Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin,
-            Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation,
+            Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)

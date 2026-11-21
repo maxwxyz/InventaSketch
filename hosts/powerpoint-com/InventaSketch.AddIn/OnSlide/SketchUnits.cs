@@ -37,6 +37,23 @@ namespace InventaSketch.AddIn.OnSlide
             catch { return false; }
         }
 
+        /// <summary>
+        /// Joins a tag value that the Office web add-in split into chunks: KEY, KEY_2 … KEY_n plus KEY_N = n (see
+        /// <c>chunkTag</c> in hosts/office-web/src/office/powerpoint.ts); a single tag is returned as it is.
+        /// </summary>
+        internal static string? JoinChunks(Func<string, string?> read, string key)
+        {
+            var first = read(key);
+            if (string.IsNullOrEmpty(first)) return first;
+            if (!int.TryParse(read(key + "_N"), System.Globalization.NumberStyles.Integer, CultureInfo.InvariantCulture, out var n) || n < 2) return first;
+            var sb = new System.Text.StringBuilder(first);
+            for (var i = 2; i <= n; i++) sb.Append(read(key + "_" + i.ToString(CultureInfo.InvariantCulture)) ?? "");
+            return sb.ToString();
+        }
+
+        /// <summary>The unit model payload of a shape (joined when the web add-in stored it in chunks).</summary>
+        public static string ModelTag(PowerPoint.Shape s) => JoinChunks(k => s.Tags[k], "ISK_MODEL") ?? "";
+
         public static string FormatBounds(PowerPoint.Shape s) =>
             string.Join(";", new[] { s.Left, s.Top, s.Width, s.Height }.Select(v => v.ToString("R", CultureInfo.InvariantCulture)));
 
@@ -49,7 +66,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (!IsUnit(s)) return null;
             try
             {
-                var doc = DocumentJson.FromCompact(s.Tags["ISK_MODEL"]);
+                var doc = DocumentJson.FromCompact(ModelTag(s));
                 var cur = new System.Drawing.RectangleF(s.Left, s.Top, s.Width, s.Height);
                 var parts = (s.Tags[BoundsTag] ?? "").Split(';');
                 if (parts.Length == 4 && parts.All(p => float.TryParse(p, NumberStyles.Float, CultureInfo.InvariantCulture, out _)))

@@ -442,7 +442,7 @@ export class App {
       }
     }
     const text = this.mainTextTarget() ? this.menuEntry("text", t("pie.text"), "cmd-text") : undefined;
-    const insert = this.pieSuggestions.length ? this.menuEntry("menu:insert", t("pie.insert"), "cmd-increase") : undefined;
+    const insert = this.pieSuggestions.length ? this.menuEntry("menu:insert", t("pie.insert"), "cmd-insert") : undefined;
     this.pieConversions = [];
     try {
       this.pieConversions = this.sessionObj.conversions(sel, lang());
@@ -480,7 +480,7 @@ export class App {
     if (e.id === "menu:insert") {
       const entries = this.pieSuggestions.map((s): PieEntry => {
         const item = this.catalog.items.find((i) => i.id === s.id);
-        return { id: `ins:${s.id}`, label: s.name, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined, icon: "cmd-increase", enabled: !!item, active: false };
+        return { id: `ins:${s.id}`, label: s.name, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined, icon: "cmd-insert", enabled: !!item, active: false };
       });
       const page = submenu(back, entries, more);
       this.pieOverflow = page.overflow;

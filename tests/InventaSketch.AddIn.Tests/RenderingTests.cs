@@ -40,6 +40,11 @@ namespace InventaSketch.AddIn.Tests
                 .Concat(new[]
                 {
                     new BarButton("", "", "", Separator: true),
+                    new BarButton("act:more", "", "Mehr Zähne") { IconId = IconIds.Increase },
+                    new BarButton("act:helix", "Schrägverzahnung", "Schrägverzahnung an/aus", Active: true),
+                    new BarButton("planscale", "1:50", "Planmaßstab der Folie …"),
+                    new BarButton("insert", "", "Passendes Element einfügen") { IconId = IconIds.Insert },
+                    new BarButton("", "", "", Separator: true),
                     new BarButton("flipH", "", "Horizontal spiegeln") { IconId = IconIds.MirrorH },
                     new BarButton("flipV", "", "Vertikal spiegeln") { IconId = IconIds.MirrorV },
                     new BarButton("rot90", "", "Um 90 Grad drehen") { IconId = IconIds.Rotate },

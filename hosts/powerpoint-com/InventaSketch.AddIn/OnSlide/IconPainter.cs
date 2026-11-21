@@ -165,6 +165,9 @@ namespace InventaSketch.AddIn.OnSlide
                         g.DrawPath(pen, drop);
                         break;
                     }
+                case IconIds.Insert:
+                    g.DrawRectangle(pen, 4, 4, 16, 16); g.DrawLine(pen, 12, 8, 12, 16); g.DrawLine(pen, 8, 12, 16, 12);
+                    break;
                 case IconIds.Actuation:
                     g.DrawLine(pen, 8, 4, 16, 4); g.DrawLine(pen, 12, 4, 12, 11); g.DrawRectangle(pen, 5, 11, 14, 9);
                     break;

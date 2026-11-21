@@ -33,8 +33,9 @@ pie menu; sidebar task pane; metadata in tags + document properties; COM precede
 pointer, semantic snapping (move, resize about the centre, rotate), two-point tool, point editing and box selection of
 points, anchoring, pie menu (8 entries, Insert/Type/Label/More) and floating bar with abstract icons, text editing,
 Slidemax-like ribbon (Structure, Tools, Annotate, Colour, Text, Layout, Elements, Extras), native formatting kept in the
-model, black and white, data exports, sidebar editor with live sync, installer package. Open: dark Office check,
-COM precedence over the web add-in (`EquivalentAddins`) not tested.
+model, black and white, data exports, sidebar editor with live sync, installer package. Dark Office: bar, pie menu and pictograms
+rendered and checked in both themes (2026-11-21). Open: COM precedence over the web add-in (`EquivalentAddins`) not
+tested (needs the web add-in installed with the maintainer's certificate).
 
 ## Phase 3 – LibreOffice extension
 
@@ -100,7 +101,8 @@ netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsn
 - Core/engine requests from the module work: done 2026-11-20 (rails, mount and port priority, concentric fit,
   pin-id attachments; hollow and crow's-foot heads, underline; input and document actions, change sets with dependents,
   plan scale, view sizes; shared AttachPoint/ReversePoints; ADR-0009). Follow-ups:
-  - COM: native moves (PowerPoint handles, arrow keys) now redraw anchored and dependent units (2026-11-20); the plan scale has no on-slide control (sidebar only); document actions only change the unit's own objects;
+  - COM: native moves (PowerPoint handles, arrow keys) now redraw anchored and dependent units (2026-11-20); the plan scale is in the floating bar and pie menu of plan elements (2026-11-21); units of the web add-in with chunked
+    model tags (`ISK_MODEL_2` … `ISK_MODEL_N`) are read (2026-11-21); document actions only change the unit's own objects;
     the floating bar shows up to three key type actions with telling pictograms (the rest is in the pie menu).
   - Web: done 2026-11-20 — `combridge.ts` redraws only units touched by `changed`/`dependents`; the method contract in
     the web host docs covers `setPlanScale`, `input`, `changed`, `dependents`, conversions and exports.

@@ -96,6 +96,7 @@ namespace InventaSketch.AddIn
                 _onSlide = new OnSlide.OnSlideController(_app, () => _registry!, () => _lang);
                 _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang, BeginPlacement);
                 _onSlide.UnitArmed += u => _bridge.UnitSelected(u);
+                _onSlide.PlanScaleRequested += SetPlanScale;
                 // Units deleted on the slide (Delete key, cut, undo) also leave the sidebar editor.
                 _app.WindowSelectionChange += _ =>
                 {

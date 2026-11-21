@@ -127,6 +127,9 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Raised when an InventaSketch unit becomes the selection (sidebar editor follows it).</summary>
         public event Action<SketchUnit>? UnitArmed;
 
+        /// <summary>"Plan scale …" from the bar or pie menu of a plan element (the add-in asks and re-renders the slide).</summary>
+        public event Action? PlanScaleRequested;
+
         /// <summary>Runs a function on PowerPoint's UI thread (automation calls arrive on RPC threads).</summary>
         public T OnUi<T>(Func<T> f) => _overlay.InvokeRequired ? (T)_overlay.Invoke(f) : f();
 
@@ -815,10 +818,16 @@ namespace InventaSketch.AddIn.OnSlide
                     ? new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
                     : new BarButton("act:" + a.Id, ShortLabel(label), tip, Active: a.IsActive));
             }
+            // Plan elements (walls, rooms, openings): the plan scale of the slide, one click away.
+            if (type?.UsesPlanScale == true && _unit is not null)
+            {
+                var scale = _unit.Doc.Settings.PlanScale ?? 100;
+                list.Add(new BarButton("planscale", "1:" + scale.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), T("Plan scale of the slide …", "Planmaßstab der Folie …")));
+            }
             // "Insert": elements that fit the selection as thumbnails right in the bar (shaft: gears, bearings …).
             if (first is not null)
             {
-                list.Add(new BarButton("insert", "", T("Insert a fitting element", "Passendes Element einfügen"), Active: _barInsertOpen) { IconId = IconIds.Increase });
+                list.Add(new BarButton("insert", "", T("Insert a fitting element", "Passendes Element einfügen"), Active: _barInsertOpen) { IconId = IconIds.Insert });
                 if (_barInsertOpen)
                 {
                     var scale = _view?.DeviceScale ?? 1;
@@ -1108,9 +1117,11 @@ namespace InventaSketch.AddIn.OnSlide
                 items.Add((new PieItem("text", T("Text \u2026", "Text \u2026")) { IconId = IconIds.Text }, true));
             // Insert elements that fit the selection (shaft: gears, bearings; wire: symbols; always annotations).
             if (first is not null)
-                items.Add((new PieItem("menu:insert", T("Insert \u25B8", "Einf\u00fcgen \u25B8")) { IconId = IconIds.Increase }, true));
+                items.Add((new PieItem("menu:insert", T("Insert \u25B8", "Einf\u00fcgen \u25B8")) { IconId = IconIds.Insert }, true));
             items.Add((new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate }, true));
             items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
+            if (type?.UsesPlanScale == true)
+                items.Add((new PieItem("planscale", T("Plan scale …", "Planmaßstab …")) { IconId = IconIds.Plan }, false));
             // Mechanisms: the input motion as a slide sequence with Morph transitions.
             if (type is not null && first is not null && type.AnimationFrames(first, 2).Count > 0)
                 items.Add((new PieItem("anim", T("Animate as slides", "Als Folien animieren")) { IconId = IconIds.Animate }, false));
@@ -1775,6 +1786,11 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 // Insert at the pointer with snapping (onto the axis, ports and mounts of the selection).
                 if (registry.Item(id.Substring(4)) is { } item) BeginPlacement(item);
+                return;
+            }
+            if (id == "planscale")
+            {
+                PlanScaleRequested?.Invoke();
                 return;
             }
             if (id == "insert")

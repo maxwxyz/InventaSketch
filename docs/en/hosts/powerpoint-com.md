@@ -88,6 +88,10 @@
   rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
   otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
   selection; typing hides it. Clicks on the bar never reach the slide.
+- **Plan scale on the slide:** plan elements (`ObjectType.UsesPlanScale`: walls, rooms, openings) show the slide's plan
+  scale as a bar button ("1:50") and a pie entry; both open the plan-scale prompt and re-render the slide.
+- **Web add-in units:** model tags split by the web add-in into chunks (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`) are
+  joined when reading (`SketchUnits.ModelTag`).
 - **Quick add (diagrams):** flowchart, UML, ER, BPMN, system and basic elements (`ObjectType.ChainConnector`) show
   blue triangles 13 logical px outside each side, and their connection ports (blue circles) when the pointer is near.
   Click a triangle: a copy is added on that side (past elements already there) with the kind's connector between the
