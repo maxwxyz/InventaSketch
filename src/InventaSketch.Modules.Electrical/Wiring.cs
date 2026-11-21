@@ -48,7 +48,7 @@ namespace InventaSketch.Modules.Electrical
             {
                 var i = Array.IndexOf(Modes, x.Str("route", def));
                 return x.WithParam("route", Modes[(i + 1 + Modes.Length) % Modes.Length]);
-            }) { Group = "route" };
+            }) { Group = "route", ParamKeys = new[] { "route" } };
 
         /// <summary>
         /// Exit direction (on the page) of an attached end: perpendicular to the box edge of the target the pin sits on,

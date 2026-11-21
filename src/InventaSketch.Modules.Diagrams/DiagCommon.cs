@@ -493,7 +493,7 @@ namespace InventaSketch.Modules.Diagrams
             => new(id, label, IconIds.Toggle, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group };
 
         public static ContextAction SetChoice(SketchObject o, string id, I18nText label, string icon, string key, string value, string fallback, string group)
-            => new(id, label, icon, x => x.WithParam(key, value)) { IsActive = string.Equals(o.Str(key, fallback), value, StringComparison.OrdinalIgnoreCase), Group = group };
+            => new(id, label, icon, x => x.WithParam(key, value)) { IsActive = string.Equals(o.Str(key, fallback), value, StringComparison.OrdinalIgnoreCase), Group = group, ParamKeys = new[] { key } };
 
         /// <summary>Appends a line to a multi-line text parameter and grows the box downwards by one row.</summary>
         public static ContextAction AddRow(string id, I18nText label, string key, string fallback, string line, bool grow = true)

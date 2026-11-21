@@ -82,6 +82,10 @@ the units on the slide.
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.
+- **Choices as dropdowns** (like the COM add-in): the context bar shows every choice of the selected element as a
+  button with the current value (pictogram from the option icons, else short text) and a caret; a click opens a list with
+  icon and label per option (`inspector` params with `options[].icon`, `mirrorIcons`; line type via `conversions`, line
+  style via `setStyle`). Type actions whose `paramKeys` are shown as choices are left out.
 - **Quick add** (like the COM add-in): a selected flowchart, UML, ER, BPMN or basic element (`chain`) shows blue
   triangles outside its sides; click adds a connected copy (`quickAdd`), drag and drop adds it at the drop point. The
   context bar then starts with the next-element palette (`nextItems`; one click calls `replaceItem`).

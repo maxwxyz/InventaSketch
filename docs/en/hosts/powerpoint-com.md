@@ -88,6 +88,12 @@
   rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
   otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
   selection; typing hides it. Clicks on the bar never reach the slide.
+- **Choices as dropdowns:** every choice of the selected element (line type, arrowheads, head size, line style, line
+  course, e-machine arrangement and type, shaft-hub connection, …) is a bar button showing its current value as a
+  pictogram (`ParamOption.Icon`, `ParamDef.WithOptionIcons`) or a short text, with a caret. A click opens a list under
+  it with pictogram and label of every option, the current one marked; a click on a row picks, a click elsewhere
+  closes. Cycle actions over the same parameters (`ContextAction.ParamKeys`) stay in the pie menu only; switches with
+  a telling pictogram (shaft stubs, housing connection, helix) are icon toggles. No text buttons where a pictogram exists.
 - **Plan scale on the slide:** plan elements (`ObjectType.UsesPlanScale`: walls, rooms, openings) show the slide's plan
   scale as a bar button ("1:50") and a pie entry; both open the plan-scale prompt and re-render the slide.
 - **Web add-in units:** model tags split by the web add-in into chunks (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`) are

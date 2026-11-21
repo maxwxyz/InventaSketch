@@ -87,6 +87,11 @@ Folie behalten.
 - **Skalieren**: zentrierte Teile (Zahnräder, Lager, Räder: `centred`) skalieren standardmäßig um ihre Mitte, mit Strg
   von der Gegenkante; andere Objekte umgekehrt. Eine Beschriftung neben dem Mauszeiger zeigt Größe (oder Faktor) und den
   aktiven Modus mit der Strg-Alternative.
+- **Auswahlen als Dropdowns** (wie im COM-Add-in): Die Kontextleiste zeigt jede Auswahl des gewählten Elements als
+  Knopf mit dem aktuellen Wert (Piktogramm aus den Options-Symbolen, sonst kurzer Text) und einem kleinen Pfeil; ein
+  Klick öffnet eine Liste mit Symbol und Beschriftung je Option (`inspector`-Parameter mit `options[].icon`,
+  `mirrorIcons`; Linientyp über `conversions`, Linienart über `setStyle`). Typaktionen, deren `paramKeys` als Auswahl
+  erscheinen, entfallen.
 - **Schnell-Anfügen** (wie im COM-Add-in): Ein ausgewähltes Ablaufdiagramm-, UML-, ER-, BPMN- oder Grundform-Element
   (`chain`) zeigt blaue Dreiecke außerhalb seiner Seiten; ein Klick fügt eine verbundene Kopie an (`quickAdd`), Ziehen und
   Loslassen fügt sie an der Ablagestelle ein. Die Kontextleiste beginnt dann mit der Palette „nächstes Element“

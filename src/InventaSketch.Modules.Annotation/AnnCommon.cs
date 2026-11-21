@@ -303,7 +303,7 @@ namespace InventaSketch.Modules.Annotation
 
         /// <summary>Choice action helper: sets <paramref name="key"/> to <paramref name="value"/>.</summary>
         public static ContextAction SetChoice(SketchObject o, string id, I18nText label, string icon, string key, string value, string current, string group)
-            => new(id, label, icon, x => x.WithParam(key, value)) { IsActive = string.Equals(o.Str(key, current), value, StringComparison.OrdinalIgnoreCase), Group = group };
+            => new(id, label, icon, x => x.WithParam(key, value)) { IsActive = string.Equals(o.Str(key, current), value, StringComparison.OrdinalIgnoreCase), Group = group, ParamKeys = new[] { key } };
 
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string icon, string key, bool fallback, string? group = null)
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group };

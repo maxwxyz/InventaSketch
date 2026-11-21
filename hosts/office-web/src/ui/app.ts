@@ -410,11 +410,14 @@ export class App {
           }),
         });
       const info = this.sessionObj.inspector(sel, lang());
-      for (const p of info.params) {
-        if (p.kind !== "choice" || !p.options || p.options.length < 2 || !p.options.every((o) => o.icon && hasIcon(o.icon))) continue;
+      // Choices with pictograms first, then the other choices (shown as short text), in parameter order.
+      const choices = info.params.filter((p) => p.kind === "choice" && !p.advanced && p.options && p.options.length > 1);
+      const pictorial = (p: (typeof choices)[number]) => p.options!.every((o) => o.icon && hasIcon(o.icon));
+      for (const p of [...choices.filter(pictorial), ...choices.filter((p) => !pictorial(p))]) {
+        const icons = pictorial(p);
         out.push({
-          key: p.key, label: p.label, current: String(p.value ?? p.default ?? p.options[0].id), mirror: p.mirrorIcons,
-          options: p.options.map((o) => ({ id: o.id, label: o.label, icon: o.icon })),
+          key: p.key, label: p.label, current: String(p.value ?? p.default ?? p.options![0].id), mirror: p.mirrorIcons,
+          options: p.options!.map((o) => ({ id: o.id, label: o.label, icon: icons ? o.icon : undefined })),
         });
       }
       if (obj.kind === "points")

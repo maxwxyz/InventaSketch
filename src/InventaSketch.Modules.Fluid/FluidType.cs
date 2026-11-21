@@ -339,7 +339,7 @@ namespace InventaSketch.Modules.Fluid
                 var cur = x.Str(def.Key, fallback);
                 for (var k = 0; k < options.Count; k++) if (options[k] == cur) i = k;
                 return x.WithParam(def.Key, options[(i + 1 + options.Count) % options.Count]);
-            }) { Group = group };
+            }) { Group = group, ParamKeys = new[] { def.Key } };
         }
 
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool def, string icon = IconIds.Toggle, string group = "param")

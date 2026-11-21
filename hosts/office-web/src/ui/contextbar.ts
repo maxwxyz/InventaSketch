@@ -56,6 +56,12 @@ export class ContextBar {
     this.el.hidden = true;
     this.el.addEventListener("pointerenter", () => (this.el.style.opacity = "1"));
     root.append(this.el);
+    // A click elsewhere closes an open dropdown.
+    root.addEventListener("pointerdown", (e) => {
+      const t = e.target as Node | null;
+      if (!this.openChoice || (t && (this.el.contains(t) || this.dropdown?.contains(t)))) return;
+      this.toggleChoice(undefined);
+    }, true);
   }
 
   /** Rebuilds and positions the bar; selectionKey identifies the selection (new selection → bar reappears). */
@@ -68,24 +74,11 @@ export class ContextBar {
     this.last = { actions, box, suppressed, palette, choices };
     if (!box || !selectionKey || this.dismissed || suppressed) {
       this.el.hidden = true;
+      this.dropdown?.remove();
+      this.dropdown = undefined;
       return;
     }
     this.el.replaceChildren();
-    const open = choices.find((c) => c.key === this.openChoice);
-    if (open) {
-      // The open choice fills the bar: Back, then one icon per option (current highlighted).
-      const back = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("pie.back"), "aria-label": t("pie.back"), text: "\u2039" });
-      back.addEventListener("click", () => this.toggleChoice(undefined));
-      this.el.append(back, h("span", { class: "isk-sep" }));
-      for (const o of open.options) {
-        const b = h("button", { class: `isk-btn isk-icon-btn${o.id === open.current ? " is-active" : ""}`, type: "button", title: o.label, "aria-label": o.label });
-        this.fillIcon(b, o.icon, o.image, open.mirror);
-        b.addEventListener("click", () => { this.openChoice = undefined; this.onChoice(open.key, o.id); });
-        this.el.append(b);
-      }
-      this.place(box);
-      return;
-    }
     if (palette.length) {
       const row = h("div", { class: "isk-palette", role: "group", "aria-label": t("ctx.next") });
       for (const p of palette) {
@@ -98,13 +91,20 @@ export class ContextBar {
       this.el.append(row);
     }
     const views = actions.filter((a) => a.kind === "view");
-    // Choices with pictograms (line type, arrowheads, line style, course): icon of the current option plus a caret.
+    // Choices as dropdowns: current option as pictogram (or short text) plus a caret; the list shows icon and label.
+    let openButton: HTMLElement | undefined;
     for (const c of choices) {
       const cur = c.options.find((o) => o.id === c.current) ?? c.options[0];
-      const b = h("button", { class: "isk-btn isk-icon-btn isk-choice", type: "button", title: `${c.label}: ${cur?.label ?? ""}`, "aria-label": c.label });
-      this.fillIcon(b, cur?.icon, cur?.image, c.mirror);
+      const pictorial = c.options.every((o) => o.icon || o.image);
+      const b = h("button", {
+        class: `isk-btn isk-choice${pictorial ? " isk-icon-btn" : ""}${this.openChoice === c.key ? " is-active" : ""}`,
+        type: "button", title: `${c.label}: ${cur?.label ?? ""}`, "aria-label": c.label, "aria-haspopup": "listbox", "aria-expanded": String(this.openChoice === c.key),
+      });
+      if (pictorial) this.fillIcon(b, cur?.icon, cur?.image, c.mirror);
+      else b.append(h("span", { class: "isk-choice-text", text: cur?.label ?? c.label }));
       b.append(h("span", { class: "isk-caret", "aria-hidden": "true" }));
       b.addEventListener("click", () => this.toggleChoice(c.key));
+      if (this.openChoice === c.key) openButton = b;
       this.el.append(b);
     }
     const covered = new Set(choices.map((c) => c.key));
@@ -124,7 +124,31 @@ export class ContextBar {
     more.addEventListener("click", (e) => this.onMore(e.clientX, e.clientY));
     this.el.append(style, more);
     this.place(box);
+    this.showDropdown(choices.find((c) => c.key === this.openChoice), openButton);
   }
+
+  /** The list of an open choice under its button: one row per option with icon and label, the current one marked. */
+  private showDropdown(choice: ChoiceEntry | undefined, anchor: HTMLElement | undefined): void {
+    this.dropdown?.remove();
+    this.dropdown = undefined;
+    if (!choice || !anchor) return;
+    const list = h("div", { class: "isk-dropdown", role: "listbox", "aria-label": choice.label });
+    for (const o of choice.options) {
+      const row = h("button", { class: `isk-drop-row${o.id === choice.current ? " is-active" : ""}`, type: "button", role: "option", "aria-selected": String(o.id === choice.current) });
+      this.fillIcon(row, o.icon, o.image, choice.mirror);
+      row.append(h("span", { text: o.label }));
+      row.addEventListener("click", () => { this.openChoice = undefined; this.dropdown?.remove(); this.dropdown = undefined; this.onChoice(choice.key, o.id); });
+      list.append(row);
+    }
+    this.root.append(list);
+    const rr = this.root.getBoundingClientRect();
+    const ar = anchor.getBoundingClientRect();
+    list.style.left = `${clamp(ar.left - rr.left, 4, Math.max(4, rr.width - list.offsetWidth - 4))}px`;
+    list.style.top = `${ar.bottom - rr.top + 4}px`;
+    this.dropdown = list;
+  }
+
+  private dropdown?: HTMLElement;
 
   private toggleChoice(key: string | undefined): void {
     this.openChoice = key === this.openChoice ? undefined : key;

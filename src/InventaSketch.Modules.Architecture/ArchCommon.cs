@@ -213,7 +213,7 @@ namespace InventaSketch.Modules.Architecture
             var cur = o.Str(key, fallback);
             var idx = Math.Max(0, values.ToList().FindIndex(v => v.Value == cur));
             var next = values[(idx + 1) % values.Count];
-            return new ContextAction(id, next.Label, IconIds.Cycle, x => x.WithParam(key, next.Value)) { Group = group };
+            return new ContextAction(id, next.Label, IconIds.Cycle, x => x.WithParam(key, next.Value)) { Group = group, ParamKeys = new[] { key } };
         }
 
         /// <summary>Clips a convex or concave polygon to the half-plane (p - origin)·normal &lt;= 0 (Sutherland-Hodgman).</summary>

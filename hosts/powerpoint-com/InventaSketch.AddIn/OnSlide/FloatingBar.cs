@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.Linq;
 using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 
@@ -18,6 +19,9 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Draw the pictogram mirrored (start arrowheads point left).</summary>
         public bool Mirror { get; init; }
     }
+
+    /// <summary>One row of a choice dropdown under a bar button: pictogram (or picture) and label.</summary>
+    internal sealed record DropItem(string Id, string Label, string? IconId, Bitmap? Icon, bool Active, bool Mirror);
 
     /// <summary>
     /// Fade rule of the floating bar (behaviour as in Slidemax): fully opaque within 12 logical px of the bar, otherwise a
@@ -79,8 +83,37 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Height of the tooltip strip below the bar (part of the window, never hit-tested).</summary>
         public int TipHeight { get; }
 
-        /// <summary>Window rectangle: bar plus tooltip strip.</summary>
-        public Rectangle WindowBounds => new(Bounds.X, Bounds.Y, Math.Max(Bounds.Width, (int)(260 * Scale)), Bounds.Height + TipHeight);
+        /// <summary>Hit-test index offset of dropdown rows (row i answers <c>DropBase + i</c>).</summary>
+        public const int DropBase = 1000;
+
+        /// <summary>Bar button the open dropdown belongs to (-1: none) and its rows.</summary>
+        public int DropAnchor { get; private set; } = -1;
+        public IReadOnlyList<DropItem> DropItems { get; private set; } = Array.Empty<DropItem>();
+        private Rectangle _drop;
+        private int _rowH;
+
+        /// <summary>Opens a dropdown list under bar button <paramref name="anchor"/>: one row per option with icon and label.</summary>
+        public void SetDropdown(int anchor, IReadOnlyList<DropItem> items)
+        {
+            if (anchor < 0 || anchor >= _cells.Count || items.Count == 0) return;
+            DropAnchor = anchor;
+            DropItems = items;
+            _rowH = (int)Math.Round(28 * Scale);
+            var longest = items.Max(i => i.Label.Length);
+            var width = (int)Math.Round(Math.Max(150 * Scale, 46 * Scale + longest * 6.6 * Scale));
+            var pad = (int)Math.Round(4 * Scale);
+            _drop = new Rectangle(_cells[anchor].X, Size.Height + pad, width, items.Count * _rowH + 2 * pad);
+        }
+
+        private Rectangle DropScreen => new(Bounds.X + _drop.X, Bounds.Y + _drop.Y, _drop.Width, _drop.Height);
+
+        /// <summary>Window rectangle: bar plus tooltip strip, or plus the open dropdown.</summary>
+        public Rectangle WindowBounds => DropAnchor < 0
+            ? new(Bounds.X, Bounds.Y, Math.Max(Bounds.Width, (int)(260 * Scale)), Bounds.Height + TipHeight)
+            : new(Bounds.X, Bounds.Y, Math.Max(Bounds.Width, _drop.Right + 2), Math.Max(Bounds.Height + TipHeight, _drop.Bottom + 2));
+
+        /// <summary>Command id behind a hit-test index (bar button or dropdown row).</summary>
+        public string IdAt(int index) => index >= DropBase ? DropItems[index - DropBase].Id : Buttons[index].Id;
 
         public IReadOnlyList<BarButton> Buttons { get; }
         public float Scale { get; }
@@ -104,18 +137,27 @@ namespace InventaSketch.AddIn.OnSlide
             Bounds = new Rectangle(x, y, Size.Width, Size.Height);
         }
 
-        public bool Contains(Point p) => Bounds.Contains(p);
+        public bool Contains(Point p) => Bounds.Contains(p) || (DropAnchor >= 0 && DropScreen.Contains(p));
 
         /// <summary>Distance from a screen point to the bar in logical pixels (0 inside).</summary>
         public double Distance(Point p)
         {
-            double dx = Math.Max(0, Math.Max(Bounds.Left - p.X, p.X - Bounds.Right));
-            double dy = Math.Max(0, Math.Max(Bounds.Top - p.Y, p.Y - Bounds.Bottom));
-            return Math.Sqrt(dx * dx + dy * dy) / Scale;
+            double D(Rectangle r)
+            {
+                double dx = Math.Max(0, Math.Max(r.Left - p.X, p.X - r.Right));
+                double dy = Math.Max(0, Math.Max(r.Top - p.Y, p.Y - r.Bottom));
+                return Math.Sqrt(dx * dx + dy * dy) / Scale;
+            }
+            return DropAnchor >= 0 ? Math.Min(D(Bounds), D(DropScreen)) : D(Bounds);
         }
 
         public int HitTest(Point p)
         {
+            if (DropAnchor >= 0 && DropScreen.Contains(p))
+            {
+                var row = (p.Y - DropScreen.Y - (int)Math.Round(4 * Scale)) / Math.Max(1, _rowH);
+                return row >= 0 && row < DropItems.Count ? DropBase + row : -1;
+            }
             if (!Bounds.Contains(p)) return -1;
             var local = new Point(p.X - Bounds.X, p.Y - Bounds.Y);
             for (var i = 0; i < _cells.Count; i++)
@@ -133,7 +175,7 @@ namespace InventaSketch.AddIn.OnSlide
             var bg = dark ? Color.FromArgb(250, 38, 40, 44) : Color.FromArgb(252, 252, 252, 253);
             var fg = dark ? Color.FromArgb(235, 235, 235) : Color.FromArgb(32, 33, 36);
             var border = dark ? Color.FromArgb(90, 255, 255, 255) : Color.FromArgb(60, 0, 0, 0);
-            var accent = Color.FromArgb(31, 95, 191);
+            var accent = dark ? Color.FromArgb(110, 165, 245) : Color.FromArgb(31, 95, 191);
             var radius = 7 * Scale;
             using (var path = Rounded(new RectangleF(0.5f, 0.5f, Size.Width - 1, Size.Height - 1), radius))
             {
@@ -191,6 +233,7 @@ namespace InventaSketch.AddIn.OnSlide
                 using var tb = new SolidBrush(color);
                 g.DrawString(btn.Glyph, btn.Glyph.Length > 1 ? small : font, tb, cell, fmt);
             }
+            if (DropAnchor >= 0) { DrawDropdown(g, dark, bg, fg, border, accent); return bmp; }
             // Tooltip for the hovered button, below the bar.
             if (Hover >= 0 && Hover < Buttons.Count && !string.IsNullOrEmpty(Buttons[Hover].Tip))
             {
@@ -208,6 +251,41 @@ namespace InventaSketch.AddIn.OnSlide
                 g.DrawString(text, tipFont, tfg, tr.X + 6 * Scale, tr.Y + 3 * Scale);
             }
             return bmp;
+        }
+
+        /// <summary>The open dropdown: a panel under its button, one row per option (icon, label), current option marked.</summary>
+        private void DrawDropdown(Graphics g, bool dark, Color bg, Color fg, Color border, Color accent)
+        {
+            using (var path = Rounded(new RectangleF(_drop.X + 0.5f, _drop.Y + 0.5f, _drop.Width - 1, _drop.Height - 1), 6 * Scale))
+            {
+                using var b = new SolidBrush(bg);
+                using var p = new Pen(border, 1);
+                g.FillPath(b, path);
+                g.DrawPath(p, path);
+            }
+            using var font = new Font("Segoe UI", 10f * Scale, GraphicsUnit.Pixel);
+            using var bold = new Font("Segoe UI", 10f * Scale, FontStyle.Bold, GraphicsUnit.Pixel);
+            var fmt = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
+            var pad = (int)Math.Round(4 * Scale);
+            for (var i = 0; i < DropItems.Count; i++)
+            {
+                var item = DropItems[i];
+                var row = new Rectangle(_drop.X + pad, _drop.Y + pad + i * _rowH, _drop.Width - 2 * pad, _rowH);
+                if (Hover == DropBase + i || item.Active)
+                {
+                    using var hb = new SolidBrush(Color.FromArgb(Hover == DropBase + i ? 45 : 26, accent));
+                    using var hp = Rounded(row, 4 * Scale);
+                    g.FillPath(hb, hp);
+                }
+                var ink = item.Active ? accent : fg;
+                var iconBox = new Rectangle(row.X + (int)(4 * Scale), row.Y + (int)(3 * Scale), _rowH - (int)(6 * Scale), _rowH - (int)(6 * Scale));
+                if (item.IconId is not null) IconPainter.Draw(g, item.IconId, iconBox, ink, item.Mirror);
+                else if (item.Icon is not null) g.DrawImage(item.Icon, iconBox);
+                var hasIcon = item.IconId is not null || item.Icon is not null;
+                var textX = hasIcon ? iconBox.Right + (int)(8 * Scale) : row.X + (int)(10 * Scale);
+                using var tb = new SolidBrush(ink);
+                g.DrawString(item.Label, item.Active ? bold : font, tb, new RectangleF(textX, row.Y, row.Right - textX - 4 * Scale, row.Height), fmt);
+            }
         }
 
         private static GraphicsPath Rounded(RectangleF r, float radius)

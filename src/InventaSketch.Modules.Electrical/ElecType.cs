@@ -265,7 +265,7 @@ namespace InventaSketch.Modules.Electrical
             {
                 var i = options.IndexOf(x.Str(def.Key, fallback));
                 return x.WithParam(def.Key, options[(i + 1 + options.Count) % options.Count]);
-            }) { Group = "param" };
+            }) { Group = "param", ParamKeys = new[] { def.Key } };
         }
 
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool def, string icon = IconIds.Toggle)

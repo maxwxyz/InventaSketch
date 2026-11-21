@@ -429,7 +429,7 @@ namespace InventaSketch.Modules.Automotive
                 var cur = x.Str(def.Key, fallback);
                 var idx = options.ToList().FindIndex(p => p.Value == cur);
                 return x.WithParam(def.Key, options[(idx + 1) % options.Count].Value);
-            }) { Group = "param" };
+            }) { Group = "param", ParamKeys = new[] { def.Key } };
         }
 
         /// <summary>Increase/decrease actions for a numeric parameter (multiplicative or additive step, clamped).</summary>

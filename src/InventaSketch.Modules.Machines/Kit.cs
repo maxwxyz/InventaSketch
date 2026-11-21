@@ -453,7 +453,7 @@ namespace InventaSketch.Modules.Machines
             var next = RotorKinds[(idx + 1) % RotorKinds.Length];
             var label = RotorLabel(next);
             return new ContextAction("param.rotor", new I18nText("Next rotor: " + label.En, "Nächster Läufer: " + label.De), IconIds.Cycle,
-                x => x.WithParam("rotor", next)) { Group = "param" };
+                x => x.WithParam("rotor", next)) { Group = "param", ParamKeys = new[] { "rotor" } };
         }
 
         /// <summary>Increment/decrement of an integer parameter (clamped).</summary>

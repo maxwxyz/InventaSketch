@@ -544,7 +544,7 @@ namespace InventaSketch.Modules.Maps
                 var c = x.Str(def.Key, fallback);
                 var i = options.ToList().FindIndex(p => p.Value == c);
                 return x.WithParam(def.Key, options[(i + 1) % options.Count].Value);
-            }) { Group = "param" };
+            }) { Group = "param", ParamKeys = new[] { def.Key } };
         }
 
         /// <summary>Label of the current option of a choice parameter.</summary>

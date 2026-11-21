@@ -200,3 +200,11 @@ textarea.isk-input { resize: vertical; }
 .isk-ico { display: inline-flex; }
 .isk-mirror { transform: scaleX(-1); }
 .isk-ctxbar img { width: 22px; height: 22px; display: block; }
+
+/* Choice dropdowns of the context bar: a list under the button with icon and label per option. */
+.isk-choice-text { font-size: 12px; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.isk-dropdown { position: absolute; z-index: 30; display: flex; flex-direction: column; min-width: 150px; padding: 4px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18); }
+.isk-drop-row { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border: 0; border-radius: 5px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.isk-drop-row:hover { background: color-mix(in srgb, var(--accent, #1f5fbf) 16%, transparent); }
+.isk-drop-row.is-active { font-weight: 600; color: var(--accent, #1f5fbf); background: color-mix(in srgb, var(--accent, #1f5fbf) 10%, transparent); }
+.isk-drop-row img { width: 22px; height: 22px; }

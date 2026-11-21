@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -62,6 +63,37 @@ namespace InventaSketch.AddIn.Tests
             // Opaque pixels exist both in the bar and in the tooltip strip (hover tooltip).
             Assert.True(bmp.GetPixel(bmp.Width / 4, bar.Size.Height / 2).A > 200);
             Assert.Contains(Enumerable.Range(0, bmp.Width), x => bmp.GetPixel(x, bar.Size.Height + bar.TipHeight / 2).A > 200);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void ChoiceDropdownShowsIconAndLabelPerOption(bool dark)
+        {
+            Directory.CreateDirectory(Out);
+            var buttons = new List<BarButton>
+            {
+                new("choice:headStart", "", "Spitze Anfang") { IconId = IconIds.HeadNone, Menu = true, Mirror = true },
+                new("choice:headEnd", "", "Spitze Ende", Active: true) { IconId = IconIds.HeadTriangle, Menu = true },
+                new("choice:kind", "Permanentmagnet…", "Maschinenart") { Menu = true },
+                new("", "", "", Separator: true),
+                new("delete", "", "Löschen", Danger: true) { IconId = IconIds.Delete },
+            };
+            var bar = new FloatingBar(buttons, 2f);
+            bar.Place(new RectangleF(400, 400, 200, 200), new Rectangle(0, 0, 1600, 1200));
+            var items = new[] { ("none", "Keine", IconIds.HeadNone), ("triangle", "Dreieck", IconIds.HeadTriangle), ("open", "Offen", IconIds.HeadOpen), ("oval", "Punkt", IconIds.HeadDot), ("tick", "Schrägstrich", IconIds.HeadTick) }
+                .Select(x => new DropItem("pick:headEnd:" + x.Item1, x.Item2, x.Item3, null, x.Item1 == "triangle", false)).ToList();
+            bar.SetDropdown(1, items);
+            bar.Hover = FloatingBar.DropBase + 2;
+            using var bmp = bar.Render(dark);
+            Assert.Equal(bar.WindowBounds.Size, bmp.Size);
+            Assert.True(bmp.Height > bar.Size.Height + items.Count * 50, "the list hangs below the bar");
+            // Rows hit-test as dropdown entries and map to their commands.
+            var b = bar.Bounds;
+            var row = new Point(b.X + 80 + 20, b.Y + bar.Size.Height + 8 + 56 * 3 + 28);
+            Assert.Equal(FloatingBar.DropBase + 3, bar.HitTest(row));
+            Assert.Equal("pick:headEnd:oval", bar.IdAt(bar.HitTest(row)));
+            bmp.Save(Path.Combine(Out, dark ? "dropdown-dark.png" : "dropdown-light.png"));
         }
 
         [Theory]

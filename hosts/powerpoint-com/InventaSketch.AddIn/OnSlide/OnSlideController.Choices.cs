@@ -7,11 +7,11 @@ using InventaSketch.Core;
 namespace InventaSketch.AddIn.OnSlide
 {
     /// <summary>
-    /// Choices right in the floating bar, with pictograms instead of text: a selected line, arrow, lead line or dimension
-    /// shows its line type, arrowheads (start, end, size), line style and line course as icon buttons with a small caret;
-    /// a click turns the bar into the icon row of that choice, a second click picks (no pie menu, no submenu). Every
-    /// choice parameter whose options carry pictograms (<see cref="ParamDef.HasOptionIcons"/>) takes part, so modules opt
-    /// in by adding option icons.
+    /// Choices right in the floating bar as dropdowns: every choice of the selected element (line type, arrowheads, head
+    /// size, line style, line course, machine arrangement and type, hub …) is a button showing its current value as a
+    /// pictogram (<see cref="ParamDef.HasOptionIcons"/>) or a short text, with a caret. A click opens a list under it with
+    /// pictogram and label of every option, the current one marked, so it is clear what comes; a click on a row picks.
+    /// Cycle actions over the same parameters (<see cref="ContextAction.ParamKeys"/>) leave the bar.
     /// </summary>
     internal sealed partial class OnSlideController
     {
@@ -26,6 +26,8 @@ namespace InventaSketch.AddIn.OnSlide
         internal sealed record BarChoice(string Key, string Tip, string Current, bool Mirror, IReadOnlyList<ChoiceOption> Options)
         {
             public ChoiceOption? CurrentOption => Options.FirstOrDefault(o => o.Value == Current) ?? Options.FirstOrDefault();
+            /// <summary>All options have a pictogram or picture: the button shows it instead of text.</summary>
+            public bool Pictorial => Options.All(o => o.IconId is not null || o.Icon is not null);
         }
 
         /// <summary>The bar choices of an object, in order: line type, then its icon parameters, then the line style.</summary>
@@ -45,12 +47,17 @@ namespace InventaSketch.AddIn.OnSlide
                 if (options.Count > 1) list.Add(new BarChoice("@type", T("Line type", "Linientyp"), o.Type, false, options));
             }
             if (registry.Type(o.Type) is { } type)
-                foreach (var pd in type.Parameters.Where(p => p.HasOptionIcons))
+            {
+                // Choices with pictograms first, then the other choices (as short text), in parameter order.
+                var choices = type.Parameters.Where(p => p.Kind == ParamKind.Choice && p.Options is { Count: > 1 } && !p.Advanced).ToList();
+                foreach (var pd in choices.Where(p => p.HasOptionIcons).Concat(choices.Where(p => !p.HasOptionIcons)))
                 {
                     var current = o.Str(pd.Key, pd.Default?.Text ?? pd.Options![0].Value);
+                    var pictorial = pd.HasOptionIcons;
                     list.Add(new BarChoice(pd.Key, pd.Label.Get(lang), current, pd.MirrorIcons,
-                        pd.Options!.Select(x => new ChoiceOption(x.Value, x.Label.Get(lang), x.Icon, null)).ToList()));
+                        pd.Options!.Select(x => new ChoiceOption(x.Value, x.Label.Get(lang), pictorial ? x.Icon : null, null)).ToList()));
                 }
+            }
             if (o.IsPointGeometry)
             {
                 var dashes = new[] { DashStyle.Solid, DashStyle.Dash, DashStyle.Dot, DashStyle.DashDot, DashStyle.LongDash, DashStyle.DashDotDot };
@@ -69,26 +76,25 @@ namespace InventaSketch.AddIn.OnSlide
             return list.Take(MaxBarChoices).ToList();
         }
 
-        /// <summary>Choice buttons for the normal bar: the current option's pictogram plus a caret.</summary>
+        /// <summary>Dropdown buttons for the bar: the current option's pictogram (or a short text) plus a caret.</summary>
         private IEnumerable<BarButton> ChoiceButtons(SketchObject o)
             => BarChoices(o).Select(c =>
             {
                 var cur = c.CurrentOption;
-                return new BarButton("choice:" + c.Key, "", c.Tip + (cur is null ? "" : ": " + cur.Label)) { IconId = cur?.IconId, Icon = cur?.Icon, Menu = true, Mirror = c.Mirror };
+                var tip = c.Tip + (cur is null ? "" : ": " + cur.Label);
+                return c.Pictorial
+                    ? new BarButton("choice:" + c.Key, "", tip, Active: _barChoice == c.Key) { IconId = cur?.IconId, Icon = cur?.Icon, Menu = true, Mirror = c.Mirror }
+                    : new BarButton("choice:" + c.Key, ShortLabel(cur?.Label ?? c.Tip, 16), tip, Active: _barChoice == c.Key) { Menu = true };
             });
 
-        /// <summary>The open choice as the whole bar: back, then one icon per option (the current one highlighted).</summary>
-        private List<BarButton>? OpenChoiceButtons(SketchObject o)
+        /// <summary>Opens the dropdown of the open choice under its button (rows: pictogram and label, current marked).</summary>
+        private void AttachDropdown(FloatingBar bar, SketchObject o)
         {
-            if (_barChoice is null) return null;
+            if (_barChoice is null) return;
             var choice = BarChoices(o).FirstOrDefault(c => c.Key == _barChoice);
-            if (choice is null) { _barChoice = null; return null; }
-            var list = new List<BarButton> { new("choice:", "‹", T("Back", "Zurück")), new("", "", "", Separator: true) };
-            list.AddRange(choice.Options.Select(x => new BarButton("pick:" + choice.Key + ":" + x.Value, "", x.Label, Active: x.Value == choice.Current)
-            {
-                IconId = x.IconId, Icon = x.Icon, Mirror = choice.Mirror,
-            }));
-            return list;
+            var anchor = bar.Buttons.ToList().FindIndex(b => b.Id == "choice:" + _barChoice);
+            if (choice is null || anchor < 0) { _barChoice = null; return; }
+            bar.SetDropdown(anchor, choice.Options.Select(x => new DropItem("pick:" + choice.Key + ":" + x.Value, x.Label, x.IconId, x.Icon, x.Value == choice.Current, choice.Mirror)).ToList());
         }
 
         /// <summary>

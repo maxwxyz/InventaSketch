@@ -87,6 +87,13 @@
   Nabe oder Schrägverzahnung als kurze Textknöpfe), „Einfügen“ (öffnet die passenden Elemente als Vorschaubilder in der
   Leiste), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
   über 180 px ausblendend; unter 0,1 bis zur nächsten Auswahl verborgen; Tippen blendet sie aus.
+- **Auswahlen als Dropdowns:** Jede Auswahl des gewählten Elements (Linientyp, Pfeilspitzen, Spitzengröße, Linienart,
+  Linienverlauf, Bauform und Art der E-Maschine, Welle-Nabe-Verbindung …) ist ein Leistenknopf mit dem aktuellen Wert als
+  Piktogramm (`ParamOption.Icon`, `ParamDef.WithOptionIcons`) oder kurzem Text und einem kleinen Pfeil. Ein Klick öffnet
+  darunter eine Liste mit Piktogramm und Beschriftung jeder Option, die aktuelle markiert; ein Klick auf eine Zeile wählt,
+  ein Klick daneben schließt. Durchschalt-Aktionen über dieselben Parameter (`ContextAction.ParamKeys`) bleiben nur im
+  Kreismenü; Schalter mit aussagekräftigem Piktogramm (Wellenstümpfe, Gehäuseanbindung, Schrägverzahnung) sind
+  Symbol-Schalter. Keine Textknöpfe, wo es ein Piktogramm gibt.
 - **Planmaßstab auf der Folie:** Planelemente (`ObjectType.UsesPlanScale`: Wände, Räume, Öffnungen) zeigen den
   Planmaßstab der Folie als Leistenknopf („1:50“) und im Kreismenü; beide öffnen die Eingabe und zeichnen die Folie neu.
 - **Einheiten des Web-Add-ins:** vom Web-Add-in aufgeteilte Modell-Tags (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`)

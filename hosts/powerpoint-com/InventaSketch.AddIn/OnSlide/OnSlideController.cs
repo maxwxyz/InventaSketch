@@ -796,8 +796,6 @@ namespace InventaSketch.AddIn.OnSlide
             var list = new List<BarButton>();
             var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             var type = first is null ? null : registry.Type(first.Type);
-            // An open choice (arrowheads, line style ...) fills the bar with its icon row.
-            if (first is not null && OpenChoiceButtons(first) is { } open) return open;
             // Just added with "+": the next element is one click away (no submenu).
             if (first is not null) list.AddRange(NextButtons(first));
             if (type is not null && first is not null && type.Views.Count > 1)
@@ -872,7 +870,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// Short bar text of an action label: without a leading "Next", "on/off"-type suffixes and explanations in brackets,
         /// at most 22 characters (so "Next start cardinality" and "Next end cardinality" stay apart).
         /// </summary>
-        internal static string ShortLabel(string label)
+        internal static string ShortLabel(string label, int max = 22)
         {
             var s = label;
             foreach (var prefix in new[] { "Next ", "Nächste ", "Nächster ", "Nächstes ", "Nächste ", "Nächster ", "Nächstes " })
@@ -887,7 +885,7 @@ namespace InventaSketch.AddIn.OnSlide
             foreach (var suffix in new[] { " on/off", " an/aus", " ein/aus" })
                 if (s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) s = s.Substring(0, s.Length - suffix.Length);
             s = s.Trim();
-            return s.Length <= 22 ? s : s.Substring(0, 21).TrimEnd() + "…";
+            return s.Length <= max ? s : s.Substring(0, max - 1).TrimEnd() + "…";
         }
 
         /// <summary>
@@ -919,6 +917,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (!AddInSettings.Bar) { HideBar(); return; }
             if (_bar is null || _fade.Dismissed) _fade.Reset();
             _bar = new FloatingBar(BarButtons(), (float)view.DeviceScale);
+            if (_unit.Objects.FirstOrDefault(o => _registry().Type(o.Type) is not null) is { } chosen) AttachDropdown(_bar, chosen);
             var frame = UnitScreenRect(view);
             // Room for the top quick-add triangle beyond the rotation handle.
             if (_chainSource is not null) { var up = (float)(14 * view.DeviceScale); frame = RectangleF.FromLTRB(frame.Left, frame.Top - up, frame.Right, frame.Bottom); }
@@ -968,6 +967,8 @@ namespace InventaSketch.AddIn.OnSlide
             if (!inside)
             {
                 if (_barPressed && message == WM_LBUTTONUP) { _barPressed = false; swallow = true; return true; }
+                // A click elsewhere closes an open dropdown (the click itself goes on as usual).
+                if (message == WM_LBUTTONDOWN && _barChoice is not null) { _barChoice = null; ShowBar(view); }
                 return false;
             }
             swallow = true;
@@ -980,7 +981,7 @@ namespace InventaSketch.AddIn.OnSlide
                 _barPressed = false;
                 if (pressed && idx >= 0 && unit is not null)
                 {
-                    var id = bar.Buttons[idx].Id;
+                    var id = bar.IdAt(idx);
                     Log.Info("Bar: " + id);
                     Post(() => ApplyAction(unit, id));
                 }
