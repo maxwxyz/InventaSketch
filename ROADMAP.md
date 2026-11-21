@@ -129,6 +129,11 @@ axis, `Anchor.SidePitch`).
 
 ### Building gear trains yourself (maintainer 2026-11-21)
 
+Status 2026-11-21 (Core + COM): carrier part with pins and build "+", planets sized to sun/ring, 2–8 planets, stepped
+planets, explode of planetary sets (axial views), bevel gears with apex ports (mitre pairs, differential from parts)
+done. Open: coupling of bevel pairs, planet pairs (Ravigneaux), exploding the schematic set and the differential,
+moving gear trains (P2).
+
 - **P1 – Planet carrier (Steg) as its own part:** axial view with 2–8 arms or a disc and planet pins at a radius, side
   view with the pins as axes; planets dock on the pins and are carried; build "+" on free pins (planet) and the centre
   (shaft); option "fixed carrier" (grounded, housing symbol), carriers that are no shafts.

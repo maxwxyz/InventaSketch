@@ -75,6 +75,11 @@ namespace InventaSketch.Modules.Mechanical
         /// <summary>Views with the rotation axis horizontal in the box (schematic, side, section): coupling scales only the diameter.</summary>
         private static readonly HashSet<string> AxisViews = new(StringComparer.Ordinal) { "stick", "side", "section", "line", "body" };
 
+        /// <summary>Parts for "explode" (<see cref="ObjectType.Parts"/>).</summary>
+        public Func<SketchObject, IReadOnlyList<PartSpec>?>? PartsOf { get; init; }
+
+        public override IReadOnlyList<PartSpec>? Parts(SketchObject o) => PartsOf?.Invoke(o);
+
         public override IReadOnlyList<Vec2> MeshDirections(SketchObject o)
             => AxisViews.Contains(ViewOf(o)) ? new[] { new Vec2(0, 1), new Vec2(0, -1) } : base.MeshDirections(o);
 
@@ -211,6 +216,18 @@ namespace InventaSketch.Modules.Mechanical
             var idx = Array.IndexOf(HubKinds, cur);
             var next = HubKinds[(idx + 1 + HubKinds.Length) % HubKinds.Length];
             return new ContextAction("param.hub", HubLabel(next), "hub-" + next, x => x.WithParam("hub", next)) { Group = "param", ParamKeys = new[] { "hub" } };
+        }
+
+        /// <summary>More / fewer of a counted parameter (planets, pins) as two pictogram actions.</summary>
+        public static IEnumerable<ContextAction> Stepper(SketchObject o, string key, I18nText name, int def, int step, int min, int max)
+        {
+            var cur = o.Int(key, def);
+            if (cur + step <= max)
+                yield return new ContextAction("param." + key + ".inc", new I18nText(name.En + " +" + step, (name.De ?? name.En) + " +" + step), IconIds.Increase,
+                    x => x.WithParam(key, Math.Min(max, x.Int(key, def) + step))) { Group = "param" };
+            if (cur - step >= min)
+                yield return new ContextAction("param." + key + ".dec", new I18nText(name.En + " −" + step, (name.De ?? name.En) + " −" + step), IconIds.Decrease,
+                    x => x.WithParam(key, Math.Max(min, x.Int(key, def) - step))) { Group = "param" };
         }
 
         public static ContextAction Toggle(SketchObject o, string key, bool def, I18nText label, string icon)

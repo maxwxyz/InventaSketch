@@ -142,6 +142,11 @@ nur mit Seitenansichten auf paralleler Achse quer zur Achse (der Teilkreis träg
 
 ### Getriebe selbst bauen (Maintainer 21.11.2026)
 
+Stand 21.11.2026 (Core + COM): Steg als Teil mit Bolzen und Bau-„+“, Planeten passend zu Sonne/Hohlrad, 2–8 Planeten,
+Stufenplaneten, Zerlegen von Planetensätzen (Stirnansichten), Kegelräder mit Spitzen-Griffen (Winkelpaare, Differential aus
+Einzelteilen) erledigt. Offen: Kopplung von Kegelradpaaren, Planetenpaare (Ravigneaux), Zerlegen des Schema-Satzes und des
+Differentials, Getriebe bewegen (P2).
+
 - **P1 – Planetenträger (Steg) als eigenes Teil:** Stirnansicht mit 2–8 Armen oder Scheibe und Planetenbolzen auf einem
   Radius, Seitenansicht mit den Bolzen als Achsen; Planeten docken an den Bolzen an und werden mitgenommen; Bau-„+“ an
   freien Bolzen (Planet) und in der Mitte (Welle); Option „fester Steg“ (gestellfest, Gehäusesymbol), Stege, die keine

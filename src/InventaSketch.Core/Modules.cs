@@ -172,6 +172,7 @@ namespace InventaSketch.Core
         public const string Ground = "cmd-ground";
         public const string Split = "cmd-split";
         public const string Hop = "cmd-hop";
+        public const string Explode = "cmd-explode";
         public const string Junction = "cmd-junction";
         public const string RemovePoint = "cmd-point-remove";
         public const string ShapeSquare = "shape-square";
@@ -253,7 +254,7 @@ namespace InventaSketch.Core
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
             MachInner, MachOuter, MachAxial, MachAxialDoubleRotor, MachAxialDoubleStator, MachMagnet, MachWound, MachCage, MachReluctance,
             HubNone, HubFixed, HubSliding, HubLoose, Helix, ShaftEnds, Ground,
-            Split, RemovePoint, Hop, Junction,
+            Split, RemovePoint, Hop, Junction, Explode,
             ShapeSquare, ShapeCircle, ShapeTriangle, FillTint, FillHatch, FillDots, FillNone, RouteFree, RouteOrthogonal, Route45,
             WallThick, WallMedium, WallThin,
         };
@@ -301,6 +302,8 @@ namespace InventaSketch.Core
         /// ranks below discrete ports. Unlike <see cref="Axis"/> it never attracts hubs.
         /// </summary>
         Rail,
+        /// <summary>Cone apex of a bevel gear (on its axis): a mating bevel gear shares it (<see cref="Building"/>).</summary>
+        Apex,
     }
 
     /// <summary>
@@ -536,6 +539,12 @@ namespace InventaSketch.Core
         /// to connect the two there (<see cref="Crossings"/>).
         /// </summary>
         public virtual bool HopsAtCrossings => false;
+
+        /// <summary>
+        /// The parts of a predefined assembly (planetary set, differential …) for "explode" (<see cref="Assemblies"/>): each
+        /// becomes an element of its own, coupled as before. Null when the object is no assembly (or not in this view).
+        /// </summary>
+        public virtual IReadOnlyList<PartSpec>? Parts(SketchObject o) => null;
 
         /// <summary>
         /// Directions (local, before rotation) in which a meshing gear can be docked (<see cref="Building"/>): all four sides

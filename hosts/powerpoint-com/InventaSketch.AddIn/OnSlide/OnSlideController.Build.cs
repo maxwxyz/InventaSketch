@@ -256,6 +256,28 @@ namespace InventaSketch.AddIn.OnSlide
             Log.Info($"Docked {item.Id} at {port.Id} of {owner.Type}");
         }
 
+        /// <summary>
+        /// Replaces a predefined assembly by its parts (<see cref="Assemblies.Explode"/>), each a unit of its own, coupled as
+        /// before; runs inside the caller's undo entry. The first part is selected.
+        /// </summary>
+        private void ApplyExplode(PowerPoint.Slide slide, SketchUnit unit)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var first = unit.Objects.FirstOrDefault(o => !o.IsPointGeometry && registry.Type(o.Type) is not null);
+            if (first is null) return;
+            var parts = Assemblies.Explode(registry, unit.Doc, first.Id, lang);
+            if (parts.Count == 0) return;
+            unit.Shape.Delete();
+            foreach (var part in parts) SketchUnits.Draw(slide, registry, SingleUnitDoc(part), lang);
+            // Teeth of the parts interlock (coupling of the inserted parts).
+            var all = SketchDocument.Create();
+            all = Edits.Add(all, all.Pages[0].Id, parts.ToArray());
+            SketchUnits.RedrawDependents(slide, registry, lang, Array.Empty<SketchDocument>(), new[] { all });
+            SketchUnits.All(slide).FirstOrDefault(u => u.Objects.Any(o => o.Id == parts[0].Id))?.Shape.Select(Office.MsoTriState.msoTrue);
+            Log.Info($"Exploded {first.Type} into {parts.Count} parts");
+        }
+
         /// <summary>Stretches a shaft at a build port to <paramref name="to"/>; the parts on it keep their place (no coupling).</summary>
         private void ApplyStretch(SketchUnit stale, string portId, Vec2 to)
         {
