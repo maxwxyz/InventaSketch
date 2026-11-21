@@ -82,11 +82,18 @@
   optional parameters: edit texts (numeral, dimension text, prefix/unit), cycle choices (line course straight/curved/
   wavy, object end, terminator, direction), toggles and text size. "← Back" returns to the main menu.
 - **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle, below if there is no
-  room): its views, edit text, up to three key type actions with a telling pictogram of the shared set (thicker/thinner
-  wall, more/fewer steps, arrow kind, swap direction; generic toggles and cycles stay in the pie menu), mirror
-  horizontally/vertically, rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
+  room): the "next element" palette after a quick add, its views, edit text, up to five key type actions (telling
+  pictograms such as thicker/thinner, more/fewer, swap direction first, then switches and cycles such as hub or helix as
+  short text buttons), "Insert" (opens the fitting elements as thumbnails in the bar), mirror horizontally/vertically,
+  rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
   otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
   selection; typing hides it. Clicks on the bar never reach the slide.
+- **Quick add (diagrams):** flowchart, UML, ER, BPMN, system and basic elements (`ObjectType.ChainConnector`) show
+  blue triangles 13 logical px outside each side, and their connection ports (blue circles) when the pointer is near.
+  Click a triangle: a copy is added on that side (past elements already there) with the kind's connector between the
+  facing ports, attached at both ends (`Flow.QuickAdd`); the bar then shows the "next element" palette, one click
+  turns the copy into another element and the connector stays (`Flow.Replace`). Drag a triangle or port: drop on a
+  port of another element to connect both, or on free space to add an element there. One undo step each.
 - **Pie menu:** right-click on a selected unit: delete (top), views, type actions, duplicate, mirror, rotate 90°. The unit
   is re-rendered from its model; native moves and resizes are folded into the model first (`SketchUnits.Read`).
 

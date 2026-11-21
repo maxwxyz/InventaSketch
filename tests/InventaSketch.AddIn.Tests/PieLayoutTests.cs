@@ -44,7 +44,7 @@ namespace InventaSketch.AddIn.Tests
         }
 
         [Fact]
-        public void BarShowsAtMostThreeKeyActionsWithSharedIcons()
+        public void BarShowsKeyActionsTellingIconsFirstThenTextButtons()
         {
             static InventaSketch.Core.ContextAction A(string id, string icon, bool enabled = true)
                 => new(id, new InventaSketch.Core.I18nText(id, id), icon, o => o) { IsEnabled = enabled };
@@ -55,8 +55,17 @@ namespace InventaSketch.AddIn.Tests
                 A("toggle", InventaSketch.Core.IconIds.Toggle), A("more2", InventaSketch.Core.IconIds.Increase),
                 A("less", InventaSketch.Core.IconIds.Decrease), A("flip", InventaSketch.Core.IconIds.Swap), A("fourth", InventaSketch.Core.IconIds.ArrowEnd),
             };
-            Assert.Equal(new[] { "more", "less", "flip" }, OnSlideController.BarActions(actions, hasTextButton: true).Select(a => a.Id));
-            Assert.Equal(new[] { "ref", "more", "less" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(a => a.Id));
+            Assert.Equal(new[] { "more", "less", "flip", "fourth", "custom" }, OnSlideController.BarActions(actions, hasTextButton: true).Select(a => a.Id));
+            Assert.Equal(new[] { "ref", "more", "less", "flip", "fourth" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(a => a.Id));
+        }
+
+        [Fact]
+        public void ShortLabelsFitTheBar()
+        {
+            Assert.Equal("Helical teeth", OnSlideController.ShortLabel("Helical teeth on/off"));
+            Assert.Equal("Schrägverzahnung", OnSlideController.ShortLabel("Schrägverzahnung an/aus"));
+            Assert.Equal("Next centre", OnSlideController.ShortLabel("Next centre (closed, tandem)"));
+            Assert.Equal(18, OnSlideController.ShortLabel("A very long action label indeed").Length);
         }
     }
 }

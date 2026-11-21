@@ -55,6 +55,9 @@ namespace InventaSketch.Engine
                 ["setMonochrome"] = SetMonochromeCore,
                 ["setMainText"] = SetMainTextCore,
                 ["suggestions"] = SuggestionsCore,
+                ["quickAdd"] = QuickAddCore,
+                ["nextItems"] = NextItemsCore,
+                ["replaceItem"] = ReplaceItemCore,
                 ["conversions"] = ConversionsCore,
                 ["exporters"] = ExportersCore,
                 ["export"] = ExportCore,
@@ -207,6 +210,7 @@ namespace InventaSketch.Engine
                     // Only for the selection: anchors are evaluated per object.
                     Centred = isSelected && IsCentred(o, ctx!),
                     MainText = isSelected ? MainTextOf(Registry, o, s.Lang) : null,
+                    Chain = isSelected && Flow.CanChain(Registry, o),
                 });
             }
             if (r?.IncludeSvg != false)
@@ -460,6 +464,54 @@ namespace InventaSketch.Engine
                 Id = i.Id, TypeId = i.TypeId, Name = i.Name.Get(lang), View = i.View, Category = i.Category,
                 Points = Registry.Type(i.TypeId)?.Geometry == GeometryKind.Points,
             }).ToList();
+        }
+
+        /// <summary>
+        /// "+" quick add: a copy of <c>id</c> (or <c>itemId</c>) on <c>side</c>, at <c>x</c>/<c>y</c> if given, joined by the
+        /// type's connector (<see cref="Flow.QuickAdd"/>). One undo step; the new element becomes the selection.
+        /// </summary>
+        private object QuickAddCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var side = (r.Side ?? "right").ToLowerInvariant() switch
+            {
+                "left" => FlowSide.Left, "top" => FlowSide.Top, "bottom" => FlowSide.Bottom, _ => FlowSide.Right,
+            };
+            Vec2? at = r.X is double x && r.Y is double y ? new Vec2(x, y) : null;
+            string? added = null;
+            s.Apply("Add next", d =>
+            {
+                var res = Flow.QuickAdd(Registry, d, id, side, at, r.ItemId);
+                added = res.ObjectId;
+                return res.Doc;
+            });
+            if (added is not null) s.Select(new[] { added });
+            return StateOf(s, r);
+        }
+
+        /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>
+        private object NextItemsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var o = s.Doc.Get(r.Id ?? s.Selection.FirstOrDefault() ?? "");
+            if (o is null) return new List<SuggestionInfo>();
+            return Flow.NextItems(Registry, o, Math.Max(1, r.Max ?? 8)).Select(i => new SuggestionInfo
+            {
+                Id = i.Id, TypeId = i.TypeId, Name = i.Name.Get(lang), View = i.View, Category = i.Category, Points = false,
+            }).ToList();
+        }
+
+        /// <summary>Turns <c>id</c> into library item <c>itemId</c> in place; attached connectors stay connected.</summary>
+        private object ReplaceItemCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            if (r.ItemId is null) throw new ArgumentException("Missing 'itemId'.");
+            s.Apply("Replace", d => Flow.Replace(Registry, d, id, r.ItemId));
+            s.Select(new[] { id });
+            return StateOf(s, r);
         }
 
         private static readonly string[] MainTextKeys = { "text", "label", "name", "title", "ref" };

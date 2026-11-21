@@ -82,10 +82,18 @@
   Winkelverbinder, Bezugslinie, Bezugszeichen, lineare und schräge Bemaßung; Endpunkte, Zeichen/Text, Ebene, Gruppe und
   Farbe bleiben erhalten) und „Beschriftung ▸“ aus den optionalen Parametern des Typs.
 - **Schwebende Leiste:** über der ausgewählten Einheit (abseits des Drehgriffs, darunter wenn oben kein Platz ist):
-  Ansichten, Text bearbeiten, bis zu drei wichtige Typaktionen mit aussagekräftigem Piktogramm aus dem gemeinsamen Satz
-  (Wand dicker/dünner, mehr/weniger Stufen, Pfeilart, Richtung tauschen; allgemeine Schalter und Zyklen bleiben im
-  Kreismenü), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
+  die Palette „nächstes Element“ nach dem Schnell-Anfügen, Ansichten, Text bearbeiten, bis zu fünf wichtige Typaktionen
+  (aussagekräftige Piktogramme wie dicker/dünner, mehr/weniger, Richtung tauschen zuerst, dann Schalter und Zyklen wie
+  Nabe oder Schrägverzahnung als kurze Textknöpfe), „Einfügen“ (öffnet die passenden Elemente als Vorschaubilder in der
+  Leiste), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
   über 180 px ausblendend; unter 0,1 bis zur nächsten Auswahl verborgen; Tippen blendet sie aus.
+- **Schnell-Anfügen (Diagramme):** Ablaufdiagramm-, UML-, ER-, BPMN-, System- und Grundform-Elemente
+  (`ObjectType.ChainConnector`) zeigen blaue Dreiecke 13 logische Pixel außerhalb jeder Seite und, wenn der Mauszeiger
+  nahe ist, ihre Anschlusspunkte (blaue Kreise). Klick auf ein Dreieck: Eine Kopie entsteht auf dieser Seite (hinter
+  schon vorhandenen Elementen) mit dem passenden Verbinder zwischen den zugewandten Anschlüssen, an beiden Enden
+  angehängt (`Flow.QuickAdd`); die Leiste zeigt dann die Palette „nächstes Element“, ein Klick macht aus der Kopie ein
+  anderes Element, der Verbinder bleibt (`Flow.Replace`). Dreieck oder Anschluss ziehen: auf einem Anschluss eines
+  anderen Elements loslassen verbindet beide, auf freier Fläche entsteht dort ein neues Element. Je ein Rückgängig-Schritt.
 - **Kreismenü:** Rechtsklick auf eine ausgewählte Einheit: Löschen (oben), Ansichten, Typaktionen, Duplizieren,
   Spiegeln, 90° drehen.
 

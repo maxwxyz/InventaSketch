@@ -16,6 +16,9 @@ namespace InventaSketch.Modules.Annotation
     {
         private readonly FlowShape _shape;
 
+        /// <summary>Flowchart steps chain with an elbow connector (quick add, <see cref="Flow"/>).</summary>
+        public override string? ChainConnector(SketchObject o) => "ann.arrow.elbow";
+
         public FlowBoxType(FlowShape shape)
             : base("ann.flow." + shape.ToString().ToLowerInvariant(), Names(shape), AnnCategories.Flowchart, Keys(shape))
         {

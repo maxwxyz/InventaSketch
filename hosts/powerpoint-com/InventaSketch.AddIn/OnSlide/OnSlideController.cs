@@ -21,9 +21,9 @@ namespace InventaSketch.AddIn.OnSlide
     ///   mirror, rotate).
     /// Hooks only compute and draw; every PowerPoint object-model call runs later through BeginInvoke.
     /// </summary>
-    internal sealed class OnSlideController : IDisposable
+    internal sealed partial class OnSlideController : IDisposable
     {
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -197,7 +197,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void Arm(SketchUnit unit)
         {
-            if (_unit?.Id != unit.Id) _selectedPoints.Clear();
+            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barInsertOpen = false; }
             var slide = CurrentSlide();
             var view = SlideView.Current(_app);
             if (slide is null || view is null) { Disarm(); return; }
@@ -208,6 +208,7 @@ namespace InventaSketch.AddIn.OnSlide
             var ctx = new RenderContext(unit.Doc, _lang());
             _unitPrims = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
             _unitAnchors = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.PageAnchors(o, ctx)).ToList();
+            UpdateChainSource(unit);
             _targets = CollectTargets(slide, unit.Id);
             _unitContext = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
             _mode = Mode.Armed;
@@ -242,7 +243,7 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate)
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect)
             {
                 _mode = Mode.Armed;
                 if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
@@ -258,7 +259,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate) return;
+                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect) return;
                 using var dpi = DpiScope.PerMonitor();
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
@@ -355,8 +356,13 @@ namespace InventaSketch.AddIn.OnSlide
                     if (message == WM_RBUTTONDOWN) { Cancel("right click"); return true; }
                     return false;
 
+                case Mode.Connect:
+                    return ConnectMouse(message, pt, view);
+
                 case Mode.Armed:
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
+                    // Quick add: blue triangles and connection ports of flowchart, UML, ER, BPMN and basic elements.
+                    if (ChainMouse(message, pt, view, out var chainSwallow)) return chainSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
                     if (message == WM_LBUTTONDOWN && PointHandleAt(pt, view) is int pointIndex and >= 0)
                     {
@@ -782,6 +788,8 @@ namespace InventaSketch.AddIn.OnSlide
             var list = new List<BarButton>();
             var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             var type = first is null ? null : registry.Type(first.Type);
+            // Just added with "+": the next element is one click away (no submenu).
+            if (first is not null) list.AddRange(NextButtons(first));
             if (type is not null && first is not null && type.Views.Count > 1)
             {
                 foreach (var v in type.Views.Take(6))
@@ -791,14 +799,29 @@ namespace InventaSketch.AddIn.OnSlide
             var hasText = first is not null && EditableText(registry, first) is not null;
             if (hasText)
                 list.Add(new BarButton("text", "", T("Edit text (double-click)", "Text bearbeiten (Doppelklick)")) { IconId = IconIds.Text });
-            // Key parameters: the first type actions with a pictogram of the shared set (teeth +/-, flip polarity …).
+            // Key parameters straight in the bar (no submenu): actions with a telling pictogram as icons, switches and
+            // cycles (hub, helix, kind …) as short text buttons; the pie menu keeps the complete list.
             var keyActions = BarActions(UnitActions(out _), hasText);
             foreach (var a in keyActions)
             {
-                var tip = a.Label.Get(_lang()) + (a.Input is not null && !a.Label.Get(_lang()).EndsWith("…", StringComparison.Ordinal) ? " …" : "");
-                list.Add(new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon });
+                var label = a.Label.Get(_lang());
+                var tip = label + (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal) ? " …" : "");
+                list.Add(IsTelling(a.Icon)
+                    ? new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
+                    : new BarButton("act:" + a.Id, ShortLabel(label), tip, Active: a.IsActive));
             }
-            if (keyActions.Count > 0) list.Add(new BarButton("", "", "", Separator: true));
+            // "Insert": elements that fit the selection as thumbnails right in the bar (shaft: gears, bearings …).
+            if (first is not null)
+            {
+                list.Add(new BarButton("insert", "", T("Insert a fitting element", "Passendes Element einfügen"), Active: _barInsertOpen) { IconId = IconIds.Increase });
+                if (_barInsertOpen)
+                {
+                    var scale = _view?.DeviceScale ?? 1;
+                    foreach (var item in registry.Suggestions(first, 8))
+                        list.Add(new BarButton("ins:" + item.Id, "", item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
+                }
+            }
+            list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
             list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
             list.Add(new BarButton("rot90", "", T("Rotate 90 degrees", "Um 90 Grad drehen")) { IconId = IconIds.Rotate });
@@ -809,25 +832,41 @@ namespace InventaSketch.AddIn.OnSlide
         }
 
         /// <summary>At most this many type actions in the floating bar; the pie menu has all of them.</summary>
-        internal const int MaxBarActions = 3;
+        internal const int MaxBarActions = 5;
 
-        /// <summary>Pictograms that say nothing without a label, or that the bar already has as its own buttons.</summary>
-        private static readonly HashSet<string> NotInBar = new()
+        /// <summary>Whether the "Insert" palette of the bar is open (closes with the next selection).</summary>
+        private bool _barInsertOpen;
+
+        /// <summary>Pictograms the bar already has as its own buttons.</summary>
+        private static readonly HashSet<string> NotInBar = new() { IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate };
+
+        /// <summary>Generic pictograms (switch, cycle) say nothing on their own: such actions show a short text instead.</summary>
+        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon != IconIds.Toggle && icon != IconIds.Cycle;
+
+        /// <summary>Short bar text of an action label: without "on/off"-type suffixes and explanations in brackets, at most 18 characters.</summary>
+        internal static string ShortLabel(string label)
         {
-            IconIds.Toggle, IconIds.Cycle, IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate,
-        };
+            var s = label;
+            var cut = s.IndexOf(" (", StringComparison.Ordinal);
+            if (cut > 0) s = s.Substring(0, cut);
+            foreach (var suffix in new[] { " on/off", " an/aus", " ein/aus" })
+                if (s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) s = s.Substring(0, s.Length - suffix.Length);
+            s = s.Trim();
+            return s.Length <= 18 ? s : s.Substring(0, 17).TrimEnd() + "…";
+        }
 
         /// <summary>
-        /// Type actions for the floating bar (key parameters such as thicker/thinner, more/fewer, swap direction): available
-        /// ones whose icon is a telling pictogram of the shared set, so the bar stays readable without labels; each icon
-        /// once, text actions only when the bar has no text button yet, at most <see cref="MaxBarActions"/>.
+        /// Type actions for the floating bar (key parameters: thicker/thinner, more/fewer, swap, hub, helix …): available ones,
+        /// telling pictograms first (each icon once), then switches and cycles as text; text actions only when the bar has
+        /// no text button yet; at most <see cref="MaxBarActions"/>.
         /// </summary>
         internal static List<ContextAction> BarActions(IEnumerable<ContextAction> actions, bool hasTextButton)
         {
             var seen = new HashSet<string>(StringComparer.Ordinal);
-            return actions.Where(a => a.IsEnabled && IconIds.All.Contains(a.Icon) && !NotInBar.Contains(a.Icon)
-                    && !(hasTextButton && a.Icon == IconIds.Text) && seen.Add(a.Icon))
-                .Take(MaxBarActions).ToList();
+            var usable = actions.Where(a => a.IsEnabled && !NotInBar.Contains(a.Icon) && !(hasTextButton && a.Icon == IconIds.Text)).ToList();
+            var telling = usable.Where(a => IsTelling(a.Icon) && seen.Add(a.Icon));
+            var text = usable.Where(a => !IsTelling(a.Icon));
+            return telling.Concat(text).Take(MaxBarActions).ToList();
         }
 
         private RectangleF UnitScreenRect(SlideView view)
@@ -1218,7 +1257,7 @@ namespace InventaSketch.AddIn.OnSlide
         private void DrawPointHandles(SlideView view)
         {
             var o = PointObject();
-            if (o is null) return;
+            if (o is null) { DrawChainTools(view); return; }
             var pts = _unit!.Doc.ResolvePoints(o);
             Present(view, _ => { }, g => DrawHandleSet(g, view, pts, _selectedPoints));
         }
@@ -1694,6 +1733,18 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 // Insert at the pointer with snapping (onto the axis, ports and mounts of the selection).
                 if (registry.Item(id.Substring(4)) is { } item) BeginPlacement(item);
+                return;
+            }
+            if (id == "insert")
+            {
+                // Opens or closes the insert palette in the bar (no undo step, no redraw of the unit).
+                _barInsertOpen = !_barInsertOpen;
+                if (_view is not null) ShowBar(_view);
+                return;
+            }
+            if (id.StartsWith("next:", StringComparison.Ordinal))
+            {
+                ReplaceNext(unit, id.Substring(5));
                 return;
             }
             if (id == "anim")

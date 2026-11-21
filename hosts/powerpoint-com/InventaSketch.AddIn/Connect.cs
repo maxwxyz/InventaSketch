@@ -259,10 +259,10 @@ namespace InventaSketch.AddIn
                 void Gallery(LibraryCategory c, int i, bool inMenu, bool compact)
                 {
                     // Inside a menu, galleries take no size/showLabel attributes (the menu shows their labels).
-                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(c.Name.Get(_lang))).Append('"').Append(" getVisible=\"GetModuleVisible\"");
+                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(GalleryLabel(c))).Append('"').Append(" getVisible=\"GetModuleVisible\"");
                     if (!inMenu) sb.Append(" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append('"');
                     sb.Append(" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
-                      .Append(" screentip=\"").Append(X(c.Name.Get(_lang))).Append("\" supertip=\"")
+                      .Append(" screentip=\"").Append(X(GalleryLabel(c))).Append("\" supertip=\"")
                       .Append(X(T("Pick an element, then click on the slide to place it (snaps to other elements). Esc cancels.",
                           "Element wählen, dann auf die Folie klicken (rastet an anderen Elementen ein). Esc bricht ab."))).Append('"')
                       .Append(" getItemCount=\"GetItemCount\" getItemImage=\"GetGalleryItemImage\" getItemScreentip=\"GetItemScreentip\"")
@@ -271,7 +271,8 @@ namespace InventaSketch.AddIn
                 foreach (var (label, mods) in RibbonGroups())
                 {
                     var ids = mods.Select(mod => mod.Id).ToList();
-                    var cats = _categories.Select((c, i) => (c, i)).Where(x => ids.Contains(x.c.ModuleId))
+                    // Categories merged into another one's gallery get no gallery of their own.
+                    var cats = _categories.Select((c, i) => (c, i)).Where(x => ids.Contains(x.c.ModuleId) && !MergedInto.ContainsKey(x.c.Id))
                         .OrderBy(x => ids.IndexOf(x.c.ModuleId)).ToList();
                     if (cats.Count == 0) continue;
                     if (m == 0)
@@ -548,7 +549,8 @@ namespace InventaSketch.AddIn
             LayoutButton(sb, "IskSameWidth", T("Same width", "Gleiche Breite"), null);
             LayoutButton(sb, "IskSameSize", T("Same size", "Gleiche Gr\u00f6\u00dfe"), null);
             sb.Append("</box>");
-            sb.Append("<box id=\"IskBoxDimensions\"><control idMso=\"ShapeHeight\" showLabel=\"false\" /><control idMso=\"ShapeWidth\" showLabel=\"false\" /></box>");
+            // Height above width (one column), so the group stays narrow.
+            sb.Append("<control idMso=\"ShapeHeight\" showLabel=\"false\" /><control idMso=\"ShapeWidth\" showLabel=\"false\" />");
             sb.Append("<separator id=\"IskSepAlign\" />");
             sb.Append("<box id=\"IskBoxAlignH\">");
             LayoutButton(sb, "IskAlignLeft", T("Align left", "Linksb\u00fcndig ausrichten"), "ObjectsAlignLeft");
@@ -673,6 +675,23 @@ namespace InventaSketch.AddIn
 
         private string T(string en, string de) => _lang == Lang.De ? de : en;
 
+        /// <summary>
+        /// Ribbon galleries that show several categories, so the "Annotate" group needs one column less: hatching with the
+        /// basic shapes, patent marks and patent drawing with lines and arrows (secondary category → primary category).
+        /// </summary>
+        internal static readonly IReadOnlyDictionary<string, string> MergedInto = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["ann.hatching"] = "basic",
+            ["ann.patent"] = "ann.lines",
+            ["patent.drawing"] = "ann.lines",
+        };
+
+        /// <summary>The category and the categories merged into it, in order.</summary>
+        private List<LibraryCategory> GalleryCategories(LibraryCategory primary)
+            => new[] { primary }.Concat(_categories.Where(c => MergedInto.TryGetValue(c.Id, out var p) && p == primary.Id)).ToList();
+
+        private string GalleryLabel(LibraryCategory primary) => string.Join(" · ", GalleryCategories(primary).Select(c => c.Name.Get(_lang)));
+
         private LibraryCategory? CategoryOf(Office.IRibbonControl control)
         {
             var idx = control.Id.LastIndexOf('_');
@@ -682,7 +701,9 @@ namespace InventaSketch.AddIn
         private List<LibraryItem> ItemsOf(Office.IRibbonControl control)
         {
             var cat = CategoryOf(control);
-            return cat is null || _registry is null ? new List<LibraryItem>() : _registry.Library.Where(i => i.Category == cat.Id).ToList();
+            if (cat is null || _registry is null) return new List<LibraryItem>();
+            var ids = GalleryCategories(cat).Select(c => c.Id).ToList();
+            return _registry.Library.Where(i => ids.Contains(i.Category)).OrderBy(i => ids.IndexOf(i.Category)).ToList();
         }
 
         public object? GetCategoryImage(Office.IRibbonControl control)

@@ -89,6 +89,8 @@ namespace InventaSketch.Engine
         internal sealed class RectType : ObjectType
         {
             public override string Id => "basic.rect";
+            /// <summary>Boxes chain with a straight arrow (quick add).</summary>
+            public override string? ChainConnector(SketchObject o) => "ann.arrow";
             public override I18nText Name => new("Rectangle", "Rechteck");
             public override string Category => "basic";
             public override Size2 DefaultSize => new(30, 20);
@@ -115,6 +117,7 @@ namespace InventaSketch.Engine
         internal sealed class EllipseType : ObjectType
         {
             public override string Id => "basic.ellipse";
+            public override string? ChainConnector(SketchObject o) => "ann.arrow";
             public override I18nText Name => new("Ellipse", "Ellipse");
             public override string Category => "basic";
             public override Size2 DefaultSize => new(20, 20);

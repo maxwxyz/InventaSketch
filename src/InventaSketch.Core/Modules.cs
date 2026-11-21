@@ -343,6 +343,13 @@ namespace InventaSketch.Core
         public virtual bool IsPart => true;
 
         /// <summary>
+        /// Quick add (<see cref="Flow"/>): the library item id (or type id) of the connector that joins an element added next
+        /// to <paramref name="o"/> with the "+" arrows; "" chains without a connector (process steps), null (default) offers
+        /// no quick add. Flowchart, UML, ER and BPMN elements and basic shapes return their usual connector.
+        /// </summary>
+        public virtual string? ChainConnector(SketchObject o) => null;
+
+        /// <summary>
         /// Called when a parameter was set from outside the type's own actions (inspector, label menu): returns the object
         /// to keep, for example with <see cref="SketchObject.Size"/> following a design box that grew (a valve with more
         /// positions keeps its drawing scale instead of being squeezed). Default: <paramref name="after"/> unchanged.

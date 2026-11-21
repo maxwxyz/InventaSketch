@@ -47,6 +47,7 @@ undo step each (no step when nothing changes).
 | `contextActions`, `inspector` | `ids`, `lang` | actions (generic, views, type actions); inspector info |
 | `suggestions` | `ids`, `lang`, `max` (default 9) | library items `{ id, typeId, name, view, category, points }` that fit the first selected object ("Insert ▸": companions, same category, annotations, in its kind of view); empty without a selection |
 | `conversions`, `convert` | `ids`, `lang`; `ids`, `itemId` (target type) | line types the first selected line, arrow, dimension or lead line can become ("Type ▸", `{ id, label, active }`); state (points, ends and attachments kept) |
+| `quickAdd`, `nextItems`, `replaceItem` | `id`, `side` (left/top/right/bottom), optional `x`/`y`, `itemId`; `id`, `max`; `id`, `itemId` | state with the new element selected (copy plus connector, one undo step); library items for the next element; state (element replaced, connectors stay) |
 | `exporters`, `export` | `ids` (selection with its groups, else the page), `lang`; `itemId` (exporter id) | domain exports that apply `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (default: document setting), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | draw plan in pt (black and white when the document is) |

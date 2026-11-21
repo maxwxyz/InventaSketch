@@ -49,6 +49,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `contextActions`, `inspector` | `ids`, `lang` | Aktionen (allgemein, Ansichten, Typaktionen); Inspektordaten |
 | `suggestions` | `ids`, `lang`, `max` (Standard 9) | Bibliothekselemente `{ id, typeId, name, view, category, points }`, die zum ersten ausgewählten Objekt passen („Einfügen ▸“: Begleiter, gleiche Kategorie, Beschriftungen, in seiner Art von Ansicht); leer ohne Auswahl |
 | `conversions`, `convert` | `ids`, `lang`; `ids`, `itemId` (Zieltyp) | Linientypen, in die die erste ausgewählte Linie, der Pfeil, das Maß oder die Hinweislinie umgewandelt werden kann („Typ ▸“, `{ id, label, active }`); Zustand (Punkte, Enden und Anhänge bleiben) |
+| `quickAdd`, `nextItems`, `replaceItem` | `id`, `side` (left/top/right/bottom), optional `x`/`y`, `itemId`; `id`, `max`; `id`, `itemId` | Zustand mit dem neuen Element ausgewählt (Kopie plus Verbinder, ein Rückgängig-Schritt); Bibliothekselemente für das nächste Element; Zustand (Element ersetzt, Verbinder bleiben) |
 | `exporters`, `export` | `ids` (Auswahl mit ihren Gruppen, sonst die Seite), `lang`; `itemId` (Exporter-Id) | zutreffende Fachexporte `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (Standard: Dokumenteinstellung), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | Zeichenplan in pt (schwarz-weiß, wenn das Dokument es ist) |

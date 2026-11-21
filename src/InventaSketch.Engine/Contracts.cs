@@ -66,6 +66,8 @@ namespace InventaSketch.Engine
         public PlanRect? Target { get; set; }
         /// <summary>Host rotation change in degrees (clockwise).</summary>
         public double? Rotation { get; set; }
+        /// <summary>quickAdd: side of the "+" arrow ("left", "top", "right", "bottom").</summary>
+        public string? Side { get; set; }
         /// <summary>Maximum number of results (suggestions).</summary>
         public int? Max { get; set; }
     }
@@ -99,6 +101,8 @@ namespace InventaSketch.Engine
         public bool Centred { get; set; }
         /// <summary>Selected objects only: the main text for quick editing (double-click, bar, pie); null if none.</summary>
         public TextEditInfo? MainText { get; set; }
+        /// <summary>Selected objects only: quick-add "+" arrows apply (<see cref="Flow.CanChain"/>).</summary>
+        public bool Chain { get; set; }
     }
 
     /// <summary>Main text of an object (<see cref="EngineApi.MainTextOf"/>); set it with <c>setMainText</c>.</summary>

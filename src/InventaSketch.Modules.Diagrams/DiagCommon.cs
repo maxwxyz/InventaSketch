@@ -613,6 +613,29 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
             => Ports(o).Select(p => Anchor.Point(AnchorRole.Port, p.P, p.Id));
+
+        /// <summary>Containers that hold other elements (swimlanes, packages, frames, lifelines): no quick add.</summary>
+        private static readonly HashSet<string> NoChain = new(StringComparer.Ordinal)
+        {
+            "diag.activity.swimlane", "diag.uml.package", "diag.sys.container", "diag.seq.lifeline", "diag.state.composite", "diag.bpmn.pool",
+        };
+
+        /// <summary>
+        /// Quick add with the connector of the diagram kind: crow's-foot relations for ER, associations for class diagrams,
+        /// note links for notes, directed flows for activity, state, BPMN, use case and system diagrams.
+        /// </summary>
+        public override string? ChainConnector(SketchObject o)
+        {
+            if (NoChain.Contains(Id)) return null;
+            if (Id == "diag.uml.note") return "diag.uml.relation.link";
+            return Category switch
+            {
+                DiagCategories.Er => "diag.er.connector",
+                DiagCategories.Structure => "diag.uml.relation",
+                DiagCategories.Sequence or DiagCategories.Relations => null,
+                _ => "diag.uml.relation.directed",
+            };
+        }
     }
 
     /// <summary>Point diagram object: renders in page coordinates from <see cref="SketchDocument.ResolvePoints"/>.</summary>
