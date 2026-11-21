@@ -219,6 +219,10 @@ Differentials, Getriebe bewegen (P2).
 
 ## Offene Punkte
 
+- **PowerPoint-UI-Szenarien (21.11.2026):** `tests/powerpoint-com` enthält elf Szenarien, übernommen aus den
+  Testskripten der Sitzung; `explode-linkages` läuft grün (10 Prüfungen). Die übrigen zehn (quick-add, bar, gear-mesh,
+  motor-shaft, build-ports, line-language, crossings, gear-trains, gear-motion, linkage-build) sind in dieser Form noch
+  nicht gelaufen und brauchen evtl. Korrekturen an Bildschirmpositionen.
 - **Stand 20.11.2026:** Engine-Kern, Engine-API und zwölf Module auf `main` (zuletzt Karten und Routen sowie
   Fluidtechnik; 826 Bibliothekselemente in 70 Kategorien, in PowerPoint geprüft).
 - Core-Wünsche aus den Modulen Karten und Fluidtechnik (20.11.2026): gemeinsame Helfer für Anschluss-Routing/`ConnectToPort` (Elektro und Fluid doppeln sie) und

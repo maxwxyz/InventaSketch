@@ -67,8 +67,9 @@ src/InventaSketch.Core            Engine-Kern (Modell, Geometrie, Einrasten, Ren
 src/InventaSketch.Modules.*       Fachmodule (Annotation, Patent, Mechanical, …)
 src/InventaSketch.Engine          JSON-Engine-API, gemeinsam für alle Hosts
 hosts/office-web                  PowerPoint-Web-Add-in (WebAssembly-Engine + TypeScript-UI)
-hosts/powerpoint-com              PowerPoint-COM-Add-in (geplant)
+hosts/powerpoint-com              PowerPoint-COM-Add-in (.NET Framework 4.8)
 hosts/libreoffice                 LibreOffice-Erweiterung (geplant)
+tests                             xUnit-Tests; tests/powerpoint-com: PowerPoint-UI-Szenarien
 docs/en, docs/de                  Dokumentation (Englisch maßgeblich, deutsche Übersetzung)
 docs/adr                          Architekturentscheidungen (ADRs)
 ```

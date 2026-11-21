@@ -151,6 +151,29 @@ Benutzerkontext läuft, und mit einem ebenso gestarteten PowerPoint prüfen.
 Vor der Installation PowerPoint schließen. Das Web-Add-in wird automatisch ausgeblendet, solange das COM-Add-in
 installiert ist (`EquivalentAddins`, ADR-0004).
 
+## UI-Szenarien (PowerPoint, lokal ausführen)
+
+`tests/powerpoint-com` enthält skriptgesteuerte Prüfungen des installierten Add-ins im echten PowerPoint: Jedes Szenario
+startet ein eigenes PowerPoint (über den Explorer) mit leerer Folie, steuert das Add-in über sein Automatisierungsobjekt
+(`Insert`, `Command`, `ScreenRect`, `LibraryItems`) und die Maus (DPI-bewusst), liest Zahlen aus den an den Formen
+gespeicherten Skizzenmodellen zurück, macht Bildschirmfotos und beendet PowerPoint ohne Speichern. Gemeinsame
+Hilfsfunktionen liegen in `IskPowerPoint.psm1`.
+
+```powershell
+.\scripts\package-com.ps1; .\dist\InventaSketch-AddIn\Install.cmd   # zuerst den aktuellen Stand installieren
+.\tests\powerpoint-com\Invoke-IskScenarios.ps1 -List                 # Szenarien
+.\tests\powerpoint-com\Invoke-IskScenarios.ps1 -Name explode-linkages
+.\tests\powerpoint-com\Invoke-IskScenarios.ps1                      # alle
+```
+
+- PowerPoint muss geschlossen sein: Der Lauf startet nicht, solange es offen ist, und berührt so nie offene
+  Präsentationen.
+- Während eines Laufs Maus und Tastatur nicht benutzen; die Szenarien klicken und ziehen auf dem Bildschirm.
+- Bildschirmfotos und das Add-in-Log landen in `local-resources/powerpoint-tests/<Zeitstempel>/<Szenario>/`
+  (von Git ignoriert); sie zeigen, was Zahlen nicht zeigen (Leiste, Brücken, Vorschauen).
+- Der Exit-Code ist die Zahl der fehlgeschlagenen Szenarien. Szenarien mit Bildschirmpositionen („+“ der Leiste, „+“ an
+  Enden) hängen vom aktuellen Layout ab und sind eine Release-Prüfung, kein Teil von `build.ps1`.
+
 ## Geprüft
 
 Siehe die englische Fassung (Abschnitt „Verified“) für die vollständige Liste der am 2026-11-20 in PowerPoint 16.0

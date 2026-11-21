@@ -198,6 +198,10 @@ moving gear trains (P2).
 
 ## Open items
 
+- **PowerPoint UI scenarios (2026-11-21):** `tests/powerpoint-com` holds eleven scenarios ported from the session's
+  test scripts; `explode-linkages` runs green (10 checks). The other ten (quick-add, bar, gear-mesh, motor-shaft,
+  build-ports, line-language, crossings, gear-trains, gear-motion, linkage-build) have not run in this form yet and may
+  need screen-position fixes.
 - **Status 2026-11-20:** engine core, Engine API and twelve modules on `main`: basic shapes, annotation, mechanical,
   patent, kinematics, electrical, electric machines, automotive/ADAS/HMI, architecture, diagrams, maps and routes,
   fluid power (each with tests, gallery and EN/DE module docs; 826 library items in 70 categories, verified in
