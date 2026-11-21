@@ -97,6 +97,7 @@ namespace InventaSketch.AddIn
                 _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang, BeginPlacement);
                 _onSlide.UnitArmed += u => _bridge.UnitSelected(u);
                 _onSlide.PlanScaleRequested += SetPlanScale;
+                _onSlide.MotionToggled += () => _ribbon?.InvalidateControl("IskMotion");
                 // Units deleted on the slide (Delete key, cut, undo) also leave the sidebar editor.
                 _app.WindowSelectionChange += _ =>
                 {
@@ -250,6 +251,8 @@ namespace InventaSketch.AddIn
               .Append(X(T("Shows the InventaSketch elements of this slide in black and white (patent style): fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß (Patentstil), einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskAnchor\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
+            sb.Append("<toggleButton id=\"IskMotion\" label=\"").Append(L(T("Move", "Bewegen"))).Append("\" getImage=\"GetMotionImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+              .Append(X(T("Motion mode: dragging turns gear trains and linkages the way they can move (gears turn with their ratios, planets orbit, centre distances stay). Off: dragging edits.", "Bewegungsmodus: Ziehen dreht Getriebe und Koppelgetriebe so, wie sie sich bewegen können (Räder drehen mit ihrer Übersetzung, Planeten laufen um, Achsabstände bleiben). Aus: Ziehen bearbeitet."))).Append("\" />");
             AppendToolsMenu(sb);
             sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
             sb.Append("</group>");
@@ -743,6 +746,20 @@ namespace InventaSketch.AddIn
             catch (Exception ex) { Log.Error("GetAnchorImage", ex); return null; }
         }
 
+        /// <summary>Ribbon image of the motion toggle (gear with a turning arrow) in the Office theme ink.</summary>
+        public object? GetMotionImage(Office.IRibbonControl control)
+        {
+            try
+            {
+                var size = (int)Math.Round(16 * DeviceScale());
+                using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(bmp))
+                    OnSlide.IconPainter.Draw(g, IconIds.Motion, new RectangleF(0, 0, size, size), OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40));
+                return PictureConverter.ToPicture(bmp);
+            }
+            catch (Exception ex) { Log.Error("GetMotionImage", ex); return null; }
+        }
+
         public object? GetGroupImage(Office.IRibbonControl control)
         {
             try
@@ -812,6 +829,7 @@ namespace InventaSketch.AddIn
             "IskSnap" => AddInSettings.Snap,
             "IskBar" => AddInSettings.Bar,
             "IskAnchor" => AddInSettings.Anchor,
+            "IskMotion" => AddInSettings.Motion,
             _ => false,
         };
 
@@ -820,6 +838,7 @@ namespace InventaSketch.AddIn
             if (control.Id == "IskSnap") AddInSettings.Snap = pressed;
             else if (control.Id == "IskBar") AddInSettings.Bar = pressed;
             else if (control.Id == "IskAnchor") AddInSettings.Anchor = pressed;
+            else if (control.Id == "IskMotion") AddInSettings.Motion = pressed;
         }
 
         /// <summary>Thumbnail of a library item (cached per item, size and theme); ink follows the Office theme.</summary>

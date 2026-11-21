@@ -23,7 +23,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal sealed partial class OnSlideController : IDisposable
     {
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port, Turn }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -172,7 +172,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch or Mode.Draw or Mode.Port) return;
+                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn) return;
                 using var dpi = DpiScope.PerMonitor();
                 SketchUnit? unit = null;
                 if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count == 1)
@@ -253,7 +253,7 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port)
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn)
             {
                 _mode = Mode.Armed;
                 if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
@@ -269,7 +269,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port) return;
+                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn) return;
                 using var dpi = DpiScope.PerMonitor();
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
@@ -381,6 +381,9 @@ namespace InventaSketch.AddIn.OnSlide
                 case Mode.Port:
                     return PortDragMouse(message, pt, view);
 
+                case Mode.Turn:
+                    return TurnMouse(message, pt, view);
+
                 case Mode.Armed:
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
                     // Lock badges where the unit touches and follows other elements: a click releases or couples.
@@ -456,6 +459,8 @@ namespace InventaSketch.AddIn.OnSlide
                         Post(() => ApplyAction(dblUnit, "text"));
                         return true;
                     }
+                    // Motion mode: gears, carriers and linkages turn the way they can move instead of being dragged.
+                    if (message == WM_LBUTTONDOWN && AddInSettings.Motion && Inside(pt, view, inset: 6) && BeginTurn(pt, view)) return true;
                     if (message == WM_LBUTTONDOWN && Inside(pt, view, inset: 6))
                     {
                         Log.Info("Drag start at " + pt.X + "," + pt.Y);
@@ -897,6 +902,9 @@ namespace InventaSketch.AddIn.OnSlide
                     foreach (var item in suggestions.Where(i => !direct.Contains(i)))
                         list.Add(new BarButton("ins:" + item.Id, "", item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
             }
+            // Motion mode for parts that can move (gear train, linkage): drag turns them instead of moving them.
+            if (MovablePart() is not null)
+                list.Add(new BarButton("motion", "", T("Move: drag turns the gears / linkage", "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
             // Predefined assemblies (planetary set …) explode into coupled parts that can be edited one by one.
             if (first is not null && Assemblies.CanExplode(registry, first))
                 list.Add(new BarButton("explode", "", T("Explode into parts", "In Einzelteile zerlegen")) { IconId = IconIds.Explode });
@@ -1945,6 +1953,11 @@ namespace InventaSketch.AddIn.OnSlide
                 unit.Shape.Delete();
                 SketchUnits.RedrawDependents(slide, registry, _lang(), new[] { doc }, Array.Empty<SketchDocument>());
                 Disarm();
+                return;
+            }
+            if (id == "motion")
+            {
+                ToggleMotion();
                 return;
             }
             if (id == "explode")

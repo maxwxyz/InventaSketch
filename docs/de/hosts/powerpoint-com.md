@@ -255,6 +255,17 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   (`Building.StretchEnd`, ohne Kopplung für diese Änderung). Die „+“ halten Abstand zu PowerPoints Größen- und Drehgriffen.
   Geprüft in PowerPoint am 21.11.2026: Gegenrad an einem Griff angedockt, Lager am Wellenende, Welle durch Ziehen
   verlängert, Lager blieb an seinem Platz.
+- **Bewegungsmodus („Bewegen“ im Menüband und in der Leiste beweglicher Teile):** Ziehen bewegt nur so, wie es technisch
+  geht. Ein Zahnrad, Steg oder eine Scheibe in Stirnansicht dreht sich um die eigene Mitte, und der ganze Getriebezug dreht
+  live beim Ziehen mit (`GearTrain`: Außen- und Inneneingriff mit der Willis-Gleichung für Planeten, Teile fest auf einer
+  Welle, Stufenräder, Riemen und Ketten, feste Stege; offene Drehzahlen werden 0 gesetzt, Hohlräder und Stege zuerst, sodass
+  ein gehäusefestes Hohlrad herauskommt). Planeten laufen mit dem Steg um; Achsabstände und Größen ändern sich nie. Ein
+  vordefiniertes Koppelgetriebe dreht seine Antriebskurbel um den Gestelldrehpunkt. Umschalt: 15°-Schritte; der Winkel
+  steht am Drehpunkt; Loslassen übernimmt (ein Rückgängig-Schritt, angedockte Bezugslinien folgen). Nicht gespeichert:
+  PowerPoint startet im Bearbeitungsmodus. Ein Teil in Stirnansicht mit dem Drehgriff zu drehen (Bearbeitungsmodus) treibt
+  seinen Zug ebenfalls an (`Coupling.Propagate`). Der Schloss-Tooltip eines Eingriffs zeigt die Übersetzung („Eingriff mit
+  Stirnrad (i = 1,8)“). Geprüft in PowerPoint am 21.11.2026: eine um 90° gedrehte Sonne drehte Steg und Planeten um 24,9°
+  (Hohlrad fest), wie berechnet.
 - **Getriebe selbst bauen:** Ein Planetenträger (`mech.carrier`, Stirn- und Schemaansicht, 2–8 Bolzen, Scheibe oder
   Arme, „fester Steg“ mit Gestellsymbol) ist ein eigenes Teil. Seine Bau-„+“ bieten an jedem freien Bolzen einen Planeten
   (so groß, dass er mit vorhandener Sonne oder vorhandenem Hohlrad kämmt) und in der Mitte Sonnenrad, Hohlrad (passend zu

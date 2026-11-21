@@ -276,6 +276,16 @@ UX round (2026-11-20, from the maintainer's feedback):
   keep their place (`Building.StretchEnd`, no coupling for that edit). The "+" keep clear of PowerPoint's resize and
   rotation handles. Verified in PowerPoint 2026-11-21: meshing gear docked at a port, bearing at a shaft end, shaft
   lengthened by dragging with the bearing in place.
+- **Motion mode ("Move" in the ribbon and in the bar of parts that can move):** dragging moves things only the way
+  they can move. A gear, carrier or pulley seen along its axis turns about its centre and the whole gear train turns with
+  it, live while dragging (`GearTrain`: external and internal mesh with Willis' equation for planets, parts fixed on a
+  shaft, compound gears, belts and chains, fixed carriers; open speeds are taken as 0, ring gears and carriers first, so a
+  ring fixed to the housing comes out). Planets orbit with their carrier; centre distances and sizes never change. A
+  predefined linkage turns its input crank about its fixed pivot. Shift: 15° steps; the angle is shown at the pivot;
+  release applies it (one undo step, docked lead lines follow). Not saved: PowerPoint starts in edit mode. Turning a
+  part in axial view with the rotation handle (edit mode) also drives its train (`Coupling.Propagate`). The lock tooltip
+  of a mesh shows the ratio ("Meshes with Spur gear (i = 1.8)"). Verified in PowerPoint 2026-11-21: a sun turned by 90°
+  moved carrier and planets by 24.9° (ring fixed), as computed.
 - **Building gear trains yourself:** a planet carrier (`mech.carrier`, axial and schematic, 2–8 pins, disc or arms,
   "fixed carrier" with a ground symbol) is a part of its own. Its build "+" offer a planet on every free pin (sized to
   mesh with the sun or ring already there) and, in the centre, a sun gear, a ring gear (sized to the planets) or a shaft;

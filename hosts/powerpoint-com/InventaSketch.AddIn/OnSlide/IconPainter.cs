@@ -289,6 +289,13 @@ namespace InventaSketch.AddIn.OnSlide
                 case IconIds.MachReluctance:
                     g.DrawLines(pen, new[] { new PointF(3, 17), new PointF(5, 17), new PointF(5, 8), new PointF(9, 8), new PointF(9, 17), new PointF(15, 17), new PointF(15, 8), new PointF(19, 8), new PointF(19, 17), new PointF(21, 17) });
                     break;
+                case IconIds.Motion:
+                    // A gear with a turning arrow around it.
+                    g.DrawEllipse(pen, 8, 8, 8, 8);
+                    g.FillEllipse(brush, 10.8f, 10.8f, 2.4f, 2.4f);
+                    g.DrawArc(pen, 3.5f, 3.5f, 17, 17, -60, 270);
+                    g.FillPolygon(brush, new[] { new PointF(16.2f, 2.2f), new PointF(20.6f, 5.4f), new PointF(15.4f, 7.4f) });
+                    break;
                 case IconIds.Explode:
                     // An assembly flying apart: four parts pushed out of the centre.
                     g.DrawRectangle(pen, 3.5f, 3.5f, 6, 6); g.DrawRectangle(pen, 14.5f, 3.5f, 6, 6);

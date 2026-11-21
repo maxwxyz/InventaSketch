@@ -151,6 +151,9 @@ moving gear trains (P2).
   joint or crank on the slide and the chain moves with constant link lengths (general 2D constraint solver instead of
   the per-mechanism closed forms); limits, ghost positions, coupler curves and animation as slides for any chain;
   predefined mechanisms become starter assemblies that can be exploded into their links.
+- **Done 2026-11-21 (Core + COM): moving gear trains live by dragging in motion mode** (see the host docs); linkages
+  turn their input crank. Open: slide animation of gear trains as an extra for everything that moves (maintainer:
+  live dragging first), drag-to-simulate for self-built linkages.
 - **P2 – Moving gear trains:** turn the input (drag a gear or shaft on the slide) and every gear turns with its ratio
   (teeth stay in mesh, carriers revolve, planets roll); ratios shown on request; animation as Morph slides like the
   linkages (`ObjectType.AnimationFrames` for gear trains). Today only linkages of the kinematics module animate as slides
