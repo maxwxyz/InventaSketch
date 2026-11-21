@@ -198,6 +198,8 @@ namespace InventaSketch.Engine
         public string Kind { get; set; } = "generic";
         /// <summary>Set for actions that need a text value: hosts prompt for it and pass it as <c>input</c> to applyAction.</summary>
         public ActionInputInfo? Input { get; set; }
+        /// <summary>Parameters the action sets (<see cref="ContextAction.ParamKeys"/>): hide it where those are choice buttons.</summary>
+        public List<string>? ParamKeys { get; set; }
     }
 
     public sealed class ActionInputInfo

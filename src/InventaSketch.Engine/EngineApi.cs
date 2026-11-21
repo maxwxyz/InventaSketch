@@ -911,6 +911,7 @@ namespace InventaSketch.Engine
                     list.Add(new ActionInfo
                     {
                         Id = "t:" + a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "type", Kind = "type", Active = a.IsActive, Enabled = a.IsEnabled,
+                        ParamKeys = a.ParamKeys?.ToList(),
                         Input = a.Input is null ? null : new ActionInputInfo { Label = a.Input.Label.Get(lang), Value = a.Input.Value, Unit = a.Input.Unit },
                     });
             }

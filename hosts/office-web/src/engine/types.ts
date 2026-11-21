@@ -81,6 +81,8 @@ export interface ActionInfo {
   kind: "generic" | "view" | "type" | "option";
   /** Present for actions that need a text value: prompt for it and pass it to applyAction. */
   input?: { label: string; value: string; unit?: string };
+  /** Parameters the action sets: the bar hides it when those are shown as choice buttons. */
+  paramKeys?: string[];
 }
 
 export type ParamValue = number | string | boolean | null;
@@ -95,6 +97,8 @@ export interface ParamInfo {
   unit?: string;
   advanced: boolean;
   options?: ActionInfo[];
+  /** Option icons are drawn mirrored (start arrowheads). */
+  mirrorIcons?: boolean;
   value?: ParamValue;
   default?: ParamValue;
 }

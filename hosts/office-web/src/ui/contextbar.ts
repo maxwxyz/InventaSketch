@@ -11,6 +11,15 @@ export interface BarBox { left: number; top: number; right: number; bottom: numb
 /** "Next element" after a quick add: library items as thumbnails at the start of the bar (one click replaces). */
 export interface PaletteEntry { id: string; label: string; image?: string; active: boolean }
 
+/** A choice shown as an icon button (current option) that opens its options as an icon row in the bar. */
+export interface ChoiceEntry {
+  key: string;
+  label: string;
+  current: string;
+  mirror?: boolean;
+  options: { id: string; label: string; icon?: string; image?: string }[];
+}
+
 /** Opacity for a pointer at distance d (px) from the bar: 1 near it, fading to 0 at `far`. */
 export function fadeOpacity(d: number, near = 28, far = 240): number {
   if (d <= near) return 1;
@@ -31,6 +40,9 @@ export class ContextBar {
   readonly el: HTMLDivElement;
   private key = "";
   private dismissed = false;
+  /** Choice whose icon row fills the bar (closes with a pick, Back or a new selection). */
+  private openChoice?: string;
+  private last?: { actions: ActionInfo[]; box: BarBox | undefined; suppressed: boolean; palette: PaletteEntry[]; choices: ChoiceEntry[] };
 
   constructor(
     private readonly root: HTMLElement,
@@ -38,6 +50,7 @@ export class ContextBar {
     private readonly onStyle: () => void,
     private readonly onMore: (clientX: number, clientY: number) => void,
     private readonly onPalette: (itemId: string) => void = () => {},
+    private readonly onChoice: (key: string, value: string) => void = () => {},
   ) {
     this.el = h("div", { class: "isk-ctxbar", role: "toolbar", "aria-label": t("ctx.title") });
     this.el.hidden = true;
@@ -46,16 +59,33 @@ export class ContextBar {
   }
 
   /** Rebuilds and positions the bar; selectionKey identifies the selection (new selection → bar reappears). */
-  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean, palette: PaletteEntry[] = []): void {
+  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean, palette: PaletteEntry[] = [], choices: ChoiceEntry[] = []): void {
     if (selectionKey !== this.key) {
       this.key = selectionKey;
       this.dismissed = false;
+      this.openChoice = undefined;
     }
+    this.last = { actions, box, suppressed, palette, choices };
     if (!box || !selectionKey || this.dismissed || suppressed) {
       this.el.hidden = true;
       return;
     }
     this.el.replaceChildren();
+    const open = choices.find((c) => c.key === this.openChoice);
+    if (open) {
+      // The open choice fills the bar: Back, then one icon per option (current highlighted).
+      const back = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("pie.back"), "aria-label": t("pie.back"), text: "\u2039" });
+      back.addEventListener("click", () => this.toggleChoice(undefined));
+      this.el.append(back, h("span", { class: "isk-sep" }));
+      for (const o of open.options) {
+        const b = h("button", { class: `isk-btn isk-icon-btn${o.id === open.current ? " is-active" : ""}`, type: "button", title: o.label, "aria-label": o.label });
+        this.fillIcon(b, o.icon, o.image, open.mirror);
+        b.addEventListener("click", () => { this.openChoice = undefined; this.onChoice(open.key, o.id); });
+        this.el.append(b);
+      }
+      this.place(box);
+      return;
+    }
     if (palette.length) {
       const row = h("div", { class: "isk-palette", role: "group", "aria-label": t("ctx.next") });
       for (const p of palette) {
@@ -68,6 +98,16 @@ export class ContextBar {
       this.el.append(row);
     }
     const views = actions.filter((a) => a.kind === "view");
+    // Choices with pictograms (line type, arrowheads, line style, course): icon of the current option plus a caret.
+    for (const c of choices) {
+      const cur = c.options.find((o) => o.id === c.current) ?? c.options[0];
+      const b = h("button", { class: "isk-btn isk-icon-btn isk-choice", type: "button", title: `${c.label}: ${cur?.label ?? ""}`, "aria-label": c.label });
+      this.fillIcon(b, cur?.icon, cur?.image, c.mirror);
+      b.append(h("span", { class: "isk-caret", "aria-hidden": "true" }));
+      b.addEventListener("click", () => this.toggleChoice(c.key));
+      this.el.append(b);
+    }
+    const covered = new Set(choices.map((c) => c.key));
     if (views.length > 1) {
       const seg = h("div", { class: "isk-seg", role: "group", "aria-label": t("ctx.view") });
       for (const v of views) seg.append(this.button(v, v.label, v.active));
@@ -77,12 +117,30 @@ export class ContextBar {
       const a = actions.find((x) => x.id === id);
       if (a) this.el.append(this.button(a));
     }
-    for (const a of actions.filter((x) => x.kind === "type").slice(0, 3)) this.el.append(this.button(a));
+    for (const a of actions.filter((x) => x.kind === "type" && !(x.paramKeys ?? []).some((k) => covered.has(k))).slice(0, 3)) this.el.append(this.button(a));
     const style = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.style"), "aria-label": t("ctx.style"), html: icon("style") });
     style.addEventListener("click", () => this.onStyle());
     const more = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.more"), "aria-label": t("ctx.more"), html: icon("more") });
     more.addEventListener("click", (e) => this.onMore(e.clientX, e.clientY));
     this.el.append(style, more);
+    this.place(box);
+  }
+
+  private toggleChoice(key: string | undefined): void {
+    this.openChoice = key === this.openChoice ? undefined : key;
+    const l = this.last;
+    if (l) this.update(this.key, l.actions, l.box, l.suppressed, l.palette, l.choices);
+  }
+
+  private fillIcon(b: HTMLElement, iconId?: string, image?: string, mirror?: boolean): void {
+    if (image) b.append(h("img", { src: image, alt: "" }));
+    else if (iconId && hasIcon(iconId)) {
+      const span = h("span", { class: `isk-ico${mirror ? " isk-mirror" : ""}`, html: icon(iconId) });
+      b.append(span);
+    }
+  }
+
+  private place(box: BarBox): void {
     this.el.hidden = false;
     this.el.style.opacity = "1";
     // Position above the selection, or below if there is no room; clamp into the pane.

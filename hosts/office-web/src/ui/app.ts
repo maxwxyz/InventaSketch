@@ -2,7 +2,7 @@
 // session. Runs inside PowerPoint (Office.js present) and standalone in a browser (dev.html).
 
 import { Engine, Session } from "../engine/client";
-import type { ActionInfo, Catalog, CatalogItem, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo } from "../engine/types";
+import type { ActionInfo, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo } from "../engine/types";
 import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
@@ -10,9 +10,9 @@ import { SlideSync } from "../office/sync";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
-import { ContextBar, InlinePrompt, type PaletteEntry } from "./contextbar";
+import { ContextBar, InlinePrompt, type ChoiceEntry, type PaletteEntry } from "./contextbar";
 import { h, svgDataUrl } from "./dom";
-import { icon } from "./icons";
+import { hasIcon, icon } from "./icons";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
 import { PieMenu } from "./piemenu";
@@ -31,6 +31,11 @@ export interface AppOptions {
   /** Running inside the COM add-in's WebView2 task pane: slide work goes through the COM bridge. */
   comBridge?: ComSyncBridge;
 }
+
+/** Line styles of the bar with their pictograms (IconIds.ForDash). */
+const DASHES: [DashStyle, string][] = [
+  ["solid", "line-solid"], ["dash", "line-dash"], ["dot", "line-dot"], ["dashDot", "line-dashdot"], ["longDash", "line-longdash"], ["dashDotDot", "line-dashdotdot"],
+];
 
 export class App {
   readonly engine: Engine;
@@ -128,7 +133,7 @@ export class App {
       this.edit((s) => s.replaceItem(id, itemId));
       this.nextFor = id;
       this.updateBar();
-    });
+    }, (key, value) => this.pickChoice(key, value));
     this.loadCatalog();
     this.bindKeys();
     this.bindDrop();
@@ -382,7 +387,52 @@ export class App {
         this.report(e);
       }
     } else if (sel.length !== 1 || sel[0] !== this.nextFor) this.nextFor = undefined;
-    this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open || this.prompt.open, palette);
+    this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open || this.prompt.open, palette, this.barChoices(sel));
+  }
+
+  /**
+   * Choices shown as icon buttons in the bar (no text, no submenu): line type (thumbnails), every choice parameter whose
+   * options have pictograms (arrowheads, head size, line course …) and, for lines, the line style.
+   */
+  private barChoices(sel: string[]): ChoiceEntry[] {
+    if (sel.length !== 1) return [];
+    const obj = this.st.objects.find((o) => o.id === sel[0]);
+    if (!obj?.known) return [];
+    const out: ChoiceEntry[] = [];
+    try {
+      const conv = this.sessionObj.conversions(sel, lang());
+      if (conv.length > 1)
+        out.push({
+          key: "@type", label: t("ctx.lineType"), current: obj.type,
+          options: conv.map((c) => {
+            const item = this.catalog.items.find((i) => i.typeId === c.id);
+            return { id: c.id, label: c.label, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined };
+          }),
+        });
+      const info = this.sessionObj.inspector(sel, lang());
+      for (const p of info.params) {
+        if (p.kind !== "choice" || !p.options || p.options.length < 2 || !p.options.every((o) => o.icon && hasIcon(o.icon))) continue;
+        out.push({
+          key: p.key, label: p.label, current: String(p.value ?? p.default ?? p.options[0].id), mirror: p.mirrorIcons,
+          options: p.options.map((o) => ({ id: o.id, label: o.label, icon: o.icon })),
+        });
+      }
+      if (obj.kind === "points")
+        out.push({
+          key: "@dash", label: t("ctx.lineStyle"), current: info.style?.dash ?? "solid",
+          options: DASHES.map(([id, ico]) => ({ id, label: t(`dash.${id}`), icon: ico })),
+        });
+    } catch (e) {
+      this.report(e);
+    }
+    return out.slice(0, 6);
+  }
+
+  private pickChoice(key: string, value: string): void {
+    const sel = this.st.selection;
+    if (key === "@type") this.edit((s) => s.convert(sel, value));
+    else if (key === "@dash") this.edit((s) => s.setStyle(sel, { dash: value as DashStyle }));
+    else this.edit((s) => s.setParam(sel, key, value));
   }
 
   /** Element just added by quick add: the bar offers the next-element palette for it. */

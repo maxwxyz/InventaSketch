@@ -193,3 +193,10 @@ textarea.isk-input { resize: vertical; }
 .isk-chain-preview { stroke: #1f5fbf; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; fill: none; }
 .isk-palette { display: flex; gap: 2px; padding-right: 4px; margin-right: 4px; border-right: 1px solid var(--border); }
 .isk-palette img { width: 26px; height: 26px; display: block; }
+
+/* Choice buttons of the context bar: icon of the current option plus a caret; mirrored start arrowheads. */
+.isk-choice { position: relative; padding-right: 9px; }
+.isk-caret { position: absolute; right: 2px; top: 50%; margin-top: -1px; border: 3px solid transparent; border-top-color: currentColor; opacity: 0.6; }
+.isk-ico { display: inline-flex; }
+.isk-mirror { transform: scaleX(-1); }
+.isk-ctxbar img { width: 22px; height: 22px; display: block; }
