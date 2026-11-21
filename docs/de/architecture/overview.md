@@ -132,5 +132,5 @@ setzt sie gekoppelt; `Attachments.OnSurface` dockt Beschriftungsenden irgendwo a
 von Leitungen und Rohren (die obere springt) und verbindet sie an einer Kreuzung. `GearTrain` löst die Drehzahlen eines
 Getriebezugs (lineares Gleichungssystem aus Eingriff, Willis, Welle, Stufenrad, Riemen und festen Teilen) und dreht ihn;
 `Assemblies` zerlegt vordefinierte Baugruppen in gekoppelte Einzelteile. `Linkage` erkennt selbst gebaute
-Koppelgetriebe (an Gelenken angedockte Glieder, Gestellpunkte, Schieber), berechnet ihren Freiheitsgrad und zieht sie bei
-konstanten Gliedlängen.
+Koppelgetriebe (an Gelenken angedockte Glieder, Gestellpunkte, Schieber, Gleitsteine in Schlitzen anderer Glieder),
+berechnet ihren Freiheitsgrad und zieht sie bei konstanten Gliedlängen.

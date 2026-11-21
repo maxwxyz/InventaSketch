@@ -226,6 +226,20 @@ namespace InventaSketch.Modules.Kinematics
         /// <summary>A fixed pivot with its pivot point at a model point.</summary>
         protected static PartSpec PivotPart(Scene s, Vec2 model) => new("kin.joint.ground", null, s.L(model)) { AlignAnchor = "c" };
 
+        /// <summary>
+        /// A slider (prismatic joint) with its block at a model point and its guide along model direction
+        /// <paramref name="guide"/>; the guide's frame hatching lies on the side of <paramref name="frameSide"/>.
+        /// </summary>
+        protected static PartSpec SliderPart(Scene s, Vec2 model, Vec2 guide, Vec2 frameSide)
+        {
+            // The symbol's axis runs along local +x with the frame hatching on local +y.
+            var g = s.L(model + guide) - s.L(model);
+            var f = s.L(model + frameSide) - s.L(model);
+            var angle = Geo.RadToDeg(Math.Atan2(g.Y, g.X));
+            if (g.Cross(f) < 0) angle += 180;
+            return new("kin.joint.prismatic", null, s.L(model)) { AlignAnchor = "c", Rotation = Math.Round(angle, 6) };
+        }
+
         /// <summary>A binary link between two model points, with optional docks of its ends.</summary>
         protected static PartSpec LinkPart(Scene s, Vec2 a, Vec2 b, PartDock? atA, PartDock? atB)
             => new("kin.link.binary", null, Vec2.Zero) { Points = new[] { s.L(a), s.L(b) }, Docks = new[] { atA, atB } };

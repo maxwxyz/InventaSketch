@@ -163,7 +163,7 @@ namespace InventaSketch.Modules.Kinematics
             return new[]
             {
                 PivotPart(s, p["O"]),                                                       // 0
-                new PartSpec("kin.joint.prismatic", null, s.L(p["B"])) { AlignAnchor = "c" }, // 1 slider
+                SliderPart(s, p["B"], new Vec2(1, 0), new Vec2(0, 1)),                      // 1 slider
                 LinkPart(s, p["O"], p["A"], new PartDock(0, "c"), null),                    // 2 crank
                 LinkPart(s, p["A"], p["B"], new PartDock(2, "j1"), new PartDock(1, "c")),   // 3 connecting rod
             };
@@ -235,6 +235,23 @@ namespace InventaSketch.Modules.Kinematics
             if (!s.Ghost) s.Joint(p["O"]);
             s.Joint(p["A"]);
         }
+
+        /// <summary>
+        /// Pivot O, crank O-A whose pin slides in the slot Y0-Y1 of the yoke (a plate with the rod end E); sliders on
+        /// horizontal guides at the slot end Y0 and at the rod end E keep the yoke upright, so it only translates.
+        /// </summary>
+        protected override IReadOnlyList<PartSpec>? PartsOf(SketchObject o, Pose p, Scene s) => new[]
+        {
+            PivotPart(s, p["O"]),                                                         // 0
+            SliderPart(s, p["Y0"], new Vec2(1, 0), new Vec2(0, -1)),                      // 1 upper guide
+            SliderPart(s, p["E"], new Vec2(1, 0), new Vec2(0, 1)),                        // 2 rod guide
+            new PartSpec("kin.link.ternary", null, Vec2.Zero)                             // 3 yoke
+            {
+                Points = new[] { s.L(p["Y0"]), s.L(p["Y1"]), s.L(p["E"]) },
+                Docks = new PartDock?[] { new(1, "c"), null, new(2, "c") },
+            },
+            LinkPart(s, p["O"], p["A"], new PartDock(0, "c"), new PartDock(3, Linkage.SlotPrefix + "0")), // 4 crank, pin in the slot
+        };
 
         protected override IEnumerable<Anchor> PoseAnchors(Scene s, SketchObject o, Pose p, Rect model)
         {
@@ -333,6 +350,19 @@ namespace InventaSketch.Modules.Kinematics
             if (p.Has("C")) s.Joint(p["C"]);
         }
 
+        /// <summary>Pivot A, link A-B, link B-C, slider at C on the guide through A.</summary>
+        protected override IReadOnlyList<PartSpec>? PartsOf(SketchObject o, Pose p, Scene s)
+        {
+            if (!p.Has("C")) return null;
+            return new[]
+            {
+                PivotPart(s, p["A"]),                                                        // 0
+                SliderPart(s, p["C"], new Vec2(0, 1), new Vec2(1, 0)),                       // 1 slider
+                LinkPart(s, p["A"], p["B"], new PartDock(0, "c"), null),                     // 2 upper link
+                LinkPart(s, p["B"], p["C"], new PartDock(2, "j1"), new PartDock(1, "c")),    // 3 lower link
+            };
+        }
+
         protected override IEnumerable<Anchor> PoseAnchors(Scene s, SketchObject o, Pose p, Rect model)
         {
             yield return Mount(s, p["A"], "A");
@@ -429,6 +459,21 @@ namespace InventaSketch.Modules.Kinematics
             s.Joint(p["A"]);
             if (p.Has("T")) s.Joint(p["T"]);
             if (p.Has("B")) s.Joint(p["B"]);
+        }
+
+        /// <summary>Pivots O4 and O2, slotted lever O4-T, crank O2-A with its pin in the lever's slot, link T-B, ram slider at B.</summary>
+        protected override IReadOnlyList<PartSpec>? PartsOf(SketchObject o, Pose p, Scene s)
+        {
+            if (!p.Has("O2", "A") || !p.Has("T", "B")) return null;
+            return new[]
+            {
+                PivotPart(s, p["O4"]),                                                       // 0
+                PivotPart(s, p["O2"]),                                                       // 1
+                SliderPart(s, p["B"], new Vec2(1, 0), new Vec2(0, -1)),                      // 2 ram
+                LinkPart(s, p["O4"], p["T"], new PartDock(0, "c"), null),                    // 3 slotted lever
+                LinkPart(s, p["O2"], p["A"], new PartDock(1, "c"), new PartDock(3, Linkage.SlotPrefix + "0")), // 4 crank, pin in the slot
+                LinkPart(s, p["T"], p["B"], new PartDock(3, "j1"), new PartDock(2, "c")),    // 5 link
+            };
         }
 
         protected override IEnumerable<Anchor> PoseAnchors(Scene s, SketchObject o, Pose p, Rect model)
