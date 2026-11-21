@@ -187,6 +187,7 @@ namespace InventaSketch.Modules.Electrical
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-30, 0), new Vec2(30, 0) };
         public override IReadOnlyList<ParamDef> Parameters => new[] { Protocol };
+        public override bool InsertablePoints => true;
         public override bool HasText => true;
 
         public static string Label(SketchObject o) => !string.IsNullOrEmpty(o.Text) ? o.Text! : o.Str("protocol", "can") switch

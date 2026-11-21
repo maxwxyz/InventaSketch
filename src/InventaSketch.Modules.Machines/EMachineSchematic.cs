@@ -94,10 +94,14 @@ namespace InventaSketch.Modules.Machines
             yield return Common.Toggle(o, "ground", true, T("Housing connection on/off", "Gehäuseanbindung an/aus")) with { Icon = IconIds.Ground };
         }
 
-        /// <summary>Ports at both shaft ends (left/right) and the housing mount below the machine.</summary>
+        /// <summary>
+        /// Ports at both shaft ends (left/right), the rotor axis between them (gears and couplings sit on it, the next shaft
+        /// section docks at its ends) and the housing mount below the machine.
+        /// </summary>
         private static IEnumerable<Anchor> ShaftPorts(Pen p, double hw, double hh) => new[]
         {
             Anchor.Point(AnchorRole.Port, p.V(-hw, 0), "w"), Anchor.Point(AnchorRole.Port, p.V(hw, 0), "e"),
+            Anchor.Segment(AnchorRole.Axis, p.V(-hw, 0), p.V(hw, 0)),
             Anchor.Point(AnchorRole.Mount, p.V(0, hh), "mount"),
         };
 

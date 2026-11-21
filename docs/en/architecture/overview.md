@@ -112,4 +112,6 @@ keeps its connectors. Line branches attach to rails of other lines (`Attachments
 touch and follow each other (mechanical pairs and docked line ends) for lock markers and releases or couples a pair
 (`SketchObject.Released`, pruned by `Coupling` once the pair no longer touches). `Fitting.Place` puts an inserted part
 where it fits the selection (on the shaft, in mesh, through the hub). `Polylines` inserts and removes corners and adds
-branches, keeping docked branches in place.
+branches, extends, splits and joins lines, keeping docked branches in place. `Building` lists the build ports of an
+element (mesh sides, ring inside, free axis ends, free hub), the library items that fit a port and places them coupled;
+`Attachments.OnSurface` docks annotation ends anywhere on the element below them.

@@ -312,6 +312,10 @@ namespace InventaSketch.Modules.Architecture
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-30, 0), new Vec2(30, 0) };
 
+        /// <summary>A wall is a centre line with corners: corners can be inserted, ends extended, walls branched (T joints).</summary>
+        public override bool InsertablePoints => true;
+        public override bool IsClosed(SketchObject o) => o.Flag("closed", false) && o.Points is { Count: > 2 };
+
         public override IReadOnlyList<ViewDef> Views => new[] { BoxType.PlanView, BoxType.ElevationView };
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
@@ -431,6 +435,8 @@ namespace InventaSketch.Modules.Architecture
             if (w is null) yield break;
             for (var i = 0; i < w.Pts.Count; i++) yield return Anchor.Point(AnchorRole.Mount, w.Pts[i], "v" + i.ToString(CultureInfo.InvariantCulture));
             for (var k = 0; k < w.SegCount; k++) yield return Anchor.Segment(AnchorRole.Axis, w.A(k), w.B(k)) with { Id = "axis" + k.ToString(CultureInfo.InvariantCulture) };
+            // The centre line is a rail: a branch wall docks onto it (T joint) and follows the wall.
+            for (var k = 0; k < w.SegCount; k++) yield return Anchor.Rail(w.A(k), w.B(k), "rail" + k.ToString(CultureInfo.InvariantCulture));
         }
 
         /// <summary>Next standard thickness up (+1) or down (-1) from the current one.</summary>
@@ -472,6 +478,8 @@ namespace InventaSketch.Modules.Architecture
 
         public override bool HasText => true;
         protected override int MinPoints => 3;
+        public override bool InsertablePoints => true;
+        public override bool IsClosed(SketchObject o) => true;
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-20, -15), new Vec2(20, -15), new Vec2(20, 15), new Vec2(-20, 15) };
 

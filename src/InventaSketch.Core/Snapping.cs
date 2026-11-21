@@ -169,8 +169,9 @@ namespace InventaSketch.Core
                         if (IsDocking(m) && t.Kind == AnchorKind.Segment && t.Role == AnchorRole.Rail)
                         {
                             var rail = new SnapGuide(GuideKind.Segment, t.P, t.Q);
-                            Consider(t.P - m.P, SemanticTier, PortWeight, "rail", t, rail, PointGuide(t.P));
-                            Consider(t.Q - m.P, SemanticTier, PortWeight, "rail", t, rail, PointGuide(t.Q));
+                            // Rail ends rank just behind ports and mounts at the same place (a wall corner stays a corner).
+                            Consider(t.P - m.P, SemanticTier, PortWeight + 0.01, "rail", t, rail, PointGuide(t.P));
+                            Consider(t.Q - m.P, SemanticTier, PortWeight + 0.01, "rail", t, rail, PointGuide(t.Q));
                             var (on, _) = Geo.ClosestOnSegment(m.P, t.P, t.Q);
                             Consider(on - m.P, SemanticTier, RailWeight, "rail", t, rail, PointGuide(on));
                         }

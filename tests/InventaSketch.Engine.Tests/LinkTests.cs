@@ -141,5 +141,29 @@ namespace InventaSketch.Engine.Tests
             (dup, ids) = Edits.Duplicate(doc, doc.Pages[0].Id, new[] { a, b }, new Vec2(0, 100));
             Assert.Equal(new[] { ids[1] }, dup.Get(ids[0])!.Released);
         }
-    }
+    
+        [Fact]
+        public void ALeaderEndDocksFreelyOnTheSurfaceBelowAndFollowsIt()
+        {
+            var plate = Reg.Create(Reg.Library.First(i => i.TypeId == "basic.rect" || i.TypeId.StartsWith("basic.")), new Vec2(100, 100)) with { Size = new Size2(60, 40) };
+            var gear = Reg.Create(Reg.Item("mech.spur.axial")!, new Vec2(110, 100)) with { Size = new Size2(10, 10) };
+            Assert.True(Reg.Type("ann.leader")!.DocksOnSurface);
+            Assert.False(Reg.Type("mech.gear.spur")!.DocksOnSurface);
+            // Inside both boxes: the smaller one (the gear on the plate) wins; inside only the plate: the plate.
+            var onGear = Attachments.OnSurface(new Vec2(111, 101), new[] { plate, gear })!;
+            Assert.Equal(gear.Id, onGear.ObjectId);
+            var onPlate = Attachments.OnSurface(new Vec2(80, 90), new[] { plate, gear })!;
+            Assert.Equal(plate.Id, onPlate.ObjectId);
+            Assert.Null(Attachments.OnSurface(new Vec2(10, 10), new[] { plate, gear }));
+
+            var leader = Reg.Create(Reg.Library.First(i => i.TypeId == "ann.leader"), Vec2.Zero) with
+            {
+                Points = new[] { new Vec2(80, 90), new Vec2(40, 60) },
+                Attach = new Attachment?[] { onPlate, null },
+            };
+            var doc = Doc(plate, leader);
+            doc = Edits.Move(doc, new[] { plate.Id }, new Vec2(5, 7));
+            Assert.Equal(new Vec2(85, 97), doc.ResolvePoints(doc.Get(leader.Id)!)[0]);
+        }
+}
 }

@@ -225,6 +225,31 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   Riemen und Ketten, deren Endnaben auf zwei Scheiben oder Kettenrädern liegen (`ObjectType.SpansHubs`), folgen einer
   verschobenen Scheibe: der Trum streckt und dreht sich, die andere Scheibe bleibt; ihr Schloss-Marker sagt „Läuft über
   Riemenscheibe“.
+- **Eine Liniensprache (verlängern, weiterzeichnen, Ecken, Abzweige, teilen, verbinden):** alle linienartigen Elemente
+  verhalten sich gleich: Leitungen, Busleitungen, Leitungsführungen, Leiterbahnen, Fluidleitungen, Straßen, Bahnlinien,
+  Flüsse, Routen, Fahrbahnmarkierungen, Trajektorien, Fahrstreifenmodelle, Wände, Polylinien sowie einfache Linien und
+  Pfeile (beim Weiterzeichnen werden sie zur Polylinie mit denselben Spitzen). Ein freies Ende zeigt ein blaues „+“:
+  Ziehen verlängert die Linie, Klick zeichnet weiter (jeder Klick setzt eine Ecke; Doppelklick, Enter, Esc oder
+  Rechtsklick beendet; der letzte Punkt dockt wie ein Linienende an). Ein Klick auf eine Ecke wählt sie aus: die Leiste
+  bietet „hier teilen“ und „entfernen“ (Piktogramme mit Tooltip); ein geschlossener Umriss (Raum, Fläche, Schraffur-
+  Polygon, geschlossene Wand) wird an der Ecke stattdessen geöffnet. Ein Ende auf ein freies Ende einer Linie derselben
+  Art fallen lassen verbindet beide. Wände bekommen T-Stöße als Abzweig (die abzweigende Wand dockt an der Mittellinie an
+  und folgt ihr). `Polylines.Extend`, `Split`, `Join`, `ObjectType.IsClosed`, `ObjectType.CornerType`. Geprüft in
+  PowerPoint am 21.11.2026: Verlängern durch Ziehen, Weiterzeichnen mit zwei Klicks und Esc, Teilen an einer Ecke.
+- **Bau-Griffe für Baugruppen (Getriebe, Antriebsstränge, E-Antriebe):** Ein ausgewähltes Zahnrad, Hohlrad, eine Welle,
+  E-Maschine oder ein Verbrennungsmotor zeigt an jedem freien Andockpunkt ein blaues „+“ (`Building.Ports`): die Seiten
+  eines Zahnrads (alle vier in Stirnansicht, oben und unten, wo die Achse in der Zeichenebene liegt,
+  `ObjectType.MeshDirections`), innen im Hohlrad (Planet), die freien Enden einer Achse (nächster Wellenabschnitt,
+  Kupplung, Lager, E-Maschine, Rad …), eine freie Nabe (Welle; ihr „+“ sitzt oben rechts außerhalb). Ein Klick auf ein
+  „+“ legt das Passende als Vorschaubilder in die Leiste; ein Klick darauf dockt es an, gekoppelt und ausgewählt
+  (`Building.Place`). Ziehen am „+“ eines Wellenendes streckt die Welle, die Teile darauf bleiben an ihrem Platz
+  (`Building.StretchEnd`, ohne Kopplung für diese Änderung). Die „+“ halten Abstand zu PowerPoints Größen- und Drehgriffen.
+  Geprüft in PowerPoint am 21.11.2026: Gegenrad an einem Griff angedockt, Lager am Wellenende, Welle durch Ziehen
+  verlängert, Lager blieb an seinem Platz.
+- **Freies Andocken von Beschriftungen auf Flächen:** Bezugslinien, Bezugspfeile, Bezugszeichen und Maße
+  (`ObjectType.DocksOnSurface`) docken ein Ende, das irgendwo auf einem anderen Element losgelassen wird, auch abseits der
+  Fangpunkte an (`Attachments.OnSurface`: die kleinste Box unter dem Punkt); das Ende folgt dann diesem Element. Geprüft in
+  PowerPoint am 21.11.2026: eine Bezugslinienspitze auf einem Rechteck folgte ihm.
 - **Ecken und Abzweige von Linien:** Eine ausgewählte Leitung, Fluidleitung, Straße, Bahnlinie, Fluss, Route, Fläche oder
   Polylinie (`ObjectType.InsertablePoints`) zeigt in der Mitte jedes Abschnitts ein „+“ (bei geführten Leitungen auf dem
   gezeichneten Pfad). Klick setzt eine neue Ecke, Ziehen knickt die Linie in einem Zug. Linien mit Abzweigen (benannte

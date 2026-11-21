@@ -16,6 +16,10 @@ namespace InventaSketch.AddIn.OnSlide
     /// the line in one go. Lines that take branches also show a branch handle beside the "+": drag it to a pin or anywhere
     /// (a click adds a short stub) and a new line of the same kind starts on the line (wires and pipes draw a junction
     /// dot, roads join). A double-click on a corner removes it. Branches already on the line stay where they are.
+    /// Free ends of open lines show a "+" beyond the end: drag it to lengthen the line, click it to keep drawing (each click
+    /// adds a corner; double-click, Enter, Esc or right-click ends; the last point docks like a line end). A click on a corner
+    /// selects it: the bar then offers split here and remove. Dropping an end on a free end of a line of the same kind joins
+    /// both lines.
     /// </summary>
     internal sealed partial class OnSlideController
     {
@@ -43,18 +47,21 @@ namespace InventaSketch.AddIn.OnSlide
         private void PrepareSegments(SketchUnit unit)
         {
             _segHandles = new List<(int, Vec2, Vec2)>();
+            _endHandles = new List<(bool, Vec2, Vec2)>();
             _canBranch = false;
             _hoverSeg = -1;
             var o = PointObject();
             var registry = _registry();
-            if (o is null || !Polylines.CanInsert(registry, o)) return;
+            if (o is null || !(Polylines.CanInsert(registry, o) || Polylines.CanExtend(registry, o))) return;
             try
             {
                 var doc = _unitContext ?? unit.Doc;
                 var pts = doc.ResolvePoints(o);
-                for (var i = 0; i + 1 < pts.Count; i++)
+                // Straight lines and arrows only get end handles (drawing on makes them polylines).
+                var segments = Polylines.CanInsert(registry, o) ? Polylines.SegmentCount(registry, doc, doc.Get(o.Id) ?? o) : 0;
+                for (var i = 0; i < segments; i++)
                 {
-                    var d = pts[i + 1] - pts[i];
+                    var d = pts[(i + 1) % pts.Count] - pts[i];
                     if (d.Length < 1e-6) continue;
                     var n = new Vec2(-d.Y, d.X) * (1 / d.Length);
                     // The branch handle sits above (or left of) the segment.
@@ -62,6 +69,16 @@ namespace InventaSketch.AddIn.OnSlide
                     _segHandles.Add((i, Polylines.SegmentHandle(registry, doc, doc.Get(o.Id) ?? o, i, _lang()), n));
                 }
                 _canBranch = Polylines.CanBranch(registry, doc, doc.Get(o.Id) ?? o, _lang());
+                // Free ends (not docked) of open lines: "+" to extend or keep drawing.
+                if (Polylines.CanExtend(registry, o))
+                    foreach (var atStart in new[] { true, false })
+                    {
+                        var i = atStart ? 0 : pts.Count - 1;
+                        var docked = o.Attach is not null && i < o.Attach.Count && o.Attach[i] is not null;
+                        var dir = pts[i] - pts[atStart ? 1 : pts.Count - 2];
+                        if (docked || dir.Length < 1e-6) continue;
+                        _endHandles.Add((atStart, pts[i], dir * (1 / dir.Length)));
+                    }
             }
             catch (Exception ex)
             {
@@ -77,11 +94,16 @@ namespace InventaSketch.AddIn.OnSlide
             if (o is null || _segHandles.Count == 0 || _unit is null) yield break;
             var pts = (_unitContext ?? _unit.Doc).ResolvePoints(o);
             var off = (float)(BranchOffsetPx * view.DeviceScale);
+            foreach (var (atStart, end, dir) in _endHandles)
+            {
+                var e = view.ToScreen(end);
+                yield return (EndCode + (atStart ? 0 : 1), new PointF(e.X + (float)dir.X * off * 1.25f, e.Y + (float)dir.Y * off * 1.25f));
+            }
             foreach (var (seg, at, n) in _segHandles)
             {
-                if (seg + 1 >= pts.Count) continue;
+                if (seg >= pts.Count) continue;
                 var a = view.ToScreen(pts[seg]);
-                var b = view.ToScreen(pts[seg + 1]);
+                var b = view.ToScreen(pts[(seg + 1) % pts.Count]);
                 if (Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y)) < MinSegmentPx * view.DeviceScale) continue;
                 var s = view.ToScreen(at);
                 yield return (2 * seg, s);
@@ -115,7 +137,14 @@ namespace InventaSketch.AddIn.OnSlide
                 g.FillEllipse(hover ? hot : fill, c.X - r, c.Y - r, 2 * r, 2 * r);
                 g.DrawEllipse(ring, c.X - r, c.Y - r, 2 * r, 2 * r);
                 var k = r * 0.55f;
-                if (code % 2 == 0)
+                if (code >= EndCode)
+                {
+                    g.FillEllipse(hover ? new SolidBrush(Color.FromArgb(60, 130, 230)) : blue, c.X - r, c.Y - r, 2 * r, 2 * r);
+                    using var white = new Pen(Color.White, 1.5f * s);
+                    g.DrawLine(white, c.X - k, c.Y, c.X + k, c.Y);
+                    g.DrawLine(white, c.X, c.Y - k, c.X, c.Y + k);
+                }
+                else if (code % 2 == 0)
                 {
                     g.DrawLine(glyph, c.X - k, c.Y, c.X + k, c.Y);
                     g.DrawLine(glyph, c.X, c.Y - k, c.X, c.Y + k);
@@ -130,7 +159,9 @@ namespace InventaSketch.AddIn.OnSlide
                 if (hover)
                 {
                     tipAt = new PointF(c.X + r + 4 * s, c.Y);
-                    tip = code % 2 == 0
+                    tip = code >= EndCode
+                        ? T("Extend: drag, or click to keep drawing", "Verlängern: ziehen, oder klicken zum Weiterzeichnen")
+                        : code % 2 == 0
                         ? T("Corner: click, or drag to bend", "Ecke: klicken oder ziehen zum Knicken")
                         : T("Branch: drag to a pin or anywhere, click for a stub", "Abzweig: zu einem Anschluss oder frei ziehen, Klick für Stich");
                 }
@@ -146,6 +177,12 @@ namespace InventaSketch.AddIn.OnSlide
             if (code < 0) return false;
             var o = PointObject();
             if (o is null) return false;
+            if (code >= EndCode)
+            {
+                HideBar();
+                BeginDraw(code == EndCode, pt);
+                return true;
+            }
             var seg = code / 2;
             var handle = _segHandles.FirstOrDefault(h => h.Seg == seg);
             HideBar();
@@ -206,7 +243,7 @@ namespace InventaSketch.AddIn.OnSlide
                 var seg = _branchSeg;
                 var from = _branchFrom;
                 var end = _branchEnd;
-                var attach = _branchMoved ? AnchorFor(end, _branchSnap) : null;
+                var attach = _branchMoved ? AnchorFor(end, _branchSnap, PointObject()?.Type) : null;
                 _mode = Mode.Armed;
                 _overlay.Clear();
                 if (unit is not null) Post(() => ApplyBranch(unit, from, end, attach));
@@ -232,6 +269,241 @@ namespace InventaSketch.AddIn.OnSlide
             });
         }
 
+        // ------------------------------------------------------------------ extend and keep drawing
+
+        private const int EndCode = 100000;
+
+        /// <summary>Free ends of the armed line: start or end, position and outward direction (mm).</summary>
+        private List<(bool AtStart, Vec2 End, Vec2 Dir)> _endHandles = new();
+
+        private bool _drawAtStart;
+        private bool _drawSticky;
+        private POINT _drawDown;
+        private readonly List<Vec2> _drawPts = new();
+        private Vec2 _drawAt;
+        private SnapResult? _drawSnap;
+
+        /// <summary>Starts extending the armed line from one of its free ends (drag) or drawing on (click).</summary>
+        private void BeginDraw(bool atStart, POINT pt)
+        {
+            _drawAtStart = atStart;
+            _drawSticky = false;
+            _drawDown = pt;
+            _drawPts.Clear();
+            _drawSnap = null;
+            _drawAt = _endHandles.First(e => e.AtStart == atStart).End;
+            _mode = Mode.Draw;
+        }
+
+        private bool DrawMouse(int message, POINT pt, SlideView view)
+        {
+            if (message == WM_MOUSEMOVE)
+            {
+                if (!_drawSticky && _drawPts.Count == 0 && Math.Abs(pt.X - _drawDown.X) + Math.Abs(pt.Y - _drawDown.Y) < 4 * view.DeviceScale) return true;
+                UpdateDraw(pt, view);
+                return true;
+            }
+            if (message == WM_LBUTTONUP && !_drawSticky)
+            {
+                var moved = Math.Abs(pt.X - _drawDown.X) + Math.Abs(pt.Y - _drawDown.Y) >= 4 * view.DeviceScale;
+                if (moved)
+                {
+                    // Drag: one new end where it was released.
+                    UpdateDraw(pt, view);
+                    _drawPts.Add(_drawAt);
+                    FinishDraw();
+                }
+                else
+                {
+                    // Click: keep drawing; every click adds a corner.
+                    _drawSticky = true;
+                    UpdateDraw(pt, view);
+                }
+                return true;
+            }
+            if (message == WM_LBUTTONDOWN && _drawSticky)
+            {
+                UpdateDraw(pt, view);
+                var last = _drawPts.Count > 0 ? view.ToScreen(_drawPts[_drawPts.Count - 1]) : (PointF?)null;
+                // A second click on the last corner ends the line there.
+                if (last is { } l && Math.Abs(l.X - pt.X) + Math.Abs(l.Y - pt.Y) < 6 * view.DeviceScale) { FinishDraw(); return true; }
+                _drawPts.Add(_drawAt);
+                UpdateDraw(pt, view);
+                return true;
+            }
+            if (message == WM_LBUTTONDBLCLK || message == WM_RBUTTONDOWN) { FinishDraw(); return true; }
+            return message is WM_LBUTTONUP or WM_RBUTTONUP;
+        }
+
+        /// <summary>Preview of the line with the corners drawn so far and the pointer (snapping like a line end).</summary>
+        private void UpdateDraw(POINT pt, SlideView view)
+        {
+            var o = PointObject();
+            if (o is null || _unit is null) return;
+            var raw = view.ToMm(pt);
+            var snap = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+            _drawAt = raw + snap.Delta;
+            _drawSnap = snap;
+            var registry = _registry();
+            var doc = _unitContext ?? _unit.Doc;
+            foreach (var q in _drawPts.Append(_drawAt)) doc = Polylines.Extend(registry, doc, o.Id, _drawAtStart, q, null, _lang()).Doc;
+            var prims = registry.Render(doc.Get(o.Id)!, new RenderContext(doc, _lang()));
+            var hint = _drawSticky ? T("Click: corner · double-click, Enter or Esc: done", "Klick: Ecke · Doppelklick, Enter oder Esc: fertig") : null;
+            Present(view, g =>
+            {
+                ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6));
+                DrawGuides(g, view, snap.Guides);
+            }, hint is null ? null : g => DrawTip(g, view, new PointF(pt.X + 18 * (float)view.DeviceScale, pt.Y + 22 * (float)view.DeviceScale), hint));
+        }
+
+        /// <summary>Commits the drawn corners (one undo step); the last one docks like a line end.</summary>
+        private void FinishDraw()
+        {
+            var unit = _unit;
+            var pts = _drawPts.ToList();
+            var atStart = _drawAtStart;
+            var attach = pts.Count > 0 && _drawSnap is not null && pts[pts.Count - 1].DistanceTo(_drawAt) < 1e-6 ? AnchorFor(_drawAt, _drawSnap, PointObject()?.Type) : null;
+            _drawPts.Clear();
+            _mode = Mode.Armed;
+            _overlay.Clear();
+            if (unit is null || pts.Count == 0)
+            {
+                if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+                return;
+            }
+            Log.Info($"Draw on: {pts.Count} point(s) at the {(atStart ? "start" : "end")}");
+            Post(() => ApplyExtend(unit, atStart, pts, attach));
+        }
+
+        private void ApplyExtend(SketchUnit stale, bool atStart, IReadOnlyList<Vec2> pts, Attachment? lastAttach)
+        {
+            var slide = CurrentSlide();
+            var unit = SketchUnits.Read(stale.Shape);
+            if (slide is null || unit is null) return;
+            var registry = _registry();
+            var line = unit.Objects.FirstOrDefault(x => x.IsPointGeometry);
+            if (line is null) return;
+            var others = SketchUnits.All(slide, unit.Id);
+            var full = SketchUnits.WithContext(unit.Doc, others);
+            var doc = full;
+            for (var i = 0; i < pts.Count; i++)
+                doc = Polylines.Extend(registry, doc, line.Id, atStart, pts[i], i == pts.Count - 1 ? lastAttach : null, _lang()).Doc;
+            CommitLineEdit(slide, unit, others, full, doc, line.Id);
+            Log.Info($"Extended {line.Type} by {pts.Count} point(s)");
+        }
+
+        // ------------------------------------------------------------------ corner selection, split, join
+
+        /// <summary>A click on a corner of a line with free corners selects it (for split / remove in the bar).</summary>
+        private bool SelectCorner(int index)
+        {
+            var o = PointObject();
+            if (o is null || !Polylines.CanInsert(_registry(), o)) return false;
+            var again = _selectedPoints.Count == 1 && _selectedPoints.Contains(index);
+            _selectedPoints.Clear();
+            if (!again) _selectedPoints.Add(index);
+            return true;
+        }
+
+        private IEnumerable<BarButton> CornerButtons()
+        {
+            var o = PointObject();
+            if (o?.Points is null || _selectedPoints.Count != 1) yield break;
+            var registry = _registry();
+            if (!Polylines.CanInsert(registry, o)) yield break;
+            var i = _selectedPoints.First();
+            var n = o.Points.Count;
+            var closed = Polylines.IsClosed(registry, o);
+            if (closed || (i > 0 && i < n - 1))
+                yield return new BarButton("pt:split:" + i, "", closed ? T("Open the outline here", "Umriss hier öffnen") : T("Split the line here", "Linie hier teilen")) { IconId = IconIds.Split };
+            if (n > (closed ? 3 : 2) && (closed || (i > 0 && i < n - 1)))
+                yield return new BarButton("pt:remove:" + i, "", T("Remove this corner (double-click)", "Diese Ecke entfernen (Doppelklick)")) { IconId = IconIds.RemovePoint };
+            yield return new BarButton("", "", "", Separator: true);
+        }
+
+        private void CornerCommand(SketchUnit unit, string id)
+        {
+            var parts = id.Split(':');
+            if (parts.Length < 3 || !int.TryParse(parts[2], out var index)) return;
+            _selectedPoints.Clear();
+            if (parts[1] == "remove") { ApplyRemoveCorner(unit, index); return; }
+            if (parts[1] != "split") return;
+            var slide = CurrentSlide();
+            if (slide is null) return;
+            var registry = _registry();
+            var line = unit.Objects.FirstOrDefault(x => x.IsPointGeometry);
+            if (line is null) return;
+            var others = SketchUnits.All(slide, unit.Id);
+            var full = SketchUnits.WithContext(unit.Doc, others);
+            var (doc, newId) = Polylines.Split(registry, full, line.Id, index, _lang());
+            if (ReferenceEquals(doc, full)) return;
+            _app.StartNewUndoEntry();
+            if (newId is not null && doc.Get(newId) is { } part) SketchUnits.Draw(slide, registry, SingleUnitDoc(part), _lang());
+            CommitLineEdit(slide, unit, others, full, doc, line.Id, startUndo: false);
+            Log.Info($"Split {line.Type} at corner {index}");
+        }
+
+        /// <summary>A free end of a line of the same kind in another unit exactly at <paramref name="at"/> (join on drop).</summary>
+        private (SketchUnit Unit, string LineId, bool AtStart)? JoinTarget(int index, Vec2 at)
+        {
+            var o = PointObject();
+            if (o?.Points is null || (index != 0 && index != o.Points.Count - 1) || !Polylines.CanExtend(_registry(), o)) return null;
+            foreach (var u in _otherUnits)
+                foreach (var other in u.Objects.Where(x => x.Type == o.Type && x.Points is { Count: >= 2 }))
+                {
+                    if (!Polylines.CanExtend(_registry(), other)) continue;
+                    var pts = u.Doc.ResolvePoints(other);
+                    foreach (var atStart in new[] { true, false })
+                    {
+                        var k = atStart ? 0 : pts.Count - 1;
+                        var docked = other.Attach is not null && k < other.Attach.Count && other.Attach[k] is not null;
+                        if (!docked && pts[k].DistanceTo(at) < 0.05) return (u, other.Id, atStart);
+                    }
+                }
+            return null;
+        }
+
+        private void ApplyJoin(SketchUnit stale, int index, Vec2 at, SketchUnit otherUnit, string otherId, bool otherAtStart)
+        {
+            var slide = CurrentSlide();
+            var unit = SketchUnits.Read(stale.Shape);
+            var otherLive = SketchUnits.Read(otherUnit.Shape);
+            if (slide is null || unit is null || otherLive is null) return;
+            var registry = _registry();
+            var line = unit.Objects.FirstOrDefault(x => x.IsPointGeometry);
+            if (line is null) return;
+            var others = SketchUnits.All(slide, unit.Id);
+            var full = SketchUnits.WithContext(unit.Doc, others);
+            var doc = Edits.SetPoint(full, line.Id, index, at);
+            doc = Polylines.Join(registry, doc, line.Id, index == 0, otherId, otherAtStart, _lang());
+            if (doc.Get(otherId) is not null) return;
+            _app.StartNewUndoEntry();
+            // The joined line's unit goes; its other objects (if any) stay in their unit.
+            var rest = otherLive.Objects.Where(x => x.Id != otherId).Select(x => x.Id).ToList();
+            if (rest.Count == 0) otherLive.Shape.Delete();
+            else SketchUnits.Replace(slide, otherLive, Edits.Remove(otherLive.Doc, new[] { otherId }), registry, _lang());
+            CommitLineEdit(slide, unit, others.Where(u => u.Id != otherLive.Id).ToList(), full, doc, line.Id, startUndo: false);
+            Log.Info($"Joined {line.Type} with {otherId}");
+        }
+
+        /// <summary>
+        /// Stores a line edit made on the merged document: other units whose objects changed (docked branches) are redrawn,
+        /// then the line's own unit with its dependents (selected). One undo step unless the caller started it.
+        /// </summary>
+        private void CommitLineEdit(PowerPoint.Slide slide, SketchUnit unit, IReadOnlyList<SketchUnit> others, SketchDocument full, SketchDocument doc, string lineId, bool startUndo = true)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            doc = Attachments.Refresh(registry, doc, new RenderContext(doc, lang));
+            if (startUndo) _app.StartNewUndoEntry();
+            foreach (var u in others)
+            {
+                var ids = u.Objects.Where(o => doc.Get(o.Id) is { } t && full.Get(o.Id) is { } f && !ReferenceEquals(t, f)).Select(o => o.Id).ToList();
+                if (ids.Count > 0) SketchUnits.Replace(slide, u, Edits.Update(u.Doc, ids, o => o with { Points = doc.Get(o.Id)!.Points, Attach = doc.Get(o.Id)!.Attach }), registry, lang);
+            }
+            ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { lineId }, _ => doc.Get(lineId)!));
+        }
+
         /// <summary>Adds the corner of segment <paramref name="seg"/> (at <paramref name="at"/>); branches stay docked; one undo step.</summary>
         private void ApplyCorner(SketchUnit stale, int seg, Vec2 mid, Vec2 at, Attachment? attach)
         {
@@ -246,15 +518,8 @@ namespace InventaSketch.AddIn.OnSlide
             var full = SketchUnits.WithContext(unit.Doc, others);
             var doc = Polylines.InsertCorner(registry, full, line.Id, seg + 1, mid, lang);
             if ((at - mid).Length > 1e-6 || attach is not null) doc = Edits.SetPoint(doc, line.Id, seg + 1, at, attach);
-            doc = Attachments.Refresh(registry, doc, new RenderContext(doc, lang));
-            _app.StartNewUndoEntry();
             // Branches in other units were docked again onto the new rails.
-            foreach (var u in others)
-            {
-                var ids = u.Objects.Where(o => doc.Get(o.Id) is { } t && full.Get(o.Id) is { } f && !ReferenceEquals(t, f)).Select(o => o.Id).ToList();
-                if (ids.Count > 0) SketchUnits.Replace(slide, u, Edits.Update(u.Doc, ids, o => o with { Points = doc.Get(o.Id)!.Points, Attach = doc.Get(o.Id)!.Attach }), registry, lang);
-            }
-            ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { line.Id }, _ => doc.Get(line.Id)!));
+            CommitLineEdit(slide, unit, others, full, doc, line.Id);
             Log.Info($"Corner added to {line.Type} on segment {seg}");
         }
 
@@ -272,14 +537,7 @@ namespace InventaSketch.AddIn.OnSlide
             var full = SketchUnits.WithContext(unit.Doc, others);
             var doc = Polylines.RemoveCorner(registry, full, line.Id, index, lang);
             if (ReferenceEquals(doc, full)) return;
-            doc = Attachments.Refresh(registry, doc, new RenderContext(doc, lang));
-            _app.StartNewUndoEntry();
-            foreach (var u in others)
-            {
-                var ids = u.Objects.Where(o => doc.Get(o.Id) is { } t && full.Get(o.Id) is { } f && !ReferenceEquals(t, f)).Select(o => o.Id).ToList();
-                if (ids.Count > 0) SketchUnits.Replace(slide, u, Edits.Update(u.Doc, ids, o => o with { Points = doc.Get(o.Id)!.Points, Attach = doc.Get(o.Id)!.Attach }), registry, lang);
-            }
-            ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { line.Id }, _ => doc.Get(line.Id)!));
+            CommitLineEdit(slide, unit, others, full, doc, line.Id);
             Log.Info($"Corner {index} removed from {line.Type}");
         }
 

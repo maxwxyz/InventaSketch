@@ -49,6 +49,28 @@ namespace InventaSketch.Core
         }
 
         /// <summary>
+        /// Free docking on a surface: the attachment of a point lying inside the box of one of <paramref name="candidates"/>
+        /// (the smallest such box, so a part wins over the housing around it), in normalised box coordinates, so the point
+        /// follows that element when it moves, turns or is resized. Null if the point lies on no box object.
+        /// </summary>
+        public static Attachment? OnSurface(Vec2 at, IEnumerable<SketchObject> candidates)
+        {
+            SketchObject? best = null;
+            var bestArea = double.MaxValue;
+            double bu = 0, bv = 0;
+            foreach (var o in candidates)
+            {
+                if (o.IsPointGeometry || o.Size.W < 1 || o.Size.H < 1) continue;
+                var (u, v) = o.ToBox(at);
+                if (Math.Abs(u) > 0.5 || Math.Abs(v) > 0.5) continue;
+                var area = o.Size.W * o.Size.H;
+                if (area >= bestArea) continue;
+                best = o; bestArea = area; bu = u; bv = v;
+            }
+            return best is null ? null : new Attachment(best.Id, bu, bv);
+        }
+
+        /// <summary>
         /// Re-resolves every attachment with an <see cref="Attachment.AnchorId"/> to the current page position of that
         /// anchor of its target (via <see cref="Registry.PageAnchors"/>). Attachments whose anchor no longer exists keep
         /// their last position and their id (so the link returns when the anchor does). Returns the same instance if

@@ -662,6 +662,9 @@ namespace InventaSketch.Engine
                 var sp = SnapPointAt(s, p, new[] { o.Id }, r.Tolerance);
                 p = new Vec2(sp.X, sp.Y);
                 attach = r.Anchor == false ? null : sp.Attach;
+                // Annotation ends dock anywhere on the element below them (free docking on a surface).
+                if (attach is null && r.Anchor != false && Registry.Type(o.Type)?.DocksOnSurface == true)
+                    attach = Attachments.OnSurface(p, s.Doc.ObjectsOn(s.Page).Where(x => x.Id != o.Id));
             }
             s.Apply("Point", d => Edits.SetPoint(d, o.Id, r.Index ?? 0, p, attach));
             return StateOf(s, r);

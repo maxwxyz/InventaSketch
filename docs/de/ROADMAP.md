@@ -88,6 +88,12 @@ später. Jeder Punkt kommt zuerst in Core/Engine, dann COM, dann Web, dann Libre
 
 ### Interaktionsmechanismen und UX-Konzepte
 
+Stand 21.11.2026 (COM): Die einheitliche Liniensprache (verlängern, weiterzeichnen, Ecken, Abzweige inkl. Wand-T-Stöße,
+teilen, verbinden), Bau-Griffe für Zahnräder, Wellen und Maschinen (inkl. Welle strecken) und freies Andocken von
+Beschriftungen auf Flächen sind erledigt und in PowerPoint geprüft; Engine/Web folgen. Als Nächstes: Kreuzungen von
+Leitungen und Rohren (automatische Brücke, Verbinden-Symbol an der Kreuzung), danach die Prüfung von Ankern, Kontakten,
+Randbedingungen und Verbindungen je Element und Ansicht.
+
 - **P1 – Eine Liniensprache für alles Linienartige.** Was Leitungen schon können (Ecken, Abzweige), geht überall, wo es
   sinnvoll ist, mit denselben Griffen und Regeln:
   - *Verlängern / Weiterzeichnen:* ein „+“ an jedem freien Ende; Ziehen verlängert die Linie, Klick zeichnet weiter

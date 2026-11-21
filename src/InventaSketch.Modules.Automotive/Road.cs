@@ -368,6 +368,7 @@ namespace InventaSketch.Modules.Automotive
                 "lane marking", "road marking", "dashed line", "solid line", "markierung", "fahrbahnmarkierung", "leitlinie", "fahrstreifenbegrenzung") { }
 
             public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-40, 0), new Vec2(40, 0) };
+            public override bool InsertablePoints => true;
             public override IReadOnlyList<ParamDef> Parameters => new[] { PatternDef, Smooth, Dash, Gap };
 
             protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)

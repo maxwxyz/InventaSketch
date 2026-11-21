@@ -381,6 +381,9 @@ namespace InventaSketch.Modules.Annotation
     {
         protected AnnPointType(string id, I18nText name, string category, params string[] keywords) : base(id, name, category, keywords) { }
 
+        /// <summary>Lead lines, arrows, numerals, dimensions: ends dock anywhere on the element below them.</summary>
+        public override bool DocksOnSurface => true;
+
         public override GeometryKind Geometry => GeometryKind.Points;
 
         /// <summary>Minimum number of points needed to render.</summary>

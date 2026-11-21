@@ -113,6 +113,8 @@ const paths: Record<string, string> = {
   "mach-srm": "M3 17h2V8h4v9h6V8h4v9h2",
   "hub-none": "M12 5v14M9.5 5h5M9.5 19h5",
   "hub-fixed": "M3 12h18M12 4v16M9.5 4h5M9.5 20h5M9.8 9.8l4.4 4.4M14.2 9.8l-4.4 4.4",
+  "cmd-split": "M8 15L19 4M16 15L5 4M4 17.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0M15 17.5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0-5 0",
+  "cmd-point-remove": "M2 15h20M12 10.5l4.5 4.5l-4.5 4.5l-4.5-4.5zM8 5h8",
   "shape-square": "M5 5h14v14H5z",
   "shape-circle": "M12 5a7 7 0 1 0 0 14a7 7 0 1 0 0-14z",
   "shape-triangle": "M12 4.5L20 19H4z",

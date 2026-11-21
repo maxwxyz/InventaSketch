@@ -125,5 +125,7 @@ ihr. Hosts rufen sie über `EditorSession.Apply` (Engine, `couple: false` für f
 (`Attachments.For`). `Links` listet, wo sich Objekte berühren und einander folgen (mechanische Paare und angedockte
 Linienenden), für Schloss-Marker, und löst oder koppelt ein Paar (`SketchObject.Released`, von `Coupling` bereinigt,
 sobald sich das Paar nicht mehr berührt). `Fitting.Place` setzt ein eingefügtes Teil passend zur Auswahl (auf die Welle,
-in Eingriff, durch die Nabe). `Polylines` fügt Ecken ein, entfernt sie und setzt Abzweige; angedockte Abzweige bleiben
-an ihrem Platz.
+in Eingriff, durch die Nabe). `Polylines` fügt Ecken ein, entfernt sie und setzt Abzweige,
+verlängert, teilt und verbindet Linien; angedockte Abzweige bleiben an ihrem Platz. `Building` liefert die Andockpunkte
+eines Elements (Eingriffsseiten, Hohlrad innen, freie Achsenden, freie Nabe), die dazu passenden Bibliothekselemente und
+setzt sie gekoppelt; `Attachments.OnSurface` dockt Beschriftungsenden irgendwo auf dem Element darunter an.
