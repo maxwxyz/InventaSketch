@@ -62,8 +62,9 @@ src/InventaSketch.Core            engine core (model, geometry, snapping, render
 src/InventaSketch.Modules.*       domain modules (Annotation, Patent, Mechanical, …)
 src/InventaSketch.Engine          JSON engine API shared by all hosts
 hosts/office-web                  PowerPoint web add-in (WebAssembly engine + TypeScript UI)
-hosts/powerpoint-com              PowerPoint COM add-in (planned)
+hosts/powerpoint-com              PowerPoint COM add-in (.NET Framework 4.8)
 hosts/libreoffice                 LibreOffice extension (planned)
+tests                             xUnit tests; tests/powerpoint-com: PowerPoint UI scenarios
 docs/en, docs/de                  documentation (English canonical, German translation)
 docs/adr                          architecture decision records
 ```

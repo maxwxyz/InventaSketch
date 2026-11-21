@@ -163,6 +163,27 @@ same way.
 Close PowerPoint before installing. The web add-in is hidden automatically while the COM add-in is installed
 (`EquivalentAddins`, ADR-0004).
 
+## UI scenarios (PowerPoint, run locally)
+
+`tests/powerpoint-com` holds scripted checks of the installed add-in in real PowerPoint: each scenario starts its own
+PowerPoint (through Explorer) with a blank slide, drives the add-in through its automation object (`Insert`, `Command`,
+`ScreenRect`, `LibraryItems`) and the mouse (DPI aware), reads numbers back from the sketch models stored on the shapes,
+takes screenshots and quits PowerPoint without saving. Shared helpers live in `IskPowerPoint.psm1`.
+
+```powershell
+.\scripts\package-com.ps1; .\dist\InventaSketch-AddIn\Install.cmd   # install the current build first
+.\tests\powerpoint-com\Invoke-IskScenarios.ps1 -List                 # scenarios
+.\tests\powerpoint-com\Invoke-IskScenarios.ps1 -Name explode-linkages
+.\tests\powerpoint-com\Invoke-IskScenarios.ps1                      # all
+```
+
+- PowerPoint must be closed: the run refuses to start while it is open, so it never touches open presentations.
+- Do not use mouse or keyboard during a run; the scenarios click and drag on screen.
+- Screenshots and the add-in log go to `local-resources/powerpoint-tests/<timestamp>/<scenario>/` (git-ignored);
+  review them for what numbers cannot show (bar layout, hops, previews).
+- The exit code is the number of failed scenarios. Scenarios with screen positions (bar "+", end "+") depend on the
+  current layout and are a release check, not part of `build.ps1`.
+
 ## Verified (2026-11-20, Windows 11, Microsoft 365 PowerPoint 16.0 build 20527, 64-bit)
 
 - Add-in loads when PowerPoint starts normally (482 ms, 159 library items in 17 categories, German UI detected).
