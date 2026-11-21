@@ -231,8 +231,10 @@ namespace InventaSketch.AddIn.OnSlide
                 if (!_branchMoved && Math.Abs(pt.X - _branchDown.X) + Math.Abs(pt.Y - _branchDown.Y) < 5 * view.DeviceScale) return true;
                 _branchMoved = true;
                 var raw = view.ToMm(pt);
-                var snap = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
-                _branchEnd = raw + snap.Delta;
+                // Shift: 15 degree steps from where the branch leaves the line.
+                var angled = KeyDown(VK_SHIFT);
+                var snap = NoSnap() || angled ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+                _branchEnd = angled ? AngleStep(_branchFrom, raw) : raw + snap.Delta;
                 _branchSnap = snap;
                 DrawBranch(view, snap.Guides);
                 return true;
@@ -341,8 +343,11 @@ namespace InventaSketch.AddIn.OnSlide
             var o = PointObject();
             if (o is null || _unit is null) return;
             var raw = view.ToMm(pt);
-            var snap = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
-            _drawAt = raw + snap.Delta;
+            // Shift: 15 degree steps from the last corner (or the end being extended).
+            var from = _drawPts.Count > 0 ? _drawPts[_drawPts.Count - 1] : _endHandles.First(e => e.AtStart == _drawAtStart).End;
+            var angled = KeyDown(VK_SHIFT);
+            var snap = NoSnap() || angled ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+            _drawAt = angled ? AngleStep(from, raw) : raw + snap.Delta;
             _drawSnap = snap;
             var registry = _registry();
             var doc = _unitContext ?? _unit.Doc;

@@ -726,8 +726,10 @@ namespace InventaSketch.AddIn.OnSlide
             var raw = view.ToMm(pt);
             if (IsTwoPoint(item))
             {
-                var snapped = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
-                _placeAt = raw + snapped.Delta;
+                // Shift: the second point in 15 degree steps from the first (no other snapping).
+                var angled = _twoStart is not null && KeyDown(VK_SHIFT);
+                var snapped = NoSnap() || angled ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+                _placeAt = angled ? AngleStep(_twoStart!.Value, raw) : raw + snapped.Delta;
                 _lastPointSnap = snapped;
                 var marker = (float)view.Mm(5);
                 if (_twoStart is null)
@@ -1423,13 +1425,30 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
+        /// <summary>
+        /// Shift while drawing or editing a line: the direction from <paramref name="from"/> snaps to 15 degree steps, the
+        /// length follows the pointer.
+        /// </summary>
+        internal static Vec2 AngleStep(Vec2 from, Vec2 to, double stepDegrees = 15)
+        {
+            var d = to - from;
+            var len = d.Length;
+            if (len < 1e-9) return to;
+            var step = stepDegrees * Math.PI / 180;
+            var a = Math.Round(Math.Atan2(d.Y, d.X) / step) * step;
+            return new Vec2(from.X + Math.Cos(a) * len, from.Y + Math.Sin(a) * len);
+        }
+
         private void UpdatePointEdit(POINT pt, SlideView view)
         {
             var o = PointObject();
             if (o is null) return;
             var raw = view.ToMm(pt);
-            var snap = NoSnap() ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
-            _pointAt = raw + snap.Delta;
+            // Shift: 15 degree steps from the neighbouring point.
+            var neighbour = _pointOrigin is { Count: > 1 } po ? po[_pointIndex == 0 ? 1 : _pointIndex - 1] : (Vec2?)null;
+            var angled = neighbour is not null && KeyDown(VK_SHIFT);
+            var snap = NoSnap() || angled ? SnapResult.None(Vec2.Zero) : Snapper.SnapPoint(raw, _targets, Options(view));
+            _pointAt = angled ? AngleStep(neighbour!.Value, raw) : raw + snap.Delta;
             _lastPointSnap = snap;
             var doc = Edits.SetPoint(_unit!.Doc, o.Id, _pointIndex, _pointAt);
             foreach (var kv in MovedGroup(_pointIndex, _pointAt)) doc = Edits.SetPoint(doc, o.Id, kv.Key, kv.Value);
