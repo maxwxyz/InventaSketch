@@ -26,13 +26,19 @@ namespace InventaSketch.Modules.Machines
             new ParamOption("outer", T("Radial flux, outer rotor", "Radialfluss, Außenläufer")),
             new ParamOption("axial", T("Axial flux, one stator and one rotor", "Axialfluss, ein Ständer und ein Läufer")),
             new ParamOption("axial-2r", T("Axial flux, double rotor (YASA type)", "Axialfluss, Doppelläufer (YASA-Bauart)")),
-            new ParamOption("axial-2s", T("Axial flux, double stator", "Axialfluss, Doppelständer")));
+            new ParamOption("axial-2s", T("Axial flux, double stator", "Axialfluss, Doppelständer")))
+            .WithOptionIcons(v => v switch
+            {
+                "outer" => IconIds.MachOuter, "axial" => IconIds.MachAxial, "axial-2r" => IconIds.MachAxialDoubleRotor,
+                "axial-2s" => IconIds.MachAxialDoubleStator, _ => IconIds.MachInner,
+            });
 
         public static readonly ParamDef Kind = Common.Choice("kind", T("Machine type", "Maschinenart"), "pmsm",
             new ParamOption("pmsm", T("Permanent-magnet synchronous (PMSM)", "Permanentmagneterregte Synchronmaschine (PMSM/PSM)")),
             new ParamOption("eesm", T("Wound-field synchronous (EESM, slip rings)", "Fremderregte Synchronmaschine (FSM/EESM, Schleifringe)")),
             new ParamOption("asm", T("Induction, squirrel cage (ASM)", "Asynchronmaschine, Käfigläufer (ASM)")),
-            new ParamOption("srm", T("Switched reluctance (SRM)", "Geschaltete Reluktanzmaschine (SRM)")));
+            new ParamOption("srm", T("Switched reluctance (SRM)", "Geschaltete Reluktanzmaschine (SRM)")))
+            .WithOptionIcons(v => v switch { "eesm" => IconIds.MachWound, "asm" => IconIds.MachCage, "srm" => IconIds.MachReluctance, _ => IconIds.MachMagnet });
 
         private static readonly ParamDef ShaftStubs = Common.Flag("shaft", T("Shaft stubs", "Wellenstümpfe"), true);
         private static readonly ParamDef Ground = Common.Flag("ground", T("Stator fixed to housing", "Ständer am Gehäuse"), true);
@@ -79,13 +85,13 @@ namespace InventaSketch.Modules.Machines
             var layout = Layouts[(Array.IndexOf(Layouts, LayoutOf(o)) + 1) % Layouts.Length];
             var ll = Layout.Options!.First(x => x.Value == layout).Label;
             yield return new ContextAction("param.layout", T("Next arrangement: " + ll.En, "Nächste Bauform: " + ll.De), IconIds.Cycle,
-                x => x.WithParam("layout", layout)) { Group = "param" };
+                x => x.WithParam("layout", layout)) { Group = "param", ParamKeys = new[] { "layout" } };
             var kind = Kinds[(Array.IndexOf(Kinds, KindOf(o)) + 1) % Kinds.Length];
             var kl = Kind.Options!.First(x => x.Value == kind).Label;
             yield return new ContextAction("param.kind", T("Next machine type: " + kl.En, "Nächste Maschinenart: " + kl.De), IconIds.Cycle,
-                x => x.WithParam("kind", kind)) { Group = "param" };
-            yield return Common.Toggle(o, "shaft", true, T("Shaft stubs on/off", "Wellenstümpfe an/aus"));
-            yield return Common.Toggle(o, "ground", true, T("Housing connection on/off", "Gehäuseanbindung an/aus"));
+                x => x.WithParam("kind", kind)) { Group = "param", ParamKeys = new[] { "kind" } };
+            yield return Common.Toggle(o, "shaft", true, T("Shaft stubs on/off", "Wellenstümpfe an/aus")) with { Icon = IconIds.ShaftEnds };
+            yield return Common.Toggle(o, "ground", true, T("Housing connection on/off", "Gehäuseanbindung an/aus")) with { Icon = IconIds.Ground };
         }
 
         /// <summary>Ports at both shaft ends (left/right) and the housing mount below the machine.</summary>

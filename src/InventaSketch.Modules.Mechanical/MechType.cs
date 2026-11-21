@@ -146,7 +146,7 @@ namespace InventaSketch.Modules.Mechanical
     {
         public static readonly string[] HubKinds = { "none", "fixed", "sliding", "loose" };
 
-        public static readonly ParamDef Hub = new("hub", new I18nText("Shaft connection", "Welle-Nabe-Verbindung"), ParamKind.Choice)
+        public static readonly ParamDef Hub = new ParamDef("hub", new I18nText("Shaft connection", "Welle-Nabe-Verbindung"), ParamKind.Choice)
         {
             Default = "fixed",
             Options = new[]
@@ -156,7 +156,7 @@ namespace InventaSketch.Modules.Mechanical
                 new ParamOption("sliding", new I18nText("Sliding (keyed, axially movable)", "Drehfest verschiebbar")),
                 new ParamOption("loose", new I18nText("Loose (idler on bearing)", "Drehbar (Losrad)")),
             },
-        };
+        }.WithOptionIcons(v => v switch { "none" => IconIds.HubNone, "sliding" => IconIds.HubSliding, "loose" => IconIds.HubLoose, _ => IconIds.HubFixed });
 
         public static ParamDef Teeth(int def) => new("teeth", new I18nText("Number of teeth", "Zähnezahl"), ParamKind.Integer)
         {
@@ -193,7 +193,7 @@ namespace InventaSketch.Modules.Mechanical
             var cur = o.Str("hub", "fixed");
             var idx = Array.IndexOf(HubKinds, cur);
             var next = HubKinds[(idx + 1 + HubKinds.Length) % HubKinds.Length];
-            return new ContextAction("param.hub", HubLabel(next), "hub-" + next, x => x.WithParam("hub", next)) { Group = "param" };
+            return new ContextAction("param.hub", HubLabel(next), "hub-" + next, x => x.WithParam("hub", next)) { Group = "param", ParamKeys = new[] { "hub" } };
         }
 
         public static ContextAction Toggle(SketchObject o, string key, bool def, I18nText label, string icon)

@@ -252,6 +252,77 @@ namespace InventaSketch.AddIn.OnSlide
                 case IconIds.CourseZigzag:
                     g.DrawLines(pen, new[] { new PointF(3, 12), new PointF(6.5f, 7), new PointF(10, 17), new PointF(14, 7), new PointF(17.5f, 17), new PointF(21, 12) });
                     break;
+                case IconIds.MachInner:
+                    g.DrawLine(thin, 3, 12, 21, 12);
+                    g.FillRectangle(brush, 9, 8, 6, 2.2f); g.FillRectangle(brush, 9, 13.8f, 6, 2.2f);
+                    g.DrawRectangle(pen, 8, 3.5f, 8, 2.6f); g.DrawRectangle(pen, 8, 17.9f, 8, 2.6f);
+                    break;
+                case IconIds.MachOuter:
+                    g.DrawLine(thin, 3, 12, 21, 12);
+                    g.DrawRectangle(pen, 9, 7.5f, 6, 2.4f); g.DrawRectangle(pen, 9, 14.1f, 6, 2.4f);
+                    g.FillRectangle(brush, 8, 3.5f, 8, 2.4f); g.FillRectangle(brush, 8, 18.1f, 8, 2.4f);
+                    g.DrawLine(pen, 17.5f, 4.5f, 17.5f, 19.5f);
+                    break;
+                case IconIds.MachAxial:
+                    g.DrawLine(thin, 3, 12, 21, 12);
+                    g.FillRectangle(brush, 8.5f, 5, 2.6f, 14); g.DrawRectangle(pen, 13, 5, 2.6f, 14);
+                    break;
+                case IconIds.MachAxialDoubleRotor:
+                    g.DrawLine(thin, 3, 12, 21, 12);
+                    g.FillRectangle(brush, 6, 5, 2.4f, 14); g.DrawRectangle(pen, 10.8f, 5, 2.4f, 14); g.FillRectangle(brush, 15.6f, 5, 2.4f, 14);
+                    break;
+                case IconIds.MachAxialDoubleStator:
+                    g.DrawLine(thin, 3, 12, 21, 12);
+                    g.DrawRectangle(pen, 6, 5, 2.4f, 14); g.FillRectangle(brush, 10.8f, 5, 2.4f, 14); g.DrawRectangle(pen, 15.6f, 5, 2.4f, 14);
+                    break;
+                case IconIds.MachMagnet:
+                    g.DrawRectangle(pen, 4, 8, 16, 8); g.FillRectangle(brush, 4, 8, 8, 8);
+                    break;
+                case IconIds.MachWound:
+                    for (var i = 0; i < 4; i++) g.DrawArc(pen, 3.5f + i * 4.25f, 8, 4.25f, 8, 180, 180);
+                    g.DrawLine(thin, 3.5f, 12, 3.5f, 17); g.DrawLine(thin, 20.5f, 12, 20.5f, 17);
+                    break;
+                case IconIds.MachCage:
+                    g.DrawLine(pen, 4, 7, 20, 7); g.DrawLine(pen, 4, 17, 20, 17);
+                    for (var x = 6f; x <= 18.5f; x += 4f) g.DrawLine(thin, x, 7, x, 17);
+                    break;
+                case IconIds.MachReluctance:
+                    g.DrawLines(pen, new[] { new PointF(3, 17), new PointF(5, 17), new PointF(5, 8), new PointF(9, 8), new PointF(9, 17), new PointF(15, 17), new PointF(15, 8), new PointF(19, 8), new PointF(19, 17), new PointF(21, 17) });
+                    break;
+                case IconIds.HubNone:
+                    g.DrawLine(pen, 12, 5, 12, 19); g.DrawLine(pen, 9.5f, 5, 14.5f, 5); g.DrawLine(pen, 9.5f, 19, 14.5f, 19);
+                    break;
+                case IconIds.HubFixed:
+                    g.DrawLine(thin, 3, 12, 21, 12);
+                    g.DrawLine(pen, 12, 4, 12, 20); g.DrawLine(pen, 9.5f, 4, 14.5f, 4); g.DrawLine(pen, 9.5f, 20, 14.5f, 20);
+                    g.DrawLine(pen, 9.8f, 9.8f, 14.2f, 14.2f); g.DrawLine(pen, 14.2f, 9.8f, 9.8f, 14.2f);
+                    break;
+                case IconIds.HubLoose:
+                    g.DrawLine(thin, 3, 12, 21, 12);
+                    g.DrawLine(pen, 12, 4, 12, 8.4f); g.DrawLine(pen, 12, 15.6f, 12, 20); g.DrawLine(pen, 9.5f, 4, 14.5f, 4); g.DrawLine(pen, 9.5f, 20, 14.5f, 20);
+                    g.DrawEllipse(thin, 10.3f, 8.4f, 3.4f, 3.2f); g.DrawEllipse(thin, 10.3f, 12.4f, 3.4f, 3.2f);
+                    break;
+                case IconIds.HubSliding:
+                    g.DrawLine(thin, 3, 11, 21, 11);
+                    g.DrawLine(pen, 12, 3, 12, 16); g.DrawLine(pen, 9.5f, 3, 14.5f, 3);
+                    g.DrawLine(pen, 10, 9, 14, 13); g.DrawLine(pen, 14, 9, 10, 13);
+                    g.DrawLine(thin, 6, 20, 18, 20);
+                    g.FillPolygon(brush, new[] { new PointF(4.5f, 20), new PointF(7.5f, 18), new PointF(7.5f, 22) });
+                    g.FillPolygon(brush, new[] { new PointF(19.5f, 20), new PointF(16.5f, 18), new PointF(16.5f, 22) });
+                    break;
+                case IconIds.Helix:
+                    g.DrawRectangle(pen, 6, 4, 12, 16);
+                    g.DrawLine(thin, 6, 12, 12, 4); g.DrawLine(thin, 6, 20, 18, 4); g.DrawLine(thin, 12, 20, 18, 12);
+                    break;
+                case IconIds.ShaftEnds:
+                    g.DrawLine(pen, 8, 12, 16, 12); g.DrawLine(thin, 2.5f, 12, 5, 12); g.DrawLine(thin, 19, 12, 21.5f, 12);
+                    g.DrawLine(thin, 8, 9, 8, 15); g.DrawLine(thin, 16, 9, 16, 15);
+                    break;
+                case IconIds.Ground:
+                    g.DrawLine(pen, 4, 9, 20, 9);
+                    for (var x = 6f; x <= 20; x += 4f) g.DrawLine(thin, x, 9, x - 3.5f, 14);
+                    g.DrawLine(thin, 12, 4, 12, 9);
+                    break;
                 case IconIds.CourseElbow:
                     g.DrawLines(pen, new[] { new PointF(3, 18), new PointF(12, 18), new PointF(12, 6), new PointF(21, 6) });
                     break;

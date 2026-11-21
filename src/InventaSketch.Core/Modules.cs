@@ -153,6 +153,24 @@ namespace InventaSketch.Core
         public const string CourseZigzag = "course-zigzag";
         public const string CourseElbow = "course-elbow";
 
+        // Drivetrain option pictograms (schematic, shaft horizontal).
+        public const string MachInner = "mach-inner";                // radial flux, inner rotor
+        public const string MachOuter = "mach-outer";                // radial flux, outer rotor
+        public const string MachAxial = "mach-axial";                // axial flux, one stator, one rotor
+        public const string MachAxialDoubleRotor = "mach-axial-2r";  // rotor | stator | rotor
+        public const string MachAxialDoubleStator = "mach-axial-2s"; // stator | rotor | stator
+        public const string MachMagnet = "mach-pm";                  // permanent magnets
+        public const string MachWound = "mach-wound";                // field winding
+        public const string MachCage = "mach-cage";                  // squirrel cage
+        public const string MachReluctance = "mach-srm";             // salient poles
+        public const string HubNone = "hub-none";
+        public const string HubFixed = "hub-fixed";
+        public const string HubSliding = "hub-sliding";
+        public const string HubLoose = "hub-loose";
+        public const string Helix = "cmd-helix";
+        public const string ShaftEnds = "cmd-shaft-ends";
+        public const string Ground = "cmd-ground";
+
         /// <summary>Pictogram of an arrowhead or line-end name ("triangle", "open", "oval"/"dot" ...); null if unknown.</summary>
         public static string? ForHead(string name) => name switch
         {
@@ -188,6 +206,8 @@ namespace InventaSketch.Core
             HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
             SizeSmall, SizeMedium, SizeLarge, LineSolid, LineDash, LineDot, LineDashDot, LineDashDotDot, LineLongDash,
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
+            MachInner, MachOuter, MachAxial, MachAxialDoubleRotor, MachAxialDoubleStator, MachMagnet, MachWound, MachCage, MachReluctance,
+            HubNone, HubFixed, HubSliding, HubLoose, Helix, ShaftEnds, Ground,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)

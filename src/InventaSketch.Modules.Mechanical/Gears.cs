@@ -61,7 +61,7 @@ namespace InventaSketch.Modules.Mechanical
         private static IEnumerable<ContextAction> GearActions(SketchObject o, bool hub, int defTeeth, bool helix)
         {
             if (hub) yield return Common.HubCycle(o);
-            if (helix) yield return Common.Toggle(o, "helix", false, T("Helical teeth on/off", "Schrägverzahnung an/aus"), "helix");
+            if (helix) yield return Common.Toggle(o, "helix", false, T("Helical teeth on/off", "Schrägverzahnung an/aus"), IconIds.Helix);
             if (o.Num("module", 0) > 0)
                 yield return new ContextAction("param.truesize", T("True size from module", "Echte Größe aus Modul"), "true-size", x => TrueSize(x, defTeeth)) { Group = "param" };
         }

@@ -101,6 +101,23 @@ const paths: Record<string, string> = {
   "course-wavy": "M3 17C10 2 14 22 21 7",
   "course-zigzag": "M3 12l3.5-5 3.5 10 4-10 3.5 10 3.5-5",
   "course-elbow": "M3 18h9V6h9",
+  // Drivetrain option pictograms (shaft horizontal).
+  "mach-inner": "M3 12h18M9 8h6v2.2H9ZM9 13.8h6V16H9ZM8 3.5h8v2.6H8zM8 17.9h8v2.6H8z",
+  "mach-outer": "M3 12h18M9 7.5h6v2.4H9zM9 14.1h6v2.4H9zM8 3.5h8v2.4H8ZM8 18.1h8v2.4H8ZM17.5 4.5v15",
+  "mach-axial": "M3 12h18M8.5 5h2.6v14H8.5ZM13 5h2.6v14H13z",
+  "mach-axial-2r": "M3 12h18M6 5h2.4v14H6ZM10.8 5h2.4v14h-2.4zM15.6 5H18v14h-2.4Z",
+  "mach-axial-2s": "M3 12h18M6 5h2.4v14H6zM10.8 5h2.4v14h-2.4ZM15.6 5H18v14h-2.4z",
+  "mach-pm": "M4 8h16v8H4zM4 8h8v8H4Z",
+  "mach-wound": "M3.5 17v-5a2.1 4 0 0 1 4.25 0a2.1 4 0 0 1 4.25 0a2.1 4 0 0 1 4.25 0a2.1 4 0 0 1 4.25 0v5",
+  "mach-cage": "M4 7h16M4 17h16M6 7v10M10 7v10M14 7v10M18 7v10",
+  "mach-srm": "M3 17h2V8h4v9h6V8h4v9h2",
+  "hub-none": "M12 5v14M9.5 5h5M9.5 19h5",
+  "hub-fixed": "M3 12h18M12 4v16M9.5 4h5M9.5 20h5M9.8 9.8l4.4 4.4M14.2 9.8l-4.4 4.4",
+  "hub-loose": "M3 12h18M12 4v4.4M12 15.6V20M9.5 4h5M9.5 20h5M12 8.4a1.7 1.6 0 1 0 0 3.2a1.7 1.6 0 1 0 0-3.2zM12 12.4a1.7 1.6 0 1 0 0 3.2a1.7 1.6 0 1 0 0-3.2z",
+  "hub-sliding": "M3 11h18M12 3v13M9.5 3h5M10 9l4 4M14 9l-4 4M6 20h12M4.5 20l3-2v4ZM19.5 20l-3-2v4Z",
+  "cmd-helix": "M6 4h12v16H6zM6 12l6-8M6 20L18 4M12 20l6-8",
+  "cmd-shaft-ends": "M8 12h8M2.5 12H5M19 12h2.5M8 9v6M16 9v6",
+  "cmd-ground": "M4 9h16M12 4v5M6 9l-3.5 5M10 9l-3.5 5M14 9l-3.5 5M18 9l-3.5 5",
 };
 
 export function icon(name: string, size = 18): string {

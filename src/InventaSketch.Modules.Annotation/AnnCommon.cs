@@ -324,7 +324,7 @@ namespace InventaSketch.Modules.Annotation
             yield return SwapAction();
         }
 
-        public static ContextAction SwapAction() => new("ann.swap", new I18nText("Swap direction", "Richtung umkehren"), "swap", Reverse) { Group = "direction" };
+        public static ContextAction SwapAction() => new("ann.swap", new I18nText("Swap direction", "Richtung umkehren"), IconIds.Swap, Reverse) { Group = "direction" };
 
         /// <summary>
         /// Attaches point <paramref name="index"/> of a point object to a box object at the given page position
