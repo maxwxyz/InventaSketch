@@ -64,8 +64,10 @@ namespace InventaSketch.AddIn.Tests
         {
             Assert.Equal("Helical teeth", OnSlideController.ShortLabel("Helical teeth on/off"));
             Assert.Equal("Schrägverzahnung", OnSlideController.ShortLabel("Schrägverzahnung an/aus"));
-            Assert.Equal("Next centre", OnSlideController.ShortLabel("Next centre (closed, tandem)"));
-            Assert.Equal(18, OnSlideController.ShortLabel("A very long action label indeed").Length);
+            Assert.Equal("Centre", OnSlideController.ShortLabel("Next centre (closed, tandem)"));
+            Assert.Equal(22, OnSlideController.ShortLabel("A very long action label indeed").Length);
+            Assert.Equal("Kardinalität Anfang", OnSlideController.ShortLabel("Nächste Kardinalität Anfang"));
+            Assert.Equal("Kardinalität Ende", OnSlideController.ShortLabel("Nächste Kardinalität Ende"));
         }
     }
 }

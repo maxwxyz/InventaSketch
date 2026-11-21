@@ -857,16 +857,26 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Generic pictograms (switch, cycle) say nothing on their own: such actions show a short text instead.</summary>
         private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon != IconIds.Toggle && icon != IconIds.Cycle;
 
-        /// <summary>Short bar text of an action label: without "on/off"-type suffixes and explanations in brackets, at most 18 characters.</summary>
+        /// <summary>
+        /// Short bar text of an action label: without a leading "Next", "on/off"-type suffixes and explanations in brackets,
+        /// at most 22 characters (so "Next start cardinality" and "Next end cardinality" stay apart).
+        /// </summary>
         internal static string ShortLabel(string label)
         {
             var s = label;
+            foreach (var prefix in new[] { "Next ", "Nächste ", "Nächster ", "Nächstes ", "Nächste ", "Nächster ", "Nächstes " })
+                if (s.StartsWith(prefix, StringComparison.Ordinal) && s.Length > prefix.Length + 2)
+                {
+                    s = s.Substring(prefix.Length);
+                    s = char.ToUpper(s[0], System.Globalization.CultureInfo.CurrentCulture) + s.Substring(1);
+                    break;
+                }
             var cut = s.IndexOf(" (", StringComparison.Ordinal);
             if (cut > 0) s = s.Substring(0, cut);
             foreach (var suffix in new[] { " on/off", " an/aus", " ein/aus" })
                 if (s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) s = s.Substring(0, s.Length - suffix.Length);
             s = s.Trim();
-            return s.Length <= 18 ? s : s.Substring(0, 17).TrimEnd() + "…";
+            return s.Length <= 22 ? s : s.Substring(0, 21).TrimEnd() + "…";
         }
 
         /// <summary>
