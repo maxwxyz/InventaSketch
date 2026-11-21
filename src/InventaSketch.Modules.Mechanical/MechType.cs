@@ -128,6 +128,19 @@ namespace InventaSketch.Modules.Mechanical
         }
     }
 
+    /// <summary>
+    /// Drivetrain ("Antriebsstrang") search keywords and the type ids of drivetrain parts of the machines module that
+    /// shafts, differentials and clutches offer in "Insert ▸". Only ids are referenced (no code dependency); they are
+    /// skipped when the machines module is not loaded.
+    /// </summary>
+    internal static class Drivetrain
+    {
+        public const string Kw1 = "drivetrain", Kw2 = "powertrain", Kw3 = "antriebsstrang";
+        public const string EMachine = "machines.drivetrain.emachine";
+        public const string Engine = "machines.drivetrain.engine";
+        public const string Wheel = "machines.drive.wheel";
+    }
+
     /// <summary>Common parameter definitions and context actions.</summary>
     internal static class Common
     {

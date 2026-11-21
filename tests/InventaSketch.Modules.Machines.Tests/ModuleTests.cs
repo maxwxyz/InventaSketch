@@ -51,6 +51,7 @@ namespace InventaSketch.Modules.Machines.Tests
             "machines.part.endwinding", "machines.part.housing", "machines.part.cooling", "machines.part.encoder", "machines.part.slipring",
             "machines.drive.battery", "machines.drive.inverter", "machines.drive.dclink", "machines.drive.motor", "machines.drive.gearbox",
             "machines.drive.differential", "machines.drive.wheel",
+            "machines.drivetrain.emachine", "machines.drivetrain.engine",
             "machines.ann.flux", "machines.ann.rotation", "machines.ann.torque",
         };
 

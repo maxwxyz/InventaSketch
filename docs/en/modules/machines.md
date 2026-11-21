@@ -2,7 +2,8 @@
 
 Quick sketches of electric machines and electric drive trains for presentations and patent drawings: radial-flux and
 axial-flux machine cross-sections and longitudinal sections, separate machine components for free assembly, drive
-system blocks with ports and flux/rotation/torque annotations.
+system blocks with ports, drivetrain schematic parts that sit on mechanical shafts (e-machine, combustion engine, wheel)
+and flux/rotation/torque annotations.
 
 > **Limits.** All drawings are *illustrative*. Slot shapes, magnet positions, air gap, yoke thickness, winding layout and
 > current pattern follow plausible proportions but are **not** the result of an electromagnetic design or a winding
@@ -76,9 +77,61 @@ default stator.
 | `machines.drive.motor` | E-motor / E-Motor | `block`, `symbol` (M/G with phase leads) |
 | `machines.drive.gearbox` | Gearbox / Getriebe | `block`, `symbol` (gear pair schematic) |
 | `machines.drive.differential` | Differential / Differential | `block`, `symbol` (schematic) |
-| `machines.drive.wheel` | Wheel / Rad | `side`, `top` |
+| `machines.drive.wheel` | Wheel / Rad | `side`, `top`, `schematic` (see "Drivetrain schematic") |
 
 Block labels follow the host language; the object text replaces the label (e.g. "HV battery").
+
+### Drivetrain schematic (category "Drivetrain schematic")
+
+Parts for building drivetrains and gearboxes quickly on a slide together with the shafts, gears, bearings, clutches and
+the differential of the mechanical module (`mech.*`). They sit on a `mech.shaft` and **follow it** (core coupling, see
+"Snapping anchors").
+
+| Type id | Name (EN / DE) | Views |
+|---|---|---|
+| `machines.drivetrain.emachine` | E-machine (gearbox schematic) / E-Maschine (Getriebeschema) | (default: radial flux, inner rotor, PMSM; variants below) `stick` schematic (`view-schematic`): rotor bars on a rotor carrier with fixed hub cross, hatched stator bars across the air gap, stator tied to the housing; `side` simplified longitudinal section (`view-side`): stator stack with end windings, rotor stack, shaft, housing; `axial` view (`view-axial`): stator ring, rotor disc, shaft |
+| `machines.drivetrain.engine` | Internal combustion engine / Verbrennungsmotor | `block` (`view-block`, label "Engine (ICE)" / "Verbrennungsmotor", or the object text), `schematic` crankshaft schematic (`view-schematic`): crankcase, cylinders with pistons and connecting rods, crankshaft with throws, output shaft on the right |
+| `machines.drive.wheel` | Wheel / Rad | additional `schematic` view (`view-schematic`): dark tyre bar for top-view drivetrain layouts (library item "Wheel (drivetrain schematic)" in this category) |
+
+**E-machine variants.** One type, two optional parameters, each variant also as a library item (schematic and side
+view):
+
+| `layout` (arrangement) | Schematic / side view |
+|---|---|
+| `inner` (default) | radial flux, inner rotor: rotor bars on a rotor carrier, stator bars around them, stator tied to the housing |
+| `outer` | radial flux, outer rotor: rotor bell from the shaft around the stator, stator on a fixed sleeve tied to the housing |
+| `axial` | axial flux, one rotor disc beside one stator (axial air gap) |
+| `axial-2r` | axial flux, double rotor (YASA type): one stator between two rotor discs |
+| `axial-2s` | axial flux, double stator: one rotor disc between two stators |
+
+| `kind` (machine type) | Mark on the rotor (air-gap side) |
+|---|---|
+| `pmsm` (default) | magnets, red (N) / blue (S) |
+| `eesm` | field winding (copper) plus two slip rings with brushes on the shaft |
+| `asm` | cage bars (grey) with short-circuit rings |
+| `srm` | salient rotor teeth (no magnets, no winding) |
+
+The axial view shows the rotor in cross-section (radial flux) or the face of the rotor disc (axial flux) with the same
+marks (magnet sectors, field poles, cage bars, slots between teeth).
+
+Further parameters (optional): e-machine `shaft` (shaft stubs; off when the machine sits on a drawn `mech.shaft` body in
+side view, on by default), `ground` (housing connection: ground strokes in the schematic, housing outline in side and
+axial view, on), `hatch`; engine `cylinders` (1-6, default 4; the schematic shows an inline engine, outer throws opposite
+the inner ones). Context actions: next arrangement, next machine type (`cmd-cycle`), shaft stubs on/off, housing
+connection on/off.
+
+The drawings are schematic symbols in the style of kinematic gearbox schematics, not a standardised graphical symbol.
+
+**Search.** All drivetrain parts carry the keywords `drivetrain`, `powertrain` and `antriebsstrang`: searching for
+"Antriebsstrang" finds e-machine, engine, e-motor, gearbox, differential (block and bevel gear set), wheel, shafts,
+spur gears, disc and multi-disc clutch and the universal joint (with the mechanical module loaded).
+
+**"Insert ▸" companions.** A shaft offers spur gear, ball bearing, e-machine (in the shaft's kind of view: schematic shaft
+→ schematic e-machine, shaft body → side view), wheel, disc clutch and flexible coupling (then bevel gear, cylindrical
+roller bearing, rigid coupling); the e-machine offers inverter and battery blocks, shaft, gear, bearing and DC link; the
+engine offers clutch, flywheel, shaft, gearbox, e-machine; the wheel offers shaft and differential; the bevel
+differential offers shaft, wheel and gears; the disc clutch offers shaft, engine, flywheel and e-machine; the e-motor block
+offers inverter, battery, gearbox and the e-machine. Ids of the other module are skipped when it is not loaded.
 
 ### Annotations (category "Flux, rotation & torque")
 
@@ -129,12 +182,23 @@ view and a longitudinal section adapts the box width so the proportions are kept
   centre snaps onto the rotor centre.
 - Longitudinal sections (`side`) expose the shaft **Axis** segment; encoders, slip rings and other parts snap their hub
   onto it, and machine axes align collinearly with mechanical shafts.
+- **Drivetrain parts and coupling.** The e-machine (every view) and the wheel (every view) expose a **Hub** at the
+  centre; the engine exposes its **Hub** and an `out` **Port** at the output shaft end (schematic: right end of the
+  crankshaft axis, which is also an **Axis** segment for a flywheel or pulley; block: right edge midpoint). The e-machine
+  has `w`/`e` **Ports** at the shaft ends and a **Mount** below the stator, the engine schematic a **Mount** below the
+  crankcase; wheel top and schematic views expose the wheel **Axis**. A hub lying on a `mech.shaft` axis makes the part
+  follow the shaft through the core coupling (`Coupling`, "carried"): moving, rotating or stretching the shaft takes the
+  e-machine, the wheels and an engine whose output sits on the shaft end along (stretching keeps the relative position on
+  the axis); moving the part alone slides it along the shaft. The wheel side view moves together with a concentric part in
+  axial view (e.g. a gear on the same axle).
 - Drive blocks expose **Port** anchors on the four edge midpoints (block view) or on the symbol terminals (battery +/−,
   inverter DC+/DC−/U/V/W, motor phase leads, gearbox input/output, differential input/left/right), so arrows and wires
   snap on.
 
 ## Known limits
 
+- Drivetrain parts only translate with their shaft (the core coupling moves parts, it does not turn them): after turning
+  a shaft, turn the parts on it as well (or turn them together).
 - Illustrative geometry only (see above); no winding schemes, no slot/pole combination checks.
 - Outer-rotor components are not size-matched by default (scale the rotor ring to fit around the stator).
 - Hosts: all output consists of lines, polylines/polygons, rectangles, ellipses and text; hatches and copper cross hatches

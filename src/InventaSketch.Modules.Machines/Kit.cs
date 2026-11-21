@@ -98,6 +98,10 @@ namespace InventaSketch.Modules.Machines
         public override bool PreferUniformScale => Uniform;
 
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();
+        /// <summary>Types offered by "Insert ▸" next to this one (see <see cref="ObjectType.Companions"/>); ids of other
+        /// modules are allowed and simply skipped when that module is not loaded.</summary>
+        public IReadOnlyList<string> CompanionTypes { get; init; } = Array.Empty<string>();
+        public override IReadOnlyList<string> Companions => CompanionTypes;
         public bool Uniform { get; init; }
         /// <summary>Default size factor applied to the design box (drawings are authored in a large design box).</summary>
         public double Scale { get; init; } = 1;

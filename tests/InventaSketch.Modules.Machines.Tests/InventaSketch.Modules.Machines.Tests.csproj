@@ -11,5 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\InventaSketch.Modules.Machines\InventaSketch.Modules.Machines.csproj" />
+    <!-- Drivetrain tests put machines parts on mechanical shafts (coupling, "Insert" companions); test-only reference. -->
+    <ProjectReference Include="..\..\src\InventaSketch.Modules.Mechanical\InventaSketch.Modules.Mechanical.csproj" />
   </ItemGroup>
 </Project>
