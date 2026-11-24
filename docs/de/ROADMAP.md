@@ -144,7 +144,13 @@ umsetzen, dann Web, dann LibreOffice.
   Bewegungsmodus (Getriebezüge und vordefinierte Getriebe drehen, selbst gebaute Koppelgetriebe ziehen; Engine
   `motionInfo`/`motionPreview`/`motionTurn`/`motionDrag`, das Ziehen rechnet von seinem letzten Schritt weiter)
   und die Bibliothekssuche mit der Rangfolge der Engine (24./25.11.2026).
-- LibreOffice folgt nach dem Web; die Engine-API oben ist hostneutral.
+- LibreOffice (25.11.2026): dieselbe Engine-API im Seitenleisten-Deck – Bibliotheks-Panel mit der Engine-Suche
+  (passende Teile zuerst, zuletzt Verwendetes), Auswahl-Panel mit kontextbezogenen Knöpfen (Ansichtsliste,
+  Spiegeln/Drehen nur mit Wirkung, Anbau-Ports, Getriebezug um einen getippten Winkel drehen, Koppelkurve,
+  Zwischenlagen, Baugruppe auswählen, Zerlegen) und den Operationen für Mehrfachauswahl aus `arrangeOptions`;
+  Bearbeitungen laufen in einer Seitensitzung über alle Einheiten der Seite, ein Rückgängig-Schritt
+  (docs/de/hosts/libreoffice.md). Ohne Overlay auf der Arbeitsfläche nicht möglich: Ziehen mit Einrasten,
+  Live-Vorschau der Kopplung, Anbau-„+“ auf der Fläche, Bewegen durch Ziehen, Kreismenü, Strg+Leertaste.
 
 ### Review am Ende des 24.11.2026 und nächste Schritte
 
@@ -166,8 +172,8 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 **Als Nächstes, in dieser Reihenfolge:**
 1. Web: Prüfung in PowerPoint im Web, sobald der Maintainer das Entwicklerzertifikat installiert hat (alle
    COM-Funktionen der UI/UX-Runde einschließlich Bewegungsmodus sind umgesetzt).
-2. LibreOffice: den Host auf den Stand der Engine-API bringen (Einfügefeld, kontextbezogene Leiste, Mehrfachauswahl,
-   Baugruppenansicht).
+2. LibreOffice: in der Seitenleiste erledigt (25.11.2026); als Nächstes ein Overlay auf der Arbeitsfläche (Einrasten
+   beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
    Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze, Gelenkgrenzen, Kegelradpaare in der
    Bewegung, Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik.
