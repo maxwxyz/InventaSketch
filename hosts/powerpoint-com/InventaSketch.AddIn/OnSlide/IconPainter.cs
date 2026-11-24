@@ -296,6 +296,11 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawArc(pen, 3.5f, 3.5f, 17, 17, -60, 270);
                     g.FillPolygon(brush, new[] { new PointF(16.2f, 2.2f), new PointF(20.6f, 5.4f), new PointF(15.4f, 7.4f) });
                     break;
+                case IconIds.Chart:
+                    // Axes with a rising curve.
+                    g.DrawLine(pen, 4, 3, 4, 20); g.DrawLine(pen, 4, 20, 21, 20);
+                    g.DrawBezier(pen, 6, 17, 10, 16, 12, 8, 19, 6);
+                    break;
                 case IconIds.AlignRow:
                     // Three parts of different size centred on one horizontal line.
                     g.DrawLine(dash, 2, 12, 22, 12);

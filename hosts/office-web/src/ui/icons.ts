@@ -114,6 +114,7 @@ const paths: Record<string, string> = {
   "hub-none": "M12 5v14M9.5 5h5M9.5 19h5",
   "hub-fixed": "M3 12h18M12 4v16M9.5 4h5M9.5 20h5M9.8 9.8l4.4 4.4M14.2 9.8l-4.4 4.4",
   "cmd-motion": "M8 12a4 4 0 1 0 8 0a4 4 0 1 0-8 0M16.25 4.6A8.5 8.5 0 1 0 20.5 12M16.2 2.2L20.6 5.4L15.4 7.4Z",
+  "view-chart": "M4 3v17h17M6 17C10 16 12 8 19 6",
   "cmd-align-row": "M2 12h20M3 8h5v8H3zM10 5h4v14h-4zM16 9.5h5v5h-5z",
   "cmd-align-column": "M12 2v20M8 3h8v5H8zM5 10h14v4H5zM9.5 16h5v5h-5z",
   "cmd-distribute-h": "M3 6h4v9H3zM10 6h4v9h-4zM17 6h4v9h-4zM7 19h3M14 19h3",

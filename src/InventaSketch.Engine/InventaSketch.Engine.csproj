@@ -18,6 +18,7 @@
     <ProjectReference Include="..\InventaSketch.Modules.Electrical\InventaSketch.Modules.Electrical.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Machines\InventaSketch.Modules.Machines.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Maps\InventaSketch.Modules.Maps.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Charts\InventaSketch.Modules.Charts.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Fluid\InventaSketch.Modules.Fluid.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Kinematics\InventaSketch.Modules.Kinematics.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Automotive\InventaSketch.Modules.Automotive.csproj" />

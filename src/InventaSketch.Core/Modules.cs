@@ -106,6 +106,7 @@ namespace InventaSketch.Core
         public const string Exploded = "view-exploded";
         public const string Table = "view-table";           // tabular / list form (ER table, BOM)
         public const string Pin = "view-pin";               // map pin / location marker
+        public const string Chart = "view-chart";           // chart: axes with a curve
         // Commands
         public const string Delete = "cmd-delete";
         public const string Duplicate = "cmd-duplicate";
@@ -254,7 +255,7 @@ namespace InventaSketch.Core
         /// <summary>Every icon id, for hosts and tests that must provide a pictogram for each.</summary>
         public static IReadOnlyList<string> All { get; } = new[]
         {
-            Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin,
+            Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin, Chart,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
             AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly,
             HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
