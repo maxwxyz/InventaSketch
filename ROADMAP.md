@@ -156,17 +156,17 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
    UI/UX round incl. motion mode are implemented).
 2. LibreOffice: done in the sidebar (2026-11-25); next an on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
 3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
-   (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion, `elevation`/`section` view
-   alias for walls with building services.
+   (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion (the
+   `elevation`/`section` view alias for walls with building services is done, 2026-11-25).
 4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
-  whole installations switch plan ↔ section ↔ schematic through `AssemblyViews` with the module's rule; open: a section
-  line per wall, walls with installations (the wall's `height` is its own height, installations use `height` as the
-  mounting height – needs a separate key first); the electrical house symbols joined the installation views on
+  whole installations switch plan ↔ section ↔ schematic through `AssemblyViews` with the module's rule; walls, doors and
+  windows switch along to their elevation (view alias `section`/`elevation`, 2026-11-25); open: a section line per
+  wall; the electrical house symbols joined the installation views on
   2026-11-25, the rule moved to Core as `InstallationViews`):** heating, plumbing, ventilation and electrical installation tied to the
   architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
   assemblies applies).

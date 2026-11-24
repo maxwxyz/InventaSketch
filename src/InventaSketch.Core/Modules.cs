@@ -530,6 +530,13 @@ namespace InventaSketch.Core
         public virtual IAssemblyViewSwitch? AssemblyViewSwitch => null;
 
         /// <summary>
+        /// Page y of the ground (floor) line this object draws in its elevation/section view, the same in every view (a wall:
+        /// the lowest point of its centre line); null (default) if it draws none. Installations switched together with such
+        /// objects stand on that line (<see cref="InstallationViews"/>).
+        /// </summary>
+        public virtual double? ElevationGround(SketchObject o, RenderContext ctx) => null;
+
+        /// <summary>
         /// The registry the type was last registered with (set by <see cref="Registry.Register"/>). Types that render from
         /// other objects of the document (a parts list naming each part) use it to read their types and labels.
         /// </summary>
