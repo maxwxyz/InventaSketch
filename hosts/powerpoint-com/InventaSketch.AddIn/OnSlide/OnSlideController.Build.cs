@@ -23,7 +23,6 @@ namespace InventaSketch.AddIn.OnSlide
 
         private List<BuildPort> _ports = new();
         private string? _portOwner;
-        private BuildPort? _portFocus;
         private BuildPort? _portPressed;
         private POINT _portDown;
         private bool _portDragging;
@@ -38,14 +37,12 @@ namespace InventaSketch.AddIn.OnSlide
             _hoverPort2 = -1;
             var registry = _registry();
             var first = unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null && (!o.IsPointGeometry || registry.Type(o.Type)!.LinkageRole(o) == LinkageRole.Link));
-            if (first is null || unit.Objects.Count() != 1) { _portOwner = null; _portFocus = null; return; }
-            if (_portOwner != first.Id) _portFocus = null;
+            if (first is null || unit.Objects.Count() != 1) { _portOwner = null; return; }
             _portOwner = first.Id;
             try
             {
                 var full = SketchUnits.WithContext(unit.Doc, _otherUnits);
                 _ports = Building.Ports(registry, full, first.Id, _lang()).ToList();
-                if (_portFocus is not null && !_ports.Any(p => p.Id == _portFocus.Id)) _portFocus = null;
             }
             catch (Exception ex)
             {
@@ -102,7 +99,6 @@ namespace InventaSketch.AddIn.OnSlide
             using var hot = new SolidBrush(Color.FromArgb(60, 130, 230));
             using var white = new Pen(Color.White, 1.5f * s);
             using var lead = new Pen(Color.FromArgb(120, FlowBlue), 1f * s) { DashPattern = new[] { 2f, 2f } };
-            using var focus = new Pen(FlowGreen, 2f * s);
             for (var i = 0; i < _ports.Count; i++)
             {
                 var p = _ports[i];
@@ -112,7 +108,6 @@ namespace InventaSketch.AddIn.OnSlide
                 var hover = i == _hoverPort2;
                 var r = (float)(PortPx * (hover ? 1.2 : 1.0) * s);
                 g.FillEllipse(hover ? hot : blue, c.X - r, c.Y - r, 2 * r, 2 * r);
-                if (_portFocus?.Id == p.Id) g.DrawEllipse(focus, c.X - r - 2 * s, c.Y - r - 2 * s, 2 * r + 4 * s, 2 * r + 4 * s);
                 var k = r * 0.55f;
                 g.DrawLine(white, c.X - k, c.Y, c.X + k, c.Y);
                 g.DrawLine(white, c.X, c.Y - k, c.X, c.Y + k);
@@ -244,28 +239,6 @@ namespace InventaSketch.AddIn.OnSlide
             else BeginPlacement(chosen);
         }
 
-        /// <summary>Bar buttons for the focused build port: thumbnails of the parts that dock there.</summary>
-        private IEnumerable<BarButton> PortButtons()
-        {
-            var port = _portFocus;
-            if (port is null || _unit is null || _portOwner is null) yield break;
-            List<LibraryItem> items;
-            try
-            {
-                var full = SketchUnits.WithContext(_unit.Doc, _otherUnits);
-                items = Building.Items(_registry(), full, _portOwner, port, 8, _lang()).ToList();
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Port items", ex);
-                yield break;
-            }
-            var scale = _view?.DeviceScale ?? 1;
-            foreach (var item in items)
-                yield return new BarButton("port:" + port.Id + ":" + item.Id, "", T("Add here: ", "Hier anfügen: ") + item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) };
-            if (items.Count > 0) yield return new BarButton("", "", "", Separator: true);
-        }
-
         /// <summary>Docks the chosen part at a build port (one undo step), coupled and selected.</summary>
         private void PortCommand(SketchUnit unit, string id)
         {
@@ -290,7 +263,6 @@ namespace InventaSketch.AddIn.OnSlide
                 SketchUnits.Replace(slide, unit, Edits.Update(unit.Doc, new[] { owner.Id }, o => o with { Points = docked.Get(owner.Id)!.Points, Attach = docked.Get(owner.Id)!.Attach }), registry, lang);
             }
             SketchUnits.RedrawDependents(slide, registry, lang, Array.Empty<SketchDocument>(), new[] { doc });
-            _portFocus = null;
             SketchUnits.All(slide).FirstOrDefault(u => u.Objects.Any(o => o.Id == placed.Id))?.Shape.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Docked {item.Id} at {port.Id} of {owner.Type}");
         }

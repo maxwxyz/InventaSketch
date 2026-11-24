@@ -947,7 +947,6 @@ namespace InventaSketch.AddIn.OnSlide
             }
             // A selected corner of a wire, pipe, road, wall …: split there or remove it.
             list.AddRange(CornerButtons());
-            list.AddRange(PortButtons());
             var hasText = first is not null && EditableText(registry, first) is not null;
             if (hasText)
                 list.Add(new BarButton("text", "", T("Edit text (double-click)", "Text bearbeiten (Doppelklick)")) { IconId = IconIds.Text });
