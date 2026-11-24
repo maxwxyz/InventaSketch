@@ -80,6 +80,26 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void ADifferentialExplodesIntoCaseSideAndSpiderGearsThatMesh()
+        {
+            var item = Reg.Library.First(i => i.TypeId == "mech.gearset.differential" && i.View == "stick");
+            var diff = Reg.Create(item, new Vec2(100, 100));
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, diff);
+            Assert.True(Assemblies.CanExplode(Reg, diff));
+            var parts = Assemblies.Explode(Reg, doc, diff.Id);
+            Assert.Single(parts, p => p.Type == "mech.diffcase");
+            Assert.Equal(4, parts.Count(p => p.Type == "mech.gear.bevel"));
+            var exploded = SketchDocument.Create();
+            exploded = Edits.Add(exploded, exploded.Pages[0].Id, parts.ToArray());
+            // Every side gear meshes with both spider gears (common cone apex in the centre).
+            Assert.Equal(4, Coupling.Graph(Reg, exploded).Count(g => g.Kind == LinkKind.Mesh));
+            // The section view explodes through the stick view.
+            var section = Reg.Library.First(i => i.TypeId == "mech.gearset.differential" && i.View == "section");
+            Assert.True(Assemblies.CanExplode(Reg, Reg.Create(section, new Vec2(0, 0))));
+        }
+
+        [Fact]
         public void WithinTheSameKindOfViewNothingMoves()
         {
             var a = Gear("stick", new Vec2(50, 50), 20);

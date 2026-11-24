@@ -92,6 +92,7 @@ namespace InventaSketch.Modules.Mechanical
             Add("planetary.stepped", "mech.gearset.planetary", "Planetary set with stepped planets", "Planetensatz mit Stufenplaneten", "stick", P(("stepped", true)), "stufenplanet", "stepped planet");
             Add("differential.stick", "mech.gearset.differential", "Differential", "Differential", "stick");
             Add("differential.section", "mech.gearset.differential", "Differential in section", "Differential im Schnitt", "section");
+            Add("diffcase.stick", "mech.diffcase", "Differential case (cage)", "Ausgleichsgehäuse (Korb)", "stick", null, "korb", "cage");
 
             // shafts
             Add("shaft.line", "mech.shaft", "Shaft (schematic)", "Welle (Schema)", "line");

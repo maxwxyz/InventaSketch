@@ -131,8 +131,8 @@ umsetzen, dann Web, dann LibreOffice.
 - Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
   Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
   Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
-- In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Differentialen (braucht ein
-  Korb-Einzelteil) und Kurvengetrieben (braucht eine Kurvenscheibe), Ansichtswechsel für Haustechnik (Grundriss ↔
+- In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Kurvengetrieben (braucht eine
+  Kurvenscheibe; Differentiale zerfallen seit 25.11.2026 in Korb, Achswellen- und Ausgleichsräder), Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
   Gelenkgrenzen sind offen.
 - Web: am 24.11.2026 auf den COM-Stand der UI/UX-Runde gebracht (Spiegeln/Drehen nur mit Wirkung, Einfügefeld mit

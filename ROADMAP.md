@@ -118,8 +118,8 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Done since in COM: bevel pairs in coupling, exploding schematic planetary sets (through the axial view), snap labels,
   Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
   selection, build "+" and "make it" in the insert box.
-- Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding differentials (needs a cage part) and cam
-  mechanisms (needs a cam disc part), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
+- Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding cam mechanisms (needs a cam disc part;
+  differentials explode into a case part, side and spider gears since 2026-11-25), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
   positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are open.
 - Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
   fitting parts placed in their spot, multi-selection bar, select assembly, snap labels, coupler curve, F = n and
