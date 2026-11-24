@@ -339,7 +339,9 @@ UX round (2026-11-20, from the maintainer's feedback):
   - *Snap labels:* while dragging, the snap target is named next to it ("pitch circle", "axis", "pin 2", "joint 1").
   - *Bevel pairs:* bevel gears with a common cone apex and crossing axes mesh; moving one moves its mate.
   - *Coupler curves:* a link of a self-built chain with F = 1 offers "draw the path": the crank turns once (or both
-    ways up to its limits) and the path of the link's end is inserted as a motion path (`Linkage.Trace`).
+    ways up to its limits) and the path of the link's end is inserted as a motion path (`Linkage.Trace`). "Ghost
+    positions" inserts four dashed grey copies of the chain spread over the crank's range as one element
+    (`Linkage.Poses`). Verified in PowerPoint 2026-11-24 (scenario `linkage-extras`).
   - *Format painter:* with several elements selected, "like the first" gives the others of the same type the first
     one's view, parameters and style (`Arrange.MatchFormat`).
   - *Exploding through another view:* an assembly whose own view has no parts recipe is exploded in a view that has one

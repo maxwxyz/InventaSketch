@@ -119,8 +119,8 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
   Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
   selection, build "+" and "make it" in the insert box.
 - Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding differentials (needs a cage part) and cam
-  mechanisms (needs a cam disc part), assembly view switch for building services (plan ↔ section ↔ schematic), limits and
-  ghost positions for self-built chains.
+  mechanisms (needs a cam disc part), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
+  positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are open.
 - Web and LibreOffice follow the COM state; the engine already carries `LibrarySearch`, `Symmetry`, `Arrange`,
   `AssemblyViews`, so the hosts only add UI.
 
