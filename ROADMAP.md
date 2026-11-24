@@ -129,9 +129,9 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - **Building services (TGA, P1 after charts):** heating, plumbing, ventilation and electrical installation tied to the
   architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
   assemblies applies).
-- **Parts list from the slide (P2):** a table element that lists the parts of the slide or selection (type, key
+- **Parts list from the slide (P2, done in COM 2026-11-24):** a table element that lists the parts of the slide or selection (type, key
   parameters, reference numeral), updated when parts change; for patent figures and gearbox slides.
-- **Dimension between parts (P2):** select two parts → centre distance, gap or angle as a live dimension.
+- **Dimension between parts (P2, done in COM 2026-11-24 for two parts):** select two parts → centre distance, gap or angle as a live dimension.
 - **Slide-wide style (P2):** line weights per ISO 128 group, monochrome/patent mode, colour accents per module, applied
   to every element on the slide at once.
 - **Math & geometry (P3):** coordinate systems, vectors, angles, geometric constructions for teaching slides.
