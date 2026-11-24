@@ -24,13 +24,13 @@
 | COM precedence over web add-in | not tested (`EquivalentAddins`) | not tested | n/a |
 | Light/dark auto detection | planned | in progress | planned |
 | German/English auto detection | verified (Office UI LCID, German detected) | in progress | verified 2026-11-20 (`ooLocale` of the UI; German UI detected, German catalog names) |
-| Insert box (search, fitting parts first, Ctrl+Space) | verified 2026-11-24 (scenario `ux-round`) | partial: implemented and checked in the browser dev page, not tested in PowerPoint on the web | planned (engine method `search`) |
-| Context-only transforms (mirror/rotate only when they change the drawing) | verified 2026-11-24 (`ux-round`, bar ids) | partial: implemented, browser dev page | planned (`transformEffect`) |
-| Multi-selection bar (one view for all, align, distribute, like the first, renumber, dimension) | verified 2026-11-24 (`ux-round`, `parts-list`, `building-services`) | partial: implemented, browser dev page | planned (`arrangeOptions`/`arrange`) |
+| Insert box (search, fitting parts first, Ctrl+Space) | verified 2026-11-24 (scenario `ux-round`) | partial: implemented and checked in the browser dev page, not tested in PowerPoint on the web | partial: Library panel search (engine `search`, fitting parts first), verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`); no Ctrl+Space (needs the overlay) |
+| Context-only transforms (mirror/rotate only when they change the drawing) | verified 2026-11-24 (`ux-round`, bar ids) | partial: implemented, browser dev page | verified 2026-11-25 (selection panel, `integration_test.py`) |
+| Multi-selection bar (one view for all, align, distribute, like the first, renumber, dimension) | verified 2026-11-24 (`ux-round`, `parts-list`, `building-services`) | partial: implemented, browser dev page | verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`) (selection panel, one undo step) |
 | Assembly view switch (gear trains axial ↔ stick, building services plan ↔ section ↔ schematic) | verified 2026-11-24 (`ux-round`, `building-services`) | partial: via the multi-selection bar, browser dev page | planned |
-| Live coupling preview while dragging | partial: implemented 2026-11-24, checked by eye (blue ghost), no scenario assertion | partial: implemented 2026-11-25, browser dev page | planned (`couplingPreview`) |
-| Motion mode (turn gear trains and mechanisms, drag self-built linkages) | verified (`gear-motion`, `linkage-build`) | partial: implemented 2026-11-25, browser dev page | planned (`motionInfo`, `motionTurn`) |
-| Coupler curve and ghost positions of self-built linkages | verified 2026-11-24 (`linkage-extras`) | partial: both in the browser dev page | planned (`drawTrace`, `drawGhosts`) |
+| Live coupling preview while dragging | partial: implemented 2026-11-24, checked by eye (blue ghost), no scenario assertion | partial: implemented 2026-11-25, browser dev page | unsupported (needs the overlay; no live drag events) |
+| Motion mode (turn gear trains and mechanisms, drag self-built linkages) | verified (`gear-motion`, `linkage-build`) | partial: implemented 2026-11-25, browser dev page | partial: gear trains turn by a typed angle (`motionTurn`), verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`); no dragging |
+| Coupler curve and ghost positions of self-built linkages | verified 2026-11-24 (`linkage-extras`) | partial: both in the browser dev page | verified 2026-11-25 (selection panel, `integration_test.py`) |
 | Parts list table following the parts | verified 2026-11-24 (`parts-list`) | not tested (engine redraws dependents) | not tested |
 
 Engine-only capabilities (all hosts): SVG export **verified** by unit tests (`SvgContainsHatchAndArrowheadAndIsMonochrome`,

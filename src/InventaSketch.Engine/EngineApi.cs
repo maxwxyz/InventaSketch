@@ -559,6 +559,15 @@ namespace InventaSketch.Engine
         private List<SketchObject> ArrangeUnits(EditorSession s, EngineRequest r)
             => s.Resolve(r.Ids).Select(s.Doc.Get).Where(o => o is not null && Registry.Type(o.Type) is not null).Select(o => o!).ToList();
 
+        /// <summary>The selection per top-level element: a group (ghost positions, a grouped assembly) moves as one.</summary>
+        private static List<(SketchObject Lead, List<string> Members, Rect Box)> ArrangeGroups(SketchDocument doc, IReadOnlyList<SketchObject> objs)
+            => objs.GroupBy(o => o.GroupId ?? o.Id, StringComparer.Ordinal).Select(g =>
+            {
+                var boxes = g.Select(o => o.IsPointGeometry ? Rect.FromPoints(doc.ResolvePoints(o)) : o.Bounds()).ToList();
+                double x0 = boxes.Min(b => b.X), y0 = boxes.Min(b => b.Y), x1 = boxes.Max(b => b.X + b.W), y1 = boxes.Max(b => b.Y + b.H);
+                return (g.First(), g.Select(o => o.Id).ToList(), new Rect(x0, y0, x1 - x0, y1 - y0));
+            }).ToList();
+
         /// <summary>
         /// Selection-wide operations that change something for the selection (<see cref="Arrange"/>): one view for all
         /// ("mview:&lt;view&gt;"), centres on a row/column ("align:row", "align:column"), even spacing ("dist:h", "dist:v"),
@@ -574,14 +583,15 @@ namespace InventaSketch.Engine
             if (objs.Count < 2) return list;
             foreach (var v in Arrange.CommonViews(Registry, objs))
                 list.Add(new ArrangeOption { Id = "mview:" + v.Id, Label = (de ? "Alle in Ansicht: " : "All in view: ") + v.Label.Get(lang), Icon = IconIds.ForView(v) });
-            var boxes = objs.Select(o => o.IsPointGeometry ? Rect.FromPoints(s.Doc.ResolvePoints(o)) : o.Bounds()).ToList();
+            var groups = ArrangeGroups(s.Doc, objs);
+            var boxes = groups.Select(g => g.Box).ToList();
             void Opt(string id, string en, string german, string icon) => list.Add(new ArrangeOption { Id = id, Label = de ? german : en, Icon = icon });
             if (Arrange.Changes(Arrange.AlignCentres(boxes, true))) Opt("align:row", "Centres on one horizontal line", "Mitten auf eine waagrechte Linie", IconIds.AlignRow);
             if (Arrange.Changes(Arrange.AlignCentres(boxes, false))) Opt("align:column", "Centres on one vertical line", "Mitten auf eine senkrechte Linie", IconIds.AlignColumn);
             if (Arrange.Changes(Arrange.Distribute(boxes, true))) Opt("dist:h", "Space evenly left to right", "Gleichmäßig von links nach rechts verteilen", IconIds.DistributeH);
             if (Arrange.Changes(Arrange.Distribute(boxes, false))) Opt("dist:v", "Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen", IconIds.DistributeV);
             if (Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context()).Count > 0) Opt("match", "Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil", IconIds.MatchFormat);
-            if (objs.Count == 2 && objs.All(o => !o.IsPointGeometry) && !HasDimensionBetween(s.Doc, objs[0].Id, objs[1].Id)) Opt("dim", "Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)", IconIds.Dimension);
+            if (groups.Count == 2 && groups.All(g => !g.Lead.IsPointGeometry) && !HasDimensionBetween(s.Doc, groups[0].Lead.Id, groups[1].Lead.Id)) Opt("dim", "Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)", IconIds.Dimension);
             if (Arrange.Renumber(Numerals(s, objs)).Count > 0) Opt("renumber", "Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren", IconIds.Renumber);
             return list;
         }
@@ -612,13 +622,15 @@ namespace InventaSketch.Engine
                     var changed = Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context());
                     return Edits.Update(doc, changed.Select(o => o.Id).ToList(), o => changed.First(x => x.Id == o.Id));
                 }
+                var groups = ArrangeGroups(doc, objs);
                 if (action == "dim")
                 {
-                    if (objs.Count != 2 || Registry.Item("ann.dimension.aligned") is not { } dimItem) return doc;
+                    if (groups.Count != 2 || Registry.Item("ann.dimension.aligned") is not { } dimItem) return doc;
                     var ctx = s.Context();
-                    var m1 = Arrange.MeasurePoint(Registry, objs[0], ctx);
-                    var m2 = Arrange.MeasurePoint(Registry, objs[1], ctx);
-                    var dim = Registry.CreateBetween(dimItem, m1.P, m2.P) with { Attach = new[] { Attachments.For(objs[0], m1.P, m1), Attachments.For(objs[1], m2.P, m2) } };
+                    var o1 = groups[0].Lead; var o2 = groups[1].Lead;
+                    var m1 = Arrange.MeasurePoint(Registry, o1, ctx);
+                    var m2 = Arrange.MeasurePoint(Registry, o2, ctx);
+                    var dim = Registry.CreateBetween(dimItem, m1.P, m2.P) with { Attach = new[] { Attachments.For(o1, m1.P, m1), Attachments.For(o2, m2.P, m2) } };
                     return Edits.Add(doc, s.PageId, dim);
                 }
                 if (action == "renumber")
@@ -627,7 +639,7 @@ namespace InventaSketch.Engine
                     return Edits.Update(doc, map.Keys.ToList(), o =>
                         !string.IsNullOrEmpty(o.Ref) ? o with { Ref = map[o.Id] } : !string.IsNullOrEmpty(o.Text) ? o with { Text = map[o.Id] } : o.WithParam("numeral", map[o.Id]));
                 }
-                var boxes = objs.Select(o => o.IsPointGeometry ? Rect.FromPoints(doc.ResolvePoints(o)) : o.Bounds()).ToList();
+                var boxes = groups.Select(g => g.Box).ToList();
                 var moves = action switch
                 {
                     "align:row" => Arrange.AlignCentres(boxes, true),
@@ -636,8 +648,8 @@ namespace InventaSketch.Engine
                     "dist:v" => Arrange.Distribute(boxes, false),
                     _ => throw new ArgumentException("Unknown arrange action: " + action),
                 };
-                for (var i = 0; i < objs.Count; i++)
-                    if (moves[i].Length > Arrange.Tolerance) doc = Edits.Move(doc, new[] { objs[i].Id }, moves[i]);
+                for (var i = 0; i < groups.Count; i++)
+                    if (moves[i].Length > Arrange.Tolerance) doc = Edits.Move(doc, groups[i].Members, moves[i]);
                 return doc;
             });
         }
@@ -1559,7 +1571,9 @@ namespace InventaSketch.Engine
             {
                 var existing = objs.Where(o => d.Objects.ContainsKey(o.Id)).ToList();
                 var fresh = objs.Where(o => !d.Objects.ContainsKey(o.Id)).ToArray();
-                foreach (var o in existing) d = Edits.Replace(d, o);
+                // replace = false: objects already in the session stay (a unit's stored copies of its docking targets must not
+                // overwrite the targets' own, newer models when several units are imported into one page session).
+                if (r.Replace != false) foreach (var o in existing) d = Edits.Replace(d, o);
                 if (fresh.Length > 0) d = Edits.Add(d, s.PageId, fresh);
                 foreach (var kv in src.References) if (!d.References.ContainsKey(kv.Key)) d = Edits.SetReference(d, kv.Key, kv.Value.Label);
                 // A plan scale stored with the slide model is adopted when the editor document has none.

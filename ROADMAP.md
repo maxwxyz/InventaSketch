@@ -129,7 +129,12 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
   `buildStretchPreview`), live coupling preview, ghost positions, dimension between two parts, motion mode (turn gear
   trains and predefined mechanisms, drag self-built linkages; engine `motionInfo`/`motionPreview`/`motionTurn`/
   `motionDrag`, the drag solves on from its last step) and the library search ranked by the engine (2026-11-24/25).
-- LibreOffice follows after the web; the engine API above is host-neutral.
+- LibreOffice (2026-11-25): the same engine API in the sidebar deck – Library panel with the engine search (fitting
+  parts first, recent items), selection panel with context-only buttons (view list, mirror/rotate only with effect,
+  build ports, turn a gear train by a typed angle, coupler curve, ghost positions, select assembly, explode) and the
+  selection-wide operations of `arrangeOptions`; edits run in a page session over all units of the page, one undo
+  step (docs/en/hosts/libreoffice.md). Not possible without an on-canvas overlay: dragging with snapping, live coupling
+  preview, build "+" on the canvas, motion by dragging, pie menu, Ctrl+Space.
 
 ### Review at the end of 2026-11-24 and next steps
 
@@ -149,7 +154,7 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 **Next, in this order:**
 1. Web: check in PowerPoint on the web once the maintainer has installed the dev certificate (all COM features of the
    UI/UX round incl. motion mode are implemented).
-2. LibreOffice: bring the host to the engine API level (insert box, context-only bar, multi-selection, assembly view).
+2. LibreOffice: done in the sidebar (2026-11-25); next an on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
 3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
    (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion, `elevation`/`section` view
    alias for walls with building services.

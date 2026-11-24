@@ -10,9 +10,20 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
   setView?view=<view id>                          switch the view of the selected unit (re-rendered by the engine)
   redraw                                          redraw the selected unit from its stored model
   numeral                                         give the selected unit the next reference numeral (with label)
+  insertFitting?item=<id>                         insert where it fits the selected unit (coupled), else in the middle
+  insertSearch?text=<query>                       insert the first hit of the library search (fitting parts first)
+  transform?kind=mirrorH|mirrorV|rotate90         mirror or rotate the selected unit(s) about their centre
+  explode / drawTrace / drawGhosts                explode an assembly; coupler curve / ghost positions of a link
+  build?port=<port id>&item=<id>                  dock a part at a build port of the selected unit
+  turn?degrees=<angle>                            turn the selected gear with its whole train
+  arrange?action=<id>                             selection-wide operation on 2+ units (ids of arrangeOptions)
+  assembly                                        select every unit coupled with the selection
+  panel?control=<key>&text=<t> | &item=<entry>    type into / choose in a control of the open sidebar panel, or
+  panel?press=<button label>                      press one of its buttons (scripting, tests/ui_smoke.py)
   cleanup                                         remove document properties of deleted units
   about                                           version and licence
-The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py.
+The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
+and ``buildItems`` fill the sidebar panel.
 The sub-folder pythonpath is added to sys.path by LibreOffice.
 """
 
@@ -33,7 +44,11 @@ IMPLEMENTATION = "org.inventasketch.libreoffice.ProtocolHandler"
 PANEL_FACTORY = "org.inventasketch.libreoffice.PanelFactory"
 PROTOCOL = "inventasketch.libreoffice:"
 DECK = "InventaSketchDeck"
-COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about")
+COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
+            "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
+            "buildItems", "turn", "arrange", "assembly", "panel")
+# Commands that change the selected unit(s); the panel is refreshed afterwards.
+_EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 
 _STATE = {"engine": None, "ctx": None, "terminate": None}
 
@@ -125,7 +140,16 @@ def _engine_version(ctx):
 
 
 def run(ctx, frame, command, args):
-    """Executes a command on a frame; errors are shown to the user (or logged when headless)."""
+    """Executes a command on a frame; errors are shown to the user (or logged when headless). Selection changes caused
+    by the command itself do not refresh the panel (sidebar.BUSY); edits refresh it once at the end."""
+    sidebar.BUSY["count"] += 1
+    try:
+        _run(ctx, frame, command, args)
+    finally:
+        sidebar.BUSY["count"] -= 1
+
+
+def _run(ctx, frame, command, args):
     try:
         ui_language(ctx)
         controller = frame.getController() if frame is not None else None
@@ -155,6 +179,52 @@ def run(ctx, frame, command, args):
         elif command == "numeral":
             host.edit(engine_for(ctx), controller, "applyAction", {"action": "numeral"})
             _describe(ctx, frame, controller, quiet=True)
+        elif command == "insertFitting":
+            host.insert_fitting(engine_for(ctx), controller, args.get("item") or args.get(""), args.get("name"))
+            _describe(ctx, frame, controller, quiet=True)
+        elif command == "insertSearch":
+            host.insert_search(engine_for(ctx), controller, args.get("text") or args.get("") or "")
+            _describe(ctx, frame, controller, quiet=True)
+        elif command == "search":
+            hits = host.search(engine_for(ctx), controller, args.get("text") or args.get("") or "")
+            for p in sidebar.panels_for(frame):
+                p.show_search(hits)
+        elif command == "transform":
+            host.transform(engine_for(ctx), controller, args.get("kind") or args.get(""))
+            _describe(ctx, frame, controller, quiet=True)
+        elif command in _EDITS:
+            host.run_op(engine_for(ctx), controller, command, ids_key="id",
+                        title=i18n.text("undoAction") % i18n.text(_EDITS[command]))
+            _describe(ctx, frame, controller, quiet=True)
+        elif command == "build":
+            host.build(engine_for(ctx), controller, args.get("port"), args.get("item"))
+            _describe(ctx, frame, controller, quiet=True)
+        elif command == "buildItems":
+            items = host.build_items(engine_for(ctx), controller, args.get("port") or args.get(""))
+            for p in sidebar.panels_for(frame):
+                p.show_build_items(items)
+        elif command == "turn":
+            host.turn(engine_for(ctx), controller, args.get("degrees") or args.get("") or "")
+            _describe(ctx, frame, controller, quiet=True)
+        elif command == "arrange":
+            host.arrange(engine_for(ctx), controller, args.get("action") or args.get(""))
+            _describe(ctx, frame, controller, quiet=True)
+        elif command == "assembly":
+            host.select_assembly(engine_for(ctx), controller)
+            _describe(ctx, frame, controller, quiet=True)
+        elif command == "panel":
+            panels = sidebar.panels_for(frame)
+            if not panels:
+                raise host.HostError(i18n.text("noPanel"))
+            reports, errors = [], []
+            for p in panels:
+                try:
+                    reports.append(p.drive(args))
+                except ValueError as ex:
+                    errors.append("%s: %s" % (p.mode, ex))
+            if not reports:
+                raise host.HostError("; ".join(errors))
+            log("panel: %s -> %s" % (args, "; ".join(reports)))
         elif command == "cleanup":
             removed = host.cleanup_properties(controller.getModel())
             log("cleanup removed %d properties" % len(removed))
@@ -174,13 +244,15 @@ def _num(value):
 
 def _describe(ctx, frame, controller, quiet):
     panels = sidebar.panels_for(frame)
+    if quiet and not panels:
+        return
     try:
         info = host.describe(engine_for(ctx), controller)
-    except host.HostError:
-        if quiet:
-            info = None
-        else:
+    except Exception as ex:
+        if not quiet:
             raise
+        log("describe: %s" % ex)
+        info = None
     if info is None and not quiet and not panels:
         message(ctx, frame, i18n.text("noUnit"))
     for p in panels:
@@ -197,9 +269,19 @@ def _open_deck(ctx, frame):
 
 sidebar.SERVICES["engine"] = lambda: engine_for()
 sidebar.SERVICES["post"] = lambda work: mainthread.poster(_STATE["ctx"] or uno.getComponentContext())(work)
-sidebar.SERVICES["run"] = lambda frame, command, argument: run(
-    _STATE["ctx"] or uno.getComponentContext(), frame, command,
-    {"": argument} if argument is not None else {})
+def _panel_run(frame, command, argument):
+    """A command from the sidebar panel. Panel events normally arrive on the main thread; when a script drives the
+    panel's controls over the remote bridge they arrive on a bridge thread that holds the solar mutex, so the command
+    is posted to the main thread without waiting (waiting would dead-lock)."""
+    ctx = _STATE["ctx"] or uno.getComponentContext()
+    args = dict(argument) if isinstance(argument, dict) else {"": argument} if argument is not None else {}
+    if mainthread.foreign():
+        sidebar.SERVICES["post"](lambda: run(ctx, frame, command, args))
+    else:
+        run(ctx, frame, command, args)
+
+
+sidebar.SERVICES["run"] = _panel_run
 
 
 class ProtocolHandler(unohelper.Base, XDispatchProvider, XDispatch, XInitialization, XServiceInfo):

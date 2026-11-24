@@ -385,6 +385,172 @@ def powerpoint_phase(office, path, out):
     office.close(doc)
 
 
+def select_shapes(office, doc, shapes):
+    """Selects the given shapes (none: an empty selection)."""
+    coll = office.smgr.createInstanceWithContext("com.sun.star.drawing.ShapeCollection", office.ctx)
+    for s in shapes:
+        coll.add(s)
+    try:
+        doc.getCurrentController().select(coll if shapes else None)
+    except Exception:
+        doc.getCurrentController().select(coll)
+
+
+def centre_mm(shape):
+    return ((shape.Position.X + shape.Size.Width / 2.0) / 100.0, (shape.Position.Y + shape.Size.Height / 2.0) / 100.0)
+
+
+def new_units(page, known):
+    return {n: s for n, s in units_of(page).items() if n not in known}
+
+
+def ux_phase(office, out, logs):
+    """UI/UX round: library search (both languages) and insert, fitting parts, build "+", turning a gear train,
+    multi-selection arrange in one undo step, select assembly, explode, coupler curve, ghost positions, transforms."""
+    doc = office.new("simpress")
+    page = doc.getDrawPages().getByIndex(0)
+    pw, ph = page.Width / 100.0, page.Height / 100.0
+    # Insert by typing, in the other language too: "welle" is the German name of the shaft.
+    select_shapes(office, doc, [])
+    known = set(units_of(page))
+    office.run(doc, "insertSearch?text=welle")
+    found = new_units(page, known)
+    check("ux.search.german", len(found) == 1 and list(found)[0].split(":")[1] == "mech.shaft", ", ".join(found))
+    for s in found.values():
+        page.remove(s)
+    known = set(units_of(page))
+    office.run(doc, "insertSearch?text=St%C3%B6%C3%9Fel")     # "Stößel" (URL-encoded): the cam follower
+    found = new_units(page, known)
+    check("ux.search.umlaut", len(found) == 1 and "cam" in list(found)[0], ", ".join(found))
+    for s in found.values():
+        page.remove(s)
+    # A fitting part is placed where it fits the selection: a gear on the shaft.
+    known = set(units_of(page))
+    office.run(doc, "insert?item=mech.shaft.line&x=60&y=40")
+    shaft = list(new_units(page, known).values())[0]
+    select_shapes(office, doc, [shaft])
+    known = set(units_of(page))
+    office.run(doc, "insertFitting?item=mech.spur.stick")
+    found = new_units(page, known)
+    gear = list(found.values())[0] if len(found) == 1 else None
+    sc, gc = centre_mm(shaft), centre_mm(gear) if gear is not None else (pw / 2, ph / 2)
+    check("ux.insertFitting.onShaft", gear is not None and abs(gc[0] - sc[0]) < 40 and abs(gc[1] - sc[1]) < 25
+          and abs(gc[0] - pw / 2) + abs(gc[1] - ph / 2) > 20,
+          "shaft centre %.1f/%.1f, gear centre %.1f/%.1f" % (sc[0], sc[1], gc[0], gc[1]))
+    # Typing with the shaft selected: the bearing fits and is placed beside the gear on the shaft.
+    shaft = units_of(page)[shaft.Name]
+    select_shapes(office, doc, [shaft])
+    known = set(units_of(page))
+    office.run(doc, "insertSearch?text=lager")
+    found = new_units(page, known)
+    check("ux.insertSearch.fitting", len(found) == 1 and list(found)[0].split(":")[1].startswith("mech.bearing"),
+          ", ".join(found))
+    recent = []
+    try:
+        with open(os.path.join(logs, "libreoffice-settings.json"), encoding="utf-8") as f:
+            recent = json.load(f).get("recent", [])
+    except Exception:
+        pass
+    check("ux.recent", len(recent) >= 3 and recent[0].startswith("mech.bearing") and "mech.spur.stick" in recent,
+          ", ".join(recent))
+    # Build "+": a meshing gear at the right port of an axial gear, then turn the train by a typed angle.
+    known = set(units_of(page))
+    office.run(doc, "insert?item=mech.spur.axial&x=60&y=110")
+    g1 = list(new_units(page, known).values())[0]
+    g1_name = g1.Name
+    select_shapes(office, doc, [g1])
+    known = set(units_of(page))
+    office.run(doc, "build?port=mesh.right&item=mech.spur.axial")
+    found = new_units(page, known)
+    g2 = list(found.values())[0] if len(found) == 1 else None
+    check("ux.build.mesh", g2 is not None and centre_mm(g2)[0] > centre_mm(units_of(page)[g1_name])[0] + 10,
+          ", ".join(found))
+    g2_name = g2.Name if g2 is not None else ""
+    models = {n: attribute(units_of(page)[n], ATTR_MODEL) for n in (g1_name, g2_name) if n in units_of(page)}
+    select_shapes(office, doc, [units_of(page)[g1_name]])
+    office.run(doc, "turn?degrees=30")
+    after = {n: attribute(units_of(page)[n], ATTR_MODEL) for n in models if n in units_of(page)}
+    check("ux.turn.train", len(models) == 2 and len(after) == 2 and all(after[n] != models[n] for n in models),
+          "both gears redrawn: %s" % [after.get(n) != models[n] for n in models])
+    # Select assembly: the meshing partner joins the selection.
+    select_shapes(office, doc, [units_of(page)[g1_name]])
+    office.run(doc, "assembly")
+    sel = doc.getCurrentController().getSelection()
+    count = sel.getCount() if sel is not None and hasattr(sel, "getCount") else 0
+    check("ux.selectAssembly", count == 2, "%d selected" % count)
+    # Multi-selection: two separate gears centred on one row, one undo step.
+    known = set(units_of(page))
+    office.run(doc, "insert?item=mech.spur.axial&x=150&y=100")
+    office.run(doc, "insert?item=mech.spur.axial&x=230&y=130")
+    pair = list(new_units(page, known).values())
+    names = [s.Name for s in pair]
+    before = [centre_mm(s) for s in pair]
+    count = page.getCount()
+    select_shapes(office, doc, pair)
+    office.run(doc, "arrange?action=align:row")
+    now = [units_of(page).get(n) for n in names]
+    ys = [centre_mm(s)[1] if s is not None else None for s in now]
+    undo = doc.getUndoManager()
+    title = undo.getCurrentUndoActionTitle() if undo.isUndoPossible() else ""
+    check("ux.arrange.alignRow", None not in ys and abs(ys[0] - ys[1]) < 0.5,
+          "y %.1f/%.1f -> %s" % (before[0][1], before[1][1], ys))
+    check("ux.arrange.oneUndoStep", title in ("InventaSketch: Arrange", "InventaSketch: Anordnen"), title)
+    undo.undo()
+    back = [centre_mm(units_of(page)[n])[1] if n in units_of(page) else None for n in names]
+    check("ux.arrange.undo", None not in back and all(abs(b - a[1]) < 0.5 for b, a in zip(back, before))
+          and page.getCount() == count, "%s, %d shapes (before %d)" % (back, page.getCount(), count))
+    undo.redo()
+    again = [centre_mm(units_of(page)[n])[1] if n in units_of(page) else None for n in names]
+    check("ux.arrange.redo", None not in again and abs(again[0] - again[1]) < 0.5 and page.getCount() == count,
+          "%s, %d shapes" % (again, page.getCount()))
+    # Undo of an insert removes the whole unit (no loose shapes are left).
+    count = page.getCount()
+    office.run(doc, "insert?item=mech.spur.teeth&x=20&y=140")
+    undo.undo()
+    check("ux.insert.undo", page.getCount() == count, "%d shapes (before %d)" % (page.getCount(), count))
+    # One view for all.
+    select_shapes(office, doc, [units_of(page)[n] for n in names])
+    office.run(doc, "arrange?action=mview:side")
+    widths = [units_of(page)[n].Size.Width for n in names if n in units_of(page)]
+    check("ux.arrange.viewForAll", len(widths) == 2 and all(w < 1500 for w in widths), "widths %s" % widths)
+    # Explode a four-bar, then the coupler curve and ghost positions of one of its links (F = 1).
+    known = set(units_of(page))
+    office.run(doc, "insert?item=kin.fourbar&x=200&y=40")
+    mech = list(new_units(page, known).values())[0]
+    mech_name = mech.Name
+    select_shapes(office, doc, [mech])
+    known = set(units_of(page))
+    office.run(doc, "explode")
+    parts = new_units(page, known)
+    check("ux.explode", mech_name not in units_of(page) and len(parts) >= 4, ", ".join(sorted(parts)))
+    links = [s for n, s in parts.items() if n.split(":")[1].startswith("kin.link")]
+    traced = ghosts = {}
+    if links:
+        select_shapes(office, doc, [links[1] if len(links) > 1 else links[0]])
+        known = set(units_of(page))
+        office.run(doc, "drawTrace")
+        traced = new_units(page, known)
+        link = units_of(page).get(links[1].Name if len(links) > 1 else links[0].Name)
+        select_shapes(office, doc, [link] if link is not None else [])
+        known = set(units_of(page))
+        office.run(doc, "drawGhosts")
+        ghosts = new_units(page, known)
+    check("ux.drawTrace", len(traced) == 1 and "path" in list(traced)[0].split(":")[1], ", ".join(traced))
+    check("ux.drawGhosts", len(ghosts) == 1 and leaf_count(list(ghosts.values())[0]) >= 3, ", ".join(ghosts))
+    # Rotate 90 degrees (an arrow is not symmetric under rotation).
+    known = set(units_of(page))
+    office.run(doc, "insert?item=ann.arrow&x=140&y=145")
+    arrow = list(new_units(page, known).values())[0]
+    w0, h0 = arrow.Size.Width, arrow.Size.Height
+    select_shapes(office, doc, [arrow])
+    office.run(doc, "transform?kind=rotate90")
+    arrow2 = units_of(page).get(arrow.Name)
+    check("ux.rotate90", arrow2 is not None and abs(arrow2.Size.Width - h0) < 150 and abs(arrow2.Size.Height - w0) < 150,
+          "%dx%d -> %s" % (w0, h0, "%dx%d" % (arrow2.Size.Width, arrow2.Size.Height) if arrow2 else "none"))
+    export_png(office, doc, page, os.path.join(out, "ux.png"))
+    office.close(doc)
+
+
 def draw_calc_phase(office, out):
     for factory, label in (("sdraw", "draw"), ("scalc", "calc")):
         doc = office.new(factory)
@@ -428,6 +594,7 @@ def main():
         proc, ctx = start_office(soffice, profile, env)
         office = Office(ctx)
         names, odp, pptx = impress_phase(office, out)
+        ux_phase(office, out, logs)
         reload_phase(office, odp, names, "odp", expect_attributes=True)
         reload_phase(office, pptx, names, "pptx", expect_attributes=False)
         draw_calc_phase(office, out)

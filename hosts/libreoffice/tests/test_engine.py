@@ -137,10 +137,11 @@ def built_engine():
     """Command of a built engine (package output or dotnet build), or None."""
     candidates = [os.path.join(LO, "build", "engine-portable", engine.ENGINE_NAME + ".dll")]
     candidates += sorted(glob.glob(os.path.join(LO, "engine", "bin", "*", "net10.0", engine.ENGINE_NAME + ".dll")))
-    for dll in candidates:
-        if os.path.isfile(dll):
-            dotnet, _ = engine.find_dotnet()
-            return [dotnet, dll] if dotnet else None
+    # The newest build wins: a package output left from an older run must not shadow a fresh dotnet build.
+    existing = sorted((dll for dll in candidates if os.path.isfile(dll)), key=os.path.getmtime, reverse=True)
+    if existing:
+        dotnet, _ = engine.find_dotnet()
+        return [dotnet, existing[0]] if dotnet else None
     return None
 
 

@@ -53,6 +53,21 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void AGroupMovesAsOneWhenAligned()
+        {
+            var (api, session) = Session();
+            var a = EngineApiTests.Insert(api, session, ItemOf(api, "mech.gear.spur", "axial"), 60, 60);
+            var b = EngineApiTests.Insert(api, session, ItemOf(api, "mech.gear.spur", "axial"), 60, 120);
+            var c = EngineApiTests.Insert(api, session, ItemOf(api, "mech.gear.spur", "axial"), 160, 200);
+            EngineApiTests.Call(api, "group", new { session, ids = new[] { a, b } });
+            var before = api.Sessions.Get(session).Doc;
+            var gap = before.Get(b)!.Transform.Y - before.Get(a)!.Transform.Y;
+            EngineApiTests.Call(api, "arrange", new { session, ids = new[] { a, b, c }, action = "align:row" });
+            var after = api.Sessions.Get(session).Doc;
+            Assert.Equal(gap, after.Get(b)!.Transform.Y - after.Get(a)!.Transform.Y, 6);
+        }
+
+        [Fact]
         public void AssemblyOfALoneGearIsTheGear()
         {
             var (api, session) = Session();

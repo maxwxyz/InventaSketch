@@ -105,11 +105,21 @@ def _set_text(shape, text):
 
 
 def create_shape(doc, page, spec, ctx=None):
-    """Creates the shape (or group) of one spec on ``page`` and returns it."""
+    """Creates the shape (or group) of one spec in ``page`` (a draw page or a group shape) and returns it.
+
+    Groups are built as a GroupShape that is added first and then filled (not with XShapeGrouper.group, which records
+    an undo action of its own: undoing it would leave the children loose on the page, because adding shapes through
+    the API records none). The drawn units are undone as a whole by host._DrawnUnits."""
     kind = spec["kind"]
     if kind == "group":
-        children = [create_shape(doc, page, c, ctx) for c in spec["children"]]
-        return group(page, children, ctx)
+        children = spec["children"]
+        if len(children) == 1:
+            return create_shape(doc, page, children[0], ctx)
+        grp = doc.createInstance("com.sun.star.drawing.GroupShape")
+        page.add(grp)
+        for c in children:
+            create_shape(doc, grp, c, ctx)
+        return grp
     shape = doc.createInstance(spec["service"])
     page.add(shape)
     if kind in ("line", "polyline", "polygon"):
@@ -129,16 +139,6 @@ def create_shape(doc, page, spec, ctx=None):
     if spec.get("rotate"):
         shape.RotateAngle = int(spec["rotate"])
     return shape
-
-
-def group(page, shapes, ctx=None):
-    if len(shapes) == 1:
-        return shapes[0]
-    ctx = ctx or uno.getComponentContext()
-    coll = ctx.ServiceManager.createInstanceWithContext("com.sun.star.drawing.ShapeCollection", ctx)
-    for s in shapes:
-        coll.add(s)
-    return page.group(coll)
 
 
 def bounds_pt(shape):
@@ -272,9 +272,8 @@ def read_unit(doc, shape):
 def draw_unit(doc, page, unit, ctx=None):
     """Draws one plan unit and stores its metadata; returns (shape, notes)."""
     specs, notes = unit_specs(unit)
-    shapes = [create_shape(doc, page, s, ctx) for s in specs]
-    if not shapes:
+    if not specs:
         return None, notes
-    top = group(page, shapes, ctx)
+    top = create_shape(doc, page, specs[0] if len(specs) == 1 else {"kind": "group", "children": specs}, ctx)
     store_unit(doc, top, unit)
     return top, notes
