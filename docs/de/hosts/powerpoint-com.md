@@ -328,7 +328,8 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
     das Gegenrad.
   - *Koppelkurven:* Ein Glied einer selbst gebauten Kette mit F = 1 bietet „Bahnkurve zeichnen“: die Kurbel dreht einmal
     ganz (oder in beide Richtungen bis zum Anschlag), die Bahn des Gliedendes wird als Bahnkurve eingefügt
-    (`Linkage.Trace`).
+    (`Linkage.Trace`). „Zwischenlagen“ fügt vier gestrichelte graue Kopien der Kette über den Kurbelbereich verteilt als
+    ein Element ein (`Linkage.Poses`). Geprüft in PowerPoint am 24.11.2026 (Szenario `linkage-extras`).
   - *Format übertragen:* Bei mehreren ausgewählten Elementen gibt „Wie das erste“ den übrigen gleichen Typs Ansicht,
     Parameter und Stil des ersten (`Arrange.MatchFormat`).
   - *Zerlegen über eine andere Ansicht:* Eine Baugruppe ohne Teile-Rezept in ihrer Ansicht wird in einer Ansicht mit

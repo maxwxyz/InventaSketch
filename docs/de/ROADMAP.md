@@ -133,7 +133,8 @@ umsetzen, dann Web, dann LibreOffice.
   Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
 - In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Differentialen (braucht ein
   Korb-Einzelteil) und Kurvengetrieben (braucht eine Kurvenscheibe), Ansichtswechsel für Haustechnik (Grundriss ↔
-  Schnitt ↔ Strangschema), Grenzen und Zwischenlagen für selbst gebaute Ketten.
+  Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
+  Gelenkgrenzen sind offen.
 - Web und LibreOffice folgen dem COM-Stand; die Engine enthält bereits `LibrarySearch`, `Symmetry`, `Arrange`,
   `AssemblyViews`, die Hosts ergänzen nur die Oberfläche.
 

@@ -69,6 +69,23 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void GhostPositionsKeepTheLinkLengths()
+        {
+            var mech = Reg.Create(Reg.Library.First(i => i.TypeId == "kin.mech.fourbar"), new Vec2(120, 90));
+            var parts = Assemblies.Explode(Reg, Doc(mech), mech.Id);
+            var exploded = Doc(parts.ToArray());
+            var links = parts.Where(p => p.Type == "kin.link.binary").ToList();
+            var poses = Linkage.Poses(Reg, exploded, links[0].Id, 4);
+            Assert.Equal(4, poses.Count);
+            foreach (var pose in poses)
+            {
+                Assert.Equal(3, pose.Count);
+                foreach (var l in links) Assert.Equal(Len(exploded, l), pose[l.Id][0].DistanceTo(pose[l.Id][1]), 2);
+            }
+            Assert.True(poses[0][links[0].Id][1].DistanceTo(poses[1][links[0].Id][1]) > 1, "the poses differ");
+        }
+
+        [Fact]
         public void ASliderCrankExplodesWithItsSliderOnTheGuide()
         {
             var mech = Reg.Create(Reg.Library.First(i => i.TypeId == "kin.mech.slidercrank"), new Vec2(100, 100));

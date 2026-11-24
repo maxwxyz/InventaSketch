@@ -204,6 +204,67 @@ namespace InventaSketch.Core
             return (backward.Concat(new[] { start }).Concat(forward).ToList(), false);
         }
 
+        /// <summary>
+        /// Ghost positions of the chain of <paramref name="linkId"/>: the chain's links (points resolved) at
+        /// <paramref name="count"/> crank angles spread over the crank's range (all the way round, or between its limits),
+        /// without the current position. Each pose maps link id → page points. Empty without a crank or with F ≠ 1.
+        /// </summary>
+        public static IReadOnlyList<IReadOnlyDictionary<string, IReadOnlyList<Vec2>>> Poses(Registry registry, SketchDocument doc, string linkId, int count = 4, Lang lang = Lang.En)
+        {
+            var result = new List<IReadOnlyDictionary<string, IReadOnlyList<Vec2>>>();
+            if (count < 1 || Dof(registry, doc, linkId, lang) is not { Dof: 1 }) return result;
+            var chain = Build(registry, doc, linkId, lang);
+            if (chain is null) return result;
+            (string Link, int Tip, Vec2 Pivot)? crank = null;
+            foreach (var link in new[] { linkId }.Concat(chain.Links.Where(l => l != linkId)))
+            {
+                var members = chain.NodeOf.Where(kv => kv.Key.Link == link).ToList();
+                var fixedOnes = members.Where(kv => chain.Nodes[kv.Value].Fixed).ToList();
+                var free = members.Where(kv => !chain.Nodes[kv.Value].Fixed).ToList();
+                if (fixedOnes.Count == 1 && free.Count >= 1) { crank = (link, free[0].Key.Index, chain.Nodes[fixedOnes[0].Value].P); break; }
+            }
+            if (crank is not { } c) return result;
+            var tip0 = doc.ResolvePoints(doc.Get(c.Link)!)[c.Tip];
+            var r = tip0.DistanceTo(c.Pivot);
+            if (r < 1e-6) return result;
+            var a0 = Math.Atan2(tip0.Y - c.Pivot.Y, tip0.X - c.Pivot.X);
+            const int Fine = 72;
+            var step = 2 * Math.PI / Fine;
+            var tol = Math.Max(0.05, r * 0.02);
+            // Walk the crank in small steps (the chain keeps its assembly mode) and remember every reachable pose.
+            List<SketchDocument> Walk(int dir)
+            {
+                var list = new List<SketchDocument>();
+                var d = doc;
+                for (var k = 1; k < Fine; k++)
+                {
+                    var a = a0 + dir * k * step;
+                    var target = c.Pivot + new Vec2(Math.Cos(a), Math.Sin(a)) * r;
+                    var next = Drag(registry, d, c.Link, c.Tip, target, lang);
+                    if (next.ResolvePoints(next.Get(c.Link)!)[c.Tip].DistanceTo(target) > tol) break;
+                    d = next;
+                    list.Add(d);
+                }
+                return list;
+            }
+            var forward = Walk(1);
+            List<SketchDocument> range;
+            if (forward.Count >= Fine - 1) range = forward; // all the way round: spread over the turn
+            else
+            {
+                var backward = Walk(-1);
+                backward.Reverse();
+                range = backward.Concat(forward).ToList();
+            }
+            if (range.Count == 0) return result;
+            for (var i = 1; i <= count; i++)
+            {
+                var d = range[Math.Min(range.Count - 1, (int)Math.Round((double)i * range.Count / (count + 1)))];
+                result.Add(chain.Links.ToDictionary(id => id, id => (IReadOnlyList<Vec2>)d.ResolvePoints(d.Get(id)!).ToList(), StringComparer.Ordinal));
+            }
+            return result;
+        }
+
         /// <summary>Writes joint positions back: the storing point of every link, joint symbols and sliders moved.</summary>
         private static SketchDocument Apply(SketchDocument doc, Chain chain, Dictionary<string, Vec2> pos)
         {

@@ -981,7 +981,10 @@ namespace InventaSketch.AddIn.OnSlide
                 list.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom (Grübler): ", "Freiheitsgrad (Grübler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke")));
                 // A chain that moves with one input: the path of this link's end as the crank turns (coupler curve).
                 if (dof.Dof == 1)
+                {
                     list.Add(new BarButton("trace", "", T("Draw the path of this link's end (coupler curve)", "Bahnkurve des Gliedendes zeichnen (Koppelkurve)")) { IconId = IconIds.Trace });
+                    list.Add(new BarButton("ghosts", "", T("Ghost positions of the linkage", "Zwischenlagen des Koppelgetriebes")) { IconId = IconIds.Animate });
+                }
             }
             // Motion mode for parts that can move (gear train, linkage): drag turns them instead of moving them.
             if (MovablePart() is not null)
@@ -2174,6 +2177,40 @@ namespace InventaSketch.AddIn.OnSlide
             if (id == "planscale")
             {
                 PlanScaleRequested?.Invoke();
+                return;
+            }
+            if (id == "ghosts")
+            {
+                // Four ghost positions of the chain as thin dashed copies of its links, one unit (one undo step).
+                var link = unit.Objects.FirstOrDefault(o => o.IsPointGeometry && Linkage.IsPart(registry, o));
+                if (link is null) return;
+                var full = SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+                var poses = Linkage.Poses(registry, full, link.Id, 4, _lang());
+                if (poses.Count == 0) return;
+                var ghostStyle = new Style { Stroke = "#8C8C8C", Dash = InventaSketch.Core.DashStyle.Dash, StrokeWidth = 0.18 };
+                var ghosts = new List<SketchObject>();
+                foreach (var pose in poses)
+                    foreach (var kv in pose)
+                    {
+                        var src = full.Get(kv.Key);
+                        if (src is null) continue;
+                        ghosts.Add(src with
+                        {
+                            Id = Ids.New(),
+                            Points = kv.Value.Select(q => new Vec2(Math.Round(q.X, 4), Math.Round(q.Y, 4))).ToList(),
+                            Attach = null,
+                            Released = null,
+                            GroupId = null,
+                            Style = ghostStyle,
+                        });
+                    }
+                _app.StartNewUndoEntry();
+                var setup = _app.ActivePresentation.PageSetup;
+                var ghostDoc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
+                ghostDoc = Edits.Add(ghostDoc, ghostDoc.Pages[0].Id, ghosts.ToArray());
+                ghostDoc = Edits.Group(ghostDoc, ghosts.Select(g => g.Id).ToList());
+                SketchUnits.Draw(slide, registry, ghostDoc, _lang(), zOrder: 0);
+                Log.Info("Ghost positions: " + poses.Count);
                 return;
             }
             if (id == "trace")
