@@ -24,7 +24,7 @@ namespace InventaSketch.Modules.Annotation
             // Lines & arrows
             new LineType(), new PolylineType(), new ArrowType(false), new ArrowType(true), new CurvedArrowType(), new ElbowArrowType(),
             // Labels & text
-            TextBoxType.Text(), TextBoxType.Label(), TextBoxType.Callout(), TextBoxType.Balloon(),
+            TextBoxType.Text(), TextBoxType.Label(), TextBoxType.Callout(), TextBoxType.Balloon(), new PartsListType(),
             // Dimensions
             new LinearDimensionType(false), new LinearDimensionType(true), new AngleDimensionType(), new RadiusDimensionType(),
             // Hatching

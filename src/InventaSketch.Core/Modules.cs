@@ -515,6 +515,19 @@ namespace InventaSketch.Core
         public virtual bool IsPart => true;
 
         /// <summary>
+        /// True if the rendering lists or summarises all parts of the document (a parts-list table): every edit of a part
+        /// redraws it (<c>ChangeSet.DependentsOf</c> in the engine, the COM host's dependent units). Such objects are never
+        /// parts themselves.
+        /// </summary>
+        public virtual bool DependsOnAllParts => false;
+
+        /// <summary>
+        /// The registry the type was last registered with (set by <see cref="Registry.Register"/>). Types that render from
+        /// other objects of the document (a parts list naming each part) use it to read their types and labels.
+        /// </summary>
+        public Registry? Owner { get; internal set; }
+
+        /// <summary>
         /// Quick add (<see cref="Flow"/>): the library item id (or type id) of the connector that joins an element added next
         /// to <paramref name="o"/> with the "+" arrows; "" chains without a connector (process steps), null (default) offers
         /// no quick add. Flowchart, UML, ER and BPMN elements and basic shapes return their usual connector.
@@ -733,6 +746,7 @@ namespace InventaSketch.Core
             {
                 if (_types.ContainsKey(t.Id)) throw new InvalidOperationException($"Object type '{t.Id}' is already registered.");
                 _types[t.Id] = t;
+                t.Owner = this;
             }
             _modules.Add(module);
             _categories.AddRange(module.Categories);

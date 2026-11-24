@@ -225,7 +225,9 @@ namespace InventaSketch.AddIn.OnSlide
             var others = all.Where(u => (skip is null || !skip.Contains(u.Id)) && !u.Objects.Any(o => touched.Contains(o.Id))).ToList();
             // Units with line ends anchored to an edited object follow it ("Anchor").
             var anchored = others.Where(u => u.Objects.Any(o => o.Attach is not null && o.Attach.Any(x => x is not null && touched.Contains(x.ObjectId)))).ToList();
-            if (anchored.Count == 0 && !b.Concat(a).Any(d => NeedsContext(registry, d))) return coupled;
+            // Parts lists on the slide follow every part edit.
+            var lists = others.Any(u => u.Objects.Any(o => registry.Type(o.Type)?.DependsOnAllParts == true));
+            if (anchored.Count == 0 && !lists && !b.Concat(a).Any(d => NeedsContext(registry, d))) return coupled;
             var deps = new HashSet<string>(ChangeSet.DependentsOf(registry, Merge(b, others), Merge(a, others), touched.ToList(), lang), StringComparer.Ordinal);
             var count = 0;
             foreach (var unit in others)

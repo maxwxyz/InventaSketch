@@ -1295,6 +1295,10 @@ namespace InventaSketch.Engine
                         if (after.Objects.ContainsKey(dep) && !seen.Contains(dep)) found.Add(dep);
                 }
             }
+            // Parts lists follow every added, changed or removed part.
+            if (touched.Any(id => (after.Get(id) ?? before.Get(id)) is { } t && PartsList.IsPart(registry, t)))
+                foreach (var o in after.Objects.Values)
+                    if (!seen.Contains(o.Id) && registry.Type(o.Type)?.DependsOnAllParts == true) found.Add(o.Id);
             return InPageOrder(after, found).ToList();
         }
 
