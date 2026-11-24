@@ -128,6 +128,14 @@ export class Session {
   assembly(ids: string[]): string[] { return this.c("assembly", { ids }); }
   /** Path of point `index` (default: last) of link `id` while its chain's crank turns (coupler curve). */
   trace(id: string, index?: number): TraceInfo { return this.c("trace", { id, index }); }
+  /** Inserts `itemId` where it fits object `id` (gear on the shaft …); `placed` false when it fits nowhere. */
+  insertFitting(id: string, itemId: string): { placed: boolean; state: EditorState } { return this.c("insertFitting", { id, itemId }); }
+  /** Inserts the coupler curve of link `id` as a motion path; one undo step. */
+  drawTrace(id: string, index?: number): EditorState { return this.c("drawTrace", { id, index }); }
+  /** Explodes assembly `id` into its parts; one undo step. */
+  explode(id: string): EditorState { return this.c("explode", { id }); }
+  /** Degree of freedom of the self-built linkage of `id` and whether `id` can be exploded. */
+  dof(id: string): { links: number | null; joints: number | null; dof: number | null; explodable: boolean } { return this.c("dof", { id }); }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */
   update(object: unknown): EditorState { return this.c("update", { object }); }
 }

@@ -14,9 +14,9 @@ namespace InventaSketch.Modules.Maps
         public const string TypeId = "map.scalebar";
 
         public static readonly string[] Units = { "km", "mi", "m", "ft" };
-        private static readonly ParamDef LengthDef = Prm.Num("length", "Represented length", "Dargestellte LÃ¤nge", 1, 0.001, 1000000, null, 0.1);
+        private static readonly ParamDef LengthDef = Prm.Num("length", "Represented length", "Dargestellte Länge", 1, 0.001, 1000000, null, 0.1);
         private static readonly ParamDef UnitDef = Prm.Choice("unit", "Unit", "Einheit", "km",
-            ("km", "Kilometres", "Kilometer"), ("mi", "Miles", "Meilen"), ("m", "Metres", "Meter"), ("ft", "Feet", "FuÃŸ"));
+            ("km", "Kilometres", "Kilometer"), ("mi", "Miles", "Meilen"), ("m", "Metres", "Meter"), ("ft", "Feet", "Fuß"));
         private static readonly ParamDef SegmentsDef = Prm.Int("segments", "Segments", "Abschnitte", 4, 1, 10);
         private static readonly ParamDef StyleDef = Prm.Choice("style", "Style", "Stil", "alternating", ("alternating", "Alternating bar", "Wechselbalken"), ("line", "Ticked line", "Linie mit Strichen"));
 
@@ -54,9 +54,9 @@ namespace InventaSketch.Modules.Maps
                     p.TextAt(new Vec2(X(i), y), text, fs, p.W, fs, anchor, color: Palette.Ink);
                 }
             }
-            return new MapBoxType(TypeId, new I18nText("Scale bar", "MaÃŸstabsleiste"), MapCategories.Marks,
+            return new MapBoxType(TypeId, new I18nText("Scale bar", "Maßstabsleiste"), MapCategories.Marks,
                 new[] { "scale", "scale bar", "distance", "km", "miles", "metres", "feet", "map",
-                        "maÃŸstab", "maÃŸstabsleiste", "maÃŸstabsbalken", "entfernung", "kilometer", "meilen", "karte" },
+                        "maßstab", "maßstabsleiste", "maßstabsbalken", "entfernung", "kilometer", "meilen", "karte" },
                 MapViews.Plan(40, 8, Draw))
             {
                 Params = new[] { LengthDef, UnitDef, SegmentsDef, StyleDef },
@@ -65,8 +65,8 @@ namespace InventaSketch.Modules.Maps
                 Extra = (o, lang) => new[]
                 {
                     Prm.Cycle(o, "map.scalebar.unit", UnitDef, new I18nText("Unit", "Einheit")),
-                    ContextAction.WithInput("map.scalebar.length", new I18nText("Lengthâ€¦", "LÃ¤ngeâ€¦"), IconIds.Text,
-                        new I18nText("Represented length (e.g. 2 km, 1.5 mi, 500 m)", "Dargestellte LÃ¤nge (z. B. 2 km, 1,5 mi, 500 m)"),
+                    ContextAction.WithInput("map.scalebar.length", new I18nText("Length…", "Länge…"), IconIds.Text,
+                        new I18nText("Represented length (e.g. 2 km, 1.5 mi, 500 m)", "Dargestellte Länge (z. B. 2 km, 1,5 mi, 500 m)"),
                         Fmt.Num(LengthOf(o), lang) + " " + UnitOf(o),
                         (x, text) =>
                         {
@@ -112,7 +112,7 @@ namespace InventaSketch.Modules.Maps
     {
         public const string TypeId = "map.north";
 
-        private static readonly ParamDef LetterDef = Prm.Bool("letter", "Show â€œNâ€", "â€žNâ€œ zeigen", true);
+        private static readonly ParamDef LetterDef = Prm.Bool("letter", "Show “N”", "„N“ zeigen", true);
 
         public static MapBoxType Create()
         {
@@ -131,7 +131,7 @@ namespace InventaSketch.Modules.Maps
             {
                 Params = new[] { LetterDef },
                 CompanionIds = new[] { ScaleBar.TypeId, Compass.TypeId, Legend.TypeId },
-                Extra = (o, lang) => new[] { Prm.Toggle(o, "map.north.letter", "letter", true, new I18nText("Show â€œNâ€", "â€žNâ€œ zeigen")) },
+                Extra = (o, lang) => new[] { Prm.Toggle(o, "map.north.letter", "letter", true, new I18nText("Show “N”", "„N“ zeigen")) },
             };
         }
     }
@@ -195,7 +195,7 @@ namespace InventaSketch.Modules.Maps
     {
         public const string TypeId = MapDeps.LegendId;
 
-        private static readonly ParamDef TitleDef = Prm.Text("title", "Title (empty: â€œLegendâ€)", "Titel (leer: â€žLegendeâ€œ)", "") with { Default = null };
+        private static readonly ParamDef TitleDef = Prm.Text("title", "Title (empty: “Legend”)", "Titel (leer: „Legende“)", "") with { Default = null };
         private static readonly ParamDef AutoDef = Prm.Bool("auto", "List the map objects of the page", "Kartenobjekte der Seite auflisten", true);
         private const int MaxEntries = 16;
 
@@ -234,7 +234,7 @@ namespace InventaSketch.Modules.Maps
                 }
             }
             return new MapBoxType(TypeId, new I18nText("Legend", "Legende"), MapCategories.Marks,
-                new[] { "legend", "key", "map key", "symbols", "explanation", "legende", "zeichenerklÃ¤rung", "kartenlegende", "erklÃ¤rung" },
+                new[] { "legend", "key", "map key", "symbols", "explanation", "legende", "zeichenerklärung", "kartenlegende", "erklärung" },
                 MapViews.Plan(46, 40, Draw))
             {
                 Params = new[] { TitleDef, AutoDef },
@@ -245,7 +245,7 @@ namespace InventaSketch.Modules.Maps
                 Extra = (o, lang) => new[]
                 {
                     Prm.Toggle(o, "map.legend.auto", "auto", true, new I18nText("List the map objects", "Kartenobjekte auflisten")),
-                    ContextAction.WithInput("map.legend.title", new I18nText("Titleâ€¦", "Titelâ€¦"), IconIds.Text,
+                    ContextAction.WithInput("map.legend.title", new I18nText("Title…", "Titel…"), IconIds.Text,
                         new I18nText("Legend title", "Titel der Legende"), o.Str("title", ""), (x, text) => x.WithParam("title", (text ?? "").Trim())) with { Group = "text" },
                 },
             };
@@ -277,7 +277,7 @@ namespace InventaSketch.Modules.Maps
         private static string Family(string key) { var i = key.IndexOf('.'); return i < 0 ? key : key.Substring(0, i); }
         private static string Variant(string key) { var i = key.IndexOf('.'); return i < 0 ? "" : key.Substring(i + 1); }
 
-        /// <summary>"[road.main] B 17" â†’ sample key and label; lines without a key get a bullet.</summary>
+        /// <summary>"[road.main] B 17" → sample key and label; lines without a key get a bullet.</summary>
         private static Entry Parse(string line)
         {
             if (line.StartsWith("[", StringComparison.Ordinal))
@@ -318,7 +318,7 @@ namespace InventaSketch.Modules.Maps
             var v = Variant(key);
             I18nText label = Family(key) switch
             {
-                "route" => v switch { "dashed" => new I18nText("Alternative route", "Alternativroute"), "dotted" => new I18nText("Walking route", "FuÃŸweg"), _ => new I18nText("Route", "Route") },
+                "route" => v switch { "dashed" => new I18nText("Alternative route", "Alternativroute"), "dotted" => new I18nText("Walking route", "Fußweg"), _ => new I18nText("Route", "Route") },
                 "road" => Prm.OptionLabel(RoadType.KindDef, v),
                 "rail" => Prm.OptionLabel(RailType.KindDef, v),
                 "river" => Prm.OptionLabel(RiverType.KindDef, v),

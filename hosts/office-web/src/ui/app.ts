@@ -19,7 +19,7 @@ import { Library } from "./library";
 import { PieMenu } from "./piemenu";
 import { buildPieEntries, labelEntries, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
 import { Stage, type ChainSide } from "./stage";
-import { assemblyExtends, canTrace, elementCount, filterTransforms, multiBarGroups, tracedPathItem, withTracedPoints } from "./uxlogic";
+import { assemblyExtends, canTrace, elementCount, filterTransforms, multiBarGroups } from "./uxlogic";
 
 export interface AppOptions {
   engine: Engine;
@@ -415,6 +415,9 @@ export class App {
       this.traceFor = { id: sel[0], trace };
       build.push({ id: "trace", label: t("ctx.trace"), icon: "cmd-trace" });
     }
+    const info = this.dofOf(sel);
+    if (info?.dof != null) build.push({ id: "info:dof", label: t("ctx.dof", info.dof), icon: "", text: `F = ${info.dof}` });
+    if (info?.explodable) build.push({ id: "explode", label: t("ctx.explode"), icon: "cmd-explode" });
     build.push(...assembly);
     this.bar.update(key, actions, box, suppressed, this.barChoices(sel), { lead, build });
   }
@@ -454,6 +457,17 @@ export class App {
     }
   }
 
+  /** Degree of freedom (self-built linkage) and explodability of a single selected object. */
+  private dofOf(sel: string[]): { dof: number | null; explodable: boolean } | undefined {
+    const o = sel.length === 1 ? this.objectById(sel[0]) : undefined;
+    if (!o?.known) return undefined;
+    try {
+      return this.sessionObj.dof(o.id);
+    } catch {
+      return undefined;
+    }
+  }
+
   /** Link whose coupler curve the bar offers, with the traced path. */
   private traceFor?: { id: string; trace: TraceInfo };
   /** "Make it …" choices for the element just added with "+". */
@@ -464,6 +478,11 @@ export class App {
     if (id === "insert") return this.openInsert({ x: clientX, y: clientY });
     if (id === "makeIt") return this.openMakeIt({ x: clientX, y: clientY });
     if (id === "trace") return this.drawPath();
+    if (id === "info:dof") return;
+    if (id === "explode" && sel.length === 1) {
+      this.edit((s) => s.explode(sel[0]));
+      return;
+    }
     if (id === "assembly") {
       try {
         this.apply(this.sessionObj.select(this.sessionObj.assembly(sel)));
@@ -514,6 +533,17 @@ export class App {
         const chosen = item(id);
         if (!chosen) return;
         this.remember(id);
+        if (sel.length === 1 && !(this.sync instanceof ComSync)) {
+          try {
+            const res = this.sessionObj.insertFitting(sel[0], id);
+            if (res.placed) {
+              this.apply(res.state, true);
+              return;
+            }
+          } catch (e) {
+            this.report(e);
+          }
+        }
         this.startInsert(chosen, false);
       },
       closed: () => this.updateBar(),
@@ -548,12 +578,7 @@ export class App {
     const traced = this.traceFor;
     if (!traced) return;
     try {
-      const first = traced.trace.points[0];
-      const inserted = this.sessionObj.insert(tracedPathItem(traced.trace), first.x, first.y, false);
-      const id = inserted.selection[0];
-      const doc = JSON.parse(this.sessionObj.save()) as { objects?: Record<string, Record<string, unknown>> };
-      const obj = id ? doc.objects?.[id] : undefined;
-      this.apply(obj ? this.sessionObj.update(withTracedPoints(obj, traced.trace)) : inserted, true);
+      this.apply(this.sessionObj.drawTrace(traced.id), true);
       this.toast(t("trace.done", traced.trace.points.length));
     } catch (e) {
       this.report(e);

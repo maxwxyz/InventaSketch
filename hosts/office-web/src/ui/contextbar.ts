@@ -13,7 +13,8 @@ import type { MultiBarGroups } from "./uxlogic";
 export interface BarBox { left: number; top: number; right: number; bottom: number }
 
 /** A host command of the bar (make it …, insert, draw the path, select assembly): icon button with a tooltip. */
-export interface BarCommand { id: string; label: string; icon: string; active?: boolean }
+/** A host command in the bar: a pictogram, or a short `text` (values such as "F = 1") when given. */
+export interface BarCommand { id: string; label: string; icon: string; active?: boolean; text?: string }
 
 /** Host commands of the single-selection bar: `lead` before the views, `build` after the element actions. */
 export interface BarExtras { lead: BarCommand[]; build: BarCommand[] }
@@ -101,10 +102,12 @@ export class ContextBar {
   }
 
   private command(c: BarCommand, prefix = ""): HTMLButtonElement {
-    const b = h("button", {
-      class: `isk-btn isk-icon-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label,
-      "data-cmd": prefix + c.id, html: icon(hasIcon(c.icon) ? c.icon : "type"),
-    });
+    const b = c.text
+      ? h("button", { class: `isk-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label, "data-cmd": prefix + c.id }, c.text)
+      : h("button", {
+        class: `isk-btn isk-icon-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label,
+        "data-cmd": prefix + c.id, html: icon(hasIcon(c.icon) ? c.icon : "type"),
+      });
     b.addEventListener("click", (e) => this.onCommand(prefix + c.id, e.clientX, e.clientY));
     return b;
   }
