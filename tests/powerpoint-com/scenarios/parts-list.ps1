@@ -30,7 +30,7 @@ Save-IskShot $S '1-parts-list'
 
 # Two gears selected: a dimension between their axes, docked on both.
 @(Get-IskShapes $S 'ISK:mech.gear.spur*')[0].Select(); Start-Sleep 2
-@(Get-IskShapes $S 'ISK:mech.gear.spur*')[1].Select([Microsoft.Office.Core.MsoTriState]::msoFalse); Start-Sleep 3
+@(Get-IskShapes $S 'ISK:mech.gear.spur*')[1].Select(0); Start-Sleep 3
 $ids = Get-IskBarIds $S
 Write-IskInfo ('multi bar: ' + ($ids -join ' '))
 Assert-Isk $S ($ids -contains 'dim') 'two selected parts offer a dimension between them'
