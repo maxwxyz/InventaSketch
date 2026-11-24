@@ -59,6 +59,18 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void ADimensionBetweenTwoGearsMeasuresTheirCentreDistance()
+        {
+            var axial = Reg.Library.First(i => i.TypeId == "mech.gear.spur" && i.View == "axial");
+            var a = Reg.Create(axial, new Vec2(20, 20));
+            var b = Reg.Create(axial, new Vec2(70, 20));
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, a, b);
+            var ctx = new RenderContext(doc);
+            Assert.Equal(50, Arrange.MeasurePoint(Reg, a, ctx).P.DistanceTo(Arrange.MeasurePoint(Reg, b, ctx).P), 6);
+        }
+
+        [Fact]
         public void RenumberInReadingOrderKeepingTheScheme()
         {
             var numerals = new[]

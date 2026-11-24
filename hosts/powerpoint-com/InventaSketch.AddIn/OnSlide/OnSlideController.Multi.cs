@@ -58,6 +58,9 @@ namespace InventaSketch.AddIn.OnSlide
                 list.Add(new BarButton("dist:h", "", T("Space evenly left to right", "Gleichmäßig von links nach rechts verteilen")) { IconId = IconIds.DistributeH });
             if (Arrange.Changes(Arrange.Distribute(boxes, horizontal: false)))
                 list.Add(new BarButton("dist:v", "", T("Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen")) { IconId = IconIds.DistributeV });
+            // Two parts: a dimension between their axes (or centres), docked on both so it follows them.
+            if (_multi.Count == 2 && firsts.All(o => o is not null && !o.IsPointGeometry))
+                list.Add(new BarButton("dim", "", T("Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)")) { IconId = IconIds.Dimension });
             // Format painter: the first selected element's view, parameters and style for the others of its type.
             if (firsts[0] is { } source && firsts.Count > 1)
             {
@@ -172,6 +175,24 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     _noCouple = false;
                 }
+            }
+            else if (id == "dim")
+            {
+                var objs = units.Select(u => u.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null)).ToList();
+                var item = registry.Item("ann.dimension.aligned");
+                if (objs.Count == 2 && objs[0] is { } o1 && objs[1] is { } o2 && item is not null)
+                {
+                    var ctx = new RenderContext(SketchUnits.WithContext(units[0].Doc, units.Skip(1)), lang);
+                    var a1 = Arrange.MeasurePoint(registry, o1, ctx);
+                    var a2 = Arrange.MeasurePoint(registry, o2, ctx);
+                    var dim = registry.CreateBetween(item, a1.P, a2.P);
+                    dim = dim with { Attach = new[] { Attachments.For(o1, a1.P, a1), Attachments.For(o2, a2.P, a2) } };
+                    var setup = _app.ActivePresentation.PageSetup;
+                    var dimDoc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
+                    dimDoc = Edits.Add(dimDoc, dimDoc.Pages[0].Id, dim);
+                    SketchUnits.Draw(slide, registry, dimDoc, lang);
+                }
+                shapes.AddRange(units.Select(u => u.Shape));
             }
             else if (id == "match")
             {

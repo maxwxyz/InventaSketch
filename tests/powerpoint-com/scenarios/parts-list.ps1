@@ -27,3 +27,14 @@ Write-IskInfo ('table after: ' + ($texts -join ' | '))
 Assert-Isk $S ($texts -contains '3') 'the parts list follows a newly inserted gear'
 $S.Window.Selection.Unselect(); Start-Sleep 2
 Save-IskShot $S '1-parts-list'
+
+# Two gears selected: a dimension between their axes, docked on both.
+@(Get-IskShapes $S 'ISK:mech.gear.spur*')[0].Select(); Start-Sleep 2
+@(Get-IskShapes $S 'ISK:mech.gear.spur*')[1].Select([Microsoft.Office.Core.MsoTriState]::msoFalse); Start-Sleep 3
+$ids = Get-IskBarIds $S
+Write-IskInfo ('multi bar: ' + ($ids -join ' '))
+Assert-Isk $S ($ids -contains 'dim') 'two selected parts offer a dimension between them'
+$addin.Command('dim') | Out-Null; Start-Sleep 5
+Assert-Isk $S (@(Get-IskShapes $S 'ISK:ann.dimension*').Count -eq 1) 'the dimension is inserted'
+$S.Window.Selection.Unselect(); Start-Sleep 2
+Save-IskShot $S '2-dimension'
