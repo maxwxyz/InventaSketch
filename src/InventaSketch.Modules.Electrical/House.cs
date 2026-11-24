@@ -24,45 +24,81 @@ namespace InventaSketch.Modules.Electrical
 
         private static readonly Pin[] Quadrants = { new("n", 0, -0.5), new("e", 0.5, 0), new("s", 0, 0.5), new("w", -0.5, 0) };
 
+        /// <summary>Mounting height in mm (bottom edge above the finished floor), used by the section view (<see cref="InstallationViews"/>).</summary>
+        private static ParamDef Height(double def) => new(InstallationViews.HeightKey, T("Mounting height (bottom edge above floor)", "Montagehöhe (Unterkante über OKFF)"), ParamKind.Number)
+        {
+            Default = def, Min = -5000, Max = 30000, Step = 10, Unit = "mm",
+        };
+
+        /// <summary>Front plate of a flush-mounted device seen on the wall (section view).</summary>
+        private static void Plate(Pen p, double w, double h) => p.Rect(-w / 2, -h / 2, w / 2, h / 2, null, "plate");
+
         public static IEnumerable<ObjectType> Types()
         {
             yield return new ElecType("elec.house.socket", T("Socket outlet", "Steckdose"), Cat,
                 new[] { "socket outlet", "outlet", "receptacle", "socket", "steckdose", "schutzkontakt", "schuko", "doppelsteckdose", "installation" },
-                Views.Plan(10, 10, Socket))
-            { Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { Gangs, Protected }, Labeled = false };
+                Views.Plan(10, 10, Socket),
+                Views.Section(8, 8, (p, o) =>
+                {
+                    var n = Count(o, "gangs", 1, 1, 4);
+                    Plate(p, 8, 8);
+                    p.Circle(0, 0, 2.6, null, "insert");
+                    p.Dot(-1, 0, 0.45, "pin");
+                    p.Dot(1, 0, 0.45, "pin");
+                    if (n > 1) p.Text(3.4, -2.2, N(n), 1.8, TextAnchor.End, false, "count");
+                }),
+                Views.Schematic(10, 10, Socket))
+            { Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { Gangs, Protected, Height(300) }, Labeled = false, Installation = true };
 
             yield return new ElecType("elec.house.switch", T("Light switch", "Lichtschalter"), Cat,
                 new[] { "light switch", "switch", "two-way", "push button", "schalter", "lichtschalter", "ausschalter", "wechselschalter", "taster", "installation" },
-                Views.Plan(10, 10, SwitchPlan))
+                Views.Plan(10, 10, SwitchPlan),
+                Views.Section(8, 8, (p, o) =>
+                {
+                    Plate(p, 8, 8);
+                    p.Rect(-2, -2.6, 2, 2.6, null, "rocker");
+                    if (o.Str("kind", "oneway") == "twoway") p.Line(-2, 0, 2, 0, S.Thin, "rocker");
+                }),
+                Views.Schematic(10, 10, SwitchPlan))
             {
-                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { SwitchKind }, Labeled = false,
+                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { SwitchKind, Height(1050) }, Labeled = false, Installation = true,
                 Extra = o => new[] { Cycle(o, "elec.house.switch.next", T("Next switch type", "Nächste Schalterart"), SwitchKind) },
             };
 
             yield return new ElecType("elec.house.light", T("Luminaire / light outlet", "Leuchte / Leuchtenauslass"), Cat,
                 new[] { "luminaire", "light", "lamp", "ceiling light", "leuchte", "lampe", "deckenleuchte", "auslass", "installation" },
-                Views.Plan(10, 10, (p, o) =>
+                Views.Plan(10, 10, LightPlan),
+                Views.Section(12, 4, (p, o) =>
                 {
-                    p.Circle(0, 0, 5, null, "body");
-                    var d = 5 * Math.Sqrt(0.5);
-                    p.Line(-d, -d, d, d, null, "cross");
-                    p.Line(-d, d, d, -d, null, "cross");
-                }))
-            { Pins = Fixed(Quadrants), Labeled = false };
+                    // Ceiling luminaire seen from the side: canopy, body, light cone hinted.
+                    p.Rect(-1.5, -2, 1.5, -1.2, null, "canopy");
+                    p.Poly(null, true, "body", -6, -1.2, 6, -1.2, 4, 2, -4, 2);
+                }),
+                Views.Schematic(10, 10, LightPlan))
+            { Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2400) }, Installation = true };
 
             yield return new ElecType("elec.house.junction", T("Junction box", "Abzweigdose"), Cat,
                 new[] { "junction box", "box", "abzweigdose", "verteilerdose", "dose", "installation" },
-                Views.Plan(5, 5, (p, o) => { p.Circle(0, 0, 2.5, null, "body"); p.Dot(0, 0, 0.9, "center"); }))
-            { Pins = Fixed(Quadrants), Labeled = false };
+                Views.Plan(5, 5, JunctionPlan),
+                Views.Section(5, 5, (p, o) => { Plate(p, 5, 5); p.Dot(0, 0, 0.6, "center"); }),
+                Views.Schematic(5, 5, JunctionPlan))
+            { Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2200) }, Installation = true };
 
             yield return new ElecType("elec.house.board", T("Distribution board", "Verteiler"), Cat,
                 new[] { "distribution board", "consumer unit", "panel", "fuse box", "verteiler", "unterverteilung", "sicherungskasten", "zählerschrank", "installation" },
-                Views.Plan(20, 10, (p, o) =>
+                Views.Plan(20, 10, BoardPlan),
+                Views.Section(20, 30, (p, o) =>
                 {
-                    p.Rect(-10, -5, 10, 5, null, "body");
-                    p.Rect(-10, 0, 10, 5, S.Hatch(1.2), "fill");
-                }))
-            { Pins = Fixed(new Pin("top", 0, -0.5), new Pin("bottom", 0, 0.5)), Uniform = false, RefPrefix = "UV", LabelSide = LabelSide.Right };
+                    // Cabinet front: door with a handle and a viewing strip.
+                    p.Rect(-10, -15, 10, 15, null, "body");
+                    p.Rect(-8, -11, 8, -7, S.Thin, "strip");
+                    p.Line(7, -1.5, 7, 1.5, null, "handle");
+                }),
+                Views.Schematic(20, 10, BoardPlan))
+            {
+                Pins = Fixed(new Pin("top", 0, -0.5), new Pin("bottom", 0, 0.5)), Uniform = false, RefPrefix = "UV", LabelSide = LabelSide.Right,
+                Params = new[] { Height(1100) }, Installation = true,
+            };
 
             yield return new ElecType("elec.sld.busbar", T("Busbar (single-line)", "Sammelschiene (einpolig)"), Cat,
                 new[] { "busbar", "bus bar", "single-line", "sammelschiene", "schiene", "einpolig", "übersichtsschaltplan" },
@@ -101,6 +137,26 @@ namespace InventaSketch.Modules.Electrical
             if (o.Flag("protected", true)) p.Line(-3.5, -1.5, 3.5, -1.5, null, "earth");
             var n = Count(o, "gangs", 1, 1, 4);
             if (n > 1) p.Text(3.5, -3.5, N(n), 2.5, TextAnchor.Start, false, "count");
+        }
+
+        private static void LightPlan(Pen p, SketchObject o)
+        {
+            p.Circle(0, 0, 5, null, "body");
+            var d = 5 * Math.Sqrt(0.5);
+            p.Line(-d, -d, d, d, null, "cross");
+            p.Line(-d, d, d, -d, null, "cross");
+        }
+
+        private static void JunctionPlan(Pen p, SketchObject o)
+        {
+            p.Circle(0, 0, 2.5, null, "body");
+            p.Dot(0, 0, 0.9, "center");
+        }
+
+        private static void BoardPlan(Pen p, SketchObject o)
+        {
+            p.Rect(-10, -5, 10, 5, null, "body");
+            p.Rect(-10, 0, 10, 5, S.Hatch(1.2), "fill");
         }
 
         private static void SwitchPlan(Pen p, SketchObject o)

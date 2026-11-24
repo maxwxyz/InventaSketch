@@ -151,7 +151,7 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 2. LibreOffice: bring the host to the engine API level (insert box, context-only bar, multi-selection, assembly view).
 3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
    (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion, `elevation`/`section` view
-   alias for walls with building services, electrical house symbols with section/schematic views.
+   alias for walls with building services.
 4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
@@ -159,7 +159,8 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
   whole installations switch plan ↔ section ↔ schematic through `AssemblyViews` with the module's rule; open: a section
-  line per wall, the electrical house symbols with section/schematic views, `elevation`/`section` alias for walls):** heating, plumbing, ventilation and electrical installation tied to the
+  line per wall, `elevation`/`section` alias for walls; the electrical house symbols joined the installation views on
+  2026-11-25, the rule moved to Core as `InstallationViews`):** heating, plumbing, ventilation and electrical installation tied to the
   architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
   assemblies applies).
 - **Parts list from the slide (P2, done in COM 2026-11-24):** a table element that lists the parts of the slide or selection (type, key

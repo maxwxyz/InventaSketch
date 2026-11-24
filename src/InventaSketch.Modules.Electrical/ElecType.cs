@@ -36,6 +36,10 @@ namespace InventaSketch.Modules.Electrical
         public static ViewSpec Plan(double w, double h, Action<Pen, SketchObject> draw) => new("plan", new I18nText("Floor plan", "Installationsplan"), IconIds.Plan, w, h, draw);
         public static ViewSpec Block(double w, double h, Action<Pen, SketchObject> draw) => new("block", new I18nText("Block", "Block"), IconIds.Block, w, h, draw);
         public static ViewSpec Top(double w, double h, Action<Pen, SketchObject> draw) => new("top", new I18nText("Top view (illustrative)", "Draufsicht (illustrativ)"), IconIds.Top, w, h, draw);
+        /// <summary>Installation section/elevation: the element seen on the wall at its mounting height (<see cref="InstallationViews"/>).</summary>
+        public static ViewSpec Section(double w, double h, Action<Pen, SketchObject> draw) => new(InstallationViews.Section, new I18nText("Section", "Schnitt"), IconIds.Front, w, h, draw);
+        /// <summary>Installation schematic (riser diagram) symbol.</summary>
+        public static ViewSpec Schematic(double w, double h, Action<Pen, SketchObject> draw) => new(InstallationViews.Schematic, new I18nText("Schematic", "Schema"), IconIds.Schematic, w, h, draw);
     }
 
     /// <summary>Where the designator/value labels are placed.</summary>
@@ -87,6 +91,13 @@ namespace InventaSketch.Modules.Electrical
         /// <summary>The object's free text is its content (net labels, silkscreen text).</summary>
         public bool TextObject { get; init; }
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
+        /// <summary>
+        /// House installation element with plan, section and schematic views and a mounting height: switches together with
+        /// building services (<see cref="InstallationViews"/>).
+        /// </summary>
+        public bool Installation { get; init; }
+
+        public override IAssemblyViewSwitch? AssemblyViewSwitch => Installation ? InstallationViews.Rule : null;
 
         public IReadOnlyList<ViewSpec> ViewSpecs => _views;
 
