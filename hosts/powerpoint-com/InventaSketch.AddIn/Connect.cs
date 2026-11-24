@@ -241,6 +241,8 @@ namespace InventaSketch.AddIn
             sb.Append("<tab id=\"IskTab\" label=\"InventaSketch\">");
             AppendStructureGroup(sb);
             sb.Append("<group id=\"IskTools\" getImage=\"GetLogoImage\" label=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\">");
+            sb.Append("<button id=\"IskSearch\" label=\"").Append(L(T("Search & insert", "Suchen & einfügen"))).Append("\" size=\"large\" imageMso=\"FindDialog\" onAction=\"OnSearchInsert\" screentip=\"")
+              .Append(X(T("Search & insert (Ctrl+Space)", "Suchen & einfügen (Strg+Leertaste)"))).Append("\" supertip=\"").Append(X(T("Type a name or keyword; with a selection the parts that fit it come first.", "Namen oder Stichwort tippen; mit Auswahl kommen zuerst die passenden Teile."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskEditor\" label=\"").Append(L(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
               .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskSnap\" label=\"").Append(L(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
@@ -909,6 +911,19 @@ namespace InventaSketch.AddIn
         /// gets <see cref="DocumentSettings.Monochrome"/> and is re-rendered, so all colours (fills, text, highlighters)
         /// are mapped by the engine, stay black and white after later edits and come back when switched off.
         /// </summary>
+        /// <summary>"Search &amp; insert": the insert box at the pointer (as Ctrl+Space on the slide).</summary>
+        public void OnSearchInsert(Office.IRibbonControl control)
+        {
+            try
+            {
+                _onSlide?.OpenInsertBox();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Search & insert", ex);
+            }
+        }
+
         public void OnMonochrome(Office.IRibbonControl control)
         {
             try

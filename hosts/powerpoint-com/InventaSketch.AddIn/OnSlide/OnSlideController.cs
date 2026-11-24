@@ -1007,6 +1007,18 @@ namespace InventaSketch.AddIn.OnSlide
             return list;
         }
 
+        /// <summary>The insert box for the ribbon button: with the armed element's fitting parts, else the whole library.</summary>
+        public void OpenInsertBox()
+        {
+            var armed = _mode == Mode.Armed ? _unit : null;
+            Post(() =>
+            {
+                if (CurrentSlide() is not { } s) return;
+                _view ??= SlideView.Current(_app);
+                OpenInsertSearch(s, armed);
+            });
+        }
+
         /// <summary>
         /// The insert box (<see cref="InsertSearch"/>) at the pointer: without typing it lists the parts that fit the selection
         /// (placed in their spot, e.g. a gear on the shaft) and then the recent items; typing searches the whole library,
