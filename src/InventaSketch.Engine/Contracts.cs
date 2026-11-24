@@ -72,6 +72,8 @@ namespace InventaSketch.Engine
         public string? Side { get; set; }
         /// <summary>Maximum number of results (suggestions).</summary>
         public int? Max { get; set; }
+        /// <summary>search: library item ids used last (most recent first), ranked higher.</summary>
+        public List<string>? Recent { get; set; }
     }
 
     public sealed class ObjectInfo
@@ -126,6 +128,31 @@ namespace InventaSketch.Engine
         public string? View { get; set; }
         public string Category { get; set; } = "";
         public bool Points { get; set; }
+        /// <summary>search: fits the selection (placed where it fits when inserted with the selection).</summary>
+        public bool Fits { get; set; }
+    }
+
+    /// <summary>Which quick transforms change the selection (<c>transformEffect</c>).</summary>
+    public sealed class TransformEffectInfo
+    {
+        public bool MirrorH { get; set; }
+        public bool MirrorV { get; set; }
+        public bool Rotate90 { get; set; }
+    }
+
+    /// <summary>Selection-wide operations that change something (<c>arrangeOptions</c>): ids such as "align:row", "mview:axial".</summary>
+    public sealed class ArrangeOption
+    {
+        public string Id { get; set; } = "";
+        public string Label { get; set; } = "";
+        public string Icon { get; set; } = "";
+    }
+
+    /// <summary>Path of a joint of a self-built linkage (<c>trace</c>).</summary>
+    public sealed class TraceInfo
+    {
+        public List<Vec2> Points { get; set; } = new();
+        public bool Closed { get; set; }
     }
 
     public sealed class EditorState
@@ -265,5 +292,7 @@ namespace InventaSketch.Engine
         public string Kind { get; set; } = "none";
         public IReadOnlyList<SnapGuide> Guides { get; set; } = new List<SnapGuide>();
         public Attachment? Attach { get; set; }
+        /// <summary>What the snap docks onto, for a label at the target ("pitch circle", "axis", "pin 2"), else null.</summary>
+        public string? Label { get; set; }
     }
 }

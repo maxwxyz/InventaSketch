@@ -128,9 +128,12 @@ umsetzen, dann Web, dann LibreOffice.
   Wandler, Parksperre, CVT, Well- und Zykloidgetriebe, Getriebegehäuse mit Lagersitzen, Ölwanne;
   docs/de/modules/mechanical-drives.md). Dort offen: Wirkungsgradkennfelder aus Messrastern, Polar- und Flächendiagramme,
   Histogramme, eine zweite y-Achse für eigene Daten; „um die Auswahl einfügen“ für Gehäuse.
-- In COM noch offen: Kegelradpaare in Kopplung und Bewegung, Ravigneaux-Sätze, Zerlegen von Schema-Planetensätzen,
-  Differentialen und Kurvengetrieben, Ansichtswechsel für Haustechnik (Grundriss ↔ Schnitt ↔ Strangschema),
-  Fangbeschriftungen, Tab-Durchlauf, Format übertragen für Semantik.
+- Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
+  Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
+  Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
+- In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Differentialen (braucht ein
+  Korb-Einzelteil) und Kurvengetrieben (braucht eine Kurvenscheibe), Ansichtswechsel für Haustechnik (Grundriss ↔
+  Schnitt ↔ Strangschema), Grenzen und Zwischenlagen für selbst gebaute Ketten.
 - Web und LibreOffice folgen dem COM-Stand; die Engine enthält bereits `LibrarySearch`, `Symmetry`, `Arrange`,
   `AssemblyViews`, die Hosts ergänzen nur die Oberfläche.
 

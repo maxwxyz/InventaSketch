@@ -80,6 +80,12 @@ namespace InventaSketch.Engine
                 ["exportCompact"] = r => { var s = S(r); return new { payload = CompactOf(s.Doc, s.Page, s.Resolve(r.Ids)) }; },
                 ["importCompact"] = ImportCompactCore,
                 ["hostTransform"] = HostTransformCore,
+                ["search"] = SearchCore,
+                ["transformEffect"] = TransformEffectCore,
+                ["arrangeOptions"] = ArrangeOptionsCore,
+                ["arrange"] = ArrangeCore,
+                ["assembly"] = AssemblyCore,
+                ["trace"] = TraceCore,
             };
         }
 
@@ -503,6 +509,141 @@ namespace InventaSketch.Engine
             return Coupling.RigidFollowers(Registry, s.Doc, s.Resolve(r.Ids), s.Lang).ToList();
         }
 
+        /// <summary>
+        /// Insert by typing: ranked library hits for <c>text</c> (<see cref="LibrarySearch"/>); with a selection (<c>ids</c>)
+        /// the parts that fit it come first and are marked <c>fits</c>; <c>recent</c> ranks recently used items higher.
+        /// </summary>
+        private object SearchCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var first = s.Resolve(r.Ids).Select(s.Doc.Get).FirstOrDefault(o => o is not null && Registry.Type(o.Type) is not null);
+            var fitting = first is null ? new List<LibraryItem>() : Registry.Suggestions(first, 12).ToList();
+            var view = first is null ? null : Registry.Type(first.Type)?.ViewOf(first);
+            var hits = LibrarySearch.Find(Registry, r.Text, lang, r.Recent ?? new List<string>(), view, Math.Max(1, r.Max ?? 30), fitting);
+            return hits.Select(i => new SuggestionInfo
+            {
+                Id = i.Id, TypeId = i.TypeId, Name = i.Name.Get(lang), View = i.View, Category = i.Category,
+                Points = Registry.Type(i.TypeId)?.Geometry == GeometryKind.Points, Fits = fitting.Any(f => f.Id == i.Id),
+            }).ToList();
+        }
+
+        /// <summary>Which of mirror horizontally/vertically and rotate by 90° change the selection (<see cref="Symmetry"/>).</summary>
+        private object TransformEffectCore(EngineRequest r)
+        {
+            var s = S(r);
+            var ctx = s.Context();
+            var prims = s.Resolve(r.Ids).Select(s.Doc.Get).Where(o => o is not null && Registry.Type(o.Type) is not null)
+                .SelectMany(o => Registry.Render(o!, ctx)).ToList();
+            var fx = Symmetry.Of(prims);
+            return new TransformEffectInfo { MirrorH = fx.MirrorH, MirrorV = fx.MirrorV, Rotate90 = fx.Rotate90 };
+        }
+
+        /// <summary>Box objects of the selection grouped per top-level element (group or single object), first object each.</summary>
+        private List<SketchObject> ArrangeUnits(EditorSession s, EngineRequest r)
+            => s.Resolve(r.Ids).Select(s.Doc.Get).Where(o => o is not null && Registry.Type(o.Type) is not null).Select(o => o!).ToList();
+
+        /// <summary>
+        /// Selection-wide operations that change something for the selection (<see cref="Arrange"/>): one view for all
+        /// ("mview:&lt;view&gt;"), centres on a row/column ("align:row", "align:column"), even spacing ("dist:h", "dist:v"),
+        /// "like the first" ("match"), renumber reference numerals ("renumber").
+        /// </summary>
+        private object ArrangeOptionsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var de = lang == Lang.De;
+            var objs = ArrangeUnits(s, r);
+            var list = new List<ArrangeOption>();
+            if (objs.Count < 2) return list;
+            foreach (var v in Arrange.CommonViews(Registry, objs))
+                list.Add(new ArrangeOption { Id = "mview:" + v.Id, Label = (de ? "Alle in Ansicht: " : "All in view: ") + v.Label.Get(lang), Icon = IconIds.ForView(v) });
+            var boxes = objs.Select(o => o.IsPointGeometry ? Rect.FromPoints(s.Doc.ResolvePoints(o)) : o.Bounds()).ToList();
+            void Opt(string id, string en, string german, string icon) => list.Add(new ArrangeOption { Id = id, Label = de ? german : en, Icon = icon });
+            if (Arrange.Changes(Arrange.AlignCentres(boxes, true))) Opt("align:row", "Centres on one horizontal line", "Mitten auf eine waagrechte Linie", IconIds.AlignRow);
+            if (Arrange.Changes(Arrange.AlignCentres(boxes, false))) Opt("align:column", "Centres on one vertical line", "Mitten auf eine senkrechte Linie", IconIds.AlignColumn);
+            if (Arrange.Changes(Arrange.Distribute(boxes, true))) Opt("dist:h", "Space evenly left to right", "Gleichmäßig von links nach rechts verteilen", IconIds.DistributeH);
+            if (Arrange.Changes(Arrange.Distribute(boxes, false))) Opt("dist:v", "Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen", IconIds.DistributeV);
+            if (Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context()).Count > 0) Opt("match", "Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil", IconIds.MatchFormat);
+            if (Arrange.Renumber(Numerals(s, objs)).Count > 0) Opt("renumber", "Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren", IconIds.Renumber);
+            return list;
+        }
+
+        private static List<(string Id, Vec2 At, string Numeral)> Numerals(EditorSession s, IEnumerable<SketchObject> objs)
+            => objs.Where(o => o.Type == "patent.numeral" && o.Points is { Count: >= 2 })
+                .Select(o => (o.Id, s.Doc.ResolvePoints(o)[1], !string.IsNullOrEmpty(o.Ref) ? o.Ref! : !string.IsNullOrEmpty(o.Text) ? o.Text! : o.Str("numeral", "10")))
+                .ToList();
+
+        /// <summary>Runs a selection-wide operation <c>action</c> (see <c>arrangeOptions</c>); one undo step.</summary>
+        private object ArrangeCore(EngineRequest r)
+        {
+            var action = r.Action ?? throw new ArgumentException("Missing 'action'.");
+            return Edit(r, "Arrange", (s, ids) =>
+            {
+                var objs = ArrangeUnits(s, r);
+                if (objs.Count < 2) return s.Doc;
+                var doc = s.Doc;
+                if (action.StartsWith("mview:", StringComparison.Ordinal))
+                    return AssemblyViews.Switch(Registry, doc, objs.Select(o => o.Id).ToList(), action.Substring(6), s.Lang);
+                if (action == "match")
+                {
+                    var changed = Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context());
+                    return Edits.Update(doc, changed.Select(o => o.Id).ToList(), o => changed.First(x => x.Id == o.Id));
+                }
+                if (action == "renumber")
+                {
+                    var map = Arrange.Renumber(Numerals(s, objs));
+                    return Edits.Update(doc, map.Keys.ToList(), o =>
+                        !string.IsNullOrEmpty(o.Ref) ? o with { Ref = map[o.Id] } : !string.IsNullOrEmpty(o.Text) ? o with { Text = map[o.Id] } : o.WithParam("numeral", map[o.Id]));
+                }
+                var boxes = objs.Select(o => o.IsPointGeometry ? Rect.FromPoints(doc.ResolvePoints(o)) : o.Bounds()).ToList();
+                var moves = action switch
+                {
+                    "align:row" => Arrange.AlignCentres(boxes, true),
+                    "align:column" => Arrange.AlignCentres(boxes, false),
+                    "dist:h" => Arrange.Distribute(boxes, true),
+                    "dist:v" => Arrange.Distribute(boxes, false),
+                    _ => throw new ArgumentException("Unknown arrange action: " + action),
+                };
+                for (var i = 0; i < objs.Count; i++)
+                    if (moves[i].Length > Arrange.Tolerance) doc = Edits.Move(doc, new[] { objs[i].Id }, moves[i]);
+                return doc;
+            });
+        }
+
+        /// <summary>The objects coupled with the selection, directly or through others (gear train, drive), selection first.</summary>
+        private object AssemblyCore(EngineRequest r)
+        {
+            var s = S(r);
+            var start = s.Resolve(r.Ids);
+            var edges = Coupling.Graph(Registry, s.Doc, s.Lang);
+            var seen = new List<string>(start);
+            var queue = new Queue<string>(start);
+            while (queue.Count > 0)
+            {
+                var id = queue.Dequeue();
+                foreach (var (_, a, b) in edges)
+                {
+                    var other = a == id ? b : b == id ? a : null;
+                    if (other is null || seen.Contains(other)) continue;
+                    seen.Add(other);
+                    queue.Enqueue(other);
+                }
+            }
+            return seen;
+        }
+
+        /// <summary>The path of point <c>index</c> (default: last) of link <c>id</c> while its chain's crank turns (<see cref="Linkage.Trace"/>).</summary>
+        private object TraceCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var o = s.Doc.Get(id) ?? throw new ArgumentException("Unknown object: " + id);
+            var index = r.Index ?? (o.Points?.Count ?? 1) - 1;
+            var path = Linkage.Trace(Registry, s.Doc, id, index, Math.Max(8, r.Max ?? 72), s.Lang);
+            return path is { } p ? new TraceInfo { Points = p.Points.ToList(), Closed = p.Closed } : new TraceInfo();
+        }
+
         /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>
         private object NextItemsCore(EngineRequest r)
         {
@@ -838,7 +979,7 @@ namespace InventaSketch.Engine
             var delta = new Vec2(r.Dx ?? 0, r.Dy ?? 0);
             if (moving.Count == 0) return new SnapResultDto { Dx = delta.X, Dy = delta.Y };
             var res = Snapper.SnapMove(moving, delta, targets, opts);
-            return new SnapResultDto { Dx = res.Delta.X, Dy = res.Delta.Y, Kind = res.Kind, Guides = res.Guides };
+            return new SnapResultDto { Dx = res.Delta.X, Dy = res.Delta.Y, Kind = res.Kind, Guides = res.Guides, Label = SnapLabel.For(res.Target, s.Lang) };
         }
 
         private object SnapPointCore(EngineRequest r)
