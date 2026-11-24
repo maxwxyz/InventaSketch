@@ -135,8 +135,13 @@ umsetzen, dann Web, dann LibreOffice.
   Korb-Einzelteil) und Kurvengetrieben (braucht eine Kurvenscheibe), Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
   Gelenkgrenzen sind offen.
-- Web und LibreOffice folgen dem COM-Stand; die Engine enthält bereits `LibrarySearch`, `Symmetry`, `Arrange`,
-  `AssemblyViews`, die Hosts ergänzen nur die Oberfläche.
+- Web: am 24.11.2026 auf den COM-Stand der UI/UX-Runde gebracht (Spiegeln/Drehen nur mit Wirkung, Einfügefeld mit
+  Strg+Leertaste, passende Teile an ihrem Platz, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung,
+  Koppelkurve, F = n und Zerlegen; Engine-Methoden `search`, `transformEffect`, `arrangeOptions`/`arrange`,
+  `assembly`, `trace`/`drawTrace`, `insertFitting`, `explode`, `dof`). Noch nicht in PowerPoint im Web geprüft (braucht
+  das Entwicklerzertifikat auf dem Rechner des Maintainers). Im Web offen: Anbau-„+“ auf der Bühne, Live-Vorschau der
+  Kopplung, Zwischenlagen, Maß zwischen Teilen, Neuzeichnen der Stückliste bei jeder Bearbeitung (Engine-Seite fertig).
+- LibreOffice folgt nach dem Web; die Engine-API oben ist hostneutral.
 
 ### Weitere sinnvolle Module und Funktionen
 

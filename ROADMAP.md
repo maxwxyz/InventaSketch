@@ -121,8 +121,13 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding differentials (needs a cage part) and cam
   mechanisms (needs a cam disc part), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
   positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are open.
-- Web and LibreOffice follow the COM state; the engine already carries `LibrarySearch`, `Symmetry`, `Arrange`,
-  `AssemblyViews`, so the hosts only add UI.
+- Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
+  fitting parts placed in their spot, multi-selection bar, select assembly, snap labels, coupler curve, F = n and
+  explode; engine methods `search`, `transformEffect`, `arrangeOptions`/`arrange`, `assembly`, `trace`/`drawTrace`,
+  `insertFitting`, `explode`, `dof`). Not yet verified inside PowerPoint on the web (needs the dev certificate on the
+  maintainer's machine). Open on the web: build "+" ports on the stage, live coupling preview, ghost positions,
+  dimension between parts, parts list redraw on every edit (engine side is done).
+- LibreOffice follows after the web; the engine API above is host-neutral.
 
 ### Further modules and functions worth adding
 
