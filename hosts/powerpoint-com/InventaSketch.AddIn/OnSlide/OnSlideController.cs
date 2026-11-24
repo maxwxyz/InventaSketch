@@ -977,7 +977,12 @@ namespace InventaSketch.AddIn.OnSlide
             // Self-built linkage: its degree of freedom (Grübler) at a glance.
             if (first is not null && first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
                 && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
+            {
                 list.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom (Grübler): ", "Freiheitsgrad (Grübler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke")));
+                // A chain that moves with one input: the path of this link's end as the crank turns (coupler curve).
+                if (dof.Dof == 1)
+                    list.Add(new BarButton("trace", "", T("Draw the path of this link's end (coupler curve)", "Bahnkurve des Gliedendes zeichnen (Koppelkurve)")) { IconId = IconIds.Trace });
+            }
             // Motion mode for parts that can move (gear train, linkage): drag turns them instead of moving them.
             if (MovablePart() is not null)
                 list.Add(new BarButton("motion", "", T("Move: drag turns the gears / linkage", "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
@@ -2169,6 +2174,22 @@ namespace InventaSketch.AddIn.OnSlide
             if (id == "planscale")
             {
                 PlanScaleRequested?.Invoke();
+                return;
+            }
+            if (id == "trace")
+            {
+                // The coupler curve of the link's last point as a motion path element (one undo step).
+                var link = unit.Objects.FirstOrDefault(o => o.IsPointGeometry && Linkage.IsPart(registry, o));
+                if (link is null) return;
+                var full = SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+                if (Linkage.Trace(registry, full, link.Id, link.Points!.Count - 1, 72, _lang()) is not { } path || path.Points.Count < 3) return;
+                var item = registry.Item(path.Closed ? "kin.path.closed" : "kin.path");
+                if (item is null) return;
+                _app.StartNewUndoEntry();
+                var curve = registry.Create(item, path.Points[0]) with { Points = path.Points.Select(q => new Vec2(Math.Round(q.X, 4), Math.Round(q.Y, 4))).ToList() };
+                if (!path.Closed) curve = curve.WithParam("arrow", false);
+                SketchUnits.Draw(slide, registry, SingleUnitDoc(curve), _lang());
+                Log.Info("Traced coupler curve: " + path.Points.Count + " points" + (path.Closed ? ", closed" : ""));
                 return;
             }
             if (id == "nextbox")

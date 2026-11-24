@@ -135,6 +135,7 @@ namespace InventaSketch.Core
         public const string SelectAssembly = "cmd-select-assembly"; // select every part coupled with this one
         public const string FitAround = "cmd-fit-around";   // size a housing/frame around what it contains
         public const string MatchFormat = "cmd-match-format"; // take view, parameters and style of the first element
+        public const string Trace = "cmd-trace";            // draw the path a point runs through (coupler curve)
 
         // Option pictograms (line ends, line styles, line courses): a short line with the feature on the right.
         public const string HeadNone = "head-none";
@@ -259,7 +260,7 @@ namespace InventaSketch.Core
         {
             Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin, Chart,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
-            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround, MatchFormat,
+            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround, MatchFormat, Trace,
             HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
             SizeSmall, SizeMedium, SizeLarge, LineSolid, LineDash, LineDot, LineDashDot, LineDashDotDot, LineLongDash,
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
