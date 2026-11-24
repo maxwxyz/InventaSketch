@@ -3,7 +3,7 @@
 
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
-  SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo,
+  SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo, BuildPortInfo, CouplingPreview,
 } from "./types";
 
 export interface EngineBackend {
@@ -136,6 +136,20 @@ export class Session {
   explode(id: string): EditorState { return this.c("explode", { id }); }
   /** Degree of freedom of the self-built linkage of `id` and whether `id` can be exploded. */
   dof(id: string): { links: number | null; joints: number | null; dof: number | null; explodable: boolean } { return this.c("dof", { id }); }
+  /** Ghost positions of the self-built linkage of link `id`: dashed grey copies over the crank's range, grouped; one undo step. */
+  drawGhosts(id: string, max?: number): EditorState { return this.c("drawGhosts", { id, max }); }
+  /** Live coupling preview of a move (dx/dy) or scale (sx/sy about pivot): neighbours that would follow, as SVG in page mm. */
+  couplingPreview(ids: string[], change: { dx: number; dy: number } | { sx: number; sy: number; pivotX: number; pivotY: number }): CouplingPreview {
+    return this.c("couplingPreview", { ids, ...change });
+  }
+  /** Build "+" ports of object `id` (page mm, outward direction; `stretch` for a shaft end that can be dragged). */
+  buildPorts(id: string): BuildPortInfo[] { return this.c("buildPorts", { id }); }
+  /** Library items that dock at port `key` of object `id`, best first. */
+  buildItems(id: string, key: string, lang: string, max?: number): SuggestionInfo[] { return this.c("buildItems", { id, key, lang, max }); }
+  /** Docks library item `itemId` at port `key` of object `id`, coupled and selected; one undo step. */
+  buildPlace(id: string, key: string, itemId: string): EditorState { return this.c("buildPlace", { id, key, itemId }); }
+  /** Stretches the shaft end at port `key` of object `id` to x/y; one undo step. */
+  buildStretch(id: string, key: string, x: number, y: number): EditorState { return this.c("buildStretch", { id, key, x, y }); }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */
   update(object: unknown): EditorState { return this.c("update", { object }); }
 }
