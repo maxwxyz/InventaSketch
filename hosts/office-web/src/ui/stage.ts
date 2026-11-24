@@ -649,9 +649,19 @@ export class Stage {
           }
           const to = stretchTarget(d.port, q);
           d.to = to;
-          // Preview: the shaft axis from the old end to the new one (longer: solid blue; shorter: the part that goes).
+          // Preview: the stretched shaft as the engine draws it (buildStretchPreview), plus the new end; the axis line only
+          // when the engine has no drawing for it.
+          let shaft: Node[] = [];
+          try {
+            const svg = this.host.session().buildStretchPreview(d.id, d.port.id, to.x, to.y);
+            if (svg) shaft = svgChildren(svg);
+          } catch {
+            shaft = [];
+          }
           this.ghost.replaceChildren(
-            s("line", { class: `isk-stretch-preview${to.delta < 0 ? " is-shorter" : ""}`, x1: d.port.x, y1: d.port.y, x2: to.x, y2: to.y }),
+            ...(shaft.length > 0
+              ? shaft
+              : [s("line", { class: `isk-stretch-preview${to.delta < 0 ? " is-shorter" : ""}`, x1: d.port.x, y1: d.port.y, x2: to.x, y2: to.y })]),
             s("circle", { class: "isk-stretch-end", cx: to.x, cy: to.y, r: 3 / this.scale }),
           );
           const mm = Math.round(to.delta * 10) / 10;

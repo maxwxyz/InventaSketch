@@ -139,8 +139,10 @@ umsetzen, dann Web, dann LibreOffice.
   Strg+Leertaste, passende Teile an ihrem Platz, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung,
   Koppelkurve, F = n und Zerlegen; Engine-Methoden `search`, `transformEffect`, `arrangeOptions`/`arrange`,
   `assembly`, `trace`/`drawTrace`, `insertFitting`, `explode`, `dof`). Noch nicht in PowerPoint im Web geprüft (braucht
-  das Entwicklerzertifikat auf dem Rechner des Maintainers). Im Web offen: Anbau-„+“ auf der Bühne, Live-Vorschau der
-  Kopplung, Zwischenlagen, Maß zwischen Teilen, Neuzeichnen der Stückliste bei jeder Bearbeitung (Engine-Seite fertig).
+  das Entwicklerzertifikat auf dem Rechner des Maintainers). Seitdem auch im Web: Anbau-„+“ auf der Bühne mit
+  Wellenziehen (Vorschau aus `buildStretchPreview`), Live-Vorschau der Kopplung, Zwischenlagen, Maß zwischen zwei Teilen
+  (24./25.11.2026). Im Web offen: Bewegungsmodus (live drehen durch Ziehen), Bibliothekssuche der Seitenleiste über das
+  Einfügefeld.
 - LibreOffice folgt nach dem Web; die Engine-API oben ist hostneutral.
 
 ### Review am Ende des 24.11.2026 und nächste Schritte
@@ -161,8 +163,8 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
   35 Minuten, Maus belegt).
 
 **Als Nächstes, in dieser Reihenfolge:**
-1. Web: die übrigen COM-Funktionen (Anbau-„+“ auf der Bühne, Live-Vorschau der Kopplung, Zwischenlagen, Maß zwischen
-   Teilen), danach Prüfung in PowerPoint im Web, sobald der Maintainer das Entwicklerzertifikat installiert hat.
+1. Web: Bewegungsmodus, danach Prüfung in PowerPoint im Web, sobald der Maintainer das Entwicklerzertifikat
+   installiert hat (Anbau-„+“, Kopplungsvorschau, Zwischenlagen und Maß sind erledigt).
 2. LibreOffice: den Host auf den Stand der Engine-API bringen (Einfügefeld, kontextbezogene Leiste, Mehrfachauswahl,
    Baugruppenansicht).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),

@@ -28,6 +28,10 @@ namespace InventaSketch.Engine.Tests
             Assert.Contains("dim", opts);
             var withDim = EngineApiTests.Call(api, "arrange", new { session, ids, action = "dim" });
             Assert.Equal(3, withDim.GetProperty("objects").GetArrayLength());
+            var again = EngineApiTests.Call(api, "arrangeOptions", new { session, ids }).EnumerateArray().Select(o => o.GetProperty("id").GetString()).ToList();
+            Assert.DoesNotContain("dim", again);
+            // A gear port is no shaft end: nothing to stretch.
+            Assert.All(EngineApiTests.Call(api, "buildPorts", new { session, id = gear }).EnumerateArray(), p => Assert.False(p.GetProperty("stretch").GetBoolean()));
         }
     }
 }

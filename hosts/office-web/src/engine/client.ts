@@ -150,6 +150,8 @@ export class Session {
   buildPlace(id: string, key: string, itemId: string): EditorState { return this.c("buildPlace", { id, key, itemId }); }
   /** Stretches the shaft end at port `key` of object `id` to x/y; one undo step. */
   buildStretch(id: string, key: string, x: number, y: number): EditorState { return this.c("buildStretch", { id, key, x, y }); }
+  /** SVG (page mm) of `id` with the shaft end at `key` stretched to x/y; nothing changes. */
+  buildStretchPreview(id: string, key: string, x: number, y: number): string { return this.c<{ svg: string }>("buildStretchPreview", { id, key, x, y }).svg; }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */
   update(object: unknown): EditorState { return this.c("update", { object }); }
 }

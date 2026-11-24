@@ -97,6 +97,7 @@ namespace InventaSketch.Engine
                 ["buildItems"] = BuildItemsCore,
                 ["buildPlace"] = BuildPlaceCore,
                 ["buildStretch"] = BuildStretchCore,
+                ["buildStretchPreview"] = BuildStretchPreviewCore,
             };
         }
 
@@ -576,10 +577,15 @@ namespace InventaSketch.Engine
             if (Arrange.Changes(Arrange.Distribute(boxes, true))) Opt("dist:h", "Space evenly left to right", "Gleichmäßig von links nach rechts verteilen", IconIds.DistributeH);
             if (Arrange.Changes(Arrange.Distribute(boxes, false))) Opt("dist:v", "Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen", IconIds.DistributeV);
             if (Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context()).Count > 0) Opt("match", "Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil", IconIds.MatchFormat);
-            if (objs.Count == 2 && objs.All(o => !o.IsPointGeometry)) Opt("dim", "Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)", IconIds.Dimension);
+            if (objs.Count == 2 && objs.All(o => !o.IsPointGeometry) && !HasDimensionBetween(s.Doc, objs[0].Id, objs[1].Id)) Opt("dim", "Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)", IconIds.Dimension);
             if (Arrange.Renumber(Numerals(s, objs)).Count > 0) Opt("renumber", "Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren", IconIds.Renumber);
             return list;
         }
+
+        /// <summary>True if a dimension already docks on both objects.</summary>
+        private static bool HasDimensionBetween(SketchDocument doc, string a, string b)
+            => doc.Objects.Values.Any(o => o.Type.StartsWith("ann.dimension", StringComparison.Ordinal) && o.Attach is { Count: >= 2 } at
+                && at.Any(x => x?.ObjectId == a) && at.Any(x => x?.ObjectId == b));
 
         private static List<(string Id, Vec2 At, string Numeral)> Numerals(EditorSession s, IEnumerable<SketchObject> objs)
             => objs.Where(o => o.Type == "patent.numeral" && o.Points is { Count: >= 2 })
@@ -784,9 +790,11 @@ namespace InventaSketch.Engine
             var s = S(r);
             var ids = s.Resolve(r.Ids);
             if (ids.Count == 0) return new { ids = Array.Empty<string>(), svg = "" };
-            var after = r.Sx is not null || r.Sy is not null
-                ? Edits.Scale(s.Doc, ids, new Vec2(r.PivotX ?? 0, r.PivotY ?? 0), r.Sx ?? 1, r.Sy ?? 1)
-                : Edits.Move(s.Doc, ids, new Vec2(r.Dx ?? 0, r.Dy ?? 0));
+            var after = r.Degrees is double deg
+                ? Edits.Rotate(s.Doc, ids, new Vec2(r.PivotX ?? 0, r.PivotY ?? 0), deg)
+                : r.Sx is not null || r.Sy is not null
+                    ? Edits.Scale(s.Doc, ids, new Vec2(r.PivotX ?? 0, r.PivotY ?? 0), r.Sx ?? 1, r.Sy ?? 1)
+                    : Edits.Move(s.Doc, ids, new Vec2(r.Dx ?? 0, r.Dy ?? 0));
             var result = Coupling.Propagate(Registry, s.Doc, after, s.Lang);
             var own = new HashSet<string>(ids, StringComparer.Ordinal);
             var changed = result.Objects.Values.Where(o => !own.Contains(o.Id) && after.Get(o.Id) is { } x
@@ -802,10 +810,11 @@ namespace InventaSketch.Engine
         {
             var s = S(r);
             var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var o = s.Doc.Get(id);
             return Building.Ports(Registry, s.Doc, id, s.Lang).Select(p => new
             {
                 id = p.Id, kind = p.Kind.ToString(), x = p.At.X, y = p.At.Y, dx = p.Dir.X, dy = p.Dir.Y,
-                stretch = p.Kind == PortKind.AxisEnd,
+                stretch = o is not null && Building.CanStretch(Registry, s.Doc, o, p, s.Lang),
             }).ToList();
         }
 
@@ -852,6 +861,18 @@ namespace InventaSketch.Engine
             var port = Port(s, id, r.Key);
             s.Apply("Stretch", d => Building.StretchEnd(Registry, d, id, port, new Vec2(r.X ?? port.At.X, r.Y ?? port.At.Y), s.Lang));
             return StateOf(s, r);
+        }
+
+        /// <summary>SVG (page mm) of object <c>id</c> with the shaft end at port <c>key</c> stretched to <c>x</c>/<c>y</c>; nothing changes.</summary>
+        private object BuildStretchPreviewCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var port = Port(s, id, r.Key);
+            var doc = Building.StretchEnd(Registry, s.Doc, id, port, new Vec2(r.X ?? port.At.X, r.Y ?? port.At.Y), s.Lang);
+            var o = doc.Get(id);
+            if (o is null) return new { svg = "" };
+            return new { svg = SvgRenderer.RenderPrimitives(Registry.Render(o, new RenderContext(doc, s.Lang))) };
         }
 
         /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>
