@@ -98,6 +98,9 @@ namespace InventaSketch.Engine
                 ["buildPlace"] = BuildPlaceCore,
                 ["buildStretch"] = BuildStretchCore,
                 ["buildStretchPreview"] = BuildStretchPreviewCore,
+                ["motionInfo"] = MotionInfoCore,
+                ["motionTurn"] = MotionTurnCore,
+                ["motionDrag"] = MotionDragCore,
             };
         }
 
@@ -873,6 +876,50 @@ namespace InventaSketch.Engine
             var o = doc.Get(id);
             if (o is null) return new { svg = "" };
             return new { svg = SvgRenderer.RenderPrimitives(Registry.Render(o, new RenderContext(doc, s.Lang))) };
+        }
+
+        /// <summary>
+        /// Motion mode: whether object <c>id</c> can move as a mechanism – <c>kind</c> "gear" (a part of a gear train that
+        /// turns about its centre: <c>x</c>/<c>y</c>), "linkage" (a link of a self-built chain with F ≥ 1) or "none".
+        /// </summary>
+        private object MotionInfoCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var o = s.Doc.Get(id);
+            if (o is null) return new { kind = "none" };
+            if (o.IsPointGeometry && Linkage.IsPart(Registry, o) && Linkage.Dof(Registry, s.Doc, id, s.Lang) is { Dof: >= 1 } d)
+                return new { kind = "linkage", dof = d.Dof };
+            if (!o.IsPointGeometry && GearTrain.Spins(Registry, o))
+            {
+                var assembly = (List<string>)AssemblyCore(new EngineRequest { Session = r.Session, Ids = new List<string> { id } });
+                return new { kind = "gear", x = o.Transform.X, y = o.Transform.Y, coupled = assembly.Count > 1 };
+            }
+            return new { kind = "none" };
+        }
+
+        /// <summary>Motion mode: turns gear <c>id</c> by <c>degrees</c> with its whole train (ratios kept); one undo step.</summary>
+        private object MotionTurnCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var deg = r.Degrees ?? 0;
+            if (Math.Abs(deg) < 1e-9 || s.Doc.Get(id) is null) return StateOf(s, r);
+            s.Apply("Turn", d => GearTrain.Turn(Registry, d, id, deg, s.Lang));
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// Motion mode: drags joint <c>index</c> of link <c>id</c> towards <c>x</c>/<c>y</c>; the self-built chain follows
+        /// with constant link lengths (<see cref="Linkage.Drag"/>); one undo step.
+        /// </summary>
+        private object MotionDragCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            if (s.Doc.Get(id) is null) return StateOf(s, r);
+            s.Apply("Move linkage", d => Linkage.Drag(Registry, d, id, r.Index ?? 1, new Vec2(r.X ?? 0, r.Y ?? 0), s.Lang));
+            return StateOf(s, r);
         }
 
         /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>
