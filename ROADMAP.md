@@ -93,7 +93,8 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
    content (no thumbnail rows).
 3. **One insert flow.** Insert button, pie menu and Ctrl+Space open the same insert box at the pointer: parts that fit
    the selection first (placed where they fit), then recent items; typing searches the whole library (both languages,
-   umlaut folding, the selection's view preferred). Docking onto a specific spot stays on the canvas ("+" ports).
+   umlaut folding, the selection's view preferred). A build "+" on the canvas opens the same box at the "+" with the
+   parts that dock there first.
 4. **Multi-selection has its own bar.** One view for all, centres on a row/column, even spacing, renumber reference
    numerals – each only when it changes something (`Arrange`); PowerPoint's native format stays available.
 5. **Assemblies are first-class.** "Select assembly" selects every coupled part; switching the view of a selected

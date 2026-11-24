@@ -101,8 +101,8 @@ umsetzen, dann Web, dann LibreOffice.
    sprechendes Piktogramm). Die Leiste wächst nie mit Inhalt (keine Vorschaubildreihen).
 3. **Ein Einfügeweg.** Einfügen-Knopf, Kreismenü und Strg+Leertaste öffnen dasselbe Einfügefeld am Zeiger: zuerst, was
    zur Auswahl passt (an seinen Platz gesetzt), dann zuletzt Verwendetes; Tippen durchsucht die ganze Bibliothek (beide
-   Sprachen, Umlaute gleichwertig, Ansicht der Auswahl bevorzugt). Andocken an eine bestimmte Stelle bleibt auf der Folie
-   („+“-Ports).
+   Sprachen, Umlaute gleichwertig, Ansicht der Auswahl bevorzugt). Ein Anbau-„+“ auf der Folie öffnet dasselbe Feld am
+   „+“ mit den dort andockenden Teilen zuerst.
 4. **Mehrfachauswahl hat eine eigene Leiste.** Eine Ansicht für alle, Mitten auf eine Zeile/Spalte, gleichmäßig
    verteilen, Bezugszeichen neu nummerieren – jeweils nur, wenn es etwas ändert (`Arrange`); das native
    PowerPoint-Format bleibt verfügbar.

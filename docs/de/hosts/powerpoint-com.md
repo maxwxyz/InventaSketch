@@ -309,7 +309,9 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   - *Einfügefeld:* ein Einfügen-Knopf für jedes Element (auch im Kreismenü, und Strg+Leertaste überall auf der Folie)
     öffnet ein Suchfeld am Zeiger: zuerst, was zur Auswahl passt („passt“, wird an seinen Platz gesetzt), dann zuletzt
     Verwendetes; Tippen durchsucht die ganze Bibliothek (`LibrarySearch`: beide Sprachen, Umlaute = ae/oe/ue/ss,
-    Ansicht der Auswahl bevorzugt). Die früher an die Leiste angehängten Vorschaubilder sind entfallen.
+    Ansicht der Auswahl bevorzugt). Ein Klick auf ein Anbau-„+“ öffnet dasselbe Feld direkt am „+“ mit den dort
+    andockenden Teilen zuerst, „Ändern in …“ nach dem Schnelleinfügen öffnet es mit dem, was das neue Element werden
+    kann. Die früher an die Leiste angehängten Vorschaubilder sind entfallen.
   - *Leiste für Mehrfachauswahl:* Bei zwei oder mehr ausgewählten InventaSketch-Elementen bietet eine Leiste eine
     Ansicht für alle, Mitten auf eine Zeile oder Spalte, gleichmäßiges Verteilen und Neunummerieren der Bezugszeichen in
     Lesereihenfolge (`Arrange`) – jeweils nur, wenn es etwas ändert. Das native PowerPoint-Format bleibt verfügbar.

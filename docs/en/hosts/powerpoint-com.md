@@ -324,7 +324,9 @@ UX round (2026-11-20, from the maintainer's feedback):
   - *Insert box:* one insert button for every element (also in the pie menu, and Ctrl+Space anywhere on the slide)
     opens a search box at the pointer: parts that fit the selection first ("fits", placed where they fit), then recent
     items; typing searches the whole library (`LibrarySearch`: both languages, umlauts = ae/oe/ue/ss, the selection's
-    view preferred). The thumbnails that used to be appended to the bar are gone.
+    view preferred). A click on a build "+" opens the same box at the "+" with the parts that dock there first, and
+    "make it …" after a quick add opens it with what the new element can become. The thumbnails that used to be
+    appended to the bar are gone.
   - *Multi-selection bar:* with two or more InventaSketch elements selected, a bar offers one view for all, centres on
     a row or column, even spacing and renumbering of reference numerals in reading order (`Arrange`) – each only when it
     changes something. PowerPoint's own format stays available for the native side.

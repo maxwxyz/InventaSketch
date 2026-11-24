@@ -300,6 +300,17 @@ namespace InventaSketch.AddIn.OnSlide
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
                 if (!view.SameAs(_view)) _view = view;
+                // A selection grown to several elements without a selection event (selected through the object model):
+                // the multi-selection bar takes over.
+                if (_mode == Mode.Armed)
+                {
+                    var sel = _app.ActiveWindow?.Selection;
+                    if (sel is not null && sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count > 1)
+                    {
+                        OnSelectionChange(sel);
+                        return;
+                    }
+                }
                 // Native moves/resizes of the armed unit (mouse, arrow keys, format pane): re-read and re-arm.
                 if (_mode == Mode.Armed && _unit is not null)
                 {
