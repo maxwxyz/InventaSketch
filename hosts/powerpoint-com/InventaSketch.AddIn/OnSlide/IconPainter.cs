@@ -319,6 +319,13 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawRectangle(pen, 6, 3, 9, 4); g.DrawRectangle(pen, 6, 10, 9, 4); g.DrawRectangle(pen, 6, 17, 9, 4);
                     g.DrawLine(thin, 19, 7, 19, 10); g.DrawLine(thin, 19, 14, 19, 17);
                     break;
+                case IconIds.Dimension:
+                    // Dimension line with arrowheads between two extension lines.
+                    g.DrawLine(thin, 4, 6, 4, 19); g.DrawLine(thin, 20, 6, 20, 19);
+                    g.DrawLine(pen, 5, 14, 19, 14);
+                    g.FillPolygon(brush, new[] { new PointF(4.5f, 14), new PointF(8.5f, 12), new PointF(8.5f, 16) });
+                    g.FillPolygon(brush, new[] { new PointF(19.5f, 14), new PointF(15.5f, 12), new PointF(15.5f, 16) });
+                    break;
                 case IconIds.Trace:
                     // A dashed loop with the tracing point on it.
                     g.DrawBezier(dash, 4, 15, 4, 4, 20, 4, 20, 12);

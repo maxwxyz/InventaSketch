@@ -136,6 +136,7 @@ namespace InventaSketch.Core
         public const string FitAround = "cmd-fit-around";   // size a housing/frame around what it contains
         public const string MatchFormat = "cmd-match-format"; // take view, parameters and style of the first element
         public const string Trace = "cmd-trace";            // draw the path a point runs through (coupler curve)
+        public const string Dimension = "cmd-dimension";    // a dimension between two parts
 
         // Option pictograms (line ends, line styles, line courses): a short line with the feature on the right.
         public const string HeadNone = "head-none";
@@ -260,7 +261,7 @@ namespace InventaSketch.Core
         {
             Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin, Chart,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
-            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround, MatchFormat, Trace,
+            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround, MatchFormat, Trace, Dimension,
             HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
             SizeSmall, SizeMedium, SizeLarge, LineSolid, LineDash, LineDot, LineDashDot, LineDashDotDot, LineLongDash,
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
@@ -515,6 +516,26 @@ namespace InventaSketch.Core
         public virtual bool IsPart => true;
 
         /// <summary>
+        /// True if the rendering lists or summarises all parts of the document (a parts-list table): every edit of a part
+        /// redraws it (<c>ChangeSet.DependentsOf</c> in the engine, the COM host's dependent units). Such objects are never
+        /// parts themselves.
+        /// </summary>
+        public virtual bool DependsOnAllParts => false;
+
+        /// <summary>
+        /// How a whole installation of this type switches its view with the arrangement kept (<see cref="AssemblyViews"/>),
+        /// e.g. building services between plan, section and schematic; null (default): the mechanical rule of
+        /// <see cref="AssemblyViews"/> (axes in the plane ↔ along the axes).
+        /// </summary>
+        public virtual IAssemblyViewSwitch? AssemblyViewSwitch => null;
+
+        /// <summary>
+        /// The registry the type was last registered with (set by <see cref="Registry.Register"/>). Types that render from
+        /// other objects of the document (a parts list naming each part) use it to read their types and labels.
+        /// </summary>
+        public Registry? Owner { get; internal set; }
+
+        /// <summary>
         /// Quick add (<see cref="Flow"/>): the library item id (or type id) of the connector that joins an element added next
         /// to <paramref name="o"/> with the "+" arrows; "" chains without a connector (process steps), null (default) offers
         /// no quick add. Flowchart, UML, ER and BPMN elements and basic shapes return their usual connector.
@@ -733,6 +754,7 @@ namespace InventaSketch.Core
             {
                 if (_types.ContainsKey(t.Id)) throw new InvalidOperationException($"Object type '{t.Id}' is already registered.");
                 _types[t.Id] = t;
+                t.Owner = this;
             }
             _modules.Add(module);
             _categories.AddRange(module.Categories);

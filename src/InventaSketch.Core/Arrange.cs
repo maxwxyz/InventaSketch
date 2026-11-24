@@ -113,6 +113,19 @@ namespace InventaSketch.Core
             return true;
         }
 
+        /// <summary>
+        /// Where a dimension between two parts measures from on <paramref name="o"/>: its hub (the axis of a gear, pulley,
+        /// bearing), else the centre of its pitch circle, else the box centre – as the anchor to dock the dimension end on.
+        /// </summary>
+        public static Anchor MeasurePoint(Registry registry, SketchObject o, RenderContext ctx)
+        {
+            var anchors = registry.PageAnchors(o, ctx).ToList();
+            return anchors.FirstOrDefault(x => x.Kind == AnchorKind.Point && x.Role == AnchorRole.Hub)
+                ?? anchors.Where(x => x.Kind == AnchorKind.Circle && x.Role is AnchorRole.Pitch or AnchorRole.PitchInner).Select(x => Anchor.Point(AnchorRole.Center, x.P)).FirstOrDefault()
+                ?? anchors.FirstOrDefault(x => x.Kind == AnchorKind.Point && x.Role == AnchorRole.Center)
+                ?? Anchor.Point(AnchorRole.Center, new Vec2(o.Transform.X, o.Transform.Y));
+        }
+
         private static Rect Union(IEnumerable<Rect> boxes)
         {
             var list = boxes.ToList();

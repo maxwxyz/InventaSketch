@@ -82,39 +82,19 @@ namespace InventaSketch.Core
         public string MimeType => "text/csv";
         public I18nText Preserves => new("Part types, names, reference numerals, quantities, parameters.", "Teiletypen, Bezeichnungen, Bezugszeichen, Mengen, Parameter.");
 
-        /// <summary>Box objects of part types (<see cref="ObjectType.IsPart"/>); annotations and patent marks never count.</summary>
-        private static bool IsPart(Registry registry, SketchObject o)
-            => !o.IsPointGeometry && registry.Type(o.Type)?.IsPart != false
-               && !o.Type.StartsWith("ann.", StringComparison.Ordinal) && !o.Type.StartsWith("patent.", StringComparison.Ordinal);
-
-        public bool Applies(Registry registry, SketchDocument doc, IReadOnlyList<SketchObject> objects) => objects.Any(o => IsPart(registry, o));
+        public bool Applies(Registry registry, SketchDocument doc, IReadOnlyList<SketchObject> objects) => objects.Any(o => PartsList.IsPart(registry, o));
 
         public string Export(Registry registry, SketchDocument doc, IReadOnlyList<SketchObject> objects, Lang lang)
         {
-            var rows = objects.Where(o => IsPart(registry, o)).Select(o => new
-            {
-                Numeral = o.Ref ?? "",
-                Name = Exports.Label(registry, o, lang),
-                o.Type,
-                TypeName = registry.Type(o.Type)?.Name.Get(lang) ?? o.Type,
-                Params = string.Join("; ", o.Params.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => p.Key + "=" + Format(p.Value))),
-            })
-            .GroupBy(r => (r.Numeral, r.Name, r.Type, r.Params))
-            .OrderBy(g => int.TryParse(g.Key.Numeral, out var n) ? n : int.MaxValue).ThenBy(g => g.Key.Numeral, StringComparer.Ordinal).ThenBy(g => g.Key.Name, StringComparer.CurrentCulture)
-            .ToList();
             var sb = new StringBuilder();
             sb.Append(lang == Lang.De ? "Pos,Bezugszeichen,Bezeichnung,Typ,Menge,Parameter" : "Item,Numeral,Name,Type,Quantity,Parameters").Append("\r\n");
-            var pos = 1;
-            foreach (var g in rows)
+            foreach (var r in PartsList.Rows(registry, objects, lang))
             {
-                var first = g.First();
-                sb.Append(pos++.ToString(CultureInfo.InvariantCulture)).Append(',').Append(Exports.Csv(first.Numeral)).Append(',').Append(Exports.Csv(first.Name)).Append(',')
-                  .Append(Exports.Csv(first.TypeName)).Append(',').Append(g.Count().ToString(CultureInfo.InvariantCulture)).Append(',').Append(Exports.Csv(first.Params)).Append("\r\n");
+                sb.Append(r.Item.ToString(CultureInfo.InvariantCulture)).Append(',').Append(Exports.Csv(r.Numeral)).Append(',').Append(Exports.Csv(r.Name)).Append(',')
+                  .Append(Exports.Csv(r.TypeName)).Append(',').Append(r.Quantity.ToString(CultureInfo.InvariantCulture)).Append(',').Append(Exports.Csv(r.Parameters)).Append("\r\n");
             }
             return sb.ToString();
         }
-
-        private static string Format(ParamValue v) => v.ToString() ?? "";
     }
 
     /// <summary>

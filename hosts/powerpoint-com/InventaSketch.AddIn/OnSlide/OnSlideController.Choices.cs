@@ -21,6 +21,9 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>At most this many choice buttons in the bar.</summary>
         internal const int MaxBarChoices = 6;
 
+        /// <summary>Up to this many views are single buttons in the bar; more become one view chip with a list.</summary>
+        internal const int MaxViewButtons = 3;
+
         internal sealed record ChoiceOption(string Value, string Label, string? IconId, Bitmap? Icon);
 
         internal sealed record BarChoice(string Key, string Tip, string Current, bool Mirror, IReadOnlyList<ChoiceOption> Options)
@@ -37,6 +40,10 @@ namespace InventaSketch.AddIn.OnSlide
             var lang = _lang();
             var list = new List<BarChoice>();
             var scale = _view?.DeviceScale ?? 1;
+            // Many views (a gear has five): one view chip with a list instead of a row of view buttons.
+            if (registry.Type(o.Type) is { } vt && vt.Views.Count > MaxViewButtons)
+                list.Add(new BarChoice("@view", T("View", "Ansicht"), vt.ViewOf(o), false,
+                    vt.Views.Select(v => new ChoiceOption(v.Id, v.Label.Get(lang), IconPainter.ForView(v), null)).ToList()));
             if (o.IsPointGeometry && Registry.IsConvertible(o))
             {
                 var options = Registry.ConversionTargets
@@ -121,6 +128,7 @@ namespace InventaSketch.AddIn.OnSlide
             return k switch
             {
                 "@type" => "conv:" + value,
+                "@view" => "view:" + value,
                 "@dash" => "dash:" + value,
                 _ => "param:" + k + ":" + value,
             };
