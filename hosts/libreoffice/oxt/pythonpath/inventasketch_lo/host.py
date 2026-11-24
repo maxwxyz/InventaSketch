@@ -1,17 +1,23 @@
 """Document side of the extension: target page, insertion point, selection, insert and edit flows.
 
-Every user action uses a short-lived engine session (createSession -> insert/importCompact -> edit -> drawPlan ->
-closeSession), so the engine process keeps no per-document state and may be restarted at any time. The page of the
-session has the size of the LibreOffice page, so draw plan coordinates (pt) are page coordinates. One undo step per
-action (UndoManager context).
+Every user action uses a short-lived engine session, so the engine process keeps no per-document state and may be
+restarted at any time. The page of the session has the size of the LibreOffice page, so draw plan coordinates (pt) are
+page coordinates. One undo step per action (UndoManager context).
+
+Editing goes through a *page session* (``PageSession``): every InventaSketch unit on the page is imported into one
+engine session (the selected units last, so the parts coupled with them, the chain of a linkage or a gear train are
+known to the engine), native moves/resizes/rotations since the last drawing are applied (``hostTransform``), the engine
+operation runs, and exactly the units whose objects changed (plus their dependents, new objects and emptied units) are
+replaced on the page in one undo step.
 """
 
-from . import i18n, metadata, render
+from . import i18n, metadata, render, ux
 from .log import log
 
 IMPRESS = "com.sun.star.presentation.PresentationDocument"
 DRAW = "com.sun.star.drawing.DrawingDocument"
 CALC = "com.sun.star.sheet.SpreadsheetDocument"
+GROUP = "com.sun.star.drawing.GroupShape"
 
 
 class HostError(Exception):
@@ -136,8 +142,88 @@ def _draw_units(doc, page, plan):
     return drawn
 
 
+def _place(doc, page, plan, zorders, drop):
+    """Draws the plan units, puts units that keep their id back at their z-position and removes the document mirror of
+    the units in ``drop`` that were not drawn again. Returns (drawn shapes, unit id -> shape)."""
+    drawn = _draw_units(doc, page, plan)
+    by_id = {}
+    for s in drawn:
+        parsed = metadata.parse_name(s.Name)
+        if parsed:
+            by_id[parsed[1]] = s
+    for z, uid in sorted((z, uid) for uid, z in zorders.items()):
+        if uid in by_id:
+            try:
+                by_id[uid].ZOrder = z
+            except Exception:
+                pass
+    for uid in drop:
+        if uid not in by_id:
+            render.remove_doc_property(doc, metadata.model_property(uid))
+            render.remove_doc_property(doc, metadata.bounds_property(uid))
+    return drawn, by_id
+
+
+def _drawn_units_action(doc, page, plan, zorders, restore, drop, title):
+    """Undo action for the units drawn in one step. LibreOffice records removing shapes and nothing for shapes added
+    through the API, so the step's own undo removes the drawn units (and gives the replaced units their document mirror
+    back) before LibreOffice restores the removed shapes; redo draws them again from the same plan."""
+    import unohelper
+    from com.sun.star.document import XUndoAction
+
+    class _DrawnUnits(unohelper.Base, XUndoAction):
+        def __init__(self):
+            self.Title = title
+
+        def undo(self):
+            ids = {u["id"] for u in plan.get("units") or []}
+            for i in reversed(range(page.getCount())):
+                parsed = metadata.parse_name(page.getByIndex(i).Name)
+                if parsed and parsed[1] in ids:
+                    page.remove(page.getByIndex(i))
+            for uid in ids | set(restore):
+                if uid in restore:
+                    payload, bounds = restore[uid]
+                    render.set_doc_property(doc, metadata.model_property(uid), payload)
+                    if bounds:
+                        render.set_doc_property(doc, metadata.bounds_property(uid), bounds)
+                else:
+                    render.remove_doc_property(doc, metadata.model_property(uid))
+                    render.remove_doc_property(doc, metadata.bounds_property(uid))
+
+        def redo(self):
+            _place(doc, page, plan, zorders, drop)
+    return _DrawnUnits()
+
+
+def _draw_step(doc, page, plan, title, remove=(), restore=None, drop=()):
+    """One undo step: removes the shapes of ``remove`` [(unit id, shape)], draws the plan units at the z-positions of
+    the removed units with the same id and records the drawn units as one undo action. ``restore``: unit id ->
+    (payload, bounds JSON) of the removed units (their document mirror after undo). Returns (drawn, unit id -> shape)."""
+    with _UndoStep(doc, title) as step:
+        zorders = {}
+        for uid, shape in remove:
+            try:
+                zorders[uid] = shape.ZOrder
+            except Exception:
+                pass
+            try:
+                page.remove(shape)
+            except Exception as ex:
+                log("remove unit %s: %s" % (uid, ex))
+        drawn, by_id = _place(doc, page, plan, zorders, drop)
+        if step.manager is not None:
+            try:
+                step.manager.addUndoAction(_drawn_units_action(doc, page, plan, zorders, restore or {}, set(drop),
+                                                               title))
+            except Exception as ex:
+                log("undo action not recorded: %s" % ex)
+    return drawn, by_id
+
+
 def insert(engine, controller, item_id, x_mm=None, y_mm=None, name=None):
-    """Inserts a library item (centre of the page/visible area unless x/y in mm are given); returns the new shapes."""
+    """Inserts a library item (centre of the page/visible area unless x/y in mm are given); returns the new shapes.
+    The item goes to the front of the user's recent items."""
     doc, page, centre, size = target(controller)
     x = centre[0] if x_mm is None else float(x_mm)
     y = centre[1] if y_mm is None else float(y_mm)
@@ -147,108 +233,402 @@ def insert(engine, controller, item_id, x_mm=None, y_mm=None, name=None):
         plan = engine.call("drawPlan", {"session": session, "ids": state["selection"]})
     finally:
         _close(engine, session)
-    with _UndoStep(doc, i18n.text("undoInsert") % (name or item_id)):
-        drawn = _draw_units(doc, page, plan)
+    drawn, _ = _draw_step(doc, page, plan, i18n.text("undoInsert") % (name or item_id))
     _select(controller, drawn)
+    ux.save_recent(item_id)
     return drawn
 
 
-def selected_unit_shape(controller):
-    """The selected InventaSketch unit shape (first selected shape with a unit name or attributes), or None."""
+# ------------------------------------------------------------------ selection
+
+
+def _is_unit(shape):
+    try:
+        return bool(metadata.parse_name(shape.Name) or render.read_attribute(shape, metadata.ATTR_ID))
+    except Exception:
+        return False
+
+
+def selected_unit_shapes(controller):
+    """The selected InventaSketch unit shapes, in selection order (shapes without a unit name or attributes are left
+    out)."""
     try:
         sel = controller.getSelection()
     except Exception:
-        return None
+        return []
     if sel is None:
-        return None
+        return []
     shapes = []
-    if hasattr(sel, "getCount") and hasattr(sel, "getByIndex") and not hasattr(sel, "getShapeType"):
-        shapes = [sel.getByIndex(i) for i in range(sel.getCount())]
-    elif hasattr(sel, "getShapeType"):
-        shapes = [sel]
-    for s in shapes:
-        try:
-            if metadata.parse_name(s.Name) or render.read_attribute(s, metadata.ATTR_ID):
-                return s
-        except Exception:
-            continue
-    return None
-
-
-def _page_of(controller, shape):
-    doc, page, _, size = target(controller)
-    return doc, page, size
-
-
-def describe(engine, controller):
-    """Inspector info of the selected unit for the sidebar: {"name", "views": [(id, label)], "view", "unit"}; None
-    if no unit is selected."""
-    shape = selected_unit_shape(controller)
-    if shape is None:
-        return None
-    doc = controller.getModel()
-    unit = render.read_unit(doc, shape)
-    if unit is None:
-        raise HostError(i18n.text("noModel"))
-    _, _, size = _page_of(controller, shape)
-    session = _session(engine, size)
     try:
-        state = engine.call("importCompact", {"session": session, "payload": unit["payload"], "includeSvg": False})
-        ids = [o["id"] for o in state["objects"]]
-        info = engine.call("inspector", {"session": session, "ids": ids[:1], "lang": i18n.language()})
-    finally:
-        _close(engine, session)
-    return {"unit": unit, "name": info.get("typeName") or unit["type"], "view": info.get("view"),
-            "views": [(v["id"], v["label"]) for v in info.get("views") or []], "source": unit["source"]}
+        if hasattr(sel, "getShapeType"):
+            shapes = [sel]
+        elif hasattr(sel, "getCount") and hasattr(sel, "getByIndex"):
+            shapes = [sel.getByIndex(i) for i in range(sel.getCount())]
+    except Exception:
+        return []
+    return [s for s in shapes if hasattr(s, "getShapeType") and _is_unit(s)]
+
+
+def selected_unit_shape(controller):
+    """The first selected InventaSketch unit shape, or None."""
+    shapes = selected_unit_shapes(controller)
+    return shapes[0] if shapes else None
+
+
+def page_unit_shapes(page):
+    """Top-level InventaSketch unit shapes on a page, in z-order."""
+    out = []
+    for i in range(page.getCount()):
+        s = page.getByIndex(i)
+        if _is_unit(s):
+            out.append(s)
+    return out
+
+
+# ------------------------------------------------------------------ page session
+
+
+class PageSession:
+    """All InventaSketch units of the current page in one engine session (see the module docstring).
+
+    ``units``: list of dicts {id, shape, unit, own, contents, selected, moved} in import order; ``selected_ids()``: the
+    own object ids of the selected units. Use as a context manager (closes the engine session)."""
+
+    def __init__(self, engine, controller, shapes=None, context=True):
+        self.engine = engine
+        self.controller = controller
+        self.doc, self.page, self.centre, self.size = target(controller)
+        self.selected_shapes = list(shapes) if shapes is not None else selected_unit_shapes(controller)
+        self.units = []
+        self.known = set()
+        self.state = None
+        self.session = _session(engine, self.size)
+        try:
+            self._load(context)
+        except Exception:
+            self.close()
+            raise
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        self.close()
+        return False
+
+    def close(self):
+        if self.session:
+            _close(self.engine, self.session)
+            self.session = None
+
+    def call(self, method, params=None):
+        request = {"session": self.session, "includeSvg": False}
+        request.update(params or {})
+        return self.engine.call(method, request)
+
+    # -------------------------------------------------------------- loading
+
+    def _read(self, shape, selected):
+        unit = render.read_unit(self.doc, shape)
+        if unit is None:
+            if selected:
+                raise HostError(i18n.text("noModel"))
+            return None
+        return {"id": unit["id"], "shape": shape, "unit": unit, "own": [], "contents": [], "selected": selected,
+                "moved": False}
+
+    def _import(self, entry):
+        state = self.call("importCompact", {"payload": entry["unit"]["payload"], "couple": False})
+        entry["contents"] = list(state.get("selection") or [])
+        self.known.update(entry["contents"])
+        return state
+
+    def _load(self, context):
+        chosen = []
+        seen = set()
+        for shape in self.selected_shapes:
+            entry = self._read(shape, True)
+            if entry["id"] not in seen:
+                seen.add(entry["id"])
+                chosen.append(entry)
+        others = []
+        if context:
+            for shape in page_unit_shapes(self.page):
+                entry = None
+                try:
+                    entry = self._read(shape, False)
+                except Exception as ex:
+                    log("context unit not readable: %s" % ex)
+                # A copy pasted inside LibreOffice keeps the unit id of its original: only the first one takes part.
+                if entry is not None and entry["id"] not in seen:
+                    seen.add(entry["id"])
+                    others.append(entry)
+        state = None
+        for entry in others:
+            try:
+                state = self._import(entry)
+            except Exception as ex:
+                log("context unit %s not imported: %s" % (entry["id"], ex))
+                entry["contents"] = None
+        others = [e for e in others if e["contents"] is not None]
+        for entry in chosen:
+            state = self._import(entry)
+        self.units = others + chosen
+        if state is None:
+            self.state = self.call("state")
+            return
+        groups = {o["id"]: o.get("groupId") for o in state["objects"]}
+        for entry in self.units:
+            entry["own"] = ux.own_ids(entry["id"], entry["contents"], groups)
+        by_id = {e["id"]: e for e in self.units}
+        order = [e["id"] for e in self.units]
+        for uid in ux.reimports(order, {u: by_id[u]["own"] for u in order}, {u: by_id[u]["contents"] for u in order}):
+            self._import(by_id[uid])
+        # Native moves, resizes and rotations since drawing (without coupling: the user moved just that unit).
+        for entry in self.units:
+            bounds = entry["unit"].get("bounds")
+            try:
+                current = render.bounds_pt(entry["shape"])
+            except Exception:
+                continue
+            if bounds and metadata.transform_needed(bounds, current):
+                request = {"ids": entry["own"], "couple": False}
+                request.update(metadata.host_transform(bounds, current))
+                self.call("hostTransform", request)
+                entry["moved"] = True
+        self.state = self.call("select", {"ids": self.selected_ids()})
+
+    # -------------------------------------------------------------- queries
+
+    def selected_ids(self):
+        out = []
+        for e in self.units:
+            if e["selected"]:
+                out.extend(i for i in e["own"] if i not in out)
+        return out
+
+    def first_id(self):
+        ids = self.selected_ids()
+        if not ids:
+            raise HostError(i18n.text("noUnit"))
+        return ids[0]
+
+    def unit_map(self):
+        return {e["id"]: e["own"] for e in self.units}
+
+    def select_objects(self, ids):
+        """Selects the unit shapes on the page that contain one of the object ids."""
+        by_id = {e["id"]: e["shape"] for e in self.units}
+        shapes = [by_id[u] for u in ux.units_containing(self.unit_map(), ids)]
+        _select(self.controller, shapes)
+        return shapes
+
+    # -------------------------------------------------------------- committing
+
+    def commit(self, label, state=None, force_selected=False, title=None):
+        """Redraws the units touched by the last engine operation in one undo step (``title``, default "edit
+        <label>"); returns the drawn shapes. The selection follows the engine's selection. ``force_selected`` redraws
+        the selected units anyway."""
+        state = state if state is not None and "objects" in state else self.call("state")
+        existing = {o["id"] for o in state["objects"]}
+        units = self.unit_map()
+        force = {e["id"] for e in self.units if e["selected"] and (e["moved"] or force_selected)}
+        # "changed" describes the last document change: without a new revision the operation changed nothing (the
+        # last change was loading the page).
+        changed, dependents = (state.get("changed"), state.get("dependents")) \
+            if state.get("revision") != self.state.get("revision") else ((), ())
+        ids, gone = ux.redraw_targets(units, self.known, existing, changed, dependents, force)
+        plan = self.call("drawPlan", {"ids": ids}) if ids else {"units": []}
+        plan_units = plan.get("units") or []
+        stale = ux.stale_units(units, plan_units)
+        fresh = {u["id"] for u in plan_units}
+        replace = [e for e in self.units if e["id"] in fresh or e["id"] in stale or e["id"] in gone]
+        drawn = []
+        if plan_units or replace:
+            restore = {}
+            for e in replace:
+                if e["unit"] is not None:
+                    bounds = e["unit"].get("bounds")
+                    restore[e["id"]] = (e["unit"]["payload"], metadata.bounds_json(bounds) if bounds else None)
+            drawn, by_name = _draw_step(self.doc, self.page, plan, title or i18n.text("undoEdit") % label,
+                                        remove=[(e["id"], e["shape"]) for e in replace], restore=restore,
+                                        drop=set(stale) | set(gone))
+            # Units that were replaced now live in the drawn shapes.
+            for e in self.units:
+                if e["id"] in by_name:
+                    e["shape"] = by_name[e["id"]]
+            removed = set(stale) | set(gone)
+            self.units = [e for e in self.units if e["id"] not in removed or e["id"] in by_name]
+            known_ids = {e["id"] for e in self.units}
+            for uid, s in by_name.items():
+                if uid not in known_ids:
+                    own = next((u.get("objectIds") for u in plan_units if u["id"] == uid), [])
+                    self.units.append({"id": uid, "shape": s, "unit": None, "own": list(own), "contents": list(own),
+                                       "selected": False, "moved": False})
+        selection = [i for i in state.get("selection") or [] if i in existing]
+        if selection:
+            self.select_objects(selection)
+        else:
+            _select(self.controller, drawn)
+        return drawn
+
+
+def _title(key):
+    """Undo title "InventaSketch: <action>" in the UI language."""
+    return i18n.text("undoAction") % i18n.text(key)
+
+
+def run_op(engine, controller, method, params=None, label=None, ids_key="ids", force_selected=False, shapes=None,
+           title=None):
+    """One engine operation on the selected unit(s) in a page session: ``ids_key`` = "ids" passes all selected object
+    ids, "id" the first one, None none. Returns the drawn shapes."""
+    with PageSession(engine, controller, shapes=shapes) as ps:
+        if not ps.selected_ids():
+            raise HostError(i18n.text("noUnit"))
+        request = dict(params or {})
+        if ids_key == "ids":
+            request["ids"] = ps.selected_ids()
+        elif ids_key == "id":
+            request["id"] = ps.first_id()
+        state = ps.call(method, request)
+        return ps.commit(label or method, state if isinstance(state, dict) else None, force_selected, title)
 
 
 def edit(engine, controller, method=None, params=None, label=None):
-    """Re-renders the selected unit from its stored model after an optional engine edit (e.g. setView, applyAction).
-    A native move/resize since the last drawing is applied first (hostTransform). Returns the new shapes."""
-    shape = selected_unit_shape(controller)
-    if shape is None:
+    """Re-renders the selected unit(s) from the stored model after an optional engine edit (e.g. setView,
+    applyAction). Native moves/resizes since the last drawing are applied first. Returns the new shapes."""
+    if not selected_unit_shapes(controller):
         raise HostError(i18n.text("noUnit"))
-    doc, page, size = _page_of(controller, shape)
-    unit = render.read_unit(doc, shape)
-    if unit is None:
-        raise HostError(i18n.text("noModel"))
-    current = render.bounds_pt(shape)
-    session = _session(engine, size)
+    if method:
+        return run_op(engine, controller, method, params, label=label, force_selected=True)
+    with PageSession(engine, controller) as ps:
+        return ps.commit(label or i18n.text("redraw"), None, force_selected=True)
+
+
+def insert_fitting(engine, controller, item_id, name=None):
+    """Inserts a library item where it fits the selected unit (gear on the shaft, gear in mesh, bearing beside a gear:
+    engine ``insertFitting``), coupled; without a selected unit or when it fits nowhere it is inserted in the middle.
+    Returns (shapes, placed)."""
+    if selected_unit_shapes(controller):
+        with PageSession(engine, controller) as ps:
+            result = ps.call("insertFitting", {"id": ps.first_id(), "itemId": item_id})
+            if result.get("placed"):
+                drawn = ps.commit(name or item_id, result.get("state"), title=i18n.text("undoInsert") % (name or item_id))
+                ux.save_recent(item_id)
+                return drawn, True
+    return insert(engine, controller, item_id, name=name), False
+
+
+def search(engine, controller, text, max_hits=40):
+    """Ranked library hits for ``text`` (engine ``search``: both languages, umlauts folded, recent items higher, the
+    parts that fit the selected unit first and marked ``fits``); an empty text lists fitting then recent items."""
+    shapes = selected_unit_shapes(controller)
+    params = {"text": text or "", "lang": i18n.language(), "recent": ux.load_recent(), "max": max_hits}
+    if shapes:
+        with PageSession(engine, controller, shapes=shapes[:1], context=False) as ps:
+            params["ids"] = ps.selected_ids()[:1]
+            return ps.call("search", params)
+    session = _session(engine, (297.0, 210.0))
     try:
-        state = engine.call("importCompact", {"session": session, "payload": unit["payload"], "includeSvg": False})
-        ids = [o["id"] for o in state["objects"]]
-        if unit.get("bounds") and metadata.transform_needed(unit["bounds"], current):
-            request = {"session": session, "ids": ids, "includeSvg": False}
-            request.update(metadata.host_transform(unit["bounds"], current))
-            engine.call("hostTransform", request)
-        if method:
-            request = {"session": session, "ids": ids, "includeSvg": False}
-            request.update(params or {})
-            engine.call(method, request)
-        state = engine.call("state", {"session": session, "includeSvg": False})
-        plan = engine.call("drawPlan", {"session": session, "ids": [o["id"] for o in state["objects"]]})
+        params["session"] = session
+        return engine.call("search", params)
     finally:
         _close(engine, session)
-    with _UndoStep(doc, i18n.text("undoEdit") % (label or unit["type"])):
-        z = shape.ZOrder
-        old_id = unit["id"]
-        page.remove(shape)
-        drawn = _draw_units(doc, page, plan)
-        new_ids = set()
-        for s in drawn:
-            parsed = metadata.parse_name(s.Name)
-            if parsed:
-                new_ids.add(parsed[1])
-            if parsed and parsed[1] == old_id:
-                try:
-                    s.ZOrder = z
-                except Exception:
-                    pass
-        if old_id not in new_ids:
-            render.remove_doc_property(doc, metadata.model_property(old_id))
-            render.remove_doc_property(doc, metadata.bounds_property(old_id))
-    _select(controller, drawn)
+
+
+def insert_search(engine, controller, text):
+    """Insert by typing: the first hit of ``search`` (placed where it fits when it fits the selection)."""
+    hits = search(engine, controller, text, max_hits=1)
+    if not hits:
+        raise HostError(i18n.text("noHits") % text)
+    hit = hits[0]
+    if hit.get("fits"):
+        return insert_fitting(engine, controller, hit["id"], hit.get("name"))[0]
+    return insert(engine, controller, hit["id"], name=hit.get("name"))
+
+
+def transform(engine, controller, kind):
+    """Mirror (``mirrorH``/``mirrorV``) or rotate by 90° (``rotate90``) the selected unit(s) about their centre."""
+    if kind == "rotate90":
+        return run_op(engine, controller, "rotate", {"degrees": 90}, title=_title("tipRotate"))
+    if kind in ("mirrorH", "mirrorV"):
+        return run_op(engine, controller, "flip", {"horizontal": kind == "mirrorH"},
+                      title=_title("tipMirrorH" if kind == "mirrorH" else "tipMirrorV"))
+    raise HostError("unknown transform: %s" % kind)
+
+
+def turn(engine, controller, degrees):
+    """Turns the selected gear with its whole train by ``degrees`` (engine ``motionTurn``)."""
+    angle = ux.parse_angle(str(degrees))
+    if angle is None:
+        raise HostError(i18n.text("badAngle"))
+    return run_op(engine, controller, "motionTurn", {"degrees": angle}, title=_title("turnRun"), ids_key="id")
+
+
+def build(engine, controller, port, item_id):
+    """Docks library item ``item_id`` at build port ``port`` of the selected unit, coupled (engine ``buildPlace``)."""
+    drawn = run_op(engine, controller, "buildPlace", {"key": port, "itemId": item_id}, title=_title("buildPlace"),
+                   ids_key="id")
+    ux.save_recent(item_id)
     return drawn
+
+
+def build_items(engine, controller, port):
+    """Library items that dock at build port ``port`` of the selected unit, best first (engine ``buildItems``)."""
+    shapes = selected_unit_shapes(controller)
+    if not shapes:
+        return []
+    with PageSession(engine, controller, shapes=shapes[:1]) as ps:
+        return ps.call("buildItems", {"id": ps.first_id(), "key": port, "lang": i18n.language(), "max": 20})
+
+
+def arrange(engine, controller, action):
+    """Selection-wide operation ``action`` of ``arrangeOptions`` on two or more selected units, one undo step."""
+    if len(selected_unit_shapes(controller)) < 2:
+        raise HostError(i18n.text("noUnit"))
+    return run_op(engine, controller, "arrange", {"action": action}, title=_title("arrangeLabel"))
+
+
+def select_assembly(engine, controller):
+    """Selects every unit coupled with the selection (engine ``assembly``); returns the selected shapes."""
+    with PageSession(engine, controller) as ps:
+        if not ps.selected_ids():
+            raise HostError(i18n.text("noUnit"))
+        ids = ps.call("assembly", {"ids": ps.selected_ids()})
+        return ps.select_objects(ids)
+
+
+def describe(engine, controller):
+    """What the selection panel shows for the selected unit(s), None without a unit:
+
+    one unit: {"count": 1, "unit", "name", "view", "views": [(id, label)], "source", "effect", "dof", "motion",
+    "ports": [{id, kind, label, …}], "assemblyExtra"}; several: {"count", "units", "arrange": [{id, label, icon}],
+    "assemblyExtra"}."""
+    shapes = selected_unit_shapes(controller)
+    if not shapes:
+        return None
+    lang = i18n.language()
+    with PageSession(engine, controller, shapes=shapes) as ps:
+        ids = ps.selected_ids()
+        chosen = [e for e in ps.units if e["selected"]]
+        assembly = ps.call("assembly", {"ids": ids})
+        extra = ux.assembly_extra(assembly, ids)
+        if len(chosen) >= 2:
+            return {"count": len(chosen), "units": [e["unit"] for e in chosen], "unitIds": [e["id"] for e in chosen],
+                    "arrange": ps.call("arrangeOptions", {"ids": ids, "lang": lang}), "assemblyExtra": extra}
+        unit = chosen[0]["unit"]
+        first = chosen[0]["own"][0]
+        info = ps.call("inspector", {"ids": [first], "lang": lang})
+        effect = ps.call("transformEffect", {"ids": chosen[0]["own"]})
+        dof = ps.call("dof", {"id": first})
+        motion = ps.call("motionInfo", {"id": first})
+        ports = ps.call("buildPorts", {"id": first})
+    for i, p in enumerate(ports or []):
+        p["label"] = ux.port_label(p, i, lang)
+    return {"count": 1, "unit": unit, "unitIds": [unit["id"]], "name": info.get("typeName") or unit["type"],
+            "view": info.get("view"), "views": [(v["id"], v["label"]) for v in info.get("views") or []],
+            "source": unit["source"], "effect": effect, "dof": dof, "motion": motion, "ports": ports or [],
+            "assemblyExtra": extra}
 
 
 def cleanup_properties(doc):

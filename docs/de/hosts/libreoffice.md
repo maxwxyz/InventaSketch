@@ -18,7 +18,8 @@ LibreOffice (Impress/Draw/Calc)
          plan.py      Zeichenplan (pt) -> Formbeschreibungen (1/100 mm), ohne UNO, mit Unit-Tests
          render.py    Formbeschreibungen -> native UNO-Formen, Gruppen, Linienenden, Metadaten
          metadata.py  Name der Einheit, Attribute, Dokumenteigenschaften in Teilstücken, Erkennen nativer Änderungen
-         sidebar.py   Deck „InventaSketch“, Panel „Bibliothek“; library.py: Filter/Suche, Vorschaubilder
+         sidebar.py   Deck „InventaSketch“, Panels „Auswahl“ und „Bibliothek“; library.py: Katalogfilter, Vorschaubilder
+         ux.py        Regeln des Auswahl-Panels, zuletzt benutzte Elemente, Buchführung der Seitensitzung (ohne UNO)
          engine.py    Engine-Prozess (JSON-Zeilen), .NET-Suche, Zeitlimit, Neustart
          mainthread.py  Befehle über die Fernbrücke laufen im Hauptthread
  └─ engine/portable/InventaSketch.LibreOffice.Engine.dll   (oder engine/<rid>/… eigenständig)
@@ -35,6 +36,23 @@ LibreOffice (Impress/Draw/Calc)
   (`createSession` → `insert` oder `importCompact` → Bearbeitung → `drawPlan` → `closeSession`). Plankoordinaten (pt)
   sind Seitenkoordinaten; der Engine-Prozess hält keinen Dokumentzustand und wird nach Absturz oder Zeitüberschreitung
   (60 s) unbemerkt neu gestartet.
+- **Seitensitzung (Bearbeiten):** Eine Bearbeitung importiert *alle* InventaSketch-Einheiten der Seite in eine
+  Engine-Sitzung (`importCompact` mit `couple: false`, die ausgewählten Einheiten zuletzt), damit die Engine die mit der
+  Auswahl gekoppelten Teile kennt (Getriebezüge, Wellen, die Glieder eines selbst gebauten Koppelgetriebes). Ein
+  Modell enthält auch Kopien der Objekte, an denen seine Punkte hängen; Einheiten, deren eigene Objekte von einer
+  solchen Kopie überschrieben wurden, werden noch einmal importiert (`ux.reimports`). Natives Verschieben, Skalieren
+  und Drehen seit dem letzten Zeichnen wird mit `hostTransform` übernommen (`couple: false`). Danach läuft die
+  Engine-Operation auf den ausgewählten Objekten, und genau die Einheiten, deren Objekte sich geändert haben
+  (`changed` + `dependents` des Editorzustands, neue Objekte, nativ veränderte ausgewählte Einheiten), werden neu
+  gezeichnet; Einheiten, deren Objekte verschwunden sind (Zerlegen) oder jetzt zu einer anderen Einheit gehören, werden
+  entfernt (`ux.redraw_targets`, `ux.stale_units`). Das verallgemeinert das bisherige Bearbeiten einer Einheit auf
+  mehrere Einheiten (Mehrfachauswahl) und auf gekoppelte Nachbarn.
+- **Ein Rückgängig-Schritt:** LibreOffice zeichnet das Entfernen von Formen über die API für Rückgängig auf, das
+  Hinzufügen aber nicht. Jeder Schritt entfernt daher die ersetzten Einheiten (von LibreOffice aufgezeichnet), zeichnet
+  die neuen und fügt eine eigene Rückgängig-Aktion hinzu (`XUndoManager.addUndoAction`), die beim Rückgängigmachen die
+  gezeichneten Einheiten entfernt (und den ersetzten Einheiten ihren Spiegel im Dokument zurückgibt) und sie beim
+  Wiederherstellen aus demselben Plan neu zeichnet. Gruppen entstehen als `GroupShape`, die danach befüllt wird, nicht
+  mit `XShapeGrouper.group` (dessen eigene Rückgängig-Aktion die Kinder lose auf der Seite zurückließ).
 - **Start der Engine (Entscheidung):** Das Standardpaket ist *portabel*: Die Engine ist eine framework-abhängige `.dll`
   (Paket ≈0,7 MB für alle Plattformen), gestartet mit dem `dotnet` des Anwenders. Die Erweiterung sucht einen Host mit
   Microsoft.NETCore.App ≥ 10 in `DOTNET_ROOT`, `PATH`, `%LOCALAPPDATA%\Microsoft\dotnet`, `%ProgramFiles%\dotnet`,
@@ -62,14 +80,23 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 - **Menü „InventaSketch“** (Impress, Draw, Calc): *Aus Bibliothek einfügen …* (öffnet das Deck der Seitenleiste),
   *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*,
   *Bezugszeichen hinzufügen*, *Daten gelöschter Einheiten entfernen*, *Über InventaSketch*.
-- **Seitenleiste „InventaSketch“ ▸ Bibliothek:** Suchfeld (Wörter treffen Namen, IDs und Schlagwörter, Akzente
-  werden ignoriert), Kategorieliste, Elementliste mit Vorschau (SVG-Vorschaubild der Engine); Doppelklick oder
-  *Einfügen* fügt das Element in der Mitte der Folie/Seite ein (Calc: in der Mitte des sichtbaren Zellbereichs).
-  *Ausgewählte Einheit* zeigt den Typ der ausgewählten Einheit und ihre Ansichten; die Wahl einer Ansicht zeichnet die
-  Einheit aus ihrem gespeicherten Modell neu.
+- **Seitenleiste „InventaSketch“**, zwei Panels (siehe UI/UX-Runde unten):
+  - *Auswahl* folgt der Auswahl im Dokument (Auswahl-Listener) und zeigt, was mit den ausgewählten
+    InventaSketch-Einheiten möglich ist – nur im Kontext.
+  - *Bibliothek*: ein Suchfeld für die ganze Bibliothek (Engine-`search`), die Kategorieliste (erster Eintrag
+    *Vorschläge*: die zur Auswahl passenden Teile, dann die zuletzt benutzten), die Elementliste mit Vorschau
+    (SVG-Vorschaubild der Engine); Doppelklick oder *Einfügen* fügt das Element ein – ein zur ausgewählten Einheit
+    passendes Teil dort, wo es passt, alles andere in der Mitte der Folie/Seite (Calc: des sichtbaren Zellbereichs).
 - **Skript-API** (DispatchHelper / Makros), jeweils `inventasketch.libreoffice:<Befehl>`:
-  `insert?item=<id>[&x=<mm>&y=<mm>]`, `library`, `editModel`, `setView?view=<id>`, `redraw`, `numeral`, `cleanup`,
-  `about`. Der Integrationstest benutzt genau diese Befehle.
+  `insert?item=<id>[&x=<mm>&y=<mm>]`, `insertFitting?item=<id>`, `insertSearch?text=<Suchtext>`, `library`,
+  `editModel`, `setView?view=<id>`, `redraw`, `numeral`, `transform?kind=mirrorH|mirrorV|rotate90`, `explode`,
+  `drawTrace`, `drawGhosts`, `build?port=<Port-ID>&item=<id>`, `turn?degrees=<Winkel>`,
+  `arrange?action=<ID aus arrangeOptions>`, `assembly`, `panel?control=<Schlüssel>&text=<Text>` /
+  `panel?control=<Schlüssel>&item=<Eintrag>` / `panel?press=<Schlüssel, Beschriftung oder action:<id>>` (bedient ein
+  Bedienelement des offenen Panels wie ein Anwender), `cleanup`, `about`. Integrations- und UI-Smoke-Test benutzen
+  diese Befehle.
+- **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in
+  `libreoffice-settings.json` neben dem Protokoll und werden in der Suche höher eingestuft.
 - Sprache der Oberfläche: Deutsch, wenn die Oberflächensprache von LibreOffice mit `de` beginnt, sonst Englisch; die
   Namen der Bibliothek liefert der Engine-Katalog in derselben Sprache.
 - Protokoll: `%LOCALAPPDATA%\InventaSketch\libreoffice.log` und `engine-stderr.log` (macOS
@@ -86,7 +113,7 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 | `freeform` (M/L/C/Z, Teilpfade) | `OpenBezierShape` / `ClosedBezierShape` (`PolyPolygonBezier`) |
 | `shape` (Dreieck, Raute) | `PolyPolygonShape` mit gedrehten Punkten (nur ohne Freiform-Unterstützung) |
 | `text` | `CustomShape`-Rechteck ohne Linie/Füllung, ohne Umbruch und Autogröße, vertikal zentriert |
-| `group` | `XShapeGrouper.group` (einzelne Kinder werden nicht verpackt) |
+| `group` | `GroupShape`, zuerst eingefügt und dann befüllt (einzelne Kinder werden nicht verpackt) |
 | `svg` | `GraphicObjectShape` mit der SVG-Grafik (Ersatz; mit dem LibreOffice-Profil bei den getesteten Elementen nicht erzeugt) |
 
 - Linie: `LineColor`, `LineWidth`, runde `LineJoint`; Strichmuster als absolutes `LineDash` (Stil RECT) mit dem
@@ -110,10 +137,46 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   `UserDefinedAttributes`; bei Gruppen stehen sie daher an der ersten Einzelform der Gruppe.
 - Spiegel im Dokument: benutzerdefinierte Dokumenteigenschaften `ISK_MODEL_<id>` (in Teilstücken `_1`, `_2` … ab
   60 000 Zeichen) und `ISK_BOUNDS_<id>`. Gelesen werden zuerst die Attribute, sonst die Dokumenteigenschaften.
-- Bearbeiten (Ansicht wechseln, neu zeichnen, Bezugszeichen) importiert das gespeicherte Modell, übernimmt ein natives
-  Verschieben/Skalieren (`hostTransform` vom gespeicherten zum aktuellen Rechteck) oder eine native Drehung (um die
-  Mitte), führt die Bearbeitung in der Engine aus und ersetzt die Einheit an derselben Stelle der Z-Reihenfolge in einem
-  Rückgängig-Schritt.
+- Bearbeiten (Ansicht wechseln, neu zeichnen, Bezugszeichen und jede Operation des Auswahl-Panels) läuft in einer
+  Seitensitzung (siehe Architektur): gespeicherte Modelle importiert, natives Verschieben/Skalieren (`hostTransform`
+  vom gespeicherten zum aktuellen Rechteck) oder native Drehung (um die Mitte) übernommen, Engine-Operation ausgeführt
+  und die betroffenen Einheiten an ihrer Stelle der Z-Reihenfolge in einem Rückgängig-Schritt ersetzt.
+
+## UI/UX-Runde 2026-11-24 (LibreOffice, 2026-11-25)
+
+Folgt den UX-Regeln der Roadmap („Plan 2026-11-24“), soweit eine Seitenleiste das kann: LibreOffice hat noch kein
+Overlay auf der Folie, daher liegt alles im Deck. Alle Entscheidungen kommen aus der Engine; reine Panel-Regeln in
+`ux.py` (`tests/test_ux.py`).
+
+- **Ein Einfügeweg (Panel Bibliothek):** Tippen durchsucht die ganze Bibliothek mit der Engine-`search` (beide
+  Sprachen, Umlaute gefaltet – „stoessel“ findet „Stößel“ –, zuletzt benutzte Elemente und die Ansicht der Auswahl
+  höher eingestuft); bei ausgewählter Einheit stehen die passenden Teile vorn und sind mit „– passt“/„– fits“
+  markiert. Ohne Eingabe listet der Eintrag *Vorschläge* die passenden Teile, dann die zuletzt benutzten. *Einfügen*
+  setzt ein passendes Teil dorthin, wo es passt (`insertFitting`: Zahnrad auf die Welle, Zahnrad in Eingriff, Lager
+  neben ein Zahnrad), gekoppelt; passt es nirgends, oder bei jedem anderen Element, kommt es in die Seitenmitte. Eine
+  gewählte Kategorie filtert die Treffer weiterhin.
+- **Panel Auswahl, eine Einheit (nur im Kontext, feste Reihenfolge):** Name und ID, *F = n (Glieder, Gelenke)* für ein
+  Glied eines selbst gebauten Koppelgetriebes (`dof`); die Ansichtsliste nur bei mehr als einer Ansicht; dann
+  Schaltflächen, die nur erscheinen, wenn sie etwas bewirken: *Bahn zeichnen* (Koppelkurve, `drawTrace`) und
+  *Zwischenlagen* (`drawGhosts`) bei F = 1, *Baugruppe wählen*, wenn gekoppelte Teile noch nicht ausgewählt sind
+  (`assembly`), *Zerlegen* bei zerlegbaren Baugruppen (`dof.explodable`), *Spiegeln ↔*, *Spiegeln ↕*, *Drehen 90°* nur,
+  wenn `transformEffect` sagt, dass sie die Zeichnung ändern (ein Zahnrad in Stirnansicht zeigt keine). *Anbauen (+)*:
+  die Anbaustellen der Einheit als Liste (`buildPorts`, „1: Eingriff, rechts“), die dort andockenden Teile
+  (`buildItems`) und *Anbauen* (`buildPlace`, angedockt und gekoppelt). Ein mit anderen gekoppeltes Zahnrad erhält
+  *Getriebe drehen um (°)* mit eingetipptem Winkel (`motionTurn`, der ganze Zug mit seinen Übersetzungen). *Aus dem
+  Modell neu zeichnen* wie bisher.
+- **Panel Auswahl, zwei oder mehr Einheiten:** die auswahlweiten Operationen der Engine aus `arrangeOptions` mit ihren
+  Beschriftungen – eine Ansicht für alle (Mechanismus bleibt erhalten), Mitten auf eine Zeile oder Spalte, gleichmäßig
+  verteilen, wie das erste, Maß zwischen beiden, Bezugszeichen neu nummerieren –, jeweils nur, wenn sie etwas ändern,
+  dazu *Baugruppe wählen*. Ein Klick führt `arrange` auf allen ausgewählten Einheiten in einer Seitensitzung und einem
+  Rückgängig-Schritt aus.
+- **Beschriftungen:** Die Erweiterung hat noch keinen Symbolsatz; die Schaltflächen tragen kurze zweisprachige
+  Textbeschriftungen mit dem Wortlaut des COM-Add-ins als Tooltip; für die auswahlweiten Operationen werden die
+  Beschriftungen der Engine verwendet (eine je Zeile).
+- **Nicht in LibreOffice (braucht das geplante Overlay):** Ziehen mit Einrasten und Einrastbeschriftungen, die
+  Live-Vorschau der Kopplung, Anbau-„+“ auf der Folie und das Strecken eines Wellenendes durch Ziehen, der
+  Bewegungsmodus durch Ziehen (Getriebezüge drehen stattdessen um einen eingetippten Winkel; Koppelgetriebe lassen
+  sich nicht ziehen), „Mach daraus …“ nach dem Schnellanfügen, das Kreismenü und Strg+Leertaste.
 
 ## Verifizierte Funktionen
 
@@ -140,6 +203,19 @@ bestanden; `tests/ui_smoke.py`, Bildschirmfotos gesichtet):
   Bedienelemente folgen der Oberflächenschrift. Eingaben ins Suchfeld und ein Klick auf *Einfügen* wurden im Smoke-Test
   nicht ausgeführt (Filter per Unit-Test geprüft; *Einfügen* ruft denselben Befehl `insert` auf).
 
+- 2026-11-25 (UI/UX-Runde, Windows 11, LibreOffice 26.8.2.2, deutsche Oberfläche): `integration_test.py` 61 Prüfungen
+  bestanden, darunter Suche in der anderen Sprache („welle“) und mit Umlauten („Stößel“), ein Zahnrad auf eine
+  ausgewählte Welle gesetzt (`insertFitting`), „lager“ bei ausgewählter Welle fügt das passende Lager ein, zuletzt
+  benutzte Elemente gespeichert, ein kämmendes Zahnrad an der Anbaustelle `mesh.right` angebaut, der Zug um 30°
+  gedreht (beide Räder neu gezeichnet), Baugruppe gewählt (2 Einheiten), zwei getrennte Zahnräder in einem
+  Rückgängig-Schritt auf eine Zeile gemittelt (Rückgängig und Wiederherstellen hinterlassen genau die Formen der
+  Einheiten), eine Ansicht für alle, eine Viergelenkkette in 5 Teile zerlegt, Koppelkurve und Zwischenlagen eines
+  Glieds, ein Pfeil um 90° gedreht, Rückgängig nach dem Einfügen entfernt die ganze Einheit. `ui_smoke.py` 8 Prüfungen
+  bestanden bei geöffnetem Deck: Ansichtswechsel aus der Ansichtsliste des Panels, „welle“ ins Suchfeld getippt und
+  *Einfügen*, „lager“ bei ausgewählter Welle fügt das Lager dort ein, wo es passt, das Panel folgt einer im Dokument
+  getroffenen Mehrfachauswahl und deren *Mitten auf eine waagrechte Linie*, *Anbauen* aus der Liste der Anbaustellen
+  und *Drehen* mit eingetipptem Winkel; Bildschirmfotos gesichtet.
+
 ## Tests
 
 ```powershell
@@ -149,16 +225,26 @@ python -m unittest discover -s hosts/libreoffice/tests -p "test_*.py"     # Unit
 ```
 
 Die Unit-Tests decken die Abbildung Plan → UNO, Metadaten, Bibliotheksfilter, Texte, .NET-Suche, das Protokoll (mit
-einer Ersatz-Engine: Fehler, Absturz, Zeitlimit, fremde Zeilen), das Weiterreichen in den Hauptthread und – wenn die
-Engine gebaut ist – echte Zeichenpläne von Bibliothekselementen ab. Der Integrationstest installiert das Paket in ein
+einer Ersatz-Engine: Fehler, Absturz, Zeitlimit, fremde Zeilen), das Weiterreichen in den Hauptthread, die Regeln des
+Auswahl-Panels und die Buchführung der Seitensitzung (`test_ux.py`) und – wenn die Engine gebaut ist – echte
+Zeichenpläne von Bibliothekselementen sowie die Engine-Abläufe hinter dem Panel mit in getrennten Sitzungen gezeichneten
+Modellen ab (Suche mit passenden Teilen, passend einfügen, Anordnen über Einheiten hinweg, ein Getriebezug über
+Einheiten gedreht, Zerlegen). Der UI-Smoke-Test bedient die Bedienelemente des Panels mit dem Befehl `panel` (Tippen ins
+Suchfeld und die Wahl eines Listeneintrags laufen über die Bedienelemente und rufen dieselben Listener auf wie ein
+Anwender; Schaltflächen führen ihre Klick-Behandlung aus); echte Mausklicks werden nicht nachgestellt, weil die Peers
+der Bedienelemente über die Fernbrücke nur generische Fenster ohne Listenfeld- oder Barrierefreiheits-Schnittstellen
+sind. Der Integrationstest installiert das Paket in ein
 temporäres Profil, startet soffice ohne Oberfläche und berührt nie das Profil oder Dateien des Anwenders; unter
 Linux/macOS läuft er mit einem Python, das `uno` importieren kann.
 
 ## Grenzen (Phase 1)
 
-- Noch keine Bedienung direkt auf der Folie (Overlay, Einrasten beim Ziehen, Kreismenü, Auswahl-Listener):
-  Bearbeitet wird über Seitenleiste und Menü. Die Seitenleiste zeigt nur Ansichten; Parameter, Stil und Text sind
-  noch nicht bearbeitbar.
+- Noch keine Bedienung direkt auf der Folie (Overlay, Einrasten beim Ziehen, Kreismenü): Bearbeitet wird über
+  Seitenleiste und Menü; das Auswahl-Panel folgt der Auswahl. Parameter, Stil und Text sind noch nicht bearbeitbar.
+- Jede Bearbeitung importiert alle InventaSketch-Einheiten der Seite (ein Engine-Aufruf je Einheit plus der Zustand);
+  Seiten mit sehr vielen Einheiten werden langsamer. Bei Einheiten, die gegenseitig aneinander hängen, kann die Engine
+  von der Kopie des Modells der anderen Einheit ausgehen, die bei der ersten gespeichert ist (die Importreihenfolge
+  kann nicht beide eigenen Modelle gewinnen lassen).
 - Schraffurlinien von LibreOffice sind Haarlinien: Die Linienstärke der Schraffur aus dem Plan wird nicht übernommen.
   Der .pptx-Export macht aus `FillHatch` eine vordefinierte Musterfüllung (Näherung von LibreOffice).
 - Textfelder nutzen die von der Engine geschätzte Größe (0,6 em je Zeichen); Schriften ohne kompatible Metrik können
