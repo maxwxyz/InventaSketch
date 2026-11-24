@@ -23,7 +23,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal sealed partial class OnSlideController : IDisposable
     {
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port, Turn }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port, Turn, Multi }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -180,6 +180,17 @@ namespace InventaSketch.AddIn.OnSlide
                     var shape = sel.ShapeRange[1];
                     if (SketchUnits.IsUnit(shape)) unit = SketchUnits.Read(shape);
                 }
+                // Several elements: the multi-selection bar (selection-wide operations).
+                if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count > 1)
+                {
+                    var units = new List<SketchUnit>();
+                    for (var i = 1; i <= sel.ShapeRange.Count; i++)
+                    {
+                        var shape = sel.ShapeRange[i];
+                        if (SketchUnits.IsUnit(shape) && SketchUnits.Read(shape) is { } u) units.Add(u);
+                    }
+                    if (units.Count >= 2) { ArmMulti(units); return; }
+                }
                 if (unit is null) { Disarm(); return; }
                 if (CurrentSlide() is PowerPoint.Slide slide && SketchUnits.HasTwin(slide, unit))
                 {
@@ -202,7 +213,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void Arm(SketchUnit unit)
         {
-            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barInsertOpen = false; _barChoice = null; }
+            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barChoice = null; }
             var slide = CurrentSlide();
             var view = SlideView.Current(_app);
             if (slide is null || view is null) { Disarm(); return; }
@@ -217,6 +228,7 @@ namespace InventaSketch.AddIn.OnSlide
             _targets = CollectTargets(slide, unit.Id);
             _unitContext = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
             PrepareFollowers(unit);
+            ResetCouplingPreview();
             PrepareLinks(unit);
             PrepareSegments(unit);
             PreparePorts(unit);
@@ -235,6 +247,7 @@ namespace InventaSketch.AddIn.OnSlide
             _mode = Mode.Idle;
             _selectedPoints.Clear();
             _unit = null;
+            _multi = new List<SketchUnit>();
             _unitContext = null;
             _pie = null;
             HideBar();
@@ -383,6 +396,9 @@ namespace InventaSketch.AddIn.OnSlide
 
                 case Mode.Turn:
                     return TurnMouse(message, pt, view);
+
+                case Mode.Multi:
+                    return MultiMouse(message, pt, view);
 
                 case Mode.Armed:
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
@@ -592,6 +608,7 @@ namespace InventaSketch.AddIn.OnSlide
                         _dragCoupled = coupled;
                         _delta = snap.Delta;
                         _guides = snap.Guides;
+                        _snapTarget = snap.Target;
                         DrawDrag(view);
                         return true;
                     }
@@ -668,6 +685,13 @@ namespace InventaSketch.AddIn.OnSlide
                 Cancel("escape");
                 return true;
             }
+            // Ctrl+Space: insert by typing at the pointer (with a selection: fitting parts first).
+            if (vk == 0x20 && ctrl && !shift && !alt && _mode is Mode.Idle or Mode.Armed)
+            {
+                var armed = _mode == Mode.Armed ? _unit : null;
+                Post(() => { if (CurrentSlide() is { } s) OpenInsertSearch(s, armed); });
+                return true;
+            }
             if (_mode == Mode.Armed && _unit is not null && !alt)
             {
                 var unit = _unit;
@@ -679,6 +703,17 @@ namespace InventaSketch.AddIn.OnSlide
                     0x44 when ctrl && !shift => "dup",                // Ctrl+D: duplicate with new ids
                     _ => null,
                 };
+                // Tab / Shift+Tab: the next part of the assembly (coupled parts only; else PowerPoint's own Tab).
+                if (vk == VK_TAB && !ctrl)
+                {
+                    var parts = AssemblyOf();
+                    if (parts.Count > 1)
+                    {
+                        var next = parts[shift ? parts.Count - 1 : 1];
+                        Post(() => next.Shape.Select(Office.MsoTriState.msoTrue));
+                        return true;
+                    }
+                }
                 if (command is not null)
                 {
                     Log.Info("Key: " + command);
@@ -782,12 +817,36 @@ namespace InventaSketch.AddIn.OnSlide
             var delta = _delta;
             var m = Matrix2D.Translation(delta.X, delta.Y);
             var moved = (_dragCoupled ? _dragPrims : _unitPrims).Select(p => Prim.Transform(p, m)).ToList();
+            // What the neighbours will do on release (meshing partners, belts, shafts that follow).
+            var partners = _unit is null || Alt() ? Array.Empty<Primitive>() : CouplingPreview(Edits.Move(_unit.Doc, _unit.Doc.Objects.Keys.ToList(), delta));
+            // What the part docks onto, named at the target ("pitch circle", "axis", "pin 2").
+            var target = _snapTarget;
+            var label = SnapLabel.For(target, _lang());
             Present(view, g =>
             {
+                ThumbnailRenderer.DrawAll(g, partners, Partner, (float)view.Mm(1.6));
                 ThumbnailRenderer.DrawAll(g, moved, Ghost, (float)view.Mm(1.6));
                 DrawGuides(g, view, _guides);
-            });
+            }, label is null || target is null ? null : g => DrawTag(g, view, view.ToScreen(target.P), label));
         }
+
+        /// <summary>Snap target of the current drag (for its label), null without an object snap.</summary>
+        private Anchor? _snapTarget;
+
+        /// <summary>A small tag next to a screen point (snap labels).</summary>
+        private static void DrawTag(Graphics g, SlideView view, PointF at, string text)
+        {
+            var k = (float)view.DeviceScale;
+            using var font = new Font("Segoe UI", 10 * k, FontStyle.Regular, GraphicsUnit.Pixel);
+            using var bg = new SolidBrush(Color.FromArgb(235, 255, 255, 255));
+            using var fg = new SolidBrush(GuideColor);
+            var size = g.MeasureString(text, font);
+            var box = new RectangleF(at.X + 8 * k, at.Y - size.Height - 8 * k, size.Width + 6 * k, size.Height + 2 * k);
+            g.FillRectangle(bg, box);
+            g.DrawString(text, font, fg, box.X + 3 * k, box.Y + 1 * k);
+        }
+
+        private static bool Alt() => KeyDown(VK_MENU);
 
         private void DrawGuides(Graphics g, SlideView view, IReadOnlyList<SnapGuide> guides)
         {
@@ -887,21 +946,10 @@ namespace InventaSketch.AddIn.OnSlide
                 var scale = _unit.Doc.Settings.PlanScale ?? 100;
                 list.Add(new BarButton("planscale", "1:" + scale.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), T("Plan scale of the slide …", "Planmaßstab der Folie …")));
             }
-            // "Insert": elements that fit the selection as thumbnails right in the bar (shaft: gears, bearings …).
+            // "Insert": one button for every element; it opens the insert box (fitting parts first, then recent, typing
+            // searches the whole library) instead of growing the bar.
             if (first is not null)
-            {
-                // Parts that snap into place (gear on the shaft, gear in mesh, bearing beside a gear) are in the bar right
-                // away; the insert button opens the rest.
-                var scale = _view?.DeviceScale ?? 1;
-                var suggestions = registry.Suggestions(first, 8);
-                var direct = DirectInserts(first, suggestions);
-                foreach (var item in direct)
-                    list.Add(new BarButton("ins:" + item.Id, "", T("Add: ", "Anfügen: ") + item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
-                list.Add(new BarButton("insert", "", T("Insert a fitting element", "Passendes Element einfügen"), Active: _barInsertOpen) { IconId = IconIds.Insert });
-                if (_barInsertOpen)
-                    foreach (var item in suggestions.Where(i => !direct.Contains(i)))
-                        list.Add(new BarButton("ins:" + item.Id, "", item.Name.Get(_lang())) { Icon = Thumb(item, (int)Math.Round(26 * scale)) });
-            }
+                list.Add(new BarButton("insert", "", T("Insert … (Ctrl+Space)", "Einfügen … (Strg+Leertaste)")) { IconId = IconIds.Insert });
             // Self-built linkage: its degree of freedom (Grübler) at a glance.
             if (first is not null && first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
                 && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
@@ -909,17 +957,113 @@ namespace InventaSketch.AddIn.OnSlide
             // Motion mode for parts that can move (gear train, linkage): drag turns them instead of moving them.
             if (MovablePart() is not null)
                 list.Add(new BarButton("motion", "", T("Move: drag turns the gears / linkage", "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
+            // Coupled with other elements (gear train, drive): select the whole assembly (then: one view for all, align …).
+            if (first is not null && AssemblyOf().Count > 1)
+                list.Add(new BarButton("assembly", "", T("Select the assembly (all coupled parts)", "Baugruppe auswählen (alle gekoppelten Teile)")) { IconId = IconIds.SelectAssembly });
             // Predefined assemblies (planetary set …) explode into coupled parts that can be edited one by one.
             if (first is not null && Assemblies.CanExplode(registry, first))
                 list.Add(new BarButton("explode", "", T("Explode into parts", "In Einzelteile zerlegen")) { IconId = IconIds.Explode });
             list.Add(new BarButton("", "", "", Separator: true));
-            list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
-            list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
-            list.Add(new BarButton("rot90", "", T("Rotate 90 degrees", "Um 90 Grad drehen")) { IconId = IconIds.Rotate });
+            // Only transforms that change the drawing (a circle, a gear in axial view, a symmetric bearing: none).
+            var effect = UnitEffect();
+            if (effect.MirrorH) list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
+            if (effect.MirrorV) list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
+            if (effect.Rotate90) list.Add(new BarButton("rot90", "", T("Rotate 90 degrees", "Um 90 Grad drehen")) { IconId = IconIds.Rotate });
             list.Add(new BarButton("dup", "", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate });
             list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("delete", "", T("Delete", "L\u00f6schen"), Danger: true) { IconId = IconIds.Delete });
             return list;
+        }
+
+        /// <summary>
+        /// The insert box (<see cref="InsertSearch"/>) at the pointer: without typing it lists the parts that fit the selection
+        /// (placed in their spot, e.g. a gear on the shaft) and then the recent items; typing searches the whole library,
+        /// fitting and recent items first, the selection's view preferred. The chosen item is placed where it fits, else it
+        /// follows the pointer until a click places it.
+        /// </summary>
+        private void OpenInsertSearch(PowerPoint.Slide slide, SketchUnit? unit)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var first = unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+            var fitting = new List<LibraryItem>();
+            string? view = null;
+            if (first is not null)
+            {
+                var suggestions = registry.Suggestions(first, 12);
+                var direct = DirectInserts(first, suggestions);
+                fitting.AddRange(direct);
+                fitting.AddRange(suggestions.Where(i => !direct.Contains(i)));
+                view = registry.Type(first.Type)?.ViewOf(first);
+            }
+            GetCursorPos(out var p);
+            var chosen = InsertSearch.Ask(registry, lang, AddInSettings.RecentItems, fitting, view, new Point(p.X, p.Y), _view?.MainWindow ?? IntPtr.Zero, (i, size) => Thumb(i, size));
+            if (chosen is null) return;
+            AddInSettings.RecentItems = LibrarySearch.Remember(AddInSettings.RecentItems, chosen.Id);
+            Log.Info("Insert by typing: " + chosen.Id);
+            if (unit is not null && InsertFitting(slide, unit, chosen)) return;
+            BeginPlacement(chosen);
+        }
+
+        /// <summary>
+        /// The units of the slide coupled with the armed unit, directly or through others (meshes, shafts, carriers, belts),
+        /// the armed unit first; just the armed unit if it is coupled with nothing.
+        /// </summary>
+        private List<SketchUnit> AssemblyOf()
+        {
+            var result = new List<SketchUnit>();
+            if (_unit is null) return result;
+            result.Add(_unit);
+            if (_otherUnits.Count == 0) return result;
+            try
+            {
+                var registry = _registry();
+                var full = SketchUnits.WithContext(_unit.Doc, _otherUnits);
+                var owner = new Dictionary<string, SketchUnit>(StringComparer.Ordinal);
+                foreach (var u in new[] { _unit }.Concat(_otherUnits))
+                    foreach (var o in u.Objects) owner[o.Id] = u;
+                var edges = Coupling.Graph(registry, full, _lang());
+                var seen = new HashSet<string>(_unit.Objects.Select(o => o.Id), StringComparer.Ordinal);
+                var queue = new Queue<string>(seen);
+                while (queue.Count > 0)
+                {
+                    var id = queue.Dequeue();
+                    foreach (var (_, a, b) in edges)
+                    {
+                        var other = a == id ? b : b == id ? a : null;
+                        if (other is null || !seen.Add(other)) continue;
+                        queue.Enqueue(other);
+                        // All objects of the other unit belong to the assembly too.
+                        if (owner.TryGetValue(other, out var u))
+                            foreach (var o in u.Objects) if (seen.Add(o.Id)) queue.Enqueue(o.Id);
+                    }
+                }
+                foreach (var u in _otherUnits)
+                    if (u.Objects.Any(o => seen.Contains(o.Id))) result.Add(u);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Assembly", ex);
+            }
+            return result;
+        }
+
+        /// <summary>Which quick transforms visibly change the selected unit (<see cref="Symmetry"/>); all on errors.</summary>
+        private TransformEffect UnitEffect()
+        {
+            if (_unit is null) return TransformEffect.All;
+            try
+            {
+                var registry = _registry();
+                var ctx = new RenderContext(SketchUnits.WithContext(_unit.Doc, _otherUnits), _lang());
+                var prims = _unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
+                return Symmetry.Of(prims);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Transform effect", ex);
+                return TransformEffect.All;
+            }
         }
 
         /// <summary>At most this many suggestions with a fitting place (<see cref="Fitting"/>) right in the bar.</summary>
@@ -949,9 +1093,6 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>At most this many type actions in the floating bar; the pie menu has all of them.</summary>
         internal const int MaxBarActions = 5;
-
-        /// <summary>Whether the "Insert" palette of the bar is open (closes with the next selection).</summary>
-        private bool _barInsertOpen;
 
         /// <summary>Pictograms the bar already has as its own buttons.</summary>
         private static readonly HashSet<string> NotInBar = new() { IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate };
@@ -1088,6 +1229,14 @@ namespace InventaSketch.AddIn.OnSlide
                 var unit = _unit;
                 var pressed = _barPressed;
                 _barPressed = false;
+                if (pressed && idx >= 0 && _mode == Mode.Multi)
+                {
+                    var multiId = bar.IdAt(idx);
+                    Log.Info("Bar: " + multiId);
+                    HideBar();
+                    Post(() => ApplyMulti(multiId));
+                    return true;
+                }
                 if (pressed && idx >= 0 && unit is not null)
                 {
                     var id = bar.IdAt(idx);
@@ -1248,17 +1397,18 @@ namespace InventaSketch.AddIn.OnSlide
                 items.Add((new PieItem("text", T("Text \u2026", "Text \u2026")) { IconId = IconIds.Text }, true));
             // Insert elements that fit the selection (shaft: gears, bearings; wire: symbols; always annotations).
             if (first is not null)
-                items.Add((new PieItem("menu:insert", T("Insert \u25B8", "Einf\u00fcgen \u25B8")) { IconId = IconIds.Insert }, true));
+                items.Add((new PieItem("insert", T("Insert \u2026", "Einf\u00fcgen \u2026")) { IconId = IconIds.Insert }, true));
+            var effect = UnitEffect();
             items.Add((new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate }, true));
-            items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
+            if (effect.Rotate90) items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
             if (type?.UsesPlanScale == true)
                 items.Add((new PieItem("planscale", T("Plan scale …", "Planmaßstab …")) { IconId = IconIds.Plan }, false));
             // Mechanisms: the input motion as a slide sequence with Morph transitions.
             if (type is not null && first is not null && type.AnimationFrames(first, 2).Count > 0)
                 items.Add((new PieItem("anim", T("Animate as slides", "Als Folien animieren")) { IconId = IconIds.Animate }, false));
             items.AddRange(actions.Select(a => (ActionItem(a), false)));
-            items.Add((new PieItem("flipH", T("Mirror ↔", "Spiegeln ↔")) { IconId = IconIds.MirrorH }, false));
-            items.Add((new PieItem("flipV", T("Mirror ↕", "Spiegeln ↕")) { IconId = IconIds.MirrorV }, false));
+            if (effect.MirrorH) items.Add((new PieItem("flipH", T("Mirror ↔", "Spiegeln ↔")) { IconId = IconIds.MirrorH }, false));
+            if (effect.MirrorV) items.Add((new PieItem("flipV", T("Mirror ↕", "Spiegeln ↕")) { IconId = IconIds.MirrorV }, false));
             return items;
         }
 
@@ -1727,11 +1877,13 @@ namespace InventaSketch.AddIn.OnSlide
             var doc = Edits.Scale(unit.Doc, unit.Doc.Objects.Keys.ToList(), _pivot, sx, sy);
             var ctx = new RenderContext(doc, _lang());
             var prims = doc.ObjectsOn(doc.Pages[0]).Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
+            var partners = CouplingPreview(doc);
             var label = (uniform ? $"×{sx:0.00}" : $"×{sx:0.00} / {sy:0.00}")
                 + (aboutCentre ? T("  · centre (Ctrl: edge)", "  · Mitte (Strg: Kante)") : T("  · edge (Ctrl: centre)", "  · Kante (Strg: Mitte)"));
             var at = view.ToScreen(p);
             Present(view, g =>
             {
+                ThumbnailRenderer.DrawAll(g, partners, Partner, (float)view.Mm(1.6));
                 ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6));
                 DrawGuides(g, view, guides);
             }, g =>
@@ -1921,6 +2073,12 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Runs a bar/pie command on the armed unit (automation); false if no unit is armed.</summary>
         public bool RunCommand(string id)
         {
+            if (_mode == Mode.Multi && _multi.Count >= 2)
+            {
+                Log.Info("Command: " + id);
+                Post(() => ApplyMulti(id));
+                return true;
+            }
             var unit = _unit;
             if (unit is null) return false;
             Log.Info("Command: " + id);
@@ -1965,6 +2123,12 @@ namespace InventaSketch.AddIn.OnSlide
                 ToggleMotion();
                 return;
             }
+            if (id == "assembly")
+            {
+                var shapes = AssemblyOf();
+                for (var i = 0; i < shapes.Count; i++) shapes[i].Shape.Select(i == 0 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse);
+                return;
+            }
             if (id == "explode")
             {
                 ApplyExplode(slide, unit);
@@ -1984,9 +2148,8 @@ namespace InventaSketch.AddIn.OnSlide
             }
             if (id == "insert")
             {
-                // Opens or closes the insert palette in the bar (no undo step, no redraw of the unit).
-                _barInsertOpen = !_barInsertOpen;
-                if (_view is not null) ShowBar(_view);
+                // The insert box at the pointer (no undo step of its own; the inserted element makes one).
+                Post(() => OpenInsertSearch(slide, unit));
                 return;
             }
             if (id.StartsWith("next:", StringComparison.Ordinal))

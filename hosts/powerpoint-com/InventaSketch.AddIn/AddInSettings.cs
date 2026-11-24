@@ -15,6 +15,7 @@ namespace InventaSketch.AddIn
             public bool Bar { get; set; } = true;
             public bool Anchor { get; set; } = true;
             public List<string> HiddenModules { get; set; } = new();
+            public List<string> RecentItems { get; set; } = new();
         }
 
         private static Data _data = Load();
@@ -40,6 +41,13 @@ namespace InventaSketch.AddIn
         {
             get => _data.HiddenModules ??= new List<string>();
             set { _data.HiddenModules = value.ToList(); Save(); }
+        }
+
+        /// <summary>Library items inserted last (insert box), most recent first.</summary>
+        public static IReadOnlyList<string> RecentItems
+        {
+            get => _data.RecentItems ??= new List<string>();
+            set { _data.RecentItems = value.ToList(); Save(); }
         }
 
         /// <summary>

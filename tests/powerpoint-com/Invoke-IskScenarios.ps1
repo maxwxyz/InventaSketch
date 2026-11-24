@@ -61,6 +61,8 @@ if ($List) {
     }
     return
 }
+# "a,b" or "a b" (as passed through powershell -File) count as several names.
+$Name = @($Name | ForEach-Object { $_ -split '[,\s]+' } | Where-Object { $_ })
 $unknown = $Name | Where-Object { $all.BaseName -notcontains $_ }
 if ($unknown) { throw "Unknown scenario(s): $($unknown -join ', '). Use -List." }
 $selected = if ($Name.Count) { $all | Where-Object { $Name -contains $_.BaseName } } else { $all }

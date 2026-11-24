@@ -67,6 +67,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "engine", "engine", "{89649D
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventaSketch.LibreOffice.Engine", "hosts\libreoffice\engine\InventaSketch.LibreOffice.Engine.csproj", "{C90E10FF-7513-41AE-A02F-6F693EFC3858}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventaSketch.Modules.Charts", "src\InventaSketch.Modules.Charts\InventaSketch.Modules.Charts.csproj", "{7C03516A-5641-4413-8F4C-A18F4BD0E468}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InventaSketch.Modules.Charts.Tests", "tests\InventaSketch.Modules.Charts.Tests\InventaSketch.Modules.Charts.Tests.csproj", "{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -401,6 +405,30 @@ Global
 		{C90E10FF-7513-41AE-A02F-6F693EFC3858}.Release|x64.Build.0 = Release|Any CPU
 		{C90E10FF-7513-41AE-A02F-6F693EFC3858}.Release|x86.ActiveCfg = Release|Any CPU
 		{C90E10FF-7513-41AE-A02F-6F693EFC3858}.Release|x86.Build.0 = Release|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Debug|x64.Build.0 = Debug|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Debug|x86.Build.0 = Debug|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Release|x64.ActiveCfg = Release|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Release|x64.Build.0 = Release|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Release|x86.ActiveCfg = Release|Any CPU
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468}.Release|x86.Build.0 = Release|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Debug|x64.Build.0 = Debug|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Debug|x86.Build.0 = Debug|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Release|x64.ActiveCfg = Release|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Release|x64.Build.0 = Release|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Release|x86.ActiveCfg = Release|Any CPU
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -435,5 +463,7 @@ Global
 		{3FBC6614-60F9-E664-B2BE-51DE5ED48937} = {2F3EF1A3-B2B0-B28C-122D-FFB85167A4CE}
 		{89649DCE-A7A8-EF41-167F-8CC71C20DD98} = {3FBC6614-60F9-E664-B2BE-51DE5ED48937}
 		{C90E10FF-7513-41AE-A02F-6F693EFC3858} = {89649DCE-A7A8-EF41-167F-8CC71C20DD98}
+		{7C03516A-5641-4413-8F4C-A18F4BD0E468} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
+		{C7EA33E0-4D86-4A9E-9186-ECFCC46BF4B4} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

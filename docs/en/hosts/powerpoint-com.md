@@ -318,6 +318,24 @@ UX round (2026-11-20, from the maintainer's feedback):
   when attachments are refreshed (a link on a fixed pivot stayed on the box centre before). Verified in PowerPoint
   2026-11-21: a four-bar built with the "+" (pivot, crank, coupler, rocker, pivot), F = 1, crank dragged: all link
   lengths kept (30.10 / 30.10 / 32.38 mm), pivots in place.
+- **UI/UX round 2026-11-24 (see the UX rules in the roadmap):**
+  - *Context-only bar:* mirror and rotate appear only when they change the drawing (`Symmetry` on the rendered
+    geometry, arrowheads included); a circle, a gear in axial view or a symmetric bearing show none of them.
+  - *Insert box:* one insert button for every element (also in the pie menu, and Ctrl+Space anywhere on the slide)
+    opens a search box at the pointer: parts that fit the selection first ("fits", placed where they fit), then recent
+    items; typing searches the whole library (`LibrarySearch`: both languages, umlauts = ae/oe/ue/ss, the selection's
+    view preferred). The thumbnails that used to be appended to the bar are gone.
+  - *Multi-selection bar:* with two or more InventaSketch elements selected, a bar offers one view for all, centres on
+    a row or column, even spacing and renumbering of reference numerals in reading order (`Arrange`) – each only when it
+    changes something. PowerPoint's own format stays available for the native side.
+  - *Assemblies:* "Select assembly" selects every part coupled with the selection; Tab/Shift+Tab step through them.
+    Switching the view of a selected gear train keeps it working (`AssemblyViews`): to the axial view parts on one shaft
+    become concentric and meshes keep their centre distance, back to stick/side view the train unfolds with meshing
+    gears in one plane and parts on one shaft stacked along it. Every part keeps its pitch circle in every view.
+  - *Live coupling preview:* while dragging or resizing, neighbours the coupling will move or scale on release
+    (meshing gears, belts, shafts following a motor) are drawn in blue.
+  - *Snap labels:* while dragging, the snap target is named next to it ("pitch circle", "axis", "pin 2", "joint 1").
+  - *Bevel pairs:* bevel gears with a common cone apex and crossing axes mesh; moving one moves its mate.
 - **Exploding predefined linkages:** the four-bar and the slider-crank show "Explode into parts" in the bar too: they
   become fixed pivots, links and a slider at the current position, docked onto each other (part recipes with points,
   docks and an align anchor, `PartSpec.Points`, `PartSpec.Docks`, `PartSpec.AlignAnchor`), i.e. a self-built linkage

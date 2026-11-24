@@ -36,7 +36,9 @@ namespace InventaSketch.Core
             public bool Span;
             public readonly List<Vec2> Hubs = new();
             public readonly List<(Vec2 A, Vec2 B)> Axes = new();
-            public bool Any => Pitch is not null || Hubs.Count > 0 || Axes.Count > 0;
+            /// <summary>Cone apex of a bevel gear seen from the side (<see cref="AnchorRole.Apex"/>), else null.</summary>
+            public Vec2? Apex;
+            public bool Any => Pitch is not null || Hubs.Count > 0 || Axes.Count > 0 || Apex is not null;
         }
 
         private static Features Read(Registry registry, SketchObject o, RenderContext ctx)
@@ -55,6 +57,7 @@ namespace InventaSketch.Core
                     f.Axis = a.AxisOf();
                 }
                 else if (a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub) f.Hubs.Add(a.P);
+                else if (a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex && f.Apex is null) f.Apex = a.P;
                 else if (a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis) f.Axes.Add((a.P, a.Q));
             }
             return f;
@@ -129,6 +132,13 @@ namespace InventaSketch.Core
             return spans.Count == 0 ? doc : FollowSpans(registry, before, doc, lang, f0, spans, changed);
         }
 
+        /// <summary>
+        /// The coupling relations of a document's box objects (mesh, carried, bonded, spanned) without released pairs, as
+        /// (kind, a, b): for a carried pair a carries b (shaft, gear).
+        /// </summary>
+        public static IReadOnlyList<(LinkKind Kind, string A, string B)> Graph(Registry registry, SketchDocument doc, Lang lang = Lang.En)
+            => Pairs(FeaturesOf(registry, doc, lang)).Where(p => !IsReleased(doc, p.A, p.B)).Select(p => (p.Kind, p.A, p.B)).ToList();
+
         /// <summary>True if the user released the pair (<see cref="SketchObject.Released"/> on either object).</summary>
         public static bool IsReleased(SketchDocument doc, string a, string b)
             => doc.Get(a)?.Released?.Contains(b) == true || doc.Get(b)?.Released?.Contains(a) == true;
@@ -172,6 +182,16 @@ namespace InventaSketch.Core
                             // Contact on the centre line: on a's pitch circle (b's when b is the ring gear around a).
                             var at = b.Inner && !a.Inner ? b.Centre + (a.Centre - b.Centre) * (rb / d) : a.Centre + (b.Centre - a.Centre) * (ra / d);
                             list.Add(new Pair(LinkKind.Mesh, ids[i], ids[j], at));
+                        }
+                    }
+                    // Bevel gears mesh where their cone apexes meet and their axes cross (angle drive, differential).
+                    if (j > i && a.Pitch is null && b.Pitch is null && a.Apex is Vec2 pa && b.Apex is Vec2 pb && pa.DistanceTo(pb) <= 0.3)
+                    {
+                        var ua = pa - a.Centre; var ub = pb - b.Centre;
+                        if (ua.Length > Eps && ub.Length > Eps && Math.Abs(ua.Normalized().Cross(ub.Normalized())) > 0.5)
+                        {
+                            list.Add(new Pair(LinkKind.Mesh, ids[i], ids[j], pa));
+                            continue;
                         }
                     }
                     // a's hub on b's axis: b carries a.
@@ -401,6 +421,11 @@ namespace InventaSketch.Core
                         break;
                     }
                 }
+
+                // Bevel pairs (shared cone apex, no pitch circle in these views): the mating gear moves along.
+                if (a0.Pitch is null && a0.Apex is not null && moved.Length > Eps)
+                    foreach (var partner in Of(mesh, id))
+                        if (!visited.Contains(partner)) RigidMove(partner, moved);
 
                 // A shaft takes the gears, bearings and hubs on its axis along (move, rotate, stretch).
                 if (carried.ContainsKey(id))

@@ -81,6 +81,72 @@ Ketten, Netz- und Verbindungslisten für Schaltpläne und E/E-Verschaltung (KiCa
 Kabelbaumlisten, Stücklisten (CSV/Excel), Bezugszeichenlisten, Diagrammstrukturen (GraphML/Mermaid) – als
 Export-Erweiterungspunkte der Module.
 
+## Plan 24.11.2026: UI/UX-Konzept und Plan-Review
+
+Rückmeldung des Maintainers am 24.11.2026: Das Einfügen-„+“, das Vorschaubilder an die Leiste hängt, ist kein gutes UI
+und klappt nicht bei allen Elementen; Spiegeln/Drehen erscheinen auch, wo sie nichts ändern; eine Mehrfachauswahl
+bekommt nur das native PowerPoint-Format; ganze Baugruppen (Getriebe, Hausinstallation) sollen zwischen Drauf-, Seiten-
+und Vorderansicht wechseln, ohne dass sich der Mechanismus ändert. Reihenfolge: Konzept und Findings zuerst in COM
+umsetzen, dann Web, dann LibreOffice.
+
+### UX-Regeln (verbindlich für alle Hosts)
+
+1. **Nur was im Kontext Sinn ergibt.** Ein Knopf erscheint nur, wenn er für dieses Element etwas bewirkt: Ansichten nur
+   bei mehr als einer, Spiegeln/Drehen nur, wenn die Zeichnung in dieser Richtung nicht symmetrisch ist (`Symmetry`, aus
+   der gezeichneten Geometrie samt Pfeilspitzen berechnet), Zerlegen nur bei zerlegbaren Teilen, Bewegen nur bei
+   beweglichen Teilen, F nur bei Koppelgetrieben.
+2. **Klein, feste Reihenfolge, Piktogramme zuerst.** Ansichten | Auswahl (Linienart, Spitzen, Stil) | bis zu fünf
+   Elementaktionen | Anbauen, Einfügen, Baugruppe, Bewegen, Zerlegen | Transformationen | Duplizieren, Löschen.
+   Piktogramme mit Tooltip (Tastenkürzel im Tooltip), Text nur für Werte, die ihn brauchen (1:50, F = 1, Schalter ohne
+   sprechendes Piktogramm). Die Leiste wächst nie mit Inhalt (keine Vorschaubildreihen).
+3. **Ein Einfügeweg.** Einfügen-Knopf, Kreismenü und Strg+Leertaste öffnen dasselbe Einfügefeld am Zeiger: zuerst, was
+   zur Auswahl passt (an seinen Platz gesetzt), dann zuletzt Verwendetes; Tippen durchsucht die ganze Bibliothek (beide
+   Sprachen, Umlaute gleichwertig, Ansicht der Auswahl bevorzugt). Andocken an eine bestimmte Stelle bleibt auf der Folie
+   („+“-Ports).
+4. **Mehrfachauswahl hat eine eigene Leiste.** Eine Ansicht für alle, Mitten auf eine Zeile/Spalte, gleichmäßig
+   verteilen, Bezugszeichen neu nummerieren – jeweils nur, wenn es etwas ändert (`Arrange`); das native
+   PowerPoint-Format bleibt verfügbar.
+5. **Baugruppen sind Bürger erster Klasse.** „Baugruppe auswählen“ wählt alle gekoppelten Teile; der Ansichtswechsel
+   einer ausgewählten Baugruppe hält Eingriffe, Wellen und Achsabstände (`AssemblyViews`); ein Teil behält seinen
+   Teilkreis in jeder Ansicht.
+6. **Das Ergebnis schon beim Ziehen zeigen.** Gekoppelte Nachbarn (kämmende Räder, Riemen, Wellen am Motor) erscheinen
+   beim Ziehen und Skalieren in einer zweiten Farbe, bevor man loslässt.
+7. **Überall dieselben Gesten.** Griffe: Ecken/Kanten skalieren, runder Griff dreht, „+“ an Enden und Ports baut an,
+   Doppelklick bearbeitet Text, Alt setzt das Einrasten aus, Shift rastet in 15°, Esc bricht ab; Tasten R, X, Y,
+   Strg+D, Shift+F10.
+8. **Wenig Text, zweisprachig.** Jede Beschriftung und jeder Tooltip zweisprachig; Tooltips sagen, was passiert, nicht
+   wie es funktioniert.
+
+### Review des Plans (24.11.2026)
+
+- Seit 21.11.2026 in COM erledigt: Linien-Sprache, Anbau-Griffe, Koppelgetriebe und Getriebezüge aus Einzelteilen und
+  live bewegt, Zerlegen vordefinierter Getriebe (außer Kurvengetriebe), Einfügen per Tippen, Live-Vorschau der Kopplung,
+  kontextbezogene Leiste, Leiste für Mehrfachauswahl, Ansichtswechsel von Getriebezügen, PowerPoint-UI-Szenarien
+  (`tests/powerpoint-com`).
+- Erledigt am 24.11.2026 (Engine, alle Hosts über die Bibliothek): Modul Diagramme/Kennlinien (`chart.*`, 25 Elemente,
+  docs/de/modules/charts.md) und die fehlenden Mechanik-Elemente (Gewindetriebe mit Mutter auf der Spindel, Freilauf,
+  Wandler, Parksperre, CVT, Well- und Zykloidgetriebe, Getriebegehäuse mit Lagersitzen, Ölwanne;
+  docs/de/modules/mechanical-drives.md). Dort offen: Wirkungsgradkennfelder aus Messrastern, Polar- und Flächendiagramme,
+  Histogramme, eine zweite y-Achse für eigene Daten; „um die Auswahl einfügen“ für Gehäuse.
+- In COM noch offen: Kegelradpaare in Kopplung und Bewegung, Ravigneaux-Sätze, Zerlegen von Schema-Planetensätzen,
+  Differentialen und Kurvengetrieben, Ansichtswechsel für Haustechnik (Grundriss ↔ Schnitt ↔ Strangschema),
+  Fangbeschriftungen, Tab-Durchlauf, Format übertragen für Semantik.
+- Web und LibreOffice folgen dem COM-Stand; die Engine enthält bereits `LibrarySearch`, `Symmetry`, `Arrange`,
+  `AssemblyViews`, die Hosts ergänzen nur die Oberfläche.
+
+### Weitere sinnvolle Module und Funktionen
+
+- **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen):** Heizung, Sanitär, Lüftung und Elektroinstallation,
+  gebunden an die Räume der Architektur, mit Grundriss, Schnitt und Schema (Strang) derselben Installation (der
+  Ansichtswechsel für Baugruppen gilt).
+- **Stückliste aus der Folie (P2):** ein Tabellenelement, das die Teile der Folie oder Auswahl auflistet (Typ,
+  Kennwerte, Bezugszeichen) und sich mit den Teilen aktualisiert; für Patentfiguren und Getriebefolien.
+- **Maß zwischen Teilen (P2):** zwei Teile wählen → Achsabstand, Spalt oder Winkel als mitlaufendes Maß.
+- **Folienweiter Stil (P2):** Linienbreiten nach ISO-128-Gruppen, Schwarzweiß-/Patentmodus, Farbakzente je Modul, auf
+  alle Elemente der Folie auf einmal.
+- **Mathematik & Geometrie (P3):** Koordinatensysteme, Vektoren, Winkel, geometrische Konstruktionen für Lehrfolien.
+- **Handskizzen-Look (P3):** wahlweise skizzenhafte Darstellung desselben Modells für Workshop-Folien.
+
 ## Plan 21.11.2026: Interaktion, Module und Elemente
 
 Mit dem Maintainer nach der COM-Feinschliff-Runde vereinbart. Prioritäten: **P1** als Nächstes, **P2** danach, **P3**

@@ -106,6 +106,7 @@ namespace InventaSketch.Core
         public const string Exploded = "view-exploded";
         public const string Table = "view-table";           // tabular / list form (ER table, BOM)
         public const string Pin = "view-pin";               // map pin / location marker
+        public const string Chart = "view-chart";           // chart: axes with a curve
         // Commands
         public const string Delete = "cmd-delete";
         public const string Duplicate = "cmd-duplicate";
@@ -126,6 +127,13 @@ namespace InventaSketch.Core
         public const string Medium = "cmd-medium";          // switch the medium (hydraulic/pneumatic: a drop)
         public const string Actuation = "cmd-actuation";    // change how something is operated (push button)
         public const string Insert = "cmd-insert";          // insert a fitting element (frame with plus)
+        public const string AlignRow = "cmd-align-row";     // centres on one horizontal line
+        public const string AlignColumn = "cmd-align-column"; // centres on one vertical line
+        public const string DistributeH = "cmd-distribute-h"; // equal spacing left to right
+        public const string DistributeV = "cmd-distribute-v"; // equal spacing top to bottom
+        public const string Renumber = "cmd-renumber";      // reference numerals in reading order
+        public const string SelectAssembly = "cmd-select-assembly"; // select every part coupled with this one
+        public const string FitAround = "cmd-fit-around";   // size a housing/frame around what it contains
 
         // Option pictograms (line ends, line styles, line courses): a short line with the feature on the right.
         public const string HeadNone = "head-none";
@@ -248,8 +256,9 @@ namespace InventaSketch.Core
         /// <summary>Every icon id, for hosts and tests that must provide a pictogram for each.</summary>
         public static IReadOnlyList<string> All { get; } = new[]
         {
-            Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin,
+            Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin, Chart,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
+            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround,
             HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
             SizeSmall, SizeMedium, SizeLarge, LineSolid, LineDash, LineDot, LineDashDot, LineDashDotDot, LineLongDash,
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
@@ -761,18 +770,40 @@ namespace InventaSketch.Core
         {
             var type = Type(o.Type);
             if (type is null || view is null || type.Views.All(v => v.Id != view) || type.ViewOf(o) == view) return o;
-            if (o.IsPointGeometry || type.Views.Any(v => v.Size is not null)) return type.WithView(o, view, ctx);
+            if (o.IsPointGeometry || type.Views.Any(v => v.Size is not null)) return KeepPitch(type, o, type.WithView(o, view, ctx), ctx);
             var from = PresetSize(type, type.ViewOf(o));
             var to = PresetSize(type, view);
             if (from is not Size2 a || to is not Size2 b || a.W < Geo.Eps || a.H < Geo.Eps || o.Size.W < Geo.Eps || o.Size.H < Geo.Eps)
-                return o with { View = view };
+                return KeepPitch(type, o, o with { View = view }, ctx);
             double k;
             if (Math.Abs(a.H - b.H) < 1e-6 * Math.Max(1, a.H)) k = o.Size.H / a.H;
             else if (Math.Abs(a.W - b.W) < 1e-6 * Math.Max(1, a.W)) k = o.Size.W / a.W;
             else if (Math.Abs(a.H - b.W) < 1e-6 * Math.Max(1, a.H)) k = o.Size.H / a.H;
             else if (Math.Abs(a.W - b.H) < 1e-6 * Math.Max(1, a.W)) k = o.Size.W / a.W;
             else k = Math.Sqrt(o.Size.W / a.W * (o.Size.H / a.H));
-            return o with { View = view, Size = new Size2(b.W * k, b.H * k) };
+            return KeepPitch(type, o, o with { View = view, Size = new Size2(b.W * k, b.H * k) }, ctx);
+        }
+
+        /// <summary>
+        /// The same part in another view keeps its pitch circle (a gear, pulley or sprocket is equally big in every view), so
+        /// meshes and belts stay intact when a whole train switches its view.
+        /// </summary>
+        private SketchObject KeepPitch(ObjectType type, SketchObject before, SketchObject after, RenderContext ctx)
+        {
+            if (before.IsPointGeometry) return after;
+            double? Pitch(SketchObject x)
+            {
+                try
+                {
+                    return PageAnchors(x, ctx).FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner)?.Radius;
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+            if (Pitch(before) is not double r0 || Pitch(after) is not double r1 || r0 < Geo.Eps || r1 < Geo.Eps || Math.Abs(r1 / r0 - 1) < 1e-6) return after;
+            return type.ScalePitch(after, r0 / r1);
         }
 
         /// <summary>Point-geometry types a line, arrow, dimension or lead line can be converted into ("Type ▸").</summary>
