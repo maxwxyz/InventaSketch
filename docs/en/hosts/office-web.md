@@ -171,6 +171,12 @@ place; a bearing docked at the shaft end; a typed search item started the normal
 meshing gear while dragging and while resizing its partner, cleared on release, matching the result; twelve ghost
 links inserted as one group; a 70.7 mm centre distance dimension between two gears.
 
+### Library search (2026-11-25)
+
+The sidebar library ranks typed queries with the engine's `search` (both languages, umlauts = ae/oe/ue/ss, recent
+items first, names starting with the query before keyword hits) like the insert box; the category chips and favourites
+still filter (`rankedItems` in `src/ui/library.ts`).
+
 ## Build and run
 
 ```powershell

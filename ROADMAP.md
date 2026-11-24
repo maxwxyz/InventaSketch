@@ -128,8 +128,7 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
   maintainer's machine). Since then also on the web: build "+" ports on the stage with shaft stretching (preview from
   `buildStretchPreview`), live coupling preview, ghost positions, dimension between two parts, motion mode (turn gear
   trains and predefined mechanisms, drag self-built linkages; engine `motionInfo`/`motionPreview`/`motionTurn`/
-  `motionDrag`, the drag solves on from its last step) (2026-11-24/25). Open on the web: the sidebar library search
-  through the insert box.
+  `motionDrag`, the drag solves on from its last step) and the library search ranked by the engine (2026-11-24/25).
 - LibreOffice follows after the web; the engine API above is host-neutral.
 
 ### Review at the end of 2026-11-24 and next steps

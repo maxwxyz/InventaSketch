@@ -98,6 +98,7 @@ export class App {
     });
     this.stage.onEditText = (o) => this.editText(o);
     this.library = new Library({
+      rank: (query) => this.sessionObj.search([], query, lang(), this.settings.recent ?? [], 400).map((x) => x.id),
       favourites: () => this.settings.favourites,
       toggleFavourite: (id) => {
         const f = new Set(this.settings.favourites);

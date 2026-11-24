@@ -143,7 +143,7 @@ umsetzen, dann Web, dann LibreOffice.
   Wellenziehen (Vorschau aus `buildStretchPreview`), Live-Vorschau der Kopplung, Zwischenlagen, Maß zwischen zwei Teilen,
   Bewegungsmodus (Getriebezüge und vordefinierte Getriebe drehen, selbst gebaute Koppelgetriebe ziehen; Engine
   `motionInfo`/`motionPreview`/`motionTurn`/`motionDrag`, das Ziehen rechnet von seinem letzten Schritt weiter)
-  (24./25.11.2026). Im Web offen: Bibliothekssuche der Seitenleiste über das Einfügefeld.
+  und die Bibliothekssuche mit der Rangfolge der Engine (24./25.11.2026).
 - LibreOffice folgt nach dem Web; die Engine-API oben ist hostneutral.
 
 ### Review am Ende des 24.11.2026 und nächste Schritte

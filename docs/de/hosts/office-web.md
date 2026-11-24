@@ -181,6 +181,12 @@ normale Platzieren; die blaue Vorschau des kämmenden Rads beim Ziehen und beim 
 Loslassen entfernt und gleich dem Ergebnis; zwölf Geisterglieder als eine Gruppe eingefügt; ein Achsabstandsmaß von
 70,7 mm zwischen zwei Zahnrädern.
 
+### Bibliothekssuche (25.11.2026)
+
+Die Bibliothek der Seitenleiste ordnet getippte Suchen mit der Engine-Suche `search` (beide Sprachen, Umlaute = ae/oe/
+ue/ss, zuletzt Verwendetes zuerst, Namen mit dem Suchwort am Anfang vor Stichworttreffern) wie das Einfügefeld; die
+Kategorie-Chips und Favoriten filtern weiterhin (`rankedItems` in `src/ui/library.ts`).
+
 ## Bauen und starten
 
 ```powershell
