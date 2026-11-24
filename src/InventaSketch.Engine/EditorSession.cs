@@ -24,6 +24,12 @@ namespace InventaSketch.Engine
 
         public string Id { get; }
         public Registry Registry { get; }
+
+        /// <summary>
+        /// Motion mode: the last solved position of a running linkage drag (<c>motionPreview</c>), the document it started
+        /// from and the dragged joint; the next step solves from there, so the chain keeps its assembly mode.
+        /// </summary>
+        internal (SketchDocument Base, SketchDocument State, string Key)? Motion { get; set; }
         public History History { get; private set; }
         public string PageId { get; set; }
         public Lang Lang { get; set; }

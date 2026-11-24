@@ -72,6 +72,8 @@ export interface CouplingPreview { ids: string[]; svg: string }
  */
 export type MotionInfo =
   | { kind: "gear"; x: number; y: number; coupled: boolean }
+  /** A predefined mechanism (four-bar …): turning about its input pivot x/y changes its crank angle. */
+  | { kind: "mechanism"; x: number; y: number; coupled: boolean }
   | { kind: "linkage"; dof: number }
   | { kind: "none" };
 

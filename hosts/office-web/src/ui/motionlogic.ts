@@ -17,7 +17,7 @@ export const TURN_MIN_RADIUS_MM = 0.5;
 export function canMove(info: MotionInfo | undefined): boolean {
   if (!info) return false;
   if (info.kind === "linkage") return true;
-  return info.kind === "gear" && info.coupled === true;
+  return (info.kind === "gear" || info.kind === "mechanism") && info.coupled === true;
 }
 
 /** Angle of `p` around `centre` in degrees, clockwise on screen (y down), in (-180, 180]; undefined at the centre. */

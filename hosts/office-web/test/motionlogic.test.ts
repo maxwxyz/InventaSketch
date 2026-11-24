@@ -14,6 +14,7 @@ describe("motion toggle in the bar", () => {
   it("is offered for a gear only when it is coupled with something (same rule as COM)", () => {
     expect(canMove({ kind: "gear", x: 0, y: 0, coupled: true })).toBe(true);
     expect(canMove({ kind: "gear", x: 0, y: 0, coupled: false })).toBe(false);
+    expect(canMove({ kind: "mechanism", x: 0, y: 0, coupled: true })).toBe(true);
   });
 
   it("is not offered for other parts or without engine answer", () => {

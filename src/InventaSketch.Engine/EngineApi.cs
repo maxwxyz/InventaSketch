@@ -891,6 +891,13 @@ namespace InventaSketch.Engine
             if (o is null) return new { kind = "none" };
             if (o.IsPointGeometry && Linkage.IsPart(Registry, o) && Linkage.Dof(Registry, s.Doc, id, s.Lang) is { Dof: >= 1 } d)
                 return new { kind = "linkage", dof = d.Dof };
+            if (!o.IsPointGeometry && Registry.Type(o.Type) is { } mt && mt.Parameters.Any(p => p.Key == "angle") && mt.AnimationFrames(o, 2).Count > 1)
+            {
+                // A predefined mechanism: dragging turns its input crank about the mount (input pivot).
+                var pivot = Registry.PageAnchors(o, s.Context()).FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Mount)?.P
+                    ?? new Vec2(o.Transform.X, o.Transform.Y);
+                return new { kind = "mechanism", x = pivot.X, y = pivot.Y, coupled = true };
+            }
             if (!o.IsPointGeometry && GearTrain.Spins(Registry, o))
             {
                 var assembly = (List<string>)AssemblyCore(new EngineRequest { Session = r.Session, Ids = new List<string> { id } });
@@ -899,14 +906,21 @@ namespace InventaSketch.Engine
             return new { kind = "none" };
         }
 
+        /// <summary>A predefined mechanism whose input turns through its "angle" parameter.</summary>
+        private bool IsMechanism(SketchObject o)
+            => !o.IsPointGeometry && Registry.Type(o.Type) is { } t && t.Parameters.Any(p => p.Key == "angle") && t.AnimationFrames(o, 2).Count > 1;
+
         /// <summary>Motion mode: turns gear <c>id</c> by <c>degrees</c> with its whole train (ratios kept); one undo step.</summary>
         private object MotionTurnCore(EngineRequest r)
         {
             var s = S(r);
             var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
             var deg = r.Degrees ?? 0;
-            if (Math.Abs(deg) < 1e-9 || s.Doc.Get(id) is null) return StateOf(s, r);
-            s.Apply("Turn", d => GearTrain.Turn(Registry, d, id, deg, s.Lang));
+            if (Math.Abs(deg) < 1e-9 || s.Doc.Get(id) is not { } o) return StateOf(s, r);
+            if (IsMechanism(o))
+                s.Apply("Turn", d => Edits.Update(d, new[] { id }, x => x.WithParam("angle", Math.Round(x.Num("angle", 0) + deg, 3))));
+            else
+                s.Apply("Turn", d => GearTrain.Turn(Registry, d, id, deg, s.Lang));
             return StateOf(s, r);
         }
 
@@ -919,7 +933,12 @@ namespace InventaSketch.Engine
             var s = S(r);
             var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
             if (s.Doc.Get(id) is null) return StateOf(s, r);
-            s.Apply("Move linkage", d => Linkage.Drag(Registry, d, id, r.Index ?? 1, new Vec2(r.X ?? 0, r.Y ?? 0), s.Lang));
+            var index = r.Index ?? 1;
+            // Continue from the last previewed position of this drag (keeps the assembly mode), else from the document.
+            var start = s.Motion is { } m && ReferenceEquals(m.Base, s.Doc) && m.Key == id + "#" + index ? m.State : s.Doc;
+            s.Motion = null;
+            var solved = Linkage.Drag(Registry, start, id, index, new Vec2(r.X ?? 0, r.Y ?? 0), s.Lang);
+            s.Apply("Move linkage", _ => solved);
             return StateOf(s, r);
         }
 
@@ -932,13 +951,25 @@ namespace InventaSketch.Engine
         {
             var s = S(r);
             var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
-            if (s.Doc.Get(id) is null) return new { ids = Array.Empty<string>(), svg = "" };
-            var after = r.Degrees is double deg
-                ? GearTrain.Turn(Registry, s.Doc, id, deg, s.Lang)
-                : Linkage.Drag(Registry, s.Doc, id, r.Index ?? 1, new Vec2(r.X ?? 0, r.Y ?? 0), s.Lang);
-            var moved = after.Objects.Values.Where(o => s.Doc.Get(o.Id) is { } b && !ReferenceEquals(b, o)
-                && (b.Transform != o.Transform || b.Size != o.Size || !(b.Points ?? Array.Empty<Vec2>()).SequenceEqual(o.Points ?? Array.Empty<Vec2>()))
-                && Registry.Type(o.Type) is not null).ToList();
+            if (s.Doc.Get(id) is not { } target) return new { ids = Array.Empty<string>(), svg = "" };
+            SketchDocument after;
+            if (r.Degrees is double deg)
+                after = IsMechanism(target)
+                    ? Edits.Update(s.Doc, new[] { id }, x => x.WithParam("angle", Math.Round(x.Num("angle", 0) + deg, 3)))
+                    : GearTrain.Turn(Registry, s.Doc, id, deg, s.Lang);
+            else
+            {
+                // Linkage drag: solve on from the last step of the same drag, so the chain cannot flip its assembly mode.
+                var key = id + "#" + (r.Index ?? 1);
+                var start = s.Motion is { } m && ReferenceEquals(m.Base, s.Doc) && m.Key == key ? m.State : s.Doc;
+                after = Linkage.Drag(Registry, start, id, r.Index ?? 1, new Vec2(r.X ?? 0, r.Y ?? 0), s.Lang);
+                s.Motion = (s.Doc, after, key);
+            }
+            // Compare resolved points: a link that follows only through a docked joint moves too.
+            bool Moved(SketchObject o) => s.Doc.Get(o.Id) is { } b && Registry.Type(o.Type) is not null
+                && (b.Transform != o.Transform || b.Size != o.Size || !ReferenceEquals(b.Params, o.Params)
+                    || o.IsPointGeometry && !s.Doc.ResolvePoints(b).SequenceEqual(after.ResolvePoints(o)));
+            var moved = after.Objects.Values.Where(Moved).ToList();
             if (moved.Count == 0) return new { ids = Array.Empty<string>(), svg = "" };
             var ctx = new RenderContext(after, s.Lang);
             return new { ids = moved.Select(o => o.Id).ToList(), svg = SvgRenderer.RenderPrimitives(moved.SelectMany(o => Registry.Render(o, ctx)).ToList()) };

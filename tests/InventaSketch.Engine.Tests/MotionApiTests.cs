@@ -40,6 +40,25 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void APredefinedMechanismTurnsItsCrankAndThePreviewShowsFollowingLinks()
+        {
+            var (api, session) = Session();
+            var mech = EngineApiTests.Insert(api, session, ItemOf(api, "kin.mech.fourbar"), 100, 100);
+            Assert.Equal("mechanism", EngineApiTests.Call(api, "motionInfo", new { session, id = mech }).GetProperty("kind").GetString());
+            var a0 = api.Sessions.Get(session).Doc.Get(mech)!.Num("angle", 0);
+            EngineApiTests.Call(api, "motionTurn", new { session, id = mech, degrees = 20 });
+            Assert.Equal(a0 + 20, api.Sessions.Get(session).Doc.Get(mech)!.Num("angle", 0), 3);
+
+            // Exploded: dragging the crank moves the rocker too (it follows only through docked joints).
+            var st = EngineApiTests.Call(api, "explode", new { session, id = mech });
+            var crank = st.GetProperty("objects").EnumerateArray().First(o => o.GetProperty("type").GetString() == "kin.link.binary").GetProperty("id").GetString()!;
+            var doc = api.Sessions.Get(session).Doc;
+            var p = doc.ResolvePoints(doc.Get(crank)!);
+            var prev = EngineApiTests.Call(api, "motionPreview", new { session, id = crank, index = 1, x = p[1].X + 2, y = p[1].Y - 2 });
+            Assert.True(prev.GetProperty("ids").GetArrayLength() >= 3, "crank, coupler and rocker move");
+        }
+
+        [Fact]
         public void DraggingALinkKeepsLengths()
         {
             var (api, session) = Session();

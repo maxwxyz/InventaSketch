@@ -30,8 +30,9 @@
 | Spiegeln/Drehen nur mit Wirkung | geprüft 24.11.2026 (`ux-round`, Knopf-IDs) | teilweise: umgesetzt, Browser-Entwicklungsseite | geplant (`transformEffect`) |
 | Leiste für Mehrfachauswahl (eine Ansicht für alle, ausrichten, verteilen, wie das erste, neu nummerieren, Maß) | geprüft 24.11.2026 (`ux-round`, `parts-list`, `building-services`) | teilweise: umgesetzt, Browser-Entwicklungsseite | geplant (`arrangeOptions`/`arrange`) |
 | Ansichtswechsel von Baugruppen (Getriebezüge Stirn ↔ Schema, Haustechnik Grundriss ↔ Schnitt ↔ Schema) | geprüft 24.11.2026 (`ux-round`, `building-services`) | teilweise: über die Mehrfachauswahl, Browser-Entwicklungsseite | geplant |
-| Live-Vorschau der Kopplung beim Ziehen | teilweise: umgesetzt 24.11.2026, per Auge geprüft (blauer Geist), ohne Szenario-Prüfung | in Arbeit | geplant (`couplingPreview`) |
-| Koppelkurve und Zwischenlagen selbst gebauter Koppelgetriebe | geprüft 24.11.2026 (`linkage-extras`) | teilweise: Koppelkurve auf der Browser-Entwicklungsseite; Zwischenlagen in Arbeit | geplant (`drawTrace`, `drawGhosts`) |
+| Live-Vorschau der Kopplung beim Ziehen | teilweise: umgesetzt 24.11.2026, per Auge geprüft (blauer Geist), ohne Szenario-Prüfung | teilweise: umgesetzt 25.11.2026, Browser-Entwicklungsseite | geplant (`couplingPreview`) |
+| Bewegungsmodus (Getriebezüge und Getriebe drehen, selbst gebaute Koppelgetriebe ziehen) | geprüft (`gear-motion`, `linkage-build`) | teilweise: umgesetzt 25.11.2026, Browser-Entwicklungsseite | geplant (`motionInfo`, `motionTurn`) |
+| Koppelkurve und Zwischenlagen selbst gebauter Koppelgetriebe | geprüft 24.11.2026 (`linkage-extras`) | teilweise: beides auf der Browser-Entwicklungsseite | geplant (`drawTrace`, `drawGhosts`) |
 | Stückliste, die den Teilen folgt | geprüft 24.11.2026 (`parts-list`) | nicht getestet (Engine zeichnet Abhängige neu) | nicht getestet |
 
 Reine Engine-Fähigkeiten (alle Hosts): SVG-Export durch Unit-Tests **verifiziert** (`SvgContainsHatchAndArrowheadAndIsMonochrome`,

@@ -343,7 +343,7 @@ export class Stage {
     if (!f) return;
     const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => this.framePoint(f, u, v));
     this.overlay.append(s("polygon", { class: `isk-sel-frame${motion ? " isk-motion-frame" : ""}`, points: corners.map((p) => `${p.x},${p.y}`).join(" ") }));
-    if (motion?.kind === "gear") {
+    if (motion?.kind === "gear" || motion?.kind === "mechanism") {
       this.overlay.append(this.pivotMark({ x: motion.x, y: motion.y }));
       return;
     }
@@ -506,7 +506,7 @@ export class Stage {
     }
     if (single?.kind === "box") {
       const info = this.motionFor(single);
-      if (info?.kind === "gear" && insideBounds(single.bounds, p, 6 / this.scale)) {
+      if ((info?.kind === "gear" || info?.kind === "mechanism") && insideBounds(single.bounds, p, 6 / this.scale)) {
         this.startMotion(single, info, p, client);
         return true;
       }
@@ -521,7 +521,7 @@ export class Stage {
   }
 
   private startMotion(obj: ObjectInfo, info: MovingInfo, p: Vec2, client: Vec2, index?: number): void {
-    if (info.kind === "gear") {
+    if (info.kind === "gear" || info.kind === "mechanism") {
       this.drag = { kind: "motion", id: obj.id, turn: new TurnTracker({ x: info.x, y: info.y }, p), degrees: 0, index: -1, target: p, startClient: client, moved: false, dimmed: [] };
       return;
     }
