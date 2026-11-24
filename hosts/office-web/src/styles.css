@@ -208,6 +208,16 @@ textarea.isk-input { resize: vertical; }
 .isk-coupling * { stroke: #1f6feb !important; fill: none !important; }
 .isk-coupling text, .isk-coupling tspan { fill: #1f6feb !important; stroke: none !important; }
 
+/* Motion mode: the turning centre, the lever to the pointer, the pulled joint; the parts that move are drawn where they
+   will be (engine motionPreview) while their current drawing is dimmed. */
+.isk-motion-frame { stroke-dasharray: 2 3; }
+.isk-motion-pivot { stroke: #1f6feb; stroke-width: 1.5px; fill: none; vector-effect: non-scaling-stroke; }
+.isk-motion-lever { stroke: #1f6feb; stroke-width: 1px; stroke-dasharray: 4 3; fill: none; vector-effect: non-scaling-stroke; }
+.isk-motion-target { fill: #1f6feb; stroke: #ffffff; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.isk-handle.isk-motion-joint { fill: #1f6feb; cursor: grab; }
+.isk-motion-preview { pointer-events: none; }
+.isk-motion-source { opacity: 0.25; }
+
 /* Groups of the context bar (fixed order: views | choices | element actions | insert … | transforms | style). */
 .isk-bar-sep { align-self: stretch; width: 1px; margin: 3px 2px; background: var(--border); }
 
