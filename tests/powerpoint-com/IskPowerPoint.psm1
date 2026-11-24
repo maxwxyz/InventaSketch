@@ -133,7 +133,9 @@ function Write-IskShapes {
 <# .SYNOPSIS The sketch model JSON stored on a shape (tag ISK_MODEL, gzip + base64). #>
 function Get-IskModel {
     param($Shape)
-    $v = $Shape.Tags.Item('ISK_MODEL')
+    # A shape the add-in just redrew is gone: its stale reference has no tags any more.
+    $v = $null
+    try { $v = $Shape.Tags.Item('ISK_MODEL') } catch { return '' }
     if (-not $v) { return '' }
     $ms = New-Object IO.MemoryStream(, [Convert]::FromBase64String($v.Substring(5)))
     (New-Object IO.StreamReader((New-Object IO.Compression.GZipStream($ms, [IO.Compression.CompressionMode]::Decompress)))).ReadToEnd()

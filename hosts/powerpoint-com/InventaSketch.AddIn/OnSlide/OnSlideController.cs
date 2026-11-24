@@ -228,6 +228,7 @@ namespace InventaSketch.AddIn.OnSlide
             _targets = CollectTargets(slide, unit.Id);
             _unitContext = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
             PrepareFollowers(unit);
+            ResetCouplingPreview();
             PrepareLinks(unit);
             PrepareSegments(unit);
             PreparePorts(unit);
@@ -804,12 +805,17 @@ namespace InventaSketch.AddIn.OnSlide
             var delta = _delta;
             var m = Matrix2D.Translation(delta.X, delta.Y);
             var moved = (_dragCoupled ? _dragPrims : _unitPrims).Select(p => Prim.Transform(p, m)).ToList();
+            // What the neighbours will do on release (meshing partners, belts, shafts that follow).
+            var partners = _unit is null || Alt() ? Array.Empty<Primitive>() : CouplingPreview(Edits.Move(_unit.Doc, _unit.Doc.Objects.Keys.ToList(), delta));
             Present(view, g =>
             {
+                ThumbnailRenderer.DrawAll(g, partners, Partner, (float)view.Mm(1.6));
                 ThumbnailRenderer.DrawAll(g, moved, Ghost, (float)view.Mm(1.6));
                 DrawGuides(g, view, _guides);
             });
         }
+
+        private static bool Alt() => KeyDown(VK_MENU);
 
         private void DrawGuides(Graphics g, SlideView view, IReadOnlyList<SnapGuide> guides)
         {
@@ -1840,11 +1846,13 @@ namespace InventaSketch.AddIn.OnSlide
             var doc = Edits.Scale(unit.Doc, unit.Doc.Objects.Keys.ToList(), _pivot, sx, sy);
             var ctx = new RenderContext(doc, _lang());
             var prims = doc.ObjectsOn(doc.Pages[0]).Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
+            var partners = CouplingPreview(doc);
             var label = (uniform ? $"×{sx:0.00}" : $"×{sx:0.00} / {sy:0.00}")
                 + (aboutCentre ? T("  · centre (Ctrl: edge)", "  · Mitte (Strg: Kante)") : T("  · edge (Ctrl: centre)", "  · Kante (Strg: Mitte)"));
             var at = view.ToScreen(p);
             Present(view, g =>
             {
+                ThumbnailRenderer.DrawAll(g, partners, Partner, (float)view.Mm(1.6));
                 ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6));
                 DrawGuides(g, view, guides);
             }, g =>

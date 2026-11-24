@@ -75,6 +75,60 @@ netlist CSV, electrical rule check report, reference sign list; next): gear and 
 netlists and connection lists for schematics and E/E wiring (KiCad/SPICE), ratsnest/airwires, harness lists, BOM
 (CSV/Excel), reference sign lists, diagram structures (GraphML/Mermaid) — as module export extension points.
 
+## Plan 2026-11-24: UI/UX concept and plan review
+
+Maintainer feedback 2026-11-24: the insert "+" that appends thumbnails to the bar is no good UI and does not work for
+every element; mirror/rotate are shown even where they change nothing; a multi-selection only gets PowerPoint's native
+format; whole assemblies (gearboxes, building services) should switch between top, side and front view with the
+mechanism kept. Order: implement concept and findings in COM first, then web, then LibreOffice.
+
+### UX rules (binding for every host)
+
+1. **Context only.** A bar button appears only when it does something for this element: views only with more than one
+   view, mirror/rotate only when the drawing is not symmetric that way (`Symmetry`, computed from the drawn geometry incl.
+   arrowheads), explode only for explodable parts, motion only for parts that can move, F only for linkages.
+2. **Small, fixed order, icons first.** Views | choices (line type, heads, style) | up to five element actions | build,
+   insert, assembly, motion, explode | transforms | duplicate, delete. Pictograms with tooltips (shortcut in the
+   tooltip), text only for values that need it (1:50, F = 1, switches without a telling icon). The bar never grows with
+   content (no thumbnail rows).
+3. **One insert flow.** Insert button, pie menu and Ctrl+Space open the same insert box at the pointer: parts that fit
+   the selection first (placed where they fit), then recent items; typing searches the whole library (both languages,
+   umlaut folding, the selection's view preferred). Docking onto a specific spot stays on the canvas ("+" ports).
+4. **Multi-selection has its own bar.** One view for all, centres on a row/column, even spacing, renumber reference
+   numerals – each only when it changes something (`Arrange`); PowerPoint's native format stays available.
+5. **Assemblies are first-class.** "Select assembly" selects every coupled part; switching the view of a selected
+   assembly keeps meshes, shafts and centre distances (`AssemblyViews`); a part keeps its pitch circle in every view.
+6. **Show the result while dragging.** Coupled neighbours (meshing gears, belts, shafts following a motor) are previewed
+   in a second colour while dragging or resizing, before release.
+7. **Same gestures everywhere.** Handles: corners/edges resize, round handle rotates, "+" on ends and ports builds on,
+   double-click edits text, Alt suspends snapping, Shift steps 15°, Esc cancels; keys R, X, Y, Ctrl+D, Shift+F10.
+8. **Little text, two languages.** Every label and tooltip bilingual; tooltips say what happens, not how it works.
+
+### Review of the plan (2026-11-24)
+
+- Done in COM since 2026-11-21: line language, build handles, linkages and gear trains built from parts and moved live,
+  explode of predefined mechanisms (except cam), insert by typing, live coupling preview, context-only bar,
+  multi-selection bar, assembly view switch for gear trains, PowerPoint UI scenarios (`tests/powerpoint-com`).
+- In progress: charts module (P1), missing mechanical elements (P1).
+- Still open in COM: bevel pairs in coupling and motion, Ravigneaux sets, exploding schematic sets, differentials and
+  cam mechanisms, assembly view switch for building services (plan ↔ section ↔ schematic), snap labels, Tab cycling,
+  format painter for semantics.
+- Web and LibreOffice follow the COM state; the engine already carries `LibrarySearch`, `Symmetry`, `Arrange`,
+  `AssemblyViews`, so the hosts only add UI.
+
+### Further modules and functions worth adding
+
+- **Building services (TGA, P1 after charts):** heating, plumbing, ventilation and electrical installation tied to the
+  architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
+  assemblies applies).
+- **Parts list from the slide (P2):** a table element that lists the parts of the slide or selection (type, key
+  parameters, reference numeral), updated when parts change; for patent figures and gearbox slides.
+- **Dimension between parts (P2):** select two parts → centre distance, gap or angle as a live dimension.
+- **Slide-wide style (P2):** line weights per ISO 128 group, monochrome/patent mode, colour accents per module, applied
+  to every element on the slide at once.
+- **Math & geometry (P3):** coordinate systems, vectors, angles, geometric constructions for teaching slides.
+- **Hand-drawn look (P3):** an optional sketchy rendering of the same model for workshop slides.
+
 ## Plan 2026-11-21: interaction, modules and elements
 
 Agreed with the maintainer after the COM polish round. Priorities: **P1** next, **P2** after that, **P3** later. Each
