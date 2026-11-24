@@ -344,6 +344,9 @@ UX round (2026-11-20, from the maintainer's feedback):
     (`Linkage.Poses`). Verified in PowerPoint 2026-11-24 (scenario `linkage-extras`).
   - *Format painter:* with several elements selected, "like the first" gives the others of the same type the first
     one's view, parameters and style (`Arrange.MatchFormat`).
+  - *Building services:* selected installations (`building-services` module) switch between plan, section and schematic
+    with the multi-selection bar's view buttons; x and widths stay, the mounting height places the elements in the
+    section, and the plan comes back exactly (`ObjectType.AssemblyViewSwitch`, `ServiceViews`).
   - *Parts list:* the "Parts list" element (`ann.partslist`, labels category) lists the parts of the slide – item,
     reference numeral (when a part has one), name, optional type, quantity – and is redrawn whenever a part is added,
     changed or removed (`PartsList`, `ObjectType.DependsOnAllParts`).

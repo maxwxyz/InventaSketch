@@ -36,7 +36,9 @@ lassen sich gegen die Zeichnungsvorschriften der Patentämter prüfen und monoch
   Elektrotechnik (Schaltzeichen, Leitungen, Hausinstallation, Leistungselektronik, illustrative Leiterplatte),
   elektrische Maschinen (Radial- und Axialfluss, Komponenten, Antriebsblöcke), Automotive/ADAS/HMI (Fahrzeuge,
   Personen, Straßen, Sensoren, Anzeigen), Architektur und Grundrisse (Wände, Öffnungen, Räume, Treppen, Möbel),
-  Diagramme (UML, ER, Sequenz, Aktivität, System, BPMN), Karten und Routen, Fluidtechnik, Patentfiguren, Diagramme und
+  Diagramme (UML, ER, Sequenz, Aktivität, System, BPMN), Karten und Routen, Fluidtechnik, Patentfiguren, technische
+  Gebäudeausrüstung (Heizung, Sanitär, Lüftung, Elektro-Ergänzungen mit Grundriss, Schnitt und Schema derselben
+  Installation), Diagramme und
   Kennlinien (XY, Balken, Drehmoment-Drehzahl, Wirkungsgradkennfeld, Pumpenkennlinie, Bode-Diagramm, Toleranzbänder).
 - **Aufgeräumte Oberfläche:** helles/dunkles/automatisches Design, Deutsch/Englisch (automatisch), schwebende
   Kontextleiste, Kreismenü per Rechtsklick, interaktiver Seitenleisten-Editor dort, wo der Host keine Interaktion auf

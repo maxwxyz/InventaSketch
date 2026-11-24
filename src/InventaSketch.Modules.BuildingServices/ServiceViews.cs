@@ -24,6 +24,15 @@ namespace InventaSketch.Modules.BuildingServices
     /// </summary>
     public static class ServiceViews
     {
+        /// <summary>The rule object for <see cref="ObjectType.AssemblyViewSwitch"/>.</summary>
+        public static readonly IAssemblyViewSwitch Rule = new SwitchRule();
+
+        private sealed class SwitchRule : IAssemblyViewSwitch
+        {
+            public SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang)
+                => ServiceViews.Switch(registry, doc, ids, view, null, lang);
+        }
+
         /// <summary>Meta key: plan y of the element centre (box) before it went to an elevation view.</summary>
         public const string MetaPlanY = "bs.planY";
         /// <summary>Meta key: plan rotation (degrees) of the element before it went to an elevation view.</summary>

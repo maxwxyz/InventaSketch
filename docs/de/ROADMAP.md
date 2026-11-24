@@ -140,7 +140,10 @@ umsetzen, dann Web, dann LibreOffice.
 
 ### Weitere sinnvolle Module und Funktionen
 
-- **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen):** Heizung, Sanitär, Lüftung und Elektroinstallation,
+- **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,
+  docs/de/modules/building-services.md; ganze Installationen wechseln Grundriss ↔ Schnitt ↔ Schema über `AssemblyViews`
+  mit der Regel des Moduls; offen: Schnittlinie je Wand, Elektro-Hausinstallationssymbole mit Schnitt-/Schemaansicht,
+  Alias `elevation`/`section` für Wände):** Heizung, Sanitär, Lüftung und Elektroinstallation,
   gebunden an die Räume der Architektur, mit Grundriss, Schnitt und Schema (Strang) derselben Installation (der
   Ansichtswechsel für Baugruppen gilt).
 - **Stückliste aus der Folie (P2, in COM erledigt am 24.11.2026):** ein Tabellenelement, das die Teile der Folie oder Auswahl auflistet (Typ,

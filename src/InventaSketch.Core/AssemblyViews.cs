@@ -15,6 +15,13 @@ namespace InventaSketch.Core
     /// one axis are stacked along it, and the gear train is unfolded into the drawing plane with its centre distances.</item>
     /// </list>
     /// </summary>
+    /// <summary>A domain's own rule for switching a whole installation's view (<see cref="ObjectType.AssemblyViewSwitch"/>).</summary>
+    public interface IAssemblyViewSwitch
+    {
+        /// <summary>The objects <paramref name="ids"/> (all of this rule's types) switched to <paramref name="view"/>.</summary>
+        SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang);
+    }
+
     public static class AssemblyViews
     {
         /// <summary>Gap between parts stacked on one axis (mm) when the axes come into the drawing plane.</summary>
@@ -23,6 +30,12 @@ namespace InventaSketch.Core
         /// <summary>The objects <paramref name="ids"/> switched to <paramref name="view"/> with the layout kept (see the class).</summary>
         public static SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang = Lang.En)
         {
+            // Objects whose types bring their own rule (building services: plan ↔ section ↔ schematic) go there, grouped.
+            var own = ids.Select(id => (Id: id, Rule: doc.Get(id) is { } x ? registry.Type(x.Type)?.AssemblyViewSwitch : null)).ToList();
+            foreach (var group in own.Where(x => x.Rule is not null).GroupBy(x => x.Rule!))
+                doc = group.Key.Switch(registry, doc, group.Select(x => x.Id).ToList(), view, lang);
+            ids = own.Where(x => x.Rule is null).Select(x => x.Id).ToList();
+            if (ids.Count == 0) return doc;
             var ctx = new RenderContext(doc, lang);
             var objects = ids.Select(doc.Get).Where(o => o is not null && !o.IsPointGeometry).Select(o => o!).ToList();
             if (objects.Count == 0) return doc;

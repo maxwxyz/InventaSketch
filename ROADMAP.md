@@ -126,7 +126,9 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 
 ### Further modules and functions worth adding
 
-- **Building services (TGA, P1 after charts):** heating, plumbing, ventilation and electrical installation tied to the
+- **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
+  whole installations switch plan ↔ section ↔ schematic through `AssemblyViews` with the module's rule; open: a section
+  line per wall, the electrical house symbols with section/schematic views, `elevation`/`section` alias for walls):** heating, plumbing, ventilation and electrical installation tied to the
   architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
   assemblies applies).
 - **Parts list from the slide (P2, done in COM 2026-11-24):** a table element that lists the parts of the slide or selection (type, key

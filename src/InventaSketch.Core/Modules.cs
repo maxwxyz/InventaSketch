@@ -523,6 +523,13 @@ namespace InventaSketch.Core
         public virtual bool DependsOnAllParts => false;
 
         /// <summary>
+        /// How a whole installation of this type switches its view with the arrangement kept (<see cref="AssemblyViews"/>),
+        /// e.g. building services between plan, section and schematic; null (default): the mechanical rule of
+        /// <see cref="AssemblyViews"/> (axes in the plane ↔ along the axes).
+        /// </summary>
+        public virtual IAssemblyViewSwitch? AssemblyViewSwitch => null;
+
+        /// <summary>
         /// The registry the type was last registered with (set by <see cref="Registry.Register"/>). Types that render from
         /// other objects of the document (a parts list naming each part) use it to read their types and labels.
         /// </summary>

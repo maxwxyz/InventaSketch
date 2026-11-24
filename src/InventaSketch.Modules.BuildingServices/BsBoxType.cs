@@ -31,6 +31,9 @@ namespace InventaSketch.Modules.BuildingServices
     /// </summary>
     internal sealed class BsBoxType : ObjectType
     {
+        /// <summary>Installations switch plan ↔ section ↔ schematic together (<see cref="ServiceViews"/>).</summary>
+        public override IAssemblyViewSwitch? AssemblyViewSwitch => ServiceViews.Rule;
+
         private readonly string _id;
         private readonly I18nText _name;
         private readonly string _category;

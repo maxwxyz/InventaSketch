@@ -332,6 +332,9 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
     ein Element ein (`Linkage.Poses`). Geprüft in PowerPoint am 24.11.2026 (Szenario `linkage-extras`).
   - *Format übertragen:* Bei mehreren ausgewählten Elementen gibt „Wie das erste“ den übrigen gleichen Typs Ansicht,
     Parameter und Stil des ersten (`Arrange.MatchFormat`).
+  - *Gebäudetechnik:* ausgewählte Installationen (Modul `building-services`) wechseln mit den Ansichtsknöpfen der
+    Mehrfachauswahl zwischen Grundriss, Schnitt und Schema; x und Breiten bleiben, die Montagehöhe setzt die Elemente im
+    Schnitt, und der Grundriss kommt exakt zurück (`ObjectType.AssemblyViewSwitch`, `ServiceViews`).
   - *Stückliste:* Das Element „Stückliste“ (`ann.partslist`, Kategorie Beschriftungen) listet die Teile der Folie –
     Position, Bezugszeichen (wenn ein Teil eines hat), Benennung, wahlweise Typ, Menge – und wird bei jedem Hinzufügen,
     Ändern oder Löschen eines Teils neu gezeichnet (`PartsList`, `ObjectType.DependsOnAllParts`).

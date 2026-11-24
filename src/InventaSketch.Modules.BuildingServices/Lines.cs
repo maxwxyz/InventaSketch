@@ -58,6 +58,9 @@ namespace InventaSketch.Modules.BuildingServices
     /// </summary>
     internal abstract class ServiceLineType : ObjectType
     {
+        /// <summary>Installations switch plan ↔ section ↔ schematic together (<see cref="ServiceViews"/>).</summary>
+        public override IAssemblyViewSwitch? AssemblyViewSwitch => ServiceViews.Rule;
+
         private static readonly IReadOnlyList<ViewDef> ViewList = new[] { BsViews.PlanView, BsViews.SectionView, BsViews.SchematicView };
 
         public override GeometryKind Geometry => GeometryKind.Points;
