@@ -12,6 +12,8 @@ export interface Settings {
   grid: number;
   liveSync: boolean;
   favourites: string[];
+  /** Library items inserted last (insert box), most recent first. */
+  recent: string[];
   libraryOpen: boolean;
   inspectorOpen: boolean;
 }
@@ -26,6 +28,7 @@ export const defaults: Settings = {
   grid: 5,
   liveSync: true,
   favourites: [],
+  recent: [],
   libraryOpen: true,
   inspectorOpen: false,
 };

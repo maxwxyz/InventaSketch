@@ -191,8 +191,26 @@ textarea.isk-input { resize: vertical; }
 .isk-chain { fill: #1f5fbf; cursor: pointer; }
 .isk-chain:hover { fill: #3c82e6; }
 .isk-chain-preview { stroke: #1f5fbf; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; fill: none; }
-.isk-palette { display: flex; gap: 2px; padding-right: 4px; margin-right: 4px; border-right: 1px solid var(--border); }
-.isk-palette img { width: 26px; height: 26px; display: block; }
+
+/* Groups of the context bar (fixed order: views | choices | element actions | insert … | transforms | style). */
+.isk-bar-sep { align-self: stretch; width: 1px; margin: 3px 2px; background: var(--border); }
+
+/* Snap label next to the snap target while dragging ("pitch circle", "axis", "pin 2"). */
+.isk-snap-label { z-index: 25; background: var(--accent); color: var(--accent-text); }
+
+/* Insert box at the pointer: search field, fitting parts first ("fits"), then recent items. */
+.isk-insertbox { position: absolute; z-index: 45; width: min(280px, calc(100% - 8px)); padding: 6px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; box-shadow: var(--shadow); }
+.isk-insertbox .isk-search-row { margin-bottom: 4px; }
+.isk-ins-list { display: flex; flex-direction: column; max-height: 260px; overflow-y: auto; }
+.isk-ins-row { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 3px 6px; border: 0; border-radius: 6px; background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.isk-ins-row:hover { background: color-mix(in srgb, var(--accent, #1f5fbf) 10%, transparent); }
+.isk-ins-row.is-active { background: color-mix(in srgb, var(--accent, #1f5fbf) 18%, transparent); }
+.isk-ins-row img, .isk-ins-noimg { flex: none; width: 26px; height: 22px; object-fit: contain; }
+:root[data-theme="dark"] .isk-ins-row img { filter: invert(1) hue-rotate(180deg); }
+.isk-ins-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.isk-ins-badge { flex: none; padding: 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 11px; font-weight: 600; }
+.isk-ins-recent { flex: none; color: var(--muted); font-size: 11px; }
+.isk-ins-empty { margin: 6px; }
 
 /* Choice buttons of the context bar: icon of the current option plus a caret; mirrored start arrowheads. */
 .isk-choice { position: relative; padding-right: 9px; }

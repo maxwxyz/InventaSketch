@@ -43,11 +43,17 @@ undo step each (no step when nothing changes).
 | `applyAction` | `action` (id from `contextActions`), `input` for input actions | state |
 | `undo`, `redo`, `select`, `selectRect` | `ids`; `x`, `y`, `w`, `h`, `mode` (enclosed/touching), `add` | state |
 | `hitTest` | `x`, `y`, `tolerance` | `{ id, ids, stack }` |
-| `snapMove`, `snapPoint`, `snapInsert`, `setSnap` | `dx`/`dy`; `x`/`y`/`exclude`; `itemId`; `snapOptions` | snap result `{ dx, dy, x, y, kind, guides, attach }` |
+| `snapMove`, `snapPoint`, `snapInsert`, `setSnap` | `dx`/`dy`; `x`/`y`/`exclude`; `itemId`; `snapOptions` | snap result `{ dx, dy, x, y, kind, guides, attach, label }`; `label` (snapMove) names what the drag docks onto ("pitch circle", "axis", "pin 2") |
 | `contextActions`, `inspector` | `ids`, `lang` | actions (generic, views, type actions); inspector info |
 | `suggestions` | `ids`, `lang`, `max` (default 9) | library items `{ id, typeId, name, view, category, points }` that fit the first selected object ("Insert ▸": companions, same category, annotations, in its kind of view); empty without a selection |
 | `conversions`, `convert` | `ids`, `lang`; `ids`, `itemId` (target type) | line types the first selected line, arrow, dimension or lead line can become ("Type ▸", `{ id, label, active }`); state (points, ends and attachments kept) |
 | `quickAdd`, `nextItems`, `replaceItem` | `id`, `side` (left/top/right/bottom), optional `x`/`y`, `itemId`; `id`, `max`; `id`, `itemId` | state with the new element selected (copy plus connector, one undo step); library items for the next element; state (element replaced, connectors stay) |
+| `search` | `ids`, `text`, `lang`, `recent` (item ids, most recent first), `max` (default 30) | library hits (`suggestions` shape plus `fits`): without text the parts that fit the first selected object, then the recent items; with text the whole library (`LibrarySearch`: both languages, umlaut folding, fitting and recent items and the selection's view ranked higher) |
+| `transformEffect` | `ids` | `{ mirrorH, mirrorV, rotate90 }`: whether the transform changes the rendered drawing (`Symmetry`, arrowheads included) |
+| `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | selection-wide operations that change something `{ id, label, icon }` (`mview:<view>` one view for all with the mechanism kept, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); state (one undo step) |
+| `assembly` | `ids` | ids of the selection plus every object coupled with it (gear train, drive), selection first |
+| `trace` | `id`, `index` (default: last point), `max` (steps, default 72) | `{ points, closed }`: path of the link's point while the chain's crank turns; empty unless the chain has F = 1 |
+| `update` | `object` (full document object as in `saveDocument`) | state |
 | `exporters`, `export` | `ids` (selection with its groups, else the page), `lang`; `itemId` (exporter id) | domain exports that apply `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (default: document setting), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | draw plan in pt (black and white when the document is) |
@@ -68,14 +74,15 @@ the units on the slide.
 ## Editing UX (parity with the COM add-in, 2026-11-20)
 
 - **Pie menu** (right-click, `Shift+F10`, "…" in the bar): a ring of sectors with a pictogram over each label, at most
-  eight entries; delete, views (up to four), "Text …", "Insert ▸", duplicate and rotate first, type actions, numeral,
+  eight entries; delete, views (up to four), "Text …", "Insert …", duplicate and rotate first, type actions, numeral,
   mirror, order and grouping behind "More ▸" (paged with Back). Labels wrap at spaces only (two lines, smaller font
   before shortening with "…"); the full label of a shortened or unavailable entry appears in a pill below the ring.
   Layout and wrapping are pure functions in `src/ui/pielogic.ts` (unit-tested).
 - **Text**: double-click on an object, the text button in the context bar or "Text …" in the pie menu edit the main text
   (`mainText`, `setMainText`) in the inline prompt; multi-line texts open the inspector's text box.
-- **Insert ▸** lists the engine's `suggestions`; picking one starts insert at the pointer on the stage (with snapping).
-  In the COM add-in's sidebar it sends the existing `place` bridge message, so the element is placed on the slide.
+- **Insert …** in the pie menu opens the insert box (see the UI/UX round below); the chosen item starts insert at the
+  pointer on the stage (with snapping). In the COM add-in's sidebar it sends the existing `place` bridge message, so the
+  element is placed on the slide.
 - **Black and white**: toggle in the top bar (and in Settings) calls `setMonochrome`; the stage, SVG/PNG export and the
   draw plans written by `src/office/powerpoint.ts` (or the COM bridge) follow the document setting. Clicking again
   restores the colours; undo works.
@@ -88,7 +95,8 @@ the units on the slide.
   style via `setStyle`). Type actions whose `paramKeys` are shown as choices are left out.
 - **Quick add** (like the COM add-in): a selected flowchart, UML, ER, BPMN or basic element (`chain`) shows blue
   triangles outside its sides; click adds a connected copy (`quickAdd`), drag and drop adds it at the drop point. The
-  context bar then starts with the next-element palette (`nextItems`; one click calls `replaceItem`).
+  context bar then starts with "Make it …", which opens the insert box with what the new element can become
+  (`nextItems`, typing searches the library; the pick calls `replaceItem`). No thumbnail row is appended to the bar.
 - **Coupling:** moves, resizes and parameter edits keep gears in mesh and gears on their shafts (engine `Coupling`);
   holding Alt while releasing edits freely (`couple: false`, `Session.couple`).
 - **Anchor** (settings, on by default, like the COM add-in's ribbon toggle): a line end dragged onto a snap target
@@ -96,12 +104,42 @@ the units on the slide.
 - **Pie menu "Label ▸"** for lines, arrows, dimensions and lead lines: entries generated from the type parameters
   (text prompts, switches, choices, text size), like the COM add-in.
 
+## UI/UX round 2026-11-24 (parity with the COM add-in)
+
+Follows the binding UX rules in the roadmap ("Plan 2026-11-24"). Pure rules in `src/ui/uxlogic.ts` and
+`src/ui/insertbox.ts`, unit-tested in `test/uxround.test.ts`.
+
+- **Context-only bar, fixed order:** "Make it …" (right after a quick add) | views | choices | text, numeral, up to three
+  type actions | insert, draw the path, select assembly | mirror/rotate | style, more. Mirror and rotate appear only when
+  `transformEffect` says they change the drawing (a circle or a gear in axial view shows none of them); the pie menu
+  follows the same rule. Pictograms with bilingual tooltips; the bar never grows with content.
+- **One insert flow:** the insert button in the bar, "Insert …" in the pie menu and Ctrl+Space (also without a
+  selection) open the insert box at the pointer. Without typing it lists the parts that fit the selection first
+  (marked "fits"/"passt") and then the recent items; typing searches the whole library (`search`). ↑/↓ move, Enter
+  takes the marked row, Esc or a click elsewhere closes. Rows show the library thumbnails. The chosen item follows the
+  pointer with snapping (click places it, Esc cancels). Recent items (last 12) are kept in the per-user settings
+  (localStorage); library inserts count too.
+- **Multi-selection bar:** with two or more elements selected (a group counts as one), the bar shows the operations of
+  `arrangeOptions` as icons with tooltips – one view for all (the mechanism kept), centres on a row or column, even
+  spacing, like the first, renumber reference numerals – each only when it changes something; a click runs `arrange`
+  (one undo step). Style and the pie menu stay available.
+- **Select assembly:** shown when the selection is coupled with parts that are not selected yet (`assembly`); a click
+  selects all coupled objects, which then get the multi-selection bar.
+- **Snap labels:** while dragging, the label from `snapMove` ("axis", "pitch circle", "pin 2") is shown next to the
+  snap target (docking point, snapped circle or segment).
+- **Draw the path:** a link of a self-built linkage with F = 1 (`trace` returns a path) offers "Draw the path"; it
+  inserts the coupler curve of the link's end as a motion path (`kin.path`, or `kin.path.closed` for a closed curve;
+  an open path without arrowhead). This takes two undo steps (insert, then the points via `update`).
+- **Not in the web host:** build "+" handles on ports (gears, shafts) do not exist on the web stage, so there is nothing
+  to route into the insert box; fitting parts are placed with the snapping ghost instead of the COM add-in's
+  "placed where it fits" (`Fitting.Place` is not exposed by the engine API); explode and motion mode are COM-only.
+
 ## Build and run
 
 ```powershell
 cd hosts/office-web
 npm ci
-npm test            # vitest (manifest, library filter, pie layout, label wrapping, resize)
+npm test            # vitest (manifest, library filter, pie layout, label wrapping, resize, UI/UX round rules)
 npm run build       # engine publish + icons + typecheck + vite build + manifest -> dist/
 npm run dev         # dev server on port 3000 (https if office-addin-dev-certs are installed)
 ```
@@ -152,6 +190,7 @@ For end users, use the local installer described above.
 | Engine in WebAssembly, catalog, insert at pointer, search | verified in browser (dev.html) |
 | Stage interaction (move, scale, snap, pie menu, floating bar) | implemented, browser check partial |
 | Pie menu with "More ▸"/"Insert ▸", text editing, black and white, centred resize | verified in browser (dev.html, 2026-11-20) |
+| UI/UX round: context-only transforms, insert box, multi-selection bar, select assembly, snap labels, draw the path | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
 | Writing native shapes into PowerPoint | implemented, **not yet tested in PowerPoint** |
 | Local installer like the COM add-in (no admin) | implemented, dry run verified; real install pending |
 | Webspace package (download page, manifest for own URL) | implemented; checked over local HTTPS, real webspace pending |

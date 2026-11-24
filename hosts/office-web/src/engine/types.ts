@@ -36,8 +36,26 @@ export interface ObjectInfo {
 /** Main text of an object: object text (no key) or the text parameter `key` (numeral, text, label, name, title). */
 export interface MainTextInfo { key?: string; label: string; value: string }
 
-/** Library item offered by "Insert ▸" for the selection (engine `suggestions`). */
-export interface SuggestionInfo { id: string; typeId: string; name: string; view?: string; category: string; points: boolean }
+/** Library item offered for the selection (engine `suggestions`, `nextItems`, `search`). */
+export interface SuggestionInfo {
+  id: string;
+  typeId: string;
+  name: string;
+  view?: string;
+  category: string;
+  points: boolean;
+  /** search: fits the selection (listed first, marked "fits"). */
+  fits?: boolean;
+}
+
+/** Which quick transforms change the selection's drawing (engine `transformEffect`, from `Symmetry`). */
+export interface TransformEffect { mirrorH: boolean; mirrorV: boolean; rotate90: boolean }
+
+/** Selection-wide operation that changes something (engine `arrangeOptions`): "mview:<view>", "align:row" … */
+export interface ArrangeOption { id: string; label: string; icon: string }
+
+/** Path of a joint of a self-built linkage while its crank turns (engine `trace`); empty when the chain has F ≠ 1. */
+export interface TraceInfo { points: Vec2[]; closed: boolean }
 
 export interface EditorState {
   session: string;
@@ -149,6 +167,8 @@ export interface SnapResult {
   kind: string;
   guides: SnapGuide[];
   attach?: { objectId: string; u: number; v: number };
+  /** snapMove: what the drag docks onto ("pitch circle", "axis", "pin 2"), for a label at the target. */
+  label?: string;
 }
 
 export interface DrawCapabilities {

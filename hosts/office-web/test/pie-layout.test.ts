@@ -49,7 +49,7 @@ describe("pie entries", () => {
   it("keeps submenu arrows and ellipses with their word", () => {
     const table = strings as Record<string, { en: string; de: string }>;
     const m = approxMeasure(10);
-    expect(wrapLabel(table["pie.insert"].de, 60, m)).toEqual({ lines: ["Einfügen ▸"], complete: true });
+    expect(wrapLabel(table["pie.insert"].de, 60, m)).toEqual({ lines: ["Einfügen …"], complete: true });
     expect(wrapLabel("Ratio …", 30, m).lines).toHaveLength(1);
   });
 });
