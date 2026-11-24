@@ -125,8 +125,9 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
   fitting parts placed in their spot, multi-selection bar, select assembly, snap labels, coupler curve, F = n and
   explode; engine methods `search`, `transformEffect`, `arrangeOptions`/`arrange`, `assembly`, `trace`/`drawTrace`,
   `insertFitting`, `explode`, `dof`). Not yet verified inside PowerPoint on the web (needs the dev certificate on the
-  maintainer's machine). Open on the web: build "+" ports on the stage, live coupling preview, ghost positions,
-  dimension between parts, parts list redraw on every edit (engine side is done).
+  maintainer's machine). Since then also on the web: build "+" ports on the stage with shaft stretching (preview from
+  `buildStretchPreview`), live coupling preview, ghost positions, dimension between two parts (2026-11-24/25). Open on
+  the web: motion mode (live turning by dragging), the sidebar library search through the insert box.
 - LibreOffice follows after the web; the engine API above is host-neutral.
 
 ### Review at the end of 2026-11-24 and next steps
@@ -145,8 +146,8 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
   (about 35 minutes, mouse busy).
 
 **Next, in this order:**
-1. Web: the remaining COM features (build "+" on the stage, live coupling preview, ghost positions, dimension between
-   parts), then check in PowerPoint on the web once the maintainer has installed the dev certificate.
+1. Web: motion mode, then check in PowerPoint on the web once the maintainer has installed the dev certificate (build
+   "+", coupling preview, ghosts and dimension are done).
 2. LibreOffice: bring the host to the engine API level (insert box, context-only bar, multi-selection, assembly view).
 3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
    (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion, `elevation`/`section` view

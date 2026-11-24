@@ -192,6 +192,22 @@ textarea.isk-input { resize: vertical; }
 .isk-chain:hover { fill: #3c82e6; }
 .isk-chain-preview { stroke: #1f5fbf; stroke-width: 1.5px; vector-effect: non-scaling-stroke; stroke-dasharray: 4 3; fill: none; }
 
+/* Build "+" at the free ports of a gear, shaft, motor or link (same blue as quick add), with a dashed lead line. */
+.isk-port { cursor: pointer; }
+.isk-port circle { fill: #1f5fbf; stroke: none; }
+.isk-port:hover circle { fill: #3c82e6; }
+.isk-port path { stroke: #ffffff; stroke-width: 1.5px; vector-effect: non-scaling-stroke; fill: none; pointer-events: none; }
+.isk-port-stretch { cursor: grab; }
+.isk-port-lead { stroke: rgba(31, 95, 191, 0.5); stroke-width: 1px; vector-effect: non-scaling-stroke; stroke-dasharray: 2 2; pointer-events: none; }
+.isk-stretch-preview { stroke: #1f5fbf; stroke-width: 2.5px; vector-effect: non-scaling-stroke; fill: none; stroke-linecap: round; }
+.isk-stretch-preview.is-shorter { stroke-dasharray: 4 3; stroke: #c0392b; }
+.isk-stretch-end { fill: #1f5fbf; stroke: #ffffff; stroke-width: 1px; vector-effect: non-scaling-stroke; }
+
+/* Live coupling preview: neighbours that follow the drag or resize, drawn in blue (like the COM add-in). */
+.isk-coupling { pointer-events: none; opacity: 0.85; }
+.isk-coupling * { stroke: #1f6feb !important; fill: none !important; }
+.isk-coupling text, .isk-coupling tspan { fill: #1f6feb !important; stroke: none !important; }
+
 /* Groups of the context bar (fixed order: views | choices | element actions | insert … | transforms | style). */
 .isk-bar-sep { align-self: stretch; width: 1px; margin: 3px 2px; background: var(--border); }
 
