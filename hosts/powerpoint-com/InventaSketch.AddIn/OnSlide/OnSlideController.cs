@@ -93,6 +93,9 @@ namespace InventaSketch.AddIn.OnSlide
         private bool _barPressed;
         private byte _barAlpha;
 
+        /// <summary>Keyboard-only hook for shortcuts that work without a selection (Ctrl+Space).</summary>
+        private readonly InputHooks _keys = new();
+
         public OnSlideController(PowerPoint.Application app, Func<Registry> registry, Func<Lang> lang)
         {
             _app = app; _registry = registry; _lang = lang;
@@ -108,6 +111,15 @@ namespace InventaSketch.AddIn.OnSlide
             _hooks.Mouse = OnMouse;
             _hooks.KeyDown = OnKey;
             _hooks.Reset = () => Cancel("reset");
+            // Ctrl+Space also without a selection: a keyboard-only hook that stays installed (the full hooks take over
+            // while an element is selected and handle the key themselves).
+            _keys.KeyDown = (vk, shift, ctrl, alt) =>
+            {
+                if (vk != 0x20 || !ctrl || shift || alt || _mode != Mode.Idle) return false;
+                Post(() => { if (CurrentSlide() is { } s) { _view ??= SlideView.Current(_app); OpenInsertSearch(s, null); } });
+                return true;
+            };
+            _keys.InstallKeyboard();
             _timer = new Timer { Interval = 250 };
             _timer.Tick += (_, _) => RefreshView();
             _app.WindowSelectionChange += OnSelectionChange;
@@ -120,6 +132,7 @@ namespace InventaSketch.AddIn.OnSlide
             try { _app.WindowSelectionChange -= OnSelectionChange; } catch { /* PowerPoint closing */ }
             _timer.Dispose();
             _hooks.Dispose();
+            _keys.Dispose();
             _overlay.Dispose();
             _barWindow.Dispose();
         }
@@ -287,6 +300,17 @@ namespace InventaSketch.AddIn.OnSlide
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
                 if (!view.SameAs(_view)) _view = view;
+                // A selection grown to several elements without a selection event (selected through the object model):
+                // the multi-selection bar takes over.
+                if (_mode == Mode.Armed)
+                {
+                    var sel = _app.ActiveWindow?.Selection;
+                    if (sel is not null && sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count > 1)
+                    {
+                        OnSelectionChange(sel);
+                        return;
+                    }
+                }
                 // Native moves/resizes of the armed unit (mouse, arrow keys, format pane): re-read and re-arm.
                 if (_mode == Mode.Armed && _unit is not null)
                 {
@@ -953,7 +977,12 @@ namespace InventaSketch.AddIn.OnSlide
             // Self-built linkage: its degree of freedom (Grübler) at a glance.
             if (first is not null && first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
                 && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
+            {
                 list.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom (Grübler): ", "Freiheitsgrad (Grübler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke")));
+                // A chain that moves with one input: the path of this link's end as the crank turns (coupler curve).
+                if (dof.Dof == 1)
+                    list.Add(new BarButton("trace", "", T("Draw the path of this link's end (coupler curve)", "Bahnkurve des Gliedendes zeichnen (Koppelkurve)")) { IconId = IconIds.Trace });
+            }
             // Motion mode for parts that can move (gear train, linkage): drag turns them instead of moving them.
             if (MovablePart() is not null)
                 list.Add(new BarButton("motion", "", T("Move: drag turns the gears / linkage", "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
@@ -1175,6 +1204,7 @@ namespace InventaSketch.AddIn.OnSlide
             GetCursorPos(out var p);
             var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
             Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
+            Log.Info("Bar ids: " + string.Join(",", _bar.Buttons.Where(b => !b.Separator).Select(b => b.Id)));
             DrawBar(view, opacity);
         }
 
@@ -2144,6 +2174,27 @@ namespace InventaSketch.AddIn.OnSlide
             if (id == "planscale")
             {
                 PlanScaleRequested?.Invoke();
+                return;
+            }
+            if (id == "trace")
+            {
+                // The coupler curve of the link's last point as a motion path element (one undo step).
+                var link = unit.Objects.FirstOrDefault(o => o.IsPointGeometry && Linkage.IsPart(registry, o));
+                if (link is null) return;
+                var full = SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+                if (Linkage.Trace(registry, full, link.Id, link.Points!.Count - 1, 72, _lang()) is not { } path || path.Points.Count < 3) return;
+                var item = registry.Item(path.Closed ? "kin.path.closed" : "kin.path");
+                if (item is null) return;
+                _app.StartNewUndoEntry();
+                var curve = registry.Create(item, path.Points[0]) with { Points = path.Points.Select(q => new Vec2(Math.Round(q.X, 4), Math.Round(q.Y, 4))).ToList() };
+                if (!path.Closed) curve = curve.WithParam("arrow", false);
+                SketchUnits.Draw(slide, registry, SingleUnitDoc(curve), _lang());
+                Log.Info("Traced coupler curve: " + path.Points.Count + " points" + (path.Closed ? ", closed" : ""));
+                return;
+            }
+            if (id == "nextbox")
+            {
+                Post(() => OpenNextBox(unit));
                 return;
             }
             if (id == "insert")

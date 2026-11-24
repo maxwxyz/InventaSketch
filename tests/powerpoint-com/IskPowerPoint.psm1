@@ -260,6 +260,24 @@ function Get-IskLog {
     $copy
 }
 
+<# .SYNOPSIS Button ids of the floating bar as last shown (from the add-in log). #>
+function Get-IskBarIds {
+    param($S)
+    $log = Get-IskLog $S
+    if (-not (Test-Path $log)) { return @() }
+    $line = Get-Content $log | Where-Object { $_ -match 'Bar ids: ' } | Select-Object -Last 1
+    if (-not $line) { return @() }
+    , @(($line -replace '.*Bar ids: ', '') -split ',' | Where-Object { $_ })
+}
+
+<# .SYNOPSIS Presses Ctrl plus a key (virtual-key code). #>
+function Send-IskCtrlKey {
+    param([byte]$Vk)
+    [IskTest.Native]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60
+    [IskTest.Native]::keybd_event($Vk, 0, 0, [UIntPtr]::Zero); [IskTest.Native]::keybd_event($Vk, 0, 2, [UIntPtr]::Zero); Start-Sleep -Milliseconds 60
+    [IskTest.Native]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
+}
+
 <# .SYNOPSIS Screen rectangle of the floating bar as last shown (from the add-in log), or $null. #>
 function Get-IskBarRect {
     param($S)

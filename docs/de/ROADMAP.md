@@ -101,8 +101,8 @@ umsetzen, dann Web, dann LibreOffice.
    sprechendes Piktogramm). Die Leiste wächst nie mit Inhalt (keine Vorschaubildreihen).
 3. **Ein Einfügeweg.** Einfügen-Knopf, Kreismenü und Strg+Leertaste öffnen dasselbe Einfügefeld am Zeiger: zuerst, was
    zur Auswahl passt (an seinen Platz gesetzt), dann zuletzt Verwendetes; Tippen durchsucht die ganze Bibliothek (beide
-   Sprachen, Umlaute gleichwertig, Ansicht der Auswahl bevorzugt). Andocken an eine bestimmte Stelle bleibt auf der Folie
-   („+“-Ports).
+   Sprachen, Umlaute gleichwertig, Ansicht der Auswahl bevorzugt). Ein Anbau-„+“ auf der Folie öffnet dasselbe Feld am
+   „+“ mit den dort andockenden Teilen zuerst.
 4. **Mehrfachauswahl hat eine eigene Leiste.** Eine Ansicht für alle, Mitten auf eine Zeile/Spalte, gleichmäßig
    verteilen, Bezugszeichen neu nummerieren – jeweils nur, wenn es etwas ändert (`Arrange`); das native
    PowerPoint-Format bleibt verfügbar.
@@ -128,9 +128,12 @@ umsetzen, dann Web, dann LibreOffice.
   Wandler, Parksperre, CVT, Well- und Zykloidgetriebe, Getriebegehäuse mit Lagersitzen, Ölwanne;
   docs/de/modules/mechanical-drives.md). Dort offen: Wirkungsgradkennfelder aus Messrastern, Polar- und Flächendiagramme,
   Histogramme, eine zweite y-Achse für eigene Daten; „um die Auswahl einfügen“ für Gehäuse.
-- In COM noch offen: Kegelradpaare in Kopplung und Bewegung, Ravigneaux-Sätze, Zerlegen von Schema-Planetensätzen,
-  Differentialen und Kurvengetrieben, Ansichtswechsel für Haustechnik (Grundriss ↔ Schnitt ↔ Strangschema),
-  Fangbeschriftungen, Tab-Durchlauf, Format übertragen für Semantik.
+- Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
+  Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
+  Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
+- In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Differentialen (braucht ein
+  Korb-Einzelteil) und Kurvengetrieben (braucht eine Kurvenscheibe), Ansichtswechsel für Haustechnik (Grundriss ↔
+  Schnitt ↔ Strangschema), Grenzen und Zwischenlagen für selbst gebaute Ketten.
 - Web und LibreOffice folgen dem COM-Stand; die Engine enthält bereits `LibrarySearch`, `Symmetry`, `Arrange`,
   `AssemblyViews`, die Hosts ergänzen nur die Oberfläche.
 

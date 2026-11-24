@@ -324,7 +324,9 @@ UX round (2026-11-20, from the maintainer's feedback):
   - *Insert box:* one insert button for every element (also in the pie menu, and Ctrl+Space anywhere on the slide)
     opens a search box at the pointer: parts that fit the selection first ("fits", placed where they fit), then recent
     items; typing searches the whole library (`LibrarySearch`: both languages, umlauts = ae/oe/ue/ss, the selection's
-    view preferred). The thumbnails that used to be appended to the bar are gone.
+    view preferred). A click on a build "+" opens the same box at the "+" with the parts that dock there first, and
+    "make it …" after a quick add opens it with what the new element can become. The thumbnails that used to be
+    appended to the bar are gone.
   - *Multi-selection bar:* with two or more InventaSketch elements selected, a bar offers one view for all, centres on
     a row or column, even spacing and renumbering of reference numerals in reading order (`Arrange`) – each only when it
     changes something. PowerPoint's own format stays available for the native side.
@@ -336,6 +338,12 @@ UX round (2026-11-20, from the maintainer's feedback):
     (meshing gears, belts, shafts following a motor) are drawn in blue.
   - *Snap labels:* while dragging, the snap target is named next to it ("pitch circle", "axis", "pin 2", "joint 1").
   - *Bevel pairs:* bevel gears with a common cone apex and crossing axes mesh; moving one moves its mate.
+  - *Coupler curves:* a link of a self-built chain with F = 1 offers "draw the path": the crank turns once (or both
+    ways up to its limits) and the path of the link's end is inserted as a motion path (`Linkage.Trace`).
+  - *Format painter:* with several elements selected, "like the first" gives the others of the same type the first
+    one's view, parameters and style (`Arrange.MatchFormat`).
+  - *Exploding through another view:* an assembly whose own view has no parts recipe is exploded in a view that has one
+    and switched back – a schematic planetary set becomes stick parts.
 - **Exploding predefined linkages:** the four-bar and the slider-crank show "Explode into parts" in the bar too: they
   become fixed pivots, links and a slider at the current position, docked onto each other (part recipes with points,
   docks and an align anchor, `PartSpec.Points`, `PartSpec.Docks`, `PartSpec.AlignAnchor`), i.e. a self-built linkage

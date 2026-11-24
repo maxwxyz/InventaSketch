@@ -319,6 +319,19 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawRectangle(pen, 6, 3, 9, 4); g.DrawRectangle(pen, 6, 10, 9, 4); g.DrawRectangle(pen, 6, 17, 9, 4);
                     g.DrawLine(thin, 19, 7, 19, 10); g.DrawLine(thin, 19, 14, 19, 17);
                     break;
+                case IconIds.Trace:
+                    // A dashed loop with the tracing point on it.
+                    g.DrawBezier(dash, 4, 15, 4, 4, 20, 4, 20, 12);
+                    g.DrawBezier(dash, 20, 12, 20, 20, 8, 21, 4, 15);
+                    g.FillEllipse(brush, 17.5f, 5.5f, 4.5f, 4.5f);
+                    break;
+                case IconIds.MatchFormat:
+                    // A brush: handle, ferrule and bristles painting a stroke.
+                    g.DrawLine(pen, 17, 3, 12, 11);
+                    g.DrawRectangle(pen, 9.5f, 10.5f, 5, 3.5f);
+                    g.FillPolygon(brush, new[] { new PointF(9.5f, 14), new PointF(14.5f, 14), new PointF(13.5f, 19), new PointF(8, 19) });
+                    g.DrawLine(thin, 4, 21, 20, 21);
+                    break;
                 case IconIds.FitAround:
                     // A frame closing in on a part: corner brackets around a small box.
                     g.DrawLines(pen, new[] { new PointF(3, 8), new PointF(3, 3), new PointF(8, 3) });

@@ -49,6 +49,26 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void ACouplerCurveOfTheExplodedFourBarIsClosed()
+        {
+            var mech = Reg.Create(Reg.Library.First(i => i.TypeId == "kin.mech.fourbar"), new Vec2(120, 90));
+            var parts = Assemblies.Explode(Reg, Doc(mech), mech.Id);
+            var exploded = Doc(parts.ToArray());
+            var links = parts.Where(p => p.Type == "kin.link.binary").ToList();
+            var crankTip = Linkage.Trace(Reg, exploded, links[0].Id, 1, 36);
+            Assert.NotNull(crankTip);
+            Assert.True(crankTip!.Value.Closed, "the crank goes all the way round");
+            var pivot = exploded.ResolvePoints(exploded.Get(links[0].Id)!)[0];
+            var r = Len(exploded, links[0]);
+            Assert.All(crankTip.Value.Points, p => Assert.Equal(r, p.DistanceTo(pivot), 2));
+            // The coupler's far joint swings on the rocker's arc.
+            var rocker = exploded.ResolvePoints(exploded.Get(links[2].Id)!);
+            var coupler = Linkage.Trace(Reg, exploded, links[1].Id, 1, 36);
+            Assert.NotNull(coupler);
+            Assert.All(coupler!.Value.Points, p => Assert.Equal(Len(exploded, links[2]), p.DistanceTo(rocker[0]), 2));
+        }
+
+        [Fact]
         public void ASliderCrankExplodesWithItsSliderOnTheGuide()
         {
             var mech = Reg.Create(Reg.Library.First(i => i.TypeId == "kin.mech.slidercrank"), new Vec2(100, 100));

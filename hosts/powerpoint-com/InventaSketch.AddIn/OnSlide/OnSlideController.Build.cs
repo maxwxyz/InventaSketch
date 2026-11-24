@@ -202,13 +202,46 @@ namespace InventaSketch.AddIn.OnSlide
                     Post(() => ApplyStretch(unit, port.Id, to));
                     return true;
                 }
-                // Click: the parts that fit this port go into the bar.
-                _portFocus = _portFocus?.Id == port.Id ? null : port;
-                if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+                // Click: the insert box opens right at the "+" with the parts that dock there first (the bar does not grow).
+                if (unit is not null)
+                {
+                    var at = PortScreen(view, port);
+                    Post(() => OpenPortInsert(unit, port, new Point((int)at.X, (int)at.Y)));
+                }
                 return true;
             }
             if (message == WM_RBUTTONDOWN) { Cancel("right click"); return true; }
             return true;
+        }
+
+        /// <summary>
+        /// The insert box at a build "+": the parts that dock there first (docked and coupled when chosen), typing searches
+        /// the whole library (anything else is placed at the pointer).
+        /// </summary>
+        private void OpenPortInsert(SketchUnit unit, BuildPort port, Point at)
+        {
+            var slide = CurrentSlide();
+            if (slide is null || _portOwner is null) return;
+            var registry = _registry();
+            var lang = _lang();
+            List<LibraryItem> items;
+            try
+            {
+                items = Building.Items(registry, SketchUnits.WithContext(unit.Doc, _otherUnits), _portOwner, port, 12, lang).ToList();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Port items", ex);
+                items = new List<LibraryItem>();
+            }
+            var first = unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+            var view = first is null ? null : registry.Type(first.Type)?.ViewOf(first);
+            var chosen = InsertSearch.Ask(registry, lang, AddInSettings.RecentItems, items, view, at, _view?.MainWindow ?? IntPtr.Zero, (i, size) => Thumb(i, size));
+            if (chosen is null) return;
+            AddInSettings.RecentItems = LibrarySearch.Remember(AddInSettings.RecentItems, chosen.Id);
+            Log.Info("Port insert: " + port.Id + " " + chosen.Id);
+            if (items.Any(i => i.Id == chosen.Id)) ApplyAction(unit, "port:" + port.Id + ":" + chosen.Id);
+            else BeginPlacement(chosen);
         }
 
         /// <summary>Bar buttons for the focused build port: thumbnails of the parts that dock there.</summary>

@@ -309,7 +309,9 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   - *Einfügefeld:* ein Einfügen-Knopf für jedes Element (auch im Kreismenü, und Strg+Leertaste überall auf der Folie)
     öffnet ein Suchfeld am Zeiger: zuerst, was zur Auswahl passt („passt“, wird an seinen Platz gesetzt), dann zuletzt
     Verwendetes; Tippen durchsucht die ganze Bibliothek (`LibrarySearch`: beide Sprachen, Umlaute = ae/oe/ue/ss,
-    Ansicht der Auswahl bevorzugt). Die früher an die Leiste angehängten Vorschaubilder sind entfallen.
+    Ansicht der Auswahl bevorzugt). Ein Klick auf ein Anbau-„+“ öffnet dasselbe Feld direkt am „+“ mit den dort
+    andockenden Teilen zuerst, „Ändern in …“ nach dem Schnelleinfügen öffnet es mit dem, was das neue Element werden
+    kann. Die früher an die Leiste angehängten Vorschaubilder sind entfallen.
   - *Leiste für Mehrfachauswahl:* Bei zwei oder mehr ausgewählten InventaSketch-Elementen bietet eine Leiste eine
     Ansicht für alle, Mitten auf eine Zeile oder Spalte, gleichmäßiges Verteilen und Neunummerieren der Bezugszeichen in
     Lesereihenfolge (`Arrange`) – jeweils nur, wenn es etwas ändert. Das native PowerPoint-Format bleibt verfügbar.
@@ -324,6 +326,13 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
     „Gelenk 1“).
   - *Kegelradpaare:* Kegelräder mit gemeinsamer Kegelspitze und gekreuzten Achsen kämmen; verschiebt man eines, folgt
     das Gegenrad.
+  - *Koppelkurven:* Ein Glied einer selbst gebauten Kette mit F = 1 bietet „Bahnkurve zeichnen“: die Kurbel dreht einmal
+    ganz (oder in beide Richtungen bis zum Anschlag), die Bahn des Gliedendes wird als Bahnkurve eingefügt
+    (`Linkage.Trace`).
+  - *Format übertragen:* Bei mehreren ausgewählten Elementen gibt „Wie das erste“ den übrigen gleichen Typs Ansicht,
+    Parameter und Stil des ersten (`Arrange.MatchFormat`).
+  - *Zerlegen über eine andere Ansicht:* Eine Baugruppe ohne Teile-Rezept in ihrer Ansicht wird in einer Ansicht mit
+    Rezept zerlegt und zurückgeschaltet – ein Schema-Planetensatz wird zu Schema-Einzelteilen.
 - **Vordefinierte Koppelgetriebe zerlegen:** Viergelenk und Schubkurbel zeigen ebenfalls „In Einzelteile zerlegen“ in der
   Leiste: sie werden zu Gestelldrehpunkten, Gliedern und einem Schieber in der aktuellen Stellung, aneinander angedockt
   (Teile-Rezepte mit Punkten, Andockungen und Ausrichtungsanker, `PartSpec.Points`, `PartSpec.Docks`,

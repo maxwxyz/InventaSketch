@@ -149,6 +149,61 @@ namespace InventaSketch.Core
             return Apply(doc, chain, pos);
         }
 
+        /// <summary>
+        /// The path of point <paramref name="index"/> of link <paramref name="linkId"/> while the chain's crank (a link on a
+        /// fixed pivot) turns – a coupler curve. The crank turns in <paramref name="steps"/> steps; a crank that cannot go
+        /// all the way round (rocker input, dead position) is turned both ways from the current position up to where the
+        /// chain stops. Null if the chain has no crank or not exactly one degree of freedom.
+        /// </summary>
+        public static (IReadOnlyList<Vec2> Points, bool Closed)? Trace(Registry registry, SketchDocument doc, string linkId, int index, int steps = 72, Lang lang = Lang.En)
+        {
+            if (Dof(registry, doc, linkId, lang) is not { Dof: 1 }) return null;
+            var chain = Build(registry, doc, linkId, lang);
+            if (chain is null) return null;
+            // The crank: the selected link if it sits on a fixed pivot, else the first link that does.
+            (string Link, int Tip, Vec2 Pivot)? crank = null;
+            foreach (var link in new[] { linkId }.Concat(chain.Links.Where(l => l != linkId)))
+            {
+                var members = chain.NodeOf.Where(kv => kv.Key.Link == link).ToList();
+                var fixedOnes = members.Where(kv => chain.Nodes[kv.Value].Fixed).ToList();
+                var free = members.Where(kv => !chain.Nodes[kv.Value].Fixed).ToList();
+                if (fixedOnes.Count == 1 && free.Count >= 1)
+                {
+                    crank = (link, free[0].Key.Index, chain.Nodes[fixedOnes[0].Value].P);
+                    break;
+                }
+            }
+            if (crank is not { } c) return null;
+            Vec2 Tip(SketchDocument d) => d.ResolvePoints(d.Get(c.Link)!)[c.Tip];
+            Vec2 Traced(SketchDocument d) => d.ResolvePoints(d.Get(linkId)!)[index];
+            var r = Tip(doc).DistanceTo(c.Pivot);
+            if (r < 1e-6) return null;
+            var a0 = Math.Atan2(Tip(doc).Y - c.Pivot.Y, Tip(doc).X - c.Pivot.X);
+            var step = 2 * Math.PI / Math.Max(8, steps);
+            var tol = Math.Max(0.05, r * 0.02);
+            List<Vec2> Run(int dir)
+            {
+                var pts = new List<Vec2>();
+                var d = doc;
+                for (var k = 1; k <= Math.Max(8, steps); k++)
+                {
+                    var a = a0 + dir * k * step;
+                    var target = c.Pivot + new Vec2(Math.Cos(a), Math.Sin(a)) * r;
+                    var next = Drag(registry, d, c.Link, c.Tip, target, lang);
+                    if (Tip(next).DistanceTo(target) > tol) break; // the chain stops here (limit, dead position)
+                    d = next;
+                    pts.Add(Traced(d));
+                }
+                return pts;
+            }
+            var forward = Run(1);
+            var start = Traced(doc);
+            if (forward.Count >= Math.Max(8, steps)) return (new[] { start }.Concat(forward.Take(forward.Count - 1)).ToList(), true);
+            var backward = Run(-1);
+            backward.Reverse();
+            return (backward.Concat(new[] { start }).Concat(forward).ToList(), false);
+        }
+
         /// <summary>Writes joint positions back: the storing point of every link, joint symbols and sliders moved.</summary>
         private static SketchDocument Apply(SketchDocument doc, Chain chain, Dictionary<string, Vec2> pos)
         {

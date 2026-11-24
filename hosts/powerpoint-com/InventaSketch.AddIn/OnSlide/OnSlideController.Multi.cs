@@ -58,6 +58,13 @@ namespace InventaSketch.AddIn.OnSlide
                 list.Add(new BarButton("dist:h", "", T("Space evenly left to right", "Gleichmäßig von links nach rechts verteilen")) { IconId = IconIds.DistributeH });
             if (Arrange.Changes(Arrange.Distribute(boxes, horizontal: false)))
                 list.Add(new BarButton("dist:v", "", T("Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen")) { IconId = IconIds.DistributeV });
+            // Format painter: the first selected element's view, parameters and style for the others of its type.
+            if (firsts[0] is { } source && firsts.Count > 1)
+            {
+                var ctx = new RenderContext(_multi[0].Doc, _lang());
+                if (Arrange.MatchFormat(registry, source, _multi.Skip(1).SelectMany(u => u.Objects), ctx).Count > 0)
+                    list.Add(new BarButton("match", "", T("Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil")) { IconId = IconIds.MatchFormat });
+            }
             if (Numerals().Count >= 2 && Arrange.Renumber(Numerals()).Count > 0)
                 list.Add(new BarButton("renumber", "", T("Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren")) { IconId = IconIds.Renumber });
             while (list.Count > 0 && list[list.Count - 1].Separator) list.RemoveAt(list.Count - 1);
@@ -103,6 +110,7 @@ namespace InventaSketch.AddIn.OnSlide
             GetCursorPos(out var p);
             var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
             Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
+            Log.Info("Bar ids: " + string.Join(",", _bar.Buttons.Where(b => !b.Separator).Select(b => b.Id)));
             DrawBar(view, opacity);
         }
 
@@ -163,6 +171,19 @@ namespace InventaSketch.AddIn.OnSlide
                 finally
                 {
                     _noCouple = false;
+                }
+            }
+            else if (id == "match")
+            {
+                var source = units[0].Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+                shapes.Add(units[0].Shape);
+                foreach (var u in units.Skip(1))
+                {
+                    var ctx = new RenderContext(u.Doc, lang);
+                    var changed = source is null ? new List<SketchObject>() : Arrange.MatchFormat(registry, source, u.Objects, ctx).ToList();
+                    if (changed.Count == 0) { shapes.Add(u.Shape); continue; }
+                    var doc = Edits.Update(u.Doc, changed.Select(o => o.Id).ToList(), o => changed.First(x => x.Id == o.Id));
+                    if (SketchUnits.Replace(slide, u, doc, registry, lang) is { } s) shapes.Add(s);
                 }
             }
             else if (id == "renumber")

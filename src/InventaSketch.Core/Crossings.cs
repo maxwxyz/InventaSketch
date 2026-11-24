@@ -117,7 +117,7 @@ namespace InventaSketch.Core
         }
 
         /// <summary>
-        /// Connects line <paramref name="id"/> to line <paramref name="otherId"/> at a crossing: the line is split there and both
+        /// Connects line <paramref name="id"/> to the other line of <paramref name="crossing"/> at that crossing: the line is split there and both
         /// parts are docked onto the other line (a junction; wires and pipes draw a dot, connection exports count it).
         /// </summary>
         public static SketchDocument Connect(Registry registry, SketchDocument doc, string id, Crossing crossing, Lang lang = Lang.En)

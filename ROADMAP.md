@@ -93,7 +93,8 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
    content (no thumbnail rows).
 3. **One insert flow.** Insert button, pie menu and Ctrl+Space open the same insert box at the pointer: parts that fit
    the selection first (placed where they fit), then recent items; typing searches the whole library (both languages,
-   umlaut folding, the selection's view preferred). Docking onto a specific spot stays on the canvas ("+" ports).
+   umlaut folding, the selection's view preferred). A build "+" on the canvas opens the same box at the "+" with the
+   parts that dock there first.
 4. **Multi-selection has its own bar.** One view for all, centres on a row/column, even spacing, renumber reference
    numerals – each only when it changes something (`Arrange`); PowerPoint's native format stays available.
 5. **Assemblies are first-class.** "Select assembly" selects every coupled part; switching the view of a selected
@@ -114,9 +115,12 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
   strain wave and cycloidal drives, gearbox housing with bearing seats, oil sump; docs/en/modules/mechanical-drives.md).
   Open there: efficiency maps from measured grids, polar/area charts and histograms, a user secondary y-axis; "insert
   around the selection" for housings.
-- Still open in COM: bevel pairs in coupling and motion, Ravigneaux sets, exploding schematic sets, differentials and
-  cam mechanisms, assembly view switch for building services (plan ↔ section ↔ schematic), snap labels, Tab cycling,
-  format painter for semantics.
+- Done since in COM: bevel pairs in coupling, exploding schematic planetary sets (through the axial view), snap labels,
+  Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
+  selection, build "+" and "make it" in the insert box.
+- Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding differentials (needs a cage part) and cam
+  mechanisms (needs a cam disc part), assembly view switch for building services (plan ↔ section ↔ schematic), limits and
+  ghost positions for self-built chains.
 - Web and LibreOffice follow the COM state; the engine already carries `LibrarySearch`, `Symmetry`, `Arrange`,
   `AssemblyViews`, so the hosts only add UI.
 

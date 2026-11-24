@@ -58,6 +58,14 @@ namespace InventaSketch.AddIn.OnSlide
             if (_mouseHook == IntPtr.Zero || _keyboardHook == IntPtr.Zero) Log.Info("Hook could not be installed, error " + Marshal.GetLastWin32Error());
         }
 
+        /// <summary>Only the keyboard hook (a permanent shortcut such as Ctrl+Space; the mouse stays untouched).</summary>
+        public void InstallKeyboard()
+        {
+            if (_keyboardHook != IntPtr.Zero) return;
+            _keyboardHook = SetWindowsHookEx(WH_KEYBOARD, _keyboardProc, IntPtr.Zero, GetCurrentThreadId());
+            if (_keyboardHook == IntPtr.Zero) Log.Info("Keyboard hook could not be installed, error " + Marshal.GetLastWin32Error());
+        }
+
         public void Uninstall()
         {
             // Keep the mouse hook until a button pressed for the add-in is released.

@@ -428,17 +428,27 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Palette buttons of the "next element" (thumbnails) for the bar, while the element was just added.</summary>
         private List<BarButton> NextButtons(SketchObject first)
         {
+            // Just added with "+": one button opens the insert box with what the new element can become (no thumbnail row).
             var list = new List<BarButton>();
-            if (_nextFor != first.Id) return list;
-            var registry = _registry();
-            var scale = _view?.DeviceScale ?? 1;
-            foreach (var item in Flow.NextItems(registry, first, 8))
-                list.Add(new BarButton("next:" + item.Id, "", T("Make it: ", "Ändern in: ") + item.Name.Get(_lang()), Active: item.TypeId == first.Type && item.View == first.View)
-                {
-                    Icon = Thumb(item, (int)Math.Round(26 * scale)),
-                });
-            if (list.Count > 0) list.Add(new BarButton("", "", "", Separator: true));
+            if (_nextFor != first.Id || Flow.NextItems(_registry(), first, 2).Count == 0) return list;
+            list.Add(new BarButton("nextbox", "", T("Make it … (another element)", "Ändern in … (anderes Element)")) { IconId = IconIds.Cycle });
+            list.Add(new BarButton("", "", "", Separator: true));
             return list;
+        }
+
+        /// <summary>The insert box for "make it …": what a just added element can become; choosing replaces it.</summary>
+        private void OpenNextBox(SketchUnit unit)
+        {
+            var registry = _registry();
+            var first = unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+            if (first is null) return;
+            var items = Flow.NextItems(registry, first, 12).ToList();
+            GetCursorPos(out var p);
+            var chosen = InsertSearch.Ask(registry, _lang(), AddInSettings.RecentItems, items, registry.Type(first.Type)?.ViewOf(first),
+                new Point(p.X, p.Y), _view?.MainWindow ?? IntPtr.Zero, (i, size) => Thumb(i, size));
+            if (chosen is null) return;
+            AddInSettings.RecentItems = LibrarySearch.Remember(AddInSettings.RecentItems, chosen.Id);
+            ApplyAction(unit, "next:" + chosen.Id);
         }
 
         private Bitmap Thumb(LibraryItem item, int size)
