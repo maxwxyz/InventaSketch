@@ -296,6 +296,36 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawArc(pen, 3.5f, 3.5f, 17, 17, -60, 270);
                     g.FillPolygon(brush, new[] { new PointF(16.2f, 2.2f), new PointF(20.6f, 5.4f), new PointF(15.4f, 7.4f) });
                     break;
+                case IconIds.AlignRow:
+                    // Three parts of different size centred on one horizontal line.
+                    g.DrawLine(dash, 2, 12, 22, 12);
+                    g.DrawRectangle(pen, 3, 8, 5, 8); g.DrawRectangle(pen, 10, 5, 4, 14); g.DrawRectangle(pen, 16, 9.5f, 5, 5);
+                    break;
+                case IconIds.AlignColumn:
+                    g.DrawLine(dash, 12, 2, 12, 22);
+                    g.DrawRectangle(pen, 8, 3, 8, 5); g.DrawRectangle(pen, 5, 10, 14, 4); g.DrawRectangle(pen, 9.5f, 16, 5, 5);
+                    break;
+                case IconIds.DistributeH:
+                    // Three parts with equal gaps, the gaps marked below.
+                    g.DrawRectangle(pen, 3, 6, 4, 9); g.DrawRectangle(pen, 10, 6, 4, 9); g.DrawRectangle(pen, 17, 6, 4, 9);
+                    g.DrawLine(thin, 7, 19, 10, 19); g.DrawLine(thin, 14, 19, 17, 19);
+                    break;
+                case IconIds.DistributeV:
+                    g.DrawRectangle(pen, 6, 3, 9, 4); g.DrawRectangle(pen, 6, 10, 9, 4); g.DrawRectangle(pen, 6, 17, 9, 4);
+                    g.DrawLine(thin, 19, 7, 19, 10); g.DrawLine(thin, 19, 14, 19, 17);
+                    break;
+                case IconIds.SelectAssembly:
+                    // Two coupled wheels inside a dashed selection frame.
+                    g.DrawRectangle(dash, 2.5f, 2.5f, 19, 19);
+                    g.DrawEllipse(pen, 5, 6, 8, 8); g.DrawEllipse(pen, 12.5f, 11, 6.5f, 6.5f);
+                    break;
+                case IconIds.Renumber:
+                    // Lead lines with numerals in order: "1 2 3".
+                    g.DrawLine(thin, 4, 20, 7, 14); g.DrawLine(thin, 11, 20, 13, 14); g.DrawLine(thin, 18, 20, 19, 14);
+                    g.DrawLine(pen, 6, 5, 6, 11);
+                    g.DrawLines(pen, new[] { new PointF(10.5f, 6), new PointF(12, 4.8f), new PointF(14, 5.6f), new PointF(11, 11), new PointF(14.5f, 11) });
+                    g.DrawLines(pen, new[] { new PointF(17, 5), new PointF(20.5f, 5), new PointF(18.5f, 7.6f), new PointF(20.5f, 9.2f), new PointF(18.6f, 11.2f), new PointF(16.8f, 10.4f) });
+                    break;
                 case IconIds.Explode:
                     // An assembly flying apart: four parts pushed out of the centre.
                     g.DrawRectangle(pen, 3.5f, 3.5f, 6, 6); g.DrawRectangle(pen, 14.5f, 3.5f, 6, 6);

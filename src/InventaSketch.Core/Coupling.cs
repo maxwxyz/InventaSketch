@@ -129,6 +129,13 @@ namespace InventaSketch.Core
             return spans.Count == 0 ? doc : FollowSpans(registry, before, doc, lang, f0, spans, changed);
         }
 
+        /// <summary>
+        /// The coupling relations of a document's box objects (mesh, carried, bonded, spanned) without released pairs, as
+        /// (kind, a, b): for a carried pair a carries b (shaft, gear).
+        /// </summary>
+        public static IReadOnlyList<(LinkKind Kind, string A, string B)> Graph(Registry registry, SketchDocument doc, Lang lang = Lang.En)
+            => Pairs(FeaturesOf(registry, doc, lang)).Where(p => !IsReleased(doc, p.A, p.B)).Select(p => (p.Kind, p.A, p.B)).ToList();
+
         /// <summary>True if the user released the pair (<see cref="SketchObject.Released"/> on either object).</summary>
         public static bool IsReleased(SketchDocument doc, string a, string b)
             => doc.Get(a)?.Released?.Contains(b) == true || doc.Get(b)?.Released?.Contains(a) == true;
