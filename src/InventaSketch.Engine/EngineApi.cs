@@ -101,6 +101,7 @@ namespace InventaSketch.Engine
                 ["motionInfo"] = MotionInfoCore,
                 ["motionTurn"] = MotionTurnCore,
                 ["motionDrag"] = MotionDragCore,
+                ["motionPreview"] = MotionPreviewCore,
             };
         }
 
@@ -920,6 +921,27 @@ namespace InventaSketch.Engine
             if (s.Doc.Get(id) is null) return StateOf(s, r);
             s.Apply("Move linkage", d => Linkage.Drag(Registry, d, id, r.Index ?? 1, new Vec2(r.X ?? 0, r.Y ?? 0), s.Lang));
             return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// Motion mode live preview: with <c>degrees</c> the gear train of <c>id</c> turned, else the chain of link <c>id</c>
+        /// with joint <c>index</c> dragged to <c>x</c>/<c>y</c>; returns the moved objects as one SVG (page mm) and their
+        /// ids. Nothing changes.
+        /// </summary>
+        private object MotionPreviewCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            if (s.Doc.Get(id) is null) return new { ids = Array.Empty<string>(), svg = "" };
+            var after = r.Degrees is double deg
+                ? GearTrain.Turn(Registry, s.Doc, id, deg, s.Lang)
+                : Linkage.Drag(Registry, s.Doc, id, r.Index ?? 1, new Vec2(r.X ?? 0, r.Y ?? 0), s.Lang);
+            var moved = after.Objects.Values.Where(o => s.Doc.Get(o.Id) is { } b && !ReferenceEquals(b, o)
+                && (b.Transform != o.Transform || b.Size != o.Size || !(b.Points ?? Array.Empty<Vec2>()).SequenceEqual(o.Points ?? Array.Empty<Vec2>()))
+                && Registry.Type(o.Type) is not null).ToList();
+            if (moved.Count == 0) return new { ids = Array.Empty<string>(), svg = "" };
+            var ctx = new RenderContext(after, s.Lang);
+            return new { ids = moved.Select(o => o.Id).ToList(), svg = SvgRenderer.RenderPrimitives(moved.SelectMany(o => Registry.Render(o, ctx)).ToList()) };
         }
 
         /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>

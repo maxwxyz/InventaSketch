@@ -31,6 +31,9 @@ namespace InventaSketch.Engine.Tests
             var info = EngineApiTests.Call(api, "motionInfo", new { session, id = gear });
             Assert.Equal("gear", info.GetProperty("kind").GetString());
             Assert.True(info.GetProperty("coupled").GetBoolean());
+            var prev = EngineApiTests.Call(api, "motionPreview", new { session, id = gear, degrees = 30 });
+            Assert.True(prev.GetProperty("ids").GetArrayLength() >= 2);
+            Assert.StartsWith("<svg", prev.GetProperty("svg").GetString());
             var before = api.Sessions.Get(session).Doc.Get(mate)!.Transform.Rotation;
             EngineApiTests.Call(api, "motionTurn", new { session, id = gear, degrees = 30 });
             Assert.NotEqual(before, api.Sessions.Get(session).Doc.Get(mate)!.Transform.Rotation);
