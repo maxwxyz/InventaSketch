@@ -15,7 +15,9 @@ Write-IskShapes $S
 $ccx = $cs.Left + $cs.Width / 2; $ccy = $cs.Top + $cs.Height / 2
 $spurs = @(Get-IskShapes $S 'ISK:mech.gear.spur*')
 $sun = $spurs | Sort-Object { [Math]::Abs(($_.Left + $_.Width / 2) - $ccx) + [Math]::Abs(($_.Top + $_.Height / 2) - $ccy) } | Select-Object -First 1
-function Angles { Get-IskShapes $S 'ISK:mech.gear.spur*' | Where-Object { [Math]::Abs(($_.Left + $_.Width / 2) - $ccx) + [Math]::Abs(($_.Top + $_.Height / 2) - $ccy) -gt 5 } | ForEach-Object { [Math]::Atan2(($_.Top + $_.Height / 2) - $ccy, ($_.Left + $_.Width / 2) - $ccx) * 180 / [Math]::PI } | Sort-Object }
+$sunName = $sun.Name
+# Planets: every spur gear except the sun (the sun's box need not be centred on the carrier's box).
+function Angles { Get-IskShapes $S 'ISK:mech.gear.spur*' | Where-Object { $_.Name -ne $sunName } | ForEach-Object { [Math]::Atan2(($_.Top + $_.Height / 2) - $ccy, ($_.Left + $_.Width / 2) - $ccx) * 180 / [Math]::PI } | Sort-Object }
 $before = @(Angles)
 $sun.Select(); Start-Sleep 3
 Assert-Isk $S ($addin.Command('motion')) 'motion mode switches on'

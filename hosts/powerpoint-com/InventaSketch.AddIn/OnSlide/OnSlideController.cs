@@ -608,6 +608,7 @@ namespace InventaSketch.AddIn.OnSlide
                         _dragCoupled = coupled;
                         _delta = snap.Delta;
                         _guides = snap.Guides;
+                        _snapTarget = snap.Target;
                         DrawDrag(view);
                         return true;
                     }
@@ -702,6 +703,17 @@ namespace InventaSketch.AddIn.OnSlide
                     0x44 when ctrl && !shift => "dup",                // Ctrl+D: duplicate with new ids
                     _ => null,
                 };
+                // Tab / Shift+Tab: the next part of the assembly (coupled parts only; else PowerPoint's own Tab).
+                if (vk == VK_TAB && !ctrl)
+                {
+                    var parts = AssemblyOf();
+                    if (parts.Count > 1)
+                    {
+                        var next = parts[shift ? parts.Count - 1 : 1];
+                        Post(() => next.Shape.Select(Office.MsoTriState.msoTrue));
+                        return true;
+                    }
+                }
                 if (command is not null)
                 {
                     Log.Info("Key: " + command);
@@ -807,12 +819,31 @@ namespace InventaSketch.AddIn.OnSlide
             var moved = (_dragCoupled ? _dragPrims : _unitPrims).Select(p => Prim.Transform(p, m)).ToList();
             // What the neighbours will do on release (meshing partners, belts, shafts that follow).
             var partners = _unit is null || Alt() ? Array.Empty<Primitive>() : CouplingPreview(Edits.Move(_unit.Doc, _unit.Doc.Objects.Keys.ToList(), delta));
+            // What the part docks onto, named at the target ("pitch circle", "axis", "pin 2").
+            var target = _snapTarget;
+            var label = SnapLabel.For(target, _lang());
             Present(view, g =>
             {
                 ThumbnailRenderer.DrawAll(g, partners, Partner, (float)view.Mm(1.6));
                 ThumbnailRenderer.DrawAll(g, moved, Ghost, (float)view.Mm(1.6));
                 DrawGuides(g, view, _guides);
-            });
+            }, label is null || target is null ? null : g => DrawTag(g, view, view.ToScreen(target.P), label));
+        }
+
+        /// <summary>Snap target of the current drag (for its label), null without an object snap.</summary>
+        private Anchor? _snapTarget;
+
+        /// <summary>A small tag next to a screen point (snap labels).</summary>
+        private static void DrawTag(Graphics g, SlideView view, PointF at, string text)
+        {
+            var k = (float)view.DeviceScale;
+            using var font = new Font("Segoe UI", 10 * k, FontStyle.Regular, GraphicsUnit.Pixel);
+            using var bg = new SolidBrush(Color.FromArgb(235, 255, 255, 255));
+            using var fg = new SolidBrush(GuideColor);
+            var size = g.MeasureString(text, font);
+            var box = new RectangleF(at.X + 8 * k, at.Y - size.Height - 8 * k, size.Width + 6 * k, size.Height + 2 * k);
+            g.FillRectangle(bg, box);
+            g.DrawString(text, font, fg, box.X + 3 * k, box.Y + 1 * k);
         }
 
         private static bool Alt() => KeyDown(VK_MENU);
