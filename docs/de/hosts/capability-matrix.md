@@ -26,6 +26,13 @@
 | COM-Vorrang vor dem Web-Add-in | nicht getestet (`EquivalentAddins`) | nicht getestet | entfällt |
 | Automatische Erkennung hell/dunkel | geplant | in Arbeit | geplant |
 | Automatische Erkennung Deutsch/Englisch | verifiziert (LCID der Office-Oberfläche, Deutsch erkannt) | in Arbeit | verifiziert 2026-11-20 (`ooLocale` der Oberfläche; deutsche Oberfläche erkannt, deutsche Katalognamen) |
+| Einfügefeld (Suche, passende Teile zuerst, Strg+Leertaste) | geprüft 24.11.2026 (Szenario `ux-round`) | teilweise: umgesetzt und auf der Browser-Entwicklungsseite geprüft, nicht in PowerPoint im Web getestet | geplant (Engine-Methode `search`) |
+| Spiegeln/Drehen nur mit Wirkung | geprüft 24.11.2026 (`ux-round`, Knopf-IDs) | teilweise: umgesetzt, Browser-Entwicklungsseite | geplant (`transformEffect`) |
+| Leiste für Mehrfachauswahl (eine Ansicht für alle, ausrichten, verteilen, wie das erste, neu nummerieren, Maß) | geprüft 24.11.2026 (`ux-round`, `parts-list`, `building-services`) | teilweise: umgesetzt, Browser-Entwicklungsseite | geplant (`arrangeOptions`/`arrange`) |
+| Ansichtswechsel von Baugruppen (Getriebezüge Stirn ↔ Schema, Haustechnik Grundriss ↔ Schnitt ↔ Schema) | geprüft 24.11.2026 (`ux-round`, `building-services`) | teilweise: über die Mehrfachauswahl, Browser-Entwicklungsseite | geplant |
+| Live-Vorschau der Kopplung beim Ziehen | teilweise: umgesetzt 24.11.2026, per Auge geprüft (blauer Geist), ohne Szenario-Prüfung | in Arbeit | geplant (`couplingPreview`) |
+| Koppelkurve und Zwischenlagen selbst gebauter Koppelgetriebe | geprüft 24.11.2026 (`linkage-extras`) | teilweise: Koppelkurve auf der Browser-Entwicklungsseite; Zwischenlagen in Arbeit | geplant (`drawTrace`, `drawGhosts`) |
+| Stückliste, die den Teilen folgt | geprüft 24.11.2026 (`parts-list`) | nicht getestet (Engine zeichnet Abhängige neu) | nicht getestet |
 
 Reine Engine-Fähigkeiten (alle Hosts): SVG-Export durch Unit-Tests **verifiziert** (`SvgContainsHatchAndArrowheadAndIsMonochrome`,
 `DrawingTests`: jede Pfeilspitze, hohle Spitzen, Krähenfuß-Enden und Unterstreichung per `text-decoration`, auch in

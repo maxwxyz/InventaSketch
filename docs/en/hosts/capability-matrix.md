@@ -24,6 +24,13 @@
 | COM precedence over web add-in | not tested (`EquivalentAddins`) | not tested | n/a |
 | Light/dark auto detection | planned | in progress | planned |
 | German/English auto detection | verified (Office UI LCID, German detected) | in progress | verified 2026-11-20 (`ooLocale` of the UI; German UI detected, German catalog names) |
+| Insert box (search, fitting parts first, Ctrl+Space) | verified 2026-11-24 (scenario `ux-round`) | partial: implemented and checked in the browser dev page, not tested in PowerPoint on the web | planned (engine method `search`) |
+| Context-only transforms (mirror/rotate only when they change the drawing) | verified 2026-11-24 (`ux-round`, bar ids) | partial: implemented, browser dev page | planned (`transformEffect`) |
+| Multi-selection bar (one view for all, align, distribute, like the first, renumber, dimension) | verified 2026-11-24 (`ux-round`, `parts-list`, `building-services`) | partial: implemented, browser dev page | planned (`arrangeOptions`/`arrange`) |
+| Assembly view switch (gear trains axial ↔ stick, building services plan ↔ section ↔ schematic) | verified 2026-11-24 (`ux-round`, `building-services`) | partial: via the multi-selection bar, browser dev page | planned |
+| Live coupling preview while dragging | partial: implemented 2026-11-24, checked by eye (blue ghost), no scenario assertion | in progress | planned (`couplingPreview`) |
+| Coupler curve and ghost positions of self-built linkages | verified 2026-11-24 (`linkage-extras`) | partial: coupler curve in the browser dev page; ghosts in progress | planned (`drawTrace`, `drawGhosts`) |
+| Parts list table following the parts | verified 2026-11-24 (`parts-list`) | not tested (engine redraws dependents) | not tested |
 
 Engine-only capabilities (all hosts): SVG export **verified** by unit tests (`SvgContainsHatchAndArrowheadAndIsMonochrome`,
 `DrawingTests`: every arrowhead, hollow heads, crow's-foot ends and `text-decoration` underline, also monochrome),
