@@ -57,6 +57,9 @@ undo step each (no step when nothing changes).
 | `couplingPreview` | `ids`, `dx`/`dy` or `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: neighbours the coupling would move or scale, as SVG in page mm (`svg` empty when nothing follows); nothing changes |
 | `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch }]`: free build ports in page mm with the outward direction; `stretch` for shaft ends |
 | `buildItems`, `buildPlace`, `buildStretch` | `id`, `key` (port id), `lang`, `max`; `itemId`; `x`, `y` | library items that dock at the port (`fits` true); state with the docked part selected; state with the shaft end moved |
+| `motionInfo` | `id` | `{ kind: "gear", x, y, coupled }` (turns about its centre with its train), `{ kind: "linkage", dof }` (link of a self-built chain with F >= 1) or `{ kind: "none" }` |
+| `motionPreview` | `id` and `degrees` (gear), or `id`, `index`, `x`, `y` (joint of a link) | `{ ids, svg }`: the objects the turn or drag would move, as SVG in page mm; nothing changes |
+| `motionTurn`, `motionDrag` | `id`, `degrees`; `id`, `index`, `x`, `y` | state (one undo step each): gear train turned (clockwise positive); chain moved with constant link lengths |
 | `update` | `object` (full document object as in `saveDocument`) | state |
 | `exporters`, `export` | `ids` (selection with its groups, else the page), `lang`; `itemId` (exporter id) | domain exports that apply `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (default: document setting), `background`, `padding` | `{ svg, width, height }` |
@@ -134,7 +137,7 @@ Follows the binding UX rules in the roadmap ("Plan 2026-11-24"). Pure rules in `
 - **Draw the path:** a link of a self-built linkage with F = 1 (`trace` returns a path) offers "Draw the path"; it
   inserts the coupler curve of the link's end as a motion path (`kin.path`, or `kin.path.closed` for a closed curve;
   an open path without arrowhead), one undo step (`drawTrace`).
-- **Not in the web host:** motion mode (dragging parts only the way they can move) is COM-only.
+- **Motion mode:** see "Motion mode" below (since 2026-11-25; before that COM-only).
 
 ## Remaining COM features (2026-11-24)
 
@@ -217,6 +220,42 @@ Windows: `npm run certs` once (trusted localhost certificate), `npm run dev`, th
 `HKCU\Software\Microsoft\Office\16.0\WEF\Developer` (name = add-in id) and restart PowerPoint.
 For end users, use the local installer described above.
 
+## Motion mode (2026-11-25)
+
+Like the COM add-in ("Moving gear trains live by dragging in motion mode", linkage dragging): dragging moves things only
+the way they can move. Pure rules in `src/ui/motionlogic.ts`, unit-tested in `test/motionlogic.test.ts`.
+
+- **Toggle:** the bar shows "Move: drag turns the gears / linkage" (icon `cmd-motion`, a toggle button with
+  `aria-pressed`) between the build commands and "Explode" when `motionInfo` says `linkage`, or `gear` with `coupled`
+  true. A lone gear coupled with nothing only spins in place, which shows nothing, so it gets no button (same rule as
+  COM). The state is session only, like COM: it is not saved and the task pane always starts in edit mode. Switching it
+  on shows a short hint in the status line.
+- **Handles in motion mode:** a selected part that can move shows only what moves it: a gear its dashed frame and a
+  cross at its centre, a link its joints (filled blue). Resize, rotate, quick-add and build "+" handles are hidden, so
+  every drag on it is a motion. Parts that cannot move keep their usual handles and drag as usual.
+- **Turning a gear:** dragging anywhere on the selected gear's frame (or on any coupled gear, which gets selected) turns
+  it about its centre (`x`/`y` from `motionInfo`) by the angle the pointer sweeps around it, accumulated across ±180° and
+  full circles (clockwise on screen positive); Shift turns in 15° steps. The angle is shown at the centre with a dashed
+  lever to the pointer.
+- **Dragging a link:** dragging a joint handle of the selected link pulls that joint; dragging elsewhere on a link pulls
+  its nearest joint. The pulled point and a dashed line from its start are shown.
+- **Preview and release:** during the drag the engine's `motionPreview` (the turned train or the moved chain) is drawn
+  in the ghost layer at about 15 updates per second (same throttle as the coupling preview, trailing update for the last
+  position) and the current drawing of the moved objects is dimmed; the context bar hides once the drag moves. Release
+  applies `motionTurn` or `motionDrag` once (one undo step: "Turn" / "Move linkage"); a click without a drag changes
+  nothing; Esc cancels and restores the bar. With motion mode off dragging edits as before.
+
+Checked in the browser (dev.html, 2026-11-25): a spur gear with a meshing gear docked from its build "+": the motion
+button appears (not for a lone gear), a real mouse drag over a quarter circle turned the gear by +90.4° and its mate
+from -10° to -100.4° with both centres unchanged, one undo step "Turn"; with motion mode off the same drag moved the
+gear. An exploded `kin.fourbar` (F = 1): dragging the crank's joint by 30° about its pivot kept all link lengths
+(9.124 / 27.371 / 22.809 mm) with the pivots in place, one undo step "Move linkage"; the preview showed the moved crank
+and coupler with their originals dimmed; a drag started on the coupler with nothing selected selected it, and Esc
+cancelled it without a change. Known gap (engine): `motionPreview` leaves out a link that only moves through a docked
+joint (the rocker of the four-bar), and every preview solves from the document state rather than from the last
+preview, so a long drag of a linkage may jump to the other assembly mode in the preview (the COM add-in solves from
+the last position).
+
 ## Status (2026-11-20)
 
 | Feature | Status |
@@ -226,6 +265,7 @@ For end users, use the local installer described above.
 | Pie menu with "More ▸"/"Insert ▸", text editing, black and white, centred resize | verified in browser (dev.html, 2026-11-20) |
 | UI/UX round: context-only transforms, insert box, multi-selection bar, select assembly, snap labels, draw the path | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
 | Build "+" (dock, stretch), live coupling preview, ghost positions, dimension between two parts | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
+| Motion mode (turn gear trains, drag linkages) | verified in browser (dev.html, 2026-11-25); **not yet tested in PowerPoint** |
 | Writing native shapes into PowerPoint | implemented, **not yet tested in PowerPoint** |
 | Local installer like the COM add-in (no admin) | implemented, dry run verified; real install pending |
 | Webspace package (download page, manifest for own URL) | implemented; checked over local HTTPS, real webspace pending |

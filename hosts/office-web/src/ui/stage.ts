@@ -3,10 +3,11 @@
 // previews drags with SVG transforms and commits the result through the session.
 
 import type { Session } from "../engine/client";
-import type { BuildPortInfo, CatalogItem, EditorState, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
+import type { BuildPortInfo, CatalogItem, EditorState, MotionInfo, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
 import { t } from "../i18n";
 import { COUPLING_PREVIEW_MS, PORT_RADIUS_PX, Throttle, portPlusPosition, portTipKey, stretchTarget } from "./buildlogic";
 import { clamp, s, svgChildren, svgDataUrl, viewBoxOf } from "./dom";
+import { TurnTracker, canMove, insideBounds, nearestJoint, stepTurn, turnLabel } from "./motionlogic";
 import { snapLabelAnchor } from "./uxlogic";
 
 export interface StageHost {
@@ -25,6 +26,10 @@ export interface StageHost {
   /** Click on a build "+": the insert box at `client` with what docks at `port` of `id`. */
   openPortInsert?(id: string, port: BuildPortInfo, client: Vec2): void;
   pointerMoved(clientX: number, clientY: number): void;
+  /** Motion mode (session only): dragging a part that can move turns its gear train or pulls a joint of its linkage. */
+  motionEnabled?(): boolean;
+  /** A drag that previews its result (motion mode) started moving: the context bar gets out of the way. */
+  hideBar?(): void;
   report(error: unknown): void;
 }
 
@@ -33,6 +38,9 @@ interface Frame { cx: number; cy: number; w: number; h: number; rot: number }
 export type ChainSide = "left" | "top" | "right" | "bottom";
 
 type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide } | { kind: "port"; index: number };
+
+/** Change shown by the motion preview (engine `motionPreview`): a gear turn or a joint dragged to a point. */
+type MotionChange = { degrees: number } | { index: number; x: number; y: number };
 
 /** Change shown by the live coupling preview (engine `couplingPreview`): a move or a scale about a pivot. */
 type CouplingChange = { dx: number; dy: number } | { sx: number; sy: number; pivotX: number; pivotY: number };
@@ -45,7 +53,12 @@ type Drag =
   | { kind: "marquee"; start: Vec2; cur: Vec2; add: boolean }
   | { kind: "pan"; startClient: Vec2; ox: number; oy: number }
   | { kind: "chain"; id: string; side: ChainSide; from: Vec2; cur: Vec2; moved: boolean; centre: Vec2 }
-  | { kind: "port"; id: string; port: BuildPortInfo; plus: Vec2; startClient: Vec2; moved: boolean; to?: { x: number; y: number; delta: number } };
+  | { kind: "port"; id: string; port: BuildPortInfo; plus: Vec2; startClient: Vec2; moved: boolean; to?: { x: number; y: number; delta: number } }
+  /** Motion mode: a gear turned about its centre (`turn`), or joint `index` of a link pulled to `target`. */
+  | { kind: "motion"; id: string; turn?: TurnTracker; degrees: number; index: number; from?: Vec2; target: Vec2; startClient: Vec2; moved: boolean; dimmed: string[] };
+
+type MotionDrag = Extract<Drag, { kind: "motion" }>;
+type MovingInfo = Exclude<MotionInfo, { kind: "none" }>;
 
 const HANDLE_PX = 9;
 /** Quick-add triangles: distance outside the frame and size (px); the top one sits beyond the rotate handle. */
@@ -111,6 +124,10 @@ export class Stage {
   /** Live coupling preview: neighbours that follow the dragged or resized selection, in blue (like COM). */
   private readonly coupling: SVGGElement;
   private readonly couplingThrottle = new Throttle((ids: string[], change: CouplingChange) => this.showCoupling(ids, change), COUPLING_PREVIEW_MS);
+  /** Motion mode preview (engine `motionPreview`), at the same rate as the coupling preview. */
+  private readonly motionThrottle = new Throttle((id: string, change: MotionChange) => this.showMotion(id, change), COUPLING_PREVIEW_MS);
+  /** Engine `motionInfo` per object, valid for one document revision. */
+  private motionCache = { revision: -1, map: new Map<string, MotionInfo>() };
   /** Build ports of the single selected element, fetched once per selection and revision. */
   private ports?: { key: string; list: BuildPortInfo[] };
   /** Page positions of the drawn "+" (same order as `ports.list`). */
@@ -308,21 +325,28 @@ export class Stage {
     if (objs.length > 1)
       for (const o of objs) this.overlay.append(s("rect", { class: "isk-sel-member", x: o.bounds.x, y: o.bounds.y, width: o.bounds.w, height: o.bounds.h }));
     const single = objs.length === 1 ? objs[0] : undefined;
+    // Motion mode on a part that can move: only what moves it (joints of a link, the gear's frame and centre); no resize,
+    // rotate, quick-add or build handles, so every drag on it is a motion.
+    const motion = single && !previewFrame ? this.motionFor(single) : undefined;
     if (single?.kind === "points" && !previewFrame) {
       const pts = previewPoints?.obj.id === single.id ? previewPoints.pts : single.points ?? [];
       this.overlay.append(s("polyline", { class: "isk-sel-path", points: pts.map((p) => `${p.x},${p.y}`).join(" ") }));
       pts.forEach((p, i) => {
-        const c = s("circle", { class: "isk-handle isk-handle-point", cx: p.x, cy: p.y, r: (HANDLE_PX / 2 + 1) * px });
+        const c = s("circle", { class: `isk-handle isk-handle-point${motion ? " isk-motion-joint" : ""}`, cx: p.x, cy: p.y, r: (HANDLE_PX / 2 + 1) * px });
         c.dataset.handle = JSON.stringify({ kind: "point", index: i } satisfies HandleSpec);
         this.overlay.append(c);
       });
-      if (!previewPoints && !single.locked) this.drawPorts(single, pts, { x: single.bounds.x + single.bounds.w, y: single.bounds.y });
+      if (!previewPoints && !single.locked && !motion) this.drawPorts(single, pts, { x: single.bounds.x + single.bounds.w, y: single.bounds.y });
       return;
     }
     const f = previewFrame ?? this.frameOf(sel);
     if (!f) return;
     const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => this.framePoint(f, u, v));
-    this.overlay.append(s("polygon", { class: "isk-sel-frame", points: corners.map((p) => `${p.x},${p.y}`).join(" ") }));
+    this.overlay.append(s("polygon", { class: `isk-sel-frame${motion ? " isk-motion-frame" : ""}`, points: corners.map((p) => `${p.x},${p.y}`).join(" ") }));
+    if (motion?.kind === "gear") {
+      this.overlay.append(this.pivotMark({ x: motion.x, y: motion.y }));
+      return;
+    }
     if (objs.some((o) => o.locked)) return;
     const top = this.framePoint(f, 0, -1);
     const up = rotateVec({ x: 0, y: -ROTATE_PX * px }, f.rot);
@@ -430,6 +454,139 @@ export class Stage {
       if (transform) g.setAttribute("transform", transform);
       else g.removeAttribute("transform");
     }
+  }
+
+  // ------------------------------------------------------------------ motion mode
+
+  /** Engine `motionInfo` of `id` (cached per document revision); "none" when the engine cannot tell. */
+  motionOf(id: string): MotionInfo {
+    const rev = this.host.state().revision;
+    if (this.motionCache.revision !== rev) this.motionCache = { revision: rev, map: new Map() };
+    let info = this.motionCache.map.get(id);
+    if (!info) {
+      try {
+        info = this.host.session().motionInfo(id);
+      } catch {
+        info = { kind: "none" };
+      }
+      this.motionCache.map.set(id, info);
+    }
+    return info;
+  }
+
+  /** How `obj` moves while motion mode is on (gear train or linkage); undefined outside the mode or for other parts. */
+  private motionFor(obj: ObjectInfo): MovingInfo | undefined {
+    if (!this.host.motionEnabled?.() || !obj.known || obj.locked) return undefined;
+    const info = this.motionOf(obj.id);
+    return canMove(info) && info.kind !== "none" ? info : undefined;
+  }
+
+  /** Small cross at a gear's centre: the pivot it turns about. */
+  private pivotMark(c: Vec2): SVGElement {
+    const r = 5 / this.scale;
+    return s("path", { class: "isk-motion-pivot", d: `M${c.x - r} ${c.y}H${c.x + r}M${c.x} ${c.y - r}V${c.y + r}` });
+  }
+
+  /**
+   * Starts a motion drag on pointer down (motion mode only): a joint handle of the selected link pulls that joint, the
+   * selected gear turns anywhere on its frame, and any other part that can move under the pointer is selected and moved
+   * at once. False when the pointer is on nothing that moves (then dragging edits as usual).
+   */
+  private beginMotion(e: PointerEvent, p: Vec2, handle: HandleSpec | undefined): boolean {
+    if (!this.host.motionEnabled?.()) return false;
+    const session = this.host.session();
+    const sel = this.objects(this.host.state().selection);
+    const single = sel.length === 1 ? sel[0] : undefined;
+    const client = { x: e.clientX, y: e.clientY };
+    if (handle) {
+      const info = single ? this.motionFor(single) : undefined;
+      if (handle.kind !== "point" || !single || info?.kind !== "linkage") return false;
+      this.startMotion(single, info, p, client, handle.index);
+      return true;
+    }
+    if (single?.kind === "box") {
+      const info = this.motionFor(single);
+      if (info?.kind === "gear" && insideBounds(single.bounds, p, 6 / this.scale)) {
+        this.startMotion(single, info, p, client);
+        return true;
+      }
+    }
+    const hit = session.hitTest(p.x, p.y, 6 / this.scale);
+    const obj = hit.id ? this.host.state().objects.find((o) => o.id === hit.id) : undefined;
+    const info = obj ? this.motionFor(obj) : undefined;
+    if (!obj || !info) return false;
+    if (!this.host.state().selection.includes(obj.id)) this.host.apply(session.select([obj.id]));
+    this.startMotion(obj, info, p, client);
+    return true;
+  }
+
+  private startMotion(obj: ObjectInfo, info: MovingInfo, p: Vec2, client: Vec2, index?: number): void {
+    if (info.kind === "gear") {
+      this.drag = { kind: "motion", id: obj.id, turn: new TurnTracker({ x: info.x, y: info.y }, p), degrees: 0, index: -1, target: p, startClient: client, moved: false, dimmed: [] };
+      return;
+    }
+    const pts = obj.points ?? [];
+    const i = Math.max(0, index ?? nearestJoint(pts, p));
+    this.drag = { kind: "motion", id: obj.id, degrees: 0, index: i, from: pts[i], target: p, startClient: client, moved: false, dimmed: [] };
+  }
+
+  /** Pointer move of a motion drag: the turn angle (Shift: 15° steps) or the pulled joint, previewed about 15 times a second. */
+  private dragMotion(d: MotionDrag, p: Vec2, shift: boolean, client: Vec2): void {
+    if (!d.moved) {
+      if (Math.hypot(client.x - d.startClient.x, client.y - d.startClient.y) < MOVE_THRESHOLD_PX) return;
+      d.moved = true;
+      this.host.hideBar?.();
+    }
+    if (d.turn) {
+      d.degrees = stepTurn(d.turn.update(p), shift);
+      const c = d.turn.centre;
+      this.overlay.replaceChildren(this.pivotMark(c), s("line", { class: "isk-motion-lever", x1: c.x, y1: c.y, x2: p.x, y2: p.y }));
+      this.showSnapLabel(turnLabel(d.degrees), c, client);
+      if (Math.abs(d.degrees) > 1e-9) this.motionThrottle.push(d.id, { degrees: d.degrees });
+      else this.clearMotionPreview(d);
+      return;
+    }
+    d.target = p;
+    const marks: SVGElement[] = [s("circle", { class: "isk-motion-target", cx: p.x, cy: p.y, r: (HANDLE_PX / 2 + 1) / this.scale })];
+    if (d.from) marks.unshift(s("line", { class: "isk-motion-lever", x1: d.from.x, y1: d.from.y, x2: p.x, y2: p.y }));
+    this.overlay.replaceChildren(...marks);
+    this.motionThrottle.push(d.id, { index: d.index, x: p.x, y: p.y });
+  }
+
+  /** Draws what the motion would move (engine `motionPreview`) and dims those objects' current drawing. */
+  private showMotion(id: string, change: MotionChange): void {
+    const d = this.drag;
+    if (d?.kind !== "motion" || d.id !== id) return;
+    try {
+      const r = this.host.session().motionPreview(id, change);
+      if (r.svg) {
+        const g = s("g", { class: "isk-motion-preview" });
+        g.append(...svgChildren(r.svg));
+        this.ghost.replaceChildren(g);
+      } else this.ghost.replaceChildren();
+      this.dim(d, r.svg ? r.ids : []);
+    } catch (e) {
+      this.clearMotionPreview(d);
+      this.host.report(e);
+    }
+  }
+
+  /** Dims the current drawing of `ids` (the parts shown moved in the preview) and restores the others. */
+  private dim(d: MotionDrag, ids: string[]): void {
+    const next = new Set(ids);
+    for (const id of d.dimmed) if (!next.has(id)) this.contentOf(id)?.classList.remove("isk-motion-source");
+    for (const id of ids) this.contentOf(id)?.classList.add("isk-motion-source");
+    d.dimmed = ids;
+  }
+
+  private contentOf(id: string): Element | null {
+    return this.content.querySelector(`[data-isk-id="${CSS.escape(id)}"]`);
+  }
+
+  private clearMotionPreview(d: MotionDrag): void {
+    this.motionThrottle.cancel();
+    this.ghost.replaceChildren();
+    this.dim(d, []);
   }
 
   // ------------------------------------------------------------------ live coupling preview
@@ -541,6 +698,10 @@ export class Stage {
       }
       if (e.button !== 0) return;
       const handle = this.handleAt(e);
+      if (this.beginMotion(e, p, handle)) {
+        this.svg.setPointerCapture(e.pointerId);
+        return;
+      }
       if (handle) {
         this.startHandle(handle, p);
         this.svg.setPointerCapture(e.pointerId);
@@ -626,6 +787,9 @@ export class Stage {
     }
     try {
       switch (d.kind) {
+        case "motion":
+          this.dragMotion(d, p, e.shiftKey, { x: e.clientX, y: e.clientY });
+          return;
         case "chain": {
           d.cur = p;
           if (!d.moved && Math.hypot(p.x - d.from.x, p.y - d.from.y) * this.scale < 6) return;
@@ -811,6 +975,14 @@ export class Stage {
     const session = this.host.session();
     try {
       switch (d.kind) {
+        case "motion": {
+          // Release applies the motion once (one undo step); a click without a drag changes nothing.
+          this.clearMotionPreview(d);
+          if (d.moved && d.turn && Math.abs(d.degrees) > 1e-6) this.host.apply(session.motionTurn(d.id, d.degrees), true);
+          else if (d.moved && !d.turn) this.host.apply(session.motionDrag(d.id, d.index, d.target.x, d.target.y), true);
+          else this.drawOverlay();
+          break;
+        }
         case "port": {
           this.ghost.replaceChildren();
           if (!d.moved) { this.host.openPortInsert?.(d.id, d.port, this.toClient(d.plus)); break; }
@@ -876,6 +1048,7 @@ export class Stage {
     this.hideScaleLabel();
     this.clearCoupling();
     if (d?.kind === "port") this.ghost.replaceChildren();
+    if (d?.kind === "motion") this.clearMotionPreview(d);
     if (d && "ids" in d) this.resetPreview(d.ids);
     else this.drawOverlay();
   }
