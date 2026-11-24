@@ -53,7 +53,9 @@ unverändert neben `AssemblyViews` nach Core wandern.
 1. **Blickrichtung.** Der Schnitt blickt vom unteren Seitenrand auf den Grundriss (Richtung −y), wie die Wandansicht des
    Architekturmoduls. **x ist gemeinsam**: Jedes Element behält in jeder Ansicht seine Mitte in x und seine Breite.
 2. **Fußbodenlinie.** `floorY` = die unterste Grundrisskante der Auswahl (größtes y auf der Seite), sofern nicht
-   angegeben. Sie wird an jedem Element gespeichert (`Meta["bs.floorY"]`), damit spätere Wechsel dieselbe Linie nutzen.
+   angegeben. Sind Wände in der Auswahl, ist es stattdessen deren Bodenlinie (der unterste Punkt der Wandmittellinien,
+   `ObjectType.ElevationGround`), damit die Installation auf dem Boden der Wandansicht steht. Sie wird an jedem Element
+   gespeichert (`Meta["bs.floorY"]`), damit spätere Wechsel dieselbe Linie nutzen.
 3. **Grundriss → Schnitt/Schema (Boxen):** y und Drehung im Grundriss werden gespeichert (`Meta["bs.planY"]`,
    `Meta["bs.planRotation"]`), die Drehung wird 0, die Größe passt sich an (Breite bleibt) und die Unterkante kommt auf
    `bottomY = floorY − height / scale`.
@@ -71,6 +73,11 @@ unverändert neben `AssemblyViews` nach Core wandern.
    seine Anschluss-Id für den Rückweg.
 7. Elemente an Seitenwänden erscheinen in Vorderansicht an ihrer x-Position (abgewickelte Ansicht); ein echter Schnitt
    je Wand bräuchte ein Schnittlinienobjekt und gehört nicht zum Umfang.
+8. **Wände, Türen und Fenster wechseln mit** (25.11.2026): `section` und `elevation` der Architektur sind Aliase
+   (`ViewAliases` im Core). Sind Wände und Installationen ausgewählt, bietet die Mehrfachauswahl „Alle in Ansicht:
+   Schnitt“ an; die Installationen gehen in `section`, Wände, Türen und Fenster in `elevation` und gemeinsam zurück in
+   den Grundriss. Die Wandpunkte bleiben, die Wand behält ihre eigene `height` (Wandhöhe) – die Installationsregel liest
+   `height` (Montagehöhe) nur bei Installationstypen, ein eigener Schlüssel ist daher nicht nötig.
 
 ## Objekttypen
 

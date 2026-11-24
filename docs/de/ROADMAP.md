@@ -176,7 +176,7 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
    beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
    Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze, Gelenkgrenzen, Kegelradpaare in der
-   Bewegung, Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik.
+   Bewegung (der Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik ist erledigt, 25.11.2026).
 4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,
    Patentmodus).
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
@@ -186,8 +186,8 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,
   docs/de/modules/building-services.md; ganze Installationen wechseln Grundriss ↔ Schnitt ↔ Schema über `AssemblyViews`
-  mit der Regel des Moduls; offen: Schnittlinie je Wand, Wände zusammen mit Installationen (bei Wänden ist `height` die Wandhöhe, bei Installationen
-  die Montagehöhe – braucht zuerst einen eigenen Schlüssel); die
+  mit der Regel des Moduls; Wände, Türen und Fenster wechseln in ihre Ansicht mit
+  (Ansichts-Alias `section`/`elevation`, 25.11.2026); offen: Schnittlinie je Wand; die
   Elektro-Hausinstallationssymbole sind seit 25.11.2026 dabei, die Regel liegt als `InstallationViews` im Core):** Heizung, Sanitär, Lüftung und Elektroinstallation,
   gebunden an die Räume der Architektur, mit Grundriss, Schnitt und Schema (Strang) derselben Installation (der
   Ansichtswechsel für Baugruppen gilt).

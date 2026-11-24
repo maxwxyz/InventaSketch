@@ -18,8 +18,12 @@ namespace InventaSketch.Core
     /// <summary>A domain's own rule for switching a whole installation's view (<see cref="ObjectType.AssemblyViewSwitch"/>).</summary>
     public interface IAssemblyViewSwitch
     {
-        /// <summary>The objects <paramref name="ids"/> (all of this rule's types) switched to <paramref name="view"/>.</summary>
-        SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang);
+        /// <summary>
+        /// The objects <paramref name="ids"/> (all of this rule's types) switched to <paramref name="view"/>.
+        /// <paramref name="groundY"/>: the page y of the ground line drawn by other objects switched together with them (walls,
+        /// <see cref="ObjectType.ElevationGround"/>), or null.
+        /// </summary>
+        SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang, double? groundY);
     }
 
     public static class AssemblyViews
@@ -30,17 +34,29 @@ namespace InventaSketch.Core
         /// <summary>The objects <paramref name="ids"/> switched to <paramref name="view"/> with the layout kept (see the class).</summary>
         public static SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang = Lang.En)
         {
+            // Each object goes to the view its type offers for `view` (itself or an alias: walls to elevation when the
+            // installations go to section, ViewAliases).
+            string? ViewFor(SketchObject o) => ViewAliases.Resolve(registry.Type(o.Type), view);
+            var ctx0 = new RenderContext(doc, lang);
+            var grounds = ids.Select(doc.Get).Where(o => o is not null && ViewFor(o!) is not null)
+                .Select(o => registry.Type(o!.Type)?.ElevationGround(o!, ctx0)).Where(g => g is not null).Select(g => g!.Value).ToList();
+            double? groundY = grounds.Count > 0 ? grounds.Max() : null;
             // Objects whose types bring their own rule (building services: plan ↔ section ↔ schematic) go there, grouped.
-            var own = ids.Select(id => (Id: id, Rule: doc.Get(id) is { } x ? registry.Type(x.Type)?.AssemblyViewSwitch : null)).ToList();
-            foreach (var group in own.Where(x => x.Rule is not null).GroupBy(x => x.Rule!))
-                doc = group.Key.Switch(registry, doc, group.Select(x => x.Id).ToList(), view, lang);
+            var own = ids.Select(id => (Id: id, Obj: doc.Get(id))).Where(x => x.Obj is not null && ViewFor(x.Obj!) is not null)
+                .Select(x => (x.Id, View: ViewFor(x.Obj!)!, Rule: registry.Type(x.Obj!.Type)?.AssemblyViewSwitch)).ToList();
+            foreach (var group in own.Where(x => x.Rule is not null).GroupBy(x => (x.Rule!, x.View)))
+                doc = group.Key.Item1.Switch(registry, doc, group.Select(x => x.Id).ToList(), group.Key.View, lang, groundY);
             ids = own.Where(x => x.Rule is null).Select(x => x.Id).ToList();
             if (ids.Count == 0) return doc;
             var ctx = new RenderContext(doc, lang);
+            // Point geometry without its own rule (walls) only changes its view: its points stay where they are.
+            var lines = ids.Select(doc.Get).Where(o => o is not null && o.IsPointGeometry).Select(o => o!).ToList();
+            if (lines.Count > 0) doc = Edits.Update(doc, lines.Select(o => o.Id).ToList(), o => registry.WithView(o, ViewFor(o), ctx));
             var objects = ids.Select(doc.Get).Where(o => o is not null && !o.IsPointGeometry).Select(o => o!).ToList();
             if (objects.Count == 0) return doc;
+            ctx = new RenderContext(doc, lang);
             var before = objects.ToDictionary(o => o.Id, o => (Centre: Centre(o), InPlane: InPlane(registry, o, ctx), Axis: AxisDir(registry, o, ctx)), StringComparer.Ordinal);
-            var switched = Edits.Update(doc, objects.Select(o => o.Id).ToList(), o => registry.WithView(o, view, ctx));
+            var switched = Edits.Update(doc, objects.Select(o => o.Id).ToList(), o => registry.WithView(o, ViewFor(o), ctx));
             var ctx1 = new RenderContext(switched, lang);
             var after = objects.ToDictionary(o => o.Id, o => InPlane(registry, switched.Get(o.Id)!, ctx1), StringComparer.Ordinal);
             var toAxial = objects.Where(o => before[o.Id].InPlane && !after[o.Id]).Select(o => o.Id).ToList();

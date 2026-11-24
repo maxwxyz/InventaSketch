@@ -51,8 +51,10 @@ next to `AssemblyViews` unchanged.
 
 1. **Viewing direction.** The section looks at the plan from its lower page edge (towards −y), like the wall elevation
    of the architecture module. **x is shared**: every element keeps its centre x and its width in every view.
-2. **Floor line.** `floorY` = the lowest plan edge of the selection (largest page y), unless given. It is stored on
-   each element (`Meta["bs.floorY"]`) so later switches use the same line.
+2. **Floor line.** `floorY` = the lowest plan edge of the selection (largest page y), unless given. With walls in the
+   selection it is their ground line instead (the lowest point of the wall centre lines, `ObjectType.ElevationGround`),
+   so the installation stands on the floor the wall elevation draws. It is stored on each element
+   (`Meta["bs.floorY"]`) so later switches use the same line.
 3. **plan → section/schematic (boxes):** plan y and rotation are stored (`Meta["bs.planY"]`, `Meta["bs.planRotation"]`),
    rotation becomes 0, the size adapts (width kept), and the bottom edge goes to
    `bottomY = floorY − height / scale`.
@@ -69,6 +71,11 @@ next to `AssemblyViews` unchanged.
    its port id for the way back.
 7. Elements on side walls are shown in front view at their x position (developed elevation); a true per-wall section
    would need a section line object and is out of scope.
+8. **Walls, doors and windows switch along** (2026-11-25): `section` and the architecture's `elevation` are aliases
+   (`ViewAliases` in Core). With walls and installations selected, the multi-selection offers "All in view: Section";
+   the installations go to `section`, the walls, doors and windows to `elevation`, and back to plan together. Wall
+   points do not move; the wall keeps its own `height` (wall height) – the installation rule reads `height` (mounting
+   height) only from installation types, so no separate key is needed.
 
 ## Object types
 

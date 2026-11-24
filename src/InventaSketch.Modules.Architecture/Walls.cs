@@ -391,6 +391,10 @@ namespace InventaSketch.Modules.Architecture
             return list;
         }
 
+        /// <summary>The ground line of the elevation: the lowest point of the centre line (points do not move between views).</summary>
+        public override double? ElevationGround(SketchObject o, RenderContext ctx)
+            => WallLine.Of(o, ctx.Doc) is { } w && w.Pts.Count > 0 ? w.Pts.Max(q => q.Y) : null;
+
         /// <summary>Walls render their joints and face breaks from the neighbouring walls.</summary>
         public override bool DependsOnNeighbours => true;
 

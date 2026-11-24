@@ -55,8 +55,8 @@ namespace InventaSketch.Core
 
         private sealed class SwitchRule : IAssemblyViewSwitch
         {
-            public SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang)
-                => InstallationViews.Switch(registry, doc, ids, view, null, lang);
+            public SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, Lang lang, double? groundY)
+                => InstallationViews.Switch(registry, doc, ids, view, null, lang, groundY);
         }
 
         /// <summary>Meta key: plan y of the element centre (box) before it went to an elevation view.</summary>
@@ -77,8 +77,12 @@ namespace InventaSketch.Core
         /// <summary>Mounting height in mm of an element whose bottom edge sits at <paramref name="bottomY"/> in an elevation view.</summary>
         public static double HeightAt(double floorY, double bottomY, double scale) => (floorY - bottomY) * scale;
 
-        /// <summary>The objects <paramref name="ids"/> switched to <paramref name="view"/> with the installation kept (see the class).</summary>
-        public static SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, double? floorY = null, Lang lang = Lang.En)
+        /// <summary>
+        /// The objects <paramref name="ids"/> switched to <paramref name="view"/> with the installation kept (see the class).
+        /// The floor line is <paramref name="floorY"/>, else the one stored by an earlier switch, else the ground line of walls
+        /// switched together with the installation (<paramref name="groundY"/>), else the lowest plan edge of the selection.
+        /// </summary>
+        public static SketchDocument Switch(Registry registry, SketchDocument doc, IReadOnlyList<string> ids, string view, double? floorY = null, Lang lang = Lang.En, double? groundY = null)
         {
             if (!AllViews.Contains(view)) return doc;
             var ctx = new RenderContext(doc, lang);
@@ -86,7 +90,7 @@ namespace InventaSketch.Core
                 .Where(o => registry.Type(o.Type)!.ViewOf(o) != view).ToList();
             if (objects.Count == 0) return doc;
 
-            var floor = floorY ?? StoredFloor(objects) ?? PlanBottom(doc, objects.Where(o => registry.Type(o.Type)!.ViewOf(o) == Plan));
+            var floor = floorY ?? StoredFloor(objects) ?? groundY ?? PlanBottom(doc, objects.Where(o => registry.Type(o.Type)!.ViewOf(o) == Plan));
             var updated = new Dictionary<string, SketchObject>(StringComparer.Ordinal);
             foreach (var o in objects)
             {

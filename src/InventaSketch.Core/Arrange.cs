@@ -46,16 +46,19 @@ namespace InventaSketch.Core
 
         /// <summary>
         /// Views every given object offers (in the order of the first object's type), without the views all of them already
-        /// show; empty if the objects share no view or are all in it.
+        /// show; empty if the objects share no view or are all in it. Aliases count as the same view
+        /// (<see cref="ViewAliases"/>: walls in elevation and installations in section).
         /// </summary>
         public static IReadOnlyList<ViewDef> CommonViews(Registry registry, IReadOnlyList<SketchObject> objects)
         {
             var types = objects.Select(o => (Object: o, Type: registry.Type(o.Type))).ToList();
             if (types.Count < 2 || types.Any(t => t.Type is null || t.Type.Views.Count < 2)) return Array.Empty<ViewDef>();
-            var first = types[0].Type!;
+            // Start from a type with the most views, so "section" (installations) is offered rather than its alias
+            // "elevation" (walls) when both are in the selection.
+            var first = types.Select(t => t.Type!).OrderByDescending(t => t.Views.Count).First();
             return first.Views
-                .Where(v => types.All(t => t.Type!.Views.Any(w => w.Id == v.Id)))
-                .Where(v => types.Any(t => t.Type!.ViewOf(t.Object) != v.Id))
+                .Where(v => types.All(t => ViewAliases.Offers(t.Type, v.Id)))
+                .Where(v => types.Any(t => t.Type!.ViewOf(t.Object) != ViewAliases.Resolve(t.Type, v.Id)))
                 .ToList();
         }
 
