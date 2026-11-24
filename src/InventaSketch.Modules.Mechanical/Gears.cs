@@ -35,6 +35,10 @@ namespace InventaSketch.Modules.Mechanical
         /// </summary>
         private static Anchor SidePitch(Pen p, double halfHeight) => Anchor.SidePitch(Vec2.Zero, halfHeight * p.Sy, new Vec2(1, 0));
 
+        /// <summary>Inner pitch circle of a ring gear seen from the side (axis horizontal in the box), like <see cref="SidePitch"/>.</summary>
+        private static Anchor SidePitchIn(Pen p, double halfHeight)
+            => new(AnchorKind.Circle, AnchorRole.PitchInner, Vec2.Zero, new Vec2(1, 0), halfHeight * p.Sy) { Id = "pitch-side" };
+
         public static IEnumerable<MechType> Types()
         {
             yield return Spur();
@@ -159,10 +163,10 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Internal() => new(
             "mech.gear.internal", T("Ring gear (internal)", "Hohlrad"), Cat,
             new[] { "ring gear", "internal gear", "annulus", "hohlrad", "innenverzahnung", "planetengetriebe" },
-            new ViewSpec("stick", VStick, 10, 40, RingStick),
+            new ViewSpec("stick", VStick, 10, 40, RingStick) { Anchors = (p, o) => new[] { SidePitchIn(p, 12) } },
             new ViewSpec("axial", VAxial, 40, 40, RingAxial) { Anchors = (p, o) => new[] { PitchIn(p, RingRoot * GearMath.Internal(GearMath.Teeth(o, 48)).Pitch) } },
             new ViewSpec("teeth", VTeeth, 40, 40, RingTeeth) { Anchors = (p, o) => new[] { PitchIn(p, RingRoot * GearMath.Internal(GearMath.Teeth(o, 48)).Pitch) } },
-            new ViewSpec("section", VSection, 10, 40, RingSection))
+            new ViewSpec("section", VSection, 10, 40, RingSection) { Anchors = (p, o) => new[] { SidePitchIn(p, RingRoot * GearMath.Internal(GearMath.Teeth(o, 48)).Pitch) } })
         {
             Params = new[] { Common.Teeth(48), Common.Module },
             Extra = o => GearActions(o, false, 48, false),
@@ -427,7 +431,8 @@ namespace InventaSketch.Modules.Mechanical
 
         /// <summary>
         /// The set as parts in the axial views: sun (20 teeth), planets (16) on a carrier with as many pins, ring gear (52);
-        /// sizes from the set's box (design 50 x 50). Stepped planets and the schematic view are not exploded.
+        /// sizes from the set's box (design 50 x 50). Stepped planets are not exploded; the schematic view is exploded through
+        /// the axial view and switched back (<see cref="Assemblies"/>, <see cref="AssemblyViews"/>).
         /// </summary>
         private static IReadOnlyList<PartSpec>? PlanetaryParts(SketchObject o)
         {

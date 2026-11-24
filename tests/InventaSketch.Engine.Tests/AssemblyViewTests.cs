@@ -63,6 +63,23 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void AStickPlanetarySetExplodesIntoStickParts()
+        {
+            var item = Reg.Library.First(i => i.TypeId == "mech.gearset.planetary" && (i.View ?? "stick") == "stick");
+            var set = Reg.Create(item, new Vec2(120, 90));
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, set);
+            Assert.True(Assemblies.CanExplode(Reg, set));
+            var parts = Assemblies.Explode(Reg, doc, set.Id);
+            Assert.True(parts.Count >= 5);
+            Assert.All(parts.Where(p => p.Type.StartsWith("mech.gear", System.StringComparison.Ordinal)), p => Assert.True(AssemblyViews.InPlane(Reg, p, new RenderContext(doc)), p.Type + " in " + p.View));
+            var exploded = SketchDocument.Create();
+            exploded = Edits.Add(exploded, exploded.Pages[0].Id, parts.ToArray());
+            // Sun and planets still mesh in the stick view.
+            Assert.Contains(Coupling.Graph(Reg, exploded), g => g.Kind == LinkKind.Mesh);
+        }
+
+        [Fact]
         public void WithinTheSameKindOfViewNothingMoves()
         {
             var a = Gear("stick", new Vec2(50, 50), 20);

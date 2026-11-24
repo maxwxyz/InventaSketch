@@ -39,6 +39,26 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void MatchFormatCopiesViewParametersAndStyleToTheSameType()
+        {
+            var stick = Reg.Library.First(i => i.TypeId == "mech.gear.spur" && i.View == "stick");
+            var axial = Reg.Library.First(i => i.TypeId == "mech.gear.spur" && i.View == "axial");
+            var source = Reg.Create(axial, new Vec2(10, 10)).WithParam("teeth", 31) with { Style = new Style { Stroke = "#cc0000" } };
+            var other = Reg.Create(stick, new Vec2(60, 10));
+            var arrow = Reg.Create(Reg.Library.First(i => i.TypeId == "ann.arrow"), new Vec2(0, 0));
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, source, other, arrow);
+            var changed = Arrange.MatchFormat(Reg, source, new[] { other, arrow }, new RenderContext(doc));
+            var m = Assert.Single(changed);
+            Assert.Equal(other.Id, m.Id);
+            Assert.Equal("axial", m.View);
+            Assert.Equal(31, m.Num("teeth", 0));
+            Assert.Equal("#cc0000", m.Style!.Stroke);
+            Assert.Equal(other.Transform.X, m.Transform.X);
+            Assert.Empty(Arrange.MatchFormat(Reg, source, new[] { source with { Id = "copy" } }, new RenderContext(doc)));
+        }
+
+        [Fact]
         public void RenumberInReadingOrderKeepingTheScheme()
         {
             var numerals = new[]

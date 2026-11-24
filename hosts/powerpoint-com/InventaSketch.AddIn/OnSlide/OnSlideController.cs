@@ -93,6 +93,9 @@ namespace InventaSketch.AddIn.OnSlide
         private bool _barPressed;
         private byte _barAlpha;
 
+        /// <summary>Keyboard-only hook for shortcuts that work without a selection (Ctrl+Space).</summary>
+        private readonly InputHooks _keys = new();
+
         public OnSlideController(PowerPoint.Application app, Func<Registry> registry, Func<Lang> lang)
         {
             _app = app; _registry = registry; _lang = lang;
@@ -108,6 +111,15 @@ namespace InventaSketch.AddIn.OnSlide
             _hooks.Mouse = OnMouse;
             _hooks.KeyDown = OnKey;
             _hooks.Reset = () => Cancel("reset");
+            // Ctrl+Space also without a selection: a keyboard-only hook that stays installed (the full hooks take over
+            // while an element is selected and handle the key themselves).
+            _keys.KeyDown = (vk, shift, ctrl, alt) =>
+            {
+                if (vk != 0x20 || !ctrl || shift || alt || _mode != Mode.Idle) return false;
+                Post(() => { if (CurrentSlide() is { } s) { _view ??= SlideView.Current(_app); OpenInsertSearch(s, null); } });
+                return true;
+            };
+            _keys.InstallKeyboard();
             _timer = new Timer { Interval = 250 };
             _timer.Tick += (_, _) => RefreshView();
             _app.WindowSelectionChange += OnSelectionChange;
@@ -120,6 +132,7 @@ namespace InventaSketch.AddIn.OnSlide
             try { _app.WindowSelectionChange -= OnSelectionChange; } catch { /* PowerPoint closing */ }
             _timer.Dispose();
             _hooks.Dispose();
+            _keys.Dispose();
             _overlay.Dispose();
             _barWindow.Dispose();
         }
@@ -1175,6 +1188,7 @@ namespace InventaSketch.AddIn.OnSlide
             GetCursorPos(out var p);
             var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
             Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
+            Log.Info("Bar ids: " + string.Join(",", _bar.Buttons.Where(b => !b.Separator).Select(b => b.Id)));
             DrawBar(view, opacity);
         }
 

@@ -37,12 +37,41 @@ namespace InventaSketch.Core
     /// </summary>
     public static class Assemblies
     {
-        public static bool CanExplode(Registry registry, SketchObject o) => !o.IsPointGeometry && registry.Type(o.Type)?.Parts(o) is { Count: > 0 };
+        public static bool CanExplode(Registry registry, SketchObject o)
+            => !o.IsPointGeometry && (registry.Type(o.Type)?.Parts(o) is { Count: > 0 } || RecipeView(registry, o) is not null);
+
+        /// <summary>
+        /// Another view of <paramref name="o"/> that has a parts recipe when its own view has none (a planetary set drawn as
+        /// a stick diagram is exploded in its axial view and the parts are switched back, <see cref="AssemblyViews"/>).
+        /// </summary>
+        private static string? RecipeView(Registry registry, SketchObject o)
+        {
+            if (registry.Type(o.Type) is not { } type || type.Parts(o) is { Count: > 0 }) return null;
+            var ctx = new RenderContext(SketchDocument.Create());
+            foreach (var v in type.Views)
+                if (v.Id != type.ViewOf(o) && type.Parts(registry.WithView(o, v.Id, ctx)) is { Count: > 0 }) return v.Id;
+            return null;
+        }
 
         /// <summary>The parts of assembly <paramref name="id"/> as new objects (not added to the document).</summary>
         public static IReadOnlyList<SketchObject> Explode(Registry registry, SketchDocument doc, string id, Lang lang = Lang.En)
         {
-            var o = doc.Get(id);
+            var original = doc.Get(id);
+            if (original is not null && RecipeView(registry, original) is { } recipeView && registry.Type(original.Type) is { } t0)
+            {
+                // Exploded in the view that has a recipe, then the parts take the assembly's own view with the mechanism kept.
+                var other = registry.WithView(original, recipeView, new RenderContext(doc, lang));
+                var parts = Explode(registry, Edits.Update(doc, new[] { id }, _ => other), id, lang);
+                if (parts.Count == 0) return parts;
+                var tmp = SketchDocument.Create();
+                tmp = Edits.Add(tmp, tmp.Pages[0].Id, parts.ToArray());
+                var back = AssemblyViews.Switch(registry, tmp, parts.Select(x => x.Id).ToList(), t0.ViewOf(original), lang);
+                // Centred where the assembly was.
+                var box = Rect.FromPoints(parts.Select(x => back.Get(x.Id)!).Select(x => new Vec2(x.Transform.X, x.Transform.Y)));
+                var shift = new Vec2(original.Transform.X - (box.X + box.W / 2), original.Transform.Y - (box.Y + box.H / 2));
+                return parts.Select(x => back.Get(x.Id)!).Select(x => x with { Transform = x.Transform with { X = Math.Round(x.Transform.X + shift.X, 6), Y = Math.Round(x.Transform.Y + shift.Y, 6) } }).ToList();
+            }
+            var o = original;
             if (o is null || registry.Type(o.Type)?.Parts(o) is not { Count: > 0 } specs) return Array.Empty<SketchObject>();
             var m = o.Matrix();
             var list = new List<SketchObject>();

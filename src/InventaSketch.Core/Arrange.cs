@@ -88,6 +88,31 @@ namespace InventaSketch.Core
             return result;
         }
 
+        /// <summary>
+        /// Format painter for semantics: the objects of the same type as <paramref name="source"/> with its view, parameters
+        /// and style (their own size, position and text stay). Returns only the objects that change.
+        /// </summary>
+        public static IReadOnlyList<SketchObject> MatchFormat(Registry registry, SketchObject source, IEnumerable<SketchObject> others, RenderContext ctx)
+        {
+            var result = new List<SketchObject>();
+            foreach (var o in others)
+            {
+                if (o.Id == source.Id || o.Type != source.Type) continue;
+                var next = registry.WithView(o, registry.Type(o.Type)?.ViewOf(source), ctx);
+                next = next with { Params = source.Params.ToDictionary(kv => kv.Key, kv => kv.Value), Style = source.Style };
+                if (!SameFormat(o, next)) result.Add(next);
+            }
+            return result;
+        }
+
+        private static bool SameFormat(SketchObject a, SketchObject b)
+        {
+            if (a.View != b.View || !Equals(a.Style, b.Style) || a.Params.Count != b.Params.Count) return false;
+            foreach (var kv in a.Params)
+                if (!b.Params.TryGetValue(kv.Key, out var v) || !v.Equals(kv.Value)) return false;
+            return true;
+        }
+
         private static Rect Union(IEnumerable<Rect> boxes)
         {
             var list = boxes.ToList();

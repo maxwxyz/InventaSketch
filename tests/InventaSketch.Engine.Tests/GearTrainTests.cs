@@ -132,7 +132,8 @@ namespace InventaSketch.Engine.Tests
             var plain = Reg.Render(set, new RenderContext(Doc(set))).Count(p => p.Tag == "planet");
             var stepped = set.WithParam("stepped", true);
             Assert.True(Reg.Render(stepped, new RenderContext(Doc(stepped))).Count(p => p.Tag == "planet") > plain);
-            Assert.False(Assemblies.CanExplode(Reg, set)); // the schematic is not exploded
+            Assert.True(Assemblies.CanExplode(Reg, set)); // the schematic explodes through the axial view
+            Assert.False(Assemblies.CanExplode(Reg, stepped)); // stepped planets have no recipe
             var p8 = Reg.Type("mech.gearset.planetary")!.Parameters.Single(x => x.Key == "planets");
             Assert.Equal(2, p8.Min);
             Assert.Equal(8, p8.Max);
