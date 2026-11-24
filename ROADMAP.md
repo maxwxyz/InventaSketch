@@ -159,7 +159,8 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
   whole installations switch plan ↔ section ↔ schematic through `AssemblyViews` with the module's rule; open: a section
-  line per wall, `elevation`/`section` alias for walls; the electrical house symbols joined the installation views on
+  line per wall, walls with installations (the wall's `height` is its own height, installations use `height` as the
+  mounting height – needs a separate key first); the electrical house symbols joined the installation views on
   2026-11-25, the rule moved to Core as `InstallationViews`):** heating, plumbing, ventilation and electrical installation tied to the
   architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
   assemblies applies).
