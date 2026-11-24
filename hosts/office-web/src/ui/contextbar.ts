@@ -1,15 +1,22 @@
-// Floating context bar near the selection (view switcher, text, flip, numeral, type actions, style, more). It becomes
-// semi-transparent and fades out as the pointer moves away; once faded out it stays hidden until the selection changes.
+// Floating context bar near the selection. Fixed order (ROADMAP UX rule 2): views | choices | element actions | insert,
+// path, assembly | transforms | style, more. Mirror/rotate appear only when they change the drawing; the bar never
+// grows with content. A selection of two or more elements gets its own bar (one view for all, align, distribute …).
+// It becomes semi-transparent and fades out as the pointer moves away; once faded out it stays hidden until the
+// selection changes.
 
 import type { ActionInfo } from "../engine/types";
 import { t } from "../i18n";
 import { clamp, h } from "./dom";
 import { hasIcon, icon } from "./icons";
+import type { MultiBarGroups } from "./uxlogic";
 
 export interface BarBox { left: number; top: number; right: number; bottom: number }
 
-/** "Next element" after a quick add: library items as thumbnails at the start of the bar (one click replaces). */
-export interface PaletteEntry { id: string; label: string; image?: string; active: boolean }
+/** A host command of the bar (make it …, insert, draw the path, select assembly): icon button with a tooltip. */
+export interface BarCommand { id: string; label: string; icon: string; active?: boolean }
+
+/** Host commands of the single-selection bar: `lead` before the views, `build` after the element actions. */
+export interface BarExtras { lead: BarCommand[]; build: BarCommand[] }
 
 /** A choice shown as an icon button (current option) that opens its options as an icon row in the bar. */
 export interface ChoiceEntry {
@@ -33,23 +40,27 @@ export function distanceToRect(x: number, y: number, r: { left: number; top: num
   return Math.hypot(dx, dy);
 }
 
-/** Bar buttons in order; "text" is the host's main-text command (objects with an editable main text). */
-const BAR_IDS = ["text", "flipH", "flipV", "rotate90", "numeral"];
+/** Element actions in order; "text" is the host's main-text command (objects with an editable main text). */
+const ELEMENT_IDS = ["text", "numeral"];
+/** Quick transforms (the host leaves out the ones that change nothing, see uxlogic.filterTransforms). */
+const TRANSFORM_IDS = ["flipH", "flipV", "rotate90"];
 
 export class ContextBar {
   readonly el: HTMLDivElement;
   private key = "";
   private dismissed = false;
-  /** Choice whose icon row fills the bar (closes with a pick, Back or a new selection). */
+  /** Choice whose dropdown is open (closes with a pick, a click elsewhere or a new selection). */
   private openChoice?: string;
-  private last?: { actions: ActionInfo[]; box: BarBox | undefined; suppressed: boolean; palette: PaletteEntry[]; choices: ChoiceEntry[] };
+  /** Repeats the last update (an opened or closed dropdown). */
+  private rerender?: () => void;
 
   constructor(
     private readonly root: HTMLElement,
     private readonly onAction: (a: ActionInfo) => void,
     private readonly onStyle: () => void,
     private readonly onMore: (clientX: number, clientY: number) => void,
-    private readonly onPalette: (itemId: string) => void = () => {},
+    /** Host commands (BarCommand ids, "arr:<option>" for the multi-selection bar) with the click position. */
+    private readonly onCommand: (id: string, clientX: number, clientY: number) => void = () => {},
     private readonly onChoice: (key: string, value: string) => void = () => {},
   ) {
     this.el = h("div", { class: "isk-ctxbar", role: "toolbar", "aria-label": t("ctx.title") });
@@ -64,35 +75,78 @@ export class ContextBar {
     }, true);
   }
 
-  /** Rebuilds and positions the bar; selectionKey identifies the selection (new selection → bar reappears). */
-  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean, palette: PaletteEntry[] = [], choices: ChoiceEntry[] = []): void {
+  /** Starts an update: false (and the bar hidden) when there is nothing to show. */
+  private begin(selectionKey: string, box: BarBox | undefined, suppressed: boolean): box is BarBox {
     if (selectionKey !== this.key) {
       this.key = selectionKey;
       this.dismissed = false;
       this.openChoice = undefined;
     }
-    this.last = { actions, box, suppressed, palette, choices };
     if (!box || !selectionKey || this.dismissed || suppressed) {
       this.el.hidden = true;
       this.dropdown?.remove();
       this.dropdown = undefined;
-      return;
+      return false;
     }
     this.el.replaceChildren();
-    if (palette.length) {
-      const row = h("div", { class: "isk-palette", role: "group", "aria-label": t("ctx.next") });
-      for (const p of palette) {
-        const b = h("button", { class: `isk-btn isk-icon-btn${p.active ? " is-active" : ""}`, type: "button", title: p.label, "aria-label": p.label });
-        if (p.image) b.append(h("img", { src: p.image, alt: "" }));
-        else b.textContent = p.label.slice(0, 2);
-        b.addEventListener("click", () => this.onPalette(p.id));
-        row.append(b);
-      }
-      this.el.append(row);
-    }
+    this.el.setAttribute("aria-label", t("ctx.title"));
+    return true;
+  }
+
+  /** A thin separator before the next group (only between non-empty groups). */
+  private group(...buttons: HTMLElement[]): void {
+    if (!buttons.length) return;
+    if (this.el.childElementCount) this.el.append(h("span", { class: "isk-bar-sep", "aria-hidden": "true" }));
+    this.el.append(...buttons);
+  }
+
+  private command(c: BarCommand, prefix = ""): HTMLButtonElement {
+    const b = h("button", {
+      class: `isk-btn isk-icon-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label,
+      "data-cmd": prefix + c.id, html: icon(hasIcon(c.icon) ? c.icon : "type"),
+    });
+    b.addEventListener("click", (e) => this.onCommand(prefix + c.id, e.clientX, e.clientY));
+    return b;
+  }
+
+  private tail(): HTMLElement[] {
+    const style = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.style"), "aria-label": t("ctx.style"), html: icon("style") });
+    style.addEventListener("click", () => this.onStyle());
+    const more = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.more"), "aria-label": t("ctx.more"), html: icon("more") });
+    more.addEventListener("click", (e) => this.onMore(e.clientX, e.clientY));
+    return [style, more];
+  }
+
+  /**
+   * Bar of a multi-selection (two or more elements): one view for all, centres on a row/column, even spacing, like the
+   * first, renumber (engine `arrangeOptions`, each only when it changes something), then host commands, style and more.
+   */
+  updateMulti(selectionKey: string, groups: MultiBarGroups, box: BarBox | undefined, suppressed: boolean, extras: BarCommand[] = []): void {
+    this.rerender = () => this.updateMulti(selectionKey, groups, box, suppressed, extras);
+    if (!this.begin(selectionKey, box, suppressed)) return;
+    this.el.setAttribute("aria-label", t("ctx.multi"));
+    const asCommand = (o: { id: string; label: string; icon: string }) => this.command({ id: o.id, label: o.label, icon: o.icon }, "arr:");
+    this.group(...groups.views.map(asCommand));
+    this.group(...groups.arrange.map(asCommand));
+    this.group(...extras.map((c) => this.command(c)));
+    this.group(...this.tail());
+    this.place(box);
+  }
+
+  /** Rebuilds and positions the bar; selectionKey identifies the selection (new selection → bar reappears). */
+  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean, choices: ChoiceEntry[] = [], extras: BarExtras = { lead: [], build: [] }): void {
+    this.rerender = () => this.update(selectionKey, actions, box, suppressed, choices, extras);
+    if (!this.begin(selectionKey, box, suppressed)) return;
+    this.group(...extras.lead.map((c) => this.command(c)));
     const views = actions.filter((a) => a.kind === "view");
+    if (views.length > 1) {
+      const seg = h("div", { class: "isk-seg", role: "group", "aria-label": t("ctx.view") });
+      for (const v of views) seg.append(this.button(v, v.label, v.active));
+      this.group(seg);
+    }
     // Choices as dropdowns: current option as pictogram (or short text) plus a caret; the list shows icon and label.
     let openButton: HTMLElement | undefined;
+    const chips: HTMLElement[] = [];
     for (const c of choices) {
       const cur = c.options.find((o) => o.id === c.current) ?? c.options[0];
       const pictorial = c.options.every((o) => o.icon || o.image);
@@ -105,24 +159,16 @@ export class ContextBar {
       b.append(h("span", { class: "isk-caret", "aria-hidden": "true" }));
       b.addEventListener("click", () => this.toggleChoice(c.key));
       if (this.openChoice === c.key) openButton = b;
-      this.el.append(b);
+      chips.push(b);
     }
+    this.group(...chips);
     const covered = new Set(choices.map((c) => c.key));
-    if (views.length > 1) {
-      const seg = h("div", { class: "isk-seg", role: "group", "aria-label": t("ctx.view") });
-      for (const v of views) seg.append(this.button(v, v.label, v.active));
-      this.el.append(seg);
-    }
-    for (const id of BAR_IDS) {
-      const a = actions.find((x) => x.id === id);
-      if (a) this.el.append(this.button(a));
-    }
-    for (const a of actions.filter((x) => x.kind === "type" && !(x.paramKeys ?? []).some((k) => covered.has(k))).slice(0, 3)) this.el.append(this.button(a));
-    const style = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.style"), "aria-label": t("ctx.style"), html: icon("style") });
-    style.addEventListener("click", () => this.onStyle());
-    const more = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.more"), "aria-label": t("ctx.more"), html: icon("more") });
-    more.addEventListener("click", (e) => this.onMore(e.clientX, e.clientY));
-    this.el.append(style, more);
+    const byId = (ids: string[]) => ids.map((id) => actions.find((x) => x.id === id)).filter((a): a is ActionInfo => !!a).map((a) => this.button(a));
+    const typeActions = actions.filter((x) => x.kind === "type" && !(x.paramKeys ?? []).some((k) => covered.has(k))).slice(0, 3).map((a) => this.button(a));
+    this.group(...byId(ELEMENT_IDS), ...typeActions);
+    this.group(...extras.build.map((c) => this.command(c)));
+    this.group(...byId(TRANSFORM_IDS));
+    this.group(...this.tail());
     this.place(box);
     this.showDropdown(choices.find((c) => c.key === this.openChoice), openButton);
   }
@@ -152,8 +198,7 @@ export class ContextBar {
 
   private toggleChoice(key: string | undefined): void {
     this.openChoice = key === this.openChoice ? undefined : key;
-    const l = this.last;
-    if (l) this.update(this.key, l.actions, l.box, l.suppressed, l.palette, l.choices);
+    this.rerender?.();
   }
 
   private fillIcon(b: HTMLElement, iconId?: string, image?: string, mirror?: boolean): void {

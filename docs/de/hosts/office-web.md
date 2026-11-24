@@ -45,11 +45,17 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `applyAction` | `action` (ID aus `contextActions`), `input` bei Eingabeaktionen | Zustand |
 | `undo`, `redo`, `select`, `selectRect` | `ids`; `x`, `y`, `w`, `h`, `mode` (enclosed/touching), `add` | Zustand |
 | `hitTest` | `x`, `y`, `tolerance` | `{ id, ids, stack }` |
-| `snapMove`, `snapPoint`, `snapInsert`, `setSnap` | `dx`/`dy`; `x`/`y`/`exclude`; `itemId`; `snapOptions` | Fangergebnis `{ dx, dy, x, y, kind, guides, attach }` |
+| `snapMove`, `snapPoint`, `snapInsert`, `setSnap` | `dx`/`dy`; `x`/`y`/`exclude`; `itemId`; `snapOptions` | Fangergebnis `{ dx, dy, x, y, kind, guides, attach, label }`; `label` (snapMove) nennt, woran das Ziehen andockt („Teilkreis“, „Achse“, „Bolzen 2“) |
 | `contextActions`, `inspector` | `ids`, `lang` | Aktionen (allgemein, Ansichten, Typaktionen); Inspektordaten |
 | `suggestions` | `ids`, `lang`, `max` (Standard 9) | Bibliothekselemente `{ id, typeId, name, view, category, points }`, die zum ersten ausgewählten Objekt passen („Einfügen ▸“: Begleiter, gleiche Kategorie, Beschriftungen, in seiner Art von Ansicht); leer ohne Auswahl |
 | `conversions`, `convert` | `ids`, `lang`; `ids`, `itemId` (Zieltyp) | Linientypen, in die die erste ausgewählte Linie, der Pfeil, das Maß oder die Hinweislinie umgewandelt werden kann („Typ ▸“, `{ id, label, active }`); Zustand (Punkte, Enden und Anhänge bleiben) |
 | `quickAdd`, `nextItems`, `replaceItem` | `id`, `side` (left/top/right/bottom), optional `x`/`y`, `itemId`; `id`, `max`; `id`, `itemId` | Zustand mit dem neuen Element ausgewählt (Kopie plus Verbinder, ein Rückgängig-Schritt); Bibliothekselemente für das nächste Element; Zustand (Element ersetzt, Verbinder bleiben) |
+| `search` | `ids`, `text`, `lang`, `recent` (Element-IDs, zuletzt verwendetes zuerst), `max` (Standard 30) | Bibliothekstreffer (Form wie `suggestions` plus `fits`): ohne Text die zum ersten ausgewählten Objekt passenden Teile, dann die zuletzt verwendeten; mit Text die ganze Bibliothek (`LibrarySearch`: beide Sprachen, Umlaute = ae/oe/ue/ss, passende und zuletzt verwendete Elemente sowie die Ansicht der Auswahl höher gewichtet) |
+| `transformEffect` | `ids` | `{ mirrorH, mirrorV, rotate90 }`: ob die Transformation die gezeichnete Geometrie ändert (`Symmetry`, Pfeilspitzen eingeschlossen) |
+| `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | auswahlweite Operationen, die etwas ändern `{ id, label, icon }` (`mview:<view>` eine Ansicht für alle mit erhaltenem Mechanismus, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); Zustand (ein Rückgängig-Schritt) |
+| `assembly` | `ids` | IDs der Auswahl und aller damit gekoppelten Objekte (Getriebezug, Antrieb), Auswahl zuerst |
+| `trace` | `id`, `index` (Standard: letzter Punkt), `max` (Schritte, Standard 72) | `{ points, closed }`: Bahn des Gliedpunkts, während die Kurbel der Kette dreht; leer, außer die Kette hat F = 1 |
+| `update` | `object` (vollständiges Dokumentobjekt wie in `saveDocument`) | Zustand |
 | `exporters`, `export` | `ids` (Auswahl mit ihren Gruppen, sonst die Seite), `lang`; `itemId` (Exporter-Id) | zutreffende Fachexporte `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (Standard: Dokumenteinstellung), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | Zeichenplan in pt (schwarz-weiß, wenn das Dokument es ist) |
@@ -71,15 +77,15 @@ Folie behalten.
 ## Bearbeitung (gleichwertig zum COM-Add-in, 2026-11-20)
 
 - **Kreismenü** (Rechtsklick, `Umschalt+F10`, „…“ in der Leiste): ein Ring aus Sektoren mit Piktogramm über jeder
-  Beschriftung, höchstens acht Einträge; zuerst Löschen, Ansichten (bis zu vier), „Text …“, „Einfügen ▸“, Duplizieren
+  Beschriftung, höchstens acht Einträge; zuerst Löschen, Ansichten (bis zu vier), „Text …“, „Einfügen …“, Duplizieren
   und Drehen, Typaktionen, Bezugszeichen, Spiegeln, Reihenfolge und Gruppierung unter „Mehr ▸“ (seitenweise mit
   Zurück). Beschriftungen brechen nur an Leerzeichen um (zwei Zeilen, kleinere Schrift vor dem Kürzen mit „…“); die
   volle Beschriftung eines gekürzten oder nicht verfügbaren Eintrags erscheint in einer Pille unter dem Ring. Layout
   und Umbruch sind reine Funktionen in `src/ui/pielogic.ts` (mit Unit-Tests).
 - **Text**: Doppelklick auf ein Objekt, die Text-Schaltfläche der Kontextleiste oder „Text …“ im Kreismenü bearbeiten
   den Haupttext (`mainText`, `setMainText`) in der Inline-Eingabe; mehrzeilige Texte öffnen das Textfeld des Inspektors.
-- **Einfügen ▸** listet die `suggestions` der Engine; die Auswahl startet das Einfügen am Mauszeiger auf der Bühne (mit
-  Fangen). In der Seitenleiste des COM-Add-ins sendet sie die vorhandene Bridge-Nachricht `place`, sodass das Element
+- **Einfügen …** im Kreismenü öffnet das Einfügefeld (siehe UI/UX-Runde unten); das gewählte Element startet das
+  Einfügen am Mauszeiger auf der Bühne (mit Fangen). In der Seitenleiste des COM-Add-ins sendet sie die vorhandene Bridge-Nachricht `place`, sodass das Element
   auf der Folie platziert wird.
 - **Schwarz-Weiß**: Umschalter in der oberen Leiste (und in den Einstellungen) ruft `setMonochrome`; Bühne,
   SVG/PNG-Export und die von `src/office/powerpoint.ts` (oder der COM-Bridge) geschriebenen Zeichenpläne folgen der
@@ -94,8 +100,9 @@ Folie behalten.
   erscheinen, entfallen.
 - **Schnell-Anfügen** (wie im COM-Add-in): Ein ausgewähltes Ablaufdiagramm-, UML-, ER-, BPMN- oder Grundform-Element
   (`chain`) zeigt blaue Dreiecke außerhalb seiner Seiten; ein Klick fügt eine verbundene Kopie an (`quickAdd`), Ziehen und
-  Loslassen fügt sie an der Ablagestelle ein. Die Kontextleiste beginnt dann mit der Palette „nächstes Element“
-  (`nextItems`; ein Klick ruft `replaceItem`).
+  Loslassen fügt sie an der Ablagestelle ein. Die Kontextleiste beginnt dann mit „Ändern in …“; das öffnet das
+  Einfügefeld mit dem, was das neue Element werden kann (`nextItems`, Tippen durchsucht die Bibliothek; die Wahl ruft
+  `replaceItem`). An die Leiste wird keine Vorschaureihe mehr angehängt.
 - **Kopplung:** Verschieben, Skalieren und Parameteränderungen halten Zahnräder im Eingriff und Räder auf ihren Wellen
   (Engine `Coupling`); mit gedrückter Alt-Taste beim Loslassen wird frei bearbeitet (`couple: false`, `Session.couple`).
 - **Verankern** (Einstellungen, standardmäßig an, wie der Menüband-Schalter des COM-Add-ins): Ein auf ein Fangziel
@@ -103,12 +110,46 @@ Folie behalten.
 - **Kreismenü „Beschriftung ▸“** für Linien, Pfeile, Maße und Hinweislinien: Einträge aus den Typparametern
   (Texteingabe, Schalter, Auswahl, Textgröße), wie im COM-Add-in.
 
+## UI/UX-Runde 2026-11-24 (gleichwertig zum COM-Add-in)
+
+Folgt den verbindlichen UX-Regeln im Fahrplan („Plan 2026-11-24“). Reine Regeln in `src/ui/uxlogic.ts` und
+`src/ui/insertbox.ts`, mit Unit-Tests in `test/uxround.test.ts`.
+
+- **Leiste nur mit Passendem, feste Reihenfolge:** „Ändern in …“ (direkt nach einem Schnell-Anfügen) | Ansichten |
+  Auswahlen | Text, Bezugszeichen, bis zu drei Typaktionen | Einfügen, Bahnkurve zeichnen, Baugruppe auswählen |
+  Spiegeln/Drehen | Stil, Mehr. Spiegeln und Drehen erscheinen nur, wenn `transformEffect` meldet, dass sie die
+  Zeichnung ändern (ein Kreis oder ein Zahnrad in Stirnansicht zeigt keins davon); das Kreismenü folgt derselben Regel.
+  Piktogramme mit zweisprachigen Tooltips; die Leiste wächst nie mit dem Inhalt.
+- **Ein Einfügeweg:** die Einfügen-Schaltfläche der Leiste, „Einfügen …“ im Kreismenü und Strg+Leertaste (auch ohne
+  Auswahl) öffnen das Einfügefeld am Mauszeiger. Ohne Eingabe listet es zuerst die zur Auswahl passenden Teile
+  (markiert „passt“/„fits“), dann die zuletzt verwendeten; Tippen durchsucht die ganze Bibliothek (`search`). ↑/↓
+  bewegen, Enter übernimmt die markierte Zeile, Esc oder ein Klick daneben schließt. Die Zeilen zeigen die
+  Bibliotheksvorschauen. Das gewählte Element folgt dem Mauszeiger mit Fangen (Klick platziert, Esc bricht ab). Die
+  zuletzt verwendeten Elemente (die letzten 12) stehen in den Benutzereinstellungen (localStorage); Einfügen aus der
+  Bibliothek zählt mit.
+- **Leiste für Mehrfachauswahl:** Bei zwei oder mehr ausgewählten Elementen (eine Gruppe zählt als eins) zeigt die
+  Leiste die Operationen aus `arrangeOptions` als Symbole mit Tooltips – eine Ansicht für alle (Mechanismus bleibt),
+  Mitten auf eine Zeile oder Spalte, gleichmäßige Abstände, wie das erste, Bezugszeichen neu nummerieren – jeweils nur,
+  wenn sie etwas ändern; ein Klick führt `arrange` aus (ein Rückgängig-Schritt). Stil und Kreismenü bleiben verfügbar.
+- **Baugruppe auswählen:** erscheint, wenn die Auswahl mit noch nicht ausgewählten Teilen gekoppelt ist (`assembly`);
+  ein Klick wählt alle gekoppelten Objekte aus, die dann die Leiste für Mehrfachauswahl bekommen.
+- **Fangbeschriftung:** Beim Ziehen steht die Beschriftung aus `snapMove` („Achse“, „Teilkreis“, „Bolzen 2“) neben
+  dem Fangziel (Andockpunkt, eingerasteter Kreis oder Abschnitt).
+- **Bahnkurve zeichnen:** Ein Glied eines selbst gebauten Koppelgetriebes mit F = 1 (`trace` liefert eine Bahn) bietet
+  „Bahnkurve zeichnen“; es fügt die Koppelkurve des Gliedendes als Bewegungsbahn ein (`kin.path`, bei geschlossener
+  Kurve `kin.path.closed`; eine offene Bahn ohne Pfeilspitze). Das sind zwei Rückgängig-Schritte (Einfügen, dann die
+  Punkte über `update`).
+- **Nicht im Web-Host:** Bau-„+“ an Anschlüssen (Zahnräder, Wellen) gibt es auf der Web-Bühne nicht, daher führt
+  nichts davon ins Einfügefeld; passende Teile werden mit dem einrastenden Vorschaubild platziert statt wie im
+  COM-Add-in „dort, wo sie passen“ (`Fitting.Place` ist über die Engine-API nicht erreichbar); Zerlegen und
+  Bewegungsmodus gibt es nur im COM-Add-in.
+
 ## Bauen und starten
 
 ```powershell
 cd hosts/office-web
 npm ci
-npm test            # vitest (Manifest, Bibliotheksfilter, Kreismenü-Layout, Umbruch, Skalieren)
+npm test            # vitest (Manifest, Bibliotheksfilter, Kreismenü-Layout, Umbruch, Skalieren, Regeln der UI/UX-Runde)
 npm run build       # Engine-Publish + Icons + Typprüfung + Vite-Build + Manifest -> dist/
 npm run dev         # Dev-Server auf Port 3000 (https, wenn office-addin-dev-certs installiert sind)
 ```
@@ -164,6 +205,7 @@ starten. Für Anwender den oben beschriebenen lokalen Installer verwenden.
 | Engine in WebAssembly, Katalog, Einfügen am Mauszeiger, Suche | im Browser geprüft (dev.html) |
 | Bühneninteraktion (Verschieben, Skalieren, Fangen, Kreismenü, schwebende Leiste) | umgesetzt, Browserprüfung teilweise |
 | Kreismenü mit „Mehr ▸“/„Einfügen ▸“, Textbearbeitung, Schwarz-Weiß, Skalieren um die Mitte | im Browser geprüft (dev.html, 2026-11-20) |
+| UI/UX-Runde: Spiegeln/Drehen nur mit Wirkung, Einfügefeld, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung, Bahnkurve zeichnen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
 | Schreiben nativer Formen in PowerPoint | umgesetzt, **noch nicht in PowerPoint getestet** |
 | Lokaler Installer wie beim COM-Add-in (ohne Admin) | umgesetzt, Probelauf geprüft; echte Installation offen |
 | Webspace-Paket (Downloadseite, Manifest für eigene URL) | umgesetzt; über lokales HTTPS geprüft, echter Webspace offen |
