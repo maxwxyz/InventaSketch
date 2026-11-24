@@ -44,9 +44,22 @@ aneinander einrasten. Zahlenwerte (Modul, Zähnezahl, Maße) sind optional.
 | Pfeiltasten | schrittweise verschieben (`Shift` = 10×) |
 | `G` | gruppieren |
 | `Shift+F10` | Kreismenü |
+| `Strg+Leertaste` | Einfügefeld: suchen und einfügen (passende Teile zuerst) |
+| `Tab` / `Shift+Tab` | nächstes / vorheriges Teil der Baugruppe (PowerPoint COM) |
 | `Esc` | abbrechen / Auswahl aufheben |
 
 ## 5. Patentzeichnungen – wichtiger Hinweis
 
 Die Vorabprüfung (Preflight) prüft die formalen Zeichnungsvorschriften von DPMA, EPA, PCT und USPTO mit zitierten
 Quellen. Sie ist nur eine Hilfestellung und ersetzt nicht die Prüfung durch eine Patentfachperson.
+
+## 6. Module
+
+Jedes Modul hat eine eigene Seite mit Elementen, Ansichten und Parametern:
+[Antriebselemente](../modules/mechanical-drives.md), [Kinematik](../modules/kinematics.md),
+[Elektrotechnik](../modules/electrical.md), [elektrische Maschinen](../modules/machines.md),
+[Automotive](../modules/automotive.md), [Architektur](../modules/architecture.md),
+[technische Gebäudeausrüstung](../modules/building-services.md), [Fluidtechnik](../modules/fluid.md),
+[Diagramme](../modules/diagrams.md), [Karten und Routen](../modules/maps.md), [Diagramme und Kennlinien](../modules/charts.md).
+Wie die Add-ins auf der Folie arbeiten (Kontextleiste, Einfügefeld mit Strg+Leertaste, Mehrfachauswahl, Baugruppen,
+Bewegungsmodus), steht je Host: [PowerPoint COM](../hosts/powerpoint-com.md), [PowerPoint im Web](../hosts/office-web.md).

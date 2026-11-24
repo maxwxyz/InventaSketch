@@ -39,9 +39,22 @@ together. Numbers (module, tooth count, dimensions) are optional.
 | Arrow keys | nudge (`Shift` = 10×) |
 | `G` | group |
 | `Shift+F10` | pie menu |
+| `Ctrl+Space` | insert box: search and insert (fitting parts first) |
+| `Tab` / `Shift+Tab` | next / previous part of the assembly (PowerPoint COM) |
 | `Esc` | cancel / deselect |
 
 ## 5. Patent drawings – important note
 
 The preflight checks formal drawing rules of DPMA, EPO, PCT and USPTO with cited sources. It is an aid only and
 does not replace review by a patent professional.
+
+## 6. Modules
+
+Each module has its own page with its elements, views and parameters:
+[mechanical drives](../modules/mechanical-drives.md), [kinematics](../modules/kinematics.md),
+[electrical](../modules/electrical.md), [electric machines](../modules/machines.md),
+[automotive](../modules/automotive.md), [architecture](../modules/architecture.md),
+[building services](../modules/building-services.md), [fluid power](../modules/fluid.md),
+[diagrams](../modules/diagrams.md), [maps and routes](../modules/maps.md), [charts](../modules/charts.md).
+How the add-ins work on the slide (context bar, insert box with Ctrl+Space, multi-selection, assemblies, motion mode) is
+described per host: [PowerPoint COM](../hosts/powerpoint-com.md), [PowerPoint web](../hosts/office-web.md).
