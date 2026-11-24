@@ -115,6 +115,8 @@
   "ctx.trace": { "en": "Draw the path of this link's end (coupler curve)", "de": "Bahnkurve des Gliedendes zeichnen (Koppelkurve)" },
   "trace.done": { "en": "Path drawn ({0} points)", "de": "Bahnkurve gezeichnet ({0} Punkte)" },
 
+  "ctx.motion": { "en": "Move: drag turns the gears / linkage", "de": "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe" },
+  "motion.on": { "en": "Motion mode: drag a gear to turn its train, a link to move its linkage. Esc cancels a drag.", "de": "Bewegen: Zahnrad ziehen dreht das Getriebe, Glied ziehen bewegt das Koppelgetriebe. Esc bricht ab." },
   "ctx.ghosts": { "en": "Ghost positions (dashed copies over the crank's range)", "de": "Geisterstellungen (gestrichelte Kopien über den Kurbelbereich)" },
   "ins.port": { "en": "Add here", "de": "Hier anfügen" },
   "port.Mesh": { "en": "Add a meshing gear here", "de": "Gegenrad hier anfügen" },

@@ -13,6 +13,21 @@ export interface LibraryHost {
   insertNow(item: CatalogItem): void;
   dragStart(item: CatalogItem | undefined): void;
   pendingId(): string | undefined;
+  /** Ranked item ids for a typed query (engine `search`: both languages, umlauts folded, recent first); optional. */
+  rank?(query: string): string[];
+}
+
+/**
+ * Items for a query in the engine's ranking (`rankedIds`), kept to the category ("*" all, "fav" favourites); falls back to
+ * {@link filterItems} without a ranking.
+ */
+export function rankedItems(catalog: Catalog, rankedIds: string[], category: string, favourites: string[]): CatalogItem[] {
+  const byId = new Map(catalog.items.map((i) => [i.id, i] as const));
+  const fav = new Set(favourites);
+  return rankedIds.map((id) => byId.get(id)).filter((i): i is CatalogItem => !!i).filter((i) => {
+    if (category === "fav") return fav.has(i.id);
+    return category === "*" || i.category === category;
+  });
 }
 
 /** Filters items by free text (all terms must match name/keywords/category) and category ("*" all, "fav"). */
@@ -74,7 +89,16 @@ export class Library {
 
   renderItems(): void {
     const favs = this.host.favourites();
-    const items = filterItems(this.catalog, this.search.value, this.category, favs);
+    const query = this.search.value.trim();
+    let ranked: string[] | undefined;
+    if (query && this.host.rank) {
+      try {
+        ranked = this.host.rank(query);
+      } catch {
+        ranked = undefined;
+      }
+    }
+    const items = ranked ? rankedItems(this.catalog, ranked, this.category, favs) : filterItems(this.catalog, this.search.value, this.category, favs);
     const pending = this.host.pendingId();
     this.grid.replaceChildren(
       ...items.map((item) => {

@@ -341,7 +341,9 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   - *Maß zwischen zwei Teilen:* Bei genau zwei ausgewählten Teilen fügt die Mehrfachauswahl-Leiste ein paralleles Maß
     zwischen ihren Achsen ein (Nabe, sonst Teilkreismitte, sonst Mitte), an beiden angedockt (`Arrange.MeasurePoint`).
   - *Zerlegen über eine andere Ansicht:* Eine Baugruppe ohne Teile-Rezept in ihrer Ansicht wird in einer Ansicht mit
-    Rezept zerlegt und zurückgeschaltet – ein Schema-Planetensatz wird zu Schema-Einzelteilen.
+    Rezept zerlegt und zurückgeschaltet – ein Schema-Planetensatz wird zu Schema-Einzelteilen. Ein
+    Kegelraddifferential zerfällt in das neue Teil Ausgleichsgehäuse (`mech.diffcase`: Korb, Ausgleichsbolzen,
+    Tellerrad), zwei Achswellenräder und zwei Ausgleichsräder, die an der gemeinsamen Kegelspitze kämmen (25.11.2026).
 - **Vordefinierte Koppelgetriebe zerlegen:** Viergelenk und Schubkurbel zeigen ebenfalls „In Einzelteile zerlegen“ in der
   Leiste: sie werden zu Gestelldrehpunkten, Gliedern und einem Schieber in der aktuellen Stellung, aneinander angedockt
   (Teile-Rezepte mit Punkten, Andockungen und Ausrichtungsanker, `PartSpec.Points`, `PartSpec.Docks`,

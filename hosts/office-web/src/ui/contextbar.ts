@@ -14,6 +14,7 @@ export interface BarBox { left: number; top: number; right: number; bottom: numb
 
 /** A host command of the bar (make it …, insert, draw the path, select assembly): icon button with a tooltip. */
 /** A host command in the bar: a pictogram, or a short `text` (values such as "F = 1") when given. */
+/** `active` set (true or false) makes it a toggle button (aria-pressed), e.g. motion mode. */
 export interface BarCommand { id: string; label: string; icon: string; active?: boolean; text?: string }
 
 /** Host commands of the single-selection bar: `lead` before the views, `build` after the element actions. */
@@ -106,6 +107,7 @@ export class ContextBar {
       ? h("button", { class: `isk-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label, "data-cmd": prefix + c.id }, c.text)
       : h("button", {
         class: `isk-btn isk-icon-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label,
+        "aria-pressed": c.active === undefined ? undefined : String(c.active),
         "data-cmd": prefix + c.id, html: icon(hasIcon(c.icon) ? c.icon : "type"),
       });
     b.addEventListener("click", (e) => this.onCommand(prefix + c.id, e.clientX, e.clientY));

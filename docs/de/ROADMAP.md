@@ -131,8 +131,8 @@ umsetzen, dann Web, dann LibreOffice.
 - Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
   Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
   Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
-- In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Differentialen (braucht ein
-  Korb-Einzelteil) und Kurvengetrieben (braucht eine Kurvenscheibe), Ansichtswechsel für Haustechnik (Grundriss ↔
+- In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Kurvengetrieben (braucht eine
+  Kurvenscheibe; Differentiale zerfallen seit 25.11.2026 in Korb, Achswellen- und Ausgleichsräder), Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
   Gelenkgrenzen sind offen.
 - Web: am 24.11.2026 auf den COM-Stand der UI/UX-Runde gebracht (Spiegeln/Drehen nur mit Wirkung, Einfügefeld mit
@@ -140,9 +140,10 @@ umsetzen, dann Web, dann LibreOffice.
   Koppelkurve, F = n und Zerlegen; Engine-Methoden `search`, `transformEffect`, `arrangeOptions`/`arrange`,
   `assembly`, `trace`/`drawTrace`, `insertFitting`, `explode`, `dof`). Noch nicht in PowerPoint im Web geprüft (braucht
   das Entwicklerzertifikat auf dem Rechner des Maintainers). Seitdem auch im Web: Anbau-„+“ auf der Bühne mit
-  Wellenziehen (Vorschau aus `buildStretchPreview`), Live-Vorschau der Kopplung, Zwischenlagen, Maß zwischen zwei Teilen
-  (24./25.11.2026). Im Web offen: Bewegungsmodus (live drehen durch Ziehen), Bibliothekssuche der Seitenleiste über das
-  Einfügefeld.
+  Wellenziehen (Vorschau aus `buildStretchPreview`), Live-Vorschau der Kopplung, Zwischenlagen, Maß zwischen zwei Teilen,
+  Bewegungsmodus (Getriebezüge und vordefinierte Getriebe drehen, selbst gebaute Koppelgetriebe ziehen; Engine
+  `motionInfo`/`motionPreview`/`motionTurn`/`motionDrag`, das Ziehen rechnet von seinem letzten Schritt weiter)
+  und die Bibliothekssuche mit der Rangfolge der Engine (24./25.11.2026).
 - LibreOffice folgt nach dem Web; die Engine-API oben ist hostneutral.
 
 ### Review am Ende des 24.11.2026 und nächste Schritte
@@ -163,14 +164,13 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
   35 Minuten, Maus belegt).
 
 **Als Nächstes, in dieser Reihenfolge:**
-1. Web: Bewegungsmodus, danach Prüfung in PowerPoint im Web, sobald der Maintainer das Entwicklerzertifikat
-   installiert hat (Anbau-„+“, Kopplungsvorschau, Zwischenlagen und Maß sind erledigt).
+1. Web: Prüfung in PowerPoint im Web, sobald der Maintainer das Entwicklerzertifikat installiert hat (alle
+   COM-Funktionen der UI/UX-Runde einschließlich Bewegungsmodus sind umgesetzt).
 2. LibreOffice: den Host auf den Stand der Engine-API bringen (Einfügefeld, kontextbezogene Leiste, Mehrfachauswahl,
    Baugruppenansicht).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
    Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze, Gelenkgrenzen, Kegelradpaare in der
-   Bewegung, Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik, Elektro-Hausinstallationssymbole mit
-   Schnitt-/Schemaansicht.
+   Bewegung, Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik.
 4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,
    Patentmodus).
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
@@ -180,8 +180,9 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,
   docs/de/modules/building-services.md; ganze Installationen wechseln Grundriss ↔ Schnitt ↔ Schema über `AssemblyViews`
-  mit der Regel des Moduls; offen: Schnittlinie je Wand, Elektro-Hausinstallationssymbole mit Schnitt-/Schemaansicht,
-  Alias `elevation`/`section` für Wände):** Heizung, Sanitär, Lüftung und Elektroinstallation,
+  mit der Regel des Moduls; offen: Schnittlinie je Wand, Wände zusammen mit Installationen (bei Wänden ist `height` die Wandhöhe, bei Installationen
+  die Montagehöhe – braucht zuerst einen eigenen Schlüssel); die
+  Elektro-Hausinstallationssymbole sind seit 25.11.2026 dabei, die Regel liegt als `InstallationViews` im Core):** Heizung, Sanitär, Lüftung und Elektroinstallation,
   gebunden an die Räume der Architektur, mit Grundriss, Schnitt und Schema (Strang) derselben Installation (der
   Ansichtswechsel für Baugruppen gilt).
 - **Stückliste aus der Folie (P2, in COM erledigt am 24.11.2026):** ein Tabellenelement, das die Teile der Folie oder Auswahl auflistet (Typ,

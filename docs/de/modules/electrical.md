@@ -49,6 +49,7 @@ Verbindungsliste (Netzliste als CSV) und eine Grundprüfung, aber keine Simulati
 | `circles` | `Simplified` | Transformator als zwei überlappende Kreise (einpolig) |
 | `block` | `Block` | Steuergerät/IC-Block, Stromrichter, Gate-Treiber |
 | `plan` | `Plan` | Installationsplan-Symbole, Leitungsführung |
+| `section`, `schematic` | `Front`, `Schematic` | Steckdose, Schalter, Leuchte, Abzweigdose und Verteiler an der Wand in ihrer Montagehöhe (`height`, mm über OKFF) und als Installationsschema; eine ausgewählte Installation wechselt zusammen mit der Gebäudetechnik Grundriss ↔ Schnitt ↔ Schema (`InstallationViews` im Core, 25.11.2026) |
 | `top` | `Top` | Leiterplatten-Objekte |
 
 ## Anschlüsse und Fangen

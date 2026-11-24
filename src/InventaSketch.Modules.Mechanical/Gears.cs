@@ -50,6 +50,7 @@ namespace InventaSketch.Modules.Mechanical
             yield return Planetary();
             yield return Carrier();
             yield return Differential();
+            yield return DiffCase();
         }
 
         // ------------------------------------------------------------------ spur gear
@@ -641,7 +642,71 @@ namespace InventaSketch.Modules.Mechanical
         {
             // The differential sits on the axle shaft; the wheels sit on its half shafts.
             CompanionTypes = new[] { "mech.shaft", Drivetrain.Wheel, "mech.gear.bevel", "mech.gear.spur", "mech.bearing.taperroller" },
+            // Built from parts with "Explode": case with cross pin and crown wheel, two side gears, two spider gears.
+            PartsOf = DifferentialParts,
         };
+
+        /// <summary>
+        /// The differential as parts in the stick view: the case (cage, cross pin, crown wheel), the two side gears on the
+        /// half shafts and the two spider gears on the pin, all bevel gears meeting at the centre (a common cone apex, so
+        /// they mesh, <see cref="Coupling"/>). The section view explodes through the stick view.
+        /// </summary>
+        private static IReadOnlyList<PartSpec>? DifferentialParts(SketchObject o)
+        {
+            if ((o.View ?? "stick") != "stick") return null;
+            var k = Math.Min(o.Size.W, o.Size.H) / 40;
+            // Bevel stick design box 12 x 30 with the cone apex at x = 10.6: scaled so the apex lands on the centre.
+            var f = 9 * k / 10.6;
+            var bevel = new Size2(12 * f, 16 * k);
+            return new[]
+            {
+                new PartSpec("mech.diffcase", "stick", Vec2.Zero) { Size = new Size2(40 * k, 40 * k) },
+                new PartSpec("mech.gear.bevel", "stick", new Vec2(-9 * k, 0)) { Size = bevel },                  // left side gear
+                new PartSpec("mech.gear.bevel", "stick", new Vec2(9 * k, 0)) { Size = bevel, Rotation = 180 },   // right side gear
+                new PartSpec("mech.gear.bevel", "stick", new Vec2(0, -9 * k)) { Size = bevel, Rotation = 90 },   // upper spider gear
+                new PartSpec("mech.gear.bevel", "stick", new Vec2(0, 9 * k)) { Size = bevel, Rotation = 270 },   // lower spider gear
+            };
+        }
+
+        /// <summary>
+        /// Differential case (cage) as a part: the cage running loose on the half shafts, the cross pin for the spider
+        /// gears and the crown wheel on the cage; side and spider bevel gears dock inside.
+        /// </summary>
+        private static MechType DiffCase() => new(
+            "mech.diffcase", T("Differential case (cage)", "Ausgleichsgehäuse (Korb)"), Cat,
+            new[] { "differential case", "cage", "differential carrier", "cross pin", "crown wheel", "ausgleichsgehäuse", "korb", "differentialkorb", "tellerrad", "ausgleichsbolzen" },
+            new ViewSpec("stick", VStick, 40, 40, DiffCaseStick)
+            {
+                Anchors = (p, o) => new[]
+                {
+                    Anchor.Point(AnchorRole.Hub, p.V(0, 0), "hub"),
+                    Anchor.Segment(AnchorRole.Axis, p.V(-20, 0), p.V(20, 0)) with { Id = "axis" },
+                    Anchor.Segment(AnchorRole.Axis, p.V(0, -14), p.V(0, 14)) with { Id = "pin" },
+                },
+            })
+        {
+            CompanionTypes = new[] { "mech.gear.bevel", "mech.shaft", "mech.bearing.taperroller" },
+        };
+
+        /// <summary>The cage, cross pin and crown wheel of <see cref="DiffStick"/> without the gears.</summary>
+        private static void DiffCaseStick(Pen p, SketchObject o)
+        {
+            p.Line(0, -14, 0, 14, S.Stick, "pin");
+            p.Line(-13, -14, 13, -14, S.Stick, "cage");
+            p.Line(-13, 14, 13, 14, S.Stick, "cage");
+            foreach (var sx in new[] { -1.0, 1.0 })
+            {
+                p.Line(sx * 13, -14, sx * 13, -1.5, S.Stick, "cage");
+                p.Line(sx * 13, 1.5, sx * 13, 14, S.Stick, "cage");
+                p.Line(sx * 11.2, -1.5, sx * 14.8, -1.5, S.Stick, "cage");
+                p.Line(sx * 11.2, 1.5, sx * 14.8, 1.5, S.Stick, "cage");
+            }
+            foreach (var sy in new[] { -1.0, 1.0 })
+            {
+                p.Line(-13, sy * 14, -13, sy * 19.5, S.Stick, "crown");
+                p.Line(-13, sy * 19.5, -17.5, sy * 15, S.Stick, "crown");
+            }
+        }
 
         /// <summary>Classic stick schematic: side gears and spider gears form a closed chamfered square inside the cage.</summary>
         private static void DiffStick(Pen p, SketchObject o)

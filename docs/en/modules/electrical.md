@@ -46,6 +46,7 @@ It is a **sketching** module for slides and patent drawings. It is **not** an EC
 | `circles` | `Simplified` | transformer as two overlapping circles (single-line) |
 | `block` | `Block` | ECU/IC block, converters, gate driver |
 | `plan` | `Plan` | house installation floor-plan symbols, cable route |
+| `section`, `schematic` | `Front`, `Schematic` | socket, switch, luminaire, junction box and distribution board seen on the wall at their mounting height (`height`, mm above the finished floor) and as installation schematic; a selected installation switches plan ↔ section ↔ schematic together with the building services (`InstallationViews` in Core, 2026-11-25) |
 | `top` | `Top` | PCB illustration objects |
 
 ## Pins and snapping

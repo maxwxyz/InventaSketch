@@ -4,6 +4,7 @@
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
   SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo, BuildPortInfo, CouplingPreview,
+  MotionInfo, MotionPreview,
 } from "./types";
 
 export interface EngineBackend {
@@ -152,6 +153,16 @@ export class Session {
   buildStretch(id: string, key: string, x: number, y: number): EditorState { return this.c("buildStretch", { id, key, x, y }); }
   /** SVG (page mm) of `id` with the shaft end at `key` stretched to x/y; nothing changes. */
   buildStretchPreview(id: string, key: string, x: number, y: number): string { return this.c<{ svg: string }>("buildStretchPreview", { id, key, x, y }).svg; }
+  /** Motion mode: whether `id` turns as part of a gear train (centre, coupled), drags as a link of a chain, or neither. */
+  motionInfo(id: string): MotionInfo { return this.c("motionInfo", { id }); }
+  /** Motion mode preview: gear `id` turned by `degrees`, or joint `index` of link `id` dragged to x/y; nothing changes. */
+  motionPreview(id: string, change: { degrees: number } | { index: number; x: number; y: number }): MotionPreview {
+    return this.c("motionPreview", { id, ...change });
+  }
+  /** Motion mode: turns gear `id` by `degrees` (clockwise) with its whole train; one undo step. */
+  motionTurn(id: string, degrees: number): EditorState { return this.c("motionTurn", { id, degrees }); }
+  /** Motion mode: drags joint `index` of link `id` to x/y, the chain follows with constant lengths; one undo step. */
+  motionDrag(id: string, index: number, x: number, y: number): EditorState { return this.c("motionDrag", { id, index, x, y }); }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */
   update(object: unknown): EditorState { return this.c("update", { object }); }
 }

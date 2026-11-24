@@ -59,6 +59,9 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `couplingPreview` | `ids`, `dx`/`dy` oder `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: Nachbarn, die die Kopplung verschieben oder skalieren würde, als SVG in Seiten-mm (`svg` leer, wenn nichts folgt); nichts wird geändert |
 | `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch }]`: freie Bauanschlüsse in Seiten-mm mit der Richtung nach außen; `stretch` bei Wellenenden |
 | `buildItems`, `buildPlace`, `buildStretch` | `id`, `key` (Anschluss-ID), `lang`, `max`; `itemId`; `x`, `y` | Bibliothekselemente, die am Anschluss andocken (`fits` true); Zustand mit dem angedockten Teil ausgewählt; Zustand mit verschobenem Wellenende |
+| `motionInfo` | `id` | `{ kind: "gear", x, y, coupled }` (dreht um seine Mitte mit seinem Getriebezug), `{ kind: "linkage", dof }` (Glied einer selbst gebauten Kette mit F >= 1) oder `{ kind: "none" }` |
+| `motionPreview` | `id` und `degrees` (Zahnrad) oder `id`, `index`, `x`, `y` (Gelenk eines Glieds) | `{ ids, svg }`: die Objekte, die das Drehen oder Ziehen bewegen würde, als SVG in Seiten-mm; nichts wird geändert |
+| `motionTurn`, `motionDrag` | `id`, `degrees`; `id`, `index`, `x`, `y` | Zustand (je ein Rückgängig-Schritt): Getriebezug gedreht (im Uhrzeigersinn positiv); Kette mit gleichbleibenden Gliedlängen bewegt |
 | `update` | `object` (vollständiges Dokumentobjekt wie in `saveDocument`) | Zustand |
 | `exporters`, `export` | `ids` (Auswahl mit ihren Gruppen, sonst die Seite), `lang`; `itemId` (Exporter-Id) | zutreffende Fachexporte `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (Standard: Dokumenteinstellung), `background`, `padding` | `{ svg, width, height }` |
@@ -142,8 +145,7 @@ Folgt den verbindlichen UX-Regeln im Fahrplan („Plan 2026-11-24“). Reine Reg
 - **Bahnkurve zeichnen:** Ein Glied eines selbst gebauten Koppelgetriebes mit F = 1 (`trace` liefert eine Bahn) bietet
   „Bahnkurve zeichnen“; es fügt die Koppelkurve des Gliedendes als Bewegungsbahn ein (`kin.path`, bei geschlossener
   Kurve `kin.path.closed`; eine offene Bahn ohne Pfeilspitze), ein Rückgängig-Schritt (`drawTrace`).
-- **Nicht im Web-Host:** Den Bewegungsmodus (Teile nur so ziehen, wie sie sich bewegen können) gibt es nur im
-  COM-Add-in.
+- **Bewegungsmodus:** siehe „Bewegungsmodus“ unten (seit 2026-11-25; vorher nur im COM-Add-in).
 
 ## Restliche COM-Funktionen (2026-11-24)
 
@@ -178,6 +180,12 @@ das Zahnrad darauf blieb an seinem Platz; ein Lager am Wellenende angedockt; ein
 normale Platzieren; die blaue Vorschau des kämmenden Rads beim Ziehen und beim Skalieren seines Partners, beim
 Loslassen entfernt und gleich dem Ergebnis; zwölf Geisterglieder als eine Gruppe eingefügt; ein Achsabstandsmaß von
 70,7 mm zwischen zwei Zahnrädern.
+
+### Bibliothekssuche (25.11.2026)
+
+Die Bibliothek der Seitenleiste ordnet getippte Suchen mit der Engine-Suche `search` (beide Sprachen, Umlaute = ae/oe/
+ue/ss, zuletzt Verwendetes zuerst, Namen mit dem Suchwort am Anfang vor Stichworttreffern) wie das Einfügefeld; die
+Kategorie-Chips und Favoriten filtern weiterhin (`rankedItems` in `src/ui/library.ts`).
 
 ## Bauen und starten
 
@@ -233,6 +241,48 @@ Windows: einmal `npm run certs` (vertrauenswürdiges localhost-Zertifikat), `npm
 Wert unter `HKCU\Software\Microsoft\Office\16.0\WEF\Developer` eintragen (Name = Add-in-ID) und PowerPoint neu
 starten. Für Anwender den oben beschriebenen lokalen Installer verwenden.
 
+## Bewegungsmodus (2026-11-25)
+
+Wie im COM-Add-in („Getriebezüge live durch Ziehen im Bewegungsmodus bewegen“, Ziehen von Koppelgetrieben): Ziehen
+bewegt Teile nur so, wie sie sich bewegen können. Reine Regeln in `src/ui/motionlogic.ts`, mit Unit-Tests in
+`test/motionlogic.test.ts`.
+
+- **Umschalter:** Die Leiste zeigt „Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe“ (Symbol `cmd-motion`, ein
+  Umschaltknopf mit `aria-pressed`) zwischen den Baubefehlen und „Zerlegen“, wenn `motionInfo` `linkage` meldet oder
+  `gear` mit `coupled` true. Ein einzelnes Zahnrad ohne Kopplung dreht sich nur auf der Stelle, was nichts zeigt, und
+  erhält daher keinen Knopf (gleiche Regel wie im COM-Add-in). Der Zustand gilt nur für die Sitzung, wie im COM-Add-in:
+  er wird nicht gespeichert, der Aufgabenbereich startet immer im Bearbeitungsmodus. Beim Einschalten erscheint ein
+  kurzer Hinweis in der Statuszeile.
+- **Griffe im Bewegungsmodus:** Ein ausgewähltes bewegliches Teil zeigt nur, was es bewegt: ein Zahnrad seinen
+  gestrichelten Rahmen und ein Kreuz in seiner Mitte, ein Glied seine Gelenke (blau gefüllt). Skalier-, Dreh-,
+  Schnellanfüge- und Bau-„+“-Griffe sind ausgeblendet, sodass jedes Ziehen daran eine Bewegung ist. Teile, die sich nicht
+  bewegen können, behalten ihre üblichen Griffe und lassen sich wie gewohnt ziehen.
+- **Zahnrad drehen:** Ziehen irgendwo im Rahmen des ausgewählten Zahnrads (oder an einem beliebigen gekoppelten
+  Zahnrad, das dabei ausgewählt wird) dreht es um seine Mitte (`x`/`y` aus `motionInfo`) um den Winkel, den der Zeiger um
+  sie überstreicht, aufsummiert über ±180° und volle Umdrehungen hinweg (im Uhrzeigersinn auf dem Bildschirm positiv);
+  Umschalt dreht in 15°-Schritten. Der Winkel steht an der Mitte, mit einem gestrichelten Hebel zum Zeiger.
+- **Glied ziehen:** Ziehen an einem Gelenkgriff des ausgewählten Glieds zieht dieses Gelenk; Ziehen an anderer Stelle
+  eines Glieds zieht sein nächstgelegenes Gelenk. Der gezogene Punkt und eine gestrichelte Linie von seinem Start werden
+  angezeigt.
+- **Vorschau und Loslassen:** Während des Ziehens wird die `motionPreview` der Engine (der gedrehte Zug oder die bewegte
+  Kette) etwa 15-mal pro Sekunde in der Vorschauebene gezeichnet (gleiche Drosselung wie die Kopplungsvorschau, letzte
+  Aktualisierung für die Endposition) und die aktuelle Zeichnung der bewegten Objekte abgeblendet; die Kontextleiste
+  verschwindet, sobald sich das Ziehen bewegt. Loslassen wendet `motionTurn` bzw. `motionDrag` einmal an (ein
+  Rückgängig-Schritt: „Turn“ / „Move linkage“); ein Klick ohne Ziehen ändert nichts; Esc bricht ab und zeigt die Leiste
+  wieder. Bei ausgeschaltetem Bewegungsmodus bearbeitet Ziehen wie bisher.
+
+Im Browser geprüft (dev.html, 2026-11-25): ein Stirnrad mit einem über sein Bau-„+“ angedockten Gegenrad: der
+Bewegungsknopf erscheint (nicht bei einem einzelnen Zahnrad), echtes Mausziehen über einen Viertelkreis drehte das Rad
+um +90,4° und das Gegenrad von -10° auf -100,4°, beide Mitten unverändert, ein Rückgängig-Schritt „Turn“; bei
+ausgeschaltetem Bewegungsmodus verschob dasselbe Ziehen das Rad. Ein zerlegtes `kin.fourbar` (F = 1): das Kurbelgelenk um
+30° um seinen Drehpunkt gezogen, alle Gliedlängen blieben gleich (9,124 / 27,371 / 22,809 mm), die Gestellpunkte an
+ihrem Platz, ein Rückgängig-Schritt „Move linkage“; die Vorschau zeigte Kurbel und Koppel bewegt, ihre Originale
+abgeblendet; ein Ziehen an der Koppel ohne Auswahl wählte sie aus, Esc brach es ohne Änderung ab. Bekannte Lücke
+(Engine): `motionPreview` lässt ein Glied aus, das sich nur über ein angedocktes Gelenk bewegt (die Schwinge des
+Viergelenks), und jede Vorschau rechnet vom Dokumentzustand statt von der letzten Vorschau aus, sodass ein langes Ziehen
+eines Koppelgetriebes in der Vorschau in die andere Montagelage springen kann (das COM-Add-in rechnet von der letzten
+Lage aus).
+
 ## Stand (2026-11-20)
 
 | Funktion | Stand |
@@ -242,6 +292,7 @@ starten. Für Anwender den oben beschriebenen lokalen Installer verwenden.
 | Kreismenü mit „Mehr ▸“/„Einfügen ▸“, Textbearbeitung, Schwarz-Weiß, Skalieren um die Mitte | im Browser geprüft (dev.html, 2026-11-20) |
 | UI/UX-Runde: Spiegeln/Drehen nur mit Wirkung, Einfügefeld, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung, Bahnkurve zeichnen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
 | Bau-„+“ (andocken, Welle ziehen), Live-Vorschau der Kopplung, Geisterstellungen, Maß zwischen zwei Teilen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
+| Bewegungsmodus (Getriebezüge drehen, Koppelgetriebe ziehen) | im Browser geprüft (dev.html, 2026-11-25); **noch nicht in PowerPoint getestet** |
 | Schreiben nativer Formen in PowerPoint | umgesetzt, **noch nicht in PowerPoint getestet** |
 | Lokaler Installer wie beim COM-Add-in (ohne Admin) | umgesetzt, Probelauf geprüft; echte Installation offen |
 | Webspace-Paket (Downloadseite, Manifest für eigene URL) | umgesetzt; über lokales HTTPS geprüft, echter Webspace offen |

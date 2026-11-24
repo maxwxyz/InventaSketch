@@ -66,6 +66,20 @@ export interface BuildPortInfo { id: string; kind: string; x: number; y: number;
 /** Live coupling preview (engine `couplingPreview`): neighbours that would follow, as one SVG in page mm ("" for none). */
 export interface CouplingPreview { ids: string[]; svg: string }
 
+/**
+ * Motion mode (engine `motionInfo`): "gear" turns about its centre x/y with its train (`coupled`: other parts move with
+ * it), "linkage" is a link of a self-built chain with `dof` ≥ 1, "none" cannot move that way.
+ */
+export type MotionInfo =
+  | { kind: "gear"; x: number; y: number; coupled: boolean }
+  /** A predefined mechanism (four-bar …): turning about its input pivot x/y changes its crank angle. */
+  | { kind: "mechanism"; x: number; y: number; coupled: boolean }
+  | { kind: "linkage"; dof: number }
+  | { kind: "none" };
+
+/** Motion mode live preview (engine `motionPreview`): the objects a turn or joint drag would move, as one SVG in page mm. */
+export interface MotionPreview { ids: string[]; svg: string }
+
 export interface EditorState {
   session: string;
   revision: number;

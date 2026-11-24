@@ -14,6 +14,7 @@ import { ContextBar, InlinePrompt, type BarCommand, type ChoiceEntry } from "./c
 import { h, svgDataUrl } from "./dom";
 import { hasIcon, icon } from "./icons";
 import { canDrawGhosts } from "./buildlogic";
+import { canMove } from "./motionlogic";
 import { InsertBox, insertRows, rememberRecent } from "./insertbox";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
@@ -91,10 +92,13 @@ export class App {
       quickAdd: (id, side, at) => this.quickAdd(id, side, at),
       openPortInsert: (id, port, at) => this.openPortInsert(id, port, at),
       pointerMoved: (x, y) => this.bar.pointerMoved(x, y),
+      motionEnabled: () => this.motion,
+      hideBar: () => this.bar.hide(),
       report: (e) => this.report(e),
     });
     this.stage.onEditText = (o) => this.editText(o);
     this.library = new Library({
+      rank: (query) => this.sessionObj.search([], query, lang(), this.settings.recent ?? [], 400).map((x) => x.id),
       favourites: () => this.settings.favourites,
       toggleFavourite: (id) => {
         const f = new Set(this.settings.favourites);
@@ -420,6 +424,9 @@ export class App {
     const info = this.dofOf(sel);
     if (canDrawGhosts(this.objectById(sel[0])?.kind, info?.dof, trace)) build.push({ id: "ghosts", label: t("ctx.ghosts"), icon: "cmd-animate" });
     if (info?.dof != null) build.push({ id: "info:dof", label: t("ctx.dof", info.dof), icon: "", text: `F = ${info.dof}` });
+    // Motion mode only for parts that can move: a link of a chain with F >= 1, a gear coupled with something.
+    if (this.objectById(sel[0])?.known && canMove(this.stage.motionOf(sel[0])))
+      build.push({ id: "motion", label: t("ctx.motion"), icon: "cmd-motion", active: this.motion });
     if (info?.explodable) build.push({ id: "explode", label: t("ctx.explode"), icon: "cmd-explode" });
     build.push(...assembly);
     this.bar.update(key, actions, box, suppressed, this.barChoices(sel), { lead, build });
@@ -471,6 +478,12 @@ export class App {
     }
   }
 
+  /**
+   * Motion mode (bar toggle): dragging a part that can move turns its gear train or pulls its linkage instead of moving
+   * it. Session only, like the COM add-in: not saved, the task pane always starts in edit mode.
+   */
+  private motion = false;
+
   /** Link whose coupler curve the bar offers, with the traced path. */
   private traceFor?: { id: string; trace: TraceInfo };
   /** "Make it …" choices for the element just added with "+". */
@@ -482,6 +495,14 @@ export class App {
     if (id === "makeIt") return this.openMakeIt({ x: clientX, y: clientY });
     if (id === "trace") return this.drawPath();
     if (id === "info:dof") return;
+    if (id === "motion") {
+      this.motion = !this.motion;
+      this.stage.drawOverlay();
+      this.updateBar();
+      this.setStatus(this.motion ? t("motion.on") : "");
+      this.stage.el.focus({ preventScroll: true });
+      return;
+    }
     if (id === "ghosts" && sel.length === 1) {
       this.edit((s) => s.drawGhosts(sel[0]));
       return;
@@ -966,7 +987,7 @@ export class App {
       if (e.key === "Escape") {
         if (this.pie.open || this.prompt.open || this.insertBox.open) return;
         if (this.pending) { this.cancelInsert(); e.preventDefault(); return; }
-        if (this.stage.dragging) { this.stage.cancelDrag(); e.preventDefault(); return; }
+        if (this.stage.dragging) { this.stage.cancelDrag(); this.updateBar(); e.preventDefault(); return; }
         if (!typing && this.st.selection.length) { this.apply(this.sessionObj.select([])); e.preventDefault(); }
         return;
       }

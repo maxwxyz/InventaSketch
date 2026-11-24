@@ -118,16 +118,17 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Done since in COM: bevel pairs in coupling, exploding schematic planetary sets (through the axial view), snap labels,
   Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
   selection, build "+" and "make it" in the insert box.
-- Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding differentials (needs a cage part) and cam
-  mechanisms (needs a cam disc part), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
+- Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding cam mechanisms (needs a cam disc part;
+  differentials explode into a case part, side and spider gears since 2026-11-25), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
   positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are open.
 - Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
   fitting parts placed in their spot, multi-selection bar, select assembly, snap labels, coupler curve, F = n and
   explode; engine methods `search`, `transformEffect`, `arrangeOptions`/`arrange`, `assembly`, `trace`/`drawTrace`,
   `insertFitting`, `explode`, `dof`). Not yet verified inside PowerPoint on the web (needs the dev certificate on the
   maintainer's machine). Since then also on the web: build "+" ports on the stage with shaft stretching (preview from
-  `buildStretchPreview`), live coupling preview, ghost positions, dimension between two parts (2026-11-24/25). Open on
-  the web: motion mode (live turning by dragging), the sidebar library search through the insert box.
+  `buildStretchPreview`), live coupling preview, ghost positions, dimension between two parts, motion mode (turn gear
+  trains and predefined mechanisms, drag self-built linkages; engine `motionInfo`/`motionPreview`/`motionTurn`/
+  `motionDrag`, the drag solves on from its last step) and the library search ranked by the engine (2026-11-24/25).
 - LibreOffice follows after the web; the engine API above is host-neutral.
 
 ### Review at the end of 2026-11-24 and next steps
@@ -146,12 +147,12 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
   (about 35 minutes, mouse busy).
 
 **Next, in this order:**
-1. Web: motion mode, then check in PowerPoint on the web once the maintainer has installed the dev certificate (build
-   "+", coupling preview, ghosts and dimension are done).
+1. Web: check in PowerPoint on the web once the maintainer has installed the dev certificate (all COM features of the
+   UI/UX round incl. motion mode are implemented).
 2. LibreOffice: bring the host to the engine API level (insert box, context-only bar, multi-selection, assembly view).
 3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
    (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion, `elevation`/`section` view
-   alias for walls with building services, electrical house symbols with section/schematic views.
+   alias for walls with building services.
 4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
@@ -159,7 +160,9 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
   whole installations switch plan ↔ section ↔ schematic through `AssemblyViews` with the module's rule; open: a section
-  line per wall, the electrical house symbols with section/schematic views, `elevation`/`section` alias for walls):** heating, plumbing, ventilation and electrical installation tied to the
+  line per wall, walls with installations (the wall's `height` is its own height, installations use `height` as the
+  mounting height – needs a separate key first); the electrical house symbols joined the installation views on
+  2026-11-25, the rule moved to Core as `InstallationViews`):** heating, plumbing, ventilation and electrical installation tied to the
   architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
   assemblies applies).
 - **Parts list from the slide (P2, done in COM 2026-11-24):** a table element that lists the parts of the slide or selection (type, key
