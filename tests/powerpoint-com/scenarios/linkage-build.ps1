@@ -1,7 +1,7 @@
 # Scenario: a four-bar built with the build "+" (links, fixed pivots) and dragged in motion mode with constant lengths.
 param($S)
 $addin = $S.AddIn
-function Lengths { Get-IskShapes $S 'ISK:kin.link*' | ForEach-Object { $q = @(Get-IskPoints $_); if ($q.Count -ge 2) { [Math]::Round((Get-IskDistance $q[0] $q[1]), 2) } } | Sort-Object }
+function Lengths { Get-IskShapes $S 'ISK:kin.link*' | ForEach-Object { $q = Get-IskPoints $_; if ($q.Count -ge 2) { [Math]::Round((Get-IskDistance $q[0] $q[1]), 2) } } | Sort-Object }
 
 $crank = $addin.Insert('kin.link')
 $S.Slide.Shapes.Item($crank).Select(); Start-Sleep 3
@@ -32,9 +32,9 @@ Invoke-IskArcDrag -Center $pv -Radius (Get-IskDistance $pv $tp) -Start ([Math]::
 Start-Sleep 2
 $moved = @(Lengths)
 Write-IskInfo ('link lengths {0} -> {1}' -f ($lengths -join ', '), ($moved -join ', '))
-Assert-Isk $S (($lengths -join ',') -eq ($moved -join ',')) 'dragging keeps every link length'
-$crankNow = @(Get-IskShapes $S 'ISK:kin.link*' | Where-Object { $q = @(Get-IskPoints $_); $q.Count -ge 2 -and (Get-IskDistance $q[0] $p[0]) -lt 0.01 })[0]
-$tip = @(Get-IskPoints $crankNow)[1]
+Assert-Isk $S ($lengths.Count -eq 3 -and ($lengths -join ",") -eq ($moved -join ",")) "dragging keeps every link length"
+$crankNow = @(Get-IskShapes $S 'ISK:kin.link*' | Where-Object { $q = Get-IskPoints $_; $q.Count -ge 2 -and (Get-IskDistance $q[0] $p[0]) -lt 0.01 })[0]
+$tip = (Get-IskPoints $crankNow)[1]
 Assert-Isk $S ((Get-IskDistance $tip $p[1]) -gt 1) ('the crank turned (tip moved {0:0.0} mm)' -f (Get-IskDistance $tip $p[1]))
 $addin.Command('motion') | Out-Null
 $S.Window.Selection.Unselect(); Start-Sleep 2

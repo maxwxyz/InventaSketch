@@ -2160,6 +2160,11 @@ namespace InventaSketch.AddIn.OnSlide
                 PlanScaleRequested?.Invoke();
                 return;
             }
+            if (id == "nextbox")
+            {
+                Post(() => OpenNextBox(unit));
+                return;
+            }
             if (id == "insert")
             {
                 // The insert box at the pointer (no undo step of its own; the inserted element makes one).
