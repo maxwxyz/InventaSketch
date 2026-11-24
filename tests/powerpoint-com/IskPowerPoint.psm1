@@ -250,13 +250,15 @@ function Get-IskLog {
     param($S)
     $log = Join-Path $env:LOCALAPPDATA 'InventaSketch\addin.log'
     if ((Test-Path $log) -and (Get-Item $log).LastWriteTime -ge $S.Started) { return $log }
-    $copy = Join-Path $S.OutDir 'addin.log'
-    $cmd = Join-Path $S.OutDir 'copy-log.cmd'
+    # A fresh pair of files per call: Explorer may still hold the previous helper while the next copy is wanted.
+    $n = [Guid]::NewGuid().ToString('N').Substring(0, 8)
+    $copy = Join-Path $S.OutDir "addin-$n.log"
+    $cmd = Join-Path $S.OutDir "copy-log-$n.cmd"
     Set-Content -Encoding ascii $cmd "@copy /y `"%LOCALAPPDATA%\InventaSketch\addin.log`" `"$copy`" >nul"
-    Remove-Item $copy -ErrorAction SilentlyContinue
     explorer.exe $cmd
-    for ($i = 0; $i -lt 20 -and -not (Test-Path $copy); $i++) { Start-Sleep -Milliseconds 250 }
+    for ($i = 0; $i -lt 40 -and -not (Test-Path $copy); $i++) { Start-Sleep -Milliseconds 250 }
     Start-Sleep -Milliseconds 300
+    Remove-Item $cmd -ErrorAction SilentlyContinue
     $copy
 }
 

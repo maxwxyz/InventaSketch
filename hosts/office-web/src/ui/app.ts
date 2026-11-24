@@ -2,7 +2,7 @@
 // session. Runs inside PowerPoint (Office.js present) and standalone in a browser (dev.html).
 
 import { Engine, Session } from "../engine/client";
-import type { ActionInfo, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo } from "../engine/types";
+import type { ActionInfo, ArrangeOption, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo, TraceInfo, TransformEffect } from "../engine/types";
 import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
@@ -10,14 +10,16 @@ import { SlideSync } from "../office/sync";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
-import { ContextBar, InlinePrompt, type ChoiceEntry, type PaletteEntry } from "./contextbar";
+import { ContextBar, InlinePrompt, type BarCommand, type ChoiceEntry } from "./contextbar";
 import { h, svgDataUrl } from "./dom";
 import { hasIcon, icon } from "./icons";
+import { InsertBox, insertRows, rememberRecent } from "./insertbox";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
 import { PieMenu } from "./piemenu";
-import { buildPieEntries, labelEntries, MAX_PIE_ITEMS, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
+import { buildPieEntries, labelEntries, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
 import { Stage, type ChainSide } from "./stage";
+import { assemblyExtends, canTrace, elementCount, filterTransforms, multiBarGroups } from "./uxlogic";
 
 export interface AppOptions {
   engine: Engine;
@@ -51,6 +53,7 @@ export class App {
   private readonly pie: PieMenu;
   private readonly bar: ContextBar;
   private readonly prompt: InlinePrompt;
+  private readonly insertBox: InsertBox;
   private readonly sync?: SlideSync | ComSync;
   private pending?: CatalogItem;
   private dragging?: CatalogItem;
@@ -97,15 +100,16 @@ export class App {
         this.settings.favourites = [...f];
         saveSettings(this.settings);
       },
-      startInsert: (item) => this.startInsert(item),
-      insertNow: (item) => this.insertAt(item, this.stage.viewCentre()),
+      startInsert: (item) => { this.remember(item.id); this.startInsert(item); },
+      insertNow: (item) => { this.remember(item.id); this.insertAt(item, this.stage.viewCentre()); },
       dragStart: (item) => (this.dragging = item),
       pendingId: () => this.pending?.id,
     });
     this.inspector = new Inspector({ session: () => this.sessionObj, state: () => this.st, apply: (s, live) => this.apply(s, live), report: (e) => this.report(e) });
     this.pie = new PieMenu(this.root, (e) => this.pickPie(e));
     this.prompt = new InlinePrompt(this.root);
-    this.status = h("div", { class: "isk-status", "aria-live": "polite" });
+    this.insertBox = new InsertBox(this.root);
+    this.status =h("div", { class: "isk-status", "aria-live": "polite" });
     this.toastEl = h("div", { class: "isk-toast", role: "status", hidden: true });
     this.topbar = h("header", { class: "isk-topbar" });
 
@@ -127,13 +131,8 @@ export class App {
     }
 
     this.layout();
-    this.bar = new ContextBar(this.root, (a) => this.runAction(a), () => this.openInspectorStyle(), (x, y) => this.openPie(x, y), (itemId) => {
-      const id = this.nextFor;
-      if (!id) return;
-      this.edit((s) => s.replaceItem(id, itemId));
-      this.nextFor = id;
-      this.updateBar();
-    }, (key, value) => this.pickChoice(key, value));
+    this.bar = new ContextBar(this.root, (a) => this.runAction(a), () => this.openInspectorStyle(), (x, y) => this.openPie(x, y),
+      (id, x, y) => this.barCommand(id, x, y), (key, value) => this.pickChoice(key, value));
     this.loadCatalog();
     this.bindKeys();
     this.bindDrop();
@@ -317,6 +316,7 @@ export class App {
   }
 
   private relocalise(): void {
+    this.insertBox.close();
     this.applyLanguage();
     this.engine.call("setPage", { session: this.sessionObj.id, lang: lang(), includeSvg: false });
     this.layout();
@@ -363,31 +363,227 @@ export class App {
     if (live && this.sync && this.settings.liveSync) this.sync.scheduleLive(next).catch((e) => this.report(e));
   }
 
+  /**
+   * Context bar for the selection (ROADMAP UX rules 1–5): only what does something for it. Mirror/rotate only when they
+   * change the drawing (`transformEffect`), "Insert …" for every element, "Draw the path" for links of a chain with
+   * F = 1, "Select assembly" when coupled parts are not selected yet, "Make it …" right after a quick add; two or more
+   * elements get the multi-selection bar (`arrangeOptions`).
+   */
   private updateBar(): void {
     const sel = this.st.selection;
-    let actions: ActionInfo[] = [];
-    if (sel.length) {
+    const key = sel.join(",");
+    const box = this.stage.selectionScreenBox();
+    const suppressed = this.stage.dragging || this.pie.open || this.prompt.open || this.insertBox.open;
+    if (sel.length !== 1 || sel[0] !== this.nextFor) this.nextFor = undefined;
+    this.traceFor = undefined;
+    this.nextChoices = [];
+    if (!sel.length) return this.bar.update("", [], undefined, true);
+    const known = sel.some((id) => this.objectById(id)?.known);
+    const assembly: BarCommand[] = known && this.assemblyGrows(sel) ? [{ id: "assembly", label: t("ctx.assembly"), icon: "cmd-select-assembly" }] : [];
+    if (elementCount(this.st.objects, sel) >= 2) {
+      let options: ArrangeOption[] = [];
       try {
-        actions = this.sessionObj.contextActions(sel, lang());
+        options = this.sessionObj.arrangeOptions(sel, lang());
       } catch (e) {
         this.report(e);
       }
-      if (this.mainTextTarget()) actions = [...actions, this.textAction()];
+      this.bar.updateMulti(key, multiBarGroups(options), box, suppressed, assembly);
+      return;
     }
-    // Just added with "+": the next element is one click away (thumbnails at the start of the bar).
-    let palette: PaletteEntry[] = [];
-    if (this.nextFor && sel.length === 1 && sel[0] === this.nextFor) {
+    let actions: ActionInfo[] = [];
+    try {
+      actions = this.sessionObj.contextActions(sel, lang());
+    } catch (e) {
+      this.report(e);
+    }
+    if (this.mainTextTarget()) actions = [...actions, this.textAction()];
+    if (known) actions = filterTransforms(actions, this.transformEffect(sel));
+    // Just added with "+": "Make it …" opens the insert box with what the new element can become (no thumbnail row).
+    const lead: BarCommand[] = [];
+    if (this.nextFor) {
       try {
-        const current = this.st.objects.find((o) => o.id === this.nextFor);
-        palette = this.sessionObj.nextItems(this.nextFor, lang()).map((s) => {
-          const item = this.catalog.items.find((i) => i.id === s.id);
-          return { id: s.id, label: s.name, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined, active: s.typeId === current?.type && s.view === current?.view };
-        });
+        this.nextChoices = this.sessionObj.nextItems(this.nextFor, lang(), 12);
       } catch (e) {
         this.report(e);
       }
-    } else if (sel.length !== 1 || sel[0] !== this.nextFor) this.nextFor = undefined;
-    this.bar.update(sel.join(","), actions, this.stage.selectionScreenBox(), this.stage.dragging || this.pie.open || this.prompt.open, palette, this.barChoices(sel));
+      if (this.nextChoices.length >= 2) lead.push({ id: "makeIt", label: t("ctx.makeIt"), icon: "cmd-cycle" });
+    }
+    const build: BarCommand[] = [];
+    if (known) build.push({ id: "insert", label: t("ctx.insert"), icon: "cmd-insert" });
+    const trace = this.traceOf(sel);
+    if (canTrace(trace)) {
+      this.traceFor = { id: sel[0], trace };
+      build.push({ id: "trace", label: t("ctx.trace"), icon: "cmd-trace" });
+    }
+    const info = this.dofOf(sel);
+    if (info?.dof != null) build.push({ id: "info:dof", label: t("ctx.dof", info.dof), icon: "", text: `F = ${info.dof}` });
+    if (info?.explodable) build.push({ id: "explode", label: t("ctx.explode"), icon: "cmd-explode" });
+    build.push(...assembly);
+    this.bar.update(key, actions, box, suppressed, this.barChoices(sel), { lead, build });
+  }
+
+  private objectById(id: string): ObjectInfo | undefined {
+    return this.st.objects.find((o) => o.id === id);
+  }
+
+  /** Mirror/rotate effect of the selection; undefined (keep all) if the engine cannot tell. */
+  private transformEffect(sel: string[]): TransformEffect | undefined {
+    try {
+      return this.sessionObj.transformEffect(sel);
+    } catch (e) {
+      this.report(e);
+      return undefined;
+    }
+  }
+
+  /** Coupled objects outside the selection exist (gear train, drive). */
+  private assemblyGrows(sel: string[]): boolean {
+    try {
+      return assemblyExtends(this.sessionObj.assembly(sel), sel);
+    } catch (e) {
+      this.report(e);
+      return false;
+    }
+  }
+
+  /** Coupler curve of a single selected link (points object); the engine returns no points unless the chain has F = 1. */
+  private traceOf(sel: string[]): TraceInfo | undefined {
+    const o = sel.length === 1 ? this.objectById(sel[0]) : undefined;
+    if (!o?.known || o.kind !== "points") return undefined;
+    try {
+      return this.sessionObj.trace(o.id);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Degree of freedom (self-built linkage) and explodability of a single selected object. */
+  private dofOf(sel: string[]): { dof: number | null; explodable: boolean } | undefined {
+    const o = sel.length === 1 ? this.objectById(sel[0]) : undefined;
+    if (!o?.known) return undefined;
+    try {
+      return this.sessionObj.dof(o.id);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** Link whose coupler curve the bar offers, with the traced path. */
+  private traceFor?: { id: string; trace: TraceInfo };
+  /** "Make it …" choices for the element just added with "+". */
+  private nextChoices: SuggestionInfo[] = [];
+
+  private barCommand(id: string, clientX: number, clientY: number): void {
+    const sel = this.st.selection;
+    if (id === "insert") return this.openInsert({ x: clientX, y: clientY });
+    if (id === "makeIt") return this.openMakeIt({ x: clientX, y: clientY });
+    if (id === "trace") return this.drawPath();
+    if (id === "info:dof") return;
+    if (id === "explode" && sel.length === 1) {
+      this.edit((s) => s.explode(sel[0]));
+      return;
+    }
+    if (id === "assembly") {
+      try {
+        this.apply(this.sessionObj.select(this.sessionObj.assembly(sel)));
+      } catch (e) {
+        this.report(e);
+      }
+      return;
+    }
+    if (id.startsWith("arr:")) {
+      this.edit((s) => s.arrange(sel, id.slice(4)));
+      this.stage.el.focus({ preventScroll: true });
+    }
+  }
+
+  /** Library items the box may offer (hidden modules left out). */
+  private itemLookup(): (id: string) => CatalogItem | undefined {
+    const map = new Map(this.visibleCatalog(this.catalog).items.map((i) => [i.id, i]));
+    return (id) => map.get(id);
+  }
+
+  /** Pointer over the stage in client coordinates (insert box by keyboard), else the middle of the stage. */
+  private pointerClient(): { x: number; y: number } {
+    const p = this.stage.lastPointerPage();
+    if (p) return this.stage.toClient(p);
+    const r = this.stage.el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.top + r.height / 3 };
+  }
+
+  private remember(itemId: string): void {
+    this.settings.recent = rememberRecent(this.settings.recent ?? [], itemId);
+    saveSettings(this.settings);
+  }
+
+  /**
+   * The insert box at the pointer: parts that fit the selection first, then recent items; typing searches the whole
+   * library. The chosen item follows the pointer with snapping (click places it, Esc cancels).
+   */
+  private openInsert(at?: { x: number; y: number }): void {
+    const sel = this.st.selection.filter((id) => this.objectById(id)?.known);
+    const item = this.itemLookup();
+    if (this.pie.open) this.pie.close();
+    this.bar.hide();
+    this.insertBox.show({
+      at: at ?? this.pointerClient(),
+      label: t("ins.title"),
+      rows: (text) => insertRows(this.sessionObj.search(sel, text, lang(), this.settings.recent ?? [], 30), this.settings.recent ?? [], item),
+      choose: (id) => {
+        const chosen = item(id);
+        if (!chosen) return;
+        this.remember(id);
+        if (sel.length === 1 && !(this.sync instanceof ComSync)) {
+          try {
+            const res = this.sessionObj.insertFitting(sel[0], id);
+            if (res.placed) {
+              this.apply(res.state, true);
+              return;
+            }
+          } catch (e) {
+            this.report(e);
+          }
+        }
+        this.startInsert(chosen, false);
+      },
+      closed: () => this.updateBar(),
+    });
+  }
+
+  /** "Make it …" after a quick add: what the new element can become first, typing searches the library; picks replace it. */
+  private openMakeIt(at: { x: number; y: number }): void {
+    const target = this.nextFor;
+    if (!target) return;
+    const choices = this.nextChoices;
+    const item = this.itemLookup();
+    this.bar.hide();
+    this.insertBox.show({
+      at,
+      label: t("ins.makeIt"),
+      rows: (text) => text.trim()
+        ? insertRows(this.sessionObj.search([target], text, lang(), this.settings.recent ?? [], 30), this.settings.recent ?? [], item)
+        : insertRows(choices, this.settings.recent ?? [], item),
+      choose: (id) => {
+        this.remember(id);
+        this.edit((s) => s.replaceItem(target, id));
+        this.nextFor = this.st.selection.length === 1 ? this.st.selection[0] : undefined;
+        this.updateBar();
+      },
+      closed: () => this.updateBar(),
+    });
+  }
+
+  /** Inserts the coupler curve of the selected link as a motion path (kin.path / kin.path.closed with the traced points). */
+  private drawPath(): void {
+    const traced = this.traceFor;
+    if (!traced) return;
+    try {
+      this.apply(this.sessionObj.drawTrace(traced.id), true);
+      this.toast(t("trace.done", traced.trace.points.length));
+    } catch (e) {
+      this.report(e);
+      this.guard(() => this.apply(this.sessionObj.state(), true));
+    }
   }
 
   /**
@@ -485,7 +681,6 @@ export class App {
   }
 
   private pieOverflow: PieEntry[] = [];
-  private pieSuggestions: SuggestionInfo[] = [];
   private pieConversions: ActionInfo[] = [];
   private pieLabels: { entry: PieEntry; change: LabelChange }[] = [];
 
@@ -498,8 +693,9 @@ export class App {
   }
 
   /**
-   * Pie menu with at most eight entries (COM add-in rules): delete, views, "Text …", "Insert ▸", duplicate, rotate in the
-   * ring; type actions, mirror, order and grouping overflow into "More ▸".
+   * Pie menu with at most eight entries (COM add-in rules): delete, views, "Text …", "Insert …", duplicate, rotate in the
+   * ring; type actions, mirror, order and grouping overflow into "More ▸". Mirror/rotate only when they change the
+   * drawing; "Insert …" opens the insert box.
    */
   openPie(clientX?: number, clientY?: number): void {
     const sel = this.st.selection;
@@ -509,22 +705,16 @@ export class App {
     } catch (e) {
       return this.report(e);
     }
+    const known = sel.some((id) => this.objectById(id)?.known);
+    if (known) actions = filterTransforms(actions, this.transformEffect(sel));
     if (clientX === undefined || clientY === undefined) {
       const box = this.stage.selectionScreenBox();
       const r = this.stage.el.getBoundingClientRect();
       clientX = box ? (box.left + box.right) / 2 : r.left + r.width / 2;
       clientY = box ? (box.top + box.bottom) / 2 : r.top + r.height / 2;
     }
-    this.pieSuggestions = [];
-    if (sel.some((id) => this.st.objects.find((o) => o.id === id)?.known)) {
-      try {
-        this.pieSuggestions = this.sessionObj.suggestions(sel, lang(), MAX_PIE_ITEMS - 1);
-      } catch (e) {
-        this.report(e);
-      }
-    }
     const text = this.mainTextTarget() ? this.menuEntry("text", t("pie.text"), "cmd-text") : undefined;
-    const insert = this.pieSuggestions.length ? this.menuEntry("menu:insert", t("pie.insert"), "cmd-insert") : undefined;
+    const insert = known ? this.menuEntry("menu:insert", t("pie.insert"), "cmd-insert") : undefined;
     this.pieConversions = [];
     try {
       this.pieConversions = this.sessionObj.conversions(sel, lang());
@@ -559,15 +749,7 @@ export class App {
       this.pieOverflow = page.overflow;
       return this.pie.show(page.main, at.x, at.y);
     }
-    if (e.id === "menu:insert") {
-      const entries = this.pieSuggestions.map((s): PieEntry => {
-        const item = this.catalog.items.find((i) => i.id === s.id);
-        return { id: `ins:${s.id}`, label: s.name, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined, icon: "cmd-insert", enabled: !!item, active: false };
-      });
-      const page = submenu(back, entries, more);
-      this.pieOverflow = page.overflow;
-      return this.pie.show(page.main, at.x, at.y);
-    }
+    if (e.id === "menu:insert") return this.openInsert(at);
     if (e.id === "menu:type") {
       const entries = this.pieConversions.map((c): PieEntry => ({ id: `conv:${c.id}`, label: c.label, icon: "cmd-cycle", enabled: true, active: !!c.active }));
       const page = submenu(back, entries, more);
@@ -597,12 +779,6 @@ export class App {
       return this.edit((s) => s.convert(sel, e.id.slice(5)));
     }
     if (e.id === "text") return this.editText();
-    if (e.id.startsWith("ins:")) {
-      // Insert at the pointer with snapping (in the COM sidebar: on the slide, like the COM pie menu).
-      const item = this.catalog.items.find((i) => i.id === e.id.slice(4));
-      if (item) this.startInsert(item, false);
-      return;
-    }
     if (e.action) this.runAction(e.action);
   }
 
@@ -747,16 +923,18 @@ export class App {
       const target = e.target as HTMLElement;
       const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName) || target.isContentEditable;
       if (e.key === "Escape") {
-        if (this.pie.open || this.prompt.open) return;
+        if (this.pie.open || this.prompt.open || this.insertBox.open) return;
         if (this.pending) { this.cancelInsert(); e.preventDefault(); return; }
         if (this.stage.dragging) { this.stage.cancelDrag(); e.preventDefault(); return; }
         if (!typing && this.st.selection.length) { this.apply(this.sessionObj.select([])); e.preventDefault(); }
         return;
       }
-      if (typing || this.pie.open || this.prompt.open) return;
+      if (typing || this.pie.open || this.prompt.open || this.insertBox.open) return;
       const sel = this.st.selection;
       const ctrl = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
+      // Ctrl+Space: the insert box at the pointer (with or without a selection).
+      if (ctrl && (e.code === "Space" || e.key === " ")) { e.preventDefault(); this.openInsert(); return; }
       const act = (id: string) => { e.preventDefault(); if (sel.length) this.edit((s) => s.applyAction(sel, id)); };
       if (ctrl && k === "z" && !e.shiftKey) { e.preventDefault(); this.edit((s) => s.undo()); }
       else if (ctrl && (k === "y" || (k === "z" && e.shiftKey))) { e.preventDefault(); this.edit((s) => s.redo()); }

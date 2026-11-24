@@ -121,8 +121,38 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding differentials (needs a cage part) and cam
   mechanisms (needs a cam disc part), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
   positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are open.
-- Web and LibreOffice follow the COM state; the engine already carries `LibrarySearch`, `Symmetry`, `Arrange`,
-  `AssemblyViews`, so the hosts only add UI.
+- Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
+  fitting parts placed in their spot, multi-selection bar, select assembly, snap labels, coupler curve, F = n and
+  explode; engine methods `search`, `transformEffect`, `arrangeOptions`/`arrange`, `assembly`, `trace`/`drawTrace`,
+  `insertFitting`, `explode`, `dof`). Not yet verified inside PowerPoint on the web (needs the dev certificate on the
+  maintainer's machine). Open on the web: build "+" ports on the stage, live coupling preview, ghost positions,
+  dimension between parts, parts list redraw on every edit (engine side is done).
+- LibreOffice follows after the web; the engine API above is host-neutral.
+
+### Review at the end of 2026-11-24 and next steps
+
+**Done today:** the UX rules above are implemented in COM (verified with 16 PowerPoint UI scenarios in
+`tests/powerpoint-com`, all green except where noted in the run logs) and in the web host (unit tests and browser
+check). New modules: charts, building services; new mechanical elements; parts list; dimension between parts; ghost
+positions and coupler curves; explode through another view; bevel pairs couple; insert box everywhere; compact bar
+(one view chip for more than three views, motion only where it shows something); search & insert in the ribbon.
+
+**Plan review – what changes in the plan:**
+- *Assemblies are the unit of work.* View switch, select assembly, explode, parts list and the multi-selection bar
+  all work on assemblies; the next features should too (variants/states, animation as slides for gear trains).
+- *One insert flow everywhere* replaced the bar palettes; the same box should serve the sidebar library search.
+- *Verification:* every user-visible COM feature gets a scenario; run the whole suite before merging larger changes
+  (about 35 minutes, mouse busy).
+
+**Next, in this order:**
+1. Web: the remaining COM features (build "+" on the stage, live coupling preview, ghost positions, dimension between
+   parts), then check in PowerPoint on the web once the maintainer has installed the dev certificate.
+2. LibreOffice: bring the host to the engine API level (insert box, context-only bar, multi-selection, assembly view).
+3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
+   (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion, `elevation`/`section` view
+   alias for walls with building services, electrical house symbols with section/schematic views.
+4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
+5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
 ### Further modules and functions worth adding
 

@@ -3,7 +3,7 @@
 
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
-  SuggestionInfo, ExporterInfo, ExportResult,
+  SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo,
 } from "./types";
 
 export interface EngineBackend {
@@ -114,4 +114,28 @@ export class Session {
     return this.c("hostTransform", { ids, from, target, rotation });
   }
   save(): string { return this.c<{ json: string }>("saveDocument").json; }
+  /** Insert by typing: library hits for `text`; parts that fit `ids` first (`fits`), `recent` ranked higher. */
+  search(ids: string[], text: string, lang: string, recent: string[], max?: number): SuggestionInfo[] {
+    return this.c("search", { ids, text, lang, recent, max });
+  }
+  /** Which of mirror horizontally/vertically and rotate by 90° change the drawing of `ids`. */
+  transformEffect(ids: string[]): TransformEffect { return this.c("transformEffect", { ids }); }
+  /** Selection-wide operations that change something for `ids` (one view for all, align, distribute, match, renumber). */
+  arrangeOptions(ids: string[], lang: string): ArrangeOption[] { return this.c("arrangeOptions", { ids, lang }); }
+  /** Runs a selection-wide operation from arrangeOptions; one undo step. */
+  arrange(ids: string[], action: string): EditorState { return this.c("arrange", { ids, action }); }
+  /** `ids` plus every object coupled with them (gear train, drive), selection first. */
+  assembly(ids: string[]): string[] { return this.c("assembly", { ids }); }
+  /** Path of point `index` (default: last) of link `id` while its chain's crank turns (coupler curve). */
+  trace(id: string, index?: number): TraceInfo { return this.c("trace", { id, index }); }
+  /** Inserts `itemId` where it fits object `id` (gear on the shaft …); `placed` false when it fits nowhere. */
+  insertFitting(id: string, itemId: string): { placed: boolean; state: EditorState } { return this.c("insertFitting", { id, itemId }); }
+  /** Inserts the coupler curve of link `id` as a motion path; one undo step. */
+  drawTrace(id: string, index?: number): EditorState { return this.c("drawTrace", { id, index }); }
+  /** Explodes assembly `id` into its parts; one undo step. */
+  explode(id: string): EditorState { return this.c("explode", { id }); }
+  /** Degree of freedom of the self-built linkage of `id` and whether `id` can be exploded. */
+  dof(id: string): { links: number | null; joints: number | null; dof: number | null; explodable: boolean } { return this.c("dof", { id }); }
+  /** Replaces one object with a full document object (as in saveDocument); one undo step. */
+  update(object: unknown): EditorState { return this.c("update", { object }); }
 }

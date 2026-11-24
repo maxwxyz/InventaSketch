@@ -86,6 +86,10 @@ namespace InventaSketch.Engine
                 ["arrange"] = ArrangeCore,
                 ["assembly"] = AssemblyCore,
                 ["trace"] = TraceCore,
+                ["insertFitting"] = InsertFittingCore,
+                ["drawTrace"] = DrawTraceCore,
+                ["explode"] = ExplodeCore,
+                ["dof"] = DofCore,
             };
         }
 
@@ -644,6 +648,73 @@ namespace InventaSketch.Engine
             return path is { } p ? new TraceInfo { Points = p.Points.ToList(), Closed = p.Closed } : new TraceInfo();
         }
 
+        /// <summary>
+        /// Inserts library item <c>itemId</c> where it fits the selected object <c>id</c> (gear on the shaft, gear in mesh,
+        /// bearing beside a gear: <see cref="Fitting.Place"/>), coupled; returns the state with <c>placed</c> = false when it
+        /// fits nowhere (the host then lets the user place it).
+        /// </summary>
+        private object InsertFittingCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Resolve(r.Ids).FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var item = Registry.Item(r.ItemId ?? "") ?? throw new KeyNotFoundException($"Unknown library item '{r.ItemId}'.");
+            var placed = Fitting.Place(Registry, s.Doc, id, item, s.Lang);
+            if (placed is null) return new { placed = false, state = StateOf(s, r) };
+            s.Apply("Insert " + item.Name.En, d => Edits.Add(d, s.PageId, placed));
+            s.Select(new[] { placed.Id });
+            return new { placed = true, state = StateOf(s, r) };
+        }
+
+        /// <summary>Inserts the coupler curve of link <c>id</c> (point <c>index</c>, default last) as a motion path; one undo step.</summary>
+        private object DrawTraceCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var o = s.Doc.Get(id) ?? throw new ArgumentException("Unknown object: " + id);
+            var path = Linkage.Trace(Registry, s.Doc, id, r.Index ?? (o.Points?.Count ?? 1) - 1, Math.Max(8, r.Max ?? 72), s.Lang);
+            if (path is not { } p || p.Points.Count < 3) return StateOf(s, r);
+            var item = Registry.Item(p.Closed ? "kin.path.closed" : "kin.path");
+            if (item is null) return StateOf(s, r);
+            var curve = Registry.Create(item, p.Points[0]) with { Points = p.Points.Select(q => new Vec2(Math.Round(q.X, 4), Math.Round(q.Y, 4))).ToList() };
+            if (!p.Closed) curve = curve.WithParam("arrow", false);
+            s.Apply("Coupler curve", d => Edits.Add(d, s.PageId, curve));
+            s.Select(new[] { curve.Id });
+            return StateOf(s, r);
+        }
+
+        /// <summary>Explodes assembly <c>id</c> into its parts (<see cref="Assemblies.Explode"/>), replacing it; one undo step.</summary>
+        private object ExplodeCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var o = s.Doc.Get(id);
+            if (o is null || !Assemblies.CanExplode(Registry, o)) return StateOf(s, r);
+            var parts = Assemblies.Explode(Registry, s.Doc, id, s.Lang);
+            if (parts.Count == 0) return StateOf(s, r);
+            s.Apply("Explode", d => Edits.Add(Edits.Remove(d, new[] { id }), s.PageId, parts.ToArray()));
+            s.Select(parts.Select(x => x.Id).ToList());
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// Degree of freedom of the self-built linkage of <c>id</c> (<see cref="Linkage.Dof"/>) and whether <c>id</c> can be
+        /// exploded (<see cref="Assemblies.CanExplode"/>): {links, joints, dof} or nulls, plus <c>explodable</c>.
+        /// </summary>
+        private object DofCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var o = s.Doc.Get(id);
+            var dof = o is null ? null : Linkage.Dof(Registry, s.Doc, id, s.Lang);
+            return new
+            {
+                links = dof?.Links,
+                joints = dof?.Joints,
+                dof = dof?.Dof,
+                explodable = o is not null && Assemblies.CanExplode(Registry, o),
+            };
+        }
+
         /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>
         private object NextItemsCore(EngineRequest r)
         {
@@ -995,7 +1066,7 @@ namespace InventaSketch.Engine
             var targets = Snapper.Targets(Registry, s.Doc, s.Page, new HashSet<string>(exclude), ctx, opts);
             var res = Snapper.SnapPoint(p, targets, opts);
             var q = p + res.Delta;
-            var dto = new SnapResultDto { Dx = res.Delta.X, Dy = res.Delta.Y, X = q.X, Y = q.Y, Kind = res.Kind, Guides = res.Guides };
+            var dto = new SnapResultDto { Dx = res.Delta.X, Dy = res.Delta.Y, X = q.X, Y = q.Y, Kind = res.Kind, Guides = res.Guides, Label = SnapLabel.For(res.Target, s.Lang) };
             // Attach the point to the box object that owns the snapped anchor (it then follows that object); pins keep
             // their anchor id, rails (lifelines, lanes) and mounts attach at the snapped position.
             if (res.Kind is "point" or "port" or "rail" or "mount")
@@ -1012,7 +1083,7 @@ namespace InventaSketch.Engine
             var moving = Registry.PageAnchors(o, ctx).ToList();
             var targets = Snapper.Targets(Registry, doc, page, new HashSet<string> { o.Id }, ctx, opts);
             var res = Snapper.SnapMove(moving, Vec2.Zero, targets, opts);
-            return new SnapResultDto { Dx = res.Delta.X, Dy = res.Delta.Y, Kind = res.Kind, Guides = res.Guides };
+            return new SnapResultDto { Dx = res.Delta.X, Dy = res.Delta.Y, Kind = res.Kind, Guides = res.Guides, Label = SnapLabel.For(res.Target, s.Lang) };
         }
 
         /// <summary>Snap preview for "insert at pointer": where the new item would land, without inserting it.</summary>

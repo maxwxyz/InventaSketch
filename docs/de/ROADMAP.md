@@ -135,8 +135,44 @@ umsetzen, dann Web, dann LibreOffice.
   Korb-Einzelteil) und Kurvengetrieben (braucht eine Kurvenscheibe), Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
   Gelenkgrenzen sind offen.
-- Web und LibreOffice folgen dem COM-Stand; die Engine enthält bereits `LibrarySearch`, `Symmetry`, `Arrange`,
-  `AssemblyViews`, die Hosts ergänzen nur die Oberfläche.
+- Web: am 24.11.2026 auf den COM-Stand der UI/UX-Runde gebracht (Spiegeln/Drehen nur mit Wirkung, Einfügefeld mit
+  Strg+Leertaste, passende Teile an ihrem Platz, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung,
+  Koppelkurve, F = n und Zerlegen; Engine-Methoden `search`, `transformEffect`, `arrangeOptions`/`arrange`,
+  `assembly`, `trace`/`drawTrace`, `insertFitting`, `explode`, `dof`). Noch nicht in PowerPoint im Web geprüft (braucht
+  das Entwicklerzertifikat auf dem Rechner des Maintainers). Im Web offen: Anbau-„+“ auf der Bühne, Live-Vorschau der
+  Kopplung, Zwischenlagen, Maß zwischen Teilen, Neuzeichnen der Stückliste bei jeder Bearbeitung (Engine-Seite fertig).
+- LibreOffice folgt nach dem Web; die Engine-API oben ist hostneutral.
+
+### Review am Ende des 24.11.2026 und nächste Schritte
+
+**Heute erledigt:** Die UX-Regeln oben sind in COM umgesetzt (geprüft mit 16 PowerPoint-UI-Szenarien in
+`tests/powerpoint-com`) und im Web-Host (Unit-Tests und Browserprüfung). Neue Module: Diagramme/Kennlinien,
+technische Gebäudeausrüstung; neue Mechanik-Elemente; Stückliste; Maß zwischen Teilen; Zwischenlagen und Koppelkurven;
+Zerlegen über eine andere Ansicht; Kegelradpaare koppeln; Einfügefeld überall; kompakte Leiste (ein Ansichts-Chip ab
+mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im Menüband.
+
+**Plan-Review – was sich am Plan ändert:**
+- *Baugruppen sind die Arbeitseinheit.* Ansichtswechsel, Baugruppe auswählen, Zerlegen, Stückliste und die Leiste
+  für Mehrfachauswahl arbeiten auf Baugruppen; neue Funktionen sollten das auch (Varianten/Zustände, Animation von
+  Getriebezügen als Folien).
+- *Ein Einfügeweg überall* hat die Paletten in der Leiste ersetzt; dasselbe Feld sollte auch die Bibliothekssuche der
+  Seitenleiste bedienen.
+- *Prüfung:* Jede sichtbare COM-Funktion bekommt ein Szenario; vor größeren Merges läuft die ganze Suite (etwa
+  35 Minuten, Maus belegt).
+
+**Als Nächstes, in dieser Reihenfolge:**
+1. Web: die übrigen COM-Funktionen (Anbau-„+“ auf der Bühne, Live-Vorschau der Kopplung, Zwischenlagen, Maß zwischen
+   Teilen), danach Prüfung in PowerPoint im Web, sobald der Maintainer das Entwicklerzertifikat installiert hat.
+2. LibreOffice: den Host auf den Stand der Engine-API bringen (Einfügefeld, kontextbezogene Leiste, Mehrfachauswahl,
+   Baugruppenansicht).
+3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
+   Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze, Gelenkgrenzen, Kegelradpaare in der
+   Bewegung, Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik, Elektro-Hausinstallationssymbole mit
+   Schnitt-/Schemaansicht.
+4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,
+   Patentmodus).
+5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
+   CSV).
 
 ### Weitere sinnvolle Module und Funktionen
 

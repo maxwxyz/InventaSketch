@@ -6,6 +6,7 @@ import type { Session } from "../engine/client";
 import type { CatalogItem, EditorState, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
 import { t } from "../i18n";
 import { clamp, s, svgChildren, svgDataUrl, viewBoxOf } from "./dom";
+import { snapLabelAnchor } from "./uxlogic";
 
 export interface StageHost {
   state(): EditorState;
@@ -101,6 +102,8 @@ export class Stage {
   private readonly guides: SVGGElement;
   private readonly ghost: SVGGElement;
   private readonly scaleLabelEl: HTMLDivElement;
+  /** What a drag docks onto ("pitch circle", "axis", "pin 2"), next to the snap target. */
+  private readonly snapLabelEl: HTMLDivElement;
   private scale = 2; // px per mm
   private ox = -10;
   private oy = -10;
@@ -133,7 +136,10 @@ export class Stage {
     this.scaleLabelEl = document.createElement("div");
     this.scaleLabelEl.className = "isk-scale-label";
     this.scaleLabelEl.hidden = true;
-    this.el.append(this.svg, this.scaleLabelEl);
+    this.snapLabelEl = document.createElement("div");
+    this.snapLabelEl.className = "isk-scale-label isk-snap-label";
+    this.snapLabelEl.hidden = true;
+    this.el.append(this.svg, this.scaleLabelEl, this.snapLabelEl);
     window.addEventListener("keydown", (e) => this.onModifier(e));
     window.addEventListener("keyup", (e) => this.onModifier(e));
 
@@ -553,7 +559,11 @@ export class Stage {
             const r = session.snapMove(d.ids, dx, dy, this.tolerance());
             dx = r.dx; dy = r.dy;
             this.drawGuides(r.guides);
-          } else this.guides.replaceChildren();
+            this.showSnapLabel(r.label, snapLabelAnchor(r.guides), { x: e.clientX, y: e.clientY });
+          } else {
+            this.guides.replaceChildren();
+            this.hideSnapLabel();
+          }
           session.couple = true;
           d.dx = dx; d.dy = dy;
           this.previewTransform(shown, `translate(${dx} ${dy})`);
@@ -628,6 +638,23 @@ export class Stage {
 
   private hideScaleLabel(): void {
     this.scaleLabelEl.hidden = true;
+    this.hideSnapLabel();
+  }
+
+  /** The snap label next to the target (page point `at`), else next to the pointer; hidden without a label. */
+  private showSnapLabel(label: string | undefined, at: Vec2 | undefined, client: Vec2): void {
+    if (!label) return this.hideSnapLabel();
+    const er = this.el.getBoundingClientRect();
+    const p = at ? this.toClient(at) : client;
+    this.snapLabelEl.textContent = label;
+    this.snapLabelEl.hidden = false;
+    const w = this.snapLabelEl.offsetWidth, h = this.snapLabelEl.offsetHeight;
+    this.snapLabelEl.style.left = `${clamp(p.x - er.left + 10, 4, Math.max(4, er.width - w - 4))}px`;
+    this.snapLabelEl.style.top = `${clamp(p.y - er.top - h - 8, 4, Math.max(4, er.height - h - 4))}px`;
+  }
+
+  private hideSnapLabel(): void {
+    this.snapLabelEl.hidden = true;
   }
 
   /** Ctrl pressed or released during a resize switches the mode without moving the pointer. */
