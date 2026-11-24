@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Factory of the sidebar panel "Library" (inventasketch_lo.sidebar.PanelFactory). -->
+<!-- Factory of the sidebar panels "Selection" and "Library" (inventasketch_lo.sidebar.PanelFactory). -->
 <oor:component-data xmlns:oor="http://openoffice.org/2001/registry" xmlns:xs="http://www.w3.org/2001/XMLSchema"
     oor:name="Factories" oor:package="org.openoffice.Office.UI">
   <node oor:name="Registered">
