@@ -932,7 +932,7 @@ namespace InventaSketch.AddIn.OnSlide
             var type = first is null ? null : registry.Type(first.Type);
             // Just added with "+": the next element is one click away (no submenu).
             if (first is not null) list.AddRange(NextButtons(first));
-            if (type is not null && first is not null && type.Views.Count > 1)
+            if (type is not null && first is not null && type.Views.Count > 1 && type.Views.Count <= MaxViewButtons)
             {
                 foreach (var v in type.Views.Take(6))
                     list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
@@ -986,8 +986,9 @@ namespace InventaSketch.AddIn.OnSlide
                     list.Add(new BarButton("ghosts", "", T("Ghost positions of the linkage", "Zwischenlagen des Koppelgetriebes")) { IconId = IconIds.Animate });
                 }
             }
-            // Motion mode for parts that can move (gear train, linkage): drag turns them instead of moving them.
-            if (MovablePart() is not null)
+            // Motion mode for parts that can move (gear train, linkage, mechanism): drag turns them instead of moving them.
+            // A lone gear coupled with nothing only spins in place, which shows nothing: no button for it.
+            if (MovablePart() is { } movable && (movable.IsPointGeometry || registry.Type(movable.Type)?.AnimationFrames(movable, 2).Count > 1 || AssemblyOf().Count > 1))
                 list.Add(new BarButton("motion", "", T("Move: drag turns the gears / linkage", "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
             // Coupled with other elements (gear train, drive): select the whole assembly (then: one view for all, align …).
             if (first is not null && AssemblyOf().Count > 1)
