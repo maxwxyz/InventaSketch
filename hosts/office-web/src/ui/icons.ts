@@ -120,6 +120,7 @@ const paths: Record<string, string> = {
   "cmd-distribute-h": "M3 6h4v9H3zM10 6h4v9h-4zM17 6h4v9h-4zM7 19h3M14 19h3",
   "cmd-distribute-v": "M6 3h9v4H6zM6 10h9v4H6zM6 17h9v4H6zM19 7v3M19 14v3",
   "cmd-renumber": "M4 20l3-6M11 20l2-6M18 20l1-6M6 5v6M10.5 6L12 4.8L14 5.6L11 11h3.5M17 5h3.5l-2 2.6l2 1.6l-1.9 2l-1.8-.8",
+  "cmd-fit-around": "M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5M8 8h8v8H8z",
   "cmd-select-assembly": "M2.5 2.5h3M8.5 2.5h3M14.5 2.5h3M21.5 2.5v3M21.5 8.5v3M21.5 14.5v3M21.5 21.5h-3M15.5 21.5h-3M9.5 21.5h-3M2.5 21.5v-3M2.5 15.5v-3M2.5 9.5v-3M5 10a4 4 0 1 0 8 0a4 4 0 1 0-8 0M12.5 14.25a3.25 3.25 0 1 0 6.5 0a3.25 3.25 0 1 0-6.5 0",
   "cmd-explode": "M3.5 3.5h6v6h-6zM14.5 3.5h6v6h-6zM3.5 14.5h6v6h-6zM14.5 14.5h6v6h-6zM10.5 12a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0-3 0Z",
   "cmd-hop": "M12 4v16M3 13h5.5M15.5 13H21M8.5 13C8.5 8.3 15.5 8.3 15.5 13",

@@ -185,7 +185,7 @@ namespace InventaSketch.Modules.Mechanical
             if (n > 1)
                 yield return new ContextAction("param.seats.dec", T(name.En + " −1", name.De + " −1"), IconIds.Decrease,
                     x => x.WithParam("seats", n - 1).WithParam("seatpos", "")) { Group = "param" };
-            yield return ContextAction.InDocument("param.fit", T("Fit around contents", "Um Inhalt anpassen"), IconIds.SizeLarge, FitAround);
+            yield return ContextAction.InDocument("param.fit", T("Fit around contents", "Um Inhalt anpassen"), IconIds.FitAround, FitAround);
         }
 
         /// <summary>

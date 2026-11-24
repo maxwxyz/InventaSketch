@@ -319,6 +319,14 @@ namespace InventaSketch.AddIn.OnSlide
                     g.DrawRectangle(pen, 6, 3, 9, 4); g.DrawRectangle(pen, 6, 10, 9, 4); g.DrawRectangle(pen, 6, 17, 9, 4);
                     g.DrawLine(thin, 19, 7, 19, 10); g.DrawLine(thin, 19, 14, 19, 17);
                     break;
+                case IconIds.FitAround:
+                    // A frame closing in on a part: corner brackets around a small box.
+                    g.DrawLines(pen, new[] { new PointF(3, 8), new PointF(3, 3), new PointF(8, 3) });
+                    g.DrawLines(pen, new[] { new PointF(16, 3), new PointF(21, 3), new PointF(21, 8) });
+                    g.DrawLines(pen, new[] { new PointF(21, 16), new PointF(21, 21), new PointF(16, 21) });
+                    g.DrawLines(pen, new[] { new PointF(8, 21), new PointF(3, 21), new PointF(3, 16) });
+                    g.DrawRectangle(thin, 8, 8, 8, 8);
+                    break;
                 case IconIds.SelectAssembly:
                     // Two coupled wheels inside a dashed selection frame.
                     g.DrawRectangle(dash, 2.5f, 2.5f, 19, 19);

@@ -27,11 +27,13 @@ optional engineering parameters and can be checked against patent-office drawing
   break lines, text boxes, callouts, technical-mechanics symbols, flowchart shapes.
 - **Native objects first:** inserted figures are native, editable PowerPoint/LibreOffice shapes wherever the host
   allows it; SVG/PDF/PNG export.
-- **Modular domains (available):** mechanics and gearboxes, kinematics (joints, linkages, cams, motion), electrical
+- **Modular domains (available):** mechanics and gearboxes (incl. screw drives, freewheels, torque converters, CVT,
+  strain wave and cycloidal drives, housings), kinematics (joints, linkages, cams, motion), electrical
   (schematic symbols, wiring, house installation, power electronics, illustrative PCB), electric machines (radial and
   axial flux, components, drive blocks), automotive/ADAS/HMI (vehicles, people, roads, sensors, displays), architecture
-  and floor plans (walls, openings, rooms, stairs, furniture), diagrams (UML, ER, sequence, activity, system, BPMN).
-  Planned: maps and routes, charts — added module by module.
+  and floor plans (walls, openings, rooms, stairs, furniture), diagrams (UML, ER, sequence, activity, system, BPMN),
+  maps and routes, fluid power, patent figures, charts and characteristic curves (XY, bar, torque–speed, efficiency map,
+  pump curve, Bode plot, tolerance bands).
 - **Clean UI:** light/dark/auto theme, German/English (automatic), floating context bar, right-click pie menu,
   interactive sidebar editor where the host does not allow on-slide interaction.
 

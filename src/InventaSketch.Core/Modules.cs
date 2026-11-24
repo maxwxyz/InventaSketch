@@ -133,6 +133,7 @@ namespace InventaSketch.Core
         public const string DistributeV = "cmd-distribute-v"; // equal spacing top to bottom
         public const string Renumber = "cmd-renumber";      // reference numerals in reading order
         public const string SelectAssembly = "cmd-select-assembly"; // select every part coupled with this one
+        public const string FitAround = "cmd-fit-around";   // size a housing/frame around what it contains
 
         // Option pictograms (line ends, line styles, line courses): a short line with the feature on the right.
         public const string HeadNone = "head-none";
@@ -257,7 +258,7 @@ namespace InventaSketch.Core
         {
             Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin, Chart,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
-            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly,
+            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround,
             HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
             SizeSmall, SizeMedium, SizeLarge, LineSolid, LineDash, LineDot, LineDashDot, LineDashDotDot, LineLongDash,
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,

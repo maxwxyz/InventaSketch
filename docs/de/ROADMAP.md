@@ -123,7 +123,11 @@ umsetzen, dann Web, dann LibreOffice.
   live bewegt, Zerlegen vordefinierter Getriebe (außer Kurvengetriebe), Einfügen per Tippen, Live-Vorschau der Kopplung,
   kontextbezogene Leiste, Leiste für Mehrfachauswahl, Ansichtswechsel von Getriebezügen, PowerPoint-UI-Szenarien
   (`tests/powerpoint-com`).
-- In Arbeit: Modul Diagramme/Kennlinien (P1), fehlende Mechanik-Elemente (P1).
+- Erledigt am 24.11.2026 (Engine, alle Hosts über die Bibliothek): Modul Diagramme/Kennlinien (`chart.*`, 25 Elemente,
+  docs/de/modules/charts.md) und die fehlenden Mechanik-Elemente (Gewindetriebe mit Mutter auf der Spindel, Freilauf,
+  Wandler, Parksperre, CVT, Well- und Zykloidgetriebe, Getriebegehäuse mit Lagersitzen, Ölwanne;
+  docs/de/modules/mechanical-drives.md). Dort offen: Wirkungsgradkennfelder aus Messrastern, Polar- und Flächendiagramme,
+  Histogramme, eine zweite y-Achse für eigene Daten; „um die Auswahl einfügen“ für Gehäuse.
 - In COM noch offen: Kegelradpaare in Kopplung und Bewegung, Ravigneaux-Sätze, Zerlegen von Schema-Planetensätzen,
   Differentialen und Kurvengetrieben, Ansichtswechsel für Haustechnik (Grundriss ↔ Schnitt ↔ Strangschema),
   Fangbeschriftungen, Tab-Durchlauf, Format übertragen für Semantik.

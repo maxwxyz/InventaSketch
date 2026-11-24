@@ -109,7 +109,11 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Done in COM since 2026-11-21: line language, build handles, linkages and gear trains built from parts and moved live,
   explode of predefined mechanisms (except cam), insert by typing, live coupling preview, context-only bar,
   multi-selection bar, assembly view switch for gear trains, PowerPoint UI scenarios (`tests/powerpoint-com`).
-- In progress: charts module (P1), missing mechanical elements (P1).
+- Done 2026-11-24 (engine, all hosts via the library): charts module (`chart.*`, 25 items, docs/en/modules/charts.md)
+  and the missing mechanical elements (screw drives with nut on the spindle, freewheel, torque converter, park lock, CVT,
+  strain wave and cycloidal drives, gearbox housing with bearing seats, oil sump; docs/en/modules/mechanical-drives.md).
+  Open there: efficiency maps from measured grids, polar/area charts and histograms, a user secondary y-axis; "insert
+  around the selection" for housings.
 - Still open in COM: bevel pairs in coupling and motion, Ravigneaux sets, exploding schematic sets, differentials and
   cam mechanisms, assembly view switch for building services (plan ↔ section ↔ schematic), snap labels, Tab cycling,
   format painter for semantics.

@@ -302,6 +302,28 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   auf der Box-Mitte). Geprüft in PowerPoint am 21.11.2026: ein mit den „+“ gebautes Viergelenk (Gestell, Kurbel, Koppel,
   Schwinge, Gestell), F = 1, Kurbel gezogen: alle Gliedlängen gleich geblieben (30,10 / 30,10 / 32,38 mm), Gestellpunkte am
   Platz.
+- **UI/UX-Runde 24.11.2026 (siehe die UX-Regeln in der Roadmap):**
+  - *Leiste nur mit Sinnvollem:* Spiegeln und Drehen erscheinen nur, wenn sie die Zeichnung ändern (`Symmetry` auf
+    der gezeichneten Geometrie samt Pfeilspitzen); ein Kreis, ein Zahnrad in Stirnansicht oder ein symmetrisches Lager
+    zeigen keinen dieser Knöpfe.
+  - *Einfügefeld:* ein Einfügen-Knopf für jedes Element (auch im Kreismenü, und Strg+Leertaste überall auf der Folie)
+    öffnet ein Suchfeld am Zeiger: zuerst, was zur Auswahl passt („passt“, wird an seinen Platz gesetzt), dann zuletzt
+    Verwendetes; Tippen durchsucht die ganze Bibliothek (`LibrarySearch`: beide Sprachen, Umlaute = ae/oe/ue/ss,
+    Ansicht der Auswahl bevorzugt). Die früher an die Leiste angehängten Vorschaubilder sind entfallen.
+  - *Leiste für Mehrfachauswahl:* Bei zwei oder mehr ausgewählten InventaSketch-Elementen bietet eine Leiste eine
+    Ansicht für alle, Mitten auf eine Zeile oder Spalte, gleichmäßiges Verteilen und Neunummerieren der Bezugszeichen in
+    Lesereihenfolge (`Arrange`) – jeweils nur, wenn es etwas ändert. Das native PowerPoint-Format bleibt verfügbar.
+  - *Baugruppen:* „Baugruppe auswählen“ wählt alle mit der Auswahl gekoppelten Teile; Tab/Shift+Tab wechselt durch
+    sie. Der Ansichtswechsel eines ausgewählten Getriebezugs hält ihn funktionsfähig (`AssemblyViews`): in die
+    Stirnansicht werden Teile einer Welle konzentrisch und Eingriffe behalten ihren Achsabstand, zurück ins Schema/die
+    Seitenansicht klappt der Zug auf, kämmende Räder liegen in einer Ebene, Teile einer Welle hintereinander. Jedes Teil
+    behält in jeder Ansicht seinen Teilkreis.
+  - *Live-Vorschau der Kopplung:* Beim Ziehen und Skalieren werden Nachbarn, die die Kopplung beim Loslassen
+    verschiebt oder skaliert (kämmende Räder, Riemen, Wellen am Motor), blau mitgezeichnet.
+  - *Fangbeschriftung:* Beim Ziehen steht am Fangziel, worauf das Teil andockt („Teilkreis“, „Achse“, „Bolzen 2“,
+    „Gelenk 1“).
+  - *Kegelradpaare:* Kegelräder mit gemeinsamer Kegelspitze und gekreuzten Achsen kämmen; verschiebt man eines, folgt
+    das Gegenrad.
 - **Vordefinierte Koppelgetriebe zerlegen:** Viergelenk und Schubkurbel zeigen ebenfalls „In Einzelteile zerlegen“ in der
   Leiste: sie werden zu Gestelldrehpunkten, Gliedern und einem Schieber in der aktuellen Stellung, aneinander angedockt
   (Teile-Rezepte mit Punkten, Andockungen und Ausrichtungsanker, `PartSpec.Points`, `PartSpec.Docks`,
