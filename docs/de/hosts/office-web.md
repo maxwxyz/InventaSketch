@@ -55,6 +55,10 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | auswahlweite Operationen, die etwas ändern `{ id, label, icon }` (`mview:<view>` eine Ansicht für alle mit erhaltenem Mechanismus, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); Zustand (ein Rückgängig-Schritt) |
 | `assembly` | `ids` | IDs der Auswahl und aller damit gekoppelten Objekte (Getriebezug, Antrieb), Auswahl zuerst |
 | `trace` | `id`, `index` (Standard: letzter Punkt), `max` (Schritte, Standard 72) | `{ points, closed }`: Bahn des Gliedpunkts, während die Kurbel der Kette dreht; leer, außer die Kette hat F = 1 |
+| `drawGhosts` | `id` (ein Glied), `max` (Standard 4) | Zustand; gestrichelte graue Kopien der Kette über den Kurbelbereich, gruppiert |
+| `couplingPreview` | `ids`, `dx`/`dy` oder `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: Nachbarn, die die Kopplung verschieben oder skalieren würde, als SVG in Seiten-mm (`svg` leer, wenn nichts folgt); nichts wird geändert |
+| `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch }]`: freie Bauanschlüsse in Seiten-mm mit der Richtung nach außen; `stretch` bei Wellenenden |
+| `buildItems`, `buildPlace`, `buildStretch` | `id`, `key` (Anschluss-ID), `lang`, `max`; `itemId`; `x`, `y` | Bibliothekselemente, die am Anschluss andocken (`fits` true); Zustand mit dem angedockten Teil ausgewählt; Zustand mit verschobenem Wellenende |
 | `update` | `object` (vollständiges Dokumentobjekt wie in `saveDocument`) | Zustand |
 | `exporters`, `export` | `ids` (Auswahl mit ihren Gruppen, sonst die Seite), `lang`; `itemId` (Exporter-Id) | zutreffende Fachexporte `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (Standard: Dokumenteinstellung), `background`, `padding` | `{ svg, width, height }` |
@@ -137,19 +141,50 @@ Folgt den verbindlichen UX-Regeln im Fahrplan („Plan 2026-11-24“). Reine Reg
   dem Fangziel (Andockpunkt, eingerasteter Kreis oder Abschnitt).
 - **Bahnkurve zeichnen:** Ein Glied eines selbst gebauten Koppelgetriebes mit F = 1 (`trace` liefert eine Bahn) bietet
   „Bahnkurve zeichnen“; es fügt die Koppelkurve des Gliedendes als Bewegungsbahn ein (`kin.path`, bei geschlossener
-  Kurve `kin.path.closed`; eine offene Bahn ohne Pfeilspitze). Das sind zwei Rückgängig-Schritte (Einfügen, dann die
-  Punkte über `update`).
-- **Nicht im Web-Host:** Bau-„+“ an Anschlüssen (Zahnräder, Wellen) gibt es auf der Web-Bühne nicht, daher führt
-  nichts davon ins Einfügefeld; passende Teile werden mit dem einrastenden Vorschaubild platziert statt wie im
-  COM-Add-in „dort, wo sie passen“ (`Fitting.Place` ist über die Engine-API nicht erreichbar); Zerlegen und
-  Bewegungsmodus gibt es nur im COM-Add-in.
+  Kurve `kin.path.closed`; eine offene Bahn ohne Pfeilspitze), ein Rückgängig-Schritt (`drawTrace`).
+- **Nicht im Web-Host:** Den Bewegungsmodus (Teile nur so ziehen, wie sie sich bewegen können) gibt es nur im
+  COM-Add-in.
+
+## Restliche COM-Funktionen (2026-11-24)
+
+Reine Regeln in `src/ui/buildlogic.ts`, mit Unit-Tests in `test/buildlogic.test.ts`.
+
+- **Bau-„+“ an Anschlüssen:** Ein einzeln ausgewähltes Zahnrad, Hohlrad, Welle, E-Maschine, Motor oder Glied zeigt an
+  jedem freien Bauanschluss ein blaues „+“ (`buildPorts`): 15 px hinter dem Anschluss in seiner Richtung nach außen mit
+  einer dünnen gestrichelten Führungslinie, so weit weiter nach außen geschoben, bis es die Skalier- und Drehgriffe
+  freilässt; das „+“ einer freien Nabe sitzt hinter der oberen rechten Ecke, damit sich das Element weiter an seiner
+  Mitte ziehen lässt (wie im COM-Add-in). Der Tooltip nennt, was dort andockt. Die Kontextleiste hält die „+“ und den
+  Drehgriff frei. Ein Klick öffnet das Einfügefeld am „+“ mit den Teilen, die dort andocken (`buildItems`, mit „passt“
+  markiert); die Wahl eines davon dockt es gekoppelt und ausgewählt an (`buildPlace`, ein Rückgängig-Schritt). Tippen
+  durchsucht die ganze Bibliothek; was dort nicht andockt, startet das normale Platzieren am Mauszeiger.
+- **Wellenende ziehen:** Ziehen des „+“ an einem Wellenende (`stretch`) zeigt das neue Ende auf der Wellenachse an
+  (Zeiger eingerastet, dann auf die Achse projiziert) und die Längenänderung neben dem Zeiger; beim Loslassen verlängert
+  oder kürzt `buildStretch` die Welle ohne Kopplung, die Teile darauf bleiben an ihrem Platz (ein Rückgängig-Schritt).
+- **Live-Vorschau der Kopplung:** Beim Ziehen oder Skalieren der Auswahl werden die Nachbarn, die die Kopplung beim
+  Loslassen verschiebt oder skaliert (kämmende Zahnräder, Teile auf einer Welle), blau gezeichnet (`couplingPreview` mit
+  `dx`/`dy` oder `sx`/`sy` um den Skalier-Bezugspunkt), gedrosselt auf etwa 15 Aktualisierungen pro Sekunde mit einer
+  letzten Aktualisierung für die Endposition. Loslassen, Esc oder Alt (freies Bearbeiten) entfernt sie. Drehen hat keine
+  Vorschau.
+- **Geisterstellungen:** Ein Glied eines selbst gebauten Koppelgetriebes mit F = 1 (`dof` oder eine Bahnkurve) erhält
+  einen Leistenknopf (Symbol `cmd-animate`), der vier gestrichelte graue Kopien der Kette über den Kurbelbereich als eine
+  Gruppe einfügt (`drawGhosts`, ein Rückgängig-Schritt).
+- **Maß zwischen zwei Teilen:** Bei genau zwei ausgewählten Teilen zeigt die Leiste für Mehrfachauswahl „Maß zwischen
+  beiden (Achsabstand)“ aus `arrangeOptions` (`dim`, Symbol `cmd-dimension`, Beschriftung von der Engine); ein Klick fügt
+  ein ausgerichtetes Maß ein, das an beiden Achsen andockt (ein Rückgängig-Schritt).
+
+Im Browser geprüft (dev.html, 2026-11-24): fünf „+“ an einem Stirnrad (vier zum Kämmen, eines an der Nabe), ein
+Gegenrad über das rechte „+“ angedockt; eine Welle von 120 auf 155 mm verlängert und mit echtem Mausziehen gekürzt,
+das Zahnrad darauf blieb an seinem Platz; ein Lager am Wellenende angedockt; ein getippter Suchtreffer startete das
+normale Platzieren; die blaue Vorschau des kämmenden Rads beim Ziehen und beim Skalieren seines Partners, beim
+Loslassen entfernt und gleich dem Ergebnis; zwölf Geisterglieder als eine Gruppe eingefügt; ein Achsabstandsmaß von
+70,7 mm zwischen zwei Zahnrädern.
 
 ## Bauen und starten
 
 ```powershell
 cd hosts/office-web
 npm ci
-npm test            # vitest (Manifest, Bibliotheksfilter, Kreismenü-Layout, Umbruch, Skalieren, Regeln der UI/UX-Runde)
+npm test            # vitest (Manifest, Bibliotheksfilter, Kreismenü-Layout, Umbruch, Skalieren, UI/UX-Runde, Bau-„+“-Regeln)
 npm run build       # Engine-Publish + Icons + Typprüfung + Vite-Build + Manifest -> dist/
 npm run dev         # Dev-Server auf Port 3000 (https, wenn office-addin-dev-certs installiert sind)
 ```
@@ -206,6 +241,7 @@ starten. Für Anwender den oben beschriebenen lokalen Installer verwenden.
 | Bühneninteraktion (Verschieben, Skalieren, Fangen, Kreismenü, schwebende Leiste) | umgesetzt, Browserprüfung teilweise |
 | Kreismenü mit „Mehr ▸“/„Einfügen ▸“, Textbearbeitung, Schwarz-Weiß, Skalieren um die Mitte | im Browser geprüft (dev.html, 2026-11-20) |
 | UI/UX-Runde: Spiegeln/Drehen nur mit Wirkung, Einfügefeld, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung, Bahnkurve zeichnen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
+| Bau-„+“ (andocken, Welle ziehen), Live-Vorschau der Kopplung, Geisterstellungen, Maß zwischen zwei Teilen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
 | Schreiben nativer Formen in PowerPoint | umgesetzt, **noch nicht in PowerPoint getestet** |
 | Lokaler Installer wie beim COM-Add-in (ohne Admin) | umgesetzt, Probelauf geprüft; echte Installation offen |
 | Webspace-Paket (Downloadseite, Manifest für eigene URL) | umgesetzt; über lokales HTTPS geprüft, echter Webspace offen |

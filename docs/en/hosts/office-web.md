@@ -53,6 +53,10 @@ undo step each (no step when nothing changes).
 | `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | selection-wide operations that change something `{ id, label, icon }` (`mview:<view>` one view for all with the mechanism kept, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); state (one undo step) |
 | `assembly` | `ids` | ids of the selection plus every object coupled with it (gear train, drive), selection first |
 | `trace` | `id`, `index` (default: last point), `max` (steps, default 72) | `{ points, closed }`: path of the link's point while the chain's crank turns; empty unless the chain has F = 1 |
+| `drawGhosts` | `id` (a link), `max` (default 4) | state; dashed grey copies of the chain over the crank's range, grouped |
+| `couplingPreview` | `ids`, `dx`/`dy` or `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: neighbours the coupling would move or scale, as SVG in page mm (`svg` empty when nothing follows); nothing changes |
+| `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch }]`: free build ports in page mm with the outward direction; `stretch` for shaft ends |
+| `buildItems`, `buildPlace`, `buildStretch` | `id`, `key` (port id), `lang`, `max`; `itemId`; `x`, `y` | library items that dock at the port (`fits` true); state with the docked part selected; state with the shaft end moved |
 | `update` | `object` (full document object as in `saveDocument`) | state |
 | `exporters`, `export` | `ids` (selection with its groups, else the page), `lang`; `itemId` (exporter id) | domain exports that apply `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (default: document setting), `background`, `padding` | `{ svg, width, height }` |
@@ -129,17 +133,47 @@ Follows the binding UX rules in the roadmap ("Plan 2026-11-24"). Pure rules in `
   snap target (docking point, snapped circle or segment).
 - **Draw the path:** a link of a self-built linkage with F = 1 (`trace` returns a path) offers "Draw the path"; it
   inserts the coupler curve of the link's end as a motion path (`kin.path`, or `kin.path.closed` for a closed curve;
-  an open path without arrowhead). This takes two undo steps (insert, then the points via `update`).
-- **Not in the web host:** build "+" handles on ports (gears, shafts) do not exist on the web stage, so there is nothing
-  to route into the insert box; fitting parts are placed with the snapping ghost instead of the COM add-in's
-  "placed where it fits" (`Fitting.Place` is not exposed by the engine API); explode and motion mode are COM-only.
+  an open path without arrowhead), one undo step (`drawTrace`).
+- **Not in the web host:** motion mode (dragging parts only the way they can move) is COM-only.
+
+## Remaining COM features (2026-11-24)
+
+Pure rules in `src/ui/buildlogic.ts`, unit-tested in `test/buildlogic.test.ts`.
+
+- **Build "+" on ports:** a single selected gear, ring gear, shaft, e-machine, engine or link shows a blue "+" at every
+  free build port (`buildPorts`): 15 px beyond the port along its outward direction with a thin dashed lead line,
+  pushed further out until it is clear of the resize and rotate handles; a free hub's "+" sits beyond the top right
+  corner, so the element can still be dragged by its centre (same as the COM add-in). The tooltip names what docks
+  there. The context bar keeps clear of the "+" and the rotate handle. A click opens the insert box at the "+" with the
+  parts that dock there (`buildItems`, marked "fits"); choosing one docks it, coupled and selected (`buildPlace`, one
+  undo step). Typing searches the whole library; anything that does not dock there starts the normal placement at the
+  pointer.
+- **Stretch a shaft end:** dragging the "+" at a shaft end (`stretch`) previews the new end on the shaft axis (pointer
+  snapped, then projected onto the axis) with the change in length next to the pointer; on release `buildStretch`
+  lengthens or shortens the shaft without coupling, so the parts on it keep their place (one undo step).
+- **Live coupling preview:** while dragging or resizing the selection, the neighbours the coupling will move or scale
+  on release (meshing gears, parts on a shaft) are drawn in blue (`couplingPreview` with `dx`/`dy`, or `sx`/`sy` about
+  the resize pivot), throttled to about 15 updates per second with a trailing update for the last position. Release,
+  Esc or Alt (free edit) clears it. Rotations have no preview.
+- **Ghost positions:** a link of a self-built linkage with F = 1 (`dof`, or a traced path) gets a bar button (icon
+  `cmd-animate`) that inserts four dashed grey copies of the chain over the crank's range as one group (`drawGhosts`,
+  one undo step).
+- **Dimension between two parts:** with exactly two parts selected, the multi-selection bar shows "Dimension between
+  the two (centre distance)" from `arrangeOptions` (`dim`, icon `cmd-dimension`, label from the engine); a click inserts
+  an aligned dimension docked on both axes (one undo step).
+
+Checked in the browser (dev.html, 2026-11-24): five "+" on a spur gear (four meshing, one hub), a meshing gear docked
+from the right "+"; a shaft lengthened from 120 to 155 mm and shortened by a real mouse drag with the gear on it kept in
+place; a bearing docked at the shaft end; a typed search item started the normal placement; the blue preview of the
+meshing gear while dragging and while resizing its partner, cleared on release, matching the result; twelve ghost
+links inserted as one group; a 70.7 mm centre distance dimension between two gears.
 
 ## Build and run
 
 ```powershell
 cd hosts/office-web
 npm ci
-npm test            # vitest (manifest, library filter, pie layout, label wrapping, resize, UI/UX round rules)
+npm test            # vitest (manifest, library filter, pie layout, label wrapping, resize, UI/UX round, build "+" rules)
 npm run build       # engine publish + icons + typecheck + vite build + manifest -> dist/
 npm run dev         # dev server on port 3000 (https if office-addin-dev-certs are installed)
 ```
@@ -191,6 +225,7 @@ For end users, use the local installer described above.
 | Stage interaction (move, scale, snap, pie menu, floating bar) | implemented, browser check partial |
 | Pie menu with "More ▸"/"Insert ▸", text editing, black and white, centred resize | verified in browser (dev.html, 2026-11-20) |
 | UI/UX round: context-only transforms, insert box, multi-selection bar, select assembly, snap labels, draw the path | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
+| Build "+" (dock, stretch), live coupling preview, ghost positions, dimension between two parts | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
 | Writing native shapes into PowerPoint | implemented, **not yet tested in PowerPoint** |
 | Local installer like the COM add-in (no admin) | implemented, dry run verified; real install pending |
 | Webspace package (download page, manifest for own URL) | implemented; checked over local HTTPS, real webspace pending |

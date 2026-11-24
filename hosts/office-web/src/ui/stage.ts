@@ -3,8 +3,9 @@
 // previews drags with SVG transforms and commits the result through the session.
 
 import type { Session } from "../engine/client";
-import type { CatalogItem, EditorState, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
+import type { BuildPortInfo, CatalogItem, EditorState, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
 import { t } from "../i18n";
+import { COUPLING_PREVIEW_MS, PORT_RADIUS_PX, Throttle, portPlusPosition, portTipKey, stretchTarget } from "./buildlogic";
 import { clamp, s, svgChildren, svgDataUrl, viewBoxOf } from "./dom";
 import { snapLabelAnchor } from "./uxlogic";
 
@@ -21,6 +22,8 @@ export interface StageHost {
   anchorEnabled(): boolean;
   /** "+" quick add (click on a triangle, or drag and drop at `at`). */
   quickAdd?(id: string, side: ChainSide, at?: Vec2): void;
+  /** Click on a build "+": the insert box at `client` with what docks at `port` of `id`. */
+  openPortInsert?(id: string, port: BuildPortInfo, client: Vec2): void;
   pointerMoved(clientX: number, clientY: number): void;
   report(error: unknown): void;
 }
@@ -29,16 +32,20 @@ interface Frame { cx: number; cy: number; w: number; h: number; rot: number }
 
 export type ChainSide = "left" | "top" | "right" | "bottom";
 
-type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide };
+type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide } | { kind: "port"; index: number };
+
+/** Change shown by the live coupling preview (engine `couplingPreview`): a move or a scale about a pivot. */
+type CouplingChange = { dx: number; dy: number } | { sx: number; sy: number; pivotX: number; pivotY: number };
 
 type Drag =
   | { kind: "move"; ids: string[]; start: Vec2; dx: number; dy: number; moved: boolean; startClient: Vec2; followers?: string[] }
-  | { kind: "scale"; ids: string[]; frame: Frame; sx: number; sy: number; single?: ObjectInfo; centred: boolean; last?: { p: Vec2; client: Vec2; free: boolean }; result?: ResizeResult }
+  | { kind: "scale"; ids: string[]; frame: Frame; sx: number; sy: number; single?: ObjectInfo; centred: boolean; last?: { p: Vec2; client: Vec2; free: boolean; alt: boolean }; result?: ResizeResult }
   | { kind: "rotate"; ids: string[]; frame: Frame; startAngle: number; delta: number }
   | { kind: "point"; obj: ObjectInfo; index: number; pos: Vec2 }
   | { kind: "marquee"; start: Vec2; cur: Vec2; add: boolean }
   | { kind: "pan"; startClient: Vec2; ox: number; oy: number }
-  | { kind: "chain"; id: string; side: ChainSide; from: Vec2; cur: Vec2; moved: boolean; centre: Vec2 };
+  | { kind: "chain"; id: string; side: ChainSide; from: Vec2; cur: Vec2; moved: boolean; centre: Vec2 }
+  | { kind: "port"; id: string; port: BuildPortInfo; plus: Vec2; startClient: Vec2; moved: boolean; to?: { x: number; y: number; delta: number } };
 
 const HANDLE_PX = 9;
 /** Quick-add triangles: distance outside the frame and size (px); the top one sits beyond the rotate handle. */
@@ -101,6 +108,13 @@ export class Stage {
   private readonly overlay: SVGGElement;
   private readonly guides: SVGGElement;
   private readonly ghost: SVGGElement;
+  /** Live coupling preview: neighbours that follow the dragged or resized selection, in blue (like COM). */
+  private readonly coupling: SVGGElement;
+  private readonly couplingThrottle = new Throttle((ids: string[], change: CouplingChange) => this.showCoupling(ids, change), COUPLING_PREVIEW_MS);
+  /** Build ports of the single selected element, fetched once per selection and revision. */
+  private ports?: { key: string; list: BuildPortInfo[] };
+  /** Page positions of the drawn "+" (same order as `ports.list`). */
+  private portPlus: Vec2[] = [];
   private readonly scaleLabelEl: HTMLDivElement;
   /** What a drag docks onto ("pitch circle", "axis", "pin 2"), next to the snap target. */
   private readonly snapLabelEl: HTMLDivElement;
@@ -132,7 +146,8 @@ export class Stage {
     this.guides = s("g", { class: "isk-guides" });
     this.overlay = s("g", { class: "isk-overlay" });
     this.ghost = s("g", { class: "isk-ghost" });
-    this.svg.append(defs, this.pageRect, this.gridRect, this.content, this.guides, this.overlay, this.ghost);
+    this.coupling = s("g", { class: "isk-coupling" });
+    this.svg.append(defs, this.pageRect, this.gridRect, this.content, this.coupling, this.guides, this.overlay, this.ghost);
     this.scaleLabelEl = document.createElement("div");
     this.scaleLabelEl.className = "isk-scale-label";
     this.scaleLabelEl.hidden = true;
@@ -266,15 +281,24 @@ export class Stage {
   }
 
   /** Selection frame (page mm) for the floating context bar. */
-  selectionScreenBox(): { left: number; top: number; right: number; bottom: number } | undefined {
+  selectionScreenBox(withHandles = false): { left: number; top: number; right: number; bottom: number } | undefined {
     const f = this.frameOf(this.host.state().selection);
     if (!f) return undefined;
     const pts = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => this.toClient(this.framePoint(f, u, v)));
+    if (withHandles) {
+      // The bar keeps clear of the rotate handle and the build "+" (they stay clickable).
+      const top = this.framePoint(f, 0, -1);
+      const up = rotateVec({ x: 0, y: -(ROTATE_PX + HANDLE_PX) / this.scale }, f.rot);
+      pts.push(this.toClient({ x: top.x + up.x, y: top.y + up.y }));
+      const r = PORT_RADIUS_PX + 2;
+      for (const c of this.portPlus.map((p) => this.toClient(p))) pts.push({ x: c.x - r, y: c.y - r }, { x: c.x + r, y: c.y + r });
+    }
     return { left: Math.min(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), right: Math.max(...pts.map((p) => p.x)), bottom: Math.max(...pts.map((p) => p.y)) };
   }
 
   drawOverlay(previewFrame?: Frame, previewPoints?: { obj: ObjectInfo; pts: Vec2[] }): void {
     this.overlay.replaceChildren();
+    this.portPlus = [];
     const st = this.host.state();
     const sel = st.selection;
     if (sel.length === 0 && !previewFrame) return;
@@ -292,6 +316,7 @@ export class Stage {
         c.dataset.handle = JSON.stringify({ kind: "point", index: i } satisfies HandleSpec);
         this.overlay.append(c);
       });
+      if (!previewPoints && !single.locked) this.drawPorts(single, pts, { x: single.bounds.x + single.bounds.w, y: single.bounds.y });
       return;
     }
     const f = previewFrame ?? this.frameOf(sel);
@@ -324,8 +349,10 @@ export class Stage {
         this.overlay.append(tri);
       }
     }
+    const handles: Vec2[] = [rh];
     for (const [u, v] of [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]) {
       const p = this.framePoint(f, u, v);
+      handles.push(p);
       const corner = u !== 0 && v !== 0;
       const r = s("rect", {
         class: `isk-handle ${corner ? "isk-handle-corner" : "isk-handle-side"}`,
@@ -335,6 +362,47 @@ export class Stage {
       r.dataset.handle = JSON.stringify({ kind: "scale", sx: u, sy: v } satisfies HandleSpec);
       this.overlay.append(r);
     }
+    if (single && !previewFrame) this.drawPorts(single, handles, { x: Math.max(...corners.map((c) => c.x)), y: Math.min(...corners.map((c) => c.y)) });
+  }
+
+  /** Build ports of a single selected element (engine `buildPorts`), cached per selection and revision. */
+  private portsOf(obj: ObjectInfo): BuildPortInfo[] {
+    if (!obj.known) return [];
+    const key = `${obj.id}@${this.host.state().revision}`;
+    if (this.ports?.key !== key) {
+      let list: BuildPortInfo[] = [];
+      try {
+        list = this.host.session().buildPorts(obj.id);
+      } catch {
+        list = [];
+      }
+      this.ports = { key, list };
+    }
+    return this.ports.list;
+  }
+
+  /**
+   * Blue "+" circles at the free build ports of the selected element (like the COM add-in): about 15 px beyond the port
+   * along its outward direction with a thin dashed lead line, pushed clear of the frame handles; a free hub's "+" sits
+   * beyond the top right corner. Click: insert box with what docks there; drag at a shaft end: stretch the shaft.
+   */
+  private drawPorts(obj: ObjectInfo, obstacles: Vec2[], topRight: Vec2): void {
+    const list = this.portsOf(obj);
+    const px = 1 / this.scale;
+    this.portPlus = [];
+    list.forEach((port, i) => {
+      const c = portPlusPosition(port, this.scale, obstacles, topRight);
+      this.portPlus.push(c);
+      this.overlay.append(s("line", { class: "isk-port-lead", x1: port.x, y1: port.y, x2: c.x, y2: c.y }));
+      const r = PORT_RADIUS_PX * px, k = r * 0.55;
+      const g = s("g", { class: `isk-port${port.stretch ? " isk-port-stretch" : ""}` });
+      g.dataset.handle = JSON.stringify({ kind: "port", index: i } satisfies HandleSpec);
+      g.dataset.port = port.id;
+      const title = s("title");
+      title.textContent = t(portTipKey(port));
+      g.append(title, s("circle", { cx: c.x, cy: c.y, r }), s("path", { d: `M${c.x - k} ${c.y}H${c.x + k}M${c.x} ${c.y - k}V${c.y + k}` }));
+      this.overlay.append(g);
+    });
   }
 
   private drawGuides(guides: SnapGuide[]): void {
@@ -362,6 +430,26 @@ export class Stage {
       if (transform) g.setAttribute("transform", transform);
       else g.removeAttribute("transform");
     }
+  }
+
+  // ------------------------------------------------------------------ live coupling preview
+
+  /** Draws the neighbours the coupling would move or scale (engine `couplingPreview`) while a drag is running. */
+  private showCoupling(ids: string[], change: CouplingChange): void {
+    if (!this.drag) return;
+    try {
+      const r = this.host.session().couplingPreview(ids, change);
+      if (r.svg) this.coupling.replaceChildren(...svgChildren(r.svg));
+      else this.coupling.replaceChildren();
+    } catch (e) {
+      this.coupling.replaceChildren();
+      this.host.report(e);
+    }
+  }
+
+  private clearCoupling(): void {
+    this.couplingThrottle.cancel();
+    this.coupling.replaceChildren();
   }
 
   // ------------------------------------------------------------------ insert ghost
@@ -501,6 +589,12 @@ export class Stage {
       this.drag = { kind: "point", obj: objs[0], index: h.index, pos: p };
       return;
     }
+    if (h.kind === "port" && objs.length === 1) {
+      const port = this.ports?.list[h.index];
+      const plus = this.portPlus[h.index];
+      if (port && plus) this.drag = { kind: "port", id: objs[0].id, port, plus, startClient: this.toClient(p), moved: false };
+      return;
+    }
     if (!f) return;
     if (h.kind === "chain" && objs.length === 1) {
       const u = h.side === "left" ? -1 : h.side === "right" ? 1 : 0;
@@ -540,6 +634,30 @@ export class Stage {
           this.guides.replaceChildren(s("line", { class: "isk-chain-preview", x1: d.from.x, y1: d.from.y, x2: p.x, y2: p.y }));
           return;
         }
+        case "port": {
+          if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < 5) return;
+          // Only a shaft end stretches; any other "+" is click-only.
+          if (!d.port.stretch) return;
+          d.moved = true;
+          let q = p;
+          if (this.host.snapEnabled() && !e.altKey) {
+            const r = this.host.session().snapPoint(p.x, p.y, [d.id], this.tolerance());
+            q = { x: r.x, y: r.y };
+            this.drawGuides(r.guides);
+          } else {
+            this.guides.replaceChildren();
+          }
+          const to = stretchTarget(d.port, q);
+          d.to = to;
+          // Preview: the shaft axis from the old end to the new one (longer: solid blue; shorter: the part that goes).
+          this.ghost.replaceChildren(
+            s("line", { class: `isk-stretch-preview${to.delta < 0 ? " is-shorter" : ""}`, x1: d.port.x, y1: d.port.y, x2: to.x, y2: to.y }),
+            s("circle", { class: "isk-stretch-end", cx: to.x, cy: to.y, r: 3 / this.scale }),
+          );
+          const mm = Math.round(to.delta * 10) / 10;
+          this.showScaleLabel(t("build.stretch", `${mm > 0 ? "+" : ""}${mm}`), { x: e.clientX, y: e.clientY });
+          return;
+        }
         case "pan":
           this.ox = d.ox - (e.clientX - d.startClient.x) / this.scale;
           this.oy = d.oy - (e.clientY - d.startClient.y) / this.scale;
@@ -566,13 +684,16 @@ export class Stage {
           }
           session.couple = true;
           d.dx = dx; d.dy = dy;
+          // Live coupling preview (meshing gears, belts, parts on a shaft) in blue, about 15 times a second; Alt: none.
+          if (!e.altKey && (dx !== 0 || dy !== 0)) this.couplingThrottle.push(d.ids, { dx, dy });
+          else this.clearCoupling();
           this.previewTransform(shown, `translate(${dx} ${dy})`);
           const f = this.frameOf(d.ids);
           if (f) this.drawOverlay({ ...f, cx: f.cx + dx, cy: f.cy + dy });
           break;
         }
         case "scale":
-          this.dragScale(d, p, e.shiftKey, e.ctrlKey || e.metaKey, { x: e.clientX, y: e.clientY });
+          this.dragScale(d, p, e.shiftKey, e.ctrlKey || e.metaKey, { x: e.clientX, y: e.clientY }, e.altKey);
           break;
         case "rotate": {
           const f = d.frame;
@@ -614,12 +735,15 @@ export class Stage {
    * centre by default and Ctrl switches to the opposite edge; other objects scale from the opposite edge, Ctrl about the
    * centre (same as the COM add-in). The label next to the pointer shows the size and the active mode.
    */
-  private dragScale(d: Extract<Drag, { kind: "scale" }>, p: Vec2, free: boolean, ctrl: boolean, client: Vec2): void {
+  private dragScale(d: Extract<Drag, { kind: "scale" }>, p: Vec2, free: boolean, ctrl: boolean, client: Vec2, alt: boolean): void {
     const f = d.frame;
-    d.last = { p, client, free };
+    d.last = { p, client, free, alt };
     const aboutCentre = ctrl !== d.centred;
     const r = resizeFrame(f, d.sx, d.sy, p, free, aboutCentre);
     d.result = r;
+    // Live coupling preview: neighbours that follow the resize (a meshing gear moving out), Alt: none.
+    if (!alt && (Math.abs(r.fx - 1) > 1e-6 || Math.abs(r.fy - 1) > 1e-6)) this.couplingThrottle.push(d.ids, { sx: r.fx, sy: r.fy, pivotX: r.pivot.x, pivotY: r.pivot.y });
+    else this.clearCoupling();
     // Preview: old frame → new frame in the frame's rotated axes.
     const tr = `translate(${r.cx} ${r.cy}) rotate(${f.rot}) scale(${r.fx} ${r.fy}) rotate(${-f.rot}) translate(${-f.cx} ${-f.cy})`;
     this.previewTransform(d.ids, tr);
@@ -661,7 +785,7 @@ export class Stage {
   private onModifier(e: KeyboardEvent): void {
     const d = this.drag;
     if (d?.kind !== "scale" || !d.last || (e.key !== "Control" && e.key !== "Meta")) return;
-    this.dragScale(d, d.last.p, d.last.free, e.ctrlKey || e.metaKey, d.last.client);
+    this.dragScale(d, d.last.p, d.last.free, e.ctrlKey || e.metaKey, d.last.client, d.last.alt);
   }
 
   private onUp(e: PointerEvent): void {
@@ -672,10 +796,21 @@ export class Stage {
     if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
     this.guides.replaceChildren();
     this.hideScaleLabel();
+    this.clearCoupling();
     if (!d) return;
     const session = this.host.session();
     try {
       switch (d.kind) {
+        case "port": {
+          this.ghost.replaceChildren();
+          if (!d.moved) { this.host.openPortInsert?.(d.id, d.port, this.toClient(d.plus)); break; }
+          // Stretching a shaft: the parts on it keep their place (no coupling for this edit, like the COM add-in).
+          if (d.to && Math.abs(d.to.delta) > 1e-6) {
+            session.couple = false;
+            this.host.apply(session.buildStretch(d.id, d.port.id, d.to.x, d.to.y), true);
+          } else this.drawOverlay();
+          break;
+        }
         case "move":
           if (d.moved && (Math.abs(d.dx) > 1e-9 || Math.abs(d.dy) > 1e-9)) this.host.apply(session.move(d.ids, d.dx, d.dy), true);
           else this.resetPreview([...d.ids, ...(d.followers ?? [])]);
@@ -729,6 +864,8 @@ export class Stage {
     this.drag = undefined;
     this.guides.replaceChildren();
     this.hideScaleLabel();
+    this.clearCoupling();
+    if (d?.kind === "port") this.ghost.replaceChildren();
     if (d && "ids" in d) this.resetPreview(d.ids);
     else this.drawOverlay();
   }

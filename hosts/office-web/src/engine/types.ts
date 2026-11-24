@@ -57,6 +57,15 @@ export interface ArrangeOption { id: string; label: string; icon: string }
 /** Path of a joint of a self-built linkage while its crank turns (engine `trace`); empty when the chain has F ≠ 1. */
 export interface TraceInfo { points: Vec2[]; closed: boolean }
 
+/**
+ * Build "+" port of an element (engine `buildPorts`): kind (Mesh, InnerMesh, AxisEnd, Hub, Pin, Bevel, Joint), position
+ * and outward direction in page mm; `stretch` for a shaft end that can be dragged longer or shorter.
+ */
+export interface BuildPortInfo { id: string; kind: string; x: number; y: number; dx: number; dy: number; stretch: boolean }
+
+/** Live coupling preview (engine `couplingPreview`): neighbours that would follow, as one SVG in page mm ("" for none). */
+export interface CouplingPreview { ids: string[]; svg: string }
+
 export interface EditorState {
   session: string;
   revision: number;

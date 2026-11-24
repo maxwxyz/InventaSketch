@@ -2,7 +2,7 @@
 // session. Runs inside PowerPoint (Office.js present) and standalone in a browser (dev.html).
 
 import { Engine, Session } from "../engine/client";
-import type { ActionInfo, ArrangeOption, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo, TraceInfo, TransformEffect } from "../engine/types";
+import type { ActionInfo, ArrangeOption, BuildPortInfo, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo, TraceInfo, TransformEffect } from "../engine/types";
 import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
@@ -13,6 +13,7 @@ import { applyTheme, resolveTheme } from "../theme";
 import { ContextBar, InlinePrompt, type BarCommand, type ChoiceEntry } from "./contextbar";
 import { h, svgDataUrl } from "./dom";
 import { hasIcon, icon } from "./icons";
+import { canDrawGhosts } from "./buildlogic";
 import { InsertBox, insertRows, rememberRecent } from "./insertbox";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
@@ -88,6 +89,7 @@ export class App {
       snapEnabled: () => this.settings.snap,
       anchorEnabled: () => this.settings.anchor,
       quickAdd: (id, side, at) => this.quickAdd(id, side, at),
+      openPortInsert: (id, port, at) => this.openPortInsert(id, port, at),
       pointerMoved: (x, y) => this.bar.pointerMoved(x, y),
       report: (e) => this.report(e),
     });
@@ -372,7 +374,7 @@ export class App {
   private updateBar(): void {
     const sel = this.st.selection;
     const key = sel.join(",");
-    const box = this.stage.selectionScreenBox();
+    const box = this.stage.selectionScreenBox(true);
     const suppressed = this.stage.dragging || this.pie.open || this.prompt.open || this.insertBox.open;
     if (sel.length !== 1 || sel[0] !== this.nextFor) this.nextFor = undefined;
     this.traceFor = undefined;
@@ -416,6 +418,7 @@ export class App {
       build.push({ id: "trace", label: t("ctx.trace"), icon: "cmd-trace" });
     }
     const info = this.dofOf(sel);
+    if (canDrawGhosts(this.objectById(sel[0])?.kind, info?.dof, trace)) build.push({ id: "ghosts", label: t("ctx.ghosts"), icon: "cmd-animate" });
     if (info?.dof != null) build.push({ id: "info:dof", label: t("ctx.dof", info.dof), icon: "", text: `F = ${info.dof}` });
     if (info?.explodable) build.push({ id: "explode", label: t("ctx.explode"), icon: "cmd-explode" });
     build.push(...assembly);
@@ -479,6 +482,10 @@ export class App {
     if (id === "makeIt") return this.openMakeIt({ x: clientX, y: clientY });
     if (id === "trace") return this.drawPath();
     if (id === "info:dof") return;
+    if (id === "ghosts" && sel.length === 1) {
+      this.edit((s) => s.drawGhosts(sel[0]));
+      return;
+    }
     if (id === "explode" && sel.length === 1) {
       this.edit((s) => s.explode(sel[0]));
       return;
@@ -545,6 +552,40 @@ export class App {
           }
         }
         this.startInsert(chosen, false);
+      },
+      closed: () => this.updateBar(),
+    });
+  }
+
+  /**
+   * The insert box at a build "+" (like the COM add-in): the parts that dock at that port first (`buildItems`); a pick
+   * among them docks it there, coupled and selected (`buildPlace`). Typing searches the whole library; anything else
+   * starts the normal placement at the pointer.
+   */
+  private openPortInsert(id: string, port: BuildPortInfo, at: { x: number; y: number }): void {
+    let fitting: SuggestionInfo[] = [];
+    try {
+      fitting = this.sessionObj.buildItems(id, port.id, lang(), 12);
+    } catch (e) {
+      this.report(e);
+    }
+    const docks = new Set(fitting.map((f) => f.id));
+    const item = this.itemLookup();
+    const recent = () => this.settings.recent ?? [];
+    if (this.pie.open) this.pie.close();
+    this.bar.hide();
+    this.insertBox.show({
+      at,
+      label: t("ins.port"),
+      rows: (text) => text.trim()
+        ? insertRows(this.sessionObj.search([id], text, lang(), recent(), 30).map((r) => (docks.has(r.id) ? { ...r, fits: true } : r)), recent(), item)
+        : insertRows(fitting, recent(), item),
+      choose: (itemId) => {
+        const chosen = item(itemId);
+        if (!chosen) return;
+        this.remember(itemId);
+        if (docks.has(itemId)) this.edit((s) => s.buildPlace(id, port.id, itemId));
+        else this.startInsert(chosen, false);
       },
       closed: () => this.updateBar(),
     });
