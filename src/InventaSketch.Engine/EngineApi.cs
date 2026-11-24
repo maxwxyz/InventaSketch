@@ -90,6 +90,13 @@ namespace InventaSketch.Engine
                 ["drawTrace"] = DrawTraceCore,
                 ["explode"] = ExplodeCore,
                 ["dof"] = DofCore,
+                ["drawGhosts"] = DrawGhostsCore,
+                ["dimensionBetween"] = DimensionBetweenCore,
+                ["couplingPreview"] = CouplingPreviewCore,
+                ["buildPorts"] = BuildPortsCore,
+                ["buildItems"] = BuildItemsCore,
+                ["buildPlace"] = BuildPlaceCore,
+                ["buildStretch"] = BuildStretchCore,
             };
         }
 
@@ -569,6 +576,7 @@ namespace InventaSketch.Engine
             if (Arrange.Changes(Arrange.Distribute(boxes, true))) Opt("dist:h", "Space evenly left to right", "Gleichmäßig von links nach rechts verteilen", IconIds.DistributeH);
             if (Arrange.Changes(Arrange.Distribute(boxes, false))) Opt("dist:v", "Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen", IconIds.DistributeV);
             if (Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context()).Count > 0) Opt("match", "Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil", IconIds.MatchFormat);
+            if (objs.Count == 2 && objs.All(o => !o.IsPointGeometry)) Opt("dim", "Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)", IconIds.Dimension);
             if (Arrange.Renumber(Numerals(s, objs)).Count > 0) Opt("renumber", "Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren", IconIds.Renumber);
             return list;
         }
@@ -593,6 +601,15 @@ namespace InventaSketch.Engine
                 {
                     var changed = Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context());
                     return Edits.Update(doc, changed.Select(o => o.Id).ToList(), o => changed.First(x => x.Id == o.Id));
+                }
+                if (action == "dim")
+                {
+                    if (objs.Count != 2 || Registry.Item("ann.dimension.aligned") is not { } dimItem) return doc;
+                    var ctx = s.Context();
+                    var m1 = Arrange.MeasurePoint(Registry, objs[0], ctx);
+                    var m2 = Arrange.MeasurePoint(Registry, objs[1], ctx);
+                    var dim = Registry.CreateBetween(dimItem, m1.P, m2.P) with { Attach = new[] { Attachments.For(objs[0], m1.P, m1), Attachments.For(objs[1], m2.P, m2) } };
+                    return Edits.Add(doc, s.PageId, dim);
                 }
                 if (action == "renumber")
                 {
@@ -713,6 +730,128 @@ namespace InventaSketch.Engine
                 dof = dof?.Dof,
                 explodable = o is not null && Assemblies.CanExplode(Registry, o),
             };
+        }
+
+        /// <summary>
+        /// Ghost positions of the self-built linkage of link <c>id</c>: <c>max</c> (default 4) dashed grey copies of the chain's
+        /// links spread over the crank's range, grouped; one undo step (<see cref="Linkage.Poses"/>).
+        /// </summary>
+        private object DrawGhostsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var poses = Linkage.Poses(Registry, s.Doc, id, Math.Max(1, r.Max ?? 4), s.Lang);
+            if (poses.Count == 0) return StateOf(s, r);
+            var style = new Style { Stroke = "#8C8C8C", Dash = DashStyle.Dash, StrokeWidth = 0.18 };
+            var ghosts = new List<SketchObject>();
+            foreach (var pose in poses)
+                foreach (var kv in pose)
+                    if (s.Doc.Get(kv.Key) is { } src)
+                        ghosts.Add(src with
+                        {
+                            Id = Ids.New(), Points = kv.Value.Select(q => new Vec2(Math.Round(q.X, 4), Math.Round(q.Y, 4))).ToList(),
+                            Attach = null, Released = null, GroupId = null, Style = style,
+                        });
+            s.Apply("Ghost positions", d => Edits.Group(Edits.Add(d, s.PageId, ghosts.ToArray()), ghosts.Select(g => g.Id).ToList()));
+            s.Select(ghosts.Select(g => g.Id).ToList());
+            return StateOf(s, r);
+        }
+
+        /// <summary>An aligned dimension between the axes of the two objects <c>ids</c>, docked on both; one undo step.</summary>
+        private object DimensionBetweenCore(EngineRequest r)
+        {
+            var s = S(r);
+            var ids = s.Resolve(r.Ids);
+            if (ids.Count != 2 || s.Doc.Get(ids[0]) is not { } o1 || s.Doc.Get(ids[1]) is not { } o2 || Registry.Item("ann.dimension.aligned") is not { } item)
+                return StateOf(s, r);
+            var ctx = s.Context();
+            var a1 = Arrange.MeasurePoint(Registry, o1, ctx);
+            var a2 = Arrange.MeasurePoint(Registry, o2, ctx);
+            var dim = Registry.CreateBetween(item, a1.P, a2.P);
+            dim = dim with { Attach = new[] { Attachments.For(o1, a1.P, a1), Attachments.For(o2, a2.P, a2) } };
+            s.Apply("Dimension", d => Edits.Add(d, s.PageId, dim));
+            s.Select(new[] { dim.Id });
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// Live coupling preview: the neighbours the coupling would move or scale if <c>ids</c> moved by <c>dx</c>/<c>dy</c>
+        /// (or scaled by <c>sx</c>/<c>sy</c> about <c>pivotX</c>/<c>pivotY</c>), as one SVG fragment in page millimetres
+        /// (<c>svg</c>, empty when nothing follows) plus their ids. Nothing is changed.
+        /// </summary>
+        private object CouplingPreviewCore(EngineRequest r)
+        {
+            var s = S(r);
+            var ids = s.Resolve(r.Ids);
+            if (ids.Count == 0) return new { ids = Array.Empty<string>(), svg = "" };
+            var after = r.Sx is not null || r.Sy is not null
+                ? Edits.Scale(s.Doc, ids, new Vec2(r.PivotX ?? 0, r.PivotY ?? 0), r.Sx ?? 1, r.Sy ?? 1)
+                : Edits.Move(s.Doc, ids, new Vec2(r.Dx ?? 0, r.Dy ?? 0));
+            var result = Coupling.Propagate(Registry, s.Doc, after, s.Lang);
+            var own = new HashSet<string>(ids, StringComparer.Ordinal);
+            var changed = result.Objects.Values.Where(o => !own.Contains(o.Id) && after.Get(o.Id) is { } x
+                && (x.Transform != o.Transform || x.Size != o.Size) && Registry.Type(o.Type) is not null).ToList();
+            if (changed.Count == 0) return new { ids = Array.Empty<string>(), svg = "" };
+            var ctx = new RenderContext(result, s.Lang);
+            var prims = changed.SelectMany(o => Registry.Render(o, ctx)).ToList();
+            return new { ids = changed.Select(o => o.Id).ToList(), svg = SvgRenderer.RenderPrimitives(prims) };
+        }
+
+        /// <summary>Build "+" ports of object <c>id</c> (<see cref="Building.Ports"/>): id, kind, position and outward direction.</summary>
+        private object BuildPortsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            return Building.Ports(Registry, s.Doc, id, s.Lang).Select(p => new
+            {
+                id = p.Id, kind = p.Kind.ToString(), x = p.At.X, y = p.At.Y, dx = p.Dir.X, dy = p.Dir.Y,
+                stretch = p.Kind == PortKind.AxisEnd,
+            }).ToList();
+        }
+
+        private BuildPort Port(EditorSession s, string id, string? portId)
+            => Building.Ports(Registry, s.Doc, id, s.Lang).FirstOrDefault(p => p.Id == portId) ?? throw new ArgumentException("Unknown port: " + portId);
+
+        /// <summary>Library items that dock at port <c>key</c> of object <c>id</c>, best first.</summary>
+        private object BuildItemsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            return Building.Items(Registry, s.Doc, id, Port(s, id, r.Key), Math.Max(1, r.Max ?? 12), s.Lang).Select(i => new SuggestionInfo
+            {
+                Id = i.Id, TypeId = i.TypeId, Name = i.Name.Get(lang), View = i.View, Category = i.Category,
+                Points = Registry.Type(i.TypeId)?.Geometry == GeometryKind.Points, Fits = true,
+            }).ToList();
+        }
+
+        /// <summary>Docks library item <c>itemId</c> at port <c>key</c> of object <c>id</c>, coupled; one undo step.</summary>
+        private object BuildPlaceCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var item = Registry.Item(r.ItemId ?? "") ?? throw new KeyNotFoundException($"Unknown library item '{r.ItemId}'.");
+            var port = Port(s, id, r.Key);
+            var placed = Building.Place(Registry, s.Doc, id, port, item, s.Lang);
+            if (placed is null) return StateOf(s, r);
+            s.Apply("Build " + item.Name.En, d =>
+            {
+                var doc = Edits.Add(d, s.PageId, placed);
+                // A pivot, joint or slider placed at a link's joint: the link docks onto it.
+                return port.Kind == PortKind.Joint && !placed.IsPointGeometry && Building.DockBack(Registry, doc, id, port, placed.Id, s.Lang) is { } docked ? docked : doc;
+            });
+            s.Select(new[] { placed.Id });
+            return StateOf(s, r);
+        }
+
+        /// <summary>Stretches the shaft end at port <c>key</c> of object <c>id</c> to <c>x</c>/<c>y</c>; one undo step.</summary>
+        private object BuildStretchCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var port = Port(s, id, r.Key);
+            s.Apply("Stretch", d => Building.StretchEnd(Registry, d, id, port, new Vec2(r.X ?? port.At.X, r.Y ?? port.At.Y), s.Lang));
+            return StateOf(s, r);
         }
 
         /// <summary>Library items offered as the next element after a quick add (same category, then companions).</summary>
