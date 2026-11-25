@@ -5,21 +5,27 @@ param($S)
 $addin = $S.AddIn
 Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes
 
-function Find-IskPrompt {
+function Find-IskPromptQuick {
+    # Owned dialogs appear below their owner (PowerPoint's frame) in UI Automation, so look one level deeper too.
     $root = [System.Windows.Automation.AutomationElement]::RootElement
     $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'InventaSketch')
-    for ($i = 0; $i -lt 40; $i++) {
-        $w = $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $cond)
+    $w = $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $cond)
+    if ($w) { return $w }
+    $frames = $root.FindAll([System.Windows.Automation.TreeScope]::Children, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ClassNameProperty, 'PPTFrameClass')))
+    foreach ($f in $frames) {
+        $w = $f.FindFirst([System.Windows.Automation.TreeScope]::Children, $cond)
         if ($w) { return $w }
-        Start-Sleep -Milliseconds 250
     }
     $null
 }
 
-function Find-IskPromptQuick {
-    $root = [System.Windows.Automation.AutomationElement]::RootElement
-    $cond = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'InventaSketch')
-    $root.FindFirst([System.Windows.Automation.TreeScope]::Children, $cond)
+function Find-IskPrompt {
+    for ($i = 0; $i -lt 40; $i++) {
+        $w = Find-IskPromptQuick
+        if ($w) { return $w }
+        Start-Sleep -Milliseconds 250
+    }
+    $null
 }
 
 function Click-IskButton($window, [string[]]$names) {
@@ -43,8 +49,15 @@ $shape.Left = ($S.App.ActivePresentation.PageSetup.SlideWidth - $shape.Width) / 
 $shape.Select(); Start-Sleep 2
 
 # OK with the mouse.
-$addin.Command('text') | Out-Null
+Write-IskInfo ("bar before: " + $addin.BarIds())
+$ran = $addin.Command('text')
+Write-IskInfo ("command text: $ran")
 $prompt = Find-IskPrompt
+if (-not $prompt) {
+    $root = [System.Windows.Automation.AutomationElement]::RootElement
+    $all = $root.FindAll([System.Windows.Automation.TreeScope]::Children, [System.Windows.Automation.Condition]::TrueCondition)
+    Write-IskInfo ("top windows: " + (($all | ForEach-Object { $_.Current.Name }) -join ' | '))
+}
 Assert-Isk $S ($null -ne $prompt) 'the text prompt opens'
 if ($prompt) {
     $edit = $prompt.FindFirst([System.Windows.Automation.TreeScope]::Descendants, (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::Edit)))

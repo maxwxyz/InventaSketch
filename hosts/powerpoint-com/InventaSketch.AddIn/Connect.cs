@@ -100,6 +100,11 @@ namespace InventaSketch.AddIn
                 _onSlide.PlanScaleRequested += SetPlanScale;
                 _onSlide.MotionToggled += () => _ribbon?.InvalidateControl("IskMotion");
                 // Units deleted on the slide (Delete key, cut, undo) also leave the sidebar editor.
+                _app.SlideSelectionChanged += _ =>
+                {
+                    try { InvalidateSlideStyle(); }
+                    catch (Exception ex) { Log.Error("Slide style controls", ex); }
+                };
                 _app.WindowSelectionChange += _ =>
                 {
                     try
@@ -270,8 +275,9 @@ namespace InventaSketch.AddIn
               .Append(X(T("Magnetic snapping: gear mesh, axes, points and alignment. Hold Alt to move freely.", "Magnetisches Einrasten: Zahneingriff, Achsen, Punkte und Fluchtlinien. Alt gedrückt halten für freies Bewegen."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskBar\" showLabel=\"false\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
-            sb.Append("<button id=\"IskMonochrome\" showLabel=\"false\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
-              .Append(X(T("Shows the InventaSketch elements of this slide in black and white: fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß, einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
+            // A toggle (maintainer 2026-11-25): pressed while the current slide is black and white; new elements take it.
+            sb.Append("<toggleButton id=\"IskMonochrome\" showLabel=\"false\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" getPressed=\"GetMonochromePressed\" onAction=\"OnMonochromeToggle\" supertip=\"")
+              .Append(X(T("Shows the InventaSketch elements of this slide in black and white: fills, text and highlighters included; elements inserted later take it too. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß, einschließlich Füllungen, Text und Markierungen; später eingefügte Elemente übernehmen es. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskAnchor\" showLabel=\"false\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskMotion\" showLabel=\"false\" label=\"").Append(L(T("Move", "Bewegen"))).Append("\" getImage=\"GetMotionImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
@@ -369,11 +375,11 @@ namespace InventaSketch.AddIn
                      .Append(imageMso is null ? "" : " imageMso=\"" + imageMso + "\"").Append(" onAction=\"OnToolsMenu\" />");
             // The InventaSketch logo marks the menu (maintainer 2026-11-25); modules, line weights and accent colour live here.
             sb.Append("<menu id=\"IskToolsMenu\" showLabel=\"false\" label=\"").Append(L(T("Extras", "Extras"))).Append("\" getImage=\"GetLogoSmallImage\" itemSize=\"normal\">");
+            AppendLineGroupMenu(sb);
+            AppendAccentMenu(sb);
             sb.Append("<button id=\"IskMenuModules\" label=\"").Append(L(T("Modules \u2026", "Module \u2026"))).Append("\" imageMso=\"ApplicationOptionsDialog\" onAction=\"OnToolsMenu\" supertip=\"")
               .Append(X(T("Choose which modules the ribbon and the library show (for example only mechanics and annotation).",
                           "Ausw\u00e4hlen, welche Module Men\u00fcband und Bibliothek zeigen (zum Beispiel nur Mechanik und Beschriftung)."))).Append("\" />");
-            AppendLineGroupMenu(sb);
-            AppendAccentMenu(sb);
             sb.Append("<menuSeparator id=\"IskMenuSep0\" />");
             Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
             Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
@@ -413,7 +419,7 @@ namespace InventaSketch.AddIn
             Button("IskMenuImport", T("Import \u2026", "Importieren \u2026"), "ImportTextFile", false,
                 T("CSV/TSV into the selected chart (or a new one), GeoJSON/GPX as map routes and markers, SVG/DXF drawings as editable shapes.",
                   "CSV/TSV in das ausgew\u00e4hlte Diagramm (oder ein neues), GeoJSON/GPX als Kartenrouten und Marker, SVG-/DXF-Zeichnungen als bearbeitbare Formen."));
-            sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" supertip=\"")
+            sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" invalidateContentOnDrop=\"true\" supertip=\"")
               .Append(X(T("Bill of materials, connection graph, netlist or reference sign list of the selection or the slide.",
                           "St\u00fcckliste, Verbindungsgraph, Netzliste oder Bezugszeichenliste der Auswahl oder der Folie."))).Append("\" />");
             sb.Append("</group>");
@@ -494,20 +500,49 @@ namespace InventaSketch.AddIn
             Log.Info($"Plan scale 1:{value} for {units.Count} unit(s)");
         }
 
-        /// <summary>Units the export works on: the selected InventaSketch units, else all units of the current slide.</summary>
-        private List<OnSlide.SketchUnit> ExportUnits()
+        /// <summary>
+        /// Units the export works on (maintainer 2026-11-25: always slide, selection or multiple selection): the selected
+        /// InventaSketch units – also when text inside one is being edited, when a shape inside a group is selected, and
+        /// units inside PowerPoint groups – else every unit of the current slide (also inside groups).
+        /// </summary>
+        private List<OnSlide.SketchUnit> ExportUnits() => ExportScope().Units;
+
+        private (List<OnSlide.SketchUnit> Units, bool Selection) ExportScope()
         {
             var units = new List<OnSlide.SketchUnit>();
-            if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return units;
+            if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return (units, false);
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            void Collect(PowerPoint.Shape s)
+            {
+                if (OnSlide.SketchUnits.IsUnit(s))
+                {
+                    if (OnSlide.SketchUnits.Read(s) is { } u && seen.Add(u.Id)) units.Add(u);
+                    return;
+                }
+                if (s.Type == Office.MsoShapeType.msoGroup)
+                    foreach (PowerPoint.Shape c in s.GroupItems) Collect(c);
+            }
             try
             {
                 var sel = _app.ActiveWindow.Selection;
-                if (sel.Type is PowerPoint.PpSelectionType.ppSelectionShapes)
+                if (sel.Type is PowerPoint.PpSelectionType.ppSelectionShapes or PowerPoint.PpSelectionType.ppSelectionText)
+                {
                     foreach (PowerPoint.Shape s in sel.ShapeRange)
-                        if (OnSlide.SketchUnits.Read(s) is { } u) units.Add(u);
+                    {
+                        // A shape picked inside a unit (child selection) stands for its unit.
+                        var shape = s;
+                        try { if (s.Child == Office.MsoTriState.msoTrue) shape = s.ParentGroup; } catch { /* not a child */ }
+                        Collect(shape);
+                    }
+                    if (sel.HasChildShapeRange)
+                        foreach (PowerPoint.Shape c in sel.ChildShapeRange)
+                            try { Collect(c.ParentGroup); } catch { /* no parent */ }
+                }
             }
             catch (Exception ex) { Log.Error("Export selection", ex); }
-            return units.Count > 0 ? units : OnSlide.SketchUnits.All(slide);
+            if (units.Count > 0) return (units, true);
+            foreach (PowerPoint.Shape s in slide.Shapes) Collect(s);
+            return (units, false);
         }
 
         /// <summary>"Export data ▸": the domain exports that apply to the selection or the slide (built when the menu opens).</summary>
@@ -516,9 +551,16 @@ namespace InventaSketch.AddIn
             var sb = new StringBuilder("<menu xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\">");
             try
             {
-                var doc = OnSlide.SketchUnits.Combined(ExportUnits());
+                var (units, selection) = ExportScope();
+                var doc = OnSlide.SketchUnits.Combined(units);
                 var objects = doc.ObjectsOn(doc.Pages[0]).ToList();
                 var exporters = _registry is null ? new List<IExporter>() : Exports.For(_registry, doc, objects).ToList();
+                // What the export covers, stated first: the selection (one or several elements) or the whole slide.
+                var scope = selection
+                    ? (units.Count == 1 ? T("Selection: 1 element", "Auswahl: 1 Element") : T($"Selection: {units.Count} elements", $"Auswahl: {units.Count} Elemente"))
+                    : T($"Slide: {units.Count} element(s)", $"Folie: {units.Count} Element(e)");
+                sb.Append("<button id=\"IskExportScope\" label=\"").Append(L(scope)).Append("\" enabled=\"false\" />");
+                sb.Append("<menuSeparator id=\"IskExportSep\" />");
                 if (exporters.Count == 0)
                     sb.Append("<button id=\"IskExportNone\" label=\"").Append(L(T("Nothing to export on this slide", "Auf dieser Folie gibt es nichts zu exportieren"))).Append("\" enabled=\"false\" />");
                 var i = 0;
@@ -538,14 +580,17 @@ namespace InventaSketch.AddIn
                 if (_registry is null || _app is null) return;
                 var exporter = Exports.All(_registry).FirstOrDefault(e => e.Id == control.Tag);
                 if (exporter is null) return;
-                var doc = OnSlide.SketchUnits.Combined(ExportUnits());
+                var (units, selection) = ExportScope();
+                var doc = OnSlide.SketchUnits.Combined(units);
                 var text = exporter.Export(_registry, doc, doc.ObjectsOn(doc.Pages[0]).ToList(), _lang);
+                var slideNo = CurrentSlide(_app) is PowerPoint.Slide cs ? cs.SlideIndex : 0;
+                var scopeName = selection ? T("selection", "Auswahl") : T("slide ", "Folie ") + slideNo;
                 Clipboard.SetText(text.Length == 0 ? " " : text);
                 var presentation = _app.ActivePresentation;
                 using var dialog = new SaveFileDialog
                 {
                     Filter = $"{exporter.Name.Get(_lang)}|*.{exporter.Extension}|{T("All files", "Alle Dateien")}|*.*",
-                    FileName = System.IO.Path.GetFileNameWithoutExtension(presentation.Name) + " - " + exporter.Name.Get(_lang).Split('(')[0].Trim() + "." + exporter.Extension,
+                    FileName = System.IO.Path.GetFileNameWithoutExtension(presentation.Name) + " - " + scopeName + " - " + exporter.Name.Get(_lang).Split('(')[0].Trim() + "." + exporter.Extension,
                     InitialDirectory = string.IsNullOrEmpty(presentation.Path) ? Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments) : presentation.Path,
                     OverwritePrompt = true,
                 };
@@ -1074,14 +1119,36 @@ namespace InventaSketch.AddIn
             }
         }
 
-        public void OnMonochrome(Office.IRibbonControl control)
+        /// <summary>
+        /// Black and white, line weights and accent colour belong to the slide: their pressed states are read again when
+        /// another slide becomes current. Snap, bar, anchor and motion are user settings and stay as they are.
+        /// </summary>
+        private void InvalidateSlideStyle()
+        {
+            if (_ribbon is null) return;
+            _ribbon.InvalidateControl("IskMonochrome");
+            foreach (var g in Style.LineGroups)
+                _ribbon.InvalidateControl("IskLineGroup" + g.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', '_'));
+            _ribbon.InvalidateControl("IskAccentNone");
+            foreach (var (id, _, _) in Accents.Presets) _ribbon.InvalidateControl("IskAccent_" + id);
+        }
+
+        /// <summary>Pressed state of the black-and-white toggle: the current slide's style.</summary>
+        public bool GetMonochromePressed(Office.IRibbonControl control)
+        {
+            try { return _app is not null && CurrentSlide(_app) is PowerPoint.Slide slide && OnSlide.SlideStyle.Current(slide).Mono; }
+            catch { return false; }
+        }
+
+        public void OnMonochromeToggle(Office.IRibbonControl control, bool pressed) => SetMonochrome(pressed);
+
+        /// <summary>Black and white for the current slide (slide style, so later elements take it) and its units; one undo step.</summary>
+        private void SetMonochrome(bool on)
         {
             try
             {
                 if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return;
                 var units = OnSlide.SketchUnits.All(slide);
-                if (units.Count == 0) return;
-                var on = units.Any(u => !u.Doc.Settings.Monochrome);
                 _app.StartNewUndoEntry();
                 // Slide-wide: new elements on the slide take it too.
                 OnSlide.SlideStyle.Write(slide, OnSlide.SlideStyle.Current(slide) with { Mono = on });
@@ -1092,10 +1159,11 @@ namespace InventaSketch.AddIn
                     OnSlide.SketchUnits.Replace(slide, u, doc, _registry, _lang);
                 }
                 Log.Info($"Black and white {(on ? "on" : "off")} for {units.Count} unit(s)");
+                _ribbon?.InvalidateControl("IskMonochrome");
             }
             catch (Exception ex)
             {
-                Log.Error("OnMonochrome", ex);
+                Log.Error("SetMonochrome", ex);
             }
         }
         /// <summary>Line group of the current slide (its style, else the first unit's, else the standard 0.5).</summary>
