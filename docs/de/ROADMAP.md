@@ -431,6 +431,14 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
   untere Zeile der Gruppe Layout: Auswahlbereich, Bild einfügen, Zuschneiden; die drei Beispielabbildungen des
   Maintainers sind aus der Bibliothek (stattdessen eine neutrale Prinzipabbildung; die Beispiele bleiben über ihre Id
   erreichbar).
+- **Vollständiges UI/UX-Review der Interaktion mit allen Elementen (Maintainer 25.11.2026, höchste Priorität):** ein
+  durchgängiges Konzept, was man wo findet und wie man es bedient – direktes Bearbeiten (Punkte, Enden, Grenz- und
+  Wertlinien in Diagrammen ziehen, skalieren, drehen), Einrasten, neu Einrasten und Lösen, Verbinden und Weiterbauen,
+  passende Elemente einfügen, Ansichtswechsel, Dateneingabe; was an das Element (Griffe), in die Kontextleiste (wenige
+  klare Piktogramme), ins Kreismenü (vollständig, beschriftet, feste Sektoren), ins Ribbon und in die Seitenleiste gehört;
+  eine Bildsprache für Griffe und Zustände (verankert, abhängig, eingerastet); Rückmeldung, was sich mitbewegt; große
+  Trefferflächen, wenig Text, verständlich für neue und ältere Anwender. Konzept: docs/de/design/interaction-ux.md (in
+  Arbeit), dann COM, Web, LibreOffice.
 - Überprüfung von Kontextleiste, Kreismenü und Griffen („wichtiger Punkt“): Griffe dürfen sich nie überlagern (kurze
   Rohre und Kabel), ein „+“ je Bedeutung, jeder Eintrag in Leiste und Kreismenü erklärt sich selbst, Suchfenster schließen
   bei Klick außerhalb, Tabellen bekommen „+“ an jeder Seite für Zeilen und Spalten. In Arbeit (Entwurfsnotiz

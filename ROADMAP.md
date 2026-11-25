@@ -389,6 +389,14 @@ in the drawing).
   PowerPoint, InventaSketch elements through the style `Caps`, model text keeps its case); Layout bottom row: selection
   pane, picture insert, crop; the maintainer's three example figures left the library (one neutral principle figure
   instead; the examples stay resolvable by id).
+- **Complete UI/UX review of the interaction with every element (maintainer 2026-11-25, top priority):** one
+  consistent concept for what is found where and how it is operated – direct manipulation (drag points, ends, limit and
+  value lines in charts, resize, rotate), snapping, re-snapping and detaching, connecting and chain building, insert
+  fitting elements, view switches, data entry; what goes on the element (handles), into the floating bar (few clear
+  pictograms), into the pie menu (complete, labelled, fixed sectors), into the ribbon and the sidebar; one visual language
+  for handles and states (attached, dependent, snapped); feedback on what moves along; large hit targets, little text,
+  understandable for new and older users. Concept: docs/en/design/interaction-ux.md (in progress), then COM, web,
+  LibreOffice.
 - Overlay bar, pie menu and handles review ("important point"): handles must never overlap (short pipes and cables),
   one "+" per meaning, every bar/pie entry explains itself, search popups close on a click outside, tables get "+" on
   every side for rows and columns. In progress (design note docs/en/design/overlay-ux.md).
