@@ -417,7 +417,8 @@ Elemente, wie in Slidemax. Struktur, Farbe und Text nutzen Office-eigene Steuere
 übertragen, Schrift-/Füll-/Konturfarbe, Schrift, Größe, fett … Aufzählungen); Layout ergänzt Anordnen, Gruppieren,
 eigene Knöpfe für gleiche Höhe/Breite/Größe, Formgröße, Ausrichten und Verteilen (zur Auswahl, eine einzelne Form zur
 Folie) und Tauschen (aus Slidemax übernommen). Die Fachmodule sind je ein großes Menü in „Elemente“, damit das Register
-auf Laptop-Bildschirme passt (schmale Fenster klappen Layout und Elemente zu Menüs zusammen). Formatierungen mit diesen
+auf Laptop-Bildschirme passt (schmale Fenster klappen Layout und Elemente zu Menüs zusammen); Grundrisse und TGA teilen
+sich ein Menü „Gebäude & TGA“ (25.11.2026), weil beide auf demselben Plan gezeichnet werden. Formatierungen mit diesen
 Steuerelementen an InventaSketch-Einheiten bleiben erhalten: jede gezeichnete Form merkt sich ihr gerendertes Aussehen
 (Tag `ISK_FMT`), beim Einlesen werden Abweichungen (Linienfarbe und -stärke, Füllung, Textfarbe, Schrift,
 Größenfaktor, fett/kursiv/unterstrichen) in den Objektstil übernommen (`NativeFormat`). Geprüft: ein rot gefärbtes

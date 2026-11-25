@@ -24,6 +24,27 @@ unten Rotortemperatur mit gestrichelter und durchgezogener Kurve, schraffiertem 
 „Grenztemperatur“, Maßpfeil „Zeitgewinn“ und Bezugszeichen 40–46; gemeinsame Zeitachse, senkrechte Phasenlinien durch
 beide Diagramme).
 
+Weitere Prüffiguren (Maintainer, 25.11.2026):
+
+- **Zeitdiagramm einer Entscheidungslogik** (drei Panels übereinander auf einer Zeitachse, Prinzipdarstellung ohne
+  Skalenbeschriftung): eine steigende Kurve gegen eine gestrichelte Grenzlinie mit Beschriftung und Bezugszeichen an der
+  Achse; eine senkrechte gestrichelte Markierung („t_krit“) durch alle Panels und ein waagerechter Zeitpfeil
+  „t_krit“ zwischen zwei Panels; im mittleren Panel eine durchgezogene und eine gestrichelte Kurve, schraffiert nur dort,
+  wo die eine über der anderen liegt; Rechteckpulse (durchgezogen und gestrichelt) im unteren Panel; Bezugszeichen 63–69
+  mit Bezugslinien; zentrierter Figurentitel.
+- **Temperatur über der Zeit** (Datenachsen mit Teilung, nur waagerechtes gepunktetes Gitter): mehrere waagerechte
+  gestrichelte Referenzlinien mit Beschriftung („Heizstempel (15)“, „Betriebsmaximum 60 Grad C“); Kurven, die sich einer
+  Asymptote nähern (PT1/Exponential), enden und später weiterlaufen (Lücke); offene Kreismarker auf einer Kurve mit
+  Wertbeschriftung („31 s“, „77 s“); senkrechter Maßpfeil zwischen zwei Niveaus („35 K“); Beschriftungen an den Kurven;
+  Bildunterschrift unter dem Diagramm.
+- **Flussdiagramm** (Modul Diagramme, nicht Charts): Startkreis, Entscheidungen mit Ja/Nein-Ausgängen, Prozesskästen mit
+  zweizeiligem Text, Rücksprung in die Seite eines früheren Kastens, gestrichelter Notizkasten mit gestricheltem Pfeil,
+  Ausgänge, die seitlich in einen Kasten münden, Endpunkt als Doppelkreis.
+
+Damit gehört zu Stufe 2 auch: Prinzipachsen (Pfeil, ohne Teilung) je Panel, Markierungen über alle Panels, Pfeile
+zwischen Panels, Bereiche „wo Kurve A über Kurve B liegt“, Punktmarker mit Beschriftung, Maßpfeile zwischen zwei
+y-Werten, Lücken in Kurven; zu Stufe 3 Pulse und asymptotische Kurven.
+
 ## Modulschnitt
 
 - **Diagramme & Funktionen** (Modul `charts`): Datendiagramme, Kennlinien und Kennfelder, Prinzipdiagramme,
