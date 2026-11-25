@@ -457,6 +457,11 @@ Review group (2026-11-25): the commands that work on the finished drawing sit to
 *Compatibility* (the drawing-rules check of DPMA, EPO, PCT and USPTO; renamed from its earlier name) and *Compare*
 (large), *Import …* and *Export data*; the group and the check have their own pictograms. Same names as in LibreOffice.
 
+Clean slides (2026-11-25): Review ▸ "Clean slides …" asks for the scope (selected elements, current slide, all slides),
+the chart mode (normalise, randomise, keep values) and options (rename categories, replace texts, remove metadata, seed);
+the engine cleans every unit in one undo step and a report states what changed and the seed. Native PowerPoint charts,
+tables, notes, comments and document properties are not touched (scenario `clean-slides`).
+
 Dialogs over the selected element (fixed 2026-11-25): the on-slide hooks leave the mouse and keyboard alone while a
 window other than PowerPoint's main window is in front (text prompt, "Change to …" box, message boxes, other programs),
 so OK and Cancel of a dialog lying over the selected element work (scenario `dialog-over-unit`).

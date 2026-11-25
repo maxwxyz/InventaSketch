@@ -42,6 +42,7 @@
 | Sketch a curve into a chart (recognised or smoothed) | verified 2026-11-25 (scenario `chart-sketch`, real mouse) | bar command and stage trail through engine `sketchCurve`; not run in the browser | not yet (needs a drawing interaction) |
 | Chart from picture (clipboard or file) | verified 2026-11-25 (scenario `chart-picture`) | import button and Ctrl+V through engine `chartFromPicture`; not run in the browser | not yet (engine method available) |
 | Chart data table editor | verified 2026-11-25 (scenario `chart-data-editor`) | inspector / one-line data input | one-line data input |
+| Clean slides for sharing (charts normalised or randomised, texts, metadata) | verified 2026-11-25 (Review ▸ Clean slides …, scenario `clean-slides`) | engine `sanitize`, no UI yet | engine `sanitize`, no UI yet |
 | Exports: LaTeX (TikZ), matplotlib, pgfplots, editable SVG | TikZ/matplotlib/pgfplots in Review ▸ Export data (engine exporters); not yet run with LaTeX/matplotlib | engine exporters; SVG export with named groups | engine exporters |
 | Import SVG/DXF drawings as editable shapes | verified 2026-11-25 (scenario `vector-import`, Review ▸ Import) | import button (engine `importVector`), checked in the browser dev page | menu command, checked 2026-11-25 (`integration_test.py`) |
 | Live coupling preview while dragging | partial: implemented 2026-11-24, checked by eye (blue ghost), no scenario assertion | partial: implemented 2026-11-25, browser dev page | unsupported (needs the overlay; no live drag events) |

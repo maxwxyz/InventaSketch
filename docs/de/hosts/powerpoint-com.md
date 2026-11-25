@@ -458,6 +458,12 @@ Registerkarte – *Kompatibilität* (die Prüfung gegen die Zeichnungsvorschrift
 benannt) und *Vergleichen* (groß), *Importieren …* und *Daten exportieren*; Gruppe und Prüfung haben eigene Symbole.
 Gleiche Namen wie in LibreOffice.
 
+Folien bereinigen (25.11.2026): Prüfen ▸ „Folien bereinigen …“ fragt nach dem Bereich (ausgewählte Elemente, aktuelle
+Folie, alle Folien), dem Diagrammmodus (normieren, zufällig verändern, Werte behalten) und Optionen (Kategorien umbenennen,
+Texte ersetzen, Metadaten entfernen, Startwert); die Engine bereinigt jede Einheit in einem Rückgängig-Schritt, ein
+Bericht nennt die Änderungen und den Startwert. Native PowerPoint-Diagramme, -Tabellen, Notizen, Kommentare und
+Dokumenteigenschaften bleiben unverändert (Szenario `clean-slides`).
+
 Dialoge über dem ausgewählten Element (behoben 25.11.2026): Die Hooks auf der Folie lassen Maus und Tastatur in Ruhe,
 solange ein anderes Fenster als PowerPoints Hauptfenster vorne ist (Texteingabe, „Ändern in …“, Meldungen, andere
 Programme); OK und Abbrechen eines Dialogs über dem ausgewählten Element funktionieren (Szenario `dialog-over-unit`).

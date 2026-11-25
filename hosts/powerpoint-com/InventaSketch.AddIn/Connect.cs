@@ -452,6 +452,9 @@ namespace InventaSketch.AddIn
             Button("IskChartFromPicture", T("Chart from picture \u2026", "Diagramm aus Bild \u2026"), "PictureInsertFromFile", false,
                 T("Turns a picture of a chart (from the clipboard, else a file: PNG, JPG, BMP, GIF) into an editable chart: bars and columns, or traced curves; values from the axis labels when they can be read.",
                   "Macht aus dem Bild eines Diagramms (aus der Zwischenablage, sonst einer Datei: PNG, JPG, BMP, GIF) ein bearbeitbares Diagramm: Balken und S\u00e4ulen oder nachgezeichnete Kurven; Werte aus der Achsbeschriftung, wenn sie lesbar ist."));
+            sb.Append("<button id=\"IskCleanSlides\" label=\"").Append(L(T("Clean slides …", "Folien bereinigen …"))).Append("\" getImage=\"GetPaintedImage\" onAction=\"OnToolsMenu\" supertip=\"")
+              .Append(X(T("Before slides are shared: charts normalised (same proportions, values unrecognisable) or randomised (plausible values, same look); optionally categories renamed, texts replaced, metadata removed. For the selection, the slide or all slides; one undo step.",
+                          "Bevor Folien weitergegeben werden: Diagramme normiert (gleiche Verhältnisse, Werte unkenntlich) oder zufällig verändert (plausible Werte, gleiches Aussehen); wahlweise Kategorien umbenannt, Texte ersetzt, Metadaten entfernt. Für Auswahl, Folie oder alle Folien; ein Rückgängig-Schritt."))).Append("\" />");
             sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" invalidateContentOnDrop=\"true\" supertip=\"")
               .Append(X(T("Bill of materials, connection graph, netlist or reference sign list of the selection or the slide.",
                           "St\u00fcckliste, Verbindungsgraph, Netzliste oder Bezugszeichenliste der Auswahl oder der Folie."))).Append("\" />");
@@ -484,6 +487,7 @@ namespace InventaSketch.AddIn
                     case "IskMenuPlanScale": SetPlanScale(); break;
                     case "IskMenuImport": ImportDataFile(); break;
                     case "IskChartFromPicture": ChartFromPictureCommand(); break;
+                    case "IskCleanSlides": CleanSlidesCommand(); break;
                     case "IskMenuCompare":
                         if (CompareWithPrevious() is { } note) MessageBox.Show(note, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         break;
@@ -910,6 +914,20 @@ namespace InventaSketch.AddIn
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     switch (control.Id)
                     {
+                        case "IskCleanSlides":
+                            {
+                                // A sheet with an eraser (clean slides).
+                                var k = size / 32f;
+                                g.ScaleTransform(k, k);
+                                using var pen = new Pen(ink, 2f) { LineJoin = System.Drawing.Drawing2D.LineJoin.Round };
+                                g.DrawLines(pen, new[] { new PointF(5, 3), new PointF(18, 3), new PointF(24, 9), new PointF(24, 20), new PointF(5, 20), new PointF(5, 3) });
+                                using var eraser = new SolidBrush(Color.FromArgb(214, 72, 72));
+                                var pts = new[] { new PointF(14, 24), new PointF(23, 15), new PointF(30, 22), new PointF(21, 31) };
+                                g.FillPolygon(eraser, pts);
+                                g.DrawPolygon(pen, pts);
+                                g.DrawLine(pen, 17.5f, 27.5f, 26.5f, 18.5f);
+                                break;
+                            }
                         default:
                             {
                                 // A sheet with a check mark (review / compatibility).
@@ -1363,6 +1381,35 @@ namespace InventaSketch.AddIn
             }
             Log.Info("Imported chart data from " + System.IO.Path.GetFileName(fileName));
             return null;
+        }
+
+        /// <summary>"Clean slides …": the dialog, then the engine's cleaning of the chosen scope in one undo step and a report.</summary>
+        private void CleanSlidesCommand()
+        {
+            try
+            {
+                if (_app is null || _registry is null || CurrentSlide(_app) is null) return;
+                var hasSelection = ExportScope().Selection;
+                var choice = CleanSlides.Ask(hasSelection, _lang, null);
+                if (choice is null) return;
+                _app.StartNewUndoEntry();
+                var report = CleanSlides.Run(_app, _registry, choice, _lang);
+                MessageBox.Show(report, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Clean slides", ex);
+            }
+        }
+
+        /// <summary>Clean slides without the dialog (automation).</summary>
+        internal string CleanSlidesAuto(string scope, string mode, int seed)
+        {
+            if (_app is null || _registry is null) return "";
+            var s = scope == "selection" ? CleanSlides.Scope.Selection : scope == "presentation" ? CleanSlides.Scope.Presentation : CleanSlides.Scope.Slide;
+            var options = new SanitizeOptions { Mode = SanitizeOptions.ParseMode(mode) ?? SanitizeMode.Normalised, Seed = seed, StripMeta = true, Lang = _lang };
+            _app.StartNewUndoEntry();
+            return CleanSlides.Run(_app, _registry, new CleanSlides.Choice(s, options), _lang);
         }
 
         private static bool IsPictureFile(string path)

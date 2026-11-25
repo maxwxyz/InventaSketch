@@ -168,6 +168,20 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Clean slides without the dialog (UI tests): scope "selection"|"slide"|"presentation", mode "normalised"|"randomised"|"none"; returns the report.</summary>
+        public string CleanSlides(string scope, string mode, int seed)
+        {
+            try
+            {
+                return _connect.CleanSlidesAuto(scope, mode, seed);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.CleanSlides", ex);
+                return "error: " + ex.Message;
+            }
+        }
+
         /// <summary>Chart from a picture file onto the current slide (UI tests); returns the note shown to the user.</summary>
         public string ChartFromPicture(string path)
         {
