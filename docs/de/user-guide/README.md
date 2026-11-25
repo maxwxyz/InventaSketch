@@ -51,7 +51,10 @@ aneinander einrasten. Zahlenwerte (Modul, Zähnezahl, Maße) sind optional.
 ## 5. Patentzeichnungen – wichtiger Hinweis
 
 Die Vorabprüfung (Preflight) prüft die formalen Zeichnungsvorschriften von DPMA, EPA, PCT und USPTO mit zitierten
-Quellen. Sie ist nur eine Hilfestellung und ersetzt nicht die Prüfung durch eine Patentfachperson.
+Quellen. Sie ist nur eine Hilfestellung und ersetzt nicht die Prüfung durch eine Patentfachperson. In PowerPoint:
+InventaSketch ▸ Extras ▸ „Patentprüfung (Zeichnungen) …“ prüft alle Folien für das gewählte Amt und listet Fehler,
+Warnungen, Hinweise und selbst zu prüfende Punkte mit Fundstelle; ein Doppelklick auf einen Befund springt zur Folie
+und zum Element (Engine `preflight`, `patentProfiles`).
 
 ## 6. Module
 

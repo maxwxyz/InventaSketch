@@ -37,6 +37,8 @@ namespace InventaSketch.Engine
                 ["insert"] = InsertCore,
                 ["importData"] = ImportDataCore,
                 ["importGeo"] = ImportGeoCore,
+                ["preflight"] = PreflightCore,
+                ["patentProfiles"] = PatentProfilesCore,
                 ["update"] = UpdateCore,
                 ["move"] = MoveCore,
                 ["scale"] = ScaleCore,
@@ -394,6 +396,44 @@ namespace InventaSketch.Engine
             s.Apply("Import map data", d => Edits.Add(d, s.PageId, created.ToArray()));
             s.Select(created.Select(o => o.Id));
             return StateOf(s, r);
+        }
+
+        // ------------------------------------------------------------------ patent workflow
+
+        /// <summary>The patent profiles (offices) for <c>preflight</c>: id and name in the session language.</summary>
+        private object PatentProfilesCore(EngineRequest r)
+        {
+            var lang = r.Lang is null ? (r.Session is null ? Lang.En : S(r).Lang) : Language.Detect(r.Lang);
+            return InventaSketch.Modules.Patent.PatentProfiles.All.Select(p => new { id = p.Id, name = p.Name.Get(lang) }).ToList();
+        }
+
+        /// <summary>
+        /// Patent drawing preflight of the session's page against profile <c>text</c> (an id of <c>patentProfiles</c>,
+        /// default "common-safe"): the findings in page and rule order with severity, element, message, suggestion and the
+        /// cited source, and the disclaimer – a drafting aid, not a legal certification.
+        /// </summary>
+        private object PreflightCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var id = string.IsNullOrWhiteSpace(r.Text) ? "common-safe" : r.Text!.Trim();
+            var profile = InventaSketch.Modules.Patent.PatentProfiles.All.FirstOrDefault(p => p.Id == id) ?? throw new ArgumentException("Unknown patent profile '" + id + "'.");
+            var findings = InventaSketch.Modules.Patent.Preflight.Run(Registry, s.Doc, profile);
+            return new
+            {
+                profile = profile.Id,
+                disclaimer = InventaSketch.Modules.Patent.Preflight.Disclaimer.Get(lang),
+                findings = findings.Select(f => new
+                {
+                    rule = f.RuleId,
+                    severity = f.Severity.ToString().ToLowerInvariant(),
+                    id = f.ObjectId,
+                    page = f.PageId,
+                    message = f.Message.Get(lang),
+                    suggestion = f.Suggestion?.Get(lang),
+                    source = f.Source,
+                }).ToList(),
+            };
         }
 
         // ------------------------------------------------------------------ editing

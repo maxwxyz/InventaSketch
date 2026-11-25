@@ -30,6 +30,7 @@ namespace InventaSketch.AddIn
     {
         private PowerPoint.Application? _app;
         private Office.IRibbonUI? _ribbon;
+        private PatentCheckForm? _patentForm;
         /// <summary>
         /// Module library, built on a worker thread from <see cref="OnConnection"/> (about 0.7 s of cold JIT): Office measures
         /// the start time of add-ins and disables slow ones. Readers wait for it; at startup only a stale ribbon cache does.
@@ -364,6 +365,7 @@ namespace InventaSketch.AddIn
             sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
             Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
             Item("IskMenuImport", T("Import data (CSV, GeoJSON, GPX) \u2026", "Daten importieren (CSV, GeoJSON, GPX) \u2026"), "ImportTextFile");
+            Item("IskMenuPatent", T("Patent check (drawings) \u2026", "Patentpr\u00fcfung (Zeichnungen) \u2026"), "ReviewSpellingAndGrammar");
             Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
             sb.Append("</menu>");
         }
@@ -393,6 +395,9 @@ namespace InventaSketch.AddIn
                     case "IskMenuSave": Tools.SaveSlides(_app, german); break;
                     case "IskMenuPlanScale": SetPlanScale(); break;
                     case "IskMenuImport": ImportDataFile(); break;
+                    case "IskMenuPatent":
+                        if (_registry is not null) { _patentForm?.Close(); _patentForm = new PatentCheckForm(_app, _registry, _lang); _patentForm.Show(); }
+                        break;
                     case "IskMenuModules":
                         var modules = (_registry?.Modules ?? Array.Empty<IModule>()).Where(mod => _categories.Any(c => c.ModuleId == mod.Id))
                             .Select(mod => (mod.Id, mod.Name.Get(_lang))).ToList();
@@ -1128,6 +1133,14 @@ namespace InventaSketch.AddIn
             return null;
         }
 
+        /// <summary>Patent check of the presentation for profile <paramref name="profileId"/> (automation, UI tests).</summary>
+        internal List<PatentCheck.Item> RunPatentCheck(string profileId)
+        {
+            if (_app is null || _registry is null) return new List<PatentCheck.Item>();
+            var profile = InventaSketch.Modules.Patent.PatentProfiles.All.FirstOrDefault(p => p.Id == profileId) ?? InventaSketch.Modules.Patent.PatentProfiles.CommonSafe;
+            return PatentCheck.Run(_app.ActivePresentation, _registry, profile);
+        }
+
         /// <summary>Button ids of the floating bar as last shown (UI tests).</summary>
         internal string LastBarIds() => _onSlide?.LastBarIds ?? "";
 
@@ -1163,6 +1176,19 @@ namespace InventaSketch.AddIn
                 OnEditorToggle(null!, visible);
                 _ribbon?.InvalidateControl("IskEditor");
                 return _pane?.Visible == true;
+            });
+        }
+
+        /// <summary>Opens (or closes) the patent check window on the UI thread (automation, UI tests); true if it is open.</summary>
+        internal bool ShowPatentCheck(bool visible)
+        {
+            if (_onSlide is null || _app is null || _registry is null) return false;
+            return _onSlide.OnUi(() =>
+            {
+                _patentForm?.Close();
+                _patentForm = null;
+                if (visible) { _patentForm = new PatentCheckForm(_app, _registry, _lang); _patentForm.Show(); }
+                return _patentForm is not null;
             });
         }
 
