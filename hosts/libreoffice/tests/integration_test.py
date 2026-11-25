@@ -672,6 +672,106 @@ def import_phase(office, out, logs):
     office.close(doc)
 
 
+def png_file(path, w, h, pixel):
+    """Writes an RGBA PNG; ``pixel(x, y)`` gives (r, g, b, a)."""
+    import struct
+    import zlib
+    raw = b"".join(b"\x00" + b"".join(bytes(pixel(x, y)) for x in range(w)) for y in range(h))
+
+    def chunk(kind, data):
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data) & 0xffffffff)
+    with open(path, "wb") as f:
+        f.write(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", w, h, 8, 6, 0, 0, 0)) +
+                chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+
+
+def models_of(*pages):
+    return {name: attribute(s, ATTR_MODEL) for p in pages for name, s in units_of(p).items()}
+
+
+def share_phase(office, out, logs):
+    """Clean slides (cleanSlides: every slide in one undo step with a fixed seed, then only the selection), export
+    (export: TikZ and matplotlib of the selected chart, editable SVG of the slide) and chart from picture
+    (chartFromPicture: a PNG with columns on a transparent background becomes a chart unit)."""
+    doc = office.new("simpress")
+    pages = doc.getDrawPages()
+    first = pages.getByIndex(0)
+    for i in reversed(range(first.getCount())):
+        first.remove(first.getByIndex(i))
+    controller = doc.getCurrentController()
+    office.run(doc, "insert?item=chart.column.grouped&x=80&y=70")
+    office.run(doc, "insert?item=ann.arrow&x=200&y=70")
+    second = pages.insertNewByIndex(0)
+    controller.setCurrentPage(second)
+    office.run(doc, "insert?item=chart.line.multi&x=120&y=80")
+    controller.setCurrentPage(first)
+    chart = next((s for n, s in units_of(first).items() if n.split(":")[1].startswith("chart.")), None)
+    check("share.setup", chart is not None and len(units_of(first)) == 2 and len(units_of(second)) == 1,
+          ", ".join(list(units_of(first)) + list(units_of(second))))
+    before = models_of(first, second)
+    office.run(doc, "cleanSlides?scope=all&mode=randomised&seed=42&texts=1")
+    after = models_of(first, second)
+    changed = sorted(n for n in after if after[n] != before.get(n))
+    charts = [n for n in before if n.split(":")[1].startswith("chart.")]
+    check("clean.allSlides", len(charts) == 2 and all(n in changed for n in charts), "changed: %s" % changed)
+    check("clean.namesKept", set(after) == set(before), ", ".join(sorted(after)))
+    lines = log_lines(logs, "clean slides (all, randomised, seed 42)")
+    check("clean.logged", bool(lines), lines[-1] if lines else "")
+    manager = doc.getUndoManager()
+    title = manager.getCurrentUndoActionTitle()
+    check("clean.oneUndoStep", "clean" in title.lower() or "bereinigen" in title.lower(), title)
+    manager.undo()
+    check("clean.undo", models_of(first, second) == before, "after undo: %s" % sorted(models_of(first, second)))
+    chart = next((s for n, s in units_of(first).items() if n.split(":")[1].startswith("chart.")), None)
+    select_shapes(office, doc, [chart])
+    office.run(doc, "cleanSlides?scope=selection&mode=normalised&seed=1")
+    now = models_of(first, second)
+    only = sorted(n for n in now if now[n] != before.get(n))
+    check("clean.selectionOnly", only == [chart.Name] if chart is not None else False, "changed: %s" % only)
+
+    chart = units_of(first)[chart.Name]
+    select_shapes(office, doc, [chart])
+    tex = os.path.join(out, "share-chart.tex")
+    office.run(doc, "export?format=latex.tikz&path=" + tex.replace("\\", "/"))
+    text = open(tex, encoding="utf-8").read() if os.path.isfile(tex) else ""
+    check("export.tikz.selection", "tikzpicture" in text and "Arrow" not in text and "Pfeil" not in text,
+          "%d characters" % len(text))
+    py = os.path.join(out, "share-chart")
+    office.run(doc, "export?format=chart.matplotlib&path=" + py.replace("\\", "/"))
+    check("export.matplotlib", os.path.isfile(py + ".py") and "matplotlib" in open(py + ".py", encoding="utf-8").read(),
+          py + ".py")
+    select_shapes(office, doc, [])
+    svg = os.path.join(out, "share-slide.svg")
+    office.run(doc, "export?format=svg&path=" + svg.replace("\\", "/"))
+    text = open(svg, encoding="utf-8").read() if os.path.isfile(svg) else ""
+    check("export.svg.page", "<svg" in text and text.count("<g") >= 2, "%d characters" % len(text))
+    office.run(doc, "export")
+    offered = log_lines(logs, "export formats (page)")
+    check("export.formats.logged", bool(offered) and "latex.tikz" in offered[-1], offered[-1] if offered else "")
+
+    png = os.path.join(out, "share-columns.png")
+    heights = (40, 80, 60, 20, 120)
+
+    def pixel(x, y):
+        for i, height in enumerate(heights):
+            if 30 + i * 60 <= x < 66 + i * 60 and 160 - height <= y < 160:
+                return (30, 90, 200, 255)
+        if y == 160 and 20 <= x < 340:
+            return (0, 0, 0, 255)
+        return (0, 0, 0, 0)       # transparent (black underneath): must become white
+    png_file(png, 360, 200, pixel)
+    known = set(units_of(first))
+    office.run(doc, "chartFromPicture?path=" + png.replace("\\", "/"))
+    new = [n for n in units_of(first) if n not in known]
+    check("picture.chart", len(new) == 1 and new[0].split(":")[1] == "chart.bar", ", ".join(new))
+    lines = log_lines(logs, "chart from picture share-columns.png")
+    check("picture.mask", bool(lines) and "mask yes" in lines[-1], lines[-1] if lines else "")
+    title = manager.getCurrentUndoActionTitle()
+    check("picture.oneUndoStep", "picture" in title.lower() or "bild" in title.lower(), title)
+    export_png(office, doc, first, os.path.join(out, "share.png"))
+    office.close(doc)
+
+
 def canvas_phase(office, out, logs):
     """On-canvas round: the job attaches the handlers to a new view; snapping after a native move (the command the
     mouse release runs) meshes a gear with another unit, coupled parts follow a dragged shaft, resizes do not snap.
@@ -769,6 +869,8 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--from-powerpoint", help="a .pptx saved by the PowerPoint COM add-in (exchange check)")
+    ap.add_argument("--only", choices=["share"], help="run only this phase (share: clean slides, export, chart from "
+                                                       "picture)")
     args = ap.parse_args()
     soffice = find_soffice(args.soffice)
     work = tempfile.mkdtemp(prefix="isk-lo-")
@@ -785,16 +887,19 @@ def main():
     try:
         proc, ctx = start_office(soffice, profile, env)
         office = Office(ctx)
-        names, odp, pptx = impress_phase(office, out)
-        ux_phase(office, out, logs)
-        canvas_phase(office, out, logs)
-        compatibility_phase(office, logs)
-        compare_phase(office, out, logs)
-        import_phase(office, out, logs)
-        reload_phase(office, odp, names, "odp", expect_attributes=True)
-        reload_phase(office, pptx, names, "pptx", expect_attributes=False)
-        draw_calc_phase(office, out)
-        if args.from_powerpoint:
+        if args.only != "share":
+            names, odp, pptx = impress_phase(office, out)
+            ux_phase(office, out, logs)
+            canvas_phase(office, out, logs)
+            compatibility_phase(office, logs)
+            compare_phase(office, out, logs)
+            import_phase(office, out, logs)
+        share_phase(office, out, logs)
+        if args.only != "share":
+            reload_phase(office, odp, names, "odp", expect_attributes=True)
+            reload_phase(office, pptx, names, "pptx", expect_attributes=False)
+            draw_calc_phase(office, out)
+        if args.from_powerpoint and args.only is None:
             powerpoint_phase(office, os.path.abspath(args.from_powerpoint), out)
     except Exception:
         check("exception", False, traceback.format_exc())
