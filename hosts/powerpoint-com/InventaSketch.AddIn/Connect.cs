@@ -1062,6 +1062,9 @@ namespace InventaSketch.AddIn
         /// <summary>Button ids of the floating bar as last shown (UI tests).</summary>
         internal string LastBarIds() => _onSlide?.LastBarIds ?? "";
 
+        /// <summary>Screen rectangle of the floating bar as last shown (UI tests).</summary>
+        internal string LastBarRect() => _onSlide?.LastBarRect ?? "";
+
         internal bool ApplyLineGroup(double g)
         {
             if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return false;

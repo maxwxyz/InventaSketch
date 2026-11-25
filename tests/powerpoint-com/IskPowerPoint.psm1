@@ -302,6 +302,12 @@ function Send-IskCtrlKey {
 <# .SYNOPSIS Screen rectangle of the floating bar as last shown (from the add-in log), or $null. #>
 function Get-IskBarRect {
     param($S)
+    # Straight from the add-in (automation object); the add-in log is the fallback for older builds.
+    try { $direct = [string]$S.AddIn.BarRect() } catch { $direct = $null }
+    if ($direct) {
+        $p = $direct -split ','
+        if ($p.Count -eq 4) { return @{ X = [int][double]$p[0]; Y = [int][double]$p[1]; W = [int][double]$p[2]; H = [int][double]$p[3] } }
+    }
     $log = Get-IskLog $S
     if (-not (Test-Path $log)) { return $null }
     $line = Get-Content $log | Where-Object { $_ -match 'Bar shown at' } | Select-Object -Last 1
