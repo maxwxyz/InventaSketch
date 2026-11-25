@@ -1918,6 +1918,8 @@ namespace InventaSketch.AddIn
         internal string PartAtOf(string shapeName, double xPt, double yPt) => _onSlide?.PartAtOf(shapeName, xPt, yPt) ?? "";
         internal string SelectedPartKey() => _onSlide?.SelectedPartKey() ?? "";
         internal string LastHandles() => _onSlide?.LastHandles ?? "";
+        internal string LastShownHandles() => _onSlide?.LastShownHandles ?? "";
+        internal string LastCommandIds() => _onSlide?.LastCommandIds ?? "";
         internal string LastPieItems() => _onSlide?.LastPieItems ?? "";
         internal string DragHandlesOf(string shapeName) => _onSlide?.DragHandlesOf(shapeName) ?? "";
 

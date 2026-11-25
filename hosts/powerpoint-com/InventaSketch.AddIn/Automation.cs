@@ -213,6 +213,12 @@ namespace InventaSketch.AddIn
         /// <summary>Visible InventaSketch handles of the selected element as last drawn: "id@x,y,r;…" (device pixels).</summary>
         public string Handles() => _connect.LastHandles();
 
+        /// <summary>Handles shown at least half right now (progressive disclosure): "id;id;…".</summary>
+        public string ShownHandles() => _connect.LastShownHandles();
+
+        /// <summary>Every command of the selected element (bar and pie, all submenus), comma-separated.</summary>
+        public string CommandIds() => _connect.LastCommandIds();
+
         /// <summary>Pie menu entries as last shown: "id	label[	(off)]" per line.</summary>
         public string PieItems() => _connect.LastPieItems();
 

@@ -30,7 +30,10 @@ function Shot-Around($name, $shapeName, [int]$margin = 260) {
     Save-IskShot $S $name -Around ($x0 - $margin / 2), ($y0 - $margin / 2), ($x1 - $x0 + $margin), ($y1 - $y0 + $margin)
 }
 function Write-Record($kind, $id, $extra) {
-    $rec = [ordered]@{ kind = $kind; id = $id; bar = [string]$addin.BarIds(); handles = (Get-Hand); pie = (Get-Pie) }
+    $shown = ''; $cmds = ''
+    try { $shown = [string]$addin.ShownHandles() } catch { }
+    try { $cmds = [string]$addin.CommandIds() } catch { }
+    $rec = [ordered]@{ kind = $kind; id = $id; bar = [string]$addin.BarIds(); handles = (Get-Hand); shown = $shown; commands = $cmds; pie = (Get-Pie) }
     if ($extra) { foreach ($k in $extra.Keys) { $rec[$k] = $extra[$k] } }
     ($rec | ConvertTo-Json -Compress -Depth 4) | Add-Content -Path $records -Encoding UTF8
 }
