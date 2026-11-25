@@ -294,11 +294,13 @@ class PageSession:
     ``units``: list of dicts {id, shape, unit, own, contents, selected, moved} in import order; ``selected_ids()``: the
     own object ids of the selected units. Use as a context manager (closes the engine session)."""
 
-    def __init__(self, engine, controller, shapes=None, context=True):
+    def __init__(self, engine, controller, shapes=None, context=True, native_selected=True):
         self.engine = engine
         self.controller = controller
         self.doc, self.page, self.centre, self.size = target(controller)
         self.selected_shapes = list(shapes) if shapes is not None else selected_unit_shapes(controller)
+        # False: native moves of the selected units are left to the caller (a drag that is snapped and coupled).
+        self.native_selected = native_selected
         self.units = []
         self.known = set()
         self.state = None
@@ -386,6 +388,8 @@ class PageSession:
             self._import(by_id[uid])
         # Native moves, resizes and rotations since drawing (without coupling: the user moved just that unit).
         for entry in self.units:
+            if entry["selected"] and not self.native_selected:
+                continue
             bounds = entry["unit"].get("bounds")
             try:
                 current = render.bounds_pt(entry["shape"])
@@ -492,6 +496,90 @@ def run_op(engine, controller, method, params=None, label=None, ids_key="ids", f
             request["id"] = ps.first_id()
         state = ps.call(method, request)
         return ps.commit(label or method, state if isinstance(state, dict) else None, force_selected, title)
+
+
+def undo_count(doc):
+    """Number of actions on the document's undo stack (None if unknown); taken at a mouse press, so a snap after the
+    drag can tell LibreOffice's own move action apart (``snap_after_move``)."""
+    manager = _undo_manager(doc)
+    try:
+        return len(manager.getAllUndoActionTitles()) if manager is not None else None
+    except Exception:
+        return None
+
+
+def _undo_native_move(doc, shapes, pairs, mark):
+    """Takes back LibreOffice's own move of a drag (exactly one new undo action since the mouse press ``mark``), so
+    the drag and the snap become one undo step. Returns True if the dragged shapes are back where they were drawn."""
+    manager = _undo_manager(doc)
+    if mark is None or manager is None:
+        return False
+    try:
+        if not manager.isUndoPossible() or len(manager.getAllUndoActionTitles()) != mark + 1:
+            return False
+        manager.undo()
+    except Exception as ex:
+        log("undo of the native move: %s" % ex)
+        return False
+    try:
+        back = all(not metadata.transform_needed(stored, render.bounds_pt(s)) for s, (stored, _) in zip(shapes, pairs))
+    except Exception:
+        back = False
+    if not back:
+        # The action was something else: give it back and keep LibreOffice's move as its own undo step.
+        try:
+            manager.redo()
+        except Exception as ex:
+            log("redo after a foreign undo action: %s" % ex)
+    return back
+
+
+def snap_after_move(engine, controller, drag_px=None, undo_mark=None):
+    """Snaps the selected unit(s) after the user dragged them with the mouse, like a drag in PowerPoint: the common move
+    since drawing (``ux.drag_delta``; None if the units were resized, rotated or not moved) goes through the engine's
+    ``snapMove`` (gear mesh, axes, ports, mounts …; tolerance 8 screen pixels at the zoom of the drag, ``drag_px`` =
+    pixels the mouse moved) and is applied with ``move`` with coupling (meshing gears, parts on a shaft, docked lines
+    follow); the touched units are redrawn. With ``undo_mark`` (undo stack size at the mouse press) LibreOffice's own
+    move is taken back first, so drag and snap are one undo step. Returns {"snap", "drawn"} or None."""
+    shapes = selected_unit_shapes(controller)
+    if not shapes:
+        return None
+    doc = controller.getModel()
+    pairs = []
+    for shape in shapes:
+        unit = render.read_unit(doc, shape)
+        if unit is None:
+            return None
+        pairs.append((unit.get("bounds"), render.bounds_pt(shape)))
+    delta = ux.drag_delta(pairs)
+    if delta is None:
+        return None
+    from .plan import MM_PER_PT
+    delta_mm = (delta[0] * MM_PER_PT, delta[1] * MM_PER_PT)
+    tolerance = ux.snap_tolerance(delta_mm, drag_px)
+    undone = _undo_native_move(doc, shapes, pairs, undo_mark)
+    try:
+        with PageSession(engine, controller, shapes=shapes, native_selected=False) as ps:
+            ids = ps.selected_ids()
+            request = {"ids": ids, "dx": delta_mm[0], "dy": delta_mm[1]}
+            if tolerance:
+                request["tolerance"] = tolerance
+            snap = ps.call("snapMove", request)
+            state = ps.call("move", {"ids": ids, "dx": snap["dx"], "dy": snap["dy"]})
+            drawn = ps.commit(i18n.text("undoSnap"), state, force_selected=True, title=_title("undoSnap"))
+    except Exception:
+        if undone:
+            # Never lose the user's drag: LibreOffice's move comes back.
+            try:
+                _undo_manager(doc).redo()
+            except Exception as ex:
+                log("redo of the native move: %s" % ex)
+        raise
+    log("snap after move: %.2f/%.2f mm -> %.2f/%.2f mm (%s%s), tolerance %s, %d unit(s) drawn, one undo step: %s"
+        % (delta_mm[0], delta_mm[1], snap["dx"], snap["dy"], snap.get("kind") or "none",
+           ", " + snap["label"] if snap.get("label") else "", "%.2f mm" % tolerance if tolerance else "default",
+           len(drawn), undone))
+    return {"snap": snap, "drawn": drawn, "merged": undone}
 
 
 def edit(engine, controller, method=None, params=None, label=None):

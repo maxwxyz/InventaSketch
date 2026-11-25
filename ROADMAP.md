@@ -198,7 +198,11 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
    tool, placed turned with "+") done 2026-11-25 (also: the render context carries the registry, which ended
    order-dependent tests); tools follow joint changes and take the flange size; one accent colour for all modules as part of the slide style
    (all done 2026-11-25).
-3. LibreOffice: on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
+3. LibreOffice: on-canvas interaction done 2026-11-25 as far as UNO allows – snapping after a drag (engine
+   `snapMove`, one undo step), Ctrl+Space into the library search, a context menu with the selection's actions; checked
+   in a real LibreOffice with real mouse and keyboard input (`ui_smoke.py` 19, `integration_test.py` 70 checks). Not
+   possible without drawing into the view: guides and labels while dragging, live coupling preview, "+" handles, pie
+   menu.
 4. P3: diagram auto-layout done 2026-11-25 (layered, multi-selection, all hosts through the engine; COM checked in
    PowerPoint); open: variants and states, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 

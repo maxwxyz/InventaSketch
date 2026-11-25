@@ -108,6 +108,31 @@ namespace InventaSketch.AddIn.OnSlide
             return boxes.ToDictionary(b => unitOf[b.Id], b => (target[b.Id], target[b.Id] - new Vec2(b.Transform.X, b.Transform.Y)), StringComparer.Ordinal);
         }
 
+        /// <summary>
+        /// Moves units (mm per unit id) as a model edit: each unit is redrawn at its new place, then every unit docked on them
+        /// (connectors, dimensions, lead lines) follows (<see cref="SketchUnits.RedrawDependents"/>), coupled parts too. A
+        /// native move of several shapes at once does not reliably notify the add-in, so docked lines would stay behind. The
+        /// units were read just before (<see cref="SketchUnits.Read"/> folds native moves into their models).
+        /// </summary>
+        private List<PowerPoint.Shape> MoveUnits(PowerPoint.Slide slide, IReadOnlyList<SketchUnit> units, IReadOnlyDictionary<string, Vec2> moves)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var shapes = new List<PowerPoint.Shape>();
+            var befores = new List<SketchDocument>();
+            var afters = new List<SketchDocument>();
+            foreach (var u in units)
+            {
+                if (!moves.TryGetValue(u.Id, out var d) || d.Length < 1e-6) { shapes.Add(u.Shape); continue; }
+                var doc = Edits.Move(u.Doc, u.Doc.ObjectsOn(u.Doc.Pages[0]).Select(o => o.Id).ToList(), d);
+                befores.Add(u.Doc);
+                afters.Add(doc);
+                if (SketchUnits.Replace(slide, u, doc, registry, lang) is { } s) shapes.Add(s);
+            }
+            if (befores.Count > 0) SketchUnits.RedrawDependents(slide, registry, lang, befores, afters, units.Select(u => u.Id).ToList());
+            return shapes;
+        }
+
         /// <summary>Reference numerals of the selection with their numeral position (point 1) and current numeral.</summary>
         private List<(string Id, Vec2 At, string Numeral)> Numerals()
         {
@@ -146,7 +171,8 @@ namespace InventaSketch.AddIn.OnSlide
             _bar.Place(frame, view.PaneRect, others);
             GetCursorPos(out var p);
             var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
-            Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
+            LastBarRect = $"{_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height}";
+            Log.Info($"Bar shown at {LastBarRect} opacity {opacity:0.##}");
             LastBarIds = string.Join(",", _bar.Buttons.Where(b => !b.Separator).Select(b => b.Id));
             Log.Info("Bar ids: " + LastBarIds);
             DrawBar(view, opacity);
@@ -180,35 +206,29 @@ namespace InventaSketch.AddIn.OnSlide
                     "dist:h" => Arrange.Distribute(boxes, horizontal: true),
                     _ => Arrange.Distribute(boxes, horizontal: false),
                 };
-                // Moved like a user drag: followers and couplings update as after a native move.
-                for (var i = 0; i < units.Count; i++)
-                {
-                    var s = units[i].Shape;
-                    s.Left += (float)(moves[i].X * Geo.PtPerMm);
-                    s.Top += (float)(moves[i].Y * Geo.PtPerMm);
-                    shapes.Add(s);
-                }
+                shapes.AddRange(MoveUnits(slide, units, units.Select((u, i) => (u.Id, moves[i])).ToDictionary(x => x.Id, x => x.Item2)));
             }
             else if (id.StartsWith("layout:", StringComparison.Ordinal))
             {
-                // A model edit: every unit goes to its target and is redrawn, then the connectors docked on them follow
-                // (RedrawDependents re-resolves their anchored ends) – a native move of several shapes at once does not
-                // reliably notify the add-in.
                 if (LayoutMoves(id == "layout:down", units) is { } layout)
                 {
-                    var befores = new List<SketchDocument>();
-                    var afters = new List<SketchDocument>();
-                    foreach (var u in units)
+                    // Connectors between the selected elements dock on the facing sides first (bottom → top, right → left);
+                    // MoveUnits then redraws them along with the moved elements.
+                    var nodes = new HashSet<string>(units.SelectMany(u => u.Objects).Where(o => !o.IsPointGeometry).Select(o => o.Id), StringComparer.Ordinal);
+                    // The selected elements as they will stand (their own anchors decide the docking points).
+                    var laid = SketchDocument.Create();
+                    laid = Edits.Add(laid, laid.Pages[0].Id, units.SelectMany(u => u.Objects.Select(o => layout.TryGetValue(u.Id, out var l) && !o.IsPointGeometry
+                        ? o with { Transform = o.Transform with { X = o.Transform.X + l.Move.X, Y = o.Transform.Y + l.Move.Y } } : o)).ToArray());
+                    foreach (var cu in SketchUnits.All(slide).Where(u => !layout.ContainsKey(u.Id)))
                     {
-                        if (!layout.TryGetValue(u.Id, out var l)) continue;
-                        var main = u.Objects.First(x => !x.IsPointGeometry && registry.Type(x.Type) is not null);
-                        var d = l.Target - new Vec2(main.Transform.X, main.Transform.Y);
-                        var doc = Edits.Move(u.Doc, u.Doc.ObjectsOn(u.Doc.Pages[0]).Select(o => o.Id).ToList(), d);
-                        befores.Add(u.Doc);
-                        afters.Add(doc);
-                        if (SketchUnits.Replace(slide, u, doc, registry, lang) is { } s) shapes.Add(s);
+                        var redocked = cu.Objects.Select(o => DiagramLayout.Redock(registry, laid, o, nodes, id == "layout:down")).Where(o => o is not null && !cu.Doc.Objects.Values.Contains(o)).ToList();
+                        if (redocked.Count == 0) continue;
+                        var doc = cu.Doc;
+                        foreach (var o in redocked) doc = Edits.Replace(doc, o!);
+                        SketchUnits.Replace(slide, cu, doc, registry, lang);
                     }
-                    SketchUnits.RedrawDependents(slide, registry, lang, befores, afters, units.Select(u => u.Id).ToList());
+                    units = units.Select(u => SketchUnits.Read(u.Shape) ?? u).ToList();
+                    shapes.AddRange(MoveUnits(slide, units, layout.ToDictionary(kv => kv.Key, kv => kv.Value.Move)));
                 }
             }
             else if (id.StartsWith("mview:", StringComparison.Ordinal))

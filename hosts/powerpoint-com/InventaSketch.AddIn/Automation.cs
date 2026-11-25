@@ -151,6 +151,9 @@ namespace InventaSketch.AddIn
         /// <summary>Button ids of the floating bar as last shown, comma-separated (UI tests; no log needed).</summary>
         public string BarIds() => _connect.LastBarIds();
 
+        /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown; "" if none yet.</summary>
+        public string BarRect() => _connect.LastBarRect();
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

@@ -223,7 +223,11 @@ Leisten-IDs jetzt direkt.
    (Roboterflansch → Werkzeug, mit „+“ gedreht gesetzt) erledigt 25.11.2026 (dazu: der Render-Kontext trägt die
    Registry, das beendete reihenfolgeabhängige Tests); Werkzeuge folgen Gelenkänderungen und übernehmen die Flanschgröße; eine Akzentfarbe für alle
    Module als Teil des Folienstils (alles erledigt 25.11.2026).
-3. LibreOffice: Overlay auf der Arbeitsfläche (Einrasten beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
+3. LibreOffice: Bedienung auf der Folie erledigt 25.11.2026, soweit UNO es erlaubt – Einrasten nach dem Ziehen
+   (Engine `snapMove`, ein Rückgängig-Schritt), Strg+Leertaste ins Suchfeld der Bibliothek, ein Kontextmenü mit den
+   Aktionen der Auswahl; in einem echten LibreOffice mit echter Maus- und Tastatureingabe geprüft (`ui_smoke.py` 19,
+   `integration_test.py` 70 Prüfungen). Ohne Zeichnen in die Ansicht nicht möglich: Hilfslinien und Beschriftung beim
+   Ziehen, Live-Vorschau der Kopplung, „+“-Griffe, Kreismenü.
 4. P3: automatisches Diagramm-Layout erledigt 25.11.2026 (Ebenen-Layout, Mehrfachauswahl, alle Hosts über die Engine;
    COM in PowerPoint geprüft); offen: Varianten und Zustände, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
 
