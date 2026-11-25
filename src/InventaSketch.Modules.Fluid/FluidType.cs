@@ -276,18 +276,18 @@ namespace InventaSketch.Modules.Fluid
                 foreach (var a in Extra(n))
                     yield return a.Input is null && a.ApplyInDocument is null ? a with { Apply = x => Adapt(x, a.Apply(Normalize(x))) } : a;
             if (Ports is not null && Ports(n).Count > 0)
-                yield return new ContextAction("fluid.ports", Common.T("Show port names", "Anschlussbezeichnungen anzeigen"), IconIds.Text,
+                yield return new ContextAction("fluid.ports", Common.T("Show port names", "Anschlüsse beschriften"), IconIds.PortLabels,
                     x => x.WithParam("showPorts", !x.Flag("showPorts", false))) { IsActive = n.Flag("showPorts", false), Group = "label" };
             if (Labeled)
             {
                 var prefix = RefPrefix;
-                yield return new ContextAction("fluid.label", Common.T("Show designator", "Kennzeichen anzeigen"), IconIds.Text, x =>
+                yield return new ContextAction("fluid.label", Common.T("Show designator", "Kennzeichen anzeigen"), IconIds.LabelShow, x =>
                 {
                     if (Common.LabelVisible(x)) return x.WithParam("showLabel", false);
                     var y = x.WithParam("showLabel", true);
                     return y.Str("ref", "").Trim().Length == 0 ? y.WithParam("ref", prefix) : y;
                 }) { IsActive = Common.LabelVisible(o), Group = "label" };
-                yield return ContextAction.WithInput("fluid.ref.set", Common.T("Designator …", "Kennzeichen …"), IconIds.Text,
+                yield return ContextAction.WithInput("fluid.ref.set", Common.T("Designator …", "Kennzeichen …"), IconIds.Name,
                     Common.T("Designator (e.g. 1V1)", "Kennzeichen (z. B. 1V1)"), o.Str("ref", ""),
                     (x, t) => x.WithParam("ref", t.Trim()).WithParam("showLabel", true)) with { Group = "label" };
             }

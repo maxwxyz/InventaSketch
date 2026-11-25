@@ -46,10 +46,17 @@ namespace InventaSketch.Modules.Automotive
     /// <summary>Pictogram ids used by the module's context actions in addition to <see cref="IconIds"/>.</summary>
     public static class AutoIcons
     {
-        /// <summary>Increase a value (not yet part of the shared <see cref="IconIds"/> vocabulary; hosts fall back to a neutral icon).</summary>
+        /// <summary>Increase a value ("+", shown with its label).</summary>
         public const string Increase = IconIds.Increase;
         /// <summary>Decrease a value (see <see cref="Increase"/>).</summary>
         public const string Decrease = IconIds.Decrease;
+        /// <summary>One more of a counted part (lanes, stripes, modules).</summary>
+        public const string More = IconIds.CountMore;
+        /// <summary>One fewer of a counted part (see <see cref="More"/>).</summary>
+        public const string Fewer = IconIds.CountFewer;
+
+        /// <summary>Parameters that count parts: their steps use <see cref="More"/>/<see cref="Fewer"/>.</summary>
+        internal static bool Counts(string key) => key is "stripes" or "modules" or "lanes";
     }
 
     /// <summary>Shared line styles (ISO 128 line roles; monochrome line drawings).</summary>
@@ -436,8 +443,8 @@ namespace InventaSketch.Modules.Automotive
         public static IEnumerable<ContextAction> PlusMinus(string key, double def, double min, double max, double step, bool multiply, I18nText more, I18nText less, string group)
         {
             double Next(double v, int dir) => Geo.Clamp(multiply ? (dir > 0 ? v * step : v / step) : v + dir * step, min, max);
-            yield return new ContextAction("param." + key + ".inc", more, AutoIcons.Increase, x => x.WithParam(key, Math.Round(Next(x.Num(key, def), +1), 3))) { Group = group };
-            yield return new ContextAction("param." + key + ".dec", less, AutoIcons.Decrease, x => x.WithParam(key, Math.Round(Next(x.Num(key, def), -1), 3))) { Group = group };
+            yield return new ContextAction("param." + key + ".inc", more, AutoIcons.Counts(key) ? AutoIcons.More : AutoIcons.Increase, x => x.WithParam(key, Math.Round(Next(x.Num(key, def), +1), 3))) { Group = group };
+            yield return new ContextAction("param." + key + ".dec", less, AutoIcons.Counts(key) ? AutoIcons.Fewer : AutoIcons.Decrease, x => x.WithParam(key, Math.Round(Next(x.Num(key, def), -1), 3))) { Group = group };
         }
     }
 }

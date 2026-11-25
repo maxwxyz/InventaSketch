@@ -114,7 +114,7 @@ namespace InventaSketch.Modules.Process
         {
             var fallback = (int)(def.Default?.Number ?? 0);
             int min = (int)(def.Min ?? int.MinValue), max = (int)(def.Max ?? int.MaxValue);
-            return new ContextAction(id, label, delta > 0 ? IconIds.Increase : IconIds.Decrease,
+            return new ContextAction(id, label, delta > 0 ? IconIds.CountMore : IconIds.CountFewer,
                 x => x.WithParam(def.Key, Math.Max(min, Math.Min(max, x.Int(def.Key, fallback) + delta)))) { Group = "param", ParamKeys = new[] { def.Key } };
         }
 

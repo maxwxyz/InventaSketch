@@ -58,7 +58,7 @@ namespace InventaSketch.Modules.Mechanical
             new ViewSpec("axial", VAxial, 30, 30, FreewheelAxial) { Bore = (p, o) => 3.2 * p.K })
         {
             Params = new[] { Common.Flag("reverse", T("Reversed locking direction", "Sperrrichtung umgekehrt"), false) },
-            Extra = o => new[] { Common.Toggle(o, "reverse", false, T("Reverse locking direction", "Sperrrichtung umkehren"), IconIds.Swap) },
+            Extra = o => new[] { Common.Toggle(o, "reverse", false, T("Reverse locking direction", "Sperrrichtung umkehren"), IconIds.Reverse) },
             CompanionTypes = new[] { "mech.shaft", "mech.gearset.planetary", "mech.converter.torque", "mech.clutch.multidisc" },
         };
 

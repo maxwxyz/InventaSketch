@@ -44,8 +44,8 @@ namespace InventaSketch.Modules.Maps
                     Prm.Cycle(o, "map.frame.style", StyleDef, new I18nText("Background", "Hintergrund")),
                     Prm.Toggle(o, "map.frame.labels", "labels", true, new I18nText("Grid labels", "Gitterbeschriftung")),
                     Prm.Toggle(o, "map.frame.tint", "tint", true, new I18nText("Land tint", "Landfarbe")),
-                    new ContextAction("map.frame.cells.inc", new I18nText("More grid cells", "Mehr Planquadrate"), IconIds.Increase, x => x.WithParam("cells", Math.Min(26, x.Int("cells", 6) + 1))) { Group = "cells" },
-                    new ContextAction("map.frame.cells.dec", new I18nText("Fewer grid cells", "Weniger Planquadrate"), IconIds.Decrease, x => x.WithParam("cells", Math.Max(1, x.Int("cells", 6) - 1))) { Group = "cells" },
+                    new ContextAction("map.frame.cells.inc", new I18nText("More grid cells", "Mehr Planquadrate"), IconIds.CountMore, x => x.WithParam("cells", Math.Min(26, x.Int("cells", 6) + 1))) { Group = "cells" },
+                    new ContextAction("map.frame.cells.dec", new I18nText("Fewer grid cells", "Weniger Planquadrate"), IconIds.CountFewer, x => x.WithParam("cells", Math.Max(1, x.Int("cells", 6) - 1))) { Group = "cells" },
                 },
             };
         }
@@ -179,7 +179,7 @@ namespace InventaSketch.Modules.Maps
         {
             yield return Prm.Cycle(o, "map.region.kind", KindDef, new I18nText("Area type", "Flächenart"));
             yield return Prm.Cycle(o, "map.region.fill", FillDef, new I18nText("Fill", "Füllung"));
-            yield return Prm.Toggle(o, "map.region.smooth", "smooth", false, new I18nText("Smooth outline", "Glatter Umriss"));
+            yield return Prm.Toggle(o, "map.region.smooth", "smooth", false, new I18nText("Smooth outline", "Glatter Umriss"), IconIds.Smooth);
             foreach (var a in PointActions(o, new I18nText("Add corner", "Ecke hinzufügen"), new I18nText("Remove corner", "Ecke entfernen"))) yield return a;
         }
     }

@@ -108,9 +108,9 @@ namespace InventaSketch.Modules.Robotics
             },
             Extra = o => new[]
             {
-                new ContextAction("robot.conveyor.reverse", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Swap,
+                new ContextAction("robot.conveyor.reverse", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse,
                     x => x.WithParam("dir", x.Str("dir", "forward") == "forward" ? "backward" : "forward")) { Group = "param", ParamKeys = new[] { "dir" } },
-                Rb.Toggle(o, "robot.conveyor.arrow", new I18nText("Direction arrow", "Richtungspfeil"), IconIds.ArrowEnd, "arrow", true),
+                Rb.Toggle(o, "robot.conveyor.arrow", new I18nText("Direction arrow", "Richtungspfeil"), IconIds.FlowArrow, "arrow", true),
             },
             CompanionIds = new[] { "robot.cell.workpiece", "robot.arm.articulated", "robot.safety.curtain" },
         };
@@ -318,7 +318,7 @@ namespace InventaSketch.Modules.Robotics
             Extra = o => new[]
             {
                 Rb.Cycle(o, "robot.scanner.shape", FieldShape),
-                Rb.Toggle(o, "robot.scanner.labels", new I18nText("Field labels", "Feldbeschriftung"), IconIds.Text, "labels", false, "annotation"),
+                Rb.Toggle(o, "robot.scanner.labels", new I18nText("Field labels", "Feldbeschriftung"), IconIds.LabelShow, "labels", false, "annotation"),
             },
             CompanionIds = new[] { "robot.mobile.agv", "robot.safety.zone", "robot.safety.fence" },
         };
@@ -388,7 +388,7 @@ namespace InventaSketch.Modules.Robotics
             }, (p, o) => new[] { RoboBoxType.Mount(p, 0, -5, "deck"), RoboBoxType.Mount(p, 14.2, -0.5, "scanner1") }))
         {
             Params = new[] { Pm.Bool("arrow", "Direction arrow", "Fahrtrichtungspfeil", true) },
-            Extra = o => new[] { Rb.Toggle(o, "robot.agv.arrow", new I18nText("Direction arrow", "Fahrtrichtungspfeil"), IconIds.ArrowEnd, "arrow", true) },
+            Extra = o => new[] { Rb.Toggle(o, "robot.agv.arrow", new I18nText("Direction arrow", "Fahrtrichtungspfeil"), IconIds.FlowArrow, "arrow", true) },
             CompanionIds = new[] { "robot.safety.scanner", "robot.arm.cobot", "robot.cell.pallet" },
         };
     }

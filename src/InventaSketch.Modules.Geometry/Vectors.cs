@@ -149,8 +149,8 @@ namespace InventaSketch.Modules.Geometry
             yield return Mx.TextInput(o, "math.vector.label", new I18nText("Name…", "Name…"), "label", "v", "label");
             yield return Mx.Cycle(o, "math.vector.notation", new I18nText("Next notation", "Nächste Schreibweise"), Pm.Notation(), "label");
             yield return Mx.Toggle(o, "math.vector.components", new I18nText("Components", "Komponenten"), "components", false, "vector");
-            yield return Mx.Toggle(o, "math.vector.points", new I18nText("Mark the points", "Punkte markieren"), "points", false, "vector");
-            yield return new ContextAction("math.vector.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Swap, Edits.ReversePoints) { Group = "vector" };
+            yield return Mx.Toggle(o, "math.vector.points", new I18nText("Mark the points", "Punkte markieren"), "points", false, "vector", IconIds.PointsShow);
+            yield return new ContextAction("math.vector.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, Edits.ReversePoints) { Group = "vector" };
         }
     }
 

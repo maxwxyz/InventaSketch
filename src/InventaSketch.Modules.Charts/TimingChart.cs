@@ -504,7 +504,7 @@ namespace InventaSketch.Modules.Charts
             var current = SignalsText(o).Replace("\r\n", "\n").Replace('\r', '\n');
             var rows = current.Split('\n').Select(l => l.Trim()).ToList();
             while (rows.Count > 0 && rows[rows.Count - 1].Length == 0) rows.RemoveAt(rows.Count - 1);
-            return ContextAction.WithInput("chart.data", new I18nText("Signals…", "Signale…"), IconIds.Text, SignalsPrompt, string.Join(" | ", rows),
+            return ContextAction.WithInput("chart.data", new I18nText("Signals…", "Signale…"), IconIds.Data, SignalsPrompt, string.Join(" | ", rows),
                 (x, text) => x.WithParam("signals", CheckSignals(text, lang))) with { Group = "data" };
         }
 
@@ -520,7 +520,7 @@ namespace InventaSketch.Modules.Charts
         }
 
         private static ContextAction MarkersInput(SketchObject o, Lang lang)
-            => ContextAction.WithInput("chart.timing.markers", new I18nText("Markers…", "Markierungen…"), IconIds.Text,
+            => ContextAction.WithInput("chart.timing.markers", new I18nText("Markers…", "Markierungen…"), IconIds.Marker,
                 new I18nText("Vertical markers “label=time”, separated by ; (e.g. t1=2; t2=5)", "Senkrechte Markierungen „Name=Zeit“, getrennt durch ; (z. B. t1=2; t2=5)"),
                 o.Str("markers", ""), (x, text) =>
                 {
@@ -531,7 +531,7 @@ namespace InventaSketch.Modules.Charts
                 }) with { Group = "timing" };
 
         private static ContextAction SpansInput(SketchObject o, Lang lang)
-            => ContextAction.WithInput("chart.timing.spans", new I18nText("Dimension arrows…", "Maßpfeile…"), IconIds.Text,
+            => ContextAction.WithInput("chart.timing.spans", new I18nText("Dimension arrows…", "Maßpfeile…"), IconIds.Dimension,
                 new I18nText("Arrows between markers, separated by ; (e.g. t1-t2 or t1-t2: t_su)", "Pfeile zwischen Markierungen, getrennt durch ; (z. B. t1-t2 oder t1-t2: t_su)"),
                 o.Str("spans", ""), (x, text) =>
                 {
@@ -573,11 +573,11 @@ namespace InventaSketch.Modules.Charts
             return new[]
             {
                 SignalsInput(o, lang),
-                new ContextAction("chart.timing.add", new I18nText("Add signal", "Signal hinzufügen"), IconIds.Insert, AddSignal) { Group = "timing" },
-                new ContextAction("chart.timing.remove", new I18nText("Remove last signal", "Letztes Signal entfernen"), IconIds.Delete, x => RemoveSignal(x, -1))
+                new ContextAction("chart.timing.add", new I18nText("Add signal", "Signal hinzufügen"), IconIds.RowAdd, AddSignal) { Group = "timing" },
+                new ContextAction("chart.timing.remove", new I18nText("Remove last signal", "Letztes Signal entfernen"), IconIds.RowRemove, x => RemoveSignal(x, -1))
                     { Group = "timing", IsEnabled = count > 1 },
                 Common.GridToggle(o),
-                Prm.Toggle(o, "chart.timing.labels", "timelabels", true, new I18nText("Time labels", "Zeitbeschriftung")),
+                Prm.Toggle(o, "chart.timing.labels", "timelabels", true, new I18nText("Time labels", "Zeitbeschriftung"), IconIds.AxisTicks),
                 Prm.Cycle(o, "chart.timing.slope", SlopeDef, new I18nText("Edges", "Flanken")),
                 MarkersInput(o, lang),
                 SpansInput(o, lang),
@@ -602,7 +602,7 @@ namespace InventaSketch.Modules.Charts
                         var set = TimingNotation.Parse(SignalsText(o));
                         var name = i < set.Signals.Count ? set.Signals[i].Name : "";
                         list.Add(A("chart.data"));
-                        list.Add(ContextAction.WithInput("chart.timing.rename", new I18nText("Name…", "Name…"), IconIds.Text, new I18nText("Signal name", "Signalname"), name,
+                        list.Add(ContextAction.WithInput("chart.timing.rename", new I18nText("Name…", "Name…"), IconIds.Name, new I18nText("Signal name", "Signalname"), name,
                             (x, text) => x.WithParam("signals", TimingNotation.Rewrite(SignalsText(x), (s, old) => s == i ? TimingNotation.CleanName(text) : old, null))) with { Group = "timing" });
                         list.Add(new ContextAction("chart.timing.removeAt", new I18nText("Remove this signal", "Dieses Signal entfernen"), IconIds.Delete, x => RemoveSignal(x, i))
                             { Group = "timing", IsEnabled = set.Signals.Count > 1 });
@@ -622,7 +622,7 @@ namespace InventaSketch.Modules.Charts
                     break;
                 case TimingTags.Dimension when i >= 0:
                     list.Add(A("chart.timing.spans"));
-                    list.Add(new ContextAction("chart.timing.span.remove", new I18nText("Remove this dimension arrow", "Diesen Maßpfeil entfernen"), IconIds.Delete, x =>
+                    list.Add(new ContextAction("chart.timing.span.remove", new I18nText("Remove this arrow", "Diesen Maßpfeil entfernen"), IconIds.Delete, x =>
                     {
                         var entries = x.Str("spans", "").Split(new[] { ';', '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries).Select(e => e.Trim()).Where(e => e.Length > 0).ToList();
                         if (i >= entries.Count) return x;

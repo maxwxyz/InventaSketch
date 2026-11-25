@@ -349,7 +349,7 @@ namespace InventaSketch.Modules.Kinematics
                 yield return KA.Ghosts(o);
                 yield return KA.PathToggle(o);
             }
-            yield return KA.Toggle(o, "kin.dof", new I18nText("Degree of freedom badge", "Freiheitsgrad-Anzeige"), IconIds.Text, "dof", false, "annotation");
+            yield return KA.Toggle(o, "kin.dof", new I18nText("Show degrees of freedom", "Freiheitsgrad zeigen"), IconIds.LabelShow, "dof", false, "annotation");
             foreach (var a in ExtraActions(o)) yield return a;
         }
 

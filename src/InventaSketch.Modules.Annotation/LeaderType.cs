@@ -125,13 +125,13 @@ namespace InventaSketch.Modules.Annotation
 
         public static IEnumerable<ContextAction> LeaderActions(SketchObject o, string defaultCurve)
         {
-            yield return Ann.SetChoice(o, "ann.curve.straight", new I18nText("Straight lead line", "Gerade Bezugslinie"), "line-straight", "curve", "straight", defaultCurve, "curve");
-            yield return Ann.SetChoice(o, "ann.curve.curved", new I18nText("Curved lead line", "Gebogene Bezugslinie"), "line-curved", "curve", "curved", defaultCurve, "curve");
-            yield return Ann.SetChoice(o, "ann.curve.wavy", new I18nText("Wavy lead line", "Wellige Bezugslinie"), "line-wavy", "curve", "wavy", defaultCurve, "curve");
-            yield return Ann.Toggle(o, "ann.curve.bend", new I18nText("Bend to other side", "Zur anderen Seite biegen"), "flip", "bend", false, "curve");
-            yield return Ann.SetChoice(o, "ann.end.none", new I18nText("Plain end", "Ende ohne Markierung"), "end-none", "end", "none", "none", "end");
-            yield return Ann.SetChoice(o, "ann.end.arrow", new I18nText("Arrow at object", "Pfeil am Objekt"), "end-arrow", "end", "arrow", "none", "end");
-            yield return Ann.SetChoice(o, "ann.end.dot", new I18nText("Dot at object", "Punkt am Objekt"), "end-dot", "end", "dot", "none", "end");
+            yield return Ann.SetChoice(o, "ann.curve.straight", new I18nText("Straight lead line", "Gerade Bezugslinie"), IconIds.CourseStraight, "curve", "straight", defaultCurve, "curve");
+            yield return Ann.SetChoice(o, "ann.curve.curved", new I18nText("Curved lead line", "Gebogene Bezugslinie"), IconIds.CourseCurved, "curve", "curved", defaultCurve, "curve");
+            yield return Ann.SetChoice(o, "ann.curve.wavy", new I18nText("Wavy lead line", "Wellige Bezugslinie"), IconIds.CourseWavy, "curve", "wavy", defaultCurve, "curve");
+            yield return Ann.Toggle(o, "ann.curve.bend", new I18nText("Bend the other way", "Andersherum biegen"), IconIds.SideSwap, "bend", false, "curve");
+            yield return Ann.SetChoice(o, "ann.end.none", new I18nText("Plain end", "Ende ohne Markierung"), IconIds.HeadNone, "end", "none", "none", "end");
+            yield return Ann.SetChoice(o, "ann.end.arrow", new I18nText("Arrow at object", "Pfeil am Objekt"), IconIds.HeadTriangle, "end", "arrow", "none", "end");
+            yield return Ann.SetChoice(o, "ann.end.dot", new I18nText("Dot at object", "Punkt am Objekt"), IconIds.HeadDot, "end", "dot", "none", "end");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => LeaderActions(o, "straight");

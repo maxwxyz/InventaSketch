@@ -130,7 +130,7 @@ namespace InventaSketch.Modules.Charts
         {
             Common.DataInput(o, DefaultData),
             Prm.Cycle(o, "chart.style", StyleDef, new I18nText("Style", "Darstellung")),
-            Prm.Toggle(o, "chart.smooth", "smooth", false, new I18nText("Smooth curve", "Geglättete Kurve")),
+            Prm.Toggle(o, "chart.smooth", "smooth", false, new I18nText("Smooth curve", "Geglättete Kurve"), IconIds.Smooth),
             Prm.Cycle(o, "chart.xscale", Common.XScale, new I18nText("x scale", "x-Skala")),
             Prm.Cycle(o, "chart.yscale", Common.YScale, new I18nText("y scale", "y-Skala")),
             Common.GridToggle(o),
@@ -265,7 +265,7 @@ namespace InventaSketch.Modules.Charts
             } },
             Prm.Cycle(o, "chart.orient", OrientDef, new I18nText("Orientation", "Ausrichtung")),
             Prm.Cycle(o, "chart.mode", ModeDef, new I18nText("Several series", "Mehrere Reihen")),
-            Prm.Toggle(o, "chart.values", "values", false, new I18nText("Value labels", "Wertbeschriftung")),
+            Prm.Toggle(o, "chart.values", "values", false, new I18nText("Value labels", "Wertbeschriftung"), IconIds.LabelShow),
             Common.GridToggle(o),
             Common.LegendCycle(o),
         };

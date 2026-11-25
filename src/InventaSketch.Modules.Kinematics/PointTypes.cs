@@ -52,8 +52,8 @@ namespace InventaSketch.Modules.Kinematics
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return KA.Toggle(o, "kin.joint.start", new I18nText("Joint at start", "Gelenk am Anfang"), IconIds.ArrowStart, "startJoint", true, "joints");
-            yield return KA.Toggle(o, "kin.joint.end", new I18nText("Joint at end", "Gelenk am Ende"), IconIds.ArrowEnd, "endJoint", true, "joints");
+            yield return KA.Toggle(o, "kin.joint.start", new I18nText("Joint at start", "Gelenk am Anfang"), IconIds.JointStart, "startJoint", true, "joints");
+            yield return KA.Toggle(o, "kin.joint.end", new I18nText("Joint at end", "Gelenk am Ende"), IconIds.JointEnd, "endJoint", true, "joints");
         }
     }
 

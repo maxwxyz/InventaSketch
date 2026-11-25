@@ -31,8 +31,8 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.partslist.header", new I18nText("Header row", "Kopfzeile"), "header", "header", true, "table");
-            yield return Ann.Toggle(o, "ann.partslist.type", new I18nText("Type column", "Spalte Typ"), "type", "type", false, "table");
+            yield return Ann.Toggle(o, "ann.partslist.header", new I18nText("Header row", "Kopfzeile"), IconIds.Toggle, "header", true, "table");
+            yield return Ann.Toggle(o, "ann.partslist.type", new I18nText("Type column", "Spalte Typ"), IconIds.Toggle, "type", false, "table");
         }
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)

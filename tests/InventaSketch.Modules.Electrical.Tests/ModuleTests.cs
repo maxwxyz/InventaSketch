@@ -266,7 +266,7 @@ namespace InventaSketch.Modules.Electrical.Tests
             var t = r.Type("elec.capacitor")!;
             var o = r.Create(r.Item("elec.capacitor")!, Vec2.Zero);
             var action = t.Actions(o, Lang.De).Single(a => a.Id == "elec.label");
-            Assert.Equal(IconIds.Text, action.Icon);
+            Assert.Equal(IconIds.LabelShow, action.Icon);
             Assert.False(action.IsActive);
             var shown = action.Apply(o);
             Assert.Equal("C1", shown.Str("ref", ""));
@@ -345,7 +345,7 @@ namespace InventaSketch.Modules.Electrical.Tests
             var o = r.Create(r.Item("elec.diode")!, Vec2.Zero);
             var anode = t.Anchors(o, Fx.Ctx()).Single(a => a.Id == "A").P;
             var flip = t.Actions(o, Lang.En).Single(a => a.Id == "elec.polarity");
-            Assert.Equal(IconIds.Swap, flip.Icon);
+            Assert.Equal(IconIds.Polarity, flip.Icon);
             var reversed = flip.Apply(o);
             Assert.True(reversed.Flag("reverse", false));
             Assert.Equal(-anode.X, t.Anchors(reversed, Fx.Ctx()).Single(a => a.Id == "A").P.X, 9);

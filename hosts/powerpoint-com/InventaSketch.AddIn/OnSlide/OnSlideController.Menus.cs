@@ -241,11 +241,18 @@ namespace InventaSketch.AddIn.OnSlide
 
             var choiceKeys = new HashSet<string>(BarChoices(first, int.MaxValue).Select(c => c.Key));
             foreach (var (a, pictorial) in BarActions(actions.Where(a => a.Id != "chart.data" && (a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains))), text is not null))
-                if (pictorial) list.Add((new BarButton("act:" + a.Id, "", a.Label.Get(_lang()) + (a.Input is not null ? " \u2026" : ""), Active: a.IsActive) { IconId = a.Icon }, false));
+                if (pictorial)
+                {
+                    // "+"/"\u2212" steps keep their label next to the pictogram (more what? \u2013 UX review G8).
+                    var tip = a.Label.Get(_lang()) + (a.Input is not null ? " \u2026" : "");
+                    list.Add((IconIds.IsStep(a.Icon)
+                        ? new BarButton("act:" + a.Id, ShortLabel(a.Label.Get(_lang()), 14), tip, Active: a.IsActive) { IconId = a.Icon, ShowLabel = true }
+                        : new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }, false));
+                }
             if (viewChip is not null) list.Add((viewChip, false));
             list.Add((insert, false));
             if (InventaSketch.Modules.Charts.ChartSketchInput.Supports(first))
-                list.Add((new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Trace }, false));
+                list.Add((new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Pencil }, false));
             if (first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
                 && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { Dof: 1 })
             {
@@ -283,11 +290,11 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Pictograms the bar or pie already has as generic commands of their own.</summary>
         private static readonly HashSet<string> NotInBar = new() { IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate };
 
-        /// <summary>Generic pictograms (switch, cycle) say nothing on their own: such actions show a short text instead.</summary>
-        // "+" and "−" alone say nothing (more what? fewer what? – UX review G8): such actions are not shown as bare pictograms.
-        // The "T" means "edit the text" only (maintainer 2026-11-25: "what is that T all the time?"): actions that reuse it
-        // for values, names or data are not shown with it.
-        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon is not (IconIds.Toggle or IconIds.Cycle or IconIds.Increase or IconIds.Decrease or IconIds.Text);
+        /// <summary>
+        /// Generic pictograms (switch, cycle, pick option) say nothing on their own: such actions show a short text instead.
+        /// The "T" means "edit the text" only (maintainer 2026-11-25: "what is that T all the time?").
+        /// </summary>
+        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && !IconIds.IsLabelOnly(icon) && icon != IconIds.Text;
 
         /// <summary>
         /// Type actions for the floating bar (key parameters: thicker/thinner, more/fewer, swap, hub, helix …): available ones,
@@ -299,7 +306,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var usable = actions.Where(a => a.IsEnabled && !NotInBar.Contains(a.Icon) && !(hasTextButton && a.Icon == IconIds.Text)).ToList();
             var shared = new HashSet<string>(usable.GroupBy(a => a.Icon).Where(g => g.Count() > 1).Select(g => g.Key));
-            bool Pictorial(ContextAction a) => IsTelling(a.Icon) && !shared.Contains(a.Icon);
+            // Step pictograms ("+"/"−", one more/fewer) are drawn with their label, so several pairs stay apart.
+            bool Pictorial(ContextAction a) => IsTelling(a.Icon) && (!shared.Contains(a.Icon) || IconIds.IsStep(a.Icon));
             return usable.Where(Pictorial).Select(a => (a, true))
                 .Concat(usable.Where(a => !Pictorial(a)).Select(a => (a, false)))
                 .Take(MaxBarActions).ToList();
@@ -358,14 +366,14 @@ namespace InventaSketch.AddIn.OnSlide
                 // Actions that only set a choice shown under "Style" stay there (no two entries for one thing).
                 edit.AddRange(actions.Where(a => a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains)).Select(ActionItem));
                 if (first is not null && Assemblies.CanExplode(registry, first)) edit.Add(PieCommand("explode", IconIds.Explode));
-                if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first)) edit.Add(PieCommand("sketch", IconIds.Trace));
+                if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first)) edit.Add(PieCommand("sketch", IconIds.Pencil));
                 if (MovablePart() is not null) edit.Add(PieCommand("motion", IconIds.Motion, active: AddInSettings.Motion));
                 // Self-built linkage: its degree of freedom, coupler curve and ghost positions.
                 if (first is not null && first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
                     && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
                 {
                     edit.Add(new PieItem("info:dof", "F = " + dof.Dof) { Hint = T("Degree of freedom (Gr\u00fcbler): ", "Freiheitsgrad (Gr\u00fcbler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke") });
-                    if (dof.Dof == 1) { edit.Add(PieCommand("trace", IconIds.Trace)); edit.Add(PieCommand("ghosts", IconIds.Animate)); }
+                    if (dof.Dof == 1) { edit.Add(PieCommand("trace", IconIds.Trace)); edit.Add(PieCommand("ghosts", IconIds.Ghosts)); }
                 }
                 // A selected corner: split there or remove it, first.
                 edit.InsertRange(0, CornerButtons().Where(b => !b.Separator).Select(b => new PieItem(b.Id, b.Tip) { IconId = b.IconId }));

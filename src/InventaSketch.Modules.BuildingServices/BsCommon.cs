@@ -203,7 +203,7 @@ namespace InventaSketch.Modules.BuildingServices
 
         /// <summary>"Mounting height…" prompt (mm).</summary>
         internal static ContextAction HeightAction(SketchObject o, ObjectType type, Lang lang)
-            => ContextAction.WithInput("bs.height.set", new I18nText("Mounting height…", "Montagehöhe…"), IconIds.Text,
+            => ContextAction.WithInput("bs.height.set", new I18nText("Mounting height…", "Montagehöhe…"), IconIds.QtyHeight,
                 new I18nText("Mounting height, bottom edge above floor (mm)", "Montagehöhe, Unterkante über OKFF (mm)"), Mm(HeightOf(o, type)),
                 (x, text) => x.WithParam(Pm.HeightKey, Math.Round(ParseMm(text, lang), 1)), "mm") with { Group = "height", ParamKeys = new[] { Pm.HeightKey } };
     }

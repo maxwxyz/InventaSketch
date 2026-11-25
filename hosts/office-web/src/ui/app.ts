@@ -776,7 +776,7 @@ export class App {
       build.push({ id: "trace", label: t("ctx.trace"), icon: "cmd-trace" });
     }
     const info = this.dofOf(sel);
-    if (canDrawGhosts(this.objectById(sel[0])?.kind, info?.dof, trace)) build.push({ id: "ghosts", label: t("ctx.ghosts"), icon: "cmd-animate" });
+    if (canDrawGhosts(this.objectById(sel[0])?.kind, info?.dof, trace)) build.push({ id: "ghosts", label: t("ctx.ghosts"), icon: "cmd-ghosts" });
     if (info?.dof != null) build.push({ id: "info:dof", label: t("ctx.dof", info.dof), icon: "", text: `F = ${info.dof}` });
     // Motion mode only for parts that can move: a link of a chain with F >= 1, a gear coupled with something.
     if (this.objectById(sel[0])?.known && canMove(this.stage.motionOf(sel[0])))
@@ -784,7 +784,7 @@ export class App {
     if (info?.explodable) build.push({ id: "explode", label: t("ctx.explode"), icon: "cmd-explode" });
     // Charts: draw a curve by hand; recognised (step, ramp, sine, PT1 …) or smoothed (charts v2).
     const chartType = this.objectById(sel[0])?.type;
-    if (sel.length === 1 && (chartType === "chart.xy" || chartType === "chart.figure")) build.push({ id: "sketch", label: t("ctx.sketch"), icon: "cmd-trace" });
+    if (sel.length === 1 && (chartType === "chart.xy" || chartType === "chart.figure")) build.push({ id: "sketch", label: t("ctx.sketch"), icon: "cmd-pencil" });
     build.push(...assembly);
     this.bar.update(key, actions, box, suppressed, this.barChoices(sel), { lead, build });
   }

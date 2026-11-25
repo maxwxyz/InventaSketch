@@ -7,7 +7,7 @@
 import type { ActionInfo } from "../engine/types";
 import { t } from "../i18n";
 import { clamp, h } from "./dom";
-import { hasIcon, icon } from "./icons";
+import { barLabel, hasIcon, icon, needsLabel } from "./icons";
 import type { MultiBarGroups } from "./uxlogic";
 
 export interface BarBox { left: number; top: number; right: number; bottom: number }
@@ -169,7 +169,9 @@ export class ContextBar {
     this.group(...chips);
     const covered = new Set(choices.map((c) => c.key));
     const byId = (ids: string[]) => ids.map((id) => actions.find((x) => x.id === id)).filter((a): a is ActionInfo => !!a).map((a) => this.button(a));
-    const typeActions = actions.filter((x) => x.kind === "type" && !(x.paramKeys ?? []).some((k) => covered.has(k))).slice(0, 3).map((a) => this.button(a));
+    // Label-only and step pictograms (switch, next variant, "+"/"−") are shown as short text: one pictogram, one meaning.
+    const typeActions = actions.filter((x) => x.kind === "type" && !(x.paramKeys ?? []).some((k) => covered.has(k))).slice(0, 3)
+      .map((a) => this.button(a, needsLabel(a.icon) ? barLabel(a.label) : undefined));
     this.group(...byId(ELEMENT_IDS), ...typeActions);
     this.group(...extras.build.map((c) => this.command(c)));
     this.group(...byId(TRANSFORM_IDS));

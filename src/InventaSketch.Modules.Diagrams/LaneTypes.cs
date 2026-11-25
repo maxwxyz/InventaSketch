@@ -263,19 +263,19 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var vertical = IsVertical(o);
-            yield return new ContextAction("diag.lanes.orientation", new I18nText("Horizontal lanes", "Waagerechte Bahnen"), IconIds.Rotate,
+            yield return new ContextAction("diag.lanes.orientation", new I18nText("Horizontal lanes", "Waagerechte Bahnen"), IconIds.Toggle,
                 x => x.WithParam("orientation", IsVertical(x) ? "horizontal" : "vertical") with { Size = new Size2(x.Size.H, x.Size.W) })
             { IsActive = !vertical, Group = "orientation" };
-            yield return LaneEdit(o, lang, "diag.lanes.add", vertical ? new I18nText("Add lane on the right", "Bahn rechts hinzufügen") : new I18nText("Add lane below", "Bahn unten hinzufügen"), IconIds.Insert, true, false);
-            yield return LaneEdit(o, lang, "diag.lanes.addStart", vertical ? new I18nText("Add lane on the left", "Bahn links hinzufügen") : new I18nText("Add lane above", "Bahn oben hinzufügen"), IconIds.Insert, true, true);
-            yield return LaneEdit(o, lang, "diag.lanes.remove", vertical ? new I18nText("Remove right lane", "Rechte Bahn entfernen") : new I18nText("Remove bottom lane", "Untere Bahn entfernen"), IconIds.Delete, false, false);
-            yield return LaneEdit(o, lang, "diag.lanes.removeStart", vertical ? new I18nText("Remove left lane", "Linke Bahn entfernen") : new I18nText("Remove top lane", "Obere Bahn entfernen"), IconIds.Delete, false, true);
+            yield return LaneEdit(o, lang, "diag.lanes.add", vertical ? new I18nText("Add lane on the right", "Bahn rechts hinzufügen") : new I18nText("Add lane below", "Bahn unten hinzufügen"), vertical ? IconIds.ColumnAdd : IconIds.RowAdd, true, false);
+            yield return LaneEdit(o, lang, "diag.lanes.addStart", vertical ? new I18nText("Add lane on the left", "Bahn links hinzufügen") : new I18nText("Add lane above", "Bahn oben hinzufügen"), vertical ? IconIds.ColumnAdd : IconIds.RowAddTop, true, true);
+            yield return LaneEdit(o, lang, "diag.lanes.remove", vertical ? new I18nText("Remove right lane", "Rechte Bahn entfernen") : new I18nText("Remove bottom lane", "Untere Bahn entfernen"), vertical ? IconIds.ColumnRemove : IconIds.RowRemove, false, false);
+            yield return LaneEdit(o, lang, "diag.lanes.removeStart", vertical ? new I18nText("Remove left lane", "Linke Bahn entfernen") : new I18nText("Remove top lane", "Obere Bahn entfernen"), vertical ? IconIds.ColumnRemove : IconIds.RowRemove, false, true);
             var lanes = Lanes(o, lang);
             for (var i = 0; i < Math.Min(8, lanes.Count); i++)
             {
                 var k = i;
                 yield return ContextAction.WithInput("diag.lanes.rename." + D.Inv(k + 1),
-                    new I18nText("Rename lane " + D.Inv(k + 1), "Bahn " + D.Inv(k + 1) + " umbenennen"), IconIds.Text,
+                    new I18nText("Rename lane " + D.Inv(k + 1), "Bahn " + D.Inv(k + 1) + " umbenennen"), IconIds.Name,
                     new I18nText("Lane name", "Name der Bahn"), lanes[k], (x, s) => RenameLane(x, k, s, lang)) with { Group = "lanes" };
             }
         }

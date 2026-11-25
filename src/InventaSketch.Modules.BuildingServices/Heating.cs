@@ -67,9 +67,9 @@ namespace InventaSketch.Modules.BuildingServices
                 Ports = ManifoldPorts,
                 Extra = o => new[]
                 {
-                    new ContextAction("bs.manifold.more", new I18nText("More circuits", "Mehr Heizkreise"), IconIds.Increase,
+                    new ContextAction("bs.manifold.more", new I18nText("More circuits", "Mehr Heizkreise"), IconIds.CountMore,
                         x => x.WithParam("circuits", Math.Min(12, x.Int("circuits", 4) + 1))) { Group = "circuits", IsEnabled = o.Int("circuits", 4) < 12, ParamKeys = new[] { "circuits" } },
-                    new ContextAction("bs.manifold.fewer", new I18nText("Fewer circuits", "Weniger Heizkreise"), IconIds.Decrease,
+                    new ContextAction("bs.manifold.fewer", new I18nText("Fewer circuits", "Weniger Heizkreise"), IconIds.CountFewer,
                         x => x.WithParam("circuits", Math.Max(1, x.Int("circuits", 4) - 1))) { Group = "circuits", IsEnabled = o.Int("circuits", 4) > 1, ParamKeys = new[] { "circuits" } },
                 },
                 CompanionIds = new[] { PipeType.TypeId, "bs.heat.floorloop", "bs.heat.pump" },

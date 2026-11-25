@@ -82,7 +82,9 @@ namespace InventaSketch.AddIn.OnSlide
                 var label = a.Label.Get(_lang());
                 var tip = label + (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal) ? " …" : "");
                 list.Add(IsTelling(a.Icon)
-                    ? new BarButton("part:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
+                    ? IconIds.IsStep(a.Icon)
+                        ? new BarButton("part:" + a.Id, ShortLabel(label), tip, Active: a.IsActive) { IconId = a.Icon, ShowLabel = true }
+                        : new BarButton("part:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
                     : new BarButton("part:" + a.Id, ShortLabel(label), tip, Active: a.IsActive));
             }
             list.Add(new BarButton("", "", "", Separator: true));

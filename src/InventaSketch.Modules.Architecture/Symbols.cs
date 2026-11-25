@@ -269,7 +269,7 @@ namespace InventaSketch.Modules.Architecture
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Arch.Cycle(o, "arch.pipe.medium", "medium", "flow", Media.Select(m => (m.Value, m.Label)).ToList());
-            yield return Arch.Toggle(o, "arch.pipe.arrow", new I18nText("Flow arrow", "Fließrichtungspfeil"), IconIds.ArrowEnd, "arrow", false);
+            yield return Arch.Toggle(o, "arch.pipe.arrow", new I18nText("Flow arrow", "Fließrichtungspfeil"), IconIds.FlowArrow, "arrow", false);
         }
     }
 
@@ -318,7 +318,7 @@ namespace InventaSketch.Modules.Architecture
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Arch.Toggle(o, "arch.section.flip", new I18nText("Flip view direction", "Blickrichtung umkehren"), IconIds.MirrorV, "flip", false, "flip");
+            yield return Arch.Toggle(o, "arch.section.flip", new I18nText("Flip view direction", "Blickrichtung umkehren"), IconIds.Reverse, "flip", false, "flip");
         }
     }
 

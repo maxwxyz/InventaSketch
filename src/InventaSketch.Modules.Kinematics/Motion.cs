@@ -67,7 +67,7 @@ namespace InventaSketch.Modules.Kinematics
         {
             var cur = o.Str("labels", "values");
             var next = cur == "values" ? "symbols" : cur == "symbols" ? "none" : "values";
-            yield return new ContextAction("kin.labels", new I18nText("Next label style", "Nächste Beschriftungsart"), IconIds.Text, x => x.WithParam("labels", next)) { Group = "param" };
+            yield return new ContextAction("kin.labels", new I18nText("Next label style", "Nächste Beschriftungsart"), IconIds.Cycle, x => x.WithParam("labels", next)) { Group = "param" };
             yield return KA.Toggle(o, "kin.limit.joint", new I18nText("Joint circle", "Gelenkkreis"), IconIds.Toggle, "joint", true, "param");
         }
     }
@@ -114,7 +114,7 @@ namespace InventaSketch.Modules.Kinematics
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return KA.Toggle(o, "kin.dof.formula", new I18nText("Show formula", "Formel zeigen"), IconIds.Text, "formula", false, "param");
+            yield return KA.Toggle(o, "kin.dof.formula", new I18nText("Show formula", "Formel zeigen"), IconIds.Formula, "formula", false, "param");
         }
     }
 }

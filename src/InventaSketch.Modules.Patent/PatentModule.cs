@@ -88,7 +88,7 @@ namespace InventaSketch.Modules.Patent
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var a in LeaderType.LeaderActions(o, "curved")) yield return a;
-            yield return new ContextAction("patent.numeral.underline", new I18nText("Underlined surface numeral", "Unterstrichenes Flächen-Bezugszeichen"), "underline",
+            yield return new ContextAction("patent.numeral.underline", new I18nText("Surface numeral (underlined)", "Flächen-Bezugszeichen (unterstrichen)"), IconIds.Toggle,
                 x => x.WithParam("underline", !x.Flag("underline", false))) { IsActive = o.Flag("underline", false) };
         }
     }

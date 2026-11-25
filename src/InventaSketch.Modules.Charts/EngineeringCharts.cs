@@ -266,7 +266,7 @@ namespace InventaSketch.Modules.Charts
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
-            ContextAction.WithInput("chart.levels", new I18nText("Contour levels…", "Höhenlinien…"), IconIds.Text,
+            ContextAction.WithInput("chart.levels", new I18nText("Contour levels…", "Höhenlinien…"), IconIds.Contour,
                 new I18nText("Efficiency levels in % (e.g. 80;90;95)", "Wirkungsgradstufen in % (z. B. 80;90;95)"), o.Str("levels", DefaultLevels),
                 (x, text) =>
                 {
@@ -274,7 +274,7 @@ namespace InventaSketch.Modules.Charts
                         throw new FormatException(lang == Lang.De ? "Keine gültigen Werte: „" + text + "“" : "No valid values: “" + text + "”");
                     return x.WithParam("levels", text.Trim());
                 }) with { Group = "data" },
-            Prm.Toggle(o, "chart.labels", "labels", true, new I18nText("Contour labels", "Beschriftung der Linien")),
+            Prm.Toggle(o, "chart.labels", "labels", true, new I18nText("Contour labels", "Linien beschriften"), IconIds.LabelShow),
             Common.GridToggle(o),
         };
     }
@@ -365,7 +365,7 @@ namespace InventaSketch.Modules.Charts
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
             Prm.Cycle(o, "chart.kind", KindDef, new I18nText("Machine", "Maschine")),
-            ContextAction.WithInput("chart.qop", new I18nText("Operating flow…", "Förderstrom im Betriebspunkt…"), IconIds.Text,
+            ContextAction.WithInput("chart.qop", new I18nText("Operating flow…", "Betriebsförderstrom…"), IconIds.QtyFlow,
                 new I18nText("Flow at the operating point", "Förderstrom im Betriebspunkt"), Fmt.Num(o.Num("qop", 70), lang),
                 (x, text) => x.WithParam("qop", Fmt.ParseInput(text, lang, 1e-6, 1e9, "m³/h", "m3/h"))) with { Group = "data" },
             Prm.Toggle(o, "chart.system", "system", true, new I18nText("System curve", "Anlagenkennlinie")),
@@ -516,7 +516,7 @@ namespace InventaSketch.Modules.Charts
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
             Prm.Cycle(o, "chart.system", SystemDef, new I18nText("System", "System")),
-            ContextAction.WithInput("chart.fc", new I18nText("Corner frequency…", "Eckfrequenz…"), IconIds.Text,
+            ContextAction.WithInput("chart.fc", new I18nText("Corner frequency…", "Eckfrequenz…"), IconIds.QtyFrequency,
                 new I18nText("Corner frequency (e.g. 1 kHz, 250 Hz, 2.5k)", "Eckfrequenz (z. B. 1 kHz, 250 Hz, 2,5k)"), Axis.LogLabel(o.Num("fc", 1000), lang) + " Hz",
                 (x, text) => x.WithParam("fc", Fmt.ParseInput(text, lang, 1e-9, 1e15, "Hz"))) with { Group = "data" },
             Prm.Cycle(o, "chart.show", ShowDef, new I18nText("Show", "Anzeigen")),
@@ -665,7 +665,7 @@ namespace InventaSketch.Modules.Charts
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
             Common.DataInput(o, DefaultData),
-            ContextAction.WithInput("chart.tol", new I18nText("Tolerance…", "Toleranz…"), IconIds.Text,
+            ContextAction.WithInput("chart.tol", new I18nText("Tolerance…", "Toleranz…"), IconIds.QtyTolerance,
                 new I18nText("Tolerance (e.g. 10 % or 0.5)", "Toleranz (z. B. 10 % oder 0,5)"),
                 Fmt.Num(o.Num("tol", 10), lang) + (o.Str("tolmode", "percent") == "percent" ? " %" : ""),
                 (x, text) =>
@@ -675,7 +675,7 @@ namespace InventaSketch.Modules.Charts
                     var v = Fmt.ParseInput(t.TrimEnd('%').Trim(), lang, 0, 1e9);
                     return x.WithParam("tol", v).WithParam("tolmode", percent ? "percent" : "absolute");
                 }) with { Group = "data" },
-            Prm.Toggle(o, "chart.smooth", "smooth", true, new I18nText("Smooth curves", "Geglättete Kurven")),
+            Prm.Toggle(o, "chart.smooth", "smooth", true, new I18nText("Smooth curves", "Geglättete Kurven"), IconIds.Smooth),
             Common.GridToggle(o),
             Common.LegendCycle(o),
         };

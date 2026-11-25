@@ -253,7 +253,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.pair.swap", new I18nText("Swap directions", "Richtungen tauschen"), IconIds.Swap, "swap", false, "direction");
+            yield return Ann.Toggle(o, "ann.pair.swap", new I18nText("Reverse directions", "Richtungen umkehren"), IconIds.Reverse, "swap", false, "direction");
         }
     }
 

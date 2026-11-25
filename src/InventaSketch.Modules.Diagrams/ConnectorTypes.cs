@@ -31,6 +31,19 @@ namespace InventaSketch.Modules.Diagrams
             ("dependency", "Dependency", "Abhängigkeit"), ("link", "Link (note anchor)", "Verbindung (Notizanker)"),
         };
 
+        /// <summary>The pictogram of a relation kind: the line and line end it draws.</summary>
+        public static string RelationIcon(string kind) => kind switch
+        {
+            "directed" => IconIds.HeadOpen,
+            "aggregation" => IconIds.HeadDiamondHollow,
+            "composition" => IconIds.HeadDiamond,
+            "generalization" => IconIds.HeadTriangleHollow,
+            "realization" => IconIds.HeadTriangleHollowDashed,
+            "dependency" => IconIds.HeadOpenDashed,
+            "link" => IconIds.LineDash,
+            _ => IconIds.HeadNone,
+        };
+
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             P.Choice("kind", "Kind", "Art", "association", KindOptions),
@@ -74,8 +87,8 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var (value, en, de) in KindOptions)
-                yield return D.SetChoice(o, "diag.rel." + value, new I18nText(en, de), IconIds.ArrowEnd, "kind", value, "association", "kind");
-            yield return new ContextAction("diag.swap", new I18nText("Swap direction", "Richtung umkehren"), IconIds.Swap, Swap) { Group = "direction" };
+                yield return D.SetChoice(o, "diag.rel." + value, new I18nText(en, de), RelationIcon(value), "kind", value, "association", "kind");
+            yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, Swap) { Group = "direction" };
             yield return RouteAction(o);
         }
     }

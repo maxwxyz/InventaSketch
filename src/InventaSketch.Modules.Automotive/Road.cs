@@ -74,7 +74,7 @@ namespace InventaSketch.Modules.Automotive
         private static ContextAction LanesAction(int delta, bool resize, Func<SketchObject, Size2>? design = null) => new(
             delta > 0 ? "param.lanes.inc" : "param.lanes.dec",
             delta > 0 ? T("Add lane", "Fahrstreifen hinzufügen") : T("Remove lane", "Fahrstreifen entfernen"),
-            delta > 0 ? AutoIcons.Increase : AutoIcons.Decrease,
+            delta > 0 ? AutoIcons.More : AutoIcons.Fewer,
             x =>
             {
                 var n = LaneCount(x);
@@ -411,7 +411,7 @@ namespace InventaSketch.Modules.Automotive
 
             public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
             {
-                yield return Prm.Cycle(o, PatternDef, T("Solid / dashed / double", "Durchgezogen / gestrichelt / doppelt"));
+                yield return Prm.Cycle(o, PatternDef, T("Next line pattern", "Nächstes Linienmuster"));
                 yield return Prm.Toggle(o, "smooth", false, T("Smooth curve", "Glatte Kurve"));
             }
         }

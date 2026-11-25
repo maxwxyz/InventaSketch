@@ -76,7 +76,7 @@ class Texts(unittest.TestCase):
         self.assertEqual(ux.search_row({"id": "a", "name": "Lager"}, "de"), "Lager")
 
     def test_info_line(self):
-        self.assertEqual(ux.info_line({"dof": {"dof": 1, "links": 4, "joints": 4}}, "en"), "F = 1 (4 links, 4 joints)")
+        self.assertEqual(ux.info_line({"dof": {"dof": 1, "links": 4, "joints": 4}}, "en"), "Degree of freedom F = 1 (4 links, 4 joints)")
         self.assertEqual(ux.info_line({"dof": {"dof": None}}, "en"), "")
         self.assertEqual(ux.info_line({}, "de"), "")
 

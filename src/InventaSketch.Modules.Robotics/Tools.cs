@@ -91,7 +91,7 @@ namespace InventaSketch.Modules.Robotics
         {
             Params = new[] { OpenParam, Pm.Bool("arrows", "Stroke arrows", "Hubpfeile", false) },
             CompanionIds = Companions,
-            Extra = o => OpenActions(o).Concat(new[] { Rb.Toggle(o, "robot.gripper.arrows", new I18nText("Stroke arrows", "Hubpfeile"), IconIds.ArrowEnd, "arrows", false) }),
+            Extra = o => OpenActions(o).Concat(new[] { Rb.Toggle(o, "robot.gripper.arrows", new I18nText("Stroke arrows", "Hubpfeile"), IconIds.FlowArrow, "arrows", false) }),
         };
 
         // ------------------------------------------------------------------ vacuum gripper
@@ -130,8 +130,8 @@ namespace InventaSketch.Modules.Robotics
             CompanionIds = Companions,
             Extra = o => new[]
             {
-                new ContextAction("robot.cups.more", new I18nText("More cups", "Mehr Saugnäpfe"), IconIds.Increase, x => x.WithParam("cups", Math.Min(4, x.Int("cups", 1) + 1))) { Group = "param", ParamKeys = new[] { "cups" }, IsEnabled = o.Int("cups", 1) < 4 },
-                new ContextAction("robot.cups.fewer", new I18nText("Fewer cups", "Weniger Saugnäpfe"), IconIds.Decrease, x => x.WithParam("cups", Math.Max(1, x.Int("cups", 1) - 1))) { Group = "param", ParamKeys = new[] { "cups" }, IsEnabled = o.Int("cups", 1) > 1 },
+                new ContextAction("robot.cups.more", new I18nText("More cups", "Mehr Saugnäpfe"), IconIds.CountMore, x => x.WithParam("cups", Math.Min(4, x.Int("cups", 1) + 1))) { Group = "param", ParamKeys = new[] { "cups" }, IsEnabled = o.Int("cups", 1) < 4 },
+                new ContextAction("robot.cups.fewer", new I18nText("Fewer cups", "Weniger Saugnäpfe"), IconIds.CountFewer, x => x.WithParam("cups", Math.Max(1, x.Int("cups", 1) - 1))) { Group = "param", ParamKeys = new[] { "cups" }, IsEnabled = o.Int("cups", 1) > 1 },
             },
         };
 
@@ -291,7 +291,7 @@ namespace InventaSketch.Modules.Robotics
         {
             Params = new[] { Pm.Bool("arrow", "Rotation arrow", "Drehrichtungspfeil", false) },
             CompanionIds = Companions,
-            Extra = o => new[] { Rb.Toggle(o, "robot.spindle.arrow", new I18nText("Rotation arrow", "Drehrichtungspfeil"), IconIds.Rotate, "arrow", false) },
+            Extra = o => new[] { Rb.Toggle(o, "robot.spindle.arrow", new I18nText("Rotation arrow", "Drehrichtungspfeil"), IconIds.FlowArrow, "arrow", false) },
         };
 
         // ------------------------------------------------------------------ coordinate frame
@@ -352,7 +352,7 @@ namespace InventaSketch.Modules.Robotics
             {
                 Rb.Cycle(o, "robot.frame.kind", FrameKind),
                 Rb.Cycle(o, "robot.frame.axes", FrameAxes, "axes"),
-                Rb.Toggle(o, "robot.frame.name", new I18nText("Show name", "Name zeigen"), IconIds.Text, "name", true, "annotation"),
+                Rb.Toggle(o, "robot.frame.name", new I18nText("Show name", "Name zeigen"), IconIds.LabelShow, "name", true, "annotation"),
             },
         };
 
@@ -378,7 +378,7 @@ namespace InventaSketch.Modules.Robotics
             Uniform = true,
             Part = false,
             Params = new[] { Pm.Bool("name", "Show label", "Beschriftung zeigen", true) },
-            Extra = o => new[] { Rb.Toggle(o, "robot.tcp.name", new I18nText("Show label", "Beschriftung zeigen"), IconIds.Text, "name", true, "annotation") },
+            Extra = o => new[] { Rb.Toggle(o, "robot.tcp.name", new I18nText("Show label", "Beschriftung zeigen"), IconIds.LabelShow, "name", true, "annotation") },
         };
     }
 }

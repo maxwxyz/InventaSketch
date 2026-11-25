@@ -262,7 +262,7 @@ namespace InventaSketch.Modules.Energy
 
         /// <summary>"Voltages…" prompt: "20/0.4" sets both windings at once.</summary>
         private static ContextAction VoltagesAction(SketchObject o, Lang lang, params ParamDef[] windings)
-            => ContextAction.WithInput("energy.voltages.set", T("Voltages…", "Spannungen…"), IconIds.Text,
+            => ContextAction.WithInput("energy.voltages.set", T("Voltages…", "Spannungen…"), IconIds.QtyVoltage,
                 T("Voltages in kV (e.g. " + (windings.Length == 2 ? "20/0.4" : "110/20/10") + ")", "Spannungen in kV (z. B. " + (windings.Length == 2 ? "20/0,4" : "110/20/10") + ")"),
                 string.Join("/", windings.Select(w => Fmt.Num(o.N(w), lang))),
                 (x, text) =>

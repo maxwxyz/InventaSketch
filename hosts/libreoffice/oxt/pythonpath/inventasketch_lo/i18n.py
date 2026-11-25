@@ -17,7 +17,7 @@ TEXTS = {
     "editSelected": ("Refresh selection", "Auswahl aktualisieren"),
     "view": ("View", "Ansicht"),
     "redraw": ("Redraw from model", "Aus dem Modell neu zeichnen"),
-    "dofInfo": ("F = %d (%d links, %d joints)", "F = %d (%d Glieder, %d Gelenke)"),
+    "dofInfo": ("Degree of freedom F = %d (%d links, %d joints)", "Freiheitsgrad F = %d (%d Glieder, %d Gelenke)"),
     "actTrace": ("Draw path", "Bahn zeichnen"),
     "tipTrace": ("Draw the path of this link's end (coupler curve)", "Bahnkurve des Gliedendes zeichnen (Koppelkurve)"),
     "actGhosts": ("Ghost positions", "Zwischenlagen"),

@@ -159,7 +159,7 @@ namespace InventaSketch.Modules.Process
             => ChartActions(o).Concat(new[]
             {
                 Toggle(o, "process.chart.labels", T("State numbers", "Zustandsnummern"), "labels", true, IconIds.Renumber),
-                Toggle(o, "process.chart.caption", T("Caption", "Beschriftung"), "caption", true, IconIds.Text),
+                Toggle(o, "process.chart.caption", T("Caption", "Beschriftung"), "caption", true, IconIds.LabelShow),
             });
 
         protected abstract IEnumerable<ContextAction> ChartActions(SketchObject o);

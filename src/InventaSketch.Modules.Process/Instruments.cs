@@ -43,7 +43,7 @@ namespace InventaSketch.Modules.Process
                 CompanionIds = new[] { "process.line.signal", "process.valve.control", "process.instrument.orifice", BubbleId },
                 Extra = o => new[]
                 {
-                    ContextAction.WithInput("process.instrument.tag", T("Tag …", "Kennzeichen …"), IconIds.Text,
+                    ContextAction.WithInput("process.instrument.tag", T("Tag …", "Kennzeichen …"), IconIds.Name,
                         T("Tag (e.g. TIC 101, PT-205)", "Kennzeichen (z. B. TIC 101, PT-205)"), o.Str(ProcessType.TagKey, "TIC 101"),
                         (x, t) => x.WithParam(ProcessType.TagKey, t.Trim())) with { Group = "label", ParamKeys = new[] { ProcessType.TagKey } },
                     Cycle("process.instrument.location", T("Location", "Anordnung"), Location),

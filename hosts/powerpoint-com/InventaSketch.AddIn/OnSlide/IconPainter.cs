@@ -31,6 +31,12 @@ namespace InventaSketch.AddIn.OnSlide
             using var thin = new Pen(ink, 1.1f) { StartCap = LineCap.Round, EndCap = LineCap.Round };
             using var dash = new Pen(ink, 1.1f) { DashPattern = new[] { 3.5f, 1.6f, 1f, 1.6f } };
             using var brush = new SolidBrush(ink);
+            if (SharedPaths.TryGetValue(iconId, out var shared))
+            {
+                DrawSvgPath(g, shared, pen, brush);
+                g.Restore(state);
+                return;
+            }
             switch (iconId)
             {
                 case IconIds.Schematic:
@@ -501,6 +507,241 @@ namespace InventaSketch.AddIn.OnSlide
                     break;
             }
             g.Restore(state);
+        }
+
+        /// <summary>
+        /// Pictograms defined once as SVG path data on the 24-unit grid, identical to the web add-in's icons.ts (a web test
+        /// compares both tables). Sub-paths closed with an uppercase "Z" are filled, everything is stroked; a zero-length
+        /// sub-path ("h.01") is a dot.
+        /// </summary>
+        internal static readonly Dictionary<string, string> SharedPaths = new()
+        {
+            // <shared-paths>
+            ["cmd-option"] = "M12 4.5a7.5 7.5 0 1 0 0 15a7.5 7.5 0 1 0 0 -15zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0 -6Z",
+            ["cmd-value"] = "M3 8h18v8H3zM16.5 5.5v13M14.5 5.5h4M14.5 18.5h4M6.5 12h.01M9.5 12h.01M12.5 12h.01",
+            ["cmd-name"] = "M2.5 12L8.5 5H21v14H8.5zM13 10h5M13 14h3.5M8.6 10.6a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 1 0 0 -2.8z",
+            ["cmd-label-show"] = "M3 14h7v7H3zM10 14l3.5-3.5M13 3h8.5v7.5H13zM15.5 6.75h3.5",
+            ["cmd-port-labels"] = "M8 4h8v16H8zM2.5 8.5H8M2.5 15.5H8M16 8.5h5.5M16 15.5h5.5M10.5 8.5h2.5M10.5 15.5h2.5",
+            ["cmd-formula"] = "M5.5 20.5c1.6 0 2.4-.8 2.8-2.8l2.2-11c.4-2 1.2-2.8 2.8-2.8M6.5 10h6.5M13.5 12l6 8M19.5 12l-6 8",
+            ["cmd-parameters"] = "M4 6h16M4 12h16M4 18h16M8 4a2 2 0 1 0 0 4a2 2 0 1 0 0 -4ZM15.5 10a2 2 0 1 0 0 4a2 2 0 1 0 0 -4ZM10.5 16a2 2 0 1 0 0 4a2 2 0 1 0 0 -4Z",
+            ["cmd-code"] = "M9 4C7 4 6.5 5 6.5 7v2.5C6.5 11 5.5 12 4 12c1.5 0 2.5 1 2.5 2.5V17c0 2 .5 3 2.5 3M15 4c2 0 2.5 1 2.5 3v2.5c0 1.5 1 2.5 2.5 2.5c-1.5 0-2.5 1-2.5 2.5V17c0 2-.5 3-2.5 3",
+            ["cmd-data"] = "M3 4h18v16H3zM3 13.5h18M9 4v16M15 4v16M3 4h18v4.5H3Z",
+            ["cmd-legend"] = "M4 5h3.5v3.5H4ZM4 10.25h3.5v3.5H4ZM4 15.5h3.5V19H4ZM11 6.75h9.5M11 12h7M11 17.25h8.5",
+            ["cmd-visibility"] = "M2 12C5 7 8.5 5 12 5C15.5 5 19 7 22 12C19 17 15.5 19 12 19C8.5 19 5 17 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 1 0 0 -6Z",
+            ["cmd-grid"] = "M4 3v17h17M4 14.5h16M4 9h16M4 3.5h16M9.5 3.5V20M15 3.5V20M20 3.5V20",
+            ["cmd-axis-ticks"] = "M7 3v14h14M11 17v3.5M15 17v3.5M19 17v3.5M3.5 13H7M3.5 9H7M3.5 5H7",
+            ["cmd-smooth"] = "M3 19C5 9 9 6 12 12C15 18 19 15 21 5M7.5 4a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0 -3ZM16.5 17.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0 -3Z",
+            ["cmd-points"] = "M3 17l6-8 6 6 6-9M3 15.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0 -3.6ZM9 7.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0 -3.6ZM15 13.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0 -3.6ZM21 4.2a1.8 1.8 0 1 0 0 3.6a1.8 1.8 0 1 0 0 -3.6Z",
+            ["cmd-contour"] = "M3.5 13C3 7 8 3.5 13 4C18.5 4.5 21.5 8 20.5 13C19.5 18 15 20.5 10.5 19.5C6.5 18.5 4 16.5 3.5 13zM8 12.5C8 9.5 10.5 7.5 13.5 8.2C16 8.8 17 11 16.5 13C16 15 14 16 12 15.6C10 15.2 8 14.5 8 12.5z",
+            ["cmd-function"] = "M3 5h18v14H3zM5.5 12C7 6.5 9 6.5 10 12C11 17.5 13 17.5 14 12C15 6.5 17 6.5 18.5 12",
+            ["cmd-marker"] = "M4 21h16M12 21v-3M12 15.5v-3M12 10V3M12 3h6.5l-2 2.5 2 2.5H12Z",
+            ["cmd-value-line"] = "M4 3v18h17M7 8.5h3M12.5 8.5h3M18 8.5h3M6 18C10 17 13 13 20 12",
+            ["cmd-hatch-between"] = "M3 6C8 4 14 4 21 6.5M3 18.5C8 15 14 15 21 18.5M6 16l3-10.5M11 15.2l2.8-10M16 15.6l2.6-10",
+            ["cmd-hatch-below"] = "M3 20h18M3 14C8 5 14 5 21 10M5.5 20l3.5-11M10.5 20l3-12.5M15.5 20l3-11.5",
+            ["cmd-break-x"] = "M2 15h7M15 15h7M7.5 19l3-8M13.5 19l3-8",
+            ["cmd-break-y"] = "M12 2v7M12 15v7M7.5 11.5l9-3M7.5 17.5l9-3",
+            ["cmd-break-x-remove"] = "M2 15h20M7.5 19l3-8M13.5 19l3-8M15.5 3l5 5M20.5 3l-5 5",
+            ["cmd-break-y-remove"] = "M8 2v20M3.5 9.5l9-3M3.5 15.5l9-3M15.5 16l5 5M20.5 16l-5 5",
+            ["cmd-ghosts"] = "M5 19L12.5 5.5M5 19l14-7M5 19h15M5 16.8a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0 -4.4ZM12.5 4a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0 -3zM19 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0 -3zM20 17.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0 -3z",
+            ["cmd-rays"] = "M3 6h16M3 12h16M3 18h16M16 3.5l3.5 2.5-3.5 2.5M16 9.5l3.5 2.5-3.5 2.5M16 15.5l3.5 2.5-3.5 2.5",
+            ["qty-angle"] = "M3.5 19.5h17M3.5 19.5L14.5 4.5M11.5 19.5A8 8 0 0 0 8.2 13.05",
+            ["qty-length"] = "M2 8h20v7H2zM6 8v3.5M10 8v2M14 8v3.5M18 8v2",
+            ["qty-width"] = "M3.5 4v16M20.5 4v16M8 12h8M4.5 12L7.7 10L7.7 14ZM19.5 12L16.3 14L16.3 10Z",
+            ["qty-height"] = "M3 21h18M8 3h8M12 7v10M12 3.5L14 6.7L10 6.7ZM12 20.5L10 17.3L14 17.3Z",
+            ["qty-thickness"] = "M3 10h18M3 14h18M12 2v4M12 22v-4M12 9.5L10 6.3L14 6.3ZM12 14.5L14 17.7L10 17.7Z",
+            ["qty-area"] = "M8 8h12v12H8zM4 8v12M8 4h12M3 8h2M3 20h2M8 3v2M20 3v2M11 17l6-6M11 13l2-2M15 17l2-2",
+            ["qty-volume"] = "M6 3v15a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V3M6 11h12M6 7h2.5M6 15h2.5",
+            ["qty-mass"] = "M7 10h10l3 11H4zM9.5 10a2.5 2.5 0 1 1 5 0",
+            ["qty-pressure"] = "M12 3a8 8 0 1 0 0 16a8 8 0 1 0 0-16zM12 11l4-4.5M10 19v3h4v-3M12 9.6a1.4 1.4 0 1 0 0 2.8a1.4 1.4 0 1 0 0 -2.8Z",
+            ["qty-power"] = "M13.5 2L5 13.5h6.5L10 22l9-12h-6.5z",
+            ["qty-voltage"] = "M2.5 12H9M9 5v14M14 8.5v7M14 12h7.5M16.5 5h4M18.5 3v4",
+            ["qty-capacity"] = "M2.5 7h16v10h-16zM18.5 10h2.5v4h-2.5M8 12h5M5 12L7.8 10.2L7.8 13.8ZM16 12L13.2 13.8L13.2 10.2Z",
+            ["qty-charge"] = "M2.5 7h16v10h-16zM18.5 10h2.5v4h-2.5M4.5 9h7v6h-7Z",
+            ["qty-time"] = "M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18zM12 7v5l3.5 2.5",
+            ["qty-frequency"] = "M3 11C4.8 3.5 7.7 3.5 9.75 11C11.8 18.5 14.7 18.5 16.5 11M3 21h13.5M3 19v4M16.5 19v4",
+            ["qty-tolerance"] = "M3 12h18M3 6.5h3M9 6.5h3M15 6.5h3M3 17.5h3M9 17.5h3M15 17.5h3",
+            ["qty-flow"] = "M2 6.5h20M2 17.5h20M4 12h9M18 12L13 15L13 9Z",
+            ["qty-range-x"] = "M2 17h20M6 10v11M18 10v11M6 10h2.5M6 21h2.5M18 10h-2.5M18 21h-2.5",
+            ["qty-range-y"] = "M7 2v20M3 6h11M3 18h11M3 6v2.5M14 6v2.5M3 18v-2.5M14 18v-2.5",
+            ["cmd-point-add"] = "M2 15h20M12 10.5l4.5 4.5-4.5 4.5L7.5 15zM9 5h6M12 2v6",
+            ["cmd-row-add"] = "M3 3h18v9H3zM3 7.5h18M12 14v7M8.5 17.5h7",
+            ["cmd-row-add-top"] = "M3 12h18v9H3zM3 16.5h18M12 3v7M8.5 6.5h7",
+            ["cmd-row-remove"] = "M3 3h18v9H3zM3 7.5h18M8.5 17.5h7",
+            ["cmd-column-add"] = "M3 3h9v18H3zM7.5 3v18M18 8.5v7M14.5 12h7",
+            ["cmd-column-remove"] = "M3 3h9v18H3zM7.5 3v18M14.5 12h7",
+            ["cmd-operation-add"] = "M3 3h18v9H3zM6 7.5h7M16 5.5c-1 1.2-1 2.8 0 4M18.5 5.5c1 1.2 1 2.8 0 4M12 14v7M8.5 17.5h7",
+            ["cmd-operation-remove"] = "M3 3h18v9H3zM6 7.5h7M16 5.5c-1 1.2-1 2.8 0 4M18.5 5.5c1 1.2 1 2.8 0 4M8.5 17.5h7",
+            ["cmd-port-add"] = "M3 8h9v12H3zM12 14h5.5M19 2.5v6M16 5.5h6M19 12.4a1.6 1.6 0 1 0 0 3.2a1.6 1.6 0 1 0 0 -3.2z",
+            ["cmd-port-remove"] = "M3 8h9v12H3zM12 14h5.5M16 5.5h6M19 12.4a1.6 1.6 0 1 0 0 3.2a1.6 1.6 0 1 0 0 -3.2z",
+            ["cmd-count-more"] = "M3 15h4.5v5H3zM9.75 15h4.5v5h-4.5zM16.5 15H21v5h-4.5zM12 2.5v8M8 6.5h8",
+            ["cmd-count-fewer"] = "M3 15h4.5v5H3zM9.75 15h4.5v5h-4.5zM16.5 15H21v5h-4.5zM8 6.5h8",
+            ["cmd-reverse"] = "M18 21V10a6 6 0 0 0-12 0v5M6 20L3.2 16L8.8 16Z",
+            ["cmd-side-swap"] = "M2 12h20M11 6.5c5 0 7.5 3 6 9.5M6.5 4.3a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0 -4.4ZM16.5 18.5L14.97 14.93L19.28 15.79Z",
+            ["cmd-polarity"] = "M3 7h6M6 4v6M15 17h6M12 4.5c4 0 6.5 2 7 6M11.5 19.5c-4 0-6.5-2-7-6M19.2 12.5L17.15 10.09L20.73 9.73ZM4.6 11.5L6.65 13.91L3.07 14.27Z",
+            ["cmd-flow-arrow"] = "M2 12h20M8.5 6.5L16 12l-7.5 5.5Z",
+            ["cmd-joint-start"] = "M8.5 12H21M5.5 9a3 3 0 1 0 0 6a3 3 0 1 0 0 -6z",
+            ["cmd-joint-end"] = "M3 12h12.5M18.5 9a3 3 0 1 0 0 6a3 3 0 1 0 0 -6z",
+            ["cmd-angle-next"] = "M5 19L12.66 12.57M11.81 6.2A14.5 14.5 0 0 1 19.07 15.49M19.36 16.66L16.64 14.04L20.53 13.07ZM5 17a2 2 0 1 0 0 4a2 2 0 1 0 0 -4Z",
+            ["cmd-angle-prev"] = "M5 19L12.66 12.57M19.07 15.49A14.5 14.5 0 0 0 11.81 6.2M10.75 5.63L14.51 5.37L12.63 8.9ZM5 17a2 2 0 1 0 0 4a2 2 0 1 0 0 -4Z",
+            ["cmd-home"] = "M3 11.5L12 3.5l9 8M5.5 9.5V21h13V9.5M10 21v-6h4v6",
+            ["cmd-align-wall"] = "M2 16h20M2 21h20M3 21l5-5M9 21l5-5M15 21l5-5M8 3h8v6H8zM12 9v2.5M12 15L9.8 12L14.2 12Z",
+            ["text-align-left"] = "M4 5h16M4 9.5h10M4 14h16M4 18.5h10",
+            ["text-align-center"] = "M4 5h16M7 9.5h10M4 14h16M7 18.5h10",
+            ["text-align-right"] = "M4 5h16M10 9.5h10M4 14h16M10 18.5h10",
+            ["head-open-dashed"] = "M3 12h3M8.5 12h3M14 12h6.5M14 7l6.5 5-6.5 5",
+            ["head-triangle-hollow-dashed"] = "M3 12h3M8 12h3M13.5 7.5l7.5 4.5-7.5 4.5z",
+            ["cmd-create-object"] = "M2 12h2.5M6.5 12h2.5M11 12h1.5M10 9l3 3-3 3M15 6.5h7v11h-7z",
+            ["cmd-pencil"] = "M15 3.5l4 4L8.5 18 3.5 19.5 5 14.5zM13 5.5l4 4M12.5 21c2.5-2 4.5 1.5 8.5-1",
+            // </shared-paths>
+        };
+
+        /// <summary>Strokes (and fills, see <see cref="SharedPaths"/>) SVG path data with M, L, H, V, C, S, A, Z (absolute and relative).</summary>
+        internal static void DrawSvgPath(Graphics g, string d, Pen pen, Brush brush)
+        {
+            foreach (var (figure, filled, length) in ParseSvgPath(d))
+            {
+                using (figure)
+                {
+                    if (length < 0.05)
+                    {
+                        var p = figure.PointCount > 0 ? figure.PathPoints[0] : PointF.Empty;
+                        var r = pen.Width * 0.55f;
+                        g.FillEllipse(brush, p.X - r, p.Y - r, 2 * r, 2 * r);
+                        continue;
+                    }
+                    if (filled) g.FillPath(brush, figure);
+                    g.DrawPath(pen, figure);
+                }
+            }
+        }
+
+        /// <summary>The sub-paths of SVG path data: figure, filled (closed with "Z"), approximate length.</summary>
+        internal static List<(GraphicsPath Figure, bool Filled, float Length)> ParseSvgPath(string d)
+        {
+            var result = new List<(GraphicsPath, bool, float)>();
+            var tokens = System.Text.RegularExpressions.Regex.Matches(d, @"[MmLlHhVvCcSsAaZz]|-?(?:\d+\.?\d*|\.\d+)(?:e-?\d+)?");
+            var i = 0;
+            char cmd = 'M';
+            float x = 0, y = 0, sx = 0, sy = 0, lastCx = 0, lastCy = 0;
+            GraphicsPath? fig = null;
+            var length = 0f;
+            bool IsNumber() => i < tokens.Count && !char.IsLetter(tokens[i].Value[0]);
+            float Num() => float.Parse(tokens[i++].Value, System.Globalization.CultureInfo.InvariantCulture);
+            void Flush(bool filled)
+            {
+                if (fig is not null) result.Add((fig, filled, length));
+                fig = null;
+                length = 0;
+            }
+            void Line(float nx, float ny)
+            {
+                fig ??= new GraphicsPath();
+                fig.AddLine(x, y, nx, ny);
+                length += (float)Math.Sqrt((nx - x) * (nx - x) + (ny - y) * (ny - y));
+                x = nx; y = ny;
+            }
+            void Bezier(float c1x, float c1y, float c2x, float c2y, float nx, float ny)
+            {
+                fig ??= new GraphicsPath();
+                fig.AddBezier(x, y, c1x, c1y, c2x, c2y, nx, ny);
+                length += (float)Math.Sqrt((nx - x) * (nx - x) + (ny - y) * (ny - y)) + 0.1f;
+                lastCx = c2x; lastCy = c2y;
+                x = nx; y = ny;
+            }
+            while (i < tokens.Count)
+            {
+                if (!IsNumber()) cmd = tokens[i++].Value[0];
+                var rel = char.IsLower(cmd);
+                float ox = rel ? x : 0, oy = rel ? y : 0;
+                var prevCmd = char.ToUpperInvariant(cmd);
+                switch (prevCmd)
+                {
+                    case 'M':
+                        Flush(false);
+                        x = Num() + ox; y = Num() + oy; sx = x; sy = y;
+                        fig = new GraphicsPath();
+                        fig.StartFigure();
+                        cmd = rel ? 'l' : 'L';
+                        lastCx = x; lastCy = y;
+                        continue;
+                    case 'L': Line(Num() + ox, Num() + oy); lastCx = x; lastCy = y; break;
+                    case 'H': Line(Num() + ox, y); lastCx = x; lastCy = y; break;
+                    case 'V': Line(x, Num() + oy); lastCx = x; lastCy = y; break;
+                    case 'C':
+                        {
+                            float a = Num() + ox, b = Num() + oy, c = Num() + ox, e = Num() + oy, nx = Num() + ox, ny = Num() + oy;
+                            Bezier(a, b, c, e, nx, ny);
+                            break;
+                        }
+                    case 'S':
+                        {
+                            float c1x = 2 * x - lastCx, c1y = 2 * y - lastCy;
+                            float c = Num() + ox, e = Num() + oy, nx = Num() + ox, ny = Num() + oy;
+                            Bezier(c1x, c1y, c, e, nx, ny);
+                            break;
+                        }
+                    case 'A':
+                        {
+                            float rx = Num(), ry = Num(), rot = Num();
+                            var large = Num() != 0;
+                            var sweep = Num() != 0;
+                            float nx = Num() + ox, ny = Num() + oy;
+                            foreach (var (c1, c2, p) in ArcToBeziers(x, y, rx, ry, rot, large, sweep, nx, ny)) Bezier(c1.X, c1.Y, c2.X, c2.Y, p.X, p.Y);
+                            x = nx; y = ny; lastCx = x; lastCy = y;
+                            break;
+                        }
+                    case 'Z':
+                        if (fig is not null)
+                        {
+                            if (Math.Abs(x - sx) > 1e-3 || Math.Abs(y - sy) > 1e-3) Line(sx, sy);
+                            fig.CloseFigure();
+                        }
+                        x = sx; y = sy;
+                        Flush(cmd == 'Z');
+                        continue;
+                    default:
+                        i++;
+                        break;
+                }
+            }
+            Flush(false);
+            return result;
+        }
+
+        /// <summary>An SVG elliptical arc as cubic Bézier segments of at most 90° (endpoint to centre parameterisation).</summary>
+        private static IEnumerable<(PointF C1, PointF C2, PointF P)> ArcToBeziers(float x1, float y1, float rx, float ry, float rotDeg, bool large, bool sweep, float x2, float y2)
+        {
+            if (rx == 0 || ry == 0 || (x1 == x2 && y1 == y2)) { yield return (new PointF(x1, y1), new PointF(x2, y2), new PointF(x2, y2)); yield break; }
+            double phi = rotDeg * Math.PI / 180, cos = Math.Cos(phi), sin = Math.Sin(phi);
+            double dx = (x1 - x2) / 2.0, dy = (y1 - y2) / 2.0;
+            double x1p = cos * dx + sin * dy, y1p = -sin * dx + cos * dy;
+            double arx = Math.Abs(rx), ary = Math.Abs(ry);
+            var lambda = x1p * x1p / (arx * arx) + y1p * y1p / (ary * ary);
+            if (lambda > 1) { arx *= Math.Sqrt(lambda); ary *= Math.Sqrt(lambda); }
+            var num = arx * arx * ary * ary - arx * arx * y1p * y1p - ary * ary * x1p * x1p;
+            var den = arx * arx * y1p * y1p + ary * ary * x1p * x1p;
+            var coef = Math.Sqrt(Math.Max(0, num / den)) * (large == sweep ? -1 : 1);
+            double cxp = coef * arx * y1p / ary, cyp = -coef * ary * x1p / arx;
+            double cx = cos * cxp - sin * cyp + (x1 + x2) / 2.0, cy = sin * cxp + cos * cyp + (y1 + y2) / 2.0;
+            double Angle(double ux, double uy, double vx, double vy)
+            {
+                var a = Math.Atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+                return a;
+            }
+            var t1 = Angle(1, 0, (x1p - cxp) / arx, (y1p - cyp) / ary);
+            var dt = Angle((x1p - cxp) / arx, (y1p - cyp) / ary, (-x1p - cxp) / arx, (-y1p - cyp) / ary);
+            if (!sweep && dt > 0) dt -= 2 * Math.PI;
+            if (sweep && dt < 0) dt += 2 * Math.PI;
+            var n = (int)Math.Ceiling(Math.Abs(dt) / (Math.PI / 2) - 1e-9);
+            var step = dt / n;
+            var k = 4.0 / 3 * Math.Tan(step / 4);
+            PointF Pt(double ex, double ey) => new((float)(cos * ex - sin * ey + cx), (float)(sin * ex + cos * ey + cy));
+            for (var s = 0; s < n; s++)
+            {
+                double a0 = t1 + s * step, a1 = a0 + step;
+                double c0 = Math.Cos(a0), s0 = Math.Sin(a0), c1 = Math.Cos(a1), s1 = Math.Sin(a1);
+                yield return (Pt(arx * (c0 - k * s0), ary * (s0 + k * c0)), Pt(arx * (c1 + k * s1), ary * (s1 - k * c1)), Pt(arx * c1, ary * s1));
+            }
         }
 
         /// <summary>

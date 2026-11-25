@@ -262,13 +262,13 @@ namespace InventaSketch.Modules.Process
                     yield return a.Input is null && a.ApplyInDocument is null ? a with { Apply = x => Adapt(x, a.Apply(Normalize(x))) } : a;
             if (TagPrefix is null) yield break;
             var prefix = TagPrefix;
-            yield return new ContextAction("process.tag.show", P.T("Show tag", "Kennzeichen anzeigen"), IconIds.Text, x =>
+            yield return new ContextAction("process.tag.show", P.T("Show tag", "Kennzeichen anzeigen"), IconIds.LabelShow, x =>
             {
                 if (TagOf(x).Length > 0) return x.WithParam(ShowTagKey, false);
                 var y = x.WithParam(ShowTagKey, true);
                 return y.Str(TagKey, "").Trim().Length == 0 ? y.WithParam(TagKey, prefix) : y;
             }) { IsActive = TagOf(n).Length > 0, Group = "label", ParamKeys = new[] { ShowTagKey } };
-            yield return ContextAction.WithInput("process.tag.set", P.T("Tag …", "Kennzeichen …"), IconIds.Text,
+            yield return ContextAction.WithInput("process.tag.set", P.T("Tag …", "Kennzeichen …"), IconIds.Name,
                 P.T("Tag (e.g. " + prefix + ")", "Kennzeichen (z. B. " + prefix + ")"), o.Str(TagKey, ""),
                 (x, t) => x.WithParam(TagKey, t.Trim()).WithParam(ShowTagKey, true)) with { Group = "label", ParamKeys = new[] { TagKey } };
         }

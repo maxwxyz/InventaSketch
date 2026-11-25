@@ -180,28 +180,28 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.table.header", new I18nText("Header row", "Kopfzeile"), "header", "header", true, "table");
+            yield return Ann.Toggle(o, "ann.table.header", new I18nText("Header row", "Kopfzeile"), IconIds.Toggle, "header", true, "table");
             foreach (var (value, en, de) in BorderOptions)
-                yield return Ann.SetChoice(o, "ann.table.borders." + value, new I18nText("Borders: " + en, "Linien: " + de), "borders-" + value, "borders", value, "all", "borders");
+                yield return Ann.SetChoice(o, "ann.table.borders." + value, new I18nText("Borders: " + en, "Linien: " + de), IconIds.Option, "borders", value, "all", "borders");
             // Adding at a side (group "side.<side>"): hosts draw these as a "+" on that side of the table, one click each.
             // A row at the top goes under the header row while there is one (the header stays the header).
             var header = o.Flag("header", true) && CellsOf(o, lang).Count > 1;
             yield return new ContextAction("ann.table.row.add.top",
                 header ? new I18nText("Add a row under the header", "Zeile unter der Kopfzeile einfügen") : new I18nText("Add a row at the top", "Zeile oben einfügen"),
-                IconIds.Insert, x => InsertRow(x, lang, x.Flag("header", true) && CellsOf(x, lang).Count > 1 ? 1 : 0)) { Group = "side.top" };
-            yield return new ContextAction("ann.table.row.add", new I18nText("Add a row at the bottom", "Zeile unten anfügen"), IconIds.Insert,
+                IconIds.RowAddTop, x => InsertRow(x, lang, x.Flag("header", true) && CellsOf(x, lang).Count > 1 ? 1 : 0)) { Group = "side.top" };
+            yield return new ContextAction("ann.table.row.add", new I18nText("Add a row at the bottom", "Zeile unten anfügen"), IconIds.RowAdd,
                 x => InsertRow(x, lang, int.MaxValue)) { Group = "side.bottom" };
-            yield return new ContextAction("ann.table.column.add.left", new I18nText("Add a column on the left", "Spalte links einfügen"), IconIds.Insert,
+            yield return new ContextAction("ann.table.column.add.left", new I18nText("Add a column on the left", "Spalte links einfügen"), IconIds.ColumnAdd,
                 x => InsertColumn(x, lang, 0)) { Group = "side.left" };
-            yield return new ContextAction("ann.table.column.add", new I18nText("Add a column on the right", "Spalte rechts anfügen"), IconIds.Insert,
+            yield return new ContextAction("ann.table.column.add", new I18nText("Add a column on the right", "Spalte rechts anfügen"), IconIds.ColumnAdd,
                 x => InsertColumn(x, lang, int.MaxValue)) { Group = "side.right" };
-            yield return new ContextAction("ann.table.row.remove", new I18nText("Remove the last row", "Letzte Zeile entfernen"), IconIds.Decrease, x =>
+            yield return new ContextAction("ann.table.row.remove", new I18nText("Remove the last row", "Letzte Zeile entfernen"), IconIds.RowRemove, x =>
             {
                 var rows = CellsOf(x, lang);
                 if (rows.Count > 1) rows.RemoveAt(rows.Count - 1);
                 return x.WithParam("cells", Format(rows));
             }) { Group = "cells", IsEnabled = CellsOf(o, lang).Count > 1 };
-            yield return new ContextAction("ann.table.column.remove", new I18nText("Remove the last column", "Letzte Spalte entfernen"), IconIds.Decrease, x =>
+            yield return new ContextAction("ann.table.column.remove", new I18nText("Remove the last column", "Letzte Spalte entfernen"), IconIds.ColumnRemove, x =>
             {
                 var rows = CellsOf(x, lang);
                 if (rows[0].Count > 1) foreach (var r in rows) r.RemoveAt(r.Count - 1);

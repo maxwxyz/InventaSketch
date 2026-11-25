@@ -122,7 +122,7 @@ namespace InventaSketch.Modules.Architecture
                 yield return Arch.Toggle(o, "arch.hinge", sliding ? new I18nText("Flip sliding direction", "Schieberichtung wechseln") : new I18nText("Flip hinge side", "Anschlagseite wechseln"),
                     IconIds.MirrorH, "hingeRight", false, "flip");
             if (window)
-                yield return Arch.Toggle(o, "arch.side", new I18nText("Swap inside/outside", "Innen/außen tauschen"), IconIds.MirrorV, "flip", false, "flip");
+                yield return Arch.Toggle(o, "arch.side", new I18nText("Swap inside/outside", "Innen/außen tauschen"), IconIds.SideSwap, "flip", false, "flip");
             else if (id != "arch.door.opening")
                 yield return Arch.Toggle(o, "arch.swing", new I18nText("Flip swing direction", "Aufschlagrichtung wechseln"), IconIds.MirrorV, "swingOut", false, "flip");
             var w = RealWidth(o, doc);
@@ -134,10 +134,10 @@ namespace InventaSketch.Modules.Architecture
                     dir > 0 ? new I18nText("Wider (" + label + ")", "Breiter (" + label + ")") : new I18nText("Narrower (" + label + ")", "Schmaler (" + label + ")"),
                     dir > 0 ? IconIds.Increase : IconIds.Decrease, x => WithWidth(x, next, leafFactor, doc)) { Group = "width" };
             }
-            yield return ContextAction.WithInput("arch.width.set", new I18nText("Width…", "Breite…"), IconIds.Text,
+            yield return ContextAction.WithInput("arch.width.set", new I18nText("Width…", "Breite…"), IconIds.QtyWidth,
                 new I18nText("Opening width (mm)", "Öffnungsbreite (mm)"), w.ToString("0", CultureInfo.InvariantCulture),
                 (x, text) => WithWidth(x, Math.Max(10, Arch.ParseMm(text, ctx.Lang)), leafFactor, doc), "mm") with { Group = "width" };
-            yield return ContextAction.InDocument("arch.align", new I18nText("Align to wall", "An Wand ausrichten"), IconIds.Rotate,
+            yield return ContextAction.InDocument("arch.align", new I18nText("Align to wall", "An Wand ausrichten"), IconIds.AlignWall,
                 (d, x, _) => AlignToWall(d, x)) with { Group = "wall", IsEnabled = HostSegment(o, doc) is not null };
         }
 

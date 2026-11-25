@@ -135,7 +135,8 @@ namespace InventaSketch.Core
         public const string SelectAssembly = "cmd-select-assembly"; // select every part coupled with this one
         public const string FitAround = "cmd-fit-around";   // size a housing/frame around what it contains
         public const string MatchFormat = "cmd-match-format"; // take view, parameters and style of the first element
-        public const string Trace = "cmd-trace";            // draw the path a point runs through (coupler curve)
+        public const string Trace = "cmd-trace";            // draw the path a point runs through (coupler curve); only that
+        public const string Pencil = "cmd-pencil";          // draw by hand (sketch a curve or line with the mouse)
         public const string Dimension = "cmd-dimension";    // a dimension between two parts
 
         // Option pictograms (line ends, line styles, line courses): a short line with the feature on the right.
@@ -201,6 +202,122 @@ namespace InventaSketch.Core
         public const string WallMedium = "wall-medium";
         public const string WallThin = "wall-thin";
 
+        // ---- Action pictograms with one meaning each (UX review 2026-11-25, F3). Text ("T") is only "edit the text".
+        // Label-only markers: hosts never draw these alone, the label carries the meaning.
+        public const string Option = "cmd-option";            // pick this option of a choice (radio button); label-only
+        // Values, names, labels
+        public const string Value = "cmd-value";              // enter a value (input field with a cursor)
+        public const string Name = "cmd-name";                // enter a name, designation, tag or title (label tag)
+        public const string LabelShow = "cmd-label-show";     // show the element's designation label (part with a label beside it)
+        public const string PortLabels = "cmd-port-labels";   // show the port names (pins with short labels)
+        public const string Formula = "cmd-formula";          // a formula f(x) ("fx")
+        public const string Parameters = "cmd-parameters";   // coefficients / a parameter set (three sliders)
+        public const string Code = "cmd-code";                // the specification as code (braces)
+        public const string Data = "cmd-data";                // the element's data (spreadsheet with a header row)
+        public const string Legend = "cmd-legend";            // a legend (swatches with lines)
+        public const string Visibility = "cmd-visibility";    // show / hide (an eye)
+        public const string Grid = "cmd-grid";                // grid lines on / off
+        public const string AxisTicks = "cmd-axis-ticks";     // tick numbers on the axes
+        public const string Smooth = "cmd-smooth";            // smooth the curve (corner polygon with a smooth curve)
+        public const string PointsShow = "cmd-points";        // mark the points / waypoints (polyline with dots)
+        public const string Contour = "cmd-contour";          // contour levels (nested closed curves)
+        public const string Function = "cmd-function";        // function generator (a wave in a box)
+        public const string Marker = "cmd-marker";            // vertical marker line with a flag
+        public const string ValueLine = "cmd-value-line";     // horizontal value / limit line on axes
+        public const string HatchBetween = "cmd-hatch-between"; // hatch the region between two curves
+        public const string HatchBelow = "cmd-hatch-below";   // hatch the area under a curve
+        public const string BreakX = "cmd-break-x";           // break the x axis here
+        public const string BreakY = "cmd-break-y";           // break the y axis here
+        public const string BreakXRemove = "cmd-break-x-remove"; // remove the x-axis breaks
+        public const string BreakYRemove = "cmd-break-y-remove"; // remove the y-axis breaks
+        public const string Ghosts = "cmd-ghosts";            // ghost positions (a link in three faded positions)
+        public const string RayBundle = "cmd-rays";           // add a ray bundle (three parallel rays)
+        // Quantities (value entry of one physical quantity)
+        public const string QtyAngle = "qty-angle";           // angle (two rays with an arc)
+        public const string QtyLength = "qty-length";         // length / distance (ruler)
+        public const string QtyWidth = "qty-width";           // width (horizontal dimension between two walls)
+        public const string QtyHeight = "qty-height";         // height above a floor (vertical dimension)
+        public const string QtyThickness = "qty-thickness";   // thickness (two arrows pointing at a slab)
+        public const string QtyArea = "qty-area";             // area (tinted rectangle)
+        public const string QtyVolume = "qty-volume";         // volume (beaker with a level)
+        public const string QtyMass = "qty-mass";             // mass (weight with a handle)
+        public const string QtyPressure = "qty-pressure";     // pressure (manometer)
+        public const string QtyPower = "qty-power";           // power (lightning bolt)
+        public const string QtyVoltage = "qty-voltage";       // voltage (cell symbol: long and short plate)
+        public const string QtyCapacity = "qty-capacity";     // storage capacity (battery with a size arrow)
+        public const string QtyCharge = "qty-charge";         // state of charge (half-filled battery)
+        public const string QtyTime = "qty-time";             // time (clock)
+        public const string QtyFrequency = "qty-frequency";   // frequency (one sine period)
+        public const string QtyTolerance = "qty-tolerance";   // tolerance (a line inside a dashed band)
+        public const string QtyFlow = "qty-flow";             // flow rate (arrow inside a pipe)
+        public const string RangeX = "qty-range-x";           // x range of an axis (brackets on a horizontal axis)
+        public const string RangeY = "qty-range-y";           // y range of an axis (brackets on a vertical axis)
+        // Structure: add / remove parts of an element; more / fewer of a repeated part
+        public const string AddPoint = "cmd-point-add";       // add a point / corner / waypoint
+        public const string RowAdd = "cmd-row-add";           // add a row (table, list, lane, signal) at the bottom
+        public const string RowAddTop = "cmd-row-add-top";    // add a row at the top / above (entry activity, lane above)
+        public const string RowRemove = "cmd-row-remove";
+        public const string ColumnAdd = "cmd-column-add";     // add a column (table, field, tab)
+        public const string ColumnRemove = "cmd-column-remove";
+        public const string OperationAdd = "cmd-operation-add"; // add an operation row "()" (UML class)
+        public const string OperationRemove = "cmd-operation-remove";
+        public const string PortAdd = "cmd-port-add";         // add a connection point / port
+        public const string PortRemove = "cmd-port-remove";
+        public const string CountMore = "cmd-count-more";     // one more of a repeated part (teeth, poles, modules …); with its label
+        public const string CountFewer = "cmd-count-fewer";   // one fewer of a repeated part; with its label
+        // Direction, side, angle
+        public const string Reverse = "cmd-reverse";          // reverse the direction (U-turn arrow)
+        public const string SideSwap = "cmd-side-swap";       // put it on the other side of its line
+        public const string Polarity = "cmd-polarity";        // swap the polarity / channel (+ and − exchanging places)
+        public const string FlowArrow = "cmd-flow-arrow";     // direction / flow arrow on the line
+        public const string JointStart = "cmd-joint-start";  // a joint at the start of a link
+        public const string JointEnd = "cmd-joint-end";       // a joint at the end of a link
+        public const string AngleNext = "cmd-angle-next";     // next position: turn a joint by one step clockwise
+        public const string AnglePrev = "cmd-angle-prev";     // previous position: one step counter-clockwise
+        public const string Home = "cmd-home";                // home position (a house)
+        public const string AlignWall = "cmd-align-wall";     // align to the wall it sits on
+        public const string TextAlignLeft = "text-align-left";
+        public const string TextAlignCenter = "text-align-center";
+        public const string TextAlignRight = "text-align-right";
+        public const string HeadOpenDashed = "head-open-dashed";             // dashed line with an open arrowhead (dependency, reply)
+        public const string HeadTriangleHollowDashed = "head-triangle-hollow-dashed"; // dashed line with a hollow triangle (realization)
+        public const string CreateObject = "cmd-create-object"; // a message creating an object (dashed arrow into a box)
+
+        /// <summary>
+        /// Pictograms hosts never show without their label: they say "switch", "next variant" or "pick" but not what. Actions
+        /// with them appear as text buttons (bar) or text rows (pie); several actions of one element may share them.
+        /// </summary>
+        public static bool IsLabelOnly(string? icon) => icon is Toggle or Cycle or Option;
+
+        /// <summary>
+        /// Step pictograms ("+"/"−", one more/fewer): they come in pairs of the same value and hosts show them together with
+        /// the (short) label, so several pairs on one element stay distinguishable.
+        /// </summary>
+        public static bool IsStep(string? icon) => icon is Increase or Decrease or CountMore or CountFewer;
+
+        /// <summary>
+        /// Pictogram for entering a value with the given unit (or parameter key): a quantity pictogram where the unit tells
+        /// the quantity, otherwise <see cref="Value"/>.
+        /// </summary>
+        public static string ForQuantity(string? unit, string? key = null)
+        {
+            var u = (unit ?? "").Trim();
+            var k = (key ?? "").ToLowerInvariant();
+            if (u is "°" or "deg" or "rad" || k.Contains("angle")) return QtyAngle;
+            if (u is "kW" or "W" or "MW" or "kWp" or "GW" or "kVA" or "MVA") return QtyPower;
+            if (u is "V" or "kV" or "mV") return QtyVoltage;
+            if (u is "kWh" or "MWh" or "Wh" or "Ah" or "mAh") return QtyCapacity;
+            if (u is "bar" or "Pa" or "kPa" or "MPa" or "psi") return QtyPressure;
+            if (u is "m³" or "m3" or "l" or "L" or "dm³") return QtyVolume;
+            if (u is "kg" or "g" or "t") return QtyMass;
+            if (u is "s" or "ms" or "min" or "h") return QtyTime;
+            if (u is "Hz" or "kHz" or "rad/s" or "1/s") return QtyFrequency;
+            if (u is "m²" or "m2") return QtyArea;
+            if (u is "%" && (k.Contains("soc") || k.Contains("charge"))) return QtyCharge;
+            if (u is "mm" or "m" or "cm" or "km") return k.Contains("width") ? QtyWidth : k.Contains("height") ? QtyHeight : k.Contains("thick") ? QtyThickness : QtyLength;
+            return Value;
+        }
+
         /// <summary>Pictogram of a shape choice ("square", "round"/"circle", "triangle"); null if unknown.</summary>
         public static string? ForShape(string value) => value switch
         {
@@ -261,7 +378,7 @@ namespace InventaSketch.Core
         {
             Schematic, Side, Section, Axial, Teeth, Top, Front, Rear, Iso, Detailed, Simplified, Symbol, Block, Plan, Exploded, Table, Pin, Chart,
             Delete, Duplicate, MirrorH, MirrorV, Rotate, RotateCcw, Increase, Decrease, Swap, ArrowStart, ArrowEnd, Text, Toggle, Cycle, Connect, Animate, Medium, Actuation, Insert,
-            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround, MatchFormat, Trace, Dimension,
+            AlignRow, AlignColumn, DistributeH, DistributeV, Renumber, SelectAssembly, FitAround, MatchFormat, Trace, Pencil, Dimension,
             HeadNone, HeadTriangle, HeadOpen, HeadStealth, HeadDiamond, HeadDot, HeadTick, HeadHalf, HeadTriangleHollow, HeadDiamondHollow,
             SizeSmall, SizeMedium, SizeLarge, LineSolid, LineDash, LineDot, LineDashDot, LineDashDotDot, LineLongDash,
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
@@ -270,6 +387,13 @@ namespace InventaSketch.Core
             Split, RemovePoint, Hop, Junction, Explode, Motion,
             ShapeSquare, ShapeCircle, ShapeTriangle, FillTint, FillHatch, FillDots, FillNone, RouteFree, RouteOrthogonal, Route45,
             WallThick, WallMedium, WallThin,
+            Option, Value, Name, LabelShow, PortLabels, Formula, Parameters, Code, Data, Legend, Visibility, Grid, AxisTicks, Smooth, PointsShow,
+            Contour, Function, Marker, ValueLine, HatchBetween, HatchBelow, BreakX, BreakY, BreakXRemove, BreakYRemove, Ghosts, RayBundle,
+            QtyAngle, QtyLength, QtyWidth, QtyHeight, QtyThickness, QtyArea, QtyVolume, QtyMass, QtyPressure, QtyPower, QtyVoltage, QtyCapacity,
+            QtyCharge, QtyTime, QtyFrequency, QtyTolerance, QtyFlow, RangeX, RangeY,
+            AddPoint, RowAdd, RowAddTop, RowRemove, ColumnAdd, ColumnRemove, OperationAdd, OperationRemove, PortAdd, PortRemove, CountMore, CountFewer,
+            Reverse, SideSwap, Polarity, FlowArrow, JointStart, JointEnd, AngleNext, AnglePrev, Home, AlignWall,
+            TextAlignLeft, TextAlignCenter, TextAlignRight, HeadOpenDashed, HeadTriangleHollowDashed, CreateObject,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)

@@ -335,9 +335,9 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.tf.text", new I18nText("Name", "Name"), IconIds.Text, "mode", "text", "text", "mode");
-            yield return D.SetChoice(o, "diag.tf.fraction", new I18nText("Transfer function (fraction)", "Übertragungsfunktion (Bruch)"), IconIds.Text, "mode", "fraction", "text", "mode");
-            yield return D.SetChoice(o, "diag.tf.icon", new I18nText("Characteristic (icon)", "Kennlinie (Symbol)"), IconIds.Chart, "mode", "icon", "text", "mode");
+            yield return D.SetChoice(o, "diag.tf.text", new I18nText("Name", "Name"), IconIds.Option, "mode", "text", "text", "mode");
+            yield return D.SetChoice(o, "diag.tf.fraction", new I18nText("Transfer function (fraction)", "Übertragungsfunktion (Bruch)"), IconIds.Option, "mode", "fraction", "text", "mode");
+            yield return D.SetChoice(o, "diag.tf.icon", new I18nText("Characteristic (icon)", "Kennlinie (Symbol)"), IconIds.Option, "mode", "icon", "text", "mode");
             yield return new ContextAction("diag.tf.nextIcon", new I18nText("Next characteristic", "Nächste Kennlinie"), IconIds.Cycle, x =>
             {
                 var i = Array.FindIndex(Icons, k => k.Value == x.Str("icon", "pt1"));
@@ -412,7 +412,7 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return D.Toggle(o, "diag.signal.arrow", new I18nText("Arrowhead", "Pfeilspitze"), "arrow", true);
-            yield return new ContextAction("diag.swap", new I18nText("Swap direction", "Richtung umkehren"), IconIds.Swap, D.Reverse) { Group = "direction" };
+            yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, D.Reverse) { Group = "direction" };
             yield return new ContextAction("diag.route.orthogonal", new I18nText("Orthogonal routing", "Rechtwinklig führen"), IconIds.Toggle,
                 x => x.WithParam("route", x.Str("route", "orthogonal") == "orthogonal" ? "straight" : "orthogonal"))
             { IsActive = o.Str("route", "orthogonal") == "orthogonal", Group = "route" };

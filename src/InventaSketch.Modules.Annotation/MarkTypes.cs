@@ -59,8 +59,8 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.viewarrow.touching", new I18nText("Letter beside the shaft", "Buchstabe neben dem Schaft"), "viewarrow-touching", "mode", "touching", "touching", "mode");
-            yield return Ann.SetChoice(o, "ann.viewarrow.freestanding", new I18nText("Letter beyond the tail", "Buchstabe hinter dem Pfeilende"), "viewarrow-free", "mode", "freestanding", "touching", "mode");
+            yield return Ann.SetChoice(o, "ann.viewarrow.touching", new I18nText("Letter beside the shaft", "Buchstabe neben dem Schaft"), IconIds.Option, "mode", "touching", "touching", "mode");
+            yield return Ann.SetChoice(o, "ann.viewarrow.freestanding", new I18nText("Letter beyond the tail", "Buchstabe hinter dem Pfeilende"), IconIds.Option, "mode", "freestanding", "touching", "mode");
             yield return Ann.SwapAction();
         }
     }
@@ -167,7 +167,7 @@ namespace InventaSketch.Modules.Annotation
         {
             yield return Ann.SetChoice(o, "ann.detailview.circle", new I18nText("Circular frame", "Kreisrahmen"), IconIds.ShapeCircle, "frame", "circle", "circle", "frame");
             yield return Ann.SetChoice(o, "ann.detailview.rect", new I18nText("Rectangular frame", "Rechteckrahmen"), IconIds.ShapeSquare, "frame", "rect", "circle", "frame");
-            yield return Ann.Toggle(o, "ann.detailview.scalebar", new I18nText("Graphic scale bar", "Grafischer Maßstab"), "scalebar", "scaleBar", false);
+            yield return Ann.Toggle(o, "ann.detailview.scalebar", new I18nText("Graphic scale bar", "Grafischer Maßstab"), IconIds.Toggle, "scaleBar", false);
         }
     }
 }

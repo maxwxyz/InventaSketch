@@ -126,7 +126,7 @@ namespace InventaSketch.Modules.Mechanical
                 foreach (var v in _views)
                 {
                     var id = v.Id;
-                    yield return new ContextAction("view." + id, v.Label, "view-" + id, x => SwitchView(x, id))
+                    yield return new ContextAction("view." + id, v.Label, IconIds.ForView(_viewDefs.First(d => d.Id == id)), x => SwitchView(x, id))
                     {
                         IsActive = current == id,
                         Group = "view",
@@ -232,10 +232,10 @@ namespace InventaSketch.Modules.Mechanical
         {
             var cur = o.Int(key, def);
             if (cur + step <= max)
-                yield return new ContextAction("param." + key + ".inc", new I18nText(name.En + " +" + step, (name.De ?? name.En) + " +" + step), IconIds.Increase,
+                yield return new ContextAction("param." + key + ".inc", new I18nText(name.En + " +" + step, (name.De ?? name.En) + " +" + step), IconIds.CountMore,
                     x => x.WithParam(key, Math.Min(max, x.Int(key, def) + step))) { Group = "param" };
             if (cur - step >= min)
-                yield return new ContextAction("param." + key + ".dec", new I18nText(name.En + " −" + step, (name.De ?? name.En) + " −" + step), IconIds.Decrease,
+                yield return new ContextAction("param." + key + ".dec", new I18nText(name.En + " −" + step, (name.De ?? name.En) + " −" + step), IconIds.CountFewer,
                     x => x.WithParam(key, Math.Max(min, x.Int(key, def) - step))) { Group = "param" };
         }
 

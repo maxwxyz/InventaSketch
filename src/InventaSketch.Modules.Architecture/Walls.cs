@@ -459,7 +459,7 @@ namespace InventaSketch.Modules.Architecture
             string Mm(double v) => v.ToString("0", CultureInfo.InvariantCulture) + " mm";
             yield return new ContextAction("arch.thickness.inc", new I18nText("Thicker wall (" + Mm(up) + ")", "Dickere Wand (" + Mm(up) + ")"), IconIds.Increase, x => x.WithParam("thickness", up)) { Group = "thickness" };
             yield return new ContextAction("arch.thickness.dec", new I18nText("Thinner wall (" + Mm(down) + ")", "Dünnere Wand (" + Mm(down) + ")"), IconIds.Decrease, x => x.WithParam("thickness", down)) { Group = "thickness" };
-            yield return ContextAction.WithInput("arch.thickness.set", new I18nText("Thickness…", "Dicke…"), IconIds.Text,
+            yield return ContextAction.WithInput("arch.thickness.set", new I18nText("Thickness…", "Dicke…"), IconIds.QtyThickness,
                 new I18nText("Wall thickness (mm)", "Wanddicke (mm)"), t.ToString("0.#", CultureInfo.InvariantCulture),
                 (x, text) => x.WithParam("thickness", Math.Min(2000, Math.Max(10, Arch.ParseMm(text, lang)))), "mm") with { Group = "thickness" };
             yield return Arch.Cycle(o, "arch.kind", "kind", "exterior", Kinds);
@@ -547,9 +547,9 @@ namespace InventaSketch.Modules.Architecture
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return ContextAction.WithInput("arch.room.name", new I18nText("Name…", "Name…"), IconIds.Text,
+            yield return ContextAction.WithInput("arch.room.name", new I18nText("Name…", "Name…"), IconIds.Name,
                 new I18nText("Room name", "Raumname"), NameOf(o, lang), (x, text) => x with { Text = string.IsNullOrWhiteSpace(text) ? null : text.Trim() });
-            yield return Arch.Toggle(o, "arch.room.area", new I18nText("Show area", "Fläche anzeigen"), IconIds.Text, "showArea", true);
+            yield return Arch.Toggle(o, "arch.room.area", new I18nText("Show area", "Fläche anzeigen"), IconIds.QtyArea, "showArea", true);
             yield return Arch.Toggle(o, "arch.room.fill", new I18nText("Tinted floor", "Boden getönt"), IconIds.Toggle, "fill", false);
         }
     }

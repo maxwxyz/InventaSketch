@@ -416,7 +416,7 @@ namespace InventaSketch.Modules.Maps
                 CompanionIds = new[] { RouteType.TypeId, MarkerType.TypeId },
                 Extra = (o, lang) => new[]
                 {
-                    ContextAction.WithInput("map.callout.distance", new I18nText("Distance…", "Entfernung…"), IconIds.Text,
+                    ContextAction.WithInput("map.callout.distance", new I18nText("Distance…", "Entfernung…"), IconIds.QtyLength,
                         new I18nText("Distance (e.g. 12.5 km, 8 mi)", "Entfernung (z. B. 12,5 km, 8 mi)"), Fmt.Num(o.Num("distance", 12), lang) + " " + o.Str("unit", "km"),
                         (x, text) =>
                         {
@@ -424,7 +424,7 @@ namespace InventaSketch.Modules.Maps
                             var y = x.WithParam("distance", v);
                             return unit is null ? y : y.WithParam("unit", unit);
                         }) with { Group = "value" },
-                    ContextAction.WithInput("map.callout.time", new I18nText("Travel time…", "Fahrzeit…"), IconIds.Text,
+                    ContextAction.WithInput("map.callout.time", new I18nText("Travel time…", "Fahrzeit…"), IconIds.QtyTime,
                         new I18nText("Travel time in minutes (or h:mm)", "Fahrzeit in Minuten (oder h:mm)"), Fmt.Num(o.Num("time", 15), lang, 0),
                         (x, text) => x.WithParam("time", Math.Round(ParseMinutes(text, lang), 1)), "min") with { Group = "value" },
                     Prm.Cycle(o, "map.callout.unit", UnitDef, new I18nText("Unit", "Einheit")),

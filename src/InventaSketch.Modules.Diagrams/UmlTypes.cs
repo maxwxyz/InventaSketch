@@ -107,8 +107,8 @@ namespace InventaSketch.Modules.Diagrams
             yield return D.AddRow("diag.class.addAttribute", new I18nText("Add " + attr.En, attr.De + " hinzufügen"), "attributes", DefaultAttributes,
                 _kind == ClassKind.Enum ? "VALUE" : "- attribute: Type");
             yield return D.RemoveRow("diag.class.removeAttribute", new I18nText("Remove last " + attr.En, "Letztes " + attr.De + " entfernen"), "attributes", DefaultAttributes);
-            yield return D.AddRow("diag.class.addOperation", new I18nText("Add operation", "Operation hinzufügen"), "operations", DefaultOperations, "+ operation(): void");
-            yield return D.RemoveRow("diag.class.removeOperation", new I18nText("Remove last operation", "Letzte Operation entfernen"), "operations", DefaultOperations);
+            yield return D.AddRow("diag.class.addOperation", new I18nText("Add operation", "Operation hinzufügen"), "operations", DefaultOperations, "+ operation(): void", icon: IconIds.OperationAdd);
+            yield return D.RemoveRow("diag.class.removeOperation", new I18nText("Remove last operation", "Letzte Operation entfernen"), "operations", DefaultOperations, icon: IconIds.OperationRemove);
             if (_kind == ClassKind.Class)
                 yield return D.Toggle(o, "diag.class.abstract", new I18nText("Abstract", "Abstrakt"), "abstract", false);
         }

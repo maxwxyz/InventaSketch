@@ -183,7 +183,7 @@ namespace InventaSketch.Modules.Robotics
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
             Rb.Cycle(o, "robot.zone.kind", KindParam),
-            Rb.Toggle(o, "robot.zone.label", new I18nText("Name", "Bezeichnung"), IconIds.Text, "label", true, "annotation"),
+            Rb.Toggle(o, "robot.zone.label", new I18nText("Show name", "Bezeichnung zeigen"), IconIds.LabelShow, "label", true, "annotation"),
         };
     }
 
@@ -299,7 +299,7 @@ namespace InventaSketch.Modules.Robotics
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
-            Rb.Toggle(o, "robot.reach.labels", new I18nText("Radius labels", "Radienangaben"), IconIds.Text, "labels", true, "annotation"),
+            Rb.Toggle(o, "robot.reach.labels", new I18nText("Radius labels", "Radienangaben"), IconIds.LabelShow, "labels", true, "annotation"),
         };
 
         public override Primitive ApplyOverride(Primitive p, Style over) => Rb.Override(p, over);

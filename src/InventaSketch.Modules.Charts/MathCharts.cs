@@ -102,16 +102,16 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Actions of a coordinate system: grid, numbers, ranges, π ticks.</summary>
         public static IEnumerable<ContextAction> Actions(SketchObject o, ObjectType t)
         {
-            yield return Prm.Toggle(o, "chart.grid", "grid", true, new I18nText("Grid", "Gitternetz"));
-            yield return Prm.Toggle(o, "chart.numbers", "numbers", true, new I18nText("Tick numbers", "Achsenzahlen"));
-            yield return Prm.Toggle(o, "chart.xpi", "xpi", false, new I18nText("x ticks in multiples of π", "x-Teilung in Vielfachen von π"));
+            yield return Prm.Toggle(o, "chart.grid", "grid", true, new I18nText("Grid", "Gitternetz"), IconIds.Grid);
+            yield return Prm.Toggle(o, "chart.numbers", "numbers", true, new I18nText("Tick numbers", "Achsenzahlen"), IconIds.AxisTicks);
+            yield return Prm.Toggle(o, "chart.xpi", "xpi", false, new I18nText("x ticks in steps of π", "x-Teilung in π-Schritten"));
             var (x0, x1, y0, y1) = Ranges(o, t);
             yield return RangeInput("chart.xrange", new I18nText("x range…", "x-Bereich…"), "xmin", "xmax", x0, x1);
             yield return RangeInput("chart.yrange", new I18nText("y range…", "y-Bereich…"), "ymin", "ymax", y0, y1);
         }
 
         private static ContextAction RangeInput(string id, I18nText label, string minKey, string maxKey, double min, double max)
-            => ContextAction.WithInput(id, label, IconIds.Text, new I18nText(label.En + " (from;to)", (label.De ?? label.En) + " (von;bis)"),
+            => ContextAction.WithInput(id, label, id.Contains("xrange") ? IconIds.RangeX : IconIds.RangeY, new I18nText(label.En + " (from;to)", (label.De ?? label.En) + " (von;bis)"),
                 Fmt.Num(min, Lang.En, 4) + ";" + Fmt.Num(max, Lang.En, 4),
                 (x, text) =>
                 {
@@ -601,7 +601,7 @@ namespace InventaSketch.Modules.Charts
         {
             yield return Prm.Cycle(o, "chart.function.next", FunctionDef, new I18nText("Function", "Funktion"));
             var label = new I18nText("Formula f(x)…", "Formel f(x)…");
-            yield return ContextAction.WithInput("chart.function.formula", label, IconIds.Text,
+            yield return ContextAction.WithInput("chart.function.formula", label, IconIds.Formula,
                 new I18nText("f(x) = … (e.g. x^2 - 2, 2 sin(x), e^(-x/2), |x - 1|)", "f(x) = … (z. B. x^2 - 2, 2 sin(x), e^(-x/2), |x - 1|)"),
                 o.Str("function", "quadratic") is "expression" or "generator" ? o.Str("expr", DefaultExpression)
                     : ExpressionOf(o.Str("function", "quadratic"), o.Num("a", 1), o.Num("b", 1), o.Num("c", 0), o.Num("d", 0)),
@@ -614,7 +614,7 @@ namespace InventaSketch.Modules.Charts
             if (fnKind is not ("expression" or "generator"))
             {
                 var coef = new I18nText("Coefficients a; b; c; d…", "Koeffizienten a; b; c; d…");
-                yield return ContextAction.WithInput("chart.function.coefficients", coef, IconIds.Text, coef,
+                yield return ContextAction.WithInput("chart.function.coefficients", coef, IconIds.Parameters, coef,
                     string.Join("; ", new[] { o.Num("a", 1), o.Num("b", 1), o.Num("c", 0), o.Num("d", 0) }.Select(v => Fmt.Num(v, Lang.En, 4))),
                     (x, t) =>
                     {
@@ -632,12 +632,12 @@ namespace InventaSketch.Modules.Charts
             if (fnKind == "generator")
             {
                 var gen = new I18nText("Function generator…", "Funktionsgenerator…");
-                yield return ContextAction.WithInput("chart.function.generator", gen, IconIds.Text,
+                yield return ContextAction.WithInput("chart.function.generator", gen, IconIds.Function,
                     new I18nText("e.g. pt1(y0=0, yinf=3, tau=1.5), step(x0=1), sine(amplitude=2, period=4)", "z. B. pt1(y0=0, yinf=3, tau=1.5), step(x0=1), sine(amplitude=2, period=4)"),
                     o.Str("generator", DefaultGenerator),
                     (x, t) => x.WithParam("generator", CurveFunctions.Parse(t).Format())) with { Group = "function", ParamKeys = new[] { "generator" } };
             }
-            yield return Prm.Toggle(o, "chart.function.showformula", "formula", true, new I18nText("Show formula", "Funktionsgleichung anzeigen"));
+            yield return Prm.Toggle(o, "chart.function.showformula", "formula", true, new I18nText("Show formula", "Gleichung anzeigen"), IconIds.LabelShow);
             foreach (var a in MathAxes.Actions(o, this)) yield return a;
             var runs = DataRuns(o, this, Lang.En);
             foreach (var a in MathAxes.BreakActions(o, this, Array.Empty<double>(), runs.SelectMany(r => r.Select(p => p.Y)))) yield return a;

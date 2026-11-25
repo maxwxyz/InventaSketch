@@ -520,8 +520,8 @@ namespace InventaSketch.Modules.Diagrams
             => new(id, label, icon, x => x.WithParam(key, value)) { IsActive = string.Equals(o.Str(key, fallback), value, StringComparison.OrdinalIgnoreCase), Group = group, ParamKeys = new[] { key } };
 
         /// <summary>Appends a line to a multi-line text parameter and grows the box downwards by one row.</summary>
-        public static ContextAction AddRow(string id, I18nText label, string key, string fallback, string line, bool grow = true)
-            => new(id, label, IconIds.Text, x =>
+        public static ContextAction AddRow(string id, I18nText label, string key, string fallback, string line, bool grow = true, string icon = IconIds.RowAdd)
+            => new(id, label, icon, x =>
             {
                 var cur = Lines(x.Str(key, fallback));
                 var next = x.WithParam(key, string.Join("\n", cur.Concat(new[] { line })));
@@ -529,8 +529,8 @@ namespace InventaSketch.Modules.Diagrams
             }) { Group = "rows" };
 
         /// <summary>Removes the last line of a multi-line text parameter and shrinks the box by one row (not below 8 mm).</summary>
-        public static ContextAction RemoveRow(string id, I18nText label, string key, string fallback, bool grow = true)
-            => new(id, label, IconIds.Delete, x =>
+        public static ContextAction RemoveRow(string id, I18nText label, string key, string fallback, bool grow = true, string icon = IconIds.RowRemove)
+            => new(id, label, icon, x =>
             {
                 var cur = Lines(x.Str(key, fallback)).ToList();
                 if (cur.Count == 0) return x;
