@@ -356,10 +356,24 @@ namespace InventaSketch.AddIn.OnSlide
 
         // ------------------------------------------------------------------ input (runs inside the hook: compute and draw only)
 
+        /// <summary>
+        /// True while a window other than PowerPoint's main window is in front – a modal dialog of the add-in (text prompt,
+        /// insert box, about box, message box) or another program. The hooks then leave every message alone, so OK and
+        /// Cancel of a dialog lying over the selected element work (maintainer report 2026-11-25: the text prompt of a
+        /// flowchart step could not be closed).
+        /// </summary>
+        private static bool ForeignForeground(SlideView view)
+        {
+            var fg = GetForegroundWindow();
+            if (fg == IntPtr.Zero || view.MainWindow == IntPtr.Zero) return false;
+            return GetAncestor(fg, GA_ROOT) != GetAncestor(view.MainWindow, GA_ROOT);
+        }
+
         private bool OnMouse(int message, POINT pt, IntPtr hwnd)
         {
             var view = _view;
             if (view is null) return false;
+            if (ForeignForeground(view)) return false;
             if (_mode == Mode.Place && !_loggedPlaceMessage) { _loggedPlaceMessage = true; Log.Info("Place: first mouse message 0x" + message.ToString("X4") + " at " + pt.X + "," + pt.Y); }
             switch (_mode)
             {
@@ -700,6 +714,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private bool OnKey(int vk, bool shift, bool ctrl, bool alt)
         {
+            if (_view is { } kv && ForeignForeground(kv)) return false;
             // Typing (text, shortcuts) hides the bar until the next selection, as in Slidemax.
             if (_mode == Mode.Armed && vk is not (VK_SHIFT or VK_CONTROL or VK_MENU) && _bar is not null)
             {
