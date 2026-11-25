@@ -113,8 +113,9 @@ namespace InventaSketch.AddIn.OnSlide
                 _barWindow.CreateControl();
                 _ = _barWindow.Handle;
             }
-            _hooks.Mouse = OnMouse;
-            _hooks.KeyDown = OnKey;
+            // While a hook runs nothing calls the object model or renders the halo (_inHook).
+            _hooks.Mouse = (m, p, h) => { _inHook = true; try { return OnMouse(m, p, h); } finally { _inHook = false; } };
+            _hooks.KeyDown = (vk, shift, ctrl, alt) => { _inHook = true; try { return OnKey(vk, shift, ctrl, alt); } finally { _inHook = false; } };
             _hooks.Reset = () => Cancel("reset");
             // Ctrl+Space also without a selection: a keyboard-only hook that stays installed (the full hooks take over
             // while an element is selected and handle the key themselves).
@@ -237,8 +238,10 @@ namespace InventaSketch.AddIn.OnSlide
             var view = SlideView.Current(_app);
             if (slide is null || view is null) { Disarm(); return; }
             _view = view;
+            if (_unit?.Id != unit.Id) _haloPreview = null;
             _unit = unit;
             _dark = OfficeTheme.IsDark();
+            ReadSlideDark();
             var registry = _registry();
             var ctx = new RenderContext(unit.Doc, _lang());
             _unitPrims = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
@@ -278,6 +281,7 @@ namespace InventaSketch.AddIn.OnSlide
             _multi = new List<SketchUnit>();
             _unitContext = null;
             _pie = null;
+            ResetHalo();
             HideBar();
             _hooks.Uninstall();
             _timer.Stop();
@@ -292,6 +296,7 @@ namespace InventaSketch.AddIn.OnSlide
             var wasArmedUnit = _unit;
             _item = null;
             _pie = null;
+            _haloPreview = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
             if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Sketch or Mode.Grip)
@@ -315,6 +320,8 @@ namespace InventaSketch.AddIn.OnSlide
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
                 if (!view.SameAs(_view)) _view = view;
+                // A multi-selection PowerPoint moved: its halo follows once the button is released.
+                if (_mode == Mode.Multi) RefreshMultiHalo(view);
                 // A selection grown to several elements without a selection event (selected through the object model):
                 // the multi-selection bar takes over.
                 if (_mode == Mode.Armed)
@@ -476,6 +483,14 @@ namespace InventaSketch.AddIn.OnSlide
                     // Quick add: blue triangles and connection ports of flowchart, UML, ER, BPMN and basic elements.
                     if (ChainMouse(message, pt, view, out var chainSwallow)) return chainSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
+                    // Ctrl+double-click on the element: select what is connected with it (the most meaningful kind).
+                    if (message == WM_LBUTTONDBLCLK && KeyDown(VK_CONTROL) && Inside(pt, view, inset: -4) && _unit is { } connectUnit)
+                    {
+                        HideBar();
+                        Log.Info("Ctrl+double-click: select connected");
+                        Post(() => { if (CurrentSlide() is { } cs && SketchUnits.Read(connectUnit.Shape) is { } fresh) SelectConnected(cs, fresh, ConnectKind.Auto); });
+                        return true;
+                    }
                     // Motion mode: gears, carriers and linkages move the way they can instead of being edited (also on a joint).
                     if (message == WM_LBUTTONDOWN && AddInSettings.Motion && (Inside(pt, view, inset: -6) || PointHandleAt(pt, view) >= 0) && BeginTurn(pt, view)) return true;
                     if (message == WM_LBUTTONDOWN && PointHandleAt(pt, view) is int pointIndex and >= 0)
@@ -702,7 +717,14 @@ namespace InventaSketch.AddIn.OnSlide
                         if (message == WM_MOUSEMOVE)
                         {
                             var h = pie.HitTest(p);
-                            if (h != pie.Hover) { pie.Hover = h; DrawPie(view); ArmPieHoverOpen(pie, h, view); }
+                            if (h != pie.Hover)
+                            {
+                                pie.Hover = h;
+                                // Hovering "select connected": the elements it would add glow faintly.
+                                SetPreview(PreviewFor(h >= 0 ? pie.Items[h].Id : null));
+                                DrawPie(view);
+                                ArmPieHoverOpen(pie, h, view);
+                            }
                             return false;
                         }
                         if (message is WM_LBUTTONDOWN or WM_RBUTTONDOWN)
@@ -979,6 +1001,8 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 g.SmoothingMode = SmoothingMode.AntiAlias;
                 g.Clear(Color.Transparent);
+                // The selection halo lies under everything else (handles, ghosts, the pie).
+                DrawHalo(g, view);
                 var state = g.Save();
                 g.TranslateTransform((float)(view.OffsetX - view.PaneRect.X), (float)(view.OffsetY - view.PaneRect.Y));
                 g.ScaleTransform((float)view.PixelsPerMm, (float)view.PixelsPerMm);
@@ -1038,47 +1062,11 @@ namespace InventaSketch.AddIn.OnSlide
         }
 
         /// <summary>
-        /// The units of the slide coupled with the armed unit, directly or through others (meshes, shafts, carriers, belts),
-        /// the armed unit first; just the armed unit if it is coupled with nothing.
+        /// The units of the slide coupled with the armed unit, directly or through others (meshes, shafts, carriers, belts,
+        /// linkages: "moves along", <see cref="ConnectKind.Coupled"/>), the armed unit first; just the armed unit if it is
+        /// coupled with nothing.
         /// </summary>
-        private List<SketchUnit> AssemblyOf()
-        {
-            var result = new List<SketchUnit>();
-            if (_unit is null) return result;
-            result.Add(_unit);
-            if (_otherUnits.Count == 0) return result;
-            try
-            {
-                var registry = _registry();
-                var full = SketchUnits.WithContext(_unit.Doc, _otherUnits);
-                var owner = new Dictionary<string, SketchUnit>(StringComparer.Ordinal);
-                foreach (var u in new[] { _unit }.Concat(_otherUnits))
-                    foreach (var o in u.Objects) owner[o.Id] = u;
-                var edges = Coupling.Graph(registry, full, _lang());
-                var seen = new HashSet<string>(_unit.Objects.Select(o => o.Id), StringComparer.Ordinal);
-                var queue = new Queue<string>(seen);
-                while (queue.Count > 0)
-                {
-                    var id = queue.Dequeue();
-                    foreach (var (_, a, b) in edges)
-                    {
-                        var other = a == id ? b : b == id ? a : null;
-                        if (other is null || !seen.Add(other)) continue;
-                        queue.Enqueue(other);
-                        // All objects of the other unit belong to the assembly too.
-                        if (owner.TryGetValue(other, out var u))
-                            foreach (var o in u.Objects) if (seen.Add(o.Id)) queue.Enqueue(o.Id);
-                    }
-                }
-                foreach (var u in _otherUnits)
-                    if (u.Objects.Any(o => seen.Contains(o.Id))) result.Add(u);
-            }
-            catch (Exception ex)
-            {
-                Log.Error("Assembly", ex);
-            }
-            return result;
-        }
+        private List<SketchUnit> AssemblyOf() => ConnectedOf(ConnectKind.Coupled);
 
         /// <summary>Which quick transforms visibly change the selected unit (<see cref="Symmetry"/>); all on errors.</summary>
         private TransformEffect UnitEffect()
@@ -1223,8 +1211,11 @@ namespace InventaSketch.AddIn.OnSlide
                 var alpha = (byte)Math.Round(255 * opacity);
                 if (hover != bar.Hover || Math.Abs(alpha - _barAlpha) >= 6 || opacity <= 0)
                 {
+                    var hoverChanged = hover != bar.Hover;
                     bar.Hover = hover;
                     DrawBar(view, opacity);
+                    // Hovering "select the assembly": what moves along glows faintly.
+                    if (hoverChanged && _mode == Mode.Armed && SetPreview(PreviewFor(hover >= 0 ? bar.IdAt(hover) : null))) DrawPointHandles(view);
                 }
                 return inside;
             }
@@ -1481,7 +1472,7 @@ namespace InventaSketch.AddIn.OnSlide
             }
             var o = PointObject();
             if (o is null && _chainSource is not null) { DrawChainTools(view); return; }
-            if (o is null && _links.Count == 0 && _ports.Count == 0 && _sides.Count == 0 && _grips.Count == 0) return;
+            if (o is null && _links.Count == 0 && _ports.Count == 0 && _sides.Count == 0 && _grips.Count == 0) { PresentHaloOnly(view); return; }
             var pts = o is null ? null : _unit!.Doc.ResolvePoints(o);
             Present(view, _ => { }, g =>
             {
@@ -2056,10 +2047,10 @@ namespace InventaSketch.AddIn.OnSlide
                 BeginSketch();
                 return;
             }
-            if (id == "assembly")
+            // "Select the assembly" is "moves along"; "connect:<kind>" selects what is connected that way.
+            if (id == "assembly" || id.StartsWith("connect:", StringComparison.Ordinal))
             {
-                var shapes = AssemblyOf();
-                for (var i = 0; i < shapes.Count; i++) shapes[i].Shape.Select(i == 0 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse);
+                SelectConnected(slide, unit, id == "assembly" ? ConnectKind.Coupled : KindOf(id.Substring(8)) ?? ConnectKind.Auto);
                 return;
             }
             if (id == "explode")

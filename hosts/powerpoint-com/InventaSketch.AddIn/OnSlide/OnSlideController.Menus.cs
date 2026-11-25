@@ -393,7 +393,14 @@ namespace InventaSketch.AddIn.OnSlide
             if (effect.Rotate90) { arrange.Add(PieCommand("rot90", IconIds.Rotate)); arrange.Add(PieCommand("rotm90", IconIds.RotateCcw)); }
             if (effect.MirrorH) arrange.Add(PieCommand("flipH", IconIds.MirrorH));
             if (effect.MirrorV) arrange.Add(PieCommand("flipV", IconIds.MirrorV));
-            if (first is not null && AssemblyOf().Count > 1) arrange.Add(PieCommand("assembly", IconIds.SelectAssembly));
+            // Select connected: the kinds that apply (net, moves along – the assembly –, following elements, loop, room walls).
+            var connected = first is null ? new List<(ConnectKind Kind, List<SketchUnit> Units)>() : ConnectOptions();
+            if (connected.Count > 0)
+                arrange.Add(new PieItem("menu:connected", T("Select connected ▸", "Verbundene auswählen ▸"))
+                {
+                    IconId = IconIds.SelectAssembly,
+                    Hint = string.Join(", ", connected.Select(c => Connectivity.Label(c.Kind).Get(_lang()))),
+                });
             if (type is not null && first is not null && type.AnimationFrames(first, 2).Count > 0) arrange.Add(PieCommand("anim", IconIds.Animate));
 
             return new List<PieGroup>
@@ -451,6 +458,12 @@ namespace InventaSketch.AddIn.OnSlide
                 items = ChoiceMenu(submenu.Substring(2), back);
                 title = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null) is { } fo ? BarChoices(fo, int.MaxValue).FirstOrDefault(c => c.Key == submenu.Substring(2))?.Tip : null;
             }
+            else if (submenu == "connected")
+            {
+                items = new List<PieItem> { back };
+                items.AddRange(ConnectItems(ConnectOptions().Select(c => (c.Kind, c.Units.Count)), _lang()));
+                title = T("Select connected", "Verbundene auswählen");
+            }
             else if (submenu == "parts")
             {
                 items = PartListMenu();
@@ -487,6 +500,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void ShowPie(POINT pt, SlideView view, List<PieItem> items, string? title = null)
         {
+            SetPreview(null);
             _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale) { Title = title };
             _mode = Mode.Pie;
             LastPieItems = string.Join("\n", items.Select(i => i.Id + "\t" + i.Label + (i.Enabled ? "" : "\t(off)")));
@@ -505,6 +519,7 @@ namespace InventaSketch.AddIn.OnSlide
                 var (ring, menus) = PieRing(PieGroups(PointObject(), _registry()), "");
                 var ids = bar.Where(b => !b.Separator).Select(b => b.Id)
                     .Concat(ring.Concat(menus.Values.SelectMany(m => m)).Where(i => i.Enabled).Select(i => i.Id))
+                    .Concat(ConnectOptions().Select(c => "connect:" + KindId(c.Kind)))
                     .Where(id => !id.StartsWith("menu:", StringComparison.Ordinal)).Distinct();
                 return string.Join(",", ids);
             }
