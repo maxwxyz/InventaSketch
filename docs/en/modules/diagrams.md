@@ -64,7 +64,9 @@ as a diagram, top to bottom" and "… left to right" (engine `arrange` with `lay
 `DiagramLayout`). A layered layout in the manner of Sugiyama: every line whose first and last docked ends sit on two
 selected elements is an edge; cycles are broken along a depth-first search, layers follow the longest path from the
 sources, barycentre sweeps reduce crossings, and layers and gaps follow the elements' own sizes. The diagram keeps its
-place (top edge and centre); connectors follow their elements. Works for any module's box elements joined by docked
+place (top edge and centre); connectors follow their elements and dock on the facing sides (bottom → top, right →
+left; an end on a port moves to the nearest port of that side). A long chain laid out left to right can run past the
+page edge. Works for any module's box elements joined by docked
 lines (process steps, flowchart, UML, BPMN, ER, blocks).
 
 ## Context actions

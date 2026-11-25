@@ -214,9 +214,13 @@ namespace InventaSketch.AddIn.OnSlide
                     // Connectors between the selected elements dock on the facing sides first (bottom → top, right → left);
                     // MoveUnits then redraws them along with the moved elements.
                     var nodes = new HashSet<string>(units.SelectMany(u => u.Objects).Where(o => !o.IsPointGeometry).Select(o => o.Id), StringComparer.Ordinal);
+                    // The selected elements as they will stand (their own anchors decide the docking points).
+                    var laid = SketchDocument.Create();
+                    laid = Edits.Add(laid, laid.Pages[0].Id, units.SelectMany(u => u.Objects.Select(o => layout.TryGetValue(u.Id, out var l) && !o.IsPointGeometry
+                        ? o with { Transform = o.Transform with { X = o.Transform.X + l.Move.X, Y = o.Transform.Y + l.Move.Y } } : o)).ToArray());
                     foreach (var cu in SketchUnits.All(slide).Where(u => !layout.ContainsKey(u.Id)))
                     {
-                        var redocked = cu.Objects.Select(o => DiagramLayout.Redock(o, nodes, id == "layout:down")).Where(o => o is not null && !cu.Doc.Objects.Values.Contains(o)).ToList();
+                        var redocked = cu.Objects.Select(o => DiagramLayout.Redock(registry, laid, o, nodes, id == "layout:down")).Where(o => o is not null && !cu.Doc.Objects.Values.Contains(o)).ToList();
                         if (redocked.Count == 0) continue;
                         var doc = cu.Doc;
                         foreach (var o in redocked) doc = Edits.Replace(doc, o!);

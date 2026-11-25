@@ -120,24 +120,38 @@ namespace InventaSketch.Core
         }
 
         /// <summary>
-        /// A connector between two laid-out elements docked on their facing sides: its first docked end on the middle of the
-        /// source's bottom (right when not <paramref name="down"/>), its last on the middle of the target's top (left), so
-        /// routed connectors run between the elements instead of through them; null if it joins no two of
-        /// <paramref name="ids"/>. Ends on a named anchor (a port) stay.
+        /// A connector between two laid-out elements docked on their facing sides: its first docked end on the source's
+        /// bottom (right when not <paramref name="down"/>), its last on the target's top (left), so routed connectors run
+        /// between the elements instead of through them. An end docked on a named anchor (a port) moves to the element's
+        /// named point anchor nearest to that side; other ends to the side's middle. Null if it joins no two of
+        /// <paramref name="ids"/>; the same object if nothing changes.
         /// </summary>
-        public static SketchObject? Redock(SketchObject line, ISet<string> ids, bool down)
+        public static SketchObject? Redock(Registry registry, SketchDocument doc, SketchObject line, ISet<string> ids, bool down)
         {
             if (!line.IsPointGeometry || line.Attach is null) return null;
             var att = line.Attach.ToList();
             var first = att.FindIndex(a => a is not null && ids.Contains(a.ObjectId));
             var last = att.FindLastIndex(a => a is not null && ids.Contains(a.ObjectId));
             if (first < 0 || last <= first || att[first]!.ObjectId == att[last]!.ObjectId) return null;
+            var ctx = new RenderContext(doc).For(registry);
             var changed = false;
             void Set(int i, double u, double v)
             {
                 var a = att[i]!;
-                if (a.AnchorId is not null || (Math.Abs(a.U - u) < 1e-9 && Math.Abs(a.V - v) < 1e-9)) return;
-                att[i] = a with { U = u, V = v };
+                if (doc.Get(a.ObjectId) is not { IsPointGeometry: false } target) return;
+                var next = a with { U = u, V = v };
+                if (a.AnchorId is not null)
+                {
+                    // The named anchor nearest to the side's middle (a flow step's "bottom" port, a class's side port …).
+                    var want = target.BoxPoint(u, v);
+                    var best = registry.PageAnchors(target, ctx).Where(x => x.Kind == AnchorKind.Point && x.Id is not null && x.Role is AnchorRole.Port or AnchorRole.EdgeMid)
+                        .OrderBy(x => x.P.DistanceTo(want)).FirstOrDefault();
+                    if (best is null) return;
+                    var (bu, bv) = target.ToBox(best.P);
+                    next = a with { AnchorId = best.Id, U = bu, V = bv };
+                }
+                if (next == a) return;
+                att[i] = next;
                 changed = true;
             }
             if (down) { Set(first, 0, 0.5); Set(last, 0, -0.5); }

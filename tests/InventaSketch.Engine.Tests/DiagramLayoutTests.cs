@@ -18,7 +18,8 @@ namespace InventaSketch.Engine.Tests
             return a with
             {
                 Points = new List<Vec2> { from.BoxPoint(0, 0.5), to.BoxPoint(0, -0.5) },
-                Attach = new[] { new Attachment(from.Id, 0, 0.5), new Attachment(to.Id, 0, -0.5) },
+                // Docked on the steps' ports, as the "+" below a step does.
+                Attach = new[] { new Attachment(from.Id, 0, 0.5) { AnchorId = "bottom" }, new Attachment(to.Id, 0, -0.5) { AnchorId = "top" } },
             };
         }
 
@@ -80,8 +81,8 @@ namespace InventaSketch.Engine.Tests
             EngineApiTests.Call(api, "arrange", new { session, ids, action = "layout:right" });
             var row = api.Sessions.Get(session).Doc;
             var ab = row.Objects.Values.First(o => o.IsPointGeometry && o.Attach is { } at2 && at2[0]?.ObjectId == a.Id && at2[1]?.ObjectId == b.Id);
-            Assert.Equal((0.5, 0.0), (ab.Attach![0]!.U, ab.Attach[0]!.V));
-            Assert.Equal((-0.5, 0.0), (ab.Attach![1]!.U, ab.Attach[1]!.V));
+            Assert.Equal(("right", 0.5, 0.0), (ab.Attach![0]!.AnchorId, ab.Attach[0]!.U, ab.Attach[0]!.V));
+            Assert.Equal(("left", -0.5, 0.0), (ab.Attach![1]!.AnchorId, ab.Attach[1]!.U, ab.Attach[1]!.V));
             EngineApiTests.Call(api, "arrange", new { session, ids, action = "layout:down" });
             // Laid out once, it is not offered again.
             var again = EngineApiTests.Call(api, "arrangeOptions", new { session, ids }).EnumerateArray().Select(o => o.GetProperty("id").GetString()).ToList();

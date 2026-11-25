@@ -65,7 +65,9 @@ bietet „Als Diagramm anordnen, von oben nach unten“ und „… von links nac
 angedocktes Ende auf zwei ausgewählten Elementen sitzt, ist eine Kante; Zyklen werden entlang einer Tiefensuche
 aufgebrochen, die Ebenen folgen dem längsten Pfad von den Quellen, Baryzentrum-Durchläufe verringern Kreuzungen, Ebenen
 und Abstände richten sich nach der Größe der Elemente. Das Diagramm bleibt an seinem Platz (Oberkante und Mitte); die
-Verbinder folgen ihren Elementen. Funktioniert für die Kastenelemente aller Module, die über angedockte Linien
+Verbinder folgen ihren Elementen und docken an den zugewandten Seiten an (unten → oben, rechts → links; ein Ende an
+einem Port wechselt zum nächsten Port dieser Seite). Eine lange Kette von links nach rechts kann über den Seitenrand
+hinauslaufen. Funktioniert für die Kastenelemente aller Module, die über angedockte Linien
 verbunden sind (Prozessschritte, Flussdiagramm, UML, BPMN, ER, Blöcke).
 
 ## Kontextaktionen

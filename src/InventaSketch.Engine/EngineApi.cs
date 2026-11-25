@@ -685,7 +685,7 @@ namespace InventaSketch.Engine
                     // Connectors dock on the facing sides (bottom → top, right → left).
                     var nodes = new HashSet<string>(target.Keys, StringComparer.Ordinal);
                     foreach (var line in doc.Objects.Values.Where(o => o.IsPointGeometry).ToList())
-                        if (DiagramLayout.Redock(line, nodes, down) is { } redocked && !ReferenceEquals(redocked, line)) doc = Edits.Replace(doc, redocked);
+                        if (DiagramLayout.Redock(Registry, doc, line, nodes, down) is { } redocked && !ReferenceEquals(redocked, line)) doc = Edits.Replace(doc, redocked);
                     return doc;
                 }
                 var groups = ArrangeGroups(doc, objs);
