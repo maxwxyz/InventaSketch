@@ -23,6 +23,14 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, Connector))
             {
                 Pins = ConnectorPins, Params = new[] { Gender, Poles }, Uniform = false, RefPrefix = "X",
+                // A mated pair joins socket and plug pole by pole; a lone plug or socket leads elsewhere (unknown current).
+                Net = o =>
+                {
+                    var n = new NetSpec();
+                    if (o.Str("gender", "pair") == "pair")
+                        for (var i = 1; i <= Count(o, "poles", 1, 1, 12); i++) n.Shorts.Add(new[] { "s" + N(i), "p" + N(i) });
+                    return n;
+                },
                 Extra = o => Choice(o, "elec.connector", T("Plug / socket", "Stecker / Buchse"), Gender),
             };
 
@@ -39,17 +47,21 @@ namespace InventaSketch.Modules.Electrical
                     p.Round(0, -2.5, 2, null, "body");
                     p.Dot(0, -2.5, 0.7);
                 }))
-            { Pins = Fixed(new Pin("1", 0, 0.5)), RefPrefix = "TP", LabelSide = LabelSide.Right };
+            { Pins = Fixed(new Pin("1", 0, 0.5)), RefPrefix = "TP", LabelSide = LabelSide.Right, Net = _ => NetSpec.Open("1") };
 
             yield return new ElecType("elec.junction", T("Junction dot", "Verbindungspunkt"), Cat,
                 new[] { "junction", "dot", "node", "connection", "verbindungspunkt", "knoten", "abzweig" },
                 Views.Symbol(2, 2, (p, o) => p.Dot(0, 0, 0.8, "junction")))
-            { Pins = Fixed(new Pin("1", 0, 0)), Labeled = false };
+            { Pins = Fixed(new Pin("1", 0, 0)), Labeled = false, Net = _ => NetSpec.Short("1") };
 
             yield return new ElecType("elec.netlabel", T("Net label", "Netzname"), Cat,
                 new[] { "net label", "net", "label", "netzname", "signalname", "potential", "vcc", "gnd" },
                 Views.Symbol(20, 6, NetLabel))
-            { Pins = Fixed(new Pin("1", -0.5, 0)), Params = new[] { Net }, Labeled = false, TextObject = true, Uniform = false };
+            {
+                Pins = Fixed(new Pin("1", -0.5, 0)), Params = new[] { Net }, Labeled = false, TextObject = true, Uniform = false,
+                // Net labels of the same name join; a name used once leads elsewhere.
+                Net = o => new NetSpec { Global = "label:" + (!string.IsNullOrEmpty(o.Text) ? o.Text! : o.Str("net", "NET")).Trim(), GlobalNeedsPartner = true },
+            };
         }
 
         private static double PoleY(int i, int n) => ((i + 0.5) / n - 0.5) * 10;

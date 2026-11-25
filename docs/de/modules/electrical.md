@@ -114,16 +114,68 @@ Die Installationsplan-Symbole orientieren sich sinngemäß an üblicher DIN/EN-P
 sich je nach Land und ist nicht normativ. Leiterplatten-Objekte sind proportional vereinfacht und enthalten keine
 Land-Pattern- oder Designregel-Daten.
 
-## Elementwerte (Calc 1)
+## Elementwerte (Calc 1 und Calc 3)
 
-Der Widerstand (`elec.resistor`) hat die Werte *R*, *U*, *I* und *P* (technische Berechnungen, siehe
-[../design/engineering-calculations.md](../design/engineering-calculations.md), Abschnitt 10). *R* wird aus dem vorhandenen
-Text `value` gelesen („4k7", „10 kΩ", „100R"); *U*, *I* und *P* sind optionale Textparameter `voltage`, `current` und
-`power`, die das Getippte behalten („230 V"). Beziehungen: *U* = *R*·*I* und *P* = *U*·*I* = *I*²·*R* = *U*²/*R* [S7]. Zwei
-beliebige Werte ergeben die anderen beiden; drei stimmige werden als geprüft markiert, drei widersprüchliche ergeben einen
-Widerspruch, und nichts wird geändert. Ein Text in `value`, der kein Widerstand ist (z. B. „1/4 W"), wird für *R* nicht
-verwendet. Die Engine-Methoden `values`, `setValue`, `clearValue`, `explain` und `dragValue` arbeiten damit; die
-Oberfläche folgt mit Calc 2. Andere Schaltzeichen bekommen Werte mit Calc 3.
+Technische Werte sind optional (Quick Sketch zuerst): Jedes Element lässt sich weiter ohne Parameter einfügen, und
+abgeleitet wird erst, wenn Werte eingegeben sind. Konzept und Quellen:
+[../design/engineering-calculations.md](../design/engineering-calculations.md) (Abschnitte 2.1–2.3, 10.7 und 10.10).
+Eingegebene Werte liegen in optionalen Textparametern, die das Getippte behalten („230 V", „4k7"); abgeleitete Werte
+werden nie gespeichert. Werte, die ein Element bestimmen, ergeben die übrigen; stimmige Werte werden als geprüft
+markiert, widersprüchliche ergeben einen Widerspruch, und nichts wird geändert.
+
+| Element | Variablen (Parameter) | Beziehungen [S7] |
+|---|---|---|
+| Widerstand `elec.resistor` | *R* (`value`, „4k7"), *U* (`voltage`), *I* (`current`), *P* (`power`); Nennleistung `prated` für die Prüfung | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
+| Lampe `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, warm); Kennzeichnung in `value` („12 V 5 W") | wie beim Widerstand |
+| Kondensator `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, „100n"), *U*, *Q* (`charge`), *E* (`energy`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*) |
+| Spule `elec.inductor` | *L* (`value`, „10 mH"), *I*, *E* (`energy`) | *E* = ½*L*·*I*² |
+| Diode, LED `elec.diode`, `elec.diode.led` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); Kennzeichnung „2,1 V 20 mA"; LED: `ifmax` für die Prüfung | *P* = *U*·*I* |
+| Z-Diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
+| Quelle `elec.source`, Batterie `elec.battery` | *U*, *I*, *P*; Kennzeichnung „5 V", „10 mA" (Stromquelle), „12 V 2 A" | *P* = *U*·*I* |
+| Transformator `elec.transformer` | *U*₁ (`u1`), *U*₂ (`u2`), *I*₁ (`i1`), *I*₂ (`i2`), *ü* (`ratio`, Panel); Kennzeichnung „230/12 V" | ideal: *ü* = *U*₁/*U*₂ = *I*₂/*I*₁ [S7, S15] |
+| Sicherung, LS-Schalter, Abgang `elec.fuse`, `elec.breaker`, `elec.sld.feeder` | *I*_B (`current`), *I*_n (`rated`); Kennzeichnung „B16", „C 10 A", „gG 35 A"; `iz` (*I*_z der Leitung, Benutzer) für die Prüfung | – |
+| RCD `elec.rcd` | *I*_n (`rated`), *I*_Δn (`idn`); Kennzeichnung „40 A 30 mA", „40/0,03 A", „30 mA" | – |
+| Steckdose, Leuchte `elec.house.socket`, `elec.house.light` | *U*, *I*, *P* | *P* = *U*·*I* |
+
+**Kennzeichnungen.** Ist der Werttext eine Kennzeichnung und nicht die Größe des Elements selbst, werden die Größen darin
+gelesen (jeweils mit Einheit) und als abgeleitet gezeigt, mit der Kennzeichnung als Formel („*I*_n = B16 = 16 A"). Ein
+eingegebener Wert, der der Kennzeichnung widerspricht, ergibt einen Widerspruch. Ein Werttext ohne Kennzeichnung
+(„1N4148", „rot") ergibt nichts und keinen Fehler.
+
+**Stromkreise.** Werte gehen über Leitungen (auch Leitungsführungen und Busse), die an Pins angedockt sind, wie beim
+Netzlistenexport; Verbindungspunkte, geschlossene Kontakte, eine gesteckte Steckverbindung, Sammelschienen, Abzweigdosen,
+Verteiler und Energiezähler verbinden Netze; Erdungszeichen derselben Art und Netznamen mit gleichem Namen verbinden
+Netze auf einer Folie (ein nur einmal verwendeter Netzname führt woandershin). Offene Kontakte und Messpunkte führen
+keinen Strom. Schutzorgane werden üblicherweise in Ruhestellung gezeichnet; sie leiten daher, außer der Parameter
+`closed` ist ausdrücklich auf falsch gesetzt. Das Netz wird nur schrittweise über Reihen- und Parallelschaltungen
+reduziert (keine Schaltungssimulation):
+
+- Elemente in Reihe haben denselben Strom, parallele Elemente dieselbe Spannung;
+- ohmsche Gruppen ergeben den Ersatzwiderstand (*R* = Σ*R*ᵢ, 1/*R* = Σ1/*R*ᵢ), kapazitive Gruppen die Ersatzkapazität
+  (Kondensatoren in Reihe haben dieselbe Ladung);
+- eine Quelle (oder Quellen in Reihe oder parallel) an der reduzierten Last schließt den Stromkreis: Spannung und Strom
+  der Quelle sind die der Last (Maschensatz), z. B. der LED-Vorwiderstand: „4k7" in einem 5-V-Kreis mit einer 2,1-V-LED
+  ergibt *I* = 0,617 mA, und der Spannungsteiler: 10 V an 1 kΩ + 4 kΩ ergibt 8 V am 4-kΩ-Widerstand;
+- einpolige Verbraucher (Steckdosen, Leuchten) an einem Netz, das ein Zweig speist, addieren sich (Knotensatz) und haben
+  dessen Spannung;
+- ein Transformator ist Last seines Primär- und Quelle seines Sekundärkreises.
+
+Spannungen und Ströme sind Beträge in Verbraucherrichtung; das gilt für Reihen-Parallel-Netze, die eine Quelle speist.
+Eine Masche, die diese Schritte nicht reduzieren (eine Brücke, Quellen an mehreren Stellen), bekommt den Hinweis
+`elec.net.reducible` („hier nicht reduzierbar – Schaltungssimulator verwenden"); die Elementbeziehungen wirken weiter.
+Elemente ohne Werte im Stromkreis (Motor, Generator, Relaisspule, Fotodiode) halten ihn reduzierbar, aber kein Wert geht
+durch sie hindurch; Drehstrommaschinen, Transistoren, ICs und andere mehrpolige Teile sind Anschlüsse mit unbekanntem
+Strom, sodass das Netz um sie herum nicht reduziert wird.
+
+**Prüfungen** (nur Hinweise, Overlay, ändern nie etwas; Katalog im Konzept, Abschnitt 4):
+
+| Id | Element | Regel | Schwere | Quelle |
+|---|---|---|---|---|
+| `elec.r.power` | Widerstand | *P* ≤ *P*_rated (`prated`) | Warnung | [S7] |
+| `elec.led.current` | LED | *I*_F ≤ *I*_F,max (`ifmax`, Datenblatt) | Warnung | [S7] |
+| `elec.coord.overload` | Sicherung, LS-Schalter, Abgang | *I*_B ≤ *I*_n ≤ *I*_z (*I*_z vom Benutzer eingegeben, keine Belastbarkeitstabellen) | Warnung | [S9] |
+| `elec.rcd.additional` | Steckdose | ihr Stromkreis hat ein Überstromschutzorgan, aber keinen RCD mit *I*_Δn ≤ 30 mA (ein RCD ohne Angabe zählt als vorhanden; nationale Regeln weichen ab) | Hinweis | [S10] |
+| `elec.net.reducible` | Elemente in einer nicht reduzierbaren Masche | kein Reihen-/Parallelnetz | Info | Abschnitt 1.6 |
 
 ## Persistenz
 
@@ -138,6 +190,13 @@ versteckten Modulzustand. Ein JSON-Round-Trip reproduziert Dokument und gerender
   (Abzweig): Es folgt, wenn die andere Leitung verschoben oder geändert wird, und die Netzliste fasst beide Leitungen
   zu einem Netz zusammen.
 - Beschriftungen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
+- Werte (Calc 3): noch keine Wechselstrom-Impedanz, Blindwiderstände, Zeitkonstanten oder Resonanz (keine
+  Frequenzvariable); keine Ersatzinduktivität; keine Polarität (nur Beträge); Werte von Motor und Generator bleiben dem
+  Modul Maschinen überlassen; Potentiometer, Basiswiderstand des Transistors und Verstärkung des Operationsverstärkers sind
+  offen. Zwei widersprüchliche Kennzeichnungen (z. B. eine 24-V-Lampe an einer 12-V-Sekundärwicklung) werden noch nicht als
+  Widerspruch gemeldet, weil ein aus einer Kennzeichnung gelesener Wert bei der Stimmigkeitsprüfung des Lösers nicht als
+  eingegeben zählt (Core-Änderung vorgeschlagen). Der Spannungsfall der Leitung (`elec.cable.drop`) wartet auf
+  Leitungswerte.
 - Sichtprüfung: `dotnet test` schreibt eine SVG-Galerie nach
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (Ports als rote Kreise, dazu ein
   Beispielschaltkreis mit angedockten Leitungen).

@@ -48,7 +48,11 @@ namespace InventaSketch.Modules.Electrical
                     if (n > 1) p.Text(3.4, -2.2, N(n), 1.8, TextAnchor.End, false, "count");
                 }),
                 Views.Schematic(10, 10, Socket))
-            { Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { Gangs, Protected, Height(300) }, Labeled = false, Installation = true };
+            {
+                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { Gangs, Protected, Height(300) }.Concat(ElecValues.LoadParams).ToList(), Labeled = false, Installation = true,
+                Variables = ElecValues.LoadVariables, Relations = ElecValues.PowerRelations, Net = _ => new NetSpec { Sink = ("U", "I") },
+                Checks = new[] { ElecValues.RcdAdditional },
+            };
 
             yield return new ElecType("elec.house.switch", T("Light switch", "Lichtschalter"), Cat,
                 new[] { "light switch", "switch", "two-way", "push button", "schalter", "lichtschalter", "ausschalter", "wechselschalter", "taster", "installation" },
@@ -61,7 +65,7 @@ namespace InventaSketch.Modules.Electrical
                 }),
                 Views.Schematic(10, 10, SwitchPlan))
             {
-                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { SwitchKind, Height(1050) }, Labeled = false, Installation = true,
+                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { SwitchKind, Height(1050) }, Labeled = false, Installation = true, Net = _ => NetSpec.Open("feed"),
                 Extra = o => Choice(o, "elec.house.switch", T("Switch type", "Schalterart"), SwitchKind),
             };
 
@@ -75,14 +79,17 @@ namespace InventaSketch.Modules.Electrical
                     p.Poly(null, true, "body", -6, -1.2, 6, -1.2, 4, 2, -4, 2);
                 }),
                 Views.Schematic(10, 10, LightPlan))
-            { Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2400) }, Installation = true };
+            {
+                Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2400) }.Concat(ElecValues.LoadParams).ToList(), Installation = true,
+                Variables = ElecValues.LoadVariables, Relations = ElecValues.PowerRelations, Net = _ => QuadrantNode(("U", "I")),
+            };
 
             yield return new ElecType("elec.house.junction", T("Junction box", "Abzweigdose"), Cat,
                 new[] { "junction box", "box", "abzweigdose", "verteilerdose", "dose", "installation" },
                 Views.Plan(5, 5, JunctionPlan),
                 Views.Section(5, 5, (p, o) => { Plate(p, 5, 5); p.Dot(0, 0, 0.6, "center"); }),
                 Views.Schematic(5, 5, JunctionPlan))
-            { Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2200) }, Installation = true };
+            { Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2200) }, Installation = true, Net = _ => QuadrantNode(null) };
 
             yield return new ElecType("elec.house.board", T("Distribution board", "Verteiler"), Cat,
                 new[] { "distribution board", "consumer unit", "panel", "fuse box", "verteiler", "unterverteilung", "sicherungskasten", "zählerschrank", "installation" },
@@ -97,18 +104,22 @@ namespace InventaSketch.Modules.Electrical
                 Views.Schematic(20, 10, BoardPlan))
             {
                 Pins = Fixed(new Pin("top", 0, -0.5), new Pin("bottom", 0, 0.5)), Uniform = false, RefPrefix = "UV", LabelSide = LabelSide.Right,
-                Params = new[] { Height(1100) }, Installation = true,
+                Params = new[] { Height(1100) }, Installation = true, Net = _ => NetSpec.Short("top", "bottom"),
             };
 
             yield return new ElecType("elec.sld.busbar", T("Busbar (single-line)", "Sammelschiene (einpolig)"), Cat,
                 new[] { "busbar", "bus bar", "single-line", "sammelschiene", "schiene", "einpolig", "übersichtsschaltplan" },
                 Views.Symbol(40, 4, (p, o) => p.Line(-20, 0, 20, 0, S.Bus, "busbar")))
-            { Pins = BusbarPins, Uniform = false, RefPrefix = "W", LabelSide = LabelSide.Right };
+            { Pins = BusbarPins, Uniform = false, RefPrefix = "W", LabelSide = LabelSide.Right, Net = o => NetSpec.Short(BusbarPins(o).Select(p => p.Id).ToArray()) };
 
             yield return new ElecType("elec.sld.feeder", T("Feeder (single-line)", "Abgang (einpolig)"), Cat,
                 new[] { "feeder", "outgoing", "single-line", "abgang", "abzweig", "einpolig", "stromkreis" },
                 Views.Symbol(10, 30, Feeder))
-            { Pins = Fixed(new Pin("bus", 0, -0.5), new Pin("load", 0, 0.5)), Params = new[] { FeederDevice }, Uniform = false, RefPrefix = "Q", LabelSide = LabelSide.Right };
+            {
+                Pins = Fixed(new Pin("bus", 0, -0.5), new Pin("load", 0, 0.5)), Params = new[] { FeederDevice }.Concat(ElecValues.DeviceParams).ToList(), Uniform = false,
+                RefPrefix = "Q", LabelSide = LabelSide.Right, Variables = ElecValues.DeviceVariables, Marking = ElecValues.DeviceMarking,
+                Net = ElecValues.Device("bus", "load"), Checks = new[] { ElecValues.Coordination, ElecValues.NotReducible },
+            };
 
             yield return new ElecType("elec.sld.meter", T("Energy meter", "Energiezähler"), Cat,
                 new[] { "meter", "energy meter", "kwh", "zähler", "stromzähler", "energiezähler", "einpolig" },
@@ -121,9 +132,17 @@ namespace InventaSketch.Modules.Electrical
                     var label = o.Str("label", "kWh");
                     if (label.Length > 0) p.Text(0, 1.3, label, Math.Min(3, 10.0 / (label.Length * 0.55)), TextAnchor.Middle, false, "name");
                 }))
-            { Pins = Fixed(TwoH().ToArray()), Params = new[] { MeterLabel }, RefPrefix = "P" };
+            { Pins = Fixed(TwoH().ToArray()), Params = new[] { MeterLabel }, RefPrefix = "P", Net = _ => NetSpec.Short("1", "2") };
 
             yield return new CableRouteType();
+        }
+
+        /// <summary>A plan element whose four connection points are one node (junction box, luminaire), optionally a single-line load.</summary>
+        private static NetSpec QuadrantNode((string U, string I)? sink)
+        {
+            var n = new NetSpec { Sink = sink };
+            n.Shorts.Add(Quadrants.Select(p => p.Id).ToArray());
+            return n;
         }
 
         private static IReadOnlyList<Pin> BusbarPins(SketchObject o)

@@ -1000,6 +1000,56 @@ way and can replace it when the transformer gets values), `ChartBreaks.ParseInpu
   preferences, E-series decision.
 - The `value.range` check ("typo?") can use `VarDef.Min/Max` when the check catalogue starts (Calc 3).
 
+### 10.10 Calc 3: Electrical (2026-11-25)
+
+**Status of the electrical accept items of Calc 3 (section 7):** done – element relations of sections 2.1–2.3 for the
+elements the module has, parsing of the electrical `value`, network reduction (series/parallel), voltage divider and LED
+series resistor ("4k7" in a 5 V circuit with a 2.1 V LED gives *I* = 0.617 mA), the bridge reports "not reducible", a
+B16 MCB with *I*_z = 13 A gives the coordination warning, the overload/RCD/resistor-power checks, and the Electrical
+module docs list the new variables. The variables and checks per element are listed in
+[../modules/electrical.md](../modules/electrical.md) ("Element values").
+
+| Area | Files |
+|---|---|
+| Variables, relations, markings, checks | `src/InventaSketch.Modules.Electrical/ElecValues.cs` |
+| Circuit analysis (nets, series/parallel reduction, circuit relations) | `src/InventaSketch.Modules.Electrical/ElecNetwork.cs` |
+| Hooks on the type (`IValueLinks`, `IValueChecks`, `Marking`, `Net`, `Checks`) | `src/InventaSketch.Modules.Electrical/ElecType.cs` |
+| Tests | `tests/InventaSketch.Modules.Electrical.Tests/CircuitValueTests.cs` |
+
+Decisions:
+
+- **Ratings are parameters, not variables.** *P*_rated, *I*_F,max and *I*_z are plain optional text parameters read by the
+  checks. As variables they would never be determined by a relation and would keep every element "under-determined".
+- **Markings.** Where the value text is not the element's own quantity (sources, lamps, LEDs, protective devices,
+  transformer), each quantity found in it becomes a one-variable relation of that element ("*I*_n = B16 = 16 A"),
+  returned by `IValueLinks`. The text is never rewritten; an entered value that disagrees gives a conflict. Passive parts
+  keep the direct binding of Calc 1 (*R*, *C*, *L* = `value`).
+- **Nets** are built as in the netlist export (attachments with pin ids, branches docked on lines), plus junction dots,
+  closed contacts (protective devices count as closed unless switched off explicitly), mated connectors, busbars,
+  junction boxes, boards, meters, earth symbols of one kind and net labels of one name (a lone label leads elsewhere and
+  counts as a terminal of unknown current).
+- **Reduction** (section 1.6): dangling branches are left out; parallel branches between the same nets; series at a net
+  with exactly two branches and nothing else; sources and passive parts are reduced separately, then one source group
+  across one load group closes the circuit. Each composite contributes sum relations over element variables (series: the
+  same current; parallel: the same voltage; closed circuit: both), and resistive or capacitive groups the equivalent
+  resistance or capacitance (Σ*U* = Σ*I*·*R*_eq, solved explicitly for *U* and *I*, numerically by Brent for one *R*).
+  Single-line loads on a net fed by one branch give Kirchhoff's current law. A loop left over without terminals of
+  unknown current marks its elements for `elec.net.reducible`.
+- **Scope.** The relations of a circuit are returned by one element (the first by id that has variables); every other
+  element returns a membership relation without solvers ("same circuit"), which never solves or checks anything but pulls
+  the owner into the solver scope. So the card and the values label of one element see the whole circuit. The analysis
+  is cached per document instance.
+- **Orientation.** Voltages and currents are magnitudes in consumer orientation, valid for series-parallel networks driven
+  by one source; sources in series are taken as aiding.
+
+Open (electrical): AC impedance, reactance, time constants and resonance (needs a frequency variable, Calc 5 charts);
+equivalent inductance; potentiometer wiper ratio, BJT base resistor and op-amp gain; motor/generator values (Machines);
+cable values and `elec.cable.drop`; `elec.kcl` (needs current directions); `elec.voltage.mismatch`. **Core change
+proposed:** a value solved by a relation without inputs (a marking) should root in itself like an entered value, so two
+markings that disagree (a 24 V lamp on a 12 V secondary) give a conflict; today such a pair is not checked. Also useful
+in Core: symbols qualified by the element's designator in cross-element formulas ("*U*(R1) = …"), since every resistor's
+voltage is called *U*.
+
 ---
 
 ## 11. Implementation notes: Calc 2 in PowerPoint (COM) (2026-11-25)

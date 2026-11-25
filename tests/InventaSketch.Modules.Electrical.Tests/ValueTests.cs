@@ -29,8 +29,10 @@ namespace InventaSketch.Modules.Electrical.Tests
             Assert.All(vars.Skip(1), v => Assert.Contains(t.Parameters, p => p.Key == v.ParamKey && p.Kind == ParamKind.Text && p.Unit is not null));
             Assert.Equal("Widerstand", vars[0].Name.De);
             Assert.All(ValueModel.Relations(t), r => Assert.Equal("S7", r.Source));
-            // Other electrical symbols have no values yet (Calc 3).
-            Assert.False(ValueModel.HasValues(Fx.Reg().Type("elec.capacitor")));
+            // The rating is a plain parameter for the power check, not a variable (Calc 3).
+            Assert.Contains(t.Parameters, p => p.Key == "prated" && p.Unit == "W");
+            // Symbols without relations have no values.
+            Assert.False(ValueModel.HasValues(Fx.Reg().Type("elec.opamp")));
         }
 
         [Fact]

@@ -15,6 +15,9 @@ namespace InventaSketch.Modules.Electrical
         private static readonly ParamDef Channel = Choice("channel", T("Channel", "Kanal"), "n", ("n", "N-channel", "N-Kanal"), ("p", "P-channel", "P-Kanal"));
 
         private static readonly Pin[] DiodePins = { new("A", -0.5, 0), new("K", 0.5, 0) };
+
+        /// <summary>A diode's value text as a marking ("2.1 V 20 mA"); a part number ("1N4148") gives nothing.</summary>
+        private static readonly Func<SketchObject, IEnumerable<MarkingValue>> DiodeMarking = ElecValues.ByKind((Quantities.Voltage, "U"), (Quantities.Current, "I"));
         private static readonly Pin[] TransistorPins = { new("B", -0.5, 0), new("C", 0.25, -0.5), new("E", 0.25, 0.5) };
         private static readonly Pin[] FetPins = { new("G", -0.5, 0), new("D", 0.25, -0.5), new("S", 0.25, 0.5) };
         private static readonly Pin[] IgbtPins = { new("G", -0.5, 0), new("C", 0.25, -0.5), new("E", 0.25, 0.5) };
@@ -24,22 +27,32 @@ namespace InventaSketch.Modules.Electrical
             yield return new ElecType("elec.diode", T("Diode", "Diode"), Cat,
                 new[] { "diode", "rectifier diode", "gleichrichterdiode", "d" },
                 Views.Symbol(20, 8, (p, o) => Diode(p)))
-            { Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D" };
+            {
+                Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D", Params = ElecValues.DiodeParams, Variables = ElecValues.DiodeVariables,
+                Relations = ElecValues.PowerRelations, Marking = DiodeMarking, Net = ElecValues.Two("A", "K", ElecValues.Drop), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return new ElecType("elec.diode.led", T("LED", "Leuchtdiode (LED)"), Cat,
                 new[] { "led", "light emitting diode", "leuchtdiode", "diode", "licht" },
                 Views.Symbol(20, 12, (p, o) => { Diode(p); Rays(p, false); }))
-            { Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D" };
+            {
+                Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D", Params = ElecValues.LedParams, Variables = ElecValues.DiodeVariables,
+                Relations = ElecValues.PowerRelations, Marking = DiodeMarking, Net = ElecValues.Two("A", "K", ElecValues.Drop),
+                Checks = new[] { ElecValues.LedCurrent, ElecValues.NotReducible },
+            };
 
             yield return new ElecType("elec.diode.zener", T("Zener diode", "Z-Diode"), Cat,
                 new[] { "zener", "z-diode", "zenerdiode", "diode", "reference" },
                 Views.Symbol(20, 8, (p, o) => Diode(p, zener: true)))
-            { Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D" };
+            {
+                Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D", Params = ElecValues.ZenerParams, Variables = ElecValues.ZenerVariables,
+                Relations = ElecValues.PowerRelations, Marking = DiodeMarking, Net = ElecValues.Two("A", "K", ElecValues.Drop), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return new ElecType("elec.diode.photo", T("Photodiode", "Fotodiode"), Cat,
                 new[] { "photodiode", "fotodiode", "photo", "light sensor", "lichtsensor", "diode" },
                 Views.Symbol(20, 12, (p, o) => { Diode(p); Rays(p, true); }))
-            { Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D" };
+            { Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D", Net = ElecValues.Two("A", "K", ElecValues.Opaque) };
 
             yield return new ElecType("elec.transistor.bjt", T("Bipolar transistor", "Bipolartransistor"), Cat,
                 new[] { "transistor", "bjt", "npn", "pnp", "bipolar", "bipolartransistor" },

@@ -49,7 +49,7 @@ namespace InventaSketch.Modules.Electrical
     /// Data-driven box object type used for all electrical symbols: views (each with its own drawing), pins
     /// (<see cref="AnchorRole.Port"/> anchors), optional parameters, designator/value labels and context actions.
     /// </summary>
-    internal sealed class ElecType : ObjectType, IValueType
+    internal sealed class ElecType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -119,6 +119,32 @@ namespace InventaSketch.Modules.Electrical
         /// <summary>Element values (Calc 1, <see cref="ElecValues"/>); empty for symbols without relations.</summary>
         public IReadOnlyList<VarDef> Variables { get; init; } = Array.Empty<VarDef>();
         public IReadOnlyList<Relation> Relations { get; init; } = Array.Empty<Relation>();
+        /// <summary>
+        /// Values read from the component's value text (Calc 3: "B16" → I_n, "12 V 5 W" → U and P). Each becomes a one-variable
+        /// marking relation of this element, so the value shows as derived ("I_n = B16 = 16 A") and an entered value that
+        /// disagrees gives a conflict. Null = the value text is not read (or a variable is bound to it directly).
+        /// </summary>
+        public Func<SketchObject, IEnumerable<MarkingValue>>? Marking { get; init; }
+        /// <summary>
+        /// Role of the element in a wired circuit (Calc 3, <see cref="ElecNetwork"/>): two-terminal branches with their
+        /// variables, pins joined inside the element, pins that carry no current, single-line loads. Null = every pin is a
+        /// terminal of unknown current (the circuit around it is not reduced).
+        /// </summary>
+        public Func<SketchObject, NetSpec>? Net { get; init; }
+        /// <summary>Plausibility checks of this type (catalogue in engineering-calculations.md section 4).</summary>
+        public IReadOnlyList<ValueCheck> Checks { get; init; } = Array.Empty<ValueCheck>();
+
+        IEnumerable<ValueCheck> IValueChecks.ValueChecks => Checks;
+
+        /// <summary>Marking relations of the value text, and the circuit relations of the network the element is wired into.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+        {
+            if (Variables.Count == 0) return Array.Empty<BoundRelation>();
+            var list = new List<BoundRelation>();
+            if (Marking is not null) list.AddRange(ElecValues.MarkingRelations(o, Marking(o)));
+            if (Net is not null) list.AddRange(ElecNetwork.Of(ctx.Doc).LinksOf(o.Id));
+            return list;
+        }
 
         public override IReadOnlyList<ParamDef> Parameters
         {

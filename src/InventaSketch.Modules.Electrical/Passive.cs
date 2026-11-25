@@ -19,7 +19,10 @@ namespace InventaSketch.Modules.Electrical
             yield return new ElecType("elec.resistor", T("Resistor", "Widerstand"), Cat,
                 new[] { "resistor", "widerstand", "ohm", "r" },
                 Views.Symbol(20, 8, ResistorIec), Views.Ansi(20, 8, ResistorAnsi))
-            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "R", Params = ElecValues.ResistorParams, Variables = ElecValues.ResistorVariables, Relations = ElecValues.Ohm };
+            {
+                Pins = Fixed(TwoH().ToArray()), RefPrefix = "R", Params = ElecValues.ResistorParams, Variables = ElecValues.ResistorVariables, Relations = ElecValues.Ohm,
+                Net = ElecValues.Two("1", "2", ElecValues.Resistive), Checks = new[] { ElecValues.ResistorPower, ElecValues.NotReducible },
+            };
 
             yield return new ElecType("elec.potentiometer", T("Potentiometer", "Potentiometer"), Cat,
                 new[] { "potentiometer", "poti", "trimmer", "variable resistor", "einstellbarer widerstand", "schleifer", "wiper" },
@@ -29,17 +32,26 @@ namespace InventaSketch.Modules.Electrical
             yield return new ElecType("elec.capacitor", T("Capacitor", "Kondensator"), Cat,
                 new[] { "capacitor", "kondensator", "kapazität", "c" },
                 Views.Symbol(20, 10, Capacitor))
-            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "C" };
+            {
+                Pins = Fixed(TwoH().ToArray()), RefPrefix = "C", Params = ElecValues.CapacitorParams, Variables = ElecValues.CapacitorVariables, Relations = ElecValues.Capacitor,
+                Net = ElecValues.Two("1", "2", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return new ElecType("elec.capacitor.polarized", T("Polarized capacitor", "Gepolter Kondensator"), Cat,
                 new[] { "electrolytic", "polarized", "capacitor", "elko", "elektrolytkondensator", "gepolt", "kondensator" },
                 Views.Symbol(20, 10, (p, o) => PolarCap(p, false)), Views.Ansi(20, 10, (p, o) => PolarCap(p, true)))
-            { Pins = Fixed(TwoH("+", "-").ToArray()), Polarized = true, RefPrefix = "C" };
+            {
+                Pins = Fixed(TwoH("+", "-").ToArray()), Polarized = true, RefPrefix = "C", Params = ElecValues.CapacitorParams, Variables = ElecValues.CapacitorVariables,
+                Relations = ElecValues.Capacitor, Net = ElecValues.Two("+", "-", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return new ElecType("elec.inductor", T("Inductor", "Spule"), Cat,
                 new[] { "inductor", "coil", "choke", "spule", "induktivität", "drossel", "l" },
                 Views.Symbol(20, 8, Inductor))
-            { Pins = Fixed(TwoH().ToArray()), Params = new[] { Core }, RefPrefix = "L" };
+            {
+                Pins = Fixed(TwoH().ToArray()), Params = new[] { Core }.Concat(ElecValues.InductorParams).ToList(), RefPrefix = "L",
+                Variables = ElecValues.InductorVariables, Relations = ElecValues.Inductor, Net = ElecValues.Two("1", "2", ElecValues.Inductive), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return new ElecType("elec.transformer", T("Transformer", "Transformator"), Cat,
                 new[] { "transformer", "transformator", "trafo", "übertrager", "wandler" },
@@ -47,8 +59,18 @@ namespace InventaSketch.Modules.Electrical
                 new ViewSpec("circles", T("Circles (single-line)", "Kreise (einpolig)"), IconIds.Simplified, 20, 20, TransformerCircles))
             {
                 Pins = Fixed(new Pin("p1", -0.5, -0.25), new Pin("p2", -0.5, 0.25), new Pin("s1", 0.5, -0.25), new Pin("s2", 0.5, 0.25)),
-                Params = new[] { Flag("core", T("Iron core", "Eisenkern"), true) },
+                Params = new[] { Flag("core", T("Iron core", "Eisenkern"), true) }.Concat(ElecValues.TransformerParams).ToList(),
                 RefPrefix = "T",
+                Variables = ElecValues.TransformerVariables, Relations = ElecValues.Transformer, Marking = ElecValues.TransformerMarking,
+                // Primary: a load of the primary circuit; secondary: the source of the secondary circuit.
+                Net = _ =>
+                {
+                    var n = new NetSpec();
+                    n.Branches.Add(new BranchDef("p1", "p2") { U = "U1", I = "I1" });
+                    n.Branches.Add(new BranchDef("s1", "s2") { U = "U2", I = "I2", Source = true });
+                    return n;
+                },
+                Checks = ElecValues.ReducibleOnly,
             };
         }
 
