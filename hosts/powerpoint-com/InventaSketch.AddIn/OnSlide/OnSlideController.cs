@@ -2314,6 +2314,7 @@ namespace InventaSketch.AddIn.OnSlide
             try
             {
                 var ran = ContextActions.Run(registry, full, own.Objects.Keys.ToList(), actionId, input, lang);
+                ApplyOutsideOwn(slide, unit, full, ran);
                 return Edits.Update(own, own.Objects.Keys.ToList(), o => ran.Get(o.Id) ?? o);
             }
             catch (FormatException ex)
@@ -2321,6 +2322,36 @@ namespace InventaSketch.AddIn.OnSlide
                 TextPrompt.Warn(ex.Message, owner);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// What a document action did outside the unit's own objects (ROADMAP plan review item 2, "Add ray bundle"): objects it
+        /// created become one new unit on the slide (inside the action's undo step), objects it removed from other units are
+        /// taken out of those units (a unit left empty is deleted). Changes to other units' objects are not taken over.
+        /// </summary>
+        private void ApplyOutsideOwn(PowerPoint.Slide slide, SketchUnit unit, SketchDocument before, SketchDocument after)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var own = new HashSet<string>(unit.Doc.Objects.Keys);
+            var added = after.Objects.Values.Where(o => !before.Objects.ContainsKey(o.Id)).ToList();
+            var removed = new HashSet<string>(before.Objects.Keys.Where(k => !own.Contains(k) && !after.Objects.ContainsKey(k)));
+            if (removed.Count > 0)
+                foreach (var other in SketchUnits.All(slide, unit.Id).Where(u => u.Doc.Objects.Keys.Any(removed.Contains)).ToList())
+                {
+                    var keep = other.Doc.Objects.Keys.Where(k => !removed.Contains(k)).ToList();
+                    if (keep.Count == 0 || other.Doc.Objects.Values.Where(o => keep.Contains(o.Id)).All(o => registry.Type(o.Type) is null))
+                        other.Shape.Delete();
+                    else
+                        SketchUnits.Replace(slide, other, Edits.Remove(other.Doc, other.Doc.Objects.Keys.Where(removed.Contains).ToList()), registry, lang);
+                    Log.Info("Action removed objects of unit " + other.Id);
+                }
+            if (added.Count == 0) return;
+            var setup = _app.ActivePresentation.PageSetup;
+            var doc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
+            doc = Edits.Add(doc, doc.Pages[0].Id, added.ToArray());
+            SketchUnits.Draw(slide, registry, doc, lang);
+            Log.Info("Action added " + added.Count + " object(s) as a new unit: " + string.Join(", ", added.Select(o => o.Type)));
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]
