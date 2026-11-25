@@ -134,7 +134,7 @@ umsetzen, dann Web, dann LibreOffice.
 - In COM noch offen: Ravigneaux-Sätze, Zerlegen von Kurvengetrieben (braucht eine
   Kurvenscheibe; Differentiale zerfallen seit 25.11.2026 in Korb, Achswellen- und Ausgleichsräder), Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
-  Gelenkgrenzen sind offen.
+  Gelenkgrenzen sind erledigt (Anschläge an Gestelldrehpunkten, 25.11.2026).
 - Web: am 24.11.2026 auf den COM-Stand der UI/UX-Runde gebracht (Spiegeln/Drehen nur mit Wirkung, Einfügefeld mit
   Strg+Leertaste, passende Teile an ihrem Platz, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung,
   Koppelkurve, F = n und Zerlegen; Engine-Methoden `search`, `transformEffect`, `arrangeOptions`/`arrange`,
@@ -175,7 +175,7 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 2. LibreOffice: in der Seitenleiste erledigt (25.11.2026); als Nächstes ein Overlay auf der Arbeitsfläche (Einrasten
    beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
-   Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze, Gelenkgrenzen (erledigt 25.11.2026: Kegelradpaare
+   Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze (erledigt 25.11.2026: Gelenkgrenzen als Anschläge an Gestelldrehpunkten, Kegelradpaare
    in den Drehzahlen des Getriebezugs nach Zähnezahl – sie haben nur Seitenansichten und drehen sich daher nicht sichtbar –
    und der Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik).
 4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,

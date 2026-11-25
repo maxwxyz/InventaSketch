@@ -136,6 +136,9 @@ namespace InventaSketch.Modules.Kinematics
         /// <summary>Role in self-built linkages (fixed pivot, free joint, slider).</summary>
         public LinkageRole Role { get; init; }
         public override LinkageRole LinkageRole(SketchObject o) => Role;
+        /// <summary>Stops of a fixed pivot (page degrees), see <see cref="ObjectType.JointLimits"/>.</summary>
+        public Func<SketchObject, (double From, double To)?>? LimitsFn { get; init; }
+        public override (double From, double To)? JointLimits(SketchObject o) => LimitsFn?.Invoke(o);
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
 
         public ViewSpec Spec(SketchObject o) => _views.FirstOrDefault(v => v.Id == ViewOf(o)) ?? _views[0];
