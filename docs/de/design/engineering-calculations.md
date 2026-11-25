@@ -1295,7 +1295,7 @@ ist der Code; die Moduldokumente nennen jede Größe, Beziehung, Verknüpfung un
 
 | Bereich | Dateien |
 |---|---|
-| Netztopologie und Anschlussbeziehungen (eine Kopie je Modul) | `src/InventaSketch.Modules.{Fluid,Process,BuildingServices,Energy}/ValueNets.cs` (`NetSpec`, `NetRule`, `PortVar`, `ValueNets`) |
+| Netztopologie und Anschlussbeziehungen (seit 26.11.2026 von den vier Modulen gemeinsam genutzt) | `src/InventaSketch.Core/ValueNets.cs` (`NetSpec`, `NetRule`, `PortVar`, `ValueNets`; Netze je Dokument und Spezifikation zwischengespeichert) |
 | Fluid: Größen, Beziehungen, Anschlussrollen, Prüfungen | `src/InventaSketch.Modules.Fluid/FluidValues.cs`; `FluidType` und `FluidLineType` implementieren `IValueType`, `IValueLinks`, `IValueChecks` |
 | Prozess | `src/InventaSketch.Modules.Process/ProcessValues.cs`; `ProcessType`, `ProcessLineType` |
 | Gebäudetechnik | `src/InventaSketch.Modules.BuildingServices/BsValues.cs`; `BsBoxType`, `PipeType`, `DuctType` |
@@ -1387,9 +1387,9 @@ ist der Code; die Moduldokumente nennen jede Größe, Beziehung, Verknüpfung un
 
 - **Größenarten:** ein Temperaturkoeffizient (%/K, 1/K, mV/K) und eine Luftwechseleinheit h⁻¹ (1/h) für `Frequency`;
   dann nehmen β und *n* ihre Einheiten bei Ein- und Ausgabe an.
-- **Ein gemeinsamer Netzhelfer:** `ValueNets.cs` ist in vier Modulen gleich (Module hängen nie voneinander ab). Ein
-  Core-Helfer (`PortNets` mit den Regeln Gleich/Strom/Summe/Verteilen und Anschlussrollen) würde die Kopien ersetzen und
-  könnte auch dem Elektromodul dienen.
+- **Ein gemeinsamer Netzhelfer:** erledigt 26.11.2026 – `ValueNets` liegt jetzt in Core
+  (`src/InventaSketch.Core/ValueNets.cs`) und ersetzt die vier Kopien; das Elektromodul könnte ihn ebenfalls nutzen (es
+  hat für die Reihen-/Parallelreduktion sein eigenes `ElecNetwork`).
 - **Doppelte Verknüpfungen:** der Löser sammelt die Anschlussbeziehungen jedes Objekts im Umfang, eine Verknüpfung zwischen
   zwei Objekten kommt also zweimal hinzu (von jedem einmal). Das schadet nicht (die zweite Kopie ist nie unabhängig), eine
   Entdoppelung nach Referenz in `ValueSolver.Solve` würde die Verknüpfungsbeziehungen aber halbieren.

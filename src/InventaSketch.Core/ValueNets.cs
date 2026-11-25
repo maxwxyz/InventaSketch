@@ -2,18 +2,16 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.CompilerServices;
-using InventaSketch.Core;
-
-namespace InventaSketch.Modules.Fluid
+namespace InventaSketch.Core
 {
     // =============================================================================================
-    // Port flows across connections (Calc 4, engineering-calculations.md section 1.6). This file is the same in the
-    // Fluid, Process, Building services and Energy modules (modules never depend on each other); a shared Core helper
-    // would replace the copies (see section 13 of the design notes).
+    // Port flows across connections (Calc 4, engineering-calculations.md sections 1.6 and 13): one net builder shared by the
+    // modules (Fluid, Process, Building services, Energy). Each module describes its elements and lines in a NetSpec; the
+    // nets are built per document and spec and cached.
     // =============================================================================================
 
     /// <summary>How the values of one class meet in a connected net.</summary>
-    internal enum NetRule
+    public enum NetRule
     {
         /// <summary>Every member shares the value (pressure, voltage): the whole net, branches included.</summary>
         Equal,
@@ -35,13 +33,13 @@ namespace InventaSketch.Modules.Fluid
     }
 
     /// <summary>Role of a port variable in a <see cref="NetRule.Sum"/> class.</summary>
-    internal enum PortRole { Share, Part, Total }
+    public enum PortRole { Share, Part, Total }
 
     /// <summary>A variable an element exposes at one of its ports for a value class ("Q" → the pump's flow).</summary>
-    internal readonly record struct PortVar(string Class, string Key, PortRole Role = PortRole.Share);
+    public readonly record struct PortVar(string Class, string Key, PortRole Role = PortRole.Share);
 
     /// <summary>What a module tells the net builder about its elements and lines.</summary>
-    internal sealed class NetSpec
+    public sealed class NetSpec
     {
         public string Prefix { get; init; } = "";
         /// <summary>Connection lines of the module (their ends dock on ports and on other lines).</summary>
@@ -57,6 +55,9 @@ namespace InventaSketch.Modules.Fluid
         public Func<string, I18nText> Name { get; init; } = c => new I18nText(c);
         /// <summary>The classes in a fixed order (deterministic relation order).</summary>
         public IReadOnlyList<string> Classes { get; init; } = Array.Empty<string>();
+
+        /// <summary>The nets built for this spec, per document (documents are immutable).</summary>
+        internal ConditionalWeakTable<SketchDocument, ValueNets> Cache { get; } = new();
     }
 
     /// <summary>
@@ -64,10 +65,8 @@ namespace InventaSketch.Modules.Fluid
     /// join ports into nets; elements pass classes through (valves). For each class the members of a net are linked by its
     /// <see cref="NetRule"/>. Built once per document (documents are immutable) and cached.
     /// </summary>
-    internal sealed class ValueNets
+    public sealed class ValueNets
     {
-        private static readonly ConditionalWeakTable<SketchDocument, ValueNets> Cache = new();
-
         private readonly Dictionary<string, List<BoundRelation>> _byObject = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Dictionary<string, int>> _component = new(StringComparer.Ordinal);
         private readonly Dictionary<string, Dictionary<int, List<(string Obj, string Port)>>> _ports = new(StringComparer.Ordinal);
@@ -75,8 +74,8 @@ namespace InventaSketch.Modules.Fluid
         private static readonly Dictionary<string, Relation> Equalities = new(StringComparer.Ordinal);
         private static readonly Dictionary<string, Relation> Sums = new(StringComparer.Ordinal);
 
-        /// <summary>The nets of <paramref name="doc"/> (cached per document; one spec per module).</summary>
-        public static ValueNets Of(SketchDocument doc, NetSpec spec) => Cache.GetValue(doc, d => new ValueNets(d, spec));
+        /// <summary>The nets of <paramref name="doc"/> (cached per document and spec).</summary>
+        public static ValueNets Of(SketchDocument doc, NetSpec spec) => spec.Cache.GetValue(doc, d => new ValueNets(d, spec));
 
         /// <summary>Port relations that involve <paramref name="objectId"/>.</summary>
         public IReadOnlyList<BoundRelation> For(string objectId)

@@ -1244,7 +1244,7 @@ is the reference; the module docs list every variable, relation, link and check
 
 | Area | Files |
 |---|---|
-| Net topology and port relations (one copy per module) | `src/InventaSketch.Modules.{Fluid,Process,BuildingServices,Energy}/ValueNets.cs` (`NetSpec`, `NetRule`, `PortVar`, `ValueNets`) |
+| Net topology and port relations (shared by the four modules since 2026-11-26) | `src/InventaSketch.Core/ValueNets.cs` (`NetSpec`, `NetRule`, `PortVar`, `ValueNets`; nets cached per document and spec) |
 | Fluid variables, relations, port roles, checks | `src/InventaSketch.Modules.Fluid/FluidValues.cs`; `FluidType` and `FluidLineType` implement `IValueType`, `IValueLinks`, `IValueChecks` |
 | Process | `src/InventaSketch.Modules.Process/ProcessValues.cs`; `ProcessType`, `ProcessLineType` |
 | Building services | `src/InventaSketch.Modules.BuildingServices/BsValues.cs`; `BsBoxType`, `PipeType`, `DuctType` |
@@ -1328,9 +1328,9 @@ is the reference; the module docs list every variable, relation, link and check
 
 - **Kinds:** a temperature coefficient (%/K, 1/K, mV/K) and an air change unit h⁻¹ (1/h) for `Frequency`; then β and
   *n* take their units on input and display.
-- **A shared net helper:** `ValueNets.cs` is the same in four modules (modules never depend on each other). A Core
-  helper (`PortNets` with the rules Equal/Flow/Sum/Spread and port roles) would replace the copies and could serve the
-  Electrical module too.
+- **A shared net helper:** done 2026-11-26 – `ValueNets` moved to Core (`src/InventaSketch.Core/ValueNets.cs`) and
+  replaces the four copies; the Electrical module could use it too (it has its own `ElecNetwork` for series/parallel
+  reduction).
 - **Duplicate links:** the solver collects the port relations of every object in scope, so a link between two objects is
   added twice (once from each). It is harmless (the second copy is never independent), but deduplicating by reference
   in `ValueSolver.Solve` would halve the link relations.
