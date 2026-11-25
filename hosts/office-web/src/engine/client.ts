@@ -133,7 +133,8 @@ export class Session {
   /** Outline of a part in page mm (polylines of [x, y]), for highlighting it. */
   partOutline(id: string, part: string): number[][][] { return this.c("partOutline", { id, part }); }
   inspector(ids: string[], lang: string): InspectorInfo { return this.c("inspector", { ids, lang }); }
-  renderSvg(options: { ids?: string[]; monochrome?: boolean; background?: string; padding?: number } = {}): { svg: string; width: number; height: number } {
+  /** Page or selection as SVG; mode "export" adds named groups per element and part (editable in Inkscape/Illustrator). */
+  renderSvg(options: { ids?: string[]; monochrome?: boolean; background?: string; padding?: number; mode?: "export" } = {}): { svg: string; width: number; height: number } {
     return this.c("renderPageSvg", options);
   }
   drawPlan(ids: string[] | undefined, capabilities: DrawCapabilities): DrawPlan { return this.c("drawPlan", { ids, capabilities }); }

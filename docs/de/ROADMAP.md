@@ -321,6 +321,9 @@ Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vektoren bleiben in `math`
    `tikzpicture` zum `\input`; SVG – Texte bleiben `<text>` (schon so), jedes Element und Teil wird eine benannte Gruppe
    (`id`/`class` mit Teilschlüssel, Inkscape-Ebenennamen), Schraffuren als Muster, damit Text und Stile in
    Inkscape/Illustrator bearbeitbar sind. Beides über die Exporter der Engine, in allen drei Hosts angeboten.
+   Erledigt 25.11.2026: TikZ für jede Zeichnung (`latex.tikz`, Core `TikzExporter`), bearbeitbares SVG (Engine
+   `renderPageSvg` Modus `export`, SVG-Export im Web). Offen: pgfplots für Diagramme (nach dem Abbildungsmodell),
+   SVG-Exportmodus in COM/LibreOffice.
 5. Diagramme aus Bildern (Scanner-Übernahme, Kurven-Digitalisierer).
 
 **Flussdiagramme (Beispiel des Maintainers 25.11.2026, erledigt):** Flussdiagrammsymbole passen ihren Text ein und
@@ -328,6 +331,20 @@ umbrechen ihn, Startkreis und Ende als Doppelkreis, Winkelverbinder führen nach
 Abstand für „ja“-Ausgänge und Rücksprünge) und tragen eine Beschriftung „ja“/„nein“, das Diagramm-Layout dockt Zweige
 und Rücksprünge seitlich an und berechnet den Abstand, gestrichelte Notizrahmen. Offen: hindernisbewusste Führung bei von
 Hand gesetzten Kästen.
+
+### Fit-Gap Patentfiguren (Recherche 25.11.2026)
+
+Recherche der Praxis von EPA/USPTO/PCT/DPMA und echter Patentfiguren gegen die Bibliothek. In Arbeit (Agenten mit
+Dateizuständigkeit): Beschriftung – optionale Schritte, Symbole nach ISO 5807 (vordefinierter Prozess,
+Seitenverbinder, Schleifenbegrenzung, Vorbereitung, manuelle Bearbeitung, Datenbank, Verzögerung), Verzweigung/
+Zusammenführung, Ja/Nein-Ausgänge beim Schnelleinfügen, Leitungssprünge und Abzweigpunkte an Verbindern, Blockpfeile,
+Doppellinienpfeile, Pfeilpaare, Bus-Schrägstrich mit Anzahl, Tabellen, Ansichtspfeile, Einzelheiten, Werkstoff-
+schraffuren, Wärmeflusspfeile; Diagramme – Regelkreisblöcke (Summierstelle, Multiplikationsstelle, Übertragungsglied),
+Rechnersystem-Vorlagen und Bus, Kommunikationssymbole (Telefon, Basisstation, Router, Satellit, IoT, Funkstrecke),
+Paket-/Rahmen-/Speicherlayouts, Sequenzfragmente und Nachrichtennummerierung, Oberflächen-Wireframes, Zustandskreise.
+Später: digitale Zeitdiagramme (`chart.timing`, mit Diagramme v2), isometrische Teile (`mech.iso.*`), „bewegte Lage“
+als Phantomkopie, Batteriezellen-Anordnungen und Kühlplatten, Optik-Modul, Polar-/Hysterese-/Konstellations-/Augen-/
+Sankey-Diagramme.
 
 ### Weitere sinnvolle Module und Funktionen
 

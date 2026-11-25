@@ -66,6 +66,17 @@ as one element. A drawing with units keeps its real size when it fits on the sli
 curves become polylines whose points can be moved. Colours, line types, fills, hatches, blocks and dimensions are not
 imported. The same command reads CSV tables into charts and GeoJSON/GPX into map routes.
 
+## 6b. Exporting for LaTeX and vector programs (2026-11-25)
+
+"Export data" (COM: Review ▸ Export data; web: export in the top bar; LibreOffice: export command) offers
+"LaTeX (TikZ)" for any selection or page – flowcharts, block diagrams, sketches, charts. The file is a standalone
+LaTeX document with one `tikzpicture` (copy it into your document; it needs `\usepackage{tikz}` and the libraries
+`patterns` and `patterns.meta`). Every text is a TikZ node: it is set in your document's font and stays editable and
+formattable in LaTeX (special characters escaped, umlauts kept). Each element is a commented `scope`; colours are named
+`\definecolor`s; hatches are TikZ patterns. Charts as pgfplots code are planned (charts v2).
+The web add-in's SVG export writes texts as text and every element and part as a named group (Inkscape labels with the
+element's name and the part key, e.g. `series.0`), so texts and styles can be edited in Inkscape or Illustrator.
+
 ## 6. Modules
 
 Each module has its own page with its elements, views and parameters:

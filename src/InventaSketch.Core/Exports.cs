@@ -43,6 +43,7 @@ namespace InventaSketch.Core
             yield return new BillOfMaterials();
             yield return new ConnectionGraph(mermaid: true);
             yield return new ConnectionGraph(mermaid: false);
+            yield return new TikzExporter();
             foreach (var m in registry.Modules.OfType<IExportProvider>())
                 foreach (var e in m.Exporters) yield return e;
         }

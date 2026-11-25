@@ -22,7 +22,7 @@ export function rasterSize(widthMm: number, heightMm: number, pxPerMm = 300 / 25
 }
 
 export function exportSvg(session: Session, ids: string[] | undefined, monochrome: boolean): void {
-  const r = session.renderSvg({ ids, monochrome, background: "#ffffff" });
+  const r = session.renderSvg({ ids, monochrome, background: "#ffffff", mode: "export" });
   download(ids?.length ? "inventasketch-selection.svg" : "inventasketch.svg", new Blob([r.svg], { type: "image/svg+xml" }));
 }
 

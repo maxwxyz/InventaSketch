@@ -1854,7 +1854,8 @@ namespace InventaSketch.Engine
         private object RenderSvgCore(EngineRequest r)
         {
             var s = S(r);
-            var options = new SvgOptions { Monochrome = r.Monochrome ?? s.Doc.Settings.Monochrome, Background = r.Background ?? "#ffffff" };
+            // mode "export": named groups per element and part for editing in Inkscape/Illustrator (texts stay text).
+            var options = new SvgOptions { Monochrome = r.Monochrome ?? s.Doc.Settings.Monochrome, Background = r.Background ?? "#ffffff", Editable = r.Mode == "export" };
             var doc = s.Doc;
             var page = s.Page;
             if (r.Ids is { Count: > 0 })

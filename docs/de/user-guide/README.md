@@ -72,6 +72,19 @@ Folie passt; sonst wird sie eingepasst. Bögen und Kurven werden zu Polylinien m
 Linienarten, Füllungen, Schraffuren, Blöcke und Bemaßungen werden nicht importiert. Derselbe Befehl liest CSV-Tabellen
 in Diagramme und GeoJSON/GPX als Kartenrouten.
 
+## 6b. Export für LaTeX und Vektorprogramme (25.11.2026)
+
+„Daten exportieren“ (COM: Überprüfen ▸ Daten exportieren; Web: Export in der oberen Leiste; LibreOffice: Exportbefehl)
+bietet „LaTeX (TikZ)“ für jede Auswahl oder Seite – Flussdiagramme, Blockschaltbilder, Skizzen, Diagramme. Die Datei ist
+ein eigenständiges LaTeX-Dokument mit einem `tikzpicture` (in Ihr Dokument kopieren; es braucht `\usepackage{tikz}`
+und die Bibliotheken `patterns` und `patterns.meta`). Jeder Text ist ein TikZ-Knoten: Er wird in der Schrift Ihres
+Dokuments gesetzt und bleibt in LaTeX bearbeitbar und formatierbar (Sonderzeichen maskiert, Umlaute bleiben). Jedes
+Element ist ein kommentierter `scope`; Farben sind benannte `\definecolor`, Schraffuren TikZ-Muster. Diagramme als
+pgfplots-Code sind geplant (Diagramme v2).
+Der SVG-Export des Web-Add-ins schreibt Texte als Text und jedes Element und Teil als benannte Gruppe
+(Inkscape-Bezeichnung mit dem Namen des Elements und dem Teilschlüssel, z. B. `series.0`), sodass Texte und Stile in
+Inkscape oder Illustrator bearbeitbar sind.
+
 ## 6. Module
 
 Jedes Modul hat eine eigene Seite mit Elementen, Ansichten und Parametern:
