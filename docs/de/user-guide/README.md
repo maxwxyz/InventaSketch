@@ -79,6 +79,11 @@ Bilder an). Balken und Säulen werden ein Säulen- oder Balkendiagramm, Kurven e
 Daten; die Werte kommen aus den Achszahlen, wenn sie lesbar sind, sonst ist der größte Balken 100 (Kurven:
 Bildeinheiten) und ein Hinweis sagt das – Daten oder Achsbereiche danach anpassen.
 
+Kurve skizzieren (25.11.2026, PowerPoint): ein XY-Diagramm oder eine Abbildung auswählen, in der Leiste „Kurve
+skizzieren“ klicken und die Kurve mit gedrückter linker Taste zeichnen (Esc oder Rechtsklick bricht ab). Beim Loslassen
+wird sie erkannt – konstant, Rampe, Sprung, Puls, Sägezahn, Dreieck, Sinus, PT1, Abfall, Kreis/Ellipse – und als exakte
+Kurve eingefügt, oder als geglättete Kurve, wenn keine Standardform passt; ein Rückgängig-Schritt.
+
 ## 6b. Export für LaTeX und Vektorprogramme (25.11.2026)
 
 „Daten exportieren“ (COM: Überprüfen ▸ Daten exportieren; Web: Export in der oberen Leiste; LibreOffice: Exportbefehl)
