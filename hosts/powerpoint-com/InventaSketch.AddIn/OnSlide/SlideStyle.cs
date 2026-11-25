@@ -7,7 +7,7 @@ using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 namespace InventaSketch.AddIn.OnSlide
 {
     /// <summary>
-    /// Slide-wide style of the InventaSketch elements, kept in a slide tag: black and white (patent style), the ISO 128 line
+    /// Slide-wide style of the InventaSketch elements, kept in a slide tag: black and white (line-drawing style), the ISO 128 line
     /// group and the accent colour. Every unit drawn on the slide takes it (<see cref="SketchUnits.Draw"/>), so newly inserted
     /// elements match the ones already there. Slides without the tag keep each unit's own settings (older presentations).
     /// </summary>

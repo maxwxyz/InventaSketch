@@ -59,8 +59,8 @@
           <node oor:name="m05a" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:patentCheck</value></prop>
             <prop oor:name="Title" oor:type="xs:string">
-              <value xml:lang="en-US">Patent Check (Drawings)...</value>
-              <value xml:lang="de">Patentprüfung (Zeichnungen) ...</value>
+              <value xml:lang="en-US">Compatibility (Drawing Rules)...</value>
+              <value xml:lang="de">Kompatibilität (Zeichnungsregeln) ...</value>
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>

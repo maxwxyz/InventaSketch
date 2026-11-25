@@ -8,7 +8,7 @@ floor-plan symbols, single-line diagram elements, power electronics blocks and i
 are **drawn independently**; no standard texts, tables or symbol database content are copied, and no claim of
 standards compliance is made.
 
-It is a **sketching** module for slides and patent drawings. It is **not** an ECAD tool: it offers a connection list
+It is a **sketching** module for slides and technical figures. It is **not** an ECAD tool: it offers a connection list
 (netlist CSV) and a basic rule check, but no simulation and no manufacturing output.
 
 ## Data exports
@@ -30,7 +30,7 @@ It is a **sketching** module for slides and patent drawings. It is **not** an EC
   (most on the 5 mm grid). Default boxes are multiples of 5 mm (for example resistor 20 × 8, gate 20 × 20,
   op-amp 30 × 20).
 - **Line weights:** symbol outlines and wires 0.35 mm, emphasised strokes (plates, bars) 0.7 mm, busbars and bus lines
-  1.0 mm, mechanical linkages thin dashed. All strokes are `LineRole.Visible`/`Thin`, so monochrome patent output works.
+  1.0 mm, mechanical linkages thin dashed. All strokes are `LineRole.Visible`/`Thin`, so monochrome output works.
 - **Labels:** optional `ref` (designator, e.g. `R1`) and `value` (e.g. `10k`) parameters. The designator is placed above
   and the value below the box (to the right for vertical symbols such as earth or antenna). Labels are kept upright on
   the page when the symbol is rotated and are deliberately placed **outside** the symbol box, like in ECAD schematics.

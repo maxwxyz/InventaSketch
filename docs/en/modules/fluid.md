@@ -8,7 +8,7 @@ ISO 1219-1 (graphical symbols for fluid power systems) and the component designa
 circuit diagrams (for example `1V1`, `0P1`). All symbols are **drawn independently**; no standard texts, tables or
 symbol artwork are copied, and **no claim of standards compliance** is made.
 
-It is a **sketching** module for slides, patent drawings and concept circuits. It does not simulate, size or check
+It is a **sketching** module for slides, technical figures and concept circuits. It does not simulate, size or check
 circuits.
 
 ## Conventions
@@ -22,7 +22,7 @@ circuits.
   symbols (filled triangles = hydraulic, hollow = pneumatic). The context action `fluid.medium` toggles it.
 - **Line weights:** symbols and working lines 0.35 mm, pistons and plugs 0.7 mm, springs and details 0.25 mm, pilot
   lines long dashes, drain lines short dashes, enclosures dash-dot. Only black strokes and black or no fills are used,
-  so monochrome (patent) output is unchanged.
+  so monochrome output is unchanged.
 - **Designator:** optional `ref` (e.g. `1V1`) with `showLabel`. It is placed outside the box on the first side without
   ports, tried in the page directions left, above, right, below, and is kept upright when the symbol is rotated.
 - **Port names:** `showPorts` shows the port names next to the ports (outside the box). The return port of 3/2, 4/2 and

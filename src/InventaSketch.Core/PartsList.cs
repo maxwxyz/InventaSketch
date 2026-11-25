@@ -10,7 +10,7 @@ namespace InventaSketch.Core
 
     /// <summary>
     /// Parts list (bill of materials) of a document or selection: one row per kind of part – same type, view-independent
-    /// parameters and reference numeral – with its quantity, ordered by numeral. Annotation and patent marks never count;
+    /// parameters and reference numeral – with its quantity, ordered by numeral. Annotation marks, numerals and sheet marks never count;
     /// map symbols, diagram shapes and charts are no parts (<see cref="ObjectType.IsPart"/>). Used by the CSV export and by
     /// the live parts-list table element.
     /// </summary>

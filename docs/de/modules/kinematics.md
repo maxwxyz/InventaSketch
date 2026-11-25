@@ -3,7 +3,7 @@
 Englische Originalfassung (maßgeblich): [../../en/modules/kinematics.md](../../en/modules/kinematics.md)
 
 Das Kinematik-Modul stellt Symbole für kinematische Schemata (Getriebeskizzen) und vordefinierte ebene
-Mechanismen für schnelle technische Skizzen und Patentzeichnungen bereit. Die Symbolformen folgen dem *Stil*
+Mechanismen für schnelle technische Skizzen und technische Abbildungen bereit. Die Symbolformen folgen dem *Stil*
 der ISO 3952 (Kinematische Skizzen – grafische Symbole); sie sind eigenständig gezeichnet und keine Kopien der
 Normbilder. Eine Normkonformität wird nicht behauptet.
 

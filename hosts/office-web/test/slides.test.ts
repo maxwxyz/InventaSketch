@@ -74,7 +74,7 @@ describe("slides: reading units", () => {
   });
 });
 
-describe("slides: patent check and comparison", () => {
+describe("slides: compatibility check and comparison", () => {
   const slides: SlideUnits[] = [
     { index: 0, slideId: "256", units: [{ unitId: "u1", payload: "o1,o2", shapeId: "1" }] },
     { index: 1, slideId: "257", units: [] },

@@ -364,7 +364,7 @@ def context_entries(info, lang=None):
     return out
 
 
-# ------------------------------------------------------------------ patent check
+# ------------------------------------------------------------------ compatibility check
 
 _SEVERITY_ORDER = {"error": 0, "warning": 1, "manual": 2, "info": 3}
 _SEVERITY_KEY = {"error": "pcError", "warning": "pcWarning", "manual": "pcManual", "info": "pcInfo"}

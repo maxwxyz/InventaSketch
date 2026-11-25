@@ -45,7 +45,7 @@ namespace InventaSketch.Core
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum ArrowSize { Small, Medium, Large }
 
-    /// <summary>Semantic line role inspired by ISO 128 (used for monochrome/patent output and default weights).</summary>
+    /// <summary>Semantic line role inspired by ISO 128 (used for monochrome output and default weights).</summary>
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public enum LineRole { Visible, Thin, Hidden, Center, Phantom, Helper, Cut }
 

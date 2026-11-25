@@ -209,7 +209,7 @@ Kreismenü, Eingabedialog und abhängige Einheiten (gleiche Umgebung, 2026-11-20
 UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
 
 - Menüband: Werkzeuge (Editor, Einrasten, Kontextleiste, Schwarz-Weiß, Verankern, kleines Info mit Logo), dann
-  **Beschriftung** (Beschriftung, Patentzeichnung und Grundformen), dann je Fachmodul eine Gruppe. Menüband-Bilder
+  **Beschriftung** (Beschriftung, Abbildungen und Grundformen), dann je Fachmodul eine Gruppe. Menüband-Bilder
   werden als 32-Bit-DIB mit Alphakanal übergeben (aus Slidemax übernommen), daher ohne weißen Kasten im dunklen Office.
 - **Schwarz-Weiß** ist ein umkehrbarer Schalter: Er setzt `DocumentSettings.Monochrome` an jeder Einheit der Folie und
   zeichnet neu; der Zeichenplan bildet alle Farben (Linien, Füllungen, Text, Markierungen) auf Schwarz/Weiß ab und

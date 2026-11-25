@@ -40,7 +40,7 @@ namespace InventaSketch.Modules.Charts
     }
 
     /// <summary>
-    /// A reference numeral with a leader line (patent figures). <see cref="At"/> is the position along its owner (x on a
+    /// A reference numeral with a leader line (technical figures). <see cref="At"/> is the position along its owner (x on a
     /// curve or a horizontal line, y on a vertical line); free numerals and numerals of regions use x/y/panel. The text sits
     /// at the target plus (dx, dy) in font heights; <see cref="Axis"/> puts it at the axis instead (left of the y axis for a
     /// horizontal line, below the x axis for a vertical line).
@@ -178,7 +178,7 @@ namespace InventaSketch.Modules.Charts
         public int Version { get; set; } = CurrentVersion;
         public I18nText? Title { get; set; }
         public I18nText? Caption { get; set; }
-        /// <summary>color (default) or mono (black lines, patent figures).</summary>
+        /// <summary>color (default) or mono (black lines, technical figures).</summary>
         public string Scheme { get; set; } = "color";
         /// <summary>none (default: labels on the curves), auto, inside, right.</summary>
         public string Legend { get; set; } = "none";

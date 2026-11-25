@@ -1,4 +1,4 @@
-"""The "Patent check (drawings)" dialog: the engine's patent drawing preflight over every page of the document for an
+"""The "Compatibility (drawing rules)" dialog: the engine's drawing-rule preflight over every page of the document for an
 office, with the findings listed (errors first) and navigation – choosing a finding goes to its page and selects its
 unit. A drafting aid, not a legal certification (the disclaimer is always shown).
 
@@ -32,7 +32,7 @@ class _Action(unohelper.Base, XActionListener):
         try:
             self.f()
         except Exception as ex:
-            log("patent dialog: %s" % ex)
+            log("compatibility dialog: %s" % ex)
 
     def disposing(self, event):
         pass
@@ -46,7 +46,7 @@ class _Item(unohelper.Base, XItemListener):
         try:
             self.f()
         except Exception as ex:
-            log("patent dialog: %s" % ex)
+            log("compatibility dialog: %s" % ex)
 
     def disposing(self, event):
         pass
@@ -102,7 +102,7 @@ class PatentDialog:
         c("summary").getModel().Label = ux.findings_summary(result["findings"], result["pages"])
         c("detail").getModel().Label = ""
         c("disclaimer").getModel().Label = result["disclaimer"] or ""
-        log("patent check dialog (%s): %d finding(s)" % (self.profile(), len(self.rows)))
+        log("compatibility check dialog (%s): %d finding(s)" % (self.profile(), len(self.rows)))
 
     def go_to(self):
         """Shows the chosen finding's suggestion and source and goes to its page and unit."""

@@ -82,7 +82,7 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 
 - **Menü „InventaSketch“** (Impress, Draw, Calc): *Aus Bibliothek einfügen …* (öffnet das Deck der Seitenleiste),
   *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*,
-  *Bezugszeichen hinzufügen*, *Patentprüfung (Zeichnungen) …*, *Mit vorheriger Folie vergleichen (Varianten)*, *Zeichnung importieren (SVG, DXF) …*,
+  *Bezugszeichen hinzufügen*, *Kompatibilität (Zeichnungsregeln) …*, *Mit vorheriger Folie vergleichen (Varianten)*, *Zeichnung importieren (SVG, DXF) …*,
   *Daten gelöschter Einheiten entfernen*, *Über InventaSketch*.
 - **Varianten** (25.11.2026, Impress und Draw): Eine duplizierte Folie behält die IDs der Einheiten. *Mit vorheriger
   Folie vergleichen* markiert, was sich von der vorherigen Folie unterscheidet (Engine `diff`, beide Folien wie
@@ -92,14 +92,14 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   auf Ziffern endet, um („…eb12“ → „…eb 1“); beim Lesen einer Einheit wird der Name aus ihren Attributen
   wiederhergestellt, weil in .pptx der Name die Einheiten-ID trägt. Geprüft: `integration_test.py` (1 neu, 1 geändert,
   1 entfernt, ein unverändertes Zahnrad ohne Markierung, Namen wiederhergestellt; Folie als `compare.png` exportiert).
-- **Patentprüfung** (25.11.2026, Impress und Draw): ein Dialog mit dem Amt (DPMA, EPA, PCT, USPTO oder das gemeinsame
-  sichere Profil) und den Befunden aller Seiten mit InventaSketch-Einheiten (Engine `preflight`, jede Seite wie eine
-  Seitensitzung geladen, native Verschiebungen zählen also mit) – Fehler zuerst, als „Folie 2 · Fehler · Meldung“; die
-  Wahl eines Befunds (Pfeiltasten oder Klick) zeigt Vorschlag und Fundstelle und springt zu Folie und Einheit. Der
-  Haftungshinweis wird immer angezeigt. Ohne sichtbares Fenster (headless, Tests) wird das Ergebnis protokolliert.
-  Geprüft: `integration_test.py` (ein Zahnrad außerhalb der Nutzfläche auf Folie 2 gefunden und seiner Einheit
-  zugeordnet) und `ui_smoke.py` (der Dialog öffnet sich in einem echten Fenster, die Pfeiltaste nach unten springt zu
-  Folie 2 und wählt das Zahnrad aus, Escape schließt ihn).
+- **Kompatibilitätsprüfung** (25.11.2026, Impress und Draw): ein Dialog mit dem Amt (DPMA, EPA, PCT, USPTO oder das
+  gemeinsame sichere Profil) und den Befunden aller Seiten mit InventaSketch-Einheiten (Engine `preflight`, jede Seite
+  wie eine Seitensitzung geladen, native Verschiebungen zählen also mit) – Fehler zuerst, als „Folie 2 · Fehler ·
+  Meldung“; die Wahl eines Befunds (Pfeiltasten oder Klick) zeigt Vorschlag und Fundstelle und springt zu Folie und
+  Einheit. Der Haftungshinweis wird immer angezeigt. Ohne sichtbares Fenster (headless, Tests) wird das Ergebnis
+  protokolliert. Geprüft: `integration_test.py` (ein Zahnrad außerhalb der Nutzfläche auf Folie 2 gefunden und seiner
+  Einheit zugeordnet) und `ui_smoke.py` (der Dialog öffnet sich in einem echten Fenster, die Pfeiltaste nach unten
+  springt zu Folie 2 und wählt das Zahnrad aus, Escape schließt ihn).
 - **Seitenleiste „InventaSketch“**, zwei Panels (siehe UI/UX-Runde unten):
   - *Auswahl* folgt der Auswahl im Dokument (Auswahl-Listener) und zeigt, was mit den ausgewählten
     InventaSketch-Einheiten möglich ist – nur im Kontext.

@@ -100,7 +100,7 @@ MULTI = {"count": 2, "arrange": [{"id": "mview:stick", "label": "All in view: St
                                  {"id": "align:row", "label": "Centres on one horizontal line"}], "assemblyExtra": 2}
 
 
-class PatentCheckTexts(unittest.TestCase):
+class CompatibilityCheckTexts(unittest.TestCase):
     FINDINGS = [
         {"severity": "info", "page": 1, "message": "note"},
         {"severity": "error", "page": 2, "message": "late error"},

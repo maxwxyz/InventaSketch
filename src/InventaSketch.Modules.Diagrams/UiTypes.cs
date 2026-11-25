@@ -5,7 +5,7 @@ using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Diagrams
 {
-    // Generic GUI wireframes for patent figures and concept sketches: device screens, common widgets and pointers, all
+    // Generic GUI wireframes for technical figures and concept sketches: device screens, common widgets and pointers, all
     // black on white outlines (filled black only where a state needs it: a pressed/primary button, an active toggle).
     // The automotive HMI elements (auto.hmi.*) stay in their own module.
 

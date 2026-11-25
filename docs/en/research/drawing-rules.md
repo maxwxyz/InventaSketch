@@ -1,4 +1,4 @@
-# Patent drawing rules: DPMA, EPO, PCT/WIPO, USPTO
+# Drawing rules of the offices: DPMA, EPO, PCT/WIPO, USPTO
 
 Research status: 2026-11-20. Primary sources only. Where a value could not be confirmed in an official text it is marked **UNVERIFIED**. Rule IDs (for example `EP-07`) are referenced by the preflight ideas in section 5.
 
@@ -16,7 +16,7 @@ Abbreviations: M = mandatory ("shall/must"), R = recommended ("should/preferably
 
 ## 1. Rules per authority
 
-### 1.1 DPMA (Germany): patents and utility models
+### 1.1 DPMA (Germany): inventions and utility models
 
 Sources:
 - PatV § 12 ("Eingereichte Zeichnungen müssen den in der Anlage 2 enthaltenen Standards entsprechen"): https://www.gesetze-im-internet.de/patv/__12.html
@@ -160,7 +160,7 @@ Sources:
 
 ## 2. Harmonised "safe common profile" (strictest common denominator)
 
-This profile is accepted by DPMA, EPO, PCT and USPTO for utility and patent filings.
+This profile is accepted by DPMA, EPO, PCT and USPTO for both utility-model and invention filings.
 
 | Parameter | Safe value | Driven by |
 |---|---|---|
@@ -193,11 +193,11 @@ This profile is accepted by DPMA, EPO, PCT and USPTO for utility and patent fili
 
 ---
 
-## 3. What patent drawings look like (conventions)
+## 3. What drawings for applications look like (conventions)
 
 These conventions come from the cited rules (PCT Guide 5.144–5.158, 37 CFR 1.84, EPO GL A-IX) plus common practice. Points without a rule are marked as practice.
 
-- **Line styles.** Visible edges use continuous thick lines. Reference lines, hatching and adjacent parts use thin continuous lines. Hidden edges use thin short dashes. Axes, symmetry planes and extreme positions of moving parts use thin dot-dash lines. Break lines are thin and freehand (Guide 5.144). The USPTO forbids centre lines and projection lines (1.84(h)) and reserves broken lines for alternate positions (1.84(h)(4)). Design patents use broken lines for environment only (1.152).
+- **Line styles.** Visible edges use continuous thick lines. Reference lines, hatching and adjacent parts use thin continuous lines. Hidden edges use thin short dashes. Axes, symmetry planes and extreme positions of moving parts use thin dot-dash lines. Break lines are thin and freehand (Guide 5.144). The USPTO forbids centre lines and projection lines (1.84(h)) and reserves broken lines for alternate positions (1.84(h)(4)). Design applications use broken lines for environment only (1.152).
 - **Section views.** The section plane is shown as a broken line in the parent view, ends marked with the figure number (often Roman, e.g. "XXII–XXII") and arrows for viewing direction. Cut faces are hatched at 45°, with a different angle for each adjacent part. Large areas are hatched along the edge only. The hatching is interrupted around numerals.
 - **Exploded views.** Parts are separated along the assembly axis. The USPTO requires a bracket embracing the separated parts (1.84(h)(1)).
 - **Perspective and isometric views** are explicitly allowed (DE-06, EP-19, US-08). Shading uses thin surface lines (parallel lines on cylinders, concentric arcs on spheres) with light from the upper left at 45° (1.84(m)). No solid fills, and stippling only sparsely (practice).
@@ -222,7 +222,7 @@ Status checked on the ISO, IEC, VDI and DIN Media catalogue pages linked below. 
 |---|---|---|---|
 | ISO 128-2:2022 (https://www.iso.org/standard/83355.html) | TPD — General principles — Part 2: Basic conventions for lines. Covers line types, designations and configurations, plus rules for leader and reference lines. | Line types (continuous, dashed, dot-dash …), widths, leader lines | **High:** line-style presets and leader-line behaviour. |
 | ISO 128-3:2022 (catalogue via https://www.iso.org/committee/46022/x/catalogue/) | Part 3: Views, sections and cuts. Replaces ISO 128-30/-40/-44. | Projection methods, section designations, hatching | **High:** section and hatching tools. Scope text not opened (**UNVERIFIED**). ISO 128-1 (general principles) edition **UNVERIFIED**. |
-| ISO 129-1:2018 + Amd 1:2020 (https://www.iso.org/standard/64007.html) | Presentation of dimensions and tolerances, general principles. Stage 90.92 (to be revised). | Dimension lines, terminators, indicators | Low: patents avoid dimensions and scales. |
+| ISO 129-1:2018 + Amd 1:2020 (https://www.iso.org/standard/64007.html) | Presentation of dimensions and tolerances, general principles. Stage 90.92 (to be revised). | Dimension lines, terminators, indicators | Low: application drawings avoid dimensions and scales. |
 | ISO 3952-1:1981 (+Amd 1), -2:1981, -3:1979, -4:1984 (https://www.iso.org/standard/9603.html, /9604, /9605, /9606) | Kinematic diagrams — graphical symbols. Part 1: links, pairs, joints. Part 2: friction and gear mechanisms, cams. Part 3: Geneva and ratchet mechanisms, couplings, brakes. Part 4: miscellaneous. | Joints, links, gears, cams, couplings, brakes | **High:** core library for mechanism sketches. |
 | ISO 2203:1973, confirmed 2024 (https://www.iso.org/standard/7006.html) | Conventional representation of gears (incl. worm and chain wheels). A gear is drawn as a solid without teeth, with the pitch surface as a thin long dash-dot line. First-angle projection. | Gear outlines, pitch lines | **High.** Note that the dash-dot pitch line conflicts with the USPTO centre-line ban, so make it optional. |
 | ISO 8826-1:1989, confirmed 2024 (https://www.iso.org/standard/16299.html); ISO 8826-2 (detailed simplified; edition **UNVERIFIED**) | Rolling bearings: simplified representation, essential features in outline. | Bearing outline plus cross symbol | Medium–high. |
@@ -231,13 +231,13 @@ Status checked on the ISO, IEC, VDI and DIN Media catalogue pages linked below. 
 | ISO 2553:2019, to be revised (https://www.iso.org/standard/72740.html) | Welding — symbolic representation of welded joints. | Weld symbols, arrow and reference line | Low. |
 | ISO 1219-1:2012 + Amd 1:2016, confirmed 2026 (https://www.iso.org/standard/60184.html); ISO 1219-2 (circuit diagrams) | Fluid power symbols for components and circuit diagrams. An application standard of ISO 14617. | Pumps, valves, cylinders, lines | **High** for hydraulic and pneumatic inventions. |
 | IEC 60617 DB (https://tc3.iec.ch/tc-activity/graphical-symbols-for-diagrams/) | Graphical symbols for diagrams. The database itself is the standard. Access requires a subscription. Design rules in IEC/ISO 81714 and IEC TS 63064. | Electrical and electronic symbols | **High** for circuits. Subscription-only, so see the licensing notes below. |
-| IEC 81346-1:2022 (https://webstore.iec.ch/en/publication/64021) / DIN EN 81346 | Structuring principles and reference designations (e.g. =A1-K1). | Designation syntax, not shapes | Low–medium: patents use plain numerals. Do not mix the two systems. |
+| IEC 81346-1:2022 (https://webstore.iec.ch/en/publication/64021) / DIN EN 81346 | Structuring principles and reference designations (e.g. =A1-K1). | Designation syntax, not shapes | Low–medium: application drawings use plain numerals. Do not mix the two systems. |
 | ISO 5807:1985 (catalogue, confirmed per search; https://www.iso.org/standard/11955.html) | Documentation symbols for data, program and system flowcharts. | Process, decision, terminator, data, connector | **High** for method claims and flowcharts. |
 | DIN 40900 (historic) | Former German electrical symbol series. Parts replaced by DIN EN 60617-x (1997), e.g. https://www.dinmedia.de/en/standard/din-en-60617-9/3020577 | — | Historic only. Do not target. |
 | ISO 14617 series | Graphical symbols for diagrams (general rules and libraries). Parts 1–15 from 2002; ISO 14617-1:2025 listed as published (search result, **UNVERIFIED**). | Generic symbol grammar, valves, actuators | Medium: the basis for ISO 1219 and ISO 10628. |
 | ISO 10628-2:2012 (https://www.iso.org/standard/51841.html); ISO 10628-1 (edition **UNVERIFIED**) | Diagrams for the chemical and petrochemical industry (P&ID): graphical symbols. | Vessels, pumps, heat exchangers, valves | Medium (process engineering). |
 | ISO 4157-1:1998 (https://www.iso.org/standard/26189.html); DIN 1356-1:2024-04 (https://www.dinmedia.de/de/norm/din-1356-1/325728444) | Construction drawings: designation systems. DIN 1356-1 covers basic representation rules for building drawings. DIN Media lists it as replaced by DIN EN ISO 7519:2025-01, with a new draft E DIN 1356-1:2026-09. | Building element designations | Low. |
-| ISO 7000:2019 (equipment symbols, ISO OBP) / ISO 7010:2019 + Amd up to 11:2026 (https://www.iso.org/standard/72424.html) | Registered symbols for equipment, and safety signs. | Icons, safety signs | Low: rarely used in patent figures, and colour-dependent (7010). |
+| ISO 7000:2019 (equipment symbols, ISO OBP) / ISO 7010:2019 + Amd up to 11:2026 (https://www.iso.org/standard/72424.html) | Registered symbols for equipment, and safety signs. | Icons, safety signs | Low: rarely used in office figures, and colour-dependent (7010). |
 | VDI 2127:1993-02 (https://vdi.de/en/home/vdi-standards/details/vdi-2127-technical-principles-of-mechanisms-terminology-of-mechanisms) | "Getriebetechnische Grundlagen; Begriffsbestimmungen der Getriebe": terminology of mechanisms. | Terminology. Whether it includes schematic symbols is **UNVERIFIED**. | Low–medium (naming of mechanism types). |
 | VDI 2221 Blatt 1:2019 (https://www.vdi.de/richtlinien/details/vdi-2221-blatt-1-entwicklung-technischer-produkte-und-systeme-modell-der-produktentwicklung); VDI 2222 Blatt 1 ("Konzipieren", 1997, **UNVERIFIED**) | Design methodology: product development model, conceptual design. | Function-structure notation (blocks for material, energy and signal flows) | Medium for "function structure" diagram templates. |
 
@@ -247,7 +247,7 @@ Status checked on the ISO, IEC, VDI and DIN Media catalogue pages linked below. 
   1. Draw every symbol independently from a functional description. Do not trace, scan or extract vector data from standard PDFs or the IEC database.
   2. Reference standard *numbers* and generic names only. Do not copy symbol descriptions, figure captions, tables or IEC/ISO registration IDs in bulk. In the EU, systematic extraction from the IEC database may also touch the sui generis database right (legal assessment **UNVERIFIED**, not legal advice).
   3. Mark the library as "inspired by / compatible with conventions of …", not "conforming to ISO xxxx", unless it has been checked against a licensed copy.
-  4. Prefer symbols that are already conventional and simple geometric forms. Patent offices require such symbols to be universally recognised (EP GL A-IX 9; 1.84(n)).
+  4. Prefer symbols that are already conventional and simple geometric forms. The offices require such symbols to be universally recognised (EP GL A-IX 9; 1.84(n)).
   5. Licence your own drawings under the project licence and keep provenance notes per symbol.
 
 ---

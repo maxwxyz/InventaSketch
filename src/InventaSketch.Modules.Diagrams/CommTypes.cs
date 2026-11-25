@@ -6,7 +6,7 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Diagrams
 {
     /// <summary>
-    /// System bus of a computer block diagram (software patent FIG. 1): a thick line or a hollow double line through its
+    /// System bus of a computer block diagram (FIG. 1 of software inventions): a thick line or a hollow double line through its
     /// points, labelled "Bus". Every segment is a rail: connection lines (taps) dock anywhere on the bus, its corners and
     /// ends rank like ports, and docked lines follow the bus. (Discrete tap points every few mm would need attachments of
     /// point anchors on lines, which Core does not offer yet.)
@@ -14,7 +14,7 @@ namespace InventaSketch.Modules.Diagrams
     public sealed class SystemBusType : DiagPointType
     {
         public SystemBusType() : base("diag.sys.bus", new I18nText("System bus", "Systembus"), DiagCategories.Computer,
-            "bus", "systembus", "system bus", "datenbus", "data bus", "computer", "rechner", "interconnect", "verbindung", "fig. 1", "patent") { }
+            "bus", "systembus", "system bus", "datenbus", "data bus", "computer", "rechner", "interconnect", "verbindung", "fig. 1") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-40, 0), new Vec2(40, 0) };
         public override bool InsertablePoints => true;

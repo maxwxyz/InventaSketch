@@ -9,7 +9,7 @@
 ```text
                 ┌──────────────────────── InventaSketch-Engine (C#, netstandard2.0 + net10.0) ───────────────────────┐
                 │  Kern: Modell · Geometrie · Primitive · Registry · Fang · Schraffur · Bearbeiten/Undo · JSON · SVG │
-                │  Module: Annotation · Patent · Mechanical · (Kinematics · Electrical · Automotive · …)             │
+                │  Module: Annotation · Figures · Mechanical · (Kinematics · Electrical · Automotive · …)            │
                 │  Engine-API: JSON-Fassade, Editor-Sitzungen, Treffertest, Einrasten, Kontextaktionen, Zeichenpläne │
                 └───────────────┬───────────────────────────────┬────────────────────────────────┬──────────────────┘
                                 │ im Prozess (.NET Fx 4.8)      │ .NET-WebAssembly ([JSExport])  │ .NET-Kindprozess
@@ -43,7 +43,7 @@ der Produktion bewährt. Siehe [ADR-0002](../../adr/0002-csharp-engine.md).
 | Hosts | `hosts/office-web`, `hosts/powerpoint-com`, `hosts/libreoffice` | nur Bedienoberfläche und Übersetzung auf die Host-API |
 
 Abhängigkeitsregel: Core ← Modules ← Engine ← Hosts. Module referenzieren nie Hosts oder die Interna anderer Module
-(Patent darf die öffentlichen Typen von Annotation verwenden). Keine Fachlogik in TypeScript oder Python.
+(Figures darf die öffentlichen Typen von Annotation verwenden). Keine Fachlogik in TypeScript oder Python.
 
 ## 3. Das Objektmodell in der Praxis
 

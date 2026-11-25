@@ -30,7 +30,7 @@ Verification legend:
 | Tool | Interaction model | Data model | UX ideas | Licence / reuse | Adoptable? |
 |---|---|---|---|---|---|
 | **KiCad (Eeschema)** | **Move (M)** detaches wires, **Drag (G)** keeps wires connected and rubber-bands them. Hotkey-first. ERC (electrical rules check) with a pin-type matrix (input, output, power, passive…) | S-expression files; symbols have pins with electrical types | M vs G distinction; ERC matrix; net labels and global labels; "junction dot" automation | **[V]** Symbol and footprint libraries are **CC-BY-SA 4.0 with an exception**: designs made with the libraries are released from Article 3 ([KiCad licence](https://www.kicad.org/libraries/license/)). KiCad code is GPL-3 **[K]** | **Partly.** Using KiCad symbols in a user's drawing is fine because of the exception. *Redistributing* converted symbol libraries inside InventaSketch makes that library CC-BY-SA 4.0: ship it as a separate attributed data package, not inside proprietary code. Copy M vs G and a light ERC (unconnected pins, output-to-output shorts). |
-| **Fritzing** | Three synchronised views (breadboard, schematic, PCB); edits propagate between them | FZP (XML) plus SVG per view | Multi-view consistency: one model, several renderings | **[V]** Graphics and documentation are CC-BY-SA 3.0 Unported ([LICENSE.txt](https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/LICENSE.txt)). App is GPL-3 **[K]** | **Concept: yes.** One model rendered as "functional", "schematic" and "patent" views is exactly what InventaSketch needs (for example a gearbox as a 3D-ish view, a stick diagram and patent line art). Parts graphics are share-alike. |
+| **Fritzing** | Three synchronised views (breadboard, schematic, PCB); edits propagate between them | FZP (XML) plus SVG per view | Multi-view consistency: one model, several renderings | **[V]** Graphics and documentation are CC-BY-SA 3.0 Unported ([LICENSE.txt](https://raw.githubusercontent.com/fritzing/fritzing-parts/develop/LICENSE.txt)). App is GPL-3 **[K]** | **Concept: yes.** One model rendered as "functional", "schematic" and "line-figure" views is exactly what InventaSketch needs (for example a gearbox as a 3D-ish view, a stick diagram and black-and-white line art). Parts graphics are share-alike. |
 | **CircuitJS (Falstad)** | Live-simulated schematic in the browser; current animation | Text netlist | Instant feedback; drag a value and see the effect | **[K]** GPL-2.0 | **No code.** Optional future "simulate" link via export to the CircuitJS text format (users open it externally). |
 | **Qucs / Qucs-S** | Schematic capture plus SPICE | XML-ish schematic | Component property tables on canvas | **[K]** GPL-2.0 | Concepts only. |
 
@@ -63,14 +63,14 @@ Verification legend:
 | **RoadRunner (MathWorks) / Driving Scenario Designer** | Road networks from clicked control points; lanes; junction auto-generation; actor trajectories with waypoints and speed | OpenDRIVE / OpenSCENARIO export | Proprietary | Concepts: lane-template plus spline-centreline model, trajectory waypoints with time stamps. |
 | **esmini** | OpenSCENARIO player | Reference player for OpenSCENARIO and OpenDRIVE | **[K]** MPL-2.0 | Optional: export `.xodr`/`.xosc` light and let users play them in esmini externally. |
 
-### A.6 Patent drawing tools
+### A.6 Line-figure drawing tools
 
 | Tool | What it does | Notes |
 |---|---|---|
 | **PatentFig AI, PatDraw, CAD-to-line-art services** | Generate or convert drawings into black-and-white line art with reference numerals and lead lines. Some use AI vectorisation; others are services that redraw from CAD | **[U]** Feature claims and licences were not verified this session. |
-| **Generic pipeline** (any tool) | Patent rules: black lines on white, no colour, hatching for cut sections, numerals ≥ 0.32 cm high, lead lines, "FIG. n" labels, margins (USPTO 37 CFR 1.84, EPO Rule 46) | **[K]** Rules are stable but should be cited from USPTO/EPO directly in a separate note. |
+| **Generic pipeline** (any tool) | Office rules: black lines on white, no colour, hatching for cut sections, numerals ≥ 0.32 cm high, lead lines, "FIG. n" labels, margins (USPTO 37 CFR 1.84, EPO Rule 46) | **[K]** Rules are stable but should be cited from USPTO/EPO directly in a separate note. |
 
-The InventaSketch "patent mode" should be a **render style plus a checker** rather than a separate editor:
+The InventaSketch "monochrome mode" should be a **render style plus a checker** rather than a separate editor:
 
 - monochrome conversion
 - line-weight normalisation
@@ -99,7 +99,7 @@ The InventaSketch "patent mode" should be a **render style plus a checker** rath
 | Boolean ops / offsets | Clipper2 (C++/C#/Delphi) with ports `clipper2-ts`, `Clipper2-WASM` | **[V]** Clipper2 is BSL-1.0; port licences not stated on the Clipper2 page | Best for wall offsets, hatch clipping, outlines. **There is also an official C# Clipper2, which is useful for a C# host.** |
 | Boolean ops (alt.) | `polygon-clipping`, `martinez-polygon-clipping` | **[K]** MIT | Simpler, slower. |
 | Vector scene / paths | paper.js | **[K]** MIT | Good path maths (offsets via plugin, hit-testing). Optional. |
-| Hatching / pattern fill | Own code: parallel lines clipped by Clipper2. Or native host hatch (LibreOffice `FillHatch`, OOXML `a:pattFill`) | n/a | Generate **real line geometry** for patent output. Host hatches don't scale like ISO hatches. |
+| Hatching / pattern fill | Own code: parallel lines clipped by Clipper2. Or native host hatch (LibreOffice `FillHatch`, OOXML `a:pattFill`) | n/a | Generate **real line geometry** for monochrome output. Host hatches don't scale like ISO hatches. |
 | Image tracing | imagetracerjs | **[V]** Unlicense (public domain) | Colour and BW tracing to SVG. |
 |  | potrace (C) and JS/WASM ports | **[K]** GPL-2.0 | Best quality, but copyleft. Run it out of process or as a user-installed plugin only. |
 |  | OpenCV.js | **[K]** Apache-2.0 (OpenCV ≥ 4.5) | Edge and contour extraction for "photo to sketch". Large (~8 MB WASM). |
@@ -245,13 +245,14 @@ Shape creation **[K]** unless marked **[V]**:
 - Bézier shapes use `PolyPolygonBezierCoords` (coordinates plus `PolygonFlags` NORMAL/CONTROL/SMOOTH/SYMMETRIC). Units are 1/100 mm.
 - `ConnectorShape`: `StartShape`/`EndShape` plus `StartGluePointIndex`/`EndGluePointIndex`. Custom glue points via `XGluePointsSupplier`. `EdgeKind` STANDARD/CURVE/LINE/LINES.
 - Arrows: `LineStartName`/`LineEndName` (e.g. "Arrow", "Square 45"), `LineStartWidth`.
-- **`FillStyle=HATCH` + `FillHatch` = `Hatch{Style (SINGLE/DOUBLE/TRIPLE), Color, Distance (1/100 mm), Angle (1/10°)}`** [V] ([Hatch](https://api.libreoffice.org/docs/idl/ref/structcom_1_1sun_1_1star_1_1drawing_1_1Hatch.html)). This is a real vector hatch, good for patent sections. `FillBitmap*` covers bitmaps.
+- **`FillStyle=HATCH` + `FillHatch` = `Hatch{Style (SINGLE/DOUBLE/TRIPLE), Color, Distance (1/100 mm), Angle (1/10°)}`** [V] ([Hatch](https://api.libreoffice.org/docs/idl/ref/structcom_1_1sun_1_1star_1_1drawing_1_1Hatch.html)). This is a real vector hatch, good for sectional views in office drawings. `FillBitmap*` covers bitmaps.
 - Grouping: `XShapeGrouper.group(XShapes)` and `ungroup`.
 - **Metadata:** the property is named **`ShapeUserDefinedAttributes`** (XNameContainer of `AttributeData`). It is stored as XML attributes in ODF automatic styles [V] ([Shape service](https://api.libreoffice.org/docs/idl/ref/servicecom_1_1sun_1_1star_1_1drawing_1_1Shape.html)), not "UserDefinedAttributes" as in the brief. It **is not expected to survive PPTX export** [U]. Also available: `Name`, `Title`, `Description`, and `InteropGrabBag` (ignored by the ODF filter [V]). Document level: `XDocumentProperties.UserDefinedProperties` or an extra stream in the document storage.
 - **Selection:** `controller.addSelectionChangeListener(XSelectionChangeListener)`. Use `XModifyListener` on the document to catch moves and resizes, then re-solve.
 - **SVG import as editable shapes:** insert as a graphic, then dispatch `.uno:Break`; or `.uno:ConvertIntoMetaFile` then `.uno:Break`. Alternatively load the SVG with the Draw import filter, which yields shapes, and copy them over. Results vary with complex SVG (clip paths, patterns). Generating UNO shapes directly from the IR is more reliable.
 - **Impress, Draw and Calc differences:**
-  - Draw: arbitrary page size and layers. This makes it the best fit for patent sheets (A4 with margins).
+  - Draw: arbitrary page size and layers. This makes it the best fit for drawing sheets for applications (A4 with
+    margins).
   - Impress: masters, notes and presentation objects.
   - Calc: one draw page per sheet. Shapes have an `Anchor` (cell or page), there are no slides, coordinates are relative to the sheet origin, and row-height changes move cell-anchored shapes.
 - **Version context:** LibreOffice now uses year-based versions. 26.8.1 was released 2026-10-08 and 26.8.2 on 2026-10-29 [V via the TDF blog archive].
@@ -307,9 +308,9 @@ For LibreOffice:
 
 | Host | Primitive shapes | Freeform / arrows / hatch / connectors | Strategy |
 |---|---|---|---|
-| **PowerPoint COM (Windows, priority)** | `AddShape` / `AddLine` / `AddTextbox` | `BuildFreeform`/`AddCurve`; arrowheads via `LineFormat`; **connectors glued via `BeginConnect`/`EndConnect`**; hatch as **generated line geometry** grouped with the outline (`FillFormat.Patterned` is a bitmap pattern and unsuitable for patents) | Apply the IR directly via COM. Group per symbol. Tags on every shape. The overlay is transient. Commit as one undo unit where possible (PowerPoint has no explicit undo transaction API **[K]**, so minimise operation count). |
+| **PowerPoint COM (Windows, priority)** | `AddShape` / `AddLine` / `AddTextbox` | `BuildFreeform`/`AddCurve`; arrowheads via `LineFormat`; **connectors glued via `BeginConnect`/`EndConnect`**; hatch as **generated line geometry** grouped with the outline (`FillFormat.Patterned` is a bitmap pattern and unsuitable for office drawings) | Apply the IR directly via COM. Group per symbol. Tags on every shape. The overlay is transient. Commit as one undo unit where possible (PowerPoint has no explicit undo transaction API **[K]**, so minimise operation count). |
 | **Office.js (Mac/web/Windows fallback)** | 1.4 API | Not available shape-by-shape. Use **(1) OOXML slide injection** for full fidelity, **(2) SVG via XmlSvg** for "picture plus convert to shape" (watch preview `Graphic.convertToShape()`), and **(3) 1.4 shapes** for simple cases | Feature-detect: 1.8+ for grouping, 1.7+ for customXml. Keep the task-pane editor as the interaction surface. Commit on "Insert/Update". |
-| **LibreOffice Impress/Draw/Calc** | UNO shapes | `PolyPolygonBezierShape`, `LineStart/EndName`, **native `FillHatch` vector hatch**, `ConnectorShape` with glue points | Apply the IR via the Python adapter. Use Draw as the patent-sheet target. In Calc, anchor to the page. |
+| **LibreOffice Impress/Draw/Calc** | UNO shapes | `PolyPolygonBezierShape`, `LineStart/EndName`, **native `FillHatch` vector hatch**, `ConnectorShape` with glue points | Apply the IR via the Python adapter. Use Draw as the target for drawing sheets. In Calc, anchor to the page. |
 
 Cross-host interaction model: **edit natively, re-solve on commit.** The user moves a native shape. A selection or modify event fires, the adapter reads the shape's tag (symbol ID), and the engine re-solves and repositions dependent shapes. This works in all three hosts without overlays. Overlays (COM only) add live previews during drags.
 

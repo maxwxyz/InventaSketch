@@ -252,10 +252,10 @@ export interface PlanUnit {
 
 export interface DrawPlan { unit: "pt"; pageWidth: number; pageHeight: number; revision: number; units: PlanUnit[] }
 
-/** Severity of a patent drawing preflight finding ("manual": a point to check by hand). */
+/** Severity of a compatibility check (preflight) finding ("manual": a point to check by hand). */
 export type PreflightSeverity = "error" | "warning" | "info" | "manual";
 
-/** One finding of the patent drawing preflight (engine `preflight`). */
+/** One finding of the compatibility check (preflight) (engine `preflight`). */
 export interface PreflightFinding {
   rule: string;
   severity: PreflightSeverity;

@@ -19,7 +19,7 @@ namespace InventaSketch.Modules.Patent
     }
 
     /// <summary>
-    /// Rule catalogue. Sources are the rows of docs/en/research/patent-drawing-rules.md (research status 2026-11-20);
+    /// Rule catalogue. Sources are the rows of docs/en/research/drawing-rules.md (research status 2026-11-20);
     /// the "P" numbers refer to section 5 of that document.
     /// </summary>
     public static class PreflightRules

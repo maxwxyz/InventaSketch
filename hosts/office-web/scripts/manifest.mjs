@@ -46,8 +46,8 @@ export const manifestTemplate = `<?xml version="1.0" encoding="UTF-8"?>
   <DisplayName DefaultValue="InventaSketch">
     <Override Locale="de-DE" Value="InventaSketch" />
   </DisplayName>
-  <Description DefaultValue="Quick technical sketches, schematic gearboxes and patent-style drawings.">
-    <Override Locale="de-DE" Value="Schnelle technische Skizzen, Getriebeschemata und Patentzeichnungen." />
+  <Description DefaultValue="Quick technical sketches, schematic gearboxes and black-and-white line drawings.">
+    <Override Locale="de-DE" Value="Schnelle technische Skizzen, Getriebeschemata und Schwarzweiß-Strichzeichnungen." />
   </Description>
   <IconUrl DefaultValue="@BASE@assets/icon-32.png" />
   <HighResolutionIconUrl DefaultValue="@BASE@assets/icon-64.png" />
@@ -124,8 +124,8 @@ export const manifestTemplate = `<?xml version="1.0" encoding="UTF-8"?>
         <bt:String id="Isk.GetStarted.Title" DefaultValue="InventaSketch is ready" />
       </bt:ShortStrings>
       <bt:LongStrings>
-        <bt:String id="Isk.Open.Tip" DefaultValue="Opens the InventaSketch editor with the library of machine elements, arrows and patent marks.">
-          <bt:Override Locale="de-DE" Value="Öffnet den InventaSketch-Editor mit Bibliothek für Maschinenelemente, Pfeile und Patentzeichen." />
+        <bt:String id="Isk.Open.Tip" DefaultValue="Opens the InventaSketch editor with the library of machine elements, arrows and figure marks.">
+          <bt:Override Locale="de-DE" Value="Öffnet den InventaSketch-Editor mit Bibliothek für Maschinenelemente, Pfeile und Zeichen für Abbildungen." />
         </bt:String>
         <bt:String id="Isk.GetStarted.Description" DefaultValue="Open the InventaSketch tab to start sketching." />
       </bt:LongStrings>

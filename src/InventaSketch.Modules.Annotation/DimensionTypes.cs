@@ -5,7 +5,7 @@ using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Annotation
 {
-    /// <summary>Shared dimension parameters and helpers (ISO 129-1 inspired; patents normally avoid dimensions).</summary>
+    /// <summary>Shared dimension parameters and helpers (ISO 129-1 inspired; figures for applications normally avoid dimensions).</summary>
     internal static class Dim
     {
         public const double TextSize = 3.5;

@@ -111,7 +111,7 @@ namespace InventaSketch.Modules.Patent
             string? label = null, string? targetId = null, string? numeral = null, NumeralScheme? scheme = null)
         {
             numeral ??= NextFree(doc, scheme);
-            var type = registry.Type(PatentIds.Numeral) ?? throw new InvalidOperationException("Patent module is not registered.");
+            var type = registry.Type(PatentIds.Numeral) ?? throw new InvalidOperationException("Figures module is not registered.");
             var o = type.Create(objectPoint) with { Points = new[] { objectPoint, numeralPoint }, Ref = numeral };
             o = o.WithParam("numeral", numeral);
             if (label is not null) o = o.WithParam("label", label);

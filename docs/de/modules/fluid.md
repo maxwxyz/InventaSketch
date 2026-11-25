@@ -8,7 +8,7 @@ Das Modul liefert Schaltzeichen für Hydraulik- und Pneumatikschaltpläne im Sin
 `0P1`). Alle Symbole sind **eigenständig gezeichnet**; es werden keine Normtexte, Tabellen oder Symbolgrafiken
 übernommen, und es wird **keine Normkonformität behauptet**.
 
-Es ist ein **Skizzier**-Modul für Folien, Patentzeichnungen und Konzeptschaltungen. Es simuliert, dimensioniert und
+Es ist ein **Skizzier**-Modul für Folien, technische Abbildungen und Konzeptschaltungen. Es simuliert, dimensioniert und
 prüft keine Schaltungen.
 
 ## Konventionen
@@ -23,7 +23,7 @@ prüft keine Schaltungen.
   Betätigungssymbole (volle Dreiecke = Hydraulik, hohle = Pneumatik). Die Kontextaktion `fluid.medium` schaltet um.
 - **Linienstärken:** Symbole und Arbeitsleitungen 0,35 mm, Kolben und Stopfen 0,7 mm, Federn und Details 0,25 mm,
   Steuerleitungen lang gestrichelt, Leckölleitungen kurz gestrichelt, Umrahmungen strichpunktiert. Es werden nur
-  schwarze Linien und schwarze oder keine Füllungen verwendet; die Schwarzweißausgabe (Patent) bleibt unverändert.
+  schwarze Linien und schwarze oder keine Füllungen verwendet; die Schwarzweißausgabe bleibt unverändert.
 - **Kennzeichen:** optional `ref` (z. B. `1V1`) mit `showLabel`. Es steht außerhalb der Box auf der ersten Seite ohne
   Anschlüsse, geprüft in den Seitenrichtungen links, oben, rechts, unten, und bleibt beim Drehen aufrecht.
 - **Anschlussnamen:** `showPorts` zeigt die Anschlussnamen neben den Anschlüssen (außerhalb der Box). Der

@@ -25,7 +25,7 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
                                                   after a mouse drag), coupled, one undo step
   quickInsert[?text=<t>]                          open the Library panel with the cursor in its search field
                                                   (Ctrl+Space in Impress/Draw)
-  patentCheck[?profile=<office id>]               patent drawing check of every page (dialog; logged when headless)
+  patentCheck[?profile=<office id>]               compatibility check (drawing rules) of every page (dialog; logged when headless)
   parts[?part=<key>&action=<id>[&input=<text>]]   chart parts of the selected element (dialog; logged when headless)
   compare                                         mark what differs from the previous page (again: remove the marks)
   importVector[?path=<file>]                      SVG/DXF drawing as editable shapes (without a path: file dialog)
@@ -263,7 +263,7 @@ def _run(ctx, frame, command, args):
 
 
 def _patent_check(ctx, frame, controller, profile):
-    """The patent check dialog; without a visible window (headless runs, tests) the result is only logged."""
+    """The compatibility check dialog; without a visible window (headless runs, tests) the result is only logged."""
     from inventasketch_lo import patentdialog
     window = frame.getContainerWindow() if frame is not None else None
     if window is not None and window.isVisible():
@@ -272,7 +272,7 @@ def _patent_check(ctx, frame, controller, profile):
     result = host.patent_check(engine_for(ctx), controller, profile or "common-safe")
     findings = result["findings"]
     located = [f for f in findings if f.get("shape") is not None]
-    log("patent check (%s): %d finding(s), %d error(s) on %d page(s); %d with element%s" % (
+    log("compatibility check (%s): %d finding(s), %d error(s) on %d page(s); %d with element%s" % (
         profile or "common-safe", len(findings), sum(1 for f in findings if f.get("severity") == "error"),
         result["pages"], len(located), (" (first: page %d, %s)" % (located[0]["page"], located[0]["shape"].Name))
         if located else ""))

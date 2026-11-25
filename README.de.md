@@ -4,7 +4,7 @@
 
 > Deutsche Übersetzung. Maßgeblich ist die englische Fassung: [README.md](README.md).
 
-**Schnelle technische Skizzen, schematische Maschinenelemente und Patentzeichnungen – direkt in PowerPoint und LibreOffice.**
+**Schnelle technische Skizzen, schematische Maschinenelemente und Zeichnungen im Schwarzweiß-Strichstil – direkt in PowerPoint und LibreOffice.**
 
 [English](README.md) · [Spezifikation](docs/de/product/specification.md) · [Architektur](docs/de/architecture/overview.md) · [Roadmap](docs/de/ROADMAP.md) · [Benutzerhandbuch](docs/de/user-guide/README.md)
 
@@ -13,10 +13,11 @@
 > [Host-Fähigkeitsmatrix](docs/de/hosts/capability-matrix.md).
 
 InventaSketch ist ein Werkzeug für schnelles, pragmatisches Prototyping („quick and dirty“) für Ingenieure, Erfinder und
-Patentfachleute. Ziehen Sie ein Zahnrad, eine Welle, ein Wälzlager, einen Pfeil oder einen Flussdiagramm-Schritt auf die
-Folie, skalieren Sie es frei, lassen Sie es an seinen Nachbarn einrasten und ergänzen Sie Bezugslinien und Bezugszeichen –
-ohne Maße, ohne Modul, ohne Zähnezahl. Wenn Sie mehr brauchen, tragen dieselben Objekte optionale technische Parameter,
-lassen sich gegen die Zeichnungsvorschriften der Patentämter prüfen und monochrom exportieren.
+Fachleute für gewerblichen Rechtsschutz. Ziehen Sie ein Zahnrad, eine Welle, ein Wälzlager, einen Pfeil oder einen
+Flussdiagramm-Schritt auf die Folie, skalieren Sie es frei, lassen Sie es an seinen Nachbarn einrasten und ergänzen Sie
+Bezugslinien und Bezugszeichen – ohne Maße, ohne Modul, ohne Zähnezahl. Wenn Sie mehr brauchen, tragen dieselben Objekte
+optionale technische Parameter, lassen sich gegen die Zeichnungsvorschriften der Ämter (DPMA, EPA, PCT, USPTO) prüfen
+und monochrom exportieren.
 
 ## Highlights (Zielumfang)
 
@@ -24,9 +25,9 @@ lassen sich gegen die Zeichnungsvorschriften der Patentämter prüfen und monoch
   Wellen und Wälzlager im Getriebeschema (Strichdarstellung nach den Konventionen von VDI 2127 / ISO 3952), vereinfachte
   Darstellung (im Stil von ISO 2203) und Schnitte – das Einrasten lässt Zahnräder auf ihren Teilkreisen kämmen und setzt
   Naben auf Wellenachsen.
-- **Patentfiguren:** Bezugszeichen mit geraden oder gekrümmten Bezugslinien, konsistente Nummerierung über alle Figuren,
-  Schraffur, FIG-Beschriftungen, Blattnummern, Amtsprofile (DPMA, EPA, PCT, USPTO) mit quellenbelegter Vorabprüfung
-  (Preflight) und Schwarz-Weiß-Export.
+- **Technische Abbildungen:** Bezugszeichen mit geraden oder gekrümmten Bezugslinien, konsistente Nummerierung über alle
+  Figuren, Schraffur, FIG-Beschriftungen, Blattnummern, Amtsprofile (DPMA, EPA, PCT, USPTO) mit quellenbelegter
+  Vorabprüfung (Preflight) und Schwarz-Weiß-Export.
 - **Beschriftungswerkzeuge:** Pfeile mit vielen Pfeilspitzen, gekrümmte und gewinkelte Verbinder, Bemaßungen, Klammern,
   Schnitt- und Bruchlinien, Textfelder, Legenden, Symbole der Technischen Mechanik, Flussdiagramm-Formen.
 - **Native Objekte zuerst:** Eingefügte Figuren sind native, bearbeitbare PowerPoint-/LibreOffice-Formen, wo immer der
@@ -36,9 +37,9 @@ lassen sich gegen die Zeichnungsvorschriften der Patentämter prüfen und monoch
   Elektrotechnik (Schaltzeichen, Leitungen, Hausinstallation, Leistungselektronik, illustrative Leiterplatte),
   elektrische Maschinen (Radial- und Axialfluss, Komponenten, Antriebsblöcke), Automotive/ADAS/HMI (Fahrzeuge,
   Personen, Straßen, Sensoren, Anzeigen), Architektur und Grundrisse (Wände, Öffnungen, Räume, Treppen, Möbel),
-  Diagramme (UML, ER, Sequenz, Aktivität, System, BPMN), Karten und Routen, Fluidtechnik, Patentfiguren, technische
-  Gebäudeausrüstung (Heizung, Sanitär, Lüftung, Elektro-Ergänzungen mit Grundriss, Schnitt und Schema derselben
-  Installation), Diagramme und
+  Diagramme (UML, ER, Sequenz, Aktivität, System, BPMN), Karten und Routen, Fluidtechnik, Abbildungen für Anmeldungen,
+  technische Gebäudeausrüstung (Heizung, Sanitär, Lüftung, Elektro-Ergänzungen mit Grundriss, Schnitt und Schema
+  derselben Installation), Diagramme und
   Kennlinien (XY, Balken, Drehmoment-Drehzahl, Wirkungsgradkennfeld, Pumpenkennlinie, Bode-Diagramm, Toleranzbänder),
   Verfahrens- und Wärmetechnik (R&I-Apparate, Armaturen, PLT-Stellen, Lüftungsbauteile, T-s-, p-v- und p-h-Kreisprozesse),
   Energiesysteme (PV, Wind, Speicher, Elektromobilität, Wasserstoff, Wärmepumpen, Netzanschluss und Einlinienschaltbilder
@@ -72,7 +73,7 @@ Voraussetzungen: .NET 10 SDK (das Build-Skript installiert es bei Bedarf benutze
 
 ```text
 src/InventaSketch.Core            Engine-Kern (Modell, Geometrie, Einrasten, Rendering, Persistenz)
-src/InventaSketch.Modules.*       Fachmodule (Annotation, Patent, Mechanical, …)
+src/InventaSketch.Modules.*       Fachmodule (Annotation, Figures, Mechanical, …)
 src/InventaSketch.Engine          JSON-Engine-API, gemeinsam für alle Hosts
 hosts/office-web                  PowerPoint-Web-Add-in (WebAssembly-Engine + TypeScript-UI)
 hosts/powerpoint-com              PowerPoint-COM-Add-in (.NET Framework 4.8)
@@ -89,5 +90,5 @@ auf Englisch).
 
 ## Lizenz
 
-[Apache License 2.0](LICENSE). Die Angaben zu Patentvorschriften dienen nur als Hilfestellung und sind keine
-Rechtsberatung.
+[Apache License 2.0](LICENSE). Die Angaben zu den Zeichnungsvorschriften der Ämter dienen nur als Hilfestellung und
+sind keine Rechtsberatung.

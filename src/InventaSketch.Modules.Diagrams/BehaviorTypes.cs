@@ -153,7 +153,7 @@ namespace InventaSketch.Modules.Diagrams
         public override Size2 DefaultSize => new(36, 16);
         protected override I18nText Placeholder => new("State", "Zustand");
 
-        /// <summary>Rounded rectangle (UML) or circle with the name (patent-style state diagrams).</summary>
+        /// <summary>Rounded rectangle (UML) or circle with the name (black-and-white state diagrams of method figures).</summary>
         public override IReadOnlyList<ViewDef> Views => new[]
         {
             new ViewDef("rounded", new I18nText("Rounded rectangle", "Abgerundetes Rechteck")) { Icon = IconIds.ShapeSquare, Size = new Size2(36, 16) },

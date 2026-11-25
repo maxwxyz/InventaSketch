@@ -448,9 +448,9 @@ namespace InventaSketch.Engine
             };
         }
 
-        // ------------------------------------------------------------------ patent workflow
+        // ------------------------------------------------------------------ compatibility check (drawing rules)
 
-        /// <summary>The patent profiles (offices) for <c>preflight</c>: id and name in the session language.</summary>
+        /// <summary>The drawing-rule profiles (offices) for <c>preflight</c>: id and name in the session language.</summary>
         private object PatentProfilesCore(EngineRequest r)
         {
             var lang = r.Lang is null ? (r.Session is null ? Lang.En : S(r).Lang) : Language.Detect(r.Lang);
@@ -458,7 +458,7 @@ namespace InventaSketch.Engine
         }
 
         /// <summary>
-        /// Patent drawing preflight of the session's page against profile <c>text</c> (an id of <c>patentProfiles</c>,
+        /// Compatibility check (preflight) of the session's page against profile <c>text</c> (an id of <c>patentProfiles</c>,
         /// default "common-safe"): the findings in page and rule order with severity, element, message, suggestion and the
         /// cited source, and the disclaimer – a drafting aid, not a legal certification.
         /// </summary>
@@ -467,7 +467,7 @@ namespace InventaSketch.Engine
             var s = S(r);
             var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
             var id = string.IsNullOrWhiteSpace(r.Text) ? "common-safe" : r.Text!.Trim();
-            var profile = InventaSketch.Modules.Patent.PatentProfiles.All.FirstOrDefault(p => p.Id == id) ?? throw new ArgumentException("Unknown patent profile '" + id + "'.");
+            var profile = InventaSketch.Modules.Patent.PatentProfiles.All.FirstOrDefault(p => p.Id == id) ?? throw new ArgumentException("Unknown office profile '" + id + "'.");
             var findings = InventaSketch.Modules.Patent.Preflight.Run(Registry, s.Doc, profile);
             return new
             {
@@ -1662,7 +1662,7 @@ namespace InventaSketch.Engine
             throw new ArgumentException($"Unknown action '{action}'.");
         }
 
-        /// <summary>Assigns the next free reference numeral to objects without one (and places a numeral label if the patent module provides "patent.numeral").</summary>
+        /// <summary>Assigns the next free reference numeral to objects without one (and places a numeral label if the figures module provides "patent.numeral").</summary>
         private object NumeralCore(EditorSession s, IReadOnlyList<string> ids, EngineRequest r)
         {
             var targets = ids.Select(s.Doc.Get).Where(o => o is not null && o.Ref is null).Cast<SketchObject>().ToList();

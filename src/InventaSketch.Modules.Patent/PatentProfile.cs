@@ -36,14 +36,14 @@ namespace InventaSketch.Modules.Patent
     /// <summary>Minimum blank margins in mm.</summary>
     public sealed record Margins(double Top, double Left, double Right, double Bottom);
 
-    /// <summary>Official source of a rule (row id of docs/en/research/patent-drawing-rules.md, provision and URL).</summary>
+    /// <summary>Official source of a rule (row id of docs/en/research/drawing-rules.md, provision and URL).</summary>
     public sealed record Citation(string Row, string Provision, string Url)
     {
         public override string ToString() => Row + ": " + Provision + " <" + Url + ">";
     }
 
     /// <summary>
-    /// Drawing-sheet profile of a patent office. Values follow docs/en/research/patent-drawing-rules.md
+    /// Drawing-sheet profile of an office. Values follow docs/en/research/drawing-rules.md
     /// (research status 2026-11-20). Profiles are a drafting aid, not legal advice.
     /// </summary>
     public sealed record PatentProfile
@@ -105,7 +105,7 @@ namespace InventaSketch.Modules.Patent
 
         public static readonly PatentProfile Epo = new()
         {
-            Id = "epo", Name = new I18nText("EPO (European patent)", "EPA (Europäisches Patent)"), Office = Office.Epo,
+            Id = "epo", Name = new I18nText("EPO (Europe)", "EPA (Europa)"), Office = Office.Epo,
             Colour = ColourPolicy.AllowedWithConditions,
         };
 
@@ -117,7 +117,7 @@ namespace InventaSketch.Modules.Patent
 
         public static readonly PatentProfile Uspto = new()
         {
-            Id = "uspto", Name = new I18nText("USPTO (utility)", "USPTO (Utility Patent)"), Office = Office.Uspto,
+            Id = "uspto", Name = new I18nText("USPTO (utility)", "USPTO (Utility)"), Office = Office.Uspto,
             Sheets = new[] { A4, Letter }, CentreLinesAllowed = false, LeadCrossingSeverity = Severity.Error,
         };
 

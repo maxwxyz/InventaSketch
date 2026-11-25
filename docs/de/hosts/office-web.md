@@ -45,7 +45,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `importData` | `text` (CSV/TSV), `id` (optional Diagramm) | Zustand; die Tabelle als Daten des ausgewählten oder eines neuen Diagramms |
 | `importGeo` | `text` (GeoJSON oder GPX) | Zustand; Routen und Marker in die Seite eingepasst, ausgewählt |
 | `importVector` | `text` (SVG oder ASCII-DXF) | Zustand; bearbeitbare Grundformen in einer Gruppe (echte Größe, wenn die Datei Einheiten hat und passt, sonst eingepasst), ausgewählt; ein Rückgängig-Schritt |
-| `preflight` | `text` (Profil-ID, Standard "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – Patent-Vorabprüfung der Zeichnungen |
+| `preflight` | `text` (Profil-ID, Standard "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – Kompatibilitätsprüfung der Zeichnungen |
 | `patentProfiles` | `lang` | die Ämter `{ id, name }` |
 | `diff` | `payload` (kompaktes Modell des früheren Stands, z. B. der vorherigen Folie) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – Varianten: was sich von diesem Stand unterscheidet (Rahmen in mm, entfernte aus dem früheren Stand) |
 | `setAccent` | `text` (Voreinstellung aus `accents`, #rrggbb oder "" für die Originalfarben) | Zustand (`accent`); Akzentfarbe des Dokuments, jedes Objekt gilt als geändert |
@@ -112,14 +112,15 @@ Folie behalten.
   geprüft (Striche bei 1 mm doppelt so breit).
 - **Akzentfarbe** (25.11.2026): eine dritte Auswahl ruft `setAccent` (Voreinstellungen aus `accents`); auf der
   Browser-Entwicklungsseite geprüft (die grüne Ladung eines Batteriespeichers wurde rot, das blaugraue Gehäuse blieb).
-- **Patentprüfung** (25.11.2026): ein Knopf in der oberen Leiste öffnet ein Panel mit dem Amt (`patentProfiles`) und
-  den Befunden der Vorabprüfung der Seite (`preflight`) – Fehler zuerst, dann Warnungen, selbst zu prüfende Punkte und
-  Hinweise, jeweils mit Vorschlag und den Fundstellen als kurze Links; ein Klick auf die Meldung eines Befunds wählt
-  sein Element aus. Der Haftungshinweis wird immer angezeigt. Auf der Browser-Entwicklungsseite geprüft (hell und
-  dunkel, Wechsel DPMA/EPA/PCT/USPTO, ein Zahnrad außerhalb der Nutzfläche über seinen Befund ausgewählt). In PowerPoint
-  (PowerPointApi 1.3) bietet das Panel **Alle Folien**: Die Einheiten jeder Folie werden aus ihren Formen gelesen
-  (`src/office/slides.ts`: Name plus `ISK_MODEL`-Tags, sonst die Modellkopie der Präsentation), jede Folie wird in einer
-  eigenen Engine-Sitzung geprüft, Befunde lauten „Folie n · …“ und springen zu Folie und Form (PowerPointApi 1.5).
+- **Kompatibilitätsprüfung** (25.11.2026): ein Knopf in der oberen Leiste öffnet das Panel „Kompatibilität“ mit dem Amt
+  (`patentProfiles`) und den Befunden der Vorabprüfung der Seite (`preflight`) – Fehler zuerst, dann Warnungen, selbst
+  zu prüfende Punkte und Hinweise, jeweils mit Vorschlag und den Fundstellen als kurze Links; ein Klick auf die Meldung
+  eines Befunds wählt sein Element aus. Der Haftungshinweis wird immer angezeigt. Auf der Browser-Entwicklungsseite
+  geprüft (hell und dunkel, Wechsel DPMA/EPA/PCT/USPTO, ein Zahnrad außerhalb der Nutzfläche über seinen Befund
+  ausgewählt). In PowerPoint (PowerPointApi 1.3) bietet das Panel **Alle Folien**: Die Einheiten jeder Folie werden aus
+  ihren Formen gelesen (`src/office/slides.ts`: Name plus `ISK_MODEL`-Tags, sonst die Modellkopie der Präsentation),
+  jede Folie wird in einer eigenen Engine-Sitzung geprüft, Befunde lauten „Folie n · …“ und springen zu Folie und Form
+  (PowerPointApi 1.5).
 - **Mit vorheriger Folie vergleichen** (25.11.2026, nur in PowerPoint): ein Knopf in der oberen Leiste markiert auf der
   ausgewählten Folie, was sich von der vorherigen unterscheidet (Engine `exportCompact` der vorherigen Folie, `diff` auf
   der aktuellen): neu grün, geändert orange, entfernt grau gestrichelt, dazu eine Legende; Formen mit dem Namen

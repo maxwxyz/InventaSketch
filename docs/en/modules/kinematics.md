@@ -3,7 +3,7 @@
 German translation: [../../de/modules/kinematics.md](../../de/modules/kinematics.md)
 
 The kinematics module provides symbols for kinematic diagrams (mechanism sketches) and predefined planar
-mechanisms for quick technical sketches and patent figures. The symbol shapes follow the *style* of
+mechanisms for quick technical sketches and technical figures. The symbol shapes follow the *style* of
 ISO 3952 (kinematic diagrams – graphical symbols); they are drawn independently and are not copies of the
 standard's figures. No claim of standards compliance is made.
 

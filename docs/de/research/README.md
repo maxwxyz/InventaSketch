@@ -1,13 +1,13 @@
 # Recherche – deutsche Kurzfassung
 
-> Kurzfassung auf Deutsch. Maßgeblich sind die englischen Recherchenotizen [patent-drawing-rules.md](../../en/research/patent-drawing-rules.md) und [tools-and-host-apis.md](../../en/research/tools-and-host-apis.md).
+> Kurzfassung auf Deutsch. Maßgeblich sind die englischen Recherchenotizen [drawing-rules.md](../../en/research/drawing-rules.md) und [tools-and-host-apis.md](../../en/research/tools-and-host-apis.md).
 
 Beide Notizen haben den Stand 2026-11-20 und existieren nur auf Englisch. Diese Seite fasst die wichtigsten Ergebnisse
 zusammen; Regel-IDs (z. B. `EP-07`, `US-08`) und Quellen stehen in den Volltexten.
 
-## 1. Zeichnungsvorschriften für Patente (DPMA, EPA, PCT, USPTO)
+## 1. Zeichnungsvorschriften der Ämter (DPMA, EPA, PCT, USPTO)
 
-Volltext: [patent-drawing-rules.md](../../en/research/patent-drawing-rules.md) – nur Primärquellen; nicht bestätigte
+Volltext: [drawing-rules.md](../../en/research/drawing-rules.md) – nur Primärquellen; nicht bestätigte
 Werte sind dort als **UNVERIFIED** markiert.
 
 **Gemeinsame Eckwerte aller vier Ämter (Zeichnungsblatt A4):**
@@ -30,8 +30,8 @@ Werte sind dort als **UNVERIFIED** markiert.
   nur bei elektronischer Einreichung** (A49 Art. 1(2)(a); A57). Papiereinreichungen bleiben schwarz-weiß.
 - **PCT:** Regel 11.13(a) PCT verlangt auch in der ab 1. 1. 2026 geltenden Fassung Linien „without colorings“; Farbe
   wird für die Veröffentlichung in Schwarz-Weiß umgewandelt. Zusätzliche Farb-PDFs (C. PCT 1699) sind nur vorgeschlagen.
-- **USPTO:** schwarz-weiß als Regelfall; Farbe bei Gebrauchspatenten nur auf Antrag (Petition, Gebühr nach 37 CFR
-  1.17(h)), bei Designpatenten ohne Antrag. 37 CFR 1.84(h) **verbietet Mittellinien und Projektionslinien**.
+- **USPTO:** schwarz-weiß als Regelfall; Farbe bei Utility-Anmeldungen nur auf Antrag (Petition, Gebühr nach 37 CFR
+  1.17(h)), bei Design-Anmeldungen ohne Antrag. 37 CFR 1.84(h) **verbietet Mittellinien und Projektionslinien**.
 
 **Weitere wichtige Abweichungen:**
 
@@ -66,7 +66,7 @@ Volltext: [tools-and-host-apis.md](../../en/research/tools-and-host-apis.md) –
 - **COM-Vorrang:** `EquivalentAddins` mit der ProgId des COM-Add-ins blendet das Web-Add-in unter Windows aus.
 - **PowerPoint COM:** volle Formen-API (`BuildFreeform`, Pfeilspitzen, `BeginConnect`/`EndConnect`, `Shape.Tags`);
   Overlay über ein geschichtetes Fenster mit `PointsToScreenPixelsX/Y`. `FillFormat.Patterned` ist eine Bitmap und für
-  Patentschraffuren ungeeignet – Schraffur als echte Liniengeometrie erzeugen.
+  Schraffuren in Amtszeichnungen ungeeignet – Schraffur als echte Liniengeometrie erzeugen.
 - **LibreOffice:** Python-UNO-`.oxt` ist die praktikabelste Erweiterungsform; die .NET-UNO-Bindings eignen sich 2026
   nicht für plattformübergreifende Erweiterungen; eine eingebettete WebView gibt es nicht. Native Vektorschraffur über
   `FillHatch`; Metadaten über `ShapeUserDefinedAttributes` (nur ODF).

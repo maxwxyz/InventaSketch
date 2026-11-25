@@ -43,7 +43,7 @@ undo step each (no step when nothing changes).
 | `importData` | `text` (CSV/TSV), `id` (optional chart) | state; the table as the data of the selected chart or a new chart |
 | `importGeo` | `text` (GeoJSON or GPX) | state; routes and markers fitted into the page, selected |
 | `importVector` | `text` (SVG or ASCII DXF) | state; editable basic shapes in one group (real size if the file has units and fits, else fitted), selected; one undo step |
-| `preflight` | `text` (profile id, default "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – patent drawing preflight |
+| `preflight` | `text` (profile id, default "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – compatibility check of the drawings |
 | `patentProfiles` | `lang` | the offices `{ id, name }` |
 | `diff` | `payload` (compact model of the earlier state, e.g. the previous slide) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – variants: what differs from that state (bounds in mm, removed ones from the earlier state) |
 | `setAccent` | `text` (preset id from `accents`, #rrggbb, or "" for the original colours) | state (`accent`); accent colour of the document, every object counts as changed |
@@ -107,14 +107,14 @@ the units on the slide.
   sync redraws every unit with it. Checked in the browser dev page (strokes doubled at 1 mm).
 - **Accent colour** (2026-11-25): a third choice calls `setAccent` (presets from `accents`); checked in the browser dev
   page (a battery's green charge became red, its blue-grey housing stayed).
-- **Patent check** (2026-11-25): a button in the top bar opens a panel with the office (`patentProfiles`) and the
-  preflight findings of the page (`preflight`) – errors first, then warnings, points to check by hand and notes, each
-  with suggestion and the cited sources as short links; clicking a finding's message selects its element. The
-  disclaimer is always shown. Checked in the browser dev page (light and dark, DPMA/EPO/PCT/USPTO switch, a gear
-  outside the usable area selected from its finding). In PowerPoint (PowerPointApi 1.3) the panel offers **All slides**:
-  the units of every slide are read from their shapes (`src/office/slides.ts`: name plus `ISK_MODEL` tags, else the
-  presentation mirror), each slide is checked in its own engine session, findings read "Slide n · …" and go to their
-  slide and shape (PowerPointApi 1.5).
+- **Compatibility check** (2026-11-25): a button in the top bar opens the "Compatibility" panel with the office
+  (`patentProfiles`) and the preflight findings of the page (`preflight`) – errors first, then warnings, points to check
+  by hand and notes, each with suggestion and the cited sources as short links; clicking a finding's message selects its
+  element. The disclaimer is always shown. Checked in the browser dev page (light and dark, DPMA/EPO/PCT/USPTO switch, a
+  gear outside the usable area selected from its finding). In PowerPoint (PowerPointApi 1.3) the panel offers **All
+  slides**: the units of every slide are read from their shapes (`src/office/slides.ts`: name plus `ISK_MODEL` tags,
+  else the presentation mirror), each slide is checked in its own engine session, findings read "Slide n · …" and go to
+  their slide and shape (PowerPointApi 1.5).
 - **Compare with the previous slide** (2026-11-25, PowerPoint only): a button in the top bar marks on the selected slide
   what differs from the previous one (engine `exportCompact` of the previous slide, `diff` on the current one): added
   green, changed orange, removed dashed grey, plus a legend; shapes named `ISK_DIFF …`; clicking again removes them.

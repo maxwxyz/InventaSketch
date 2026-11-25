@@ -21,7 +21,7 @@
   LibreOffice 26.8 (.pptx).
 - Ribbon tab **InventaSketch**, generated from the module library: a tools group (Editor, Snap and Context bar
   toggles stored in `%LOCALAPPDATA%\InventaSketch\settings.json`, black-and-white, info), then one group per module
-  (basic shapes, annotation, patent, mechanics, kinematics, electrical, machines, automotive, architecture, diagrams)
+  (basic shapes, annotation, figures, mechanics, kinematics, electrical, machines, automotive, architecture, diagrams)
   with one thumbnail gallery per library category (6 columns, name in the
   tooltip; groups with many categories show icons only so the tab fits on laptop screens). New modules appear without
   ribbon changes. Thumbnails are rendered with GDI+ from the engine primitives and follow the Office theme.
@@ -234,7 +234,7 @@ Pie menu, input prompt and dependents (same environment, 2026-11-20 evening):
 UX round (2026-11-20, from the maintainer's feedback):
 
 - Ribbon: Tools (Editor, Snap, Context bar, Black & white, Anchor, small About with logo), then **Annotate** (annotation,
-  patent figures and basic shapes), then one group per domain module. Ribbon images are passed as 32-bit DIBs with
+  figures and basic shapes), then one group per domain module. Ribbon images are passed as 32-bit DIBs with
   alpha (ported from Slidemax), so thumbnails have no white box in a dark Office.
 - **Black & white** is a reversible switch: it sets `DocumentSettings.Monochrome` on every unit of the slide and
   re-renders; the draw plan maps all colours (lines, fills, text, highlighters) to black/white and drops translucent

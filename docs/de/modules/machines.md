@@ -1,6 +1,6 @@
 # Modul E-Maschinen & Antriebe (`machines`)
 
-Schnellskizzen elektrischer Maschinen und elektrischer Antriebsstränge für Präsentationen und Patentzeichnungen:
+Schnellskizzen elektrischer Maschinen und elektrischer Antriebsstränge für Präsentationen und technische Abbildungen:
 Quer- und Längsschnitte von Radial- und Axialflussmaschinen, einzelne Maschinenkomponenten zum freien Zusammensetzen,
 Antriebsstrang-Blöcke mit Ports, Antriebsstrangteile für Getriebeschemata, die auf mechanischen Wellen sitzen (E-Maschine,
 Verbrennungsmotor, Rad), sowie Fluss-, Drehrichtungs- und Drehmomentkennzeichnungen.
@@ -12,7 +12,7 @@ Verbrennungsmotor, Rad), sowie Fluss-, Drehrichtungs- und Drehmomentkennzeichnun
 Jedes Objekt lässt sich ohne Parametereingabe einfügen. Freies gleich- und ungleichmäßiges Skalieren ändert nur die
 Boxgröße, nie die Parameter. Geschnittenes Eisen ist schraffiert (Ständer 45°, Läufer 135°, Welle 45°, Gehäuse 135°, damit
 sich benachbarte Teile unterscheiden), Kupferwicklungen haben eine helle Kupferfüllung mit feiner Kreuzschraffur (auch
-einfarbig lesbar), Nordmagnete sind rot und Südmagnete blau (schwarz bzw. weiß in einfarbiger/Patent-Ausgabe).
+einfarbig lesbar), Nordmagnete sind rot und Südmagnete blau (schwarz bzw. weiß in einfarbiger Ausgabe).
 
 ## Objekttypen
 

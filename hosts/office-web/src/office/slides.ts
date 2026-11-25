@@ -1,5 +1,5 @@
 // Work across slides with Office.js: read the InventaSketch units of every slide (shape name + ISK_MODEL tags, or the
-// presentation mirror), run the engine's patent preflight per slide, compare a slide with the previous one (engine
+// presentation mirror), run the engine's compatibility check (preflight) per slide, compare a slide with the previous one (engine
 // `diff`) and mark the differences, and go to a finding. The domain logic stays in the engine; this module only moves
 // models between slides and engine sessions and draws marks.
 
@@ -84,7 +84,7 @@ function close(engine: Engine, session: Session): void {
 }
 
 /**
- * Patent preflight of every slide with units, one engine session per slide (the office's page rules apply to each
+ * Compatibility check (preflight) of every slide with units, one engine session per slide (the office's page rules apply to each
  * sheet). Findings carry the slide number and the shape of their element.
  */
 export function checkSlides(engine: Engine, slides: SlideUnits[], profile: string, lang: string, page: { w: number; h: number }): { disclaimer: string; findings: SlideFinding[]; slides: number } {

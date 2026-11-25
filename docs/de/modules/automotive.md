@@ -1,8 +1,8 @@
 # Modul Fahrzeuge, ADAS & HMI (`automotive`)
 
-Reduzierte Strichzeichnungen im Patentstil für Erfindungsmeldungen zu Fahrzeugfunktionen: Fahrzeuge in mehreren
-Ansichten, Fahrzeugkomponenten, Personen, Straßenumgebung, ADAS-Sensoren mit Sichtbereichen, Wahrnehmungs-Overlays,
-Trajektorien und HMI-Elemente. Alle Darstellungen sind eigenständig, generisch und markenneutral.
+Reduzierte Strichzeichnungen im Schwarzweiß-Strichstil für Erfindungsmeldungen zu Fahrzeugfunktionen: Fahrzeuge in
+mehreren Ansichten, Fahrzeugkomponenten, Personen, Straßenumgebung, ADAS-Sensoren mit Sichtbereichen,
+Wahrnehmungs-Overlays, Trajektorien und HMI-Elemente. Alle Darstellungen sind eigenständig, generisch und markenneutral.
 
 > **Grenzen.** Das Modul zeichnet *illustrative Szenen*. Es wird nichts simuliert: Sichtbereiche erkennen nichts,
 > Trajektorien werden weder geplant noch auf Fahrbarkeit geprüft, TTC- und Sicherheitsabstandswerte sind

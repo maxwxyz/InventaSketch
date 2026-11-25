@@ -31,7 +31,7 @@ namespace InventaSketch.Modules.Annotation
 
     /// <summary>
     /// Flowchart box with text and an optional step number ("S100") written outside the upper-right corner,
-    /// the usual layout of patent method flowcharts (practice, see EP GL A-IX 8). An optional step (parameter
+    /// the usual layout of method flowcharts in applications (practice, see EP GL A-IX 8). An optional step (parameter
     /// <c>optional</c>) is drawn with a dashed outline.
     /// </summary>
     public sealed class FlowBoxType : AnnBoxType
@@ -394,7 +394,7 @@ namespace InventaSketch.Modules.Annotation
         }
     }
 
-    /// <summary>Stand-alone step number label ("S100") for patent flowcharts.</summary>
+    /// <summary>Stand-alone step number label ("S100") for method flowcharts.</summary>
     public sealed class FlowStepType : AnnBoxType
     {
         public FlowStepType() : base("ann.flow.step", new I18nText("Step number", "Schrittnummer"), AnnCategories.Flowchart, "step", "schritt", "s100", "number", "nummer", "flowchart") { }

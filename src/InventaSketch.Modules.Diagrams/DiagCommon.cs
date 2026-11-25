@@ -28,7 +28,7 @@ namespace InventaSketch.Modules.Diagrams
         public const string Bpmn = "diag.bpmn";
         /// <summary>Control loops (block diagrams of control engineering).</summary>
         public const string Control = "diag.control";
-        /// <summary>Computer systems and communication (software patent FIG. 1, networks).</summary>
+        /// <summary>Computer systems and communication (FIG. 1 of software inventions, networks).</summary>
         public const string Computer = "diag.computer";
         /// <summary>Packet, frame, register and memory layouts.</summary>
         public const string Data = "diag.data";

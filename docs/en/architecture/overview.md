@@ -7,7 +7,7 @@
 ```text
                 ┌──────────────────────── InventaSketch engine (C#, netstandard2.0 + net10.0) ───────────────────────┐
                 │  Core: model · geometry · primitives · registry · snapping · hatching · edits/undo · JSON · SVG    │
-                │  Modules: Annotation · Patent · Mechanical · (Kinematics · Electrical · Automotive · …)             │
+                │  Modules: Annotation · Figures · Mechanical · (Kinematics · Electrical · Automotive · …)            │
                 │  Engine API: JSON facade, editor sessions, hit test, snapping, context actions, host draw plans   │
                 └───────────────┬───────────────────────────────┬────────────────────────────────┬──────────────────┘
                                 │ in-process (.NET Fx 4.8)      │ .NET WebAssembly ([JSExport])  │ .NET child process
@@ -40,7 +40,7 @@ See [ADR-0002](../../adr/0002-csharp-engine.md).
 | Hosts | `hosts/office-web`, `hosts/powerpoint-com`, `hosts/libreoffice` | UI and host API translation only |
 
 Dependency rule: Core ← Modules ← Engine ← Hosts. Modules never reference hosts or each other's internals
-(Patent may use Annotation's public types). No domain logic in TypeScript or Python.
+(Figures may use Annotation's public types). No domain logic in TypeScript or Python.
 
 ## 3. Object model in practice
 

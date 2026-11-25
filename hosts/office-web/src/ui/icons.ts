@@ -38,7 +38,7 @@ const paths: Record<string, string> = {
   menuBack: "M19 12H5M11 6l-6 6 6 6",
   // Compare: two sheets side by side with a difference mark.
   compare: "M3 5h7v14H3zM14 5h7v14h-7zM16.5 12h2M17.5 11v2",
-  // Patent check: a sheet with a tick.
+  // Compatibility check: a sheet with a tick.
   check: "M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8.5 13.5l2.5 2.5 4.5-5",
   // Black and white: a circle, right half filled.
   mono: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 3A9 9 0 0 1 12 21Z",

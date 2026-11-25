@@ -6,7 +6,7 @@ using Xunit;
 
 namespace InventaSketch.Modules.Annotation.Tests
 {
-    /// <summary>Patent flowchart gaps (2026-11-25): further ISO 5807 shapes, optional steps, parallel mode, decision exits.</summary>
+    /// <summary>Method flowchart gaps (2026-11-25): further ISO 5807 shapes, optional steps, parallel mode, decision exits.</summary>
     public class FlowShapeTests
     {
         public static readonly string[] NewShapes =

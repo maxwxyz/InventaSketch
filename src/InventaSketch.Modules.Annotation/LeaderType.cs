@@ -12,7 +12,7 @@ namespace InventaSketch.Modules.Annotation
     public enum LeaderEnd { None, Arrow, Dot }
 
     /// <summary>
-    /// Geometry of reference-numeral lead lines, shared by <c>ann.leader</c> and the patent module's
+    /// Geometry of reference-numeral lead lines, shared by <c>ann.leader</c> and the figures module's
     /// <c>patent.numeral</c>. Point A touches the part, point B is the numeral position (text centre).
     /// The line stops short of the numeral so it never runs into the text (EP GL A-IX 7.5.1; 37 CFR 1.84(q)).
     /// </summary>
@@ -52,7 +52,7 @@ namespace InventaSketch.Modules.Annotation
                 var k = len * 0.22;
                 return Ann.Cubic(a, a + d / 3 + n * k, a + d * (2.0 / 3) + n * k, b, style, AnnTags.Lead);
             }
-            // Wavy "S" curve, the common patent-drawing style that separates lead lines from object edges.
+            // Wavy "S" curve, the common style of figures for applications that separates lead lines from object edges.
             var w = len * 0.28;
             return Ann.Cubic(a, a + d / 3 + n * w, a + d * (2.0 / 3) - n * w, b, style, AnnTags.Lead);
         }

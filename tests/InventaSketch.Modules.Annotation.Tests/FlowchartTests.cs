@@ -5,7 +5,7 @@ using Xunit;
 
 namespace InventaSketch.Modules.Annotation.Tests
 {
-    /// <summary>Flowcharts as in patent method figures (maintainer example 2026-11-25): text fitting, symbols, routing, labels.</summary>
+    /// <summary>Flowcharts as in method figures of applications (maintainer example 2026-11-25): text fitting, symbols, routing, labels.</summary>
     public class FlowchartTests
     {
         [Fact]

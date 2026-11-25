@@ -218,7 +218,7 @@ namespace InventaSketch.Core
 
     public sealed record SvgOptions
     {
-        /// <summary>Converts all colours to black/white (patent and monochrome export).</summary>
+        /// <summary>Converts all colours to black/white (monochrome export).</summary>
         public bool Monochrome { get; init; }
         /// <summary>Writes explicit hatch lines instead of SVG patterns (best compatibility, required for PowerPoint SVG import).</summary>
         public bool ExplicitHatch { get; init; } = true;

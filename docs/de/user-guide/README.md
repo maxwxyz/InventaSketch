@@ -6,9 +6,9 @@
 
 ## 1. Wofür InventaSketch gedacht ist
 
-Schnelle technische Skizzen direkt in Ihrer Präsentation: Getriebe und Maschinenelemente, Mechanismen, Patentfiguren mit
-Bezugszeichen, Funktionsdiagramme, Flussdiagramme. Sie ziehen Elemente auf die Folie, skalieren sie frei und lassen sie
-aneinander einrasten. Zahlenwerte (Modul, Zähnezahl, Maße) sind optional.
+Schnelle technische Skizzen direkt in Ihrer Präsentation: Getriebe und Maschinenelemente, Mechanismen, technische
+Abbildungen mit Bezugszeichen, Funktionsdiagramme, Flussdiagramme. Sie ziehen Elemente auf die Folie, skalieren sie frei
+und lassen sie aneinander einrasten. Zahlenwerte (Modul, Zähnezahl, Maße) sind optional.
 
 ## 2. Installation
 
@@ -29,7 +29,7 @@ aneinander einrasten. Zahlenwerte (Modul, Zähnezahl, Maße) sind optional.
    Auswahl blendet aus, wenn Sie sich mit dem Mauszeiger entfernen.
 6. Wechseln Sie die Darstellung (Getriebeschema, Seitenansicht, Schnitt, axial, Verzahnung), ohne Beschriftungen oder
    Verknüpfungen zu verlieren.
-7. Fügen Sie Bezugslinien und Bezugszeichen hinzu, führen Sie die Patent-Vorabprüfung (Preflight) für das gewählte
+7. Fügen Sie Bezugslinien und Bezugszeichen hinzu, führen Sie die Kompatibilitätsprüfung (Preflight) für das gewählte
    Anmeldeamt aus und exportieren Sie in Schwarz-Weiß.
 
 ## 4. Tastatur
@@ -48,15 +48,16 @@ aneinander einrasten. Zahlenwerte (Modul, Zähnezahl, Maße) sind optional.
 | `Tab` / `Shift+Tab` | nächstes / vorheriges Teil der Baugruppe (PowerPoint COM) |
 | `Esc` | abbrechen / Auswahl aufheben |
 
-## 5. Patentzeichnungen – wichtiger Hinweis
+## 5. Zeichnungen für Anmeldungen – wichtiger Hinweis
 
 Die Vorabprüfung (Preflight) prüft die formalen Zeichnungsvorschriften von DPMA, EPA, PCT und USPTO mit zitierten
-Quellen. Sie ist nur eine Hilfestellung und ersetzt nicht die Prüfung durch eine Patentfachperson. In PowerPoint:
-InventaSketch ▸ Prüfen ▸ „Patentprüfung“ prüft alle Folien für das gewählte Amt und listet Fehler,
+Quellen. Sie ist nur eine Hilfestellung und ersetzt nicht die Prüfung durch Fachleute für gewerblichen Rechtsschutz. In
+PowerPoint: InventaSketch ▸ Prüfen ▸ „Kompatibilität“ prüft alle Folien für das gewählte Amt und listet Fehler,
 Warnungen, Hinweise und selbst zu prüfende Punkte mit Fundstelle; ein Doppelklick auf einen Befund springt zur Folie
-und zum Element (Engine `preflight`, `patentProfiles`). Im Web-Add-in macht der Prüfknopf in der oberen Leiste dasselbe
-für die Seite; ein Klick auf einen Befund wählt sein Element aus. In LibreOffice Impress und Draw: InventaSketch ▸
-„Patentprüfung (Zeichnungen) …“ prüft alle Seiten; die Wahl eines Befunds springt zu Folie und Einheit.
+und zum Element (Engine `preflight`, `patentProfiles`). Im Web-Add-in öffnet der Prüfknopf in der oberen Leiste
+das Panel „Kompatibilität“, das dasselbe für die Seite macht; ein Klick auf einen Befund wählt sein Element aus. In
+LibreOffice Impress und Draw: InventaSketch ▸ „Kompatibilität (Zeichnungsregeln) …“ prüft alle Seiten; die Wahl eines
+Befunds springt zu Folie und Einheit.
 
 Varianten (vorher/nachher, Stand der Technik/Erfindung): Folie duplizieren und die Kopie ändern. InventaSketch ▸ Prüfen
 ▸ „Mit vorheriger Folie vergleichen“ markiert, was neu (grün), geändert (orange) und entfernt (grau gestrichelt) ist,

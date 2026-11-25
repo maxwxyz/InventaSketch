@@ -7,7 +7,7 @@
 
 | Item | Outcome | Status |
 |---|---|---|
-| Research | Patent drawing rules (DPMA/EPO/PCT/USPTO), tool landscape, host APIs | shipped (docs/en/research) |
+| Research | Drawing rules of the offices (DPMA/EPO/PCT/USPTO), tool landscape, host APIs | shipped (docs/en/research) |
 | Repository & governance | README EN/DE, licence, ADRs, contribution rules, CI | in progress |
 | Engine core | Model, geometry, primitives, snapping, hatching, edits/undo, JSON, SVG | in progress (26 tests) |
 | Module contract | `IModule`, `ObjectType`, views, params, anchors, actions, library | in progress |
@@ -18,11 +18,11 @@
 |---|---|---|
 | Annotation module | Arrows, lead lines, dimensions, text, hatching, brackets, mechanics symbols, flowchart starters | in progress |
 | Mechanical module | Gears (spur/internal/bevel/worm/rack/planetary/differential), shafts, bearings, couplings, fasteners, springs; stick/side/section/axial/teeth views | in progress |
-| Patent module | Numerals, numbering scheme, reference sign list, office profiles, preflight, monochrome export | in progress |
+| Figures module | Numerals, numbering scheme, reference sign list, office profiles, preflight, monochrome export | in progress |
 | Engine API | JSON facade, sessions, hit test, snapping, context actions, host draw plans | in progress |
 | Web add-in | WebAssembly engine, sidebar preview editor, library, inspector, pie menu, floating bar, native shape writer | in progress |
 
-**Exit criteria:** two-stage gearbox and a patent figure can be created without numeric input in the sidebar editor,
+**Exit criteria:** two-stage gearbox and a technical figure can be created without numeric input in the sidebar editor,
 inserted into PowerPoint (web) and exported as SVG; all tests green.
 
 ## Phase 2 – PowerPoint COM add-in (Windows)
@@ -165,7 +165,7 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
    through the catalog; module docs docs/en/modules/process.md, energy.md, robotics.md); slide-wide style: ISO 128 line
    groups and black and white as a slide style for all elements, new ones included (done 2026-11-25 in COM and web);
    open: colour accents per module.
-5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
+5. P3: variants and states, diagram auto-layout, figure workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
 ### Review at the end of 2026-11-25 and next steps
 
@@ -205,32 +205,32 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
    menu.
 4. P3: diagram auto-layout done 2026-11-25 (layered, multi-selection, all hosts through the engine; COM checked in
    PowerPoint); import of CSV (chart data) and GeoJSON/GPX (map routes and markers) done 2026-11-25 (COM Extras menu, web import
-   button; checked in PowerPoint); patent check of all slides with navigation to the finding (COM; engine `preflight` for web and
+   button; checked in PowerPoint); compatibility check of all slides with navigation to the finding (COM; engine `preflight` for web and
    LibreOffice) done 2026-11-25; variants and states as a slide comparison (added/changed/removed marked; COM Extras menu,
-   engine `diff`) done 2026-11-25; patent check in web (panel for the page) and LibreOffice (dialog over every page
-   with navigation) done 2026-11-25; slide comparison in LibreOffice done 2026-11-25; open: the slide comparison and the
-   check across all slides in the web add-in (both need the other slides' units through Office.js; engine `diff` is
-   ready), SVG/DXF import (vector drawings as editable shapes – a larger piece of its own).
+   engine `diff`) done 2026-11-25; compatibility check in web (panel for the page) and LibreOffice (dialog over every
+   page with navigation) done 2026-11-25; slide comparison in LibreOffice done 2026-11-25; open: the slide comparison
+   and the check across all slides in the web add-in (both need the other slides' units through Office.js; engine `diff`
+   is ready), SVG/DXF import (vector drawings as editable shapes – a larger piece of its own).
 
 ### Review at the end of the P3 round (2026-11-25) and next steps
 
 **Done in this round:** variants as a slide comparison (Core `Variants`, engine `diff`; COM Extras menu, scenario
-`variants`; LibreOffice menu, integration check), the patent check in all three hosts (COM window over all slides, web
-panel for the page, LibreOffice dialog over all pages with keyboard navigation, checked with real input in
+`variants`; LibreOffice menu, integration check), the compatibility check in all three hosts (COM window over all
+slides, web panel for the page, LibreOffice dialog over all pages with keyboard navigation, checked with real input in
 `ui_smoke.py`), diagram auto-layout, CSV/GeoJSON/GPX import. Test totals at the end: .NET 1,698 (18 test projects), web 207, LibreOffice
 unit 110, LibreOffice integration 77, LibreOffice UI smoke 23, PowerPoint scenarios green one by one.
 
 **Found by verification (and fixed):** a new LibreOffice command is silently ignored unless it is in the protocol
 handler's command list; LibreOffice renames duplicated shapes whose names end in digits, which would have cut the unit
 id out of the name in .pptx – names are now restored from the attributes; the photographs rule named only the DPMA
-although it applies to every office; the first patent finding of a page has no element, so navigation must handle
+although it applies to every office; the first compatibility finding of a page has no element, so navigation must handle
 page-level findings.
 
 **Plan review – what changes in the plan:**
-- *Same command, same name, same place in every host.* "Patent check (drawings)" and "Compare with the previous slide
-  (variants)" now exist under the same names in COM and LibreOffice. In COM both sit in the Extras menu; with parts list
-  and data export they form a "Review" family – a ribbon group *Review* (Patent check, Compare, Parts list, Export
-  data) would make them findable without the menu. Proposed for the maintainer's decision, not built.
+- *Same command, same name, same place in every host.* "Compatibility (drawing rules)" and "Compare with the previous
+  slide (variants)" now exist under the same names in COM and LibreOffice. In COM both sit in the Extras menu; with
+  parts list and data export they form a "Review" family – a ribbon group *Review* (Compatibility, Compare, Parts list,
+  Export data) would make them findable without the menu. Proposed for the maintainer's decision, not built.
 - *Every host command gets a headless path and a visible path.* The LibreOffice dialog logs its result when no window
   is visible; that made the integration test possible, and `ui_smoke.py` covers the real dialog.
 - *Features that need other slides (web)* wait for the Office.js check in PowerPoint; building them blind would break
@@ -242,7 +242,7 @@ page-level findings.
    (2026-11-25, unit-tested against an Office.js stand-in) and wait for that run.
 2. SVG/DXF import – done 2026-11-25 (Core `VectorImport`, engine `importVector`; COM Review ▸ Import, web import button,
    LibreOffice menu; scenario `vector-import`, LibreOffice integration check).
-3. Ribbon group *Review* in COM – done 2026-11-25 (Patent check, Compare, Import, Export data).
+3. Ribbon group *Review* in COM – done 2026-11-25 (Compatibility, Compare, Import, Export data).
 4. Open details: a section line per wall; LibreOffice on-canvas limits (guides while dragging need drawing into the
    view); real webspace and installer runs; the web host's corner radius (PowerPointApi 1.10 adjustments) is built but not
    yet run in PowerPoint. Curves and intersections keep the road lane
@@ -268,7 +268,7 @@ module (most used first), cross-module coupling beyond the generic port docking,
 
 Plan: [docs/en/design/charts-v2.md](docs/en/design/charts-v2.md) – select, switch and style every part of a chart (also
 with PowerPoint's own tools), stacked panels with a shared axis and phase lines, value lines, shaded and hatched regions,
-dimension arrows and numerals for patent figures, curves from functions and hand sketches, axis breaks, matplotlib
+dimension arrows and numerals for technical figures, curves from functions and hand sketches, axis breaks, matplotlib
 export, charts from pictures. Math coordinate systems and function graphs move into the chart module; geometry and
 vectors stay in `math`.
 
@@ -279,7 +279,7 @@ vectors stay in `math`.
    some parts folds into those parts, a click on the selected chart selects the part (bar, pie menu, "Parts …" list,
    outline). Open: web and LibreOffice part selection; Tab cycling through parts.
 2. Figure model (panels, phase lines, value lines, regions/hatching, notes, dimension arrows, numerals; table editor;
-   the maintainer's patent figure as a preset).
+   the maintainer's example figure as a preset).
 3. Curves from functions and sketches; axis breaks.
 4. matplotlib export; math merge.
 4a. **Editable exports (maintainer 2026-11-25):** LaTeX – every drawing (flowcharts, block diagrams, sketches) as TikZ
@@ -297,10 +297,10 @@ double circle, elbow connectors route by their docked sides (C runs with clearan
 carry a "yes"/"no" label, the diagram layout docks branches and loops on the sides and computes the clearance, dashed
 note frames. Open: obstacle-aware routing for hand-placed boxes.
 
-### Patent figures fit-gap (research 2026-11-25)
+### Technical figures fit-gap (research 2026-11-25)
 
-Research of EPO/USPTO/PCT/DPMA practice and real patent figures against the library. In progress (agents with file
-ownership): annotation – optional steps, ISO 5807 shapes (predefined process, off-page connector, loop limits,
+Research of EPO/USPTO/PCT/DPMA practice and figures from real applications against the library. In progress (agents with
+file ownership): annotation – optional steps, ISO 5807 shapes (predefined process, off-page connector, loop limits,
 preparation, manual operation, database, delay), fork/join, yes/no exits on quick add, hop-overs and junction dots on
 connectors, wide (hollow) arrows, double-line arrows, arrow pairs, bus slash with count, tables, view arrows, detail
 views, material hatches, heat-flow arrows; diagrams – control-loop blocks (summing junction, multiplication point,
@@ -328,15 +328,15 @@ group), then web and LibreOffice through the same engine command.
   architecture rooms, with plan, section and schematic (riser) views of the same installation (the view switch of
   assemblies applies).
 - **Parts list from the slide (P2, done in COM 2026-11-24):** a table element that lists the parts of the slide or selection (type, key
-  parameters, reference numeral), updated when parts change; for patent figures and gearbox slides.
+  parameters, reference numeral), updated when parts change; for technical figures and gearbox slides.
 - **Dimension between parts (P2, done in COM 2026-11-24 for two parts):** select two parts → centre distance, gap or angle as a live dimension.
-- **Slide-wide style (P2):** line weights per ISO 128 group, monochrome/patent mode, colour accents per module, applied
+- **Slide-wide style (P2):** line weights per ISO 128 group, monochrome mode, colour accents per module, applied
   to every element on the slide at once.
 - **Math & geometry (P3, done 2026-11-25, module `math`, docs/en/modules/geometry.md):** coordinate systems, function
   graphs, vectors, angles, triangles and circles, constructions for teaching slides (18 types, 32 items).
 - **Hand-drawn look (P3):** an optional sketchy rendering of the same model for workshop slides.
 - **Optics (P3, idea 2026-11-25):** lenses, mirrors, prisms, beam splitters, light sources and detectors with beam
-  paths that follow the elements – common in patent figures and teaching slides.
+  paths that follow the elements – common in technical figures and teaching slides.
 - **Timing and sequence charts (P3, idea 2026-11-25):** signal timing diagrams and step/transition charts (GRAFCET
   ideas) tied to the electrical and fluid modules' designators.
 
@@ -388,8 +388,8 @@ axis, `Anchor.SidePitch`).
 - **P3 – Variants and states** (spec §7): before/after, operating modes; visibility per variant; slide per variant.
 - **P3 – Diagram auto-layout and routing:** layered layout that keeps manual placement, connectors that avoid shapes,
   jump-overs at crossings.
-- **P3 – Patent workflow in the hosts:** numbering assistant across figures, preflight panel with navigation to the
-  finding (preflight rules exist in the patent module), figure-sheet layout.
+- **P3 – Figure workflow in the hosts:** numbering assistant across figures, preflight panel with navigation to the
+  finding (preflight rules exist in the figures module), figure-sheet layout.
 - **P3 – Import:** SVG/DXF outlines as hatchable regions, GeoJSON/GPX for maps, CSV for charts.
 
 ### Building gear trains yourself (maintainer 2026-11-21)
@@ -468,7 +468,7 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
   build-ports, line-language, crossings, gear-trains, gear-motion, linkage-build) have not run in this form yet and may
   need screen-position fixes.
 - **Status 2026-11-20:** engine core, Engine API and twelve modules on `main`: basic shapes, annotation, mechanical,
-  patent, kinematics, electrical, electric machines, automotive/ADAS/HMI, architecture, diagrams, maps and routes,
+  figures, kinematics, electrical, electric machines, automotive/ADAS/HMI, architecture, diagrams, maps and routes,
   fluid power (each with tests, gallery and EN/DE module docs; 826 library items in 70 categories, verified in
   PowerPoint).
 - Core wishes from the maps and fluid modules (2026-11-20): shared helpers for port routing/`ConnectToPort` (electrical and fluid duplicate them) and multi-subpath
@@ -501,7 +501,7 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
   - Checked in PowerPoint 2026-11-20: drawn heads, underline, input prompt, dependent wall redraw with one undo step.
 - UX feedback from the maintainer (2026-11-20), COM first, then web:
   - Done 2026-11-20 (COM, verified in PowerPoint where noted in the host docs): black and white as a reversible document setting (fills, text, highlighters); ribbon order (Annotate =
-    annotation + patent + basic shapes right after Tools, small About); transparent ribbon thumbnails for dark Office;
+    annotation + figures + basic shapes right after Tools, small About); transparent ribbon thumbnails for dark Office;
     sidebar preview drops units deleted on the slide; text editing by double-click and a bar button; view switch keeps
     proportions; resize about the centre for centred parts; pie menu "Insert ▸" with elements that fit the selection
     (shaft → gears and bearings, wire → electrical symbols, always labels/arrows/numerals), placed at the pointer with

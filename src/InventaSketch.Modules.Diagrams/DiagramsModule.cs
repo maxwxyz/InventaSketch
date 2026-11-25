@@ -8,7 +8,7 @@ namespace InventaSketch.Modules.Diagrams
     /// <summary>
     /// Diagrams module: UML (class, use case, activity, state, sequence, deployment, relationships), ER (entities,
     /// Chen notation, crow's-foot connectors), system/architecture blocks, BPMN-lite with pools and lanes, control loops,
-    /// computer systems and communication, data layouts, GUI wireframes and patent-style state circles. Every box symbol exposes
+    /// computer systems and communication, data layouts, GUI wireframes and state circles. Every box symbol exposes
     /// connector ports; connectors are point objects whose ends attach to those ports. Simple flowchart starters
     /// remain in the annotation module (<c>ann.flow.*</c>).
     /// </summary>
@@ -100,7 +100,7 @@ namespace InventaSketch.Modules.Diagrams
                 yield return Item("diag.state.final", "diag.activity.final", "Final state", "Endzustand", DiagCategories.State, "final", "end", "ende");
                 yield return Item("diag.state.activities", "diag.state.state", "State with entry/exit", "Zustand mit Ein-/Austritt", DiagCategories.State, "entry", "exit", "do")
                     with { Params = Ps(("entry", "open()"), ("exit", "close()")), Size = new Size2(40, 22) };
-                yield return Item("diag.state.circle", "diag.state.state", "State (circle)", "Zustand (Kreis)", DiagCategories.State, "circle", "kreis", "patent", "bubble")
+                yield return Item("diag.state.circle", "diag.state.state", "State (circle)", "Zustand (Kreis)", DiagCategories.State, "circle", "kreis", "bubble")
                     with { View = "circle", Size = new Size2(20, 20) };
                 yield return Item("diag.state.transition", "diag.uml.relation", "Transition (event [guard] / action)", "Transition (Ereignis [Bedingung] / Aktion)", DiagCategories.State,
                         "transition", "übergang", "event", "ereignis", "guard", "bedingung")
@@ -117,7 +117,7 @@ namespace InventaSketch.Modules.Diagrams
                     with { Params = Ps(("kind", "create")) };
                 yield return Item("diag.seq.message.self", "diag.seq.message", "Self message", "Selbstaufruf", DiagCategories.Sequence, "self", "selbst", "recursion", "rekursion")
                     with { Points = new[] { new Vec2(0, -4), new Vec2(0, 4) } };
-                yield return Item("diag.seq.message.numbered", "diag.seq.message", "Message with step numeral", "Nachricht mit Schrittnummer", DiagCategories.Sequence, "step", "schritt", "numeral", "bezugszeichen", "302", "patent")
+                yield return Item("diag.seq.message.numbered", "diag.seq.message", "Message with step numeral", "Nachricht mit Schrittnummer", DiagCategories.Sequence, "step", "schritt", "numeral", "bezugszeichen", "302")
                     with { Params = Ps(("step", "302")) };
                 yield return Item("diag.seq.lifeline.gap", "diag.seq.lifeline", "Lifeline with time gap", "Lebenslinie mit Zeitlücke", DiagCategories.Sequence, "time gap", "zeitlücke", "break", "unterbrechung", "//")
                     with { Params = Ps(("breaks", "50")) };
@@ -182,12 +182,12 @@ namespace InventaSketch.Modules.Diagrams
                 yield return Item("diag.ctrl.loop.sensor", "diag.ctrl.loop", "Control loop with sensor", "Regelkreis mit Messglied", DiagCategories.Control, "sensor", "messglied", "measurement", "messung")
                     with { Params = Ps(("sensor", true)), Size = new Size2(120, 50) };
 
-                // Computer systems (software patent FIG. 1): system blocks without port squares, named by their role.
+                // Computer systems (FIG. 1 of software inventions): system blocks without port squares, named by their role.
                 foreach (var (role, en, de) in new[] { ("processor", "Processor (block)", "Prozessor (Block)"), ("memory", "Memory (block)", "Speicher (Block)"),
                     ("storage", "Storage (block)", "Massenspeicher (Block)"), ("network", "Network interface (block)", "Netzwerkschnittstelle (Block)"),
                     ("io", "I/O interface (block)", "E/A-Schnittstelle (Block)"), ("display", "Display (block)", "Anzeige (Block)"),
                     ("sensor", "Sensor(s) (block)", "Sensor(en) (Block)"), ("input", "Input device (block)", "Eingabegerät (Block)") })
-                    yield return Item("diag.sys.block." + role, "diag.sys.block", en, de, DiagCategories.Computer, role, "computer", "rechner", "fig. 1", "patent", "software")
+                    yield return Item("diag.sys.block." + role, "diag.sys.block", en, de, DiagCategories.Computer, role, "computer", "rechner", "fig. 1", "software")
                         with { Params = Ps(("role", role), ("portsLeft", 0), ("portsRight", 0)), Size = new Size2(40, 16) };
                 yield return Item("diag.sys.bus.double", "diag.sys.bus", "System bus (double line)", "Systembus (Doppellinie)", DiagCategories.Computer, "double", "doppel", "hollow")
                     with { Params = Ps(("style", "double")) };

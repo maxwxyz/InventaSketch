@@ -6,7 +6,7 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Annotation
 {
     /// <summary>
-    /// Annotation module: lines and arrows, leaders, labels, dimensions, hatching, patent marks,
+    /// Annotation module: lines and arrows, leaders, labels, dimensions, hatching, figure marks,
     /// technical-mechanics symbols (free-body diagrams) and flowchart starters. Every type is
     /// insertable without parameters.
     /// </summary>
@@ -30,7 +30,7 @@ namespace InventaSketch.Modules.Annotation
             new LinearDimensionType(false), new LinearDimensionType(true), new AngleDimensionType(), new RadiusDimensionType(),
             // Hatching
             new HatchBoxType(false), new HatchBoxType(true), new HatchPolygonType(),
-            // Patent marks
+            // Figure marks
             new LeaderType(), new FigLabelType(), new SectionLineType(), new DetailCircleType(), new CenterlineType(), new BreaklineType(),
             new BracketType(true), new BracketType(false), new ViewArrowType(), new DetailViewType(),
             // Technical mechanics
@@ -49,7 +49,7 @@ namespace InventaSketch.Modules.Annotation
             new LibraryCategory(AnnCategories.Labels, new I18nText("Labels & text", "Beschriftungen & Text"), Id, 20),
             new LibraryCategory(AnnCategories.Dimensions, new I18nText("Dimensions", "Bemaßung"), Id, 30),
             new LibraryCategory(AnnCategories.Hatching, new I18nText("Hatching", "Schraffur"), Id, 40),
-            new LibraryCategory(AnnCategories.PatentMarks, new I18nText("Patent marks", "Patentzeichen"), Id, 50),
+            new LibraryCategory(AnnCategories.PatentMarks, new I18nText("Figure marks", "Zeichen für Abbildungen"), Id, 50),
             new LibraryCategory(AnnCategories.Mechanics, new I18nText("Technical mechanics", "Technische Mechanik"), Id, 60),
             new LibraryCategory(AnnCategories.Flowchart, new I18nText("Flowchart", "Ablaufdiagramm"), Id, 70),
         };

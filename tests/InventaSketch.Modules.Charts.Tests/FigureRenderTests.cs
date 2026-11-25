@@ -38,7 +38,7 @@ namespace InventaSketch.Modules.Charts.Tests
         }
 
         [Fact]
-        public void PatentFigureHasEveryElementOfTheCheckFigure()
+        public void ExampleFigureHasEveryElementOfTheCheckFigure()
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.figure.phases");

@@ -395,7 +395,7 @@ namespace InventaSketch.Modules.Patent.Tests
         }
 
         [Fact]
-        public void JsonRoundTripKeepsPatentData()
+        public void JsonRoundTripKeepsFigureData()
         {
             var r = Fx.Reg();
             var doc = Fx.Clean(r, out _);
@@ -414,14 +414,14 @@ namespace InventaSketch.Modules.Patent.Tests
             var doc = Fx.Clean(r, out _);
             var dir = Path.Combine(AppContext.BaseDirectory, "gallery");
             Directory.CreateDirectory(dir);
-            var html = new StringBuilder("<!doctype html><html><head><meta charset=\"utf-8\"><title>Patent gallery</title><style>body{margin:10px;font-family:Arial}svg{border:1px solid #999;margin:4px;width:560px;height:792px}</style></head><body>");
+            var html = new StringBuilder("<!doctype html><html><head><meta charset=\"utf-8\"><title>Figures gallery</title><style>body{margin:10px;font-family:Arial}svg{border:1px solid #999;margin:4px;width:560px;height:792px}</style></head><body>");
             html.Append("<div>Editor view (with sheet helper) and filing export (monochrome, helpers removed)</div>");
             foreach (var page in doc.Pages) html.Append(SvgRenderer.RenderPage(r, doc, page));
             foreach (var svg in PatentExport.AllPagesSvg(r, doc)) html.Append(svg);
             html.Append("</body></html>");
-            File.WriteAllText(Path.Combine(dir, "patent-gallery.html"), html.ToString());
+            File.WriteAllText(Path.Combine(dir, "figures-gallery.html"), html.ToString());
             var findings = Preflight.Run(r, doc, PatentProfiles.CommonSafe);
-            File.WriteAllText(Path.Combine(dir, "patent-preflight.txt"), Fx.Dump(findings) + "\n\n" + ReferenceNumerals.Export(doc));
+            File.WriteAllText(Path.Combine(dir, "figures-preflight.txt"), Fx.Dump(findings) + "\n\n" + ReferenceNumerals.Export(doc));
         }
     }
 }

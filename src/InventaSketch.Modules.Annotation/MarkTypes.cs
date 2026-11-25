@@ -68,7 +68,7 @@ namespace InventaSketch.Modules.Annotation
     /// <summary>
     /// Detail view frame (circle or rectangle) for the enlarged drawing of a detail, labelled with the letter of its detail
     /// marker (<c>ann.detail.circle</c>): without an own letter the n-th detail view on the page takes the letter of the n-th
-    /// marker. An optional graphic scale bar replaces a written scale ("2:1"), which patent drawings do not allow.
+    /// marker. An optional graphic scale bar replaces a written scale ("2:1"), which the offices' drawing rules do not allow.
     /// </summary>
     public sealed class DetailViewType : AnnBoxType
     {

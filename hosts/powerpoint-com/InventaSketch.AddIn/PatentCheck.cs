@@ -10,7 +10,7 @@ using PowerPoint = Microsoft.Office.Interop.PowerPoint;
 namespace InventaSketch.AddIn
 {
     /// <summary>
-    /// Patent workflow in PowerPoint: the patent drawing preflight (<see cref="Preflight"/>) over every slide of the
+    /// Compatibility check in PowerPoint: the drawing-rule preflight (<see cref="Preflight"/>) over every slide of the
     /// presentation for an office profile, with navigation from a finding to its slide and element. A drafting aid, not a
     /// legal certification (the disclaimer is always shown).
     /// </summary>
@@ -44,7 +44,7 @@ namespace InventaSketch.AddIn
         }
     }
 
-    /// <summary>The "Patent check" window: office choice, findings list with navigation, disclaimer.</summary>
+    /// <summary>The "Compatibility" window: office choice, findings list with navigation, disclaimer.</summary>
     internal sealed class PatentCheckForm : Form
     {
         private readonly PowerPoint.Application _app;
@@ -124,11 +124,11 @@ namespace InventaSketch.AddIn
                 _list.EndUpdate();
                 var errors = items.Count(i => i.Finding.Severity == Severity.Error);
                 _summary.Text = items.Count == 0 ? T("No findings.", "Keine Befunde.") : T($"{items.Count} finding(s), {errors} error(s).", $"{items.Count} Befund(e), {errors} Fehler.");
-                Log.Info($"Patent check ({profile.Id}): {items.Count} finding(s)");
+                Log.Info($"Compatibility check ({profile.Id}): {items.Count} finding(s)");
             }
             catch (Exception ex)
             {
-                Log.Error("Patent check", ex);
+                Log.Error("Compatibility check", ex);
                 _summary.Text = ex.Message;
             }
             finally
@@ -148,7 +148,7 @@ namespace InventaSketch.AddIn
             }
             catch (Exception ex)
             {
-                Log.Error("Patent check: go to finding", ex);
+                Log.Error("Compatibility check: go to finding", ex);
             }
         }
     }
