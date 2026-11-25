@@ -1460,6 +1460,8 @@ namespace InventaSketch.AddIn
 
         internal string PartAtOf(string shapeName, double xPt, double yPt) => _onSlide?.PartAtOf(shapeName, xPt, yPt) ?? "";
 
+        internal string BuildPortsOf(string shapeName) => _onSlide?.BuildPortsOf(shapeName) ?? "";
+
         /// <summary>Runs a bar/pie command on the selected unit (automation).</summary>
         internal bool RunUnitCommand(string commandId) => _onSlide?.RunCommand(commandId) ?? false;
 

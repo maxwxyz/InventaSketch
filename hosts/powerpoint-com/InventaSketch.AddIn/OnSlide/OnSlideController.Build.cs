@@ -245,6 +245,20 @@ namespace InventaSketch.AddIn.OnSlide
             else BeginPlacement(chosen);
         }
 
+        /// <summary>Build ports of a unit with the items they offer, for UI tests ("id|kind|item,item…" per line).</summary>
+        internal string BuildPortsOf(string shapeName) => OnUi(() =>
+        {
+            var slide = CurrentSlide();
+            if (slide is null) return "";
+            var unit = SketchUnits.Read(slide.Shapes[shapeName]);
+            var owner = unit?.Objects.FirstOrDefault(o => _registry().Type(o.Type) is not null);
+            if (unit is null || owner is null) return "";
+            var registry = _registry();
+            var full = SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+            return string.Join("\n", Building.Ports(registry, full, owner.Id, _lang()).Select(p =>
+                p.Id + "|" + p.Kind + "|" + string.Join(",", Building.Items(registry, full, owner.Id, p, 8, _lang()).Select(i => i.Id))));
+        });
+
         /// <summary>Docks the chosen part at a build port (one undo step), coupled and selected.</summary>
         private void PortCommand(SketchUnit unit, string id)
         {
