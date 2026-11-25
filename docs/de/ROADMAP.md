@@ -266,13 +266,14 @@ Seite hat kein Element, die Navigation muss also seitenweite Befunde behandeln.
 
 **Als Nächstes, in dieser Reihenfolge:**
 1. Web in PowerPoint (wartet auf den Maintainer: Entwicklungszertifikat über `npm run certs` in `hosts/office-web`
-   oder ein hochgeladenes Webspace-Paket); danach Web-Prüfung über alle Folien und Folienvergleich über Office.js.
+   oder ein hochgeladenes Webspace-Paket). Web-Prüfung über alle Folien, Folienvergleich und Eckenradius sind gebaut
+   (25.11.2026, mit nachgebautem Office.js unit-getestet) und warten auf diesen Lauf.
 2. SVG/DXF-Import – erledigt 25.11.2026 (Core `VectorImport`, Engine `importVector`; COM Prüfen ▸ Importieren,
    Web-Importknopf, LibreOffice-Menü; Szenario `vector-import`, LibreOffice-Integrationsprüfung).
 3. Menüband-Gruppe *Prüfen* in COM – erledigt 25.11.2026 (Patentprüfung, Vergleichen, Importieren, Daten exportieren).
 4. Offene Details: Schnittlinie je Wand; Grenzen der Bedienung auf der Folie in LibreOffice (Hilfslinien beim Ziehen
-   brauchen Zeichnen in die Ansicht); echte Läufe auf Webspace und mit dem Installer; der Web-Host setzt den Eckenradius
-   abgerundeter Rechtecke noch nicht (es gilt PowerPoints Standard; zusammen mit der Web-Prüfung in PowerPoint). Kurven und
+   brauchen Zeichnen in die Ansicht); echte Läufe auf Webspace und mit dem Installer; der Eckenradius im Web-Host
+   (PowerPointApi-1.10-Anpassungen) ist gebaut, aber in PowerPoint noch nicht ausgeführt. Kurven und
    Kreuzungen behalten seit 25.11.2026 bei jeder Fahrstreifenzahl die Fahrstreifenbreite (sie wachsen mit).
 
 **Test des Maintainers 25.11.2026 – gefunden und behoben:** Das Einfügefeld scheiterte beim zweiten Öffnen (es gab

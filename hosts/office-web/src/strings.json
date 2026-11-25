@@ -182,5 +182,15 @@
   "pc.sev.error": { "en": "Error", "de": "Fehler" },
   "pc.sev.warning": { "en": "Warning", "de": "Warnung" },
   "pc.sev.manual": { "en": "Check by hand", "de": "Selbst prüfen" },
-  "pc.sev.info": { "en": "Note", "de": "Hinweis" }
+  "pc.sev.info": { "en": "Note", "de": "Hinweis" },
+  "pc.allSlides": { "en": "All slides", "de": "Alle Folien" },
+  "pc.slide": { "en": "Slide {0}", "de": "Folie {0}" },
+  "pc.reading": { "en": "Reading the slides …", "de": "Folien werden gelesen …" },
+  "cmd.compare": { "en": "Compare with the previous slide (variants): marks added, changed and removed elements; click again to remove the marks", "de": "Mit vorheriger Folie vergleichen (Varianten): markiert neue, geänderte und entfernte Elemente; erneut klicken entfernt die Markierungen" },
+  "cmp.legend": { "en": "Compared with slide {0}: {1} added, {2} changed, {3} removed", "de": "Vergleich mit Folie {0}: {1} neu, {2} geändert, {3} entfernt" },
+  "cmp.done": { "en": "Marked: {0} added, {1} changed, {2} removed", "de": "Markiert: {0} neu, {1} geändert, {2} entfernt" },
+  "cmp.cleared": { "en": "Comparison marks removed", "de": "Vergleichsmarkierungen entfernt" },
+  "cmp.none": { "en": "No differences to the previous slide", "de": "Keine Unterschiede zur vorherigen Folie" },
+  "cmp.first": { "en": "There is no previous slide to compare with", "de": "Es gibt keine vorherige Folie zum Vergleichen" },
+  "cmp.unsupported": { "en": "Comparing slides needs PowerPoint with PowerPointApi 1.5", "de": "Der Folienvergleich braucht PowerPoint mit PowerPointApi 1.5" }
 }

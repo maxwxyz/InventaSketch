@@ -238,13 +238,14 @@ page-level findings.
 
 **Next, in this order:**
 1. Web in PowerPoint (blocked on the maintainer: dev certificate via `npm run certs` in `hosts/office-web`, or an
-   uploaded webspace package); then the web check across all slides and the slide comparison through Office.js.
+   uploaded webspace package). The web check across all slides, the slide comparison and the corner radius are built
+   (2026-11-25, unit-tested against an Office.js stand-in) and wait for that run.
 2. SVG/DXF import – done 2026-11-25 (Core `VectorImport`, engine `importVector`; COM Review ▸ Import, web import button,
    LibreOffice menu; scenario `vector-import`, LibreOffice integration check).
 3. Ribbon group *Review* in COM – done 2026-11-25 (Patent check, Compare, Import, Export data).
 4. Open details: a section line per wall; LibreOffice on-canvas limits (guides while dragging need drawing into the
-   view); real webspace and installer runs; the web host does not set the corner radius of rounded rectangles yet
-   (PowerPoint's default is used; to be done with the web check in PowerPoint). Curves and intersections keep the road lane
+   view); real webspace and installer runs; the web host's corner radius (PowerPointApi 1.10 adjustments) is built but not
+   yet run in PowerPoint. Curves and intersections keep the road lane
    width for any lane count since 2026-11-25 (they grow with their lanes).
 
 **Maintainer test 2026-11-25 – found and fixed:** the insert box failed the second time (it disposed shared thumbnails);
