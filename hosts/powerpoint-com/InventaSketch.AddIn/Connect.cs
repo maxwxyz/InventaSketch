@@ -252,6 +252,7 @@ namespace InventaSketch.AddIn
             sb.Append("<button id=\"IskMonochrome\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
               .Append(X(T("Shows the InventaSketch elements of this slide in black and white (patent style): fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß (Patentstil), einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
             AppendLineGroupMenu(sb);
+            AppendAccentMenu(sb);
             sb.Append("<toggleButton id=\"IskAnchor\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskMotion\" label=\"").Append(L(T("Move", "Bewegen"))).Append("\" getImage=\"GetMotionImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
@@ -327,6 +328,18 @@ namespace InventaSketch.AddIn
                 sb.Append("<toggleButton id=\"IskLineGroup").Append(mm.Replace('.', '_')).Append("\" tag=\"").Append(mm).Append("\" label=\"")
                   .Append(L((_lang == Lang.De ? mm.Replace('.', ',') : mm) + " mm" + name)).Append("\" getPressed=\"GetLineGroupPressed\" onAction=\"OnLineGroup\" />");
             }
+            sb.Append("</menu>");
+        }
+
+        /// <summary>"Accent colour": one colour for the coloured parts of every InventaSketch element of the slide.</summary>
+        private void AppendAccentMenu(StringBuilder sb)
+        {
+            sb.Append("<menu id=\"IskAccent\" label=\"").Append(L(T("Accent colour", "Akzentfarbe"))).Append("\" imageMso=\"ShapeFillColorPicker\" supertip=\"")
+              .Append(X(T("One colour for the coloured parts of every InventaSketch element of this slide (hue and saturation; pale stays pale, black and grey stay). New elements on the slide take it too.",
+                          "Eine Farbe für die farbigen Teile aller InventaSketch-Elemente dieser Folie (Farbton und Sättigung; Helles bleibt hell, Schwarz und Grau bleiben). Neue Elemente auf der Folie übernehmen sie."))).Append("\">");
+            sb.Append("<toggleButton id=\"IskAccentNone\" tag=\"none\" label=\"").Append(L(T("Original colours", "Originalfarben"))).Append("\" getPressed=\"GetAccentPressed\" onAction=\"OnAccent\" />");
+            foreach (var (id, _, name) in Accents.Presets)
+                sb.Append("<toggleButton id=\"IskAccent_").Append(id).Append("\" tag=\"").Append(id).Append("\" label=\"").Append(L(name.Get(_lang))).Append("\" getPressed=\"GetAccentPressed\" onAction=\"OnAccent\" />");
             sb.Append("</menu>");
         }
 
@@ -951,7 +964,7 @@ namespace InventaSketch.AddIn
                 var on = units.Any(u => !u.Doc.Settings.Monochrome);
                 _app.StartNewUndoEntry();
                 // Slide-wide: new elements on the slide take it too.
-                OnSlide.SlideStyle.Write(slide, on, OnSlide.SlideStyle.Read(slide)?.Group ?? units.Select(u => u.Doc.Settings.LineGroup).FirstOrDefault(g => g is not null));
+                OnSlide.SlideStyle.Write(slide, OnSlide.SlideStyle.Current(slide) with { Mono = on });
                 foreach (var u in units)
                 {
                     if (u.Doc.Settings.Monochrome == on) continue;
@@ -969,8 +982,7 @@ namespace InventaSketch.AddIn
         private double CurrentLineGroup()
         {
             if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return Style.DesignLineGroup;
-            if (OnSlide.SlideStyle.Read(slide) is { } st) return st.Group ?? Style.DesignLineGroup;
-            return OnSlide.SketchUnits.All(slide).Select(u => u.Doc.Settings.LineGroup).FirstOrDefault(g => g is not null) ?? Style.DesignLineGroup;
+            return OnSlide.SlideStyle.Current(slide).Group ?? Style.DesignLineGroup;
         }
 
         public bool GetLineGroupPressed(Office.IRibbonControl control)
@@ -1000,6 +1012,53 @@ namespace InventaSketch.AddIn
         }
 
         /// <summary>The ISO 128 line group <paramref name="g"/> for the current slide (slide style + every unit redrawn).</summary>
+        public bool GetAccentPressed(Office.IRibbonControl control)
+        {
+            try
+            {
+                // "none" = the original colours (customUI attributes must not be empty).
+                var original = control.Tag is null or "" or "none";
+                if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return original;
+                var current = OnSlide.SlideStyle.Current(slide).Accent;
+                var preset = Accents.Presets.FirstOrDefault(p => p.Id == control.Tag);
+                return original ? current is null : preset.Id is not null && preset.Color == current;
+            }
+            catch { return false; }
+        }
+
+        public void OnAccent(Office.IRibbonControl control, bool pressed)
+        {
+            try { ApplyAccent(control.Tag is null or "none" ? "" : control.Tag); }
+            catch (Exception ex) { Log.Error("OnAccent", ex); }
+        }
+
+        /// <summary>
+        /// The accent colour for the current slide (preset id, #rrggbb or "" for the original colours): stored as the slide
+        /// style and every unit redrawn with it (one undo step); new elements on the slide take it too.
+        /// </summary>
+        internal bool ApplyAccent(string value)
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return false;
+            var v = (value ?? "").Trim();
+            var preset = Accents.Presets.FirstOrDefault(p => string.Equals(p.Id, v, StringComparison.OrdinalIgnoreCase));
+            var accent = v.Length == 0 ? null : preset.Id is not null ? preset.Color : Accents.Normalize(v);
+            if (v.Length > 0 && accent is null) return false;
+            var units = OnSlide.SketchUnits.All(slide);
+            _app.StartNewUndoEntry();
+            OnSlide.SlideStyle.Write(slide, OnSlide.SlideStyle.Current(slide) with { Accent = accent });
+            foreach (var u in units)
+            {
+                if (u.Doc.Settings.Accent == accent) continue;
+                OnSlide.SketchUnits.Replace(slide, u, u.Doc with { Settings = u.Doc.Settings with { Accent = accent } }, _registry, _lang);
+            }
+            _ribbon?.Invalidate();
+            Log.Info($"Accent {accent ?? "original"} for {units.Count} unit(s)");
+            return true;
+        }
+
+        /// <summary>True once PowerPoint has loaded the ribbon (an invalid ribbon XML is dropped silently; UI tests check this).</summary>
+        internal bool RibbonLoaded => _ribbon is not null;
+
         /// <summary>Button ids of the floating bar as last shown (UI tests).</summary>
         internal string LastBarIds() => _onSlide?.LastBarIds ?? "";
 
@@ -1010,8 +1069,7 @@ namespace InventaSketch.AddIn
             double? group = Math.Abs(g - Style.DesignLineGroup) < 1e-9 ? null : g;
             var units = OnSlide.SketchUnits.All(slide);
             _app.StartNewUndoEntry();
-            var mono = OnSlide.SlideStyle.Read(slide)?.Mono ?? units.Any(u => u.Doc.Settings.Monochrome);
-            OnSlide.SlideStyle.Write(slide, mono, group);
+            OnSlide.SlideStyle.Write(slide, OnSlide.SlideStyle.Current(slide) with { Group = group });
             foreach (var u in units)
             {
                 if (u.Doc.Settings.LineGroup == group) continue;

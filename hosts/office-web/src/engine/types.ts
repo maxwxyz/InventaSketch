@@ -100,6 +100,8 @@ export interface EditorState {
   monochrome?: boolean;
   /** ISO 128 line group (setLineGroup): width of the thick line in mm; thin lines are half of it. 0.5 by default. */
   lineGroup?: number;
+  /** Accent colour (setAccent, #rrggbb): coloured parts of all elements take its hue; absent = each module's colours. */
+  accent?: string | null;
   /** Objects added or modified by the change that produced this revision (edit, undo, redo). */
   changed?: string[];
   /** Further objects whose rendering depends on the changed or removed ones (wall joints, openings): redraw them too. */

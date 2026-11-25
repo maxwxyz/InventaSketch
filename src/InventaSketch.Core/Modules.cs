@@ -1027,8 +1027,8 @@ namespace InventaSketch.Core
 
         /// <summary>
         /// The object's primitives in its local coordinates (page coordinates for point geometry) as every renderer draws
-        /// them: the drawing's line group applied (ISO 128: every stroke scales with it) and the object's own style
-        /// overrides on top (they still win). SVG, exports and the native draw plans all go through here.
+        /// them: the drawing's line group applied (ISO 128: every stroke scales with it), its accent colour
+        /// (<see cref="Accents"/>) and the object's own style overrides on top (they still win). SVG, exports and the native draw plans all go through here.
         /// </summary>
         public IReadOnlyList<Primitive> RenderLocal(SketchObject o, RenderContext ctx)
         {
@@ -1036,11 +1036,13 @@ namespace InventaSketch.Core
             ctx.For(this);
             var local = type.Render(o, ctx);
             var k = ctx.Doc.Settings.LineGroup is double g && g > 0 ? g / Style.DesignLineGroup : 1;
-            if (Math.Abs(k - 1) < 1e-9 && o.Style is null) return local;
+            var accent = ctx.Doc.Settings.Accent;
+            if (Math.Abs(k - 1) < 1e-9 && accent is null && o.Style is null) return local;
             var result = new List<Primitive>(local.Count);
             foreach (var p in local)
             {
                 var q = Math.Abs(k - 1) > 1e-9 ? Prim.ScaleStrokes(p, k) : p;
+                if (accent is not null) q = Accents.Apply(q, accent);
                 if (o.Style is not null) q = Prim.TextOverride(type.ApplyOverride(q, o.Style), o.Style);
                 result.Add(q);
             }

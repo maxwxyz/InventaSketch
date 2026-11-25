@@ -42,6 +42,8 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `setMainText` | `id` (Standard: erstes ausgewähltes Objekt mit Haupttext), `text` | Zustand; setzt den Haupttext des Objekts (unten) |
 | `setPlanScale` | `value` (> 0 setzt, null löscht den Planmaßstab des Dokuments, 100 = 1:100) | Zustand |
 | `setMonochrome` | `value` (true/false) | Zustand; Schwarz-Weiß für das Dokument, jedes Objekt gilt als geändert |
+| `setAccent` | `text` (Voreinstellung aus `accents`, #rrggbb oder "" für die Originalfarben) | Zustand (`accent`); Akzentfarbe des Dokuments, jedes Objekt gilt als geändert |
+| `accents` | `lang` | die angebotenen Akzentfarben `{ id, color, name }` |
 | `setLineGroup` | `value` (0,25, 0,35, 0,5, 0,7 oder 1 – Breite der breiten Linie in mm) | Zustand (`lineGroup`); ISO-128-Liniengruppe des Dokuments, jedes Objekt gilt als geändert |
 | `applyAction` | `action` (ID aus `contextActions`), `input` bei Eingabeaktionen | Zustand |
 | `undo`, `redo`, `select`, `selectRect` | `ids`; `x`, `y`, `w`, `h`, `mode` (enclosed/touching), `add` | Zustand |
@@ -102,6 +104,8 @@ Folie behalten.
   wie Schwarz-Weiß ist sie eine Dokumenteinstellung, die ein Folienmodell in die Seitensitzung mitbringt
   (`importCompact`), die Live-Synchronisierung zeichnet also jede Einheit damit neu. Auf der Browser-Entwicklungsseite
   geprüft (Striche bei 1 mm doppelt so breit).
+- **Akzentfarbe** (25.11.2026): eine dritte Auswahl ruft `setAccent` (Voreinstellungen aus `accents`); auf der
+  Browser-Entwicklungsseite geprüft (die grüne Ladung eines Batteriespeichers wurde rot, das blaugraue Gehäuse blieb).
 - **Skalieren**: zentrierte Teile (Zahnräder, Lager, Räder: `centred`) skalieren standardmäßig um ihre Mitte, mit Strg
   von der Gegenkante; andere Objekte umgekehrt. Eine Beschriftung neben dem Mauszeiger zeigt Größe (oder Faktor) und den
   aktiven Modus mit der Strg-Alternative.

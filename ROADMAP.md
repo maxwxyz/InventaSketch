@@ -196,8 +196,8 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
    `hosts/office-web`) or an uploaded webspace package.
 2. Cross-module consistency: one crossing/hop rule for all line families and mounts with a direction (robot flange →
    tool, placed turned with "+") done 2026-11-25 (also: the render context carries the registry, which ended
-   order-dependent tests); tools follow joint changes and take the flange size (2026-11-25); open: colour accents per module as part of the
-   slide style.
+   order-dependent tests); tools follow joint changes and take the flange size; one accent colour for all modules as part of the slide style
+   (all done 2026-11-25).
 3. LibreOffice: on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
 4. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 

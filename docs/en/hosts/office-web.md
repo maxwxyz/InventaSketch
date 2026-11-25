@@ -40,6 +40,8 @@ undo step each (no step when nothing changes).
 | `setMainText` | `id` (default: first selected object with one), `text` | state; sets the object's main text (below) |
 | `setPlanScale` | `value` (> 0 sets, null clears the document plan scale, 100 = 1:100) | state |
 | `setMonochrome` | `value` (true/false) | state; document black and white, every object counts as changed |
+| `setAccent` | `text` (preset id from `accents`, #rrggbb, or "" for the original colours) | state (`accent`); accent colour of the document, every object counts as changed |
+| `accents` | `lang` | the offered accent colours `{ id, color, name }` |
 | `setLineGroup` | `value` (0.25, 0.35, 0.5, 0.7 or 1 – thick line width in mm) | state (`lineGroup`); ISO 128 line group of the document, every object counts as changed |
 | `applyAction` | `action` (id from `contextActions`), `input` for input actions | state |
 | `undo`, `redo`, `select`, `selectRect` | `ids`; `x`, `y`, `w`, `h`, `mode` (enclosed/touching), `add` | state |
@@ -97,6 +99,8 @@ the units on the slide.
 - **Line weights** (2026-11-25): a choice next to it calls `setLineGroup` (ISO 128 line group, 0.5 mm standard); like
   black and white it is a document setting that a slide model brings into the page session (`importCompact`), so live
   sync redraws every unit with it. Checked in the browser dev page (strokes doubled at 1 mm).
+- **Accent colour** (2026-11-25): a third choice calls `setAccent` (presets from `accents`); checked in the browser dev
+  page (a battery's green charge became red, its blue-grey housing stayed).
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.
