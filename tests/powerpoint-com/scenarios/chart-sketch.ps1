@@ -28,4 +28,16 @@ $after = Get-IskModel $unit
 $blocks = ([regex]::Matches(($after -replace '\\n', "`n"), "`n`n")).Count
 Write-IskInfo ("data blocks after: $blocks")
 Assert-Isk $S ($after -ne $before -and $after -match '\\n\\n') 'a new series was added to the chart data'
+# The sketched curve remembers its trail: "Curve shape" switches the shape without losing it.
+$unit.Select(); Start-Sleep 2
+$addin.Command('partsel:series.1') | Out-Null; Start-Sleep 2
+$bar = $addin.BarIds()
+Write-IskInfo ("bar of the sketched curve: " + $bar)
+Assert-Isk $S ($bar -match 'part:chart\.curve\.shape') 'the sketched curve offers "Curve shape"'
+$m1 = Get-IskModel $unit
+$addin.Command('part:chart.curve.shape') | Out-Null; Start-Sleep 3
+$unit = @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'chart\.xy' } | Select-Object -First 1
+$m2 = Get-IskModel $unit
+Assert-Isk $S ($m2 -ne $m1 -and $m2 -match 'sketch shape=') 'switching the shape changes the curve and keeps the sketch memo'
+Save-IskShot $S '2-shape-switched'
 Send-IskEscape; Start-Sleep 1

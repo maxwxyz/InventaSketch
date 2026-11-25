@@ -33,6 +33,7 @@ namespace InventaSketch.Engine
             modules.Add(new InventaSketch.Modules.Automotive.AutomotiveModule());
             modules.Add(new InventaSketch.Modules.Architecture.ArchitectureModule());
             modules.Add(new InventaSketch.Modules.Diagrams.DiagramsModule());
+            modules.Add(new InventaSketch.Modules.Optics.OpticsModule());
             return Create(modules);
         }
 
