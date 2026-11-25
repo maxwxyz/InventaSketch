@@ -75,7 +75,7 @@ namespace InventaSketch.Modules.Machines
     /// Data-driven object type used for all machine symbols: a list of views (each with its own drawing and icon),
     /// optional parameters, anchors and context actions.
     /// </summary>
-    internal sealed class MachType : ObjectType
+    internal sealed class MachType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -100,7 +100,21 @@ namespace InventaSketch.Modules.Machines
 
         /// <summary>Default size of a view: design box times <see cref="Scale"/>.</summary>
         public Size2 SizeOf(ViewSpec v) => new(v.Design.W * Scale, v.Design.H * Scale);
-        public override IReadOnlyList<ParamDef> Parameters => Params;
+        public override IReadOnlyList<ParamDef> Parameters => ValueSpec.Params.Count == 0 ? Params : _allParams ??= Params.Concat(ValueSpec.Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 3, MachValues)
+
+        private IReadOnlyList<ParamDef>? _allParams;
+
+        /// <summary>Variables, relations, value parameters, checks and drive ports of this type (empty for parts without values).</summary>
+        internal MachValues.Spec ValueSpec => MachValues.For(_id);
+
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : MachLinks.For(this, o, ctx);
         public override bool PreferUniformScale => Uniform;
 
         /// <summary>Drives that take their shaft along when moved (<see cref="ObjectType.DrivesShaft"/>).</summary>

@@ -203,6 +203,42 @@ and encoder signals a wire (wires of the electrical module), the cooling channel
 four sides of the drive system blocks an arrow (block diagram), then the elements that fit. Shaft ends (gearbox, wheels,
 e-machines, engine output) are mechanical and are built on with shafts at their axis ends.
 
+## Engineering values (Calc 3)
+
+Values are optional: every element still inserts and scales without them. They are entered and shown with the Values
+card (*Edit ▸ Values ▸*, the *Values* button in Explore and Engineer) and stored in optional text parameters (engineering
+section of the inspector); `poles` is the existing pole count. Speeds *n*, torques *T* (German *M*) and powers are
+magnitudes; *P* = 2π·*n*·*T*. Card variables come first. Design notes:
+[engineering-calculations.md, section 12](../design/engineering-calculations.md#12-implementation-notes-calc-3-machine-elements-2026-11-25).
+
+| Element | Variables (parameter) | Local relations [source] |
+|---|---|---|
+| Radial- and axial-flux machine (`machines.radial`, `machines.axial`) | *n* (`speed`), *T* (`torque`), *P* (`power`), *f* (`frequency`); panel *n*_s (`syncSpeed`), *s* (`slip`), pole count 2*p* (`poles`); engineer η (`efficiency`), *P*_el (`powerEl`), *P*_N (`ratedPower`), *T*_N (`ratedTorque`) | *n*_s = 60·*f*/*p* (*p* = pole count/2) [S15]; *s* = (*n*_s − *n*)/*n*_s [S15]; *P* = 2π·*n*·*T*; motor operation *P* = η·*P*_el [S14] |
+| E-motor block, drivetrain e-machine | *n*, *T*, *P*, η; engineer *P*_el, *P*_N, *T*_N | *P* = 2π·*n*·*T*; *P* = η·*P*_el |
+| Combustion engine | *n*, *T*, *P*; engineer *P*_N, *T*_N | *P* = 2π·*n*·*T* (no thermodynamics) |
+| Gearbox, differential (blocks) | *i* (`ratio`), η (`efficiency`, default 100 %), *n*₂ (`speedOut`), *T*₂ (`torqueOut`); panel *n*₁ (`speedIn`), *T*₁ (`torqueIn`), *P*₁ (`powerIn`), *P*₂ (`powerOut`) | *n*₁ = *i*·*n*₂; *T*₂ = *T*₁·*i*·η [S18]; *P*₁ = 2π·*n*₁·*T*₁; *P*₂ = 2π·*n*₂·*T*₂ |
+| Wheel | *r* (`radius`, dynamic rolling radius), *n*, *T*, *v* (`linSpeed`, km/h); panel *F* (`force`), *P* | *v* = 2π·*n*·*r*; *F* = *T*/*r* [S18]; *P* = 2π·*n*·*T* |
+
+**Links.**
+
+- *Drive chain*: a connector (an arrow or any line) whose first docked end sits on a block with a mechanical output
+  (e-motor, e-machine, engine, gearbox, differential) and whose last docked end sits on a block with a mechanical input
+  (gearbox, differential, wheel) passes *n* and *T* downstream: motor → gearbox → differential → wheel. The direction of
+  the connector decides which block is upstream.
+- *Shafts*: the e-machine, the engine and the wheel on a mechanical shaft share its speed; the mechanical module passes
+  the torque along the shaft line and through gear meshes (keys `n`, `T`, `P` in both modules).
+
+**Checks** (hints only, overlay, nothing changes):
+
+| Id | Rule | Severity | Source |
+|---|---|---|---|
+| `mach.slip.sign` | induction machine (`rotor` = `asm`) in motor mode with *n* > *n*_s (generator operation) | info | [S15] |
+| `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (gearbox, differential) or *P* > *P*_el (motor) | warning | [S1] |
+| `mach.overload` | *P* > *P*_N or *T* > *T*_N (rating entered by the user) | warning | [S14] |
+
+Not yet: generator operation in the efficiency relation, slot/pole numbers, Kloss torque–speed curve, DC machine
+constants, battery, inverter and DC link values (Calc 4 with the energy module).
+
 ## Known limits
 
 - Drivetrain parts only translate with their shaft (the core coupling moves parts, it does not turn them): after turning

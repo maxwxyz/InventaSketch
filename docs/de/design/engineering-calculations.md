@@ -729,6 +729,9 @@ Wertegriffen auf der Zeichnung beim Widerstand (der Griff sitzt in der Karte); W
 - ein LS B16 an einem Stromkreis mit *I*_z = 13 A (Nutzer) ergibt die Koordinationswarnung
 - die Doku der Module Elektro, Mechanik und Maschinen listet die neuen Größen
 
+*Stand (Maschinenelemente):* die Punkte zu Zahnrädern, Trieben, Federn, Lagern, Motoren und Antriebsblöcken samt ihren
+Prüfungen sind erledigt, siehe Abschnitt 12.
+
 **Calc 4 – Fluid, Wärme/Verfahren, Gebäudetechnik, Energie/Solar, modulübergreifende Ketten.** Diese Stufe bringt:
 - die Beziehungen aus den Abschnitten 2.7–2.10 und 3.5–3.8
 - Anschlussflüsse über `PortMedia`
@@ -1120,3 +1123,79 @@ Dieser Abschnitt hält die Entscheidungen fest, die der Plan offenließ. Maßgeb
 - Einzelne Variablen für die Beschriftung in der Karte wählen (das Modell kann es).
 - Die Vorschau von `dragValue` in der Engine gibt noch keine Werte frei; der Web-Host sollte `ValueDrag` genauso nutzen.
 - Einheitenwahl und Einstellung der signifikanten Stellen (Ingenieur, Calc 6); Richtungspfeile ↑↓ beim Ziehen.
+
+---
+
+## 12. Umsetzungsnotizen: Calc 3 Maschinenelemente (25.11.2026)
+
+Dieser Abschnitt hält die Entscheidungen für den Maschinenteil von Calc 3 fest (Module Mechanik und Maschinen). Maßgeblich
+ist der Code; die Moduldokus listen jede Größe ([mechanical-drives.md](../modules/mechanical-drives.md#technische-werte-calc-3),
+[machines.md](../modules/machines.md#technische-werte-calc-3)).
+
+### 12.1 Dateien
+
+| Bereich | Dateien |
+|---|---|
+| Mechanik: Größen, Beziehungen, Wertparameter, Prüfungen | `src/InventaSketch.Modules.Mechanical/MechValues.cs`; `MechType` implementiert `IValueType`, `IValueLinks`, `IValueChecks` |
+| Mechanik: Topologie und Anschlussbeziehungen | `src/InventaSketch.Modules.Mechanical/MechLinks.cs` (`MechTopology`, `MechLinks`) |
+| Maschinen: Größen, Beziehungen, Prüfungen, Verknüpfung der Antriebsblöcke | `src/InventaSketch.Modules.Machines/MachValues.cs` (`MachValues`, `MachLinks`); `MachType` in `Kit.cs` |
+| Tests | `tests/InventaSketch.Modules.Mechanical.Tests/ValueTests.cs`, `tests/InventaSketch.Modules.Machines.Tests/ValueTests.cs` |
+
+### 12.2 Entscheidungen
+
+- **Beträge.** Drehzahlen, Drehmomente und Leistungen von Zahnrädern, Wellen, Riemenscheiben, Kettenrädern, Maschinen und
+  Antriebsblöcken sind Beträge; der Drehsinn ist kein Wert. Vorzeichenbehaftete Drehzahlen würden jeden Außeneingriff zum
+  Vorzeichenkonflikt machen, wenn Nutzer auf beiden Seiten positive Drehzahlen eintragen. Nur der Planetensatz rechnet mit
+  vorzeichenbehafteten Drehzahlen (gleicher Drehsinn positiv), weil die Willis-Gleichung sie braucht.
+- **Topologie aus den Kopplungen des Kerns** (`Coupling.Graph`, die Beziehungen hinter „Verbundene auswählen – bewegt sich
+  mit“), je Dokument und Registry zwischengespeichert:
+  - *Wellenstränge*: Wellen, Kupplungen und die darauf festen Teile (getragen oder konzentrisch, Nabe nicht lose) haben
+    dasselbe *n*. Lager übernehmen die Drehzahl ihrer Welle, verbinden aber nichts. Planetenträger, Ausgleichskörbe und
+    Radsätze bleiben außen vor.
+  - *Drehmoment entlang eines Wellenstrangs* wird unverändert weitergegeben, wenn höchstens zwei Teile Moment aufnehmen
+    oder abgeben (Zahnräder, Riemenscheiben, Kettenräder, Spindeln, Maschinen); bei drei oder mehr ist die Aufteilung
+    unbekannt, dann entsteht keine Momentverknüpfung.
+  - *Eingriffe*: sich berührende Zahnräder (Stirnrad, Hohlrad, Kegelrad, Schnecke und Schneckenrad; das *z* der Schnecke
+    ist ihre Gangzahl) halten *z*_a·*n*_a = *z*_b·*n*_b. Planeten auf einem Trägerbolzen bleiben außen vor, da Willis über
+    getrennte Teile vorzeichenbehaftete Drehzahlen braucht.
+  - *Trume*: Riemen halten *v* = π·*d*·*n* und *M* = *F*·*d*/2 an beiden Scheiben; Ketten halten *v* = *z*·*p*·*n* und
+    *M* = *F*·*z*·*p*/(2π), dazu *z*₁·*n*₁ = *z*₂·*n*₂ und das Momentverhältnis, wenn keine Teilung eingetragen ist. Eine
+    Mutter auf einer Spindel übernimmt deren *v* und *F*.
+- **Stufenwirkungsgrad.** Das η eines Zahnrads ist der Wirkungsgrad des Eingriffs, in dem es das getriebene Rad ist
+  (Vorgabe 1). Über einen Eingriff gilt *P*_b/η_b = *P*_a/η_a, also *M*_b = *M*_a·(*z*_b/*z*_a)·(η_b/η_a). Sind An- und
+  Abtriebsmoment eingetragen, weicht die Vorgabe und der Löser bestimmt η.
+- **Kette der Antriebsblöcke.** Ein Verbinder (jede Linie), dessen erstes angedocktes Ende an einem Block mit mechanischem
+  Abtrieb und dessen letztes an einem Block mit mechanischem Antrieb sitzt, gibt *n* und *M* weiter: Motor/E-Maschine/
+  Verbrennungsmotor → Getriebe (*n*₁ = *i*·*n*₂, *M*₂ = *M*₁·*i*·η) → Differential (ebenso) → Rad (*v* = ω·*r*,
+  *F* = *M*/*r*). Antriebsstrangteile auf einer mechanischen Welle übernehmen deren Drehzahl. Beide Module verwenden für
+  drehende Elemente die Schlüssel `n`, `T` und `P`, daher treffen sich die Verknüpfungen ohne Code-Abhängigkeit zwischen
+  den Modulen.
+- **Speicherung.** Eingetragene Werte liegen in optionalen Textparametern (im Ingenieurabschnitt des Inspektors);
+  vorhandene Zahlenparameter werden genutzt: `teeth` (*z*), `module` (*m*, mm), `pitch` der Spindel (*P*_h, mm), `starts`
+  (*z* der Schnecke), `poles`. Beim Einfügen werden `teeth` und `poles` wie bisher gespeichert und zählen daher als
+  eingetragene Werte.
+- **Lagerlebensdauer** *L*₁₀ ist eine Anzahl in Millionen Umdrehungen (eine Einheit „Umdrehung“ gibt es nicht); *L*₁₀h ist
+  eine Zeit in Stunden.
+- **Prüfungen** laufen in `ValueSolver.Checks`: `mech.mesh.module` [S16], `mech.power.balance` [S1],
+  `mech.planetary.assembly` [S39], `mech.bearing.life` [S19], `mech.screw.selflock` [S18], `mach.slip.sign` [S15],
+  `mach.efficiency` [S1] und **`mach.overload`** [S14] (Leistung oder Moment über der eingetragenen Bemessung *P*_N bzw.
+  *M*_N). Die letzte ist neu: Abschnitt 4 listet sie nicht, der Prüfumfang von Calc 3 nennt aber „Überlast“.
+
+### 12.3 Stand der Maschinenpunkte von Calc 3
+
+- Erledigt: Räderzüge mit absolutem *n*, *M*, *P* und Wirkungsgraden (Abnahme: der dreistufige Stirnradzug stimmt mit der
+  Handrechnung überein; Modul 2 und 2,5 ergeben die Modulwarnung); Planetensatz mit Willis; Riemen-, Ketten- und
+  Gewindetriebe; Federn (*F* = *c*·*s*, *c* aus der Geometrie); Lagerlebensdauer; Motoren (*n*_s, Schlupf, *P*–*M*–*n*, η);
+  die Kette der Antriebsblöcke; die genannten Prüfungen; die Moduldokus listen die Größen.
+- Offen:
+  - Willis über getrennte Teile (Sonne, Planeten auf einem Träger, Hohlrad, Träger als einzelne Elemente): braucht
+    vorzeichenbehaftete Drehzahlen; vorerst das Element Planetensatz verwenden.
+  - Momentaufteilung auf einem Wellenstrang mit drei oder mehr momentführenden Teilen (Verzweigungen).
+  - Drehfeder (braucht im Kern eine Größenart Drehfederrate N·m/rad), Verknüpfung Zahnstange–Ritzel (die Zahnstange hat
+    keinen Teilkreisanker), CVT, Ravigneaux, Ausgleichsradsatz, Well- und Zykloidgetriebe, Schwungradenergie,
+    Rutschkupplung.
+  - Generatorbetrieb der Maschinen (die Wirkungsgradbeziehung gilt für Motorbetrieb); Batterie, Wechselrichter und
+    Zwischenkreis (Calc 4 mit Energie).
+  - Kern: `ValueSolver.Solve` erzeugt seinen `RenderContext` ohne Registry, daher greifen `IValueLinks` auf
+    `ObjectType.Owner` zurück (von allen Registries geteilt, in denen der Typ registriert ist). `ctx.For(registry)` im
+    Löser (und bei den Aufrufern von `ValueSolver.Checks`) würde das exakt machen.
