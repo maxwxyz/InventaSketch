@@ -368,10 +368,9 @@ namespace InventaSketch.Modules.Annotation.Tests
                         var contours = Hatching.Contours(withOutline.First(p => p.Tag == AnnTags.Region));
                         var lines = prims.Where(p => p.Tag == AnnTags.Hatch).ToList();
                         Assert.NotEmpty(lines);
-                        if (pattern == "dotted")
-                            Assert.All(lines, e => Assert.True(Ann.Inside(Prim.Bounds(new[] { e })!.Value.Center, contours), what)); // rotated dots become paths
-                        else
-                            AssertInside(lines.Cast<LinePrim>().Select(l => (l.A, l.B)), contours, what);
+                        // Strokes are clipped to the outline; dots and small marks (concrete aggregate) lie inside it.
+                        if (lines.OfType<LinePrim>().Any()) AssertInside(lines.OfType<LinePrim>().Select(l => (l.A, l.B)), contours, what);
+                        Assert.All(lines.Where(e => e is not LinePrim), e => Assert.True(Ann.Inside(Prim.Bounds(new[] { e })!.Value.Center, contours), what)); // rotated dots become paths
                     }
                 }
             }

@@ -38,8 +38,9 @@ namespace InventaSketch.Modules.Annotation.Tests
             var circles = T.All<EllipsePrim>(T.Render(r, doc2, end.Id)).ToList();
             Assert.Equal(2, circles.Count);
             Assert.Empty(T.All<TextPrim>(T.Render(r, doc2, end.Id)));
-            Assert.Equal("ja", r.Item("ann.arrow.elbow.yes")!.Text);
-            Assert.Equal("nein", r.Item("ann.arrow.elbow.no")!.Text);
+            // Exit labels are stored language-neutral and written in the language of the drawing.
+            Assert.Equal("yes", r.Item("ann.arrow.elbow.yes")!.Params!["exit"].Text);
+            Assert.Equal("no", r.Item("ann.arrow.elbow.no")!.Params!["exit"].Text);
         }
 
         [Fact]
@@ -70,11 +71,12 @@ namespace InventaSketch.Modules.Annotation.Tests
                 Points = new List<Vec2> { a.BoxPoint(0.5, 0), b.BoxPoint(0.5, 0) },
                 Attach = new[] { new Attachment(a.Id, 0.5, 0) { AnchorId = "right" }, new Attachment(b.Id, 0.5, 0) { AnchorId = "right" } },
             });
-            var prims = T.Render(r, doc3, c.Id);
+            var prims = r.Render(doc3.Get(c.Id)!, new RenderContext(doc3, Lang.De));
             var line = T.All<PathPrim>(prims).Single(p => p.Tag == AnnTags.Main);
             var xs = PartLooks.Sample(line.Segments).Select(p => p.X).ToList();
             Assert.True(xs.Max() >= a.Bounds().Right + 7.9, "runs to the right of both boxes");
             Assert.Equal("ja", T.All<TextPrim>(prims).Single().Text);
+            Assert.Equal("yes", T.All<TextPrim>(T.Render(r, doc3, c.Id)).Single().Text);
         }
 
         [Fact]

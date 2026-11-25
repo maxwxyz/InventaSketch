@@ -88,6 +88,78 @@ Maintainers (Engine-Test `TheMaintainersFlowchartIsLaidOutWithoutLinesThroughBox
 Verbinder durch einen Kasten). Offen: hindernisbewusste Führung bei von Hand gesetzten Kästen (nur das Layout berechnet
 Abstände).
 
+Weitere Symbole (Konventionen der ISO 5807, eigenständig gezeichnet): vordefinierter Prozess / Unterprogramm
+(`ann.flow.predefined`, zwei innere Seitenlinien; der Text passt dazwischen), Seitenverbinder (`ann.flow.offpage`,
+Fünfeck mit Spitze nach unten, gleichmäßig skaliert, Buchstabe „A“), Schleifenbegrenzung (`ann.flow.loop`, oben
+abgeschrägte Ecken; `ann.flow.loop.end` oder Parameter `edge = end`: unten abgeschrägt), Vorbereitung
+(`ann.flow.preparation`, Sechseck), manuelle Verarbeitung (`ann.flow.manual`, Trapez), Datenspeicher
+(`ann.flow.database`, Zylinder) und Verzögerung (`ann.flow.delay`, „D“-Form). Jedes Symbol passt seinen Text in seine
+eigene Innenfläche ein (unter dem Zylinderdeckel, über der Fünfeckspitze, links vom Bogen der Verzögerung) und hat die
+vier Kantenanschlüsse. Jedes `ann.flow.*`-Symbol hat den Parameter `optional`: ein optionaler Schritt wird gestrichelt
+umrandet (Aktion „Optionaler Schritt (gestrichelt)“, Bibliothekseintrag `ann.flow.process.optional`).
+
+Parallelbetrieb (`ann.flow.parallel`, Aufteilung / Zusammenführung): ein gefüllter Balken (`style = bar`) oder die
+zwei parallelen Linien der ISO 5807 (`style = doubleline`); 2–6 Anschlüsse (`ports`, Vorgabe 3) gleichmäßig verteilt
+auf jeder Längsseite; breiter als hoch liegt er waagerecht (Anschlüsse oben und unten), sonst steht er (Anschlüsse links
+und rechts). Er wird mit dem Winkelverbinder verkettet.
+
+Ausgänge einer Verzweigung: Fügt „+“ (Schnellhinzufügen) Verbinder an eine Verzweigung an, bekommt der erste die
+Ausgangsbeschriftung „ja“, der zweite „nein“. Die Beschriftung wird sprachneutral gespeichert (`exit = yes|no` am
+Verbinder) und in der Sprache der Zeichnung geschrieben („yes“/„no“ auf Englisch); ein bearbeiteter Verbindertext geht
+vor. Der Parameter `exitLabels` („a|b|c“) gibt andere Beschriftungen in der Reihenfolge des Hinzufügens vor; die Vorlage
+„Verzweigung (Vergleich: < = >)“ (`ann.flow.decision.compare`) beschriftet drei Ausgänge mit „<“, „=“, „>“. Die
+Bibliothekseinträge „Verbinder „ja““ / „Verbinder „nein““ tragen denselben sprachneutralen Ausgang. Core-Erweiterung:
+`ObjectType.ChainConnectorParams(o, index)` liefert Parameter für den index-ten Verbinder, der ein Element verlässt;
+`Flow.QuickAdd` zählt die schon abgehenden Verbinder und setzt sie.
+
+## Verbinder und Zeichen für Patentfiguren (25.11.2026)
+
+Ergänzungen des Beschriftungsmoduls für Patentfiguren; alle sind ohne Parameter einfügbar, schwarz-weiß und mit nativen
+Linien, Freihandformen und Texten gezeichnet.
+
+- **Brücken und Verbindungspunkte.** Der Winkelverbinder und Verbinder-Polylinien (offene Polylinie mit Pfeilspitze oder
+  angedocktem Ende) zeichnen eine Brücke, wo sie einen früher gezeichneten Verbinder kreuzen (Parameter `hops`,
+  Vorgabe an; Aktion „Brücken an Kreuzungen an/aus“; Brückengeometrie aus Core `Crossings`). Nur Verbinder des
+  Beschriftungsmoduls wirken mit: einfache Polylinien (Zeichnungen, importierte Vektorgrafik) überbrücken weder noch
+  werden sie überbrückt, Leitungen anderer Module sind nicht betroffen. Ihre gezeichneten Abschnitte sind Schienen: ein
+  Verbinderende, das auf dem Abschnitt eines anderen Verbinders andockt, folgt ihm und bekommt automatisch einen
+  Verbindungspunkt. „Knotenpunkt (Linien)“ (`ann.junction`) ist ein einzelner Punkt, dessen Mittelanschluss auf einer
+  Schiene andockt.
+- **Blockpfeil** (`ann.arrow.wide`): hohler Blockpfeil entlang einer geraden (`route = straight`) oder orthogonalen
+  Führung als ein geschlossener Umriss; Schaftbreite `width` 6 mm, Spitze 2 × Breite breit und 1,2 × Breite lang,
+  Spitzen am Anfang und/oder Ende, Füllung keine, Schraffur oder Punkte, optionaler Text entlang des Schafts. Vorlagen:
+  beidseitig (`.double`), mit Knick (`.elbow`), Kehre (`.uturn`).
+- **Doppellinienpfeil ⇒** (`ann.arrow.doubleline`): zwei parallele Striche (`gap` 2 mm) mit offener Winkelspitze; mit
+  zwei Punkten führt und dockt er wie der Winkelverbinder (auch in C-Form um Kästen), mit mehr Punkten läuft er
+  orthogonal durch sie.
+- **Pfeilpaar** (`ann.arrow.pair`): zwei parallele Pfeile in Gegenrichtung (`gap` 3 mm, Anfrage / Antwort) mit je
+  einer Beschriftung (`labelForward`, `labelBack`) auf ihrer Außenseite; Aktion „Richtungen tauschen“.
+- **Busmarkierung** an `ann.line`, `ann.arrow`, `ann.arrow.elbow` und `ann.polyline`: `busMark = slash` zeichnet einen
+  Schrägstrich mit der Anzahl der Leitungen (`busCount`, z. B. „8“ oder „n“) daneben, `busMark = strokes` einen
+  Schrägstrich je Leitung (Ideen von IEC 60617 S00002 / S00003, eigenständig gezeichnet), in der Mitte des längsten
+  Abschnitts. Vorlage „Sammelleitung mit Schrägstrich (n Leitungen)“ (`ann.line.bus`).
+- **Tabelle** (`ann.table`): Zellen als Text (`cells`: Zeilen per Zeilenumbruch oder geschriebenem „\n“, Spalten per „|“
+  oder Tabulator), fette Kopfzeile, Linien alle / außen / waagerecht / keine, Spaltenbreiten nach Inhalt, eine
+  Schriftgröße für die ganze Tabelle; Aktionen fügen Zeilen oder Spalten an bzw. entfernen sie. Ohne Zellen zeigt sie
+  eine kleine zweispaltige Tabelle in der Sprache der Zeichnung.
+- **Ansichtspfeil** (`ann.viewarrow`): Pfeil mit fettem Großbuchstaben; `mode = touching` setzt den Buchstaben neben
+  den Schaft (die Spitze berührt den Umriss), `freestanding` hinter das Pfeilende (`ann.viewarrow.free`).
+- **Einzelheit** (`ann.detail.view`): Kreis- oder Rechteckrahmen für eine vergrößerte Einzelheit, beschriftet mit dem
+  Buchstaben ihres Einzelheit-Kreises (`ann.detail.circle`; die n-te Einzelheit ohne eigenen Buchstaben nimmt den des
+  n-ten Kreises) und optional mit grafischem Maßstab (`scaleBar`, `scale`, `barLength`: ein Balken der gezeichneten
+  Länge, beschriftet mit der wahren Länge, z. B. „5 mm“), sodass keine geschriebene Maßstabsangabe wie „2:1“ nötig ist.
+- **Werkstoffschraffuren** für `ann.hatch.*` (`pattern`): Flüssigkeit, Glas, Gummi / Kunststoff, Holz, Beton,
+  Erdreich – einfache, eigenständige Muster, auf die Fläche beschnitten; Bibliothekseinträge `ann.hatch.rect.<pattern>`.
+- **Wärmestrompfeil** (`ann.arrow.heat`): gewellter Schaft mit geradem Ende und gefüllter Spitze, Beschriftung „Q“
+  kursiv.
+
+Host-Hinweise: alles wird als native Linien, Freihandformen, gefüllte Kreise und Texte gezeichnet; der Blockpfeil ist
+eine Freihandform (Schraffur-/Punktfüllung folgt der Musterfüllung des Hosts wie bei anderen schraffierten Flächen).
+Brücken berechnet die Engine nur für Verbinder des Beschriftungsmoduls; Hosts zeigen an deren Kreuzungen kein
+„Verbinden“-Symbol (das bleibt Leitungen und Rohren vorbehalten). Offen: Brücken zwischen Verbindern des
+Beschriftungsmoduls und Leitungen anderer Module, Führung des Blockpfeils um Kästen (er folgt seinen Punkten), eine
+einspaltige Tabelle kann keine leere Zeile bekommen.
+
 ## Kontextaktionen
 
 | Typ | Aktionen |
