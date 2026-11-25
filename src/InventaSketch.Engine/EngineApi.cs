@@ -616,7 +616,8 @@ namespace InventaSketch.Engine
         /// <summary>
         /// Selection-wide operations that change something for the selection (<see cref="Arrange"/>): one view for all
         /// ("mview:&lt;view&gt;"), centres on a row/column ("align:row", "align:column"), even spacing ("dist:h", "dist:v"),
-        /// "like the first" ("match"), renumber reference numerals ("renumber").
+        /// "like the first" ("match"), renumber reference numerals ("renumber"), a layered diagram layout of connected
+        /// elements ("layout:down", "layout:right", <see cref="DiagramLayout"/>).
         /// </summary>
         private object ArrangeOptionsCore(EngineRequest r)
         {
@@ -637,6 +638,10 @@ namespace InventaSketch.Engine
             if (Arrange.Changes(Arrange.Distribute(boxes, false))) Opt("dist:v", "Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen", IconIds.DistributeV);
             if (Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context()).Count > 0) Opt("match", "Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil", IconIds.MatchFormat);
             if (groups.Count == 2 && groups.All(g => !g.Lead.IsPointGeometry) && !HasDimensionBetween(s.Doc, groups[0].Lead.Id, groups[1].Lead.Id)) Opt("dim", "Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)", IconIds.Dimension);
+            // Connected diagrams (flowchart, UML, BPMN, ER): a layered layout, top to bottom or left to right.
+            foreach (var (id, down, en, german) in new[] { ("layout:down", true, "Lay out as a diagram, top to bottom", "Als Diagramm anordnen, von oben nach unten"), ("layout:right", false, "Lay out as a diagram, left to right", "Als Diagramm anordnen, von links nach rechts") })
+                if (DiagramLayout.Layered(s.Doc, objs, down) is { } target && Arrange.Changes(objs.Where(o => target.ContainsKey(o.Id)).Select(o => target[o.Id] - new Vec2(o.Transform.X, o.Transform.Y))))
+                    Opt(id, en, german, down ? IconIds.DistributeV : IconIds.DistributeH);
             if (Arrange.Renumber(Numerals(s, objs)).Count > 0) Opt("renumber", "Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren", IconIds.Renumber);
             return list;
         }
@@ -666,6 +671,17 @@ namespace InventaSketch.Engine
                 {
                     var changed = Arrange.MatchFormat(Registry, objs[0], objs.Skip(1), s.Context());
                     return Edits.Update(doc, changed.Select(o => o.Id).ToList(), o => changed.First(x => x.Id == o.Id));
+                }
+                if (action.StartsWith("layout:", StringComparison.Ordinal))
+                {
+                    // Docked connectors follow their elements (the session refreshes attachments after the edit).
+                    if (DiagramLayout.Layered(doc, objs, action == "layout:down") is not { } target) return doc;
+                    foreach (var o in objs.Where(o => target.ContainsKey(o.Id)))
+                    {
+                        var d = target[o.Id] - new Vec2(o.Transform.X, o.Transform.Y);
+                        if (d.Length > Arrange.Tolerance) doc = Edits.Move(doc, new[] { o.Id }, d);
+                    }
+                    return doc;
                 }
                 var groups = ArrangeGroups(doc, objs);
                 if (action == "dim")

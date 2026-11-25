@@ -58,6 +58,11 @@ namespace InventaSketch.AddIn.OnSlide
                 list.Add(new BarButton("dist:h", "", T("Space evenly left to right", "Gleichmäßig von links nach rechts verteilen")) { IconId = IconIds.DistributeH });
             if (Arrange.Changes(Arrange.Distribute(boxes, horizontal: false)))
                 list.Add(new BarButton("dist:v", "", T("Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen")) { IconId = IconIds.DistributeV });
+            // Connected elements (flowchart, UML, BPMN, ER): a layered diagram layout (DiagramLayout).
+            if (LayoutMoves(true, _multi) is { } down && Arrange.Changes(down.Values.Select(v => v.Move)))
+                list.Add(new BarButton("layout:down", "", T("Lay out as a diagram, top to bottom", "Als Diagramm anordnen, von oben nach unten")) { IconId = IconIds.DistributeV });
+            if (LayoutMoves(false, _multi) is { } right && Arrange.Changes(right.Values.Select(v => v.Move)))
+                list.Add(new BarButton("layout:right", "", T("Lay out as a diagram, left to right", "Als Diagramm anordnen, von links nach rechts")) { IconId = IconIds.DistributeH });
             // Two parts: a dimension between their axes (or centres), docked on both so it follows them.
             if (_multi.Count == 2 && firsts.All(o => o is not null && !o.IsPointGeometry))
                 list.Add(new BarButton("dim", "", T("Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)")) { IconId = IconIds.Dimension });
@@ -72,6 +77,35 @@ namespace InventaSketch.AddIn.OnSlide
                 list.Add(new BarButton("renumber", "", T("Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren")) { IconId = IconIds.Renumber });
             while (list.Count > 0 && list[list.Count - 1].Separator) list.RemoveAt(list.Count - 1);
             return list;
+        }
+
+        /// <summary>
+        /// A layered diagram layout of the selected units (<see cref="DiagramLayout"/>) per unit id: the target centre of its
+        /// main element (page mm) and the move from where its shape is now. Computed from the shapes' current bounds (a
+        /// native move may not be in the stored model yet) and the connectors of every unit on the slide; null if no
+        /// connector joins two of them.
+        /// </summary>
+        private Dictionary<string, (Vec2 Target, Vec2 Move)>? LayoutMoves(bool down, IReadOnlyList<SketchUnit> units)
+        {
+            var registry = _registry();
+            var slide = CurrentSlide();
+            if (slide is null || units.Count < 2) return null;
+            var boxes = new List<SketchObject>();
+            var unitOf = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var u in units)
+            {
+                var o = u.Objects.FirstOrDefault(x => !x.IsPointGeometry && registry.Type(x.Type) is not null);
+                if (o is null) return null;
+                var r = MmRect(u);
+                var b = o with { Transform = o.Transform with { X = r.X + r.W / 2, Y = r.Y + r.H / 2, Rotation = 0 }, Size = new Size2(r.W, r.H) };
+                boxes.Add(b);
+                unitOf[b.Id] = u.Id;
+            }
+            var lines = SketchUnits.All(slide).SelectMany(u => u.Objects).Where(o => o.IsPointGeometry && o.Attach is not null);
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, boxes.Concat(lines).GroupBy(o => o.Id).Select(g => g.First()).ToArray());
+            if (DiagramLayout.Layered(doc, boxes, down) is not { } target) return null;
+            return boxes.ToDictionary(b => unitOf[b.Id], b => (target[b.Id], target[b.Id] - new Vec2(b.Transform.X, b.Transform.Y)), StringComparer.Ordinal);
         }
 
         /// <summary>Reference numerals of the selection with their numeral position (point 1) and current numeral.</summary>
@@ -153,6 +187,28 @@ namespace InventaSketch.AddIn.OnSlide
                     s.Left += (float)(moves[i].X * Geo.PtPerMm);
                     s.Top += (float)(moves[i].Y * Geo.PtPerMm);
                     shapes.Add(s);
+                }
+            }
+            else if (id.StartsWith("layout:", StringComparison.Ordinal))
+            {
+                // A model edit: every unit goes to its target and is redrawn, then the connectors docked on them follow
+                // (RedrawDependents re-resolves their anchored ends) – a native move of several shapes at once does not
+                // reliably notify the add-in.
+                if (LayoutMoves(id == "layout:down", units) is { } layout)
+                {
+                    var befores = new List<SketchDocument>();
+                    var afters = new List<SketchDocument>();
+                    foreach (var u in units)
+                    {
+                        if (!layout.TryGetValue(u.Id, out var l)) continue;
+                        var main = u.Objects.First(x => !x.IsPointGeometry && registry.Type(x.Type) is not null);
+                        var d = l.Target - new Vec2(main.Transform.X, main.Transform.Y);
+                        var doc = Edits.Move(u.Doc, u.Doc.ObjectsOn(u.Doc.Pages[0]).Select(o => o.Id).ToList(), d);
+                        befores.Add(u.Doc);
+                        afters.Add(doc);
+                        if (SketchUnits.Replace(slide, u, doc, registry, lang) is { } s) shapes.Add(s);
+                    }
+                    SketchUnits.RedrawDependents(slide, registry, lang, befores, afters, units.Select(u => u.Id).ToList());
                 }
             }
             else if (id.StartsWith("mview:", StringComparison.Ordinal))

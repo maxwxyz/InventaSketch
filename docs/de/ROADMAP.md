@@ -224,7 +224,8 @@ Leisten-IDs jetzt direkt.
    Registry, das beendete reihenfolgeabhängige Tests); Werkzeuge folgen Gelenkänderungen und übernehmen die Flanschgröße; eine Akzentfarbe für alle
    Module als Teil des Folienstils (alles erledigt 25.11.2026).
 3. LibreOffice: Overlay auf der Arbeitsfläche (Einrasten beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
-4. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
+4. P3: automatisches Diagramm-Layout erledigt 25.11.2026 (Ebenen-Layout, Mehrfachauswahl, alle Hosts über die Engine;
+   COM in PowerPoint geprüft); offen: Varianten und Zustände, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
 
 ### Weitere sinnvolle Module und Funktionen
 

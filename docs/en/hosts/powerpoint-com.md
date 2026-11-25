@@ -343,7 +343,10 @@ UX round (2026-11-20, from the maintainer's feedback):
     appended to the bar are gone.
   - *Multi-selection bar:* with two or more InventaSketch elements selected, a bar offers one view for all, centres on
     a row or column, even spacing and renumbering of reference numerals in reading order (`Arrange`) – each only when it
-    changes something. PowerPoint's own format stays available for the native side.
+    changes something. PowerPoint's own format stays available for the native side. Connected diagram elements
+    (flowchart, UML, BPMN, ER) also get "Lay out as a diagram, top to bottom / left to right" (2026-11-25,
+    `DiagramLayout`): a model edit of the selected units, then the connectors docked on them are redrawn
+    (`RedrawDependents`); scenario `diagram-layout` (three scattered steps end in one column, arrows join them).
   - *Assemblies:* "Select assembly" selects every part coupled with the selection; Tab/Shift+Tab step through them.
     Switching the view of a selected gear train keeps it working (`AssemblyViews`): to the axial view parts on one shaft
     become concentric and meshes keep their centre distance, back to stick/side view the train unfolds with meshing

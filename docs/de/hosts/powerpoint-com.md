@@ -331,6 +331,10 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   - *Leiste für Mehrfachauswahl:* Bei zwei oder mehr ausgewählten InventaSketch-Elementen bietet eine Leiste eine
     Ansicht für alle, Mitten auf eine Zeile oder Spalte, gleichmäßiges Verteilen und Neunummerieren der Bezugszeichen in
     Lesereihenfolge (`Arrange`) – jeweils nur, wenn es etwas ändert. Das native PowerPoint-Format bleibt verfügbar.
+    Verbundene Diagrammelemente (Flussdiagramm, UML, BPMN, ER) bekommen außerdem „Als Diagramm anordnen, von oben nach
+    unten / von links nach rechts“ (25.11.2026, `DiagramLayout`): eine Modelländerung der ausgewählten Einheiten, danach
+    werden die daran angedockten Verbinder neu gezeichnet (`RedrawDependents`); Szenario `diagram-layout` (drei
+    verstreute Schritte stehen danach in einer Spalte, die Pfeile verbinden sie).
   - *Baugruppen:* „Baugruppe auswählen“ wählt alle mit der Auswahl gekoppelten Teile; Tab/Shift+Tab wechselt durch
     sie. Der Ansichtswechsel eines ausgewählten Getriebezugs hält ihn funktionsfähig (`AssemblyViews`): in die
     Stirnansicht werden Teile einer Welle konzentrisch und Eingriffe behalten ihren Achsabstand, zurück ins Schema/die

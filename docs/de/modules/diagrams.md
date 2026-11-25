@@ -57,6 +57,17 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
 - **Beziehungsrichtung:** die Markierung sitzt am Endpunkt, also vom Teil/Kind/Client zum Ganzen/Elternteil/Anbieter
   zeichnen.
 
+## Automatisches Layout (25.11.2026)
+
+Die verbundenen Elemente eines Diagramms auswählen (die Verbinder müssen nicht mit ausgewählt sein): Die Mehrfachauswahl
+bietet „Als Diagramm anordnen, von oben nach unten“ und „… von links nach rechts“ (Engine `arrange` mit `layout:down` /
+`layout:right`, Core `DiagramLayout`). Ein Ebenen-Layout nach Art von Sugiyama: Jede Linie, deren erstes und letztes
+angedocktes Ende auf zwei ausgewählten Elementen sitzt, ist eine Kante; Zyklen werden entlang einer Tiefensuche
+aufgebrochen, die Ebenen folgen dem längsten Pfad von den Quellen, Baryzentrum-Durchläufe verringern Kreuzungen, Ebenen
+und Abstände richten sich nach der Größe der Elemente. Das Diagramm bleibt an seinem Platz (Oberkante und Mitte); die
+Verbinder folgen ihren Elementen. Funktioniert für die Kastenelemente aller Module, die über angedockte Linien
+verbunden sind (Prozessschritte, Flussdiagramm, UML, BPMN, ER, Blöcke).
+
 ## Kontextaktionen
 
 | Typ | Aktionen |
