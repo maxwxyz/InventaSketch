@@ -1029,6 +1029,9 @@ namespace InventaSketch.AddIn.OnSlide
                 view = registry.Type(first.Type)?.ViewOf(first);
             }
             GetCursorPos(out var p);
+            // The side to attach to: where the pie was opened (right-click), else the pointer (Ctrl+Space).
+            var from = _pieOpenedAt is { } po && (DateTime.UtcNow - po.When).TotalSeconds < 30 ? po.At : p;
+            _insertToward = _view?.ToMm(from);
             var chosen = InsertSearch.Ask(registry, lang, AddInSettings.RecentItems, fitting, view, new Point(p.X, p.Y), _view?.MainWindow ?? IntPtr.Zero, (i, size) => Thumb(i, size));
             if (chosen is null) return;
             AddInSettings.RecentItems = LibrarySearch.Remember(AddInSettings.RecentItems, chosen.Id);

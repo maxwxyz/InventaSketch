@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using InventaSketch.Core;
 using Office = Microsoft.Office.Core;
 using PowerPoint = Microsoft.Office.Interop.PowerPoint;
@@ -49,15 +48,23 @@ namespace InventaSketch.AddIn.OnSlide
             return ids;
         }
 
+        /// <summary>
+        /// Where the user asked for the insert (page mm): the point of the right-click, Ctrl+Space or "+" that opened the
+        /// pie or the insert box. The fitted part goes to that side (maintainer 2026-11-25: "attached elements appear on the
+        /// side where you clicked").
+        /// </summary>
+        private Vec2? _insertToward;
+
         /// <summary>The item placed where it fits the unit (first anchor of <see cref="FitAnchors"/> that takes it), or null.</summary>
         private SketchObject? FitToUnit(SketchUnit unit, SketchDocument full, LibraryItem item)
         {
             var registry = _registry();
+            var toward = _insertToward;
             foreach (var id in FitAnchors(unit, full))
             {
                 try
                 {
-                    if (Fitting.Place(registry, full, id, item, _lang()) is { } placed) return placed;
+                    if (Fitting.Place(registry, full, id, item, _lang(), toward) is { } placed) return placed;
                 }
                 catch (Exception ex)
                 {
@@ -66,11 +73,6 @@ namespace InventaSketch.AddIn.OnSlide
             }
             return null;
         }
-
-        // TODO(PlaceNear): call Fitting.PlaceNear(registry, doc, item, pointerPage, maxDistance, lang) directly once the engine
-        // has it in main; until then it is found by reflection and the fallback below fits onto the nearest shaft.
-        private static readonly MethodInfo? PlaceNearMethod = typeof(Fitting).GetMethod("PlaceNear", BindingFlags.Public | BindingFlags.Static, null,
-            new[] { typeof(Registry), typeof(SketchDocument), typeof(LibraryItem), typeof(Vec2), typeof(double), typeof(Lang) }, null);
 
         /// <summary>
         /// The item fitted near the pointer (page mm): on the closest shaft or part within <paramref name="maxDistance"/> that
@@ -84,8 +86,8 @@ namespace InventaSketch.AddIn.OnSlide
             var lang = _lang();
             try
             {
-                if (PlaceNearMethod is not null)
-                    return PlaceNearMethod.Invoke(null, new object[] { registry, doc, item, pointer, maxDistance, lang }) as SketchObject;
+                // On a shaft: fitted to its diameter, in its view, at the pointer's projection (engine).
+                if (Fitting.PlaceNear(registry, doc, item, pointer, maxDistance, lang) is { } onShaft) return onShaft;
                 var ctx = new RenderContext(doc, lang);
                 var near = new List<(string Id, double D)>();
                 foreach (var o in doc.Objects.Values)
@@ -99,8 +101,9 @@ namespace InventaSketch.AddIn.OnSlide
                     }
                     if (d <= maxDistance) near.Add((o.Id, d));
                 }
+                // Other fits (a gear meshing with a gear near the pointer): on the pointer's side.
                 foreach (var (id, _) in near.OrderBy(n => n.D).Take(4))
-                    if (Fitting.Place(registry, doc, id, item, lang) is { } placed) return placed;
+                    if (Fitting.Place(registry, doc, id, item, lang, pointer) is { } placed) return placed;
             }
             catch (Exception ex)
             {

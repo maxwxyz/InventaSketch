@@ -80,6 +80,9 @@ namespace InventaSketch.AddIn.OnSlide
 
         // ------------------------------------------------------------------ shared labels
 
+        /// <summary>Where and when the pie was last opened on the element (the side for "Insert …").</summary>
+        private (POINT At, DateTime When)? _pieOpenedAt;
+
         /// <summary>A name cut to <paramref name="max"/> characters with "…".</summary>
         private static string Shorten(string s, int max) => s.Length <= max ? s : s.Substring(0, max - 1).TrimEnd() + "…";
 
@@ -428,6 +431,7 @@ namespace InventaSketch.AddIn.OnSlide
         private void OpenPie(POINT pt, SlideView view, string? submenu = null)
         {
             if (_unit is null) return;
+            if (submenu is null) _pieOpenedAt = (pt, DateTime.UtcNow);
             var registry = _registry();
             var pointObject = PointObject();
             var back = new PieItem("menu:back", T("\u2190 Back", "\u2190 Zur\u00fcck")) { Hint = T("Back to the main ring", "Zur\u00fcck zum Hauptring") };
