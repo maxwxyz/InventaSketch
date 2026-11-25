@@ -21,6 +21,7 @@
     <ProjectReference Include="..\InventaSketch.Modules.Charts\InventaSketch.Modules.Charts.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.BuildingServices\InventaSketch.Modules.BuildingServices.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Process\InventaSketch.Modules.Process.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Energy\InventaSketch.Modules.Energy.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Fluid\InventaSketch.Modules.Fluid.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Kinematics\InventaSketch.Modules.Kinematics.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Automotive\InventaSketch.Modules.Automotive.csproj" />
