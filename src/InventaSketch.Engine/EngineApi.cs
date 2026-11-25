@@ -53,6 +53,7 @@ namespace InventaSketch.Engine
                 ["setPoint"] = SetPointCore,
                 ["setPlanScale"] = SetPlanScaleCore,
                 ["setMonochrome"] = SetMonochromeCore,
+                ["setLineGroup"] = SetLineGroupCore,
                 ["setMainText"] = SetMainTextCore,
                 ["suggestions"] = SuggestionsCore,
                 ["quickAdd"] = QuickAddCore,
@@ -161,6 +162,7 @@ namespace InventaSketch.Engine
         public string ApplyAction(string json) => Invoke("applyAction", json);
         public string SetPlanScale(string json) => Invoke("setPlanScale", json);
         public string SetMonochrome(string json) => Invoke("setMonochrome", json);
+        public string SetLineGroup(string json) => Invoke("setLineGroup", json);
         public string SetMainText(string json) => Invoke("setMainText", json);
         public string Suggestions(string json) => Invoke("suggestions", json);
         public string Undo(string json) => Invoke("undo", json);
@@ -217,6 +219,7 @@ namespace InventaSketch.Engine
                 UndoLabel = s.History.UndoLabel,
                 PlanScale = doc.Settings.PlanScale,
                 Monochrome = doc.Settings.Monochrome,
+                LineGroup = doc.Settings.LineGroup ?? Style.DesignLineGroup,
                 Changed = s.LastChanged.ToList(),
                 Dependents = s.LastDependents.ToList(),
             };
@@ -462,6 +465,22 @@ namespace InventaSketch.Engine
             var value = r.Value is { ValueKind: JsonValueKind.True };
             if (s.Doc.Settings.Monochrome != value)
                 s.Apply("Black and white", d => d with { Settings = d.Settings with { Monochrome = value } });
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// Sets the ISO 128 line group of the drawing (<see cref="DocumentSettings.LineGroup"/>, <c>value</c> = width of the
+        /// thick line in mm, one of <see cref="Style.LineGroups"/>; 0.5 or absent = the design group); one undo step. Every
+        /// stroke scales with it; hosts redraw all units.
+        /// </summary>
+        private object SetLineGroupCore(EngineRequest r)
+        {
+            var s = S(r);
+            double? group = r.Value is { ValueKind: JsonValueKind.Number } v ? v.GetDouble() : null;
+            if (group is double g && (g <= 0 || Math.Abs(g - Style.DesignLineGroup) < 1e-9)) group = null;
+            if (group is double h && !Style.LineGroups.Any(x => Math.Abs(x - h) < 1e-9)) throw new ArgumentException("Unknown line group " + h.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".");
+            if (s.Doc.Settings.LineGroup != group)
+                s.Apply("Line group", d => d with { Settings = d.Settings with { LineGroup = group } });
             return StateOf(s, r);
         }
 
@@ -1590,6 +1609,8 @@ namespace InventaSketch.Engine
                 // Black and white is a slide-wide switch (the COM add-in sets it on every unit): the slide model decides, so
                 // live redraws keep the look of the units on the slide.
                 if (d.Settings.Monochrome != src.Settings.Monochrome) d = d with { Settings = d.Settings with { Monochrome = src.Settings.Monochrome } };
+                // So is the line group.
+                if (d.Settings.LineGroup != src.Settings.LineGroup) d = d with { Settings = d.Settings with { LineGroup = src.Settings.LineGroup } };
                 return d;
             });
             if (r.Add != false) s.Select(objs.Select(o => o.Id));
@@ -1619,6 +1640,8 @@ namespace InventaSketch.Engine
                 if (!before.Objects.TryGetValue(kv.Key, out var old) || !ReferenceEquals(old, kv.Value)) changed.Add(kv.Key);
             // Black and white changes the rendering of every object.
             if (before.Settings.Monochrome != after.Settings.Monochrome) changed.UnionWith(after.Objects.Keys);
+            // So does the line group (every stroke width).
+            if (before.Settings.LineGroup != after.Settings.LineGroup) changed.UnionWith(after.Objects.Keys);
             // A new plan scale changes the rendering of every object that uses it.
             if (before.Settings.PlanScale != after.Settings.PlanScale)
                 foreach (var o in after.Objects.Values)

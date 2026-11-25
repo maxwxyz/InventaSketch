@@ -251,6 +251,7 @@ namespace InventaSketch.AddIn
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
             sb.Append("<button id=\"IskMonochrome\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
               .Append(X(T("Shows the InventaSketch elements of this slide in black and white (patent style): fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß (Patentstil), einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
+            AppendLineGroupMenu(sb);
             sb.Append("<toggleButton id=\"IskAnchor\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskMotion\" label=\"").Append(L(T("Move", "Bewegen"))).Append("\" getImage=\"GetMotionImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
@@ -313,6 +314,22 @@ namespace InventaSketch.AddIn
         /// The "Extras" menu of the tools group (like Slidemax's tools menu): insert symbol, decimal separator, proofing
         /// language, send and save slides, show/hide modules.
         /// </summary>
+        /// <summary>"Line weights": the ISO 128 line groups for the InventaSketch elements of the slide.</summary>
+        private void AppendLineGroupMenu(StringBuilder sb)
+        {
+            sb.Append("<menu id=\"IskLineGroup\" label=\"").Append(L(T("Line weights", "Linienstärken"))).Append("\" imageMso=\"LineStylesGallery\" supertip=\"")
+              .Append(X(T("ISO 128 line group for every InventaSketch element of this slide (thick lines; thin lines are half as wide). New elements on the slide take it too.",
+                          "ISO-128-Liniengruppe für alle InventaSketch-Elemente dieser Folie (breite Linien; schmale Linien sind halb so breit). Neue Elemente auf der Folie übernehmen sie."))).Append("\">");
+            foreach (var g in Style.LineGroups)
+            {
+                var mm = g.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture);
+                var name = Math.Abs(g - Style.DesignLineGroup) < 1e-9 ? T(" (standard)", " (Standard)") : g < Style.DesignLineGroup ? T(" (fine)", " (fein)") : T(" (bold)", " (kräftig)");
+                sb.Append("<toggleButton id=\"IskLineGroup").Append(mm.Replace('.', '_')).Append("\" tag=\"").Append(mm).Append("\" label=\"")
+                  .Append(L((_lang == Lang.De ? mm.Replace('.', ',') : mm) + " mm" + name)).Append("\" getPressed=\"GetLineGroupPressed\" onAction=\"OnLineGroup\" />");
+            }
+            sb.Append("</menu>");
+        }
+
         private void AppendToolsMenu(StringBuilder sb)
         {
             void Item(string id, string label, string? imageMso)
@@ -933,6 +950,8 @@ namespace InventaSketch.AddIn
                 if (units.Count == 0) return;
                 var on = units.Any(u => !u.Doc.Settings.Monochrome);
                 _app.StartNewUndoEntry();
+                // Slide-wide: new elements on the slide take it too.
+                OnSlide.SlideStyle.Write(slide, on, OnSlide.SlideStyle.Read(slide)?.Group ?? units.Select(u => u.Doc.Settings.LineGroup).FirstOrDefault(g => g is not null));
                 foreach (var u in units)
                 {
                     if (u.Doc.Settings.Monochrome == on) continue;
@@ -946,6 +965,53 @@ namespace InventaSketch.AddIn
                 Log.Error("OnMonochrome", ex);
             }
         }
+        /// <summary>Line group of the current slide (its style, else the first unit's, else the standard 0.5).</summary>
+        private double CurrentLineGroup()
+        {
+            if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return Style.DesignLineGroup;
+            if (OnSlide.SlideStyle.Read(slide) is { } st) return st.Group ?? Style.DesignLineGroup;
+            return OnSlide.SketchUnits.All(slide).Select(u => u.Doc.Settings.LineGroup).FirstOrDefault(g => g is not null) ?? Style.DesignLineGroup;
+        }
+
+        public bool GetLineGroupPressed(Office.IRibbonControl control)
+        {
+            try
+            {
+                return double.TryParse(control.Tag, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g)
+                       && Math.Abs(g - CurrentLineGroup()) < 1e-9;
+            }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// Sets the ISO 128 line group of the slide: stored as the slide style and every unit re-rendered with it (one undo
+        /// step); new elements on the slide take it too.
+        /// </summary>
+        public void OnLineGroup(Office.IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return;
+                if (!double.TryParse(control.Tag, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g)) return;
+                double? group = Math.Abs(g - Style.DesignLineGroup) < 1e-9 ? null : g;
+                var units = OnSlide.SketchUnits.All(slide);
+                _app.StartNewUndoEntry();
+                var mono = OnSlide.SlideStyle.Read(slide)?.Mono ?? units.Any(u => u.Doc.Settings.Monochrome);
+                OnSlide.SlideStyle.Write(slide, mono, group);
+                foreach (var u in units)
+                {
+                    if (u.Doc.Settings.LineGroup == group) continue;
+                    OnSlide.SketchUnits.Replace(slide, u, u.Doc with { Settings = u.Doc.Settings with { LineGroup = group } }, _registry, _lang);
+                }
+                _ribbon?.Invalidate();
+                Log.Info($"Line group {g.ToString(System.Globalization.CultureInfo.InvariantCulture)} for {units.Count} unit(s)");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnLineGroup", ex);
+            }
+        }
+
         // ------------------------------------------------------------------ sidebar editor (custom task pane)
 
         /// <summary>Shows or hides the sidebar editor (ribbon toggle and automation).</summary>

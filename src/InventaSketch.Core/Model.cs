@@ -169,6 +169,11 @@ namespace InventaSketch.Core
         /// </summary>
         public bool Monochrome { get; init; }
         /// <summary>
+        /// ISO 128 line group of the drawing: the width of visible (thick) lines in mm, every other line role scaled with it
+        /// (<see cref="Style.LineGroups"/>; null = 0.5, the group the elements are designed in).
+        /// </summary>
+        public double? LineGroup { get; init; }
+        /// <summary>
         /// Plan scale denominator of the document (100 means 1:100), used by types with <see cref="ObjectType.UsesPlanScale"/>
         /// when an object has no scale of its own. Null: each module's default.
         /// </summary>

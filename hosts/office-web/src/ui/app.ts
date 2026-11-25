@@ -41,6 +41,9 @@ const DASHES: [DashStyle, string][] = [
   ["solid", "line-solid"], ["dash", "line-dash"], ["dot", "line-dot"], ["dashDot", "line-dashdot"], ["longDash", "line-longdash"], ["dashDotDot", "line-dashdotdot"],
 ];
 
+/** ISO 128 line groups offered (width of the thick line in mm), as the engine's Style.LineGroups. */
+export const LINE_GROUPS = [0.25, 0.35, 0.5, 0.7, 1];
+
 export class App {
   readonly engine: Engine;
   private readonly root: HTMLElement;
@@ -218,6 +221,7 @@ export class App {
       this.iconButton("mono", t("cmd.mono"), () => this.setMonochrome(!st?.monochrome), {
         class: `isk-btn isk-icon-btn${st?.monochrome ? " is-active" : ""}`, "aria-pressed": String(!!st?.monochrome), "data-cmd": "mono",
       }),
+      this.lineGroupSelect(st?.lineGroup ?? 0.5),
       this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome))),
       this.iconButton("png", t("cmd.exportPng"), () => exportPng(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome).catch((e) => this.report(e))),
       h("span", { class: "isk-grow" }),
@@ -229,6 +233,17 @@ export class App {
   /** Black and white is a document setting (one undo step); live sync redraws every unit on the slide. */
   private setMonochrome(value: boolean): void {
     this.edit((s) => s.setMonochrome(value));
+  }
+
+  /** ISO 128 line group of the drawing (a document setting, one undo step; live sync redraws every unit on the slide). */
+  private lineGroupSelect(current: number): HTMLElement {
+    const sel = h("select", { class: "isk-input isk-linegroup", title: t("cmd.lineGroup"), "aria-label": t("cmd.lineGroup"), "data-cmd": "linegroup" });
+    for (const g of LINE_GROUPS) {
+      const mm = (lang() === "de" ? String(g).replace(".", ",") : String(g)) + " mm";
+      sel.append(h("option", { value: String(g), selected: Math.abs(g - current) < 1e-9 }, mm));
+    }
+    sel.addEventListener("change", () => this.edit((s) => s.setLineGroup(Number(sel.value))));
+    return sel;
   }
 
   private toggleSettings(anchor: HTMLElement): void {

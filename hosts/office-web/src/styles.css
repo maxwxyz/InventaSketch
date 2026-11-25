@@ -170,6 +170,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .isk-check { display: flex; align-items: center; gap: 6px; margin: 4px 0; cursor: pointer; }
 .isk-input { width: 100%; min-width: 0; padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 textarea.isk-input { resize: vertical; }
+/* Line group choice in the top bar: as narrow as its text, not a full row. */
+.isk-input.isk-linegroup { width: auto; flex: 0 0 auto; padding: 2px 4px; }
 .isk-color { width: 40px; height: 28px; padding: 0 2px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 .isk-row { display: flex; gap: 6px; align-items: center; }
 

@@ -214,6 +214,12 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
 - **Schwarz-Weiß** ist ein umkehrbarer Schalter: Er setzt `DocumentSettings.Monochrome` an jeder Einheit der Folie und
   zeichnet neu; der Zeichenplan bildet alle Farben (Linien, Füllungen, Text, Markierungen) auf Schwarz/Weiß ab und
   entfernt durchscheinende Füllungen. Erneutes Klicken stellt die Farben wieder her.
+- **Linienstärken** (Menü neben Schwarz-Weiß, 25.11.2026): die ISO-128-Liniengruppe der InventaSketch-Elemente der
+  Folie – 0,25, 0,35, 0,5 (Standard, darin sind die Elemente entworfen), 0,7 oder 1 mm für breite Linien; alle anderen
+  Linienrollen skalieren mit (schmale Linien bleiben halb so breit), eine eigene Linienbreite des Elements gilt weiter.
+  Schwarz-Weiß und Liniengruppe sind ein **Folienstil** im Folien-Tag `ISK_STYLE` (`OnSlide/SlideStyle.cs`): Jede auf
+  der Folie gezeichnete Einheit übernimmt ihn, später eingefügte Elemente passen also zu den vorhandenen. Folien ohne
+  das Tag behalten die Einstellungen jeder Einheit.
 - **Text**: Doppelklick auf eine ausgewählte Einheit, der Leistenknopf „Text“ oder „Text …“ im Kreismenü bearbeiten
   ihren Haupttext (Objekttext, Bezugszeichen, Name oder Beschriftung).
 - **Einfügen ▸** im Kreismenü (und die Einfüge-Palette der Leiste) bietet passende Elemente zur Auswahl an

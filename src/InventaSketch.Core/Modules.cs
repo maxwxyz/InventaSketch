@@ -994,9 +994,12 @@ namespace InventaSketch.Core
             var local = type.Render(o, ctx);
             var m = o.Matrix();
             var result = new List<Primitive>(local.Count);
+            // Line group of the drawing (ISO 128): every stroke scales with it; the object's own overrides still win.
+            var k = ctx.Doc.Settings.LineGroup is double g && g > 0 ? g / Style.DesignLineGroup : 1;
             foreach (var p in local)
             {
                 var q = o.IsPointGeometry ? p : Prim.Transform(p, m);
+                if (Math.Abs(k - 1) > 1e-9) q = Prim.ScaleStrokes(q, k);
                 if (o.Style is not null) q = Prim.TextOverride(type.ApplyOverride(q, o.Style), o.Style);
                 result.Add(q);
             }

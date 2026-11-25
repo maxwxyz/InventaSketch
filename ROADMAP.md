@@ -161,7 +161,9 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
    side views, so they do not visibly turn); the exploded differential works as one (gears loose in the case, Willis
    with the case: straight on both sides turn with the case, one side held → the other turns twice as fast); the
    `elevation`/`section` view alias for walls with building services).
-4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
+4. P2 modules: process & thermal, energy systems, robotics (in progress 2026-11-25); slide-wide style: ISO 128 line
+   groups and black and white as a slide style for all elements, new ones included (done 2026-11-25 in COM and web);
+   open: colour accents per module.
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
 ### Further modules and functions worth adding
