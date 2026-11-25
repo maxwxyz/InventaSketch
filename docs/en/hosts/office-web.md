@@ -42,6 +42,8 @@ undo step each (no step when nothing changes).
 | `setMonochrome` | `value` (true/false) | state; document black and white, every object counts as changed |
 | `importData` | `text` (CSV/TSV), `id` (optional chart) | state; the table as the data of the selected chart or a new chart |
 | `importGeo` | `text` (GeoJSON or GPX) | state; routes and markers fitted into the page, selected |
+| `preflight` | `text` (profile id, default "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – patent drawing preflight |
+| `patentProfiles` | `lang` | the offices `{ id, name }` |
 | `setAccent` | `text` (preset id from `accents`, #rrggbb, or "" for the original colours) | state (`accent`); accent colour of the document, every object counts as changed |
 | `accents` | `lang` | the offered accent colours `{ id, color, name }` |
 | `setLineGroup` | `value` (0.25, 0.35, 0.5, 0.7 or 1 – thick line width in mm) | state (`lineGroup`); ISO 128 line group of the document, every object counts as changed |

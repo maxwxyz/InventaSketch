@@ -168,6 +168,27 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Patent check of the presentation: one line per finding "slide|severity|rule|shape name" (UI tests).</summary>
+        public string PatentCheck(string profileId)
+        {
+            try
+            {
+                return string.Join("\n", _connect.RunPatentCheck(profileId).Select(i => i.Slide + "|" + i.Finding.Severity + "|" + i.Finding.RuleId + "|" + (i.ShapeName ?? "")));
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.PatentCheck", ex);
+                return "error: " + ex.Message;
+            }
+        }
+
+        /// <summary>Opens (true) or closes (false) the patent check window; true if it is open.</summary>
+        public bool ShowPatentCheck(bool visible)
+        {
+            try { return _connect.ShowPatentCheck(visible); }
+            catch (Exception ex) { Log.Error("Automation.ShowPatentCheck", ex); return false; }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

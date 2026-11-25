@@ -34,6 +34,8 @@
 | Tool on a robot flange with "+", turned to the tool axis | verified 2026-11-25 (scenario `robot-tool`) | build "+" (port kind `Mount`), not tested | port list (`portMount`), not tested |
 | Diagram layout of connected elements (layered, connectors redock) | verified 2026-11-25 (scenario `diagram-layout`, also align keeps connectors) | through the engine (`arrangeOptions`), not tested | through the engine (selection panel), not tested |
 | Snap after dragging, Ctrl+Space insert, context menu | verified | partial (browser dev page) | verified 2026-11-25 (`ui_smoke.py`, real input; snapping after release, no guides while dragging) |
+| Patent check of all slides with navigation to the finding | verified 2026-11-25 (scenario `patent-check`) | engine `preflight` (no panel yet) | engine `preflight` (no panel yet) |
+| Import CSV (chart data), GeoJSON/GPX (map) | verified 2026-11-25 (scenario `import`) | import button (engine `importData`/`importGeo`), not tested in PowerPoint | not exposed |
 | Live coupling preview while dragging | partial: implemented 2026-11-24, checked by eye (blue ghost), no scenario assertion | partial: implemented 2026-11-25, browser dev page | unsupported (needs the overlay; no live drag events) |
 | Motion mode (turn gear trains and mechanisms, drag self-built linkages) | verified (`gear-motion`, `linkage-build`) | partial: implemented 2026-11-25, browser dev page | partial: gear trains turn by a typed angle (`motionTurn`), verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`); no dragging |
 | Coupler curve and ghost positions of self-built linkages | verified 2026-11-24 (`linkage-extras`) | partial: both in the browser dev page | verified 2026-11-25 (selection panel, `integration_test.py`) |
