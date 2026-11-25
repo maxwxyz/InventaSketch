@@ -314,6 +314,13 @@ Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vektoren bleiben in `math`
    Tabelleneditor; die Patentfigur des Maintainers als Vorlage).
 3. Kurven aus Funktionen und Skizzen; Achsenbrüche.
 4. matplotlib-Export; Zusammenlegung mit Mathe.
+4a. **Bearbeitbare Exporte (Maintainer 25.11.2026):** LaTeX – jede Zeichnung (Flussdiagramme, Blockschaltbilder,
+   Skizzen) als TikZ mit Texten als TikZ-Knoten (Dokumentschrift, Formatierung und Formeln bleiben in LaTeX
+   bearbeitbar, Umlaute und Sonderzeichen maskiert), Diagramme und Abbildungen als pgfplots (Achsen, Teilung, Legende,
+   Beschriftungen, Wertlinien, schraffierte Bereiche als LaTeX-Code, Daten eingebettet), eigenständig oder als
+   `tikzpicture` zum `\input`; SVG – Texte bleiben `<text>` (schon so), jedes Element und Teil wird eine benannte Gruppe
+   (`id`/`class` mit Teilschlüssel, Inkscape-Ebenennamen), Schraffuren als Muster, damit Text und Stile in
+   Inkscape/Illustrator bearbeitbar sind. Beides über die Exporter der Engine, in allen drei Hosts angeboten.
 5. Diagramme aus Bildern (Scanner-Übernahme, Kurven-Digitalisierer).
 
 **Flussdiagramme (Beispiel des Maintainers 25.11.2026, erledigt):** Flussdiagrammsymbole passen ihren Text ein und

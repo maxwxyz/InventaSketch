@@ -282,6 +282,12 @@ vectors stay in `math`.
    the maintainer's patent figure as a preset).
 3. Curves from functions and sketches; axis breaks.
 4. matplotlib export; math merge.
+4a. **Editable exports (maintainer 2026-11-25):** LaTeX – every drawing (flowcharts, block diagrams, sketches) as TikZ
+   with texts as TikZ nodes (document font, formatting and maths stay editable in LaTeX, umlauts and special characters
+   escaped), charts and figures as pgfplots (axes, ticks, legend, labels, value lines, hatched regions as LaTeX code, data
+   inline), standalone or as a `tikzpicture` to `\input`; SVG – texts stay `<text>` (already so), every element and part
+   becomes a named group (`id`/`class` with the part key, Inkscape layer labels), hatches as patterns, so text and
+   styles can be edited in Inkscape/Illustrator. Both through the engine's exporters, offered in all three hosts.
 5. Charts from pictures (scanner port, curve digitiser).
 
 **Flowcharts (maintainer example 2026-11-25, done):** flowchart symbols fit and wrap their text, start circle and end

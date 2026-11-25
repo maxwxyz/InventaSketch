@@ -132,6 +132,9 @@ export interface ActionInfo {
 
 export type ParamValue = number | string | boolean | null;
 
+/** A selectable part of an element (charts v2: a curve, an axis, the grid …); engine `parts`. */
+export interface PartView { key: string; label: string; kind: string; hidden: boolean; style?: StyleInfo }
+
 export interface ParamInfo {
   key: string;
   label: string;

@@ -16,7 +16,8 @@ chart and using hover hints, the context bar and the pie menu:
 - curves from data, from functions (constant, ramp, step, rectangle pulse, sawtooth, triangle, sine, exponential, PT1,
   circle/ellipse) and from a hand sketch that becomes a smooth or idealised curve;
 - reverse engineering: a picture (clipboard, photo, screenshot) becomes an editable chart;
-- export as matplotlib code (and the existing SVG/PNG).
+- export as matplotlib code, as LaTeX (pgfplots for charts, TikZ for flowcharts and sketches; texts stay LaTeX text,
+  editable and set in the document font) and as SVG with texts as text and parts as named groups (and PNG).
 
 Example the design is checked against: the maintainer's patent figure (power P with phases "pre-conditioning" and
 "full load" on top; rotor temperature below with a dashed and a solid curve, a hatched region between them, a limit

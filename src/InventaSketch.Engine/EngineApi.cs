@@ -78,6 +78,7 @@ namespace InventaSketch.Engine
                 ["partActions"] = PartActionsCore,
                 ["applyPartAction"] = ApplyPartActionCore,
                 ["setPartLook"] = SetPartLookCore,
+                ["partOutline"] = PartOutlineCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
                 ["redo"] = r => { var s = S(r); s.Redo(); return StateOf(s, r); },
                 ["select"] = r => { var s = S(r); s.Select(r.Ids); return StateOf(s, r); },
@@ -1756,6 +1757,46 @@ namespace InventaSketch.Engine
                 });
             });
             return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// partOutline: the drawn outline of one part of element id in page mm, as polylines [[x, y], …] (lines and curves
+        /// sampled, sub-paths separate, texts and areas as their box), for hosts that highlight the selected part.
+        /// </summary>
+        private object PartOutlineCore(EngineRequest r)
+        {
+            var s = S(r);
+            var o = PartOwner(s, r);
+            var part = r.Part ?? throw new ArgumentException("Missing 'part'.");
+            var lines = new List<List<double[]>>();
+            if (Registry.Type(o.Type) is null) return lines;
+            static double[] P(Vec2 v) => new[] { Math.Round(v.X, 3), Math.Round(v.Y, 3) };
+            foreach (var p in Prim.Flatten(Registry.Render(o, s.Context())))
+            {
+                if (p.Tag is not { } t || !(t == part || t.StartsWith(part + ".", StringComparison.Ordinal))) continue;
+                switch (p)
+                {
+                    case LinePrim l: lines.Add(new List<double[]> { P(l.A), P(l.B) }); break;
+                    case PathPrim path:
+                        {
+                            var sub = new List<PathSeg>();
+                            void Flush() { if (sub.Count > 1) lines.Add(PartLooks.Sample(sub).Select(P).ToList()); sub.Clear(); }
+                            foreach (var seg in path.Segments) { if (seg.Op == SegOp.M) Flush(); sub.Add(seg); }
+                            Flush();
+                            break;
+                        }
+                    default:
+                        {
+                            var pts = Prim.Points(p).ToList();
+                            if (pts.Count == 0) break;
+                            var b = Rect.FromPoints(pts);
+                            if (p is TextPrim tp) b = b.Inflate(tp.TextStyle.Size * 0.3);
+                            lines.Add(new List<double[]> { P(new Vec2(b.X, b.Y)), P(new Vec2(b.Right, b.Y)), P(new Vec2(b.Right, b.Bottom)), P(new Vec2(b.X, b.Bottom)), P(new Vec2(b.X, b.Y)) });
+                            break;
+                        }
+                }
+            }
+            return lines;
         }
 
         /// <summary>

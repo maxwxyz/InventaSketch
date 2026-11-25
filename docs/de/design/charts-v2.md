@@ -17,7 +17,9 @@ auswählen, Hover-Hinweise, Kontextleiste und Kreismenü.
 - Kurven aus Daten, aus Funktionen (konstant, Rampe, Sprung, Rechteckpuls, Sägezahn, Dreieck, Sinus, Exponential, PT1,
   Kreis/Ellipse) und aus einer Handskizze, aus der eine geglättete oder idealisierte Kurve wird.
 - Rückwärts: Ein Bild (Zwischenablage, Foto, Bildschirmfoto) wird zu einem bearbeitbaren Diagramm.
-- Export als matplotlib-Code (zusätzlich zu SVG/PNG).
+- Export als matplotlib-Code, als LaTeX (pgfplots für Diagramme, TikZ für Flussdiagramme und Skizzen; Texte bleiben
+  LaTeX-Text, bearbeitbar und in der Dokumentschrift gesetzt) und als SVG mit Texten als Text und Teilen als benannten
+  Gruppen (dazu PNG).
 
 Prüfbeispiel: die Patentfigur des Maintainers (oben Leistung P mit den Phasen „Vorkonditionierung“ und „Volllastphase“;
 unten Rotortemperatur mit gestrichelter und durchgezogener Kurve, schraffiertem Bereich dazwischen, Grenzlinie
