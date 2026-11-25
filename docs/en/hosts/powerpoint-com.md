@@ -441,6 +441,13 @@ Data export (Extras ▸ Export data, 2026-11-20): offers the domain exports that
 slide (bill of materials, connection graph as Mermaid/GraphML, netlist, reference sign list), saves the file and copies
 the text to the clipboard. Verified: two equal spur gears and a shaft gave a bill of materials with quantity 2.
 
+Variants (Extras ▸ Compare with the previous slide, 2026-11-25): a duplicated slide keeps the elements' ids, so a
+"before/after" or "baseline/invention" pair can be compared. The command marks on the current slide what differs from
+the previous one (`Variants.Diff` in Core): added elements in green, changed ones (type, view, parameters, text,
+position, size or points) in orange, removed ones as a dashed grey frame where they were, plus a legend at the top
+right. The marks are plain PowerPoint shapes tagged `ISK_DIFF`; calling the command again removes them. One undo step.
+Verified: scenario `variants` (one gear removed, one changed, one added → 3 marks and a legend, removed again).
+
 ## Known limits / next steps
 
 - PowerPoint started via `New-Object -ComObject PowerPoint.Application` did not list the freshly registered add-in in

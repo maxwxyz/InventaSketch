@@ -38,6 +38,7 @@ namespace InventaSketch.Engine
                 ["importData"] = ImportDataCore,
                 ["importGeo"] = ImportGeoCore,
                 ["preflight"] = PreflightCore,
+                ["diff"] = DiffCore,
                 ["patentProfiles"] = PatentProfilesCore,
                 ["update"] = UpdateCore,
                 ["move"] = MoveCore,
@@ -396,6 +397,26 @@ namespace InventaSketch.Engine
             s.Apply("Import map data", d => Edits.Add(d, s.PageId, created.ToArray()));
             s.Select(created.Select(o => o.Id));
             return StateOf(s, r);
+        }
+
+        // ------------------------------------------------------------------ variants
+
+        /// <summary>
+        /// Variants: the elements added, removed and changed from the state in <c>payload</c> (a compact model, e.g. the
+        /// previous slide's) to the session's page (<see cref="Variants.Diff"/>), with their page bounds.
+        /// </summary>
+        private object DiffCore(EngineRequest r)
+        {
+            var s = S(r);
+            var before = DocumentJson.FromCompact(r.Payload ?? throw new ArgumentException("Missing 'payload'."));
+            var d = Variants.Diff(before, s.Doc);
+            object Box(SketchDocument doc, string id) { var b = Variants.Bounds(doc, doc.Get(id)!); return new { id, x = b.X, y = b.Y, w = b.W, h = b.H }; }
+            return new
+            {
+                added = d.Added.Select(id => Box(s.Doc, id)).ToList(),
+                changed = d.Changed.Select(id => Box(s.Doc, id)).ToList(),
+                removed = d.Removed.Select(id => Box(before, id)).ToList(),
+            };
         }
 
         // ------------------------------------------------------------------ patent workflow

@@ -46,6 +46,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `importGeo` | `text` (GeoJSON oder GPX) | Zustand; Routen und Marker in die Seite eingepasst, ausgewählt |
 | `preflight` | `text` (Profil-ID, Standard "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – Patent-Vorabprüfung der Zeichnungen |
 | `patentProfiles` | `lang` | die Ämter `{ id, name }` |
+| `diff` | `payload` (kompaktes Modell des früheren Stands, z. B. der vorherigen Folie) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – Varianten: was sich von diesem Stand unterscheidet (Rahmen in mm, entfernte aus dem früheren Stand) |
 | `setAccent` | `text` (Voreinstellung aus `accents`, #rrggbb oder "" für die Originalfarben) | Zustand (`accent`); Akzentfarbe des Dokuments, jedes Objekt gilt als geändert |
 | `accents` | `lang` | die angebotenen Akzentfarben `{ id, color, name }` |
 | `setLineGroup` | `value` (0,25, 0,35, 0,5, 0,7 oder 1 – Breite der breiten Linie in mm) | Zustand (`lineGroup`); ISO-128-Liniengruppe des Dokuments, jedes Objekt gilt als geändert |
