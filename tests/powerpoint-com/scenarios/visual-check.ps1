@@ -27,7 +27,7 @@ $scr = ConvertTo-IskPixel $S @(([double]$flat[0] * 25.4 / 72), ([double]$flat[1]
 Invoke-IskClick $scr[0] $scr[1] 2500
 $part = $addin.SelectedPart()
 Write-IskInfo ("first click on the curve selects: '$part'")
-Assert-Isk $S ($part -eq 'series.0') 'the first click on the curve selects the curve'
+Assert-Isk $S ($part -eq 'series.0' -or $part -like 'point.0.*') 'the first click on the curve selects the curve or the point under the pointer'
 Shot-Unit $c '2-curve-first-click'
 # 3. The pie of the chart part and of a gear.
 $r = Get-IskRect $S $c

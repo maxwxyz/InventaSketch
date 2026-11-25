@@ -337,7 +337,7 @@ namespace InventaSketch.AddIn.OnSlide
             List<PieItem>? partStyle = null;
             if (_part is not null && PartOwner() is { } owner && SelectedPartInfo(owner) is { } part)
             {
-                editLabel = part.Label.Get(_lang()) + " ▸";
+                // The centre names the part; the place keeps its short label (a long part name did not fit).
                 var (partEdit, styleOfPart) = PartPieItems();
                 edit.AddRange(partEdit);
                 partStyle = styleOfPart;

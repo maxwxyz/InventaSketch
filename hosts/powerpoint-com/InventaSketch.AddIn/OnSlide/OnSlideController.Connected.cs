@@ -199,8 +199,17 @@ namespace InventaSketch.AddIn.OnSlide
         private List<SketchUnit> HaloSelected()
             => _mode == Mode.Multi ? _multi : _unit is null ? new List<SketchUnit>() : new List<SketchUnit> { _unit };
 
+        /// <summary>
+        /// Identity of a unit's drawing for the halo cache: position and size plus the content of its objects, so the halo
+        /// follows every change (a curve dragged inside a chart, a new form, scaling – maintainer 2026-11-25: the halo stayed
+        /// as it was until the next selection).
+        /// </summary>
         private static string UnitKey(SketchUnit u)
-            => u.Id + "@" + Math.Round(u.BoundsPt.X, 2) + "," + Math.Round(u.BoundsPt.Y, 2) + "," + Math.Round(u.BoundsPt.Width, 2) + "," + Math.Round(u.BoundsPt.Height, 2);
+        {
+            var content = 17;
+            unchecked { foreach (var o in u.Doc.Objects.Values) content = content * 31 + o.GetHashCode(); }
+            return u.Id + "@" + Math.Round(u.BoundsPt.X, 2) + "," + Math.Round(u.BoundsPt.Y, 2) + "," + Math.Round(u.BoundsPt.Width, 2) + "," + Math.Round(u.BoundsPt.Height, 2) + "#" + content;
+        }
 
         /// <summary>The rendered primitives of a unit (page mm): the armed unit's from the arm, others rendered once.</summary>
         private IReadOnlyList<Primitive> UnitPrims(SketchUnit u)
