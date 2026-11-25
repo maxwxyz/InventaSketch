@@ -231,12 +231,37 @@ namespace InventaSketch.AddIn
         internal static readonly IReadOnlyDictionary<string, string> SharedMenu = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["building-services"] = "architecture",
+            // Machine elements and linkages (gears, shafts, bearings … and joints, links, mechanisms): one menu.
+            ["kinematics"] = "mechanical",
         };
+
+        /// <summary>Categories shown in another module's menu (category → module whose menu shows it).</summary>
+        internal static readonly IReadOnlyDictionary<string, string> CategoryMenu = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            // Forces, moments, supports, beams, springs: technical mechanics belongs to the mechanics menu, not to the basics.
+            ["ann.mechanics"] = "mechanical",
+        };
+
+        /// <summary>
+        /// Category order inside a shared menu, most used first (maintainer 2026-11-25: "the order inside is not optimised
+        /// yet"); categories not listed follow in their module order.
+        /// </summary>
+        internal static readonly string[] MenuCategoryOrder =
+        {
+            "mech.gears", "mech.shafts", "mech.bearings", "mech.couplings", "mech.drives", "mech.screwdrives", "mech.springs",
+            "mech.fasteners", "mech.housings", "mech.arrows",
+            "kin.mechanisms", "kin.joints", "kin.links", "kin.motion",
+            "ann.mechanics",
+        };
+
+        /// <summary>The module whose menu shows category <paramref name="c"/>.</summary>
+        private static string MenuModuleOf(LibraryCategory c) => CategoryMenu.TryGetValue(c.Id, out var m) ? m : c.ModuleId;
 
         /// <summary>Label of a host module's menu when it shares it with partners.</summary>
         internal static readonly IReadOnlyDictionary<string, I18nText> SharedMenuLabels = new Dictionary<string, I18nText>(StringComparer.Ordinal)
         {
             ["architecture"] = new I18nText("Building & services", "Gebäude & TGA"),
+            ["mechanical"] = new I18nText("Mechanics", "Mechanik"),
         };
 
         private List<(string Label, List<IModule> Modules)> RibbonGroups()
@@ -246,7 +271,8 @@ namespace InventaSketch.AddIn
             var order = new[] { "mechanical", "kinematics", "electrical", "machines", "automotive", "architecture", "diagrams" };
             var groups = new List<(string, List<IModule>)>();
             var first = modules.Where(mod => Array.IndexOf(annotate, mod.Id) >= 0).OrderBy(mod => Array.IndexOf(annotate, mod.Id)).ToList();
-            if (first.Count > 0) groups.Add((T("Annotate", "Beschriftung"), first));
+            // The first group holds the basics: PowerPoint's shapes, lines and arrows, labels, dimensions, hatching, figure marks.
+            if (first.Count > 0) groups.Add((T("Basics", "Grundlagen"), first));
             foreach (var mod in modules.Where(mod => Array.IndexOf(annotate, mod.Id) < 0 && !SharedMenu.ContainsKey(mod.Id))
                          .OrderBy(mod => Array.IndexOf(order, mod.Id) is var i && i >= 0 ? i : order.Length))
             {
@@ -273,8 +299,6 @@ namespace InventaSketch.AddIn
               .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskSnap\" showLabel=\"false\" label=\"").Append(L(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Magnetic snapping: gear mesh, axes, points and alignment. Hold Alt to move freely.", "Magnetisches Einrasten: Zahneingriff, Achsen, Punkte und Fluchtlinien. Alt gedrückt halten für freies Bewegen."))).Append("\" />");
-            sb.Append("<toggleButton id=\"IskBar\" showLabel=\"false\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
-              .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
             // A toggle (maintainer 2026-11-25): pressed while the current slide is black and white; new elements take it.
             sb.Append("<toggleButton id=\"IskMonochrome\" showLabel=\"false\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" getPressed=\"GetMonochromePressed\" onAction=\"OnMonochromeToggle\" supertip=\"")
               .Append(X(T("Shows the InventaSketch elements of this slide in black and white: fills, text and highlighters included; elements inserted later take it too. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß, einschließlich Füllungen, Text und Markierungen; später eingefügte Elemente übernehmen es. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
@@ -304,13 +328,16 @@ namespace InventaSketch.AddIn
                 {
                     var ids = mods.Select(mod => mod.Id).ToList();
                     // Categories merged into another one's gallery get no gallery of their own.
-                    var cats = _categories.Select((c, i) => (c, i)).Where(x => ids.Contains(x.c.ModuleId) && !MergedInto.ContainsKey(x.c.Id))
-                        .OrderBy(x => ids.IndexOf(x.c.ModuleId)).ToList();
+                    var cats = _categories.Select((c, i) => (c, i)).Where(x => ids.Contains(MenuModuleOf(x.c)) && !MergedInto.ContainsKey(x.c.Id))
+                        .OrderBy(x => Array.IndexOf(MenuCategoryOrder, x.c.Id) is var k && k >= 0 ? k : MenuCategoryOrder.Length)
+                        .ThenBy(x => ids.IndexOf(MenuModuleOf(x.c))).ToList();
                     if (cats.Count == 0) continue;
                     if (m == 0)
                     {
                         // "Annotate" stays open as a group; many categories show icons only (name in the tooltip).
                         sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(L(label)).Append("\">");
+                        // PowerPoint's own shapes first, as an icon (maintainer 2026-11-25).
+                        sb.Append("<control idMso=\"ShapesInsertGallery\" showLabel=\"false\" />");
                         foreach (var (c, i) in cats) Gallery(c, i, inMenu: false, compact: cats.Count > 4);
                         sb.Append("</group>");
                         // Formatting groups (like Slidemax) right after "Annotate", before the domain modules.
@@ -380,6 +407,9 @@ namespace InventaSketch.AddIn
             sb.Append("<button id=\"IskMenuModules\" label=\"").Append(L(T("Modules \u2026", "Module \u2026"))).Append("\" imageMso=\"ApplicationOptionsDialog\" onAction=\"OnToolsMenu\" supertip=\"")
               .Append(X(T("Choose which modules the ribbon and the library show (for example only mechanics and annotation).",
                           "Ausw\u00e4hlen, welche Module Men\u00fcband und Bibliothek zeigen (zum Beispiel nur Mechanik und Beschriftung)."))).Append("\" />");
+            // The floating context bar as a switch in Extras (maintainer 2026-11-25: out of the ribbon group).
+            sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+              .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
             sb.Append("<menuSeparator id=\"IskMenuSep0\" />");
             Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
             Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
@@ -670,12 +700,11 @@ namespace InventaSketch.AddIn
             sb.Append("<group id=\"IskLayout\" label=\"").Append(L(T("Layout", "Layout"))).Append("\" imageMso=\"ObjectsAlignLeft\">");
             sb.Append("<box id=\"IskBoxArrange\"><control idMso=\"ObjectBringToFrontMenu\" showLabel=\"false\" /><control idMso=\"ObjectSendToBackMenu\" showLabel=\"false\" /></box>");
             sb.Append("<box id=\"IskBoxGroup\"><control idMso=\"ObjectsGroup\" showLabel=\"false\" /><control idMso=\"ObjectsUngroup\" showLabel=\"false\" /><control idMso=\"ObjectsRegroup\" showLabel=\"false\" /></box>");
-            // Bottom row: selection pane, PowerPoint's shapes and a table insert, icons only (maintainer 2026-11-25).
-            sb.Append("<box id=\"IskBoxSelect\"><control idMso=\"SelectionPane\" showLabel=\"false\" />");
-            // PowerPoint's own shapes gallery as an icon (maintainer 2026-11-25: instead of a text box button).
-            sb.Append("<control idMso=\"ShapesInsertGallery\" showLabel=\"false\" />");
-            sb.Append("<button id=\"IskInsertTable\" showLabel=\"false\" label=\"").Append(L(T("Table", "Tabelle"))).Append("\" screentip=\"").Append(X(T("Insert a table", "Tabelle einf\u00fcgen")))
-              .Append("\" getImage=\"GetPaintedImage\" getVisible=\"GetInsertQuickVisible\" onAction=\"OnInsertQuick\" />");
+            // Bottom row: table, selection pane, picture (PowerPoint's own controls, icons only).
+            // PowerPoint's native table dropdown, the selection pane and picture insert, icons only (maintainer 2026-11-25).
+            sb.Append("<box id=\"IskBoxSelect\"><control idMso=\"TableInsertGallery\" showLabel=\"false\" />");
+            sb.Append("<control idMso=\"SelectionPane\" showLabel=\"false\" />");
+            sb.Append("<control idMso=\"PictureInsertFromFile\" showLabel=\"false\" />");
             sb.Append("</box>");
             // Height above width (one column), so the group stays narrow.
             sb.Append("<control idMso=\"ShapeHeight\" showLabel=\"false\" /><control idMso=\"ShapeWidth\" showLabel=\"false\" />");
@@ -867,7 +896,7 @@ namespace InventaSketch.AddIn
             catch (Exception ex) { Log.Error("GetLogoSmallImage", ex); return null; }
         }
 
-        /// <summary>Pictograms drawn in the Office theme ink: the Review group, the compatibility check and the table insert.</summary>
+        /// <summary>Pictograms drawn in the Office theme ink: the Review group and the compatibility check.</summary>
         public object? GetPaintedImage(Office.IRibbonControl control)
         {
             try
@@ -881,7 +910,6 @@ namespace InventaSketch.AddIn
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     switch (control.Id)
                     {
-                        case "IskInsertTable": OnSlide.IconPainter.Draw(g, IconIds.Table, new RectangleF(0, 0, size, size), ink); break;
                         default:
                             {
                                 // A sheet with a check mark (review / compatibility).
@@ -905,12 +933,6 @@ namespace InventaSketch.AddIn
             }
         }
 
-        /// <summary>The table insert is shown only while a table element is in the library.</summary>
-        public bool GetInsertQuickVisible(Office.IRibbonControl control)
-            => control.Id != "IskInsertTable" || _registry?.Item("ann.table") is not null;
-
-        /// <summary>Layout group: inserts a table like a gallery pick (placed at the pointer).</summary>
-        public void OnInsertQuick(Office.IRibbonControl control) => OnGalleryAction(control, "ann.table", 0);
 
         /// <summary>Ribbon image of the anchor toggle: the abstract "connect" pictogram in the Office theme ink.</summary>
         public object? GetAnchorImage(Office.IRibbonControl control)
