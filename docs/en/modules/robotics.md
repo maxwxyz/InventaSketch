@@ -32,7 +32,7 @@ but follows the same pattern as the kinematics mechanisms: one moved joint for s
   over its limits, with the other joints as they are. So ghost positions and all animation frames share one framing,
   and the base never moves while the moved joint turns. When anything else changes (another joint, a link length, a
   limit, the moved joint, the envelope), the **box follows the robot**: the drawing scale and the page position of the
-  base are kept and the box size adapts (`OnParamChanged`, and the actions "Home position", "Move joint …",
+  base are kept and the box size adapts (`OnParamChanged`, and the actions "Home position", the joint choice,
   "Reach envelope"). A view switch keeps the drawing scale as well.
 - Joint values are **clamped to the joint limits** before drawing.
 - Line roles: bodies are medium outlines (0.35 mm) with a light fill (`#eef1f5`, darker grey for bases and motors) so a
@@ -175,10 +175,10 @@ greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, no
 
 ## Context actions
 
-Robots: `J… +15°` / `J… −15°` (50 mm for linear axes) on the moved joint, "Move joint J…" (cycles the moved joint),
+Robots: `J… +15°` / `J… −15°` (50 mm for linear axes) on the moved joint, joint ▾ (choice of the moved joint),
 "Home position", "Ghost positions" (0 ↔ 4, over the moved joint's range), "Reach envelope", drawing style body ↔
 kinematic schematic (option pictograms detailed/schematic), "Joint labels" (J1… / A1… by UI language, coinciding joints
-share a label "J5/J6"). Grippers: open/close, stroke arrows, more/fewer cups. Others: cycle kind/shape/axes, toggles for
+share a label "J5/J6"). Grippers: open/close, stroke arrows, more/fewer cups. Others: kind ▾ / shape ▾ / axes ▾ (choices), toggles for
 names, arrows, mesh band, field tint, closed fence, reverse conveyor.
 
 ## Host notes

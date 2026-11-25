@@ -484,15 +484,9 @@ namespace InventaSketch.Modules.Machines
 
         public static I18nText RotorLabel(string kind) => Rotor.Options!.First(x => x.Value == kind).Label;
 
-        /// <summary>Cycles the rotor type SPM, IPM, spoke, EESM, ASM, SRM.</summary>
-        public static ContextAction RotorCycle(SketchObject o)
-        {
-            var idx = Array.IndexOf(RotorKinds, RotorKind(o));
-            var next = RotorKinds[(idx + 1) % RotorKinds.Length];
-            var label = RotorLabel(next);
-            return new ContextAction("param.rotor", new I18nText("Next rotor: " + label.En, "Nächster Läufer: " + label.De), IconIds.Cycle,
-                x => x.WithParam("rotor", next)) { Group = "param", ParamKeys = new[] { "rotor" } };
-        }
+        /// <summary>The rotor type (SPM, IPM, spoke, EESM, ASM, SRM) as a choice – a dropdown, never a cycle button.</summary>
+        public static IEnumerable<ContextAction> RotorChoice(SketchObject o)
+            => ActionChoices.FromParam(o, "param.rotor", Rotor, T("Rotor", "Läufer"), "param", RotorKinds);
 
         /// <summary>Increment/decrement of an integer parameter (clamped).</summary>
         public static IEnumerable<ContextAction> Stepper(SketchObject o, string key, I18nText name, int def, int step, int min, int max)
@@ -512,13 +506,13 @@ namespace InventaSketch.Modules.Machines
             return new ContextAction("param." + key, label, IconIds.Toggle, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = on, Group = "param" };
         }
 
-        public static ContextAction LayoutSwap(SketchObject o)
-            => new("param.layout", Outer(o) ? T("Inner rotor", "Innenläufer") : T("Outer rotor", "Außenläufer"), IconIds.Cycle,
-                x => x.WithParam("layout", Outer(x) ? "inner" : "outer")) { Group = "param" };
+        /// <summary>Inner or outer rotor as a choice (names the parameter: one place for it in the hosts).</summary>
+        public static IEnumerable<ContextAction> LayoutChoice(SketchObject o)
+            => ActionChoices.FromParam(o, "param.layout", Layout, null, "param", null);
 
-        public static ContextAction ModeSwap(SketchObject o)
-            => new("param.mode", o.Str("mode", "motor") == "generator" ? T("Motor (M)", "Motor (M)") : T("Generator (G)", "Generator (G)"), IconIds.Cycle,
-                x => x.WithParam("mode", x.Str("mode", "motor") == "generator" ? "motor" : "generator")) { Group = "param" };
+        /// <summary>Motor or generator as a choice.</summary>
+        public static IEnumerable<ContextAction> ModeChoice(SketchObject o)
+            => ActionChoices.FromParam(o, "param.mode", Mode, null, "param", null);
 
         public static string L(Pen p, string en, string de) => p.Lang == Lang.De ? de : en;
     }

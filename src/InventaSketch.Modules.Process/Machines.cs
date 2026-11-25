@@ -40,7 +40,7 @@ namespace InventaSketch.Modules.Process
                 Params = new[] { PdKind },
                 Ports = Fixed(new Port("S", -6, 0), new Port("D", 6, 0)),
                 Block = true, TagPrefix = "P-102", CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.pump.kind", T("Pump type", "Pumpenbauart"), PdKind) },
+                Extra = o => Choice(o, "process.pump.kind", T("Pump type", "Pumpenbauart"), PdKind),
             };
 
             yield return new ProcessType("process.compressor", T("Compressor (process)", "Verdichter (Prozess)"), Cat, 14, 12, Compressor,
@@ -50,7 +50,7 @@ namespace InventaSketch.Modules.Process
                 Params = new[] { CompKind },
                 Ports = Fixed(new Port("S", -7, 0), new Port("D", 7, 0)),
                 Block = true, TagPrefix = "K-101", CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.compressor.kind", T("Compressor type", "Verdichterbauart"), CompKind) },
+                Extra = o => Choice(o, "process.compressor.kind", T("Compressor type", "Verdichterbauart"), CompKind),
             };
 
             yield return new ProcessType("process.turbine", T("Turbine / expander", "Turbine / Entspannungsmaschine"), Cat, 14, 12, Turbine,
@@ -71,7 +71,7 @@ namespace InventaSketch.Modules.Process
                     : new[] { new Port("I", -6, 0.5), new Port("O", 6, -4.5) },
                 Block = true, TagPrefix = "B-101",
                 CompanionIds = new[] { "process.line", "process.hvac.filter", "process.hvac.coil", "process.hvac.damper", "process.motor" },
-                Extra = o => new[] { Cycle("process.fan.kind", T("Centrifugal / axial", "Radial / axial"), FanKind) },
+                Extra = o => Choice(o, "process.fan.kind", null, FanKind),
             };
 
             yield return new ProcessType("process.motor", T("Electric motor (drive)", "Elektromotor (Antrieb)"), Cat, 10, 10, Motor,

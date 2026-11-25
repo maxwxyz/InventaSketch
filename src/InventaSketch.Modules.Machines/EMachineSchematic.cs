@@ -40,6 +40,19 @@ namespace InventaSketch.Modules.Machines
             new ParamOption("srm", T("Switched reluctance (SRM)", "Geschaltete Reluktanzmaschine (SRM)")))
             .WithOptionIcons(v => v switch { "eesm" => IconIds.MachWound, "asm" => IconIds.MachCage, "srm" => IconIds.MachReluctance, _ => IconIds.MachMagnet });
 
+        private static readonly (string Value, I18nText Label)[] ShortLayouts =
+        {
+            ("inner", T("Radial, inner rotor", "Radial, Innenläufer")), ("outer", T("Radial, outer rotor", "Radial, Außenläufer")),
+            ("axial", T("Axial flux", "Axialfluss")), ("axial-2r", T("Axial, double rotor", "Axial, Doppelläufer")),
+            ("axial-2s", T("Axial, double stator", "Axial, Doppelständer")),
+        };
+
+        private static readonly (string Value, I18nText Label)[] ShortKinds =
+        {
+            ("pmsm", T("Permanent magnet (PMSM)", "Permanentmagnet (PMSM)")), ("eesm", T("Wound field (EESM)", "Fremderregt (FSM)")),
+            ("asm", T("Induction (ASM)", "Asynchron (ASM)")), ("srm", T("Reluctance (SRM)", "Reluktanz (SRM)")),
+        };
+
         private static readonly ParamDef ShaftStubs = Common.Flag("shaft", T("Shaft stubs", "Wellenstümpfe"), true);
         private static readonly ParamDef Ground = Common.Flag("ground", T("Stator fixed to housing", "Ständer am Gehäuse"), true);
 
@@ -82,14 +95,11 @@ namespace InventaSketch.Modules.Machines
 
         private static IEnumerable<ContextAction> Actions(SketchObject o)
         {
-            var layout = Layouts[(Array.IndexOf(Layouts, LayoutOf(o)) + 1) % Layouts.Length];
-            var ll = Layout.Options!.First(x => x.Value == layout).Label;
-            yield return new ContextAction("param.layout", T("Next arrangement: " + ll.En, "Nächste Bauform: " + ll.De), IconIds.Cycle,
-                x => x.WithParam("layout", layout)) { Group = "param", ParamKeys = new[] { "layout" } };
-            var kind = Kinds[(Array.IndexOf(Kinds, KindOf(o)) + 1) % Kinds.Length];
-            var kl = Kind.Options!.First(x => x.Value == kind).Label;
-            yield return new ContextAction("param.kind", T("Next machine type: " + kl.En, "Nächste Maschinenart: " + kl.De), IconIds.Cycle,
-                x => x.WithParam("kind", kind)) { Group = "param", ParamKeys = new[] { "kind" } };
+            // Arrangement and machine type are choices with the machine pictograms (short option names for bar and pie).
+            foreach (var a in ActionChoices.FromValues("param.layout", T("Arrangement", "Bauform"), "layout", LayoutOf(o), ShortLayouts.Select(x => (x.Value, x.Label, Layout.Options!.First(p => p.Value == x.Value).Icon)), "param"))
+                yield return a;
+            foreach (var a in ActionChoices.FromValues("param.kind", T("Machine type", "Maschinenart"), "kind", KindOf(o), ShortKinds.Select(x => (x.Value, x.Label, Kind.Options!.First(p => p.Value == x.Value).Icon)), "param"))
+                yield return a;
             yield return Common.Toggle(o, "shaft", true, T("Shaft stubs on/off", "Wellenstümpfe an/aus")) with { Icon = IconIds.ShaftEnds };
             yield return Common.Toggle(o, "ground", true, T("Housing connection on/off", "Gehäuseanbindung an/aus")) with { Icon = IconIds.Ground };
         }

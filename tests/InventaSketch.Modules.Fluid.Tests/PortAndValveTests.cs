@@ -75,13 +75,13 @@ namespace InventaSketch.Modules.Fluid.Tests
             var r = Fx.Reg();
             var v = Fx.Item(r, "fluid.valve.42");
             var before = Fx.Ports(r, v).Select(a => a.Id).ToList();
-            foreach (var id in new[] { "fluid.valve.actLeft.next", "fluid.valve.flip", "fluid.valve.detent", "fluid.medium" })
+            foreach (var id in new[] { "fluid.valve.actLeft=lever", "fluid.valve.flip", "fluid.valve.detent", "fluid.medium=pneumatic" })
             {
                 var changed = Fx.Action(r, v, id).Apply(v);
                 Assert.Equal(before, Fx.Ports(r, changed).Select(a => a.Id).Where(x => x is not ("X" or "Y")));
             }
             // 4/2 -> 4/3: same four ports, now at the centre box.
-            var three = Fx.Action(r, v, "fluid.valve.ways.next").Apply(v);
+            var three = Fx.Action(r, v, "fluid.valve.ways=4/3").Apply(v);
             Assert.Equal("4/3", three.Str("ways", ""));
             Assert.Equal(before, Fx.Ports(r, three).Select(a => a.Id));
         }
@@ -153,12 +153,13 @@ namespace InventaSketch.Modules.Fluid.Tests
             var open = Fx.Render(r, v.WithParam("centre", "open"));
             Assert.Equal(2, open.Count(p => p.Tag == "join-dot"));
 
-            var cycle = Fx.Action(r, v, "fluid.valve.centre.next");
-            Assert.True(cycle.IsEnabled);
-            Assert.Equal("tandem", cycle.Apply(v).Str("centre", ""));
+            // The centre position is a choice among the centres of the valve (three positions only).
+            Assert.Equal(DirectionalValves.Centres4.Select(c => "fluid.valve.centre=" + c), Fx.Options(r, v, "fluid.valve.centre").Select(a => a.Id));
+            Assert.Equal("tandem", Fx.Action(r, v, "fluid.valve.centre=tandem").Apply(v).Str("centre", ""));
             var five = v.WithParam("ways", "5/3");
-            Assert.Equal("float", Fx.Action(r, five, "fluid.valve.centre.next").Apply(five).Str("centre", ""));
-            Assert.False(Fx.Action(r, Fx.Item(r, "fluid.valve.42"), "fluid.valve.centre.next").IsEnabled);
+            Assert.Equal(DirectionalValves.Centres5.Select(c => "fluid.valve.centre=" + c), Fx.Options(r, five, "fluid.valve.centre").Select(a => a.Id));
+            Assert.Equal("float", Fx.Action(r, five, "fluid.valve.centre=float").Apply(five).Str("centre", ""));
+            Assert.Empty(Fx.Options(r, Fx.Item(r, "fluid.valve.42"), "fluid.valve.centre"));
         }
 
         [Fact]
@@ -177,7 +178,7 @@ namespace InventaSketch.Modules.Fluid.Tests
         }
 
         [Fact]
-        public void CyclingWaysKeepsTheDrawingScale()
+        public void ChoosingWaysKeepsTheDrawingScale()
         {
             var r = Fx.Reg();
             var v = Fx.Item(r, "fluid.valve.42");
@@ -185,9 +186,9 @@ namespace InventaSketch.Modules.Fluid.Tests
             var scale = v.Size.W / t.Design(v).W;
             var seen = new List<string>();
             var o = v;
-            for (var i = 0; i < 6; i++)
+            foreach (var ways in new[] { "4/3", "5/2", "5/3", "2/2", "3/2", "4/2" })
             {
-                o = Fx.Action(r, o, "fluid.valve.ways.next").Apply(o);
+                o = Fx.Action(r, o, "fluid.valve.ways=" + ways).Apply(o);
                 seen.Add(o.Str("ways", ""));
                 Assert.Equal(scale, o.Size.W / t.Design(o).W, 9);
                 Assert.Equal(1, o.Size.H / t.Design(o).H, 9);
@@ -200,13 +201,12 @@ namespace InventaSketch.Modules.Fluid.Tests
         {
             var r = Fx.Reg();
             var v = Fx.Item(r, "fluid.valve.32");
-            var toggle = Fx.Action(r, v, "fluid.valve.normal");
-            Assert.True(toggle.IsEnabled);
-            Assert.False(toggle.IsActive);
-            var open = toggle.Apply(v);
+            // The rest position is a choice (2/2 and 3/2 valves only).
+            Assert.True(Fx.Action(r, v, "fluid.valve.normal=closed").IsActive);
+            var open = Fx.Action(r, v, "fluid.valve.normal=open").Apply(v);
             Assert.Equal("open", open.Str("normal", ""));
             Assert.NotEqual(SvgRenderer.RenderPrimitives(Fx.Render(r, v)), SvgRenderer.RenderPrimitives(Fx.Render(r, open)));
-            Assert.False(Fx.Action(r, Fx.Item(r, "fluid.valve.43"), "fluid.valve.normal").IsEnabled);
+            Assert.Empty(Fx.Options(r, Fx.Item(r, "fluid.valve.43"), "fluid.valve.normal"));
         }
 
         [Fact]
@@ -222,7 +222,7 @@ namespace InventaSketch.Modules.Fluid.Tests
             Assert.Contains(lp, p => p.Tag == "detent");
             Assert.Contains(lp, p => p.Tag == "operator");
             Assert.DoesNotContain(lp, p => p.Tag == "spring");
-            var cycle = Fx.Action(r, v, "fluid.valve.actLeft.next");
+            var cycle = Fx.Action(r, v, "fluid.valve.actLeft=pilot");
             Assert.Equal("pilot", cycle.Apply(v).Str("actLeft", ""));
             var pilot = Fx.Item(r, "fluid.valve.52.pilot");
             Assert.Equal(2, Fx.Render(r, pilot).Count(p => p.Tag == "pilot" && p is LinePrim));
@@ -245,7 +245,7 @@ namespace InventaSketch.Modules.Fluid.Tests
             var mount = r.PageAnchors(valve, ctx).Single(a => a.Role == AnchorRole.Mount && a.Id == "left").P;
             var actMount = r.PageAnchors(act, ctx).Single(a => a.Role == AnchorRole.Mount).P + res.Delta;
             Assert.True(mount.DistanceTo(actMount) < 1e-9);
-            var pilot = Fx.Action(r, act, "fluid.actuation.next");
+            var pilot = Fx.Action(r, act, "fluid.actuation=lever");
             Assert.Equal("lever", pilot.Apply(act).Str("kind", ""));
         }
 
@@ -267,14 +267,14 @@ namespace InventaSketch.Modules.Fluid.Tests
 
             var pump = Fx.Item(r, "fluid.pump");
             Assert.Contains(Fx.Render(r, Fx.Action(r, pump, "fluid.variable").Apply(pump)), p => p.Tag == "variable");
-            Assert.Equal(2, Fx.Render(r, Fx.Action(r, pump, "fluid.flow.next").Apply(pump)).Count(p => p.Tag == "triangle"));
+            Assert.Equal(2, Fx.Render(r, Fx.Action(r, pump, "fluid.flow=two").Apply(pump)).Count(p => p.Tag == "triangle"));
 
             var cyl = Fx.Item(r, "fluid.cylinder.double");
-            var through = Fx.Action(r, cyl, "fluid.cyl.rod").Apply(cyl);
+            var through = Fx.Action(r, cyl, "fluid.cyl.rod=double").Apply(cyl);
             Assert.Equal("double", through.Str("rod", ""));
-            Assert.Contains(Fx.Render(r, Fx.Action(r, cyl, "fluid.cyl.cushion.next").Apply(cyl)), p => p.Tag == "cushion");
+            Assert.Contains(Fx.Render(r, Fx.Other(r, cyl, "fluid.cyl.cushion").Apply(cyl)), p => p.Tag == "cushion");
             var single = Fx.Item(r, "fluid.cylinder.single");
-            Assert.Equal("extend", Fx.Action(r, single, "fluid.cyl.spring.next").Apply(single).Str("spring", ""));
+            Assert.Equal("extend", Fx.Action(r, single, "fluid.cyl.spring=extend").Apply(single).Str("spring", ""));
         }
     }
 }

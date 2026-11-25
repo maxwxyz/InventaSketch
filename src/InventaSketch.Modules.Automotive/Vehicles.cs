@@ -249,8 +249,6 @@ namespace InventaSketch.Modules.Automotive
 
         private static I18nText T(string en, string de) => new(en, de);
 
-        public static readonly I18nText NextView = T("Next vehicle view", "Nächste Fahrzeugansicht");
-
         public static readonly CarBody Car = new()
         {
             L = 45, Wd = 20, H = 14.5, Clearance = 1.6, WheelR = 3.2, ArchR = 3.8, Axles = new[] { -13.5, 13.5 },
@@ -292,7 +290,6 @@ namespace InventaSketch.Modules.Automotive
                 Views.RearV(b.Wd, b.H, (p, o) => b.Front(p, o, true)) with { Anchors = (p, o) => b.FrontAnchors(p, o, true) })
             {
                 CenterHub = true,
-                NextViewLabel = NextView,
             };
 
         public static IEnumerable<AutoType> Types()
@@ -350,7 +347,6 @@ namespace InventaSketch.Modules.Automotive
                 Views.RearV(s.Wd, s.H, (p, o) => TruckRear(p, s)) with { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Mount, p.V(0, s.BoxBottom + 2.5), "mount.rear") } })
             {
                 CenterHub = true,
-                NextViewLabel = NextView,
             };
 
         private static void TruckSide(Pen p, TruckSpec s)
@@ -493,7 +489,6 @@ namespace InventaSketch.Modules.Automotive
                 Views.RearV(Wd, H, Rear))
             {
                 CenterHub = true,
-                NextViewLabel = NextView,
             };
         }
 
@@ -525,7 +520,6 @@ namespace InventaSketch.Modules.Automotive
                 Views.FrontV(Wd, H, Front))
             {
                 CenterHub = true,
-                NextViewLabel = NextView,
             };
         }
 
@@ -593,7 +587,6 @@ namespace InventaSketch.Modules.Automotive
                 Views.FrontV(8, 12, Front))
             {
                 CenterHub = true,
-                NextViewLabel = Vehicles.NextView,
             };
         }
 
@@ -643,7 +636,6 @@ namespace InventaSketch.Modules.Automotive
                 Views.FrontV(6, 10.5, Front))
             {
                 CenterHub = true,
-                NextViewLabel = Vehicles.NextView,
             };
         }
 
@@ -679,7 +671,6 @@ namespace InventaSketch.Modules.Automotive
                 Views.FrontV(4.5, 11.5, Front))
             {
                 CenterHub = true,
-                NextViewLabel = Vehicles.NextView,
             };
         }
     }

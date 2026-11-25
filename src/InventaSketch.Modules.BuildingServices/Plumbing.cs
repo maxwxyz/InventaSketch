@@ -88,11 +88,8 @@ namespace InventaSketch.Modules.BuildingServices
                 Params = new[] { Media.PipeParam("cold"), RiserDir },
                 Ports = BsBoxType.Uv(new[] { (0.0, 0.0, "riser") }, new[] { (0.0, 0.5, "bottom"), (0.0, -0.5, "top") }),
                 Rails = (c, _, view) => view == BsViews.Plan ? Array.Empty<(Vec2, Vec2)>() : new[] { (new Vec2(0, c.Hh), new Vec2(0, -c.Hh)) },
-                Extra = o => new[]
-                {
-                    Bs.Cycle(o, "bs.riser.medium", Media.PipeParam("cold")) with { Icon = IconIds.Medium },
-                    Bs.Cycle(o, "bs.riser.dir", RiserDir),
-                },
+                Extra = o => Bs.Choice(o, "bs.riser.medium", Media.PipeParam("cold"), new I18nText("Medium", "Medium"))
+                    .Concat(Bs.Choice(o, "bs.riser.dir", RiserDir, new I18nText("Direction", "Richtung"))),
                 CompanionIds = new[] { PipeType.TypeId, "bs.san.wc", "bs.san.basin" },
             };
         }

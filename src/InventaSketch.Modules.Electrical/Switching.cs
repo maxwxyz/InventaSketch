@@ -24,7 +24,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, SwitchDraw))
             {
                 Pins = SwitchPins, Params = new[] { Contact }, Switchable = true, RefPrefix = "S",
-                Extra = o => new[] { Cycle(o, "elec.contact.next", T("Next contact type", "Nächste Kontaktart"), Contact) },
+                Extra = o => Choice(o, "elec.contact", T("Contact type", "Kontaktart"), Contact),
             };
 
             yield return new ElecType("elec.pushbutton", T("Push button", "Taster"), Cat,
@@ -32,7 +32,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 14, PushButton))
             {
                 Pins = Fixed(TwoH().ToArray()), Params = new[] { ContactSimple }, Switchable = true, RefPrefix = "S",
-                Extra = o => new[] { Cycle(o, "elec.contact.next", T("Next contact type", "Nächste Kontaktart"), ContactSimple) },
+                Extra = o => Choice(o, "elec.contact", T("Contact type", "Kontaktart"), ContactSimple),
             };
 
             yield return new ElecType("elec.relay.coil", T("Relay coil", "Relaisspule"), Cat,

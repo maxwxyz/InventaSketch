@@ -64,7 +64,6 @@ namespace InventaSketch.Modules.Maps
                 CompanionIds = new[] { NorthArrow.TypeId, Compass.TypeId, Legend.TypeId },
                 Extra = (o, lang) => new[]
                 {
-                    Prm.Cycle(o, "map.scalebar.unit", UnitDef, new I18nText("Unit", "Einheit")),
                     ContextAction.WithInput("map.scalebar.length", new I18nText("Length…", "Länge…"), IconIds.QtyLength,
                         new I18nText("Represented length (e.g. 2 km, 1.5 mi, 500 m)", "Dargestellte Länge (z. B. 2 km, 1,5 mi, 500 m)"),
                         Fmt.Num(LengthOf(o), lang) + " " + UnitOf(o),
@@ -76,8 +75,8 @@ namespace InventaSketch.Modules.Maps
                         }) with { Group = "length" },
                     new ContextAction("map.scalebar.segments.inc", new I18nText("More segments", "Mehr Abschnitte"), IconIds.CountMore, x => x.WithParam("segments", Math.Min(10, x.Int("segments", 4) + 1))) { Group = "segments" },
                     new ContextAction("map.scalebar.segments.dec", new I18nText("Fewer segments", "Weniger Abschnitte"), IconIds.CountFewer, x => x.WithParam("segments", Math.Max(1, x.Int("segments", 4) - 1))) { Group = "segments" },
-                    Prm.Cycle(o, "map.scalebar.style", StyleDef, new I18nText("Style", "Stil")),
-                },
+                }.Concat(Prm.Choice(o, "map.scalebar.unit", UnitDef, new I18nText("Unit", "Einheit")))
+                    .Concat(Prm.Choice(o, "map.scalebar.style", StyleDef, new I18nText("Style", "Stil"))),
             };
         }
 
@@ -179,9 +178,8 @@ namespace InventaSketch.Modules.Maps
                 CompanionIds = new[] { ScaleBar.TypeId, NorthArrow.TypeId, Legend.TypeId },
                 Extra = (o, lang) => new[]
                 {
-                    Prm.Cycle(o, "map.compass.points", PointsDef, new I18nText("Points", "Strahlen")),
                     Prm.Toggle(o, "map.compass.labels", "labels", true, new I18nText("Cardinal letters", "Himmelsrichtungen beschriften")),
-                },
+                }.Concat(Prm.Choice(o, "map.compass.points", PointsDef, new I18nText("Points", "Strahlen"))),
             };
         }
     }

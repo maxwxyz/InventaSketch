@@ -425,7 +425,11 @@ namespace InventaSketch.Modules.Architecture.Tests
             Assert.Equal(200, Act(t, o, "arch.thickness.dec").Num("thickness", 0));
             Assert.Contains("300 mm", t.Actions(o, Lang.De).Single(a => a.Id == "arch.thickness.inc").Label.De);
             var kinds = new List<string>();
-            for (var i = 0; i < 3; i++) { o = Act(t, o, "arch.kind"); kinds.Add(o.Str("kind", "")); }
+            // The wall kind is a choice: one option per kind, the current one marked.
+            var options = t.Actions(o, Lang.En).Where(a => a.Choice?.Key == "arch.kind").ToList();
+            Assert.Equal(new[] { "arch.kind=exterior", "arch.kind=interior", "arch.kind=partition" }, options.Select(a => a.Id));
+            Assert.Equal("arch.kind=exterior", Assert.Single(options, a => a.IsActive).Id);
+            foreach (var k in new[] { "interior", "partition", "exterior" }) { o = Act(t, o, "arch.kind=" + k); kinds.Add(o.Str("kind", "")); }
             Assert.Equal(new[] { "interior", "partition", "exterior" }, kinds);
             Assert.True(Act(t, o, "arch.closed").Flag("closed", false));
         }
@@ -462,9 +466,9 @@ namespace InventaSketch.Modules.Architecture.Tests
             Assert.Equal(13, s.Render(o, Fx.Ctx()).Count(p => p.Tag == ArchTags.Tread));
 
             var tree = r.Type("arch.site.tree")!;
-            Assert.Equal("conifer", Act(tree, tree.Create(Vec2.Zero), "arch.tree.kind").Str("kind", ""));
+            Assert.Equal("conifer", Act(tree, tree.Create(Vec2.Zero), "arch.tree.kind=conifer").Str("kind", ""));
             var pipe = r.Type("arch.hvac.pipe")!;
-            Assert.Equal("return", Act(pipe, pipe.Create(Vec2.Zero), "arch.pipe.medium").Str("medium", ""));
+            Assert.Equal("return", Act(pipe, pipe.Create(Vec2.Zero), "arch.pipe.medium=return").Str("medium", ""));
         }
     }
 

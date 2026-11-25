@@ -62,6 +62,12 @@ namespace InventaSketch.Modules.Fluid.Tests
         public static SketchObject Item(Registry r, string id, Vec2 at = default) => r.Create(r.Item(id) ?? throw new KeyNotFoundException(id), at);
 
         public static ContextAction Action(Registry r, SketchObject o, string id) => r.TypeOf(o).Actions(o, Lang.En).Single(a => a.Id == id);
+
+        /// <summary>The options of choice <paramref name="key"/> ("fluid.medium": one action per value, the current one active).</summary>
+        public static List<ContextAction> Options(Registry r, SketchObject o, string key) => r.TypeOf(o).Actions(o, Lang.En).Where(a => a.Choice?.Key == key).ToList();
+
+        /// <summary>The first option of choice <paramref name="key"/> that is not current (what a switch would have switched to).</summary>
+        public static ContextAction Other(Registry r, SketchObject o, string key) => Options(r, o, key).First(a => !a.IsActive);
     }
 
     public class ModuleRegistrationTests

@@ -83,8 +83,6 @@ namespace InventaSketch.Modules.Automotive
         public bool TextEditable { get; init; }
         /// <summary>Exposes a Hub anchor at the box centre (vehicles: snaps onto lane centrelines).</summary>
         public bool CenterHub { get; init; }
-        /// <summary>Label used by the "next view" action (e.g. "Next vehicle view").</summary>
-        public I18nText? NextViewLabel { get; init; }
         /// <summary>Type-specific context actions in addition to the view switches.</summary>
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
 
@@ -116,12 +114,6 @@ namespace InventaSketch.Modules.Automotive
             var current = ViewOf(o);
             if (_views.Count > 1)
             {
-                var idx = _views.ToList().FindIndex(v => v.Id == current);
-                var next = _views[(Math.Max(0, idx) + 1) % _views.Count];
-                yield return new ContextAction("view.next", NextViewLabel ?? new I18nText("Next view", "Nächste Ansicht"), IconIds.Cycle, x => SwitchView(x, NextView(x)))
-                {
-                    Group = "view",
-                };
                 foreach (var v in _views)
                 {
                     var id = v.Id;
@@ -130,12 +122,6 @@ namespace InventaSketch.Modules.Automotive
             }
             if (Extra is not null)
                 foreach (var a in Extra(o)) yield return a;
-        }
-
-        private string NextView(SketchObject o)
-        {
-            var idx = _views.ToList().FindIndex(v => v.Id == ViewOf(o));
-            return _views[(Math.Max(0, idx) + 1) % _views.Count].Id;
         }
 
         /// <summary>

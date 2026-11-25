@@ -122,12 +122,12 @@ Anschlag der Kurbel abgefahren).
 
 | Aktions-ID | Bezeichnung (EN / DE) | Icon | Gilt für |
 |---|---|---|---|
-| `kin.angle.next` / `kin.angle.prev` | Next / previous position (±15°) / Nächste / vorherige Stellung | `cmd-rotate` | Mechanismen, Kurvenscheibe |
+| `kin.angle.next` / `kin.angle.prev` | Position +15° / −15° / Stellung +15° / −15° | `cmd-rotate` | Mechanismen, Kurvenscheibe |
 | `kin.ghosts` | Ghost positions / Zwischenlagen (schaltet 0 ↔ letzte Anzahl, Vorgabe 4) | `cmd-animate` | Mechanismen |
 | `kin.path` | Motion path / Bahnkurve | `cmd-toggle` | Mechanismen |
 | `kin.dof` | Degree of freedom badge / Freiheitsgrad-Anzeige | `cmd-text` | Mechanismen, Kurvenscheibe |
 | `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage | `cmd-swap` | Viergelenk |
-| `kin.follower` | Next follower type / Nächste Stößelform | `cmd-cycle` | Kurvenscheibe |
+| `kin.follower=roller/flat/knife` | Follower ▾ / Stößel ▾ (Auswahl) | `cmd-option` | Stößel, Kurvenscheibe |
 | `kin.joint.start` / `kin.joint.end` | Gelenk am Anfang / Ende | `cmd-arrow-start` / `cmd-arrow-end` | Starres Glied |
 | `kin.stroke`, `kin.open`, `kin.load` | Aus-/Einfahren, Öffnen/Schließen, Last | `cmd-toggle` | Kolben, Greifer, Seilrolle |
 | `kin.path.*`, `kin.labels`, `kin.limit.joint`, `kin.dof.formula` | Bahn-, Beschriftungs- und Anzeigeoptionen | verschiedene | Bewegungsangaben |

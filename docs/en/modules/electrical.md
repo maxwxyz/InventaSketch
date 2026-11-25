@@ -83,8 +83,8 @@ symbol with its facing pin.
 | `elec.toggle` | `Toggle` | switch state open/closed (`closed`; NC contacts default to closed) — switch, push button, contactor, breaker, RCD |
 | `elec.polarity` | `Swap` | flip polarity (`reverse`: mirrors symbol and pins) — diodes, thyristor, polarised capacitor, source, battery |
 | `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N ↔ P channel |
-| `elec.*.next` | `Cycle` | next gate function, contact type, earth symbol, source type, supply type, plug/socket, package, … |
-| `elec.route.next` | `Cycle` | wire/track routing free → orthogonal → 45° |
+| `elec.<choice>=<value>` | `Option` | choices (dropdowns): gate function, contact type, earth symbol, source type, supply, plug/socket, package, bus protocol, … |
+| `elec.route=free/orthogonal/45` | route pictograms | wire/track routing as a choice |
 | `elec.label` | `Text` | show designator/value (adds `ref` = prefix + `1` if empty) or hide labels |
 | `elec.envelope` | `Toggle` | envelope circle of transistors |
 

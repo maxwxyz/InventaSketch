@@ -218,7 +218,7 @@ namespace InventaSketch.Modules.Maps
                 Params = new[] { KindDef },
                 TextEditable = true,
                 CompanionIds = new[] { RouteType.TypeId, Callout.TypeId, StopType.TypeId },
-                Extra = (o, lang) => new[] { Prm.Cycle(o, "map.marker.kind", KindDef, new I18nText("Marker", "Marker")) },
+                Extra = (o, lang) => Prm.Choice(o, "map.marker.kind", KindDef, new I18nText("Marker", "Marker")),
             };
         }
     }
@@ -259,7 +259,7 @@ namespace InventaSketch.Modules.Maps
             {
                 Params = new[] { KindDef },
                 CompanionIds = new[] { Place.TypeId, Callout.TypeId, RouteType.TypeId },
-                Extra = (o, lang) => new[] { Prm.Cycle(o, "map.poi.kind", KindDef, new I18nText("Place type", "Ortsart")) },
+                Extra = (o, lang) => Prm.Choice(o, "map.poi.kind", KindDef, new I18nText("Place type", "Ortsart")),
             };
         }
     }
@@ -292,14 +292,13 @@ namespace InventaSketch.Modules.Maps
                 CompanionIds = new[] { RouteType.TypeId, MarkerType.TypeId, Callout.TypeId },
                 Extra = (o, lang) => new[]
                 {
-                    new ContextAction("map.stop.next", new I18nText("Next number", "Nächste Nummer"), IconIds.Increase, x => x.WithParam("number", Math.Min(999, x.Int("number", 1) + 1))) { Group = "number" },
-                    new ContextAction("map.stop.prev", new I18nText("Previous number", "Vorige Nummer"), IconIds.Decrease, x => x.WithParam("number", Math.Max(0, x.Int("number", 1) - 1)))
+                    new ContextAction("map.stop.next", new I18nText("Number +1", "Nummer +1"), IconIds.Increase, x => x.WithParam("number", Math.Min(999, x.Int("number", 1) + 1))) { Group = "number" },
+                    new ContextAction("map.stop.prev", new I18nText("Number −1", "Nummer −1"), IconIds.Decrease, x => x.WithParam("number", Math.Max(0, x.Int("number", 1) - 1)))
                     {
                         Group = "number",
                         IsEnabled = o.Int("number", 1) > 0,
                     },
-                    Prm.Cycle(o, "map.stop.shape", ShapeDef, new I18nText("Shape", "Form")),
-                },
+                }.Concat(Prm.Choice(o, "map.stop.shape", ShapeDef, new I18nText("Shape", "Form"))),
             };
         }
     }
@@ -427,10 +426,9 @@ namespace InventaSketch.Modules.Maps
                     ContextAction.WithInput("map.callout.time", new I18nText("Travel time…", "Fahrzeit…"), IconIds.QtyTime,
                         new I18nText("Travel time in minutes (or h:mm)", "Fahrzeit in Minuten (oder h:mm)"), Fmt.Num(o.Num("time", 15), lang, 0),
                         (x, text) => x.WithParam("time", Math.Round(ParseMinutes(text, lang), 1)), "min") with { Group = "value" },
-                    Prm.Cycle(o, "map.callout.unit", UnitDef, new I18nText("Unit", "Einheit")),
-                    Prm.Cycle(o, "map.callout.mode", ModeDef, new I18nText("Mode", "Verkehrsmittel")),
-                    Prm.Cycle(o, "map.callout.tail", TailDef, new I18nText("Pointer", "Zeiger")),
-                },
+                }.Concat(Prm.Choice(o, "map.callout.unit", UnitDef, new I18nText("Unit", "Einheit")))
+                    .Concat(Prm.Choice(o, "map.callout.mode", ModeDef, new I18nText("Mode", "Verkehrsmittel")))
+                    .Concat(Prm.Choice(o, "map.callout.tail", TailDef, new I18nText("Pointer", "Zeiger"))),
             };
         }
     }

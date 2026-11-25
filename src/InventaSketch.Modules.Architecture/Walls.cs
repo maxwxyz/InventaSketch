@@ -462,7 +462,7 @@ namespace InventaSketch.Modules.Architecture
             yield return ContextAction.WithInput("arch.thickness.set", new I18nText("Thickness…", "Dicke…"), IconIds.QtyThickness,
                 new I18nText("Wall thickness (mm)", "Wanddicke (mm)"), t.ToString("0.#", CultureInfo.InvariantCulture),
                 (x, text) => x.WithParam("thickness", Math.Min(2000, Math.Max(10, Arch.ParseMm(text, lang)))), "mm") with { Group = "thickness" };
-            yield return Arch.Cycle(o, "arch.kind", "kind", "exterior", Kinds);
+            foreach (var a in Arch.Choice(o, "arch.kind", new I18nText("Wall kind", "Wandart"), "kind", "exterior", Kinds)) yield return a;
             yield return Arch.Toggle(o, "arch.closed", new I18nText("Closed loop", "Geschlossen"), IconIds.Toggle, "closed", false);
         }
     }

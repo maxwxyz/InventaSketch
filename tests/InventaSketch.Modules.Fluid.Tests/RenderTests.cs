@@ -133,7 +133,7 @@ namespace InventaSketch.Modules.Fluid.Tests
             foreach (var id in new[] { "fluid.pump", "fluid.motor", "fluid.source", "fluid.valve.52.pilot" })
             {
                 var o = Fx.Item(r, id);
-                var toggle = Fx.Action(r, o, "fluid.medium");
+                var toggle = Fx.Other(r, o, "fluid.medium");
                 var other = toggle.Apply(o);
                 string Medium(SketchObject x) => x.Str("medium", r.TypeOf(x).Parameters.Single(p => p.Key == "medium").Default!.Value.Text!);
                 Assert.NotEqual(Medium(o), Medium(other));
@@ -155,7 +155,7 @@ namespace InventaSketch.Modules.Fluid.Tests
             var texts = Fx.Render(r, named).OfType<TextPrim>().Where(t => t.Tag == "port").Select(t => t.Text).OrderBy(x => x).ToList();
             Assert.Equal(new[] { "A", "B", "P", "T" }, texts);
             // Pneumatic: the return port is named R (exhaust), the id stays T.
-            var pneu = Fx.Action(r, named, "fluid.medium").Apply(named);
+            var pneu = Fx.Action(r, named, "fluid.medium=pneumatic").Apply(named);
             Assert.Contains(Fx.Render(r, pneu).OfType<TextPrim>(), t => t.Text == "R");
             Assert.Contains(Fx.Ports(r, pneu), a => a.Id == "T");
 

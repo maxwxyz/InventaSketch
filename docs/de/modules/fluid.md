@@ -20,7 +20,7 @@ prüft keine Schaltungen.
   –, folgt `Size`, sodass der Zeichnungsmaßstab bleibt.
 - **Hydraulik oder Pneumatik** ist der optionale Parameter `medium` (`hydraulic` / `pneumatic`) bei den Typen, deren
   Zeichnung sich unterscheidet: Pumpen/Verdichter, Motoren, Schwenkantrieb, Druckquellen, Wegeventile und
-  Betätigungssymbole (volle Dreiecke = Hydraulik, hohle = Pneumatik). Die Kontextaktion `fluid.medium` schaltet um.
+  Betätigungssymbole (volle Dreiecke = Hydraulik, hohle = Pneumatik). Die Kontextauswahl `fluid.medium` (Hydraulik / Pneumatik) legt es fest.
 - **Linienstärken:** Symbole und Arbeitsleitungen 0,35 mm, Kolben und Stopfen 0,7 mm, Federn und Details 0,25 mm,
   Steuerleitungen lang gestrichelt, Leckölleitungen kurz gestrichelt, Umrahmungen strichpunktiert. Es werden nur
   schwarze Linien und schwarze oder keine Füllungen verwendet; die Schwarzweißausgabe bleibt unverändert.
@@ -69,17 +69,17 @@ Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Bauteils 
 | Aktion | Symbol | Wirkung |
 |---|---|---|
 | `view.<id>` | Ansichtssymbol | FRL ausführlich / vereinfacht |
-| `fluid.medium` | `Medium` | Hydraulik ↔ Pneumatik |
-| `fluid.valve.ways.next` | `Cycle` | 2/2 → 3/2 → 4/2 → 4/3 → 5/2 → 5/3 (die Größe folgt der Entwurfsbox) |
-| `fluid.valve.centre.next` | `Cycle` | Mittelstellung (4/3: gesperrt, Umlauf, Schwimm, offen, belüftet; 5/3: gesperrt, entlüftet, belüftet) |
+| `fluid.medium=hydraulic/pneumatic` | `Option` | Medium ▾ (Auswahl) |
+| `fluid.valve.ways=…` | `Option` | Ventiltyp ▾ 2/2, 3/2, 4/2, 4/3, 5/2, 5/3 (die Größe folgt der Entwurfsbox) |
+| `fluid.valve.centre=…` | `Option` | Mittelstellung ▾, nur bei drei Stellungen (4/3: gesperrt, Umlauf, Schwimm, offen, belüftet; 5/3: gesperrt, entlüftet, belüftet); `fluid.valve.normal=closed/open`: Ruhestellung ▾ (2/2, 3/2) |
 | `fluid.valve.normal` | `Toggle` | Ruhestellung gesperrt / offen (2/2, 3/2) |
-| `fluid.valve.actLeft.next`, `fluid.valve.actRight.next` | `Actuation` | Betätigung je Seite |
+| `fluid.valve.actLeft=…`, `fluid.valve.actRight=…` | `Option` | Betätigung links ▾ / rechts ▾ |
 | `fluid.valve.flip` | `Swap` | Federseite tauschen (Betätigungen tauschen; die Grundstellung folgt) |
 | `fluid.valve.detent`, `fluid.valve.centring` | `Toggle` | Rastung; Federzentrierung bei 3 Stellungen |
-| `fluid.variable`, `fluid.flow.next` | `Toggle`/`Cycle` | Pumpen/Motoren: verstellbar, eine/zwei Stromrichtungen |
-| `fluid.cyl.rod`, `fluid.cyl.cushion.next`, `fluid.cyl.spring.next` | `Toggle`/`Cycle` | Kolbenstange, Dämpfung, Feder |
+| `fluid.variable`, `fluid.flow=one/two` | `Toggle`/`Option` | Pumpen/Motoren: verstellbar, Stromrichtungen ▾ |
+| `fluid.cyl.rod=…`, `fluid.cyl.cushion=…`, `fluid.cyl.spring=…` | `Option` | Kolbenstange ▾, Dämpfung ▾, Feder ▾ |
 | `fluid.spring`, `fluid.piloted`, `fluid.adjustable`, `fluid.check` | `Toggle` | Optionen von Rückschlag-, Drossel- und Druckventilen |
-| `fluid.line.kind.next`, `fluid.line.route` | `Cycle`/`Toggle` | Leitungsart; orthogonal / gerade |
+| `fluid.line.kind=…`, `fluid.line.route=orthogonal/free` | `Option`/Führungs-Piktogramme | Leitungsart ▾; Führung ▾ |
 | `fluid.ports` | `Text` | Anschlussnamen anzeigen |
 | `fluid.label` | `Text` | Kennzeichen ein-/ausblenden (setzt bei Bedarf einen Vorschlag wie `1V1`) |
 | `fluid.ref.set` | `Text` | Kennzeichen direkt eingeben (Eingabeaktion) |

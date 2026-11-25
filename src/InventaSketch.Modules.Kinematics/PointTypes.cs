@@ -227,7 +227,7 @@ namespace InventaSketch.Modules.Kinematics
         {
             yield return KA.Toggle(o, "kin.path.arrow", new I18nText("Arrowhead", "Pfeilspitze"), IconIds.ArrowEnd, "arrow", true, "path");
             yield return KA.Toggle(o, "kin.path.smooth", new I18nText("Smooth curve", "Geglättet"), IconIds.Toggle, "smooth", true, "path");
-            yield return KA.Toggle(o, "kin.path.closed", new I18nText("Closed path", "Geschlossene Bahn"), IconIds.Cycle, "closed", false, "path");
+            yield return KA.Toggle(o, "kin.path.closed", new I18nText("Closed path", "Geschlossene Bahn"), IconIds.Toggle, "closed", false, "path");
         }
     }
 }

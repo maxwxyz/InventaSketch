@@ -85,7 +85,7 @@ namespace InventaSketch.Modules.Fluid
                 Ports = o => o.Str("kind", "pushbutton") == "pilot" ? new[] { new Port("X", -2.5, 0) } : Array.Empty<Port>(),
                 Mounts = Fixed(new Port("mount", 2.5, 0)),
                 CompanionIds = new[] { TypeId, "fluid.line" },
-                Extra = o => new[] { Cycle("fluid.actuation.next", T("Next actuation", "Nächste Betätigung"), ActKind) },
+                Extra = o => ChoiceActions(o, "fluid.actuation", null, ActKind),
             };
         }
 
@@ -367,21 +367,19 @@ namespace InventaSketch.Modules.Fluid
 
         private static IEnumerable<ContextAction> Actions(SketchObject o)
         {
-            yield return Cycle("fluid.valve.ways.next", T("Next valve type (2/2 … 5/3)", "Nächster Ventiltyp (2/2 … 5/3)"), Ways);
-            var three = Positions(o) == 3;
-            var centres = PortCount(o) == 5 ? Centres5 : Centres4;
-            yield return Cycle("fluid.valve.centre.next", T("Next centre position", "Nächste Mittelstellung"), Centre, centres) with { IsEnabled = three };
-            var twoWayOrThree = o.Str("ways", "4/3") is "2/2" or "3/2";
-            yield return new ContextAction("fluid.valve.normal", T("Normally closed / open", "Ruhestellung gesperrt / offen"), IconIds.Toggle,
-                x => x.WithParam("normal", x.Str("normal", "closed") == "open" ? "closed" : "open"))
-            { IsActive = o.Str("normal", "closed") == "open", IsEnabled = twoWayOrThree, Group = "param" };
-            yield return Cycle("fluid.valve.actLeft.next", T("Next actuation (left)", "Nächste Betätigung (links)"), ActLeft, Operators, "actuation", IconIds.Actuation);
-            yield return Cycle("fluid.valve.actRight.next", T("Next actuation (right)", "Nächste Betätigung (rechts)"), ActRight, Operators, "actuation", IconIds.Actuation);
+            foreach (var a in ChoiceActions(o, "fluid.valve.ways", T("Valve type", "Ventiltyp"), Ways)) yield return a;
+            // Centre position (three positions only) and rest position (2/2, 3/2 only) are choices where they apply.
+            if (Positions(o) == 3)
+                foreach (var a in ChoiceActions(o, "fluid.valve.centre", T("Centre position", "Mittelstellung"), Centre, PortCount(o) == 5 ? Centres5 : Centres4)) yield return a;
+            if (o.Str("ways", "4/3") is "2/2" or "3/2")
+                foreach (var a in ChoiceActions(o, "fluid.valve.normal", T("Rest position", "Ruhestellung"), Normal)) yield return a;
+            foreach (var a in ChoiceActions(o, "fluid.valve.actLeft", T("Actuation left", "Betätigung links"), ActLeft, Operators, "actuation")) yield return a;
+            foreach (var a in ChoiceActions(o, "fluid.valve.actRight", T("Actuation right", "Betätigung rechts"), ActRight, Operators, "actuation")) yield return a;
             yield return new ContextAction("fluid.valve.flip", T("Swap sides (spring, actuation)", "Seiten tauschen (Feder, Betätigung)"), IconIds.Swap,
                 x => x.WithParam("actLeft", x.Str("actRight", "solenoid")).WithParam("actRight", x.Str("actLeft", "solenoid")))
             { Group = "actuation" };
             yield return Toggle(o, "fluid.valve.detent", T("Detent", "Rastung"), "detent", false, IconIds.Toggle, "actuation");
-            yield return Toggle(o, "fluid.valve.centring", T("Spring centred", "Federzentriert"), "centring", true, IconIds.Toggle, "actuation") with { IsEnabled = three };
+            yield return Toggle(o, "fluid.valve.centring", T("Spring centred", "Federzentriert"), "centring", true, IconIds.Toggle, "actuation") with { IsEnabled = Positions(o) == 3 };
         }
     }
 }

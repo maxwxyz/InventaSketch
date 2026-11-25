@@ -41,7 +41,7 @@ namespace InventaSketch.Modules.Mechanical
                 new ViewSpec("section", VSection, 10, 30, (p, o) => PulleySide(p, true)) { Bore = SideBore })
             {
                 Params = new[] { Common.Hub },
-                Extra = o => new[] { Common.HubCycle(o) },
+                Extra = o => Common.HubChoice(o),
             };
             yield return new MechType("mech.belt", T("Belt", "Riemen"), Cat,
                 new[] { "belt", "v-belt", "timing belt", "belt drive", "riemen", "keilriemen", "zahnriemen", "riementrieb" },
@@ -61,7 +61,7 @@ namespace InventaSketch.Modules.Mechanical
                 new ViewSpec("side", VSide, 6, 30, SprocketSide) { Bore = SideBore })
             {
                 Params = new[] { Common.Hub, Common.Teeth(18) },
-                Extra = o => new[] { Common.HubCycle(o) },
+                Extra = o => Common.HubChoice(o),
             };
             yield return new MechType("mech.chain", T("Roller chain", "Rollenkette"), Cat,
                 new[] { "chain", "roller chain", "chain drive", "kette", "rollenkette", "kettentrieb" },

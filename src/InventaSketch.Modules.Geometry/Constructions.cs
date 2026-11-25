@@ -264,7 +264,7 @@ namespace InventaSketch.Modules.Geometry
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Mx.Cycle(o, "math.parallel.pair", new I18nText("Next angle pair", "Nächstes Winkelpaar"), Pair, "angles");
+            foreach (var opt in Mx.Choice(o, "math.parallel.pair", new I18nText("Angle pair", "Winkelpaar"), Pair, "angles")) yield return opt;
             yield return Mx.NumberInput(o, "math.parallel.angle", new I18nText("Angle…", "Winkel…"), Parameters[0], "angles");
             yield return Mx.Toggle(o, "math.parallel.values", new I18nText("Show values", "Werte anzeigen"), "values", false, "angles");
         }

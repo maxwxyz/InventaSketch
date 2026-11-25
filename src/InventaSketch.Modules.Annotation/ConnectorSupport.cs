@@ -122,13 +122,9 @@ namespace InventaSketch.Modules.Annotation
             yield return P.Text("busCount", "Number of lines", "Anzahl Leitungen", "3");
         }
 
-        public static ContextAction BusAction(SketchObject o)
-            => new("ann.bus.next", new I18nText("Next bus mark (none / slash / strokes)", "Nächste Busmarkierung (keine / Schrägstrich / Striche)"), IconIds.Cycle, x =>
-            {
-                var modes = BusOptions.Select(b => b.Item1).ToList();
-                var i = modes.IndexOf(x.Str("busMark", "none"));
-                return x.WithParam("busMark", modes[(i + 1 + modes.Count) % modes.Count]);
-            }) { Group = "bus", ParamKeys = new[] { "busMark" } };
+        /// <summary>The bus mark as a choice (none / slash with number / one stroke per line).</summary>
+        public static IEnumerable<ContextAction> BusActions(SketchObject o)
+            => ActionChoices.FromParam(o, "ann.bus", BusParams().First(), new I18nText("Bus mark", "Busmarkierung"), "bus", null);
 
         /// <summary>Midpoint and unit direction of the longest segment of a path.</summary>
         public static (Vec2 Mid, Vec2 Dir) Longest(IReadOnlyList<Vec2> p)

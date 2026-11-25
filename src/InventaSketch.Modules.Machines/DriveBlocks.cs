@@ -106,7 +106,7 @@ namespace InventaSketch.Modules.Machines
             {
                 Params = extraParams ?? Array.Empty<ParamDef>(),
                 CompanionTypes = companions ?? Array.Empty<string>(),
-                Extra = o => o.Type == "machines.drive.motor" && o.View == "symbol" ? new[] { Common.ModeSwap(o) } : Array.Empty<ContextAction>(),
+                Extra = o => o.Type == "machines.drive.motor" && o.View == "symbol" ? Common.ModeChoice(o) : Array.Empty<ContextAction>(),
             };
             return t;
         }

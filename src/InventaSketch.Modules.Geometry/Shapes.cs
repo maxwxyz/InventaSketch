@@ -243,8 +243,8 @@ namespace InventaSketch.Modules.Geometry
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Mx.Cycle(o, "math.triangle.kind", new I18nText("Next kind", "Nächste Art"), Kind, "triangle");
-            yield return Mx.Cycle(o, "math.triangle.construction", new I18nText("Next construction", "Nächste Konstruktion"), ConstructionDef, "triangle");
+            foreach (var opt in Mx.Choice(o, "math.triangle.kind", new I18nText("Triangle kind", "Dreiecksart"), Kind, "triangle")) yield return opt;
+            foreach (var opt in Mx.Choice(o, "math.triangle.construction", new I18nText("Construction", "Konstruktion"), ConstructionDef, "triangle")) yield return opt;
             yield return Mx.Toggle(o, "math.triangle.vertices", new I18nText("Vertex labels", "Eckpunkte beschriften"), "vertexLabels", true, "labels");
             yield return Mx.Toggle(o, "math.triangle.sides", new I18nText("Side labels", "Seiten beschriften"), "sideLabels", true, "labels");
             yield return Mx.Toggle(o, "math.triangle.angles", new I18nText("Angle marks", "Winkel markieren"), "angleMarks", false, "labels");
@@ -381,7 +381,7 @@ namespace InventaSketch.Modules.Geometry
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Mx.Cycle(o, "math.circle.show", new I18nText("Radius / diameter", "Radius / Durchmesser"), Show, "circle");
+            foreach (var opt in Mx.Choice(o, "math.circle.show", new I18nText("Line shown", "Gezeigte Strecke"), Show, "circle")) yield return opt;
             yield return Mx.Toggle(o, "math.circle.centre", new I18nText("Centre", "Mittelpunkt"), "centre", true, "circle");
             yield return Mx.Toggle(o, "math.circle.labels", new I18nText("Labels", "Beschriftung"), "labels", true, "circle");
         }

@@ -150,8 +150,8 @@ free end of a cable or pipe offers "+" to continue it or to dock the next elemen
 ## Context actions
 
 Show rating label and Designation… (every box element), rated power / capacity / volume / voltage… inputs (accept
-`10`, `10 kW`, `10,5`), Voltages… on transformers and the substation (`20/0.4`, `110/20/10`), cycle kind / form /
-fuel / phases / source / technology / symbol, toggle switch state (breaker, disconnector, earthing switch), DC
+`10`, `10 kW`, `10,5`), Voltages… on transformers and the substation (`20/0.4`, `110/20/10`), kind / form /
+fuel / phases / source / technology / symbol / carrier / routing as choices ▾, toggle switch state (breaker, disconnector, earthing switch), DC
 charging, bidirectional meter, colour by voltage level, more/fewer modules, rows and busbar connection points,
 turn rotor (wind turbine); cables: routing, voltage, show voltage, conductor marks, designation; pipes: carrier, code;
 flows: carrier, wider/narrower band, label.

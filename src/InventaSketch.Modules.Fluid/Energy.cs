@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InventaSketch.Core;
 using static InventaSketch.Modules.Fluid.Common;
 
@@ -37,8 +38,7 @@ namespace InventaSketch.Modules.Fluid
                 Extra = o => new[]
                 {
                     Toggle(o, "fluid.variable", T("Fixed / variable displacement", "Konstant / verstellbar"), "variable", false),
-                    Cycle("fluid.flow.next", T("One / two flow directions", "Eine / zwei Stromrichtungen"), Flow),
-                },
+                }.Concat(ChoiceActions(o, "fluid.flow", null, Flow)),
             };
 
             yield return new FluidType("fluid.motor", T("Motor (hydraulic/pneumatic)", "Motor (Hydro-/Druckluftmotor)"), Cat,
@@ -51,8 +51,7 @@ namespace InventaSketch.Modules.Fluid
                 Extra = o => new[]
                 {
                     Toggle(o, "fluid.variable", T("Fixed / variable displacement", "Konstant / verstellbar"), "variable", false),
-                    Cycle("fluid.flow.next", T("One / two flow directions", "Eine / zwei Stromrichtungen"), Flow),
-                },
+                }.Concat(ChoiceActions(o, "fluid.flow", null, Flow)),
             };
 
             yield return new FluidType("fluid.cylinder.double", T("Double-acting cylinder", "Doppeltwirkender Zylinder"), Cat,
@@ -64,12 +63,7 @@ namespace InventaSketch.Modules.Fluid
                     ? new[] { new Port("A", -12.5, 5), new Port("B", 12.5, 5) }
                     : new[] { new Port("A", -20, 5), new Port("B", 5, 5) },
                 CompanionIds = CylCompanions,
-                Extra = o => new[]
-                {
-                    new ContextAction("fluid.cyl.rod", T("Through rod", "Durchgehende Stange"), IconIds.Toggle,
-                        x => x.WithParam("rod", x.Str("rod", "single") == "double" ? "single" : "double")) { IsActive = o.Str("rod", "single") == "double", Group = "param" },
-                    Cycle("fluid.cyl.cushion.next", T("Next cushioning (none / fixed / adjustable)", "Nächste Dämpfung (keine / fest / einstellbar)"), Cushion),
-                },
+                Extra = o => ChoiceActions(o, "fluid.cyl.rod", null, Rod).Concat(ChoiceActions(o, "fluid.cyl.cushion", T("Cushioning", "Dämpfung"), Cushion)),
             };
 
             yield return new FluidType("fluid.cylinder.single", T("Single-acting cylinder", "Einfachwirkender Zylinder"), Cat,
@@ -79,7 +73,7 @@ namespace InventaSketch.Modules.Fluid
                 Params = new[] { Spring }, RefPrefix = "1A1", Uniform = false,
                 Ports = o => o.Str("spring", "return") == "extend" ? new[] { new Port("B", 5, 5) } : new[] { new Port("A", -20, 5) },
                 CompanionIds = CylCompanions,
-                Extra = o => new[] { Cycle("fluid.cyl.spring.next", T("Next spring arrangement", "Nächste Federanordnung"), Spring) },
+                Extra = o => ChoiceActions(o, "fluid.cyl.spring", null, Spring),
             };
 
             yield return new FluidType("fluid.rotary", T("Rotary actuator (limited angle)", "Schwenkantrieb (begrenzter Winkel)"), Cat,

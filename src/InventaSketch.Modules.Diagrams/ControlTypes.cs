@@ -105,8 +105,11 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var signs = Signs(o);
-            yield return new ContextAction("diag.sum.feedbackSign", new I18nText("Feedback sign + / −", "Vorzeichen Rückführung + / −"), IconIds.Cycle,
-                x => SetSign(x, 1, Signs(x)["bottom"] == "−" ? '+' : '-')) { Group = "signs" };
+            // The sign of the feedback input (bottom) is a choice, not a switch to click through.
+            var feedback = new ActionChoice("diag.sum.feedback", new I18nText("Feedback sign", "Vorzeichen Rückführung"));
+            var negative = signs["bottom"] == "−";
+            yield return ActionChoices.Option(feedback, "plus", new I18nText("Positive (+)", "Positiv (+)"), "", !negative, x => SetSign(x, 1, '+')) with { Group = "signs", ParamKeys = new[] { "signs" } };
+            yield return ActionChoices.Option(feedback, "minus", new I18nText("Negative (−)", "Negativ (−)"), "", negative, x => SetSign(x, 1, '-')) with { Group = "signs", ParamKeys = new[] { "signs" } };
             yield return new ContextAction("diag.sum.topInput", new I18nText("Input from above", "Eingang von oben"), IconIds.Toggle,
                 x => SetSign(x, 2, Signs(x)["top"] is null ? '+' : ' ')) { IsActive = signs["top"] is not null, Group = "signs" };
             yield return new ContextAction("diag.sum.cross", new I18nText("Circle with cross", "Kreis mit Kreuz"), IconIds.Toggle,
@@ -338,11 +341,17 @@ namespace InventaSketch.Modules.Diagrams
             yield return D.SetChoice(o, "diag.tf.text", new I18nText("Name", "Name"), IconIds.Option, "mode", "text", "text", "mode");
             yield return D.SetChoice(o, "diag.tf.fraction", new I18nText("Transfer function (fraction)", "Übertragungsfunktion (Bruch)"), IconIds.Option, "mode", "fraction", "text", "mode");
             yield return D.SetChoice(o, "diag.tf.icon", new I18nText("Characteristic (icon)", "Kennlinie (Symbol)"), IconIds.Option, "mode", "icon", "text", "mode");
-            yield return new ContextAction("diag.tf.nextIcon", new I18nText("Next characteristic", "Nächste Kennlinie"), IconIds.Cycle, x =>
+            // The characteristic is a choice (each option shows its curve); picking one also shows it.
+            var characteristic = new ActionChoice("diag.tf.characteristic", new I18nText("Characteristic", "Kennlinie"));
+            var icon = o.Str("icon", "pt1");
+            foreach (var (value, en, de) in Icons)
             {
-                var i = Array.FindIndex(Icons, k => k.Value == x.Str("icon", "pt1"));
-                return x.WithParam("icon", Icons[(i + 1) % Icons.Length].Value).WithParam("mode", "icon");
-            }) { Group = "icon" };
+                var v = value;
+                yield return ActionChoices.Option(characteristic, v, new I18nText(en, de), "", v == icon, x => x.WithParam("icon", v).WithParam("mode", "icon")) with
+                {
+                    Group = "icon", ParamKeys = new[] { "icon", "mode" }, Preview = Icon(v, Vec2.Zero, 10).ToList(),
+                };
+            }
         }
     }
 
@@ -413,9 +422,7 @@ namespace InventaSketch.Modules.Diagrams
         {
             yield return D.Toggle(o, "diag.signal.arrow", new I18nText("Arrowhead", "Pfeilspitze"), "arrow", true);
             yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, D.Reverse) { Group = "direction" };
-            yield return new ContextAction("diag.route.orthogonal", new I18nText("Orthogonal routing", "Rechtwinklig führen"), IconIds.Toggle,
-                x => x.WithParam("route", x.Str("route", "orthogonal") == "orthogonal" ? "straight" : "orthogonal"))
-            { IsActive = o.Str("route", "orthogonal") == "orthogonal", Group = "route" };
+            foreach (var a in RouteActions(o, "orthogonal")) yield return a;
         }
     }
 

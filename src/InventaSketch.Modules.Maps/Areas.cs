@@ -41,12 +41,11 @@ namespace InventaSketch.Modules.Maps
                 CompanionIds = new[] { RoadType.TypeId, RouteType.TypeId, RegionType.TypeId, Place.TypeId, ScaleBar.TypeId, NorthArrow.TypeId, Legend.TypeId },
                 Extra = (o, lang) => new[]
                 {
-                    Prm.Cycle(o, "map.frame.style", StyleDef, new I18nText("Background", "Hintergrund")),
                     Prm.Toggle(o, "map.frame.labels", "labels", true, new I18nText("Grid labels", "Gitterbeschriftung")),
                     Prm.Toggle(o, "map.frame.tint", "tint", true, new I18nText("Land tint", "Landfarbe")),
                     new ContextAction("map.frame.cells.inc", new I18nText("More grid cells", "Mehr Planquadrate"), IconIds.CountMore, x => x.WithParam("cells", Math.Min(26, x.Int("cells", 6) + 1))) { Group = "cells" },
                     new ContextAction("map.frame.cells.dec", new I18nText("Fewer grid cells", "Weniger Planquadrate"), IconIds.CountFewer, x => x.WithParam("cells", Math.Max(1, x.Int("cells", 6) - 1))) { Group = "cells" },
-                },
+                }.Concat(Prm.Choice(o, "map.frame.style", StyleDef, new I18nText("Background", "Hintergrund"))),
             };
         }
 
@@ -177,8 +176,8 @@ namespace InventaSketch.Modules.Maps
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Prm.Cycle(o, "map.region.kind", KindDef, new I18nText("Area type", "Flächenart"));
-            yield return Prm.Cycle(o, "map.region.fill", FillDef, new I18nText("Fill", "Füllung"));
+            foreach (var opt in Prm.Choice(o, "map.region.kind", KindDef, new I18nText("Area type", "Flächenart"))) yield return opt;
+            foreach (var opt in Prm.Choice(o, "map.region.fill", FillDef, new I18nText("Fill", "Füllung"))) yield return opt;
             yield return Prm.Toggle(o, "map.region.smooth", "smooth", false, new I18nText("Smooth outline", "Glatter Umriss"), IconIds.Smooth);
             foreach (var a in PointActions(o, new I18nText("Add corner", "Ecke hinzufügen"), new I18nText("Remove corner", "Ecke entfernen"))) yield return a;
         }
@@ -237,9 +236,8 @@ namespace InventaSketch.Modules.Maps
                 CompanionIds = new[] { PoiType.TypeId, MarkerType.TypeId, RoadType.TypeId },
                 Extra = (o, lang) => new[]
                 {
-                    Prm.Cycle(o, "map.place.rank", RankDef, new I18nText("Place rank", "Ortsgröße")),
                     Prm.Toggle(o, "map.place.dot", "dot", true, new I18nText("Settlement dot", "Ortspunkt")),
-                },
+                }.Concat(Prm.Choice(o, "map.place.rank", RankDef, new I18nText("Place rank", "Ortsgröße"))),
             };
         }
     }

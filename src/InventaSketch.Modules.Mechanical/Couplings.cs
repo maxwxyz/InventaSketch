@@ -53,7 +53,7 @@ namespace InventaSketch.Modules.Mechanical
                 new ViewSpec("section", T("Section", "Schnitt"), 12, 40, FlywheelSection) { Bore = (p, o) => 2.5 * p.Sy })
             {
                 Params = new[] { Common.Hub },
-                Extra = o => new[] { Common.HubCycle(o) },
+                Extra = o => Common.HubChoice(o),
             };
         }
 

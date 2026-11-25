@@ -72,8 +72,8 @@ namespace InventaSketch.Modules.Geometry
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Mx.TextInput(o, "math.point.label", new I18nText("Label…", "Beschriftung…"), "label", "A", "label");
-            yield return Mx.Cycle(o, "math.point.position", new I18nText("Move label around", "Beschriftung versetzen"), Position, "label");
-            yield return Mx.Cycle(o, "math.point.marker", new I18nText("Next marker", "Nächste Markierung"), Marker, "marker");
+            foreach (var opt in Mx.Choice(o, "math.point.position", new I18nText("Label position", "Beschriftungslage"), Position, "label")) yield return opt;
+            foreach (var opt in Mx.Choice(o, "math.point.marker", new I18nText("Marker", "Markierung"), Marker, "marker")) yield return opt;
         }
     }
 
@@ -147,7 +147,7 @@ namespace InventaSketch.Modules.Geometry
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Mx.TextInput(o, "math.vector.label", new I18nText("Name…", "Name…"), "label", "v", "label");
-            yield return Mx.Cycle(o, "math.vector.notation", new I18nText("Next notation", "Nächste Schreibweise"), Pm.Notation(), "label");
+            foreach (var opt in Mx.Choice(o, "math.vector.notation", new I18nText("Notation", "Schreibweise"), Pm.Notation(), "label")) yield return opt;
             yield return Mx.Toggle(o, "math.vector.components", new I18nText("Components", "Komponenten"), "components", false, "vector");
             yield return Mx.Toggle(o, "math.vector.points", new I18nText("Mark the points", "Punkte markieren"), "points", false, "vector", IconIds.PointsShow);
             yield return new ContextAction("math.vector.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, Edits.ReversePoints) { Group = "vector" };
@@ -264,12 +264,14 @@ namespace InventaSketch.Modules.Geometry
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var current = o.Str("construction", "parallelogram");
-            yield return new ContextAction("math.sum.parallelogram", new I18nText("Parallelogram", "Parallelogramm"), IconIds.Cycle, x => Switch(x, "parallelogram"))
-                { IsActive = current == "parallelogram", Group = "construction", ParamKeys = new[] { "construction" } };
-            yield return new ContextAction("math.sum.tail", new I18nText("Head to tail", "Aneinanderhängen"), IconIds.Cycle, x => Switch(x, "tail"))
-                { IsActive = current == "tail", Group = "construction", ParamKeys = new[] { "construction" } };
+            // The construction is a choice; switching keeps the two vectors (Switch).
+            var construction = new ActionChoice("math.sum.construction", new I18nText("Construction", "Konstruktion"));
+            yield return ActionChoices.Option(construction, "parallelogram", new I18nText("Parallelogram", "Parallelogramm"), "", current == "parallelogram", x => Switch(x, "parallelogram"))
+                with { Group = "construction", ParamKeys = new[] { "construction" } };
+            yield return ActionChoices.Option(construction, "tail", new I18nText("Head to tail", "Aneinanderhängen"), "", current == "tail", x => Switch(x, "tail"))
+                with { Group = "construction", ParamKeys = new[] { "construction" } };
             yield return Mx.Toggle(o, "math.sum.result", new I18nText("Resultant", "Resultierende"), "result", true, "construction");
-            yield return Mx.Cycle(o, "math.sum.notation", new I18nText("Next notation", "Nächste Schreibweise"), Pm.Notation(), "label");
+            foreach (var opt in Mx.Choice(o, "math.sum.notation", new I18nText("Notation", "Schreibweise"), Pm.Notation(), "label")) yield return opt;
         }
     }
 }

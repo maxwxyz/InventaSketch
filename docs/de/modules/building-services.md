@@ -158,7 +158,7 @@ passenden Anschluss.
 
 ## Kontextaktionen
 
-Montagehöhe… (Eingabe, jedes Element), Medium/Art weiterschalten (Rohr, Luftleitung, Strang, Luftdurchlass, Dosen,
+Montagehöhe… (Eingabe, jedes Element), Medium/Art als Auswahl ▾ (Rohr, Luftleitung, Strang, Luftdurchlass, Dosen,
 Melder), Fließpfeil und Brücken (Rohr), Luftrichtungspfeil (Luftleitung), mehr/weniger Heizkreise (Verteiler),
 Heizwendel (Speicher), Strangrichtung.
 

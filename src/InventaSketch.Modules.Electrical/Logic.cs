@@ -30,7 +30,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 20, GateIec), Views.Ansi(20, 20, GateAnsi))
             {
                 Pins = GatePins, Params = new[] { Gate, Inputs }, RefPrefix = "U",
-                Extra = o => new[] { Cycle(o, "elec.gate.next", T("Next gate function", "Nächste Gatterfunktion"), Gate) },
+                Extra = o => Choice(o, "elec.gate", T("Gate function", "Gatterfunktion"), Gate),
             };
 
             yield return new ElecType("elec.flipflop", T("Flip-flop", "Flipflop"), Cat,
@@ -38,7 +38,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 30, FlipFlopDraw))
             {
                 Pins = FlipFlopPins, Params = new[] { FlipFlop }, RefPrefix = "U",
-                Extra = o => new[] { Cycle(o, "elec.flipflop.next", T("Next flip-flop type", "Nächster Flipflop-Typ"), FlipFlop) },
+                Extra = o => Choice(o, "elec.flipflop", T("Flip-flop type", "Flipflop-Typ"), FlipFlop),
             };
 
             yield return new ElecType("elec.opamp", T("Operational amplifier", "Operationsverstärker"), Cat,

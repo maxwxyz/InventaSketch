@@ -89,7 +89,7 @@ namespace InventaSketch.Modules.Diagrams
             foreach (var (value, en, de) in KindOptions)
                 yield return D.SetChoice(o, "diag.rel." + value, new I18nText(en, de), RelationIcon(value), "kind", value, "association", "kind");
             yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, Swap) { Group = "direction" };
-            yield return RouteAction(o);
+            foreach (var a in RouteActions(o)) yield return a;
         }
     }
 
@@ -119,24 +119,16 @@ namespace InventaSketch.Modules.Diagrams
         protected override DiagEnd EndEnd(SketchObject o) => D.ParseEnd(o.Str("endEnd", "zeroOrMany"), DiagEnd.ZeroOrMany);
         protected override bool IsDashed(SketchObject o) => !o.Flag("identifying", true);
 
-        /// <summary>Next crow's-foot notation in the cycle (none and UML heads restart the cycle).</summary>
-        public static DiagEnd Next(DiagEnd e)
-        {
-            var i = Array.IndexOf(D.CrowCycle, e);
-            return D.CrowCycle[(i + 1) % D.CrowCycle.Length];
-        }
-
-        private ContextAction Cycle(string id, I18nText label, string key, DiagEnd fallback)
-            => new(id, label, IconIds.Cycle, x => x.WithParam(key, D.EndName(Next(D.ParseEnd(x.Str(key, ""), fallback))))) { Group = "ends" };
-
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Cycle("diag.crow.start", new I18nText("Next start cardinality", "Nächste Kardinalität Anfang"), "startEnd", DiagEnd.OnlyOne);
-            yield return Cycle("diag.crow.end", new I18nText("Next end cardinality", "Nächste Kardinalität Ende"), "endEnd", DiagEnd.ZeroOrMany);
+            // Cardinalities are choices (dropdowns), never "next" buttons (maintainer 2026-11-25).
+            var defs = Parameters;
+            foreach (var a in ActionChoices.FromParam(o, "diag.crow.start", defs.First(p => p.Key == "startEnd"), new I18nText("Start", "Anfang"), "ends", null)) yield return a;
+            foreach (var a in ActionChoices.FromParam(o, "diag.crow.end", defs.First(p => p.Key == "endEnd"), new I18nText("End", "Ende"), "ends", null)) yield return a;
             yield return new ContextAction("diag.swap", new I18nText("Swap ends", "Enden tauschen"), IconIds.Swap,
                 x => D.SwapParams(x.WithParam("startEnd", D.EndName(StartEnd(x))).WithParam("endEnd", D.EndName(EndEnd(x))), "startEnd", "endEnd")) { Group = "direction" };
             yield return D.Toggle(o, "diag.crow.identifying", new I18nText("Identifying", "Identifizierend"), "identifying", true);
-            yield return RouteAction(o);
+            foreach (var a in RouteActions(o)) yield return a;
         }
     }
 }

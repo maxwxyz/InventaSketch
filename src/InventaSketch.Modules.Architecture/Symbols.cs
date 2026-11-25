@@ -20,14 +20,12 @@ namespace InventaSketch.Modules.Architecture
                     Pm.Choice("shape", "Shape", "Form", "square", ("square", "Square", "Rechteckig"), ("round", "Round", "Rund")).WithOptionIcons(IconIds.ForShape),
                     Pm.Choice("material", "Material", "Material", "concrete", ("concrete", "Reinforced concrete (solid)", "Stahlbeton (schwarz)"), ("masonry", "Masonry (hatched)", "Mauerwerk (schraffiert)"), ("steel", "Steel (outline)", "Stahl (Umriss)")),
                 },
-                Extra = o => new[]
-                {
-                    Arch.Cycle(o, "arch.column.shape", "shape", "square", new[] { ("square", new I18nText("Square column", "Rechteckige Stütze")), ("round", new I18nText("Round column", "Runde Stütze")) }),
-                    Arch.Cycle(o, "arch.column.material", "material", "concrete", new[]
+                Extra = o => Arch.Choice(o, "arch.column.shape", new I18nText("Shape", "Form"), "shape", "square",
+                        new[] { ("square", new I18nText("Square", "Rechteckig")), ("round", new I18nText("Round", "Rund")) }, icon: IconIds.ForShape)
+                    .Concat(Arch.Choice(o, "arch.column.material", new I18nText("Material", "Material"), "material", "concrete", new[]
                     {
                         ("concrete", new I18nText("Concrete (solid)", "Stahlbeton (schwarz)")), ("masonry", new I18nText("Masonry (hatched)", "Mauerwerk (schraffiert)")), ("steel", new I18nText("Steel (outline)", "Stahl (Umriss)")),
-                    }),
-                },
+                    })),
             };
 
             var sv = ArchCategories.Services;
@@ -56,7 +54,7 @@ namespace InventaSketch.Modules.Architecture
             {
                 Uniform = true,
                 Params = new[] { Pm.Choice("kind", "Kind", "Art", "deciduous", ("deciduous", "Deciduous tree", "Laubbaum"), ("conifer", "Conifer", "Nadelbaum"), ("shrub", "Shrub", "Strauch")) },
-                Extra = o => new[] { Arch.Cycle(o, "arch.tree.kind", "kind", "deciduous", TreeKinds) },
+                Extra = o => Arch.Choice(o, "arch.tree.kind", new I18nText("Kind", "Art"), "kind", "deciduous", TreeKinds),
             };
         }
 
@@ -268,7 +266,11 @@ namespace InventaSketch.Modules.Architecture
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Arch.Cycle(o, "arch.pipe.medium", "medium", "flow", Media.Select(m => (m.Value, m.Label)).ToList());
+            foreach (var a in Arch.Choice(o, "arch.pipe.medium", new I18nText("Medium", "Medium"), "medium", "flow", Media.Select(m => (m.Value, m.Label)).ToList(),
+                preview: v => Media.FirstOrDefault(m => m.Value == v) is { Value: not null } m
+                    ? new Primitive[] { Prim.Line(0, 0, 12, 0, new Style { Stroke = m.Color, StrokeWidth = m.Width * 2, Dash = m.Dash, Role = LineRole.Visible }) }
+                    : null))
+                yield return a;
             yield return Arch.Toggle(o, "arch.pipe.arrow", new I18nText("Flow arrow", "Fließrichtungspfeil"), IconIds.FlowArrow, "arrow", false);
         }
     }

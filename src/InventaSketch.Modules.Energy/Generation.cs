@@ -144,7 +144,7 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { Fmt.Si(o.Clamped(GensetPower) * 1000, "VA", l), Pm.OptionLabel(Fuel, o.S(Fuel)).Get(l) },
                 Uniform = false,
                 CompanionIds = new[] { "energy.grid.breaker", "energy.grid.busbar", "energy.line.cable" },
-                Extra = (o, l) => new[] { Act.Cycle(o, "energy.fuel.next", Fuel), Act.Number(o, "energy.power.set", T("Rated power…", "Nennleistung…"), GensetPower, l) },
+                Extra = (o, l) => Act.Choice(o, "energy.fuel", Fuel).Concat(new[] { Act.Number(o, "energy.power.set", T("Rated power…", "Nennleistung…"), GensetPower, l) }),
             };
         }
 

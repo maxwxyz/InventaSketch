@@ -131,11 +131,13 @@ namespace InventaSketch.Modules.Fluid.Tests
         {
             var r = Fx.Reg();
             var line = Fx.Item(r, "fluid.line");
-            var kind = Fx.Action(r, line, "fluid.line.kind.next");
-            Assert.Equal(IconIds.Cycle, kind.Icon);
+            // Line type and routing are choices (dropdowns), the current option marked.
+            var kind = Fx.Action(r, line, "fluid.line.kind=pilot");
+            Assert.Equal("fluid.line.kind=working", Assert.Single(Fx.Options(r, line, "fluid.line.kind"), a => a.IsActive).Id);
             Assert.Equal("pilot", kind.Apply(line).Str("kind", ""));
-            var route = Fx.Action(r, line, "fluid.line.route");
-            Assert.True(route.IsActive);
+            Assert.True(Fx.Action(r, line, "fluid.line.route=orthogonal").IsActive);
+            var route = Fx.Action(r, line, "fluid.line.route=free");
+            Assert.Equal(IconIds.RouteFree, route.Icon);
             var free = route.Apply(line) with { Points = new[] { new Vec2(0, 0), new Vec2(20, 10) } };
             Assert.Equal(2, ((PathPrim)Fx.Render(r, free).Single()).Segments.Count);
             Assert.Equal(4, ((PathPrim)Fx.Render(r, free.WithParam("route", "orthogonal")).Single()).Segments.Count);
@@ -248,7 +250,7 @@ namespace InventaSketch.Modules.Fluid.Tests
         {
             var (r, doc) = Circuit.Build();
             var valve = doc.Objects.Values.Single(o => o.Type == "fluid.valve.directional");
-            var next = ContextActions.Run(r, doc, new[] { valve.Id }, "fluid.valve.centre.next", null, Lang.En);
+            var next = ContextActions.Run(r, doc, new[] { valve.Id }, "fluid.valve.centre=tandem", null, Lang.En);
             Assert.Equal("tandem", next.Get(valve.Id)!.Str("centre", ""));
             var named = ContextActions.Run(r, doc, new[] { valve.Id }, "fluid.ref.set", "2V1", Lang.En);
             Assert.Equal("2V1", named.Get(valve.Id)!.Str("ref", ""));

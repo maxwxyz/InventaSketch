@@ -350,10 +350,9 @@ namespace InventaSketch.Modules.Robotics
             Params = new[] { FrameKind, FrameAxes, Pm.Bool("name", "Show name", "Name zeigen", true) },
             Extra = o => new[]
             {
-                Rb.Cycle(o, "robot.frame.kind", FrameKind),
-                Rb.Cycle(o, "robot.frame.axes", FrameAxes, "axes"),
                 Rb.Toggle(o, "robot.frame.name", new I18nText("Show name", "Name zeigen"), IconIds.LabelShow, "name", true, "annotation"),
-            },
+            }.Concat(Rb.Choice(o, "robot.frame.kind", FrameKind))
+                .Concat(Rb.Choice(o, "robot.frame.axes", FrameAxes, "axes")),
         };
 
         // ------------------------------------------------------------------ TCP marker

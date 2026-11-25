@@ -133,8 +133,8 @@ continue it or to dock the next element.
 
 ## Context actions
 
-Tag (show / enter), cycle choices (heads, support, roof, internals, bundle, draft, pump/compressor/fan kind, valve kind,
-actuator, fail-safe position, instrument location and device, filter, recovery, humidifier, chart cycle), toggles
+Tag (show / enter), choices ▾ (heads, support, roof, internals, bundle, draft, pump/compressor/fan kind, valve kind,
+actuator, fail-safe position, instrument location and device, filter, recovery, humidifier, chart cycle, line routing), toggles
 (level, saddles, boot, agitator, jacket, base, closed, motorised, eccentric, arrow, hops, dome, superheat, subcool,
 efficiency, state numbers, caption), steps (trays, packed beds, plates, compression/pressure ratio), line number and
 instrument tag inputs, orthogonal/straight routing.

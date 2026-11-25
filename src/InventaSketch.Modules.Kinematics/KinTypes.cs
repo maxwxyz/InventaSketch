@@ -54,9 +54,9 @@ namespace InventaSketch.Modules.Kinematics
         /// <summary>+15° / -15° steps of the input angle (clockwise on screen is positive).</summary>
         public static IEnumerable<ContextAction> AngleSteps(SketchObject o, double def)
         {
-            yield return new ContextAction("kin.angle.next", new I18nText("Next position (+15°)", "Nächste Stellung (+15°)"), IconIds.AngleNext,
+            yield return new ContextAction("kin.angle.next", new I18nText("Position +15°", "Stellung +15°"), IconIds.AngleNext,
                 x => x.WithParam("angle", NormAngle(x.Num("angle", def) + Step))) { Group = "angle" };
-            yield return new ContextAction("kin.angle.prev", new I18nText("Previous position (−15°)", "Vorherige Stellung (−15°)"), IconIds.AnglePrev,
+            yield return new ContextAction("kin.angle.prev", new I18nText("Position −15°", "Stellung −15°"), IconIds.AnglePrev,
                 x => x.WithParam("angle", NormAngle(x.Num("angle", def) - Step))) { Group = "angle" };
         }
 

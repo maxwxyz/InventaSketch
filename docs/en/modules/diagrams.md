@@ -259,17 +259,17 @@ the name, 8 ports on the outline; the size adapts when switching). Library: "Sta
 | State | show activities, add entry/exit activity, remove last exit activity |
 | Composite state | add/remove region |
 | Swimlanes, pool | horizontal/vertical (swaps width and height), add lane at either end, remove first/last lane, rename lane n |
-| Summing junction, transfer block, signal arrow | feedback sign, input from above, cross style / content (name, fraction, characteristic), next characteristic / arrowhead, swap, orthogonal |
+| Summing junction, transfer block, signal arrow | feedback sign, input from above, cross style / content (name, fraction, characteristic), characteristic ▾ (options show the curve) / arrowhead, swap, routing ▾ |
 | Data fields | layout, equal widths, ruler, add field |
 | Fragment, message, lifeline | operator, add/remove operand / number messages / time gap |
-| GUI widgets | device, status bar, filled, shape, kind, rows, checked, on, value ±10, next glyph, next active tab, gesture |
+| GUI widgets | device, status bar, filled, shape, kind, rows, checked, on, value ±10, glyph ▾ (options show the glyph), active tab ▾, gesture |
 | Entity | add/remove attribute, weak entity |
 | ER attribute / relationship | key, multivalued, derived / identifying |
 | UML relationship | kind (8 choices), swap direction (multiplicities and roles stay at their class ends), orthogonal routing |
-| Crow's-foot connector | cycle start/end cardinality (one → one and only one → zero or one → many → one or many → zero or many), swap ends, identifying, orthogonal routing |
+| Crow's-foot connector | start ▾ / end ▾ cardinality (none, one, one and only one, zero or one, many, one or many, zero or many), swap ends, identifying, routing ▾ (straight / orthogonal) |
 | Sequence message | sync/async/reply/create, swap direction |
 | Block | add/remove port left/right |
-| Lifeline, container, lollipop, task, gateway | destroyed / actor head, dashed frame / title band, required socket, sub-process, next gateway marker |
+| Lifeline, container, lollipop, task, gateway | destroyed / actor head, dashed frame / title band, required socket, sub-process, gateway marker ▾ |
 
 Adding a row grows the box downwards by one row (top edge stays in place); removing a row shrinks it.
 

@@ -790,9 +790,15 @@ namespace InventaSketch.Modules.Diagrams
             yield return Anchor.Point(AnchorRole.Mid, D.At(path, 0.5).P, "mid");
         }
 
-        protected static ContextAction RouteAction(SketchObject o)
-            => new("diag.route.orthogonal", new I18nText("Orthogonal routing", "Rechtwinklig führen"), IconIds.Toggle,
-                x => x.WithParam("route", x.Str("route", "straight") == "orthogonal" ? "straight" : "orthogonal"))
-            { IsActive = o.Str("route", "straight") == "orthogonal", Group = "route" };
+        /// <summary>
+        /// Routing as a choice (straight with waypoints / orthogonal, with the route pictograms) – a dropdown, not a switch;
+        /// it names the "route" parameter so that hosts showing the parameter keep one place for it.
+        /// </summary>
+        internal static IEnumerable<ContextAction> RouteActions(SketchObject o, string fallback = "straight")
+            => ActionChoices.FromValues("diag.route", new I18nText("Routing", "Führung"), "route", o.Str("route", fallback), new[]
+            {
+                ("straight", new I18nText("Straight", "Gerade"), (string?)IconIds.RouteFree),
+                ("orthogonal", new I18nText("Orthogonal", "Rechtwinklig"), (string?)IconIds.RouteOrthogonal),
+            }, "route");
     }
 }

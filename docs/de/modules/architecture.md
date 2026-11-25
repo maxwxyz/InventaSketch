@@ -108,12 +108,12 @@ Breitenschritten mit den Flügeln).
 
 | Typ | Aktionen |
 |---|---|
-| Wand | dicker/dünner (Standarddicken 75 ... 490 mm), „Dicke…“ (Eingabe, mm), Art durchschalten, geschlossen |
+| Wand | dicker/dünner (Standarddicken 75 ... 490 mm), „Dicke…“ (Eingabe, mm), Wandart ▾ (Auswahl), geschlossen |
 | Türen | Anschlagseite wechseln, Aufschlagrichtung wechseln, breiter/schmaler (±125 mm; Flügeltiefe wächst mit), „Breite…“ (Eingabe, mm), an Wand ausrichten |
 | Fenster | Anschlagseite wechseln, innen/außen tauschen, breiter/schmaler, „Breite…“ (Eingabe, mm), an Wand ausrichten |
 | Treppen | Laufrichtung umkehren, mehr/weniger Stufen |
 | Raum | „Name…“ (Eingabe), Fläche anzeigen, getönter Boden |
-| Stütze, Baum, Leitung | Form/Material, Art, Medium durchschalten; Fließrichtungspfeil |
+| Stütze, Baum, Leitung | Form ▾ / Material ▾, Art ▾, Medium ▾ (Auswahlen; die Medien zeigen ihre Linie); Fließrichtungspfeil |
 | Schnittlinie, Grundstücksgrenze | Blickrichtung umkehren; geschlossen, Grenzpunkte |
 
 Eingabeaktionen („…“) fragen einen Wert ab: das COM-Add-in öffnet seinen Eingabedialog, der Web-Aufgabenbereich ein

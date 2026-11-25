@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Energy
@@ -42,12 +43,10 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { Fmt.Si(o.Clamped(ChargePower) * 1000, "W", l) + (o.B(Dc) ? " DC" : " AC") },
                 Uniform = false,
                 CompanionIds = new[] { "energy.mobility.ev", "energy.grid.meter", "energy.line.cable" },
-                Extra = (o, l) => new[]
-                {
-                    Act.Cycle(o, "energy.form.next", ChargerForm),
+                Extra = (o, l) => Act.Choice(o, "energy.form", ChargerForm).Concat(new[] {
                     Act.Toggle(o, "energy.dc.toggle", T("DC charging", "DC-Laden"), Dc),
                     Act.Number(o, "energy.power.set", T("Charging power…", "Ladeleistung…"), ChargePower, l),
-                },
+                }),
             };
 
             yield return new EnergyType("energy.mobility.ev", T("Electric vehicle", "Elektrofahrzeug"), EnCategories.Consumers,
@@ -91,7 +90,7 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { KindShort(o.S(LoadKind), l), Fmt.Si(o.Clamped(LoadPower) * 1000, "W", l) },
                 Uniform = false,
                 CompanionIds = new[] { "energy.grid.meter", "energy.grid.busbar", "energy.line.cable" },
-                Extra = (o, l) => new[] { Act.Cycle(o, "energy.kind.next", LoadKind), Act.Number(o, "energy.power.set", T("Peak load…", "Spitzenlast…"), LoadPower, l) },
+                Extra = (o, l) => Act.Choice(o, "energy.kind", LoadKind).Concat(new[] { Act.Number(o, "energy.power.set", T("Peak load…", "Spitzenlast…"), LoadPower, l) }),
             };
 
             yield return new EnergyType("energy.control.ems", T("Energy management system", "Energiemanagementsystem"), EnCategories.Consumers,

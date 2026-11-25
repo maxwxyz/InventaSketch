@@ -368,7 +368,7 @@ namespace InventaSketch.Modules.Geometry
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Mx.Cycle(o, "math.graph.function.next", new I18nText("Next function", "Nächste Funktion"), Function, "function");
+            foreach (var opt in Mx.Choice(o, "math.graph.function", new I18nText("Function", "Funktion"), Function, "function")) yield return opt;
             var fn = Spec(o);
             var label = new I18nText("Coefficients a; b; c; d…", "Koeffizienten a; b; c; d…");
             yield return ContextAction.WithInput("math.graph.coefficients", label, IconIds.Parameters, label,

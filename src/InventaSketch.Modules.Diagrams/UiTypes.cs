@@ -231,8 +231,7 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return D.Toggle(o, "diag.button.filled", new I18nText("Filled (primary)", "Gefüllt (primär)"), "filled", false);
-            yield return new ContextAction("diag.button.shape", new I18nText("Next shape", "Nächste Form"), IconIds.Cycle,
-                x => x.WithParam("shape", x.Str("shape", "rounded") switch { "rounded" => "pill", "pill" => "rect", _ => "rounded" })) { Group = "shape" };
+            foreach (var a in ActionChoices.FromParam(o, "diag.button.shape", Parameters.First(p => p.Key == "shape"), null, "shape", null)) yield return a;
         }
     }
 
@@ -602,11 +601,9 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return new ContextAction("diag.icon.next", new I18nText("Next glyph", "Nächstes Motiv"), IconIds.Cycle, x =>
-            {
-                var i = Array.FindIndex(Glyphs, g => g.Value == x.Str("glyph", "menu"));
-                return x.WithParam("glyph", Glyphs[(i + 1) % Glyphs.Length].Value);
-            }) { Group = "glyph" };
+            // The glyph is a choice; each option shows its glyph.
+            foreach (var a in ActionChoices.FromParam(o, "diag.icon.glyph", Parameters[0], null, "glyph", null))
+                yield return a with { Preview = Glyph(ActionChoices.ValueOf(a.Id) ?? "", 10).ToList() };
         }
     }
 
@@ -650,8 +647,19 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return new ContextAction("diag.tabs.next", new I18nText("Next active tab", "Nächster aktiver Reiter"), IconIds.Cycle,
-                x => x.WithParam("active", x.Int("active", 1) % Math.Max(1, Tabs(x, lang).Count) + 1)) { Group = "tabs" };
+            // The active tab is a choice among the tabs (by name).
+            var tabNames = Tabs(o, lang);
+            if (tabNames.Count > 1)
+            {
+                var activeTab = new ActionChoice("diag.tabs.active", new I18nText("Active tab", "Aktiver Reiter"));
+                var active = o.Int("active", 1);
+                for (var i = 0; i < tabNames.Count; i++)
+                {
+                    var n = i + 1;
+                    var name = tabNames[i].Length > 22 ? tabNames[i].Substring(0, 21) + "…" : tabNames[i];
+                    yield return ActionChoices.Option(activeTab, D.Inv(n), new I18nText(name, name), "", n == active, x => x.WithParam("active", n)) with { Group = "tabs", ParamKeys = new[] { "active" } };
+                }
+            }
             yield return new ContextAction("diag.tabs.add", new I18nText("Add tab", "Reiter hinzufügen"), IconIds.ColumnAdd, x =>
             {
                 var tabs = Tabs(x, lang).ToList();

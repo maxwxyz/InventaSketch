@@ -46,10 +46,9 @@ namespace InventaSketch.Modules.Process
                 Block = true, TagPrefix = "V-101", Uniform = false, CompanionIds = Companions,
                 Extra = o => new[]
                 {
-                    Cycle("process.vessel.heads", T("Heads", "Böden"), Heads),
-                    Cycle("process.vessel.support", T("Support", "Auflager"), Support),
                     Toggle(o, "process.vessel.level", T("Liquid level", "Flüssigkeitsstand"), "level", false),
-                },
+                }.Concat(Choice(o, "process.vessel.heads", T("Heads", "Böden"), Heads))
+                    .Concat(Choice(o, "process.vessel.support", T("Support", "Auflager"), Support)),
             };
 
             yield return new ProcessType("process.vessel.horizontal", T("Horizontal vessel", "Behälter, liegend"), Cat, 32, 14, HorizontalVessel,
@@ -86,9 +85,8 @@ namespace InventaSketch.Modules.Process
                 Block = true, TagPrefix = "TK-101", Uniform = false, CompanionIds = Companions,
                 Extra = o => new[]
                 {
-                    Cycle("process.tank.roof", T("Roof", "Dach"), Roof),
                     Toggle(o, "process.vessel.level", T("Liquid level", "Flüssigkeitsstand"), "level", false),
-                },
+                }.Concat(Choice(o, "process.tank.roof", T("Roof", "Dach"), Roof)),
             };
 
             yield return new ProcessType("process.column", T("Process column", "Kolonne"), Cat, 12, 50, Column,
@@ -101,10 +99,9 @@ namespace InventaSketch.Modules.Process
                 CompanionIds = new[] { "process.line", "process.hx.shelltube", "process.vessel.horizontal", "process.pump.centrifugal", "process.instrument.bubble" },
                 Extra = o => new[]
                 {
-                    Cycle("process.column.internals", T("Trays / packing", "Böden / Packung"), Internals),
                     o.Str("internals", "trays") == "packed" ? Step("process.column.more", T("More packed beds", "Mehr Packungsbetten"), Beds, 1) : Step("process.column.more", T("More trays", "Mehr Böden"), Trays, 2),
                     o.Str("internals", "trays") == "packed" ? Step("process.column.fewer", T("Fewer packed beds", "Weniger Packungsbetten"), Beds, -1) : Step("process.column.fewer", T("Fewer trays", "Weniger Böden"), Trays, -2),
-                },
+                }.Concat(Choice(o, "process.column.internals", null, Internals)),
             };
 
             yield return new ProcessType("process.reactor", T("Stirred tank reactor", "Rührkesselreaktor"), Cat, 16, 30, Reactor,

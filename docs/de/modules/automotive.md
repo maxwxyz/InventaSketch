@@ -113,11 +113,11 @@ Mittellinie, Einmündung, Ladeparkplatz, prädizierte Trajektorie, …). Die Suc
 
 | Objekt | Aktionen |
 |---|---|
-| Fahrzeuge | nächste Fahrzeugansicht (Draufsicht → Seite → Front → Heck), direkte Ansichtswahl; der Maßstab bleibt erhalten |
-| Straßen | Fahrstreifen + / − (der gerade Abschnitt behält die Fahrstreifenbreite und wächst/schrumpft), nächstes Markierungsmuster, Fahrstreifenmitten; Kreuzung: Kreuzung/Einmündung, Fußgängerüberwege |
-| Sichtbereich | Reichweite + / − (×1,25), Öffnungswinkel + / − (10°), um 15° drehen, nächste Füllung |
+| Fahrzeuge | Ansichtswahl (Draufsicht, Seite, Front, Heck; Ansichtsauswahl der Hosts, kein „nächste Ansicht“-Knopf); der Maßstab bleibt erhalten |
+| Straßen | Fahrstreifen + / − (der gerade Abschnitt behält die Fahrstreifenbreite und wächst/schrumpft), Markierung ▾, Fahrstreifenmitten; Kreuzung: Kreuzung/Einmündung, Fußgängerüberwege |
+| Sichtbereich | Reichweite + / − (×1,25), Öffnungswinkel + / − (10°), um 15° drehen, Füllung ▾ |
 | Trajektorie | Fahrschlauch ein/aus, Fahrschlauchbreite + / −, Zeitmarken, gestrichelt (prädiziert) |
-| Sonstige | Parameter-Schalter und -Wechsel (Signalzustand, Schildform, Absperrungsart, Türöffnung, Lenkwinkel, …) |
+| Sonstige | Parameter-Schalter und Auswahlen ▾ (Signalzustand, Schildform, Absperrungsart, Türöffnung, Lenkwinkel, …) |
 
 Plus-/Minus-Aktionen verwenden die Piktogramm-IDs `cmd-increase`/`cmd-decrease`, die noch nicht zum gemeinsamen
 `IconIds`-Vokabular gehören (Hosts zeigen bis zur Aufnahme ein neutrales Symbol).

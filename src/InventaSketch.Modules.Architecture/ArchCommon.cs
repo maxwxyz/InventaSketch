@@ -202,14 +202,14 @@ namespace InventaSketch.Modules.Architecture
         internal static ContextAction Toggle(SketchObject o, string id, I18nText label, string icon, string key, bool fallback, string group = "param")
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group };
 
-        /// <summary>Cycles a choice parameter through <paramref name="values"/>; the label names the next value.</summary>
-        internal static ContextAction Cycle(SketchObject o, string id, string key, string fallback, IReadOnlyList<(string Value, I18nText Label)> values, string group = "param")
-        {
-            var cur = o.Str(key, fallback);
-            var idx = Math.Max(0, values.ToList().FindIndex(v => v.Value == cur));
-            var next = values[(idx + 1) % values.Count];
-            return new ContextAction(id, next.Label, IconIds.Cycle, x => x.WithParam(key, next.Value)) { Group = group, ParamKeys = new[] { key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (one option per value, the current one marked; hosts show a dropdown) – never a
+        /// cycle button (maintainer 2026-11-25).
+        /// </summary>
+        internal static IEnumerable<ContextAction> Choice(SketchObject o, string id, I18nText label, string key, string fallback, IReadOnlyList<(string Value, I18nText Label)> values,
+            string group = "param", Func<string, string?>? icon = null, Func<string, IReadOnlyList<Primitive>?>? preview = null)
+            => ActionChoices.FromValues(id, label, key, o.Str(key, fallback), values.Select(v => (v.Value, v.Label, icon?.Invoke(v.Value))), group)
+                .Select(a => preview is null ? a : a with { Preview = preview(ActionChoices.ValueOf(a.Id) ?? "") }).ToList();
 
         /// <summary>Clips a convex or concave polygon to the half-plane (p - origin)·normal &lt;= 0 (Sutherland-Hodgman).</summary>
         internal static List<Vec2> ClipHalfPlane(IReadOnlyList<Vec2> poly, Vec2 origin, Vec2 normal)

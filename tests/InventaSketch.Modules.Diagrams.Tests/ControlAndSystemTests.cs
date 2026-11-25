@@ -38,9 +38,12 @@ namespace InventaSketch.Modules.Diagrams.Tests
             Assert.Equal(2, T.All<LinePrim>(cross).Count(l => l.Tag == DiagTags.Marker));
             Assert.All(T.All<TextPrim>(cross), t => Assert.True(t.Position.Length < 3));
 
-            // Actions: flip the feedback sign, add an input from above.
+            // Actions: the feedback sign is a choice (+ / −, the current one marked), add an input from above.
             var type = r.TypeOf(o);
-            var flipped = type.Actions(o, Lang.En).Single(a => a.Id == "diag.sum.feedbackSign").Apply(o);
+            var sign = type.Actions(o, Lang.En).Where(a => a.Choice?.Key == "diag.sum.feedback").ToList();
+            Assert.Equal(new[] { "diag.sum.feedback=plus", "diag.sum.feedback=minus" }, sign.Select(a => a.Id));
+            Assert.True(sign[1].IsActive);
+            var flipped = sign[0].Apply(o);
             Assert.Equal("++", flipped.Str("signs", ""));
             var three = type.Actions(o, Lang.En).Single(a => a.Id == "diag.sum.topInput").Apply(o);
             Assert.Equal("+-+", three.Str("signs", ""));

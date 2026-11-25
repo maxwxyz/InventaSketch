@@ -280,17 +280,17 @@ Beschriftungsvorlage).
 | Zustand | Aktivitäten anzeigen, Eintritts-/Austrittsaktivität hinzufügen, letzte Austrittsaktivität entfernen |
 | Zusammengesetzter Zustand | Region hinzufügen/entfernen |
 | Schwimmbahnen, Pool | waagerecht/senkrecht (tauscht Breite und Höhe), Bahn an einem der Enden hinzufügen, erste/letzte Bahn entfernen, Bahn n umbenennen |
-| Summierstelle, Übertragungsglied, Signalpfeil | Vorzeichen Rückführung, Eingang von oben, Kreuzform / Inhalt (Name, Bruch, Kennlinie), nächste Kennlinie / Pfeilspitze, Richtung umkehren, rechtwinklig |
+| Summierstelle, Übertragungsglied, Signalpfeil | Vorzeichen Rückführung, Eingang von oben, Kreuzform / Inhalt (Name, Bruch, Kennlinie), Kennlinie ▾ (Optionen zeigen die Kurve) / Pfeilspitze, Richtung umkehren, Führung ▾ |
 | Datenfelder | Anordnung, gleiche Breiten, Lineal, Feld hinzufügen |
 | Fragment, Nachricht, Lebenslinie | Operator, Operand hinzufügen/entfernen / Nachrichten nummerieren / Zeitlücke |
-| GUI-Elemente | Gerät, Statusleiste, gefüllt, Form, Art, Zeilen, ausgewählt, ein, Wert ±10, nächstes Motiv, nächster aktiver Reiter, Geste |
+| GUI-Elemente | Gerät, Statusleiste, gefüllt, Form, Art, Zeilen, ausgewählt, ein, Wert ±10, Motiv ▾ (Optionen zeigen das Motiv), aktiver Reiter ▾, Geste |
 | Entität | Attribut hinzufügen/entfernen, schwache Entität |
 | ER-Attribut / -Beziehung | Schlüssel, mehrwertig, abgeleitet / identifizierend |
 | UML-Beziehung | Art (8 Möglichkeiten), Richtung umkehren (Multiplizitäten und Rollen bleiben an ihren Klassenenden), rechtwinklige Führung |
-| Krähenfuß-Verbinder | Kardinalität Anfang/Ende weiterschalten (eins → genau eins → null oder eins → viele → eins oder viele → null oder viele), Enden tauschen, identifizierend, rechtwinklige Führung |
+| Krähenfuß-Verbinder | Kardinalität Anfang ▾ / Ende ▾ (keine, eins, genau eins, null oder eins, viele, eins oder viele, null oder viele), Enden tauschen, identifizierend, Führung ▾ (gerade / rechtwinklig) |
 | Sequenznachricht | synchron/asynchron/Antwort/Erzeugen, Richtung umkehren |
 | Block | Port links/rechts hinzufügen/entfernen |
-| Lebenslinie, Container, Lolli, Aufgabe, Gateway | zerstört / Akteur-Kopf, gestrichelter Rahmen / Titelband, benötigte Buchse, Teilprozess, nächste Gateway-Markierung |
+| Lebenslinie, Container, Lolli, Aufgabe, Gateway | zerstört / Akteur-Kopf, gestrichelter Rahmen / Titelband, benötigte Buchse, Teilprozess, Gateway-Markierung ▾ |
 
 Eine hinzugefügte Zeile vergrößert die Box um eine Zeilenhöhe nach unten (Oberkante bleibt stehen); Entfernen
 verkleinert sie entsprechend.

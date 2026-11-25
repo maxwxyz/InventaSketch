@@ -103,7 +103,7 @@ namespace InventaSketch.Modules.Annotation
         }
 
         /// <summary>
-        /// Order of the "next arrowhead style" action: arrow-like heads only, hollow variants next to their filled
+        /// Order of the arrow-like heads, hollow variants next to their filled
         /// counterparts. Crow's-foot ends are ER cardinalities, not arrowheads, and are left out.
         /// </summary>
         public static readonly ArrowHead[] HeadCycle =
@@ -366,10 +366,10 @@ namespace InventaSketch.Modules.Annotation
                 x => x.WithParam("headStart", Head(x, "headStart", defStart) == ArrowHead.None ? "triangle" : "none")) { IsActive = s != ArrowHead.None, Group = "heads", ParamKeys = new[] { "headStart" } };
             yield return new ContextAction("ann.head.end", new I18nText("Arrowhead at end", "Pfeilspitze am Ende"), IconIds.ArrowEnd,
                 x => x.WithParam("headEnd", Head(x, "headEnd", defEnd) == ArrowHead.None ? "triangle" : "none")) { IsActive = e != ArrowHead.None, Group = "heads", ParamKeys = new[] { "headEnd" } };
-            yield return new ContextAction("ann.head.style", new I18nText("Next arrowhead style", "Nächste Pfeilspitzenform"), IconIds.Cycle,
-                x => x.WithParam("headEnd", HeadName(NextHead(Head(x, "headEnd", defEnd))))) { Group = "heads", ParamKeys = new[] { "headEnd" } };
-            yield return new ContextAction("ann.head.size", new I18nText("Next arrowhead size", "Nächste Pfeilspitzengröße"), IconIds.Cycle,
-                x => x.WithParam("headSize", ((ArrowSize)(((int)HeadSize(x) + 1) % 3)).ToString().ToLowerInvariant())) { Group = "heads", ParamKeys = new[] { "headSize" } };
+            // Head form and size are choices (dropdowns with the head pictograms), never "next" buttons (maintainer 2026-11-25).
+            var defs = P.Heads(defStart, defEnd).ToList();
+            foreach (var a in ActionChoices.FromParam(o, "ann.head.style", defs.Single(d => d.Key == "headEnd"), null, "heads", null)) yield return a;
+            foreach (var a in ActionChoices.FromParam(o, "ann.head.size", defs.Single(d => d.Key == "headSize"), null, "heads", null)) yield return a;
             yield return SwapAction();
         }
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Energy
@@ -49,12 +50,9 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => InverterRating(o, l),
                 Uniform = false,
                 CompanionIds = new[] { "energy.pv.string", "energy.storage.battery", "energy.grid.meter", "energy.line.cable" },
-                Extra = (o, l) => new[]
-                {
-                    Act.Cycle(o, "energy.kind.next", InverterKind),
-                    Act.Cycle(o, "energy.phases.next", Phases),
+                Extra = (o, l) => Act.Choice(o, "energy.kind", InverterKind).Concat(Act.Choice(o, "energy.phases", Phases)).Concat(new[] {
                     Act.Number(o, "energy.power.set", T("Rated power…", "Nennleistung…"), InverterPower, l),
-                },
+                }),
             };
 
             yield return new EnergyType("energy.conv.converter", T("Power converter", "Stromrichter"), EnCategories.Storage,
@@ -78,11 +76,9 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { Fmt.Si(o.Clamped(InverterPower) * 1000, "W", l), Short(o.S(ConverterKind)) },
                 Uniform = false,
                 CompanionIds = new[] { "energy.h2.electrolyser", "energy.storage.battery", "energy.line.cable" },
-                Extra = (o, l) => new[]
-                {
-                    Act.Cycle(o, "energy.kind.next", ConverterKind),
+                Extra = (o, l) => Act.Choice(o, "energy.kind", ConverterKind).Concat(new[] {
                     Act.Number(o, "energy.power.set", T("Rated power…", "Nennleistung…"), InverterPower, l),
-                },
+                }),
             };
 
             yield return new EnergyType("energy.storage.battery", T("Battery storage", "Batteriespeicher"), EnCategories.Storage,
@@ -111,12 +107,10 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { Fmt.Si(o.Clamped(Capacity) * 1000, "Wh", l) },
                 Uniform = false,
                 CompanionIds = new[] { "energy.conv.inverter", "energy.grid.meter", "energy.line.cable" },
-                Extra = (o, l) => new[]
-                {
-                    Act.Cycle(o, "energy.form.next", BatteryForm),
+                Extra = (o, l) => Act.Choice(o, "energy.form", BatteryForm).Concat(new[] {
                     Act.Number(o, "energy.capacity.set", T("Capacity…", "Kapazität…"), Capacity, l),
                     Act.Number(o, "energy.soc.set", T("State of charge…", "Ladezustand…"), Soc, l),
-                },
+                }),
             };
         }
 

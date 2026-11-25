@@ -198,10 +198,9 @@ namespace InventaSketch.Modules.Process
 
         protected override IEnumerable<ContextAction> ChartActions(SketchObject o) => new[]
         {
-            Cycle("process.chart.cycle", T("Rankine / Carnot", "Rankine / Carnot"), CycleParam),
             Toggle(o, "process.chart.superheat", T("Superheating", "Überhitzung"), "superheat", true),
             Toggle(o, "process.chart.dome", T("Saturation dome", "Grenzkurve"), "dome", true),
-        };
+        }.Concat(Choice(o, "process.chart.cycle", null, CycleParam));
     }
 
     /// <summary>p-v diagram of the air-standard cycles: Otto (default), Diesel, Carnot (ideal gas).</summary>
@@ -252,13 +251,12 @@ namespace InventaSketch.Modules.Process
 
         protected override IEnumerable<ContextAction> ChartActions(SketchObject o) => new[]
         {
-            Cycle("process.chart.cycle", T("Otto / Diesel / Carnot", "Otto / Diesel / Carnot"), CycleParam),
             new ContextAction("process.chart.ratio.up", T("Higher compression ratio", "Höheres Verdichtungsverhältnis"), IconIds.Increase,
                 x => x.WithParam("ratio", Math.Min(25, x.Num("ratio", 8) + 1))) { Group = "param", ParamKeys = new[] { "ratio" } },
             new ContextAction("process.chart.ratio.down", T("Lower compression ratio", "Niedrigeres Verdichtungsverhältnis"), IconIds.Decrease,
                 x => x.WithParam("ratio", Math.Max(2, x.Num("ratio", 8) - 1))) { Group = "param", ParamKeys = new[] { "ratio" } },
             Toggle(o, "process.chart.efficiency", T("Show efficiency", "Wirkungsgrad anzeigen"), "efficiency", false),
-        };
+        }.Concat(Choice(o, "process.chart.cycle", null, CycleParam));
     }
 
     /// <summary>log p-h diagram: vapour-compression refrigeration (heat pump) cycle with the saturation dome.</summary>

@@ -117,7 +117,7 @@ marks (magnet sectors, field poles, cage bars, slots between teeth).
 Further parameters (optional): e-machine `shaft` (shaft stubs; off when the machine sits on a drawn `mech.shaft` body in
 side view, on by default), `ground` (housing connection: ground strokes in the schematic, housing outline in side and
 axial view, on), `hatch`; engine `cylinders` (1-6, default 4; the schematic shows an inline engine, outer throws opposite
-the inner ones). Context actions: next arrangement, next machine type (`cmd-cycle`), shaft stubs on/off, housing
+the inner ones). Context actions: arrangement ▾ and machine type ▾ (choices with the machine pictograms), shaft stubs on/off, housing
 connection on/off.
 
 The drawings are schematic symbols in the style of kinematic gearbox schematics, not a standardised graphical symbol.
@@ -163,7 +163,7 @@ current out of the drawing plane, under a south pole into it.
 
 ## Context actions
 
-View switches (with the `ViewDef.Icon` pictograms), **next rotor type** (`param.rotor`, icon `cmd-cycle`), **poles ±2**
+View switches (with the `ViewDef.Icon` pictograms), **rotor type ▾** (choice `param.rotor=…`), **poles ±2**
 (`param.poles.inc/dec`), **slots ±3** (`param.slots.inc/dec`), **current directions on/off**, **cooling on/off**, **inner/outer
 rotor** (`cmd-swap`); motor symbol: motor/generator; magnet: swap polarity, arrow on/off; coil: currents, core; cooling
 channel: count, flow direction; encoder: resolver/encoder; annotations: reverse direction. Switching between a round

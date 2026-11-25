@@ -269,15 +269,12 @@ namespace InventaSketch.Modules.Energy
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, ParamDef p, string icon = IconIds.Toggle, string group = "param")
             => new(id, label, icon, x => x.WithParam(p.Key, !x.B(p))) { IsActive = o.B(p), Group = group, ParamKeys = new[] { p.Key } };
 
-        /// <summary>Cycles a choice parameter; the label names the next value.</summary>
-        public static ContextAction Cycle(SketchObject o, string id, ParamDef choice, string group = "param")
-        {
-            var values = choice.Options!;
-            var cur = o.S(choice);
-            var idx = Math.Max(0, values.ToList().FindIndex(v => v.Value == cur));
-            var next = values[(idx + 1) % values.Count];
-            return new ContextAction(id, next.Label, IconIds.Cycle, x => x.WithParam(choice.Key, next.Value)) { Group = group, ParamKeys = new[] { choice.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (one option per value, the current one marked; hosts show a dropdown) – never a
+        /// cycle button (maintainer 2026-11-25). The label defaults to the parameter's.
+        /// </summary>
+        public static IEnumerable<ContextAction> Choice(SketchObject o, string id, ParamDef choice, I18nText? label = null, string group = "param")
+            => ActionChoices.FromParam(o, id, choice, label, group, null);
 
         /// <summary>The pictogram of a typed quantity ("energy.power.set": power …), else from the unit.</summary>
         public static string QuantityIcon(string id, ParamDef p) => id switch

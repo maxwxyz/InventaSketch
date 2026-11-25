@@ -35,7 +35,7 @@ nicht), folgt aber demselben Muster wie dessen Mechanismen: eine bewegte Achse f
   teilen sich daher einen Ausschnitt, und der Sockel bewegt sich nicht, während die bewegte Achse dreht. Ändert sich
   etwas anderes (eine andere Achse, eine Gliedlänge, eine Grenze, die bewegte Achse, der Arbeitsraum), **folgt die Box
   dem Roboter**: Zeichnungsmaßstab und Blattposition des Sockels bleiben, die Boxgröße passt sich an
-  (`OnParamChanged` sowie die Aktionen „Grundstellung“, „Achse … bewegen“, „Arbeitsraum“). Auch ein Ansichtswechsel
+  (`OnParamChanged` sowie die Aktionen „Grundstellung“, die Achsauswahl, „Arbeitsraum“). Auch ein Ansichtswechsel
   behält den Zeichnungsmaßstab.
 - Achswerte werden vor dem Zeichnen **auf die Achsgrenzen begrenzt**.
 - Linienarten: Körper als mittlere Konturen (0,35 mm) mit heller Füllung (`#eef1f5`, dunkleres Grau für Sockel und
@@ -184,11 +184,11 @@ lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, …).
 
 ## Kontextaktionen
 
-Roboter: `A… +15°` / `A… −15°` (50 mm bei Linearachsen) an der bewegten Achse, „Achse A… bewegen“ (wechselt die
-bewegte Achse), „Grundstellung“, „Zwischenlagen“ (0 ↔ 4, über den Bereich der bewegten Achse), „Arbeitsraum“,
+Roboter: `A… +15°` / `A… −15°` (50 mm bei Linearachsen) an der bewegten Achse, Achse ▾ (Auswahl der
+bewegten Achse), „Grundstellung“, „Zwischenlagen“ (0 ↔ 4, über den Bereich der bewegten Achse), „Arbeitsraum“,
 Darstellung Körperkontur ↔ kinematisches Schema (Options-Piktogramme detailliert/Schema), „Achsbeschriftung“
 (J1… / A1… je nach UI-Sprache, zusammenfallende Achsen teilen sich eine Beschriftung „A5/A6“). Greifer:
-öffnen/schließen, Hubpfeile, mehr/weniger Saugnäpfe. Übrige: Art/Form/Achsen wechseln, Schalter für Namen, Pfeile,
+öffnen/schließen, Hubpfeile, mehr/weniger Saugnäpfe. Übrige: Art ▾ / Form ▾ / Achsen ▾ (Auswahlen), Schalter für Namen, Pfeile,
 Gitterband, Feldtönung, geschlossenen Zaun, Förderrichtung umkehren.
 
 ## Host-Hinweise

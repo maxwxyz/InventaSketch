@@ -547,17 +547,18 @@ namespace InventaSketch.Modules.Machines.Tests
         }
 
         [Fact]
-        public void RotorCycleVisitsAllRotorTypes()
+        public void RotorChoiceOffersAllRotorTypes()
         {
             var r = Fx.Reg();
             var t = r.Type("machines.radial")!;
             var o = r.Create(r.Item("machines.radial.spm")!, Vec2.Zero);
             var seen = new List<string>();
-            for (var i = 0; i < 6; i++)
+            var options = t.Actions(o, Lang.En).Where(x => x.Choice?.Key == "param.rotor").ToList();
+            Assert.Equal(6, options.Count);
+            Assert.Equal("param.rotor=spm", Assert.Single(options, x => x.IsActive).Id);
+            foreach (var rotor in new[] { "ipm", "spoke", "eesm", "asm", "srm", "spm" })
             {
-                var a = t.Actions(o, Lang.En).Single(x => x.Id == "param.rotor");
-                Assert.Equal(IconIds.Cycle, a.Icon);
-                o = a.Apply(o);
+                o = t.Actions(o, Lang.En).Single(x => x.Id == "param.rotor=" + rotor).Apply(o);
                 seen.Add(o.Str("rotor", ""));
             }
             Assert.Equal(new[] { "ipm", "spoke", "eesm", "asm", "srm", "spm" }, seen);
@@ -583,11 +584,11 @@ namespace InventaSketch.Modules.Machines.Tests
             Assert.True(A(withCurrents, "param.currents").IsActive);
             var cooled = A(o, "param.cooling").Apply(o);
             Assert.True(cooled.Flag("cooling", false));
-            Assert.Equal("outer", A(o, "param.layout").Apply(o).Str("layout", ""));
+            Assert.Equal("outer", A(o, "param.layout=outer").Apply(o).Str("layout", ""));
             // the schematic symbol only offers motor/generator
             var sym = r.Create(r.Item("machines.motor.symbol")!, Vec2.Zero);
-            Assert.Equal("generator", A(sym, "param.mode").Apply(sym).Str("mode", ""));
-            Assert.DoesNotContain(t.Actions(sym, Lang.En), a => a.Id == "param.rotor");
+            Assert.Equal("generator", A(sym, "param.mode=generator").Apply(sym).Str("mode", ""));
+            Assert.DoesNotContain(t.Actions(sym, Lang.En), a => a.Choice?.Key == "param.rotor");
         }
 
         [Fact]

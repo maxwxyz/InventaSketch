@@ -72,7 +72,7 @@ namespace InventaSketch.Modules.Machines
                 var l = new List<ContextAction>();
                 l.AddRange(Common.Stepper(o, "slots", T("Slots", "Nuten"), 36, 3, 6, 96));
                 l.Add(Common.Toggle(o, "currents", false, T("Current directions on/off", "Stromrichtungen an/aus")));
-                l.Add(Common.LayoutSwap(o));
+                l.AddRange(Common.LayoutChoice(o));
                 return l;
             },
         };
@@ -132,10 +132,10 @@ namespace InventaSketch.Modules.Machines
             },
             Extra = o =>
             {
-                var l = new List<ContextAction> { Common.RotorCycle(o) };
+                var l = new List<ContextAction>(Common.RotorChoice(o));
                 l.AddRange(Common.Stepper(o, "poles", T("Poles", "Pole"), 8, 2, 2, 64));
                 l.Add(Common.Toggle(o, "currents", false, T("Current directions on/off", "Stromrichtungen an/aus")));
-                l.Add(Common.LayoutSwap(o));
+                l.AddRange(Common.LayoutChoice(o));
                 return l;
             },
         };
@@ -471,11 +471,10 @@ namespace InventaSketch.Modules.Machines
                 Common.Choice("kind", T("Sensor", "Sensor"), "resolver", new ParamOption("resolver", T("Resolver", "Resolver")), new ParamOption("encoder", T("Optical encoder", "Optischer Drehgeber"))),
                 Common.Count("slits", T("Encoder slits", "Strichzahl (Darstellung)"), 24, 8, 96, 1, advanced: true),
             },
-            Extra = o => new[]
+            Extra = o => ActionChoices.FromValues("param.kind", T("Sensor", "Sensor"), "kind", o.Str("kind", "resolver"), new[]
             {
-                new ContextAction("param.kind", o.Str("kind", "resolver") == "encoder" ? T("Resolver", "Resolver") : T("Optical encoder", "Optischer Drehgeber"), IconIds.Cycle,
-                    x => x.WithParam("kind", x.Str("kind", "resolver") == "encoder" ? "resolver" : "encoder")) { Group = "param" },
-            },
+                ("resolver", T("Resolver", "Resolver"), (string?)null), ("encoder", T("Optical encoder", "Optischer Drehgeber"), (string?)null),
+            }, "param"),
         };
 
         private static bool IsEncoder(SketchObject o) => o.Str("kind", "resolver") == "encoder";

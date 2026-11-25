@@ -154,7 +154,7 @@ terminal with its fitting connection.
 
 ## Context actions
 
-Mounting height… (input, every element), cycle medium/kind (pipe, duct, riser, air terminal, outlets, detector),
+Mounting height… (input, every element), medium/kind as choices ▾ (pipe, duct, riser, air terminal, outlets, detector),
 flow arrow and hops (pipe), air flow arrow (duct), more/fewer circuits (manifold), heating coil (water heater),
 riser direction.
 

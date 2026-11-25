@@ -73,7 +73,7 @@ namespace InventaSketch.Modules.Automotive
                 Views.FrontV(90, 34, Draw))
             {
                 Params = new[] { layout, value, speed },
-                Extra = o => new[] { Prm.Cycle(o, layout, T("Dials / digital", "Rundinstrumente / digital")) },
+                Extra = o => Prm.Choice(o, layout, T("Layout", "Anordnung")),
             };
         }
 
@@ -113,7 +113,7 @@ namespace InventaSketch.Modules.Automotive
                 Views.SideV(6, 32, Side))
             {
                 Params = new[] { content },
-                Extra = o => new[] { Prm.Cycle(o, content, T("Next content", "Nächster Inhalt")) },
+                Extra = o => Prm.Choice(o, content, T("Content", "Inhalt")),
             };
         }
 
@@ -285,7 +285,7 @@ namespace InventaSketch.Modules.Automotive
                 Views.SymbolV(12, 11, Draw))
             {
                 Params = new[] { shape },
-                Extra = o => new[] { Prm.Cycle(o, shape, T("Next icon shape", "Nächste Symbolform")) },
+                Extra = o => Prm.Choice(o, shape, T("Icon shape", "Symbolform")),
             };
         }
 
@@ -343,7 +343,7 @@ namespace InventaSketch.Modules.Automotive
             {
                 Params = new[] { kind },
                 Uniform = false,
-                Extra = o => new[] { Prm.Cycle(o, kind, T("Next block kind", "Nächste Blockart")) },
+                Extra = o => Prm.Choice(o, kind, T("Block kind", "Blockart")),
             };
         }
     }

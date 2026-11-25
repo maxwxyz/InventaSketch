@@ -56,7 +56,7 @@ namespace InventaSketch.Modules.Robotics
             }, (p, o) => new[] { RoboBoxType.Port(p, 0, -2.5, "grip"), RoboBoxType.Port(p, 0, 2.5, "bottom") }))
         {
             Params = new[] { ShapeParam },
-            Extra = o => new[] { Rb.Cycle(o, "robot.workpiece.shape", ShapeParam) },
+            Extra = o => Rb.Choice(o, "robot.workpiece.shape", ShapeParam),
             CompanionIds = new[] { "robot.cell.conveyor", "robot.cell.pallet", "robot.gripper.parallel" },
         };
 
@@ -207,7 +207,7 @@ namespace InventaSketch.Modules.Robotics
             }, (p, o) => new[] { RoboBoxType.Port(p, -9.4, 14, "hinge"), RoboBoxType.Port(p, 9.4, 14, "latch") }))
         {
             Params = new[] { DoorKind },
-            Extra = o => new[] { Rb.Cycle(o, "robot.door.kind", DoorKind) },
+            Extra = o => Rb.Choice(o, "robot.door.kind", DoorKind),
             CompanionIds = new[] { "robot.safety.fence", "robot.safety.curtain", "robot.safety.estop" },
         };
 
@@ -317,9 +317,8 @@ namespace InventaSketch.Modules.Robotics
             },
             Extra = o => new[]
             {
-                Rb.Cycle(o, "robot.scanner.shape", FieldShape),
                 Rb.Toggle(o, "robot.scanner.labels", new I18nText("Field labels", "Feldbeschriftung"), IconIds.LabelShow, "labels", false, "annotation"),
-            },
+            }.Concat(Rb.Choice(o, "robot.scanner.shape", FieldShape)),
             CompanionIds = new[] { "robot.mobile.agv", "robot.safety.zone", "robot.safety.fence" },
         };
 

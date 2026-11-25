@@ -91,7 +91,7 @@ namespace InventaSketch.Modules.Automotive
         {
             yield return LanesAction(+1, resize, design);
             yield return LanesAction(-1, resize, design);
-            yield return Prm.Cycle(o, markings, T("Next marking pattern", "Nächstes Markierungsmuster"));
+            foreach (var opt in Prm.Choice(o, markings, T("Markings", "Markierung"))) yield return opt;
             yield return Prm.Toggle(o, "centerlines", false, T("Lane centre lines", "Fahrstreifenmitten"));
         }
 
@@ -290,7 +290,7 @@ namespace InventaSketch.Modules.Automotive
             {
                 Params = new[] { Lanes, markings, arms, stop, zebra, Centerlines, Dash, Gap },
                 Uniform = false,
-                Extra = o => RoadActions(o, false, markings, Design).Append(Prm.Cycle(o, arms, T("Cross / T-junction", "Kreuzung / Einmündung")))
+                Extra = o => RoadActions(o, false, markings, Design).Concat(Prm.Choice(o, arms, T("Junction", "Knoten")))
                     .Append(Prm.Toggle(o, "crosswalks", false, T("Crosswalks", "Fußgängerüberwege"))),
             };
         }
@@ -411,7 +411,7 @@ namespace InventaSketch.Modules.Automotive
 
             public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
             {
-                yield return Prm.Cycle(o, PatternDef, T("Next line pattern", "Nächstes Linienmuster"));
+                foreach (var opt in Prm.Choice(o, PatternDef, T("Line pattern", "Linienmuster"))) yield return opt;
                 yield return Prm.Toggle(o, "smooth", false, T("Smooth curve", "Glatte Kurve"));
             }
         }

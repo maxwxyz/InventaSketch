@@ -143,9 +143,9 @@ Elements.
 
 ## Kontextaktionen
 
-Kennzeichen (anzeigen / eingeben), Auswahlen durchschalten (Böden, Auflager, Dach, Einbauten, Rohrbündel, Zug,
+Kennzeichen (anzeigen / eingeben), Auswahlen ▾ (Böden, Auflager, Dach, Einbauten, Rohrbündel, Zug,
 Pumpen-/Verdichter-/Ventilatorbauart, Armaturenart, Antrieb, Sicherheitsstellung, Anordnung und Gerät der Messstelle,
-Filter, Wärmerückgewinnung, Befeuchter, Kreisprozess), Umschalter (Füllstand, Sättel, Wassersack, Rührwerk,
+Filter, Wärmerückgewinnung, Befeuchter, Kreisprozess, Leitungsführung), Umschalter (Füllstand, Sättel, Wassersack, Rührwerk,
 Doppelmantel, Grundrahmen, geschlossen, Stellantrieb, exzentrisch, Pfeil, Brücken, Grenzkurve, Überhitzung,
 Unterkühlung, Wirkungsgrad, Zustandsnummern, Beschriftung), Schritte (Böden, Packungsbetten, Platten, Verdichtungs-/
 Druckverhältnis), Eingaben für Leitungsnummer und Messstellen-Kennzeichen, orthogonale/gerade Führung.

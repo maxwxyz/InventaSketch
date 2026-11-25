@@ -230,14 +230,17 @@ namespace InventaSketch.Modules.Electrical.Tests
         }
 
         [Fact]
-        public void GateCycleActionChangesFunction()
+        public void GateFunctionIsAChoice()
         {
             var r = Fx.Reg();
             var t = r.Type("elec.gate")!;
             var o = r.Create(r.Item("elec.gate.and")!, Vec2.Zero);
-            var next = t.Actions(o, Lang.En).Single(a => a.Id == "elec.gate.next");
-            Assert.Equal(IconIds.Cycle, next.Icon);
-            Assert.Equal("or", next.Apply(o).Str("gate", ""));
+            // The gate function is a choice (dropdown), the current one marked – not a cycle button.
+            var options = t.Actions(o, Lang.En).Where(a => a.Choice?.Key == "elec.gate").ToList();
+            Assert.True(options.Count > 2);
+            Assert.Equal("elec.gate=and", Assert.Single(options, a => a.IsActive).Id);
+            Assert.DoesNotContain(t.Actions(o, Lang.En), a => a.Icon == IconIds.Cycle);
+            Assert.Equal("or", options.Single(a => a.Id == "elec.gate=or").Apply(o).Str("gate", ""));
         }
 
         [Fact]
@@ -532,8 +535,9 @@ namespace InventaSketch.Modules.Electrical.Tests
             Assert.Equal(new[] { new Vec2(0, 0), new Vec2(20, 0), new Vec2(30, 10) }, pts);
             var free = wire.WithParam("route", "free");
             Assert.Equal(2, ((PathPrim)Fx.Render(r, free).Single()).Segments.Count);
-            var cycle = r.TypeOf(wire).Actions(wire, Lang.En).Single(a => a.Id == "elec.route.next");
-            Assert.Equal("orthogonal", cycle.Apply(free).Str("route", ""));
+            var orthogonal = r.TypeOf(wire).Actions(free, Lang.En).Single(a => a.Id == "elec.route=orthogonal");
+            Assert.Equal(IconIds.RouteOrthogonal, orthogonal.Icon);
+            Assert.Equal("orthogonal", orthogonal.Apply(free).Str("route", ""));
         }
 
         [Fact]

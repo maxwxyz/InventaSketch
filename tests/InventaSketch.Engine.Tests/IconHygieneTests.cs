@@ -98,7 +98,7 @@ namespace InventaSketch.Engine.Tests
 
         /// <summary>
         /// The meaning of an action: its id without place qualifiers, segment by segment ("ann.table.row.add.top" = "add a
-        /// row", "diag.lanes.addStart" = "add a lane", "fluid.valve.actLeft.next" = "next actuation", "diag.lanes.rename.2").
+        /// row", "diag.lanes.addStart" = "add a lane", "fluid.valve.actLeft" = "actuation","diag.lanes.rename.2").
         /// </summary>
         internal static string Meaning(string id)
             => string.Join(".", id.Split('.')

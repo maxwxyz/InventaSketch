@@ -35,7 +35,7 @@ namespace InventaSketch.Modules.Process
                 Params = new[] { CoilKind },
                 Ports = Fixed(new Port("A1", -5, 0), new Port("A2", 5, 0), new Port("W1", -2.5, 6), new Port("W2", 2.5, 6)),
                 Uniform = false, CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.coil.kind", T("Heating / cooling", "Heizen / Kühlen"), CoilKind) },
+                Extra = o => Choice(o, "process.coil.kind", null, CoilKind),
             };
 
             yield return new ProcessType("process.hvac.damper", T("Air damper", "Luftklappe"), Cat, 10, 10, Damper,
@@ -55,7 +55,7 @@ namespace InventaSketch.Modules.Process
                 Params = new[] { FilterKind },
                 Ports = Fixed(new Port("A1", -5, 0), new Port("A2", 5, 0)),
                 Uniform = false, CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.filter.kind", T("Panel / bag filter", "Platten- / Taschenfilter"), FilterKind) },
+                Extra = o => Choice(o, "process.filter.kind", null, FilterKind),
             };
 
             yield return new ProcessType("process.hvac.recovery", T("Heat recovery", "Wärmerückgewinnung"), Cat, 10, 20, Recovery,
@@ -65,7 +65,7 @@ namespace InventaSketch.Modules.Process
                 Params = new[] { RecoveryKind },
                 Ports = Fixed(new Port("S1", -5, 5), new Port("S2", 5, 5), new Port("E1", 5, -5), new Port("E2", -5, -5)),
                 Uniform = false, CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.recovery.kind", T("Plate / wheel", "Platte / Rotor"), RecoveryKind) },
+                Extra = o => Choice(o, "process.recovery.kind", null, RecoveryKind),
             };
 
             yield return new ProcessType("process.hvac.humidifier", T("Humidifier", "Luftbefeuchter"), Cat, 10, 12, Humidifier,
@@ -75,7 +75,7 @@ namespace InventaSketch.Modules.Process
                 Params = new[] { HumidifierKind },
                 Ports = Fixed(new Port("A1", -5, 0), new Port("A2", 5, 0), new Port("W1", 0, 6)),
                 Uniform = false, CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.humidifier.kind", T("Steam / spray", "Dampf / Sprüh"), HumidifierKind) },
+                Extra = o => Choice(o, "process.humidifier.kind", null, HumidifierKind),
             };
         }
 
