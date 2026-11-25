@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFrameworks>$(IskLibTargets)</TargetFrameworks>
+    <RootNamespace>InventaSketch.Modules.Robotics</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="InventaSketch.Modules.Robotics.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\InventaSketch.Core\InventaSketch.Core.csproj" />
+  </ItemGroup>
+</Project>
