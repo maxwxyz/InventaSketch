@@ -441,7 +441,15 @@ in the drawing).
    dropdown as an own menu of the same width; fluid power shares one menu with process and thermal engineering (two
    titled sections; the modules stay separate because ISO 1219 and ISO 10628 draw pumps, valves and lines differently);
    gallery thumbnails fill ellipses and rounded rectangles as such (no white squares), tiny elements stay small.
-8. Later: sidebar preview live, sequence/GRAFCET charts, isometric parts, moved positions, battery arrays,
+8. Selection (maintainer 2026-11-25, in progress): a clear selection look for single, multiple and connected
+   selections (soft blue halo around the exact outline, like Slidemax's gradient), so overlapping elements show what is
+   selected; "Select connected": electrical and fluid nets, loops, what moves along (shafts, gears, belts), all
+   following elements (flowcharts, chains), closed room walls. Attached elements appear on the side that was clicked
+   (fitting with a preferred direction).
+9. UI/UX review of all elements, combinations and workflows (2026-11-25, docs/en/design/ux-review-2026-11-25.md):
+   readable bar and pie, element name on the pie's edit place, progressive disclosure, four-button bar; follow-ups F2
+   slide-wide symbol size, F3 pictogram and label hygiene, F4 multi-selection review.
+10. Later: sidebar preview live, sequence/GRAFCET charts, isometric parts, moved positions, battery arrays,
    obstacle-aware routing for hand-placed flowchart boxes.
 
 ### Further modules and functions worth adding

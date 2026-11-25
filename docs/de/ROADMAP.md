@@ -489,7 +489,15 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
    der Verfahrens- und Wärmetechnik (zwei Abschnitte mit Titel; die Module bleiben getrennt, weil ISO 1219 und ISO 10628
    Pumpen, Ventile und Leitungen unterschiedlich zeichnen); Katalogvorschauen füllen Ellipsen und abgerundete Rechtecke
    als solche (keine weißen Quadrate), winzige Elemente bleiben klein.
-8. Später: Seitenleisten-Vorschau live, Ablauf-/GRAFCET-Diagramme, isometrische Teile, bewegte Lagen,
+8. Auswahl (Maintainer 25.11.2026, in Arbeit): eine klare Auswahldarstellung für Einzel-, Mehrfach- und verbundene
+   Auswahl (weicher blauer Schein um die genaue Kontur, wie der Verlauf bei Slidemax), damit bei übereinanderliegenden
+   Elementen klar ist, was ausgewählt ist; „Verbundene auswählen“: Elektro- und Fluidnetze, Schleifen, was sich mitbewegt
+   (Wellen, Zahnräder, Riemen), alle folgenden Elemente (Ablaufdiagramme, Ketten), geschlossene Raumwände. Angefügte
+   Elemente erscheinen an der geklickten Seite (Einpassen mit Vorzugsrichtung).
+9. UI/UX-Review aller Elemente, Kombinationen und Abläufe (25.11.2026, docs/de/design/ux-review-2026-11-25.md): lesbare
+   Leiste und lesbares Kreismenü, Elementname am Bearbeiten-Platz, schrittweises Einblenden, Leiste mit vier Knöpfen;
+   Folgepunkte F2 folienweite Symbolgröße, F3 Piktogramm- und Beschriftungshygiene, F4 Review der Mehrfachauswahl.
+10. Später: Seitenleisten-Vorschau live, Ablauf-/GRAFCET-Diagramme, isometrische Teile, bewegte Lagen,
    Batteriezellen-Anordnungen, hindernisvermeidendes Routing für von Hand platzierte Ablaufkästen.
 
 ### Weitere sinnvolle Module und Funktionen
