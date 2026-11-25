@@ -31,8 +31,8 @@ namespace InventaSketch.Core
 
         /// <summary>
         /// Pictogram of the choice itself (an <see cref="IconIds"/> id) for the closed dropdown instead of the current option's
-        /// picture: "Detail" (a line with its points) and "Smoothing" of a sketched curve, whose option pictures would look
-        /// like the curve-shape button next to them. The open list keeps the option pictures.
+        /// picture: "Detail" (a line with its points) and "Smoothing" of a sketched curve, whose option pictures all show the
+        /// current curve and would look alike next to each other. The open list keeps the option pictures.
         /// </summary>
         public string? BarIcon { get; init; }
     }
