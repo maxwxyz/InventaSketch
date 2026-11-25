@@ -1435,10 +1435,24 @@ namespace InventaSketch.AddIn
         /// <summary>"Import …": asks for a CSV/TSV, GeoJSON/GPX or SVG/DXF file and imports it (<see cref="ImportData"/>).</summary>
         private void ImportDataFile()
         {
+            // Plotting or drawing code on the clipboard (matplotlib, pgfplots, TikZ): offer to import it without a file.
+            try
+            {
+                var clip = Clipboard.ContainsText() ? Clipboard.GetText() : null;
+                if (clip is not null && CodeImportFormat.Detect(clip) is { } kind
+                    && MessageBox.Show(T("The clipboard holds " + kind + " code. Import it?", "Die Zwischenablage enthält " + kind + "-Code. Importieren?"),
+                        "InventaSketch", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+                {
+                    MessageBox.Show(ImportCode(clip), "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            }
+            catch (Exception ex) { Log.Error("Clipboard code", ex); }
             using var dialog = new OpenFileDialog
             {
                 Title = T("Import", "Importieren"),
-                Filter = T("All importable files", "Alle importierbaren Dateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf;*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf;*.png;*.jpg;*.jpeg;*.bmp;*.gif|"
+                Filter = T("All importable files", "Alle importierbaren Dateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf;*.py;*.tex;*.tikz;*.pgf;*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf;*.py;*.tex;*.tikz;*.pgf;*.png;*.jpg;*.jpeg;*.bmp;*.gif|"
+                    + T("Plotting and drawing code (matplotlib, pgfplots, TikZ)", "Diagramm- und Zeichencode (matplotlib, pgfplots, TikZ)") + " (*.py;*.tex;*.tikz;*.pgf)|*.py;*.tex;*.tikz;*.pgf|"
                     + T("Chart pictures", "Diagrammbilder") + " (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|"
                     + T("Drawings", "Zeichnungen") + " (*.svg;*.dxf)|*.svg;*.dxf|"
                     + T("Data files", "Datendateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx|"
@@ -1465,6 +1479,9 @@ namespace InventaSketch.AddIn
             if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return T("Please select a slide first.", "Bitte zuerst eine Folie auswählen.");
             var setup = _app.ActivePresentation.PageSetup;
             var pageMm = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
+            var ext = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
+            if (ext is ".py" or ".tex" or ".tikz" or ".pgf" || ext is ".txt" && CodeImportFormat.Detect(text) is not null)
+                return ImportCode(text);
             if (VectorImport.IsVectorFile(fileName, text))
             {
                 // A vector drawing as editable basic shapes, grouped into one unit (real size if it has units and fits).
@@ -1522,6 +1539,55 @@ namespace InventaSketch.AddIn
             }
             Log.Info("Imported chart data from " + System.IO.Path.GetFileName(fileName));
             return null;
+        }
+
+        /// <summary>
+        /// Imports plotting or drawing code (read, never executed): matplotlib and pgfplots become charts and figures, TikZ
+        /// drawings basic shapes, lines, arrows and texts (one group), all in one unit and one undo step. Returns the report.
+        /// </summary>
+        internal string ImportCode(string text)
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return T("Please select a slide first.", "Bitte zuerst eine Folie auswählen.");
+            var setup = _app.ActivePresentation.PageSetup;
+            var pageMm = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
+            var format = CodeImportFormat.Detect(text);
+            if (format is null) return T("The text is neither a matplotlib script nor pgfplots or TikZ code.", "Der Text ist weder ein matplotlib-Skript noch pgfplots- oder TikZ-Code.");
+            var report = new CodeImportReport();
+            var created = new List<SketchObject>();
+            if (format is CodeImportFormat.Matplotlib or CodeImportFormat.Pgfplots)
+            {
+                var result = format == CodeImportFormat.Matplotlib
+                    ? InventaSketch.Modules.Charts.ChartCodeImport.Matplotlib(_registry, text, pageMm)
+                    : InventaSketch.Modules.Charts.ChartCodeImport.Pgfplots(_registry, text, pageMm);
+                created.AddRange(result.Charts);
+                report.Add(result.Report);
+            }
+            if (format == CodeImportFormat.Tikz || format == CodeImportFormat.Pgfplots && text.Contains("\\begin{tikzpicture}"))
+            {
+                var drawing = TikzImport.Parse(text, report, skipAxisPictures: format == CodeImportFormat.Pgfplots);
+                var shapes = TikzImport.Elements(_registry, drawing, pageMm).ToList();
+                if (shapes.Count > 1)
+                {
+                    var gid = Ids.New("g");
+                    shapes = shapes.Select(o => o with { GroupId = gid }).ToList();
+                }
+                created.AddRange(shapes);
+            }
+            var lines = new List<string>();
+            if (created.Count > 0)
+            {
+                var doc = SketchDocument.Create(pageMm);
+                doc = Edits.Add(doc, doc.Pages[0].Id, created.ToArray());
+                _app.StartNewUndoEntry();
+                OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang)?.Select(Office.MsoTriState.msoTrue);
+                lines.Add(report.Skipped.Count == 0 ? T("Imported completely.", "Vollständig importiert.")
+                    : T("Imported; " + report.Skipped.Count + " part(s) were not imported:", "Importiert; " + report.Skipped.Count + " Teil(e) wurden nicht importiert:"));
+            }
+            else lines.Add(T("Nothing could be imported:", "Nichts konnte importiert werden:"));
+            lines.AddRange(report.Skipped.Take(12).Select(k => (k.Line > 0 ? T("line ", "Zeile ") + k.Line + ": " : "") + k.Reason.Get(_lang)));
+            if (report.Skipped.Count > 12) lines.Add("…");
+            Log.Info($"Imported {format} code: {created.Count} element(s), {report.Skipped.Count} skipped");
+            return string.Join("\n", lines);
         }
 
         /// <summary>"Clean slides …": the dialog, then the engine's cleaning of the chosen scope in one undo step and a report.</summary>

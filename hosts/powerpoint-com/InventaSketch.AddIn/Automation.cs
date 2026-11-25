@@ -210,6 +210,13 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Imports plotting or drawing code (matplotlib, pgfplots, TikZ) onto the current slide; returns the report.</summary>
+        public string ImportCode(string text)
+        {
+            try { return _connect.ImportCode(text); }
+            catch (Exception ex) { Log.Error("Automation.ImportCode", ex); return "error: " + ex.Message; }
+        }
+
         /// <summary>The ribbon's "All caps" toggle on the current selection: sets it and returns the pressed state read back.</summary>
         public bool SetAllCaps(bool on)
         {
