@@ -48,6 +48,20 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void ALongChainStaysOnThePage()
+        {
+            // Five steps (54 mm each) in a chain, laid out left to right on a 16:9 slide (338.7 mm wide): the gaps shrink to fit.
+            var steps = Enumerable.Range(0, 5).Select(i => Box(new Vec2(150 + 20 * i, 60 + 10 * (i % 3)))).ToList();
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, steps.ToArray());
+            doc = Edits.Add(doc, doc.Pages[0].Id, steps.Zip(steps.Skip(1), (a, b) => Arrow(a, b)).ToArray());
+            var t = DiagramLayout.Layered(doc, steps, down: false)!;
+            var w = steps[0].Size.W;
+            Assert.All(steps, s => Assert.InRange(t[s.Id].X, w / 2, doc.Pages[0].Size.W - w / 2));
+            Assert.True(t[steps[4].Id].X > t[steps[0].Id].X, "still left to right");
+        }
+
+        [Fact]
         public void ACycleIsBrokenAndTheLayoutStillWorks()
         {
             var a = Box(new Vec2(40, 40)); var b = Box(new Vec2(120, 40)); var c = Box(new Vec2(80, 120));
