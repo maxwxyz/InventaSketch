@@ -707,6 +707,9 @@ for the resistor (the grip is in the card); web and LibreOffice follow.
 - a B16 MCB on a circuit with *I*_z = 13 A (user) gives the coordination warning
 - docs for the Electrical, Mechanical and Machines modules list the new variables
 
+*Status (machine elements):* the gear, drive, spring, bearing, motor and drive-block items and their checks are done,
+see section 12.
+
 **Calc 4 – Fluid, thermal/process, building services, energy/solar, cross-module chains.** This phase adds:
 - the relations of sections 2.7–2.10 and 3.5–3.8
 - port flows across `PortMedia`
@@ -1081,3 +1084,73 @@ This section records the choices made where the plan left them open. The code is
 - Choosing single variables for the label in the card (the model supports it).
 - The engine's `dragValue` preview does not release values yet; the web host should use `ValueDrag` the same way.
 - Unit picker and the significant-digit setting (Engineer, Calc 6); direction arrows ↑↓ while dragging.
+
+---
+
+## 12. Implementation notes: Calc 3 machine elements (2026-11-25)
+
+This section records the choices made for the machine part of Calc 3 (Mechanical and Machines modules). The code is the
+reference; the module docs list every variable ([mechanical-drives.md](../modules/mechanical-drives.md#engineering-values-calc-3),
+[machines.md](../modules/machines.md#engineering-values-calc-3)).
+
+### 12.1 Files
+
+| Area | Files |
+|---|---|
+| Mechanical variables, relations, value parameters, checks | `src/InventaSketch.Modules.Mechanical/MechValues.cs`; `MechType` implements `IValueType`, `IValueLinks`, `IValueChecks` |
+| Mechanical topology and port relations | `src/InventaSketch.Modules.Mechanical/MechLinks.cs` (`MechTopology`, `MechLinks`) |
+| Machines variables, relations, checks, drive-block links | `src/InventaSketch.Modules.Machines/MachValues.cs` (`MachValues`, `MachLinks`); `MachType` in `Kit.cs` |
+| Tests | `tests/InventaSketch.Modules.Mechanical.Tests/ValueTests.cs`, `tests/InventaSketch.Modules.Machines.Tests/ValueTests.cs` |
+
+### 12.2 Decisions
+
+- **Magnitudes.** Speeds, torques and powers of gears, shafts, pulleys, sprockets, machines and drive blocks are
+  magnitudes; the direction of rotation is no value. Signed speeds would turn every external mesh into a sign conflict
+  when users enter positive speeds on both sides. Only the planetary set uses signed member speeds (same sense =
+  positive), because Willis' equation needs them.
+- **Topology from the core coupling relations** (`Coupling.Graph`, the relations behind "select connected – moves
+  along"), cached per document and registry:
+  - *Shaft lines*: shafts, couplings and the parts fixed on them (carried or concentric, hub not loose) share *n*.
+    Bearings take the speed of their shaft but join nothing. Planet carriers, differential cages and gear sets stay out.
+  - *Torque along a shaft line* passes unchanged when at most two members take or give torque (gears, pulleys,
+    sprockets, screws, machines); with three or more the split is unknown, so no torque link is made.
+  - *Meshes*: touching gears (spur, ring, bevel, worm and wheel; the worm's z is its number of starts) keep
+    *z*_a·*n*_a = *z*_b·*n*_b. Planets on a carrier pin are left out, since Willis across separate parts needs signed
+    speeds.
+  - *Strands*: belts keep *v* = π·*d*·*n* and *T* = *F*·*d*/2 at both pulleys; chains keep *v* = *z*·*p*·*n* and
+    *T* = *F*·*z*·*p*/(2π), plus *z*₁·*n*₁ = *z*₂·*n*₂ and the torque ratio when no pitch is entered. A nut on a screw
+    takes the screw's *v* and *F*.
+- **Stage efficiency.** A gear's η is the efficiency of the mesh in which it is the driven gear (default 1). Across a
+  mesh *P*_b/η_b = *P*_a/η_a, so *T*_b = *T*_a·(*z*_b/*z*_a)·(η_b/η_a). With an input torque and an output torque
+  entered, the default gives way and the solver derives η.
+- **Drive-block chain.** A connector (any line) whose first docked end sits on a block with a mechanical output and whose
+  last docked end sits on a block with a mechanical input passes *n* and *T*: motor/e-machine/engine → gearbox
+  (*n*₁ = *i*·*n*₂, *T*₂ = *T*₁·*i*·η) → differential (the same) → wheel (*v* = ω·*r*, *F* = *T*/*r*). Drivetrain parts
+  on a mechanical shaft share its speed. Both modules use the keys `n`, `T` and `P` for rotating elements, so the links
+  meet without a code dependency between the modules.
+- **Storage.** Entered values live in optional text parameters (listed in the engineering section of the inspector);
+  existing number parameters are reused: `teeth` (*z*), `module` (*m*, mm), screw `pitch` (*P*_h, mm), `starts` (worm
+  *z*), `poles`. Creating an element stores `teeth` and `poles` as before, so they count as entered values.
+- **Bearing life** *L*₁₀ is a count in millions of revolutions (no revolution unit exists); *L*₁₀h is a time in hours.
+- **Checks** run in `ValueSolver.Checks`: `mech.mesh.module` [S16], `mech.power.balance` [S1],
+  `mech.planetary.assembly` [S39], `mech.bearing.life` [S19], `mech.screw.selflock` [S18], `mach.slip.sign` [S15],
+  `mach.efficiency` [S1], and **`mach.overload`** [S14] (power or torque above the entered rating *P*_N or *T*_N). The
+  last one is new: section 4 does not list it, but the Calc 3 check set names "overload".
+
+### 12.3 Status of the Calc 3 machine items
+
+- Done: gear trains with absolute *n*, *T*, *P* and efficiencies (accept: three-stage spur train matches the hand
+  calculation; modules 2 and 2.5 give the module warning); planetary set with Willis; belt, chain and screw drives;
+  springs (*F* = *c*·*s*, *c* from geometry); bearing life; motors (*n*_s, slip, *P*–*T*–*n*, η); the drive-block chain;
+  the checks above; module docs list the variables.
+- Open:
+  - Willis across separate parts (sun, planets on a carrier, ring, carrier as separate elements): needs signed speeds;
+    use the planetary set element for now.
+  - Torque split on a shaft line with three or more torque members (branches).
+  - Torsion spring (needs a torsional rate kind N·m/rad in Core), rack–pinion link (the rack has no pitch anchor),
+    CVT, Ravigneaux, differential gear set, strain wave and cycloidal drives, flywheel energy, slip clutch.
+  - Generator operation of the machines (the efficiency relation is for motor operation); battery, inverter and DC link
+    (Calc 4 with Energy).
+  - Core: `ValueSolver.Solve` creates its `RenderContext` without the registry, so `IValueLinks` fall back to
+    `ObjectType.Owner` (shared by every registry the type is registered with). Passing `ctx.For(registry)` in the solver
+    (and in callers of `ValueSolver.Checks`) would make this exact.

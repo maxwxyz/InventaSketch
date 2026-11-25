@@ -69,6 +69,61 @@ Library items: `mech.freewheel`, `mech.freewheel.section`, `mech.freewheel.axial
 - Context actions: housing "bearing seats ±1" (resets `seatpos`), "fit around contents"; sump "oil level up/down",
   "drain plug on/off".
 
+## Engineering values (Calc 3)
+
+This section covers all elements of the module (gears, shafts, belts, chains, screw drives, springs, bearings), not only
+the ones described above. Values are optional: every element still inserts and scales without them. They are entered and
+shown with the Values card (*Edit ▸ Values ▸*, the *Values* button in Explore and Engineer) and stored in optional text
+parameters (engineering section of the inspector); existing parameters are reused where they exist. Design notes:
+[engineering-calculations.md, section 12](../design/engineering-calculations.md#12-implementation-notes-calc-3-machine-elements-2026-11-25).
+
+Speeds *n*, torques *T* (German symbol *M*) and powers *P* are magnitudes; *P* = 2π·*n*·*T*. Card variables come first.
+
+| Element | Variables (parameter) | Local relations [source] |
+|---|---|---|
+| Spur/helical, ring, bevel gear, worm wheel | *z* (`teeth`), *m* (`module`, mm), *n* (`speed`), *T* (`torque`); panel *P* (`power`), *d* (`diameter`); engineer η (`efficiency`, default 100 %) | *d* = *m*·*z* [S16]; *P* = 2π·*n*·*T* [S18] |
+| Worm | *z* = number of starts (`starts`), *m*, *n*, *T*; *P*, η | *P* = 2π·*n*·*T* |
+| Rack | *m*, *v* (`linSpeed`), *F* (`force`), *P* | *P* = *F*·*v* [S1] |
+| Planetary set | *z*_s (`zs`, default 20), *z*_r (`zr`, default 52), *n*_s (`speeds`), *n*_c (`speedc`); panel *n*_r (`speedr`), *T*_s, *T*_r, *T*_c (`torques`, `torquer`, `torquec`); engineer *k* = *z*_p1/*z*_p2 for stepped planets (`stepRatio`, default 1) | Willis *n*_s − *n*_c = −(*z*_r/*z*_s)·*k*·(*n*_r − *n*_c); *T*_r = *T*_s·*k*·*z*_r/*z*_s; *T*_s + *T*_r + *T*_c = 0 [S39]. Speeds and torques are signed here (same sense positive) |
+| Shaft, spline shaft, rigid and flexible coupling, universal joint | *n*, *T*, *P* | *P* = 2π·*n*·*T* |
+| Pulley | *d* (`diameter`, effective diameter), *n*, *T*, *P* | *P* = 2π·*n*·*T* |
+| Sprocket | *z* (`teeth`), *n*, *T*, *P* | *P* = 2π·*n*·*T* |
+| Belt | *v*, *F* (effective pull), *P* | *P* = *F*·*v* |
+| Roller chain | *p* (`pitch`, mm), *v*, *F*, *P* | *P* = *F*·*v* |
+| Screw (spindle) | *P*_h (lead, `pitch`, mm), *n*, *v*, *F*; panel *T*, *P*; engineer η (default 100 %) | *v* = *P*_h·*n*; *F* = 2π·*T*·η/*P*_h [S18, S23]; *P* = 2π·*n*·*T* |
+| Screw-drive nut | *v*, *F* | – |
+| Compression and tension spring | *F* (`force`), *s* (`travel`), *c* (`rate`); panel *d* (`wire`), *D* (`meanDiameter`), *n*_f (`activeCoils`); engineer *G* (`shearModulus`, default 81 000 N/mm²) | *F* = *c*·*s*; *c* = *G*·*d*⁴/(8·*D*³·*n*_f) [S21] |
+| Rolling bearings (ball, angular contact, thrust: *p* = 3; tapered, cylindrical, needle roller: *p* = 10/3) | *C* (`loadRating`, kN), *P* (`load`, kN), *L*₁₀ (`life`, 10⁶ revolutions), *L*₁₀h (`lifeHours`, h); panel *n*; engineer *L*_req (`requiredLife`, h) | *L*₁₀ = (*C*/*P*)^*p*; *L*₁₀h = 10⁶·*L*₁₀/(60·*n*) [S19] |
+| Plain bearing | *n* | – |
+
+**Links between elements** (read from the coupling of the drawing, the same relations as "select connected – moves
+along"):
+
+- *Shaft line*: a shaft, couplings on it and the parts fixed on it (hub fixed, sliding or none) share *n*; a loose hub
+  turns freely. Bearings take the speed of their shaft. The torque passes along the line unchanged when at most two
+  parts on it take or give torque; with a branch (three or more) no torque is passed.
+- *Mesh*: *z*_a·*n*_a = *z*_b·*n*_b and *T*_b = *T*_a·(*z*_b/*z*_a)·(η_b/η_a) [S18]. η of a gear is the efficiency of
+  the mesh in which it is the driven gear (enter it on the driven gear of each stage); with an input and an output
+  torque entered, η is derived. Planets on a carrier pin are not linked (use the planetary set).
+- *Belt*: *v* = π·*d*·*n* and *T* = *F*·*d*/2 at both pulleys. *Chain*: *v* = *z*·*p*·*n* and *T* = *F*·*z*·*p*/(2π);
+  without a pitch the sprockets still keep *z*₁·*n*₁ = *z*₂·*n*₂ and *T*₂·*z*₁ = *T*₁·*z*₂ [S18, S20].
+- *Screw and nut*: the nut on the spindle takes its *v* and *F*.
+- Drivetrain parts of the machines module (e-machine, engine, wheel) on a shaft join the shaft line with the same keys.
+
+**Checks** (hints only, overlay, nothing changes):
+
+| Id | Rule | Severity | Source |
+|---|---|---|---|
+| `mech.mesh.module` | meshing gears with different modules | warning | [S16] |
+| `mech.power.balance` | η > 100 % on a gear, worm or screw (more power out than in) | warning | [S1] |
+| `mech.planetary.assembly` | (*z*_s + *z*_r)/*N* not an integer or *z*_r − *z*_s odd (simple planets) | warning | [S18, S39] |
+| `mech.bearing.life` | *L*₁₀h below the entered required life | hint | [S19] |
+| `mech.screw.selflock` | lead screw with an entered or derived η > 50 % (back-driving possible) | info | [S18] |
+
+Not yet: torsion spring, rack–pinion link, CVT, Ravigneaux, differential gear set, strain wave and cycloidal drives,
+flywheel energy, slip clutch, Willis across separate planetary parts, torque split at branches. No strength verification
+(ISO 6336, DIN 743, EN 13906 beyond *F* = *c*·*s*).
+
 ## Host notes
 
 All new elements render to native host primitives (lines, rectangles, ellipses, polylines and polygons with hatch fill),

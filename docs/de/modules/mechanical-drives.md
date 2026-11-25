@@ -73,6 +73,66 @@ Bibliothekselemente: `mech.freewheel`, `mech.freewheel.section`, `mech.freewheel
 - Kontextaktionen: Gehäuse „Lagersitze ±1“ (setzt `seatpos` zurück), „Um Inhalt anpassen“; Ölwanne „Ölstand
   höher/niedriger“, „Ablassschraube an/aus“.
 
+## Technische Werte (Calc 3)
+
+Dieser Abschnitt gilt für alle Elemente des Moduls (Zahnräder, Wellen, Riemen, Ketten, Gewindetriebe, Federn, Lager),
+nicht nur für die oben beschriebenen. Werte sind optional: jedes Element lässt sich weiterhin ohne sie einfügen und
+skalieren. Eingetragen und angezeigt werden sie mit der Wertekarte (*Bearbeiten ▸ Werte ▸*, die Schaltfläche *Werte* in
+Erkunden und Ingenieur), gespeichert in optionalen Textparametern (Ingenieurabschnitt des Inspektors); vorhandene
+Parameter werden genutzt, wo es sie gibt. Entwurfsnotizen:
+[engineering-calculations.md, Abschnitt 12](../design/engineering-calculations.md#12-umsetzungsnotizen-calc-3-maschinenelemente-25112026).
+
+Drehzahlen *n*, Drehmomente *M* und Leistungen *P* sind Beträge; *P* = 2π·*n*·*M*. Kartengrößen stehen vorn.
+
+| Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
+|---|---|---|
+| Stirnrad/Schrägstirnrad, Hohlrad, Kegelrad, Schneckenrad | *z* (`teeth`), *m* (`module`, mm), *n* (`speed`), *M* (`torque`); Panel *P* (`power`), *d* (`diameter`); Ingenieur η (`efficiency`, Vorgabe 100 %) | *d* = *m*·*z* [S16]; *P* = 2π·*n*·*M* [S18] |
+| Schnecke | *z* = Gangzahl (`starts`), *m*, *n*, *M*; *P*, η | *P* = 2π·*n*·*M* |
+| Zahnstange | *m*, *v* (`linSpeed`), *F* (`force`), *P* | *P* = *F*·*v* [S1] |
+| Planetensatz | *z*_s (`zs`, Vorgabe 20), *z*_r (`zr`, Vorgabe 52), *n*_s (`speeds`), *n*_c (`speedc`); Panel *n*_r (`speedr`), *M*_s, *M*_r, *M*_c (`torques`, `torquer`, `torquec`); Ingenieur *k* = *z*_p1/*z*_p2 für Stufenplaneten (`stepRatio`, Vorgabe 1) | Willis *n*_s − *n*_c = −(*z*_r/*z*_s)·*k*·(*n*_r − *n*_c); *M*_r = *M*_s·*k*·*z*_r/*z*_s; *M*_s + *M*_r + *M*_c = 0 [S39]. Drehzahlen und Momente sind hier vorzeichenbehaftet (gleicher Drehsinn positiv) |
+| Welle, Keilwelle, starre und elastische Kupplung, Kardangelenk | *n*, *M*, *P* | *P* = 2π·*n*·*M* |
+| Riemenscheibe | *d* (`diameter`, Wirkdurchmesser), *n*, *M*, *P* | *P* = 2π·*n*·*M* |
+| Kettenrad | *z* (`teeth`), *n*, *M*, *P* | *P* = 2π·*n*·*M* |
+| Riemen | *v*, *F* (Umfangskraft), *P* | *P* = *F*·*v* |
+| Rollenkette | *p* (`pitch`, mm), *v*, *F*, *P* | *P* = *F*·*v* |
+| Gewindespindel | *P*_h (Steigung, `pitch`, mm), *n*, *v*, *F*; Panel *M*, *P*; Ingenieur η (Vorgabe 100 %) | *v* = *P*_h·*n*; *F* = 2π·*M*·η/*P*_h [S18, S23]; *P* = 2π·*n*·*M* |
+| Gewindetrieb-Mutter | *v*, *F* | – |
+| Druck- und Zugfeder | *F* (`force`), *s* (`travel`), *c* (`rate`); Panel *d* (`wire`), *D* (`meanDiameter`), *n*_f (`activeCoils`); Ingenieur *G* (`shearModulus`, Vorgabe 81 000 N/mm²) | *F* = *c*·*s*; *c* = *G*·*d*⁴/(8·*D*³·*n*_f) [S21] |
+| Wälzlager (Rillen-, Schräg-, Axialkugellager: *p* = 3; Kegel-, Zylinderrollen-, Nadellager: *p* = 10/3) | *C* (`loadRating`, kN), *P* (`load`, kN), *L*₁₀ (`life`, 10⁶ Umdrehungen), *L*₁₀h (`lifeHours`, h); Panel *n*; Ingenieur *L*_erf (`requiredLife`, h) | *L*₁₀ = (*C*/*P*)^*p*; *L*₁₀h = 10⁶·*L*₁₀/(60·*n*) [S19] |
+| Gleitlager | *n* | – |
+
+**Verknüpfungen zwischen Elementen** (aus der Kopplung der Zeichnung, dieselben Beziehungen wie „Verbundene auswählen –
+bewegt sich mit“):
+
+- *Wellenstrang*: eine Welle, Kupplungen darauf und die darauf festen Teile (Nabe fest, verschiebbar oder ohne) haben
+  dasselbe *n*; eine lose Nabe dreht frei. Lager übernehmen die Drehzahl ihrer Welle. Das Moment wird unverändert
+  weitergegeben, wenn höchstens zwei Teile darauf Moment aufnehmen oder abgeben; bei einer Verzweigung (drei oder mehr)
+  wird kein Moment weitergegeben.
+- *Eingriff*: *z*_a·*n*_a = *z*_b·*n*_b und *M*_b = *M*_a·(*z*_b/*z*_a)·(η_b/η_a) [S18]. Das η eines Zahnrads ist der
+  Wirkungsgrad des Eingriffs, in dem es getrieben wird (am getriebenen Rad jeder Stufe eintragen); sind An- und
+  Abtriebsmoment eingetragen, wird η bestimmt. Planeten auf einem Trägerbolzen werden nicht verknüpft (Planetensatz
+  verwenden).
+- *Riemen*: *v* = π·*d*·*n* und *M* = *F*·*d*/2 an beiden Scheiben. *Kette*: *v* = *z*·*p*·*n* und
+  *M* = *F*·*z*·*p*/(2π); ohne Teilung halten die Kettenräder trotzdem *z*₁·*n*₁ = *z*₂·*n*₂ und *M*₂·*z*₁ = *M*₁·*z*₂
+  [S18, S20].
+- *Spindel und Mutter*: die Mutter auf der Spindel übernimmt deren *v* und *F*.
+- Antriebsstrangteile des Maschinenmoduls (E-Maschine, Verbrennungsmotor, Rad) auf einer Welle gehören mit denselben
+  Schlüsseln zum Wellenstrang.
+
+**Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
+
+| Id | Regel | Schwere | Quelle |
+|---|---|---|---|
+| `mech.mesh.module` | kämmende Räder mit verschiedenem Modul | Warnung | [S16] |
+| `mech.power.balance` | η > 100 % an Zahnrad, Schnecke oder Spindel (mehr Leistung heraus als hinein) | Warnung | [S1] |
+| `mech.planetary.assembly` | (*z*_s + *z*_r)/*N* nicht ganzzahlig oder *z*_r − *z*_s ungerade (einfache Planeten) | Warnung | [S18, S39] |
+| `mech.bearing.life` | *L*₁₀h unter der eingetragenen geforderten Lebensdauer | Hinweis | [S19] |
+| `mech.screw.selflock` | Trapezgewindetrieb mit eingetragenem oder bestimmtem η > 50 % (Rücklauf möglich) | Info | [S18] |
+
+Noch nicht: Drehfeder, Verknüpfung Zahnstange–Ritzel, CVT, Ravigneaux, Ausgleichsradsatz, Well- und Zykloidgetriebe,
+Schwungradenergie, Rutschkupplung, Willis über getrennte Planetenteile, Momentaufteilung an Verzweigungen. Kein
+Festigkeitsnachweis (ISO 6336, DIN 743, EN 13906 über *F* = *c*·*s* hinaus).
+
 ## Hinweise zu den Hosts
 
 Alle neuen Elemente werden wie die übrigen Mechaniksymbole in native Host-Grundformen umgesetzt (Linien, Rechtecke,

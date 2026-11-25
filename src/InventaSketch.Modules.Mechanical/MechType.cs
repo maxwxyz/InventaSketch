@@ -37,7 +37,7 @@ namespace InventaSketch.Modules.Mechanical
     /// Data-driven object type used for all mechanical symbols: a list of views (each with its own drawing),
     /// optional parameters, anchors and context actions.
     /// </summary>
-    internal sealed class MechType : ObjectType
+    internal sealed class MechType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -59,7 +59,22 @@ namespace InventaSketch.Modules.Mechanical
         public override IReadOnlyList<string> Keywords => _keywords;
         public override IReadOnlyList<ViewDef> Views => _viewDefs;
         public override Size2 DefaultSize => _views[0].Design;
-        public override IReadOnlyList<ParamDef> Parameters => Params;
+        public override IReadOnlyList<ParamDef> Parameters => ValueSpec.Params.Count == 0 ? Params : _allParams ??= Params.Concat(ValueSpec.Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 3, MechValues / MechLinks)
+
+        private MechValues.Spec? _values;
+        private IReadOnlyList<ParamDef>? _allParams;
+
+        /// <summary>Variables, relations, value parameters and checks of this type (empty for elements without values).</summary>
+        internal MechValues.Spec ValueSpec => _values ??= MechValues.For(this);
+
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : MechLinks.For(this, o, ctx);
         public override bool PreferUniformScale => Uniform;
 
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();

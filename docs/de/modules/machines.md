@@ -206,6 +206,43 @@ Wasserleitung (Energiemodul), die vier Seiten der Antriebsstrang-Blöcke einen P
 passenden Elemente. Wellenenden (Getriebe, Räder, E-Maschinen, Motorabtrieb) sind mechanisch und werden mit Wellen an
 ihren Achsenden weitergebaut.
 
+## Technische Werte (Calc 3)
+
+Werte sind optional: jedes Element lässt sich weiterhin ohne sie einfügen und skalieren. Eingetragen und angezeigt werden
+sie mit der Wertekarte (*Bearbeiten ▸ Werte ▸*, die Schaltfläche *Werte* in Erkunden und Ingenieur), gespeichert in
+optionalen Textparametern (Ingenieurabschnitt des Inspektors); `poles` ist die vorhandene Polzahl. Drehzahlen *n*,
+Drehmomente *M* und Leistungen sind Beträge; *P* = 2π·*n*·*M*. Kartengrößen stehen vorn. Entwurfsnotizen:
+[engineering-calculations.md, Abschnitt 12](../design/engineering-calculations.md#12-umsetzungsnotizen-calc-3-maschinenelemente-25112026).
+
+| Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
+|---|---|---|
+| Radial- und Axialflussmaschine (`machines.radial`, `machines.axial`) | *n* (`speed`), *M* (`torque`), *P* (`power`), *f* (`frequency`); Panel *n*_s (`syncSpeed`), *s* (`slip`), Polzahl 2*p* (`poles`); Ingenieur η (`efficiency`), *P*_el (`powerEl`), *P*_N (`ratedPower`), *M*_N (`ratedTorque`) | *n*_s = 60·*f*/*p* (*p* = Polzahl/2) [S15]; *s* = (*n*_s − *n*)/*n*_s [S15]; *P* = 2π·*n*·*M*; Motorbetrieb *P* = η·*P*_el [S14] |
+| E-Motor-Block, E-Maschine (Antriebsstrang) | *n*, *M*, *P*, η; Ingenieur *P*_el, *P*_N, *M*_N | *P* = 2π·*n*·*M*; *P* = η·*P*_el |
+| Verbrennungsmotor | *n*, *M*, *P*; Ingenieur *P*_N, *M*_N | *P* = 2π·*n*·*M* (keine Thermodynamik) |
+| Getriebe, Differential (Blöcke) | *i* (`ratio`), η (`efficiency`, Vorgabe 100 %), *n*₂ (`speedOut`), *M*₂ (`torqueOut`); Panel *n*₁ (`speedIn`), *M*₁ (`torqueIn`), *P*₁ (`powerIn`), *P*₂ (`powerOut`) | *n*₁ = *i*·*n*₂; *M*₂ = *M*₁·*i*·η [S18]; *P*₁ = 2π·*n*₁·*M*₁; *P*₂ = 2π·*n*₂·*M*₂ |
+| Rad | *r* (`radius`, dynamischer Rollradius), *n*, *M*, *v* (`linSpeed`, km/h); Panel *F* (`force`), *P* | *v* = 2π·*n*·*r*; *F* = *M*/*r* [S18]; *P* = 2π·*n*·*M* |
+
+**Verknüpfungen.**
+
+- *Antriebskette*: ein Verbinder (ein Pfeil oder jede Linie), dessen erstes angedocktes Ende an einem Block mit
+  mechanischem Abtrieb (E-Motor, E-Maschine, Verbrennungsmotor, Getriebe, Differential) und dessen letztes an einem Block
+  mit mechanischem Antrieb (Getriebe, Differential, Rad) sitzt, gibt *n* und *M* weiter: Motor → Getriebe → Differential
+  → Rad. Die Richtung des Verbinders bestimmt, welcher Block vorn liegt.
+- *Wellen*: E-Maschine, Verbrennungsmotor und Rad auf einer mechanischen Welle übernehmen deren Drehzahl; das
+  Mechanik-Modul gibt das Moment entlang des Wellenstrangs und über Zahneingriffe weiter (Schlüssel `n`, `T`, `P` in
+  beiden Modulen).
+
+**Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
+
+| Id | Regel | Schwere | Quelle |
+|---|---|---|---|
+| `mach.slip.sign` | Asynchronmaschine (`rotor` = `asm`) im Motorbetrieb mit *n* > *n*_s (Generatorbetrieb) | Info | [S15] |
+| `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (Getriebe, Differential) oder *P* > *P*_el (Motor) | Warnung | [S1] |
+| `mach.overload` | *P* > *P*_N oder *M* > *M*_N (Bemessung vom Nutzer eingetragen) | Warnung | [S14] |
+
+Noch nicht: Generatorbetrieb in der Wirkungsgradbeziehung, Nut-/Polzahlen, Kloss-Kennlinie, Konstanten der
+Gleichstrommaschine, Werte für Batterie, Wechselrichter und Zwischenkreis (Calc 4 mit dem Energiemodul).
+
 ## Bekannte Grenzen
 
 - Antriebsstrangteile werden mit ihrer Welle nur verschoben (die Core-Kopplung verschiebt Teile, sie dreht sie nicht):
