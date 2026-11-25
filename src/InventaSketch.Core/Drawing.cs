@@ -133,6 +133,12 @@ namespace InventaSketch.Core
         public static readonly Style CenterLine = Of(LineRole.Center);
         public static readonly Style Helper = Of(LineRole.Helper);
 
+        /// <summary>ISO 128 line groups offered for a drawing (width of the thick line in mm; thin lines are half of it).</summary>
+        public static readonly IReadOnlyList<double> LineGroups = new[] { 0.25, 0.35, 0.5, 0.7, 1.0 };
+
+        /// <summary>The line group the elements are designed in (<see cref="RoleWidth"/>).</summary>
+        public const double DesignLineGroup = 0.5;
+
         /// <summary>Default stroke width per role (mm), following ISO 128 line group 0.5.</summary>
         public static double RoleWidth(LineRole role) => role switch
         {
@@ -273,6 +279,25 @@ namespace InventaSketch.Core
 
         /// <summary>Applies an affine transform exactly (rotated rectangles/ellipses become paths).</summary>
         /// <summary>Applies the text overrides of an object style (<see cref="Style.TextColor"/> ...) to every text primitive.</summary>
+        /// <summary>
+        /// The primitive with every stroke width multiplied by <paramref name="k"/> (a line group other than the design group):
+        /// explicit widths and role widths alike, so thick and thin lines keep their ratio.
+        /// </summary>
+        public static Primitive ScaleStrokes(Primitive p, double k)
+        {
+            if (Math.Abs(k - 1) < 1e-9) return p;
+            Style S(Style s) => s with { StrokeWidth = Math.Round(s.EffectiveWidth * k, 6) };
+            return p switch
+            {
+                LinePrim l => l with { Style = S(l.Style) },
+                PathPrim a => a with { Style = S(a.Style) },
+                EllipsePrim e => e with { Style = S(e.Style) },
+                RectPrim r => r with { Style = S(r.Style) },
+                GroupPrim g => g with { Children = g.Children.Select(c => ScaleStrokes(c, k)).ToList() },
+                _ => p,
+            };
+        }
+
         public static Primitive TextOverride(Primitive p, Style? s)
         {
             if (s is null || !s.HasTextOverride) return p;

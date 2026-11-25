@@ -175,6 +175,8 @@ namespace InventaSketch.Engine
         public double? PlanScale { get; set; }
         /// <summary>Document black-and-white setting (<c>setMonochrome</c>).</summary>
         public bool Monochrome { get; set; }
+        /// <summary>ISO 128 line group of the document (thick line width in mm, <c>setLineGroup</c>); 0.5 by default.</summary>
+        public double LineGroup { get; set; }
         /// <summary>
         /// Objects added or modified by the document change that produced <see cref="Revision"/> (edit, undo or redo);
         /// empty after open/new. Hosts redraw these units.

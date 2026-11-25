@@ -111,6 +111,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var ids = doc.ObjectsOn(doc.Pages[0]).Select(o => o.Id).ToList();
             if (ids.Count == 0) return null;
+            // The slide-wide style (black and white, line group) applies to every unit drawn on the slide.
+            doc = SlideStyle.Apply(slide, doc);
             // One unit: all objects of the model belong together (make them an assembly if there are several).
             if (ids.Count > 1 && doc.Objects.Values.Select(o => o.GroupId).Distinct().Count() != 1)
                 doc = Edits.Group(doc, ids);

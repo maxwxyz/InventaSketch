@@ -151,6 +151,7 @@
   "set.grid": { "en": "Grid", "de": "Raster" },
   "set.gridOff": { "en": "off", "de": "aus" },
   "set.mono": { "en": "Black and white (patent drawings)", "de": "Schwarz-Weiß (Patentzeichnungen)" },
+  "cmd.lineGroup": { "en": "Line weights (ISO 128 line group: width of thick lines; thin lines are half as wide)", "de": "Linienstärken (ISO-128-Liniengruppe: Breite der breiten Linien; schmale Linien sind halb so breit)" },
   "cmd.mono": { "en": "Black and white: show, export and draw on the slide without colours (click again to restore them)", "de": "Schwarz-Weiß: ohne Farben anzeigen, exportieren und auf die Folie zeichnen (erneut klicken stellt sie wieder her)" },
   "set.file": { "en": "Sketch file", "de": "Skizzendatei" },
   "set.open": { "en": "Open…", "de": "Öffnen…" },

@@ -40,6 +40,7 @@ undo step each (no step when nothing changes).
 | `setMainText` | `id` (default: first selected object with one), `text` | state; sets the object's main text (below) |
 | `setPlanScale` | `value` (> 0 sets, null clears the document plan scale, 100 = 1:100) | state |
 | `setMonochrome` | `value` (true/false) | state; document black and white, every object counts as changed |
+| `setLineGroup` | `value` (0.25, 0.35, 0.5, 0.7 or 1 – thick line width in mm) | state (`lineGroup`); ISO 128 line group of the document, every object counts as changed |
 | `applyAction` | `action` (id from `contextActions`), `input` for input actions | state |
 | `undo`, `redo`, `select`, `selectRect` | `ids`; `x`, `y`, `w`, `h`, `mode` (enclosed/touching), `add` | state |
 | `hitTest` | `x`, `y`, `tolerance` | `{ id, ids, stack }` |
@@ -93,6 +94,9 @@ the units on the slide.
 - **Black and white**: toggle in the top bar (and in Settings) calls `setMonochrome`; the stage, SVG/PNG export and the
   draw plans written by `src/office/powerpoint.ts` (or the COM bridge) follow the document setting. Clicking again
   restores the colours; undo works.
+- **Line weights** (2026-11-25): a choice next to it calls `setLineGroup` (ISO 128 line group, 0.5 mm standard); like
+  black and white it is a document setting that a slide model brings into the page session (`importCompact`), so live
+  sync redraws every unit with it. Checked in the browser dev page (strokes doubled at 1 mm).
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.

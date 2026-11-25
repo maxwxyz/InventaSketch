@@ -239,6 +239,12 @@ UX round (2026-11-20, from the maintainer's feedback):
 - **Black & white** is a reversible switch: it sets `DocumentSettings.Monochrome` on every unit of the slide and
   re-renders; the draw plan maps all colours (lines, fills, text, highlighters) to black/white and drops translucent
   fills. Clicking again restores the colours.
+- **Line weights** (menu next to Black & white, 2026-11-25): the ISO 128 line group of the slide's InventaSketch
+  elements – 0.25, 0.35, 0.5 (standard, the elements are designed in it), 0.7 or 1 mm for thick lines; every other line
+  role scales with it (thin lines stay half as wide), an element's own line width still wins. Black & white and the line
+  group are a **slide style** kept in the slide tag `ISK_STYLE` (`OnSlide/SlideStyle.cs`): every unit drawn on the slide
+  takes it, so elements inserted later match the ones already there. Slides without the tag keep each unit's own
+  settings.
 - **Text**: double-click on a selected unit, the "Text" bar button or "Text …" in the pie menu edit its main text
   (object text, reference numeral, name or label).
 - **Insert ▸** in the pie menu (and the insert palette of the bar) offers elements that fit the selection

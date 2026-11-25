@@ -182,8 +182,9 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
    zerlegte Differential arbeitet als solches (Räder lose im Korb, Willis mit dem Korb: geradeaus drehen beide Seiten mit
    dem Korb, eine Seite festgehalten → die andere dreht doppelt so schnell); der Ansichts-Alias `elevation`/`section` für
    Wände mit Haustechnik).
-4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,
-   Patentmodus).
+4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik (in Arbeit 25.11.2026); folienweiter Stil:
+   ISO-128-Liniengruppen und Schwarz-Weiß als Folienstil für alle Elemente, auch neue (erledigt 25.11.2026 in COM und
+   Web); offen: Farbakzente je Modul.
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
    CSV).
 
