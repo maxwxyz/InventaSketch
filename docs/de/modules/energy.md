@@ -45,6 +45,13 @@ Spannungsbeschriftung, Ebenenfarben, eine Andockschiene und den Zweirichtungszä
   Kante**. Ein Schaltbild liest sich damit vom Netz aus von oben nach unten (klassischer Aufbau). Ausnahmen: Die
   Netzeinspeisung hat ihren Verknüpfungspunkt unten, die Windenergieanlage ihr Kabel am Turmfuß (unten), jeweils in
   beiden Ansichten. Die Anschluss-Ids sind in beiden Ansichten gleich.
+- **Gerade Kabel bleiben gerade:** Ein Ansichtswechsel behält den Boxmittelpunkt (nur die Größe ändert sich); daher
+  behält jeder Anschluss an Ober- oder Unterkante seinen x-Abstand zur Mitte und jeder seitliche Anschluss seinen
+  y-Abstand, in beiden Ansichten. Anschlüsse oben und unten liegen bei x = 0 (Einliniensymbole sind zentriert, der
+  Beschriftungsbereich liegt rechts) – außer beim Elektrofahrzeug (Ladeanschluss über dem Heck, x = −15 in beiden
+  Ansichten) und beim Dreiwicklungstransformator (mv/lv bei ±2,8). Ein senkrechtes Kabel von einem Abgang der
+  Sammelschiene zu einem Gerät bleibt damit ein senkrechtes Segment, wenn das ganze Schaltbild zwischen bildhaft und
+  Einlinienschaltbild wechselt (getestet).
 - **Beschriftung:** Bezeichnung (`name`) und Bemessungszeilen (z. B. `630 kVA`) stehen in einem reservierten
   Beschriftungsbereich innerhalb der Box; `showLabel` blendet sie aus. Zahlen folgen der Oberflächensprache
   (Dezimalkomma im Deutschen: `0,4 kV`) mit gut lesbaren SI-Vorsätzen (`430 Wp`, `2,58 kWp`, `40 MVA`, `2 MWh`).
@@ -66,33 +73,33 @@ Größen sind die Entwurfsgrößen bildhaft / Einlinienschaltbild (B x H, mm auf
 
 | Id | Name (EN / DE) | Größen | Anschlüsse | Parameter |
 |---|---|---|---|---|
-| `energy.pv.module` | PV module / PV-Modul | 20x34 / 26x22 | dc | `power` (430 Wp) |
-| `energy.pv.string` | PV string / PV-String | 50x26 / 26x22 | dc | `modules` (6, 2–24; Aktionen mehr/weniger), `power` je Modul (430 Wp) |
-| `energy.pv.array` | PV array / PV-Generator (Feld) | 50x34 / 26x22 | dc | `power` (10 kWp), `rows` (2, 1–6), `columns` (5, 1–12) |
-| `energy.wind.turbine` | Wind turbine / Windenergieanlage | 30x44 / 26x24 | ac (unten) | `power` (3 MW), `rotor` (0°; Aktion „Rotor drehen“, Animationsbilder) |
-| `energy.gen.genset` | Generator set (genset) / Stromaggregat | 36x24 / 26x24 | ac | `power` (100 kVA), `fuel` diesel/gas/biogas/h2 |
-| `energy.conv.inverter` | Inverter / Wechselrichter | 24x30 / 30x24 | ac, dc (+ bat bei Hybrid) | `power` (10 kW), `phases` 3/1, `kind` pv/hybrid/battery |
-| `energy.conv.converter` | Power converter / Stromrichter | 24x30 / 30x24 | a, b | `power` (10 kW), `kind` acdc (Gleichrichter)/dcdc/acac (Frequenzumrichter) |
-| `energy.storage.battery` | Battery storage / Batteriespeicher | 24x30 / 26x24 | dc | `capacity` (10 kWh), `soc` (75 %, Füllstand), `form` wall/cabinet/container |
-| `energy.heat.heatpump` | Heat pump / Wärmepumpe | 34x24 / 30x24 | el, heat | `power` (8 kW), `source` air/ground/water; HP/WP nach Oberflächensprache |
-| `energy.heat.chp` | CHP unit / Blockheizkraftwerk (BHKW) | 40x24 / 34x28 | el, fuel, heat | `power` (50 kWel), `thermal` (80 kWth), `fuel` gas/biogas/h2 |
+| `energy.pv.module` | PV module / PV-Modul | 20x34 / 40x22 | dc | `power` (430 Wp) |
+| `energy.pv.string` | PV string / PV-String | 50x26 / 40x22 | dc | `modules` (6, 2–24; Aktionen mehr/weniger), `power` je Modul (430 Wp) |
+| `energy.pv.array` | PV array / PV-Generator (Feld) | 50x34 / 40x22 | dc | `power` (10 kWp), `rows` (2, 1–6), `columns` (5, 1–12) |
+| `energy.wind.turbine` | Wind turbine / Windenergieanlage | 30x44 / 38x24 | ac (unten) | `power` (3 MW), `rotor` (0°; Aktion „Rotor drehen“, Animationsbilder) |
+| `energy.gen.genset` | Generator set (genset) / Stromaggregat | 36x24 / 38x24 | ac | `power` (100 kVA), `fuel` diesel/gas/biogas/h2 |
+| `energy.conv.inverter` | Inverter / Wechselrichter | 24x30 / 38x24 | ac, dc (+ bat bei Hybrid) | `power` (10 kW), `phases` 3/1, `kind` pv/hybrid/battery |
+| `energy.conv.converter` | Power converter / Stromrichter | 24x30 / 38x24 | a, b | `power` (10 kW), `kind` acdc (Gleichrichter)/dcdc/acac (Frequenzumrichter) |
+| `energy.storage.battery` | Battery storage / Batteriespeicher | 24x30 / 36x24 | dc | `capacity` (10 kWh), `soc` (75 %, Füllstand), `form` wall/cabinet/container |
+| `energy.heat.heatpump` | Heat pump / Wärmepumpe | 34x24 / 38x24 | el, heat | `power` (8 kW), `source` air/ground/water; HP/WP nach Oberflächensprache |
+| `energy.heat.chp` | CHP unit / Blockheizkraftwerk (BHKW) | 40x24 / 38x28 | el, fuel, heat | `power` (50 kWel), `thermal` (80 kWth), `fuel` gas/biogas/h2 |
 | `energy.heat.storage` | Thermal storage tank / Wärmespeicher | 24x32 / 28x26 | charge, discharge | `volume` (1000 l; ab 10 000 l in m³) |
-| `energy.h2.electrolyser` | Electrolyser / Elektrolyseur | 36x26 / 30x26 | el, water, h2 | `power` (1000 kW), `tech` pem/alkaline/soec |
-| `energy.h2.fuelcell` | Fuel cell / Brennstoffzelle | 36x26 / 30x26 | el, h2, heat | `power` (100 kW) |
-| `energy.h2.tank` | Hydrogen tank / Wasserstofftank | 36x22 / 26x24 | h2 | `mass` (500 kg), `pressure` (350 bar) |
-| `energy.mobility.charger` | EV charger / Ladestation | 22x30 / 28x24 | ac, ev | `power` (11 kW), `form` wallbox/pillar, `dc` (false) |
-| `energy.mobility.ev` | Electric vehicle / Elektrofahrzeug | 40x20 / 24x24 | charge | `battery` (60 kWh) |
-| `energy.load.building` | Consumer (load) / Verbraucher (Last) | 28x30 / 26x24 | ac | `kind` house/apartment/commercial/industry, `power` (10 kW) |
-| `energy.control.ems` | Energy management system / Energiemanagementsystem | 26x22 / 30x16 | data (unten, gestrichelt) | – |
-| `energy.grid.infeed` | Utility grid (infeed) / Netzeinspeisung (öffentliches Netz) | 30x34 / 28x18 | poc (unten) | `voltage` (20 kV); Titel Grid/Netz, solange keine Bezeichnung gesetzt ist |
-| `energy.grid.transformer` | Transformer / Transformator | 30x34 / 30x26 | hv, lv | `hv` (20 kV), `lv` (0,4 kV), `power` (630 kVA), `vector` (Schaltgruppe als Text, leer), `levelColors` |
-| `energy.grid.transformer3` | Three-winding transformer / Dreiwicklungstransformator | 30x34 / 34x28 | hv, mv, lv | `hv` (110 kV), `mv` (20 kV), `lv` (10 kV), `power` (40 MVA), `vector`, `levelColors` |
-| `energy.grid.substation` | Compact substation / Ortsnetzstation (Kompaktstation) | 34x30 / 34x30 | mv, lv | `hv` (MS-Seite, 20 kV), `lv` (0,4 kV), `power` (630 kVA), `levelColors` |
-| `energy.grid.meter` | Energy meter / Energiezähler | 20x28 / 22x24 | a, b | `bidirectional` (true; Pfeile Bezug/Einspeisung), `unit` (kWh) |
+| `energy.h2.electrolyser` | Electrolyser / Elektrolyseur | 36x26 / 38x26 | el, water, h2 | `power` (1000 kW), `tech` pem/alkaline/soec |
+| `energy.h2.fuelcell` | Fuel cell / Brennstoffzelle | 36x26 / 38x26 | el, h2, heat | `power` (100 kW) |
+| `energy.h2.tank` | Hydrogen tank / Wasserstofftank | 36x22 / 34x24 | h2 | `mass` (500 kg), `pressure` (350 bar) |
+| `energy.mobility.charger` | EV charger / Ladestation | 22x30 / 38x24 | ac, ev | `power` (11 kW), `form` wallbox/pillar, `dc` (false) |
+| `energy.mobility.ev` | Electric vehicle / Elektrofahrzeug | 40x20 / 40x24 | charge | `battery` (60 kWh) |
+| `energy.load.building` | Consumer (load) / Verbraucher (Last) | 28x30 / 30x24 | ac | `kind` house/apartment/commercial/industry, `power` (10 kW) |
+| `energy.control.ems` | Energy management system / Energiemanagementsystem | 26x22 / 38x16 | data (unten, gestrichelt) | – |
+| `energy.grid.infeed` | Utility grid (infeed) / Netzeinspeisung (öffentliches Netz) | 30x34 / 38x18 | poc (unten) | `voltage` (20 kV); Titel Grid/Netz, solange keine Bezeichnung gesetzt ist |
+| `energy.grid.transformer` | Transformer / Transformator | 30x34 / 38x26 | hv, lv | `hv` (20 kV), `lv` (0,4 kV), `power` (630 kVA), `vector` (Schaltgruppe als Text, leer), `levelColors` |
+| `energy.grid.transformer3` | Three-winding transformer / Dreiwicklungstransformator | 30x34 / 38x28 | hv, mv, lv | `hv` (110 kV), `mv` (20 kV), `lv` (10 kV), `power` (40 MVA), `vector`, `levelColors` |
+| `energy.grid.substation` | Compact substation / Ortsnetzstation (Kompaktstation) | 34x30 / 40x30 | mv, lv | `hv` (MS-Seite, 20 kV), `lv` (0,4 kV), `power` (630 kVA), `levelColors` |
+| `energy.grid.meter` | Energy meter / Energiezähler | 20x28 / 30x24 | a, b | `bidirectional` (true; Pfeile Bezug/Einspeisung), `unit` (kWh) |
 | `energy.grid.busbar` | Busbar / Sammelschiene | 60x10 / 60x8 | t1…tn auf der Schiene + Schiene `bar0` | `voltage` (0,4 kV), `dc`, `taps` (5, 2–12), `levelColors`; die Breite bleibt beim Ansichtswechsel erhalten |
-| `energy.grid.breaker` | Circuit breaker / Leistungsschalter | 16x24 / 22x24 | a, b | `closed` (true), `symbol` contact (Schalter mit Leistungsschalterkreuz) / square (gefüllt = geschlossen) |
-| `energy.grid.disconnector` | Disconnector / Trennschalter | 16x24 / 22x24 | a, b | `closed` (true), `kind` disconnector / loadbreak (Lasttrennschalter) / fuse (Sicherungslasttrennschalter) |
-| `energy.grid.earthing` | Earthing switch / Erdungsschalter | 16x24 / 22x24 | a | `closed` (false) |
+| `energy.grid.breaker` | Circuit breaker / Leistungsschalter | 16x24 / 26x24 | a, b | `closed` (true), `symbol` contact (Schalter mit Leistungsschalterkreuz) / square (gefüllt = geschlossen) |
+| `energy.grid.disconnector` | Disconnector / Trennschalter | 16x24 / 26x24 | a, b | `closed` (true), `kind` disconnector / loadbreak (Lasttrennschalter) / fuse (Sicherungslasttrennschalter) |
+| `energy.grid.earthing` | Earthing switch / Erdungsschalter | 16x24 / 26x24 | a | `closed` (false) |
 | `energy.line.cable` | Cable / line / Kabel / Leitung | Punkte | Schienen `rail0…` | `voltage` (0,4 kV), `dc`, `levelColors`, `kind` power/data (gestrichelt), `conductors` (0–5 Striche), `label`, `showVoltage`, `route` free/orthogonal |
 | `energy.line.pipe` | Energy carrier pipe / Rohrleitung (Energieträger) | Punkte | Schienen | `carrier` hydrogen/gas/heat/cooling/water, `label`, `showCode` |
 | `energy.line.flow` | Energy flow arrow / Energiefluss-Pfeil | Punkte | Schienen | `carrier` electricity/hydrogen/gas/heat/cooling/water, `weight` (Bandbreite 2,5 mm), `label` (z. B. „12 MWh/a“) |
@@ -159,17 +166,18 @@ enthält (die Standardschriften von Office und LibreOffice tun das). Die Windene
 
 ## Tests und Galerie
 
-`tests/InventaSketch.Modules.Energy.Tests` (75 Tests): Registrierung und Id-Konventionen, zweisprachige Namen,
+`tests/InventaSketch.Modules.Energy.Tests` (77 Tests): Registrierung und Id-Konventionen, zweisprachige Namen,
 Parameter, Optionen und Aktionen, beide Ansichten mit ihren Icons, Einfügen ohne Parameter, Bibliothekseinträge mit
 gültigen Parametern und Ansichten, jeder Bibliothekseintrag in jeder Ansicht in beiden Sprachen innerhalb seiner Box
 (auch gestreckt, gestaucht, mit jeder Auswahl und den Grenzen jeder Zahl), jeder Parameter ändert Zeichnung oder
 Anschlüsse, Skalieren ändert `Size` statt Parameter, die Ansichten zeichnen verschiedene Symbole, Größen beim
 Ansichtswechsel (visueller Maßstab bleibt, Breite der Sammelschiene bleibt), Beschriftungen in beiden Sprachen und
 SI-Vorsätze, Ebenenfarben, Schaltzustände, Stilüberschreibung, Anschlüsse mit gleichen Ids in beiden Ansichten auf der
-Boxkante und mit Zuleitung, Schiene und Abgänge der Sammelschiene, ein an einem Anschluss angedocktes Kabel folgt
+Boxkante, mit Zuleitung und gleichem Abstand zur Mitte über den Ansichtswechsel, Schiene und Abgänge der Sammelschiene, ein an einem Anschluss angedocktes Kabel folgt
 Verschieben und Ansichtswechsel, ein an der Sammelschiene angedocktes Kabel mit Verbindungspunkt, Linienlogik (Ecken,
 Verlängern, Abzweige), orthogonale Führung, Leiterstriche und Beschriftung, Kürzel der Rohrleitungen, das Band des
 Energieflusses, Zahlenformate und eingegebene Spannungen. Der Galerietest schreibt `gallery/*.html` (jeder Typ in
 beiden Ansichten, gestreckt und beschriftet, alle Vorlagen in beiden Ansichten sowie zwei Beispielsysteme – ein
-Heim-Energiesystem und ein MS/NS-Einlinienschaltbild – jeweils bildhaft und als Einlinienschaltbild); ein weiterer
-Test prüft, dass jedes Kabelende der Beispiele in beiden Ansichten auf seinem Anschluss bleibt.
+Heim-Energiesystem und ein MS/NS-Einlinienschaltbild – jeweils bildhaft und als Einlinienschaltbild); weitere
+Tests prüfen, dass jedes Kabelende der Beispiele in beiden Ansichten auf seinem Anschluss bleibt und jedes gerade
+Kabel nach dem Ansichtswechsel des ganzen Schaltbilds ein senkrechtes Segment bleibt.

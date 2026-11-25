@@ -29,15 +29,13 @@ namespace InventaSketch.Modules.Energy
                 },
                 ViewSpec.Pictorial(22, 30, ChargerPictorial) with
                 {
-                    Ports = o => o.S(ChargerForm) == "pillar"
-                        ? new[] { new Port("ac", 0, -15), new Port("ev", 7.5, 15) }
-                        : new[] { new Port("ac", 0, -15), new Port("ev", 0, 15) },
+                    Ports = ViewSpec.Fixed(new Port("ac", 0, -15), new Port("ev", 0, 15)),
                     LabelBox = o => o.S(ChargerForm) == "pillar" ? new Box(-4.5, -4.5, 4.5, 1) : new Box(-7, 0, 7, 4.3),
                     LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(28, 24, ChargerSymbol) with
+                ViewSpec.SingleLine(38, 24, ChargerSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("ac", -7, -12), new Port("ev", -7, 12)), LabelBox = ViewSpec.LabelAt(0, -6, 14, 6),
+                    Ports = ViewSpec.Fixed(new Port("ac", 0, -12), new Port("ev", 0, 12)), LabelBox = ViewSpec.LabelAt(7, -6, 19, 6),
                 })
             {
                 Params = new[] { ChargePower, ChargerForm, Dc },
@@ -62,9 +60,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("charge", -15, -10)), LabelBox = ViewSpec.LabelAt(-7.2, -1.2, 7.2, 4.4), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(24, 24, EvSymbol) with
+                ViewSpec.SingleLine(40, 24, EvSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("charge", -5, -12)), LabelBox = ViewSpec.LabelAt(1.5, -5, 12, 5),
+                    Ports = ViewSpec.Fixed(new Port("charge", -15, -12)), LabelBox = ViewSpec.LabelAt(-8.5, -5, 20, 5),
                 })
             {
                 Params = new[] { EvBattery },
@@ -84,9 +82,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("ac", 0, -15)), LabelBox = ViewSpec.LabelAt(-14, 9.6, 14, 15), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(26, 24, LoadSymbol) with
+                ViewSpec.SingleLine(30, 24, LoadSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("ac", -6, -12)), LabelBox = ViewSpec.LabelAt(1, -6, 13, 6),
+                    Ports = ViewSpec.Fixed(new Port("ac", 0, -12)), LabelBox = ViewSpec.LabelAt(3.5, -6, 15, 6),
                 })
             {
                 Params = new[] { LoadKind, LoadPower },
@@ -106,9 +104,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("data", 0, 11)), LabelBox = ViewSpec.LabelAt(1.5, 8.4, 13, 11),
                 },
-                ViewSpec.SingleLine(30, 16, EmsSymbol) with
+                ViewSpec.SingleLine(38, 16, EmsSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("data", -6, 8)), LabelBox = ViewSpec.LabelAt(3.5, -5, 15, 5),
+                    Ports = ViewSpec.Fixed(new Port("data", 0, 8)), LabelBox = ViewSpec.LabelAt(9.5, -5, 19, 5),
                 })
             {
                 Uniform = false,
@@ -148,15 +146,16 @@ namespace InventaSketch.Modules.Energy
             var cable = St.Stroke(Pal.Dark, 0.6);
             if (o.S(ChargerForm) == "pillar")
             {
+                // The tethered cable hangs in front of the column to a connector at the bottom centre.
                 p.Line(0, -15, 0, -13, stub, EnTags.Lead);
-                p.Path(new[] { PathSeg.Move(new Vec2(5.5, 0)), PathSeg.Cubic(new Vec2(9.5, 2), new Vec2(9.5, 8), new Vec2(7.5, 11.5)) }, cable, "cable");
-                p.Rect(6.2, 11.5, 8.8, 14, St.Fill(Pal.Dark), "connector", 0.4);
-                p.Line(7.5, 14, 7.5, 15, stub, EnTags.Lead);
-                p.Rect(-6.5, 12, 5.5, 13.4, St.Fill(Pal.Dark), "base");
+                p.Rect(-7, 12, 7, 13.4, St.Fill(Pal.Dark), "base");
                 p.Rect(-5.5, -13, 5.5, 12, St.Fill(Pal.Light), "column", 1);
                 p.Rect(-4, -11, 4, -6, St.Fill(Pal.Dark), "screen", 0.3);
                 p.Line(-2.6, -9.6, 2.6, -9.6, St.Detail(Pal.Green, 0.4), "screen");
-                Plug(p, 0, 6, 2.2, true);
+                Plug(p, 0, 5, 2.2, true);
+                p.Path(new[] { PathSeg.Move(new Vec2(0, 7.2)), PathSeg.Cubic(new Vec2(3.5, 9), new Vec2(-3.5, 10.5), new Vec2(0, 12.6)) }, cable, "cable");
+                p.Rect(-1.3, 12.6, 1.3, 14.4, St.Fill(Pal.Dark), "connector", 0.4);
+                p.Line(0, 14.4, 0, 15, stub, EnTags.Lead);
                 return;
             }
             p.Line(0, -15, 0, -11, stub, EnTags.Lead);
@@ -170,7 +169,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void ChargerSymbol(Pen p, SketchObject o)
         {
-            const double cx = -7;
+            const double cx = 0;
             p.Line(cx, -12, cx, -5, St.Sym, EnTags.Lead);
             p.Line(cx, 5, cx, 12, St.Sym, EnTags.Lead);
             p.Rect(cx - 5, -5, cx + 5, 5, St.SymWhite, "body");
@@ -196,7 +195,8 @@ namespace InventaSketch.Modules.Energy
 
         private static void EvSymbol(Pen p, SketchObject o)
         {
-            const double cx = -5;
+            // Same x as the pictorial charge port (above the rear of the car).
+            const double cx = -15;
             var u = p.Uniform(cx, 0);
             p.Add(Prim.Line(p.V(cx, -12), u.V(0, -5), St.Sym), EnTags.Lead);
             u.Circle(0, 0, 5, St.SymWhite, "body");
@@ -250,7 +250,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void LoadSymbol(Pen p, SketchObject o)
         {
-            const double cx = -6;
+            const double cx = 0;
             p.Line(cx, -12, cx, 5, St.Sym, EnTags.Lead);
             p.Head(cx, 8.5, cx, 4.5, 4, 1.6, null, "arrow");
         }
@@ -273,9 +273,9 @@ namespace InventaSketch.Modules.Energy
 
         private static void EmsSymbol(Pen p, SketchObject o)
         {
-            p.Line(-6, 5, -6, 8, St.Data, EnTags.Lead);
-            p.Rect(-14, -5, 2, 5, St.SymWhite, "body");
-            p.Text(-6, 0, "EMS", 3.4, 12, 3.4, TextAnchor.Middle, true, null, "letter");
+            p.Line(0, 5, 0, 8, St.Data, EnTags.Lead);
+            p.Rect(-8, -5, 8, 5, St.SymWhite, "body");
+            p.Text(0, 0, "EMS", 3.4, 12, 3.4, TextAnchor.Middle, true, null, "letter");
         }
     }
 }

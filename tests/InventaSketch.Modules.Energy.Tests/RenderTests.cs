@@ -152,9 +152,9 @@ namespace InventaSketch.Modules.Energy.Tests
             var tr = Fx.Item(r, "energy.grid.transformer");
             Assert.Equal(new Size2(30, 34), tr.Size);
             var sld = r.WithView(tr, "single-line", Fx.Ctx());
-            Assert.Equal(new Size2(30, 26), sld.Size);
+            Assert.Equal(new Size2(38, 26), sld.Size);
             var big = r.WithView(tr with { Size = new Size2(60, 68) }, "single-line", Fx.Ctx());
-            Assert.Equal(60, big.Size.W, 6);
+            Assert.Equal(76, big.Size.W, 6);
             Assert.Equal(52, big.Size.H, 6);
             Assert.Equal(tr.Size, r.WithView(sld, "pictorial", Fx.Ctx()).Size);
 
@@ -230,10 +230,10 @@ namespace InventaSketch.Modules.Energy.Tests
             var r = Fx.Reg();
             Vec2 BladeEnd(SketchObject o) => ((LinePrim)r.Render(o, Fx.Ctx()).Single(p => p.Tag == "blade")).B;
             var cb = Fx.Item(r, "energy.grid.breaker");
-            Assert.Equal(-4, BladeEnd(cb).X, 6); // closed: straight to the contact
-            Assert.True(BladeEnd(cb.WithParam("closed", false)).X < -6);
+            Assert.Equal(0, BladeEnd(cb).X, 6); // closed: straight to the contact
+            Assert.True(BladeEnd(cb.WithParam("closed", false)).X < -4);
             var es = Fx.Item(r, "energy.grid.earthing");
-            Assert.True(BladeEnd(es).X < -6); // earthing switches default to open
+            Assert.True(BladeEnd(es).X < -4); // earthing switches default to open
             var toggle = r.TypeOf(cb).Actions(cb, Lang.En).Single(a => a.Id == "energy.switch.toggle");
             Assert.False(toggle.Apply(cb).Flag("closed", true));
             var square = Fx.Item(r, "energy.grid.breaker.square");

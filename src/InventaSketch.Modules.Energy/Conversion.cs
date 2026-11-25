@@ -36,13 +36,13 @@ namespace InventaSketch.Modules.Energy
                 },
                 ViewSpec.Pictorial(24, 30, InverterPictorial) with
                 {
-                    Ports = InverterPorts(new Port("ac", 0, -15), new Port("dc", 0, 15), new Port("bat", 12, 5)),
+                    Ports = InverterPorts(new Port("ac", 0, -15), new Port("dc", 0, 15), new Port("bat", 12, 2.5)),
                     LabelBox = ViewSpec.LabelAt(-7.5, -1, 7.5, 8.6), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(30, 24, InverterSymbol) with
+                ViewSpec.SingleLine(38, 24, InverterSymbol) with
                 {
-                    Ports = InverterPorts(new Port("ac", -8, -12), new Port("dc", -8, 12), new Port("bat", 15, 2.5)),
-                    LabelBox = ViewSpec.LabelAt(-1, -11, 15, 0.8),
+                    Ports = InverterPorts(new Port("ac", 0, -12), new Port("dc", 0, 12), new Port("bat", 19, 2.5)),
+                    LabelBox = ViewSpec.LabelAt(6.5, -11, 19, 0.8),
                 })
             {
                 Params = new[] { InverterPower, Phases, InverterKind },
@@ -68,10 +68,10 @@ namespace InventaSketch.Modules.Energy
                     Ports = ViewSpec.Fixed(new Port("a", 0, -15), new Port("b", 0, 15)),
                     LabelBox = ViewSpec.LabelAt(-7.5, -1, 7.5, 8.6), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(30, 24, ConverterSymbol) with
+                ViewSpec.SingleLine(38, 24, ConverterSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("a", -8, -12), new Port("b", -8, 12)),
-                    LabelBox = ViewSpec.LabelAt(-1, -6, 15, 6),
+                    Ports = ViewSpec.Fixed(new Port("a", 0, -12), new Port("b", 0, 12)),
+                    LabelBox = ViewSpec.LabelAt(6.5, -6, 19, 6),
                 })
             {
                 Params = new[] { InverterPower, ConverterKind },
@@ -102,9 +102,9 @@ namespace InventaSketch.Modules.Energy
                     },
                     LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(26, 24, BatterySymbol) with
+                ViewSpec.SingleLine(36, 24, BatterySymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("dc", -6, -12)), LabelBox = ViewSpec.LabelAt(1, -6, 13, 6),
+                    Ports = ViewSpec.Fixed(new Port("dc", 0, -12)), LabelBox = ViewSpec.LabelAt(6.5, -6, 18, 6),
                 })
             {
                 Params = new[] { Capacity, Soc, BatteryForm },
@@ -176,7 +176,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void InverterPictorial(Pen p, SketchObject o)
         {
-            if (o.S(InverterKind) == "hybrid") p.Line(9, 5, 12, 5, St.Stroke(Pal.Dark, 0.5), EnTags.Lead);
+            if (o.S(InverterKind) == "hybrid") p.Line(9, 2.5, 12, 2.5, St.Stroke(Pal.Dark, 0.5), EnTags.Lead);
             Housing(p, true, false);
         }
 
@@ -184,10 +184,10 @@ namespace InventaSketch.Modules.Energy
         {
             if (o.S(InverterKind) == "hybrid")
             {
-                p.Line(-3, 2.5, 15, 2.5, St.Sym, EnTags.Lead);
-                p.DcSign(11, 5, 1.3, St.Thin);
+                p.Line(5, 2.5, 19, 2.5, St.Sym, EnTags.Lead);
+                p.DcSign(15, 5, 1.3, St.Thin);
             }
-            ConverterBox(p, -8, 0, 5, false, true, -12, 12);
+            ConverterBox(p, 0, 0, 5, false, true, -12, 12);
         }
 
         private static void ConverterPictorial(Pen p, SketchObject o)
@@ -199,7 +199,7 @@ namespace InventaSketch.Modules.Energy
         private static void ConverterSymbol(Pen p, SketchObject o)
         {
             var kind = o.S(ConverterKind);
-            ConverterBox(p, -8, 0, 5, kind == "dcdc", kind != "acac", -12, 12);
+            ConverterBox(p, 0, 0, 5, kind == "dcdc", kind != "acac", -12, 12);
         }
 
         // ------------------------------------------------------------------ battery
@@ -248,7 +248,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void BatterySymbol(Pen p, SketchObject o)
         {
-            const double cx = -6;
+            const double cx = 0;
             var thick = Style.Visible with { StrokeWidth = 0.9 };
             p.Line(cx, -12, cx, -3.5, St.Sym, EnTags.Lead);
             p.Line(cx - 4, -3.5, cx + 4, -3.5, St.Sym, "plate+");

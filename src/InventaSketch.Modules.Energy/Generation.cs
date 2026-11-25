@@ -35,9 +35,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("dc", 0, -17)), LabelBox = ViewSpec.LabelAt(-10, 11.8, 10, 17), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(26, 22, (p, o) => PvSymbol(p, -6, -11, false)) with
+                ViewSpec.SingleLine(40, 22, (p, o) => PvSymbol(p, 0, -11, false)) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("dc", -6, -11)), LabelBox = ViewSpec.LabelAt(3, -5, 13, 7.5),
+                    Ports = ViewSpec.Fixed(new Port("dc", 0, -11)), LabelBox = ViewSpec.LabelAt(9.5, -5, 20, 7.5),
                 })
             {
                 Params = new[] { ModulePower },
@@ -53,9 +53,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("dc", 0, -13)), LabelBox = ViewSpec.LabelAt(-25, 7.2, 25, 13), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(26, 22, (p, o) => PvSymbol(p, -6, -11, false, o.I(Modules))) with
+                ViewSpec.SingleLine(40, 22, (p, o) => PvSymbol(p, 0, -11, false, o.I(Modules))) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("dc", -6, -11)), LabelBox = ViewSpec.LabelAt(3, -5, 13, 7.5),
+                    Ports = ViewSpec.Fixed(new Port("dc", 0, -11)), LabelBox = ViewSpec.LabelAt(9.5, -5, 20, 7.5),
                 })
             {
                 Params = new[] { Modules, ModulePower },
@@ -79,9 +79,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("dc", 0, -17)), LabelBox = ViewSpec.LabelAt(-25, 9, 25, 17), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(26, 22, (p, o) => PvSymbol(p, -6, -11, true)) with
+                ViewSpec.SingleLine(40, 22, (p, o) => PvSymbol(p, 0, -11, true)) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("dc", -6, -11)), LabelBox = ViewSpec.LabelAt(3, -5, 13, 7.5),
+                    Ports = ViewSpec.Fixed(new Port("dc", 0, -11)), LabelBox = ViewSpec.LabelAt(9.5, -5, 20, 7.5),
                 })
             {
                 Params = new[] { ArrayPower, Rows, Columns },
@@ -106,9 +106,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("ac", 0, 22)), LabelBox = ViewSpec.LabelAt(2.5, 8.5, 15, 18.5),
                 },
-                ViewSpec.SingleLine(26, 24, WindSymbol) with
+                ViewSpec.SingleLine(38, 24, WindSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("ac", -6, 12)), LabelBox = ViewSpec.LabelAt(1.5, -6, 13, 6),
+                    Ports = ViewSpec.Fixed(new Port("ac", 0, 12)), LabelBox = ViewSpec.LabelAt(6.5, -6, 19, 6),
                 })
             {
                 Params = new[] { WindPower, Rotor },
@@ -135,9 +135,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("ac", 0, -12)), LabelBox = ViewSpec.LabelAt(3.5, -5, 15, 8),
                 },
-                ViewSpec.SingleLine(26, 24, (p, o) => Generator(p, -6, 0, -12)) with
+                ViewSpec.SingleLine(38, 24, (p, o) => Generator(p, 0, 0, -12)) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("ac", -6, -12)), LabelBox = ViewSpec.LabelAt(1.5, -6, 13, 6),
+                    Ports = ViewSpec.Fixed(new Port("ac", 0, -12)), LabelBox = ViewSpec.LabelAt(6.5, -6, 19, 6),
                 })
             {
                 Params = new[] { GensetPower, Fuel },
@@ -271,7 +271,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void WindSymbol(Pen p, SketchObject o)
         {
-            const double cx = -6;
+            const double cx = 0;
             // The symbol core keeps its shape under non-uniform scaling; only the lead stretches.
             var u = p.Uniform(cx, 0);
             u.Line(0, -2.2, 0, -6.8, St.Sym, "mast");
