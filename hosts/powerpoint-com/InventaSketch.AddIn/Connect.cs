@@ -363,6 +363,7 @@ namespace InventaSketch.AddIn
             sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" />");
             sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
             Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
+            Item("IskMenuImport", T("Import data (CSV, GeoJSON, GPX) \u2026", "Daten importieren (CSV, GeoJSON, GPX) \u2026"), "ImportTextFile");
             Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
             sb.Append("</menu>");
         }
@@ -391,6 +392,7 @@ namespace InventaSketch.AddIn
                     case "IskMenuSend": Tools.SendSlides(_app, german); break;
                     case "IskMenuSave": Tools.SaveSlides(_app, german); break;
                     case "IskMenuPlanScale": SetPlanScale(); break;
+                    case "IskMenuImport": ImportDataFile(); break;
                     case "IskMenuModules":
                         var modules = (_registry?.Modules ?? Array.Empty<IModule>()).Where(mod => _categories.Any(c => c.ModuleId == mod.Id))
                             .Select(mod => (mod.Id, mod.Name.Get(_lang))).ToList();
@@ -1058,6 +1060,73 @@ namespace InventaSketch.AddIn
 
         /// <summary>True once PowerPoint has loaded the ribbon (an invalid ribbon XML is dropped silently; UI tests check this).</summary>
         internal bool RibbonLoaded => _ribbon is not null;
+
+        /// <summary>"Import data …": asks for a CSV/TSV, GeoJSON or GPX file and imports it (<see cref="ImportData"/>).</summary>
+        private void ImportDataFile()
+        {
+            using var dialog = new OpenFileDialog
+            {
+                Title = T("Import data", "Daten importieren"),
+                Filter = T("Data files", "Datendateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx|"
+                    + T("All files", "Alle Dateien") + " (*.*)|*.*",
+            };
+            if (dialog.ShowDialog() != DialogResult.OK) return;
+            var message = ImportData(dialog.FileName, System.IO.File.ReadAllText(dialog.FileName));
+            if (message is not null) MessageBox.Show(message, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        /// <summary>
+        /// Imports a data file onto the current slide (one undo step): GeoJSON/GPX as map routes and markers fitted into the
+        /// slide (one unit), a table (CSV/TSV) as the data of the selected chart or of a new chart. Returns a message for the
+        /// user if nothing could be imported, else null.
+        /// </summary>
+        internal string? ImportData(string fileName, string text)
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return T("Please select a slide first.", "Bitte zuerst eine Folie auswählen.");
+            var setup = _app.ActivePresentation.PageSetup;
+            var pageMm = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
+            if (Imports.IsGeoFile(fileName, text))
+            {
+                var geo = Imports.ParseGeo(text);
+                var objects = geo is null ? new List<SketchObject>() : Imports.GeoElements(_registry, geo, pageMm).ToList();
+                if (objects.Count == 0) return T("The file has no lines or points to import.", "Die Datei enthält keine Linien oder Punkte zum Importieren.");
+                var doc = SketchDocument.Create(pageMm);
+                doc = Edits.Add(doc, doc.Pages[0].Id, objects.ToArray());
+                _app.StartNewUndoEntry();
+                OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang)?.Select(Office.MsoTriState.msoTrue);
+                Log.Info($"Imported {objects.Count} map element(s) from {System.IO.Path.GetFileName(fileName)}");
+                return null;
+            }
+            var data = Imports.CsvToChartData(text);
+            if (data.Length == 0) return T("The file has no rows.", "Die Datei enthält keine Zeilen.");
+            bool HasData(SketchObject o) => _registry.Type(o.Type)?.Parameters.Any(p => p.Key == "data") == true;
+            _app.StartNewUndoEntry();
+            // The selected chart takes the data; otherwise a new chart in the middle of the slide.
+            OnSlide.SketchUnit? selected = null;
+            try
+            {
+                var sel = _app.ActiveWindow.Selection;
+                if (sel.Type is PowerPoint.PpSelectionType.ppSelectionShapes)
+                    foreach (PowerPoint.Shape sh in sel.ShapeRange)
+                        if (OnSlide.SketchUnits.Read(sh) is { } u && u.Objects.Any(HasData)) { selected = u; break; }
+            }
+            catch (Exception ex) { Log.Error("Import selection", ex); }
+            if (selected is not null)
+            {
+                var ids = selected.Objects.Where(HasData).Select(o => o.Id).Take(1).ToList();
+                OnSlide.SketchUnits.Replace(slide, selected, Edits.Update(selected.Doc, ids, o => o.WithParam("data", data)), _registry, _lang);
+            }
+            else
+            {
+                var item = _registry.Library.FirstOrDefault(i => i.TypeId.StartsWith("chart.", StringComparison.Ordinal) && _registry.Type(i.TypeId)!.Parameters.Any(p => p.Key == "data"));
+                if (item is null) return T("No chart type is installed.", "Kein Diagrammtyp installiert.");
+                var doc = SketchDocument.Create(pageMm);
+                doc = Edits.Add(doc, doc.Pages[0].Id, _registry.Create(item, new Vec2(pageMm.W / 2, pageMm.H / 2)).WithParam("data", data));
+                OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang)?.Select(Office.MsoTriState.msoTrue);
+            }
+            Log.Info("Imported chart data from " + System.IO.Path.GetFileName(fileName));
+            return null;
+        }
 
         /// <summary>Button ids of the floating bar as last shown (UI tests).</summary>
         internal string LastBarIds() => _onSlide?.LastBarIds ?? "";

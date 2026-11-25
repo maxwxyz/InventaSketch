@@ -229,7 +229,9 @@ Leisten-IDs jetzt direkt.
    `integration_test.py` 70 Prüfungen). Ohne Zeichnen in die Ansicht nicht möglich: Hilfslinien und Beschriftung beim
    Ziehen, Live-Vorschau der Kopplung, „+“-Griffe, Kreismenü.
 4. P3: automatisches Diagramm-Layout erledigt 25.11.2026 (Ebenen-Layout, Mehrfachauswahl, alle Hosts über die Engine;
-   COM in PowerPoint geprüft); offen: Varianten und Zustände, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
+   COM in PowerPoint geprüft); Import von CSV (Diagrammdaten) und GeoJSON/GPX (Kartenrouten und Marker) erledigt 25.11.2026 (COM Menü Extras,
+   Web-Import-Knopf; in PowerPoint geprüft); offen: Varianten und Zustände, Patent-Arbeitsablauf, SVG/DXF-Import
+   (Vektorzeichnungen als bearbeitbare Formen – ein eigener größerer Baustein).
 
 ### Weitere sinnvolle Module und Funktionen
 

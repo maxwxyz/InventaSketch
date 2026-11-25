@@ -85,6 +85,16 @@ bleiben), ein gerade eingefügter Mittelpunkt wird also wieder entfernt. Anheftu
 zweisprachiger Meldung und ändern nichts. Schritte verwenden `IconIds.Increase` / `IconIds.Decrease`, Durchschalten
 `IconIds.Cycle`, Schalter `IconIds.Toggle`, Eingaben `IconIds.Text`, Umkehren `IconIds.Swap`.
 
+## GeoJSON und GPX importieren (25.11.2026)
+
+„Daten importieren …“ (COM: Menü Extras; Web: Import-Knopf; Engine `importGeo`) macht aus einer GeoJSON-Datei (Feature,
+FeatureCollection oder Geometrie: Linien, Polygonringe, Punkte) oder einer GPX-Datei (Tracks, Routen, Wegpunkte)
+Kartenelemente, eingepasst in die Folie (um ein Zehntel eingerückt, genordet, abstandstreue Zylinderprojektion um die
+mittlere Breite der Daten – passend für Stadt- und Regionalkarten, nicht für Kontinente): Jede Linie wird eine Route
+(dichte Tracks auf Punkte im Abstand von 0,5 mm ausgedünnt), jeder Punkt ein Wegpunkt-Marker mit seinem Namen; eine
+Datei nur mit Linien bekommt Start- und Zielmarker. Jedes Element ist eine eigene Einheit und bleibt bearbeitbar
+(`Imports.ParseGeo`, `Imports.GeoElements`). In PowerPoint geprüft (Szenario `import`: ein GPX-Lauf mit Start und Ziel).
+
 ## Legende
 
 Die Einträge stammen in dieser Rangfolge aus

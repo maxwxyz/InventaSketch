@@ -76,6 +76,10 @@ export class Session {
   setLineGroup(value: number): EditorState { return this.c("setLineGroup", { value }); }
   /** Accent colour of the drawing: preset id, #rrggbb, or "" for each module's own colours. */
   setAccent(text: string): EditorState { return this.c("setAccent", { text }); }
+  /** A CSV/TSV table as the data of the selected chart (or a new chart). */
+  importData(text: string): EditorState { return this.c("importData", { text }); }
+  /** GeoJSON or GPX as map routes and markers fitted into the page. */
+  importGeo(text: string): EditorState { return this.c("importGeo", { text }); }
   /** Sets the main text (ObjectInfo.mainText) of one object; one undo step. */
   setMainText(id: string, text: string): EditorState { return this.c("setMainText", { id, text }); }
   /** Library items that fit the first of `ids` ("Insert ▸"), at most `max`. */

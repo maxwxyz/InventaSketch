@@ -154,6 +154,20 @@ namespace InventaSketch.AddIn
         /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown; "" if none yet.</summary>
         public string BarRect() => _connect.LastBarRect();
 
+        /// <summary>Imports a data file's text (CSV/TSV, GeoJSON, GPX) as "Import data …" does; "" on success, else the message.</summary>
+        public string ImportData(string fileName, string text)
+        {
+            try
+            {
+                return _connect.ImportData(fileName, text) ?? "";
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.ImportData", ex);
+                return ex.Message;
+            }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

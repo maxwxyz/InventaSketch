@@ -204,7 +204,9 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
    possible without drawing into the view: guides and labels while dragging, live coupling preview, "+" handles, pie
    menu.
 4. P3: diagram auto-layout done 2026-11-25 (layered, multi-selection, all hosts through the engine; COM checked in
-   PowerPoint); open: variants and states, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
+   PowerPoint); import of CSV (chart data) and GeoJSON/GPX (map routes and markers) done 2026-11-25 (COM Extras menu, web import
+   button; checked in PowerPoint); open: variants and states, patent workflow panel, SVG/DXF import (vector drawings
+   as editable shapes – a larger piece of its own).
 
 ### Further modules and functions worth adding
 

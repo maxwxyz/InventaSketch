@@ -35,6 +35,8 @@ namespace InventaSketch.Engine
                 ["state"] = r => StateOf(S(r), r),
                 ["catalog"] = r => CatalogOf(Language.Detect(r.Lang)),
                 ["insert"] = InsertCore,
+                ["importData"] = ImportDataCore,
+                ["importGeo"] = ImportGeoCore,
                 ["update"] = UpdateCore,
                 ["move"] = MoveCore,
                 ["scale"] = ScaleCore,
@@ -346,6 +348,52 @@ namespace InventaSketch.Engine
             }
             _catalogs[lang] = cat;
             return cat;
+        }
+
+        // ------------------------------------------------------------------ importing data files
+
+        /// <summary>
+        /// A CSV/TSV table (<c>text</c>) as the data of chart <c>id</c> (default: the selected element with chart data;
+        /// none selected: a new XY chart in the middle of the page); separator and decimal comma are detected
+        /// (<see cref="Imports.CsvToChartData"/>). One undo step.
+        /// </summary>
+        private object ImportDataCore(EngineRequest r)
+        {
+            var s = S(r);
+            var data = Imports.CsvToChartData(r.Text ?? "");
+            if (data.Length == 0) throw new ArgumentException("The file has no rows.");
+            bool HasData(SketchObject? o) => o is not null && Registry.Type(o.Type)?.Parameters.Any(p => p.Key == "data") == true;
+            var target = r.Id is { } id ? s.Doc.Get(id) : s.Selection.Select(s.Doc.Get).FirstOrDefault(HasData);
+            if (HasData(target))
+            {
+                s.Apply("Import data", d => Edits.Update(d, new[] { target!.Id }, o => o.WithParam("data", data)));
+                s.Select(new[] { target!.Id });
+                return StateOf(s, r);
+            }
+            var item = Registry.Library.FirstOrDefault(i => i.TypeId.StartsWith("chart.", StringComparison.Ordinal) && Registry.Type(i.TypeId)!.Parameters.Any(p => p.Key == "data"))
+                ?? throw new InvalidOperationException("No chart type is installed.");
+            var chart = Registry.Create(item, new Vec2(s.Page.Size.W / 2, s.Page.Size.H / 2)).WithParam("data", data);
+            s.Apply("Import data", d => Edits.Add(d, s.PageId, chart));
+            s.Select(new[] { chart.Id });
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// GeoJSON or GPX (<c>text</c>) as map elements fitted into the page (inset by a tenth): every track, route, line
+        /// string and polygon ring as a route line, every point or waypoint as a marker (its name as the text); the
+        /// first line gets start and finish markers if the file has no points. One undo step; the new elements are selected.
+        /// </summary>
+        private object ImportGeoCore(EngineRequest r)
+        {
+            var s = S(r);
+            var geo = Imports.ParseGeo(r.Text ?? "") ?? throw new ArgumentException("Neither GeoJSON nor GPX.");
+            if (geo.IsEmpty) throw new ArgumentException("The file has no lines or points.");
+            if (Registry.Library.All(i => i.TypeId != "map.route")) throw new InvalidOperationException("The maps module is not installed.");
+            var created = Imports.GeoElements(Registry, geo, s.Page.Size);
+            if (created.Count == 0) throw new ArgumentException("The file has no usable lines or points.");
+            s.Apply("Import map data", d => Edits.Add(d, s.PageId, created.ToArray()));
+            s.Select(created.Select(o => o.Id));
+            return StateOf(s, r);
         }
 
         // ------------------------------------------------------------------ editing

@@ -80,6 +80,16 @@ three). Invalid inputs throw `FormatException` with a bilingual message and chan
 `IconIds.Increase` / `IconIds.Decrease`, cycles `IconIds.Cycle`, toggles `IconIds.Toggle`, inputs `IconIds.Text`,
 reverse `IconIds.Swap`.
 
+## Importing GeoJSON and GPX (2026-11-25)
+
+"Import data …" (COM: Extras menu; web: import button; engine `importGeo`) turns a GeoJSON file (Feature,
+FeatureCollection or geometry: line strings, polygon rings, points) or a GPX file (tracks, routes, waypoints) into map
+elements fitted into the slide (inset by a tenth, north up, equirectangular projection around the data's mean latitude
+– right for city and region maps, not for continents): every line becomes a route (dense tracks thinned to points
+0.5 mm apart), every point a waypoint marker with its name; a file with lines only gets start and finish markers. Each
+element is its own unit and stays editable (`Imports.ParseGeo`, `Imports.GeoElements`). Checked in PowerPoint (scenario
+`import`: a GPX run with start and finish).
+
 ## Legend
 
 Entries come, in this order of precedence, from

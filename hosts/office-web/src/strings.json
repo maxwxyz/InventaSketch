@@ -152,6 +152,7 @@
   "set.grid": { "en": "Grid", "de": "Raster" },
   "set.gridOff": { "en": "off", "de": "aus" },
   "set.mono": { "en": "Black and white (patent drawings)", "de": "Schwarz-Weiß (Patentzeichnungen)" },
+  "cmd.import": { "en": "Import data: CSV/TSV into the selected chart (or a new one), GeoJSON/GPX as map routes and markers", "de": "Daten importieren: CSV/TSV in das ausgewählte Diagramm (oder ein neues), GeoJSON/GPX als Kartenrouten und Marker" },
   "cmd.accent": { "en": "Accent colour: one colour for the coloured parts of all elements (pale stays pale, black and grey stay)", "de": "Akzentfarbe: eine Farbe für die farbigen Teile aller Elemente (Helles bleibt hell, Schwarz und Grau bleiben)" },
   "cmd.accentNone": { "en": "Original colours", "de": "Originalfarben" },
   "cmd.lineGroup": { "en": "Line weights (ISO 128 line group: width of thick lines; thin lines are half as wide)", "de": "Linienstärken (ISO-128-Liniengruppe: Breite der breiten Linien; schmale Linien sind halb so breit)" },
