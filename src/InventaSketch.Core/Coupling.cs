@@ -94,7 +94,60 @@ namespace InventaSketch.Core
         /// drag along are moved or scaled.
         /// </summary>
         public static SketchDocument Propagate(Registry registry, SketchDocument before, SketchDocument after, Lang lang = Lang.En)
-            => PruneReleased(registry, AlignTeeth(registry, before, PropagateCore(registry, before, after, lang), lang), lang);
+            => PruneReleased(registry, AlignTeeth(registry, before, FollowMounts(registry, before, PropagateCore(registry, before, after, lang), lang), lang), lang);
+
+        /// <summary>
+        /// Parts docked on a directed mount (<see cref="Anchor.Directed"/>: a tool on a robot flange) follow it: when the
+        /// element carrying the mount changes (a joint turns, it moves), every part whose own directed mount sat on it facing
+        /// it is turned by the change of the mount's direction and moved onto it again; parts docked on those follow in turn.
+        /// </summary>
+        private static SketchDocument FollowMounts(Registry registry, SketchDocument before, SketchDocument after, Lang lang)
+        {
+            var changed = after.Objects.Values.Where(o => !o.IsPointGeometry && before.Get(o.Id) is { } b && !SameState(b, o)).Select(o => o.Id).ToList();
+            if (changed.Count == 0) return after;
+            var ctx0 = new RenderContext(before, lang).For(registry);
+            List<Anchor> Directed(SketchDocument d, SketchObject o, RenderContext c)
+                => registry.Type(o.Type) is null ? new List<Anchor>()
+                    : registry.PageAnchors(o, c).Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Mount && a.Direction is not null).ToList();
+            var others = before.Objects.Values.Where(o => !o.IsPointGeometry && after.Get(o.Id) is not null)
+                .Select(o => (Obj: o, Mounts: Directed(before, o, ctx0))).Where(x => x.Mounts.Count > 0).ToList();
+            if (others.Count < 2) return after;
+            var doc = after;
+            var done = new HashSet<string>(changed, StringComparer.Ordinal);
+            var queue = new Queue<string>(changed);
+            while (queue.Count > 0)
+            {
+                var id = queue.Dequeue();
+                var b0 = before.Get(id);
+                var b1 = doc.Get(id);
+                if (b0 is null || b1 is null) continue;
+                var old = Directed(before, b0, ctx0);
+                if (old.Count == 0) continue;
+                var now = Directed(doc, b1, new RenderContext(doc, lang).For(registry));
+                foreach (var (other, mounts) in others)
+                {
+                    if (done.Contains(other.Id)) continue;
+                    foreach (var m in mounts)
+                    {
+                        // Docked: its mount on one of ours, facing it.
+                        var host = old.FirstOrDefault(h => h.P.DistanceTo(m.P) <= 0.3 && h.Direction!.Value.Dot(m.Direction!.Value) < -0.99);
+                        if (host is null || now.FirstOrDefault(h => h.Id == host.Id) is not { } moved) continue;
+                        var d0 = host.Direction!.Value; var d1 = moved.Direction!.Value;
+                        var turn = (Math.Atan2(d1.Y, d1.X) - Math.Atan2(d0.Y, d0.X)) * 180 / Math.PI;
+                        var o = doc.Get(other.Id)!;
+                        var turned = Math.Abs(turn) < 1e-9 ? o : o with { Transform = o.Transform with { Rotation = Math.Round(((o.Transform.Rotation + turn) % 360 + 540) % 360 - 180, 6) } };
+                        var tm = registry.PageAnchors(turned, new RenderContext(doc, lang).For(registry)).First(a => a.Role == AnchorRole.Mount && a.Id == m.Id);
+                        var shift = moved.P - tm.P;
+                        var placed = turned with { Transform = turned.Transform with { X = Math.Round(turned.Transform.X + shift.X, 6), Y = Math.Round(turned.Transform.Y + shift.Y, 6) } };
+                        if (!SameState(o, placed)) doc = Edits.Replace(doc, placed);
+                        done.Add(other.Id);
+                        queue.Enqueue(other.Id);
+                        break;
+                    }
+                }
+            }
+            return doc;
+        }
 
         private static SketchDocument PropagateCore(Registry registry, SketchDocument before, SketchDocument after, Lang lang)
         {

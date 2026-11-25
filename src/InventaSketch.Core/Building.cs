@@ -33,6 +33,8 @@ namespace InventaSketch.Core
     {
         /// <summary>The axis segment of an <see cref="PortKind.AxisEnd"/> port (start = the other end).</summary>
         public Vec2 AxisFrom { get; init; }
+        /// <summary>Radius of the connection face of a <see cref="PortKind.Mount"/> port (0 = unknown).</summary>
+        public double FaceRadius { get; init; }
     }
 
     /// <summary>
@@ -135,7 +137,7 @@ namespace InventaSketch.Core
             // mount already sits on it.
             foreach (var m in own.Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Mount && a.Direction is not null && a.Id is not null))
                 if (!others.Any(x => x.Anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Mount && a.P.DistanceTo(m.P) <= 0.5)))
-                    list.Add(new BuildPort("mount." + m.Id, PortKind.Mount, m.P, m.Direction!.Value));
+                    list.Add(new BuildPort("mount." + m.Id, PortKind.Mount, m.P, m.Direction!.Value) { FaceRadius = m.Radius });
 
             // A hub on no shaft (and no axis of its own): a shaft through it, or a concentric gear or carrier.
             var hub = own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == "hub")
@@ -271,6 +273,12 @@ namespace InventaSketch.Core
                 var have = mount.Direction!.Value;
                 var turn = (Math.Atan2(want.Y, want.X) - Math.Atan2(have.Y, have.X)) * 180 / Math.PI;
                 var turned = probe with { Transform = probe.Transform with { Rotation = Math.Round(((probe.Transform.Rotation + turn) % 360 + 540) % 360 - 180, 6) } };
+                // Faces of known size: the part is scaled so its face matches the port's (a gripper as wide as the flange).
+                if (port.FaceRadius > 1e-6 && mount.Radius > 1e-6 && Math.Abs(port.FaceRadius / mount.Radius - 1) > 1e-3)
+                {
+                    var k = port.FaceRadius / mount.Radius;
+                    turned = turned with { Size = new Size2(turned.Size.W * k, turned.Size.H * k) };
+                }
                 var tm = Anchors(registry, doc, turned, lang).First(a => a.Role == AnchorRole.Mount && a.Id == mountId);
                 return Translate(turned, port.At - tm.P);
             }

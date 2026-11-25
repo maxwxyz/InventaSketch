@@ -165,8 +165,10 @@ greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, no
   **directed** along the tool axis (`Anchor.Directed`, where the axis shows in the view) and the tools' mounts face
   back to the robot: the flange offers a "+" (build port `mount.flange`) with the grippers and tools, and the chosen one
   is placed on the flange **turned to the tool axis** (checked in PowerPoint, scenario `robot-tool`). Dragging a tool
-  onto the flange snaps the position only; a tool placed earlier does not follow later joint changes, and it keeps its
-  own size (it is not scaled to the flange) – open.
+  onto the flange snaps the position only. The tool is scaled so its flange plate matches the robot's flange (both faces
+  give their radius), and a tool docked on the flange **follows** when a joint turns or the robot moves
+  (`Coupling.Propagate` turns and moves parts docked on a directed mount; checked in PowerPoint: J5 + 15° turns the
+  gripper from −30° to −15° on the flange).
 - Tools: port `tcp` at the gripping point / wire tip / tool tip; the TCP marker's port `tcp` snaps there.
 - Fence: rails along every segment; door ports `hinge`/`latch` and light-curtain ports dock anywhere on them.
 - Conveyor: rail `belt` along the belt surface (workpiece ports dock anywhere on it).

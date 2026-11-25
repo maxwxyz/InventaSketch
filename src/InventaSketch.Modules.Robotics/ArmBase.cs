@@ -395,7 +395,7 @@ namespace InventaSketch.Modules.Robotics
             yield return Anchor.Point(AnchorRole.Mount, s.L(Proj.To2(pose.Base, view)), "base");
             // The flange faces along the tool axis where that axis shows in the view (tools docked with "+" turn with it).
             var td = s.L(Proj.To2(pose.Flange + pose.ToolDir, view)) - f;
-            yield return td.Length > 0.3 * s.S ? Anchor.Directed(AnchorRole.Mount, f, td, "flange") : Anchor.Point(AnchorRole.Mount, f, "flange");
+            yield return td.Length > 0.3 * s.S ? Anchor.Directed(AnchorRole.Mount, f, td, "flange", pose.FlangeRadius * s.S) : Anchor.Point(AnchorRole.Mount, f, "flange");
             yield return Anchor.Point(AnchorRole.Port, f, "tcp");
         }
 

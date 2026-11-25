@@ -338,10 +338,11 @@ namespace InventaSketch.Core
         /// <summary>
         /// A point anchor with a direction (<see cref="Q"/> = a point one unit along it): the outward direction of a connection
         /// face, e.g. a robot flange along the tool axis, or a tool's mount pointing back to the flange. Parts docked there
-        /// with "+" are turned so the two directions face each other (<see cref="Building"/>).
+        /// with "+" are turned so the two directions face each other (<see cref="Building"/>) and, when both faces give their
+        /// radius (<see cref="Radius"/>), scaled so the faces match; docked parts follow the face (<see cref="Coupling"/>).
         /// </summary>
-        public static Anchor Directed(AnchorRole role, Vec2 p, Vec2 dir, string? id = null)
-            => new(AnchorKind.Point, role, p, p + dir.Normalized()) { Id = id, HasDirection = true };
+        public static Anchor Directed(AnchorRole role, Vec2 p, Vec2 dir, string? id = null, double faceRadius = 0)
+            => new(AnchorKind.Point, role, p, p + dir.Normalized(), faceRadius) { Id = id, HasDirection = true };
 
         /// <summary>True for point anchors with a direction (<see cref="Directed"/>).</summary>
         public bool HasDirection { get; init; }
@@ -365,7 +366,7 @@ namespace InventaSketch.Core
 
         public Anchor Transform(Matrix2D m) => Kind switch
         {
-            AnchorKind.Point => HasDirection ? this with { P = m.Apply(P), Q = m.Apply(Q) } : this with { P = m.Apply(P) },
+            AnchorKind.Point => HasDirection ? this with { P = m.Apply(P), Q = m.Apply(Q), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) } : this with { P = m.Apply(P) },
             AnchorKind.Segment => this with { P = m.Apply(P), Q = m.Apply(Q) },
             // Circles: radius scales with the mean linear scale (free scaling may make it an ellipse visually). A circle with Q
             // set carries an axis direction (pitch circle of a gear seen from the side, see AxisOf).
