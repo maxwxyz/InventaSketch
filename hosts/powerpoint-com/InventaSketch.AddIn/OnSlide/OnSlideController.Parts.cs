@@ -201,6 +201,15 @@ namespace InventaSketch.AddIn.OnSlide
             Log.Info("Part action " + actionId + " on " + _part);
             // A deleted part is gone: a deleted point leaves its curve selected, anything else the whole element.
             if (actionId == PartLooks.DeleteAction) _part = ActionChoiceBar.AfterDelete(_part);
+            // A command that adds a part ("Fill below ▸ //", "Fill to ▸ curve 2"): the new part is selected, so its own
+            // choices (pattern, colour …) are right there in the bar.
+            else if (action.Choice?.IsMenu == true)
+            {
+                var ctx = new RenderContext(unit.Doc, _lang());
+                var before = _registry().Parts(o, ctx).Where(p => !p.Detail).Select(p => p.Key).ToList();
+                var after = _registry().Parts(next, ctx).Where(p => !p.Detail).Select(p => p.Key).ToList();
+                if (ActionChoiceBar.Added(before, after) is { } added) _part = added;
+            }
             _app.StartNewUndoEntry();
             ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { o.Id }, _ => next));
         }

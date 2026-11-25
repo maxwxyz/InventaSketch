@@ -974,9 +974,13 @@ namespace InventaSketch.Core
         /// </summary>
         public IEnumerable<ContextAction> PartActions(SketchObject o, string part, RenderContext ctx)
         {
-            foreach (var a in OwnPartActions(o, part, ctx)) yield return a;
+            var own = OwnPartActions(o, part, ctx).ToList();
+            foreach (var a in own) yield return a;
+            // A choice the type offers itself (a figure curve's line style stored in its model) replaces the generic one.
+            var ownChoices = new HashSet<string>(own.Where(a => a.Choice is not null).Select(a => a.Choice!.Key), StringComparer.Ordinal);
             var drawn = PartLooks.DrawnWidth(Render(o, ctx), part);
-            foreach (var a in PartLooks.Generic(o, part, drawn)) yield return a;
+            foreach (var a in PartLooks.Generic(o, part, drawn))
+                if (a.Choice is null || !ownChoices.Contains(a.Choice.Key)) yield return a;
         }
 
         /// <summary>Type-specific actions of a part (see <see cref="PartActions"/>).</summary>

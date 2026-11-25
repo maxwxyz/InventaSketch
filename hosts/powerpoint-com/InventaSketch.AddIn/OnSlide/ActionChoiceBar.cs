@@ -84,6 +84,14 @@ namespace InventaSketch.AddIn.OnSlide
             return null;
         }
 
+        /// <summary>The one part key in <paramref name="after"/> that was not in <paramref name="before"/> (an area just added), or null.</summary>
+        public static string? Added(IEnumerable<string> before, IEnumerable<string> after)
+        {
+            var old = new HashSet<string>(before, StringComparer.Ordinal);
+            var added = after.Where(k => !old.Contains(k)).Distinct().ToList();
+            return added.Count == 1 ? added[0] : null;
+        }
+
         /// <summary>The part selected after <paramref name="part"/> was deleted: a point's curve ("point.0.3" → "series.0"), else none.</summary>
         public static string? AfterDelete(string part)
         {

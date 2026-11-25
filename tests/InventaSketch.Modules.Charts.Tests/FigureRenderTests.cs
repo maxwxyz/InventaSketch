@@ -305,9 +305,10 @@ namespace InventaSketch.Modules.Charts.Tests
             var ctx = Fx.Ctx();
             var series = r.PartActions(o, "series.1", ctx);
             // Line style and markers are choices (dropdowns): the current option active, every option sets its value.
-            Assert.True(series.Single(a => a.Id == "chart.figure.line=dash").IsActive);
-            Assert.Equal("Line style", series.Single(a => a.Id == "chart.figure.line=dot").Choice!.Label.En);
-            Assert.Equal("dot", SpecOf(series.Single(a => a.Id == "chart.figure.line=dot").Apply(o)).Series[1].Line);
+            Assert.Single(series, a => a.Id == "part.dash=dash"); // the figure's own line style replaces the generic one
+            Assert.True(series.Single(a => a.Id == "part.dash=dash").IsActive);
+            Assert.Equal("Line style", series.Single(a => a.Id == "part.dash=dot").Choice!.Label.En);
+            Assert.Equal("dot", SpecOf(series.Single(a => a.Id == "part.dash=dot").Apply(o)).Series[1].Line);
             Assert.True(series.Single(a => a.Id == "chart.figure.marker=none").IsActive);
             Assert.Equal("circle", SpecOf(series.Single(a => a.Id == "chart.figure.marker=circle").Apply(o)).Series[1].Marker);
             Assert.NotNull(series.Single(a => a.Id == "chart.figure.marker=diamond").Preview);
@@ -321,8 +322,8 @@ namespace InventaSketch.Modules.Charts.Tests
             var refs = r.PartActions(o, "ref.2", ctx);
             Assert.Equal(2, SpecOf(refs.Single(a => a.Id == PartLooks.DeleteAction).Apply(o)).Refs.Count);
             Assert.Equal("Limit", SpecOf(refs.Single(a => a.Id == "chart.figure.label").Input!.Apply(o, " Limit ")).Refs[2].Label!.En);
-            Assert.True(refs.Single(a => a.Id == "chart.figure.line=dashdot").IsActive);
-            Assert.Equal("solid", SpecOf(refs.Single(a => a.Id == "chart.figure.line=solid").Apply(o)).Refs[2].Line);
+            Assert.True(refs.Single(a => a.Id == "part.dash=dashdot").IsActive);
+            Assert.Equal("solid", SpecOf(refs.Single(a => a.Id == "part.dash=solid").Apply(o)).Refs[2].Line);
 
             var region = r.PartActions(o, "region.0", ctx);
             Assert.Equal("x", SpecOf(region.Single(a => a.Id == "chart.area.pattern=x").Apply(o)).Regions[0].Hatch);

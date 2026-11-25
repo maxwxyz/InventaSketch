@@ -58,7 +58,7 @@ namespace InventaSketch.Core.Tests
             Assert.Equal(new[] { "t.mode=a", "t.mode=b" }, options.Select(x => x.Id));
             Assert.True(options[0].IsActive);
             Assert.Equal(IconIds.LineDash, options[1].Icon);
-            Assert.Equal("", options[0].Icon);
+            Assert.Equal(IconIds.Option, options[0].Icon); // no pictogram of its own: the label-only option marker
             Assert.All(options, x => Assert.Equal(new[] { "mode" }, x.ParamKeys));
             Assert.Equal("b", options[1].Apply(o).Str("mode", ""));
             var withB = o.WithParam("mode", "b");

@@ -8,8 +8,10 @@ $addin = $S.AddIn
 
 function Get-Fig { Get-IskShapes $S 'ISK:chart*' | Select-Object -First 1 }
 function Get-Regions($shape) {
-    # The figure specification is a JSON string inside the model: its "regions" array (escaped quotes).
-    $model = (Get-IskModel $shape) -replace '\\"', '"'
+    # The figure specification is a JSON string inside the model: its "regions" array. The model JSON escapes the quotes
+    # of that string as " (System.Text.Json's default encoder), so \uXXXX and \" are decoded first.
+    $model = [regex]::Replace((Get-IskModel $shape), '\\u([0-9a-fA-F]{4})', { param($m) [string][char][Convert]::ToInt32($m.Groups[1].Value, 16) })
+    $model = $model -replace '\\"', '"'
     $m = [regex]::Match($model, '"regions"\s*:\s*\[(.*?)\]\s*[,}]')
     if ($m.Success) { $m.Groups[1].Value } else { '' }
 }

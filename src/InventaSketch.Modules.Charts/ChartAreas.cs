@@ -521,6 +521,20 @@ namespace InventaSketch.Modules.Charts
         private static IReadOnlyList<Primitive> ColorSwatch(string color, double? opacity = null)
             => new Primitive[] { Prim.Rect(-3, -3, 6, 6, new Style { Stroke = "#9e9e9e", StrokeWidth = 0.15, Role = LineRole.Thin, Fill = Fill.Solid(opacity is { } a ? Lighten(color, 1 - a) : color) }) };
 
+        /// <summary>A name cut to 20 characters with "…" (option labels must fit the bar and the pie).</summary>
+        private static string Short(string s) => s.Length <= 20 ? s : s.Substring(0, 19).TrimEnd() + "…";
+
+        /// <summary>A 6 × 4 mm framed swatch of an edge line style (none: a dotted grey frame only as a hint).</summary>
+        private static IReadOnlyList<Primitive> EdgeSwatch(string? edge, string color)
+            => new Primitive[]
+            {
+                Prim.Rect(-3, -2, 6, 4, new Style
+                {
+                    Stroke = edge is null ? "#c8c8c8" : color, StrokeWidth = edge is null ? 0.15 : 0.35, Role = LineRole.Thin,
+                    Dash = edge is null ? DashStyle.Dot : FigureComposer.DashOf(edge, DashStyle.Solid), Fill = Fill.Solid(Lighten(color, 0.8)),
+                }),
+            };
+
         /// <summary>Colours offered for an area (value "auto" = the curve's colour).</summary>
         private static readonly (string Value, I18nText Label)[] Colors =
         {
@@ -601,25 +615,24 @@ namespace InventaSketch.Modules.Charts
                 list.Add(Opt(oc, Fmt.I((int)Math.Round(v * 100)), new I18nText(text), "", Math.Abs(opacity - v) < 1e-6, x => x.Opacity = v >= 1 ? null : v, ColorSwatch(color, v)));
             }
 
+            // The edge options show a framed swatch (the dash pictograms belong to the part's own line style choice).
             var ec = new ActionChoice("chart.area.edge", new I18nText("Edge", "Rand"));
             foreach (var (value, label) in Edges)
             {
                 var v = value;
-                list.Add(Opt(ec, v ?? "none", label, v is null ? IconIds.FillNone : IconIds.ForDash(FigureComposer.DashOf(v, DashStyle.Solid)), r.Edge == v, x => x.Edge = v));
+                list.Add(Opt(ec, v ?? "none", label, IconIds.Option, r.Edge == v, x => x.Edge = v, EdgeSwatch(v, color)));
             }
 
-            var twoEdges = r.Kind is "between" or "betweenx";
-            if (twoEdges)
+            if (r.Kind is "between" or "betweenx")
             {
-                var other = r.Kind == "between" ? (r.Y2 is { } y2 ? "y = " + Fmt.Num(y2, lang, 4) : SeriesLabel(m, r.B).En)
-                    : (r.X2 is { } x2 ? "x = " + Fmt.Num(x2, lang, 4) : SeriesLabel(m, r.B).En);
-                var a = SeriesLabel(m, r.A).En;
+                // Short labels (the bar shows 22 characters): "above" / "below" (right / left of) the area's other edge.
+                var x = r.Kind == "betweenx";
                 var wc = new ActionChoice("chart.area.where", new I18nText("Where", "Wo"));
-                list.Add(Opt(wc, "all", new I18nText("Everywhere", "Überall"), "", r.Where is null, x => x.Where = null));
-                list.Add(Opt(wc, "above", new I18nText("Where " + a + (r.Kind == "betweenx" ? " is right of " : " is above ") + other,
-                    "Wo " + a + (r.Kind == "betweenx" ? " rechts von " : " über ") + other + " liegt"), "", r.Where == "above", x => x.Where = "above"));
-                list.Add(Opt(wc, "below", new I18nText("Where " + a + (r.Kind == "betweenx" ? " is left of " : " is below ") + other,
-                    "Wo " + a + (r.Kind == "betweenx" ? " links von " : " unter ") + other + " liegt"), "", r.Where == "below", x => x.Where = "below"));
+                list.Add(Opt(wc, "all", new I18nText("Everywhere", "Überall"), IconIds.Option, r.Where is null, a => a.Where = null));
+                list.Add(Opt(wc, "above", x ? new I18nText("Only where right", "Nur wo rechts") : new I18nText("Only where above", "Nur wo darüber"),
+                    IconIds.Option, r.Where == "above", a => a.Where = "above"));
+                list.Add(Opt(wc, "below", x ? new I18nText("Only where left", "Nur wo links") : new I18nText("Only where below", "Nur wo darunter"),
+                    IconIds.Option, r.Where == "below", a => a.Where = "below"));
             }
             if (r.Kind is "below" or "between" or "betweenx")
             {
@@ -630,7 +643,7 @@ namespace InventaSketch.Modules.Charts
                 list.Add(Opt(sc, "mid", new I18nText("Steps (mid)", "Stufen (Mitte)"), "", r.Step == "mid", x => x.Step = "mid"));
             }
 
-            list.Add(ContextAction.WithInput("chart.area.label", new I18nText("Legend label…", "Legendentext…"), IconIds.Text,
+            list.Add(ContextAction.WithInput("chart.area.label", new I18nText("Legend label…", "Legendentext…"), IconIds.Legend,
                 new I18nText("Legend entry of the area (empty: none)", "Legendeneintrag der Fläche (leer: keiner)"), r.Label?.Get(lang) ?? "",
                 (x, text) => ed.Edit(x, lang, areas => { if (k < areas.Count) areas[k].Label = string.IsNullOrWhiteSpace(text) ? null : new I18nText(text.Trim()); })) with { Group = "area" });
             list.Add(new ContextAction(PartLooks.DeleteAction, new I18nText("Delete area", "Fläche löschen"), IconIds.Delete,
@@ -677,7 +690,7 @@ namespace InventaSketch.Modules.Charts
             {
                 if (j == k || m.Series[j].Panel != panel) continue;
                 var b = j;
-                yield return ActionChoices.Option(to, "curve." + Fmt.I(j), new I18nText(m.Series[j].Name), "", false,
+                yield return ActionChoices.Option(to, "curve." + Fmt.I(j), new I18nText(Short(m.Series[j].Name)), "", false,
                     Add(() => { var r = New("between", DefaultPattern); r.A = k; r.B = b; return r; })) with { Group = "area" };
             }
             for (var i = 0; i < m.Lines.Count; i++)
@@ -685,13 +698,13 @@ namespace InventaSketch.Modules.Charts
                 var line = m.Lines[i];
                 if (line.Panel != panel) continue;
                 var y = line.Y;
-                yield return ActionChoices.Option(to, "line." + Fmt.I(i), line.Label, "", false,
+                yield return ActionChoices.Option(to, "line." + Fmt.I(i), new I18nText(Short(line.Label.En), Short(line.Label.Get(Lang.De))), "", false,
                     Add(() => { var r = New("between", DefaultPattern); r.A = k; r.Y2 = y; return r; })) with { Group = "area" };
             }
             yield return ActionChoices.InputOption(to, "value", new I18nText("A y value …", "Einen y-Wert …"), "",
                 new I18nText("Fill between the curve and the horizontal line y =", "Zwischen Kurve und waagerechter Linie y = füllen"), "0",
                 (x, text) => ed.Edit(x, lang, areas => { var r = New("between", DefaultPattern); r.A = k; r.Y2 = Fmt.ParseInput(text, lang, -1e300, 1e300); areas.Add(r); })) with { Group = "area" };
-            yield return ActionChoices.InputOption(to, "x", new I18nText("A vertical line x = … (fill_betweenx)", "Eine senkrechte Linie x = … (fill_betweenx)"), "",
+            yield return ActionChoices.InputOption(to, "x", new I18nText("A line x = …", "Eine Linie x = …"), "",
                 new I18nText("Fill horizontally between the curve and the vertical line x =", "Waagerecht zwischen Kurve und senkrechter Linie x = füllen"), Fmt.Num(m.X.Min, lang, 4),
                 (x, text) => ed.Edit(x, lang, areas => { var r = New("betweenx", DefaultPattern); r.A = k; r.X2 = Fmt.ParseInput(text, lang, -1e300, 1e300); areas.Add(r); })) with { Group = "area" };
         }
@@ -711,12 +724,13 @@ namespace InventaSketch.Modules.Charts
             var add = new ActionChoice("chart.area.add", new I18nText("Add area", "Fläche hinzufügen")) { IsMenu = true };
             Func<SketchObject, SketchObject> Add(Func<FigRegion> make) => x => ed.Edit(x, lang, areas => areas.Add(make()));
             ContextAction Opt(string value, I18nText label, Func<FigRegion> make) => ActionChoices.Option(add, value, label, "", false, Add(make)) with { Group = "area" };
+            // Short fixed labels (the curve names can be long): the first curve, the first two curves of a panel, the first two lines.
             if (m.Series.Count > 0)
-                yield return Opt("below", new I18nText("Below " + m.Series[0].Name, "Unter " + m.Series[0].Name), () => { var r = New("below", DefaultPattern); r.A = 0; return r; });
+                yield return Opt("below", new I18nText("Below the first curve", "Unter der ersten Kurve"), () => { var r = New("below", DefaultPattern); r.A = 0; return r; });
             var pair = Enumerable.Range(0, m.Series.Count).SelectMany(a => Enumerable.Range(a + 1, Math.Max(0, m.Series.Count - a - 1)).Select(b => (a, b)))
                 .FirstOrDefault(p => m.Series[p.a].Panel == m.Series[p.b].Panel && p.a != p.b);
             if (m.Series.Count >= 2 && pair.a != pair.b)
-                yield return Opt("between", new I18nText("Between " + m.Series[pair.a].Name + " and " + m.Series[pair.b].Name, "Zwischen " + m.Series[pair.a].Name + " und " + m.Series[pair.b].Name),
+                yield return Opt("between", new I18nText("Between two curves", "Zwischen zwei Kurven"),
                     () => { var r = New("between", DefaultPattern); r.A = pair.a; r.B = pair.b; return r; });
             yield return Opt("span", new I18nText("Vertical span (axvspan)", "Senkrechter Bereich (axvspan)"),
                 () => { var r = New("span", DefaultPattern); r.From = Round(Inner(m.X, 1.0 / 3)); r.To = Round(Inner(m.X, 2.0 / 3)); return r; });
@@ -725,7 +739,7 @@ namespace InventaSketch.Modules.Charts
                     () => { var r = New("hspan", DefaultPattern); r.Y1 = Round(Inner(m.Y[0], 1.0 / 3)); r.Y2 = Round(Inner(m.Y[0], 2.0 / 3)); return r; });
             var lines = m.Lines.Where(l => l.Panel == 0).Take(2).ToList();
             if (lines.Count == 2)
-                yield return Opt("lines", new I18nText("Between the lines " + lines[0].Label.En + " and " + lines[1].Label.En, "Zwischen den Linien " + lines[0].Label.Get(Lang.De) + " und " + lines[1].Label.Get(Lang.De)),
+                yield return Opt("lines", new I18nText("Between two lines", "Zwischen zwei Linien"),
                     () => { var r = New("hspan", DefaultPattern); r.Y1 = Math.Min(lines[0].Y, lines[1].Y); r.Y2 = Math.Max(lines[0].Y, lines[1].Y); return r; });
         }
 

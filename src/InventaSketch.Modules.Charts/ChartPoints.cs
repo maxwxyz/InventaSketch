@@ -227,9 +227,9 @@ namespace InventaSketch.Modules.Charts
             var p = new Vec2(series[k].X[i], series[k].Y[i]);
             yield return new ContextAction(PartLooks.DeleteAction, new I18nText("Delete point", "Punkt löschen"), IconIds.Delete,
                 x => ed.EditSeries(x, lang, k, pts => { var l = pts.ToList(); if (i < l.Count) l.RemoveAt(i); return l; })) { Group = "point" };
-            yield return new ContextAction("chart.point.add", new I18nText("Add a point after it", "Punkt danach einfügen"), IconIds.Insert,
+            yield return new ContextAction("chart.point.add", new I18nText("Add a point after it", "Punkt danach einfügen"), IconIds.AddPoint,
                 x => ed.EditSeries(x, lang, k, pts => AddAfter(pts, i))) { Group = "point" };
-            yield return ContextAction.WithInput("chart.point.value", new I18nText("Value…", "Wert…"), IconIds.Text,
+            yield return ContextAction.WithInput("chart.point.value", new I18nText("Value…", "Wert…"), IconIds.Value,
                 new I18nText("x; y of the point", "x; y des Punkts"), Num(p.X, lang) + "; " + Num(p.Y, lang),
                 (x, text) =>
                 {
