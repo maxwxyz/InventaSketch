@@ -274,23 +274,30 @@ class CanvasRules(unittest.TestCase):
         self.assertEqual(ux.command_url("arrange", action="align:row"), "inventasketch.libreoffice:arrange?action=align%3Arow")
         self.assertEqual(ux.command_url("explode"), "inventasketch.libreoffice:explode")
 
-    def test_context_menu_of_a_gear(self):
+    def test_context_menu_of_a_gear_has_the_eight_places(self):
         entries = ux.context_entries(dict(GEAR, view="axial"), "en")
-        self.assertEqual(entries[0], ("sub", "Switch view", [("item", "Side", ux.command_url("setView", view="side"))]))
-        self.assertEqual([e[1] for e in entries[1:-1]], ["Select assembly", "Redraw from model",
-                                                         "More in the InventaSketch sidebar…"])
+        self.assertEqual(ux.is_disabled_url(entries[0][2]), True)          # Text: a gear has no text
+        self.assertEqual([e[1] for e in entries[:-1]], ["Text …", "Edit", "Insert …", "Duplicate", "Style", "Delete",
+                                                        "View", "Arrange"])
+        view = entries[6]
+        self.assertEqual(view[0], "sub")
+        self.assertEqual(view[2][0], ("item", "Axial", ux.command_url("setView", view="axial"), True))
         self.assertEqual(entries[-1], ("sep",))
 
     def test_context_menu_of_a_link_and_of_several_units(self):
         link = ux.context_entries(LINK, "de")
-        self.assertEqual([e[1] for e in link[:5]], ["Bahn zeichnen", "Zwischenlagen", "Horizontal spiegeln",
-                                                    "Vertikal spiegeln", "Um 90 Grad drehen"])
-        self.assertEqual(link[2][2], ux.command_url("transform", kind="mirrorH"))
+        edit = dict((e[1], e) for e in link if e[0] == "sub")["Bearbeiten"][2]
+        self.assertIn(("item", "Bahn zeichnen", ux.command_url("drawTrace")), edit)
+        arrange = dict((e[1], e) for e in link if e[0] == "sub")["Anordnen"][2]
+        self.assertEqual([e[1] for e in arrange[:4]], ["Um 90 Grad drehen", "Um 90 Grad zurückdrehen",
+                                                       "Horizontal spiegeln", "Vertikal spiegeln"])
+        self.assertEqual(arrange[2][2], ux.command_url("transform", kind="mirrorH"))
         multi = ux.context_entries(MULTI, "en")
-        self.assertEqual([e[1] for e in multi if e[0] == "item"],
-                         ["All in view: Stick", "Centres on one horizontal line", "Select assembly",
-                          "More in the InventaSketch sidebar…"])
-        self.assertEqual(multi[1][2], ux.command_url("arrange", action="align:row"))
+        # A place with one entry shows it directly (View); Arrange keeps its name.
+        self.assertEqual(multi[6], ("item", "All in view: Stick", ux.command_url("arrange", action="mview:stick")))
+        self.assertEqual(multi[0][0], "off")                                    # no text for several units
+        self.assertIn(("item", "Centres on one horizontal line", ux.command_url("arrange", action="align:row")),
+                      multi[7][2])
         self.assertEqual(ux.context_entries(None), [])
 
 

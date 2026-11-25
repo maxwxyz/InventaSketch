@@ -40,6 +40,20 @@ def category_entries(catalog):
 _SAFE = re.compile(r"[^0-9A-Za-z_.-]")
 
 
+def svg_path(svg, folder="options", base=None):
+    """Writes an SVG picture (an option's ``previewSvg``) to the cache under a name from its content and returns the
+    file path."""
+    import hashlib
+    data = (svg or "").encode("utf-8")
+    target = os.path.join(base or log_dir(), "thumbnails", folder)
+    os.makedirs(target, exist_ok=True)
+    path = os.path.join(target, hashlib.sha1(data).hexdigest()[:16] + ".svg")
+    if not os.path.isfile(path):
+        with open(path, "wb") as f:
+            f.write(data)
+    return path
+
+
 def thumbnail_path(item, lang, base=None):
     """Writes the item's SVG thumbnail to the cache (once) and returns the file path (None without thumbnail)."""
     svg = item.get("thumbnail")
