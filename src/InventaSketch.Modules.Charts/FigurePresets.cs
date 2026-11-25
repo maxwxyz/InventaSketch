@@ -16,6 +16,8 @@ namespace InventaSketch.Modules.Charts
         public static readonly string Patent = BuildPatent().ToJson();
         public static readonly string Timing = BuildTiming().ToJson();
         public static readonly string Temperature = BuildTemperature().ToJson();
+        /// <summary>A neutral principle figure (two stacked panels, a step and a first-order response) for the library.</summary>
+        public static readonly string Principle = BuildPrinciple().ToJson();
 
         /// <summary>Specification of a figure inserted without parameters: the example figure.</summary>
         public static string Default => Patent;
@@ -166,6 +168,28 @@ namespace InventaSketch.Modules.Charts
         /// labels, two first-order curves (one fast towards 160 °C, one slow towards 110 °C) with a gap each, open circle
         /// markers where they reach activation 14b ("31 s", "77 s"), a vertical dimension "35 K" and a caption.
         /// </summary>
+        /// <summary>
+        /// Neutral principle figure: an input step in the upper panel and the first-order response in the lower one on a
+        /// shared time axis, principle style (no numbers), marks t1 and t2. The starting point for own figures.
+        /// </summary>
+        private static FigureSpec BuildPrinciple()
+        {
+            const double t1 = 2, tau = 1.5;
+            var s = new FigureSpec
+            {
+                Scheme = "mono",
+                X = new FigAxis { Mode = "principle", Min = 0, Max = 10, Label = T("Time t", "Zeit t"), Marks = { new FigMark(t1, "t1"), new FigMark(R(t1 + 3 * tau), "t2") } },
+                Panels =
+                {
+                    new FigPanel { Mode = "principle", Min = 0, Max = 1.3, Label = T("Input u", "Eingang u") },
+                    new FigPanel { Mode = "principle", Min = 0, Max = 1.2, Label = T("Output y", "Ausgang y") },
+                },
+            };
+            s.Series.Add(new FigSeries { X = { 0, t1, t1, 10 }, Y = { 0.2, 0.2, 1, 1 }, Line = "solid", Panel = 0 });
+            s.Series.Add(Curve(Sample(t => t <= t1 ? 0.2 : 0.2 + 0.8 * (1 - Math.Exp(-(t - t1) / tau)), 0, 10, 0.25, t1), 1, "solid"));
+            return s;
+        }
+
         private static FigureSpec BuildTemperature()
         {
             var tauFast = 31 / Math.Log(140.0 / 65);
