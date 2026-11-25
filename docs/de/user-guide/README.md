@@ -60,7 +60,8 @@ für die Seite; ein Klick auf einen Befund wählt sein Element aus. In LibreOffi
 
 Varianten (vorher/nachher, Stand der Technik/Erfindung): Folie duplizieren und die Kopie ändern. InventaSketch ▸ Extras
 ▸ „Mit vorheriger Folie vergleichen“ markiert, was neu (grün), geändert (orange) und entfernt (grau gestrichelt) ist,
-mit Legende; ein erneuter Aufruf entfernt die Markierungen (Engine `diff`).
+mit Legende; ein erneuter Aufruf entfernt die Markierungen (Engine `diff`). In LibreOffice Impress und Draw:
+InventaSketch ▸ „Mit vorheriger Folie vergleichen (Varianten)“.
 
 ## 6. Module
 

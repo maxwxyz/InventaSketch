@@ -55,7 +55,8 @@ its slide and unit.
 
 Variants (before/after, prior art/invention): duplicate the slide and change the copy. InventaSketch ▸ Extras ▸
 "Compare with the previous slide" marks what was added (green), changed (orange) and removed (dashed grey) with a
-legend; run it again to remove the marks (engine `diff`).
+legend; run it again to remove the marks (engine `diff`). In LibreOffice Impress and Draw: InventaSketch ▸ "Compare
+with Previous Slide (Variants)".
 
 ## 6. Modules
 

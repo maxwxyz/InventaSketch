@@ -111,6 +111,16 @@ TEXTS = {
     "pcWarning": ("Warning", "Warnung"),
     "pcManual": ("Check by hand", "Selbst prüfen"),
     "pcInfo": ("Note", "Hinweis"),
+    "cmpNotHere": ("The comparison works on the pages of Impress and Draw documents.",
+                   "Der Vergleich arbeitet auf den Seiten von Impress- und Draw-Dokumenten."),
+    "cmpNoPrevious": ("There is no previous slide to compare with.", "Es gibt keine vorherige Folie zum Vergleichen."),
+    "cmpNone": ("No differences to the previous slide.", "Keine Unterschiede zur vorherigen Folie."),
+    "cmpUndo": ("InventaSketch: Compare with the previous slide", "InventaSketch: Mit vorheriger Folie vergleichen"),
+    "cmpUndoRemove": ("InventaSketch: Remove comparison marks", "InventaSketch: Vergleichsmarkierungen entfernen"),
+    "cmpLegendSlide": ("Compared with slide %d: %d added, %d changed, %d removed",
+                       "Vergleich mit Folie %d: %d neu, %d geändert, %d entfernt"),
+    "cmpLegendPage": ("Compared with page %d: %d added, %d changed, %d removed",
+                      "Vergleich mit Seite %d: %d neu, %d geändert, %d entfernt"),
 }
 
 _STATE = {"lang": "en"}

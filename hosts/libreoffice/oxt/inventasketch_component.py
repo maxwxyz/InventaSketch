@@ -26,6 +26,7 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
   quickInsert[?text=<t>]                          open the Library panel with the cursor in its search field
                                                   (Ctrl+Space in Impress/Draw)
   patentCheck[?profile=<office id>]               patent drawing check of every page (dialog; logged when headless)
+  compare                                         mark what differs from the previous page (again: remove the marks)
   about                                           version and licence
 The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
 and ``buildItems`` fill the sidebar panel. The job ``CanvasJob`` (Jobs.xcu, document event "OnViewCreated") attaches
@@ -54,7 +55,7 @@ PROTOCOL = "inventasketch.libreoffice:"
 DECK = "InventaSketchDeck"
 COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
             "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
-            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck")
+            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 
@@ -242,6 +243,9 @@ def _run(ctx, frame, command, args):
             log("panel: %s -> %s" % (args, "; ".join(reports)))
         elif command == "patentCheck":
             _patent_check(ctx, frame, controller, args.get("profile") or args.get("") or None)
+        elif command == "compare":
+            result = host.compare_with_previous(engine_for(ctx), controller)
+            log("compare: %s" % sorted(result.items()))
         elif command == "cleanup":
             removed = host.cleanup_properties(controller.getModel())
             log("cleanup removed %d properties" % len(removed))

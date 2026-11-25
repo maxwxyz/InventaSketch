@@ -587,6 +587,52 @@ def patent_phase(office, logs):
     office.close(doc)
 
 
+def compare_phase(office, out, logs):
+    """Variants: a slide with two gears is duplicated (the copy keeps the units' ids); on the copy one gear is deleted,
+    one switched to another view and a third inserted; "compare" marks 1 added, 1 changed, 1 removed with a legend (one
+    undo step) and removes the marks when run again."""
+    doc = office.new("simpress")
+    pages = doc.getDrawPages()
+    first = pages.getByIndex(0)
+    for i in reversed(range(first.getCount())):
+        first.remove(first.getByIndex(i))
+    controller = doc.getCurrentController()
+    office.run(doc, "insert?item=mech.spur.axial&x=60&y=70")
+    office.run(doc, "insert?item=mech.spur.axial&x=140&y=70")
+    office.run(doc, "insert?item=mech.spur.axial&x=100&y=150")      # stays unchanged on the copy
+    copy = doc.duplicate(first)
+    controller.setCurrentPage(copy)
+    gears = sorted((s for s in units_of(copy).values() if s.Position.Y < 10000), key=lambda s: s.Position.X)
+    # LibreOffice may rename a duplicated shape ("…eb12" → "…eb 1"); its attributes keep the unit id.
+    check("compare.duplicateKeepsUnits", len(gears) == 2 and len(units_of(copy)) == 3
+          and sorted(attribute(s, "isk:id") for s in units_of(copy).values())
+          == sorted(attribute(s, "isk:id") for s in units_of(first).values()), ", ".join(sorted(units_of(copy))))
+    if len(gears) != 2:
+        office.close(doc)
+        return
+    copy.remove(gears[1])
+    select_shapes(office, doc, [gears[0]])
+    office.run(doc, "setView?view=side")
+    select_shapes(office, doc, [])
+    office.run(doc, "insert?item=mech.spur.axial&x=220&y=70")
+    office.run(doc, "compare")
+    marks = [s.Name for s in shapes_of(copy) if (s.Name or "").startswith("ISK_DIFF")]
+    line = (log_lines(logs, "compare:") or [""])[-1]
+    check("compare.marks", len(marks) == 4 and "('added', 1)" in line and "('changed', 1)" in line
+          and "('removed', 1)" in line, "%s; %s" % (marks, line[-90:]))
+    export_png(office, doc, copy, os.path.join(out, "compare.png"))
+    title = doc.getUndoManager().getCurrentUndoActionTitle()
+    check("compare.oneUndoStep", "vergleichen" in title or "Compare" in title, title)
+    office.run(doc, "compare")
+    left = [s.Name for s in shapes_of(copy) if (s.Name or "").startswith("ISK_DIFF")]
+    check("compare.removedAgain", not left, ", ".join(left))
+    # Reading the copy restored the unit names from the attributes (the name carries the id in .pptx).
+    names = sorted(units_of(copy))
+    check("compare.unitNamesRestored", all(n == "ISK:%s:%s" % (attribute(s, "isk:type"), attribute(s, "isk:id"))
+                                           for n, s in units_of(copy).items()), ", ".join(names))
+    office.close(doc)
+
+
 def canvas_phase(office, out, logs):
     """On-canvas round: the job attaches the handlers to a new view; snapping after a native move (the command the
     mouse release runs) meshes a gear with another unit, coupled parts follow a dragged shaft, resizes do not snap.
@@ -704,6 +750,7 @@ def main():
         ux_phase(office, out, logs)
         canvas_phase(office, out, logs)
         patent_phase(office, logs)
+        compare_phase(office, out, logs)
         reload_phase(office, odp, names, "odp", expect_attributes=True)
         reload_phase(office, pptx, names, "pptx", expect_attributes=False)
         draw_calc_phase(office, out)

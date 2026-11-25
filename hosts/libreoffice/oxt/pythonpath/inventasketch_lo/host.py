@@ -769,6 +769,69 @@ def patent_check(engine, controller, profile):
     return {"disclaimer": disclaimer, "pages": checked, "findings": findings}
 
 
+DIFF_PREFIX = "ISK_DIFF"
+
+
+def _diff_marks(page):
+    return [s for s in (page.getByIndex(i) for i in range(page.getCount())) if (s.Name or "").startswith(DIFF_PREFIX)]
+
+
+def compare_with_previous(engine, controller):
+    """Variants: marks on the current page what differs from the previous page (a duplicated page keeps the units'
+    ids): added elements green, changed ones orange, removed ones as a dashed grey frame where they were, plus a legend
+    at the top right; called again it removes the marks. One undo step. Returns {"removed": n} or {"added", "changed",
+    "removed" (counts), "previous": page number}."""
+    import uno
+    from com.sun.star.awt import Point, Size
+    doc = controller.getModel()
+    if doc_kind(doc) not in ("impress", "draw"):
+        raise HostError(i18n.text("cmpNotHere"))
+    page = controller.getCurrentPage()
+    marks = _diff_marks(page)
+    if marks:
+        with _UndoStep(doc, i18n.text("cmpUndoRemove")):
+            for s in marks:
+                page.remove(s)
+        return {"cleared": len(marks)}
+    number = page.Number
+    if number < 2:
+        raise HostError(i18n.text("cmpNoPrevious"))
+    previous = doc.getDrawPages().getByIndex(number - 2)
+    with PageSession(engine, controller, shapes=[], page=previous) as ps:
+        ids = [o["id"] for o in ps.call("state").get("objects") or []]
+        payload = ps.call("exportCompact", {"ids": ids})["payload"]
+    with PageSession(engine, controller, shapes=[], page=page) as cs:
+        diff = cs.call("diff", {"payload": payload})
+    marks = ux.diff_marks(diff)
+    if not marks:
+        raise HostError(i18n.text("cmpNone"))
+    slides = doc_kind(doc) == "impress"
+    with _UndoStep(doc, i18n.text("cmpUndo")):
+        for kind, (x, y, w, h), colour, dashed in marks:
+            box = doc.createInstance("com.sun.star.drawing.RectangleShape")
+            page.add(box)
+            box.Position, box.Size = Point(int(x * 100), int(y * 100)), Size(int(w * 100), int(h * 100))
+            box.FillStyle = uno.Enum("com.sun.star.drawing.FillStyle", "NONE")
+            box.LineColor, box.LineWidth, box.CornerRadius = colour, 70, 150
+            if dashed:
+                dash = uno.createUnoStruct("com.sun.star.drawing.LineDash")
+                dash.Style = uno.Enum("com.sun.star.drawing.DashStyle", "RECT")
+                dash.Dots, dash.DotLen, dash.Dashes, dash.DashLen, dash.Distance = 0, 0, 1, 300, 200
+                box.LineStyle = uno.Enum("com.sun.star.drawing.LineStyle", "DASH")
+                box.LineDash = dash
+            box.Name = "%s %s %s" % (DIFF_PREFIX, kind, len(_diff_marks(page)))
+        legend = doc.createInstance("com.sun.star.drawing.TextShape")
+        page.add(legend)
+        legend.setString(ux.diff_legend(diff, number - 1, slides))
+        legend.CharHeight = 9
+        legend.TextAutoGrowWidth = True
+        legend.TextHorizontalAdjust = uno.Enum("com.sun.star.drawing.TextHorizontalAdjust", "RIGHT")
+        legend.Position = Point(max(0, page.Width - 600 - legend.Size.Width), 300)
+        legend.Name = DIFF_PREFIX + " legend"
+    return {"added": len(diff.get("added") or []), "changed": len(diff.get("changed") or []),
+            "removed": len(diff.get("removed") or []), "previous": number - 1}
+
+
 def go_to(controller, page_number, shape=None):
     """Shows page ``page_number`` (1-based) and selects ``shape`` on it."""
     try:

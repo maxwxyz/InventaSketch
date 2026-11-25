@@ -56,6 +56,14 @@
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>
+          <node oor:name="m05a2" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:compare</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Compare with Previous Slide (Variants)</value>
+              <value xml:lang="de">Mit vorheriger Folie vergleichen (Varianten)</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
           <node oor:name="m05b" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>private:separator</value></prop>
           </node>
