@@ -473,6 +473,13 @@ in the drawing).
     are computed live and shown on request: U/I/P/R, C, L, impedance and time constants; speed, torque, power, ratio,
     centre distance from module and teeth; flow, pressure, force; heat quantity and heat flow; PV string voltages and
     yield. Concept and catalogue: docs/en/design/engineering-calculations.md (research in progress).
+    **Guiding idea (maintainer 2026-11-25):** sketch fast, but also learn and understand interactively and playfully,
+    and draw and compute physically correct and technically precise, with plausibility checks (gentle warnings with
+    their rule and source: gear modules that do not match, a fuse below the cable load, a PV string above the
+    inverter's maximum voltage at low temperature …); the same for charts (curves generated from or linked to element
+    values with operating points, e.g. motor torque–speed, pump vs. system curve, PV IV curve with MPP, Bode plot of an
+    RC network); and across modules where sensible (e-motor → coupling → gearbox → wheel, PV → inverter → distribution
+    board → circuits, pump → pipes → heat exchanger → radiator).
 15. Later: sidebar preview live, sequence/GRAFCET charts, isometric parts, moved positions, battery arrays,
    obstacle-aware routing for hand-placed flowchart boxes.
 

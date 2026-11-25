@@ -524,6 +524,13 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
     Werte live berechnet und auf Wunsch angezeigt: U/I/P/R, C, L, Impedanz und Zeitkonstanten; Drehzahl, Drehmoment,
     Leistung, Übersetzung, Achsabstand aus Modul und Zähnezahl; Durchfluss, Druck, Kraft; Wärmemenge und Wärmestrom;
     PV-Strangspannungen und Ertrag. Konzept und Katalog: docs/de/design/engineering-calculations.md (Recherche läuft).
+    **Leitbild (Maintainer 25.11.2026):** schnell skizzieren, aber auch interaktiv und spielerisch lernen und verstehen,
+    und physikalisch korrekt und technisch präzise zeichnen und rechnen, mit Plausibilitätsprüfungen (behutsame Hinweise
+    mit Regel und Quelle: Zahnräder mit unterschiedlichem Modul, Sicherung kleiner als die Leitungslast, PV-Strang über
+    der Maximalspannung des Wechselrichters bei Kälte …); dasselbe für Diagramme (Kurven aus Elementwerten erzeugt oder
+    mit ihnen verknüpft, mit Betriebspunkt, z. B. Motor-Drehmoment/Drehzahl, Pumpen- gegen Anlagenkennlinie,
+    PV-Kennlinie mit MPP, Bode-Diagramm eines RC-Glieds); und modulübergreifend, wo sinnvoll (E-Motor → Kupplung →
+    Getriebe → Rad, PV → Wechselrichter → Verteiler → Stromkreise, Pumpe → Rohrnetz → Wärmetauscher → Heizkörper).
 15. Später: Seitenleisten-Vorschau live, Ablauf-/GRAFCET-Diagramme, isometrische Teile, bewegte Lagen,
    Batteriezellen-Anordnungen, hindernisvermeidendes Routing für von Hand platzierte Ablaufkästen.
 

@@ -285,7 +285,9 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>Generic pictograms (switch, cycle) say nothing on their own: such actions show a short text instead.</summary>
         // "+" and "−" alone say nothing (more what? fewer what? – UX review G8): such actions are not shown as bare pictograms.
-        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon is not (IconIds.Toggle or IconIds.Cycle or IconIds.Increase or IconIds.Decrease);
+        // The "T" means "edit the text" only (maintainer 2026-11-25: "what is that T all the time?"): actions that reuse it
+        // for values, names or data are not shown with it.
+        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon is not (IconIds.Toggle or IconIds.Cycle or IconIds.Increase or IconIds.Decrease or IconIds.Text);
 
         /// <summary>
         /// Type actions for the floating bar (key parameters: thicker/thinner, more/fewer, swap, hub, helix …): available ones,
@@ -351,7 +353,7 @@ namespace InventaSketch.AddIn.OnSlide
                 if (pointObject is not null && Registry.IsConvertible(pointObject))
                 {
                     edit.Add(new PieItem("menu:type", T("Line type ▸", "Linientyp ▸")) { IconId = IconIds.Cycle, Hint = T("Line, arrow, dimension, lead line …; the ends stay", "Linie, Pfeil, Maß, Hinweislinie …; die Enden bleiben") });
-                    edit.Add(new PieItem("menu:label", T("Label ▸", "Beschriftung ▸")) { IconId = IconIds.Text, Hint = T("Texts and switches of the label", "Texte und Schalter der Beschriftung") });
+                    edit.Add(new PieItem("menu:label", T("Label ▸", "Beschriftung ▸")) { Hint = T("Texts and switches of the label", "Texte und Schalter der Beschriftung") });
                 }
                 // Actions that only set a choice shown under "Style" stay there (no two entries for one thing).
                 edit.AddRange(actions.Where(a => a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains)).Select(ActionItem));

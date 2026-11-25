@@ -256,9 +256,11 @@ function Get-IskLog {
     $cmd = Join-Path $S.OutDir "copy-log-$n.cmd"
     Set-Content -Encoding ascii $cmd "@copy /y `"%LOCALAPPDATA%\InventaSketch\addin.log`" `"$copy`" >nul"
     explorer.exe $cmd
-    for ($i = 0; $i -lt 40 -and -not (Test-Path $copy); $i++) { Start-Sleep -Milliseconds 250 }
+    for ($i = 0; $i -lt 120 -and -not (Test-Path $copy); $i++) { Start-Sleep -Milliseconds 250 }
     Start-Sleep -Milliseconds 300
     Remove-Item $cmd -ErrorAction SilentlyContinue
+    # Explorer did not copy in time: an empty file, so a scenario's log fallback finds nothing instead of failing.
+    if (-not (Test-Path $copy)) { Write-Host '  (add-in log could not be copied in time)'; Set-Content -Encoding ascii $copy '' }
     $copy
 }
 

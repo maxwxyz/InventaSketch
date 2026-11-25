@@ -39,7 +39,7 @@ namespace InventaSketch.AddIn.OnSlide
         public float Scale { get; }
         /// <summary>Name shown in the centre (the element, or the open submenu); a click there closes the menu.</summary>
         public string? Title { get; set; }
-        public float Inner => (Title is null ? 28 : 42) * Scale;
+        public float Inner => (Title is null ? 28 : 46) * Scale;
         /// <summary>
         /// The ring grows with the number of entries and, beyond that, until every label fits completely in two lines of
         /// the small font (UX review 2026-11-25: no labels outside the ring, no "…" where a larger ring helps); capped at
@@ -50,25 +50,39 @@ namespace InventaSketch.AddIn.OnSlide
 
         private float BaseOuter => (Items.Count <= 6 ? 132 : Items.Count <= 8 ? 148 : 176) * Scale;
 
-        private float FitOuter()
+        /// <summary>
+        /// One text size for every label of the menu (maintainer 2026-11-25: mixed sizes "look terrible"): 12 px when the
+        /// ring can grow until every label fits in two lines, else 10.5 px for all.
+        /// </summary>
+        public float LabelPx => (_labelPx ??= FitOuterAndSize().Size);
+        private float? _labelPx;
+
+        private float FitOuter() => FitOuterAndSize().Outer;
+
+        private (float Outer, float Size) FitOuterAndSize()
         {
+            if (_outer is { } o && _labelPx is { } z) return (o, z);
             using var bmp = new Bitmap(1, 1);
             using var g = Graphics.FromImage(bmp);
             g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
-            using var small = new Font("Segoe UI", 10.5f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
-            var smallH = small.GetHeight(g);
-            for (var outer = BaseOuter; ; outer += 12 * Scale)
+            foreach (var px in new[] { 12f, 10.5f })
             {
-                if (outer >= 236 * Scale) return 236 * Scale;
-                var all = true;
-                for (var i = 0; i < Items.Count && all; i++)
+                using var f = new Font("Segoe UI", px * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+                var h = f.GetHeight(g);
+                for (var outer = BaseOuter; outer <= 236 * Scale; outer += 12 * Scale)
                 {
-                    var mid = (-90 + i * 360.0 / Math.Max(1, Items.Count)) * Math.PI / 180;
-                    var (_, width) = LabelBox(Inner, outer, mid, HasIcon(Items[i]), smallH);
-                    all = Fits(g, Items[i].Label, small, width, out _);
+                    var all = true;
+                    for (var i = 0; i < Items.Count && all; i++)
+                    {
+                        var mid = (-90 + i * 360.0 / Math.Max(1, Items.Count)) * Math.PI / 180;
+                        var (_, width) = LabelBox(Inner, outer, mid, HasIcon(Items[i]), h);
+                        all = Fits(g, Items[i].Label, f, width, out _);
+                    }
+                    if (all) { _outer = outer; _labelPx = px; return (outer, px); }
                 }
-                if (all) return outer;
             }
+            _outer = 236 * Scale; _labelPx = 10.5f;
+            return (_outer.Value, _labelPx.Value);
         }
 
         /// <summary>
@@ -169,7 +183,8 @@ namespace InventaSketch.AddIn.OnSlide
             var sweepDeg = 360f / Math.Max(1, Items.Count);
             var sweepRad = sweepDeg * Math.PI / 180;
             using var font = new Font("Segoe UI", 12f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
-            using var small = new Font("Segoe UI", 10.5f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            // Every label in one size (see LabelPx).
+            using var small = new Font("Segoe UI", LabelPx * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
             using var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near, Trimming = StringTrimming.EllipsisCharacter };
             string? hoverFull = null;
             for (var i = 0; i < Items.Count; i++)
@@ -196,13 +211,11 @@ namespace InventaSketch.AddIn.OnSlide
                 // The content block (pictogram, up to two lines) lies completely inside the ring (UX review 2026-11-25:
                 // labels stuck out of the pie at the left and right places).
                 var (rc, width) = LabelBox(inner, outer, mid, HasIcon(item), small.GetHeight(g));
-                var useFont = font;
+                var useFont = small;
                 var oneLine = false;
-                var full = Fits(g, item.Label, font, width, out var textSize);
-                if (!full && Fits(g, item.Label, small, width, out var smallSize)) { useFont = small; textSize = smallSize; full = true; }
-                else if (!full)
+                var full = Fits(g, item.Label, small, width, out var textSize);
+                if (!full)
                 {
-                    useFont = small;
                     // A word too long even in the small font: one line shortened with "…" instead of a break inside the word.
                     oneLine = !WordsFit(g, item.Label, small, width);
                     textSize = new SizeF(width, (oneLine ? 1 : 2) * small.GetHeight(g));
@@ -241,7 +254,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (Title is not null)
             {
                 // The element's name in the centre, so it is clear what the menu acts on.
-                using var titleFont = new Font("Segoe UI", 8.5f * Scale, FontStyle.Bold, GraphicsUnit.Pixel);
+                using var titleFont = new Font("Segoe UI Semibold", Math.Min(LabelPx, 10.5f) * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
                 using var tb = new SolidBrush(Color.FromArgb(dark ? 200 : 190, fg));
                 using var tf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisWord };
                 var box = new RectangleF(Centre.X - inner * 0.86f, Centre.Y - inner * 0.62f, inner * 1.72f, inner * 1.24f);

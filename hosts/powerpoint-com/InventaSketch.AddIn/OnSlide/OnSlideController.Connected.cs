@@ -216,6 +216,15 @@ namespace InventaSketch.AddIn.OnSlide
             return prims;
         }
 
+        /// <summary>Page primitives of the selected part of the armed element (empty without a part selection).</summary>
+        private List<Primitive> SelectedPartPrims()
+        {
+            if (_part is null || PartOwner() is not { } o || _unit is null) return new List<Primitive>();
+            var key = _part;
+            return Prim.Flatten(_registry().Render(o, new RenderContext(_unit.Doc, _lang())))
+                .Where(p => p.Tag is { } t && (t == key || t.StartsWith(key + ".", StringComparison.Ordinal))).ToList();
+        }
+
         /// <summary>Reads whether the current slide's background is dark (UI thread, outside the hooks).</summary>
         private void ReadSlideDark()
         {
@@ -244,7 +253,7 @@ namespace InventaSketch.AddIn.OnSlide
             var faint = (_haloPreview ?? new List<SketchUnit>()).Where(u => selected.All(s => s.Id != u.Id)).ToList();
             var key = string.Join(";", selected.Select(UnitKey)) + "|" + string.Join(";", faint.Select(UnitKey))
                 + "|" + Math.Round(view.OffsetX) + "," + Math.Round(view.OffsetY) + "," + view.PixelsPerMm.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)
-                + "|" + view.PaneRect + "|" + _slideDark;
+                + "|" + view.PaneRect + "|" + _slideDark + "|" + (_part ?? "");
             if (key == _haloKey) return _halo;
             if (_inHook)
             {
@@ -266,7 +275,15 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 var layers = new List<HaloLayer>();
                 if (faint.Count > 0) layers.Add(new HaloLayer(faint.SelectMany(UnitPrims).ToList(), 0.45f));
-                layers.Add(new HaloLayer(selected.SelectMany(UnitPrims).ToList(), 1f));
+                // A selected part (a chart's curve, area, axis, limit line, arrow …) glows on its own; the rest of the
+                // element only faintly (maintainer 2026-11-25: "in charts too: curves, areas, arrows – everything you select").
+                var partPrims = SelectedPartPrims();
+                if (partPrims.Count > 0)
+                {
+                    layers.Add(new HaloLayer(selected.SelectMany(UnitPrims).ToList(), 0.25f));
+                    layers.Add(new HaloLayer(partPrims, 1f));
+                }
+                else layers.Add(new HaloLayer(selected.SelectMany(UnitPrims).ToList(), 1f));
                 _halo = SelectionHalo.Render(layers, view.OffsetX, view.OffsetY, view.PixelsPerMm, (float)view.DeviceScale, _slideDark, view.PaneRect);
                 LastHalo = "selected=" + string.Join(",", selected.Select(u => u.Shape.Name)) + "; connected=" + string.Join(",", faint.Select(u => u.Shape.Name));
                 Log.Info("Halo: " + LastHalo + (_halo is null ? " (not visible)" : $" ({_halo.Bitmap.Width}x{_halo.Bitmap.Height} px)"));
