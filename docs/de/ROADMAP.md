@@ -189,6 +189,41 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
    CSV).
 
+### Review am Ende des 25.11.2026 und nächste Schritte
+
+**Heute erledigt:** UI/UX-Runde in LibreOffice (Seitenleiste: Engine-Suche, kontextbezogenes Auswahl-Panel, Operationen
+für Mehrfachauswahl, Seitensitzung mit einem Rückgängig-Schritt); die COM-Liste aus Punkt 3 (Kurvenscheibe als Teil und
+zerlegbare Kurvengetriebe, Ravigneaux-Sätze, Gelenkgrenzen, Kegelradpaare und Differential in den Drehzahlen des
+Getriebezugs, Wände wechseln mit der Haustechnik die Ansicht); drei P2-Module, parallel von Agenten mit
+Dateizuständigkeit gebaut – Verfahrens- und Wärmetechnik (35 Typen), Energiesysteme (30), Robotik (25) –, in der Engine
+registriert und in PowerPoint geprüft (Szenario `p2-modules`); ISO-128-Liniengruppen als Folienstil in COM und Web
+(Szenario `line-group`).
+
+**Durch Prüfung gefunden (und behoben):** Die Bibliothekssuche ließ einen Namensanfang („Lagertank“) vor zur Auswahl
+passende Teile rutschen – passende Teile stehen jetzt immer vorn; der Differentialkorb sperrte in den Drehzahlen seine
+Räder – er wirkt jetzt als Steg; die nativen Zeichenpläne renderten selbst und übergingen die Liniengruppe –
+`Registry.RenderLocal` ist jetzt der einzige Render-Weg; Einlinien-Symbole der Energie saßen außermittig, Kabel knickten
+nach einem Ansichtswechsel; PowerPoint-Szenarien lasen die Leiste aus nachhinkenden Log-Kopien – das Add-in meldet seine
+Leisten-IDs jetzt direkt.
+
+**Plan-Review – was sich am Plan ändert:**
+- *Zwei Render-Wege sind eine Falle.* Jede Funktion, die das Aussehen ändert, bekommt einen Zeichenplan-Test (der Weg,
+  den COM und Web für native Formen nehmen), nicht nur einen SVG-/`Registry.Render`-Test.
+- *Parallele Modul-Agenten funktionieren*, wenn der Koordinator Solution, Engine-Katalog und Review behält: Jede Galerie
+  wird vor dem Merge angesehen (so wurden die Kabelknicke gefunden), und jedes neue Modul bekommt ein
+  PowerPoint-Einfügeszenario.
+- *Konsistenz über Module ist der nächste Qualitätsschritt:* Leitungen von Fluidtechnik, Haustechnik, Verfahrenstechnik
+  und Energie springen noch nicht übereinander; Roboterwerkzeuge docken ohne Flanschausrichtung an; Farbakzente je Modul
+  sind offen.
+
+**Als Nächstes, in dieser Reihenfolge:**
+1. Web: Prüfung in PowerPoint im Web – braucht das Entwicklerzertifikat des Maintainers (`npm run certs` in
+   `hosts/office-web`) oder ein hochgeladenes Webspace-Paket.
+2. Konsistenz über Module: eine Kreuzungs-/Sprungregel für alle Leitungsfamilien, Anschlüsse mit Richtung
+   (Roboterflansch → Werkzeug), Farbakzente je Modul als Teil des Folienstils.
+3. LibreOffice: Overlay auf der Arbeitsfläche (Einrasten beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
+4. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,
