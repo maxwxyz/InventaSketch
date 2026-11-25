@@ -471,6 +471,16 @@ namespace InventaSketch.Modules.Charts
             return new I18nText(n.En, n.De);
         }
 
+        /// <summary>Pictogram of a shape in the "Curve shape" choice (one per shape, <see cref="IconIds"/>).</summary>
+        public static string Icon(CurveShape s) => s switch
+        {
+            CurveShape.Interpolated => IconIds.CurveSpline,
+            CurveShape.Fitted => IconIds.CurveFitted,
+            CurveShape.Segments => IconIds.CurveSegments,
+            CurveShape.Raw => IconIds.CurveRaw,
+            _ => IconIds.CurveSmoothed,
+        };
+
         /// <summary>Text id of a shape ("smoothed", "interpolated", "fitted", "segments", "raw").</summary>
         public static string Id(CurveShape s) => Names.First(n => n.Shape == s).Id;
 
@@ -530,21 +540,18 @@ namespace InventaSketch.Modules.Charts
         /// The part actions of a sketched curve, each a choice (maintainer 2026-11-25: choices are dropdowns, never cycles):
         /// "Curve shape" (smoothed, interpolated, fitted function, straight segments, as drawn), "Fitted function" (the ranked
         /// fits; fitted shape with two or more fits), "Smoothing" (light, medium, strong; smoothed shape) and "Detail" (low,
-        /// medium = adaptive default, high: how many key points are kept; not for exact piecewise-linear functions). Every
-        /// option has a small preview of the curve in that shape (the detail options with the kept points as dots). <paramref name="edit"/> turns a memo change into the object edit
-        /// (recompute the points, store memo and points).
+        /// medium = adaptive default, high: how many key points are kept; not for exact piecewise-linear functions). The shape
+        /// options carry their own pictogram (<see cref="Icon"/>: a drawing of the current curve looks alike in most shapes);
+        /// the other options a small preview of the curve (the detail options with the kept points as dots).
+        /// <paramref name="edit"/> turns a memo change into the object edit (recompute the points, store memo and points).
         /// </summary>
         internal static IEnumerable<ContextAction> Actions(CurveSketchMemo m, Func<Func<CurveSketchMemo, CurveSketchMemo>, Func<SketchObject, SketchObject>> edit)
         {
-            // TODO(icons): pictograms for the curve shapes (smoothed, interpolated, fitted, segments, as drawn) would replace the previews.
             var shape = new ActionChoice(ShapeAction, new I18nText("Curve shape", "Kurvenform"));
             foreach (var s in Offered(m))
             {
                 var to = s;
-                yield return ActionChoices.Option(shape, Id(s), Name(s, m), "", s == m.Shape, edit(x => x with { Shape = to })) with
-                {
-                    Group = "curve", Preview = Preview(m with { Shape = to }),
-                };
+                yield return ActionChoices.Option(shape, Id(s), Name(s, m), Icon(s), s == m.Shape, edit(x => x with { Shape = to })) with { Group = "curve" };
             }
             if (m.Shape == CurveShape.Fitted && m.Fits.Count > 1)
             {

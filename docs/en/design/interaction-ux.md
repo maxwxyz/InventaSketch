@@ -172,6 +172,11 @@ both tables are identical. Contact sheets (light and dark, 32 and 16 px) are wri
   *Mirror* stay the host's commands for the element.
 - **Charts:** *Data*, *Legend*, *Grid*, *Tick numbers*, *Smooth*, *Formula* (fx), *Parameters*, *Code* (JSON),
   *Contour*, *Function generator*, *Marker*, *Value line*, *Hatch between/below*, x/y axis break and its removal.
+  The five curve shapes of a sketched curve (options of "Curve shape") are one family, the same hump drawn five ways:
+  *Smoothed* (`curve-smoothed`: a calm curve with the removed jitter as dots on both sides), *Interpolated*
+  (`curve-spline`: a smooth curve exactly through three ringed points), *Fitted function* (`curve-fitted`: a function
+  curve with measured points beside it, not on it), *Straight segments* (`curve-segments`: straight lines between the
+  three ringed points) and *As drawn* (`curve-raw`: a shaky hand-drawn line).
 - **Drawing by hand:** *Pencil* ("sketch a curve"); *Trace* only for the coupler curve; *Ghosts* for ghost positions.
 - **Label-only markers:** *Toggle* (switch), *Cycle* (next variant) and *Option* (pick this option of a choice:
   relation kinds have their line-end pictograms, other kinds such as fragment or screen kinds use *Option*) never stand
@@ -192,8 +197,9 @@ current one marked – never a cycle button.** It holds for the element and for 
 
 - Engine: a choice is one action per option with the same `ActionChoice` (`src/InventaSketch.Core/ActionChoices.cs`;
   id `<choice>=<value>`, the current option `IsActive`; parameter choices through `ActionChoices.FromParam`). Options
-  without a shared pictogram carry a small drawing (`ContextAction.Preview`: the curve in that shape, the fill pattern,
-  the colour). Commands that form a menu ("Fill to ▸", "Add area ▸") are an `ActionChoice` with `IsMenu` (nothing
+  without a shared pictogram carry a small drawing (`ContextAction.Preview`: the fitted function, the smoothing, the fill
+  pattern, the colour). The curve shapes have their own pictograms (a drawing of the current curve looks alike in most
+  shapes). Commands that form a menu ("Fill to ▸", "Add area ▸") are an `ActionChoice` with `IsMenu` (nothing
   current). No `IconIds.Cycle` action and no "Next …" action that steps through options is left in any module; the
   engine test `tests/InventaSketch.Engine.Tests/ChoiceRuleTests.cs` checks this for every element, that every choice
   has at least two options with exactly one current, that a choice over a parameter the hosts already show as a
@@ -201,7 +207,7 @@ current one marked – never a cycle button.** It holds for the element and for 
   the same parameter to different fixed values outside a choice (the radio pattern: separate buttons for what is one
   dropdown).
   When the current option's picture would repeat a neighbouring button's (the fitted function, smoothing and detail of a
-  sketched curve all show the current curve, like the curve-shape button), the closed dropdown shows the choice's own
+  sketched curve all show the current curve), the closed dropdown shows the choice's own
   pictogram (`ActionChoice.BarIcon`: smoothing, a line with its points) or the current option's name
   (`LabelInBar`: "Sine ▾"); the open list keeps the pictures.
 - Bar: one dropdown button per choice, showing the current option's pictogram or picture (else a short text) and a

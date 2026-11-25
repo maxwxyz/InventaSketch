@@ -142,7 +142,9 @@ edge, where, steps) is one action per option (`ActionChoices.Option`, id `<choic
 `chart.curve.shape=fitted`), all carrying the same `ActionChoice` (key and label), the current option marked active.
 Hosts show them as one dropdown ("Curve shape: Smoothed ▾") and in the pie as "Curve shape: Smoothed ▸" opening the
 options – never as a cycle button. Options without a shared pictogram carry a small drawing (`ContextAction.Preview`:
-the curve in that shape, the fill pattern, the colour, the marker), which the hosts render as the option picture.
+the fitted function, the smoothing, the fill pattern, the colour, the marker), which the hosts render as the option
+picture. The curve shapes have their own pictograms (`IconIds.CurveSmoothed`, `CurveSpline`, `CurveFitted`,
+`CurveSegments`, `CurveRaw`), since a drawing of the current curve looks alike in most shapes.
 Choices whose options are commands (`ActionChoice.IsMenu`: "Fill below ▸", "Fill to ▸", "Add area ▸") mark nothing.
 The engine reports `choice`, `choiceLabel`, `choiceMenu` and `previewSvg` with every action.
 

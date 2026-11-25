@@ -177,7 +177,12 @@ dass beide Tabellen gleich sind. Kontaktbögen (hell und dunkel, 32 und 16 px) s
   *Grundstellung*, *An Wand ausrichten*. *Drehen* und *Spiegeln* bleiben die Host-Befehle für das Element.
 - **Diagramme:** *Daten*, *Legende*, *Gitternetz*, *Achsenzahlen*, *Glätten*, *Formel* (fx), *Parameter*, *Code*
   (JSON), *Höhenlinien*, *Funktionsgenerator*, *Marke*, *Wertlinie*, *Zwischen/unter Kurven schraffieren*,
-  Achsenbruch x/y und sein Entfernen.
+  Achsenbruch x/y und sein Entfernen. Die fünf Kurvenformen einer skizzierten Kurve (Möglichkeiten von „Kurvenform“)
+  sind eine Familie, derselbe Bogen auf fünf Arten: *Geglättet* (`curve-smoothed`: ruhige Kurve, das entfernte Zittern
+  als Punkte zu beiden Seiten), *Interpoliert* (`curve-spline`: glatte Kurve genau durch drei umkreiste Punkte),
+  *Ausgleichsfunktion* (`curve-fitted`: Funktionskurve mit Messpunkten daneben, nicht darauf), *Gerade Abschnitte*
+  (`curve-segments`: gerade Linien zwischen den drei umkreisten Punkten) und *Wie gezeichnet* (`curve-raw`: zittrige
+  Freihandlinie).
 - **Von Hand zeichnen:** *Stift* („Kurve skizzieren“); *Bahnkurve* nur für die Koppelkurve; *Zwischenlagen*.
 - **Nur mit Beschriftung:** *Schalter*, *Nächste Variante* und *Option* (diese Option einer Auswahl wählen:
   Beziehungsarten haben ihre Linienende-Piktogramme, andere Arten wie Fragment- oder Bildschirmarten nutzen *Option*)
@@ -202,7 +207,8 @@ jedes seiner Teile:
 - Engine: eine Auswahl ist eine Aktion je Möglichkeit mit derselben `ActionChoice`
   (`src/InventaSketch.Core/ActionChoices.cs`; Id `<Auswahl>=<Wert>`, die aktuelle Möglichkeit `IsActive`;
   Parameterauswahlen über `ActionChoices.FromParam`). Möglichkeiten ohne passendes gemeinsames Piktogramm tragen eine
-  kleine Zeichnung (`ContextAction.Preview`: die Kurve in dieser Form, das Füllmuster, die Farbe). Befehle, die ein Menü
+  kleine Zeichnung (`ContextAction.Preview`: die Ausgleichsfunktion, die Glättung, das Füllmuster, die Farbe). Die Kurvenformen haben eigene
+  Piktogramme (eine Zeichnung der aktuellen Kurve sieht in den meisten Formen gleich aus). Befehle, die ein Menü
   bilden („Füllen bis ▸“, „Fläche hinzufügen ▸“), sind eine `ActionChoice` mit `IsMenu` (nichts aktuell). In keinem
   Modul bleibt eine `IconIds.Cycle`- oder „Nächste …“-Aktion, die durch Möglichkeiten schaltet; der Engine-Test
   `tests/InventaSketch.Engine.Tests/ChoiceRuleTests.cs` prüft das für jedes Element, dazu dass jede Auswahl mindestens
@@ -211,7 +217,7 @@ jedes seiner Teile:
   Elements oder Teils denselben Parameter außerhalb einer Auswahl auf verschiedene feste Werte setzen (das
   Radio-Muster: getrennte Knöpfe für eine Klappliste).
   Würde das Bild der aktuellen Möglichkeit das eines Nachbarknopfs wiederholen (Ausgleichsfunktion, Glättung und
-  Detailgrad einer skizzierten Kurve zeigen alle die aktuelle Kurve, wie der Kurvenform-Knopf), zeigt die geschlossene
+  Detailgrad einer skizzierten Kurve zeigen alle die aktuelle Kurve), zeigt die geschlossene
   Klappliste das eigene Piktogramm der Auswahl (`ActionChoice.BarIcon`: Glätten, Linie mit ihren Punkten) oder den
   Namen der aktuellen Möglichkeit (`LabelInBar`: „Sinus ▾“); die offene Liste behält die Bilder.
 - Leiste: ein Klapplisten-Knopf je Auswahl mit dem Piktogramm oder Bild der aktuellen Möglichkeit (sonst einem kurzen

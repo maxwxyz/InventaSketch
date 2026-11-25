@@ -156,8 +156,10 @@ Füllmuster, Farbe, Deckkraft, Rand, Wo, Stufen) ist eine Aktion je Möglichkeit
 `<Auswahl>=<Wert>`, z. B. `chart.style=step`, `chart.curve.shape=fitted`), alle mit derselben `ActionChoice` (Schlüssel
 und Bezeichnung), die aktuelle aktiv markiert. Die Hosts zeigen sie als eine Klappliste („Kurvenform: Geglättet ▾“) und
 im Kreismenü als „Kurvenform: Geglättet ▸“, das die Möglichkeiten öffnet – nie als Durchschalt-Knopf. Möglichkeiten
-ohne passendes gemeinsames Piktogramm tragen eine kleine Zeichnung (`ContextAction.Preview`: die Kurve in dieser Form,
-das Füllmuster, die Farbe, der Marker), die die Hosts als Bild der Möglichkeit zeigen. Auswahlen aus Befehlen
+ohne passendes gemeinsames Piktogramm tragen eine kleine Zeichnung (`ContextAction.Preview`: die Ausgleichsfunktion,
+die Glättung, das Füllmuster, die Farbe, der Marker), die die Hosts als Bild der Möglichkeit zeigen. Die Kurvenformen
+haben eigene Piktogramme (`IconIds.CurveSmoothed`, `CurveSpline`, `CurveFitted`, `CurveSegments`, `CurveRaw`), weil
+eine Zeichnung der aktuellen Kurve in den meisten Formen gleich aussieht. Auswahlen aus Befehlen
 (`ActionChoice.IsMenu`: „Darunter füllen ▸“, „Füllen bis ▸“, „Fläche hinzufügen ▸“) markieren nichts. Die Engine
 liefert zu jeder Aktion `choice`, `choiceLabel`, `choiceMenu` und `previewSvg`.
 
