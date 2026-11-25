@@ -57,6 +57,30 @@ namespace InventaSketch.Modules.Energy.Tests
         }
 
         [Fact]
+        public void PortsKeepTheirOffsetFromTheCentreAcrossTheViewSwitch()
+        {
+            // A diagram switched pictorial <-> single-line keeps straight cables straight: boxes keep their centres
+            // (Registry.WithView only changes the size), so a port on the top/bottom edge must keep its x offset and a
+            // port on the left/right edge its y offset from the box centre.
+            var r = Fx.Reg();
+            foreach (var t in Fx.BoxTypes(r))
+                foreach (var item in r.Library.Where(i => i.TypeId == t.Id && i.View is null))
+                {
+                    var pic = r.WithView(r.Create(item, Vec2.Zero), "pictorial", Fx.Ctx());
+                    var sld = r.WithView(pic, "single-line", Fx.Ctx());
+                    var a = Fx.Anchors(r, pic, AnchorRole.Port).ToDictionary(x => x.Id!, x => x.P);
+                    var b = Fx.Anchors(r, sld, AnchorRole.Port).ToDictionary(x => x.Id!, x => x.P);
+                    foreach (var (id, p) in a)
+                    {
+                        var q = b[id];
+                        var side = Math.Abs(Math.Abs(p.X) - pic.Size.W / 2) < 1e-6;
+                        if (side) Assert.True(Math.Abs(p.Y - q.Y) < 1e-6, $"{item.Id} port {id}: y {p.Y} -> {q.Y}");
+                        else Assert.True(Math.Abs(p.X - q.X) < 1e-6, $"{item.Id} port {id}: x {p.X} -> {q.X}");
+                    }
+                }
+        }
+
+        [Fact]
         public void PortsFollowParameters()
         {
             var r = Fx.Reg();

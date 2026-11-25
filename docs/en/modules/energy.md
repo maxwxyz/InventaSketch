@@ -42,6 +42,12 @@ add a pictorial view, voltage labels, level colours, a docking rail and the bidi
   (heat, hydrogen, water, fuel, battery of a hybrid inverter) on the **left/right edges**. A diagram therefore reads
   top-down from the grid (classic single-line layout). Exceptions: the grid infeed has its point of connection at the
   bottom, the wind turbine its cable at the tower foot (bottom) in both views. Port ids are the same in both views.
+- **Straight cables stay straight:** a view switch keeps the box centre (only the size changes), so every port on
+  the top or bottom edge keeps its x offset from the centre and every side port its y offset in both views. Top and
+  bottom ports sit at x = 0 (single-line symbols are centred, the label area is to the right) except the electric
+  vehicle (charge port above the rear, x = −15 in both views) and the three-winding transformer (mv/lv at ±2.8).
+  A vertical cable from a busbar tap to a device therefore stays one vertical segment when the whole diagram
+  switches between pictorial and single-line (tested).
 - **Labels:** a designation (`name`) and rating lines (e.g. `630 kVA`) are drawn inside the box in a reserved label
   area; `showLabel` hides them. Numbers use the UI language (decimal comma in German: `0,4 kV`) and readable SI
   prefixes (`430 Wp`, `2.58 kWp`, `40 MVA`, `2 MWh`). AC voltages are shown in kV, DC voltages below 1 kV in volts
@@ -60,33 +66,33 @@ and `showLabel` (true).
 
 | Id | Name (EN / DE) | Sizes | Ports | Parameters |
 |---|---|---|---|---|
-| `energy.pv.module` | PV module / PV-Modul | 20x34 / 26x22 | dc | `power` (430 Wp) |
-| `energy.pv.string` | PV string / PV-String | 50x26 / 26x22 | dc | `modules` (6, 2–24; more/fewer actions), `power` per module (430 Wp) |
-| `energy.pv.array` | PV array / PV-Generator (Feld) | 50x34 / 26x22 | dc | `power` (10 kWp), `rows` (2, 1–6), `columns` (5, 1–12) |
-| `energy.wind.turbine` | Wind turbine / Windenergieanlage | 30x44 / 26x24 | ac (bottom) | `power` (3 MW), `rotor` (0°; "turn rotor" action, animation frames) |
-| `energy.gen.genset` | Generator set (genset) / Stromaggregat | 36x24 / 26x24 | ac | `power` (100 kVA), `fuel` diesel/gas/biogas/h2 |
-| `energy.conv.inverter` | Inverter / Wechselrichter | 24x30 / 30x24 | ac, dc (+ bat when hybrid) | `power` (10 kW), `phases` 3/1, `kind` pv/hybrid/battery |
-| `energy.conv.converter` | Power converter / Stromrichter | 24x30 / 30x24 | a, b | `power` (10 kW), `kind` acdc (rectifier)/dcdc/acac (frequency converter) |
-| `energy.storage.battery` | Battery storage / Batteriespeicher | 24x30 / 26x24 | dc | `capacity` (10 kWh), `soc` (75 %, fill level), `form` wall/cabinet/container |
-| `energy.heat.heatpump` | Heat pump / Wärmepumpe | 34x24 / 30x24 | el, heat | `power` (8 kW), `source` air/ground/water; HP/WP by UI language |
-| `energy.heat.chp` | CHP unit / Blockheizkraftwerk (BHKW) | 40x24 / 34x28 | el, fuel, heat | `power` (50 kWel), `thermal` (80 kWth), `fuel` gas/biogas/h2 |
+| `energy.pv.module` | PV module / PV-Modul | 20x34 / 40x22 | dc | `power` (430 Wp) |
+| `energy.pv.string` | PV string / PV-String | 50x26 / 40x22 | dc | `modules` (6, 2–24; more/fewer actions), `power` per module (430 Wp) |
+| `energy.pv.array` | PV array / PV-Generator (Feld) | 50x34 / 40x22 | dc | `power` (10 kWp), `rows` (2, 1–6), `columns` (5, 1–12) |
+| `energy.wind.turbine` | Wind turbine / Windenergieanlage | 30x44 / 38x24 | ac (bottom) | `power` (3 MW), `rotor` (0°; "turn rotor" action, animation frames) |
+| `energy.gen.genset` | Generator set (genset) / Stromaggregat | 36x24 / 38x24 | ac | `power` (100 kVA), `fuel` diesel/gas/biogas/h2 |
+| `energy.conv.inverter` | Inverter / Wechselrichter | 24x30 / 38x24 | ac, dc (+ bat when hybrid) | `power` (10 kW), `phases` 3/1, `kind` pv/hybrid/battery |
+| `energy.conv.converter` | Power converter / Stromrichter | 24x30 / 38x24 | a, b | `power` (10 kW), `kind` acdc (rectifier)/dcdc/acac (frequency converter) |
+| `energy.storage.battery` | Battery storage / Batteriespeicher | 24x30 / 36x24 | dc | `capacity` (10 kWh), `soc` (75 %, fill level), `form` wall/cabinet/container |
+| `energy.heat.heatpump` | Heat pump / Wärmepumpe | 34x24 / 38x24 | el, heat | `power` (8 kW), `source` air/ground/water; HP/WP by UI language |
+| `energy.heat.chp` | CHP unit / Blockheizkraftwerk (BHKW) | 40x24 / 38x28 | el, fuel, heat | `power` (50 kWel), `thermal` (80 kWth), `fuel` gas/biogas/h2 |
 | `energy.heat.storage` | Thermal storage tank / Wärmespeicher | 24x32 / 28x26 | charge, discharge | `volume` (1000 l; m³ from 10 000 l) |
-| `energy.h2.electrolyser` | Electrolyser / Elektrolyseur | 36x26 / 30x26 | el, water, h2 | `power` (1000 kW), `tech` pem/alkaline/soec |
-| `energy.h2.fuelcell` | Fuel cell / Brennstoffzelle | 36x26 / 30x26 | el, h2, heat | `power` (100 kW) |
-| `energy.h2.tank` | Hydrogen tank / Wasserstofftank | 36x22 / 26x24 | h2 | `mass` (500 kg), `pressure` (350 bar) |
-| `energy.mobility.charger` | EV charger / Ladestation | 22x30 / 28x24 | ac, ev | `power` (11 kW), `form` wallbox/pillar, `dc` (false) |
-| `energy.mobility.ev` | Electric vehicle / Elektrofahrzeug | 40x20 / 24x24 | charge | `battery` (60 kWh) |
-| `energy.load.building` | Consumer (load) / Verbraucher (Last) | 28x30 / 26x24 | ac | `kind` house/apartment/commercial/industry, `power` (10 kW) |
-| `energy.control.ems` | Energy management system / Energiemanagementsystem | 26x22 / 30x16 | data (bottom, dashed) | – |
-| `energy.grid.infeed` | Utility grid (infeed) / Netzeinspeisung (öffentliches Netz) | 30x34 / 28x18 | poc (bottom) | `voltage` (20 kV); title Grid/Netz unless named |
-| `energy.grid.transformer` | Transformer / Transformator | 30x34 / 30x26 | hv, lv | `hv` (20 kV), `lv` (0.4 kV), `power` (630 kVA), `vector` (vector group text, empty), `levelColors` |
-| `energy.grid.transformer3` | Three-winding transformer / Dreiwicklungstransformator | 30x34 / 34x28 | hv, mv, lv | `hv` (110 kV), `mv` (20 kV), `lv` (10 kV), `power` (40 MVA), `vector`, `levelColors` |
-| `energy.grid.substation` | Compact substation / Ortsnetzstation (Kompaktstation) | 34x30 / 34x30 | mv, lv | `hv` (MV side, 20 kV), `lv` (0.4 kV), `power` (630 kVA), `levelColors` |
-| `energy.grid.meter` | Energy meter / Energiezähler | 20x28 / 22x24 | a, b | `bidirectional` (true; import/export arrows), `unit` (kWh) |
+| `energy.h2.electrolyser` | Electrolyser / Elektrolyseur | 36x26 / 38x26 | el, water, h2 | `power` (1000 kW), `tech` pem/alkaline/soec |
+| `energy.h2.fuelcell` | Fuel cell / Brennstoffzelle | 36x26 / 38x26 | el, h2, heat | `power` (100 kW) |
+| `energy.h2.tank` | Hydrogen tank / Wasserstofftank | 36x22 / 34x24 | h2 | `mass` (500 kg), `pressure` (350 bar) |
+| `energy.mobility.charger` | EV charger / Ladestation | 22x30 / 38x24 | ac, ev | `power` (11 kW), `form` wallbox/pillar, `dc` (false) |
+| `energy.mobility.ev` | Electric vehicle / Elektrofahrzeug | 40x20 / 40x24 | charge | `battery` (60 kWh) |
+| `energy.load.building` | Consumer (load) / Verbraucher (Last) | 28x30 / 30x24 | ac | `kind` house/apartment/commercial/industry, `power` (10 kW) |
+| `energy.control.ems` | Energy management system / Energiemanagementsystem | 26x22 / 38x16 | data (bottom, dashed) | – |
+| `energy.grid.infeed` | Utility grid (infeed) / Netzeinspeisung (öffentliches Netz) | 30x34 / 38x18 | poc (bottom) | `voltage` (20 kV); title Grid/Netz unless named |
+| `energy.grid.transformer` | Transformer / Transformator | 30x34 / 38x26 | hv, lv | `hv` (20 kV), `lv` (0.4 kV), `power` (630 kVA), `vector` (vector group text, empty), `levelColors` |
+| `energy.grid.transformer3` | Three-winding transformer / Dreiwicklungstransformator | 30x34 / 38x28 | hv, mv, lv | `hv` (110 kV), `mv` (20 kV), `lv` (10 kV), `power` (40 MVA), `vector`, `levelColors` |
+| `energy.grid.substation` | Compact substation / Ortsnetzstation (Kompaktstation) | 34x30 / 40x30 | mv, lv | `hv` (MV side, 20 kV), `lv` (0.4 kV), `power` (630 kVA), `levelColors` |
+| `energy.grid.meter` | Energy meter / Energiezähler | 20x28 / 30x24 | a, b | `bidirectional` (true; import/export arrows), `unit` (kWh) |
 | `energy.grid.busbar` | Busbar / Sammelschiene | 60x10 / 60x8 | t1…tn on the bar + rail `bar0` | `voltage` (0.4 kV), `dc`, `taps` (5, 2–12), `levelColors`; the width is kept on a view switch |
-| `energy.grid.breaker` | Circuit breaker / Leistungsschalter | 16x24 / 22x24 | a, b | `closed` (true), `symbol` contact (switch with breaker cross) / square (filled = closed) |
-| `energy.grid.disconnector` | Disconnector / Trennschalter | 16x24 / 22x24 | a, b | `closed` (true), `kind` disconnector / loadbreak (switch-disconnector) / fuse (fuse switch-disconnector) |
-| `energy.grid.earthing` | Earthing switch / Erdungsschalter | 16x24 / 22x24 | a | `closed` (false) |
+| `energy.grid.breaker` | Circuit breaker / Leistungsschalter | 16x24 / 26x24 | a, b | `closed` (true), `symbol` contact (switch with breaker cross) / square (filled = closed) |
+| `energy.grid.disconnector` | Disconnector / Trennschalter | 16x24 / 26x24 | a, b | `closed` (true), `kind` disconnector / loadbreak (switch-disconnector) / fuse (fuse switch-disconnector) |
+| `energy.grid.earthing` | Earthing switch / Erdungsschalter | 16x24 / 26x24 | a | `closed` (false) |
 | `energy.line.cable` | Cable / line / Kabel / Leitung | points | rails `rail0…` | `voltage` (0.4 kV), `dc`, `levelColors`, `kind` power/data (dashed), `conductors` (0–5 marks), `label`, `showVoltage`, `route` free/orthogonal |
 | `energy.line.pipe` | Energy carrier pipe / Rohrleitung (Energieträger) | points | rails | `carrier` hydrogen/gas/heat/cooling/water, `label`, `showCode` |
 | `energy.line.flow` | Energy flow arrow / Energiefluss-Pfeil | points | rails | `carrier` electricity/hydrogen/gas/heat/cooling/water, `weight` (band width 2.5 mm), `label` (e.g. "12 MWh/a") |
@@ -151,15 +157,17 @@ LibreOffice fonts do). The wind turbine offers animation frames (rotor steps of 
 
 ## Tests and gallery
 
-`tests/InventaSketch.Modules.Energy.Tests` (75 tests): registration and id conventions, bilingual names, parameters,
+`tests/InventaSketch.Modules.Energy.Tests` (77 tests): registration and id conventions, bilingual names, parameters,
 options and actions, both views with their icons, insertion without parameters, library items resolve to valid
 parameters and views, every library item rendered in every view in both languages inside its box (also stretched,
 squashed, with every choice and the limits of every number), every parameter changes the drawing or the ports,
 scaling changes `Size` not parameters, the views draw different symbols, view switch sizes (visual scale kept,
 busbar width kept), labels in both languages and unit prefixes, level colours, switch states, style override, ports
-with the same ids in both views on the box edge and reached by a lead, busbar rail and taps, a cable docked on a port
+with the same ids in both views on the box edge, reached by a lead and keeping their offset from the centre across
+the view switch, busbar rail and taps, a cable docked on a port
 following moves and view switches, a cable docked on the busbar with a junction dot, line language (corners, extend,
 branches), orthogonal routing, conductor marks and labels, pipe codes, the flow band, number formatting and typed
 voltages. The gallery test writes `gallery/*.html` (every type in both views, stretched and named, all presets in both
 views, and two sample systems — a home energy system and an MV/LV single-line diagram — each in the pictorial and the
-single-line view); a further test checks that every cable end of the samples stays on its port in both views.
+single-line view); further tests check that every cable end of the samples stays on its port in both views and
+that every straight cable stays one vertical segment after switching the whole diagram.

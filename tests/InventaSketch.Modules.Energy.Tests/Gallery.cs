@@ -169,7 +169,7 @@ namespace InventaSketch.Modules.Energy.Tests
             (doc, house) = Place(r, doc, "energy.load.building", 100, 115);
             (doc, wb) = Place(r, doc, "energy.mobility.charger", 134, 115);
             (doc, ev) = Place(r, doc, "energy.mobility.ev", 149, 150);
-            (doc, hp) = Place(r, doc, "energy.heat.heatpump", 159, 112);
+            (doc, hp) = Place(r, doc, "energy.heat.heatpump", 168, 112);
             doc = Connect(r, doc, "energy.line.cable.lv", grid, "poc", meter, "a");
             doc = Connect(r, doc, "energy.line.cable.lv", meter, "b", bus, "t3");
             doc = Connect(r, doc, "energy.line.cable.lv", bus, "t1", inv, "ac");
@@ -188,17 +188,17 @@ namespace InventaSketch.Modules.Energy.Tests
         {
             var doc = SketchDocument.Create();
             string grid, cb, tr, bus, q1, q2, q3, load, inv, pv, wb;
-            (doc, grid) = Place(r, doc, "energy.grid.infeed", 86, 10);
-            (doc, cb) = Place(r, doc, "energy.grid.breaker", 84, 36, null, ("name", "Q0"));
-            (doc, tr) = Place(r, doc, "energy.grid.transformer.sld", 87, 64, null, ("name", "T1"));
+            (doc, grid) = Place(r, doc, "energy.grid.infeed", 80, 10);
+            (doc, cb) = Place(r, doc, "energy.grid.breaker", 80, 36, null, ("name", "Q0"));
+            (doc, tr) = Place(r, doc, "energy.grid.transformer.sld", 80, 64, null, ("name", "T1"));
             (doc, bus) = Place(r, doc, "energy.grid.busbar", 80, 90, new Size2(120, 8), ("name", "LV"));
-            (doc, q1) = Place(r, doc, "energy.grid.disconnector.fuse", 36, 112, null, ("name", "F1"));
-            (doc, q2) = Place(r, doc, "energy.grid.breaker", 84, 112, null, ("name", "Q2"));
-            (doc, q3) = Place(r, doc, "energy.grid.disconnector.loadbreak", 132, 112, null, ("name", "Q3"), ("closed", false));
-            (doc, load) = Place(r, doc, "energy.load.building.sld", 38, 140);
-            (doc, inv) = Place(r, doc, "energy.conv.inverter.sld", 88, 140);
-            (doc, pv) = Place(r, doc, "energy.pv.array.sld", 86, 166);
-            (doc, wb) = Place(r, doc, "energy.mobility.charger.sld", 135, 140);
+            (doc, q1) = Place(r, doc, "energy.grid.disconnector.fuse", 32, 112, null, ("name", "F1"));
+            (doc, q2) = Place(r, doc, "energy.grid.breaker", 80, 112, null, ("name", "Q2"));
+            (doc, q3) = Place(r, doc, "energy.grid.disconnector.loadbreak", 128, 112, null, ("name", "Q3"), ("closed", false));
+            (doc, load) = Place(r, doc, "energy.load.building.sld", 32, 140);
+            (doc, inv) = Place(r, doc, "energy.conv.inverter.sld", 80, 140);
+            (doc, pv) = Place(r, doc, "energy.pv.array.sld", 80, 166);
+            (doc, wb) = Place(r, doc, "energy.mobility.charger.sld", 128, 140);
             doc = Connect(r, doc, "energy.line.cable.mv", grid, "poc", cb, "a");
             doc = Connect(r, doc, "energy.line.cable.mv", cb, "b", tr, "hv");
             doc = Connect(r, doc, "energy.line.cable.lv", tr, "lv", bus, "t3");
@@ -210,6 +210,36 @@ namespace InventaSketch.Modules.Energy.Tests
             doc = Connect(r, doc, "energy.line.cable.dc", inv, "dc", pv, "dc");
             doc = Connect(r, doc, "energy.line.cable.lv", q3, "b", wb, "ac");
             return doc;
+        }
+
+        /// <summary>The drawn path of a cable (routing applied).</summary>
+        private static System.Collections.Generic.List<Vec2> CablePath(Registry r, SketchDocument doc, SketchObject cable)
+            => ((PathPrim)r.Render(cable, new RenderContext(doc)).First(p => p.Tag == EnTags.Cable)).Segments
+                .Where(s => s.Op != SegOp.Z).Select(s => s.P).ToList();
+
+        [Fact]
+        public void StraightCablesStayStraightWhenTheDiagramSwitchesItsView()
+        {
+            // Every cable of the samples runs straight down from a busbar tap or device port to the next port; after
+            // switching the whole diagram (pictorial -> single-line -> pictorial) it is still one vertical segment.
+            var r = Fx.Reg();
+            foreach (var sample in new[] { HomeSystem(r), MvLvDiagram(r) })
+            {
+                var pic = SwitchAll(r, sample, EnViews.Pictorial);
+                var cables = pic.Objects.Values.Where(o => o.IsPointGeometry).Select(o => o.Id).ToList();
+                Assert.NotEmpty(cables);
+                foreach (var doc in new[] { pic, SwitchAll(r, pic, EnViews.SingleLine), SwitchAll(r, SwitchAll(r, pic, EnViews.SingleLine), EnViews.Pictorial) })
+                    foreach (var id in cables)
+                    {
+                        var cable = doc.Get(id)!;
+                        var path = CablePath(r, doc, cable);
+                        var a = cable.Attach![0]!;
+                        var b = cable.Attach![cable.Points!.Count - 1]!;
+                        var what = $"{r.TypeOf(cable).ViewOf(cable)}: cable {a.AnchorId} -> {b.AnchorId}";
+                        Assert.True(path.Count == 2, what + " has a jog: " + string.Join(" ", path));
+                        Assert.True(Math.Abs(path[0].X - path[1].X) < 1e-6, what + " is not vertical: " + string.Join(" ", path));
+                    }
+            }
         }
 
         [Fact]

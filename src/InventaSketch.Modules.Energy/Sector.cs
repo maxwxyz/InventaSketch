@@ -37,11 +37,11 @@ namespace InventaSketch.Modules.Energy
                 },
                 ViewSpec.Pictorial(34, 24, HeatPumpPictorial) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("el", 9, -12), new Port("heat", 17, 3)), LabelBox = ViewSpec.LabelAt(5, -6.5, 13, 8.5), LabelAlign = TextAnchor.Middle,
+                    Ports = ViewSpec.Fixed(new Port("el", 0, -12), new Port("heat", 17, 3)), LabelBox = ViewSpec.LabelAt(5, -6.5, 13, 8.5), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(30, 24, HeatPumpSymbol) with
+                ViewSpec.SingleLine(38, 24, HeatPumpSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("el", -6, -12), new Port("heat", 15, 3)), LabelBox = ViewSpec.LabelAt(1.5, -11, 15, 1.5),
+                    Ports = ViewSpec.Fixed(new Port("el", 0, -12), new Port("heat", 19, 3)), LabelBox = ViewSpec.LabelAt(7.5, -11, 19, 1.5),
                 })
             {
                 Params = new[] { HeatPower, Source },
@@ -59,11 +59,11 @@ namespace InventaSketch.Modules.Energy
                 },
                 ViewSpec.Pictorial(40, 24, ChpPictorial) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("el", 0, -12), new Port("fuel", -20, 5), new Port("heat", 20, 3)), LabelBox = ViewSpec.LabelAt(5, -5, 16, 8.5),
+                    Ports = ViewSpec.Fixed(new Port("el", 0, -12), new Port("fuel", -20, 5), new Port("heat", 20, 5)), LabelBox = ViewSpec.LabelAt(5, -5, 16, 8.5),
                 },
-                ViewSpec.SingleLine(34, 28, ChpSymbol) with
+                ViewSpec.SingleLine(38, 28, ChpSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("el", -6, -14), new Port("fuel", -17, 7.5), new Port("heat", 17, 7.5)), LabelBox = ViewSpec.LabelAt(1, -12, 16, 4.5),
+                    Ports = ViewSpec.Fixed(new Port("el", 0, -14), new Port("fuel", -19, 5), new Port("heat", 19, 5)), LabelBox = ViewSpec.LabelAt(6, -13, 19, 2.5),
                 })
             {
                 Params = new[] { ElPower, ThPower, ChpFuel },
@@ -85,7 +85,7 @@ namespace InventaSketch.Modules.Energy
                 },
                 ViewSpec.SingleLine(28, 26, HeatStorageSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("charge", -14, -5), new Port("discharge", 14, -5)), LabelBox = ViewSpec.LabelAt(0, -2, 14, 9),
+                    Ports = ViewSpec.Fixed(new Port("charge", -14, -8), new Port("discharge", 14, -8)), LabelBox = ViewSpec.LabelAt(0, -5, 14, 9),
                 })
             {
                 Params = new[] { Volume },
@@ -105,9 +105,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("el", 0, -13), new Port("water", -18, 4), new Port("h2", 18, 0)), LabelBox = ViewSpec.LabelAt(-12, 8.6, 12, 13), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(30, 26, ElectrolyserSymbol) with
+                ViewSpec.SingleLine(38, 26, ElectrolyserSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("el", -4, -13), new Port("water", -15, 0), new Port("h2", 15, 0)), LabelBox = ViewSpec.LabelAt(3, -12, 15, -1.5),
+                    Ports = ViewSpec.Fixed(new Port("el", 0, -13), new Port("water", -19, 4), new Port("h2", 19, 0)), LabelBox = ViewSpec.LabelAt(7, -12, 19, -1.5),
                 })
             {
                 Params = new[] { ElyPower, ElyTech },
@@ -127,9 +127,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("el", 0, -13), new Port("h2", -18, 1), new Port("heat", 18, 1)), LabelBox = ViewSpec.LabelAt(-12, 9.4, 12, 13), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(30, 26, FuelCellSymbol) with
+                ViewSpec.SingleLine(38, 26, FuelCellSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("el", -4, -13), new Port("h2", -15, 0), new Port("heat", 15, 3)), LabelBox = ViewSpec.LabelAt(3, -12, 15, 1.5),
+                    Ports = ViewSpec.Fixed(new Port("el", 0, -13), new Port("h2", -19, 1), new Port("heat", 19, 1)), LabelBox = ViewSpec.LabelAt(7, -12, 19, -0.8),
                 })
             {
                 Params = new[] { FcPower },
@@ -149,9 +149,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("h2", 0, -11)), LabelBox = ViewSpec.LabelAt(-9, -0.4, 9, 5.2), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(26, 24, TankSymbol) with
+                ViewSpec.SingleLine(34, 24, TankSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("h2", -6, -12)), LabelBox = ViewSpec.LabelAt(0.5, -5, 13, 5),
+                    Ports = ViewSpec.Fixed(new Port("h2", 0, -12)), LabelBox = ViewSpec.LabelAt(5.5, -5, 17, 5),
                 })
             {
                 Params = new[] { Mass, Pressure },
@@ -173,7 +173,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void HeatPumpPictorial(Pen p, SketchObject o)
         {
-            p.Line(9, -12, 9, -8, St.Stroke(Pal.Dark, 0.5), EnTags.Lead);
+            p.Line(0, -12, 0, -8, St.Stroke(Pal.Dark, 0.5), EnTags.Lead);
             p.Line(14, 3, 17, 3, St.Stroke(Pal.Heat, 0.6), EnTags.Lead);
             p.Rect(-12, 10, -9, 11.5, St.Fill(Pal.Dark), "foot");
             p.Rect(9, 10, 12, 11.5, St.Fill(Pal.Dark), "foot");
@@ -192,9 +192,9 @@ namespace InventaSketch.Modules.Energy
 
         private static void HeatPumpSymbol(Pen p, SketchObject o)
         {
-            const double cx = -6;
+            const double cx = 0;
             p.Line(cx, -12, cx, -6, St.Sym, EnTags.Lead);
-            p.Line(0, 3, 15, 3, St.Thin, EnTags.Lead);
+            p.Line(cx + 6, 3, 19, 3, St.Thin, EnTags.Lead);
             p.Rect(cx - 6, -6, cx + 6, 6, St.SymWhite, "body");
             p.Text(cx, -1.5, p.Lang == Lang.De ? "WP" : "HP", 3.4, 8, 3.4, TextAnchor.Middle, true, null, "letter");
             // Heat lifted from the source (bottom) to the useful temperature (top).
@@ -205,7 +205,7 @@ namespace InventaSketch.Modules.Energy
         {
             p.Line(0, -12, 0, -7, St.Stroke(Pal.Dark, 0.5), EnTags.Lead);
             p.Line(-20, 5, -17, 5, St.Stroke(Pal.Gas, 0.6), EnTags.Lead);
-            p.Line(17, 3, 20, 3, St.Stroke(Pal.Heat, 0.6), EnTags.Lead);
+            p.Line(17, 5, 20, 5, St.Stroke(Pal.Heat, 0.6), EnTags.Lead);
             p.Rect(12, -11.5, 14.5, -7, St.Fill(Pal.Dark), "exhaust");
             p.Rect(-17, -7, 17, 10, St.Fill(Pal.Metal), "enclosure", 0.8);
             for (var i = 0; i < 3; i++) p.Rect(-14 + 3 * i, -5, -12 + 3 * i, -3, St.Fill(Pal.Steel), "cylinder");
@@ -218,13 +218,13 @@ namespace InventaSketch.Modules.Energy
 
         private static void ChpSymbol(Pen p, SketchObject o)
         {
-            p.Line(-17, 7.5, -10.5, 7.5, St.Thin, EnTags.Lead);
-            p.Line(-1.5, 7.5, 17, 7.5, St.Thin, EnTags.Lead);
-            var g = Generation.Generator(p, -6, -4, -14, 4.4);
-            p.Add(Prim.Line(g.V(-0.5, 4.4), p.V(-6.5, 4), St.Sym), "shaft");
-            p.Add(Prim.Line(g.V(0.5, 4.4), p.V(-5.5, 4), St.Sym), "shaft");
-            p.Rect(-10.5, 4, -1.5, 11, St.SymWhite, "engine");
-            p.Poly(St.Thin, true, "flame", -6, 5.3, -4.5, 7.7, -5.1, 9.9, -6.9, 9.9, -7.5, 7.7);
+            p.Line(-19, 5, -4.5, 5, St.Thin, EnTags.Lead);
+            p.Line(4.5, 5, 19, 5, St.Thin, EnTags.Lead);
+            var g = Generation.Generator(p, 0, -5.5, -14, 4.4);
+            p.Add(Prim.Line(g.V(-0.5, 4.4), p.V(-0.5, 1.5), St.Sym), "shaft");
+            p.Add(Prim.Line(g.V(0.5, 4.4), p.V(0.5, 1.5), St.Sym), "shaft");
+            p.Rect(-4.5, 1.5, 4.5, 8.5, St.SymWhite, "engine");
+            p.Poly(St.Thin, true, "flame", 0, 2.8, 1.5, 5.2, 0.9, 7.4, -0.9, 7.4, -1.5, 5.2);
         }
 
         private static readonly string[] Layers = { "#ef5350", "#ffa726", "#90caf9", "#42a5f5" };
@@ -243,8 +243,8 @@ namespace InventaSketch.Modules.Energy
 
         private static void HeatStorageSymbol(Pen p, SketchObject o)
         {
-            p.Line(-14, -5, -10, -5, St.Thin, EnTags.Lead);
-            p.Line(-2, -5, 14, -5, St.Thin, EnTags.Lead);
+            p.Line(-14, -8, -10, -8, St.Thin, EnTags.Lead);
+            p.Line(-2, -8, 14, -8, St.Thin, EnTags.Lead);
             p.Rect(-10, -9, -2, 9, St.SymWhite, "tank", 2.5);
             foreach (var y in new[] { -3.0, 1.0, 5.0 }) p.Line(-9.2, y, -2.8, y, St.Thin with { Dash = DashStyle.Dash }, "layer");
         }
@@ -272,10 +272,10 @@ namespace InventaSketch.Modules.Energy
 
         private static void ElectrolyserSymbol(Pen p, SketchObject o)
         {
-            const double cx = -4;
+            const double cx = 0;
             p.Line(cx, -13, cx, -6, St.Sym, EnTags.Lead);
-            p.Line(-15, 0, cx - 6, 0, St.Thin, EnTags.Lead);
-            p.Line(cx + 6, 0, 15, 0, St.Thin, EnTags.Lead);
+            p.Line(-19, 4, cx - 6, 4, St.Thin, EnTags.Lead);
+            p.Line(cx + 6, 0, 19, 0, St.Thin, EnTags.Lead);
             p.Rect(cx - 6, -6, cx + 6, 6, St.SymWhite, "body");
             p.Line(cx - 6, 6, cx + 6, -6, St.Sym, "diagonal");
             p.DcSign(cx - 2.7, -2.7, 2, St.Thin);
@@ -300,10 +300,10 @@ namespace InventaSketch.Modules.Energy
 
         private static void FuelCellSymbol(Pen p, SketchObject o)
         {
-            const double cx = -4;
+            const double cx = 0;
             p.Line(cx, -13, cx, -6, St.Sym, EnTags.Lead);
-            p.Line(-15, 0, cx - 6, 0, St.Thin, EnTags.Lead);
-            p.Line(cx + 6, 3, 15, 3, St.Thin, EnTags.Lead);
+            p.Line(-19, 1, cx - 6, 1, St.Thin, EnTags.Lead);
+            p.Line(cx + 6, 1, 19, 1, St.Thin, EnTags.Lead);
             p.Rect(cx - 6, -6, cx + 6, 6, St.SymWhite, "body");
             p.Line(cx - 6, -6, cx + 6, 6, St.Sym, "diagonal");
             p.Text(cx - 2.9, 2.8, "H₂", 2.6, 4.4, 2.6, TextAnchor.Middle, false, null, "medium");
@@ -327,9 +327,9 @@ namespace InventaSketch.Modules.Energy
 
         private static void TankSymbol(Pen p, SketchObject o)
         {
-            p.Line(-6, -12, -6, -5, St.Sym, EnTags.Lead);
-            p.Rect(-9.5, -5, -2.5, 9, St.SymWhite, "vessel", 3.5);
-            p.Text(-6, 2, "H₂", 2.6, 5.5, 2.6, TextAnchor.Middle, false, null, "medium");
+            p.Line(0, -12, 0, -5, St.Sym, EnTags.Lead);
+            p.Rect(-3.5, -5, 3.5, 9, St.SymWhite, "vessel", 3.5);
+            p.Text(0, 2, "H₂", 2.6, 5.5, 2.6, TextAnchor.Middle, false, null, "medium");
         }
 
         internal static string Inv(double v) => v.ToString(CultureInfo.InvariantCulture);

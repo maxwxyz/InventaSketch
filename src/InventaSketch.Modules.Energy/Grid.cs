@@ -51,9 +51,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("poc", 0, 17)), LabelBox = ViewSpec.LabelAt(6, 8.6, 15, 15.6),
                 },
-                ViewSpec.SingleLine(28, 18, InfeedSymbol) with
+                ViewSpec.SingleLine(38, 18, InfeedSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("poc", -6, 9)), LabelBox = ViewSpec.LabelAt(3, -8, 14, 1),
+                    Ports = ViewSpec.Fixed(new Port("poc", 0, 9)), LabelBox = ViewSpec.LabelAt(8.5, -8, 19, 1),
                 })
             {
                 Params = new[] { GridVoltage },
@@ -70,9 +70,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("hv", 0, -17), new Port("lv", 0, 17)), LabelBox = ViewSpec.LabelAt(-6, -2.6, 6, 9.1), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(30, 26, TransformerSymbol) with
+                ViewSpec.SingleLine(38, 26, TransformerSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("hv", -7, -13), new Port("lv", -7, 13)), LabelBox = ViewSpec.LabelAt(0, -12, 15, 12),
+                    Ports = ViewSpec.Fixed(new Port("hv", 0, -13), new Port("lv", 0, 13)), LabelBox = ViewSpec.LabelAt(6.5, -12, 19, 12),
                 })
             {
                 Params = new[] { Hv, Lv, TrPower, Vector, Pm.LevelColors },
@@ -93,11 +93,11 @@ namespace InventaSketch.Modules.Energy
                     "dreiwicklungstransformator", "dreiwicklungstrafo", "transformator", "trafo", "umspannwerk", "tertiärwicklung"),
                 ViewSpec.Pictorial(30, 34, (p, o) => TransformerPictorial(p, o, true)) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("hv", 0, -17), new Port("mv", -5, 17), new Port("lv", 5, 17)), LabelBox = ViewSpec.LabelAt(-6, -2.6, 6, 9.1), LabelAlign = TextAnchor.Middle,
+                    Ports = ViewSpec.Fixed(new Port("hv", 0, -17), new Port("mv", -2.8, 17), new Port("lv", 2.8, 17)), LabelBox = ViewSpec.LabelAt(-6, -2.6, 6, 9.1), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(34, 28, Transformer3Symbol) with
+                ViewSpec.SingleLine(38, 28, Transformer3Symbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("hv", -8, -14), new Port("mv", -10.8, 14), new Port("lv", -5.2, 14)), LabelBox = ViewSpec.LabelAt(1, -13, 17, 13),
+                    Ports = ViewSpec.Fixed(new Port("hv", 0, -14), new Port("mv", -2.8, 14), new Port("lv", 2.8, 14)), LabelBox = ViewSpec.LabelAt(8, -13, 19, 13),
                 })
             {
                 Params = new[] { Hv3, Mv3, Lv3, Tr3Power, Vector, Pm.LevelColors },
@@ -123,9 +123,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("mv", 0, -15), new Port("lv", 0, 15)), LabelBox = ViewSpec.LabelAt(-13, -5.4, 13, -0.6), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(34, 30, SubstationSymbol) with
+                ViewSpec.SingleLine(40, 30, SubstationSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("mv", -6, -15), new Port("lv", -6, 15)), LabelBox = ViewSpec.LabelAt(4.5, -10, 17, 10),
+                    Ports = ViewSpec.Fixed(new Port("mv", 0, -15), new Port("lv", 0, 15)), LabelBox = ViewSpec.LabelAt(10.5, -10, 20, 10),
                 })
             {
                 Params = new[] { StationMv, Lv, TrPower, Pm.LevelColors },
@@ -147,9 +147,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("a", 0, -14), new Port("b", 0, 14)), LabelBox = ViewSpec.LabelAt(-7, 5.6, 7, 9.4), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(22, 24, MeterSymbol) with
+                ViewSpec.SingleLine(30, 24, MeterSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("a", -4, -12), new Port("b", -4, 12)), LabelBox = ViewSpec.LabelAt(3.5, -5, 11, 5),
+                    Ports = ViewSpec.Fixed(new Port("a", 0, -12), new Port("b", 0, 12)), LabelBox = ViewSpec.LabelAt(7.5, -5, 15, 5),
                 })
             {
                 Params = new[] { Bidirectional, MeterUnit },
@@ -194,9 +194,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("a", 0, -12), new Port("b", 0, 12)), LabelBox = ViewSpec.LabelAt(-5, 2.6, 5, 5.6), LabelAlign = TextAnchor.Middle,
                 },
-                ViewSpec.SingleLine(22, 24, BreakerSymbol_) with
+                ViewSpec.SingleLine(26, 24, BreakerSymbol_) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("a", -4, -12), new Port("b", -4, 12)), LabelBox = ViewSpec.LabelAt(3.5, -5, 11, 5),
+                    Ports = ViewSpec.Fixed(new Port("a", 0, -12), new Port("b", 0, 12)), LabelBox = ViewSpec.LabelAt(5, -5, 13, 5),
                 })
             {
                 DefaultViewId = EnViews.SingleLine,
@@ -213,9 +213,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("a", 0, -12), new Port("b", 0, 12)),
                 },
-                ViewSpec.SingleLine(22, 24, DisconnectorSymbol) with
+                ViewSpec.SingleLine(26, 24, DisconnectorSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("a", -4, -12), new Port("b", -4, 12)), LabelBox = ViewSpec.LabelAt(3.5, -5, 11, 5),
+                    Ports = ViewSpec.Fixed(new Port("a", 0, -12), new Port("b", 0, 12)), LabelBox = ViewSpec.LabelAt(5, -5, 13, 5),
                 })
             {
                 DefaultViewId = EnViews.SingleLine,
@@ -232,9 +232,9 @@ namespace InventaSketch.Modules.Energy
                 {
                     Ports = ViewSpec.Fixed(new Port("a", 0, -12)),
                 },
-                ViewSpec.SingleLine(22, 24, EarthingSymbol) with
+                ViewSpec.SingleLine(26, 24, EarthingSymbol) with
                 {
-                    Ports = ViewSpec.Fixed(new Port("a", -4, -12)), LabelBox = ViewSpec.LabelAt(3.5, -5, 11, 5),
+                    Ports = ViewSpec.Fixed(new Port("a", 0, -12)), LabelBox = ViewSpec.LabelAt(5, -5, 13, 5),
                 })
             {
                 DefaultViewId = EnViews.SingleLine,
@@ -313,8 +313,8 @@ namespace InventaSketch.Modules.Energy
 
         private static void InfeedSymbol(Pen p, SketchObject o)
         {
-            p.Line(-6, 1, -6, 9, St.Sym, EnTags.Lead);
-            p.Rect(-13, -8, 1, 1, St.Sym with { Fill = Fill.Hatched(new HatchPattern(45, 1.2, true)) }, "network");
+            p.Line(0, 1, 0, 9, St.Sym, EnTags.Lead);
+            p.Rect(-7, -8, 7, 1, St.Sym with { Fill = Fill.Hatched(new HatchPattern(45, 1.2, true)) }, "network");
         }
 
         // ------------------------------------------------------------------ transformers
@@ -343,9 +343,9 @@ namespace InventaSketch.Modules.Energy
             p.Rect(-6.5, -3, 6.5, 9.5, St.Fill(Pal.White), "nameplate", 0.4);
             if (three)
             {
-                foreach (var x in new[] { -5.0, 5.0 })
+                foreach (var x in new[] { -2.8, 2.8 })
                 {
-                    p.Rect(x - 2, 12, x + 2, 14.2, St.Fill(Pal.Dark), "cable-box");
+                    p.Rect(x - 1.9, 12, x + 1.9, 14.2, St.Fill(Pal.Dark), "cable-box");
                     p.Line(x, 14.2, x, 17, dark, EnTags.Lead);
                 }
             }
@@ -358,7 +358,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void TransformerSymbol(Pen p, SketchObject o)
         {
-            const double cx = -7, r = 4.6, d = 3.3;
+            const double cx = 0, r = 4.6, d = 3.3;
             var hv = LevelColor(o, o.Clamped(Hv));
             var lv = LevelColor(o, o.Clamped(Lv));
             Windings(p, cx, 13, r, d, hv, lv);
@@ -382,15 +382,15 @@ namespace InventaSketch.Modules.Energy
             var lv = LevelColor(o, o.Clamped(Lv3));
             // Winding circles keep their shape; the leads run vertically from the circles and jog to the ports when the
             // box is scaled non-uniformly.
-            var u = p.Uniform(-8, 0);
+            var u = p.Uniform(0, 0);
             void Lead(Vec2 from, Vec2 port, string color)
             {
                 var mid = (from.Y + port.Y) / 2;
                 p.Add(Prim.Polyline(new[] { from, new Vec2(from.X, mid), new Vec2(port.X, mid), port }, Sym(color)), EnTags.Lead);
             }
-            Lead(u.V(0, -3.2 - r), p.V(-8, -14), hv);
-            Lead(u.V(-2.8, 1.6 + r), p.V(-10.8, 14), mv);
-            Lead(u.V(2.8, 1.6 + r), p.V(-5.2, 14), lv);
+            Lead(u.V(0, -3.2 - r), p.V(0, -14), hv);
+            Lead(u.V(-2.8, 1.6 + r), p.V(-2.8, 14), mv);
+            Lead(u.V(2.8, 1.6 + r), p.V(2.8, 14), lv);
             u.Circle(0, -3.2, r, Sym(hv), "winding-hv");
             u.Circle(-2.8, 1.6, r, Sym(mv), "winding-mv");
             u.Circle(2.8, 1.6, r, Sym(lv), "winding-lv");
@@ -415,10 +415,10 @@ namespace InventaSketch.Modules.Energy
 
         private static void SubstationSymbol(Pen p, SketchObject o)
         {
-            const double cx = -6, r = 4.4, d = 3.1;
+            const double cx = 0, r = 4.4, d = 3.1;
             var mv = LevelColor(o, o.Clamped(StationMv));
             var lv = LevelColor(o, o.Clamped(Lv));
-            p.Rect(-15, -10, 3, 10, St.Thin with { StrokeWidth = 0.25, Dash = DashStyle.Dash }, "boundary");
+            p.Rect(-9, -10, 9, 10, St.Thin with { StrokeWidth = 0.25, Dash = DashStyle.Dash }, "boundary");
             Windings(p, cx, 15, r, d, mv, lv);
         }
 
@@ -449,7 +449,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void MeterSymbol(Pen p, SketchObject o)
         {
-            const double cx = -4;
+            const double cx = 0;
             p.Line(cx, -12, cx, -5, St.Sym, EnTags.Lead);
             p.Line(cx, 5, cx, 12, St.Sym, EnTags.Lead);
             p.Rect(cx - 6, -5, cx + 6, 5, St.SymWhite, "body");
@@ -511,7 +511,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void BreakerSymbol_(Pen p, SketchObject o)
         {
-            const double cx = -4;
+            const double cx = 0;
             var closed = o.B(Closed);
             if (o.S(BreakerSymbol) == "square")
             {
@@ -560,7 +560,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void DisconnectorSymbol(Pen p, SketchObject o)
         {
-            const double cx = -4;
+            const double cx = 0;
             var kind = o.S(DisconnectorKind);
             p.Line(cx, -12, cx, -5, St.Sym, EnTags.Lead);
             if (kind == "loadbreak") p.Round(cx, -5.9, 0.9, St.SymWhite, "contact");
@@ -574,7 +574,7 @@ namespace InventaSketch.Modules.Energy
 
         private static void EarthingSymbol(Pen p, SketchObject o)
         {
-            const double cx = -4;
+            const double cx = 0;
             p.Line(cx, -12, cx, -5, St.Sym, EnTags.Lead);
             p.Line(cx - 1.6, -5, cx + 1.6, -5, St.Sym, "contact");
             var hinge = new Vec2(cx, 4);
