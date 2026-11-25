@@ -2409,7 +2409,9 @@ namespace InventaSketch.AddIn.OnSlide
             string? input = null;
             if (action.Input is not null)
             {
-                input = TextPrompt.AskInput(action.Input.Label.Get(lang), action.Input.Unit, action.Input.Value, owner);
+                // Chart data: the table editor instead of the one-line prompt (charts v2).
+                input = action.Id == "chart.data" ? DataEditor.Ask(action.Label.Get(lang), action.Input.Value, owner)
+                    : TextPrompt.AskInput(action.Input.Label.Get(lang), action.Input.Unit, action.Input.Value, owner);
                 if (input is null) return null;
             }
             try

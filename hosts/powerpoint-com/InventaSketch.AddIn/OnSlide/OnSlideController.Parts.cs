@@ -116,7 +116,8 @@ namespace InventaSketch.AddIn.OnSlide
             SketchObject next;
             if (action.Input is not null)
             {
-                var input = TextPrompt.AskInput(action.Input.Label.Get(_lang()), action.Input.Unit, action.Input.Value, owner);
+                var input = action.Id == "chart.data" ? DataEditor.Ask(action.Label.Get(_lang()), action.Input.Value, owner)
+                    : TextPrompt.AskInput(action.Input.Label.Get(_lang()), action.Input.Unit, action.Input.Value, owner);
                 if (input is null) return;
                 try { next = action.Input.Apply(o, input); }
                 catch (FormatException ex) { TextPrompt.Warn(ex.Message, owner); return; }
