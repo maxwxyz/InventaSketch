@@ -1,36 +1,37 @@
-// Floating context bar near the selection. Fixed order (ROADMAP UX rule 2): views | choices | element actions | insert,
-// path, assembly | transforms | style, more. Mirror/rotate appear only when they change the drawing; the bar never
-// grows with content. A selection of two or more elements gets its own bar (one view for all, align, distribute …).
-// It becomes semi-transparent and fades out as the pointer moves away; once faded out it stays hidden until the
-// selection changes.
+// Floating context bar near the selection (docs/en/design/interaction-ux.md section 5, same structure as the COM
+// add-in's): the element's main action with a short label, up to three pictograms, then "⋯" (the pie menu with
+// everything, grouped). Choices are dropdowns: the closed button shows the choice's pictogram, the current option's
+// name or picture and a caret; the open list shows every option with pictogram or picture and label, the current one
+// marked. A selection of two or more elements keeps its groups (one view for all | align and distribute | …).
+// The bar fades with the pointer distance; once faded out it stays hidden until the selection changes.
 
 import type { ActionInfo } from "../engine/types";
 import { t } from "../i18n";
+import { choiceFace, choiceTip, type ChoiceEntry } from "./barlogic";
 import { clamp, h } from "./dom";
-import { barLabel, hasIcon, icon, needsLabel } from "./icons";
-import type { MultiBarGroups } from "./uxlogic";
+import { hasIcon, icon } from "./icons";
+
+export type { ChoiceEntry } from "./barlogic";
 
 export interface BarBox { left: number; top: number; right: number; bottom: number }
 
-/** A host command of the bar (make it …, insert, draw the path, select assembly): icon button with a tooltip. */
-/** A host command in the bar: a pictogram, or a short `text` (values such as "F = 1") when given. */
-/** `active` set (true or false) makes it a toggle button (aria-pressed), e.g. motion mode. */
+/**
+ * A host command of the bar (make it …, values, insert, draw the path, select assembly …): a pictogram, or a short
+ * `text` (values such as "F = 1") when given. `active` set (true or false) makes it a toggle button (aria-pressed).
+ */
 export interface BarCommand { id: string; label: string; icon: string; active?: boolean; text?: string }
 
-/** Host commands of the single-selection bar: `lead` before the views, `build` after the element actions. */
-export interface BarExtras { lead: BarCommand[]; build: BarCommand[] }
+/**
+ * One button of the bar: a host command, an engine action or a choice (a dropdown). `label` shows a short label next
+ * to the pictogram (the main action); `text` makes an action a text button (label-only pictograms).
+ */
+export type BarItem =
+  | { kind: "command"; cmd: BarCommand; label?: string }
+  | { kind: "action"; action: ActionInfo; label?: string; text?: string }
+  | { kind: "choice"; choice: ChoiceEntry; label?: string };
 
-/** A choice shown as an icon button (current option) that opens its options as an icon row in the bar. */
-export interface ChoiceEntry {
-  key: string;
-  label: string;
-  current: string;
-  mirror?: boolean;
-  options: { id: string; label: string; icon?: string; image?: string }[];
-}
-
-/** Opacity for a pointer at distance d (px) from the bar: 1 near it, fading to 0 at `far`. */
-export function fadeOpacity(d: number, near = 28, far = 240): number {
+/** Opacity for a pointer at distance d (px) from the bar: fully there within `near`, fading out until `far` (UX review G1). */
+export function fadeOpacity(d: number, near = 90, far = 420): number {
   if (d <= near) return 1;
   if (d >= far) return 0;
   return clamp(1 - (d - near) / (far - near), 0, 1);
@@ -42,11 +43,6 @@ export function distanceToRect(x: number, y: number, r: { left: number; top: num
   return Math.hypot(dx, dy);
 }
 
-/** Element actions in order; "text" is the host's main-text command (objects with an editable main text). */
-const ELEMENT_IDS = ["text", "numeral"];
-/** Quick transforms (the host leaves out the ones that change nothing, see uxlogic.filterTransforms). */
-const TRANSFORM_IDS = ["flipH", "flipV", "rotate90"];
-
 export class ContextBar {
   readonly el: HTMLDivElement;
   private key = "";
@@ -55,15 +51,20 @@ export class ContextBar {
   private openChoice?: string;
   /** Repeats the last update (an opened or closed dropdown). */
   private rerender?: () => void;
+  private dropdown?: HTMLElement;
+  /** Bar ids as last shown (command ids, "act:<id>", "choice:<key>", "more"), for checks and UI tests. */
+  lastIds: string[] = [];
+  /** Rows of the open dropdown as last shown ("id\tlabel[\t(current)]" per line). */
+  lastDropItems = "";
 
   constructor(
     private readonly root: HTMLElement,
     private readonly onAction: (a: ActionInfo) => void,
-    private readonly onStyle: () => void,
     private readonly onMore: (clientX: number, clientY: number) => void,
     /** Host commands (BarCommand ids, "arr:<option>" for the multi-selection bar) with the click position. */
-    private readonly onCommand: (id: string, clientX: number, clientY: number) => void = () => {},
-    private readonly onChoice: (key: string, value: string) => void = () => {},
+    private readonly onCommand: (id: string, clientX: number, clientY: number) => void,
+    /** An option of a choice was picked. */
+    private readonly onChoice: (key: string, optionId: string) => void,
   ) {
     this.el = h("div", { class: "isk-ctxbar", role: "toolbar", "aria-label": t("ctx.title") });
     this.el.hidden = true;
@@ -71,14 +72,26 @@ export class ContextBar {
     root.append(this.el);
     // A click elsewhere closes an open dropdown.
     root.addEventListener("pointerdown", (e) => {
-      const t = e.target as Node | null;
-      if (!this.openChoice || (t && (this.el.contains(t) || this.dropdown?.contains(t)))) return;
+      const target = e.target as Node | null;
+      if (!this.openChoice || (target && (this.el.contains(target) || this.dropdown?.contains(target)))) return;
       this.toggleChoice(undefined);
+    }, true);
+    root.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && this.openChoice) { e.preventDefault(); e.stopPropagation(); this.toggleChoice(undefined); }
     }, true);
   }
 
-  /** Starts an update: false (and the bar hidden) when there is nothing to show. */
-  private begin(selectionKey: string, box: BarBox | undefined, suppressed: boolean): box is BarBox {
+  /** A dropdown of the bar is open. */
+  get dropdownOpen(): boolean {
+    return !!this.openChoice;
+  }
+
+  /**
+   * Shows the bar for a selection: the groups in order with a separator between non-empty ones, then "⋯".
+   * `selectionKey` identifies the selection (a new selection makes a dismissed bar reappear).
+   */
+  show(selectionKey: string, groups: BarItem[][], box: BarBox | undefined, suppressed: boolean, ariaLabel = t("ctx.title")): void {
+    this.rerender = () => this.show(selectionKey, groups, box, suppressed, ariaLabel);
     if (selectionKey !== this.key) {
       this.key = selectionKey;
       this.dismissed = false;
@@ -86,134 +99,130 @@ export class ContextBar {
     }
     if (!box || !selectionKey || this.dismissed || suppressed) {
       this.el.hidden = true;
-      this.dropdown?.remove();
-      this.dropdown = undefined;
-      return false;
+      this.closeDropdown();
+      return;
     }
     this.el.replaceChildren();
-    this.el.setAttribute("aria-label", t("ctx.title"));
-    return true;
+    this.el.setAttribute("aria-label", ariaLabel);
+    this.lastIds = [];
+    let openButton: HTMLElement | undefined;
+    let openChoice: ChoiceEntry | undefined;
+    for (const g of [...groups.filter((x) => x.length), [undefined]]) {
+      if (this.el.childElementCount) this.el.append(h("span", { class: "isk-bar-sep", "aria-hidden": "true" }));
+      for (const item of g) {
+        if (!item) { this.el.append(this.moreButton()); continue; }
+        const b = this.item(item);
+        this.el.append(b);
+        if (item.kind === "choice" && item.choice.key === this.openChoice) { openButton = b; openChoice = item.choice; }
+      }
+    }
+    this.place(box);
+    this.showDropdown(openChoice, openButton);
   }
 
-  /** A thin separator before the next group (only between non-empty groups). */
-  private group(...buttons: HTMLElement[]): void {
-    if (!buttons.length) return;
-    if (this.el.childElementCount) this.el.append(h("span", { class: "isk-bar-sep", "aria-hidden": "true" }));
-    this.el.append(...buttons);
+  private moreButton(): HTMLButtonElement {
+    const more = h("button", { class: "isk-btn isk-more-btn", type: "button", title: t("ctx.more"), "aria-label": t("ctx.more"), "data-cmd": "more" }, "⋯");
+    more.addEventListener("click", (e) => this.onMore(e.clientX, e.clientY));
+    this.lastIds.push("more");
+    return more;
   }
 
-  private command(c: BarCommand, prefix = ""): HTMLButtonElement {
-    const b = c.text
-      ? h("button", { class: `isk-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label, "data-cmd": prefix + c.id }, c.text)
-      : h("button", {
-        class: `isk-btn isk-icon-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label,
-        "aria-pressed": c.active === undefined ? undefined : String(c.active),
-        "data-cmd": prefix + c.id, html: icon(hasIcon(c.icon) ? c.icon : "type"),
-      });
-    b.addEventListener("click", (e) => this.onCommand(prefix + c.id, e.clientX, e.clientY));
+  private item(item: BarItem): HTMLButtonElement {
+    if (item.kind === "command") return this.command(item.cmd, item.label);
+    if (item.kind === "action") return this.action(item.action, item.label, item.text);
+    return this.choiceButton(item.choice, item.label);
+  }
+
+  /** Pictogram (or text) plus an optional short label. */
+  private face(b: HTMLElement, iconId: string | undefined, label: string | undefined, text?: string): void {
+    if (text) { b.classList.add("isk-text-btn"); b.append(h("span", { class: "isk-bar-text", text })); return; }
+    if (iconId && hasIcon(iconId)) b.append(h("span", { class: "isk-ico", html: icon(iconId) }));
+    if (label) { b.classList.add("isk-labelled"); b.append(h("span", { class: "isk-bar-label", text: label })); }
+    else b.classList.add("isk-icon-btn");
+  }
+
+  private command(c: BarCommand, label?: string): HTMLButtonElement {
+    const b = h("button", {
+      class: `isk-btn${c.active ? " is-active" : ""}`, type: "button", title: c.label, "aria-label": c.label,
+      "aria-pressed": c.active === undefined ? undefined : String(c.active), "data-cmd": c.id,
+    });
+    this.face(b, c.icon, label, c.text);
+    b.addEventListener("click", (e) => this.onCommand(c.id, e.clientX, e.clientY));
+    this.lastIds.push(c.id);
     return b;
   }
 
-  private tail(): HTMLElement[] {
-    const style = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.style"), "aria-label": t("ctx.style"), html: icon("style") });
-    style.addEventListener("click", () => this.onStyle());
-    const more = h("button", { class: "isk-btn isk-icon-btn", type: "button", title: t("ctx.more"), "aria-label": t("ctx.more"), html: icon("more") });
-    more.addEventListener("click", (e) => this.onMore(e.clientX, e.clientY));
-    return [style, more];
+  private action(a: ActionInfo, label?: string, text?: string): HTMLButtonElement {
+    const tip = a.input && !a.label.endsWith("…") ? `${a.label} …` : a.label;
+    const b = h("button", {
+      class: `isk-btn${a.active ? " is-active" : ""}`, type: "button", title: tip, "aria-label": tip,
+      "aria-pressed": a.kind === "type" ? String(!!a.active) : undefined, disabled: !a.enabled, "data-cmd": `act:${a.id}`,
+    });
+    this.face(b, a.icon, label, text);
+    b.addEventListener("click", () => this.onAction(a));
+    this.lastIds.push(`act:${a.id}`);
+    return b;
   }
 
-  /**
-   * Bar of a multi-selection (two or more elements): one view for all, centres on a row/column, even spacing, like the
-   * first, renumber (engine `arrangeOptions`, each only when it changes something), then host commands, style and more.
-   */
-  updateMulti(selectionKey: string, groups: MultiBarGroups, box: BarBox | undefined, suppressed: boolean, extras: BarCommand[] = []): void {
-    this.rerender = () => this.updateMulti(selectionKey, groups, box, suppressed, extras);
-    if (!this.begin(selectionKey, box, suppressed)) return;
-    this.el.setAttribute("aria-label", t("ctx.multi"));
-    const asCommand = (o: { id: string; label: string; icon: string }) => this.command({ id: o.id, label: o.label, icon: o.icon }, "arr:");
-    this.group(...groups.views.map(asCommand));
-    this.group(...groups.arrange.map(asCommand));
-    this.group(...extras.map((c) => this.command(c)));
-    this.group(...this.tail());
-    this.place(box);
-  }
-
-  /** Rebuilds and positions the bar; selectionKey identifies the selection (new selection → bar reappears). */
-  update(selectionKey: string, actions: ActionInfo[], box: BarBox | undefined, suppressed: boolean, choices: ChoiceEntry[] = [], extras: BarExtras = { lead: [], build: [] }): void {
-    this.rerender = () => this.update(selectionKey, actions, box, suppressed, choices, extras);
-    if (!this.begin(selectionKey, box, suppressed)) return;
-    this.group(...extras.lead.map((c) => this.command(c)));
-    const views = actions.filter((a) => a.kind === "view");
-    if (views.length > 1) {
-      const seg = h("div", { class: "isk-seg", role: "group", "aria-label": t("ctx.view") });
-      for (const v of views) seg.append(this.button(v, v.label, v.active));
-      this.group(seg);
+  /** The closed dropdown of a choice: its face (pictogram, picture or short text), an optional label and a caret. */
+  private choiceButton(c: ChoiceEntry, label?: string): HTMLButtonElement {
+    const open = this.openChoice === c.key;
+    const b = h("button", {
+      class: `isk-btn isk-choice${open ? " is-active" : ""}`, type: "button", title: choiceTip(c, t("ctx.clickToChoose")),
+      "aria-label": c.label, "aria-haspopup": "listbox", "aria-expanded": String(open), "data-cmd": `choice:${c.key}`,
+    });
+    const f = choiceFace(c);
+    if (f.kind === "text") b.append(h("span", { class: "isk-choice-text", text: label ? `${label}: ${f.text}` : f.text }));
+    else {
+      if (f.kind === "icon") b.append(h("span", { class: `isk-ico${c.mirror ? " isk-mirror" : ""}`, html: icon(f.icon) }));
+      else b.append(h("img", { src: f.image, alt: "" }));
+      if (label) b.append(h("span", { class: "isk-bar-label", text: label }));
     }
-    // Choices as dropdowns: current option as pictogram (or short text) plus a caret; the list shows icon and label.
-    let openButton: HTMLElement | undefined;
-    const chips: HTMLElement[] = [];
-    for (const c of choices) {
-      const cur = c.options.find((o) => o.id === c.current) ?? c.options[0];
-      const pictorial = c.options.every((o) => o.icon || o.image);
-      const b = h("button", {
-        class: `isk-btn isk-choice${pictorial ? " isk-icon-btn" : ""}${this.openChoice === c.key ? " is-active" : ""}`,
-        type: "button", title: `${c.label}: ${cur?.label ?? ""}`, "aria-label": c.label, "aria-haspopup": "listbox", "aria-expanded": String(this.openChoice === c.key),
-      });
-      if (pictorial) this.fillIcon(b, cur?.icon, cur?.image, c.mirror);
-      else b.append(h("span", { class: "isk-choice-text", text: cur?.label ?? c.label }));
-      b.append(h("span", { class: "isk-caret", "aria-hidden": "true" }));
-      b.addEventListener("click", () => this.toggleChoice(c.key));
-      if (this.openChoice === c.key) openButton = b;
-      chips.push(b);
-    }
-    this.group(...chips);
-    const covered = new Set(choices.map((c) => c.key));
-    const byId = (ids: string[]) => ids.map((id) => actions.find((x) => x.id === id)).filter((a): a is ActionInfo => !!a).map((a) => this.button(a));
-    // Label-only and step pictograms (switch, next variant, "+"/"−") are shown as short text: one pictogram, one meaning.
-    const typeActions = actions.filter((x) => x.kind === "type" && !(x.paramKeys ?? []).some((k) => covered.has(k))).slice(0, 3)
-      .map((a) => this.button(a, needsLabel(a.icon) ? barLabel(a.label) : undefined));
-    this.group(...byId(ELEMENT_IDS), ...typeActions);
-    this.group(...extras.build.map((c) => this.command(c)));
-    this.group(...byId(TRANSFORM_IDS));
-    this.group(...this.tail());
-    this.place(box);
-    this.showDropdown(choices.find((c) => c.key === this.openChoice), openButton);
+    if (!c.menu) b.append(h("span", { class: "isk-caret", "aria-hidden": "true" }));
+    b.addEventListener("click", () => this.toggleChoice(c.key));
+    this.lastIds.push(`choice:${c.key}`);
+    return b;
   }
 
-  /** The list of an open choice under its button: one row per option with icon and label, the current one marked. */
+  /** The list of an open choice under its button: one row per option with pictogram or picture and label, the current one marked. */
   private showDropdown(choice: ChoiceEntry | undefined, anchor: HTMLElement | undefined): void {
-    this.dropdown?.remove();
-    this.dropdown = undefined;
+    this.closeDropdown();
     if (!choice || !anchor) return;
     const list = h("div", { class: "isk-dropdown", role: "listbox", "aria-label": choice.label });
+    list.append(h("div", { class: "isk-drop-head", text: choice.label }));
+    const rows: string[] = [];
     for (const o of choice.options) {
-      const row = h("button", { class: `isk-drop-row${o.id === choice.current ? " is-active" : ""}`, type: "button", role: "option", "aria-selected": String(o.id === choice.current) });
-      this.fillIcon(row, o.icon, o.image, choice.mirror);
+      const current = !choice.menu && o.id === choice.current;
+      const row = h("button", { class: `isk-drop-row${current ? " is-active" : ""}`, type: "button", role: "option", "aria-selected": String(current), "data-option": o.id });
+      if (o.image) row.append(h("img", { src: o.image, alt: "" }));
+      else if (o.icon && hasIcon(o.icon)) row.append(h("span", { class: `isk-ico${choice.mirror ? " isk-mirror" : ""}`, html: icon(o.icon) }));
+      else row.append(h("span", { class: "isk-drop-blank", "aria-hidden": "true" }));
       row.append(h("span", { text: o.label }));
-      row.addEventListener("click", () => { this.openChoice = undefined; this.dropdown?.remove(); this.dropdown = undefined; this.onChoice(choice.key, o.id); });
+      row.addEventListener("click", () => { this.openChoice = undefined; this.closeDropdown(); this.onChoice(choice.key, o.id); });
       list.append(row);
+      rows.push(`${o.id}\t${o.label}${current ? "\t(current)" : ""}`);
     }
+    this.lastDropItems = rows.join("\n");
     this.root.append(list);
     const rr = this.root.getBoundingClientRect();
     const ar = anchor.getBoundingClientRect();
     list.style.left = `${clamp(ar.left - rr.left, 4, Math.max(4, rr.width - list.offsetWidth - 4))}px`;
-    list.style.top = `${ar.bottom - rr.top + 4}px`;
+    // Below the button, or above it when the list does not fit below.
+    let top = ar.bottom - rr.top + 4;
+    if (top + list.offsetHeight > rr.height - 4) top = Math.max(4, ar.top - rr.top - list.offsetHeight - 4);
+    list.style.top = `${top}px`;
     this.dropdown = list;
+    (list.querySelector(".is-active") as HTMLElement | null ?? list.querySelector(".isk-drop-row") as HTMLElement | null)?.focus({ preventScroll: true });
   }
 
-  private dropdown?: HTMLElement;
+  private closeDropdown(): void {
+    this.dropdown?.remove();
+    this.dropdown = undefined;
+  }
 
   private toggleChoice(key: string | undefined): void {
     this.openChoice = key === this.openChoice ? undefined : key;
     this.rerender?.();
-  }
-
-  private fillIcon(b: HTMLElement, iconId?: string, image?: string, mirror?: boolean): void {
-    if (image) b.append(h("img", { src: image, alt: "" }));
-    else if (iconId && hasIcon(iconId)) {
-      const span = h("span", { class: `isk-ico${mirror ? " isk-mirror" : ""}`, html: icon(iconId) });
-      b.append(span);
-    }
   }
 
   private place(box: BarBox): void {
@@ -229,23 +238,9 @@ export class ContextBar {
     this.el.style.top = `${clamp(top, 4, Math.max(4, rr.height - bh - 4))}px`;
   }
 
-  private button(a: ActionInfo, text?: string, pressed?: boolean): HTMLButtonElement {
-    const b = h("button", {
-      class: `isk-btn ${text ? "isk-seg-btn" : "isk-icon-btn"} ${a.active ? "is-active" : ""}`,
-      type: "button",
-      title: a.label,
-      "aria-label": a.label,
-      "aria-pressed": pressed !== undefined || a.kind === "type" ? String(!!(pressed ?? a.active)) : undefined,
-      disabled: !a.enabled,
-      html: text ? undefined : hasIcon(a.icon) ? icon(a.icon) : icon("type"),
-    }, text ?? "");
-    b.addEventListener("click", () => this.onAction(a));
-    return b;
-  }
-
   /** Fades with the pointer distance; fully faded → hidden until the next selection. */
   pointerMoved(clientX: number, clientY: number): void {
-    if (this.el.hidden) return;
+    if (this.el.hidden || this.openChoice) return;
     const r = this.el.getBoundingClientRect();
     const o = fadeOpacity(distanceToRect(clientX, clientY, r));
     if (o <= 0) {
@@ -258,6 +253,8 @@ export class ContextBar {
 
   hide(): void {
     this.el.hidden = true;
+    this.openChoice = undefined;
+    this.closeDropdown();
   }
 }
 

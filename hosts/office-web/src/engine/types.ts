@@ -31,6 +31,8 @@ export interface ObjectInfo {
   mainText?: MainTextInfo;
   /** Selected objects only: quick-add "+" arrows apply (flowchart, UML, ER, BPMN, basic shapes). */
   chain?: boolean;
+  /** Selected objects only: the type has values (engine `values`): the bar offers "Values" in Explore and Engineer. */
+  hasValues?: boolean;
 }
 
 /** Main text of an object: object text (no key) or the text parameter `key` (numeral, text, label, name, title). */
@@ -106,8 +108,88 @@ export interface EditorState {
   /** Objects added or modified by the change that produced this revision (edit, undo, redo). */
   changed?: string[];
   /** Further objects whose rendering depends on the changed or removed ones (wall joints, openings): redraw them too. */
-  dependents?: string[];
+  dependents?: string[];  /** Value level of the document (setValueLevel): quick sketch (default), explore or engineer. */
+  valueLevel?: ValueLevel;
 }
+
+export type ValueLevel = "quick" | "explore" | "engineer";
+
+/** A kind of "select connected" that adds something (engine `connectOptions`). */
+export interface ConnectOption { kind: "net" | "coupled" | "chain" | "loop" | "walls"; label: string; hint: string; ids: string[] }
+
+/** One variable of an element with its value (engine `values`); numbers in SI and in the display unit. */
+export interface VarInfo {
+  key: string;
+  name: string;
+  symbol: string;
+  kind: string;
+  relevance: "card" | "panel" | "engineer";
+  unit: string;
+  unitFactor: number;
+  unitOffset: number;
+  units: string[];
+  value?: number | null;
+  number?: number | null;
+  display: string;
+  text?: string | null;
+  provenance: "unknown" | "entered" | "default" | "linked" | "derived";
+  formula?: string | null;
+  relation?: string | null;
+  source?: string | null;
+  error?: string | null;
+  conflict: boolean;
+  param: string;
+}
+
+/** A relation that disagrees (engine `values`): both values and the entered values involved. */
+export interface ConflictInfo { relation: string; formula: string; objectId: string; key: string; valueText: string; impliedText: string; involved: string[]; message: string }
+
+/** The values of one element (engine `values`). */
+export interface ObjectValues {
+  id: string;
+  status: "empty" | "under" | "determined" | "checked" | "conflict";
+  vars: VarInfo[];
+  missing: string[][];
+  conflicts: ConflictInfo[];
+  hint: string;
+}
+
+export interface ValuesResult { objects: ObjectValues[]; elapsedMs: number; truncated: boolean }
+
+/** Step-by-step formula lines of a derived value (engine `explain`). */
+export interface ExplainResult { id: string; key: string; steps: { key: string; text: string; source?: string | null }[]; text: string }
+
+/** Result of the unit-aware calculator (engine `calc`). */
+export interface CalcResult { value: number; dimension: string; kind?: string | null; unit: string; number: number; text: string; steps: string[] }
+
+/** Result of a unit conversion (engine `convertUnit`). */
+export interface ConvertUnitResult { value: number; unit: string; text: string; kind: string; units: string[] }
+
+/** Result of the code import (engine `importCode`: matplotlib, pgfplots, TikZ; read, never executed). */
+export interface CodeImportResult {
+  state: EditorState;
+  format?: string | null;
+  ids: string[];
+  imported: string[];
+  skipped: { line: number; code: string; reason: string }[];
+  message: string;
+}
+
+/** A grip on a value of an element (engine `dragHandles`): chart limit lines, value lines, markers, data points. */
+export interface DragHandleInfo {
+  key: string;
+  x: number;
+  y: number;
+  constraint: "free" | "horizontal" | "vertical";
+  dx: number;
+  dy: number;
+  label: string;
+  part?: string | null;
+  showWith?: string | null;
+  byPart: boolean;
+}
+
+export interface ObjectHandles { id: string; handles: DragHandleInfo[] }
 
 export interface CatalogCategory { id: string; name: string; module: string; order: number }
 export interface CatalogItem { id: string; typeId: string; name: string; category: string; keywords: string[]; thumbnail: string; points: boolean }

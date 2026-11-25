@@ -310,6 +310,8 @@ namespace InventaSketch.Engine
         public TextEditInfo? MainText { get; set; }
         /// <summary>Selected objects only: quick-add "+" arrows apply (<see cref="Flow.CanChain"/>).</summary>
         public bool Chain { get; set; }
+        /// <summary>Selected objects only: the type has values (<see cref="ValueModel.HasValues"/>): hosts offer "Values".</summary>
+        public bool HasValues { get; set; }
     }
 
     /// <summary>Main text of an object (<see cref="EngineApi.MainTextOf"/>); set it with <c>setMainText</c>.</summary>
@@ -382,6 +384,8 @@ namespace InventaSketch.Engine
         public double LineGroup { get; set; }
         /// <summary>Accent colour of the document (#rrggbb, <c>setAccent</c>); null = each module's own colours.</summary>
         public string? Accent { get; set; }
+        /// <summary>Value level of the document (<c>setValueLevel</c>): "quick" (default), "explore" or "engineer".</summary>
+        public string ValueLevel { get; set; } = "quick";
         /// <summary>
         /// Objects added or modified by the document change that produced <see cref="Revision"/> (edit, undo or redo);
         /// empty after open/new. Hosts redraw these units.

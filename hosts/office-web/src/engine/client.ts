@@ -5,6 +5,7 @@ import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
   SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo, BuildPortInfo, CouplingPreview,
   MotionInfo, MotionPreview, PreflightResult, PartView, SanitizeMode, SanitizeOptions, SanitizeResult,
+  CalcResult, CodeImportResult, ConnectOption, ConvertUnitResult, DragHandleInfo, ExplainResult, ObjectHandles, ValueLevel, ValuesResult,
 } from "./types";
 
 export interface EngineBackend {
@@ -205,6 +206,34 @@ export class Session {
   motionTurn(id: string, degrees: number): EditorState { return this.c("motionTurn", { id, degrees }); }
   /** Motion mode: drags joint `index` of link `id` to x/y, the chain follows with constant lengths; one undo step. */
   motionDrag(id: string, index: number, x: number, y: number): EditorState { return this.c("motionDrag", { id, index, x, y }); }
+  /** Select connected: `ids` plus what is connected by `mode` (auto, net, coupled, chain, loop, walls), selection first. */
+  connected(ids: string[], mode: string): string[] { return this.c("connected", { ids, mode }); }
+  /** The kinds of "select connected" that add something for the first of `ids`, each with its ids. */
+  connectOptions(ids: string[], lang: string): ConnectOption[] { return this.c("connectOptions", { ids, lang }); }
+  /** Value level of the document (quick sketch, explore, engineer); one undo step when it changes. */
+  setValueLevel(level: ValueLevel): EditorState { return this.c("setValueLevel", { text: level }); }
+  /** The values of element `id` (status, variables with provenance and formula, missing sets, conflicts). */
+  values(id: string, lang: string, digits?: number): ValuesResult { return this.c("values", { id, lang, digits }); }
+  /** Stores an entered value as typed ("4k7", "230 V"); empty text clears; one undo step. A wrong unit throws. */
+  setValue(id: string, key: string, text: string): EditorState { return this.c("setValue", { id, key, text }); }
+  /** Removes an entered value; one undo step. */
+  clearValue(id: string, key: string): EditorState { return this.c("clearValue", { id, key }); }
+  /** Step-by-step formula lines of value `key` of element `id`. */
+  explain(id: string, key: string, lang: string, digits?: number): ExplainResult { return this.c("explain", { id, key, lang, digits }); }
+  /** The unit-aware calculator ("230 V * 16 A", "1500 rpm in rad/s"). */
+  calc(text: string, lang: string, digits?: number): CalcResult { return this.c("calc", { text, lang, digits }); }
+  /** Converts a value with a unit ("12 mm") into `unit`. */
+  convertUnit(text: string, unit: string, lang: string): ConvertUnitResult { return this.c("convertUnit", { text, unit, lang }); }
+  /** matplotlib, pgfplots or TikZ code as editable elements (read, never executed); one undo step, the new ones selected. */
+  importCode(text: string, lang: string, mode = "auto"): CodeImportResult { return this.c("importCode", { text, lang, mode }); }
+  /** Grips on values of `ids` (chart limit lines, value lines, markers, points), page mm. */
+  dragHandles(ids: string[], lang: string): ObjectHandles[] { return this.c("dragHandles", { ids, lang }); }
+  /** Preview of grip `key` of element `id` dragged to x/y: the snapped grip with its label, document unchanged. */
+  moveHandlePreview(id: string, key: string, x: number, y: number, lang: string): DragHandleInfo | null {
+    return this.c<{ handle: DragHandleInfo | null }>("moveHandle", { id, key, x, y, lang, preview: true }).handle;
+  }
+  /** Drags grip `key` of element `id` to x/y (constrained and snapped by the element); one undo step. */
+  moveHandle(id: string, key: string, x: number, y: number): EditorState { return this.c("moveHandle", { id, key, x, y }); }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */
   update(object: unknown): EditorState { return this.c("update", { object }); }
 }
