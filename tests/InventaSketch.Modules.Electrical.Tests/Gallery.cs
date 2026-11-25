@@ -102,6 +102,10 @@ namespace InventaSketch.Modules.Electrical.Tests
             var page = SvgRenderer.RenderPage(cr, doc, doc.Pages[0]);
             page = page.Replace("width=\"338.667mm\" height=\"190.5mm\"", "width=\"1354\" height=\"762\"");
             index.Append("<h2>Example circuit (wires attached to pins)</h2>").Append(page);
+            // Calc 3: the same circuit closed, with values derived through the wires (LED series resistor).
+            var (vr, vdoc) = CircuitValueTests.ValuedCircuit();
+            var valued = SvgRenderer.RenderPage(vr, vdoc, vdoc.Pages[0]).Replace("width=\"338.667mm\" height=\"190.5mm\"", "width=\"1354\" height=\"762\"");
+            index.Append("<h2>Example circuit with values (switch closed, LED 2.1 V)</h2>").Append(valued);
             File.WriteAllText(Path.Combine(dir, "index.html"), Page("InventaSketch electrical gallery", index.ToString()), Encoding.UTF8);
             Assert.True(File.Exists(Path.Combine(dir, "index.html")));
         }

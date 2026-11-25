@@ -107,16 +107,66 @@ Value text is edited in the inspector (`value`, `ref`); the context action canno
 House installation symbols follow common DIN/EN floor-plan practice in spirit; their exact appearance varies between
 countries and is not normative. PCB objects are proportionally simplified and imply no land-pattern or design-rule data.
 
-## Element values (Calc 1)
+## Element values (Calc 1 and Calc 3)
 
-The resistor (`elec.resistor`) has the values *R*, *U*, *I* and *P* (engineering calculations, see
-[../design/engineering-calculations.md](../design/engineering-calculations.md), section 10). *R* is read from the existing
-`value` text ("4k7", "10 kΩ", "100R"); *U*, *I* and *P* are optional text parameters `voltage`, `current` and `power`
-that keep what was typed ("230 V"). Relations: *U* = *R*·*I* and *P* = *U*·*I* = *I*²·*R* = *U*²/*R* [S7]. Any two values
-give the other two; three that agree are marked as checked, three that disagree give a conflict and nothing is changed.
-A `value` text that is no resistance (e.g. "1/4 W") is ignored for *R*. The engine methods `values`, `setValue`,
-`clearValue`, `explain` and `dragValue` work on it; the user interface follows with Calc 2. Other symbols get values with
-Calc 3.
+Engineering values are optional (Quick Sketch first): every element still inserts without parameters, and nothing is
+derived until values are entered. Design and sources: [../design/engineering-calculations.md](../design/engineering-calculations.md)
+(sections 2.1–2.3, 10.7 and 10.10). Entered values live in optional text parameters that keep what was typed ("230 V",
+"4k7"); derived values are never stored. Any values that determine an element give the others; values that agree are
+marked as checked, values that disagree give a conflict and nothing is changed.
+
+| Element | Variables (parameter) | Relations [S7] |
+|---|---|---|
+| Resistor `elec.resistor` | *R* (`value`, "4k7"), *U* (`voltage`), *I* (`current`), *P* (`power`); rating `prated` for the check | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
+| Lamp `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, hot); marking in `value` ("12 V 5 W") | as the resistor |
+| Capacitor `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, "100n"), *U*, *Q* (`charge`), *E* (`energy`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*) |
+| Inductor `elec.inductor` | *L* (`value`, "10 mH"), *I*, *E* (`energy`) | *E* = ½*L*·*I*² |
+| Diode, LED `elec.diode`, `elec.diode.led` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); marking "2.1 V 20 mA"; LED: `ifmax` for the check | *P* = *U*·*I* |
+| Zener diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
+| Source `elec.source`, battery `elec.battery` | *U*, *I*, *P*; marking "5 V", "10 mA" (current source), "12 V 2 A" | *P* = *U*·*I* |
+| Transformer `elec.transformer` | *U*₁ (`u1`), *U*₂ (`u2`), *I*₁ (`i1`), *I*₂ (`i2`), *n* (`ratio`, panel); marking "230/12 V" | ideal: *n* = *U*₁/*U*₂ = *I*₂/*I*₁ [S7, S15] |
+| Fuse, MCB, feeder `elec.fuse`, `elec.breaker`, `elec.sld.feeder` | *I*_B (`current`), *I*_n (`rated`); marking "B16", "C 10 A", "gG 35 A"; `iz` (*I*_z of the cable, user) for the check | – |
+| RCD `elec.rcd` | *I*_n (`rated`), *I*_Δn (`idn`); marking "40 A 30 mA", "40/0,03 A", "30 mA" | – |
+| Socket outlet, luminaire `elec.house.socket`, `elec.house.light` | *U*, *I*, *P* | *P* = *U*·*I* |
+
+**Markings.** Where the value text is a marking rather than the element's own quantity, the quantities in it are read
+(each with its unit) and shown as derived with the marking as formula ("*I*_n = B16 = 16 A"). An entered value that
+disagrees with the marking gives a conflict. A value text that is no marking ("1N4148", "red") gives nothing and no
+error.
+
+**Circuits.** Values pass through wires (and cable routes and buses) docked to pins, as in the netlist export; junction
+dots, closed contacts, a mated plug and socket, busbars, junction boxes, distribution boards and energy meters join
+nets; earth symbols of the same kind and net labels of the same name join nets on a page (a net label used once leads
+elsewhere). Open contacts and test points carry no current. Protective devices are drawn in their rest position by
+convention, so they conduct unless the parameter `closed` is set to false explicitly. The network is reduced only by
+series and parallel steps (no circuit simulation):
+
+- series elements share the current, parallel elements share the voltage;
+- resistive groups give the equivalent resistance (*R* = Σ*R*ᵢ, 1/*R* = Σ1/*R*ᵢ), capacitive groups the equivalent
+  capacitance (series capacitors share the charge);
+- one source (or sources in series or parallel) across the reduced load closes the circuit: the source's voltage and
+  current equal the load's (Kirchhoff's voltage law), e.g. the LED series resistor: "4k7" in a 5 V circuit with a 2.1 V
+  LED gives *I* = 0.617 mA, and the voltage divider: 10 V over 1 kΩ + 4 kΩ gives 8 V across the 4 kΩ;
+- single-line loads (socket outlets, luminaires) on a net fed by one branch add up (Kirchhoff's current law) and share
+  its voltage;
+- a transformer is a load of its primary circuit and the source of its secondary circuit.
+
+Voltages and currents are magnitudes in consumer orientation; this holds for series-parallel networks driven by one
+source. A loop that these steps cannot reduce (a bridge, sources in several places) gets the hint `elec.net.reducible`
+("not reducible here – use a circuit simulator"); the element relations still work. Elements without values in a
+circuit (motor, generator, relay coil, photodiode) keep it reducible, but no value passes through them; three-phase
+machines, transistors, ICs and other multi-pin parts are terminals of unknown current, so the network around them is
+not reduced.
+
+**Checks** (hints only, overlay, never change anything; catalogue in the design document, section 4):
+
+| Id | Element | Rule | Severity | Source |
+|---|---|---|---|---|
+| `elec.r.power` | resistor | *P* ≤ *P*_rated (`prated`) | warning | [S7] |
+| `elec.led.current` | LED | *I*_F ≤ *I*_F,max (`ifmax`, datasheet) | warning | [S7] |
+| `elec.coord.overload` | fuse, MCB, feeder | *I*_B ≤ *I*_n ≤ *I*_z (*I*_z entered by the user, no ampacity tables) | warning | [S9] |
+| `elec.rcd.additional` | socket outlet | its circuit has an overcurrent device drawn but no RCD with *I*_Δn ≤ 30 mA (an RCD without rating counts as present; national rules differ) | hint | [S10] |
+| `elec.net.reducible` | elements in an irreducible loop | not a series/parallel network | info | section 1.6 |
 
 ## Persistence
 
@@ -129,6 +179,11 @@ module state. A JSON round trip reproduces the document and the rendered SVG exa
 - A wire end docked on another wire or a bus (its rail) is attached to that rail (a branch): it follows when the
   other wire moves or changes, and the netlist joins both wires into one net.
 - Labels lie outside the object box, so host selection frames do not include them.
+- Values (Calc 3): no AC impedance, reactance, time constants or resonance yet (no frequency variable); no equivalent
+  inductance; no polarity (magnitudes only); motor and generator values are left to the Machines module; potentiometer,
+  transistor base resistor and op-amp gain are open. Two markings that disagree (e.g. a 24 V lamp on a 12 V transformer
+  secondary) are not reported as a conflict yet, because a value read from a marking does not count as entered in the
+  solver's consistency check (Core change proposed). Cable voltage drop (`elec.cable.drop`) waits for cable values.
 - Visual review: `dotnet test` writes an SVG gallery to
   `tests/InventaSketch.Modules.Electrical.Tests/bin/Debug/net10.0/gallery/index.html` (ports shown as red circles,
   plus an example circuit with attached wires).

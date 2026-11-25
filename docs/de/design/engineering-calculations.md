@@ -1032,6 +1032,59 @@ genauso und kann sie ersetzen, wenn der Transformator Werte bekommt), `ChartBrea
   Stummschaltliste, Einheitenvorlieben, Entscheidung zu den E-Reihen.
 - Die Prüfung `value.range` („Tippfehler?") kann `VarDef.Min/Max` nutzen, sobald der Prüfkatalog beginnt (Calc 3).
 
+### 10.10 Calc 3: Elektrotechnik (25.11.2026)
+
+**Stand der elektrotechnischen Abnahmepunkte von Calc 3 (Abschnitt 7):** erledigt – Elementbeziehungen der Abschnitte
+2.1–2.3 für die Elemente, die das Modul hat, Lesen des elektrischen `value`, Netzreduktion (Reihe/parallel),
+Spannungsteiler und LED-Vorwiderstand („4k7" in einem 5-V-Kreis mit einer 2,1-V-LED ergibt *I* = 0,617 mA), die Brücke
+meldet „nicht reduzierbar", ein LS-Schalter B16 mit *I*_z = 13 A ergibt die Warnung zur Schutzzuordnung, die Prüfungen
+für Überlast, RCD und Widerstandsleistung, und die Modulbeschreibung Elektrotechnik listet die neuen Variablen. Variablen
+und Prüfungen je Element stehen in [../modules/electrical.md](../modules/electrical.md) („Elementwerte").
+
+| Bereich | Dateien |
+|---|---|
+| Variablen, Beziehungen, Kennzeichnungen, Prüfungen | `src/InventaSketch.Modules.Electrical/ElecValues.cs` |
+| Schaltungsanalyse (Netze, Reihen-/Parallelreduktion, Kreisbeziehungen) | `src/InventaSketch.Modules.Electrical/ElecNetwork.cs` |
+| Anknüpfung am Typ (`IValueLinks`, `IValueChecks`, `Marking`, `Net`, `Checks`) | `src/InventaSketch.Modules.Electrical/ElecType.cs` |
+| Tests | `tests/InventaSketch.Modules.Electrical.Tests/CircuitValueTests.cs` |
+
+Entscheidungen:
+
+- **Bemessungswerte sind Parameter, keine Variablen.** *P*_rated, *I*_F,max und *I*_z sind einfache optionale
+  Textparameter, die die Prüfungen lesen. Als Variablen würde keine Beziehung sie je bestimmen, und jedes Element bliebe
+  „unterbestimmt".
+- **Kennzeichnungen.** Ist der Werttext nicht die Größe des Elements selbst (Quellen, Lampen, LEDs, Schutzorgane,
+  Transformator), wird jede darin gefundene Größe zu einer Beziehung mit einer Variablen dieses Elements
+  („*I*_n = B16 = 16 A"), geliefert über `IValueLinks`. Der Text wird nie umgeschrieben; ein widersprechender eingegebener
+  Wert ergibt einen Widerspruch. Passive Bauteile behalten die direkte Bindung aus Calc 1 (*R*, *C*, *L* = `value`).
+- **Netze** entstehen wie beim Netzlistenexport (Andockungen mit Pin-Id, an Leitungen angedockte Abzweige), dazu
+  Verbindungspunkte, geschlossene Kontakte (Schutzorgane gelten als geschlossen, außer sie sind ausdrücklich
+  ausgeschaltet), gesteckte Steckverbindungen, Sammelschienen, Abzweigdosen, Verteiler, Zähler, Erdungszeichen einer Art
+  und Netznamen gleichen Namens (ein einzelner Netzname führt woandershin und zählt als Anschluss mit unbekanntem Strom).
+- **Reduktion** (Abschnitt 1.6): offene Zweige bleiben außen vor; parallele Zweige zwischen denselben Netzen; Reihe an
+  einem Netz mit genau zwei Zweigen und sonst nichts; Quellen und passive Teile werden getrennt reduziert, dann schließt
+  eine Quellengruppe an einer Lastgruppe den Stromkreis. Jede Zusammenfassung liefert Summenbeziehungen über
+  Elementvariablen (Reihe: gleicher Strom; parallel: gleiche Spannung; geschlossener Kreis: beides), ohmsche oder
+  kapazitive Gruppen den Ersatzwiderstand oder die Ersatzkapazität (Σ*U* = Σ*I*·*R*_ers, explizit nach *U* und *I*
+  gelöst, numerisch nach Brent für ein *R*). Einpolige Verbraucher an einem Netz, das ein Zweig speist, ergeben den
+  Knotensatz. Eine übrig bleibende Masche ohne Anschlüsse mit unbekanntem Strom markiert ihre Elemente für
+  `elec.net.reducible`.
+- **Bereich (Scope).** Die Beziehungen eines Stromkreises liefert ein Element (das erste nach Id mit Variablen); jedes
+  andere Element liefert eine Zugehörigkeitsbeziehung ohne Löser („gleicher Stromkreis"), die nie etwas löst oder prüft,
+  aber den Besitzer in den Lösungsbereich holt. So sehen die Karte und das Werte-Label eines einzelnen Elements den ganzen
+  Stromkreis. Die Analyse wird je Dokumentinstanz zwischengespeichert.
+- **Richtung.** Spannungen und Ströme sind Beträge in Verbraucherrichtung, gültig für Reihen-Parallel-Netze mit einer
+  speisenden Quelle; Quellen in Reihe gelten als gleichsinnig.
+
+Offen (Elektrotechnik): Wechselstrom-Impedanz, Blindwiderstände, Zeitkonstanten und Resonanz (braucht eine
+Frequenzvariable, Calc-5-Diagramme); Ersatzinduktivität; Schleiferstellung des Potentiometers, Basiswiderstand des
+Bipolartransistors und Verstärkung des Operationsverstärkers; Werte von Motor/Generator (Maschinen); Leitungswerte und
+`elec.cable.drop`; `elec.kcl` (braucht Stromrichtungen); `elec.voltage.mismatch`. **Vorgeschlagene Core-Änderung:** Ein
+Wert, den eine Beziehung ohne Eingänge löst (eine Kennzeichnung), sollte wie ein eingegebener Wert in sich selbst
+wurzeln, damit zwei widersprüchliche Kennzeichnungen (eine 24-V-Lampe an einer 12-V-Sekundärwicklung) einen Widerspruch
+ergeben; heute wird ein solches Paar nicht geprüft. Ebenfalls nützlich in Core: Symbole in elementübergreifenden Formeln
+mit dem Kennzeichen des Elements („*U*(R1) = …"), da die Spannung jedes Widerstands *U* heißt.
+
 ---
 
 ## 11. Umsetzungsnotizen: Calc 2 in PowerPoint (COM) (25.11.2026)

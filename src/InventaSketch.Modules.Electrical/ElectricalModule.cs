@@ -29,6 +29,11 @@ namespace InventaSketch.Modules.Electrical
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
 
+        private static readonly Lazy<IReadOnlyDictionary<string, ObjectType>> ById = new(() => AllTypes.Value.ToDictionary(t => t.Id, StringComparer.Ordinal));
+
+        /// <summary>A type of this module by id (the circuit analysis reads pins and roles without a registry).</summary>
+        internal static ObjectType? FindType(string id) => ById.Value.TryGetValue(id, out var t) ? t : null;
+
         public string Id => "electrical";
         public I18nText Name => new("Electrical & electronics", "Elektrotechnik & Elektronik");
         public string Version => "0.2.0";

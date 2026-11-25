@@ -20,6 +20,10 @@ namespace InventaSketch.Modules.Electrical
             ("none", "Unspecified", "Ohne Angabe"), ("dc", "DC (=)", "Gleichstrom (=)"), ("ac", "AC (~)", "Wechselstrom (~)"), ("ac3", "Three-phase (3~)", "Drehstrom (3~)"));
         private static readonly ParamDef Label = Text("label", T("Label", "Beschriftung"), "");
 
+        /// <summary>A source's value text as a marking: "5 V" (voltage source, battery), "10 mA" (current source), "12 V 2 A".</summary>
+        private static readonly Func<SketchObject, IEnumerable<MarkingValue>> SourceMarking =
+            ElecValues.ByKind((Quantities.Voltage, "U"), (Quantities.Current, "I"), (Quantities.Power, "P"));
+
         public static IEnumerable<ElecType> Types()
         {
             yield return new ElecType("elec.ground", T("Ground / earth", "Erde / Masse"), Cat,
@@ -27,6 +31,8 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(10, 10, Ground))
             {
                 Pins = Fixed(new Pin("1", 0, -0.5)), Params = new[] { GroundKind }, Labeled = false,
+                // Every earth symbol of one kind on a page is the same node (schematic convention).
+                Net = o => new NetSpec { Global = "earth:" + o.Str("kind", "earth") },
                 Extra = o => Choice(o, "elec.ground", T("Earth symbol", "Erdungszeichen"), GroundKind),
             };
 
@@ -34,14 +40,20 @@ namespace InventaSketch.Modules.Electrical
                 new[] { "source", "voltage source", "current source", "dc", "ac", "supply", "quelle", "spannungsquelle", "stromquelle", "gleichspannung", "wechselspannung", "netz" },
                 Views.Symbol(20, 10, Source))
             {
-                Pins = Fixed(TwoH("+", "-").ToArray()), Params = new[] { SourceKind }, Polarized = true, RefPrefix = "G",
+                Pins = Fixed(TwoH("+", "-").ToArray()), Params = new[] { SourceKind }.Concat(ElecValues.SourceParams).ToList(), Polarized = true, RefPrefix = "G",
+                Variables = ElecValues.SourceVariables, Relations = ElecValues.PowerRelations, Marking = SourceMarking,
+                Net = _ => NetSpec.Branch(ElecValues.SourceBranch), Checks = ElecValues.ReducibleOnly,
                 Extra = o => Choice(o, "elec.source", T("Source type", "Quellenart"), SourceKind),
             };
 
             yield return new ElecType("elec.battery", T("Battery", "Batterie"), Cat,
                 new[] { "battery", "cell", "accumulator", "pack", "batterie", "zelle", "akku", "akkumulator", "hv battery" },
                 Views.Symbol(20, 10, Battery))
-            { Pins = Fixed(TwoH("+", "-").ToArray()), Params = new[] { Cells }, Polarized = true, RefPrefix = "G" };
+            {
+                Pins = Fixed(TwoH("+", "-").ToArray()), Params = new[] { Cells }.Concat(ElecValues.SourceParams).ToList(), Polarized = true, RefPrefix = "G",
+                Variables = ElecValues.SourceVariables, Relations = ElecValues.PowerRelations, Marking = SourceMarking,
+                Net = _ => NetSpec.Branch(ElecValues.SourceBranch), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return new ElecType("elec.lamp", T("Lamp", "Lampe"), Cat,
                 new[] { "lamp", "light", "bulb", "indicator", "lampe", "leuchte", "glühlampe", "meldeleuchte" },
@@ -54,7 +66,11 @@ namespace InventaSketch.Modules.Electrical
                     p.Line(-d, -d, d, d, null, "cross");
                     p.Line(-d, d, d, -d, null, "cross");
                 }))
-            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "E" };
+            {
+                Pins = Fixed(TwoH().ToArray()), RefPrefix = "E", Params = ElecValues.LampParams, Variables = ElecValues.LampVariables, Relations = ElecValues.Ohm,
+                Marking = ElecValues.ByKind((Quantities.Voltage, "U"), (Quantities.Current, "I"), (Quantities.Power, "P"), (Quantities.Resistance, "R")),
+                Net = ElecValues.Two("1", "2", ElecValues.Resistive), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return Machine("elec.motor", T("Motor", "Motor"), "M", new[] { "motor", "drive", "antrieb", "elektromotor", "m", "dc motor", "ac motor", "drehstrommotor" });
             yield return Machine("elec.generator", T("Generator", "Generator"), "G", new[] { "generator", "alternator", "lichtmaschine", "g", "dynamo" });
@@ -111,6 +127,8 @@ namespace InventaSketch.Modules.Electrical
             => new(id, name, Cat, keywords, Views.Symbol(20, 15, (p, o) => MachineDraw(p, o, letter)))
             {
                 Pins = MachinePins, Params = new[] { Supply }, RefPrefix = letter,
+                // Machine values (P, n, T) belong to the Machines module; in a circuit the symbol only keeps the network reducible.
+                Net = o => o.Str("supply", "none") == "ac3" ? new NetSpec() : NetSpec.Branch(ElecValues.Opaque),
                 Extra = o => Choice(o, id + ".supply", T("Supply", "Stromart"), Supply),
             };
 

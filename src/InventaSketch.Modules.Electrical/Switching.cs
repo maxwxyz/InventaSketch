@@ -23,7 +23,7 @@ namespace InventaSketch.Modules.Electrical
                 new[] { "switch", "contact", "make", "break", "changeover", "relay contact", "schalter", "kontakt", "schließer", "öffner", "wechsler", "relaiskontakt", "no", "nc" },
                 Views.Symbol(20, 10, SwitchDraw))
             {
-                Pins = SwitchPins, Params = new[] { Contact }, Switchable = true, RefPrefix = "S",
+                Pins = SwitchPins, Params = new[] { Contact }, Switchable = true, RefPrefix = "S", Net = SwitchNet,
                 Extra = o => Choice(o, "elec.contact", T("Contact type", "Kontaktart"), Contact),
             };
 
@@ -31,7 +31,7 @@ namespace InventaSketch.Modules.Electrical
                 new[] { "push button", "pushbutton", "button", "momentary", "taster", "drucktaster", "knopf" },
                 Views.Symbol(20, 14, PushButton))
             {
-                Pins = Fixed(TwoH().ToArray()), Params = new[] { ContactSimple }, Switchable = true, RefPrefix = "S",
+                Pins = Fixed(TwoH().ToArray()), Params = new[] { ContactSimple }, Switchable = true, RefPrefix = "S", Net = o => ElecValues.Contact(o, "1", "2"),
                 Extra = o => Choice(o, "elec.contact", T("Contact type", "Kontaktart"), ContactSimple),
             };
 
@@ -43,12 +43,12 @@ namespace InventaSketch.Modules.Electrical
                     p.Line(5, 0, 10, 0, null, "lead");
                     p.Rect(-5, -3.5, 5, 3.5, null, "body");
                 }))
-            { Pins = Fixed(TwoH("A1", "A2").ToArray()), RefPrefix = "K" };
+            { Pins = Fixed(TwoH("A1", "A2").ToArray()), RefPrefix = "K", Net = ElecValues.Two("A1", "A2", ElecValues.Opaque) };
 
             yield return new ElecType("elec.contactor", T("Contactor (main contacts)", "Schütz (Hauptkontakte)"), Cat,
                 new[] { "contactor", "schütz", "main contact", "hauptkontakt", "power contact", "relay" },
                 Views.Symbol(20, 30, Contactor))
-            { Pins = ContactorPins, Params = new[] { Poles }, Switchable = true, RefPrefix = "Q" };
+            { Pins = ContactorPins, Params = new[] { Poles }, Switchable = true, RefPrefix = "Q", Net = ContactorNet };
 
             yield return new ElecType("elec.fuse", T("Fuse", "Sicherung"), Cat,
                 new[] { "fuse", "sicherung", "schmelzsicherung", "protection", "schutz" },
@@ -57,7 +57,10 @@ namespace InventaSketch.Modules.Electrical
                     p.Line(-10, 0, 10, 0, null, "lead");
                     p.Rect(-6, -2, 6, 2, null, "body");
                 }))
-            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "F" };
+            {
+                Pins = Fixed(TwoH().ToArray()), RefPrefix = "F", Params = ElecValues.DeviceParams, Variables = ElecValues.DeviceVariables,
+                Marking = ElecValues.DeviceMarking, Net = ElecValues.Device("1", "2"), Checks = new[] { ElecValues.Coordination, ElecValues.NotReducible },
+            };
 
             yield return new ElecType("elec.breaker", T("Miniature circuit breaker", "Leitungsschutzschalter"), Cat,
                 new[] { "circuit breaker", "breaker", "mcb", "leitungsschutzschalter", "ls-schalter", "sicherungsautomat", "leistungsschalter" },
@@ -66,15 +69,51 @@ namespace InventaSketch.Modules.Electrical
                     ContactAt(p, 0, "no", IsClosed(o));
                     p.Cross(4, 0, 1.1, null, "breaker");
                 }))
-            { Pins = Fixed(TwoH().ToArray()), Switchable = true, RefPrefix = "F" };
+            {
+                Pins = Fixed(TwoH().ToArray()), Switchable = true, RefPrefix = "F", Params = ElecValues.DeviceParams, Variables = ElecValues.DeviceVariables,
+                Marking = ElecValues.DeviceMarking, Net = ElecValues.Device("1", "2"), Checks = new[] { ElecValues.Coordination, ElecValues.NotReducible },
+            };
 
             yield return new ElecType("elec.rcd", T("Residual current device (RCD)", "Fehlerstrom-Schutzschalter (RCD)"), Cat,
                 new[] { "rcd", "rccb", "gfci", "residual current", "fi", "fi-schalter", "fehlerstromschutzschalter", "rcd" },
                 Views.Symbol(20, 20, Rcd))
             {
                 Pins = Fixed(new Pin("Lin", -0.5, -0.25), new Pin("Nin", -0.5, 0.25), new Pin("Lout", 0.5, -0.25), new Pin("Nout", 0.5, 0.25)),
-                Switchable = true, RefPrefix = "F",
+                Switchable = true, RefPrefix = "F", Params = ElecValues.RcdParams, Variables = ElecValues.RcdVariables, Marking = ElecValues.RcdMarking,
+                // Both poles conduct (the residual current is not modelled); open only when switched off explicitly.
+                Net = o =>
+                {
+                    if (ElecValues.ExplicitlyOpen(o)) return NetSpec.Open("Lin", "Nin", "Lout", "Nout");
+                    var n = NetSpec.Short("Lin", "Lout");
+                    n.Shorts.Add(new[] { "Nin", "Nout" });
+                    return n;
+                },
             };
+        }
+
+        /// <summary>
+        /// Make/break contacts conduct when closed; a changeover contact joins the common pin with the normally closed one at
+        /// rest and with the normally open one when operated.
+        /// </summary>
+        private static NetSpec SwitchNet(SketchObject o)
+        {
+            if (o.Str("contact", "no") != "changeover") return ElecValues.Contact(o, "1", "2");
+            var operated = o.Flag("closed", false);
+            var n = NetSpec.Short("com", operated ? "no" : "nc");
+            n.Ignore.Add(operated ? "nc" : "no");
+            return n;
+        }
+
+        private static NetSpec ContactorNet(SketchObject o)
+        {
+            var poles = Count(o, "poles", 3, 1, 3);
+            var n = new NetSpec();
+            for (var i = 1; i <= poles; i++)
+            {
+                if (IsClosed(o)) n.Shorts.Add(new[] { "L" + N(i), "T" + N(i) });
+                else { n.Ignore.Add("L" + N(i)); n.Ignore.Add("T" + N(i)); }
+            }
+            return n;
         }
 
         private static IReadOnlyList<Pin> SwitchPins(SketchObject o) => o.Str("contact", "no") == "changeover"
