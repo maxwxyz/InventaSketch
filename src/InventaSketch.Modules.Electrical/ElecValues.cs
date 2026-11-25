@@ -18,11 +18,13 @@ namespace InventaSketch.Modules.Electrical
             new ParamDef("voltage", T("Voltage", "Spannung"), ParamKind.Text) { Unit = "V" },
             new ParamDef("current", T("Current", "Strom"), ParamKind.Text) { Unit = "A" },
             new ParamDef("power", T("Power", "Leistung"), ParamKind.Text) { Unit = "W" },
+            // Calc 2: the values label below the symbol ("U = 230 V, I = 2 A, P = 460 W"), drawn by ValueLabels.
+            ValueLabels.ShowValues,
         };
 
         public static readonly IReadOnlyList<VarDef> ResistorVariables = new[]
         {
-            new VarDef("R", T("Resistance", "Widerstand"), T("R", "R"), Quantities.Resistance) { Param = "value", Unit = "Ω", Min = 1e-6, Max = 1e12 },
+            new VarDef("R", T("Resistance", "Widerstand"), T("R", "R"), Quantities.Resistance) { Param = "value", OnTypeLabel = true, Unit = "Ω", Min = 1e-6, Max = 1e12 },
             new VarDef("U", T("Voltage", "Spannung"), T("U", "U"), Quantities.Voltage) { Param = "voltage", Unit = "V" },
             new VarDef("I", T("Current", "Strom"), T("I", "I"), Quantities.Current) { Param = "current", Unit = "A" },
             new VarDef("P", T("Power", "Leistung"), T("P", "P"), Quantities.Power) { Param = "power", Unit = "W" },

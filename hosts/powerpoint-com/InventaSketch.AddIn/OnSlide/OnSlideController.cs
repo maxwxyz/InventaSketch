@@ -1059,6 +1059,13 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     g.TranslateTransform(-view.PaneRect.X, -view.PaneRect.Y);
                     screenSpace(g);
+                    g.ResetTransform();
+                }
+                // Conflicting element values: a small amber badge at the selected element (overlay only, Calc 2).
+                if (_mode == Mode.Armed)
+                {
+                    g.TranslateTransform(-view.PaneRect.X, -view.PaneRect.Y);
+                    DrawValueBadge(g, view);
                 }
             }
             _overlay.Present(bmp, view.PaneRect, view.MainWindow);
@@ -2066,6 +2073,8 @@ namespace InventaSketch.AddIn.OnSlide
             // Opening or closing a bar choice is no edit; picking an option becomes the edit command.
             if (ChoiceCommand(id) is not { } command) return;
             id = command;
+            // Element values: the card, a value of the pie, the values label (Calc 2).
+            if (ValueCommand(stale, id)) return;
             var slide = CurrentSlide();
             var unit = SketchUnits.Read(stale.Shape);
             if (slide is null || unit is null) return;

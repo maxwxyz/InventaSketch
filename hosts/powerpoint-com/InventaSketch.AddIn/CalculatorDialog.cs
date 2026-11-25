@@ -28,11 +28,19 @@ namespace InventaSketch.AddIn
         private string T(string en, string de) => _lang == Lang.De ? de : en;
 
         /// <summary>Shows the calculator (one window; a second call brings it to the front).</summary>
-        public static void ShowCalculator(Lang lang)
+        public static void ShowCalculator(Lang lang) => ShowCalculator(lang, null);
+
+        /// <summary>Shows the calculator with <paramref name="text"/> in the input line (the value card's "Calculator …": the chosen value).</summary>
+        public static void ShowCalculator(Lang lang, string? text)
         {
-            if (_open is { IsDisposed: false }) { _open.Activate(); return; }
-            _open = new CalculatorDialog(lang);
-            _open.Show();
+            if (_open is not { IsDisposed: false }) { _open = new CalculatorDialog(lang); _open.Show(); }
+            else _open.Activate();
+            if (!string.IsNullOrEmpty(text))
+            {
+                _open._input.Text = text;
+                _open._input.SelectionStart = _open._input.Text.Length;
+                _open._input.Focus();
+            }
         }
 
         private CalculatorDialog(Lang lang)

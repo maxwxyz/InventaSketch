@@ -211,6 +211,7 @@ namespace InventaSketch.Core
         public const string LabelShow = "cmd-label-show";     // show the element's designation label (part with a label beside it)
         public const string PortLabels = "cmd-port-labels";   // show the port names (pins with short labels)
         public const string Formula = "cmd-formula";          // a formula f(x) ("fx")
+        public const string Values = "cmd-values";            // the element's values and how they follow from each other ("x=")
         public const string Parameters = "cmd-parameters";   // coefficients / a parameter set (three sliders)
         public const string Code = "cmd-code";                // the specification as code (braces)
         public const string Data = "cmd-data";                // the element's data (spreadsheet with a header row)
@@ -387,7 +388,7 @@ namespace InventaSketch.Core
             Split, RemovePoint, Hop, Junction, Explode, Motion,
             ShapeSquare, ShapeCircle, ShapeTriangle, FillTint, FillHatch, FillDots, FillNone, RouteFree, RouteOrthogonal, Route45,
             WallThick, WallMedium, WallThin,
-            Option, Value, Name, LabelShow, PortLabels, Formula, Parameters, Code, Data, Legend, Visibility, Grid, AxisTicks, Smooth, PointsShow,
+            Option, Value, Values, Name, LabelShow, PortLabels, Formula, Parameters, Code, Data, Legend, Visibility, Grid, AxisTicks, Smooth, PointsShow,
             Contour, Function, Marker, ValueLine, HatchBetween, HatchBelow, BreakX, BreakY, BreakXRemove, BreakYRemove, Ghosts, RayBundle,
             QtyAngle, QtyLength, QtyWidth, QtyHeight, QtyThickness, QtyArea, QtyVolume, QtyMass, QtyPressure, QtyPower, QtyVoltage, QtyCapacity,
             QtyCharge, QtyTime, QtyFrequency, QtyTolerance, QtyFlow, RangeX, RangeY,
@@ -1327,7 +1328,8 @@ namespace InventaSketch.Core
         {
             var type = TypeOf(o);
             ctx.For(this);
-            var local = type.Render(o, ctx);
+            // The values label (part "values", Calc 2) of types with element values, when the object asks for it.
+            var local = ValueLabels.Append(this, o, ctx, type.Render(o, ctx));
             var k = ctx.Doc.Settings.LineGroup is double g && g > 0 ? g / Style.DesignLineGroup : 1;
             var accent = ctx.Doc.Settings.Accent;
             if (Math.Abs(k - 1) < 1e-9 && accent is null && o.Style is null) return PartLooks.Apply(local, o.Parts);
@@ -1347,7 +1349,9 @@ namespace InventaSketch.Core
         public IReadOnlyList<PartInfo> Parts(SketchObject o, RenderContext ctx)
         {
             ctx.For(this);
-            return TypeOf(o).Parts(o, ctx).Select(p => p with { Hidden = PartLooks.LookOf(o.Parts, p.Key)?.Hidden == true }).ToList();
+            var parts = TypeOf(o).Parts(o, ctx);
+            if (ValueLabels.PartOf(this, o) is { } values) parts = parts.Append(values);
+            return parts.Select(p => p with { Hidden = PartLooks.LookOf(o.Parts, p.Key)?.Hidden == true }).ToList();
         }
 
         /// <summary>

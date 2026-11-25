@@ -185,7 +185,25 @@ namespace InventaSketch.Core
         /// when an object has no scale of its own. Null: each module's default.
         /// </summary>
         public double? PlanScale { get; init; }
+        /// <summary>
+        /// How element values are shown (docs/en/design/engineering-calculations.md, section 1.1): null = Quick sketch (no
+        /// values, cards or warnings; the default, so older documents are unchanged), Explore or Engineer.
+        /// </summary>
+        public ValueLevel? ValueLevel { get; init; }
+
+        /// <summary>The value level with the default applied (<see cref="Core.ValueLevel.QuickSketch"/> when not set).</summary>
+        [System.Text.Json.Serialization.JsonIgnore]
+        public ValueLevel EffectiveValueLevel => ValueLevel ?? Core.ValueLevel.QuickSketch;
+
+        /// <summary>The settings with <paramref name="level"/> (Quick sketch is stored as "not set").</summary>
+        public DocumentSettings WithValueLevel(ValueLevel level) => this with { ValueLevel = level == Core.ValueLevel.QuickSketch ? null : level };
     }
+
+    /// <summary>
+    /// The three ways of working with element values (engineering-calculations.md, section 1.1): Quick sketch shows nothing
+    /// new, Explore shows values, formulas and grips (3 significant digits), Engineer adds precision and sources.
+    /// </summary>
+    public enum ValueLevel { QuickSketch, Explore, Engineer }
 
     public static class PageSizes
     {
