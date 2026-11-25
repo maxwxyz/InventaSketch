@@ -317,11 +317,13 @@ Funktionsgraphen des Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vekto
    Tabelleneditor für Diagrammdaten in COM (Raster, leere Zeile = neue Reihe, Einfügen aus Excel).
 3. **Kurven aus Funktionen und Skizzen (erledigt 25.11.2026):** 13 Funktionsgeneratoren mit Textform, Skizzenerkennung
    (10 Arten, sonst Glättung), COM „Kurve skizzieren“ in XY-Diagrammen und Abbildungen (mit echter Maus geprüft).
-   Achsenbrüche: Baustein (`AxisBreaks`, aus Slidemax übernommen) fertig, von den Diagrammtypen noch nicht gezeichnet.
+   Achsenbrüche zeichnen XY-Diagramme und Abbildungen seit 25.11.2026 (Zickzack oder Schrägstriche, Aktionen an den
+   Achsteilen); nicht nach matplotlib/pgfplots exportiert (nur Kommentar).
 4. **matplotlib- und pgfplots-Export (erledigt 25.11.2026):** `chart.matplotlib` (.py) und `chart.pgfplots` (.tex) für
    alle Diagrammtypen samt Abbildungen, Teil-Aussehen berücksichtigt, Texte bearbeitbar; Python-Syntax geprüft, aber noch
-   nicht mit matplotlib ausgeführt oder mit LaTeX übersetzt (hier nicht installiert). Zusammenlegung mit Mathe
-   (Koordinatensysteme und Funktionsgraphen ins Diagramm-Modul) offen.
+   nicht mit matplotlib ausgeführt oder mit LaTeX übersetzt (hier nicht installiert). Zusammenlegung mit Mathe erledigt 25.11.2026:
+   `chart.math.axes` und `chart.math.function` (Formelauswertung, Funktionsfamilien, Generatoren); die Mathe-Einträge
+   treten zurück.
 4a. **Bearbeitbare Exporte (Maintainer 25.11.2026):** LaTeX – jede Zeichnung (Flussdiagramme, Blockschaltbilder,
    Skizzen) als TikZ mit Texten als TikZ-Knoten (Dokumentschrift, Formatierung und Formeln bleiben in LaTeX
    bearbeitbar, Umlaute und Sonderzeichen maskiert), Diagramme und Abbildungen als pgfplots (Achsen, Teilung, Legende,
@@ -387,7 +389,7 @@ dialog-over-unit, diagram-layout, compatibility-check, ribbon-look.
    Dialog in LibreOffice), Export von Auswahl/Folie in Web und LibreOffice, Abbildungsvorlagen in beiden Hosts prüfen.
 2. Achsenbrüche in XY-Diagrammen und Abbildungen zeichnen; Zusammenlegung mit Mathe (Koordinatensysteme und
    Funktionsgraphen als Diagrammvorlagen, Einträge des Mathe-Moduls treten über `LibraryItem.Alternative` zurück).
-3. Folien bereinigen zur Weitergabe (unten; Engine fertig 25.11.2026, Host-Befehle offen).
+3. Folien bereinigen zur Weitergabe (unten; Engine und PowerPoint-COM fertig 25.11.2026, Web und LibreOffice offen).
 4. Hindernisbewusste Führung bei von Hand gesetzten Flussdiagrammkästen; Tab-Durchlauf durch Diagrammteile;
    isometrische Teile, bewegte Lagen, Batteriezellen-Anordnungen, Optik-Modul (Fit-Gap „später“).
 5. Kennfeld-Meldung (wartet auf erneuten Versuch des Maintainers), Web-Prüfung in PowerPoint (braucht das
@@ -400,7 +402,7 @@ und Tastatur (kein Hook darf Eingaben eines Dialogs im Vordergrund schlucken); U
 ins ausgewählte Element wählt das Teil; Leiste und Kreismenü wirken darauf; „Ganzes Element“ verlässt es); jedes „+“
 sagt, was es anfügt.
 
-### Folien bereinigen zur Weitergabe (Maintainer 25.11.2026; Engine fertig 25.11.2026, Hosts offen; wie Slidemax)
+### Folien bereinigen zur Weitergabe (Maintainer 25.11.2026; Engine und COM fertig 25.11.2026, Web und LibreOffice offen; wie Slidemax)
 
 Ein Befehl „Folien bereinigen“ für Auswahl, Folie oder ganze Präsentation, bevor Folien das Unternehmen verlassen:
 Diagramme und Abbildungen entweder **normiert** (gleiche Verhältnisse und Formen, Werte und Achszahlen unkenntlich –

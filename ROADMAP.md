@@ -285,11 +285,12 @@ vectors stay in `math`.
    row = new series, paste from Excel).
 3. **Curves from functions and sketches (done 2026-11-25):** 13 function generators with text form, sketch recognition
    (10 kinds, smoothing fallback), COM "Sketch a curve" on XY charts and figures (verified with the real mouse). Axis
-   breaks: building block (`AxisBreaks`, port of Slidemax) done, not yet drawn by the chart types.
+   breaks drawn by XY charts and figures (zigzag or slash, actions on the axis parts) since 2026-11-25; not exported to
+   matplotlib/pgfplots (comment only).
 4. **matplotlib and pgfplots export (done 2026-11-25):** `chart.matplotlib` (.py) and `chart.pgfplots` (.tex) for every
    chart type incl. figures, part looks respected, texts editable; Python syntax checked, but not yet run with matplotlib
-   or compiled with LaTeX (neither installed here). Math merge (coordinate systems and function graphs into the chart
-   module) open.
+   or compiled with LaTeX (neither installed here). Math merge done 2026-11-25: `chart.math.axes` and
+   `chart.math.function` (formula evaluator, function families, generators); the math items step back.
 4a. **Editable exports (maintainer 2026-11-25):** LaTeX – every drawing (flowcharts, block diagrams, sketches) as TikZ
    with texts as TikZ nodes (document font, formatting and maths stay editable in LaTeX, umlauts and special characters
    escaped), charts and figures as pgfplots (axes, ticks, legend, labels, value lines, hatched regions as LaTeX code, data
@@ -349,7 +350,7 @@ dialog-over-unit, diagram-layout, compatibility-check, ribbon-look.
    LibreOffice dialog), export of selection/slide in web and LibreOffice, figure presets checked in both hosts.
 2. Axis breaks drawn by XY charts and figures; math merge (coordinate systems and function graphs as chart presets,
    items of the math module step back via `LibraryItem.Alternative`).
-3. Clean slides for sharing (below; engine done 2026-11-25, host commands open).
+3. Clean slides for sharing (below; engine and PowerPoint COM done 2026-11-25, web and LibreOffice open).
 4. Obstacle-aware routing for hand-placed flowchart boxes; Tab cycling through chart parts; isometric parts, moved
    positions, battery cell arrays, optics module (fit-gap "later").
 5. Kennfeld report (waiting for the maintainer's retry), web check in PowerPoint (needs the dev certificate).
@@ -360,7 +361,7 @@ weights, accent) while working modes are user settings (snap, bar, anchor, move)
 keyboard through (no hook may swallow input of a foreground dialog); sub-selection follows one pattern (click on the
 selected element selects its part; bar and pie act on it; "whole element" leaves it); every "+" says what it adds.
 
-### Clean slides for sharing (maintainer 2026-11-25; engine done 2026-11-25, hosts open; like Slidemax)
+### Clean slides for sharing (maintainer 2026-11-25; engine and COM done 2026-11-25, web and LibreOffice open; like Slidemax)
 
 A "Clean slides" command for the selection, the slide or the whole presentation before slides leave the company:
 charts and figures either **normalised** (same proportions and shapes, values and axis numbers made unrecognisable –
