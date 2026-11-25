@@ -79,6 +79,8 @@ namespace InventaSketch.Engine
                 ["applyPartAction"] = ApplyPartActionCore,
                 ["setPartLook"] = SetPartLookCore,
                 ["partOutline"] = PartOutlineCore,
+                ["sketchCurve"] = SketchCurveCore,
+                ["chartFromPicture"] = ChartFromPictureCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
                 ["redo"] = r => { var s = S(r); s.Redo(); return StateOf(s, r); },
                 ["select"] = r => { var s = S(r); s.Select(r.Ids); return StateOf(s, r); },
@@ -1763,6 +1765,46 @@ namespace InventaSketch.Engine
         /// partOutline: the drawn outline of one part of element id in page mm, as polylines [[x, y], …] (lines and curves
         /// sampled, sub-paths separate, texts and areas as their box), for hosts that highlight the selected part.
         /// </summary>
+        /// <summary>
+        /// sketchCurve: a curve drawn by hand into chart id (points = pointer trail in page mm) is recognised or smoothed and
+        /// added as a new series (charts v2, <see cref="InventaSketch.Modules.Charts.ChartSketchInput"/>); one undo step.
+        /// Returns the state plus the message (what was recognised); unchanged state with an empty message if nothing fits.
+        /// </summary>
+        private object SketchCurveCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var chart = s.Doc.Get(r.Id ?? "") ?? throw new KeyNotFoundException($"Unknown object '{r.Id}'.");
+            var trail = (r.Points ?? new List<double[]>()).Where(p => p.Length >= 2).Select(p => new Vec2(p[0], p[1])).ToList();
+            var result = InventaSketch.Modules.Charts.ChartSketchInput.Add(Registry, chart, trail, new RenderContext(s.Doc, lang));
+            if (result is null) return new { state = StateOf(s, r), message = "" };
+            s.Apply("Sketch", d => Edits.Update(d, new[] { chart.Id }, _ => result.Chart));
+            return new { state = StateOf(s, r), message = result.Message.Get(lang), kind = result.Kind?.ToString() };
+        }
+
+        /// <summary>
+        /// chartFromPicture: a picture (payload = base64 RGBA bytes, w × h pixels) becomes a chart on the page at (x, y) mm
+        /// (charts v2 stage 5, <see cref="InventaSketch.Modules.Charts.Scanning.ChartFromPicture"/>); one undo step, selected.
+        /// Returns the state plus the message for the user (also when nothing was found).
+        /// </summary>
+        private object ChartFromPictureCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var w = (int)(r.W ?? 0); var h = (int)(r.H ?? 0);
+            var bytes = string.IsNullOrEmpty(r.Payload) ? Array.Empty<byte>() : Convert.FromBase64String(r.Payload);
+            var image = new InventaSketch.Modules.Charts.Scanning.PixelImage(w, h, bytes);
+            var at = new Vec2(r.X ?? s.Page.Size.W / 2, r.Y ?? s.Page.Size.H / 2);
+            var result = InventaSketch.Modules.Charts.Scanning.ChartFromPicture.Build(Registry, image, at, lang);
+            if (result.Chart is not null)
+            {
+                var chart = result.Chart;
+                s.Apply("Chart from picture", d => Edits.Add(d, s.PageId, chart));
+                s.Select(new List<string> { chart.Id });
+            }
+            return new { state = StateOf(s, r), message = result.Message.Get(lang), id = result.Chart?.Id };
+        }
+
         private object PartOutlineCore(EngineRequest r)
         {
             var s = S(r);

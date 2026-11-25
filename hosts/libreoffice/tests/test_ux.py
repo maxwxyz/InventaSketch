@@ -499,6 +499,14 @@ class EngineFlows(unittest.TestCase):
 
 
 
+class ConnectionPortRowTests(unittest.TestCase):
+    """Connection ports and line ends have their own names in the build list (2026-11-25)."""
+
+    def test_connection_kinds_are_named(self):
+        self.assertIn("Anschluss", ux.port_label({"id": "dc", "kind": "Connect", "dx": 1, "dy": 0}, 0, "de"))
+        self.assertIn("Leitungsende", ux.port_label({"id": "line.end", "kind": "LineEnd", "dx": 0, "dy": 1}, 0, "de"))
+
+
 class PartRowTests(unittest.TestCase):
     """Chart parts dialog rows (charts v2)."""
 

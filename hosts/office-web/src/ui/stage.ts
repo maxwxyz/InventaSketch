@@ -119,6 +119,8 @@ export class Stage {
   readonly svg: SVGSVGElement;
   private readonly pageRect: SVGRectElement;
   private readonly gridRect: SVGRectElement;
+  /** Sketch mode (charts v2): the trail in page mm while the button is held, and what receives it on release. */
+  private sketch?: { done: (points: number[][]) => void; points: number[][]; drawing: boolean };
   /** Outline of the selected part of a chart (charts v2), below the selection handles. */
   private readonly partLayer: SVGGElement;
   private readonly content: SVGGElement;
@@ -178,6 +180,7 @@ export class Stage {
     this.snapLabelEl.hidden = true;
     this.el.append(this.svg, this.scaleLabelEl, this.snapLabelEl);
     window.addEventListener("keydown", (e) => this.onModifier(e));
+    window.addEventListener("keydown", (e) => { if (e.key === "Escape" && this.sketch) { this.cancelSketch(); e.preventDefault(); } });
     window.addEventListener("keyup", (e) => this.onModifier(e));
 
     new ResizeObserver(() => this.resize()).observe(this.el);
@@ -316,6 +319,29 @@ export class Stage {
       for (const c of this.portPlus.map((p) => this.toClient(p))) pts.push({ x: c.x - r, y: c.y - r }, { x: c.x + r, y: c.y + r });
     }
     return { left: Math.min(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), right: Math.max(...pts.map((p) => p.x)), bottom: Math.max(...pts.map((p) => p.y)) };
+  }
+
+  /** Starts sketch mode: the next drag draws a trail (shown live) that `done` receives on release; Esc cancels. */
+  startSketch(done: (points: number[][]) => void): void {
+    this.sketch = { done, points: [], drawing: false };
+    this.el.style.cursor = "crosshair";
+  }
+
+  /** Leaves sketch mode without a result. */
+  cancelSketch(): void {
+    this.sketch = undefined;
+    this.el.style.cursor = "";
+    this.partLayer.querySelectorAll(".isk-sketch-trail").forEach((n) => n.remove());
+  }
+
+  get sketching(): boolean {
+    return !!this.sketch;
+  }
+
+  private drawSketchTrail(): void {
+    this.partLayer.querySelectorAll(".isk-sketch-trail").forEach((n) => n.remove());
+    const pts = this.sketch?.points ?? [];
+    if (pts.length >= 2) this.partLayer.append(s("polyline", { class: "isk-part-outline isk-sketch-trail", points: pts.map((p) => `${p[0]},${p[1]}`).join(" ") }));
   }
 
   /** Outline of the selected part (page mm polylines); none clears it. */
@@ -679,6 +705,14 @@ export class Stage {
   private onDown(e: PointerEvent): void {
     this.el.focus({ preventScroll: true });
     const p = this.toPage(e.clientX, e.clientY);
+    if (this.sketch && e.button === 0) {
+      this.sketch.drawing = true;
+      this.sketch.points = [[p.x, p.y]];
+      this.svg.setPointerCapture(e.pointerId);
+      e.preventDefault();
+      return;
+    }
+    if (this.sketch && e.button === 2) { this.cancelSketch(); return; }
     const session = this.host.session();
     const st = this.host.state();
     if (e.button === 1 || (e.button === 0 && this.spaceDown)) {
@@ -787,6 +821,11 @@ export class Stage {
 
   private onMove(e: PointerEvent): void {
     const p = this.toPage(e.clientX, e.clientY);
+    if (this.sketch?.drawing) {
+      const last = this.sketch.points[this.sketch.points.length - 1];
+      if (Math.hypot(p.x - last[0], p.y - last[1]) * this.scale >= 2) { this.sketch.points.push([p.x, p.y]); this.drawSketchTrail(); }
+      return;
+    }
     this.lastPointer = p;
     this.host.pointerMoved(e.clientX, e.clientY);
     const d = this.drag;
@@ -973,6 +1012,16 @@ export class Stage {
   }
 
   private onUp(e: PointerEvent): void {
+    const sk = this.sketch;
+    if (sk?.drawing) {
+      if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
+      const p = this.toPage(e.clientX, e.clientY);
+      sk.points.push([p.x, p.y]);
+      const pts = sk.points;
+      this.cancelSketch();
+      if (pts.length >= 3) sk.done(pts);
+      return;
+    }
     const d = this.drag;
     this.drag = undefined;
     // Alt edits freely: no mechanical coupling (gears in mesh, gears on shafts) for this edit.

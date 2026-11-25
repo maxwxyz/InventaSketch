@@ -51,6 +51,8 @@ TEXTS = {
     "portBevel": ("Cone apex", "Kegelspitze"),
     "portJoint": ("Joint", "Gelenk"),
     "portMount": ("Flange (tool)", "Flansch (Werkzeug)"),
+    "portConnect": ("Connection (line or element)", "Anschluss (Leitung oder Element)"),
+    "portLineEnd": ("Line end (continue or connect)", "Leitungsende (fortsetzen oder anschließen)"),
     "dirRight": ("right", "rechts"),
     "dirDownRight": ("bottom right", "rechts unten"),
     "dirDown": ("bottom", "unten"),

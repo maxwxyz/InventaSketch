@@ -48,7 +48,7 @@ export function stretchTarget(port: BuildPortInfo, p: Vec2): { x: number; y: num
 /** Tooltip key of a "+" (strings.json "port.*"): what docks there and, for a shaft end, that dragging lengthens it. */
 export function portTipKey(port: BuildPortInfo): string {
   if (port.kind === "AxisEnd") return port.stretch ? "port.AxisEnd.stretch" : "port.AxisEnd";
-  return ["Mesh", "InnerMesh", "Hub", "Pin", "Bevel", "Joint", "Mount"].includes(port.kind) ? `port.${port.kind}` : "port.other";
+  return ["Mesh", "InnerMesh", "Hub", "Pin", "Bevel", "Joint", "Mount", "Connect", "LineEnd"].includes(port.kind) ? `port.${port.kind}` : "port.other";
 }
 
 /**
