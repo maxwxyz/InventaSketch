@@ -28,7 +28,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown (UI tests).</summary>
         internal string LastBarRect { get; private set; } = "";
 
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port, Turn, Multi, Sketch }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port, Turn, Multi, Sketch, Grip }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -190,7 +190,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Sketch) return;
+                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Sketch or Mode.Grip) return;
                 using var dpi = DpiScope.PerMonitor();
                 SketchUnit? unit = null;
                 if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count == 1)
@@ -251,6 +251,7 @@ namespace InventaSketch.AddIn.OnSlide
             PrepareSegments(unit);
             PreparePorts(unit);
             PrepareSides(unit);
+            PrepareGrips(unit);
             _mode = Mode.Armed;
             _hooks.Install();
             _timer.Start();
@@ -287,7 +288,7 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Sketch)
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Sketch or Mode.Grip)
             {
                 _mode = Mode.Armed;
                 if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
@@ -303,7 +304,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn) return;
+                if (_mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Grip) return;
                 using var dpi = DpiScope.PerMonitor();
                 var view = SlideView.Current(_app);
                 if (view is null) { Cancel("no slide view"); return; }
@@ -440,6 +441,9 @@ namespace InventaSketch.AddIn.OnSlide
                 case Mode.Port:
                     return PortDragMouse(message, pt, view);
 
+                case Mode.Grip:
+                    return GripMouse(message, pt, view);
+
                 case Mode.Turn:
                     return TurnMouse(message, pt, view);
 
@@ -453,6 +457,8 @@ namespace InventaSketch.AddIn.OnSlide
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
                     // Lock badges where the unit touches and follows other elements: a click releases or couples.
                     if (LinkMouse(message, pt, view, out var linkSwallow)) return linkSwallow;
+                    // Drag handles of the element (chart limit lines, value lines, markers): before the body drag inside the plot.
+                    if (GripStart(message, pt, view, out var gripSwallow)) return gripSwallow;
                     // Build "+" on gears, shafts and machines: what fits there, or stretch a shaft.
                     if (PortMouse(message, pt, view, out var portSwallow)) return portSwallow;
                     // "+" on the sides of a table: a row or column there.
@@ -737,7 +743,7 @@ namespace InventaSketch.AddIn.OnSlide
                 FinishDraw();
                 return true;
             }
-            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band)
+            if (vk == VK_ESCAPE && _mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Grip)
             {
                 Cancel("escape");
                 return true;
@@ -1433,14 +1439,20 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Small diamond handles on the points of a selected line/arrow/dimension/lead line.</summary>
         private void DrawPointHandles(SlideView view)
         {
-            if (_part is not null && PartOwner() is not null) { Present(view, _ => { }, g => DrawPart(g, view)); return; }
-            var o = PointObject();
             if (_unit is not null) LastHandles = HandleLayout.Describe(Handles(view));
+            if (_part is not null && PartOwner() is not null)
+            {
+                // A selected chart part: its outline, and the grips stay draggable.
+                Present(view, _ => { }, g => { DrawPart(g, view); DrawGrips(g, view); FlushTip(g, view); });
+                return;
+            }
+            var o = PointObject();
             if (o is null && _chainSource is not null) { DrawChainTools(view); return; }
-            if (o is null && _links.Count == 0 && _ports.Count == 0 && _sides.Count == 0) return;
+            if (o is null && _links.Count == 0 && _ports.Count == 0 && _sides.Count == 0 && _grips.Count == 0) return;
             var pts = o is null ? null : _unit!.Doc.ResolvePoints(o);
             Present(view, _ => { }, g =>
             {
+                DrawGrips(g, view);
                 if (pts is not null) DrawHandleSet(g, view, pts, _selectedPoints);
                 if (pts is not null) DrawSegmentHandles(g, view);
                 DrawPorts(g, view);

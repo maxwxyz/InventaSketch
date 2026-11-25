@@ -60,7 +60,7 @@ Abgeleitet aus der Engine (Aktionen, Ansichten, Anker von `ObjectType`, `Buildin
 | Prozess-, Energieanlagen, Gebäudetechnik | Box | 1–3 | „+“ an freien Anschlüssen | Art, Medium, Stufen | Planmaßstab, Baugruppen-Ansichtswechsel |
 | Wände, Räume (Architektur) | Punkte (Ecken) | – | Rauten, Eckpunkte, „+“ an freien Wandenden | dicker/dünner, Art-Auswahl, 1:50 | Öffnungen folgen der Wand |
 | Öffnungen, Treppen, Plansymbole | Box | 1–2 | – | Breite ±, an Wand ausrichten | |
-| Diagramme (auch Figurendiagramme) | Box | – | Teil-Umriss nach Klick auf ein Teil; (geplant) Griffe für Wertlinien | Daten …, Stil, Kurve skizzieren | Teile: Reihe, Achse, Gitter, Legende, Grenze … |
+| Diagramme (auch Figurendiagramme) | Box | – | Griffe auf Grenz-, Wertlinien und Markern; Teil-Umriss nach Klick auf ein Teil | Daten …, Stil, Kurve skizzieren | Teile: Reihe, Achse, Gitter, Legende, Grenze … |
 | Diagrammknoten: Flussdiagramm, UML, BPMN, ER, Regelung | Box | 1–2 | Schnell-Anfügen-Dreiecke, Anschlüsse beim Annähern | Zeilen ±, Schalter | „Ändern in …“ nach Schnell-Anfügen |
 | Pfeile, Linien, Hinweislinien, Maße, Verbinder | Punkte | – | Rauten, „+“ an freien Enden (Polylinien), Eckpunkte | Linientyp, Spitzen, Linienart | Typ wandeln, Beschriftungsmenü |
 | Tabelle, Text, Stückliste (Annotation) | Box | – | Tabelle: „+“ an jeder Seite | Kopfzeile, letzte Zeile/Spalte entfernen | |
@@ -83,6 +83,7 @@ Abgeleitet aus der Engine (Aktionen, Ansichten, Anker von `ObjectType`, `Buildin
 | **Hohler Kreis mit Kreuz und Punkt** an einer Kreuzung | die kreuzenden Leitungen verbinden (Knotenpunkt) | Klick |
 | **Blaues Schloss** (zu) / **graues Schloss** (offen) neben einem Berührpunkt, dünne Zuleitung | gekoppelt, bewegt sich mit / berührt, aber gelöst | Klick schaltet um |
 | **Blaues Dreieck** vor einer Seite (Diagrammknoten) | das nächste Element auf dieser Seite | Klick: verbundene Kopie; Ziehen: mit anderem Element verbinden oder ablegen |
+| **Blau umrandetes Quadrat mit kleinen Pfeilspitzen** auf einem Wert (Grenzlinie, Wertlinie, Marker eines Diagramms) | ein Wert, der auf der Zeichnung gezogen wird; die Pfeilspitzen zeigen die erlaubte Richtung | ziehen: die Linie folgt (geführt), der neue Wert steht neben dem Zeiger und rastet ein (ein Zehntel des Achsschritts); loslassen = ein Rückgängig-Schritt; Esc bricht ab; ein Klick wählt dieses Teil |
 | **Blauer Umriss** eines Teils (Diagramme) | das gewählte Teil | Leiste und Kreismenü wirken darauf |
 | **Rote gestrichelte Hilfslinien, roter Punkt, Beschriftung** beim Ziehen | Fangen und woran angedockt wird | Alt setzt aus |
 | **Zweitfarbige (blaue) Vorschau** beim Ziehen | was mitbewegt wird (gekoppelte Nachbarn) | |
@@ -171,15 +172,15 @@ unten = Stil, links = Ansicht/anordnen):
 - Einfügefeld schließt bei Klick daneben (`InsertSearch.ClickedOutside`) und wenn ein anderes Fenster aktiv wird.
 - Tabellen: Aktionen gruppiert `side.top/bottom/left/right` (Engine, `TableType`), als „+“ an jeder Seite gezeichnet;
   eine Zeile oben kommt unter die Kopfzeile.
-- UI-Szenarien: `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus` (tests/powerpoint-com/scenarios).
+- Griffe auf Werten (`OnSlideController.Handles.cs`, Engine `Registry.DragHandles` / `MoveHandle`): in der Anordnung als feste Griffe (Vorrang vor dem Verschieben des Körpers im Diagrammfeld), Tooltip mit dem Wert, geführtes Ziehen mit Live-Vorschau des geänderten Teils und seines neuen Werts, ein Rückgängig-Schritt, Esc bricht ab, ein Klick wählt das Teil; `DragHandlesOf` für UI-Tests.
+- UI-Szenarien: `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus`, `chart-drag-handles` (tests/powerpoint-com/scenarios).
 
 ## 9. Folgeschritte (in Phasen, mit Abnahmekriterien)
 
 **Phase 1 – die Sprache in COM vollenden**
-1. *Ziehgriffe von Diagrammteilen* (Engine-Ziehgriffe für Wertlinien, Grenzen, Marker, entstehen gerade im Core): als
-   **kleines blaues Quadrat** auf der Linie (neue `HandleKind.Drag`, Priorität 80, fest auf der Linie, die Anordnung
-   hält andere frei). Abnahme: eine Grenzlinie lässt sich entlang ihrer Achse ziehen und fängt an Teilstrichen; ein
-   Rückgängig-Schritt; der Wert steht beim Ziehen daneben; Szenario `chart-drag-handles`.
+1. *Griffe über Diagramme hinaus*: dieselben Griffe für jedes Element, dessen Typ Ziehgriffe anbietet (Maßwerte,
+   Winkel, Robotergelenke, Achsabstand von Zahnrädern). Abnahme: jeder solche Typ nennt seine Griffe in `DragHandles`,
+   das COM-Overlay braucht keine Änderung; die Griffe behalten ihren Platz in der Anordnung.
 2. *Abhängigkeiten beim Überfahren hervorheben*: Überfahren eines Schlosses oder von „Baugruppe wählen“ umrandet jede
    mitbewegte Einheit in der Zweitfarbe. Abnahme: ein Rad auf einer Welle zeigt Welle und deren andere Räder, sonst
    nichts.

@@ -36,7 +36,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>The handle layout for the armed unit in the current view (cached until the unit or the view changes).</summary>
         private IReadOnlyList<PlacedHandle> Handles(SlideView view)
         {
-            var key = (_unit, _unit?.Doc, view.OffsetX, view.OffsetY, view.PixelsPerPoint, view.DeviceScale, _ports, _links, _segHandles, _sides, _chainSource, _crossings, _endHandles);
+            var key = (_unit, _unit?.Doc, view.OffsetX, view.OffsetY, view.PixelsPerPoint, view.DeviceScale, _ports, _links, _segHandles, _sides, _chainSource, _crossings, _endHandles, _grips);
             if (_layoutKey is not null && key.Equals(_layoutKey)) return _layout;
             try
             {
@@ -101,6 +101,9 @@ namespace InventaSketch.AddIn.OnSlide
                 for (var i = 0; i < pts.Count; i++)
                     specs.Add(new HandleSpec("pt:" + i, HandleKind.Point, view.ToScreen(pts[i]), default, 0, 5, 100) { Fixed = true });
             }
+            // Grips on values of the element (chart limit lines, value lines, markers): on the drawing, fixed.
+            for (var i = 0; i < _grips.Count; i++)
+                specs.Add(new HandleSpec("drag:" + i, HandleKind.Drag, view.ToScreen(_grips[i].Position), default, 0, (float)GripPx + 3, 95) { Fixed = true, Tip = _grips[i].Label.Get(_lang()) });
             if (_chainSource is not null)
                 foreach (var side in Sides)
                     specs.Add(new HandleSpec("tri:" + side, HandleKind.Triangle, TriangleCentre(view, side), default, 0, (float)(TrianglePx * 0.6), 100) { Fixed = true });
@@ -266,6 +269,197 @@ namespace InventaSketch.AddIn.OnSlide
                 if (i == _hoverSide2) QueueTip(view, h.At, h.Spec.Tip, (float)PortPx);
             }
         }
+
+        // ------------------------------------------------------------------ grips: drag a value on the drawing
+
+        /// <summary>Visible half size of a grip (logical pixels).</summary>
+        private const double GripPx = 5.5;
+
+        /// <summary>Drag handles of the armed unit's element (<see cref="Registry.DragHandles"/>), page mm.</summary>
+        private List<DragHandle> _grips = new();
+        private string? _gripOwner;
+        private int _hoverGrip = -1;
+        private DragHandle? _grip;
+        private Vec2 _gripAt;
+        private POINT _gripDown;
+        private bool _gripMoved;
+
+        private void PrepareGrips(SketchUnit unit)
+        {
+            _grips = new List<DragHandle>();
+            _gripOwner = null;
+            _hoverGrip = -1;
+            try
+            {
+                var registry = _registry();
+                var ctx = new RenderContext(_unitContext ?? unit.Doc, _lang());
+                foreach (var o in unit.Objects.Where(x => registry.Type(x.Type) is not null))
+                {
+                    var handles = registry.DragHandles(o, ctx);
+                    if (handles.Count == 0) continue;
+                    _grips = handles.ToList();
+                    _gripOwner = o.Id;
+                    break;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Drag handles", ex);
+            }
+        }
+
+        private SketchObject? GripObject() => _gripOwner is null ? null : _unit?.Doc.Get(_gripOwner);
+
+        /// <summary>Grip input while armed: hover (tooltip with the value) and the start of a drag.</summary>
+        private bool GripStart(int message, POINT pt, SlideView view, out bool swallow)
+        {
+            swallow = false;
+            if (_grips.Count == 0 || _unit is null) return false;
+            if (message == WM_MOUSEMOVE)
+            {
+                var i = NearestIndex(view, pt, "drag:");
+                if (i != _hoverGrip) { _hoverGrip = i; DrawPointHandles(view); }
+                return false;
+            }
+            if (message != WM_LBUTTONDOWN) return false;
+            var hit = NearestIndex(view, pt, "drag:");
+            if (hit < 0 || hit >= _grips.Count) return false;
+            HideBar();
+            _grip = _grips[hit];
+            _gripAt = _grip.Position;
+            _gripDown = pt;
+            _gripMoved = false;
+            _mode = Mode.Grip;
+            swallow = true;
+            return true;
+        }
+
+        /// <summary>
+        /// Dragging a grip: the pointer constrained to the grip's direction, a live preview of the changed part with its new
+        /// value (the slide is not touched); release applies it in one undo step, a click without moving selects the part.
+        /// </summary>
+        private bool GripMouse(int message, POINT pt, SlideView view)
+        {
+            var grip = _grip;
+            if (grip is null || _unit is null) { _mode = Mode.Armed; return true; }
+            if (message == WM_MOUSEMOVE)
+            {
+                if (!_gripMoved && Math.Abs(pt.X - _gripDown.X) + Math.Abs(pt.Y - _gripDown.Y) < 3 * view.DeviceScale) return true;
+                _gripMoved = true;
+                _gripAt = Dragging.Constrain(grip, view.ToMm(pt));
+                DrawGripDrag(view, grip);
+                return true;
+            }
+            if (message == WM_LBUTTONUP)
+            {
+                var unit = _unit;
+                var at = _gripAt;
+                var moved = _gripMoved;
+                _grip = null;
+                _mode = Mode.Armed;
+                _overlay.Clear();
+                if (moved) Post(() => ApplyGrip(unit, grip.Key, at));
+                else if (grip.Part is not null && PartOwner() is not null) Post(() => SelectPart(grip.Part));
+                else { ShowBar(view); DrawPointHandles(view); }
+                return true;
+            }
+            if (message == WM_RBUTTONDOWN) { Cancel("right click"); return true; }
+            return true;
+        }
+
+        private void DrawGripDrag(SlideView view, DragHandle grip)
+        {
+            var o = GripObject();
+            if (o is null || _unit is null) return;
+            var registry = _registry();
+            var lang = _lang();
+            var ctxDoc = _unitContext ?? _unit.Doc;
+            SketchObject moved;
+            try { moved = registry.MoveHandle(o, grip.Key, _gripAt, new RenderContext(ctxDoc, lang)); }
+            catch (Exception ex) { Log.Error("Move handle", ex); return; }
+            var doc = Edits.Update(ctxDoc, new[] { o.Id }, _ => moved);
+            var ctx = new RenderContext(doc, lang);
+            var all = Prim.Flatten(registry.Render(moved, ctx)).ToList();
+            var part = grip.Part is null ? all : all.Where(p => p.Tag is { } t && (t == grip.Part || t.StartsWith(grip.Part + ".", StringComparison.Ordinal))).ToList();
+            var prims = part.Count > 0 ? part : all;
+            var after = Dragging.Find(registry.DragHandles(moved, ctx), grip.Key);
+            var label = (after ?? grip).Label.Get(lang);
+            var at = view.ToScreen(after?.Position ?? _gripAt);
+            Present(view, g => ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6)), g =>
+            {
+                DrawGrip(g, view, at, grip, hover: true);
+                DrawTag(g, view, at, label);
+            });
+        }
+
+        /// <summary>Applies a grip drag to the element on the slide (value snapped by the element): one undo step.</summary>
+        private void ApplyGrip(SketchUnit stale, string key, Vec2 at)
+        {
+            var slide = CurrentSlide();
+            var unit = SketchUnits.Read(stale.Shape);
+            if (slide is null || unit is null) return;
+            var registry = _registry();
+            var lang = _lang();
+            var o = (_gripOwner is null ? null : unit.Doc.Get(_gripOwner)) ?? unit.Objects.FirstOrDefault(x => registry.Type(x.Type) is not null);
+            if (o is null) return;
+            var full = SketchUnits.NeedsContext(registry, unit.Doc) ? SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)) : unit.Doc;
+            var moved = registry.MoveHandle(o, key, at, new RenderContext(full, lang));
+            if (Equals(moved, o)) { Log.Info("Drag handle " + key + ": no change"); if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); } return; }
+            _app.StartNewUndoEntry();
+            ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { o.Id }, _ => moved));
+            Log.Info($"Drag handle {key} of {o.Type} to ({at.X:0.##}, {at.Y:0.##}) mm");
+        }
+
+        private void DrawGrips(Graphics g, SlideView view)
+        {
+            for (var i = 0; i < _grips.Count; i++)
+            {
+                var h = HandleById(view, "drag:" + i);
+                if (h is null) continue;
+                DrawGrip(g, view, h.At, _grips[i], i == _hoverGrip);
+                if (i == _hoverGrip) QueueTip(view, h.At, h.Spec.Tip + T(" · drag to change", " · ziehen zum Ändern"), (float)GripPx + 4);
+            }
+        }
+
+        /// <summary>A grip: a small blue-rimmed square with small arrowheads in the directions it may move.</summary>
+        private static void DrawGrip(Graphics g, SlideView view, PointF c, DragHandle grip, bool hover)
+        {
+            var s = (float)view.DeviceScale;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var r = (float)(GripPx * (hover ? 1.15 : 1.0) * s);
+            using var fill = new SolidBrush(hover ? Color.FromArgb(225, 236, 252) : Color.White);
+            using var rim = new Pen(FlowBlue, 1.6f * s);
+            using var blue = new SolidBrush(FlowBlue);
+            g.FillRectangle(fill, c.X - r, c.Y - r, 2 * r, 2 * r);
+            g.DrawRectangle(rim, c.X - r, c.Y - r, 2 * r, 2 * r);
+            g.FillRectangle(blue, c.X - r * 0.35f, c.Y - r * 0.35f, r * 0.7f, r * 0.7f);
+            var dirs = grip.Constraint == DragConstraint.Free || grip.Direction.Length < 1e-9
+                ? new[] { new Vec2(1, 0), new Vec2(-1, 0), new Vec2(0, 1), new Vec2(0, -1) }
+                : new[] { grip.Direction, grip.Direction * -1 };
+            foreach (var d in dirs)
+            {
+                // Arrowhead just outside the square, pointing away from it.
+                var tip = new PointF(c.X + (float)d.X * (r + 6 * s), c.Y + (float)d.Y * (r + 6 * s));
+                var bx = c.X + (float)d.X * (r + 2 * s);
+                var by = c.Y + (float)d.Y * (r + 2 * s);
+                var n = new PointF((float)-d.Y * 3 * s, (float)d.X * 3 * s);
+                g.FillPolygon(blue, new[] { tip, new PointF(bx + n.X, by + n.Y), new PointF(bx - n.X, by - n.Y) });
+            }
+        }
+
+        /// <summary>Drag handles of a shape's element for UI tests: "key:x,y;…" in slide points.</summary>
+        internal string DragHandlesOf(string shapeName) => OnUi(() =>
+        {
+            var slide = CurrentSlide();
+            if (slide is null) return "";
+            var unit = SketchUnits.Read(slide.Shapes[shapeName]);
+            if (unit is null) return "";
+            var registry = _registry();
+            var ctx = new RenderContext(SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id)), _lang());
+            var ci = System.Globalization.CultureInfo.InvariantCulture;
+            return string.Join(";", unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.DragHandles(o, ctx))
+                .Select(h => h.Key + ":" + (h.Position.X * Geo.PtPerMm).ToString("0.##", ci) + "," + (h.Position.Y * Geo.PtPerMm).ToString("0.##", ci)));
+        });
 
         // ------------------------------------------------------------------ shared drawing
 

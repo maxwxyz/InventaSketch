@@ -60,7 +60,7 @@ Derived from the engine (`ObjectType` actions, views, anchors, `Building.Ports`,
 | Process, energy units, building services | box | 1–3 | "+" at free ports | kind, medium, steppers | plan scale, assembly view switch |
 | Walls, rooms (Architecture) | points (corners) | – | diamonds, corner dots, "+" at free wall ends | thicker/thinner, kind dropdown, 1:50 | openings follow the wall |
 | Openings, stairs, plan symbols | box | 1–2 | – | width ±, align to wall | |
-| Charts (incl. figure charts) | box | – | part outline after a click on a part; (planned) value-line handles | data …, style, sketch a curve | parts: series, axis, grid, legend, limit … |
+| Charts (incl. figure charts) | box | – | grips on limit lines, value lines and markers; part outline after a click on a part | data …, style, sketch a curve | parts: series, axis, grid, legend, limit … |
 | Diagram nodes: flowchart, UML, BPMN, ER, control | box | 1–2 | quick-add triangles, ports on hover | rows ±, toggles | "Make it …" after a quick add |
 | Arrows, lines, leaders, dimensions, connectors | points | – | diamonds, "+" at free ends (polylines), corner dots | line type, heads, line style dropdowns | type conversion, label menu |
 | Table, text, parts list (Annotation) | box | – | table: "+" on each side | header, remove last row/column | |
@@ -83,6 +83,7 @@ Derived from the engine (`ObjectType` actions, views, anchors, `Building.Ports`,
 | **Hollow circle with a cross and a dot** at a crossing | connect the crossing lines (junction) | click |
 | **Blue lock** (closed) / **grey lock** (open) beside a contact point, thin lead line | coupled, moves along / touching but released | click toggles |
 | **Blue triangle** outside a side (diagram nodes) | the next element on that side | click: a connected copy; drag: connect to another element or place |
+| **Blue-rimmed square with small arrowheads** on a value (chart limit line, value line, marker) | a value that is dragged on the drawing; the arrowheads show the allowed direction | drag: the line follows (constrained), the new value shows beside the pointer and snaps (a tenth of the axis step); release = one undo step; Esc cancels; a click selects that part |
 | **Blue outline** of a part (charts) | the selected part | the bar and pie act on it |
 | **Red dashed guides, red dot, label** while dragging | snapping and what it docks to | Alt suspends |
 | **Second colour (blue) ghost** while dragging | what moves along (coupled neighbours) | |
@@ -165,15 +166,15 @@ left = view/arrange):
 - Insert box closes on a click outside (`InsertSearch.ClickedOutside`) and when another window is activated.
 - Tables: actions grouped `side.top/bottom/left/right` (engine, `TableType`), drawn as "+" on each side; a row at the
   top goes under the header row.
-- UI scenarios: `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus` (tests/powerpoint-com/scenarios).
+- Grips on values (`OnSlideController.Handles.cs`, engine `Registry.DragHandles` / `MoveHandle`): drawn in the layout as fixed handles (priority over moving the body inside the plot), hover tooltip with the value, constrained drag with a live preview of the changed part and its new value, one undo step, Esc cancels, a click selects the part; `DragHandlesOf` for UI tests.
+- UI scenarios: `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus`, `chart-drag-handles` (tests/powerpoint-com/scenarios).
 
 ## 9. Follow-ups (phased, with acceptance criteria)
 
 **Phase 1 – finish the language in COM**
-1. *Drag handles of chart parts* (engine drag handles of value lines, limits, markers, being added in Core): drawn as a
-   **small blue square** on the line (new `HandleKind.Drag`, priority 80, fixed on the line, the layout keeps others
-   clear). Accept: a limit line of a chart can be dragged along its axis with snapping to ticks; one undo step; the
-   value shows in a tag while dragging; scenario `chart-drag-handles`.
+1. *Grips beyond charts*: the same grips for every element whose type offers drag handles (dimension values, angles,
+   robot joints, gear centre distance). Accept: each such type lists its handles in `DragHandles` and the COM overlay
+   needs no change; the grips keep their place in the layout.
 2. *Dependency highlight on hover*: hovering a lock badge or "Select assembly" outlines every unit that moves along in
    the second colour. Accept: a gear on a shaft shows the shaft and its other gears outlined; nothing else.
 3. *Engine icon hygiene*: every action icon id is in `IconIds.All` (or a new id with a pictogram in all three hosts);

@@ -24,6 +24,11 @@ namespace InventaSketch.AddIn.OnSlide
         Corner,
         /// <summary>Stub icon beside a segment: drag a branch out of the line.</summary>
         Branch,
+        /// <summary>
+        /// Grip on a value of the element (chart limit line, value line, marker): a small blue square with arrows in the
+        /// directions it moves; drag changes the value.
+        /// </summary>
+        Drag,
     }
 
     /// <summary>
