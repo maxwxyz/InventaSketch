@@ -505,6 +505,10 @@ namespace InventaSketch.AddIn
             Item("IskMenuSend", T("Send slides …", "Folien senden …"), "FileSendAsAttachment");
             Item("IskMenuSave", T("Save selected slides as a file …", "Ausgewählte Folien als Datei speichern …"), "FileSaveAs");
             sb.Append("<menuSeparator id=\"IskMenuSep0\" title=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\" />");
+            // Calculator with units and unit conversion (maintainer 2026-11-25).
+            sb.Append("<button id=\"IskMenuCalculator\" label=\"").Append(L(T("Calculator with units \u2026", "Rechner mit Einheiten \u2026"))).Append("\" imageMso=\"CalculatorInsert\" onAction=\"OnToolsMenu\" supertip=\"")
+              .Append(X(T("Calculate and convert with units: 230 V * 16 A, 1500 rpm in rad/s, 12 mm + 0.5 in, (4k7 \u03a9 || 10 k\u03a9).",
+                          "Mit Einheiten rechnen und umrechnen: 230 V * 16 A, 1500 min\u207b\u00b9 in rad/s, 12 mm + 0,5 in, (4k7 \u03a9 || 10 k\u03a9)."))).Append("\" />");
             Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
             Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
             sb.Append("<menu id=\"IskMenuLanguage\" label=\"").Append(L(T("Proofing language", "Korrektursprache"))).Append("\" imageMso=\"SetLanguage\">");
@@ -559,6 +563,7 @@ namespace InventaSketch.AddIn
                 switch (control.Id)
                 {
                     case "IskMenuSymbol": Tools.InsertSymbol(_app); break;
+                    case "IskMenuCalculator": CalculatorDialog.ShowCalculator(_lang); break;
                     case "IskMenuDecimals":
                         if (Tools.AskDecimals(german) is { } d)
                         {
