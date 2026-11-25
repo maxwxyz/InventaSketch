@@ -81,7 +81,7 @@ namespace InventaSketch.Engine.Tests
         [Fact]
         public void PipesInPlansTakeCornersAndBranches()
         {
-            var pipe = Reg.Create(Reg.Library.First(i => i.TypeId == "arch.hvac.pipe"), Vec2.Zero) with { Points = new[] { new Vec2(0, 0), new Vec2(50, 0) } };
+            var pipe = Reg.Create(Reg.Item("arch.hvac.pipe")!, Vec2.Zero) with { Points = new[] { new Vec2(0, 0), new Vec2(50, 0) } };
             var doc = SketchDocument.Create();
             doc = Edits.Add(doc, doc.Pages[0].Id, pipe);
             Assert.True(Polylines.CanExtend(Reg, pipe));

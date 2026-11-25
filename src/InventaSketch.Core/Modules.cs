@@ -775,6 +775,13 @@ namespace InventaSketch.Core
         public string? Text { get; init; }
         public Style? Style { get; init; }
         public IReadOnlyList<string> Keywords { get; init; } = Array.Empty<string>();
+        /// <summary>
+        /// Id of another module's item that offers the same element, usually with more views or ports (a WC of the
+        /// building services for the floor-plan WC of the architecture). While that item is registered, this one is left
+        /// out of <see cref="Registry.Library"/> (no duplicates in galleries and search); <see cref="Registry.Item"/> still
+        /// finds it, and its type keeps rendering existing documents. Modules stay usable on their own.
+        /// </summary>
+        public string? Alternative { get; init; }
     }
 
     public interface IModule
@@ -795,11 +802,17 @@ namespace InventaSketch.Core
         private readonly Dictionary<string, ObjectType> _types = new(StringComparer.Ordinal);
         private readonly List<IModule> _modules = new();
         private readonly List<LibraryCategory> _categories = new();
-        private readonly List<LibraryItem> _library = new();
+        private readonly List<LibraryItem> _all = new();
+        private List<LibraryItem> _library = new();
+        private List<LibraryCategory> _visibleCategories = new();
 
         public IReadOnlyList<IModule> Modules => _modules;
-        public IReadOnlyList<LibraryCategory> Categories => _categories;
+        /// <summary>Categories with at least one offered item (a category whose items all have an alternative is left out).</summary>
+        public IReadOnlyList<LibraryCategory> Categories => _visibleCategories;
+        /// <summary>The offered items: every item except those whose <see cref="LibraryItem.Alternative"/> is registered.</summary>
         public IReadOnlyList<LibraryItem> Library => _library;
+        /// <summary>Every registered item, including those left out of <see cref="Library"/> in favour of an alternative.</summary>
+        public IReadOnlyList<LibraryItem> AllItems => _all;
         public IEnumerable<ObjectType> Types => _types.Values;
 
         public Registry Register(IModule module)
@@ -816,8 +829,13 @@ namespace InventaSketch.Core
             foreach (var item in module.Library)
             {
                 if (!_types.ContainsKey(item.TypeId)) throw new InvalidOperationException($"Library item '{item.Id}' references unknown type '{item.TypeId}'.");
-                _library.Add(item);
+                _all.Add(item);
             }
+            // Items with a registered alternative leave the offered library (also items of modules registered earlier).
+            var ids = new HashSet<string>(_all.Select(i => i.Id), StringComparer.Ordinal);
+            _library = _all.Where(i => i.Alternative is null || !ids.Contains(i.Alternative)).ToList();
+            var hidden = new HashSet<string>(_all.Except(_library).Select(i => i.Category), StringComparer.Ordinal);
+            _visibleCategories = _categories.Where(c => !hidden.Contains(c.Id) || _library.Any(i => i.Category == c.Id)).ToList();
             return this;
         }
 
@@ -825,7 +843,8 @@ namespace InventaSketch.Core
 
         public ObjectType TypeOf(SketchObject o) => Type(o.Type) ?? throw new KeyNotFoundException($"Unknown object type '{o.Type}'.");
 
-        public LibraryItem? Item(string id) => _library.FirstOrDefault(i => i.Id == id);
+        /// <summary>The item with this id, also one left out of <see cref="Library"/> in favour of an alternative.</summary>
+        public LibraryItem? Item(string id) => _all.FirstOrDefault(i => i.Id == id);
 
         /// <summary>
         /// The object with parameter <paramref name="key"/> set to <paramref name="value"/> (null removes it), passed through

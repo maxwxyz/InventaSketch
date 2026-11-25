@@ -105,7 +105,7 @@ namespace InventaSketch.Modules.Electrical
             Add("relay.contact.nc", "elec.switch", "Relay contact (NC)", "Relaiskontakt (Öffner)", null, P(("contact", "nc")), null, null, "relay", "relais");
             Add("contactor", "elec.contactor", "Contactor, 3-pole", "Schütz, 3-polig");
             Add("fuse", "elec.fuse", "Fuse", "Sicherung");
-            Add("breaker", "elec.breaker", "Circuit breaker", "Leitungsschutzschalter");
+            Add("breaker", "elec.breaker", "Miniature circuit breaker", "Leitungsschutzschalter");
             Add("rcd", "elec.rcd", "RCD (residual current device)", "FI-Schutzschalter (RCD)");
 
             // sources & loads
@@ -149,7 +149,7 @@ namespace InventaSketch.Modules.Electrical
             // wires, connectors & buses
             Add("wire", "elec.wire", "Wire", "Leitung");
             Add("wire.free", "elec.wire", "Wire (straight)", "Leitung (gerade)", null, P(("route", "free")));
-            Add("junction", "elec.junction", "Junction dot", "Verbindungspunkt");
+            Add("junction", "elec.junction", "Junction dot (circuit)", "Verbindungspunkt (Schaltplan)");
             Add("netlabel", "elec.netlabel", "Net label", "Netzname");
             Add("netlabel.vcc", "elec.netlabel", "Net label VCC", "Netzname VCC", null, null, "VCC", null, "supply", "versorgung");
             Add("netlabel.gnd", "elec.netlabel", "Net label GND", "Netzname GND", null, null, "GND", null, "ground", "masse");

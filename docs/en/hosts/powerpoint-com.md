@@ -437,6 +437,10 @@ Box selection of points: with a line, polyline, wire or wall selected, Alt + dra
 inside are selected (filled handles) and move together when one of them is dragged (one undo step). Verified: two of
 four polyline points moved up 40 pt together.
 
+Ribbon (2026-11-25): the Tools, Structure and Colour groups show pictograms only (names as screentips); "Line weights"
+has its own pictogram (three lines of growing width); "Modules" is a button of its own in the Tools group (which modules
+the ribbon and the library show; it was hidden in the Extras menu); "About" moved to the end of the Extras menu.
+
 Review group (2026-11-25): the commands that work on the finished drawing sit together at the end of the tab –
 *Patent check* and *Compare* (large), *Import …* and *Export data*; they left the Extras menu, which keeps symbol,
 decimal separator, proofing language, send/save slides, plan scale and module visibility. Same names as in LibreOffice.

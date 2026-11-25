@@ -435,6 +435,11 @@ Rahmenauswahl von Punkten: Ist eine Linie, Polylinie, Leitung oder Wand ausgewä
 Rahmen; die Punkte darin werden ausgewählt (gefüllte Griffe) und bewegen sich gemeinsam, wenn einer davon gezogen wird
 (ein Rückgängig-Schritt). Geprüft: zwei von vier Polylinienpunkten wanderten gemeinsam 40 pt nach oben.
 
+Menüband (25.11.2026): Die Gruppen Werkzeuge, Struktur und Farbe zeigen nur Symbole (Namen als Tooltip);
+„Linienstärken“ hat ein eigenes Symbol (drei Linien wachsender Stärke); „Module“ ist ein eigener Knopf in der Gruppe
+Werkzeuge (welche Module Menüband und Bibliothek zeigen; vorher versteckt im Menü Extras); „Info“ steht am Ende des Menüs
+Extras.
+
 Gruppe Prüfen (25.11.2026): Die Befehle, die auf der fertigen Zeichnung arbeiten, stehen gemeinsam am Ende der
 Registerkarte – *Patentprüfung* und *Vergleichen* (groß), *Importieren …* und *Daten exportieren*; sie sind aus dem Menü
 Extras herausgewandert, das Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern, Planmaßstab und

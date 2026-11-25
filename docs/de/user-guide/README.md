@@ -80,6 +80,12 @@ Jedes Modul hat eine eigene Seite mit Elementen, Ansichten und Parametern:
 [Automotive](../modules/automotive.md), [Architektur](../modules/architecture.md),
 [technische Gebäudeausrüstung](../modules/building-services.md), [Fluidtechnik](../modules/fluid.md),
 [Diagramme](../modules/diagrams.md), [Karten und Routen](../modules/maps.md), [Diagramme und Kennlinien](../modules/charts.md),
-[Verfahrens- und Wärmetechnik](../modules/process.md), [Energiesysteme](../modules/energy.md), [Robotik](../modules/robotics.md).
+[Verfahrens- und Wärmetechnik](../modules/process.md), [Energiesysteme](../modules/energy.md), [Robotik](../modules/robotics.md), [Mathematik & Geometrie](../modules/geometry.md).
+
+Jedes Element gehört zu einem Modul (Review 25.11.2026): Installationen (Sanitär, Heizung, Leitungen) zur
+Gebäudetechnik, Drehrichtungs- und Drehmomentpfeile zur Mechanik, Kurvenscheiben zur Kinematik, der Nordpfeil zu den
+Karten. Elemente mit gleichem Namen, aber anderer Bedeutung tragen eindeutige Namen (Leitungsschutzschalter /
+Leistungsschalter, Kolonne / Stütze, Feder (Sinnbild) / Feder zwischen zwei Gelenken). Welche Module Menüband und
+Bibliothek zeigen: InventaSketch ▸ Module.
 Wie die Add-ins auf der Folie arbeiten (Kontextleiste, Einfügefeld mit Strg+Leertaste, Mehrfachauswahl, Baugruppen,
 Bewegungsmodus), steht je Host: [PowerPoint COM](../hosts/powerpoint-com.md), [PowerPoint im Web](../hosts/office-web.md).

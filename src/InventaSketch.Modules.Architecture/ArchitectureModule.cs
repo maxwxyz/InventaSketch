@@ -103,7 +103,22 @@ namespace InventaSketch.Modules.Architecture
             Add("tree.conifer", "arch.site.tree", "Conifer", "Nadelbaum", P(("kind", "conifer")), kw: new[] { "conifer", "nadelbaum", "fir", "tanne" });
             Add("tree.shrub", "arch.site.tree", "Shrub", "Strauch", P(("kind", "shrub")), size: new Size2(15, 15), kw: new[] { "shrub", "bush", "strauch", "busch", "hecke" });
             Add("level.upper", "arch.site.level", "Level marker +2.75", "Höhenkote +2,75", P(("level", 2.75)), kw: new[] { "upper floor", "obergeschoss" });
-            return list;
+            // Installations are offered by the building services module (plan, section and schematic views, more ports), the
+            // north arrow by the maps module: these items step back while those modules are registered (LibraryItem.Alternative).
+            var alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["arch.sanitary.wc"] = "bs.san.wc",
+                ["arch.sanitary.washbasin"] = "bs.san.basin",
+                ["arch.sanitary.shower"] = "bs.san.shower",
+                ["arch.sanitary.bathtub"] = "bs.san.bathtub",
+                ["arch.hvac.radiator"] = "bs.heat.radiator",
+                ["arch.hvac.heatpump"] = "bs.heat.heatpump",
+                ["arch.hvac.boiler"] = "bs.heat.boiler",
+                ["arch.hvac.pipe"] = "bs.pipe",
+                ["arch.site.north"] = "map.north",
+            };
+            foreach (var m in PipeType.Media.Skip(1)) alternatives["arch.pipe." + m.Value] = "bs.pipe." + m.Value;
+            return list.Select(i => alternatives.TryGetValue(i.Id, out var alt) ? i with { Alternative = alt } : i).ToList();
         }
     }
 }

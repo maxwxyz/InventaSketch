@@ -1,0 +1,194 @@
+# Modul Mathematik & Geometrie (`math`)
+
+Koordinatensysteme, Funktionsgraphen, Punkte und Vektoren, Winkel, Dreiecke, Kreise und Zirkelkonstruktionen – für
+Unterrichts- und Erklärfolien. Jedes Element wird mit nativen Grundformen gezeichnet (Linien, Linienzüge, Polygone,
+Ellipsen, Text), bleibt mit den eigenen Werkzeugen des Hosts bearbeitbar und ist ohne Parameter einfügbar. Parameter
+sind optionale Anreicherung: Bereiche, Koeffizienten, Winkel, Beschriftungen und die gezeigte Konstruktion.
+
+Die Zeichnungen folgen üblicher Schul- und Lehrbuchpraxis (Achsen mit Pfeilspitzen, kursive Variablen, aufrechte
+Punktnamen, Zirkelbögen, Rechter-Winkel-Quadrat mit Punkt). Es werden keine Normtexte oder -tabellen wiedergegeben
+und keine Normkonformität behauptet.
+
+## Verhältnis zu anderen Modulen
+
+| Thema | Modul | Hinweis |
+|---|---|---|
+| Kleines Koordinatensystem-Symbol für Freikörperbilder (`ann.coordsys`), Winkel- und Radiusmaße (`ann.dimension.angle`, `ann.dimension.radius`) | annotation | technische Zeichnungszeichen, ohne Bereiche oder Gitter |
+| Datendiagramme (`chart.xy`, `chart.axes`, Balkendiagramme, Kennlinien) | charts | Mess- oder Auslegungsdaten mit Einheiten und Legenden |
+| Koordinatensysteme mit Gitter und Gitterpunkten zum Andocken, Funktionsgraphen aus einer Formelfamilie, Vektoren, aus der Zeichnung gemessene Winkel, Schulkonstruktionen | **math** | dieses Modul |
+
+Die Module hängen nicht voneinander ab. Linien jedes Moduls docken an den Anschlüssen dieses Moduls an
+(`AnchorRole.Port`).
+
+## Konventionen
+
+- **Quick Sketch zuerst:** Jedes Element ist ohne Parameter einfügbar; freies (auch ungleichmäßiges) Skalieren ändert
+  `Size`, nie Parameter, und jede Zeichnung bleibt in ihrer Box (getestet in gestreckten, gestauchten und sehr kleinen
+  Größen mit jeder Parametervariante).
+- **Was sich streckt und was stimmt:** Koordinatensysteme, Zahlenstrahl, Funktionsgraphen und die Parallelen strecken
+  sich mit der Box (ungleichmäßiges Skalieren ändert die Einheiten von x und y unabhängig, die Bereiche bleiben).
+  Dreiecke strecken sich ebenfalls, aber ein rechtwinkliges Dreieck behält seinen rechten Winkel (Katheten entlang der
+  Boxkanten) und ein gleichschenkliges bleibt gleichschenklig; die Konstruktionen (Inkreis, Umkreis,
+  Seitenhalbierende, Höhen) werden aus den gestreckten Ecken berechnet und stimmen daher immer. Kreise, regelmäßige
+  Vielecke, die 3D-Achsen, das Polarkoordinatennetz, der Einheitskreis, Thales, die Tangente und die
+  Zirkelkonstruktionen behalten ihre Form: Sie werden gleichmäßig in die Box eingepasst und zentriert.
+- **Winkel:** Parameter, die etwas auf einem Kreis platzieren (Berührpunkt, Punkt C, Winkel am Einheitskreis,
+  Polarnetz, Winkel der Querlinie oder des halbierten Winkels), verwenden den mathematischen Drehsinn: Grad **gegen den
+  Uhrzeigersinn** ab der positiven x-Achse, wie in der Schulmathematik (wie die Schraffurwinkel im Core). Die eigene
+  Drehung des Objekts bleibt wie bei allen Objekten im Uhrzeigersinn auf dem Bildschirm.
+- **Beschriftung:** Variablen kursiv (x, y, a, b, c, α, r, d, t), Punktnamen aufrecht (A, B, C, M, P). Text skaliert
+  mit der Box relativ zu ihrer Entwurfsgröße (kleinerer Faktor, 0,5 … 2,5), sodass ungleichmäßiges Strecken ihn nie
+  verzerrt; Punkttypen (Vektor, Vektoraddition, Winkel) haben einen Parameter `textSize` (4 mm ≈ 11 pt). Zahlen mit
+  Dezimalkomma im Deutschen und Minuszeichen „−“. Sprachabhängige Namen: Kreismittelpunkt O (EN) / M (DE);
+  Inkreismittelpunkt I / W, Umkreismittelpunkt O / U, Schwerpunkt G / S, Höhenschnittpunkt H / H; Berührpunkt einer
+  Tangente T / B.
+- **Linienarten (Ideen aus ISO 128):** Figurumrisse und Vektoren als breite Volllinie (0,5 mm), Achsen 0,35 mm mit
+  gefüllter Pfeilspitze, Gitterlinien schmal grau (0,15 mm), Konstruktionslinien schmal (0,25 mm), Hilfslinien
+  (Vektorkomponenten, Projektionen, Parallelogrammkopien) gestrichelt (Strichlinie).
+- **Farben (Modulkonvention):** Konstruktionen und Funktionskurven blau `#1565c0`, Ergebnisse rot `#c62828`
+  (Resultierende einer Vektoraddition, Mittelsenkrechte und Winkelhalbierende, Tangente, Sinus), zweiter Vektor und
+  Tangensstrecke grün `#2e7d32`, Kosinus blau. Die Schwarz-Weiß-Einstellung des Dokuments und die Akzentfarbe gelten
+  wie üblich.
+- **Stilüberschreibungen:** Eine Strichfarbe färbt jede Linie, jeden Text und jede Punktmarkierung des Elements um; die
+  Breite gilt für den Hauptstrich und Umrisse, Strichart und Pfeilspitzen für den Hauptstrich, eine Füllung für den
+  geschlossenen Umriss von Dreieck, Vieleck oder Kreis – er wird zuerst gezeichnet, sodass die Füllung keine
+  Konstruktion verdeckt.
+- **Figuren, keine Bauteile:** `IsPart` ist für alle Typen falsch (keine Stücklisteneinträge).
+
+## Objekttypen
+
+Größen sind Entwurfsgrößen (B x H, mm). „Punkte“ = Punktgeometrie (Seitenkoordinaten, Enden docken wie Linienenden an).
+
+| Id | Name (EN / DE) | Größe | Parameter |
+|---|---|---|---|
+| `math.axes.cartesian` | Coordinate system (2D) / Koordinatensystem (2D) | 70x60 | `xMin`/`xMax` (−5…5), `yMin`/`yMax` (−4…4), `xStep`/`yStep` (1), `grid` (an), `numbers` (an), `xPi` (x-Teilung in Vielfachen von π/2), `xLabel` („x“), `yLabel` („y“) |
+| `math.axes.number` | Number line / Zahlenstrahl | 90x14 | `min`/`max` (−5…5), `step` (1), `minor` (Zwischenstriche zwischen den Zahlen, 0–9), `numbers` (an), `label` (Name am Pfeil) |
+| `math.axes.spatial` | Coordinate system (3D) / Koordinatensystem (3D) | 50x50 | `projection` Schrägbild (x unter 45°, verkürzt um ½√2) / isometrisch, `names` x, y, z / x₁, x₂, x₃, `ticks` (Einheitsstriche, 4), `negative` (negative Halbachsen, an), `numbers` („1“ am ersten Strich) |
+| `math.axes.polar` | Polar grid / Polarkoordinatennetz | 64x64 | `rings` (4, 1–10), `step` 15/30/45/90°, `unit` Grad / Bogenmaß (π/6, π/3 …), `angleLabels`, `radiusLabels` |
+| `math.graph.function` | Function graph / Funktionsgraph | 70x60 | `function` linear / quadratisch / kubisch / Sinus / Kosinus / exponentiell (eˣ) / Logarithmus (ln x) / Wurzel / Betrag / Kehrwert; Koeffizienten von y = a·f(b·(x − c)) + d: `a`, `b`, `c`, `d`; `formula` (an); alle Achsenparameter (Standard x −4…4, y −2…8) |
+| `math.point.labelled` | Point with label / Punkt mit Beschriftung | 14x10 | `label` („A“), `marker` Punkt / Kreuz / Kreis, `position` der Beschriftung (8 Richtungen, rechts oben) |
+| `math.vector.arrow` | Vector / Vektor | Punkte (2) | `label` („v“), `notation` Pfeil darüber / fett / ohne, `components` (gestrichelte x- und y-Komponente mit v<sub>x</sub>, v<sub>y</sub>), `tailLabel`, `tipLabel`, `points` (Punkte an beiden Enden), `textSize` |
+| `math.vector.sum` | Vector addition / Vektoraddition | Punkte (3) | `construction` Parallelogramm (Punkte O, Spitze von a, Spitze von b) / Aneinanderhängen (O, Spitze von a, Spitze des an a gehängten b), `labelA` („a“), `labelB` („b“), `notation`, `result` (Resultierende a + b, an), `textSize` |
+| `math.angle.mark` | Angle / Winkel | Punkte (3) | Punkt auf dem ersten Schenkel, Scheitel, Punkt auf dem zweiten Schenkel; `label` („α“), `mark` automatisch (Quadrat bei 90°) / Bogen / Doppelbogen / Rechter-Winkel-Quadrat, `value` (gemessener Wert, z. B. „α = 45°“), `rays` (an), `reflex` (andere Seite), `radius` (7 mm), `textSize` |
+| `math.shape.triangle` | Triangle / Dreieck | 50x40 | `kind` allgemein / rechtwinklig (γ = 90° bei C) / gleichschenklig / gleichseitig, `construction` keine / Inkreis (Winkelhalbierende) / Umkreis (Mittelsenkrechte) / Seitenhalbierende und Schwerpunkt / Höhen und Höhenschnittpunkt, `vertexLabels`, `sideLabels`, `angleMarks` (α, β, γ) |
+| `math.shape.polygon` | Regular polygon / Regelmäßiges Vieleck | 40x40 | `sides` (6, 3–12; waagerechte Unterkante), `circumcircle`, `incircle`, `centre`, `labels` (A, B, C …) |
+| `math.circle.basic` | Circle with radius / Kreis mit Radius | 40x40 | `show` Radius / Durchmesser / beides / nur Kreis, `angle` (Richtung des Radius, 45°; der Durchmesser bei „beides“ liegt waagerecht), `centre`, `labels` |
+| `math.circle.tangent` | Tangent to a circle / Tangente an einen Kreis | 56x44 | `angle` (Lage des Berührpunkts, 60°), `radius` (Radius und rechter Winkel), `labels` |
+| `math.circle.thales` | Thales circle / Thaleskreis | 60x40 | `angle` (Lage von C, 115°, 1–179), `full` (Vollkreis statt Halbkreis), `centre`, `labels` |
+| `math.circle.unit` | Unit circle / Einheitskreis | 64x64 | `angle` (40°), `label` („α“), `tan` (Tangensstrecke auf x = 1), `values` (cos α = 0,77 …) |
+| `math.construct.perpendicular` | Perpendicular bisector / Mittelsenkrechte | 50x40 | `arcs` (Zirkelbögen), `labels` (A, B, M, m) |
+| `math.construct.anglebisector` | Angle bisector / Winkelhalbierende | 56x40 | `angle` (70°, 10–170), `arcs` (Zirkelbögen), `labels` (S, w) |
+| `math.lines.parallel` | Parallel lines and transversal / Parallelen mit Querlinie | 64x44 | `angle` der Querlinie (60°, 20–160), `pair` Stufenwinkel / Wechselwinkel / Nachbarwinkel (Ergänzungswinkel) / alle / keine, `values` (Grad statt α, β), `labels` (g, h) |
+
+**Funktionsgraph:** Es gibt bewusst keinen freien Formelparser. Die zehn Grundfunktionen mit den vier Koeffizienten
+decken die üblichen Schulbeispiele ab (Scheitelpunktform einer Parabel, gestreckter und verschobener Sinus,
+Wachstum). Die Kurve wird abgetastet (800 Punkte über den Bereich, vereinfacht), exakt am Zeichenbereich
+abgeschnitten (Bisektion) und an der Polstelle von 1/x sowie am Definitionsrand von ln und √ getrennt (keine
+Sprunglinie über einen Pol). Die Funktionsgleichung steht in Schulschreibweise und vereinfacht da
+(„f(x) = 2(x − 1)² − 3“, „f(x) = 0,5x + 1“, „f(x) = e⁻ˣ“, „f(x) = 2·sin(3x) + 1“; Exponenten, die sich nicht hochgestellt
+schreiben lassen, werden zu „exp(…)“) und in der Ecke des Zeichenbereichs platziert, in der sie weder Kurve noch Achse
+verdeckt; Achsenzahlen wechseln auf die andere Seite ihrer Achse, wo die Kurve durch sie läuft.
+
+**Teilung:** Zahlen stehen an jedem n-ten Teilstrich, sodass sie sich nie überlappen; der Achsenschnittpunkt wird
+einmal mit „0“ beschriftet, wenn er der Ursprung ist. Bereiche mit mehr als 100 Teilstrichen verdoppeln die Teilung.
+`xPi` beschriftet die x-Achse in Vielfachen von π/2 (π bei breiten Bereichen): „π/2“, „π“, „3π/2“, „−π“.
+
+## Bibliothek
+
+32 Einträge: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (erster Quadrant 0…6 x 0…5), `math.axes.number`,
+`math.axes.spatial`, `math.axes.spatial.isometric`, `math.axes.polar`; Graphen `math.graph.function` (Parabel
+y = x²), `math.graph.function.linear` (y = 0,5x + 1), `math.graph.function.sine` (−2π…2π, π-Teilung, 90x45),
+`math.graph.function.exponential`; `math.point.labelled`, `math.vector.arrow`, `math.vector.arrow.position` (Ortsvektor
+von O nach P mit Punkten), `math.vector.arrow.components`, `math.vector.sum` (Parallelogramm), `math.vector.sum.tail`
+(aneinandergehängt); Winkel `math.angle.mark`, `math.angle.mark.right` (90°, Quadrat), `math.angle.mark.value`
+(„α = 45°“), `math.angle.mark.arc` (nur Bogen, zum Markieren einer vorhandenen Figur); Figuren `math.shape.triangle`,
+`math.shape.triangle.right` (mit Winkelmarkierungen), `math.shape.triangle.incircle`,
+`math.shape.triangle.circumcircle`, `math.shape.polygon` (Sechseck), `math.circle.basic`, `math.circle.tangent`,
+`math.circle.thales`, `math.circle.unit`; Konstruktionen `math.construct.perpendicular`,
+`math.construct.anglebisector`, `math.lines.parallel`.
+
+Kategorien: `math.axes` Coordinate systems / Koordinatensysteme, `math.graphs` Function graphs / Funktionsgraphen,
+`math.vectors` Points & vectors / Punkte & Vektoren, `math.angles` Angles / Winkel, `math.figures` Figures & circles /
+Figuren & Kreise, `math.constructions` Constructions / Konstruktionen.
+
+Suchbegriffe decken beide Sprachen ab, z. B. Koordinatensystem, Zahlenstrahl, Schrägbild, Parabel, Sinus, Ortsvektor,
+Kräfteparallelogramm, rechter Winkel, Dreieck, Inkreis, Umkreis, Höhe, Schwerpunkt, Thaleskreis, Einheitskreis,
+Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwinkel.
+
+## Anker
+
+- **Anschlüsse** (`AnchorRole.Port`, stabile Ids; ein angedocktes Linienende folgt ihnen bei Verschieben, freiem
+  Skalieren und Parameteränderungen über `Attachments.Refresh`): `origin` der 2D- und 3D-Achsen, `pole` des
+  Polarnetzes, `zero` des Zahlenstrahls, `pt` eines Punkts, `A`/`B`/`C` und `centre` (Mittelpunkt der Konstruktion)
+  eines Dreiecks, `v0…` und `centre` eines Vielecks, `centre` eines Kreises, `centre`/`contact` der Tangente,
+  `A`/`B`/`C`/`centre` bei Thales, `origin`/`P` des Einheitskreises, `A`/`B`/`M`/`S1`/`S2` der Mittelsenkrechten,
+  `vertex`/`P1`/`P2`/`Q` der Winkelhalbierenden, `s1`/`s2` (Schnittpunkte) der Parallelen, `sum` (Spitze der
+  Resultierenden) der Vektoraddition und `vertex` des Winkels. Funktionsgraphen ergänzen ihre markanten Punkte:
+  `zero0…` (Nullstellen), `ext0…` (Extrema) und `yint` (y-Achsenabschnitt).
+- **Gitterpunkte** (`AnchorRole.Mid`): jeder Teilstrich-Kreuzungspunkt eines 2D-Koordinatensystems (`g<i>_<j>` = der
+  Punkt (i·xStep | j·yStep), z. B. `g3_-2`; bis 900 Punkte), jeder Teilstrich des Zahlenstrahls (`t<i>`), die
+  Einheitsstriche der 3D-Achsen (`x_1`, `y_2` … bzw. `x1_1` …), Ring/Strahl-Kreuzungen des Polarnetzes
+  (`r<Ring>a<Grad>`), Seitenmitten und Kantenmitten von Vielecken, Quadrantenpunkte von Kreisen
+  (`AnchorRole.Quadrant`). Ein auf ein Koordinatensystem gezeichneter Vektor dockt mit seinen Enden an Gitterpunkten an
+  und bleibt dort, wenn das Koordinatensystem verschoben oder gestreckt wird (getestet).
+- **Schienen** (`AnchorRole.Rail`): die Achsen (`xaxis`, `yaxis`, `axis-x` …), der Zahlenstrahl, die Parallelen `g`,
+  `h` und die Querlinie – Linienenden docken überall entlang an.
+- Punkttypen (Vektor, Vektoraddition, Winkel) docken auf Flächen an (`DocksOnSurface`): Ein auf eine Figur gezogenes
+  Ende folgt ihr.
+
+## Kontextaktionen
+
+Koordinatensysteme: Gitternetz, Achsenzahlen, x-Bereich… und y-Bereich… (akzeptiert `-5;5`, `−2,5..7,5`, `0 10`,
+`0 bis 10`; ein Komma ist ein Dezimalkomma). Zahlenstrahl: Zahlen, Bereich…, feinere/gröbere Unterteilung. 3D-Achsen:
+Projektion wechseln, Achsennamen, negative Halbachsen. Polarnetz: mehr/weniger Ringe, nächster Winkelschritt,
+Grad/Bogenmaß. Funktionsgraph: nächste Funktion, Koeffizienten a; b; c; d… (z. B. `2; 1; 1; -3`),
+Funktionsgleichung anzeigen, dazu die Achsenaktionen. Punkt: Beschriftung…, Beschriftung versetzen, nächste
+Markierung. Vektor: Name…, nächste Schreibweise, Komponenten, Punkte markieren, Richtung umkehren. Vektoraddition:
+Parallelogramm / Aneinanderhängen (a, b und die Resultierende bleiben: der dritte Punkt wandert), Resultierende,
+nächste Schreibweise. Winkel: Winkel festlegen… (dreht den zweiten Schenkel um den Scheitel; Werte über 180° ergeben
+den überstumpfen Winkel), Wert anzeigen, nächste Markierung, Schenkel zeichnen, andere Seite, Name…. Dreieck: nächste
+Art, nächste Konstruktion, Ecken/Seiten beschriften, Winkel markieren. Vieleck: mehr/weniger Ecken, Umkreis, Inkreis,
+Eckpunkte beschriften. Kreis: Radius/Durchmesser, Mittelpunkt, Beschriftung. Tangente: Berührpunkt bei Winkel…,
+Berührpunkt verschieben (+30°), Radius und rechter Winkel. Thales: Lage von C…, C auf dem Kreis verschieben,
+Vollkreis. Einheitskreis: Winkel…, um 15° drehen, Tangensstrecke, Werte anzeigen. Konstruktionen: Zirkelbögen,
+Beschriftung, Winkel…; Parallelen: nächstes Winkelpaar, Winkel…, Werte anzeigen.
+
+## Host-Hinweise und Grenzen
+
+- Die gesamte Ausgabe besteht aus nativen Grundformen (Linien mit Pfeilspitzen, Linienzüge, geschlossene Polygone,
+  Ellipsen, Text); Bögen sind Linienzüge (`Prim.Arc`), daher zeichnet jeder Host alles nativ – kein Vektorbild nötig.
+- Text verwendet Unicode-Zeichen, die die Standardschriften von Office und LibreOffice enthalten (α β γ φ π √ ² ³ − ·,
+  tiefgestellte ₁ ₂ ₃). Exponenten von eˣ verwenden hochgestellte Zeichen einschließlich des Modifikatorbuchstabens ˣ
+  (U+02E3) und ⁽ ⁾; Schriften ohne diese Zeichen greifen auf die Schriftverknüpfung des Hosts zurück. Vektorpfeile über
+  Buchstaben sind eigene kurze Pfeillinien und Indizes (v<sub>x</sub>) eigene kleinere Textfelder, beide anhand einer
+  geschätzten Zeichenbreite positioniert; bei sehr breiten oder schmalen Schriften können sie leicht versetzt sitzen.
+- Beschriftungen gedrehter Box-Elemente drehen sich mit (keine Aufrecht-Korrektur).
+- Der Funktionsgraph hat bewusst keinen freien Formelparser; Messdaten zeichnet `chart.xy` des Diagrammmoduls.
+- Das mit `mark = right` gezeichnete Rechter-Winkel-Quadrat folgt den tatsächlichen Schenkeln: Bei einem Winkel, der
+  nicht 90° beträgt, wird es zur Raute. `auto` (Standard) zeichnet das Quadrat nur bei 90° (±0,05°).
+- Sehr kleine Boxen: Passen Beschriftungen und Zeichnung nicht hinein, schrumpft die ganze Figur (einschließlich
+  Schriftgrößen und Anker) gleichmäßig in die Box.
+
+## Tests und Galerie
+
+`tests/InventaSketch.Modules.Geometry.Tests` (120 Tests): Registrierung, Id-Konventionen, zweisprachige Namen,
+Parameter, Optionen und Aktionen; Einfügen ohne Parameter; Bibliothekseinträge verweisen auf gültige Parameter; jeder
+Bibliothekseintrag in seiner Box in beiden Sprachen, gestreckt, gestaucht und mit jeder Parametervariante; jeder
+Parameter ändert die Zeichnung; freies Skalieren ändert `Size` und behält Parameter; Anker in der Box mit eindeutigen
+Ids; Anschlüsse an den markanten Punkten; Stil- und Füllungsüberschreibung; jede Kontextaktion läuft;
+Zahlenformatierung, Bereichseingabe, π-Teilung und Funktionsgleichungen; Gitterpunkt-Anker, erster Quadrant, dichte
+Teilung ohne überlappende Zahlen, Abschneiden der Parabel am Bereich, Anker für Nullstellen/Extrema/y-Achsenabschnitt,
+die zwei Äste der Hyperbel, Sinus mit π-Teilung, ln ab der Unterkante; Koeffizienten- und Bereichseingabe; 3D-Achsen
+behalten ihre Winkel beim Strecken; Polarbeschriftung in Grad und Bogenmaß; Vektorkomponenten und Schreibweise,
+Ortsvektor, Vektoraddition behält die Resultierende beim Konstruktionswechsel; gemessene Winkelwerte, automatisches
+Rechter-Winkel-Quadrat, Winkel festlegen; rechtwinkliges und gleichschenkliges Dreieck beim Strecken, gleichseitiges
+Dreieck, Inkreis berührt alle Seiten, Umkreis durch die Ecken, Höhenschnittpunkt auf allen Höhen (auch stumpf),
+regelmäßige Vielecke bleiben regelmäßig, Sinus-/Kosinuslängen am Einheitskreis, rechter Winkel bei Thales, Tangente
+senkrecht zum Radius, runde Kreise, Geometrie von Mittelsenkrechter und Winkelhalbierender, Winkelmarken an
+Parallelen; eine zusammengesetzte Folie, auf der eine an Gitterpunkten angedockte Vektoraddition und ein Winkel dem
+Koordinatensystem beim Verschieben und Strecken folgen.
+
+Der Galerietest schreibt `gallery/*.html` in den Testausgabeordner (eine Seite je Kategorie: jeder Bibliothekseintrag
+auf Englisch und Deutsch, gestreckt und gestaucht, dazu die Auswahlwerte der wichtigsten Parameter) und
+`gallery/index.html` mit einer zusammengesetzten Unterrichtsfolie (Koordinatensystem, angedockte Vektoraddition,
+beschrifteter Punkt, Winkel φ) in beiden Sprachen.

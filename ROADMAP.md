@@ -255,6 +255,15 @@ the roundabout ring and junction arms offered "+" at chord joints and inner ends
 intersection was 160 mm) and the roundabout's arm lanes were narrower than the roads – top views now share the factor
 0.6 and one lane width; rounded rectangles in COM ignored their radius.
 
+**Library review (2026-11-25, maintainer request):** every element of every module checked by tests
+(`LibraryAuditTests`: insert, render inside the box, every parameter value, every view, every context action, scaling,
+engine round trip with undo/redo – 1,273 elements, 21,341 checks, 0 failures; `CouplingAuditTests`: a line docked on each
+of 2,193 ports follows move, rotation and scaling; `BuildAllElementsTests`: "+" on scaled elements). Overlaps cut:
+`LibraryItem.Alternative` keeps a duplicate out of the library while its better alternative is registered (modules stay
+usable on their own, existing slides keep rendering); names that meant different things were made distinct; a test keeps
+any two modules from offering the same name again. Still open from the review: the order of the elements within each
+module (most used first), cross-module coupling beyond the generic port docking, a data table editor for charts in COM.
+
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
@@ -269,7 +278,8 @@ intersection was 160 mm) and the roundabout's arm lanes were narrower than the r
 - **Dimension between parts (P2, done in COM 2026-11-24 for two parts):** select two parts → centre distance, gap or angle as a live dimension.
 - **Slide-wide style (P2):** line weights per ISO 128 group, monochrome/patent mode, colour accents per module, applied
   to every element on the slide at once.
-- **Math & geometry (P3):** coordinate systems, vectors, angles, geometric constructions for teaching slides.
+- **Math & geometry (P3, done 2026-11-25, module `math`, docs/en/modules/geometry.md):** coordinate systems, function
+  graphs, vectors, angles, triangles and circles, constructions for teaching slides (18 types, 32 items).
 - **Hand-drawn look (P3):** an optional sketchy rendering of the same model for workshop slides.
 - **Optics (P3, idea 2026-11-25):** lenses, mirrors, prisms, beam splitters, light sources and detectors with beam
   paths that follow the elements – common in patent figures and teaching slides.

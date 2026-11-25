@@ -110,7 +110,7 @@ namespace InventaSketch.Modules.Machines
             Add("block.inverter", "machines.drive.inverter", "Inverter (block)", "Wechselrichter (Block)", "block");
             Add("block.inverter.symbol", "machines.drive.inverter", "Three-phase inverter bridge", "Drehstrom-Wechselrichterbrücke", "symbol");
             Add("block.dclink", "machines.drive.dclink", "DC link (block)", "Zwischenkreis (Block)", "block");
-            Add("block.dclink.symbol", "machines.drive.dclink", "DC-link capacitor", "Zwischenkreiskondensator", "symbol");
+            Add("block.dclink.symbol", "machines.drive.dclink", "DC-link capacitor (drive block)", "Zwischenkreiskondensator (Antriebsblock)", "symbol");
             Add("block.motor", "machines.drive.motor", "E-motor (block)", "E-Motor (Block)", "block");
             Add("block.gearbox", "machines.drive.gearbox", "Gearbox (block)", "Getriebe (Block)", "block");
             Add("block.gearbox.symbol", "machines.drive.gearbox", "Gearbox (schematic)", "Getriebe (Schema)", "symbol");
@@ -154,7 +154,15 @@ namespace InventaSketch.Modules.Machines
             Add("torque", "machines.ann.torque", "Torque arrow", "Drehmomentpfeil", "curved");
             Add("torque.vector", "machines.ann.torque", "Moment vector", "Momentenvektor", "vector");
 
-            return list;
+            // Rotation and torque arrows are offered by the mechanical module (the same symbols, more views).
+            var alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["machines.rotation"] = "mech.arrow.rotation.axial",
+                ["machines.rotation.side"] = "mech.arrow.rotation",
+                ["machines.torque"] = "mech.arrow.torque",
+                ["machines.torque.vector"] = "mech.arrow.torque.vector",
+            };
+            return list.Select(i => alternatives.TryGetValue(i.Id, out var alt) ? i with { Alternative = alt } : i).ToList();
         }
     }
 }

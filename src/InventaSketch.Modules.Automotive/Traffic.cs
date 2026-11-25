@@ -230,7 +230,7 @@ namespace InventaSketch.Modules.Automotive
                 }
                 if (!string.IsNullOrEmpty(o.Text)) p.Text(-19, 0, o.Text!, 6, 10, 10, bold: true);
             }
-            return new AutoType("auto.traffic.parking", T("Parking slot", "Parkplatz"), Cat,
+            return new AutoType("auto.traffic.parking", T("Parking slot", "Parkstand"), Cat,
                 new[] { "parking", "parking slot", "parking space", "charging", "ev charging", "parkplatz", "stellplatz", "parkbucht", "ladestation", "laden" },
                 Views.TopV(50, 25, Top) with { Anchors = (p, o) => new[] { Anchor.Segment(AnchorRole.Axis, p.V(-25, 0), p.V(25, 0)) with { Id = "slot" } } })
             {
