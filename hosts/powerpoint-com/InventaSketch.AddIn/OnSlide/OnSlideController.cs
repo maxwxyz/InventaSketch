@@ -231,6 +231,20 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
+        /// <summary>Arms the current selection again (after a setting changed how the overlay looks, e.g. the control size).</summary>
+        internal void Rearm()
+        {
+            try
+            {
+                Disarm();
+                OnSelectionChange(_app.ActiveWindow.Selection);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Rearm", ex);
+            }
+        }
+
         private void Arm(SketchUnit unit)
         {
             var newlyArmed = _unit?.Id != unit.Id;
@@ -272,6 +286,7 @@ namespace InventaSketch.AddIn.OnSlide
             _timer.Start();
             _overlay.Clear();
             ShowBar(view);
+            StartFirstHint(view);
             DrawPointHandles(view);
             if (LastHandles.Length > 0) Log.Info("Shown: " + LastShownHandles);
             if (LastHandles.Length > 0) Log.Info("Handles: " + LastHandles + (HandleLayout.AnyOverlap(Handles(view), (float)view.DeviceScale) ? " (overlap!)" : ""));
@@ -1539,6 +1554,7 @@ namespace InventaSketch.AddIn.OnSlide
                 DrawPorts(g, view);
                 DrawSides(g, view);
                 DrawLinks(g, view);
+                QueueFirstHint(view);
                 // The hovered handle's tooltip last, so no handle covers it.
                 FlushTip(g, view);
             });

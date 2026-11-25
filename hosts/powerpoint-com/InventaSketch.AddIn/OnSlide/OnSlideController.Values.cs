@@ -129,7 +129,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (unit is null || o is null) return null;
             var registry = _registry();
             var lang = _lang();
-            table ??= ValueSolver.Solve(unit.Doc, registry, new[] { objectId }, null, lang);
+            table ??= ValueSolver.Solve(ValueDoc(unit), registry, new[] { objectId }, null, lang);
             var name = registry.Type(o.Type)?.Name.Get(lang) ?? o.Type;
             var designator = o.Str("ref", "").Trim();
             var title = name + (designator.Length > 0 ? " " + designator : "") + " · " + T("Values", "Werte");
@@ -191,13 +191,13 @@ namespace InventaSketch.AddIn.OnSlide
                     if (double.IsNaN(si)) return CardModelFor(objectId);
                     var slide = CurrentSlide();
                     if (slide is null || UnitHolding(slide, objectId) is not { } unit) return null;
-                    return CardModelFor(objectId, ValueDrag.Plan(unit.Doc, registry, objectId, key, si, lang).Table);
+                    return CardModelFor(objectId, ValueDrag.Plan(ValueDoc(unit), registry, objectId, key, si, lang).Table);
                 },
                 Commit = (key, si) =>
                 {
                     var slide = CurrentSlide();
                     if (slide is null || UnitHolding(slide, objectId) is not { } unit) return null;
-                    var plan = ValueDrag.Plan(unit.Doc, registry, objectId, key, si, lang);
+                    var plan = ValueDrag.Plan(ValueDoc(unit), registry, objectId, key, si, lang);
                     return EditValues(objectId, o => ValueDrag.Apply(registry, o, key, si, plan.Released, lang, ValueLevelSetting.Digits(Level())), "drag " + key);
                 },
             };
@@ -225,6 +225,24 @@ namespace InventaSketch.AddIn.OnSlide
         private SketchDocument? _badgeDoc;
         private bool _badgeConflict;
 
+        /// <summary>
+        /// The model the values are solved in: the unit with the other units of the slide as context. Gear trains, circuits
+        /// and drive chains span several units, and the Calc 3 links read the neighbours; entered values stay in the unit.
+        /// </summary>
+        private SketchDocument ValueDoc(SketchUnit unit)
+        {
+            try
+            {
+                var slide = CurrentSlide();
+                return slide is null ? unit.Doc : SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Value context", ex);
+                return unit.Doc;
+            }
+        }
+
         /// <summary>The armed element's entered values conflict and the level shows values.</summary>
         private bool ValueBadgeWanted()
         {
@@ -237,7 +255,7 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     var o = ValueObject();
                     if (o is not null && Level() != ValueLevel.QuickSketch)
-                        _badgeConflict = ValueSolver.Solve(_unit.Doc, _registry(), new[] { o.Id }, null, _lang()).Status(o.Id) == ValueStatus.Conflict;
+                        _badgeConflict = ValueSolver.Solve(ValueDoc(_unit), _registry(), new[] { o.Id }, null, _lang()).Status(o.Id) == ValueStatus.Conflict;
                 }
                 catch (Exception ex)
                 {
@@ -341,7 +359,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (slide is null || ValueObjectOf(slide, shapeName, out var unit) is not { } o || unit is null) return "";
             var registry = _registry();
             var lang = _lang();
-            var plan = ValueDrag.Plan(unit.Doc, registry, o.Id, key, si, lang);
+            var plan = ValueDrag.Plan(ValueDoc(unit), registry, o.Id, key, si, lang);
             if (preview) return CardModelFor(o.Id, plan.Table)?.Describe() ?? "";
             return EditValues(o.Id, x => ValueDrag.Apply(registry, x, key, si, plan.Released, lang, ValueLevelSetting.Digits(Level())), "drag " + key)?.Describe() ?? "";
         });

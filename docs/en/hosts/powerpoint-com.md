@@ -182,6 +182,13 @@
 - **More menu (ribbon):** "Check and exchange" (review items, send slides, save slides, import of matplotlib/pgfplots/TikZ
   code), then tools: symbol size ×1/×1.5/×2 for every standard symbol of the slide (new symbols take it), value level,
   calculator.
+- **Larger controls and first-use hint:** More ▸ "Larger controls (125 %)" makes the bar, the pie menu, the handles and
+  their hit areas a quarter larger (setting per user in `settings.json`; the layout keeps the larger handles apart, UI
+  scenario `control-size`). The first selection of an element with a blue "+" shows "Blue + adds what fits here" next to
+  it for three seconds, once per user.
+- **Values across elements (Calc 3):** the value card, drag previews and the conflict badge solve with the other units of
+  the slide as context, so gear trains, belt and chain drives, circuits and drive chains that span several elements
+  pass their speeds, torques, currents and voltages along; entered values stay in each element.
 - **Actions that add or remove elements:** a document action of an element (for example "Add ray bundle" on a light
   source) may create objects or remove objects of other units; the created ones become one new unit, removed ones are
   taken out of their units, all in the action's undo step (UI scenario `ray-bundle`).
@@ -360,8 +367,9 @@ UX round (2026-11-20, from the maintainer's feedback):
 - **One line language (extend, draw on, corners, branches, split, join):** every line-like element works the same way:
   wires, buses, cable routes, PCB tracks, pipes, roads, rails, rivers, routes, lane markings, trajectories, lane models,
   walls, polylines, and straight lines and arrows (drawn on, they become a polyline with the same heads). A free end
-  shows a blue "+": drag it to lengthen the line, click it to keep drawing (each click adds a corner; double-click,
-  Enter, Esc or right-click ends; the last point docks like a line end). A click on a corner selects it: the bar offers
+  shows a blue "+": drag it to draw the line on (release sets the point; each further click adds a corner; double-click,
+  Enter, Esc or right-click ends; the last point docks like a line end); a click on it opens the insert box with what
+  fits there (since 2026-11-25: extend and connect share the one "+"). A click on a corner selects it: the bar offers
   split here and remove (pictograms with tooltips); a closed outline (room, region, hatched polygon, closed wall) is
   opened at that corner instead. Dropping an end on a free end of a line of the same kind joins both lines. Walls get
   T joints as branches (the branch wall docks onto the wall's centre line and follows it). `Polylines.Extend`, `Split`,

@@ -559,6 +559,9 @@ namespace InventaSketch.AddIn
             // The floating context bar as a switch in Extras (maintainer 2026-11-25: out of the ribbon group).
             sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
+            // Larger on-slide controls for low vision (interaction concept section 9 item 10).
+            sb.Append("<toggleButton id=\"IskLargeControls\" label=\"").Append(L(T("Larger controls (125 %)", "Größere Bedienelemente (125 %)"))).Append("\" imageMso=\"ZoomIn\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+              .Append(X(T("Context bar, pie menu, handles and their hit areas on the slide a quarter larger.", "Kontextleiste, Kreismenü, Griffe und ihre Trefferflächen auf der Folie ein Viertel größer."))).Append("\" />");
             // The check and exchange commands (maintainer 2026-11-25: the Review group moved into this menu).
             sb.Append("<menuSeparator id=\"IskMenuSepReview\" title=\"").Append(L(T("Check and share", "Prüfen und Weitergeben"))).Append("\" />");
             AppendReviewItems(sb);
@@ -1351,12 +1354,22 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Size of the on-slide controls (1 = normal, 1.25 = larger); the selection is armed again at the new size.</summary>
+        internal void SetControlSize(double factor)
+        {
+            AddInSettings.UiScale = factor;
+            Log.Info("Control size " + AddInSettings.UiScale.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
+            _ribbon?.InvalidateControl("IskLargeControls");
+            _onSlide?.Rearm();
+        }
+
         public bool GetTogglePressed(Office.IRibbonControl control) => control.Id switch
         {
             "IskSnap" => AddInSettings.Snap,
             "IskBar" => AddInSettings.Bar,
             "IskAnchor" => AddInSettings.Anchor,
             "IskMotion" => AddInSettings.Motion,
+            "IskLargeControls" => AddInSettings.UiScale > 1.01,
             _ => false,
         };
 
@@ -1366,6 +1379,7 @@ namespace InventaSketch.AddIn
             else if (control.Id == "IskBar") AddInSettings.Bar = pressed;
             else if (control.Id == "IskAnchor") AddInSettings.Anchor = pressed;
             else if (control.Id == "IskMotion") AddInSettings.Motion = pressed;
+            else if (control.Id == "IskLargeControls") SetControlSize(pressed ? 1.25 : 1.0);
         }
 
         /// <summary>Thumbnail of a library item (cached per item, size and theme); ink follows the Office theme.</summary>

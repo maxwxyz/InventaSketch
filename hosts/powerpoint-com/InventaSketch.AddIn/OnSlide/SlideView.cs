@@ -33,7 +33,8 @@ namespace InventaSketch.AddIn.OnSlide
         public IntPtr MainWindow { get; }
         public double SlideWidth { get; }
         public double SlideHeight { get; }
-        /// <summary>Screen pixels per logical pixel (1 = 96 dpi).</summary>
+        /// <summary>Screen pixels per logical pixel of the on-slide controls: the display scale (1 = 96 dpi) times the
+        /// user's control size (<see cref="AddInSettings.UiScale"/>).</summary>
         public double DeviceScale { get; }
 
         public bool Contains(POINT p) => PaneRect.Contains(p.X, p.Y);
@@ -93,7 +94,8 @@ namespace InventaSketch.AddIn.OnSlide
                     rect = Rectangle.FromLTRB(left, rect.Top, Math.Max(left, right), bottom);
                 }
                 if (rect.Width <= 0 || rect.Height <= 0) return null;
-                return new SlideView(k, x0, y0, hwnd, rect, root, setup.SlideWidth, setup.SlideHeight, scale);
+                // The user's control size (125 % for low vision) scales bar, pie, handles and hit targets together.
+                return new SlideView(k, x0, y0, hwnd, rect, root, setup.SlideWidth, setup.SlideHeight, scale * AddInSettings.UiScale);
             }
             catch (Exception ex)
             {

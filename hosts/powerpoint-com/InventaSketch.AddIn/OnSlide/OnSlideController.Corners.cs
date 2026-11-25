@@ -233,17 +233,40 @@ namespace InventaSketch.AddIn.OnSlide
                 _mode = Mode.Branch;
                 return true;
             }
-            // Corner: drag the new point right away (preview with the corner inserted; committed on release).
+            // Corner: drag the new point right away (preview with the corner inserted; committed on release). The corner
+            // starts where its dot is drawn: the layout may have slid the dot along its segment, away from the middle
+            // (concept section 9 item 6).
+            var start = DrawnCornerAt(view, o, seg, handle.At);
             _unitBeforeInsert = _unit;
             _insertSeg = seg;
-            _insertAt = handle.At;
-            _unit = new SketchUnit(_unit.Shape, _unit.Id, Edits.InsertPoint(_unit.Doc, o.Id, seg + 1, handle.At), _unit.BoundsPt);
+            _insertAt = start;
+            _unit = new SketchUnit(_unit.Shape, _unit.Id, Edits.InsertPoint(_unit.Doc, o.Id, seg + 1, start), _unit.BoundsPt);
             _selectedPoints.Clear();
             _pointIndex = seg + 1;
             _pointOrigin = _unit.Doc.ResolvePoints(PointObject()!);
-            _pointAt = handle.At;
+            _pointAt = start;
             _mode = Mode.EditPoint;
             return true;
+        }
+
+        /// <summary>
+        /// The page point (mm) where the corner dot of segment <paramref name="seg"/> is drawn, projected onto the segment
+        /// (kept clear of its ends); <paramref name="fallback"/> (the segment's handle point) when the dot is not placed.
+        /// </summary>
+        private Vec2 DrawnCornerAt(SlideView view, SketchObject line, int seg, Vec2 fallback)
+        {
+            var placed = HandleById(view, "seg:" + seg.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            var pts = (_unitContext ?? _unit?.Doc)?.ResolvePoints(line);
+            if (placed is not { Visible: true } || pts is null || seg >= pts.Count || pts.Count < 2) return fallback;
+            var mm = view.ToMm(new POINT { X = (int)Math.Round(placed.At.X), Y = (int)Math.Round(placed.At.Y) });
+            Vec2 a = pts[seg], b = pts[(seg + 1) % pts.Count];
+            var d = b - a;
+            var len2 = d.X * d.X + d.Y * d.Y;
+            if (len2 < 1e-9) return fallback;
+            var t = Math.Max(0.08, Math.Min(0.92, ((mm - a).X * d.X + (mm - a).Y * d.Y) / len2));
+            var at = a + d * t;
+            // Within a pixel of the handle point: keep the engine's point exactly (the usual case).
+            return (at - fallback).Length * Geo.PtPerMm * view.PixelsPerPoint < 1.5 ? fallback : at;
         }
 
         /// <summary>Ends a corner drag: restores the armed unit and returns the segment (or -1 if no corner was being added).</summary>
