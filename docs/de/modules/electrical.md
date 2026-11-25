@@ -8,7 +8,7 @@ Installationsplan-Symbole der Hausinstallation, Elemente für einpolige Übersic
 Leistungselektronik und illustrative Leiterplatten-Objekte. Alle Symbole sind **eigenständig gezeichnet**; es werden
 keine Normtexte, Tabellen oder Inhalte von Symboldatenbanken übernommen und keine Normkonformität behauptet.
 
-Es ist ein **Skizzier**-Modul für Folien und Patentzeichnungen, **kein** ECAD-Werkzeug: Es bietet eine
+Es ist ein **Skizzier**-Modul für Folien und technische Abbildungen, **kein** ECAD-Werkzeug: Es bietet eine
 Verbindungsliste (Netzliste als CSV) und eine Grundprüfung, aber keine Simulation und keine Fertigungsdaten.
 
 ## Datenexporte
@@ -33,7 +33,7 @@ Verbindungsliste (Netzliste als CSV) und eine Grundprüfung, aber keine Simulati
   Gatter 20 × 20, Operationsverstärker 30 × 20).
 - **Linienbreiten:** Symbolkonturen und Leitungen 0,35 mm, betonte Striche (Platten, Balken) 0,7 mm, Sammelschienen und
   Busleitungen 1,0 mm, mechanische Wirkverbindungen dünn gestrichelt. Alle Linien haben `LineRole.Visible`/`Thin`,
-  die monochrome Patentausgabe funktioniert also.
+  die Schwarzweiß-Ausgabe funktioniert also.
 - **Beschriftung:** optionale Parameter `ref` (Kennzeichen, z. B. `R1`) und `value` (z. B. `10k`). Das Kennzeichen steht
   über, der Wert unter der Box (bei senkrechten Symbolen wie Erde oder Antenne rechts daneben). Beim Drehen bleiben die
   Texte auf der Seite aufrecht; sie liegen bewusst **außerhalb** der Symbolbox wie in ECAD-Schaltplänen.

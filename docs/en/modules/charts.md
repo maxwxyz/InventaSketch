@@ -22,7 +22,7 @@ follow the box. Text is sized by the smaller scale factor relative to the design
 | `chart.pump` | Pump / fan curve / Pumpen-/Ventilatorkennlinie | `kind` pump / fan, `h0` (shut-off head or pressure), `qmax`, `hstat` (static part of the system), `qop` (flow at the operating point), `system` (system curve) |
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` low pass / high pass of 1st or 2nd order, `fc` (Hz), `zeta` (damping, 2nd order), `gain` (dB), `show` magnitude and phase / magnitude / phase, `marker` (corner frequency line), `xrange`, `data` (measured `f;dB;°`, replaces the system) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (nominal curve, see below), `tol` + `tolmode` percent / absolute, `smooth`, `limits`, `patterns`; further data blocks are drawn as measured series with markers |
-| `chart.figure` | Figure (principle, patent) / Prinzip- und Patentbild | `spec` (JSON specification, see [Figure](#figure-charts-v2-stage-2)); stacked panels, principle or data axes, value lines, markers, regions, notes, reference numerals |
+| `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON specification, see [Figure](#figure-charts-v2-stage-2)); stacked panels, principle or data axes, value lines, markers, regions, notes, reference numerals |
 
 Common parameters (where they apply): `title`, `xlabel`, `xunit`, `ylabel`, `yunit` (empty = the type's
 bilingual default, an explicitly empty label hides the title), `xscale` / `yscale` linear / log, `xrange` / `yrange`
@@ -39,7 +39,7 @@ The library has 28 presets (`chart.line`, `chart.line.markers`, `chart.line.mult
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in three categories: data charts, characteristic curves and principle and patent figures.
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in three categories: data charts, characteristic curves and principle and technical figures.
 
 ## Data format
 
@@ -150,13 +150,13 @@ axis), `axis.box` (closed frame), `tick.x`, `tick.y`, `label.x`, `label.y` (tick
 
 ## Figure (charts v2 stage 2)
 
-The chart type `chart.figure` draws principle and patent figures from a **versioned JSON specification** in the
-parameter `spec` (inserted without parameters it shows the patent figure below). Category "Principle and patent
+The chart type `chart.figure` draws principle and technical figures from a **versioned JSON specification** in the
+parameter `spec` (inserted without parameters it shows the example figure below). Category "Principle and technical
 figures" with three presets, the check figures of the [charts v2 design](../design/charts-v2.md):
 
 | Id | Name | Shows |
 |---|---|---|
-| `chart.figure.phases` | Phases with rotor temperature (patent figure) | power P with the phases "pre-conditioning" and "full load" (phase lines t0, t1 through both panels); rotor temperature without (dashed) and with pre-conditioning (solid) up to the limit temperature, the region between them hatched, the time gained as a dimension arrow with extension lines, reference numerals 40–46; principle axes, monochrome |
+| `chart.figure.phases` | Phases with rotor temperature (technical figure) | power P with the phases "pre-conditioning" and "full load" (phase lines t0, t1 through both panels); rotor temperature without (dashed) and with pre-conditioning (solid) up to the limit temperature, the region between them hatched, the time gained as a dimension arrow with extension lines, reference numerals 40–46; principle axes, monochrome |
 | `chart.figure.timing` | Timing diagram of a decision logic | "Fig. 2 …" title; three panels: maturity mass towards a dashed limit (numeral 64 at the axis, 63 on the curve), heat demand with a bump and dashed drive loss heat hatched only where the demand is higher (65–67), sampling signal with a solid (68) and a dashed pulse (69); t_krit as a dashed marker through all panels and as a time arrow below the first panel; rotated axis titles |
 | `chart.figure.temperature` | Temperature over time with thresholds | data axes 0–200 s / 0–220 °C, dotted horizontal grid only, four dashed reference lines with labels, a fast and a slow first-order curve with a gap each and inline labels, open circle markers "31 s" / "77 s", a vertical dimension "35 K", a caption; colour |
 

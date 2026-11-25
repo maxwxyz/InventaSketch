@@ -83,7 +83,7 @@ export function withTracedPoints(obj: Record<string, unknown>, trace: TraceInfo)
 
 const SEVERITY_ORDER: Record<PreflightSeverity, number> = { error: 0, warning: 1, manual: 2, info: 3 };
 
-/** Patent check list: errors first, then warnings, points to check by hand and notes; the engine order within each. */
+/** Compatibility check list: errors first, then warnings, points to check by hand and notes; the engine order within each. */
 export function orderFindings(findings: PreflightFinding[]): PreflightFinding[] {
   return findings.map((f, i) => ({ f, i }))
     .sort((a, b) => (SEVERITY_ORDER[a.f.severity] ?? 9) - (SEVERITY_ORDER[b.f.severity] ?? 9) || a.i - b.i)

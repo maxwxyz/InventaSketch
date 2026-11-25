@@ -12,14 +12,15 @@ chart and using hover hints, the context bar and the pie menu:
 - several plots stacked with a shared x or y axis, with phase lines across all of them (e.g. power on top, rotor
   temperature below on one time axis);
 - axis breaks, single value lines (horizontal and vertical, with label), shaded or hatched regions (between two curves,
-  below a curve, between two x values), dimension arrows ("time gained"), text and reference numerals for patent figures;
+  below a curve, between two x values), dimension arrows ("time gained"), text and reference numerals for technical
+  figures;
 - curves from data, from functions (constant, ramp, step, rectangle pulse, sawtooth, triangle, sine, exponential, PT1,
   circle/ellipse) and from a hand sketch that becomes a smooth or idealised curve;
 - reverse engineering: a picture (clipboard, photo, screenshot) becomes an editable chart;
 - export as matplotlib code, as LaTeX (pgfplots for charts, TikZ for flowcharts and sketches; texts stay LaTeX text,
   editable and set in the document font) and as SVG with texts as text and parts as named groups (and PNG).
 
-Example the design is checked against: the maintainer's patent figure (power P with phases "pre-conditioning" and
+Example the design is checked against: the maintainer's example figure (power P with phases "pre-conditioning" and
 "full load" on top; rotor temperature below with a dashed and a solid curve, a hatched region between them, a limit
 line "limit temperature", a dimension arrow "time gained" and reference numerals 40–46; shared time axis, vertical phase
 lines through both plots).
@@ -80,7 +81,7 @@ types stay and become presets that fill the specification:
   marker, step/smooth, label at the curve end, numeral;
 - `refs`: value lines (x or y, label, style), `regions` (between curves, below a curve, between x or y values; fill,
   hatch, opacity), `notes` (text, arrow, dimension arrow between two points, reference numeral with leader);
-- legend, title, number format, colours by a scheme (monochrome for patents).
+- legend, title, number format, colours by a scheme (monochrome for applications).
 
 ## Stages
 
@@ -89,7 +90,7 @@ types stay and become presets that fill the specification:
    scenario: recolour one curve natively, it stays after a redraw.
 2. **Figure model**: panels with shared x axis and phase lines, value lines, regions and hatching, notes, dimension
    arrows, reference numerals; data table editor (port of Slidemax `ChartSheet` grid logic, WinForms dialog in COM).
-   The maintainer's patent figure is built as a library preset and checked in PowerPoint.
+   The maintainer's example figure is built as a library preset and checked in PowerPoint.
 3. **Curves from functions and sketches**: function generators; sketch recognition (simplify, classify line / step /
    pulse / sawtooth / triangle / sine / exponential / circle, fit, else smoothing spline – Slidemax `Smoothed`);
    axis breaks (port of Slidemax `AxisBreakSpans`, `Along/ValueAlong`, zigzag; extended to XY and the x axis).

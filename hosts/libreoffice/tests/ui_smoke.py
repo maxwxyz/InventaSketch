@@ -454,8 +454,8 @@ def _window_titled(titles):
     return None
 
 
-def patent_dialog_phase(office, out):
-    """The patent check dialog in a visible window, with real keyboard input: the command opens it (in a thread, the
+def compatibility_dialog_phase(office, out):
+    """The compatibility check dialog in a visible window, with real keyboard input: the command opens it (in a thread, the
     dialog is modal) with the findings of every slide, the list has the focus, Down chooses the first finding (the gear
     outside the usable area on slide 2), which shows slide 2 and selects the gear; Escape closes the dialog."""
     import threading
@@ -472,7 +472,7 @@ def patent_dialog_phase(office, out):
     gear = list(units_of(pages.getByIndex(1)).values())[0]
     controller.setCurrentPage(pages.getByIndex(0))
     select_shapes(office, doc, [])
-    titles = ("Patent check (drawings)", "Patentprüfung (Zeichnungen)")
+    titles = ("Compatibility (drawing rules)", "Kompatibilität (Zeichnungsregeln)")
     runner = threading.Thread(target=lambda: office.run(doc, "patentCheck?profile=uspto"), daemon=True)
     runner.start()
     dialog = None
@@ -480,34 +480,34 @@ def patent_dialog_phase(office, out):
     while dialog is None and time.time() < end:
         dialog = _window_titled(titles)
         time.sleep(0.5)
-    check("patentDialog.opens", dialog is not None)
+    check("compatDialog.opens", dialog is not None)
     if dialog is None:
         office.close(doc)
         return
     time.sleep(1.5)
-    screenshot(dialog, os.path.join(out, "patent-dialog.png"))
+    screenshot(dialog, os.path.join(out, "compatibility-dialog.png"))
     GUARD["window"] = dialog
     try:
         # The first finding is the sheet size of slide 2 (no element), the second the gear outside the usable area.
         keys(VK_DOWN)
         on_slide_2 = wait_for(lambda: controller.getCurrentPage().Number == 2, 6)
-        check("patentDialog.goesToSlide", on_slide_2)
+        check("compatDialog.goesToSlide", on_slide_2)
         keys(VK_DOWN)
 
         def chosen():
             sel = controller.getSelection()
             return sel.getByIndex(0).Name if sel is not None and hasattr(sel, "getCount") and sel.getCount() == 1 else ""
         wait_for(lambda: chosen() == gear.Name, 6)
-        check("patentDialog.selectsElement", chosen() == gear.Name, "selected %s" % chosen())
+        check("compatDialog.selectsElement", chosen() == gear.Name, "selected %s" % chosen())
         time.sleep(1)
-        screenshot(dialog, os.path.join(out, "patent-dialog-chosen.png"))
+        screenshot(dialog, os.path.join(out, "compatibility-dialog-chosen.png"))
         keys(VK_ESCAPE)
     except ForeignWindow as ex:
-        check("patentDialog.foreground", False, "stopped, no input sent: %s" % ex)
+        check("compatDialog.foreground", False, "stopped, no input sent: %s" % ex)
     finally:
         GUARD["window"] = None
     runner.join(10)
-    check("patentDialog.closes", not runner.is_alive())
+    check("compatDialog.closes", not runner.is_alive())
     office.close(doc)
 
 
@@ -549,7 +549,7 @@ def main():
     try:
         if not args.skip_canvas:
             canvas_phase(office, args.out, logs)
-            patent_dialog_phase(office, args.out)
+            compatibility_dialog_phase(office, args.out)
         if args.canvas_only:
             raise _Done()
         doc = office.desktop.loadComponentFromURL("private:factory/simpress", "_blank", 0, ())

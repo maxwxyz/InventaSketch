@@ -7,7 +7,7 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Charts
 {
     /// <summary>
-    /// Figure (charts v2 stage 2): one chart type for principle and patent figures, driven by a versioned JSON
+    /// Figure (charts v2 stage 2): one chart type for principle and technical figures, driven by a versioned JSON
     /// specification in the parameter <c>spec</c> (<see cref="FigureSpec"/>): stacked panels on a shared x axis, data or
     /// principle axes, curves with gaps, value lines, vertical markers through all panels, point markers, hatched regions,
     /// notes, dimension arrows and reference numerals. A specification that cannot be read renders an empty frame with a
@@ -23,9 +23,9 @@ namespace InventaSketch.Modules.Charts
 
         private static readonly I18nText Unreadable = new("Figure specification cannot be read (JSON)", "Bildspezifikation nicht lesbar (JSON)");
 
-        public FigureChart() : base(TypeId, new I18nText("Figure (principle, patent)", "Prinzip- und Patentbild"), CategoryId,
-            "figure", "principle", "patent", "timing diagram", "phase", "panels", "stacked", "reference numeral", "hatched", "dimension", "time gained",
-            "bild", "prinzipbild", "patentbild", "patentzeichnung", "zeitdiagramm", "zeitverlauf", "phasen", "bezugszeichen", "schraffur", "zeitgewinn")
+        public FigureChart() : base(TypeId, new I18nText("Figure (principle, technical)", "Prinzip- und technische Abbildung"), CategoryId,
+            "figure", "principle", "technical figure", "timing diagram", "phase", "panels", "stacked", "reference numeral", "hatched", "dimension", "time gained",
+            "bild", "prinzipbild", "abbildung", "strichzeichnung", "zeitdiagramm", "zeitverlauf", "phasen", "bezugszeichen", "schraffur", "zeitgewinn")
         { }
 
         public override Size2 Design => new(100, 80);

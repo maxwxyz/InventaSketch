@@ -52,7 +52,7 @@ namespace InventaSketch.Modules.Automotive
         public const string Decrease = IconIds.Decrease;
     }
 
-    /// <summary>Shared line styles (ISO 128 line roles; patent-style monochrome drawings).</summary>
+    /// <summary>Shared line styles (ISO 128 line roles; monochrome line drawings).</summary>
     internal static class S
     {
         public static readonly Style Vis = Style.Visible;

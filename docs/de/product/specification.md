@@ -11,12 +11,13 @@
 ## 1. Vision
 
 InventaSketch macht aus Ideen klare technische Skizzen – **direkt in PowerPoint und LibreOffice**. Es ist ein
-Werkzeug für schnelles, pragmatisches Prototyping für Ingenieure, Erfinder und Patentfachleute: Ziehen Sie ein Zahnrad,
+Werkzeug für schnelles, pragmatisches Prototyping für Ingenieure, Erfinder und Fachleute für gewerblichen
+Rechtsschutz: Ziehen Sie ein Zahnrad,
 eine Welle, ein Wälzlager, einen Widerstand, eine Wand, ein Fahrzeug oder einen Flussdiagramm-Schritt auf die Folie,
 skalieren Sie es frei, lassen Sie es an seinen Nachbarn einrasten, ergänzen Sie Pfeile, Beschriftungen und
 Bezugszeichen – und das Ergebnis ist eine saubere, bearbeitbare Figur. Ohne Maße, ohne Modul, ohne Zähnezahl.
-Genauigkeit, Parameter und Prüfungen nach den Vorschriften der Patentämter stehen bei Bedarf zur Verfügung, werden aber
-nie verlangt.
+Genauigkeit, Parameter und Prüfungen nach den Zeichnungsvorschriften der Ämter stehen bei Bedarf zur Verfügung, werden
+aber nie verlangt.
 
 Es ist **kein** CAD-, EDA-, BIM-, GIS-, FEM- oder Mehrkörpersimulationssystem und kein Werkzeug zur rechtlichen
 Konformitätsprüfung.
@@ -46,8 +47,8 @@ Konformitätsprüfung.
 - Ein zweistufiges Getriebe (zwei Wellen, vier Zahnräder, vier Wälzlager, Leistungsflusspfeil, Beschriftungen) wird
   in unter einer Minute ohne Eingabe einer einzigen Zahl als Getriebeschema skizziert und lässt sich auf vereinfachte
   Darstellungen umschalten.
-- Eine Patentfigur mit Bezugszeichen, gekrümmten Bezugslinien und Schraffur wird erstellt, gegen ein Amtsprofil
-  (DPMA/EPA/PCT/USPTO) geprüft und monochrom als SVG/PDF/PNG exportiert.
+- Eine Figur im Schwarzweiß-Strichstil mit Bezugszeichen, gekrümmten Bezugslinien und Schraffur wird erstellt, gegen ein
+  Amtsprofil (DPMA/EPA/PCT/USPTO) geprüft und monochrom als SVG/PDF/PNG exportiert.
 - Eingefügte Objekte sind native Formen in PowerPoint (Windows-COM) und bleiben mit PowerPoint-Werkzeugen bearbeitbar.
 - Dasselbe Dokument lässt sich im Seitenleisten-Editor des Web-Add-ins (PowerPoint für Mac/Web) und in LibreOffice öffnen.
 
@@ -57,7 +58,7 @@ Konformitätsprüfung.
 |---|---|---|
 | Entwicklungsingenieur | Konzeptskizzen, Getriebe-/Antriebsstranglayouts, Mechanismen, E/E-Architekturen | Tempo, Einrasten, schematische Symbole, Varianten |
 | Erfinder / F&E | Erfindungsmeldungen, Ideensammlungen, Funktionskonzepte | schnelle Figuren, Nummerierung, Vorher-/Nachher-Varianten |
-| Patentanwalt / Patentsachbearbeiter | Patentfiguren, Bezugszeichenlisten, einreichungsfertige Exporte | Regelprofile, Monochromie, konsistente Bezugszeichen |
+| Anwalt für gewerblichen Rechtsschutz / Sachbearbeiter | Abbildungen für Anmeldungen, Bezugszeichenlisten, einreichungsfertige Exporte | Regelprofile, Monochromie, konsistente Bezugszeichen |
 | Lehrende / Studierende | Technische Mechanik, Maschinenelemente, Schaltungen | klare Lehrbuchkonventionen |
 | Berater / Manager | Prozess- und Systemdiagramme in Präsentationen | native PowerPoint-Formen, Designs |
 
@@ -137,8 +138,8 @@ kompaktes Layout für schmale Aufgabenbereiche; per Tastatur bedienbar; Tooltips
 Kanonisches, versioniertes JSON (`inventasketch-document` v1). Seiten mit Z-Reihenfolge; Objekte mit ID, Typ,
 Transformation (Mittelpunkt, Drehung, Spiegelung), Boxgröße, optionalen Punkten + Anbindungen, Ansicht, optionalen
 Parametern, Stil-Überschreibungen, Text, Bezugszeichen, Gruppen-ID, Ebene; Ebenen (inkl. Hilfsebenen, die vom
-Patentexport ausgeschlossen sind); Bezugszeichen-Verzeichnis; Einstellungen (Einheiten, Raster, Profil). Einheiten mm,
-y nach unten. Details: [Architekturüberblick](../architecture/overview.md).
+Schwarzweiß-Export ausgeschlossen sind); Bezugszeichen-Verzeichnis; Einstellungen (Einheiten, Raster, Profil). Einheiten
+mm, y nach unten. Details: [Architekturüberblick](../architecture/overview.md).
 
 In Host-Dokumenten reist das Modell mit den Formen: Tags je Gruppe (ID/Typ) plus komprimierte Modelldaten
 (`isk1:` GZip+Base64), gespiegelt in einen Speicher auf Dokumentebene. Extern bearbeitete Formen werden erkannt; das
@@ -157,12 +158,12 @@ schraffierte Bereiche (Stahl 45°, Kreuzschraffur, horizontal/vertikal, dicht/we
 berücksichtigt), Flussdiagramm-Grundformen (Prozess, Verzweigung, Start/Ende, Daten, Dokument, Konnektor,
 Schrittbezeichnungen „S100“).
 
-### 6.2 Patent Studio (`patent.*`) – in Arbeit
+### 6.2 Abbildungs-Studio (Typ-IDs `patent.*`) – in Arbeit
 Bezugszeichen mit Bezugslinien, Nummerierungsschema (10/20/30, Unterteile 11/12), eine einzige maßgebliche Quelle über
 alle Figuren, Export der Bezugszeichenliste, Hilfe für Zeichnungsblatt und Nutzfläche, Blattnummern („1/3“),
 FIG-Beschriftungen, monochromer Export, **Vorabprüfung (Preflight)** mit versionierten Amtsprofilen (DPMA, EPA, PCT,
 USPTO, gemeinsames sicheres Profil), deren Regeln ihre Rechtsgrundlage zitieren (siehe
-[Zeichnungsvorschriften für Patente](../../en/research/patent-drawing-rules.md)). Befunde: Fehler / Warnung / Hinweis /
+[Zeichnungsvorschriften der Ämter](../../en/research/drawing-rules.md)). Befunde: Fehler / Warnung / Hinweis /
 manuell, mit Navigation zum Objekt und Vorschlägen. Eine fehlerfreie Vorabprüfung ist eine Hilfestellung, keine
 rechtliche Bescheinigung.
 
@@ -200,7 +201,8 @@ Dämpfer, Massen, Freischnittgrenzen, Koordinatensysteme, Grundelemente für Que
 Glieder, Dreh-/Schub-/Kugel-/Kurvengelenke, Viergelenk, Schubkurbel, Kreuzschleife, Kniehebel, Kurvengetriebe mit
 Abtriebsglied; Simulation durch Ziehen mit einem 2D-Constraint-Solver; Gelenk- und Winkelgrenzen, die in die Zeichnung
 eingetragen werden; Bewegungsbahnen und Geisterbilder (Start-/Zwischen-/Endlagen als gestrichelte Überlagerungen für
-Patentfiguren); Export als Folienfolge für Animationen; Anzeige des Freiheitsgrads. Keine Dynamiksimulation impliziert.
+technische Abbildungen); Export als Folienfolge für Animationen; Anzeige des Freiheitsgrads. Keine Dynamiksimulation
+impliziert.
 
 ### 6.6 Elektrotechnik & Elektronik (`elec.*`) – geplant
 Unabhängig gezeichnete Symbole im IEC-Stil (Widerstand, Kondensator, Spule, Diode, LED, Transistor, MOSFET, IGBT,
@@ -302,16 +304,16 @@ sowie Luft- und Raumfahrt. Jedes davon wird zum Modul, sobald ein konkreter Umfa
 7. Fahrzeug, Straße, Sensorsichtfeld, Trajektorie.
 8. Grundriss eines Hauses mit Wänden, Räumen, Türen, Fenstern.
 9. Prozessdiagramm mit Swimlanes.
-10. Patentfigur: Bezugszeichen, Schraffur, Vorabprüfung, monochromer Export.
+10. Technische Abbildung: Bezugszeichen, Schraffur, Vorabprüfung, monochromer Export.
 11. Native Objekte + SVG/PDF exportieren; erneut öffnen und prüfen.
 
 ## 10. Nicht im Umfang
 
 3D-CAD, FEM/CFD, Mehrkörperdynamik, fertigungstaugliche Leiterplattenausgabe, BIM, Topologie in GIS-Qualität,
-vollständige Navigation, rechtliche Zertifizierung von Patentzeichnungen.
+vollständige Navigation, rechtliche Zertifizierung von Zeichnungen für Anmeldungen.
 
 ## 11. Quellen
 
-Siehe [research/patent-drawing-rules.md](../../en/research/patent-drawing-rules.md) (amtliche Quellen der Patentämter)
+Siehe [research/drawing-rules.md](../../en/research/drawing-rules.md) (amtliche Quellen der Ämter)
 und [research/tools-and-host-apis.md](../../en/research/tools-and-host-apis.md) (Werkzeuglandschaft, Host-APIs,
 Lizenzen); beide nur auf Englisch, deutsche Kurzfassung: [research/README.md](../research/README.md).

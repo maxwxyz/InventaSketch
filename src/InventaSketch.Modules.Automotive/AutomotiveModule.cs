@@ -6,7 +6,7 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Automotive
 {
     /// <summary>
-    /// Vehicles, ADAS and HMI module: reduced, patent-style line drawings of vehicles (top/side/front/rear views),
+    /// Vehicles, ADAS and HMI module: reduced black-and-white line drawings of vehicles (top/side/front/rear views),
     /// vehicle subsystems, humans, road environment, ADAS sensors with fields of view, perception overlays,
     /// trajectories and HMI elements for invention disclosures of vehicle functions. Illustrative scenes only; nothing
     /// is simulated. Every object is insertable without parameters and drawn inside its box.

@@ -33,7 +33,7 @@ namespace InventaSketch.Modules.Charts
         {
             new LibraryCategory(ChartCategories.Data, new I18nText("Data charts", "Datendiagramme"), Id, 10),
             new LibraryCategory(ChartCategories.Engineering, new I18nText("Characteristic curves", "Kennlinien & Kennfelder"), Id, 20),
-            new LibraryCategory(FigureChart.CategoryId, new I18nText("Principle and patent figures", "Prinzip- und Patentbilder"), Id, 30),
+            new LibraryCategory(FigureChart.CategoryId, new I18nText("Principle and technical figures", "Prinzip- und technische Abbildungen"), Id, 30),
         };
 
         public IEnumerable<LibraryItem> Library => Items.Value;
@@ -95,9 +95,9 @@ namespace InventaSketch.Modules.Charts
             Add("limits", XyChart.TypeId, "Curve with limit lines", "Kurve mit Grenzlinien", P(("limits", "1.5;5.5")),
                 kw: new[] { "limit", "threshold", "grenzwert", "schwelle", "grenzlinie" });
 
-            // Figures (charts v2 stage 2): principle and patent figures from a JSON specification.
-            Add("figure.phases", FigureChart.TypeId, "Phases with rotor temperature (patent figure)", "Phasen mit Rotortemperatur (Patentbild)",
-                P(("spec", FigurePresets.Patent)), kw: new[] { "patent", "phase", "pre-conditioning", "full load", "time gained", "vorkonditionierung", "volllast", "zeitgewinn", "rotortemperatur" });
+            // Figures (charts v2 stage 2): principle and technical figures from a JSON specification.
+            Add("figure.phases", FigureChart.TypeId, "Phases with rotor temperature (technical figure)", "Phasen mit Rotortemperatur (technische Abbildung)",
+                P(("spec", FigurePresets.Patent)), kw: new[] { "phase", "pre-conditioning", "full load", "time gained", "vorkonditionierung", "volllast", "zeitgewinn", "rotortemperatur" });
             Add("figure.timing", FigureChart.TypeId, "Timing diagram of a decision logic", "Zeitablauf einer Entscheidungslogik",
                 P(("spec", FigurePresets.Timing)), new Size2(100, 110), "timing", "pulse", "t_krit", "decision", "zeitdiagramm", "impuls", "entscheidung", "abtastsignal");
             Add("figure.temperature", FigureChart.TypeId, "Temperature over time with thresholds", "Temperaturverlauf mit Schwellen",

@@ -23,7 +23,7 @@ namespace InventaSketch.Modules.Annotation
         public static TextBoxType Text() => new("ann.text", new I18nText("Text", "Text"), TextFrame.None, "Text", new Size2(40, 10), "text", "note", "notiz", "beschriftung");
         public static TextBoxType Label() => new("ann.label", new I18nText("Label", "Beschriftungsfeld"), TextFrame.Rect, "Label", new Size2(36, 12), "label", "frame", "rahmen", "schild", "box");
         public static TextBoxType Callout() => new("ann.callout", new I18nText("Callout", "Hinweisfeld"), TextFrame.Rounded, "Note", new Size2(44, 16), "callout", "note", "hinweis", "sprechblase", "rounded");
-        /// <summary>Numbered circle. Patent offices forbid encircled reference signs (EP A49 Art. 1(2)(d), PCT R. 11.13(e), 37 CFR 1.84(p)(1)); use for presentations.</summary>
+        /// <summary>Numbered circle. The offices forbid encircled reference signs (EP A49 Art. 1(2)(d), PCT R. 11.13(e), 37 CFR 1.84(p)(1)); use for presentations.</summary>
         public static TextBoxType Balloon() => new("ann.balloon", new I18nText("Balloon", "Positionsnummer (Kreis)"), TextFrame.Circle, "1", new Size2(9, 9), "balloon", "item", "position", "kreis", "nummer");
 
         public override Size2 DefaultSize { get; }

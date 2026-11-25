@@ -110,7 +110,7 @@ namespace InventaSketch.Modules.Charts.Tests
         }
 
         [Fact]
-        public void DefaultSpecIsThePatentFigure()
+        public void DefaultSpecIsTheExampleFigure()
         {
             Assert.Equal(FigurePresets.Patent, FigureChart.SpecDef.Default?.Text);
             var o = new SketchObject { Id = "f", Type = FigureChart.TypeId, Size = new Size2(100, 80) };

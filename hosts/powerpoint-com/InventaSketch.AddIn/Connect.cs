@@ -224,7 +224,7 @@ namespace InventaSketch.AddIn
         /// New modules and categories appear without changing this code.
         /// </summary>
         /// <summary>
-        /// Ribbon groups in order: one "Annotate" group right after the tools (annotation, patent figures and basic
+        /// Ribbon groups in order: one "Annotate" group right after the tools (annotation, figures and basic
         /// shapes: the things every sketch needs), then one group per domain module. New modules appear automatically.
         /// </summary>
         /// <summary>Modules shown in another module's ribbon menu (partner → host), e.g. building services with floor plans.</summary>
@@ -401,7 +401,7 @@ namespace InventaSketch.AddIn
         }
 
         /// <summary>
-        /// The "Review" group at the end of the tab: what works on the finished drawing \u2013 patent check, comparison with the
+        /// The "Review" group at the end of the tab: what works on the finished drawing \u2013 compatibility check, comparison with the
         /// previous slide (variants), data import and export. One place for these commands (they left the Extras menu).
         /// </summary>
         private void AppendReviewGroup(StringBuilder sb)
@@ -808,7 +808,7 @@ namespace InventaSketch.AddIn
 
         /// <summary>
         /// Ribbon galleries that show several categories, so the "Annotate" group needs one column less: hatching with the
-        /// basic shapes, patent marks and patent drawing with lines and arrows (secondary category → primary category).
+        /// basic shapes, figure marks and numerals & sheets with lines and arrows (secondary category → primary category).
         /// </summary>
         internal static readonly IReadOnlyDictionary<string, string> MergedInto = new Dictionary<string, string>(StringComparer.Ordinal)
         {
@@ -1104,9 +1104,9 @@ namespace InventaSketch.AddIn
             }
         }
 
-        /// <summary>Recolours the InventaSketch shapes of the current slide to black/white (patent style).</summary>
+        /// <summary>Recolours the InventaSketch shapes of the current slide to black/white (line-drawing style).</summary>
         /// <summary>
-        /// Switches the InventaSketch elements of the slide to black and white (patent style) or back: every unit's model
+        /// Switches the InventaSketch elements of the slide to black and white (line-drawing style) or back: every unit's model
         /// gets <see cref="DocumentSettings.Monochrome"/> and is re-rendered, so all colours (fills, text, highlighters)
         /// are mapped by the engine, stay black and white after later edits and come back when switched off.
         /// </summary>
@@ -1483,7 +1483,7 @@ namespace InventaSketch.AddIn
             return null;
         }
 
-        /// <summary>Patent check of the presentation for profile <paramref name="profileId"/> (automation, UI tests).</summary>
+        /// <summary>Compatibility check of the presentation for profile <paramref name="profileId"/> (automation, UI tests).</summary>
         internal List<PatentCheck.Item> RunPatentCheck(string profileId)
         {
             if (_app is null || _registry is null) return new List<PatentCheck.Item>();
@@ -1529,7 +1529,7 @@ namespace InventaSketch.AddIn
             });
         }
 
-        /// <summary>Opens (or closes) the patent check window on the UI thread (automation, UI tests); true if it is open.</summary>
+        /// <summary>Opens (or closes) the compatibility check window on the UI thread (automation, UI tests); true if it is open.</summary>
         internal bool ShowPatentCheck(bool visible)
         {
             if (_onSlide is null || _app is null || _registry is null) return false;

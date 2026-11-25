@@ -160,7 +160,7 @@ describe("texts of the UI/UX round", () => {
   });
 });
 
-describe("patent check list", () => {
+describe("compatibility check list", () => {
   const f = (severity: PreflightFinding["severity"], rule: string): PreflightFinding => ({ rule, severity, message: rule, source: "" });
 
   it("puts errors first and keeps the engine order within a severity", () => {
@@ -178,7 +178,7 @@ describe("patent check list", () => {
   });
 });
 
-describe("patent check sources", () => {
+describe("compatibility check sources", () => {
   it("splits cited sources into labels and links", () => {
     const s = "DE-01: PatV § 6(2) <https://www.gesetze-im-internet.de/patv/__6.html>; EP-02: OJ EPO 2025, A49 Art. 2(1) <https://www.epo.org/a49>; US-06: 37 CFR 1.84(f)";
     expect(sourceLinks(s)).toEqual([

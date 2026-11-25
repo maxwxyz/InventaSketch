@@ -21,14 +21,14 @@ namespace InventaSketch.Modules.Patent
     }
 
     /// <summary>
-    /// Patent drawing preflight. Renders every page (helper layers, helper lines and the sheet frame excluded) and
+    /// Compatibility check (preflight) against the drawing rules of an office. Renders every page (helper layers, helper lines and the sheet frame excluded) and
     /// checks it against a <see cref="PatentProfile"/>. A clean result is a drafting aid, never a legal certification.
     /// </summary>
     public static class Preflight
     {
         public static readonly I18nText Disclaimer = new(
-            "Preflight is a drafting aid based on the cited office rules (research status 2026-11-20). A result without findings does not certify that the drawings comply with the requirements of any patent office and is not legal advice. Check the current official rules or consult a patent attorney before filing.",
-            "Der Preflight ist eine Zeichenhilfe auf Basis der zitierten Amtsvorschriften (Recherchestand 20.11.2026). Ein Ergebnis ohne Befunde bestätigt nicht, dass die Zeichnungen den Anforderungen eines Patentamts genügen, und ist keine Rechtsberatung. Prüfen Sie vor der Einreichung die aktuellen amtlichen Vorschriften oder fragen Sie einen Patentanwalt.");
+            "Preflight is a drafting aid based on the cited office rules (research status 2026-11-20). A result without findings does not certify that the drawings comply with the requirements of any office and is not legal advice. Check the current official rules or consult an IP attorney before filing.",
+            "Der Preflight ist eine Zeichenhilfe auf Basis der zitierten Amtsvorschriften (Recherchestand 20.11.2026). Ein Ergebnis ohne Befunde bestätigt nicht, dass die Zeichnungen den Anforderungen eines Amts genügen, und ist keine Rechtsberatung. Prüfen Sie vor der Einreichung die aktuellen amtlichen Vorschriften oder fragen Sie eine Fachperson für gewerblichen Rechtsschutz.");
 
         private static readonly Regex ScalePattern = new(@"(?i)(\b1\s*:\s*\d+([.,]\d+)?\b|\b\d+\s*:\s*1\b|\bactual\s+size\b|\bnatural\s+size\b|\bscale\s*1\s*/\s*\d+|natürliche\s+größe|\bmaßstab\b|\bmassstab\b)", RegexOptions.Compiled);
         private static readonly Regex FigPattern = new(@"^\s*(FIG|Fig|Figure|Abb|Abbildung)\.?\s*(\d+)\s*([A-Za-z]?)\s*$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -145,7 +145,7 @@ namespace InventaSketch.Modules.Patent
                     colourAllowed
                         ? new I18nText($"Colour {colour} is used. Accepted only for electronic filing (since 2025-10-01); avoid colour-dependent wording and expect B/W for PCT and paper.", $"Farbe {colour} wird verwendet. Nur bei elektronischer Einreichung zulässig (seit 01.10.2025); keine farbabhängigen Formulierungen, PCT und Papier bleiben schwarz-weiß.")
                         : new I18nText($"Colour {colour} is used. Drawings must be black and white.", $"Farbe {colour} wird verwendet. Zeichnungen müssen schwarz-weiß sein."),
-                    new I18nText("Use black lines on white; the patent export converts colours to black.", "Schwarze Linien auf Weiß verwenden; der Patentexport wandelt Farben in Schwarz um."));
+                    new I18nText("Use black lines on white; the black-and-white export converts colours to black.", "Schwarze Linien auf Weiß verwenden; der Schwarzweiß-Export wandelt Farben in Schwarz um."));
             var transparent = flat.Any(p => StyleOf(p)?.Opacity is double op && op < 1);
             if (grey is not null || transparent)
                 c.Add(PreflightRules.Greyscale, colourAllowed ? Severity.Info : Severity.Error, o.Id, page.Id,

@@ -240,7 +240,7 @@ namespace InventaSketch.Modules.Diagrams
             }
             var (at, dir) = D.At(path, 0.5);
             list.AddRange(D.SideLabel(text, at, D.LabelSide(dir), LabelSize(o)));
-            // Step numeral at the start of the arrow, above the line (patent style: "302").
+            // Step numeral at the start of the arrow, above the line (as in method figures: "302").
             if (step.Length > 0) list.AddRange(EndLabel(step, path, true, 0, true, LabelSize(o)).Select(p => p with { Tag = DiagTags.Numeral }));
         }
 

@@ -7,7 +7,7 @@ using InventaSketch.Modules.Annotation;
 
 namespace InventaSketch.Modules.Patent
 {
-    /// <summary>Type ids of the patent module.</summary>
+    /// <summary>Type ids of the figures module.</summary>
     public static class PatentIds
     {
         public const string Numeral = "patent.numeral";
@@ -26,7 +26,7 @@ namespace InventaSketch.Modules.Patent
         public const double DefaultTextSize = 5.0;
 
         public NumeralType() : base(PatentIds.Numeral, new I18nText("Reference numeral", "Bezugszeichen"), PatentIds.Category,
-            "reference", "numeral", "sign", "bezugszeichen", "patent", "lead line", "bezugslinie") { }
+            "reference", "numeral", "sign", "bezugszeichen", "lead line", "bezugslinie") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(0, 0), new Vec2(14, -10) };
         public override bool HasText => true;
@@ -165,19 +165,19 @@ namespace InventaSketch.Modules.Patent
             => new Primitive[] { Prim.Text(0, 0, TextOf(o, ctx.Doc), new TextStyle { Size = o.Num("textSize", DefaultTextSize) }) with { Tag = "sheetnumber" } };
     }
 
-    /// <summary>Patent drawing module: reference numerals, sheet helper, sheet numbers, profiles, preflight and export.</summary>
+    /// <summary>Figures module: reference numerals, sheet helper, sheet numbers, profiles, preflight and export.</summary>
     public sealed class PatentModule : IModule, IExportProvider
     {
         private static readonly ObjectType[] AllTypes = { new NumeralType(), new SheetType(), new PageNumberType() };
 
         public string Id => "patent";
-        public I18nText Name => new("Patent", "Patent");
+        public I18nText Name => new("Figures", "Abbildungen");
         public string Version => "0.2.0";
         public IEnumerable<ObjectType> Types => AllTypes;
 
         public IEnumerable<LibraryCategory> Categories => new[]
         {
-            new LibraryCategory(PatentIds.Category, new I18nText("Patent drawing", "Patentzeichnung"), Id, 55),
+            new LibraryCategory(PatentIds.Category, new I18nText("Numerals & sheets", "Bezugszeichen & Blätter"), Id, 55),
         };
 
         /// <summary>Domain exports of this module (<see cref="IExportProvider"/>).</summary>

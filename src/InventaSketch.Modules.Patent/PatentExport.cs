@@ -9,14 +9,14 @@ using InventaSketch.Modules.Annotation;
 namespace InventaSketch.Modules.Patent
 {
     /// <summary>
-    /// Patent export helpers: monochrome SVG per page (helper layers, helper lines and the sheet frame excluded),
+    /// Export helpers for figures: monochrome SVG per page (helper layers, helper lines and the sheet frame excluded),
     /// sheet frames, sheet numbers and figure numbering.
     /// </summary>
     public static class PatentExport
     {
         public const string HelperLayerId = "patent-helper";
 
-        /// <summary>True if the object never goes into a patent export (sheet frame, helper or hidden layer).</summary>
+        /// <summary>True if the object never goes into a monochrome figure export (sheet frame, helper or hidden layer).</summary>
         public static bool IsExcluded(SketchDocument doc, SketchObject o)
         {
             if (o.Type == PatentIds.Sheet) return true;
@@ -92,14 +92,14 @@ namespace InventaSketch.Modules.Patent
         /// <summary>Adds the helper layer (excluded from export and preflight) if missing.</summary>
         public static SketchDocument EnsureHelperLayer(SketchDocument doc)
             => doc.Layers.Any(l => l.Id == HelperLayerId) ? doc
-                : doc with { Layers = doc.Layers.Concat(new[] { new Layer(HelperLayerId, "Patent helper", Visible: true, Locked: true, Helper: true) }).ToList() };
+                : doc with { Layers = doc.Layers.Concat(new[] { new Layer(HelperLayerId, "Drawing helper", Visible: true, Locked: true, Helper: true) }).ToList() };
 
         /// <summary>Adds a locked sheet frame (margins of the profile) to a page on the helper layer.</summary>
         public static SketchDocument AddSheetFrame(Registry registry, SketchDocument doc, string pageId, PatentProfile profile)
         {
             doc = EnsureHelperLayer(doc);
             var page = doc.Pages.First(p => p.Id == pageId);
-            var type = registry.Type(PatentIds.Sheet) ?? throw new InvalidOperationException("Patent module is not registered.");
+            var type = registry.Type(PatentIds.Sheet) ?? throw new InvalidOperationException("Figures module is not registered.");
             var o = type.Create(new Vec2(page.Size.W / 2, page.Size.H / 2)) with { Size = page.Size, Layer = HelperLayerId, Locked = true };
             o = o.WithParam("profile", profile.Id);
             doc = Edits.Add(doc, pageId, o);
@@ -109,7 +109,7 @@ namespace InventaSketch.Modules.Patent
         /// <summary>Ensures each page has one automatic sheet number at the top centre inside the usable area.</summary>
         public static SketchDocument ApplySheetNumbers(Registry registry, SketchDocument doc, PatentProfile profile)
         {
-            var type = registry.Type(PatentIds.PageNumber) ?? throw new InvalidOperationException("Patent module is not registered.");
+            var type = registry.Type(PatentIds.PageNumber) ?? throw new InvalidOperationException("Figures module is not registered.");
             foreach (var page in doc.Pages.ToList())
             {
                 var usable = profile.Usable(page.Size);

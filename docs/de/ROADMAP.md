@@ -9,7 +9,7 @@
 
 | Punkt | Ergebnis | Status |
 |---|---|---|
-| Recherche | Zeichnungsvorschriften für Patente (DPMA/EPA/PCT/USPTO), Werkzeuglandschaft, Host-APIs | ausgeliefert ([docs/en/research](../en/research/); deutsche Kurzfassung: [research/README.md](research/README.md)) |
+| Recherche | Zeichnungsvorschriften der Ämter (DPMA/EPA/PCT/USPTO), Werkzeuglandschaft, Host-APIs | ausgeliefert ([docs/en/research](../en/research/); deutsche Kurzfassung: [research/README.md](research/README.md)) |
 | Repository & Governance | README EN/DE, Lizenz, ADRs, Regeln für Beiträge, CI | in Arbeit |
 | Engine-Kern | Modell, Geometrie, Primitive, Einrasten, Schraffur, Bearbeitungen/Rückgängig, JSON, SVG | in Arbeit (26 Tests) |
 | Modulvertrag | `IModule`, `ObjectType`, Ansichten, Parameter, Ankerpunkte, Aktionen, Bibliothek | in Arbeit |
@@ -20,11 +20,11 @@
 |---|---|---|
 | Annotation-Modul | Pfeile, Bezugslinien, Bemaßungen, Text, Schraffur, Klammern, Mechanik-Symbole, Flussdiagramm-Grundformen | in Arbeit |
 | Mechanical-Modul | Zahnräder (Stirnrad/Hohlrad/Kegelrad/Schnecke/Zahnstange/Planetensatz/Differenzial), Wellen, Wälzlager, Kupplungen, Verbindungselemente, Federn; Ansichten Getriebeschema/Seite/Schnitt/axial/Verzahnung | in Arbeit |
-| Patent-Modul | Bezugszeichen, Nummerierungsschema, Bezugszeichenliste, Amtsprofile, Vorabprüfung (Preflight), monochromer Export | in Arbeit |
+| Modul Abbildungen | Bezugszeichen, Nummerierungsschema, Bezugszeichenliste, Amtsprofile, Vorabprüfung (Preflight), monochromer Export | in Arbeit |
 | Engine-API | JSON-Fassade, Sitzungen, Treffertest, Einrasten, Kontextaktionen, Host-Zeichenpläne | in Arbeit |
 | Web-Add-in | WebAssembly-Engine, Vorschau-Editor in der Seitenleiste, Bibliothek, Eigenschaftenbereich, Kreismenü, schwebende Leiste, Schreiber für native Formen | in Arbeit |
 
-**Abschlusskriterien:** Ein zweistufiges Getriebe und eine Patentfigur lassen sich im Seitenleisten-Editor ohne
+**Abschlusskriterien:** Ein zweistufiges Getriebe und eine technische Abbildung lassen sich im Seitenleisten-Editor ohne
 Zahleneingabe erstellen, in PowerPoint (Web) einfügen und als SVG exportieren; alle Tests grün.
 
 ## Phase 2 – PowerPoint-COM-Add-in (Windows)
@@ -186,7 +186,7 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
    alle Hosts über den Katalog; Moduldoku docs/de/modules/process.md, energy.md, robotics.md); folienweiter Stil:
    ISO-128-Liniengruppen und Schwarz-Weiß als Folienstil für alle Elemente, auch neue (erledigt 25.11.2026 in COM und
    Web); offen: Farbakzente je Modul.
-5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
+5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Abbildungs-Ablauf, Import (SVG/DXF, GeoJSON/GPX,
    CSV).
 
 ### Review am Ende des 25.11.2026 und nächste Schritte
@@ -230,18 +230,19 @@ Leisten-IDs jetzt direkt.
    Ziehen, Live-Vorschau der Kopplung, „+“-Griffe, Kreismenü.
 4. P3: automatisches Diagramm-Layout erledigt 25.11.2026 (Ebenen-Layout, Mehrfachauswahl, alle Hosts über die Engine;
    COM in PowerPoint geprüft); Import von CSV (Diagrammdaten) und GeoJSON/GPX (Kartenrouten und Marker) erledigt 25.11.2026 (COM Menü Extras,
-   Web-Import-Knopf; in PowerPoint geprüft); Patentprüfung aller Folien mit Sprung zum Befund (COM; Engine `preflight` für Web und LibreOffice) erledigt
+   Web-Import-Knopf; in PowerPoint geprüft); Kompatibilitätsprüfung aller Folien mit Sprung zum Befund (COM; Engine `preflight` für Web und LibreOffice) erledigt
    25.11.2026; Varianten und Zustände als Folienvergleich (neu/geändert/entfernt markiert; COM Menü Extras, Engine
-   `diff`) erledigt 25.11.2026; Patentprüfung im Web (Panel für die Seite) und in LibreOffice (Dialog über alle Seiten
-   mit Sprung zum Befund) erledigt 25.11.2026; Folienvergleich in LibreOffice erledigt 25.11.2026; offen: Folienvergleich
-   und Prüfung über alle Folien im Web-Add-in (beide brauchen die Einheiten der anderen Folien über Office.js; Engine
-   `diff` steht bereit), SVG/DXF-Import (Vektorzeichnungen als bearbeitbare Formen – ein eigener größerer Baustein).
+   `diff`) erledigt 25.11.2026; Kompatibilitätsprüfung im Web (Panel für die Seite) und in LibreOffice (Dialog über alle
+   Seiten mit Sprung zum Befund) erledigt 25.11.2026; Folienvergleich in LibreOffice erledigt 25.11.2026; offen:
+   Folienvergleich und Prüfung über alle Folien im Web-Add-in (beide brauchen die Einheiten der anderen Folien über
+   Office.js; Engine `diff` steht bereit), SVG/DXF-Import (Vektorzeichnungen als bearbeitbare Formen – ein eigener
+   größerer Baustein).
 
 ### Review am Ende der P3-Runde (25.11.2026) und nächste Schritte
 
 **In dieser Runde erledigt:** Varianten als Folienvergleich (Core `Variants`, Engine `diff`; COM Menü Extras, Szenario
-`variants`; LibreOffice-Menü, Integrationsprüfung), die Patentprüfung in allen drei Hosts (COM-Fenster über alle
-Folien, Web-Panel für die Seite, LibreOffice-Dialog über alle Seiten mit Tastaturnavigation, mit echter Eingabe in
+`variants`; LibreOffice-Menü, Integrationsprüfung), die Kompatibilitätsprüfung in allen drei Hosts (COM-Fenster über
+alle Folien, Web-Panel für die Seite, LibreOffice-Dialog über alle Seiten mit Tastaturnavigation, mit echter Eingabe in
 `ui_smoke.py` geprüft), automatisches Diagramm-Layout, Import von CSV/GeoJSON/GPX. Teststand am Ende: .NET 1.698 (18
 Testprojekte), Web 207, LibreOffice-Unit 110, LibreOffice-Integration 77, LibreOffice-UI-Smoke 23,
 PowerPoint-Szenarien einzeln grün.
@@ -249,13 +250,13 @@ PowerPoint-Szenarien einzeln grün.
 **Durch Prüfung gefunden (und behoben):** Ein neuer LibreOffice-Befehl wird stillschweigend ignoriert, wenn er nicht in
 der Befehlsliste des Protokoll-Handlers steht; LibreOffice benennt duplizierte Formen um, deren Name auf Ziffern endet,
 wodurch in .pptx die Einheiten-ID aus dem Namen abgeschnitten worden wäre – die Namen werden jetzt aus den Attributen
-wiederhergestellt; die Foto-Regel nannte nur das DPMA, obwohl sie für alle Ämter gilt; der erste Patent-Befund einer
-Seite hat kein Element, die Navigation muss also seitenweite Befunde behandeln.
+wiederhergestellt; die Foto-Regel nannte nur das DPMA, obwohl sie für alle Ämter gilt; der erste Kompatibilitätsbefund
+einer Seite hat kein Element, die Navigation muss also seitenweite Befunde behandeln.
 
 **Plan-Review – was sich am Plan ändert:**
-- *Gleicher Befehl, gleicher Name, gleicher Ort in jedem Host.* „Patentprüfung (Zeichnungen)“ und „Mit vorheriger Folie
-  vergleichen (Varianten)“ heißen in COM und LibreOffice jetzt gleich. In COM stehen beide im Menü Extras; mit
-  Stückliste und Datenexport bilden sie eine Familie „Prüfen“ – eine Menüband-Gruppe *Prüfen* (Patentprüfung,
+- *Gleicher Befehl, gleicher Name, gleicher Ort in jedem Host.* „Kompatibilität (Zeichnungsregeln)“ und „Mit vorheriger
+  Folie vergleichen (Varianten)“ heißen in COM und LibreOffice jetzt gleich. In COM stehen beide im Menü Extras; mit
+  Stückliste und Datenexport bilden sie eine Familie „Prüfen“ – eine Menüband-Gruppe *Prüfen* (Kompatibilität,
   Vergleichen, Stückliste, Daten exportieren) machte sie ohne Menü auffindbar. Zur Entscheidung durch den Maintainer
   vorgeschlagen, nicht gebaut.
 - *Jeder Host-Befehl bekommt einen Weg ohne und einen mit sichtbarem Fenster.* Der LibreOffice-Dialog protokolliert
@@ -270,7 +271,7 @@ Seite hat kein Element, die Navigation muss also seitenweite Befunde behandeln.
    (25.11.2026, mit nachgebautem Office.js unit-getestet) und warten auf diesen Lauf.
 2. SVG/DXF-Import – erledigt 25.11.2026 (Core `VectorImport`, Engine `importVector`; COM Prüfen ▸ Importieren,
    Web-Importknopf, LibreOffice-Menü; Szenario `vector-import`, LibreOffice-Integrationsprüfung).
-3. Menüband-Gruppe *Prüfen* in COM – erledigt 25.11.2026 (Patentprüfung, Vergleichen, Importieren, Daten exportieren).
+3. Menüband-Gruppe *Prüfen* in COM – erledigt 25.11.2026 (Kompatibilität, Vergleichen, Importieren, Daten exportieren).
 4. Offene Details: Schnittlinie je Wand; Grenzen der Bedienung auf der Folie in LibreOffice (Hilfslinien beim Ziehen
    brauchen Zeichnen in die Ansicht); echte Läufe auf Webspace und mit dem Installer; der Eckenradius im Web-Host
    (PowerPointApi-1.10-Anpassungen) ist gebaut, aber in PowerPoint noch nicht ausgeführt. Kurven und
@@ -299,9 +300,9 @@ Diagramme in COM.
 
 Plan: [docs/de/design/charts-v2.md](design/charts-v2.md) – jedes Teil eines Diagramms auswählen, umschalten und
 formatieren (auch mit PowerPoints eigenen Werkzeugen), gestapelte Panels mit gemeinsamer Achse und Phasenlinien,
-Wertlinien, schattierte und schraffierte Bereiche, Maßpfeile und Bezugszeichen für Patentfiguren, Kurven aus Funktionen
-und Handskizzen, Achsenbrüche, matplotlib-Export, Diagramme aus Bildern. Koordinatensysteme und Funktionsgraphen des
-Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vektoren bleiben in `math`.
+Wertlinien, schattierte und schraffierte Bereiche, Maßpfeile und Bezugszeichen für technische Abbildungen, Kurven aus
+Funktionen und Handskizzen, Achsenbrüche, matplotlib-Export, Diagramme aus Bildern. Koordinatensysteme und
+Funktionsgraphen des Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vektoren bleiben in `math`.
 
 1. **Teile (erledigt 25.11.2026 für Engine und COM):** `SketchObject.Parts` (Aussehen je Teilschlüssel: Stil oder
    ausgeblendet, Art-Schlüssel gelten für alle), `ObjectType.Parts`/`PartActions`, `Registry.Parts`/`PartAt`/
@@ -311,7 +312,7 @@ Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vektoren bleiben in `math`
    genau diese Teile, ein Klick ins ausgewählte Diagramm wählt das Teil (Leiste, Kreismenü, Liste „Teile …“, Umriss).
    Offen: Teilauswahl in Web und LibreOffice; Tab-Durchlauf durch die Teile.
 2. Abbildungsmodell (Panels, Phasenlinien, Wertlinien, Bereiche/Schraffur, Anmerkungen, Maßpfeile, Bezugszeichen;
-   Tabelleneditor; die Patentfigur des Maintainers als Vorlage).
+   Tabelleneditor; die Beispielfigur des Maintainers als Vorlage).
 3. Kurven aus Funktionen und Skizzen; Achsenbrüche.
 4. matplotlib-Export; Zusammenlegung mit Mathe.
 4a. **Bearbeitbare Exporte (Maintainer 25.11.2026):** LaTeX – jede Zeichnung (Flussdiagramme, Blockschaltbilder,
@@ -332,10 +333,10 @@ Abstand für „ja“-Ausgänge und Rücksprünge) und tragen eine Beschriftung 
 und Rücksprünge seitlich an und berechnet den Abstand, gestrichelte Notizrahmen. Offen: hindernisbewusste Führung bei von
 Hand gesetzten Kästen.
 
-### Fit-Gap Patentfiguren (Recherche 25.11.2026)
+### Fit-Gap technische Abbildungen (Recherche 25.11.2026)
 
-Recherche der Praxis von EPA/USPTO/PCT/DPMA und echter Patentfiguren gegen die Bibliothek. In Arbeit (Agenten mit
-Dateizuständigkeit): Beschriftung – optionale Schritte, Symbole nach ISO 5807 (vordefinierter Prozess,
+Recherche der Praxis von EPA/USPTO/PCT/DPMA und von Abbildungen aus echten Anmeldungen gegen die Bibliothek. In Arbeit
+(Agenten mit Dateizuständigkeit): Beschriftung – optionale Schritte, Symbole nach ISO 5807 (vordefinierter Prozess,
 Seitenverbinder, Schleifenbegrenzung, Vorbereitung, manuelle Bearbeitung, Datenbank, Verzögerung), Verzweigung/
 Zusammenführung, Ja/Nein-Ausgänge beim Schnelleinfügen, Leitungssprünge und Abzweigpunkte an Verbindern, Blockpfeile,
 Doppellinienpfeile, Pfeilpaare, Bus-Schrägstrich mit Anzahl, Tabellen, Ansichtspfeile, Einzelheiten, Werkstoff-
@@ -365,15 +366,15 @@ geändert wurde; zuerst COM (Extras oder Gruppe Prüfen), dann Web und LibreOffi
   gebunden an die Räume der Architektur, mit Grundriss, Schnitt und Schema (Strang) derselben Installation (der
   Ansichtswechsel für Baugruppen gilt).
 - **Stückliste aus der Folie (P2, in COM erledigt am 24.11.2026):** ein Tabellenelement, das die Teile der Folie oder Auswahl auflistet (Typ,
-  Kennwerte, Bezugszeichen) und sich mit den Teilen aktualisiert; für Patentfiguren und Getriebefolien.
+  Kennwerte, Bezugszeichen) und sich mit den Teilen aktualisiert; für technische Abbildungen und Getriebefolien.
 - **Maß zwischen Teilen (P2, in COM erledigt am 24.11.2026 für zwei Teile):** zwei Teile wählen → Achsabstand, Spalt oder Winkel als mitlaufendes Maß.
-- **Folienweiter Stil (P2):** Linienbreiten nach ISO-128-Gruppen, Schwarzweiß-/Patentmodus, Farbakzente je Modul, auf
+- **Folienweiter Stil (P2):** Linienbreiten nach ISO-128-Gruppen, Schwarzweiß-Modus, Farbakzente je Modul, auf
   alle Elemente der Folie auf einmal.
 - **Mathematik & Geometrie (P3, erledigt 25.11.2026, Modul `math`, docs/de/modules/geometry.md):** Koordinatensysteme,
   Funktionsgraphen, Vektoren, Winkel, Dreiecke und Kreise, Konstruktionen für Lehrfolien (18 Typen, 32 Elemente).
 - **Handskizzen-Look (P3):** wahlweise skizzenhafte Darstellung desselben Modells für Workshop-Folien.
 - **Optik (P3, Idee 25.11.2026):** Linsen, Spiegel, Prismen, Strahlteiler, Lichtquellen und Detektoren mit
-  Strahlengängen, die den Elementen folgen – häufig in Patentfiguren und Lehrfolien.
+  Strahlengängen, die den Elementen folgen – häufig in technischen Abbildungen und Lehrfolien.
 - **Zeit- und Ablaufdiagramme (P3, Idee 25.11.2026):** Signal-Zeitdiagramme und Schritt-/Übergangsdarstellungen (in
   Anlehnung an GRAFCET), verknüpft mit den Kennzeichen der Elektro- und Fluidmodule.
 
@@ -432,8 +433,8 @@ nur mit Seitenansichten auf paralleler Achse quer zur Achse (der Teilkreis träg
   je Variante.
 - **P3 – Automatisches Layout und Routing für Diagramme:** Schichtenlayout, das manuelle Platzierung respektiert;
   Verbinder, die Formen ausweichen; Brücken an Kreuzungen.
-- **P3 – Patent-Ablauf in den Hosts:** Nummerierungsassistent über Figuren, Preflight-Bereich mit Sprung zum Befund
-  (Preflight-Regeln gibt es im Patentmodul), Blattlayout für Figuren.
+- **P3 – Abbildungs-Ablauf in den Hosts:** Nummerierungsassistent über Figuren, Preflight-Bereich mit Sprung zum Befund
+  (Preflight-Regeln gibt es im Modul Abbildungen), Blattlayout für Figuren.
 - **P3 – Import:** SVG/DXF-Umrisse als schraffierbare Flächen, GeoJSON/GPX für Karten, CSV für Diagramme.
 
 ### Getriebe selbst bauen (Maintainer 21.11.2026)
@@ -560,7 +561,7 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
   Installation und Laden des Add-ins in PowerPoint (Windows ohne COM-Add-in, Mac, Web) stehen aus.
 - UX-Rückmeldungen des Maintainers (20.11.2026), erst COM, dann Web:
   - Erledigt am 20.11.2026 (COM, wo in der Host-Doku vermerkt in PowerPoint geprüft): Schwarz-Weiß als umkehrbare Dokumenteinstellung (Füllungen, Text, Markierungen); Menüband-Reihenfolge
-    (Beschriftung = Beschriftung + Patent + Grundformen direkt nach Werkzeuge, kleiner Info-Button); transparente
+    (Beschriftung = Beschriftung + Abbildungen + Grundformen direkt nach Werkzeuge, kleiner Info-Button); transparente
     Menüband-Vorschaubilder für dunkles Office; Seitenleisten-Vorschau entfernt auf der Folie gelöschte Einheiten;
     Text bearbeiten per Doppelklick und Leistenknopf; Ansichtswechsel behält Proportionen; Größe ändern um die Mitte bei
     zentrierten Teilen; Kreismenü „Einfügen ▸“ mit passenden Elementen zur Auswahl (Welle → Zahnräder und Lager,

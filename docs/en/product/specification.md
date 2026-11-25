@@ -9,10 +9,11 @@
 ## 1. Vision
 
 InventaSketch turns ideas into clear technical sketches **directly inside PowerPoint and LibreOffice**. It is a
-quick-and-dirty prototyping tool for engineers, inventors and patent professionals: drag in a gear, a shaft, a
+quick-and-dirty prototyping tool for engineers, inventors and IP professionals: drag in a gear, a shaft, a
 bearing, a resistor, a wall, a vehicle or a flowchart step, scale it freely, snap it to its neighbours, add arrows,
 labels and reference numerals — and the result is a clean, editable figure. No dimensions, no module, no tooth
-count required. Precision, parameters and patent-office checks are available when wanted, never demanded.
+count required. Precision, parameters and checks against the offices'
+drawing rules are available when wanted, never demanded.
 
 It is **not** a CAD, EDA, BIM, GIS, FEM or multibody-simulation system, and it is not a legal compliance tool.
 
@@ -39,8 +40,8 @@ It is **not** a CAD, EDA, BIM, GIS, FEM or multibody-simulation system, and it i
 
 - A two-stage gearbox (two shafts, four gears, four bearings, power-flow arrow, labels) is sketched in under a
   minute without entering a single number, in stick-diagram style, and can be switched to conventional views.
-- A patent-style figure with reference numerals, curved lead lines and hatching is created, checked against an
-  office profile (DPMA/EPO/PCT/USPTO) and exported monochrome as SVG/PDF/PNG.
+- A figure in black-and-white line style with reference numerals, curved lead lines and hatching is created, checked
+  against an office profile (DPMA/EPO/PCT/USPTO) and exported monochrome as SVG/PDF/PNG.
 - Inserted objects are native shapes in PowerPoint (Windows COM) and remain editable with PowerPoint tools.
 - The same document opens in the sidebar editor of the web add-in (PowerPoint for Mac/Web) and in LibreOffice.
 
@@ -50,7 +51,7 @@ It is **not** a CAD, EDA, BIM, GIS, FEM or multibody-simulation system, and it i
 |---|---|---|
 | Development engineer | Concept sketches, gearbox/drivetrain layouts, mechanisms, E/E architectures | speed, snapping, schematic symbols, variants |
 | Inventor / R&D | Invention disclosures, idea collections, function concepts | quick figures, numbering, before/after variants |
-| Patent attorney / paralegal | Patent figures, reference sign lists, office-ready exports | rule profiles, monochrome, numeral consistency |
+| IP attorney / paralegal | Figures for applications, reference sign lists, office-ready exports | rule profiles, monochrome, numeral consistency |
 | Teacher / student | Technical mechanics, machine elements, circuits | clear textbook conventions |
 | Consultant / manager | Process and system diagrams in decks | native PowerPoint shapes, themes |
 
@@ -122,7 +123,7 @@ accessible; tooltips with previews.
 
 Canonical, versioned JSON (`inventasketch-document` v1). Pages with z-order; objects with id, type, transform
 (centre, rotation, flip), box size, optional points + attachments, view, optional parameters, style overrides,
-text, reference numeral, group id, layer; layers (incl. helper layers excluded from patent export); reference-sign
+text, reference numeral, group id, layer; layers (incl. helper layers excluded from monochrome export); reference-sign
 dictionary; settings (units, grid, profile). Units mm, y down. Details: [architecture overview](../architecture/overview.md).
 
 In host documents the model travels with the shapes: per-group tags (id/type) plus a compressed model payload
@@ -141,11 +142,11 @@ and braces, dimensions (linear, aligned, angle, radius; ticks or arrows), centre
 dotted, insulation; islands respected), flowchart starters (process, decision, terminator, data, document,
 connector, step labels "S100").
 
-### 6.2 Patent Studio (`patent.*`) – in progress
+### 6.2 Figures studio (type ids `patent.*`) – in progress
 Reference numerals with lead lines, numbering scheme (10/20/30, sub-parts 11/12), single source of truth across
 figures, reference sign list export, sheet/usable-area helper, page numbers ("1/3"), FIG labels, monochrome
 export, **preflight** with versioned office profiles (DPMA, EPO, PCT, USPTO, common-safe) whose rules cite their
-legal source (see [patent drawing rules](../research/patent-drawing-rules.md)). Findings: error / warning / info /
+legal source (see [drawing rules](../research/drawing-rules.md)). Findings: error / warning / info /
 manual, with object navigation and suggestions. A clean preflight is an aid, not legal certification.
 
 Key facts from research (2026-11): margins top 2.5 / left 2.5 / right 1.5 / bottom 1.0 cm on A4 at all four
@@ -177,7 +178,7 @@ springs, dampers, masses, free-body cut boundaries, coordinate systems, shear/mo
 ### 6.5 Kinematics & mechanisms (`kin.*`) – planned
 Links, revolute/prismatic/spherical/cam joints, four-bar, slider-crank, scotch yoke, toggle, cam-follower;
 drag-to-simulate with a 2D constraint solver; joint/angle limits written into the drawing; motion traces and
-ghosting (start/intermediate/end positions as dashed overlays for patent figures); export as slide sequence for
+ghosting (start/intermediate/end positions as dashed overlays for technical figures); export as slide sequence for
 animation; degree-of-freedom indicator. No dynamics simulation implied.
 
 ### 6.6 Electrical & electronics (`elec.*`) – planned
@@ -268,15 +269,15 @@ logistics, agriculture, marine & aerospace. Each becomes a module when a concret
 7. Vehicle, road, sensor FoV, trajectory.
 8. House floor plan with walls, rooms, doors, windows.
 9. Process diagram with swimlanes.
-10. Patent figure: numerals, hatching, preflight, monochrome export.
+10. Technical figure: numerals, hatching, preflight, monochrome export.
 11. Export native objects + SVG/PDF; reopen and verify.
 
 ## 10. Out of scope
 
 3D CAD, FEM/CFD, multibody dynamics, manufacturing-grade PCB output, BIM, GIS-grade topology, full navigation,
-legal certification of patent drawings.
+legal certification of drawings for applications.
 
 ## 11. Sources
 
-See [research/patent-drawing-rules.md](../research/patent-drawing-rules.md) (official office sources) and
+See [research/drawing-rules.md](../research/drawing-rules.md) (official office sources) and
 [research/tools-and-host-apis.md](../research/tools-and-host-apis.md) (tool landscape, host APIs, licences).

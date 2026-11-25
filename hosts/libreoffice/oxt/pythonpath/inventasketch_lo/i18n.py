@@ -90,11 +90,11 @@ TEXTS = {
                       "gestartet."),
     "engineEnded": ("The InventaSketch engine ended unexpectedly.%s",
                     "Die InventaSketch-Engine wurde unerwartet beendet.%s"),
-    "about": ("InventaSketch %s for LibreOffice\n\nTechnical sketches, patent drawings and diagrams as native, "
+    "about": ("InventaSketch %s for LibreOffice\n\nTechnical sketches, line drawings and diagrams as native, "
               "editable shapes.\n\nEngine: %s\nLicence: Apache License 2.0\n%s",
-              "InventaSketch %s für LibreOffice\n\nTechnische Skizzen, Patentzeichnungen und Diagramme als native, "
+              "InventaSketch %s für LibreOffice\n\nTechnische Skizzen, Strichzeichnungen und Diagramme als native, "
               "bearbeitbare Formen.\n\nEngine: %s\nLizenz: Apache License 2.0\n%s"),
-    "pcTitle": ("Patent check (drawings)", "Patentprüfung (Zeichnungen)"),
+    "pcTitle": ("Compatibility (drawing rules)", "Kompatibilität (Zeichnungsregeln)"),
     "ptTitle": ("Chart parts", "Diagrammteile"),
     "ptParts": ("Parts of the element", "Teile des Elements"),
     "ptActions": ("Actions of the part", "Aktionen des Teils"),
@@ -106,8 +106,8 @@ TEXTS = {
     "pcOffice": ("Office:", "Amt:"),
     "pcCheck": ("Check", "Prüfen"),
     "pcClose": ("Close", "Schließen"),
-    "pcNotHere": ("The patent check works on the pages of Impress and Draw documents.",
-                  "Die Patentprüfung arbeitet auf den Seiten von Impress- und Draw-Dokumenten."),
+    "pcNotHere": ("The compatibility check works on the pages of Impress and Draw documents.",
+                  "Die Kompatibilitätsprüfung arbeitet auf den Seiten von Impress- und Draw-Dokumenten."),
     "pcNoUnits": ("No page has InventaSketch elements.", "Keine Seite enthält InventaSketch-Elemente."),
     "pcNone": ("No findings on %d page(s).", "Keine Befunde auf %d Seite(n)."),
     "pcSummary": ("%d finding(s), %d error(s) on %d page(s). Choose a finding to go to it.",

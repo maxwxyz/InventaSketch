@@ -7,7 +7,7 @@ namespace InventaSketch.Modules.Charts
 {
     /// <summary>
     /// Library presets of the figure chart (the check figures of docs/en/design/charts-v2.md), built as
-    /// <see cref="FigureSpec"/> objects and stored as JSON: the patent figure with phases and rotor temperature, the timing
+    /// <see cref="FigureSpec"/> objects and stored as JSON: the example figure with phases and rotor temperature, the timing
     /// diagram of a decision logic and a temperature curve with activation thresholds. The curves are qualitative
     /// (first-order lags, a Gaussian bump, rectangle pulses) chosen to show the figure elements, not measured data.
     /// </summary>
@@ -17,7 +17,7 @@ namespace InventaSketch.Modules.Charts
         public static readonly string Timing = BuildTiming().ToJson();
         public static readonly string Temperature = BuildTemperature().ToJson();
 
-        /// <summary>Specification of a figure inserted without parameters: the patent figure.</summary>
+        /// <summary>Specification of a figure inserted without parameters: the example figure.</summary>
         public static string Default => Patent;
 
         private static I18nText T(string en, string de) => new(en, de);
@@ -49,7 +49,7 @@ namespace InventaSketch.Modules.Charts
         }
 
         /// <summary>
-        /// The maintainer's patent figure: power P with the phases "pre-conditioning" and "full load" (phase lines through
+        /// The maintainer's example figure: power P with the phases "pre-conditioning" and "full load" (phase lines through
         /// both panels); rotor temperature without (dashed) and with pre-conditioning (solid) up to the limit temperature,
         /// the region between them hatched, the time gained as a dimension arrow, reference numerals 40–46.
         /// </summary>
@@ -84,7 +84,7 @@ namespace InventaSketch.Modules.Charts
             var pre = Curve(Sample(Pre, 0, 10, 0.1, tb), 1, "solid");
             pre.Numeral = new FigNumeral { Text = "44", At = 2.5, Dx = 0, Dy = 1.6 };
             s.Series.Add(pre);
-            // As usual in patent figures, the reference numerals name the curves (no text labels).
+            // As usual in figures for applications, the reference numerals name the curves (no text labels).
 
             s.Refs.Add(new FigRef { Kind = "v", X = t0, Line = "dash", Numeral = new FigNumeral { Text = "41", At = 0.75, Panel = 0, Dx = -1.3, Dy = -0.9 } });
             s.Refs.Add(new FigRef { Kind = "v", X = t1, Line = "dash", Numeral = new FigNumeral { Text = "42", At = 0.7, Panel = 0, Dx = 1.3, Dy = -0.9 } });

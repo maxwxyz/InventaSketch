@@ -9,7 +9,7 @@ namespace InventaSketch.Engine
     public static class ModuleCatalog
     {
         /// <summary>
-        /// Registry with the standard modules (annotation, mechanical, patent) plus the engine's basic shapes.
+        /// Registry with the standard modules (annotation, mechanical, figures) plus the engine's basic shapes.
         /// Only the <see cref="IModule"/> contract is used, so modules can grow independently.
         /// </summary>
         public static Registry CreateDefault(bool includeBasicShapes = true)

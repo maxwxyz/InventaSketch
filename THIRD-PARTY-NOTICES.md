@@ -13,5 +13,5 @@ Further entries (web add-in packages, icons, fonts) are added with the change th
 ## Standards
 
 Drawing conventions follow publicly described practice of ISO 128, ISO 129, ISO 2203, ISO 3952, ISO 8826, IEC 60617,
-VDI 2127 and patent-office rules. Symbols are drawn independently; no standard texts, tables or database content are
-reproduced. Standard names are used for reference only.
+VDI 2127 and the drawing rules of the offices (DPMA, EPO, PCT, USPTO). Symbols are drawn independently; no standard
+texts, tables or database content are reproduced. Standard names are used for reference only.

@@ -5,7 +5,7 @@
 
 ## 1. What InventaSketch is for
 
-Quick technical sketches inside your presentation: gearboxes and machine elements, mechanisms, patent figures with
+Quick technical sketches inside your presentation: gearboxes and machine elements, mechanisms, technical figures with
 reference numerals, functional diagrams, flowcharts. You drag elements in, scale them freely and let them snap
 together. Numbers (module, tooth count, dimensions) are optional.
 
@@ -25,7 +25,7 @@ together. Numbers (module, tooth count, dimensions) are optional.
 5. Right-click for the pie menu (views, flip, numeral, delete). The floating bar next to the selection fades when you
    move away.
 6. Switch representations (stick diagram, side view, section, axial, teeth) without losing labels or links.
-7. Add lead lines and reference numerals; run the patent preflight for the chosen office; export black-and-white.
+7. Add lead lines and reference numerals; run the compatibility check for the chosen office; export black-and-white.
 
 ## 4. Keyboard
 
@@ -43,15 +43,15 @@ together. Numbers (module, tooth count, dimensions) are optional.
 | `Tab` / `Shift+Tab` | next / previous part of the assembly (PowerPoint COM) |
 | `Esc` | cancel / deselect |
 
-## 5. Patent drawings – important note
+## 5. Drawings for applications – important note
 
 The preflight checks formal drawing rules of DPMA, EPO, PCT and USPTO with cited sources. It is an aid only and
-does not replace review by a patent professional. In PowerPoint: InventaSketch ▸ Review ▸ "Patent check"
+does not replace review by an IP professional. In PowerPoint: InventaSketch ▸ Review ▸ "Compatibility"
 checks every slide for the chosen office and lists errors, warnings, notes and points to check by hand with their
 source; double-click a finding to go to its slide and element (engine `preflight`, `patentProfiles`). In the web
-add-in the check button in the top bar does the same for the page; clicking a finding selects its element. In
-LibreOffice Impress and Draw: InventaSketch ▸ "Patent Check (Drawings)…" checks every page; choosing a finding goes to
-its slide and unit.
+add-in the check button in the top bar opens the "Compatibility" panel, which does the same for the page; clicking a
+finding selects its element. In LibreOffice Impress and Draw: InventaSketch ▸ "Compatibility (Drawing Rules)…" checks
+every page; choosing a finding goes to its slide and unit.
 
 Variants (before/after, prior art/invention): duplicate the slide and change the copy. InventaSketch ▸ Review ▸
 "Compare with the previous slide" marks what was added (green), changed (orange) and removed (dashed grey) with a

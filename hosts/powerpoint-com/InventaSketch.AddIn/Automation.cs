@@ -213,7 +213,7 @@ namespace InventaSketch.AddIn
             }
         }
 
-        /// <summary>Patent check of the presentation: one line per finding "slide|severity|rule|shape name" (UI tests).</summary>
+        /// <summary>Compatibility check of the presentation: one line per finding "slide|severity|rule|shape name" (UI tests).</summary>
         public string PatentCheck(string profileId)
         {
             try
@@ -227,7 +227,7 @@ namespace InventaSketch.AddIn
             }
         }
 
-        /// <summary>Opens (true) or closes (false) the patent check window; true if it is open.</summary>
+        /// <summary>Opens (true) or closes (false) the compatibility check window; true if it is open.</summary>
         public bool ShowPatentCheck(bool visible)
         {
             try { return _connect.ShowPatentCheck(visible); }

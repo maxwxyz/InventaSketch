@@ -76,7 +76,7 @@ elbow connector's `clearance` is set). An end on a port moves to the nearest por
 page edge. Works for any module's box elements joined by docked
 lines (process steps, flowchart, UML, BPMN, ER, blocks).
 
-## Patent flowcharts (annotation module, 2026-11-25)
+## Method flowcharts (annotation module, 2026-11-25)
 
 The flowchart symbols of the annotation module (`ann.flow.*`) fit their text: words wrap onto lines inside the symbol
 (the inscribed area of diamond and circle), the size goes down until it fits, and only below 60 % of the size are long
@@ -109,10 +109,10 @@ labels in quick-add order; the preset "Decision (compare: < = >)" (`ann.flow.dec
 Core hook: `ObjectType.ChainConnectorParams(o, index)` returns parameters for the index-th connector leaving an
 element; `Flow.QuickAdd` counts the connectors already leaving it and applies them.
 
-## Connectors and marks for patent figures (2026-11-25)
+## Connectors and marks for technical figures (2026-11-25)
 
-Annotation module additions for patent figures; all are insertable without parameters, black and white, and drawn with
-native lines, freeforms and texts.
+Annotation module additions for technical figures; all are insertable without parameters, black and white, and drawn
+with native lines, freeforms and texts.
 
 - **Hops and junction dots.** The elbow connector and connector polylines (an open polyline with an arrowhead or a
   docked end) draw a hop where they cross a connector drawn before them (parameter `hops`, default on; action "Hops
@@ -181,7 +181,7 @@ Category "Control loops": block diagrams of control engineering, drawn after the
 
 ## Computer systems and communication (2026-11-25)
 
-Category "Computer systems & communication" (software patent FIG. 1, network sketches):
+Category "Computer systems & communication" (FIG. 1 of software inventions, network sketches):
 
 - System blocks by role: processor, memory, storage, network interface, I/O interface, display, sensor(s), input
   device (presets of `diag.sys.block` with the new `role` parameter: the localised role name is shown while the block has
@@ -233,9 +233,9 @@ underlined), and the pointers `diag.ui.touch` (finger with ripples: tap, double 
 
 ## State circles and transitions (2026-11-25)
 
-`diag.state.state` has the views `rounded` (UML) and `circle` (patent-style state diagrams: circle with the name, 8
-ports on the outline; the size adapts when switching). Library: "State (circle)" and "Transition (event [guard] /
-action)" (`diag.state.transition`, a directed UML relation with that label template).
+`diag.state.state` has the views `rounded` (UML) and `circle` (state diagrams in black-and-white line style: circle with
+the name, 8 ports on the outline; the size adapts when switching). Library: "State (circle)" and "Transition (event
+[guard] / action)" (`diag.state.transition`, a directed UML relation with that label template).
 
 ## Interactive pools and lanes (2026-11-25)
 

@@ -13,7 +13,7 @@ auswählen, Hover-Hinweise, Kontextleiste und Kreismenü.
   unten Rotortemperatur auf einer Zeitachse).
 - Achsenbrüche, einzelne Wertlinien (waagerecht und senkrecht, mit Beschriftung), schattierte oder schraffierte Bereiche
   (zwischen zwei Kurven, unter einer Kurve, zwischen zwei x-Werten), Maßpfeile („Zeitgewinn“), Text und Bezugszeichen
-  für Patentfiguren.
+  für technische Abbildungen.
 - Kurven aus Daten, aus Funktionen (konstant, Rampe, Sprung, Rechteckpuls, Sägezahn, Dreieck, Sinus, Exponential, PT1,
   Kreis/Ellipse) und aus einer Handskizze, aus der eine geglättete oder idealisierte Kurve wird.
 - Rückwärts: Ein Bild (Zwischenablage, Foto, Bildschirmfoto) wird zu einem bearbeitbaren Diagramm.
@@ -21,10 +21,10 @@ auswählen, Hover-Hinweise, Kontextleiste und Kreismenü.
   LaTeX-Text, bearbeitbar und in der Dokumentschrift gesetzt) und als SVG mit Texten als Text und Teilen als benannten
   Gruppen (dazu PNG).
 
-Prüfbeispiel: die Patentfigur des Maintainers (oben Leistung P mit den Phasen „Vorkonditionierung“ und „Volllastphase“;
-unten Rotortemperatur mit gestrichelter und durchgezogener Kurve, schraffiertem Bereich dazwischen, Grenzlinie
-„Grenztemperatur“, Maßpfeil „Zeitgewinn“ und Bezugszeichen 40–46; gemeinsame Zeitachse, senkrechte Phasenlinien durch
-beide Diagramme).
+Prüfbeispiel: die Beispielfigur des Maintainers (oben Leistung P mit den Phasen „Vorkonditionierung“ und
+„Volllastphase“; unten Rotortemperatur mit gestrichelter und durchgezogener Kurve, schraffiertem Bereich dazwischen,
+Grenzlinie „Grenztemperatur“, Maßpfeil „Zeitgewinn“ und Bezugszeichen 40–46; gemeinsame Zeitachse, senkrechte
+Phasenlinien durch beide Diagramme).
 
 Weitere Prüffiguren (Maintainer, 25.11.2026):
 
@@ -87,7 +87,7 @@ Diagrammtypen bleiben und werden zu Vorlagen, die diese Beschreibung füllen:
 - `refs`: Wertlinien (x oder y, Beschriftung, Stil), `regions` (zwischen Kurven, unter einer Kurve, zwischen x- oder
   y-Werten; Füllung, Schraffur, Deckkraft), `notes` (Text, Pfeil, Maßpfeil zwischen zwei Punkten, Bezugszeichen mit
   Bezugslinie);
-- Legende, Titel, Zahlenformat, Farben nach Schema (schwarz-weiß für Patente).
+- Legende, Titel, Zahlenformat, Farben nach Schema (schwarz-weiß für Anmeldungen).
 
 ## Stufen
 
@@ -96,7 +96,8 @@ Diagrammtypen bleiben und werden zu Vorlagen, die diese Beschreibung füllen:
    ausblenden und formatieren; PowerPoint-Szenario: eine Kurve nativ umfärben, sie bleibt nach dem Neuzeichnen.
 2. **Abbildungsmodell**: Panels mit gemeinsamer x-Achse und Phasenlinien, Wertlinien, Bereiche und Schraffur,
    Anmerkungen, Maßpfeile, Bezugszeichen; Tabellen-Dateneditor (Übernahme der Tabellenlogik aus Slidemax `ChartSheet`,
-   WinForms-Dialog in COM). Die Patentfigur des Maintainers wird als Bibliotheksvorlage gebaut und in PowerPoint geprüft.
+   WinForms-Dialog in COM). Die Beispielfigur des Maintainers wird als Bibliotheksvorlage gebaut und in PowerPoint
+   geprüft.
 3. **Kurven aus Funktionen und Skizzen**: Funktionsgeneratoren; Skizzenerkennung (vereinfachen, einordnen als Gerade /
    Sprung / Puls / Sägezahn / Dreieck / Sinus / Exponential / Kreis, anpassen, sonst Glättungsspline – Slidemax
    `Smoothed`); Achsenbrüche (Übernahme aus Slidemax `AxisBreakSpans`, `Along/ValueAlong`, Zickzack; erweitert auf XY

@@ -11,4 +11,4 @@ is a later decision (security and versioning).
 
 ## Consequences
 New domains are added without touching Core. Cross-module reuse goes through public types only (for example
-Patent uses Annotation's lead-line helpers).
+Figures uses Annotation's lead-line helpers).

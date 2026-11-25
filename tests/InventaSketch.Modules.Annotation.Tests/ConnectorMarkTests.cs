@@ -6,7 +6,7 @@ using Xunit;
 
 namespace InventaSketch.Modules.Annotation.Tests
 {
-    /// <summary>Connectors and marks for patent figures (2026-11-25): hops, junctions, block/double-line/pair/heat arrows, bus marks, table, view marks.</summary>
+    /// <summary>Connectors and marks for technical figures (2026-11-25): hops, junctions, block/double-line/pair/heat arrows, bus marks, table, view marks.</summary>
     public class ConnectorMarkTests
     {
         private static (SketchDocument Doc, SketchObject Obj) Line(Registry r, string item, SketchDocument? doc, params Vec2[] pts)

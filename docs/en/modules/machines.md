@@ -1,6 +1,6 @@
 # Electric machines & drives module (`machines`)
 
-Quick sketches of electric machines and electric drive trains for presentations and patent drawings: radial-flux and
+Quick sketches of electric machines and electric drive trains for presentations and technical figures: radial-flux and
 axial-flux machine cross-sections and longitudinal sections, separate machine components for free assembly, drive
 system blocks with ports, drivetrain schematic parts that sit on mechanical shafts (e-machine, combustion engine, wheel)
 and flux/rotation/torque annotations.
@@ -12,7 +12,7 @@ and flux/rotation/torque annotations.
 Every object can be inserted without entering parameters. Free uniform and non-uniform scaling changes only the box size;
 parameters stay untouched. Sectioned iron is hatched (stator 45°, rotor 135°, shaft 45°, housing 135°, so adjacent parts
 differ), copper windings use a light copper fill with a fine cross hatch (readable in monochrome), north magnets are red
-and south magnets blue (black and white in monochrome/patent output).
+and south magnets blue (black and white in monochrome output).
 
 ## Object types
 

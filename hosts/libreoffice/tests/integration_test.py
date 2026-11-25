@@ -567,8 +567,8 @@ def distance_mm(a, b):
     return ((ax - bx) ** 2 + (ay - by) ** 2) ** 0.5
 
 
-def patent_phase(office, logs):
-    """Patent check over every slide (the dialog's check without a visible window logs its result): a gear outside
+def compatibility_phase(office, logs):
+    """Compatibility check over every slide (the dialog's check without a visible window logs its result): a gear outside
     the usable area on slide 2 is found and its unit shape resolved; slides without units are skipped."""
     doc = office.new("simpress")
     pages = doc.getDrawPages()
@@ -578,12 +578,12 @@ def patent_phase(office, logs):
     office.run(doc, "insert?item=mech.spur.axial&x=60&y=60")
     office.run(doc, "insert?item=mech.spur.axial&x=-5&y=60")
     doc.getCurrentController().setCurrentPage(pages.getByIndex(0))
-    before = len(log_lines(logs, "patent check (uspto):"))
+    before = len(log_lines(logs, "compatibility check (uspto):"))
     office.run(doc, "patentCheck?profile=uspto")
-    lines = log_lines(logs, "patent check (uspto):")
+    lines = log_lines(logs, "compatibility check (uspto):")
     line = lines[-1] if len(lines) > before else ""
-    check("patent.checked", "on 1 page(s)" in line and " 0 finding(s)" not in line, line[-200:])
-    check("patent.elementFound", "(first: page 2, ISK:" in line, line[-120:])
+    check("compat.checked", "on 1 page(s)" in line and " 0 finding(s)" not in line, line[-200:])
+    check("compat.elementFound", "(first: page 2, ISK:" in line, line[-120:])
     office.close(doc)
 
 
@@ -788,7 +788,7 @@ def main():
         names, odp, pptx = impress_phase(office, out)
         ux_phase(office, out, logs)
         canvas_phase(office, out, logs)
-        patent_phase(office, logs)
+        compatibility_phase(office, logs)
         compare_phase(office, out, logs)
         import_phase(office, out, logs)
         reload_phase(office, odp, names, "odp", expect_attributes=True)

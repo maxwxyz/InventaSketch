@@ -66,7 +66,7 @@ Register-ComClass $AddInPath '{3E4B8064-5C25-452F-8F79-22581212A547}' 'InventaSk
 foreach ($office in $officeRoots) {
     Set-Key "$office\PowerPoint\Addins\$progId" @{
         'FriendlyName' = 'InventaSketch'
-        'Description'  = 'Quick technical sketches and patent drawings'
+        'Description'  = 'Quick technical sketches and line drawings'
         'LoadBehavior' = 3
     }
 }

@@ -85,7 +85,7 @@ namespace InventaSketch.Core
         public Style? Style { get; init; }
         /// <summary>Free text (labels, text boxes, callouts).</summary>
         public string? Text { get; init; }
-        /// <summary>Linked patent reference numeral (key into <see cref="SketchDocument.References"/>).</summary>
+        /// <summary>Linked reference numeral (key into <see cref="SketchDocument.References"/>).</summary>
         public string? Ref { get; init; }
         /// <summary>Objects sharing a group id are selected and transformed together (assembly).</summary>
         public string? GroupId { get; init; }
@@ -166,10 +166,10 @@ namespace InventaSketch.Core
     {
         public string Units { get; init; } = "mm";
         public GridSettings Grid { get; init; } = new();
-        /// <summary>Active patent/export profile id.</summary>
+        /// <summary>Active drawing-rule/export profile id.</summary>
         public string? Profile { get; init; }
         /// <summary>
-        /// Black-and-white output (patent style): renderers map every colour to black or white and drop translucent
+        /// Black-and-white output (line-drawing style): renderers map every colour to black or white and drop translucent
         /// fills (highlighters); the objects keep their colours, so switching it off restores them.
         /// </summary>
         public bool Monochrome { get; init; }
@@ -208,7 +208,7 @@ namespace InventaSketch.Core
         public IReadOnlyList<Page> Pages { get; init; } = Array.Empty<Page>();
         public IReadOnlyDictionary<string, SketchObject> Objects { get; init; } = new Dictionary<string, SketchObject>();
         public IReadOnlyList<Layer> Layers { get; init; } = new[] { new Layer("default", "Default") };
-        /// <summary>Patent reference numeral dictionary keyed by numeral.</summary>
+        /// <summary>Reference numeral dictionary keyed by numeral.</summary>
         public IReadOnlyDictionary<string, ReferenceEntry> References { get; init; } = new Dictionary<string, ReferenceEntry>();
         public DocumentSettings Settings { get; init; } = new();
 

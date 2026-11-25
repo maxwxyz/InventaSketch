@@ -315,7 +315,7 @@ class PageSession:
         if page is None:
             self.doc, self.page, self.centre, self.size = target(controller)
         else:
-            # Another page of an Impress/Draw document (patent check of every page).
+            # Another page of an Impress/Draw document (compatibility check of every page).
             self.doc, self.page = controller.getModel(), page
             w, h = page.Width / 100.0, page.Height / 100.0
             self.centre, self.size = (w / 2.0, h / 2.0), (w, h)
@@ -741,12 +741,12 @@ def describe(engine, controller):
 
 
 def patent_profiles(engine):
-    """The offices of the patent drawing preflight ([{id, name}], the first is the default)."""
+    """The offices of the compatibility check (drawing-rule preflight) ([{id, name}], the first is the default)."""
     return engine.call("patentProfiles", {"lang": i18n.language()})
 
 
 def patent_check(engine, controller, profile):
-    """Patent drawing preflight of every page with InventaSketch units (Impress/Draw) for office ``profile``.
+    """Compatibility check (drawing-rule preflight) of every page with InventaSketch units (Impress/Draw) for office ``profile``.
 
     Each page is loaded like a page session (native moves applied) and checked on its own. Returns {"disclaimer",
     "pages": number of pages checked, "findings": [{severity, message, suggestion, source, rule, id, "page": 1-based

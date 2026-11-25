@@ -24,7 +24,7 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.pump` | Pump / fan curve / Pumpen-/Ventilatorkennlinie | `kind` Pumpe / Ventilator, `h0` (Nullförderhöhe bzw. Nulldruck), `qmax`, `hstat` (statischer Anteil der Anlage), `qop` (Förderstrom im Betriebspunkt), `system` (Anlagenkennlinie) |
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` Tief- / Hochpass 1. oder 2. Ordnung, `fc` (Hz), `zeta` (Dämpfungsgrad, 2. Ordnung), `gain` (dB), `show` Betrag und Phase / Betrag / Phase, `marker` (Linie bei der Eckfrequenz), `xrange`, `data` (Messdaten `f;dB;°`, ersetzen das System) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (Sollkurve, siehe unten), `tol` + `tolmode` Prozent / absolut, `smooth`, `limits`, `patterns`; weitere Datenblöcke werden als Messreihen mit Markern gezeichnet |
-| `chart.figure` | Figure (principle, patent) / Prinzip- und Patentbild | `spec` (JSON-Spezifikation, siehe [Bild](#bild-diagramme-v2-stufe-2)); gestapelte Panels, Prinzip- oder Datenachsen, Wertlinien, Markierungen, Flächen, Anmerkungen, Bezugszeichen |
+| `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON-Spezifikation, siehe [Bild](#bild-diagramme-v2-stufe-2)); gestapelte Panels, Prinzip- oder Datenachsen, Wertlinien, Markierungen, Flächen, Anmerkungen, Bezugszeichen |
 
 Gemeinsame Parameter (wo sinnvoll): `title`, `xlabel`, `xunit`, `ylabel`, `yunit` (leer = zweisprachige Vorgabe
 des Typs, ausdrücklich leere Beschriftung blendet den Achsentitel aus), `xscale` / `yscale` linear / logarithmisch,
@@ -44,7 +44,7 @@ Die Bibliothek enthält 28 Vorlagen (`chart.line`, `chart.line.markers`, `chart.
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
 `chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in drei Kategorien: Datendiagramme, Kennlinien &
-Kennfelder sowie Prinzip- und Patentbilder.
+Kennfelder sowie Prinzip- und technische Abbildungen.
 
 ## Datenformat
 
@@ -167,13 +167,13 @@ hängen die Panelnummer an: `axis.y.2`, `label.y.2`.
 
 ## Bild (Diagramme v2, Stufe 2)
 
-Der Diagrammtyp `chart.figure` zeichnet Prinzip- und Patentbilder aus einer **versionierten JSON-Spezifikation** im
-Parameter `spec` (ohne Parameter eingefügt zeigt er das Patentbild unten). Kategorie „Prinzip- und Patentbilder“ mit
-drei Vorlagen, den Prüfbildern aus dem [Entwurf Diagramme v2](../design/charts-v2.md):
+Der Diagrammtyp `chart.figure` zeichnet Prinzip- und technische Abbildungen aus einer **versionierten
+JSON-Spezifikation** im Parameter `spec` (ohne Parameter eingefügt zeigt er das Beispielbild unten). Kategorie „Prinzip-
+und technische Abbildungen“ mit drei Vorlagen, den Prüfbildern aus dem [Entwurf Diagramme v2](../design/charts-v2.md):
 
 | Id | Name | Zeigt |
 |---|---|---|
-| `chart.figure.phases` | Phasen mit Rotortemperatur (Patentbild) | Leistung P mit den Phasen „Vorkonditionierung“ und „Volllastphase“ (Phasenlinien t0, t1 durch beide Panels); Rotortemperatur ohne (gestrichelt) und mit Vorkonditionierung (durchgezogen) bis zur Grenztemperatur, Fläche dazwischen schraffiert, Zeitgewinn als Maßpfeil mit Hilfslinien, Bezugszeichen 40–46; Prinzipachsen, schwarz-weiß |
+| `chart.figure.phases` | Phasen mit Rotortemperatur (technische Abbildung) | Leistung P mit den Phasen „Vorkonditionierung“ und „Volllastphase“ (Phasenlinien t0, t1 durch beide Panels); Rotortemperatur ohne (gestrichelt) und mit Vorkonditionierung (durchgezogen) bis zur Grenztemperatur, Fläche dazwischen schraffiert, Zeitgewinn als Maßpfeil mit Hilfslinien, Bezugszeichen 40–46; Prinzipachsen, schwarz-weiß |
 | `chart.figure.timing` | Zeitablauf einer Entscheidungslogik | Titel „Fig. 2 …“; drei Panels: Reifemasse gegen eine gestrichelte Grenze (Bezugszeichen 64 an der Achse, 63 an der Kurve), Wärmebedarf mit Buckel und gestrichelte Antriebsverlustwärme, nur dort schraffiert, wo der Bedarf höher ist (65–67), Abtastsignal mit durchgezogenem (68) und gestricheltem Impuls (69); t_krit als gestrichelte Markierung durch alle Panels und als Zeitpfeil unter dem ersten Panel; gedrehte Achsentitel |
 | `chart.figure.temperature` | Temperaturverlauf mit Schwellen | Datenachsen 0–200 s / 0–220 °C, nur waagerechtes gepunktetes Gitter, vier gestrichelte Bezugslinien mit Beschriftung, eine schnelle und eine langsame Kurve 1. Ordnung mit je einer Lücke und Beschriftung in der Lücke, offene Kreismarker „31 s“ / „77 s“, ein senkrechter Maßpfeil „35 K“, eine Bildunterschrift; farbig |
 

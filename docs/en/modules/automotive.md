@@ -1,8 +1,8 @@
 # Vehicles, ADAS & HMI module (`automotive`)
 
-Reduced, patent-style line drawings for invention disclosures of vehicle functions: vehicles in several views,
-vehicle subsystems, people, the road environment, ADAS sensors with fields of view, perception overlays, trajectories
-and HMI elements. All artwork is original, generic and brand-neutral.
+Reduced line drawings in black-and-white line style for invention disclosures of vehicle functions: vehicles in several
+views, vehicle subsystems, people, the road environment, ADAS sensors with fields of view, perception overlays,
+trajectories and HMI elements. All artwork is original, generic and brand-neutral.
 
 > **Limits.** The module draws *illustrative scenes*. Nothing is simulated: fields of view do not detect anything,
 > trajectories are not planned or checked for feasibility, TTC and safety-distance values are labels, and

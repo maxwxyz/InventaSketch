@@ -90,7 +90,7 @@ namespace InventaSketch.Modules.Annotation
     /// <summary>Shared annotation helpers.</summary>
     public static class Ann
     {
-        /// <summary>Default text height (em, mm). 5 mm em gives ≈3.6 mm cap height, above the 3.2 mm patent minimum.</summary>
+        /// <summary>Default text height (em, mm). 5 mm em gives ≈3.6 mm cap height, above the 3.2 mm minimum of the offices.</summary>
         public const double TextSize = 5.0;
         /// <summary>Approximate advance width per character relative to the em size (Arial-like fonts).</summary>
         public const double CharWidth = 0.6;

@@ -280,9 +280,9 @@ export class App {
     return sel;
   }
 
-  /** Office chosen last in the patent check (the first profile until then). */
+  /** Office chosen last in the compatibility check (the first profile until then). */
   private patentProfile = "";
-  /** The patent check covers every slide (PowerPoint only). */
+  /** The compatibility check covers every slide (PowerPoint only). */
   private patentAllSlides = true;
 
   /** "Compare with the previous slide": marks what differs on the selected slide, or removes the marks again. */
@@ -301,7 +301,7 @@ export class App {
   }
 
   /**
-   * "Patent check (drawings)": the engine's preflight of the page for an office, as a popover – office choice, findings
+   * "Compatibility (drawing rules)": the engine's preflight of the page for an office, as a popover – office choice, findings
    * (errors first) with suggestion and cited source; a finding with an element selects it. The disclaimer is always shown.
    */
   private togglePatentCheck(anchor: HTMLElement): void {

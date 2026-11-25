@@ -78,7 +78,7 @@ zum nächsten Port dieser Seite. Eine lange Kette von links nach rechts kann üb
 hinauslaufen. Funktioniert für die Kastenelemente aller Module, die über angedockte Linien
 verbunden sind (Prozessschritte, Flussdiagramm, UML, BPMN, ER, Blöcke).
 
-## Patent-Flussdiagramme (Modul Beschriftung, 25.11.2026)
+## Verfahrens-Flussdiagramme (Modul Beschriftung, 25.11.2026)
 
 Die Flussdiagrammsymbole des Beschriftungsmoduls (`ann.flow.*`) passen ihren Text ein: Wörter werden innerhalb des
 Symbols umbrochen (bei Raute und Kreis in der eingeschriebenen Fläche), die Schrift wird kleiner, bis er passt, und erst
@@ -116,10 +116,10 @@ Bibliothekseinträge „Verbinder „ja““ / „Verbinder „nein““ trage
 `ObjectType.ChainConnectorParams(o, index)` liefert Parameter für den index-ten Verbinder, der ein Element verlässt;
 `Flow.QuickAdd` zählt die schon abgehenden Verbinder und setzt sie.
 
-## Verbinder und Zeichen für Patentfiguren (25.11.2026)
+## Verbinder und Zeichen für technische Abbildungen (25.11.2026)
 
-Ergänzungen des Beschriftungsmoduls für Patentfiguren; alle sind ohne Parameter einfügbar, schwarz-weiß und mit nativen
-Linien, Freihandformen und Texten gezeichnet.
+Ergänzungen des Beschriftungsmoduls für technische Abbildungen; alle sind ohne Parameter einfügbar, schwarz-weiß und mit
+nativen Linien, Freihandformen und Texten gezeichnet.
 
 - **Brücken und Verbindungspunkte.** Der Winkelverbinder und Verbinder-Polylinien (offene Polylinie mit Pfeilspitze oder
   angedocktem Ende) zeichnen eine Brücke, wo sie einen früher gezeichneten Verbinder kreuzen (Parameter `hops`,
@@ -194,7 +194,7 @@ gezeichnet, keine Norm-Abbildung übernommen).
 
 ## Rechnersysteme und Kommunikation (25.11.2026)
 
-Kategorie „Rechnersysteme & Kommunikation“ (Softwarepatent FIG. 1, Netzwerkskizzen):
+Kategorie „Rechnersysteme & Kommunikation“ (FIG. 1 von Software-Erfindungen, Netzwerkskizzen):
 
 - Systemblöcke nach Rolle: Prozessor, Speicher, Massenspeicher, Netzwerkschnittstelle, E/A-Schnittstelle, Anzeige,
   Sensor(en), Eingabegerät (Vorlagen von `diag.sys.block` mit dem neuen Parameter `role`: der übersetzte Rollenname
@@ -250,9 +250,10 @@ sowie die Zeiger `diag.ui.touch` (Finger mit Wellen: Tippen, Doppeltippen, lange
 
 ## Zustandskreise und Transitionen (25.11.2026)
 
-`diag.state.state` hat die Ansichten `rounded` (UML) und `circle` (Zustandsdiagramme im Patentstil: Kreis mit dem Namen,
-8 Ports auf dem Umriss; die Größe passt sich beim Umschalten an). Bibliothek: „Zustand (Kreis)“ und „Transition
-(Ereignis [Bedingung] / Aktion)“ (`diag.state.transition`, eine gerichtete UML-Beziehung mit dieser Beschriftungsvorlage).
+`diag.state.state` hat die Ansichten `rounded` (UML) und `circle` (Zustandsdiagramme im Schwarzweiß-Strichstil: Kreis
+mit dem Namen, 8 Ports auf dem Umriss; die Größe passt sich beim Umschalten an). Bibliothek: „Zustand (Kreis)“ und
+„Transition (Ereignis [Bedingung] / Aktion)“ (`diag.state.transition`, eine gerichtete UML-Beziehung mit dieser
+Beschriftungsvorlage).
 
 ## Interaktive Pools und Bahnen (25.11.2026)
 

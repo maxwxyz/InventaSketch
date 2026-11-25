@@ -77,7 +77,7 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
 `unopkg remove org.inventasketch.libreoffice`.
 
 - **Menu "InventaSketch"** (Impress, Draw, Calc): *Insert from Library…* (opens the sidebar deck), *Edit Model of
-  Selected Unit*, *Redraw Selected Unit from Model*, *Add Reference Numeral*, *Patent Check (Drawings)…*, *Compare
+  Selected Unit*, *Redraw Selected Unit from Model*, *Add Reference Numeral*, *Compatibility (Drawing Rules)…*, *Compare
   with Previous Slide (Variants)*, *Import Drawing (SVG, DXF)…*, *Remove Data of Deleted Units*, *About InventaSketch*.
 - **Variants** (2026-11-25, Impress and Draw): a duplicated slide keeps the units' ids. *Compare with Previous Slide*
   marks what differs from the previous slide (engine `diff`, both slides loaded like page sessions): added units green,
@@ -86,9 +86,9 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   renames a duplicated shape whose name ends in digits ("…eb12" → "…eb 1"); reading a unit restores the name from its
   attributes, because in .pptx the name carries the unit id. Checked: `integration_test.py` (1 added, 1 changed,
   1 removed, an unchanged gear unmarked, names restored; slide exported as `compare.png`).
-- **Patent check** (2026-11-25, Impress and Draw): a dialog with the office (DPMA, EPO, PCT, USPTO or the common safe
-  profile) and the findings of every page with InventaSketch units (engine `preflight`, each page loaded like a page
-  session, so native moves count) – errors first, as "Slide 2 · Error · message"; choosing a finding (arrow keys or
+- **Compatibility check** (2026-11-25, Impress and Draw): a dialog with the office (DPMA, EPO, PCT, USPTO or the common
+  safe profile) and the findings of every page with InventaSketch units (engine `preflight`, each page loaded like a
+  page session, so native moves count) – errors first, as "Slide 2 · Error · message"; choosing a finding (arrow keys or
   click) shows its suggestion and cited source and goes to its slide and unit. The disclaimer is always shown. Without
   a visible window (headless, tests) the result is logged. Checked: `integration_test.py` (a gear outside the usable
   area on slide 2 found and resolved to its unit) and `ui_smoke.py` (the dialog opens in a real window, the Down key
