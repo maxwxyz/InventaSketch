@@ -156,6 +156,55 @@ charging, bidirectional meter, colour by voltage level, more/fewer modules, rows
 turn rotor (wind turbine); cables: routing, voltage, show voltage, conductor marks, designation; pipes: carrier, code;
 flows: carrier, wider/narrower band, label.
 
+## Engineering values (Calc 4)
+
+Values are optional: every element still inserts and scales without them. They are entered and shown with the Values
+card (*Edit ▸ Values ▸*, the *Values* button in Explore and Engineer) and stored in optional text parameters
+(engineering section of the inspector). The existing rating parameters are read as values in their stored units:
+module and string `power` (Wp), array `power` (kWp), inverter and charger `power` (kW), battery `capacity` (kWh), heat
+pump `power` (kW), busbar `voltage` (kV), transformer `power` (kVA), `hv` and `lv` (kV), string `modules`. Because
+these are stored when an element is inserted, a string shows its STC power and a transformer its rated currents right
+away. Card variables come first. Design notes:
+[engineering-calculations.md, section 13](../design/engineering-calculations.md#13-implementation-notes-calc-4-fluid-process-building-services-energy-2026-11-25).
+
+| Element | Variables (parameter) | Local relations [source] |
+|---|---|---|
+| PV module | *U*_oc,max (`vocMax`), *P*_mpp (`power`), *U*_oc (`voc`), *U*_mpp (`vmp`); panel *I*_sc (`isc`), *I*_mpp (`imp`), β (`betaVoc`, % per K), θ_min (`tmin`), θ_max (`tmax`), *U*_mpp,min (`vmpMin`) | *P*_mpp = *U*_mpp·*I*_mpp (2 % tolerance for rounded datasheet values); *U*_oc,max = *U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min = *U*_mpp·(1 + β·(θ_max − 25 °C)) (β of *U*_oc as an approximation) [S33] |
+| PV string | *U*_oc,max, *U*_mpp,S (`vmpString`), *I*_sc, *P* (`powerString`); panel *N*_s (`modules`), *P*_mpp (`power`), *U*_oc, *U*_mpp, *I*_mpp, β, θ_min, θ_max, *U*_mpp,min | *P* = *N*_s·*P*_mpp; *U*_mpp,S = *N*_s·*U*_mpp [S34]; *U*_oc,max = *N*_s·*U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min likewise with θ_max [S33] |
+| PV array | *P* (`power`), *N*_p (`strings`), *I*_sc (`iscArray`), *U*_oc,max; panel *P*_S (`powerString`), *I*_sc,S (`isc`), *U*_mpp,min | *P* = *N*_p·*P*_S; *I*_sc = *N*_p·*I*_sc,S [S34] |
+| Inverter | *P*_DC (`powerDc`), *P*_AC (`powerAc`), *I*_AC (`currentAc`, per phase), *U*_oc,max (from the strings); panel η (`efficiency`, default 97 %), *R* (`dcAcRatio`), *P*_AC,N (`power`), *U*_AC (`voltageAc`, line-to-line, default 400 V), cos φ (`powerFactor`, default 1), *U*_mpp,min, *I*_sc (`iscDc`), *U*_mpp (`vmpDc`), *U*_DC,max (`udcMax`), *U*_MPPT,min/max (`mpptMin`, `mpptMax`), *I*_DC,max (`idcMax`) | *P*_AC = η·*P*_DC [S33]; *R* = *P*_DC/*P*_AC,N [S34]; three-phase *I*_AC = *P*_AC/(√3·*U*_AC·cos φ), single-phase *I*_AC = *P*_AC/((*U*_AC/√3)·cos φ) [S7] |
+| Grid busbar, grid connection meter (boards) | *P* (`powerIn`, sum of the feeders), *I* (`current`, per phase), *U* (busbar `voltage` in kV, meter `systemVoltage`); panel cos φ (`powerFactor`, default 1) | *I* = *P*/(√3·*U*·cos φ); DC busbar *I* = *P*/*U* [S7] |
+| Battery storage | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P* [S35] |
+| EV charger | *P* (`power`), *U* (`voltage`, default 400 V), *I* (`current`); panel cos φ | AC: *P* = √3·*U*·*I*·cos φ; DC charging: *P* = *U*·*I* [S7] |
+| Heat pump | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); panel θ_F (`flowTemp`), θ_Q (`sourceTemp`) | Φ_H = COP·*P*_el [S32] |
+| Wind turbine | *P* (`powerWind`), *D* (`diameter`), *v* (`windSpeed`), *c*_p (`cp`); engineer ρ (`airDensity`, default 1.225 kg/m³) | *P* = ½·ρ·π·*D*²/4·*v*³·*c*_p [S36] |
+| Power transformer | *S*_r (`power`), *I*_HV (`currentHv`), *I*_LV (`currentLv`); panel *U*_HV (`hv`), *U*_LV (`lv`) | *I* = *S*_r/(√3·*U*) per side [S7] |
+
+**Port flows.** Cables join ports into nets (a busbar joins all its taps and its bar). DC side: the string voltages
+*U*_oc,max, *U*_mpp,min and *U*_mpp are shared by the whole net (parallel strings have to agree, otherwise the card shows a
+conflict); the short-circuit current and the STC power of parallel strings add up at the inverter. AC side: the system
+voltage is shared; the AC power of the inverters adds up at a busbar or at the device side (port b) of a meter, and the
+meter passes it on at its grid side (port a). The busbar's 0.4 kV therefore becomes the inverter's *U*_AC. The keys
+(`P`, `U`, `I`) are the same as in other modules, but no link crosses into the electrical module (modules never depend
+on each other).
+
+Examples (accept criteria): 10 modules with *U*_oc = 49.5 V, β = −0.27 %/K and θ_min = −10 °C give
+*U*_oc,max = 10 · 49.5 V · 1.0945 = 541.8 V, and an inverter with *U*_DC,max = 500 V shows the warning `pv.voc.max`.
+10 × 400 Wp into an inverter with η = 96 % on a 0.4 kV busbar: *P*_AC = 3.84 kW and *I* = 5.54 A per phase (16.6 A for a
+single-phase inverter).
+
+**Checks** (hints only, overlay, nothing changes):
+
+| Id | Rule | Severity | Source |
+|---|---|---|---|
+| `pv.voc.max` | *N*_s·*U*_oc(θ_min) of the connected strings > *U*_DC,max of the inverter | warning | [S33] (rule named in IEC 62548-1) |
+| `pv.mpp.min` | *N*_s·*U*_mpp(θ_max) < *U*_MPPT,min | hint | [S33, S34] |
+| `pv.isc.max` | *N*_p·*I*_sc > *I*_DC,max | warning | [S33] |
+| `pv.dcac` | DC/AC ratio outside 0.8–1.5 | info | [S34] |
+| `bat.crate` | *C* > *C*_max | hint | [S35] |
+| `heat.cop.carnot` | COP > *T*_F/(*T*_F − *T*_Q) in kelvin (impossible) | warning | [S29] |
+| `wind.betz` | *c*_p > 16/27 (Betz limit, impossible) | warning | [S36] |
+
 ## Host notes
 
 All output uses native primitives (lines, polylines, polygons, rectangles with rounded corners, ellipses, cubic and

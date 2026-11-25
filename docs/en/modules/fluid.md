@@ -111,6 +111,49 @@ without a junction dot, positions.
 All state is in the canonical document (`type`, `view`, `params`, `points`, `attach`, `text`); there is no hidden
 module state. A JSON round trip reproduces the document and the rendered SVG exactly (tested).
 
+## Engineering values (Calc 4)
+
+Values are optional: every symbol still inserts and scales without them. They are entered and shown with the Values card
+(*Edit ▸ Values ▸*, the *Values* button in Explore and Engineer) and stored in optional text parameters (engineering
+section of the inspector). Speeds are magnitudes, *P* = 2π·*n*·*T* (German *M*). Card variables come first. Design notes:
+[engineering-calculations.md, section 13](../design/engineering-calculations.md#13-implementation-notes-calc-4-fluid-process-building-services-energy-2026-11-25).
+
+| Element | Variables (parameter) | Local relations [source] |
+|---|---|---|
+| Pump / compressor (`fluid.pump`) | *V*_g (`displacement`, cm³), *n* (`speed`), *Q* (`flowRate`, l/min), *p* (`pressure`, bar); panel *T* (`torque`, drive), *P* (`power`, drive), *P*_hyd (`powerHyd`); engineer η_v (`efficiencyV`), η_hm (`efficiencyHm`), both default 100 % | *Q* = *V*_g·*n*·η_v; *T* = *V*_g·*p*/(2π·η_hm); *P* = 2π·*n*·*T*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd/(η_v·η_hm) [S26] |
+| Motor (`fluid.motor`) | as the pump; *T* and *P* are output values | *n* = *Q*·η_v/*V*_g; *T* = *V*_g·*p*·η_hm/(2π); *P* = 2π·*n*·*T*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd·η_v·η_hm [S26] |
+| Double-acting cylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_ext (`forceExt`), *v*_ext (`speedExt`); panel *p*, *Q*, *F*_ret (`forceRet`), *v*_ret (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_ext (`timeExt`), *t*_ret (`timeRet`); engineer η_hm, *F*_req (`forceReq`), *p*_max (`pmax`, linked) | *A*₁ = π·*D*²/4 (through rod: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm and *v* = *Q*/*A* both ways; *t* = *s*/*v* [S26] |
+| Single-acting cylinder | *D*, *F* (`force`, spring force not included), *v* (`speed`), *p*; panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`); engineer η_hm, *F*_req, *p*_max | *A* = π·*D*²/4 (spring extend: annulus); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
+| Rotary actuator | *V*_g, *p*, *T*; engineer η_hm | *T* = *V*_g·*p*·η_hm/(2π) [S26] |
+| Relief, reducing, sequence valve | *p*_set (`setPressure`) | – |
+| Gauge, pressure switch, pressure source | *p* (shown from the net) | – |
+| Flow meter | *Q* (shown from the net) | – |
+| Accumulator | *V*₀ (`volume`), *p*₀ (`p0`), Δ*V* (`volumeUsable`); panel *p*₁, *p*₂, *V*₁, *V*₂ (absolute pressures) | *p*₀·*V*₀ = *p*₁·*V*₁ = *p*₂·*V*₂ (isothermal); Δ*V* = *V*₁ − *V*₂ [S26] |
+| Line (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); panel *p* | *v* = 4·*Q*/(π·*d*_i²) [S27] |
+
+**Port flows.** Lines join ports into nets (line ends docked on ports and on other lines). Per net:
+
+- *Q* (volume flow) is shared when at most two elements carry it (a pump and a cylinder, say); lines take it only on an
+  unbranched run. A tee to a relief valve or a gauge does not count as a branch for the elements, because they carry no
+  flow. Two cylinders on one net share nothing (the split is unknown).
+- *p* (pressure) is shared by the whole net; *p*_max is the relief valve's set pressure, passed to the cylinders.
+- Directional valves pass *Q*, *p* and *p*_max between P, A and B (supply view; T/R/S stay apart); non-return valves,
+  flow meters, filters, coolers, heaters, FRL units, crossings and coupled quick couplings pass all three; throttles pass
+  *Q* and *p*_max but not *p*; reducing valves pass *Q* and set *p* at A to *p*_set.
+- Line and valve losses are not modelled.
+
+Example (accept criterion): a pump with *V*_g = 10 cm³ at 1450 min⁻¹ gives *Q* = 14.5 l/min; through a 4/3 valve to a
+50/28 mm cylinder at 100 bar: *F*_ext = 19.6 kN, *F*_ret = 13.5 kN, *v*_ext = 0.123 m/s, *v*_ret = 0.179 m/s, whether
+the 100 bar is entered at the pump or at the cylinder.
+
+**Checks** (hints only, overlay, nothing changes):
+
+| Id | Rule | Severity | Source |
+|---|---|---|---|
+| `fluid.cyl.force` | *F*_req > *p*_max·*A*·η_hm (*p*_max from the relief valve, else the supply pressure *p*) | warning | [S26] |
+| `fluid.velocity` | line velocity outside the textbook range of its function: suction 0.5–1.5 m/s (docked on a pump's S), return 2–4 m/s (drain line, tank, T/R port), pressure 3–6 m/s | hint | [S26] |
+| `fluid.pressure.relief` | a pump with values whose pressure net (through valves) contains no relief valve | hint | [S25] (ISO 4413) |
+
 ## Host notes
 
 All symbols are simple native primitives (lines, rectangles, ellipses, polylines, closed triangles, text); no vector

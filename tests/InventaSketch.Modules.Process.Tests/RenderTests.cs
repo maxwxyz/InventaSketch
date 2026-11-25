@@ -67,7 +67,8 @@ namespace InventaSketch.Modules.Process.Tests
         {
             var r = Fx.Reg();
             foreach (var t in r.Types.Where(t => t.Geometry == GeometryKind.Box))
-                foreach (var p in t.Parameters.Where(p => p.Kind is ParamKind.Choice or ParamKind.Boolean or ParamKind.Integer or ParamKind.Number))
+                // The values label (Calc 4) shows nothing until values are entered.
+                foreach (var p in t.Parameters.Where(p => p.Kind is ParamKind.Choice or ParamKind.Boolean or ParamKind.Integer or ParamKind.Number && p.Key != ValueLabels.ShowParam))
                 {
                     var values = p.Kind switch
                     {

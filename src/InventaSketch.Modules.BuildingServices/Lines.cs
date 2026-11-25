@@ -133,7 +133,7 @@ namespace InventaSketch.Modules.BuildingServices
     /// Pipe (heating flow/return, cold and hot water, circulation, waste) as a polyline: medium colour and dash in every
     /// view; hops where it crosses an earlier pipe; the schematic adds the medium code and the nominal size.
     /// </summary>
-    internal sealed class PipeType : ServiceLineType
+    internal sealed class PipeType : ServiceLineType, IValueType, IValueLinks, IValueChecks
     {
         public const string TypeId = "bs.pipe";
 
@@ -155,7 +155,14 @@ namespace InventaSketch.Modules.BuildingServices
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             MediumParam, Pm.Height(0), Dn, Arrow, Hops, Pm.Scale,
-        };
+        }.Concat(BsValues.For(TypeId).Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 4, BsValues)
+
+        public IReadOnlyList<VarDef> Variables => BsValues.For(TypeId).Variables;
+        public IReadOnlyList<Relation> Relations => BsValues.For(TypeId).Relations;
+        public IEnumerable<ValueCheck> ValueChecks => BsValues.For(TypeId).Checks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => BsValues.Links(o, ctx);
 
         /// <summary>A pipe drawn over an earlier pipe hops over it; hosts offer to connect there.</summary>
         public override bool HopsAtCrossings => true;
@@ -222,7 +229,7 @@ namespace InventaSketch.Modules.BuildingServices
     /// Air duct (supply, extract, outdoor, exhaust air): in plan and section a double line of the duct width at the plan
     /// scale with a centre line; in the schematic a single line with the air code. Branches dock onto the centre line.
     /// </summary>
-    internal sealed class DuctType : ServiceLineType
+    internal sealed class DuctType : ServiceLineType, IValueType, IValueLinks, IValueChecks
     {
         public const string TypeId = "bs.duct";
 
@@ -239,7 +246,14 @@ namespace InventaSketch.Modules.BuildingServices
             "luftleitung", "lüftung", "kanal", "lüftungskanal", "zuluft", "abluft", "außenluft", "fortluft", "wickelfalzrohr", "kwl", "tga",
         };
 
-        public override IReadOnlyList<ParamDef> Parameters => new[] { KindParam, Width, Pm.Height(2400), Arrow, Pm.Scale };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { KindParam, Width, Pm.Height(2400), Arrow, Pm.Scale }.Concat(BsValues.For(TypeId).Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 4, BsValues)
+
+        public IReadOnlyList<VarDef> Variables => BsValues.For(TypeId).Variables;
+        public IReadOnlyList<Relation> Relations => BsValues.For(TypeId).Relations;
+        public IEnumerable<ValueCheck> ValueChecks => BsValues.For(TypeId).Checks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => BsValues.Links(o, ctx);
 
         public override IReadOnlyList<string> Companions => new[] { "bs.vent.terminal", "bs.vent.unit" };
 

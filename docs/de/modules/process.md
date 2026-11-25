@@ -150,6 +150,43 @@ Doppelmantel, Grundrahmen, geschlossen, Stellantrieb, exzentrisch, Pfeil, Brück
 Unterkühlung, Wirkungsgrad, Zustandsnummern, Beschriftung), Schritte (Böden, Packungsbetten, Platten, Verdichtungs-/
 Druckverhältnis), Eingaben für Leitungsnummer und Messstellen-Kennzeichen, orthogonale/gerade Führung.
 
+## Technische Werte (Calc 4)
+
+Werte sind optional: jedes Symbol lässt sich weiterhin ohne sie einfügen und skalieren. Eingetragen und angezeigt werden
+sie mit der Wertekarte (*Bearbeiten ▸ Werte ▸*, die Schaltfläche *Werte* in Erkunden und Ingenieur), gespeichert in
+optionalen Textparametern (Ingenieurabschnitt des Inspektors). Wasser ist das voreingestellte Medium: c = 4,19 kJ/(kg·K),
+ρ = 1000 kg/m³ (Vorgaben, die eingetragenen Werten weichen). Kartengrößen stehen vorn. Entwurfsnotizen:
+[engineering-calculations.md, Abschnitt 13](../design/engineering-calculations.md#13-umsetzungsnotizen-calc-4-fluid-prozess-gebäudetechnik-energie-25112026).
+
+| Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
+|---|---|---|
+| Kreiselpumpe | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, Welle), η (`efficiency`); Panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`); Ingenieur ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
+| Verdrängerpumpe, Ventilator | *V̇*, Δ*p*, *P*, η; Panel *P*_hyd | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
+| Rohrbündel-, Platten-, allgemeiner Wärmeübertrager | Φ (`duty`), *k* (`u`), *A* (`area`), Δθ_m (`lmtd`); Panel ṁ₁ (`massFlow1`), θ₁,ein (`temp1In`), θ₁,aus (`temp1Out`), ṁ₂, θ₂,ein, θ₂,aus; Ingenieur *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,ein − θ₁,aus); Φ = ṁ₂·*c*₂·(θ₂,aus − θ₂,ein); Gegenstrom Δθ_m = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) mit Δθ_a = θ₁,ein − θ₂,aus, Δθ_b = θ₁,aus − θ₂,ein; Φ = *k*·*A*·Δθ_m [S29] |
+| Luftkühler, Kühlturm | Φ, ṁ (`massFlow`), θ_ein (`tempIn`), θ_aus (`tempOut`); Ingenieur *c* | Φ = ṁ·*c*·(θ_ein − θ_aus) [S29] |
+| Behälter, Tank, Reaktor, Kolonne | *V* (`volume`), *D* (`diameter`), *h* (`length`, zylindrischer Teil), *Q* (`heat`); Panel Δθ (`deltaT`); Ingenieur ρ, *c* | *V* = π·*D*²·*h*/4 (Böden nicht mitgerechnet); *Q* = ρ·*V*·*c*·Δθ [S29] |
+| Prozessleitung | *V̇* (`flowRate`), ṁ (`massFlow`), *v* (`velocity`), θ (`temperature`); Panel *d*_i (`innerDiameter`); Ingenieur ρ | ṁ = ρ·*V̇*; *v* = 4·*V̇*/(π·*d*_i²) [S27, S29] |
+
+Seite 1 eines Wärmeübertragers ist die Rohrseite (T1 ein, T2 aus), die A-Seite des Plattenwärmeübertragers (A1, A2) und
+die Primärseite des allgemeinen Symbols (P1, P2); Seite 2 ist die Mantelseite (S1, S2), die B-Seite (B1, B2) und die
+Sekundärseite (S1, S2). Φ > 0 heißt: Wärme fließt von Seite 1 zu Seite 2; ist Seite 1 kälter, wechseln alle Differenzen
+das Vorzeichen und Φ < 0. Andere Bauarten als Gegenstrom brauchen einen Korrekturfaktor (nicht abgebildet).
+
+**Werte über Anschlüsse.** Prozessleitungen verbinden Stutzen zu Netzen. Volumenstrom *V̇*, Massenstrom ṁ und
+Stofftemperatur θ gelten gemeinsam, wenn höchstens zwei Elemente sie im Netz führen; Leitungen übernehmen sie auf einem
+unverzweigten Strang. Die Leitung rechnet *V̇* und ṁ ineinander um. Hand-, Stell- und Rückschlagarmaturen,
+Schmutzfänger, Reduzierstücke und Durchflussmessglieder geben alle drei weiter, Luftfilter und Luftklappen (A1–A2)
+ebenso; Pumpen und Ventilatoren geben die Temperatur weiter. Eine Pumpe, die über eine Armatur einen Wärmeübertrager
+speist, setzt so ṁ₁, und die Austrittstemperatur der Seite 1 wird zur Eintrittstemperatur des nächsten Elements.
+Wärmeverluste und die Erwärmung in Pumpen werden nicht abgebildet. Verdichter und Turbinen haben noch keine Werte (die
+Verdichtungsarbeit braucht Gaseigenschaften).
+
+**Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
+
+| Id | Regel | Schwere | Quelle |
+|---|---|---|---|
+| `heat.cross` | Wärmeübertrager mit allen vier Temperaturen: (θ₁,ein − θ₂,aus)·(θ₁,aus − θ₂,ein) ≤ 0, eine Temperaturkreuzung, die im Gegenstrom nicht erreichbar ist | Warnung | [S29] |
+
 ## Hinweise für Hosts
 
 Alle Ausgaben sind native Primitive (Linien, Polylinien, Polygone, Rechtecke, Ellipsen, kubische Pfade, Text); jeder

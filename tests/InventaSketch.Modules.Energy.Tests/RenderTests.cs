@@ -102,6 +102,8 @@ namespace InventaSketch.Modules.Energy.Tests
                 {
                     // Hops only show where the line crosses another one (engine CrossModuleHopTests).
                     if (p.Key == "hops") continue;
+                    // Engineering values (Calc 4) show only in the values label, which is off and empty by default.
+                    if (p.Key == ValueLabels.ShowParam || p.Kind == ParamKind.Text && ValueModel.Variables(t).Any(v => v.ParamKey == p.Key)) continue;
                     var baseObj = t.Create(Vec2.Zero);
                     // Lines: a diagonal run, so routing has something to change.
                     if (baseObj.IsPointGeometry) baseObj = baseObj with { Points = new[] { new Vec2(-15, 0), new Vec2(15, 10) } };

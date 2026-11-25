@@ -26,6 +26,11 @@ namespace InventaSketch.Modules.Fluid
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
 
+        private static readonly Lazy<IReadOnlyDictionary<string, ObjectType>> ById = new(() => AllTypes.Value.ToDictionary(t => t.Id, StringComparer.Ordinal));
+
+        /// <summary>The module's type with this id (net passages of the values, <see cref="FluidValues"/>), or null.</summary>
+        internal static ObjectType? TypeById(string id) => ById.Value.TryGetValue(id, out var t) ? t : null;
+
         public string Id => "fluid";
         public I18nText Name => new("Fluid power", "Fluidtechnik");
         public string Version => "0.2.0";

@@ -48,7 +48,7 @@ namespace InventaSketch.Modules.Energy
     /// Port convention: the grid-side port at the top edge, the device side at the bottom edge, other media (heat,
     /// hydrogen, water, fuel) at the left and right edges.
     /// </summary>
-    internal sealed class EnergyType : ObjectType
+    internal sealed class EnergyType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -97,7 +97,19 @@ namespace InventaSketch.Modules.Energy
         /// <summary>Motion frames (wind turbine rotor); null = no animation.</summary>
         public Func<SketchObject, int, IReadOnlyList<SketchObject>>? Frames { get; init; }
 
-        public override IReadOnlyList<ParamDef> Parameters => Params.Concat(new[] { Pm.Name, Pm.ShowLabel }).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => Params.Concat(new[] { Pm.Name, Pm.ShowLabel }).Concat(ValueSpec.Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 4, EnergyValues)
+
+        /// <summary>Variables, relations, value parameters, port roles and checks of this type (empty for elements without values).</summary>
+        internal EnergyValues.Spec ValueSpec => EnergyValues.For(_id);
+
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : EnergyValues.Links(o, ctx);
 
         public ViewSpec Spec(string? view) => view == EnViews.SingleLine ? _singleLine : view == EnViews.Pictorial ? _pictorial : Spec(DefaultViewId);
         public ViewSpec Spec(SketchObject o) => Spec(ViewOf(o));

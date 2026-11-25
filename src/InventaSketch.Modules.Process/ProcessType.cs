@@ -17,7 +17,7 @@ namespace InventaSketch.Modules.Process
     /// <see cref="AnchorRole.Port"/> anchors (the same ids in every view), optional parameters and an equipment tag
     /// (e.g. "P-101") written outside the box, upright on the page.
     /// </summary>
-    internal sealed class ProcessType : ObjectType
+    internal sealed class ProcessType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         public const string TagKey = "tag";
         public const string ShowTagKey = "showTag";
@@ -69,7 +69,21 @@ namespace InventaSketch.Modules.Process
         private static readonly ParamDef TagParam = P.Text(TagKey, "Tag (equipment number)", "Kennzeichen (Anlagenkennzeichen)", "");
         private static readonly ParamDef ShowTagParam = P.Flag(ShowTagKey, "Show tag", "Kennzeichen anzeigen", true);
 
-        public override IReadOnlyList<ParamDef> Parameters => TagPrefix is null ? Params : Params.Concat(new[] { TagParam, ShowTagParam }).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => _allParams ??= (TagPrefix is null ? Params : Params.Concat(new[] { TagParam, ShowTagParam })).Concat(ValueSpec.Params).ToList();
+
+        private IReadOnlyList<ParamDef>? _allParams;
+
+        // ------------------------------------------------------------------ element values (Calc 4, ProcessValues)
+
+        /// <summary>Variables, relations, value parameters, nozzle roles and checks of this type (empty for symbols without values).</summary>
+        internal ProcessValues.Spec ValueSpec => ProcessValues.For(_id);
+
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : ProcessValues.Links(o, ctx);
 
         /// <summary>The object with every missing parameter set to its default, so drawings and ports read one value.</summary>
         public SketchObject Normalize(SketchObject o)

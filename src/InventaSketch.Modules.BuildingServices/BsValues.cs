@@ -1,0 +1,590 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using InventaSketch.Core;
+
+namespace InventaSketch.Modules.BuildingServices
+{
+    /// <summary>
+    /// Element values of the building services elements (Calc 4, engineering-calculations.md sections 2.9 and 3.7): heat
+    /// generators (boiler, heat pump with COP), radiators (EN 442 characteristic Φ = Φ₅₀·(Δθ/50 K)^n with the logarithmic excess
+    /// temperature, and the operating return temperature from flow and characteristic), underfloor loop, circulator pump,
+    /// mixing valve, water heater, air terminal (room area, height and air change give the air flow), ventilation unit (heat
+    /// recovery), pipes (velocity, DN as approximation of the inner diameter) and ducts (round or rectangular). Every value is
+    /// optional. Water: ρ = 1000 kg/m³ and c = 4.19 kJ/(kg·K) as defaults; air: ρ·c_p = 0.34 W·h/(m³·K).
+    /// <para>
+    /// Port flows (<see cref="ValueNets"/>): pipes and ducts join ports into nets. The volume flow (<c>Vdot</c>) is passed on an
+    /// unbranched run and summed at a branch (the generator's port, the pump's outlet, the ventilation unit's spigot and the
+    /// mixer outlet are the totals of the radiators, loops and terminals on the branches). The stream temperature (<c>theta</c>)
+    /// is passed on an unbranched run and from the single supplying outlet to every inlet of a split. Thermostatic valves pass
+    /// both; pumps pass the temperature. Heat losses of pipes are not modelled.
+    /// </para>
+    /// </summary>
+    internal static class BsValues
+    {
+        private static I18nText T(string en, string de) => new(en, de);
+
+        internal sealed class Spec
+        {
+            public static readonly Spec Empty = new(Array.Empty<VarDef>(), Array.Empty<Relation>(), Array.Empty<ParamDef>(), Array.Empty<ValueCheck>());
+
+            public Spec(IReadOnlyList<VarDef> variables, IReadOnlyList<Relation> relations, IReadOnlyList<ParamDef> parameters, IReadOnlyList<ValueCheck> checks)
+            {
+                Variables = variables; Relations = relations; Params = parameters; Checks = checks;
+            }
+
+            public IReadOnlyList<VarDef> Variables { get; }
+            public IReadOnlyList<Relation> Relations { get; }
+            public IReadOnlyList<ParamDef> Params { get; }
+            public IReadOnlyList<ValueCheck> Checks { get; }
+            public Func<SketchObject, string, IEnumerable<PortVar>> Ports { get; init; } = (_, _) => Array.Empty<PortVar>();
+            /// <summary>Relations that depend on what is entered (round or rectangular duct).</summary>
+            public Func<SketchObject, IEnumerable<Relation>>? Local { get; init; }
+        }
+
+        // ------------------------------------------------------------------ parameters and variables
+
+        private static ParamDef Text(string key, I18nText label, string? unit) => new(key, label, ParamKind.Text) { Unit = unit, Advanced = true };
+
+        private static VarDef V(string key, I18nText name, I18nText symbol, QuantityKind kind, string? unit, string param, VarRelevance rel = VarRelevance.Card)
+            => new(key, name, symbol, kind) { Unit = unit, Param = param, Relevance = rel };
+
+        /// <summary>Text parameters for the variables without a parameter of their own (existing number parameters are reused).</summary>
+        private static ParamDef[] Params(IEnumerable<VarDef> vars, params string[] existing)
+            => vars.Where(v => !existing.Contains(v.ParamKey)).Select(v => Text(v.ParamKey, v.Name, v.Unit)).Append(ValueLabels.ShowValues).ToArray();
+
+        private const double G = 9.80665;
+        private const double WaterC = 4190;
+        private const double WaterRho = 1000;
+        /// <summary>Volumetric heat capacity of air ρ·c_p ≈ 0.34 W·h/(m³·K) [S30].</summary>
+        private const double AirRhoC = 0.34 * 3600;
+        private const double C0 = 273.15;
+
+        private static VarDef Flow(string unit = "l/h", string key = "Vdot", string param = "flowRate", I18nText? name = null, VarRelevance rel = VarRelevance.Panel)
+            => V(key, name ?? T("Volume flow", "Volumenstrom"), T("V̇", "V̇"), Quantities.VolumeFlow, unit, param, rel) with { Min = 0, Max = 100 };
+        private static VarDef Temp(string key, I18nText name, I18nText sym, string param, VarRelevance rel, double? def = null)
+            => V(key, name, sym, Quantities.Temperature, "°C", param, rel) with { Min = C0 - 60, Max = C0 + 200, Default = def };
+        private static VarDef FlowTemp(VarRelevance rel = VarRelevance.Card) => Temp("thf", T("Flow temperature", "Vorlauftemperatur"), T("θ_F", "θ_VL"), "flowTemp", rel);
+        private static VarDef ReturnTemp(VarRelevance rel = VarRelevance.Card) => Temp("thr", T("Return temperature", "Rücklauftemperatur"), T("θ_R", "θ_RL"), "returnTemp", rel);
+        private static VarDef HeatOut(I18nText? name = null, VarRelevance rel = VarRelevance.Card)
+            => V("Phi", name ?? T("Heat output", "Wärmeleistung"), T("Φ", "Φ"), Quantities.HeatFlow, "W", "heatOutput", rel) with { Min = 0, Max = 1e9 };
+        private static VarDef Rho() => V("rho", T("Density of water", "Dichte des Wassers"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = WaterRho, Min = 1, Max = 3e4 };
+        private static VarDef Cp() => V("c", T("Specific heat capacity of water", "Spezifische Wärmekapazität des Wassers"), T("c", "c"), Quantities.SpecificHeat, "kJ/(kg·K)", "specificHeat", VarRelevance.Engineer) with { Default = WaterC, Min = 1, Max = 1e5 };
+        private static VarDef Velocity(VarRelevance rel = VarRelevance.Card) => V("v", T("Flow velocity", "Strömungsgeschwindigkeit"), T("v", "v"), Quantities.Speed, "m/s", "velocity", rel) with { Min = 0, Max = 100 };
+
+        // ------------------------------------------------------------------ relations
+
+        /// <summary>Φ = ρ·c·V̇·(θ_F − θ_R) [S29, S30].</summary>
+        private static readonly Relation Carrier =
+            new Relation("bs.heat.carrier", T("Heat carried by water", "Vom Wasser transportierte Wärme"), "{Phi} = {rho}·{c}·{Vdot}·({thf} − {thr})", "Phi", "rho", "c", "Vdot", "thf", "thr") { Source = "S29" }
+                .Solve("Phi", "{rho}·{c}·{Vdot}·({thf} − {thr})", v => v("rho") * v("c") * v("Vdot") * (v("thf") - v("thr")))
+                .Solve("Vdot", "{Phi}/({rho}·{c}·({thf} − {thr}))", v => v("Phi") / (v("rho") * v("c") * (v("thf") - v("thr"))))
+                .Solve("thf", "{thr} + {Phi}/({rho}·{c}·{Vdot})", v => v("thr") + v("Phi") / (v("rho") * v("c") * v("Vdot")))
+                .Solve("thr", "{thf} − {Phi}/({rho}·{c}·{Vdot})", v => v("thf") - v("Phi") / (v("rho") * v("c") * v("Vdot")))
+                .Solve("rho", "{Phi}/({c}·{Vdot}·({thf} − {thr}))", v => v("Phi") / (v("c") * v("Vdot") * (v("thf") - v("thr"))))
+                .Solve("c", "{Phi}/({rho}·{Vdot}·({thf} − {thr}))", v => v("Phi") / (v("rho") * v("Vdot") * (v("thf") - v("thr"))));
+
+        /// <summary>Logarithmic excess temperature (θ_F − θ_R)/ln((θ_F − θ_i)/(θ_R − θ_i)); continuous at θ_F = θ_R, 0 for θ_R ≤ θ_i (EN 442-2 [S31]).</summary>
+        internal static double ExcessLn(double thf, double thr, double thi)
+        {
+            double a = thf - thi, b = thr - thi;
+            if (a <= 0 || b <= 0) return 0;
+            if (Math.Abs(a - b) <= 1e-12 * a) return a;
+            return (a - b) / Math.Log(a / b);
+        }
+
+        /// <summary>Δθ = logarithmic excess temperature over the room (EN 442-2 [S31]).</summary>
+        private static readonly Relation Excess =
+            new Relation("bs.radiator.excess", T("Logarithmic excess temperature", "Logarithmische Übertemperatur"), "{dT} = ({thf} − {thr})/ln(({thf} − {thi})/({thr} − {thi}))", "dT", "thf", "thr", "thi") { Source = "S31" }
+                .Solve("dT", "({thf} − {thr})/ln(({thf} − {thi})/({thr} − {thi}))", v =>
+                {
+                    var d = ExcessLn(v("thf"), v("thr"), v("thi"));
+                    return d > 0 ? d : double.NaN;
+                });
+
+        /// <summary>Radiator characteristic Φ = Φ₅₀·(Δθ/50 K)^n (EN 442-2 [S31]).</summary>
+        private static readonly Relation Characteristic =
+            new Relation("bs.radiator.characteristic", T("Radiator characteristic", "Heizkörperkennlinie"), "{Phi} = {phi50}·({dT}/50 K)^{n}", "Phi", "phi50", "dT", "n") { Source = "S31" }
+                .Solve("Phi", "{phi50}·({dT}/50 K)^{n}", v => v("phi50") * Math.Pow(v("dT") / 50, v("n")))
+                .Solve("phi50", "{Phi}/({dT}/50 K)^{n}", v => v("Phi") / Math.Pow(v("dT") / 50, v("n")))
+                .Solve("dT", "50 K·({Phi}/{phi50})^(1/{n})", v => 50 * Math.Pow(v("Phi") / v("phi50"), 1 / v("n")))
+                .Solve("n", "ln({Phi}/{phi50})/ln({dT}/50 K)", v => Math.Log(v("Phi") / v("phi50")) / Math.Log(v("dT") / 50));
+
+        /// <summary>
+        /// Operating point: the water gives off what the radiator emits, ρ·c·V̇·(θ_F − θ_R) = Φ₅₀·(Δθ_ln/50 K)^n, solved numerically
+        /// (this gives the return temperature and the output from flow, flow temperature, room temperature and Φ₅₀/n) [S31].
+        /// </summary>
+        private static readonly Relation Operating =
+            new Relation("bs.radiator.operating", T("Radiator operating point", "Betriebspunkt des Heizkörpers"),
+                "{rho}·{c}·{Vdot}·({thf} − {thr}) = {phi50}·(Δθ_ln({thf}, {thr}, {thi})/50 K)^{n}", "thr", "Vdot", "thf", "thi", "phi50", "n", "rho", "c") { Source = "S31" }
+                .WithResidual(v => v("rho") * v("c") * v("Vdot") * (v("thf") - v("thr")) - v("phi50") * Math.Pow(ExcessLn(v("thf"), v("thr"), v("thi")) / 50, v("n")));
+
+        /// <summary>Δp = ρ·g·H [S28].</summary>
+        private static readonly Relation Head =
+            new Relation("bs.pump.head", T("Head", "Förderhöhe"), "{Phyd} = {rho}·g·{H}·{Vdot}", "Phyd", "rho", "H", "Vdot") { Source = "S28" }
+                .Solve("Phyd", "{rho}·g·{H}·{Vdot}", v => v("rho") * G * v("H") * v("Vdot"))
+                .Solve("H", "{Phyd}/({rho}·g·{Vdot})", v => v("Phyd") / (v("rho") * G * v("Vdot")))
+                .Solve("Vdot", "{Phyd}/({rho}·g·{H})", v => v("Phyd") / (v("rho") * G * v("H")));
+
+        private static readonly Relation PumpPower =
+            new Relation("bs.pump.power", T("Electrical power", "Elektrische Leistung"), "{Pel} = {Phyd}/{eta}", "Pel", "Phyd", "eta") { Source = "S28" }
+                .Solve("Pel", "{Phyd}/{eta}", v => v("Phyd") / v("eta"))
+                .Solve("Phyd", "{Pel}·{eta}", v => v("Pel") * v("eta"))
+                .Solve("eta", "{Phyd}/{Pel}", v => v("Phyd") / v("Pel"));
+
+        /// <summary>Mixing: V̇_AB = V̇_A + V̇_B [S1].</summary>
+        private static readonly Relation MixFlow =
+            new Relation("bs.mixer.flow", T("Flow balance", "Volumenstrombilanz"), "{Vab} = {Va} + {Vb}", "Vab", "Va", "Vb") { Source = "S1" }
+                .Solve("Vab", "{Va} + {Vb}", v => v("Va") + v("Vb"))
+                .Solve("Va", "{Vab} − {Vb}", v => v("Vab") - v("Vb"))
+                .Solve("Vb", "{Vab} − {Va}", v => v("Vab") - v("Va"));
+
+        /// <summary>Mixing temperature θ_AB = (V̇_A·θ_A + V̇_B·θ_B)/V̇_AB (equal ρ·c) [S29].</summary>
+        private static readonly Relation MixTemp =
+            new Relation("bs.mixer.temperature", T("Mixing temperature", "Mischtemperatur"), "{thab} = ({Va}·{tha} + {Vb}·{thb})/{Vab}", "thab", "Va", "tha", "Vb", "thb", "Vab") { Source = "S29" }
+                .Solve("thab", "({Va}·{tha} + {Vb}·{thb})/{Vab}", v => (v("Va") * v("tha") + v("Vb") * v("thb")) / v("Vab"))
+                .Solve("tha", "({Vab}·{thab} − {Vb}·{thb})/{Va}", v => (v("Vab") * v("thab") - v("Vb") * v("thb")) / v("Va"))
+                .Solve("thb", "({Vab}·{thab} − {Va}·{tha})/{Vb}", v => (v("Vab") * v("thab") - v("Va") * v("tha")) / v("Vb"));
+
+        /// <summary>Heat pump Φ_H = COP·P_el [S29, S32].</summary>
+        private static readonly Relation Cop =
+            new Relation("bs.heatpump.cop", T("Coefficient of performance", "Leistungszahl"), "{Phi} = {cop}·{Pel}", "Phi", "cop", "Pel") { Source = "S32" }
+                .Solve("Phi", "{cop}·{Pel}", v => v("cop") * v("Pel"))
+                .Solve("cop", "{Phi}/{Pel}", v => v("Phi") / v("Pel"))
+                .Solve("Pel", "{Phi}/{cop}", v => v("Phi") / v("cop"));
+
+        /// <summary>Underfloor loop Φ = q·A [S30].</summary>
+        private static readonly Relation Flux =
+            new Relation("bs.floor.flux", T("Heat flux", "Wärmestromdichte"), "{Phi} = {q}·{A}", "Phi", "q", "A") { Source = "S30" }
+                .Solve("Phi", "{q}·{A}", v => v("q") * v("A"))
+                .Solve("q", "{Phi}/{A}", v => v("Phi") / v("A"))
+                .Solve("A", "{Phi}/{q}", v => v("Phi") / v("q"));
+
+        /// <summary>Loop length L ≈ A/s (pipe spacing s) [S30].</summary>
+        private static readonly Relation LoopLength =
+            new Relation("bs.floor.length", T("Loop length", "Rohrlänge des Heizkreises"), "{L} = {A}/{s}", "L", "A", "s") { Source = "S30", Validity = T("approximation, connection lines not counted", "Näherung, Anbindeleitungen nicht mitgerechnet") }
+                .Solve("L", "{A}/{s}", v => v("A") / v("s"))
+                .Solve("A", "{L}·{s}", v => v("L") * v("s"))
+                .Solve("s", "{A}/{L}", v => v("A") / v("L"));
+
+        /// <summary>Stored heat Q = ρ·V·c·Δθ [S29].</summary>
+        private static readonly Relation Stored =
+            new Relation("bs.storage.heat", T("Stored heat", "Gespeicherte Wärme"), "{Q} = {rho}·{V}·{c}·{dT}", "Q", "rho", "V", "c", "dT") { Source = "S29" }
+                .Solve("Q", "{rho}·{V}·{c}·{dT}", v => v("rho") * v("V") * v("c") * v("dT"))
+                .Solve("V", "{Q}/({rho}·{c}·{dT})", v => v("Q") / (v("rho") * v("c") * v("dT")))
+                .Solve("dT", "{Q}/({rho}·{V}·{c})", v => v("Q") / (v("rho") * v("V") * v("c")));
+
+        private static readonly Relation HeatUp =
+            new Relation("bs.storage.time", T("Heat-up time", "Aufheizzeit"), "{t} = {Q}/{P}", "t", "Q", "P") { Source = "S29", Validity = T("no losses", "ohne Verluste") }
+                .Solve("t", "{Q}/{P}", v => v("Q") / v("P"))
+                .Solve("Q", "{t}·{P}", v => v("t") * v("P"))
+                .Solve("P", "{Q}/{t}", v => v("Q") / v("t"));
+
+        /// <summary>Room volume V = A·h [S1].</summary>
+        private static readonly Relation RoomVolume =
+            new Relation("bs.room.volume", T("Room volume", "Raumvolumen"), "{V} = {A}·{h}", "V", "A", "h") { Source = "S1" }
+                .Solve("V", "{A}·{h}", v => v("A") * v("h"))
+                .Solve("A", "{V}/{h}", v => v("V") / v("h"))
+                .Solve("h", "{V}/{A}", v => v("V") / v("A"));
+
+        /// <summary>Air flow V̇ = n·V with the air change rate n in h⁻¹ [S30].</summary>
+        private static readonly Relation AirChange =
+            new Relation("bs.room.airchange", T("Air change", "Luftwechsel"), "{Vdot} = {n}·{V}/1 h", "Vdot", "n", "V") { Source = "S30" }
+                .Solve("Vdot", "{n}·{V}/1 h", v => v("n") * v("V") / 3600)
+                .Solve("n", "{Vdot}·1 h/{V}", v => v("Vdot") * 3600 / v("V"))
+                .Solve("V", "{Vdot}·1 h/{n}", v => v("Vdot") * 3600 / v("n"));
+
+        /// <summary>Heat recovery θ_SUP = θ_ODA + η_t·(θ_ETA − θ_ODA) [S30].</summary>
+        private static readonly Relation Recovery =
+            new Relation("bs.vent.recovery", T("Heat recovery", "Wärmerückgewinnung"), "{thSup} = {thOut} + {eta}·({thExt} − {thOut})", "thSup", "thOut", "eta", "thExt") { Source = "S30" }
+                .Solve("thSup", "{thOut} + {eta}·({thExt} − {thOut})", v => v("thOut") + v("eta") * (v("thExt") - v("thOut")))
+                .Solve("eta", "({thSup} − {thOut})/({thExt} − {thOut})", v => (v("thSup") - v("thOut")) / (v("thExt") - v("thOut")))
+                .Solve("thExt", "{thOut} + ({thSup} − {thOut})/{eta}", v => v("thOut") + (v("thSup") - v("thOut")) / v("eta"))
+                .Solve("thOut", "({thSup} − {eta}·{thExt})/(1 − {eta})", v => (v("thSup") - v("eta") * v("thExt")) / (1 - v("eta")));
+
+        /// <summary>Recovered heat Φ = 0.34 W·h/(m³·K)·V̇·(θ_SUP − θ_ODA) [S30].</summary>
+        private static readonly Relation Recovered =
+            new Relation("bs.vent.heat", T("Recovered heat flow", "Zurückgewonnener Wärmestrom"), "{Phi} = 0.34 W·h/(m³·K)·{Vsup}·({thSup} − {thOut})", "Phi", "Vsup", "thSup", "thOut") { Source = "S30" }
+                .Solve("Phi", "0.34 W·h/(m³·K)·{Vsup}·({thSup} − {thOut})", v => AirRhoC * v("Vsup") * (v("thSup") - v("thOut")))
+                .Solve("Vsup", "{Phi}/(0.34 W·h/(m³·K)·({thSup} − {thOut}))", v => v("Phi") / (AirRhoC * (v("thSup") - v("thOut"))));
+
+        /// <summary>v = V̇/A [S27].</summary>
+        private static readonly Relation VelocityArea =
+            new Relation("bs.flow.velocity", T("Flow velocity", "Strömungsgeschwindigkeit"), "{v} = {Vdot}/{A}", "v", "Vdot", "A") { Source = "S27" }
+                .Solve("v", "{Vdot}/{A}", v => v("Vdot") / v("A"))
+                .Solve("Vdot", "{v}·{A}", v => v("v") * v("A"))
+                .Solve("A", "{Vdot}/{v}", v => v("Vdot") / v("v"));
+
+        /// <summary>Round cross-section A = π·d²/4 [S27].</summary>
+        private static readonly Relation RoundArea =
+            new Relation("bs.duct.round", T("Cross-section (round)", "Querschnitt (rund)"), "{A} = π·{d}²/4", "A", "d") { Source = "S27" }
+                .Solve("A", "π·{d}²/4", v => Math.PI * v("d") * v("d") / 4)
+                .Solve("d", "√(4·{A}/π)", v => Math.Sqrt(4 * v("A") / Math.PI));
+
+        /// <summary>Rectangular cross-section A = a·b [S30].</summary>
+        private static readonly Relation RectArea =
+            new Relation("bs.duct.rect", T("Cross-section (rectangular)", "Querschnitt (rechteckig)"), "{A} = {d}·{b}", "A", "d", "b") { Source = "S30" }
+                .Solve("A", "{d}·{b}", v => v("d") * v("b"))
+                .Solve("b", "{A}/{d}", v => v("A") / v("d"))
+                .Solve("d", "{A}/{b}", v => v("A") / v("b"));
+
+        private static readonly Relation RoundHydraulic =
+            new Relation("bs.duct.dh.round", T("Hydraulic diameter (round)", "Hydraulischer Durchmesser (rund)"), "{dh} = {d}", "dh", "d") { Source = "S30" }
+                .Solve("dh", "{d}", v => v("d"))
+                .Solve("d", "{dh}", v => v("dh"));
+
+        /// <summary>Hydraulic diameter of a rectangle d_h = 2·a·b/(a + b) [S30].</summary>
+        private static readonly Relation RectHydraulic =
+            new Relation("bs.duct.dh.rect", T("Hydraulic diameter (rectangular)", "Hydraulischer Durchmesser (rechteckig)"), "{dh} = 2·{d}·{b}/({d} + {b})", "dh", "d", "b") { Source = "S30" }
+                .Solve("dh", "2·{d}·{b}/({d} + {b})", v => 2 * v("d") * v("b") / (v("d") + v("b")));
+
+        /// <summary>Pipe: d_i ≈ DN (nominal size; the inner diameter depends on the pipe series) [S30].</summary>
+        private static readonly Relation Nominal =
+            new Relation("bs.pipe.dn", T("Inner diameter from DN (approximation)", "Innendurchmesser aus DN (Näherung)"), "{di} ≈ {DN}", "di", "DN")
+            {
+                Source = "S30", Tolerance = 0.5,
+                Validity = T("DN is a nominal size; enter the inner diameter of the pipe series for exact values",
+                             "DN ist eine Nennweite; für genaue Werte den Innendurchmesser der Rohrreihe eintragen"),
+            }
+                .Solve("di", "{DN}", v => v("DN"));
+
+        /// <summary>Pipe: v = 4·V̇/(π·d_i²) [S27].</summary>
+        private static readonly Relation PipeVelocity =
+            new Relation("bs.pipe.velocity", T("Flow velocity", "Strömungsgeschwindigkeit"), "{v} = 4·{Vdot}/(π·{di}²)", "v", "Vdot", "di") { Source = "S27" }
+                .Solve("v", "4·{Vdot}/(π·{di}²)", v => 4 * v("Vdot") / (Math.PI * v("di") * v("di")))
+                .Solve("Vdot", "π·{di}²·{v}/4", v => Math.PI * v("di") * v("di") * v("v") / 4)
+                .Solve("di", "√(4·{Vdot}/(π·{v}))", v => Math.Sqrt(4 * v("Vdot") / (Math.PI * v("v"))));
+
+        // ------------------------------------------------------------------ specs per type
+
+        private static readonly Dictionary<string, Spec> Specs = new(StringComparer.Ordinal);
+
+        public static Spec For(string typeId)
+        {
+            lock (Specs)
+            {
+                if (!Specs.TryGetValue(typeId, out var s)) Specs[typeId] = s = Build(typeId);
+                return s;
+            }
+        }
+
+        private static Spec Build(string typeId) => typeId switch
+        {
+            "bs.heat.boiler" => Boiler(),
+            "bs.heat.heatpump" => HeatPump(),
+            "bs.heat.radiator" => Radiator(),
+            "bs.heat.floorloop" => FloorLoop(),
+            "bs.heat.pump" => Pump(),
+            "bs.heat.mixer" => Mixer(),
+            "bs.san.heater" => WaterHeater(),
+            "bs.vent.terminal" => Terminal(),
+            "bs.vent.unit" => VentUnit(),
+            PipeType.TypeId => Pipe(),
+            DuctType.TypeId => Duct(),
+            _ => Spec.Empty,
+        };
+
+        /// <summary>A heat generator: the flow port supplies (total of the branches), the return port collects.</summary>
+        private static IEnumerable<PortVar> GeneratorPort(string port) => port switch
+        {
+            "flow" => new[] { new PortVar("Vdot", "Vdot", PortRole.Total), new PortVar("theta", "thf", PortRole.Total) },
+            "return" => new[] { new PortVar("Vdot", "Vdot", PortRole.Total), new PortVar("theta", "thr", PortRole.Part) },
+            _ => Array.Empty<PortVar>(),
+        };
+
+        /// <summary>A consumer: the flow port takes the supply temperature, the return port gives its own.</summary>
+        private static IEnumerable<PortVar> ConsumerPort(string port) => port switch
+        {
+            "flow" => new[] { new PortVar("Vdot", "Vdot", PortRole.Part), new PortVar("theta", "thf", PortRole.Part) },
+            "return" => new[] { new PortVar("Vdot", "Vdot", PortRole.Part), new PortVar("theta", "thr", PortRole.Total) },
+            _ => Array.Empty<PortVar>(),
+        };
+
+        private static Spec Boiler()
+        {
+            var vars = new[] { HeatOut(), FlowTemp(), ReturnTemp(), Flow(rel: VarRelevance.Card), Rho(), Cp() };
+            return new Spec(vars, new[] { Carrier }, Params(vars), new[] { Balance() }) { Ports = (_, p) => GeneratorPort(p) };
+        }
+
+        private static Spec HeatPump()
+        {
+            var vars = new[]
+            {
+                HeatOut(T("Heat output", "Heizleistung")),
+                V("Pel", T("Electrical power", "Elektrische Leistung"), T("P_el", "P_el"), Quantities.Power, "W", "powerEl") with { Min = 0, Max = 1e9 },
+                V("cop", T("Coefficient of performance", "Leistungszahl"), T("COP", "COP"), Quantities.Ratio, null, "cop") with { Min = 0.1, Max = 100 },
+                FlowTemp(),
+                Temp("ths", T("Source temperature (outdoor air)", "Quellentemperatur (Außenluft)"), T("θ_Q", "θ_Q"), "sourceTemp", VarRelevance.Panel),
+                ReturnTemp(VarRelevance.Panel), Flow(), Rho(), Cp(),
+            };
+            return new Spec(vars, new[] { Cop, Carrier }, Params(vars), new[] { Carnot(), Balance() }) { Ports = (_, p) => GeneratorPort(p) };
+        }
+
+        private static Spec Radiator()
+        {
+            var vars = new[]
+            {
+                HeatOut(),
+                V("phi50", T("Standard output Φ₅₀ (Δθ = 50 K)", "Normwärmeleistung Φ₅₀ (Δθ = 50 K)"), T("Φ₅₀", "Φ₅₀"), Quantities.HeatFlow, "W", "phi50") with { Min = 1, Max = 1e6 },
+                FlowTemp(), ReturnTemp(), Flow(),
+                Temp("thi", T("Room temperature", "Raumtemperatur"), T("θ_i", "θ_i"), "roomTemp", VarRelevance.Panel, C0 + 20),
+                V("n", T("Radiator exponent", "Heizkörperexponent"), T("n", "n"), Quantities.Ratio, null, "exponent", VarRelevance.Panel) with { Default = 1.3, Min = 0.5, Max = 3 },
+                V("dT", T("Logarithmic excess temperature", "Logarithmische Übertemperatur"), T("Δθ_ln", "Δθ_ln"), Quantities.TemperatureDifference, "K", "excessTemp", VarRelevance.Panel) with { Min = 0.01, Max = 200 },
+                Rho(), Cp(),
+            };
+            return new Spec(vars, new[] { Excess, Characteristic, Carrier, Operating }, Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => ConsumerPort(p) };
+        }
+
+        private static Spec FloorLoop()
+        {
+            var vars = new[]
+            {
+                HeatOut(),
+                V("A", T("Heated area", "Beheizte Fläche"), T("A", "A"), Quantities.Area, "m²", "area") with { Min = 1e-3, Max = 1e5 },
+                V("q", T("Heat flux density", "Wärmestromdichte"), T("q", "q"), Quantities.Irradiance, "W/m²", "heatFlux") with { Min = 0, Max = 1e4 },
+                Flow(rel: VarRelevance.Card), FlowTemp(VarRelevance.Panel), ReturnTemp(VarRelevance.Panel),
+                V("s", T("Pipe spacing", "Verlegeabstand"), T("s", "s"), Quantities.Length, "mm", "spacing", VarRelevance.Panel) with { Min = 1e-3, Max = 2 },
+                V("L", T("Loop length", "Rohrlänge des Heizkreises"), T("L", "L"), Quantities.Length, "m", "loopLength", VarRelevance.Panel) with { Min = 0, Max = 1e4 },
+                Rho(), Cp(),
+            };
+            return new Spec(vars, new[] { Flux, Carrier, LoopLength }, Params(vars, "spacing"), Array.Empty<ValueCheck>()) { Ports = (_, p) => ConsumerPort(p) };
+        }
+
+        private static Spec Pump()
+        {
+            var vars = new[]
+            {
+                Flow(rel: VarRelevance.Card),
+                V("H", T("Head", "Förderhöhe"), T("H", "H"), Quantities.Length, "m", "head") with { Min = 0, Max = 1e4 },
+                V("Pel", T("Electrical power", "Elektrische Leistung"), T("P_el", "P_el"), Quantities.Power, "W", "powerEl") with { Min = 0, Max = 1e9 },
+                V("eta", T("Efficiency", "Wirkungsgrad"), T("η", "η"), Quantities.Efficiency, "%", "efficiency") with { Min = 0, Max = 1 },
+                V("Phyd", T("Hydraulic power", "Hydraulische Leistung"), T("P_hyd", "P_hyd"), Quantities.Power, "W", "powerHyd", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                Rho(),
+            };
+            return new Spec(vars, new[] { Head, PumpPower }, Params(vars), Array.Empty<ValueCheck>())
+            {
+                Ports = (_, p) => p switch
+                {
+                    "in" => new[] { new PortVar("Vdot", "Vdot", PortRole.Part) },
+                    "out" => new[] { new PortVar("Vdot", "Vdot", PortRole.Total) },
+                    _ => Array.Empty<PortVar>(),
+                },
+            };
+        }
+
+        private static Spec Mixer()
+        {
+            VarDef F(string key, I18nText name, string param, VarRelevance rel) => Flow(key: key, param: param, name: name, rel: rel) with { Symbol = T("V̇_" + key.Substring(1).ToUpperInvariant(), "V̇_" + key.Substring(1).ToUpperInvariant()) };
+            var vars = new[]
+            {
+                Temp("thab", T("Mixed temperature (AB)", "Mischtemperatur (AB)"), T("θ_AB", "θ_AB"), "tempAB", VarRelevance.Card),
+                Temp("tha", T("Temperature at A (hot)", "Temperatur an A (warm)"), T("θ_A", "θ_A"), "tempA", VarRelevance.Card),
+                Temp("thb", T("Temperature at B (bypass)", "Temperatur an B (Beimischung)"), T("θ_B", "θ_B"), "tempB", VarRelevance.Card),
+                F("Vab", T("Volume flow AB", "Volumenstrom AB"), "flowAB", VarRelevance.Card),
+                F("Va", T("Volume flow A", "Volumenstrom A"), "flowA", VarRelevance.Panel),
+                F("Vb", T("Volume flow B", "Volumenstrom B"), "flowB", VarRelevance.Panel),
+            };
+            return new Spec(vars, new[] { MixFlow, MixTemp }, Params(vars), Array.Empty<ValueCheck>())
+            {
+                Ports = (_, p) => p switch
+                {
+                    "a" => new[] { new PortVar("Vdot", "Va", PortRole.Part), new PortVar("theta", "tha", PortRole.Part) },
+                    "b" => new[] { new PortVar("Vdot", "Vb", PortRole.Part), new PortVar("theta", "thb", PortRole.Part) },
+                    "ab" => new[] { new PortVar("Vdot", "Vab", PortRole.Total), new PortVar("theta", "thab", PortRole.Total) },
+                    _ => Array.Empty<PortVar>(),
+                },
+            };
+        }
+
+        private static Spec WaterHeater()
+        {
+            var vars = new[]
+            {
+                V("V", T("Storage volume", "Speichervolumen"), T("V", "V"), Quantities.Volume, "l", "volume") with { Min = 1e-4, Max = 1e3 },
+                V("dT", T("Heating by", "Erwärmung um"), T("Δθ", "Δθ"), Quantities.TemperatureDifference, "K", "deltaT") with { Min = 0, Max = 200 },
+                V("Q", T("Stored heat", "Gespeicherte Wärme"), T("Q", "Q"), Quantities.Energy, "kWh", "heat") with { Min = 0, Max = 1e15 },
+                V("P", T("Heating power", "Heizleistung"), T("P", "P"), Quantities.Power, "W", "power") with { Min = 0, Max = 1e9 },
+                V("t", T("Heat-up time", "Aufheizzeit"), T("t", "t"), Quantities.Time_, "h", "heatUpTime", VarRelevance.Panel) with { Min = 0, Max = 1e8 },
+                Rho(), Cp(),
+            };
+            return new Spec(vars, new[] { Stored, HeatUp }, Params(vars), Array.Empty<ValueCheck>());
+        }
+
+        private static Spec Terminal()
+        {
+            var vars = new[]
+            {
+                Flow("m³/h", rel: VarRelevance.Card) with { Name = T("Air flow", "Luftvolumenstrom") },
+                V("A", T("Room area", "Raumfläche"), T("A", "A"), Quantities.Area, "m²", "roomArea") with { Min = 1e-2, Max = 1e5 },
+                V("n", T("Air change rate (per hour)", "Luftwechselzahl (je Stunde)"), T("n", "n"), Quantities.Ratio, null, "airChange") with { Min = 0, Max = 100 },
+                V("V", T("Room volume", "Raumvolumen"), T("V", "V"), Quantities.Volume, "m³", "roomVolume") with { Min = 1e-2, Max = 1e6 },
+                V("h", T("Room height", "Raumhöhe"), T("h", "h"), Quantities.Length, "m", "roomHeight", VarRelevance.Panel) with { Default = 2.5, Min = 0.5, Max = 100 },
+            };
+            return new Spec(vars, new[] { RoomVolume, AirChange }, Params(vars), Array.Empty<ValueCheck>())
+            {
+                Ports = (_, p) => p == "duct" ? new[] { new PortVar("Vdot", "Vdot", PortRole.Part) } : Array.Empty<PortVar>(),
+            };
+        }
+
+        private static Spec VentUnit()
+        {
+            var vars = new[]
+            {
+                Flow("m³/h", "Vsup", "flowSupply", T("Supply air flow", "Zuluftvolumenstrom"), VarRelevance.Card) with { Symbol = T("V̇_SUP", "V̇_ZUL") },
+                V("eta", T("Heat recovery efficiency", "Wärmebereitstellungsgrad"), T("η_t", "η_t"), Quantities.Efficiency, "%", "recovery") with { Min = 0, Max = 1 },
+                Temp("thSup", T("Supply air temperature", "Zulufttemperatur"), T("θ_SUP", "θ_ZUL"), "tempSupply", VarRelevance.Card),
+                V("Phi", T("Recovered heat flow", "Zurückgewonnener Wärmestrom"), T("Φ_WRG", "Φ_WRG"), Quantities.HeatFlow, "W", "heatRecovered") with { Min = -1e9, Max = 1e9 },
+                Flow("m³/h", "Vext", "flowExtract", T("Extract air flow", "Abluftvolumenstrom"), VarRelevance.Panel) with { Symbol = T("V̇_ETA", "V̇_ABL") },
+                Temp("thOut", T("Outdoor air temperature", "Außenlufttemperatur"), T("θ_ODA", "θ_AUL"), "tempOutdoor", VarRelevance.Panel),
+                Temp("thExt", T("Extract air temperature", "Ablufttemperatur"), T("θ_ETA", "θ_ABL"), "tempExtract", VarRelevance.Panel),
+            };
+            return new Spec(vars, new[] { Recovery, Recovered }, Params(vars), Array.Empty<ValueCheck>())
+            {
+                Ports = (_, p) => p switch
+                {
+                    "supply" or "outdoor" => new[] { new PortVar("Vdot", "Vsup", PortRole.Total) },
+                    "extract" or "exhaust" => new[] { new PortVar("Vdot", "Vext", PortRole.Total) },
+                    _ => Array.Empty<PortVar>(),
+                },
+            };
+        }
+
+        private static Spec Pipe()
+        {
+            var vars = new[]
+            {
+                Flow(rel: VarRelevance.Card),
+                V("di", T("Inner diameter", "Innendurchmesser"), T("d_i", "d_i"), Quantities.Length, "mm", "innerDiameter") with { Min = 1e-4, Max = 5 },
+                Velocity(),
+                Temp("theta", T("Water temperature", "Wassertemperatur"), T("θ", "θ"), "temperature", VarRelevance.Card),
+                V("DN", T("Nominal size DN", "Nennweite DN"), T("DN", "DN"), Quantities.Length, "mm", "dn", VarRelevance.Panel) with { StoredUnit = "mm", Min = 1e-3, Max = 5 },
+            };
+            return new Spec(vars, new[] { PipeVelocity, Nominal }, Params(vars, "dn"), new[] { WaterVelocity() });
+        }
+
+        private static Spec Duct()
+        {
+            var vars = new[]
+            {
+                Flow("m³/h", rel: VarRelevance.Card) with { Name = T("Air flow", "Luftvolumenstrom") },
+                V("d", T("Duct size (diameter / width)", "Kanalgröße (Durchmesser / Breite)"), T("d", "d"), Quantities.Length, "mm", "width") with { StoredUnit = "mm", Min = 1e-3, Max = 10 },
+                Velocity(),
+                V("A", T("Cross-section", "Querschnitt"), T("A", "A"), Quantities.Area, "cm²", "crossSection") with { Min = 1e-6, Max = 100 },
+                V("b", T("Duct height (rectangular)", "Kanalhöhe (rechteckig)"), T("b", "b"), Quantities.Length, "mm", "ductHeight", VarRelevance.Panel) with { Min = 1e-3, Max = 10 },
+                V("dh", T("Hydraulic diameter", "Hydraulischer Durchmesser"), T("d_h", "d_h"), Quantities.Length, "mm", "hydraulicDiameter", VarRelevance.Panel) with { Min = 1e-3, Max = 10 },
+            };
+            return new Spec(vars, new[] { VelocityArea }, Params(vars, "width"), new[] { AirVelocity() })
+            {
+                // A height b makes the duct rectangular (a = width); otherwise it is round.
+                Local = o => o.Params.TryGetValue("ductHeight", out var b) && !string.IsNullOrWhiteSpace(b.Text)
+                    ? new[] { RectArea, RectHydraulic }
+                    : new[] { RoundArea, RoundHydraulic },
+            };
+        }
+
+        // ------------------------------------------------------------------ net description
+
+        private static IEnumerable<string[]> Through(SketchObject o, string cls) => o.Type switch
+        {
+            "bs.heat.trv" => new[] { new[] { "in", "out" } },
+            "bs.heat.pump" when cls == "theta" => new[] { new[] { "in", "out" } },
+            _ => Array.Empty<string[]>(),
+        };
+
+        internal static readonly NetSpec Nets = new()
+        {
+            Prefix = "bs",
+            IsLine = o => o.Type is PipeType.TypeId or DuctType.TypeId,
+            PortVars = (o, port) => For(o.Type).Ports(o, port),
+            LineVars = o => o.Type == PipeType.TypeId
+                ? new[] { new PortVar("Vdot", "Vdot"), new PortVar("theta", "theta") }
+                : new[] { new PortVar("Vdot", "Vdot") },
+            Through = Through,
+            Classes = new[] { "Vdot", "theta" },
+            Rule = c => c == "Vdot" ? NetRule.Sum : NetRule.Spread,
+            Name = c => c == "Vdot" ? T("Volume flow passed on", "Volumenstrom weitergegeben") : T("Temperature passed on", "Temperatur weitergegeben"),
+        };
+
+        public static IEnumerable<BoundRelation> Links(SketchObject o, RenderContext ctx)
+        {
+            var spec = For(o.Type);
+            if (spec.Local is not null)
+                foreach (var r in spec.Local(o)) yield return BoundRelation.Local(r, o.Id);
+            foreach (var b in ValueNets.Of(ctx.Doc, Nets).For(o.Id)) yield return b;
+        }
+
+        // ------------------------------------------------------------------ checks (section 4)
+
+        private const double Rel = 1e-6;
+
+        private static bool Heating(SketchObject pipe) => pipe.Str("medium", "cold") is "flow" or "return";
+
+        /// <summary>heat.velocity: heating pipes outside 0.3–1.0 m/s, water pipes above 2 m/s (textbook values [S30]).</summary>
+        private static ValueCheck WaterVelocity() => new(
+            "heat.velocity", CheckSeverity.Hint,
+            T("The flow velocity is outside the usual range (heating distribution 0.3–1.0 m/s, water pipes up to 2 m/s). Check the inner diameter.",
+              "Die Strömungsgeschwindigkeit liegt außerhalb des üblichen Bereichs (Heizungsverteilung 0,3–1,0 m/s, Wasserleitungen bis 2 m/s). Innendurchmesser prüfen."),
+            "heating: v ∉ [0.3, 1.0] m/s; water: v > 2 m/s",
+            c => c["v"] is double v && (Heating(c.Object) ? v < 0.3 * (1 - Rel) || v > 1.0 * (1 + Rel) : v > 2.0 * (1 + Rel)))
+        { Source = "S30" };
+
+        /// <summary>air.velocity: duct velocity outside 2–4 m/s (residential, textbook [S30]).</summary>
+        private static ValueCheck AirVelocity() => new(
+            "air.velocity", CheckSeverity.Hint,
+            T("The air velocity is outside the usual residential range of 2–4 m/s. Check the duct size.",
+              "Die Luftgeschwindigkeit liegt außerhalb des im Wohnbau üblichen Bereichs von 2–4 m/s. Kanalgröße prüfen."),
+            "v ∉ [2, 4] m/s",
+            c => c["v"] is double v && (v < 2 * (1 - Rel) || v > 4 * (1 + Rel)))
+        { Source = "S30" };
+
+        /// <summary>heat.cop.carnot: COP above the Carnot limit T_F/(T_F − T_Q) in kelvin (impossible) [S29].</summary>
+        private static ValueCheck Carnot() => new(
+            "heat.cop.carnot", CheckSeverity.Warning,
+            T("The COP is above the Carnot limit T_flow/(T_flow − T_source): impossible. Check the COP and the temperatures.",
+              "Die Leistungszahl liegt über der Carnot-Grenze T_VL/(T_VL − T_Q): unmöglich. Leistungszahl und Temperaturen prüfen."),
+            "COP > T_F/(T_F − T_Q)",
+            c => c["cop"] is double cop && c["thf"] is double tf && c["ths"] is double ts && tf > ts && cop > tf / (tf - ts) * (1 + Rel))
+        { Source = "S29" };
+
+        private static readonly HashSet<string> Consumers = new(StringComparer.Ordinal) { "bs.heat.radiator", "bs.heat.floorloop" };
+
+        /// <summary>heat.balance: the consumers on the generator's heating circuit need more than the generator gives [S29].</summary>
+        private static ValueCheck Balance() => new(
+            "heat.balance", CheckSeverity.Hint,
+            T("The consumers on this heating circuit need more heat than the generator gives. Check the outputs.",
+              "Die Verbraucher an diesem Heizkreis brauchen mehr Wärme, als der Wärmeerzeuger abgibt. Leistungen prüfen."),
+            "ΣΦ_consumers > Φ_source",
+            c =>
+            {
+                if (c.Table.Get(c.Object.Id, "Phi") is not { Value: double source, Provenance: Provenance.Entered }) return false;
+                var sum = 0.0;
+                foreach (var id in HeatingCircuit(c.Context.Doc, c.Object.Id))
+                    if (c.Context.Doc.Get(id) is { } x && Consumers.Contains(x.Type) && c.Table.Get(id, "Phi")?.Value is double phi) sum += phi;
+                return sum > source * (1 + Rel);
+            })
+        { Source = "S29" };
+
+        /// <summary>Elements joined to <paramref name="id"/> by heating pipes (through every element on the way).</summary>
+        internal static IReadOnlyCollection<string> HeatingCircuit(SketchDocument doc, string id)
+        {
+            var adj = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+            void Edge(string a, string b)
+            {
+                if (!adj.TryGetValue(a, out var l)) adj[a] = l = new List<string>();
+                l.Add(b);
+                if (!adj.TryGetValue(b, out l)) adj[b] = l = new List<string>();
+                l.Add(a);
+            }
+            foreach (var line in doc.Objects.Values)
+                if (line.Type == PipeType.TypeId && Heating(line))
+                    foreach (var a in line.Attach ?? Array.Empty<Attachment?>())
+                        if (a is not null && doc.Get(a.ObjectId) is not null) Edge(line.Id, a.ObjectId);
+            var seen = new HashSet<string>(StringComparer.Ordinal) { id };
+            var queue = new Queue<string>(new[] { id });
+            while (queue.Count > 0)
+                foreach (var n in adj.TryGetValue(queue.Dequeue(), out var l) ? l : new List<string>())
+                    if (seen.Add(n)) queue.Enqueue(n);
+            return seen;
+        }
+    }
+}

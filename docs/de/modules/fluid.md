@@ -114,6 +114,53 @@ andere Leitung nur berühren (ohne Verbindungspunkt), Positionen.
 Der gesamte Zustand liegt im kanonischen Dokument (`type`, `view`, `params`, `points`, `attach`, `text`); es gibt keinen
 versteckten Modulzustand. Ein JSON-Roundtrip reproduziert Dokument und gerendertes SVG exakt (getestet).
 
+## Technische Werte (Calc 4)
+
+Werte sind optional: jedes Symbol lässt sich weiterhin ohne sie einfügen und skalieren. Eingetragen und angezeigt werden
+sie mit der Wertekarte (*Bearbeiten ▸ Werte ▸*, die Schaltfläche *Werte* in Erkunden und Ingenieur), gespeichert in
+optionalen Textparametern (Ingenieurabschnitt des Inspektors). Drehzahlen sind Beträge, *P* = 2π·*n*·*M*. Kartengrößen
+stehen vorn. Entwurfsnotizen:
+[engineering-calculations.md, Abschnitt 13](../design/engineering-calculations.md#13-umsetzungsnotizen-calc-4-fluid-prozess-gebäudetechnik-energie-25112026).
+
+| Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
+|---|---|---|
+| Pumpe / Verdichter (`fluid.pump`) | *V*_g (`displacement`, cm³), *n* (`speed`), *Q* (`flowRate`, l/min), *p* (`pressure`, bar); Panel *M* (`torque`, Antrieb), *P* (`power`, Antrieb), *P*_hyd (`powerHyd`); Ingenieur η_v (`efficiencyV`), η_hm (`efficiencyHm`), beide Vorgabe 100 % | *Q* = *V*_g·*n*·η_v; *M* = *V*_g·*p*/(2π·η_hm); *P* = 2π·*n*·*M*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd/(η_v·η_hm) [S26] |
+| Motor (`fluid.motor`) | wie die Pumpe; *M* und *P* sind Abtriebswerte | *n* = *Q*·η_v/*V*_g; *M* = *V*_g·*p*·η_hm/(2π); *P* = 2π·*n*·*M*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd·η_v·η_hm [S26] |
+| Doppeltwirkender Zylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_aus (`forceExt`), *v*_aus (`speedExt`); Panel *p*, *Q*, *F*_ein (`forceRet`), *v*_ein (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_aus (`timeExt`), *t*_ein (`timeRet`); Ingenieur η_hm, *F*_erf (`forceReq`), *p*_max (`pmax`, verknüpft) | *A*₁ = π·*D*²/4 (durchgehende Stange: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm und *v* = *Q*/*A* in beide Richtungen; *t* = *s*/*v* [S26] |
+| Einfachwirkender Zylinder | *D*, *F* (`force`, ohne Federkraft), *v* (`speed`), *p*; Panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`); Ingenieur η_hm, *F*_erf, *p*_max | *A* = π·*D*²/4 (Federvorhub: Ringfläche); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
+| Schwenkantrieb | *V*_g, *p*, *M*; Ingenieur η_hm | *M* = *V*_g·*p*·η_hm/(2π) [S26] |
+| Druckbegrenzungs-, Druckminder-, Zuschaltventil | *p*_E (`setPressure`) | – |
+| Manometer, Druckschalter, Druckquelle | *p* (aus dem Netz angezeigt) | – |
+| Durchflussmesser | *Q* (aus dem Netz angezeigt) | – |
+| Hydrospeicher | *V*₀ (`volume`), *p*₀ (`p0`), Δ*V* (`volumeUsable`); Panel *p*₁, *p*₂, *V*₁, *V*₂ (absolute Drücke) | *p*₀·*V*₀ = *p*₁·*V*₁ = *p*₂·*V*₂ (isotherm); Δ*V* = *V*₁ − *V*₂ [S26] |
+| Leitung (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); Panel *p* | *v* = 4·*Q*/(π·*d*_i²) [S27] |
+
+**Werte über Anschlüsse.** Leitungen verbinden Anschlüsse zu Netzen (Leitungsenden an Anschlüssen und an anderen
+Leitungen). Je Netz gilt:
+
+- *Q* (Volumenstrom) gilt gemeinsam, wenn höchstens zwei Elemente ihn führen (etwa Pumpe und Zylinder); Leitungen
+  übernehmen ihn nur auf einem unverzweigten Strang. Ein Abzweig zu einem Druckbegrenzungsventil oder Manometer zählt
+  für die Elemente nicht als Verzweigung, weil diese keinen Strom führen. Zwei Zylinder an einem Netz teilen nichts (die
+  Aufteilung ist unbekannt).
+- *p* (Druck) gilt im ganzen Netz; *p*_max ist der Einstelldruck des Druckbegrenzungsventils und geht an die Zylinder.
+- Wegeventile geben *Q*, *p* und *p*_max zwischen P, A und B weiter (Versorgungssicht; T/R/S bleiben getrennt);
+  Rückschlagventile, Durchflussmesser, Filter, Kühler, Heizer, Wartungseinheiten, Kreuzungen und gekuppelte
+  Schnellkupplungen geben alle drei weiter; Drosseln geben *Q* und *p*_max weiter, aber nicht *p*; Druckminderventile
+  geben *Q* weiter und setzen *p* an A auf *p*_E.
+- Verluste in Leitungen und Ventilen werden nicht abgebildet.
+
+Beispiel (Abnahmekriterium): eine Pumpe mit *V*_g = 10 cm³ bei 1450 min⁻¹ liefert *Q* = 14,5 l/min; über ein
+4/3-Wegeventil an einen Zylinder 50/28 mm bei 100 bar: *F*_aus = 19,6 kN, *F*_ein = 13,5 kN, *v*_aus = 0,123 m/s,
+*v*_ein = 0,179 m/s, gleich ob die 100 bar an der Pumpe oder am Zylinder eingetragen sind.
+
+**Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
+
+| Id | Regel | Schwere | Quelle |
+|---|---|---|---|
+| `fluid.cyl.force` | *F*_erf > *p*_max·*A*·η_hm (*p*_max vom Druckbegrenzungsventil, sonst der Versorgungsdruck *p*) | Warnung | [S26] |
+| `fluid.velocity` | Leitungsgeschwindigkeit außerhalb des Lehrbuchbereichs ihrer Funktion: Saugleitung 0,5–1,5 m/s (an S einer Pumpe), Rücklauf 2–4 m/s (Leckölleitung, Tank, Anschluss T/R), Druckleitung 3–6 m/s | Hinweis | [S26] |
+| `fluid.pressure.relief` | eine Pumpe mit Werten, in deren Drucknetz (über Ventile) kein Druckbegrenzungsventil liegt | Hinweis | [S25] (ISO 4413) |
+
 ## Hinweise für Hosts
 
 Alle Symbole bestehen aus einfachen nativen Grundelementen (Linien, Rechtecke, Ellipsen, Polylinien, geschlossene

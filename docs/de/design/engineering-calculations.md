@@ -746,6 +746,9 @@ Prüfungen sind erledigt, siehe Abschnitt 12.
 - Fläche und Luftwechsel eines Raums ergeben Luftvolumenstrom und Kanalgeschwindigkeit
 - die Kette PV → Wechselrichter → Verteiler zeigt den AC-Strom je Außenleiter
 
+*Stand:* alle fünf Abnahmepunkte sind in den Modulen Fluid, Prozess, Gebäudetechnik und Energie umgesetzt, mit Unit-Tests
+(Abschnitt 13); der Verteiler ist die Sammelschiene oder der Zähler des Energiemoduls, kein Verteiler des Elektromoduls.
+
 **Calc 5 – Verknüpfte Diagramme.** Diese Stufe bringt:
 - die Verknüpfungen aus Abschnitt 5: Drehmoment-Drehzahl, Pumpe/Anlage, PV I-U/P-U, Bode RC/RLC, Sprungantwort,
   Getriebeplan, Heizkurve
@@ -1252,3 +1255,116 @@ ist der Code; die Moduldokus listen jede Größe ([mechanical-drives.md](../modu
   - Kern: `ValueSolver.Solve` erzeugt seinen `RenderContext` ohne Registry, daher greifen `IValueLinks` auf
     `ObjectType.Owner` zurück (von allen Registries geteilt, in denen der Typ registriert ist). `ctx.For(registry)` im
     Löser (und bei den Aufrufern von `ValueSolver.Checks`) würde das exakt machen.
+
+---
+
+## 13. Umsetzungsnotizen: Calc 4 Fluid, Prozess, Gebäudetechnik, Energie (25.11.2026)
+
+Dieser Abschnitt hält die Entscheidungen zu Calc 4 in den Modulen Fluid, Prozess, Gebäudetechnik und Energie fest. Maßgeblich
+ist der Code; die Moduldokumente nennen jede Größe, Beziehung, Verknüpfung und Prüfung
+([fluid.md](../modules/fluid.md#technische-werte-calc-4), [process.md](../modules/process.md#technische-werte-calc-4),
+[building-services.md](../modules/building-services.md#technische-werte-calc-4),
+[energy.md](../modules/energy.md#technische-werte-calc-4)).
+
+### 13.1 Dateien
+
+| Bereich | Dateien |
+|---|---|
+| Netztopologie und Anschlussbeziehungen (eine Kopie je Modul) | `src/InventaSketch.Modules.{Fluid,Process,BuildingServices,Energy}/ValueNets.cs` (`NetSpec`, `NetRule`, `PortVar`, `ValueNets`) |
+| Fluid: Größen, Beziehungen, Anschlussrollen, Prüfungen | `src/InventaSketch.Modules.Fluid/FluidValues.cs`; `FluidType` und `FluidLineType` implementieren `IValueType`, `IValueLinks`, `IValueChecks` |
+| Prozess | `src/InventaSketch.Modules.Process/ProcessValues.cs`; `ProcessType`, `ProcessLineType` |
+| Gebäudetechnik | `src/InventaSketch.Modules.BuildingServices/BsValues.cs`; `BsBoxType`, `PipeType`, `DuctType` |
+| Energie | `src/InventaSketch.Modules.Energy/EnergyValues.cs`; `EnergyType` |
+| Tests | `tests/InventaSketch.Modules.{Fluid,Process,BuildingServices,Energy}.Tests/ValueTests.cs` |
+
+### 13.2 Entscheidungen
+
+- **Netze aus Andockungen.** Ein Netz ist, was die Leitungen des Moduls (Fluidleitung, Prozessleitung, Rohr und
+  Luftleitung, Energiekabel) verbinden: Leitungsenden an Anschlüssen (Andockung mit Anschluss-Id) und an anderen Leitungen
+  (Abzweige). Ein Ende an einer Schiene oder an einer Sammelschiene ohne Anschluss-Id zählt als Anschluss `*` des
+  Elements. Elemente geben Wertklassen von Anschluss zu Anschluss weiter, wo sie durchlässig sind (Ventile, Kupplungen,
+  die Anschlusspunkte einer Sammelschiene). Die Topologie wird je Dokument einmal aufgebaut (Dokumente sind
+  unveränderlich) und zwischengespeichert. Jede Wertklasse hat eine Regel:
+  - *Gleich* (Druck, Spannung): das ganze Netz teilt den Wert, Abzweige eingeschlossen.
+  - *Strom* (Volumen- und Massenstrom, Stofftemperatur im Prozessmodul): gemeinsam, wenn höchstens zwei Elemente die
+    Klasse im Netz führen; Leitungen übernehmen ihn nur auf einem unverzweigten Strang. Ein Abzweig zu einem Manometer oder
+    Druckbegrenzungsventil hält die Elemente nicht auf, weil diese keinen Strom führen; eine Aufteilung auf zwei
+    Verbraucher hält ihn auf (die Aufteilung ist unbekannt).
+  - *Summe* (parallele PV-Strings, Einspeisungen an einem Verteiler, Heizkörper an einem Heizungsabzweig): ein als
+    *Summe* markierter Anschluss ist die Summe der *Teil*-Anschlüsse seines Netzes; ein unverzweigter Strang mit zwei
+    Elementen verhält sich wie *Strom*.
+  - *Verteilen* (Stofftemperatur in der Gebäudetechnik): der eine speisende Austritt einer Verzweigung gibt seine
+    Temperatur an jeden Eintritt; Mischung an einer Zusammenführung rechnet nur das Mischventil.
+
+  Die Anschlussrollen folgen den Zeichenkonventionen der Module (Vorlaufanschluss des Wärmeerzeugers und Pumpenaustritt
+  sind Summen, Heizkörper Teile; die Geräteseite b eines Zählers ist Summe, die Netzseite a Teil). Über einen Anschluss
+  ohne Rolle geht nichts weiter.
+- **Auswahlabhängige Beziehungen** (durchgehende Kolbenstange, ziehender Zylinder, Rechteckkanal, ein- oder dreiphasiger
+  Wechselrichter, DC-Sammelschiene, DC-Ladepunkt) werden je Objekt in `IValueLinks.ValueLinks` als eigene Beziehungen des
+  Elements gebunden, weil `IValueType.Relations` je Typ gilt.
+- **Gespeicherte Vorgaben gelten als eingetragen.** Vorhandene Bemessungsparameter (Modul-Wp, Wechselrichter-kW,
+  Sammelschienen-kV, Kanalbreite, Verlegeabstand …) werden beim Einfügen gespeichert und sind damit eingetragene Werte: ein
+  String zeigt sofort seine STC-Leistung. Damit das mit echten Datenblättern keine Konflikte erzeugt, hat
+  *P*_mpp = *U*_mpp·*I*_mpp 2 % Toleranz und *d*_i ≈ DN 50 % Toleranz (DN ist eine Nennweite). Die von Calc 4
+  hinzugefügten Wertparameter sind optionale Texte ohne Vorgabe; ein neues Element trägt also keinen eigenen Wert.
+- **Vorgaben, die weichen** (auf der Karte als *Vorgabe* gekennzeichnet): Wasser ρ = 1000 kg/m³ und *c* = 4,19 kJ/(kg·K),
+  Wirkungsgrade von Pumpe und Motor 100 %, Heizkörperexponent *n* = 1,3 und Raumtemperatur 20 °C, Raumhöhe 2,5 m,
+  Wechselrichter η = 97 % (typisch, innerhalb der 0,95–0,98 aus Abschnitt 2.10), AC-Netzspannung 400 V, cos φ = 1,
+  Luftdichte 1,225 kg/m³.
+- **Betriebspunkt des Heizkörpers.** Sind Volumenstrom, Vorlauf-, Raumtemperatur und Φ₅₀/*n* bekannt, folgt die
+  Rücklauftemperatur aus ρ·*c*·*V̇*·(θ_VL − θ_RL) = Φ₅₀·(Δθ_ln/50 K)^*n* (zwei Unbekannte, eine Gleichung nach Elimination von
+  Φ). Die Beziehung ist ein Residuum, das Brent im Temperaturbereich löst; die Übertemperatur wird für θ_RL ≤ θ_i als 0
+  fortgesetzt, damit das Intervall immer einen Vorzeichenwechsel hat.
+- **Vorzeichen am Wärmeübertrager.** Seite 1 und Seite 2 statt warm und kalt: Φ > 0 heißt Wärme von Seite 1 zu Seite 2;
+  ist Seite 1 kälter, wechseln alle Differenzen das Vorzeichen und die Gegenstrom-LMTD bleibt gültig. `heat.cross` meldet
+  sich, wenn die beiden Enddifferenzen verschiedene Vorzeichen haben.
+- **Temperaturkoeffizient und Luftwechsel.** Core hat keine Größenart für %/K oder h⁻¹. β ist ein Verhältnis in %, gelesen
+  als „je Kelvin“ („−0,27“ oder „−0,27 %“), die Luftwechselzahl eine reine Zahl je Stunde („1“). Eingaben wie „−0,27 %/K“
+  oder „1/h“ lehnt der Parser ab. Siehe 13.4.
+- **AC-Strom.** *U*_AC ist in beiden Fällen die Außenleiterspannung des Netzes: dreiphasig *I* = *P*/(√3·*U*·cos φ),
+  einphasig (Außenleiter gegen Neutralleiter) *I* = *P*/((*U*/√3)·cos φ). Verteiler (Sammelschiene, Zähler) setzen eine
+  symmetrische Drehstromlast voraus.
+- **Prüfungen** laufen in `ValueSolver.Checks`: `fluid.cyl.force`, `fluid.velocity`, `fluid.pressure.relief` [S25, S26];
+  `heat.cross` [S29]; `heat.velocity`, `air.velocity` [S30], `heat.cop.carnot`, `heat.balance` [S29]; `pv.voc.max`,
+  `pv.mpp.min`, `pv.isc.max` [S33], `pv.dcac` [S34], `bat.crate` [S35]. **`wind.betz`** [S36] (*c*_p über 16/27) ist neu:
+  Abschnitt 4 nennt sie nicht, aber die Betz-Grenze aus Abschnitt 2.10 macht höhere Werte unmöglich. Die
+  Lehrbuch-Geschwindigkeitsbereiche sind die Vorgaben aus Abschnitt 4, bis es Nutzergrenzen gibt (Calc 6). `fluid.velocity`
+  leitet die Funktion der Leitung aus ihren Andockungen ab (S einer Pumpe: Saugleitung; Tank, T/R oder Leckölleitung:
+  Rücklauf; sonst Druckleitung).
+
+### 13.3 Stand der Punkte von Calc 4
+
+- Umgesetzt: die fünf Abnahmepunkte (Unit-Tests mit Handrechnung):
+  - 10 Module, *U*_oc = 49,5 V, β = −0,27 %/K, θ_min = −10 °C: *U*_oc,max = 541,78 V; `pv.voc.max` gegen
+    *U*_DC,max = 500 V;
+  - Pumpe 10 cm³ bei 1450 min⁻¹ (14,5 l/min) über ein 4/3-Wegeventil an einen Zylinder 50/28 mm bei 100 bar:
+    *F*_aus = 19,63 kN, *F*_ein = 13,48 kN, *v*_aus = 0,123 m/s, *v*_ein = 0,179 m/s, mit dem Druck an der Pumpe oder am
+    Zylinder eingetragen;
+  - Heizkessel (55 °C) → Rohr (50 l/h) → Heizkörper (Φ₅₀ = 1000 W, *n* = 1,3): θ_RL ≈ 46,0 °C, Φ ≈ 521 W, zurück zum
+    Kessel;
+  - Raum 20 m², *n* = 1 h⁻¹: 50 m³/h an Luftdurchlass, Luftleitung und Gerät, 2,76 m/s in einer Leitung mit 80 mm;
+  - 10 × 400 Wp → Wechselrichter (η = 96 %) → 0,4-kV-Sammelschiene: 3,84 kW, 5,54 A je Außenleiter (16,6 A einphasig).
+- Umgesetzt: die in den Moduldokumenten genannten Beziehungen aus den Abschnitten 2.7–2.10 und 3.5–3.8, Werte über
+  Anschlüsse in jedem Modul, die Katalogprüfungen aus Abschnitt 4 für diese Fachgebiete, und jedes Bibliothekselement lässt
+  sich weiterhin ohne Werte einfügen und löst keine Prüfung aus (je Modul getestet).
+- Offen:
+  - Druckverlust in Rohren (Darcy–Weisbach, Colebrook) und Blenden-/Ventilskalierung (*K*_v, *Q*_nenn);
+    Druckluftverbrauch; Verdichter und Turbinen (Gaseigenschaften).
+  - Heizkurve, Heizlast (Idee von EN 12831-1), Summen am Heizkreisverteiler, Warmwasserzirkulation.
+  - PV-Einstrahlung und Zelltemperatur (NMOT), Ertragsabschätzung, BHKW, Elektrolyseur und Brennstoffzelle,
+    Wasserstofftank, Spannungsfall der Kabel im Energiemodul, Ladezeit von E-Fahrzeugen.
+  - Raumwerte aus einem Architekturraum (Fläche, Höhe) statt am Luftdurchlass: dafür muss das Architekturmodul seine
+    Fläche als Größe mit gemeinsamem Schlüssel bereitstellen.
+  - Richtungen: Netze sind ungerichtet; Mischung an einer Zusammenführung und die Aufteilung eines Stroms ohne Summen
+    brauchen Fließrichtungen (Pfeile oder Leitungsrichtung), die das Modell noch nicht nutzt.
+
+### 13.4 Hilfreiche Änderungen im Kern (hier nicht vorgenommen)
+
+- **Größenarten:** ein Temperaturkoeffizient (%/K, 1/K, mV/K) und eine Luftwechseleinheit h⁻¹ (1/h) für `Frequency`;
+  dann nehmen β und *n* ihre Einheiten bei Ein- und Ausgabe an.
+- **Ein gemeinsamer Netzhelfer:** `ValueNets.cs` ist in vier Modulen gleich (Module hängen nie voneinander ab). Ein
+  Core-Helfer (`PortNets` mit den Regeln Gleich/Strom/Summe/Verteilen und Anschlussrollen) würde die Kopien ersetzen und
+  könnte auch dem Elektromodul dienen.
+- **Doppelte Verknüpfungen:** der Löser sammelt die Anschlussbeziehungen jedes Objekts im Umfang, eine Verknüpfung zwischen
+  zwei Objekten kommt also zweimal hinzu (von jedem einmal). Das schadet nicht (die zweite Kopie ist nie unabhängig), eine
+  Entdoppelung nach Referenz in `ValueSolver.Solve` würde die Verknüpfungsbeziehungen aber halbieren.
