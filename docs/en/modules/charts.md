@@ -311,6 +311,65 @@ yet (integration follows in the figure model).
 Host capability: the building blocks produce data (specs, polylines, marker points); a host will draw them with the
 existing native primitives (freeforms and closed polygons), no vector picture is needed.
 
+## Export as matplotlib and pgfplots (charts v2 stage 4)
+
+The charts module offers two domain exports (`IExportProvider`) for selections that contain charts (`chart.*`), so a
+chart can be recreated as code in which every text stays editable:
+
+- **Charts as Python (matplotlib)** (`chart.matplotlib`, `.py`): a self-contained script for matplotlib 3.5 or later,
+  plain lists, no numpy code. One function `figure_1()`, `figure_2()` … per chart; `python script.py` shows the
+  charts, `python script.py out/chart.pdf` saves `out/chart-1.pdf`, `out/chart-2.pdf` … (the extension picks the
+  format). Texts are ordinary matplotlib texts, made mathtext-safe (`$` escaped).
+- **Charts as LaTeX (pgfplots)** (`chart.pgfplots`, `.tex`): a `standalone` document (pdfLaTeX or LuaLaTeX,
+  pgfplots 1.18 compatibility, libraries `fillbetween`, `groupplots`, `arrows.meta`, `patterns.meta`) with one
+  `tikzpicture` per chart (one page each); the `tikzpicture` can be copied into any document. Every text — axis titles,
+  named ticks, legend entries, titles, notes, numerals — is LaTeX text in the document font. Special characters are
+  escaped, Greek letters and symbols become LaTeX commands (pdfLaTeX-safe), German tick labels use
+  `/pgf/number format/use comma`.
+
+Both read the chart models, not the drawing: the data text, the parameters and the figure specification, with axis
+ranges, ticks and axis titles taken from the composed frame (the same layout the renderer uses). Numbers are always
+written in invariant culture (a German decimal comma never reaches the code; value labels in German stay text with a
+comma). A subscript written as `t_krit` or `f_c` becomes a math subscript (`$t_{\mathrm{krit}}$`). Every item carries
+its part key as a comment (`# series.0`, `% region.0`), and part looks apply: hidden parts are left out, part styles
+override colour, width and dash.
+
+| Feature | matplotlib | pgfplots |
+| --- | --- | --- |
+| Figure size | `figsize` from the element size (mm → inch) | `scale only axis` with the plot area of each panel (mm) |
+| Stacked panels (figures, Bode) | `plt.subplots(n, 1, sharex=True)`, height ratios from the panel shares | `groupplot` (1 × n), x labels at the bottom edge |
+| Curves | `plot` with colour, width, dash (solid, dashed, dotted, dash-dot, long dash, dash-dot-dot), markers (filled/open) | `\addplot` with the same options |
+| Gaps | `nan` in the lists | `nan` with `unbounded coords=jump` |
+| Steps | `drawstyle='steps-post'` | `const plot` |
+| Smooth curves | the renderer's spline, sampled (in log space on log axes) | same points |
+| Scales, ranges, ticks | log scales, fixed ranges, `MultipleLocator(step)`, named marks | `xmode=log`, `xtick distance`, named `xtick`/`xticklabels` |
+| Grid | major/minor per axis, grid colour and dash | `xmajorgrids`, `xminorgrids`, grid styles |
+| Principle axes | no ticks, arrowheads at the axis ends | `axis lines` with `-Stealth` |
+| Value lines, limit lines | `axhline` with label (`annotate`) | `\draw` with a `\node` |
+| Vertical marker through all panels | `ConnectionPatch` from the top of the first to the bottom of the last panel | `\coordinate`s in the panels, line drawn after the group |
+| Regions | `fill_between` with hatch `//`, `xx`, `..` or solid; "only where A is above B" as `where=[a >= b …]` mask; spans as `axvspan` | `fill between` (`fillbetween` library) with `patterns.meta` patterns; masked regions as the filled polygons computed from both curves |
+| Notes, arrows, dimensions | `annotate` (arrow `-\|>`, dimension `<\|-\|>`) | `\node`, `\draw` with `Stealth` tips |
+| Reference numerals | `annotate` with a leader line (offset in font heights) | `\node` shifted in `em` plus a leader `\draw` |
+| Bars | `bar`/`barh`, grouped by offsets, stacked with `bottom`/`left`, value labels with `bar_label`, patterns in monochrome | `ybar`/`xbar` (stacked), `nodes near coords` with the labels as symbolic meta |
+| Efficiency map | `contour` over the field (nan outside the envelope) with `clabel` | traced contour lines as plots, labels as nodes |
+| Torque power curve | `twinx` | an overlaid axis with `axis y line=right` |
+| Tolerance band | `fill_between` lower/upper | `fill between` of both limit curves |
+| Title, caption, panel titles | `suptitle`, `supxlabel`, texts in the panels | `title`, a node below the picture, nodes |
+
+Approximations: layout details (label positions shrunk to fit, the white backing of labels, maximum widths of notes,
+the exact spacing of hatch lines and arrowheads) follow each library's own layout; font sizes are relative (the
+chart font in matplotlib, `\footnotesize` and smaller in LaTeX). Stacked bars with negative values are stacked by
+pgfplots in data order. The positions of texts that only exist in the layout (region notes of the torque chart, the
+operating point label, the corner frequency label) are taken from the composed chart and converted to data
+coordinates. A figure whose specification cannot be read exports its message.
+
+Tests (`ExportTests`, `ExportRunTests`): every library item in English and German gives a plausible script (balanced
+brackets, every visible curve, bar, region, reference and numeral present) and a plausible document (balanced braces,
+paired environments, every colour defined); checks for the figure presets (hatched region with the where-mask,
+vertical marker across the panels, numerals), hidden parts, part colour overrides, decimal commas and escaping. When
+Python is installed the scripts are parsed by Python; with matplotlib they are run headless (Agg) and must save every
+figure; with pdflatex the documents are compiled. Without these tools those tests are skipped.
+
 ## Tests and gallery
 
 `tests/InventaSketch.Modules.Charts.Tests` covers registration, bilingual names, parameters, options and actions,

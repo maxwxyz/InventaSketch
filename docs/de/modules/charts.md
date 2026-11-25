@@ -332,6 +332,66 @@ nutzen sie noch nicht (die Einbindung folgt im Figurenmodell).
 Hosts: Die Bausteine erzeugen Daten (Spezifikationen, Polylinien, Markierungspunkte); ein Host zeichnet sie mit den
 vorhandenen nativen Primitiven (Freihandformen und geschlossene Polygone), ein Vektorbild ist nicht nötig.
 
+## Export als matplotlib und pgfplots (Diagramme v2, Stufe 4)
+
+Das Diagramm-Modul bietet zwei Fachexporte (`IExportProvider`) für Auswahlen mit Diagrammen (`chart.*`), mit denen sich
+ein Diagramm als Code nachbauen lässt, in dem jeder Text bearbeitbar bleibt:
+
+- **Diagramme als Python (matplotlib)** (`chart.matplotlib`, `.py`): ein eigenständiges Skript für matplotlib 3.5 oder
+  neuer, einfache Listen, kein numpy-Code. Eine Funktion `figure_1()`, `figure_2()` … je Diagramm; `python skript.py`
+  zeigt die Diagramme, `python skript.py out/bild.pdf` speichert `out/bild-1.pdf`, `out/bild-2.pdf` … (die Endung
+  wählt das Format). Texte sind gewöhnliche matplotlib-Texte, mathtext-sicher gemacht (`$` maskiert).
+- **Diagramme als LaTeX (pgfplots)** (`chart.pgfplots`, `.tex`): ein `standalone`-Dokument (pdfLaTeX oder LuaLaTeX,
+  pgfplots-Kompatibilität 1.18, Bibliotheken `fillbetween`, `groupplots`, `arrows.meta`, `patterns.meta`) mit einem
+  `tikzpicture` je Diagramm (je eine Seite); das `tikzpicture` lässt sich in jedes Dokument kopieren. Jeder Text –
+  Achsentitel, benannte Teilstriche, Legendeneinträge, Titel, Anmerkungen, Bezugszeichen – ist LaTeX-Text in der
+  Dokumentschrift. Sonderzeichen werden maskiert, griechische Buchstaben und Symbole werden LaTeX-Befehle
+  (pdfLaTeX-tauglich), deutsche Skalenbeschriftungen nutzen `/pgf/number format/use comma`.
+
+Beide lesen die Diagrammmodelle, nicht die Zeichnung: den Datentext, die Parameter und die Bildspezifikation;
+Achsbereiche, Teilung und Achsentitel kommen aus dem berechneten Rahmen (dasselbe Layout wie beim Zeichnen). Zahlen
+werden immer kulturunabhängig geschrieben (ein deutsches Dezimalkomma gelangt nie in den Code; deutsche
+Wertbeschriftungen bleiben Text mit Komma). Ein Index wie `t_krit` oder `f_c` wird ein mathematischer Index
+(`$t_{\mathrm{krit}}$`). Jedes Element trägt seinen Teileschlüssel als Kommentar (`# series.0`, `% region.0`), und das
+Aussehen der Teile gilt: ausgeblendete Teile entfallen, Teilestile ersetzen Farbe, Breite und Strichart.
+
+| Merkmal | matplotlib | pgfplots |
+| --- | --- | --- |
+| Bildgröße | `figsize` aus der Elementgröße (mm → Zoll) | `scale only axis` mit der Plotfläche jedes Teilbilds (mm) |
+| Gestapelte Teilbilder (Bilder, Bode) | `plt.subplots(n, 1, sharex=True)`, Höhenverhältnisse aus den Anteilen | `groupplot` (1 × n), x-Beschriftung am unteren Rand |
+| Kurven | `plot` mit Farbe, Breite, Strichart (durchgezogen, gestrichelt, gepunktet, Strichpunkt, lang gestrichelt, Strich-Punkt-Punkt), Markern (gefüllt/offen) | `\addplot` mit denselben Optionen |
+| Lücken | `nan` in den Listen | `nan` mit `unbounded coords=jump` |
+| Stufen | `drawstyle='steps-post'` | `const plot` |
+| Geglättete Kurven | der Spline des Renderers, abgetastet (bei log. Achsen im log. Raum) | dieselben Punkte |
+| Skalen, Bereiche, Teilung | log. Skalen, feste Bereiche, `MultipleLocator(Schritt)`, benannte Marken | `xmode=log`, `xtick distance`, benannte `xtick`/`xticklabels` |
+| Gitter | Haupt-/Nebengitter je Achse, Gitterfarbe und Strichart | `xmajorgrids`, `xminorgrids`, Gitterstile |
+| Prinzipachsen | keine Teilstriche, Pfeilspitzen an den Achsenden | `axis lines` mit `-Stealth` |
+| Wertlinien, Grenzlinien | `axhline` mit Beschriftung (`annotate`) | `\draw` mit einem `\node` |
+| Senkrechte Markierung durch alle Teilbilder | `ConnectionPatch` vom oberen Rand des ersten zum unteren Rand des letzten Teilbilds | `\coordinate`s in den Teilbildern, Linie nach der Gruppe gezeichnet |
+| Flächen | `fill_between` mit Schraffur `//`, `xx`, `..` oder flächig; „nur wo A über B liegt“ als Maske `where=[a >= b …]`; x-Bereiche als `axvspan` | `fill between` (Bibliothek `fillbetween`) mit `patterns.meta`-Mustern; maskierte Flächen als die aus beiden Kurven berechneten Polygone |
+| Anmerkungen, Pfeile, Maße | `annotate` (Pfeil `-\|>`, Maßpfeil `<\|-\|>`) | `\node`, `\draw` mit `Stealth`-Spitzen |
+| Bezugszeichen | `annotate` mit Hinweislinie (Versatz in Schrifthöhen) | `\node` um `em` verschoben plus Hinweislinie `\draw` |
+| Balken | `bar`/`barh`, gruppiert über Versatz, gestapelt mit `bottom`/`left`, Wertbeschriftung mit `bar_label`, Muster in Schwarz-Weiß | `ybar`/`xbar` (gestapelt), `nodes near coords` mit den Beschriftungen als symbolische Metadaten |
+| Wirkungsgradkennfeld | `contour` über dem Feld (nan außerhalb der Hüllkurve) mit `clabel` | verfolgte Höhenlinien als Plots, Beschriftungen als Knoten |
+| Leistungskurve (Drehmoment) | `twinx` | überlagerte Achse mit `axis y line=right` |
+| Toleranzband | `fill_between` unten/oben | `fill between` der beiden Grenzkurven |
+| Titel, Bildunterschrift, Teilbildtitel | `suptitle`, `supxlabel`, Texte in den Teilbildern | `title`, Knoten unter dem Bild, Knoten |
+
+Näherungen: Layoutdetails (verkleinerte Beschriftungen, weiße Hinterlegung, Höchstbreiten von Anmerkungen, genauer
+Abstand der Schraffurlinien und Pfeilspitzen) folgen dem Layout der jeweiligen Bibliothek; Schriftgrößen sind relativ
+(Diagrammschrift in matplotlib, `\footnotesize` und kleiner in LaTeX). Gestapelte Balken mit negativen Werten stapelt
+pgfplots in Datenreihenfolge. Die Lage von Texten, die nur im Layout existieren (Bereichshinweise der
+Drehmomentkennlinie, Betriebspunkt- und Eckfrequenzbeschriftung), wird aus dem berechneten Diagramm übernommen und in
+Datenkoordinaten umgerechnet. Ein Bild mit unlesbarer Spezifikation exportiert seine Meldung.
+
+Tests (`ExportTests`, `ExportRunTests`): Jede Bibliotheksvorlage ergibt auf Englisch und Deutsch ein plausibles
+Skript (ausgeglichene Klammern, jede sichtbare Kurve, jeder Balken, jede Fläche, Bezugslinie und jedes Bezugszeichen
+vorhanden) und ein plausibles Dokument (ausgeglichene geschweifte Klammern, gepaarte Umgebungen, jede Farbe
+definiert); dazu Prüfungen der Bildvorlagen (schraffierte Fläche mit Maske, senkrechte Markierung durch die
+Teilbilder, Bezugszeichen), ausgeblendeter Teile, überschriebener Teilefarben, Dezimalkommas und Maskierung. Ist Python
+installiert, werden die Skripte von Python geparst; mit matplotlib laufen sie ohne Bildschirm (Agg) und müssen jedes
+Bild speichern; mit pdflatex werden die Dokumente übersetzt. Ohne diese Werkzeuge werden diese Tests übersprungen.
+
 ## Tests und Galerie
 
 `tests/InventaSketch.Modules.Charts.Tests` prüft Registrierung, zweisprachige Namen, Parameter, Optionen und
