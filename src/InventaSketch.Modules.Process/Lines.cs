@@ -226,7 +226,7 @@ namespace InventaSketch.Modules.Process
         {
             var p = ctx.Doc.ResolvePoints(o);
             if (p.Count < 2) return Array.Empty<string>();
-            return Crossings.Find(ctx.Doc, o, Path(o, p, ctx), x => PathOf(x, ctx)).Select(c => c.Other).Distinct();
+            return Crossings.Find(ctx.Doc, o, Path(o, p, ctx), x => PathOf(x, ctx), ctx.Registry ?? Owner).Select(c => c.Other).Distinct();
         }
 
         public static Style StyleOf(string kind) => kind switch
@@ -245,7 +245,7 @@ namespace InventaSketch.Modules.Process
             var kind = o.Str("kind", "main");
             var style = StyleOf(kind);
             if (o.Flag("arrow", false)) style = style with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small };
-            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx)).Where(c => c.Above).ToList() : new List<Crossing>();
+            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx), ctx.Registry ?? Owner).Where(c => c.Above).ToList() : new List<Crossing>();
             Primitive main = hops.Count == 0 ? Prim.Polyline(route, style) : Prim.Path(Crossings.HopPath(route, hops), style);
             var list = new List<Primitive> { main with { Tag = ProcessTags.Line } };
             if (kind == "traced") list.Add(Prim.Polyline(Routing.Offset(route, 0.9), S.Dashed) with { Tag = "tracer" });

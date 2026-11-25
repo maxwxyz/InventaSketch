@@ -167,8 +167,13 @@ lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, …).
 - Robotersockel: **Mount** `base` (Fuß auf dem Boden; beim Delta oben auf der Grundplatte). Er rastet auf dem Mount
   `top` des Robotersockels oder dem Mount `deck` des mobilen Roboters ein (mobiler Manipulator).
 - Roboterflansch: **Mount** `flange` – der eigene Mount `flange` eines Greifers oder Werkzeugs rastet dort ein (Mount auf
-  Mount); dazu **Port** `tcp` am selben Punkt für TCP-Marken und Koordinatensysteme (Port auf Port). Die Ausrichtung des
-  Werkzeugs wird nicht automatisch übernommen: das Werkzeug auf die Flanschrichtung drehen (offener Punkt).
+  Mount); dazu **Port** `tcp` am selben Punkt für TCP-Marken und Koordinatensysteme (Port auf Port). Seit 25.11.2026 ist
+  der Flansch-Mount entlang der Werkzeugachse **gerichtet** (`Anchor.Directed`, wo die Achse in der Ansicht sichtbar ist),
+  und die Mounts der Werkzeuge zeigen zum Roboter zurück: Der Flansch bietet ein „+“ (Anbau-Port `mount.flange`) mit den
+  Greifern und Werkzeugen, das gewählte wird **zur Werkzeugachse gedreht** auf den Flansch gesetzt (in PowerPoint
+  geprüft, Szenario `robot-tool`). Ein auf den Flansch gezogenes Werkzeug rastet nur in der Lage ein; ein früher
+  angebautes Werkzeug folgt späteren Gelenkänderungen nicht und behält seine eigene Größe (es wird nicht auf den Flansch
+  skaliert) – offen.
 - Werkzeuge: Port `tcp` am Greifpunkt / an der Drahtspitze / an der Werkzeugspitze; der Port `tcp` der TCP-Marke rastet
   dort ein.
 - Zaun: Schienen entlang jedes Abschnitts; die Ports `hinge`/`latch` der Tür und die Ports des Lichtvorhangs docken

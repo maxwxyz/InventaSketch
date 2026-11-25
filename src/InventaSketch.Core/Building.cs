@@ -21,6 +21,11 @@ namespace InventaSketch.Core
         Bevel,
         /// <summary>Free joint of a link (linkage): the next link, a fixed pivot, a joint or a slider goes here.</summary>
         Joint,
+        /// <summary>
+        /// A directed mount (robot flange): a part with a directed mount of the same id goes here, turned so its mount
+        /// direction faces the port's (a gripper on the flange, pointing along the tool axis).
+        /// </summary>
+        Mount,
     }
 
     /// <summary>A place on an element where a fitting part can be docked: page point, outward direction, kind.</summary>
@@ -126,6 +131,12 @@ namespace InventaSketch.Core
                 }
             }
 
+            // Directed mounts (robot flange): a part with a matching mount goes there, facing it; taken if another element's
+            // mount already sits on it.
+            foreach (var m in own.Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Mount && a.Direction is not null && a.Id is not null))
+                if (!others.Any(x => x.Anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Mount && a.P.DistanceTo(m.P) <= 0.5)))
+                    list.Add(new BuildPort("mount." + m.Id, PortKind.Mount, m.P, m.Direction!.Value));
+
             // A hub on no shaft (and no axis of its own): a shaft through it, or a concentric gear or carrier.
             var hub = own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == "hub")
                 ?? own.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && !IsPin(a));
@@ -200,6 +211,26 @@ namespace InventaSketch.Core
                     .OrderBy(i => i.TypeId == o.Type ? 0 : 1).ToList();
                 return parts.Where(i => Place(registry, doc, id, port, i, lang) is not null).Take(max).ToList();
             }
+            if (port.Kind == PortKind.Mount)
+            {
+                // Parts with a directed mount of the same id (tools for a flange): the element's suggestions first, then the
+                // other types of its module (directed mounts are a module's own connection faces, so the search stays small).
+                var mountId = port.Id.Substring("mount.".Length);
+                var prefix = o.Type.Split('.')[0] + ".";
+                var firsts = registry.Suggestions(o, 14)
+                    .Concat(registry.Library.Where(i => i.TypeId.StartsWith(prefix, StringComparison.Ordinal)).GroupBy(i => i.TypeId).Select(g => g.First())).ToList();
+                var fits = new List<LibraryItem>();
+                foreach (var item in firsts)
+                {
+                    if (fits.Count >= max) break;
+                    if (fits.Any(i => i.TypeId == item.TypeId) || registry.Type(item.TypeId) is null) continue;
+                    var probe = registry.Create(item, Vec2.Zero);
+                    if (probe.IsPointGeometry) continue;
+                    if (!Anchors(registry, doc, probe, lang).Any(a => a.Role == AnchorRole.Mount && a.Id == mountId && a.Direction is not null)) continue;
+                    if (Place(registry, doc, id, port, item, lang) is not null) fits.Add(item);
+                }
+                return fits;
+            }
             var candidates = registry.Suggestions(o, 14).ToList();
             // The element's own type in its view (a gear next to a gear, the next shaft section).
             var same = registry.Library.FirstOrDefault(i => i.TypeId == o.Type && i.View == o.View);
@@ -230,6 +261,19 @@ namespace InventaSketch.Core
             if (port.Kind == PortKind.Joint) return PlaceAtJoint(registry, doc, sel, port, item, lang);
             var probe = registry.Create(item, port.At);
             if (probe.IsPointGeometry) return null;
+            if (port.Kind == PortKind.Mount)
+            {
+                // Turn the part so its mount direction faces the port, then put its mount on the port.
+                var mountId = port.Id.Substring("mount.".Length);
+                var mount = Anchors(registry, doc, probe, lang).FirstOrDefault(a => a.Role == AnchorRole.Mount && a.Id == mountId && a.Direction is not null);
+                if (mount is null) return null;
+                var want = port.Dir * -1;
+                var have = mount.Direction!.Value;
+                var turn = (Math.Atan2(want.Y, want.X) - Math.Atan2(have.Y, have.X)) * 180 / Math.PI;
+                var turned = probe with { Transform = probe.Transform with { Rotation = Math.Round(((probe.Transform.Rotation + turn) % 360 + 540) % 360 - 180, 6) } };
+                var tm = Anchors(registry, doc, turned, lang).First(a => a.Role == AnchorRole.Mount && a.Id == mountId);
+                return Translate(turned, port.At - tm.P);
+            }
             probe = probe with { Transform = probe.Transform with { Rotation = sel.Transform.Rotation } };
             var anchors = Anchors(registry, doc, probe, lang);
             var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);

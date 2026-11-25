@@ -50,6 +50,7 @@ TEXTS = {
     "portPin": ("Planet pin", "Planetenbolzen"),
     "portBevel": ("Cone apex", "Kegelspitze"),
     "portJoint": ("Joint", "Gelenk"),
+    "portMount": ("Flange (tool)", "Flansch (Werkzeug)"),
     "dirRight": ("right", "rechts"),
     "dirDownRight": ("bottom right", "rechts unten"),
     "dirDown": ("bottom", "unten"),

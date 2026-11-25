@@ -124,6 +124,7 @@
   "port.Hub": { "en": "Add a shaft through the hub", "de": "Welle durch die Nabe" },
   "port.Pin": { "en": "Add a planet on this pin", "de": "Planet auf diesen Bolzen setzen" },
   "port.Bevel": { "en": "Add a mating bevel gear here", "de": "Gegen-Kegelrad hier anfügen" },
+  "port.Mount": { "en": "Add a tool here, facing along the flange", "de": "Werkzeug hier anbauen, ausgerichtet am Flansch" },
   "port.Joint": { "en": "Add the next link, a fixed pivot or a slider here", "de": "Nächstes Glied, Gestelldrehpunkt oder Schieber anfügen" },
   "port.AxisEnd": { "en": "Add at the shaft end", "de": "Am Wellenende anfügen" },
   "port.AxisEnd.stretch": { "en": "Add at the shaft end (click) · lengthen the shaft (drag)", "de": "Am Wellenende anfügen (Klick) · Welle verlängern (ziehen)" },

@@ -161,8 +161,12 @@ greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, no
 - Robot base: **mount** `base` (foot on the floor; on top of the delta's base plate). It snaps onto the mount `top` of
   the pedestal or the mount `deck` of the mobile robot (mobile manipulator).
 - Robot flange: **mount** `flange` – a gripper's or tool's own mount `flange` snaps there (mount onto mount); and
-  **port** `tcp` at the same point for TCP markers and frames (port onto port). The tool's orientation is not taken
-  over automatically: rotate the tool to the flange direction (open issue).
+  **port** `tcp` at the same point for TCP markers and frames (port onto port). Since 2026-11-25 the flange mount is
+  **directed** along the tool axis (`Anchor.Directed`, where the axis shows in the view) and the tools' mounts face
+  back to the robot: the flange offers a "+" (build port `mount.flange`) with the grippers and tools, and the chosen one
+  is placed on the flange **turned to the tool axis** (checked in PowerPoint, scenario `robot-tool`). Dragging a tool
+  onto the flange snaps the position only; a tool placed earlier does not follow later joint changes, and it keeps its
+  own size (it is not scaled to the flange) – open.
 - Tools: port `tcp` at the gripping point / wire tip / tool tip; the TCP marker's port `tcp` snaps there.
 - Fence: rails along every segment; door ports `hinge`/`latch` and light-curtain ports dock anywhere on them.
 - Conveyor: rail `belt` along the belt surface (workpiece ports dock anywhere on it).

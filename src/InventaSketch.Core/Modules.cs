@@ -334,6 +334,20 @@ namespace InventaSketch.Core
         /// <summary>Id of the object that contributed the anchor (set by <see cref="Snapper.Targets"/>; null for page anchors).</summary>
         public string? Owner { get; init; }
         public static Anchor Point(AnchorRole role, Vec2 p, string? id = null) => new(AnchorKind.Point, role, p) { Id = id };
+
+        /// <summary>
+        /// A point anchor with a direction (<see cref="Q"/> = a point one unit along it): the outward direction of a connection
+        /// face, e.g. a robot flange along the tool axis, or a tool's mount pointing back to the flange. Parts docked there
+        /// with "+" are turned so the two directions face each other (<see cref="Building"/>).
+        /// </summary>
+        public static Anchor Directed(AnchorRole role, Vec2 p, Vec2 dir, string? id = null)
+            => new(AnchorKind.Point, role, p, p + dir.Normalized()) { Id = id, HasDirection = true };
+
+        /// <summary>True for point anchors with a direction (<see cref="Directed"/>).</summary>
+        public bool HasDirection { get; init; }
+
+        /// <summary>The unit direction of a directed point anchor, else null.</summary>
+        public Vec2? Direction => HasDirection && (Q - P).Length > 1e-9 ? (Q - P).Normalized() : null;
         public static Anchor Circle(AnchorRole role, Vec2 c, double r) => new(AnchorKind.Circle, role, c, default, r);
         public static Anchor Segment(AnchorRole role, Vec2 a, Vec2 b) => new(AnchorKind.Segment, role, a, b);
         /// <summary>A <see cref="AnchorRole.Rail"/> segment from <paramref name="a"/> to <paramref name="b"/>.</summary>
@@ -351,7 +365,7 @@ namespace InventaSketch.Core
 
         public Anchor Transform(Matrix2D m) => Kind switch
         {
-            AnchorKind.Point => this with { P = m.Apply(P) },
+            AnchorKind.Point => HasDirection ? this with { P = m.Apply(P), Q = m.Apply(Q) } : this with { P = m.Apply(P) },
             AnchorKind.Segment => this with { P = m.Apply(P), Q = m.Apply(Q) },
             // Circles: radius scales with the mean linear scale (free scaling may make it an ellipse visually). A circle with Q
             // set carries an axis direction (pitch circle of a gear seen from the side, see AxisOf).
@@ -449,6 +463,20 @@ namespace InventaSketch.Core
         public SketchDocument Doc { get; }
         public Lang Lang { get; }
         public bool Monochrome { get; }
+
+        /// <summary>
+        /// The registry rendering with this context (set by the registry's render and anchor calls; may be null for a type
+        /// called directly). Types that read other objects' types (crossings with other modules' lines, the parts list) use
+        /// it rather than <see cref="ObjectType.Owner"/>, which is shared by every registry the type is registered with.
+        /// </summary>
+        public Registry? Registry { get; internal set; }
+
+        /// <summary>A context for <paramref name="registry"/>.</summary>
+        public RenderContext For(Registry registry)
+        {
+            Registry ??= registry;
+            return this;
+        }
     }
 
     /// <summary>Base class for all object types.</summary>
@@ -1004,6 +1032,7 @@ namespace InventaSketch.Core
         public IReadOnlyList<Primitive> RenderLocal(SketchObject o, RenderContext ctx)
         {
             var type = TypeOf(o);
+            ctx.For(this);
             var local = type.Render(o, ctx);
             var k = ctx.Doc.Settings.LineGroup is double g && g > 0 ? g / Style.DesignLineGroup : 1;
             if (Math.Abs(k - 1) < 1e-9 && o.Style is null) return local;
@@ -1032,6 +1061,7 @@ namespace InventaSketch.Core
         /// <summary>Generic box anchors (centre, corners, edge midpoints) plus type anchors, in page coordinates.</summary>
         public IEnumerable<Anchor> PageAnchors(SketchObject o, RenderContext ctx)
         {
+            ctx.For(this);
             var type = Type(o.Type);
             if (o.IsPointGeometry)
             {

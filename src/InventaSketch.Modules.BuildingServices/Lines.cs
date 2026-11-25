@@ -172,7 +172,7 @@ namespace InventaSketch.Modules.BuildingServices
         {
             var p = PathOf(o, ctx);
             if (p.Count < 2) return Array.Empty<string>();
-            return Crossings.Find(ctx.Doc, o, p, x => PathOf(x, ctx)).Select(c => c.Other).Distinct();
+            return Crossings.Find(ctx.Doc, o, p, x => PathOf(x, ctx), ctx.Registry ?? Owner).Select(c => c.Other).Distinct();
         }
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
@@ -181,7 +181,7 @@ namespace InventaSketch.Modules.BuildingServices
             var view = ViewOf(o);
             var style = Media.PipeStyle(m, view == BsViews.Schematic ? Math.Max(0.5, m.Width) : (double?)null);
             if (o.Flag("arrow", false)) style = style with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small };
-            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, p, x => PathOf(x, ctx)).Where(c => c.Above).ToList() : new List<Crossing>();
+            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, p, x => PathOf(x, ctx), ctx.Registry ?? Owner).Where(c => c.Above).ToList() : new List<Crossing>();
             Primitive main = hops.Count == 0 ? Prim.Polyline(p, style) : Prim.Path(Crossings.HopPath(p, hops), style);
             var list = new List<Primitive> { main with { Tag = BsTags.Pipe } };
             list.AddRange(Junctions(o, ctx.Doc.ResolvePoints(o), 0.6, m.Color));

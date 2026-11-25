@@ -225,7 +225,7 @@ namespace InventaSketch.Modules.Fluid
         {
             var p = ctx.Doc.ResolvePoints(o);
             if (p.Count < 2) return Array.Empty<string>();
-            return Crossings.Find(ctx.Doc, o, Path(o, p, ctx), x => PathOf(x, ctx)).Select(c => c.Other).Distinct();
+            return Crossings.Find(ctx.Doc, o, Path(o, p, ctx), x => PathOf(x, ctx), ctx.Registry ?? Owner).Select(c => c.Other).Distinct();
         }
 
         /// <summary>On a line one adds valves, cylinders and gauges ("Insert ▸").</summary>
@@ -257,7 +257,7 @@ namespace InventaSketch.Modules.Fluid
             var kind = KindOf(o);
             if (kind == "hose") return new Primitive[] { Prim.Path(Hose(p), S.Line) with { Tag = "hose" } };
             var route = Path(o, p, ctx);
-            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx)).Where(c => c.Above).ToList() : new List<Crossing>();
+            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx), ctx.Registry ?? Owner).Where(c => c.Above).ToList() : new List<Crossing>();
             Primitive main = hops.Count == 0 ? Prim.Polyline(route, StyleOf(kind)) : Prim.Path(Crossings.HopPath(route, hops), StyleOf(kind));
             var list = new List<Primitive> { main with { Tag = "line" } };
             // Junction dot where an end is docked onto another line (a tee, Polylines.Branch).

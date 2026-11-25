@@ -129,7 +129,10 @@ in Eingriff, durch die Nabe). `Polylines` fügt Ecken ein, entfernt sie und setz
 verlängert, teilt und verbindet Linien; angedockte Abzweige bleiben an ihrem Platz. `Building` liefert die Andockpunkte
 eines Elements (Eingriffsseiten, Hohlrad innen, freie Achsenden, freie Nabe), die dazu passenden Bibliothekselemente und
 setzt sie gekoppelt; `Attachments.OnSurface` dockt Beschriftungsenden irgendwo auf dem Element darunter an. `Crossings` findet Kreuzungen
-von Leitungen und Rohren (die obere springt) und verbindet sie an einer Kreuzung. `GearTrain` löst die Drehzahlen eines
+von Leitungen und Rohren (die obere springt; eine Regel für alle springenden Leitungsfamilien – Leitungen von
+Fluidtechnik, Elektrotechnik, Haustechnik, Verfahrenstechnik und Energie springen übereinander, 25.11.2026) und verbindet
+sie an einer Kreuzung. Gerichtete Anker (`Anchor.Directed`) tragen die Außenrichtung einer Anschlussfläche; ein
+gerichteter Mount bietet einen Anbau-Port, an dem ein Teil ihm zugewandt gesetzt wird (Roboterflansch → Werkzeug). `GearTrain` löst die Drehzahlen eines
 Getriebezugs (lineares Gleichungssystem aus Eingriff, Willis, Welle, Stufenrad, Riemen, Kegelradpaar und festen Teilen) und dreht ihn;
 `Assemblies` zerlegt vordefinierte Baugruppen in gekoppelte Einzelteile. `Linkage` erkennt selbst gebaute
 Koppelgetriebe (an Gelenken angedockte Glieder, Gestellpunkte, Schieber, Gleitsteine in Schlitzen anderer Glieder),

@@ -4,12 +4,14 @@ using System.Linq;
 
 namespace InventaSketch.Core
 {
-    /// <summary>Where a line crosses another line of the same kind without being connected to it.</summary>
+    /// <summary>Where a line crosses another line (of any module that hops at crossings) without being connected to it.</summary>
     public sealed record Crossing(string Other, Vec2 At, int Segment, bool Above);
 
     /// <summary>
     /// Crossings of wires and pipes (<see cref="ObjectType.HopsAtCrossings"/>): the line drawn later (higher in the page
-    /// order) shows a small hop (bridge) where it crosses an earlier one, so crossings read as "not connected". Hosts offer a
+    /// order) shows a small hop (bridge) where it crosses an earlier one, so crossings read as "not connected". One rule
+    /// for every line family: a hydraulic line hops over an electric wire, a process pipe over an energy cable, as over a
+    /// line of its own kind. Hosts offer a
     /// connect icon at each crossing (<see cref="Connect"/>: both parts of the line are docked onto the other line, a
     /// junction dot appears).
     /// </summary>
@@ -19,12 +21,13 @@ namespace InventaSketch.Core
         public const double HopRadius = 1.2;
 
         /// <summary>
-        /// Crossings of line <paramref name="o"/> (drawn path <paramref name="path"/>) with the other lines of the same type on
-        /// its page (their drawn paths from <paramref name="pathOf"/>): proper intersections away from the segment ends of both
-        /// lines (ends docked onto a line are branches, not crossings). <see cref="Crossing.Segment"/> indexes
-        /// <paramref name="path"/>.
+        /// Crossings of line <paramref name="o"/> (drawn path <paramref name="path"/>) with the other lines on its page: lines of
+        /// the same type with their drawn paths from <paramref name="pathOf"/>, and – given the <paramref name="registry"/> –
+        /// lines of other types that hop at crossings too, with their drawn paths from their rails. Proper intersections away
+        /// from the segment ends of both lines (ends docked onto a line are branches, not crossings).
+        /// <see cref="Crossing.Segment"/> indexes <paramref name="path"/>.
         /// </summary>
-        public static IReadOnlyList<Crossing> Find(SketchDocument doc, SketchObject o, IReadOnlyList<Vec2> path, Func<SketchObject, IReadOnlyList<Vec2>> pathOf)
+        public static IReadOnlyList<Crossing> Find(SketchDocument doc, SketchObject o, IReadOnlyList<Vec2> path, Func<SketchObject, IReadOnlyList<Vec2>> pathOf, Registry? registry = null)
         {
             var list = new List<Crossing>();
             if (path.Count < 2) return list;
@@ -32,10 +35,14 @@ namespace InventaSketch.Core
             if (page is null) return list;
             var order = page.Order.ToList();
             var own = order.IndexOf(o.Id);
+            RenderContext? ctx = null;
             foreach (var other in doc.ObjectsOn(page))
             {
-                if (other.Id == o.Id || other.Type != o.Type || other.Points is null) continue;
-                var q = pathOf(other);
+                if (other.Id == o.Id || other.Points is null) continue;
+                IReadOnlyList<Vec2> q;
+                if (other.Type == o.Type) q = pathOf(other);
+                else if (registry?.Type(other.Type)?.HopsAtCrossings == true) q = RailPath(registry, doc, other, ctx ??= new RenderContext(doc));
+                else continue;
                 var above = own > order.IndexOf(other.Id);
                 for (var i = 0; i + 1 < path.Count; i++)
                     for (var j = 0; j + 1 < q.Count; j++)
@@ -54,15 +61,18 @@ namespace InventaSketch.Core
         {
             if (registry.Type(o.Type)?.HopsAtCrossings != true) return Array.Empty<Crossing>();
             var ctx = new RenderContext(doc, lang);
-            IReadOnlyList<Vec2> PathOf(SketchObject x)
-            {
-                var rails = registry.PageAnchors(x, ctx).Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Rail).ToList();
-                if (rails.Count == 0) return doc.ResolvePoints(x);
-                var pts = new List<Vec2> { rails[0].P };
-                foreach (var r in rails) { if (pts[pts.Count - 1].DistanceTo(r.P) > 1e-9) pts.Add(r.P); pts.Add(r.Q); }
-                return pts;
-            }
-            return Find(doc, o, PathOf(o), PathOf);
+            IReadOnlyList<Vec2> PathOf(SketchObject x) => RailPath(registry, doc, x, ctx);
+            return Find(doc, o, PathOf(o), PathOf, registry);
+        }
+
+        /// <summary>The drawn path of a line from its rails (<see cref="AnchorRole.Rail"/>), else its points.</summary>
+        private static IReadOnlyList<Vec2> RailPath(Registry registry, SketchDocument doc, SketchObject x, RenderContext ctx)
+        {
+            var rails = registry.PageAnchors(x, ctx).Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Rail).ToList();
+            if (rails.Count == 0) return doc.ResolvePoints(x);
+            var pts = new List<Vec2> { rails[0].P };
+            foreach (var r in rails) { if (pts[pts.Count - 1].DistanceTo(r.P) > 1e-9) pts.Add(r.P); pts.Add(r.Q); }
+            return pts;
         }
 
         /// <summary>The crossing lies away from both segment ends (an end on the other line is a branch, not a crossing).</summary>
