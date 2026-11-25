@@ -754,6 +754,14 @@ namespace InventaSketch.AddIn.OnSlide
                     0x44 when ctrl && !shift => "dup",                // Ctrl+D: duplicate with new ids
                     _ => null,
                 };
+                // With a chart part selected: Tab / Shift+Tab steps through the parts, Esc returns to the whole element.
+                if (_part is not null && (vk == VK_TAB && !ctrl || vk == VK_ESCAPE && !ctrl && !shift))
+                {
+                    var back = shift;
+                    var escape = vk == VK_ESCAPE;
+                    Post(() => { if (escape) SelectPart(null); else StepPart(back); });
+                    return true;
+                }
                 // Tab / Shift+Tab: the next part of the assembly (coupled parts only; else PowerPoint's own Tab).
                 if (vk == VK_TAB && !ctrl)
                 {

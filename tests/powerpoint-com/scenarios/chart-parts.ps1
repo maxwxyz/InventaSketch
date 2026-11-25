@@ -53,6 +53,14 @@ Save-IskShot $S '2-part-selected'
 $bar = $addin.BarIds()
 Write-IskInfo ("bar: " + $bar)
 Assert-Isk $S ($bar -match 'part:part.hide' -and $bar -match 'info:part') 'the bar shows the actions of the selected curve'
+# Tab steps to the next part, Shift+Tab back to the curve.
+[IskTest.Native]::keybd_event(0x09, 0, 0, [UIntPtr]::Zero); [IskTest.Native]::keybd_event(0x09, 0, 2, [UIntPtr]::Zero); Start-Sleep 2
+$tabbed = $addin.SelectedPart()
+Write-IskInfo ("after Tab: '$tabbed'")
+Assert-Isk $S ($tabbed -ne '' -and $tabbed -ne 'series.0') 'Tab selects the next part'
+[IskTest.Native]::keybd_event(0x10, 0, 0, [UIntPtr]::Zero); [IskTest.Native]::keybd_event(0x09, 0, 0, [UIntPtr]::Zero)
+[IskTest.Native]::keybd_event(0x09, 0, 2, [UIntPtr]::Zero); [IskTest.Native]::keybd_event(0x10, 0, 2, [UIntPtr]::Zero); Start-Sleep 2
+Assert-Isk $S ($addin.SelectedPart() -eq 'series.0') 'Shift+Tab goes back to the curve'
 $addin.Command('part:part.hide') | Out-Null; Start-Sleep 2
 $shape = $S.Slide.Shapes.Item($name)
 Save-IskShot $S '3-curve-hidden'
