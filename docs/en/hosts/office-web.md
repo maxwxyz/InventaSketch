@@ -62,6 +62,13 @@ undo step each (no step when nothing changes).
 | `transformEffect` | `ids` | `{ mirrorH, mirrorV, rotate90 }`: whether the transform changes the rendered drawing (`Symmetry`, arrowheads included) |
 | `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | selection-wide operations that change something `{ id, label, icon }` (`mview:<view>` one view for all with the mechanism kept, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); state (one undo step) |
 | `assembly` | `ids` | ids of the selection plus every object coupled with it (gear train, drive), selection first |
+| `connected`, `connectOptions` | `ids`, `mode` (auto, net, coupled, chain, loop, walls); `ids`, `lang` | "Select connected": the ids, the given ones first; the kinds that add something `{ kind, label, hint, ids }` |
+| `parts`, `partAt`, `partActions`, `applyPartAction`, `partOutline` | `id`, `lang`; `id`, `x`, `y`, `tolerance`; `id`, `part`; `id`, `part`, `action`, `input`; `id`, `part` | parts of a chart `{ key, label, kind, hidden }`; `{ part }`; the part's actions (with the choice fields); state; outline polylines in page mm |
+| `dragHandles`, `moveHandle` | `ids`, `lang`; `id`, `key`, `x`, `y`, `preview` | grips on values `[{ id, handles: [{ key, x, y, constraint, dx, dy, label, part, showWith, byPart }] }]`; state (one undo step) or `{ handle }` as it would be |
+| `values`, `setValue`, `clearValue`, `explain` | `id`, `lang`, `digits`; `id`, `key`, `text`; `id`, `key`; `id`, `key`, `digits` | value table (engineering-calculations.md 10.6); state; state; `{ steps, text }` |
+| `calc`, `convertUnit` | `text`, `lang`, `digits`; `text`, `unit` | calculator with units `{ value, unit, text, steps }`; `{ value, unit, text, kind, units }` |
+| `importCode` | `text`, `mode` (auto, matplotlib, pgfplots, tikz), `lang` | `{ state, format, ids, imported, skipped, message }` (read, never run; one undo step) |
+| `setValueLevel` | `text` ("quick", "explore", "engineer") | state (`valueLevel`); one undo step when it changes (added 2026-11-25 for the web add-in) |
 | `trace` | `id`, `index` (default: last point), `max` (steps, default 72) | `{ points, closed }`: path of the link's point while the chain's crank turns; empty unless the chain has F = 1 |
 | `drawGhosts` | `id` (a link), `max` (default 4) | state; dashed grey copies of the chain over the crank's range, grouped |
 | `couplingPreview` | `ids`, `dx`/`dy` or `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: neighbours the coupling would move or scale, as SVG in page mm (`svg` empty when nothing follows); nothing changes |
@@ -78,23 +85,20 @@ undo step each (no step when nothing changes).
 
 Editor state: `session`, `revision`, `pageId`, `pageWidth`, `pageHeight`, `grid`, `selection`, `selectionBounds`,
 `canUndo`, `canRedo`, `undoLabel`, `objects`, `svg` (page SVG, black and white when the document is), `planScale`,
-`monochrome`, `changed` (objects added or modified by the change that produced this revision, also by undo/redo; every
+`monochrome`, `valueLevel` ("quick", "explore", "engineer"), `changed` (objects added or modified by the change that produced this revision, also by undo/redo; every
 object after `setMonochrome`, every plan-scale object after `setPlanScale`) and `dependents` (further objects whose
 rendering depends on the changed or removed ones: wall joints, openings). Hosts redraw the units of `changed` plus
 `dependents` in one step. Each object carries id, type, name, kind (box/points), bounds, centre, size, rotation, flips,
 points, group, view, text and reference; **selected** objects also carry `centred` (pitch circle or hub anchor: resize
-about the centre by default) and `mainText` `{ key, label, value }`: the numeral of reference numerals and lead lines,
+about the centre by default), `hasValues` (the type has values: "Values" in the bar) and `mainText` `{ key, label, value }`: the numeral of reference numerals and lead lines,
 else the object text of text types, else the first text parameter among text, label, name and title (`key` absent for
 the object text). `importCompact` adopts the slide model's black-and-white setting, so live redraws keep the look of
 the units on the slide.
 
 ## Editing UX (parity with the COM add-in, 2026-11-20)
 
-- **Pie menu** (right-click, `Shift+F10`, "…" in the bar): a ring of sectors with a pictogram over each label, at most
-  eight entries; delete, views (up to four), "Text …", "Insert …", duplicate and rotate first, type actions, numeral,
-  mirror, order and grouping behind "More ▸" (paged with Back). Labels wrap at spaces only (two lines, smaller font
-  before shortening with "…"); the full label of a shortened or unavailable entry appears in a pill below the ring.
-  Layout and wrapping are pure functions in `src/ui/pielogic.ts` (unit-tested).
+- **Pie menu** (right-click, `Shift+F10`, "⋯" in the bar): since 2026-11-25 the eight fixed places of the interaction
+  concept, see "Interaction concept" below (the earlier priority ring with "More ▸" is gone).
 - **Text**: double-click on an object, the text button in the context bar or "Text …" in the pie menu edit the main text
   (`mainText`, `setMainText`) in the inline prompt; multi-line texts open the inspector's text box.
 - **Insert …** in the pie menu opens the insert box (see the UI/UX round below); the chosen item starts insert at the
@@ -154,10 +158,8 @@ the units on the slide.
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.
-- **Choices as dropdowns** (like the COM add-in): the context bar shows every choice of the selected element as a
-  button with the current value (pictogram from the option icons, else short text) and a caret; a click opens a list with
-  icon and label per option (`inspector` params with `options[].icon`, `mirrorIcons`; line type via `conversions`, line
-  style via `setStyle`). Type actions whose `paramKeys` are shown as choices are left out.
+- **Choices as dropdowns** (like the COM add-in): every choice is a dropdown, also the engine's action choices of an
+  element and of a selected part; see "Interaction concept" below.
 - **Quick add** (like the COM add-in): a selected flowchart, UML, ER, BPMN or basic element (`chain`) shows blue
   triangles outside its sides; click adds a connected copy (`quickAdd`), drag and drop adds it at the drop point. The
   context bar then starts with "Make it …", which opens the insert box with what the new element can become
@@ -174,10 +176,10 @@ the units on the slide.
 Follows the binding UX rules in the roadmap ("Plan 2026-11-24"). Pure rules in `src/ui/uxlogic.ts` and
 `src/ui/insertbox.ts`, unit-tested in `test/uxround.test.ts`.
 
-- **Context-only bar, fixed order:** "Make it …" (right after a quick add) | views | choices | text, numeral, up to three
-  type actions | insert, draw the path, select assembly | mirror/rotate | style, more. Mirror and rotate appear only when
-  `transformEffect` says they change the drawing (a circle or a gear in axial view shows none of them); the pie menu
-  follows the same rule. Pictograms with bilingual tooltips; the bar never grows with content.
+- **Context-only bar:** since 2026-11-25 the main action plus up to three pictograms plus "⋯" (see "Interaction
+  concept" below). Mirror and rotate appear only when `transformEffect` says they change the drawing (a circle or a gear
+  in axial view shows none of them); the pie menu follows the same rule. Pictograms with bilingual tooltips; the bar
+  never grows with content.
 - **One insert flow:** the insert button in the bar, "Insert …" in the pie menu and Ctrl+Space (also without a
   selection) open the insert box at the pointer. Without typing it lists the parts that fit the selection first
   (marked "fits"/"passt") and then the recent items; typing searches the whole library (`search`). ↑/↓ move, Enter
@@ -235,12 +237,88 @@ The sidebar library ranks typed queries with the engine's `search` (both languag
 items first, names starting with the query before keyword hits) like the insert box; the category chips and favourites
 still filter (`rankedItems` in `src/ui/library.ts`).
 
+## Interaction concept (2026-11-25, parity with the COM add-in)
+
+Follows [interaction-ux.md](../design/interaction-ux.md) (sections 4–6a) and
+[engineering-calculations.md](../design/engineering-calculations.md) section 11. Pure rules in `src/ui/barlogic.ts`,
+`src/ui/pielogic.ts`, `src/ui/handlelayout.ts`, `src/ui/partlogic.ts`, `src/ui/valuecard.ts` and `src/ui/tools.ts`
+(tests `test/barlogic.test.ts`, `test/pie-layout.test.ts`, `test/handlelayout.test.ts`, `test/partlogic.test.ts`).
+
+- **Floating bar:** the same structure for every element. First the main action with a short label: "Make it …" right
+  after a quick add, else "Values" (Explore and Engineer, elements with values), else "Data" (charts), else "Text", else
+  "View ▾", else the first pictorial style choice, else "Insert". Then up to three pictograms in the COM order: telling
+  type actions whose pictogram is unique (steps keep their label), the view, Insert, sketch / coupler curve / ghost
+  positions / explode / move mode / select assembly, the pictorial choices, choices shown by name and menus, rotate 90°
+  and mirror where they change the drawing. Then "⋯" (the pie). 32 px buttons; the bar is fully visible within 90 px of
+  the pointer and fades out until 420 px (UX review G1). A multi-selection keeps its groups (one view for all | align
+  and distribute | select assembly) plus "⋯". A selected part shows its name, its first three commands (choices as
+  dropdowns) and "⋯". No cycle buttons and no style button any more (Style ▸ in the pie has "Line and fill …").
+- **Choices are dropdowns:** one dropdown per choice: the parameter choices (`inspector`), the line type
+  (`conversions`), the line style, the view, and the engine's action choices – every action with the same `choice` is
+  an option (element: key `@a.<choice>`, part: `@p.<choice>`). The closed button shows `choiceBarIcon` if set, else the
+  current option's name when `choiceLabelInBar`, else the current option's pictogram or its `previewSvg` picture, plus a
+  caret; menus (`choiceMenu`) show "Label ▸". The open list shows every option with pictogram or picture and label, the
+  current one marked; Esc or a click elsewhere closes it. Picking runs the option (input options ask first); a menu
+  option that adds a part ("Fill below ▸") selects the new part, so its own choices are right there.
+- **Pie menu:** eight fixed places clockwise from 12 o'clock: Text …, Edit ▸, Insert …, Duplicate, Style ▸, Delete,
+  View ▸, Arrange ▸. Edit holds the element's own commands (Values ▸, Label ▸, type actions that no choice covers,
+  numeral, menu choices, explode, sketch, move mode, F = n, coupler curve, ghost positions, Parts ▸; with a part
+  selected its commands and "Whole element"); Style one entry per state choice ("Line style: Dashed ▸") plus "Line and
+  fill …"; View the views; Arrange rotate either way, mirror, order, grouping and "Select connected ▸". A place with
+  nothing for the element stays greyed and keeps the menu open on a click; a place with one entry shows it directly
+  (Edit, Style and Arrange keep their name). Submenus open by click and start with "← Back"; more than eleven entries
+  continue in "More ▸". One label size (11.5 px); labels wrap at spaces into up to three lines inside their sector
+  (no-break spaces keep "…" and "▸" with their word); the full label and a one-line hint show below the ring. The centre
+  names the element (or its part, or the open submenu) and closes the menu. The ring is moved, and in a narrow pane
+  scaled, so it stays inside the pane.
+- **Selection halo:** every selected element (one, several, the result of "Select connected") gets a soft blue glow
+  along its drawn outline: a copy of its SVG drawing in a layer above the drawing, through an SVG filter (alpha widened
+  by 3.5 px, blurred by 4 px, tinted, the element itself cut out). It lies under every handle, shows over elements that
+  lie on top of the selected one, and is hidden while dragging. A selected part glows in full, its element fainter. The
+  dashed member boxes of a multi-selection are gone.
+- **Select connected:** Arrange ▸ "Select connected ▸" lists the kinds that apply (`connectOptions`: net, moves along,
+  following elements, closed loop, room walls) with the number of elements and a one-line hint; hovering an entry shows
+  what it would add with a fainter glow, choosing it selects them. Ctrl+double-click on an element selects the most
+  meaningful kind (`connected` with mode `auto`).
+- **Parts:** a click on a chart's curve, point, axis … selects that part at once, also when the chart was not selected
+  yet (`partAt`); Del deletes the part (`part.delete`) or hides it, never the element; a deleted point leaves its curve
+  selected.
+- **Values:** in Explore and Engineer the bar starts with "Values" (pictogram x=) for elements with values
+  (`hasValues`); Edit ▸ Values ▸ lists every value at every level. The value card (right of the element) has one row per
+  value: marker (✎ entered, = derived, ○ default, ⇄ linked, ⚠ in conflict), symbol, name, field (the engine's parser:
+  "4k7", "230 V", "1,5 kW"), unit and × for an entered value; under derived values the formula step by step (`explain`,
+  Explore and Engineer; Engineer adds the source and a fourth digit); a status line (✓, what is missing, conflict) and
+  each conflict with both values; a refused entry shows its message under its row. Enter or leaving the field stores
+  the value (`setValue`, one undo step), × clears it (`clearValue`). Below: "Calculator …" and "Show values on the
+  drawing" (`showValues`). The level (Quick sketch, Explore, Engineer) is a document setting (`setValueLevel`), in
+  Settings and in the card.
+- **Calculator and code import** (top bar): the calculator with units (`calc`, an optional target unit through
+  `convertUnit`; "230 V * 16 A", "1500 rpm in rad/s"); the code import takes pasted or opened matplotlib, pgfplots or
+  TikZ code (`importCode`: read, never run) and reports what was imported and what not. `.py` and `.tex` files chosen in
+  the import button open it too.
+- **Handle layout:** one layout for the handles of the selected element (`src/ui/handlelayout.ts`, a port of the COM
+  `HandleLayout`, pure screen geometry): the frame handles, the rotate handle, point diamonds, quick-add triangles and
+  value grips stay; every build "+" takes the first free place around its preferred place (15 px beyond its port, a
+  hub's beyond the top right corner), further out and leaning up to 40°, with a gap of 3 px; a "+" that had to move
+  keeps a dashed lead to its port.
+- **Grips on values** (charts): the `dragHandles` of the selected element as blue-rimmed squares with arrowheads in the
+  allowed direction; the point grips of a curve show with the selected curve or point. Dragging shows where the value
+  lands and its label beside the pointer (`moveHandle` with `preview`, about 15 times a second); release is one undo
+  step, Esc cancels, a click selects the grip's part.
+
+Checked with unit tests, the type check and the production build; **not yet checked in a browser or in PowerPoint**.
+Known differences from the COM add-in: no progressive disclosure yet (every "+" is shown at once; no fade-in near the
+pointer, no Shift overview); the web stage draws no lock badges, junctions, corner dots or branch handles, so the layout
+places only "+"; pressing on a selected curve does not drag the whole curve (`byPart` grips); no ↔ grip in the value
+card and no ⚠ badge on the drawing; an unfilled closed shape keeps a faint glow inside its outline; the value level is a
+setting of the engine document (COM: a presentation tag) and `importCompact` does not carry it from a slide model.
+
 ## Build and run
 
 ```powershell
 cd hosts/office-web
 npm ci
-npm test            # vitest (manifest, library filter, pie layout, label wrapping, resize, UI/UX round, build "+" rules)
+npm test            # vitest (manifest, library filter, pie places and layout, label wrapping, resize, UI/UX round, build "+" rules, bar and choice rules, handle layout)
 npm run build       # engine publish + icons + typecheck + vite build + manifest -> dist/
 npm run dev         # dev server on port 3000 (https if office-addin-dev-certs are installed)
 ```
@@ -330,6 +408,7 @@ the last position).
 | UI/UX round: context-only transforms, insert box, multi-selection bar, select assembly, snap labels, draw the path | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
 | Build "+" (dock, stretch), live coupling preview, ghost positions, dimension between two parts | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
 | Motion mode (turn gear trains, drag linkages) | verified in browser (dev.html, 2026-11-25); **not yet tested in PowerPoint** |
+| Interaction concept: bar, choice dropdowns, eight-place pie, halo, select connected, parts, values, calculator, code import, handle layout, grips | unit tests, type check and build (2026-11-25); **not yet checked in a browser or in PowerPoint** |
 | Writing native shapes into PowerPoint | implemented, **not yet tested in PowerPoint** |
 | Local installer like the COM add-in (no admin) | implemented, dry run verified; real install pending |
 | Webspace package (download page, manifest for own URL) | implemented; checked over local HTTPS, real webspace pending |

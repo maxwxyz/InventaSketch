@@ -64,6 +64,13 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `transformEffect` | `ids` | `{ mirrorH, mirrorV, rotate90 }`: ob die Transformation die gezeichnete Geometrie ändert (`Symmetry`, Pfeilspitzen eingeschlossen) |
 | `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | auswahlweite Operationen, die etwas ändern `{ id, label, icon }` (`mview:<view>` eine Ansicht für alle mit erhaltenem Mechanismus, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); Zustand (ein Rückgängig-Schritt) |
 | `assembly` | `ids` | IDs der Auswahl und aller damit gekoppelten Objekte (Getriebezug, Antrieb), Auswahl zuerst |
+| `connected`, `connectOptions` | `ids`, `mode` (auto, net, coupled, chain, loop, walls); `ids`, `lang` | „Verbundene auswählen“: die IDs, die gegebenen zuerst; die Arten, die etwas hinzufügen `{ kind, label, hint, ids }` |
+| `parts`, `partAt`, `partActions`, `applyPartAction`, `partOutline` | `id`, `lang`; `id`, `x`, `y`, `tolerance`; `id`, `part`; `id`, `part`, `action`, `input`; `id`, `part` | Teile eines Diagramms `{ key, label, kind, hidden }`; `{ part }`; die Aktionen des Teils (mit den Auswahlfeldern); Zustand; Umriss als Polylinien in Seiten-mm |
+| `dragHandles`, `moveHandle` | `ids`, `lang`; `id`, `key`, `x`, `y`, `preview` | Griffe an Werten `[{ id, handles: [{ key, x, y, constraint, dx, dy, label, part, showWith, byPart }] }]`; Zustand (ein Rückgängig-Schritt) oder `{ handle }`, wie er wäre |
+| `values`, `setValue`, `clearValue`, `explain` | `id`, `lang`, `digits`; `id`, `key`, `text`; `id`, `key`; `id`, `key`, `digits` | Wertetabelle (engineering-calculations.md 10.6); Zustand; Zustand; `{ steps, text }` |
+| `calc`, `convertUnit` | `text`, `lang`, `digits`; `text`, `unit` | Rechner mit Einheiten `{ value, unit, text, steps }`; `{ value, unit, text, kind, units }` |
+| `importCode` | `text`, `mode` (auto, matplotlib, pgfplots, tikz), `lang` | `{ state, format, ids, imported, skipped, message }` (gelesen, nie ausgeführt; ein Rückgängig-Schritt) |
+| `setValueLevel` | `text` („quick“, „explore“, „engineer“) | Zustand (`valueLevel`); ein Rückgängig-Schritt, wenn sie sich ändert (2026-11-25 für das Web-Add-in ergänzt) |
 | `trace` | `id`, `index` (Standard: letzter Punkt), `max` (Schritte, Standard 72) | `{ points, closed }`: Bahn des Gliedpunkts, während die Kurbel der Kette dreht; leer, außer die Kette hat F = 1 |
 | `drawGhosts` | `id` (ein Glied), `max` (Standard 4) | Zustand; gestrichelte graue Kopien der Kette über den Kurbelbereich, gruppiert |
 | `couplingPreview` | `ids`, `dx`/`dy` oder `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: Nachbarn, die die Kopplung verschieben oder skalieren würde, als SVG in Seiten-mm (`svg` leer, wenn nichts folgt); nichts wird geändert |
@@ -80,12 +87,12 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 
 Editorzustand: `session`, `revision`, `pageId`, `pageWidth`, `pageHeight`, `grid`, `selection`, `selectionBounds`,
 `canUndo`, `canRedo`, `undoLabel`, `objects`, `svg` (Seiten-SVG, schwarz-weiß, wenn das Dokument es ist), `planScale`,
-`monochrome`, `changed` (durch die Änderung dieser Revision hinzugefügte oder geänderte Objekte, auch bei
+`monochrome`, `valueLevel` („quick“, „explore“, „engineer“), `changed` (durch die Änderung dieser Revision hinzugefügte oder geänderte Objekte, auch bei
 Rückgängig/Wiederholen; nach `setMonochrome` alle Objekte, nach `setPlanScale` alle Objekte mit Planmaßstab) und
 `dependents` (weitere Objekte, deren Darstellung von den geänderten oder entfernten abhängt: Wandanschlüsse,
 Öffnungen). Hosts zeichnen die Einheiten aus `changed` und `dependents` in einem Schritt neu. Jedes Objekt enthält ID,
 Typ, Name, Art (box/points), Grenzen, Mitte, Größe, Drehung, Spiegelung, Punkte, Gruppe, Ansicht, Text und Bezug;
-**ausgewählte** Objekte zusätzlich `centred` (Teilkreis- oder Nabenanker: standardmäßig um die Mitte skalieren) und
+**ausgewählte** Objekte zusätzlich `centred` (Teilkreis- oder Nabenanker: standardmäßig um die Mitte skalieren), `hasValues` (der Typ hat Werte: „Werte“ in der Leiste) und
 `mainText` `{ key, label, value }`: das Bezugszeichen bei Bezugszeichen und Bezugslinien, sonst der Objekttext bei
 Texttypen, sonst der erste Textparameter aus text, label, name und title (`key` fehlt beim Objekttext). `importCompact`
 übernimmt die Schwarz-Weiß-Einstellung des Folienmodells, damit Live-Neuzeichnungen das Aussehen der Einheiten auf der
@@ -93,12 +100,8 @@ Folie behalten.
 
 ## Bearbeitung (gleichwertig zum COM-Add-in, 2026-11-20)
 
-- **Kreismenü** (Rechtsklick, `Umschalt+F10`, „…“ in der Leiste): ein Ring aus Sektoren mit Piktogramm über jeder
-  Beschriftung, höchstens acht Einträge; zuerst Löschen, Ansichten (bis zu vier), „Text …“, „Einfügen …“, Duplizieren
-  und Drehen, Typaktionen, Bezugszeichen, Spiegeln, Reihenfolge und Gruppierung unter „Mehr ▸“ (seitenweise mit
-  Zurück). Beschriftungen brechen nur an Leerzeichen um (zwei Zeilen, kleinere Schrift vor dem Kürzen mit „…“); die
-  volle Beschriftung eines gekürzten oder nicht verfügbaren Eintrags erscheint in einer Pille unter dem Ring. Layout
-  und Umbruch sind reine Funktionen in `src/ui/pielogic.ts` (mit Unit-Tests).
+- **Kreismenü** (Rechtsklick, `Umschalt+F10`, „⋯“ in der Leiste): seit 2026-11-25 die acht festen Plätze des
+  Interaktionskonzepts, siehe „Interaktionskonzept“ unten (der frühere Prioritätsring mit „Mehr ▸“ entfällt).
 - **Text**: Doppelklick auf ein Objekt, die Text-Schaltfläche der Kontextleiste oder „Text …“ im Kreismenü bearbeiten
   den Haupttext (`mainText`, `setMainText`) in der Inline-Eingabe; mehrzeilige Texte öffnen das Textfeld des Inspektors.
 - **Einfügen …** im Kreismenü öffnet das Einfügefeld (siehe UI/UX-Runde unten); das gewählte Element startet das
@@ -165,11 +168,8 @@ Folie behalten.
 - **Skalieren**: zentrierte Teile (Zahnräder, Lager, Räder: `centred`) skalieren standardmäßig um ihre Mitte, mit Strg
   von der Gegenkante; andere Objekte umgekehrt. Eine Beschriftung neben dem Mauszeiger zeigt Größe (oder Faktor) und den
   aktiven Modus mit der Strg-Alternative.
-- **Auswahlen als Dropdowns** (wie im COM-Add-in): Die Kontextleiste zeigt jede Auswahl des gewählten Elements als
-  Knopf mit dem aktuellen Wert (Piktogramm aus den Options-Symbolen, sonst kurzer Text) und einem kleinen Pfeil; ein
-  Klick öffnet eine Liste mit Symbol und Beschriftung je Option (`inspector`-Parameter mit `options[].icon`,
-  `mirrorIcons`; Linientyp über `conversions`, Linienart über `setStyle`). Typaktionen, deren `paramKeys` als Auswahl
-  erscheinen, entfallen.
+- **Auswahlen als Dropdowns** (wie im COM-Add-in): Jede Auswahl ist ein Dropdown, auch die Aktionsauswahlen der Engine
+  für ein Element und für ein gewähltes Teil; siehe „Interaktionskonzept“ unten.
 - **Schnell-Anfügen** (wie im COM-Add-in): Ein ausgewähltes Ablaufdiagramm-, UML-, ER-, BPMN- oder Grundform-Element
   (`chain`) zeigt blaue Dreiecke außerhalb seiner Seiten; ein Klick fügt eine verbundene Kopie an (`quickAdd`), Ziehen und
   Loslassen fügt sie an der Ablagestelle ein. Die Kontextleiste beginnt dann mit „Ändern in …“; das öffnet das
@@ -187,9 +187,8 @@ Folie behalten.
 Folgt den verbindlichen UX-Regeln im Fahrplan („Plan 2026-11-24“). Reine Regeln in `src/ui/uxlogic.ts` und
 `src/ui/insertbox.ts`, mit Unit-Tests in `test/uxround.test.ts`.
 
-- **Leiste nur mit Passendem, feste Reihenfolge:** „Ändern in …“ (direkt nach einem Schnell-Anfügen) | Ansichten |
-  Auswahlen | Text, Bezugszeichen, bis zu drei Typaktionen | Einfügen, Bahnkurve zeichnen, Baugruppe auswählen |
-  Spiegeln/Drehen | Stil, Mehr. Spiegeln und Drehen erscheinen nur, wenn `transformEffect` meldet, dass sie die
+- **Leiste nur mit Passendem:** seit 2026-11-25 die Hauptaktion plus bis zu drei Piktogramme plus „⋯“ (siehe
+  „Interaktionskonzept“ unten). Spiegeln und Drehen erscheinen nur, wenn `transformEffect` meldet, dass sie die
   Zeichnung ändern (ein Kreis oder ein Zahnrad in Stirnansicht zeigt keins davon); das Kreismenü folgt derselben Regel.
   Piktogramme mit zweisprachigen Tooltips; die Leiste wächst nie mit dem Inhalt.
 - **Ein Einfügeweg:** die Einfügen-Schaltfläche der Leiste, „Einfügen …“ im Kreismenü und Strg+Leertaste (auch ohne
@@ -252,12 +251,97 @@ Die Bibliothek der Seitenleiste ordnet getippte Suchen mit der Engine-Suche `sea
 ue/ss, zuletzt Verwendetes zuerst, Namen mit dem Suchwort am Anfang vor Stichworttreffern) wie das Einfügefeld; die
 Kategorie-Chips und Favoriten filtern weiterhin (`rankedItems` in `src/ui/library.ts`).
 
+## Interaktionskonzept (2026-11-25, gleichwertig zum COM-Add-in)
+
+Folgt [interaction-ux.md](../design/interaction-ux.md) (Abschnitte 4–6a) und
+[engineering-calculations.md](../design/engineering-calculations.md) Abschnitt 11. Reine Regeln in `src/ui/barlogic.ts`,
+`src/ui/pielogic.ts`, `src/ui/handlelayout.ts`, `src/ui/partlogic.ts`, `src/ui/valuecard.ts` und `src/ui/tools.ts`
+(Tests `test/barlogic.test.ts`, `test/pie-layout.test.ts`, `test/handlelayout.test.ts`, `test/partlogic.test.ts`).
+
+- **Schwebende Leiste:** derselbe Aufbau für jedes Element. Zuerst die Hauptaktion mit kurzer Beschriftung: „Ändern in …“
+  direkt nach einem Schnell-Anfügen, sonst „Werte“ (Erkunden und Ingenieur, Elemente mit Werten), sonst „Daten“
+  (Diagramme), sonst „Text“, sonst „Ansicht ▾“, sonst die erste bildhafte Stilauswahl, sonst „Einfügen“. Dann bis zu
+  drei Piktogramme in der COM-Reihenfolge: aussagekräftige Typaktionen mit eindeutigem Piktogramm (Schritte behalten
+  ihre Beschriftung), die Ansicht, Einfügen, Kurve skizzieren / Koppelkurve / Zwischenlagen / Zerlegen /
+  Bewegungsmodus / Baugruppe auswählen, die bildhaften Auswahlen, Auswahlen mit Namen und Menüs, Drehen um 90° und
+  Spiegeln, wo sie die Zeichnung ändern. Dann „⋯“ (das Kreismenü). Knöpfe 32 px; die Leiste ist bis 90 px Abstand
+  zum Mauszeiger voll sichtbar und blendet bis 420 px aus (UX-Review G1). Eine Mehrfachauswahl behält ihre Gruppen
+  (eine Ansicht für alle | ausrichten und verteilen | Baugruppe auswählen) plus „⋯“. Ein gewähltes Teil zeigt seinen
+  Namen, seine ersten drei Befehle (Auswahlen als Dropdowns) und „⋯“. Keine Durchschalt-Knöpfe und kein Stil-Knopf mehr
+  („Stil ▸“ im Kreismenü hat „Linie und Füllung …“).
+- **Auswahlen sind Dropdowns:** ein Dropdown je Auswahl: die Parameterauswahlen (`inspector`), der Linientyp
+  (`conversions`), die Linienart, die Ansicht und die Aktionsauswahlen der Engine – jede Aktion mit derselben `choice`
+  ist eine Option (Element: Schlüssel `@a.<choice>`, Teil: `@p.<choice>`). Der geschlossene Knopf zeigt
+  `choiceBarIcon`, wenn gesetzt, sonst bei `choiceLabelInBar` den Namen der aktuellen Option, sonst ihr Piktogramm
+  oder ihr `previewSvg`-Bild, dazu einen kleinen Pfeil; Menüs (`choiceMenu`) zeigen „Bezeichnung ▸“. Die offene Liste
+  zeigt jede Option mit Piktogramm oder Bild und Beschriftung, die aktuelle markiert; Esc oder ein Klick daneben
+  schließt sie. Die Wahl führt die Option aus (Eingabeoptionen fragen zuerst); eine Menüoption, die ein Teil hinzufügt
+  („Füllen bis ▸“), wählt das neue Teil, sodass seine eigenen Auswahlen gleich da sind.
+- **Kreismenü:** acht feste Plätze im Uhrzeigersinn ab 12 Uhr: Text …, Bearbeiten ▸, Einfügen …, Duplizieren, Stil ▸,
+  Löschen, Ansicht ▸, Anordnen ▸. „Bearbeiten“ enthält die eigenen Befehle des Elements (Werte ▸, Beschriftung ▸,
+  Typaktionen, die keine Auswahl abdeckt, Bezugszeichen, Menüauswahlen, Zerlegen, Kurve skizzieren, Bewegungsmodus,
+  F = n, Koppelkurve, Zwischenlagen, Teile ▸; bei gewähltem Teil dessen Befehle und „Ganzes Element“); „Stil“ einen
+  Eintrag je Zustandsauswahl („Linienart: Gestrichelt ▸“) plus „Linie und Füllung …“; „Ansicht“ die Ansichten;
+  „Anordnen“ Drehen in beide Richtungen, Spiegeln, Reihenfolge, Gruppierung und „Verbundene auswählen ▸“. Ein Platz
+  ohne Inhalt für das Element bleibt ausgegraut und hält das Menü bei einem Klick offen; ein Platz mit einem Eintrag
+  zeigt ihn direkt („Bearbeiten“, „Stil“ und „Anordnen“ behalten ihren Namen). Untermenüs öffnen per Klick und
+  beginnen mit „← Zurück“; mehr als elf Einträge gehen in „Mehr ▸“ weiter. Eine Schriftgröße (11,5 px);
+  Beschriftungen brechen an Leerzeichen in bis zu drei Zeilen innerhalb ihres Sektors um (geschützte Leerzeichen halten
+  „…“ und „▸“ beim Wort); die volle Beschriftung und ein einzeiliger Hinweis stehen unter dem Ring. Die Mitte nennt das
+  Element (oder sein Teil oder das offene Untermenü) und schließt das Menü. Der Ring wird verschoben und in einem
+  schmalen Bereich verkleinert, sodass er im Bereich bleibt.
+- **Auswahl-Schein:** Jedes gewählte Element (eins, mehrere, das Ergebnis von „Verbundene auswählen“) bekommt einen
+  weichen blauen Schein entlang seines gezeichneten Umrisses: eine Kopie seiner SVG-Zeichnung in einer Ebene über der
+  Zeichnung, durch einen SVG-Filter (Alpha um 3,5 px verbreitert, um 4 px weichgezeichnet, eingefärbt, das Element
+  selbst ausgespart). Er liegt unter allen Griffen, zeigt sich auch über Elementen, die über dem gewählten liegen, und
+  verschwindet beim Ziehen. Ein gewähltes Teil leuchtet voll, sein Element schwächer. Die gestrichelten Rahmen der
+  Mitglieder einer Mehrfachauswahl entfallen.
+- **Verbundene auswählen:** „Anordnen ▸ Verbundene auswählen ▸“ listet die zutreffenden Arten (`connectOptions`: Netz,
+  bewegt sich mit, folgende Elemente, geschlossene Schleife, Raumwände) mit der Anzahl der Elemente und einem
+  einzeiligen Hinweis; das Überfahren eines Eintrags zeigt, was er hinzufügen würde, mit schwächerem Schein, die Wahl
+  wählt sie aus. Strg+Doppelklick auf ein Element wählt die sinnvollste Art (`connected` mit Modus `auto`).
+- **Teile:** Ein Klick auf eine Kurve, einen Punkt, eine Achse … eines Diagramms wählt dieses Teil sofort, auch wenn
+  das Diagramm noch nicht gewählt war (`partAt`); Entf löscht das Teil (`part.delete`) oder blendet es aus, nie das
+  Element; ein gelöschter Punkt lässt seine Kurve gewählt.
+- **Werte:** In Erkunden und Ingenieur beginnt die Leiste bei Elementen mit Werten (`hasValues`) mit „Werte“
+  (Piktogramm x=); „Bearbeiten ▸ Werte ▸“ listet jeden Wert auf jeder Stufe. Die Wertekarte (rechts vom Element) hat
+  eine Zeile je Wert: Markierung (✎ eingegeben, = abgeleitet, ○ Vorgabe, ⇄ verbunden, ⚠ im Widerspruch), Symbol,
+  Name, Feld (der Parser der Engine: „4k7“, „230 V“, „1,5 kW“), Einheit und × bei einem eingegebenen Wert; unter
+  abgeleiteten Werten die Formel Schritt für Schritt (`explain`, Erkunden und Ingenieur; Ingenieur ergänzt die Quelle
+  und eine vierte Stelle); eine Statuszeile (✓, was fehlt, Widerspruch) und jeder Widerspruch mit beiden Werten; eine
+  abgelehnte Eingabe zeigt ihre Meldung unter ihrer Zeile. Enter oder Verlassen des Felds speichert den Wert
+  (`setValue`, ein Rückgängig-Schritt), × löscht ihn (`clearValue`). Darunter: „Rechner …“ und „Werte in der Zeichnung
+  zeigen“ (`showValues`). Die Stufe (Schnellskizze, Erkunden, Ingenieur) ist eine Dokumenteinstellung
+  (`setValueLevel`), in den Einstellungen und in der Karte.
+- **Rechner und Code-Import** (obere Leiste): der Rechner mit Einheiten (`calc`, eine optionale Zieleinheit über
+  `convertUnit`; „230 V * 16 A“, „1500 rpm in rad/s“); der Code-Import nimmt eingefügten oder geöffneten matplotlib-,
+  pgfplots- oder TikZ-Code (`importCode`: gelesen, nie ausgeführt) und berichtet, was importiert wurde und was nicht.
+  `.py`- und `.tex`-Dateien in der Import-Schaltfläche öffnen ihn ebenfalls.
+- **Griff-Anordnung:** ein Layout für die Griffe des gewählten Elements (`src/ui/handlelayout.ts`, eine Portierung des
+  COM-`HandleLayout`, reine Bildschirmgeometrie): Rahmengriffe, Drehgriff, Punkt-Rauten, Schnell-Anfügen-Dreiecke und
+  Wertgriffe bleiben; jedes Bau-„+“ nimmt den ersten freien Platz um seinen bevorzugten Platz (15 px hinter seinem
+  Anschluss, bei einer Nabe hinter der oberen rechten Ecke), weiter außen und bis 40° geneigt, mit 3 px Abstand; ein
+  „+“, das ausweichen musste, behält eine gestrichelte Verbindung zu seinem Anschluss.
+- **Griffe an Werten** (Diagramme): die `dragHandles` des gewählten Elements als blau umrandete Quadrate mit
+  Pfeilspitzen in der erlaubten Richtung; die Punktgriffe einer Kurve erscheinen mit der gewählten Kurve oder einem
+  ihrer Punkte. Beim Ziehen zeigt eine Vorschau, wo der Wert landet, und seine Beschriftung neben dem Mauszeiger
+  (`moveHandle` mit `preview`, etwa 15-mal pro Sekunde); Loslassen ist ein Rückgängig-Schritt, Esc bricht ab, ein Klick
+  wählt das Teil des Griffs.
+
+Geprüft mit Unit-Tests, Typprüfung und Produktions-Build; **noch nicht im Browser oder in PowerPoint geprüft**.
+Bekannte Unterschiede zum COM-Add-in: noch keine schrittweise Einblendung (jedes „+“ ist sofort sichtbar; kein
+Einblenden in Zeigernähe, keine Übersicht mit Umschalt); die Web-Bühne zeichnet keine Schloss-Plaketten, Knoten,
+Eckpunkte oder Abzweig-Griffe, daher ordnet das Layout nur „+“ an; Drücken auf eine gewählte Kurve zieht nicht die
+ganze Kurve (`byPart`-Griffe); kein ↔-Griff in der Wertekarte und keine ⚠-Plakette in der Zeichnung; eine ungefüllte
+geschlossene Form behält innerhalb ihres Umrisses einen schwachen Schein; die Wertestufe ist eine Einstellung des
+Engine-Dokuments (COM: ein Präsentations-Tag) und `importCompact` übernimmt sie nicht aus einem Folienmodell.
+
 ## Bauen und starten
 
 ```powershell
 cd hosts/office-web
 npm ci
-npm test            # vitest (Manifest, Bibliotheksfilter, Kreismenü-Layout, Umbruch, Skalieren, UI/UX-Runde, Bau-„+“-Regeln)
+npm test            # vitest (Manifest, Bibliotheksfilter, Kreismenü-Plätze und -Layout, Umbruch, Skalieren, UI/UX-Runde, Bau-„+“-Regeln, Leisten- und Auswahlregeln, Griff-Anordnung)
 npm run build       # Engine-Publish + Icons + Typprüfung + Vite-Build + Manifest -> dist/
 npm run dev         # Dev-Server auf Port 3000 (https, wenn office-addin-dev-certs installiert sind)
 ```
@@ -358,6 +442,7 @@ Lage aus).
 | UI/UX-Runde: Spiegeln/Drehen nur mit Wirkung, Einfügefeld, Leiste für Mehrfachauswahl, Baugruppe auswählen, Fangbeschriftung, Bahnkurve zeichnen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
 | Bau-„+“ (andocken, Welle ziehen), Live-Vorschau der Kopplung, Geisterstellungen, Maß zwischen zwei Teilen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
 | Bewegungsmodus (Getriebezüge drehen, Koppelgetriebe ziehen) | im Browser geprüft (dev.html, 2026-11-25); **noch nicht in PowerPoint getestet** |
+| Interaktionskonzept: Leiste, Auswahl-Dropdowns, Kreismenü mit acht Plätzen, Schein, Verbundene auswählen, Teile, Werte, Rechner, Code-Import, Griff-Anordnung, Wertgriffe | Unit-Tests, Typprüfung und Build (2026-11-25); **noch nicht im Browser oder in PowerPoint geprüft** |
 | Schreiben nativer Formen in PowerPoint | umgesetzt, **noch nicht in PowerPoint getestet** |
 | Lokaler Installer wie beim COM-Add-in (ohne Admin) | umgesetzt, Probelauf geprüft; echte Installation offen |
 | Webspace-Paket (Downloadseite, Manifest für eigene URL) | umgesetzt; über lokales HTTPS geprüft, echter Webspace offen |
