@@ -826,7 +826,17 @@ namespace InventaSketch.Core
             }
             _modules.Add(module);
             _categories.AddRange(module.Categories);
-            foreach (var item in module.Library)
+            // Within a category the items of one type stand together (an element, its views and presets side by side), in
+            // the order in which each type first appears; the module decides that order (most used first).
+            var items = module.Library.ToList();
+            var catFirst = new Dictionary<string, int>(StringComparer.Ordinal);
+            var typeFirst = new Dictionary<(string, string), int>();
+            for (var i = 0; i < items.Count; i++)
+            {
+                if (!catFirst.ContainsKey(items[i].Category)) catFirst[items[i].Category] = i;
+                if (!typeFirst.ContainsKey((items[i].Category, items[i].TypeId))) typeFirst[(items[i].Category, items[i].TypeId)] = i;
+            }
+            foreach (var item in items.Select((it, i) => (it, i)).OrderBy(x => catFirst[x.it.Category]).ThenBy(x => typeFirst[(x.it.Category, x.it.TypeId)]).ThenBy(x => x.i).Select(x => x.it))
             {
                 if (!_types.ContainsKey(item.TypeId)) throw new InvalidOperationException($"Library item '{item.Id}' references unknown type '{item.TypeId}'.");
                 _all.Add(item);

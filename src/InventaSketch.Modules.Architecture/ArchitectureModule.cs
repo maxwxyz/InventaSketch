@@ -118,6 +118,8 @@ namespace InventaSketch.Modules.Architecture
                 ["arch.site.north"] = "map.north",
             };
             foreach (var m in PipeType.Media.Skip(1)) alternatives["arch.pipe." + m.Value] = "bs.pipe." + m.Value;
+            // The building services have no gas pipe; the energy module's natural gas line is the same element.
+            alternatives["arch.pipe.gas"] = "energy.line.pipe.gas";
             return list.Select(i => alternatives.TryGetValue(i.Id, out var alt) ? i with { Alternative = alt } : i).ToList();
         }
     }

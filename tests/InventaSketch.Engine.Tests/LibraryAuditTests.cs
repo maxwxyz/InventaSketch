@@ -170,6 +170,15 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void Order()
+        {
+            // Not an assertion: categories in menu order and their items in library order, for the ordering review.
+            foreach (var m in Reg.Modules)
+                foreach (var c in Reg.Categories.Where(c => c.ModuleId == m.Id).OrderBy(c => c.Order))
+                    _out.WriteLine($"ORDER {m.Id} | {c.Order} {c.Name.De} | " + string.Join(" · ", Reg.Library.Where(i => i.Category == c.Id).Select(i => i.Name.De)));
+        }
+
+        [Fact]
         public void Inventory()
         {
             // Not an assertion: the module and category overview plus element names that occur in more than one module
