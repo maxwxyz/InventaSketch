@@ -298,6 +298,16 @@ vectors stay in `math`.
    styles can be edited in Inkscape/Illustrator. Both through the engine's exporters, offered in all three hosts.
    Done 2026-11-25: TikZ for every drawing (`latex.tikz`, Core `TikzExporter`), editable SVG (engine `renderPageSvg`
    mode `export`, web SVG export). Open: pgfplots for charts (after the figure model), SVG export mode in COM/LibreOffice.
+4b. **matplotlib and LaTeX import (maintainer 2026-11-25, planned):** the reverse of the exports – a matplotlib script
+   (.py) or a LaTeX file (pgfplots `axis`/`groupplot`, TikZ `tikzpicture`) becomes editable elements: pgfplots and
+   matplotlib plots become charts or figures (series from `plot`/`scatter`/`step`/`bar`/`barh`/`fill_between`/
+   `axhline`/`axvline`/`annotate`, `\addplot coordinates/table`, `fill between`, axis labels, ranges, log modes,
+   legends, subplots/groupplots as stacked panels), TikZ drawings become basic shapes, arrows and texts (`\draw`,
+   `\node`, `\fill`, colours, dash patterns, arrowheads). Code is read, never executed: a safe parser for the literal
+   subset (lists, numbers, keyword arguments, simple `numpy.linspace`/`arange` and arithmetic on them); anything computed
+   beyond that is reported as not imported. Files written by our own exporters round-trip exactly (tests). Through the
+   import command in every host (COM Review ▸ Import, web import button, LibreOffice import), plus pasting code from the
+   clipboard.
 5. **Charts from pictures (done 2026-11-25 for COM):** Slidemax scanner port (bars/columns, digit labels), new curve
    digitiser, `ChartFromPicture`; COM Review "Chart from picture …" (clipboard or file), verified in PowerPoint. Open:
    engine method and web/LibreOffice commands.

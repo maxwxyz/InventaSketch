@@ -332,6 +332,16 @@ Funktionsgraphen des Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vekto
    Erledigt 25.11.2026: TikZ für jede Zeichnung (`latex.tikz`, Core `TikzExporter`), bearbeitbares SVG (Engine
    `renderPageSvg` Modus `export`, SVG-Export im Web). Offen: pgfplots für Diagramme (nach dem Abbildungsmodell),
    SVG-Exportmodus in COM/LibreOffice.
+4b. **Import von matplotlib und LaTeX (Maintainer 25.11.2026, geplant):** die Umkehrung der Exporte – ein
+   matplotlib-Skript (.py) oder eine LaTeX-Datei (pgfplots `axis`/`groupplot`, TikZ `tikzpicture`) wird zu bearbeitbaren
+   Elementen: pgfplots- und matplotlib-Diagramme werden Diagramme oder Abbildungen (Reihen aus `plot`/`scatter`/`step`/
+   `bar`/`barh`/`fill_between`/`axhline`/`axvline`/`annotate`, `\addplot coordinates/table`, `fill between`,
+   Achsbeschriftungen, Bereiche, Log-Modi, Legenden, Subplots/Groupplots als gestapelte Panels), TikZ-Zeichnungen werden
+   Grundformen, Pfeile und Texte (`\draw`, `\node`, `\fill`, Farben, Strichmuster, Pfeilspitzen). Code wird gelesen,
+   nie ausgeführt: ein sicherer Parser für den literalen Teil (Listen, Zahlen, Schlüsselwortargumente, einfache
+   `numpy.linspace`/`arange` und Arithmetik darauf); weiter Berechnetes wird als nicht importiert gemeldet. Dateien aus
+   unseren eigenen Exportern kommen exakt zurück (Tests). Über den Importbefehl in jedem Host (COM Prüfen ▸ Importieren,
+   Import-Knopf im Web, Import in LibreOffice) und durch Einfügen von Code aus der Zwischenablage.
 5. **Diagramme aus Bildern (erledigt 25.11.2026 für COM):** Übernahme des Slidemax-Scanners (Balken/Säulen,
    Ziffernbeschriftung), neuer Kurven-Digitalisierer, `ChartFromPicture`; COM Prüfen ▸ „Diagramm aus Bild …“
    (Zwischenablage oder Datei), in PowerPoint geprüft. Offen: Engine-Methode und Befehle in Web/LibreOffice.
