@@ -282,7 +282,8 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   geht. Ein Zahnrad, Steg oder eine Scheibe in Stirnansicht dreht sich um die eigene Mitte, und der ganze Getriebezug dreht
   live beim Ziehen mit (`GearTrain`: Außen- und Inneneingriff mit der Willis-Gleichung für Planeten, Teile fest auf einer
   Welle, Stufenräder, Riemen und Ketten, Kegelradpaare nach Zähnezahl (25.11.2026; Kegelräder gibt es nur von der Seite, sie
-  behalten daher ihre Zeichnung, aber die Übersetzung läuft durch ein Winkelgetriebe und der Eingriffs-Tooltip zeigt i), feste
+  behalten daher ihre Zeichnung, aber die Übersetzung läuft durch ein Winkelgetriebe und der Eingriffs-Tooltip zeigt i; im
+  Ausgleichsgehäuse laufen die Räder lose und das Gehäuse wirkt als Steg), feste
   Stege; offene Drehzahlen werden 0 gesetzt, Hohlräder und Stege zuerst, sodass
   ein gehäusefestes Hohlrad herauskommt). Planeten laufen mit dem Steg um; Achsabstände und Größen ändern sich nie. Ein
   vordefiniertes Koppelgetriebe dreht seine Antriebskurbel um den Gestelldrehpunkt. Umschalt: 15°-Schritte; der Winkel

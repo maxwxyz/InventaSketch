@@ -155,10 +155,11 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 1. Web: check in PowerPoint on the web once the maintainer has installed the dev certificate (all COM features of the
    UI/UX round incl. motion mode are implemented).
 2. LibreOffice: done in the sidebar (2026-11-25); next an on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
-3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
-   (then explode differentials), Ravigneaux sets (done 2026-11-25: joint limits as stops on fixed pivots, bevel pairs in the
-   gear train speeds by their teeth – they only have side views, so they do not visibly turn –, and the
-   `elevation`/`section` view alias for walls with building services).
+3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), Ravigneaux sets. Done
+   2026-11-25: joint limits as stops on fixed pivots; bevel pairs in the gear train speeds by their teeth (they only have
+   side views, so they do not visibly turn); the exploded differential works as one (gears loose in the case, Willis
+   with the case: straight on both sides turn with the case, one side held → the other turns twice as fast); the
+   `elevation`/`section` view alias for walls with building services.
 4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
@@ -235,8 +236,8 @@ axis, `Anchor.SidePitch`).
 
 Status 2026-11-21 (Core + COM): carrier part with pins and build "+", planets sized to sun/ring, 2–8 planets, stepped
 planets, explode of planetary sets (axial views), bevel gears with apex ports (mitre pairs, differential from parts)
-done. Open: coupling of bevel pairs, planet pairs (Ravigneaux), exploding the schematic set and the differential,
-moving gear trains (P2).
+done. Since done: coupling of bevel pairs, exploding the schematic set and the differential, moving gear trains, the
+differential in the gear train speeds (2026-11-24/25). Open: planet pairs (Ravigneaux).
 
 - **P1 – Planet carrier (Steg) as its own part:** axial view with 2–8 arms or a disc and planet pins at a radius, side
   view with the pins as axes; planets dock on the pins and are carried; build "+" on free pins (planet) and the centre

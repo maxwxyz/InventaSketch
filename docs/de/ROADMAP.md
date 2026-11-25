@@ -175,9 +175,11 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 2. LibreOffice: in der Seitenleiste erledigt (25.11.2026); als Nächstes ein Overlay auf der Arbeitsfläche (Einrasten
    beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
-   Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze (erledigt 25.11.2026: Gelenkgrenzen als Anschläge an Gestelldrehpunkten, Kegelradpaare
-   in den Drehzahlen des Getriebezugs nach Zähnezahl – sie haben nur Seitenansichten und drehen sich daher nicht sichtbar –
-   und der Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik).
+   Ravigneaux-Sätze. Erledigt 25.11.2026: Gelenkgrenzen als Anschläge an Gestelldrehpunkten; Kegelradpaare in den
+   Drehzahlen des Getriebezugs nach Zähnezahl (sie haben nur Seitenansichten und drehen sich daher nicht sichtbar); das
+   zerlegte Differential arbeitet als solches (Räder lose im Korb, Willis mit dem Korb: geradeaus drehen beide Seiten mit
+   dem Korb, eine Seite festgehalten → die andere dreht doppelt so schnell); der Ansichts-Alias `elevation`/`section` für
+   Wände mit Haustechnik.
 4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,
    Patentmodus).
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
@@ -263,8 +265,9 @@ nur mit Seitenansichten auf paralleler Achse quer zur Achse (der Teilkreis träg
 
 Stand 21.11.2026 (Core + COM): Steg als Teil mit Bolzen und Bau-„+“, Planeten passend zu Sonne/Hohlrad, 2–8 Planeten,
 Stufenplaneten, Zerlegen von Planetensätzen (Stirnansichten), Kegelräder mit Spitzen-Griffen (Winkelpaare, Differential aus
-Einzelteilen) erledigt. Offen: Kopplung von Kegelradpaaren, Planetenpaare (Ravigneaux), Zerlegen des Schema-Satzes und des
-Differentials, Getriebe bewegen (P2).
+Einzelteilen) erledigt. Inzwischen erledigt: Kopplung von Kegelradpaaren, Zerlegen des Schema-Satzes und des
+Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebezugs (24./25.11.2026). Offen:
+Planetenpaare (Ravigneaux).
 
 - **P1 – Planetenträger (Steg) als eigenes Teil:** Stirnansicht mit 2–8 Armen oder Scheibe und Planetenbolzen auf einem
   Radius, Seitenansicht mit den Bolzen als Achsen; Planeten docken an den Bolzen an und werden mitgenommen; Bau-„+“ an
