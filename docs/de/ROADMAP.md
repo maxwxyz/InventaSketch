@@ -131,7 +131,7 @@ umsetzen, dann Web, dann LibreOffice.
 - Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
   Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
   Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
-- In COM noch offen: Ravigneaux-Sätze, Zerlegen von Kurvengetrieben (braucht eine
+- In COM noch offen: Zerlegen von Kurvengetrieben (braucht eine
   Kurvenscheibe; Differentiale zerfallen seit 25.11.2026 in Korb, Achswellen- und Ausgleichsräder), Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
   Gelenkgrenzen sind erledigt (Anschläge an Gestelldrehpunkten, 25.11.2026).
@@ -175,7 +175,8 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 2. LibreOffice: in der Seitenleiste erledigt (25.11.2026); als Nächstes ein Overlay auf der Arbeitsfläche (Einrasten
    beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
-   Ravigneaux-Sätze. Erledigt 25.11.2026: Gelenkgrenzen als Anschläge an Gestelldrehpunkten; Kegelradpaare in den
+   Erledigt 25.11.2026: Ravigneaux-Sätze (Planetenpaare auf einem Steg mit Bolzenpaaren, Zerlegen, Willis-Übersetzungen);
+   Gelenkgrenzen als Anschläge an Gestelldrehpunkten; Kegelradpaare in den
    Drehzahlen des Getriebezugs nach Zähnezahl (sie haben nur Seitenansichten und drehen sich daher nicht sichtbar); das
    zerlegte Differential arbeitet als solches (Räder lose im Korb, Willis mit dem Korb: geradeaus drehen beide Seiten mit
    dem Korb, eine Seite festgehalten → die andere dreht doppelt so schnell); der Ansichts-Alias `elevation`/`section` für
@@ -266,8 +267,8 @@ nur mit Seitenansichten auf paralleler Achse quer zur Achse (der Teilkreis träg
 Stand 21.11.2026 (Core + COM): Steg als Teil mit Bolzen und Bau-„+“, Planeten passend zu Sonne/Hohlrad, 2–8 Planeten,
 Stufenplaneten, Zerlegen von Planetensätzen (Stirnansichten), Kegelräder mit Spitzen-Griffen (Winkelpaare, Differential aus
 Einzelteilen) erledigt. Inzwischen erledigt: Kopplung von Kegelradpaaren, Zerlegen des Schema-Satzes und des
-Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebezugs (24./25.11.2026). Offen:
-Planetenpaare (Ravigneaux).
+Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebezugs, Planetenpaare (Ravigneaux-Satz,
+24./25.11.2026).
 
 - **P1 – Planetenträger (Steg) als eigenes Teil:** Stirnansicht mit 2–8 Armen oder Scheibe und Planetenbolzen auf einem
   Radius, Seitenansicht mit den Bolzen als Achsen; Planeten docken an den Bolzen an und werden mitgenommen; Bau-„+“ an

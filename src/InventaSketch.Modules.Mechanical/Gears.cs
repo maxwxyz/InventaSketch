@@ -48,6 +48,7 @@ namespace InventaSketch.Modules.Mechanical
             yield return WormWheel();
             yield return Rack();
             yield return Planetary();
+            yield return Ravigneaux();
             yield return Carrier();
             yield return Differential();
             yield return DiffCase();
@@ -562,6 +563,134 @@ namespace InventaSketch.Modules.Mechanical
             p.CenterCross(0, 0, 25, 25);
         }
 
+        // ------------------------------------------------------------------ Ravigneaux set
+
+        // Axial design 50 x 50, module PM: ring 52, large sun 20, long planet 16 (as the simple set), small sun 14, short
+        // planet 10. Long planets mesh with the large sun, the ring and a short planet; short planets with the small sun.
+        private const double RvSmallSun = PM * 14 / 2, RvShort = PM * 10 / 2, RvShortPin = RvSmallSun + RvShort;
+
+        /// <summary>Angle (rad, clockwise) from a long planet's pin to its short planet's pin, so the two mesh.</summary>
+        private static double RvPairAngle(double longPin, double shortPin, double contact)
+            => Math.Acos((longPin * longPin + shortPin * shortPin - contact * contact) / (2 * longPin * shortPin));
+
+        private static readonly double RvDelta = RvPairAngle(PCarrier, RvShortPin, RvShort + PPlanet);
+
+        private static MechType Ravigneaux() => new(
+            "mech.gearset.ravigneaux", T("Ravigneaux gear set", "Ravigneaux-Radsatz"), Cat,
+            new[] { "ravigneaux", "planet pairs", "compound planetary", "automatic transmission", "two suns", "planetenpaare", "ravigneaux-satz", "automatikgetriebe", "zwei sonnen" },
+            new ViewSpec("stick", VStick, 34, 50, RavigneauxStick),
+            new ViewSpec("axial", VAxial, 50, 50, RavigneauxAxial) { Anchors = PlanetAnchors })
+        {
+            Params = new[] { Common.Count("pairs", T("Planet pairs", "Planetenpaare"), 3, 2, 3) },
+            Extra = o => Common.Stepper(o, "pairs", T("Planet pairs", "Planetenpaare"), 3, 1, 2, 3),
+            CompanionTypes = new[] { "mech.shaft", "mech.carrier", "mech.gear.spur", "mech.gear.internal" },
+            PartsOf = RavigneauxParts,
+        };
+
+        private static int Pairs(SketchObject o) => Math.Max(2, Math.Min(3, o.Int("pairs", 3)));
+
+        /// <summary>
+        /// The set as parts in the axial view: a carrier with paired pins (long planets outside, short planets inside), the
+        /// large sun (20), the small sun (14), the ring (52), the long (16) and short (10) planets; the schematic view explodes
+        /// through the axial view.
+        /// </summary>
+        private static IReadOnlyList<PartSpec>? RavigneauxParts(SketchObject o)
+        {
+            if ((o.View ?? "stick") != "axial") return null;
+            var k = Math.Min(o.Size.W, o.Size.H) / 50;
+            var n = Pairs(o);
+            var list = new List<PartSpec>
+            {
+                new("mech.carrier", "axial", Vec2.Zero)
+                {
+                    PinRadius = PCarrier * k,
+                    Params = new Dictionary<string, ParamValue>
+                    {
+                        ["arms"] = n, ["paired"] = true, ["innerRatio"] = Math.Round(RvShortPin / PCarrier, 6),
+                        ["innerAngle"] = Math.Round(RvDelta * 180 / Math.PI, 6),
+                    },
+                },
+                new("mech.gear.spur", "axial", Vec2.Zero) { Pitch = PSun * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 20 } },
+                new("mech.gear.spur", "axial", Vec2.Zero) { Pitch = RvSmallSun * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 14 } },
+                new("mech.gear.internal", "axial", Vec2.Zero) { InnerPitch = PRing * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 52 } },
+            };
+            for (var i = 0; i < n; i++)
+            {
+                var phi = -Math.PI / 2 + i * 2 * Math.PI / n;
+                list.Add(new("mech.gear.spur", "axial", Frag.Polar(PCarrier * k, phi)) { Pitch = PPlanet * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 16 } });
+                list.Add(new("mech.gear.spur", "axial", Frag.Polar(RvShortPin * k, phi + RvDelta)) { Pitch = RvShort * k, Params = new Dictionary<string, ParamValue> { ["teeth"] = 10 } });
+            }
+            return list;
+        }
+
+        private static void RavigneauxAxial(Pen p, SketchObject o)
+        {
+            p.Circle(0, 0, PRim, S.Vis, "rim");
+            p.Circle(0, 0, PRing - PM, S.Vis, "ring");
+            p.Circle(0, 0, PRing, S.Ctr, "pitch");
+            // Large sun in front, small sun behind it (hidden).
+            p.Circle(0, 0, PSun + PM, S.Vis, "sun");
+            p.Circle(0, 0, PSun, S.Ctr, "pitch");
+            p.Circle(0, 0, RvSmallSun + PM, S.Hid, "sun2");
+            var n = Pairs(o);
+            for (var i = 0; i < n; i++)
+            {
+                var phi = -Math.PI / 2 + i * 2 * Math.PI / n;
+                var cl = Frag.Polar(PCarrier, phi);
+                var cs = Frag.Polar(RvShortPin, phi + RvDelta);
+                p.Circle(cl.X, cl.Y, PPlanet + PM, S.Vis, "planet");
+                p.Circle(cl.X, cl.Y, PPlanet, S.Ctr, "pitch");
+                p.Circle(cl.X, cl.Y, 1.6, S.Vis, "pin");
+                p.Circle(cs.X, cs.Y, RvShort + PM, S.Vis, "planet2");
+                p.Circle(cs.X, cs.Y, RvShort, S.Ctr, "pitch");
+                p.Circle(cs.X, cs.Y, 1.2, S.Vis, "pin");
+            }
+            p.Circle(0, 0, PCarrier, S.Ctr, "carrier");
+            p.Circle(0, 0, RvShortPin, S.Ctr, "carrier");
+            p.Circle(0, 0, 2.6, S.Vis, "bore");
+            p.CenterCross(0, 0, 25, 25);
+        }
+
+        /// <summary>
+        /// Stick schematic: small sun (shaft to the left) with the short planets, the long planets meshing with the short
+        /// ones, the large sun (shaft to the right) and the ring; the carrier holds both pins (hollow shaft to the left).
+        /// </summary>
+        private static void RavigneauxStick(Pen p, SketchObject o)
+        {
+            const double xs = -7, xl = 6, fw = 2.5, carrierX = -12.5;
+            // Small sun on the central shaft to the left, large sun on the shaft to the right.
+            p.Line(-17, 0, xs, 0, S.Heavy, "shaft");
+            p.Line(xs - fw, -RvSmallSun, xs + fw, -RvSmallSun, S.Stick, "sun2");
+            p.Line(xs - fw, RvSmallSun, xs + fw, RvSmallSun, S.Stick, "sun2");
+            Frag.Hub(p, p.V(xs, -RvSmallSun), p.V(xs, 0), p.V(xs, RvSmallSun), "fixed", S.Stick);
+            p.Line(xl, 0, 17, 0, S.Heavy, "shaft");
+            p.Line(xl - fw, -PSun, xl + fw, -PSun, S.Stick, "sun");
+            p.Line(xl - fw, PSun, xl + fw, PSun, S.Stick, "sun");
+            Frag.Hub(p, p.V(xl, -PSun), p.V(xl, 0), p.V(xl, PSun), "fixed", S.Stick);
+            // Carrier on a hollow shaft around the small sun's shaft.
+            p.Line(-17, -1.4, carrierX, -1.4, S.Stick, "carrier");
+            p.Line(-17, 1.4, carrierX, 1.4, S.Stick, "carrier");
+            p.Line(carrierX, -PCarrier, carrierX, PCarrier, S.Stick, "carrier");
+            foreach (var s in new[] { -1.0, 1.0 })
+            {
+                // Short planet on its pin, meshing with the small sun and the long planet.
+                var ys = s * RvShortPin;
+                p.Line(carrierX, ys, xs + fw * 0.5, ys, S.Stick, "carrier");
+                p.Line(xs - fw, s * RvSmallSun, xs + fw, s * RvSmallSun, S.Stick, "planet2");
+                p.Line(xs - fw, s * (RvShortPin + RvShort), xs + fw, s * (RvShortPin + RvShort), S.Stick, "planet2");
+                Frag.Hub(p, p.V(xs, s * RvSmallSun), p.V(xs, ys), p.V(xs, s * (RvShortPin + RvShort)), "loose", S.Stick);
+                // Long planet: from the short planet across to the large sun and the ring.
+                var yl = s * PCarrier;
+                p.Line(carrierX, yl, xl + fw * 0.5, yl, S.Stick, "carrier");
+                p.Line(xs - fw, s * (PCarrier - PPlanet), xl + fw, s * (PCarrier - PPlanet), S.Stick, "planet");
+                p.Line(xl - fw, s * PRing, xl + fw, s * PRing, S.Stick, "planet");
+                Frag.Hub(p, p.V(xl, s * PSun), p.V(xl, yl), p.V(xl, s * PRing), "loose", S.Stick);
+                // Ring gear bracket.
+                p.Poly(S.Stick, false, xl - fw - 1, s * PRim, xl - fw - 1, s * (PRing + 0.9), xl + fw + 1, s * (PRing + 0.9), xl + fw + 1, s * PRim);
+            }
+            p.Axis(17);
+        }
+
         // ------------------------------------------------------------------ planet carrier
 
         // Axial design 50 x 50: pins on a circle of radius 18; schematic 20 x 50 with the pins at +-18.
@@ -578,6 +707,9 @@ namespace InventaSketch.Modules.Mechanical
                 Common.Count("arms", T("Planet pins", "Planetenbolzen"), 3, 2, 8),
                 Common.Flag("disc", T("Disc instead of arms", "Scheibe statt Arme"), false),
                 Common.Flag("fixed", T("Fixed carrier (grounded)", "Fester Steg (gestellfest)"), false),
+                Common.Flag("paired", T("Paired pins (planet pairs, Ravigneaux)", "Bolzenpaare (Planetenpaare, Ravigneaux)"), false),
+                new ParamDef("innerRatio", T("Inner pin radius / outer", "Innerer / äußerer Bolzenkreis"), ParamKind.Number) { Default = 0.6667, Min = 0.3, Max = 0.95, Step = 0.01, Advanced = true },
+                new ParamDef("innerAngle", T("Inner pin offset (°)", "Versatz innerer Bolzen (°)"), ParamKind.Number) { Default = 46.2, Min = 5, Max = 90, Step = 0.5, Unit = "°", Advanced = true },
             },
             Extra = o => Common.Stepper(o, "arms", T("Pins", "Bolzen"), 3, 1, 2, 8)
                 .Append(Common.Toggle(o, "fixed", false, T("Fixed carrier on/off", "Fester Steg an/aus"), IconIds.Ground)),
@@ -588,6 +720,15 @@ namespace InventaSketch.Modules.Mechanical
         private static int Arms(SketchObject o) => Math.Max(2, Math.Min(8, o.Int("arms", 3)));
 
         private static List<double> ArmAngles(SketchObject o) => Enumerable.Range(0, Arms(o)).Select(i => -Math.PI / 2 + i * 2 * Math.PI / Arms(o)).ToList();
+
+        /// <summary>Inner pins of a carrier with paired pins (radius, angle per arm), else none.</summary>
+        private static IEnumerable<Vec2> InnerPins(SketchObject o)
+        {
+            if (!o.Flag("paired", false)) yield break;
+            var r = CarrierR * Math.Max(0.3, Math.Min(0.95, o.Num("innerRatio", 0.6667)));
+            var d = o.Num("innerAngle", 46.2) * Math.PI / 180;
+            foreach (var a in ArmAngles(o)) yield return Frag.Polar(r, a + d);
+        }
 
         private static void CarrierAxial(Pen p, SketchObject o)
         {
@@ -605,6 +746,18 @@ namespace InventaSketch.Modules.Mechanical
                 p.Circle(c.X, c.Y, 2.6, S.Vis, "boss");
                 p.Circle(c.X, c.Y, 1.2, S.Vis, "pin");
             }
+            foreach (var c in InnerPins(o))
+            {
+                // Inner pin of a pair: its own short arm from the hub.
+                var n = new Vec2(-c.Y, c.X) * (1.6 / Math.Max(1e-9, c.Length));
+                if (!o.Flag("disc", false))
+                {
+                    p.Line(n.X, n.Y, c.X + n.X, c.Y + n.Y, S.Vis, "arm");
+                    p.Line(-n.X, -n.Y, c.X - n.X, c.Y - n.Y, S.Vis, "arm");
+                }
+                p.Circle(c.X, c.Y, 2.2, S.Vis, "boss");
+                p.Circle(c.X, c.Y, 1.0, S.Vis, "pin");
+            }
             p.Circle(0, 0, 4.2, S.Vis, "hub");
             p.Circle(0, 0, 2.2, S.Vis, "bore");
             p.Circle(0, 0, CarrierR, S.Ctr, "pitch");
@@ -612,7 +765,9 @@ namespace InventaSketch.Modules.Mechanical
         }
 
         private static IEnumerable<Anchor> CarrierAxialAnchors(Pen p, SketchObject o)
-            => ArmAngles(o).Select((a, i) => Anchor.Point(AnchorRole.Hub, p.V(Frag.Polar(CarrierR, a)), "pin" + i));
+            => ArmAngles(o).Select((a, i) => Anchor.Point(AnchorRole.Hub, p.V(Frag.Polar(CarrierR, a)), "pin" + i))
+                // Inner pins of pairs follow the outer ones ("pin<n+i>"), so "pin0" stays on the outer circle.
+                .Concat(InnerPins(o).Select((c, i) => Anchor.Point(AnchorRole.Hub, p.V(c), "pin" + (Arms(o) + i))));
 
         private static void CarrierStick(Pen p, SketchObject o)
         {

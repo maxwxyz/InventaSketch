@@ -374,7 +374,11 @@ UX round (2026-11-20, from the maintainer's feedback):
   a sun gear's "+" in the centre offers a carrier with room for planets (pin radius 1.8 × the sun). Planets on the pins
   ride on the carrier (they move with it) and mesh with sun and ring. Planetary sets have 2–8 planets and stepped
   planets (schematic and axial view); in the axial views a set explodes into sun, planets, ring gear and carrier with
-  the bar pictogram "Explode into parts" (`Assemblies.Explode`, `ObjectType.Parts`), coupled as before. Bevel gears have
+  the bar pictogram "Explode into parts" (`Assemblies.Explode`, `ObjectType.Parts`), coupled as before. A Ravigneaux
+  set (`mech.gearset.ravigneaux`, 2026-11-25: small sun 14, large sun 20, short planets 10, long planets 16, ring 52,
+  2–3 planet pairs, schematic and axial view) explodes into both suns, the planet pairs, the ring and a carrier with
+  paired pins (`mech.carrier` with `paired`, inner pin circle and offset angle); turning it solves the pairs with Willis
+  (ring held, small sun in: carrier −14/38 = reverse; large sun held: 14/34). Bevel gears have
   their cone apex as an anchor: their "+" offer a mating bevel gear above or below (axes at 90°) and one facing it on
   the same axis, so a differential is built from a side gear, the opposite side gear and spider gears. Gear ports only
   offer parts in the same kind of view (no side-view shaft for an axial gear). Bevel pairs are not coupled yet (moving

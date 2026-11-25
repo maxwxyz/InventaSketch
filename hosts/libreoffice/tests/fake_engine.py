@@ -5,6 +5,10 @@ import json
 import sys
 import time
 
+# The protocol is UTF-8 like the real engine (Program.cs), whatever the locale of the test run.
+sys.stdin.reconfigure(encoding="utf-8")
+sys.stdout.reconfigure(encoding="utf-8")
+
 for line in sys.stdin:
     if not line.strip():
         continue
