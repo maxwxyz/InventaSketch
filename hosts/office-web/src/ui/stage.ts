@@ -3,9 +3,11 @@
 // previews drags with SVG transforms and commits the result through the session.
 
 import type { Session } from "../engine/client";
-import type { BuildPortInfo, CatalogItem, EditorState, MotionInfo, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
-import { t } from "../i18n";
-import { COUPLING_PREVIEW_MS, PORT_RADIUS_PX, Throttle, portPlusPosition, portTipKey, stretchTarget } from "./buildlogic";
+import type { BuildPortInfo, CatalogItem, DragHandleInfo, EditorState, MotionInfo, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
+import { lang, t } from "../i18n";
+import { COUPLING_PREVIEW_MS, HUB_CORNER_PX, PORT_OFFSET_PX, PORT_RADIUS_PX, Throttle, portTipKey, stretchTarget } from "./buildlogic";
+import { PRIORITY, resolveHandles, type LayoutSpec } from "./handlelayout";
+import { gripShown } from "./partlogic";
 import { clamp, s, svgChildren, svgDataUrl, viewBoxOf } from "./dom";
 import { TurnTracker, canMove, insideBounds, nearestJoint, stepTurn, turnLabel } from "./motionlogic";
 import { snapLabelAnchor } from "./uxlogic";
@@ -32,6 +34,12 @@ export interface StageHost {
   hideBar?(): void;
   /** A click without dragging on the single selected element at page point `p` (charts v2: selects the part there). */
   clickPart?(id: string, p: Vec2, tolerance: number): void;
+  /** Ctrl+double-click on element `id`: select what is connected with it (the most meaningful kind). */
+  selectConnected?(id: string): void;
+  /** The selected part of element `id` (grips of a curve's points show with it), if any. */
+  selectedPart?(id: string): string | undefined;
+  /** A click on a grip: select its part of element `id`. */
+  selectPart?(id: string, part: string): void;
   report(error: unknown): void;
 }
 
@@ -39,7 +47,7 @@ interface Frame { cx: number; cy: number; w: number; h: number; rot: number }
 
 export type ChainSide = "left" | "top" | "right" | "bottom";
 
-type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide } | { kind: "port"; index: number };
+type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide } | { kind: "port"; index: number } | { kind: "grip"; index: number };
 
 /** Change shown by the motion preview (engine `motionPreview`): a gear turn or a joint dragged to a point. */
 type MotionChange = { degrees: number } | { index: number; x: number; y: number };
@@ -56,6 +64,8 @@ type Drag =
   | { kind: "pan"; startClient: Vec2; ox: number; oy: number }
   | { kind: "chain"; id: string; side: ChainSide; from: Vec2; cur: Vec2; moved: boolean; centre: Vec2 }
   | { kind: "port"; id: string; port: BuildPortInfo; plus: Vec2; startClient: Vec2; moved: boolean; to?: { x: number; y: number; delta: number } }
+  /** A grip on a value (chart limit line, value line, marker, data point) dragged to `to` (the element constrains and snaps it). */
+  | { kind: "grip"; id: string; grip: DragHandleInfo; startClient: Vec2; moved: boolean; to?: Vec2 }
   /** Motion mode: a gear turned about its centre (`turn`), or joint `index` of a link pulled to `target`. */
   | { kind: "motion"; id: string; turn?: TurnTracker; degrees: number; index: number; from?: Vec2; target: Vec2; startClient: Vec2; moved: boolean; dimmed: string[] };
 
@@ -124,6 +134,15 @@ export class Stage {
   /** Outline of the selected part of a chart (charts v2), below the selection handles. */
   private readonly partLayer: SVGGElement;
   private readonly content: SVGGElement;
+  /** Selection look: a soft blue glow along the exact outline of every selected element (above the drawing, under handles). */
+  private readonly haloLayer: SVGGElement;
+  private readonly haloDefs: SVGDefsElement;
+  /** What the halo was last drawn for (selection, revision, zoom, preview): redrawn only when it changes. */
+  private haloKey = "";
+  /** Elements a hovered "Select connected" entry would add: glow fainter. */
+  private haloPreview: string[] = [];
+  /** The selected part's outline (page mm polylines): glows like a selection, its element fainter. */
+  private partLines?: number[][][];
   private readonly overlay: SVGGElement;
   private readonly guides: SVGGElement;
   private readonly ghost: SVGGElement;
@@ -138,6 +157,12 @@ export class Stage {
   private ports?: { key: string; list: BuildPortInfo[] };
   /** Page positions of the drawn "+" (same order as `ports.list`). */
   private portPlus: Vec2[] = [];
+  /** Grips on values of the single selected element (engine `dragHandles`), fetched once per selection and revision. */
+  private grips?: { key: string; list: DragHandleInfo[] };
+  /** The grips drawn now (shown ones, in `data-handle` index order). */
+  private shownGrips: DragHandleInfo[] = [];
+  /** Live preview of a dragged grip (engine `moveHandle` with preview), at the coupling preview rate. */
+  private readonly gripThrottle = new Throttle((id: string, grip: DragHandleInfo, to: Vec2, client: Vec2) => this.showGrip(id, grip, to, client), COUPLING_PREVIEW_MS);
   private readonly scaleLabelEl: HTMLDivElement;
   /** What a drag docks onto ("pitch circle", "axis", "pin 2"), next to the snap target. */
   private readonly snapLabelEl: HTMLDivElement;
@@ -171,7 +196,9 @@ export class Stage {
     this.ghost = s("g", { class: "isk-ghost" });
     this.coupling = s("g", { class: "isk-coupling" });
     this.partLayer = s("g", { class: "isk-part-layer" });
-    this.svg.append(defs, this.pageRect, this.gridRect, this.content, this.coupling, this.guides, this.partLayer, this.overlay, this.ghost);
+    this.haloLayer = s("g", { class: "isk-halo-layer", "aria-hidden": "true" });
+    this.haloDefs = s("defs");
+    this.svg.append(defs, this.haloDefs, this.pageRect, this.gridRect, this.content, this.coupling, this.haloLayer, this.guides, this.partLayer, this.overlay, this.ghost);
     this.scaleLabelEl = document.createElement("div");
     this.scaleLabelEl.className = "isk-scale-label";
     this.scaleLabelEl.hidden = true;
@@ -344,12 +371,100 @@ export class Stage {
     if (pts.length >= 2) this.partLayer.append(s("polyline", { class: "isk-part-outline isk-sketch-trail", points: pts.map((p) => `${p[0]},${p[1]}`).join(" ") }));
   }
 
-  /** Outline of the selected part (page mm polylines); none clears it. */
+  /** Outline of the selected part (page mm polylines); none clears it. The part glows, its element fainter. */
   setPartOutline(lines?: number[][][]): void {
+    this.partLines = lines?.length ? lines : undefined;
     this.partLayer.replaceChildren(...(lines ?? []).map((l) => s("polyline", { class: "isk-part-outline", points: l.map((p) => `${p[0]},${p[1]}`).join(" ") })));
+    this.haloKey = "";
+    this.drawHalo();
+  }
+
+  /** Elements a hovered "Select connected" entry would add (fainter glow); empty clears the preview. */
+  setHaloPreview(ids: string[]): void {
+    this.haloPreview = ids;
+    this.drawHalo();
+  }
+
+  /** What the halo shows as last drawn (UI checks): selected ids, previewed ids and whether a part glows. */
+  get haloState(): { selected: number; preview: number; part: boolean } {
+    return {
+      selected: this.haloLayer.querySelectorAll(":scope > g.isk-halo-sel").length,
+      preview: this.haloLayer.querySelectorAll(":scope > g.isk-halo-preview").length,
+      part: !!this.haloLayer.querySelector(":scope > g.isk-halo-partglow"),
+    };
+  }
+
+  /**
+   * The selection look (docs/en/design/interaction-ux.md section 6a, like the COM add-in's SelectionHalo): every selected
+   * element gets a soft blue glow along its drawn lines and shapes – a copy of its drawing, widened and blurred by an SVG
+   * filter – with the element's own strokes and filled areas cut out, so the glow lies around it as if behind it. The
+   * layer lies above the drawing, so an outline running under another element still glows over it, and under every
+   * handle. Hidden while dragging (the preview takes over). A selected part glows in full, its element fainter; what a
+   * hovered "Select connected" entry would add glows fainter too.
+   */
+  drawHalo(): void {
+    const st = this.host.state();
+    const d = this.drag;
+    const hidden = !!d && d.kind !== "marquee" && d.kind !== "pan" && !(d.kind === "move" && !d.moved) && !(d.kind === "port" && !d.moved);
+    const preview = this.haloPreview.filter((id) => !st.selection.includes(id));
+    const partKey = this.partLines ? this.partLines.reduce((n, l) => n + l.length, 0) + ":" + (this.partLines[0]?.[0]?.join(",") ?? "") : "";
+    const key = hidden ? "hidden" : `${st.revision}|${st.selection.join(",")}|${preview.join(",")}|${this.scale.toFixed(3)}|${partKey}`;
+    if (key === this.haloKey) return;
+    this.haloKey = key;
+    this.haloLayer.replaceChildren();
+    this.haloDefs.replaceChildren();
+    if (hidden) return;
+    let n = 0;
+    const add = (node: Element, bounds: { x: number; y: number; w: number; h: number }, opacity: number, cls: string) => {
+      const id = `isk-halo-${n++}`;
+      this.haloDefs.append(this.haloFilter(id, bounds, opacity));
+      const g = s("g", { class: cls, filter: `url(#${id})` });
+      g.append(node);
+      this.haloLayer.append(g);
+    };
+    const layers: [string[], number, string][] = [[preview, 0.24, "isk-halo-preview"], [st.selection, this.partLines ? 0.22 : 0.48, "isk-halo-sel"]];
+    for (const [ids, opacity, cls] of layers) {
+      for (const id of ids) {
+        const o = st.objects.find((x) => x.id === id);
+        const src = this.content.querySelector(`[data-isk-id="${CSS.escape(id)}"]`);
+        if (!o || !src) continue;
+        const copy = src.cloneNode(true) as Element;
+        copy.removeAttribute("data-isk-id");
+        copy.querySelectorAll("[data-isk-id]").forEach((x) => x.removeAttribute("data-isk-id"));
+        add(copy, o.bounds, opacity, cls);
+      }
+    }
+    if (this.partLines) {
+      const g = s("g", { class: "isk-halo-part" });
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const l of this.partLines) {
+        g.append(s("polyline", { points: l.map((p) => `${p[0]},${p[1]}`).join(" ") }));
+        for (const p of l) { x0 = Math.min(x0, p[0]); y0 = Math.min(y0, p[1]); x1 = Math.max(x1, p[0]); y1 = Math.max(y1, p[1]); }
+      }
+      if (Number.isFinite(x0)) add(g, { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, 0.55, "isk-halo-partglow");
+    }
+  }
+
+  /** The glow filter of one element: widen its alpha, blur, tint, then cut the element itself out. */
+  private haloFilter(id: string, b: { x: number; y: number; w: number; h: number }, opacity: number): SVGFilterElement {
+    const px = 1 / this.scale;
+    const spread = 3.5 * px, blur = 4 * px, pad = spread + 3 * blur + 2 * px;
+    const f = s("filter", {
+      id, filterUnits: "userSpaceOnUse", "color-interpolation-filters": "sRGB",
+      x: b.x - pad, y: b.y - pad, width: b.w + 2 * pad, height: b.h + 2 * pad,
+    });
+    f.append(
+      s("feMorphology", { in: "SourceAlpha", operator: "dilate", radius: spread.toFixed(4), result: "wide" }),
+      s("feGaussianBlur", { in: "wide", stdDeviation: blur.toFixed(4), result: "soft" }),
+      s("feFlood", { "flood-color": "#006ee6", "flood-opacity": opacity, result: "tint" }),
+      s("feComposite", { in: "tint", in2: "soft", operator: "in", result: "glow" }),
+      s("feComposite", { in: "glow", in2: "SourceAlpha", operator: "out" }),
+    );
+    return f;
   }
 
   drawOverlay(previewFrame?: Frame, previewPoints?: { obj: ObjectInfo; pts: Vec2[] }): void {
+    this.drawHalo();
     this.overlay.replaceChildren();
     this.portPlus = [];
     const st = this.host.state();
@@ -357,9 +472,7 @@ export class Stage {
     if (sel.length === 0 && !previewFrame) return;
     const px = 1 / this.scale;
     const objs = this.objects(sel);
-    // Thin outline per selected object (assembly members, multi selection).
-    if (objs.length > 1)
-      for (const o of objs) this.overlay.append(s("rect", { class: "isk-sel-member", x: o.bounds.x, y: o.bounds.y, width: o.bounds.w, height: o.bounds.h }));
+    // Multi selection: every member glows (drawHalo), so no extra boxes are drawn.
     const single = objs.length === 1 ? objs[0] : undefined;
     // Motion mode on a part that can move: only what moves it (joints of a link, the gear's frame and centre); no resize,
     // rotate, quick-add or build handles, so every drag on it is a motion.
@@ -372,7 +485,10 @@ export class Stage {
         c.dataset.handle = JSON.stringify({ kind: "point", index: i } satisfies HandleSpec);
         this.overlay.append(c);
       });
-      if (!previewPoints && !single.locked && !motion) this.drawPorts(single, pts, { x: single.bounds.x + single.bounds.w, y: single.bounds.y });
+      if (!previewPoints && !single.locked && !motion) {
+        const grips = this.drawGrips(single);
+        this.drawPorts(single, [...pts.map((p) => ({ p, r: HANDLE_PX / 2 + 1 })), ...grips], { x: single.bounds.x + single.bounds.w, y: single.bounds.y });
+      }
       return;
     }
     const f = previewFrame ?? this.frameOf(sel);
@@ -409,10 +525,10 @@ export class Stage {
         this.overlay.append(tri);
       }
     }
-    const handles: Vec2[] = [rh];
+    const handles: { p: Vec2; r: number }[] = [{ p: rh, r: HANDLE_PX / 2 + 1 }];
     for (const [u, v] of [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]) {
       const p = this.framePoint(f, u, v);
-      handles.push(p);
+      handles.push({ p, r: HANDLE_PX / 2 + 1 });
       const corner = u !== 0 && v !== 0;
       const r = s("rect", {
         class: `isk-handle ${corner ? "isk-handle-corner" : "isk-handle-side"}`,
@@ -422,7 +538,82 @@ export class Stage {
       r.dataset.handle = JSON.stringify({ kind: "scale", sx: u, sy: v } satisfies HandleSpec);
       this.overlay.append(r);
     }
-    if (single && !previewFrame) this.drawPorts(single, handles, { x: Math.max(...corners.map((c) => c.x)), y: Math.min(...corners.map((c) => c.y)) });
+    // Quick-add triangles are fixed handles too: the "+" keep clear of them.
+    this.overlay.querySelectorAll<SVGPolygonElement>(".isk-chain").forEach((tri) => {
+      const pts = (tri.getAttribute("points") ?? "").split(" ").map((xy) => xy.split(",").map(Number));
+      if (pts.length === 3) handles.push({ p: { x: (pts[0][0] + pts[1][0] + pts[2][0]) / 3, y: (pts[0][1] + pts[1][1] + pts[2][1]) / 3 }, r: CHAIN_SIZE_PX / 2 + 1 });
+    });
+    if (single && !previewFrame) {
+      handles.push(...this.drawGrips(single));
+      this.drawPorts(single, handles, { x: Math.max(...corners.map((c) => c.x)), y: Math.min(...corners.map((c) => c.y)) });
+    }
+  }
+
+  /** Grips of a single selected element (engine `dragHandles`), cached per selection and revision. */
+  private gripsOf(obj: ObjectInfo): DragHandleInfo[] {
+    if (!obj.known) return [];
+    const key = `${obj.id}@${this.host.state().revision}`;
+    if (this.grips?.key !== key) {
+      let list: DragHandleInfo[] = [];
+      try {
+        list = this.host.session().dragHandles([obj.id], lang()).find((h) => h.id === obj.id)?.handles ?? [];
+      } catch {
+        list = [];
+      }
+      this.grips = { key, list };
+    }
+    return this.grips.list;
+  }
+
+  /**
+   * Grips on values (interaction-ux.md section 4, like the COM add-in): a blue-rimmed square with small arrowheads in
+   * the directions it moves, at chart limit lines, value lines, markers; the grips of a curve's points come with the
+   * selected curve or point. Drag: the line follows (the element constrains and snaps), the new value shows beside the
+   * pointer, release is one undo step, Esc cancels; a click selects the grip's part. Returns them as layout obstacles.
+   */
+  private drawGrips(obj: ObjectInfo): { p: Vec2; r: number }[] {
+    const all = this.gripsOf(obj);
+    const part = this.host.selectedPart?.(obj.id);
+    this.shownGrips = all.filter((g) => gripShown(g, part, all));
+    const px = 1 / this.scale;
+    const size = 9 * px, a = 3 * px;
+    return this.shownGrips.map((g, i) => {
+      const grp = s("g", { class: `isk-grip${g.part && g.part === part ? " is-selected" : ""}` });
+      grp.dataset.handle = JSON.stringify({ kind: "grip", index: i } satisfies HandleSpec);
+      const title = s("title");
+      title.textContent = g.label;
+      grp.append(title, s("rect", { x: g.x - size / 2, y: g.y - size / 2, width: size, height: size, rx: 1.5 * px }));
+      // Arrowheads show the allowed direction (both ways along it); a free grip has none.
+      if (g.constraint !== "free") {
+        const len = Math.hypot(g.dx, g.dy) || 1;
+        const d = { x: g.dx / len, y: g.dy / len }, n = { x: -d.y, y: d.x };
+        for (const sgn of [1, -1]) {
+          const tip = { x: g.x + sgn * d.x * (size / 2 + 2 * a), y: g.y + sgn * d.y * (size / 2 + 2 * a) };
+          const base = { x: g.x + sgn * d.x * (size / 2 + 0.6 * a), y: g.y + sgn * d.y * (size / 2 + 0.6 * a) };
+          grp.append(s("path", { class: "isk-grip-arrow", d: `M${tip.x} ${tip.y}L${base.x + n.x * a} ${base.y + n.y * a}L${base.x - n.x * a} ${base.y - n.y * a}Z` }));
+        }
+      }
+      this.overlay.append(grp);
+      return { p: { x: g.x, y: g.y }, r: 7 };
+    });
+  }
+
+  /** Live preview of a dragged grip: where it lands (snapped by the element) and its new value beside the pointer. */
+  private showGrip(id: string, grip: DragHandleInfo, to: Vec2, client: Vec2): void {
+    if (this.drag?.kind !== "grip") return;
+    let h: DragHandleInfo | null = null;
+    try {
+      h = this.host.session().moveHandlePreview(id, grip.key, to.x, to.y, lang());
+    } catch {
+      h = null;
+    }
+    if (!h) return;
+    const size = 9 / this.scale;
+    this.ghost.replaceChildren(
+      s("line", { class: "isk-grip-lead", x1: grip.x, y1: grip.y, x2: h.x, y2: h.y }),
+      s("rect", { class: "isk-grip-ghost", x: h.x - size / 2, y: h.y - size / 2, width: size, height: size }),
+    );
+    this.showScaleLabel(h.label, client);
   }
 
   /** Build ports of a single selected element (engine `buildPorts`), cached per selection and revision. */
@@ -443,17 +634,34 @@ export class Stage {
 
   /**
    * Blue "+" circles at the free build ports of the selected element (like the COM add-in): about 15 px beyond the port
-   * along its outward direction with a thin dashed lead line, pushed clear of the frame handles; a free hub's "+" sits
-   * beyond the top right corner. Click: insert box with what docks there; drag at a shaft end: stretch the shaft.
+   * along its outward direction; a free hub's "+" sits beyond the top right corner. One layout for all handles
+   * (`resolveHandles`, the COM HandleLayout): the frame handles, point diamonds, triangles and grips stay, every "+"
+   * takes the first free place around its preferred one with a 3 px gap, so no two handles lie on top of each other; a
+   * "+" that had to move keeps a thin dashed lead to its port. Click: insert box with what docks there; drag at a shaft
+   * end: stretch the shaft.
    */
-  private drawPorts(obj: ObjectInfo, obstacles: Vec2[], topRight: Vec2): void {
+  private drawPorts(obj: ObjectInfo, obstacles: { p: Vec2; r: number }[], topRight: Vec2): void {
     const list = this.portsOf(obj);
     const px = 1 / this.scale;
     this.portPlus = [];
+    const toPx = (p: Vec2) => ({ x: p.x * this.scale, y: p.y * this.scale });
+    const specs: LayoutSpec[] = obstacles.map((o, i) => ({ id: `fixed:${i}`, kind: "frame", anchor: toPx(o.p), dir: { x: 0, y: 0 }, offset: 0, radius: o.r, priority: 0, fixed: true }));
+    const preferred: Vec2[] = [];
     list.forEach((port, i) => {
-      const c = portPlusPosition(port, this.scale, obstacles, topRight);
+      const hub = port.kind === "Hub";
+      const anchor = hub ? toPx(topRight) : toPx(port);
+      const dir = hub ? { x: 1, y: -1 } : { x: port.dx, y: port.dy };
+      const offset = hub ? HUB_CORNER_PX * Math.SQRT2 : PORT_OFFSET_PX;
+      const len = Math.hypot(dir.x, dir.y) || 1;
+      preferred.push({ x: anchor.x + (dir.x / len) * offset, y: anchor.y + (dir.y / len) * offset });
+      specs.push({ id: `port:${i}`, kind: "add", anchor, dir, offset, radius: PORT_RADIUS_PX, priority: PRIORITY.add, maxPush: 48 });
+    });
+    const placed = resolveHandles(specs).slice(obstacles.length);
+    list.forEach((port, i) => {
+      const at = placed[i].at;
+      const c = { x: at.x * px, y: at.y * px };
       this.portPlus.push(c);
-      this.overlay.append(s("line", { class: "isk-port-lead", x1: port.x, y1: port.y, x2: c.x, y2: c.y }));
+      if (Math.hypot(at.x - preferred[i].x, at.y - preferred[i].y) > 1) this.overlay.append(s("line", { class: "isk-port-lead", x1: port.x, y1: port.y, x2: c.x, y2: c.y }));
       const r = PORT_RADIUS_PX * px, k = r * 0.55;
       const g = s("g", { class: `isk-port${port.stretch ? " isk-port-stretch" : ""}` });
       g.dataset.handle = JSON.stringify({ kind: "port", index: i } satisfies HandleSpec);
@@ -757,6 +965,13 @@ export class Stage {
       const last = this.lastDown;
       this.lastDown = { time: now, x: e.clientX, y: e.clientY, id: hit.id };
       if (hit.id && last && last.id === hit.id && now - last.time < 450 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6
+          && (e.ctrlKey || e.metaKey) && !e.shiftKey && this.host.selectConnected) {
+        // Ctrl+double-click: select connected (the most meaningful kind for the element).
+        this.lastDown = undefined;
+        this.host.selectConnected(hit.id);
+        return;
+      }
+      if (hit.id && last && last.id === hit.id && now - last.time < 450 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6
           && !(e.shiftKey || e.ctrlKey || e.metaKey)) {
         this.lastDown = undefined;
         this.editTextAt(hit.id, hit.ids);
@@ -792,6 +1007,11 @@ export class Stage {
     const objs = this.objects(ids);
     if (h.kind === "point" && objs.length === 1) {
       this.drag = { kind: "point", obj: objs[0], index: h.index, pos: p };
+      return;
+    }
+    if (h.kind === "grip" && objs.length === 1) {
+      const grip = this.shownGrips[h.index];
+      if (grip) this.drag = { kind: "grip", id: objs[0].id, grip, startClient: this.toClient(p), moved: false };
       return;
     }
     if (h.kind === "port" && objs.length === 1) {
@@ -845,6 +1065,13 @@ export class Stage {
           d.moved = true;
           // Preview: dashed line from the side to the pointer, where the new element will be added.
           this.guides.replaceChildren(s("line", { class: "isk-chain-preview", x1: d.from.x, y1: d.from.y, x2: p.x, y2: p.y }));
+          return;
+        }
+        case "grip": {
+          if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < 4) return;
+          d.moved = true;
+          d.to = p;
+          this.gripThrottle.push(d.id, d.grip, p, { x: e.clientX, y: e.clientY });
           return;
         }
         case "port": {
@@ -1034,6 +1261,15 @@ export class Stage {
     const session = this.host.session();
     try {
       switch (d.kind) {
+        case "grip": {
+          // Release: one undo step with the value the element snaps to; a click selects the grip's part.
+          this.gripThrottle.cancel();
+          this.ghost.replaceChildren();
+          if (d.moved && d.to) this.host.apply(session.moveHandle(d.id, d.grip.key, d.to.x, d.to.y), true);
+          else if (d.grip.part) this.host.selectPart?.(d.id, d.grip.part);
+          else this.drawOverlay();
+          break;
+        }
         case "motion": {
           // Release applies the motion once (one undo step); a click without a drag changes nothing.
           this.clearMotionPreview(d);
@@ -1109,7 +1345,8 @@ export class Stage {
     this.guides.replaceChildren();
     this.hideScaleLabel();
     this.clearCoupling();
-    if (d?.kind === "port") this.ghost.replaceChildren();
+    if (d?.kind === "port" || d?.kind === "grip") this.ghost.replaceChildren();
+    if (d?.kind === "grip") this.gripThrottle.cancel();
     if (d?.kind === "motion") this.clearMotionPreview(d);
     if (d && "ids" in d) this.resetPreview(d.ids);
     else this.drawOverlay();

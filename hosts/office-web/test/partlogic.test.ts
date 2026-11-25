@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ActionInfo, PartView } from "../src/engine/types";
-import { isPartCommand, keepPart, partActionId, partActions, partListEntries, partPieEntries } from "../src/ui/partlogic";
+import { addedPart, isPartCommand, keepPart, partActionId, partActions, partAfterDelete, partDeleteAction, partListEntries } from "../src/ui/partlogic";
 
 const act = (id: string, extra: Partial<ActionInfo> = {}): ActionInfo => ({ id, label: id, icon: "cmd-toggle", enabled: true, active: false, group: "part", kind: "generic", ...extra });
 const parts: PartView[] = [
@@ -18,11 +18,19 @@ describe("part mode (charts v2)", () => {
     expect(isPartCommand("insert")).toBe(false);
   });
 
-  it("offers the part actions in the pie, then the parts list and the whole element", () => {
-    const entries = partPieEntries([act("part.hide"), act("chart.data", { input: { label: "Data", value: "0;1" } })], "Parts ▸", "Whole element");
-    expect(entries.map((e) => e.id)).toEqual(["part:part.hide", "part:chart.data", "menu:parts", "part:none"]);
-    expect(entries[0].action?.id).toBe("part:part.hide");
-    expect(entries[1].label.endsWith("…")).toBe(true);
+  it("deletes a part with its own delete, else hides it, never the element", () => {
+    expect(partDeleteAction([act("part.hide"), act("part.delete")])).toBe("part.delete");
+    expect(partDeleteAction([act("part.hide")])).toBe("part.hide");
+    expect(partDeleteAction([act("part.hide", { active: true })])).toBeUndefined();
+    expect(partDeleteAction([act("part.delete", { enabled: false })])).toBeUndefined();
+    expect(partAfterDelete("point.0.3")).toBe("series.0");
+    expect(partAfterDelete("series.1")).toBeUndefined();
+  });
+
+  it("selects the one part a menu option added", () => {
+    expect(addedPart(["series.0"], ["series.0", "area.0"])).toBe("area.0");
+    expect(addedPart(["series.0"], ["series.0"])).toBeUndefined();
+    expect(addedPart([], ["a", "b"])).toBeUndefined();
   });
 
   it("lists every part, hidden ones marked, the current one active", () => {

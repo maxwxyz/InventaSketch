@@ -127,6 +127,7 @@ namespace InventaSketch.Engine
                 ["motionPreview"] = MotionPreviewCore,
             };
             RegisterValueMethods();
+            _methods["setValueLevel"] = SetValueLevelCore;
         }
 
         /// <summary>Shared instance with <see cref="ModuleCatalog.CreateDefault"/>.</summary>
@@ -245,6 +246,7 @@ namespace InventaSketch.Engine
                 Monochrome = doc.Settings.Monochrome,
                 LineGroup = doc.Settings.LineGroup ?? Style.DesignLineGroup,
                 Accent = doc.Settings.Accent,
+                ValueLevel = ValueLevelId(doc.Settings.EffectiveValueLevel),
                 Changed = s.LastChanged.ToList(),
                 Dependents = s.LastDependents.ToList(),
             };
@@ -267,6 +269,7 @@ namespace InventaSketch.Engine
                     Centred = isSelected && IsCentred(o, ctx!),
                     MainText = isSelected ? MainTextOf(Registry, o, s.Lang) : null,
                     Chain = isSelected && Flow.CanChain(Registry, o),
+                    HasValues = isSelected && ValueModel.HasValues(type),
                 });
             }
             if (r?.IncludeSvg != false)
@@ -740,6 +743,34 @@ namespace InventaSketch.Engine
                 s.Apply("Black and white", d => d with { Settings = d.Settings with { Monochrome = value } });
             return StateOf(s, r);
         }
+
+        /// <summary>
+        /// setValueLevel: the value level of the drawing (<see cref="DocumentSettings.ValueLevel"/>, <c>text</c> = "quick",
+        /// "explore" or "engineer"; empty = quick sketch), docs/en/design/engineering-calculations.md section 11. One undo step
+        /// when it changes; nothing is redrawn (the level only changes what the hosts offer: the Values button, formula lines).
+        /// </summary>
+        private object SetValueLevelCore(EngineRequest r)
+        {
+            var s = S(r);
+            var level = (r.Text ?? "").Trim().ToLowerInvariant() switch
+            {
+                "" or "quick" or "quicksketch" => Core.ValueLevel.QuickSketch,
+                "explore" => Core.ValueLevel.Explore,
+                "engineer" => Core.ValueLevel.Engineer,
+                _ => throw new ArgumentException("Unknown value level '" + r.Text + "' (quick, explore, engineer)."),
+            };
+            if (s.Doc.Settings.EffectiveValueLevel != level)
+                s.Apply("Value level", d => d with { Settings = d.Settings.WithValueLevel(level) });
+            return StateOf(s, r);
+        }
+
+        /// <summary>The API id of a value level ("quick", "explore", "engineer").</summary>
+        private static string ValueLevelId(ValueLevel level) => level switch
+        {
+            Core.ValueLevel.Explore => "explore",
+            Core.ValueLevel.Engineer => "engineer",
+            _ => "quick",
+        };
 
         /// <summary>
         /// Sets the ISO 128 line group of the drawing (<see cref="DocumentSettings.LineGroup"/>, <c>value</c> = width of the

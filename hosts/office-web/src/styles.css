@@ -284,3 +284,62 @@ textarea.isk-input { resize: vertical; }
 .isk-sev-warning { background: #f0a020; color: #1b1b1b; }
 .isk-sev-manual { background: #5c6bc0; color: #fff; }
 .isk-sev-info { background: var(--border); color: var(--text); }
+
+/* Floating bar (interaction-ux.md section 5): 32 px buttons, the main action with a short label, "⋯" last. */
+.isk-ctxbar .isk-btn { min-height: 32px; min-width: 32px; border: 1px solid transparent; }
+.isk-ctxbar .isk-btn:hover:not(:disabled) { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 45%, transparent); }
+.isk-labelled { padding: 2px 10px 2px 6px; }
+.isk-choice:has(.isk-bar-label) { padding-right: 14px; gap: 4px; }
+.isk-bar-label, .isk-bar-text { font-size: 12px; font-weight: 600; white-space: nowrap; }
+.isk-text-btn { padding: 2px 8px; }
+.isk-more-btn { min-width: 32px; padding: 0 6px; font-size: 18px; line-height: 1; letter-spacing: 1px; }
+.isk-choice-text { font-size: 12px; padding-right: 4px; }
+.isk-drop-head { padding: 2px 8px 4px; font-size: 11px; color: var(--muted); }
+.isk-drop-row { min-height: 32px; font-size: 12px; }
+.isk-drop-row:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.isk-drop-blank { display: inline-block; width: 22px; height: 22px; }
+.isk-dropdown { max-height: min(420px, calc(100% - 16px)); overflow-y: auto; }
+
+/* Pie (section 6): one label size, the element's name in the centre, the hint line below the ring. */
+.isk-pie-lbl { white-space: nowrap; font-weight: 500; }
+.isk-pie-centre { padding: 4px; color: var(--text); overflow: hidden; }
+.isk-pie-title { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; font-size: 11px; font-weight: 600; line-height: 1.2; text-align: center; word-break: break-word; }
+.isk-pie-hint { position: absolute; left: 50%; transform: translateX(-50%); width: max-content; max-width: 330px; padding: 4px 10px; border-radius: 8px; background: var(--text); color: var(--bg); font-size: 11.5px; text-align: center; pointer-events: none; }
+.isk-pie-hint[hidden] { display: none; }
+.isk-pie-item.is-disabled { opacity: 0.32; }
+
+/* Selection halo (section 6a): the copy of the element only feeds the glow filter; the part outline glows too. */
+.isk-halo-layer { pointer-events: none; }
+.isk-halo-part polyline { fill: none; stroke: #000; stroke-width: 2px; vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Value card (engineering-calculations.md section 11): one row per value, formula lines and errors below it. */
+.isk-valuecard { width: min(360px, calc(100% - 12px)); }
+.isk-val-status { margin: 4px 0 6px; font-weight: 600; }
+.isk-val-status.is-conflict, .isk-val-mark.is-conflict { color: #b26a00; }
+.isk-val-rows { display: grid; grid-template-columns: 16px auto 1fr 96px auto 26px; align-items: center; column-gap: 6px; row-gap: 2px; }
+.isk-val-row { display: contents; }
+.isk-val-mark { text-align: center; color: var(--muted); }
+.isk-val-sym { font-style: italic; font-family: "Cambria Math", "Times New Roman", serif; }
+.isk-val-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.isk-val-input { width: 100%; min-width: 0; }
+.isk-val-unit { font-size: 11px; }
+.isk-val-clear { width: 26px; min-height: 26px; }
+.isk-val-formula { grid-column: 2 / -1; font-size: 11px; margin: 0 0 3px; }
+.isk-val-error { grid-column: 2 / -1; color: var(--danger); font-size: 11px; }
+.isk-val-conflicts { margin: 6px 0; padding-left: 4px; list-style: none; color: #b26a00; font-size: 12px; }
+.isk-val-foot { margin-top: 8px; justify-content: space-between; flex-wrap: wrap; }
+
+/* Calculator with units and code import. */
+.isk-calc-result { display: block; margin: 6px 0 2px; font-size: 16px; font-weight: 600; }
+.isk-calc-steps { font-size: 11px; }
+.isk-code { width: min(420px, calc(100% - 12px)); }
+.isk-code-text { width: 100%; box-sizing: border-box; font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; resize: vertical; }
+.isk-code-report { margin-top: 6px; font-size: 12px; }
+
+/* Grips on values (charts): blue-rimmed squares with arrowheads in the directions they move. */
+.isk-grip { cursor: grab; }
+.isk-grip rect { fill: #ffffff; stroke: #1f5fbf; stroke-width: 1.6px; vector-effect: non-scaling-stroke; }
+.isk-grip:hover rect, .isk-grip.is-selected rect { fill: #dbe8fb; }
+.isk-grip-arrow { fill: #1f5fbf; stroke: none; pointer-events: none; }
+.isk-grip-ghost { fill: rgba(31, 95, 191, 0.25); stroke: #1f5fbf; stroke-width: 1.6px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.isk-grip-lead { stroke: #1f5fbf; stroke-width: 1px; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; pointer-events: none; }

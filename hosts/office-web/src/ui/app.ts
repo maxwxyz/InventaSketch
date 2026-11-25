@@ -2,7 +2,10 @@
 // session. Runs inside PowerPoint (Office.js present) and standalone in a browser (dev.html).
 
 import { Engine, Session } from "../engine/client";
-import type { ActionInfo, ArrangeOption, BuildPortInfo, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, PreflightResult, SuggestionInfo, TraceInfo, TransformEffect } from "../engine/types";
+import type {
+  ActionInfo, ArrangeOption, BuildPortInfo, Catalog, CatalogItem, ConnectOption, DashStyle, EditorState, ExporterInfo, InspectorInfo, ObjectInfo, PreflightResult,
+  SuggestionInfo, TraceInfo, TransformEffect, ValueLevel,
+} from "../engine/types";
 import { download, editorExportScope, exportFileStem, exportPng, exportScopeLabel, exportSvg, resolveExportSource, type ExportSource } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
@@ -11,7 +14,13 @@ import { checkSlides, cleanSlide, compareWithPrevious, goToFinding, readCurrentS
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
-import { ContextBar, InlinePrompt, type BarCommand, type ChoiceEntry } from "./contextbar";
+import { ContextBar, InlinePrompt, type BarItem } from "./contextbar";
+import {
+  ELEMENT_CHOICE, PART_CHOICE, actionEntries, barActions, choicePick, choicePieLabel, currentOption, groupActionChoices, isPictorial, isStep, isTelling,
+  pickBar, shortLabel, type ChoiceEntry,
+} from "./barlogic";
+import { ValueCard, visibleVars } from "./valuecard";
+import { Calculator, CodeImport, isCodeName } from "./tools";
 import { h, svgDataUrl } from "./dom";
 import { hasIcon, icon } from "./icons";
 import { canDrawGhosts } from "./buildlogic";
@@ -21,10 +30,10 @@ import { InsertBox, insertRows, rememberRecent } from "./insertbox";
 import { Inspector } from "./inspector";
 import { Library } from "./library";
 import { PieMenu } from "./piemenu";
-import { buildPieEntries, labelEntries, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
+import { addMenu, entryOf, labelEntries, pieRing, withBack, type LabelChange, type PieEntry, type PieGroup } from "./pielogic";
 import { Stage, type ChainSide } from "./stage";
 import { isPictureName, pictureToRgba } from "./picture";
-import { isPartCommand, keepPart, partActionId, partActions, partListEntries, partPieEntries, type SelectedPart } from "./partlogic";
+import { PART_PREFIX, addedPart, isPartCommand, keepPart, partActionId, partAfterDelete, partDeleteAction, partListEntries, type SelectedPart } from "./partlogic";
 import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, importKind, orderFindings, sourceLinks } from "./uxlogic";
 
 export interface AppOptions {
@@ -48,6 +57,28 @@ const DASHES: [DashStyle, string][] = [
 /** ISO 128 line groups offered (width of the thick line in mm), as the engine's Style.LineGroups. */
 export const LINE_GROUPS = [0.25, 0.35, 0.5, 0.7, 1];
 
+/** What the bar and the pie of a selection are built from (engine actions, choices, inspector), fetched once per use. */
+interface ElementModel {
+  sel: string[];
+  /** The single selected element (undefined for several). */
+  obj?: ObjectInfo;
+  known: boolean;
+  /** Context actions with mirror/rotate left out where they change nothing. */
+  actions: ActionInfo[];
+  /** Actions that are no choice option and set no parameter shown as a choice. */
+  plain: ActionInfo[];
+  /** View, line type, parameter choices and line style. */
+  paramChoices: ChoiceEntry[];
+  /** The element's own choices among actions ("@a.<choice>"), menus included. */
+  actionChoices: ChoiceEntry[];
+  covered: Set<string>;
+  info?: InspectorInfo;
+  conversions: ActionInfo[];
+}
+
+/** A bar candidate: its id (to drop duplicates), whether it is the main action, and the button. */
+interface BarCandidate { id: string; main?: boolean; item: BarItem }
+
 export class App {
   readonly engine: Engine;
   private readonly root: HTMLElement;
@@ -63,6 +94,9 @@ export class App {
   private readonly bar: ContextBar;
   private readonly prompt: InlinePrompt;
   private readonly insertBox: InsertBox;
+  private readonly valueCard: ValueCard;
+  private readonly calculator: Calculator;
+  private readonly codeImport: CodeImport;
   private readonly sync?: SlideSync | ComSync;
   private pending?: CatalogItem;
   private dragging?: CatalogItem;
@@ -102,6 +136,12 @@ export class App {
       motionEnabled: () => this.motion,
       hideBar: () => this.bar.hide(),
       clickPart: (id, p, tolerance) => this.selectPartAt(id, p, tolerance),
+      selectConnected: (id) => this.selectConnected([id], "auto"),
+      selectedPart: (id) => (this.part?.id === id ? this.part.key : undefined),
+      selectPart: (id, key) => this.guard(() => {
+        const info = this.sessionObj.parts(id, lang()).find((p) => p.key === key);
+        if (info) this.setPart({ id, key, label: info.label });
+      }),
       report: (e) => this.report(e),
     });
     this.stage.onEditText = (o) => this.editText(o);
@@ -122,8 +162,23 @@ export class App {
     // A picture pasted while the stage has the focus becomes a chart (charts v2).
     window.addEventListener("paste", (e) => { if (document.activeElement === this.stage.el) this.pastePicture(e); });
     this.inspector = new Inspector({ session: () => this.sessionObj, state: () => this.st, apply: (s, live) => this.apply(s, live), report: (e) => this.report(e) });
-    this.pie = new PieMenu(this.root, (e) => this.pickPie(e));
+    this.pie = new PieMenu(this.root, (e) => this.pickPie(e), (e) => this.hoverPie(e), () => {
+      this.stage.setHaloPreview([]);
+      queueMicrotask(() => { if (!this.pie.open) this.updateBar(); });
+    });
     this.prompt = new InlinePrompt(this.root);
+    const tools = { session: () => this.sessionObj, apply: (s: EditorState, live?: boolean) => this.apply(s, live), report: (e: unknown) => this.report(e) };
+    this.calculator = new Calculator(this.root, tools);
+    this.codeImport = new CodeImport(this.root, tools);
+    this.valueCard = new ValueCard(this.root, {
+      ...tools,
+      state: () => this.st,
+      setLevel: (level) => this.setValueLevel(level),
+      openCalculator: (text) => this.calculator.show(this.pointerClient(), text),
+      showsValues: (id) => this.showsValues(id),
+      setShowValues: (id, on) => this.edit((s) => s.setParam([id], "showValues", on)),
+      closed: () => queueMicrotask(() => this.updateBar()),
+    });
     this.insertBox = new InsertBox(this.root);
     this.status =h("div", { class: "isk-status", "aria-live": "polite" });
     this.toastEl = h("div", { class: "isk-toast", role: "status", hidden: true });
@@ -147,7 +202,7 @@ export class App {
     }
 
     this.layout();
-    this.bar = new ContextBar(this.root, (a) => this.runAction(a), () => this.openInspectorStyle(), (x, y) => this.openPie(x, y),
+    this.bar = new ContextBar(this.root, (a) => this.runAction(a), (x, y) => this.openPie(x, y),
       (id, x, y) => this.barCommand(id, x, y), (key, value) => this.pickChoice(key, value));
     this.loadCatalog();
     this.bindKeys();
@@ -229,6 +284,8 @@ export class App {
         class: `isk-btn isk-icon-btn${st?.monochrome ? " is-active" : ""}`, "aria-pressed": String(!!st?.monochrome), "data-cmd": "mono",
       }),
       this.importButton(),
+      this.iconButton("cmd-code", t("cmd.importCode"), (e) => this.codeImport.show(this.below(e.currentTarget as HTMLElement)), { "aria-haspopup": "dialog", "data-cmd": "importcode" }),
+      this.textButton(t("cmd.calcShort"), t("cmd.calc"), (e) => this.calculator.show(this.below(e.currentTarget as HTMLElement)), { "aria-haspopup": "dialog", "data-cmd": "calculator" }),
       this.lineGroupSelect(st?.lineGroup ?? 0.5),
       this.accentSelect(st?.accent ?? null),
       this.slideAccess
@@ -245,6 +302,19 @@ export class App {
     this.topbar.replaceChildren(...items.filter((x): x is HTMLElement => !!x));
   }
 
+  /** A top bar button with a short text label. */
+  private textButton(text: string, label: string, onClick: (e: MouseEvent) => void, extra: Record<string, string | boolean | undefined> = {}): HTMLButtonElement {
+    const b = h("button", { class: "isk-btn", type: "button", title: label, "aria-label": label, ...extra }, text);
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  /** The client point under the middle of a button (popovers open there). */
+  private below(el: HTMLElement): { x: number; y: number } {
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width / 2, y: r.bottom };
+  }
+
   /** Black and white is a document setting (one undo step); live sync redraws every unit on the slide. */
   private setMonochrome(value: boolean): void {
     this.edit((s) => s.setMonochrome(value));
@@ -252,13 +322,15 @@ export class App {
 
   /** "Import": a CSV/TSV table into the selected chart (or a new one), GeoJSON/GPX as map routes and markers, SVG/DXF as shapes. */
   private importButton(): HTMLElement {
-    const input = h("input", { type: "file", accept: ".csv,.tsv,.txt,.geojson,.json,.gpx,.svg,.dxf,.png,.jpg,.jpeg,.bmp,.gif,.webp", hidden: true });
+    const input = h("input", { type: "file", accept: ".csv,.tsv,.txt,.geojson,.json,.gpx,.svg,.dxf,.py,.tex,.tikz,.pgf,.png,.jpg,.jpeg,.bmp,.gif,.webp", hidden: true });
     input.addEventListener("change", async () => {
       const f = input.files?.[0];
       input.value = "";
       if (!f) return;
       if (isPictureName(f.name)) return this.chartFromPicture(f);
       const text = await f.text();
+      // matplotlib, pgfplots and TikZ code: the code import with its report (the code is read, never run).
+      if (isCodeName(f.name)) return this.codeImport.show(this.below(button), text);
       const kind = importKind(f.name, text);
       this.edit((s) => (kind === "vector" ? s.importVector(text) : kind === "geo" ? s.importGeo(text) : s.importData(text)));
     });
@@ -598,6 +670,9 @@ export class App {
         check(this.settings.anchor, t("set.anchor"), (v) => { this.settings.anchor = v; saveSettings(this.settings); }),
         h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("set.grid")), grid),
         check(!!this.st.monochrome, t("set.mono"), (v) => this.setMonochrome(v))),
+      h("fieldset", {}, h("legend", {}, t("val.level")),
+        ...(["quick", "explore", "engineer"] as const).map((v) => radio("isk-level", v, this.st.valueLevel ?? "quick", t(`val.level.${v}`), () => this.setValueLevel(v))),
+        h("p", { class: "isk-muted" }, t("val.levelHint"))),
       h("fieldset", {}, h("legend", {}, t("set.file")), h("div", { class: "isk-row" }, openBtn, saveBtn), open),
       this.exportFieldset(),
       h("p", { class: "isk-muted" }, this.versionLine()),
@@ -703,43 +778,30 @@ export class App {
     this.refreshPart();
     this.renderTopbar();
     if (this.settings.inspectorOpen || this.root.dataset.layout === "wide") this.inspector.update();
+    this.valueCard.refresh();
     this.updateBar();
     if (live && this.sync && this.settings.liveSync) this.sync.scheduleLive(next).catch((e) => this.report(e));
   }
 
   /**
-   * Context bar for the selection (ROADMAP UX rules 1–5): only what does something for it. Mirror/rotate only when they
-   * change the drawing (`transformEffect`), "Insert …" for every element, "Draw the path" for links of a chain with
-   * F = 1, "Select assembly" when coupled parts are not selected yet, "Make it …" right after a quick add; two or more
-   * elements get the multi-selection bar (`arrangeOptions`).
+   * The floating bar (docs/en/design/interaction-ux.md section 5, the COM add-in's structure): the element's main action
+   * with a short label ("Make it …", "Values", "Data", "Text", "View", the first style choice, else "Insert"), up to three
+   * pictograms in the order of use (its telling actions, the view, Insert, its tools, its pictorial choices, rotate and
+   * mirror where they change the drawing), then "⋯" – the pie with everything. A selected part shows its name, its first
+   * three commands and "⋯"; two or more elements keep the multi-selection groups (`arrangeOptions`).
    */
   private updateBar(): void {
     const sel = this.st.selection;
     const key = sel.join(",");
     const box = this.stage.selectionScreenBox(true);
-    const suppressed = this.stage.dragging || this.pie.open || this.prompt.open || this.insertBox.open;
+    const suppressed = this.stage.dragging || this.pie.open || this.prompt.open || this.insertBox.open || this.valueCard.open;
     if (sel.length !== 1 || sel[0] !== this.nextFor) this.nextFor = undefined;
     this.traceFor = undefined;
     this.nextChoices = [];
-    if (!sel.length) return this.bar.update("", [], undefined, true);
-    const part = this.part;
-    if (part && sel.length === 1 && sel[0] === part.id) {
-      // A selected part (charts v2): its name, its actions, "Parts …" and "Whole element".
-      let acts: ActionInfo[] = [];
-      try {
-        acts = partActions(this.sessionObj.partActions(part.id, part.key, lang()));
-      } catch (e) {
-        this.report(e);
-      }
-      const lead: BarCommand[] = [{ id: "info:part", label: t("part.selected"), icon: "", text: part.label }];
-      const build: BarCommand[] = [
-        { id: "partlist", label: t("part.list"), icon: "view-table" },
-        { id: "part:none", label: t("part.whole"), icon: "cmd-select-assembly" },
-      ];
-      return this.bar.update(key + "#" + part.key, acts, box, suppressed, [], { lead, build });
-    }
+    if (!sel.length) return this.bar.show("", [], undefined, true);
+    const part = this.partFor(sel);
+    if (part) return this.bar.show(`${key}#${part.key}`, this.partBar(part), box, suppressed);
     const known = sel.some((id) => this.objectById(id)?.known);
-    const assembly: BarCommand[] = known && this.assemblyGrows(sel) ? [{ id: "assembly", label: t("ctx.assembly"), icon: "cmd-select-assembly" }] : [];
     if (elementCount(this.st.objects, sel) >= 2) {
       let options: ArrangeOption[] = [];
       try {
@@ -747,46 +809,159 @@ export class App {
       } catch (e) {
         this.report(e);
       }
-      this.bar.updateMulti(key, multiBarGroups(options), box, suppressed, assembly);
+      const groups = multiBarGroups(options);
+      const asItem = (o: { id: string; label: string; icon: string }): BarItem => ({ kind: "command", cmd: { id: `arr:${o.id}`, label: o.label, icon: o.icon } });
+      const assembly: BarItem[] = known && this.assemblyGrows(sel) ? [{ kind: "command", cmd: { id: "assembly", label: t("ctx.assembly"), icon: "cmd-select-assembly" } }] : [];
+      this.bar.show(key, [groups.views.map(asItem), groups.arrange.map(asItem), assembly], box, suppressed, t("ctx.multi"));
       return;
     }
-    let actions: ActionInfo[] = [];
-    try {
-      actions = this.sessionObj.contextActions(sel, lang());
-    } catch (e) {
-      this.report(e);
-    }
-    if (this.mainTextTarget()) actions = [...actions, this.textAction()];
-    if (known) actions = filterTransforms(actions, this.transformEffect(sel));
-    // Just added with "+": "Make it …" opens the insert box with what the new element can become (no thumbnail row).
-    const lead: BarCommand[] = [];
     if (this.nextFor) {
       try {
         this.nextChoices = this.sessionObj.nextItems(this.nextFor, lang(), 12);
       } catch (e) {
         this.report(e);
       }
-      if (this.nextChoices.length >= 2) lead.push({ id: "makeIt", label: t("ctx.makeIt"), icon: "cmd-cycle" });
     }
-    const build: BarCommand[] = [];
-    if (known) build.push({ id: "insert", label: t("ctx.insert"), icon: "cmd-insert" });
+    const m = this.elementModel(sel);
+    const { main, icons } = pickBar(m.obj?.known ? this.barCandidates(m) : []);
+    this.bar.show(key, [main ? [main.item] : [], icons.map((c) => c.item)], box, suppressed);
+  }
+
+  /** The selected part, while its element is selected alone. */
+  private partFor(sel: string[]): SelectedPart | undefined {
+    const part = this.part;
+    return part && sel.length === 1 && sel[0] === part.id ? part : undefined;
+  }
+
+  /** The bar of a selected part: its name, its first three commands (choices as dropdowns), then "⋯". */
+  private partBar(part: SelectedPart): BarItem[][] {
+    let acts: ActionInfo[] = [];
+    try {
+      acts = this.sessionObj.partActions(part.id, part.key, lang());
+    } catch (e) {
+      this.report(e);
+    }
+    const items: BarItem[] = [];
+    for (const e of actionEntries(acts, PART_CHOICE, svgDataUrl)) {
+      if (items.length >= 3) break;
+      if ("choice" in e) { items.push({ kind: "choice", choice: e.choice }); continue; }
+      if (!e.action.enabled) continue;
+      const a = { ...e.action, id: PART_PREFIX + e.action.id };
+      items.push(isTelling(a.icon)
+        ? { kind: "action", action: a, label: isStep(a.icon) ? shortLabel(a.label, 14) : undefined }
+        : { kind: "action", action: a, text: shortLabel(a.label, 18) });
+    }
+    return [[{ kind: "command", cmd: { id: "info:part", label: t("part.selected"), icon: "", text: part.label } }], items];
+  }
+
+  /** Actions, choices and inspector of a selection, for the bar and the pie. */
+  private elementModel(sel: string[]): ElementModel {
+    const obj = sel.length === 1 ? this.objectById(sel[0]) : undefined;
+    const known = sel.some((id) => this.objectById(id)?.known);
+    let actions: ActionInfo[] = [];
+    try {
+      actions = this.sessionObj.contextActions(sel, lang());
+    } catch (e) {
+      this.report(e);
+    }
+    if (known) actions = filterTransforms(actions, this.transformEffect(sel));
+    let info: InspectorInfo | undefined;
+    let conversions: ActionInfo[] = [];
+    const paramChoices: ChoiceEntry[] = [];
+    const views = actions.filter((a) => a.kind === "view");
+    if (views.length > 1)
+      paramChoices.push({ key: "@view", label: t("ctx.view"), current: views.find((v) => v.active)?.id ?? views[0].id, options: views.map((v) => ({ id: v.id, label: v.label, icon: hasIcon(v.icon) ? v.icon : undefined })) });
+    if (obj?.known) {
+      try {
+        conversions = this.sessionObj.conversions(sel, lang());
+        if (conversions.length > 1)
+          paramChoices.push({
+            key: "@type", label: t("ctx.lineType"), current: obj.type,
+            options: conversions.map((c) => {
+              const item = this.catalog.items.find((i) => i.typeId === c.id);
+              return { id: c.id, label: c.label, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined };
+            }),
+          });
+        info = this.sessionObj.inspector(sel, lang());
+        // Choices with pictograms first, then the other choices (shown as short text), in parameter order.
+        const choices = info.params.filter((p) => p.kind === "choice" && !p.advanced && p.options && p.options.length > 1);
+        const pictorial = (p: (typeof choices)[number]) => p.options!.every((o) => o.icon && hasIcon(o.icon));
+        for (const p of [...choices.filter(pictorial), ...choices.filter((p) => !pictorial(p))]) paramChoices.push(this.paramChoice(p, pictorial(p)));
+        if (obj.kind === "points")
+          paramChoices.push({
+            key: "@dash", label: t("ctx.lineStyle"), current: info.style?.dash ?? "solid",
+            options: DASHES.map(([id, ico]) => ({ id, label: t(`dash.${id}`), icon: ico })),
+          });
+      } catch (e) {
+        this.report(e);
+      }
+    }
+    const covered = new Set(paramChoices.map((c) => c.key));
+    const isCovered = (a: ActionInfo) => (a.paramKeys ?? []).some((k) => covered.has(k));
+    const { choices: actionChoices } = groupActionChoices(actions.filter((a) => a.choice && !isCovered(a)), ELEMENT_CHOICE, svgDataUrl);
+    const plain = actions.filter((a) => !a.choice && !(a.kind === "type" && isCovered(a)));
+    return { sel, obj, known, actions, plain, paramChoices, actionChoices, covered, info, conversions };
+  }
+
+  /** A parameter choice as a dropdown (pictograms when every option has one). */
+  private paramChoice(p: InspectorInfo["params"][number], pictorial: boolean): ChoiceEntry {
+    return {
+      key: p.key, label: p.label, current: String(p.value ?? p.default ?? p.options![0].id), mirror: p.mirrorIcons,
+      options: p.options!.map((o) => ({ id: o.id, label: o.label, icon: pictorial ? o.icon : undefined })),
+    };
+  }
+
+  /** Bar candidates of one element in the order of use; the first marked main gets a short label (COM `BarCandidates`). */
+  private barCandidates(m: ElementModel): BarCandidate[] {
+    const obj = m.obj!;
+    const sel = m.sel;
+    const out: BarCandidate[] = [];
+    const cmd = (id: string, label: string, iconId: string, active?: boolean): BarItem => ({ kind: "command", cmd: { id, label, icon: iconId, active } });
+    const viewChoice = m.paramChoices.find((c) => c.key === "@view");
+    const styleChoices = [...m.paramChoices.filter((c) => c.key !== "@view"), ...m.actionChoices];
+    const text = this.mainTextTarget();
+    const insert = m.known ? cmd("insert", t("ctx.insert"), "cmd-insert") : undefined;
+    const data = m.actions.find((a) => a.id === "chart.data" && a.enabled);
+    const labelled = (item: BarItem, label: string): BarItem => ({ ...item, label });
+    // The main action.
+    let main: BarCandidate | undefined;
+    if (this.nextFor && this.nextChoices.length >= 2) main = { id: "makeIt", item: labelled(cmd("makeIt", t("ctx.makeIt"), "cmd-cycle"), t("bar.makeIt")) };
+    else if (obj.hasValues && (this.st.valueLevel ?? "quick") !== "quick") main = { id: "values", item: labelled(cmd("values", t("ctx.values"), "cmd-values"), t("bar.values")) };
+    else if (data) main = { id: `act:${data.id}`, item: { kind: "action", action: data, label: t("bar.data") } };
+    else if (text) main = { id: "text", item: labelled(cmd("text", t("ctx.text"), "cmd-text"), t("bar.text")) };
+    else if (viewChoice) main = { id: `choice:${viewChoice.key}`, item: { kind: "choice", choice: viewChoice, label: t("bar.view") } };
+    else {
+      const first = styleChoices.find(isPictorial);
+      if (first) main = { id: `choice:${first.key}`, item: { kind: "choice", choice: first, label: shortLabel(first.label, 20) } };
+    }
+    if (!main && insert) main = { id: "insert", item: labelled(insert, t("bar.insert")) };
+    if (main) out.push({ ...main, main: true });
+    // Then the pictograms, in order of preference.
+    const chart = obj.type === "chart.xy" || obj.type === "chart.figure";
+    if (chart) out.push({ id: "sketch", item: cmd("sketch", t("ctx.sketch"), "cmd-pencil") });
+    for (const { action, pictorial } of barActions(m.plain, m.covered, !!text))
+      if (pictorial && action.id !== data?.id) out.push({ id: `act:${action.id}`, item: { kind: "action", action, label: isStep(action.icon) ? shortLabel(action.label, 14) : undefined } });
+    if (viewChoice) out.push({ id: `choice:${viewChoice.key}`, item: { kind: "choice", choice: viewChoice } });
+    if (insert) out.push({ id: "insert", item: insert });
     const trace = this.traceOf(sel);
     if (canTrace(trace)) {
       this.traceFor = { id: sel[0], trace };
-      build.push({ id: "trace", label: t("ctx.trace"), icon: "cmd-trace" });
+      out.push({ id: "trace", item: cmd("trace", t("ctx.trace"), "cmd-trace") });
     }
     const info = this.dofOf(sel);
-    if (canDrawGhosts(this.objectById(sel[0])?.kind, info?.dof, trace)) build.push({ id: "ghosts", label: t("ctx.ghosts"), icon: "cmd-ghosts" });
-    if (info?.dof != null) build.push({ id: "info:dof", label: t("ctx.dof", info.dof), icon: "", text: `F = ${info.dof}` });
+    if (canDrawGhosts(obj.kind, info?.dof, trace)) out.push({ id: "ghosts", item: cmd("ghosts", t("ctx.ghosts"), "cmd-ghosts") });
+    if (info?.explodable) out.push({ id: "explode", item: cmd("explode", t("ctx.explode"), "cmd-explode") });
     // Motion mode only for parts that can move: a link of a chain with F >= 1, a gear coupled with something.
-    if (this.objectById(sel[0])?.known && canMove(this.stage.motionOf(sel[0])))
-      build.push({ id: "motion", label: t("ctx.motion"), icon: "cmd-motion", active: this.motion });
-    if (info?.explodable) build.push({ id: "explode", label: t("ctx.explode"), icon: "cmd-explode" });
-    // Charts: draw a curve by hand; recognised (step, ramp, sine, PT1 …) or smoothed (charts v2).
-    const chartType = this.objectById(sel[0])?.type;
-    if (sel.length === 1 && (chartType === "chart.xy" || chartType === "chart.figure")) build.push({ id: "sketch", label: t("ctx.sketch"), icon: "cmd-pencil" });
-    build.push(...assembly);
-    this.bar.update(key, actions, box, suppressed, this.barChoices(sel), { lead, build });
+    if (canMove(this.stage.motionOf(sel[0]))) out.push({ id: "motion", item: cmd("motion", t("ctx.motion"), "cmd-motion", this.motion) });
+    if (this.assemblyGrows(sel)) out.push({ id: "assembly", item: cmd("assembly", t("ctx.assembly"), "cmd-select-assembly") });
+    for (const c of styleChoices.filter(isPictorial)) out.push({ id: `choice:${c.key}`, item: { kind: "choice", choice: c } });
+    for (const c of styleChoices.filter((x) => x.labelInBar && !x.menu)) out.push({ id: `choice:${c.key}`, item: { kind: "choice", choice: c } });
+    for (const c of styleChoices.filter((x) => x.menu)) out.push({ id: `choice:${c.key}`, item: { kind: "choice", choice: c } });
+    for (const id of ["rotate90", "flipH"]) {
+      const a = m.actions.find((x) => x.id === id);
+      if (a) out.push({ id: `act:${a.id}`, item: { kind: "action", action: a } });
+    }
+    return out;
   }
 
   private objectById(id: string): ObjectInfo | undefined {
@@ -869,6 +1044,8 @@ export class App {
     } catch (e) {
       this.report(e);
     }
+    // The grips of a selected curve's points come with it.
+    this.stage.drawOverlay();
     this.updateBar();
   }
 
@@ -893,11 +1070,8 @@ export class App {
       if (sel.length !== 1) return;
       try {
         const entries = partListEntries(this.sessionObj.parts(sel[0], lang()), part?.key, t("part.hidden"));
-        const back = this.menuEntry("menu:back", t("pie.back"), "menuBack");
-        const page = submenu(back, entries, this.menuEntry("menu:more", t("pie.more"), "more"));
-        this.pieOverflow = page.overflow;
         this.bar.hide();
-        this.pie.show(page.main, clientX, clientY);
+        this.showSubmenu("parts", entries, t("part.title"), this.pie.open ? undefined : { x: clientX, y: clientY });
       } catch (e) {
         this.report(e);
       }
@@ -919,7 +1093,11 @@ export class App {
     if (id === "insert") return this.openInsert({ x: clientX, y: clientY });
     if (id === "makeIt") return this.openMakeIt({ x: clientX, y: clientY });
     if (id === "trace") return this.drawPath();
-    if (id === "info:dof" || id === "info:part") return;
+    if (id === "text") return this.editText();
+    if (id === "values") return this.openValues();
+    if (id === "format") return this.openInspectorStyle();
+    if (id === "rotm90") { this.edit((s) => s.rotate(sel, -90)); return; }
+    if (id.startsWith("info:")) return;
     if (id === "sketch" && sel.length === 1) {
       const chart = sel[0];
       this.bar.hide();
@@ -1090,51 +1268,69 @@ export class App {
   }
 
   /**
-   * Choices shown as icon buttons in the bar (no text, no submenu): line type (thumbnails), every choice parameter whose
-   * options have pictograms (arrowheads, head size, line course …) and, for lines, the line style.
+   * An option of a choice was picked (bar dropdown or pie): line type, line style, parameter, view, or the option action
+   * of an element choice ("@a.") or of the selected part's choice ("@p."); input options ask for their value first.
    */
-  private barChoices(sel: string[]): ChoiceEntry[] {
-    if (sel.length !== 1) return [];
-    const obj = this.st.objects.find((o) => o.id === sel[0]);
-    if (!obj?.known) return [];
-    const out: ChoiceEntry[] = [];
-    try {
-      const conv = this.sessionObj.conversions(sel, lang());
-      if (conv.length > 1)
-        out.push({
-          key: "@type", label: t("ctx.lineType"), current: obj.type,
-          options: conv.map((c) => {
-            const item = this.catalog.items.find((i) => i.typeId === c.id);
-            return { id: c.id, label: c.label, image: item?.thumbnail ? svgDataUrl(item.thumbnail) : undefined };
-          }),
-        });
-      const info = this.sessionObj.inspector(sel, lang());
-      // Choices with pictograms first, then the other choices (shown as short text), in parameter order.
-      const choices = info.params.filter((p) => p.kind === "choice" && !p.advanced && p.options && p.options.length > 1);
-      const pictorial = (p: (typeof choices)[number]) => p.options!.every((o) => o.icon && hasIcon(o.icon));
-      for (const p of [...choices.filter(pictorial), ...choices.filter((p) => !pictorial(p))]) {
-        const icons = pictorial(p);
-        out.push({
-          key: p.key, label: p.label, current: String(p.value ?? p.default ?? p.options![0].id), mirror: p.mirrorIcons,
-          options: p.options!.map((o) => ({ id: o.id, label: o.label, icon: icons ? o.icon : undefined })),
-        });
+  private pickChoice(key: string, value: string): void {
+    const sel = this.st.selection;
+    const pick = choicePick(key, value);
+    switch (pick.kind) {
+      case "convert": return this.edit((s) => s.convert(sel, pick.typeId));
+      case "dash": return this.edit((s) => s.setStyle(sel, { dash: pick.dash as DashStyle }));
+      case "param": return this.edit((s) => s.setParam(sel, pick.key, pick.value));
+      case "view":
+      case "action": {
+        let a: ActionInfo | undefined;
+        try { a = this.sessionObj.contextActions(sel, lang()).find((x) => x.id === pick.id); } catch (e) { this.report(e); }
+        if (a) this.runAction(a);
+        return;
       }
-      if (obj.kind === "points")
-        out.push({
-          key: "@dash", label: t("ctx.lineStyle"), current: info.style?.dash ?? "solid",
-          options: DASHES.map(([id, ico]) => ({ id, label: t(`dash.${id}`), icon: ico })),
-        });
+      case "part": {
+        const part = this.partFor(sel);
+        if (!part) return;
+        let a: ActionInfo | undefined;
+        try { a = this.sessionObj.partActions(part.id, part.key, lang()).find((x) => x.id === pick.id); } catch (e) { this.report(e); }
+        if (a) this.runAction({ ...a, id: PART_PREFIX + a.id });
+      }
+    }
+  }
+
+  /** Select connected: what is connected with `ids` by `mode` ("auto": the most meaningful kind for the element). */
+  private selectConnected(ids: string[], mode: string): void {
+    try {
+      const found = this.sessionObj.connected(ids, mode);
+      if (found.length > ids.length || found.some((id) => !ids.includes(id))) {
+        this.apply(this.sessionObj.select(found));
+        this.setStatus(t("connect.done", found.length));
+      } else this.setStatus(t("connect.none"));
     } catch (e) {
       this.report(e);
     }
-    return out.slice(0, 6);
   }
 
-  private pickChoice(key: string, value: string): void {
+  /** The value level of the drawing (Quick sketch, Explore, Engineer): a document setting, one undo step. */
+  private setValueLevel(level: ValueLevel): void {
+    this.edit((s) => s.setValueLevel(level), false);
+  }
+
+  /** The element's values label switch (parameter showValues), undefined when its type has none. */
+  private showsValues(id: string): boolean | undefined {
+    try {
+      const p = this.sessionObj.inspector([id], lang()).params.find((x) => x.key === "showValues");
+      return p ? (p.value ?? p.default) === true : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /** The value card of the selected element, right of it; `focusKey` puts the cursor into that value. */
+  private openValues(focusKey?: string): void {
     const sel = this.st.selection;
-    if (key === "@type") this.edit((s) => s.convert(sel, value));
-    else if (key === "@dash") this.edit((s) => s.setStyle(sel, { dash: value as DashStyle }));
-    else this.edit((s) => s.setParam(sel, key, value));
+    const obj = sel.length === 1 ? this.objectById(sel[0]) : undefined;
+    if (!obj?.hasValues) return;
+    const box = this.stage.selectionScreenBox();
+    this.bar.hide();
+    this.valueCard.show(obj.id, obj.name, box ? { x: box.right, y: box.top } : this.pointerClient(), focusKey);
   }
 
   /** Element just added by quick add: the bar offers the next-element palette for it. */
@@ -1164,16 +1360,17 @@ export class App {
     const part = this.part;
     if (partAction !== undefined && part) {
       if (partAction === "none") return this.partCommand(a.id, 0, 0);
+      const run = (input?: string) => this.runPartAction(part, partAction, !!a.choiceMenu, input);
       if (a.input) {
         const input = a.input;
         this.bar.hide();
         this.prompt.show({ title: a.label, label: input.label, value: input.value, unit: input.unit }, this.promptAnchor(), (value) => {
-          this.edit((s) => s.applyPartAction(part.id, part.key, partAction, value));
+          run(value);
           this.stage.el.focus({ preventScroll: true });
         });
         return;
       }
-      this.edit((s) => s.applyPartAction(part.id, part.key, partAction));
+      run();
       this.stage.el.focus({ preventScroll: true });
       return;
     }
@@ -1193,6 +1390,29 @@ export class App {
     this.stage.el.focus({ preventScroll: true });
   }
 
+  /**
+   * Runs a part action (one undo step). A deleted point leaves its curve selected, any other deleted part the whole
+   * element; a menu option that adds a part ("Fill below ▸ //") selects the new part, so its choices are right there.
+   */
+  private runPartAction(part: SelectedPart, action: string, menu: boolean, input?: string): void {
+    const keys = () => { try { return this.sessionObj.parts(part.id, lang()).map((p) => p.key); } catch { return []; } };
+    const before = menu ? keys() : [];
+    try {
+      const next = this.sessionObj.applyPartAction(part.id, part.key, action, input);
+      if (action === "part.delete") {
+        const after = partAfterDelete(part.key);
+        this.part = after ? { id: part.id, key: after, label: after } : undefined;
+      } else if (menu) {
+        const added = addedPart(before, keys());
+        if (added) this.part = { id: part.id, key: added, label: added };
+      }
+      this.apply(next, true);
+      if (this.part) this.setPart(keepPart(this.part, this.st.selection, () => this.sessionObj.parts(part.id, lang())));
+    } catch (e) {
+      this.report(e);
+    }
+  }
+
   /** Where inline prompts open: below the selection, else in the middle of the stage (client px). */
   private promptAnchor(): { x: number; y: number } {
     const box = this.stage.selectionScreenBox();
@@ -1200,105 +1420,260 @@ export class App {
     return box ? { x: (box.left + box.right) / 2, y: box.bottom } : { x: r.left + r.width / 2, y: r.top + r.height / 2 };
   }
 
-  private pieOverflow: PieEntry[] = [];
-  private pieConversions: ActionInfo[] = [];
-  private pieLabels: { entry: PieEntry; change: LabelChange }[] = [];
+  /** Submenus of the open pie (place groups, choices, paged continuations) and their titles. */
+  private pieMenus = new Map<string, PieEntry[]>();
+  private pieTitles = new Map<string, string>();
+  /** Every choice the open pie can open ("menu:c:<key>"). */
+  private pieChoices: ChoiceEntry[] = [];
+  private pieLabels: { entry: PieEntry; change?: LabelChange }[] = [];
+  /** "Select connected" kinds of the open pie. */
+  private pieConnect: ConnectOption[] = [];
 
-  private textAction(): ActionInfo {
-    return { id: "text", label: t("ctx.text"), icon: "cmd-text", enabled: true, active: false, group: "edit", kind: "generic" };
+  private menuEntry(id: string, label: string, icon?: string, hint?: string, extra: Partial<PieEntry> = {}): PieEntry {
+    return { id, label, icon, enabled: true, active: false, hint, ...extra };
   }
 
-  private menuEntry(id: string, label: string, icon?: string): PieEntry {
-    return { id, label, icon, enabled: true, active: false };
+  /** The pie entry of a choice: "Label: Current ▸" (or "Label ▸" for a menu) with the current option's picture. */
+  private choicePieEntry(c: ChoiceEntry): PieEntry {
+    const cur = currentOption(c);
+    const names = c.options.map((o) => o.label);
+    return {
+      id: `menu:c:${c.key}`, label: choicePieLabel(c), icon: cur?.icon, image: cur?.icon ? undefined : cur?.image, mirror: c.mirror, enabled: true, active: false,
+      hint: t("pie.choose", names.slice(0, 4).join(", ") + (names.length > 4 ? ", …" : "")),
+    };
+  }
+
+  /** An engine action as a pie entry: its pictogram only when it is telling (label-only markers show the text alone). */
+  private actionPieEntry(a: ActionInfo, hint?: string): PieEntry {
+    const e = entryOf(a);
+    return { ...e, icon: isTelling(a.icon) || a.icon === "delete" || a.icon === "cmd-delete" ? a.icon : undefined, hint: hint ?? (a.input ? t("pie.hint.asks") : undefined) };
   }
 
   /**
-   * Pie menu with at most eight entries (COM add-in rules): delete, views, "Text …", "Insert …", duplicate, rotate in the
-   * ring; type actions, mirror, order and grouping overflow into "More ▸". Mirror/rotate only when they change the
-   * drawing; "Insert …" opens the insert box.
+   * The eight places of the pie for the selection (docs/en/design/interaction-ux.md section 6, COM `PieGroups`): Text,
+   * Edit ▸ (the element's own commands; a selected part's commands), Insert, Duplicate, Style ▸ (one entry per choice),
+   * Delete, View ▸ (the views), Arrange ▸ (rotate, mirror, order, grouping, select connected).
+   */
+  private pieGroups(sel: string[]): PieGroup[] {
+    const m = this.elementModel(sel);
+    const obj = m.obj;
+    const part = this.partFor(sel);
+    const entry = (id: string, label: string, iconId?: string, hint?: string, extra: Partial<PieEntry> = {}) => this.menuEntry(id, label, iconId, hint, extra);
+    this.pieChoices = [...m.paramChoices, ...m.actionChoices];
+    this.pieLabels = [];
+
+    const text = this.mainTextTarget() ? [entry("text", t("pie.text"), "cmd-text", t("pie.hint.text"))] : [];
+
+    const edit: PieEntry[] = [];
+    let partStyle: PieEntry[] | undefined;
+    if (part) {
+      let acts: ActionInfo[] = [];
+      try { acts = this.sessionObj.partActions(part.id, part.key, lang()); } catch (e) { this.report(e); }
+      partStyle = [];
+      for (const e of actionEntries(acts, PART_CHOICE, svgDataUrl)) {
+        if ("choice" in e) {
+          this.pieChoices.push(e.choice);
+          (e.choice.menu ? edit : partStyle).push(this.choicePieEntry(e.choice));
+        } else edit.push(this.actionPieEntry({ ...e.action, id: PART_PREFIX + e.action.id }));
+      }
+      edit.push(entry("part:none", t("part.whole"), "cmd-select-assembly", t("pie.hint.whole")));
+    } else {
+      if (this.nextFor && this.nextChoices.length >= 2) edit.push(entry("makeIt", t("ctx.makeIt"), "cmd-cycle", t("pie.hint.makeIt")));
+      if (obj?.hasValues) edit.push(entry("menu:values", t("pie.values"), "cmd-values", t("pie.hint.values")));
+      if (m.conversions.length && m.info) {
+        this.pieLabels = labelEntries(m.info.params, { larger: t("pie.textLarger"), smaller: t("pie.textSmaller") });
+        for (const p of m.info.params)
+          if (p.kind === "choice" && p.options && p.options.length > 1 && !this.pieChoices.some((c) => c.key === p.key))
+            this.pieChoices.push(this.paramChoice(p, p.options.every((o) => o.icon && hasIcon(o.icon))));
+        if (this.pieLabels.length) edit.push(entry("menu:label", t("pie.label"), "cmd-label-show", t("pie.hint.label")));
+      }
+      // Actions that only set a choice shown under Style stay there (one entry per thing).
+      edit.push(...m.plain.filter((a) => a.kind === "type").map((a) => this.actionPieEntry(a)));
+      const numeral = m.actions.find((a) => a.id === "numeral");
+      if (numeral) edit.push(this.actionPieEntry(numeral));
+      edit.push(...m.actionChoices.filter((c) => c.menu).map((c) => this.choicePieEntry(c)));
+      if (obj?.known) {
+        const info = this.dofOf(sel);
+        const trace = this.traceOf(sel);
+        if (info?.explodable) edit.push(entry("explode", t("ctx.explode"), "cmd-explode", t("pie.hint.explode")));
+        if (obj.type === "chart.xy" || obj.type === "chart.figure") edit.push(entry("sketch", t("pie.sketch"), "cmd-pencil", t("pie.hint.sketch")));
+        if (canMove(this.stage.motionOf(obj.id))) edit.push(entry("motion", t("pie.motion"), "cmd-motion", t("ctx.motion"), { active: this.motion }));
+        if (info?.dof != null) edit.push(entry("info:dof", `F = ${info.dof}`, undefined, t("ctx.dof", info.dof)));
+        if (canTrace(trace)) { this.traceFor = { id: obj.id, trace }; edit.push(entry("trace", t("pie.trace"), "cmd-trace", t("ctx.trace"))); }
+        if (canDrawGhosts(obj.kind, info?.dof, trace)) edit.push(entry("ghosts", t("pie.ghosts"), "cmd-ghosts", t("ctx.ghosts")));
+      }
+    }
+    if (obj?.known) {
+      let parts = 0;
+      try { parts = this.sessionObj.parts(obj.id, lang()).length; } catch { parts = 0; }
+      if (parts) edit.push(entry("menu:parts", t("part.parts"), "view-table", t("pie.hint.parts")));
+    }
+
+    const insert = m.known ? [entry("insert", t("pie.insert"), "cmd-insert", t("pie.hint.insert"))] : [];
+    const by = (id: string) => m.actions.find((a) => a.id === id);
+    const dupAction = by("duplicate");
+    const dup = dupAction ? [this.actionPieEntry(dupAction, t("pie.hint.duplicate"))] : [];
+    const delAction = by("delete");
+    const del = delAction ? [{ ...this.actionPieEntry(delAction, t("pie.hint.delete")), danger: true }] : [];
+
+    const style = partStyle ?? [...m.paramChoices.filter((c) => c.key !== "@view"), ...m.actionChoices.filter((c) => !c.menu)].map((c) => this.choicePieEntry(c));
+    if (obj?.known && !part) style.push(entry("format", t("pie.format"), "style", t("pie.hint.format")));
+
+    const views = m.actions.filter((a) => a.kind === "view");
+    const view = views.length > 1 ? views.map((v) => this.actionPieEntry(v, t("pie.hint.view"))) : [];
+
+    const arrange: PieEntry[] = [];
+    const rot = by("rotate90");
+    if (rot) {
+      arrange.push(this.actionPieEntry(rot, t("pie.hint.rotate")));
+      arrange.push(entry("rotm90", t("pie.rotateBack"), "cmd-rotate-ccw", t("pie.hint.rotateBack")));
+    }
+    for (const id of ["flipH", "flipV"]) { const a = by(id); if (a) arrange.push(this.actionPieEntry(a, t(`pie.hint.${id}`))); }
+    for (const id of ["front", "back", "group", "ungroup"]) { const a = by(id); if (a?.enabled) arrange.push(this.actionPieEntry(a)); }
+    this.pieConnect = [];
+    if (m.known) {
+      try { this.pieConnect = this.sessionObj.connectOptions(sel, lang()); } catch { this.pieConnect = []; }
+      if (this.pieConnect.length) arrange.push(entry("menu:connected", t("pie.connected"), "cmd-select-assembly", this.pieConnect.map((c) => c.label).join(", ")));
+    }
+
+    return [
+      { key: "text", label: t("pie.text"), icon: "cmd-text", items: text, hint: t("pie.hint.text") },
+      { key: "edit", label: t("pie.edit"), icon: "inspector", items: edit, alwaysMenu: true },
+      { key: "insert", label: t("pie.insert"), icon: "cmd-insert", items: insert, hint: t("pie.hint.insert") },
+      { key: "duplicate", label: t("pie.duplicate"), icon: "duplicate", items: dup, hint: t("pie.hint.duplicate") },
+      { key: "style", label: t("pie.style"), icon: "style", items: style, alwaysMenu: true },
+      { key: "delete", label: t("pie.delete"), icon: "delete", items: del, hint: t("pie.hint.delete") },
+      { key: "view", label: t("pie.view"), icon: "view", items: view, alwaysMenu: views.length > 1 },
+      { key: "arrange", label: t("pie.arrange"), icon: "front", items: arrange, alwaysMenu: true },
+    ];
+  }
+
+  /** What the pie names in its centre: the selected part, the element, or the number of elements. */
+  private pieTitle(sel: string[]): string {
+    const part = this.partFor(sel);
+    if (part) return part.label;
+    const n = elementCount(this.st.objects, sel);
+    if (n >= 2) return t("pie.elements", n);
+    return this.objectById(sel[0])?.name ?? "";
+  }
+
+  /** A hovered pie entry: "Select connected" kinds preview what they would add with a fainter glow. */
+  private hoverPie(e: PieEntry | undefined): void {
+    const kind = e?.id.startsWith("connect:") ? e.id.slice(8) : undefined;
+    this.stage.setHaloPreview(kind ? this.pieConnect.find((c) => c.kind === kind)?.ids ?? [] : []);
+  }
+
+  /** Shows a submenu ring (Back first), paged into "More ▸" when long. */
+  private showSubmenu(key: string, items: PieEntry[], title: string, where?: { x: number; y: number }): void {
+    const at = where ?? this.pie.at ?? this.pointerClient();
+    addMenu(this.pieMenus, key, items, t("pie.more"));
+    this.pieTitles.set(key, title);
+    this.pie.show(withBack(this.backEntry(), this.pieMenus.get(key) ?? []), at.x, at.y, title);
+  }
+
+  private backEntry(): PieEntry {
+    return this.menuEntry("menu:back", t("pie.back"), undefined, t("pie.hint.back"));
+  }
+
+  /**
+   * The pie menu (right-click, Shift+F10, "⋯"): eight fixed labelled places for every element, the element's name in the
+   * centre; submenus open by click and start with "← Back".
    */
   openPie(clientX?: number, clientY?: number): void {
     const sel = this.st.selection;
-    const part = this.part;
-    if (part && sel.length === 1 && sel[0] === part.id) {
-      let acts: ActionInfo[] = [];
-      try {
-        acts = this.sessionObj.partActions(part.id, part.key, lang());
-      } catch (e) {
-        return this.report(e);
-      }
-      const box = this.stage.selectionScreenBox();
-      const x = clientX ?? (box ? (box.left + box.right) / 2 : 0);
-      const y = clientY ?? (box ? (box.top + box.bottom) / 2 : 0);
-      const { main, overflow } = pieSplit(partPieEntries(acts, t("part.parts"), t("part.whole")).map((entry) => ({ entry, essential: true })), this.menuEntry("menu:more", t("pie.more"), "more"));
-      this.pieOverflow = overflow;
-      this.bar.hide();
-      this.pie.show(main, x, y);
-      return;
-    }
-    let actions: ActionInfo[];
-    try {
-      actions = this.sessionObj.contextActions(sel, lang());
-    } catch (e) {
-      return this.report(e);
-    }
-    const known = sel.some((id) => this.objectById(id)?.known);
-    if (known) actions = filterTransforms(actions, this.transformEffect(sel));
+    if (!sel.length) return;
     if (clientX === undefined || clientY === undefined) {
       const box = this.stage.selectionScreenBox();
       const r = this.stage.el.getBoundingClientRect();
       clientX = box ? (box.left + box.right) / 2 : r.left + r.width / 2;
       clientY = box ? (box.top + box.bottom) / 2 : r.top + r.height / 2;
     }
-    const text = this.mainTextTarget() ? this.menuEntry("text", t("pie.text"), "cmd-text") : undefined;
-    const insert = known ? this.menuEntry("menu:insert", t("pie.insert"), "cmd-insert") : undefined;
-    this.pieConversions = [];
-    try {
-      this.pieConversions = this.sessionObj.conversions(sel, lang());
-    } catch (e) {
-      this.report(e);
-    }
-    const type = this.pieConversions.length ? this.menuEntry("menu:type", t("pie.type"), "cmd-cycle") : undefined;
-    // "Label ▸" belongs to the convertible point types (lines, arrows, dimensions, lead lines), like in the COM add-in.
-    this.pieLabels = [];
-    if (type) {
-      try {
-        const info = this.sessionObj.inspector(sel, lang());
-        this.pieLabels = labelEntries(info.params, { larger: t("pie.textLarger"), smaller: t("pie.textSmaller") });
-      } catch (e) {
-        this.report(e);
-      }
-    }
-    const label = this.pieLabels.length ? this.menuEntry("menu:label", t("pie.label"), "cmd-text") : undefined;
-    const { main, overflow } = pieSplit(buildPieEntries(actions, { text, insert, type, label }), this.menuEntry("menu:more", t("pie.more"), "more"));
-    this.pieOverflow = overflow;
+    const { ring, menus, titles } = pieRing(this.pieGroups(sel), t("pie.more"));
+    this.pieMenus = menus;
+    this.pieTitles = titles;
     this.bar.hide();
-    this.pie.show(main, clientX, clientY);
+    this.valueCard.close();
+    this.pie.show(ring, clientX, clientY, this.pieTitle(sel));
   }
 
   private pickPie(e: PieEntry): void {
     const at = this.pie.at ?? { x: 0, y: 0 };
-    const back = this.menuEntry("menu:back", t("pie.back"), "menuBack");
-    const more = this.menuEntry("menu:more", t("pie.more"), "more");
+    const sel = this.st.selection;
     if (e.id === "menu:back") return this.openPie(at.x, at.y);
-    if (e.id === "menu:more") {
-      const page = submenu(back, this.pieOverflow, more);
-      this.pieOverflow = page.overflow;
-      return this.pie.show(page.main, at.x, at.y);
+    if (e.id.startsWith("menu:g:")) {
+      const key = e.id.slice(7);
+      const items = this.pieMenus.get(key);
+      if (items) this.pie.show(withBack(this.backEntry(), items), at.x, at.y, this.pieTitles.get(key.replace(/\+$/, "")) ?? this.pieTitles.get(key));
+      return;
     }
-    if (e.id === "menu:insert") return this.openInsert(at);
-    if (e.id === "menu:parts" || e.id.startsWith("partsel:") || e.id === "part:none") return this.partCommand(e.id, at.x, at.y);
-    if (e.id === "menu:type") {
-      const entries = this.pieConversions.map((c): PieEntry => ({ id: `conv:${c.id}`, label: c.label, icon: "cmd-cycle", enabled: true, active: !!c.active }));
-      const page = submenu(back, entries, more);
-      this.pieOverflow = page.overflow;
-      return this.pie.show(page.main, at.x, at.y);
+    if (e.id.startsWith("menu:c:")) {
+      const key = e.id.slice(7);
+      const c = this.pieChoices.find((x) => x.key === key);
+      if (!c) return;
+      const options = c.options.map((o): PieEntry => ({
+        id: `pick:${key}:${o.id}`, label: o.label, icon: o.icon, image: o.icon ? undefined : o.image, mirror: c.mirror,
+        enabled: true, active: !c.menu && o.id === c.current, hint: c.label,
+      }));
+      return this.showSubmenu(`c-${key}`, options, c.label);
     }
-    if (e.id === "menu:label") {
-      const page = submenu(back, this.pieLabels.map((l) => l.entry), more);
-      this.pieOverflow = page.overflow;
-      return this.pie.show(page.main, at.x, at.y);
+    if (e.id.startsWith("pick:")) {
+      const rest = e.id.slice(5);
+      const cut = rest.indexOf(":");
+      if (cut > 0) this.pickChoice(rest.slice(0, cut), rest.slice(cut + 1));
+      return;
     }
+    if (e.id === "menu:connected") {
+      const items = this.pieConnect.map((c) => this.menuEntry(`connect:${c.kind}`, `${c.label} (${c.ids.length})`, "cmd-select-assembly", c.hint));
+      return this.showSubmenu("connected", items, t("pie.connectedTitle"));
+    }
+    if (e.id.startsWith("connect:")) {
+      const option = this.pieConnect.find((c) => c.kind === e.id.slice(8));
+      if (option) {
+        this.apply(this.sessionObj.select(option.ids));
+        this.setStatus(t("connect.done", option.ids.length));
+      }
+      return;
+    }
+    if (e.id === "menu:values") {
+      const obj = sel.length === 1 ? this.objectById(sel[0]) : undefined;
+      if (!obj) return;
+      const items: PieEntry[] = [];
+      try {
+        const level = this.st.valueLevel ?? "quick";
+        const vals = this.sessionObj.values(obj.id, lang()).objects.find((o) => o.id === obj.id);
+        for (const v of visibleVars(vals?.vars ?? [], level)) {
+          const derived = v.provenance === "derived" || v.provenance === "linked";
+          items.push(this.menuEntry(`val:${v.key}`, `${v.name} ${v.symbol}${v.display ? (derived ? ` = ${v.display}` : ` … ${v.display}`) : " …"}`, undefined, derived ? v.formula ?? undefined : t("pie.hint.enterValue")));
+        }
+      } catch (err) {
+        this.report(err);
+      }
+      const shows = this.showsValues(obj.id);
+      if (shows !== undefined) items.push(this.menuEntry("valshow", t("val.show"), "cmd-label-show", t("pie.hint.valshow"), { active: shows }));
+      return this.showSubmenu("values", items, t("val.title"));
+    }
+    if (e.id.startsWith("val:")) return this.openValues(e.id.slice(4));
+    if (e.id === "valshow") {
+      const id = sel[0];
+      const shows = this.showsValues(id);
+      if (shows !== undefined) this.edit((s) => s.setParam([id], "showValues", !shows));
+      return;
+    }
+    if (e.id === "insert") return this.openInsert(at);
+    if (e.id === "menu:parts") {
+      if (sel.length !== 1) return;
+      try {
+        const entries = partListEntries(this.sessionObj.parts(sel[0], lang()), this.part?.key, t("part.hidden"));
+        this.showSubmenu("parts", entries, t("part.title"));
+      } catch (err) {
+        this.report(err);
+      }
+      return;
+    }
+    if (e.id.startsWith("partsel:") || e.id === "part:none") return this.partCommand(e.id, at.x, at.y);
+    if (e.id === "menu:label") return this.showSubmenu("label", this.pieLabels.map((l) => l.entry), t("pie.labelTitle"));
+    if (["makeIt", "explode", "sketch", "motion", "trace", "ghosts", "rotm90", "format", "values"].includes(e.id) || e.id.startsWith("info:"))
+      return this.barCommand(e.id, at.x, at.y);
     if (e.id.startsWith("lbl:")) {
       const change = this.pieLabels.find((l) => l.entry.id === e.id)?.change;
       if (!change) return;
@@ -1311,10 +1686,6 @@ export class App {
         return;
       }
       return this.edit((s) => s.setParam(sel, change.key, change.value ?? null));
-    }
-    if (e.id.startsWith("conv:")) {
-      const sel = this.st.selection;
-      return this.edit((s) => s.convert(sel, e.id.slice(5)));
     }
     if (e.id === "text") return this.editText();
     if (e.action) this.runAction(e.action);
@@ -1479,7 +1850,19 @@ export class App {
       else if (ctrl && k === "d") act("duplicate");
       else if (ctrl && k === "g") act(e.shiftKey ? "ungroup" : "group");
       else if (ctrl && k === "a") { e.preventDefault(); this.apply(this.sessionObj.select(this.st.objects.map((o) => o.id))); }
-      else if (!ctrl && (e.key === "Delete" || e.key === "Backspace")) act("delete");
+      else if (!ctrl && (e.key === "Delete" || e.key === "Backspace")) {
+        // A selected part: its own delete (a point, a curve, an area …), else it is hidden – never the whole element.
+        const part = this.partFor(sel);
+        if (part) {
+          e.preventDefault();
+          let acts: ActionInfo[] = [];
+          try { acts = this.sessionObj.partActions(part.id, part.key, lang()); } catch (err) { this.report(err); }
+          const id = partDeleteAction(acts);
+          if (id) this.runPartAction(part, id, false);
+          return;
+        }
+        act("delete");
+      }
       else if (!ctrl && !e.altKey && k === "r") act("rotate90");
       else if (!ctrl && !e.altKey && k === "x") act("flipH");
       else if (!ctrl && !e.altKey && k === "y") act("flipV");
