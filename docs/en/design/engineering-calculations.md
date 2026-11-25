@@ -3,7 +3,7 @@
 Status: concept and plan, 2026-11-25 (maintainer request). Calc 0 and Calc 1 (quantities, units, parser, unit
 converter and calculator, relation engine, engine API, Ohm's law on the resistor) are implemented; the design decisions
 are in section 10. Calc 2 (the PowerPoint user interface: level, Values button, pie, value card, values label, drag,
-conflict badge) is implemented in COM, see section 11. Calc 3–6 are open. German version:
+conflict badge) is implemented in COM, see section 11. Calc 3 (electrical: section 10.10; machine elements: section 12) and Calc 4 (fluid, process, building services, energy: section 13) are implemented in the engine (2026-11-26); Calc 5–6 are open. German version:
 [../../de/design/engineering-calculations.md](../../de/design/engineering-calculations.md).
 
 **Why.** Two maintainer requests from 2026-11-25:

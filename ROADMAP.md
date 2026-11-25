@@ -425,16 +425,16 @@ in the drawing).
 - Web and LibreOffice: clean slides, export of selection or slide; LibreOffice chart from picture.
 
 **Next, in this order (COM first):**
-1. Interaction concept phase 1 (concept section 9): grips for every type with values (dimensions, angles, joints,
+1. Done 2026-11-26 (engine for Annotation, Robotics, Kinematics, Geometry, Maps, Optics, Charts; COM): Interaction concept phase 1 (concept section 9): grips for every type with values (dimensions, angles, joints,
    centre distances), dependency highlight on hover, one pictogram one meaning (engine test), remove actions that
    duplicate a choice or view, "+" between table rows/columns, corner dot inserts where drawn; COM ribbon icons in the
    same line style everywhere (menus of the Elements group).
 2. Done 2026-11-25: COM: "Add ray bundle" (optics) must insert the new ray (action results with new objects become units).
 3. Done 2026-11-25: Host docs (powerpoint-com.md EN/DE) rewritten to the new bar, pie and handles.
-4. Phase 2: the same concept in the web add-in (port `HandleLayout`, bar groups, pie places), code import buttons in
+4. Done 2026-11-26 (web, unit-tested; browser check open; LibreOffice in progress): Phase 2: the same concept in the web add-in (port `HandleLayout`, bar groups, pie places), code import buttons in
    web and LibreOffice, chart grips in web.
-5. Phase 3: first-use hints, larger UI size for low vision.
-6. Optics (maintainer idea 2026-11-25, optional): interactive light rays – drag a source, a lens or a mirror and watch
+5. Done 2026-11-26 (COM): Phase 3: first-use hints, larger UI size for low vision (More ▸ "Larger controls (125 %)").
+6. Done 2026-11-26 (engine: grips for focal points, beams, ray direction; image construction; COM: dependents follow live while dragging): Optics (maintainer idea 2026-11-25, optional): interactive light rays – drag a source, a lens or a mirror and watch
    the rays follow live while dragging; drag the ray's start angle or the focal point (grips); show the image point.
 7. Ribbon (done 2026-11-25): the Review group moved into the menu "More" (was "Extras", section "Check and
    exchange"); painted 16 px icons for the basics galleries and the collapsed Elements and Text groups; the table
@@ -462,7 +462,7 @@ in the drawing).
     line leaves the slide it says where it continues, "→ W3 slide 4", and the selection/halo shows its continuation).
     Every element gets its designation and value label where relevant (resistor, capacitor, inductor, fuse, motor,
     pump, valve, building-services devices), placed automatically and kept on edits.
-13. **Electrical installation and switchgear (maintainer 2026-11-25):** a distribution board / control cabinet module:
+13. **Done 2026-11-26 (engine; module docs/en/modules/switchgear.md): Electrical installation and switchgear (maintainer 2026-11-25):** a distribution board / control cabinet module:
     DIN rails, terminal blocks (feed-through, PE, N, fused, multi-level), RCD (FI), MCBs, RCBOs, SPDs, main switch,
     meters, contactors, relays, bus actuators and couplers (KNX and others), power supplies, switches and push buttons,
     cable ducts – with designations (BMK/reference designations per IEC 81346 ideas) and ratings. Exports: house
@@ -482,9 +482,9 @@ in the drawing).
       values are never overwritten, conflicts show both values.
     - **Calc 2** COM UI: level switch (quick sketch / explore / engineer), Values button, pie Edit ▸ Values ▸, value
       card, labels, grips/sliders, formulas step by step.
-    - **Calc 3** electrical and machine elements (series/parallel, LED, gear trains n/T/P, belts, chains, screws,
+    - **Calc 3 (done 2026-11-26)** electrical and machine elements (series/parallel, LED, gear trains n/T/P, belts, chains, screws,
       springs, bearings, motors) with checks.
-    - **Calc 4** fluid, thermal/process, building services, energy/solar and cross-module chains.
+    - **Calc 4 (done 2026-11-26)** fluid, thermal/process, building services, energy/solar and cross-module chains.
     - **Calc 5** linked charts (torque–speed, pump/system, PV I–V, Bode, step response, gear train, heating curve).
     - **Calc 6** engineer extras (tolerance intervals, calculation sheet, sources pane, check settings).
     **Guiding idea (maintainer 2026-11-25):** sketch fast, but also learn and understand interactively and playfully,

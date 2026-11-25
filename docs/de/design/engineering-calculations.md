@@ -4,7 +4,7 @@ Stand: Konzept und Plan, 25.11.2026 (Wunsch des Maintainers). Calc 0 und Calc 1 
 Einheitenumrechner und Rechner, Beziehungs-Engine, Engine-API, ohmsches Gesetz am Widerstand) sind umgesetzt; die
 Entwurfsentscheidungen stehen in Abschnitt 10. Calc 2 (die PowerPoint-Oberfläche: Stufe, Werte-Schaltfläche,
 Kreismenü, Wertekarte, Wertebeschriftung, Ziehen, Widerspruchszeichen) ist in COM umgesetzt, siehe Abschnitt 11.
-Calc 3–6 sind offen. Englische (maßgebliche)
+Calc 3 (Elektro: Abschnitt 10.10; Maschinenelemente: Abschnitt 12) und Calc 4 (Fluid, Verfahren, Gebäudetechnik, Energie: Abschnitt 13) sind in der Engine umgesetzt (26.11.2026); Calc 5–6 sind offen. Englische (maßgebliche)
 Fassung: [../../en/design/engineering-calculations.md](../../en/design/engineering-calculations.md).
 
 **Warum.** Zwei Wünsche des Maintainers vom 25.11.2026:
