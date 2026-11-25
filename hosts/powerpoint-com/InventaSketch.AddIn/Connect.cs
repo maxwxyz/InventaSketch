@@ -273,7 +273,7 @@ namespace InventaSketch.AddIn
         {
             var modules = (_registry?.Modules ?? Array.Empty<IModule>()).Where(mod => _categories.Any(c => c.ModuleId == mod.Id)).ToList();
             var annotate = new[] { "annotation", "patent", "basic" };
-            var order = new[] { "mechanical", "kinematics", "electrical", "machines", "automotive", "architecture", "diagrams" };
+            var order = new[] { "mechanical", "kinematics", "electrical", "switchgear", "machines", "automotive", "architecture", "diagrams" };
             var groups = new List<(string, List<IModule>)>();
             var first = modules.Where(mod => Array.IndexOf(annotate, mod.Id) >= 0).OrderBy(mod => Array.IndexOf(annotate, mod.Id)).ToList();
             // The first group holds the basics: PowerPoint's shapes, lines and arrows, labels, dimensions, hatching, figure marks.
