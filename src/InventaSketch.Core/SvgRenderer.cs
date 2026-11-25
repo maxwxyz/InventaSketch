@@ -228,6 +228,12 @@ namespace InventaSketch.Core
         /// <summary>Adds data-isk-id attributes for round-trip/hit-testing.</summary>
         public bool ObjectIds { get; init; } = true;
         public string FontFamily { get; init; } = "Arial, Helvetica, sans-serif";
+        /// <summary>
+        /// Export for editing in Inkscape/Illustrator: every element becomes a named group (id, Inkscape label with its type
+        /// and text), every tagged part a group labelled with its part key (charts v2: "series.0", "axis.x" …). Texts are
+        /// written as text in any case.
+        /// </summary>
+        public bool Editable { get; init; }
     }
 
     /// <summary>Renders primitives/pages to standalone SVG (mm user units).</summary>
@@ -241,7 +247,9 @@ namespace InventaSketch.Core
             var ctx = new RenderContext(doc, lang, options.Monochrome);
             var vb = options.ViewBox ?? new Rect(0, 0, page.Size.W, page.Size.H);
             var sb = new StringBuilder();
-            sb.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" ")
+            sb.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" ");
+            if (options.Editable) sb.Append("xmlns:inkscape=\"http://www.inkscape.org/namespaces/inkscape\" ");
+            sb
               .Append("width=\"").Append(F(vb.W)).Append("mm\" height=\"").Append(F(vb.H)).Append("mm\" ")
               .Append("viewBox=\"").Append(F(vb.X)).Append(' ').Append(F(vb.Y)).Append(' ').Append(F(vb.W)).Append(' ').Append(F(vb.H)).Append("\">\n");
             if (options.Background is not null)
@@ -250,12 +258,32 @@ namespace InventaSketch.Core
             {
                 sb.Append("<g");
                 if (options.ObjectIds) sb.Append(" data-isk-id=\"").Append(Esc(r.Object.Id)).Append("\" data-isk-type=\"").Append(Esc(r.Object.Type)).Append('"');
+                if (options.Editable)
+                {
+                    var name = (registry.Type(r.Object.Type)?.Name.Get(lang) ?? r.Object.Type) + (string.IsNullOrWhiteSpace(r.Object.Text) ? "" : ": " + r.Object.Text!.Replace("\n", " "));
+                    sb.Append(" id=\"isk-").Append(Esc(r.Object.Id)).Append("\" inkscape:label=\"").Append(Esc(name)).Append('"');
+                }
                 sb.Append(">\n");
-                foreach (var p in r.Primitives) Write(sb, p, options, "  ");
+                if (options.Editable) WriteParts(sb, r.Primitives, options, "  ");
+                else foreach (var p in r.Primitives) Write(sb, p, options, "  ");
                 sb.Append("</g>\n");
             }
             sb.Append("</svg>\n");
             return sb.ToString();
+        }
+
+        /// <summary>Primitives with consecutive equal tags grouped and labelled by their part key (editable export).</summary>
+        private static void WriteParts(StringBuilder sb, IReadOnlyList<Primitive> prims, SvgOptions o, string indent)
+        {
+            var i = 0;
+            while (i < prims.Count)
+            {
+                var tag = prims[i].Tag;
+                if (tag is null) { Write(sb, prims[i++], o, indent); continue; }
+                sb.Append(indent).Append("<g class=\"isk-part\" data-part=\"").Append(Esc(tag)).Append("\" inkscape:label=\"").Append(Esc(tag)).Append("\">\n");
+                while (i < prims.Count && prims[i].Tag == tag) Write(sb, prims[i++], o, indent + "  ");
+                sb.Append(indent).Append("</g>\n");
+            }
         }
 
         /// <summary>Renders loose primitives (e.g. a library thumbnail) fitted into a viewBox.</summary>

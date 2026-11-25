@@ -288,12 +288,26 @@ vectors stay in `math`.
    inline), standalone or as a `tikzpicture` to `\input`; SVG – texts stay `<text>` (already so), every element and part
    becomes a named group (`id`/`class` with the part key, Inkscape layer labels), hatches as patterns, so text and
    styles can be edited in Inkscape/Illustrator. Both through the engine's exporters, offered in all three hosts.
+   Done 2026-11-25: TikZ for every drawing (`latex.tikz`, Core `TikzExporter`), editable SVG (engine `renderPageSvg`
+   mode `export`, web SVG export). Open: pgfplots for charts (after the figure model), SVG export mode in COM/LibreOffice.
 5. Charts from pictures (scanner port, curve digitiser).
 
 **Flowcharts (maintainer example 2026-11-25, done):** flowchart symbols fit and wrap their text, start circle and end
 double circle, elbow connectors route by their docked sides (C runs with clearance for "yes" exits and loops back) and
 carry a "yes"/"no" label, the diagram layout docks branches and loops on the sides and computes the clearance, dashed
 note frames. Open: obstacle-aware routing for hand-placed boxes.
+
+### Patent figures fit-gap (research 2026-11-25)
+
+Research of EPO/USPTO/PCT/DPMA practice and real patent figures against the library. In progress (agents with file
+ownership): annotation – optional steps, ISO 5807 shapes (predefined process, off-page connector, loop limits,
+preparation, manual operation, database, delay), fork/join, yes/no exits on quick add, hop-overs and junction dots on
+connectors, wide (hollow) arrows, double-line arrows, arrow pairs, bus slash with count, tables, view arrows, detail
+views, material hatches, heat-flow arrows; diagrams – control-loop blocks (summing junction, multiplication point,
+transfer function), computer-system presets and bus, communication icons (phone, base station, router, satellite, IoT,
+wireless link), packet/frame/memory layouts, sequence fragments and message numbering, GUI wireframes, state circles.
+Later: digital timing diagrams (`chart.timing`, with charts v2), isometric parts (`mech.iso.*`), "moved position"
+phantom copies, battery cell arrays and cooling plates, optics module, polar/hysteresis/constellation/eye/Sankey charts.
 
 ### Further modules and functions worth adding
 
