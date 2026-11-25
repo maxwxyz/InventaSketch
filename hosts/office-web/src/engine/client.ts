@@ -4,7 +4,7 @@
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
   SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo, BuildPortInfo, CouplingPreview,
-  MotionInfo, MotionPreview, PreflightResult,
+  MotionInfo, MotionPreview, PreflightResult, PartView,
 } from "./types";
 
 export interface EngineBackend {
@@ -122,6 +122,16 @@ export class Session {
     return this.c("setSnap", { snapOptions: options });
   }
   contextActions(ids: string[], lang: string): ActionInfo[] { return this.c("contextActions", { ids, lang }); }
+  /** Parts of element `id` (charts v2): curves, axes, grid … with label and hidden flag. */
+  parts(id: string, lang: string): PartView[] { return this.c("parts", { id, lang }); }
+  /** Part of element `id` at the page point (mm) within `tolerance`, or null. */
+  partAt(id: string, x: number, y: number, tolerance: number): string | null { return this.c<{ part: string | null }>("partAt", { id, x, y, tolerance }).part; }
+  /** Actions of one part: the element's own ones that concern it, then show/hide, thicker, thinner, line style, reset. */
+  partActions(id: string, part: string, lang: string): ActionInfo[] { return this.c("partActions", { id, part, lang }); }
+  /** Runs a part action (one undo step). */
+  applyPartAction(id: string, part: string, action: string, input?: string): EditorState { return this.c("applyPartAction", { id, part, action, input }); }
+  /** Outline of a part in page mm (polylines of [x, y]), for highlighting it. */
+  partOutline(id: string, part: string): number[][][] { return this.c("partOutline", { id, part }); }
   inspector(ids: string[], lang: string): InspectorInfo { return this.c("inspector", { ids, lang }); }
   renderSvg(options: { ids?: string[]; monochrome?: boolean; background?: string; padding?: number } = {}): { svg: string; width: number; height: number } {
     return this.c("renderPageSvg", options);

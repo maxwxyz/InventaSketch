@@ -22,6 +22,7 @@ import { Library } from "./library";
 import { PieMenu } from "./piemenu";
 import { buildPieEntries, labelEntries, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
 import { Stage, type ChainSide } from "./stage";
+import { isPartCommand, keepPart, partActionId, partActions, partListEntries, partPieEntries, type SelectedPart } from "./partlogic";
 import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, importKind, orderFindings, sourceLinks } from "./uxlogic";
 
 export interface AppOptions {
@@ -98,6 +99,7 @@ export class App {
       pointerMoved: (x, y) => this.bar.pointerMoved(x, y),
       motionEnabled: () => this.motion,
       hideBar: () => this.bar.hide(),
+      clickPart: (id, p, tolerance) => this.selectPartAt(id, p, tolerance),
       report: (e) => this.report(e),
     });
     this.stage.onEditText = (o) => this.editText(o);
@@ -506,6 +508,7 @@ export class App {
     if (next.svg === undefined && this.st) next = { ...next, svg: this.st.svg };
     this.st = next;
     this.stage.render();
+    this.refreshPart();
     this.renderTopbar();
     if (this.settings.inspectorOpen || this.root.dataset.layout === "wide") this.inspector.update();
     this.updateBar();
@@ -527,6 +530,22 @@ export class App {
     this.traceFor = undefined;
     this.nextChoices = [];
     if (!sel.length) return this.bar.update("", [], undefined, true);
+    const part = this.part;
+    if (part && sel.length === 1 && sel[0] === part.id) {
+      // A selected part (charts v2): its name, its actions, "Parts …" and "Whole element".
+      let acts: ActionInfo[] = [];
+      try {
+        acts = partActions(this.sessionObj.partActions(part.id, part.key, lang()));
+      } catch (e) {
+        this.report(e);
+      }
+      const lead: BarCommand[] = [{ id: "info:part", label: t("part.selected"), icon: "", text: part.label }];
+      const build: BarCommand[] = [
+        { id: "partlist", label: t("part.list"), icon: "view-table" },
+        { id: "part:none", label: t("part.whole"), icon: "cmd-select-assembly" },
+      ];
+      return this.bar.update(key + "#" + part.key, acts, box, suppressed, [], { lead, build });
+    }
     const known = sel.some((id) => this.objectById(id)?.known);
     const assembly: BarCommand[] = known && this.assemblyGrows(sel) ? [{ id: "assembly", label: t("ctx.assembly"), icon: "cmd-select-assembly" }] : [];
     if (elementCount(this.st.objects, sel) >= 2) {
@@ -632,12 +651,81 @@ export class App {
   /** "Make it …" choices for the element just added with "+". */
   private nextChoices: SuggestionInfo[] = [];
 
+  /** Selected part of the single selected element (charts v2), shown outlined; the bar and pie act on it. */
+  private part?: SelectedPart;
+
+  /** A click without dragging on the selected element: the part under the pointer, or the whole element. */
+  private selectPartAt(id: string, p: { x: number; y: number }, tolerance: number): void {
+    try {
+      const parts = this.sessionObj.parts(id, lang());
+      if (!parts.length) return;
+      const key = this.sessionObj.partAt(id, p.x, p.y, tolerance);
+      const info = key ? parts.find((x) => x.key === key) : undefined;
+      this.setPart(info ? { id, key: info.key, label: info.label } : undefined);
+    } catch (e) {
+      this.report(e);
+    }
+  }
+
+  private setPart(part: SelectedPart | undefined): void {
+    this.part = part;
+    try {
+      this.stage.setPartOutline(part ? this.sessionObj.partOutline(part.id, part.key) : undefined);
+    } catch (e) {
+      this.report(e);
+    }
+    this.updateBar();
+  }
+
+  /** After an edit: keep the part while its element stays selected alone, refresh its outline. */
+  private refreshPart(): void {
+    if (!this.part) return;
+    const next = keepPart(this.part, this.st.selection, () => this.sessionObj.parts(this.part!.id, lang()));
+    this.part = next;
+    try {
+      this.stage.setPartOutline(next ? this.sessionObj.partOutline(next.id, next.key) : undefined);
+    } catch (e) {
+      this.report(e);
+    }
+  }
+
+  /** Part mode commands: the parts list, choosing a part from it, leaving the part. */
+  private partCommand(id: string, clientX: number, clientY: number): void {
+    const part = this.part;
+    const sel = this.st.selection;
+    if (id === "part:none") return this.setPart(undefined);
+    if (id === "partlist" || id === "menu:parts") {
+      if (sel.length !== 1) return;
+      try {
+        const entries = partListEntries(this.sessionObj.parts(sel[0], lang()), part?.key, t("part.hidden"));
+        const back = this.menuEntry("menu:back", t("pie.back"), "menuBack");
+        const page = submenu(back, entries, this.menuEntry("menu:more", t("pie.more"), "more"));
+        this.pieOverflow = page.overflow;
+        this.bar.hide();
+        this.pie.show(page.main, clientX, clientY);
+      } catch (e) {
+        this.report(e);
+      }
+      return;
+    }
+    if (id.startsWith("partsel:") && sel.length === 1) {
+      const key = id.slice(8);
+      try {
+        const info = this.sessionObj.parts(sel[0], lang()).find((x) => x.key === key);
+        if (info) this.setPart({ id: sel[0], key, label: info.label });
+      } catch (e) {
+        this.report(e);
+      }
+    }
+  }
+
   private barCommand(id: string, clientX: number, clientY: number): void {
     const sel = this.st.selection;
     if (id === "insert") return this.openInsert({ x: clientX, y: clientY });
     if (id === "makeIt") return this.openMakeIt({ x: clientX, y: clientY });
     if (id === "trace") return this.drawPath();
-    if (id === "info:dof") return;
+    if (id === "info:dof" || id === "info:part") return;
+    if (isPartCommand(id)) return this.partCommand(id, clientX, clientY);
     if (id === "motion") {
       this.motion = !this.motion;
       this.stage.drawOverlay();
@@ -862,6 +950,23 @@ export class App {
 
   runAction(a: ActionInfo): void {
     if (!a.enabled) return;
+    const partAction = partActionId(a.id);
+    const part = this.part;
+    if (partAction !== undefined && part) {
+      if (partAction === "none") return this.partCommand(a.id, 0, 0);
+      if (a.input) {
+        const input = a.input;
+        this.bar.hide();
+        this.prompt.show({ title: a.label, label: input.label, value: input.value, unit: input.unit }, this.promptAnchor(), (value) => {
+          this.edit((s) => s.applyPartAction(part.id, part.key, partAction, value));
+          this.stage.el.focus({ preventScroll: true });
+        });
+        return;
+      }
+      this.edit((s) => s.applyPartAction(part.id, part.key, partAction));
+      this.stage.el.focus({ preventScroll: true });
+      return;
+    }
     if (a.id === "text") return this.editText();
     const sel = this.st.selection;
     if (a.input) {
@@ -904,6 +1009,23 @@ export class App {
    */
   openPie(clientX?: number, clientY?: number): void {
     const sel = this.st.selection;
+    const part = this.part;
+    if (part && sel.length === 1 && sel[0] === part.id) {
+      let acts: ActionInfo[] = [];
+      try {
+        acts = this.sessionObj.partActions(part.id, part.key, lang());
+      } catch (e) {
+        return this.report(e);
+      }
+      const box = this.stage.selectionScreenBox();
+      const x = clientX ?? (box ? (box.left + box.right) / 2 : 0);
+      const y = clientY ?? (box ? (box.top + box.bottom) / 2 : 0);
+      const { main, overflow } = pieSplit(partPieEntries(acts, t("part.parts"), t("part.whole")).map((entry) => ({ entry, essential: true })), this.menuEntry("menu:more", t("pie.more"), "more"));
+      this.pieOverflow = overflow;
+      this.bar.hide();
+      this.pie.show(main, x, y);
+      return;
+    }
     let actions: ActionInfo[];
     try {
       actions = this.sessionObj.contextActions(sel, lang());
@@ -955,6 +1077,7 @@ export class App {
       return this.pie.show(page.main, at.x, at.y);
     }
     if (e.id === "menu:insert") return this.openInsert(at);
+    if (e.id === "menu:parts" || e.id.startsWith("partsel:") || e.id === "part:none") return this.partCommand(e.id, at.x, at.y);
     if (e.id === "menu:type") {
       const entries = this.pieConversions.map((c): PieEntry => ({ id: `conv:${c.id}`, label: c.label, icon: "cmd-cycle", enabled: true, active: !!c.active }));
       const page = submenu(back, entries, more);

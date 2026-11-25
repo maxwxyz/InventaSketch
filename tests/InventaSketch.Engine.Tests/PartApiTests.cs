@@ -45,6 +45,11 @@ namespace InventaSketch.Engine.Tests
             var hit = EngineApiTests.Call(api, "partAt", new { session, id, x = at.X, y = at.Y, tolerance = 0.3 });
             Assert.Equal("series.0", hit.GetProperty("part").GetString());
 
+            // Outline of the selected part for host highlighting (page mm polylines).
+            var outline = EngineApiTests.Call(api, "partOutline", new { session, id, part = "series.0" }).EnumerateArray().ToList();
+            Assert.NotEmpty(outline);
+            Assert.True(outline[0].GetArrayLength() >= 2);
+
             // Each change is one undo step.
             EngineApiTests.Call(api, "undo", new { session });
             Assert.Null(api.Sessions.Get(session).Doc.Get(id)!.Parts!["series.0"].Style!.StrokeWidth);

@@ -30,6 +30,8 @@ export interface StageHost {
   motionEnabled?(): boolean;
   /** A drag that previews its result (motion mode) started moving: the context bar gets out of the way. */
   hideBar?(): void;
+  /** A click without dragging on the single selected element at page point `p` (charts v2: selects the part there). */
+  clickPart?(id: string, p: Vec2, tolerance: number): void;
   report(error: unknown): void;
 }
 
@@ -117,6 +119,8 @@ export class Stage {
   readonly svg: SVGSVGElement;
   private readonly pageRect: SVGRectElement;
   private readonly gridRect: SVGRectElement;
+  /** Outline of the selected part of a chart (charts v2), below the selection handles. */
+  private readonly partLayer: SVGGElement;
   private readonly content: SVGGElement;
   private readonly overlay: SVGGElement;
   private readonly guides: SVGGElement;
@@ -164,7 +168,8 @@ export class Stage {
     this.overlay = s("g", { class: "isk-overlay" });
     this.ghost = s("g", { class: "isk-ghost" });
     this.coupling = s("g", { class: "isk-coupling" });
-    this.svg.append(defs, this.pageRect, this.gridRect, this.content, this.coupling, this.guides, this.overlay, this.ghost);
+    this.partLayer = s("g", { class: "isk-part-layer" });
+    this.svg.append(defs, this.pageRect, this.gridRect, this.content, this.coupling, this.guides, this.partLayer, this.overlay, this.ghost);
     this.scaleLabelEl = document.createElement("div");
     this.scaleLabelEl.className = "isk-scale-label";
     this.scaleLabelEl.hidden = true;
@@ -311,6 +316,11 @@ export class Stage {
       for (const c of this.portPlus.map((p) => this.toClient(p))) pts.push({ x: c.x - r, y: c.y - r }, { x: c.x + r, y: c.y + r });
     }
     return { left: Math.min(...pts.map((p) => p.x)), top: Math.min(...pts.map((p) => p.y)), right: Math.max(...pts.map((p) => p.x)), bottom: Math.max(...pts.map((p) => p.y)) };
+  }
+
+  /** Outline of the selected part (page mm polylines); none clears it. */
+  setPartOutline(lines?: number[][][]): void {
+    this.partLayer.replaceChildren(...(lines ?? []).map((l) => s("polyline", { class: "isk-part-outline", points: l.map((p) => `${p[0]},${p[1]}`).join(" ") })));
   }
 
   drawOverlay(previewFrame?: Frame, previewPoints?: { obj: ObjectInfo; pts: Vec2[] }): void {
@@ -995,7 +1005,10 @@ export class Stage {
         }
         case "move":
           if (d.moved && (Math.abs(d.dx) > 1e-9 || Math.abs(d.dy) > 1e-9)) this.host.apply(session.move(d.ids, d.dx, d.dy), true);
-          else this.resetPreview([...d.ids, ...(d.followers ?? [])]);
+          else {
+            this.resetPreview([...d.ids, ...(d.followers ?? [])]);
+            if (!d.moved && d.ids.length === 1) this.host.clickPart?.(d.ids[0], d.start, 6 / this.scale);
+          }
           break;
         case "scale": {
           const r = d.result;

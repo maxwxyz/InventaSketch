@@ -106,6 +106,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .isk-content { pointer-events: none; }
 .isk-sel-frame, .isk-sel-path { fill: none; stroke: var(--sel); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
 .isk-sel-path { stroke-dasharray: 4 3; }
+.isk-part-outline { fill: none; stroke: var(--sel); stroke-width: 3px; stroke-opacity: 0.75; vector-effect: non-scaling-stroke; pointer-events: none; }
 .isk-sel-member { fill: none; stroke: var(--sel); stroke-width: 1px; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; opacity: 0.7; }
 .isk-sel-stem { stroke: var(--sel); stroke-width: 1px; vector-effect: non-scaling-stroke; }
 .isk-handle { fill: #ffffff; stroke: var(--sel); stroke-width: 1.4px; vector-effect: non-scaling-stroke; }
