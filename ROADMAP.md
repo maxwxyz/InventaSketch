@@ -206,8 +206,9 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
 4. P3: diagram auto-layout done 2026-11-25 (layered, multi-selection, all hosts through the engine; COM checked in
    PowerPoint); import of CSV (chart data) and GeoJSON/GPX (map routes and markers) done 2026-11-25 (COM Extras menu, web import
    button; checked in PowerPoint); patent check of all slides with navigation to the finding (COM; engine `preflight` for web and
-   LibreOffice) done 2026-11-25; open: variants and states, a preflight panel in web and LibreOffice, SVG/DXF import (vector drawings
-   as editable shapes – a larger piece of its own).
+   LibreOffice) done 2026-11-25; variants and states as a slide comparison (added/changed/removed marked; COM Extras menu,
+   engine `diff`) done 2026-11-25; open: a preflight panel and a compare command in web and LibreOffice, SVG/DXF import
+   (vector drawings as editable shapes – a larger piece of its own).
 
 ### Further modules and functions worth adding
 

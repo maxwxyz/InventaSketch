@@ -366,6 +366,7 @@ namespace InventaSketch.AddIn
             Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
             Item("IskMenuImport", T("Import data (CSV, GeoJSON, GPX) \u2026", "Daten importieren (CSV, GeoJSON, GPX) \u2026"), "ImportTextFile");
             Item("IskMenuPatent", T("Patent check (drawings) \u2026", "Patentpr\u00fcfung (Zeichnungen) \u2026"), "ReviewSpellingAndGrammar");
+            Item("IskMenuCompare", T("Compare with the previous slide (variants)", "Mit vorheriger Folie vergleichen (Varianten)"), "ReviewCompareTwoVersions");
             Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
             sb.Append("</menu>");
         }
@@ -395,6 +396,9 @@ namespace InventaSketch.AddIn
                     case "IskMenuSave": Tools.SaveSlides(_app, german); break;
                     case "IskMenuPlanScale": SetPlanScale(); break;
                     case "IskMenuImport": ImportDataFile(); break;
+                    case "IskMenuCompare":
+                        if (CompareWithPrevious() is { } note) MessageBox.Show(note, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        break;
                     case "IskMenuPatent":
                         if (_registry is not null) { _patentForm?.Close(); _patentForm = new PatentCheckForm(_app, _registry, _lang); _patentForm.Show(); }
                         break;
@@ -1130,6 +1134,70 @@ namespace InventaSketch.AddIn
                 OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang)?.Select(Office.MsoTriState.msoTrue);
             }
             Log.Info("Imported chart data from " + System.IO.Path.GetFileName(fileName));
+            return null;
+        }
+
+        /// <summary>Tag of the comparison marks (native shapes, not InventaSketch units).</summary>
+        internal const string DiffTag = "ISK_DIFF";
+
+        /// <summary>
+        /// Variants: compares the InventaSketch elements of the current slide with the previous slide (a duplicate keeps the
+        /// elements' ids, <see cref="Variants"/>) and marks them on the current slide – added green, changed orange, removed as
+        /// a dashed grey frame where they were – with a legend. Called again, it removes the marks. One undo step. Returns a
+        /// message for the user when there is nothing to compare, else null.
+        /// </summary>
+        internal string? CompareWithPrevious()
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return T("Please select a slide first.", "Bitte zuerst eine Folie auswählen.");
+            _app.StartNewUndoEntry();
+            var marks = slide.Shapes.Cast<PowerPoint.Shape>().Where(sh => { try { return sh.Tags[DiffTag] == "1"; } catch { return false; } }).ToList();
+            if (marks.Count > 0)
+            {
+                foreach (var m in marks) m.Delete();
+                Log.Info($"Comparison marks removed ({marks.Count})");
+                return null;
+            }
+            if (slide.SlideIndex < 2) return T("There is no previous slide to compare with.", "Es gibt keine vorherige Folie zum Vergleichen.");
+            var previous = _app.ActivePresentation.Slides[slide.SlideIndex - 1];
+            SketchDocument Doc(PowerPoint.Slide sl)
+            {
+                var doc = SketchDocument.Create();
+                var seen = new HashSet<string>(StringComparer.Ordinal);
+                var objs = OnSlide.SketchUnits.All(sl).SelectMany(u => u.Objects).Where(o => seen.Add(o.Id)).ToArray();
+                return objs.Length == 0 ? doc : Edits.Add(doc, doc.Pages[0].Id, objs);
+            }
+            var before = Doc(previous);
+            var after = Doc(slide);
+            var diff = Variants.Diff(before, after);
+            if (diff.None) return T("No differences to the previous slide.", "Keine Unterschiede zur vorherigen Folie.");
+            void Mark(SketchDocument doc, string id, int bgr, bool dashed)
+            {
+                if (doc.Get(id) is not { } o) return;
+                var r = Variants.Bounds(doc, o);
+                var pad = 1.5;
+                var box = slide.Shapes.AddShape(Office.MsoAutoShapeType.msoShapeRoundedRectangle,
+                    (float)((r.X - pad) * Geo.PtPerMm), (float)((r.Y - pad) * Geo.PtPerMm), (float)Math.Max(4, (r.W + 2 * pad) * Geo.PtPerMm), (float)Math.Max(4, (r.H + 2 * pad) * Geo.PtPerMm));
+                box.Fill.Visible = Office.MsoTriState.msoFalse;
+                box.Line.ForeColor.RGB = bgr;
+                box.Line.Weight = 2f;
+                if (dashed) box.Line.DashStyle = Office.MsoLineDashStyle.msoLineDash;
+                box.Name = "ISK_DIFF " + id;
+                box.Tags.Add(DiffTag, "1");
+            }
+            // Colours as 0x00BBGGRR (PowerPoint RGB): green, orange, grey.
+            const int green = 0x3C9A2E, orange = 0x0080F5, grey = 0x8C8C8C;
+            foreach (var id in diff.Added) Mark(after, id, green, false);
+            foreach (var id in diff.Changed) Mark(after, id, orange, false);
+            foreach (var id in diff.Removed) Mark(before, id, grey, true);
+            var w = _app.ActivePresentation.PageSetup.SlideWidth;
+            var legend = slide.Shapes.AddTextbox(Office.MsoTextOrientation.msoTextOrientationHorizontal, w - 250, 6, 244, 20);
+            legend.TextFrame.TextRange.Text = T($"Compared with slide {previous.SlideIndex}: {diff.Added.Count} added, {diff.Changed.Count} changed, {diff.Removed.Count} removed",
+                $"Vergleich mit Folie {previous.SlideIndex}: {diff.Added.Count} neu, {diff.Changed.Count} geändert, {diff.Removed.Count} entfernt");
+            legend.TextFrame.TextRange.Font.Size = 9;
+            legend.TextFrame.TextRange.ParagraphFormat.Alignment = PowerPoint.PpParagraphAlignment.ppAlignRight;
+            legend.Name = "ISK_DIFF legend";
+            legend.Tags.Add(DiffTag, "1");
+            Log.Info($"Compared slide {slide.SlideIndex} with {previous.SlideIndex}: +{diff.Added.Count} ~{diff.Changed.Count} -{diff.Removed.Count}");
             return null;
         }
 

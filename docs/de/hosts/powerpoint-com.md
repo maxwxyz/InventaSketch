@@ -440,6 +440,14 @@ oder der Folie passen (Stückliste, Verbindungsgraph als Mermaid/GraphML, Netzli
 Datei und legt den Text in die Zwischenablage. Geprüft: zwei gleiche Stirnräder und eine Welle ergaben eine Stückliste
 mit Menge 2.
 
+Varianten (Extras ▸ Mit vorheriger Folie vergleichen, 2026-11-25): Eine duplizierte Folie behält die IDs der Elemente,
+so lässt sich ein Paar „vorher/nachher“ oder „Stand der Technik/Erfindung“ vergleichen. Der Befehl markiert auf der
+aktuellen Folie, was sich von der vorherigen unterscheidet (`Variants.Diff` im Core): neue Elemente grün, geänderte
+(Typ, Ansicht, Parameter, Text, Lage, Größe oder Punkte) orange, entfernte als grau gestrichelter Rahmen an ihrer
+alten Stelle, dazu eine Legende oben rechts. Die Markierungen sind einfache PowerPoint-Formen mit dem Tag `ISK_DIFF`;
+ein erneuter Aufruf entfernt sie. Ein Rückgängig-Schritt. Geprüft: Szenario `variants` (ein Zahnrad entfernt, eines
+geändert, eines neu → 3 Markierungen und Legende, danach wieder entfernt).
+
 ## Bekannte Grenzen / nächste Schritte
 
 - Ein per `New-Object -ComObject PowerPoint.Application` gestartetes PowerPoint listete das frisch registrierte Add-in

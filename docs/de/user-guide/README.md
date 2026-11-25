@@ -56,6 +56,10 @@ InventaSketch ▸ Extras ▸ „Patentprüfung (Zeichnungen) …“ prüft alle 
 Warnungen, Hinweise und selbst zu prüfende Punkte mit Fundstelle; ein Doppelklick auf einen Befund springt zur Folie
 und zum Element (Engine `preflight`, `patentProfiles`).
 
+Varianten (vorher/nachher, Stand der Technik/Erfindung): Folie duplizieren und die Kopie ändern. InventaSketch ▸ Extras
+▸ „Mit vorheriger Folie vergleichen“ markiert, was neu (grün), geändert (orange) und entfernt (grau gestrichelt) ist,
+mit Legende; ein erneuter Aufruf entfernt die Markierungen (Engine `diff`).
+
 ## 6. Module
 
 Jedes Modul hat eine eigene Seite mit Elementen, Ansichten und Parametern:

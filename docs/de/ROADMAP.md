@@ -231,7 +231,8 @@ Leisten-IDs jetzt direkt.
 4. P3: automatisches Diagramm-Layout erledigt 25.11.2026 (Ebenen-Layout, Mehrfachauswahl, alle Hosts über die Engine;
    COM in PowerPoint geprüft); Import von CSV (Diagrammdaten) und GeoJSON/GPX (Kartenrouten und Marker) erledigt 25.11.2026 (COM Menü Extras,
    Web-Import-Knopf; in PowerPoint geprüft); Patentprüfung aller Folien mit Sprung zum Befund (COM; Engine `preflight` für Web und LibreOffice) erledigt
-   25.11.2026; offen: Varianten und Zustände, ein Prüf-Panel in Web und LibreOffice, SVG/DXF-Import
+   25.11.2026; Varianten und Zustände als Folienvergleich (neu/geändert/entfernt markiert; COM Menü Extras, Engine
+   `diff`) erledigt 25.11.2026; offen: ein Prüf-Panel und ein Vergleichsbefehl in Web und LibreOffice, SVG/DXF-Import
    (Vektorzeichnungen als bearbeitbare Formen – ein eigener größerer Baustein).
 
 ### Weitere sinnvolle Module und Funktionen

@@ -44,6 +44,7 @@ undo step each (no step when nothing changes).
 | `importGeo` | `text` (GeoJSON or GPX) | state; routes and markers fitted into the page, selected |
 | `preflight` | `text` (profile id, default "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – patent drawing preflight |
 | `patentProfiles` | `lang` | the offices `{ id, name }` |
+| `diff` | `payload` (compact model of the earlier state, e.g. the previous slide) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – variants: what differs from that state (bounds in mm, removed ones from the earlier state) |
 | `setAccent` | `text` (preset id from `accents`, #rrggbb, or "" for the original colours) | state (`accent`); accent colour of the document, every object counts as changed |
 | `accents` | `lang` | the offered accent colours `{ id, color, name }` |
 | `setLineGroup` | `value` (0.25, 0.35, 0.5, 0.7 or 1 – thick line width in mm) | state (`lineGroup`); ISO 128 line group of the document, every object counts as changed |

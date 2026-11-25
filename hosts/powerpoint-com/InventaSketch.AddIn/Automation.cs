@@ -189,6 +189,13 @@ namespace InventaSketch.AddIn
             catch (Exception ex) { Log.Error("Automation.ShowPatentCheck", ex); return false; }
         }
 
+        /// <summary>Compares the current slide with the previous one (or removes the marks); "" on success, else the message.</summary>
+        public string CompareWithPrevious()
+        {
+            try { return _connect.CompareWithPrevious() ?? ""; }
+            catch (Exception ex) { Log.Error("Automation.CompareWithPrevious", ex); return ex.Message; }
+        }
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

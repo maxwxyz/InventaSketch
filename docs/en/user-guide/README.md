@@ -50,6 +50,10 @@ does not replace review by a patent professional. In PowerPoint: InventaSketch �
 checks every slide for the chosen office and lists errors, warnings, notes and points to check by hand with their
 source; double-click a finding to go to its slide and element (engine `preflight`, `patentProfiles`).
 
+Variants (before/after, prior art/invention): duplicate the slide and change the copy. InventaSketch ▸ Extras ▸
+"Compare with the previous slide" marks what was added (green), changed (orange) and removed (dashed grey) with a
+legend; run it again to remove the marks (engine `diff`).
+
 ## 6. Modules
 
 Each module has its own page with its elements, views and parameters:
