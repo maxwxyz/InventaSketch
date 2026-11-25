@@ -4,7 +4,11 @@ $addin = $S.AddIn
 $k = Get-IskScale
 
 $w = $addin.Insert('elec.wire.free')
-$ws = $S.Slide.Shapes.Item($w); $ws.Left = 150; $ws.Top = 330
+# The add-in may redraw the unit after a move (new shape): set the position, then look the wire up again.
+function Wire { @(Get-IskShapes $S 'ISK:elec.wire*')[0] }
+$ws = $S.Slide.Shapes.Item($w); $ws.Left = 150; Start-Sleep 1
+$ws = Wire; $ws.Top = 330; Start-Sleep 1
+$ws = Wire
 $ws.Select(); Start-Sleep 3
 $n0 = (Get-IskPoints $ws).Count
 $r = Get-IskRect $S $w
@@ -17,12 +21,20 @@ $ws = Wire
 $n1 = (Get-IskPoints $ws).Count
 Assert-Isk $S ($n1 -gt $n0) "dragging the end '+' extends the wire ($n0 -> $n1 points)"
 
-# Draw on: click the end "+", click two more points, Esc.
+# Draw on: drag from the end "+", click one more point, Esc.
 $ws.Select(); Start-Sleep 3
 $r = Get-IskRect $S $ws.Name
 $ex = $r.X + $r.W; $ey = $r.Y + $r.H
-Invoke-IskClick ($ex + 14 * $k) ($ey + 11 * $k) -WaitMs 600
-Invoke-IskClick ($ex + 160) ($ey + 10) -WaitMs 600
+# The end "+" where the handle layout placed it (automation Handles(): "id@x,y,r;…"); the old fixed offset as fallback.
+$endPlus = @(([string]$addin.Handles()) -split ';' | ForEach-Object {
+        $m = [regex]::Match($_, '^(end:1|port:\d+)@(-?\d+),(-?\d+)')
+        if ($m.Success) { [pscustomobject]@{ Id = $m.Groups[1].Value; X = [double]$m.Groups[2].Value; Y = [double]$m.Groups[3].Value } }
+    }) | Sort-Object { [Math]::Abs($_.X - $ex) + [Math]::Abs($_.Y - $ey) } | Select-Object -First 1
+# Dragging the end "+" draws on (a click on it opens the insert box); release sets the point, a click adds a corner.
+if (-not $endPlus) { $endPlus = [pscustomobject]@{ Id = 'fallback'; X = $ex + 14 * $k; Y = $ey + 11 * $k } }
+Write-IskInfo ("end + at {0},{1} ({2})" -f $endPlus.X, $endPlus.Y, $endPlus.Id)
+Invoke-IskDrag -From @($endPlus.X, $endPlus.Y) -To @(($ex + 160), ($ey + 10))
+Start-Sleep -Milliseconds 600
 Invoke-IskClick ($ex + 160) ($ey - 120) -WaitMs 600
 Save-IskShot $S '1-drawing'
 Send-IskEscape; Start-Sleep 4

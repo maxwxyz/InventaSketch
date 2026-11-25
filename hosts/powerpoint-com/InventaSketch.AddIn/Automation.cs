@@ -220,6 +220,13 @@ namespace InventaSketch.AddIn
             catch (Exception ex) { Log.Error("Automation.SetSymbolSize", ex); return false; }
         }
 
+        /// <summary>Sets the size of the on-slide controls (1 or 1.25) like More ▸ "Larger controls"; the selection is armed again.</summary>
+        public bool SetControlSize(double factor)
+        {
+            try { _connect.SetControlSize(factor); return true; }
+            catch (Exception ex) { Log.Error("Automation.SetControlSize", ex); return false; }
+        }
+
         /// <summary>The selection halo as last drawn: "selected=…; connected=…".</summary>
         public string Halo() => _connect.LastHalo();
 

@@ -455,6 +455,50 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
+        // ------------------------------------------------------------------ first-use hint
+
+        /// <summary>End (tick count) of the first-use hint at the primary "+"; 0 when none is shown.</summary>
+        private int _hintUntil;
+        private string? _hintFor;
+
+        /// <summary>
+        /// The first selection of an element with a blue "+" explains it once per user, for three seconds (interaction
+        /// concept section 9 item 9): "Blue + adds what fits here".
+        /// </summary>
+        private void StartFirstHint(SlideView view)
+        {
+            try
+            {
+                var primary = PrimaryHandleId(view);
+                if (primary is null || !(primary.StartsWith("side:", StringComparison.Ordinal) || primary.StartsWith("port:", StringComparison.Ordinal) || primary.StartsWith("end:", StringComparison.Ordinal))) return;
+                if (!AddInSettings.FirstTime("plus")) return;
+                _hintFor = primary;
+                _hintUntil = unchecked(Environment.TickCount + 3500);
+                Log.Info("First-use hint at " + primary);
+                var t = new System.Windows.Forms.Timer { Interval = 3600 };
+                t.Tick += (_, _) =>
+                {
+                    t.Stop();
+                    t.Dispose();
+                    _hintUntil = 0;
+                    if (_mode == Mode.Armed && _view is { } v) DrawPointHandles(v);
+                };
+                t.Start();
+            }
+            catch (Exception ex)
+            {
+                Log.Error("First-use hint", ex);
+            }
+        }
+
+        /// <summary>Queues the first-use hint at its "+" while it lasts (a hovered handle's own tip wins).</summary>
+        private void QueueFirstHint(SlideView view)
+        {
+            if (_hintUntil == 0 || _hintFor is null || _tip is not null || unchecked(_hintUntil - Environment.TickCount) <= 0) return;
+            if (HandleById(view, _hintFor) is { Visible: true } h)
+                QueueTip(view, h.At, T("Blue + adds what fits here", "Blaues + fügt hinzu, was hier passt"), (float)PortPx);
+        }
+
         /// <summary>Size of an insert dot relative to a build "+" (small: a table may show many of them).</summary>
         private const double GapScale = 0.72;
 

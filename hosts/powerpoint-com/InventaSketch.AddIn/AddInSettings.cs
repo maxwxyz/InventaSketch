@@ -16,6 +16,8 @@ namespace InventaSketch.AddIn
             public bool Anchor { get; set; } = true;
             public List<string> HiddenModules { get; set; } = new();
             public List<string> RecentItems { get; set; } = new();
+            public double UiScale { get; set; } = 1.0;
+            public List<string> HintsShown { get; set; } = new();
         }
 
         private static Data _data = Load();
@@ -48,6 +50,26 @@ namespace InventaSketch.AddIn
         {
             get => _data.RecentItems ??= new List<string>();
             set { _data.RecentItems = value.ToList(); Save(); }
+        }
+
+        /// <summary>
+        /// Size of the on-slide controls (bar, pie menu, handles, hit targets): 1 = normal, 1.25 = larger for low vision
+        /// (interaction concept section 9 item 10). Clamped to 1 … 1.5.
+        /// </summary>
+        public static double UiScale
+        {
+            get => double.IsNaN(_data.UiScale) || _data.UiScale < 1 ? 1 : Math.Min(1.5, _data.UiScale);
+            set { _data.UiScale = Math.Max(1, Math.Min(1.5, value)); Save(); }
+        }
+
+        /// <summary>True the first time for <paramref name="hint"/> (and remembers it): first-use hints show once per user.</summary>
+        public static bool FirstTime(string hint)
+        {
+            _data.HintsShown ??= new List<string>();
+            if (_data.HintsShown.Contains(hint)) return false;
+            _data.HintsShown.Add(hint);
+            Save();
+            return true;
         }
 
         /// <summary>

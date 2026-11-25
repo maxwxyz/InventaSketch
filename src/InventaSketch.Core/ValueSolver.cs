@@ -252,7 +252,8 @@ namespace InventaSketch.Core
             var opt = options ?? new ValueSolveOptions();
             var sw = Stopwatch.StartNew();
             var table = new ValueTable();
-            var ctx = new RenderContext(doc, lang);
+            // The context names the registry: links and checks of the types read their neighbours through it.
+            var ctx = new RenderContext(doc, lang).For(registry);
 
             // 1. Scope: the given objects, then objects reached through links (breadth first, in discovery order).
             var start = ids?.ToList() ?? (doc.Pages.Count > 0 ? doc.Pages[0].Order.ToList() : doc.Objects.Keys.OrderBy(k => k, StringComparer.Ordinal).ToList());
@@ -527,7 +528,7 @@ namespace InventaSketch.Core
             {
                 var o = table.Objects[id];
                 if (registry.Type(o.Type) is not IValueChecks checks) continue;
-                var c = new ValueCheckContext(o, table, ctx);
+                var c = new ValueCheckContext(o, table, ctx.Registry is null ? ctx.For(registry) : ctx);
                 foreach (var rule in checks.ValueChecks)
                 {
                     bool violated;

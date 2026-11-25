@@ -192,6 +192,14 @@
 - **Menü „Mehr“ (Menüband):** „Prüfen und Weitergeben“ (Prüfpunkte, Folien senden, Folien speichern, Import von
   matplotlib-, pgfplots- und TikZ-Code), dann Werkzeuge: Symbolgröße ×1/×1,5/×2 für alle Standardsymbole der Folie (neue
   Symbole übernehmen sie), Werte-Stufe, Rechner.
+- **Größere Bedienelemente und Hinweis beim ersten Mal:** Mehr ▸ „Größere Bedienelemente (125 %)“ macht Leiste,
+  Kreismenü, Griffe und ihre Trefferflächen ein Viertel größer (Einstellung je Benutzer in `settings.json`; das Layout
+  hält auch die größeren Griffe auseinander, UI-Szenario `control-size`). Die erste Auswahl eines Elements mit blauem „+“
+  zeigt daneben drei Sekunden lang „Blaues + fügt hinzu, was hier passt“, einmal je Benutzer.
+- **Werte über Elemente hinweg (Calc 3):** Wertekarte, Ziehvorschau und Konflikt-Abzeichen rechnen mit den anderen
+  Einheiten der Folie als Kontext, damit Zahnradzüge, Riemen- und Kettentriebe, Stromkreise und Antriebsketten über
+  mehrere Elemente Drehzahlen, Momente, Ströme und Spannungen weitergeben; eingetragene Werte bleiben im jeweiligen
+  Element.
 - **Aktionen, die Elemente hinzufügen oder entfernen:** eine Dokument-Aktion eines Elements (etwa „Strahlenbündel
   einfügen“ an einer Lichtquelle) kann Objekte erzeugen oder Objekte anderer Einheiten entfernen; erzeugte werden eine
   neue Einheit, entfernte werden aus ihren Einheiten genommen, alles im Rückgängig-Schritt der Aktion (UI-Szenario
@@ -350,8 +358,9 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   verhalten sich gleich: Leitungen, Busleitungen, Leitungsführungen, Leiterbahnen, Fluidleitungen, Straßen, Bahnlinien,
   Flüsse, Routen, Fahrbahnmarkierungen, Trajektorien, Fahrstreifenmodelle, Wände, Polylinien sowie einfache Linien und
   Pfeile (beim Weiterzeichnen werden sie zur Polylinie mit denselben Spitzen). Ein freies Ende zeigt ein blaues „+“:
-  Ziehen verlängert die Linie, Klick zeichnet weiter (jeder Klick setzt eine Ecke; Doppelklick, Enter, Esc oder
-  Rechtsklick beendet; der letzte Punkt dockt wie ein Linienende an). Ein Klick auf eine Ecke wählt sie aus: die Leiste
+  Ziehen zeichnet die Linie weiter (Loslassen setzt den Punkt; jeder weitere Klick setzt eine Ecke; Doppelklick, Enter,
+  Esc oder Rechtsklick beendet; der letzte Punkt dockt wie ein Linienende an); ein Klick darauf öffnet das Einfügefeld
+  mit dem, was dort passt (seit 25.11.2026 teilen sich Verlängern und Verbinden das eine „+“). Ein Klick auf eine Ecke wählt sie aus: die Leiste
   bietet „hier teilen“ und „entfernen“ (Piktogramme mit Tooltip); ein geschlossener Umriss (Raum, Fläche, Schraffur-
   Polygon, geschlossene Wand) wird an der Ecke stattdessen geöffnet. Ein Ende auf ein freies Ende einer Linie derselben
   Art fallen lassen verbindet beide. Wände bekommen T-Stöße als Abzweig (die abzweigende Wand dockt an der Mittellinie an
