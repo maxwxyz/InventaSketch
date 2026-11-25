@@ -135,19 +135,19 @@ export const PIE_LINES = 3;
 
 /**
  * Ring geometry for n entries (px): first entry at 12 o'clock, clockwise. Each slot centres its content block
- * (pictogram over label) in the middle of the ring depth; `width` is the room for the label: the chord at the content's
- * inner edge, so labels stay inside their sector and the ring.
+ * (pictogram over label) in the middle of the ring depth; `width` is the room for the label: the sector chord where the
+ * label lines sit, so labels stay inside their sector and the ring.
  */
 export function pieGeometry(n: number): { inner: number; outer: number; slots: PieSlot[] } {
   const count = Math.max(1, n);
   const inner = 40;
-  const outer = count <= 8 ? 146 : 166;
+  const outer = count <= 8 ? 150 : 168;
   const sweep = (2 * Math.PI) / count;
   const rc = (inner + outer) / 2 + 4;
-  // The narrowest place of the content block is its inner edge (about a third of the depth inside the centre).
-  const rInner = rc - (outer - inner) * 0.18;
+  // The label lines sit a little inside the centre of the block (below the pictogram at the top slot).
+  const rInner = rc - 8;
   const chord = count === 1 ? 2 * rInner : 2 * rInner * Math.sin(Math.min(sweep, Math.PI) / 2);
-  const width = Math.max(44, Math.min(chord - 8, 96));
+  const width = Math.max(44, Math.min(chord - 4, 96));
   const slots = Array.from({ length: n }, (_, i) => {
     const a = -Math.PI / 2 + i * sweep;
     return { angle: (a * 180) / Math.PI, x: Math.cos(a) * rc, y: Math.sin(a) * rc, width };

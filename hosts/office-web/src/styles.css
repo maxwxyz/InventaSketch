@@ -343,3 +343,5 @@ textarea.isk-input { resize: vertical; }
 .isk-grip-arrow { fill: #1f5fbf; stroke: none; pointer-events: none; }
 .isk-grip-ghost { fill: rgba(31, 95, 191, 0.25); stroke: #1f5fbf; stroke-width: 1.6px; vector-effect: non-scaling-stroke; pointer-events: none; }
 .isk-grip-lead { stroke: #1f5fbf; stroke-width: 1px; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+/* Option pictures (engine previews, library thumbnails) are drawn dark on transparent: inverted on dark panels. */
+:root[data-theme="dark"] .isk-ctxbar img, :root[data-theme="dark"] .isk-dropdown img { filter: invert(1) hue-rotate(180deg); }
