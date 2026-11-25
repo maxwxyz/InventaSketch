@@ -233,9 +233,9 @@ Leisten-IDs jetzt direkt.
    Web-Import-Knopf; in PowerPoint geprüft); Patentprüfung aller Folien mit Sprung zum Befund (COM; Engine `preflight` für Web und LibreOffice) erledigt
    25.11.2026; Varianten und Zustände als Folienvergleich (neu/geändert/entfernt markiert; COM Menü Extras, Engine
    `diff`) erledigt 25.11.2026; Patentprüfung im Web (Panel für die Seite) und in LibreOffice (Dialog über alle Seiten
-   mit Sprung zum Befund) erledigt 25.11.2026; offen: der Folienvergleich in Web und LibreOffice (Engine `diff` steht
-   bereit), die Web-Prüfung über alle Folien, SVG/DXF-Import (Vektorzeichnungen als bearbeitbare Formen – ein eigener
-   größerer Baustein).
+   mit Sprung zum Befund) erledigt 25.11.2026; Folienvergleich in LibreOffice erledigt 25.11.2026; offen: Folienvergleich
+   und Prüfung über alle Folien im Web-Add-in (beide brauchen die Einheiten der anderen Folien über Office.js; Engine
+   `diff` steht bereit), SVG/DXF-Import (Vektorzeichnungen als bearbeitbare Formen – ein eigener größerer Baustein).
 
 ### Weitere sinnvolle Module und Funktionen
 

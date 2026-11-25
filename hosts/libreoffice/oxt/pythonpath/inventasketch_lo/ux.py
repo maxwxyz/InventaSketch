@@ -412,3 +412,28 @@ def findings_summary(findings, pages, lang=None):
         return i18n.text("pcNone", lang) % pages
     errors = sum(1 for f in findings if f.get("severity") == "error")
     return i18n.text("pcSummary", lang) % (len(findings), errors, pages)
+
+
+# ------------------------------------------------------------------ variants (slide comparison)
+
+DIFF_GREEN, DIFF_ORANGE, DIFF_GREY = 0x2E9A3C, 0xF58000, 0x8C8C8C
+
+
+def diff_marks(diff, pad=1.5):
+    """Frames of the engine's ``diff`` answer: [(kind, (x, y, w, h) in mm, RGB colour, dashed)], added green, changed
+    orange, removed dashed grey; each frame ``pad`` mm larger than the element and at least 4 mm wide and high."""
+    out = []
+    for kind, colour, dashed in (("added", DIFF_GREEN, False), ("changed", DIFF_ORANGE, False),
+                                 ("removed", DIFF_GREY, True)):
+        for e in diff.get(kind) or []:
+            w, h = max(4.0, e["w"] + 2 * pad), max(4.0, e["h"] + 2 * pad)
+            cx, cy = e["x"] + e["w"] / 2.0, e["y"] + e["h"] / 2.0
+            out.append((kind, (cx - w / 2.0, cy - h / 2.0, w, h), colour, dashed))
+    return out
+
+
+def diff_legend(diff, previous, slides=True, lang=None):
+    """'Compared with slide 1: 1 added, 1 changed, 1 removed' (page in Draw)."""
+    return i18n.text("cmpLegendSlide" if slides else "cmpLegendPage", lang) % (
+        previous, len(diff.get("added") or []), len(diff.get("changed") or []), len(diff.get("removed") or []))
+

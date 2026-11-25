@@ -265,6 +265,13 @@ def read_unit(doc, shape):
         source = "document"
     if not payload:
         return None
+    if source == "attributes" and unit_type and (parsed is None or parsed[1] != unit_id):
+        # LibreOffice renames a duplicated shape ("…eb12" → "…eb 1"); in .pptx the name carries the id, so restore it.
+        try:
+            shape.Name = metadata.unit_name(unit_type, unit_id)
+            log("unit name restored: %s" % shape.Name)
+        except Exception as ex:
+            log("unit name not restored: %s" % ex)
     return {"id": unit_id, "type": unit_type, "payload": payload, "bounds": metadata.parse_bounds(bounds),
             "source": source}
 

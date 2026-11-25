@@ -82,8 +82,16 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 
 - **Menü „InventaSketch“** (Impress, Draw, Calc): *Aus Bibliothek einfügen …* (öffnet das Deck der Seitenleiste),
   *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*,
-  *Bezugszeichen hinzufügen*, *Patentprüfung (Zeichnungen) …*, *Daten gelöschter Einheiten entfernen*,
-  *Über InventaSketch*.
+  *Bezugszeichen hinzufügen*, *Patentprüfung (Zeichnungen) …*, *Mit vorheriger Folie vergleichen (Varianten)*,
+  *Daten gelöschter Einheiten entfernen*, *Über InventaSketch*.
+- **Varianten** (25.11.2026, Impress und Draw): Eine duplizierte Folie behält die IDs der Einheiten. *Mit vorheriger
+  Folie vergleichen* markiert, was sich von der vorherigen Folie unterscheidet (Engine `diff`, beide Folien wie
+  Seitensitzungen geladen): neue Einheiten grün, geänderte orange, entfernte als grau gestrichelter Rahmen an ihrer
+  alten Stelle, dazu eine Legende oben rechts; die Markierungen sind einfache Formen mit dem Namen `ISK_DIFF …`, ein
+  erneuter Aufruf entfernt sie (jeweils ein Rückgängig-Schritt). LibreOffice benennt eine duplizierte Form, deren Name
+  auf Ziffern endet, um („…eb12“ → „…eb 1“); beim Lesen einer Einheit wird der Name aus ihren Attributen
+  wiederhergestellt, weil in .pptx der Name die Einheiten-ID trägt. Geprüft: `integration_test.py` (1 neu, 1 geändert,
+  1 entfernt, ein unverändertes Zahnrad ohne Markierung, Namen wiederhergestellt; Folie als `compare.png` exportiert).
 - **Patentprüfung** (25.11.2026, Impress und Draw): ein Dialog mit dem Amt (DPMA, EPA, PCT, USPTO oder das gemeinsame
   sichere Profil) und den Befunden aller Seiten mit InventaSketch-Einheiten (Engine `preflight`, jede Seite wie eine
   Seitensitzung geladen, native Verschiebungen zählen also mit) – Fehler zuerst, als „Folie 2 · Fehler · Meldung“; die
@@ -111,7 +119,7 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   `panel?control=<Schlüssel>&item=<Eintrag>` / `panel?press=<Schlüssel, Beschriftung oder action:<id>>` (bedient ein
   Bedienelement des offenen Panels wie ein Anwender), `snapMove[?px=<Pixel>&undo=<n>]` (ausgewählte Einheit(en) nach
   einer nativen Verschiebung einrasten, wie nach dem Ziehen mit der Maus), `quickInsert[?text=<Text>]`
-  (Bibliotheks-Panel mit dem Cursor im Suchfeld, wie Strg+Leertaste), `patentCheck[?profile=<Amts-ID>]`, `cleanup`,
+  (Bibliotheks-Panel mit dem Cursor im Suchfeld, wie Strg+Leertaste), `patentCheck[?profile=<Amts-ID>]`, `compare`, `cleanup`,
   `about`. Integrations- und
   UI-Smoke-Test benutzen diese Befehle.
 - **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in

@@ -208,8 +208,9 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
    button; checked in PowerPoint); patent check of all slides with navigation to the finding (COM; engine `preflight` for web and
    LibreOffice) done 2026-11-25; variants and states as a slide comparison (added/changed/removed marked; COM Extras menu,
    engine `diff`) done 2026-11-25; patent check in web (panel for the page) and LibreOffice (dialog over every page
-   with navigation) done 2026-11-25; open: the slide comparison in web and LibreOffice (engine `diff` is ready), the web
-   check across all slides, SVG/DXF import (vector drawings as editable shapes – a larger piece of its own).
+   with navigation) done 2026-11-25; slide comparison in LibreOffice done 2026-11-25; open: the slide comparison and the
+   check across all slides in the web add-in (both need the other slides' units through Office.js; engine `diff` is
+   ready), SVG/DXF import (vector drawings as editable shapes – a larger piece of its own).
 
 ### Further modules and functions worth adding
 

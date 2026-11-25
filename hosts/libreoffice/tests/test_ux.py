@@ -131,6 +131,25 @@ class PatentCheckTexts(unittest.TestCase):
         self.assertTrue(ux.findings_summary(self.FINDINGS, 2, "en").startswith("5 finding(s), 2 error(s) on 2 page(s)."))
 
 
+class VariantRules(unittest.TestCase):
+    DIFF = {"added": [{"id": "a", "x": 10, "y": 20, "w": 30, "h": 30}],
+            "changed": [{"id": "c", "x": 50, "y": 20, "w": 1, "h": 30}],
+            "removed": [{"id": "r", "x": 90, "y": 20, "w": 30, "h": 30}]}
+
+    def test_marks_are_padded_and_coloured(self):
+        marks = ux.diff_marks(self.DIFF)
+        self.assertEqual([m[0] for m in marks], ["added", "changed", "removed"])
+        self.assertEqual(marks[0][1], (8.5, 18.5, 33.0, 33.0))
+        self.assertEqual(marks[1][1][2], 4.0)                # a thin element still gets a visible frame
+        self.assertEqual([m[2] for m in marks], [ux.DIFF_GREEN, ux.DIFF_ORANGE, ux.DIFF_GREY])
+        self.assertEqual([m[3] for m in marks], [False, False, True])
+        self.assertEqual(ux.diff_marks({}), [])
+
+    def test_legend(self):
+        self.assertEqual(ux.diff_legend(self.DIFF, 1, True, "en"), "Compared with slide 1: 1 added, 1 changed, 1 removed")
+        self.assertEqual(ux.diff_legend(self.DIFF, 3, False, "de"), "Vergleich mit Seite 3: 1 neu, 1 geändert, 1 entfernt")
+
+
 class SelectionPanel(unittest.TestCase):
     def test_gear_shows_only_what_changes_something(self):
         acts = ux.selection_actions(GEAR)
