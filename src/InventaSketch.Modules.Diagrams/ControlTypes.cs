@@ -152,8 +152,15 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.mult.cross", new I18nText("Cross (×)", "Kreuz (×)"), IconIds.Toggle, "symbol", "cross", "cross", "symbol");
-            yield return D.SetChoice(o, "diag.mult.dot", new I18nText("Dot (·)", "Punkt (·)"), IconIds.Toggle, "symbol", "dot", "cross", "symbol");
+            // Option pictures: the multiplier circle with a cross or a dot.
+            var s = Style.Visible with { StrokeWidth = 0.4 };
+            foreach (var a in D.Choice(o, "diag.mult.symbol", new I18nText("Symbol", "Symbol"), "symbol", "cross", "symbol", new (string, I18nText, string?)[]
+            {
+                ("cross", new I18nText("Cross (×)", "Kreuz (×)"), null),
+                ("dot", new I18nText("Dot (·)", "Punkt (·)"), null),
+            }, v => v == "dot"
+                ? new Primitive[] { Prim.Circle(0, 0, 5, s), Prim.Circle(0, 0, 1, s with { Fill = Fill.Solid("#000000") }) }
+                : new Primitive[] { Prim.Circle(0, 0, 5, s), new LinePrim(new Vec2(-3.5, -3.5), new Vec2(3.5, 3.5), s), new LinePrim(new Vec2(-3.5, 3.5), new Vec2(3.5, -3.5), s) })) yield return a;
         }
     }
 
@@ -338,9 +345,13 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.tf.text", new I18nText("Name", "Name"), IconIds.Option, "mode", "text", "text", "mode");
-            yield return D.SetChoice(o, "diag.tf.fraction", new I18nText("Transfer function (fraction)", "Übertragungsfunktion (Bruch)"), IconIds.Option, "mode", "fraction", "text", "mode");
-            yield return D.SetChoice(o, "diag.tf.icon", new I18nText("Characteristic (icon)", "Kennlinie (Symbol)"), IconIds.Option, "mode", "icon", "text", "mode");
+            // What the block shows; the characteristic option shows the current curve.
+            foreach (var a in D.Choice(o, "diag.tf.mode", new I18nText("Content", "Inhalt"), "mode", "text", "mode", new (string, I18nText, string?)[]
+            {
+                ("text", new I18nText("Name", "Name"), null),
+                ("fraction", new I18nText("Transfer function", "Übertragungsfunktion"), null),
+                ("icon", new I18nText("Characteristic", "Kennlinie"), null),
+            }, v => v == "icon" ? Icon(o.Str("icon", "pt1"), Vec2.Zero, 10).ToList() : null)) yield return a;
             // The characteristic is a choice (each option shows its curve); picking one also shows it.
             var characteristic = new ActionChoice("diag.tf.characteristic", new I18nText("Characteristic", "Kennlinie"));
             var icon = o.Str("icon", "pt1");

@@ -193,10 +193,29 @@ namespace InventaSketch.Modules.Diagrams
             return list;
         }
 
+        /// <summary>Option picture of a device frame: phone, tablet, monitor on its stand, app window or browser window.</summary>
+        private static IReadOnlyList<Primitive> DevicePreview(string device)
+        {
+            var s = Style.Visible with { StrokeWidth = 0.4 };
+            switch (device)
+            {
+                case "tablet":
+                    return new Primitive[] { new RectPrim(-4.5, -6, 9, 12, s, 1), new LinePrim(new Vec2(-0.8, 4.8), new Vec2(0.8, 4.8), s) };
+                case "monitor":
+                    return new Primitive[] { new RectPrim(-6, -5, 12, 8, s, 0.4), new LinePrim(new Vec2(0, 3), new Vec2(0, 5), s), new LinePrim(new Vec2(-2.5, 5), new Vec2(2.5, 5), s) };
+                case "window":
+                    return new Primitive[] { new RectPrim(-6, -4.5, 12, 9, s, 0.4), new LinePrim(new Vec2(-6, -2.5), new Vec2(6, -2.5), s) };
+                case "browser":
+                    return new Primitive[] { new RectPrim(-6, -4.5, 12, 9, s, 0.4), new LinePrim(new Vec2(-6, -2.5), new Vec2(6, -2.5), s), new RectPrim(-4.5, -4.1, 7, 1.2, s with { StrokeWidth = 0.25 }, 0.6) };
+                default:
+                    return new Primitive[] { new RectPrim(-3, -6, 6, 12, s, 1), new LinePrim(new Vec2(-0.8, -5), new Vec2(0.8, -5), s) };
+            }
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            foreach (var (value, en, de) in Devices)
-                yield return D.SetChoice(o, "diag.screen." + value, new I18nText(en, de), IconIds.Option, "device", value, "phone", "device");
+            foreach (var a in D.Choice(o, "diag.screen.device", new I18nText("Device", "Gerät"), "device", "phone", "device",
+                Devices.Select(d => (d.Value, new I18nText(d.En, d.De), (string?)null)).ToList(), DevicePreview)) yield return a;
             yield return D.Toggle(o, "diag.screen.statusBar", new I18nText("Status bar", "Statusleiste"), "statusBar", true);
         }
     }
@@ -279,12 +298,39 @@ namespace InventaSketch.Modules.Diagrams
             return list;
         }
 
+        /// <summary>Option picture of a field kind: the field with a magnifier, a drop-down caret or password dots.</summary>
+        private static IReadOnlyList<Primitive> FieldPreview(string kind)
+        {
+            var s = Style.Visible with { StrokeWidth = 0.4 };
+            var list = new List<Primitive> { new RectPrim(-6, -2, 12, 4, s, 0.5) };
+            switch (kind)
+            {
+                case "search":
+                    list.Add(Prim.Circle(3.6, -0.3, 0.9, s));
+                    list.Add(new LinePrim(new Vec2(4.2, 0.3), new Vec2(5, 1.1), s));
+                    break;
+                case "dropdown":
+                    list.Add(Prim.Polyline(new[] { new Vec2(3.2, -0.5), new Vec2(4, 0.4), new Vec2(4.8, -0.5) }, s));
+                    break;
+                case "password":
+                    foreach (var x in new[] { -4.0, -2.4, -0.8 }) list.Add(Prim.Circle(x, 0, 0.45, s with { Fill = Fill.Solid("#000000") }));
+                    break;
+                default:
+                    list.Add(new LinePrim(new Vec2(-4.8, -1.1), new Vec2(-4.8, 1.1), s));
+                    break;
+            }
+            return list;
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.field.text", new I18nText("Text", "Text"), IconIds.Option, "kind", "text", "text", "kind");
-            yield return D.SetChoice(o, "diag.field.search", new I18nText("Search", "Suche"), IconIds.Option, "kind", "search", "text", "kind");
-            yield return D.SetChoice(o, "diag.field.dropdown", new I18nText("Drop-down", "Auswahlliste"), IconIds.Option, "kind", "dropdown", "text", "kind");
-            yield return D.SetChoice(o, "diag.field.password", new I18nText("Password", "Passwort"), IconIds.Option, "kind", "password", "text", "kind");
+            foreach (var a in D.Choice(o, "diag.field.kind", new I18nText("Field", "Feld"), "kind", "text", "kind", new (string, I18nText, string?)[]
+            {
+                ("text", new I18nText("Text", "Text"), null),
+                ("search", new I18nText("Search", "Suche"), null),
+                ("dropdown", new I18nText("Drop-down", "Auswahlliste"), null),
+                ("password", new I18nText("Password", "Passwort"), null),
+            }, FieldPreview)) yield return a;
         }
     }
 
@@ -755,12 +801,32 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o) => new[] { ("tip", Tip(o).Tip) }.Concat(D.RectPorts(o.Size));
 
+        /// <summary>Option picture of a gesture: the touch marks as drawn above the fingertip.</summary>
+        private static IReadOnlyList<Primitive> GesturePreview(string gesture)
+        {
+            var s = Style.Visible with { StrokeWidth = 0.4 };
+            switch (gesture)
+            {
+                case "long":
+                    return new Primitive[] { Prim.Circle(0, 0, 4, s with { StrokeWidth = 1.2 }), Prim.Circle(0, 0, 1, s with { Fill = Fill.Solid("#000000") }) };
+                case "swipe":
+                    return new Primitive[] { Prim.Circle(3, 0, 2, s), new LinePrim(new Vec2(1, 0), new Vec2(-6, 0), s with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small }) };
+                case "double":
+                    return new Primitive[] { Prim.Circle(0, 0, 1.7, s), Prim.Circle(0, 0, 3.3, s), Prim.Circle(0, 0, 5, s with { Dash = DashStyle.Dash }) };
+                default:
+                    return new Primitive[] { Prim.Circle(0, 0, 2.5, s), Prim.Circle(0, 0, 5, s with { Dash = DashStyle.Dash }) };
+            }
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.touch.tap", new I18nText("Tap", "Tippen"), IconIds.Option, "gesture", "tap", "tap", "gesture");
-            yield return D.SetChoice(o, "diag.touch.double", new I18nText("Double tap", "Doppeltippen"), IconIds.Option, "gesture", "double", "tap", "gesture");
-            yield return D.SetChoice(o, "diag.touch.long", new I18nText("Long press", "Lange drücken"), IconIds.Option, "gesture", "long", "tap", "gesture");
-            yield return D.SetChoice(o, "diag.touch.swipe", new I18nText("Swipe", "Wischen"), IconIds.Option, "gesture", "swipe", "tap", "gesture");
+            foreach (var a in D.Choice(o, "diag.touch.gesture", new I18nText("Gesture", "Geste"), "gesture", "tap", "gesture", new (string, I18nText, string?)[]
+            {
+                ("tap", new I18nText("Tap", "Tippen"), null),
+                ("double", new I18nText("Double tap", "Doppeltippen"), null),
+                ("long", new I18nText("Long press", "Lange drücken"), null),
+                ("swipe", new I18nText("Swipe", "Wischen"), null),
+            }, GesturePreview)) yield return a;
         }
     }
 

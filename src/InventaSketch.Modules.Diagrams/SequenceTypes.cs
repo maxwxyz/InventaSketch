@@ -246,10 +246,13 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.msg.sync", new I18nText("Synchronous", "Synchron"), IconIds.HeadTriangle, "kind", "sync", "sync", "kind");
-            yield return D.SetChoice(o, "diag.msg.async", new I18nText("Asynchronous", "Asynchron"), IconIds.HeadOpen, "kind", "async", "sync", "kind");
-            yield return D.SetChoice(o, "diag.msg.return", new I18nText("Reply", "Antwort"), IconIds.HeadOpenDashed, "kind", "return", "sync", "kind");
-            yield return D.SetChoice(o, "diag.msg.create", new I18nText("Create", "Erzeugen"), IconIds.CreateObject, "kind", "create", "sync", "kind");
+            foreach (var a in D.Choice(o, "diag.msg.kind", new I18nText("Message", "Nachricht"), "kind", "sync", "kind", new (string, I18nText, string?)[]
+            {
+                ("sync", new I18nText("Synchronous", "Synchron"), IconIds.HeadTriangle),
+                ("async", new I18nText("Asynchronous", "Asynchron"), IconIds.HeadOpen),
+                ("return", new I18nText("Reply", "Antwort"), IconIds.HeadOpenDashed),
+                ("create", new I18nText("Create", "Erzeugen"), IconIds.CreateObject),
+            })) yield return a;
             yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, D.Reverse) { Group = "direction" };
             yield return ContextAction.InDocument("diag.msg.number", new I18nText("Number messages (top-down, step 2)", "Nachrichten nummerieren (von oben, Schritt 2)"), IconIds.Renumber,
                 (doc, x, _) => NumberMessages(doc, x)) with { Group = "numbers" };
@@ -341,8 +344,8 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            foreach (var (value, en, de) in Kinds)
-                yield return D.SetChoice(o, "diag.fragment." + value, new I18nText(en, de), IconIds.Option, "kind", value, "alt", "kind");
+            foreach (var a in D.Choice(o, "diag.fragment.kind", new I18nText("Operator", "Operator"), "kind", "alt", "kind",
+                Kinds.Select(k => (k.Value, new I18nText(k.En, k.De), (string?)null)).ToList())) yield return a;
             yield return new ContextAction("diag.fragment.addOperand", new I18nText("Add operand", "Operand hinzufügen"), IconIds.RowAdd, x =>
             {
                 var n = OperandsOf(x);

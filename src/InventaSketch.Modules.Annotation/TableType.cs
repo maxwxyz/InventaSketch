@@ -178,11 +178,23 @@ namespace InventaSketch.Modules.Annotation
             return list;
         }
 
+        /// <summary>Option picture of a border style: a 3 x 3 table with the lines that style draws (the others faint).</summary>
+        private static IReadOnlyList<Primitive> BordersPreview(string borders)
+        {
+            var on = Style.Visible with { StrokeWidth = 0.4 };
+            var off = Style.Helper with { StrokeWidth = 0.15, Dash = DashStyle.Dot };
+            bool outer = borders is "all" or "outer", rows = borders is "all" or "horizontal", cols = borders == "all";
+            var list = new List<Primitive> { new RectPrim(-6, -4.5, 12, 9, outer ? on : off) };
+            foreach (var y in new[] { -1.5, 1.5 }) list.Add(new LinePrim(new Vec2(-6, y), new Vec2(6, y), rows ? on : off));
+            foreach (var x in new[] { -2.0, 2.0 }) list.Add(new LinePrim(new Vec2(x, -4.5), new Vec2(x, 4.5), cols ? on : off));
+            return list;
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Ann.Toggle(o, "ann.table.header", new I18nText("Header row", "Kopfzeile"), IconIds.Toggle, "header", true, "table");
-            foreach (var (value, en, de) in BorderOptions)
-                yield return Ann.SetChoice(o, "ann.table.borders." + value, new I18nText("Borders: " + en, "Linien: " + de), IconIds.Option, "borders", value, "all", "borders");
+            foreach (var a in Ann.Choice(o, "ann.table.borders", new I18nText("Borders", "Linien"), "borders", "all", "borders",
+                BorderOptions.Select(b => (b.Item1, new I18nText(b.Item2, b.Item3), (string?)null)).ToList(), BordersPreview)) yield return a;
             // Adding at a side (group "side.<side>"): hosts draw these as a "+" on that side of the table, one click each.
             // A row at the top goes under the header row while there is one (the header stays the header).
             var header = o.Flag("header", true) && CellsOf(o, lang).Count > 1;

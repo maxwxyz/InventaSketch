@@ -72,7 +72,7 @@ namespace InventaSketch.Modules.Annotation.Tests
             Assert.Contains(pb, p => p == new Vec2(-hw, hh));
             Assert.Contains(pe, p => p == new Vec2(-hw, -hh));         // bottom corners cut
             Assert.DoesNotContain(pe, p => p == new Vec2(-hw, hh));
-            Assert.Equal("end", type.Actions(begin, Lang.En).Single(a => a.Id == "ann.flow.loop.end").Apply(begin).Str("edge", ""));
+            Assert.Equal("end", type.Actions(begin, Lang.En).Single(a => a.Id == "ann.flow.loop.edge=end").Apply(begin).Str("edge", ""));
             Assert.NotNull(doc);
         }
 

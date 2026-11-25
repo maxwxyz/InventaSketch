@@ -206,8 +206,10 @@ jedes seiner Teile:
   bilden („Füllen bis ▸“, „Fläche hinzufügen ▸“), sind eine `ActionChoice` mit `IsMenu` (nichts aktuell). In keinem
   Modul bleibt eine `IconIds.Cycle`- oder „Nächste …“-Aktion, die durch Möglichkeiten schaltet; der Engine-Test
   `tests/InventaSketch.Engine.Tests/ChoiceRuleTests.cs` prüft das für jedes Element, dazu dass jede Auswahl mindestens
-  zwei Möglichkeiten mit genau einer aktuellen hat und dass eine Auswahl über einen Parameter, den die Hosts schon als
-  Klappliste zeigen, ihn in `ParamKeys` nennt (eine Stelle je Auswahl).
+  zwei Möglichkeiten mit genau einer aktuellen hat, dass eine Auswahl über einen Parameter, den die Hosts schon als
+  Klappliste zeigen, ihn in `ParamKeys` nennt (eine Stelle je Auswahl), und dass keine zwei aktiven Aktionen eines
+  Elements oder Teils denselben Parameter außerhalb einer Auswahl auf verschiedene feste Werte setzen (das
+  Radio-Muster: getrennte Knöpfe für eine Klappliste).
 - Leiste: ein Klapplisten-Knopf je Auswahl mit dem Piktogramm oder Bild der aktuellen Möglichkeit (sonst einem kurzen
   Text) und einem Pfeil; ein Klick öffnet die Liste aller Möglichkeiten mit Piktogramm oder Bild und Bezeichnung, die
   aktuelle markiert (`FloatingBar.SetDropdown`, dasselbe Aussehen wie die Auswahlen des Elements). Teilauswahlen haben
@@ -387,6 +389,13 @@ Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
   Ventils, Kolbenstange und Leitungsführung, Führung der Diagramm- und Verfahrenstechnik-Leitungen. „Nächste Ansicht“
   (Fahrzeuge) entfällt: die Ansichtsauswahl der Hosts wechselt die Ansicht.
 - Zahlenschritte behalten ihre „+“/„−“-Knöpfe, heißen aber nicht mehr „Nächste“ („Stellung +15°“, „Nummer +1“).
+- Radio-artige Möglichkeitsgruppen (je Wert eine eigene Aktion) wurden ebenfalls Auswahlen: Füllung, Maßbegrenzung und
+  Maßart, Schleifengrenze, Parallelbalken, Schraffurmuster, Bezugslinie und ihr Ende, Verbinderführung, Bruchlinie,
+  Buchstabe des Ansichtspfeils, Detailrahmen, Tabellenlinien, Textausrichtung der Beschriftung; Buslinie und
+  Funkstrecke, UML-Beziehung, Multiplikatorsymbol, Inhalt des Übertragungsblocks, Datenanordnung, Nachrichtenart,
+  Fragmentoperator, Bildschirmgerät, Eingabefeld und Geste der Diagramme (Hilfen `Ann.Choice`, `D.Choice`;
+  Options-Ids `<Auswahl>=<Wert>`, gespeicherte Werte unverändert). Möglichkeiten ohne Modul-Piktogramm tragen eine
+  Vorschau (Führung, Schraffur, Linien, Gerät, Feld, Geste …).
 
 ## 9. Folgeschritte (in Phasen, mit Abnahmekriterien)
 

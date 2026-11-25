@@ -132,9 +132,12 @@ namespace InventaSketch.Modules.Annotation
             yield return Ann.Toggle(o, "ann.wide.headstart", new I18nText("Head at start", "Spitze am Anfang"), IconIds.ArrowStart, "headStart", false, "heads");
             yield return Ann.Toggle(o, "ann.wide.headend", new I18nText("Head at end", "Spitze am Ende"), IconIds.ArrowEnd, "headEnd", true, "heads");
             yield return Ann.SwapAction();
-            yield return Ann.SetChoice(o, "ann.wide.fill.none", new I18nText("Hollow", "Hohl"), IconIds.FillNone, "fill", "none", "none", "fill");
-            yield return Ann.SetChoice(o, "ann.wide.fill.hatch", new I18nText("Hatched", "Schraffiert"), IconIds.FillHatch, "fill", "hatch", "none", "fill");
-            yield return Ann.SetChoice(o, "ann.wide.fill.dots", new I18nText("Dotted", "Punktiert"), IconIds.FillDots, "fill", "dots", "none", "fill");
+            foreach (var a in Ann.Choice(o, "ann.wide.fill", new I18nText("Fill", "Füllung"), "fill", "none", "fill", new (string, I18nText, string?)[]
+            {
+                ("none", new I18nText("Hollow", "Hohl"), IconIds.FillNone),
+                ("hatch", new I18nText("Hatched", "Schraffiert"), IconIds.FillHatch),
+                ("dots", new I18nText("Dotted", "Punktiert"), IconIds.FillDots),
+            })) yield return a;
             yield return new ContextAction("ann.wide.wider", new I18nText("Wider", "Breiter"), IconIds.Increase, x => x.WithParam("width", Math.Min(50, x.Num("width", 6) + 1))) { Group = "width" };
             yield return new ContextAction("ann.wide.narrower", new I18nText("Narrower", "Schmaler"), IconIds.Decrease, x => x.WithParam("width", Math.Max(1, x.Num("width", 6) - 1))) { Group = "width" };
         }

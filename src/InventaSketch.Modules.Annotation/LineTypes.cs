@@ -340,9 +340,18 @@ namespace InventaSketch.Modules.Annotation
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var a in Ann.ArrowActions(o, ArrowHead.None, ArrowHead.Triangle)) yield return a;
-            yield return Ann.SetChoice(o, "ann.route.auto", new I18nText("Automatic routing", "Automatische Führung"), IconIds.Option, "route", "auto", "auto", "route");
-            yield return Ann.SetChoice(o, "ann.route.hvh", new I18nText("Route horizontal first", "Erst waagerecht führen"), IconIds.Option, "route", "hvh", "auto", "route");
-            yield return Ann.SetChoice(o, "ann.route.vhv", new I18nText("Route vertical first", "Erst senkrecht führen"), IconIds.Option, "route", "vhv", "auto", "route");
+            // Option pictures for the fixed routes: the elbow line horizontal-vertical-horizontal or vertical-horizontal-vertical.
+            foreach (var a in Ann.Choice(o, "ann.route", new I18nText("Routing", "Führung"), "route", "auto", "route", new (string, I18nText, string?)[]
+            {
+                ("auto", new I18nText("Automatic", "Automatisch"), null),
+                ("hvh", new I18nText("Horizontal first", "Erst waagerecht"), null),
+                ("vhv", new I18nText("Vertical first", "Erst senkrecht"), null),
+            }, v => v switch
+            {
+                "hvh" => new Primitive[] { Prim.Polyline(new[] { new Vec2(-6, 4), new Vec2(0, 4), new Vec2(0, -4), new Vec2(6, -4) }, Style.Visible with { StrokeWidth = 0.5 }) },
+                "vhv" => new Primitive[] { Prim.Polyline(new[] { new Vec2(-6, 4), new Vec2(-6, 0), new Vec2(6, 0), new Vec2(6, -4) }, Style.Visible with { StrokeWidth = 0.5 }) },
+                _ => null,
+            })) yield return a;
             yield return AnnConnectors.HopsAction(o, true);
             foreach (var a in AnnConnectors.BusActions(o)) yield return a;
         }
@@ -402,8 +411,11 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.break.zigzag", new I18nText("Zig-zag break", "Zickzack-Bruch"), IconIds.CourseZigzag, "form", "zigzag", "zigzag", "form");
-            yield return Ann.SetChoice(o, "ann.break.wavy", new I18nText("Freehand break", "Freihand-Bruch"), IconIds.CourseWavy, "form", "wavy", "zigzag", "form");
+            foreach (var a in Ann.Choice(o, "ann.break.form", new I18nText("Break line", "Bruchlinie"), "form", "zigzag", "form", new (string, I18nText, string?)[]
+            {
+                ("zigzag", new I18nText("Zig-zag", "Zickzack"), IconIds.CourseZigzag),
+                ("wavy", new I18nText("Freehand", "Freihand"), IconIds.CourseWavy),
+            })) yield return a;
         }
     }
 

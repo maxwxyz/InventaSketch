@@ -516,8 +516,21 @@ namespace InventaSketch.Modules.Diagrams
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool fallback, string? group = null)
             => new(id, label, IconIds.Toggle, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group };
 
-        public static ContextAction SetChoice(SketchObject o, string id, I18nText label, string icon, string key, string value, string fallback, string group)
-            => new(id, label, icon, x => x.WithParam(key, value)) { IsActive = string.Equals(o.Str(key, fallback), value, StringComparison.OrdinalIgnoreCase), Group = group, ParamKeys = new[] { key } };
+        /// <summary>
+        /// A choice over the values of parameter <paramref name="param"/>: one option per value (id "<paramref name="key"/>=value",
+        /// the stored value compared ignoring case is current, each names the parameter in <see cref="ContextAction.ParamKeys"/>),
+        /// shown by the hosts as one dropdown – never as separate buttons (maintainer 2026-11-25, interaction-ux.md 5a).
+        /// Options without a pictogram (null icon) carry <paramref name="preview"/> of their value when given.
+        /// </summary>
+        public static IEnumerable<ContextAction> Choice(SketchObject o, string key, I18nText label, string param, string fallback, string group,
+            IReadOnlyList<(string Value, I18nText Label, string? Icon)> values, Func<string, IReadOnlyList<Primitive>?>? preview = null)
+        {
+            var stored = o.Str(param, fallback);
+            var current = values.FirstOrDefault(v => string.Equals(v.Value, stored, StringComparison.OrdinalIgnoreCase)).Value ?? stored;
+            return ActionChoices.FromValues(key, label, param, current, values, group)
+                .Select(a => preview is null || a.Icon != IconIds.Option ? a : a with { Preview = preview(ActionChoices.ValueOf(a.Id) ?? "") })
+                .ToList();
+        }
 
         /// <summary>Appends a line to a multi-line text parameter and grows the box downwards by one row.</summary>
         public static ContextAction AddRow(string id, I18nText label, string key, string fallback, string line, bool grow = true, string icon = IconIds.RowAdd)
