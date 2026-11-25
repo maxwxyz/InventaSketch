@@ -49,6 +49,25 @@ function Test-NoOverlap([string]$what) {
     $h
 }
 
+# Handles shown right after a selection with the pointer far away (progressive disclosure): automation ShownHandles(),
+# else the add-in log line "Shown: ...". Expected: the point diamonds and at most one "+".
+function Test-Calm([string]$what, $shape) {
+    $S.Window.Selection.Unselect(); Start-Sleep 1
+    Move-IskMouse 30 30; Start-Sleep -Milliseconds 300
+    $shape.Select(); Start-Sleep 3
+    $raw = $null
+    try { $raw = [string]$addin.ShownHandles() } catch { $raw = $null }
+    if ($null -eq $raw) {
+        $line = Get-Content (Get-IskLog $S) | Where-Object { $_ -match 'Shown: ' } | Select-Object -Last 1
+        $raw = if ($line) { $line -replace '.*Shown: ', '' } else { '' }
+    }
+    $shown = @(($raw -split ';') | Where-Object { $_ -and $_ -notlike 'pt:*' })
+    Write-IskInfo ("$what shown on selection: " + ($shown -join ' '))
+    Assert-Isk $S ($shown.Count -le 1) "$what`: calm on selection - at most one handle besides the points ($($shown -join ', '))"
+    Assert-Isk $S (@($shown | Where-Object { $_ -like 'lock:*' -or $_ -like 'seg:*' -or $_ -like 'branch:*' }).Count -eq 0) "$what`: no lock badge, corner dot or branch until the pointer comes near"
+    $r = Get-IskRect $S $shape.Name
+    Save-IskShot $S ("calm-" + $what) -Around ($r.CX - 200), ($r.CY - 200), 400, 400
+}
 # 1) A short cable docked on a PV string: lock badge at the docked end, one "+" at the free end.
 $S.Window.Selection.Unselect()
 $pv = $addin.Insert('energy.pv.string.10'); $shape = $S.Slide.Shapes.Item($pv)
@@ -72,6 +91,7 @@ if ($connect) {
     $cable.Select(); Start-Sleep 3
     $r = Get-IskRect $S $cable.Name
     Save-IskShot $S '1-short-cable' -Around ($r.CX - 200), ($r.CY - 200), 400, 400
+    Test-Calm 'cable' $cable
     $h = Test-NoOverlap 'short cable'
     Assert-Isk $S (@($h | Where-Object { $_.Id -like 'lock:*' }).Count -ge 1) 'the docked end shows its lock badge'
     Assert-Isk $S (@($h | Where-Object { $_.Id -like 'port:*' -or $_.Id -like 'end:*' }).Count -eq 1) 'the free end shows exactly one "+"'
@@ -105,6 +125,7 @@ $S.Window.Selection.Unselect(); Start-Sleep 1
 (Get-IskShapes $S 'ISK:mech.gear.spur*' | Select-Object -First 1).Select(); Start-Sleep 3
 $r = Get-IskRect $S (Get-IskSelected $S).Name
 Save-IskShot $S '4-gear' -Around ($r.X - 120), ($r.Y - 120), ($r.W + 240), ($r.H + 240)
+Test-Calm 'gear' (Get-IskSelected $S)
 $h = Test-NoOverlap 'gear'
 Assert-Isk $S (@($h | Where-Object { $_.Id -like 'lock:*' }).Count -ge 1) 'the mesh shows a lock badge'
 Send-IskEscape; Start-Sleep 1

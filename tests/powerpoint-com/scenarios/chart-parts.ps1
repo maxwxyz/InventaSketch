@@ -4,6 +4,22 @@
 param($S)
 $addin = $S.AddIn
 
+# Every command of the selected element (bar and pie): automation CommandIds(), else the add-in log line "Commands: ...".
+function Get-CommandIds {
+    $raw = $null
+    try { $raw = [string]$S.AddIn.CommandIds() } catch { $raw = $null }
+    if (-not $raw) {
+        $line = Get-Content (Get-IskLog $S) | Where-Object { $_ -match 'Commands: ' } | Select-Object -Last 1
+        if ($line) { $raw = $line -replace '.*Commands: ', '' }
+    }
+    , @(($raw -split ',') | Where-Object { $_ })
+}
+function Wait-CommandIds([scriptblock]$Until, [int]$Seconds = 10) {
+    $ids = @(); $end = (Get-Date).AddSeconds($Seconds)
+    do { $ids = Get-CommandIds; if (& $Until $ids) { break }; Start-Sleep -Milliseconds 700 } while ((Get-Date) -lt $end)
+    , $ids
+}
+
 $S.Window.Selection.Unselect()
 $name = $addin.Insert('chart.line'); $shape = $S.Slide.Shapes.Item($name)
 $shape.Left = 120; $shape.Top = 90; $shape.Width = 420; $shape.Height = 270
@@ -52,7 +68,7 @@ Invoke-IskClick $scr[0] $scr[1] 2500
 Save-IskShot $S '2-part-selected'
 $bar = $addin.BarIds()
 Write-IskInfo ("bar: " + $bar)
-Assert-Isk $S ($bar -match 'part:part.hide' -and $bar -match 'info:part') 'the bar shows the actions of the selected curve'
+Assert-Isk $S (((Get-CommandIds) -contains 'part:part.hide') -and $bar -match 'info:part') 'the bar shows the actions of the selected curve'
 # Tab steps to the next part, Shift+Tab back to the curve.
 [IskTest.Native]::keybd_event(0x09, 0, 0, [UIntPtr]::Zero); [IskTest.Native]::keybd_event(0x09, 0, 2, [UIntPtr]::Zero); Start-Sleep 2
 $tabbed = $addin.SelectedPart()

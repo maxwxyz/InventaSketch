@@ -35,7 +35,7 @@ Text im Overlay; es muss konsistent sein: was findet man wo, wie bedient man was
 | Ort | Was dorthin gehört | Regel |
 |---|---|---|
 | **Am Element (Griffe)** | Alles, was man durch Ziehen oder einen Klick *an einer Stelle* tut: verschieben, skalieren, drehen (PowerPoints Griffe, übernommen), Punkte und Enden (Rauten), „+“ an einer Stelle (Bauanschluss, freies Ende, Tabellenseite), Eckpunkt, Abzweig, Knotenpunkt, Schloss, Schnell-Anfügen-Dreiecke, Umriss eines Diagrammteils. | Direkte Bearbeitung zuerst. Ein Aussehen je Bedeutung (Abschnitt 4). Nie zwei Griffe übereinander. |
-| **Schwebende Leiste** | Die 3–5 häufigsten Befehle *dieses* Elements, dann Ansichten und Transformationen, dann Stil-Auswahlen, dann „⋯“. | Nur Kontext, klein, Piktogramme mit Tooltips; kurzer Text nur, wo kein Piktogramm eindeutig ist. Wächst nie mit Inhalt. |
+| **Schwebende Leiste** | Die Hauptaktion *dieses* Elements (mit kurzem Text), seine nächsten zwei oder drei Befehle als Piktogramme, dann „⋯“. | Nur Kontext, klein, Piktogramme mit Tooltips; kurzer Text nur, wo kein Piktogramm eindeutig ist. Wächst nie mit Inhalt. |
 | **Kreismenü** (Rechtsklick, Umschalt+F10, „⋯“) | Alles zum Element, in acht festen Plätzen gruppiert. | Vollständig, beschriftet, Hinweis in einer Zeile; derselbe Platz bedeutet für jedes Element dasselbe. |
 | **Menüband** | Einfügen (Bibliothek, Suchen & Einfügen), dokument- und folienweite Einstellungen (Fangen, Verankern, Liniengruppe, Akzent, Planmaßstab, Schwarz-Weiß), Werkzeuge (Folien bereinigen, Kompatibilität, Export). | Nichts Elementspezifisches. |
 | **Seitenleisten-Editor** | Jeder Parameter (Inspektor), Datentabellen, Bibliothek mit Suche. | Die „Langform“; für die Schnellskizze nie nötig. |
@@ -101,23 +101,54 @@ ihres Segments – mit mindestens 3 logischen px Abstand. Optionale Griffe (Eckp
 ausgeblendet; auf Elementen unter 24 px gibt es keine (hineinzoomen). Ein verschobenes „+“ behält eine dünne gestrichelte
 Linie zu seinem Anschluss.
 
+### Ruhig von Anfang an: schrittweise Anzeige (Runde 2, 25.11.2026)
+
+Urteil nach der ersten Runde: „immer noch dasselbe“ – die Griffe überlappten nicht mehr, aber ein gewähltes Zahnrad
+zeigte noch vier „+“, ein Schloss und Zuleitungen, eine kurze Leitung sechs Griffe. Regel: **zeigen, was das Element
+ist, und den einen nächsten Schritt; alles andere erscheint dort, wo der Zeiger hingeht.**
+
+- **Immer sichtbar:** PowerPoints Rahmen, die Punktrauten einer Linie und höchstens **ein** „+“ (der Hauptplatz):
+  - das freie Ende einer Linie oder Leitung (sonst ihr Anfang);
+  - die freie Seite eines Zahnrads rechts (sonst irgendeine freie Seite);
+  - ein Anschluss, dann ein freies Achsende, dann ein beliebiger Bauanschluss;
+  - die Unterseite einer Tabelle;
+  - das Dreieck unter einem Diagrammknoten.
+- **Nahe am Zeiger:** jeder andere Griff blendet sich ab etwa 56 logischen px ein und ist innerhalb von 24 px ganz da;
+  er blendet sich wieder aus, wenn der Zeiger geht. Das sind weitere „+“, Eckpunkte, Abzweige, Knotenpunkte,
+  Wertgriffe, die übrigen Dreiecke und Schlösser. Die Deckkraft folgt dem Abstand, ohne Flackern und ohne Zeitgeber.
+- **Umschalt** zeigt alle Griffe auf einmal (Überblick), Loslassen blendet sie wieder aus.
+- **Angedockt:** ein winziger grauer Punkt markiert jede Verbindungsstelle. Das Schloss erscheint in ihrer Nähe in
+  ruhigem Grau, wird unter dem Zeiger blau und zeigt erst dann seine Zuleitung. Ein vom Anschluss weggeschobenes „+“
+  zeigt seine gestrichelte Linie nur unter dem Zeiger.
+- **Gewähltes Diagrammteil:** seine Griffe bleiben sichtbar.
+- Ausgeblendete Griffe nehmen keine Klicks weg: getroffen wird ein Griff nur mit dem Zeiger darauf, und dort ist er
+  ganz sichtbar.
+
 ## 5. Schwebende Leiste
 
-Reihenfolge, für jedes Element gleich, Gruppen durch einen dünnen Strich getrennt:
+Für jedes Element gleich aufgebaut (Runde 2): **höchstens vier Knöpfe plus „⋯“**.
 
-1. **Element:** „Ändern in …“ (direkt nach Schnell-Anfügen, mit Text) · **Einfügen** (Piktogramm *und* Text – die
-   Hauptaktion) · gewählte Ecke teilen / entfernen · Text bearbeiten · bis zu fünf Schlüsselaktionen (Piktogramm nur,
-   wenn eindeutig *und* von keiner anderen Aktion des Elements benutzt, sonst kurzer Text) · 1:50 · Kurve skizzieren ·
-   F = n, Koppelkurve, Zwischenlagen · zerlegen · Bewegungsmodus · Baugruppe wählen.
-2. **Ansicht und Transformationen:** bis zu drei Ansichtsknöpfe oder eine Ansichtsauswahl · spiegeln ↔ · spiegeln ↕ ·
-   um 90° drehen – nur, was die Zeichnung sichtbar ändert.
-3. **Stil:** Auswahllisten mit dem aktuellen Wert als Piktogramm (Linientyp, Spitzen, Linienart, Führung …).
-4. **⋯** – das Kreismenü (alles andere, gruppiert). Duplizieren und Löschen sind dort (und Strg+D, Entf).
+1. **Die Hauptaktion mit kurzem Text:**
+   - „Ändern in …“ direkt nach Schnell-Anfügen;
+   - sonst „Daten“ (Diagramme);
+   - sonst „Text“ (Texte, Diagrammknoten, Bezugszeichen, Tabellen: ihre Zellen);
+   - sonst „Ansicht“ (eine Auswahlliste, für Elemente mit mehreren Ansichten);
+   - sonst die erste Stil-Auswahl (Linien: z. B. die Pfeilspitzen);
+   - sonst „Einfügen“.
+2. **Bis zu drei Piktogramme mit Tooltips**, in dieser Reihenfolge:
+   - eigene Aktionen des Elements mit eindeutigem Piktogramm;
+   - die Ansichtsauswahl;
+   - Einfügen;
+   - Kurve skizzieren, Koppelkurve, Zwischenlagen, zerlegen, Bewegungsmodus, Baugruppe wählen;
+   - die Stil-Auswahlen mit Piktogramm;
+   - 90° drehen und spiegeln, wo es die Zeichnung ändert.
+3. **⋯** – das Kreismenü: alles, gruppiert. Duplizieren und Löschen sind dort (und Strg+D, Entf).
 
-Tooltips: „was passiert“ plus Tastenkürzel („Horizontal spiegeln (X)“, „Linienart: Gestrichelt – klicken zum Wählen“).
-Ein gewähltes Diagrammteil hat eine eigene Leiste (Teilname, seine Aktionen, Teileliste, ganzes Element, ⋯). Die
-Mehrfachauswahl hat die Gruppen eine Ansicht für alle | ausrichten und verteilen | Diagramm anordnen (Text
-„Diagramm ↓“, „Diagramm →“) | Maß, Format übertragen, neu nummerieren.
+Eine gewählte Ecke zeigt „Teilen“ (mit Text) und „Entfernen“. Ein gewähltes Diagrammteil zeigt seinen Namen, seine
+drei häufigsten Befehle und „⋯“. Knöpfe sind 32 logische px groß (Trefferflächen von mindestens 28 px) mit getöntem,
+umrandetem Hover. Tooltips sagen, was passiert, plus Tastenkürzel („Horizontal spiegeln (X)“, „Linienart: Gestrichelt –
+klicken zum Wählen“). Die Mehrfachauswahl behält ihre Gruppen: eine Ansicht für alle | ausrichten und verteilen |
+Diagramm anordnen („Diagramm ↓“, „Diagramm →“) | Maß, Format übertragen, neu nummerieren.
 
 ## 6. Kreismenü
 
@@ -145,6 +176,8 @@ unten = Stil, links = Ansicht/anordnen):
 - Untermenüs beginnen mit „← Zurück“; mehr als elf Einträge gehen in „Mehr ▸“ weiter.
 - Beim Überfahren zeigt ein Eintrag seinen vollen Text und einen Hinweis in einer Zeile unter dem Ring. Esc, ein Klick
   daneben oder in die Mitte schließt das Menü.
+- Die Mitte nennt das Element (oder sein gewähltes Teil, oder das offene Untermenü), damit klar ist, worauf das Menü
+  wirkt. Ausgegraute Plätze haben wenig Kontrast, so heben sich die verfügbaren ab.
 
 ## 7. Rückmeldung und Barrierearmut
 
@@ -174,6 +207,31 @@ unten = Stil, links = Ansicht/anordnen):
   eine Zeile oben kommt unter die Kopfzeile.
 - Griffe auf Werten (`OnSlideController.Handles.cs`, Engine `Registry.DragHandles` / `MoveHandle`): in der Anordnung als feste Griffe (Vorrang vor dem Verschieben des Körpers im Diagrammfeld), Tooltip mit dem Wert, geführtes Ziehen mit Live-Vorschau des geänderten Teils und seines neuen Werts, ein Rückgängig-Schritt, Esc bricht ab, ein Klick wählt das Teil; `DragHandlesOf` für UI-Tests.
 - UI-Szenarien: `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus`, `chart-drag-handles` (tests/powerpoint-com/scenarios).
+
+### Runde 2 (25.11.2026): ruhiges Overlay, Leiste mit vier Knöpfen, eingepasstes Einfügen
+
+- Schrittweise Anzeige aller Griffe (`OnSlideController.Handles.cs`: `Reveal`, `PrimaryHandleId`, `UpdateReveal`,
+  ausgeblendetes Zeichnen); ruhige Schlösser; Zuleitungen nur beim Überfahren; die sichtbaren Griffe für UI-Tests
+  (`LastShownHandles`, Protokollzeile „Shown: …“).
+- Leiste: Hauptaktion mit Text plus bis zu drei Piktogramme plus „⋯“ (`BarCandidates`); 32-px-Knöpfe mit deutlichem
+  Hover; jeder Befehl bleibt im Kreismenü erreichbar (`LastCommandIds`, Protokollzeile „Commands: …“).
+- Kreismenü: der Name des Elements in der Mitte, ausgegraute Plätze mit wenig Kontrast, Koppelgetriebe- und
+  Eckenbefehle unter Bearbeiten.
+- Tabellen: „Text“ bearbeitet die Zellen (eine Zeile, „|“ und „\n“); Doppelklick ebenso.
+- Einpassen: die gewählte Einheit wird Objekt für Objekt geprüft (Wellen zuerst, dann die Welle, auf der ein gewähltes
+  Teil sitzt); Einfügen am Zeiger zeigt nahe einer Welle schon das eingepasste Ergebnis („Passt hier – Klick fügt ein“)
+  und fügt genau das ein (`OnSlideController.Fitting.cs`; `Fitting.PlaceNear` wird genutzt, sobald die Engine es hat,
+  bis dahin per Reflexion).
+
+Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
+
+| Element | Vorher (Runde 1) | Nachher (Runde 2) |
+|---|---|---|
+| Zahnrad mit Gegenrad | 4 blaue „+“, 1 „+“ zum Gegenrad, Schloss mit Zuleitung, PowerPoints Rahmen; Leiste mit Einfügen, Ansichten, Nabe, Schrägverzahnung, Spiegeln … (8–10 Knöpfe) | PowerPoints Rahmen und ein „+“ (die freie Seite rechts); ein grauer Punkt am Eingriff; Leiste: „Ansicht ▾“ + bis zu 3 Piktogramme + ⋯ |
+| Kurze, einseitig angedockte Leitung | 2 Rauten, „+“, Schloss mit Zuleitung, Eckpunkt, Abzweig | 2 Rauten und ein „+“ am freien Ende; ein grauer Punkt am angedockten Ende; Eckpunkt, Abzweig und Schloss erscheinen nahe am Zeiger |
+| Diagramm mit Grenzlinien | Griffe immer, Leiste mit Daten, Skizzieren, Einfügen, Stil … | ruhiges Diagramm; Griffe erscheinen nahe den Linien (immer bei gewähltem Teil); Leiste: „Daten“ + bis zu 3 Piktogramme + ⋯ |
+| Ablaufdiagramm-Kasten | 4 Dreiecke, Leiste mit Text, Einfügen, Aktionen, Spiegeln … | das Dreieck unten; die anderen nahe am Zeiger; Leiste: „Text“ + bis zu 3 + ⋯ |
+| Tabelle | 4 „+“ an den Seiten; Leiste: Einfügen, Kopfzeile, Zeile/Spalte entfernen … | ein „+“ unten (eine Zeile); die anderen nahe ihrer Seite; Leiste: „Text“ (die Zellen) + bis zu 3 + ⋯ |
 
 ## 9. Folgeschritte (in Phasen, mit Abnahmekriterien)
 

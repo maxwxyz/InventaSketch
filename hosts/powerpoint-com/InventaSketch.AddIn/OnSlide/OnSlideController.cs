@@ -173,6 +173,7 @@ namespace InventaSketch.AddIn.OnSlide
             _view = view;
             _item = item;
             _targets = CollectTargets(slide, exceptId: null);
+            PreparePlacementContext();
             _mode = Mode.Place;
             _placePressed = false;
             _twoStart = null;
@@ -252,12 +253,17 @@ namespace InventaSketch.AddIn.OnSlide
             PreparePorts(unit);
             PrepareSides(unit);
             PrepareGrips(unit);
+            GetCursorPos(out var cursor);
+            _pointer = cursor;
+            _shiftHeld = KeyDown(VK_SHIFT);
+            _revealKey = "";
             _mode = Mode.Armed;
             _hooks.Install();
             _timer.Start();
             _overlay.Clear();
             ShowBar(view);
             DrawPointHandles(view);
+            if (LastHandles.Length > 0) Log.Info("Shown: " + LastShownHandles);
             if (LastHandles.Length > 0) Log.Info("Handles: " + LastHandles + (HandleLayout.AnyOverlap(Handles(view), (float)view.DeviceScale) ? " (overlap!)" : ""));
             Log.Info($"Armed {unit.Shape.Name}: {_unitAnchors.Count} anchors, {_targets.Count} targets, pane {view.PaneRect}, {view.PixelsPerPoint:0.###} px/pt, hooks {_hooks.Installed}");
         }
@@ -422,8 +428,10 @@ namespace InventaSketch.AddIn.OnSlide
                     {
                         var item = _item;
                         var at = _placeAt;
+                        var fitted = _placeFitted;
                         Cancel("placed");
-                        if (item is not null) Post(() => InsertAt(item, at));
+                        if (item is not null && fitted is not null) Post(() => InsertFitted(fitted, item));
+                        else if (item is not null) Post(() => InsertAt(item, at));
                         return true;
                     }
                     if (message == WM_RBUTTONDOWN) { Cancel("right click"); return true; }
@@ -454,6 +462,8 @@ namespace InventaSketch.AddIn.OnSlide
                     return SketchMouse(message, pt, view);
 
                 case Mode.Armed:
+                    // Progressive disclosure: secondary handles fade in near the pointer.
+                    if (message == WM_MOUSEMOVE) UpdateReveal(pt, view, fromMouse: true);
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
                     // Lock badges where the unit touches and follows other elements: a click releases or couples.
                     if (LinkMouse(message, pt, view, out var linkSwallow)) return linkSwallow;
@@ -731,6 +741,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             if (_view is { } kv && ForeignForeground(kv)) return false;
             if (_mode == Mode.Sketch && vk == VK_ESCAPE) { Cancel("sketch: Esc"); return true; }
+            // Shift shows every handle of the selection (progressive disclosure); released, the next pointer move hides them.
+            if (vk == VK_SHIFT && _mode == Mode.Armed && _view is { } sv) { _shiftHeld = true; UpdateReveal(_pointer, sv); return false; }
             // Typing (text, shortcuts) hides the bar until the next selection, as in Slidemax.
             if (_mode == Mode.Armed && vk is not (VK_SHIFT or VK_CONTROL or VK_MENU) && _bar is not null)
             {
@@ -864,6 +876,18 @@ namespace InventaSketch.AddIn.OnSlide
                     ThumbnailRenderer.DrawAll(g, lprims, Ghost, (float)view.Mm(1.6));
                     DrawGuides(g, view, snapped.Guides);
                 });
+                return;
+            }
+            // A part that fits a shaft near the pointer: the ghost shows the fitted result (on the shaft, in its view and
+            // size), not the item's default look; a click inserts exactly that. Alt places freely.
+            _placeFitted = NoSnap() ? null : FitNear(item, raw, view.Mm(FitReachPx));
+            if (_placeFitted is { } fitted && _placeContext is { } placeDoc)
+            {
+                var fdoc = Edits.Add(placeDoc, placeDoc.Pages[0].Id, fitted);
+                var fprims = registry.Render(fdoc.Get(fitted.Id)!, new RenderContext(fdoc, _lang()));
+                var tagAt = new PointF(pt.X, pt.Y);
+                var fitLabel = T("Fits here – click to insert", "Passt hier – Klick fügt ein");
+                Present(view, g => ThumbnailRenderer.DrawAll(g, fprims, Ghost, (float)view.Mm(1.6)), g => DrawTag(g, view, tagAt, fitLabel));
                 return;
             }
             var probe = registry.Create(item, raw);
@@ -1089,7 +1113,7 @@ namespace InventaSketch.AddIn.OnSlide
                 foreach (var item in suggestions)
                 {
                     if (list.Count >= MaxDirectInserts) break;
-                    if (Fitting.Place(registry, full, first.Id, item, _lang()) is not null) list.Add(item);
+                    if (FitToUnit(_unit, full, item) is not null) list.Add(item);
                 }
             }
             catch (Exception ex)
@@ -1163,6 +1187,8 @@ namespace InventaSketch.AddIn.OnSlide
             Log.Info($"Bar shown at {LastBarRect} opacity {opacity:0.##}");
             LastBarIds = string.Join(",", _bar.Buttons.Where(b => !b.Separator).Select(b => b.Id));
             Log.Info("Bar ids: " + LastBarIds);
+            LastCommandIds = CommandIds(_bar.Buttons);
+            Log.Info("Commands: " + LastCommandIds);
             DrawBar(view, opacity);
         }
 
@@ -1308,6 +1334,13 @@ namespace InventaSketch.AddIn.OnSlide
                     return (pd.Label.Get(_lang()), o.Ref ?? o.Str(key, pd.Default?.Text ?? ""), (x, t) => x.WithParam(key, t) with { Text = null, Ref = t });
                 return (pd.Label.Get(_lang()), o.Str(key, pd.Default?.Text ?? ""), (x, t) => x.WithParam(key, t));
             }
+            // Tables: the cells, on one line ("|" between columns, "\n" between rows), so double-click and "Text" edit them.
+            if (type.Parameters.FirstOrDefault(p => p.Key == "cells" && p.Kind == ParamKind.Text) is { } cellsDef)
+            {
+                var raw = o.Str("cells", "");
+                if (string.IsNullOrWhiteSpace(raw) && o.Type == "ann.table") raw = InventaSketch.Modules.Annotation.TableType.DefaultCells(_lang());
+                return (cellsDef.Label.Get(_lang()), raw.Replace("\r", "").Replace("\n", "\\n"), (x, t) => x.WithParam("cells", t));
+            }
             return null;
         }
 
@@ -1439,7 +1472,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Small diamond handles on the points of a selected line/arrow/dimension/lead line.</summary>
         private void DrawPointHandles(SlideView view)
         {
-            if (_unit is not null) LastHandles = HandleLayout.Describe(Handles(view));
+            if (_unit is not null) { LastHandles = HandleLayout.Describe(Handles(view)); LastShownHandles = ShownHandles(view); }
             if (_part is not null && PartOwner() is not null)
             {
                 // A selected chart part: its outline, and the grips stay draggable.

@@ -3,12 +3,28 @@
 param($S)
 $addin = $S.AddIn
 
+# Every command of the selected element (bar and pie): automation CommandIds(), else the add-in log line "Commands: ...".
+function Get-CommandIds {
+    $raw = $null
+    try { $raw = [string]$S.AddIn.CommandIds() } catch { $raw = $null }
+    if (-not $raw) {
+        $line = Get-Content (Get-IskLog $S) | Where-Object { $_ -match 'Commands: ' } | Select-Object -Last 1
+        if ($line) { $raw = $line -replace '.*Commands: ', '' }
+    }
+    , @(($raw -split ',') | Where-Object { $_ })
+}
+function Wait-CommandIds([scriptblock]$Until, [int]$Seconds = 10) {
+    $ids = @(); $end = (Get-Date).AddSeconds($Seconds)
+    do { $ids = Get-CommandIds; if (& $Until $ids) { break }; Start-Sleep -Milliseconds 700 } while ((Get-Date) -lt $end)
+    , $ids
+}
+
 $S.Window.Selection.Unselect()
 $name = $addin.Insert('chart.line'); $shape = $S.Slide.Shapes.Item($name)
 $shape.Left = 120; $shape.Top = 90; $shape.Width = 480; $shape.Height = 300
 $shape.Select(); Start-Sleep 2
 $before = (Get-IskModel $S.Slide.Shapes.Item($name))
-Assert-Isk $S ($addin.BarIds() -match 'sketch') 'the chart bar offers "Sketch a curve"'
+Assert-Isk $S ((Get-CommandIds) -contains 'sketch') 'the chart bar offers "Sketch a curve"'
 $addin.Command('sketch') | Out-Null; Start-Sleep 1
 
 # A step drawn inside the plot area: low on the left, high on the right.
@@ -33,7 +49,7 @@ $unit.Select(); Start-Sleep 2
 $addin.Command('partsel:series.1') | Out-Null; Start-Sleep 2
 $bar = $addin.BarIds()
 Write-IskInfo ("bar of the sketched curve: " + $bar)
-Assert-Isk $S ($bar -match 'part:chart\.curve\.shape') 'the sketched curve offers "Curve shape"'
+Assert-Isk $S ((Get-CommandIds) -contains 'part:chart.curve.shape') 'the sketched curve offers "Curve shape"'
 $m1 = Get-IskModel $unit
 $addin.Command('part:chart.curve.shape') | Out-Null; Start-Sleep 3
 $unit = @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'chart\.xy' } | Select-Object -First 1

@@ -53,6 +53,142 @@ namespace InventaSketch.AddIn.OnSlide
 
         private PlacedHandle? HandleById(SlideView view, string id) => Handles(view).FirstOrDefault(h => h.Id == id);
 
+        // ------------------------------------------------------------------ progressive disclosure
+
+        /// <summary>
+        /// Pointer distance (logical pixels) within which a secondary handle is fully shown, and beyond which it is gone;
+        /// in between it fades. Shift shows every handle.
+        /// </summary>
+        internal const float RevealNear = 24, RevealFar = 56;
+
+        /// <summary>Last pointer position while armed (screen pixels), for the disclosure of handles.</summary>
+        private POINT _pointer = new() { X = -100000, Y = -100000 };
+        private string _revealKey = "";
+        /// <summary>Shift is held: every handle shown.</summary>
+        private bool _shiftHeld;
+
+        /// <summary>
+        /// Opacity of a secondary handle for a pointer distance (logical pixels): 1 within <see cref="RevealNear"/>, 0 beyond
+        /// <see cref="RevealFar"/>, linear in between.
+        /// </summary>
+        internal static float RevealFor(double distance)
+            => distance <= RevealNear ? 1f : distance >= RevealFar ? 0f : (float)((RevealFar - distance) / (RevealFar - RevealNear));
+
+        /// <summary>
+        /// How much of a handle is shown (0..1). Always: point diamonds, the one primary "+" (<see cref="PrimaryHandleId"/>).
+        /// Everything else (more "+", corner dots, branches, junctions, grips, lock badges, quick-add triangles) appears as
+        /// the pointer comes near it, or while Shift is held.
+        /// </summary>
+        private float Reveal(SlideView view, PlacedHandle h, PointF? anchor = null)
+        {
+            if (h.Kind is HandleKind.Point or HandleKind.Native) return 1;
+            if (h.Id == PrimaryHandleId(view) || _shiftHeld) return 1;
+            var s = view.DeviceScale;
+            double D(PointF p) => Math.Sqrt((p.X - _pointer.X) * (p.X - _pointer.X) + (p.Y - _pointer.Y) * (p.Y - _pointer.Y)) / s;
+            var d = D(h.At);
+            if (anchor is { } a) d = Math.Min(d, D(a));
+            else if (h.Spec.Anchor != h.At) d = Math.Min(d, D(h.Spec.Anchor));
+            return RevealFor(d);
+        }
+
+        /// <summary>
+        /// The one "+" shown right away: the most useful place to build on. Lines: the free end of the line (else its start);
+        /// tables: the bottom (a row); diagram nodes: the triangle below; gears: the free side to the right (else any free
+        /// side); others: a connection port, a free axis end, then any build port. Null if the element has none.
+        /// </summary>
+        private string? PrimaryHandleId(SlideView view)
+        {
+            var handles = Handles(view);
+            if (_primaryFor == _layout) return _primary;
+            _primaryFor = _layout;
+            _primary = null;
+            bool Has(string id) => handles.Any(h => h.Visible && h.Id == id);
+            if (_chainSource is not null) { _primary = "tri:" + FlowSide.Bottom; return _primary; }
+            if (_sides.Any(x => x.Side == "bottom")) { _primary = "side:bottom"; return _primary; }
+            if (PointObject() is { Points: { } pts })
+            {
+                var endPort = EndPortIndex(atStart: false);
+                var startPort = EndPortIndex(atStart: true);
+                _primary = endPort >= 0 ? "port:" + endPort : Has("end:1") ? "end:1" : startPort >= 0 ? "port:" + startPort : Has("end:0") ? "end:0" : null;
+                if (_primary is null && _ports.Count > 0) _primary = "port:0";
+                return _primary;
+            }
+            int Find(Func<BuildPort, bool> f) => _ports.FindIndex(p => f(p));
+            var order = new Func<BuildPort, bool>[]
+            {
+                p => p.Kind == PortKind.Mesh && p.Id == "mesh.right",
+                p => p.Kind == PortKind.Mesh,
+                p => p.Kind == PortKind.Connect,
+                p => p.Kind == PortKind.AxisEnd && p.Id.EndsWith(".end", StringComparison.Ordinal),
+                p => p.Kind == PortKind.AxisEnd,
+                p => true,
+            };
+            foreach (var f in order)
+                if (Find(f) is var i and >= 0) { _primary = "port:" + i; break; }
+            return _primary;
+        }
+
+        private string? _primary;
+        private object? _primaryFor;
+
+        /// <summary>Ids of the handles shown at least half as last drawn ("id;id;…"; UI tests: calm on selection).</summary>
+        internal string LastShownHandles { get; private set; } = "";
+
+        private string ShownHandles(SlideView view)
+            => string.Join(";", Handles(view).Where(h => h.Visible && h.Kind != HandleKind.Native && Reveal(view, h) >= 0.5f).Select(h => h.Id));
+
+        /// <summary>
+        /// While armed: remembers the pointer and redraws the handles when what is shown changes (handles fading in or out as
+        /// the pointer comes near, Shift pressed or released). Opacities are compared in fifths, so a redraw is rare.
+        /// </summary>
+        private void UpdateReveal(POINT pt, SlideView view, bool fromMouse = false)
+        {
+            _pointer = pt;
+            // The key state is current when the pointer moves (inside the keyboard hook it is not yet).
+            if (fromMouse) _shiftHeld = KeyDown(VK_SHIFT);
+            if (_unit is null) return;
+            var handles = Handles(view);
+            var sb = new System.Text.StringBuilder(_shiftHeld ? "S" : "-");
+            foreach (var h in handles)
+                if (h.Visible && h.Kind is not (HandleKind.Native or HandleKind.Point))
+                    sb.Append((int)Math.Round(Reveal(view, h) * 5));
+            if (_chainSource is not null)
+                foreach (var side in Sides)
+                    sb.Append((int)Math.Round(TriangleReveal(view, side) * 5));
+            var key = sb.ToString();
+            if (key == _revealKey) return;
+            _revealKey = key;
+            DrawPointHandles(view);
+        }
+
+        /// <summary>Quick-add triangle opacity: the one below always, the others near the pointer.</summary>
+        private float TriangleReveal(SlideView view, FlowSide side)
+        {
+            var h = HandleById(view, "tri:" + side);
+            return h is null ? 1 : Reveal(view, h);
+        }
+
+        /// <summary>
+        /// Draws one handle with an opacity: fully opaque straight onto the overlay, otherwise through a small bitmap blended
+        /// with that alpha (so every handle look fades the same way without touching its colours).
+        /// </summary>
+        private static void Faded(Graphics g, PointF c, float alpha, float half, Action<Graphics, PointF> draw)
+        {
+            if (alpha <= 0.02f) return;
+            if (alpha >= 0.98f) { draw(g, c); return; }
+            var size = Math.Max(4, (int)Math.Ceiling(2 * half));
+            using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var bg = Graphics.FromImage(bmp))
+            {
+                bg.SmoothingMode = SmoothingMode.AntiAlias;
+                bg.Clear(Color.Transparent);
+                draw(bg, new PointF(size / 2f, size / 2f));
+            }
+            using var ia = new System.Drawing.Imaging.ImageAttributes();
+            ia.SetColorMatrix(new System.Drawing.Imaging.ColorMatrix { Matrix33 = alpha });
+            g.DrawImage(bmp, new Rectangle((int)Math.Round(c.X - size / 2f), (int)Math.Round(c.Y - size / 2f), size, size), 0, 0, size, size, GraphicsUnit.Pixel, ia);
+        }
+
         /// <summary>Hit radius of every handle of ours (logical pixels): targets of 24 px at least, whatever they look like.</summary>
         internal const float HitPx = 12;
 
@@ -265,8 +401,9 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 var h = HandleById(view, "side:" + _sides[i].Side);
                 if (h is null || !h.Visible) continue;
-                DrawAddHandle(g, view, h.At, i == _hoverSide2);
-                if (i == _hoverSide2) QueueTip(view, h.At, h.Spec.Tip, (float)PortPx);
+                var hover = i == _hoverSide2;
+                Faded(g, h.At, hover ? 1 : Reveal(view, h), AddHalf(view), (gg, c) => DrawAddHandle(gg, view, c, hover));
+                if (hover) QueueTip(view, h.At, h.Spec.Tip, (float)PortPx);
             }
         }
 
@@ -416,8 +553,12 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 var h = HandleById(view, "drag:" + i);
                 if (h is null) continue;
-                DrawGrip(g, view, h.At, _grips[i], i == _hoverGrip);
-                if (i == _hoverGrip) QueueTip(view, h.At, h.Spec.Tip + T(" · drag to change", " · ziehen zum Ändern"), (float)GripPx + 4);
+                var hover = i == _hoverGrip;
+                var grip = _grips[i];
+                // A grip of the selected part is always shown; the others appear as the pointer comes near.
+                var alpha = hover || (_part is not null && grip.Part == _part) ? 1 : Reveal(view, h);
+                Faded(g, h.At, alpha, (float)((GripPx * 1.15 + 8) * view.DeviceScale), (gg, c) => DrawGrip(gg, view, c, grip, hover));
+                if (hover) QueueTip(view, h.At, h.Spec.Tip + T(" · drag to change", " · ziehen zum Ändern"), (float)GripPx + 4);
             }
         }
 
@@ -462,6 +603,9 @@ namespace InventaSketch.AddIn.OnSlide
         });
 
         // ------------------------------------------------------------------ shared drawing
+
+        /// <summary>Half the size of the bitmap a faded "+" is drawn into (screen pixels).</summary>
+        private static float AddHalf(SlideView view) => (float)(PortPx * 1.25 * view.DeviceScale) + 3;
 
         /// <summary>The "add here" handle: a filled blue circle with a white "+" (build ports, free ends, table sides).</summary>
         private static void DrawAddHandle(Graphics g, SlideView view, PointF c, bool hover)

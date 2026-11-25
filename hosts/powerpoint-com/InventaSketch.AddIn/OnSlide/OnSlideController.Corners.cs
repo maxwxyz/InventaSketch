@@ -136,50 +136,62 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var s = (float)view.DeviceScale;
             g.SmoothingMode = SmoothingMode.AntiAlias;
+            if (PointObject() is null || _unit is null) return;
+            foreach (var h in Handles(view))
+            {
+                if (!h.Visible) continue;
+                var code = SegmentCode(h.Id);
+                if (code < 0) continue;
+                var hover = code == _hoverSeg;
+                // Progressive disclosure: corner dots, branches, junctions and further "+" appear as the pointer comes near.
+                var alpha = hover ? 1 : Reveal(view, h);
+                var half = (float)(Math.Max(PortPx, SegHandlePx) * 1.5 * s) + 3;
+                Faded(g, h.At, alpha, half, (gg, c) => DrawSegmentHandle(gg, view, c, code, hover));
+                if (hover) QueueTip(view, h.At, h.Spec.Tip, (float)(code >= EndCode && code < CrossCode ? PortPx : SegHandlePx));
+            }
+        }
+
+        private static void DrawSegmentHandle(Graphics g, SlideView view, PointF c, int code, bool hover)
+        {
+            var s = (float)view.DeviceScale;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            if (code >= EndCode && code < CrossCode)
+            {
+                // Free end: the same "add here" handle as every other "+".
+                DrawAddHandle(g, view, c, hover);
+                return;
+            }
             using var ring = new Pen(FlowBlue, 1.3f * s);
             using var glyph = new Pen(FlowBlue, 1.4f * s) { StartCap = LineCap.Round, EndCap = LineCap.Round };
             using var fill = new SolidBrush(Color.White);
             using var hot = new SolidBrush(Color.FromArgb(225, 236, 252));
             using var blue = new SolidBrush(FlowBlue);
-            foreach (var (code, c) in SegmentHandlesOnScreen(view))
+            if (code < EndCode && code % 2 == 0)
             {
-                var hover = code == _hoverSeg;
-                if (code >= EndCode && code < CrossCode)
-                {
-                    // Free end: the same "add here" handle as every other "+".
-                    DrawAddHandle(g, view, c, hover);
-                    if (hover) QueueTip(view, c, SegmentTip(view, code), (float)PortPx);
-                    continue;
-                }
-                if (code < EndCode && code % 2 == 0)
-                {
-                    // New corner: a small hollow dot on the segment (no "+", so it is not mistaken for "add an element").
-                    var rd = (float)(CornerDotPx * (hover ? 1.5 : 1.0) * s);
-                    g.FillEllipse(hover ? hot : fill, c.X - rd, c.Y - rd, 2 * rd, 2 * rd);
-                    g.DrawEllipse(ring, c.X - rd, c.Y - rd, 2 * rd, 2 * rd);
-                    if (hover) QueueTip(view, c, SegmentTip(view, code), (float)CornerDotPx);
-                    continue;
-                }
-                var r = (float)(SegHandlePx * (hover ? 1.25 : 1.0) * s);
-                g.FillEllipse(hover ? hot : fill, c.X - r, c.Y - r, 2 * r, 2 * r);
-                g.DrawEllipse(ring, c.X - r, c.Y - r, 2 * r, 2 * r);
-                var k = r * 0.55f;
-                if (code >= CrossCode)
-                {
-                    // Junction: two crossing strokes and a dot.
-                    g.DrawLine(glyph, c.X - k, c.Y, c.X + k, c.Y);
-                    g.DrawLine(glyph, c.X, c.Y - k, c.X, c.Y + k);
-                    var d = 1.5f * s;
-                    g.FillEllipse(blue, c.X - d, c.Y - d, 2 * d, 2 * d);
-                }
-                else
-                {
-                    // Branch: a stub leaving a dot.
-                    var d = 1.3f * s;
-                    g.FillEllipse(blue, c.X - d, c.Y + k - d, 2 * d, 2 * d);
-                    g.DrawLine(glyph, c.X, c.Y + k, c.X, c.Y - k);
-                }
-                if (hover) QueueTip(view, c, SegmentTip(view, code), (float)SegHandlePx);
+                // New corner: a small hollow dot on the segment (no "+", so it is not mistaken for "add an element").
+                var rd = (float)(CornerDotPx * (hover ? 1.5 : 1.0) * s);
+                g.FillEllipse(hover ? hot : fill, c.X - rd, c.Y - rd, 2 * rd, 2 * rd);
+                g.DrawEllipse(ring, c.X - rd, c.Y - rd, 2 * rd, 2 * rd);
+                return;
+            }
+            var r = (float)(SegHandlePx * (hover ? 1.25 : 1.0) * s);
+            g.FillEllipse(hover ? hot : fill, c.X - r, c.Y - r, 2 * r, 2 * r);
+            g.DrawEllipse(ring, c.X - r, c.Y - r, 2 * r, 2 * r);
+            var k = r * 0.55f;
+            if (code >= CrossCode)
+            {
+                // Junction: two crossing strokes and a dot.
+                g.DrawLine(glyph, c.X - k, c.Y, c.X + k, c.Y);
+                g.DrawLine(glyph, c.X, c.Y - k, c.X, c.Y + k);
+                var d = 1.5f * s;
+                g.FillEllipse(blue, c.X - d, c.Y - d, 2 * d, 2 * d);
+            }
+            else
+            {
+                // Branch: a stub leaving a dot.
+                var d = 1.3f * s;
+                g.FillEllipse(blue, c.X - d, c.Y + k - d, 2 * d, 2 * d);
+                g.DrawLine(glyph, c.X, c.Y + k, c.X, c.Y - k);
             }
         }
 
