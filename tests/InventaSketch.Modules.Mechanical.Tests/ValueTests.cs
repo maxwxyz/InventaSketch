@@ -140,6 +140,34 @@ namespace InventaSketch.Modules.Mechanical.Tests
         }
 
         [Fact]
+        public void TheCalculationSheetOfTheGearExampleListsQuantitySymbolValueUnitFormulaAndSource()
+        {
+            // Accept (Calc 6): the calculation sheet of the three-stage train.
+            var r = Fx.Reg();
+            var doc = ThreeStage(r, ("s1", "speed", "1500 rpm"), ("s1", "torque", "10 N·m"));
+            var t = Solve(doc, r);
+            var ids = doc.Pages[0].Order;
+            var rows = CalcSheet.Rows(t, r, ids, Lang.En);
+            Assert.NotEmpty(rows);
+            var g2n = rows.First(x => x.Symbol == "n" && x.Formula.Contains("z") && x.Origin == "derived");
+            Assert.Equal("min⁻¹", g2n.Unit);
+            Assert.Equal("750", g2n.Value);
+            var cited = rows.First(x => x.Formula.Contains("z") && x.Source.Length > 0).Source;
+            Assert.Matches(@"^\[S\d+\]$", cited);
+            Assert.Contains(rows, x => x.Origin == "entered" && x.Symbol == "T" && x.Value == "10" && x.Unit == "N·m");
+            var csv = CalcSheet.Csv(rows, Lang.En);
+            Assert.StartsWith("Element,Quantity,Symbol,Value,Unit,Range,Formula,Origin,Source", csv);
+            var md = CalcSheet.Markdown(rows, Lang.De);
+            Assert.Contains("| Element | Größe | Zeichen | Wert | Einheit |", md);
+            Assert.Contains("Quellen:", md);
+            Assert.Contains(ValueSources.Get(cited)!.De, md);
+            var tex = CalcSheet.Latex(rows, Lang.En);
+            Assert.Contains("\\begin{tabular}", tex);
+            var cells = CalcSheet.TableCells(rows, Lang.En);
+            Assert.StartsWith("Element|Symbol|Value|Formula|Source\n", cells);
+        }
+
+        [Fact]
         public void StageEfficienciesOnTheDrivenGearsReduceTorqueAndPower()
         {
             var r = Fx.Reg();

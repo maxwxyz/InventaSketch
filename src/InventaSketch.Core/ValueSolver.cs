@@ -51,6 +51,11 @@ namespace InventaSketch.Core
         /// <summary>The variables the value was computed from.</summary>
         public IReadOnlyList<VarRef> Inputs { get; internal set; } = Array.Empty<VarRef>();
         public bool InConflict { get; internal set; }
+        /// <summary>
+        /// Range of the value from the tolerances it rests on (Calc 6): an entered "4k7 ±5 %" gives 4.465 … 4.935 kΩ, a value
+        /// derived from it the range its relation gives at the corners of its inputs' ranges. Null without a tolerance.
+        /// </summary>
+        public (double Lo, double Hi)? Interval { get; internal set; }
     }
 
     /// <summary>
@@ -238,11 +243,13 @@ namespace InventaSketch.Core
             public int[] Via = Array.Empty<int>();
             public int[][] Inputs = Array.Empty<int[]>();
             public int[][] Roots = Array.Empty<int[]>();
+            /// <summary>Variables in the order they were derived (for the tolerance ranges).</summary>
+            public List<int> Order = new();
 
             public State Clone() => new()
             {
                 Value = (double[])Value.Clone(), Known = (bool[])Known.Clone(), Prov = (Provenance[])Prov.Clone(),
-                Via = (int[])Via.Clone(), Inputs = (int[][])Inputs.Clone(), Roots = (int[][])Roots.Clone(),
+                Via = (int[])Via.Clone(), Inputs = (int[][])Inputs.Clone(), Roots = (int[][])Roots.Clone(), Order = new List<int>(Order),
             };
         }
 
@@ -396,6 +403,7 @@ namespace InventaSketch.Core
             }
             foreach (var r in table.CheckedRelations)
                 foreach (var k in relVars[r]) table.CheckedObjects.Add(table.Vars[k].Ref.ObjectId);
+            Intervals(table, relVars, st);
             table.Truncated = truncated;
             table.ElapsedMs = sw.Elapsed.TotalMilliseconds;
             return table;
@@ -432,11 +440,61 @@ namespace InventaSketch.Core
                 var w = 0;
                 foreach (var v in vars) if (v != unknown) inputs[w++] = v;
                 st.Inputs[unknown] = inputs;
+                st.Order.Add(unknown);
                 // A value from a relation without inputs (a marking such as "24 V" on a lamp) is its own origin, like an entered
                 // value: two markings that disagree are then checked against each other.
                 st.Roots[unknown] = inputs.Length == 0 ? new[] { unknown } : Union(inputs.Select(v => st.Roots[v]));
                 foreach (var next in varRels[unknown]) if (next != r) pending.Add(next);
             }
+        }
+
+        /// <summary>
+        /// Tolerance ranges (Calc 6): entered values with a tolerance get its bounds; derived values, in the order they were
+        /// derived, the range of their relation over the corners of their inputs' ranges (exact for relations monotonic in
+        /// each input, as Ohm's law, power, ratios and sums are; at most 2⁶ corners).
+        /// </summary>
+        private static void Intervals(ValueTable table, List<int[]> relVars, State st)
+        {
+            var n = table.Vars.Count;
+            var lo = new double[n];
+            var hi = new double[n];
+            var any = false;
+            for (var i = 0; i < n; i++)
+            {
+                lo[i] = hi[i] = st.Value[i];
+                if (st.Known[i] && st.Prov[i] == Provenance.Entered && table.Vars[i].Tolerance is { } tol)
+                {
+                    var (a, c) = tol.Bounds(st.Value[i]);
+                    lo[i] = Math.Min(a, c); hi[i] = Math.Max(a, c);
+                    any |= hi[i] > lo[i];
+                }
+            }
+            if (!any) return;
+            foreach (var k in st.Order)
+            {
+                var inputs = st.Inputs[k];
+                if (inputs is null || inputs.Length == 0 || st.Via[k] < 0) continue;
+                var wide = inputs.Where(v => hi[v] > lo[v]).ToList();
+                if (wide.Count == 0 || wide.Count > 6) continue;
+                var b = table.Relations[st.Via[k]];
+                var vars = relVars[st.Via[k]];
+                var key = KeyOf(b, vars, k);
+                var value = new double[n];
+                Array.Copy(st.Value, value, n);
+                double min = double.PositiveInfinity, max = double.NegativeInfinity;
+                for (var mask = 0; mask < 1 << wide.Count; mask++)
+                {
+                    for (var j = 0; j < wide.Count; j++) value[wide[j]] = (mask >> j & 1) == 0 ? lo[wide[j]] : hi[wide[j]];
+                    var def = table.Vars[k].Def;
+                    var x = b.Relation.Compute(key, name => value[vars[Pos(b.Relation, name)]], def.Min, def.Max);
+                    if (double.IsNaN(x) || double.IsInfinity(x)) continue;
+                    min = Math.Min(min, x); max = Math.Max(max, x);
+                }
+                if (min > max) continue;
+                lo[k] = Math.Min(min, st.Value[k]); hi[k] = Math.Max(max, st.Value[k]);
+            }
+            for (var i = 0; i < n; i++)
+                if (st.Known[i] && hi[i] > lo[i]) table.Vars[i].Interval = (lo[i], hi[i]);
         }
 
         /// <summary>

@@ -1055,6 +1055,28 @@ voltage is called *U*.
 
 ---
 
+### 10.11 Calc 6, engine part: tolerance ranges, calculation sheet, sources (2026-11-26)
+
+- **Tolerance ranges.** An entered value with a tolerance ("4k7 ±5 %", "230 V ±10 %") gets its bounds; every value derived
+  from it gets the range its relation gives at the corners of its inputs' ranges (in the order the values were derived,
+  at most six inputs with a range; exact for relations monotonic in each input). `VarValue.Interval`; engine `values`
+  returns `lo`, `hi` and `range` ("180 V … 220 V"). Accept: "4k7 ±5 %" in the 5 V LED circuit gives I = 0.617 mA in
+  0.588 … 0.650 mA (test `AToleranceOnTheResistorGivesTheCurrentAsARange`).
+- **Calculation sheet.** `CalcSheet` (Core) lists every known value of the chosen elements: element (designator and
+  type), quantity, symbol, value, unit (with the prefix it is shown in), range, formula, origin (entered, derived,
+  linked, default) and source; as CSV (";" for German, "," otherwise), Markdown and LaTeX (booktabs) with the cited
+  sources in full, or as the cells of an annotation table for the slide. Engine method `calcSheet` (`ids`, `mode`
+  csv/markdown/latex/table) returns `{ text, rows, sources }`. Accept: the sheet of the three-stage gear train lists
+  quantity, symbol, value, unit, formula and source (test
+  `TheCalculationSheetOfTheGearExampleListsQuantitySymbolValueUnitFormulaAndSource`).
+- **Sources.** `ValueSources` (Core) holds the citations of section 9 in both languages (generated from this document);
+  an engine test checks that every source a relation or check cites is in it.
+- **Markings.** A value from a relation without inputs (a marking such as "24 V" on a lamp) is its own origin: two
+  markings that disagree give a conflict naming both. Links that both ends report are added once.
+- **Open (Calc 6):** the host side (COM: "Calculation sheet …" in the value card and More menu with copy/save and
+  "insert as table"; a sources pane in Engineer), check settings (user limits, mute list), unit preferences (bar/MPa,
+  min⁻¹/s⁻¹, kWh/MJ) and the decision on standard series (E series) and their licence.
+
 ## 11. Implementation notes: Calc 2 in PowerPoint (COM) (2026-11-25)
 
 This section records the choices made where the plan left them open. The code is the reference.

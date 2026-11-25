@@ -98,6 +98,22 @@ namespace InventaSketch.Modules.Electrical.Tests
         }
 
         [Fact]
+        public void AToleranceOnTheResistorGivesTheCurrentAsARange()
+        {
+            // Accept (Calc 6): "4k7 ±5 %" in the LED circuit shows I as an interval: 2.9 V / (4.7 kΩ ± 5 %).
+            var t = LedCircuit("4k7 ±5 %").Solve();
+            var i = t.Get("R1", "I")!;
+            Assert.Equal(2.9 / 4700, i.Value!.Value, 12);
+            var range = i.Interval!.Value;
+            Assert.Equal(2.9 / (4700 * 1.05), range.Lo, 12);
+            Assert.Equal(2.9 / (4700 * 0.95), range.Hi, 12);
+            // The LED's current is the same range (series circuit).
+            var led = t.Get("D1", "I")!.Interval!.Value;
+            Assert.Equal(range.Lo, led.Lo, 12);
+            Assert.Equal(range.Hi, led.Hi, 12);
+        }
+
+        [Fact]
         public void ASingleElementSeesTheWholeCircuit()
         {
             // The card and the values label solve one element: the circuit joins the scope through its owner.

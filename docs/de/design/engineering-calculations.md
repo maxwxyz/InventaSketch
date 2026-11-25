@@ -1093,6 +1093,31 @@ mit dem Kennzeichen des Elements („*U*(R1) = …"), da die Spannung jedes Wide
 
 ---
 
+### 10.11 Calc 6, Engine-Teil: Toleranzbereiche, Rechenblatt, Quellen (26.11.2026)
+
+- **Toleranzbereiche.** Ein eingegebener Wert mit Toleranz („4k7 ±5 %“, „230 V ±10 %“) bekommt seine Grenzen; jeder
+  daraus abgeleitete Wert den Bereich, den seine Beziehung an den Ecken der Eingangsbereiche ergibt (in der Reihenfolge
+  der Ableitung, höchstens sechs Eingänge mit Bereich; exakt für Beziehungen, die in jedem Eingang monoton sind).
+  `VarValue.Interval`; die Engine-Methode `values` liefert `lo`, `hi` und `range` („180 V … 220 V“). Abnahme: „4k7 ±5 %“
+  im 5-V-LED-Kreis ergibt I = 0,617 mA im Bereich 0,588 … 0,650 mA (Test
+  `AToleranceOnTheResistorGivesTheCurrentAsARange`).
+- **Rechenblatt.** `CalcSheet` (Core) listet jeden bekannten Wert der gewählten Elemente: Element (Kennzeichen und
+  Typ), Größe, Zeichen, Wert, Einheit (mit dem Vorsatz, in dem der Wert gezeigt wird), Bereich, Formel, Herkunft
+  (eingegeben, berechnet, übernommen, Vorgabe) und Quelle; als CSV („;“ auf Deutsch, sonst „,“), Markdown und LaTeX
+  (booktabs) mit den zitierten Quellen im Volltext oder als Zellen einer Beschriftungstabelle für die Folie.
+  Engine-Methode `calcSheet` (`ids`, `mode` csv/markdown/latex/table) liefert `{ text, rows, sources }`. Abnahme: das
+  Rechenblatt des dreistufigen Zahnradgetriebes listet Größe, Zeichen, Wert, Einheit, Formel und Quelle (Test
+  `TheCalculationSheetOfTheGearExampleListsQuantitySymbolValueUnitFormulaAndSource`).
+- **Quellen.** `ValueSources` (Core) enthält die Angaben aus Abschnitt 9 in beiden Sprachen (aus diesem Dokument
+  erzeugt); ein Engine-Test prüft, dass jede Quelle, die eine Beziehung oder Prüfung nennt, darin steht.
+- **Aufschriften.** Ein Wert aus einer Beziehung ohne Eingänge (eine Aufschrift wie „24 V“ auf einer Lampe) ist seine
+  eigene Herkunft: zwei widersprechende Aufschriften ergeben einen Widerspruch, der beide nennt. Verknüpfungen, die
+  beide Enden melden, werden einmal aufgenommen.
+- **Offen (Calc 6):** die Host-Seite (COM: „Rechenblatt …“ in der Wertekarte und im Menü Mehr mit Kopieren/Speichern
+  und „als Tabelle einfügen“; ein Quellenbereich in der Stufe Ingenieur), Prüfeinstellungen (eigene Grenzen,
+  Stummschalten), Einheitenvorlieben (bar/MPa, min⁻¹/s⁻¹, kWh/MJ) und die Entscheidung zu Normreihen (E-Reihen) und
+  ihrer Lizenz.
+
 ## 11. Umsetzungsnotizen: Calc 2 in PowerPoint (COM) (25.11.2026)
 
 Dieser Abschnitt hält die Entscheidungen fest, die der Plan offenließ. Maßgeblich ist der Code.

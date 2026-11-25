@@ -141,6 +141,26 @@ namespace InventaSketch.Core.Tests
         private static void Near(double e, double? a) => Assert.True(a is double x && Math.Abs(x - e) <= 1e-9 * Math.Abs(e), $"expected {e}, got {a}");
 
         [Fact]
+        public void TolerancesGiveRanges()
+        {
+            // 100 Ω ±10 % at 2 A: U = 200 V in 180 … 220 V, P = 400 W in 360 … 440 W (Calc 6).
+            var (doc, _) = One("t.res", ("value", "100 Ω ±10 %"), ("current", "2 A"));
+            var t = Solve(doc);
+            Near(200, t.Get("o1", "U")!.Value);
+            var r = t.Get("o1", "R")!.Interval!.Value;
+            Near(90, r.Lo); Near(110, r.Hi);
+            var u = t.Get("o1", "U")!.Interval!.Value;
+            Near(180, u.Lo); Near(220, u.Hi);
+            var p = t.Get("o1", "P")!.Interval!.Value;
+            Assert.InRange(p.Lo, 359.999, 360.001); Assert.InRange(p.Hi, 439.999, 440.001);
+            // The current is exact: no range.
+            Assert.Null(t.Get("o1", "I")!.Interval);
+            // Without a tolerance nothing gets a range.
+            var (plain, _) = One("t.res", ("value", "100"), ("current", "2 A"));
+            Assert.Null(Solve(plain).Get("o1", "U")!.Interval);
+        }
+
+        [Fact]
         public void TwoMarkingsThatDisagreeConflict()
         {
             // A 24 V lamp on a 12 V source: both values come from markings (relations without inputs), none is entered.
