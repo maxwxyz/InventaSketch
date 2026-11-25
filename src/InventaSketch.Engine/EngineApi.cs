@@ -41,6 +41,7 @@ namespace InventaSketch.Engine
                 ["sanitize"] = SanitizeCore,
                 ["diff"] = DiffCore,
                 ["importVector"] = ImportVectorCore,
+                ["importCode"] = ImportCodeCore,
                 ["patentProfiles"] = PatentProfilesCore,
                 ["update"] = UpdateCore,
                 ["move"] = MoveCore,
@@ -431,6 +432,73 @@ namespace InventaSketch.Engine
             s.Apply("Import drawing", d => Edits.Add(d, s.PageId, created.ToArray()));
             s.Select(created.Select(o => o.Id));
             return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// importCode (roadmap 4b): plotting or drawing code (<c>text</c>) as editable elements on the current page. <c>mode</c>:
+        /// "auto" (default: detected from the content; "latex" is the same), "matplotlib" (a Python script), "pgfplots" (LaTeX axes; tikzpictures
+        /// without an axis in the same text are imported as drawings too) or "tikz" (LaTeX drawings). The code is read, never
+        /// executed: matplotlib and pgfplots plots become charts and figures, TikZ drawings become lines, arrows, basic shapes
+        /// and texts (one group). One undo step; the new elements are selected. Returns {state, format, ids, imported, skipped,
+        /// message}: the report lines of what was imported and of every part that was not ({line, code, reason}), in the request
+        /// or session language. Nothing importable is not an error: the report says why.
+        /// </summary>
+        private object ImportCodeCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var text = r.Text ?? "";
+            if (text.Length > 4_000_000) throw new ArgumentException("The code is too long to be imported.");
+            var hint = (r.Mode ?? "auto").Trim().ToLowerInvariant();
+            var format = CodeImportFormat.FromHint(hint);
+            if (format is null && hint is not ("" or "auto" or "latex" or "tex")) throw new ArgumentException("Unknown format '" + r.Mode + "' (auto, matplotlib, pgfplots, tikz, latex).");
+            format ??= CodeImportFormat.Detect(text);
+            var report = new CodeImportReport();
+            var created = new List<SketchObject>();
+            if (format == CodeImportFormat.Matplotlib || format == CodeImportFormat.Pgfplots)
+            {
+                var result = format == CodeImportFormat.Matplotlib
+                    ? InventaSketch.Modules.Charts.ChartCodeImport.Matplotlib(Registry, text, s.Page.Size)
+                    : InventaSketch.Modules.Charts.ChartCodeImport.Pgfplots(Registry, text, s.Page.Size);
+                created.AddRange(result.Charts);
+                report.Add(result.Report);
+            }
+            if (format == CodeImportFormat.Tikz || format == CodeImportFormat.Pgfplots && text.Contains("\\begin{tikzpicture}"))
+            {
+                var tikzReport = new CodeImportReport();
+                var drawing = TikzImport.Parse(text, tikzReport, skipAxisPictures: format == CodeImportFormat.Pgfplots);
+                var shapes = TikzImport.Elements(Registry, drawing, s.Page.Size).ToList();
+                if (shapes.Count > 1)
+                {
+                    var gid = Ids.New("g");
+                    shapes = shapes.Select(o => o with { GroupId = gid }).ToList();
+                }
+                if (shapes.Count > 0)
+                    tikzReport.Imported.Add(new I18nText("Drawing: " + shapes.Count + " element" + (shapes.Count == 1 ? "" : "s"), "Zeichnung: " + shapes.Count + " Element" + (shapes.Count == 1 ? "" : "e")));
+                created.AddRange(shapes);
+                report.Add(tikzReport);
+            }
+            if (created.Count > 0)
+            {
+                s.Apply("Import code", d => Edits.Add(d, s.PageId, created.ToArray()));
+                s.Select(created.Select(o => o.Id));
+            }
+            var message = format is null
+                ? new I18nText("The text is neither a matplotlib script nor pgfplots or TikZ code.", "Der Text ist weder ein matplotlib-Skript noch pgfplots- oder TikZ-Code.")
+                : created.Count == 0
+                    ? new I18nText("Nothing could be imported; see the lines that were not imported.", "Nichts konnte importiert werden; siehe die nicht importierten Zeilen.")
+                    : report.Skipped.Count == 0
+                        ? new I18nText("Imported completely.", "Vollständig importiert.")
+                        : new I18nText("Imported; " + report.Skipped.Count + " part(s) were not imported.", "Importiert; " + report.Skipped.Count + " Teil(e) wurden nicht importiert.");
+            return new
+            {
+                state = StateOf(s, r),
+                format,
+                ids = created.Select(o => o.Id).ToList(),
+                imported = report.Imported.Select(t => t.Get(lang)).ToList(),
+                skipped = report.Skipped.Select(k => new { line = k.Line, code = k.Code, reason = k.Reason.Get(lang) }).ToList(),
+                message = message.Get(lang),
+            };
         }
 
         // ------------------------------------------------------------------ variants
