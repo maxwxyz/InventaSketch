@@ -700,6 +700,16 @@ namespace InventaSketch.Core
         public virtual SketchObject OnParamChanged(SketchObject before, SketchObject after, string key) => after;
 
         /// <summary>
+        /// Clean slides for sharing (<see cref="Sanitizer"/>): <paramref name="o"/> with its values made unrecognisable
+        /// according to <see cref="SanitizeOptions.Mode"/> (normalised: same proportions on a neutral scale; randomised:
+        /// plausible random values with the same look), and the text and metadata options applied. Use only
+        /// <paramref name="rng"/> for random numbers so a seed reproduces the result. Default: no values, only the generic
+        /// texts and metadata (<see cref="Sanitizer.Basic"/>); types with values worth hiding (charts, dimensions, tables …)
+        /// override it. Returns <paramref name="o"/> itself when nothing changes; must keep the object renderable in its box.
+        /// </summary>
+        public virtual SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng) => Sanitizer.Basic(this, o, opt, rng);
+
+        /// <summary>
         /// Motion frames for an animation as a slide sequence (mechanisms: the input angle stepped through its range):
         /// <paramref name="count"/> copies of <paramref name="o"/> in playing order, the first one the current state, all
         /// with the same box so hosts can morph between them. Empty for types without motion.

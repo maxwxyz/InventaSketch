@@ -377,7 +377,7 @@ dialog-over-unit, diagram-layout, compatibility-check, ribbon-look.
    Dialog in LibreOffice), Export von Auswahl/Folie in Web und LibreOffice, Abbildungsvorlagen in beiden Hosts prüfen.
 2. Achsenbrüche in XY-Diagrammen und Abbildungen zeichnen; Zusammenlegung mit Mathe (Koordinatensysteme und
    Funktionsgraphen als Diagrammvorlagen, Einträge des Mathe-Moduls treten über `LibraryItem.Alternative` zurück).
-3. Folien bereinigen zur Weitergabe (unten).
+3. Folien bereinigen zur Weitergabe (unten; Engine fertig 25.11.2026, Host-Befehle offen).
 4. Hindernisbewusste Führung bei von Hand gesetzten Flussdiagrammkästen; Tab-Durchlauf durch Diagrammteile;
    isometrische Teile, bewegte Lagen, Batteriezellen-Anordnungen, Optik-Modul (Fit-Gap „später“).
 5. Kennfeld-Meldung (wartet auf erneuten Versuch des Maintainers), Web-Prüfung in PowerPoint (braucht das
@@ -390,7 +390,7 @@ und Tastatur (kein Hook darf Eingaben eines Dialogs im Vordergrund schlucken); U
 ins ausgewählte Element wählt das Teil; Leiste und Kreismenü wirken darauf; „Ganzes Element“ verlässt es); jedes „+“
 sagt, was es anfügt.
 
-### Folien bereinigen zur Weitergabe (Maintainer 25.11.2026, geplant; wie Slidemax)
+### Folien bereinigen zur Weitergabe (Maintainer 25.11.2026; Engine fertig 25.11.2026, Hosts offen; wie Slidemax)
 
 Ein Befehl „Folien bereinigen“ für Auswahl, Folie oder ganze Präsentation, bevor Folien das Unternehmen verlassen:
 Diagramme und Abbildungen entweder **normiert** (gleiche Verhältnisse und Formen, Werte und Achszahlen unkenntlich –
@@ -398,6 +398,17 @@ z. B. auf 0…1 oder Indexwerte skaliert, Skalenbeschriftungen ersetzt) oder **r
 gleichem Aussehen, Kurven behalten ihren Charakter); wahlweise Texte, Bezugszeichen, Namen, Notizen, Kommentare,
 ausgeblendete Folien und Dokumenteigenschaften entfernen oder ersetzen. Ein Rückgängig-Schritt und ein Bericht, was
 geändert wurde; zuerst COM (Extras oder Gruppe Prüfen), dann Web und LibreOffice über denselben Engine-Befehl.
+
+**Engine fertig (25.11.2026, docs/de/user-guide/README.md Abschnitt 6d):** `ObjectType.Sanitize` mit `SanitizeOptions`
+(Modus keiner/normiert/randomisiert, Kategorien umbenennen, Texte ersetzen, Metadaten entfernen, Startwert, Streuung),
+`Sanitizer.Apply` mit zweisprachigem `SanitizeReport`, Engine-Methode `sanitize` (IDs oder Seite, ein Rückgängig-Schritt,
+Zustand + Bericht). Alle Diagrammtypen sind abgedeckt (XY, Balken, Achsen, Drehmoment, Wirkungsgrad, Pumpe/Ventilator,
+Bode, Toleranzband, Abbildung); außerdem Längen- und Radiusmaße, Tabellen und Bauteilwerte elektrischer Schaltzeichen.
+Offen: die Host-Befehle (zuerst COM-Dialog: Umfang Auswahl/Folie/Präsentation, Modus, die vier Optionen, Startwert im
+Bericht; dann Web und LibreOffice); Inhalte der Präsentation außerhalb des Engine-Modells (native PowerPoint-Diagramme und
+-Tabellen, Notizen, Kommentare, ausgeblendete Folien, Dokumenteigenschaften); Werte weiterer Module (Stücklisten leiten
+sich von den Teilen ab und folgen ihnen; Kennwerte von Energie und Gebäudetechnik, Maße in Karten und Architektur,
+mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Winkel ist in der Zeichnung sichtbar).
 
 ### Weitere sinnvolle Module und Funktionen
 

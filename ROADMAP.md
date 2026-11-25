@@ -339,7 +339,7 @@ dialog-over-unit, diagram-layout, compatibility-check, ribbon-look.
    LibreOffice dialog), export of selection/slide in web and LibreOffice, figure presets checked in both hosts.
 2. Axis breaks drawn by XY charts and figures; math merge (coordinate systems and function graphs as chart presets,
    items of the math module step back via `LibraryItem.Alternative`).
-3. Clean slides for sharing (below).
+3. Clean slides for sharing (below; engine done 2026-11-25, host commands open).
 4. Obstacle-aware routing for hand-placed flowchart boxes; Tab cycling through chart parts; isometric parts, moved
    positions, battery cell arrays, optics module (fit-gap "later").
 5. Kennfeld report (waiting for the maintainer's retry), web check in PowerPoint (needs the dev certificate).
@@ -350,7 +350,7 @@ weights, accent) while working modes are user settings (snap, bar, anchor, move)
 keyboard through (no hook may swallow input of a foreground dialog); sub-selection follows one pattern (click on the
 selected element selects its part; bar and pie act on it; "whole element" leaves it); every "+" says what it adds.
 
-### Clean slides for sharing (maintainer 2026-11-25, planned; like Slidemax)
+### Clean slides for sharing (maintainer 2026-11-25; engine done 2026-11-25, hosts open; like Slidemax)
 
 A "Clean slides" command for the selection, the slide or the whole presentation before slides leave the company:
 charts and figures either **normalised** (same proportions and shapes, values and axis numbers made unrecognisable –
@@ -358,6 +358,17 @@ e.g. scaled to 0…1 or to index values, tick labels replaced) or **randomised**
 look, curves keep their character); optionally texts, reference numerals, names, notes, comments, hidden slides and
 document properties removed or replaced. One undo step, a report of what was changed; COM first (Extras or Review
 group), then web and LibreOffice through the same engine command.
+
+**Engine done (2026-11-25, docs/en/user-guide/README.md section 6d):** `ObjectType.Sanitize` with `SanitizeOptions`
+(mode none/normalised/randomised, rename categories, replace texts, strip metadata, seed, spread), `Sanitizer.Apply` with
+a bilingual `SanitizeReport`, engine method `sanitize` (ids or page, one undo step, state + report). Every chart type is
+covered (XY, bar, axes, torque, efficiency, pump/fan, Bode, tolerance band, figure); linear and radius dimensions, tables
+and electrical component values too. Open: the host commands (COM dialog first: scope selection/slide/presentation, mode,
+the four options, seed shown in the report; then web and LibreOffice); presentation-level items that live outside the
+engine model (native PowerPoint charts and tables, speaker notes, comments, hidden slides, document properties); values
+in further modules (parts lists derive from the parts and follow them; energy and building-services ratings, map and
+architecture dimensions, mechanical parameters shown as labels); angle dimensions keep their value (the angle is visible
+in the drawing).
 
 ### Further modules and functions worth adding
 

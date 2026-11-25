@@ -122,6 +122,44 @@ step); LibreOffice lists the same ports in its sidebar and builds through the sa
 add-in the "+" of elements offers connectors and elements, but an element chosen there is placed without its joining
 connector, and line ends show no "+" yet; both follow with a host update.
 
+## 6d. Clean slides for sharing (engine 2026-11-25; host commands follow)
+
+Before slides leave the company, charts and other elements must not reveal real values. The engine command `sanitize`
+cleans the selected elements (or every element of the current slide) in **one undo step** and returns a report of what
+changed. The host commands (COM first, then web and LibreOffice) are not available yet.
+
+- **Normalised** (default): same proportions and shapes, values on a neutral scale. Data charts are mapped to 0…1 (one
+  map for all series of a chart, so the ratios between them stay; log axes are divided by their maximum, so the decades
+  stay); bars are divided by the largest bar or the highest stack; limit lines and fixed axis ranges follow; units that no
+  longer apply are cleared. Engineering charts get their rated values set to 1 with the ratios kept: torque curve and
+  efficiency map (maximum torque and speed 1, corner speed as a fraction; the power axis numbers of the torque curve are
+  hidden, the efficiency map is moved to a 90 % peak with the contour shapes unchanged and its contour labels switched off),
+  pump and fan curves (shut-off head and maximum flow 1, operating point and static head as fractions), Bode plots
+  (frequency relative to the corner frequency, gain 0 dB, measured magnitudes relative to their maximum, damping kept),
+  axes (ranges 0…1). Tolerance bands are rewritten as nominal, lower and upper values, so percent bands keep their shape.
+  Figures map every coordinate – curves, value lines, regions, notes, dimension arrows, numerals and marks – with one x
+  map and one y map per panel.
+- **Randomised**: plausible random values with the same look – the same number of series, points and categories, a
+  similar range, curves that keep their character. Each value axis gets a random factor at least 20 % away from 1 and a
+  gentle monotone bend; each curve gets smooth noise on its increments (every increment keeps its sign, so monotone curves
+  stay monotone and peaks stay peaks); bars vary by ±spread around a random factor; rated values of engineering charts
+  vary with plausible ratios (a resonant Bode plot stays resonant). Figures get the random maps without noise, so notes
+  and numerals stay on their curves. The same seed gives the same result.
+- **Options**: *rename categories* ("A", "B", "C" … – the same category gets the same letter in every series; numeric row
+  labels such as years too); *replace texts* (titles, labels, captions, notes, series names, free texts of text elements
+  and table cells become neutral "lorem ipsum" placeholders of the same length; custom axis titles become "x" and "y";
+  designators and numbers such as "FIG. 1", "R1" or "10" stay; the names of the reference numerals used become "Part 10");
+  *strip metadata* (provenance and import data stored with an element); *seed* and *spread* (default ±25 %).
+- **Other elements**: linear and radius dimensions show a letter instead of the value (normalised) or a value with a
+  varied drawing scale (randomised); numbers in tables are divided by the column maximum or varied per column; component
+  values of electrical symbols are removed (normalised) or varied (randomised). Everything else keeps its values; the
+  text and metadata options apply to every element.
+- **Report**: changed elements of all elements, split into values, texts, metadata and reference names, one line per
+  element type, and the seed used (in English or German).
+
+The values are changed in the element model, not only in the picture: a cleaned chart does not keep its real data in the
+file. Undo restores everything while the presentation is open.
+
 ## 6. Modules
 
 Each module has its own page with its elements, views and parameters:

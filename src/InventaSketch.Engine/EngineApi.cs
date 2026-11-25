@@ -38,6 +38,7 @@ namespace InventaSketch.Engine
                 ["importData"] = ImportDataCore,
                 ["importGeo"] = ImportGeoCore,
                 ["preflight"] = PreflightCore,
+                ["sanitize"] = SanitizeCore,
                 ["diff"] = DiffCore,
                 ["importVector"] = ImportVectorCore,
                 ["patentProfiles"] = PatentProfilesCore,
@@ -483,6 +484,61 @@ namespace InventaSketch.Engine
                     suggestion = f.Suggestion?.Get(lang),
                     source = f.Source,
                 }).ToList(),
+            };
+        }
+
+        /// <summary>
+        /// Clean slides for sharing (<see cref="Sanitizer"/>): the elements <c>ids</c> (groups expanded; none = every element
+        /// of the current page) with their values made unrecognisable. <c>mode</c>: "normalised" (default, same proportions
+        /// on a neutral scale), "randomised" (plausible random values with the same look) or "none" (only the text and
+        /// metadata options); <c>value</c>: an object {renameCategories, replaceTexts, stripMeta, seed, spread}. One undo step.
+        /// Returns {state, report}: the editor state and the counts per kind, the seed used (pass it again to reproduce the
+        /// result) and the report lines in the request or session language.
+        /// </summary>
+        private object SanitizeCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var mode = string.IsNullOrWhiteSpace(r.Mode) ? SanitizeMode.Normalised
+                : SanitizeOptions.ParseMode(r.Mode) ?? throw new ArgumentException("Unknown mode '" + r.Mode + "' (normalised, randomised, none).");
+            var opt = new SanitizeOptions { Mode = mode, Lang = lang };
+            if (r.Value is { ValueKind: JsonValueKind.Object } v)
+            {
+                bool Flag(string name) => v.TryGetProperty(name, out var p) && p.ValueKind == JsonValueKind.True;
+                int? seed = v.TryGetProperty("seed", out var sd) && sd.ValueKind == JsonValueKind.Number && sd.TryGetInt32(out var n) ? n : null;
+                double spread = v.TryGetProperty("spread", out var sp) && sp.ValueKind == JsonValueKind.Number ? sp.GetDouble() : opt.Spread;
+                opt = opt with { RenameCategories = Flag("renameCategories"), ReplaceTexts = Flag("replaceTexts"), StripMeta = Flag("stripMeta"), Seed = seed, Spread = spread };
+            }
+            // A fixed seed, so the report names the one that was used.
+            opt = opt with { Seed = opt.Seed ?? new Random().Next(1, int.MaxValue) };
+            var ids = r.Ids is { Count: > 0 } ? s.Resolve(r.Ids) : s.Page.Order.Where(s.Doc.Objects.ContainsKey).ToList();
+            SanitizeReport? report = null;
+            s.Apply("Clean slide", d =>
+            {
+                var (doc, rep) = Sanitizer.Apply(Registry, d, ids, opt);
+                report = rep;
+                return rep.Any ? doc : d;
+            });
+            report ??= Sanitizer.Apply(Registry, s.Doc, Array.Empty<string>(), opt).Report;
+            return new
+            {
+                state = StateOf(s, r),
+                report = new
+                {
+                    mode = report.Mode switch { SanitizeMode.Normalised => "normalised", SanitizeMode.Randomised => "randomised", _ => "none" },
+                    seed = report.Seed,
+                    elements = report.Elements,
+                    changed = report.Changed,
+                    values = report.Values,
+                    texts = report.Texts,
+                    metadata = report.Metadata,
+                    references = report.References,
+                    unknown = report.Unknown,
+                    failed = report.Failed,
+                    byType = report.ByType.Select(t => new { type = t.TypeId, name = t.Name.Get(lang), count = t.Count }).ToList(),
+                    summary = report.Summary.Get(lang),
+                    lines = report.Lines.Select(l => l.Get(lang)).ToList(),
+                },
             };
         }
 
