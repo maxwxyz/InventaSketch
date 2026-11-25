@@ -217,6 +217,47 @@ Bilder ergeben zweisprachige `Warnings`.
   den Balkenscanner verwenden), die Ziffernerkennung liest nur Zahlen in Schriften ähnlich den gespeicherten Mustern
   (eine Texterkennung des Hosts lässt sich einstecken).
 
+## Kurvenfunktionen, Skizzenerkennung und Achsenbrüche (Bausteine)
+
+Diagramme v2, Stufe 3 (25.11.2026): reine, hostunabhängige Bibliotheken im Diagrammmodul; Diagrammtypen und Hosts
+nutzen sie noch nicht (die Einbindung folgt im Figurenmodell).
+
+- **Kurvenfunktionen** (`CurveFunctions`, `CurveSpec`): Konstante, Rampe (linear), Sprung, Rechteckimpuls, Pulsfolge,
+  Sägezahn, Dreieck, Sinus, exponentielle Annäherung (PT1), exponentieller Abfall, Sprungantwort zweiter Ordnung (PT2),
+  Gauß-Glocke und Kreis/Ellipse (geschlossen, parametrisch). Jede Art hat einen zweisprachigen Namen und
+  Parameterdefinitionen (Name, Vorgabe, gültiger Bereich, zweisprachige Bezeichnung; ohne Einheit – sie übernehmen die
+  Einheiten der Achsen; `ToParamDef()` für den Inspektor). Textform, kulturunabhängig: `pt1(y0=20, yinf=160, tau=12)`;
+  Werte auch nach Position (`sine(2, 10)`), Groß-/Kleinschreibung egal, fehlende Parameter erhalten ihre Vorgabe,
+  optionale Verschiebungen (`t0`, `phase`, `offset`) entfallen, solange sie neutral sind, `circle(cx, cy, r)` ergibt
+  eine Ellipse. Ein deutsches Dezimalkomma wird angenommen, wo es eindeutig ist (`tau=1,5` zwischen zwei Ziffern in
+  einem benannten Wert, oder alle Argumente mit `;` getrennt). Fehler werfen `CurveSpecFormatException` (eine
+  `FormatException`) mit englischer und deutscher Meldung. `Sample(xMin, xMax)` liefert exakte Ecken für stückweise
+  lineare Arten (ein Sprung sind zwei Punkte mit gleichem x), einen Stützpunkt am Beginn `t0` von PT1/PT2/Abfall,
+  mindestens 64 Abschnitte je Sinusperiode und ein dichtes Band um eine schmale Gauß-Glocke (höchstens 20 000 Punkte).
+- **Skizzenerkennung** (`SketchFit.Fit(trail, options)`): Eingabe ist die Mausspur in Datenkoordinaten und möglichst
+  der Plotrahmen in Datenkoordinaten (alle Toleranzen beziehen sich darauf und wirken so wie Bildschirmabstände). Die
+  Spur wird nach Bogenlänge neu abgetastet, vereinfacht (Ramer–Douglas–Peucker), auf eine geschlossene Schleife
+  geprüft und mit Konstante, Rampe, Sprung, Rechteckimpuls, Sägezahn, Dreieck, Sinus, PT1, Abfall oder (geschlossen)
+  einer achsparallelen Ellipse angepasst: Eine Rastersuche mit linearen kleinsten Quadraten liefert den Start,
+  Nelder–Mead verfeinert ihn auf einem robusten (Huber), symmetrischen Abstand Spur ↔ Kurve, so dass senkrechte
+  Flanken, Überschwinger und Absetzhaken nicht stören. Unter den Arten, deren Restfehler höchstens 1,25 × den besten
+  + 0,003 beträgt, gewinnt die mit den wenigsten Parametern; angenommen wird sie bis zu einem Restfehler von 2 % des
+  Rahmens. Das Ergebnis enthält Art, Spezifikation, Restfehler, Zuversicht, die vollständige Rangfolge, die
+  vereinfachte Spur und immer eine geglättete Spur (zentripetales Catmull–Rom; die gleichförmige Variante ist die
+  Formel von Slidemax `Smoothed`), die verwendet wird, wenn nichts passt. Alle Schwellen sind benannte Konstanten in
+  `SketchFit`.
+- **Achsenbrüche** (`BrokenAxis`, `BrokenPlot`, `AxisBreaks`, aus Slidemax übernommen und von Säulendiagrammen auf
+  jede x- oder y-Achse mit stetigen Werten verallgemeinert): Wert ↔ Lage mit einem oder mehreren Brüchen (Werte
+  `Lo … Hi` auf eine Lücke in mm gestaucht; Werte im Bruch liegen linear in der Lücke, die Umkehrung gilt),
+  Seitenpunkte auf Achsen beliebiger Richtung, XY-Abbildung, `VisibleRuns` schneidet Kurven genau an den Bruchgrenzen,
+  automatische Lage von Brüchen in datenfreien Lücken (`AxisBreaks.Spans`, die Slidemax-Regeln: eigene Höhe, ganz
+  stauchen, wirkungslose Brüche entfallen) sowie die Zickzack- oder Doppelschrägstrich-Markierungen (Maße aus
+  Slidemax: Linien 4,5 pt auseinander, Zacken 6,5 × 1,75 pt, Schrägstriche unter 15°) quer über den Plot oder kurz auf
+  der Achslinie. Nur lineare Achsen.
+
+Hosts: Die Bausteine erzeugen Daten (Spezifikationen, Polylinien, Markierungspunkte); ein Host zeichnet sie mit den
+vorhandenen nativen Primitiven (Freihandformen und geschlossene Polygone), ein Vektorbild ist nicht nötig.
+
 ## Tests und Galerie
 
 `tests/InventaSketch.Modules.Charts.Tests` prüft Registrierung, zweisprachige Namen, Parameter, Optionen und

@@ -193,6 +193,44 @@ integration. Nothing throws: empty, tiny, blank or inconsistent pictures give bi
   shallow angle may swap, filled area charts are reported as "filled areas" (use the bar scanner), the digit reader
   reads only numbers in fonts similar to the stored patterns (a host OCR can be plugged in).
 
+## Curve functions, sketch recognition and axis breaks (building blocks)
+
+Charts v2 stage 3 (2026-11-25): pure, host-free libraries in the charts module; chart types and hosts do not use them
+yet (integration follows in the figure model).
+
+- **Curve functions** (`CurveFunctions`, `CurveSpec`): constant, ramp (linear), step, rectangle pulse, pulse train,
+  sawtooth, triangle, sine, exponential approach (PT1), exponential decay, second-order step response (PT2), Gaussian
+  bump and circle/ellipse (closed, parametric). Each kind has a bilingual name and parameter definitions (name,
+  default, valid range, bilingual label; unit-less – they take the units of the axes; `ToParamDef()` for the
+  inspector). Text form, invariant culture: `pt1(y0=20, yinf=160, tau=12)`; positional values (`sine(2, 10)`), case
+  does not matter, missing parameters take their defaults, optional shifts/offsets (`t0`, `phase`, `offset`) are left
+  out while neutral, `circle(cx, cy, r)` gives an ellipse. A German decimal comma is accepted where unambiguous
+  (`tau=1,5` between two digits in a named value, or all arguments separated by `;`). Errors throw
+  `CurveSpecFormatException` (a `FormatException`) with an English and a German message. `Sample(xMin, xMax)` returns
+  exact corners for piecewise-linear kinds (a jump is two points with the same x), a vertex at the start `t0` of
+  PT1/PT2/decay, at least 64 segments per sine period and a dense band around a narrow Gaussian bump (at most 20 000
+  points).
+- **Sketch recognition** (`SketchFit.Fit(trail, options)`): input is the pointer trail in data coordinates and,
+  preferably, the plot frame in data coordinates (all tolerances are relative to it, so they act like screen
+  distances). The trail is resampled by arc length, simplified (Ramer–Douglas–Peucker), checked for a closed loop and
+  fitted with constant, ramp, step, rectangle pulse, sawtooth, triangle, sine, PT1, decay or (closed) an axis-parallel
+  ellipse: a grid search with linear least squares gives the start, Nelder–Mead refines it on a robust (Huber),
+  symmetric trail ↔ curve distance, so vertical edges, overshoots and pen hooks are handled. Among the kinds whose
+  residual is at most 1.25 × the best + 0.003 the one with the fewest parameters wins; it is accepted up to a residual
+  of 2 % of the frame. The result has the kind, the spec, residual, confidence, the full ranking, the simplified trail
+  and always a smoothed trail (centripetal Catmull–Rom; the uniform variant is the Slidemax `Smoothed` formula), which
+  is the curve to use when nothing fits. All thresholds are named constants in `SketchFit`.
+- **Axis breaks** (`BrokenAxis`, `BrokenPlot`, `AxisBreaks`, ported from Slidemax and generalised from bar charts to
+  any x or y axis with continuous values): value ↔ position with one or more breaks (values `Lo … Hi` compressed into
+  a gap in mm; values inside a break map linearly into the gap, the inverse holds), page points on axes in any
+  direction, XY mapping, `VisibleRuns` cuts curves exactly at the break limits, automatic placement of breaks in
+  data-free gaps (`AxisBreaks.Spans`, the Slidemax rules: own extent, shrink to fit, drop ineffective breaks) and the
+  zigzag or double-slash markers (sizes from Slidemax: lines 4.5 pt apart, teeth 6.5 × 1.75 pt, slashes at 15°) across
+  the plot or short on the axis line. Linear axes only.
+
+Host capability: the building blocks produce data (specs, polylines, marker points); a host will draw them with the
+existing native primitives (freeforms and closed polygons), no vector picture is needed.
+
 ## Tests and gallery
 
 `tests/InventaSketch.Modules.Charts.Tests` covers registration, bilingual names, parameters, options and actions,
