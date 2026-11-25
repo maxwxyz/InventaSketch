@@ -318,6 +318,54 @@ namespace InventaSketch.AddIn
         /// <summary>The library for UI reviews: "id\tcategory\ttype\tmodule\tname" per line.</summary>
         public string LibraryCatalog() => string.Join("\n", _connect.LibraryCatalog());
 
+        // ---- Element values (Calc 2) ----
+        public bool SetValueLevel(string level)
+        {
+            try { return OnSlide.ValueLevelSetting.Parse(level) is { } l && _connect.SetValueLevel(l); }
+            catch (Exception ex) { Log.Error("Automation.SetValueLevel", ex); return false; }
+        }
+
+        public string ValueLevel()
+        {
+            try { return OnSlide.ValueLevelSetting.TagOf(_connect.CurrentValueLevel()); }
+            catch (Exception ex) { Log.Error("Automation.ValueLevel", ex); return ""; }
+        }
+
+        /// <summary>"key|provenance|field[|conflict][|formula]" per row, then "status|…", "conflict|…", "label|on/off".</summary>
+        public string Values(string shapeName)
+        {
+            try { return _connect.ValuesOf(shapeName); }
+            catch (Exception ex) { Log.Error("Automation.Values " + shapeName, ex); return ""; }
+        }
+
+        public string SetValue(string shapeName, string key, string text)
+        {
+            try { return _connect.SetValueOf(shapeName, key, text); }
+            catch (Exception ex) { Log.Error("Automation.SetValue " + shapeName, ex); return "error: " + ex.Message; }
+        }
+
+        public bool ClearValue(string shapeName, string key)
+        {
+            try { return _connect.ClearValueOf(shapeName, key); }
+            catch (Exception ex) { Log.Error("Automation.ClearValue " + shapeName, ex); return false; }
+        }
+
+        public bool ShowValues(string shapeName, bool on)
+        {
+            try { return _connect.ShowValuesOf(shapeName, on); }
+            catch (Exception ex) { Log.Error("Automation.ShowValues " + shapeName, ex); return false; }
+        }
+
+        public string DragValue(string shapeName, string key, double si, bool preview)
+        {
+            try { return _connect.DragValueOf(shapeName, key, si, preview); }
+            catch (Exception ex) { Log.Error("Automation.DragValue " + shapeName, ex); return ""; }
+        }
+
+        public string ValueBadge() => _connect.ValueBadgeState();
+
+        public bool ValueCard(bool close) => _connect.ValueCardOpen(close);
+
         public string Version() => typeof(Automation).Assembly.GetName().Version.ToString();
     }
 }
