@@ -146,8 +146,17 @@ namespace InventaSketch.Modules.Annotation
             yield return Ann.Toggle(o, "ann.flow.optional", new I18nText("Optional step (dashed)", "Optionaler Schritt (gestrichelt)"), IconIds.LineDash, "optional", false, "flow");
             if (_shape == FlowShape.Loop)
             {
-                yield return Ann.SetChoice(o, "ann.flow.loop.begin", new I18nText("Loop begin", "Schleifenanfang"), IconIds.Option, "edge", "begin", "begin", "edge");
-                yield return Ann.SetChoice(o, "ann.flow.loop.end", new I18nText("Loop end", "Schleifenende"), IconIds.Option, "edge", "end", "begin", "edge");
+                // Option pictures: the loop limit with its top (begin) or bottom (end) corners cut.
+                foreach (var a in Ann.Choice(o, "ann.flow.loop.edge", new I18nText("Loop limit", "Schleifengrenze"), "edge", "begin", "edge", new (string, I18nText, string?)[]
+                {
+                    ("begin", new I18nText("Begin", "Anfang"), null),
+                    ("end", new I18nText("End", "Ende"), null),
+                }, v => new Primitive[]
+                {
+                    Prim.Polygon(v == "end"
+                        ? new[] { new Vec2(-6, -3), new Vec2(6, -3), new Vec2(6, 1.5), new Vec2(4.5, 3), new Vec2(-4.5, 3), new Vec2(-6, 1.5) }
+                        : new[] { new Vec2(-4.5, -3), new Vec2(4.5, -3), new Vec2(6, -1.5), new Vec2(6, 3), new Vec2(-6, 3), new Vec2(-6, -1.5) }, Style.Visible with { StrokeWidth = 0.4 }),
+                })) yield return a;
             }
         }
 
@@ -385,8 +394,13 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.parallel.bar", new I18nText("Filled bar", "Gefüllter Balken"), IconIds.Option, "style", "bar", "bar", "style");
-            yield return Ann.SetChoice(o, "ann.parallel.doubleline", new I18nText("Two parallel lines", "Zwei parallele Linien"), IconIds.Option, "style", "doubleline", "bar", "style");
+            foreach (var a in Ann.Choice(o, "ann.parallel.style", new I18nText("Bar", "Balken"), "style", "bar", "style", new (string, I18nText, string?)[]
+            {
+                ("bar", new I18nText("Filled bar", "Gefüllter Balken"), null),
+                ("doubleline", new I18nText("Two parallel lines", "Zwei parallele Linien"), null),
+            }, v => v == "doubleline"
+                ? new Primitive[] { new LinePrim(new Vec2(-6, -0.8), new Vec2(6, -0.8), Style.Visible with { StrokeWidth = 0.4 }), new LinePrim(new Vec2(-6, 0.8), new Vec2(6, 0.8), Style.Visible with { StrokeWidth = 0.4 }) }
+                : new Primitive[] { new RectPrim(-6, -0.8, 12, 1.6, Style.Visible with { StrokeWidth = 0.3, Fill = Fill.Solid("#000000") }) })) yield return a;
             yield return new ContextAction("ann.parallel.more", new I18nText("Add a port per side", "Anschluss je Seite dazu"), IconIds.PortAdd,
                 x => x.WithParam("ports", Math.Min(6, x.Int("ports", 3) + 1))) { Group = "ports", IsEnabled = o.Int("ports", 3) < 6 };
             yield return new ContextAction("ann.parallel.fewer", new I18nText("Remove a port per side", "Anschluss je Seite weg"), IconIds.PortRemove,

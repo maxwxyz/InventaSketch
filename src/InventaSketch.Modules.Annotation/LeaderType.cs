@@ -125,13 +125,19 @@ namespace InventaSketch.Modules.Annotation
 
         public static IEnumerable<ContextAction> LeaderActions(SketchObject o, string defaultCurve)
         {
-            yield return Ann.SetChoice(o, "ann.curve.straight", new I18nText("Straight lead line", "Gerade Bezugslinie"), IconIds.CourseStraight, "curve", "straight", defaultCurve, "curve");
-            yield return Ann.SetChoice(o, "ann.curve.curved", new I18nText("Curved lead line", "Gebogene Bezugslinie"), IconIds.CourseCurved, "curve", "curved", defaultCurve, "curve");
-            yield return Ann.SetChoice(o, "ann.curve.wavy", new I18nText("Wavy lead line", "Wellige Bezugslinie"), IconIds.CourseWavy, "curve", "wavy", defaultCurve, "curve");
+            foreach (var a in Ann.Choice(o, "ann.curve", new I18nText("Lead line", "Bezugslinie"), "curve", defaultCurve, "curve", new (string, I18nText, string?)[]
+            {
+                ("straight", new I18nText("Straight", "Gerade"), IconIds.CourseStraight),
+                ("curved", new I18nText("Curved", "Gebogen"), IconIds.CourseCurved),
+                ("wavy", new I18nText("Wavy", "Wellig"), IconIds.CourseWavy),
+            })) yield return a;
             yield return Ann.Toggle(o, "ann.curve.bend", new I18nText("Bend the other way", "Andersherum biegen"), IconIds.SideSwap, "bend", false, "curve");
-            yield return Ann.SetChoice(o, "ann.end.none", new I18nText("Plain end", "Ende ohne Markierung"), IconIds.HeadNone, "end", "none", "none", "end");
-            yield return Ann.SetChoice(o, "ann.end.arrow", new I18nText("Arrow at object", "Pfeil am Objekt"), IconIds.HeadTriangle, "end", "arrow", "none", "end");
-            yield return Ann.SetChoice(o, "ann.end.dot", new I18nText("Dot at object", "Punkt am Objekt"), IconIds.HeadDot, "end", "dot", "none", "end");
+            foreach (var a in Ann.Choice(o, "ann.end", new I18nText("End at object", "Ende am Objekt"), "end", "none", "end", new (string, I18nText, string?)[]
+            {
+                ("none", new I18nText("Plain", "Ohne Markierung"), IconIds.HeadNone),
+                ("arrow", new I18nText("Arrow", "Pfeil"), IconIds.HeadTriangle),
+                ("dot", new I18nText("Dot", "Punkt"), IconIds.HeadDot),
+            })) yield return a;
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => LeaderActions(o, "straight");

@@ -59,8 +59,11 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.viewarrow.touching", new I18nText("Letter beside the shaft", "Buchstabe neben dem Schaft"), IconIds.Option, "mode", "touching", "touching", "mode");
-            yield return Ann.SetChoice(o, "ann.viewarrow.freestanding", new I18nText("Letter beyond the tail", "Buchstabe hinter dem Pfeilende"), IconIds.Option, "mode", "freestanding", "touching", "mode");
+            foreach (var a in Ann.Choice(o, "ann.viewarrow.mode", new I18nText("Letter", "Buchstabe"), "mode", "touching", "mode", new (string, I18nText, string?)[]
+            {
+                ("touching", new I18nText("Beside the shaft", "Neben dem Schaft"), null),
+                ("freestanding", new I18nText("Beyond the tail", "Hinter dem Pfeilende"), null),
+            })) yield return a;
             yield return Ann.SwapAction();
         }
     }
@@ -165,8 +168,11 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.detailview.circle", new I18nText("Circular frame", "Kreisrahmen"), IconIds.ShapeCircle, "frame", "circle", "circle", "frame");
-            yield return Ann.SetChoice(o, "ann.detailview.rect", new I18nText("Rectangular frame", "Rechteckrahmen"), IconIds.ShapeSquare, "frame", "rect", "circle", "frame");
+            foreach (var a in Ann.Choice(o, "ann.detailview.frame", new I18nText("Frame", "Rahmen"), "frame", "circle", "frame", new (string, I18nText, string?)[]
+            {
+                ("circle", new I18nText("Circle", "Kreis"), IconIds.ShapeCircle),
+                ("rect", new I18nText("Rectangle", "Rechteck"), IconIds.ShapeSquare),
+            })) yield return a;
             yield return Ann.Toggle(o, "ann.detailview.scalebar", new I18nText("Graphic scale bar", "Grafischer Maßstab"), IconIds.Toggle, "scaleBar", false);
         }
     }

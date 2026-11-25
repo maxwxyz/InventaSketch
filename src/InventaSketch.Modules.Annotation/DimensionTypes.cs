@@ -76,12 +76,14 @@ namespace InventaSketch.Modules.Annotation
             }
         }
 
+        /// <summary>The terminator choice of a dimension (arrows, ticks or dots; one dropdown).</summary>
         public static IEnumerable<ContextAction> TerminatorActions(SketchObject o)
-        {
-            yield return Ann.SetChoice(o, "ann.dim.arrow", new I18nText("Arrow terminators", "Pfeile als Begrenzung"), IconIds.HeadTriangle, "terminator", "arrow", "arrow", "terminator");
-            yield return Ann.SetChoice(o, "ann.dim.tick", new I18nText("Tick terminators", "Striche als Begrenzung"), IconIds.HeadTick, "terminator", "tick", "arrow", "terminator");
-            yield return Ann.SetChoice(o, "ann.dim.dot", new I18nText("Dot terminators", "Punkte als Begrenzung"), IconIds.HeadDot, "terminator", "dot", "arrow", "terminator");
-        }
+            => Ann.Choice(o, "ann.dim.terminator", new I18nText("Terminators", "Begrenzung"), "terminator", "arrow", "terminator", new (string, I18nText, string?)[]
+            {
+                ("arrow", new I18nText("Arrows", "Pfeile"), IconIds.HeadTriangle),
+                ("tick", new I18nText("Ticks", "Striche"), IconIds.HeadTick),
+                ("dot", new I18nText("Dots", "Punkte"), IconIds.HeadDot),
+            });
     }
 
     /// <summary>
@@ -244,9 +246,23 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.dim.radius", new I18nText("Radius", "Radius"), IconIds.Option, "kind", "radius", "radius", "kind");
-            yield return Ann.SetChoice(o, "ann.dim.diameter", new I18nText("Diameter", "Durchmesser"), IconIds.Option, "kind", "diameter", "radius", "kind");
+            foreach (var a in Ann.Choice(o, "ann.dim.kind", new I18nText("Dimension", "Maßart"), "kind", "radius", "kind", new (string, I18nText, string?)[]
+            {
+                ("radius", new I18nText("Radius", "Radius"), null),
+                ("diameter", new I18nText("Diameter", "Durchmesser"), null),
+            }, KindPreview)) yield return a;
             foreach (var a in Dim.TerminatorActions(o)) yield return a;
+        }
+
+        /// <summary>Option picture of the dimension kind: a circle with its radius or its diameter.</summary>
+        private static IReadOnlyList<Primitive> KindPreview(string kind)
+        {
+            var s = Style.Visible with { StrokeWidth = 0.4 };
+            var arrow = s with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small };
+            var circle = Prim.Circle(0, 0, 5, Style.ThinLine with { StrokeWidth = 0.3 });
+            return kind == "diameter"
+                ? new Primitive[] { circle, new LinePrim(new Vec2(-3.5, 3.5), new Vec2(3.5, -3.5), arrow with { ArrowStart = ArrowHead.Triangle }) }
+                : new Primitive[] { circle, Prim.Circle(0, 0, 0.4, s with { Fill = Fill.Solid("#000000") }), new LinePrim(Vec2.Zero, new Vec2(3.5, -3.5), arrow) };
         }
     }
 }

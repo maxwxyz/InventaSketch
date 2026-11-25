@@ -196,8 +196,10 @@ current one marked – never a cycle button.** It holds for the element and for 
   the colour). Commands that form a menu ("Fill to ▸", "Add area ▸") are an `ActionChoice` with `IsMenu` (nothing
   current). No `IconIds.Cycle` action and no "Next …" action that steps through options is left in any module; the
   engine test `tests/InventaSketch.Engine.Tests/ChoiceRuleTests.cs` checks this for every element, that every choice
-  has at least two options with exactly one current, and that a choice over a parameter the hosts already show as a
-  dropdown names it in `ParamKeys` (one place per choice).
+  has at least two options with exactly one current, that a choice over a parameter the hosts already show as a
+  dropdown names it in `ParamKeys` (one place per choice), and that no two enabled actions of an element or part set
+  the same parameter to different fixed values outside a choice (the radio pattern: separate buttons for what is one
+  dropdown).
 - Bar: one dropdown button per choice, showing the current option's pictogram or picture (else a short text) and a
   caret; a click opens the list of every option with pictogram or picture and label, the current one marked
   (`FloatingBar.SetDropdown`, the same look as the element's choices). Part choices use the key "@p.&lt;choice&gt;",
@@ -361,6 +363,12 @@ Before → after, right after selecting with the pointer away from the element:
 - Two-value switches that were really choices became choices too: fluid medium, valve rest position, piston rod and line
   routing, diagram and process line routing. "Next view" (vehicles) was dropped: the hosts' view control switches views.
 - Numeric steps keep their "+"/"−" buttons but no longer say "Next" ("Position +15°", "Number +1").
+- Radio-style option sets (one separate action per value) became choices too: annotation fill, dimension terminators
+  and kind, loop limit, parallel bar, hatch pattern, lead line and its end, connector routing, break line, view-arrow
+  letter, detail frame, table borders, text alignment; diagram bus and radio-link line, UML relation, multiplier
+  symbol, transfer-block content, data layout, message kind, fragment operator, screen device, input field and
+  gesture (helpers `Ann.Choice`, `D.Choice`; option ids `<choice>=<value>`, persisted values unchanged). Options
+  without a module pictogram carry a preview (route, hatch, borders, device, field, gesture …).
 
 ## 9. Follow-ups (phased, with acceptance criteria)
 

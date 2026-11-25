@@ -84,9 +84,12 @@ namespace InventaSketch.Modules.Annotation
             yield return Ann.Toggle(o, "ann.text.bold", new I18nText("Bold", "Fett"), IconIds.Toggle, "bold", false, "font");
             yield return Ann.Toggle(o, "ann.text.italic", new I18nText("Italic", "Kursiv"), IconIds.Toggle, "italic", false, "font");
             var ad = _frame == TextFrame.None ? "left" : "center";
-            yield return Ann.SetChoice(o, "ann.align.left", new I18nText("Align left", "Linksbündig"), IconIds.TextAlignLeft, "align", "left", ad, "align");
-            yield return Ann.SetChoice(o, "ann.align.center", new I18nText("Centre", "Zentriert"), IconIds.TextAlignCenter, "align", "center", ad, "align");
-            yield return Ann.SetChoice(o, "ann.align.right", new I18nText("Align right", "Rechtsbündig"), IconIds.TextAlignRight, "align", "right", ad, "align");
+            foreach (var a in Ann.Choice(o, "ann.align", new I18nText("Alignment", "Ausrichtung"), "align", ad, "align", new (string, I18nText, string?)[]
+            {
+                ("left", new I18nText("Left", "Linksbündig"), IconIds.TextAlignLeft),
+                ("center", new I18nText("Centre", "Zentriert"), IconIds.TextAlignCenter),
+                ("right", new I18nText("Right", "Rechtsbündig"), IconIds.TextAlignRight),
+            })) yield return a;
         }
     }
 

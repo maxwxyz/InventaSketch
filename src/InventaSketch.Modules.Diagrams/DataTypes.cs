@@ -343,11 +343,27 @@ namespace InventaSketch.Modules.Diagrams
             foreach (var p in D.RectPorts(o.Size)) yield return p;
         }
 
+        /// <summary>Option picture of a field layout: cells in one row, in wrapped rows or stacked.</summary>
+        private static IReadOnlyList<Primitive> LayoutPreview(string layout)
+        {
+            var s = Style.Visible with { StrokeWidth = 0.35 };
+            var cells = layout switch
+            {
+                "wrapped" => new[] { (-6.0, -3.0, 4.0), (-2.0, -3.0, 8.0), (-6.0, 0.0, 6.0), (0.0, 0.0, 6.0) },
+                "stack" => new[] { (-3.0, -4.5, 6.0), (-3.0, -1.5, 6.0), (-3.0, 1.5, 6.0) },
+                _ => new[] { (-6.0, -1.5, 3.0), (-3.0, -1.5, 5.0), (2.0, -1.5, 4.0) },
+            };
+            return cells.Select(c => (Primitive)new RectPrim(c.Item1, c.Item2, c.Item3, 3, s)).ToList();
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.data.row", new I18nText("One row", "Eine Zeile"), IconIds.Option, "layout", "row", "row", "layout");
-            yield return D.SetChoice(o, "diag.data.wrapped", new I18nText("Rows of a fixed bit width", "Zeilen fester Bitbreite"), IconIds.Option, "layout", "wrapped", "row", "layout");
-            yield return D.SetChoice(o, "diag.data.stack", new I18nText("Stack (memory map)", "Stapel (Speicherbelegung)"), IconIds.Option, "layout", "stack", "row", "layout");
+            foreach (var a in D.Choice(o, "diag.data.layout", new I18nText("Layout", "Anordnung"), "layout", "row", "layout", new (string, I18nText, string?)[]
+            {
+                ("row", new I18nText("One row", "Eine Zeile"), null),
+                ("wrapped", new I18nText("Rows of a fixed bit width", "Zeilen fester Bitbreite"), null),
+                ("stack", new I18nText("Stack (memory map)", "Stapel (Speicherbelegung)"), null),
+            }, LayoutPreview)) yield return a;
             yield return new ContextAction("diag.data.equal", new I18nText("Equal widths", "Gleiche Breiten"), IconIds.Toggle,
                 x => x.WithParam("widths", x.Str("widths", "proportional") == "equal" ? "proportional" : "equal")) { IsActive = o.Str("widths", "proportional") == "equal", Group = "widths" };
             yield return D.Toggle(o, "diag.data.ruler", new I18nText("Bit ruler / addresses", "Bitlineal / Adressen"), "ruler", false);

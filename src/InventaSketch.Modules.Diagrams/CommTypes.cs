@@ -76,8 +76,15 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.bus.thick", new I18nText("Thick line", "Dicke Linie"), IconIds.Option, "style", "thick", "thick", "style");
-            yield return D.SetChoice(o, "diag.bus.double", new I18nText("Hollow double line", "Hohle Doppellinie"), IconIds.Option, "style", "double", "thick", "style");
+            // Option pictures: one thick line, or two thin lines (the hollow bus).
+            var s = Style.Visible with { StrokeWidth = 0.4 };
+            foreach (var a in D.Choice(o, "diag.bus.style", new I18nText("Bus line", "Buslinie"), "style", "thick", "style", new (string, I18nText, string?)[]
+            {
+                ("thick", new I18nText("Thick line", "Dicke Linie"), null),
+                ("double", new I18nText("Hollow double line", "Hohle Doppellinie"), null),
+            }, v => v == "double"
+                ? new Primitive[] { new LinePrim(new Vec2(-6, -1), new Vec2(6, -1), s), new LinePrim(new Vec2(-6, 1), new Vec2(6, 1), s) }
+                : new Primitive[] { new LinePrim(new Vec2(-6, 0), new Vec2(6, 0), s with { StrokeWidth = 1.6 }) })) yield return a;
         }
     }
 
@@ -150,8 +157,11 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.wireless.zigzag", new I18nText("Lightning zigzag", "Blitz-Zickzack"), IconIds.CourseZigzag, "style", "zigzag", "zigzag", "style");
-            yield return D.SetChoice(o, "diag.wireless.arcs", new I18nText("Dashed with radio arcs", "Gestrichelt mit Funkbögen"), IconIds.LineDash, "style", "arcs", "zigzag", "style");
+            foreach (var a in D.Choice(o, "diag.wireless.style", new I18nText("Radio link", "Funkstrecke"), "style", "zigzag", "style", new (string, I18nText, string?)[]
+            {
+                ("zigzag", new I18nText("Lightning zigzag", "Blitz-Zickzack"), IconIds.CourseZigzag),
+                ("arcs", new I18nText("Dashed with radio arcs", "Gestrichelt mit Funkbögen"), IconIds.LineDash),
+            })) yield return a;
             foreach (var a in ActionChoices.FromParam(o, "diag.wireless.arrows", Parameters.First(p => p.Key == "arrows"), null, "arrows", null)) yield return a;
             yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, D.Reverse) { Group = "direction" };
         }

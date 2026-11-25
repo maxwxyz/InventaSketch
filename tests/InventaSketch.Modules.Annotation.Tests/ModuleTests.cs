@@ -175,12 +175,12 @@ namespace InventaSketch.Modules.Annotation.Tests
             var (doc, leader) = T.Insert(r, "ann.leader", new Vec2(50, 50));
             var type = r.TypeOf(leader);
             var actions = type.Actions(leader, Lang.De).ToList();
-            Assert.Contains(actions, a => a.Id == "ann.curve.straight" && a.IsActive);
-            var wavy = actions.Single(a => a.Id == "ann.curve.wavy").Apply(leader);
+            Assert.Contains(actions, a => a.Id == "ann.curve=straight" && a.IsActive);
+            var wavy = actions.Single(a => a.Id == "ann.curve=wavy").Apply(leader);
             doc = Edits.Replace(doc, wavy);
             var path = Assert.IsType<PathPrim>(T.Render(r, doc, leader.Id).Single(p => p.Tag == AnnTags.Lead));
             Assert.Equal(SegOp.C, path.Segments[1].Op);
-            var dot = actions.Single(a => a.Id == "ann.end.dot").Apply(wavy);
+            var dot = actions.Single(a => a.Id == "ann.end=dot").Apply(wavy);
             doc = Edits.Replace(doc, dot);
             Assert.Equal(ArrowHead.Oval, ((PathPrim)T.Render(r, doc, leader.Id).Single(p => p.Tag == AnnTags.Lead)).Style.ArrowStart);
         }

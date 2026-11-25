@@ -86,8 +86,8 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            foreach (var (value, en, de) in KindOptions)
-                yield return D.SetChoice(o, "diag.rel." + value, new I18nText(en, de), RelationIcon(value), "kind", value, "association", "kind");
+            foreach (var a in D.Choice(o, "diag.rel.kind", new I18nText("Relation", "Beziehung"), "kind", "association", "kind",
+                KindOptions.Select(k => (k.Item1, new I18nText(k.Item2, k.Item3), (string?)RelationIcon(k.Item1))).ToList())) yield return a;
             yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, Swap) { Group = "direction" };
             foreach (var a in RouteActions(o)) yield return a;
         }
