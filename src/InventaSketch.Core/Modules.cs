@@ -803,6 +803,19 @@ namespace InventaSketch.Core
         /// <summary>Type-specific actions of a part (see <see cref="PartActions"/>).</summary>
         protected virtual IEnumerable<ContextAction> OwnPartActions(SketchObject o, string part, RenderContext ctx) => Array.Empty<ContextAction>();
 
+        /// <summary>
+        /// Interactive handles of the object (<see cref="DragHandle"/>, positions in page mm): values the user can drag directly
+        /// on the drawing, such as the limit and value lines of a chart. None by default.
+        /// </summary>
+        public virtual IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx) => Array.Empty<DragHandle>();
+
+        /// <summary>
+        /// The object with handle <paramref name="key"/> dragged to the page point <paramref name="pagePos"/> (the type applies the
+        /// handle's constraint and snaps the value sensibly, e.g. to the axis resolution). Unknown keys return
+        /// <paramref name="o"/> unchanged.
+        /// </summary>
+        public virtual SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx) => o;
+
         /// <summary>Applies the user's style override to rendered primitives.</summary>
         public virtual Primitive ApplyOverride(Primitive p, Style over) => Prim.Restyle(p, s => s with
         {
@@ -1158,6 +1171,33 @@ namespace InventaSketch.Core
         {
             ctx.For(this);
             return TypeOf(o).PartActions(o, part, ctx).ToList();
+        }
+
+        /// <summary>The drag handles of <paramref name="o"/> in page mm (<see cref="ObjectType.DragHandles"/>); empty for unknown types.</summary>
+        public IReadOnlyList<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            ctx.For(this);
+            var type = Type(o.Type);
+            if (type is null) return Array.Empty<DragHandle>();
+            try
+            {
+                return type.DragHandles(o, ctx).ToList();
+            }
+            catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidOperationException)
+            {
+                return Array.Empty<DragHandle>();
+            }
+        }
+
+        /// <summary>
+        /// <paramref name="o"/> with handle <paramref name="key"/> dragged to <paramref name="pagePos"/> (page mm,
+        /// <see cref="ObjectType.MoveHandle"/>); unchanged for unknown types or keys.
+        /// </summary>
+        public SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            ctx.For(this);
+            var type = Type(o.Type);
+            return type is null ? o : type.MoveHandle(o, key, pagePos, ctx);
         }
 
         public IEnumerable<RenderedObject> RenderPage(SketchDocument doc, Page page, RenderContext ctx, Func<SketchObject, bool>? filter = null)

@@ -625,6 +625,8 @@ namespace InventaSketch.Modules.Charts
                 se.Y = se.Y.Select(v => Fmt.Finite(v) ? fy(v) : v).ToList();
                 se.LabelAt = MXn(se.LabelAt);
                 Num(se.Numeral, se.Panel, false);
+                // The kept trail of a sketched curve carries the original values: dropped (the curve stays as drawn).
+                se.Sketch = null;
             }
             foreach (var r in s.Refs)
             {
