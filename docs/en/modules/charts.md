@@ -137,7 +137,7 @@ Invalid inputs throw `FormatException` with a bilingual message and change nothi
 inputs `IconIds.Text`. The chart types have no view switch.
 
 **Choices are dropdowns (2026-11-25).** Every choice among several options (style, scale, legend position, orientation,
-machine, function, edges, curve shape, fitted function, smoothing, line style, marker, fill pattern, colour, opacity,
+machine, function, edges, curve shape, fitted function, smoothing, detail, line style, marker, fill pattern, colour, opacity,
 edge, where, steps) is one action per option (`ActionChoices.Option`, id `<choice>=<value>`, e.g. `chart.style=step`,
 `chart.curve.shape=fitted`), all carrying the same `ActionChoice` (key and label), the current option marked active.
 Hosts show them as one dropdown ("Curve shape: Smoothed ▾") and in the pie as "Curve shape: Smoothed ▸" opening the
@@ -179,18 +179,59 @@ moves it, values adjusted in the background; single points moved by click and dr
   glow (`Registry.PartPrimitives`).
 - Drag handles (`DragHandles`): one free handle per point, shown with its curve (`DragHandle.ShowWith = "series.k"`);
   the value snaps to a tenth of the axis step (log axes: two significant digits) and stays inside the axis range; on a
-  curve whose x never falls the point stays between its neighbours. Curves with more than 40 points (sketched ones) get
-  no point handles – their points stay selectable on the drawing and editable with "Value …". One handle per curve
+  curve whose x never falls the point stays between its neighbours. Curves with more than 64 points (dense data) get
+  no point handles – their points stay selectable on the drawing and editable with "Value …"; sketched curves store only
+  their key points (at most 64), so they always get grips. One handle per curve
   (`series.k`, `DragHandle.ByPart`) is dragged by pressing on the selected curve: every point moves by the snapped offset
   (log axes: a factor); of a clearly vertical (horizontal) drag only that direction counts.
 - Actions: point – delete, add a point after it (halfway to the next one), "Value …" (`x; y`); curve – delete curve.
   Deleting a curve drops its areas and point markers and moves the indices and part looks of later curves down.
   Editing a point of a sketched curve makes it plain data (its shape memo goes); the other curves keep theirs. The XY
-  chart's data are then written as one block per curve ("Name;" header, `x;y` rows).
+  chart's data are then written as one block per curve ("Name;" header, `x;y` rows); a curve that was drawn as a spline
+  keeps that look through a `# spline` line before its block.
 - PowerPoint: the point grips are small blue-rimmed dots (the selected point filled blue with a soft glow); they appear
   for the selected curve or point, the others near the pointer. A click on a grip selects the point; dragging moves it
   (live preview, one undo step, Esc cancels). With a curve selected, pressing anywhere on it and dragging moves the
   curve. Del deletes the selected point (the curve stays selected), curve or area.
+
+## Sketched curves: key points, detail and drawing speed (2026-11-25)
+
+Maintainer: "When drawing a curve it sometimes samples too many points – maybe it can be set, or depend on how fast or
+which curve you draw?" A sketched curve (`ChartSketchInput`, `CurveShapes`, `CurveKeyPoints`) stores only the points
+that carry its shape – every stored point is a data row, a point part and a grip – instead of 96–120 dense samples:
+
+- The pointer trail is cleaned once and kept with the curve (`CurveSketchMemo`: XY chart comment `# sketch …` before the
+  block, figure series member `sketch`), so every choice below is recomputed from it without loss.
+- Key points per curve shape, all tolerances relative to the plot (1 = plot size), at the default detail:
+  - **Smoothed**: the smoothed trail; key points so that the chart spline through them stays within 0.6 % of it.
+  - **Interpolated (spline)**: the lightly averaged trail; key points so that the spline stays within 1.5 %.
+  - **Fitted function**: piecewise-linear functions (constant, ramp, step, pulse, sawtooth, triangle) store their exact
+    corners; smooth ones (sine, ellipse) key points for the spline within 0.5 %; PT1, PT2 and decay whose start corner
+    lies inside the drawn range are stored as straight segments within 0.5 % (a spline would round the corner).
+  - **Straight segments**: Ramer–Douglas–Peucker within 1.5 % of the lightly averaged trail.
+  - **As drawn**: the trail thinned with Ramer–Douglas–Peucker within 0.2 % (the tremor stays visible).
+- Spline key points (`CurveKeyPoints.Spline`): seeds at the ends, at turning points of x and y (zigzag with a hysteresis
+  of 4 tolerances), at corners (≥ 50° within ±2 % of arc length) and at the steepest point between a peak and a valley
+  (inflection); between them as few points as possible, spread evenly over the curve's bending (√|curvature| plus a
+  small base), their number raised until the spline through all key points stays within the tolerance band in both
+  directions (overshoots count); points that can go without leaving the band are dropped. A straight line keeps 2
+  points, a single arc about 5–7, a two-period sine about 15–20, a scribble at most the detail's limit.
+- Drawing: smoothed, interpolated and smooth fitted curves are drawn with the chart spline (uniform Catmull–Rom,
+  `Draw.Spline`; affine-invariant, so the check in plot units holds on the drawing). XY chart: per block, marked by its
+  memo (`CurveShapes.IsSpline`) or a `# spline` line (kept when the points are edited by hand or the slide is cleaned;
+  `ChartSketchInput.XySplines`), also in the matplotlib/pgfplots export; figure: the series' `smooth` flag.
+- **Detail** (part choice next to "Curve shape" and "Smoothing", a dropdown with a preview of the kept points): Low
+  (tolerances × 2, at most 24 points), Medium (default, adaptive; at most 40), High (tolerances × ½, at most 64). A lower
+  detail never keeps more points than a higher one. Not offered for exact piecewise-linear fits. Stored as `detail=low`
+  / `"detail": "high"` (medium is left out).
+- **Drawing speed** as a hint: the host passes a time stamp per trail point (COM: ms since the press; engine
+  `sketchCurve` accepts `[x, y, t]`). Rule: the speed at a point is measured over at least 120 ms around it in plot
+  sizes per second; its tolerance factor is √(speed / 1 plot per second), clamped to 0.6 … 1.5. Slow, careful drawing
+  (≤ 0.36 plots/s) tightens the tolerances to 0.6 ×, a fast flick (≥ 2.25 plots/s) relaxes them to 1.5 ×; a stroke of
+  one plot width per second is neutral. The factors are stored per kept trail point in steps of 0.1 (`pace=4456…`, one
+  digit per point, 0 = 0.6 … 9 = 1.5; left out without time stamps), so the result is deterministic.
+- Old sketched data (dense rows, memo without detail or pace) load unchanged and are drawn as splines when their shape is
+  smooth; any choice recomputes them as key points.
 
 ## Areas (2026-11-25)
 

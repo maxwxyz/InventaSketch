@@ -100,17 +100,24 @@ namespace InventaSketch.Modules.Charts.Tests
             }
             Assert.Equal(CurveShapes.Order.Count, seen.Count); // every option was picked, the last one the fitted shape
             Assert.Equal(CurveShape.Fitted, ChartSketchInput.Memo(o, 1)!.Shape);
-            Assert.Equal(raw.Count, seen[CurveShape.Raw].Count);
+            // Only key points are stored (medium detail: at most 40); "as drawn" is the lightly thinned trail.
+            Assert.True(seen.Values.All(s => s.Count >= 2 && s.Count <= CurveShapes.MaxOf(CurveDetail.Medium)));
+            Assert.InRange(seen[CurveShape.Raw].Count, 10, raw.Count - 1);
             Assert.InRange(seen[CurveShape.Segments].Count, 3, 30);
-            Assert.True(seen[CurveShape.Interpolated].Count > seen[CurveShape.Segments].Count);
-            Assert.True(seen[CurveShape.Smoothed].Count > seen[CurveShape.Segments].Count);
-            Assert.True(seen.Values.All(s => s.Count <= CurveShapes.MaxPoints));
-            // Interpolation passes through the key points (= the segment corners).
-            foreach (var k in seen[CurveShape.Segments])
-                Assert.True(seen[CurveShape.Interpolated].Min(p => p.DistanceTo(k)) < 1e-3, "key point " + k);
-            // Every shape stays close to the drawn sine.
-            foreach (var kv in seen)
-                foreach (var p in kv.Value) Assert.InRange(p.Y - Sine(p.X), -0.45, 0.45);
+            Assert.True(seen[CurveShape.Raw].Count > seen[CurveShape.Segments].Count);
+            // Every shape, as drawn (spline through the key points for the smooth shapes), stays close to the drawn sine.
+            var memo0 = ChartSketchInput.Memo(o, 1)!;
+            foreach (var shape in CurveShapes.Order)
+            {
+                var m = memo0 with { Shape = shape };
+                Assert.Equal(shape is CurveShape.Smoothed or CurveShape.Interpolated or CurveShape.Fitted, CurveShapes.IsSpline(m));
+                var drawn = CurveShapes.Drawn(m);
+                Assert.True(drawn.Count >= CurveShapes.Points(m).Count, shape.ToString());
+                foreach (var p in drawn) Assert.InRange(p.Y - Sine(p.X), -0.45, 0.45);
+                // The chart draws the smooth shapes as splines (the memo marks the block), the others straight.
+                var x = ChartSketchInput.WithShape(o, 1, mm => mm with { Shape = shape });
+                Assert.Equal(new[] { false, CurveShapes.IsSpline(m) }, ChartSketchInput.XySplines(x.Str("data", "")));
+            }
         }
 
         [Fact]
@@ -127,8 +134,9 @@ namespace InventaSketch.Modules.Charts.Tests
             memo = ChartSketchInput.Memo(o, 1)!;
             Assert.Equal(CurveShape.Smoothed, memo.Shape);
             Assert.Equal(CurveShapes.DefaultStrength, memo.Strength);
-            var smooth = LastSeries(o);
-            var asDrawn = LastSeries(ChartSketchInput.WithShape(o, 1, m => m with { Shape = CurveShape.Raw }));
+            // The curves as the chart draws them (the smoothed one is a spline through its key points).
+            var smooth = CurveShapes.Drawn(memo);
+            var asDrawn = memo.Raw; // the kept trail, tremor included
             var ideal = Enumerable.Range(0, 120).Select(i => 0.3 + 5.4 * i / 119.0).Select(x => new Vec2(x, Wavy(x))).ToList();
             // The tremor is in the trail as drawn; the default (medium) smoothing is as calm as the intended curve.
             var why = $"ideal {Turning(ideal):F2}, smoothed {Turning(smooth):F2}, drawn {Turning(asDrawn):F2}";
@@ -140,10 +148,10 @@ namespace InventaSketch.Modules.Charts.Tests
             // Smoothing: medium → strong → light → medium.
             var strong = Apply(r, o, "series.1", CurveShapes.SmoothingAction + "=3");
             Assert.Equal(3, ChartSketchInput.Memo(strong, 1)!.Strength);
-            Assert.True(Turning(LastSeries(strong)) <= Turning(smooth) + 1e-9);
+            Assert.True(Turning(CurveShapes.Drawn(ChartSketchInput.Memo(strong, 1)!)) <= Turning(smooth) + 1e-9);
             var light = Apply(r, strong, "series.1", CurveShapes.SmoothingAction + "=1");
             Assert.Equal(1, ChartSketchInput.Memo(light, 1)!.Strength);
-            Assert.True(Turning(LastSeries(light)) >= Turning(LastSeries(strong)));
+            Assert.True(Turning(CurveShapes.Drawn(ChartSketchInput.Memo(light, 1)!)) >= Turning(CurveShapes.Drawn(ChartSketchInput.Memo(strong, 1)!)));
             Assert.Equal(2, ChartSketchInput.Memo(Apply(r, light, "series.1", CurveShapes.SmoothingAction + "=2"), 1)!.Strength);
         }
 

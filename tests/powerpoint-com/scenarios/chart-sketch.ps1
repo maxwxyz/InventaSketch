@@ -56,4 +56,20 @@ $unit = @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'chart\.xy
 $m2 = Get-IskModel $unit
 Assert-Isk $S ($m2 -ne $m1 -and $m2 -match 'sketch shape=') 'switching the shape changes the curve and keeps the sketch memo'
 Save-IskShot $S '2-shape-switched'
+# Key points only (2026-11-25): the sketched block keeps few rows (medium detail: at most 40), so every point gets a grip.
+$data = ($m2 -replace '\\n', "`n")
+$tail = $data.Substring($data.LastIndexOf('# sketch'))
+$rows = ([regex]::Matches($tail, "`n-?[0-9][0-9.eE+-]*;-?[0-9][0-9.eE+-]*")).Count
+Write-IskInfo ("rows of the sketched curve: " + $rows)
+Assert-Isk $S ($rows -ge 2 -and $rows -le 40) "the sketched curve stores only its key points ($rows rows)"
+# "Detail" is a dropdown next to "Curve shape"; picking "High" keeps the memo (lossless switch).
+$unit.Select(); Start-Sleep 2
+$addin.Command('partsel:series.1') | Out-Null; Start-Sleep 2
+$bar = $addin.BarIds()
+Assert-Isk $S (($bar -split ',') -contains 'choice:@p.chart.curve.detail') 'the sketched curve offers the "Detail" dropdown'
+$addin.Command('pick:@p.chart.curve.detail:chart.curve.detail=high') | Out-Null; Start-Sleep 3
+$unit = @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'chart\.xy' } | Select-Object -First 1
+$m3 = Get-IskModel $unit
+Assert-Isk $S ($m3 -match 'detail=high' -and $m3 -match 'sketch shape=segments') 'picking a detail keeps the sketch memo'
+Save-IskShot $S '3-detail-high'
 Send-IskEscape; Start-Sleep 1

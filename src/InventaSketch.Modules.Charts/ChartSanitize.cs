@@ -145,6 +145,8 @@ namespace InventaSketch.Modules.Charts
         {
             public string? Name;
             public List<string>? Columns;
+            /// <summary>Drawn with the spline (a smooth sketched curve: its memo is dropped, its look kept with <c># spline</c>).</summary>
+            public bool Spline;
             public readonly List<Row> Rows = new();
             public bool HasLabels => Rows.Any(r => r.Label is not null);
             public int Cols => Rows.Count == 0 ? 0 : Rows.Max(r => r.V.Length);
@@ -190,6 +192,7 @@ namespace InventaSketch.Modules.Charts
             {
                 if (b.Rows.Count == 0) continue;
                 if (lines.Count > 0) lines.Add(null);
+                if (b.Spline) lines.Add(new List<string> { ChartSketchInput.SplineComment });
                 if (b.Columns is { Count: > 0 }) lines.Add(b.Columns.Select(Quote).ToList());
                 else if (!string.IsNullOrEmpty(b.Name)) lines.Add(new List<string> { Quote(b.Name!), "" });
                 foreach (var r in b.Rows)
@@ -299,8 +302,11 @@ namespace InventaSketch.Modules.Charts
 
         private static SketchObject Xy(SketchObject o, Ctx c, string defaultData)
         {
-            var blocks = Read(o.Str("data", defaultData));
+            var text = o.Str("data", defaultData);
+            var blocks = Read(text);
             if (blocks.Count == 0) return o;
+            var splines = ChartSketchInput.XySplineBlocks(text);
+            for (var i = 0; i < blocks.Count && i < splines.Length; i++) blocks[i].Spline = splines[i];
             if (c.Opt.ReplaceTexts) RenameSeries(blocks, c);
             if (c.Opt.RenameCategories) RenameCategories(blocks, false);
             bool xlog = Log(o, "xscale"), ylog = Log(o, "yscale");

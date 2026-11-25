@@ -14,19 +14,32 @@ namespace InventaSketch.Modules.Charts
     /// log axes in log space), recognised as a step, pulse, ramp, sine, PT1 … (<see cref="SketchFit"/>) or else smoothed,
     /// and added as a series (XY chart: a new data block; figure: a new series in the specification). The cleaned trail is
     /// kept with the series (<see cref="CurveSketchMemo"/>), so the curve shape can be switched later on the curve's part
-    /// ("Curve shape": smoothed, interpolated, fitted function, straight segments, as drawn).
+    /// ("Curve shape": smoothed, interpolated, fitted function, straight segments, as drawn; "Detail": low, medium, high).
+    /// The series stores only the key points of the curve (<see cref="CurveKeyPoints"/>); smooth shapes are drawn through
+    /// them with the chart spline (XY chart: per block, see <see cref="XySplines"/>; figure: the series' smooth flag).
     /// </summary>
     public static class ChartSketchInput
     {
         /// <summary>Most points a sketched curve keeps.</summary>
         public const int MaxPoints = CurveShapes.MaxPoints;
 
+        /// <summary>
+        /// Comment line before an XY data block whose curve is drawn with the spline although it carries no sketch memo (a
+        /// smooth sketched curve whose points were edited by hand keeps its look).
+        /// </summary>
+        public const string SplineComment = "# spline";
+
         /// <summary>True for the chart types a curve can be sketched into.</summary>
         public static bool Supports(SketchObject o) => o.Type is XyChart.TypeId or FigureChart.TypeId;
 
-        public static SketchedCurve? Add(Registry registry, SketchObject chart, IReadOnlyList<Vec2> pageTrail, RenderContext ctx)
+        /// <summary>
+        /// Adds the curve drawn along <paramref name="pageTrail"/> (page mm) to the chart. <paramref name="times"/> (optional, ms,
+        /// one per trail point) are the pointer time stamps: the drawing speed is a hint for the detail (slow keeps more).
+        /// </summary>
+        public static SketchedCurve? Add(Registry registry, SketchObject chart, IReadOnlyList<Vec2> pageTrail, RenderContext ctx, IReadOnlyList<double>? times = null)
         {
             if (!Supports(chart) || pageTrail.Count < 3 || registry.TypeOf(chart) is not ChartType type) return null;
+            if (times is not null && times.Count != pageTrail.Count) times = null;
             ctx.For(registry);
             var c = type.Compose(chart, ctx);
             var inverse = chart.Matrix().Invert();
@@ -39,14 +52,15 @@ namespace InventaSketch.Modules.Charts
             // Fit in the axes' own scale (log axes in log10), so a decade looks like a decade.
             double Fx(double v) => xa.IsLog ? Math.Log10(v) : v;
             double Fy(double v) => ya.IsLog ? Math.Log10(v) : v;
-            var data = local
-                .Select(p => new Vec2(Fx(xa.V((p.X - a.X) / Math.Max(a.W, 1e-9))), Fy(ya.V((a.Bottom - p.Y) / Math.Max(a.H, 1e-9)))))
-                .Where(p => Fmt.Finite(p.X) && Fmt.Finite(p.Y)).ToList();
+            var mapped = local
+                .Select(p => new Vec2(Fx(xa.V((p.X - a.X) / Math.Max(a.W, 1e-9))), Fy(ya.V((a.Bottom - p.Y) / Math.Max(a.H, 1e-9))))).ToList();
+            var ok = Enumerable.Range(0, mapped.Count).Where(i => Fmt.Finite(mapped[i].X) && Fmt.Finite(mapped[i].Y)).ToList();
+            var data = ok.Select(i => mapped[i]).ToList();
             if (data.Count < 3) return null;
             double x0 = Fx(xa.Min), x1 = Fx(xa.Max), y0 = Fy(ya.Min), y1 = Fy(ya.Max);
             var frame = new Rect(Math.Min(x0, x1), Math.Min(y0, y1), Math.Abs(x1 - x0), Math.Abs(y1 - y0));
             var fit = SketchFit.Fit(data, new SketchFitOptions { Frame = frame });
-            var memo = CurveShapes.Create(data, frame, xa.IsLog, ya.IsLog, fit);
+            var memo = CurveShapes.Create(data, frame, xa.IsLog, ya.IsLog, fit, times is null ? null : ok.Select(i => times[i]).ToList());
             var curve = CurveShapes.Points(memo);
             if (curve.Count < 2) return null;
             var lang = ctx.Lang;
@@ -69,6 +83,7 @@ namespace InventaSketch.Modules.Charts
                 Panel = panelIndex,
                 Label = name,
                 Sketch = memo,
+                Smooth = CurveShapes.IsSpline(memo),
             });
             return new SketchedCurve(chart.WithParam("spec", spec.ToJson()), message, fit.Kind);
         }
@@ -132,7 +147,7 @@ namespace InventaSketch.Modules.Charts
                 se.Sketch = next;
                 se.X = pts.Select(p => p.X).ToList();
                 se.Y = pts.Select(p => p.Y).ToList();
-                se.Smooth = false;
+                se.Smooth = CurveShapes.IsSpline(next);
                 se.Step = false;
                 return o.WithParam("spec", spec.ToJson());
             }
@@ -166,10 +181,41 @@ namespace InventaSketch.Modules.Charts
             return null;
         }
 
+        /// <summary>
+        /// Per curve of XY chart data (in <see cref="ChartData.Xy"/> order): true if it is drawn with the spline – its block
+        /// carries a sketch memo of a smooth shape (<see cref="CurveShapes.IsSpline"/>) or a <see cref="SplineComment"/> line.
+        /// </summary>
+        public static bool[] XySplines(string text)
+        {
+            var blocks = ChartData.Parse(text);
+            var flags = XySplineBlocks(text);
+            var result = new List<bool>();
+            for (var b = 0; b < blocks.Count; b++)
+            {
+                var count = ChartData.Xy(new[] { blocks[b] }).Count;
+                for (var i = 0; i < count; i++) result.Add(b < flags.Length && flags[b]);
+            }
+            return result.ToArray();
+        }
+
+        /// <summary>Per data block of XY chart data (<see cref="ChartData.Parse"/> order): drawn with the spline (see <see cref="XySplines"/>).</summary>
+        internal static bool[] XySplineBlocks(string text)
+        {
+            var blocks = ChartData.Parse(text);
+            var lines = (text ?? "").Replace("\r\n", "\n").Replace('\r', '\n').Replace('|', '\n').Split('\n');
+            var scan = Scan(lines);
+            if (scan.Count != blocks.Count) return new bool[blocks.Count];
+            return scan.Select(b => b.Spline || (b.Memo is int ml && CurveShapes.TryParseComment(lines[ml], out var m) && m is not null && CurveShapes.IsSpline(m))).ToArray();
+        }
+
+        /// <summary>True if the (trimmed) line is the <see cref="SplineComment"/>.</summary>
+        public static bool IsSplineComment(string line) => string.Equals(line.Trim(), SplineComment, StringComparison.OrdinalIgnoreCase);
+
         private sealed class ScanBlock
         {
             public List<int> Rows { get; } = new();
             public int? Memo { get; set; }
+            public bool Spline { get; set; }
         }
 
         /// <summary>Row lines per block, exactly as <see cref="ChartData.Parse"/> splits them, plus each block's memo line.</summary>
@@ -178,6 +224,7 @@ namespace InventaSketch.Modules.Charts
             var blocks = new List<ScanBlock>();
             ScanBlock? cur = null;
             int? pending = null;
+            var spline = false;
             for (var i = 0; i < lines.Length; i++)
             {
                 var line = lines[i].Trim();
@@ -188,8 +235,9 @@ namespace InventaSketch.Modules.Charts
                 }
                 if (line.StartsWith("#", StringComparison.Ordinal) || line.StartsWith("//", StringComparison.Ordinal))
                 {
-                    // A memo belongs to the rows that follow it (a memo between rows of a block is stale and ignored).
+                    // A memo (or spline mark) belongs to the rows that follow it (one between rows of a block is stale and ignored).
                     if (CurveShapes.IsComment(line)) pending = i;
+                    else if (IsSplineComment(line)) spline = true;
                     continue;
                 }
                 var fields = ChartData.SplitFields(line);
@@ -201,8 +249,9 @@ namespace InventaSketch.Modules.Charts
                     continue;
                 }
                 if (cur is null) { cur = new ScanBlock(); blocks.Add(cur); }
-                if (cur.Rows.Count == 0) { cur.Memo = pending; pending = null; }
-                else pending = null;
+                if (cur.Rows.Count == 0) { cur.Memo = pending; cur.Spline = spline; }
+                pending = null;
+                spline = false;
                 cur.Rows.Add(i);
             }
             return blocks.Where(b => b.Rows.Count > 0).ToList();

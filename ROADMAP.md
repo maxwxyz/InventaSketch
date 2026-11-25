@@ -642,6 +642,10 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
 
 ## Open items
 
+- **Sketched curves: key points (2026-11-25, `CurveKeyPoints`):** curves store only their key points, with a "Detail"
+  choice and the drawing speed as a hint (COM trail time stamps). Open: the `chart-sketch` scenario (row count, Detail
+  dropdown) has not run in PowerPoint yet; the web add-in does not send pointer times to `sketchCurve` (`[x, y, t]`)
+  yet; selecting a freshly sketched curve computes all choice previews once (about 50–130 ms, then cached).
 - **Shaft fit (2026-11-25, `ShaftFit`):** parts fit their shaft on insertion, at an axis end and when dragged on; a shaft
   whose diameter changes later does not refit the parts already on it (gears would leave their mesh), and an assembly
   view switch keeps sizes. Worm wheel and freewheel axial bores differ from their side/section bores by about 7 % after a

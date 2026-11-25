@@ -11,11 +11,14 @@ namespace InventaSketch.AddIn.OnSlide
     /// <summary>
     /// Sketching a curve into a chart (charts v2 stage 3): "Sketch a curve" on an XY chart or a figure, then draw with the
     /// left button held; on release the trail is recognised (step, pulse, ramp, sine, PT1 …) or smoothed and added to the
-    /// chart as a new curve (one undo step). Esc or a right click cancels.
+    /// chart as a new curve (one undo step). Esc or a right click cancels. Every trail point carries its time (ms since the
+    /// press): the drawing speed is a hint for how many key points the curve keeps (slow, careful drawing keeps more).
     /// </summary>
     internal sealed partial class OnSlideController
     {
         private readonly List<Vec2> _sketchPts = new();
+        private readonly List<double> _sketchTimes = new();
+        private readonly System.Diagnostics.Stopwatch _sketchClock = new();
         private bool _sketchPressed;
         private POINT _sketchLast;
 
@@ -26,6 +29,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             if (_view is null || SketchChart() is null) return;
             _sketchPts.Clear();
+            _sketchTimes.Clear();
             _sketchPressed = false;
             HideBar();
             _mode = Mode.Sketch;
@@ -41,26 +45,28 @@ namespace InventaSketch.AddIn.OnSlide
                     if (!view.Contains(pt)) { Cancel("sketch: click outside"); return false; }
                     _sketchPressed = true;
                     _sketchPts.Clear();
-                    _sketchPts.Add(view.ToMm(pt));
-                    _sketchLast = pt;
+                    _sketchTimes.Clear();
+                    _sketchClock.Restart();
+                    AddSketchPoint(view, pt);
                     return true;
                 case WM_MOUSEMOVE:
                     if (_sketchPressed && Math.Abs(pt.X - _sketchLast.X) + Math.Abs(pt.Y - _sketchLast.Y) >= 2 * view.DeviceScale)
                     {
-                        _sketchPts.Add(view.ToMm(pt));
-                        _sketchLast = pt;
+                        AddSketchPoint(view, pt);
                         DrawSketch(view);
                     }
                     return _sketchPressed;
                 case WM_LBUTTONUP when _sketchPressed:
                     {
                         _sketchPressed = false;
-                        _sketchPts.Add(view.ToMm(pt));
+                        AddSketchPoint(view, pt);
+                        _sketchClock.Stop();
                         var unit = _unit;
                         var trail = _sketchPts.ToList();
+                        var times = _sketchTimes.ToList();
                         _mode = Mode.Armed;
                         _overlay.Clear();
-                        if (unit is not null && trail.Count >= 3) Post(() => ApplySketch(unit, trail));
+                        if (unit is not null && trail.Count >= 3) Post(() => ApplySketch(unit, trail, times));
                         else ShowBar(view);
                         return true;
                     }
@@ -69,6 +75,14 @@ namespace InventaSketch.AddIn.OnSlide
                     return true;
             }
             return message is WM_LBUTTONUP or WM_RBUTTONUP;
+        }
+
+        /// <summary>One trail point (page mm) with its time since the press (ms).</summary>
+        private void AddSketchPoint(SlideView view, POINT pt)
+        {
+            _sketchPts.Add(view.ToMm(pt));
+            _sketchTimes.Add(_sketchClock.Elapsed.TotalMilliseconds);
+            _sketchLast = pt;
         }
 
         /// <summary>The trail drawn so far, or a hint before the first stroke.</summary>
@@ -92,7 +106,7 @@ namespace InventaSketch.AddIn.OnSlide
         }
 
         /// <summary>Adds the sketched curve to the chart (recognised or smoothed), one undo step.</summary>
-        private void ApplySketch(SketchUnit stale, List<Vec2> trail)
+        private void ApplySketch(SketchUnit stale, List<Vec2> trail, List<double> times)
         {
             var slide = CurrentSlide();
             var unit = SketchUnits.Read(stale.Shape);
@@ -100,7 +114,7 @@ namespace InventaSketch.AddIn.OnSlide
             var chart = unit.Objects.FirstOrDefault(o => _registry().Type(o.Type) is not null && ChartSketchInput.Supports(o));
             if (chart is null) return;
             SketchedCurve? result;
-            try { result = ChartSketchInput.Add(_registry(), chart, trail, new RenderContext(unit.Doc, _lang())); }
+            try { result = ChartSketchInput.Add(_registry(), chart, trail, new RenderContext(unit.Doc, _lang()), times); }
             catch (Exception ex) { Log.Error("Sketch", ex); return; }
             if (result is null) { Log.Info("Sketch: nothing added"); return; }
             Log.Info("Sketch: " + result.Message.En);

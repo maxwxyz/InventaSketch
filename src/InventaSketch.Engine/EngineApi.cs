@@ -1995,7 +1995,8 @@ namespace InventaSketch.Engine
         /// sampled, sub-paths separate, texts and areas as their box), for hosts that highlight the selected part.
         /// </summary>
         /// <summary>
-        /// sketchCurve: a curve drawn by hand into chart id (points = pointer trail in page mm) is recognised or smoothed and
+        /// sketchCurve: a curve drawn by hand into chart id (points = pointer trail in page mm, optionally [x, y, t] with the
+        /// pointer time t in ms as a drawing-speed hint) is recognised or smoothed and
         /// added as a new series (charts v2, <see cref="InventaSketch.Modules.Charts.ChartSketchInput"/>); one undo step.
         /// Returns the state plus the message (what was recognised); unchanged state with an empty message if nothing fits.
         /// </summary>
@@ -2004,8 +2005,11 @@ namespace InventaSketch.Engine
             var s = S(r);
             var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
             var chart = s.Doc.Get(r.Id ?? "") ?? throw new KeyNotFoundException($"Unknown object '{r.Id}'.");
-            var trail = (r.Points ?? new List<double[]>()).Where(p => p.Length >= 2).Select(p => new Vec2(p[0], p[1])).ToList();
-            var result = InventaSketch.Modules.Charts.ChartSketchInput.Add(Registry, chart, trail, new RenderContext(s.Doc, lang));
+            var pts = (r.Points ?? new List<double[]>()).Where(p => p.Length >= 2).ToList();
+            var trail = pts.Select(p => new Vec2(p[0], p[1])).ToList();
+            // Optional third value: the pointer time in ms (drawing speed as a detail hint), used when every point has one.
+            var times = pts.Count > 0 && pts.All(p => p.Length >= 3) ? pts.Select(p => p[2]).ToList() : null;
+            var result = InventaSketch.Modules.Charts.ChartSketchInput.Add(Registry, chart, trail, new RenderContext(s.Doc, lang), times);
             if (result is null) return new { state = StateOf(s, r), message = "" };
             s.Apply("Sketch", d => Edits.Update(d, new[] { chart.Id }, _ => result.Chart));
             return new { state = StateOf(s, r), message = result.Message.Get(lang), kind = result.Kind?.ToString() };

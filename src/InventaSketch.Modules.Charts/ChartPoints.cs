@@ -25,10 +25,11 @@ namespace InventaSketch.Modules.Charts
         public const string Kind = "point";
 
         /// <summary>
-        /// Curves with more visible points than this (sketched and sampled curves) get no point handles: a press on them moves
-        /// the whole curve; their points stay selectable on the drawing (part shapes) and editable through "Value …".
+        /// Curves with more visible points than this (densely sampled or imported curves) get no point handles: a press on them
+        /// moves the whole curve; their points stay selectable on the drawing (part shapes) and editable through "Value …".
+        /// Sketched curves store only their key points (at most <see cref="CurveShapes.MaxPoints"/>), so they always get grips.
         /// </summary>
-        public const int MaxPointHandles = 40;
+        public const int MaxPointHandles = CurveShapes.MaxPoints;
 
         /// <summary>Part key of point <paramref name="i"/> of curve <paramref name="k"/> ("point.0.3").</summary>
         public static string Key(int k, int i) => Kind + "." + Fmt.I(k) + "." + Fmt.I(i);

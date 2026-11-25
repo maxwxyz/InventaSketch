@@ -712,6 +712,11 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
 
 ## Offene Punkte
 
+- **Skizzierte Kurven: Stützpunkte (25.11.2026, `CurveKeyPoints`):** Kurven speichern nur ihre Stützpunkte, mit der
+  Auswahl „Detailgrad“ und der Zeichengeschwindigkeit als Hinweis (Zeitstempel der COM-Spur). Offen: das Szenario
+  `chart-sketch` (Zeilenzahl, Klappliste Detailgrad) ist noch nicht in PowerPoint gelaufen; das Web-Add-in sendet noch
+  keine Zeigerzeiten an `sketchCurve` (`[x, y, t]`); die Auswahl einer frisch skizzierten Kurve berechnet alle
+  Auswahl-Vorschauen einmal (etwa 50–130 ms, danach zwischengespeichert).
 - **Wellenpassung (25.11.2026, `ShaftFit`):** Teile passen sich beim Einfügen, beim Anbau am Achsende und beim Aufziehen
   an ihre Welle an; ändert sich der Wellendurchmesser später, werden die Teile darauf nicht nachgeführt (Zahnräder kämen
   aus dem Eingriff), und ein Ansichtswechsel der ganzen Baugruppe behält die Größen. Bei Schneckenrad und Freilauf

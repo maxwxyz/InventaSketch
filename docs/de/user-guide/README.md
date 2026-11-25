@@ -82,7 +82,11 @@ Bildeinheiten) und ein Hinweis sagt das – Daten oder Achsbereiche danach anpas
 Kurve skizzieren (25.11.2026, PowerPoint): ein XY-Diagramm oder eine Abbildung auswählen, in der Leiste „Kurve
 skizzieren“ klicken und die Kurve mit gedrückter linker Taste zeichnen (Esc oder Rechtsklick bricht ab). Beim Loslassen
 wird sie erkannt – konstant, Rampe, Sprung, Puls, Sägezahn, Dreieck, Sinus, PT1, Abfall, Kreis/Ellipse – und als exakte
-Kurve eingefügt, oder als geglättete Kurve, wenn keine Standardform passt; ein Rückgängig-Schritt.
+Kurve eingefügt, oder als geglättete Kurve, wenn keine Standardform passt; ein Rückgängig-Schritt. Die Kurve behält nur
+die Punkte, die ihre Form tragen (eine Gerade zwei, ein Bogen wenige, enge Biegungen mehr), jeden mit einem Griff; glatte
+Formen werden als Spline durch sie gezeichnet. Wo es auf Details ankommt, langsam zeichnen – langsames, sorgfältiges
+Zeichnen behält mehr Punkte, ein schneller Strich weniger. Bei ausgewählter Kurve ändern die Klapplisten „Kurvenform“,
+„Glättung“ und „Detailgrad“ (Gering, Mittel, Hoch) sie jederzeit, ohne die Zeichnung zu verlieren.
 
 ## 6b. Export für LaTeX und Vektorprogramme (25.11.2026)
 
