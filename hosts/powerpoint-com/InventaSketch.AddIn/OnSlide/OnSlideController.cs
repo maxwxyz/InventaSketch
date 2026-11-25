@@ -231,7 +231,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void Arm(SketchUnit unit)
         {
-            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barChoice = null; }
+            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barChoice = null; _part = null; }
             var slide = CurrentSlide();
             var view = SlideView.Current(_app);
             if (slide is null || view is null) { Disarm(); return; }
@@ -264,6 +264,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (_mode is Mode.Place) return;
             _mode = Mode.Idle;
             _selectedPoints.Clear();
+            _part = null;
             _unit = null;
             _multi = new List<SketchUnit>();
             _unitContext = null;
@@ -650,6 +651,8 @@ namespace InventaSketch.AddIn.OnSlide
                         _overlay.Clear();
                         Log.Info($"Drag end: moved={moved}, delta=({delta.X:0.##}, {delta.Y:0.##}) mm, snap guides {_guides.Count}");
                         if (moved && unit is not null && delta.Length > 1e-6) Post(() => ApplyMove(unit, delta));
+                        // A click without dragging on a chart selects the part under the pointer (curve, axis, grid …).
+                        else if (!moved && unit is not null && SelectPartAt(pt, view)) { ShowBar(view); DrawPointHandles(view); }
                         return true;
                     }
                     return message is WM_LBUTTONDOWN or WM_RBUTTONDOWN or WM_RBUTTONUP;
@@ -931,6 +934,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private List<BarButton> BarButtons()
         {
+            if (PartButtons() is { } partBar) return partBar;
             var registry = _registry();
             var list = new List<BarButton>();
             var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
@@ -1407,6 +1411,12 @@ namespace InventaSketch.AddIn.OnSlide
                 ShowPie(pt, view, sub);
                 return;
             }
+            if (submenu == "parts" && PartListMenu() is { } partMenu)
+            {
+                HideBar();
+                ShowPie(pt, view, partMenu);
+                return;
+            }
             if (submenu == "more")
             {
                 var sub = new List<PieItem> { new("menu:back", T("← Back", "← Zurück")) };
@@ -1433,7 +1443,9 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>All entries of the main pie in priority order (essential entries first, see <see cref="PieLayout"/>).</summary>
         private List<(PieItem Item, bool Essential)> BuildPieItems(SketchObject? pointObject, Registry registry)
         {
-            var items = new List<(PieItem, bool)> { (new PieItem("delete", T("Delete", "Löschen"), Danger: true) { IconId = IconIds.Delete }, true) };
+            var items = new List<(PieItem, bool)>(PartPieItems());
+            items.Add((new PieItem("delete", T("Delete", "Löschen"), Danger: true) { IconId = IconIds.Delete }, true));
+            if (PartOwner() is not null) items.Add((new PieItem("menu:parts", T("Parts ▸", "Teile ▸")) { IconId = IconIds.Table }, true));
             // Type conversion and the label menu belong to lines, arrows, dimensions and lead lines only.
             if (pointObject is not null && Registry.IsConvertible(pointObject))
             {
@@ -1613,6 +1625,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Small diamond handles on the points of a selected line/arrow/dimension/lead line.</summary>
         private void DrawPointHandles(SlideView view)
         {
+            if (_part is not null && PartOwner() is not null) { Present(view, _ => { }, g => DrawPart(g, view)); return; }
             var o = PointObject();
             if (o is null && _chainSource is not null) { DrawChainTools(view); return; }
             if (o is null && _links.Count == 0 && _ports.Count == 0) return;
@@ -2149,6 +2162,11 @@ namespace InventaSketch.AddIn.OnSlide
             if (id.StartsWith("port:", StringComparison.Ordinal))
             {
                 PortCommand(unit, id);
+                return;
+            }
+            if (id == "partlist" || id.StartsWith("part:", StringComparison.Ordinal) || id.StartsWith("partsel:", StringComparison.Ordinal))
+            {
+                PartCommand(slide, unit, id);
                 return;
             }
             if (id.StartsWith("pt:", StringComparison.Ordinal))

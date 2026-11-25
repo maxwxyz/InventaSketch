@@ -73,6 +73,11 @@ namespace InventaSketch.Engine
                 ["export"] = ExportCore,
                 ["convert"] = ConvertCore,
                 ["applyAction"] = ApplyActionCore,
+                ["parts"] = PartsCore,
+                ["partAt"] = PartAtCore,
+                ["partActions"] = PartActionsCore,
+                ["applyPartAction"] = ApplyPartActionCore,
+                ["setPartLook"] = SetPartLookCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
                 ["redo"] = r => { var s = S(r); s.Redo(); return StateOf(s, r); },
                 ["select"] = r => { var s = S(r); s.Select(r.Ids); return StateOf(s, r); },
@@ -1683,6 +1688,88 @@ namespace InventaSketch.Engine
                 return d;
             });
             return StateOf(s, r);
+        }
+
+        // ---- Parts of an element (charts v2, docs/en/design/charts-v2.md) ----
+
+        private SketchObject PartOwner(EditorSession s, EngineRequest r)
+        {
+            var id = r.Id ?? s.Resolve(r.Ids).FirstOrDefault();
+            return s.Doc.Get(id ?? "") ?? throw new KeyNotFoundException($"Unknown object '{id}'.");
+        }
+
+        /// <summary>parts: the selectable parts of one element (id) with label, kind, hidden flag and own look.</summary>
+        private object PartsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var o = PartOwner(s, r);
+            if (Registry.Type(o.Type) is null) return new List<PartView>();
+            return Registry.Parts(o, s.Context()).Select(p => new PartView
+            {
+                Key = p.Key, Label = p.Label.Get(lang), Kind = p.Kind, Hidden = p.Hidden,
+                Style = o.Parts is not null && o.Parts.TryGetValue(p.Key, out var look) ? look.Style : null,
+            }).ToList();
+        }
+
+        /// <summary>partAt: the part of element id under the page point (x, y) within tolerance (mm), or null.</summary>
+        private object PartAtCore(EngineRequest r)
+        {
+            var s = S(r);
+            var o = PartOwner(s, r);
+            if (Registry.Type(o.Type) is null) return new { part = (string?)null };
+            return new { part = Registry.PartAt(o, new Vec2(r.X ?? 0, r.Y ?? 0), s.Context(), r.Tolerance ?? 1.0) };
+        }
+
+        /// <summary>partActions: actions of one part of element id (type actions first, then show/hide, thicker, thinner, line style, reset).</summary>
+        private object PartActionsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var o = PartOwner(s, r);
+            var part = r.Part ?? throw new ArgumentException("Missing 'part'.");
+            if (Registry.Type(o.Type) is null) return new List<ActionInfo>();
+            return Registry.PartActions(o, part, s.Context()).Select(a => new ActionInfo
+            {
+                Id = a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "part", Kind = "part", Active = a.IsActive, Enabled = a.IsEnabled,
+                ParamKeys = a.ParamKeys?.ToList(),
+                Input = a.Input is null ? null : new ActionInputInfo { Label = a.Input.Label.Get(lang), Value = a.Input.Value, Unit = a.Input.Unit },
+            }).ToList();
+        }
+
+        /// <summary>applyPartAction: runs action (id from partActions) on part of every listed element that offers it.</summary>
+        private object ApplyPartActionCore(EngineRequest r)
+        {
+            var s = S(r);
+            var part = r.Part ?? throw new ArgumentException("Missing 'part'.");
+            var action = r.Action ?? throw new ArgumentException("Missing 'action'.");
+            var ids = r.Id is not null ? new List<string> { r.Id } : s.Resolve(r.Ids).ToList();
+            s.Apply("Part", d =>
+            {
+                var ctx = new RenderContext(d, s.Lang);
+                return Edits.Update(d, ids, o =>
+                {
+                    if (Registry.Type(o.Type) is null) return o;
+                    var a = Registry.PartActions(o, part, ctx).FirstOrDefault(x => x.Id == action && x.IsEnabled);
+                    if (a is null) return o;
+                    return a.Input is not null ? a.Input.Apply(o, r.Input ?? a.Input.Value) : a.Apply(o);
+                });
+            });
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// setPartLook: merges style into the look of part (replace: sets it), and/or shows or hides it (hidden), on every
+        /// listed element. Hosts call it when the user formats a part with the host's own tools.
+        /// </summary>
+        private object SetPartLookCore(EngineRequest r)
+        {
+            var part = r.Part ?? throw new ArgumentException("Missing 'part'.");
+            return Edit(r, "Part look", (s, ids) => Edits.Update(s.Doc, ids, o => PartLooks.WithLook(o, part, p => p with
+            {
+                Style = r.Style is null ? (r.Replace == true ? null : p.Style) : r.Replace == true ? r.Style : (p.Style ?? new Style()).Merge(r.Style),
+                Hidden = r.Hidden ?? p.Hidden,
+            })));
         }
 
         private object InspectorCore(EngineRequest r)

@@ -151,6 +151,20 @@ namespace InventaSketch.AddIn
         /// <summary>Button ids of the floating bar as last shown, comma-separated (UI tests; no log needed).</summary>
         public string BarIds() => _connect.LastBarIds();
 
+        /// <summary>Part key of the InventaSketch unit shapeName at the slide point (xPt, yPt) in points (charts v2), "" if none.</summary>
+        public string PartAt(string shapeName, double xPt, double yPt)
+        {
+            try
+            {
+                return _connect.PartAtOf(shapeName, xPt, yPt);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.PartAt " + shapeName, ex);
+                return "";
+            }
+        }
+
         /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown; "" if none yet.</summary>
         public string BarRect() => _connect.LastBarRect();
 

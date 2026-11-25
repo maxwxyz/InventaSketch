@@ -166,6 +166,7 @@ namespace InventaSketch.Modules.Charts
         public void DrawAxes(List<Primitive> into, Lang lang)
         {
             var ticks = new List<IReadOnlyList<Vec2>>();
+            var yticks = new List<IReadOnlyList<Vec2>>();
             var labelColor = Palette.Ink;
             double hw = W / 2, hh = H / 2;
             for (var pi = 0; pi < Panels.Count; pi++)
@@ -173,15 +174,17 @@ namespace InventaSketch.Modules.Charts
                 var p = Panels[pi];
                 var a = p.Area;
                 var last = pi == Panels.Count - 1;
-                if (Box) into.Add(Prim.Rect(a.X, a.Y, a.W, a.H, S.Axis) with { Tag = ChartTags.Axis });
+                // Part keys per panel: "axis.y" in a single-panel chart, "axis.y.2" for the second of stacked panels.
+                var ps = Panels.Count > 1 ? "." + Fmt.I(pi + 1) : "";
+                if (Box) into.Add(Prim.Rect(a.X, a.Y, a.W, a.H, S.Axis) with { Tag = ChartTags.Axis + ".box" + ps });
                 else
                 {
                     var axis = S.Axis;
                     var arrow = Arrows ? axis with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small } : axis;
                     var ext = Arrows ? Fs * 0.8 : 0;
-                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.Right + ext, a.Bottom), arrow) with { Tag = ChartTags.Axis });
-                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.X, a.Y - ext), arrow) with { Tag = ChartTags.Axis });
-                    if (p.Y2 is not null) into.Add(Prim.Line(new Vec2(a.Right, a.Bottom), new Vec2(a.Right, a.Y), axis) with { Tag = ChartTags.Axis });
+                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.Right + ext, a.Bottom), arrow) with { Tag = ChartTags.Axis + ".x" + ps });
+                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.X, a.Y - ext), arrow) with { Tag = ChartTags.Axis + ".y" + ps });
+                    if (p.Y2 is not null) into.Add(Prim.Line(new Vec2(a.Right, a.Bottom), new Vec2(a.Right, a.Y), axis) with { Tag = ChartTags.Axis + ".y2" + ps });
                 }
 
                 // X ticks (every panel) and labels (bottom panel).
@@ -198,26 +201,27 @@ namespace InventaSketch.Modules.Charts
                 }
                 if (last) XLabels(into, xl, a, labelColor);
 
-                YAxis(into, ticks, p.Y, a, a.X, -1, lang, labelColor);
-                if (p.Y2 is not null) YAxis(into, ticks, p.Y2, a, a.Right, 1, lang, labelColor);
+                YAxis(into, yticks, p.Y, a, a.X, -1, lang, labelColor, ChartTags.TickLabel + ".y" + ps);
+                if (p.Y2 is not null) YAxis(into, yticks, p.Y2, a, a.Right, 1, lang, labelColor, ChartTags.TickLabel + ".y2" + ps);
 
                 // Axis titles.
                 if (!string.IsNullOrEmpty(p.YTitle))
                 {
                     var fs = Fit(p.YTitle!, Fs, a.H);
-                    into.Add(new TextPrim(new Vec2(-hw + Pad + Fs * 0.55, a.Y + a.H / 2), p.YTitle!, new TextStyle { Size = fs, Color = labelColor }, -90) { Tag = ChartTags.AxisTitle });
+                    into.Add(new TextPrim(new Vec2(-hw + Pad + Fs * 0.55, a.Y + a.H / 2), p.YTitle!, new TextStyle { Size = fs, Color = labelColor }, -90) { Tag = ChartTags.AxisTitle + ".y" + ps });
                 }
                 if (p.Y2 is not null && !string.IsNullOrEmpty(p.Y2Title))
                 {
                     var fs = Fit(p.Y2Title!, Fs, a.H);
-                    into.Add(new TextPrim(new Vec2(hw - Pad - Fs * 0.55, a.Y + a.H / 2), p.Y2Title!, new TextStyle { Size = fs, Color = labelColor }, -90) { Tag = ChartTags.AxisTitle });
+                    into.Add(new TextPrim(new Vec2(hw - Pad - Fs * 0.55, a.Y + a.H / 2), p.Y2Title!, new TextStyle { Size = fs, Color = labelColor }, -90) { Tag = ChartTags.AxisTitle + ".y2" + ps });
                 }
             }
-            if (Draw.MultiPath(ticks, S.Tick, ChartTags.Tick) is { } tp) into.Add(tp);
+            if (Draw.MultiPath(ticks, S.Tick, ChartTags.Tick + ".x") is { } tp) into.Add(tp);
+            if (Draw.MultiPath(yticks, S.Tick, ChartTags.Tick + ".y") is { } typ) into.Add(typ);
             if (!string.IsNullOrEmpty(XTitle))
             {
                 var fs = Fit(XTitle!, Fs, Plot.W);
-                into.Add(new TextPrim(new Vec2(Plot.X + Plot.W / 2, hh - Pad - Fs * 0.5), XTitle!, new TextStyle { Size = fs, Color = labelColor }) { Tag = ChartTags.AxisTitle });
+                into.Add(new TextPrim(new Vec2(Plot.X + Plot.W / 2, hh - Pad - Fs * 0.5), XTitle!, new TextStyle { Size = fs, Color = labelColor }) { Tag = ChartTags.AxisTitle + ".x" });
             }
             if (!string.IsNullOrEmpty(Title))
             {
@@ -246,12 +250,12 @@ namespace InventaSketch.Modules.Charts
                 var w = Fmt.Width(text, fs);
                 var x = Geo.Clamp(pos, -hw + Pad + w / 2, hw - Pad - w / 2);
                 if (x - w / 2 < lastRight + fs * 0.4) continue; // thinned out: would overlap the previous label
-                into.Add(new TextPrim(new Vec2(x, y), text, new TextStyle { Size = fs, Color = color }) { Tag = ChartTags.TickLabel });
+                into.Add(new TextPrim(new Vec2(x, y), text, new TextStyle { Size = fs, Color = color }) { Tag = ChartTags.TickLabel + ".x" });
                 lastRight = x + w / 2;
             }
         }
 
-        private void YAxis(List<Primitive> into, List<IReadOnlyList<Vec2>> ticks, Axis y, Rect a, double x0, int side, Lang lang, string color)
+        private void YAxis(List<Primitive> into, List<IReadOnlyList<Vec2>> ticks, Axis y, Rect a, double x0, int side, Lang lang, string color, string labelTag)
         {
             double hh = H / 2;
             var fs = Fs;
@@ -273,7 +277,7 @@ namespace InventaSketch.Modules.Charts
                 var cy = Geo.Clamp(py, -hh + Pad + fs / 2, hh - Pad - fs / 2);
                 if (lastY - cy < fs * 1.1) continue; // thinned out
                 var x = x0 + side * (TickLen + Gap);
-                into.Add(new TextPrim(new Vec2(x, cy), t.Label, new TextStyle { Size = fs, Color = color, Anchor = side < 0 ? TextAnchor.End : TextAnchor.Start }) { Tag = ChartTags.TickLabel });
+                into.Add(new TextPrim(new Vec2(x, cy), t.Label, new TextStyle { Size = fs, Color = color, Anchor = side < 0 ? TextAnchor.End : TextAnchor.Start }) { Tag = labelTag });
                 lastY = cy;
             }
         }

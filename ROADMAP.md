@@ -264,6 +264,26 @@ usable on their own, existing slides keep rendering); names that meant different
 any two modules from offering the same name again. Still open from the review: the order of the elements within each
 module (most used first), cross-module coupling beyond the generic port docking, a data table editor for charts in COM.
 
+### Charts v2 – matplotlib, but interactive (maintainer request 2026-11-25)
+
+Plan: [docs/en/design/charts-v2.md](docs/en/design/charts-v2.md) – select, switch and style every part of a chart (also
+with PowerPoint's own tools), stacked panels with a shared axis and phase lines, value lines, shaded and hatched regions,
+dimension arrows and numerals for patent figures, curves from functions and hand sketches, axis breaks, matplotlib
+export, charts from pictures. Math coordinate systems and function graphs move into the chart module; geometry and
+vectors stay in `math`.
+
+1. **Parts (done 2026-11-25 for engine and COM):** `SketchObject.Parts` (look per part key: style or hidden, kind keys
+   apply to all), `ObjectType.Parts`/`PartActions`, `Registry.Parts`/`PartAt`/`PartActions`, applied in the single render
+   path; charts tag every piece (`series.0`, `marker.0`, `bar.0`, `axis.x`, `label.y`, `grid.major` …); engine `parts`,
+   `partAt`, `partActions`, `applyPartAction`, `setPartLook`; COM: leaf shapes carry `ISK_PART`, native formatting of
+   some parts folds into those parts, a click on the selected chart selects the part (bar, pie menu, "Parts …" list,
+   outline). Open: web and LibreOffice part selection; Tab cycling through parts.
+2. Figure model (panels, phase lines, value lines, regions/hatching, notes, dimension arrows, numerals; table editor;
+   the maintainer's patent figure as a preset).
+3. Curves from functions and sketches; axis breaks.
+4. matplotlib export; math merge.
+5. Charts from pictures (scanner port, curve digitiser).
+
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;

@@ -98,6 +98,11 @@ namespace InventaSketch.Core
         public IReadOnlyList<string>? Released { get; init; }
         /// <summary>Provenance and extension data (module-namespaced keys).</summary>
         public IReadOnlyDictionary<string, string>? Meta { get; init; }
+        /// <summary>
+        /// Looks of single parts (a curve, an axis, the grid …) by part key, on top of <see cref="Style"/>: their own style or
+        /// hidden (<see cref="PartLooks"/>). Null when no part has its own look.
+        /// </summary>
+        public IReadOnlyDictionary<string, PartLook>? Parts { get; init; }
 
         [JsonIgnore] public bool IsPointGeometry => Points is not null;
 

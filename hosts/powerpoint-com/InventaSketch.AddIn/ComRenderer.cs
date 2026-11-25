@@ -42,6 +42,20 @@ namespace InventaSketch.AddIn
 
         private void Draw(PlanOp op, List<PowerPoint.Shape> created)
         {
+            var first = created.Count;
+            DrawOp(op, created);
+            // Every leaf shape remembers its part key (charts v2: "series.0", "axis.x" …), so formatting one curve with
+            // PowerPoint's tools changes that part only (NativeFormat.Fold). Group ops carry the object id, not a part.
+            if (op.Op != "group" && !string.IsNullOrEmpty(op.Tag))
+                for (var i = first; i < created.Count; i++)
+                {
+                    try { created[i].Tags.Add(OnSlide.NativeFormat.PartTag, op.Tag); }
+                    catch (Exception ex) { Log.Error("Part tag", ex); }
+                }
+        }
+
+        private void DrawOp(PlanOp op, List<PowerPoint.Shape> created)
+        {
             switch (op.Op)
             {
                 case "group":

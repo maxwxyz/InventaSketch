@@ -295,6 +295,27 @@ wieder denselben Namen anbieten. Aus dem Review noch offen: die Reihenfolge der 
 (Häufiges zuerst), Kopplung über Modulgrenzen über das allgemeine Andocken an Ports hinaus, ein Tabellen-Dateneditor für
 Diagramme in COM.
 
+### Diagramme v2 – matplotlib, aber interaktiv (Wunsch des Maintainers 25.11.2026)
+
+Plan: [docs/de/design/charts-v2.md](design/charts-v2.md) – jedes Teil eines Diagramms auswählen, umschalten und
+formatieren (auch mit PowerPoints eigenen Werkzeugen), gestapelte Panels mit gemeinsamer Achse und Phasenlinien,
+Wertlinien, schattierte und schraffierte Bereiche, Maßpfeile und Bezugszeichen für Patentfiguren, Kurven aus Funktionen
+und Handskizzen, Achsenbrüche, matplotlib-Export, Diagramme aus Bildern. Koordinatensysteme und Funktionsgraphen des
+Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vektoren bleiben in `math`.
+
+1. **Teile (erledigt 25.11.2026 für Engine und COM):** `SketchObject.Parts` (Aussehen je Teilschlüssel: Stil oder
+   ausgeblendet, Art-Schlüssel gelten für alle), `ObjectType.Parts`/`PartActions`, `Registry.Parts`/`PartAt`/
+   `PartActions`, im einzigen Renderpfad angewandt; Diagramme versehen jedes Stück mit Schlüssel (`series.0`,
+   `marker.0`, `bar.0`, `axis.x`, `label.y`, `grid.major` …); Engine `parts`, `partAt`, `partActions`,
+   `applyPartAction`, `setPartLook`; COM: Einzelformen tragen `ISK_PART`, native Formatierung einzelner Teile geht in
+   genau diese Teile, ein Klick ins ausgewählte Diagramm wählt das Teil (Leiste, Kreismenü, Liste „Teile …“, Umriss).
+   Offen: Teilauswahl in Web und LibreOffice; Tab-Durchlauf durch die Teile.
+2. Abbildungsmodell (Panels, Phasenlinien, Wertlinien, Bereiche/Schraffur, Anmerkungen, Maßpfeile, Bezugszeichen;
+   Tabelleneditor; die Patentfigur des Maintainers als Vorlage).
+3. Kurven aus Funktionen und Skizzen; Achsenbrüche.
+4. matplotlib-Export; Zusammenlegung mit Mathe.
+5. Diagramme aus Bildern (Scanner-Übernahme, Kurven-Digitalisierer).
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,

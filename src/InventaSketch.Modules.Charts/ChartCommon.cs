@@ -21,16 +21,27 @@ namespace InventaSketch.Modules.Charts
         public const string Engineering = "chart.eng";
     }
 
-    /// <summary>Semantic primitive tags used by the chart types (tests and host naming).</summary>
+    /// <summary>
+    /// Semantic primitive tags used by the chart types. A tag is also the part key (charts v2, <see cref="PartLooks"/>):
+    /// kind plus what it belongs to – "series.0", "marker.1", "bar.2", "axis.x", "axis.y.2" (second panel), "label.x",
+    /// "tick.y", "grid.major", "axistitle.y". A look on the kind ("series", "grid") applies to all of them.
+    /// </summary>
     public static class ChartTags
     {
+        /// <summary>True if <paramref name="tag"/> is of <paramref name="kind"/> ("series.0" is a "series").</summary>
+        public static bool Is(string? tag, string kind) =>
+            tag is not null && (tag == kind || tag.Length > kind.Length && tag[kind.Length] == '.' && tag.StartsWith(kind, StringComparison.Ordinal));
+
+        /// <summary>The key of the k-th item of a kind ("series.0").</summary>
+        public static string Nth(string kind, int k) => kind + "." + k.ToString(CultureInfo.InvariantCulture);
+
         public const string Axis = "axis";
         public const string Tick = "tick";
-        public const string Grid = "grid";
+        public const string Grid = "grid.major";
         public const string GridMinor = "grid.minor";
         public const string Zero = "zero";
         public const string TickLabel = "label";
-        public const string AxisTitle = "axis.title";
+        public const string AxisTitle = "axistitle";
         public const string Title = "title";
         public const string Series = "series";
         public const string Marker = "marker";
@@ -38,7 +49,7 @@ namespace InventaSketch.Modules.Charts
         public const string Band = "band";
         public const string Limit = "limit";
         public const string Contour = "contour";
-        public const string ContourLabel = "contour.label";
+        public const string ContourLabel = "contourlabel";
         public const string Envelope = "envelope";
         public const string Helper = "helper";
         public const string Point = "point";

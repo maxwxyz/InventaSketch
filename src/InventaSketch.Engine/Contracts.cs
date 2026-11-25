@@ -74,6 +74,21 @@ namespace InventaSketch.Engine
         public int? Max { get; set; }
         /// <summary>search: library item ids used last (most recent first), ranked higher.</summary>
         public List<string>? Recent { get; set; }
+        /// <summary>Part key of an element (charts v2: "series.0", "axis.x" …) for partActions, applyPartAction and setPartLook.</summary>
+        public string? Part { get; set; }
+        /// <summary>setPartLook: switch the part off (true) or on (false); null leaves it.</summary>
+        public bool? Hidden { get; set; }
+    }
+
+    /// <summary>A selectable part of an element (<see cref="InventaSketch.Core.PartInfo"/>).</summary>
+    public sealed class PartView
+    {
+        public string Key { get; set; } = "";
+        public string Label { get; set; } = "";
+        public string Kind { get; set; } = "";
+        public bool Hidden { get; set; }
+        /// <summary>The part's own look, if it has one.</summary>
+        public Style? Style { get; set; }
     }
 
     public sealed class ObjectInfo

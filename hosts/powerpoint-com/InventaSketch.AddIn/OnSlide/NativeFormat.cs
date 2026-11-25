@@ -17,6 +17,8 @@ namespace InventaSketch.AddIn.OnSlide
     internal static class NativeFormat
     {
         public const string Tag = "ISK_FMT";
+        /// <summary>Part key of a leaf shape (the primitive tag, e.g. "series.0"), set by <see cref="ComRenderer"/>.</summary>
+        public const string PartTag = "ISK_PART";
 
         /// <summary>Native formatting of one shape as rendered or as found now.</summary>
         internal sealed record Look(string? Line, double? Weight, string? Fill, string? TextColor, double? TextSize, string? Font, bool? Bold, bool? Italic, bool? Underline)
@@ -48,19 +50,44 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
-        /// <summary>The model with the formatting changes made in PowerPoint folded in (unchanged if there are none).</summary>
+        /// <summary>
+        /// The model with the formatting changes made in PowerPoint folded in (unchanged if there are none). Changes on some
+        /// parts of a single element (one curve, the grid …) go into the look of exactly those parts
+        /// (<see cref="SketchObject.Parts"/>); changes on all of it into the element style.
+        /// </summary>
         public static SketchDocument Fold(PowerPoint.Shape unit, SketchDocument doc)
         {
-            var pairs = new List<(Look Before, Look Now)>();
+            var leaves = new List<(string? Part, Look Before, Look Now)>();
             foreach (var leaf in Leaves(unit))
             {
                 var before = Look.Decode(leaf.Tags[Tag]);
                 if (before is null) continue;
-                pairs.Add((before, Read(leaf)));
+                var part = leaf.Tags[PartTag];
+                leaves.Add((string.IsNullOrEmpty(part) ? null : part, before, Read(leaf)));
             }
-            var delta = Decide(pairs);
-            if (delta is null) return doc;
-            return Edits.Update(doc, doc.Objects.Keys.ToList(), o => o with { Style = Apply(o.Style, delta) });
+            return FoldLooks(doc, leaves);
+        }
+
+        /// <summary>Folds the before/now looks of the leaves (with their part keys) into the model (see <see cref="Fold"/>).</summary>
+        internal static SketchDocument FoldLooks(SketchDocument doc, IReadOnlyList<(string? Part, Look Before, Look Now)> leaves)
+        {
+            var changed = leaves.Where(l => Decide(new[] { (l.Before, l.Now) }) is not null).ToList();
+            if (changed.Count == 0) return doc;
+            var parts = changed.Select(l => l.Part).Distinct().ToList();
+            var allParts = leaves.Select(l => l.Part).Distinct().Count();
+            if (doc.Objects.Count == 1 && parts.All(p => p is not null) && parts.Count < allParts)
+            {
+                var id = doc.Objects.Keys.First();
+                foreach (var part in parts)
+                {
+                    var delta = Decide(leaves.Where(l => l.Part == part).Select(l => (l.Before, l.Now)).ToList());
+                    if (delta is null) continue;
+                    doc = Edits.Update(doc, new[] { id }, o => PartLooks.WithLook(o, part!, p => p with { Style = Apply(p.Style, delta) }));
+                }
+                return doc;
+            }
+            var all = Decide(leaves.Select(l => (l.Before, l.Now)).ToList());
+            return all is null ? doc : Edits.Update(doc, doc.Objects.Keys.ToList(), o => o with { Style = Apply(o.Style, all) });
         }
 
         /// <summary>
