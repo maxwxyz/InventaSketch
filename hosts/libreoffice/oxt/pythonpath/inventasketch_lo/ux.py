@@ -362,3 +362,53 @@ def context_entries(info, lang=None):
     out.append(("item", i18n.text("ctxSidebar", lang), command_url("editModel")))
     out.append(("sep",))
     return out
+
+
+# ------------------------------------------------------------------ patent check
+
+_SEVERITY_ORDER = {"error": 0, "warning": 1, "manual": 2, "info": 3}
+_SEVERITY_KEY = {"error": "pcError", "warning": "pcWarning", "manual": "pcManual", "info": "pcInfo"}
+_URL = re.compile(r"\s*<https?://[^>\s]+>")
+
+
+def order_findings(findings):
+    """Errors first, then warnings, points to check by hand and notes; page and engine order within each."""
+    indexed = list(enumerate(findings or []))
+    indexed.sort(key=lambda p: (_SEVERITY_ORDER.get(p[1].get("severity"), 9), p[1].get("page") or 0, p[0]))
+    return [f for _, f in indexed]
+
+
+def severity_label(severity, lang=None):
+    key = _SEVERITY_KEY.get(severity)
+    return i18n.text(key, lang) if key else (severity or "")
+
+
+def finding_row(f, slides=True, lang=None):
+    """List row: 'Slide 2 · Error · message' ('Page' in Draw)."""
+    where = i18n.text("pcSlide" if slides else "pcPage", lang) % (f.get("page") or 0)
+    return "%s · %s · %s" % (where, severity_label(f.get("severity"), lang), f.get("message") or "")
+
+
+def source_text(source):
+    """The cited sources without their links: 'DE-01: PatV § 6(2) <https://…>; …' → 'DE-01: PatV § 6(2); …'."""
+    return _URL.sub("", source or "").strip()
+
+
+def finding_detail(f, lang=None):
+    """Detail lines of a chosen finding: suggestion and sources."""
+    lines = []
+    if f.get("suggestion"):
+        lines.append(f["suggestion"])
+    if f.get("source"):
+        lines.append(i18n.text("pcSource", lang) % source_text(f["source"]))
+    return "\n".join(lines)
+
+
+def findings_summary(findings, pages, lang=None):
+    """'3 finding(s), 1 error(s) on 2 page(s)'; a hint when no page has InventaSketch elements."""
+    if not pages:
+        return i18n.text("pcNoUnits", lang)
+    if not findings:
+        return i18n.text("pcNone", lang) % pages
+    errors = sum(1 for f in findings if f.get("severity") == "error")
+    return i18n.text("pcSummary", lang) % (len(findings), errors, pages)

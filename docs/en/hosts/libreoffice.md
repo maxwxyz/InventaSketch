@@ -77,8 +77,15 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
 `unopkg remove org.inventasketch.libreoffice`.
 
 - **Menu "InventaSketch"** (Impress, Draw, Calc): *Insert from Library…* (opens the sidebar deck), *Edit Model of
-  Selected Unit*, *Redraw Selected Unit from Model*, *Add Reference Numeral*, *Remove Data of Deleted Units*,
-  *About InventaSketch*.
+  Selected Unit*, *Redraw Selected Unit from Model*, *Add Reference Numeral*, *Patent Check (Drawings)…*, *Remove Data
+  of Deleted Units*, *About InventaSketch*.
+- **Patent check** (2026-11-25, Impress and Draw): a dialog with the office (DPMA, EPO, PCT, USPTO or the common safe
+  profile) and the findings of every page with InventaSketch units (engine `preflight`, each page loaded like a page
+  session, so native moves count) – errors first, as "Slide 2 · Error · message"; choosing a finding (arrow keys or
+  click) shows its suggestion and cited source and goes to its slide and unit. The disclaimer is always shown. Without
+  a visible window (headless, tests) the result is logged. Checked: `integration_test.py` (a gear outside the usable
+  area on slide 2 found and resolved to its unit) and `ui_smoke.py` (the dialog opens in a real window, the Down key
+  goes to slide 2 and selects the gear, Escape closes it).
 - **Sidebar deck "InventaSketch"**, two panels (see the UI/UX round below):
   - *Selection* follows the document selection (selection listener) and shows what can be done with the selected
     InventaSketch unit(s), context only.
@@ -97,7 +104,8 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   `assembly`, `panel?control=<key>&text=<text>` / `panel?control=<key>&item=<entry>` / `panel?press=<key, label or
   action:<id>>` (operates a control of the open panel the way a user does), `snapMove[?px=<pixels>&undo=<n>]` (snap
   the selected unit(s) after a native move, as after a mouse drag), `quickInsert[?text=<text>]` (Library panel with
-  the cursor in the search field, as Ctrl+Space), `cleanup`, `about`. The integration and UI smoke tests use these
+  the cursor in the search field, as Ctrl+Space), `patentCheck[?profile=<office id>]`, `cleanup`, `about`. The
+  integration and UI smoke tests use these
   commands.
 - **Recent items** (last 12 inserted library items, per user) are kept in `libreoffice-settings.json` next to the log
   and rank higher in the search.

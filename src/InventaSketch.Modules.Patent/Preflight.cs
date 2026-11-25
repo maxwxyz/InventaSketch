@@ -408,8 +408,9 @@ namespace InventaSketch.Modules.Patent
                 "Prüfen, dass die Zeichnung nur unerlässliche Wörter enthält (z. B. \"Wasser\", \"offen\", \"Schnitt A–A\").");
             M(PreflightRules.ManualPriorArt, "Label prior-art figures (\"Prior Art\" / \"Stand der Technik\").",
                 "Figuren zum Stand der Technik kennzeichnen (\"Stand der Technik\" / \"Prior Art\").");
-            M(PreflightRules.ManualPhotos, "Do not use photographs instead of drawings (the DPMA does not accept them as drawings).",
-                "Keine Fotos anstelle von Zeichnungen verwenden (das DPMA erkennt sie nicht als Zeichnungen an).");
+            // Office-neutral: the DPMA does not accept photographs as drawings, EPO, PCT and USPTO only in exceptional cases.
+            M(PreflightRules.ManualPhotos, "Do not use photographs instead of drawings (the offices accept them only in exceptional cases, if at all).",
+                "Keine Fotos anstelle von Zeichnungen verwenden (die Ämter lassen sie höchstens in Ausnahmefällen zu).");
         }
 
         // ------------------------------------------------------------------------------------------ helpers

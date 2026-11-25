@@ -80,6 +80,9 @@ def user32():
     u.GetAncestor.argtypes = [wintypes.HWND, wintypes.UINT]
     u.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
     u.GetWindowRect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+    u.FindWindowW.restype = wintypes.HWND
+    u.FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
+    u.SetForegroundWindow.argtypes = [wintypes.HWND]
     return u
 
 
@@ -423,6 +426,91 @@ def canvas_phase(office, out, logs):
         office.close(doc)
 
 
+class _Win32Window:
+    """A top-level window found by its title, with the two calls ``guard`` and ``screenshot`` use."""
+
+    def __init__(self, hwnd):
+        self.hwnd = hwnd
+
+    def getPosSize(self):
+        import ctypes
+        import types
+        from ctypes import wintypes
+        rect = wintypes.RECT()
+        user32().GetWindowRect(self.hwnd, ctypes.byref(rect))
+        return types.SimpleNamespace(X=rect.left, Y=rect.top, Width=rect.right - rect.left, Height=rect.bottom - rect.top)
+
+    def toFront(self):
+        user32().SetForegroundWindow(self.hwnd)
+
+
+def _window_titled(titles):
+    """The soffice top-level window with one of ``titles`` (the dialog), or None."""
+    u = user32()
+    for title in titles:
+        hwnd = u.FindWindowW(None, title)
+        if hwnd and _process_name(hwnd).startswith("soffice"):
+            return _Win32Window(hwnd)
+    return None
+
+
+def patent_dialog_phase(office, out):
+    """The patent check dialog in a visible window, with real keyboard input: the command opens it (in a thread, the
+    dialog is modal) with the findings of every slide, the list has the focus, Down chooses the first finding (the gear
+    outside the usable area on slide 2), which shows slide 2 and selects the gear; Escape closes the dialog."""
+    import threading
+    doc = office.desktop.loadComponentFromURL("private:factory/simpress", "_blank", 0, ())
+    office.docs.append(doc)
+    controller = doc.getCurrentController()
+    window = controller.getFrame().getContainerWindow()
+    window.setPosSize(40, 40, 1500, 950, 15)
+    time.sleep(3)
+    pages = doc.getDrawPages()
+    pages.insertNewByIndex(0)
+    controller.setCurrentPage(pages.getByIndex(1))
+    office.run(doc, "insert?item=mech.spur.axial&x=-5&y=60")
+    gear = list(units_of(pages.getByIndex(1)).values())[0]
+    controller.setCurrentPage(pages.getByIndex(0))
+    select_shapes(office, doc, [])
+    titles = ("Patent check (drawings)", "Patentprüfung (Zeichnungen)")
+    runner = threading.Thread(target=lambda: office.run(doc, "patentCheck?profile=uspto"), daemon=True)
+    runner.start()
+    dialog = None
+    end = time.time() + 20
+    while dialog is None and time.time() < end:
+        dialog = _window_titled(titles)
+        time.sleep(0.5)
+    check("patentDialog.opens", dialog is not None)
+    if dialog is None:
+        office.close(doc)
+        return
+    time.sleep(1.5)
+    screenshot(dialog, os.path.join(out, "patent-dialog.png"))
+    GUARD["window"] = dialog
+    try:
+        # The first finding is the sheet size of slide 2 (no element), the second the gear outside the usable area.
+        keys(VK_DOWN)
+        on_slide_2 = wait_for(lambda: controller.getCurrentPage().Number == 2, 6)
+        check("patentDialog.goesToSlide", on_slide_2)
+        keys(VK_DOWN)
+
+        def chosen():
+            sel = controller.getSelection()
+            return sel.getByIndex(0).Name if sel is not None and hasattr(sel, "getCount") and sel.getCount() == 1 else ""
+        wait_for(lambda: chosen() == gear.Name, 6)
+        check("patentDialog.selectsElement", chosen() == gear.Name, "selected %s" % chosen())
+        time.sleep(1)
+        screenshot(dialog, os.path.join(out, "patent-dialog-chosen.png"))
+        keys(VK_ESCAPE)
+    except ForeignWindow as ex:
+        check("patentDialog.foreground", False, "stopped, no input sent: %s" % ex)
+    finally:
+        GUARD["window"] = None
+    runner.join(10)
+    check("patentDialog.closes", not runner.is_alive())
+    office.close(doc)
+
+
 class _Done(Exception):
     pass
 
@@ -461,6 +549,7 @@ def main():
     try:
         if not args.skip_canvas:
             canvas_phase(office, args.out, logs)
+            patent_dialog_phase(office, args.out)
         if args.canvas_only:
             raise _Done()
         doc = office.desktop.loadComponentFromURL("private:factory/simpress", "_blank", 0, ())
