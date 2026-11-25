@@ -15,13 +15,17 @@ namespace InventaSketch.AddIn.OnSlide
         public string? Glyph { get; init; }
         /// <summary>Abstract pictogram id (<see cref="InventaSketch.Core.IconIds"/>); preferred over Icon and Glyph.</summary>
         public string? IconId { get; init; }
+        /// <summary>One line that says what the entry does, shown below the ring while the pointer is on it.</summary>
+        public string? Hint { get; init; }
     }
 
     /// <summary>
     /// Radial (pie) menu layout, hit test and drawing. Unavailable commands are greyed instead of hidden so every command
-    /// keeps its place; the first item (delete) is at 12 o'clock (Slidemax conventions). Each sector shows an abstract
+    /// keeps its place; the first item (delete) is at 12 o'clock (Slidemax conventions), the others follow clockwise in
+    /// the order edit, insert, view, style, arrange (<see cref="OnSlideController.PieRing"/>). Each sector shows an abstract
     /// pictogram above a label that is wrapped (two lines at most) to the sector's chord, shrunk or shortened with "…";
-    /// the full label of the hovered entry then appears in a pill below the ring.
+    /// the hovered entry shows its full label and a one-line explanation (<see cref="PieItem.Hint"/>) in a pill below the
+    /// ring. Esc, a click outside the ring or on its centre close it.
     /// </summary>
     internal sealed class PieMenu
     {
@@ -148,7 +152,12 @@ namespace InventaSketch.AddIn.OnSlide
                     oneLine = !WordsFit(g, item.Label, small, width);
                     textSize = new SizeF(width, (oneLine ? 1 : 2) * small.GetHeight(g));
                 }
-                if (!full && i == Hover) hoverFull = item.Label;
+                if (i == Hover)
+                {
+                    // Below the ring: the full label of a shortened entry and what the entry does.
+                    var hint = string.IsNullOrEmpty(item.Hint) || item.Hint == item.Label ? null : item.Hint;
+                    hoverFull = !full && hint is not null ? item.Label + " – " + hint : !full ? item.Label : hint;
+                }
                 var icon = HasIcon(item) ? 18 * Scale : 0;
                 var gap = icon > 0 ? 3 * Scale : 0;
                 var blockH = icon + gap + textSize.Height;
@@ -181,7 +190,7 @@ namespace InventaSketch.AddIn.OnSlide
                 g.DrawLine(x, Centre.X + d, Centre.Y - d, Centre.X - d, Centre.Y + d);
             }
 
-            // Full label of a shortened entry under the pointer.
+            // Full label of a shortened entry and the one-line explanation of the entry under the pointer.
             if (hoverFull is not null)
             {
                 var size = g.MeasureString(hoverFull, font);

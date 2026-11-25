@@ -10,7 +10,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// <summary>
     /// Insert by typing (Ctrl+Space on the slide, or the search button in the bar's insert palette): a small search box at
     /// the pointer with ranked hits (<see cref="LibrarySearch"/>), thumbnails and the category; Enter or a click inserts,
-    /// Esc closes. Recent items are listed before anything is typed.
+    /// Esc or a click outside the box closes it. Recent items are listed before anything is typed.
     /// </summary>
     internal static class InsertSearch
     {
@@ -111,12 +111,37 @@ namespace InventaSketch.AddIn.OnSlide
             // At the pointer, kept on the screen.
             var area = Screen.FromPoint(at).WorkingArea;
             form.Location = new Point(Math.Max(area.Left, Math.Min(at.X, area.Right - form.Width)), Math.Max(area.Top, Math.Min(at.Y, area.Bottom - form.Height)));
-            form.Shown += (_, _) => { box.Focus(); Refresh(); };
+            // Light dismiss (maintainer 2026-11-25): a click outside the box – on the slide, the ribbon or another window –
+            // closes it like Esc. The owner is disabled while the box is open, so the click is watched by polling.
+            var wasDown = Control.MouseButtons != MouseButtons.None;
+            void Dismiss(string why)
+            {
+                if (!form.Visible || form.DialogResult != DialogResult.None) return;
+                Log.Info("Insert box closed: " + why);
+                form.DialogResult = DialogResult.Cancel;
+                form.Close();
+            }
+            using var watch = new Timer { Interval = 40 };
+            watch.Tick += (_, _) =>
+            {
+                var down = Control.MouseButtons != MouseButtons.None;
+                if (ClickedOutside(wasDown, down, form.Bounds, Control.MousePosition)) Dismiss("click outside");
+                wasDown = down;
+            };
+            form.Deactivate += (_, _) => Dismiss("another window");
+            form.Shown += (_, _) => { box.Focus(); Refresh(); wasDown = Control.MouseButtons != MouseButtons.None; watch.Start(); };
             // The thumbnails belong to the caller's cache (shared by later boxes): never dispose them here. Disposing them
             // made the next box throw "Invalid parameter" while drawing its list.
             var result = owner != IntPtr.Zero ? form.ShowDialog(new Owner(owner)) : form.ShowDialog();
             return result == DialogResult.OK ? chosen : null;
         }
+
+        /// <summary>
+        /// True when a mouse button went down (not held from before) while the pointer is outside the box: the box then
+        /// closes. A press that started inside and is dragged out (scroll bar) does not count.
+        /// </summary>
+        internal static bool ClickedOutside(bool wasDown, bool isDown, Rectangle bounds, Point pointer)
+            => isDown && !wasDown && !bounds.Contains(pointer);
 
         private static string CategoryName(Registry registry, LibraryItem item, Lang lang)
         {

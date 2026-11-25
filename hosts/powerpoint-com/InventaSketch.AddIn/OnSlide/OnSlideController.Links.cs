@@ -45,18 +45,20 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
-        /// <summary>Screen positions of the contact points and their badges (badges spread so they never overlap).</summary>
+        /// <summary>
+        /// Screen positions of the contact points and their badges, from the shared handle layout (<see cref="Handles"/>):
+        /// beside the contact point, clear of PowerPoint's handles, the point diamonds, the "+" and each other.
+        /// </summary>
         private List<(Link Link, PointF At, PointF Badge)> LinkBadges(SlideView view)
         {
             var list = new List<(Link, PointF, PointF)>();
             var s = (float)view.DeviceScale;
             var off = (float)(BadgeOffsetPx * s);
-            var gap = (float)(2.3 * BadgePx * s);
-            foreach (var l in _links)
+            for (var i = 0; i < _links.Count; i++)
             {
+                var l = _links[i];
                 var at = view.ToScreen(l.At);
-                var badge = new PointF(at.X + off, at.Y - off);
-                while (list.Any(x => Math.Abs(x.Item3.X - badge.X) < gap && Math.Abs(x.Item3.Y - badge.Y) < gap)) badge = new PointF(badge.X + gap, badge.Y);
+                var badge = HandleById(view, "lock:" + i)?.At ?? new PointF(at.X + off, at.Y - off);
                 list.Add((l, at, badge));
             }
             return list;
@@ -65,11 +67,8 @@ namespace InventaSketch.AddIn.OnSlide
         private int LinkAt(POINT pt, SlideView view)
         {
             if (_links.Count == 0) return -1;
-            var r = BadgePx * 1.25 * view.DeviceScale;
-            var badges = LinkBadges(view);
-            for (var i = 0; i < badges.Count; i++)
-                if (Math.Abs(badges[i].Badge.X - pt.X) <= r && Math.Abs(badges[i].Badge.Y - pt.Y) <= r) return i;
-            return -1;
+            var i = NearestIndex(view, pt, "lock:");
+            return i < _links.Count ? i : -1;
         }
 
         /// <summary>Lock badges input while armed: hover feedback and the toggle click.</summary>
@@ -132,7 +131,8 @@ namespace InventaSketch.AddIn.OnSlide
             if (_hoverLink < 0 || _hoverLink >= badges.Count || _linkDoc is null) return;
             var h = badges[_hoverLink];
             var self = _unit.Doc.Objects.ContainsKey(h.Link.A) ? h.Link.A : h.Link.B;
-            DrawTip(g, view, new PointF(h.Badge.X + (float)(BadgePx * 1.6 * s), h.Badge.Y), Links.Describe(_registry(), _linkDoc, h.Link, self, _lang()));
+            var what = Links.Describe(_registry(), _linkDoc, h.Link, self, _lang());
+            QueueTip(view, h.Badge, what, (float)BadgePx);
         }
 
         /// <summary>A padlock glyph centred at <paramref name="c"/>: body plus shackle, the shackle lifted and open when released.</summary>

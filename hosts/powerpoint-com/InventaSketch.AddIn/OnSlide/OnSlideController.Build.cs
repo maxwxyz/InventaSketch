@@ -14,8 +14,10 @@ namespace InventaSketch.AddIn.OnSlide
     /// Build handles for assembling gearboxes and drivetrains (<see cref="Building"/>): a selected gear, ring gear, shaft,
     /// e-machine or engine shows a blue "+" at every free build port: the four sides of a gear (meshing gear), inside a
     /// ring gear (planet), the free ends of an axis (next shaft section, coupling, bearing, e-machine, wheel …), a free
-    /// hub (shaft). A click on a "+" puts the parts that fit there into the floating bar; a click on one docks it there,
-    /// coupled and selected. Dragging the "+" at a shaft end stretches the shaft; the parts on it keep their place.
+    /// hub (shaft), a free connection port or line end. A click on a "+" opens the insert box at the "+" with the parts that
+    /// fit there first; choosing one docks it there, coupled and selected. Dragging the "+" at a shaft end stretches the
+    /// shaft (the parts on it keep their place); dragging the "+" at a free line end draws the line on. Positions come from
+    /// the shared handle layout (<see cref="HandleLayout"/>).
     /// </summary>
     internal sealed partial class OnSlideController
     {
@@ -52,43 +54,24 @@ namespace InventaSketch.AddIn.OnSlide
         }
 
         /// <summary>
-        /// Screen position of a port's "+": a little beyond the port along its direction, pushed further out until it is
-        /// clear of PowerPoint's resize and rotation handles (those keep working). A free hub's "+" sits outside the unit,
-        /// beyond its top right corner, so the element can still be dragged by its centre.
+        /// Screen position of a port's "+" from the shared handle layout (<see cref="Handles"/>): a little beyond the port
+        /// along its direction, clear of PowerPoint's handles, the point diamonds and every other handle. A free hub's "+"
+        /// sits outside the unit, beyond its top right corner, so the element can still be dragged by its centre.
         /// </summary>
         private PointF PortScreen(SlideView view, BuildPort p)
         {
-            var scale = (float)view.DeviceScale;
-            var rect = UnitRectMm();
-            if (p.Kind == PortKind.Hub)
-            {
-                var corner = view.ToScreen(new Vec2(rect.X + rect.W, rect.Y));
-                return new PointF(corner.X + 16 * scale, corner.Y - 16 * scale);
-            }
+            var i = _ports.IndexOf(p);
+            if (i >= 0 && HandleById(view, "port:" + i) is { } h) return h.At;
             var s = view.ToScreen(p.At);
-            var handles = Enumerable.Range(0, 8).Select(h => view.ToScreen(HandlePoint(rect, h))).ToList();
-            var top = view.ToScreen(new Vec2(rect.X + rect.W / 2, rect.Y));
-            handles.Add(new PointF(top.X, top.Y - 35 * scale));
-            var clear = 15 * scale;
-            var off = (float)(PortOffsetPx * scale);
-            for (var i = 0; i < 12; i++)
-            {
-                var c = new PointF(s.X + (float)p.Dir.X * off, s.Y + (float)p.Dir.Y * off);
-                if (handles.All(h => Math.Abs(h.X - c.X) > clear || Math.Abs(h.Y - c.Y) > clear)) return c;
-                off += 6 * scale;
-            }
+            var off = (float)(PortOffsetPx * view.DeviceScale);
             return new PointF(s.X + (float)p.Dir.X * off, s.Y + (float)p.Dir.Y * off);
         }
 
         private int PortAt2(POINT pt, SlideView view)
         {
-            var r = PortPx * 1.4 * view.DeviceScale;
-            for (var i = 0; i < _ports.Count; i++)
-            {
-                var c = PortScreen(view, _ports[i]);
-                if (Math.Abs(c.X - pt.X) <= r && Math.Abs(c.Y - pt.Y) <= r) return i;
-            }
-            return -1;
+            if (_ports.Count == 0) return -1;
+            var i = NearestIndex(view, pt, "port:");
+            return i < _ports.Count ? i : -1;
         }
 
         private void DrawPorts(Graphics g, SlideView view)
@@ -96,29 +79,18 @@ namespace InventaSketch.AddIn.OnSlide
             if (_ports.Count == 0) return;
             var s = (float)view.DeviceScale;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var blue = new SolidBrush(FlowBlue);
-            using var hot = new SolidBrush(Color.FromArgb(60, 130, 230));
-            using var white = new Pen(Color.White, 1.5f * s);
             using var lead = new Pen(Color.FromArgb(120, FlowBlue), 1f * s) { DashPattern = new[] { 2f, 2f } };
             for (var i = 0; i < _ports.Count; i++)
             {
                 var p = _ports[i];
                 var at = view.ToScreen(p.At);
                 var c = PortScreen(view, p);
+                // A thin dashed lead shows where the "+" belongs once the layout pushed it out of the way.
                 g.DrawLine(lead, at, c);
-                var hover = i == _hoverPort2;
-                var r = (float)(PortPx * (hover ? 1.2 : 1.0) * s);
-                g.FillEllipse(hover ? hot : blue, c.X - r, c.Y - r, 2 * r, 2 * r);
-                var k = r * 0.55f;
-                g.DrawLine(white, c.X - k, c.Y, c.X + k, c.Y);
-                g.DrawLine(white, c.X, c.Y - k, c.X, c.Y + k);
+                DrawAddHandle(g, view, c, i == _hoverPort2);
             }
             if (_hoverPort2 >= 0 && _hoverPort2 < _ports.Count)
-            {
-                var p = _ports[_hoverPort2];
-                var c = PortScreen(view, p);
-                DrawTip(g, view, new PointF(c.X + (float)(PortPx * 1.8 * s), c.Y), PortTip(p));
-            }
+                QueueTip(view, PortScreen(view, _ports[_hoverPort2]), PortTip(_ports[_hoverPort2]), (float)PortPx);
         }
 
         private string PortTip(BuildPort p) => p.Kind switch
@@ -131,7 +103,9 @@ namespace InventaSketch.AddIn.OnSlide
             PortKind.Bevel => T("Add a mating bevel gear here", "Gegen-Kegelrad hier anfügen"),
             PortKind.Mount => T("Add a tool here, facing along the flange", "Werkzeug hier anbauen, ausgerichtet am Flansch"),
             PortKind.Connect => T("Connect a line or the next element here", "Leitung oder nächstes Element hier anschließen"),
-            PortKind.LineEnd => T("Continue the line or connect an element", "Leitung fortsetzen oder Element anschließen"),
+            PortKind.LineEnd => EndOfPort(p) is not null
+                ? T("Continue here: click for a fitting element or line · drag to draw the line on", "Hier weiterbauen: Klick für passendes Element oder Leitung · ziehen zeichnet die Leitung weiter")
+                : T("Continue the line or connect an element", "Leitung fortsetzen oder Element anschließen"),
             _ => StretchablePort(p)
                 ? T("Add at the shaft end (click) · lengthen the shaft (drag)", "Am Wellenende anfügen (Klick) · Welle verlängern (ziehen)")
                 : T("Add at the shaft end", "Am Wellenende anfügen"),
@@ -174,6 +148,13 @@ namespace InventaSketch.AddIn.OnSlide
             if (message == WM_MOUSEMOVE)
             {
                 if (!_portDragging && Math.Abs(pt.X - _portDown.X) + Math.Abs(pt.Y - _portDown.Y) < 5 * view.DeviceScale) return true;
+                // One "+" per free line end: dragging it draws the line on (the click opens what fits there).
+                if (!_portDragging && EndOfPort(port) is bool atStart)
+                {
+                    _portPressed = null;
+                    BeginDraw(atStart, _portDown);
+                    return DrawMouse(message, pt, view);
+                }
                 if (!StretchablePort(port)) return true;
                 _portDragging = true;
                 var raw = view.ToMm(pt);

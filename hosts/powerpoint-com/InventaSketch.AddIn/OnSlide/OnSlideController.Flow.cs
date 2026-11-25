@@ -145,18 +145,25 @@ namespace InventaSketch.AddIn.OnSlide
                     var p = h * 0.38f;
                     g.DrawLine(white, m.X - p, m.Y, m.X + p, m.Y);
                     g.DrawLine(white, m.X, m.Y - p, m.X, m.Y + p);
+                    QueueTip(view, c, T("Add the next element here (a copy, connected) · drag: connect or place it",
+                        "Nächstes Element hier anfügen (Kopie, verbunden) · ziehen: verbinden oder ablegen"), (float)(TrianglePx * 0.6));
                 }
             }
-            if (!_showPorts) return;
-            using var ring = new Pen(FlowBlue, 1.4f * s);
-            using var fill = new SolidBrush(Color.White);
-            foreach (var a in ConnectablePorts(view))
+            if (_showPorts)
             {
-                var p = view.ToScreen(a.P);
-                var r = (a.Id == _hoverPort ? 4.5f : 3.2f) * s;
-                g.FillEllipse(a.Id == _hoverPort ? blue : fill, p.X - r, p.Y - r, 2 * r, 2 * r);
-                g.DrawEllipse(ring, p.X - r, p.Y - r, 2 * r, 2 * r);
+                using var ring = new Pen(FlowBlue, 1.4f * s);
+                using var fill = new SolidBrush(Color.White);
+                foreach (var a in ConnectablePorts(view))
+                {
+                    var p = view.ToScreen(a.P);
+                    var r = (a.Id == _hoverPort ? 4.5f : 3.2f) * s;
+                    g.FillEllipse(a.Id == _hoverPort ? blue : fill, p.X - r, p.Y - r, 2 * r, 2 * r);
+                    g.DrawEllipse(ring, p.X - r, p.Y - r, 2 * r, 2 * r);
+                    if (a.Id == _hoverPort)
+                        QueueTip(view, p, T("Drag from this port to connect", "Von diesem Anschluss ziehen zum Verbinden"), 4.5f);
+                }
             }
+            FlushTip(g, view);
         }
 
         /// <summary>Quick-add input while armed: hover feedback and the start of a triangle or port drag.</summary>
@@ -431,8 +438,8 @@ namespace InventaSketch.AddIn.OnSlide
             // Just added with "+": one button opens the insert box with what the new element can become (no thumbnail row).
             var list = new List<BarButton>();
             if (_nextFor != first.Id || Flow.NextItems(_registry(), first, 2).Count == 0) return list;
-            list.Add(new BarButton("nextbox", "", T("Make it … (another element)", "Ändern in … (anderes Element)")) { IconId = IconIds.Cycle });
-            list.Add(new BarButton("", "", "", Separator: true));
+            // The main action right after a quick add, with a short text: the cycle pictogram alone says too little.
+            list.Add(new BarButton("nextbox", T("Make it …", "Ändern in …"), T("Turn the new element into another one (connections stay)", "Das neue Element in ein anderes ändern (Verbindungen bleiben)")) { IconId = IconIds.Cycle, ShowLabel = true });
             return list;
         }
 

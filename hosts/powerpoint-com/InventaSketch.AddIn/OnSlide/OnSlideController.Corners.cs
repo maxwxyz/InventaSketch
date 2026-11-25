@@ -91,42 +91,45 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
-        /// <summary>Screen positions of the visible segment handles (segments too short on screen get none).</summary>
+        /// <summary>
+        /// Screen positions of the visible segment handles from the shared handle layout (<see cref="Handles"/>): junction
+        /// icons, "+" at free ends without a port "+", corner dots and branch handles (short segments get none).
+        /// </summary>
         private IEnumerable<(int Code, PointF At)> SegmentHandlesOnScreen(SlideView view)
         {
-            var o = PointObject();
-            if (o is null || _unit is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0)) yield break;
-            var pts = (_unitContext ?? _unit.Doc).ResolvePoints(o);
-            var off = (float)(BranchOffsetPx * view.DeviceScale);
-            for (var i = 0; i < _crossings.Count; i++)
+            if (PointObject() is null || _unit is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0)) yield break;
+            foreach (var h in Handles(view))
             {
-                // Connect icon a little above and right of the crossing (the line stays clickable there).
-                var x = view.ToScreen(_crossings[i].At);
-                yield return (CrossCode + i, new PointF(x.X + off * 0.8f, x.Y - off * 0.8f));
-            }
-            foreach (var (atStart, end, dir) in _endHandles)
-            {
-                var e = view.ToScreen(end);
-                yield return (EndCode + (atStart ? 0 : 1), new PointF(e.X + (float)dir.X * off * 1.25f, e.Y + (float)dir.Y * off * 1.25f));
-            }
-            foreach (var (seg, at, n) in _segHandles)
-            {
-                if (seg >= pts.Count) continue;
-                var a = view.ToScreen(pts[seg]);
-                var b = view.ToScreen(pts[(seg + 1) % pts.Count]);
-                if (Math.Sqrt((a.X - b.X) * (a.X - b.X) + (a.Y - b.Y) * (a.Y - b.Y)) < MinSegmentPx * view.DeviceScale) continue;
-                var s = view.ToScreen(at);
-                yield return (2 * seg, s);
-                if (_canBranch) yield return (2 * seg + 1, new PointF(s.X + (float)n.X * off, s.Y + (float)n.Y * off));
+                if (!h.Visible) continue;
+                var code = SegmentCode(h.Id);
+                if (code >= 0) yield return (code, h.At);
             }
         }
 
+        /// <summary>Hover/hit code of a segment handle id ("cross:i", "end:k", "seg:i", "branch:i"), -1 for other handles.</summary>
+        internal static int SegmentCode(string id)
+        {
+            var cut = id.IndexOf(':');
+            if (cut < 0 || !int.TryParse(id.Substring(cut + 1), out var n)) return -1;
+            return id.Substring(0, cut) switch
+            {
+                "cross" => CrossCode + n,
+                "end" => EndCode + n,
+                "seg" => 2 * n,
+                "branch" => 2 * n + 1,
+                _ => -1,
+            };
+        }
+
+        /// <summary>The tooltip of a segment handle (from the layout).</summary>
+        private string SegmentTip(SlideView view, int code)
+            => Handles(view).FirstOrDefault(h => h.Visible && SegmentCode(h.Id) == code)?.Spec.Tip ?? "";
+
         private int SegmentHandleAt(POINT pt, SlideView view)
         {
-            var r = SegHandlePx * 1.4 * view.DeviceScale;
-            foreach (var (code, at) in SegmentHandlesOnScreen(view))
-                if (Math.Abs(at.X - pt.X) <= r && Math.Abs(at.Y - pt.Y) <= r) return code;
-            return -1;
+            if (PointObject() is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0)) return -1;
+            var h = NearestHandle(view, pt);
+            return h is null ? -1 : SegmentCode(h.Id);
         }
 
         private void DrawSegmentHandles(Graphics g, SlideView view)
@@ -138,11 +141,25 @@ namespace InventaSketch.AddIn.OnSlide
             using var fill = new SolidBrush(Color.White);
             using var hot = new SolidBrush(Color.FromArgb(225, 236, 252));
             using var blue = new SolidBrush(FlowBlue);
-            PointF? tipAt = null;
-            string? tip = null;
             foreach (var (code, c) in SegmentHandlesOnScreen(view))
             {
                 var hover = code == _hoverSeg;
+                if (code >= EndCode && code < CrossCode)
+                {
+                    // Free end: the same "add here" handle as every other "+".
+                    DrawAddHandle(g, view, c, hover);
+                    if (hover) QueueTip(view, c, SegmentTip(view, code), (float)PortPx);
+                    continue;
+                }
+                if (code < EndCode && code % 2 == 0)
+                {
+                    // New corner: a small hollow dot on the segment (no "+", so it is not mistaken for "add an element").
+                    var rd = (float)(CornerDotPx * (hover ? 1.5 : 1.0) * s);
+                    g.FillEllipse(hover ? hot : fill, c.X - rd, c.Y - rd, 2 * rd, 2 * rd);
+                    g.DrawEllipse(ring, c.X - rd, c.Y - rd, 2 * rd, 2 * rd);
+                    if (hover) QueueTip(view, c, SegmentTip(view, code), (float)CornerDotPx);
+                    continue;
+                }
                 var r = (float)(SegHandlePx * (hover ? 1.25 : 1.0) * s);
                 g.FillEllipse(hover ? hot : fill, c.X - r, c.Y - r, 2 * r, 2 * r);
                 g.DrawEllipse(ring, c.X - r, c.Y - r, 2 * r, 2 * r);
@@ -155,18 +172,6 @@ namespace InventaSketch.AddIn.OnSlide
                     var d = 1.5f * s;
                     g.FillEllipse(blue, c.X - d, c.Y - d, 2 * d, 2 * d);
                 }
-                else if (code >= EndCode)
-                {
-                    g.FillEllipse(hover ? new SolidBrush(Color.FromArgb(60, 130, 230)) : blue, c.X - r, c.Y - r, 2 * r, 2 * r);
-                    using var white = new Pen(Color.White, 1.5f * s);
-                    g.DrawLine(white, c.X - k, c.Y, c.X + k, c.Y);
-                    g.DrawLine(white, c.X, c.Y - k, c.X, c.Y + k);
-                }
-                else if (code % 2 == 0)
-                {
-                    g.DrawLine(glyph, c.X - k, c.Y, c.X + k, c.Y);
-                    g.DrawLine(glyph, c.X, c.Y - k, c.X, c.Y + k);
-                }
                 else
                 {
                     // Branch: a stub leaving a dot.
@@ -174,19 +179,8 @@ namespace InventaSketch.AddIn.OnSlide
                     g.FillEllipse(blue, c.X - d, c.Y + k - d, 2 * d, 2 * d);
                     g.DrawLine(glyph, c.X, c.Y + k, c.X, c.Y - k);
                 }
-                if (hover)
-                {
-                    tipAt = new PointF(c.X + r + 4 * s, c.Y);
-                    tip = code >= CrossCode
-                        ? T("Connect here (junction)", "Hier verbinden (Knotenpunkt)")
-                        : code >= EndCode
-                        ? T("Extend: drag, or click to keep drawing", "Verlängern: ziehen, oder klicken zum Weiterzeichnen")
-                        : code % 2 == 0
-                        ? T("Corner: click, or drag to bend", "Ecke: klicken oder ziehen zum Knicken")
-                        : T("Branch: drag to a pin or anywhere, click for a stub", "Abzweig: zu einem Anschluss oder frei ziehen, Klick für Stich");
-                }
+                if (hover) QueueTip(view, c, SegmentTip(view, code), (float)SegHandlePx);
             }
-            if (tip is not null && tipAt is { } at) DrawTip(g, view, at, tip);
         }
 
         /// <summary>Segment handles while armed: start of a corner drag (with the new corner) or of a branch drag.</summary>

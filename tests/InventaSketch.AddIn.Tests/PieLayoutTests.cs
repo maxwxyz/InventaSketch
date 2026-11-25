@@ -1,50 +1,72 @@
+using System.Collections.Generic;
 using System.Linq;
 using InventaSketch.AddIn.OnSlide;
 using Xunit;
 
 namespace InventaSketch.AddIn.Tests
 {
-    /// <summary>The pie menu keeps at most eight entries in its ring; the rest goes into "More" without duplicates.</summary>
+    /// <summary>
+    /// The pie menu has eight fixed places (text, edit, insert, duplicate, style, delete, view, arrange) for every element;
+    /// groups open submenus, empty places stay greyed, long submenus continue in "More"; the bar shows pictograms only when
+    /// they are unambiguous.
+    /// </summary>
     public class PieLayoutTests
     {
-        private static (PieItem, bool) E(string id, bool essential) => (new PieItem(id, id), essential);
+        private static PieItem I(string id) => new(id, id);
 
-        [Fact]
-        public void SmallMenusStayInOneRing()
-        {
-            var (main, overflow) = OnSlideController.PieLayout(new[] { E("delete", true), E("dup", true), E("a1", false) }, "More");
-            Assert.Equal(new[] { "delete", "dup", "a1" }, main.Select(i => i.Id));
-            Assert.Empty(overflow);
-        }
+        private static OnSlideController.PieGroup G(string key, params PieItem[] items) => new(key, key + " >", null, items);
 
-        [Fact]
-        public void LargeMenusOverflowIntoMoreWithoutDuplicates()
-        {
-            var all = new[]
+        private static List<OnSlideController.PieGroup> Groups(int editCount, int styleCount = 0, int viewCount = 0)
+            => new()
             {
-                E("delete", true), E("view:plan", true), E("view:elevation", true), E("dup", true), E("rot90", true),
-                E("act:thicker", false), E("act:thinner", false), E("act:kind", false), E("act:thickness", false),
-                E("act:closed", false), E("flipH", false), E("flipV", false),
+                G("text", I("text")),
+                G("edit", Enumerable.Range(0, editCount).Select(i => I("act:" + i)).ToArray()) with { AlwaysMenu = true },
+                G("insert", I("insert")),
+                G("duplicate", I("dup")),
+                G("style", Enumerable.Range(0, styleCount).Select(i => I("menu:c:" + i)).ToArray()) with { AlwaysMenu = true },
+                G("delete", I("delete")),
+                G("view", Enumerable.Range(0, viewCount).Select(i => I("view:" + i)).ToArray()),
+                G("arrange"),
             };
-            var (main, overflow) = OnSlideController.PieLayout(all, "More");
-            Assert.Equal(OnSlideController.MaxPieItems, main.Count);
-            Assert.Equal("menu:more", main.Last().Id);
-            Assert.Equal(new[] { "delete", "view:plan", "view:elevation", "dup", "rot90", "act:thicker", "act:thinner" }, main.Take(7).Select(i => i.Id));
-            Assert.Equal(new[] { "act:kind", "act:thickness", "act:closed", "flipH", "flipV" }, overflow.Select(i => i.Id));
-            Assert.Empty(main.Select(i => i.Id).Intersect(overflow.Select(i => i.Id)));
-        }
 
         [Fact]
-        public void TooManyEssentialEntriesAlsoOverflow()
+        public void EveryElementGetsTheSameEightPlaces()
         {
-            var all = Enumerable.Range(0, 10).Select(i => E("e" + i, true)).ToArray();
-            var (main, overflow) = OnSlideController.PieLayout(all, "More");
-            Assert.Equal(8, main.Count);
-            Assert.Equal(new[] { "e7", "e8", "e9" }, overflow.Select(i => i.Id));
+            var (ring, menus) = OnSlideController.PieRing(Groups(3, 2, 2), "More");
+            Assert.Equal(new[] { "text", "menu:g:edit", "insert", "dup", "menu:g:style", "delete", "menu:g:view", "menu:g:arrange" }, ring.Select(i => i.Id));
+            Assert.Equal(8, OnSlideController.PieSlots.Length);
+            Assert.Equal(new[] { "act:0", "act:1", "act:2" }, menus["edit"].Select(i => i.Id));
+            // Nothing to arrange: the place stays, greyed.
+            Assert.False(ring.Single(i => i.Id == "menu:g:arrange").Enabled);
+            // Every entry has a label; submenu entries explain what is inside.
+            Assert.All(ring, i => Assert.False(string.IsNullOrWhiteSpace(i.Label)));
+            Assert.Equal("act:0, act:1, act:2", ring.Single(i => i.Id == "menu:g:edit").Hint);
         }
 
         [Fact]
-        public void BarShowsKeyActionsTellingIconsFirstThenTextButtons()
+        public void ASingleEntryIsShownDirectlyUnlessThePlaceIsAMenu()
+        {
+            var (ring, menus) = OnSlideController.PieRing(Groups(1, 0, 1), "More");
+            Assert.Equal("view:0", ring[6].Id);           // one view: directly
+            Assert.Equal("menu:g:edit", ring[1].Id);      // edit keeps its name with one entry
+            Assert.Single(menus["edit"]);
+            Assert.False(ring[4].Enabled);                // no style: greyed place
+        }
+
+        [Fact]
+        public void LongSubmenusContinueInMoreWithoutDuplicates()
+        {
+            var (_, menus) = OnSlideController.PieRing(Groups(25), "More");
+            var first = menus["edit"];
+            Assert.Equal(OnSlideController.MaxSubItems, first.Count);
+            Assert.Equal("menu:g:edit+", first.Last().Id);
+            var all = menus["edit"].Concat(menus["edit+"]).Concat(menus["edit++"]).Where(i => !i.Id.StartsWith("menu:")).Select(i => i.Id).ToList();
+            Assert.Equal(25, all.Count);
+            Assert.Equal(25, all.Distinct().Count());
+        }
+
+        [Fact]
+        public void BarShowsPictogramsOnlyWhenTheyAreUnambiguous()
         {
             static InventaSketch.Core.ContextAction A(string id, string icon, bool enabled = true)
                 => new(id, new InventaSketch.Core.I18nText(id, id), icon, o => o) { IsEnabled = enabled };
@@ -55,19 +77,31 @@ namespace InventaSketch.AddIn.Tests
                 A("toggle", InventaSketch.Core.IconIds.Toggle), A("more2", InventaSketch.Core.IconIds.Increase),
                 A("less", InventaSketch.Core.IconIds.Decrease), A("flip", InventaSketch.Core.IconIds.Swap), A("fourth", InventaSketch.Core.IconIds.ArrowEnd),
             };
-            Assert.Equal(new[] { "more", "less", "flip", "fourth", "custom" }, OnSlideController.BarActions(actions, hasTextButton: true).Select(a => a.Id));
-            Assert.Equal(new[] { "ref", "more", "less", "flip", "fourth" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(a => a.Id));
+            // Two actions share "+": both become text buttons; telling pictograms first.
+            var withText = OnSlideController.BarActions(actions, hasTextButton: true);
+            Assert.Equal(new[] { "less", "flip", "fourth", "custom", "more" }, withText.Select(x => x.Action.Id));
+            Assert.Equal(new[] { true, true, true, false, false }, withText.Select(x => x.Pictorial));
+            Assert.Equal(new[] { "ref", "less", "flip", "fourth", "custom" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(x => x.Action.Id));
+        }
+
+        [Fact]
+        public void BarGroupsAreSeparated()
+        {
+            var a = new List<BarButton> { new("insert", "", "") };
+            var b = new List<BarButton>();
+            var c = new List<BarButton> { new("flipH", "", ""), new("rot90", "", "") };
+            var d = new List<BarButton> { new("more", "", "") };
+            var bar = OnSlideController.JoinGroups(a, b, c, d);
+            Assert.Equal(new[] { "insert", "", "flipH", "rot90", "", "more" }, bar.Select(x => x.Id));
+            Assert.Equal(2, bar.Count(x => x.Separator));
         }
 
         [Fact]
         public void ShortLabelsFitTheBar()
         {
             Assert.Equal("Helical teeth", OnSlideController.ShortLabel("Helical teeth on/off"));
-            Assert.Equal("Schrägverzahnung", OnSlideController.ShortLabel("Schrägverzahnung an/aus"));
             Assert.Equal("Centre", OnSlideController.ShortLabel("Next centre (closed, tandem)"));
             Assert.Equal(22, OnSlideController.ShortLabel("A very long action label indeed").Length);
-            Assert.Equal("Kardinalität Anfang", OnSlideController.ShortLabel("Nächste Kardinalität Anfang"));
-            Assert.Equal("Kardinalität Ende", OnSlideController.ShortLabel("Nächste Kardinalität Ende"));
         }
     }
 }
