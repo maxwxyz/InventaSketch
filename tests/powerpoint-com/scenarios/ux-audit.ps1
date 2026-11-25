@@ -64,6 +64,8 @@ $picked = foreach ($g in ($catalog | Group-Object Cat)) {
     $types = @($g.Group | Group-Object Type | ForEach-Object { $_.Group[0] })
     $types | Select-Object -First 2
 }
+# ISK_AUDIT_COMBOS_ONLY=1 skips the per-category part (combinations and workflows only).
+if ($env:ISK_AUDIT_COMBOS_ONLY) { $picked = @() }
 $i = 0
 foreach ($it in $picked) {
     $i++
@@ -101,8 +103,8 @@ function Fit($target, $id) {
     $addin.Command('ins:' + $id) | Out-Null; Start-Sleep 2
     Get-IskSelected $S
 }
-Combo 'shaft-gear-bearing' { $sh = Put 'mech.shaft' 250 230; $g = Fit $sh 'mech.gear.spur'; $b = Fit $sh 'mech.bearing.ball'; $g }
-Combo 'gear-mesh' { $g = Put 'mech.gear.spur' 250 200; Fit $g 'mech.gear.spur' | Out-Null; $g }
+Combo 'shaft-gear-bearing' { $sh = Put 'mech.shaft.body' 250 230; $g = Fit $sh 'mech.spur.side'; $b = Fit $sh 'mech.bearing.ball.stick'; $g }
+Combo 'gear-mesh' { $g = Put 'mech.spur.axial' 250 200; Fit $g 'mech.spur.axial' | Out-Null; $g }
 Combo 'pv-cable' {
     $pv = Put 'energy.pv.string' 200 200; $pv.Select(); Start-Sleep 1
     $ports = @(([string]$addin.BuildPorts($pv.Name) -split "`n") | Where-Object { $_ })
@@ -121,7 +123,7 @@ Combo 'resistor' { $r = Put 'elec.resistor' 250 220; $r }
 # ---------------------------------------------------------------- 3. multi-selection
 try {
     New-AuditSlide | Out-Null
-    $a = Put 'mech.gear.spur' 200 200; $b = Put 'ann.flow.process' 480 220
+    $a = Put 'mech.spur.side' 200 200; $b = Put 'ann.flow.process' 480 220
     $a.Select(); $b.Select(0); Start-Sleep 2
     Save-IskShot $S 'multi-selection'
     Write-Record 'multi' 'gear+box' $null
@@ -131,13 +133,13 @@ catch { Write-IskInfo ("  multi: " + $_.Exception.Message) }
 # ---------------------------------------------------------------- 4. workflows: insert box, placement ghost
 try {
     New-AuditSlide | Out-Null
-    $sh = Put 'mech.shaft' 250 230; $sh.Select(); Start-Sleep 1
+    $sh = Put 'mech.shaft.body' 250 230; $sh.Select(); Start-Sleep 1
     [IskTest.Native]::keybd_event(0x11, 0, 0, [UIntPtr]::Zero); [IskTest.Native]::keybd_event(0x20, 0, 0, [UIntPtr]::Zero)
     [IskTest.Native]::keybd_event(0x20, 0, 2, [UIntPtr]::Zero); [IskTest.Native]::keybd_event(0x11, 0, 2, [UIntPtr]::Zero)
     Start-Sleep 2
     Save-IskShot $S 'workflow-insert-box'
     Send-IskEscape; Start-Sleep 1
-    $addin.Place('mech.bearing.ball') | Out-Null; Start-Sleep 1
+    $addin.Place('mech.bearing.ball.stick') | Out-Null; Start-Sleep 1
     $r = Get-IskRect $S $sh.Name
     Move-IskMouse ($r.CX + 30) ($r.CY + 40); Start-Sleep 1
     Save-IskShot $S 'workflow-place-ghost-near-shaft' -Around ($r.CX - 300), ($r.CY - 250), 600, 500
