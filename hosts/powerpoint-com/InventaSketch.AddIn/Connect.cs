@@ -991,25 +991,32 @@ namespace InventaSketch.AddIn
         {
             try
             {
-                if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return;
-                if (!double.TryParse(control.Tag, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g)) return;
-                double? group = Math.Abs(g - Style.DesignLineGroup) < 1e-9 ? null : g;
-                var units = OnSlide.SketchUnits.All(slide);
-                _app.StartNewUndoEntry();
-                var mono = OnSlide.SlideStyle.Read(slide)?.Mono ?? units.Any(u => u.Doc.Settings.Monochrome);
-                OnSlide.SlideStyle.Write(slide, mono, group);
-                foreach (var u in units)
-                {
-                    if (u.Doc.Settings.LineGroup == group) continue;
-                    OnSlide.SketchUnits.Replace(slide, u, u.Doc with { Settings = u.Doc.Settings with { LineGroup = group } }, _registry, _lang);
-                }
-                _ribbon?.Invalidate();
-                Log.Info($"Line group {g.ToString(System.Globalization.CultureInfo.InvariantCulture)} for {units.Count} unit(s)");
+                if (double.TryParse(control.Tag, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var g)) ApplyLineGroup(g);
             }
             catch (Exception ex)
             {
                 Log.Error("OnLineGroup", ex);
             }
+        }
+
+        /// <summary>The ISO 128 line group <paramref name="g"/> for the current slide (slide style + every unit redrawn).</summary>
+        internal bool ApplyLineGroup(double g)
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return false;
+            if (!Style.LineGroups.Any(x => Math.Abs(x - g) < 1e-9)) return false;
+            double? group = Math.Abs(g - Style.DesignLineGroup) < 1e-9 ? null : g;
+            var units = OnSlide.SketchUnits.All(slide);
+            _app.StartNewUndoEntry();
+            var mono = OnSlide.SlideStyle.Read(slide)?.Mono ?? units.Any(u => u.Doc.Settings.Monochrome);
+            OnSlide.SlideStyle.Write(slide, mono, group);
+            foreach (var u in units)
+            {
+                if (u.Doc.Settings.LineGroup == group) continue;
+                OnSlide.SketchUnits.Replace(slide, u, u.Doc with { Settings = u.Doc.Settings with { LineGroup = group } }, _registry, _lang);
+            }
+            _ribbon?.Invalidate();
+            Log.Info($"Line group {g.ToString(System.Globalization.CultureInfo.InvariantCulture)} for {units.Count} unit(s)");
+            return true;
         }
 
         // ------------------------------------------------------------------ sidebar editor (custom task pane)
