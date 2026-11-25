@@ -318,8 +318,10 @@ Funktionsgraphen des Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vekto
 3. **Kurven aus Funktionen und Skizzen (erledigt 25.11.2026):** 13 Funktionsgeneratoren mit Textform, Skizzenerkennung
    (10 Arten, sonst Glättung), COM „Kurve skizzieren“ in XY-Diagrammen und Abbildungen (mit echter Maus geprüft).
    Achsenbrüche: Baustein (`AxisBreaks`, aus Slidemax übernommen) fertig, von den Diagrammtypen noch nicht gezeichnet.
-4. matplotlib- und pgfplots-Export (in Arbeit 25.11.2026); Zusammenlegung mit Mathe (Koordinatensysteme und
-   Funktionsgraphen ins Diagramm-Modul) offen.
+4. **matplotlib- und pgfplots-Export (erledigt 25.11.2026):** `chart.matplotlib` (.py) und `chart.pgfplots` (.tex) für
+   alle Diagrammtypen samt Abbildungen, Teil-Aussehen berücksichtigt, Texte bearbeitbar; Python-Syntax geprüft, aber noch
+   nicht mit matplotlib ausgeführt oder mit LaTeX übersetzt (hier nicht installiert). Zusammenlegung mit Mathe
+   (Koordinatensysteme und Funktionsgraphen ins Diagramm-Modul) offen.
 4a. **Bearbeitbare Exporte (Maintainer 25.11.2026):** LaTeX – jede Zeichnung (Flussdiagramme, Blockschaltbilder,
    Skizzen) als TikZ mit Texten als TikZ-Knoten (Dokumentschrift, Formatierung und Formeln bleiben in LaTeX
    bearbeitbar, Umlaute und Sonderzeichen maskiert), Diagramme und Abbildungen als pgfplots (Achsen, Teilung, Legende,

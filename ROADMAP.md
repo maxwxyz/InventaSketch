@@ -286,8 +286,10 @@ vectors stay in `math`.
 3. **Curves from functions and sketches (done 2026-11-25):** 13 function generators with text form, sketch recognition
    (10 kinds, smoothing fallback), COM "Sketch a curve" on XY charts and figures (verified with the real mouse). Axis
    breaks: building block (`AxisBreaks`, port of Slidemax) done, not yet drawn by the chart types.
-4. matplotlib and pgfplots export (in progress 2026-11-25); math merge (coordinate systems and function graphs into the
-   chart module) open.
+4. **matplotlib and pgfplots export (done 2026-11-25):** `chart.matplotlib` (.py) and `chart.pgfplots` (.tex) for every
+   chart type incl. figures, part looks respected, texts editable; Python syntax checked, but not yet run with matplotlib
+   or compiled with LaTeX (neither installed here). Math merge (coordinate systems and function graphs into the chart
+   module) open.
 4a. **Editable exports (maintainer 2026-11-25):** LaTeX – every drawing (flowcharts, block diagrams, sketches) as TikZ
    with texts as TikZ nodes (document font, formatting and maths stay editable in LaTeX, umlauts and special characters
    escaped), charts and figures as pgfplots (axes, ticks, legend, labels, value lines, hatched regions as LaTeX code, data
