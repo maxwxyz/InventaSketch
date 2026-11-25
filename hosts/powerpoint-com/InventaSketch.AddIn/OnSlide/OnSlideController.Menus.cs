@@ -228,6 +228,8 @@ namespace InventaSketch.AddIn.OnSlide
             BarButton Labelled(BarButton b, string label) => b with { Glyph = label, ShowLabel = b.IconId is not null };
             BarButton? main = null;
             if (_nextFor == first.Id && NextButtons(first).FirstOrDefault() is { } next) main = next;
+            // Explore and Engineer: "Values" for elements with values (Calc 2); Quick sketch keeps the bar unchanged.
+            else if (ValuesButtonFor(first, type) is { } values) main = values;
             else if (actions.FirstOrDefault(a => a.Id == "chart.data" && a.IsEnabled) is { } data)
                 main = new BarButton("act:" + data.Id, T("Data", "Daten"), data.Label.Get(_lang()) + " \u2026") { IconId = IconIds.Table, ShowLabel = true };
             else if (text is not null)
@@ -359,6 +361,8 @@ namespace InventaSketch.AddIn.OnSlide
             else
             {
                 if (first is not null && _nextFor == first.Id) edit.Add(PieCommand("nextbox", IconIds.Cycle));
+                // Values ▸ at every level (Quick sketch included: entering values stays possible, Calc 2).
+                if (first is not null && ValuesPieItem(first) is { } values) edit.Add(values);
                 if (pointObject is not null && Registry.IsConvertible(pointObject))
                 {
                     edit.Add(new PieItem("menu:type", T("Line type ▸", "Linientyp ▸")) { IconId = IconIds.Cycle, Hint = T("Line, arrow, dimension, lead line …; the ends stay", "Linie, Pfeil, Maß, Hinweislinie …; die Enden bleiben") });
@@ -480,6 +484,11 @@ namespace InventaSketch.AddIn.OnSlide
                 items = new List<PieItem> { back };
                 items.AddRange(ConnectItems(ConnectOptions().Select(c => (c.Kind, c.Units.Count)), _lang()));
                 title = T("Select connected", "Verbundene auswählen");
+            }
+            else if (submenu == "values")
+            {
+                items = ValuesMenu(back);
+                title = T("Values", "Werte");
             }
             else if (submenu == "parts")
             {

@@ -2,7 +2,9 @@
 
 Stand: Konzept und Plan, 25.11.2026 (Wunsch des Maintainers). Calc 0 und Calc 1 (Größen, Einheiten, Parser,
 Einheitenumrechner und Rechner, Beziehungs-Engine, Engine-API, ohmsches Gesetz am Widerstand) sind umgesetzt; die
-Entwurfsentscheidungen stehen in Abschnitt 10. Calc 2–6 sind offen. Englische (maßgebliche)
+Entwurfsentscheidungen stehen in Abschnitt 10. Calc 2 (die PowerPoint-Oberfläche: Stufe, Werte-Schaltfläche,
+Kreismenü, Wertekarte, Wertebeschriftung, Ziehen, Widerspruchszeichen) ist in COM umgesetzt, siehe Abschnitt 11.
+Calc 3–6 sind offen. Englische (maßgebliche)
 Fassung: [../../en/design/engineering-calculations.md](../../en/design/engineering-calculations.md).
 
 **Warum.** Zwei Wünsche des Maintainers vom 25.11.2026:
@@ -704,6 +706,9 @@ in", „1500 rpm in rad/s", „4k7 || 10k", „2 kWh / 230 V" → Ah) und die En
 - eine exportierte Folie enthält nur die gewählten Beschriftungen, keine Karte und keine Zeichen
 - in Aus erscheint nichts Neues
 
+*Stand:* in COM fertig (Abschnitt 11) außer dem Abschnitt *Werte* im Inspektor, der Karte beim Überfahren und
+Wertegriffen auf der Zeichnung beim Widerstand (der Griff sitzt in der Karte); Web und LibreOffice folgen.
+
 **Calc 3 – Elektro und Maschinenelemente, erste Ketten und Prüfungen.** Diese Stufe bringt:
 - die Elementbeziehungen aus den Abschnitten 2.1–2.6 und 3.1–3.4
 - das Parsen des elektrischen `value`
@@ -1022,10 +1027,96 @@ genauso und kann sie ersetzen, wenn der Transformator Werte bekommt), `ChartBrea
 
 ### 10.9 Offen für spätere Stufen
 
-- Calc 2 (COM): Die Stufeneinstellung (*Aus · Erkunden · Ingenieur*) braucht eine Dokumenteinstellung; Karte,
-  Kreismenüeinträge, Inspektorabschnitt, Griffe, Rechenweg und das Rechner-Popup nutzen die API oben. Rückgängig:
-  `setValue`, `clearValue` und ein losgelassenes `dragValue` sind je ein Schritt; die Wahl „U und I behalten, R ableiten"
-  ist ein `clearValue`.
+- Calc 2 (COM): fertig, siehe Abschnitt 11.
 - Calc 6: Intervallergebnisse aus Toleranzen (Toleranzen werden gelesen und behalten, aber noch nicht weitergerechnet),
   Stummschaltliste, Einheitenvorlieben, Entscheidung zu den E-Reihen.
 - Die Prüfung `value.range` („Tippfehler?") kann `VarDef.Min/Max` nutzen, sobald der Prüfkatalog beginnt (Calc 3).
+
+---
+
+## 11. Umsetzungsnotizen: Calc 2 in PowerPoint (COM) (25.11.2026)
+
+Dieser Abschnitt hält die Entscheidungen fest, die der Plan offenließ. Maßgeblich ist der Code.
+
+### 11.1 Dateien
+
+| Bereich | Dateien |
+|---|---|
+| Stufeneinstellung | Core `Model.cs` (`ValueLevel`, `DocumentSettings.ValueLevel`); COM `OnSlide/ValueCardModel.cs` (`ValueLevelSetting`), `Connect.cs` (*Mehr ▸ Werte*) |
+| Wertebeschriftung, Eingabe, Ziehen | Core `ValueLabels.cs` (`ValueLabels`, `ValueEdits`, `ValueDrag`), eingehängt in `Registry.RenderLocal` und `Registry.Parts` |
+| Karte, Leiste, Kreismenü, Hinweiszeichen | COM `OnSlide/ValueCardModel.cs` (Inhalt, rein), `OnSlide/ValueCard.cs` (Popup), `OnSlide/OnSlideController.Values.cs` |
+| Piktogramm | `IconIds.Values` = `cmd-values` („x="), in COM `IconPainter.SharedPaths` und Web `icons.ts` |
+| Tests | Core `ValueLevelTests`, Elektro `ValueLabelTests`, AddIn `ValueCardTests`, PowerPoint-Szenario `tests/powerpoint-com/scenarios/values-ohm.ps1` |
+
+### 11.2 Entscheidungen
+
+- **Stufe.** In PowerPoint ist das Dokument die Präsentation, daher ist die Stufe ein Präsentations-Tag (`ISK_VALUES` =
+  `quick`, `explore` oder `engineer`). Einheiten mit `DocumentSettings.ValueLevel` (aus dem Web-Host) sind der Rückfall,
+  wenn das Tag fehlt. Core speichert die Schnellskizze als „nicht gesetzt"; alte Dokumente bleiben unverändert, und
+  `valueLevel` wird nur für Erkunden und Ingenieur geschrieben. Der Schalter ist *Mehr ▸ Werte* mit drei Umschaltflächen,
+  die aktuelle gedrückt, wie *Symbolgröße*.
+- **Leiste.** In Erkunden und Ingenieur bekommt ein Element, dessen Typ Werte hat, *Werte* (Piktogramm `cmd-values`, mit
+  Beschriftung) als Hauptaktion; das ist Gruppe 1 aus Abschnitt 1.5. Die bisherige Hauptaktion behält ihren
+  Piktogrammplatz. In der Schnellskizze bleibt die Leiste unverändert.
+- **Kreismenü.** *Bearbeiten ▸ Werte ▸* gibt es auf jeder Stufe, weil Werte auch in der Schnellskizze eingebbar bleiben.
+  Es hat einen Eintrag je Variable („Spannung *U* … 230 V", „Leistung *P* = 460 W") und danach *Werte auf der Zeichnung
+  zeigen*. Die acht Plätze bleiben, wie sie sind.
+- **Karte.** Ein randloses Popup rechts neben dem Element. Esc, ein Klick daneben oder ein anderes Fenster schließt es,
+  wie beim Einfügefeld. Eine Zeile je Variable:
+  - Marke: ✎ eingegeben, = berechnet, ○ Vorgabe, ⇄ übernommen, ⚠ im Widerspruch
+  - Symbol (kursiv), Name, Wertfeld (der gemeinsame Parser: „4k7", „230 V", „1,5 kW", deutsch und englisch), Einheit
+    (was eine bloße Zahl bedeutet), Griff ↔ (nur Erkunden), × (löscht einen eingegebenen Wert)
+  - unter einem berechneten Wert in Erkunden und Ingenieur seine Formelzeile („R = U/I = 230 V/2,00 A = 115 Ω");
+    Ingenieur ergänzt die Quelle („[S7]") und eine vierte signifikante Stelle; die Schnellskizze zeigt nur die Werte.
+
+  Die Statuszeile sagt ✓, was fehlt („Noch 1 Wert: R, I oder P") oder dass Eingaben sich widersprechen; jede
+  Widerspruchszeile nennt beide Werte und die beteiligten Eingaben. Eine falsche Eingabe (ein Strom im Spannungsfeld)
+  zeigt ihre Meldung unter der Zeile, nie in einem Meldungsfenster. Enter oder das Verlassen des Felds übernimmt den Wert
+  (wie `setValue`: ein Rückgängig-Schritt, das Element wird neu gezeichnet); × löscht (`clearValue`). Darunter: *Rechner …*
+  öffnet den Rechner mit dem gewählten Wert, und *Auf der Zeichnung zeigen* schaltet die Wertebeschriftung. Die Karte nutzt
+  eine Schriftgröße; Nebensächliches ist grau.
+- **Auf Abruf, nicht beim Überfahren.** Die Karte öffnet über die Leiste oder das Kreismenü statt beim Überfahren. So
+  bleibt die Folie standardmäßig ruhig (interaction-ux.md), und eine Hover-Karte würde mit PowerPoints eigenen Griffen
+  konkurrieren.
+- **Live-Ziehen.** Keine Geometrie des Widerstands stellt *U*, *I* oder *R* dar; ein Griff auf der Zeichnung hätte keine
+  Bedeutung. Der Griff sitzt deshalb in der Karte:
+  - ↔ nach links oder rechts ziehen ändert den Wert logarithmisch (3 signifikante Stellen);
+  - die anderen Zeilen und Formeln folgen live (Solver-Overrides, das Dokument bleibt unverändert);
+  - Loslassen speichert den Wert als einen Rückgängig-Schritt, Esc stellt zurück.
+
+  Ein dritter festgehaltener Wert überbestimmt ein Element mit zwei eingegebenen Werten. `ValueDrag` gibt dann die
+  eingegebenen Werte nach dem gezogenen in der Reihenfolge des Typs frei, den letzten zuerst. Beispiel: Sind *U* und *I*
+  eingegeben, gibt das Ziehen von *R* den Wert *I* frei; *I* und *P* folgen, und das Loslassen speichert *R* und löscht *I*
+  im selben Rückgängig-Schritt. Griffe auf der Zeichnung bleiben geometrischen Werten vorbehalten (`DragHandles`: jetzt
+  Diagramme; Zahnräder und Zylinder in Calc 3/4).
+- **Wertebeschriftung.** Die Beschriftung ist der Teil `values`. `Registry.RenderLocal` zeichnet sie für jeden
+  `IValueType`, solange der Parameter `showValues` an ist:
+  - mittig unter allem, was das Element zeichnet (auch seine eigenen Beschriftungen), aufrecht bei jeder Drehung oder
+    Spiegelung, Schrift 2,5 mm;
+  - listet die bekannten Kartenwerte, lässt aber einen Wert weg, den der Typ eingegeben schon selbst zeigt
+    (`VarDef.OnTypeLabel`: *R* des Widerstands ist sein Werttext „4k7");
+  - `valueLabelKeys` („R,P") wählt die Variablen ausdrücklich (Modell und Tests; die Karte bietet den Schalter für das
+    ganze Element);
+  - zeigt eingegebene Texte mit Einheit wie getippt.
+
+  Die Beschriftung ist Inhalt: Sie erscheint auf jeder Stufe, wird gedruckt und exportiert und bleibt beim Verschieben am
+  Element. Der Widerstand führt `showValues` unter seinen Parametern, daher zeigt ihn auch der Inspektor.
+- **Prüfungen.** Solange sich die eingegebenen Werte des ausgewählten Elements widersprechen, sitzt ein kleines
+  bernsteinfarbenes ⚠ außen an seiner oberen rechten Ecke (Erkunden und Ingenieur). Es ist nur Overlay: nie exportiert,
+  nie modal. Die Karte zeigt die Widerspruchszeilen.
+
+### 11.3 Host-Hinweise (COM)
+
+- Karte, Kreismenüeinträge und Hinweiszeichen wirken auf das ausgewählte Element; andere Elemente der Folie zeigen noch
+  kein Hinweiszeichen.
+- Die Wertebeschriftung ist nativer PowerPoint-Text in der Einheit, wie die anderen Beschriftungen.
+- Automatisierung (UI-Tests): `SetValueLevel`, `ValueLevel`, `Values`, `SetValue`, `ClearValue`, `ShowValues`,
+  `DragValue`, `ValueBadge`, `ValueCard`.
+
+### 11.4 Offen
+
+- Der Abschnitt *Werte* im Inspektor (Seitenleiste), die Liste *Prüfungen* und das Hinweiszeichen an jedem Element der
+  Folie (mit den Prüfregeln aus Calc 3).
+- Einzelne Variablen für die Beschriftung in der Karte wählen (das Modell kann es).
+- Die Vorschau von `dragValue` in der Engine gibt noch keine Werte frei; der Web-Host sollte `ValueDrag` genauso nutzen.
+- Einheitenwahl und Einstellung der signifikanten Stellen (Ingenieur, Calc 6); Richtungspfeile ↑↓ beim Ziehen.

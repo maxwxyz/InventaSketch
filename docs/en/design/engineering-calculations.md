@@ -2,7 +2,8 @@
 
 Status: concept and plan, 2026-11-25 (maintainer request). Calc 0 and Calc 1 (quantities, units, parser, unit
 converter and calculator, relation engine, engine API, Ohm's law on the resistor) are implemented; the design decisions
-are in section 10. Calc 2–6 are open. German version:
+are in section 10. Calc 2 (the PowerPoint user interface: level, Values button, pie, value card, values label, drag,
+conflict badge) is implemented in COM, see section 11. Calc 3–6 are open. German version:
 [../../de/design/engineering-calculations.md](../../de/design/engineering-calculations.md).
 
 **Why.** Two maintainer requests from 2026-11-25:
@@ -683,6 +684,9 @@ and the engine methods `convertUnit`, `calc` and `units`. The calculator popup (
 - an exported slide contains only the chosen labels, no card or marks
 - Off shows nothing new
 
+*Status:* done in COM (section 11) except the inspector *Values* section, the card on hover and on-drawing value grips
+for the resistor (the grip is in the card); web and LibreOffice follow.
+
 **Calc 3 – Electrical and machine elements, first chains and checks.** This phase adds:
 - the element relations of sections 2.1–2.6 and 3.1–3.4
 - parsing of the electrical `value`
@@ -988,9 +992,92 @@ way and can replace it when the transformer gets values), `ChartBreaks.ParseInpu
 
 ### 10.9 Open for later phases
 
-- Calc 2 (COM): the level setting (*Off · Explore · Engineer*) needs a document setting; the card, pie entries,
-  inspector section, grips, formula view and the calculator popup use the API above. Undo: `setValue`, `clearValue` and
-  a released `dragValue` are one step each; a "keep U and I, derive R" pick is one `clearValue`.
+- Calc 2 (COM): done, see section 11.
 - Calc 6: interval results from tolerances (tolerances are parsed and kept, not yet propagated), mute list, unit
   preferences, E-series decision.
 - The `value.range` check ("typo?") can use `VarDef.Min/Max` when the check catalogue starts (Calc 3).
+
+---
+
+## 11. Implementation notes: Calc 2 in PowerPoint (COM) (2026-11-25)
+
+This section records the choices made where the plan left them open. The code is the reference.
+
+### 11.1 Files
+
+| Area | Files |
+|---|---|
+| Level setting | Core `Model.cs` (`ValueLevel`, `DocumentSettings.ValueLevel`); COM `OnSlide/ValueCardModel.cs` (`ValueLevelSetting`), `Connect.cs` (*More ▸ Values*) |
+| Values label, entering, drag | Core `ValueLabels.cs` (`ValueLabels`, `ValueEdits`, `ValueDrag`), hooked into `Registry.RenderLocal` and `Registry.Parts` |
+| Card, bar, pie, badge | COM `OnSlide/ValueCardModel.cs` (content, pure), `OnSlide/ValueCard.cs` (popup), `OnSlide/OnSlideController.Values.cs` |
+| Pictogram | `IconIds.Values` = `cmd-values` ("x="), in COM `IconPainter.SharedPaths` and web `icons.ts` |
+| Tests | Core `ValueLevelTests`, Electrical `ValueLabelTests`, AddIn `ValueCardTests`, PowerPoint scenario `tests/powerpoint-com/scenarios/values-ohm.ps1` |
+
+### 11.2 Decisions
+
+- **Level.** In PowerPoint the document is the presentation, so the level is a presentation tag (`ISK_VALUES` =
+  `quick`, `explore` or `engineer`). Units that carry `DocumentSettings.ValueLevel` (from the web host) are the fallback
+  when the tag is missing. Core stores Quick sketch as "not set", so old documents are unchanged and `valueLevel` is
+  written only for Explore and Engineer. The switch is *More ▸ Values* with three toggle buttons, the current one pressed,
+  like *Symbol size*.
+- **Bar.** In Explore and Engineer an element whose type has values gets *Values* (pictogram `cmd-values`, with its label)
+  as the main action, which is group 1 of section 1.5. The former main action keeps its pictogram place. Quick sketch
+  leaves the bar unchanged.
+- **Pie.** *Edit ▸ Values ▸* is there at every level, because entering values stays possible in Quick sketch. It has one
+  entry per variable ("Voltage *U* … 230 V", "Power *P* = 460 W") and then *Show values on the drawing*. The eight places
+  stay as they are.
+- **Card.** A borderless popup right of the element. Esc, a click outside or another window closes it, as with the insert
+  box. One row per variable:
+  - marker: ✎ entered, = derived, ○ default, ⇄ linked, ⚠ in conflict
+  - symbol (italic), name, value field (the shared parser: "4k7", "230 V", "1,5 kW", German and English), unit (what a
+    bare number means), grip ↔ (Explore only), × (clears an entered value)
+  - under a derived value, in Explore and Engineer, its formula line ("R = U/I = 230 V/2.00 A = 115 Ω"); Engineer adds the
+    source ("[S7]") and a fourth significant digit; Quick sketch shows the values only.
+
+  The status line says ✓, what is missing ("1 more value: R, I or P") or that entries conflict; each conflict line names
+  both values and the entered values involved. A wrong entry (a current in a voltage field) shows its message under the
+  row, never in a message box. Enter or leaving the field applies it (`setValue` semantics: one undo step, the element is
+  redrawn); × clears (`clearValue`). Below: *Calculator …* opens the calculator with the chosen value, and *Show on
+  drawing* switches the values label. The card uses one text size; secondary text is grey.
+- **On demand, not on hover.** The card opens from the bar or the pie instead of on hover. This keeps the slide calm by
+  default (interaction-ux.md), and a hover card would compete with PowerPoint's own handles.
+- **Live drag.** No geometry of the resistor encodes *U*, *I* or *R*, so a grip on the drawing would mean nothing. The
+  grip is in the card instead:
+  - dragging ↔ left or right changes the value logarithmically (3 significant digits);
+  - the other rows and formulas follow live (solver overrides, the document is unchanged);
+  - releasing stores the value as one undo step, and Esc restores.
+
+  Holding a third value over-determines an element that has two entered values. `ValueDrag` then releases the entered
+  values after the dragged one in the type's order, last first. Example: with *U* and *I* entered, dragging *R* releases
+  *I*, so *I* and *P* follow, and the release stores *R* and clears *I* in the same undo step. Grips on the drawing stay
+  for geometric values (`DragHandles`: charts now; gears and cylinders in Calc 3/4).
+- **Values label.** The label is the part `values`. `Registry.RenderLocal` draws it for every `IValueType` while the
+  parameter `showValues` is on:
+  - placed centred below everything the element draws (its own labels included), upright at any rotation or mirroring,
+    2.5 mm text;
+  - lists the known card values, but leaves out a value that the type already shows when entered (`VarDef.OnTypeLabel`:
+    the resistor's *R* is its value text "4k7");
+  - `valueLabelKeys` ("R,P") chooses the variables explicitly (model and tests; the card offers the switch for the whole
+    element);
+  - shows entered texts with a unit as typed.
+
+  The label is content: it shows at every level, is printed and exported, and stays with the element when it moves. The
+  resistor lists `showValues` among its parameters, so the inspector shows it too.
+- **Checks.** While the entered values of the selected element conflict, a small amber ⚠ badge sits outside its top
+  right corner (Explore and Engineer). The badge is overlay only: it is never exported and never modal. The card shows
+  the conflict lines.
+
+### 11.3 Host notes (COM)
+
+- The card, the pie entries and the badge act on the selected element; other elements of the slide show no badge yet.
+- The values label is native PowerPoint text inside the unit, like the other labels.
+- Automation (UI tests): `SetValueLevel`, `ValueLevel`, `Values`, `SetValue`, `ClearValue`, `ShowValues`, `DragValue`,
+  `ValueBadge`, `ValueCard`.
+
+### 11.4 Open
+
+- The inspector's *Values* section (sidebar), the *Checks* list and the badge on every element of the slide (with the
+  check rules of Calc 3).
+- Choosing single variables for the label in the card (the model supports it).
+- The engine's `dragValue` preview does not release values yet; the web host should use `ValueDrag` the same way.
+- Unit picker and the significant-digit setting (Engineer, Calc 6); direction arrows ↑↓ while dragging.

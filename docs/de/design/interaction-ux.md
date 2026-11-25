@@ -132,6 +132,8 @@ Für jedes Element gleich aufgebaut (Runde 2): **höchstens vier Knöpfe plus �
 
 1. **Die Hauptaktion mit kurzem Text:**
    - „Ändern in …“ direkt nach Schnell-Anfügen;
+   - sonst „Werte“ (Piktogramm „x="), für Elemente mit Werten, wenn die Wertestufe Erkunden oder Ingenieur ist
+     (engineering-calculations.md, Abschnitt 11);
    - sonst „Daten“ (Diagramme);
    - sonst „Text“ (Texte, Diagrammknoten, Bezugszeichen, Tabellen: ihre Zellen);
    - sonst „Ansicht“ (eine Auswahlliste, für Elemente mit mehreren Ansichten);

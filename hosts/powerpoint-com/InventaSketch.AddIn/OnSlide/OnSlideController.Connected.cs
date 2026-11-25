@@ -307,7 +307,8 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Shows just the halo (an armed element without handles, a multi-selection).</summary>
         private void PresentHaloOnly(SlideView view)
         {
-            if (HaloWanted && EnsureHalo(view) is not null) Present(view, _ => { });
+            // The value conflict badge needs the overlay too (Calc 2).
+            if (HaloWanted && EnsureHalo(view) is not null || ValueBadgeWanted()) Present(view, _ => { });
             else _overlay.Clear();
         }
 

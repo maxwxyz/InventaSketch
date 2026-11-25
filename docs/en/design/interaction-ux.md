@@ -129,6 +129,8 @@ The same structure for every element (round 2): **at most four buttons plus "⋯
 
 1. **The main action, with a short label:**
    - "Make it …" right after a quick add;
+   - else "Values" (pictogram "x="), for elements with values when the value level is Explore or Engineer
+     (engineering-calculations.md, section 11);
    - else "Data" (charts);
    - else "Text" (texts, diagram nodes, numerals, tables: their cells);
    - else "View" (a dropdown, for elements with several views);

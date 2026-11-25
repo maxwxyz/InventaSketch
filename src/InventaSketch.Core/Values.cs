@@ -48,6 +48,11 @@ namespace InventaSketch.Core
         /// <summary>Typical range (SI), also the bracket of a numeric root search.</summary>
         public double? Min { get; init; }
         public double? Max { get; init; }
+        /// <summary>
+        /// The type already draws the entered value in a label of its own (the resistor's value text "4k7"): the values
+        /// label (<see cref="ValueLabels"/>) leaves it out unless it is chosen explicitly.
+        /// </summary>
+        public bool OnTypeLabel { get; init; }
 
         public string ParamKey => Param ?? Key;
 

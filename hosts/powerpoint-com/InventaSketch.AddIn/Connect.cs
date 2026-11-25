@@ -466,6 +466,66 @@ namespace InventaSketch.AddIn
             catch (Exception ex) { Log.Error("SetSymbolSize", ex); }
         }
 
+        /// <summary>
+        /// "Values": the value level of the presentation (Calc 2, engineering-calculations.md section 1.1) – Quick sketch
+        /// (default, nothing new on the slide), Explore, Engineer; the current one is pressed.
+        /// </summary>
+        private void AppendValueLevelMenu(StringBuilder sb)
+        {
+            sb.Append("<menu id=\"IskValueLevel\" label=\"").Append(L(T("Values", "Werte"))).Append("\" imageMso=\"CalculatorInsert\" supertip=\"")
+              .Append(X(T("How element values show in this presentation: Quick sketch shows nothing new; Explore and Engineer add the Values button, the value card with formulas and conflict marks.",
+                          "Wie Elementwerte in dieser Präsentation erscheinen: Schnellskizze zeigt nichts Neues; Erkunden und Ingenieur ergänzen die Werte-Schaltfläche, die Werte-Karte mit Formeln und Hinweise auf Widersprüche."))).Append("\">");
+            foreach (var level in OnSlide.ValueLevelSetting.Levels)
+            {
+                var tag = OnSlide.ValueLevelSetting.TagOf(level);
+                sb.Append("<toggleButton id=\"IskValues_").Append(tag).Append("\" tag=\"").Append(tag).Append("\" label=\"").Append(L(OnSlide.ValueLevelSetting.Label(level, _lang)))
+                  .Append("\" supertip=\"").Append(X(OnSlide.ValueLevelSetting.Hint(level, _lang))).Append("\" getPressed=\"GetValueLevelPressed\" onAction=\"OnValueLevel\" />");
+            }
+            sb.Append("</menu>");
+        }
+
+        public bool GetValueLevelPressed(Office.IRibbonControl control)
+        {
+            try
+            {
+                return OnSlide.ValueLevelSetting.Parse(control.Tag) is { } level && CurrentValueLevel() == level;
+            }
+            catch (Exception ex) { Log.Error("GetValueLevelPressed", ex); return false; }
+        }
+
+        public void OnValueLevel(Office.IRibbonControl control, bool pressed)
+        {
+            // A pressed level clicked again stays (a level is always chosen).
+            if (OnSlide.ValueLevelSetting.Parse(control.Tag) is { } level) SetValueLevel(level);
+            else _ribbon?.InvalidateControl(control.Id);
+        }
+
+        /// <summary>The value level of the active presentation (Quick sketch when none is open).</summary>
+        internal ValueLevel CurrentValueLevel()
+        {
+            if (_app is null) return ValueLevel.QuickSketch;
+            PowerPoint.Presentation? presentation = null;
+            try { presentation = _app.ActivePresentation; } catch { /* none open */ }
+            return OnSlide.ValueLevelSetting.Read(presentation, CurrentSlide(_app));
+        }
+
+        /// <summary>Sets the value level of the active presentation (a presentation tag), refreshes the menu and the bar.</summary>
+        internal bool SetValueLevel(ValueLevel level)
+        {
+            try
+            {
+                if (_app is null) return false;
+                PowerPoint.Presentation presentation;
+                try { presentation = _app.ActivePresentation; } catch { return false; }
+                OnSlide.ValueLevelSetting.Write(presentation, level);
+                Log.Info("Value level: " + level);
+                foreach (var l in OnSlide.ValueLevelSetting.Levels) _ribbon?.InvalidateControl("IskValues_" + OnSlide.ValueLevelSetting.TagOf(l));
+                _onSlide?.OnUi(() => { _onSlide.LevelChanged(); return true; });
+                return true;
+            }
+            catch (Exception ex) { Log.Error("SetValueLevel", ex); return false; }
+        }
+
         /// <summary>"Accent colour": one colour for the coloured parts of every InventaSketch element of the slide.</summary>
         private void AppendAccentMenu(StringBuilder sb)
         {
@@ -492,6 +552,7 @@ namespace InventaSketch.AddIn
             AppendLineGroupMenu(sb);
             AppendAccentMenu(sb);
             AppendSymbolSizeMenu(sb);
+            AppendValueLevelMenu(sb);
             sb.Append("<button id=\"IskMenuModules\" label=\"").Append(L(T("Modules \u2026", "Module \u2026"))).Append("\" imageMso=\"ApplicationOptionsDialog\" onAction=\"OnToolsMenu\" supertip=\"")
               .Append(X(T("Choose which modules the ribbon and the library show (for example only mechanics and annotation).",
                           "Ausw\u00e4hlen, welche Module Men\u00fcband und Bibliothek zeigen (zum Beispiel nur Mechanik und Beschriftung)."))).Append("\" />");
@@ -1993,6 +2054,16 @@ namespace InventaSketch.AddIn
         internal string DragHandlesOf(string shapeName) => _onSlide?.DragHandlesOf(shapeName) ?? "";
 
         internal string BuildPortsOf(string shapeName) => _onSlide?.BuildPortsOf(shapeName) ?? "";
+
+        // Element values (Calc 2) for the automation object.
+        internal string ValuesOf(string shapeName) => _onSlide?.ValuesOf(shapeName) ?? "";
+        internal string SetValueOf(string shapeName, string key, string text) => _onSlide?.SetValueOf(shapeName, key, text) ?? "no on-slide controller";
+        internal bool ClearValueOf(string shapeName, string key) => _onSlide?.ClearValueOf(shapeName, key) ?? false;
+        internal bool ShowValuesOf(string shapeName, bool on) => _onSlide?.ShowValuesOf(shapeName, on) ?? false;
+        internal string DragValueOf(string shapeName, string key, double si, bool preview) => _onSlide?.DragValueOf(shapeName, key, si, preview) ?? "";
+        internal string ValueBadgeState() => _onSlide?.ValueBadgeState() ?? "";
+        internal string LastValueBadge() => _onSlide?.LastValueBadge ?? "";
+        internal bool ValueCardOpen(bool close) => _onSlide?.ValueCardOpen(close) ?? false;
 
         /// <summary>Runs a bar/pie command on the selected unit (automation).</summary>
         internal bool RunUnitCommand(string commandId) => _onSlide?.RunCommand(commandId) ?? false;
