@@ -1,9 +1,11 @@
-// Two small tools of the top bar, like the COM add-in's: the calculator with units (engine `calc`, `convertUnit`:
+// Small tools, like the COM add-in's: the calculator with units (engine `calc`, `convertUnit`:
 // "230 V * 16 A", "1500 rpm in rad/s") and the code import (engine `importCode`: matplotlib, pgfplots and TikZ code
-// become editable charts and drawings; the code is read, never run). The engine does all the work.
+// become editable charts and drawings; the code is read, never run) – plus the calculation sheet of an element (engine
+// `calcSheet`, `insertCalcTable`: copy, download, insert as a table). The engine does all the work.
 
 import type { Session } from "../engine/client";
-import type { CodeImportResult, EditorState } from "../engine/types";
+import type { CalcSheetMode, CodeImportResult, EditorState } from "../engine/types";
+import { download } from "../export";
 import { lang, t } from "../i18n";
 import { clamp, h } from "./dom";
 import { icon } from "./icons";
@@ -109,6 +111,77 @@ export class Calculator extends Popover {
     if (text) go(true);
     expr.focus();
     expr.select();
+  }
+}
+
+/** Formats of the calculation sheet offered for copy and download, with file extension and media type. */
+export const SHEET_FORMATS: { mode: Exclude<CalcSheetMode, "table">; ext: string; mime: string }[] = [
+  { mode: "csv", ext: "csv", mime: "text/csv" },
+  { mode: "markdown", ext: "md", mime: "text/markdown" },
+  { mode: "latex", ext: "tex", mime: "application/x-tex" },
+];
+
+/** File name of a downloaded calculation sheet. */
+export function sheetFileName(mode: Exclude<CalcSheetMode, "table">): string {
+  return `inventasketch-calculation.${SHEET_FORMATS.find((f) => f.mode === mode)?.ext ?? "txt"}`;
+}
+
+/**
+ * The calculation sheet of the selected element (engine `calcSheet`, engineering-calculations.md Calc 6): every value with
+ * symbol, unit, range, formula, origin and source as CSV, Markdown or LaTeX – copy it, download it, or insert it as an
+ * annotation table next to the element (`insertCalcTable`, one undo step).
+ */
+export class CalcSheet extends Popover {
+  show(ids: string[], at?: { x: number; y: number }): void {
+    const mode = h("select", { class: "isk-input", "aria-label": t("sheet.format"), "data-cmd": "sheetformat" });
+    for (const f of SHEET_FORMATS) mode.append(h("option", { value: f.mode }, t(`sheet.format.${f.mode}`)));
+    const area = h("textarea", { class: "isk-input isk-sheet-text", rows: 9, readonly: true, spellcheck: "false", "aria-label": t("sheet.title"), "data-cmd": "sheettext" });
+    const info = h("p", { class: "isk-muted", "aria-live": "polite", "data-cmd": "sheetinfo" });
+    const current = () => mode.value as Exclude<CalcSheetMode, "table">;
+    const load = () => {
+      try {
+        const r = this.host.session().calcSheet(ids, current(), lang());
+        area.value = r.text;
+        info.textContent = t("sheet.rows", r.rows);
+      } catch (e) {
+        area.value = "";
+        info.textContent = e instanceof Error ? e.message.replace(/^calcSheet: /, "") : String(e);
+      }
+    };
+    mode.addEventListener("change", load);
+    const copy = h("button", { class: "isk-btn", type: "button", "data-cmd": "sheetcopy" }, t("sheet.copy"));
+    copy.addEventListener("click", async () => {
+      try {
+        await navigator.clipboard.writeText(area.value);
+        info.textContent = t("sheet.copied");
+      } catch {
+        // Without clipboard access (some Office hosts): select the text for Ctrl+C.
+        area.focus();
+        area.select();
+        info.textContent = t("sheet.copyHint");
+      }
+    });
+    const save = h("button", { class: "isk-btn", type: "button", "data-cmd": "sheetdownload" }, t("sheet.download"));
+    save.addEventListener("click", () => {
+      const f = SHEET_FORMATS.find((x) => x.mode === current())!;
+      download(sheetFileName(f.mode), new Blob([area.value], { type: `${f.mime};charset=utf-8` }));
+    });
+    const table = h("button", { class: "isk-btn isk-primary", type: "button", "data-cmd": "sheettable", title: t("sheet.tableHint") }, t("sheet.table"));
+    table.addEventListener("click", () => {
+      try {
+        this.host.apply(this.host.session().insertCalcTable(ids, lang()), true);
+        this.close();
+      } catch (e) {
+        this.host.report(e);
+      }
+    });
+    this.frame(t("sheet.title"), "isk-sheet",
+      h("label", { class: "isk-field isk-row" }, h("span", { class: "isk-field-label" }, t("sheet.format")), mode),
+      area, info,
+      h("div", { class: "isk-row isk-sheet-actions" }, copy, save, table));
+    load();
+    this.placeAt(at);
+    mode.focus();
   }
 }
 

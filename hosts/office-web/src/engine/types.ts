@@ -66,6 +66,22 @@ export interface TraceInfo { points: Vec2[]; closed: boolean }
 /** A build "+": kind Mesh/Hub/AxisEnd/… or Connect (connection port) / LineEnd (free end of a cable, pipe, duct); `medium` of a connection. */
 export interface BuildPortInfo { id: string; kind: string; x: number; y: number; dx: number; dy: number; stretch: boolean; medium?: string }
 
+/** Where the selection touches another element and follows it (engine `links`): a lock badge; a click toggles it (`toggleLink`). */
+export interface LinkInfo { key: string; kind: "mesh" | "carried" | "bonded" | "attached" | "spanned"; a: string; b: string; x: number; y: number; released: boolean; index: number; label: string }
+
+/** Corner dot of one segment of a line with free corners (engine `polylineHandles`), page mm; `nx`/`ny` the branch side. */
+export interface SegmentHandleInfo { index: number; x: number; y: number; nx: number; ny: number; ax: number; ay: number; bx: number; by: number }
+
+/** Corner dots, branch handles, removable and splittable corners of a line (engine `polylineHandles`). */
+export interface PolylineHandles { corners: boolean; branch: boolean; closed: boolean; segments: SegmentHandleInfo[]; removable: number[]; splittable: number[] }
+
+/** An insert place on an element (engine `insertHandles`: between table rows and columns), page mm. */
+export interface InsertHandleInfo { key: string; x: number; y: number; dx: number; dy: number; label: string }
+
+/** The calculation sheet (engine `calcSheet`): the text in the asked format, the number of rows and the cited sources. */
+export interface CalcSheetResult { text: string; rows: number; sources: { id: string; text: string }[] }
+export type CalcSheetMode = "csv" | "markdown" | "latex" | "table";
+
 /** Live coupling preview (engine `couplingPreview`): neighbours that would follow, as one SVG in page mm ("" for none). */
 export interface CouplingPreview { ids: string[]; svg: string }
 
@@ -137,6 +153,10 @@ export interface VarInfo {
   relation?: string | null;
   source?: string | null;
   error?: string | null;
+  /** Range of a value with tolerances (SI) and as text ("180 V … 220 V"); absent without tolerances. */
+  lo?: number | null;
+  hi?: number | null;
+  range?: string | null;
   conflict: boolean;
   param: string;
 }

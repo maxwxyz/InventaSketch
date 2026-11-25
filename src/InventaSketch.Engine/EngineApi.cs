@@ -127,6 +127,7 @@ namespace InventaSketch.Engine
                 ["motionPreview"] = MotionPreviewCore,
             };
             RegisterValueMethods();
+            RegisterWebMethods();
             _methods["setValueLevel"] = SetValueLevelCore;
         }
 
