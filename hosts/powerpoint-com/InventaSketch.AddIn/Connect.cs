@@ -1291,6 +1291,11 @@ namespace InventaSketch.AddIn
 
         internal System.Collections.Generic.IEnumerable<string> LibraryItemIds() => _registry?.Library.Select(i => i.Id) ?? Enumerable.Empty<string>();
 
+        /// <summary>Library rows for UI reviews: id, category, type, module and name, tab-separated.</summary>
+        internal System.Collections.Generic.IEnumerable<string> LibraryCatalog()
+            => _registry?.Library.Select(i => string.Join("\t", i.Id, i.Category, i.TypeId,
+                   _categories.FirstOrDefault(c => c.Id == i.Category)?.ModuleId ?? "", i.Name.Get(_lang))) ?? Enumerable.Empty<string>();
+
         private static PowerPoint.Slide? CurrentSlide(PowerPoint.Application app)
         {
             try

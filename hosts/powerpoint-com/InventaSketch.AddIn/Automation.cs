@@ -296,6 +296,9 @@ namespace InventaSketch.AddIn
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 
+        /// <summary>The library for UI reviews: "id\tcategory\ttype\tmodule\tname" per line.</summary>
+        public string LibraryCatalog() => string.Join("\n", _connect.LibraryCatalog());
+
         public string Version() => typeof(Automation).Assembly.GetName().Version.ToString();
     }
 }
