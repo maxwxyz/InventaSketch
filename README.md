@@ -39,7 +39,12 @@ USPTO) and exported in monochrome.
   instrumentation tags, HVAC items, T-s, p-v and p-h cycle diagrams), energy systems (PV, wind, storage, e-mobility,
   hydrogen, heat pumps, grid connection and single-line diagrams across voltage levels) and robotics (articulated,
   SCARA, delta, gantry and mobile robots posed by their joint angles, grippers and tools, reach envelopes, work cells
-  and safety equipment).
+  and safety equipment), optics (lenses, mirrors, prisms, gratings, sources and detectors with rays traced live and the
+  image constructed) and distribution boards and installation (DIN-rail devices, terminal blocks, cables; exports of the
+  installation list, circuit plan, board layout, terminal plan and cable list).
+- **Engineering values (optional):** where elements carry values (electrical, machine elements and drives, fluid
+  power, process, building services, energy), the others are computed live with units, tolerance ranges, the formula
+  step by step and its source, plausibility checks and a calculation sheet; a calculator with units is built in.
 - **Clean UI:** light/dark/auto theme, German/English (automatic), floating context bar, right-click pie menu,
   interactive sidebar editor where the host does not allow on-slide interaction.
 
