@@ -211,6 +211,10 @@ namespace InventaSketch.Core
         public static readonly QuantityKind Viscosity = new("kinematicViscosity", T("Kinematic viscosity", "Kinematische Viskosität"), Len.Pow(2) / Time);
         public static readonly QuantityKind Inertia = new("inertia", T("Moment of inertia", "Trägheitsmoment"), Mass * Len.Pow(2));
         public static readonly QuantityKind SpringRate = new("springRate", T("Spring rate", "Federrate"), Force_ / Len);
+        /// <summary>Rate of a torsion spring or shaft (torque per angle).</summary>
+        public static readonly QuantityKind TorsionalRate = new("torsionalRate", T("Torsional spring rate", "Drehfederrate"), Energy_ / Ang);
+        /// <summary>Relative change per kelvin (PV temperature coefficients, resistance coefficients): %/K, 1/K, ppm/K.</summary>
+        public static readonly QuantityKind TemperatureCoefficient = new("temperatureCoefficient", T("Temperature coefficient", "Temperaturkoeffizient"), Dimension.None / Temp);
 
         private static readonly List<QuantityKind> AllKinds = new();
 
@@ -240,6 +244,8 @@ namespace InventaSketch.Core
             Resistivity.Add("Ω·m", 1, new[] { "Ohm·m", "ohm·m" });
             Frequency.Add("Hz", 1, null, 0, "mkMG");
             Frequency.Add("s⁻¹", 1, new[] { "1/s" });
+            // Air changes and other rates per hour (building services).
+            Frequency.Add("h⁻¹", 1.0 / 3600, new[] { "1/h" });
             RotationalSpeed.Add("min⁻¹", 2 * Pi / 60, new[] { "rpm", "RPM", "1/min", "/min", "U/min", "r/min", "rev/min" });
             RotationalSpeed.Add("rad/s", 1);
             RotationalSpeed.Add("rev/s", 2 * Pi, new[] { "rps", "r/s", "U/s" });
@@ -317,6 +323,11 @@ namespace InventaSketch.Core
             Inertia.Add("kg·m²", 1, new[] { "kgm²" });
             SpringRate.Add("N/mm", 1e3);
             SpringRate.Add("N/m", 1);
+            TorsionalRate.Add("N·m/rad", 1, new[] { "Nm/rad" });
+            TorsionalRate.Add("N·m/°", 180 / Pi, new[] { "Nm/°", "Nm/deg", "N·m/deg" });
+            TemperatureCoefficient.Add("%/K", 0.01, new[] { "%/°C" });
+            TemperatureCoefficient.Add("1/K", 1, new[] { "K⁻¹", "1/°C" });
+            TemperatureCoefficient.Add("ppm/K", 1e-6, new[] { "ppm/°C" });
 
             // Preference order when a calculation result has to be named by its dimension (power before heat flow,
             // energy before torque, frequency before nothing).
@@ -325,7 +336,7 @@ namespace InventaSketch.Core
                 Ratio, Efficiency, Count, Voltage, Current, Power, ApparentPower, ReactivePower, HeatFlow, Resistance, Capacitance,
                 Inductance, Charge, Resistivity, Frequency, RotationalSpeed, Angle, Time_, Length, Area, Volume, Mass_, Force,
                 Energy, Torque, Speed, Acceleration, Pressure, VolumeFlow, MassFlow, Temperature, TemperatureDifference, Density,
-                SpecificHeat, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate,
+                SpecificHeat, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate, TorsionalRate, TemperatureCoefficient,
             });
         }
 
