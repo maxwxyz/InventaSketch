@@ -757,7 +757,6 @@ namespace InventaSketch.AddIn.OnSlide
                                 // Hovering "select connected": the elements it would add glow faintly.
                                 SetPreview(PreviewFor(h >= 0 ? pie.Items[h].Id : null));
                                 DrawPie(view);
-                                ArmPieHoverOpen(pie, h, view);
                             }
                             return false;
                         }

@@ -160,7 +160,21 @@ namespace InventaSketch.AddIn.Tests
                     if (c.R < 150 && c.G < 150 && c.B < 150) outside++;
                 }
             Assert.Equal(0, outside);
-            Assert.True(pie.Outer <= 236 * 2f + 0.1f, "the ring stays within its cap");
+            Assert.True(pie.Outer <= PieMenu.MaxOuter * 2f + 0.1f, "the ring stays within its cap");
+            // Nothing lies under the centre cap: draw the pie without its title and look inside the cap's circle.
+            var bare = new PieMenu(new PointF(520, 520), items, 2f);
+            using var bmp2 = new Bitmap(1040, 1040);
+            using (var g = Graphics.FromImage(bmp2)) { g.Clear(Color.White); bare.Draw(g, dark: false); }
+            var under = 0;
+            for (var y = 0; y < bmp2.Height; y += 2)
+                for (var x = 0; x < bmp2.Width; x += 2)
+                {
+                    var d = System.Math.Sqrt((x - 520.0) * (x - 520.0) + (y - 520.0) * (y - 520.0));
+                    if (d >= bare.Inner + 2 || d < 14) continue;   // the close mark sits at the very centre
+                    var c = bmp2.GetPixel(x, y);
+                    if (c.R < 150 && c.G < 150 && c.B < 150) under++;
+                }
+            Assert.Equal(0, under);
         }
 
         [Fact]

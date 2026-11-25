@@ -102,6 +102,9 @@ namespace InventaSketch.Core
                 if (key is null || (keys is not null && !Known(keys, key))) return;
                 var (dist, rank) = Distance(prim, p);
                 if (dist > tolerance) return;
+                // Background structure (grid lines, ticks) gives way to what lies on it: a click on a curve point that sits
+                // on a grid line selects the curve (maintainer 2026-11-25).
+                if (Background(key)) rank += 1;
                 // Equal rank and distance: the later (topmost) primitive wins, as the user sees it.
                 if (rank < bestRank || rank == bestRank && dist <= bestDist + 1e-6) { best = Resolve(keys, key); bestRank = rank; bestDist = dist; }
             }
@@ -110,6 +113,9 @@ namespace InventaSketch.Core
         }
 
         private static bool Known(ICollection<string> keys, string key) => Resolve(keys, key) is not null;
+
+        /// <summary>Grid lines and ticks: the structure behind the data.</summary>
+        private static bool Background(string key) => key.StartsWith("grid", StringComparison.Ordinal) || key.StartsWith("tick", StringComparison.Ordinal);
 
         private static string? Resolve(ICollection<string>? keys, string key)
         {

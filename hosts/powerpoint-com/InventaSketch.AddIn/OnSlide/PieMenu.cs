@@ -43,10 +43,17 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>
         /// The ring grows with the number of entries and, beyond that, until every label fits completely in two lines of
         /// the small font (UX review 2026-11-25: no labels outside the ring, no "…" where a larger ring helps); capped at
-        /// 236 logical px, beyond which a label is shortened and shown in full in the hint line.
+        /// <see cref="MaxOuter"/> logical px, beyond which a label is shortened and shown in full in the hint line.
         /// </summary>
         public float Outer => _outer ??= FitOuter();
         private float? _outer;
+
+        /// <summary>
+        /// Labels wrap to up to three lines before the ring grows, and the ring grows at most to <see cref="MaxOuter"/>
+        /// (maintainer 2026-11-25: "let the text wrap so the pie does not get huge – at the edge it cannot be reached").
+        /// </summary>
+        public const int MaxLines = 3;
+        public const float MaxOuter = 196;
 
         private float BaseOuter => (Items.Count <= 6 ? 132 : Items.Count <= 8 ? 148 : 176) * Scale;
 
@@ -69,7 +76,7 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 using var f = new Font("Segoe UI", px * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
                 var h = f.GetHeight(g);
-                for (var outer = BaseOuter; outer <= 236 * Scale; outer += 12 * Scale)
+                for (var outer = BaseOuter; outer <= MaxOuter * Scale; outer += 12 * Scale)
                 {
                     var all = true;
                     for (var i = 0; i < Items.Count && all; i++)
@@ -81,7 +88,7 @@ namespace InventaSketch.AddIn.OnSlide
                     if (all) { _outer = outer; _labelPx = px; return (outer, px); }
                 }
             }
-            _outer = 236 * Scale; _labelPx = 10.5f;
+            _outer = MaxOuter * Scale; _labelPx = 10.5f;
             return (_outer.Value, _labelPx.Value);
         }
 
@@ -92,7 +99,7 @@ namespace InventaSketch.AddIn.OnSlide
         private (float Radius, float Width) LabelBox(float inner, float outer, double mid, bool hasIcon, float smallH)
         {
             var sweepRad = Sweep;
-            var worstH = (hasIcon ? 25 * Scale : 0) + 2 * smallH + 2 * Scale;
+            var worstH = (hasIcon ? 25 * Scale : 0) + MaxLines * smallH + 2 * Scale;
             var limit = outer - 7 * Scale;
             float rc = inner + (outer - inner) * 0.55f, width = 0;
             for (var f = 0.40f; f <= 0.78f; f += 0.02f)
@@ -101,13 +108,18 @@ namespace InventaSketch.AddIn.OnSlide
                 var ax = (float)Math.Abs(Math.Cos(mid) * r);
                 var ay = (float)Math.Abs(Math.Sin(mid) * r);
                 var vertical = ay + worstH / 2;
-                if (vertical >= limit || r - worstH / 2 < inner * 0.6f) continue;
+                if (vertical >= limit) continue;
                 var inside = 2 * ((float)Math.Sqrt(limit * limit - vertical * vertical) - ax);
                 var chordAt = (float)(2 * r * Math.Sin(Math.Min(sweepRad, Math.PI) / 2)) - 6 * Scale;
-                var w = Math.Min(Math.Min(inside, chordAt), 120 * Scale);
+                // The box keeps clear of the centre cap too (maintainer 2026-11-25: labels hidden under the centre).
+                var clear = inner + 6 * Scale;
+                var dy = Math.Max(0, ay - worstH / 2);
+                var outsideCap = dy >= clear ? float.MaxValue : 2 * (ax - (float)Math.Sqrt(clear * clear - dy * dy));
+                if (outsideCap <= 0) continue;
+                var w = Math.Min(Math.Min(Math.Min(inside, chordAt), outsideCap), 120 * Scale);
                 if (w > width) { width = w; rc = r; }
             }
-            return (rc, Math.Max(36 * Scale, width));
+            return (rc, Math.Max(30 * Scale, width));
         }
         public int Hover { get; set; } = -1;
 
@@ -152,7 +164,7 @@ namespace InventaSketch.AddIn.OnSlide
             using var fmt = new StringFormat { Alignment = StringAlignment.Center, Trimming = StringTrimming.None };
             size = g.MeasureString(text, font, new SizeF(width, 1000), fmt, out var chars, out var lines);
             // Never break inside a word: every word must fit on a line of its own.
-            return chars >= text.Length && lines <= 2 && WordsFit(g, text, font, width);
+            return chars >= text.Length && lines <= MaxLines && WordsFit(g, text, font, width);
         }
 
         private static bool WordsFit(Graphics g, string text, Font font, float width)
@@ -218,7 +230,7 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     // A word too long even in the small font: one line shortened with "…" instead of a break inside the word.
                     oneLine = !WordsFit(g, item.Label, small, width);
-                    textSize = new SizeF(width, (oneLine ? 1 : 2) * small.GetHeight(g));
+                    textSize = new SizeF(width, (oneLine ? 1 : MaxLines) * small.GetHeight(g));
                 }
                 if (i == Hover)
                 {

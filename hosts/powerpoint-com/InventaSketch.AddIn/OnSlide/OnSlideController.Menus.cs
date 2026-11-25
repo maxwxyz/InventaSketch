@@ -86,28 +86,8 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>A name cut to <paramref name="max"/> characters with "…".</summary>
         private static string Shorten(string s, int max) => s.Length <= max ? s : s.Substring(0, max - 1).TrimEnd() + "…";
 
-        /// <summary>Opens the element's own submenu when the pointer rests on its place for half a second (UX review F1).</summary>
-        private System.Windows.Forms.Timer? _pieHoverTimer;
-
-        private void ArmPieHoverOpen(PieMenu pie, int index, SlideView view)
-        {
-            _pieHoverTimer?.Stop();
-            if (index < 0 || index >= pie.Items.Count) return;
-            var item = pie.Items[index];
-            if (!item.Enabled || item.Id != "menu:g:edit") return;
-            _pieHoverTimer ??= new System.Windows.Forms.Timer { Interval = 500 };
-            _pieHoverTimer.Tick -= PieHoverTick;
-            _pieHoverTimer.Tick += PieHoverTick;
-            _pieHoverTimer.Start();
-
-            void PieHoverTick(object? sender, EventArgs e)
-            {
-                _pieHoverTimer!.Stop();
-                _pieHoverTimer.Tick -= PieHoverTick;
-                if (_mode != Mode.Pie || _pie != pie || pie.Hover != index) return;
-                OpenPie(new POINT { X = (int)pie.Centre.X, Y = (int)pie.Centre.Y }, view, "g:edit");
-            }
-        }
+        // Submenus open with a click, like "Back" closes them – one way everywhere (maintainer 2026-11-25: opening on hover but
+        // going back only by click was inconsistent).
 
         /// <summary>Label of a generic command, the same in bar tooltip and pie.</summary>
         private string CommandLabel(string id) => id switch
@@ -519,6 +499,14 @@ namespace InventaSketch.AddIn.OnSlide
         {
             SetPreview(null);
             _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale) { Title = title };
+            // The whole ring stays on the screen (at the edge of the slide or screen it was out of reach): move the centre in.
+            // The overlay draws inside the slide pane: keep the ring inside the pane and the screen.
+            var screen = System.Drawing.Rectangle.Intersect(System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point(pt.X, pt.Y)).WorkingArea, view.PaneRect);
+            var margin = _pie.Outer + 34 * (float)view.DeviceScale;   // ring, shadow and the hint line below it
+            var cx = Math.Min(Math.Max(pt.X, screen.Left + margin), screen.Right - margin);
+            var cy = Math.Min(Math.Max(pt.Y, screen.Top + _pie.Outer + 10 * (float)view.DeviceScale), screen.Bottom - margin);
+            if (Math.Abs(cx - pt.X) > 0.5 || Math.Abs(cy - pt.Y) > 0.5)
+                _pie = new PieMenu(new PointF(cx, cy), items, (float)view.DeviceScale) { Title = title };
             _mode = Mode.Pie;
             LastPieItems = string.Join("\n", items.Select(i => i.Id + "\t" + i.Label + (i.Enabled ? "" : "\t(off)")));
             Log.Info("Pie" + (title is null ? "" : " [" + title + "]") + ": " + string.Join("; ", items.Select(i => i.Id + "=" + i.Label + (i.Enabled ? "" : " (off)"))));
