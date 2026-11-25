@@ -12,7 +12,7 @@ namespace InventaSketch.Modules.Charts
     /// text parameter (typed in or pasted from a spreadsheet, see <see cref="ChartData"/>). Series stay distinguishable in
     /// monochrome output through dash patterns, markers and fill patterns.
     /// </summary>
-    public sealed class ChartsModule : IModule
+    public sealed class ChartsModule : IModule, IExportProvider
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() => new ObjectType[]
         {
@@ -37,6 +37,9 @@ namespace InventaSketch.Modules.Charts
         };
 
         public IEnumerable<LibraryItem> Library => Items.Value;
+
+        /// <summary>Domain exports of this module (<see cref="IExportProvider"/>): charts as matplotlib and pgfplots code.</summary>
+        public IEnumerable<IExporter> Exporters => new IExporter[] { new MatplotlibExporter(), new PgfplotsExporter() };
 
         private static IReadOnlyDictionary<string, ParamValue> P(params (string Key, ParamValue Value)[] kv) => kv.ToDictionary(x => x.Key, x => x.Value);
 
