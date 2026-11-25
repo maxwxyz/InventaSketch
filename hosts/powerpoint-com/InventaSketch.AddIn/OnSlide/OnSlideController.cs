@@ -2226,6 +2226,15 @@ namespace InventaSketch.AddIn.OnSlide
                 var ctx = new RenderContext(doc, _lang());
                 doc = Edits.Update(doc, ids, o => registry.WithView(o, view, ctx));
             }
+            else if (id.StartsWith("gap:", StringComparison.Ordinal))
+            {
+                // An insert place on the drawing (between table rows or columns): applied to the element that offers it.
+                var key = id.Substring(4);
+                var ctx = new RenderContext(_unitContext ?? doc, _lang());
+                var owner = doc.Objects.Values.FirstOrDefault(o => InsertHandles.Of(registry, o, ctx).Any(h => h.Key == key));
+                if (owner is null) return;
+                doc = Edits.Update(doc, new[] { owner.Id }, o => InsertHandles.Apply(registry, o, key, ctx));
+            }
             else if (id.StartsWith("act:", StringComparison.Ordinal))
             {
                 var ran = RunTypeAction(slide, unit, id.Substring(4));

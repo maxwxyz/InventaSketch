@@ -92,6 +92,10 @@
   das Element an einem anderen hängt, markiert ein winziger grauer Punkt die Stelle; in der Nähe erscheint das Schloss
   (grau), unter dem Zeiger wird es blau und zeigt seine Zuleitung. Alle Griffe werden gemeinsam angeordnet
   (`HandleLayout`): nie übereinander oder auf PowerPoints Griffen, 24 px Trefferflächen, der nächste gewinnt.
+- **Zwischen Tabellenzeilen und -spalten einfügen:** eine Tabelle zeigt außerdem kleine „+“-Punkte am linken Rand an jeder
+  inneren Zeilenlinie und am oberen Rand an jeder inneren Spaltenlinie (sie erscheinen nahe am Zeiger); ein Klick fügt
+  genau dort eine leere Zeile oder Spalte ein. Die Stellen kommen aus der Engine (`IInsertHandles`, Core) und erscheinen
+  nie in der Leiste oder im Kreismenü.
 - **Schwebende Leiste:** für jedes Element gleich aufgebaut, höchstens vier Knöpfe plus „⋯“:
   1. Die Hauptaktion mit kurzem Text. Je nach Element ist das „Ändern in …“ nach Schnell-Anfügen, „Daten“
      (Diagramme), „Text“ (Texte, Diagrammknoten, Tabellen: die Zellen), „Ansicht“ (Elemente mit mehreren Ansichten,

@@ -92,6 +92,9 @@
   joint; near it the lock badge appears (grey), under the pointer it turns blue and shows its lead line. All handles
   are placed together (`HandleLayout`): never on top of each other or of PowerPoint's handles, 24 px hit targets, the
   nearest wins.
+- **Insert between table rows and columns:** a table also shows small "+" dots on its left border at each inner row line
+  and on its top border at each inner column line (fading in near the pointer); a click inserts an empty row or column
+  exactly there. The places come from the engine (`IInsertHandles`, Core) and never appear in the bar or the pie.
 - **Floating bar:** the same structure for every element, at most four buttons plus "⋯":
   1. The main action, with a short label. Depending on the element this is "Make it …" after a quick add, "Data"
      (charts), "Text" (texts, diagram nodes, tables: the cells), "View" (elements with several views, a dropdown), or

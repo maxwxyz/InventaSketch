@@ -11,7 +11,7 @@ namespace InventaSketch.Modules.Annotation
     /// lines and texts: bold header row, borders all / outer / horizontal / none, column widths from the content. Rows share
     /// the box height; the text size follows the row height and the widest cell.
     /// </summary>
-    public sealed class TableType : AnnBoxType
+    public sealed class TableType : AnnBoxType, IInsertHandles
     {
         public TableType() : base("ann.table", new I18nText("Table (cells)", "Tabelle (Zellen)"), AnnCategories.Labels,
             "table", "cells", "grid", "matrix", "tabelle", "zellen", "raster", "wertetabelle", "spalten", "zeilen")
@@ -119,6 +119,35 @@ namespace InventaSketch.Modules.Annotation
             need = need.Select(n => Math.Max(n, mean * 0.25)).ToList();
             var sum = need.Sum();
             return need.Select(n => width * n / sum).ToList();
+        }
+
+        /// <summary>
+        /// "+" dots between rows (on the left border at each inner row line) and between columns (on the top border at each
+        /// inner column line): a click inserts an empty row or column exactly there (concept section 9 item 5). The outer
+        /// sides keep their "add at the side" actions.
+        /// </summary>
+        public IEnumerable<InsertHandle> InsertHandles(SketchObject o, RenderContext ctx)
+        {
+            double w = Math.Max(4, o.Size.W), h = Math.Max(3, o.Size.H);
+            var lang = ctx.Lang;
+            var rows = CellsOf(o, lang);
+            var nRows = rows.Count;
+            var rh = h / nRows;
+            for (var r = 1; r < nRows; r++)
+            {
+                var at = r;
+                yield return new InsertHandle("row." + at.ToString(CultureInfo.InvariantCulture), new Vec2(-w / 2, -h / 2 + r * rh), new Vec2(-1, 0),
+                    new I18nText($"Insert a row here (before row {at + 1})", $"Hier eine Zeile einfügen (vor Zeile {at + 1})"), x => InsertRow(x, lang, at));
+            }
+            var widths = ColumnWidths(rows, w);
+            var x0 = -w / 2;
+            for (var c = 1; c < widths.Count; c++)
+            {
+                x0 += widths[c - 1];
+                var at = c;
+                yield return new InsertHandle("col." + at.ToString(CultureInfo.InvariantCulture), new Vec2(x0, -h / 2), new Vec2(0, -1),
+                    new I18nText($"Insert a column here (before column {at + 1})", $"Hier eine Spalte einfügen (vor Spalte {at + 1})"), x => InsertColumn(x, lang, at));
+            }
         }
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
