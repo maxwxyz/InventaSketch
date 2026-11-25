@@ -112,6 +112,7 @@ namespace InventaSketch.AddIn
                         if (_pane?.Visible == true && CurrentSlide(_app) is PowerPoint.Slide slide) _bridge.SlideUnits(slide);
                     }
                     catch (Exception ex) { Log.Error("Sidebar slide units", ex); }
+                    _ribbon?.InvalidateControl("IskAllCaps");
                 };
                 // Model exchange with LibreOffice: mirror the models into document properties on save, adopt
                 // LibreOffice-drawn units on open.
@@ -299,13 +300,13 @@ namespace InventaSketch.AddIn
               .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskSnap\" showLabel=\"false\" label=\"").Append(L(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Magnetic snapping: gear mesh, axes, points and alignment. Hold Alt to move freely.", "Magnetisches Einrasten: Zahneingriff, Achsen, Punkte und Fluchtlinien. Alt gedrückt halten für freies Bewegen."))).Append("\" />");
-            // A toggle (maintainer 2026-11-25): pressed while the current slide is black and white; new elements take it.
-            sb.Append("<toggleButton id=\"IskMonochrome\" showLabel=\"false\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" getPressed=\"GetMonochromePressed\" onAction=\"OnMonochromeToggle\" supertip=\"")
-              .Append(X(T("Shows the InventaSketch elements of this slide in black and white: fills, text and highlighters included; elements inserted later take it too. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß, einschließlich Füllungen, Text und Markierungen; später eingefügte Elemente übernehmen es. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskAnchor\" showLabel=\"false\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
             sb.Append("<toggleButton id=\"IskMotion\" showLabel=\"false\" label=\"").Append(L(T("Move", "Bewegen"))).Append("\" getImage=\"GetMotionImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Motion mode: dragging turns gear trains and linkages the way they can move (gears turn with their ratios, planets orbit, centre distances stay). Off: dragging edits.", "Bewegungsmodus: Ziehen dreht Getriebe und Koppelgetriebe so, wie sie sich bewegen können (Räder drehen mit ihrer Übersetzung, Planeten laufen um, Achsabstände bleiben). Aus: Ziehen bearbeitet."))).Append("\" />");
+            // A toggle (maintainer 2026-11-25): pressed while the current slide is black and white; new elements take it.
+            sb.Append("<toggleButton id=\"IskMonochrome\" showLabel=\"false\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" getPressed=\"GetMonochromePressed\" onAction=\"OnMonochromeToggle\" supertip=\"")
+              .Append(X(T("Shows the InventaSketch elements of this slide in black and white: fills, text and highlighters included; elements inserted later take it too. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß, einschließlich Füllungen, Text und Markierungen; später eingefügte Elemente übernehmen es. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
             AppendToolsMenu(sb);
             sb.Append("</group>");
             if (_registry is not null)
@@ -315,7 +316,7 @@ namespace InventaSketch.AddIn
                 void Gallery(LibraryCategory c, int i, bool inMenu, bool compact)
                 {
                     // Inside a menu, galleries take no size/showLabel attributes (the menu shows their labels).
-                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(GalleryLabel(c))).Append('"').Append(" getVisible=\"GetModuleVisible\"");
+                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(GalleryShortLabel(c))).Append('"').Append(" getVisible=\"GetModuleVisible\"");
                     if (!inMenu) sb.Append(" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append('"');
                     sb.Append(" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
                       .Append(" screentip=\"").Append(X(GalleryLabel(c))).Append("\" supertip=\"")
@@ -338,7 +339,11 @@ namespace InventaSketch.AddIn
                         sb.Append("<group id=\"IskMod_").Append(m++).Append("\" getImage=\"GetGroupImage\" label=\"").Append(L(label)).Append("\">");
                         // PowerPoint's own shapes first, as an icon (maintainer 2026-11-25).
                         sb.Append("<control idMso=\"ShapesInsertGallery\" showLabel=\"false\" />");
-                        foreach (var (c, i) in cats) Gallery(c, i, inMenu: false, compact: cats.Count > 4);
+                        // PowerPoint's table dropdown right under the shapes (maintainer 2026-11-25).
+                        sb.Append("<control idMso=\"TableInsertGallery\" showLabel=\"false\" />");
+                        // Icons only, like the shapes and table dropdowns (maintainer 2026-11-25); the short name is the
+                        // label for screen readers and the full category list the screentip.
+                        foreach (var (c, i) in cats) Gallery(c, i, inMenu: false, compact: true);
                         sb.Append("</group>");
                         // Formatting groups (like Slidemax) right after "Annotate", before the domain modules.
                         AppendFormattingGroups(sb);
@@ -694,6 +699,9 @@ namespace InventaSketch.AddIn
             sb.Append("<box id=\"IskBoxFontStyle\"><control idMso=\"Bold\" showLabel=\"false\" /><control idMso=\"Italic\" showLabel=\"false\" />")
               .Append("<control idMso=\"Underline\" showLabel=\"false\" /><control idMso=\"Strikethrough\" showLabel=\"false\" />")
               .Append("<control idMso=\"Subscript\" showLabel=\"false\" /><control idMso=\"Superscript\" showLabel=\"false\" />")
+              // All capitals as a toggle right of superscript (maintainer 2026-11-25); InventaSketch elements keep their text.
+              .Append("<toggleButton id=\"IskAllCaps\" showLabel=\"false\" label=\"").Append(L(T("All caps", "Großbuchstaben"))).Append("\" getImage=\"GetPaintedImage\" getPressed=\"GetAllCapsPressed\" onAction=\"OnAllCapsToggle\" screentip=\"")
+              .Append(X(T("All caps", "Großbuchstaben"))).Append("\" supertip=\"").Append(X(T("Shows the selected text or the texts of the selected elements in capitals; click again for the original case.", "Zeigt den ausgewählten Text oder die Texte der ausgewählten Elemente in Großbuchstaben; erneut klicken stellt die Schreibweise wieder her."))).Append("\" />")
               .Append("<control idMso=\"TextAlignGallery\" showLabel=\"false\" /></box>");
             sb.Append("<box id=\"IskBoxParagraph\"><control idMso=\"AlignLeft\" showLabel=\"false\" /><control idMso=\"AlignCenter\" showLabel=\"false\" />")
               .Append("<control idMso=\"AlignRight\" showLabel=\"false\" /><control idMso=\"IndentDecrease\" showLabel=\"false\" />")
@@ -704,11 +712,11 @@ namespace InventaSketch.AddIn
             sb.Append("<group id=\"IskLayout\" label=\"").Append(L(T("Layout", "Layout"))).Append("\" imageMso=\"ObjectsAlignLeft\">");
             sb.Append("<box id=\"IskBoxArrange\"><control idMso=\"ObjectBringToFrontMenu\" showLabel=\"false\" /><control idMso=\"ObjectSendToBackMenu\" showLabel=\"false\" /></box>");
             sb.Append("<box id=\"IskBoxGroup\"><control idMso=\"ObjectsGroup\" showLabel=\"false\" /><control idMso=\"ObjectsUngroup\" showLabel=\"false\" /><control idMso=\"ObjectsRegroup\" showLabel=\"false\" /></box>");
-            // Bottom row: table, selection pane, picture (PowerPoint's own controls, icons only).
-            // PowerPoint's native table dropdown, the selection pane and picture insert, icons only (maintainer 2026-11-25).
-            sb.Append("<box id=\"IskBoxSelect\"><control idMso=\"TableInsertGallery\" showLabel=\"false\" />");
-            sb.Append("<control idMso=\"SelectionPane\" showLabel=\"false\" />");
+            // Bottom row: selection pane, picture insert and crop (PowerPoint's own controls, icons only; the table dropdown
+            // moved under the shapes in the basics group, maintainer 2026-11-25).
+            sb.Append("<box id=\"IskBoxSelect\"><control idMso=\"SelectionPane\" showLabel=\"false\" />");
             sb.Append("<control idMso=\"PictureInsertFromFile\" showLabel=\"false\" />");
+            sb.Append("<control idMso=\"PictureCrop\" showLabel=\"false\" />");
             sb.Append("</box>");
             // Height above width (one column), so the group stays narrow.
             sb.Append("<control idMso=\"ShapeHeight\" showLabel=\"false\" /><control idMso=\"ShapeWidth\" showLabel=\"false\" />");
@@ -846,15 +854,65 @@ namespace InventaSketch.AddIn
         internal static readonly IReadOnlyDictionary<string, string> MergedInto = new Dictionary<string, string>(StringComparer.Ordinal)
         {
             ["ann.hatching"] = "basic",
+            // Dimensions are lines too (maintainer 2026-11-25): one gallery "Lines & arrows · Dimensions".
+            ["ann.dimensions"] = "ann.lines",
             ["ann.patent"] = "ann.lines",
             ["patent.drawing"] = "ann.lines",
         };
+
+        /// <summary>
+        /// Gallery icons that are not the first item (maintainer 2026-11-25): the decision for flowcharts, the bearing block
+        /// for joints and supports. The shapes-and-hatching gallery gets a painted hatched square (thin hatch lines vanish
+        /// in a 16 px thumbnail).
+        /// </summary>
+        internal static readonly IReadOnlyDictionary<string, string> CategoryIconItem = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["ann.flow"] = "ann.flow.decision",
+            ["kin.joints"] = "kin.ground.detailed",
+        };
+
+        /// <summary>The hatched-square pictogram of the shapes-and-hatching gallery.</summary>
+        private Bitmap HatchIcon(int logicalSize)
+        {
+            var size = (int)Math.Round(logicalSize * DeviceScale());
+            var ink = OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
+            var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using var g = Graphics.FromImage(bmp);
+            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            var m = size * 0.16f; var w = size - 2 * m;
+            var box = new RectangleF(m, m, w, w);
+            using var pen = new Pen(ink, Math.Max(1f, size / 16f));
+            using var hatch = new Pen(ink, Math.Max(1f, size / 22f));
+            var clip = g.Clip; g.SetClip(box);
+            for (var k = -1; k <= 4; k++)
+            {
+                var o = m + k * w / 3.5f;
+                g.DrawLine(hatch, o, m + w, o + w, m);
+            }
+            g.Clip = clip;
+            g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
+            return bmp;
+        }
 
         /// <summary>The category and the categories merged into it, in order.</summary>
         private List<LibraryCategory> GalleryCategories(LibraryCategory primary)
             => new[] { primary }.Concat(_categories.Where(c => MergedInto.TryGetValue(c.Id, out var p) && p == primary.Id)).ToList();
 
         private string GalleryLabel(LibraryCategory primary) => string.Join(" · ", GalleryCategories(primary).Select(c => c.Name.Get(_lang)));
+
+        /// <summary>
+        /// Short ribbon names of galleries that hold several categories (the full list is the screentip): long joined names
+        /// made PowerPoint collapse the following groups into empty buttons.
+        /// </summary>
+        private static readonly IReadOnlyDictionary<string, I18nText> ShortGalleryNames = new Dictionary<string, I18nText>(StringComparer.Ordinal)
+        {
+            ["ann.lines"] = new("Lines & dimensions", "Linien & Maße"),
+            ["basic"] = new("Shapes & hatching", "Formen & Schraffur"),
+            ["ann.labels"] = new("Labels & text", "Beschriftung"),
+        };
+
+        private string GalleryShortLabel(LibraryCategory primary)
+            => ShortGalleryNames.TryGetValue(primary.Id, out var n) ? n.Get(_lang) : GalleryLabel(primary);
 
         private LibraryCategory? CategoryOf(Office.IRibbonControl control)
         {
@@ -874,7 +932,10 @@ namespace InventaSketch.AddIn
         {
             try
             {
-                var item = ItemsOf(control).FirstOrDefault();
+                var cat = CategoryOf(control);
+                if (cat is not null && GalleryCategories(cat).Any(c => c.Id == "ann.hatching")) return PictureConverter.ToPicture(HatchIcon(32));
+                var item = cat is not null && CategoryIconItem.TryGetValue(cat.Id, out var iconId) && _registry?.Item(iconId) is { } chosen
+                    ? chosen : ItemsOf(control).FirstOrDefault();
                 return item is null ? null : PictureConverter.ToPicture(Thumbnail(item, 32));
             }
             catch (Exception ex)
@@ -914,6 +975,16 @@ namespace InventaSketch.AddIn
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     switch (control.Id)
                     {
+                        case "IskAllCaps":
+                            {
+                                // "AB": two capitals.
+                                using var font = new Font("Segoe UI", size * 0.5f, FontStyle.Bold, GraphicsUnit.Pixel);
+                                using var brush = new SolidBrush(ink);
+                                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                                var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                                g.DrawString("AB", font, brush, new RectangleF(-size * 0.1f, 0, size * 1.2f, size), fmt);
+                                break;
+                            }
                         case "IskCleanSlides":
                             {
                                 // A sheet with an eraser (clean slides).
@@ -1187,6 +1258,76 @@ namespace InventaSketch.AddIn
         public void OnMonochromeToggle(Office.IRibbonControl control, bool pressed) => SetMonochrome(pressed);
 
         /// <summary>Black and white for the current slide (slide style, so later elements take it) and its units; one undo step.</summary>
+        /// <summary>Pressed while the selected text, or every selected element/shape, is in all capitals.</summary>
+        public bool GetAllCapsPressed(Office.IRibbonControl control)
+        {
+            try
+            {
+                if (_app?.ActiveWindow?.Selection is not PowerPoint.Selection sel) return false;
+                if (sel.Type == PowerPoint.PpSelectionType.ppSelectionText) return sel.TextRange2.Font.Allcaps == Office.MsoTriState.msoTrue;
+                if (sel.Type != PowerPoint.PpSelectionType.ppSelectionShapes) return false;
+                var any = false;
+                foreach (PowerPoint.Shape shape in sel.ShapeRange)
+                {
+                    if (OnSlide.SketchUnits.Read(shape) is { } unit)
+                    {
+                        if (!unit.Doc.Objects.Values.All(o => o.Style?.Caps == true)) return false;
+                    }
+                    else if (shape.HasTextFrame == Office.MsoTriState.msoTrue)
+                    {
+                        if (shape.TextFrame2.TextRange.Font.Allcaps != Office.MsoTriState.msoTrue) return false;
+                    }
+                    else continue;
+                    any = true;
+                }
+                return any;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("GetAllCapsPressed", ex);
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// All caps on or off: native text through PowerPoint's own attribute; InventaSketch elements through their style
+        /// (<see cref="Style.Caps"/>), so the model text keeps its case and every host shows capitals. One undo step.
+        /// </summary>
+        public void OnAllCapsToggle(Office.IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                if (_app?.ActiveWindow?.Selection is not PowerPoint.Selection sel || _registry is null) return;
+                var state = pressed ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse;
+                _app.StartNewUndoEntry();
+                if (sel.Type == PowerPoint.PpSelectionType.ppSelectionText) sel.TextRange2.Font.Allcaps = state;
+                else if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && CurrentSlide(_app) is PowerPoint.Slide slide)
+                {
+                    var shapes = new List<PowerPoint.Shape>();
+                    var reselect = new List<PowerPoint.Shape>();
+                    foreach (PowerPoint.Shape shape in sel.ShapeRange) shapes.Add(shape);
+                    foreach (var shape in shapes)
+                    {
+                        if (OnSlide.SketchUnits.Read(shape) is { } unit)
+                        {
+                            var ids = unit.Doc.Objects.Keys.ToList();
+                            var doc = Edits.Update(unit.Doc, ids, o => o with { Style = (o.Style ?? new Style()) with { Caps = pressed ? true : null } });
+                            if (OnSlide.SketchUnits.Replace(slide, unit, doc, _registry, _lang) is { } redrawn) reselect.Add(redrawn);
+                        }
+                        else if (shape.HasTextFrame == Office.MsoTriState.msoTrue) { shape.TextFrame2.TextRange.Font.Allcaps = state; reselect.Add(shape); }
+                    }
+                    // Redrawn units are new shapes: select them again so the toggle (and the bar) show the state.
+                    for (var k = 0; k < reselect.Count; k++) reselect[k].Select(k == 0 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse);
+                }
+                Log.Info("All caps " + (pressed ? "on" : "off"));
+                _ribbon?.InvalidateControl("IskAllCaps");
+            }
+            catch (Exception ex)
+            {
+                Log.Error("OnAllCapsToggle", ex);
+            }
+        }
+
         private void SetMonochrome(bool on)
         {
             try
@@ -1615,6 +1756,7 @@ namespace InventaSketch.AddIn
         internal string ScreenRectOf(string shapeName) => _onSlide?.ScreenRectOf(shapeName) ?? "";
 
         internal string PartAtOf(string shapeName, double xPt, double yPt) => _onSlide?.PartAtOf(shapeName, xPt, yPt) ?? "";
+        internal string SelectedPartKey() => _onSlide?.SelectedPartKey() ?? "";
 
         internal string BuildPortsOf(string shapeName) => _onSlide?.BuildPortsOf(shapeName) ?? "";
 

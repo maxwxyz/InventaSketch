@@ -381,6 +381,33 @@ in further modules (parts lists derive from the parts and follow them; energy an
 architecture dimensions, mechanical parameters shown as labels); angle dimensions keep their value (the angle is visible
 in the drawing).
 
+### Maintainer feedback 2026-11-25 (evening), COM first
+
+- Ribbon (done 2026-11-25): PowerPoint's table dropdown under the shapes in the basics group; black and white right
+  before Extras; dimensions in the lines gallery; gallery icons: hatched square for shapes and hatching, the decision for
+  flowcharts, the bearing block for joints and supports; "All caps" toggle right of superscript (native text through
+  PowerPoint, InventaSketch elements through the style `Caps`, model text keeps its case); Layout bottom row: selection
+  pane, picture insert, crop; the maintainer's three example figures left the library (one neutral principle figure
+  instead; the examples stay resolvable by id).
+- **Complete UI/UX review of the interaction with every element (maintainer 2026-11-25, top priority):** one
+  consistent concept for what is found where and how it is operated – direct manipulation (drag points, ends, limit and
+  value lines in charts, resize, rotate), snapping, re-snapping and detaching, connecting and chain building, insert
+  fitting elements, view switches, data entry; what goes on the element (handles), into the floating bar (few clear
+  pictograms), into the pie menu (complete, labelled, fixed sectors), into the ribbon and the sidebar; one visual language
+  for handles and states (attached, dependent, snapped); feedback on what moves along; large hit targets, little text,
+  understandable for new and older users. Concept: docs/en/design/interaction-ux.md (in progress), then COM, web,
+  LibreOffice.
+- Overlay bar, pie menu and handles review ("important point"): handles must never overlap (short pipes and cables),
+  one "+" per meaning, every bar/pie entry explains itself, search popups close on a click outside, tables get "+" on
+  every side for rows and columns. In progress (design note docs/en/design/overlay-ux.md).
+- Sketched curves: switch between smoothed, interpolated, fitted function, straight segments and as drawn; cleaner
+  default (de-noised trail). In progress.
+- Charts: drag limit lines, value lines and marks interactively (drag handles in Core, engine `dragHandles`/`moveHandle`,
+  COM overlay). In progress.
+- Later: the sidebar editor's preview is not live while the slide changes, and the sidebar still showed the old
+  compatibility wording in the maintainer's build (web strings are clean since 2026-11-25; check the COM sidebar after the
+  next web build).
+
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;

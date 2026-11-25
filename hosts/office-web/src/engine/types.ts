@@ -253,6 +253,34 @@ export interface PlanUnit {
 
 export interface DrawPlan { unit: "pt"; pageWidth: number; pageHeight: number; revision: number; units: PlanUnit[] }
 
+/**
+ * Chart handling of "Clean slides" (engine `sanitize`): "normalised" (same proportions on a neutral scale), "randomised"
+ * (plausible random values, same look) or "none" (chart values kept; only the text and metadata options apply).
+ */
+export type SanitizeMode = "normalised" | "randomised" | "none";
+
+/** Options of engine `sanitize` (its `value`); a fixed seed reproduces a randomised result. */
+export interface SanitizeOptions { renameCategories: boolean; replaceTexts: boolean; stripMeta: boolean; seed?: number; spread?: number }
+
+/** What engine `sanitize` changed: counts, the seed used and the report lines (request language). */
+export interface SanitizeReport {
+  mode: SanitizeMode;
+  seed: number;
+  elements: number;
+  changed: number;
+  values: number;
+  texts: number;
+  metadata: number;
+  references: number;
+  unknown: number;
+  failed: number;
+  byType: { type: string; name: string; count: number }[];
+  summary: string;
+  lines: string[];
+}
+
+export interface SanitizeResult { state: EditorState; report: SanitizeReport }
+
 /** Severity of a compatibility check (preflight) finding ("manual": a point to check by hand). */
 export type PreflightSeverity = "error" | "warning" | "info" | "manual";
 

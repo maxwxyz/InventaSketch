@@ -29,6 +29,13 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
   parts[?part=<key>&action=<id>[&input=<text>]]   chart parts of the selected element (dialog; logged when headless)
   compare                                         mark what differs from the previous page (again: remove the marks)
   importVector[?path=<file>]                      SVG/DXF drawing as editable shapes (without a path: file dialog)
+  cleanSlides[?scope=selection|slide|all&mode=normalised|randomised|none&rename=1&texts=1&meta=0&seed=<n>]
+                                                  clean the InventaSketch elements for sharing (engine sanitize; dialog
+                                                  without arguments, report as message box; logged when headless)
+  export[?format=<id or extension>&path=<file>]   export the selection, else the page: editable SVG, LaTeX TikZ, chart
+                                                  data … (dialog and save dialog for what is missing)
+  chartFromPicture[?path=<file>]                  a picture (PNG, JPEG, BMP, GIF) as an editable chart (file dialog
+                                                  without a path)
   about                                           version and licence
 The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
 and ``buildItems`` fill the sidebar panel. The job ``CanvasJob`` (Jobs.xcu, document event "OnViewCreated") attaches
@@ -57,7 +64,8 @@ PROTOCOL = "inventasketch.libreoffice:"
 DECK = "InventaSketchDeck"
 COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
             "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
-            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare", "importVector", "parts")
+            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare", "importVector", "parts",
+            "cleanSlides", "export", "chartFromPicture")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 
@@ -255,6 +263,12 @@ def _run(ctx, frame, command, args):
         elif command == "cleanup":
             removed = host.cleanup_properties(controller.getModel())
             log("cleanup removed %d properties" % len(removed))
+        elif command == "cleanSlides":
+            _clean_slides(ctx, frame, controller, args)
+        elif command == "export":
+            _export(ctx, frame, controller, args)
+        elif command == "chartFromPicture":
+            _chart_from_picture(ctx, frame, controller, args.get("path") or args.get(""))
     except (host.HostError, EngineError) as ex:
         message(ctx, frame, str(ex), error=True)
     except Exception as ex:
@@ -319,6 +333,123 @@ def _import_vector(ctx, frame, controller, path):
         text = raw.decode("cp1252", errors="replace")
     drawn = host.import_vector(engine_for(ctx), controller, text, os.path.basename(path))
     log("imported %s: %d unit(s)" % (os.path.basename(path), len(drawn)))
+
+
+def _visible(frame):
+    window = frame.getContainerWindow() if frame is not None else None
+    return window is not None and window.isVisible()
+
+
+def _clean_slides(ctx, frame, controller, args):
+    """Clean slides: the dialog (without arguments and with a visible window), else the choice from the arguments; the
+    report is shown in a message box (only logged when headless)."""
+    from inventasketch_lo import clean
+    kind = host.doc_kind(controller.getModel())
+    has_selection = bool(host.selected_unit_shapes(controller))
+    if _visible(frame) and not args.get("scope"):
+        from inventasketch_lo import cleandialog
+        choice = cleandialog.CleanDialog(ctx, frame, kind, has_selection).execute(
+            lambda text: message(ctx, frame, text, error=True))
+        if choice is None:
+            return
+    else:
+        try:
+            choice = clean.choice_from_args(args, has_selection)
+        except ValueError as ex:
+            raise host.HostError(str(ex))
+    result = host.clean_slides(engine_for(ctx), controller, choice)
+    total = result["total"]
+    log("clean slides (%s, %s, seed %d): %d of %d element(s) changed on %d page(s), %d unit shape(s) redrawn" % (
+        choice["scope"], choice["mode"], result["seed"], total["changed"], total["elements"], result["pages"],
+        result["drawn"]))
+    message(ctx, frame, clean.report_text(total, result["seed"]))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _export(ctx, frame, controller, args):
+    """Export of the selection, else the page: the format from the arguments or the dialog, the file from the
+    arguments or the save dialog. Without a visible window and without arguments the formats are only logged."""
+    from inventasketch_lo import exporting
+    engine = engine_for(ctx)
+    offer = host.export_formats(engine, controller)
+    wanted = args.get("format") or args.get("")
+    if wanted:
+        fmt = exporting.find(offer["formats"], wanted)
+        if fmt is None:
+            raise host.HostError(i18n.text("exUnknown") % wanted)
+    elif _visible(frame):
+        from inventasketch_lo import exportdialog
+        fmt = exportdialog.ExportDialog(ctx, frame, offer).execute()
+        if fmt is None:
+            return
+    else:
+        log("export formats (%s): %s" % ("selection" if offer["selection"] else "page",
+                                         ", ".join(f["id"] for f in offer["formats"])))
+        return
+    path = args.get("path")
+    if not path:
+        if not _visible(frame):
+            log("export: no path given")
+            return
+        path = _save_path(ctx, fmt, offer["selection"])
+        if not path:
+            return
+    path = exporting.ensure_extension(path, fmt["extension"])
+    result = host.export_text(engine, controller, fmt["id"])
+    data = exporting.file_bytes(result["text"], fmt["extension"])
+    try:
+        with open(path, "wb") as f:
+            f.write(data)
+    except OSError as ex:
+        raise host.HostError(i18n.text("exWriteFailed") % ex)
+    log("export %s (%s): %d bytes -> %s" % (fmt["id"], "selection" if result["selection"] else "page", len(data),
+                                             path))
+
+
+def _save_path(ctx, fmt, selection):
+    """The file chosen in LibreOffice's save dialog for a format (automatic extension), or None."""
+    from inventasketch_lo import exporting
+    picker = ctx.ServiceManager.createInstanceWithContext("com.sun.star.ui.dialogs.FilePicker", ctx)
+    picker.initialize((uno.getConstantByName("com.sun.star.ui.dialogs.TemplateDescription.FILESAVE_AUTOEXTENSION"),))
+    picker.setTitle("InventaSketch – " + i18n.text("exTitle"))
+    title, pattern = exporting.filter_pattern(fmt)
+    picker.appendFilter(title, pattern)
+    picker.setCurrentFilter(title)
+    picker.setDefaultName(exporting.default_name(fmt, selection))
+    try:
+        picker.setValue(uno.getConstantByName(
+            "com.sun.star.ui.dialogs.ExtendedFilePickerElementIds.CHECKBOX_AUTOEXTENSION"), 0, True)
+    except Exception as ex:
+        log("save dialog auto extension: %s" % ex)
+    if picker.execute() != 1:
+        return None
+    files = picker.getSelectedFiles() or picker.getFiles()
+    return uno.fileUrlToSystemPath(files[0]) if files else None
+
+
+def _chart_from_picture(ctx, frame, controller, path):
+    """A picture file as an editable chart; without a path the user picks one (file dialog). The engine's note (what
+    was read, whether the values come from the axis labels) is shown in a message box (logged when headless)."""
+    from inventasketch_lo import picture
+    if not path:
+        picker = ctx.ServiceManager.createInstanceWithContext("com.sun.star.ui.dialogs.FilePicker", ctx)
+        picker.initialize((uno.getConstantByName("com.sun.star.ui.dialogs.TemplateDescription.FILEOPEN_SIMPLE"),))
+        picker.setTitle("InventaSketch – " + i18n.text("picTitle"))
+        patterns = ";".join("*" + e for e in picture.EXTENSIONS)
+        picker.appendFilter("%s (%s)" % (i18n.text("picFilter"), patterns.replace(";", ", ")), patterns)
+        if picker.execute() != 1 or not picker.getFiles():
+            return
+        path = uno.fileUrlToSystemPath(picker.getFiles()[0])
+    if not os.path.isfile(path):
+        raise host.HostError(i18n.text("picUnreadable") % path)
+    dib, mask = host.read_picture(path)
+    result = host.chart_from_picture(engine_for(ctx), controller, dib, mask)
+    log("chart from picture %s (%dx%d px sent, mask %s): %s, %d shape(s)" % (
+        os.path.basename(path), result["size"][0], result["size"][1], "yes" if mask else "no",
+        result["id"] or "nothing found", len(result["drawn"])))
+    if result["message"]:
+        message(ctx, frame, result["message"])
+    _describe(ctx, frame, controller, quiet=True)
 
 
 def _num(value):

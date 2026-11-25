@@ -450,10 +450,11 @@ class PageSession:
 
     # -------------------------------------------------------------- committing
 
-    def commit(self, label, state=None, force_selected=False, title=None):
+    def commit(self, label, state=None, force_selected=False, title=None, select=True):
         """Redraws the units touched by the last engine operation in one undo step (``title``, default "edit
-        <label>"); returns the drawn shapes. The selection follows the engine's selection. ``force_selected`` redraws
-        the selected units anyway."""
+        <label>"); returns the drawn shapes. The selection follows the engine's selection (``select`` False: the
+        document selection is left alone, e.g. for pages that are not shown). ``force_selected`` redraws the selected
+        units anyway."""
         state = state if state is not None and "objects" in state else self.call("state")
         existing = {o["id"] for o in state["objects"]}
         units = self.unit_map()
@@ -491,7 +492,9 @@ class PageSession:
                     self.units.append({"id": uid, "shape": s, "unit": None, "own": list(own), "contents": list(own),
                                        "selected": False, "moved": False})
         selection = [i for i in state.get("selection") or [] if i in existing]
-        if selection:
+        if not select:
+            pass
+        elif selection:
             self.select_objects(selection)
         else:
             _select(self.controller, drawn)
@@ -872,6 +875,140 @@ def compare_with_previous(engine, controller):
         legend.Name = DIFF_PREFIX + " legend"
     return {"added": len(diff.get("added") or []), "changed": len(diff.get("changed") or []),
             "removed": len(diff.get("removed") or []), "previous": number - 1}
+
+
+def clean_slides(engine, controller, choice):
+    """Clean slides (engine ``sanitize``, rules in ``clean``): the selected units, every unit of the current
+    slide/page/sheet or of every slide/page (``choice["scope"]``), each page loaded like a page session; the changed
+    units are redrawn, all pages in one undo step. One seed for the whole run. Returns {"total": merged report counts
+    and lines, "seed", "pages": pages with units, "drawn": number of redrawn unit shapes}."""
+    from . import clean
+    doc = controller.getModel()
+    kind = doc_kind(doc)
+    choice = clean.with_seed(choice)
+    selection = choice["scope"] == "selection"
+    shapes = selected_unit_shapes(controller) if selection else []
+    if selection and not shapes:
+        raise HostError(i18n.text("noUnit"))
+    if kind in ("impress", "draw"):
+        pages = doc.getDrawPages()
+        current = controller.getCurrentPage().Number - 1
+        indices = clean.pages_for_scope(choice["scope"], current, pages.getCount(), kind)
+        targets = [(i, None if i == current else pages.getByIndex(i)) for i in indices]
+    else:
+        targets = [(0, None)]
+    reports, drawn, loaded = [], 0, 0
+    with _UndoStep(doc, i18n.text("clUndo")):
+        for _, page in targets:
+            if page is not None and not page_unit_shapes(page):
+                continue
+            with PageSession(engine, controller, shapes=shapes, page=page) as ps:
+                if not ps.units:
+                    continue
+                loaded += 1
+                result = ps.call("sanitize", clean.request(choice, ps.selected_ids() if selection else []))
+                reports.append(result.get("report") or {})
+                drawn += len(ps.commit(i18n.text("clTitle"), result.get("state"), title=i18n.text("clUndo"),
+                                       select=page is None))
+    if not loaded:
+        raise HostError(i18n.text("clNothing"))
+    return {"total": clean.merge(reports), "seed": choice["seed"], "pages": loaded, "drawn": drawn}
+
+
+def _export_session(engine, controller):
+    """Page session of an export: only the selected units, or every unit of the page without a selection."""
+    shapes = selected_unit_shapes(controller)
+    return PageSession(engine, controller, shapes=shapes, context=not shapes)
+
+
+def _export_ids(ps, kind):
+    """(object ids, selection?) of an export: the selected units' objects, else none (= the page; Calc: every unit,
+    because the session page of a sheet is only a working area)."""
+    ids = ps.selected_ids()
+    if ids:
+        return ids, True
+    if not ps.units:
+        raise HostError(i18n.text("exNothing"))
+    if kind == "calc":
+        return [i for e in ps.units for i in e["own"]], False
+    return [], False
+
+
+def export_formats(engine, controller):
+    """What an export offers here (rules in ``exporting``): {"formats": [{id, name, extension, preserves}], "selection":
+    bool, "count": selected units, "kind"}."""
+    from . import exporting
+    kind = doc_kind(controller.getModel())
+    with _export_session(engine, controller) as ps:
+        ids, selection = _export_ids(ps, kind)
+        exporters = ps.call("exporters", {"ids": ids, "lang": i18n.language()})
+        count = sum(1 for e in ps.units if e["selected"])
+    return {"formats": exporting.formats(exporters), "selection": selection, "count": count, "kind": kind}
+
+
+def export_text(engine, controller, format_id):
+    """Runs the export ``format_id`` (``exporting.SVG``: editable SVG from ``renderPageSvg`` mode "export", else the
+    engine exporter of that id) on the selection or the page. Returns {"text", "extension", "selection"}."""
+    from . import exporting
+    kind = doc_kind(controller.getModel())
+    with _export_session(engine, controller) as ps:
+        ids, selection = _export_ids(ps, kind)
+        if format_id == exporting.SVG:
+            r = ps.call("renderPageSvg", {"ids": ids, "mode": "export", "background": "#ffffff"})
+            return {"text": r["svg"], "extension": "svg", "selection": selection}
+        r = ps.call("export", {"ids": ids, "itemId": format_id, "lang": i18n.language()})
+        return {"text": r.get("text") or "", "extension": r.get("extension") or "txt", "selection": selection}
+
+
+def read_picture(path):
+    """(DIB bytes, mask DIB bytes or None) of a picture file, decoded by LibreOffice (``GraphicProvider``)."""
+    import uno
+    from com.sun.star.beans import PropertyValue
+    ctx = uno.getComponentContext()
+    provider = ctx.ServiceManager.createInstanceWithContext("com.sun.star.graphic.GraphicProvider", ctx)
+    arg = PropertyValue()
+    arg.Name, arg.Value = "URL", uno.systemPathToFileUrl(path)
+    try:
+        graphic = provider.queryGraphic((arg,))
+    except Exception as ex:
+        raise HostError(i18n.text("picUnreadable") % ex)
+    if graphic is None:
+        raise HostError(i18n.text("picUnreadable") % path)
+    dib = graphic.getDIB().value
+    mask = None
+    try:
+        if graphic.getPropertyValue("Transparent"):
+            mask = graphic.getMaskDIB().value
+    except Exception as ex:
+        log("picture transparency: %s" % ex)
+    return dib, mask
+
+
+def chart_from_picture(engine, controller, dib, mask=None):
+    """A picture (DIB from ``read_picture``) as an editable chart in the middle of the slide/page (Calc: of the visible
+    area), engine ``chartFromPicture``; one undo step, selected. Returns {"message": what was read, for the user,
+    "id": chart id or None, "drawn": shapes, "size": pixels sent}."""
+    from . import picture
+    try:
+        params = picture.request(dib, mask)
+    except ValueError as ex:
+        raise HostError(i18n.text("picUnreadable") % ex)
+    doc, page, centre, size = target(controller)
+    session = _session(engine, size)
+    try:
+        params.update({"session": session, "x": centre[0], "y": centre[1], "lang": i18n.language(),
+                       "includeSvg": False})
+        result = engine.call("chartFromPicture", params)
+        chart = result.get("id")
+        plan = engine.call("drawPlan", {"session": session, "ids": [chart]}) if chart else None
+    finally:
+        _close(engine, session)
+    drawn = []
+    if plan:
+        drawn, _ = _draw_step(doc, page, plan, i18n.text("picUndo"))
+        _select(controller, drawn)
+    return {"message": result.get("message") or "", "id": chart, "drawn": drawn,
+            "size": (params["w"], params["h"])}
 
 
 def go_to(controller, page_number, shape=None):

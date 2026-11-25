@@ -103,6 +103,17 @@ namespace InventaSketch.Modules.Charts
             return ChartBreaks.Actions(o, x, series.SelectMany(s => s.Points.Select(p => p.X)), y, series.SelectMany(s => s.Points.Select(p => p.Y)).Concat(limits));
         }
 
+        /// <summary>The chart actions of a part plus, on a sketched curve, the curve shape actions (<see cref="CurveShapes"/>).</summary>
+        protected override IEnumerable<ContextAction> OwnPartActions(SketchObject o, string part, RenderContext ctx)
+        {
+            var own = base.OwnPartActions(o, part, ctx);
+            var seg = part.Split('.');
+            if (seg.Length == 2 && seg[0] is ChartTags.Series or ChartTags.Marker
+                && int.TryParse(seg[1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var k))
+                return ChartSketchInput.ShapeActions(o, k).Concat(own).ToList();
+            return own;
+        }
+
         /// <summary>Step curve: each value is held until the next x.</summary>
         public static List<Vec2> Steps(IReadOnlyList<Vec2> p)
         {

@@ -165,7 +165,9 @@ export function drawOp(shapes: PowerPoint.ShapeCollection, op: PlanOp, caps: Hos
   out.push(s);
 }
 
-function targetSlide(context: PowerPoint.RequestContext, caps: HostCapabilities): PowerPoint.Slide {
+/** The given slide, else the selected one (the first slide without the selection API). */
+function targetSlide(context: PowerPoint.RequestContext, caps: HostCapabilities, slideId?: string): PowerPoint.Slide {
+  if (slideId) return context.presentation.slides.getItem(slideId);
   return caps.selection ? context.presentation.getSelectedSlides().getItemAt(0) : context.presentation.slides.getItemAt(0);
 }
 
@@ -200,10 +202,10 @@ async function storeBounds(context: PowerPoint.RequestContext, shape: PowerPoint
   shape.tags.add(TAG_BOUNDS, JSON.stringify(b));
 }
 
-/** Draws native units on the current slide (replacing earlier shapes of the same units). */
-export async function writeNativeUnits(units: PlanUnit[], caps: HostCapabilities): Promise<void> {
+/** Draws native units on the current slide or `slideId` (replacing earlier shapes of the same units). */
+export async function writeNativeUnits(units: PlanUnit[], caps: HostCapabilities, slideId?: string): Promise<void> {
   await PowerPoint.run(async (context) => {
-    const slide = targetSlide(context, caps);
+    const slide = targetSlide(context, caps, slideId);
     await deleteUnits(context, slide, new Set(units.map((u) => u.id)));
     for (const unit of units) {
       const created: PowerPoint.Shape[] = [];
@@ -266,17 +268,46 @@ export async function writeSvgUnit(unit: PlanUnit, caps: HostCapabilities): Prom
   });
 }
 
-/** Writes units (native or SVG) in order. */
-export async function writeUnits(units: PlanUnit[], caps: HostCapabilities): Promise<void> {
+/**
+ * Writes units (native or SVG) in order onto the current slide or `slideId`. Native units go straight to that slide; a
+ * picture can only be inserted into the shown slide (setSelectedDataAsync), so for SVG units on another slide that slide
+ * is shown first and the previously shown one afterwards (PowerPointApi 1.5).
+ */
+export async function writeUnits(units: PlanUnit[], caps: HostCapabilities, slideId?: string): Promise<void> {
   const native = units.filter((u) => u.mode === "native");
-  if (native.length) await writeNativeUnits(native, caps);
-  for (const u of units.filter((x) => x.mode === "svg")) await writeSvgUnit(u, caps);
+  if (native.length) await writeNativeUnits(native, caps, slideId);
+  const svg = units.filter((x) => x.mode === "svg");
+  if (!svg.length) return;
+  const shown = slideId && caps.selection ? await selectedSlideId() : undefined;
+  const navigate = !!slideId && !!shown && shown !== slideId;
+  if (navigate) await showSlide(slideId!);
+  try {
+    for (const u of svg) await writeSvgUnit(u, caps);
+  } finally {
+    if (navigate) await showSlide(shown!);
+  }
 }
 
-/** Removes units from the current slide. */
-export async function deleteUnitShapes(unitIds: string[], caps: HostCapabilities): Promise<number> {
+async function selectedSlideId(): Promise<string | undefined> {
+  return PowerPoint.run(async (context) => {
+    const sel = context.presentation.getSelectedSlides();
+    sel.load("items/id");
+    await context.sync();
+    return sel.items[0]?.id;
+  });
+}
+
+async function showSlide(slideId: string): Promise<void> {
+  await PowerPoint.run(async (context) => {
+    context.presentation.setSelectedSlides([slideId]);
+    await context.sync();
+  });
+}
+
+/** Removes units from the current slide or `slideId`. */
+export async function deleteUnitShapes(unitIds: string[], caps: HostCapabilities, slideId?: string): Promise<number> {
   if (!unitIds.length || !caps.shapes) return 0;
-  return PowerPoint.run(async (context) => deleteUnits(context, targetSlide(context, caps), new Set(unitIds)));
+  return PowerPoint.run(async (context) => deleteUnits(context, targetSlide(context, caps, slideId), new Set(unitIds)));
 }
 
 async function readTags(context: PowerPoint.RequestContext, coll: PowerPoint.TagCollection): Promise<Map<string, string>> {
@@ -287,16 +318,25 @@ async function readTags(context: PowerPoint.RequestContext, coll: PowerPoint.Tag
 
 /** Reads the selected InventaSketch unit (group, picture or member shape) with model and bounds. */
 export async function readSelectedUnit(caps: HostCapabilities): Promise<UnitOnSlide | undefined> {
-  if (!caps.selection) return undefined;
+  return (await readSelectedUnits(caps))[0];
+}
+
+/**
+ * Reads every selected InventaSketch unit (groups, pictures or member shapes; each unit once, in selection order) with
+ * model and bounds.
+ */
+export async function readSelectedUnits(caps: HostCapabilities): Promise<UnitOnSlide[]> {
+  if (!caps.selection) return [];
   return PowerPoint.run(async (context) => {
     const sel = context.presentation.getSelectedShapes();
     sel.load(caps.rotation ? "items/name,items/left,items/top,items/width,items/height,items/rotation" : "items/name,items/left,items/top,items/width,items/height");
     await context.sync();
+    const out: UnitOnSlide[] = [];
     for (const shape of sel.items) {
       const tags = caps.tags ? await readTags(context, shape.tags) : new Map<string, string>();
       const parsed = parseName(shape.name);
       const unitId = tags.get(TAG_ID) ?? parsed?.unitId;
-      if (!unitId) continue;
+      if (!unitId || out.some((u) => u.unitId === unitId)) continue;
       let payload = joinTag(TAG_MODEL, tags);
       if (!payload && caps.tags) payload = joinTag(mirrorKey(unitId), await readTags(context, context.presentation.tags));
       let stored: UnitOnSlide["stored"];
@@ -307,9 +347,9 @@ export async function readSelectedUnit(caps: HostCapabilities): Promise<UnitOnSl
       }
       const current: UnitOnSlide["current"] = { left: shape.left, top: shape.top, width: shape.width, height: shape.height };
       if (caps.rotation) current.rotation = shape.rotation;
-      return { unitId, type: tags.get(TAG_TYPE) ?? parsed?.type ?? "", payload, stored, current };
+      out.push({ unitId, type: tags.get(TAG_TYPE) ?? parsed?.type ?? "", payload, stored, current });
     }
-    return undefined;
+    return out;
   });
 }
 

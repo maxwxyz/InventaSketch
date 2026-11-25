@@ -56,6 +56,22 @@
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>
+          <node oor:name="m04c" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:chartFromPicture</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Chart from Picture...</value>
+              <value xml:lang="de">Diagramm aus Bild ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+          <node oor:name="m04d" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:export</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Export...</value>
+              <value xml:lang="de">Exportieren ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
           <node oor:name="m05a" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:patentCheck</value></prop>
             <prop oor:name="Title" oor:type="xs:string">
@@ -77,6 +93,14 @@
             <prop oor:name="Title" oor:type="xs:string">
               <value xml:lang="en-US">Compare with Previous Slide (Variants)</value>
               <value xml:lang="de">Mit vorheriger Folie vergleichen (Varianten)</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+          <node oor:name="m05a3" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:cleanSlides</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Clean Slides...</value>
+              <value xml:lang="de">Folien bereinigen ...</value>
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>

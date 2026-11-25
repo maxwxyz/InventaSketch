@@ -4,7 +4,7 @@
 import type { Session } from "../engine/client";
 import type { DrawCapabilities, EditorState, PlanUnit } from "../engine/types";
 import type { HostCapabilities } from "./capabilities";
-import { acknowledgeSelectedBounds, deleteUnitShapes, nativelyEdited, readSelectedUnit, writeUnits, type BoxPt } from "./powerpoint";
+import { acknowledgeSelectedBounds, deleteUnitShapes, nativelyEdited, readSelectedUnits, writeUnits, type BoxPt } from "./powerpoint";
 import { WorkQueue } from "./workqueue";
 
 export interface SyncHost {
@@ -82,25 +82,54 @@ export class SlideSync {
     });
   }
 
-  /** Reads the selected InventaSketch unit into the editor (selection-changed handler). */
+  /**
+   * Reads the selected InventaSketch units into the editor (selection-changed handler). Several selected units are all
+   * loaded and selected together, so the editor selection (and with it the export and clean scope) matches the slide's.
+   */
   loadSelection(): Promise<void> {
     if (this.writing) return Promise.resolve();
     return this.queue.latest("read", async () => {
       if (this.writing) return;
-      const u = await readSelectedUnit(this.h.host);
-      if (!u?.payload) return;
+      const list = (await readSelectedUnits(this.h.host)).filter((u) => !!u.payload);
+      if (!list.length) return;
       const session = this.h.session();
-      let st = session.importCompact(u.payload);
-      const ids = st.selection;
-      this.units.set(u.unitId, ids);
-      if (nativelyEdited(u) && u.stored) {
-        const rot = (u.current.rotation ?? 0) - (u.stored.rotation ?? 0);
-        st = session.hostTransform(ids, rect(u.stored), rect(u.current), rot);
-        await acknowledgeSelectedBounds(u.unitId, this.h.host);
-        this.h.adopt(st, "native-edit");
-        return;
+      let st: EditorState | undefined;
+      let edited = false;
+      const all: string[] = [];
+      for (const u of list) {
+        st = session.importCompact(u.payload!);
+        const ids = st.selection;
+        this.units.set(u.unitId, ids);
+        all.push(...ids);
+        if (nativelyEdited(u) && u.stored) {
+          const rot = (u.current.rotation ?? 0) - (u.stored.rotation ?? 0);
+          st = session.hostTransform(ids, rect(u.stored), rect(u.current), rot);
+          await acknowledgeSelectedBounds(u.unitId, this.h.host);
+          edited = true;
+        }
       }
-      this.h.adopt(st, "loaded");
+      // One unit: its import/transform state is complete. Several: select them all, then the full state (with page SVG).
+      if (list.length > 1) {
+        session.select(all);
+        st = session.state();
+      }
+      this.h.adopt(st!, edited ? "native-edit" : "loaded");
+    });
+  }
+
+  /**
+   * Replaces units on a slide (default: the current one) outside the live tracking, e.g. after cleaning slides; the
+   * selection-changed handler does not read them back meanwhile. Errors reach the caller.
+   */
+  replaceOnSlide(units: PlanUnit[], slideId?: string): Promise<void> {
+    if (!units.length) return Promise.resolve();
+    return this.queue.run(async () => {
+      this.writing++;
+      try {
+        await writeUnits(units, this.h.host, slideId);
+      } finally {
+        this.writing--;
+      }
     });
   }
 

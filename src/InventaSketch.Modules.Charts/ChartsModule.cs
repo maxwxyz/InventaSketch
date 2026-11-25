@@ -20,6 +20,7 @@ namespace InventaSketch.Modules.Charts
             new TorqueChart(), new EfficiencyChart(), new PumpChart(), new BodeChart(), new BandChart(),
             new FigureChart(),
             new MathAxesChart(), new FunctionChart(),
+            new TimingChart(),
         });
 
         private static readonly Lazy<IReadOnlyDictionary<string, ObjectType>> ById = new(() => AllTypes.Value.ToDictionary(t => t.Id, StringComparer.Ordinal));
@@ -126,13 +127,33 @@ namespace InventaSketch.Modules.Charts
             Add("limits", XyChart.TypeId, "Curve with limit lines", "Kurve mit Grenzlinien", P(("limits", "1.5;5.5")),
                 kw: new[] { "limit", "threshold", "grenzwert", "schwelle", "grenzlinie" });
 
-            // Figures (charts v2 stage 2): principle and technical figures from a JSON specification.
+            // Figures (charts v2 stage 2): principle and technical figures from a JSON specification. The library offers one
+            // neutral figure; the maintainer's three example figures stay resolvable by id (documents, tests) but are not
+            // offered (maintainer 2026-11-25: "take the three example charts out again").
+            Add("figure", FigureChart.TypeId, "Principle figure (stacked panels)", "Prinzipabbildung (gestapelte Bereiche)",
+                P(("spec", FigurePresets.Principle)), new Size2(100, 80), "figure", "principle", "panels", "stacked", "step response",
+                "abbildung", "prinzip", "bereiche", "sprungantwort");
+            var examples = list.Count;
             Add("figure.phases", FigureChart.TypeId, "Phases with rotor temperature (technical figure)", "Phasen mit Rotortemperatur (technische Abbildung)",
                 P(("spec", FigurePresets.Patent)), kw: new[] { "phase", "pre-conditioning", "full load", "time gained", "vorkonditionierung", "volllast", "zeitgewinn", "rotortemperatur" });
             Add("figure.timing", FigureChart.TypeId, "Timing diagram of a decision logic", "Zeitablauf einer Entscheidungslogik",
                 P(("spec", FigurePresets.Timing)), new Size2(100, 110), "timing", "pulse", "t_krit", "decision", "zeitdiagramm", "impuls", "entscheidung", "abtastsignal");
             Add("figure.temperature", FigureChart.TypeId, "Temperature over time with thresholds", "Temperaturverlauf mit Schwellen",
                 P(("spec", FigurePresets.Temperature)), new Size2(110, 75), "temperature", "threshold", "activation", "temperatur", "schwelle", "aktivierung", "aufheizen");
+            for (var i = examples; i < list.Count; i++) list[i] = list[i] with { Alternative = "chart.figure" };
+
+            // Digital timing diagrams (signal rows on a shared time axis, see TimingNotation).
+            Add("timing", TimingChart.TypeId, "Timing diagram", "Zeitdiagramm",
+                kw: new[] { "timing diagram", "clock", "enable", "data", "waveform", "zeitdiagramm", "impulsdiagramm", "takt", "signalverlauf" });
+            Add("timing.clock", TimingChart.TypeId, "Clock and enable", "Takt und Freigabe",
+                P(("signals", "CLK: clock\nEN: 0011110000\nGCLK: 00pppp0000")),
+                kw: new[] { "clock", "enable", "gated clock", "clock gating", "takt", "freigabe", "taktfreigabe", "gegateter takt" });
+            Add("timing.bus", TimingChart.TypeId, "Bus transfer", "Busübertragung",
+                P(("signals", "CLK: clock\nCS: 1.0.....1.\nADDR: x.[A0]..[A1]..x.\nDATA: z..[D0]..[D1]..z\nWE: 1..0.....1"), ("markers", "t1=2; t2=5"), ("spans", "t1-t2")),
+                new Size2(100, 70), "bus", "address", "data bus", "write cycle", "chip select", "adresse", "datenbus", "schreibzyklus", "busprotokoll");
+            Add("timing.handshake", TimingChart.TypeId, "Handshake (REQ/ACK)", "Handshake-Protokoll (REQ/ACK)",
+                P(("signals", "REQ: 0.1...0...\nACK: 0..1...0..\nDATA: x.[D]....x.."), ("markers", "t1=2; t2=3"), ("spans", "t1-t2")),
+                new Size2(100, 55), "handshake", "request", "acknowledge", "req", "ack", "four-phase", "quittung", "anforderung", "vierphasen");
             return list;
         }
     }

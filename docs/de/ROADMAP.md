@@ -422,6 +422,35 @@ Bericht; dann Web und LibreOffice); Inhalte der Präsentation außerhalb des Eng
 sich von den Teilen ab und folgen ihnen; Kennwerte von Energie und Gebäudetechnik, Maße in Karten und Architektur,
 mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Winkel ist in der Zeichnung sichtbar).
 
+### Rückmeldungen des Maintainers 25.11.2026 (abends), COM zuerst
+
+- Ribbon (erledigt 25.11.2026): PowerPoints Tabellen-Dropdown unter den Formen in den Grundlagen; Schwarz-Weiß direkt vor
+  Extras; Bemaßung im Linien-Katalog; Katalogsymbole: schraffiertes Quadrat für Formen und Schraffur, die Verzweigung für
+  Ablaufdiagramme, der Lagerbock für Gelenke und Lagerungen; Umschalter „Großbuchstaben“ rechts neben Hochgestellt
+  (nativer Text über PowerPoint, InventaSketch-Elemente über den Stil `Caps`, der Modelltext behält seine Schreibweise);
+  untere Zeile der Gruppe Layout: Auswahlbereich, Bild einfügen, Zuschneiden; die drei Beispielabbildungen des
+  Maintainers sind aus der Bibliothek (stattdessen eine neutrale Prinzipabbildung; die Beispiele bleiben über ihre Id
+  erreichbar).
+- **Vollständiges UI/UX-Review der Interaktion mit allen Elementen (Maintainer 25.11.2026, höchste Priorität):** ein
+  durchgängiges Konzept, was man wo findet und wie man es bedient – direktes Bearbeiten (Punkte, Enden, Grenz- und
+  Wertlinien in Diagrammen ziehen, skalieren, drehen), Einrasten, neu Einrasten und Lösen, Verbinden und Weiterbauen,
+  passende Elemente einfügen, Ansichtswechsel, Dateneingabe; was an das Element (Griffe), in die Kontextleiste (wenige
+  klare Piktogramme), ins Kreismenü (vollständig, beschriftet, feste Sektoren), ins Ribbon und in die Seitenleiste gehört;
+  eine Bildsprache für Griffe und Zustände (verankert, abhängig, eingerastet); Rückmeldung, was sich mitbewegt; große
+  Trefferflächen, wenig Text, verständlich für neue und ältere Anwender. Konzept: docs/de/design/interaction-ux.md (in
+  Arbeit), dann COM, Web, LibreOffice.
+- Überprüfung von Kontextleiste, Kreismenü und Griffen („wichtiger Punkt“): Griffe dürfen sich nie überlagern (kurze
+  Rohre und Kabel), ein „+“ je Bedeutung, jeder Eintrag in Leiste und Kreismenü erklärt sich selbst, Suchfenster schließen
+  bei Klick außerhalb, Tabellen bekommen „+“ an jeder Seite für Zeilen und Spalten. In Arbeit (Entwurfsnotiz
+  docs/de/design/overlay-ux.md).
+- Skizzierte Kurven: umschaltbar zwischen geglättet, interpoliert, angenäherter Funktion, geraden Segmenten und wie
+  gezeichnet; sauberer Standard (entrauschte Spur). In Arbeit.
+- Diagramme: Grenzwertlinien, Wertlinien und Markierungen interaktiv ziehen (Ziehgriffe in Core, Engine
+  `dragHandles`/`moveHandle`, COM-Overlay). In Arbeit.
+- Später: Die Vorschau im Seitenleisten-Editor ist nicht live, während sich die Folie ändert, und die Seitenleiste zeigte
+  im Build des Maintainers noch die alte Bezeichnung für die Kompatibilitätsprüfung (die Web-Texte sind seit 25.11.2026
+  sauber; nach dem nächsten Web-Build in der COM-Seitenleiste prüfen).
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,

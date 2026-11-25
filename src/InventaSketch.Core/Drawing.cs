@@ -99,10 +99,12 @@ namespace InventaSketch.Core
         public bool? Bold { get; init; }
         public bool? Italic { get; init; }
         public bool? Underline { get; init; }
+        /// <summary>All capitals: the object's texts are shown in upper case (the model text keeps its case).</summary>
+        public bool? Caps { get; init; }
 
         /// <summary>True if any text override is set.</summary>
         [System.Text.Json.Serialization.JsonIgnore]
-        public bool HasTextOverride => TextColor is not null || Font is not null || FontScale is not null || Bold is not null || Italic is not null || Underline is not null;
+        public bool HasTextOverride => TextColor is not null || Font is not null || FontScale is not null || Bold is not null || Italic is not null || Underline is not null || Caps is not null;
 
         public static readonly Style Default = new();
 
@@ -124,6 +126,7 @@ namespace InventaSketch.Core
             Bold = over.Bold ?? Bold,
             Italic = over.Italic ?? Italic,
             Underline = over.Underline ?? Underline,
+            Caps = over.Caps ?? Caps,
         };
 
         public static Style Of(LineRole role) => new() { Role = role };
@@ -305,6 +308,7 @@ namespace InventaSketch.Core
             {
                 TextPrim t => t with
                 {
+                    Text = s.Caps == true ? t.Text.ToUpperInvariant() : t.Text,
                     TextStyle = t.TextStyle with
                     {
                         Color = s.TextColor ?? t.TextStyle.Color,
