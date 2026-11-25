@@ -192,7 +192,10 @@ current one marked – never a cycle button.** It holds for the element and for 
   id `<choice>=<value>`, the current option `IsActive`; parameter choices through `ActionChoices.FromParam`). Options
   without a shared pictogram carry a small drawing (`ContextAction.Preview`: the curve in that shape, the fill pattern,
   the colour). Commands that form a menu ("Fill to ▸", "Add area ▸") are an `ActionChoice` with `IsMenu` (nothing
-  current). No `IconIds.Cycle` action that steps through options is left in the charts.
+  current). No `IconIds.Cycle` action and no "Next …" action that steps through options is left in any module; the
+  engine test `tests/InventaSketch.Engine.Tests/ChoiceRuleTests.cs` checks this for every element, that every choice
+  has at least two options with exactly one current, and that a choice over a parameter the hosts already show as a
+  dropdown names it in `ParamKeys` (one place per choice).
 - Bar: one dropdown button per choice, showing the current option's pictogram or picture (else a short text) and a
   caret; a click opens the list of every option with pictogram or picture and label, the current one marked
   (`FloatingBar.SetDropdown`, the same look as the element's choices). Part choices use the key "@p.&lt;choice&gt;",
@@ -345,6 +348,17 @@ Before → after, right after selecting with the pointer away from the element:
   pressing on the selected curve (`DragHandle.ByPart`), Del on a part (`PartLooks.DeleteAction`).
 - Areas: hatched and patterned areas of every matplotlib kind, created with "Fill below ▸", "Fill to ▸" and "Add area ▸".
 - UI scenarios: `chart-points`, `chart-curve-drag`, `chart-areas`, `part-choice-dropdown`.
+
+### Round 5 (2026-11-25): every module's cycles became choices
+
+- All remaining cycle and "next variant" actions of the modules (annotation heads and bus marks, architecture, building
+  services, diagrams, electrical, energy, fluid, geometry, kinematics, machines, maps, mechanical hubs, optics, process,
+  robotics, automotive) are choices: one option per value with the module's option pictograms (hub, head, size, route,
+  machine, shape, fill …) or `IconIds.Option` with a label; diagram glyphs and transfer characteristics carry a preview,
+  architecture pipe media show their line. Helpers `ActionChoices.FromParam(…, only)` and `ActionChoices.FromValues`.
+- Two-value switches that were really choices became choices too: fluid medium, valve rest position, piston rod and line
+  routing, diagram and process line routing. "Next view" (vehicles) was dropped: the hosts' view control switches views.
+- Numeric steps keep their "+"/"−" buttons but no longer say "Next" ("Position +15°", "Number +1").
 
 ## 9. Follow-ups (phased, with acceptance criteria)
 

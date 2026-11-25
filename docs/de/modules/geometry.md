@@ -162,18 +162,18 @@ Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwi
 
 Koordinatensysteme: Gitternetz, Achsenzahlen, x-Bereich… und y-Bereich… (akzeptiert `-5;5`, `−2,5..7,5`, `0 10`,
 `0 bis 10`; ein Komma ist ein Dezimalkomma). Zahlenstrahl: Zahlen, Bereich…, feinere/gröbere Unterteilung. 3D-Achsen:
-Projektion wechseln, Achsennamen, negative Halbachsen. Polarnetz: mehr/weniger Ringe, nächster Winkelschritt,
-Grad/Bogenmaß. Funktionsgraph: nächste Funktion, Koeffizienten a; b; c; d… (z. B. `2; 1; 1; -3`),
-Funktionsgleichung anzeigen, dazu die Achsenaktionen. Punkt: Beschriftung…, Beschriftung versetzen, nächste
-Markierung. Vektor: Name…, nächste Schreibweise, Komponenten, Punkte markieren, Richtung umkehren. Vektoraddition:
+Projektion ▾, Achsennamen ▾, negative Halbachsen. Polarnetz: mehr/weniger Ringe, Winkelschritt ▾,
+Winkeleinheit ▾. Funktionsgraph: Funktion ▾, Koeffizienten a; b; c; d… (z. B. `2; 1; 1; -3`),
+Funktionsgleichung anzeigen, dazu die Achsenaktionen. Punkt: Beschriftung…, Beschriftungslage ▾,
+Markierung ▾. Vektor: Name…, Schreibweise ▾, Komponenten, Punkte markieren, Richtung umkehren. Vektoraddition:
 Parallelogramm / Aneinanderhängen (a, b und die Resultierende bleiben: der dritte Punkt wandert), Resultierende,
-nächste Schreibweise. Winkel: Winkel festlegen… (dreht den zweiten Schenkel um den Scheitel; Werte über 180° ergeben
-den überstumpfen Winkel), Wert anzeigen, nächste Markierung, Schenkel zeichnen, andere Seite, Name…. Dreieck: nächste
-Art, nächste Konstruktion, Ecken/Seiten beschriften, Winkel markieren. Vieleck: mehr/weniger Ecken, Umkreis, Inkreis,
-Eckpunkte beschriften. Kreis: Radius/Durchmesser, Mittelpunkt, Beschriftung. Tangente: Berührpunkt bei Winkel…,
+Schreibweise ▾. Winkel: Winkel festlegen… (dreht den zweiten Schenkel um den Scheitel; Werte über 180° ergeben
+den überstumpfen Winkel), Wert anzeigen, Markierung ▾, Schenkel zeichnen, andere Seite, Name…. Dreieck:
+Art ▾, Konstruktion ▾, Ecken/Seiten beschriften, Winkel markieren. Vieleck: mehr/weniger Ecken, Umkreis, Inkreis,
+Eckpunkte beschriften. Kreis: gezeigte Strecke ▾ (Radius/Durchmesser), Mittelpunkt, Beschriftung. Tangente: Berührpunkt bei Winkel…,
 Berührpunkt verschieben (+30°), Radius und rechter Winkel. Thales: Lage von C…, C auf dem Kreis verschieben,
 Vollkreis. Einheitskreis: Winkel…, um 15° drehen, Tangensstrecke, Werte anzeigen. Konstruktionen: Zirkelbögen,
-Beschriftung, Winkel…; Parallelen: nächstes Winkelpaar, Winkel…, Werte anzeigen.
+Beschriftung, Winkel…; Parallelen: Winkelpaar ▾, Winkel…, Werte anzeigen.
 
 ## Host-Hinweise und Grenzen
 

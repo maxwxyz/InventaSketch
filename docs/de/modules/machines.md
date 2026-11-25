@@ -117,8 +117,8 @@ denselben Kennzeichen (Magnetsektoren, Erregerpole, Käfigstäbe, Nuten zwischen
 Weitere Parameter (optional): E-Maschine `shaft` (Wellenstümpfe; aus, wenn die Maschine in der Seitenansicht auf einem
 gezeichneten Wellenkörper `mech.shaft` sitzt, standardmäßig an), `ground` (Gehäuseanbindung: Gestellstriche im Schema,
 Gehäusekontur in Seiten- und Stirnansicht, an), `hatch`; Verbrennungsmotor `cylinders` (1-6, Standard 4; das Schema zeigt
-einen Reihenmotor, äußere Kröpfungen gegenüber den inneren). Kontextaktionen: nächste Bauform, nächste Maschinenart
-(`cmd-cycle`), Wellenstümpfe an/aus, Gehäuseanbindung an/aus.
+einen Reihenmotor, äußere Kröpfungen gegenüber den inneren). Kontextaktionen: Bauform ▾ und Maschinenart ▾
+(Auswahlen mit den Maschinen-Piktogrammen), Wellenstümpfe an/aus, Gehäuseanbindung an/aus.
 
 Die Darstellungen sind Schemasymbole im Stil kinematischer Getriebeschemata, kein genormtes Schaltzeichen.
 
@@ -164,7 +164,7 @@ aus der Zeichenebene heraus, unter einem Südpol in sie hinein.
 
 ## Kontextaktionen
 
-Ansichtswechsel (mit den `ViewDef.Icon`-Piktogrammen), **nächste Läuferbauart** (`param.rotor`, Symbol `cmd-cycle`),
+Ansichtswechsel (mit den `ViewDef.Icon`-Piktogrammen), **Läuferbauart ▾** (Auswahl `param.rotor=…`),
 **Polzahl ±2** (`param.poles.inc/dec`), **Nutzahl ±3** (`param.slots.inc/dec`), **Stromrichtungen an/aus**, **Kühlung an/aus**,
 **Innen-/Außenläufer** (`cmd-swap`); Schaltzeichen: Motor/Generator; Magnet: Polarität tauschen, Pfeil an/aus; Spule:
 Ströme, Kern; Kühlkanal: Anzahl, Strömungsrichtung; Drehgeber: Resolver/Drehgeber; Kennzeichnungen: Richtung umkehren.

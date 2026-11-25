@@ -118,12 +118,12 @@ the stops, and the coupler curve and the ghost positions end there (the chain is
 
 | Action id | Label (EN / DE) | Icon | Applies to |
 |---|---|---|---|
-| `kin.angle.next` / `kin.angle.prev` | Next / previous position (±15°) / Nächste / vorherige Stellung | `cmd-rotate` | mechanisms, cam follower |
+| `kin.angle.next` / `kin.angle.prev` | Position +15° / −15° / Stellung +15° / −15° | `cmd-rotate` | mechanisms, cam follower |
 | `kin.ghosts` | Ghost positions / Zwischenlagen (toggles 0 ↔ last count, default 4) | `cmd-animate` | mechanisms |
 | `kin.path` | Motion path / Bahnkurve | `cmd-toggle` | mechanisms |
 | `kin.dof` | Degree of freedom badge / Freiheitsgrad-Anzeige | `cmd-text` | mechanisms, cam follower |
 | `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage | `cmd-swap` | four-bar |
-| `kin.follower` | Next follower type / Nächste Stößelform | `cmd-cycle` | cam follower |
+| `kin.follower=roller/flat/knife` | Follower ▾ / Stößel ▾ (choice) | `cmd-option` | cam follower, cam disc |
 | `kin.joint.start` / `kin.joint.end` | Joint at start / end | `cmd-arrow-start` / `cmd-arrow-end` | rigid link |
 | `kin.stroke`, `kin.open`, `kin.load` | Extend/retract, open/close, load | `cmd-toggle` | piston, gripper, pulley |
 | `kin.path.*`, `kin.labels`, `kin.limit.joint`, `kin.dof.formula` | path, label and badge options | various | motion annotations |

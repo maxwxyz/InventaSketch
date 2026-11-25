@@ -19,7 +19,7 @@ circuits.
   through an action or the inspector (`ObjectType.OnParamChanged`) — `Size` follows, so the drawing scale stays.
 - **Hydraulic vs pneumatic** is the optional `medium` parameter (`hydraulic` / `pneumatic`) on the types where the
   drawing differs: pumps/compressors, motors, the rotary actuator, pressure sources, directional valves and actuation
-  symbols (filled triangles = hydraulic, hollow = pneumatic). The context action `fluid.medium` toggles it.
+  symbols (filled triangles = hydraulic, hollow = pneumatic). The context choice `fluid.medium` (hydraulic / pneumatic) sets it.
 - **Line weights:** symbols and working lines 0.35 mm, pistons and plugs 0.7 mm, springs and details 0.25 mm, pilot
   lines long dashes, drain lines short dashes, enclosures dash-dot. Only black strokes and black or no fills are used,
   so monochrome output is unchanged.
@@ -66,17 +66,17 @@ its facing port.
 | Action id | Icon | Effect |
 |---|---|---|
 | `view.<id>` | view icon | FRL detailed / simplified |
-| `fluid.medium` | `Medium` | hydraulic ↔ pneumatic |
-| `fluid.valve.ways.next` | `Cycle` | 2/2 → 3/2 → 4/2 → 4/3 → 5/2 → 5/3 (the size follows the design box) |
-| `fluid.valve.centre.next` | `Cycle` | centre position (4/3: closed, tandem, float, open, pressurised; 5/3: closed, exhausted, pressurised) |
+| `fluid.medium=hydraulic/pneumatic` | `Option` | medium ▾ (choice) |
+| `fluid.valve.ways=…` | `Option` | valve type ▾ 2/2, 3/2, 4/2, 4/3, 5/2, 5/3 (the size follows the design box) |
+| `fluid.valve.centre=…` | `Option` | centre position ▾, three positions only (4/3: closed, tandem, float, open, pressurised; 5/3: closed, exhausted, pressurised); `fluid.valve.normal=closed/open`: rest position ▾ (2/2, 3/2) |
 | `fluid.valve.normal` | `Toggle` | normally closed / open (2/2, 3/2) |
-| `fluid.valve.actLeft.next`, `fluid.valve.actRight.next` | `Actuation` | actuation per side |
+| `fluid.valve.actLeft=…`, `fluid.valve.actRight=…` | `Option` | actuation left ▾ / right ▾ |
 | `fluid.valve.flip` | `Swap` | flip the spring side (swap the actuations; the normal position follows) |
 | `fluid.valve.detent`, `fluid.valve.centring` | `Toggle` | detent; spring centring of 3-position valves |
-| `fluid.variable`, `fluid.flow.next` | `Toggle`/`Cycle` | pumps/motors: variable displacement, one/two flow directions |
-| `fluid.cyl.rod`, `fluid.cyl.cushion.next`, `fluid.cyl.spring.next` | `Toggle`/`Cycle` | cylinder rod, cushioning, spring |
+| `fluid.variable`, `fluid.flow=one/two` | `Toggle`/`Option` | pumps/motors: variable displacement, flow directions ▾ |
+| `fluid.cyl.rod=…`, `fluid.cyl.cushion=…`, `fluid.cyl.spring=…` | `Option` | piston rod ▾, cushioning ▾, spring ▾ |
 | `fluid.spring`, `fluid.piloted`, `fluid.adjustable`, `fluid.check` | `Toggle` | check, throttle and pressure valve options |
-| `fluid.line.kind.next`, `fluid.line.route` | `Cycle`/`Toggle` | line type; orthogonal / straight |
+| `fluid.line.kind=…`, `fluid.line.route=orthogonal/free` | `Option`/route pictograms | line type ▾; routing ▾ |
 | `fluid.ports` | `Text` | show port names |
 | `fluid.label` | `Text` | show/hide the designator (adds a suggestion such as `1V1` if empty) |
 | `fluid.ref.set` | `Text` | designator typed directly (input action) |

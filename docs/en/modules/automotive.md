@@ -108,11 +108,11 @@ T-junction, charging slot, predicted trajectory, …). Search works in English a
 
 | Object | Actions |
 |---|---|
-| Vehicles | next vehicle view (cycles top → side → front → rear), direct view switches; the scale is kept |
-| Roads | lanes + / − (the straight segment keeps its lane width and grows/shrinks), next marking pattern, lane centre lines; intersection: cross/T, crosswalks |
-| Field of view | range + / − (×1.25), angle + / − (10°), rotate 15°, next fill |
+| Vehicles | view switches (top, side, front, rear; the hosts' view control, no "next view" button); the scale is kept |
+| Roads | lanes + / − (the straight segment keeps its lane width and grows/shrinks), markings ▾, lane centre lines; intersection: cross/T, crosswalks |
+| Field of view | range + / − (×1.25), angle + / − (10°), rotate 15°, fill ▾ |
 | Trajectory | toggle driving corridor, corridor width + / −, time ticks, dashed (predicted) |
-| Others | parameter toggles and cycles (signal state, sign shape, barrier kind, door opening, steering angle, …) |
+| Others | parameter toggles and choices ▾ (signal state, sign shape, barrier kind, door opening, steering angle, …) |
 
 Increase/decrease actions use the pictogram ids `cmd-increase`/`cmd-decrease`, which are not yet part of the shared
 `IconIds` vocabulary (hosts show a neutral icon until they are added).

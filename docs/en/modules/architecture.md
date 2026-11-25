@@ -105,12 +105,12 @@ steps).
 
 | Type | Actions |
 |---|---|
-| Wall | thicker/thinner (standard thicknesses 75 ... 490 mm), "Thickness…" (input, mm), cycle kind, closed loop |
+| Wall | thicker/thinner (standard thicknesses 75 ... 490 mm), "Thickness…" (input, mm), wall kind ▾ (choice), closed loop |
 | Doors | flip hinge side, flip swing direction, wider/narrower (±125 mm; hinged leaves grow with the width), "Width…" (input, mm), align to wall |
 | Windows | flip hinge side, swap inside/outside, wider/narrower, "Width…" (input, mm), align to wall |
 | Stairs | reverse walking direction, more/fewer steps |
 | Room | "Name…" (input), show area, tinted floor |
-| Column, tree, pipe | cycle shape/material, kind, medium; pipe flow arrow |
+| Column, tree, pipe | shape ▾ / material ▾, kind ▾, medium ▾ (choices; the medium options show their line); pipe flow arrow |
 | Section marker, site boundary | flip view direction; closed, boundary markers |
 
 Input actions ("…") ask for a value: the COM add-in opens its prompt dialog, the web task pane an inline field.

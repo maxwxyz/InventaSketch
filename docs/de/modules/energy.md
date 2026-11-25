@@ -161,7 +161,7 @@ Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Elements.
 
 Bemessungsdaten anzeigen und Bezeichnung… (jedes Box-Element), Eingaben für Leistung / Kapazität / Volumen /
 Spannung… (akzeptieren `10`, `10 kW`, `10,5`), Spannungen… an Transformatoren und Ortsnetzstation (`20/0,4`,
-`110/20/10`), Art / Bauform / Brennstoff / Phasen / Wärmequelle / Technologie / Darstellung weiterschalten,
+`110/20/10`), Art / Bauform / Brennstoff / Phasen / Wärmequelle / Technologie / Darstellung / Energieträger / Führung als Auswahl ▾,
 Schaltzustand umschalten (Leistungs-, Trenn-, Erdungsschalter), DC-Laden, Zweirichtungszähler, Farbe nach
 Spannungsebene, Module, Reihen und Anschlusspunkte der Sammelschiene mehr/weniger, Rotor drehen (Windenergieanlage);
 Kabel: Führung, Spannung, Spannung anzeigen, Leiterstriche, Kabelbezeichnung; Leitungen: Energieträger, Kürzel;

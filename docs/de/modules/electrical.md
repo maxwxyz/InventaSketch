@@ -89,8 +89,8 @@ zugewandten Anschluss.
 | `elec.toggle` | `Toggle` | Schaltzustand offen/geschlossen (`closed`; Öffner standardmäßig geschlossen) – Schalter, Taster, Schütz, LS-Schalter, RCD |
 | `elec.polarity` | `Swap` | Polarität umkehren (`reverse`: spiegelt Symbol und Anschlüsse) – Dioden, Thyristor, Elko, Quelle, Batterie |
 | `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N- ↔ P-Kanal |
-| `elec.*.next` | `Cycle` | nächste Gatterfunktion, Kontaktart, Erdungszeichen, Quellenart, Stromart, Stecker/Buchse, Gehäuse, … |
-| `elec.route.next` | `Cycle` | Leitungs-/Leiterbahnführung frei → orthogonal → 45° |
+| `elec.<Auswahl>=<Wert>` | `Option` | Auswahlen (Dropdowns): Gatterfunktion, Kontaktart, Erdungszeichen, Quellenart, Stromart, Stecker/Buchse, Gehäuse, Busprotokoll, … |
+| `elec.route=free/orthogonal/45` | Führungs-Piktogramme | Leitungs-/Leiterbahnführung als Auswahl |
 | `elec.label` | `Text` | Kennzeichen/Wert anzeigen (setzt `ref` = Präfix + `1`, falls leer) oder ausblenden |
 | `elec.envelope` | `Toggle` | Gehäusekreis bei Transistoren |
 

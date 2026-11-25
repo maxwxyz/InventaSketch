@@ -60,12 +60,12 @@ junction in the same undo step. Paths (dashed lines) take no part in junctions.
 
 | Type | Actions |
 |---|---|
-| Road | road type ▸ (cycle motorway → main → side → path; the label names the next type), smooth curve, bridge, add point, remove point |
+| Road | road type ▾ (choice: motorway, main, side, path; the current one marked), smooth curve, bridge, add point, remove point |
 | Rail, river | line/water type ▸, smooth curve, add/remove point |
 | Route | route style ▸ (solid → dashed → dotted), direction arrows ▸, waypoint dots, smooth curve, add waypoint, remove waypoint, reverse direction |
 | Region | area type ▸, fill ▸ (tint → hatch → none), smooth outline, add/remove corner |
 | Marker, POI | view switches (pin / symbol, scale kept), marker ▸ / place type ▸ |
-| Stop | next / previous number (not below 0), shape ▸ |
+| Stop | number +1 / −1 (not below 0), shape ▾ |
 | Callout | "Distance…" (input, accepts `12.5 km`, `8 mi`, `500 m`), "Travel time…" (input: `90`, `1:30`, `1 h 30`, `2h`, `45 min`), unit ▸, mode ▸, pointer ▸ |
 | Place label | place rank ▸, settlement dot |
 | Scale bar | unit ▸, "Length…" (input: `2 km`, `1,5 mi`, `500 m`, plain number keeps the unit), more / fewer segments, style ▸ |
@@ -77,7 +77,7 @@ junction in the same undo step. Paths (dashed lines) take no part in junctions.
 changes the line least (smallest triangle with its neighbours; end points of open lines stay), so a just-added
 midpoint is removed again. Attachments stay with their points. *Remove* is greyed out at two points (regions:
 three). Invalid inputs throw `FormatException` with a bilingual message and change nothing. Steps use
-`IconIds.Increase` / `IconIds.Decrease`, cycles `IconIds.Cycle`, toggles `IconIds.Toggle`, inputs `IconIds.Text`,
+`IconIds.Increase` / `IconIds.Decrease`, choices one `IconIds.Option` per option (`ActionChoice`), toggles `IconIds.Toggle`, inputs `IconIds.Text`,
 reverse `IconIds.Swap`.
 
 ## Importing GeoJSON and GPX (2026-11-25)

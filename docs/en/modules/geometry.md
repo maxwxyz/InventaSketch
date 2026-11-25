@@ -151,17 +151,17 @@ Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwi
 ## Context actions
 
 Coordinate systems: grid, tick numbers, x range… and y range… (accept `-5;5`, `−2,5..7,5`, `0 10`, `0 bis 10`; a comma
-is a decimal comma). Number line: numbers, range…, finer/coarser minor ticks. 3D axes: switch projection, axis names,
-negative half-axes. Polar grid: more/fewer rings, next angle step, degrees/radians. Function graph: next function,
-coefficients a; b; c; d… (e.g. `2; 1; 1; -3`), show formula, plus the axis actions. Point: label…, move label around,
-next marker. Vector: name…, next notation, components, mark the points, reverse direction. Vector addition:
-parallelogram / head to tail (keeps a, b and the resultant: the third point moves), resultant, next notation. Angle:
-set angle… (turns the second ray about the vertex; values above 180° give the reflex angle), show value, next mark,
-draw the rays, other side, name…. Triangle: next kind, next construction, vertex/side labels, angle marks. Polygon:
-more/fewer sides, circumcircle, incircle, vertex labels. Circle: radius/diameter, centre, labels. Tangent: point of
+is a decimal comma). Number line: numbers, range…, finer/coarser minor ticks. 3D axes: projection ▾, axis names ▾,
+negative half-axes. Polar grid: more/fewer rings, angle step ▾, angle unit ▾. Function graph: function ▾,
+coefficients a; b; c; d… (e.g. `2; 1; 1; -3`), show formula, plus the axis actions. Point: label…, label position ▾,
+marker ▾. Vector: name…, notation ▾, components, mark the points, reverse direction. Vector addition:
+construction ▾ parallelogram / head to tail (keeps a, b and the resultant: the third point moves), resultant, notation ▾. Angle:
+set angle… (turns the second ray about the vertex; values above 180° give the reflex angle), show value, mark ▾,
+draw the rays, other side, name…. Triangle: kind ▾, construction ▾, vertex/side labels, angle marks. Polygon:
+more/fewer sides, circumcircle, incircle, vertex labels. Circle: line shown ▾ (radius/diameter), centre, labels. Tangent: point of
 contact at angle…, move the point of contact (+30°), radius and right angle. Thales: position of C…, move C along the
 circle, full circle. Unit circle: angle…, turn by 15°, tangent segment, show values. Constructions: compass marks,
-labels, angle…; parallel lines: next angle pair, angle…, show values.
+labels, angle…; parallel lines: angle pair ▾, angle…, show values.
 
 ## Host notes and limits
 

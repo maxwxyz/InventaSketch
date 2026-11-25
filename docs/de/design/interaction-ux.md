@@ -201,8 +201,11 @@ jedes seiner Teile:
   (`src/InventaSketch.Core/ActionChoices.cs`; Id `<Auswahl>=<Wert>`, die aktuelle Möglichkeit `IsActive`;
   Parameterauswahlen über `ActionChoices.FromParam`). Möglichkeiten ohne passendes gemeinsames Piktogramm tragen eine
   kleine Zeichnung (`ContextAction.Preview`: die Kurve in dieser Form, das Füllmuster, die Farbe). Befehle, die ein Menü
-  bilden („Füllen bis ▸“, „Fläche hinzufügen ▸“), sind eine `ActionChoice` mit `IsMenu` (nichts aktuell). In den
-  Diagrammen bleibt keine `IconIds.Cycle`-Aktion, die durch Möglichkeiten schaltet.
+  bilden („Füllen bis ▸“, „Fläche hinzufügen ▸“), sind eine `ActionChoice` mit `IsMenu` (nichts aktuell). In keinem
+  Modul bleibt eine `IconIds.Cycle`- oder „Nächste …“-Aktion, die durch Möglichkeiten schaltet; der Engine-Test
+  `tests/InventaSketch.Engine.Tests/ChoiceRuleTests.cs` prüft das für jedes Element, dazu dass jede Auswahl mindestens
+  zwei Möglichkeiten mit genau einer aktuellen hat und dass eine Auswahl über einen Parameter, den die Hosts schon als
+  Klappliste zeigen, ihn in `ParamKeys` nennt (eine Stelle je Auswahl).
 - Leiste: ein Klapplisten-Knopf je Auswahl mit dem Piktogramm oder Bild der aktuellen Möglichkeit (sonst einem kurzen
   Text) und einem Pfeil; ein Klick öffnet die Liste aller Möglichkeiten mit Piktogramm oder Bild und Bezeichnung, die
   aktuelle markiert (`FloatingBar.SetDropdown`, dasselbe Aussehen wie die Auswahlen des Elements). Teilauswahlen haben
@@ -369,6 +372,19 @@ Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
 - Flächen: schraffierte und gemusterte Flächen aller matplotlib-Arten, angelegt mit „Darunter füllen ▸“, „Füllen bis ▸“
   und „Fläche hinzufügen ▸“.
 - UI-Szenarien: `chart-points`, `chart-curve-drag`, `chart-areas`, `part-choice-dropdown`.
+
+### Runde 5 (25.11.2026): die Durchschalter aller Module wurden Auswahlen
+
+- Alle übrigen Durchschalt- und „Nächste …“-Aktionen der Module (Pfeilspitzen und Busmarkierung der Beschriftung,
+  Architektur, Gebäudetechnik, Diagramme, Elektro, Energie, Fluid, Geometrie, Kinematik, Maschinen, Karten,
+  Mechanik-Naben, Optik, Verfahrenstechnik, Robotik, Automotive) sind Auswahlen: eine Möglichkeit je Wert mit den
+  Options-Piktogrammen des Moduls (Nabe, Spitze, Größe, Führung, Maschine, Form, Füllung …) oder `IconIds.Option` mit
+  Bezeichnung; GUI-Motive und Kennlinien tragen eine Vorschau, Architektur-Medien zeigen ihre Linie. Hilfen
+  `ActionChoices.FromParam(…, only)` und `ActionChoices.FromValues`.
+- Zweiwertige Schalter, die eigentlich Auswahlen waren, wurden ebenfalls Auswahlen: Fluid-Medium, Ruhestellung des
+  Ventils, Kolbenstange und Leitungsführung, Führung der Diagramm- und Verfahrenstechnik-Leitungen. „Nächste Ansicht“
+  (Fahrzeuge) entfällt: die Ansichtsauswahl der Hosts wechselt die Ansicht.
+- Zahlenschritte behalten ihre „+“/„−“-Knöpfe, heißen aber nicht mehr „Nächste“ („Stellung +15°“, „Nummer +1“).
 
 ## 9. Folgeschritte (in Phasen, mit Abnahmekriterien)
 
