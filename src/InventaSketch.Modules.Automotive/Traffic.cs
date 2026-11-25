@@ -69,7 +69,7 @@ namespace InventaSketch.Modules.Automotive
                 Views.TopV(6, 4, Top))
             {
                 Params = new[] { state, pole },
-                Extra = o => new[] { Prm.Cycle(o, state, T("Next signal state", "Nächster Signalzustand")), Prm.Toggle(o, "pole", true, T("Pole", "Mast")) },
+                Extra = o => Prm.Choice(o, state, T("Signal state", "Signalzustand")).Append(Prm.Toggle(o, "pole", true, T("Pole", "Mast"))),
             };
         }
 
@@ -138,7 +138,7 @@ namespace InventaSketch.Modules.Automotive
             {
                 Params = new[] { shape, pole },
                 TextEditable = true,
-                Extra = o => new[] { Prm.Cycle(o, shape, T("Next sign shape", "Nächste Schildform")), Prm.Toggle(o, "pole", true, T("Pole", "Pfosten")) },
+                Extra = o => Prm.Choice(o, shape, T("Sign shape", "Schildform")).Append(Prm.Toggle(o, "pole", true, T("Pole", "Pfosten"))),
             };
         }
 
@@ -209,7 +209,7 @@ namespace InventaSketch.Modules.Automotive
             {
                 Params = new[] { kind, posts },
                 Uniform = false,
-                Extra = o => new[] { Prm.Cycle(o, kind, T("Next barrier kind", "Nächste Absperrungsart")) },
+                Extra = o => Prm.Choice(o, kind, T("Barrier kind", "Absperrungsart")),
             };
         }
 
@@ -328,7 +328,7 @@ namespace InventaSketch.Modules.Automotive
                 Views.SideV(10, 10, Side))
             {
                 Params = new[] { kind },
-                Extra = o => new[] { Prm.Cycle(o, kind, T("Next obstacle kind", "Nächste Hindernisart")) },
+                Extra = o => Prm.Choice(o, kind, T("Obstacle kind", "Hindernisart")),
             };
         }
     }

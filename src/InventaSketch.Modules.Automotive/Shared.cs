@@ -425,19 +425,12 @@ namespace InventaSketch.Modules.Automotive
         public static ContextAction Toggle(SketchObject o, string key, bool def, I18nText label, string icon = IconIds.Toggle)
             => new("param." + key, label, icon, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = "param" };
 
-        /// <summary>Cycles a choice parameter through its options.</summary>
-        public static ContextAction Cycle(SketchObject o, ParamDef def, I18nText label)
-        {
-            var options = def.Options ?? Array.Empty<ParamOption>();
-            var fallback = def.Default?.Text ?? (options.Count > 0 ? options[0].Value : "");
-            return new ContextAction("param." + def.Key, label, IconIds.Cycle, x =>
-            {
-                if (options.Count == 0) return x;
-                var cur = x.Str(def.Key, fallback);
-                var idx = options.ToList().FindIndex(p => p.Value == cur);
-                return x.WithParam(def.Key, options[(idx + 1) % options.Count].Value);
-            }) { Group = "param", ParamKeys = new[] { def.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (id "param.&lt;key&gt;=&lt;value&gt;", the current option marked; hosts show a dropdown) –
+        /// never a cycle button (maintainer 2026-11-25).
+        /// </summary>
+        public static IEnumerable<ContextAction> Choice(SketchObject o, ParamDef def, I18nText? label = null)
+            => ActionChoices.FromParam(o, "param." + def.Key, def, label, "param", null);
 
         /// <summary>Increase/decrease actions for a numeric parameter (multiplicative or additive step, clamped).</summary>
         public static IEnumerable<ContextAction> PlusMinus(string key, double def, double min, double max, double step, bool multiply, I18nText more, I18nText less, string group)

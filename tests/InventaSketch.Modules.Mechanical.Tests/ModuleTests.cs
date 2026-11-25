@@ -346,15 +346,19 @@ namespace InventaSketch.Modules.Mechanical.Tests
         }
 
         [Fact]
-        public void HubCycleAndHelixToggle()
+        public void HubChoiceAndHelixToggle()
         {
             var r = Fx.Reg();
             var t = r.Type("mech.gear.spur")!;
             var o = r.Create(r.Item("mech.spur.stick")!, Vec2.Zero);
+            // The hub is a choice with the hub pictograms (dropdown), the current one marked.
+            var hubs = t.Actions(o, Lang.En).Where(a => a.Choice?.Key == "param.hub").ToList();
+            Assert.Equal(new[] { IconIds.HubNone, IconIds.HubFixed, IconIds.HubSliding, IconIds.HubLoose }, hubs.Select(a => a.Icon));
+            Assert.Equal("param.hub=fixed", Assert.Single(hubs, a => a.IsActive).Id);
             var seen = new List<string>();
-            for (var i = 0; i < 4; i++)
+            foreach (var hub in new[] { "sliding", "loose", "none", "fixed" })
             {
-                o = t.Actions(o, Lang.En).Single(a => a.Id == "param.hub").Apply(o);
+                o = t.Actions(o, Lang.En).Single(a => a.Id == "param.hub=" + hub).Apply(o);
                 seen.Add(o.Str("hub", ""));
             }
             Assert.Equal(new[] { "sliding", "loose", "none", "fixed" }, seen);

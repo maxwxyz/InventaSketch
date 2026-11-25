@@ -27,7 +27,7 @@ namespace InventaSketch.Modules.Fluid
                 Params = new[] { TankKind }, Labeled = false,
                 Ports = Fixed(new Port("T", 0, -2.5)),
                 CompanionIds = Companions,
-                Extra = o => new[] { Cycle("fluid.tank.next", T("Open / closed reservoir", "Offener / geschlossener Behälter"), TankKind) },
+                Extra = o => ChoiceActions(o, "fluid.tank", null, TankKind),
             };
 
             yield return new FluidType("fluid.source", T("Pressure source", "Druckquelle"), Cat,
@@ -107,7 +107,7 @@ namespace InventaSketch.Modules.Fluid
                 Params = new[] { AccuKind }, RefPrefix = "0Z7",
                 Ports = Fixed(new Port("P", 0, 7.5)),
                 CompanionIds = Companions,
-                Extra = o => new[] { Cycle("fluid.accumulator.next", T("Next loading (gas / spring / weight)", "Nächste Vorspannung (Gas / Feder / Gewicht)"), AccuKind) },
+                Extra = o => ChoiceActions(o, "fluid.accumulator", null, AccuKind),
             };
         }
 

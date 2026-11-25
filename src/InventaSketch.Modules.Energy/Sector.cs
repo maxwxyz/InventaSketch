@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Energy
@@ -48,7 +49,7 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { Fmt.Si(o.Clamped(HeatPower) * 1000, "W", l), Pm.OptionLabel(Source, o.S(Source)).Get(l) },
                 Uniform = false,
                 CompanionIds = new[] { "energy.heat.storage", "energy.grid.meter", "energy.line.pipe" },
-                Extra = (o, l) => new[] { Act.Cycle(o, "energy.source.next", Source), Act.Number(o, "energy.power.set", T("Heating power…", "Heizleistung…"), HeatPower, l) },
+                Extra = (o, l) => Act.Choice(o, "energy.source", Source).Concat(new[] { Act.Number(o, "energy.power.set", T("Heating power…", "Heizleistung…"), HeatPower, l) }),
             };
 
             yield return new EnergyType("energy.heat.chp", T("CHP unit", "Blockheizkraftwerk (BHKW)"), EnCategories.Sector,
@@ -70,7 +71,7 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { Fmt.Si(o.Clamped(ElPower) * 1000, "W", l) + "el", Fmt.Si(o.Clamped(ThPower) * 1000, "W", l) + "th", Pm.OptionLabel(ChpFuel, o.S(ChpFuel)).Get(l) },
                 Uniform = false,
                 CompanionIds = new[] { "energy.heat.storage", "energy.line.pipe", "energy.grid.meter" },
-                Extra = (o, l) => new[] { Act.Cycle(o, "energy.fuel.next", ChpFuel), Act.Number(o, "energy.power.set", T("Electrical power…", "Elektrische Leistung…"), ElPower, l) },
+                Extra = (o, l) => Act.Choice(o, "energy.fuel", ChpFuel).Concat(new[] { Act.Number(o, "energy.power.set", T("Electrical power…", "Elektrische Leistung…"), ElPower, l) }),
             };
 
             yield return new EnergyType("energy.heat.storage", T("Thermal storage tank", "Wärmespeicher"), EnCategories.Sector,
@@ -114,7 +115,7 @@ namespace InventaSketch.Modules.Energy
                 Rating = (o, l) => new[] { Fmt.Si(o.Clamped(ElyPower) * 1000, "W", l), Pm.OptionLabel(ElyTech, o.S(ElyTech)).Get(l) },
                 Uniform = false,
                 CompanionIds = new[] { "energy.h2.tank", "energy.conv.converter", "energy.line.pipe" },
-                Extra = (o, l) => new[] { Act.Cycle(o, "energy.tech.next", ElyTech), Act.Number(o, "energy.power.set", T("Rated power…", "Nennleistung…"), ElyPower, l) },
+                Extra = (o, l) => Act.Choice(o, "energy.tech", ElyTech).Concat(new[] { Act.Number(o, "energy.power.set", T("Rated power…", "Nennleistung…"), ElyPower, l) }),
             };
 
             yield return new EnergyType("energy.h2.fuelcell", T("Fuel cell", "Brennstoffzelle"), EnCategories.Sector,

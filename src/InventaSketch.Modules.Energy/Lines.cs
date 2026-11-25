@@ -181,8 +181,7 @@ namespace InventaSketch.Modules.Energy
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return new ContextAction("energy.route.next", Pm.OptionLabel(Route, o.S(Route) == "free" ? "orthogonal" : "free"), IconIds.Cycle,
-                x => x.WithParam(Route.Key, x.S(Route) == "free" ? "orthogonal" : "free")) { Group = "route", ParamKeys = new[] { Route.Key } };
+            foreach (var a in Act.Choice(o, "energy.route", Route, group: "route")) yield return a;
             yield return Act.Number(o, "energy.voltage.set", new I18nText("Nominal voltage…", "Nennspannung…"), VoltageParam, lang);
             yield return Act.Toggle(o, "energy.voltage.show", new I18nText("Show voltage", "Spannung anzeigen"), ShowVoltage, IconIds.LabelShow, "label");
             yield return Act.Step(o, "energy.conductors.more", new I18nText("One conductor mark more", "Ein Leiterstrich mehr"), Conductors, 1);
@@ -252,7 +251,7 @@ namespace InventaSketch.Modules.Energy
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Act.Cycle(o, "energy.carrier.next", CarrierParam) with { Icon = IconIds.Medium };
+            foreach (var a in Act.Choice(o, "energy.carrier", CarrierParam)) yield return a;
             yield return Act.Toggle(o, "energy.code.show", new I18nText("Show carrier code", "Kürzel anzeigen"), ShowCode, IconIds.LabelShow, "label");
         }
     }
@@ -319,7 +318,7 @@ namespace InventaSketch.Modules.Energy
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Act.Cycle(o, "energy.carrier.next", CarrierParam) with { Icon = IconIds.Medium };
+            foreach (var a in Act.Choice(o, "energy.carrier", CarrierParam)) yield return a;
             yield return new ContextAction("energy.weight.more", new I18nText("Wider band", "Breiteres Band"), IconIds.Increase,
                 x => x.WithParam(Weight.Key, Math.Min(20, x.Clamped(Weight) * 1.5))) { Group = "weight", ParamKeys = new[] { Weight.Key } };
             yield return new ContextAction("energy.weight.less", new I18nText("Narrower band", "Schmaleres Band"), IconIds.Decrease,

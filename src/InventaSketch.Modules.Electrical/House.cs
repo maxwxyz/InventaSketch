@@ -62,7 +62,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Schematic(10, 10, SwitchPlan))
             {
                 Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { SwitchKind, Height(1050) }, Labeled = false, Installation = true,
-                Extra = o => new[] { Cycle(o, "elec.house.switch.next", T("Next switch type", "Nächste Schalterart"), SwitchKind) },
+                Extra = o => Choice(o, "elec.house.switch", T("Switch type", "Schalterart"), SwitchKind),
             };
 
             yield return new ElecType("elec.house.light", T("Luminaire / light outlet", "Leuchte / Leuchtenauslass"), Cat,

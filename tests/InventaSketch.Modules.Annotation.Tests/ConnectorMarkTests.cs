@@ -204,7 +204,7 @@ namespace InventaSketch.Modules.Annotation.Tests
                 Assert.Equal("8", marks.OfType<TextPrim>().Single().Text);
                 var strokes = Edits.Replace(doc, doc.Get(o.Id)!.WithParam("busMark", "strokes").WithParam("busCount", "4"));
                 Assert.Equal(4, T.Render(r, strokes, o.Id).Count(p => p.Tag == AnnConnectors.BusTag && p is LinePrim));
-                Assert.Contains(r.Type(o.Type)!.Actions(o, Lang.En), a => a.Id == "ann.bus.next");
+                Assert.Equal(new[] { "ann.bus=none", "ann.bus=slash", "ann.bus=strokes" }, r.Type(o.Type)!.Actions(o, Lang.En).Where(a => a.Choice?.Key == "ann.bus").Select(a => a.Id));
             }
             Assert.Equal("n", r.Item("ann.line.bus")!.Params!["busCount"].Text);
         }

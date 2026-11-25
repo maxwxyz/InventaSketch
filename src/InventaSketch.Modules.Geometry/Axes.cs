@@ -405,8 +405,8 @@ namespace InventaSketch.Modules.Geometry
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Mx.Cycle(o, "math.spatial.projection", new I18nText("Switch projection", "Projektion wechseln"), Projection, "axes");
-            yield return Mx.Cycle(o, "math.spatial.names", new I18nText("Switch axis names", "Achsennamen wechseln"), Names, "axes");
+            foreach (var opt in Mx.Choice(o, "math.spatial.projection", new I18nText("Projection", "Projektion"), Projection, "axes")) yield return opt;
+            foreach (var opt in Mx.Choice(o, "math.spatial.names", new I18nText("Axis names", "Achsennamen"), Names, "axes")) yield return opt;
             yield return Mx.Toggle(o, "math.spatial.negative", new I18nText("Negative half-axes", "Negative Halbachsen"), "negative", true, "axes");
         }
     }
@@ -481,8 +481,8 @@ namespace InventaSketch.Modules.Geometry
                 x => x.WithParam("rings", Math.Min(10, x.Int("rings", 4) + 1))) { Group = "rings", ParamKeys = new[] { "rings" }, IsEnabled = o.Int("rings", 4) < 10 };
             yield return new ContextAction("math.polar.rings.less", new I18nText("Fewer rings", "Weniger Ringe"), IconIds.CountFewer,
                 x => x.WithParam("rings", Math.Max(1, x.Int("rings", 4) - 1))) { Group = "rings", ParamKeys = new[] { "rings" }, IsEnabled = o.Int("rings", 4) > 1 };
-            yield return Mx.Cycle(o, "math.polar.step", new I18nText("Next angle step", "Nächster Winkelschritt"), Step, "angles");
-            yield return Mx.Cycle(o, "math.polar.unit", new I18nText("Degrees / radians", "Grad / Bogenmaß"), Unit, "angles");
+            foreach (var opt in Mx.Choice(o, "math.polar.step", new I18nText("Angle step", "Winkelschritt"), Step, "angles")) yield return opt;
+            foreach (var opt in Mx.Choice(o, "math.polar.unit", new I18nText("Angle unit", "Winkeleinheit"), Unit, "angles")) yield return opt;
         }
     }
 }

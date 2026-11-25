@@ -182,9 +182,8 @@ namespace InventaSketch.Modules.Robotics
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
-            Rb.Cycle(o, "robot.zone.kind", KindParam),
             Rb.Toggle(o, "robot.zone.label", new I18nText("Show name", "Bezeichnung zeigen"), IconIds.LabelShow, "label", true, "annotation"),
-        };
+        }.Concat(Rb.Choice(o, "robot.zone.kind", KindParam));
     }
 
     /// <summary>

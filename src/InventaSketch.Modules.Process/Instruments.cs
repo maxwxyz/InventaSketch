@@ -46,9 +46,8 @@ namespace InventaSketch.Modules.Process
                     ContextAction.WithInput("process.instrument.tag", T("Tag …", "Kennzeichen …"), IconIds.Name,
                         T("Tag (e.g. TIC 101, PT-205)", "Kennzeichen (z. B. TIC 101, PT-205)"), o.Str(ProcessType.TagKey, "TIC 101"),
                         (x, t) => x.WithParam(ProcessType.TagKey, t.Trim())) with { Group = "label", ParamKeys = new[] { ProcessType.TagKey } },
-                    Cycle("process.instrument.location", T("Location", "Anordnung"), Location),
-                    Cycle("process.instrument.shape", T("Device", "Gerät"), Shape),
-                },
+                }.Concat(Choice(o, "process.instrument.location", T("Location", "Anordnung"), Location))
+                    .Concat(Choice(o, "process.instrument.shape", T("Device", "Gerät"), Shape)),
             };
 
             yield return new ProcessType("process.instrument.orifice", T("Flow element (orifice / venturi)", "Durchflussmessglied (Blende / Venturi)"), Cat, 10, 6, FlowElement,
@@ -59,7 +58,7 @@ namespace InventaSketch.Modules.Process
                 Ports = Fixed(new Port("1", -5, 0), new Port("2", 5, 0)),
                 TagPrefix = "FE-101",
                 CompanionIds = new[] { BubbleId, "process.line.signal", "process.line" },
-                Extra = o => new[] { Cycle("process.orifice.kind", T("Orifice / venturi", "Blende / Venturi"), ElementKind) },
+                Extra = o => Choice(o, "process.orifice.kind", null, ElementKind),
             };
         }
 

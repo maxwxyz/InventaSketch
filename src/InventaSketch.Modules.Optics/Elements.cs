@@ -160,8 +160,9 @@ namespace InventaSketch.Modules.Optics
             foreach (var a in base.OwnActions(o, doc)) yield return a;
             yield return Ox.Toggle(o, "optics.focal", new I18nText("Focal points F, F′", "Brennpunkte F, F′"), "focal", false, "lens");
             yield return Ox.NumberInput(o, "optics.f", new I18nText("Focal length", "Brennweite"), Parameters[1], "lens");
-            if (ViewOf(o) != "symbol") yield return Ox.Cycle(o, "optics.shape", new I18nText("Lens shape", "Linsenform"), Shape, "lens");
-            yield return Ox.Cycle(o, "optics.bundle", new I18nText("Parallel / point bundle", "Paralleles / punktförmiges Bündel"), Bundle, "rays");
+            if (ViewOf(o) != "symbol")
+                foreach (var opt in Ox.Choice(o, "optics.shape", new I18nText("Lens shape", "Linsenform"), Shape, "lens")) yield return opt;
+            foreach (var opt in Ox.Choice(o, "optics.bundle", new I18nText("Ray bundle", "Strahlenbündel"), Bundle, "rays")) yield return opt;
             foreach (var a in Ox.RayCount(o, Parameters[3])) yield return a;
         }
     }
@@ -369,7 +370,7 @@ namespace InventaSketch.Modules.Optics
         {
             yield return Ox.Toggle(o, "optics.dispersion", new I18nText("Dispersion", "Dispersion"), "dispersion", false, "prism");
             yield return Ox.NumberInput(o, "optics.n", new I18nText("Refractive index", "Brechzahl"), Parameters[1], "prism");
-            yield return Ox.Cycle(o, "optics.prism.shape", new I18nText("Prism shape", "Prismenform"), ShapeDef, "prism");
+            foreach (var opt in Ox.Choice(o, "optics.prism.shape", new I18nText("Prism shape", "Prismenform"), ShapeDef, "prism")) yield return opt;
         }
     }
 
@@ -597,7 +598,7 @@ namespace InventaSketch.Modules.Optics
 
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
-            yield return Ox.Cycle(o, "optics.tint", new I18nText("Filter colour", "Filterfarbe"), Tint, "filter");
+            foreach (var opt in Ox.Choice(o, "optics.tint", new I18nText("Filter colour", "Filterfarbe"), Tint, "filter")) yield return opt;
         }
     }
 

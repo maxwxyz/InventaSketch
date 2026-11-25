@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Kinematics
@@ -65,9 +66,7 @@ namespace InventaSketch.Modules.Kinematics
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            var cur = o.Str("labels", "values");
-            var next = cur == "values" ? "symbols" : cur == "symbols" ? "none" : "values";
-            yield return new ContextAction("kin.labels", new I18nText("Next label style", "Nächste Beschriftungsart"), IconIds.Cycle, x => x.WithParam("labels", next)) { Group = "param" };
+            foreach (var a in ActionChoices.FromParam(o, "kin.labels", Parameters.First(p => p.Key == "labels"), null, "param", null)) yield return a;
             yield return KA.Toggle(o, "kin.limit.joint", new I18nText("Joint circle", "Gelenkkreis"), IconIds.Toggle, "joint", true, "param");
         }
     }

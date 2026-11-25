@@ -397,24 +397,26 @@ namespace InventaSketch.Modules.Machines.Tests
         }
 
         [Fact]
-        public void ArrangementAndMachineTypeCycle()
+        public void ArrangementAndMachineTypeAreChoices()
         {
             var r = Fx.Reg();
             var t = r.Type("machines.drivetrain.emachine")!;
             var o = r.Create(r.Item("machines.emachine.stick")!, Vec2.Zero);
             var layouts = new List<string>();
             var kinds = new List<string>();
-            for (var i = 0; i < 5; i++)
+            // Dropdowns with the machine pictograms, the current option marked.
+            var arrangement = t.Actions(o, Lang.De).Where(x => x.Choice?.Key == "param.layout").ToList();
+            Assert.Equal("Bauform", arrangement[0].Choice!.Label.De);
+            Assert.Equal(new[] { IconIds.MachInner, IconIds.MachOuter, IconIds.MachAxial, IconIds.MachAxialDoubleRotor, IconIds.MachAxialDoubleStator }, arrangement.Select(x => x.Icon));
+            Assert.Equal("param.layout=inner", Assert.Single(arrangement, x => x.IsActive).Id);
+            foreach (var layout in new[] { "outer", "axial", "axial-2r", "axial-2s", "inner" })
             {
-                var a = t.Actions(o, Lang.De).Single(x => x.Id == "param.layout");
-                Assert.Equal(IconIds.Cycle, a.Icon);
-                Assert.StartsWith("Nächste Bauform", a.Label.De);
-                o = a.Apply(o);
+                o = t.Actions(o, Lang.De).Single(x => x.Id == "param.layout=" + layout).Apply(o);
                 layouts.Add(o.Str("layout", ""));
             }
-            for (var i = 0; i < 4; i++)
+            foreach (var kind in new[] { "eesm", "asm", "srm", "pmsm" })
             {
-                o = t.Actions(o, Lang.En).Single(x => x.Id == "param.kind").Apply(o);
+                o = t.Actions(o, Lang.En).Single(x => x.Id == "param.kind=" + kind).Apply(o);
                 kinds.Add(o.Str("kind", ""));
             }
             Assert.Equal(new[] { "outer", "axial", "axial-2r", "axial-2s", "inner" }, layouts);

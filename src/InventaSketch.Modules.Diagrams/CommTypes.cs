@@ -152,12 +152,7 @@ namespace InventaSketch.Modules.Diagrams
         {
             yield return D.SetChoice(o, "diag.wireless.zigzag", new I18nText("Lightning zigzag", "Blitz-Zickzack"), IconIds.CourseZigzag, "style", "zigzag", "zigzag", "style");
             yield return D.SetChoice(o, "diag.wireless.arcs", new I18nText("Dashed with radio arcs", "Gestrichelt mit Funkbögen"), IconIds.LineDash, "style", "arcs", "zigzag", "style");
-            yield return new ContextAction("diag.wireless.arrows", new I18nText("Next arrowheads", "Nächste Pfeilspitzen"), IconIds.ArrowEnd, x => x.WithParam("arrows", x.Str("arrows", "none") switch
-            {
-                "none" => "end",
-                "end" => "both",
-                _ => "none",
-            })) { Group = "arrows" };
+            foreach (var a in ActionChoices.FromParam(o, "diag.wireless.arrows", Parameters.First(p => p.Key == "arrows"), null, "arrows", null)) yield return a;
             yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, D.Reverse) { Group = "direction" };
         }
     }

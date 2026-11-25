@@ -55,7 +55,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Top(20, 16, Footprint))
             {
                 Pins = FootprintPins, Params = new[] { Package }, Uniform = false, RefPrefix = "U",
-                Extra = o => new[] { Cycle(o, "elec.pcb.package.next", T("Next package", "Nächstes Gehäuse"), Package) },
+                Extra = o => Choice(o, "elec.pcb.package", T("Package", "Gehäuse"), Package),
             };
 
             yield return new ElecType("elec.pcb.hole", T("Mounting hole", "Befestigungsbohrung"), Cat,
@@ -208,6 +208,6 @@ namespace InventaSketch.Modules.Electrical
             return new Primitive[] { Prim.Polyline(route, Style.Visible with { StrokeWidth = w }) with { Tag = "track" } };
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[] { Routing.CycleAction(o, "45") };
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Routing.RouteActions(o, "45");
     }
 }

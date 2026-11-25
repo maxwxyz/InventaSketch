@@ -26,7 +26,7 @@ namespace InventaSketch.Modules.BuildingServices
                 Mount = Mounting.Ceiling, WallBacked = false, ToScale = false, Uniform = true, DefaultHeight = 2450,
                 Params = new[] { TerminalKind },
                 Ports = BsBoxType.Uv(new[] { (0.0, 0.0, "duct") }, new[] { (0.0, -0.5, "duct") }),
-                Extra = o => new[] { Bs.Cycle(o, "bs.terminal.kind", TerminalKind) with { Icon = IconIds.Medium } },
+                Extra = o => Bs.Choice(o, "bs.terminal.kind", TerminalKind),
                 CompanionIds = new[] { DuctType.TypeId, "bs.vent.unit" },
             };
 
@@ -202,7 +202,7 @@ namespace InventaSketch.Modules.BuildingServices
                 Mount = Mounting.Wall, ToScale = false, Uniform = true, DefaultHeight = 300,
                 Params = new[] { DataKind },
                 Ports = BsBoxType.Same((0, -0.5, "cable")),
-                Extra = o => new[] { Bs.Cycle(o, "bs.data.kind", DataKind) },
+                Extra = o => Bs.Choice(o, "bs.data.kind", DataKind, new I18nText("Outlet kind", "Dosenart")),
             };
 
             yield return new BsBoxType("bs.elec.detector", new I18nText("Detector (smoke / heat / motion)", "Melder (Rauch / Wärme / Bewegung)"), Cat,
@@ -213,7 +213,7 @@ namespace InventaSketch.Modules.BuildingServices
                 Mount = Mounting.Ceiling, WallBacked = false, ToScale = false, Uniform = true, DefaultHeight = 2440,
                 Params = new[] { DetectorKind },
                 Ports = BsBoxType.Uv(new[] { (0.0, -0.5, "cable") }, new[] { (0.0, -0.5, "cable") }),
-                Extra = o => new[] { Bs.Cycle(o, "bs.detector.kind", DetectorKind) },
+                Extra = o => Bs.Choice(o, "bs.detector.kind", DetectorKind, new I18nText("Detector kind", "Melderart")),
             };
 
             yield return new BsBoxType("bs.elec.appliance", new I18nText("Appliance outlet", "Geräteanschlussdose"), Cat,
@@ -224,7 +224,7 @@ namespace InventaSketch.Modules.BuildingServices
                 Mount = Mounting.Wall, ToScale = false, Uniform = true, DefaultHeight = 300,
                 Params = new[] { ApplianceKind },
                 Ports = BsBoxType.Same((0, -0.5, "cable")),
-                Extra = o => new[] { Bs.Cycle(o, "bs.appliance.kind", ApplianceKind) },
+                Extra = o => Bs.Choice(o, "bs.appliance.kind", ApplianceKind, new I18nText("Appliance", "Gerät")),
             };
 
             yield return new BsBoxType("bs.elec.bonding", new I18nText("Equipotential bonding bar", "Potentialausgleichsschiene"), Cat,

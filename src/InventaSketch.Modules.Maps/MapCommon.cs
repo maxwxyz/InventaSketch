@@ -528,24 +528,11 @@ namespace InventaSketch.Modules.Maps
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = "param" };
 
         /// <summary>
-        /// Cycles a choice parameter through its options; the label names the next option ("Road type: main road ▸").
+        /// A choice parameter as a choice (one option per value, the current one marked; hosts show a dropdown) – never a
+        /// cycle button (maintainer 2026-11-25).
         /// </summary>
-        public static ContextAction Cycle(SketchObject o, string id, ParamDef def, I18nText prefix)
-        {
-            var options = def.Options ?? Array.Empty<ParamOption>();
-            var fallback = def.Default?.Text ?? (options.Count > 0 ? options[0].Value : "");
-            var cur = o.Str(def.Key, fallback);
-            var idx = options.ToList().FindIndex(p => p.Value == cur);
-            var next = options.Count == 0 ? null : options[(idx + 1) % options.Count];
-            var label = next is null ? prefix : new I18nText(prefix.En + ": " + next.Label.En, (prefix.De ?? prefix.En) + ": " + (next.Label.De ?? next.Label.En));
-            return new ContextAction(id, label, IconIds.Cycle, x =>
-            {
-                if (options.Count == 0) return x;
-                var c = x.Str(def.Key, fallback);
-                var i = options.ToList().FindIndex(p => p.Value == c);
-                return x.WithParam(def.Key, options[(i + 1) % options.Count].Value);
-            }) { Group = "param", ParamKeys = new[] { def.Key } };
-        }
+        public static IEnumerable<ContextAction> Choice(SketchObject o, string id, ParamDef def, I18nText label)
+            => ActionChoices.FromParam(o, id, def, label, "param", null);
 
         /// <summary>Label of the current option of a choice parameter.</summary>
         public static I18nText OptionLabel(ParamDef def, string value)

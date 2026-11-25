@@ -27,7 +27,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(10, 10, Ground))
             {
                 Pins = Fixed(new Pin("1", 0, -0.5)), Params = new[] { GroundKind }, Labeled = false,
-                Extra = o => new[] { Cycle(o, "elec.ground.next", T("Next earth symbol", "Nächstes Erdungszeichen"), GroundKind) },
+                Extra = o => Choice(o, "elec.ground", T("Earth symbol", "Erdungszeichen"), GroundKind),
             };
 
             yield return new ElecType("elec.source", T("Voltage/current source", "Spannungs-/Stromquelle"), Cat,
@@ -35,7 +35,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, Source))
             {
                 Pins = Fixed(TwoH("+", "-").ToArray()), Params = new[] { SourceKind }, Polarized = true, RefPrefix = "G",
-                Extra = o => new[] { Cycle(o, "elec.source.next", T("Next source type", "Nächste Quellenart"), SourceKind) },
+                Extra = o => Choice(o, "elec.source", T("Source type", "Quellenart"), SourceKind),
             };
 
             yield return new ElecType("elec.battery", T("Battery", "Batterie"), Cat,
@@ -111,7 +111,7 @@ namespace InventaSketch.Modules.Electrical
             => new(id, name, Cat, keywords, Views.Symbol(20, 15, (p, o) => MachineDraw(p, o, letter)))
             {
                 Pins = MachinePins, Params = new[] { Supply }, RefPrefix = letter,
-                Extra = o => new[] { Cycle(o, id + ".supply", T("Next supply type", "Nächste Stromart"), Supply) },
+                Extra = o => Choice(o, id + ".supply", T("Supply", "Stromart"), Supply),
             };
 
         private static IReadOnlyList<Pin> MachinePins(SketchObject o) => o.Str("supply", "none") == "ac3"

@@ -29,7 +29,7 @@ namespace InventaSketch.Modules.Process
                     ? new[] { new Port("T1", -14, -6), new Port("T2", 14, 6), new Port("S1", 7, -6), new Port("S2", -7, 6) }
                     : new[] { new Port("T1", -14, -6), new Port("T2", -14, 6), new Port("S1", 7, -6), new Port("S2", -7, 6) },
                 Block = true, TagPrefix = "E-101", Uniform = false, CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.hx.bundle", T("U-tubes / straight tubes", "U-Rohre / gerade Rohre"), Bundle) },
+                Extra = o => Choice(o, "process.hx.bundle", null, Bundle),
             };
 
             yield return new ProcessType("process.hx.plate", T("Plate heat exchanger", "Plattenwärmeübertrager"), Cat, 14, 16, Plate,
@@ -69,7 +69,7 @@ namespace InventaSketch.Modules.Process
                 Params = new[] { Draft },
                 Ports = Fixed(new Port("W1", 10, -1), new Port("W2", -10, 10.5)),
                 Block = true, TagPrefix = "CT-101", Uniform = false, CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.coolingtower.draft", T("Natural / mechanical draft", "Naturzug / Ventilator"), Draft) },
+                Extra = o => Choice(o, "process.coolingtower.draft", null, Draft),
             };
         }
 

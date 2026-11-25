@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InventaSketch.Core;
 using static InventaSketch.Modules.Process.P;
 
@@ -38,9 +39,8 @@ namespace InventaSketch.Modules.Process
                 TagPrefix = "HV-101", CompanionIds = Companions,
                 Extra = o => new[]
                 {
-                    Cycle("process.valve.kind", T("Valve type", "Armaturenart"), ValveKind),
                     Toggle(o, "process.valve.closed", T("Normally closed", "Normal geschlossen"), "closed", false),
-                },
+                }.Concat(Choice(o, "process.valve.kind", T("Valve type", "Armaturenart"), ValveKind)),
             };
 
             yield return new ProcessType("process.valve.control", T("Control valve", "Stellventil (Regelventil)"), Cat, 12, 13, Control,
@@ -51,11 +51,8 @@ namespace InventaSketch.Modules.Process
                 Ports = Fixed(new Port("1", -6, 3.5), new Port("2", 6, 3.5), new Port("S", 0, -6.5)),
                 TagPrefix = "TV-101",
                 CompanionIds = new[] { "process.instrument.bubble", "process.line.signal", "process.line", "process.valve.manual" },
-                Extra = o => new[]
-                {
-                    Cycle("process.valve.actuator", T("Actuator", "Antrieb"), Actuator, IconIds.Actuation),
-                    Cycle("process.valve.fail", T("Fail-safe position", "Sicherheitsstellung"), Fail),
-                },
+                Extra = o => Choice(o, "process.valve.actuator", T("Actuator", "Antrieb"), Actuator)
+                    .Concat(Choice(o, "process.valve.fail", T("Fail-safe position", "Sicherheitsstellung"), Fail)),
             };
 
             yield return new ProcessType("process.valve.check", T("Check valve", "Rückschlagarmatur"), Cat, 10, 6, Check,
@@ -111,7 +108,7 @@ namespace InventaSketch.Modules.Process
                     ? new[] { new Port("1", -5, -2), new Port("2", 5, -2) }
                     : new[] { new Port("1", -5, 0), new Port("2", 5, 0) },
                 TagPrefix = "S-101", CompanionIds = Companions,
-                Extra = o => new[] { Cycle("process.strainer.kind", T("Filter / Y-strainer", "Filter / Y-Schmutzfänger"), StrainerKind) },
+                Extra = o => Choice(o, "process.strainer.kind", null, StrainerKind),
             };
         }
 

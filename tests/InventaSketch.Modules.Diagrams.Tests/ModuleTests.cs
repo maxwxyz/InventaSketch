@@ -478,18 +478,18 @@ namespace InventaSketch.Modules.Diagrams.Tests
         }
 
         [Fact]
-        public void CycleActionStepsThroughCrowsFootNotations()
+        public void CardinalitiesAreChoicesOfCrowsFootNotations()
         {
             var r = T.Reg();
             var (_, o) = T.Insert(r, "diag.er.connector", new Vec2(100, 100));
             var type = r.TypeOf(o);
+            // One option per notation (dropdown), the current one marked – no "next cardinality" button.
+            var options = type.Actions(o, Lang.En).Where(a => a.Choice?.Key == "diag.crow.end").ToList();
+            Assert.Equal(new[] { "none", "one", "onlyOne", "zeroOrOne", "many", "oneOrMany", "zeroOrMany" }, options.Select(a => ActionChoices.ValueOf(a.Id)));
+            Assert.Equal("diag.crow.end=zeroOrMany", Assert.Single(options, a => a.IsActive).Id);
             var seen = new List<string>();
-            var x = o;
-            for (var i = 0; i < 6; i++)
-            {
-                x = type.Actions(x, Lang.En).Single(a => a.Id == "diag.crow.end").Apply(x);
-                seen.Add(x.Str("endEnd", ""));
-            }
+            foreach (var value in new[] { "one", "onlyOne", "zeroOrOne", "many", "oneOrMany", "zeroOrMany" })
+                seen.Add(type.Actions(o, Lang.En).Single(a => a.Id == "diag.crow.end=" + value).Apply(o).Str("endEnd", ""));
             Assert.Equal(new[] { "one", "onlyOne", "zeroOrOne", "many", "oneOrMany", "zeroOrMany" }, seen);
             var swapped = type.Actions(o, Lang.En).Single(a => a.Id == "diag.swap").Apply(o);
             Assert.Equal("zeroOrMany", swapped.Str("startEnd", ""));

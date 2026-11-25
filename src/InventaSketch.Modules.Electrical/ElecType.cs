@@ -298,17 +298,12 @@ namespace InventaSketch.Modules.Electrical
         /// <summary>Clamped integer parameter.</summary>
         public static int Count(SketchObject o, string key, int def, int min, int max) => Math.Max(min, Math.Min(max, o.Int(key, def)));
 
-        /// <summary>Cycles a choice parameter through its options.</summary>
-        public static ContextAction Cycle(SketchObject o, string id, I18nText label, ParamDef def)
-        {
-            var options = def.Options!.Select(x => x.Value).ToList();
-            var fallback = def.Default?.Text ?? options[0];
-            return new ContextAction(id, label, IconIds.Cycle, x =>
-            {
-                var i = options.IndexOf(x.Str(def.Key, fallback));
-                return x.WithParam(def.Key, options[(i + 1 + options.Count) % options.Count]);
-            }) { Group = "param", ParamKeys = new[] { def.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (id "&lt;id&gt;=&lt;value&gt;", the current option marked; hosts show a dropdown) – never a
+        /// cycle button (maintainer 2026-11-25).
+        /// </summary>
+        public static IEnumerable<ContextAction> Choice(SketchObject o, string id, I18nText label, ParamDef def)
+            => ActionChoices.FromParam(o, id, def, label, "param", null);
 
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool def, string icon = IconIds.Toggle)
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = "param" };

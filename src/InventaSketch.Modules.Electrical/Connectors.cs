@@ -23,7 +23,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, Connector))
             {
                 Pins = ConnectorPins, Params = new[] { Gender, Poles }, Uniform = false, RefPrefix = "X",
-                Extra = o => new[] { Cycle(o, "elec.connector.next", T("Plug / socket / pair", "Stecker / Buchse / Paar"), Gender) },
+                Extra = o => Choice(o, "elec.connector", T("Plug / socket", "Stecker / Buchse"), Gender),
             };
 
             yield return new ElecType("elec.terminal", T("Terminal", "Anschlussklemme"), Cat,

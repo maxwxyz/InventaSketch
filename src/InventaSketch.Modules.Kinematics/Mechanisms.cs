@@ -565,9 +565,7 @@ namespace InventaSketch.Modules.Kinematics
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            var kinds = new[] { "roller", "flat", "knife" };
-            var next = kinds[(Array.IndexOf(kinds, o.Str("follower", "roller")) + 1) % kinds.Length];
-            yield return new ContextAction("kin.cam.follower.next", new I18nText("Next follower kind", "Nächste Stößelart"), IconIds.Toggle, x => x.WithParam("follower", next)) { Group = "param" };
+            foreach (var a in ActionChoices.FromParam(o, "kin.follower", Parameters.First(p => p.Key == "follower"), null, "param", null)) yield return a;
         }
     }
 
@@ -803,10 +801,7 @@ namespace InventaSketch.Modules.Kinematics
 
         protected override IEnumerable<ContextAction> ExtraActions(SketchObject o)
         {
-            var kinds = new[] { "roller", "flat", "knife" };
-            var cur = Array.IndexOf(kinds, Follower(o));
-            var next = kinds[(cur + 1 + kinds.Length) % kinds.Length];
-            yield return new ContextAction("kin.follower", new I18nText("Next follower type", "Nächste Stößelform"), IconIds.Cycle, x => x.WithParam("follower", next)) { Group = "param" };
+            foreach (var a in ActionChoices.FromParam(o, "kin.follower", Parameters.First(p => p.Key == "follower"), null, "param", null)) yield return a;
         }
     }
 }

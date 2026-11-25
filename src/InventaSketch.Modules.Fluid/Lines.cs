@@ -291,13 +291,9 @@ namespace InventaSketch.Modules.Fluid
             return p.Count < 2 ? Array.Empty<Anchor>() : Routing.Rails(Path(o, p, ctx));
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
-        {
-            Cycle("fluid.line.kind.next", T("Next line type (working / pilot / drain / hose)", "Nächste Leitungsart (Arbeit / Steuer / Leck / Schlauch)"), Kind),
-            new ContextAction("fluid.line.route", T("Orthogonal / straight", "Orthogonal / gerade"), IconIds.Toggle,
-                x => x.WithParam("route", x.Str("route", "orthogonal") == "free" ? "orthogonal" : "free"))
-            { IsActive = o.Str("route", "orthogonal") == "orthogonal", Group = "route" },
-            Toggle(o, "fluid.line.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop),
-        };
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+            => ChoiceActions(o, "fluid.line.kind", null, Kind)
+                .Concat(ChoiceActions(o, "fluid.line.route", null, Routing.Param(), group: "route"))
+                .Append(Toggle(o, "fluid.line.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop));
     }
 }

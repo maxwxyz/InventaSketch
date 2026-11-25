@@ -19,7 +19,7 @@ namespace InventaSketch.Modules.Annotation
             => new Primitive[] { new LinePrim(p[0], p[p.Count - 1], Style.Visible with { ArrowStart = Ann.Head(o, "headStart", ArrowHead.None), ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.None), ArrowSize = Ann.HeadSize(o) }) { Tag = AnnTags.Main } }
                 .Concat(AnnConnectors.BusMark(o, new[] { p[0], p[p.Count - 1] })).ToList();
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None).Append(AnnConnectors.BusAction(o));
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None).Concat(AnnConnectors.BusActions(o));
     }
 
     /// <summary>
@@ -80,7 +80,7 @@ namespace InventaSketch.Modules.Annotation
             => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None)
                 .Append(Ann.Toggle(o, "ann.closed", new I18nText("Closed", "Geschlossen"), IconIds.Toggle, "closed", false))
                 .Append(AnnConnectors.HopsAction(o, true))
-                .Append(AnnConnectors.BusAction(o));
+                .Concat(AnnConnectors.BusActions(o));
     }
 
     /// <summary>Straight arrow; head style per end is configurable (single or double arrow).</summary>
@@ -113,7 +113,7 @@ namespace InventaSketch.Modules.Annotation
                 }) { Tag = AnnTags.Main },
             }.Concat(AnnConnectors.BusMark(o, new[] { p[0], p[p.Count - 1] })).ToList();
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, _start, ArrowHead.Triangle).Append(AnnConnectors.BusAction(o));
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, _start, ArrowHead.Triangle).Concat(AnnConnectors.BusActions(o));
     }
 
     /// <summary>Curved arrow through three points (start, through-point, end) as a quadratic curve.</summary>
@@ -344,7 +344,7 @@ namespace InventaSketch.Modules.Annotation
             yield return Ann.SetChoice(o, "ann.route.hvh", new I18nText("Route horizontal first", "Erst waagerecht führen"), IconIds.Option, "route", "hvh", "auto", "route");
             yield return Ann.SetChoice(o, "ann.route.vhv", new I18nText("Route vertical first", "Erst senkrecht führen"), IconIds.Option, "route", "vhv", "auto", "route");
             yield return AnnConnectors.HopsAction(o, true);
-            yield return AnnConnectors.BusAction(o);
+            foreach (var a in AnnConnectors.BusActions(o)) yield return a;
         }
     }
 

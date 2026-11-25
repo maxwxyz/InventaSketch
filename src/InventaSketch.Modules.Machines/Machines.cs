@@ -64,15 +64,15 @@ namespace InventaSketch.Modules.Machines
             var schematic = o.View == "schematic";
             if (schematic)
             {
-                yield return Common.ModeSwap(o);
+                foreach (var a in Common.ModeChoice(o)) yield return a;
                 yield break;
             }
-            yield return Common.RotorCycle(o);
+            foreach (var a in Common.RotorChoice(o)) yield return a;
             foreach (var a in Common.Stepper(o, "poles", T("Poles", "Pole"), 8, 2, 2, 64)) yield return a;
             foreach (var a in Common.Stepper(o, "slots", T("Slots", "Nuten"), 36, 3, 6, 96)) yield return a;
             yield return Common.Toggle(o, "currents", false, T("Current directions on/off", "Stromrichtungen an/aus"));
             yield return Common.Toggle(o, "cooling", false, T("Cooling channels on/off", "Kühlkanäle an/aus"));
-            yield return Common.LayoutSwap(o);
+            foreach (var a in Common.LayoutChoice(o)) yield return a;
         }
 
         private static int RotorPoles(SketchObject o, string kind)
@@ -221,11 +221,13 @@ namespace InventaSketch.Modules.Machines
             Extra = o =>
             {
                 var list = new List<ContextAction>();
-                if (o.View == "schematic") { list.Add(Common.ModeSwap(o)); return list; }
+                if (o.View == "schematic") { list.AddRange(Common.ModeChoice(o)); return list; }
                 list.AddRange(Common.Stepper(o, "poles", T("Poles", "Pole"), 16, 2, 2, 64));
                 list.AddRange(Common.Stepper(o, "coils", T("Coils", "Spulen"), 18, 3, 3, 96));
-                list.Add(new ContextAction("param.disc", o.Str("disc", "rotor") == "rotor" ? T("Show stator disc", "Statorscheibe zeigen") : T("Show rotor disc", "Rotorscheibe zeigen"),
-                    IconIds.Cycle, x => x.WithParam("disc", x.Str("disc", "rotor") == "rotor" ? "stator" : "rotor")) { Group = "param" });
+                list.AddRange(ActionChoices.FromValues("param.disc", T("Face view shows", "Stirnansicht zeigt"), "disc", o.Str("disc", "rotor"), new[]
+                {
+                    ("rotor", T("Rotor disc", "Rotorscheibe"), (string?)null), ("stator", T("Stator disc", "Statorscheibe"), (string?)null),
+                }, "param"));
                 list.Add(Common.Toggle(o, "currents", false, T("Current directions on/off", "Stromrichtungen an/aus")));
                 list.Add(Common.Toggle(o, "cooling", false, T("Cooling channels on/off", "Kühlkanäle an/aus")));
                 return list;

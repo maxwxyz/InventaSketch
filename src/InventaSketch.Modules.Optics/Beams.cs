@@ -186,7 +186,7 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             yield return Ox.Toggle(o, "optics.ray.trace", new I18nText("Trace through elements", "Durch Elemente verfolgen"), "trace", true, "ray");
-            yield return Ox.Cycle(o, "optics.ray.arrows", new I18nText("Arrowheads", "Pfeilspitzen"), Arrows, "ray");
+            foreach (var opt in Ox.Choice(o, "optics.ray.arrows", new I18nText("Arrowheads", "Pfeilspitzen"), Arrows, "ray")) yield return opt;
             yield return Ox.Toggle(o, "optics.ray.virtual", new I18nText("Virtual rays", "Virtuelle Strahlen"), "virtual", true, "ray");
             yield return Ox.NumberInput(o, "optics.ray.tail", new I18nText("Length after the last element", "Länge nach dem letzten Element"), Parameters[3], "ray");
         }

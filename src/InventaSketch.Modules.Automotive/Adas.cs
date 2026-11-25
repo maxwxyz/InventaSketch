@@ -217,7 +217,7 @@ namespace InventaSketch.Modules.Automotive
             {
                 Params = new[] { rows, cols, occ, seed },
                 Uniform = false,
-                Extra = o => new[] { new ContextAction("param.seed", T("Other pattern", "Anderes Muster"), IconIds.Cycle, x => x.WithParam("seed", (x.Int("seed", 1) + 1) % 1000)) { Group = "param" } }
+                Extra = o => new[] { new ContextAction("param.seed.next", T("Other pattern", "Anderes Muster"), IconIds.Increase, x => x.WithParam("seed", (x.Int("seed", 1) + 1) % 1000)) { Group = "param" } }
                     .Concat(Prm.PlusMinus("occupancy", 0.3, 0, 1, 0.1, false, T("More occupied cells", "Mehr belegte Zellen"), T("Fewer occupied cells", "Weniger belegte Zellen"), "param")),
             };
         }

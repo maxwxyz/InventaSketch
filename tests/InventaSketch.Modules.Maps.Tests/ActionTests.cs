@@ -11,32 +11,40 @@ namespace InventaSketch.Modules.Maps.Tests
         private static ContextAction Act(Registry r, SketchObject o, string id, Lang lang = Lang.En)
             => r.TypeOf(o).Actions(o, new RenderContext(SketchDocument.Create(), lang)).Single(a => a.Id == id);
 
+        private static List<ContextAction> Options(Registry r, SketchObject o, string key, Lang lang = Lang.En)
+            => r.TypeOf(o).Actions(o, new RenderContext(SketchDocument.Create(), lang)).Where(a => a.Choice?.Key == key).ToList();
+
         [Fact]
-        public void RoadTypeCyclesThroughAllKinds()
+        public void RoadTypeIsAChoiceOfAllKinds()
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "map.road.motorway", new Vec2(50, 50));
+            // One option per kind (dropdown "Road type: Motorway"), the current one marked.
+            var options = Options(r, o, "map.road.kind", Lang.De);
+            Assert.Equal(new[] { "motorway", "main", "side", "path" }, options.Select(a => ActionChoices.ValueOf(a.Id)));
+            Assert.Equal("Straßenart", options[0].Choice!.Label.De);
+            Assert.Equal("Straßenart: Autobahn", ActionChoices.Caption(options[0].Choice!, options).De);
             var seen = new List<string>();
-            for (var i = 0; i < 4; i++)
+            foreach (var kind in new[] { "main", "side", "path", "motorway" })
             {
-                var a = Act(r, o, "map.road.kind");
-                o = a.Apply(o);
+                o = Act(r, o, "map.road.kind=" + kind).Apply(o);
                 seen.Add(o.Str("kind", ""));
             }
             Assert.Equal(new[] { "main", "side", "path", "motorway" }, seen);
-            Assert.Equal("Straßenart: Hauptstraße", Act(r, o, "map.road.kind", Lang.De).Label.De);
+            Assert.Equal("Hauptstraße", Act(r, o, "map.road.kind=main", Lang.De).Label.De);
         }
 
         [Fact]
-        public void RouteStyleAndArrowsCycle()
+        public void RouteStyleAndArrowsAreChoices()
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "map.route", new Vec2(50, 50));
-            o = Act(r, o, "map.route.style").Apply(o);
+            o = Act(r, o, "map.route.style=dashed").Apply(o);
             Assert.Equal("dashed", o.Str("style", ""));
-            o = Act(r, o, "map.route.style").Apply(o);
+            o = Act(r, o, "map.route.style=dotted").Apply(o);
             Assert.Equal("dotted", o.Str("style", ""));
-            o = Act(r, o, "map.route.arrows").Apply(o);
+            Assert.True(Act(r, o, "map.route.style=dotted").IsActive);
+            o = Act(r, o, "map.route.arrows=end").Apply(o);
             Assert.Equal("end", o.Str("arrows", ""));
             var reversed = Act(r, o, "map.route.reverse").Apply(o);
             Assert.Equal(o.Points![0], reversed.Points![reversed.Points.Count - 1]);
@@ -121,7 +129,7 @@ namespace InventaSketch.Modules.Maps.Tests
             Assert.Equal("1 km", input.Value);
             var units = new List<string>();
             var o = bar;
-            for (var i = 0; i < 4; i++) { o = Act(r, o, "map.scalebar.unit").Apply(o); units.Add(o.Str("unit", "")); }
+            foreach (var unit in new[] { "mi", "m", "ft", "km" }) { o = Act(r, o, "map.scalebar.unit=" + unit).Apply(o); units.Add(o.Str("unit", "")); }
             Assert.Equal(new[] { "mi", "m", "ft", "km" }, units);
         }
 
@@ -166,12 +174,13 @@ namespace InventaSketch.Modules.Maps.Tests
         }
 
         [Fact]
-        public void PoiKindCycleNamesTheNextKind()
+        public void PoiKindIsAChoiceNamingEachKind()
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "map.poi.pin", new Vec2(0, 0));
-            var a = Act(r, o, "map.poi.kind");
-            Assert.Equal("Place type: Building", a.Label.En);
+            var a = Act(r, o, "map.poi.kind=building");
+            Assert.Equal("Building", a.Label.En);
+            Assert.Equal("Place type", a.Choice!.Label.En);
             Assert.Equal("building", a.Apply(o).Str("kind", ""));
         }
 

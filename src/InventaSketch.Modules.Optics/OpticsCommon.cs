@@ -167,17 +167,12 @@ namespace InventaSketch.Modules.Optics
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool fallback, string? group = null)
             => new(id, label, IconIds.Toggle, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group, ParamKeys = new[] { key } };
 
-        /// <summary>Cycles a choice parameter through its options.</summary>
-        public static ContextAction Cycle(SketchObject o, string id, I18nText label, ParamDef def, string? group = null)
-        {
-            var values = def.Options!.Select(x => x.Value).ToList();
-            var fallback = def.Default?.Text ?? values[0];
-            return new ContextAction(id, label, IconIds.Cycle, x =>
-            {
-                var i = values.IndexOf(x.Str(def.Key, fallback));
-                return x.WithParam(def.Key, values[(i + 1) % values.Count]);
-            }) { Group = group, ParamKeys = new[] { def.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (one option per value, the current one marked; hosts show a dropdown) – never a
+        /// cycle button (maintainer 2026-11-25).
+        /// </summary>
+        public static IEnumerable<ContextAction> Choice(SketchObject o, string id, I18nText label, ParamDef def, string? group = null)
+            => ActionChoices.FromParam(o, id, def, label, group, null);
 
         /// <summary>Number input clamped to the parameter's limits.</summary>
         public static ContextAction NumberInput(SketchObject o, string id, I18nText label, ParamDef def, string? group = null)

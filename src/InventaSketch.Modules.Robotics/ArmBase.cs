@@ -476,10 +476,13 @@ namespace InventaSketch.Modules.Robotics
                 x => x.WithParam(j.Key, Geo.Clamp(x.Num(j.Key, j.Default) + step, Math.Min(lo, hi), Math.Max(lo, hi)))) { Group = "joint", ParamKeys = new[] { j.Key } };
             yield return new ContextAction("robot.joint.prev", new I18nText(En("−"), De("−")), IconIds.AnglePrev,
                 x => x.WithParam(j.Key, Geo.Clamp(x.Num(j.Key, j.Default) - step, Math.Min(lo, hi), Math.Max(lo, hi)))) { Group = "joint", ParamKeys = new[] { j.Key } };
-            var idx = IndexOf(j);
-            var next = Joints[(idx + 1) % Joints.Count];
-            yield return new ContextAction("robot.motion.next", new I18nText("Move joint " + next.Short.En, "Achse " + (next.Short.De ?? next.Short.En) + " bewegen"), IconIds.Cycle,
-                x => KeepScale(x, x.WithParam("motion", next.Key))) { Group = "joint", ParamKeys = new[] { "motion" } };
+            // The joint that "+"/"−" move is a choice among the joints (not a "next joint" button).
+            var jointChoice = new ActionChoice("robot.motion", new I18nText("Joint", "Achse"));
+            foreach (var d in Joints)
+            {
+                var key = d.Key;
+                yield return ActionChoices.Option(jointChoice, key, new I18nText(d.Short.En, d.Short.De ?? d.Short.En), "", key == j.Key, x => KeepScale(x, x.WithParam("motion", key))) with { Group = "joint", ParamKeys = new[] { "motion" } };
+            }
             yield return new ContextAction("robot.home", new I18nText("Home position", "Grundstellung"), IconIds.Home, x =>
             {
                 var r = x;
@@ -491,7 +494,7 @@ namespace InventaSketch.Modules.Robotics
                 x => x.WithParam("ghosts", x.Int("ghosts", 0) > 0 ? 0 : 4)) { IsActive = ghosts > 0, Group = "motion", ParamKeys = new[] { "ghosts" } };
             yield return new ContextAction("robot.envelope", new I18nText("Reach envelope", "Arbeitsraum"), IconIds.Toggle,
                 x => KeepScale(x, x.WithParam("envelope", !x.Flag("envelope", false)))) { IsActive = o.Flag("envelope", false), Group = "motion", ParamKeys = new[] { "envelope" } };
-            yield return Rb.Cycle(o, "robot.style", StyleParam, "style");
+            foreach (var opt in Rb.Choice(o, "robot.style", StyleParam, "style")) yield return opt;
             yield return Rb.Toggle(o, "robot.labels", new I18nText("Joint labels", "Achsbeschriftung"), IconIds.LabelShow, "labels", false, "annotation");
         }
 

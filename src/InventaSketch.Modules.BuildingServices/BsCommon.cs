@@ -181,16 +181,12 @@ namespace InventaSketch.Modules.BuildingServices
         internal static ContextAction Toggle(SketchObject o, string id, I18nText label, string icon, string key, bool fallback, string group = "param")
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group, ParamKeys = new[] { key } };
 
-        /// <summary>Cycles a choice parameter through its options; the label names the next value.</summary>
-        internal static ContextAction Cycle(SketchObject o, string id, ParamDef choice, string group = "param")
-        {
-            var values = choice.Options!;
-            var fallback = choice.Default?.Text ?? values[0].Value;
-            var cur = o.Str(choice.Key, fallback);
-            var idx = Math.Max(0, values.ToList().FindIndex(v => v.Value == cur));
-            var next = values[(idx + 1) % values.Count];
-            return new ContextAction(id, next.Label, IconIds.Cycle, x => x.WithParam(choice.Key, next.Value)) { Group = group, ParamKeys = new[] { choice.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (one option per value, the current one marked; hosts show a dropdown) – never a
+        /// cycle button (maintainer 2026-11-25). The label defaults to the parameter's.
+        /// </summary>
+        internal static IEnumerable<ContextAction> Choice(SketchObject o, string id, ParamDef choice, I18nText? label = null, string group = "param")
+            => ActionChoices.FromParam(o, id, choice, label, group, null);
 
         /// <summary>"Mounting height…" prompt (mm).</summary>
         internal static ContextAction HeightAction(SketchObject o, ObjectType type, Lang lang)

@@ -38,7 +38,7 @@ namespace InventaSketch.Modules.Automotive
                 Views.TopV(9.2, 5.6, SeatedTop))
             {
                 Params = new[] { Role },
-                Extra = o => new[] { Prm.Cycle(o, Role, T("Driver / passenger", "Fahrer / Beifahrer")) },
+                Extra = o => Prm.Choice(o, Role, T("Occupant", "Insasse")),
             };
             const double k = 0.63, head = 0.95;
             yield return new AutoType("auto.human.child", T("Child", "Kind"), Cat,

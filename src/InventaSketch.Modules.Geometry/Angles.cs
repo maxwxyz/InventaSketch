@@ -119,7 +119,7 @@ namespace InventaSketch.Modules.Geometry
                     return SetAngle(x, val);
                 }, "°") with { Group = "angle" };
             yield return Mx.Toggle(o, "math.angle.value", new I18nText("Show value", "Wert anzeigen"), "value", false, "angle");
-            yield return Mx.Cycle(o, "math.angle.mark.next", new I18nText("Next mark", "Nächste Markierung"), MarkDef, "angle");
+            foreach (var opt in Mx.Choice(o, "math.angle.mark", new I18nText("Mark", "Markierung"), MarkDef, "angle")) yield return opt;
             yield return Mx.Toggle(o, "math.angle.rays", new I18nText("Draw the rays", "Schenkel zeichnen"), "rays", true, "angle");
             yield return Mx.Toggle(o, "math.angle.reflex", new I18nText("Other side", "Andere Seite"), "reflex", false, "angle");
             yield return Mx.TextInput(o, "math.angle.label", new I18nText("Name…", "Name…"), "label", "α", "label");

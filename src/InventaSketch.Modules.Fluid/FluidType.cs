@@ -269,8 +269,14 @@ namespace InventaSketch.Modules.Fluid
                 }
             if (MediumDefault is not null)
             {
-                                yield return new ContextAction("fluid.medium", Common.T("Hydraulic ↔ pneumatic", "Hydraulik ↔ Pneumatik"), IconIds.Medium,
-                    x => Adapt(x, x.WithParam("medium", Common.Pneumatic(Normalize(x)) ? "hydraulic" : "pneumatic"))) { IsActive = Common.Pneumatic(n), Group = "medium" };
+                // Hydraulic or pneumatic is a choice (one place with the "medium" parameter), not a switch.
+                var medium = new ActionChoice("fluid.medium", Common.T("Medium", "Medium"));
+                foreach (var (value, label) in new[] { ("hydraulic", Common.T("Hydraulic", "Hydraulik")), ("pneumatic", Common.T("Pneumatic", "Pneumatik")) })
+                {
+                    var v = value;
+                    yield return ActionChoices.Option(medium, v, label, "", Common.Pneumatic(n) == (v == "pneumatic"), x => Adapt(x, x.WithParam("medium", v)))
+                        with { Group = "medium", ParamKeys = new[] { "medium" } };
+                }
             }
             if (Extra is not null)
                 foreach (var a in Extra(n))
@@ -341,19 +347,12 @@ namespace InventaSketch.Modules.Fluid
 
         public static ParamDef Flag(string key, I18nText label, bool def) => new(key, label, ParamKind.Boolean) { Default = def };
 
-        /// <summary>Cycles a choice parameter through its options (or the given subset).</summary>
-        public static ContextAction Cycle(string id, I18nText label, ParamDef def, IReadOnlyList<string>? subset = null, string group = "param", string icon = IconIds.Cycle)
-        {
-            var options = subset ?? def.Options!.Select(x => x.Value).ToList();
-            var fallback = def.Default?.Text ?? options[0];
-            return new ContextAction(id, label, icon, x =>
-            {
-                var i = -1;
-                var cur = x.Str(def.Key, fallback);
-                for (var k = 0; k < options.Count; k++) if (options[k] == cur) i = k;
-                return x.WithParam(def.Key, options[(i + 1 + options.Count) % options.Count]);
-            }) { Group = group, ParamKeys = new[] { def.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (one option per value or per value of <paramref name="subset"/>, the current one
+        /// marked; hosts show a dropdown) – never a cycle button (maintainer 2026-11-25). The label defaults to the parameter's.
+        /// </summary>
+        public static IEnumerable<ContextAction> ChoiceActions(SketchObject o, string id, I18nText? label, ParamDef def, IReadOnlyList<string>? subset = null, string group = "param")
+            => ActionChoices.FromParam(o, id, def, label, group, subset);
 
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool def, string icon = IconIds.Toggle, string group = "param")
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = group };

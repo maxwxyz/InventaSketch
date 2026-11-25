@@ -94,7 +94,7 @@ namespace InventaSketch.Modules.Automotive
             foreach (var a in Prm.PlusMinus("angle", 50, 5, 360, 10, false, T("Wider angle", "Größerer Öffnungswinkel"), T("Narrower angle", "Kleinerer Öffnungswinkel"), "angle")) yield return a;
             yield return new ContextAction("param.heading.rotate", T("Turn by 15°", "Um 15° drehen"), IconIds.AngleNext,
                 x => x.WithParam("heading", Geo.NormDeg(x.Num("heading", 0) + 15 + 180) - 180)) { Group = "heading" };
-            yield return Prm.Cycle(o, FillDef, T("Next fill", "Nächste Füllung"));
+            foreach (var opt in Prm.Choice(o, FillDef, T("Fill", "Füllung"))) yield return opt;
         }
     }
 

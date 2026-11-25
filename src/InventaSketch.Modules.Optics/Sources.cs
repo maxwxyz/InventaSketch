@@ -179,7 +179,7 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
-            yield return Ox.Cycle(o, "optics.emission", new I18nText("Emission", "Abstrahlung"), Sources.Emission, "rays");
+            foreach (var opt in Ox.Choice(o, "optics.emission", new I18nText("Emission", "Abstrahlung"), Sources.Emission, "rays")) yield return opt;
             foreach (var a in Ox.RayCount(o, Parameters[1])) yield return a;
         }
     }
@@ -254,8 +254,8 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
-            yield return Ox.Cycle(o, "optics.emission", new I18nText("Emission", "Abstrahlung"), Sources.EmissionNoRadial, "rays");
-            yield return Ox.Cycle(o, "optics.color", new I18nText("Light colour", "Lichtfarbe"), Colour, "rays");
+            foreach (var opt in Ox.Choice(o, "optics.emission", new I18nText("Emission", "Abstrahlung"), Sources.EmissionNoRadial, "rays")) yield return opt;
+            foreach (var opt in Ox.Choice(o, "optics.color", new I18nText("Light colour", "Lichtfarbe"), Colour, "rays")) yield return opt;
             foreach (var a in Ox.RayCount(o, Parameters[1])) yield return a;
         }
     }
@@ -328,7 +328,7 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
-            yield return Ox.Cycle(o, "optics.color", new I18nText("Wavelength", "Wellenlänge"), Colour, "rays");
+            foreach (var opt in Ox.Choice(o, "optics.color", new I18nText("Wavelength", "Wellenlänge"), Colour, "rays")) yield return opt;
             foreach (var a in Ox.RayCount(o, Parameters[0])) yield return a;
         }
     }
@@ -418,7 +418,7 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
-            yield return Ox.Cycle(o, "optics.bundle", new I18nText("Principal rays / fan", "Konstruktionsstrahlen / Fächer"), Bundle, "rays");
+            foreach (var opt in Ox.Choice(o, "optics.bundle", new I18nText("Rays", "Strahlen"), Bundle, "rays")) yield return opt;
         }
     }
 }

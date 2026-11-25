@@ -55,12 +55,9 @@ namespace InventaSketch.Modules.Electrical
         public static ParamDef Param(string def) => Choice("route", T("Routing", "Leitungsführung"), def,
             ("free", "Free (straight)", "Frei (gerade)"), ("orthogonal", "Orthogonal", "Orthogonal"), ("45", "45°", "45°")).WithOptionIcons(IconIds.ForRoute);
 
-        public static ContextAction CycleAction(SketchObject o, string def) => new("elec.route.next",
-            T("Next routing (free / orthogonal / 45°)", "Nächste Führung (frei / orthogonal / 45°)"), IconIds.Cycle, x =>
-            {
-                var i = Array.IndexOf(Modes, x.Str("route", def));
-                return x.WithParam("route", Modes[(i + 1 + Modes.Length) % Modes.Length]);
-            }) { Group = "route", ParamKeys = new[] { "route" } };
+        /// <summary>Routing as a choice (free / orthogonal / 45°, with the route pictograms) – a dropdown, not a cycle.</summary>
+        public static IEnumerable<ContextAction> RouteActions(SketchObject o, string def)
+            => ActionChoices.FromParam(o, "elec.route", Param(def), null, "route", null);
 
         /// <summary>
         /// Exit direction (on the page) of an attached end: perpendicular to the box edge of the target the pin sits on,
@@ -196,11 +193,9 @@ namespace InventaSketch.Modules.Electrical
             return p.Count < 2 ? Array.Empty<Anchor>() : Routing.Rails(RouteOf(o, p, ctx));
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
-        {
-            Routing.CycleAction(o, "orthogonal"),
-            Toggle(o, "elec.wire.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop),
-        };
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+            => Routing.RouteActions(o, "orthogonal")
+                .Append(Toggle(o, "elec.wire.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop));
     }
 
     /// <summary>
@@ -256,6 +251,6 @@ namespace InventaSketch.Modules.Electrical
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
-            => new[] { Cycle(o, "elec.bus.next", T("Next bus protocol", "Nächstes Busprotokoll"), Protocol) };
+            => Choice(o, "elec.bus", T("Bus protocol", "Busprotokoll"), Protocol);
     }
 }

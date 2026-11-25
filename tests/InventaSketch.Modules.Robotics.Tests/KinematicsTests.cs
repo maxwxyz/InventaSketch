@@ -334,7 +334,10 @@ namespace InventaSketch.Modules.Robotics.Tests
             Assert.Equal("A5 +15°", next.Label.De);
             Assert.Equal(85, next.Apply(o).Num("j5", 0), 9);
             Assert.Equal(o.Size, next.Apply(o).Size);
-            var cycled = t.Actions(o, Lang.En).Single(a => a.Id == "robot.motion.next").Apply(o);
+            // The moved joint is a choice among the joints, the current one marked.
+            var joints = t.Actions(o, Lang.En).Where(a => a.Choice?.Key == "robot.motion").ToList();
+            Assert.Equal("robot.motion=j5", Assert.Single(joints, a => a.IsActive).Id);
+            var cycled = joints.Single(a => a.Id == "robot.motion=j6").Apply(o);
             Assert.Equal("j6", cycled.Str("motion", ""));
             var home = t.Actions(o, Lang.En).Single(a => a.Id == "robot.home").Apply(o.WithParam("j1", 50.0));
             Assert.Equal(0, home.Num("j1", 99));

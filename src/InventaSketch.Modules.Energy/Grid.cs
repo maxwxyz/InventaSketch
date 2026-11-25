@@ -31,7 +31,7 @@ namespace InventaSketch.Modules.Energy
         internal static readonly ParamDef Closed = Pm.Bool("closed", "Closed", "Geschlossen", true);
         internal static readonly ParamDef EarthClosed = Pm.Bool("closed", "Closed (earthed)", "Geschlossen (geerdet)", false);
         internal static readonly ParamDef BreakerSymbol = Pm.Choice("symbol", "Symbol", "Darstellung", "contact",
-            ("contact", "Switch with breaker cross", "Schalter mit Leistungsschalterkreuz"), ("square", "Square (filled = closed)", "Quadrat (gefüllt = geschlossen)"));
+            ("contact", "Switch with breaker cross", "Schalter mit Kreuz (Leistungsschalter)"), ("square", "Square (filled = closed)", "Quadrat (gefüllt = geschlossen)"));
         internal static readonly ParamDef DisconnectorKind = Pm.Choice("kind", "Kind", "Art", "disconnector",
             ("disconnector", "Disconnector", "Trennschalter"), ("loadbreak", "Switch-disconnector (load-break)", "Lasttrennschalter"),
             ("fuse", "Fuse switch-disconnector", "Sicherungslasttrennschalter"));
@@ -203,7 +203,7 @@ namespace InventaSketch.Modules.Energy
                 Params = new[] { Closed, BreakerSymbol },
                 Uniform = false,
                 CompanionIds = new[] { "energy.grid.disconnector", "energy.grid.busbar", "energy.line.cable" },
-                Extra = (o, l) => new[] { SwitchToggle(o, Closed), Act.Cycle(o, "energy.symbol.next", BreakerSymbol) },
+                Extra = (o, l) => new[] { SwitchToggle(o, Closed) }.Concat(Act.Choice(o, "energy.symbol", BreakerSymbol)),
             };
 
             yield return new EnergyType("energy.grid.disconnector", T("Disconnector", "Trennschalter"), EnCategories.Grid,
@@ -222,7 +222,7 @@ namespace InventaSketch.Modules.Energy
                 Params = new[] { Closed, DisconnectorKind },
                 Uniform = false,
                 CompanionIds = new[] { "energy.grid.breaker", "energy.grid.earthing", "energy.line.cable" },
-                Extra = (o, l) => new[] { SwitchToggle(o, Closed), Act.Cycle(o, "energy.kind.next", DisconnectorKind) },
+                Extra = (o, l) => new[] { SwitchToggle(o, Closed) }.Concat(Act.Choice(o, "energy.kind", DisconnectorKind)),
             };
 
             yield return new EnergyType("energy.grid.earthing", T("Earthing switch", "Erdungsschalter"), EnCategories.Grid,

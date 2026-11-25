@@ -159,11 +159,7 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return new ContextAction("diag.gateway.next", new I18nText("Next gateway marker", "Nächste Gateway-Markierung"), IconIds.Cycle, x =>
-            {
-                var i = Array.IndexOf(Markers, x.Str("marker", "exclusive"));
-                return x.WithParam("marker", Markers[(i + 1) % Markers.Length]);
-            }) { Group = "marker" };
+            foreach (var a in ActionChoices.FromParam(o, "diag.gateway.marker", Parameters.First(p => p.Key == "marker"), null, "marker", null)) yield return a;
         }
     }
 }

@@ -60,6 +60,38 @@ namespace InventaSketch.Core
             }
         }
 
+        /// <summary>
+        /// The options of a choice parameter limited to the values <paramref name="only"/> (in that order; null: all), as
+        /// <see cref="FromParam(SketchObject, string, ParamDef, I18nText, string?)"/>. The label defaults to the parameter's.
+        /// </summary>
+        public static IEnumerable<ContextAction> FromParam(SketchObject o, string key, ParamDef def, I18nText? label, string? group, IEnumerable<string>? only)
+        {
+            var options = def.Options ?? Array.Empty<ParamOption>();
+            var values = only?.ToList();
+            var subset = values is null ? options.ToList() : values.Select(v => options.FirstOrDefault(p => p.Value == v)).Where(p => p is not null).Select(p => p!).ToList();
+            var fallback = def.Default?.Text ?? (subset.Count > 0 ? subset[0].Value : "");
+            return FromValues(key, label ?? def.Label, def.Key, o.Str(def.Key, fallback), subset.Select(p => (p.Value, p.Label, p.Icon)), group);
+        }
+
+        /// <summary>
+        /// A choice over the values of parameter <paramref name="paramKey"/> without a <see cref="ParamDef"/> at hand: one
+        /// option per value (id "key=value", pictogram or <see cref="IconIds.Option"/>), the one equal to
+        /// <paramref name="current"/> active; each sets the parameter and names it in <see cref="ContextAction.ParamKeys"/>
+        /// (hosts showing the parameter as a dropdown leave the options out: one place per choice).
+        /// </summary>
+        public static IEnumerable<ContextAction> FromValues(string key, I18nText label, string paramKey, string current, IEnumerable<(string Value, I18nText Label, string? Icon)> values, string? group = null)
+        {
+            var choice = new ActionChoice(key, label);
+            var list = new List<ContextAction>();
+            foreach (var (value, text, icon) in values)
+            {
+                var v = value;
+                var a = Option(choice, v, text, icon ?? IconIds.Option, v == current, x => x.WithParam(paramKey, v)) with { ParamKeys = new[] { paramKey } };
+                list.Add(group is null ? a : a with { Group = group });
+            }
+            return list;
+        }
+
         /// <summary>The option value of an option id ("fitted" of "chart.curve.shape=fitted"); null for other ids.</summary>
         public static string? ValueOf(string actionId)
         {

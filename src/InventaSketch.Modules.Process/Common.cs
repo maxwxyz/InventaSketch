@@ -94,17 +94,12 @@ namespace InventaSketch.Modules.Process
         public static ParamDef Text(string key, string en, string de, string def) => new(key, T(en, de), ParamKind.Text) { Default = def };
 
         /// <summary>Cycles a choice parameter through its options; the label names the parameter.</summary>
-        public static ContextAction Cycle(string id, I18nText label, ParamDef def, string icon = IconIds.Cycle, string group = "param")
-        {
-            var options = def.Options!.Select(x => x.Value).ToList();
-            var fallback = def.Default?.Text ?? options[0];
-            return new ContextAction(id, label, icon, x =>
-            {
-                var cur = x.Str(def.Key, fallback);
-                var i = options.IndexOf(cur);
-                return x.WithParam(def.Key, options[(i + 1 + options.Count) % options.Count]);
-            }) { Group = group, ParamKeys = new[] { def.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (one option per value, the current one marked; hosts show a dropdown) – never a
+        /// cycle button (maintainer 2026-11-25). The label defaults to the parameter's.
+        /// </summary>
+        public static IEnumerable<ContextAction> Choice(SketchObject o, string id, I18nText? label, ParamDef def, string group = "param")
+            => ActionChoices.FromParam(o, id, def, label, group, null);
 
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool def, string icon = IconIds.Toggle, string group = "param")
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = group, ParamKeys = new[] { key } };

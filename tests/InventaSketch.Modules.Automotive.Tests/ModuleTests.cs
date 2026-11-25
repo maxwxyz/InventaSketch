@@ -229,7 +229,7 @@ namespace InventaSketch.Modules.Automotive.Tests
     public class VehicleTests
     {
         [Fact]
-        public void NextViewCyclesAllViewsAndKeepsScale()
+        public void ViewSwitchesKeepScale()
         {
             var r = Fx.Reg();
             var t = r.Type("auto.vehicle.car")!;
@@ -237,9 +237,11 @@ namespace InventaSketch.Modules.Automotive.Tests
             Assert.Equal("top", o.View);
             o = o with { Size = new Size2(o.Size.W * 2, o.Size.H * 2) };
             var seen = new List<string>();
-            for (var i = 0; i < 4; i++)
+            // No "next view" button: the views are switched directly (the hosts' view control).
+            Assert.DoesNotContain(t.Actions(o, Lang.En), a => a.Icon == IconIds.Cycle);
+            foreach (var view in new[] { "side", "front", "rear", "top" })
             {
-                o = t.Actions(o, Lang.En).Single(a => a.Id == "view.next").Apply(o);
+                o = t.Actions(o, Lang.En).Single(a => a.Id == "view." + view).Apply(o);
                 seen.Add(o.View!);
             }
             Assert.Equal(new[] { "side", "front", "rear", "top" }, seen);

@@ -210,22 +210,12 @@ namespace InventaSketch.Modules.Mechanical
 
         public static ParamDef Flag(string key, I18nText label, bool def) => new(key, label, ParamKind.Boolean) { Default = def };
 
-        private static I18nText HubLabel(string kind) => kind switch
-        {
-            "none" => new I18nText("Shaft connection: none", "Verbindung: ohne"),
-            "sliding" => new I18nText("Shaft connection: sliding", "Verbindung: verschiebbar"),
-            "loose" => new I18nText("Shaft connection: loose", "Verbindung: drehbar (Losrad)"),
-            _ => new I18nText("Shaft connection: fixed", "Verbindung: drehfest"),
-        };
-
-        /// <summary>Cycles the hub symbol none, fixed, sliding, loose.</summary>
-        public static ContextAction HubCycle(SketchObject o)
-        {
-            var cur = o.Str("hub", "fixed");
-            var idx = Array.IndexOf(HubKinds, cur);
-            var next = HubKinds[(idx + 1 + HubKinds.Length) % HubKinds.Length];
-            return new ContextAction("param.hub", HubLabel(next), "hub-" + next, x => x.WithParam("hub", next)) { Group = "param", ParamKeys = new[] { "hub" } };
-        }
+        /// <summary>
+        /// The shaft-hub connection (none, fixed, sliding, loose) as a choice with the hub pictograms – a dropdown, never a
+        /// cycle button (maintainer 2026-11-25).
+        /// </summary>
+        public static IEnumerable<ContextAction> HubChoice(SketchObject o)
+            => ActionChoices.FromParam(o, "param.hub", Hub, null, "param", HubKinds);
 
         /// <summary>More / fewer of a counted parameter (planets, pins) as two pictogram actions.</summary>
         public static IEnumerable<ContextAction> Stepper(SketchObject o, string key, I18nText name, int def, int step, int min, int max)

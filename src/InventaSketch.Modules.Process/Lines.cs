@@ -174,9 +174,8 @@ namespace InventaSketch.Modules.Process
                     yield return Prim.Circle(raw[i].X, raw[i].Y, r, S.Black) with { Tag = ProcessTags.Junction };
         }
 
-        protected ContextAction RouteAction(SketchObject o) => new("process.line.route", T("Orthogonal / straight", "Orthogonal / gerade"), IconIds.Toggle,
-            x => x.WithParam("route", x.Str("route", "orthogonal") == "free" ? "orthogonal" : "free"))
-        { IsActive = o.Str("route", "orthogonal") == "orthogonal", Group = "route", ParamKeys = new[] { "route" } };
+        /// <summary>Routing as a choice (orthogonal / free, with the route pictograms) – a dropdown, not a switch.</summary>
+        protected IEnumerable<ContextAction> RouteActions(SketchObject o) => Choice(o, "process.line.route", null, Routing.Param(), "route");
     }
 
     /// <summary>
@@ -267,14 +266,12 @@ namespace InventaSketch.Modules.Process
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
-            Cycle("process.line.kind", T("Line type", "Leitungsart"), Kind),
             Toggle(o, "process.line.arrow", T("Flow arrow", "Fließpfeil"), "arrow", false, IconIds.FlowArrow),
             ContextAction.WithInput("process.line.number", T("Line number …", "Leitungsnummer …"), IconIds.Name,
                 T("Line number (e.g. 100-P-001-DN50)", "Leitungsnummer (z. B. 100-P-001-DN50)"), o.Str("lineNo", ""),
                 (x, t) => x.WithParam("lineNo", t.Trim())) with { Group = "label", ParamKeys = new[] { "lineNo" } },
-            RouteAction(o),
             Toggle(o, "process.line.hops", T("Hops at crossings", "Brücken an Kreuzungen"), "hops", true, IconIds.Hop),
-        };
+        }.Concat(RouteActions(o)).Concat(Choice(o, "process.line.kind", T("Line type", "Leitungsart"), Kind));
     }
 
     /// <summary>
@@ -286,7 +283,7 @@ namespace InventaSketch.Modules.Process
         public const string TypeId = "process.line.signal";
 
         public static readonly ParamDef Kind = Choice("kind", "Signal", "Signalart", "electric",
-            ("connection", "Process connection / impulse line", "Prozessanschluss / Wirkdruckleitung"),
+            ("connection", "Process connection / impulse line", "Wirkdruckleitung (Prozessanschluss)"),
             ("electric", "Electric signal (dashed)", "Elektrisches Signal (gestrichelt)"),
             ("pneumatic", "Pneumatic signal (double slashes)", "Pneumatisches Signal (Doppelstriche)"),
             ("capillary", "Capillary tube (crosses)", "Kapillarleitung (Kreuze)"),
@@ -348,10 +345,7 @@ namespace InventaSketch.Modules.Process
             return list;
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
-        {
-            Cycle("process.signal.kind", T("Signal type", "Signalart"), Kind),
-            RouteAction(o),
-        };
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+            => RouteActions(o).Concat(Choice(o, "process.signal.kind", T("Signal type", "Signalart"), Kind));
     }
 }

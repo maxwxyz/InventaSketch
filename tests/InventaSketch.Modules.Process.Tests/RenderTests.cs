@@ -234,7 +234,7 @@ namespace InventaSketch.Modules.Process.Tests
             var withLegs = r.SetParam(v, "support", "legs");
             Assert.Equal(v.Size.W, withLegs.Size.W, 6);
             Assert.True(withLegs.Size.H > v.Size.H);
-            var viaAction = Fx.Action(r, v, "process.vessel.support").Apply(v);
+            var viaAction = Fx.Action(r, v, "process.vessel.support=legs").Apply(v);
             Assert.Equal(withLegs.Size, viaAction.Size);
         }
     }
