@@ -205,8 +205,8 @@ namespace InventaSketch.AddIn.OnSlide
         public static extern IntPtr GetWindow(IntPtr hWnd, uint uCmd);
 
         /// <summary>
-        /// Oberstes Besitzerfenster (Dialoge, Leiste, Editor -> PowerPoint-Hauptfenster). GA_ROOTOWNER folgt dem Besitzer nur
-        /// bei Popup-Fenstern, WinForms-Dialoge sind keine; daher selbst über GW_OWNER gehen.
+        /// Topmost owner window (dialogs, bar, editor -> PowerPoint main window). GA_ROOTOWNER follows the owner only for
+        /// popup windows and WinForms dialogs are none, so the owner chain is walked via GW_OWNER.
         /// </summary>
         public static IntPtr RootOwner(IntPtr hwnd)
         {

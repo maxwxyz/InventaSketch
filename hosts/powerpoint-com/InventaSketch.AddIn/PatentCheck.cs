@@ -62,7 +62,7 @@ namespace InventaSketch.AddIn
         public PatentCheckForm(PowerPoint.Application app, Registry registry, Lang lang)
         {
             _app = app; _registry = registry; _lang = lang;
-            Text = T("Patent check (drawings)", "Patentprüfung (Zeichnungen)");
+            Text = T("Compatibility (drawing rules)", "Kompatibilität (Zeichnungsregeln)");
             StartPosition = FormStartPosition.CenterScreen; ShowInTaskbar = false; Font = SystemFonts.MessageBoxFont;
             // Sizes in logical pixels, scaled like the font (PowerPoint's UI thread may report 96 dpi on a 200 % display
             // while the message font is drawn at full size).

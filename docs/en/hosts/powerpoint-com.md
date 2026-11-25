@@ -441,10 +441,19 @@ four polyline points moved up 40 pt together.
 Ribbon (2026-11-25): the Tools, Structure and Colour groups show pictograms only (names as screentips); "Line weights"
 has its own pictogram (three lines of growing width); "Modules" is a button of its own in the Tools group (which modules
 the ribbon and the library show; it was hidden in the Extras menu); "About" moved to the end of the Extras menu.
+Later the same day (maintainer): the Extras menu carries the InventaSketch logo and is the last control of the Tools
+group; "Modules …", "Line weights" and "Accent colour" moved into it. All ribbon pictograms are rendered at the
+screen's device pixels (sharp on high-DPI screens). Layout group: the bottom row of the first column holds the
+selection pane, PowerPoint's shapes gallery and "Table" (icons only); "Same height", "Same width" and "Same size" sit
+left of "Swap positions". About box: "Copyright © 2026 Max Wilfinger".
 
 Review group (2026-11-25): the commands that work on the finished drawing sit together at the end of the tab –
-*Patent check* and *Compare* (large), *Import …* and *Export data*; they left the Extras menu, which keeps symbol,
-decimal separator, proofing language, send/save slides, plan scale and module visibility. Same names as in LibreOffice.
+*Compatibility* (the drawing-rules check of DPMA, EPO, PCT and USPTO; renamed from its earlier name) and *Compare*
+(large), *Import …* and *Export data*; the group and the check have their own pictograms. Same names as in LibreOffice.
+
+Dialogs over the selected element (fixed 2026-11-25): the on-slide hooks leave the mouse and keyboard alone while a
+window other than PowerPoint's main window is in front (text prompt, "Change to …" box, message boxes, other programs),
+so OK and Cancel of a dialog lying over the selected element work (scenario `dialog-over-unit`).
 
 Importing drawings (Review ▸ Import …, 2026-11-25): an SVG or DXF file becomes one unit of native, editable shapes –
 lines, polylines (arcs, curves and bulges flattened into editable points), rectangles (with their corner radius),

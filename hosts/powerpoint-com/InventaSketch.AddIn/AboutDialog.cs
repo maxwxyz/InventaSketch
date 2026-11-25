@@ -35,6 +35,7 @@ namespace InventaSketch.AddIn
             var text = new FlowLayoutPanel { FlowDirection = FlowDirection.TopDown, AutoSize = true, WrapContents = false, Margin = Padding.Empty };
             text.Controls.Add(new Label { Text = "InventaSketch", Font = title, AutoSize = true, Margin = new Padding(0, 0, 0, em / 4) });
             text.Controls.Add(new Label { Text = T("Version ", "Version ") + typeof(AboutDialog).Assembly.GetName().Version, AutoSize = true });
+            text.Controls.Add(new Label { Text = "Copyright © 2026 Max Wilfinger", AutoSize = true });
             text.Controls.Add(new Label { Text = T("Licence: Apache-2.0", "Lizenz: Apache-2.0"), AutoSize = true, Margin = new Padding(0, 0, 0, em / 2) });
             var link = new LinkLabel { Text = ProjectUrl, AutoSize = true };
             link.LinkClicked += (_, _) =>

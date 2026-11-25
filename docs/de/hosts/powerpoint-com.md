@@ -439,12 +439,21 @@ Rahmen; die Punkte darin werden ausgewählt (gefüllte Griffe) und bewegen sich 
 Menüband (25.11.2026): Die Gruppen Werkzeuge, Struktur und Farbe zeigen nur Symbole (Namen als Tooltip);
 „Linienstärken“ hat ein eigenes Symbol (drei Linien wachsender Stärke); „Module“ ist ein eigener Knopf in der Gruppe
 Werkzeuge (welche Module Menüband und Bibliothek zeigen; vorher versteckt im Menü Extras); „Info“ steht am Ende des Menüs
-Extras.
+Extras. Später am selben Tag (Maintainer): Das Menü Extras trägt das InventaSketch-Logo und ist das letzte Element der
+Gruppe Werkzeuge; „Module …“, „Linienstärken“ und „Akzentfarbe“ sind dort hineingewandert. Alle Symbole des Menübands
+werden in den Gerätepixeln des Bildschirms gezeichnet (scharf auf hochauflösenden Bildschirmen). Gruppe Layout: Die
+untere Zeile der ersten Spalte enthält den Auswahlbereich, PowerPoints Formenkatalog und „Tabelle“ (nur Symbole);
+„Gleiche Höhe“, „Gleiche Breite“ und „Gleiche Größe“ stehen links neben „Positionen tauschen“. Info-Dialog: „Copyright ©
+2026 Max Wilfinger“.
 
 Gruppe Prüfen (25.11.2026): Die Befehle, die auf der fertigen Zeichnung arbeiten, stehen gemeinsam am Ende der
-Registerkarte – *Patentprüfung* und *Vergleichen* (groß), *Importieren …* und *Daten exportieren*; sie sind aus dem Menü
-Extras herausgewandert, das Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern, Planmaßstab und
-Modulsichtbarkeit behält. Gleiche Namen wie in LibreOffice.
+Registerkarte – *Kompatibilität* (die Prüfung gegen die Zeichnungsvorschriften von DPMA, EPA, PCT und USPTO; früher anders
+benannt) und *Vergleichen* (groß), *Importieren …* und *Daten exportieren*; Gruppe und Prüfung haben eigene Symbole.
+Gleiche Namen wie in LibreOffice.
+
+Dialoge über dem ausgewählten Element (behoben 25.11.2026): Die Hooks auf der Folie lassen Maus und Tastatur in Ruhe,
+solange ein anderes Fenster als PowerPoints Hauptfenster vorne ist (Texteingabe, „Ändern in …“, Meldungen, andere
+Programme); OK und Abbrechen eines Dialogs über dem ausgewählten Element funktionieren (Szenario `dialog-over-unit`).
 
 Zeichnungen importieren (Prüfen ▸ Importieren …, 25.11.2026): Eine SVG- oder DXF-Datei wird zu einer Einheit aus
 nativen, bearbeitbaren Formen – Linien, Polylinien (Bögen, Kurven und Bulges als bearbeitbare Punkte), Rechtecke (mit
