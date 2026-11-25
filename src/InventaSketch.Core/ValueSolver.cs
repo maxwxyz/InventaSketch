@@ -260,6 +260,7 @@ namespace InventaSketch.Core
             var scope = new List<SketchObject>();
             var inScope = new HashSet<string>(StringComparer.Ordinal);
             var links = new List<BoundRelation>();
+            var seenLinks = new HashSet<string>(StringComparer.Ordinal);
             var queue = new Queue<string>(start);
             while (queue.Count > 0 && scope.Count < opt.MaxObjects)
             {
@@ -271,6 +272,8 @@ namespace InventaSketch.Core
                 if (type is IValueLinks l)
                     foreach (var b in l.ValueLinks(o, ctx))
                     {
+                        // Both ends of a link usually report it: keep one (a conflict is then reported once).
+                        if (!seenLinks.Add(LinkKey(b))) continue;
                         links.Add(b);
                         foreach (var r in b.Map.Values) if (!inScope.Contains(r.ObjectId)) queue.Enqueue(r.ObjectId);
                     }
@@ -434,6 +437,19 @@ namespace InventaSketch.Core
                 st.Roots[unknown] = inputs.Length == 0 ? new[] { unknown } : Union(inputs.Select(v => st.Roots[v]));
                 foreach (var next in varRels[unknown]) if (next != r) pending.Add(next);
             }
+        }
+
+        /// <summary>
+        /// Identity of a link: its relation and the variables it binds; a pass-through equality is the same whichever end
+        /// reports it (a = b and b = a).
+        /// </summary>
+        private static string LinkKey(BoundRelation b)
+        {
+            var pairs = b.Map.Select(kv => kv.Key + "=" + kv.Value.ObjectId + "/" + kv.Value.Key).ToList();
+            if (b.Relation.IsLink && b.Map.Count == 2)
+                return b.Relation.Id + "|" + string.Join("|", b.Map.Values.Select(v => v.ObjectId + "/" + v.Key).OrderBy(s => s, StringComparer.Ordinal));
+            pairs.Sort(StringComparer.Ordinal);
+            return b.Relation.Id + "|" + string.Join("|", pairs);
         }
 
         private static void AddRelation(ValueTable table, BoundRelation b, string objectId)

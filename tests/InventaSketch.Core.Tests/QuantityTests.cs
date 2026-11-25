@@ -71,6 +71,19 @@ namespace InventaSketch.Core.Tests
         }
 
         [Fact]
+        public void CoefficientsRatesAndTorsion()
+        {
+            // PV temperature coefficient (Calc 4), air changes per hour (building services), torsion springs (Calc 3).
+            Assert.Equal(-0.0027, P("-0,27 %/K", Quantities.TemperatureCoefficient, lang: Lang.De), 12);
+            Assert.Equal(-0.0027, P("-0.27 %/K", Quantities.TemperatureCoefficient), 12);
+            Assert.Equal(4e-6, P("4 ppm/K", Quantities.TemperatureCoefficient), 15);
+            Assert.Equal(0.5 / 3600, P("0.5 1/h", Quantities.Frequency), 12);
+            Assert.Equal(2.0 / 3600, P("2 h⁻¹", Quantities.Frequency), 12);
+            Assert.Equal(50, P("50 N·m/rad", Quantities.TorsionalRate), 9);
+            Assert.Equal(180 / Math.PI, P("1 Nm/°", Quantities.TorsionalRate), 9);
+        }
+
+        [Fact]
         public void FractionsAndLists()
         {
             Near(50, P("20/0,4", Quantities.Ratio));
