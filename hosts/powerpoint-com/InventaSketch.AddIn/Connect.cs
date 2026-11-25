@@ -316,7 +316,7 @@ namespace InventaSketch.AddIn
                 void Gallery(LibraryCategory c, int i, bool inMenu, bool compact)
                 {
                     // Inside a menu, galleries take no size/showLabel attributes (the menu shows their labels).
-                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(GalleryLabel(c))).Append('"').Append(" getVisible=\"GetModuleVisible\"");
+                    sb.Append("<gallery id=\"IskCat_").Append(i).Append("\" label=\"").Append(L(GalleryShortLabel(c))).Append('"').Append(" getVisible=\"GetModuleVisible\"");
                     if (!inMenu) sb.Append(" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append('"');
                     sb.Append(" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
                       .Append(" screentip=\"").Append(X(GalleryLabel(c))).Append("\" supertip=\"")
@@ -341,7 +341,9 @@ namespace InventaSketch.AddIn
                         sb.Append("<control idMso=\"ShapesInsertGallery\" showLabel=\"false\" />");
                         // PowerPoint's table dropdown right under the shapes (maintainer 2026-11-25).
                         sb.Append("<control idMso=\"TableInsertGallery\" showLabel=\"false\" />");
-                        foreach (var (c, i) in cats) Gallery(c, i, inMenu: false, compact: cats.Count > 4);
+                        // Icons only, like the shapes and table dropdowns (maintainer 2026-11-25); the short name is the
+                        // label for screen readers and the full category list the screentip.
+                        foreach (var (c, i) in cats) Gallery(c, i, inMenu: false, compact: true);
                         sb.Append("</group>");
                         // Formatting groups (like Slidemax) right after "Annotate", before the domain modules.
                         AppendFormattingGroups(sb);
@@ -898,6 +900,20 @@ namespace InventaSketch.AddIn
 
         private string GalleryLabel(LibraryCategory primary) => string.Join(" · ", GalleryCategories(primary).Select(c => c.Name.Get(_lang)));
 
+        /// <summary>
+        /// Short ribbon names of galleries that hold several categories (the full list is the screentip): long joined names
+        /// made PowerPoint collapse the following groups into empty buttons.
+        /// </summary>
+        private static readonly IReadOnlyDictionary<string, I18nText> ShortGalleryNames = new Dictionary<string, I18nText>(StringComparer.Ordinal)
+        {
+            ["ann.lines"] = new("Lines & dimensions", "Linien & Maße"),
+            ["basic"] = new("Shapes & hatching", "Formen & Schraffur"),
+            ["ann.labels"] = new("Labels & text", "Beschriftung"),
+        };
+
+        private string GalleryShortLabel(LibraryCategory primary)
+            => ShortGalleryNames.TryGetValue(primary.Id, out var n) ? n.Get(_lang) : GalleryLabel(primary);
+
         private LibraryCategory? CategoryOf(Office.IRibbonControl control)
         {
             var idx = control.Id.LastIndexOf('_');
@@ -1288,6 +1304,7 @@ namespace InventaSketch.AddIn
                 else if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && CurrentSlide(_app) is PowerPoint.Slide slide)
                 {
                     var shapes = new List<PowerPoint.Shape>();
+                    var reselect = new List<PowerPoint.Shape>();
                     foreach (PowerPoint.Shape shape in sel.ShapeRange) shapes.Add(shape);
                     foreach (var shape in shapes)
                     {
@@ -1295,10 +1312,12 @@ namespace InventaSketch.AddIn
                         {
                             var ids = unit.Doc.Objects.Keys.ToList();
                             var doc = Edits.Update(unit.Doc, ids, o => o with { Style = (o.Style ?? new Style()) with { Caps = pressed ? true : null } });
-                            OnSlide.SketchUnits.Replace(slide, unit, doc, _registry, _lang);
+                            if (OnSlide.SketchUnits.Replace(slide, unit, doc, _registry, _lang) is { } redrawn) reselect.Add(redrawn);
                         }
-                        else if (shape.HasTextFrame == Office.MsoTriState.msoTrue) shape.TextFrame2.TextRange.Font.Allcaps = state;
+                        else if (shape.HasTextFrame == Office.MsoTriState.msoTrue) { shape.TextFrame2.TextRange.Font.Allcaps = state; reselect.Add(shape); }
                     }
+                    // Redrawn units are new shapes: select them again so the toggle (and the bar) show the state.
+                    for (var k = 0; k < reselect.Count; k++) reselect[k].Select(k == 0 ? Office.MsoTriState.msoTrue : Office.MsoTriState.msoFalse);
                 }
                 Log.Info("All caps " + (pressed ? "on" : "off"));
                 _ribbon?.InvalidateControl("IskAllCaps");

@@ -210,6 +210,17 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>The ribbon's "All caps" toggle on the current selection: sets it and returns the pressed state read back.</summary>
+        public bool SetAllCaps(bool on)
+        {
+            try
+            {
+                _connect.OnAllCapsToggle(null!, on);
+                return _connect.GetAllCapsPressed(null!);
+            }
+            catch (Exception ex) { Log.Error("Automation.SetAllCaps", ex); return false; }
+        }
+
         /// <summary>Key of the selected chart part ("" = the whole element or no part selection).</summary>
         public string SelectedPart()
         {
