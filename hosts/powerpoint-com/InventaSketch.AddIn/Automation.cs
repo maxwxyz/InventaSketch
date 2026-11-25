@@ -151,6 +151,23 @@ namespace InventaSketch.AddIn
         /// <summary>Button ids of the floating bar as last shown, comma-separated (UI tests; no log needed).</summary>
         public string BarIds() => _connect.LastBarIds();
 
+        /// <summary>
+        /// Build ports of the InventaSketch unit shapeName (UI tests): one line per free port "id|kind|item ids offered"
+        /// (comma separated, best first); "" if none.
+        /// </summary>
+        public string BuildPorts(string shapeName)
+        {
+            try
+            {
+                return _connect.BuildPortsOf(shapeName);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.BuildPorts " + shapeName, ex);
+                return "";
+            }
+        }
+
         /// <summary>Part key of the InventaSketch unit shapeName at the slide point (xPt, yPt) in points (charts v2), "" if none.</summary>
         public string PartAt(string shapeName, double xPt, double yPt)
         {
