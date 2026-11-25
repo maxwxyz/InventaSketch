@@ -72,6 +72,11 @@ Bars and columns become a column or bar chart, curves an XY chart with the trace
 numbers when they can be read, otherwise the largest bar is 100 (curves: picture units) and a note says so – edit the
 data or the axis ranges afterwards.
 
+Sketching a curve (2026-11-25, PowerPoint): select an XY chart or a figure, click "Sketch a curve" in the bar and draw
+the curve with the left button held (Esc or a right click cancels). On release it is recognised – constant, ramp, step,
+pulse, sawtooth, triangle, sine, PT1, decay, circle/ellipse – and added as an exact curve, or added as a smoothed curve
+when no standard shape fits; one undo step.
+
 ## 6b. Exporting for LaTeX and vector programs (2026-11-25)
 
 "Export data" (COM: Review ▸ Export data; web: export in the top bar; LibreOffice: export command) offers

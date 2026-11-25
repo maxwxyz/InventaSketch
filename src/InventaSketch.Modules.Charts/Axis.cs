@@ -52,6 +52,15 @@ namespace InventaSketch.Modules.Charts
             return Reversed ? 1 - t : t;
         }
 
+        /// <summary>Value at the normalised position <paramref name="t"/> (inverse of <see cref="T"/>; sketched curves).</summary>
+        public double V(double t)
+        {
+            if (Reversed) t = 1 - t;
+            return Kind == AxisKind.Log
+                ? Math.Pow(10, Math.Log10(Min) + t * (Math.Log10(Max) - Math.Log10(Min)))
+                : Min + t * (Max - Min);
+        }
+
         /// <summary>True if <paramref name="v"/> lies within the axis range (tolerant to rounding).</summary>
         public bool Contains(double v)
         {

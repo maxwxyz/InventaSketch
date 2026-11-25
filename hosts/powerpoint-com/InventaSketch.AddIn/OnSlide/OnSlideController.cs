@@ -28,7 +28,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown (UI tests).</summary>
         internal string LastBarRect { get; private set; } = "";
 
-        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port, Turn, Multi }
+        private enum Mode { Idle, Armed, Place, Drag, Pie, Resize, EditPoint, Rotate, Band, Connect, Branch, Draw, Port, Turn, Multi, Sketch }
 
         private static readonly Color Ghost = Color.FromArgb(240, 140, 0);
         private static readonly Color GuideColor = Color.FromArgb(220, 40, 40);
@@ -190,7 +190,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             try
             {
-                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn) return;
+                if (_mode is Mode.Place or Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Band or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Sketch) return;
                 using var dpi = DpiScope.PerMonitor();
                 SketchUnit? unit = null;
                 if (sel.Type == PowerPoint.PpSelectionType.ppSelectionShapes && sel.ShapeRange.Count == 1)
@@ -285,7 +285,7 @@ namespace InventaSketch.AddIn.OnSlide
             _pie = null;
             _guides = Array.Empty<SnapGuide>();
             _overlay.Clear();
-            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn)
+            if (wasArmedUnit is not null && _mode is Mode.Drag or Mode.Pie or Mode.Resize or Mode.EditPoint or Mode.Rotate or Mode.Connect or Mode.Branch or Mode.Draw or Mode.Port or Mode.Turn or Mode.Sketch)
             {
                 _mode = Mode.Armed;
                 if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
@@ -443,6 +443,9 @@ namespace InventaSketch.AddIn.OnSlide
 
                 case Mode.Multi:
                     return MultiMouse(message, pt, view);
+
+                case Mode.Sketch:
+                    return SketchMouse(message, pt, view);
 
                 case Mode.Armed:
                     if (HandleBar(message, pt, view, out var barSwallow)) return barSwallow;
@@ -715,6 +718,7 @@ namespace InventaSketch.AddIn.OnSlide
         private bool OnKey(int vk, bool shift, bool ctrl, bool alt)
         {
             if (_view is { } kv && ForeignForeground(kv)) return false;
+            if (_mode == Mode.Sketch && vk == VK_ESCAPE) { Cancel("sketch: Esc"); return true; }
             // Typing (text, shortcuts) hides the bar until the next selection, as in Slidemax.
             if (_mode == Mode.Armed && vk is not (VK_SHIFT or VK_CONTROL or VK_MENU) && _bar is not null)
             {
@@ -995,6 +999,9 @@ namespace InventaSketch.AddIn.OnSlide
             }
             // "Insert": one button for every element; it opens the insert box (fitting parts first, then recent, typing
             // searches the whole library) instead of growing the bar.
+            // Charts: draw a curve by hand; it is recognised (step, ramp, sine, PT1 …) or smoothed (charts v2).
+            if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first))
+                list.Add(new BarButton("sketch", "", T("Sketch a curve (draw it with the mouse)", "Kurve skizzieren (mit der Maus zeichnen)")) { IconId = IconIds.Trace });
             if (first is not null)
                 list.Add(new BarButton("insert", "", T("Insert … (Ctrl+Space)", "Einfügen … (Strg+Leertaste)")) { IconId = IconIds.Insert });
             // Self-built linkage: its degree of freedom (Grübler) at a glance.
@@ -2206,6 +2213,11 @@ namespace InventaSketch.AddIn.OnSlide
             if (id == "motion")
             {
                 ToggleMotion();
+                return;
+            }
+            if (id == "sketch")
+            {
+                BeginSketch();
                 return;
             }
             if (id == "assembly")
