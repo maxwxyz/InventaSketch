@@ -47,6 +47,35 @@ namespace InventaSketch.Modules.Annotation
             return o.Str("prefix", defaultPrefix) + Ann.Fmt(v, o.Int("decimals", 1)) + defaultSuffix + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
         }
 
+        private const string Letters = "abcdefghkmnpqrstuvwxyz";
+
+        /// <summary>
+        /// Clean slides for sharing (<see cref="Sanitizer"/>): the shown value made unrecognisable. Normalised: a letter
+        /// instead of the number and the scale factor reset (the drawn geometry keeps the proportions); randomised: the drawing scale factor varied by
+        /// a random factor (override texts: their numbers varied). Override texts are values, so "replace texts" leaves them.
+        /// </summary>
+        public static SketchObject Sanitize(ObjectType type, SketchObject o, SanitizeOptions opt, Random rng)
+        {
+            var r = Sanitizer.Basic(type, o, opt with { ReplaceTexts = false }, rng);
+            var textOver = !string.IsNullOrEmpty(o.Text);
+            var over = textOver ? o.Text! : o.Str("text", "");
+            switch (opt.Mode)
+            {
+                case SanitizeMode.Normalised:
+                    return r.WithParam("text", Letters[rng.Next(Letters.Length)].ToString()).WithParam("scale", 1.0) with { Text = null };
+                case SanitizeMode.Randomised:
+                    var k = SanitizeText.Away(rng, opt.Variation);
+                    if (over.Length > 0)
+                    {
+                        var mapped = SanitizeText.MapNumbers(over, v => v * k);
+                        return textOver ? r with { Text = mapped } : r.WithParam("text", mapped);
+                    }
+                    return r.WithParam("scale", Geo.Clamp(o.Num("scale", 1) * k, 0.0001, 10000));
+                default:
+                    return r;
+            }
+        }
+
         public static IEnumerable<ContextAction> TerminatorActions(SketchObject o)
         {
             yield return Ann.SetChoice(o, "ann.dim.arrow", new I18nText("Arrow terminators", "Pfeile als Begrenzung"), "dim-arrow", "terminator", "arrow", "arrow", "terminator");
@@ -72,6 +101,8 @@ namespace InventaSketch.Modules.Annotation
         }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 0), new Vec2(15, 0) };
+
+        public override SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng) => Dim.Sanitize(this, o, opt, rng);
 
         public override IReadOnlyList<ParamDef> Parameters
         {
@@ -184,6 +215,8 @@ namespace InventaSketch.Modules.Annotation
         public RadiusDimensionType() : base("ann.dimension.radius", new I18nText("Radius dimension", "Radiusmaß"), AnnCategories.Dimensions, "radius", "diameter", "durchmesser", "dimension", "bemaßung") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(0, 0), new Vec2(12, -9) };
+
+        public override SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng) => Dim.Sanitize(this, o, opt, rng);
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {

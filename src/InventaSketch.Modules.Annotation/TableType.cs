@@ -50,6 +50,42 @@ namespace InventaSketch.Modules.Annotation
 
         public static string Format(IEnumerable<IEnumerable<string>> rows) => string.Join("\n", rows.Select(r => string.Join("|", r)));
 
+        /// <summary>
+        /// Clean slides for sharing (<see cref="Sanitizer"/>): numbers in the cells below the header row made unrecognisable
+        /// per column – normalised: divided by the largest number of the column (two decimals); randomised: a random factor
+        /// per column and ±spread per cell, decimals kept. "Replace texts" turns cells without digits into placeholders.
+        /// </summary>
+        public override SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng)
+        {
+            var r = Sanitizer.Basic(this, o, opt, rng);
+            var raw = o.Str("cells", "");
+            if (string.IsNullOrWhiteSpace(raw)) return r;
+            var rows = Parse(raw);
+            var start = o.Flag("header", true) && rows.Count > 1 ? 1 : 0;
+            var cols = rows[0].Count;
+            for (var c = 0; c < cols; c++)
+            {
+                if (opt.Mode == SanitizeMode.Normalised)
+                {
+                    var max = 0.0;
+                    for (var i = start; i < rows.Count; i++) SanitizeText.MapNumbers(rows[i][c], v => { max = Math.Max(max, Math.Abs(v)); return v; });
+                    if (max > 0)
+                        for (var i = start; i < rows.Count; i++) rows[i][c] = SanitizeText.MapNumbers(rows[i][c], v => v / max, 2);
+                }
+                else if (opt.Mode == SanitizeMode.Randomised)
+                {
+                    var k = SanitizeText.Away(rng, opt.Variation);
+                    for (var i = start; i < rows.Count; i++) rows[i][c] = SanitizeText.MapNumbers(rows[i][c], v => v * k * SanitizeText.Vary(rng, opt.Variation));
+                }
+            }
+            if (opt.ReplaceTexts)
+                foreach (var row in rows)
+                    for (var c = 0; c < row.Count; c++)
+                        if (row[c].Trim().Length > 0 && !row[c].Any(char.IsDigit)) row[c] = SanitizeText.Placeholder(row[c], rng).Replace("\n", " ");
+            var text = Format(rows);
+            return text == raw ? r : r.WithParam("cells", text);
+        }
+
         private static List<List<string>> CellsOf(SketchObject o, Lang lang)
         {
             var raw = o.Str("cells", "");

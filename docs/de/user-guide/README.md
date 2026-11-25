@@ -136,6 +136,49 @@ Im PowerPoint-COM-Add-in bietet das „+“ an Elementen Leitungen und Elemente 
 noch ohne verbindende Leitung gesetzt, und Leitungsenden zeigen noch kein „+“; beides folgt mit einer
 Host-Aktualisierung.
 
+## 6d. Folien bereinigen zur Weitergabe (Engine 25.11.2026; Host-Befehle folgen)
+
+Bevor Folien das Unternehmen verlassen, dürfen Diagramme und andere Elemente keine echten Werte verraten. Der
+Engine-Befehl `sanitize` bereinigt die ausgewählten Elemente (oder alle Elemente der aktuellen Folie) in **einem
+Rückgängig-Schritt** und liefert einen Bericht, was geändert wurde. Die Host-Befehle (zuerst COM, dann Web und
+LibreOffice) gibt es noch nicht.
+
+- **Normiert** (Standard): gleiche Verhältnisse und Formen, Werte auf einer neutralen Skala. Datendiagramme werden auf
+  0…1 abgebildet (eine Abbildung für alle Reihen eines Diagramms, damit ihre Verhältnisse bleiben; logarithmische Achsen
+  werden durch ihr Maximum geteilt, damit die Dekaden bleiben); Balken werden durch den größten Balken oder den höchsten
+  Stapel geteilt; Grenzlinien und feste Achsenbereiche folgen; nicht mehr passende Einheiten werden geleert.
+  Kennliniendiagramme bekommen ihre Bemessungswerte auf 1 gesetzt, die Verhältnisse bleiben: Drehmomentkennlinie und
+  Wirkungsgradkennfeld (Maximalmoment und -drehzahl 1, Eckdrehzahl als Anteil; die Zahlen der Leistungsachse der
+  Drehmomentkennlinie werden ausgeblendet, das Kennfeld wird mit unveränderten Höhenlinienformen auf 90 % Bestwert
+  verschoben und seine Linienbeschriftung abgeschaltet), Pumpen- und Ventilatorkennlinie (Nullförderhöhe und
+  Maximalförderstrom 1, Betriebspunkt und statischer Anteil als Anteile), Bode-Diagramm (Frequenz bezogen auf die
+  Eckfrequenz, Verstärkung 0 dB, gemessene Beträge bezogen auf ihr Maximum, Dämpfung bleibt), Achsen (Bereiche 0…1).
+  Toleranzbänder werden als Soll-, Unter- und Oberwerte neu geschrieben, damit Prozentbänder ihre Form behalten.
+  Abbildungen bilden jede Koordinate – Kurven, Bezugslinien, Flächen, Anmerkungen, Maßpfeile, Bezugszeichen und
+  Achsmarken – mit einer x-Abbildung und einer y-Abbildung je Teilbild ab.
+- **Randomisiert**: plausible Zufallswerte mit gleichem Aussehen – gleich viele Reihen, Punkte und Kategorien, ähnlicher
+  Bereich, Kurven behalten ihren Charakter. Jede Wertachse bekommt einen Zufallsfaktor mindestens 20 % von 1 entfernt
+  und eine sanfte monotone Verbiegung; jede Kurve bekommt glattes Rauschen auf ihren Schritten (jeder Schritt behält sein
+  Vorzeichen, monotone Kurven bleiben monoton, Spitzen bleiben Spitzen); Balken schwanken um ±Streuung um einen
+  Zufallsfaktor; Bemessungswerte der Kennlinien schwanken mit plausiblen Verhältnissen (ein Bode-Diagramm mit
+  Resonanzüberhöhung behält sie). Abbildungen bekommen die Zufallsabbildungen ohne Rauschen, damit Anmerkungen und
+  Bezugszeichen auf ihren Kurven bleiben. Derselbe Startwert ergibt dasselbe Ergebnis.
+- **Optionen**: *Kategorien umbenennen* („A“, „B“, „C“ … – dieselbe Kategorie bekommt in jeder Reihe denselben
+  Buchstaben; auch Zahlen als Zeilenbeschriftung wie Jahre); *Texte ersetzen* (Titel, Beschriftungen, Bildunterschriften,
+  Anmerkungen, Reihennamen, freie Texte von Textelementen und Tabellenzellen werden zu neutralen
+  „Lorem ipsum“-Platzhaltern gleicher Länge; eigene Achsentitel werden zu „x“ und „y“; Kennzeichen und Zahlen wie
+  „FIG. 1“, „R1“ oder „10“ bleiben; die Namen der verwendeten Bezugszeichen werden zu „Teil 10“); *Metadaten entfernen*
+  (mit dem Element gespeicherte Herkunfts- und Importdaten); *Startwert* und *Streuung* (Standard ±25 %).
+- **Andere Elemente**: Längen- und Radiusmaße zeigen einen Buchstaben statt des Werts (normiert) oder einen Wert mit
+  verändertem Zeichnungsmaßstab (randomisiert); Zahlen in Tabellen werden durch das Spaltenmaximum geteilt oder je Spalte
+  verändert; Bauteilwerte elektrischer Schaltzeichen werden entfernt (normiert) oder verändert (randomisiert). Alle
+  anderen Elemente behalten ihre Werte; die Text- und Metadatenoptionen gelten für jedes Element.
+- **Bericht**: geänderte von allen Elementen, aufgeteilt in Werte, Texte, Metadaten und Bezugszeichennamen, eine Zeile je
+  Elementtyp und der verwendete Startwert (auf Deutsch oder Englisch).
+
+Die Werte werden im Elementmodell geändert, nicht nur im Bild: Ein bereinigtes Diagramm behält seine echten Daten nicht
+in der Datei. Rückgängig stellt alles wieder her, solange die Präsentation geöffnet ist.
+
 ## 6. Module
 
 Jedes Modul hat eine eigene Seite mit Elementen, Ansichten und Parametern:

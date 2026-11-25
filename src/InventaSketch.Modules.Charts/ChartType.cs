@@ -85,6 +85,9 @@ namespace InventaSketch.Modules.Charts
 
         public static bool Mono(RenderContext ctx) => ctx.Monochrome || ctx.Doc.Settings.Monochrome;
 
+        /// <summary>Clean slides for sharing: chart values normalised or randomised (<see cref="ChartSanitize"/>).</summary>
+        public override SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng) => ChartSanitize.Apply(this, o, opt, rng);
+
         /// <summary>
         /// Every drawn part (charts v2): each curve, its markers, bars, axes, ticks, tick labels, axis titles, grid, legend …
         /// The key is the primitive tag (<see cref="ChartTags"/>); legend pieces form one part.

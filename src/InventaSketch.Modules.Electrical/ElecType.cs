@@ -99,6 +99,21 @@ namespace InventaSketch.Modules.Electrical
 
         public override IAssemblyViewSwitch? AssemblyViewSwitch => Installation ? InstallationViews.Rule : null;
 
+        /// <summary>
+        /// Clean slides for sharing (<see cref="Sanitizer"/>): the component value ("10 kΩ", "100 nF") – normalised: removed
+        /// (the designator stays); randomised: its numbers multiplied by a random factor. Designators are not values.
+        /// </summary>
+        public override SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng)
+        {
+            var r = Sanitizer.Basic(this, o, opt, rng);
+            var value = o.Str("value", "");
+            if (value.Trim().Length == 0 || opt.Mode == SanitizeMode.None) return r;
+            if (opt.Mode == SanitizeMode.Normalised) return r.WithParam("value", "");
+            var k = SanitizeText.Away(rng, opt.Variation);
+            var mapped = SanitizeText.MapNumbers(value, v => SanitizeText.Round(v * k, 2));
+            return mapped == value ? r : r.WithParam("value", mapped);
+        }
+
         public IReadOnlyList<ViewSpec> ViewSpecs => _views;
 
         public override IReadOnlyList<ParamDef> Parameters
