@@ -60,6 +60,26 @@ namespace InventaSketch.Modules.Optics.Tests
                 yield return ("Imaging: object at 2f, principal rays meet at 2f′", d, new Rect(85, 115, 200, 70));
             }
             {
+                var lens = I("optics.lens.biconvex", 160, 150).WithParam("focal", true);
+                var obj = I("optics.object.arrow", 100, 142).WithParam("image", "construction").WithParam("names", true);
+                yield return ("Image construction: g = 1.5f, real image b = 3f, twice the size", Fx.Doc(Axis(80, 300, 150), lens, obj), new Rect(85, 110, 215, 80));
+            }
+            {
+                var lens = I("optics.lens.biconvex", 160, 150).WithParam("focal", true);
+                var obj = I("optics.object.arrow", 140, 142).WithParam("image", "construction").WithParam("names", true);
+                yield return ("Image construction: g < f, virtual upright image (magnifier)", Fx.Doc(Axis(80, 240, 150), lens, obj), new Rect(85, 100, 155, 70));
+            }
+            {
+                var lens = I("optics.lens.biconcave", 160, 150).WithParam("f", 30.0).WithParam("focal", true);
+                var obj = I("optics.object.arrow", 100, 142).WithParam("image", "construction").WithParam("names", true);
+                yield return ("Image construction: diverging lens, virtual reduced image", Fx.Doc(Axis(80, 230, 150), lens, obj), new Rect(85, 120, 145, 50));
+            }
+            {
+                var mirror = I("optics.mirror.concave", 200, 150).WithParam("focal", true);
+                var obj = I("optics.object.arrow", 140, 142).WithParam("image", "construction").WithParam("names", true);
+                yield return ("Image construction: concave mirror, g = 1.5f", Fx.Doc(Axis(60, 210, 150), mirror, obj), new Rect(65, 125, 145, 60));
+            }
+            {
                 var lens = I("optics.lens.biconvex", 180, 150).WithParam("focal", true);
                 var obj = I("optics.object.arrow", 100, 142).WithParam("bundle", "fan");
                 var d = Bundle(Fx.Doc(Axis(80, 290, 150), lens, obj, I("optics.screen", 262, 150)), obj.Id, "tip");

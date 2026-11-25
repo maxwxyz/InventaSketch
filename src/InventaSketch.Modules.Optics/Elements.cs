@@ -148,6 +148,38 @@ namespace InventaSketch.Modules.Optics
             return new Emission(rays, null);
         }
 
+        /// <summary>Half height of the lens's own bundle: half the parameter <c>beam</c>, or 70 % of the half aperture.</summary>
+        private static double BundleHalf(SketchObject o) => o.Num("beam", 0) is var beam && beam > 0 ? beam / 2 : 0.7 * o.Size.H / 2;
+
+        /// <summary>
+        /// Grips: the focal length at the focal point behind the lens (+f on the axis), and also at the one in front (−f) when
+        /// the focal points are drawn; with the lens's own bundle docked, the edge of the bundle (bundle height).
+        /// </summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var f = Math.Abs(F(o));
+            var focal = o.Flag("focal", false);
+            var part = focal ? OpticsTags.Focal : null;
+            if (focal) yield return Grips.Page(o, Grips.FocalFront, new Vec2(-f, 0), DragConstraint.Horizontal, Grips.FocalLabel(f), part);
+            yield return Grips.Page(o, Grips.FocalBack, new Vec2(f, 0), DragConstraint.Horizontal, Grips.FocalLabel(f), part);
+            if (Beams.BundlesOf(ctx.Doc, o.Id).Count == 0) yield break;
+            var half = BundleHalf(o);
+            var x = o.Str("bundle", "parallel") == "point" ? 0 : -Math.Max(f, 15);
+            yield return Grips.Page(o, Grips.Beam, new Vec2(x, -half), DragConstraint.Vertical, Grips.BeamLabel(2 * half));
+        }
+
+        /// <summary>A focal point dragged along the axis sets f to its distance from the lens (whole mm); the bundle edge its height.</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            var local = Grips.ToLocal(o, pagePos);
+            return key switch
+            {
+                Grips.FocalFront or Grips.FocalBack => o.WithParam("f", Grips.FocalLength(local.X)),
+                Grips.Beam => o.WithParam("beam", Grips.BundleHeight(local.Y)),
+                _ => o,
+            };
+        }
+
         public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)
         {
             yield return new PartInfo(OpticsTags.Body, new I18nText("Lens body", "Linsenkörper"), "shape");
@@ -278,6 +310,35 @@ namespace InventaSketch.Modules.Optics
             var f = F(o);
             yield return Anchor.Point(AnchorRole.Port, new Vec2(vertex - f, 0), "f");
             yield return Anchor.Point(AnchorRole.Port, new Vec2(vertex - 2 * f, 0), "cc");
+        }
+
+        /// <summary>
+        /// Curved mirrors: the focal length as a grip at the focal point F on the axis (in front of a concave mirror, behind a
+        /// convex one), and at the centre of curvature (2f) when the focal point is drawn.
+        /// </summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            if (!Curved) yield break;
+            var (_, vertex, _) = Layout(o);
+            var f = F(o);
+            var focal = o.Flag("focal", false);
+            var part = focal ? OpticsTags.Focal : null;
+            yield return Grips.Page(o, Grips.MirrorFocal, new Vec2(vertex - f, 0), DragConstraint.Horizontal, Grips.FocalLabel(Math.Abs(f)), part);
+            if (focal) yield return Grips.Page(o, Grips.MirrorCentre, new Vec2(vertex - 2 * f, 0), DragConstraint.Horizontal, Grips.FocalLabel(Math.Abs(f)), part);
+        }
+
+        /// <summary>F dragged along the axis sets f to its distance from the vertex; the centre of curvature to half of it.</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (!Curved) return o;
+            var (_, vertex, _) = Layout(o);
+            var x = Grips.ToLocal(o, pagePos).X - vertex;
+            return key switch
+            {
+                Grips.MirrorFocal => o.WithParam("f", Grips.FocalLength(x)),
+                Grips.MirrorCentre => o.WithParam("f", Grips.FocalLength(x / 2)),
+                _ => o,
+            };
         }
 
         public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)
@@ -493,6 +554,23 @@ namespace InventaSketch.Modules.Optics
         {
             yield return Ox.NumberInput(o, "optics.opening", new I18nText("Opening", "Öffnung"), Parameters[0], "stop");
         }
+
+        /// <summary>The opening as a grip at the inner edge of the upper blade, dragged across the axis.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var open = Open(o);
+            var share = Geo.Clamp(o.Num("opening", 0.35), 0.02, 0.95);
+            yield return Grips.Page(o, Grips.Opening, new Vec2(0, -open), DragConstraint.Vertical,
+                Grips.Label("Opening", "Öffnung", Math.Round(share * 100), "%"), OpticsTags.Body);
+        }
+
+        /// <summary>The blade edge dragged to a distance from the axis sets the opening as a share of the half height (steps of 0.01).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key != Grips.Opening || o.Size.H < 1e-9) return o;
+            var y = Math.Abs(Grips.ToLocal(o, pagePos).Y);
+            return o.WithParam("opening", Geo.Clamp(Dragging.Snap(y / (o.Size.H / 2), 0.01), 0.02, 0.95));
+        }
     }
 
     /// <summary>Transmission grating: a plate with grooves; orders ±1 … ±3 leave at sin θm = sin θ + m·sin θ1·λ/550 nm.</summary>
@@ -674,6 +752,17 @@ namespace InventaSketch.Modules.Optics
             var rays = Ox.Spaced(-alpha, alpha, n).Select(a => new StartRay(m.Apply(origin), m.ApplyLinear(new Vec2(Math.Cos(a), Math.Sin(a))).Normalized())).ToList();
             return new Emission(rays, o.Id);
         }
+
+        /// <summary>With a docked bundle: the edge ray of the output cone (half cone angle).</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            if (Beams.BundlesOf(ctx.Doc, o.Id).Count == 0) yield break;
+            var alpha = Geo.DegToRad(Geo.Clamp(o.Num("spread", 12), 1, 80));
+            yield return Grips.Cone(o, new Vec2(o.Size.W / 2, 0), alpha, Math.Max(10, 0.3 * o.Size.W));
+        }
+
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+            => key == Grips.Spread ? o.WithParam("spread", Grips.ConeDegrees(Grips.ToLocal(o, pagePos), new Vec2(o.Size.W / 2, 0))) : o;
 
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {

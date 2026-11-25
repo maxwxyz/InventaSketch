@@ -47,7 +47,7 @@ Radiometrie).
 | `optics.detector.camera` | Kamera: Objektiv auf den Bildsensor fokussiert | `label` |
 | `optics.detector.eye` | Auge (Schnitt): Hornhaut, Iris, Linse, Netzhaut, Sehnerv | `label` |
 | `optics.screen.plain` | Schirm | `label` |
-| `optics.object.arrow` | Gegenstandspfeil auf der Achse (Abbildungsfiguren) | `bundle` Konstruktionsstrahlen/Fächer, `rays`, `label` |
+| `optics.object.arrow` | Gegenstandspfeil auf der Achse (Abbildungsfiguren) | `bundle` Konstruktionsstrahlen/Fächer, `rays`, `image` aus/Bild/Konstruktion (Bild), `names` (false), `label` |
 | `optics.ray` | Lichtstrahl (Punktobjekt, Seitenkoordinaten) | `trace` (true), `arrows` Mitte/Ende/keine, `virtual` (true), `tail` (0 = automatisch) |
 | `optics.axis.line` | Optische Achse (Strichpunktlinie, Punktobjekt) | `label` |
 
@@ -79,9 +79,10 @@ angedockt, heißt die Aktion **Strahlenbündel entfernen** und entfernt es.
 
 **Live-Verfolgung.** Strahlen werden bei jedem Zeichnen aus dem aktuellen Dokument verfolgt: Alle Optik-Elemente der
 Seite (ohne ausgeblendete Ebenen) wirken mit. Jedes Optik-Element meldet die Strahlen seiner Seite als abhängige Objekte
-(`ObjectType.Dependents`, `DependsOnNeighbours`); Verschieben, Drehen, Skalieren oder Ändern eines Elements zeichnet die
-Strahlen im selben Rückgängig-Schritt neu, der angedockte Startpunkt folgt seinem Emitter über die normale Anbindung.
-Nichts muss von Hand neu verfolgt werden.
+(`ObjectType.Dependents`, `DependsOnNeighbours`); Elemente, die auf Licht wirken (eine optische Fläche haben), melden
+zusätzlich die Gegenstandspfeile der Seite, die ein Bild zeichnen. Verschieben, Drehen, Skalieren oder Ändern eines
+Elements oder das Ziehen eines seiner Griffe zeichnet Strahlen und Bilder daher im selben Rückgängig-Schritt neu, der
+angedockte Startpunkt folgt seinem Emitter über die normale Anbindung. Nichts muss von Hand neu verfolgt werden.
 
 **Verwendete Physik:**
 
@@ -104,6 +105,62 @@ Nichts muss von Hand neu verfolgt werden.
   (30–400 mm), und die offenen Enden eines Bündels werden quer dazu auf eine Linie gebracht. Ein freier Strahl, der nichts
   trifft, endet an seinem zweiten Punkt.
 
+## Bildkonstruktion
+
+Ein Gegenstandspfeil (`optics.object.arrow`), vor dem auf seiner Achse eine Sammel- oder Zerstreuungslinse oder ein
+gekrümmter Spiegel steht (das nächste solche Element, dessen Mitte höchstens die halbe größere Kastenseite von der
+Achsenlinie des Pfeils entfernt ist; ein Spiegel muss dem Pfeil seine spiegelnde Seite zuwenden), zeichnet sein **Bild** –
+Parameter `image`, eine Auswahl in der Kontextleiste:
+
+- `off`: kein Bild.
+- `image` (Vorgabe): nur der Bildpfeil. Ein **reelles** Bild (das Licht trifft sich dort wirklich) wird durchgezogen
+  gezeichnet, ein **virtuelles** gestrichelt (Linienrolle verdeckt).
+- `construction`: das Bild mit den drei **Konstruktionsstrahlen** von der Pfeilspitze, je in einer Farbe: Parallelstrahl
+  (rot: parallel zur Achse bis zum Element, dann durch F′ oder vom virtuellen F′ weg), Mittelpunktstrahl (grün: durch den
+  optischen Mittelpunkt bzw. Scheitel, ungebrochen bzw. symmetrisch reflektiert) und Brennpunktstrahl (blau: durch F oder
+  in Richtung F, nach dem Element parallel zur Achse). Rückverlängerungen zu einem virtuellen Bild und der Teil eines
+  Brennpunktstrahls, der nur auf F zielt, sind gestrichelt. Wie in Lehrbuchfiguren knicken die Strahlen an der Hauptebene
+  des Elements, die bei Bedarf über die gezeichnete Öffnung hinaus verlängert ist.
+
+Jeder Punkt des Pfeils (Fuß und Spitze) wird mit der Linsengleichung **1/f = 1/g + 1/b** und dem Abbildungsmaßstab
+**β = −b/g** abgebildet (g Gegenstandsweite, b Bildweite; b > 0 hinter einer Linse bzw. vor einem Spiegel = reell,
+b < 0 = virtuell; `ThinLens.ImageDistance`/`Magnification`). Beispiele (f = 40 mm): g = 2f ergibt b = 2f, β = −1;
+g = 1,5f ergibt b = 3f, β = −2; g = f/2 ergibt b = −f, β = 2 (virtuell, aufrecht, vergrößert). Ein Spiegel klappt den
+Bildraum auf seine Vorderseite zurück; das Bild eines Wölbspiegels liegt hinter ihm. Bei g = f (Bild im Unendlichen), bei
+Bildern weiter als 5 m oder mehr als 50-fach vergrößert wird kein Bild gezeichnet (die Konstruktionsstrahlen schon, ohne
+Brennpunktstrahl).
+
+`names` (Schalter **Namen Gegenstand und Bild**) schreibt die Namen an die Spitzen: deutsch „G“ und „B“, englisch „O“ und
+„I“. Bild und Strahlen sind reine paraxiale Geometrie aus dem Dokument, werden mit dem Pfeil gezeichnet (außerhalb seines
+Kastens, wie die Brennpunktmarken einer Linse) und folgen live, wenn Pfeil, Linse oder Spiegel verschoben oder geändert
+werden. Ein am Pfeil angedocktes Strahlenbündel (Konstruktionsstrahlen, verfolgt) arbeitet weiterhin unabhängig davon:
+Die verfolgten Strahlen treffen sich im gezeichneten Bild.
+
+## Griffe (Ziehgriffe)
+
+Werte werden direkt in der Zeichnung gezogen (`ObjectType.DragHandles` / `MoveHandle`, Seiten-mm; die Hosts zeigen und
+bedienen sie allgemein). Ein Zug schreibt nur den Parameter; Kasten (`Size`) und Lage ändern sich nie.
+
+| Element | Griff (Schlüssel) | Wo | Bewegung | Schreibt |
+|---|---|---|---|---|
+| Linsen | `f.back`, bei gezeichneten Brennpunkten auch `f.front` | F′ bei +f (F bei −f) auf der Achse | entlang der Achse | `f` = Abstand von der Linse, ganze mm, 1–5000 (das Vorzeichen bleibt beim Typ) |
+| Linsen mit angedocktem eigenem Bündel | `beam` | Rand des Bündels (Start der parallelen Strahlen bzw. auf der Linsenebene bei Strahlen aus 2f) | quer zur Achse | `beam` = doppelter Abstand von der Achse, ganze mm |
+| Hohl-/Wölbspiegel | `f`, bei gezeichnetem F und M auch `cc` | F (vor dem Hohlspiegel, hinter dem Wölbspiegel), M bei 2f | entlang der Achse | `f` = Abstand vom Scheitel (M: die Hälfte davon), ganze mm |
+| Blende / Spalt | `opening` | Innenkante der oberen Lamelle | quer zur Achse | `opening` = Anteil der halben Höhe, Schritte 0,01, 0,02–0,95 |
+| Lampe, LED (Kegel) mit angedockten Strahlen | `spread` | auf dem oberen Randstrahl des Kegels, jenseits des Kolbens | frei; zählt der Winkel von der Kolbenmitte aus | `spread` = halber Kegelwinkel, ganze Grad, 1°–80° |
+| Lampe, LED (parallel) mit angedockten Strahlen | `beam` | Rand des Bündels an Kolben/Kuppel | quer zur Achse | `beam`, ganze mm |
+| Laser mit mehreren Strahlen und angedockten Strahlen | `beam` | Rand des Strahls am Austritt | quer zur Achse | `beam`, ganze mm |
+| Lichtwellenleiter mit angedockten Strahlen | `spread` | auf dem oberen Randstrahl des Austrittskegels | frei, Winkel vom Ausgangsende | `spread`, ganze Grad |
+| Freier verfolgter Strahl | `dir` | auf dem gezeichneten Strahl, halbwegs zum zweiten Punkt bzw. zum ersten getroffenen Element | frei, um den Start (Bogen) | zweiter Punkt um den ersten gedreht, ganze Grad (im Uhrzeigersinn am Bildschirm), Länge bleibt |
+
+Jeder Griff trägt eine zweisprachige Beschriftung mit seinem aktuellen Wert („Brennweite f: 40 mm“, „Halber Kegelwinkel:
+12°“, „Startwinkel: 30°“). Die Griffe von Linsen und Spiegeln gehören bei gezeichneten Marken zum Teil `focal` (Auswahl
+der Brennpunkte zeigt sie). Emitter-Griffe erscheinen nur, solange ein Strahlenbündel angedockt ist (sonst ist kein Kegel
+zu sehen); ein an einem Emitter angedockter Strahl übernimmt dessen Richtung (Emitter drehen) und hat keinen eigenen Griff;
+ein nicht verfolgter Strahl wird über seine Punkte bearbeitet. Prismen und Gitter haben keine Griffe (kein Parameter
+entspricht natürlich einem Punkt der Zeichnung); der Winkel der 1. Ordnung eines Gitters wird in seinem Zahlenfeld
+eingestellt.
+
 ## Fanganker
 
 - Jedes Element bietet seinen optischen Mittelpunkt als `Port`-Anker (`o`; Spiegel: Scheitel; Detektoren und Schirm:
@@ -116,8 +173,9 @@ Nichts muss von Hand neu verfolgt werden.
 
 ## Teile und Bereinigen
 
-Teileschlüssel (`PartLooks`): `body`, `focal`, `hatch`, `detail`, `label` an Elementen; `ray` (alle Strahlen, einzeln
-`ray.<i>`) und `virtual` an Strahlen; `axis` an der optischen Achse. Sie lassen sich einzeln umgestalten oder ausblenden.
+Teileschlüssel (`PartLooks`): `body`, `focal`, `hatch`, `detail`, `label` an Elementen; `image`, `construction` und
+`names` am Gegenstandspfeil (aufgeführt, solange gezeichnet); `ray` (alle Strahlen, einzeln `ray.<i>`) und `virtual` an
+Strahlen; `axis` an der optischen Achse. Sie lassen sich einzeln umgestalten oder ausblenden.
 
 Folien bereinigen (`Sanitize`): Optik-Elemente enthalten keine schützenswerten Werte; der allgemeine Durchgang ersetzt
 Freitext-Beschriftungen (Kennzeichen wie `L1` bleiben). Brennweiten, Brechzahlen und Positionen bleiben erhalten.
@@ -125,8 +183,8 @@ Freitext-Beschriftungen (Kennzeichen wie `L1` bleiben). Brennweiten, Brechzahlen
 ## Persistenz
 
 Der gesamte Zustand liegt im Dokumentmodell: Parameter, `Size`, `Transform`, die Punkte des Strahls und die Anbindung
-seines ersten Punkts (`AnchorId` = `exit`/`o`/`tip`). Die verfolgten Wege werden nicht gespeichert, sondern aus dem
-Dokument berechnet; JSON-Rundreisen werden deshalb identisch gezeichnet.
+seines ersten Punkts (`AnchorId` = `exit`/`o`/`tip`). Die verfolgten Wege, Bilder, Konstruktionsstrahlen und Griffe
+werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen werden deshalb identisch gezeichnet.
 
 ## Hinweise für Hosts
 
@@ -136,12 +194,22 @@ Dokument berechnet; JSON-Rundreisen werden deshalb identisch gezeichnet.
   Einheiten der Folie als Kontext zeichnen und die nach einer Bearbeitung gemeldeten abhängigen Objekte neu zeichnen, wie
   bereits bei Wänden und Leitungen.
 - **Strahlenbündel einfügen** fügt ein neues Objekt ein (`ContextAction.ApplyInDocument`). Die Engine (Office Web,
-  LibreOffice) übernimmt das; das PowerPoint-COM-Add-in übernimmt derzeit aus einem Aktionsergebnis nur die eigenen
-  Objekte der gewählten Einheit, dort hat die Aktion also keine sichtbare Wirkung, bis das Add-in neue Objekte eines
-  Aktionsergebnisses als neue Einheiten einfügt. Das Bibliothekselement „Lichtstrahl (verfolgt)“, dessen Start man auf
-  eine Quelle zieht, funktioniert in jedem Host.
+  LibreOffice) übernimmt das, und das PowerPoint-COM-Add-in fügt die neuen Objekte eines Aktionsergebnisses als neue
+  Einheiten ein. Das Bibliothekselement „Lichtstrahl (verfolgt)“, dessen Start man auf eine Quelle zieht, funktioniert in
+  jedem Host.
 - Die gespeicherten Punkte eines angedockten Strahls werden durch die Verfolgung nicht aktualisiert; Hosts mit
   Punktgriffen zeigen den angedockten Start und den (unbenutzten) zweiten Punkt.
+- **Gegenstandspfeile mit Bild hängen von Nachbarn ab** wie Strahlen: mit den übrigen Einheiten der Folie als Kontext
+  zeichnen und neu zeichnen, wenn eine Linse oder ein Spiegel, durch die sie abbilden, bearbeitet wird (sie werden als deren
+  abhängige Objekte gemeldet). Das Bild liegt außerhalb des Pfeilkastens, die native Gruppe des Pfeils wächst also mit
+  (wie eine Linse mit ihren Brennpunktmarken).
+- **Griffe:** Das COM-Add-in zeigt und zieht die Griffe jedes Typs allgemein (Vorschau des gezogenen Elements, ein
+  Rückgängig-Schritt beim Loslassen, dann werden die abhängigen Objekte neu gezeichnet). Strahlen und Bilder in *anderen*
+  Einheiten folgen beim Loslassen, nicht während des Ziehens: Ein Live-Folgen beim Ziehen eines Griffs oder beim
+  Verschieben von Quelle, Linse oder Spiegel braucht einen Host, der die gemeldeten abhängigen Objekte mit dem bewegten
+  Element in seiner Zieh-Vorschau neu zeichnet (offener Punkt). `moveHandle` der Engine (Web, LibreOffice) erkennt eine
+  Änderung nur an Parametern und Größe; der Richtungsgriff des freien Strahls, der die Punkte des Strahls ändert, braucht
+  dort auch den Vergleich der Punkte.
 
 ## Grenzen und nächste Schritte
 
@@ -150,5 +218,7 @@ Dokument berechnet; JSON-Rundreisen werden deshalb identisch gezeichnet.
 - Der Lichtwellenleiter führt kein Licht vom Eingang zum Ausgang; ein Bündel am Ausgangsende beginnt einen neuen Kegel.
 - Licht, das ein Element von einer ungewöhnlichen Seite erreicht (etwa durch den Rand einer Linse), wird von der einzigen
   optischen Fläche des Elements behandelt.
-- Mögliche nächste Schritte: automatische Bildkonstruktion (reelles/virtuelles Bild), dicke Linsen mit zwei Flächen,
-  Vorlagen für Michelson/Mach-Zehnder.
+- Die Bildkonstruktion verwendet nur die erste Linse bzw. den ersten gekrümmten Spiegel auf der Achse des Pfeils (kein Bild
+  eines Bildes durch ein zweites Element); das verfolgte Strahlenbündel durchläuft dagegen alle Elemente.
+- Mögliche nächste Schritte: Bilder durch mehrere Elemente, dicke Linsen mit zwei Flächen, Vorlagen für
+  Michelson/Mach-Zehnder.

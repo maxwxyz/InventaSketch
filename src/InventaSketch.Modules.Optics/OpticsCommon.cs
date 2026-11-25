@@ -44,6 +44,87 @@ namespace InventaSketch.Modules.Optics
         public const string Virtual = "virtual";
         /// <summary>The dash-dot optical axis.</summary>
         public const string Axis = "axis";
+        /// <summary>Image arrow of an object arrow (real: solid, virtual: dashed).</summary>
+        public const string Image = "image";
+        /// <summary>Construction rays of an object arrow's image (parallel, central and focal ray).</summary>
+        public const string Construction = "construction";
+        /// <summary>Names of object and image ("G"/"B" in German, "O"/"I" in English).</summary>
+        public const string Names = "names";
+    }
+
+    /// <summary>
+    /// Keys, labels and snapping of the drag handles (grips) of the optics types (<see cref="ObjectType.DragHandles"/>): a value
+    /// is dragged on the drawing (a focal point along the axis, the edge ray of a cone, the edge of a bundle) and written to its
+    /// parameter; the box (<see cref="SketchObject.Size"/>) never changes.
+    /// </summary>
+    internal static class Grips
+    {
+        /// <summary>Focal point in front of a lens (local −f), shown with the focal points.</summary>
+        public const string FocalFront = "f.front";
+        /// <summary>Focal point behind a lens (local +f).</summary>
+        public const string FocalBack = "f.back";
+        /// <summary>Focal point of a curved mirror.</summary>
+        public const string MirrorFocal = "f";
+        /// <summary>Centre of curvature of a curved mirror (2f), shown with the focal point.</summary>
+        public const string MirrorCentre = "cc";
+        /// <summary>Edge ray of an emitted cone (half cone angle, parameter <c>spread</c>).</summary>
+        public const string Spread = "spread";
+        /// <summary>Edge of a parallel bundle (bundle height, parameter <c>beam</c>).</summary>
+        public const string Beam = "beam";
+        /// <summary>Inner edge of a stop's upper blade (parameter <c>opening</c>).</summary>
+        public const string Opening = "opening";
+        /// <summary>Start direction of a free ray (around its first point).</summary>
+        public const string Direction = "dir";
+
+        /// <summary>A number for a label: up to two decimals, decimal comma in German.</summary>
+        public static string Num(double v, Lang lang)
+        {
+            var s = Math.Round(v, 2).ToString("0.##", CultureInfo.InvariantCulture);
+            if (s == "-0") s = "0";
+            return lang == Lang.De ? s.Replace('.', ',') : s;
+        }
+
+        /// <summary>"Focal length f: 40 mm" / "Brennweite f: 40 mm".</summary>
+        public static I18nText Label(string en, string de, double v, string unit)
+        {
+            var sep = unit == "°" ? "" : " ";
+            return new I18nText(en + ": " + Num(v, Lang.En) + sep + unit, de + ": " + Num(v, Lang.De) + sep + unit);
+        }
+
+        public static I18nText FocalLabel(double f) => Label("Focal length f", "Brennweite f", f, "mm");
+        public static I18nText SpreadLabel(double deg) => Label("Half cone angle", "Halber Kegelwinkel", deg, "°");
+        public static I18nText BeamLabel(double h) => Label("Bundle height", "Bündelhöhe", h, "mm");
+
+        /// <summary>A focal length dragged to <paramref name="distance"/> mm: whole millimetres, 1 … 5000 mm.</summary>
+        public static double FocalLength(double distance) => Geo.Clamp(Dragging.Snap(Math.Abs(distance), 1), 1, 5000);
+
+        /// <summary>A bundle height from the dragged half height: whole millimetres, 1 … 500 mm.</summary>
+        public static double BundleHeight(double half) => Geo.Clamp(Dragging.Snap(2 * Math.Abs(half), 1), 1, 500);
+
+        /// <summary>
+        /// Half cone angle (whole degrees, 1° … 80°) of the point <paramref name="local"/> seen from the cone's origin
+        /// <paramref name="origin"/> (local coordinates, axis = +x); either side of the axis counts.
+        /// </summary>
+        public static double ConeDegrees(Vec2 local, Vec2 origin)
+        {
+            var v = local - origin;
+            var deg = v.X <= 1e-9 ? 80 : Geo.RadToDeg(Math.Atan2(Math.Abs(v.Y), v.X));
+            return Geo.Clamp(Dragging.Snap(deg, 1), 1, 80);
+        }
+
+        /// <summary>A page point in the local coordinates of box object <paramref name="o"/>.</summary>
+        public static Vec2 ToLocal(SketchObject o, Vec2 page) => o.Matrix().Invert().Apply(page);
+
+        /// <summary>The handle in local coordinates moved to the page (position, allowed direction).</summary>
+        public static DragHandle Page(SketchObject o, string key, Vec2 local, DragConstraint constraint, I18nText label, string? part = null)
+            => Dragging.ToPage(new DragHandle(key, local, constraint, label) { Part = part }, o);
+
+        /// <summary>
+        /// The grip of the edge ray of a cone with half angle <paramref name="alpha"/> (radians) from <paramref name="origin"/>:
+        /// on the upper edge ray, <paramref name="radius"/> from the origin (local coordinates).
+        /// </summary>
+        public static DragHandle Cone(SketchObject o, Vec2 origin, double alpha, double radius)
+            => Page(o, Spread, origin + new Vec2(Math.Cos(alpha), -Math.Sin(alpha)) * radius, DragConstraint.Free, SpreadLabel(Geo.RadToDeg(alpha)));
     }
 
     /// <summary>Parameter definition helpers (all parameters are optional).</summary>
@@ -212,14 +293,20 @@ namespace InventaSketch.Modules.Optics
         public override string Category => _category;
         public override IReadOnlyList<string> Keywords => _keywords;
 
-        /// <summary>Rays read the elements of their page; elements name the rays as their dependents.</summary>
+        /// <summary>
+        /// Rays read the elements of their page and object arrows image through the next lens or curved mirror; elements
+        /// name the rays (and, if they act on light, the object arrows that draw an image) as their dependents.
+        /// </summary>
         public override bool DependsOnNeighbours => true;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
         {
             var page = ctx.Doc.PageOf(o.Id);
             if (page is null) return Array.Empty<string>();
-            return ctx.Doc.ObjectsOn(page).Where(x => x.Id != o.Id && x.Type == RayType.TypeId).Select(x => x.Id).ToList();
+            var optical = !o.IsPointGeometry && Surfaces(o).Count > 0;
+            return ctx.Doc.ObjectsOn(page)
+                .Where(x => x.Id != o.Id && (x.Type == RayType.TypeId || optical && x.Type == Sources.ObjectId && Imaging.Shown(x)))
+                .Select(x => x.Id).ToList();
         }
 
         /// <summary>Optical surfaces in local coordinates (box types); empty for elements light passes unaffected.</summary>
