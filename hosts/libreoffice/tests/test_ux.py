@@ -179,6 +179,71 @@ class PageSessionRules(unittest.TestCase):
         self.assertEqual(ux.units_containing(units, None), [])
 
 
+def bounds(x, y, w=40.0, h=30.0, r=0):
+    return {"x": x, "y": y, "w": w, "h": h, "r": r}
+
+
+class CanvasRules(unittest.TestCase):
+    def test_drag_delta_is_the_common_pure_move(self):
+        self.assertEqual(ux.drag_delta([(bounds(10, 20), bounds(25, 18))]), (15, -2))
+        self.assertEqual(ux.drag_delta([(bounds(10, 20), bounds(25, 18)), (bounds(0, 0, 5, 5), bounds(15, -2, 5, 5))]),
+                         (15, -2))
+
+    def test_no_snap_for_resize_rotation_other_moves_or_no_move(self):
+        self.assertIsNone(ux.drag_delta([(bounds(10, 20), bounds(10, 20))]))                  # a click
+        self.assertIsNone(ux.drag_delta([(bounds(10, 20), bounds(10, 20, w=50))]))            # resized
+        self.assertIsNone(ux.drag_delta([(bounds(10, 20), bounds(30, 20, r=9000))]))          # rotated
+        self.assertIsNone(ux.drag_delta([(bounds(10, 20), bounds(25, 20)), (bounds(0, 0), bounds(0, 9))]))
+        self.assertIsNone(ux.drag_delta([(None, bounds(1, 2))]))
+        self.assertIsNone(ux.drag_delta([]))
+
+    def test_snap_tolerance_follows_the_zoom_of_the_drag(self):
+        # 30 mm in 120 px: 0.25 mm per pixel, 8 px = 2 mm.
+        self.assertAlmostEqual(ux.snap_tolerance((30.0, 0.0), 120), 2.0)
+        self.assertEqual(ux.snap_tolerance((300.0, 0.0), 20), 10.0)      # kept within limits
+        self.assertEqual(ux.snap_tolerance((1.0, 0.0), 500), 0.5)
+        self.assertIsNone(ux.snap_tolerance((30.0, 0.0), None))           # scripting: engine default
+        self.assertIsNone(ux.snap_tolerance((30.0, 0.0), 2))
+
+    def test_release_ends_a_drag_to_snap(self):
+        self.assertTrue(ux.snaps_after_release(1, 0, (10, 10), (60, 40)))
+        self.assertTrue(ux.snaps_after_release(1, ux.MOD_SHIFT, (10, 10), (60, 40)))   # constrained move
+        self.assertFalse(ux.snaps_after_release(1, 0, (10, 10), (11, 10)))             # a click
+        self.assertFalse(ux.snaps_after_release(1, ux.MOD_CTRL, (10, 10), (60, 40)))   # copy
+        self.assertFalse(ux.snaps_after_release(1, ux.MOD_ALT, (10, 10), (60, 40)))    # free move
+        self.assertFalse(ux.snaps_after_release(2, 0, (10, 10), (60, 40)))             # right button
+        self.assertFalse(ux.snaps_after_release(1, 0, None, (60, 40)))                 # press not seen
+
+    def test_ctrl_space(self):
+        self.assertTrue(ux.is_quick_insert_key(ux.KEY_SPACE, ux.MOD_CTRL))
+        self.assertFalse(ux.is_quick_insert_key(ux.KEY_SPACE, 0))
+        self.assertFalse(ux.is_quick_insert_key(ux.KEY_SPACE, ux.MOD_CTRL | ux.MOD_SHIFT))
+        self.assertFalse(ux.is_quick_insert_key(ux.KEY_RETURN, ux.MOD_CTRL))
+
+    def test_command_urls_are_encoded(self):
+        self.assertEqual(ux.command_url("arrange", action="align:row"), "inventasketch.libreoffice:arrange?action=align%3Arow")
+        self.assertEqual(ux.command_url("explode"), "inventasketch.libreoffice:explode")
+
+    def test_context_menu_of_a_gear(self):
+        entries = ux.context_entries(dict(GEAR, view="axial"), "en")
+        self.assertEqual(entries[0], ("sub", "Switch view", [("item", "Side", ux.command_url("setView", view="side"))]))
+        self.assertEqual([e[1] for e in entries[1:-1]], ["Select assembly", "Redraw from model",
+                                                         "More in the InventaSketch sidebar…"])
+        self.assertEqual(entries[-1], ("sep",))
+
+    def test_context_menu_of_a_link_and_of_several_units(self):
+        link = ux.context_entries(LINK, "de")
+        self.assertEqual([e[1] for e in link[:5]], ["Bahn zeichnen", "Zwischenlagen", "Horizontal spiegeln",
+                                                    "Vertikal spiegeln", "Um 90 Grad drehen"])
+        self.assertEqual(link[2][2], ux.command_url("transform", kind="mirrorH"))
+        multi = ux.context_entries(MULTI, "en")
+        self.assertEqual([e[1] for e in multi if e[0] == "item"],
+                         ["All in view: Stick", "Centres on one horizontal line", "Select assembly",
+                          "More in the InventaSketch sidebar…"])
+        self.assertEqual(multi[1][2], ux.command_url("arrange", action="align:row"))
+        self.assertEqual(ux.context_entries(None), [])
+
+
 @unittest.skipUnless(built_engine(), "engine not built (dotnet build hosts/libreoffice/engine)")
 class EngineFlows(unittest.TestCase):
     """The page session's engine calls with payloads drawn in separate sessions (as stored on separate shapes)."""
@@ -337,6 +402,30 @@ class EngineFlows(unittest.TestCase):
             self.assertGreater(len(redraw), 2)
             link = next(o["id"] for o in state["objects"] if o["kind"] == "points" and o["type"].startswith("kin.link"))
             self.assertEqual(self.call("dof", s, id=link)["dof"], 1)
+        finally:
+            self.call("closeSession", s)
+
+    def test_snap_after_a_drag_meshes_a_gear_drawn_as_another_unit(self):
+        # As host.snap_after_move: the dragged unit keeps its stored model, the drag delta goes through snapMove and
+        # is applied with move (coupled); the dragged unit is redrawn in place.
+        gear = self.item("mech.gear.spur", "axial")
+        units = self.drawn_units([(gear, 100, 80), (gear, 200, 80)])
+        s, own, known, base = self.page_session(units)
+        try:
+            a, b = own[units[0]["id"]], own[units[1]["id"]]
+            snap = self.call("snapMove", s, ids=b, dx=-72.0, dy=1.0, tolerance=4.0)
+            self.assertEqual(snap["kind"], "mesh")
+            state = self.call("move", s, ids=b, dx=snap["dx"], dy=snap["dy"])
+            redraw, gone = self.redraw(s, own, known, base, state)
+            self.assertTrue(set(b) <= set(redraw))
+            self.assertEqual(gone, [])
+            plan = {u["id"]: u for u in self.call("drawPlan", s, ids=redraw)["units"]}
+            self.assertEqual(set(plan), {units[1]["id"]} | ({units[0]["id"]} if set(a) & set(redraw) else set()))
+            box = self.call("drawPlan", s, ids=a + b)["units"]
+            centres = [(u["bounds"]["x"] + u["bounds"]["w"] / 2, u["bounds"]["y"] + u["bounds"]["h"] / 2) for u in box]
+            distance = ((centres[0][0] - centres[1][0]) ** 2 + (centres[0][1] - centres[1][1]) ** 2) ** 0.5
+            # In mesh: the centre distance is the radius of the engine's mesh guide circle (sum of the pitch radii).
+            self.assertAlmostEqual(distance * 25.4 / 72.0, snap["guides"][0]["radius"], delta=0.3)
         finally:
             self.call("closeSession", s)
 

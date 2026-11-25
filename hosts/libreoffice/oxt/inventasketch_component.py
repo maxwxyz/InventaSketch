@@ -21,9 +21,14 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
   panel?control=<key>&text=<t> | &item=<entry>    type into / choose in a control of the open sidebar panel, or
   panel?press=<button label>                      press one of its buttons (scripting, tests/ui_smoke.py)
   cleanup                                         remove document properties of deleted units
+  snapMove[?px=<pixels>&undo=<n>]                 snap the selected unit(s) after a native move (canvas.py runs it
+                                                  after a mouse drag), coupled, one undo step
+  quickInsert[?text=<t>]                          open the Library panel with the cursor in its search field
+                                                  (Ctrl+Space in Impress/Draw)
   about                                           version and licence
 The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
-and ``buildItems`` fill the sidebar panel.
+and ``buildItems`` fill the sidebar panel. The job ``CanvasJob`` (Jobs.xcu, document event "OnViewCreated") attaches
+the on-canvas handlers of canvas.py (snapping after a drag, Ctrl+Space, context menu) to every Impress/Draw view.
 The sub-folder pythonpath is added to sys.path by LibreOffice.
 """
 
@@ -34,19 +39,21 @@ from urllib.parse import parse_qs
 import uno
 import unohelper
 from com.sun.star.frame import FeatureStateEvent, XDispatch, XDispatchProvider, XTerminateListener
+from com.sun.star.task import XJob
 from com.sun.star.lang import XInitialization, XServiceInfo
 
-from inventasketch_lo import EXTENSION_ID, VERSION, host, i18n, mainthread, sidebar
+from inventasketch_lo import EXTENSION_ID, VERSION, canvas, host, i18n, mainthread, sidebar
 from inventasketch_lo.engine import Engine, EngineError, engine_command
 from inventasketch_lo.log import log, log_path
 
 IMPLEMENTATION = "org.inventasketch.libreoffice.ProtocolHandler"
 PANEL_FACTORY = "org.inventasketch.libreoffice.PanelFactory"
+CANVAS_JOB = "org.inventasketch.libreoffice.CanvasJob"
 PROTOCOL = "inventasketch.libreoffice:"
 DECK = "InventaSketchDeck"
 COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
             "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
-            "buildItems", "turn", "arrange", "assembly", "panel")
+            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 
@@ -159,11 +166,18 @@ def _run(ctx, frame, command, args):
         if controller is None or host.doc_kind(controller.getModel()) is None:
             message(ctx, frame, i18n.text("notSupported"), error=True)
             return
+        canvas.attach(controller)
+        if command == "snapMove":
+            _snap_move(ctx, frame, controller, args)
+            return
         if command == "insert":
             item = args.get("item") or args.get("")
             host.insert(engine_for(ctx), controller, item, _num(args.get("x")), _num(args.get("y")), args.get("name"))
         elif command == "library":
             _open_deck(ctx, frame)
+        elif command == "quickInsert":
+            _open_deck(ctx, frame)
+            _focus_library(frame, args.get("text"))
         elif command == "editModel":
             _open_deck(ctx, frame)
             _describe(ctx, frame, controller, quiet=False)
@@ -259,7 +273,46 @@ def _describe(ctx, frame, controller, quiet):
         p.show_unit(info)
 
 
+def _snap_move(ctx, frame, controller, args):
+    """Snap after a native move. From the mouse (``auto``) errors are only logged: no message box after a drag."""
+    try:
+        undo = args.get("undo")
+        done = host.snap_after_move(engine_for(ctx), controller, _num(args.get("px")),
+                                    int(undo) if undo not in (None, "") else None)
+    except Exception as ex:
+        if not args.get("auto"):
+            raise
+        log("ERROR: snap after move: %s" % ex)
+        log(traceback.format_exc())
+        return
+    if done is not None:
+        _describe(ctx, frame, controller, quiet=True)
+
+
+def _focus_library(frame, text=None):
+    """Puts the cursor into the Library panel's search field. The deck creates its panels asynchronously: without the
+    panel the request waits and the panel takes it when it is filled (sidebar.request_focus)."""
+    panels = [p for p in sidebar.panels_for(frame) if p.mode == "library" and p.categories]
+    if not panels:
+        sidebar.request_focus(frame, text)
+        return
+    # Not through XDeck.getPanels()/XPanel.expand: that crashed soffice 26.8 once the deck was shown (2026-11-25).
+    panels[0].focus_search(text)
+
+
 def _open_deck(ctx, frame):
+    """Shows the InventaSketch deck. Through the sidebar API first: the dispatch ``.uno:SidebarDeck.<deck>`` toggles,
+    so it would close a deck that is already open (Ctrl+Space twice)."""
+    try:
+        provider = frame.getController().getSidebar()
+        provider.setVisible(True)
+        provider.showDecks(True)
+        deck = provider.getDecks().getByName(DECK)
+        if not deck.isActive():
+            deck.activate(True)
+        return
+    except Exception as ex:
+        log("open deck through the sidebar API: %s" % ex)
     try:
         helper = ctx.ServiceManager.createInstanceWithContext("com.sun.star.frame.DispatchHelper", ctx)
         helper.executeDispatch(frame, ".uno:SidebarDeck." + DECK, "", 0, ())
@@ -282,6 +335,7 @@ def _panel_run(frame, command, argument):
 
 
 sidebar.SERVICES["run"] = _panel_run
+sidebar.SERVICES["language"] = lambda: ui_language(_STATE["ctx"] or uno.getComponentContext())
 
 
 class ProtocolHandler(unohelper.Base, XDispatchProvider, XDispatch, XInitialization, XServiceInfo):
@@ -295,6 +349,10 @@ class ProtocolHandler(unohelper.Base, XDispatchProvider, XDispatch, XInitializat
     def initialize(self, args):
         if args:
             self.frame = args[0]
+            try:
+                canvas.attach(self.frame.getController())
+            except Exception:
+                pass
 
     def getImplementationName(self):
         return IMPLEMENTATION
@@ -337,6 +395,30 @@ class ProtocolHandler(unohelper.Base, XDispatchProvider, XDispatch, XInitializat
         mainthread.call(lambda: run(self.ctx, self.frame, command, parsed), self.post)
 
 
+class CanvasJob(unohelper.Base, XJob):
+    """Job on the document event "OnViewCreated" (Jobs.xcu): attaches the on-canvas handlers (canvas.py) to the new
+    Impress/Draw view."""
+
+    def __init__(self, ctx, *args):
+        self.ctx = ctx
+        _STATE["ctx"] = _STATE["ctx"] or ctx
+
+    def execute(self, args):
+        try:
+            env = {}
+            for a in args or ():
+                if a.Name == "Environment":
+                    env = {v.Name: v.Value for v in a.Value}
+            frame = env.get("Frame")
+            model = env.get("Model")
+            controller = frame.getController() if frame is not None else                 model.getCurrentController() if model is not None else None
+            canvas.attach(controller)
+        except Exception:
+            log("canvas job: " + traceback.format_exc())
+        return None
+
+
 g_ImplementationHelper = unohelper.ImplementationHelper()
 g_ImplementationHelper.addImplementation(ProtocolHandler, IMPLEMENTATION, ("com.sun.star.frame.ProtocolHandler",))
 g_ImplementationHelper.addImplementation(sidebar.PanelFactory, PANEL_FACTORY, ("com.sun.star.ui.UIElementFactory",))
+g_ImplementationHelper.addImplementation(CanvasJob, CANVAS_JOB, ("com.sun.star.task.Job",))

@@ -4,6 +4,8 @@ Library: one search box for the whole library (engine ``search``: both languages
 higher, parts that fit the selected unit first and marked); without typing the "Suggestions" entry lists the fitting
 parts and the recent items, the other categories browse the catalog. Double-click or "Insert" inserts the marked item:
 a fitting part where it fits the selected unit (``insertFitting``), anything else in the middle of the page/visible area.
+Ctrl+Space in the document (canvas.py, command ``quickInsert``) puts the cursor into the search field; Enter there
+inserts the marked item (the first hit) and gives the focus back to the document, Escape only gives it back.
 
 Selection: follows the document selection (selection listener). One unit: views (only with more than one), F = n for
 links, context-only actions in the fixed order of the UX rules (draw the path and ghost positions for F = 1, select
@@ -20,7 +22,7 @@ import traceback
 
 import uno
 import unohelper
-from com.sun.star.awt import XActionListener, XItemListener, XTextListener, XWindowListener
+from com.sun.star.awt import XActionListener, XItemListener, XKeyListener, XTextListener, XWindowListener
 from com.sun.star.lang import XComponent
 from com.sun.star.ui import XSidebarPanel, XToolPanel, XUIElement, XUIElementFactory
 from com.sun.star.ui.UIElementType import TOOLPANEL
@@ -38,6 +40,23 @@ SERVICES = {}
 BUSY = {"count": 0}
 _CATALOGS = {}
 SUGGESTIONS = "\x00suggestions"
+
+
+# Ctrl+Space before the Library panel exists: [(frame, search text or None)], taken by the panel once it is filled.
+_FOCUS_REQUESTS = []
+
+
+def request_focus(frame, text=None):
+    del _FOCUS_REQUESTS[:]
+    _FOCUS_REQUESTS.append((frame, text))
+
+
+def _take_focus_request(frame):
+    for i, (f, text) in enumerate(_FOCUS_REQUESTS):
+        if f == frame:
+            del _FOCUS_REQUESTS[i]
+            return True, text
+    return False, None
 
 
 def panels_for(frame):
@@ -68,6 +87,28 @@ class _Listener(unohelper.Base, XActionListener, XItemListener, XTextListener):
 
     def textChanged(self, event):
         self._run(event)
+
+    def disposing(self, event):
+        pass
+
+
+class _SearchKeys(unohelper.Base, XKeyListener):
+    """Enter in the search field inserts the marked item, Escape returns to the document."""
+
+    def __init__(self, panel):
+        self.panel = panel
+
+    def keyPressed(self, event):
+        try:
+            if event.KeyCode == ux.KEY_RETURN:
+                self.panel.insert_from_search()
+            elif event.KeyCode == ux.KEY_ESCAPE:
+                self.panel.focus_document()
+        except Exception:
+            log("sidebar search key: " + traceback.format_exc())
+
+    def keyReleased(self, event):
+        pass
 
     def disposing(self, event):
         pass
@@ -166,6 +207,11 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         if self.mode == "selection":
             self._listen_selection()
         _PANELS.append(self)
+        try:
+            from . import canvas
+            canvas.attach(self.frame.getController() if self.frame is not None else None)
+        except Exception:
+            log("sidebar: canvas not attached: " + traceback.format_exc())
         # Filling the panel calls the engine: done after the sidebar has finished creating the panel.
         post = SERVICES.get("post")
         if post is not None:
@@ -178,6 +224,14 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             return
         if self.mode == "library":
             self._load_catalog()
+            wanted, text = _take_focus_request(self.frame)
+            if wanted:
+                # Once more through the main loop: the panel window is laid out and visible then.
+                post = SERVICES.get("post")
+                if post is not None:
+                    post(lambda: self.disposed or self.focus_search(text))
+                else:
+                    self.focus_search(text)
         else:
             # describe updates every panel of the frame (the library needs the selection for fitting parts).
             self.load_selection(quiet=True)
@@ -251,6 +305,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self._add("searchLabel", "FixedText", Label=t("search"), HelpText=t("searchHint"))
         search = self._add("search", "Edit", Text="", HelpText=t("searchHint"))
         search.addTextListener(_Listener(lambda e: self._refilter()))
+        search.addKeyListener(_SearchKeys(self))
         cats = self._add("category", "ListBox", Dropdown=True, LineCount=20)
         cats.addItemListener(_Listener(lambda e: self._refilter()))
         items = self._add("items", "ListBox", Dropdown=False, MultiSelection=False)
@@ -440,6 +495,28 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
 
     def _run(self, command, argument):
         SERVICES["run"](self.frame, command, argument)
+
+    def focus_search(self, text=None):
+        """Puts the cursor into the search field with its text selected, so typing replaces it (Ctrl+Space)."""
+        search = self.controls["search"]
+        if text is not None:
+            search.setText(text)
+        current = search.getText()
+        search.setFocus()
+        search.setSelection(uno.createUnoStruct("com.sun.star.awt.Selection", 0, len(current)))
+
+    def insert_from_search(self):
+        """Enter in the search field: inserts the marked item and returns to the document."""
+        if self._current_item() is None:
+            return
+        self._insert()
+        self.focus_document()
+
+    def focus_document(self):
+        try:
+            self.frame.getComponentWindow().setFocus()
+        except Exception as ex:
+            log("focus document: %s" % ex)
 
     # ------------------------------------------------------------ selection
 

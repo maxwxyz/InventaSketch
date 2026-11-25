@@ -8,7 +8,9 @@ and decides which units on the page have to be redrawn after an engine operation
 - the context-only action list of the selection panel in the fixed order of the UX rules (roadmap, plan 2026-11-24);
 - labels of build ports and search rows, the typed turn angle;
 - page session bookkeeping: which units to import again so every unit's own objects come from its own payload, which
-  objects to redraw after an operation and which units became stale or empty.
+  objects to redraw after an operation and which units became stale or empty;
+- on-canvas interaction (canvas.py): whether a mouse release ends a drag to snap, the common move of the dragged units,
+  the snap tolerance at the zoom of the drag, the Ctrl+Space key and the context menu entries.
 """
 
 import json
@@ -256,3 +258,107 @@ def units_containing(units, ids):
     """Unit ids (page order of ``units``) that contain one of the object ids."""
     wanted = set(ids or ())
     return [uid for uid, objs in units.items() if any(o in wanted for o in objs)]
+
+
+# ------------------------------------------------------------------ on-canvas interaction (canvas.py)
+
+# Snap distance on screen, as in the PowerPoint COM add-in and the Office web add-in (8 px).
+SNAP_PX = 8.0
+# UNO key code and modifiers (com.sun.star.awt.Key, KeyModifier, MouseButton).
+KEY_SPACE = 1284
+KEY_RETURN = 1280
+KEY_ESCAPE = 1281
+MOD_SHIFT, MOD_CTRL, MOD_ALT = 1, 2, 4
+MOUSE_LEFT = 1
+
+
+def drag_delta(pairs, tolerance=0.05):
+    """The common translation (dx, dy in pt) of the selected units after a mouse drag, or None.
+
+    ``pairs``: [(stored bounds, current bounds)] per selected unit (pt, see metadata.bounds_json). Only a pure move
+    counts: no unit resized or rotated, every unit moved by the same vector, and the move longer than ``tolerance``."""
+    from . import metadata
+    delta = None
+    for stored, current in pairs or ():
+        if not stored or not current:
+            return None
+        if abs(metadata.rotation_delta(stored, current)) > 1e-6:
+            return None
+        if abs(stored["w"] - current["w"]) > tolerance or abs(stored["h"] - current["h"]) > tolerance:
+            return None
+        d = (current["x"] - stored["x"], current["y"] - stored["y"])
+        if delta is None:
+            delta = d
+        elif abs(d[0] - delta[0]) > tolerance or abs(d[1] - delta[1]) > tolerance:
+            return None
+    if delta is None or (delta[0] ** 2 + delta[1] ** 2) ** 0.5 <= tolerance:
+        return None
+    return delta
+
+
+def snap_tolerance(delta_mm, drag_px, snap_px=SNAP_PX, low=0.5, high=10.0):
+    """Snap tolerance in mm for a drag: ``snap_px`` screen pixels at the zoom of the drag (mm moved per pixel the mouse
+    moved), kept within [low, high]; None (engine default) without a usable pixel distance."""
+    try:
+        px = float(drag_px)
+    except (TypeError, ValueError):
+        return None
+    mm = (delta_mm[0] ** 2 + delta_mm[1] ** 2) ** 0.5
+    if px < 4 or mm <= 0:
+        return None
+    return max(low, min(high, snap_px * mm / px))
+
+
+def is_quick_insert_key(key_code, modifiers):
+    """Ctrl+Space (Cmd+Space on macOS, MOD1 in UNO) without Shift or Alt."""
+    return key_code == KEY_SPACE and (modifiers or 0) & (MOD_SHIFT | MOD_CTRL | MOD_ALT) == MOD_CTRL
+
+
+def snaps_after_release(buttons, modifiers, press, release):
+    """True if a mouse release ends a drag that may move units and should snap: left button, no Ctrl (copy) or Alt
+    (free move, as in the other hosts), and the mouse moved at least two pixels between press and release."""
+    if press is None or release is None or not (buttons or 0) & MOUSE_LEFT:
+        return False
+    if (modifiers or 0) & (MOD_CTRL | MOD_ALT):
+        return False
+    return ((release[0] - press[0]) ** 2 + (release[1] - press[1]) ** 2) ** 0.5 >= 2
+
+
+def command_url(command, **args):
+    """``inventasketch.libreoffice:<command>?k=v`` with URL-encoded values (parse_command decodes them)."""
+    from urllib.parse import quote
+    query = "&".join("%s=%s" % (k, quote(str(v), safe="")) for k, v in sorted(args.items()) if v is not None)
+    return "inventasketch.libreoffice:%s%s" % (command, "?" + query if query else "")
+
+
+def context_entries(info, lang=None):
+    """Context menu entries for the selected unit(s), the selection panel's actions in its order:
+    [("item", label, url) | ("sub", label, [("item", label, url)]) | ("sep",)]; [] without a unit.
+
+    One unit: the other views (submenu, only with more than one view), the context-only actions of
+    ``selection_actions``, redraw from the model and the sidebar for the rest (build "+", turning). Several units: the
+    engine's selection-wide operations, select assembly and the sidebar. A separator ends the block."""
+    if not info:
+        return []
+    out = []
+    if show_views(info):
+        current = info.get("view")
+        views = [("item", label, command_url("setView", view=vid)) for vid, label in info.get("views") or []
+                 if vid != current]
+        if views:
+            out.append(("sub", i18n.text("ctxViews", lang), views))
+    for command, argument, label, tip in selection_actions(info):
+        # Mirror and rotate read better with the longer wording ("Mirror horizontally").
+        text = label_of(tip if command == "transform" else label, lang)
+        if command == "transform":
+            url = command_url(command, kind=argument)
+        elif command == "arrange":
+            url = command_url(command, action=argument)
+        else:
+            url = command_url(command)
+        out.append(("item", text, url))
+    if info.get("count", 1) == 1:
+        out.append(("item", i18n.text("redraw", lang), command_url("redraw")))
+    out.append(("item", i18n.text("ctxSidebar", lang), command_url("editModel")))
+    out.append(("sep",))
+    return out

@@ -9,6 +9,9 @@ soffice):
 2. Save as .odp and .pptx, reload both and check unit names, stored models (UserDefinedAttributes in .odp, document
    properties in both) and that a unit loaded from each file can be re-rendered from its stored model.
 3. Export the slide as PNG for visual review; Draw and Calc: insert one item each.
+   UI/UX and on-canvas rounds: library search and insert, fitting parts, build, turn, arrange, explode; the
+   canvas job attaches to a new view, snapping after a native move (command snapMove) meshes a gear, coupled parts
+   follow a moved shaft, a resize does not snap.
 4. Optional (``--from-powerpoint <file.pptx>``): a presentation saved by the PowerPoint COM add-in (units with the
    ``ISK_MODEL_<id>`` document mirror) is recognised and editable; the edited file is saved as
    ``<out>/from-powerpoint-edited.pptx`` for the reverse check in PowerPoint.
@@ -551,6 +554,90 @@ def ux_phase(office, out, logs):
     office.close(doc)
 
 
+def log_lines(logs, needle):
+    path = os.path.join(logs, "libreoffice.log")
+    if not os.path.isfile(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [line.strip() for line in f if needle in line]
+
+
+def distance_mm(a, b):
+    (ax, ay), (bx, by) = centre_mm(a), centre_mm(b)
+    return ((ax - bx) ** 2 + (ay - by) ** 2) ** 0.5
+
+
+def canvas_phase(office, out, logs):
+    """On-canvas round: the job attaches the handlers to a new view; snapping after a native move (the command the
+    mouse release runs) meshes a gear with another unit, coupled parts follow a dragged shaft, resizes do not snap.
+    Real mouse drags, Ctrl+Space and the context menu are driven by ui_smoke.py."""
+    attached_before = len(log_lines(logs, "canvas: handlers attached (impress)"))
+    doc = office.new("simpress")
+    page = doc.getDrawPages().getByIndex(0)
+    attached = len(log_lines(logs, "canvas: handlers attached (impress)"))
+    check("canvas.jobAttaches", attached == attached_before + 1, "%d -> %d (job OnViewCreated, before any command)"
+          % (attached_before, attached))
+    from com.sun.star.awt import Point, Size
+    undo = doc.getUndoManager()
+    # Gear B dropped 1.3 mm beside the meshing position of gear A: the snap (default tolerance 2 mm) meshes it.
+    known = set(units_of(page))
+    office.run(doc, "insert?item=mech.spur.axial&x=60&y=60")
+    a_name = list(new_units(page, known))[0]
+    known = set(units_of(page))
+    office.run(doc, "insert?item=mech.spur.axial&x=160&y=60")
+    b_name = list(new_units(page, known))[0]
+    a, b = units_of(page)[a_name], units_of(page)[b_name]
+    model_b = attribute(b, ATTR_MODEL)
+    dropped = Point(b.Position.X - 7350, b.Position.Y + 80)       # centre at 86.5/60.8 mm, mesh distance is 25.2 mm
+    b.Position = dropped
+    count = page.getCount()
+    select_shapes(office, doc, [b])
+    office.run(doc, "snapMove")
+    a, b = units_of(page).get(a_name), units_of(page).get(b_name)
+    dist = distance_mm(a, b) if a is not None and b is not None else -1
+    title = undo.getCurrentUndoActionTitle() if undo.isUndoPossible() else ""
+    check("canvas.snap.mesh", b is not None and abs(dist - 25.2) < 0.3 and page.getCount() == count,
+          "centre distance %.2f mm (dropped at 26.5 mm), %d shapes (before %d)" % (dist, page.getCount(), count))
+    check("canvas.snap.modelStored", b is not None and attribute(b, ATTR_MODEL) != model_b)
+    check("canvas.snap.oneUndoStep", title in ("InventaSketch: Move and snap", "InventaSketch: Verschieben und einrasten"),
+          title)
+    sel = doc.getCurrentController().getSelection()
+    check("canvas.snap.selectionKept", sel is not None and sel.getCount() == 1 and sel.getByIndex(0).Name == b_name)
+    undo.undo()
+    b = units_of(page).get(b_name)
+    check("canvas.snap.undo", b is not None and abs(b.Position.X - dropped.X) <= 2 and abs(b.Position.Y - dropped.Y) <= 2
+          and page.getCount() == count, "back at the dropped position (an API move is no undo action)")
+    # A shaft dragged by 20 mm: the gear on it follows (coupling), both redrawn in the same step.
+    known = set(units_of(page))
+    office.run(doc, "insert?item=mech.shaft.line&x=60&y=120")
+    shaft_name = list(new_units(page, known))[0]
+    select_shapes(office, doc, [units_of(page)[shaft_name]])
+    known = set(units_of(page))
+    office.run(doc, "insertFitting?item=mech.spur.stick")
+    gear_name = list(new_units(page, known))[0]
+    shaft, gear = units_of(page)[shaft_name], units_of(page)[gear_name]
+    gear_before = centre_mm(gear)
+    shaft.Position = Point(shaft.Position.X + 2000, shaft.Position.Y)
+    select_shapes(office, doc, [shaft])
+    office.run(doc, "snapMove")
+    gear = units_of(page).get(gear_name)
+    moved = (centre_mm(gear)[0] - gear_before[0], centre_mm(gear)[1] - gear_before[1]) if gear is not None else (0, 0)
+    check("canvas.snap.coupledFollow", gear is not None and abs(moved[0] - 20) < 0.5 and abs(moved[1]) < 0.5,
+          "gear on the shaft moved by %.2f/%.2f mm" % moved)
+    # A native resize is no drag: nothing is snapped or redrawn.
+    a = units_of(page)[a_name]
+    actions = len(undo.getAllUndoActionTitles())
+    a.Size = Size(a.Size.Width + 1500, a.Size.Height + 1500)
+    select_shapes(office, doc, [a])
+    office.run(doc, "snapMove")
+    check("canvas.snap.notForResize", len(undo.getAllUndoActionTitles()) == actions and
+          units_of(page)[a_name].Size.Width == a.Size.Width, "%d undo actions" % len(undo.getAllUndoActionTitles()))
+    check("canvas.snap.logged", len(log_lines(logs, "snap after move:")) >= 2,
+          (log_lines(logs, "snap after move:") or [""])[0][-160:])
+    export_png(office, doc, page, os.path.join(out, "canvas.png"))
+    office.close(doc)
+
+
 def draw_calc_phase(office, out):
     for factory, label in (("sdraw", "draw"), ("scalc", "calc")):
         doc = office.new(factory)
@@ -595,6 +682,7 @@ def main():
         office = Office(ctx)
         names, odp, pptx = impress_phase(office, out)
         ux_phase(office, out, logs)
+        canvas_phase(office, out, logs)
         reload_phase(office, odp, names, "odp", expect_attributes=True)
         reload_phase(office, pptx, names, "pptx", expect_attributes=False)
         draw_calc_phase(office, out)
