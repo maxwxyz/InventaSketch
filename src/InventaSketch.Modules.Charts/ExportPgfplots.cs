@@ -172,6 +172,7 @@ namespace InventaSketch.Modules.Charts
                 var f = _f;
                 var n = f.Panels.Count;
                 L("% --- Chart " + Fmt.I(number) + ": " + Comment(f.Name) + " [" + Comment(f.Id) + "]");
+                foreach (var note in f.Notes) L("% Note: " + Comment(note));
                 L("\\begin{tikzpicture}");
                 var common = CommonOptions();
                 if (n > 1)

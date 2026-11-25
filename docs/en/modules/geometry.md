@@ -15,9 +15,29 @@ standard is claimed.
 |---|---|---|
 | Small coordinate-system symbol for free-body diagrams (`ann.coordsys`), angle and radius dimensions (`ann.dimension.angle`, `ann.dimension.radius`) | annotation | technical drawing marks, no ranges or grid |
 | Data charts (`chart.xy`, `chart.axes`, bar charts, characteristic curves) | charts | measured or engineering data with units and legends |
-| Coordinate systems with grid and grid points to dock on, function graphs from a formula family, vectors, angles measured from the drawing, school constructions | **math** | this module |
+| 2D coordinate system and function graphs in math style (`chart.math.axes`, `chart.math.function`) | charts | moved there in charts v2 stage 4, see [below](#moved-to-the-charts-module-charts-v2-stage-4-2026-11-25) |
+| Coordinate systems with grid and grid points to dock on, function graphs from a formula family, vectors, angles measured from the drawing, school constructions | **math** | this module (the 2D coordinate system and function graph types remain for existing slides) |
 
 The modules do not depend on each other. Lines of any module can dock on the ports of this one (`AnchorRole.Port`).
+
+## Moved to the charts module (charts v2 stage 4, 2026-11-25)
+
+The 2D coordinate system and the function graphs are offered by the charts module, so all charts share one axis
+system (axis breaks, parts, export): `chart.axes.math` (Coordinate system (2D)), `chart.axes.math.quadrant`,
+`chart.function` (parabola), `chart.function.linear`, `chart.function.sine`, `chart.function.exponential`, plus a typed
+formula (`chart.function.formula`) and a function generator (`chart.function.generator`); see
+[charts](charts.md#coordinate-systems-and-function-graphs-charts-v2-stage-4).
+
+- The items `math.axes.cartesian`, `math.axes.cartesian.quadrant`, `math.graph.function`, `math.graph.function.linear`,
+  `math.graph.function.sine` and `math.graph.function.exponential` name those items as `LibraryItem.Alternative`:
+  while the charts module is registered they are left out of galleries and search (the category "Function graphs" then
+  disappears); they are still found by id, and the types `math.axes.cartesian` and `math.graph.function` stay
+  registered, so existing slides keep rendering and editing. On its own, the math module still offers everything.
+- Points and vectors dock on the chart version as before: the origin is a port, the axes are rails (`axis.x`,
+  `axis.y`), every grid point is a snap point (`g<x>_<y>` with the data values, e.g. `g2_3`), function graphs have the
+  ports `zero0…`, `ext0…` and `yint`; vector ends also dock anywhere on the chart's surface and follow it (tested in
+  `ChartsMergeTests`). The vector suggests the chart coordinate system as companion (the math one without charts).
+- Number line, 3D axes and polar grid stay in this module.
 
 ## Conventions
 

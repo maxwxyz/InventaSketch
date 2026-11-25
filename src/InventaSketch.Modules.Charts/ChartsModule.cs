@@ -19,6 +19,7 @@ namespace InventaSketch.Modules.Charts
             new XyChart(), new BarChart(), new AxesChart(),
             new TorqueChart(), new EfficiencyChart(), new PumpChart(), new BodeChart(), new BandChart(),
             new FigureChart(),
+            new MathAxesChart(), new FunctionChart(),
         });
 
         private static readonly Lazy<IReadOnlyDictionary<string, ObjectType>> ById = new(() => AllTypes.Value.ToDictionary(t => t.Id, StringComparer.Ordinal));
@@ -32,6 +33,7 @@ namespace InventaSketch.Modules.Charts
         public IEnumerable<LibraryCategory> Categories => new[]
         {
             new LibraryCategory(ChartCategories.Data, new I18nText("Data charts", "Datendiagramme"), Id, 10),
+            new LibraryCategory(ChartCategories.Math, new I18nText("Coordinate systems & function graphs", "Koordinatensysteme & Funktionsgraphen"), Id, 15),
             new LibraryCategory(ChartCategories.Engineering, new I18nText("Characteristic curves", "Kennlinien & Kennfelder"), Id, 20),
             new LibraryCategory(FigureChart.CategoryId, new I18nText("Principle and technical figures", "Prinzip- und technische Abbildungen"), Id, 30),
         };
@@ -80,6 +82,32 @@ namespace InventaSketch.Modules.Charts
             Add("axes.loglog", AxesChart.TypeId, "Log–log axes", "Doppelt logarithmische Achsen",
                 P(("xscale", "log"), ("yscale", "log"), ("xrange", "1;1000"), ("yrange", "0.1;100"), ("arrows", false), ("box", true)),
                 kw: new[] { "log", "logarithmic", "logarithmisch", "doppeltlogarithmisch" });
+            Add("line.break", XyChart.TypeId, "Line chart with axis break", "Liniendiagramm mit Achsenbruch",
+                P(("style", "linepoints"), ("data", "0;12\n1;15\n2;14\n3;96\n4;98\n5;101\n6;99"), ("ybreaks", "25-85")),
+                kw: new[] { "axis break", "break", "broken axis", "achsenbruch", "unterbrochene achse", "bruch" });
+
+            // Coordinate systems and function graphs in math style (charts v2 stage 4: moved from the math module, which keeps
+            // its types for existing slides; its library items step back in favour of these).
+            Add("axes.math", MathAxesChart.TypeId, "Coordinate system (2D)", "Koordinatensystem (2D)",
+                kw: new[] { "cartesian", "kartesisch", "achsenkreuz", "origin", "ursprung" });
+            Add("axes.math.quadrant", MathAxesChart.TypeId, "First quadrant", "Erster Quadrant",
+                P(("xmin", 0.0), ("xmax", 6.0), ("ymin", 0.0), ("ymax", 5.0)), new Size2(60, 55), "quadrant", "positive", "erster quadrant");
+            Add("function", FunctionChart.TypeId, "Parabola y = x²", "Parabel y = x²", kw: new[] { "quadratic", "quadratisch", "normalparabel" });
+            Add("function.linear", FunctionChart.TypeId, "Linear function", "Lineare Funktion",
+                P(("function", "linear"), ("a", 0.5), ("d", 1.0), ("xmin", -5.0), ("xmax", 5.0), ("ymin", -4.0), ("ymax", 4.0)),
+                kw: new[] { "line", "straight", "gerade", "steigung", "slope" });
+            Add("function.sine", FunctionChart.TypeId, "Sine curve", "Sinuskurve",
+                P(("function", "sine"), ("xmin", -6.5), ("xmax", 6.5), ("ymin", -1.5), ("ymax", 1.5), ("ystep", 0.5), ("xpi", true)),
+                new Size2(90, 45), "sin", "trigonometric", "trigonometrisch", "periodic", "periodisch");
+            Add("function.exponential", FunctionChart.TypeId, "Exponential function", "Exponentialfunktion",
+                P(("function", "exponential"), ("xmin", -4.0), ("xmax", 3.0), ("ymin", -1.0), ("ymax", 8.0)),
+                kw: new[] { "exp", "growth", "wachstum", "e-funktion" });
+            Add("function.formula", FunctionChart.TypeId, "Function from a formula", "Funktion aus einer Formel",
+                P(("function", "expression"), ("expr", FunctionChart.DefaultExpression), ("xmin", -3.0), ("xmax", 3.0), ("ymin", -3.0), ("ymax", 3.0)),
+                kw: new[] { "formula", "expression", "term", "formel", "funktionsterm", "polynomial", "polynom" });
+            Add("function.generator", FunctionChart.TypeId, "Step response (PT1) in a coordinate system", "Sprungantwort (PT1) im Koordinatensystem",
+                P(("function", "generator"), ("xmin", 0.0), ("xmax", 8.0), ("ymin", 0.0), ("ymax", 4.0), ("xname", "t"), ("yname", "y")),
+                kw: new[] { "pt1", "step response", "time constant", "sprungantwort", "zeitkonstante" });
 
             // Characteristic curves and engineering charts
             Add("torque", TorqueChart.TypeId, "Torque–speed curve with power", "Drehmoment-Drehzahl-Kennlinie mit Leistung");

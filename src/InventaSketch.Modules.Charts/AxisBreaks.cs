@@ -406,4 +406,138 @@ namespace InventaSketch.Modules.Charts
             return Array.Empty<AxisBreakSpan>();
         }
     }
+    /// <summary>
+    /// Axis breaks of the chart types (charts v2 stage 3): the parameters <c>ybreaks</c>/<c>xbreaks</c> ("lo-hi" pairs separated
+    /// by ";", e.g. "20-80"), the marker style, the "Axis break here…" input and the remove action.
+    /// </summary>
+    internal static class ChartBreaks
+    {
+        public const string YKey = "ybreaks";
+        public const string XKey = "xbreaks";
+        public const string StyleKey = "breakstyle";
+
+        public static readonly ParamDef YBreaks = Prm.Text(YKey, "y-axis breaks (hidden ranges lo-hi; …, e.g. 20-80)", "Achsenbrüche y (ausgeblendete Bereiche von-bis; …, z. B. 20-80)", "", advanced: true);
+        public static readonly ParamDef XBreaks = Prm.Text(XKey, "x-axis breaks (hidden ranges lo-hi; …)", "Achsenbrüche x (ausgeblendete Bereiche von-bis; …)", "", advanced: true);
+        public static readonly ParamDef Style = Prm.Choice(StyleKey, "Axis break marker", "Achsenbruch-Zeichen", "zigzag",
+            ("zigzag", "Zigzag across the plot", "Zickzack über das Diagramm"), ("slash", "Double slash on the axis", "Doppelter Schrägstrich an der Achse"));
+
+        public static BreakMarkerStyle StyleOf(string? s) => s == "slash" ? BreakMarkerStyle.Slash : BreakMarkerStyle.Zigzag;
+
+        public static BreakMarkerStyle StyleOf(SketchObject o) => StyleOf(o.Str(StyleKey, "zigzag"));
+
+        /// <summary>The ranges of a break text; unreadable pairs are skipped (rendering never fails).</summary>
+        public static List<(double Lo, double Hi)> Parse(string? text)
+        {
+            var list = new List<(double, double)>();
+            foreach (var part in (text ?? "").Split(';', '|'))
+                if (TryPair(part, out var r)) list.Add(r);
+            return list;
+        }
+
+        /// <summary>One pair "lo-hi" (also "lo–hi", "lo..hi", "lo…hi", "lo to hi", "lo bis hi"); negative numbers are allowed ("-50--20").</summary>
+        public static bool TryPair(string? text, out (double Lo, double Hi) range)
+        {
+            range = default;
+            var t = (text ?? "").Trim().Replace('−', '-');
+            if (t.Length == 0) return false;
+            foreach (var sep in new[] { "…", "..", "–", " to ", " bis " })
+            {
+                var i = t.IndexOf(sep, StringComparison.OrdinalIgnoreCase);
+                if (i > 0) return Make(t.Substring(0, i), t.Substring(i + sep.Length), out range);
+            }
+            // A hyphen ends the first number when it follows a digit (not an exponent sign).
+            for (var i = 1; i < t.Length; i++)
+            {
+                if (t[i] != '-') continue;
+                var j = i - 1;
+                while (j >= 0 && t[j] == ' ') j--;
+                if (j < 0 || !(char.IsDigit(t[j]) || t[j] == '.' || t[j] == ',')) continue;
+                return Make(t.Substring(0, i), t.Substring(i + 1), out range);
+            }
+            return false;
+        }
+
+        private static bool Make(string a, string b, out (double Lo, double Hi) range)
+        {
+            range = default;
+            if (!ChartData.TryNumber(a.Trim(), out var lo) || !ChartData.TryNumber(b.Trim(), out var hi) || !Fmt.Finite(lo) || !Fmt.Finite(hi) || lo == hi) return false;
+            range = (Math.Min(lo, hi), Math.Max(lo, hi));
+            return true;
+        }
+
+        /// <summary>Text form of break ranges (invariant culture): "20-80; 120-180".</summary>
+        public static string Format(IEnumerable<(double Lo, double Hi)> ranges)
+            => string.Join("; ", ranges.Select(r => Fmt.Num(r.Lo, Lang.En, 6) + "-" + Fmt.Num(r.Hi, Lang.En, 6)));
+
+        /// <summary>Strict parse of an input; empty = no breaks. Throws a bilingual <see cref="FormatException"/>.</summary>
+        public static List<(double Lo, double Hi)> ParseInput(string? text, Lang lang)
+        {
+            var list = new List<(double, double)>();
+            foreach (var part in (text ?? "").Split(';', '|'))
+            {
+                if (part.Trim().Length == 0) continue;
+                if (!TryPair(part, out var r))
+                    throw new FormatException(lang == Lang.De
+                        ? "Kein gültiger Bereich „von-bis“: „" + part.Trim() + "“"
+                        : "Not a valid range “lo-hi”: “" + part.Trim() + "”");
+                list.Add(r);
+            }
+            return list;
+        }
+
+        /// <summary>The axis with the breaks of parameter <paramref name="key"/> (linear axes only).</summary>
+        public static Axis Apply(Axis a, SketchObject o, string key, int? target = 5)
+        {
+            var ranges = Parse(o.Str(key, ""));
+            return ranges.Count == 0 ? a : a.WithBreaks(ranges, StyleOf(o), target: target);
+        }
+
+        /// <summary>
+        /// A break for the largest data-free gap of the axis (between data values, value lines and the axis ends) when it
+        /// covers more than 40 % of the axis; rounded to the tick grid. Null if there is no such gap.
+        /// </summary>
+        public static (double Lo, double Hi)? Suggest(Axis a, IEnumerable<double> values)
+        {
+            if (a.Kind != AxisKind.Linear) return null;
+            var v = values.Where(x => Fmt.Finite(x) && x >= a.Min && x <= a.Max).Concat(new[] { a.Min, a.Max }).Distinct().OrderBy(x => x).ToList();
+            double best = 0, lo = 0, hi = 0;
+            for (var i = 0; i + 1 < v.Count; i++)
+                if (v[i + 1] - v[i] > best) { best = v[i + 1] - v[i]; lo = v[i]; hi = v[i + 1]; }
+            if (best <= (a.Max - a.Min) * 0.4) return null;
+            var step = Axis.NiceStep(best / 10);
+            var l = Math.Ceiling((lo + best * 0.12) / step - 1e-9) * step;
+            var h = Math.Floor((hi - best * 0.12) / step + 1e-9) * step;
+            return h > l ? (l, h) : null;
+        }
+
+        /// <summary>"Axis break here…": the hidden ranges of an axis as text (prefilled with the current breaks or a suggestion).</summary>
+        public static ContextAction Input(SketchObject o, string id, string key, bool x, (double Lo, double Hi)? suggestion)
+        {
+            var current = o.Str(key, "");
+            var value = Parse(current) is { Count: > 0 } now ? Format(now) : suggestion is { } s ? Format(new[] { s }) : "";
+            return ContextAction.WithInput(id, Label(x), IconIds.Text, Prompt(x), value,
+                (obj, text) => obj.WithParam(key, Format(ParseInput(text, Lang.En)))) with { Group = "breaks", ParamKeys = new[] { key } };
+        }
+
+        public static I18nText Label(bool x) => x ? new I18nText("x-axis break here…", "Achsenbruch x hier…") : new I18nText("Axis break here…", "Achsenbruch hier…");
+
+        public static I18nText Prompt(bool x) => x
+            ? new I18nText("Hidden x range “lo-hi” (several: separate with ;, empty = none)", "Ausgeblendeter x-Bereich „von-bis“ (mehrere mit ; trennen, leer = keiner)")
+            : new I18nText("Hidden y range “lo-hi” (several: separate with ;, empty = none)", "Ausgeblendeter y-Bereich „von-bis“ (mehrere mit ; trennen, leer = keiner)");
+
+        public static I18nText RemoveLabel(bool x) => x ? new I18nText("Remove x-axis breaks", "Achsenbrüche x entfernen") : new I18nText("Remove axis breaks", "Achsenbrüche entfernen");
+
+        public static ContextAction Remove(SketchObject o, string id, string key, bool x)
+            => new ContextAction(id, RemoveLabel(x), IconIds.Delete, obj => obj.WithParam(key, ""))
+            { Group = "breaks", ParamKeys = new[] { key }, IsEnabled = Parse(o.Str(key, "")).Count > 0 };
+
+        /// <summary>The four break actions of a chart with one x and one y axis.</summary>
+        public static IEnumerable<ContextAction> Actions(SketchObject o, Axis x, IEnumerable<double> xValues, Axis y, IEnumerable<double> yValues)
+        {
+            yield return Input(o, "chart.ybreak", YKey, false, Suggest(y, yValues));
+            yield return Remove(o, "chart.ybreak.remove", YKey, false);
+            yield return Input(o, "chart.xbreak", XKey, true, Suggest(x, xValues));
+            yield return Remove(o, "chart.xbreak.remove", XKey, true);
+        }
+    }
 }

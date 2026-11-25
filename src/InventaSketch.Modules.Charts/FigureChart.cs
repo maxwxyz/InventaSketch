@@ -122,8 +122,52 @@ namespace InventaSketch.Modules.Charts
                 Edit("chart.figure.principle", new I18nText("Principle axes", "Prinzipachsen"), IconIds.Toggle, lang, TogglePrinciple, "param") with { IsActive = spec?.AllPrinciple == true },
                 Edit("chart.figure.mono", new I18nText("Monochrome", "Schwarz-Weiß"), IconIds.Toggle, lang, s => s.Scheme = s.Mono ? "color" : "mono", "param") with { IsActive = spec?.Mono == true },
                 SpecInput(o, lang),
-            };
+            }.Concat(spec is null ? Array.Empty<ContextAction>() : new[]
+            {
+                BreakInput(o, lang, spec, false, 0), BreakRemove(lang, spec, false, 0),
+                BreakInput(o, lang, spec, true, 0), BreakRemove(lang, spec, true, 0),
+            });
         }
+
+        // ------------------------------------------------------------------ axis breaks
+
+        /// <summary>The specification axis of the x axis or of the y axis of panel <paramref name="panel"/> (created if needed).</summary>
+        private static FigAxis BreakAxis(FigureSpec s, bool x, int panel)
+        {
+            if (x) return s.X;
+            if (s.Panels.Count == 0) s.Panels.Add(new FigPanel());
+            return s.Panels[Math.Max(0, Math.Min(s.Panels.Count - 1, panel))];
+        }
+
+        private static IReadOnlyList<(double Lo, double Hi)> BreaksOf(FigureSpec s, bool x, int panel)
+        {
+            if (x) return s.X.Breaks;
+            var ps = FigureComposer.PanelsOf(s);
+            return ps[Math.Max(0, Math.Min(ps.Count - 1, panel))].Breaks;
+        }
+
+        /// <summary>"Axis break here…" on the x axis or the y axis of a panel: the hidden ranges, prefilled with the current ones or a suggestion.</summary>
+        private static ContextAction BreakInput(SketchObject o, Lang lang, FigureSpec spec, bool x, int panel)
+        {
+            var current = BreaksOf(spec, x, panel);
+            string value;
+            if (current.Count > 0) value = ChartBreaks.Format(current);
+            else
+            {
+                var n = FigureComposer.PanelsOf(spec).Count;
+                var axis = x ? FigureComposer.XAxis(spec) : FigureComposer.YAxis(spec, panel);
+                var data = x ? spec.Series.SelectMany(se => se.X)
+                    : spec.Series.Where(se => Math.Max(0, Math.Min(n - 1, se.Panel)) == panel).SelectMany(se => se.Y);
+                value = ChartBreaks.Suggest(axis, data) is { } sug ? ChartBreaks.Format(new[] { sug }) : "";
+            }
+            var id = x ? "chart.figure.xbreak" : "chart.figure.ybreak";
+            return ContextAction.WithInput(id, ChartBreaks.Label(x), IconIds.Text, ChartBreaks.Prompt(x), value,
+                (obj, text) => SetSpec(obj, lang, s => BreakAxis(s, x, panel).Breaks = ChartBreaks.ParseInput(text, lang))) with { Group = "breaks" };
+        }
+
+        private static ContextAction BreakRemove(Lang lang, FigureSpec spec, bool x, int panel)
+            => Edit(x ? "chart.figure.xbreak.remove" : "chart.figure.ybreak.remove", ChartBreaks.RemoveLabel(x), IconIds.Delete, lang,
+                s => BreakAxis(s, x, panel).Breaks.Clear(), "breaks") with { IsEnabled = BreaksOf(spec, x, panel).Count > 0 };
 
         /// <summary>Adds a dashed value line at three quarters of the y range of panel <paramref name="panel"/>.</summary>
         internal static void AddHLine(FigureSpec s, int panel)
@@ -237,13 +281,29 @@ namespace InventaSketch.Modules.Charts
                     {
                         var dir = seg.Length > 1 ? seg[1] : "";
                         list.Add(Edit("chart.figure.principle", new I18nText("Principle axes", "Prinzipachsen"), IconIds.Toggle, lang, TogglePrinciple, "param") with { IsActive = spec.AllPrinciple });
-                        if (dir == "x") list.Add(Edit("chart.figure.vline", new I18nText("Add vertical marker", "Senkrechte Markierung hinzufügen"), IconIds.Insert, lang, AddVLine));
+                        if (dir == "x")
+                        {
+                            list.Add(Edit("chart.figure.vline", new I18nText("Add vertical marker", "Senkrechte Markierung hinzufügen"), IconIds.Insert, lang, AddVLine));
+                            list.Add(BreakInput(o, lang, spec, true, 0));
+                            list.Add(BreakRemove(lang, spec, true, 0));
+                        }
                         else if (dir == "y")
                         {
                             // "axis.y" (one panel) or "axis.y.2" (second of stacked panels).
                             var panel = seg.Length > 2 && int.TryParse(seg[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var pn) ? pn - 1 : 0;
                             list.Add(Edit("chart.figure.hline", new I18nText("Add value line", "Wertlinie hinzufügen"), IconIds.Insert, lang, x => AddHLine(x, panel)));
+                            list.Add(BreakInput(o, lang, spec, false, panel));
+                            list.Add(BreakRemove(lang, spec, false, panel));
                         }
+                        break;
+                    }
+                case ChartTags.AxisBreak:
+                    {
+                        // "axisbreak.x", "axisbreak.y" or "axisbreak.y.2".
+                        var x = seg.Length > 1 && seg[1] == "x";
+                        var panel = !x && seg.Length > 2 && int.TryParse(seg[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var pn) ? pn - 1 : 0;
+                        list.Add(BreakInput(o, lang, spec, x, panel));
+                        list.Add(BreakRemove(lang, spec, x, panel));
                         break;
                     }
             }

@@ -39,9 +39,60 @@ namespace InventaSketch.Modules.Charts
         public bool Reversed { get; private set; }
         public bool IsLog => Kind == AxisKind.Log;
 
+        // ------------------------------------------------------------------ axis breaks (charts v2 stage 3)
+
+        private IReadOnlyList<AxisBreak> _breaks = Array.Empty<AxisBreak>();
+        private BrokenAxis? _broken;
+        private double _length = 100;
+
+        /// <summary>Breaks of a linear axis (normalised: inside the range, sorted, merged); empty without breaks.</summary>
+        public IReadOnlyList<AxisBreak> Breaks => _breaks;
+        public bool HasBreaks => _breaks.Count > 0;
+        /// <summary>Marker style of the breaks (set with <see cref="WithBreaks"/>).</summary>
+        public BreakMarkerStyle BreakStyle { get; private set; } = BreakMarkerStyle.Zigzag;
+        /// <summary>The broken mapping for the current length (null without breaks).</summary>
+        public BrokenAxis? Broken => _broken;
+
+        /// <summary>
+        /// A copy of this linear axis with the value ranges <paramref name="ranges"/> compressed into marker bands of
+        /// <paramref name="gap"/> mm (<see cref="AxisBreaks.RequiredGap"/> by default). The tick step is chosen for the visible
+        /// span (about <paramref name="target"/> steps; null keeps the step). Log and category axes, and ranges outside the axis,
+        /// are returned unchanged.
+        /// </summary>
+        public Axis WithBreaks(IEnumerable<(double Lo, double Hi)> ranges, BreakMarkerStyle style = BreakMarkerStyle.Zigzag, double? gap = null, int? target = 5)
+        {
+            if (Kind != AxisKind.Linear) return this;
+            var g = gap ?? AxisBreaks.RequiredGap(style, AxisBreaks.AxisMarkerWidth);
+            var list = ranges.Where(r => Fmt.Finite(r.Lo) && Fmt.Finite(r.Hi)).Select(r => new AxisBreak(Math.Min(r.Lo, r.Hi), Math.Max(r.Lo, r.Hi), g)).ToList();
+            if (list.Count == 0) return this;
+            var probe = new BrokenAxis(Min, Max, _length, list);
+            // A break that would hide (almost) the whole axis is dropped.
+            if (probe.Breaks.Count == 0 || probe.VisibleRanges.Sum(v => v.Hi - v.Lo) < (Max - Min) * 0.02) return this;
+            var visible = probe.VisibleRanges.Sum(v => v.Hi - v.Lo);
+            var step = target is int tg ? Math.Min(Step > 0 ? Step : double.MaxValue, NiceStep(visible / Math.Max(1, tg))) : Step;
+            var a = new Axis(Kind, Min, Max, step) { Categories = Categories, Reversed = Reversed, BreakStyle = style, _breaks = probe.Breaks, _length = _length };
+            a._broken = probe;
+            return a;
+        }
+
+        /// <summary>Length of the axis in mm (set by the layout; the break bands have a fixed length in mm).</summary>
+        internal void SetLength(double mm)
+        {
+            if (!(mm > 0) || !Fmt.Finite(mm)) return;
+            _length = mm;
+            if (_breaks.Count > 0) _broken = new BrokenAxis(Min, Max, mm, _breaks);
+        }
+
+        /// <summary>True if <paramref name="v"/> lies strictly inside a break (hidden).</summary>
+        public bool InBreak(double v) => _broken is not null && _broken.BreakIndexOf(v) >= 0;
+
+        /// <summary>Within the range and not hidden by a break.</summary>
+        public bool Visible(double v) => Contains(v) && !InBreak(v);
+
         /// <summary>Normalised position 0 … 1 of <paramref name="v"/> (outside the range: below 0 / above 1; NaN for v ≤ 0 on log axes).</summary>
         public double T(double v)
         {
+            if (_broken is not null) return _broken.T(v);
             double t;
             if (Kind == AxisKind.Log)
             {
@@ -55,6 +106,7 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Value at the normalised position <paramref name="t"/> (inverse of <see cref="T"/>; sketched curves).</summary>
         public double V(double t)
         {
+            if (_broken is not null) return _broken.Value(t * _broken.Length);
             if (Reversed) t = 1 - t;
             return Kind == AxisKind.Log
                 ? Math.Pow(10, Math.Log10(Min) + t * (Math.Log10(Max) - Math.Log10(Min)))
@@ -97,6 +149,7 @@ namespace InventaSketch.Modules.Charts
                         {
                             var v = i * Step;
                             if (Math.Abs(v) < Step * 1e-9) v = 0;
+                            if (InBreak(v)) continue; // tick labels skip hidden ranges
                             list.Add(new Tick(v, TickMark.Major, Fmt.Num(v, lang, d)));
                         }
                         break;

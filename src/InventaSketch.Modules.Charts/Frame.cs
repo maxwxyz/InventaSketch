@@ -26,7 +26,7 @@ namespace InventaSketch.Modules.Charts
         public List<AxisText> Texts { get; } = new();
 
         /// <summary>The ticks to draw: the custom ticks if set, else the axis ticks.</summary>
-        public IReadOnlyList<Tick> TickList(Lang lang) => Ticks is null ? Y.Ticks(lang) : Ticks.Where(t => Y.Contains(t.Value)).ToList();
+        public IReadOnlyList<Tick> TickList(Lang lang) => Ticks is null ? Y.Ticks(lang) : Ticks.Where(t => Y.Visible(t.Value)).ToList();
     }
 
     /// <summary>A text at an axis value (drawn like a tick label, tagged with its own part key).</summary>
@@ -87,7 +87,39 @@ namespace InventaSketch.Modules.Charts
         public List<AxisText> XTexts { get; } = new();
 
         /// <summary>The x ticks to draw: the custom ticks if set, else the axis ticks.</summary>
-        public IReadOnlyList<Tick> XTickList(Lang lang) => XTicks is null ? X.Ticks(lang) : XTicks.Where(t => X.Contains(t.Value)).ToList();
+        public IReadOnlyList<Tick> XTickList(Lang lang) => XTicks is null ? X.Ticks(lang) : XTicks.Where(t => X.Visible(t.Value)).ToList();
+
+        /// <summary>
+        /// Math style (coordinate systems and function graphs): one panel, the axes cross at the origin (clamped into the
+        /// ranges) and end in arrowheads beyond the plot, ticks cross the axis lines, tick numbers sit beside the axes and the
+        /// axis names (<see cref="XName"/>, <see cref="YName"/>) at the arrow tips.
+        /// </summary>
+        public bool MathAxes { get; set; }
+        /// <summary>Axis name at the tip of the x axis (math style).</summary>
+        public string? XName { get; set; }
+        /// <summary>Axis name at the tip of the y axis (math style).</summary>
+        public string? YName { get; set; }
+        /// <summary>Tick numbers (math style; data charts always label their ticks).</summary>
+        public bool Numbers { get; set; } = true;
+        /// <summary>Page points a tick number should not cover (math style: the number moves to the other side of its axis).</summary>
+        public List<Vec2> NumberAvoid { get; } = new();
+
+        /// <summary>Data value where the other axis crosses (math style): 0 clamped into the range.</summary>
+        private static double Cross(Axis a) => a.Kind == AxisKind.Linear ? Geo.Clamp(0, a.Min, a.Max) : a.Min;
+        /// <summary>Data x of the y axis.</summary>
+        public double OriginX => MathAxes ? Cross(X) : X.Min;
+        /// <summary>Data y of the x axis (first panel).</summary>
+        public double OriginY => MathAxes && Panels.Count > 0 ? Cross(Panels[0].Y) : Panels.Count > 0 ? Panels[0].Y.Min : 0;
+        /// <summary>Page x of the y axis line of a panel.</summary>
+        public double AxisX(Panel p) => MathAxes ? p.Area.X + X.T(OriginX) * p.Area.W : p.Area.X;
+        /// <summary>Page y of the x axis line of a panel.</summary>
+        public double AxisY(Panel p) => MathAxes ? p.Area.Bottom - p.Y.T(Cross(p.Y)) * p.Area.H : p.Area.Bottom;
+        /// <summary>Overhang of the math-style axes beyond the plot (arrowheads).</summary>
+        private double Over => Math.Max(Fs * 0.9, 1.0);
+        /// <summary>Size of the axis names (math style).</summary>
+        private double NameFs => Fs * 1.3;
+        private double MathTick => 0.25 * Fs;
+        private double MathGap => 0.33 * Fs;
 
         /// <summary>Height of the caption line (0 without caption).</summary>
         private double CaptionH => string.IsNullOrEmpty(Caption) ? 0 : Fs * 1.1 + Gap;
@@ -111,6 +143,7 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Computes the plot area and the panel areas; reduces the font when the box is too small.</summary>
         public void Layout(Lang lang)
         {
+            if (MathAxes) { MathLayout(lang); return; }
             for (var attempt = 0; attempt < 6; attempt++)
             {
                 double hw = W / 2, hh = H / 2;
@@ -153,6 +186,54 @@ namespace InventaSketch.Modules.Charts
                 Panels[i].Area = new Rect(Plot.X, y0, Plot.W, Math.Max(h, 1));
                 y0 += h + between;
             }
+            SetLengths();
+        }
+
+        /// <summary>The broken axes get their length in mm (the break bands have a fixed size in mm).</summary>
+        private void SetLengths()
+        {
+            X.SetLength(Plot.W);
+            foreach (var p in Panels)
+            {
+                p.Y.SetLength(p.Area.H);
+                p.Y2?.SetLength(p.Area.H);
+            }
+        }
+
+        /// <summary>
+        /// Layout of the math style: room for the arrowheads and axis names right and above, tick numbers beside the axes
+        /// (which cross at the origin, so the margins depend on where the origin lies).
+        /// </summary>
+        private void MathLayout(Lang lang)
+        {
+            for (var attempt = 0; attempt < 6; attempt++)
+            {
+                double hw = W / 2, hh = H / 2;
+                var p = Panels[0];
+                var xw = Numbers ? XTickList(lang).Where(t => t.Label is not null).Select(t => Fmt.Width(t.Label!, Fs)).DefaultIfEmpty(0).Max() : 0;
+                var yw = Numbers ? p.TickList(lang).Where(t => t.Label is not null).Select(t => Fmt.Width(t.Label!, Fs)).DefaultIfEmpty(0).Max() : 0;
+                var xn = string.IsNullOrEmpty(XName) ? 0 : Fmt.Width(XName!, NameFs);
+                var yn = string.IsNullOrEmpty(YName) ? 0 : Fmt.Width(YName!, NameFs);
+                var right = Pad + Over + (xn > 0 ? 0.25 * NameFs + xn : 0);
+                var top = Pad + (string.IsNullOrEmpty(Title) ? 0 : Fs * 1.3 + Gap) + Over + (yn > 0 ? 0.15 * NameFs + NameFs : 0);
+                double left = Pad + xw / 2, bottom = Pad + CaptionH + (Numbers ? Fs / 2 : 0);
+                for (var iter = 0; iter < 5; iter++)
+                {
+                    Plot = new Rect(-hw + left, -hh + top, Math.Max(W - left - right, 1), Math.Max(H - top - bottom, 1));
+                    p.Area = Plot;
+                    SetLengths();
+                    double ax = AxisX(p), ay = AxisY(p);
+                    var needLeft = Numbers ? yw + MathTick + MathGap + Pad - (ax + hw) : 0;
+                    if (yn > 0) needLeft = Math.Max(needLeft, yn / 2 + Pad - (ax + hw));
+                    var needBottom = Numbers ? MathTick + MathGap + Fs + Pad + CaptionH - (hh - ay) : 0;
+                    if (needLeft <= 1e-6 && needBottom <= 1e-6) break;
+                    left += Math.Max(0, needLeft);
+                    bottom += Math.Max(0, needBottom);
+                }
+                if ((Plot.W < W * 0.3 || Plot.H < H * 0.3) && attempt < 5 && Fs > 0.8) { Fs *= 0.8; continue; }
+                break;
+            }
+            SetLengths();
         }
 
         /// <summary>Page (local) position of a data point in a panel; <paramref name="secondary"/> uses the panel's right axis.</summary>
@@ -165,6 +246,36 @@ namespace InventaSketch.Modules.Charts
 
         /// <summary>True if the panel position is a finite point.</summary>
         public static bool Ok(Vec2 v) => Fmt.Finite(v.X) && Fmt.Finite(v.Y);
+
+        /// <summary>True if the x axis or the panel's y axis has breaks.</summary>
+        public bool HasBreaks(Panel p) => X.HasBreaks || p.Y.HasBreaks;
+
+        /// <summary>True if the data point is not hidden by a break of the x axis or the panel's y axis.</summary>
+        public bool IsVisible(Panel p, double x, double y) => !X.InBreak(x) && !p.Y.InBreak(y);
+
+        /// <summary>
+        /// The parts of a data polyline outside the axis breaks (cut exactly at the break limits), in data coordinates; non-finite
+        /// points are gaps. Without breaks the polyline is returned as one run.
+        /// </summary>
+        public IReadOnlyList<IReadOnlyList<Vec2>> VisibleRuns(Panel p, IReadOnlyList<Vec2> data)
+        {
+            if (!HasBreaks(p)) return new[] { data };
+            var plot = new BrokenPlot(p.Area, X.Min, X.Max, X.Breaks, p.Y.Min, p.Y.Max, p.Y.Breaks);
+            var runs = new List<IReadOnlyList<Vec2>>();
+            var piece = new List<Vec2>();
+            void Flush()
+            {
+                if (piece.Count > 0) runs.AddRange(plot.VisibleRuns(piece));
+                piece = new List<Vec2>();
+            }
+            foreach (var v in data)
+            {
+                if (!Ok(v)) { Flush(); continue; }
+                piece.Add(v);
+            }
+            Flush();
+            return runs;
+        }
 
         /// <summary>Grid lines behind the data (major and minor).</summary>
         public void DrawGrid(List<Primitive> into)
@@ -181,7 +292,7 @@ namespace InventaSketch.Modules.Charts
                     {
                         if (t.Mark == TickMark.None) continue;
                         var x = a.X + X.T(t.Value) * a.W;
-                        if (Math.Abs(x - a.X) < 0.01 || Math.Abs(x - a.Right) < 0.01 && Box) continue;
+                        if (!MathAxes && (Math.Abs(x - a.X) < 0.01 || Math.Abs(x - a.Right) < 0.01 && Box)) continue;
                         (t.IsMajor ? major : minor).Add(new[] { new Vec2(x, a.Y), new Vec2(x, a.Bottom) });
                     }
                 if (p.Y.Kind != AxisKind.Category && (p.Grid ?? Grid))
@@ -189,7 +300,7 @@ namespace InventaSketch.Modules.Charts
                     {
                         if (t.Mark == TickMark.None) continue;
                         var y = a.Bottom - p.Y.T(t.Value) * a.H;
-                        if (Math.Abs(y - a.Bottom) < 0.01 || Math.Abs(y - a.Y) < 0.01 && Box) continue;
+                        if (!MathAxes && (Math.Abs(y - a.Bottom) < 0.01 || Math.Abs(y - a.Y) < 0.01 && Box)) continue;
                         (t.IsMajor ? major : minor).Add(new[] { new Vec2(a.X, y), new Vec2(a.Right, y) });
                     }
             }
@@ -201,15 +312,16 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Thin zero line where 0 lies strictly inside a linear value axis (bars, Bode magnitude, negative data).</summary>
         public void DrawZero(List<Primitive> into)
         {
+            if (MathAxes) return; // the axes themselves run through zero
             foreach (var p in Panels)
             {
                 var a = p.Area;
-                if (p.Y.Kind == AxisKind.Linear && p.Y.Min < 0 && p.Y.Max > 0)
+                if (p.Y.Kind == AxisKind.Linear && p.Y.Min < 0 && p.Y.Max > 0 && !p.Y.InBreak(0))
                 {
                     var y = a.Bottom - p.Y.T(0) * a.H;
                     into.Add(Prim.Line(new Vec2(a.X, y), new Vec2(a.Right, y), S.Zero) with { Tag = ChartTags.Zero });
                 }
-                if (X.Kind == AxisKind.Linear && X.Min < 0 && X.Max > 0)
+                if (X.Kind == AxisKind.Linear && X.Min < 0 && X.Max > 0 && !X.InBreak(0))
                 {
                     var x = a.X + X.T(0) * a.W;
                     into.Add(Prim.Line(new Vec2(x, a.Y), new Vec2(x, a.Bottom), S.Zero) with { Tag = ChartTags.Zero });
@@ -219,6 +331,13 @@ namespace InventaSketch.Modules.Charts
 
         /// <summary>Axis lines, ticks, tick labels, axis titles and chart title (drawn above the data).</summary>
         public void DrawAxes(List<Primitive> into, Lang lang)
+        {
+            if (MathAxes) DrawMathAxes(into, lang);
+            else DrawFrameAxes(into, lang);
+            DrawBreaks(into);
+        }
+
+        private void DrawFrameAxes(List<Primitive> into, Lang lang)
         {
             var ticks = new List<IReadOnlyList<Vec2>>();
             var yticks = new List<IReadOnlyList<Vec2>>();
@@ -263,7 +382,7 @@ namespace InventaSketch.Modules.Charts
                 YAxis(into, yticks, p.Y, a, a.X, -1, lang, labelColor, ChartTags.TickLabel + ".y" + ps, p.Ticks);
                 foreach (var t in p.Texts)
                 {
-                    if (!p.Y.Contains(t.Value)) continue;
+                    if (!p.Y.Visible(t.Value)) continue;
                     var py = Geo.Clamp(a.Bottom - p.Y.T(t.Value) * a.H, -hh + Pad + Fs / 2, hh - Pad - Fs / 2);
                     into.Add(new TextPrim(new Vec2(a.X - TickLen - Gap, py), t.Text, new TextStyle { Size = Fs, Color = labelColor, Anchor = TextAnchor.End }) { Tag = t.Tag });
                 }
@@ -300,6 +419,170 @@ namespace InventaSketch.Modules.Charts
             }
         }
 
+        /// <summary>
+        /// Math-style axes: both axes through the origin with arrowheads beyond the plot, ticks across the axis lines, numbers
+        /// below the x axis and left of the y axis (on the other side where a curve passes, <see cref="NumberAvoid"/>), a
+        /// single "0" at the origin and the axis names at the arrow tips.
+        /// </summary>
+        private void DrawMathAxes(List<Primitive> into, Lang lang)
+        {
+            double hw = W / 2, hh = H / 2;
+            var p = Panels[0];
+            var a = p.Area;
+            double ax = AxisX(p), ay = AxisY(p);
+            var head = S.Axis with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small };
+            into.Add(Prim.Line(new Vec2(a.X, ay), new Vec2(a.Right + Over, ay), head) with { Tag = ChartTags.Axis + ".x" });
+            into.Add(Prim.Line(new Vec2(ax, a.Bottom), new Vec2(ax, a.Y - Over), head) with { Tag = ChartTags.Axis + ".y" });
+            var color = Palette.Ink;
+            bool Hit(Rect r) => NumberAvoid.Any(r.Contains);
+            var xt = new List<IReadOnlyList<Vec2>>();
+            var yt = new List<IReadOnlyList<Vec2>>();
+
+            var lastRight = double.NegativeInfinity;
+            foreach (var t in XTickList(lang).OrderBy(t => t.Value))
+            {
+                var x = a.X + X.T(t.Value) * a.W;
+                if (!Fmt.Finite(x) || Math.Abs(x - ax) < 0.01) continue; // the origin: the "0" below
+                if (t.Mark != TickMark.None)
+                {
+                    var len = t.IsMajor ? MathTick : MathTick * 0.6;
+                    xt.Add(new[] { new Vec2(x, ay - len), new Vec2(x, ay + len) });
+                }
+                if (!Numbers || t.Label is null) continue;
+                var w = Fmt.Width(t.Label, Fs);
+                var cx = Geo.Clamp(x, -hw + Pad + w / 2, hw - Pad - w / 2);
+                if (cx - w / 2 < lastRight + Fs * 0.4) continue; // thinned out
+                var y = ay + MathTick + MathGap + Fs / 2;
+                var above = new Rect(cx - w / 2, ay - MathTick - MathGap - Fs, w, Fs);
+                if (Hit(new Rect(cx - w / 2, ay + MathTick + MathGap, w, Fs)) && above.Y >= a.Y && !Hit(above)) y = ay - MathTick - MathGap - Fs / 2;
+                y = Geo.Clamp(y, -hh + Pad + Fs / 2, hh - Pad - Fs / 2);
+                into.Add(new TextPrim(new Vec2(cx, y), t.Label, new TextStyle { Size = Fs, Color = color }) { Tag = ChartTags.TickLabel + ".x" });
+                lastRight = cx + w / 2;
+            }
+
+            var lastY = double.PositiveInfinity;
+            foreach (var t in p.TickList(lang).Select(t => (t, Pos: a.Bottom - p.Y.T(t.Value) * a.H)).Where(x => Fmt.Finite(x.Pos)).OrderByDescending(x => x.Pos).Select(x => x.t))
+            {
+                var y = a.Bottom - p.Y.T(t.Value) * a.H;
+                if (Math.Abs(y - ay) < 0.01) continue;
+                if (t.Mark != TickMark.None)
+                {
+                    var len = t.IsMajor ? MathTick : MathTick * 0.6;
+                    yt.Add(new[] { new Vec2(ax - len, y), new Vec2(ax + len, y) });
+                }
+                if (!Numbers || t.Label is null) continue;
+                var cy = Geo.Clamp(y, -hh + Pad + Fs / 2, hh - Pad - Fs / 2);
+                if (lastY - cy < Fs * 1.1) continue; // thinned out
+                var w = Fmt.Width(t.Label, Fs);
+                var right = new Rect(ax + MathTick + MathGap, cy - Fs / 2, w, Fs);
+                var onRight = Hit(new Rect(ax - MathTick - MathGap - w, cy - Fs / 2, w, Fs)) && right.Right <= a.Right && !Hit(right);
+                var x = onRight ? ax + MathTick + MathGap : Math.Max(ax - MathTick - MathGap, -hw + Pad + w);
+                into.Add(new TextPrim(new Vec2(x, cy), t.Label, new TextStyle { Size = Fs, Color = color, Anchor = onRight ? TextAnchor.Start : TextAnchor.End }) { Tag = ChartTags.TickLabel + ".y" });
+                lastY = cy;
+            }
+            if (Numbers && X.Kind == AxisKind.Linear && p.Y.Kind == AxisKind.Linear && OriginX == 0 && OriginY == 0 && X.Visible(0) && p.Y.Visible(0))
+            {
+                var w = Fmt.Width("0", Fs);
+                var at = new Vec2(Math.Max(ax - MathGap, -hw + Pad + w), Geo.Clamp(ay + MathTick + MathGap + Fs / 2, -hh + Pad + Fs / 2, hh - Pad - Fs / 2));
+                into.Add(new TextPrim(at, "0", new TextStyle { Size = Fs, Color = color, Anchor = TextAnchor.End }) { Tag = ChartTags.TickLabel + ".x" });
+            }
+            if (Draw.MultiPath(xt, S.Tick, ChartTags.Tick + ".x") is { } tx) into.Add(tx);
+            if (Draw.MultiPath(yt, S.Tick, ChartTags.Tick + ".y") is { } ty) into.Add(ty);
+
+            if (!string.IsNullOrEmpty(XName))
+            {
+                var fs = Math.Min(NameFs, Math.Max(0.3, (hw - Pad - (a.Right + Over + 0.25 * NameFs)) / (Math.Max(1, XName!.Length) * Fmt.CharWidth)));
+                into.Add(new TextPrim(new Vec2(a.Right + Over + 0.25 * NameFs, Geo.Clamp(ay, -hh + Pad + fs / 2, hh - Pad - fs / 2)), XName!,
+                    new TextStyle { Size = fs, Color = color, Italic = true, Anchor = TextAnchor.Start }) { Tag = ChartTags.AxisTitle + ".x" });
+            }
+            if (!string.IsNullOrEmpty(YName))
+            {
+                var w = Fmt.Width(YName!, NameFs);
+                var at = new Vec2(Geo.Clamp(ax, -hw + Pad + w / 2, hw - Pad - w / 2), a.Y - Over - 0.15 * NameFs - NameFs / 2);
+                into.Add(new TextPrim(at, YName!, new TextStyle { Size = NameFs, Color = color, Italic = true }) { Tag = ChartTags.AxisTitle + ".y" });
+            }
+            if (!string.IsNullOrEmpty(Caption))
+            {
+                var fs = Math.Max(0.05, Math.Min(Fs, (W - 2 * Pad) / (Math.Max(1, Caption!.Length) * Fmt.CharWidth)));
+                into.Add(new TextPrim(new Vec2(0, hh - Pad - Fs * 0.55), Caption!, new TextStyle { Size = fs, Color = color }) { Tag = ChartTags.Caption });
+            }
+            if (!string.IsNullOrEmpty(Title))
+            {
+                var fs = Fit(Title!, Fs * 1.1, W - 2 * Pad);
+                into.Add(new TextPrim(new Vec2(0, -hh + Pad + Fs * 0.6), Title!, new TextStyle { Size = fs, Bold = true, Color = color }) { Tag = ChartTags.Title });
+            }
+        }
+
+        /// <summary>
+        /// Break markers (charts v2 stage 3) above the axes: a zigzag band across the plot and the axis line, or a double slash
+        /// on the axis line (and on the opposite frame side of a closed frame). The band is filled with white so the axis line
+        /// appears interrupted; parts "axisbreak.y" (per panel like "axis.y.2") and "axisbreak.x".
+        /// </summary>
+        private void DrawBreaks(List<Primitive> into)
+        {
+            double hw = W / 2 - 0.05, hh = H / 2 - 0.05;
+            var w = AxisBreaks.AxisMarkerWidth;
+            Vec2 In(Vec2 v) => new(Geo.Clamp(v.X, -hw, hw), Geo.Clamp(v.Y, -hh, hh));
+            var xMarkers = new List<BreakMarker>();
+            for (var pi = 0; pi < Panels.Count; pi++)
+            {
+                var p = Panels[pi];
+                var a = p.Area;
+                var ps = Panels.Count > 1 ? "." + Fmt.I(pi + 1) : "";
+                if (p.Y.Broken is { } yb)
+                {
+                    var list = new List<BreakMarker>();
+                    var axisX = AxisX(p);
+                    var far = Box || p.Y2 is not null;
+                    for (var i = 0; i < yb.Breaks.Count; i++)
+                    {
+                        var (g0, g1) = yb.GapPositions(i);
+                        var y = a.Bottom - (g0 + g1) / 2;
+                        if (p.Y.BreakStyle == BreakMarkerStyle.Zigzag)
+                            list.Add(AxisBreaks.Marker(BreakMarkerStyle.Zigzag, In(new Vec2(Math.Min(a.X, axisX - w / 2), y)), In(new Vec2(Math.Max(far ? a.Right + w / 2 : a.Right, axisX + w / 2), y))));
+                        else
+                        {
+                            list.Add(AxisBreaks.Marker(BreakMarkerStyle.Slash, In(new Vec2(axisX - w / 2, y)), In(new Vec2(axisX + w / 2, y))));
+                            if (far) list.Add(AxisBreaks.Marker(BreakMarkerStyle.Slash, In(new Vec2(a.Right - w / 2, y)), In(new Vec2(a.Right + w / 2, y))));
+                        }
+                    }
+                    EmitBreaks(into, list, ChartTags.AxisBreak + ".y" + ps);
+                }
+                if (X.Broken is { } xb)
+                {
+                    var axisY = AxisY(p);
+                    for (var i = 0; i < xb.Breaks.Count; i++)
+                    {
+                        var (g0, g1) = xb.GapPositions(i);
+                        var x = a.X + (g0 + g1) / 2;
+                        if (X.BreakStyle == BreakMarkerStyle.Zigzag)
+                            xMarkers.Add(AxisBreaks.Marker(BreakMarkerStyle.Zigzag, In(new Vec2(x, Math.Max(a.Bottom, axisY + w / 2))), In(new Vec2(x, Math.Min(Box ? a.Y - w / 2 : a.Y, axisY - w / 2)))));
+                        else
+                        {
+                            xMarkers.Add(AxisBreaks.Marker(BreakMarkerStyle.Slash, In(new Vec2(x, axisY + w / 2)), In(new Vec2(x, axisY - w / 2))));
+                            if (Box) xMarkers.Add(AxisBreaks.Marker(BreakMarkerStyle.Slash, In(new Vec2(x, a.Y + w / 2)), In(new Vec2(x, a.Y - w / 2))));
+                        }
+                    }
+                }
+            }
+            EmitBreaks(into, xMarkers, ChartTags.AxisBreak + ".x");
+        }
+
+        private static void EmitBreaks(List<Primitive> into, List<BreakMarker> markers, string tag)
+        {
+            if (markers.Count == 0) return;
+            var band = new List<PathSeg>();
+            foreach (var m in markers)
+            {
+                band.Add(PathSeg.Move(m.Band[0]));
+                for (var i = 1; i < m.Band.Count; i++) band.Add(PathSeg.Line(m.Band[i]));
+                band.Add(PathSeg.Close);
+            }
+            into.Add(new PathPrim(band, S.FillOnly(Palette.White)) { Tag = tag });
+            var line = new Style { Stroke = Palette.Axis, StrokeWidth = 0.25, Role = LineRole.Visible };
+            if (Draw.MultiPath(markers.SelectMany(m => new[] { m.Line1, m.Line2 }), line, tag) is { } lines) into.Add(lines);
+        }
+
         private static double Fit(string text, double fs, double width) => Math.Max(0.5, Math.Min(fs, width / (Math.Max(1, text.Length) * Fmt.CharWidth)));
 
         private void XLabels(List<Primitive> into, List<(double Pos, string Text)> labels, Rect a, string color)
@@ -332,7 +615,7 @@ namespace InventaSketch.Modules.Charts
             var y = a.Bottom + TickLen + Gap + Fs / 2;
             foreach (var t in texts)
             {
-                if (!X.Contains(t.Value)) continue;
+                if (!X.Visible(t.Value)) continue;
                 var w = Fmt.Width(t.Text, Fs);
                 var x = Geo.Clamp(a.X + X.T(t.Value) * a.W, -hw + Pad + w / 2, hw - Pad - w / 2);
                 into.Add(new TextPrim(new Vec2(x, y), t.Text, new TextStyle { Size = Fs, Color = color }) { Tag = t.Tag });
@@ -349,7 +632,7 @@ namespace InventaSketch.Modules.Charts
                 fs = Math.Max(0.6, Math.Min(Fs, band * 0.8));
             }
             var lastY = double.PositiveInfinity;
-            var list = (custom?.Where(t => y.Contains(t.Value)) ?? y.Ticks(lang)).Select(t => (t, Pos: a.Bottom - y.T(t.Value) * a.H)).OrderByDescending(x => x.Pos).ToList();
+            var list = (custom?.Where(t => y.Visible(t.Value)) ?? y.Ticks(lang)).Select(t => (t, Pos: a.Bottom - y.T(t.Value) * a.H)).OrderByDescending(x => x.Pos).ToList();
             foreach (var (t, py) in list)
             {
                 if (t.Mark != TickMark.None)
@@ -431,6 +714,25 @@ namespace InventaSketch.Modules.Charts
             yield return Anchor.Point(AnchorRole.Corner, new Vec2(a.Right, a.Bottom), "plot.br");
             yield return Anchor.Point(AnchorRole.Corner, new Vec2(a.X, a.Bottom), "plot.bl");
             yield return Anchor.Point(AnchorRole.Center, a.Center, "plot.c");
+            if (MathAxes)
+            {
+                // Math style: the origin and the axes where they are drawn, and the grid points (to dock points and vectors).
+                var p = Panels[0];
+                double ax = AxisX(p), ay = AxisY(p);
+                yield return Anchor.Point(AnchorRole.Port, new Vec2(ax, ay), "origin");
+                yield return Anchor.Rail(new Vec2(p.Area.X, ay), new Vec2(p.Area.Right + Over, ay), "axis.x");
+                yield return Anchor.Rail(new Vec2(ax, p.Area.Bottom), new Vec2(ax, p.Area.Y - Over), "axis.y");
+                var xs = XTickList(Lang.En).Where(t => t.Mark == TickMark.Major).Select(t => t.Value).ToList();
+                var ys = p.TickList(Lang.En).Where(t => t.Mark == TickMark.Major).Select(t => t.Value).ToList();
+                if (xs.Count * ys.Count <= 900)
+                    foreach (var gx in xs)
+                        foreach (var gy in ys)
+                        {
+                            var g = P(p, gx, gy);
+                            if (Ok(g)) yield return Anchor.Point(AnchorRole.Mid, g, "g" + Fmt.Num(gx, Lang.En, 6) + "_" + Fmt.Num(gy, Lang.En, 6));
+                        }
+                yield break;
+            }
             for (var i = 0; i < Panels.Count; i++)
             {
                 var p = Panels[i];

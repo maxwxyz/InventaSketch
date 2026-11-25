@@ -48,6 +48,8 @@ namespace InventaSketch.Modules.Charts
                 case BodeChart: b.Bode(); break;
                 case BandChart: b.Band(); break;
                 case FigureChart: b.Figure(); break;
+                case MathAxesChart: break;
+                case FunctionChart fc: b.Function(fc); break;
             }
             return b._x;
         }
@@ -113,11 +115,8 @@ namespace InventaSketch.Modules.Charts
 
         // ------------------------------------------------------------------ coordinates
 
-        private static double FromT(Axis a, double t)
-        {
-            if (a.Reversed) t = 1 - t;
-            return a.IsLog ? Math.Pow(10, Math.Log10(a.Min) + t * (Math.Log10(a.Max) - Math.Log10(a.Min))) : a.Min + t * (a.Max - a.Min);
-        }
+        /// <summary>Data value at the normalised position (inverse of the axis mapping, axis breaks included).</summary>
+        private static double FromT(Axis a, double t) => a.V(t);
 
         /// <summary>Panel whose plot area is nearest to the page y.</summary>
         private int PanelAt(double py)
@@ -204,6 +203,16 @@ namespace InventaSketch.Modules.Charts
                 if (f.Box && Hidden(ChartTags.Axis + ".box" + ps)) { xp.Y.LineHidden = true; _x.X.LineHidden = true; }
                 _x.Panels.Add(xp);
             }
+            // Axis breaks are not exported: the exported axes run continuously over the whole range.
+            var broken = new List<string>();
+            if (f.X.HasBreaks) broken.Add("x: " + ChartBreaks.Format(f.X.Breaks.Select(b => (b.Lo, b.Hi))));
+            for (var i = 0; i < n; i++)
+                if (f.Panels[i].Y.HasBreaks) broken.Add("y" + (n > 1 ? " " + Fmt.I(i + 1) : "") + ": " + ChartBreaks.Format(f.Panels[i].Y.Breaks.Select(b => (b.Lo, b.Hi))));
+            if (broken.Count > 0)
+                _x.Notes.Add((_lang == Lang.De ? "Achsenbrüche werden nicht exportiert, die Achsen laufen durch (" : "Axis breaks are not exported; the axes run continuously (")
+                    + string.Join(", ", broken) + ")");
+            if (f.MathAxes)
+                _x.Notes.Add(_lang == Lang.De ? "Achsen im Mathematikstil (durch den Ursprung) werden als Rahmenachsen exportiert" : "Math-style axes (through the origin) are exported as frame axes");
         }
 
         private XAxis Axis(Axis a, string? title, string dir, string ps, IReadOnlyList<Tick>? custom, bool arrow, bool grid, bool minor)
@@ -336,6 +345,20 @@ namespace InventaSketch.Modules.Charts
                 var legend = Common.SeriesName(series[k].Name, k, _lang);
                 AddSeries(0, key, mkey, series[k].Points, line, marker, style == "step", smooth, legend);
             }
+        }
+
+        /// <summary>Function graph: the sampled curve (gaps between its pieces) and the formula.</summary>
+        private void Function(FunctionChart type)
+        {
+            var pts = new List<Vec2>();
+            foreach (var run in FunctionChart.DataRuns(_o, type, _lang))
+            {
+                if (pts.Count > 0) pts.Add(new Vec2(double.NaN, double.NaN));
+                pts.AddRange(run);
+            }
+            var key = ChartTags.Nth(ChartTags.Series, 0);
+            AddSeries(0, key, null, pts, Stroke(key, "#1565c0", 0.5, DashStyle.Solid), null);
+            foreach (var t in ComposedTexts(ChartTags.Formula)) Add(t);
         }
 
         private static XFillStyle FillOf(Fill? fill, string stroke)

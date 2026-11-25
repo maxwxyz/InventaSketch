@@ -25,6 +25,10 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` Tief- / Hochpass 1. oder 2. Ordnung, `fc` (Hz), `zeta` (Dämpfungsgrad, 2. Ordnung), `gain` (dB), `show` Betrag und Phase / Betrag / Phase, `marker` (Linie bei der Eckfrequenz), `xrange`, `data` (Messdaten `f;dB;°`, ersetzen das System) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (Sollkurve, siehe unten), `tol` + `tolmode` Prozent / absolut, `smooth`, `limits`, `patterns`; weitere Datenblöcke werden als Messreihen mit Markern gezeichnet |
 | `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON-Spezifikation, siehe [Bild](#bild-diagramme-v2-stufe-2)); gestapelte Panels, Prinzip- oder Datenachsen, Wertlinien, Markierungen, Flächen, Anmerkungen, Bezugszeichen |
+| `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | Mathematikstil, siehe [Koordinatensysteme und Funktionsgraphen](#koordinatensysteme-und-funktionsgraphen-diagramme-v2-stufe-4) |
+| `chart.math.function` | Function graph / Funktionsgraph | Grundfunktion, eingegebene Formel oder Funktionsgenerator im Koordinatensystem im Mathematikstil |
+
+`chart.xy` nimmt auch Achsenbrüche (`ybreaks`, `xbreaks`, `breakstyle`, siehe [Achsenbrüche](#achsenbrüche-diagramme-v2-stufe-3)).
 
 Gemeinsame Parameter (wo sinnvoll): `title`, `xlabel`, `xunit`, `ylabel`, `yunit` (leer = zweisprachige Vorgabe
 des Typs, ausdrücklich leere Beschriftung blendet den Achsentitel aus), `xscale` / `yscale` linear / logarithmisch,
@@ -39,12 +43,13 @@ für Skizzen und ist keine Messung. Die Pumpenkennlinie ist H(Q) = H₀ (1 − (
 durch den statischen Anteil und den Betriebspunkt. Das Bode-Diagramm wird aus den Standard-Übertragungsfunktionen von
 Tief- und Hochpässen 1. und 2. Ordnung berechnet.
 
-Die Bibliothek enthält 28 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
+Die Bibliothek enthält 37 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
-`chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.limits`, `chart.torque`,
+`chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.line.break`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in drei Kategorien: Datendiagramme, Kennlinien &
-Kennfelder sowie Prinzip- und technische Abbildungen.
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`, die acht unten genannten Koordinatensysteme und Funktionsgraphen) in vier Kategorien:
+Datendiagramme, Koordinatensysteme & Funktionsgraphen, Kennlinien & Kennfelder sowie Prinzip- und technische
+Abbildungen.
 
 ## Datenformat
 
@@ -164,6 +169,75 @@ hängen die Panelnummer an: `axis.y.2`, `label.y.2`.
   den Elementstil.
 - Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (siehe Entwurf
   [Diagramme v2](../design/charts-v2.md)).
+
+## Achsenbrüche (Diagramme v2, Stufe 3)
+
+Das XY-Diagramm (`chart.xy`), das Bild (`chart.figure`) sowie Koordinatensysteme und Funktionsgraphen im
+Mathematikstil können Wertebereiche einer linearen Achse ausblenden (Achsenbruch), so passen weit auseinanderliegende
+Daten in ein Diagramm (z. B. 10–15 und 95–100 auf einer y-Achse).
+
+- Parameter: `ybreaks` / `xbreaks` (erweitert): ausgeblendete Bereiche als Paare „von-bis“, getrennt durch „;“, z. B.
+  `20-80` oder `-50--20; 120-180` (auch `von..bis`, `von–bis`, Dezimalkomma erlaubt); `breakstyle` Zickzack (Vorgabe:
+  ein doppeltes Zickzackband über das ganze Diagramm und die Achslinie) / Schrägstrich (kurzer doppelter Schrägstrich
+  an der Achslinie und an der Gegenseite eines geschlossenen Rahmens). Unlesbare Paare werden beim Zeichnen
+  übergangen; logarithmische und Kategorieachsen haben keine Brüche.
+- Zeichnen (`Frame`): die Achse bildet über `BrokenAxis` ab (gleicher Maßstab außerhalb der Brüche, jeder Bruch auf
+  das Zeichenband von `AxisBreaks.RequiredGap` gestaucht, etwa 3,6 mm); Kurven werden in sichtbare Abschnitte geteilt,
+  genau an den Bruchgrenzen geschnitten; Datenpunkte im Bruch erhalten keinen Marker und keinen Anschluss;
+  Skalenbeschriftungen, Gitterlinien, Grenzlinien, Wertlinien und Texte im Bruch entfallen; die Teilung richtet sich
+  nach dem sichtbaren Bereich. Das Band ist weiß gefüllt, die Achslinie erscheint unterbrochen.
+- Bild: je Achse `"breaks": [[20, 80], …]` in `x` und in jedem Panel (auch `{"from": 20, "to": 80}` oder ein Text
+  `"20-80; …"`) sowie `"breakStyle": "zigzag" | "slash"` für das Bild. Optionale Angaben der Version 1: ältere Leser
+  übergehen sie, fehlerhafte Einträge werden ausgelassen.
+- Teile: `axisbreak.y` (gestapelte Panels `axisbreak.y.1`, `axisbreak.y.2` …) und `axisbreak.x`, benannt
+  „Achsenbruch y“ / „y axis break“.
+- Aktionen: „Achsenbruch hier…“ (`chart.ybreak`, Eingabe „von-bis“, mehrere mit „;“, leer = keiner; vorbelegt mit den
+  aktuellen Brüchen oder einem Vorschlag für die größte datenfreie Lücke, wenn sie mehr als 40 % der Achse einnimmt),
+  „Achsenbruch x hier…“ (`chart.xbreak`), „Achsenbrüche entfernen“ (`chart.ybreak.remove`, `chart.xbreak.remove`).
+  Angeboten am Element, an den Achsenteilen (Achse, Teilstriche, Skalenbeschriftung, Achsentitel dieser Richtung)
+  und am Bruchzeichen. Im Bild (`chart.figure.ybreak` …) bearbeitet der Achsenteil eines gestapelten Panels die Brüche
+  dieses Panels.
+- Anker: Datenanschlüsse und Achsschienen folgen der gebrochenen Abbildung (ein Anschluss liegt dort, wo sein Punkt
+  gezeichnet ist).
+- Export: matplotlib und pgfplots geben Brüche nicht wieder; die Achsen laufen durch, das Diagramm beginnt mit dem
+  Kommentar „Achsenbrüche werden nicht exportiert …“ mit den ausgeblendeten Bereichen.
+
+## Koordinatensysteme und Funktionsgraphen (Diagramme v2, Stufe 4)
+
+Das 2D-Koordinatensystem und die Funktionsgraphen des Mathematikmoduls sind ins Diagrammmodul umgezogen, damit alle
+Diagramme ein Achsensystem teilen (`Frame`, mit Achsenbrüchen, Teilen und Export). Kategorie „Koordinatensysteme &
+Funktionsgraphen“.
+
+| Id | Name (EN / DE) | Hinweise |
+|---|---|---|
+| `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | Mathematikstil: beide Achsen schneiden sich im Ursprung (0 in die Bereiche geklemmt) und enden mit Pfeilspitzen jenseits des Diagramms, Teilstriche quer zu den Achslinien, Zahlen unter der x-Achse und links der y-Achse, eine „0“ im Ursprung, Achsennamen (`xname`, `yname`, kursiv) an den Pfeilspitzen; `xmin`/`xmax`/`ymin`/`ymax`, `xstep`/`ystep`, `grid`, `numbers`, `xpi` (x-Teilung in Vielfachen von π/2, beschriftet π/2, π, 3π/2 …), `title`, Achsenbrüche |
+| `chart.math.function` | Function graph / Funktionsgraph | das Koordinatensystem mit einer Kurve: `function` = eine von zehn Grundfunktionen als y = a·f(b(x − c)) + d (linear, quadratisch, kubisch, Sinus, Kosinus, Exponential, ln, Quadratwurzel, Betrag, Kehrwert; `a`–`d`), eine eingegebene Formel (`expression`, Text `expr`) oder ein Funktionsgenerator (`generator`, Textform der Kurvenfunktionen, z. B. `pt1(y0=0, yinf=3, tau=1.5)`); `formula` zeigt „f(x) = …“ in der am wenigsten verdeckenden Ecke |
+
+- Formeln (`FunctionExpression`, ein kleiner sicherer Auswerter): Zahlen (Dezimalpunkt oder Dezimalkomma zwischen
+  Ziffern), `x`, `π`/`pi`, `e`, `+ − · × * / : ^ ** ² ³`, Klammern, `|…|`, Multiplikation ohne Zeichen (`2x`,
+  `3(x+1)`, `x sin(x)`) sowie sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, ln, log/lg, log2, sqrt/√, cbrt,
+  abs, sign, floor, ceil, round; ein vorangestelltes „f(x) =“ oder „y =“ wird übergangen. Ausgewertet wird nur
+  Arithmetik; Länge (400) und Verschachtelungstiefe sind begrenzt. Eine unlesbare Formel zeichnet die Achsen und den
+  Hinweis „Formel nicht lesbar“.
+- Kurven werden abgetastet (800 Punkte über den Bereich), am y-Bereich an den genauen Schnittpunkten abgeschnitten und
+  an Polstellen und Definitionsrändern getrennt (keine Linie durch den Pol von 1/x); Generatoren werden mit ihren
+  exakten Eckpunkten (Sprünge) gezeichnet.
+- Anschlüsse: `origin`, die Nullstellen (`zero0` …), Extrema (`ext0` …) und der y-Achsenabschnitt (`yint`); die Achsen
+  sind Schienen (`axis.x`, `axis.y`), jeder Gitterpunkt ist ein Fangpunkt (`g2_3` = x 2, y 3). So docken Punkte und
+  Vektoren des Mathematikmoduls am Diagramm an (ihre Enden auch frei auf seiner Fläche) und folgen ihm beim
+  Verschieben, Drehen und Skalieren.
+- Teile: die Kurve `series.0` (nach ihrer Formel benannt), `formula`, Achsen, Teilstriche, Zahlen, Achsennamen, Gitter.
+- Aktionen: Funktion (weiterschalten), „Formel f(x)…“ (wechselt zu einer eingegebenen Formel, vorbelegt mit der
+  aktuellen Funktion), „Koeffizienten a; b; c; d…“, „Funktionsgenerator…“ (bei Generatoren), Funktionsgleichung
+  anzeigen, Gitternetz, Achsenzahlen, π-Teilung, „x-Bereich…“, „y-Bereich…“, Achsenbrüche.
+- Bibliothek: `chart.axes.math`, `chart.axes.math.quadrant` (erster Quadrant 0…6 × 0…5), `chart.function` (Parabel),
+  `chart.function.linear` (y = 0,5x + 1), `chart.function.sine` (−2π…2π, π-Teilung), `chart.function.exponential`,
+  `chart.function.formula` (f(x) = x³/4 − x), `chart.function.generator` (PT1-Sprungantwort über t).
+- Das Mathematikmodul behält seine Typen `math.axes.cartesian` und `math.graph.function` (bestehende Folien werden
+  weiter gezeichnet); seine Bibliothekseinträge nennen diese Diagrammeinträge als `LibraryItem.Alternative` und
+  treten zurück, solange das Diagrammmodul registriert ist. Zahlenstrahl, 3D-Achsen und Polarkoordinatennetz bleiben
+  im Mathematikmodul.
+- Export: die Kurve wird als Reihe exportiert (die Achsen im Mathematikstil als Rahmenachsen, mit Kommentar).
 
 ## Bild (Diagramme v2, Stufe 2)
 
@@ -327,7 +401,8 @@ nutzen sie noch nicht (die Einbindung folgt im Figurenmodell).
   automatische Lage von Brüchen in datenfreien Lücken (`AxisBreaks.Spans`, die Slidemax-Regeln: eigene Höhe, ganz
   stauchen, wirkungslose Brüche entfallen) sowie die Zickzack- oder Doppelschrägstrich-Markierungen (Maße aus
   Slidemax: Linien 4,5 pt auseinander, Zacken 6,5 × 1,75 pt, Schrägstriche unter 15°) quer über den Plot oder kurz auf
-  der Achslinie. Nur lineare Achsen.
+  der Achslinie. Nur lineare Achsen. Seit Stufe 3 von den Diagrammtypen gezeichnet, siehe
+  [Achsenbrüche](#achsenbrüche-diagramme-v2-stufe-3).
 
 Hosts: Die Bausteine erzeugen Daten (Spezifikationen, Polylinien, Markierungspunkte); ein Host zeichnet sie mit den
 vorhandenen nativen Primitiven (Freihandformen und geschlossene Polygone), ein Vektorbild ist nicht nötig.

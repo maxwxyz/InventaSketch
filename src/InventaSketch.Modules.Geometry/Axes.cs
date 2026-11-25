@@ -227,7 +227,7 @@ namespace InventaSketch.Modules.Geometry
             "coordinate system", "axes", "cartesian", "grid", "koordinatensystem", "achsenkreuz", "kartesisch", "gitter", "xy") { }
 
         public override Size2 DefaultSize => new(70, 60);
-        public override IReadOnlyList<string> Companions => new[] { "math.vector.arrow", "math.point.labelled", "math.graph.function" };
+        public override IReadOnlyList<string> Companions => new[] { "math.vector.arrow", "math.point.labelled", GeometryModule.ChartFunctionType, "math.graph.function" };
         public override IReadOnlyList<ParamDef> Parameters { get; } = AxesSpec.Params(-5, 5, -4, 4).ToList();
 
         internal override void Draw(Fig f, SketchObject o, Lang lang)
