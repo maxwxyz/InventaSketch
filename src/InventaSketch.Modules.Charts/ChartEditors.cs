@@ -33,7 +33,7 @@ namespace InventaSketch.Modules.Charts
     /// The XY chart's curves and areas: curves from the data text (<see cref="ChartData"/>), areas from the parameter
     /// <c>areas</c> (JSON array of area objects, <see cref="FigureSpec.ParseAreas"/>), limit lines as the lines an area can
     /// reach. Changing points rewrites the data as one block per curve ("Name;" header, "x;y" rows), keeping the sketch
-    /// memos of the curves that were not changed.
+    /// memos of the curves that were not changed and the spline look of every curve drawn as a spline (<c># spline</c>).
     /// </summary>
     internal sealed class XyEditor : IAreaEditor, ISeriesEditor
     {
@@ -45,11 +45,13 @@ namespace InventaSketch.Modules.Charts
 
         public IReadOnlyList<AreaSeries> Series(SketchObject o, Lang lang)
         {
-            var series = ChartData.Xy(ChartData.Parse(o.Str("data", XyChart.DefaultData)));
+            var text = o.Str("data", XyChart.DefaultData);
+            var series = ChartData.Xy(ChartData.Parse(text));
             var step = o.Str("style", "line") == "step";
             var smooth = o.Flag("smooth", false) && !step;
-            return series.Select((s, k) => new AreaSeries(s.Points.Select(p => p.X).ToList(), s.Points.Select(p => p.Y).ToList(), 0, step, smooth,
-                Common.SeriesName(s.Name, k, lang), SeriesLook.Of(k).Color)).ToList();
+            var splines = ChartSketchInput.XySplines(text);
+            return series.Select((s, k) => new AreaSeries(s.Points.Select(p => p.X).ToList(), s.Points.Select(p => p.Y).ToList(), 0, step,
+                (smooth || k < splines.Length && splines[k]) && !step, Common.SeriesName(s.Name, k, lang), SeriesLook.Of(k).Color)).ToList();
         }
 
         public AreaModel? Model(SketchObject o, Lang lang)
@@ -80,6 +82,8 @@ namespace InventaSketch.Modules.Charts
             if (k < 0 || k >= series.Count) return o;
             // The sketch memo of every curve, so unchanged sketched curves keep their shape choice.
             var memos = Enumerable.Range(0, series.Count).Select(i => ChartSketchInput.XyBlock(text, i)?.Memo).ToList();
+            // Curves drawn with the spline stay so (an edited smooth sketched curve keeps its look through "# spline").
+            var splines = ChartSketchInput.XySplines(text);
             var next = change(series[k].Points.ToList());
             var blocks = new List<string>();
             for (var i = 0; i < series.Count; i++)
@@ -90,6 +94,7 @@ namespace InventaSketch.Modules.Charts
                 var lines = new List<string>();
                 if (!string.IsNullOrWhiteSpace(series[i].Name)) lines.Add(Header(series[i].Name!));
                 if (i != k && memos[i] is { } memo) lines.Add(memo);
+                else if (i < splines.Length && splines[i]) lines.Add(ChartSketchInput.SplineComment);
                 lines.AddRange(pts.Select(p => N(p.X) + ";" + N(p.Y)));
                 blocks.Add(string.Join("\n", lines));
             }

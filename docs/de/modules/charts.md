@@ -151,7 +151,7 @@ Ungültige Eingaben werfen eine `FormatException` mit zweisprachiger Meldung und
 `IconIds.Toggle`, Eingaben `IconIds.Text`. Die Diagrammtypen haben keine Ansichtsumschaltung.
 
 **Auswahlen sind Klapplisten (25.11.2026).** Jede Auswahl unter mehreren Möglichkeiten (Darstellung, Skala, Lage der
-Legende, Ausrichtung, Maschine, Funktion, Flanken, Kurvenform, Ausgleichsfunktion, Glättung, Strichart, Marker,
+Legende, Ausrichtung, Maschine, Funktion, Flanken, Kurvenform, Ausgleichsfunktion, Glättung, Detailgrad, Strichart, Marker,
 Füllmuster, Farbe, Deckkraft, Rand, Wo, Stufen) ist eine Aktion je Möglichkeit (`ActionChoices.Option`, Id
 `<Auswahl>=<Wert>`, z. B. `chart.style=step`, `chart.curve.shape=fitted`), alle mit derselben `ActionChoice` (Schlüssel
 und Bezeichnung), die aktuelle aktiv markiert. Die Hosts zeigen sie als eine Klappliste („Kurvenform: Geglättet ▾“) und
@@ -199,8 +199,9 @@ verschieben oder löschen; einzelne Kurven löschen“):
   liegt), der Umrandung und dem Leuchten (`Registry.PartPrimitives`).
 - Ziehgriffe (`DragHandles`): je Punkt ein freier Griff, gezeigt mit seiner Kurve (`DragHandle.ShowWith = "series.k"`);
   der Wert rastet auf ein Zehntel des Achsschritts (log. Achsen: zwei gültige Stellen) und bleibt im Achsbereich; auf
-  einer Kurve, deren x nie fällt, bleibt der Punkt zwischen seinen Nachbarn. Kurven mit mehr als 40 Punkten (skizzierte)
-  erhalten keine Punktgriffe – ihre Punkte bleiben auf der Zeichnung auswählbar und mit „Wert …“ änderbar. Je Kurve ein
+  einer Kurve, deren x nie fällt, bleibt der Punkt zwischen seinen Nachbarn. Kurven mit mehr als 64 Punkten (dichte
+  Daten) erhalten keine Punktgriffe – ihre Punkte bleiben auf der Zeichnung auswählbar und mit „Wert …“ änderbar;
+  skizzierte Kurven speichern nur ihre Stützpunkte (höchstens 64) und erhalten daher immer Griffe. Je Kurve ein
   Griff (`series.k`, `DragHandle.ByPart`) wird gezogen, indem man auf die ausgewählte Kurve drückt: jeder Punkt wandert
   um den gerasteten Versatz (log. Achsen: um einen Faktor); bei deutlich senkrechtem (waagerechtem) Ziehen zählt nur
   diese Richtung.
@@ -208,12 +209,57 @@ verschieben oder löschen; einzelne Kurven löschen“):
   Eine gelöschte Kurve nimmt ihre Flächen und Punktmarker mit, Indizes und Teil-Aussehen späterer Kurven rücken nach.
   Ein geänderter Punkt einer skizzierten Kurve macht sie zu reinen Daten (ihr Form-Memo entfällt); die anderen Kurven
   behalten ihres. Die Daten des XY-Diagramms werden dann als ein Block je Kurve geschrieben (Kopfzeile „Name;“, Zeilen
-  `x;y`).
+  `x;y`); eine als Spline gezeichnete Kurve behält dieses Aussehen über eine Zeile `# spline` vor ihrem Block.
 - PowerPoint: Die Punktgriffe sind kleine blau umrandete Punkte (der ausgewählte Punkt blau gefüllt mit sanftem
   Leuchten); sie erscheinen für die ausgewählte Kurve oder den ausgewählten Punkt, die anderen nahe am Zeiger. Ein Klick
   auf einen Griff wählt den Punkt; Ziehen verschiebt ihn (Live-Vorschau, ein Rückgängig-Schritt, Esc bricht ab). Mit
   ausgewählter Kurve verschiebt Drücken irgendwo auf ihr und Ziehen die Kurve. Entf löscht den ausgewählten Punkt (die
   Kurve bleibt ausgewählt), die Kurve oder die Fläche.
+
+## Skizzierte Kurven: Stützpunkte, Detailgrad und Zeichengeschwindigkeit (25.11.2026)
+
+Maintainer: „Beim Zeichnen einer Kurve werden manchmal zu viele Punkte gesetzt – vielleicht einstellbar, oder abhängig
+davon, wie schnell oder welche Kurve man zeichnet?“ Eine skizzierte Kurve (`ChartSketchInput`, `CurveShapes`,
+`CurveKeyPoints`) speichert nur die Punkte, die ihre Form tragen – jeder gespeicherte Punkt ist eine Datenzeile, ein
+Punkt-Teil und ein Griff – statt 96–120 dichter Abtastpunkte:
+
+- Die Zeigerspur wird einmal bereinigt und mit der Kurve aufbewahrt (`CurveSketchMemo`: im XY-Diagramm der Kommentar
+  `# sketch …` vor dem Block, in Abbildungen das Reihen-Feld `sketch`), sodass jede der folgenden Auswahlen verlustfrei
+  daraus neu berechnet wird.
+- Stützpunkte je Kurvenform, alle Toleranzen relativ zum Plot (1 = Plotgröße), beim Standard-Detailgrad:
+  - **Geglättet**: die geglättete Spur; Stützpunkte so, dass der Diagramm-Spline durch sie höchstens 0,6 % abweicht.
+  - **Interpoliert (Spline)**: die leicht gemittelte Spur; Stützpunkte so, dass der Spline höchstens 1,5 % abweicht.
+  - **Ausgleichsfunktion**: stückweise lineare Funktionen (konstant, Rampe, Sprung, Puls, Sägezahn, Dreieck) speichern
+    ihre exakten Ecken; glatte (Sinus, Ellipse) Stützpunkte für den Spline innerhalb 0,5 %; PT1, PT2 und Abfall mit
+    Startecke im gezeichneten Bereich werden als gerade Abschnitte innerhalb 0,5 % gespeichert (ein Spline würde die
+    Ecke abrunden).
+  - **Gerade Abschnitte**: Ramer–Douglas–Peucker innerhalb 1,5 % der leicht gemittelten Spur.
+  - **Wie gezeichnet**: die Spur, mit Ramer–Douglas–Peucker innerhalb 0,2 % ausgedünnt (das Zittern bleibt sichtbar).
+- Spline-Stützpunkte (`CurveKeyPoints.Spline`): feste Punkte an den Enden, an Umkehrpunkten von x und y (Zickzack mit
+  einer Hysterese von 4 Toleranzen), an Ecken (≥ 50° innerhalb ±2 % Bogenlänge) und an der steilsten Stelle zwischen
+  Gipfel und Tal (Wendepunkt); dazwischen so wenige Punkte wie möglich, gleichmäßig über die Krümmung verteilt
+  (√|Krümmung| plus kleine Grundlast), ihre Zahl wird erhöht, bis der Spline durch alle Stützpunkte in beiden Richtungen
+  im Toleranzband bleibt (Überschwinger zählen); Punkte, ohne die das Band hält, entfallen. Eine Gerade behält 2 Punkte,
+  ein einzelner Bogen etwa 5–7, ein Sinus über zwei Perioden etwa 15–20, ein Gekritzel höchstens die Grenze des
+  Detailgrads.
+- Zeichnen: geglättete, interpolierte und glatte angenäherte Kurven werden mit dem Diagramm-Spline gezeichnet
+  (gleichmäßiges Catmull–Rom, `Draw.Spline`; affin invariant, daher gilt die Prüfung in Ploteinheiten auch auf der
+  Zeichnung). XY-Diagramm: je Block, markiert durch sein Memo (`CurveShapes.IsSpline`) oder eine Zeile `# spline`
+  (bleibt beim Ändern der Punkte von Hand und beim Bereinigen der Folie erhalten; `ChartSketchInput.XySplines`), auch im
+  matplotlib-/pgfplots-Export; Abbildung: das Feld `smooth` der Reihe.
+- **Detailgrad** (Teil-Auswahl neben „Kurvenform“ und „Glättung“, eine Klappliste mit Vorschau der behaltenen Punkte):
+  Gering (Toleranzen × 2, höchstens 24 Punkte), Mittel (Standard, adaptiv; höchstens 40), Hoch (Toleranzen × ½,
+  höchstens 64). Ein geringerer Detailgrad behält nie mehr Punkte als ein höherer. Nicht angeboten für exakte stückweise
+  lineare Ausgleichsfunktionen. Gespeichert als `detail=low` / `"detail": "high"` (Mittel entfällt).
+- **Zeichengeschwindigkeit** als Hinweis: der Host gibt je Spurpunkt einen Zeitstempel (COM: ms seit dem Drücken; Engine
+  `sketchCurve` nimmt `[x, y, t]`). Regel: die Geschwindigkeit an einem Punkt wird über mindestens 120 ms um ihn in
+  Plotgrößen je Sekunde gemessen; ihr Toleranzfaktor ist √(Geschwindigkeit / 1 Plot je Sekunde), begrenzt auf
+  0,6 … 1,5. Langsames, sorgfältiges Zeichnen (≤ 0,36 Plots/s) verschärft die Toleranzen auf 0,6 ×, ein schneller Strich
+  (≥ 2,25 Plots/s) lockert sie auf 1,5 ×; ein Strich von einer Plotbreite je Sekunde ist neutral. Die Faktoren werden je
+  behaltenem Spurpunkt in Stufen von 0,1 gespeichert (`pace=4456…`, eine Ziffer je Punkt, 0 = 0,6 … 9 = 1,5; ohne
+  Zeitstempel entfällt das Feld), das Ergebnis ist also deterministisch.
+- Alte skizzierte Daten (dichte Zeilen, Memo ohne Detailgrad und Tempo) laden unverändert und werden bei glatter Form als
+  Spline gezeichnet; jede Auswahl berechnet sie als Stützpunkte neu.
 
 ## Flächen (25.11.2026)
 

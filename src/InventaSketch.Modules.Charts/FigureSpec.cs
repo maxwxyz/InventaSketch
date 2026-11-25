@@ -81,8 +81,9 @@ namespace InventaSketch.Modules.Charts
         public string? LabelPos { get; set; }
         public FigNumeral? Numeral { get; set; }
         /// <summary>
-        /// A hand-sketched curve: its kept trail, shape and fitted functions ("sketch": {"shape", "strength", "fit", "log",
-        /// "frame", "fits", "raw"}); null for curves that were not sketched. The points (x, y) are the drawn curve.
+        /// A hand-sketched curve: its kept trail, shape and fitted functions ("sketch": {"shape", "strength", "detail", "fit",
+        /// "log", "frame", "fits", "pace", "raw"}); null for curves that were not sketched. The points (x, y) are the curve's
+        /// key points (drawn as a spline when <see cref="Smooth"/>).
         /// </summary>
         public CurveSketchMemo? Sketch { get; set; }
     }
@@ -398,6 +399,8 @@ namespace InventaSketch.Modules.Charts
                 YLog = log.Contains("y"),
                 Frame = f.Count == 4 && f.All(Fmt.Finite) ? new Rect(f[0], f[1], f[2], f[3]) : default,
                 Raw = raw,
+                Detail = CurveShapes.DetailOf(Str(k, "detail")) ?? CurveDetail.Medium,
+                Pace = CurveShapes.ParsePace(Str(k, "pace"), raw.Count),
             };
             return memo.IsValid ? memo : null;
         }
@@ -728,6 +731,7 @@ namespace InventaSketch.Modules.Charts
             w.WriteStartObject();
             w.WriteString("shape", CurveShapes.Id(m.Shape));
             if (m.Strength != CurveShapes.DefaultStrength) w.WriteNumber("strength", m.Strength);
+            if (m.Detail != CurveDetail.Medium) w.WriteString("detail", CurveShapes.Id(m.Detail));
             if (m.Fit is CurveKind k) w.WriteString("fit", CurveFunctions.Info(k).Id);
             if (m.XLog || m.YLog) w.WriteString("log", (m.XLog ? "x" : "") + (m.YLog ? "y" : ""));
             w.WriteStartArray("frame"); WVal(w, m.Frame.X); WVal(w, m.Frame.Y); WVal(w, m.Frame.W); WVal(w, m.Frame.H); w.WriteEndArray();
@@ -737,6 +741,7 @@ namespace InventaSketch.Modules.Charts
                 foreach (var s in m.Fits) w.WriteStringValue(s.Format());
                 w.WriteEndArray();
             }
+            if (m.Pace.Count == m.Raw.Count && m.Pace.Count > 0) w.WriteString("pace", CurveShapes.PaceText(m.Pace));
             w.WriteStartArray("raw");
             foreach (var p in m.Raw) { w.WriteStartArray(); WVal(w, p.X); WVal(w, p.Y); w.WriteEndArray(); }
             w.WriteEndArray();

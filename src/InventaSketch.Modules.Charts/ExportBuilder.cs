@@ -329,9 +329,11 @@ namespace InventaSketch.Modules.Charts
 
         private void Xy()
         {
-            var series = ChartData.Xy(ChartData.Parse(_o.Str("data", XyChart.DefaultData)));
+            var text = _o.Str("data", XyChart.DefaultData);
+            var series = ChartData.Xy(ChartData.Parse(text));
             var style = _o.Str("style", "line");
             var smooth = _o.Flag("smooth", false) && style != "step";
+            var splines = ChartSketchInput.XySplines(text);
             var lines = style != "points";
             var markers = style is "points" or "linepoints";
             Limits();
@@ -344,7 +346,7 @@ namespace InventaSketch.Modules.Charts
                 var line = lines ? Stroke(key, look.Color, 0.5, look.Dash) : null;
                 var marker = markers ? Marker(mkey, MarkerName(look.Marker), look.FilledMarker, look.Color, _f.Fs * 0.3) : null;
                 var legend = Common.SeriesName(series[k].Name, k, _lang);
-                drawn[k] = AddSeries(0, key, mkey, series[k].Points, line, marker, style == "step", smooth, legend);
+                drawn[k] = AddSeries(0, key, mkey, series[k].Points, line, marker, style == "step", smooth || style != "step" && k < splines.Length && splines[k], legend);
             }
             // Areas below everything else (as drawn).
             var areas = XyEditor.Areas(_o);

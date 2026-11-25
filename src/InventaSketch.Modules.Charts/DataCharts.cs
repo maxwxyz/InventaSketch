@@ -76,6 +76,8 @@ namespace InventaSketch.Modules.Charts
             Common.Apply(f, o, ctx);
             var style = o.Str("style", "line");
             var smooth = o.Flag("smooth", false);
+            // Sketched curves of a smooth shape (and edited ones marked "# spline") are drawn as splines through their key points.
+            var splines = ChartSketchInput.XySplines(o.Str("data", DefaultData));
             var lines = style != "points";
             var markers = style is "points" or "linepoints";
             for (var k = 0; k < series.Count; k++)
@@ -111,7 +113,7 @@ namespace InventaSketch.Modules.Charts
                     foreach (var run in f.VisibleRuns(panel, style == "step" ? Steps(data) : data))
                     {
                         var path = run.Select(p => f.P(panel, p.X, p.Y)).ToList();
-                        if (Draw.Series(path, panel.Area, look.Line(0.5), smooth && style != "step", tag) is { } line) segs.AddRange(line.Segments);
+                        if (Draw.Series(path, panel.Area, look.Line(0.5), (smooth || k < splines.Length && splines[k]) && style != "step", tag) is { } line) segs.AddRange(line.Segments);
                         c.Avoid.Add(path);
                     }
                     if (segs.Count > 0) c.Lines.Add(new PathPrim(segs, look.Line(0.5)) { Tag = tag });

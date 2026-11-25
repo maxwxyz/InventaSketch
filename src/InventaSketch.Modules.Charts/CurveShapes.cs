@@ -22,8 +22,20 @@ namespace InventaSketch.Modules.Charts
     }
 
     /// <summary>
-    /// What a sketched curve remembers: the chosen shape, the smoothing strength, the fitted functions (best first) and the
-    /// lightly cleaned trail. Stored with the series (XY chart: a comment line <c># sketch …</c> before the data block; figure:
+    /// How many points a sketched curve keeps (part choice "Detail"): the tolerances of the key point selection
+    /// (<see cref="CurveKeyPoints"/>) are doubled for <see cref="Low"/> and halved for <see cref="High"/>.
+    /// </summary>
+    public enum CurveDetail
+    {
+        Low,
+        /// <summary>The default: adaptive key points with the base tolerances.</summary>
+        Medium,
+        High,
+    }
+
+    /// <summary>
+    /// What a sketched curve remembers: the chosen shape, the smoothing strength, the detail, the fitted functions (best
+    /// first), the lightly cleaned trail and the drawing pace along it. Stored with the series (XY chart: a comment line <c># sketch …</c> before the data block; figure:
     /// the member <c>sketch</c> of the series), so <see cref="CurveShapes.Points"/> can recompute the curve for every shape.
     /// </summary>
     public sealed record CurveSketchMemo
@@ -31,6 +43,8 @@ namespace InventaSketch.Modules.Charts
         public CurveShape Shape { get; init; } = CurveShape.Smoothed;
         /// <summary>Smoothing strength 1 (light), 2 (medium) or 3 (strong).</summary>
         public int Strength { get; init; } = CurveShapes.DefaultStrength;
+        /// <summary>How many key points the curve keeps (low, medium = adaptive default, high).</summary>
+        public CurveDetail Detail { get; init; } = CurveDetail.Medium;
         /// <summary>The chosen fitted kind (one of <see cref="Fits"/>); null when nothing could be fitted.</summary>
         public CurveKind? Fit { get; init; }
         /// <summary>Fitted functions, best first, in fit space (the axes' own scale: log10 of the values on log axes).</summary>
@@ -42,6 +56,11 @@ namespace InventaSketch.Modules.Charts
         public Rect Frame { get; init; }
         /// <summary>The cleaned trail in data coordinates (at most <see cref="CurveShapes.MaxRaw"/> points).</summary>
         public IReadOnlyList<Vec2> Raw { get; init; } = Array.Empty<Vec2>();
+        /// <summary>
+        /// Drawing pace per point of <see cref="Raw"/>: the tolerance factor from the drawing speed (<see cref="CurveKeyPoints.Pace"/>,
+        /// 0.6 slow … 1.5 fast, in steps of 0.1); empty when the host gave no time stamps (factor 1 everywhere).
+        /// </summary>
+        public IReadOnlyList<double> Pace { get; init; } = Array.Empty<double>();
 
         /// <summary>The spec of <see cref="Fit"/> (else the best fit), or null.</summary>
         public CurveSpec? FitSpec => Fits.FirstOrDefault(s => s.Kind == Fit) ?? Fits.FirstOrDefault();
@@ -52,15 +71,22 @@ namespace InventaSketch.Modules.Charts
 
     /// <summary>
     /// Curve shapes of sketched curves (charts v2): the trail is cleaned once when it is sketched (<see cref="Create"/>), every
-    /// shape is computed from it (<see cref="Points"/>), and the part actions "Curve shape", "Fitted function" and "Smoothing"
-    /// switch between them. All tolerances are relative to the plot frame (1 = plot size), so they act like screen distances.
+    /// shape is computed from it (<see cref="Points"/>), and the part actions "Curve shape", "Fitted function", "Smoothing" and
+    /// "Detail" switch between them. All tolerances are relative to the plot frame (1 = plot size), so they act like screen
+    /// distances.
+    /// <para>
+    /// Stored points (2026-11-25): a curve keeps only its key points (<see cref="CurveKeyPoints"/>), not dense samples.
+    /// Smoothed and interpolated shapes and smooth fitted functions are drawn through them with the chart's spline
+    /// (<see cref="IsSpline"/>: XY chart block marked by its memo or <c># spline</c>, figure series <c>smooth</c>); straight
+    /// segments, "as drawn" and piecewise-linear functions (step, pulse, ramp, sawtooth, triangle) are drawn straight.
+    /// </para>
     /// </summary>
     public static class CurveShapes
     {
         /// <summary>Most points of the kept trail.</summary>
         public const int MaxRaw = 96;
-        /// <summary>Most points of a drawn curve.</summary>
-        public const int MaxPoints = 120;
+        /// <summary>Most stored points of a sketched curve (detail high; medium keeps at most 40, low 24).</summary>
+        public const int MaxPoints = 64;
         /// <summary>Most fitted functions kept (best first).</summary>
         public const int MaxFits = 6;
         public const int DefaultStrength = 2;
@@ -74,24 +100,90 @@ namespace InventaSketch.Modules.Charts
         private static readonly double[] StrengthEpsilon = { 0, 0.002, 0.004, 0.008 };
         /// <summary>Moving average half-width before the key points are picked.</summary>
         public const int KeyWindow = 3;
-        /// <summary>Ramer–Douglas–Peucker tolerance of the key points (1.5 % of the plot).</summary>
+        /// <summary>Ramer–Douglas–Peucker tolerance of the key points of straight segments and the interpolating spline (1.5 % of the plot).</summary>
         public const double KeyEpsilon = 0.015;
+        /// <summary>Largest distance between the smoothed curve and the spline through its stored points (0.6 % of the plot).</summary>
+        public const double SmoothTolerance = 0.006;
+        /// <summary>Largest distance between a smooth fitted function and the spline through its stored points (0.5 % of the plot).</summary>
+        public const double FitTolerance = 0.005;
+        /// <summary>Ramer–Douglas–Peucker tolerance of the thinned trail "as drawn" (0.2 % of the plot).</summary>
+        public const double RawTolerance = 0.002;
+        /// <summary>Tolerance scale of the details low, medium and high.</summary>
+        private static readonly double[] DetailScale = { 2, 1, 0.5 };
+        /// <summary>Most stored points of the details low, medium and high.</summary>
+        private static readonly int[] DetailMax = { 24, 40, MaxPoints };
 
-        /// <summary>Order of the "Curve shape" cycle.</summary>
+        /// <summary>Order of the "Curve shape" choice.</summary>
         public static IReadOnlyList<CurveShape> Order { get; } = new[] { CurveShape.Smoothed, CurveShape.Interpolated, CurveShape.Fitted, CurveShape.Segments, CurveShape.Raw };
+
+        /// <summary>Order of the "Detail" choice.</summary>
+        public static IReadOnlyList<CurveDetail> Details { get; } = new[] { CurveDetail.Low, CurveDetail.Medium, CurveDetail.High };
+
+        /// <summary>Tolerance scale of a detail (low 2, medium 1, high 0.5).</summary>
+        public static double Scale(CurveDetail d) => DetailScale[(int)Clamp(d)];
+
+        /// <summary>Most stored points of a detail (low 24, medium 40, high 64).</summary>
+        public static int MaxOf(CurveDetail d) => DetailMax[(int)Clamp(d)];
+
+        private static CurveDetail Clamp(CurveDetail d) => d < CurveDetail.Low ? CurveDetail.Low : d > CurveDetail.High ? CurveDetail.High : d;
+
+        /// <summary>True for the function kinds whose sample is exact with straight lines (constant, ramp, step, pulses, sawtooth, triangle).</summary>
+        public static bool IsPiecewiseLinear(CurveKind k)
+            => k is CurveKind.Constant or CurveKind.Ramp or CurveKind.Step or CurveKind.Pulse or CurveKind.PulseTrain or CurveKind.Sawtooth or CurveKind.Triangle;
+
+        /// <summary>
+        /// True if the memo's points are drawn with the chart spline: smoothed, interpolated, and fitted functions that are
+        /// smooth over the drawn range (sine, ellipse; PT1, PT2 and decay only when their start corner lies before it).
+        /// </summary>
+        public static bool IsSpline(CurveSketchMemo m) => m.Shape switch
+        {
+            CurveShape.Segments or CurveShape.Raw => false,
+            CurveShape.Fitted => m.FitSpec is not { } s || !StraightFit(m, s),
+            _ => true,
+        };
+
+        /// <summary>
+        /// True if a fitted function is stored as straight segments: piecewise-linear kinds (their exact corners) and kinds whose
+        /// start corner t0 (PT1, PT2, decay) lies inside the drawn x range (a spline would round it off).
+        /// </summary>
+        private static bool StraightFit(CurveSketchMemo m, CurveSpec s)
+        {
+            if (IsPiecewiseLinear(s.Kind)) return true;
+            double? corner = s.Kind switch
+            {
+                CurveKind.Pt1 => s.Values[3],
+                CurveKind.Decay => s.Values[2],
+                CurveKind.Pt2 => s.Values[4],
+                _ => null,
+            };
+            if (corner is not double c) return false;
+            var xs = m.Raw.Select(p => To(p.X, m.XLog)).Where(Fmt.Finite).ToList();
+            return xs.Count > 0 && c > xs.Min() + 1e-9 * Math.Max(1, m.Frame.W);
+        }
+
+        /// <summary>True if the detail changes the memo's points (all shapes but piecewise-linear fitted functions, which are exact).</summary>
+        public static bool HasDetail(CurveSketchMemo m) => !(m.Shape == CurveShape.Fitted && m.FitSpec is { } s && IsPiecewiseLinear(s.Kind));
 
         // ------------------------------------------------------------------ creating and computing
 
         /// <summary>
         /// The memo of a newly sketched curve: <paramref name="trail"/> in fit space (log10 on log axes), the plot
         /// <paramref name="frame"/> in fit space and the recognition result of the trail. A recognised kind starts as
-        /// <see cref="CurveShape.Fitted"/>, anything else as <see cref="CurveShape.Smoothed"/>.
+        /// <see cref="CurveShape.Fitted"/>, anything else as <see cref="CurveShape.Smoothed"/>. <paramref name="times"/> (ms, one
+        /// per trail point, optional) gives the drawing pace (<see cref="CurveKeyPoints.Pace"/>).
         /// </summary>
-        public static CurveSketchMemo Create(IReadOnlyList<Vec2> trail, Rect frame, bool xlog, bool ylog, SketchFitResult fit)
+        public static CurveSketchMemo Create(IReadOnlyList<Vec2> trail, Rect frame, bool xlog, bool ylog, SketchFitResult fit, IReadOnlyList<double>? times = null)
         {
             frame = SafeFrame(frame, trail);
-            var raw = Clean(trail.Where(Finite).Select(p => Norm(p, frame)).ToList());
+            var keep = Enumerable.Range(0, trail.Count).Where(i => Finite(trail[i])).ToList();
+            var norm = keep.Select(i => Norm(trail[i], frame)).ToList();
+            var raw = Clean(norm);
+            var pace = times is not null && times.Count == trail.Count
+                ? RawPace(norm, CurveKeyPoints.Pace(norm, keep.Select(i => times[i]).ToList()), raw.Count)
+                : Array.Empty<double>();
             var fits = fit.Ranking.Take(MaxFits).Select(c => RoundSpec(c.Spec)).ToList();
+            var rawData = raw.Select(p => Denorm(p, frame)).Select(p => new Vec2(Round(Back(p.X, xlog), xlog, frame.W), Round(Back(p.Y, ylog), ylog, frame.H))).ToList();
+            var finite = Enumerable.Range(0, rawData.Count).Where(i => Finite(rawData[i])).ToList();
             return new CurveSketchMemo
             {
                 Shape = fit.Kind is null ? CurveShape.Smoothed : CurveShape.Fitted,
@@ -100,35 +192,141 @@ namespace InventaSketch.Modules.Charts
                 XLog = xlog,
                 YLog = ylog,
                 Frame = frame,
-                Raw = raw.Select(p => Denorm(p, frame)).Select(p => new Vec2(Round(Back(p.X, xlog), xlog, frame.W), Round(Back(p.Y, ylog), ylog, frame.H)))
-                    .Where(Finite).ToList(),
+                Raw = finite.Select(i => rawData[i]).ToList(),
+                Pace = pace.Count == rawData.Count ? finite.Select(i => pace[i]).ToList() : Array.Empty<double>(),
             };
         }
 
-        /// <summary>The curve of the memo's shape in data coordinates (at most <see cref="MaxPoints"/> points; empty for an invalid memo).</summary>
+        /// <summary>
+        /// The pace at the <paramref name="count"/> evenly spaced points of the cleaned trail (by share of the arc length of
+        /// <paramref name="norm"/>), lightly averaged (±2 points) and rounded to the stored steps; empty when it is 1 everywhere
+        /// or unknown.
+        /// </summary>
+        private static IReadOnlyList<double> RawPace(IReadOnlyList<Vec2> norm, IReadOnlyList<double>? pace, int count)
+        {
+            if (pace is null || count < 2 || norm.Count < 2) return Array.Empty<double>();
+            var n = norm.Count;
+            var s = new double[n];
+            for (var i = 1; i < n; i++) s[i] = s[i - 1] + norm[i].DistanceTo(norm[i - 1]);
+            var total = s[n - 1];
+            if (!(total > 0)) return Array.Empty<double>();
+            var at = new double[count];
+            var k = 0;
+            for (var j = 0; j < count; j++)
+            {
+                var u = total * j / (count - 1);
+                while (k < n - 2 && s[k + 1] < u) k++;
+                var seg = s[k + 1] - s[k];
+                var t = seg > 0 ? Geo.Clamp((u - s[k]) / seg, 0, 1) : 0;
+                at[j] = pace[k] + (pace[k + 1] - pace[k]) * t;
+            }
+            var result = new List<double>(count);
+            for (var j = 0; j < count; j++)
+            {
+                int a = Math.Max(0, j - 2), b = Math.Min(count - 1, j + 2);
+                double sum = 0;
+                for (var i = a; i <= b; i++) sum += at[i];
+                result.Add(CurveKeyPoints.Quantise(sum / (b - a + 1)));
+            }
+            return result.All(f => Math.Abs(f - 1) < 1e-9) ? Array.Empty<double>() : result;
+        }
+
+        /// <summary>
+        /// The stored points of the memo's shape in data coordinates – its key points (<see cref="CurveKeyPoints"/>; at most
+        /// <see cref="MaxOf"/> of its detail), drawn as a spline when <see cref="IsSpline"/>; empty for an invalid memo.
+        /// </summary>
         public static IReadOnlyList<Vec2> Points(CurveSketchMemo m)
         {
             if (!m.IsValid) return Array.Empty<Vec2>();
+            // The choices' previews ask for the same memos again and again: keep the last results (keyed by the memo's text).
+            var key = ToComment(m) + " strength=" + Fmt.I(m.Strength);
+            lock (Cache)
+                if (Cache.TryGetValue(key, out var hit)) return hit;
+            var result = Compute(m);
+            lock (Cache)
+            {
+                if (Cache.Count >= CacheSize) Cache.Clear();
+                Cache[key] = result;
+            }
+            return result;
+        }
+
+        private const int CacheSize = 256;
+        private static readonly Dictionary<string, IReadOnlyList<Vec2>> Cache = new(StringComparer.Ordinal);
+
+        private static IReadOnlyList<Vec2> Compute(CurveSketchMemo m)
+        {
             var frame = m.Frame;
-            var fitRaw = m.Raw.Select(p => new Vec2(To(p.X, m.XLog), To(p.Y, m.YLog))).Where(Finite).ToList();
-            if (fitRaw.Count < 2) return Array.Empty<Vec2>();
-            var raw = fitRaw.Select(p => Norm(p, frame)).ToList();
-            IReadOnlyList<Vec2> fitSpace;
+            var fitRaw = m.Raw.Select(p => new Vec2(To(p.X, m.XLog), To(p.Y, m.YLog))).ToList();
+            var ok = Enumerable.Range(0, fitRaw.Count).Where(i => Finite(fitRaw[i])).ToList();
+            if (ok.Count < 2) return Array.Empty<Vec2>();
+            var raw = ok.Select(i => Norm(fitRaw[i], frame)).ToList();
+            var pace = m.Pace.Count == m.Raw.Count ? ok.Select(i => m.Pace[i]).ToList() : null;
+            var d = Clamp(m.Detail);
+            var adaptive = true;
+            IReadOnlyList<Vec2> norm;
             if (m.Shape == CurveShape.Fitted && m.FitSpec is { } spec)
-                fitSpace = spec.Sample(fitRaw.Min(p => p.X), fitRaw.Max(p => p.X));
+            {
+                var sample = spec.Sample(ok.Min(i => fitRaw[i].X), ok.Max(i => fitRaw[i].X)).Where(Finite).Select(p => Norm(p, frame)).ToList();
+                if (IsPiecewiseLinear(spec.Kind)) { norm = Thin(sample, MaxPoints); adaptive = false; }
+                else
+                {
+                    var straight = StraightFit(m, spec);
+                    var target = straight ? sample : Uniform(sample);
+                    norm = straight
+                        ? CurveKeyPoints.Polyline(target, FitTolerance * Scale(d), null, MaxOf(d))
+                        : CurveKeyPoints.Spline(target, FitTolerance * Scale(d), null, MaxOf(d));
+                }
+            }
             else
             {
-                var norm = m.Shape switch
+                switch (m.Shape)
                 {
-                    CurveShape.Raw => raw,
-                    CurveShape.Segments => KeyPoints(raw),
-                    CurveShape.Interpolated => Interpolate(KeyPoints(raw)),
-                    _ => Smooth(raw, m.Strength),
-                };
-                fitSpace = norm.Select(p => Denorm(p, frame)).ToList();
+                    case CurveShape.Raw:
+                        {
+                            var along = CurveKeyPoints.Along(raw, pace);
+                            norm = CurveKeyPoints.Polyline(raw, RawTolerance * Scale(d), along, MaxOf(d));
+                            break;
+                        }
+                    case CurveShape.Segments:
+                        {
+                            var target = KeyTarget(raw);
+                            var along = CurveKeyPoints.Along(target, pace);
+                            norm = CurveKeyPoints.Polyline(target, KeyEpsilon * Scale(d), along, MaxOf(d));
+                            break;
+                        }
+                    case CurveShape.Interpolated:
+                        {
+                            var target = KeyTarget(raw);
+                            var along = CurveKeyPoints.Along(target, pace);
+                            norm = CurveKeyPoints.Spline(target, KeyEpsilon * Scale(d), along, MaxOf(d));
+                            break;
+                        }
+                    default:
+                        {
+                            var target = Uniform(Smooth(raw, m.Strength));
+                            var along = CurveKeyPoints.Along(target, pace);
+                            norm = CurveKeyPoints.Spline(target, SmoothTolerance * Scale(d), along, MaxOf(d));
+                            break;
+                        }
+                }
             }
-            var data = fitSpace.Select(p => new Vec2(Back(p.X, m.XLog), Back(p.Y, m.YLog))).Where(Finite).ToList();
-            return Thin(data, MaxPoints);
+            var data = norm.Select(p => Denorm(p, frame)).Select(p => new Vec2(Back(p.X, m.XLog), Back(p.Y, m.YLog))).Where(Finite).ToList();
+            var own = Thin(data, MaxPoints);
+            // A lower detail never keeps more points than a higher one: the finer key points keep a tighter tolerance, so
+            // when they are fewer they are taken.
+            if (adaptive && d < CurveDetail.High && Points(m with { Detail = d + 1 }) is { } finer && finer.Count <= own.Count) return finer;
+            return own;
+        }
+
+        /// <summary>The curve as drawn (data coordinates): the stored points, through the chart spline when <see cref="IsSpline"/>.</summary>
+        public static IReadOnlyList<Vec2> Drawn(CurveSketchMemo m) => Drawn(m, Points(m));
+
+        private static IReadOnlyList<Vec2> Drawn(CurveSketchMemo m, IReadOnlyList<Vec2> pts)
+        {
+            if (!IsSpline(m) || pts.Count < 3) return pts;
+            var fit = pts.Select(p => new Vec2(To(p.X, m.XLog), To(p.Y, m.YLog))).ToList();
+            return CurveKeyPoints.SplineCurve(fit).Select(p => new Vec2(Back(p.X, m.XLog), Back(p.Y, m.YLog))).ToList();
         }
 
         /// <summary>
@@ -148,7 +346,7 @@ namespace InventaSketch.Modules.Charts
             return list;
         }
 
-        /// <summary>Smoothed shape (frame-normalised): moving average of the strength's width, simplified, centripetal Catmull–Rom spline.</summary>
+        /// <summary>Smoothed curve (frame-normalised, dense): moving average of the strength's width, simplified, centripetal Catmull–Rom spline.</summary>
         public static IReadOnlyList<Vec2> Smooth(IReadOnlyList<Vec2> norm, int strength)
         {
             var s = Math.Max(1, Math.Min(3, strength));
@@ -158,20 +356,15 @@ namespace InventaSketch.Modules.Charts
             return SketchFit.CatmullRom(SketchFit.Simplify(avg, StrengthEpsilon[s]), 8, 0.5);
         }
 
-        /// <summary>Key points (frame-normalised): corners and turning points of the lightly averaged trail (Ramer–Douglas–Peucker).</summary>
+        /// <summary>Key points (frame-normalised, medium detail, no pace): corners and turning points of the lightly averaged trail.</summary>
         public static IReadOnlyList<Vec2> KeyPoints(IReadOnlyList<Vec2> norm)
+            => CurveKeyPoints.Polyline(KeyTarget(norm), KeyEpsilon, null, MaxOf(CurveDetail.Medium));
+
+        /// <summary>The lightly averaged, evenly spaced trail the key points are picked from.</summary>
+        private static IReadOnlyList<Vec2> KeyTarget(IReadOnlyList<Vec2> norm)
         {
             var r = Uniform(norm);
-            if (r.Count < 3) return r;
-            return SketchFit.Simplify(Average(r, KeyWindow), KeyEpsilon);
-        }
-
-        /// <summary>Centripetal Catmull–Rom spline through the key points, as many steps per segment as fit into <see cref="MaxPoints"/> (2 … 10).</summary>
-        public static IReadOnlyList<Vec2> Interpolate(IReadOnlyList<Vec2> keys)
-        {
-            if (keys.Count < 3) return keys;
-            var steps = Math.Max(2, Math.Min(10, (MaxPoints - 1) / (keys.Count - 1)));
-            return SketchFit.CatmullRom(keys, steps, 0.5);
+            return r.Count < 3 ? r : Average(r, KeyWindow);
         }
 
         private static IReadOnlyList<Vec2> Uniform(IReadOnlyList<Vec2> norm)
@@ -257,6 +450,27 @@ namespace InventaSketch.Modules.Charts
 
         private static readonly I18nText[] StrengthNames = { new("Light", "Leicht"), new("Medium", "Mittel"), new("Strong", "Stark") };
 
+        private static readonly (CurveDetail Detail, string Id, string En, string De)[] DetailNames =
+        {
+            (CurveDetail.Low, "low", "Low", "Gering"),
+            (CurveDetail.Medium, "medium", "Medium (adaptive)", "Mittel (adaptiv)"),
+            (CurveDetail.High, "high", "High", "Hoch"),
+        };
+
+        /// <summary>Text id of a detail ("low", "medium", "high").</summary>
+        public static string Id(CurveDetail d) => DetailNames.First(n => n.Detail == Clamp(d)).Id;
+
+        /// <summary>The detail with this text id (case-insensitive), or null.</summary>
+        public static CurveDetail? DetailOf(string? id)
+            => DetailNames.Where(n => string.Equals(n.Id, id?.Trim(), StringComparison.OrdinalIgnoreCase)).Select(n => (CurveDetail?)n.Detail).FirstOrDefault();
+
+        /// <summary>Display name of a detail.</summary>
+        public static I18nText Name(CurveDetail d)
+        {
+            var n = DetailNames.First(x => x.Detail == Clamp(d));
+            return new I18nText(n.En, n.De);
+        }
+
         /// <summary>Text id of a shape ("smoothed", "interpolated", "fitted", "segments", "raw").</summary>
         public static string Id(CurveShape s) => Names.First(n => n.Shape == s).Id;
 
@@ -306,7 +520,8 @@ namespace InventaSketch.Modules.Charts
         public static int NextStrength(CurveSketchMemo m) => Math.Max(1, Math.Min(3, m.Strength)) % 3 + 1;
 
         /// <summary>Choice keys of the part actions (option ids "key=value", e.g. "chart.curve.shape=fitted").</summary>
-        public const string ShapeAction = "chart.curve.shape", FitAction = "chart.curve.fit", SmoothingAction = "chart.curve.smoothing";
+        public const string ShapeAction = "chart.curve.shape", FitAction = "chart.curve.fit", SmoothingAction = "chart.curve.smoothing",
+            DetailAction = "chart.curve.detail";
 
         /// <summary>The option id of <paramref name="shape"/> in the "Curve shape" choice.</summary>
         public static string ShapeOption(CurveShape shape) => ShapeAction + ActionChoices.Separator + Id(shape);
@@ -314,8 +529,9 @@ namespace InventaSketch.Modules.Charts
         /// <summary>
         /// The part actions of a sketched curve, each a choice (maintainer 2026-11-25: choices are dropdowns, never cycles):
         /// "Curve shape" (smoothed, interpolated, fitted function, straight segments, as drawn), "Fitted function" (the ranked
-        /// fits; fitted shape with two or more fits) and "Smoothing" (light, medium, strong; smoothed shape). Every option has a
-        /// small preview of the curve in that shape. <paramref name="edit"/> turns a memo change into the object edit
+        /// fits; fitted shape with two or more fits), "Smoothing" (light, medium, strong; smoothed shape) and "Detail" (low,
+        /// medium = adaptive default, high: how many key points are kept; not for exact piecewise-linear functions). Every
+        /// option has a small preview of the curve in that shape (the detail options with the kept points as dots). <paramref name="edit"/> turns a memo change into the object edit
         /// (recompute the points, store memo and points).
         /// </summary>
         internal static IEnumerable<ContextAction> Actions(CurveSketchMemo m, Func<Func<CurveSketchMemo, CurveSketchMemo>, Func<SketchObject, SketchObject>> edit)
@@ -355,15 +571,29 @@ namespace InventaSketch.Modules.Charts
                     };
                 }
             }
+            if (HasDetail(m))
+            {
+                var detail = new ActionChoice(DetailAction, new I18nText("Detail", "Detailgrad"));
+                foreach (var d in Details)
+                {
+                    var to = d;
+                    yield return ActionChoices.Option(detail, Id(d), Name(d), "", d == Clamp(m.Detail), edit(x => x with { Detail = to })) with
+                    {
+                        Group = "curve", Preview = Preview(m with { Detail = to }, dots: true),
+                    };
+                }
+            }
         }
 
         /// <summary>
         /// The curve of the memo as a small drawing for a dropdown option: the trail's frame scaled into 7 × 4.5 mm (centred at
-        /// 0,0, y down), one thin path; null when the memo gives no curve.
+        /// 0,0, y down), one thin path as drawn (spline or straight); with <paramref name="dots"/> the stored points as small
+        /// dots; null when the memo gives no curve.
         /// </summary>
-        public static IReadOnlyList<Primitive>? Preview(CurveSketchMemo m)
+        public static IReadOnlyList<Primitive>? Preview(CurveSketchMemo m, bool dots = false)
         {
-            var pts = Points(m);
+            var keys = Points(m);
+            var pts = Drawn(m, keys);
             if (pts.Count < 2) return null;
             var f = m.Frame;
             double Fx(double v) => m.XLog ? Math.Log10(v) : v;
@@ -373,7 +603,17 @@ namespace InventaSketch.Modules.Charts
             if (page.Count < 2) return null;
             var segs = new List<PathSeg> { PathSeg.Move(page[0]) };
             segs.AddRange(page.Skip(1).Select(PathSeg.Line));
-            return new Primitive[] { new PathPrim(segs, new Style { Stroke = Palette.Ink, StrokeWidth = 0.3, Role = LineRole.Visible }) };
+            var list = new List<Primitive> { new PathPrim(segs, new Style { Stroke = Palette.Ink, StrokeWidth = 0.3, Role = LineRole.Visible }) };
+            if (dots)
+            {
+                var dot = new Style { Stroke = "none", Fill = Fill.Solid("#1f5fbf"), Role = LineRole.Thin };
+                foreach (var k in keys)
+                {
+                    var p = new Vec2((Fx(k.X) - f.X) / f.W * W - W / 2, H / 2 - (Fy(k.Y) - f.Y) / f.H * H);
+                    if (Finite(p)) list.Add(Prim.Circle(p.X, p.Y, 0.22, dot));
+                }
+            }
+            return list;
         }
 
         // ------------------------------------------------------------------ text form (XY chart data comment)
@@ -391,17 +631,20 @@ namespace InventaSketch.Modules.Charts
         private static string N(double v) => v.ToString("R", CultureInfo.InvariantCulture);
 
         /// <summary>
-        /// The memo as one comment line: <c># sketch shape=fitted fit=sine log=x frame=x,y,w,h fits=sine(…);pt1(…) raw=x,y x,y …</c>
-        /// (invariant numbers; the data parser skips it).
+        /// The memo as one comment line: <c># sketch shape=fitted detail=high fit=sine log=x frame=x,y,w,h fits=sine(…);pt1(…)
+        /// pace=4456… raw=x,y x,y …</c> (invariant numbers; detail only when not medium; pace one digit per raw point, 0 = 0.6 …
+        /// 9 = 1.5, only with time stamps; the data parser skips it).
         /// </summary>
         public static string ToComment(CurveSketchMemo m)
         {
             var parts = new List<string> { CommentTag, "shape=" + Id(m.Shape) };
             if (m.Strength != DefaultStrength) parts.Add("strength=" + Fmt.I(m.Strength));
+            if (Clamp(m.Detail) != CurveDetail.Medium) parts.Add("detail=" + Id(m.Detail));
             if (m.Fit is CurveKind k) parts.Add("fit=" + CurveFunctions.Info(k).Id);
             if (m.XLog || m.YLog) parts.Add("log=" + (m.XLog ? "x" : "") + (m.YLog ? "y" : ""));
             parts.Add("frame=" + string.Join(",", new[] { m.Frame.X, m.Frame.Y, m.Frame.W, m.Frame.H }.Select(N)));
             if (m.Fits.Count > 0) parts.Add("fits=" + string.Join(";", m.Fits.Select(s => s.Format().Replace(" ", ""))));
+            if (m.Pace.Count == m.Raw.Count && m.Pace.Count > 0) parts.Add("pace=" + PaceText(m.Pace));
             parts.Add("raw=" + string.Join(" ", m.Raw.Select(p => N(p.X) + "," + N(p.Y))));
             return string.Join(" ", parts);
         }
@@ -444,10 +687,24 @@ namespace InventaSketch.Modules.Charts
                 YLog = log.Contains("y"),
                 Frame = frame,
                 Raw = raw,
+                Detail = fields.TryGetValue("detail", out var dt) && DetailOf(dt) is CurveDetail d ? d : CurveDetail.Medium,
+                Pace = fields.TryGetValue("pace", out var pc) ? ParsePace(pc, raw.Count) : Array.Empty<double>(),
             };
             if (!m.IsValid) return false;
             memo = m;
             return true;
+        }
+
+        /// <summary>The pace as digits, one per point (0 = 0.6 … 4 = 1 … 9 = 1.5).</summary>
+        internal static string PaceText(IReadOnlyList<double> pace)
+            => new(pace.Select(f => (char)('0' + CurveKeyPoints.Digit(f))).ToArray());
+
+        /// <summary>The pace from its digits; empty unless there is exactly one digit per point of the trail.</summary>
+        internal static IReadOnlyList<double> ParsePace(string? text, int count)
+        {
+            var t = (text ?? "").Trim();
+            if (t.Length != count || count == 0 || !t.All(c => c >= '0' && c <= '9')) return Array.Empty<double>();
+            return t.Select(c => CurveKeyPoints.Quantise(CurveKeyPoints.PaceMin + (c - '0') * CurveKeyPoints.PaceStep)).ToList();
         }
 
         /// <summary>Fitted functions from their text forms (unreadable ones are skipped, at most <see cref="MaxFits"/>).</summary>

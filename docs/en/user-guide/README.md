@@ -75,7 +75,10 @@ data or the axis ranges afterwards.
 Sketching a curve (2026-11-25, PowerPoint): select an XY chart or a figure, click "Sketch a curve" in the bar and draw
 the curve with the left button held (Esc or a right click cancels). On release it is recognised – constant, ramp, step,
 pulse, sawtooth, triangle, sine, PT1, decay, circle/ellipse – and added as an exact curve, or added as a smoothed curve
-when no standard shape fits; one undo step.
+when no standard shape fits; one undo step. The curve keeps only the points that carry its shape (a straight line two,
+an arc a few, tight bends more), each with a grip; smooth shapes are drawn as a spline through them. Draw slowly where
+detail matters – slow, careful drawing keeps more points, a quick stroke fewer. With the curve selected, the dropdowns
+"Curve shape", "Smoothing" and "Detail" (Low, Medium, High) change it at any time without losing the drawing.
 
 ## 6b. Exporting for LaTeX and vector programs (2026-11-25)
 
