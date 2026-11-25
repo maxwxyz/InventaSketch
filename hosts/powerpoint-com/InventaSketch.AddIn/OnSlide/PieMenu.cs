@@ -40,8 +40,61 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Name shown in the centre (the element, or the open submenu); a click there closes the menu.</summary>
         public string? Title { get; set; }
         public float Inner => (Title is null ? 28 : 42) * Scale;
-        /// <summary>The ring grows with the number of entries so labels keep their room.</summary>
-        public float Outer => (Items.Count <= 6 ? 132 : Items.Count <= 8 ? 148 : 176) * Scale;
+        /// <summary>
+        /// The ring grows with the number of entries and, beyond that, until every label fits completely in two lines of
+        /// the small font (UX review 2026-11-25: no labels outside the ring, no "…" where a larger ring helps); capped at
+        /// 236 logical px, beyond which a label is shortened and shown in full in the hint line.
+        /// </summary>
+        public float Outer => _outer ??= FitOuter();
+        private float? _outer;
+
+        private float BaseOuter => (Items.Count <= 6 ? 132 : Items.Count <= 8 ? 148 : 176) * Scale;
+
+        private float FitOuter()
+        {
+            using var bmp = new Bitmap(1, 1);
+            using var g = Graphics.FromImage(bmp);
+            g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+            using var small = new Font("Segoe UI", 10.5f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            var smallH = small.GetHeight(g);
+            for (var outer = BaseOuter; ; outer += 12 * Scale)
+            {
+                if (outer >= 236 * Scale) return 236 * Scale;
+                var all = true;
+                for (var i = 0; i < Items.Count && all; i++)
+                {
+                    var mid = (-90 + i * 360.0 / Math.Max(1, Items.Count)) * Math.PI / 180;
+                    var (_, width) = LabelBox(Inner, outer, mid, HasIcon(Items[i]), smallH);
+                    all = Fits(g, Items[i].Label, small, width, out _);
+                }
+                if (all) return outer;
+            }
+        }
+
+        /// <summary>
+        /// Radius and width of an entry's content block so that the block (pictogram, two lines) lies inside the ring and
+        /// does not spill into the neighbouring sectors: the radius across the sector that leaves the widest box.
+        /// </summary>
+        private (float Radius, float Width) LabelBox(float inner, float outer, double mid, bool hasIcon, float smallH)
+        {
+            var sweepRad = Sweep;
+            var worstH = (hasIcon ? 25 * Scale : 0) + 2 * smallH + 2 * Scale;
+            var limit = outer - 7 * Scale;
+            float rc = inner + (outer - inner) * 0.55f, width = 0;
+            for (var f = 0.40f; f <= 0.78f; f += 0.02f)
+            {
+                var r = inner + (outer - inner) * f;
+                var ax = (float)Math.Abs(Math.Cos(mid) * r);
+                var ay = (float)Math.Abs(Math.Sin(mid) * r);
+                var vertical = ay + worstH / 2;
+                if (vertical >= limit || r - worstH / 2 < inner * 0.6f) continue;
+                var inside = 2 * ((float)Math.Sqrt(limit * limit - vertical * vertical) - ax);
+                var chordAt = (float)(2 * r * Math.Sin(Math.Min(sweepRad, Math.PI) / 2)) - 6 * Scale;
+                var w = Math.Min(Math.Min(inside, chordAt), 120 * Scale);
+                if (w > width) { width = w; rc = r; }
+            }
+            return (rc, Math.Max(36 * Scale, width));
+        }
         public int Hover { get; set; } = -1;
 
         private double Sweep => 2 * Math.PI / Math.Max(1, Items.Count);
@@ -140,10 +193,9 @@ namespace InventaSketch.AddIn.OnSlide
 
                 // Content block (pictogram over label) centred in the sector.
                 var mid = (start + sweepDeg / 2) * Math.PI / 180;
-                // Text-only entries (sub-menus) sit further out, where the sector is wider.
-                var rc = inner + (outer - inner) * (HasIcon(item) ? 0.55f : 0.64f);
-                var chord = (float)(2 * rc * Math.Sin(Math.Min(sweepRad, Math.PI) / 2));
-                var width = Math.Max(44 * Scale, Math.Min(chord - 6 * Scale, 96 * Scale));
+                // The content block (pictogram, up to two lines) lies completely inside the ring (UX review 2026-11-25:
+                // labels stuck out of the pie at the left and right places).
+                var (rc, width) = LabelBox(inner, outer, mid, HasIcon(item), small.GetHeight(g));
                 var useFont = font;
                 var oneLine = false;
                 var full = Fits(g, item.Label, font, width, out var textSize);

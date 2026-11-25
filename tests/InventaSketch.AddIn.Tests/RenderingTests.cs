@@ -125,6 +125,44 @@ namespace InventaSketch.AddIn.Tests
             Assert.Equal(-1, pie.HitTest(new PointF(300, 300)));
         }
 
+        /// <summary>
+        /// UX review 2026-11-25 (maintainer: "the labels stick out of the pie"): with 6, 8, 10 and 12 places, long German
+        /// labels with and without pictograms, no text pixel lies outside the ring.
+        /// </summary>
+        [Theory]
+        [InlineData(6)]
+        [InlineData(8)]
+        [InlineData(10)]
+        [InlineData(12)]
+        public void PieLabelsStayInsideTheRing(int count)
+        {
+            Directory.CreateDirectory(Out);
+            var labels = new[] { "Kurvenform: Ausgleichsfunktion", "Gelenkkreis anzeigen", "Verbundene auswählen ▸", "Leitungsführung: orthogonal",
+                "Wandart: Innenwand (tragend)", "Zwischenlagen", "Text bearbeiten …", "Wellenanschluss: Passfeder", "Freiheitsgrad F = 1",
+                "Achsenbeschriftung", "Strahlenbündel einfügen", "Diagrammwerte normieren" };
+            var items = Enumerable.Range(0, count).Select(i => new PieItem("i" + i, labels[i % labels.Length]) { IconId = i % 2 == 0 ? IconIds.Text : null }).ToArray();
+            var pie = new PieMenu(new PointF(520, 520), items, 2f) { Title = "Stirnrad" };
+            using var bmp = new Bitmap(1040, 1040);
+            using (var g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.White);
+                pie.Draw(g, dark: false);
+            }
+            bmp.Save(Path.Combine(Out, "pie-fit-" + count + ".png"));
+            var outside = 0;
+            for (var y = 0; y < bmp.Height; y += 2)
+                for (var x = 0; x < bmp.Width; x += 2)
+                {
+                    var d = System.Math.Sqrt((x - 520.0) * (x - 520.0) + (y - 520.0) * (y - 520.0));
+                    if (d <= pie.Outer + 1) continue;
+                    var c = bmp.GetPixel(x, y);
+                    // Text is dark; the shadow outside the ring is a faint grey.
+                    if (c.R < 150 && c.G < 150 && c.B < 150) outside++;
+                }
+            Assert.Equal(0, outside);
+            Assert.True(pie.Outer <= 236 * 2f + 0.1f, "the ring stays within its cap");
+        }
+
         [Fact]
         public void TextOnlySubmenuKeepsLongWordsReadable()
         {

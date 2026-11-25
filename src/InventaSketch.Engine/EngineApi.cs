@@ -106,6 +106,8 @@ namespace InventaSketch.Engine
                 ["arrangeOptions"] = ArrangeOptionsCore,
                 ["arrange"] = ArrangeCore,
                 ["assembly"] = AssemblyCore,
+                ["connected"] = ConnectedCore,
+                ["connectOptions"] = ConnectOptionsCore,
                 ["trace"] = TraceCore,
                 ["insertFitting"] = InsertFittingCore,
                 ["drawTrace"] = DrawTraceCore,
@@ -989,23 +991,45 @@ namespace InventaSketch.Engine
         /// <summary>The objects coupled with the selection, directly or through others (gear train, drive), selection first.</summary>
         private object AssemblyCore(EngineRequest r)
         {
+            // What moves along (Connectivity.Coupled), the same rule as the COM add-in's "Select the assembly".
             var s = S(r);
-            var start = s.Resolve(r.Ids);
-            var edges = Coupling.Graph(Registry, s.Doc, s.Lang);
-            var seen = new List<string>(start);
-            var queue = new Queue<string>(start);
-            while (queue.Count > 0)
-            {
-                var id = queue.Dequeue();
-                foreach (var (_, a, b) in edges)
-                {
-                    var other = a == id ? b : b == id ? a : null;
-                    if (other is null || seen.Contains(other)) continue;
-                    seen.Add(other);
-                    queue.Enqueue(other);
-                }
-            }
+            var seen = new List<string>();
+            foreach (var id in s.Resolve(r.Ids))
+                foreach (var c in Connectivity.Connected(Registry, s.Doc, id, ConnectKind.Coupled, new RenderContext(s.Doc, s.Lang)))
+                    if (!seen.Contains(c)) seen.Add(c);
             return seen;
+        }
+
+        /// <summary>
+        /// Select connected (<see cref="Connectivity"/>): the elements connected to <c>ids</c> by <c>mode</c> ("auto",
+        /// "net", "coupled", "chain", "loop", "walls"), the given elements first. Returns the ids.
+        /// </summary>
+        private object ConnectedCore(EngineRequest r)
+        {
+            var s = S(r);
+            var kind = (r.Mode ?? "auto").Trim().ToLowerInvariant() switch
+            {
+                "net" => ConnectKind.Net, "coupled" => ConnectKind.Coupled, "chain" => ConnectKind.Chain,
+                "loop" => ConnectKind.Loop, "walls" => ConnectKind.Walls, "auto" or "" => ConnectKind.Auto,
+                _ => throw new ArgumentException("Unknown mode '" + r.Mode + "' (auto, net, coupled, chain, loop, walls)."),
+            };
+            var ctx = new RenderContext(s.Doc, s.Lang);
+            var seen = new List<string>();
+            foreach (var id in s.Resolve(r.Ids))
+                foreach (var c in Connectivity.Connected(Registry, s.Doc, id, kind, ctx))
+                    if (!seen.Contains(c)) seen.Add(c);
+            return seen;
+        }
+
+        /// <summary>The kinds of "select connected" that add something for the first of <c>ids</c>: {kind, label, hint, ids}.</summary>
+        private object ConnectOptionsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = s.Resolve(r.Ids).FirstOrDefault() ?? throw new ArgumentException("Missing 'ids'.");
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            return Connectivity.Options(Registry, s.Doc, id, new RenderContext(s.Doc, lang))
+                .Select(o => new { kind = o.Kind.ToString().ToLowerInvariant(), label = Connectivity.Label(o.Kind).Get(lang), hint = Connectivity.Hint(o.Kind).Get(lang), ids = o.Ids })
+                .ToList();
         }
 
         /// <summary>The path of point <c>index</c> (default: last) of link <c>id</c> while its chain's crank turns (<see cref="Linkage.Trace"/>).</summary>

@@ -213,6 +213,9 @@ namespace InventaSketch.AddIn
         /// <summary>Visible InventaSketch handles of the selected element as last drawn: "id@x,y,r;…" (device pixels).</summary>
         public string Handles() => _connect.LastHandles();
 
+        /// <summary>The selection halo as last drawn: "selected=…; connected=…".</summary>
+        public string Halo() => _connect.LastHalo();
+
         /// <summary>Handles shown at least half right now (progressive disclosure): "id;id;…".</summary>
         public string ShownHandles() => _connect.LastShownHandles();
 
