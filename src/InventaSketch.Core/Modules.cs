@@ -489,6 +489,12 @@ namespace InventaSketch.Core
         public virtual IReadOnlyList<string> Keywords => Array.Empty<string>();
         public virtual GeometryKind Geometry => GeometryKind.Box;
         public virtual Size2 DefaultSize => new(30, 30);
+        /// <summary>
+        /// The unscaled size of <paramref name="o"/> for its parameters and view (relative: only ratios between objects of this
+        /// type count), or null if it does not depend on them. A road with more lanes is naturally wider; "+" uses it to tell
+        /// a scaled element from one whose parameters made it bigger (<see cref="Building.SourceScale"/>).
+        /// </summary>
+        public virtual Size2? NaturalSize(SketchObject o) => null;
 
         /// <summary>
         /// Types that are typically added next to this one (a shaft: gears, bearings, couplings; a wire: electrical

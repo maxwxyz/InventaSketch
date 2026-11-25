@@ -67,7 +67,11 @@ namespace InventaSketch.Modules.Automotive
             };
         }
 
-        private static ContextAction LanesAction(int delta, bool resize) => new(
+        /// <summary>
+        /// "Add/remove lane": the straight segment grows across (<paramref name="resize"/>); a curve or junction whose design
+        /// size depends on its lanes (<paramref name="design"/>) is scaled with it, so the lane width stays.
+        /// </summary>
+        private static ContextAction LanesAction(int delta, bool resize, Func<SketchObject, Size2>? design = null) => new(
             delta > 0 ? "param.lanes.inc" : "param.lanes.dec",
             delta > 0 ? T("Add lane", "Fahrstreifen hinzufügen") : T("Remove lane", "Fahrstreifen entfernen"),
             delta > 0 ? AutoIcons.Increase : AutoIcons.Decrease,
@@ -77,13 +81,16 @@ namespace InventaSketch.Modules.Automotive
                 var m = Math.Max(1, Math.Min(8, n + delta));
                 if (m == n) return x;
                 var y = x.WithParam("lanes", m);
-                return resize ? y with { Size = new Size2(x.Size.W, x.Size.H * m / n) } : y;
+                if (resize) return y with { Size = new Size2(x.Size.W, x.Size.H * m / n) };
+                if (design is null) return y;
+                var (a, b) = (design(x), design(y));
+                return y with { Size = new Size2(x.Size.W * b.W / a.W, x.Size.H * b.H / a.H) };
             }) { Group = "lanes" };
 
-        private static IEnumerable<ContextAction> RoadActions(SketchObject o, bool resize, ParamDef markings)
+        private static IEnumerable<ContextAction> RoadActions(SketchObject o, bool resize, ParamDef markings, Func<SketchObject, Size2>? design = null)
         {
-            yield return LanesAction(+1, resize);
-            yield return LanesAction(-1, resize);
+            yield return LanesAction(+1, resize, design);
+            yield return LanesAction(-1, resize, design);
             yield return Prm.Cycle(o, markings, T("Next marking pattern", "Nächstes Markierungsmuster"));
             yield return Prm.Toggle(o, "centerlines", false, T("Lane centre lines", "Fahrstreifenmitten"));
         }
@@ -125,7 +132,7 @@ namespace InventaSketch.Modules.Automotive
             }
             return new AutoType("auto.road.straight", T("Road segment (straight)", "Straßenabschnitt (gerade)"), Cat,
                 new[] { "road", "lane", "street", "highway", "motorway", "straight", "straße", "fahrbahn", "fahrstreifen", "autobahn", "gerade" },
-                Views.TopV(160, 2 * LaneWidth, Draw) with { Fluid = true, Anchors = Anchors })
+                Views.TopV(160, 2 * LaneWidth, Draw) with { Fluid = true, Anchors = Anchors, DesignOf = o => new Size2(160, LaneCount(o) * LaneWidth) })
             {
                 Params = new[] { Lanes, markings, Centerlines, Dash, Gap },
                 Uniform = false,
@@ -138,34 +145,37 @@ namespace InventaSketch.Modules.Automotive
         private static AutoType Curve()
         {
             var markings = Markings("dashed");
-            const double R = 120;
-            var c = new Vec2(-60, 60);
-            (int N, double Lw, double Ri) Geometry(SketchObject o)
+            // Outer radius: 120 design units up to three lanes, larger with more lanes, so every lane keeps the road lane
+            // width (inner edge at least 15 units from the arc centre). The design box is R x R, the arc centre its
+            // lower left corner.
+            static double Radius(SketchObject o) => Math.Max(120, LaneCount(o, 6) * LaneWidth + 15);
+            Size2 Design(SketchObject o) => new(Radius(o), Radius(o));
+            (int N, double Lw, double Ri, double R) Geometry(SketchObject o)
             {
                 var n = LaneCount(o, 6);
-                var lw = Math.Min(LaneWidth, 110.0 / n);
-                return (n, lw, R - n * lw);
+                var r = Radius(o);
+                return (n, LaneWidth, r - n * LaneWidth, r);
             }
-            List<Vec2> ArcAt(Pen p, double r) => Pen.ArcD(c.X, c.Y, r, r, -90, 90, 48).Select(p.V).ToList();
+            List<Vec2> ArcAt(Pen p, SketchObject o, double r) => Pen.ArcD(-Radius(o) / 2, Radius(o) / 2, r, r, -90, 90, 48).Select(p.V).ToList();
             void Draw(Pen p, SketchObject o)
             {
-                var (n, lw, ri) = Geometry(o);
-                p.Add(Prim.Polyline(ArcAt(p, R), S.Vis), AutoTags.Edge);
-                p.Add(Prim.Polyline(ArcAt(p, ri), S.Vis), AutoTags.Edge);
+                var (n, lw, ri, R) = Geometry(o);
+                p.Add(Prim.Polyline(ArcAt(p, o, R), S.Vis), AutoTags.Edge);
+                p.Add(Prim.Polyline(ArcAt(p, o, ri), S.Vis), AutoTags.Edge);
                 for (var k = 1; k < n; k++)
                 {
                     var (draw, solid) = Pattern(o, k, n, "dashed");
-                    if (draw) Separator(p, ArcAt(p, ri + k * lw), solid, o.Num("dash", 10), o.Num("gap", 8));
+                    if (draw) Separator(p, ArcAt(p, o, ri + k * lw), solid, o.Num("dash", 10), o.Num("gap", 8));
                 }
                 if (o.Flag("centerlines", false))
-                    for (var i = 0; i < n; i++) p.Add(Prim.Polyline(ArcAt(p, ri + (i + 0.5) * lw), S.Ctr), AutoTags.Lane);
+                    for (var i = 0; i < n; i++) p.Add(Prim.Polyline(ArcAt(p, o, ri + (i + 0.5) * lw), S.Ctr), AutoTags.Lane);
             }
             IEnumerable<Anchor> Anchors(Pen p, SketchObject o)
             {
-                var (n, lw, ri) = Geometry(o);
+                var (n, lw, ri, _) = Geometry(o);
                 for (var i = 0; i < n; i++)
                 {
-                    var pts = ArcAt(p, ri + (i + 0.5) * lw);
+                    var pts = ArcAt(p, o, ri + (i + 0.5) * lw);
                     foreach (var c in Shapes.AxisChords(pts, 8)) foreach (var a in LaneCentre(c with { Id = "lane" + I(i) })) yield return a;
                     yield return Anchor.Point(AnchorRole.End, pts[0], "lane" + I(i) + ".start");
                     yield return Anchor.Point(AnchorRole.End, pts[pts.Count - 1], "lane" + I(i) + ".end");
@@ -173,11 +183,11 @@ namespace InventaSketch.Modules.Automotive
             }
             return new AutoType("auto.road.curve", T("Road segment (curve)", "Straßenabschnitt (Kurve)"), Cat,
                 new[] { "road", "curve", "bend", "lane", "street", "straße", "kurve", "biegung", "fahrbahn" },
-                Views.TopV(R, R, Draw) with { Anchors = Anchors })
+                Views.TopV(120, 120, Draw) with { Anchors = Anchors, DesignOf = Design })
             {
                 Params = new[] { Lanes, markings, Centerlines, Dash, Gap },
                 Uniform = false,
-                Extra = o => RoadActions(o, false, markings),
+                Extra = o => RoadActions(o, false, markings, Design),
             };
         }
 
@@ -202,17 +212,21 @@ namespace InventaSketch.Modules.Automotive
             var arms = Prm.Choice("arms", "Arms", "Arme", "4", ("4", "Four-way (cross)", "Kreuzung (4 Arme)"), ("3", "T-junction", "Einmündung (3 Arme)"));
             var stop = Prm.Bool("stopLines", "Stop lines", "Haltlinien", true);
             var zebra = Prm.Bool("crosswalks", "Crosswalks", "Fußgängerüberwege", false);
-            const double E = 80, rf = 10;
+            const double rf = 10;
+            // Every lane has the road lane width; the arms reach 80 design units from the centre up to two lanes and grow
+            // with more lanes, so 35 units of arm remain beyond the corner fillet.
             (int N, double Lw, double Hw) Geometry(SketchObject o)
             {
                 var n = LaneCount(o, 6);
-                var lw = Math.Min(LaneWidth, 120.0 / n);
-                return (n, lw, n * lw / 2);
+                return (n, LaneWidth, n * LaneWidth / 2);
             }
+            static double Reach(SketchObject o) => Math.Max(80, LaneCount(o, 6) * LaneWidth / 2 + rf + 35);
+            Size2 Design(SketchObject o) => new(2 * Reach(o), 2 * Reach(o));
             IEnumerable<Vec2> Dirs(SketchObject o) => o.Str("arms", "4") == "3" ? ArmDirs.Take(3) : ArmDirs;
             void Draw(Pen p, SketchObject o)
             {
                 var (n, lw, hw) = Geometry(o);
+                var E = Reach(o);
                 var tee = o.Str("arms", "4") == "3";
                 foreach (var sx in new[] { -1.0, 1.0 })
                     foreach (var sy in new[] { -1.0, 1.0 })
@@ -257,6 +271,7 @@ namespace InventaSketch.Modules.Automotive
             IEnumerable<Anchor> Anchors(Pen p, SketchObject o)
             {
                 var (n, lw, hw) = Geometry(o);
+                var E = Reach(o);
                 var j = 0;
                 foreach (var d in Dirs(o))
                 {
@@ -271,11 +286,11 @@ namespace InventaSketch.Modules.Automotive
             }
             return new AutoType("auto.road.intersection", T("Intersection", "Kreuzung"), Cat,
                 new[] { "intersection", "junction", "crossroads", "t-junction", "kreuzung", "einmündung", "knotenpunkt", "straße" },
-                Views.TopV(2 * E, 2 * E, Draw) with { Anchors = Anchors })
+                Views.TopV(160, 160, Draw) with { Anchors = Anchors, DesignOf = Design })
             {
                 Params = new[] { Lanes, markings, arms, stop, zebra, Centerlines, Dash, Gap },
                 Uniform = false,
-                Extra = o => RoadActions(o, false, markings).Append(Prm.Cycle(o, arms, T("Cross / T-junction", "Kreuzung / Einmündung")))
+                Extra = o => RoadActions(o, false, markings, Design).Append(Prm.Cycle(o, arms, T("Cross / T-junction", "Kreuzung / Einmündung")))
                     .Append(Prm.Toggle(o, "crosswalks", false, T("Crosswalks", "Fußgängerüberwege"))),
             };
         }

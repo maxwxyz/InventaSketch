@@ -18,9 +18,11 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
   2 Fahrstreifen 96 × 42 mm, Pkw 27 mm lang, Kreuzung 96 × 96 mm, Kreisverkehr 120 × 120 mm; alle Draufsichten teilen
   den Faktor, Fahrzeuge passen also weiter in ihre Fahrstreifen. Seiten-, Vorder- und Rückansichten behalten ihre
   Entwurfsgröße. Freies gleichmäßiges/ungleichmäßiges Skalieren ändert nur die Boxgröße.
-- **Eine Fahrstreifenbreite überall** – gerade Straßen, Kurven, Kreuzungen (bis drei Fahrstreifen je Richtung) und die
-  Zufahrten des Kreisverkehrs haben dieselbe Fahrstreifenbreite, so dass eine Straße an jedem Arm Streifen für Streifen
-  andockt (die Zufahrten des Kreisverkehrs waren vor dem 25.11.2026 schmaler).
+- **Eine Fahrstreifenbreite überall** – gerade Straßen, Kurven, Kreuzungen und die Zufahrten des Kreisverkehrs haben bei
+  jeder Fahrstreifenzahl dieselbe Fahrstreifenbreite, so dass eine Straße an jedem Arm Streifen für Streifen andockt (vor
+  dem 25.11.2026 waren die Zufahrten des Kreisverkehrs schmaler, und Kurven und Kreuzungen verschmälerten ihre Streifen ab
+  vier Fahrstreifen). Kurven und Kreuzungen wachsen mit ihren Fahrstreifen („Fahrstreifen hinzufügen“ vergrößert die Box
+  mit); `ObjectType.NaturalSize` sagt dem „+“, dass dieses Wachstum keine Skalierung ist.
 - **Fahrtrichtung +x** (Front rechts), y nach unten; in der Draufsicht liegt die linke Fahrzeugseite bei −y.
   Für andere Richtungen das Objekt drehen oder spiegeln.
 - Jedes Objekt ist ohne Parameter einfügbar und wird in jeder Ansicht innerhalb seiner Box gezeichnet.

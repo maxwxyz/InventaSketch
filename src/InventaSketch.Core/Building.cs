@@ -539,8 +539,13 @@ namespace InventaSketch.Core
                 .OrderByDescending(i => i.View == o.View ? 1 : 0).ThenByDescending(i => i.Params?.Count ?? 0)
                 .FirstOrDefault();
             if (item is null) return null;
-            var reference = item.Size ?? registry.Type(o.Type)?.DefaultSize;
+            var type = registry.Type(o.Type);
+            var reference = item.Size ?? type?.DefaultSize;
             if (reference is not { } r || r.W < 1e-6 || r.H < 1e-6) return null;
+            // Parameters that change the natural size (more lanes) are not a scale: the item's size is carried over to the
+            // element's parameters first.
+            if (type?.NaturalSize(o) is { } no && type.NaturalSize(registry.Create(item, Vec2.Zero)) is { } ni && ni.W > 1e-6 && ni.H > 1e-6)
+                r = new Size2(r.W * no.W / ni.W, r.H * no.H / ni.H);
             return new Vec2(o.Size.W / r.W, o.Size.H / r.H);
         }
 
