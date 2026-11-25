@@ -389,6 +389,19 @@ def finding_row(f, slides=True, lang=None):
     return "%s · %s · %s" % (where, severity_label(f.get("severity"), lang), f.get("message") or "")
 
 
+def part_row(p, lang=None):
+    """Parts list row: 'Series 1' or 'Major grid (hidden)'."""
+    return (p.get("label") or p.get("key") or "") + (i18n.text("ptHidden", lang) if p.get("hidden") else "")
+
+
+def part_action_row(a, lang=None):
+    """Actions list row: the label, '…' when the action needs a value, '✓' when it is active."""
+    label = a.get("label") or a.get("id") or ""
+    if a.get("input") and not label.endswith("…"):
+        label += " …"
+    return ("✓ " if a.get("active") else "") + label
+
+
 def source_text(source):
     """The cited sources without their links: 'DE-01: PatV § 6(2) <https://…>; …' → 'DE-01: PatV § 6(2); …'."""
     return _URL.sub("", source or "").strip()

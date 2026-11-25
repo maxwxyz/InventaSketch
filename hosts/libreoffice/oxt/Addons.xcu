@@ -64,6 +64,14 @@
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>
+          <node oor:name="m05a1" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:parts</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Chart Parts...</value>
+              <value xml:lang="de">Diagrammteile ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
           <node oor:name="m05a2" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:compare</value></prop>
             <prop oor:name="Title" oor:type="xs:string">
