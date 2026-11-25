@@ -72,6 +72,30 @@ namespace InventaSketch.Core.Tests
             public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx) => Array.Empty<Primitive>();
         }
 
+        /// <summary>
+        /// A marked element (a lamp labelled "24 V"): the marking is a relation without inputs for U; "with" links U to another
+        /// marked element (a lamp on a transformer secondary).
+        /// </summary>
+        internal sealed class MarkType : ObjectType, IValueType, IValueLinks
+        {
+            public override string Id => "t.mark";
+            public override I18nText Name => new("Marked");
+            public IReadOnlyList<VarDef> Variables { get; } = new[] { new VarDef("U", T("Voltage", "Spannung"), T("U", "U"), Quantities.Voltage) };
+            public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
+            public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+            {
+                var mark = o.Num("mark", double.NaN);
+                if (!double.IsNaN(mark))
+                    yield return new BoundRelation(new Relation("t.mark." + o.Id, T("Marking", "Aufschrift"), "{U} = " + mark, "U").Solve("U", mark.ToString(System.Globalization.CultureInfo.InvariantCulture), _ => mark),
+                        new Dictionary<string, VarRef> { ["U"] = new(o.Id, "U") });
+                var with = o.Str("with", "");
+                if (with.Length > 0)
+                    yield return new BoundRelation(Relation.Equality("t.same", T("Same voltage", "Gleiche Spannung")),
+                        new Dictionary<string, VarRef> { ["a"] = new(o.Id, "U"), ["b"] = new(with, "U") });
+            }
+            public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx) => Array.Empty<Primitive>();
+        }
+
         /// <summary>A relation without an explicit inverse for x: x³ + x = y (numeric root search).</summary>
         internal sealed class CubicType : ObjectType, IValueType
         {
@@ -96,7 +120,7 @@ namespace InventaSketch.Core.Tests
             public string Id => "tv";
             public I18nText Name => new("Values");
             public string Version => "1.0";
-            public IEnumerable<ObjectType> Types => new ObjectType[] { new ResType(), new LampType(), new CubicType() };
+            public IEnumerable<ObjectType> Types => new ObjectType[] { new ResType(), new LampType(), new CubicType(), new MarkType() };
             public IEnumerable<LibraryCategory> Categories => Array.Empty<LibraryCategory>();
             public IEnumerable<LibraryItem> Library => Array.Empty<LibraryItem>();
         }
@@ -115,6 +139,24 @@ namespace InventaSketch.Core.Tests
         private static ValueTable Solve(SketchDocument doc, ValueSolveOptions? opt = null) => ValueSolver.Solve(doc, Reg, null, opt);
 
         private static void Near(double e, double? a) => Assert.True(a is double x && Math.Abs(x - e) <= 1e-9 * Math.Abs(e), $"expected {e}, got {a}");
+
+        [Fact]
+        public void TwoMarkingsThatDisagreeConflict()
+        {
+            // A 24 V lamp on a 12 V source: both values come from markings (relations without inputs), none is entered.
+            var a = new SketchObject { Id = "a", Type = "t.mark" }.WithParam("mark", 24.0).WithParam("with", "b");
+            var b = new SketchObject { Id = "b", Type = "t.mark" }.WithParam("mark", 12.0);
+            var doc = SketchDocument.Create();
+            doc = doc with { Objects = new Dictionary<string, SketchObject> { ["a"] = a, ["b"] = b }, Pages = new[] { doc.Pages[0] with { Order = new[] { "a", "b" } } } };
+            var t = Solve(doc);
+            // The conflict sits on the element whose marking disagrees and names both markings.
+            Assert.Equal(ValueStatus.Conflict, t.Status("b"));
+            var c = Assert.Single(t.Conflicts);
+            Assert.Equal(new[] { "a", "b" }, c.Involved.Select(r => r.ObjectId).OrderBy(x => x));
+            // Agreeing markings check each other instead.
+            var same = doc with { Objects = new Dictionary<string, SketchObject> { ["a"] = a.WithParam("mark", 12.0), ["b"] = b } };
+            Assert.NotEqual(ValueStatus.Conflict, Solve(same).Status("b"));
+        }
 
         [Theory]
         [InlineData("voltage", 0.23, "current", "2 A")]

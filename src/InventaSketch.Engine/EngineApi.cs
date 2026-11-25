@@ -2013,7 +2013,8 @@ namespace InventaSketch.Engine
                     if (d.Get(o.Id) is not { } x) return d;
                     var moved = Registry.MoveHandle(x, key, at, new RenderContext(d, s.Lang));
                     // Nothing changed (unknown key, value snapped to the same number): no undo step.
-                    if (ReferenceEquals(moved, x) || moved.Params.Count == x.Params.Count && moved.Params.All(kv => x.Params.TryGetValue(kv.Key, out var v) && v.Equals(kv.Value)) && moved.Size == x.Size)
+                    if (ReferenceEquals(moved, x) || moved.Params.Count == x.Params.Count && moved.Params.All(kv => x.Params.TryGetValue(kv.Key, out var v) && v.Equals(kv.Value)) && moved.Size == x.Size
+                        && SamePoints(moved.Points, x.Points) && SameAttach(moved.Attach, x.Attach))
                         return d;
                     return Edits.Replace(d, moved);
                 });
@@ -2031,6 +2032,14 @@ namespace InventaSketch.Engine
         /// added as a new series (charts v2, <see cref="InventaSketch.Modules.Charts.ChartSketchInput"/>); one undo step.
         /// Returns the state plus the message (what was recognised); unchanged state with an empty message if nothing fits.
         /// </summary>
+        /// <summary>Equal point lists (both null, or the same points in order).</summary>
+        private static bool SamePoints(IReadOnlyList<Vec2>? a, IReadOnlyList<Vec2>? b)
+            => ReferenceEquals(a, b) || a is not null && b is not null && a.Count == b.Count && a.SequenceEqual(b);
+
+        /// <summary>Equal attachments (both null, or the same attachment per point).</summary>
+        private static bool SameAttach(IReadOnlyList<Attachment?>? a, IReadOnlyList<Attachment?>? b)
+            => ReferenceEquals(a, b) || a is not null && b is not null && a.Count == b.Count && a.SequenceEqual(b);
+
         private object SketchCurveCore(EngineRequest r)
         {
             var s = S(r);
