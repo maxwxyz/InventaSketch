@@ -233,7 +233,8 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void Arm(SketchUnit unit)
         {
-            if (_unit?.Id != unit.Id) { _selectedPoints.Clear(); _barChoice = null; _part = null; }
+            var newlyArmed = _unit?.Id != unit.Id;
+            if (newlyArmed) { _selectedPoints.Clear(); _barChoice = null; _part = null; }
             var slide = CurrentSlide();
             var view = SlideView.Current(_app);
             if (slide is null || view is null) { Disarm(); return; }
@@ -261,6 +262,12 @@ namespace InventaSketch.AddIn.OnSlide
             _shiftHeld = KeyDown(VK_SHIFT);
             _revealKey = "";
             _mode = Mode.Armed;
+            // A click right on a chart's curve, area, axis … selects that part at once (maintainer 2026-11-25: "the chart
+            // turns blue first and only then the curve, even when I click the curve").
+            if (newlyArmed && KeyDownNow(0x01) && PartOwner() is not null && view.Contains(cursor))
+            {
+                SelectPartAt(cursor, view);
+            }
             _hooks.Install();
             _timer.Start();
             _overlay.Clear();
