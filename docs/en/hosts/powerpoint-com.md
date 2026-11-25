@@ -421,7 +421,8 @@ Slidemax. Structure, Colour and Text use Office's own controls (new slide, paste
 colour, font, size, bold … bullets); Layout adds arrange, group, own same height/width/size, shape size, align and
 distribute (relative to the selection, a single shape relative to the slide) and swap (ported from Slidemax). The
 domain modules are one large menu each in "Elements", so the tab fits on laptop screens (narrow windows collapse Layout
-and Elements into menus). Formatting done with these controls on InventaSketch units is kept: every drawn shape
+and Elements into menus); floor plans and building services share one menu "Building & services" (2026-11-25), since
+both are drawn on the same plan. Formatting done with these controls on InventaSketch units is kept: every drawn shape
 remembers its rendered look (tag `ISK_FMT`), and reading a unit folds the differences (line colour and weight, fill,
 text colour, font, size factor, bold/italic/underline) into the objects' style (`NativeFormat`). Verified: a gear
 recoloured red with 2.5 pt lines stayed so after a rotation re-rendered it.

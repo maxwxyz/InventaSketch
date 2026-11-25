@@ -222,6 +222,18 @@ namespace InventaSketch.AddIn
         /// Ribbon groups in order: one "Annotate" group right after the tools (annotation, patent figures and basic
         /// shapes: the things every sketch needs), then one group per domain module. New modules appear automatically.
         /// </summary>
+        /// <summary>Modules shown in another module's ribbon menu (partner → host), e.g. building services with floor plans.</summary>
+        internal static readonly IReadOnlyDictionary<string, string> SharedMenu = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["building-services"] = "architecture",
+        };
+
+        /// <summary>Label of a host module's menu when it shares it with partners.</summary>
+        internal static readonly IReadOnlyDictionary<string, I18nText> SharedMenuLabels = new Dictionary<string, I18nText>(StringComparer.Ordinal)
+        {
+            ["architecture"] = new I18nText("Building & services", "Gebäude & TGA"),
+        };
+
         private List<(string Label, List<IModule> Modules)> RibbonGroups()
         {
             var modules = (_registry?.Modules ?? Array.Empty<IModule>()).Where(mod => _categories.Any(c => c.ModuleId == mod.Id)).ToList();
@@ -230,8 +242,16 @@ namespace InventaSketch.AddIn
             var groups = new List<(string, List<IModule>)>();
             var first = modules.Where(mod => Array.IndexOf(annotate, mod.Id) >= 0).OrderBy(mod => Array.IndexOf(annotate, mod.Id)).ToList();
             if (first.Count > 0) groups.Add((T("Annotate", "Beschriftung"), first));
-            foreach (var mod in modules.Where(mod => Array.IndexOf(annotate, mod.Id) < 0)
+            foreach (var mod in modules.Where(mod => Array.IndexOf(annotate, mod.Id) < 0 && !SharedMenu.ContainsKey(mod.Id))
                          .OrderBy(mod => Array.IndexOf(order, mod.Id) is var i && i >= 0 ? i : order.Length))
+            {
+                // Modules drawn on the same drawing share one menu (floor plans and building services: one plan).
+                var partners = modules.Where(x => SharedMenu.TryGetValue(x.Id, out var host) && host == mod.Id).ToList();
+                var label = partners.Count > 0 && SharedMenuLabels.TryGetValue(mod.Id, out var shared) ? shared.Get(_lang) : mod.Name.Get(_lang);
+                groups.Add((label, new List<IModule> { mod }.Concat(partners).ToList()));
+            }
+            // A partner whose host module is not loaded gets its own menu.
+            foreach (var mod in modules.Where(mod => SharedMenu.TryGetValue(mod.Id, out var host) && !modules.Any(x => x.Id == host)))
                 groups.Add((mod.Name.Get(_lang), new List<IModule> { mod }));
             return groups;
         }

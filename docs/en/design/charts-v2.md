@@ -23,6 +23,25 @@ Example the design is checked against: the maintainer's patent figure (power P w
 line "limit temperature", a dimension arrow "time gained" and reference numerals 40–46; shared time axis, vertical phase
 lines through both plots).
 
+More check figures (maintainer, 2026-11-25):
+
+- **Timing diagram of a decision logic** (three stacked panels on one time axis, principle style without tick labels):
+  a rising curve towards a dashed limit line with a label and a numeral on the axis; a vertical dashed marker
+  ("t_krit") through all panels and a horizontal time arrow labelled "t_krit" between two panels; in the middle panel
+  a solid and a dashed curve with the region hatched only where one lies above the other; rectangle pulses (one solid,
+  one dashed) in the bottom panel; reference numerals 63–69 with leader lines; a centred figure title.
+- **Temperature over time** (data axes with ticks, horizontal dotted grid only): several horizontal dashed reference
+  lines with labels ("heating ram (15)", "operating maximum 60 °C"); curves approaching an asymptote (PT1 / exponential)
+  that stop and continue later (gap); open circle markers on a curve with value labels ("31 s", "77 s"); a vertical
+  dimension arrow between two levels ("35 K"); labels on the curves; a caption below the plot.
+- **Flowchart** (diagrams module, not charts): start circle, decisions with yes/no exits, process boxes with two-line
+  text, a loop back into the side of an earlier box, a dashed note box with a dashed arrow, exits joining a box from the
+  side, an end bullseye.
+
+So stage 2 also covers: principle axes (arrow, no ticks) per panel, markers across panels, arrows between panels,
+regions "where curve A is above curve B", point markers with labels, dimension arrows between two y values, gaps in
+curves; stage 3 covers pulses and asymptotic curves.
+
 ## Module cut
 
 - **Charts & functions** (module `charts`): data charts, characteristic curves and maps, principle diagrams, function
