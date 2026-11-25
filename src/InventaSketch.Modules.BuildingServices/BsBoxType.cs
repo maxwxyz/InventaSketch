@@ -148,6 +148,50 @@ namespace InventaSketch.Modules.BuildingServices
             => (Extra?.Invoke(o) ?? Array.Empty<ContextAction>()).Concat(new[] { Bs.HeightAction(o, this, lang) });
 
         /// <summary>
+        /// What a port carries (build "+", <see cref="Building"/>): the port ids name the medium (heating flow/return incl.
+        /// manifold circuits f1/r1 …, cold and hot water, circulation, waste, the air of a ventilation unit), risers and air
+        /// terminals carry their own medium parameter, inline heating parts (pump, mixer, valve, expansion vessel) take
+        /// either heating pipe, electrical outlets an installation cable.
+        /// </summary>
+        public override PortConnection? Connection(SketchObject o, Anchor port)
+        {
+            var id = port.Id;
+            if (id is null) return null;
+            switch (id)
+            {
+                case "riser":
+                case "bottom":
+                case "top":
+                    return Pipe(o.Str("medium", "cold"));
+                case "duct":
+                    return Duct(o.Str("kind", "supply"));
+                case "outdoor":
+                case "exhaust":
+                case "extract":
+                case "supply":
+                    return Duct(id);
+                case "in":
+                case "out":
+                case "a":
+                case "ab":
+                case "b":
+                case "pipe":
+                    return PortConnection.Of(PortMedia.Heating, "bs.pipe.flow");
+                case "cable":
+                case "earth":
+                    return PortConnection.Of(PortMedia.ElectricInstallation, "elec.house.cable");
+            }
+            if (id.Length > 1 && (id[0] == 'f' || id[0] == 'r') && int.TryParse(id.Substring(1), out _)) return Pipe(id[0] == 'f' ? "flow" : "return");
+            return Media.Pipes.Any(m => m.Value == id) ? Pipe(id) : null;
+        }
+
+        private static PortConnection Pipe(string medium)
+            => PortConnection.Of(PipeType.MediumOf(medium), "bs.pipe." + medium, new Dictionary<string, ParamValue> { ["medium"] = medium });
+
+        private static PortConnection Duct(string kind)
+            => PortConnection.Of(PortMedia.AirOf(kind), "bs.duct." + kind, new Dictionary<string, ParamValue> { ["kind"] = kind });
+
+        /// <summary>
         /// The width (shared x extent of plan and elevation) is kept. To-scale elements take the real height of the target
         /// view at the object's plan scale; symbols keep their visual scale.
         /// </summary>

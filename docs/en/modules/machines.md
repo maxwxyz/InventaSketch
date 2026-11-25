@@ -196,6 +196,13 @@ view and a longitudinal section adapts the box width so the proportions are kept
   inverter DC+/DC−/U/V/W, motor phase leads, gearbox input/output, differential input/left/right), so arrows and wires
   snap on.
 
+### Build "+" (connections)
+
+Phase terminals u/v/w offer an AC wire, battery and DC-link terminals (plus/minus, dc+/dc-) a DC wire, coil ends, brushes
+and encoder signals a wire (wires of the electrical module), the cooling channel in/out a water pipe (energy module), the
+four sides of the drive system blocks an arrow (block diagram), then the elements that fit. Shaft ends (gearbox, wheels,
+e-machines, engine output) are mechanical and are built on with shafts at their axis ends.
+
 ## Known limits
 
 - Drivetrain parts only translate with their shaft (the core coupling moves parts, it does not turn them): after turning

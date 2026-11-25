@@ -126,6 +126,11 @@ edge. Process lines hop over earlier process lines (`hops`, Core `Crossings`) an
 The heat-traced kind adds a dashed tracer beside the line; the line number is written along the longest segment.
 Signal marks (slashes, crosses, circles) are spaced 8 mm and kept off the corners.
 
+**Build "+" (connections).** Nozzles and pipe ports offer a process line (`process`), instrument bubbles and the actuator
+port S of control valves a signal line (`instrument`), then the equipment, valves or instruments that connect there. The
+drive shaft of a motor is a mechanical coupling without a line. The free end of a process or signal line offers "+" to
+continue it or to dock the next element.
+
 ## Context actions
 
 Tag (show / enter), cycle choices (heads, support, roof, internals, bundle, draft, pump/compressor/fan kind, valve kind,

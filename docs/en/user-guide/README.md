@@ -66,6 +66,40 @@ as one element. A drawing with units keeps its real size when it fits on the sli
 curves become polylines whose points can be moved. Colours, line types, fills, hatches, blocks and dimensions are not
 imported. The same command reads CSV tables into charts and GeoJSON/GPX into map routes.
 
+## 6b. Building on with "+"
+
+A single selected element shows a blue "+" at every free place where something can be added: a meshing gear on a gear,
+the next shaft section or a part at a shaft end, a planet in a ring gear, the next link at a free joint, a tool on a robot
+flange – and, for everything that is connected by lines, at every free **connection port**:
+
+- **Which ports.** Electrical symbols, house installation, PCB pads, energy elements (PV modules, strings and arrays,
+  inverters, batteries, wind turbines, transformers, switchgear, chargers, heat pumps, electrolysers …), building services
+  (radiators, boilers, heat pumps, manifolds, pumps, valves, sanitary fixtures, risers, air terminals, ventilation units,
+  outlets and detectors), fluid power, process plants (nozzles, valves, pumps, instruments) and the electrical, coolant and
+  block-diagram terminals of electric machines. A port that already has a line or an element on it shows no "+".
+- **What it offers.** Clicking the "+" opens the insert box with the connector of the port's medium first – a DC cable at
+  the DC side of a PV module, inverter or battery, an AC cable at the grid side (with the voltage of the winding or the
+  grid where the element states it), a heating flow pipe at a flow connection and a return pipe at a return, cold water,
+  hot water, circulation and waste pipes at sanitary fixtures, a supply or extract duct at air terminals, an installation
+  cable at sockets, switches and outlets, a wire at schematic symbols, a track at PCB pads, a working, pilot or drain line
+  in fluid power, a process or signal line in a P&ID – then the elements that have a port of the same medium.
+- **Connector.** Choosing the connector draws it straight out of the port, its start docked on the port, and selects it.
+  Its free end shows a "+" again: choose the same line to continue it by one segment, or an element to put that element's
+  fitting port on the line end (the line stays docked when the element moves). So you build a whole PV system, heating
+  circuit or circuit by clicking "+" again and again.
+- **Element.** Choosing an element directly places it one connector length away, with its fitting port facing back,
+  joined to the port by the connector.
+- **Media fit.** A general electrical wire fits DC and AC ports, a heating pump or valve fits flow and return pipes, a heat
+  pump fits heat and cooling pipes. Elements of other modules are offered only when their port carries exactly that
+  medium (an installation outlet of the building services after an installation cable, not a resistor after a PV string).
+  A line drawn by hand from a connection port carries the port's medium, so its free end shows the "+" too.
+
+Hosts: the PowerPoint web add-in shows these "+" for elements and for line ends (engine `buildPorts`, kinds `Connect`
+and `LineEnd` with their `medium`; `buildItems`; `buildPlace` builds connector, element or longer line in one undo
+step); LibreOffice lists the same ports in its sidebar and builds through the same engine calls. In the PowerPoint COM
+add-in the "+" of elements offers connectors and elements, but an element chosen there is placed without its joining
+connector, and line ends show no "+" yet; both follow with a host update.
+
 ## 6. Modules
 
 Each module has its own page with its elements, views and parameters:

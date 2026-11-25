@@ -198,6 +198,8 @@ namespace InventaSketch.Modules.Electrical
             "track", "trace", "leiterbahn", "pcb", "copper") { }
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { Width, Routing.Param("45") };
+        /// <summary>A track joins pads and footprints (build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.Pcb;
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
         {

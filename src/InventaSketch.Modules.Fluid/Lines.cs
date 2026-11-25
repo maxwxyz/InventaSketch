@@ -208,6 +208,8 @@ namespace InventaSketch.Modules.Fluid
         private static readonly ParamDef Hops = Flag("hops", T("Hops at crossings", "Brücken an Kreuzungen"), true);
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Routing.Param(), Hops };
+        /// <summary>Working, pilot, drain lines and hoses all carry the fluid (build "+" at their free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.Fluid;
         public override bool InsertablePoints => true;
 
         /// <summary>A line drawn over an earlier line hops over it (unless switched off); hosts offer to connect there.</summary>

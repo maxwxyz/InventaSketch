@@ -56,6 +56,11 @@ Switching the FRL view keeps the visual scale and takes the proportions of the t
 - The valve exposes `Mount` anchors (`left`, `right`) at its ends; the separate actuation symbol (`fluid.actuation`)
   docks there with its `mount` anchor.
 
+**Build "+" (connections).** Every free port offers a line (medium `fluid`): pilot ports X/Y/Z of directional valves,
+piloted check valves and pilot actuators a pilot line, leakage ports L a drain line, all others a working line; then the
+components with a port that fits. The free end of a line offers "+" to continue it or to dock the next component with
+its facing port.
+
 ## Context actions
 
 | Action id | Icon | Effect |

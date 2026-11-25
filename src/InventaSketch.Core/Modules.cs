@@ -585,6 +585,23 @@ namespace InventaSketch.Core
         public virtual string? ChainConnector(SketchObject o) => null;
 
         /// <summary>
+        /// Connection ports (<see cref="Building"/>, <see cref="PortKind.Connect"/>): what flows through port
+        /// <paramref name="port"/> (a <see cref="AnchorRole.Port"/> anchor of <paramref name="o"/>) and which line connects it
+        /// – a DC cable at a PV module, a heating flow pipe at a radiator, a supply-air duct at an air terminal. The build "+"
+        /// at the port offers that connector (start docked on the port, free end with its own "+") and the elements with a
+        /// port of the same medium. Null (default): the port is a geometric point, not a medium connection.
+        /// </summary>
+        public virtual PortConnection? Connection(SketchObject o, Anchor port) => null;
+
+        /// <summary>
+        /// The medium a connection line carries (<see cref="PortMedia"/>): an electrical wire "electric", a DC cable
+        /// "electric.dc", a heating flow pipe "heating.flow". The free end of such a line offers "+" (continue the line, or
+        /// dock an element with a port of that medium). Null (default): not a connection line; a line docked on a
+        /// connection port then carries that port's medium (<see cref="Building.LineMedium"/>).
+        /// </summary>
+        public virtual string? LineMedium(SketchObject line) => null;
+
+        /// <summary>
         /// Point objects whose corners can be inserted and removed freely (wires, pipes, roads, polylines): hosts show "+"
         /// handles on the segments (<see cref="Polylines"/>). Lines with a fixed number of points (dimensions, arrows) say no.
         /// </summary>

@@ -198,6 +198,14 @@ Beim Wechsel zwischen runder Ansicht und Längsschnitt wird die Boxbreite angepa
   Wechselrichter DC+/DC−/U/V/W, Motor-Phasenanschlüsse, Getriebe-Ein-/Ausgang, Differential Eingang/links/rechts), sodass
   Pfeile und Leitungen andocken.
 
+### Weiterbauen mit „+“ (Anschlüsse)
+
+Phasenklemmen u/v/w bieten eine AC-Leitung an, Batterie- und Zwischenkreisklemmen (plus/minus, dc+/dc-) eine
+DC-Leitung, Spulenenden, Bürsten und Gebersignale eine Leitung (Leitungen des Elektromoduls), der Kühlkanal ein/aus eine
+Wasserleitung (Energiemodul), die vier Seiten der Antriebsstrang-Blöcke einen Pfeil (Blockschaltbild), danach die
+passenden Elemente. Wellenenden (Getriebe, Räder, E-Maschinen, Motorabtrieb) sind mechanisch und werden mit Wellen an
+ihren Achsenden weitergebaut.
+
 ## Bekannte Grenzen
 
 - Antriebsstrangteile werden mit ihrer Welle nur verschoben (die Core-Kopplung verschiebt Teile, sie dreht sie nicht):

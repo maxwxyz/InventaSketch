@@ -138,6 +138,15 @@ Verbraucher & E-Mobilität, `energy.grid` Grid connection & single-line / Netzan
 - **Flow arrow:** a band of `weight` with an arrow head (mitred corners) in the pictorial view; a thin line with a filled
   head in the single-line view.
 
+**Build "+" (connections).** Every free port offers its line first (`ObjectType.Connection`, see the user guide): `dc`
+and `bat` a DC cable, `ac`, `el`, `poc`, `hv`, `mv`, `lv` an AC cable at the voltage the element states for that port
+(transformer windings, grid infeed), `data` a communication line, `heat`, `charge`/`discharge` (heat storage) a heat
+pipe, `fuel` a gas pipe, `water` a water pipe, `h2` a hydrogen pipe; switchgear, meters and busbars a cable (DC for DC
+busbars); converters DC or AC per side by their conversion; charger and vehicle DC for DC charging. The heat port of the
+heat pump takes heat and cooling pipes. Then the elements with a port of the same medium (a PV string after a PV module,
+an inverter or battery after a DC cable). Cables carry `electric.dc`, `electric.ac` or `data`, pipes their carrier; the
+free end of a cable or pipe offers "+" to continue it or to dock the next element. Flow arrows carry no medium of their own.
+
 ## Context actions
 
 Show rating label and Designation… (every box element), rated power / capacity / volume / voltage… inputs (accept

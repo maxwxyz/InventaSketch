@@ -147,6 +147,15 @@ Kategorien: `bs.heating` Heating / Heizung, `bs.plumbing` Plumbing & sanitary / 
   und Schnitt; im Schema eine Linie mit Luftkürzel. Rohre: Medienlinie in Grundriss und Schnitt; das Schema ergänzt
   Medienkürzel und `DN …`.
 
+**Weiterbauen mit „+“ (Anschlüsse).** Die Anschluss-IDs nennen das Medium: `flow`/`f1…` eine Vorlaufleitung,
+`return`/`r1…` eine Rücklaufleitung, `cold`, `hot`, `circulation`, `waste` die passende Wasserleitung, Steigleitungen die
+Leitung ihres Mediums, Luftdurchlässe die Luftleitung ihrer Luftart, das Lüftungsgerät Außen-, Fort-, Ab- und
+Zuluftleitungen; Inline-Teile der Heizung (Pumpe, Mischventil, Thermostatventil, Ausdehnungsgefäß) passen an Vor- und
+Rücklauf; Anschlussdosen, Melder, Geräte und die Potentialausgleichsschiene eine Installationsleitung
+(`electric.installation`, die Leitungsführung des Elektromoduls). Rohr- und Luftleitungen führen ihr Medium; ihre freien
+Enden bieten „+“ zum Verlängern oder zum Andocken des nächsten Heizkörpers, Sanitärobjekts oder Luftdurchlasses mit dem
+passenden Anschluss.
+
 ## Kontextaktionen
 
 Montagehöhe… (Eingabe, jedes Element), Medium/Art weiterschalten (Rohr, Luftleitung, Strang, Luftdurchlass, Dosen,

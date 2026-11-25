@@ -153,6 +153,8 @@ namespace InventaSketch.Modules.Electrical
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal"), Hops };
         public override bool InsertablePoints => true;
+        /// <summary>A wire carries any electrical connection (build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.Electric;
 
         /// <summary>Drawn path of a wire (routed).</summary>
         private static IReadOnlyList<Vec2> PathOf(SketchObject x, RenderContext ctx)
@@ -218,6 +220,8 @@ namespace InventaSketch.Modules.Electrical
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-30, 0), new Vec2(30, 0) };
         public override IReadOnlyList<ParamDef> Parameters => new[] { Protocol };
         public override bool InsertablePoints => true;
+        /// <summary>A bus carries data (build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.Data;
         public override bool HasText => true;
 
         public static string Label(SketchObject o) => !string.IsNullOrEmpty(o.Text) ? o.Text! : o.Str("protocol", "can") switch

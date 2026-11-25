@@ -74,6 +74,13 @@ Verbindungsliste (Netzliste als CSV) und eine Grundprüfung, aber keine Simulati
 - Busleitungen bieten alle 10 mm `Port`-Abgriffe und dazwischen eine Schiene, die Sammelschiene fünf Abgriffe.
 - Objekte ohne Anschlüsse: Leiterplattenkontur, Kupferfläche, Befestigungsbohrung, Bestückungsdruck-Text.
 
+**Weiterbauen mit „+“ (Anschlüsse).** Jeder freie Anschluss bietet eine Leitung (orthogonal) und die dort passenden
+Schaltzeichen an; Elemente der Hausinstallation die Leitungsführung (`electric.installation`, auch von den Anschlussdosen
+der Gebäudetechnik genutzt), Pads und Bauformen der Leiterplatte eine Leiterbahn (`pcb`). Leitungen führen `electric`
+(sie passen an DC- und AC-Anschlüsse anderer Module), Busleitungen `data`; das freie Ende einer Leitung, Busleitung,
+Leitungsführung oder Leiterbahn bietet „+“ zum Verlängern oder zum Andocken des nächsten Schaltzeichens mit dem
+zugewandten Anschluss.
+
 ## Kontextaktionen
 
 | Aktions-ID | Icon | Wirkung |

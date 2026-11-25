@@ -147,6 +147,9 @@ namespace InventaSketch.Modules.Energy
             }
         }
 
+        /// <summary>Medium and connector of a port (<see cref="EnergyPorts"/>): DC/AC cables, heat, gas, water and hydrogen pipes, data lines.</summary>
+        public override PortConnection? Connection(SketchObject o, Anchor port) => port.Id is null ? null : EnergyPorts.Of(this, o, port.Id);
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             if (Extra is not null)
