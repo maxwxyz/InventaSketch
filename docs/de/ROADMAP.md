@@ -523,7 +523,21 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
     und Elektronik, Maschinenelemente, Maschinen, Fluidtechnik, Solar/Energie, TGA, Verfahrenstechnik), werden abgeleitete
     Werte live berechnet und auf Wunsch angezeigt: U/I/P/R, C, L, Impedanz und Zeitkonstanten; Drehzahl, Drehmoment,
     Leistung, Übersetzung, Achsabstand aus Modul und Zähnezahl; Durchfluss, Druck, Kraft; Wärmemenge und Wärmestrom;
-    PV-Strangspannungen und Ertrag. Konzept und Katalog: docs/de/design/engineering-calculations.md (Recherche läuft).
+    PV-Strangspannungen und Ertrag. Konzept und Katalog: docs/de/design/engineering-calculations.md (erledigt
+    25.11.2026: Grundsätze, Formelkatalog mit Quellen je Fachgebiet, ~35 Plausibilitätsprüfungen, verknüpfte
+    Diagramme, modulübergreifende Ketten). Stufen, jeweils zuerst COM, dann Web und LibreOffice über die gemeinsame
+    Engine-API:
+    - **Calc 0** Größen, Einheiten, ein Parser/Formatierer (4k7, µF, min⁻¹, °C gegenüber K, Toleranzen).
+    - **Calc 1** Beziehungs-Engine und Engine-API (values, setValue, clearValue, explain, dragValue, checks); eingegebene
+      Werte werden nie überschrieben, Widersprüche zeigen beide Werte.
+    - **Calc 2** COM-Oberfläche: Stufenumschalter (Schnellskizze / Erkunden / Ingenieur), Schaltfläche Werte, Kreismenü
+      Bearbeiten ▸ Werte ▸, Wertekarte, Beschriftungen, Griffe/Schieber, Formeln Schritt für Schritt.
+    - **Calc 3** Elektro und Maschinenelemente (Reihe/parallel, LED, Räderzüge n/M/P, Riemen, Ketten, Gewindetriebe,
+      Federn, Lager, Motoren) mit Prüfungen.
+    - **Calc 4** Fluid, Wärme/Verfahren, Gebäudetechnik, Energie/Solar und modulübergreifende Ketten.
+    - **Calc 5** verknüpfte Diagramme (Drehmoment-Drehzahl, Pumpe/Anlage, PV I-U, Bode, Sprungantwort, Getriebeplan,
+      Heizkurve).
+    - **Calc 6** Ingenieur-Extras (Toleranzintervalle, Rechenblatt, Quellenbereich, Prüfeinstellungen).
     **Leitbild (Maintainer 25.11.2026):** schnell skizzieren, aber auch interaktiv und spielerisch lernen und verstehen,
     und physikalisch korrekt und technisch präzise zeichnen und rechnen, mit Plausibilitätsprüfungen (behutsame Hinweise
     mit Regel und Quelle: Zahnräder mit unterschiedlichem Modul, Sicherung kleiner als die Leitungslast, PV-Strang über

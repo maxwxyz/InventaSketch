@@ -472,7 +472,19 @@ in the drawing).
     electronics, machine elements, machines, fluid power, solar/energy, building services, process), derived values
     are computed live and shown on request: U/I/P/R, C, L, impedance and time constants; speed, torque, power, ratio,
     centre distance from module and teeth; flow, pressure, force; heat quantity and heat flow; PV string voltages and
-    yield. Concept and catalogue: docs/en/design/engineering-calculations.md (research in progress).
+    yield. Concept and catalogue: docs/en/design/engineering-calculations.md (done 2026-11-25: principles, formula
+    catalogue with sources per domain, ~35 plausibility checks, linked charts, cross-module chains). Phases, each COM
+    first, then web and LibreOffice on the shared engine API:
+    - **Calc 0** quantities, units, one parser/formatter (4k7, µF, rpm, °C vs K, tolerances).
+    - **Calc 1** relation engine and engine API (values, setValue, clearValue, explain, dragValue, checks); entered
+      values are never overwritten, conflicts show both values.
+    - **Calc 2** COM UI: level switch (quick sketch / explore / engineer), Values button, pie Edit ▸ Values ▸, value
+      card, labels, grips/sliders, formulas step by step.
+    - **Calc 3** electrical and machine elements (series/parallel, LED, gear trains n/T/P, belts, chains, screws,
+      springs, bearings, motors) with checks.
+    - **Calc 4** fluid, thermal/process, building services, energy/solar and cross-module chains.
+    - **Calc 5** linked charts (torque–speed, pump/system, PV I–V, Bode, step response, gear train, heating curve).
+    - **Calc 6** engineer extras (tolerance intervals, calculation sheet, sources pane, check settings).
     **Guiding idea (maintainer 2026-11-25):** sketch fast, but also learn and understand interactively and playfully,
     and draw and compute physically correct and technically precise, with plausibility checks (gentle warnings with
     their rule and source: gear modules that do not match, a fuse below the cable load, a PV string above the
