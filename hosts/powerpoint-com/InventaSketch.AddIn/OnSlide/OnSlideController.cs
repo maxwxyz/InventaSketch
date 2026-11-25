@@ -1424,7 +1424,7 @@ namespace InventaSketch.AddIn.OnSlide
             var registry = _registry();
             var setup = _app.ActivePresentation.PageSetup;
             var doc = SketchDocument.Create(new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm));
-            doc = Edits.Add(doc, doc.Pages[0].Id, registry.Create(item, at));
+            doc = Edits.Add(doc, doc.Pages[0].Id, SymbolSize.ForSlide(registry, registry.Create(item, at), SlideStyle.Current(slide).Symbols));
             _app.StartNewUndoEntry();
             var shape = SketchUnits.Draw(slide, registry, doc, _lang());
             SketchUnits.RedrawDependents(slide, registry, _lang(), Array.Empty<SketchDocument>(), new[] { doc });

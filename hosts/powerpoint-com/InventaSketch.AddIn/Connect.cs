@@ -407,6 +407,65 @@ namespace InventaSketch.AddIn
             sb.Append("</menu>");
         }
 
+        /// <summary>"Symbol size": ×1 / ×1.5 / ×2 for every standard symbol of the slide (UX review 2026-11-25, F2).</summary>
+        private void AppendSymbolSizeMenu(StringBuilder sb)
+        {
+            sb.Append("<menu id=\"IskSymbolSize\" label=\"").Append(L(T("Symbol size", "Symbolgröße"))).Append("\" imageMso=\"ShapeSizeDialog\" supertip=\"")
+              .Append(X(T("Size of the standard symbols on this slide (fluid, electrical, joints, plan symbols …): larger symbols stay clear of PowerPoint's selection handles. New symbols take it too; parameters do not change.",
+                          "Größe der Normsymbole auf dieser Folie (Fluid, Elektro, Gelenke, Plansymbole …): größere Symbole bleiben frei von PowerPoints Auswahlgriffen. Neue Symbole übernehmen sie; Parameter ändern sich nicht."))).Append("\">");
+            foreach (var k in OnSlide.SymbolSize.Factors)
+            {
+                var txt = "×" + (_lang == Lang.De ? k.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', ',') : k.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture));
+                var name = Math.Abs(k - 1) < 1e-9 ? T(" (standard)", " (Norm)") : "";
+                sb.Append("<toggleButton id=\"IskSymbols").Append(k.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', '_')).Append("\" tag=\"")
+                  .Append(k.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)).Append("\" label=\"").Append(L(txt + name)).Append("\" getPressed=\"GetSymbolSizePressed\" onAction=\"OnSymbolSize\" />");
+            }
+            sb.Append("</menu>");
+        }
+
+        public bool GetSymbolSizePressed(Office.IRibbonControl control)
+        {
+            try
+            {
+                if (_app is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return false;
+                return double.TryParse(control.Tag, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var k)
+                    && Math.Abs(OnSlide.SlideStyle.Current(slide).Symbols - k) < 1e-6;
+            }
+            catch (Exception ex) { Log.Error("GetSymbolSizePressed", ex); return false; }
+        }
+
+        public void OnSymbolSize(Office.IRibbonControl control, bool pressed)
+        {
+            if (double.TryParse(control.Tag, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var k)) SetSymbolSize(k);
+        }
+
+        /// <summary>Scales every symbol of the current slide to the factor <paramref name="k"/> (one undo step) and stores it.</summary>
+        internal void SetSymbolSize(double k)
+        {
+            try
+            {
+                if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return;
+                var style = OnSlide.SlideStyle.Current(slide);
+                var ratio = k / style.Symbols;
+                _app.StartNewUndoEntry();
+                OnSlide.SlideStyle.Write(slide, style with { Symbols = k });
+                var changed = 0;
+                if (Math.Abs(ratio - 1) > 1e-9)
+                    foreach (var u in OnSlide.SketchUnits.All(slide))
+                    {
+                        var ids = OnSlide.SymbolSize.SymbolIds(_registry, u.Doc);
+                        if (ids.Count == 0) continue;
+                        var doc = Edits.Update(u.Doc, ids, o => OnSlide.SymbolSize.Scale(o, ratio));
+                        OnSlide.SketchUnits.Replace(slide, u, doc, _registry, _lang);
+                        changed++;
+                    }
+                Log.Info($"Symbol size ×{k} for {changed} unit(s)");
+                foreach (var f in OnSlide.SymbolSize.Factors)
+                    _ribbon?.InvalidateControl("IskSymbols" + f.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', '_'));
+            }
+            catch (Exception ex) { Log.Error("SetSymbolSize", ex); }
+        }
+
         /// <summary>"Accent colour": one colour for the coloured parts of every InventaSketch element of the slide.</summary>
         private void AppendAccentMenu(StringBuilder sb)
         {
@@ -432,6 +491,7 @@ namespace InventaSketch.AddIn
               .Append("\" getImage=\"GetLogoSmallImage\" itemSize=\"normal\">");
             AppendLineGroupMenu(sb);
             AppendAccentMenu(sb);
+            AppendSymbolSizeMenu(sb);
             sb.Append("<button id=\"IskMenuModules\" label=\"").Append(L(T("Modules \u2026", "Module \u2026"))).Append("\" imageMso=\"ApplicationOptionsDialog\" onAction=\"OnToolsMenu\" supertip=\"")
               .Append(X(T("Choose which modules the ribbon and the library show (for example only mechanics and annotation).",
                           "Ausw\u00e4hlen, welche Module Men\u00fcband und Bibliothek zeigen (zum Beispiel nur Mechanik und Beschriftung)."))).Append("\" />");
@@ -1274,7 +1334,8 @@ namespace InventaSketch.AddIn
             var setup = slide.Parent is PowerPoint.Presentation p ? p.PageSetup : _app.ActivePresentation.PageSetup;
             var pageMm = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
             var doc = SketchDocument.Create(pageMm);
-            var obj = _registry.Create(item, new Vec2(pageMm.W / 2, pageMm.H / 2));
+            // Symbols take the slide's symbol size (UX review F2).
+            var obj = OnSlide.SymbolSize.ForSlide(_registry, _registry.Create(item, new Vec2(pageMm.W / 2, pageMm.H / 2)), OnSlide.SlideStyle.Current(slide).Symbols);
             doc = Edits.Add(doc, doc.Pages[0].Id, obj);
             _app.StartNewUndoEntry();
             var last = OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang);
@@ -1340,6 +1401,8 @@ namespace InventaSketch.AddIn
                 _ribbon.InvalidateControl("IskLineGroup" + g.ToString("0.0#", System.Globalization.CultureInfo.InvariantCulture).Replace('.', '_'));
             _ribbon.InvalidateControl("IskAccentNone");
             foreach (var (id, _, _) in Accents.Presets) _ribbon.InvalidateControl("IskAccent_" + id);
+            foreach (var f in OnSlide.SymbolSize.Factors)
+                _ribbon.InvalidateControl("IskSymbols" + f.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture).Replace('.', '_'));
         }
 
         /// <summary>Pressed state of the black-and-white toggle: the current slide's style.</summary>

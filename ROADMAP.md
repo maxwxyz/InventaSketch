@@ -475,7 +475,9 @@ in the drawing).
     yield. Concept and catalogue: docs/en/design/engineering-calculations.md (done 2026-11-25: principles, formula
     catalogue with sources per domain, ~35 plausibility checks, linked charts, cross-module chains). Phases, each COM
     first, then web and LibreOffice on the shared engine API:
-    - **Calc 0** quantities, units, one parser/formatter (4k7, µF, rpm, °C vs K, tolerances).
+    - **Calc 0** quantities, units, one parser/formatter (4k7, µF, rpm, °C vs K, tolerances); a unit converter and a
+      calculator with units ("230 V * 16 A", "1500 rpm in rad/s"; maintainer 2026-11-25), engine `convert`/`calc`, COM
+      popup in the More menu and the value card with Calc 2.
     - **Calc 1** relation engine and engine API (values, setValue, clearValue, explain, dragValue, checks); entered
       values are never overwritten, conflicts show both values.
     - **Calc 2** COM UI: level switch (quick sketch / explore / engineer), Values button, pie Edit ▸ Values ▸, value

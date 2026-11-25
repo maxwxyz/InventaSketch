@@ -16,7 +16,7 @@ namespace InventaSketch.AddIn.OnSlide
         public const string Tag = "ISK_STYLE";
 
         /// <summary>The three settings of a slide style.</summary>
-        internal sealed record Values(bool Mono, double? Group, string? Accent);
+        internal sealed record Values(bool Mono, double? Group, string? Accent, double Symbols = 1.0);
 
         /// <summary>The slide's style, or null if the slide has none.</summary>
         public static Values? Read(PowerPoint.Slide slide)
@@ -28,6 +28,7 @@ namespace InventaSketch.AddIn.OnSlide
             var mono = false;
             double? group = null;
             string? accent = null;
+            var symbols = 1.0;
             foreach (var part in raw.Split(';'))
             {
                 var kv = part.Split('=');
@@ -37,8 +38,9 @@ namespace InventaSketch.AddIn.OnSlide
                          && Style.LineGroups.Any(x => Math.Abs(x - g) < 1e-9) && Math.Abs(g - Style.DesignLineGroup) > 1e-9)
                     group = g;
                 else if (kv[0] == "accent") accent = Accents.Normalize(kv[1]);
+                else if (kv[0] == "symbols" && double.TryParse(kv[1], NumberStyles.Float, CultureInfo.InvariantCulture, out var k) && k > 0.2 && k < 5) symbols = k;
             }
-            return new Values(mono, group, accent);
+            return new Values(mono, group, accent, symbols);
         }
 
         /// <summary>The slide's style, else the one the units on it share (first unit with a setting), else the default.</summary>
@@ -56,7 +58,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var value = "mono=" + (v.Mono ? "1" : "0")
                 + (v.Group is double g ? ";group=" + g.ToString("0.##", CultureInfo.InvariantCulture) : "")
-                + (v.Accent is { } a ? ";accent=" + a : "");
+                + (v.Accent is { } a ? ";accent=" + a : "")
+                + (Math.Abs(v.Symbols - 1) > 1e-9 ? ";symbols=" + v.Symbols.ToString("0.##", CultureInfo.InvariantCulture) : "");
             try { slide.Tags.Delete(Tag); } catch { /* not set */ }
             slide.Tags.Add(Tag, value);
         }

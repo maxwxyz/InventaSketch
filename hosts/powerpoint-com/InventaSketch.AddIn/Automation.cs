@@ -213,6 +213,13 @@ namespace InventaSketch.AddIn
         /// <summary>Visible InventaSketch handles of the selected element as last drawn: "id@x,y,r;…" (device pixels).</summary>
         public string Handles() => _connect.LastHandles();
 
+        /// <summary>Sets the slide's symbol size (1, 1.5 or 2) like the More menu does.</summary>
+        public bool SetSymbolSize(double factor)
+        {
+            try { _connect.SetSymbolSize(factor); return true; }
+            catch (Exception ex) { Log.Error("Automation.SetSymbolSize", ex); return false; }
+        }
+
         /// <summary>The selection halo as last drawn: "selected=…; connected=…".</summary>
         public string Halo() => _connect.LastHalo();
 

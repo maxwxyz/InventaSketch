@@ -527,7 +527,9 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
     25.11.2026: Grundsätze, Formelkatalog mit Quellen je Fachgebiet, ~35 Plausibilitätsprüfungen, verknüpfte
     Diagramme, modulübergreifende Ketten). Stufen, jeweils zuerst COM, dann Web und LibreOffice über die gemeinsame
     Engine-API:
-    - **Calc 0** Größen, Einheiten, ein Parser/Formatierer (4k7, µF, min⁻¹, °C gegenüber K, Toleranzen).
+    - **Calc 0** Größen, Einheiten, ein Parser/Formatierer (4k7, µF, min⁻¹, °C gegenüber K, Toleranzen); ein
+      Einheitenumrechner und ein Rechner mit Einheiten („230 V * 16 A“, „1500 min⁻¹ in rad/s“; Maintainer 25.11.2026),
+      Engine `convert`/`calc`, COM-Fenster im Menü Mehr und in der Wertekarte mit Calc 2.
     - **Calc 1** Beziehungs-Engine und Engine-API (values, setValue, clearValue, explain, dragValue, checks); eingegebene
       Werte werden nie überschrieben, Widersprüche zeigen beide Werte.
     - **Calc 2** COM-Oberfläche: Stufenumschalter (Schnellskizze / Erkunden / Ingenieur), Schaltfläche Werte, Kreismenü
