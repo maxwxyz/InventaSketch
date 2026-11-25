@@ -37,6 +37,7 @@ namespace InventaSketch.Engine
             _methods["convertUnit"] = ConvertUnitCore;
             _methods["calc"] = CalcCore;
             _methods["units"] = UnitsCore;
+            _methods["calcSheet"] = CalcSheetCore;
         }
 
         public string Values(string json) => Invoke("values", json);
@@ -47,6 +48,35 @@ namespace InventaSketch.Engine
         public string Checks(string json) => Invoke("checks", json);
         public string ConvertUnit(string json) => Invoke("convertUnit", json);
         public string Calc(string json) => Invoke("calc", json);
+        public string CalcSheet(string json) => Invoke("calcSheet", json);
+
+        /// <summary>
+        /// The calculation sheet of <c>ids</c> (default: the page) in <c>mode</c> "csv" (default), "markdown", "latex" or
+        /// "table" (the cells of an annotation table): <c>{ text, rows, sources }</c> (Calc 6).
+        /// </summary>
+        private object CalcSheetCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = LangOf(r, s);
+            var ids = ValueIds(r) ?? s.Page.Order.ToList();
+            var table = SolveValues(s, r);
+            var rows = InventaSketch.Core.CalcSheet.Rows(table, Registry, ids, lang, r.Digits ?? 3);
+            var mode = (r.Mode ?? "csv").ToLowerInvariant();
+            var text = mode switch
+            {
+                "csv" => InventaSketch.Core.CalcSheet.Csv(rows, lang),
+                "markdown" or "md" => InventaSketch.Core.CalcSheet.Markdown(rows, lang),
+                "latex" or "tex" => InventaSketch.Core.CalcSheet.Latex(rows, lang),
+                "table" => InventaSketch.Core.CalcSheet.TableCells(rows, lang),
+                _ => throw new ArgumentException($"Unknown mode '{r.Mode}' (csv, markdown, latex, table)."),
+            };
+            return new
+            {
+                text,
+                rows = rows.Count,
+                sources = InventaSketch.Core.CalcSheet.Cited(rows).Select(id => new { id, text = ValueSources.Get(id)!.Get(lang) }).ToList(),
+            };
+        }
 
         private Lang LangOf(EngineRequest r, EditorSession? s = null) => r.Lang is not null ? Language.Detect(r.Lang) : s?.Lang ?? Lang.En;
 
@@ -103,6 +133,9 @@ namespace InventaSketch.Engine
                         Relation = v.Via?.Relation.Id,
                         Source = v.Via?.Relation.Source,
                         Tolerance = v.Tolerance,
+                        Lo = v.Interval?.Lo,
+                        Hi = v.Interval?.Hi,
+                        Range = v.Interval is { } iv ? ValueFormat.Format(iv.Lo, unit, lang, digits) + " … " + ValueFormat.Format(iv.Hi, unit, lang, digits) : null,
                         Error = v.Error?.Get(lang),
                         Conflict = v.InConflict,
                         Param = v.Def.ParamKey,

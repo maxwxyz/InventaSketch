@@ -124,6 +124,10 @@ namespace InventaSketch.Engine
         public string? Source { get; set; }
         /// <summary>Tolerance of an entered value (relative: fractions; absolute: SI).</summary>
         public Tolerance? Tolerance { get; set; }
+        /// <summary>Range from the tolerances the value rests on (SI), and as text "4.47 … 4.94 kΩ"; null without one (Calc 6).</summary>
+        public double? Lo { get; set; }
+        public double? Hi { get; set; }
+        public string? Range { get; set; }
         /// <summary>Parse error of a stored text (the value then counts as not entered).</summary>
         public string? Error { get; set; }
         public bool Conflict { get; set; }
