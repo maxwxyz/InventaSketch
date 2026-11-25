@@ -464,6 +464,166 @@ namespace InventaSketch.Modules.Robotics
             return sized with { Transform = sized.Transform with { X = sized.Transform.X + shift.X, Y = sized.Transform.Y + shift.Y } };
         }
 
+        // ------------------------------------------------------------------ joint grips
+
+        /// <summary>Snap of dragged joint values: 1° for revolute joints, 5 mm for linear axes.</summary>
+        public const double AngleSnap = 1, StrokeSnap = 5;
+
+        /// <summary>
+        /// A joint grip in local coordinates: the joint <see cref="Def"/>, its projected centre, the lever point the grip sits
+        /// on (index into <see cref="LeverPoints"/>), the probe step and, for linear axes, the local displacement per mm.
+        /// </summary>
+        private sealed record JointGrip(JointDef Def, int Index, Vec2 Centre, Vec2 At, int Lever, double Probe, Vec2 PerUnit, double RatePerDeg);
+
+        /// <summary>Points a joint grip can sit on, in chain order: the schematic joints, then the flange.</summary>
+        private static List<V3> LeverPoints(ArmPose p) => p.Joints.Select(j => j.P).Append(p.Flange).ToList();
+
+        /// <summary>
+        /// Grips of the joints whose motion shows in the view: revolute joints whose axis faces the viewer (the first point
+        /// further down the chain that turns about the joint carries the grip) and linear axes that move across the view (the
+        /// first point that moves with the axis). Joints whose grip would sit on another grip are left out.
+        /// </summary>
+        private List<JointGrip> JointGrips(SketchObject o, ArmScene s, ArmPose pose, double[] q)
+        {
+            var view = ViewOf(o);
+            var vd = Proj.ViewDir(view);
+            var list = new List<JointGrip>();
+            if (!pose.Ok) return list;
+            var pts0 = LeverPoints(pose);
+            Vec2 L(V3 p) => s.L(Proj.To2(p, view));
+            for (var i = 0; i < Joints.Count; i++)
+            {
+                var def = Joints[i];
+                var k = pose.Joints.FindIndex(x => x.Key == def.Key);
+                if (k < 0) continue;
+                var sym = pose.Joints[k];
+                var prismatic = sym.Kind == JointKind.Prismatic;
+                if (!prismatic && (sym.Kind != JointKind.Revolute || Math.Abs(sym.Axis.Normalized().Dot(vd)) < 0.6)) continue;
+                var (lo, hi) = Limit(o, def);
+                var probe = prismatic ? Math.Max(1, Math.Abs(hi - lo) * 0.01) : 5.0;
+                var qq = (double[])q.Clone();
+                // Probe towards the inside of the range so the probed pose stays within the limits.
+                if (q[i] + probe > Math.Max(lo, hi)) probe = -probe;
+                qq[i] = q[i] + probe;
+                var p1 = Pose(o, qq);
+                if (!p1.Ok) continue;
+                var pts1 = LeverPoints(p1);
+                if (pts1.Count != pts0.Count) continue;
+                var c = L(sym.P);
+                for (var m = prismatic ? k : k + 1; m < pts0.Count; m++)
+                {
+                    Vec2 a = L(pts0[m]), b = L(pts1[m]);
+                    var moved = (b - a).Length;
+                    if (prismatic)
+                    {
+                        if (moved < 0.3 * Math.Abs(probe) * s.S) continue;
+                        list.Add(new JointGrip(def, i, c, a, m, probe, (b - a) / probe, 0));
+                        break;
+                    }
+                    var dist = (a - c).Length;
+                    if (dist < 3 * s.R || moved < 0.5 * dist * Geo.DegToRad(Math.Abs(probe))) continue;
+                    var rate = Wrap(Math.Atan2(b.Y - c.Y, b.X - c.X) - Math.Atan2(a.Y - c.Y, a.X - c.X)) / probe;
+                    if (Math.Abs(rate) < 1e-6) break;
+                    list.Add(new JointGrip(def, i, c, a, m, probe, Vec2.Zero, rate));
+                    break;
+                }
+            }
+            // Coinciding grips (a wrist seen end-on): the first joint keeps its grip.
+            var kept = new List<JointGrip>();
+            foreach (var g in list)
+                if (kept.All(x => x.At.DistanceTo(g.At) >= 2 * s.R)) kept.Add(g);
+            return kept;
+        }
+
+        private static double Wrap(double rad)
+        {
+            while (rad > Math.PI) rad -= 2 * Math.PI;
+            while (rad <= -Math.PI) rad += 2 * Math.PI;
+            return rad;
+        }
+
+        private static string Key(JointDef j) => "joint." + j.Key;
+
+        private static I18nText GripLabel(JointDef j, double v)
+        {
+            var value = (v < 0 ? "−" : "") + Rb.Fmt(Math.Abs(v)) + (j.Prismatic ? " mm" : "°");
+            var de = j.Short.De ?? j.Short.En;
+            return j.Prismatic
+                ? new I18nText($"Axis position {j.Short.En}: {value}", $"Achsstellung {de}: {value}")
+                : new I18nText($"Joint angle {j.Short.En}: {value}", $"Gelenkwinkel {de}: {value}");
+        }
+
+        /// <summary>
+        /// Joint grips ("joint.j2", "joint.x" …): revolute joints are dragged about their axis (free motion, the type keeps
+        /// the grip on its arc), linear axes along their projected direction.
+        /// </summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var s = SceneFor(o, out var pose, out var q);
+            var m = o.Matrix();
+            foreach (var g in JointGrips(o, s, pose, q))
+            {
+                var local = new DragHandle(Key(g.Def), g.At, DragConstraint.Free, GripLabel(g.Def, q[g.Index]));
+                if (!g.Def.Prismatic) { yield return Dragging.ToPage(local, o); continue; }
+                var d = g.PerUnit;
+                var h = local with { Constraint = Math.Abs(d.X) >= Math.Abs(d.Y) ? DragConstraint.Horizontal : DragConstraint.Vertical };
+                yield return Dragging.ToPage(h, o) with { Direction = m.ApplyLinear(d).Normalized() };
+            }
+        }
+
+        /// <summary>
+        /// The joint of grip <paramref name="key"/> set so that its lever point follows the pointer: revolute joints turn by
+        /// the pointer's angle about the joint (refined on the projected pose, snapped to 1°, wrapped into and clamped to the
+        /// joint limits), linear axes move by the pointer's travel along the axis (snapped to 5 mm). The base stays in place
+        /// and the drawing scale is kept (<see cref="KeepScale"/>).
+        /// </summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            var s = SceneFor(o, out var pose, out var q);
+            var g = JointGrips(o, s, pose, q).FirstOrDefault(x => Key(x.Def) == key);
+            if (g is null) return o;
+            var p = o.Matrix().Invert().Apply(pagePos);
+            var (lo, hi) = Limit(o, g.Def);
+            if (hi < lo) (lo, hi) = (hi, lo);
+            double v;
+            if (g.Def.Prismatic)
+            {
+                var d2 = g.PerUnit.Dot(g.PerUnit);
+                if (d2 < 1e-12) return o;
+                v = Dragging.Snap(q[g.Index] + (p - g.At).Dot(g.PerUnit) / d2, StrokeSnap);
+            }
+            else
+            {
+                if ((p - g.Centre).Length < 1e-9) return o;
+                var target = Math.Atan2(p.Y - g.Centre.Y, p.X - g.Centre.X);
+                var view = ViewOf(o);
+                double AngleAt(double value)
+                {
+                    var qq = (double[])q.Clone();
+                    qq[g.Index] = value;
+                    var pp = Pose(o, qq);
+                    var pts = LeverPoints(pp);
+                    if (!pp.Ok || pts.Count <= g.Lever) return double.NaN;
+                    var a = s.L(Proj.To2(pts[g.Lever], view));
+                    return Math.Atan2(a.Y - g.Centre.Y, a.X - g.Centre.X);
+                }
+                v = q[g.Index] + Wrap(target - Math.Atan2(g.At.Y - g.Centre.Y, g.At.X - g.Centre.X)) / g.RatePerDeg;
+                // A joint axis that is tilted to the view projects the lever's circle as an ellipse: two corrections.
+                for (var it = 0; it < 2; it++)
+                {
+                    var now = AngleAt(v);
+                    if (double.IsNaN(now)) break;
+                    v += Wrap(target - now) / g.RatePerDeg;
+                }
+                // Into the joint's range: the turn the other way round when that lies within the limits.
+                foreach (var alt in new[] { v - 360, v + 360 })
+                    if ((v < lo || v > hi) && alt >= lo && alt <= hi) v = alt;
+                v = Dragging.Snap(v, AngleSnap);
+            }
+            v = Geo.Clamp(v, lo, hi);
+            return KeepScale(o, o.WithParam(g.Def.Key, v));
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var j = MotionJoint(o);

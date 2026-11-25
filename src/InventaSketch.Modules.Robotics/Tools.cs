@@ -78,7 +78,7 @@ namespace InventaSketch.Modules.Robotics
                     p.Arrow(-xi - 1.6, -2.2, -xi - 4.6, -2.2, 1.0, RS.Thin);
                     p.Arrow(xi + 1.6, -2.2, xi + 4.6, -2.2, 1.0, RS.Thin);
                 }
-            }, (p, o) => SideAnchors(p, -11, 9.2)),
+            }, (p, o) => SideAnchors(p, -11, 9.2)) { Open = new OpenGrip(new Vec2(1.9, 9.5), new Vec2(5.4, 0)) },
             new SymView(RoboViews.AxialView, new Size2(20, 20), (p, o) =>
             {
                 var open = Geo.Clamp(o.Num("open", 0.6), 0, 1);
@@ -87,7 +87,7 @@ namespace InventaSketch.Modules.Robotics
                 var xi = 1.0 + open * 5.4;
                 foreach (var sgn in new[] { -1, 1 }) p.Box(sgn * xi, -3.6, sgn * (xi + 1.8), 3.6, RS.White, RoboTags.Jaw);
                 p.Line(-1, 0, 1, 0, RS.Center); p.Line(0, -1, 0, 1, RS.Center);
-            }, (p, o) => AxialAnchors(p)))
+            }, (p, o) => AxialAnchors(p)) { Open = new OpenGrip(new Vec2(1.9, 0), new Vec2(5.4, 0)) })
         {
             Params = new[] { OpenParam, Pm.Bool("arrows", "Stroke arrows", "Hubpfeile", false) },
             CompanionIds = Companions,
@@ -190,7 +190,7 @@ namespace InventaSketch.Modules.Robotics
                 Finger(p, 0, open, RS.Hidden);
                 Finger(p, -1, open, RS.White);
                 Finger(p, 1, open, RS.White);
-            }, (p, o) => SideAnchors(p, -11, 10.0)),
+            }, (p, o) => SideAnchors(p, -11, 10.0)) { Open = new OpenGrip(new Vec2(1.3, 10.0), new Vec2(4.4, 0)) },
             new SymView(RoboViews.AxialView, new Size2(20, 20), (p, o) =>
             {
                 var open = Geo.Clamp(o.Num("open", 0.6), 0, 1);
@@ -206,7 +206,7 @@ namespace InventaSketch.Modules.Robotics
                     p.PolyD(new[] { c0 - v * 1.1, c1 - v * 1.1, c1 + v * 1.1, c0 + v * 1.1 }, RS.White, true, RoboTags.Jaw);
                 }
                 p.Line(-1, 0, 1, 0, RS.Center); p.Line(0, -1, 0, 1, RS.Center);
-            }, (p, o) => AxialAnchors(p)))
+            }, (p, o) => AxialAnchors(p)) { Open = new OpenGrip(new Vec2(0, -3.5), new Vec2(0, -3.4)) })
         {
             Params = new[] { OpenParam },
             CompanionIds = Companions,

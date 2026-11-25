@@ -175,6 +175,27 @@ Berührpunkt verschieben (+30°), Radius und rechter Winkel. Thales: Lage von C�
 Vollkreis. Einheitskreis: Winkel…, um 15° drehen, Tangensstrecke, Werte anzeigen. Konstruktionen: Zirkelbögen,
 Beschriftung, Winkel…; Parallelen: Winkelpaar ▾, Winkel…, Werte anzeigen.
 
+## Griffe (Ziehgriffe)
+
+`DragHandles` / `MoveHandle` (Hosts zeichnen sie als blaue Griffe; interaction-ux.md Abschnitt 4). Winkel sind
+mathematische Grad (gegen den Uhrzeigersinn ab +x); jeder Winkelgriff bewegt sich frei und dreht seinen Punkt um den
+Mittelpunkt zum Zeiger hin, gerastet auf 1° und innerhalb einer halben Drehung vom alten Wert:
+
+| Figur | Schlüssel | Griff an | Parameter | Bereich |
+|---|---|---|---|---|
+| Kreis mit Radius | `angle` | Ende des Radius (des Durchmessers, wenn nur er gezeigt wird; keiner bei „Nur Kreis“) | `angle` | −360° … 360° |
+| Tangente an einen Kreis | `angle` | Berührpunkt | `angle` | −360° … 360° |
+| Thaleskreis | `angle` | C | `angle` | 1° … 179° |
+| Einheitskreis | `angle` | P | `angle` | −360° … 360° |
+| Winkelhalbierende | `angle` | Ende des zweiten Schenkels | `angle` | 10° … 170° |
+| Parallelen mit Querlinie | `angle` | oberes Ende der Querlinie | `angle` | 20° … 160° |
+| Winkel (Punktobjekt) | `radius` | der Bogen bei 0,3 des Bogens oder die äußere Ecke des Rechter-Winkel-Quadrats; bewegt sich längs dieses Strahls | `radius` | 0,5-mm-Schritte, 1 … 100 mm |
+
+Griffe von Box-Figuren sitzen dort, wo die Figur den Punkt zeichnet, auch wenn extreme Boxgrößen die Figur verkleinern
+(`Fig.Fit`). Die Beschriftungen nennen den Wert („Berührpunkt: 60°“ / „Point of contact: 60°“, „Bogenradius: 7 mm“ /
+„Arc radius: 7 mm“). Größen des regelmäßigen Vielecks, der Kreise und Achsen sind die Boxgröße (freies Skalieren),
+keine Parameter, daher ohne Griff.
+
 ## Host-Hinweise und Grenzen
 
 - Die gesamte Ausgabe besteht aus nativen Grundformen (Linien mit Pfeilspitzen, Linienzüge, geschlossene Polygone,

@@ -17,6 +17,21 @@ namespace InventaSketch.Modules.Robotics
         public Size2 Design { get; }
         public Action<Pad, SketchObject> Draw { get; }
         public Func<Pad, SketchObject, IEnumerable<Anchor>>? Anchors { get; }
+        /// <summary>Grip of the gripper opening ("open", 0 … 1) in this view, or null.</summary>
+        public OpenGrip? Open { get; init; }
+    }
+
+    /// <summary>
+    /// Where the opening grip of a gripper view sits: design point <see cref="Closed"/> at opening 0, moving by
+    /// <see cref="PerOpen"/> per unit of opening (a jaw or finger tip that follows "open").
+    /// </summary>
+    internal sealed record OpenGrip(Vec2 Closed, Vec2 PerOpen)
+    {
+        public const string Key = "open";
+        /// <summary>Snap of the dragged opening (5 %).</summary>
+        public const double Snap = 0.05;
+
+        public Vec2 At(double open) => Closed + PerOpen * open;
     }
 
     /// <summary>
@@ -74,6 +89,32 @@ namespace InventaSketch.Modules.Robotics
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Extra?.Invoke(o) ?? Array.Empty<ContextAction>();
+
+        private static double Opening(SketchObject o) => Geo.Clamp(o.Num("open", 0.6), 0, 1);
+
+        /// <summary>Grip "open" on a jaw or finger of grippers (views with an <see cref="OpenGrip"/>), dragged along the jaw stroke.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            if (Spec(o).Open is not { } g) yield break;
+            var pad = PadFor(o, ctx.Lang);
+            var open = Opening(o);
+            var label = Rb.Fmt(Math.Round(open * 100)) + " %";
+            var local = new DragHandle(OpenGrip.Key, pad.V(g.At(open)), Math.Abs(g.PerOpen.X) >= Math.Abs(g.PerOpen.Y) ? DragConstraint.Horizontal : DragConstraint.Vertical,
+                new I18nText("Gripper opening: " + label, "Greiferöffnung: " + label));
+            yield return Dragging.ToPage(local, o);
+        }
+
+        /// <summary>"open": the pointer's travel along the jaw stroke as the opening (snapped to 5 %, 0 … 1).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key != OpenGrip.Key || Spec(o).Open is not { } g) return o;
+            var pad = PadFor(o, ctx.Lang);
+            var local = o.Matrix().Invert().Apply(pagePos);
+            var design = new Vec2(local.X / pad.Sx, local.Y / pad.Sy);
+            var d2 = g.PerOpen.Dot(g.PerOpen);
+            if (d2 < 1e-12) return o;
+            return o.WithParam("open", Geo.Clamp(Dragging.Snap((design - g.Closed).Dot(g.PerOpen) / d2, OpenGrip.Snap), 0, 1));
+        }
 
         public override Primitive ApplyOverride(Primitive p, Style over) => Rb.Override(p, over);
 

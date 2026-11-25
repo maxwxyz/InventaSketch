@@ -26,6 +26,9 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("cpv", "Coupler point offset (× coupler)", "Koppelpunkt-Versatz (× Koppel)", 0, -3, 3, null, 0.05, advanced: true),
         }).ToList();
 
+        /// <summary>Input grip on the crank pin A, turning the crank about O2.</summary>
+        protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O2", "A") ? (p["O2"], p["A"]) : null;
+
         public override Pose Solve(SketchObject o, double angle)
         {
             double d = Len(o, "ground", 40), a = Len(o, "crank", 12), b = Len(o, "coupler", 36), c = Len(o, "rocker", 30);
@@ -91,7 +94,7 @@ namespace InventaSketch.Modules.Kinematics
         {
             var crossed = o.Str("branch", "open") == "crossed";
             yield return new ContextAction("kin.branch", new I18nText("Crossed assembly mode", "Gekreuzte Montagelage"), IconIds.Toggle,
-                x => x.WithParam("branch", x.Str("branch", "open") == "crossed" ? "open" : "crossed")) { IsActive = crossed, Group = "param" };
+                x => x.WithParam("branch", x.Str("branch", "open") == "crossed" ? "open" : "crossed")) { IsActive = crossed, Group = "param", ParamKeys = new[] { "branch" } };
         }
     }
 
@@ -111,6 +114,9 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("rod", "Connecting rod length", "Pleuellänge", 36, 0.1, 1e5),
             KP.Num("offset", "Offset (eccentricity)", "Versatz (Exzentrizität)", 0, -1e5, 1e5),
         }).ToList();
+
+        /// <summary>Input grip on the crank pin A, turning the crank about O.</summary>
+        protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O", "A") ? (p["O"], p["A"]) : null;
 
         public override Pose Solve(SketchObject o, double angle)
         {
@@ -195,6 +201,9 @@ namespace InventaSketch.Modules.Kinematics
         {
             KP.Num("crank", "Crank length", "Kurbellänge", 12, 0.1, 1e5),
         }).ToList();
+
+        /// <summary>Input grip on the crank pin A, turning the crank about O.</summary>
+        protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O", "A") ? (p["O"], p["A"]) : null;
 
         public override Pose Solve(SketchObject o, double angle)
         {
@@ -298,6 +307,9 @@ namespace InventaSketch.Modules.Kinematics
             for (var k = 1; k <= n; k++) yield return a * (1 - (double)k / (n + 1));
         }
 
+        /// <summary>Input grip on the knee joint B, turning the upper link about A.</summary>
+        protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("A", "B") ? (p["A"], p["B"]) : null;
+
         public override Pose Solve(SketchObject o, double angle)
         {
             double l1 = Len(o, "link1", 26), l2 = Len(o, "link2", 26);
@@ -395,6 +407,9 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("link", "Link length", "Koppellänge", 16, 0.1, 1e5),
             KP.Num("ram", "Ram guide height above O4", "Höhe Stößelführung über O4", 44, 0.1, 1e5),
         }).ToList();
+
+        /// <summary>Input grip on the crank pin A, turning the crank about O2.</summary>
+        protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O2", "A") ? (p["O2"], p["A"]) : null;
 
         public override Pose Solve(SketchObject o, double angle)
         {
@@ -706,6 +721,10 @@ namespace InventaSketch.Modules.Kinematics
             }
         }
 
+        /// <summary>Input grip on the cam nose (its outermost point), turning the cam about its pivot O.</summary>
+        protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p)
+            => p.Has("O", "N") ? (p["O"], p["N"]) : null;
+
         public override Pose Solve(SketchObject o, double angle)
         {
             double r0 = Len(o, "base", 8), h = Math.Max(0, o.Num("lift", 7));
@@ -717,6 +736,8 @@ namespace InventaSketch.Modules.Kinematics
             p["O"] = Vec2.Zero;
             p["C"] = new Vec2(0, y);
             p["T"] = new Vec2(0, y - rod);
+            // Cam nose: the outermost point of the contour (inside the framing square below), the input grip.
+            p["N"] = Vec2.Polar(r0 + h, Geo.DegToRad(angle - 135));
             p.Extra.Add(new Vec2(-(r0 + h), -(r0 + h)));
             p.Extra.Add(new Vec2(r0 + h, r0 + h));
             p.Extra.Add(new Vec2(-0.7 * r0, y));

@@ -355,6 +355,59 @@ namespace InventaSketch.Modules.Kinematics
 
         protected virtual IEnumerable<ContextAction> ExtraActions(SketchObject o) => Array.Empty<ContextAction>();
 
+        // ------------------------------------------------------------------ input angle grip
+
+        /// <summary>Snap of the dragged input angle (degrees).</summary>
+        public const double AngleSnap = 1;
+
+        /// <summary>
+        /// The input link of a pose in model coordinates: the fixed pivot it turns about and a point on it that turns with the
+        /// input angle (the crank pin, the cam nose …); null if the mechanism has no input grip.
+        /// </summary>
+        protected virtual (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => null;
+
+        /// <summary>Grip "angle" on the input link (crank pin, upper toggle joint, cam nose): dragged about its pivot.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var angle = AngleOf(o);
+            var pose = Solve(o, angle);
+            if (InputLever(o, pose) is not { } lever || (lever.Tip - lever.Pivot).Length < Geo.Eps) yield break;
+            var s = SceneFor(o, pose, ModelBounds(o));
+            var value = KA.NormAngle(angle);
+            var text = (value < 0 ? "−" : "") + Frag.Deg(Math.Abs(value));
+            yield return Dragging.ToPage(new DragHandle("angle", s.L(lever.Tip), DragConstraint.Free, new I18nText("Input angle: " + text, "Antriebswinkel: " + text)), o);
+        }
+
+        /// <summary>
+        /// "angle": the input link turned towards the pointer about its pivot (the pointer's angle change, mapped through the
+        /// mechanism's own sense of rotation), snapped to 1° and normalised to (−180°, 180°].
+        /// </summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key != "angle") return o;
+            var angle = AngleOf(o);
+            var pose = Solve(o, angle);
+            if (InputLever(o, pose) is not { } lever || (lever.Tip - lever.Pivot).Length < Geo.Eps) return o;
+            if (InputLever(o, Solve(o, angle + 1)) is not { } probe) return o;
+            var s = SceneFor(o, pose, ModelBounds(o));
+            var local = o.Matrix().Invert().Apply(pagePos);
+            var model = (local - s.Off) / s.S + s.C;
+            if ((model - lever.Pivot).Length < Geo.Eps) return o;
+            double Dir(Vec2 v) => Math.Atan2(v.Y, v.X);
+            var phi0 = Dir(lever.Tip - lever.Pivot);
+            var rate = WrapRad(Dir(probe.Tip - probe.Pivot) - phi0); // radians per degree of input angle
+            if (Math.Abs(rate) < 1e-9) return o;
+            var next = angle + WrapRad(Dir(model - lever.Pivot) - phi0) / rate;
+            return o.WithParam("angle", KA.NormAngle(Dragging.Snap(next, AngleSnap)));
+        }
+
+        private static double WrapRad(double a)
+        {
+            while (a > Math.PI) a -= 2 * Math.PI;
+            while (a <= -Math.PI) a += 2 * Math.PI;
+            return a;
+        }
+
         protected static Anchor Port(Scene s, Vec2 model, string id) => Anchor.Point(AnchorRole.Port, s.L(model), id);
         protected static Anchor Mount(Scene s, Vec2 model, string id) => Anchor.Point(AnchorRole.Mount, s.L(model), id);
 

@@ -106,6 +106,51 @@ namespace InventaSketch.Modules.Geometry
             return o2 with { Points = pts, Attach = att };
         }
 
+        /// <summary>Share of the sweep where the radius grip sits on the arc (beside the name at the middle).</summary>
+        internal const double GripAt = 0.3;
+
+        /// <summary>
+        /// Where the radius grip sits and the ray it moves along: on the arc at <see cref="GripAt"/> of the sweep, or at the
+        /// outer corner of the right-angle square (its side is 0.6 of the radius); null for degenerate rays.
+        /// </summary>
+        private static (Vec2 At, Vec2 Dir, double PerRadius)? RadiusGrip(SketchObject o, IReadOnlyList<Vec2> p)
+        {
+            if (p.Count < 3) return null;
+            Vec2 a = p[0], v = p[1], b = p[2];
+            if (a.DistanceTo(v) < 1e-6 || b.DistanceTo(v) < 1e-6) return null;
+            var (start, sweep, deg) = Measure(o, p);
+            var r = o.Num("radius", 7);
+            var mark = o.Str("mark", "auto");
+            var right = !o.Flag("reflex", false) && (mark == "right" || mark == "auto" && Math.Abs(deg - 90) < 0.05);
+            if (right)
+            {
+                var diag = ((a - v).Normalized() + (b - v).Normalized()).Normalized();
+                var per = 0.6 * Math.Sqrt(2);
+                return (v + diag * (r * per), diag, per);
+            }
+            var dir = new Vec2(Math.Cos(start + GripAt * sweep), Math.Sin(start + GripAt * sweep));
+            return (v + dir * r, dir, 1.0);
+        }
+
+        /// <summary>Grip "radius" on the arc (or the corner of the right-angle square), dragged away from or towards the vertex.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            if (RadiusGrip(o, ctx.Doc.ResolvePoints(o)) is not { } g) yield break;
+            var r = o.Num("radius", 7);
+            yield return new DragHandle("radius", g.At, DragConstraint.Vertical,
+                new I18nText("Arc radius: " + Mx.Num(r, Lang.En, 1) + " mm", "Bogenradius: " + Mx.Num(r, Lang.De, 1) + " mm")) { Direction = g.Dir };
+        }
+
+        /// <summary>"radius": the pointer's distance from the vertex along the grip's ray, snapped to 0.5 mm (1 … 100 mm).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key != "radius") return o;
+            var p = ctx.Doc.ResolvePoints(o);
+            if (RadiusGrip(o, p) is not { } g) return o;
+            var r = (pagePos - p[1]).Dot(g.Dir) / g.PerRadius;
+            return o.WithParam("radius", Geo.Clamp(Dragging.Snap(r, Mx.LengthSnap), 1, 100));
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx)
         {
             var p = ctx.Doc.ResolvePoints(o);

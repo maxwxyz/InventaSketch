@@ -412,7 +412,24 @@ Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
 **Phase 1 – die Sprache in COM vollenden**
 1. *Griffe über Diagramme hinaus*: dieselben Griffe für jedes Element, dessen Typ Ziehgriffe anbietet (Maßwerte,
    Winkel, Robotergelenke, Achsabstand von Zahnrädern). Abnahme: jeder solche Typ nennt seine Griffe in `DragHandles`,
-   das COM-Overlay braucht keine Änderung; die Griffe behalten ihren Platz in der Anordnung.
+   das COM-Overlay braucht keine Änderung; die Griffe behalten ihren Platz in der Anordnung. *Umgesetzt (2026-11-25)
+   über Diagramme hinaus für:*
+   - *Maße (Annotation): lineares/paralleles Maß „offset“ (quer zur Messrichtung) und „text“ (längs der Maßlinie, neuer
+     optionaler Parameter `textAt`), Winkelmaß „radius“ (radial), Radius-/Durchmessermaß „text“ (längs der Linie,
+     `textAt`); die gemessenen Endpunkte bleiben Punktgriffe;*
+   - *Roboter (Robotik): „joint.j1“ … für Drehachsen, deren Achse zum Betrachter zeigt (um die Achse gezogen, 1°,
+     Achsgrenzen), „joint.x/y/z“ und die SCARA-Pinole für Linearachsen (5 mm, Hub), „open“ an Parallel- und
+     Dreifingergreifern (5 %);*
+   - *Kinematik: „angle“ am Antriebsglied jedes Mechanismus (Kurbelzapfen, Knie, Nocken; 1°), „stroke“ des Kolbens,
+     „open“ der Greiferbacken (5 %), „limitFrom/limitTo“ eines Gestelldrehpunkts mit Anschlägen und „min/max“ der
+     Winkelbegrenzung (5°);*
+   - *Geometrie: „angle“ des Kreisradius, des Berührpunkts, von C am Thaleskreis, des Einheitskreises, der
+     Winkelhalbierenden und der Querlinie (1°, Bereich der Figur), „radius“ des Winkelbogens (0,5 mm).*
+
+   *Jede Moduldoku nennt ihre Griffe (Schlüssel, Bewegung, Parameter, Raster). Offen: Achsabstand von Zahnrädern
+   (Mechanik). Bogengriffe (Gelenke, Antriebswinkel) nutzen `DragConstraint.Free` und halten den Griff in `MoveHandle`
+   auf seinem Bogen; ein `DragConstraint.Arc` mit Mittelpunkt in Core ließe die Hosts gebogene Pfeile zeichnen und die
+   Vorschau auf den Bogen beschränken.*
 2. *Abhängigkeiten beim Überfahren hervorheben*: Überfahren eines Schlosses oder von „Baugruppe wählen“ umrandet jede
    mitbewegte Einheit in der Zweitfarbe. Abnahme: ein Rad auf einer Welle zeigt Welle und deren andere Räder, sonst
    nichts. *Umgesetzt für „Baugruppe wählen“ und die Einträge „Verbundene auswählen“ (schwächerer Schein, Abschnitt 6a);
@@ -427,7 +444,13 @@ Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
    aufgelistet).
 4. *Aktionen, die eine Auswahl oder Ansicht doppeln*, bekommen `ParamKeys` oder entfallen (Welle hohl als Schalter und
    Ansicht, Roboter-Stil neben Ansichten, `view.*`-Aktionen in sechs Modulen, `map.point.add/remove` neben Eckpunkten).
-   Abnahme: das Kreismenü dieser Elemente nennt jedes Ding einmal.
+   Abnahme: das Kreismenü dieser Elemente nennt jedes Ding einmal. *Umgesetzt für Annotation, Robotik, Kinematik,
+   Geometrie und Karten (2026-11-25): die `view.*`-Aktionen der Karten entfallen (die Ansichtsauswahl des Hosts behält
+   den Maßstab über `ViewDef.Size`), ebenso `map.point.add/remove` (Eckpunkt-Punkte und Eckbefehle); der Schalter
+   „Gekreuzte Montagelage“ des Viergelenks nennt `branch` in `ParamKeys`; der Darstellungsstil der Roboter ist bereits
+   eine Auswahl mit `ParamKeys`. Eine Prüfung aller Bibliothekselemente dieser Module fand keine weitere Aktion, die einen
+   Auswahlparameter setzt, ohne ihn zu nennen. Offen: Welle-hohl-Schalter (Mechanik) und die `view.*`-Aktionen von
+   Automotive, Elektrik, Fluid, Maschinen und Mechanik.*
 5. *Zwischen Zeilen/Spalten einer Tabelle*: „+“-Punkte auf den inneren Zeilen- und Spaltenlinien (dort einfügen).
    Abnahme: ein Klick auf den Punkt zwischen Zeile 2 und 3 fügt dort eine Zeile ein.
 6. *Ecke dort einfügen, wo der Punkt gezeichnet ist*, wenn die Anordnung ihn entlang des Segments verschoben hat.

@@ -64,6 +64,39 @@ namespace InventaSketch.Modules.Kinematics
             yield return Anchor.Point(AnchorRole.Port, Vec2.Zero, "c");
         }
 
+        /// <summary>Share of the box where the grips sit on the limit rays (their outer end).</summary>
+        private const double GripAt = 0.75;
+
+        private static double Value(SketchObject o, string key) => o.Num(key, key == "min" ? -30 : 45);
+
+        /// <summary>Grips "min" and "max" at the outer ends of the limit rays, dragged around the joint.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            double hw = o.Size.W / 2, hh = o.Size.H / 2;
+            foreach (var (key, en, de) in new[] { ("min", "Minimum angle", "Minimaler Winkel"), ("max", "Maximum angle", "Maximaler Winkel") })
+            {
+                var v = Value(o, key);
+                var at = new Vec2(Math.Cos(Geo.DegToRad(v)) * hw * GripAt, Math.Sin(Geo.DegToRad(v)) * hh * GripAt);
+                yield return Dragging.ToPage(new DragHandle(key, at, DragConstraint.Free, KinGrips.Label(en, de, KinGrips.Deg(v))), o);
+            }
+        }
+
+        /// <summary>
+        /// "min"/"max": the angle of the pointer about the joint (on the box's ellipse), snapped to 5° and kept within one
+        /// turn of the old value.
+        /// </summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key is not ("min" or "max")) return o;
+            var local = o.Matrix().Invert().Apply(pagePos);
+            double hw = Math.Max(o.Size.W / 2, 1e-6), hh = Math.Max(o.Size.H / 2, 1e-6);
+            if (Math.Abs(local.X) < Geo.Eps && Math.Abs(local.Y) < Geo.Eps) return o;
+            var old = Value(o, key);
+            var deg = Geo.RadToDeg(Math.Atan2(local.Y / hh, local.X / hw));
+            var turned = old + KA.NormAngle(deg - old);
+            return o.WithParam(key, Geo.Clamp(Dragging.Snap(turned, KinGrips.AngleSnap), -360, 360));
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var a in ActionChoices.FromParam(o, "kin.labels", Parameters.First(p => p.Key == "labels"), null, "param", null)) yield return a;

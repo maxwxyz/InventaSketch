@@ -76,6 +76,27 @@ namespace InventaSketch.Modules.Annotation
             }
         }
 
+        /// <summary>Snap of dragged offsets and radii (mm) and of dragged text positions (share of the line).</summary>
+        public const double LengthSnap = 0.5, ShareSnap = 0.05;
+
+        /// <summary>
+        /// A grip of a dimension (<see cref="DragHandle"/>) in page coordinates. Dimensions are point objects, so the allowed
+        /// direction is given in page coordinates directly; the constraint names the motion in the dimension's own frame
+        /// (<see cref="DragConstraint.Horizontal"/> along the measuring direction or arc, <see cref="DragConstraint.Vertical"/>
+        /// across it).
+        /// </summary>
+        public static DragHandle Grip(string key, Vec2 at, DragConstraint constraint, Vec2 dir, string en, string de, string value)
+            => new(key, at, constraint, new I18nText(en + ": " + value, de + ": " + value)) { Direction = dir.Length < Geo.Eps ? Vec2.Zero : dir.Normalized() };
+
+        /// <summary>A length for a grip label ("−8 mm").</summary>
+        public static string Mm(double v) => Ann.Fmt(v, 1).Replace("-", "−") + " mm";
+
+        /// <summary>A share for a grip label ("50 %").</summary>
+        public static string Pct(double v) => Ann.Fmt(v * 100, 0).Replace("-", "−") + " %";
+
+        /// <summary>Text position along the dimension line (share; outside 0 … 1 the text sits beyond the extension lines).</summary>
+        public static ParamDef TextAtParam(double? def) => P.Num("textAt", "Text position along the line", "Textlage längs der Maßlinie", def, -1, 1.5, null, ShareSnap, advanced: true);
+
         /// <summary>The terminator choice of a dimension (arrows, ticks or dots; one dropdown).</summary>
         public static IEnumerable<ContextAction> TerminatorActions(SketchObject o)
             => Ann.Choice(o, "ann.dim.terminator", new I18nText("Terminators", "Begrenzung"), "terminator", "arrow", "terminator", new (string, I18nText, string?)[]
@@ -113,8 +134,77 @@ namespace InventaSketch.Modules.Annotation
                 var list = new List<ParamDef> { P.Num("offset", "Offset", "Abstand", -8, -500, 500) };
                 if (!_aligned) list.Add(P.Choice("axis", "Direction", "Richtung", "auto", ("auto", "Automatic", "Automatisch"), ("horizontal", "Horizontal", "Waagerecht"), ("vertical", "Vertical", "Senkrecht")));
                 list.AddRange(Dim.Common());
+                list.Add(Dim.TextAtParam(0.5));
                 return list;
             }
+        }
+
+        /// <summary>The dimension line: measuring direction u, its normal n, the feature sides sa/sb, the line position s and its ends qa/qb.</summary>
+        private (Vec2 U, Vec2 N, double Sa, double Sb, double S, Vec2 Qa, Vec2 Qb) Layout(SketchObject o, IReadOnlyList<Vec2> p)
+        {
+            var a = p[0]; var b = p[p.Count - 1];
+            var u = Axis(o, a, b);
+            var n = u.Perp; // (-u.y, u.x)
+            var offset = o.Num("offset", -8);
+            var sa = a.Dot(n); var sb = b.Dot(n);
+            var s = (offset < 0 ? Math.Min(sa, sb) : Math.Max(sa, sb)) + offset;
+            return (u, n, sa, sb, s, a + n * (s - sa), b + n * (s - sb));
+        }
+
+        /// <summary>Text position along the line (share, clamped).</summary>
+        private static double TextAt(SketchObject o) => Geo.Clamp(o.Num("textAt", 0.5), -1, 1.5);
+
+        /// <summary>Centre of the text: beside the dimension line at its share, on the side away from the feature.</summary>
+        private static Vec2 TextPos(SketchObject o, Vec2 n, Vec2 qa, Vec2 qb, double size)
+        {
+            var offset = o.Num("offset", -8);
+            var side = offset < 0 ? -n : n;
+            if (Math.Abs(offset) < Geo.Eps) side = n.Y > 0 ? -n : n;
+            return Vec2.Lerp(qa, qb, TextAt(o)) + side * (0.8 + size * 0.45);
+        }
+
+        /// <summary>
+        /// Grips: "offset" on the dimension line (away from the text; drags the line across the measuring direction) and
+        /// "text" on the text (drags it along the line). The measured end points stay the element's point handles.
+        /// </summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 2) yield break;
+            var (u, n, _, _, _, qa, qb) = Layout(o, p);
+            var t = TextAt(o);
+            yield return Dim.Grip("offset", Vec2.Lerp(qa, qb, t <= 0.5 ? 0.75 : 0.25), DragConstraint.Vertical, n,
+                "Dimension line offset", "Abstand der Maßlinie", Dim.Mm(o.Num("offset", -8)));
+            if (qa.DistanceTo(qb) > Geo.Eps)
+                yield return Dim.Grip("text", TextPos(o, n, qa, qb, TextSizeOf(o, Dim.TextSize)), DragConstraint.Horizontal, u,
+                    "Dimension text position", "Lage des Maßtexts", Dim.Pct(t));
+        }
+
+        /// <summary>
+        /// "offset": the line through the pointer (snapped to 0.5 mm; negative offsets count from the lower feature side, so
+        /// the line stays outside the feature); "text": the pointer's share along the line (snapped to 5 %).
+        /// </summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 2) return o;
+            var (u, n, sa, sb, _, qa, qb) = Layout(o, p);
+            if (key == "offset")
+            {
+                var s = pagePos.Dot(n);
+                double lo = Math.Min(sa, sb), hi = Math.Max(sa, sb);
+                var off = s < (lo + hi) / 2
+                    ? Math.Min(Dragging.Snap(s - lo, Dim.LengthSnap), -Dim.LengthSnap)
+                    : Math.Max(Dragging.Snap(s - hi, Dim.LengthSnap), 0);
+                return o.WithParam("offset", Geo.Clamp(off, -500, 500));
+            }
+            if (key == "text")
+            {
+                var len = (qb - qa).Dot(u);
+                if (Math.Abs(len) < Geo.Eps) return o;
+                return o.WithParam("textAt", Geo.Clamp(Dragging.Snap((pagePos - qa).Dot(u) / len, Dim.ShareSnap), -1, 1.5));
+            }
+            return o;
         }
 
         /// <summary>Measuring direction (unit vector) for the given points.</summary>
@@ -136,13 +226,7 @@ namespace InventaSketch.Modules.Annotation
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {
             var a = p[0]; var b = p[p.Count - 1];
-            var u = Axis(o, a, b);
-            var n = u.Perp; // (-u.y, u.x)
-            var offset = o.Num("offset", -8);
-            var sa = a.Dot(n); var sb = b.Dot(n);
-            var s = (offset < 0 ? Math.Min(sa, sb) : Math.Max(sa, sb)) + offset;
-            var qa = a + n * (s - sa);
-            var qb = b + n * (s - sb);
+            var (u, n, sa, sb, s, qa, qb) = Layout(o, p);
             var list = new List<Primitive>();
             foreach (var (pt, q, sp) in new[] { (a, qa, sa), (b, qb, sb) })
             {
@@ -154,10 +238,8 @@ namespace InventaSketch.Modules.Annotation
             list.Add(new LinePrim(qa, qb, Dim.LineStyle(o)) { Tag = AnnTags.Main });
             var text = Dim.Label(o, Measure(o, p));
             var size = TextSizeOf(o, Dim.TextSize);
-            var side = offset < 0 ? -n : n;
-            if (Math.Abs(offset) < Geo.Eps) side = n.Y > 0 ? -n : n;
             // Text sits beside the dimension line, on the side away from the feature; readable orientation.
-            var pos = Vec2.Lerp(qa, qb, 0.5) + side * (0.8 + size * 0.45);
+            var pos = TextPos(o, n, qa, qb, size);
             list.Add(Ann.Text(pos, text, size, AnnTags.DimText, rotation: Ann.ReadableAngle(u)));
             return list;
         }
@@ -190,7 +272,7 @@ namespace InventaSketch.Modules.Annotation
         {
             var v = p[0]; var a = p[1] - v; var b = p[2] - v;
             if (a.Length < Geo.Eps || b.Length < Geo.Eps) return Array.Empty<Primitive>();
-            var r = o.Num("radius", 0.65 * Math.Min(a.Length, b.Length));
+            var r = Radius(o, a, b);
             var start = Math.Atan2(a.Y, a.X);
             var sweep = Math.Atan2(a.Cross(b), a.Dot(b));
             var list = new List<Primitive>();
@@ -208,6 +290,36 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx) => Array.Empty<Anchor>();
 
+        /// <summary>Share of the sweep where the radius grip sits on the arc (beside the text, which is at the middle).</summary>
+        internal const double GripAt = 0.3;
+
+        /// <summary>Arc radius: the parameter, else 0.65 of the shorter leg.</summary>
+        private static double Radius(SketchObject o, Vec2 a, Vec2 b) => o.Num("radius", 0.65 * Math.Min(a.Length, b.Length));
+
+        /// <summary>Grip "radius" on the arc, dragged radially (the arc grows or shrinks about the vertex).</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 3) yield break;
+            var v = p[0]; var a = p[1] - v; var b = p[2] - v;
+            if (a.Length < Geo.Eps || b.Length < Geo.Eps) yield break;
+            var r = Radius(o, a, b);
+            var dir = Vec2.Polar(1, Math.Atan2(a.Y, a.X) + GripAt * Math.Atan2(a.Cross(b), a.Dot(b)));
+            yield return Dim.Grip("radius", v + dir * r, DragConstraint.Vertical, dir, "Arc radius", "Bogenradius", Dim.Mm(r));
+        }
+
+        /// <summary>"radius": the pointer's distance from the vertex along the grip's ray (snapped to 0.5 mm, at least 1 mm).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key != "radius") return o;
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 3) return o;
+            var v = p[0]; var a = p[1] - v; var b = p[2] - v;
+            if (a.Length < Geo.Eps || b.Length < Geo.Eps) return o;
+            var dir = Vec2.Polar(1, Math.Atan2(a.Y, a.X) + GripAt * Math.Atan2(a.Cross(b), a.Dot(b)));
+            return o.WithParam("radius", Geo.Clamp(Dragging.Snap((pagePos - v).Dot(dir), Dim.LengthSnap), 1, 500));
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Dim.TerminatorActions(o);
     }
 
@@ -223,23 +335,62 @@ namespace InventaSketch.Modules.Annotation
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             P.Choice("kind", "Kind", "Art", "radius", ("radius", "Radius", "Radius"), ("diameter", "Diameter", "Durchmesser")),
-        }.Concat(Dim.Common()).ToList();
+        }.Concat(Dim.Common()).Concat(new[] { Dim.TextAtParam(null) }).ToList();
+
+        /// <summary>
+        /// Text position as a share of the radius from the centre (default: the middle of the radius, a quarter for a
+        /// diameter); negative shares lie on the other half of a diameter.
+        /// </summary>
+        private static double TextAt(SketchObject o, bool dia) => Geo.Clamp(o.Num("textAt", dia ? 0.25 : 0.5), dia ? -1 : 0, 1.5);
+
+        private static bool IsDiameter(SketchObject o) => o.Str("kind", "radius") == "diameter";
+
+        /// <summary>Centre of the text beside the line at its share (above the line).</summary>
+        private Vec2 TextPos(SketchObject o, Vec2 c, Vec2 e, double size)
+        {
+            var u = (e - c).Normalized();
+            var n = u.Perp; if (n.Y > 0) n = -n;
+            return Vec2.Lerp(c, e, TextAt(o, IsDiameter(o))) + n * (0.8 + size * 0.45);
+        }
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {
             var c = p[0]; var e = p[p.Count - 1];
             var r = c.DistanceTo(e);
             if (r < Geo.Eps) return Array.Empty<Primitive>();
-            var dia = o.Str("kind", "radius") == "diameter";
+            var dia = IsDiameter(o);
             var u = (e - c) / r;
             var start = dia ? c - u * r : c;
             var list = new List<Primitive> { new LinePrim(start, e, Dim.LineStyle(o, start: dia)) { Tag = AnnTags.Main } };
             var size = TextSizeOf(o, Dim.TextSize);
             var text = Dim.Label(o, dia ? 2 * r : r, dia ? "Ø" : "R");
-            var n = u.Perp; if (n.Y > 0) n = -n;
-            var pos = Vec2.Lerp(c, e, dia ? 0.25 : 0.5) + n * (0.8 + size * 0.45);
-            list.Add(Ann.Text(pos, text, size, AnnTags.DimText, rotation: Ann.ReadableAngle(u)));
+            list.Add(Ann.Text(TextPos(o, c, e, size), text, size, AnnTags.DimText, rotation: Ann.ReadableAngle(u)));
             return list;
+        }
+
+        /// <summary>Grip "text" on the dimension text, dragged along the radius or diameter line.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 2) yield break;
+            var c = p[0]; var e = p[p.Count - 1];
+            if (c.DistanceTo(e) < Geo.Eps) yield break;
+            yield return Dim.Grip("text", TextPos(o, c, e, TextSizeOf(o, Dim.TextSize)), DragConstraint.Horizontal, e - c,
+                "Dimension text position", "Lage des Maßtexts", Dim.Pct(TextAt(o, IsDiameter(o))));
+        }
+
+        /// <summary>"text": the pointer's share of the radius along the line (snapped to 5 %).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key != "text") return o;
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 2) return o;
+            var c = p[0]; var e = p[p.Count - 1];
+            var r = c.DistanceTo(e);
+            if (r < Geo.Eps) return o;
+            var dia = IsDiameter(o);
+            var t = (pagePos - c).Dot((e - c) / r) / r;
+            return o.WithParam("textAt", Geo.Clamp(Dragging.Snap(t, Dim.ShareSnap), dia ? -1 : 0, 1.5));
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx) => Array.Empty<Anchor>();

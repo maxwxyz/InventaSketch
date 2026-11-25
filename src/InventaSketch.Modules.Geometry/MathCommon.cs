@@ -106,6 +106,31 @@ namespace InventaSketch.Modules.Geometry
         public TextPrim Text(Vec2 at, string text, double size, bool italic = false, TextAnchor anchor = TextAnchor.Middle, string? tag = MathTags.Label, string? color = null, bool bold = false)
             => Add(new TextPrim(at, text, new TextStyle { Size = size, Italic = italic, Bold = bold, Anchor = anchor, Color = color }) { Tag = tag });
 
+        /// <summary>Drag handles of a box figure (local coordinates) with their edits; the edit gets the pointer in drawing coordinates.</summary>
+        public List<MathGrip> Grips { get; private set; } = new();
+
+        /// <summary>The shrink applied by <see cref="Fit"/> (identity for regular layouts): drawing → local coordinates.</summary>
+        public Matrix2D FitMatrix { get; private set; } = Matrix2D.Identity;
+
+        /// <summary>
+        /// A grip on an angle parameter (mathematical degrees, counter-clockwise from +x, see <see cref="Mx.Dir"/>): the point
+        /// <paramref name="at"/> turns about <paramref name="centre"/>; dragging sets the parameter to the pointer's direction,
+        /// snapped to <see cref="Mx.AngleSnap"/>, kept within half a turn of the old value and clamped to the range.
+        /// </summary>
+        public void AngleGrip(string key, Vec2 centre, Vec2 at, double value, double min, double max, string en, string de)
+        {
+            var text = Mx.Num(value, Lang.En, 1) + "°";
+            var textDe = Mx.Num(value, Lang.De, 1) + "°";
+            Grips.Add(new MathGrip(new DragHandle(key, at, DragConstraint.Free, new I18nText(en + ": " + text, de + ": " + textDe)), (o, p) =>
+            {
+                var d = p - centre;
+                if (d.Length < Geo.Eps) return o;
+                var deg = Geo.RadToDeg(Math.Atan2(-d.Y, d.X));
+                var turned = value + Mx.HalfTurn(deg - value);
+                return o.WithParam(key, Geo.Clamp(Dragging.Snap(turned, Mx.AngleSnap), min, max));
+            }));
+        }
+
         public void Port(string id, Vec2 p) => Anchors.Add(Anchor.Point(AnchorRole.Port, p, id));
         public void Pt(AnchorRole role, Vec2 p, string? id = null) => Anchors.Add(Anchor.Point(role, p, id));
         public void Rail(Vec2 a, Vec2 b, string id) => Anchors.Add(Anchor.Rail(a, b, id));
@@ -126,9 +151,14 @@ namespace InventaSketch.Modules.Geometry
             var m = Matrix2D.Scaling(s, s) * Matrix2D.Translation(-b.Center.X, -b.Center.Y);
             Items = Items.Select(p => Mx.ScaleText(Prim.Transform(p, m), s)).ToList();
             Anchors = Anchors.Select(a => a.Transform(m)).ToList();
+            Grips = Grips.Select(g => g with { Handle = g.Handle with { Position = m.Apply(g.Handle.Position) } }).ToList();
+            FitMatrix = m;
             return this;
         }
     }
+
+    /// <summary>A drag handle of a box figure (local coordinates before <see cref="Fig.Fit"/>) and its edit (object, pointer in drawing coordinates → object).</summary>
+    internal sealed record MathGrip(DragHandle Handle, Func<SketchObject, Vec2, SketchObject> Move);
 
     /// <summary>Shared drawing helpers, styles, number formatting and parsing.</summary>
     internal static class Mx
@@ -209,6 +239,16 @@ namespace InventaSketch.Modules.Geometry
         /// <summary>Text scale of a box object relative to its design size (smaller factor, clamped to 0.5 … 2.5).</summary>
         public static double Scale(Size2 size, Size2 design)
             => Geo.Clamp(Math.Min(size.W / design.W, size.H / design.H), 0.5, 2.5);
+
+        /// <summary>Snap of dragged angles (degrees) and of dragged lengths (mm).</summary>
+        public const double AngleSnap = 1, LengthSnap = 0.5;
+
+        /// <summary>An angle difference in degrees reduced to (−180°, 180°].</summary>
+        public static double HalfTurn(double deg)
+        {
+            var r = Geo.NormDeg(deg);
+            return r > 180 + 1e-9 ? r - 360 : r;
+        }
 
         public static double TextW(string text, double size) => Math.Max(1, (text ?? "").Length) * size * CharW;
 
@@ -483,6 +523,20 @@ namespace InventaSketch.Modules.Geometry
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx) => Build(o, ctx.Lang).Items;
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx) => Build(o, ctx.Lang).Anchors;
+
+        /// <summary>The figure's grips (angles that are parameters) in page mm.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+            => Build(o, ctx.Lang).Grips.Select(g => Dragging.ToPage(g.Handle, o)).ToList();
+
+        /// <summary>Applies grip <paramref name="key"/> dragged to the page point.</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            var f = Build(o, ctx.Lang);
+            var g = f.Grips.FirstOrDefault(x => x.Handle.Key == key);
+            if (g is null) return o;
+            var local = o.Matrix().Invert().Apply(pagePos);
+            return g.Move(o, f.FitMatrix.Invert().Apply(local));
+        }
     }
 
     /// <summary>Point type: draws from the resolved page points (attachments honoured).</summary>

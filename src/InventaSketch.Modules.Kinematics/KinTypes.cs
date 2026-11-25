@@ -157,6 +157,67 @@ namespace InventaSketch.Modules.Kinematics
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
             => Extra is null ? Array.Empty<ContextAction>() : Extra(o);
+
+        /// <summary>Drag handles in local coordinates (computed with the object's pen) with their edits.</summary>
+        public Func<Pen, SketchObject, IEnumerable<KinGrip>>? GripsFn { get; init; }
+
+        /// <summary>The symbol's grips (piston position, jaw opening, pivot stops …) in page mm.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+            => GripsFn is null ? Array.Empty<DragHandle>() : GripsFn(PenFor(o), o).Select(g => Dragging.ToPage(g.Handle, o)).ToList();
+
+        /// <summary>Applies grip <paramref name="key"/> dragged to the page point (in local coordinates for the grip's edit).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (GripsFn is null) return o;
+            var pen = PenFor(o);
+            var g = GripsFn(pen, o).FirstOrDefault(x => x.Handle.Key == key);
+            return g is null ? o : g.Move(o, pen, o.Matrix().Invert().Apply(pagePos));
+        }
+    }
+
+    /// <summary>A drag handle of a box symbol in local coordinates and its edit (object, pen, local pointer position → object).</summary>
+    internal sealed record KinGrip(DragHandle Handle, Func<SketchObject, Pen, Vec2, SketchObject> Move);
+
+    /// <summary>Helpers for grips of kinematic symbols.</summary>
+    internal static class KinGrips
+    {
+        /// <summary>Snap of dragged shares (piston position, opening) and of dragged angles (degrees).</summary>
+        public const double ShareSnap = 0.05, AngleSnap = 5;
+
+        public static I18nText Label(string en, string de, string value) => new(en + ": " + value, de + ": " + value);
+
+        public static string Pct(double v) => Math.Round(v * 100).ToString("0", CultureInfo.InvariantCulture) + " %";
+
+        public static string Deg(double v) => (v < 0 ? "−" : "") + Frag.Deg(Math.Abs(v));
+
+        /// <summary>
+        /// A share parameter (0 … 1) driven by a point that moves along design x: design x = <paramref name="x0"/> +
+        /// <paramref name="perUnit"/> · value at design y <paramref name="y"/>; dragged horizontally, snapped to 5 %.
+        /// </summary>
+        public static KinGrip Share(Pen p, SketchObject o, string key, double fallback, double x0, double perUnit, double y, string en, string de)
+        {
+            var v = Geo.Clamp(o.Num(key, fallback), 0, 1);
+            return new KinGrip(new DragHandle(key, p.V(x0 + perUnit * v, y), DragConstraint.Horizontal, Label(en, de, Pct(v))),
+                (x, pen, local) => x.WithParam(key, Geo.Clamp(Dragging.Snap((local.X / pen.Sx - x0) / perUnit, ShareSnap), 0, 1)));
+        }
+
+        /// <summary>
+        /// An angle parameter (degrees, clockwise on screen from local +x) shown by a point at <paramref name="radius"/> about
+        /// <paramref name="centre"/> (local); dragged around the centre, snapped to 5°, kept within one turn of its old value.
+        /// </summary>
+        public static KinGrip Angle(SketchObject o, string key, double fallback, Vec2 centre, double radius, string en, string de)
+        {
+            var v = o.Num(key, fallback);
+            var at = centre + new Vec2(Math.Cos(Geo.DegToRad(v)), Math.Sin(Geo.DegToRad(v))) * radius;
+            return new KinGrip(new DragHandle(key, at, DragConstraint.Free, Label(en, de, Deg(v))), (x, pen, local) =>
+            {
+                var d = local - centre;
+                if (d.Length < Geo.Eps) return x;
+                var old = x.Num(key, fallback);
+                var turned = old + KA.NormAngle(Geo.RadToDeg(Math.Atan2(d.Y, d.X)) - old);
+                return x.WithParam(key, Geo.Clamp(Dragging.Snap(turned, AngleSnap), -360, 360));
+            });
+        }
     }
 
     /// <summary>Point-geometry kinematic element (links, springs, dampers, motion paths); renders in page coordinates.</summary>

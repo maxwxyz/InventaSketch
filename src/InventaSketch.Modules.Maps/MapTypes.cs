@@ -131,32 +131,16 @@ namespace InventaSketch.Modules.Maps
             return v.Anchors(PenFor(o, v), o).ToList();
         }
 
+        /// <summary>
+        /// The type's own actions. Views are not repeated here: hosts offer them in their view dropdown, and switching keeps
+        /// the drawing scale through the views' design sizes (<see cref="ViewDef.Size"/>, <see cref="ObjectType.WithView"/>).
+        /// </summary>
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
-        {
-            var current = ViewOf(o);
-            if (_views.Count > 1)
-                foreach (var v in _views)
-                {
-                    var id = v.Id;
-                    yield return new ContextAction("view." + id, v.Label, v.Icon, x => SwitchView(x, id)) { IsActive = current == id, Group = "view" };
-                }
-            if (Extra is not null)
-                foreach (var a in Extra(o, lang)) yield return a;
-        }
+            => Extra is null ? Array.Empty<ContextAction>() : Extra(o, lang);
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => MapDeps.Legends(o, ctx);
 
         public override Primitive ApplyOverride(Primitive p, Style over) => MapDeps.Override(p, over, base.ApplyOverride);
-
-        /// <summary>Switches the view and keeps the drawing scale (the new view's design size times the current mean scale factor).</summary>
-        public SketchObject SwitchView(SketchObject o, string viewId)
-        {
-            var from = Spec(o);
-            var to = Spec(viewId);
-            if (from.Id == to.Id) return o with { View = to.Id };
-            var k = Math.Sqrt(Math.Max(o.Size.W, 0.01) * Math.Max(o.Size.H, 0.01) / (from.Design.W * from.Design.H));
-            return o with { View = to.Id, Size = new Size2(to.Design.W * k, to.Design.H * k) };
-        }
     }
 
     /// <summary>Base class of point-geometry map types; renders in page coordinates from the resolved points.</summary>
@@ -196,76 +180,5 @@ namespace InventaSketch.Modules.Maps
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => MapDeps.Legends(o, ctx);
 
         public override Primitive ApplyOverride(Primitive p, Style over) => MapDeps.Override(p, over, base.ApplyOverride);
-
-        /// <summary>"Add waypoint" / "Remove waypoint" actions (point editing without a selected vertex).</summary>
-        protected IEnumerable<ContextAction> PointActions(SketchObject o, I18nText add, I18nText remove)
-        {
-            var count = o.Points?.Count ?? 0;
-            yield return new ContextAction("map.point.add", add, IconIds.AddPoint, x => PointEdit.Insert(x, ClosedOutline)) { Group = "points" };
-            yield return new ContextAction("map.point.remove", remove, IconIds.RemovePoint, x => PointEdit.Remove(x, ClosedOutline, ClosedOutline ? 3 : 2))
-            {
-                Group = "points",
-                IsEnabled = count > (ClosedOutline ? 3 : 2),
-            };
-        }
-    }
-
-    /// <summary>Point editing of point objects: insert a point in the longest segment, remove the least significant one.</summary>
-    internal static class PointEdit
-    {
-        /// <summary>Inserts the midpoint of the longest segment (attachments keep their points).</summary>
-        public static SketchObject Insert(SketchObject o, bool closed)
-        {
-            if (o.Points is not { Count: >= 2 } pts) return o;
-            var n = pts.Count;
-            var segs = closed && n >= 3 ? n : n - 1;
-            int best = 0; double bestLen = -1;
-            for (var i = 0; i < segs; i++)
-            {
-                var l = pts[i].DistanceTo(pts[(i + 1) % n]);
-                if (l > bestLen + 1e-9) { bestLen = l; best = i; }
-            }
-            var mid = Vec2.Lerp(pts[best], pts[(best + 1) % n], 0.5);
-            var list = pts.ToList();
-            list.Insert(best + 1, mid);
-            IReadOnlyList<Attachment?>? att = null;
-            if (o.Attach is not null)
-            {
-                var a = o.Attach.ToList();
-                while (a.Count < n) a.Add(null);
-                a.Insert(best + 1, null);
-                att = a;
-            }
-            return o with { Points = list, Attach = att };
-        }
-
-        /// <summary>
-        /// Removes the point whose removal changes the outline least (smallest triangle with its neighbours; end points of
-        /// open lines stay). A just inserted midpoint is therefore removed again. Unchanged at <paramref name="min"/> points.
-        /// </summary>
-        public static SketchObject Remove(SketchObject o, bool closed, int min)
-        {
-            if (o.Points is not { } pts || pts.Count <= min) return o;
-            var n = pts.Count;
-            int best = -1; double bestArea = double.MaxValue;
-            for (var i = closed ? 0 : 1; i < (closed ? n : n - 1); i++)
-            {
-                var a = pts[(i - 1 + n) % n]; var b = pts[i]; var c = pts[(i + 1) % n];
-                var area = Math.Abs((b - a).Cross(c - a)) / 2;
-                if (area < bestArea - 1e-9) { bestArea = area; best = i; }
-            }
-            if (best < 0) return o;
-            var list = pts.ToList();
-            list.RemoveAt(best);
-            IReadOnlyList<Attachment?>? att = null;
-            if (o.Attach is not null)
-            {
-                var a = o.Attach.ToList();
-                while (a.Count < n) a.Add(null);
-                a.RemoveAt(best);
-                att = a.Any(x => x is not null) ? a : null;
-            }
-            return o with { Points = list, Attach = att };
-        }
     }
 }

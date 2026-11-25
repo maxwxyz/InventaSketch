@@ -179,7 +179,6 @@ namespace InventaSketch.Modules.Maps
             foreach (var opt in Prm.Choice(o, "map.region.kind", KindDef, new I18nText("Area type", "Flächenart"))) yield return opt;
             foreach (var opt in Prm.Choice(o, "map.region.fill", FillDef, new I18nText("Fill", "Füllung"))) yield return opt;
             yield return Prm.Toggle(o, "map.region.smooth", "smooth", false, new I18nText("Smooth outline", "Glatter Umriss"), IconIds.Smooth);
-            foreach (var a in PointActions(o, new I18nText("Add corner", "Ecke hinzufügen"), new I18nText("Remove corner", "Ecke entfernen"))) yield return a;
         }
     }
 

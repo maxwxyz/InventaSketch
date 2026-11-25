@@ -65,11 +65,11 @@ anderen (über die gekreuzten Straßen legen). Straßen melden `DependsOnNeighbo
 
 | Typ | Aktionen |
 |---|---|
-| Straße | Straßenart ▾ (Auswahl: Autobahn, Hauptstraße, Nebenstraße, Weg; die aktuelle markiert), glatte Kurve, Brücke, Punkt hinzufügen, Punkt entfernen |
-| Bahn, Gewässer | Linien-/Gewässerart ▸, glatte Kurve, Punkt hinzufügen/entfernen |
-| Route | Routenstil ▸ (durchgezogen → gestrichelt → gepunktet), Richtungspfeile ▸, Wegpunkte zeigen, glatte Kurve, Wegpunkt hinzufügen, Wegpunkt entfernen, Richtung umkehren |
-| Gebiet | Flächenart ▸, Füllung ▸ (Farbton → Schraffur → keine), glatter Umriss, Ecke hinzufügen/entfernen |
-| Marker, POI | Ansichtswechsel (Stecknadel / Symbol, Maßstab bleibt), Marker ▸ / Ortsart ▸ |
+| Straße | Straßenart ▾ (Auswahl: Autobahn, Hauptstraße, Nebenstraße, Weg; die aktuelle markiert), glatte Kurve, Brücke |
+| Bahn, Gewässer | Linien-/Gewässerart ▸, glatte Kurve |
+| Route | Routenstil ▸ (durchgezogen → gestrichelt → gepunktet), Richtungspfeile ▸, Wegpunkte zeigen, glatte Kurve, Richtung umkehren |
+| Gebiet | Flächenart ▸, Füllung ▸ (Farbton → Schraffur → keine), glatter Umriss |
+| Marker, POI | Marker ▸ / Ortsart ▸ |
 | Halt | Nummer +1 / −1 (nicht unter 0), Form ▾ |
 | Entfernungsangabe | „Entfernung…“ (Eingabe, akzeptiert `12,5 km`, `8 mi`, `500 m`), „Fahrzeit…“ (Eingabe: `90`, `1:30`, `1 h 30`, `2h`, `45 min`), Einheit ▸, Verkehrsmittel ▸, Zeiger ▸ |
 | Ortsbeschriftung | Ortsgröße ▸, Ortspunkt |
@@ -78,10 +78,12 @@ anderen (über die gekreuzten Straßen legen). Straßen melden `DependsOnNeighbo
 | Nordpfeil, Windrose | „N“ zeigen; Strahlen ▸, Himmelsrichtungen beschriften |
 | Legende | Kartenobjekte auflisten (automatisch), „Titel…“ (Eingabe) |
 
-*Wegpunkt hinzufügen* fügt den Mittelpunkt des längsten Abschnitts ein; *Wegpunkt entfernen* entfernt den Punkt,
-dessen Wegfall die Linie am wenigsten verändert (kleinstes Dreieck mit den Nachbarn; Endpunkte offener Linien
-bleiben), ein gerade eingefügter Mittelpunkt wird also wieder entfernt. Anheftungen bleiben bei ihren Punkten.
-*Entfernen* ist bei zwei Punkten (Gebiete: drei) ausgegraut. Ungültige Eingaben werfen eine `FormatException` mit
+Jedes Ding wird einmal angeboten (Bedienkonzept, Abschnitt 9 Punkt 4): Punkte von Straßen, Bahnen, Gewässern, Routen
+und Gebieten fügt man mit den Eckpunkt-Punkten des Hosts hinzu (Klick oder Ziehen auf einem Abschnitt) und entfernt
+sie mit den Eckbefehlen (Ecke auswählen: „Entfernen“, oder Doppelklick); die Ansichten von Markern und POIs (Stecknadel
+/ Symbol) sind die Ansichtsauswahl des Hosts, die den Zeichenmaßstab über die Entwurfsgrößen der Ansichten behält
+(`ViewDef.Size`, `ObjectType.WithView`). Die früheren Aktionen „Punkt hinzufügen/entfernen“ und `view.*` wiederholten
+sie und wurden entfernt. Ungültige Eingaben werfen eine `FormatException` mit
 zweisprachiger Meldung und ändern nichts. Schritte verwenden `IconIds.Increase` / `IconIds.Decrease`, Auswahlen je Option
 `IconIds.Option` (`ActionChoice`), Schalter `IconIds.Toggle`, Eingaben `IconIds.Text`, Umkehren `IconIds.Swap`.
 

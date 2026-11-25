@@ -23,13 +23,9 @@ namespace InventaSketch.Modules.Maps.Tests
             }
         }
 
-        /// <summary>The item's object switched to <paramref name="view"/> through the type's own view action (keeps the scale).</summary>
+        /// <summary>The item's object switched to <paramref name="view"/> the way hosts switch views (keeps the scale).</summary>
         public static SketchObject InView(ObjectType type, SketchObject o, string view)
-        {
-            if (o.View == view) return o;
-            var act = type.Actions(o, Lang.En).FirstOrDefault(a => a.Id == "view." + view);
-            return act is null ? o with { View = view } : act.Apply(o);
-        }
+            => o.View == view ? o : type.WithView(o, view, Ctx());
 
         public static void AssertFinite(IEnumerable<Primitive> prims, string what)
         {
