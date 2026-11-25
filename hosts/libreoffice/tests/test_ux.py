@@ -498,6 +498,20 @@ class EngineFlows(unittest.TestCase):
             self.call("closeSession", s)
 
 
+
+class PartRowTests(unittest.TestCase):
+    """Chart parts dialog rows (charts v2)."""
+
+    def test_part_rows(self):
+        self.assertEqual(ux.part_row({"key": "series.0", "label": "Reihe 1", "hidden": False}, "de"), "Reihe 1")
+        self.assertEqual(ux.part_row({"key": "grid.major", "label": "Hauptgitter", "hidden": True}, "de"), "Hauptgitter (ausgeblendet)")
+        self.assertEqual(ux.part_row({"key": "axis.x", "label": "x axis", "hidden": True}, "en"), "x axis (hidden)")
+        self.assertEqual(ux.part_action_row({"id": "part.hide", "label": "Hide"}), "Hide")
+        self.assertEqual(ux.part_action_row({"id": "chart.data", "label": "Data…", "input": {"value": "0;1"}}), "Data…")
+        self.assertEqual(ux.part_action_row({"id": "chart.xscale", "label": "x scale", "input": {"value": "log"}}), "x scale …")
+        self.assertEqual(ux.part_action_row({"id": "chart.grid", "label": "Grid", "active": True}), "✓ Grid")
+
+
 if __name__ == "__main__":
     i18n.set_language("en")
     unittest.main()

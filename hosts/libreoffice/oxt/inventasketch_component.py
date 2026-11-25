@@ -26,6 +26,7 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
   quickInsert[?text=<t>]                          open the Library panel with the cursor in its search field
                                                   (Ctrl+Space in Impress/Draw)
   patentCheck[?profile=<office id>]               patent drawing check of every page (dialog; logged when headless)
+  parts[?part=<key>&action=<id>[&input=<text>]]   chart parts of the selected element (dialog; logged when headless)
   compare                                         mark what differs from the previous page (again: remove the marks)
   importVector[?path=<file>]                      SVG/DXF drawing as editable shapes (without a path: file dialog)
   about                                           version and licence
@@ -56,7 +57,7 @@ PROTOCOL = "inventasketch.libreoffice:"
 DECK = "InventaSketchDeck"
 COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
             "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
-            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare", "importVector")
+            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare", "importVector", "parts")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 
@@ -246,6 +247,8 @@ def _run(ctx, frame, command, args):
             _patent_check(ctx, frame, controller, args.get("profile") or args.get("") or None)
         elif command == "importVector":
             _import_vector(ctx, frame, controller, args.get("path") or args.get(""))
+        elif command == "parts":
+            _parts(ctx, frame, controller, args)
         elif command == "compare":
             result = host.compare_with_previous(engine_for(ctx), controller)
             log("compare: %s" % sorted(result.items()))
@@ -273,6 +276,25 @@ def _patent_check(ctx, frame, controller, profile):
         profile or "common-safe", len(findings), sum(1 for f in findings if f.get("severity") == "error"),
         result["pages"], len(located), (" (first: page %d, %s)" % (located[0]["page"], located[0]["shape"].Name))
         if located else ""))
+
+
+def _parts(ctx, frame, controller, args):
+    """Chart parts: with part and action given (automation) the action runs; otherwise the dialog opens, or without a
+    visible window the parts are logged."""
+    engine = engine_for(ctx)
+    if args.get("part") and args.get("action"):
+        host.part_action(engine, controller, args["part"], args["action"], args.get("input"))
+        log("parts: %s on %s" % (args["action"], args["part"]))
+        return
+    listed = host.parts(engine, controller)
+    if not listed:
+        raise host.HostError(i18n.text("ptNone"))
+    window = frame.getContainerWindow() if frame is not None else None
+    if window is not None and window.isVisible():
+        from inventasketch_lo import partsdialog
+        partsdialog.PartsDialog(ctx, frame, engine, controller).execute()
+        return
+    log("parts: %s" % ", ".join("%s%s" % (p["key"], " (hidden)" if p.get("hidden") else "") for p in listed))
 
 
 def _import_vector(ctx, frame, controller, path):

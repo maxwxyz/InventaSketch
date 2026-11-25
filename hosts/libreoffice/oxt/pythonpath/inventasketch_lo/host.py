@@ -791,6 +791,33 @@ def _diff_marks(page):
     return [s for s in (page.getByIndex(i) for i in range(page.getCount())) if (s.Name or "").startswith(DIFF_PREFIX)]
 
 
+def parts(engine, controller):
+    """Parts of the selected unit's element (charts v2: each curve, axis, grid …) as engine dicts with key, label,
+    kind, hidden; an empty list if it has none."""
+    with PageSession(engine, controller) as ps:
+        if not ps.selected_ids():
+            raise HostError(i18n.text("noUnit"))
+        return ps.call("parts", {"id": ps.first_id(), "lang": i18n.language()}) or []
+
+
+def part_actions(engine, controller, part):
+    """Actions of one part of the selected unit's element (the element's own ones that concern it, then show/hide,
+    thicker, thinner, line style, reset)."""
+    with PageSession(engine, controller) as ps:
+        if not ps.selected_ids():
+            raise HostError(i18n.text("noUnit"))
+        return ps.call("partActions", {"id": ps.first_id(), "part": part, "lang": i18n.language()}) or []
+
+
+def part_action(engine, controller, part, action, text=None):
+    """Runs a part action on the selected unit and redraws it (one undo step). Returns the drawn shapes."""
+    params = {"part": part, "action": action}
+    if text is not None:
+        params["input"] = text
+    return run_op(engine, controller, "applyPartAction", params, ids_key="id", force_selected=True,
+                  title=i18n.text("ptUndo"))
+
+
 def compare_with_previous(engine, controller):
     """Variants: marks on the current page what differs from the previous page (a duplicated page keeps the units'
     ids): added elements green, changed ones orange, removed ones as a dashed grey frame where they were, plus a legend
