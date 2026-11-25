@@ -269,7 +269,20 @@ namespace InventaSketch.AddIn.OnSlide
             if (LastHandles.Length > 0) Log.Info("Shown: " + LastShownHandles);
             if (LastHandles.Length > 0) Log.Info("Handles: " + LastHandles + (HandleLayout.AnyOverlap(Handles(view), (float)view.DeviceScale) ? " (overlap!)" : ""));
             Log.Info($"Armed {unit.Shape.Name}: {_unitAnchors.Count} anchors, {_targets.Count} targets, pane {view.PaneRect}, {view.PixelsPerPoint:0.###} px/pt, hooks {_hooks.Installed}");
+            // Ctrl+double-click: PowerPoint's first Ctrl+click takes the element out of the selection, its second click puts it
+            // back – the same element re-selected with Ctrl within the double-click time is the gesture.
+            if (_ctrlClick is { } cc && cc.UnitId == unit.Id && KeyDown(VK_CONTROL)
+                && unchecked(Environment.TickCount - cc.Tick) <= GetDoubleClickTime() + 200)
+            {
+                _ctrlClick = null;
+                Log.Info("Ctrl+double-click: select connected");
+                var again = unit;
+                Post(() => { if (CurrentSlide() is { } cs && SketchUnits.Read(again.Shape) is { } fresh) SelectConnected(cs, fresh, ConnectKind.Auto); });
+            }
         }
+
+        /// <summary>The last Ctrl+click on the armed element (for Ctrl+double-click, see <see cref="Arm"/>).</summary>
+        private (string UnitId, int Tick)? _ctrlClick;
 
         private void Disarm()
         {
@@ -483,6 +496,20 @@ namespace InventaSketch.AddIn.OnSlide
                     // Quick add: blue triangles and connection ports of flowchart, UML, ER, BPMN and basic elements.
                     if (ChainMouse(message, pt, view, out var chainSwallow)) return chainSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
+                    // Ctrl+double-click: two Ctrl+presses on the element within the double-click time (the hooks see two presses,
+                    // not a double-click message); the first is remembered and passed on.
+                    if (message == WM_LBUTTONDOWN && KeyDownNow(VK_CONTROL) && Inside(pt, view, inset: -4) && _unit is { } ctrlUnit)
+                    {
+                        if (_ctrlClick is { } prev && prev.UnitId == ctrlUnit.Id && unchecked(Environment.TickCount - prev.Tick) <= GetDoubleClickTime())
+                        {
+                            _ctrlClick = null;
+                            HideBar();
+                            Log.Info("Ctrl+double-click: select connected");
+                            Post(() => { if (CurrentSlide() is { } cs && SketchUnits.Read(ctrlUnit.Shape) is { } fresh) SelectConnected(cs, fresh, ConnectKind.Auto); });
+                            return true;
+                        }
+                        _ctrlClick = (ctrlUnit.Id, Environment.TickCount);
+                    }
                     // Ctrl+double-click on the element: select what is connected with it (the most meaningful kind).
                     if (message == WM_LBUTTONDBLCLK && KeyDown(VK_CONTROL) && Inside(pt, view, inset: -4) && _unit is { } connectUnit)
                     {

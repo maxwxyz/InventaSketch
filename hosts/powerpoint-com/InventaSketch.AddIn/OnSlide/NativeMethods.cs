@@ -115,6 +115,10 @@ namespace InventaSketch.AddIn.OnSlide
         [DllImport("kernel32.dll")]
         public static extern uint GetCurrentThreadId();
 
+        /// <summary>The user's double-click time in milliseconds.</summary>
+        [DllImport("user32.dll")]
+        public static extern int GetDoubleClickTime();
+
         [DllImport("user32.dll")]
         public static extern short GetKeyState(int nVirtKey);
 
@@ -313,5 +317,8 @@ namespace InventaSketch.AddIn.OnSlide
         }
 
         public static bool KeyDown(int vk) => (GetKeyState(vk) & 0x8000) != 0;
+
+        /// <summary>The key's physical state right now (inside hooks the thread's key state can lag behind).</summary>
+        public static bool KeyDownNow(int vk) => (GetAsyncKeyState(vk) & 0x8000) != 0;
     }
 }
