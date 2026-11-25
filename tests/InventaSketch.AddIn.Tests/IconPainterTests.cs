@@ -58,6 +58,50 @@ namespace InventaSketch.AddIn.Tests
             }
         }
 
+        private static readonly string[] CurveShapeIcons = { IconIds.CurveSmoothed, IconIds.CurveSpline, IconIds.CurveFitted, IconIds.CurveSegments, IconIds.CurveRaw };
+
+        /// <summary>The five curve-shape pictograms differ from each other and from their neighbours in the curve's bar.</summary>
+        [Fact]
+        public void CurveShapePictogramsAreDistinct()
+        {
+            var renders = new List<string>();
+            foreach (var id in new List<string>(CurveShapeIcons) { IconIds.Smooth, IconIds.PointsShow })
+                renders.Add(System.Convert.ToBase64String(Render(id)));
+            Assert.Equal(renders.Count, new HashSet<string>(renders).Count);
+        }
+
+        /// <summary>Contact sheet of the curve-shape pictograms at 24 and 36 px, light and dark (ui-renders/curve-shapes.png).</summary>
+        [Fact]
+        public void WritesCurveShapeSheet()
+        {
+            const int cell = 96;
+            var dir = Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, "ui-renders");
+            Directory.CreateDirectory(dir);
+            using var sheet = new Bitmap(cell * CurveShapeIcons.Length, 2 * 72);
+            using (var g = Graphics.FromImage(sheet))
+            using (var font = new Font("Segoe UI", 9f, GraphicsUnit.Pixel))
+            {
+                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                var themes = new[] { (Color.White, Color.FromArgb(40, 40, 40)), (Color.FromArgb(31, 31, 31), Color.FromArgb(232, 232, 232)) };
+                for (var t = 0; t < themes.Length; t++)
+                {
+                    var (bg, ink) = themes[t];
+                    using var back = new SolidBrush(bg);
+                    using var text = new SolidBrush(ink);
+                    g.FillRectangle(back, 0, t * 72, sheet.Width, 72);
+                    for (var i = 0; i < CurveShapeIcons.Length; i++)
+                    {
+                        float x = i * cell, y = t * 72;
+                        IconPainter.Draw(g, CurveShapeIcons[i], new RectangleF(x + 10, y + 16, 24, 24), ink);
+                        IconPainter.Draw(g, CurveShapeIcons[i], new RectangleF(x + 46, y + 10, 36, 36), ink);
+                        var w = g.MeasureString(CurveShapeIcons[i], font).Width;
+                        g.DrawString(CurveShapeIcons[i], font, text, x + (cell - w) / 2, y + 52);
+                    }
+                }
+            }
+            sheet.Save(Path.Combine(dir, "curve-shapes.png"), ImageFormat.Png);
+        }
+
         /// <summary>Contact sheets for review: every pictogram at 32 and 16 px, light and dark (ui-renders/icons-*.png).</summary>
         [Fact]
         public void WritesIconSheet()

@@ -233,6 +233,12 @@ namespace InventaSketch.Core
         public const string BreakYRemove = "cmd-break-y-remove"; // remove the y-axis breaks
         public const string Ghosts = "cmd-ghosts";            // ghost positions (a link in three faded positions)
         public const string RayBundle = "cmd-rays";           // add a ray bundle (three parallel rays)
+        // Curve shapes of a sketched curve (options of the "Curve shape" choice; one family: the same hump, drawn five ways)
+        public const string CurveSmoothed = "curve-smoothed"; // smoothed (a calm curve with the removed jitter as dots on both sides)
+        public const string CurveSpline = "curve-spline";     // interpolated spline (a smooth curve exactly through three ringed points)
+        public const string CurveFitted = "curve-fitted";     // fitted function (a function curve with measured points beside it, not on it)
+        public const string CurveSegments = "curve-segments"; // straight segments (straight lines between three ringed points)
+        public const string CurveRaw = "curve-raw";           // as drawn (a shaky hand-drawn line)
         // Quantities (value entry of one physical quantity)
         public const string QtyAngle = "qty-angle";           // angle (two rays with an arc)
         public const string QtyLength = "qty-length";         // length / distance (ruler)
@@ -390,6 +396,7 @@ namespace InventaSketch.Core
             WallThick, WallMedium, WallThin,
             Option, Value, Values, Name, LabelShow, PortLabels, Formula, Parameters, Code, Data, Legend, Visibility, Grid, AxisTicks, Smooth, PointsShow,
             Contour, Function, Marker, ValueLine, HatchBetween, HatchBelow, BreakX, BreakY, BreakXRemove, BreakYRemove, Ghosts, RayBundle,
+            CurveSmoothed, CurveSpline, CurveFitted, CurveSegments, CurveRaw,
             QtyAngle, QtyLength, QtyWidth, QtyHeight, QtyThickness, QtyArea, QtyVolume, QtyMass, QtyPressure, QtyPower, QtyVoltage, QtyCapacity,
             QtyCharge, QtyTime, QtyFrequency, QtyTolerance, QtyFlow, RangeX, RangeY,
             AddPoint, RowAdd, RowAddTop, RowRemove, ColumnAdd, ColumnRemove, OperationAdd, OperationRemove, PortAdd, PortRemove, CountMore, CountFewer,

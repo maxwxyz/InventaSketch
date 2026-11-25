@@ -66,13 +66,16 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.Null(ChartSketchInput.Memo(result.Chart, 0));
             Assert.DoesNotContain(r.PartActions(result.Chart, "series.0", Fx.Ctx()), a => a.Choice?.Key == CurveShapes.ShapeAction);
             var actions = r.PartActions(result.Chart, "series.1", Fx.Ctx());
-            // "Curve shape" is a choice (a dropdown): one option per shape, the current one active, each with a preview.
+            // "Curve shape" is a choice (a dropdown): one option per shape, the current one active, each with its own
+            // pictogram (a preview of this sine would look the same in every shape).
             var shapes = actions.Where(a => a.Choice?.Key == CurveShapes.ShapeAction).ToList();
             Assert.Equal(CurveShapes.Offered(memo).Select(CurveShapes.ShapeOption), shapes.Select(a => a.Id));
             Assert.Equal(CurveShapes.ShapeOption(CurveShape.Fitted), Assert.Single(shapes, a => a.IsActive).Id);
             Assert.Equal("Curve shape", shapes[0].Choice!.Label.En);
             Assert.Equal("Kurvenform", shapes[0].Choice!.Label.De);
-            Assert.All(shapes, a => Assert.NotNull(a.Preview));
+            Assert.Equal(new[] { IconIds.CurveSmoothed, IconIds.CurveSpline, IconIds.CurveFitted, IconIds.CurveSegments, IconIds.CurveRaw }, shapes.Select(a => a.Icon));
+            Assert.All(shapes, a => Assert.Contains(a.Icon, IconIds.All));
+            Assert.All(shapes, a => Assert.Null(a.Preview));
             Assert.DoesNotContain(actions, a => a.Icon == IconIds.Cycle);
             if (memo.Fits.Count > 1) Assert.Equal(memo.Fits.Count, actions.Count(a => a.Choice?.Key == CurveShapes.FitAction));
             // The fit's picture would repeat the shape button's (both the current curve): the bar shows its name instead.
