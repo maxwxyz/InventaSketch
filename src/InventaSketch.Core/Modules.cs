@@ -320,12 +320,49 @@ namespace InventaSketch.Core
     }
 
     /// <summary>
+    /// Section of a shaft axis with its own radius (a stepped shaft): from <see cref="From"/> to <see cref="To"/> as
+    /// fractions of the axis segment (P = 0, Q = 1).
+    /// </summary>
+    public sealed record AxisStep(double From, double To, double Radius);
+
+    /// <summary>
     /// Snap anchor. Point: P. Circle: centre P with Radius. Segment: P to Q. Coordinates are local
     /// (box objects) or page coordinates (point objects) as returned by <see cref="ObjectType.Anchors"/>;
     /// <see cref="Registry.PageAnchors"/> always returns page coordinates.
+    /// <para>
+    /// Shaft fit (<see cref="ShaftFit"/>): a <see cref="AnchorRole.Hub"/> point may carry the radius of the part's bore and an
+    /// <see cref="AnchorRole.Axis"/> segment the radius of the shaft (<see cref="Steps"/> for a stepped shaft). 0 means
+    /// unknown: such anchors snap and couple as before, only nothing is fitted.
+    /// </para>
     /// </summary>
     public sealed record Anchor(AnchorKind Kind, AnchorRole Role, Vec2 P, Vec2 Q = default, double Radius = 0)
     {
+        /// <summary>A hub point with the radius of the part's bore at its current size (<see cref="ShaftFit"/>).</summary>
+        public static Anchor Hub(Vec2 p, double boreRadius, string? id = "hub") => new(AnchorKind.Point, AnchorRole.Hub, p, default, Math.Max(0, boreRadius)) { Id = id };
+
+        /// <summary>
+        /// A shaft axis from <paramref name="a"/> to <paramref name="b"/> with the shaft radius; <paramref name="steps"/> give the
+        /// radius of the sections of a stepped shaft (positions as fractions of the segment), elsewhere <paramref name="radius"/>.
+        /// </summary>
+        public static Anchor Shaft(Vec2 a, Vec2 b, double radius, IReadOnlyList<AxisStep>? steps = null)
+            => new(AnchorKind.Segment, AnchorRole.Axis, a, b, Math.Max(0, radius)) { Steps = steps };
+
+        /// <summary>Radii of the sections of a stepped shaft axis (see <see cref="Shaft"/>), else null.</summary>
+        public IReadOnlyList<AxisStep>? Steps { get; init; }
+
+        /// <summary>
+        /// The radius at <paramref name="p"/>: for a stepped axis the radius of the section that the projection of the point
+        /// falls into, else <see cref="Radius"/>.
+        /// </summary>
+        public double RadiusAt(Vec2 p)
+        {
+            if (Kind != AnchorKind.Segment || Steps is not { Count: > 0 } steps) return Radius;
+            var (_, t) = Geo.ClosestOnSegment(p, P, Q);
+            foreach (var s in steps)
+                if (t >= Math.Min(s.From, s.To) - 1e-9 && t <= Math.Max(s.From, s.To) + 1e-9) return s.Radius;
+            return Radius;
+        }
+
         /// <summary>
         /// Optional id, unique per object (pins, ports, mounts). Attachments refer to it via
         /// <see cref="Attachment.AnchorId"/>, so ids of connection points must be stable across parameter changes.
@@ -366,8 +403,16 @@ namespace InventaSketch.Core
 
         public Anchor Transform(Matrix2D m) => Kind switch
         {
-            AnchorKind.Point => HasDirection ? this with { P = m.Apply(P), Q = m.Apply(Q), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) } : this with { P = m.Apply(P) },
-            AnchorKind.Segment => this with { P = m.Apply(P), Q = m.Apply(Q) },
+            // Point and segment radii (bore, shaft, face) scale with the mean linear scale; page placement is rigid.
+            AnchorKind.Point => HasDirection ? this with { P = m.Apply(P), Q = m.Apply(Q), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) }
+                : Radius > 0 ? this with { P = m.Apply(P), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) } : this with { P = m.Apply(P) },
+            AnchorKind.Segment => Radius > 0 || Steps is not null
+                ? this with
+                {
+                    P = m.Apply(P), Q = m.Apply(Q), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)),
+                    Steps = Steps?.Select(s => s with { Radius = s.Radius * Math.Sqrt(Math.Abs(m.Determinant)) }).ToList(),
+                }
+                : this with { P = m.Apply(P), Q = m.Apply(Q) },
             // Circles: radius scales with the mean linear scale (free scaling may make it an ellipse visually). A circle with Q
             // set carries an axis direction (pitch circle of a gear seen from the side, see AxisOf).
             _ => this with { P = m.Apply(P), Q = Q == default ? Q : m.Apply(Q), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) },

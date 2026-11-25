@@ -291,7 +291,7 @@ namespace InventaSketch.Modules.Machines
         }
 
         /// <summary>Shaft cross-section (hatched).</summary>
-        public static void ShaftSection(Pen p, SketchObject o, double r) => p.Circle(0, 0, r, Iron(p, o, ShaftHatch), "shaft");
+        public static void ShaftSection(Pen p, SketchObject o, double r) => p.Round(new Vec2(0, 0), r, Iron(p, o, ShaftHatch), "shaft");
 
         /// <summary>Housing ring (section) with optional cooling-jacket channels and cooling fins.</summary>
         public static void HousingRing(Pen p, SketchObject o, double ri, double ro, bool cooling, int channels = 24, bool fins = false, int finCount = 36)
@@ -423,7 +423,7 @@ namespace InventaSketch.Modules.Machines
                     double a = m * x0, b = m * x1;
                     p.Box(a, sign * r0, b, sign * r1, S.Vis, "bearing");
                     var rb = Math.Min(x1 - x0, r1 - r0) * 0.3;
-                    p.Circle((a + b) / 2, sign * (r0 + r1) / 2, rb, S.Thin, "bearing");
+                    p.Round(new Vec2((a + b) / 2, sign * (r0 + r1) / 2), rb, S.Thin, "bearing");
                 }
         }
 

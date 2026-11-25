@@ -341,7 +341,13 @@ namespace InventaSketch.Core
                     if (pitch is null) return null;
                     return Translate(probe, port.At + port.Dir * pitch.Radius - pitch.P);
                 case PortKind.Hub:
-                    if (axis is not null && hub is null) return Translate(probe, port.At - Vec2.Lerp(axis.P, axis.Q, 0.5));
+                    if (axis is not null && hub is null)
+                    {
+                        // A shaft through the hub, as thick as the part's bore (ShaftFit).
+                        var through = Translate(probe, port.At - Vec2.Lerp(axis.P, axis.Q, 0.5));
+                        var bore = registry.PageAnchors(sel, new RenderContext(doc, lang)).Where(ShaftFit.HasBore).OrderBy(h => h.P.DistanceTo(port.At)).FirstOrDefault();
+                        return bore is null || bore.P.DistanceTo(port.At) > ShaftFit.OnAxis ? through : ShaftFit.ScaleShaft(registry, doc, through, bore, lang);
+                    }
                     return Concentric(registry, doc, sel, probe, port, lang);
                 case PortKind.Bevel:
                     {
@@ -402,7 +408,15 @@ namespace InventaSketch.Core
                         var len = port.At.DistanceTo(port.AxisFrom);
                         var inset = Math.Min(turned.Size.W / 2, len * 0.15);
                         var h = Anchors(registry, doc, turned, lang).First(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub);
-                        return Translate(turned, port.At - port.Dir * inset - h.P);
+                        var onEnd = Translate(turned, port.At - port.Dir * inset - h.P);
+                        // Its bore fits the shaft (ShaftFit); a grown part moves inwards so it still ends at the shaft end.
+                        var shaftAxis = registry.PageAnchors(sel, new RenderContext(doc, lang))
+                            .FirstOrDefault(a => ShaftFit.HasRadius(a) && Geo.ClosestOnSegment(port.At, a.P, a.Q).Point.DistanceTo(port.At) <= 0.05);
+                        if (shaftAxis is null) return onEnd;
+                        var fitted = ShaftFit.Scale(registry, doc, onEnd, shaftAxis, lang);
+                        if (ReferenceEquals(fitted, onEnd)) return onEnd;
+                        var inset2 = Math.Min(fitted.Size.W / 2, len * 0.15);
+                        return Translate(fitted, port.Dir * (inset - inset2));
                     }
             }
             return null;

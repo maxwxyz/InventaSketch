@@ -51,9 +51,11 @@ namespace InventaSketch.Modules.Mechanical
                 "freilauf", "freilaufkupplung", "überholkupplung", "klemmrollenfreilauf", "klemmkörperfreilauf", "rücklaufsperre",
                 Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3,
             },
-            new ViewSpec("stick", VStick, 12, 20, FreewheelStick),
-            new ViewSpec("section", VSection, 14, 24, FreewheelSection),
-            new ViewSpec("axial", VAxial, 30, 30, FreewheelAxial))
+            // Bore: inside the inner ring (section 3, the schematic the same design value so the fit carries over a view
+            // switch, axial 3.2 round as drawn).
+            new ViewSpec("stick", VStick, 12, 20, FreewheelStick) { Bore = (p, o) => 3 * p.Sy },
+            new ViewSpec("section", VSection, 14, 24, FreewheelSection) { Bore = (p, o) => 3 * p.Sy },
+            new ViewSpec("axial", VAxial, 30, 30, FreewheelAxial) { Bore = (p, o) => 3.2 * p.K })
         {
             Params = new[] { Common.Flag("reverse", T("Reversed locking direction", "Sperrrichtung umgekehrt"), false) },
             Extra = o => new[] { Common.Toggle(o, "reverse", false, T("Reverse locking direction", "Sperrrichtung umkehren"), IconIds.Swap) },
@@ -118,9 +120,9 @@ namespace InventaSketch.Modules.Mechanical
                 var a = -Math.PI / 2 + i * pitch + d * at * pitch;
                 var rRamp = rIn + (rOut - rIn) * at / ramp;
                 var c = Frag.Polar((rRamp + race) / 2, a);
-                p.Circle(c.X, c.Y, (race - rRamp) / 2 * 0.95, S.Vis, "roller");
+                p.Hole(c.X, c.Y, (race - rRamp) / 2 * 0.95, S.Vis, "roller");
             }
-            p.Circle(0, 0, 3.2, S.Vis, "bore");
+            p.Hole(0, 0, 3.2, S.Vis, "bore");
             p.CenterCross(0, 0, 15, 15);
         }
 
@@ -242,7 +244,7 @@ namespace InventaSketch.Modules.Mechanical
                 Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3,
             },
             new ViewSpec("stick", VStick, 16, 30, ParkStick) { Anchors = (p, o) => new[] { Mount(p, -7, -13.2, "pivot") } },
-            new ViewSpec("axial", VAxial, 40, 40, ParkAxial) { Anchors = (p, o) => new[] { Mount(p, -17.5, -14, "pivot") } })
+            new ViewSpec("axial", VAxial, 40, 40, ParkAxial) { Anchors = (p, o) => new[] { Mount(p, -17.5, -14, "pivot") }, Bore = (p, o) => 3 * p.K })
         {
             Params = new[]
             {
@@ -277,7 +279,7 @@ namespace InventaSketch.Modules.Mechanical
             var z = GearMath.Teeth(o, 12);
             const double tip = 12, root = 9.3;
             p.PolyD(GearMath.Outline(z, root, tip, (tip + root) / 2, -Math.PI / 2 + Math.PI / z), S.Vis, true, "teeth");
-            p.Circle(0, 0, 3, S.Vis, "bore");
+            p.Hole(0, 0, 3, S.Vis, "bore");
             p.CenterCross(0, 0, 13.5, 13.5);
             var pivot = new Vec2(-14, -14);
             var turn = Engaged(o) ? 0 : Geo.DegToRad(-10);
@@ -288,10 +290,10 @@ namespace InventaSketch.Modules.Mechanical
             }
             var pawl = new[] { R(-15.5, -16), R(6, -16), R(6, -12.6), R(1.6, -12.6), R(0.9, -9.9), R(-0.9, -9.9), R(-1.6, -12.6), R(-15.5, -12.6) };
             p.PolyD(pawl, S.Vis, true, "pawl");
-            p.Circle(pivot.X, pivot.Y, 1.1, S.Vis, "pivot");
+            p.Hole(pivot.X, pivot.Y, 1.1, S.Vis, "pivot");
             p.Line(-17.5, -14, pivot.X - 1.1, -14, S.Vis, "pivot");
             GroundAt(p, -17.5, -17, -17.5, -11, new Vec2(-1, 0), 2.3);
-            p.Circle(4.5, -17.7, 1.6, Engaged(o) ? S.Vis : S.Hid, "actuator");
+            p.Hole(4.5, -17.7, 1.6, Engaged(o) ? S.Vis : S.Hid, "actuator");
         }
 
         // ------------------------------------------------------------------ CVT variator
@@ -385,7 +387,7 @@ namespace InventaSketch.Modules.Mechanical
             foreach (var cx in new[] { -15.0, 15.0 })
             {
                 p.Circle(cx, 0, 13, S.Vis, "sheave");
-                p.Circle(cx, 0, 3, S.Vis, "hub");
+                p.Hole(cx, 0, 3, S.Vis, "hub");
                 p.Line(cx - 14, 0, cx + 14, 0, S.Ctr, "center");
                 p.Line(cx, -14, cx, 14, S.Ctr, "center");
             }
@@ -401,7 +403,7 @@ namespace InventaSketch.Modules.Mechanical
                     for (var k = 1; k < n; k++)
                     {
                         var q = Vec2.Lerp(a, b, k / (double)n);
-                        p.Circle(q.X, q.Y, 0.35, S.Vis, "pin");
+                        p.Hole(q.X, q.Y, 0.35, S.Vis, "pin");
                     }
                 }
             }
@@ -476,10 +478,10 @@ namespace InventaSketch.Modules.Mechanical
             for (var k = 0; k < 20; k++)
             {
                 var a = 2 * Math.PI * k / 20;
-                p.Circle(13.7 * Math.Cos(a), 11.0 * Math.Sin(a), 0.6, S.Vis, "ball");
+                p.Hole(13.7 * Math.Cos(a), 11.0 * Math.Sin(a), 0.6, S.Vis, "ball");
             }
-            p.Circle(0, 0, 4, S.Vis, "hub");
-            p.Circle(0, 0, 2.2, S.Vis, "bore");
+            p.Hole(0, 0, 4, S.Vis, "hub");
+            p.Hole(0, 0, 2.2, S.Vis, "bore");
             p.CenterCross(0, 0, 20, 20);
         }
 
@@ -541,7 +543,7 @@ namespace InventaSketch.Modules.Mechanical
             for (var k = 0; k < n; k++)
             {
                 var c = Frag.Polar(R, 2 * Math.PI * k / n);
-                p.Circle(c.X, c.Y, rr, S.Vis, "pin");
+                p.Hole(c.X, c.Y, rr, S.Vis, "pin");
             }
             var disc = new List<Vec2>();
             var samples = Math.Min(720, n * 24);
@@ -559,11 +561,11 @@ namespace InventaSketch.Modules.Mechanical
             {
                 var a = -Math.PI / 2 + j * Math.PI / 3;
                 var q = Frag.Polar(ro, a);
-                p.Circle(e + q.X, q.Y, rp + e, S.Vis, "hole");
-                p.Circle(q.X, q.Y, rp, S.Vis, "output-pin");
+                p.Hole(e + q.X, q.Y, rp + e, S.Vis, "hole");
+                p.Hole(q.X, q.Y, rp, S.Vis, "output-pin");
             }
-            p.Circle(e, 0, 4, S.Vis, "eccentric");
-            p.Circle(0, 0, 1.8, S.Vis, "bore");
+            p.Hole(e, 0, 4, S.Vis, "eccentric");
+            p.Hole(0, 0, 1.8, S.Vis, "bore");
             p.CenterCross(0, 0, 20, 20);
         }
     }

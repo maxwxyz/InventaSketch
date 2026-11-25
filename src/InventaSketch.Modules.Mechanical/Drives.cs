@@ -21,14 +21,24 @@ namespace InventaSketch.Modules.Mechanical
 
         private static Anchor Pitch(Pen p, double r) => Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, r * p.K);
 
+        /// <summary>
+        /// Bore of pulleys and sprockets (design 3 of the rim radius 15): across the axis in the side, section and schematic
+        /// views (the schematic has the same height), round in the axial views.
+        /// </summary>
+        private const double BoreR = 3;
+
+        private static double SideBore(Pen p, SketchObject o) => BoreR * p.Sy;
+
+        private static double AxialBore(Pen p, SketchObject o) => BoreR * p.K;
+
         public static IEnumerable<MechType> Types()
         {
             yield return new MechType("mech.pulley", T("Belt pulley", "Riemenscheibe"), Cat,
                 new[] { "pulley", "sheave", "v-belt pulley", "riemenscheibe", "keilriemenscheibe", "scheibe", "riementrieb" },
-                new ViewSpec("stick", VStick, 8, 30, PulleyStick),
-                new ViewSpec("axial", VAxial, 30, 30, PulleyAxial) { Anchors = (p, o) => new[] { Pitch(p, PitchR) } },
-                new ViewSpec("side", VSide, 10, 30, (p, o) => PulleySide(p, false)),
-                new ViewSpec("section", VSection, 10, 30, (p, o) => PulleySide(p, true)))
+                new ViewSpec("stick", VStick, 8, 30, PulleyStick) { Bore = SideBore },
+                new ViewSpec("axial", VAxial, 30, 30, PulleyAxial) { Anchors = (p, o) => new[] { Pitch(p, PitchR) }, Bore = AxialBore },
+                new ViewSpec("side", VSide, 10, 30, (p, o) => PulleySide(p, false)) { Bore = SideBore },
+                new ViewSpec("section", VSection, 10, 30, (p, o) => PulleySide(p, true)) { Bore = SideBore })
             {
                 Params = new[] { Common.Hub },
                 Extra = o => new[] { Common.HubCycle(o) },
@@ -45,10 +55,10 @@ namespace InventaSketch.Modules.Mechanical
             };
             yield return new MechType("mech.sprocket", T("Chain sprocket", "Kettenrad"), Cat,
                 new[] { "sprocket", "chain wheel", "kettenrad", "ritzel", "kettentrieb" },
-                new ViewSpec("stick", VStick, 8, 30, SprocketStick),
-                new ViewSpec("axial", VAxial, 30, 30, SprocketAxial) { Anchors = (p, o) => new[] { Pitch(p, PitchR) } },
-                new ViewSpec("teeth", T("With teeth", "Mit Zähnen"), 30, 30, SprocketTeeth) { Anchors = (p, o) => new[] { Pitch(p, PitchR) } },
-                new ViewSpec("side", VSide, 6, 30, SprocketSide))
+                new ViewSpec("stick", VStick, 8, 30, SprocketStick) { Bore = SideBore },
+                new ViewSpec("axial", VAxial, 30, 30, SprocketAxial) { Anchors = (p, o) => new[] { Pitch(p, PitchR) }, Bore = AxialBore },
+                new ViewSpec("teeth", T("With teeth", "Mit Zähnen"), 30, 30, SprocketTeeth) { Anchors = (p, o) => new[] { Pitch(p, PitchR) }, Bore = AxialBore },
+                new ViewSpec("side", VSide, 6, 30, SprocketSide) { Bore = SideBore })
             {
                 Params = new[] { Common.Hub, Common.Teeth(18) },
                 Extra = o => new[] { Common.HubCycle(o) },
@@ -77,8 +87,8 @@ namespace InventaSketch.Modules.Mechanical
             p.Circle(0, 0, Tip, S.Vis, "rim");
             p.Circle(0, 0, PitchR, S.Ctr, "pitch");
             p.Circle(0, 0, 11, S.Thin, "groove");
-            p.Circle(0, 0, 5.5, S.Vis, "hub");
-            p.Circle(0, 0, 3, S.Vis, "bore");
+            p.Hole(0, 0, 5.5, S.Vis, "hub");
+            p.Hole(0, 0, 3, S.Vis, "bore");
             p.CenterCross(0, 0, 15, 15);
         }
 
@@ -167,7 +177,7 @@ namespace InventaSketch.Modules.Mechanical
             p.Circle(0, 0, Tip, S.Vis, "tip");
             p.Circle(0, 0, PitchR, S.Ctr, "pitch");
             p.Circle(0, 0, 11.2, S.Thin, "root");
-            p.Circle(0, 0, 3, S.Vis, "bore");
+            p.Hole(0, 0, 3, S.Vis, "bore");
             p.CenterCross(0, 0, 15, 15);
         }
 
@@ -176,7 +186,7 @@ namespace InventaSketch.Modules.Mechanical
             var z = GearMath.Teeth(o, 18);
             p.PolyD(GearMath.Sprocket(z, PitchR, Tip, -Math.PI / 2), S.Vis, true, "teeth");
             p.Circle(0, 0, PitchR, S.Ctr, "pitch");
-            p.Circle(0, 0, 3, S.Vis, "bore");
+            p.Hole(0, 0, 3, S.Vis, "bore");
             p.CenterCross(0, 0, 15, 15);
         }
 

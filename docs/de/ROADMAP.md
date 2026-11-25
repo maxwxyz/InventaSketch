@@ -662,6 +662,15 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
 
 ## Offene Punkte
 
+- **Wellenpassung (25.11.2026, `ShaftFit`):** Teile passen sich beim Einfügen, beim Anbau am Achsende und beim Aufziehen
+  an ihre Welle an; ändert sich der Wellendurchmesser später, werden die Teile darauf nicht nachgeführt (Zahnräder kämen
+  aus dem Eingriff), und ein Ansichtswechsel der ganzen Baugruppe behält die Größen. Bei Schneckenrad und Freilauf
+  weichen die Bohrungen der Stirnansicht nach einem Ansichtswechsel um etwa 7 % von Seiten-/Schnittansicht ab; Ansichten
+  ohne Bibliotheksvorlage (Riemenscheibe seitlich, Kupplung seitlich, Scheibe Draufsicht) behalten beim Wechsel dorthin
+  den Rahmen (`Registry.WithView`). Schemata von Planeten-/Ravigneaux-Satz, Schnecken, Hohlräder, Lagerungssymbole und
+  die Untersetzungsgetriebe (Wellgetriebe, Zykloidgetriebe, CVT, Wandler) haben keine Bohrung. Der COM-Host muss
+  `Fitting.PlaceNear` noch für die Live-Vorschau beim Einfügen aufrufen und `Fitting.Place` den Klickpunkt (`toward`)
+  übergeben.
 - **PowerPoint-UI-Szenarien (21.11.2026):** `tests/powerpoint-com` enthält elf Szenarien, übernommen aus den
   Testskripten der Sitzung; `explode-linkages` läuft grün (10 Prüfungen). Die übrigen zehn (quick-add, bar, gear-mesh,
   motor-shaft, build-ports, line-language, crossings, gear-trains, gear-motion, linkage-build) sind in dieser Form noch

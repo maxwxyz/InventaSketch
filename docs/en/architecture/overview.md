@@ -111,7 +111,18 @@ diagrams: `QuickAdd` adds a connected copy on a side (`ObjectType.ChainConnector
 keeps its connectors. Line branches attach to rails of other lines (`Attachments.For`). `Links` lists where objects
 touch and follow each other (mechanical pairs and docked line ends) for lock markers and releases or couples a pair
 (`SketchObject.Released`, pruned by `Coupling` once the pair no longer touches). `Fitting.Place` puts an inserted part
-where it fits the selection (on the shaft, in mesh, through the hub). `Polylines` inserts and removes corners and adds
+where it fits the selection (on the shaft, in mesh, through the hub); with a preference point (`toward`, where the user
+clicked) a meshing gear goes in that direction (any angle; across the axis in side views; free sides as fallback) and a
+part on a shaft to the axis position nearest the point, off the hubs already there. `Fitting.PlaceNear` gives hosts the
+part fitted onto the shaft nearest the pointer by the same rule (live insertion preview, in the shaft's kind of view). Parts fit their shaft
+(`ShaftFit`, 2026-11-25): a hub anchor carries the bore radius of the part in its current view (`Anchor.Hub`; axial
+views the round bore, side, section and schematic views the bore across the axis, schematics with the proportion that
+keeps the fit over a view switch) and a shaft axis the shaft radius (`Anchor.Shaft`, per section on a stepped shaft,
+`Anchor.RadiusAt`); a part inserted on a shaft, built at its end, or dragged onto it (`Coupling.Propagate`, also a shaft
+dragged through a hub) is scaled uniformly (Size × k) so its bore equals the shaft diameter, a shaft put through a part
+takes the bore diameter. Anchors without a radius are left alone. Round features (rolling elements, bores, holes, pins,
+hub and shaft circles) are drawn at the detail scale, so they stay round when a part is stretched non-uniformly.
+`Polylines` inserts and removes corners and adds
 branches, extends, splits and joins lines, keeping docked branches in place. `Building` lists the build ports of an
 element (mesh sides, ring inside, free axis ends, free hub), the library items that fit a port and places them coupled;
 `Attachments.OnSurface` docks annotation ends anywhere on the element below them. `Crossings` finds where wires or pipes

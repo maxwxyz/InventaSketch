@@ -19,21 +19,48 @@ namespace InventaSketch.Modules.Mechanical
             yield return Spline();
         }
 
-        private static IEnumerable<Anchor> AxisAnchors(Pen p, SketchObject o)
+        /// <summary>
+        /// Shaft axis with the shaft radius (half the box height) for <see cref="ShaftFit"/>. The schematic line carries the
+        /// same diameter as the body although it is drawn as a line, so parts keep fitting when the drawing switches between
+        /// schematic and side views. A stepped shaft reports the radius of each section.
+        /// </summary>
+        private static IEnumerable<Anchor> AxisAnchors(Pen p, SketchObject o, bool stepped)
         {
             var hw = p.W / 2;
-            yield return Anchor.Segment(AnchorRole.Axis, new Vec2(-hw, 0), new Vec2(hw, 0));
+            var r = p.H / 2;
+            IReadOnlyList<AxisStep>? steps = null;
+            if (stepped)
+            {
+                var (x0, x1, x2, x3) = StepXs(p);
+                double T(double x) => p.W > Geo.Eps ? (x + hw) / p.W : 0;
+                var thin = r * StepRatio;
+                steps = new[] { new AxisStep(0, T(x1), thin), new AxisStep(T(x1), T(x2), r), new AxisStep(T(x2), 1, thin) };
+            }
+            yield return Anchor.Shaft(new Vec2(-hw, 0), new Vec2(hw, 0), r, steps);
             yield return Anchor.Point(AnchorRole.End, new Vec2(-hw, 0), "left");
             yield return Anchor.Point(AnchorRole.End, new Vec2(hw, 0), "right");
+        }
+
+        /// <summary>Radius of the thin end sections of a stepped shaft relative to the middle section.</summary>
+        private const double StepRatio = 0.65;
+
+        /// <summary>Section limits of a stepped shaft (actual x): body start, shoulders, body end.</summary>
+        private static (double X0, double X1, double X2, double X3) StepXs(Pen p)
+        {
+            var hw = p.W / 2;
+            var ext = Math.Min(3, p.W * 0.06);
+            double x0 = -hw + ext, x3 = hw - ext;
+            var len = x3 - x0;
+            return (x0, x0 + len * 0.3, x0 + len * 0.7, x3);
         }
 
         private static MechType Shaft() => new(
             "mech.shaft", T("Shaft", "Welle"), Cat,
             new[] { "shaft", "axle", "spindle", "drive shaft", "propeller shaft", "half shaft", "welle", "achse", "antriebswelle", "getriebewelle", "hohlwelle", "gelenkwelle", "seitenwelle", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
-            new ViewSpec("line", T("Schematic line", "Schema-Linie"), 120, 8, ShaftLine) { Fluid = true, Anchors = AxisAnchors },
-            new ViewSpec("body", T("Body", "Körper"), 120, 8, (p, o) => ShaftBody(p, o, false, Hollow(o, false))) { Fluid = true, Anchors = AxisAnchors },
-            new ViewSpec("hollow", T("Hollow shaft", "Hohlwelle"), 120, 8, (p, o) => ShaftBody(p, o, false, true)) { Fluid = true, Anchors = AxisAnchors },
-            new ViewSpec("stepped", T("Stepped", "Abgesetzt"), 120, 8, (p, o) => ShaftBody(p, o, true, Hollow(o, false))) { Fluid = true, Anchors = AxisAnchors })
+            new ViewSpec("line", T("Schematic line", "Schema-Linie"), 120, 8, ShaftLine) { Fluid = true, Anchors = (p, o) => AxisAnchors(p, o, false) },
+            new ViewSpec("body", T("Body", "Körper"), 120, 8, (p, o) => ShaftBody(p, o, false, Hollow(o, false))) { Fluid = true, Anchors = (p, o) => AxisAnchors(p, o, false) },
+            new ViewSpec("hollow", T("Hollow shaft", "Hohlwelle"), 120, 8, (p, o) => ShaftBody(p, o, false, true)) { Fluid = true, Anchors = (p, o) => AxisAnchors(p, o, false) },
+            new ViewSpec("stepped", T("Stepped", "Abgesetzt"), 120, 8, (p, o) => ShaftBody(p, o, true, Hollow(o, false))) { Fluid = true, Anchors = (p, o) => AxisAnchors(p, o, true) })
         {
             Params = new[] { Common.Flag("hollow", T("Hollow", "Hohl"), false) },
             Rotating = false,
@@ -85,8 +112,8 @@ namespace InventaSketch.Modules.Mechanical
                 }
                 return;
             }
-            var len = x3 - x0;
-            double x1 = x0 + len * 0.3, x2 = x0 + len * 0.7, h1 = hh * 0.65;
+            var (_, x1, x2, _) = StepXs(p);
+            var h1 = hh * StepRatio;
             p.PolyP(new[]
             {
                 new Vec2(x0, -h1), new Vec2(x1, -h1), new Vec2(x1, -hh), new Vec2(x2, -hh), new Vec2(x2, -h1), new Vec2(x3, -h1),
@@ -145,7 +172,8 @@ namespace InventaSketch.Modules.Mechanical
         private static IEnumerable<Anchor> SplineAxis(Pen p, SketchObject o)
         {
             var hw = p.W / 2;
-            yield return Anchor.Segment(AnchorRole.Axis, new Vec2(-hw, 0), new Vec2(hw, 0));
+            // Outer radius of the splines: hubs with a splined bore fit onto it.
+            yield return Anchor.Shaft(new Vec2(-hw, 0), new Vec2(hw, 0), 5 * p.Sy);
         }
 
         /// <summary>Side view following the simplified spline convention: thin root line over the splined length.</summary>

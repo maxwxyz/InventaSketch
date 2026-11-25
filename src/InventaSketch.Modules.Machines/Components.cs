@@ -489,8 +489,8 @@ namespace InventaSketch.Modules.Machines
                 var pitch = 360.0 / n;
                 for (var i = 0; i < n; i++)
                     p.PolyD(G.Sector(20, 25, i * pitch - 0.22 * pitch, i * pitch + 0.22 * pitch), S.Black, true, "slit");
-                p.Circle(0, 0, 8, S.Vis, "hub");
-                p.Circle(0, 0, 5, S.Thin, "shaft");
+                p.Round(new Vec2(0, 0), 8, S.Vis, "hub");
+                p.Round(new Vec2(0, 0), 5, S.Thin, "shaft");
                 p.Box(-5, -30, 5, -17.5, S.White, "readhead");
             }
             else
@@ -552,7 +552,7 @@ namespace InventaSketch.Modules.Machines
             new ViewSpec("axial", T("Axial view", "Stirnansicht"), IconIds.Axial, 40, 40, (p, o) =>
             {
                 p.Circle(0, 0, 9, S.Thin with { Fill = Fill.Solid(S.CopperColor) }, "ring");
-                p.Circle(0, 0, 4, Mag.Iron(p, o, Mag.ShaftHatch), "shaft");
+                p.Round(new Vec2(0, 0), 4, Mag.Iron(p, o, Mag.ShaftHatch), "shaft");
                 p.Box(-1.8, -15, 1.8, -9, S.Thin with { Fill = Fill.Solid("#555555") }, "brush");
                 p.Line(0, -15, 0, -20, S.Wire, "lead");
                 p.CenterCross(0, 0, 13, 13);

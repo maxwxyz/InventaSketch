@@ -14,6 +14,8 @@ namespace InventaSketch.Core
     /// along the centre line, together with their shafts and the rest of their train.</item>
     /// <item><b>Carried:</b> a hub point (<see cref="AnchorRole.Hub"/>) on a shaft axis (<see cref="AnchorRole.Axis"/>):
     /// gears, bearings and hubs follow their shaft when it moves, rotates or stretches; moving the gear alone slides it.</item>
+    /// <item><b>Seated:</b> a part with a bore that comes onto a shaft (dragged onto its axis, or the shaft through its hub)
+    /// gets the shaft's diameter (<see cref="ShaftFit"/>).</item>
     /// <item><b>Bonded:</b> hub points that coincide (gear and shaft in axial view; not two gears lying on top of each
     /// other): they move together.</item>
     /// </list>
@@ -80,7 +82,7 @@ namespace InventaSketch.Core
         private static double MeshDistance(double ra, bool innerA, double rb, bool innerB)
             => innerA == innerB ? ra + rb : Math.Abs(ra - rb);
 
-        private static bool SameState(SketchObject a, SketchObject b)
+        internal static bool SameState(SketchObject a, SketchObject b)
         {
             if (a.Transform != b.Transform || a.Size != b.Size || a.View != b.View || a.Params.Count != b.Params.Count) return false;
             foreach (var kv in a.Params)
@@ -94,7 +96,7 @@ namespace InventaSketch.Core
         /// drag along are moved or scaled.
         /// </summary>
         public static SketchDocument Propagate(Registry registry, SketchDocument before, SketchDocument after, Lang lang = Lang.En)
-            => PruneReleased(registry, AlignTeeth(registry, before, FollowMounts(registry, before, PropagateCore(registry, before, after, lang), lang), lang), lang);
+            => PruneReleased(registry, AlignTeeth(registry, before, FollowMounts(registry, before, ShaftFit.Seat(registry, before, PropagateCore(registry, before, after, lang), lang), lang), lang), lang);
 
         /// <summary>
         /// Parts docked on a directed mount (<see cref="Anchor.Directed"/>: a tool on a robot flange) follow it: when the

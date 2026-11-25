@@ -441,7 +441,7 @@ namespace InventaSketch.Modules.Machines
                     AxialMarks(p, o, 8.5, 16);
                     break;
             }
-            p.Circle(0, 0, 4, S.Vis, "shaft");
+            p.Round(new Vec2(0, 0), 4, S.Vis, "shaft");
             p.CenterCross(0, 0, 20, 20);
         }
     }

@@ -376,7 +376,7 @@ namespace InventaSketch.Modules.Kinematics
             if (detailed)
             {
                 p.Ellipse(0, -8, 5.6, 5.6, KS.Thin, "groove");
-                p.Ellipse(0, -8, 2.6, 2.6, KS.Thin, "hub");
+                p.Round(0, -8, 2.6, KS.Thin, "hub");
                 p.Arc(0, -8, 7, 7, 180, 180, KS.Link, "rope");
             }
             p.Joint(0, -8, 1.3);

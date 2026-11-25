@@ -63,6 +63,12 @@ namespace InventaSketch.Modules.Machines
         public bool Hub { get; init; }
         /// <summary>View-specific anchors in local coordinates.</summary>
         public Func<Pen, SketchObject, IEnumerable<Anchor>>? Anchors { get; init; }
+        /// <summary>
+        /// Bore radius (actual mm) carried by the <see cref="Hub"/> anchor, so the part fits onto a shaft
+        /// (<see cref="ShaftFit"/>): across the axis in views with the axis in the drawing plane, round (detail scale) in
+        /// face views. Null: no bore, the part keeps its size on a shaft.
+        /// </summary>
+        public Func<Pen, SketchObject, double>? Bore { get; init; }
     }
 
     /// <summary>
@@ -134,9 +140,10 @@ namespace InventaSketch.Modules.Machines
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
             var v = Spec(o);
-            if (v.Hub) yield return Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub");
+            var pen = PenFor(o, v, ctx.Lang);
+            if (v.Hub) yield return v.Bore is null ? Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub") : Anchor.Hub(Vec2.Zero, v.Bore(pen, o));
             if (v.Anchors is null) yield break;
-            foreach (var a in v.Anchors(PenFor(o, v, ctx.Lang), o)) yield return a;
+            foreach (var a in v.Anchors(pen, o)) yield return a;
         }
 
         /// <summary>

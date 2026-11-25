@@ -180,13 +180,13 @@ namespace InventaSketch.Modules.Mechanical
         private static void CamDraw(Pen p, double cy, bool follower)
         {
             p.PolyD(CamProfile(cy), S.Vis, true, "profile");
-            p.Circle(0, cy, 2.5, S.Vis, "bore");
+            p.Hole(0, cy, 2.5, S.Vis, "bore");
             p.Line(-12, cy, 12, cy, S.Ctr, "center");
             p.Line(0, cy - (follower ? 13 : 16.5), 0, cy + 11.5, S.Ctr, "center");
             if (!follower) return;
             // roller follower on the nose, stem in a guide
             var rollerY = cy - 15 - 3;
-            p.Circle(0, rollerY, 3, S.Vis, "roller");
+            p.Hole(0, rollerY, 3, S.Vis, "roller");
             p.Round(p.V(0, rollerY), 0.6, S.Black, "pin");
             p.Box(-1.2, rollerY - 3, 1.2, -25, S.Vis, "stem");
             p.Box(-5, -21, -1.6, -17, p.Hatch(), "guide");

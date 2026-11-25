@@ -597,6 +597,13 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
 
 ## Open items
 
+- **Shaft fit (2026-11-25, `ShaftFit`):** parts fit their shaft on insertion, at an axis end and when dragged on; a shaft
+  whose diameter changes later does not refit the parts already on it (gears would leave their mesh), and an assembly
+  view switch keeps sizes. Worm wheel and freewheel axial bores differ from their side/section bores by about 7 % after a
+  view switch; views without a library preset (pulley side, coupling side, washer top) keep the box when switched to
+  (`Registry.WithView`). Planetary/Ravigneaux schematics, worms, ring gears, supports and the reducers (strain wave,
+  cycloidal, CVT, torque converter) have no bore. The COM host still has to call `Fitting.PlaceNear` for the live
+  insertion preview and pass the click point (`toward`) to `Fitting.Place`.
 - **PowerPoint UI scenarios (2026-11-21):** `tests/powerpoint-com` holds eleven scenarios ported from the session's
   test scripts; `explode-linkages` runs green (10 checks). The other ten (quick-add, bar, gear-mesh, motor-shaft,
   build-ports, line-language, crossings, gear-trains, gear-motion, linkage-build) have not run in this form yet and may

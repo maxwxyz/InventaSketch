@@ -61,11 +61,11 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Spur() => new(
             "mech.gear.spur", T("Spur gear", "Stirnrad"), Cat,
             new[] { "gear", "spur", "cog", "toothed wheel", "pinion", "zahnrad", "stirnrad", "ritzel", "verzahnung", "getriebe", "gearbox", "transmission", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
-            new ViewSpec("stick", VStick, 8, 30, (p, o) => GearStick(p, o, 4, 15)) { Anchors = (p, o) => new[] { SidePitch(p, 15) } },
-            new ViewSpec("side", VSide, 10, 30, SpurSide) { Anchors = (p, o) => new[] { SidePitch(p, 15 * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } },
-            new ViewSpec("section", VSection, 10, 30, SpurSection) { Anchors = (p, o) => new[] { SidePitch(p, 15 * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } },
-            new ViewSpec("axial", VAxial, 30, 30, SpurAxial) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } },
-            new ViewSpec("teeth", VTeeth, 30, 30, SpurTeeth) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 18)).Pitch) } })
+            new ViewSpec("stick", VStick, 8, 30, (p, o) => GearStick(p, o, 4, 15)) { Anchors = (p, o) => new[] { SidePitch(p, 15) }, Bore = (p, o) => StickBore(p, o, 18) },
+            new ViewSpec("side", VSide, 10, 30, SpurSide) { Anchors = (p, o) => new[] { SidePitch(p, 15 * GearMath.External(GearMath.Teeth(o, 18)).Pitch) }, Bore = SideBore },
+            new ViewSpec("section", VSection, 10, 30, SpurSection) { Anchors = (p, o) => new[] { SidePitch(p, 15 * GearMath.External(GearMath.Teeth(o, 18)).Pitch) }, Bore = SideBore },
+            new ViewSpec("axial", VAxial, 30, 30, SpurAxial) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 18)).Pitch) }, Bore = AxialBore },
+            new ViewSpec("teeth", VTeeth, 30, 30, SpurTeeth) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 18)).Pitch) }, Bore = AxialBore })
         {
             Params = new[] { Common.Hub, Common.Teeth(18), Common.Module, Common.Helix, Common.Bore, Common.Keyway },
             Extra = o => GearActions(o, true, 18, true),
@@ -74,6 +74,21 @@ namespace InventaSketch.Modules.Mechanical
             // Teeth view: tooth 0 points up (GearMath.Outline phase -90 deg).
             Teeth = o => o.View == "teeth" ? (GearMath.Teeth(o, 18), -90.0) : null,
         };
+
+        /// <summary>Bore radius of the side and section views (design 4.5 of the tip radius 15, across the axis).</summary>
+        private const double SideBoreR = 4.5, AxialBoreR = 4.2;
+
+        private static double SideBore(Pen p, SketchObject o) => SideBoreR * p.Sy;
+
+        /// <summary>Round bore of the axial views (stays round: detail scale).</summary>
+        private static double AxialBore(Pen p, SketchObject o) => AxialBoreR * p.K;
+
+        /// <summary>
+        /// Schematic bore: the stick symbol shows no bore. A view switch keeps the pitch circle (stick: the symbol height,
+        /// side view: the pitch lines), so the schematic takes the side view's bore relative to the pitch circle and the fit
+        /// carries over between the views.
+        /// </summary>
+        private static double StickBore(Pen p, SketchObject o, int defTeeth) => SideBoreR / GearMath.External(GearMath.Teeth(o, defTeeth)).Pitch * p.Sy;
 
         /// <summary>Hub cycle, helix toggle and (if a module is set) true size from module.</summary>
         private static IEnumerable<ContextAction> GearActions(SketchObject o, bool hub, int defTeeth, bool helix)
@@ -221,15 +236,18 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Bevel() => new(
             "mech.gear.bevel", T("Bevel gear", "Kegelrad"), Cat,
             new[] { "bevel", "bevel gear", "mitre", "angle drive", "kegelrad", "kegelradgetriebe", "winkelgetriebe" },
-            new ViewSpec("stick", VStick, 12, 30, BevelStick) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(10.6, 0), "apex") } },
-            new ViewSpec("side", VSide, 24, 30, (p, o) => BevelBody(p, o, false)) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(11.5, 0), "apex") } },
-            new ViewSpec("section", VSection, 24, 30, (p, o) => BevelBody(p, o, true)) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(11.5, 0), "apex") } })
+            new ViewSpec("stick", VStick, 12, 30, BevelStick) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(10.6, 0), "apex") }, Bore = BevelBore },
+            new ViewSpec("side", VSide, 24, 30, (p, o) => BevelBody(p, o, false)) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(11.5, 0), "apex") }, Bore = BevelBore },
+            new ViewSpec("section", VSection, 24, 30, (p, o) => BevelBody(p, o, true)) { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Apex, p.V(11.5, 0), "apex") }, Bore = BevelBore })
         {
             Params = new[] { Common.Hub, Common.Teeth(24), Common.Module, Common.Bore },
             Extra = o => GearActions(o, true, 24, false),
             // Mating bevel gears (angle drive, differential side and spider gears), the shaft, a carrier as the cage.
             CompanionTypes = new[] { "mech.gear.bevel", "mech.shaft", "mech.carrier", "mech.bearing.taperroller" },
         };
+
+        /// <summary>Bore of the bevel gear (design 3 across the axis; the schematic has the same height and takes the same).</summary>
+        private static double BevelBore(Pen p, SketchObject o) => 3 * p.Sy;
 
         /// <summary>Bevel gear schematic: gear line with slanted tooth bars pointing to the cone apex on the axis.</summary>
         private static void BevelStick(Pen p, SketchObject o)
@@ -267,6 +285,7 @@ namespace InventaSketch.Modules.Mechanical
 
         // ------------------------------------------------------------------ worm and worm wheel
 
+        // The worm is cut on its own shaft: no bore, it keeps its size on a shaft.
         private static MechType Worm() => new(
             "mech.gear.worm", T("Worm", "Schnecke"), Cat,
             new[] { "worm", "worm drive", "screw gear", "schnecke", "schneckengetriebe", "schneckenwelle" },
@@ -302,17 +321,17 @@ namespace InventaSketch.Modules.Mechanical
         {
             p.Circle(0, 0, 5.5, S.Vis, "tip");
             p.Circle(0, 0, 4.2, S.Ctr, "pitch");
-            p.Circle(0, 0, 1.8, S.Vis, "bore");
+            p.Hole(0, 0, 1.8, S.Vis, "bore");
             p.CenterCross(0, 0, 6, 6);
         }
 
         private static MechType WormWheel() => new(
             "mech.gear.wormwheel", T("Worm wheel", "Schneckenrad"), Cat,
             new[] { "worm wheel", "worm gear", "schneckenrad", "schneckengetriebe" },
-            new ViewSpec("stick", VStick, 8, 30, (p, o) => GearStick(p, o, 4, 15)),
-            new ViewSpec("side", VSide, 10, 30, WormWheelSide),
-            new ViewSpec("axial", VAxial, 30, 30, SpurAxial) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 30)).Pitch) } },
-            new ViewSpec("teeth", VTeeth, 30, 30, SpurTeeth) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 30)).Pitch) } })
+            new ViewSpec("stick", VStick, 8, 30, (p, o) => GearStick(p, o, 4, 15)) { Bore = SideBore },
+            new ViewSpec("side", VSide, 10, 30, WormWheelSide) { Bore = SideBore },
+            new ViewSpec("axial", VAxial, 30, 30, SpurAxial) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 30)).Pitch) }, Bore = AxialBore },
+            new ViewSpec("teeth", VTeeth, 30, 30, SpurTeeth) { Anchors = (p, o) => new[] { Pitch(p, SpurTip * GearMath.External(GearMath.Teeth(o, 30)).Pitch) }, Bore = AxialBore })
         {
             Params = new[] { Common.Hub, Common.Teeth(30), Common.Module, Common.Bore },
             Extra = o => GearActions(o, true, 30, false),
@@ -415,9 +434,11 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Planetary() => new(
             "mech.gearset.planetary", T("Planetary gear set", "Planetenradsatz"), Cat,
             new[] { "planetary", "epicyclic", "sun", "planet", "carrier", "ring", "planetengetriebe", "umlaufgetriebe", "sonnenrad", "planetenrad", "steg", "hohlrad" },
+            // Axial views: the sun's bore (the set sits on the sun shaft). The schematic shows the members on separate
+            // shafts and has no single bore: it keeps its size.
             new ViewSpec("stick", VStick, 30, 50, PlanetStick),
-            new ViewSpec("axial", VAxial, 50, 50, (p, o) => PlanetAxial(p, o, false)) { Anchors = PlanetAnchors },
-            new ViewSpec("teeth", VTeeth, 50, 50, (p, o) => PlanetAxial(p, o, true)) { Anchors = PlanetAnchors })
+            new ViewSpec("axial", VAxial, 50, 50, (p, o) => PlanetAxial(p, o, false)) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K },
+            new ViewSpec("teeth", VTeeth, 50, 50, (p, o) => PlanetAxial(p, o, true)) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K })
         {
             Params = new[]
             {
@@ -525,7 +546,7 @@ namespace InventaSketch.Modules.Mechanical
                     var psi = phi + Math.PI - delta / PPlanet;
                     var c = Frag.Polar(PCarrier, phi);
                     p.PolyD(GearMath.Outline(zp, PPlanet - 1.25 * PM, PPlanet + PM, PPlanet, psi).Select(q => q + c), S.Vis, true, "planet");
-                    p.Circle(c.X, c.Y, 1.6, S.Vis, "pin");
+                    p.Hole(c.X, c.Y, 1.6, S.Vis, "pin");
                 }
                 // ring: tooth where the first planet has a gap (contact on the outside of planet 0)
                 {
@@ -554,12 +575,12 @@ namespace InventaSketch.Modules.Mechanical
                     p.Circle(c.X, c.Y, PPlanet + PM, S.Vis, "planet");
                     p.Circle(c.X, c.Y, PPlanet, S.Ctr, "pitch");
                     if (Stepped(o)) p.Circle(c.X, c.Y, PStep + PM, S.Hid, "planet");
-                    p.Circle(c.X, c.Y, 1.6, S.Vis, "pin");
+                    p.Hole(c.X, c.Y, 1.6, S.Vis, "pin");
                 }
             }
             p.Circle(0, 0, PRing, S.Ctr, "pitch");
             p.Circle(0, 0, PCarrier, S.Ctr, "carrier");
-            p.Circle(0, 0, 2.6, S.Vis, "bore");
+            p.Hole(0, 0, 2.6, S.Vis, "bore");
             p.CenterCross(0, 0, 25, 25);
         }
 
@@ -579,7 +600,7 @@ namespace InventaSketch.Modules.Mechanical
             "mech.gearset.ravigneaux", T("Ravigneaux gear set", "Ravigneaux-Radsatz"), Cat,
             new[] { "ravigneaux", "planet pairs", "compound planetary", "automatic transmission", "two suns", "planetenpaare", "ravigneaux-satz", "automatikgetriebe", "zwei sonnen" },
             new ViewSpec("stick", VStick, 34, 50, RavigneauxStick),
-            new ViewSpec("axial", VAxial, 50, 50, RavigneauxAxial) { Anchors = PlanetAnchors })
+            new ViewSpec("axial", VAxial, 50, 50, RavigneauxAxial) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K })
         {
             Params = new[] { Common.Count("pairs", T("Planet pairs", "Planetenpaare"), 3, 2, 3) },
             Extra = o => Common.Stepper(o, "pairs", T("Planet pairs", "Planetenpaare"), 3, 1, 2, 3),
@@ -640,14 +661,14 @@ namespace InventaSketch.Modules.Mechanical
                 var cs = Frag.Polar(RvShortPin, phi + RvDelta);
                 p.Circle(cl.X, cl.Y, PPlanet + PM, S.Vis, "planet");
                 p.Circle(cl.X, cl.Y, PPlanet, S.Ctr, "pitch");
-                p.Circle(cl.X, cl.Y, 1.6, S.Vis, "pin");
+                p.Hole(cl.X, cl.Y, 1.6, S.Vis, "pin");
                 p.Circle(cs.X, cs.Y, RvShort + PM, S.Vis, "planet2");
                 p.Circle(cs.X, cs.Y, RvShort, S.Ctr, "pitch");
-                p.Circle(cs.X, cs.Y, 1.2, S.Vis, "pin");
+                p.Hole(cs.X, cs.Y, 1.2, S.Vis, "pin");
             }
             p.Circle(0, 0, PCarrier, S.Ctr, "carrier");
             p.Circle(0, 0, RvShortPin, S.Ctr, "carrier");
-            p.Circle(0, 0, 2.6, S.Vis, "bore");
+            p.Hole(0, 0, 2.6, S.Vis, "bore");
             p.CenterCross(0, 0, 25, 25);
         }
 
@@ -700,7 +721,7 @@ namespace InventaSketch.Modules.Mechanical
             "mech.carrier", T("Planet carrier", "Planetenträger (Steg)"), Cat,
             new[] { "carrier", "planet carrier", "spider", "arm", "steg", "planetenträger", "planetensteg", "umlaufgetriebe" },
             new ViewSpec("stick", VStick, 20, 50, CarrierStick) { Anchors = CarrierStickAnchors },
-            new ViewSpec("axial", VAxial, 50, 50, CarrierAxial) { Anchors = CarrierAxialAnchors })
+            new ViewSpec("axial", VAxial, 50, 50, CarrierAxial) { Anchors = CarrierAxialAnchors, Bore = (p, o) => 2.2 * p.K })
         {
             Params = new[]
             {
@@ -743,8 +764,8 @@ namespace InventaSketch.Modules.Mechanical
                     p.Line(n.X * 2.2, n.Y * 2.2, c.X + n.X * 2.2, c.Y + n.Y * 2.2, S.Vis, "arm");
                     p.Line(-n.X * 2.2, -n.Y * 2.2, c.X - n.X * 2.2, c.Y - n.Y * 2.2, S.Vis, "arm");
                 }
-                p.Circle(c.X, c.Y, 2.6, S.Vis, "boss");
-                p.Circle(c.X, c.Y, 1.2, S.Vis, "pin");
+                p.Hole(c.X, c.Y, 2.6, S.Vis, "boss");
+                p.Hole(c.X, c.Y, 1.2, S.Vis, "pin");
             }
             foreach (var c in InnerPins(o))
             {
@@ -755,11 +776,11 @@ namespace InventaSketch.Modules.Mechanical
                     p.Line(n.X, n.Y, c.X + n.X, c.Y + n.Y, S.Vis, "arm");
                     p.Line(-n.X, -n.Y, c.X - n.X, c.Y - n.Y, S.Vis, "arm");
                 }
-                p.Circle(c.X, c.Y, 2.2, S.Vis, "boss");
-                p.Circle(c.X, c.Y, 1.0, S.Vis, "pin");
+                p.Hole(c.X, c.Y, 2.2, S.Vis, "boss");
+                p.Hole(c.X, c.Y, 1.0, S.Vis, "pin");
             }
-            p.Circle(0, 0, 4.2, S.Vis, "hub");
-            p.Circle(0, 0, 2.2, S.Vis, "bore");
+            p.Hole(0, 0, 4.2, S.Vis, "hub");
+            p.Hole(0, 0, 2.2, S.Vis, "bore");
             p.Circle(0, 0, CarrierR, S.Ctr, "pitch");
             if (o.Flag("fixed", false)) Frag.GroundStrokes(p, p.V(-6, 8), p.V(6, 8), new Vec2(0, 1), 1.6, 1.6);
         }
