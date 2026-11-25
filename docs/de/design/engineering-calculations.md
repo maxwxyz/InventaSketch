@@ -1,6 +1,8 @@
 # Technische Werte und Berechnungen – Konzept und Katalog
 
-Stand: Konzept und Plan, 25.11.2026 (Wunsch des Maintainers). Noch nichts davon ist umgesetzt. Englische (maßgebliche)
+Stand: Konzept und Plan, 25.11.2026 (Wunsch des Maintainers). Calc 0 und Calc 1 (Größen, Einheiten, Parser,
+Einheitenumrechner und Rechner, Beziehungs-Engine, Engine-API, ohmsches Gesetz am Widerstand) sind umgesetzt; die
+Entwurfsentscheidungen stehen in Abschnitt 10. Calc 2–6 sind offen. Englische (maßgebliche)
 Fassung: [../../en/design/engineering-calculations.md](../../en/design/engineering-calculations.md).
 
 **Warum.** Zwei Wünsche des Maintainers vom 25.11.2026:
@@ -675,6 +677,14 @@ gespeichert.
 - die Zeitbudgets aus Abschnitt 1.8 werden in einem Benchmark-Test eingehalten
 - die Ergebnisse sind deterministisch (gleiche Eingabe, gleicher Rechenweg)
 
+**Ergänzung zu Calc 0/1 – Einheitenumrechner und Rechner** (Wunsch des Maintainers vom 25.11.2026).
+`Units.Convert(wert, von, nach)` mit Prüfung der Größenart und Nullpunkten für °C/°F/K, die Anzeigeeinheiten je
+Größenart, ein sicherer einheitenbewusster Ausdrucksrechner (`UnitCalculator`: „230 V * 16 A" → 3,68 kW, „12 mm + 0.5
+in", „1500 rpm in rad/s", „4k7 || 10k", „2 kWh / 230 V" → Ah) und die Engine-Methoden `convertUnit`, `calc` und
+`units`. Das Rechner-Popup (Menü *Mehr*, Wertekarte) kommt mit Calc 2.
+
+*Stand:* Calc 0 und Calc 1 einschließlich Umrechner und Rechner sind fertig (Abschnitt 10).
+
 **Calc 2 – COM-Oberfläche (Erkunden und Ingenieur).** Diese Stufe bringt:
 - die Stufeneinstellung im Menüband
 - die Schaltfläche *Werte* in der Leiste
@@ -861,3 +871,161 @@ ihrer jeweils aktuellen Auflage gemeint.
 Vorhandene Code-Beziehungen, die hier wiederverwendet werden: `Linkages.Grubler` und `Linkage.Dof` (Kinematik, Core),
 `GearTrain.Speeds` und `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Verfahrenstechnik) und
 `PumpChart.OperatingPoint` (Diagramme).
+
+---
+
+## 10. Umsetzungsnotizen: Calc 0 und Calc 1 (25.11.2026)
+
+Dieser Abschnitt hält die Entscheidungen fest, die das Konzept offen ließ. Maßgeblich ist der Code.
+
+### 10.1 Dateien
+
+| Bereich | Dateien |
+|---|---|
+| Größen, Einheiten, Suche, Umrechnung | `src/InventaSketch.Core/Quantities.cs` (`Dimension`, `QuantityKind`, `Unit`, `Quantities`), `Units.cs` (`UnitCatalog`, `Units`) |
+| Parser und Formatierung | `src/InventaSketch.Core/ValueParser.cs` (`ValueParser`, `ParsedValue`, `Tolerance`, `ValueFormat`) |
+| Rechner | `src/InventaSketch.Core/UnitCalculator.cs` |
+| Variablen, Beziehungen, Haken | `src/InventaSketch.Core/Values.cs` (`VarDef`, `Relation`, `BoundRelation`, `IValueType`, `IValueLinks`, `IValueChecks`, `ValueModel`, `RootFinder`) |
+| Löser | `src/InventaSketch.Core/ValueSolver.cs` (`ValueSolver`, `ValueTable`, `ValueConflict`, `ExplainStep`) |
+| Engine-API | `src/InventaSketch.Engine/EngineValues.cs` (partielle `EngineApi`), DTOs in `Contracts.cs` |
+| Beispiel | `src/InventaSketch.Modules.Electrical/ElecValues.cs` (Widerstand) |
+
+### 10.2 Größen und Einheiten
+
+- **Dimension** hat sechs Exponenten: Länge, Masse, Zeit, Strom, Temperatur und **ebener Winkel**. Im SI ist der
+  Radiant 1; ihn mitzuführen trennt aber Drehzahl (min⁻¹, rad/s) von Frequenz (Hz) und lässt „1500 rpm in rad/s" mit 2π
+  umrechnen. Intern steht eine Drehzahl in rad/s, damit gilt *P* = *T*·*n* im SI ohne Faktor 2π. Wo ein Produkt die
+  SI-Sicht braucht (N·m × rad/s = W), fällt der Winkelexponent beim Benennen des Ergebnisses weg; rpm ↔ Hz bleibt
+  abgelehnt.
+- **Größenarten** (39): Verhältnis, Wirkungsgrad, Anzahl, Spannung, Strom, Leistung, Schein- und Blindleistung,
+  Wärmestrom, Widerstand, Kapazität, Induktivität, Ladung, spezifischer Widerstand, Frequenz, Drehzahl, Winkel, Zeit,
+  Länge, Fläche, Volumen, Masse, Kraft, Drehmoment, Energie, Geschwindigkeit, Beschleunigung, Druck, Volumenstrom,
+  Massenstrom, Temperatur, Temperaturdifferenz, Dichte, spezifische Wärmekapazität, Wärmedurchgangskoeffizient,
+  Bestrahlungsstärke, kinematische Viskosität, Trägheitsmoment, Federrate. Drehmoment und Energie, Leistung und
+  Wärmestrom, Temperatur und Temperaturdifferenz teilen sich eine Dimension und sind getrennte Größenarten. Die erste
+  Einheit einer Größenart ist ihre Anzeigeeinheit (Ladung: Ah, Drehzahl: min⁻¹, Temperatur: °C).
+- **Einheiten** haben Faktor und Nullpunkt zum SI und eine ausdrückliche Liste der SI-Vorsätze, die sie annehmen und
+  zeigen (Ω nimmt µ m k M G, F nimmt p n µ m). Quadratische und zusammengesetzte Einheiten (mm², kN·m, l/min) stehen
+  einzeln in der Liste und nehmen keine Vorsätze.
+- **Suchreihenfolge:** genaue Schreibweise, Vorsatz + genaue Schreibweise, dann ohne Groß-/Kleinschreibung (so gehen
+  „10 KW" und „1010 MM" weiter). Schreibweisen werden vereinheitlicht: Leerzeichen und `^` fallen weg, Hochzahlen als
+  Ziffern (mm2 = mm^2 = mm²), `*`, `⋅` und `.` zwischen Buchstaben als `·` (auch ohne: Nm = N·m), u als µ bei Vorsätzen,
+  Ohm-Zeichen, `º` und `℃`.
+
+### 10.3 Parser und Formatierung
+
+- Eine **bloße Zahl** gilt in der Anzeigeeinheit des Feldes (`VarDef.Unit`). Ein **Buchstabencode** („4k7", „2n2",
+  „R47") oder ein bloßer Vorsatz („10k", „2.5k") multipliziert die kohärente Einheit der Größenart (Ω, F, V …), wie der
+  Code es meint. R als Dezimalzeichen gilt nur für Widerstände.
+- **Brüche:** Ein `/` oder `:` mit folgender Zahl trennt Werte („230/12 V", „20/0,4"); ein `/` mit folgendem Buchstaben
+  gehört zur Einheit („1500/min", „40 l/min"). Bei dimensionslosen Größenarten ist das Ergebnis der Quotient, sonst
+  enthält `Parts` alle Werte und `Value` den ersten. Teile ohne Einheit übernehmen die zuletzt geschriebene Einheit.
+- **Toleranzen:** „±5 %", „+/-5%", „−20/+80 %", „±0,1 V" (absolut) und ein nachgestelltes „1%" nach einem Wert („10k
+  1%") bei Größenarten ohne eigene %-Einheit (auf einem Wirkungsgradfeld ist „97 %" der Wert).
+- **Temperaturdifferenz** nimmt K; „°C" nur auf Deutsch (Abschnitt 1.3), angezeigt als K.
+- **Zahlen:** Dezimalkomma oder -punkt; sind beide da, ist das spätere das Dezimalzeichen; wiederholte Trennzeichen sind
+  Tausendertrennzeichen (die Regeln des bisherigen Diagramm-Parsers, jetzt `ValueParser.TryNumber`).
+- **Anzeige:** `ValueFormat.Format` rundet auf signifikante Stellen (Vorgabe 3), wählt aus der Vorsatzliste der Einheit
+  den Vorsatz, der die Zahl nach dem Runden in [1, 1000) hält (999,7 W → „1 kW"), streicht Endnullen, sofern sie nicht
+  erhalten bleiben sollen (Formelzeilen behalten sie: „2,00 A"), und setzt auf Deutsch das Dezimalkomma. Formatieren →
+  Einlesen ergibt den Wert innerhalb der gezeigten Stellen (für EN und DE getestet).
+
+### 10.4 Einheitenumrechner und Rechner
+
+- `Units.Convert(wert, von, nach)` prüft die **Größenart streng**: m → kg und auch N·m → J werden mit zweisprachiger
+  Meldung abgelehnt (`TryConvert`). `Units.DisplayUnits(art)` listet die Einheiten einer Größenart.
+- `UnitCalculator` ist ein rekursiv absteigender Parser (keine Codeausführung; höchstens 500 Zeichen und 64
+  Schachtelungsebenen): Zahlen in beiden Sprachen und Buchstabencodes, alle Katalogeinheiten und Produkte/Quotienten
+  daraus („kg·m/s²", „V/A", „m3/h"), `+ − · × * / ÷ ^ ² ³`, `||` oder `∥` (parallel), Klammern, sqrt/√, abs, sin, cos,
+  tan (Bogenmaß oder Winkel), ln, lg/log, exp, π und eine nachgestellte Umrechnung „in/to/as/into/nach/->/→ Einheit"
+  (die letzte, deren Rest eine Einheit ist, so bleibt bei „12 mm + 0.5 in" der Zoll erhalten). Er arbeitet
+  **dimensionsbasiert**: Summen brauchen gleiche Dimensionen, Umrechnungen dieselbe Dimension (der Winkel darf
+  wegfallen, außer bei rpm ↔ Hz).
+- **Ergebniseinheit:** Eine Summe behält die zuerst geschriebene Einheit („12 mm + 0.5 in" → 24,7 mm); sonst benennt
+  die erste Größenart mit der Dimension des Ergebnisses es (Leistung vor Wärmestrom, Energie vor Drehmoment) in ihrer
+  Anzeigeeinheit mit passendem Vorsatz; ohne Größenart wird die kohärente SI-Einheit ausgeschrieben. Temperaturen in
+  °C/°F sind absolut: ihre Differenz ist eine Differenz in K, eine addierte Differenz behält °C, zwei absolute
+  Temperaturen lassen sich nicht addieren. Vorgabe sind 4 signifikante Stellen.
+- Die Engine-Methode heißt `convertUnit`, weil `convert` schon Elemente in andere Typen umwandelt.
+
+### 10.5 Beziehungs-Engine
+
+- **Typvertrag.** Statt neuer virtueller Member an `ObjectType` (`Modules.cs` wird parallel bearbeitet) implementiert
+  ein Typ `IValueType { Variables; Relations }`; `ValueModel.Variables(typ)` liefert für alle anderen Typen eine leere
+  Liste. Das entspricht „Vorgabe leer" im Plan. Anschlussbeziehungen kommen aus `IValueLinks.ValueLinks(o, ctx)` (der
+  Haken für Calc 3/4: Objekte, auf die eine Verknüpfung zeigt, kommen in den Löserumfang, in Breitensuche), Prüfungen aus
+  `IValueChecks.ValueChecks`.
+- **`VarDef`:** Schlüssel, zweisprachiger Name und Formelzeichen, Größenart, Anzeigeeinheit, gebundener Parameter
+  (Vorgabe: der Schlüssel), gespeicherte Einheit eines Zahlparameters (z. B. kV), Relevanz, Vorgabewert (SI) und
+  typischer Bereich (SI; zugleich das Intervall einer numerischen Lösung).
+- **Speicherentscheidung (wie im Plan):** Eingegebene Werte liegen in den **Parametern**, ohne neues Modellfeld; alte
+  Dokumente bleiben unverändert. Ein Textparameter behält den Text wie getippt („4k7 ±5 %", „230 V"); ein Zahlparameter
+  hält die Zahl in seiner gespeicherten Einheit. Neue Wertparameter sind optionale Text-`ParamDef`s mit Einheitenhinweis.
+  Gespeicherte Texte werden großzügig gelesen (deutsche Regeln); ein Text, der kein Wert der Größenart ist (z. B.
+  „BC547"), gilt als nicht eingegeben, und der Fehler wird gemeldet. Abgeleitete Werte werden nie gespeichert.
+- **`Relation`:** Id, zweisprachiger Name, Formel mit Schlüsseln in geschweiften Klammern („{U} = {R}·{I}"), explizite
+  Löser je Variable mit ihrem Ausdruck („{U}/{I}", für den Rechenweg), optional ein Residuum für eine eingeschlossene
+  Brent-Suche, relative Toleranz (Vorgabe 1e-6), Quellen-Id, Gültigkeit und `IsLink` für durchreichende
+  Anschlussbeziehungen (`Relation.Equality`). Redundante Formen werden ausdrücklich angegeben (*P* = *U*·*I* = *I*²·*R* =
+  *U*²/*R*), damit für die lokale Ausbreitung zwei beliebige Werte genügen.
+- **Löser** (`ValueSolver.Solve(doc, registry, ids, options)`): Umfang = übergebene Ids (Vorgabe: erste Seite) plus
+  verknüpfte Objekte; Beziehungen in Umfangsreihenfolge, lokale vor Verknüpfungen; eine Arbeitsliste löst jede Beziehung
+  mit genau einer Unbekannten (jede Variable einmal); jeder Wert merkt sich Beziehung, Eingänge und die Menge der
+  eingegebenen/vorgegebenen Werte, auf denen er beruht (seine *Wurzeln*). Eine vollständig bekannte Beziehung ist nur dann
+  eine **unabhängige Prüfung**, wenn eine ihrer Variablen Information trägt, die die anderen nicht haben (ihre Wurzeln
+  sind nicht in deren Wurzeln enthalten); eine bestandene unabhängige Prüfung ergibt den Status *geprüft* (✓), eine
+  nicht bestandene einen **Widerspruch** mit dem Wert der Variablen, dem von der Beziehung verlangten Wert und den
+  beteiligten Eingaben. Vorgabewerte werden nach der Ausbreitung einzeln versucht und zurückgenommen, wenn sie zu einem
+  Widerspruch führen. `Missing(id)` nennt die kleinsten Mengen (bis drei) weiterer Variablen, die das Element bestimmen
+  würden. Das Zeitbudget (Vorgabe 50 ms) beendet den Durchlauf und setzt `Truncated`. `Overrides` rechnen mit einem
+  Wert, als wäre er eingegeben, ohne das Dokument zu ändern (Vorschau beim Ziehen).
+- **Status je Element:** leer, unterbestimmt, bestimmt, geprüft, Widerspruch.
+- **Rechenweg:** eine Zeile je abgeleitetem Wert der Kette, Eingänge zuerst: „R = U/I = 230 V/2,00 A = 115 Ω";
+  eingegebene Werte wie getippt („R = 4k7"); numerische Lösungen „x = 2 (numerisch gelöst: y = x³ + x)".
+- **Gemessen:** 1000 Widerstände mit je zwei Eingaben (4000 Beziehungen, 2000 gelesene Texte) brauchen unter .NET 10 im
+  Release-Build auf einer ausgelasteten Entwicklungsmaschine etwa 26–35 ms (Test `ThousandResistorsSolveWithinTheBudget`:
+  bester von sechs Läufen, Grenze 50 ms im Release-, 150 ms im Debug-Build). Das WebAssembly-Budget (200 ms) ist noch nicht
+  gemessen.
+
+### 10.6 Engine-API (ergänzend)
+
+| Methode | Anfrage | Ergebnis |
+|---|---|---|
+| `values` | `session`, `id` oder `ids` (Vorgabe: Seite), `lang`, `digits` | `objects[]`: `id`, `status`, `hint` („Noch 1 Wert: R, I oder P", „✓", „Widerspruch: …"), `vars[]` (Schlüssel, Name, Formelzeichen, Größenart, Relevanz, Einheit + Faktor/Nullpunkt, Einheiten, Wert SI, Zahl, Anzeige, Text, Herkunft, Formel, Beziehung, Quelle, Toleranz, Fehler, Widerspruch, Parameter), `missing`, `conflicts[]` (Beziehung, Formel, Schlüssel, Wert/verlangter Wert mit Texten, Beteiligte, Meldung); `elapsedMs`, `truncated` |
+| `setValue` | `id`, `key`, `text` | Zustand; ein Rückgängig-Schritt; falsche Größenart/unbekannte Einheit → zweisprachiger Fehler; leerer Text löscht |
+| `clearValue` | `id`, `key` | Zustand; ein Rückgängig-Schritt |
+| `explain` | `id`, `key`, `digits` | `steps[]` und `text` |
+| `dragValue` | `id`, `key`, `value` (SI) oder `text`, `preview` | Vorschau: wie `values`, Dokument unverändert; Loslassen: speichert den formatierten Wert, ein Rückgängig-Schritt |
+| `checks` | `ids` (Vorgabe: Seite) | verletzte Prüfungen (leer, bis Calc 3 Regeln bringt) |
+| `convertUnit` | `value` + `fromUnit` + `unit` oder `text` (+ `quantityKind`) + `unit` | `value`, `unit`, `text`, `kind`, `units` |
+| `calc` | `text`, `lang`, `digits` (Vorgabe 4) | `value` (SI), `dimension`, `kind`, `unit`, `number`, `text`, `steps` |
+| `units` | `quantityKind` (optional) | Größenarten mit Name, Dimension und Anzeigeeinheiten |
+
+### 10.7 Beispiel: Widerstand
+
+`elec.resistor` hat *R* (aus dem vorhandenen Text `value`, „4k7" auf der Beschriftung ist also der Widerstand), *U*,
+*I* und *P* (neue optionale Textparameter `voltage`, `current`, `power`). Zwei beliebige ergeben die anderen; drei
+stimmige ergeben ✓; drei widersprüchliche ergeben einen Widerspruch, der beide Werte nennt und nichts ändert. Ein Text in
+`value`, der kein Widerstand ist (z. B. „1/4 W"), wird für *R* nicht verwendet.
+
+### 10.8 Parser, die jetzt weiterreichen
+
+| Bisheriger Parser | Jetzt | Verhalten |
+|---|---|---|
+| Diagramme `Fmt.ParseInput`, `ChartData.TryNumber` | `ValueParser.ParseNumber`, `ValueParser.TryNumber` | derselbe Code, nach Core verschoben |
+| Energie `Act.Number` | Zahl über `ValueParser.TryNumber` (Einheitensuffix und Begrenzung unverändert) | nimmt zusätzlich Tausendertrennzeichen |
+| Gebäudetechnik `Bs.ParseMm`, Architektur `Arch.ParseMm` | `ValueParser.ParseMillimetres` (Architektur lehnt ≤ 0 weiter ab) | nimmt zusätzlich jede Längeneinheit (km, in, ft) und Leerzeichen als Tausendertrennzeichen |
+
+Nicht umgestellt (anderer Zweck): Energie `Fmt.ParseRatio` (Spannungslisten in kV; `ValueParser` liest „20/0,4 kV"
+genauso und kann sie ersetzen, wenn der Transformator Werte bekommt), `ChartBreaks.ParseInput` (Bereiche),
+`FunctionExpression` (Diagrammformeln in x; der Rechner ist getrennt) und die Zahlprüfung beim Import in `Imports.cs`.
+
+### 10.9 Offen für spätere Stufen
+
+- Calc 2 (COM): Die Stufeneinstellung (*Aus · Erkunden · Ingenieur*) braucht eine Dokumenteinstellung; Karte,
+  Kreismenüeinträge, Inspektorabschnitt, Griffe, Rechenweg und das Rechner-Popup nutzen die API oben. Rückgängig:
+  `setValue`, `clearValue` und ein losgelassenes `dragValue` sind je ein Schritt; die Wahl „U und I behalten, R ableiten"
+  ist ein `clearValue`.
+- Calc 6: Intervallergebnisse aus Toleranzen (Toleranzen werden gelesen und behalten, aber noch nicht weitergerechnet),
+  Stummschaltliste, Einheitenvorlieben, Entscheidung zu den E-Reihen.
+- Die Prüfung `value.range` („Tippfehler?") kann `VarDef.Min/Max` nutzen, sobald der Prüfkatalog beginnt (Calc 3).

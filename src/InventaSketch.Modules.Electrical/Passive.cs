@@ -19,7 +19,7 @@ namespace InventaSketch.Modules.Electrical
             yield return new ElecType("elec.resistor", T("Resistor", "Widerstand"), Cat,
                 new[] { "resistor", "widerstand", "ohm", "r" },
                 Views.Symbol(20, 8, ResistorIec), Views.Ansi(20, 8, ResistorAnsi))
-            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "R" };
+            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "R", Params = ElecValues.ResistorParams, Variables = ElecValues.ResistorVariables, Relations = ElecValues.Ohm };
 
             yield return new ElecType("elec.potentiometer", T("Potentiometer", "Potentiometer"), Cat,
                 new[] { "potentiometer", "poti", "trimmer", "variable resistor", "einstellbarer widerstand", "schleifer", "wiper" },
