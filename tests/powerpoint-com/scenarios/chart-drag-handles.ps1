@@ -19,7 +19,8 @@ function Get-Grips([string]$name) {
     if ($raw) {
         foreach ($part in ($raw -split ';' | Where-Object { $_ })) {
             $m = [regex]::Match($part, '^(.+):(-?[\d.]+),(-?[\d.]+)$')
-            if ($m.Success) {
+            # Only the limit lines (the chart also has point and curve handles since 2026-11-25).
+            if ($m.Success -and $m.Groups[1].Value -like 'limit.*') {
                 $px = ConvertTo-IskPixel $S @(([double]$m.Groups[2].Value * 25.4 / 72), ([double]$m.Groups[3].Value * 25.4 / 72))
                 $list += [pscustomobject]@{ Id = $m.Groups[1].Value; X = $px[0]; Y = $px[1] }
             }

@@ -48,16 +48,23 @@ namespace InventaSketch.Modules.Charts.Tests
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.line");
-            var styles = new List<string>();
-            for (var i = 0; i < 4; i++) { o = Act(r, o, "chart.style").Apply(o); styles.Add(o.Str("style", "")); }
-            Assert.Equal(new[] { "linepoints", "points", "step", "line" }, styles);
+            // A choice is one option per value (a dropdown in the hosts), never a cycle: every option sets its value directly.
+            var styles = r.TypeOf(o).Actions(o, Fx.Ctx()).Where(a => a.Choice?.Key == "chart.style").ToList();
+            Assert.Equal(new[] { "chart.style=line", "chart.style=linepoints", "chart.style=points", "chart.style=step" }, styles.Select(a => a.Id));
+            Assert.Equal("chart.style=line", Assert.Single(styles, a => a.IsActive).Id);
+            Assert.All(styles, a => Assert.Equal(new[] { "style" }, a.ParamKeys));
+            Assert.Equal("Style", styles[0].Choice!.Label.En);
+            Assert.Equal("Darstellung", styles[0].Choice!.Label.De);
+            Assert.Equal("Line with markers", styles[1].Label.En);
+            o = Act(r, o, "chart.style=step").Apply(o);
+            Assert.Equal("step", o.Str("style", ""));
+            Assert.True(Act(r, o, "chart.style=step").IsActive);
             var grid = Act(r, o, "chart.grid");
             Assert.True(grid.IsActive);
             Assert.False(grid.Apply(o).Flag("grid", true));
-            Assert.Equal("Style: line with markers".ToLowerInvariant(), Act(r, o, "chart.style").Label.En.ToLowerInvariant());
-            Assert.StartsWith("Darstellung: ", Act(r, o, "chart.style").Label.De);
+            Assert.DoesNotContain(r.TypeOf(o).Actions(o, Fx.Ctx()), a => a.Icon == IconIds.Cycle);
             var bar = Fx.Item(r, "chart.column");
-            Assert.Equal("bar", Act(r, bar, "chart.orient").Apply(bar).Str("orient", ""));
+            Assert.Equal("bar", Act(r, bar, "chart.orient=bar").Apply(bar).Str("orient", ""));
         }
 
         [Theory]
@@ -112,7 +119,7 @@ namespace InventaSketch.Modules.Charts.Tests
             doc = Edits.Add(doc, doc.Pages[0].Id, o);
             doc = ContextActions.Run(r, doc, new[] { o.Id }, "chart.qop", "55", Lang.En);
             Assert.Equal(55, doc.Get(o.Id)!.Num("qop", 0));
-            doc = ContextActions.Run(r, doc, new[] { o.Id }, "chart.kind", null, Lang.En);
+            doc = ContextActions.Run(r, doc, new[] { o.Id }, "chart.kind=fan", null, Lang.En);
             Assert.Equal("fan", doc.Get(o.Id)!.Str("kind", ""));
         }
     }

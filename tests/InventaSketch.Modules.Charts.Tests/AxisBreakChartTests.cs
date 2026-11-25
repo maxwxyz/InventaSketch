@@ -145,7 +145,7 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.Contains("chart.ybreak.remove", onBreak);
             var onAxis = r.TypeOf(o).PartActions(o, "axis.y", Fx.Ctx()).Select(a => a.Id).ToList();
             Assert.Contains("chart.ybreak", onAxis);
-            Assert.Contains("chart.yscale", onAxis);
+            Assert.Contains("chart.yscale=log", onAxis);
             Assert.Contains("chart.xbreak", r.TypeOf(o).PartActions(o, "axis.x", Fx.Ctx()).Select(a => a.Id));
             // Remove takes the breaks away.
             var removed = Act(r, o, "chart.ybreak.remove").Apply(o);

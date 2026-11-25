@@ -136,8 +136,7 @@ namespace InventaSketch.Modules.Charts
             Prm.Toggle(o, "chart.power", "power", true, new I18nText("Power curve", "Leistungskurve")),
             Prm.Toggle(o, "chart.regions", "regions", true, new I18nText("Region notes", "Bereichshinweise")),
             Common.GridToggle(o),
-            Common.LegendCycle(o),
-        };
+        }.Concat(Common.LegendChoice(o));
     }
 
     /// <summary>
@@ -362,16 +361,14 @@ namespace InventaSketch.Modules.Charts
             return c;
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Prm.Options(o, "chart.kind", KindDef, new I18nText("Machine", "Maschine")).Concat(new[]
         {
-            Prm.Cycle(o, "chart.kind", KindDef, new I18nText("Machine", "Maschine")),
             ContextAction.WithInput("chart.qop", new I18nText("Operating flow…", "Förderstrom im Betriebspunkt…"), IconIds.Text,
                 new I18nText("Flow at the operating point", "Förderstrom im Betriebspunkt"), Fmt.Num(o.Num("qop", 70), lang),
                 (x, text) => x.WithParam("qop", Fmt.ParseInput(text, lang, 1e-6, 1e9, "m³/h", "m3/h"))) with { Group = "data" },
             Prm.Toggle(o, "chart.system", "system", true, new I18nText("System curve", "Anlagenkennlinie")),
             Common.GridToggle(o),
-            Common.LegendCycle(o),
-        };
+        }).Concat(Common.LegendChoice(o));
     }
 
     /// <summary>
@@ -513,16 +510,16 @@ namespace InventaSketch.Modules.Charts
             return c;
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Prm.Options(o, "chart.system", SystemDef, new I18nText("System", "System")).Concat(new[]
         {
-            Prm.Cycle(o, "chart.system", SystemDef, new I18nText("System", "System")),
             ContextAction.WithInput("chart.fc", new I18nText("Corner frequency…", "Eckfrequenz…"), IconIds.Text,
                 new I18nText("Corner frequency (e.g. 1 kHz, 250 Hz, 2.5k)", "Eckfrequenz (z. B. 1 kHz, 250 Hz, 2,5k)"), Axis.LogLabel(o.Num("fc", 1000), lang) + " Hz",
                 (x, text) => x.WithParam("fc", Fmt.ParseInput(text, lang, 1e-9, 1e15, "Hz"))) with { Group = "data" },
-            Prm.Cycle(o, "chart.show", ShowDef, new I18nText("Show", "Anzeigen")),
+        }).Concat(Prm.Options(o, "chart.show", ShowDef, new I18nText("Show", "Anzeigen"))).Concat(new[]
+        {
             Prm.Toggle(o, "chart.marker", "marker", true, new I18nText("Mark the corner frequency", "Eckfrequenz markieren")),
             Common.GridToggle(o),
-        };
+        });
     }
 
     /// <summary>
@@ -677,7 +674,6 @@ namespace InventaSketch.Modules.Charts
                 }) with { Group = "data" },
             Prm.Toggle(o, "chart.smooth", "smooth", true, new I18nText("Smooth curves", "Geglättete Kurven")),
             Common.GridToggle(o),
-            Common.LegendCycle(o),
-        };
+        }.Concat(Common.LegendChoice(o));
     }
 }

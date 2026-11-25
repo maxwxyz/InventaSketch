@@ -422,7 +422,7 @@ namespace InventaSketch.Modules.Charts
         {
             "hist", "hist2d", "pie", "boxplot", "violinplot", "contour", "contourf", "imshow", "pcolormesh", "pcolor", "quiver", "streamplot", "stackplot",
             "stem", "hexbin", "specgram", "table", "clabel", "tricontour", "tricontourf", "polar", "matshow", "spy", "eventplot", "broken_barh", "fill",
-            "fill_betweenx", "inset_axes", "secondary_xaxis", "secondary_yaxis", "arrow", "add_patch", "barbs", "axline", "axhspan", "ecdf", "stairs",
+            "inset_axes", "secondary_xaxis", "secondary_yaxis", "arrow", "add_patch", "barbs", "axline", "ecdf", "stairs",
             "plot_date", "acorr", "xcorr", "psd", "csd", "cohere", "magnitude_spectrum", "angle_spectrum", "phase_spectrum", "triplot", "tripcolor",
         };
 
@@ -452,6 +452,8 @@ namespace InventaSketch.Modules.Charts
                 case "barh": return Bar(ax, a, true);
                 case "bar_label": ax.BarValues = true; return PyNone.Instance;
                 case "fill_between": return FillBetween(ax, a);
+                case "fill_betweenx": return FillBetweenX(ax, a);
+                case "axhspan": return HSpan(ax, a);
                 case "axhline": return ValueLine(ax, a, true);
                 case "axvline": return ValueLine(ax, a, false);
                 case "hlines": return Lines(ax, a, true);
@@ -875,25 +877,36 @@ namespace InventaSketch.Modules.Charts
         private FigRegion RegionLook(PyArgs a)
         {
             var r = new FigRegion();
-            var hatch = (a["hatch"] as PyStr)?.V;
+            var hatch = AreaPattern.Clean((a["hatch"] as PyStr)?.V);
             var face = Color(a.Any("facecolor", "fc", "color"));
+            var faceOnly = Color(a.Any("facecolor", "fc"));
             var edge = Color(a.Any("edgecolor", "ec"));
-            if (!string.IsNullOrEmpty(hatch))
+            if (hatch is not null)
             {
-                var h = hatch!;
-                var c = h[0];
-                r.Fill = c is 'x' or 'X' or '+' ? "cross" : c is '.' or 'o' or 'O' or '*' ? "dots" : "hatch";
-                r.Angle = c switch { '/' => 45, '\\' => 135, '|' => 90, '-' => 0, 'x' or 'X' => 45, '+' => 0, _ => (double?)null };
-                var times = h.Count(ch => ch == c);
-                r.Spacing = times >= 3 ? 0.8 : times == 2 ? 1.2 : 2.0;
+                // The hatch pattern as it is ('/', '\\', '|', '-', '+', 'x', 'o', 'O', '.', '*', repeated for density); its colour is
+                // the edge colour (matplotlib draws the hatch in it), else the face colour; a face colour of its own is a tint.
+                r.Hatch = hatch;
+                r.Fill = faceOnly is { } fo && fo != "none" ? "solid" : "hatch";
                 r.Color = edge is { } e && e != "none" ? e : face is { } f && f != "none" ? f : null;
             }
             else
             {
-                r.Fill = "solid";
+                r.Fill = face == "none" ? "none" : "solid";
                 r.Color = face is { } f && f != "none" ? f : null;
             }
+            // An edge line: an edge colour without linewidth=0, or a line style/width given.
+            var lw = a.Any("linewidth", "lw", "linewidths");
+            var width = lw is not null && PyEval.IsNumber(lw) ? PyEval.Num(lw) : (double?)null;
+            var style = LineName(a.Any("linestyle", "ls", "linestyles"), out _);
+            if (edge is { } ec && ec != "none" && width is not 0 || style is not null && width is not 0 && width is not null)
+            {
+                r.Edge = style ?? "solid";
+                if (edge is { } ecol && ecol != "none" && ecol != r.Color) r.EdgeColor = ecol;
+            }
             if (a["alpha"] is { } al && PyEval.IsNumber(al)) r.Opacity = Math.Max(0, Math.Min(1, PyEval.Num(al)));
+            if (a["label"] is { } lv && lv is not PyNone && PyEval.Str(lv) is { Length: > 0 } label && !label.StartsWith("_", StringComparison.Ordinal))
+                r.Label = new I18nText(MathText(label));
+            if (a["step"] is PyStr { V: var st } && st is "pre" or "post" or "mid") r.Step = st;
             return r;
         }
 
@@ -909,9 +922,37 @@ namespace InventaSketch.Modules.Charts
             if (fill.Y1.Length != x.Length || fill.Y2 is { } y2 && y2.Length != x.Length) throw No("x and y have different lengths.", "x und y sind verschieden lang.");
             if (PyEval.IsNumber(y1v) && fill.Y2 is not null) { (fill.Y1, fill.Y2) = (fill.Y2, null); fill.Y2Const = PyEval.Num(y1v); }
             if (a["where"] is { } w && w is not PyNone) fill.Where = PyEval.Numbers(w).Select(v => v != 0).ToArray();
-            if (a["step"] is { } st && st is not PyNone) Note("Stepped filled areas are filled along straight edges.", "Gestufte Flächen werden mit geraden Rändern gefüllt.");
-            if (a["label"] is { } lv && lv is not PyNone) fill.Label = PyEval.Str(lv);
             ax.Fills.Add(fill);
+            return new PyObj("artist");
+        }
+
+        /// <summary>fill_betweenx(y, x1, x2=0, where=, step=): horizontally between two curves x(y) or a curve and x = constant.</summary>
+        private PyVal FillBetweenX(ImpAxes ax, PyArgs a)
+        {
+            var y = Data(a.Arg(0, "y") ?? throw No("fill_betweenx needs y and x.", "fill_betweenx braucht y und x."));
+            var x1v = a.Arg(1, "x1") ?? throw No("fill_betweenx needs y and x.", "fill_betweenx braucht y und x.");
+            var x2v = a.Arg(2, "x2");
+            var fill = new ImpFill { X = y, Line = Line, Code = Code, Region = RegionLook(a), Horizontal = true };
+            fill.Y1 = PyEval.IsNumber(x1v) ? Enumerable.Repeat(PyEval.Num(x1v), y.Length).ToArray() : Data(x1v);
+            if (x2v is null || PyEval.IsNumber(x2v)) fill.Y2Const = x2v is null ? 0 : PyEval.Num(x2v);
+            else fill.Y2 = Data(x2v);
+            if (fill.Y1.Length != y.Length || fill.Y2 is { } x2 && x2.Length != y.Length) throw No("x and y have different lengths.", "x und y sind verschieden lang.");
+            if (PyEval.IsNumber(x1v) && fill.Y2 is not null) { (fill.Y1, fill.Y2) = (fill.Y2, null); fill.Y2Const = PyEval.Num(x1v); }
+            if (a["where"] is { } w && w is not PyNone) fill.Where = PyEval.Numbers(w).Select(v => v != 0).ToArray();
+            ax.Fills.Add(fill);
+            return new PyObj("artist");
+        }
+
+        /// <summary>axhspan(ymin, ymax): a band over the whole width (a band over part of the width is not imported).</summary>
+        private PyVal HSpan(ImpAxes ax, PyArgs a)
+        {
+            var y0 = PyEval.Num(a.Arg(0, "ymin") ?? throw No("axhspan needs two y values.", "axhspan braucht zwei y-Werte."));
+            var y1 = PyEval.Num(a.Arg(1, "ymax") ?? throw No("axhspan needs two y values.", "axhspan braucht zwei y-Werte."));
+            if (a.Arg(2, "xmin") is { } x0 && PyEval.Num(x0) > 0.001 || a.Arg(3, "xmax") is { } x1 && PyEval.Num(x1) < 0.999)
+                throw No("A band over part of the width is not imported.", "Ein Band über einen Teil der Breite wird nicht importiert.");
+            var r = RegionLook(a);
+            r.Kind = "hspan"; r.Y1 = Math.Min(y0, y1); r.Y2 = Math.Max(y0, y1);
+            ax.Spans.Add(r);
             return new PyObj("artist");
         }
 
@@ -964,7 +1005,6 @@ namespace InventaSketch.Modules.Charts
                 throw No("A span over part of the height is not imported.", "Ein Bereich über einen Teil der Höhe wird nicht importiert.");
             var r = RegionLook(a);
             r.Kind = "span"; r.From = Math.Min(x0, x1); r.To = Math.Max(x0, x1);
-            if (a["label"] is { } lv && lv is not PyNone) Note("The legend entry of a span is not imported.", "Der Legendeneintrag eines Bereichs wird nicht importiert.");
             ax.Spans.Add(r);
             return new PyObj("artist");
         }

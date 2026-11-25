@@ -240,7 +240,8 @@ namespace InventaSketch.AddIn.OnSlide
             list.Add((main, true));
 
             var choiceKeys = new HashSet<string>(BarChoices(first, int.MaxValue).Select(c => c.Key));
-            foreach (var (a, pictorial) in BarActions(actions.Where(a => a.Id != "chart.data" && (a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains))), text is not null))
+            // Choice options never become single buttons (a choice is a dropdown; the pie has them as "Label ▸").
+            foreach (var (a, pictorial) in BarActions(actions.Where(a => a.Id != "chart.data" && a.Choice is null && (a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains))), text is not null))
                 if (pictorial) list.Add((new BarButton("act:" + a.Id, "", a.Label.Get(_lang()) + (a.Input is not null ? " \u2026" : ""), Active: a.IsActive) { IconId = a.Icon }, false));
             if (viewChip is not null) list.Add((viewChip, false));
             list.Add((insert, false));
@@ -342,10 +343,13 @@ namespace InventaSketch.AddIn.OnSlide
             // The centre names the element (UX review F1); the place keeps its short label – the name there was cut off and
             // said the same twice (after-run of the review). Resting on it opens the element's commands.
             var editLabel = T("Edit ▸", "Bearbeiten ▸");
+            List<PieItem>? partStyle = null;
             if (_part is not null && PartOwner() is { } owner && SelectedPartInfo(owner) is { } part)
             {
                 editLabel = part.Label.Get(_lang()) + " ▸";
-                edit.AddRange(PartPieItems().Select(e => e.Item));
+                var (partEdit, styleOfPart) = PartPieItems();
+                edit.AddRange(partEdit);
+                partStyle = styleOfPart;
             }
             else
             {
@@ -355,8 +359,14 @@ namespace InventaSketch.AddIn.OnSlide
                     edit.Add(new PieItem("menu:type", T("Line type ▸", "Linientyp ▸")) { IconId = IconIds.Cycle, Hint = T("Line, arrow, dimension, lead line …; the ends stay", "Linie, Pfeil, Maß, Hinweislinie …; die Enden bleiben") });
                     edit.Add(new PieItem("menu:label", T("Label ▸", "Beschriftung ▸")) { Hint = T("Texts and switches of the label", "Texte und Schalter der Beschriftung") });
                 }
-                // Actions that only set a choice shown under "Style" stay there (no two entries for one thing).
-                edit.AddRange(actions.Where(a => a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains)).Select(ActionItem));
+                // Actions that only set a choice shown under "Style" stay there (no two entries for one thing); the element's
+                // own action choices are one entry each: menus ("Add area ▸") here, state choices under "Style".
+                edit.AddRange(actions.Where(a => a.Choice is null && (a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains))).Select(ActionItem));
+                if (first is not null)
+                    edit.AddRange(ElementActionChoices(first).Where(c => c.IsMenu).Select(c => new PieItem("menu:c:" + c.Key, c.Tip + " ▸")
+                    {
+                        Hint = T("Choose: ", "Wählen: ") + string.Join(", ", c.Options.Take(4).Select(o => o.Label)) + (c.Options.Count > 4 ? ", …" : ""),
+                    }));
                 if (first is not null && Assemblies.CanExplode(registry, first)) edit.Add(PieCommand("explode", IconIds.Explode));
                 if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first)) edit.Add(PieCommand("sketch", IconIds.Trace));
                 if (MovablePart() is not null) edit.Add(PieCommand("motion", IconIds.Motion, active: AddInSettings.Motion));
@@ -378,7 +388,11 @@ namespace InventaSketch.AddIn.OnSlide
 
             // Bottom: style – every choice opens its options.
             var style = new List<PieItem>();
-            foreach (var c in choices.Where(c => c.Key != "@view"))
+            // A selected part: its own choices ("Curve shape: Smoothed ▸", "Pattern: // ▸" …).
+            var styleChoices = partStyle is not null ? new List<BarChoice>()
+                : choices.Where(c => c.Key != "@view").Concat(first is null ? new List<BarChoice>() : ElementActionChoices(first).Where(c => !c.IsMenu)).ToList();
+            if (partStyle is not null) style.AddRange(partStyle);
+            foreach (var c in styleChoices)
             {
                 var cur = c.CurrentOption;
                 style.Add(new PieItem("menu:c:" + c.Key, c.Tip + (cur is null ? "" : ": " + cur.Label)) { IconId = cur?.IconId, Icon = cur?.IconId is null ? cur?.Icon : null, Hint = T("Choose: ", "Wählen: ") + string.Join(", ", c.Options.Take(4).Select(o => o.Label)) + (c.Options.Count > 4 ? ", …" : "") });
@@ -427,16 +441,19 @@ namespace InventaSketch.AddIn.OnSlide
         private List<PieItem>? ChoiceMenu(string key, PieItem back)
         {
             var first = _unit?.Objects.FirstOrDefault(o => _registry().Type(o.Type) is not null);
-            var choice = first is null ? null : BarChoices(first, int.MaxValue).FirstOrDefault(c => c.Key == key);
+            var choice = first is null ? null : AllChoices(first).FirstOrDefault(c => c.Key == key);
             if (choice is null) return null;
-            var items = new List<PieItem> { back };
-            items.AddRange(choice.Options.Take(MaxSubItems).Select(o => new PieItem("pick:" + key + ":" + o.Value, o.Label, Active: o.Value == choice.Current)
+            var options = choice.Options.Select(o => new PieItem("pick:" + key + ":" + o.Value, o.Label, Active: !choice.IsMenu && o.Value == choice.Current)
             {
                 IconId = o.IconId,
                 Icon = o.IconId is null ? o.Icon : null,
                 Hint = choice.Tip,
-            }));
-            return items;
+            }).ToList();
+            // Long choices (fill patterns) continue in "More ▸", like every pie submenu.
+            var menuKey = "c-" + key;
+            AddMenu(_pieMenus, menuKey, options, T("More ▸", "Mehr ▸"));
+            _pieTitles[menuKey] = choice.Tip;
+            return new List<PieItem> { back }.Concat(_pieMenus[menuKey]).ToList();
         }
 
         private void OpenPie(POINT pt, SlideView view, string? submenu = null)
@@ -464,7 +481,7 @@ namespace InventaSketch.AddIn.OnSlide
             else if (submenu.StartsWith("c:", StringComparison.Ordinal))
             {
                 items = ChoiceMenu(submenu.Substring(2), back);
-                title = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null) is { } fo ? BarChoices(fo, int.MaxValue).FirstOrDefault(c => c.Key == submenu.Substring(2))?.Tip : null;
+                title = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null) is { } fo ? AllChoices(fo).FirstOrDefault(c => c.Key == submenu.Substring(2))?.Tip : null;
             }
             else if (submenu == "connected")
             {

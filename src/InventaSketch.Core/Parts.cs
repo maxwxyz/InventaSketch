@@ -22,6 +22,12 @@ namespace InventaSketch.Core
     {
         /// <summary>True while the part is switched off (it can still be selected from a list and shown again).</summary>
         public bool Hidden { get; init; }
+
+        /// <summary>
+        /// A fine part (a data point of a curve): selectable on the drawing and through its handle, but left out of part lists
+        /// and of the Tab order, which would otherwise be flooded.
+        /// </summary>
+        public bool Detail { get; init; }
     }
 
     /// <summary>
@@ -231,11 +237,23 @@ namespace InventaSketch.Core
             return null;
         }
 
-        private static readonly DashStyle[] DashCycle = { DashStyle.Solid, DashStyle.Dash, DashStyle.Dot, DashStyle.DashDot };
+        private static readonly (DashStyle Dash, string Value, I18nText Label)[] Dashes =
+        {
+            (DashStyle.Solid, "solid", new I18nText("Solid", "Durchgezogen")),
+            (DashStyle.Dash, "dash", new I18nText("Dashed", "Gestrichelt")),
+            (DashStyle.Dot, "dot", new I18nText("Dotted", "Gepunktet")),
+            (DashStyle.DashDot, "dashdot", new I18nText("Dash-dot", "Strichpunkt")),
+        };
+
+        /// <summary>Id of a type's part action that removes the part itself (a data point, a curve, an area): the Del key runs it.</summary>
+        public const string DeleteAction = "part.delete";
+
+        /// <summary>Key of the generic line style choice of a part (options "part.dash=solid", "part.dash=dot" …).</summary>
+        public const string DashChoice = "part.dash";
 
         /// <summary>
-        /// Actions every part offers: show/hide, thicker, thinner, next dash style, reset (its own look removed). Type actions
-        /// come first (<see cref="ObjectType.PartActions"/>), these after them.
+        /// Actions every part offers: show/hide, thicker, thinner, the line style (a choice: solid, dashed, dotted, dash-dot),
+        /// reset (its own look removed). Type actions come first (<see cref="ObjectType.PartActions"/>), these after them.
         /// </summary>
         public static IEnumerable<ContextAction> Generic(SketchObject o, string key, double? drawnWidth)
         {
@@ -247,10 +265,15 @@ namespace InventaSketch.Core
                 x => WithLook(x, key, p => p with { Style = (p.Style ?? new Style()) with { StrokeWidth = Math.Round(Math.Min(5, w * 1.5), 3) } })) { Group = "part" };
             yield return new ContextAction("part.thinner", new I18nText("Thinner", "Dünner"), IconIds.Decrease,
                 x => WithLook(x, key, p => p with { Style = (p.Style ?? new Style()) with { StrokeWidth = Math.Round(Math.Max(0.05, w / 1.5), 3) } })) { Group = "part" };
-            var dash = look.Style?.Dash ?? DashStyle.Solid;
-            var nextDash = DashCycle[(Array.IndexOf(DashCycle, dash) + 1 + DashCycle.Length) % DashCycle.Length];
-            yield return new ContextAction("part.dash", new I18nText("Line style", "Strichart"), IconIds.LineDash,
-                x => WithLook(x, key, p => p with { Style = (p.Style ?? new Style()) with { Dash = nextDash } })) { Group = "part" };
+            // The current option is the part's own dash only (a part drawn dashed by the type shows no option current).
+            var dash = look.Style?.Dash;
+            var choice = new ActionChoice(DashChoice, new I18nText("Line style", "Strichart"));
+            foreach (var (d, value, label) in Dashes)
+            {
+                var to = d;
+                yield return ActionChoices.Option(choice, value, label, IconIds.ForDash(d), dash == d,
+                    x => WithLook(x, key, p => p with { Style = (p.Style ?? new Style()) with { Dash = to } })) with { Group = "part" };
+            }
             if (!look.IsEmpty)
                 yield return new ContextAction("part.reset", new I18nText("Reset look", "Aussehen zurücksetzen"), IconIds.Cycle,
                     x => WithLook(x, key, _ => new PartLook())) { Group = "part" };

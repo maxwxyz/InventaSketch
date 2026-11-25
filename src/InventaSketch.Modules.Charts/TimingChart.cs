@@ -578,10 +578,9 @@ namespace InventaSketch.Modules.Charts
                     { Group = "timing", IsEnabled = count > 1 },
                 Common.GridToggle(o),
                 Prm.Toggle(o, "chart.timing.labels", "timelabels", true, new I18nText("Time labels", "Zeitbeschriftung")),
-                Prm.Cycle(o, "chart.timing.slope", SlopeDef, new I18nText("Edges", "Flanken")),
                 MarkersInput(o, lang),
                 SpansInput(o, lang),
-            };
+            }.Concat(Prm.Options(o, "chart.timing.slope", SlopeDef, new I18nText("Edges", "Flanken")));
         }
 
         /// <summary>
@@ -606,7 +605,7 @@ namespace InventaSketch.Modules.Charts
                             (x, text) => x.WithParam("signals", TimingNotation.Rewrite(SignalsText(x), (s, old) => s == i ? TimingNotation.CleanName(text) : old, null))) with { Group = "timing" });
                         list.Add(new ContextAction("chart.timing.removeAt", new I18nText("Remove this signal", "Dieses Signal entfernen"), IconIds.Delete, x => RemoveSignal(x, i))
                             { Group = "timing", IsEnabled = set.Signals.Count > 1 });
-                        list.Add(A("chart.timing.slope"));
+                        list.AddRange(all.Where(a => a.Choice?.Key == "chart.timing.slope"));
                         break;
                     }
                 case ChartTags.Ref when i >= 0:

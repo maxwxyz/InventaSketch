@@ -20,7 +20,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var chart = Fx.Item(r, "chart.limits", new Vec2(120, 90));
             var limits = ChartData.Numbers(chart.Str("limits", ""));
             var handles = r.DragHandles(chart, Fx.Ctx());
-            Assert.Equal(limits.Count, handles.Count);
+            Assert.Equal(limits.Count, handles.Count(x => x.Key.StartsWith("limit.", System.StringComparison.Ordinal)));
             var h = handles.Single(x => x.Key == "limit.1");
             Assert.Equal(DragConstraint.Vertical, h.Constraint);
             Assert.Equal(ChartTags.Limit, h.Part);
@@ -64,10 +64,12 @@ namespace InventaSketch.Modules.Charts.Tests
         }
 
         [Fact]
-        public void ChartsWithoutLimitsHaveNoHandles()
+        public void ChartsWithoutLimitsHaveOnlyTheirPointAndCurveHandles()
         {
             var r = Fx.Reg();
-            Assert.Empty(r.DragHandles(Fx.Item(r, "chart.line"), Fx.Ctx()));
+            var line = r.DragHandles(Fx.Item(r, "chart.line"), Fx.Ctx());
+            Assert.NotEmpty(line);
+            Assert.All(line, h => Assert.True(h.Key.StartsWith("point.", System.StringComparison.Ordinal) || h.ByPart, h.Key));
             Assert.Empty(r.DragHandles(Fx.Item(r, "chart.column"), Fx.Ctx()));
         }
 
@@ -83,7 +85,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var fig = r.Type(FigureChart.TypeId)!.Create(new Vec2(120, 90)).WithParam("spec", FigureJson);
             var handles = r.DragHandles(fig, Fx.Ctx());
-            var keys = handles.Select(h => h.Key).ToList();
+            var keys = handles.Where(h => h.Part is not { } p || !p.StartsWith("point.", System.StringComparison.Ordinal) && !h.ByPart).Select(h => h.Key).ToList();
             Assert.Equal(new[] { "ref.0", "ref.1", "ref.2", "xmark.0", "ymark.0.0", "region.0.from", "region.0.to" }, keys);
             DragHandle H(string key) => handles.Single(h => h.Key == key);
             Assert.Equal(DragConstraint.Vertical, H("ref.0").Constraint);

@@ -40,6 +40,8 @@ namespace InventaSketch.Modules.Charts
         public string Code = "";
         /// <summary>pgfplots: the series indices of the named paths (already resolved).</summary>
         public int? SeriesA, SeriesB;
+        /// <summary>fill_betweenx: <see cref="X"/> holds the y values, <see cref="Y1"/>/<see cref="Y2"/> the x values of the edges.</summary>
+        public bool Horizontal;
     }
 
     /// <summary>A note whose points may be given as axes fractions (resolved with the final axis ranges).</summary>
@@ -426,14 +428,15 @@ namespace InventaSketch.Modules.Charts
         {
             var r = fill.Region;
             r.Panel = null;
-            if (fill.Label is not null)
-                report.Skip(fill.Line, fill.Code, new I18nText("The legend entry of a filled area is not imported.", "Der Legendeneintrag einer Fläche wird nicht importiert."));
-            int Edge(double[] ys)
+            if (fill.Label is { Length: > 0 } label && !label.StartsWith("_", StringComparison.Ordinal)) r.Label ??= new I18nText(label);
+            // fill_betweenx: the edges are curves x(y) – their points are (edge value, y).
+            int Edge(double[] values)
             {
-                var k = Match(spec, panel, offset, fill.X, ys);
+                double[] xs = fill.Horizontal ? values : fill.X, ys = fill.Horizontal ? fill.X : values;
+                var k = Match(spec, panel, offset, xs, ys);
                 if (k >= 0) return k;
                 if (spec.Series.Count >= FigureSpec.MaxSeries) return -1;
-                spec.Series.Add(new FigSeries { X = fill.X.ToList(), Y = ys.ToList(), Panel = panel, Color = r.Color, Width = 0.1 });
+                spec.Series.Add(new FigSeries { X = xs.ToList(), Y = ys.ToList(), Panel = panel, Color = r.Color, Width = 0.1 });
                 hidden.Add(spec.Series.Count - 1);
                 edges.Add(spec.Series.Count - 1);
                 return spec.Series.Count - 1;
@@ -445,30 +448,36 @@ namespace InventaSketch.Modules.Charts
             }
             var a1 = Edge(fill.Y1);
             if (a1 < 0) return null;
+            // The where-mask as "curve A above (right of) the other edge", "below (left of)" or everywhere; null if it is neither.
+            string? WhereOf(Func<int, double> other)
+            {
+                if (fill.Where is not { } w || w.All(x => x)) return "";
+                var n = Math.Min(w.Length, fill.Y1.Length);
+                bool Same(Func<int, bool> f) => Enumerable.Range(0, n).All(i => !Fmt.Finite(fill.Y1[i]) || !Fmt.Finite(other(i)) || w[i] == f(i));
+                if (Same(i => fill.Y1[i] >= other(i)) || Same(i => fill.Y1[i] > other(i))) return "above";
+                if (Same(i => fill.Y1[i] <= other(i)) || Same(i => fill.Y1[i] < other(i))) return "below";
+                return null;
+            }
+            I18nText NotRead() => new("This where-condition of a filled area is not imported (only “curve above/below the other edge” is read).",
+                "Diese where-Bedingung einer Fläche wird nicht importiert (nur „Kurve über/unter dem anderen Rand“ wird gelesen).");
             if (fill.Y2 is null)
             {
-                r.Kind = "below"; r.A = a1; r.Base = fill.Y2Const;
-                if (fill.Where is not null)
-                {
-                    report.Skip(fill.Line, fill.Code, new I18nText("The where-condition of a filled area down to a constant is not imported; the whole area is filled.", "Die where-Bedingung einer Fläche bis zu einer Konstanten wird nicht importiert; die ganze Fläche wird gefüllt."));
-                }
+                var where = WhereOf(_ => fill.Y2Const);
+                if (where is null) { report.Skip(fill.Line, fill.Code, NotRead()); return null; }
+                r.A = a1;
+                if (fill.Horizontal) { r.Kind = "betweenx"; r.X2 = fill.Y2Const; r.Where = where.Length == 0 ? null : where; }
+                else if (where.Length == 0) { r.Kind = "below"; r.Base = fill.Y2Const; }
+                else { r.Kind = "between"; r.Y2 = fill.Y2Const; r.Where = where; }
                 return r;
             }
-            var b1 = Edge(fill.Y2);
+            var y2 = fill.Y2;
+            var b1 = Edge(y2);
             if (b1 < 0) return null;
-            r.Kind = "between"; r.A = a1; r.B = b1;
-            if (fill.Where is { } w)
-            {
-                var n = Math.Min(w.Length, Math.Min(fill.Y1.Length, fill.Y2.Length));
-                bool Same(Func<int, bool> f) => Enumerable.Range(0, n).All(i => !Fmt.Finite(fill.Y1[i]) || !Fmt.Finite(fill.Y2[i]) || w[i] == f(i));
-                if (Same(i => fill.Y1[i] >= fill.Y2[i]) || Same(i => fill.Y1[i] > fill.Y2[i])) r.Above = true;
-                else if (Same(i => fill.Y2[i] >= fill.Y1[i]) || Same(i => fill.Y2[i] > fill.Y1[i])) { r.A = b1; r.B = a1; r.Above = true; }
-                else if (!w.All(x => x))
-                {
-                    report.Skip(fill.Line, fill.Code, new I18nText("This where-condition of a filled area is not imported (only “curve 1 above curve 2” is read).", "Diese where-Bedingung einer Fläche wird nicht importiert (nur „Kurve 1 über Kurve 2“ wird gelesen)."));
-                    return null;
-                }
-            }
+            r.Kind = fill.Horizontal ? "betweenx" : "between"; r.A = a1; r.B = b1;
+            var w2 = WhereOf(i => i < y2.Length ? y2[i] : double.NaN);
+            if (w2 is null) { report.Skip(fill.Line, fill.Code, NotRead()); return null; }
+            if (w2 == "below" && !fill.Horizontal) { r.A = b1; r.B = a1; r.Where = "above"; }
+            else r.Where = w2.Length == 0 ? null : w2;
             return r;
         }
 

@@ -52,7 +52,7 @@ namespace InventaSketch.AddIn.OnSlide
         private void StepPart(bool back)
         {
             if (PartOwner() is not { } o) return;
-            var keys = _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).Where(p => !p.Hidden).Select(p => p.Key).ToList();
+            var keys = _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).Where(p => !p.Hidden && !p.Detail).Select(p => p.Key).ToList();
             if (keys.Count == 0) return;
             var i = _part is null ? -1 : keys.IndexOf(_part);
             var next = i < 0 ? (back ? keys.Count - 1 : 0) : (i + (back ? keys.Count - 1 : 1)) % keys.Count;
@@ -68,7 +68,11 @@ namespace InventaSketch.AddIn.OnSlide
         private PartInfo? SelectedPartInfo(SketchObject o)
             => _part is null ? null : _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).FirstOrDefault(p => p.Key == _part);
 
-        /// <summary>Bar of a selected part: its name, its actions, "Parts ▸" and "whole element".</summary>
+        /// <summary>
+        /// Bar of a selected part: its name, its three most used commands, "⋯". A choice among several options (curve shape,
+        /// line style, pattern …) is one dropdown button "choice:@p.&lt;key&gt;" showing the current option (its pictogram or
+        /// picture, else a short text), never a cycle (maintainer 2026-11-25).
+        /// </summary>
         private List<BarButton>? PartButtons()
         {
             if (_part is null || PartOwner() is not { } o) return null;
@@ -76,9 +80,17 @@ namespace InventaSketch.AddIn.OnSlide
             if (info is null) { _part = null; return null; }
             var list = new List<BarButton> { new("info:part", info.Label.Get(_lang()), T("Selected part (click or Tab: another part, Esc: whole element)", "Ausgewähltes Teil (Klick oder Tab: anderes Teil, Esc: ganzes Element)")) };
             list.Add(new BarButton("", "", "", Separator: true));
-            // The same structure as every bar: the part's name, its three most used commands, "⋯" (the rest: the pie).
-            foreach (var a in PartActions(o).Where(a => a.IsEnabled).Take(MaxBarButtons - 1))
+            var actions = PartActions(o);
+            var choices = PartChoices(o);
+            foreach (var e in ActionChoiceBar.Entries(actions).Where(e => e.IsChoice || e.Action!.IsEnabled).Take(MaxBarButtons - 1))
             {
+                if (e.Choice is { } c)
+                {
+                    var bc = choices.FirstOrDefault(x => x.Key == ActionChoiceBar.Key(ActionChoiceBar.PartPrefix, c));
+                    if (bc is not null) list.Add(ChoiceButton(bc));
+                    continue;
+                }
+                var a = e.Action!;
                 var label = a.Label.Get(_lang());
                 var tip = label + (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal) ? " …" : "");
                 list.Add(IsTelling(a.Icon)
@@ -90,13 +102,54 @@ namespace InventaSketch.AddIn.OnSlide
             return list;
         }
 
-        /// <summary>Pie entries of a selected part (first, essential).</summary>
-        private IEnumerable<(PieItem Item, bool Essential)> PartPieItems()
+        /// <summary>The dropdown button of a choice: the current option's pictogram or picture (or a short text) and a caret.</summary>
+        private BarButton ChoiceButton(BarChoice c)
         {
-            if (_part is null || PartOwner() is not { } o) yield break;
-            foreach (var a in PartActions(o))
-                yield return (new PieItem("part:" + a.Id, a.Label.Get(_lang()), a.IsEnabled, a.IsActive) { IconId = a.Icon }, true);
-            yield return (new PieItem("part:none", T("Whole element", "Ganzes Element")) { IconId = IconIds.SelectAssembly }, true);
+            var cur = c.CurrentOption;
+            var tip = c.Tip + (cur is null ? " …" : ": " + cur.Label) + T(" – click to choose", " – klicken zum Wählen");
+            return c.Pictorial
+                ? new BarButton("choice:" + c.Key, "", tip, Active: _barChoice == c.Key) { IconId = cur?.IconId, Icon = cur?.IconId is null ? cur?.Icon : null, Menu = true, Mirror = c.Mirror }
+                : new BarButton("choice:" + c.Key, ShortLabel(cur?.Label ?? c.Tip, 16), tip, Active: _barChoice == c.Key) { Menu = true };
+        }
+
+        /// <summary>
+        /// Pie entries of a selected part: its commands and menus ("Fill to ▸") for the Edit place, its state choices ("Line
+        /// style: Dashed ▸", opening the options with the current one marked) for the Style place.
+        /// </summary>
+        private (List<PieItem> Edit, List<PieItem> Style) PartPieItems()
+        {
+            var edit = new List<PieItem>();
+            var style = new List<PieItem>();
+            if (_part is null || PartOwner() is not { } o) return (edit, style);
+            var choices = PartChoices(o);
+            foreach (var e in ActionChoiceBar.Entries(PartActions(o)))
+            {
+                if (e.Choice is { } c)
+                {
+                    var bc = choices.FirstOrDefault(x => x.Key == ActionChoiceBar.Key(ActionChoiceBar.PartPrefix, c));
+                    var cur = bc?.CurrentOption;
+                    var item = new PieItem("menu:c:" + ActionChoiceBar.Key(ActionChoiceBar.PartPrefix, c), ActionChoiceBar.PieLabel(c, e.Options, _lang()))
+                    {
+                        IconId = cur?.IconId, Icon = cur?.IconId is null ? cur?.Icon : null,
+                        Hint = T("Choose: ", "Wählen: ") + string.Join(", ", e.Options.Take(4).Select(x => x.Label.Get(_lang()))) + (e.Options.Count > 4 ? ", …" : ""),
+                    };
+                    (c.IsMenu ? edit : style).Add(item);
+                    continue;
+                }
+                var a = e.Action!;
+                edit.Add(new PieItem("part:" + a.Id, a.Label.Get(_lang()), a.IsEnabled, a.IsActive) { IconId = IsTelling(a.Icon) || a.Icon == IconIds.Delete ? a.Icon : null });
+            }
+            edit.Add(new PieItem("part:none", T("Whole element", "Ganzes Element")) { IconId = IconIds.SelectAssembly });
+            return (edit, style);
+        }
+
+        /// <summary>Del with a part selected: the part's own delete (a point, a curve, an area …), else it is hidden – never the whole element.</summary>
+        private void DeletePart()
+        {
+            if (_part is null || PartOwner() is not { } o || _unit is null || CurrentSlide() is not { } slide) return;
+            if (ActionChoiceBar.DeleteActionId(PartActions(o)) is not { } id) { Log.Info("Del on part " + _part + ": nothing to delete"); return; }
+            Log.Info("Del on part " + _part + ": " + id);
+            if (SketchUnits.Read(_unit.Shape) is { } unit) PartCommand(slide, unit, "part:" + id);
         }
 
         /// <summary>The "Parts ▸" pie: every part of the element (hidden ones marked), choosing one selects it.</summary>
@@ -104,7 +157,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             if (PartOwner() is not { } o) return null;
             var items = new List<PieItem> { new("menu:back", T("← Back", "← Zurück")) };
-            foreach (var p in _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).Take(MaxSubItems))
+            foreach (var p in _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).Where(p => !p.Detail).Take(MaxSubItems))
                 items.Add(new PieItem("partsel:" + p.Key, p.Label.Get(_lang()) + (p.Hidden ? T(" (hidden)", " (ausgeblendet)") : ""), Active: p.Key == _part));
             return items;
         }
@@ -144,6 +197,8 @@ namespace InventaSketch.AddIn.OnSlide
             }
             else next = action.Apply(o);
             Log.Info("Part action " + actionId + " on " + _part);
+            // A deleted part is gone: a deleted point leaves its curve selected, anything else the whole element.
+            if (actionId == PartLooks.DeleteAction) _part = ActionChoiceBar.AfterDelete(_part);
             _app.StartNewUndoEntry();
             ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { o.Id }, _ => next));
         }
@@ -163,14 +218,23 @@ namespace InventaSketch.AddIn.OnSlide
         private void DrawPart(Graphics g, SlideView view)
         {
             if (_part is null || PartOwner() is not { } o) return;
-            var drawn = Prim.Flatten(_registry().Render(o, new RenderContext(_unit!.Doc, _lang())))
-                .Where(p => p.Tag is { } t && (t == _part || t.StartsWith(_part + ".", StringComparison.Ordinal))).ToList();
+            // The drawn primitives of the part plus its part shapes (a data point: a small circle).
+            var drawn = _registry().PartPrimitives(o, _part, new RenderContext(_unit!.Doc, _lang()));
             using var pen = new Pen(Color.FromArgb(200, 31, 95, 191), (float)(2.2 * view.DeviceScale));
             foreach (var p in drawn)
             {
                 switch (p)
                 {
                     case LinePrim l: g.DrawLine(pen, view.ToScreen(l.A), view.ToScreen(l.B)); break;
+                    case EllipsePrim e:
+                        {
+                            var c = view.ToScreen(e.Center);
+                            var rx = Math.Max(5 * view.DeviceScale, Math.Abs(view.ToScreen(e.Center + new Vec2(e.Rx, 0)).X - c.X)) + 2 * view.DeviceScale;
+                            using var glow = new SolidBrush(Color.FromArgb(90, 31, 95, 191));
+                            g.FillEllipse(glow, (float)(c.X - rx), (float)(c.Y - rx), (float)(2 * rx), (float)(2 * rx));
+                            g.DrawEllipse(pen, (float)(c.X - rx), (float)(c.Y - rx), (float)(2 * rx), (float)(2 * rx));
+                            break;
+                        }
                     case PathPrim a:
                         {
                             // Each sub-path on its own (grid lines, ticks), so no line joins them.

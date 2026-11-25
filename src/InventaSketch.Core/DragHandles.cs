@@ -29,6 +29,19 @@ namespace InventaSketch.Core
         /// mirroring); <see cref="Vec2.Zero"/> for <see cref="DragConstraint.Free"/>.
         /// </summary>
         public Vec2 Direction { get; init; }
+
+        /// <summary>
+        /// Part key whose selection shows this handle too (progressive disclosure): the point handles of a curve
+        /// ("point.0.3") appear when the curve ("series.0") or one of its points is selected; elsewhere only near the pointer.
+        /// </summary>
+        public string? ShowWith { get; init; }
+
+        /// <summary>
+        /// The handle has no grip of its own: hosts drag it when the pointer is pressed on its <see cref="Part"/> while that part
+        /// is selected (a whole curve dragged by grabbing the curve). <see cref="Position"/> is a point of the part; the host
+        /// moves it by the pointer's offset and calls <see cref="ObjectType.MoveHandle"/> with the moved position.
+        /// </summary>
+        public bool ByPart { get; init; }
     }
 
     /// <summary>Helpers shared by the types that offer drag handles and by the hosts that drag them.</summary>

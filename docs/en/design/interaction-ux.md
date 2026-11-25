@@ -84,7 +84,8 @@ Derived from the engine (`ObjectType` actions, views, anchors, `Building.Ports`,
 | **Blue lock** (closed) / **grey lock** (open) beside a contact point, thin lead line | coupled, moves along / touching but released | click toggles |
 | **Blue triangle** outside a side (diagram nodes) | the next element on that side | click: a connected copy; drag: connect to another element or place |
 | **Blue-rimmed square with small arrowheads** on a value (chart limit line, value line, marker) | a value that is dragged on the drawing; the arrowheads show the allowed direction | drag: the line follows (constrained), the new value shows beside the pointer and snaps (a tenth of the axis step); release = one undo step; Esc cancels; a click selects that part |
-| **Blue outline** of a part (charts) | the selected part | the bar and pie act on it |
+| **Small blue-rimmed dot** on a data point of a curve (charts) | a value of the curve; filled blue with a soft glow when selected | appears for the selected curve (or point), the others near the pointer; click: selects the point; drag: moves it (snapped, one undo step, Esc cancels); Del deletes it |
+| **Blue outline** of a part (charts) | the selected part; pressing on a selected curve and dragging moves the whole curve | the bar and pie act on it; Del deletes the part (point, curve, area …) or hides it, never the element |
 | **Soft blue glow** around the outline of an element | it is selected (alone, with others, or by "select connected") | – (section 6a) |
 | **Fainter blue glow** | what a hovered "Select connected" entry (or "select the assembly") would add | choosing the entry selects it |
 | **Red dashed guides, red dot, label** while dragging | snapping and what it docks to | Alt suspends |
@@ -148,6 +149,27 @@ commands and "⋯". Buttons are 32 logical px (targets of at least 28 px) with a
 Tooltips say what happens plus the shortcut ("Mirror horizontally (X)", "Line style: Dashed – click to choose"). The
 multi-selection bar keeps its groups: one view for all | align and distribute | diagram layout ("Diagram ↓", "Diagram →")
 | dimension, format painter, renumber.
+
+### 5a. Choices are dropdowns (rule, 2026-11-25)
+
+Maintainer: "Curve shape is a switch to click through, not a dropdown – we had that before, did you forget everything?!"
+
+**Rule: a choice among several options is always a dropdown with the options' pictograms or pictures and labels, the
+current one marked – never a cycle button.** It holds for the element and for each of its parts:
+
+- Engine: a choice is one action per option with the same `ActionChoice` (`src/InventaSketch.Core/ActionChoices.cs`;
+  id `<choice>=<value>`, the current option `IsActive`; parameter choices through `ActionChoices.FromParam`). Options
+  without a shared pictogram carry a small drawing (`ContextAction.Preview`: the curve in that shape, the fill pattern,
+  the colour). Commands that form a menu ("Fill to ▸", "Add area ▸") are an `ActionChoice` with `IsMenu` (nothing
+  current). No `IconIds.Cycle` action that steps through options is left in the charts.
+- Bar: one dropdown button per choice, showing the current option's pictogram or picture (else a short text) and a
+  caret; a click opens the list of every option with pictogram or picture and label, the current one marked
+  (`FloatingBar.SetDropdown`, the same look as the element's choices). Part choices use the key "@p.&lt;choice&gt;",
+  element action choices "@a.&lt;choice&gt;"; picking runs the option ("part:&lt;id&gt;", "act:&lt;id&gt;").
+- Pie: state choices sit under **Style ▸** as "Label: Current ▸" (the selected part's own choices when a part is
+  selected), menus under **Edit ▸** as "Label ▸"; both open the options (long lists continue in "More ▸").
+- Web and LibreOffice: the engine reports `choice`, `choiceLabel`, `choiceMenu` and `previewSvg` with every action, so
+  they group the options the same way.
 
 ## 6. Pie menu
 
@@ -278,6 +300,20 @@ Before → after, right after selecting with the pointer away from the element:
 - COM: `OnSlide/SelectionHalo.cs` (glow, cached per selection and view, never rendered inside a hook) and
   `OnSlideController.Connected.cs` (pie entries, hover preview, Ctrl+double-click, selecting the units); log lines
   "Halo: selected=…; connected=…" and "Select connected (kind): n units"; UI scenario `select-connected`.
+
+### Round 4 (2026-11-25): choices as dropdowns, data points, curves and areas on charts
+
+- Choices on parts and elements (section 5a): `ActionChoices` in Core; every chart cycle (style, scales, legend,
+  orientation, mode, machine, system, show, function, edges, curve shape, fitted function, smoothing, line style, marker,
+  fill) became a choice; COM `OnSlideController.Choices.cs` (`ActionBarChoices`, `PartChoices`, `ElementActionChoices`,
+  option pictures from previews), `OnSlideController.Parts.cs` (part bar and pie), pure helpers
+  `OnSlide/ActionChoiceBar.cs` (tests `tests/InventaSketch.AddIn.Tests/ActionChoiceBarTests.cs`); log line
+  "Dropdown [label]: …", automation `DropItems()`, `Command("menu:c:@p.<choice>")` opens a pie submenu.
+- Data points and curves (docs/en/modules/charts.md): point parts with part shapes (`ObjectType.PartShapes`,
+  `Registry.PartPrimitives`), point grips shown with their curve (`DragHandle.ShowWith`), whole curves dragged by
+  pressing on the selected curve (`DragHandle.ByPart`), Del on a part (`PartLooks.DeleteAction`).
+- Areas: hatched and patterned areas of every matplotlib kind, created with "Fill below ▸", "Fill to ▸" and "Add area ▸".
+- UI scenarios: `chart-points`, `chart-curve-drag`, `chart-areas`, `part-choice-dropdown`.
 
 ## 9. Follow-ups (phased, with acceptance criteria)
 

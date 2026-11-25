@@ -232,6 +232,9 @@ namespace InventaSketch.AddIn
         /// <summary>Pie menu entries as last shown: "id	label[	(off)]" per line.</summary>
         public string PieItems() => _connect.LastPieItems();
 
+        /// <summary>Rows of the open bar dropdown as last shown: "id, tab, label[, tab, (current)][, tab, (picture)]" per line.</summary>
+        public string DropItems() => _connect.LastDropItems();
+
         /// <summary>Drag handles (grips) of a shape's element: "key:x,y;…" in slide points.</summary>
         public string DragHandlesOf(string shapeName)
         {

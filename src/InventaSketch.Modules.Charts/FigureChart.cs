@@ -53,7 +53,14 @@ namespace InventaSketch.Modules.Charts
             Chart c;
             try { c = new FigureComposer(o, ctx, spec, Design).Compose(); }
             catch (Exception) { return Enumerable.Empty<ChartHandle>(); }
-            return ChartHandles.Figure(c, spec, ctx.Lang).ToList();
+            return ChartHandles.Figure(c, spec, ctx.Lang).Concat(ChartPoints.Handles(c, FigureEditor.Instance, o, ctx.Lang)).ToList();
+        }
+
+        /// <summary>A small circle per data point (hit test and highlight of point parts).</summary>
+        public override IEnumerable<Primitive> PartShapes(SketchObject o, RenderContext ctx)
+        {
+            if (!FigureSpec.TryParse(SpecText(o), out var spec, out _) || spec is null) return Array.Empty<Primitive>();
+            return ChartPoints.Shapes(Compose(o, ctx), FigureEditor.Series(spec, ctx.Lang)).ToList();
         }
 
         /// <summary>Empty principle axes with the message that the specification cannot be read.</summary>
@@ -80,14 +87,14 @@ namespace InventaSketch.Modules.Charts
             var parts = base.Parts(o, ctx).ToList();
             if (!FigureSpec.TryParse(SpecText(o), out var spec, out _) || spec is null) return parts;
             var numerals = FigureComposer.NumeralIndex(spec).Texts;
-            return parts.Select(p =>
+            var list = parts.Select(p =>
             {
                 var seg = p.Key.Split('.');
                 if (seg.Length != 2 || !int.TryParse(seg[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var k) || k < 0) return p;
                 I18nText? text = seg[0] switch
                 {
                     ChartTags.Ref when k < spec.Refs.Count => spec.Refs[k].Label ?? (spec.Refs[k].Numeral is { } rn ? new I18nText(rn.Text) : null),
-                    ChartTags.Region when k < spec.Regions.Count => spec.Regions[k].Numeral is { } gn ? new I18nText(gn.Text) : null,
+                    ChartTags.Region when k < spec.Regions.Count => spec.Regions[k].Label ?? (spec.Regions[k].Numeral is { } gn ? new I18nText(gn.Text) : null),
                     ChartTags.Note when k < spec.Notes.Count => spec.Notes[k].Text,
                     _ => null,
                 };
@@ -95,6 +102,9 @@ namespace InventaSketch.Modules.Charts
                     return p with { Label = new I18nText("Reference numeral " + numerals[k], "Bezugszeichen " + numerals[k]) };
                 return text is null ? p : p with { Label = new I18nText(p.Label.En + " – " + text.En, (p.Label.De ?? p.Label.En) + " – " + text.Get(Lang.De)) };
             }).ToList();
+            // Every data point is a fine part (selected through its handle or on the drawing).
+            list.AddRange(ChartPoints.Parts(Compose(o, ctx), FigureEditor.Instance, o));
+            return list;
         }
 
         // ------------------------------------------------------------------ actions
@@ -136,7 +146,7 @@ namespace InventaSketch.Modules.Charts
             {
                 BreakInput(o, lang, spec, false, 0), BreakRemove(lang, spec, false, 0),
                 BreakInput(o, lang, spec, true, 0), BreakRemove(lang, spec, true, 0),
-            });
+            }).Concat(spec is null ? Array.Empty<ContextAction>() : ChartAreas.AddActions(o, FigureEditor.Instance, lang));
         }
 
         // ------------------------------------------------------------------ axis breaks
@@ -215,30 +225,62 @@ namespace InventaSketch.Modules.Charts
 
         private static double Round(double v) => v == 0 || !Fmt.Finite(v) ? v : Math.Round(v, Math.Max(0, Math.Min(12, 2 - (int)Math.Floor(Math.Log10(Math.Abs(v))))));
 
-        private static readonly (string Value, string En, string De)[] LineStyles =
+        private static readonly (string Value, I18nText Label)[] LineStyles =
         {
-            ("solid", "solid", "durchgezogen"), ("dash", "dashed", "gestrichelt"), ("dot", "dotted", "gepunktet"), ("dashdot", "dash-dot", "strichpunktiert"),
+            ("solid", new I18nText("Solid", "Durchgezogen")), ("dash", new I18nText("Dashed", "Gestrichelt")), ("dot", new I18nText("Dotted", "Gepunktet")),
+            ("dashdot", new I18nText("Dash-dot", "Strichpunktiert")), ("longdash", new I18nText("Long dashes", "Lange Striche")), ("dashdotdot", new I18nText("Dash-dot-dot", "Strich-Punkt-Punkt")),
         };
 
-        private static readonly (string Value, string En, string De)[] Fills =
+        private static readonly (string? Value, I18nText Label)[] MarkerChoices =
         {
-            ("hatch", "hatched", "schraffiert"), ("cross", "cross-hatched", "kreuzschraffiert"), ("solid", "solid", "flächig"), ("dots", "dotted", "gepunktet"),
+            (null, new I18nText("No markers", "Keine Marker")), ("circle", new I18nText("Circles", "Kreise")), ("square", new I18nText("Squares", "Quadrate")),
+            ("triangle", new I18nText("Triangles", "Dreiecke")), ("diamond", new I18nText("Diamonds", "Rauten")), ("cross", new I18nText("Crosses", "Kreuze")), ("plus", new I18nText("Plus signs", "Pluszeichen")),
         };
 
-        private static (string Value, string En, string De) Next((string Value, string En, string De)[] list, string? current)
+        /// <summary>The line style as a choice (option ids "chart.figure.line=dash" …; pictograms of the dash styles).</summary>
+        private static IEnumerable<ContextAction> LineChoice(Lang lang, string current, Action<FigureSpec, string> set)
         {
-            var i = Array.FindIndex(list, x => x.Value == current);
-            return list[(i + 1 + list.Length) % list.Length];
+            var choice = new ActionChoice("chart.figure.line", new I18nText("Line style", "Linienart"));
+            foreach (var (value, label) in LineStyles)
+            {
+                var v = value;
+                yield return ActionChoices.Option(choice, v, label, IconIds.ForDash(FigureComposer.DashOf(v, DashStyle.Solid)), v == current,
+                    x => SetSpec(x, lang, s => set(s, v))) with { Group = "figure" };
+            }
+        }
+
+        /// <summary>The markers of a curve as a choice (none, circle, square …), each option with its marker as preview.</summary>
+        private static IEnumerable<ContextAction> MarkerChoice(Lang lang, int k, string? current)
+        {
+            var choice = new ActionChoice("chart.figure.marker", new I18nText("Markers", "Marker"));
+            foreach (var (value, label) in MarkerChoices)
+            {
+                var v = value;
+                IReadOnlyList<Primitive> preview = v is null
+                    ? new Primitive[] { Prim.Line(new Vec2(-3, 0), new Vec2(3, 0), new Style { Stroke = Palette.Ink, StrokeWidth = 0.3 }) }
+                    : new Primitive[]
+                    {
+                        Prim.Line(new Vec2(-3, 0), new Vec2(3, 0), new Style { Stroke = Palette.Ink, StrokeWidth = 0.3 }),
+                        Draw.Markers(new[] { new Vec2(0, 0) }, FigureComposer.MarkerOf(v) ?? MarkerKind.Circle, true, Palette.Ink, 1.4),
+                    };
+                yield return ActionChoices.Option(choice, v ?? "none", label, "", v == current, x => SetSpec(x, lang, s => s.Series[k].Marker = v)) with
+                {
+                    Group = "figure", Preview = preview,
+                };
+            }
         }
 
         /// <summary>
-        /// Actions of one part: curves (line style, markers, smoothing, hatch below), value lines and markers (line style,
-        /// label, remove), regions (fill, remove), notes (text, remove), axes (principle/data, add a value line or marker).
+        /// Actions of one part: curves (shape, line style and marker choices, smoothing, fill below ▸, fill to ▸, delete),
+        /// data points (delete, add after, value), value lines and markers (line style, label, delete), areas (pattern,
+        /// colour, opacity, edge, where, steps, label, delete), notes (text, delete), axes (principle/data, add a value line
+        /// or marker, breaks).
         /// </summary>
         protected override IEnumerable<ContextAction> OwnPartActions(SketchObject o, string part, RenderContext ctx)
         {
             var lang = ctx.Lang;
             if (!FigureSpec.TryParse(SpecText(o), out var spec, out _) || spec is null) return new[] { SpecInput(o, lang) };
+            if (ChartPoints.Parse(part) is { } pt) return ChartPoints.PointActions(o, pt.Series, pt.Index, FigureEditor.Instance, lang).ToList();
             var seg = part.Split('.');
             var kind = seg[0];
             int k = seg.Length > 1 && int.TryParse(seg[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : -1;
@@ -248,37 +290,29 @@ namespace InventaSketch.Modules.Charts
                 case ChartTags.Series or ChartTags.Marker or ChartTags.CurveLabel when k >= 0 && k < spec.Series.Count:
                     {
                         var s = spec.Series[k];
-                        // Sketched curves first: switch their shape (smoothed, interpolated, fitted, segments, as drawn).
+                        // Sketched curves first: their shape (smoothed, interpolated, fitted, segments, as drawn).
                         list.AddRange(ChartSketchInput.ShapeActions(o, k));
-                        var next = Next(LineStyles, s.Line ?? "solid");
-                        list.Add(Edit("chart.figure.line", new I18nText("Line: " + next.En, "Linie: " + next.De), IconIds.LineDash, lang, x => x.Series[k].Line = next.Value));
-                        list.Add(Edit("chart.figure.markers", new I18nText("Markers", "Marker"), IconIds.Toggle, lang, x => x.Series[k].Marker = x.Series[k].Marker is null ? "circle" : null) with { IsActive = s.Marker is not null });
+                        list.AddRange(LineChoice(lang, s.Line ?? "solid", (x, value) => x.Series[k].Line = value));
+                        list.AddRange(MarkerChoice(lang, k, s.Marker));
                         list.Add(Edit("chart.figure.smooth", new I18nText("Smooth curve", "Geglättete Kurve"), IconIds.Toggle, lang, x => x.Series[k].Smooth = !x.Series[k].Smooth) with { IsActive = s.Smooth });
-                        list.Add(Edit("chart.figure.below", new I18nText("Hatch below the curve", "Fläche unter der Kurve schraffieren"), IconIds.Insert, lang,
-                            x => x.Regions.Add(new FigRegion { Kind = "below", A = k })));
-                        if (spec.Series.Count >= 2)
-                            list.Add(Edit("chart.figure.region", new I18nText("Hatch between curves 1 and 2", "Zwischen Kurve 1 und 2 schraffieren"), IconIds.Insert, lang, AddRegion) with { IsEnabled = CanRegion(spec) });
+                        list.AddRange(ChartAreas.CurveActions(o, k, FigureEditor.Instance, lang));
+                        list.Add(ChartPoints.DeleteSeries(k, FigureEditor.Instance, lang));
                         break;
                     }
                 case ChartTags.Ref when k >= 0 && k < spec.Refs.Count:
                     {
                         var r = spec.Refs[k];
-                        if (r.Kind != "point")
-                        {
-                            var next = Next(LineStyles, r.Line ?? "dash");
-                            list.Add(Edit("chart.figure.line", new I18nText("Line: " + next.En, "Linie: " + next.De), IconIds.LineDash, lang, x => x.Refs[k].Line = next.Value));
-                        }
+                        if (r.Kind != "point") list.AddRange(LineChoice(lang, r.Line ?? "dash", (x, value) => x.Refs[k].Line = value));
                         else list.Add(Edit("chart.figure.fill", new I18nText("Filled circle", "Gefüllter Kreis"), IconIds.Toggle, lang, x => x.Refs[k].Filled = !x.Refs[k].Filled) with { IsActive = r.Filled });
                         list.Add(ContextAction.WithInput("chart.figure.label", new I18nText("Label…", "Beschriftung…"), IconIds.Text, new I18nText("Label", "Beschriftung"),
                             r.Label?.Get(lang) ?? "", (x, text) => SetSpec(x, lang, s => s.Refs[k].Label = string.IsNullOrWhiteSpace(text) ? null : new I18nText(text.Trim()))) with { Group = "figure" });
-                        list.Add(Edit("chart.figure.remove", new I18nText("Remove", "Entfernen"), IconIds.Delete, lang, x => x.Refs.RemoveAt(k)));
+                        list.Add(Edit(PartLooks.DeleteAction, new I18nText("Delete", "Löschen"), IconIds.Delete, lang, x => x.Refs.RemoveAt(k)));
                         break;
                     }
                 case ChartTags.Region when k >= 0 && k < spec.Regions.Count:
                     {
-                        var next = Next(Fills, spec.Regions[k].Fill);
-                        list.Add(Edit("chart.figure.fill", new I18nText("Fill: " + next.En, "Füllung: " + next.De), IconIds.Cycle, lang, x => x.Regions[k].Fill = next.Value));
-                        list.Add(Edit("chart.figure.remove", new I18nText("Remove", "Entfernen"), IconIds.Delete, lang, x => x.Regions.RemoveAt(k)));
+                        var c = Compose(o, ctx);
+                        list.AddRange(ChartAreas.PartActions(o, k, FigureEditor.Instance, lang, c.F.K));
                         break;
                     }
                 case ChartTags.Note when k >= 0 && k < spec.Notes.Count:
@@ -286,7 +320,7 @@ namespace InventaSketch.Modules.Charts
                         var n = spec.Notes[k];
                         list.Add(ContextAction.WithInput("chart.figure.label", new I18nText("Text…", "Text…"), IconIds.Text, new I18nText("Text", "Text"),
                             n.Text?.Get(lang) ?? "", (x, text) => SetSpec(x, lang, s => s.Notes[k].Text = string.IsNullOrWhiteSpace(text) ? null : new I18nText(text.Trim()))) with { Group = "figure" });
-                        list.Add(Edit("chart.figure.remove", new I18nText("Remove", "Entfernen"), IconIds.Delete, lang, x => x.Notes.RemoveAt(k)));
+                        list.Add(Edit(PartLooks.DeleteAction, new I18nText("Delete", "Löschen"), IconIds.Delete, lang, x => x.Notes.RemoveAt(k)));
                         break;
                     }
                 case ChartTags.Axis or ChartTags.Tick or ChartTags.TickLabel or ChartTags.AxisTitle:

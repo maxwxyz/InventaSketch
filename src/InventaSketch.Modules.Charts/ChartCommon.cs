@@ -175,23 +175,16 @@ namespace InventaSketch.Modules.Charts
         public static ContextAction Toggle(SketchObject o, string id, string key, bool def, I18nText label)
             => new(id, label, IconIds.Toggle, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = "param", ParamKeys = new[] { key } };
 
-        /// <summary>Cycles a choice parameter through its options; the label names the next option ("Style: step ▸").</summary>
-        public static ContextAction Cycle(SketchObject o, string id, ParamDef def, I18nText prefix)
-        {
-            var options = def.Options ?? Array.Empty<ParamOption>();
-            var fallback = def.Default?.Text ?? (options.Count > 0 ? options[0].Value : "");
-            var cur = o.Str(def.Key, fallback);
-            var idx = options.ToList().FindIndex(p => p.Value == cur);
-            var next = options.Count == 0 ? null : options[(idx + 1) % options.Count];
-            var label = next is null ? prefix : new I18nText(prefix.En + ": " + next.Label.En, (prefix.De ?? prefix.En) + ": " + (next.Label.De ?? next.Label.En));
-            return new ContextAction(id, label, IconIds.Cycle, x =>
-            {
-                if (options.Count == 0) return x;
-                var c = x.Str(def.Key, fallback);
-                var i = options.ToList().FindIndex(p => p.Value == c);
-                return x.WithParam(def.Key, options[(i + 1) % options.Count].Value);
-            }) { Group = "param", ParamKeys = new[] { def.Key } };
-        }
+        /// <summary>
+        /// A choice parameter as a choice (<see cref="ActionChoice"/> <paramref name="id"/>, one option per value, ids
+        /// "id=value", the current one active) – never a cycle (maintainer 2026-11-25: choices are dropdowns).
+        /// </summary>
+        public static IEnumerable<ContextAction> Options(SketchObject o, string id, ParamDef def, I18nText label)
+            => ActionChoices.FromParam(o, id, def, label, "param").ToList();
+
+        /// <summary>The option of choice <paramref name="id"/> that sets <paramref name="value"/> (from a list of actions), or null.</summary>
+        public static ContextAction? Option(IEnumerable<ContextAction> actions, string id, string value)
+            => actions.FirstOrDefault(a => a.Id == id + ActionChoices.Separator + value);
     }
 
     /// <summary>Number formatting (decimal comma in German) and text measuring.</summary>

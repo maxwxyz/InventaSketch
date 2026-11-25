@@ -26,16 +26,16 @@ $axes.Left = 380; $axes.Top = 60
 Assert-Isk $S ((Get-IskModel $axes) -match 'chart\.math\.axes') 'the coordinate system is a chart type'
 Assert-Isk $S ($axes.Type -eq 6 -and $axes.GroupItems.Count -ge 3) 'the coordinate system is drawn natively'
 
-# 3. Function graph, then "Next function".
+# 3. Function graph, then another function from the Function dropdown (a choice, never a cycle).
 $S.Window.Selection.Unselect()
 $name3 = $addin.Insert('chart.function.sine'); $fn = $S.Slide.Shapes.Item($name3)
 $fn.Left = 380; $fn.Top = 300
 $m0 = Get-IskModel $fn
 Assert-Isk $S ($m0 -match 'chart\.math\.function') 'the function graph is a chart type'
 $fn.Select(); Start-Sleep 2
-$addin.Command('act:chart.function.next') | Out-Null; Start-Sleep 3
+$addin.Command('pick:function:cubic') | Out-Null; Start-Sleep 3
 $fn = @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'chart\.math\.function' } | Select-Object -First 1
 $m1 = Get-IskModel $fn
-Assert-Isk $S ($m1 -ne $m0) 'Next function changes the graph'
+Assert-Isk $S ($m1 -ne $m0 -and $m1 -match 'cubic') 'picking another function changes the graph'
 Save-IskShot $S '1-breaks-and-functions'
 Send-IskEscape; Start-Sleep 1

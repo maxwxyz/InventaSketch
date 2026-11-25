@@ -41,7 +41,7 @@ namespace InventaSketch.Engine.Tests
             // Hit test at the curve's middle point (page coordinates).
             var line = api.Registry.Render(o, new RenderContext(api.Sessions.Get(session).Doc)).OfType<PathPrim>().Single(p => p.Tag == "series.0");
             var pts = PartLooks.Sample(line.Segments);
-            var at = pts[pts.Count / 2];
+            var at = (pts[pts.Count / 2] + pts[pts.Count / 2 + 1]) / 2;   // between two data points (a point itself is the point part)
             var hit = EngineApiTests.Call(api, "partAt", new { session, id, x = at.X, y = at.Y, tolerance = 0.3 });
             Assert.Equal("series.0", hit.GetProperty("part").GetString());
 

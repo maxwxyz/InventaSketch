@@ -24,6 +24,7 @@ namespace InventaSketch.Modules.Charts
         private Panel[] _ps = Array.Empty<Panel>();
         private readonly List<FigPanel> _fps;
         private SeriesGeo?[] _geo = Array.Empty<SeriesGeo?>();
+        private IReadOnlyList<AreaSeries> _areaSeries = Array.Empty<AreaSeries>();
         private int[] _seriesNum = Array.Empty<int>(), _refNum = Array.Empty<int>(), _regionNum = Array.Empty<int>(), _noteNum = Array.Empty<int>();
 
         public FigureComposer(SketchObject o, RenderContext ctx, FigureSpec spec, Size2 design)
@@ -74,7 +75,7 @@ namespace InventaSketch.Modules.Charts
         {
             var data = s.Series.SelectMany(x => x.X)
                 .Concat(s.Refs.Where(r => r.Kind is "v" or "point").Select(r => r.X))
-                .Concat(s.Regions.Where(r => r.Kind == "span").SelectMany(r => new[] { r.From ?? double.NaN, r.To ?? double.NaN }));
+                .Concat(XyChart.AreaX(s.Regions));
             return WithBreaks(BuildAxis(s.X, data, 0.05), s.X, s);
         }
 
@@ -89,8 +90,16 @@ namespace InventaSketch.Modules.Charts
             var n = panels.Count;
             var data = s.Series.Where(x => Clamp(x.Panel, n) == i).SelectMany(x => x.Y)
                 .Concat(s.Refs.Where(r => r.Kind == "h" && (r.Panel is null && i == 0 || r.Panel is { } p && (p < 0 || Clamp(p, n) == i))).Select(r => r.Y))
-                .Concat(s.Regions.Where(r => r.Base is not null && r.Kind == "below" && r.A >= 0 && r.A < s.Series.Count && Clamp(s.Series[r.A].Panel, n) == i).Select(r => r.Base!.Value));
+                .Concat(XyChart.AreaY(s.Regions.Where(r => RegionPanel(s, r, n) == i)));
             return WithBreaks(BuildAxis(panels[Clamp(i, n)], data, 0.12), panels[Clamp(i, n)], s);
+        }
+
+        /// <summary>The panel whose y axis an area's values belong to (its curve's panel, or its own panel for bands); -1 for none.</summary>
+        private static int RegionPanel(FigureSpec s, FigRegion r, int n)
+        {
+            if (r.Kind == "hspan") return r.Panel is { } p && p < 0 ? 0 : Clamp(r.Panel ?? 0, n);
+            if (r.Kind is "below" or "between" && r.A >= 0 && r.A < s.Series.Count) return Clamp(s.Series[r.A].Panel, n);
+            return -1;
         }
 
         private string? AxisTitle(FigAxis a)
@@ -136,7 +145,7 @@ namespace InventaSketch.Modules.Charts
             _ => def,
         };
 
-        private static MarkerKind? MarkerOf(string? m) => m switch
+        internal static MarkerKind? MarkerOf(string? m) => m switch
         {
             "circle" => MarkerKind.Circle,
             "square" => MarkerKind.Square,
@@ -194,6 +203,9 @@ namespace InventaSketch.Modules.Charts
                 var mk = MarkerOf(se.Marker);
                 _f.Legend.Add(new LegendEntry(SeriesName(_s, k, _lang), SeriesStyle(k), mk, !se.MarkerOpen));
             }
+            _areaSeries = FigureEditor.Series(_s, _lang);
+            foreach (var r in _s.Regions.Where(r => r.Label is not null))
+                _f.Legend.Add(new LegendEntry(r.Label!.Get(_lang), ChartAreas.LegendStyle(r, ChartAreas.ColorOf(r, _areaSeries, _mono), _mono, _f.K), Area: true));
             _f.ExtraRight = ExtraRight(x);
             AxisTexts(n);
             _f.Layout(_lang);
@@ -508,57 +520,10 @@ namespace InventaSketch.Modules.Charts
         {
             var r = _s.Regions[k];
             var n = _ps.Length;
-            var polys = new List<List<Vec2>>();
-            string baseColor = Palette.Helper;
-            int panel = 0;
-            switch (r.Kind)
-            {
-                case "span":
-                    {
-                        var from = r.From ?? _f.X.Min;
-                        var to = r.To ?? _f.X.Max;
-                        double x0 = PX(Math.Min(from, to)), x1 = PX(Math.Max(from, to));
-                        if (!Fmt.Finite(x0) || !Fmt.Finite(x1)) return;
-                        var panels = r.Panel is { } sp && sp >= 0 ? new[] { Clamp(sp, n) } : Enumerable.Range(0, n).ToArray();
-                        panel = panels[0];
-                        foreach (var pi in panels)
-                        {
-                            var a = _ps[pi].Area;
-                            double l = Safe(x0, a.X, a.Right), rr = Safe(x1, a.X, a.Right);
-                            if (rr - l < 1e-6) continue;
-                            polys.Add(new List<Vec2> { new(l, a.Y), new(rr, a.Y), new(rr, a.Bottom), new(l, a.Bottom) });
-                        }
-                        break;
-                    }
-                case "below":
-                    {
-                        if (r.A < 0 || r.A >= _geo.Length || _geo[r.A] is not { } ga) return;
-                        panel = ga.PanelIndex;
-                        var a = ga.Panel.Area;
-                        var baseY = r.Base is { } b && Fmt.Finite(PY(panel, b)) ? Safe(PY(panel, b), a.Y, a.Bottom) : a.Bottom;
-                        polys = Between(ga.At, ga.Xs, _ => baseY, Array.Empty<double>(), r, a, false);
-                        baseColor = SeriesColor(r.A);
-                        break;
-                    }
-                default:
-                    {
-                        if (r.A < 0 || r.A >= _geo.Length || r.B < 0 || r.B >= _geo.Length || r.A == r.B) return;
-                        if (_geo[r.A] is not { } ga || _geo[r.B] is not { } gb || ga.PanelIndex != gb.PanelIndex) return;
-                        panel = ga.PanelIndex;
-                        polys = Between(ga.At, ga.Xs, gb.At, gb.Xs, r, ga.Panel.Area, r.Above);
-                        baseColor = SeriesColor(r.A);
-                        break;
-                    }
-            }
+            // Geometry and drawing shared with the XY chart's areas (every kind, pattern, edge; ChartAreas).
+            var (polys, panel) = ChartAreas.Polygons(r, _f, _areaSeries);
             if (polys.Count == 0) return;
-            var segs = new List<PathSeg>();
-            foreach (var poly in polys)
-            {
-                segs.Add(PathSeg.Move(poly[0]));
-                for (var i = 1; i < poly.Count; i++) segs.Add(PathSeg.Line(poly[i]));
-                segs.Add(PathSeg.Close);
-            }
-            _c.Areas.Add(new PathPrim(segs, RegionStyle(r, baseColor)) { Tag = ChartTags.Nth(ChartTags.Region, k) });
+            _c.Areas.AddRange(ChartAreas.Render(r, polys, ChartTags.Nth(ChartTags.Region, k), ChartAreas.ColorOf(r, _areaSeries, _mono), _mono, _f.K));
 
             if (r.Numeral is { } num && _regionNum[k] >= 0)
             {
@@ -575,21 +540,6 @@ namespace InventaSketch.Modules.Charts
                 }
                 Numeral(target, num.Text, num.Dx, num.Dy, NumTag(_regionNum[k]));
             }
-        }
-
-        private Style RegionStyle(FigRegion r, string baseColor)
-        {
-            var color = _mono ? Palette.Black : r.Color ?? baseColor;
-            var spacing = r.Spacing ?? Math.Max(0.6, 1.2 * _f.K);
-            var fill = r.Fill switch
-            {
-                "solid" => Fill.Solid(_mono ? "#d9d9d9" : color),
-                "dots" => Fill.Dotted(r.Spacing ?? Math.Max(0.6, 1.0 * _f.K)),
-                "cross" => Fill.Hatched(new HatchPattern(r.Angle ?? 45, spacing, Cross: true, Color: color, Width: 0.15)),
-                _ => Fill.Hatched(new HatchPattern(r.Angle ?? 45, spacing, Color: color, Width: 0.15)),
-            };
-            var opacity = r.Opacity ?? (r.Fill == "solid" && !_mono ? 0.3 : (double?)null);
-            return new Style { Stroke = "none", Fill = fill, Opacity = opacity, Role = LineRole.Thin };
         }
 
         private static double Area(IReadOnlyList<Vec2> poly)
@@ -654,9 +604,6 @@ namespace InventaSketch.Modules.Charts
             Flush();
             return result;
         }
-
-        private List<List<Vec2>> Between(Func<double, double> fa, IReadOnlyList<double> xa, Func<double, double> fb, IReadOnlyList<double> xb, FigRegion r, Rect area, bool above)
-            => Between(fa, xa, fb, xb, r, area, above, PX);
 
         // ------------------------------------------------------------------ notes
 

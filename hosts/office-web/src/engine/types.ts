@@ -129,6 +129,14 @@ export interface ActionInfo {
   input?: { label: string; value: string; unit?: string };
   /** Parameters the action sets: the bar hides it when those are shown as choice buttons. */
   paramKeys?: string[];
+  /** Key of the choice this action is an option of: show the options of one choice as one dropdown (never a cycle). */
+  choice?: string;
+  /** What the choice chooses ("Curve shape"). */
+  choiceLabel?: string;
+  /** The choice is a menu of commands ("Fill to ▸"): no current option. */
+  choiceMenu?: boolean;
+  /** A small SVG drawing of the option (fill patterns, colours, curve shapes) when no shared pictogram fits. */
+  previewSvg?: string;
 }
 
 export type ParamValue = number | string | boolean | null;

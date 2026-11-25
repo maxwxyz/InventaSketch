@@ -305,32 +305,75 @@ namespace InventaSketch.Modules.Charts
 
         public static int NextStrength(CurveSketchMemo m) => Math.Max(1, Math.Min(3, m.Strength)) % 3 + 1;
 
-        /// <summary>Part action ids.</summary>
+        /// <summary>Choice keys of the part actions (option ids "key=value", e.g. "chart.curve.shape=fitted").</summary>
         public const string ShapeAction = "chart.curve.shape", FitAction = "chart.curve.fit", SmoothingAction = "chart.curve.smoothing";
 
+        /// <summary>The option id of <paramref name="shape"/> in the "Curve shape" choice.</summary>
+        public static string ShapeOption(CurveShape shape) => ShapeAction + ActionChoices.Separator + Id(shape);
+
         /// <summary>
-        /// The part actions of a sketched curve: "Curve shape: next" (always), "Fitted function: next kind" (fitted shape with
-        /// two or more fits) and "Smoothing: next strength" (smoothed shape). <paramref name="edit"/> turns a memo change into
-        /// the object edit (recompute the points, store memo and points).
+        /// The part actions of a sketched curve, each a choice (maintainer 2026-11-25: choices are dropdowns, never cycles):
+        /// "Curve shape" (smoothed, interpolated, fitted function, straight segments, as drawn), "Fitted function" (the ranked
+        /// fits; fitted shape with two or more fits) and "Smoothing" (light, medium, strong; smoothed shape). Every option has a
+        /// small preview of the curve in that shape. <paramref name="edit"/> turns a memo change into the object edit
+        /// (recompute the points, store memo and points).
         /// </summary>
         internal static IEnumerable<ContextAction> Actions(CurveSketchMemo m, Func<Func<CurveSketchMemo, CurveSketchMemo>, Func<SketchObject, SketchObject>> edit)
         {
-            var next = NextShape(m);
-            var shapeName = Name(next, m);
-            yield return new ContextAction(ShapeAction, new I18nText("Curve shape: " + shapeName.En, "Kurvenform: " + shapeName.Get(Lang.De)), IconIds.Cycle,
-                edit(x => x with { Shape = NextShape(x) })) { Group = "curve" };
-            if (m.Shape == CurveShape.Fitted && m.Fits.Count > 1 && NextFit(m) is CurveKind nk)
+            // TODO(icons): pictograms for the curve shapes (smoothed, interpolated, fitted, segments, as drawn) would replace the previews.
+            var shape = new ActionChoice(ShapeAction, new I18nText("Curve shape", "Kurvenform"));
+            foreach (var s in Offered(m))
             {
-                var kn = CurveFunctions.Info(nk).Name;
-                yield return new ContextAction(FitAction, new I18nText("Fitted function: " + kn.En, "Ausgleichsfunktion: " + kn.Get(Lang.De)), IconIds.Cycle,
-                    edit(x => x with { Fit = NextFit(x) })) { Group = "curve" };
+                var to = s;
+                yield return ActionChoices.Option(shape, Id(s), Name(s, m), "", s == m.Shape, edit(x => x with { Shape = to })) with
+                {
+                    Group = "curve", Preview = Preview(m with { Shape = to }),
+                };
+            }
+            if (m.Shape == CurveShape.Fitted && m.Fits.Count > 1)
+            {
+                var fit = new ActionChoice(FitAction, new I18nText("Fitted function", "Ausgleichsfunktion"));
+                foreach (var spec in m.Fits)
+                {
+                    var kind = spec.Kind;
+                    yield return ActionChoices.Option(fit, CurveFunctions.Info(kind).Id, CurveFunctions.Info(kind).Name, "", kind == m.Fit, edit(x => x with { Fit = kind })) with
+                    {
+                        Group = "curve", Preview = Preview(m with { Fit = kind }),
+                    };
+                }
             }
             if (m.Shape == CurveShape.Smoothed)
             {
-                var sn = StrengthNames[NextStrength(m) - 1];
-                yield return new ContextAction(SmoothingAction, new I18nText("Smoothing: " + sn.En, "Glättung: " + sn.Get(Lang.De)), IconIds.Cycle,
-                    edit(x => x with { Strength = NextStrength(x) })) { Group = "curve" };
+                var smoothing = new ActionChoice(SmoothingAction, new I18nText("Smoothing", "Glättung"));
+                var current = Math.Max(1, Math.Min(3, m.Strength));
+                for (var k = 1; k <= 3; k++)
+                {
+                    var to = k;
+                    yield return ActionChoices.Option(smoothing, Fmt.I(k), StrengthNames[k - 1], "", k == current, edit(x => x with { Strength = to })) with
+                    {
+                        Group = "curve", Preview = Preview(m with { Strength = to }),
+                    };
+                }
             }
+        }
+
+        /// <summary>
+        /// The curve of the memo as a small drawing for a dropdown option: the trail's frame scaled into 7 × 4.5 mm (centred at
+        /// 0,0, y down), one thin path; null when the memo gives no curve.
+        /// </summary>
+        public static IReadOnlyList<Primitive>? Preview(CurveSketchMemo m)
+        {
+            var pts = Points(m);
+            if (pts.Count < 2) return null;
+            var f = m.Frame;
+            double Fx(double v) => m.XLog ? Math.Log10(v) : v;
+            double Fy(double v) => m.YLog ? Math.Log10(v) : v;
+            const double W = 7, H = 4.5;
+            var page = pts.Select(p => new Vec2((Fx(p.X) - f.X) / f.W * W - W / 2, H / 2 - (Fy(p.Y) - f.Y) / f.H * H)).Where(Finite).ToList();
+            if (page.Count < 2) return null;
+            var segs = new List<PathSeg> { PathSeg.Move(page[0]) };
+            segs.AddRange(page.Skip(1).Select(PathSeg.Line));
+            return new Primitive[] { new PathPrim(segs, new Style { Stroke = Palette.Ink, StrokeWidth = 0.3, Role = LineRole.Visible }) };
         }
 
         // ------------------------------------------------------------------ text form (XY chart data comment)

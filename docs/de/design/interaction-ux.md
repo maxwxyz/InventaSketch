@@ -84,7 +84,8 @@ Abgeleitet aus der Engine (Aktionen, Ansichten, Anker von `ObjectType`, `Buildin
 | **Blaues Schloss** (zu) / **graues Schloss** (offen) neben einem Berührpunkt, dünne Zuleitung | gekoppelt, bewegt sich mit / berührt, aber gelöst | Klick schaltet um |
 | **Blaues Dreieck** vor einer Seite (Diagrammknoten) | das nächste Element auf dieser Seite | Klick: verbundene Kopie; Ziehen: mit anderem Element verbinden oder ablegen |
 | **Blau umrandetes Quadrat mit kleinen Pfeilspitzen** auf einem Wert (Grenzlinie, Wertlinie, Marker eines Diagramms) | ein Wert, der auf der Zeichnung gezogen wird; die Pfeilspitzen zeigen die erlaubte Richtung | ziehen: die Linie folgt (geführt), der neue Wert steht neben dem Zeiger und rastet ein (ein Zehntel des Achsschritts); loslassen = ein Rückgängig-Schritt; Esc bricht ab; ein Klick wählt dieses Teil |
-| **Blauer Umriss** eines Teils (Diagramme) | das gewählte Teil | Leiste und Kreismenü wirken darauf |
+| **Kleiner blau umrandeter Punkt** auf einem Datenpunkt einer Kurve (Diagramme) | ein Wert der Kurve; ausgewählt blau gefüllt mit sanftem Leuchten | erscheint für die ausgewählte Kurve (oder den Punkt), die anderen nahe am Zeiger; Klick: wählt den Punkt; ziehen: verschiebt ihn (gerastet, ein Rückgängig-Schritt, Esc bricht ab); Entf löscht ihn |
+| **Blauer Umriss** eines Teils (Diagramme) | das gewählte Teil; Drücken auf eine ausgewählte Kurve und Ziehen verschiebt die ganze Kurve | Leiste und Kreismenü wirken darauf; Entf löscht das Teil (Punkt, Kurve, Fläche …) oder blendet es aus, nie das Element |
 | **Weicher blauer Schein** um die Kontur eines Elements | es ist ausgewählt (allein, mit anderen oder über „Verbundene auswählen“) | – (Abschnitt 6a) |
 | **Schwächerer blauer Schein** | was ein überfahrener Eintrag „Verbundene auswählen“ (oder „Baugruppe wählen“) dazunähme | Wählen des Eintrags wählt es aus |
 | **Rote gestrichelte Hilfslinien, roter Punkt, Beschriftung** beim Ziehen | Fangen und woran angedockt wird | Alt setzt aus |
@@ -151,6 +152,32 @@ drei häufigsten Befehle und „⋯“. Knöpfe sind 32 logische px groß (Treff
 umrandetem Hover. Tooltips sagen, was passiert, plus Tastenkürzel („Horizontal spiegeln (X)“, „Linienart: Gestrichelt –
 klicken zum Wählen“). Die Mehrfachauswahl behält ihre Gruppen: eine Ansicht für alle | ausrichten und verteilen |
 Diagramm anordnen („Diagramm ↓“, „Diagramm →“) | Maß, Format übertragen, neu nummerieren.
+
+### 5a. Auswahlen sind Klapplisten (Regel, 25.11.2026)
+
+Maintainer: „Kurvenform ist ein Schalter zum Durchklicken, keine Klappliste – das hatten wir doch schon, habt ihr alles
+vergessen?!“
+
+**Regel: Eine Auswahl unter mehreren Möglichkeiten ist immer eine Klappliste mit den Piktogrammen oder Bildern und
+Bezeichnungen der Möglichkeiten, die aktuelle markiert – nie ein Durchschalt-Knopf.** Das gilt für das Element und für
+jedes seiner Teile:
+
+- Engine: eine Auswahl ist eine Aktion je Möglichkeit mit derselben `ActionChoice`
+  (`src/InventaSketch.Core/ActionChoices.cs`; Id `<Auswahl>=<Wert>`, die aktuelle Möglichkeit `IsActive`;
+  Parameterauswahlen über `ActionChoices.FromParam`). Möglichkeiten ohne passendes gemeinsames Piktogramm tragen eine
+  kleine Zeichnung (`ContextAction.Preview`: die Kurve in dieser Form, das Füllmuster, die Farbe). Befehle, die ein Menü
+  bilden („Füllen bis ▸“, „Fläche hinzufügen ▸“), sind eine `ActionChoice` mit `IsMenu` (nichts aktuell). In den
+  Diagrammen bleibt keine `IconIds.Cycle`-Aktion, die durch Möglichkeiten schaltet.
+- Leiste: ein Klapplisten-Knopf je Auswahl mit dem Piktogramm oder Bild der aktuellen Möglichkeit (sonst einem kurzen
+  Text) und einem Pfeil; ein Klick öffnet die Liste aller Möglichkeiten mit Piktogramm oder Bild und Bezeichnung, die
+  aktuelle markiert (`FloatingBar.SetDropdown`, dasselbe Aussehen wie die Auswahlen des Elements). Teilauswahlen haben
+  den Schlüssel „@p.&lt;Auswahl&gt;“, Aktionsauswahlen des Elements „@a.&lt;Auswahl&gt;“; die Wahl führt die
+  Möglichkeit aus („part:&lt;Id&gt;“, „act:&lt;Id&gt;“).
+- Kreismenü: Zustandsauswahlen stehen unter **Stil ▸** als „Bezeichnung: Aktuell ▸“ (bei ausgewähltem Teil dessen
+  eigene Auswahlen), Menüs unter **Bearbeiten ▸** als „Bezeichnung ▸“; beide öffnen die Möglichkeiten (lange Listen
+  gehen unter „Mehr ▸“ weiter).
+- Web und LibreOffice: die Engine liefert zu jeder Aktion `choice`, `choiceLabel`, `choiceMenu` und `previewSvg`, damit
+  sie die Möglichkeiten genauso zusammenfassen.
 
 ## 6. Kreismenü
 
@@ -291,6 +318,22 @@ Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
   gezeichnet) und `OnSlideController.Connected.cs` (Kreismenü-Einträge, Vorschau beim Überfahren, Strg+Doppelklick,
   Auswahl der Einheiten); Protokollzeilen „Halo: selected=…; connected=…“ und „Select connected (Art): n units“;
   UI-Szenario `select-connected`.
+
+### Runde 4 (25.11.2026): Auswahlen als Klapplisten, Datenpunkte, Kurven und Flächen in Diagrammen
+
+- Auswahlen an Teilen und Elementen (Abschnitt 5a): `ActionChoices` in Core; jeder Durchschalter der Diagramme
+  (Darstellung, Skalen, Legende, Ausrichtung, Modus, Maschine, System, Anzeige, Funktion, Flanken, Kurvenform,
+  Ausgleichsfunktion, Glättung, Strichart, Marker, Füllung) wurde eine Auswahl; COM `OnSlideController.Choices.cs`
+  (`ActionBarChoices`, `PartChoices`, `ElementActionChoices`, Bilder der Möglichkeiten aus den Vorschauen),
+  `OnSlideController.Parts.cs` (Teil-Leiste und Kreismenü), reine Helfer `OnSlide/ActionChoiceBar.cs` (Tests
+  `tests/InventaSketch.AddIn.Tests/ActionChoiceBarTests.cs`); Protokollzeile „Dropdown [Bezeichnung]: …“, Automation
+  `DropItems()`, `Command("menu:c:@p.<Auswahl>")` öffnet ein Kreismenü-Untermenü.
+- Datenpunkte und Kurven (docs/de/modules/charts.md): Punkt-Teile mit Teilformen (`ObjectType.PartShapes`,
+  `Registry.PartPrimitives`), Punktgriffe mit ihrer Kurve gezeigt (`DragHandle.ShowWith`), ganze Kurven durch Drücken
+  auf die ausgewählte Kurve gezogen (`DragHandle.ByPart`), Entf auf einem Teil (`PartLooks.DeleteAction`).
+- Flächen: schraffierte und gemusterte Flächen aller matplotlib-Arten, angelegt mit „Darunter füllen ▸“, „Füllen bis ▸“
+  und „Fläche hinzufügen ▸“.
+- UI-Szenarien: `chart-points`, `chart-curve-drag`, `chart-areas`, `part-choice-dropdown`.
 
 ## 9. Folgeschritte (in Phasen, mit Abnahmekriterien)
 

@@ -599,7 +599,7 @@ namespace InventaSketch.Modules.Charts
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Prm.Cycle(o, "chart.function.next", FunctionDef, new I18nText("Function", "Funktion"));
+            foreach (var option in Prm.Options(o, "chart.function", FunctionDef, new I18nText("Function", "Funktion"))) yield return option;
             var label = new I18nText("Formula f(x)…", "Formel f(x)…");
             yield return ContextAction.WithInput("chart.function.formula", label, IconIds.Text,
                 new I18nText("f(x) = … (e.g. x^2 - 2, 2 sin(x), e^(-x/2), |x - 1|)", "f(x) = … (z. B. x^2 - 2, 2 sin(x), e^(-x/2), |x - 1|)"),
