@@ -126,7 +126,7 @@ Anschlag der Kurbel abgefahren).
 | `kin.ghosts` | Ghost positions / Zwischenlagen (schaltet 0 ↔ letzte Anzahl, Vorgabe 4) | `cmd-animate` | Mechanismen |
 | `kin.path` | Motion path / Bahnkurve | `cmd-toggle` | Mechanismen |
 | `kin.dof` | Degree of freedom badge / Freiheitsgrad-Anzeige | `cmd-text` | Mechanismen, Kurvenscheibe |
-| `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage | `cmd-swap` | Viergelenk |
+| `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage (nennt `branch` in `ParamKeys`: Hosts, die die Auswahl der Montagelage zeigen, lassen sie weg) | `cmd-swap` | Viergelenk |
 | `kin.follower=roller/flat/knife` | Follower ▾ / Stößel ▾ (Auswahl) | `cmd-option` | Stößel, Kurvenscheibe |
 | `kin.joint.start` / `kin.joint.end` | Gelenk am Anfang / Ende | `cmd-arrow-start` / `cmd-arrow-end` | Starres Glied |
 | `kin.stroke`, `kin.open`, `kin.load` | Aus-/Einfahren, Öffnen/Schließen, Last | `cmd-toggle` | Kolben, Greifer, Seilrolle |
@@ -134,6 +134,27 @@ Anschlag der Kurbel abgefahren).
 
 Den Ansichtswechsel (`schematic`, `detailed`) bietet der Host über `ViewDef` mit den Icons `view-schematic`
 und `view-detailed` an.
+
+## Griffe (Ziehgriffe)
+
+`DragHandles` / `MoveHandle` (Hosts zeichnen sie als blaue Griffe; interaction-ux.md Abschnitt 4). Nur Werte, die
+Parameter des Typs sind, bekommen einen Griff:
+
+| Element | Schlüssel | Griff an | Bewegung | Parameter | Raster |
+|---|---|---|---|---|---|
+| Viergelenk, Schubkurbel, Kreuzschubkurbel, Schnellrücklauf | `angle` | Kurbelzapfen A | frei; die Kurbel dreht sich um ihren Gestelldrehpunkt zum Zeiger hin | `angle` | 1°, auf (−180°, 180°] normiert |
+| Kniehebel | `angle` | Kniegelenk B | um den oberen Drehpunkt A | `angle` | 1° |
+| Kurvenscheibe mit Stößel | `angle` | Nocken (äußerster Punkt) | um den Drehpunkt der Scheibe | `angle` | 1° |
+| Kolben und Zylinder | `stroke` | Stangenende | längs der Zylinderachse | `stroke` | 5 %, 0 … 1 |
+| Greiferbacken | `open` | rechte Backe | seitlich | `open` | 5 %, 0 … 1 |
+| Gestelldrehpunkt mit Anschlägen (`limited`) | `limitFrom`, `limitTo` | äußeres Ende jeder Anschlaglinie | um den Drehpunkt | `limitFrom`, `limitTo` | 5°, innerhalb einer halben Drehung vom alten Wert |
+| Winkelbegrenzung | `min`, `max` | äußeres Ende jedes Grenzstrahls | um das Gelenk | `min`, `max` | 5°, innerhalb einer halben Drehung vom alten Wert |
+
+Der Antriebswinkel folgt dem eigenen Drehsinn des Mechanismus (aus der gelösten Stellung ermittelt), so bewegt sich der
+Griff bei jedem Mechanismus mit dem Zeiger. Die Beschriftungen nennen den Wert: „Antriebswinkel: −60°“ / „Input angle:
+−60°“, „Kolbenstellung: 45 %“ / „Piston position: 45 %“, „Backenöffnung: 60 %“ / „Jaw opening: 60 %“, „Anschlag von:
+−135°“ / „Stop from: −135°“, „Minimaler Winkel: −30°“ / „Minimum angle: −30°“. Selbst gebaute Koppelgetriebe (Glieder
+und Gelenke als Punktobjekte) bewegt man über ihre Punktgriffe und den Bewegungsmodus, nicht über Griffe.
 
 ## Hinweise für Hosts
 

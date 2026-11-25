@@ -72,6 +72,13 @@ namespace InventaSketch.Modules.Kinematics
                 KP.Num("limitTo", "Stop to (°)", "Anschlag bis (°)", -45, -360, 360, "°", 5),
             },
             LimitsFn = PivotLimits,
+            GripsFn = (p, o) => o.Flag("limited", false)
+                ? new[]
+                {
+                    KinGrips.Angle(o, "limitFrom", -135, p.V(0, PivotY), 4 * PivotR * p.K, "Stop from", "Anschlag von"),
+                    KinGrips.Angle(o, "limitTo", -45, p.V(0, PivotY), 4 * PivotR * p.K, "Stop to", "Anschlag bis"),
+                }
+                : Array.Empty<KinGrip>(),
         };
 
         /// <summary>
@@ -315,6 +322,8 @@ namespace InventaSketch.Modules.Kinematics
                 new ContextAction("kin.stroke", new I18nText("Extend / retract", "Ausfahren / einfahren"), IconIds.Toggle,
                     x => x.WithParam("stroke", Stroke(x) > 0.5 ? 0.1 : 0.9)) { IsActive = Stroke(o) > 0.5, Group = "param" },
             },
+            // Rod end at design x = PistonX + 20 = 6 + 12 · stroke.
+            GripsFn = (p, o) => new[] { KinGrips.Share(p, o, "stroke", 0.45, 6, 12, 0, "Piston position", "Kolbenstellung") },
         };
 
         private static double PistonX(SketchObject o) => -14 + 12 * Stroke(o);
@@ -397,6 +406,8 @@ namespace InventaSketch.Modules.Kinematics
                 new ContextAction("kin.open", new I18nText("Open / close jaws", "Backen öffnen / schließen"), IconIds.Toggle,
                     x => x.WithParam("open", Opening(x) > 0.3 ? 0.1 : 0.6)) { IsActive = Opening(o) > 0.3, Group = "param" },
             },
+            // Right jaw at design x = 3.5 + 7.5 · opening.
+            GripsFn = (p, o) => new[] { KinGrips.Share(p, o, "open", 0.6, 3.5, 7.5, 4, "Jaw opening", "Backenöffnung") },
         };
 
         private static void DrawGripper(Pen p, SketchObject o, bool detailed)

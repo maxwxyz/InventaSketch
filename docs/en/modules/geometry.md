@@ -163,6 +163,27 @@ contact at angle…, move the point of contact (+30°), radius and right angle. 
 circle, full circle. Unit circle: angle…, turn by 15°, tangent segment, show values. Constructions: compass marks,
 labels, angle…; parallel lines: angle pair ▾, angle…, show values.
 
+## Grips (drag handles)
+
+`DragHandles` / `MoveHandle` (hosts draw them as blue grips; interaction-ux.md section 4). Angles are mathematical
+degrees (counter-clockwise from +x); every angle grip moves freely and turns its point about the centre towards the
+pointer, snapped to 1° and kept within half a turn of the old value:
+
+| Figure | Key | Grip on | Parameter | Range |
+|---|---|---|---|---|
+| Circle with radius | `angle` | end of the radius (of the diameter when only that is shown; none for "circle only") | `angle` | −360° … 360° |
+| Tangent to a circle | `angle` | point of contact | `angle` | −360° … 360° |
+| Thales circle | `angle` | C | `angle` | 1° … 179° |
+| Unit circle | `angle` | P | `angle` | −360° … 360° |
+| Angle bisector | `angle` | end of the second ray | `angle` | 10° … 170° |
+| Parallel lines and transversal | `angle` | upper end of the transversal | `angle` | 20° … 160° |
+| Angle (point object) | `radius` | the arc at 0.3 of the sweep, or the outer corner of the right-angle square; moves along that ray | `radius` | 0.5 mm steps, 1 … 100 mm |
+
+Grips of box figures are placed where the figure draws the point, including the shrink of extreme box sizes
+(`Fig.Fit`). Labels name the value ("Point of contact: 60°" / "Berührpunkt: 60°", "Arc radius: 7 mm" /
+"Bogenradius: 7 mm"). Sizes of the regular polygon, circles and axes are the box size (free scaling), not parameters,
+so they have no grip.
+
 ## Host notes and limits
 
 - All output uses native primitives (lines with arrowheads, polylines, closed polygons, ellipses, text); arcs are

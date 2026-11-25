@@ -50,45 +50,20 @@ namespace InventaSketch.Modules.Maps.Tests
             Assert.Equal(o.Points![0], reversed.Points![reversed.Points.Count - 1]);
         }
 
+        /// <summary>
+        /// Each thing once (interaction concept, section 9 item 4): points are added and removed with the hosts' corner dots
+        /// and corner commands, views with the hosts' view dropdown, so no map element repeats them as its own actions.
+        /// </summary>
         [Fact]
-        public void AddAndRemoveWaypointKeepAttachmentsAligned()
+        public void PointsAndViewsAreNotRepeatedAsActions()
         {
             var r = Fx.Reg();
-            var stop = Fx.Item(r, "map.stop", new Vec2(100, 0));
-            var route = Fx.Line(r, "map.route", new Vec2(0, 0), new Vec2(20, 0), new Vec2(100, 0)) with
+            foreach (var item in r.Library)
             {
-                Attach = new Attachment?[] { null, null, new Attachment(stop.Id, 0, 0) { AnchorId = "loc" } },
-            };
-            var added = Act(r, route, "map.point.add").Apply(route);
-            Assert.Equal(4, added.Points!.Count);
-            Assert.Equal(new Vec2(60, 0), added.Points[2]); // midpoint of the longest segment
-            Assert.Equal(4, added.Attach!.Count);
-            Assert.Null(added.Attach[2]);
-            Assert.Equal(stop.Id, added.Attach[3]!.ObjectId);
-
-            // Removing takes out the least significant (collinear) point: the one just added.
-            var removed = Act(r, added, "map.point.remove").Apply(added);
-            Assert.Equal(3, removed.Points!.Count);
-            Assert.Equal(stop.Id, removed.Attach![2]!.ObjectId);
-
-            // A two-point route cannot lose a point: the action is offered but disabled.
-            var two = Fx.Line(r, "map.route", new Vec2(0, 0), new Vec2(10, 0));
-            var remove = Act(r, two, "map.point.remove");
-            Assert.False(remove.IsEnabled);
-            var after = ContextActions.Run(r, Fx.Doc(two).Doc, new[] { two.Id }, "map.point.remove", null, Lang.En);
-            Assert.Equal(2, after.Get(two.Id)!.Points!.Count);
-        }
-
-        [Fact]
-        public void RemovingACornerKeepsRegionsClosedWithAtLeastThreePoints()
-        {
-            var r = Fx.Reg();
-            var region = Fx.Line(r, "map.region", new Vec2(0, 0), new Vec2(10, 0), new Vec2(10, 10), new Vec2(0, 10));
-            var three = Act(r, region, "map.point.remove").Apply(region);
-            Assert.Equal(3, three.Points!.Count);
-            Assert.False(Act(r, three, "map.point.remove").IsEnabled);
-            var five = Act(r, region, "map.point.add").Apply(region);
-            Assert.Equal(5, five.Points!.Count);
+                var o = r.Create(item, new Vec2(50, 50));
+                var ids = r.TypeOf(o).Actions(o, Fx.Ctx()).Select(a => a.Id).ToList();
+                Assert.DoesNotContain(ids, id => id.StartsWith("view.", StringComparison.Ordinal) || id.StartsWith("map.point.", StringComparison.Ordinal));
+            }
         }
 
         [Theory]
@@ -189,11 +164,10 @@ namespace InventaSketch.Modules.Maps.Tests
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "map.poi.fuel", new Vec2(0, 0)) with { Size = new Size2(14, 14) };
-            var pin = Act(r, o, "view.pin").Apply(o);
+            // Registry.WithView (the host's view dropdown) keeps the drawing scale through the views' design sizes.
+            var pin = r.WithView(o, "pin", Fx.Ctx());
             Assert.Equal("pin", pin.View);
             Assert.Equal(Math.Sqrt(14 * 14 / 49.0) * 8, pin.Size.W, 6);
-            // Registry.WithView (host view bar) gives the same size.
-            Assert.Equal(pin.Size, r.WithView(o, "pin", Fx.Ctx()).Size);
         }
     }
 }

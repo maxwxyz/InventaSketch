@@ -191,6 +191,23 @@ Darstellung Körperkontur ↔ kinematisches Schema (Options-Piktogramme detailli
 öffnen/schließen, Hubpfeile, mehr/weniger Saugnäpfe. Übrige: Art ▾ / Form ▾ / Achsen ▾ (Auswahlen), Schalter für Namen, Pfeile,
 Gitterband, Feldtönung, geschlossenen Zaun, Förderrichtung umkehren.
 
+## Griffe (Ziehgriffe)
+
+`DragHandles` / `MoveHandle` (Hosts zeichnen sie als blaue Griffe; interaction-ux.md Abschnitt 4):
+
+| Element | Schlüssel | Bewegung | Parameter | Raster |
+|---|---|---|---|---|
+| Roboter: Drehachse, deren Achse zum Betrachter zeigt (Seitenansicht: Schulter, Ellbogen, Hand schwenken; Draufsicht: Grundachse, SCARA-Arme) | `joint.j1` … | frei; die Achse dreht sich um ihre Achse zum Zeiger hin (an der projizierten Stellung, daher auch bei geneigten Achsen) | `j1` … | 1°, in die Achsgrenzen umgerechnet und begrenzt |
+| Roboter: Linearachse, die sich quer zur Blickrichtung bewegt (Portal X/Y/Z, SCARA-Pinole in der Seitenansicht) | `joint.x`, `joint.j3` … | längs der projizierten Achse | `x`, `y`, `z`, `j3` | 5 mm, auf den Hub begrenzt |
+| Parallel- und Dreifingergreifer (Seiten- und Axialansicht) | `open` | längs des Backenhubs | `open` | 5 %, 0 … 1 |
+
+Der Griff sitzt am ersten Punkt weiter unten in der Kette, der sich mit der Achse bewegt (nächste Achse, sonst der
+Flansch); Ziehen fühlt sich an, als nähme man den Arm an diesem Punkt. Achsen, deren Bewegung in der Ansicht nicht zu
+sehen ist, haben keinen Griff (Grundachse in der Seitenansicht, Unterarm- und Flanschdrehung); zusammenfallende Griffe
+(eine Hand von vorn) behalten den der ersten Achse. Beschriftungen: „Gelenkwinkel A2: 15°“ / „Joint angle J2: 15°“,
+„Achsstellung X: 600 mm“ / „Axis position X: 600 mm“, „Greiferöffnung: 60 %“ / „Gripper opening: 60 %“. Ziehen an einer
+Achse behält wie die Achsschritte den Zeichenmaßstab und den Sockel auf der Seite (`KeepScale`).
+
 ## Host-Hinweise
 
 Alle Ausgaben nutzen native Primitive (Polygone, Polylinien, Rechtecke, Ellipsen, kubische Pfade, Text). Arbeitsräume

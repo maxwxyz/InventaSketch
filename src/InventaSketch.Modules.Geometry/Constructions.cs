@@ -150,6 +150,7 @@ namespace InventaSketch.Modules.Geometry
             f.Port("vertex", s0);
             f.Port("P1", map(P1)); f.Port("P2", map(P2)); f.Port("Q", map(Q));
             f.Pt(AnchorRole.Mid, map(r1), "ray1"); f.Pt(AnchorRole.Mid, map(r2), "ray2"); f.Pt(AnchorRole.Mid, map(bisEnd), "bisector");
+            f.AngleGrip("angle", s0, map(r2), phi, 10, 170, "Angle", "Winkel");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
@@ -260,6 +261,7 @@ namespace InventaSketch.Modules.Geometry
             f.Rail(new Vec2(x0, yTop), new Vec2(x1, yTop), "g");
             f.Rail(new Vec2(x0, yBot), new Vec2(x1, yBot), "h");
             f.Rail(up * tMin, up * tMax, "transversal");
+            f.AngleGrip("angle", Vec2.Zero, up * tMax, phi, 20, 160, "Angle of the transversal", "Winkel der Querlinie");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)

@@ -181,6 +181,23 @@ kinematic schematic (option pictograms detailed/schematic), "Joint labels" (J1�
 share a label "J5/J6"). Grippers: open/close, stroke arrows, more/fewer cups. Others: kind ▾ / shape ▾ / axes ▾ (choices), toggles for
 names, arrows, mesh band, field tint, closed fence, reverse conveyor.
 
+## Grips (drag handles)
+
+`DragHandles` / `MoveHandle` (hosts draw them as blue grips; interaction-ux.md section 4):
+
+| Element | Key | Motion | Parameter | Snap |
+|---|---|---|---|---|
+| Robots: revolute joint whose axis faces the viewer (side view: shoulder, elbow, wrist bend; top view: base axis, SCARA arms) | `joint.j1` … | free; the joint turns towards the pointer about its axis (on the projected pose, so tilted axes work too) | `j1` … | 1°, wrapped into and clamped to the joint limits |
+| Robots: linear axis moving across the view (gantry X/Y/Z, SCARA quill in the side view) | `joint.x`, `joint.j3` … | along the projected axis | `x`, `y`, `z`, `j3` | 5 mm, clamped to the stroke |
+| Parallel and three-finger gripper (side and axial view) | `open` | along the jaw stroke | `open` | 5 %, 0 … 1 |
+
+The grip sits on the first point further down the chain that moves with the joint (next joint, else the flange), so
+dragging it feels like taking the arm by that point. Joints whose motion does not show in the view have no grip (base
+axis in the side view, forearm and flange roll); coinciding grips (a wrist seen end-on) keep the first joint's.
+Labels: "Joint angle J2: 15°" / "Gelenkwinkel A2: 15°", "Axis position X: 600 mm" / "Achsstellung X: 600 mm",
+"Gripper opening: 60 %" / "Greiferöffnung: 60 %". A joint drag keeps the drawing scale and the base on the page
+(`KeepScale`), like the joint steps.
+
 ## Host notes
 
 All output uses native primitives (polygons, polylines, rectangles, ellipses, cubic paths, text). Envelopes and zones are

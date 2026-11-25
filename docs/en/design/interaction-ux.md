@@ -379,7 +379,21 @@ Before → after, right after selecting with the pointer away from the element:
 **Phase 1 – finish the language in COM**
 1. *Grips beyond charts*: the same grips for every element whose type offers drag handles (dimension values, angles,
    robot joints, gear centre distance). Accept: each such type lists its handles in `DragHandles` and the COM overlay
-   needs no change; the grips keep their place in the layout.
+   needs no change; the grips keep their place in the layout. *Done (2026-11-25) beyond charts for:*
+   - *dimensions (Annotation): linear/aligned "offset" (across the measuring direction) and "text" (along the line,
+     new optional parameter `textAt`), angle dimension "radius" (radially), radius/diameter dimension "text" (along the
+     line, `textAt`); the measured end points stay point handles;*
+   - *robots (Robotics): "joint.j1" … for revolute joints whose axis faces the viewer (dragged about the axis, 1°, joint
+     limits), "joint.x/y/z" and the SCARA quill for linear axes (5 mm, stroke), "open" on parallel and three-finger
+     grippers (5 %);*
+   - *kinematics: "angle" on the input link of every mechanism (crank pin, knee, cam nose; 1°), "stroke" of the piston,
+     "open" of the gripper jaws (5 %), "limitFrom/limitTo" of a fixed pivot with stops and "min/max" of angle limits (5°);*
+   - *geometry: "angle" of the circle's radius, the point of contact, Thales' C, the unit circle, the angle bisector and
+     the transversal (1°, the figure's range), "radius" of the angle mark (0.5 mm).*
+
+   *Each module doc lists its grips (keys, motion, parameter, snap). Open: gear centre distance (Mechanical). Arc grips
+   (joints, input angles) use `DragConstraint.Free` and keep the grip on its arc in `MoveHandle`; a Core
+   `DragConstraint.Arc` with a centre would let hosts draw curved arrows and constrain the preview to the arc.*
 2. *Dependency highlight on hover*: hovering a lock badge or "Select assembly" outlines every unit that moves along in
    the second colour. Accept: a gear on a shaft shows the shaft and its other gears outlined; nothing else. *Done for
    "select the assembly" and the "Select connected" entries (fainter glow, section 6a); lock badges open.*
@@ -391,7 +405,12 @@ Before → after, right after selecting with the pointer away from the element:
    Open: views of nine mechanical elements still share a view pictogram (listed by the test).
 4. *Actions that duplicate a choice or a view* get `ParamKeys` or are removed (shaft hollow toggle vs. hollow view,
    robot style vs. views, `view.*` actions of six modules, `map.point.add/remove` vs. corner dots). Accept: the pie of
-   these elements lists each thing once.
+   these elements lists each thing once. *Done for Annotation, Robotics, Kinematics, Geometry and Maps (2026-11-25):
+   Maps' `view.*` actions removed (the host's view dropdown keeps the scale through `ViewDef.Size`) and
+   `map.point.add/remove` removed (corner dots and corner commands); the four-bar's "Crossed assembly mode" toggle names
+   `branch` in `ParamKeys`; the robot drawing style is a choice with `ParamKeys` already. A scan of every library element
+   of these modules found no other action that sets a dropdown parameter without naming it. Open: the shaft hollow
+   toggle (Mechanical) and the `view.*` actions of Automotive, Electrical, Fluid, Machines and Mechanical.*
 5. *Between rows/columns of a table*: "+" dots on the inner row and column lines (insert there). Accept: a click on
    the dot between row 2 and 3 inserts a row there.
 6. *Corner dot insert where it is drawn* when the layout slid it along its segment. Accept: the new corner appears

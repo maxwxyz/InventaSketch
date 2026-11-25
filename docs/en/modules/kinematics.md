@@ -122,7 +122,7 @@ the stops, and the coupler curve and the ghost positions end there (the chain is
 | `kin.ghosts` | Ghost positions / Zwischenlagen (toggles 0 ↔ last count, default 4) | `cmd-animate` | mechanisms |
 | `kin.path` | Motion path / Bahnkurve | `cmd-toggle` | mechanisms |
 | `kin.dof` | Degree of freedom badge / Freiheitsgrad-Anzeige | `cmd-text` | mechanisms, cam follower |
-| `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage | `cmd-swap` | four-bar |
+| `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage (names `branch` in `ParamKeys`: hosts that show the assembly mode dropdown leave it out) | `cmd-swap` | four-bar |
 | `kin.follower=roller/flat/knife` | Follower ▾ / Stößel ▾ (choice) | `cmd-option` | cam follower, cam disc |
 | `kin.joint.start` / `kin.joint.end` | Joint at start / end | `cmd-arrow-start` / `cmd-arrow-end` | rigid link |
 | `kin.stroke`, `kin.open`, `kin.load` | Extend/retract, open/close, load | `cmd-toggle` | piston, gripper, pulley |
@@ -130,6 +130,27 @@ the stops, and the coupler curve and the ghost positions end there (the chain is
 
 View switching (`schematic`, `detailed`) is offered by the host from `ViewDef` with the icons
 `view-schematic` and `view-detailed`.
+
+## Grips (drag handles)
+
+`DragHandles` / `MoveHandle` (hosts draw them as blue grips; interaction-ux.md section 4). Only values that are
+parameters of the type get a grip:
+
+| Element | Key | Grip on | Motion | Parameter | Snap |
+|---|---|---|---|---|---|
+| Four-bar, slider-crank, scotch yoke, quick-return | `angle` | crank pin A | free; the crank turns towards the pointer about its frame pivot | `angle` | 1°, normalised to (−180°, 180°] |
+| Toggle | `angle` | knee B | about the upper pivot A | `angle` | 1° |
+| Cam with follower | `angle` | cam nose (outermost point) | about the cam pivot | `angle` | 1° |
+| Piston and cylinder | `stroke` | rod end | along the cylinder axis | `stroke` | 5 %, 0 … 1 |
+| Gripper jaws | `open` | right jaw | sideways | `open` | 5 %, 0 … 1 |
+| Fixed pivot with stops (`limited`) | `limitFrom`, `limitTo` | outer end of each stop line | about the pivot | `limitFrom`, `limitTo` | 5°, within half a turn of the old value |
+| Angle limits | `min`, `max` | outer end of each limit ray | about the joint | `min`, `max` | 5°, within half a turn of the old value |
+
+The input angle follows the mechanism's own sense of rotation (found from the solved pose), so the grip moves with the
+pointer for every mechanism. Labels name the value: "Input angle: −60°" / "Antriebswinkel: −60°", "Piston position:
+45 %" / "Kolbenstellung: 45 %", "Jaw opening: 60 %" / "Backenöffnung: 60 %", "Stop from: −135°" / "Anschlag von:
+−135°", "Minimum angle: −30°" / "Minimaler Winkel: −30°". Self-built linkages (links and joints as point objects) are
+moved through their point handles and motion mode, not through grips.
 
 ## Host notes
 

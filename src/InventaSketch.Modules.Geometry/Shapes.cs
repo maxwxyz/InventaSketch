@@ -377,6 +377,11 @@ namespace InventaSketch.Modules.Geometry
             }
             f.Port("centre", c);
             for (var i = 0; i < 4; i++) f.Pt(AnchorRole.Quadrant, c + Mx.Dir(90 * i) * R, "q" + i.ToString(CultureInfo.InvariantCulture));
+            // Grip at the end of the radius (or of the diameter shown alone): turns it about the centre.
+            if (show is "radius" or "both")
+                f.AngleGrip("angle", c, c + Mx.Dir(angle) * R, angle, -360, 360, "Direction of the radius", "Richtung des Radius");
+            else if (show == "diameter")
+                f.AngleGrip("angle", c, c + Mx.Dir(angle) * R, angle, -360, 360, "Direction of the diameter", "Richtung des Durchmessers");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
@@ -442,6 +447,7 @@ namespace InventaSketch.Modules.Geometry
             f.Port("contact", P);
             f.Pt(AnchorRole.Mid, e0, "t0");
             f.Pt(AnchorRole.Mid, e1, "t1");
+            f.AngleGrip("angle", M, P, phi, -360, 360, "Point of contact", "Berührpunkt");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
@@ -506,6 +512,7 @@ namespace InventaSketch.Modules.Geometry
                 f.Text(Mx.Beside(C, C - M, "C", tl, 0.8), "C", tl);
             }
             f.Port("A", A); f.Port("B", B); f.Port("C", C); f.Port("centre", M);
+            f.AngleGrip("angle", M, C, phi, 1, 179, "Position of C", "Lage von C");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
@@ -646,6 +653,7 @@ namespace InventaSketch.Modules.Geometry
             f.Text(Mx.Beside(P, P - O, "P", tl, 0.8), "P", tl);
             f.Port("origin", O);
             f.Port("P", P);
+            f.AngleGrip("angle", O, P, theta, -360, 360, "Angle", "Winkel");
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)

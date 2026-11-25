@@ -140,7 +140,6 @@ namespace InventaSketch.Modules.Maps
             foreach (var opt in Prm.Choice(o, "map.road.kind", KindDef, new I18nText("Road type", "Straßenart"))) yield return opt;
             yield return Prm.Toggle(o, "map.road.smooth", "smooth", false, new I18nText("Smooth curve", "Glatte Kurve"), IconIds.Smooth);
             yield return Prm.Toggle(o, "map.road.bridge", "bridge", false, new I18nText("Bridge", "Brücke"));
-            foreach (var a in PointActions(o, new I18nText("Add point", "Punkt hinzufügen"), new I18nText("Remove point", "Punkt entfernen"))) yield return a;
         }
     }
 
@@ -207,7 +206,6 @@ namespace InventaSketch.Modules.Maps
         {
             foreach (var opt in Prm.Choice(o, "map.rail.kind", KindDef, new I18nText("Line type", "Linienart"))) yield return opt;
             yield return Prm.Toggle(o, "map.rail.smooth", "smooth", false, new I18nText("Smooth curve", "Glatte Kurve"), IconIds.Smooth);
-            foreach (var a in PointActions(o, new I18nText("Add point", "Punkt hinzufügen"), new I18nText("Remove point", "Punkt entfernen"))) yield return a;
         }
     }
 
@@ -284,7 +282,6 @@ namespace InventaSketch.Modules.Maps
         {
             foreach (var opt in Prm.Choice(o, "map.river.kind", KindDef, new I18nText("Water type", "Gewässerart"))) yield return opt;
             yield return Prm.Toggle(o, "map.river.smooth", "smooth", true, new I18nText("Smooth curve", "Glatte Kurve"), IconIds.Smooth);
-            foreach (var a in PointActions(o, new I18nText("Add point", "Punkt hinzufügen"), new I18nText("Remove point", "Punkt entfernen"))) yield return a;
         }
     }
 
@@ -394,7 +391,6 @@ namespace InventaSketch.Modules.Maps
             foreach (var opt in Prm.Choice(o, "map.route.arrows", ArrowsDef, new I18nText("Direction arrows", "Richtungspfeile"))) yield return opt;
             yield return Prm.Toggle(o, "map.route.waypoints", "waypoints", true, new I18nText("Show waypoints", "Wegpunkte zeigen"), IconIds.PointsShow);
             yield return Prm.Toggle(o, "map.route.smooth", "smooth", false, new I18nText("Smooth curve", "Glatte Kurve"), IconIds.Smooth);
-            foreach (var a in PointActions(o, new I18nText("Add waypoint", "Wegpunkt hinzufügen"), new I18nText("Remove waypoint", "Wegpunkt entfernen"))) yield return a;
             yield return new ContextAction("map.route.reverse", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, Edits.ReversePoints) { Group = "points" };
         }
     }
