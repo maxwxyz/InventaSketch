@@ -161,7 +161,8 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
    side views, so they do not visibly turn); the exploded differential works as one (gears loose in the case, Willis
    with the case: straight on both sides turn with the case, one side held → the other turns twice as fast); the
    `elevation`/`section` view alias for walls with building services).
-4. P2 modules: process & thermal, energy systems, robotics (in progress 2026-11-25); slide-wide style: ISO 128 line
+4. P2 modules: process & thermal (35 types), energy systems (30), robotics (25) done 2026-11-25 (engine, all hosts
+   through the catalog; module docs docs/en/modules/process.md, energy.md, robotics.md); slide-wide style: ISO 128 line
    groups and black and white as a slide style for all elements, new ones included (done 2026-11-25 in COM and web);
    open: colour accents per module.
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
@@ -276,11 +277,11 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
 
 - **P1 – Charts (`chart.*`, spec §6.12):** XY/line/scatter/bar, characteristic curves (torque–speed, efficiency map),
   Bode plot, tolerance bands; data typed in or pasted from Excel; monochrome-safe.
-- **P2 – Process & thermal (`process.*`):** P&ID beyond fluid power (vessels, columns, heat exchangers, pumps,
+- **P2 – Process & thermal (`process.*`, done 2026-11-25):** P&ID beyond fluid power (vessels, columns, heat exchangers, pumps,
   instrumentation bubbles with tags), thermodynamic cycles (T-s, p-v, p-h diagrams), HVAC.
-- **P2 – Energy systems (`energy.*`):** PV, wind, battery storage, charger/wallbox, grid connection, hydrogen,
+- **P2 – Energy systems (`energy.*`, done 2026-11-25):** PV, wind, battery storage, charger/wallbox, grid connection, hydrogen,
   single-line diagrams across voltage levels.
-- **P2 – Robotics (`robot.*`):** arms from kinematic joints, frames, grippers, work cells, reach envelopes, safety zones.
+- **P2 – Robotics (`robot.*`, done 2026-11-25):** arms from kinematic joints, frames, grippers, work cells, reach envelopes, safety zones.
 - **P3 – Networks & IT (`net.*`):** servers, cloud, routers, switches, topologies, C4 context/container diagrams.
 - **P3 – Optics & physics (`optics.*`):** rays, lenses, mirrors, prisms, waves, fields.
 - **P3 – Reliability & systems engineering:** fault trees, FMEA blocks, SysML-style blocks and requirement links.

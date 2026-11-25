@@ -182,7 +182,8 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
    zerlegte Differential arbeitet als solches (Räder lose im Korb, Willis mit dem Korb: geradeaus drehen beide Seiten mit
    dem Korb, eine Seite festgehalten → die andere dreht doppelt so schnell); der Ansichts-Alias `elevation`/`section` für
    Wände mit Haustechnik).
-4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik (in Arbeit 25.11.2026); folienweiter Stil:
+4. P2-Module: Verfahrens- und Wärmetechnik (35 Typen), Energiesysteme (30), Robotik (25) erledigt 25.11.2026 (Engine,
+   alle Hosts über den Katalog; Moduldoku docs/de/modules/process.md, energy.md, robotics.md); folienweiter Stil:
    ISO-128-Liniengruppen und Schwarz-Weiß als Folienstil für alle Elemente, auch neue (erledigt 25.11.2026 in COM und
    Web); offen: Farbakzente je Modul.
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
@@ -312,12 +313,12 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
 - **P1 – Diagramme/Kennlinien (`chart.*`, Spezifikation §6.12):** XY/Linie/Punkte/Balken, Kennlinien
   (Drehmoment–Drehzahl, Wirkungsgradkennfeld), Bode-Diagramm, Toleranzbänder; Daten eintippen oder aus Excel einfügen;
   schwarz-weiß-tauglich.
-- **P2 – Verfahrens- und Wärmetechnik (`process.*`):** R&I-Fließbild über die Fluidtechnik hinaus (Behälter, Kolonnen,
+- **P2 – Verfahrens- und Wärmetechnik (`process.*`, erledigt 25.11.2026):** R&I-Fließbild über die Fluidtechnik hinaus (Behälter, Kolonnen,
   Wärmetauscher, Pumpen, Messstellen mit Kennzeichnung), thermodynamische Kreisprozesse (T-s-, p-v-, p-h-Diagramme),
   Klimatechnik.
-- **P2 – Energiesysteme (`energy.*`):** PV, Wind, Batteriespeicher, Ladegerät/Wallbox, Netzanschluss, Wasserstoff,
+- **P2 – Energiesysteme (`energy.*`, erledigt 25.11.2026):** PV, Wind, Batteriespeicher, Ladegerät/Wallbox, Netzanschluss, Wasserstoff,
   Übersichtsschaltpläne über Spannungsebenen.
-- **P2 – Robotik (`robot.*`):** Arme aus Kinematik-Gelenken, Koordinatensysteme, Greifer, Arbeitszellen,
+- **P2 – Robotik (`robot.*`, erledigt 25.11.2026):** Arme aus Kinematik-Gelenken, Koordinatensysteme, Greifer, Arbeitszellen,
   Reichweitenhüllen, Schutzbereiche.
 - **P3 – Netzwerke & IT (`net.*`):** Server, Cloud, Router, Switches, Topologien, C4-Kontext-/Container-Diagramme.
 - **P3 – Optik & Physik (`optics.*`):** Strahlen, Linsen, Spiegel, Prismen, Wellen, Felder.
