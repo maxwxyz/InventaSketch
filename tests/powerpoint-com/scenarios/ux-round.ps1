@@ -14,7 +14,7 @@ $S.Window.Selection.Unselect()
 $a = $addin.Insert('ann.arrow')
 $as = $S.Slide.Shapes.Item($a); $as.Left = 420; $as.Top = 80
 $as.Select(); Start-Sleep 3
-$ids = Get-IskBarIds $S
+$ids = Wait-IskBarIds $S { param($i) $i -contains 'flipH' }
 Write-IskInfo ('arrow bar: ' + ($ids -join ' '))
 Assert-Isk $S ($ids -contains 'flipH') 'an arrow can be mirrored horizontally'
 foreach ($x in @($S.Slide.Shapes)) { $x.Delete() }
@@ -23,7 +23,7 @@ foreach ($x in @($S.Slide.Shapes)) { $x.Delete() }
 $g1 = $addin.Insert('mech.spur.axial'); $s1 = $S.Slide.Shapes.Item($g1); $s1.Left = 100; $s1.Top = 100
 $g2 = $addin.Insert('mech.spur.axial'); $s2 = $S.Slide.Shapes.Item($g2); $s2.Left = 400; $s2.Top = 180
 $S.Slide.Shapes.Range([string[]]@($g1, $g2)).Select(); Start-Sleep 3
-$ids = Get-IskBarIds $S
+$ids = Wait-IskBarIds $S { param($i) $i -contains 'align:row' }
 Write-IskInfo ('multi bar: ' + ($ids -join ' '))
 Assert-Isk $S ($ids -contains 'align:row') 'two misaligned gears offer "centres on one row"'
 Save-IskShot $S '2-multi-bar'
@@ -39,10 +39,10 @@ $g1 = $addin.Insert('mech.spur.axial'); $s1 = $S.Slide.Shapes.Item($g1); $s1.Lef
 $s1.Select(); Start-Sleep 3
 $addin.Command('port:mesh.right:mech.spur.axial') | Out-Null; Start-Sleep 5
 @(Get-IskShapes $S 'ISK:mech.gear.spur*')[0].Select(); Start-Sleep 3
-$ids = Get-IskBarIds $S
+$ids = Wait-IskBarIds $S { param($i) $i -contains 'assembly' }
 Assert-Isk $S ($ids -contains 'assembly') 'a coupled gear offers "select assembly"'
 $addin.Command('assembly') | Out-Null; Start-Sleep 4
-$ids = Get-IskBarIds $S
+$ids = Wait-IskBarIds $S { param($i) $i -contains 'mview:stick' }
 Write-IskInfo ('assembly bar: ' + ($ids -join ' '))
 Assert-Isk $S ($S.Window.Selection.ShapeRange.Count -eq 2 -and ($ids -contains 'mview:stick')) 'the assembly is selected and offers its views'
 $addin.Command('mview:stick') | Out-Null; Start-Sleep 6

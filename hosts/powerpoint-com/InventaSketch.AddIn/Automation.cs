@@ -131,6 +131,9 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Button ids of the floating bar as last shown, comma-separated (UI tests; no log needed).</summary>
+        public string BarIds() => _connect.LastBarIds();
+
         /// <summary>All library item ids, separated by newlines.</summary>
         public string LibraryItems() => string.Join("\n", _connect.LibraryItemIds());
 

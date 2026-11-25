@@ -265,11 +265,30 @@ function Get-IskLog {
 <# .SYNOPSIS Button ids of the floating bar as last shown (from the add-in log). #>
 function Get-IskBarIds {
     param($S)
+    # Straight from the add-in (automation object); the add-in log is the fallback for older builds.
+    try { $direct = [string]$S.AddIn.BarIds() } catch { $direct = $null }
+    if ($null -ne $direct) { return , @($direct -split ',' | Where-Object { $_ }) }
     $log = Get-IskLog $S
     if (-not (Test-Path $log)) { return @() }
     $line = Get-Content $log | Where-Object { $_ -match 'Bar ids: ' } | Select-Object -Last 1
     if (-not $line) { return @() }
     , @(($line -replace '.*Bar ids: ', '') -split ',' | Where-Object { $_ })
+}
+
+<#
+.SYNOPSIS Bar ids once they satisfy a condition (the log copy can lag behind the bar by a moment); the last ids read
+after the timeout otherwise.
+#>
+function Wait-IskBarIds {
+    param($S, [scriptblock]$Until, [int]$Seconds = 10)
+    $ids = @()
+    $end = (Get-Date).AddSeconds($Seconds)
+    do {
+        $ids = Get-IskBarIds $S
+        if (& $Until $ids) { break }
+        Start-Sleep -Milliseconds 700
+    } while ((Get-Date) -lt $end)
+    , $ids
 }
 
 <# .SYNOPSIS Presses Ctrl plus a key (virtual-key code). #>

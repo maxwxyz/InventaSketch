@@ -1000,6 +1000,9 @@ namespace InventaSketch.AddIn
         }
 
         /// <summary>The ISO 128 line group <paramref name="g"/> for the current slide (slide style + every unit redrawn).</summary>
+        /// <summary>Button ids of the floating bar as last shown (UI tests).</summary>
+        internal string LastBarIds() => _onSlide?.LastBarIds ?? "";
+
         internal bool ApplyLineGroup(double g)
         {
             if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return false;

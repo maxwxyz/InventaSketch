@@ -113,7 +113,8 @@ namespace InventaSketch.AddIn.OnSlide
             GetCursorPos(out var p);
             var opacity = _fade.Update(_bar.Distance(new Point(p.X, p.Y)));
             Log.Info($"Bar shown at {_bar.Bounds.X},{_bar.Bounds.Y},{_bar.Bounds.Width},{_bar.Bounds.Height} opacity {opacity:0.##}");
-            Log.Info("Bar ids: " + string.Join(",", _bar.Buttons.Where(b => !b.Separator).Select(b => b.Id)));
+            LastBarIds = string.Join(",", _bar.Buttons.Where(b => !b.Separator).Select(b => b.Id));
+            Log.Info("Bar ids: " + LastBarIds);
             DrawBar(view, opacity);
         }
 

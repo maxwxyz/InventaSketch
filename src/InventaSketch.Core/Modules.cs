@@ -990,16 +990,27 @@ namespace InventaSketch.Core
         /// <summary>Renders an object into page coordinates (style overrides applied).</summary>
         public IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
+            var local = RenderLocal(o, ctx);
+            if (o.IsPointGeometry) return local;
+            var m = o.Matrix();
+            return local.Select(p => Prim.Transform(p, m)).ToList();
+        }
+
+        /// <summary>
+        /// The object's primitives in its local coordinates (page coordinates for point geometry) as every renderer draws
+        /// them: the drawing's line group applied (ISO 128: every stroke scales with it) and the object's own style
+        /// overrides on top (they still win). SVG, exports and the native draw plans all go through here.
+        /// </summary>
+        public IReadOnlyList<Primitive> RenderLocal(SketchObject o, RenderContext ctx)
+        {
             var type = TypeOf(o);
             var local = type.Render(o, ctx);
-            var m = o.Matrix();
-            var result = new List<Primitive>(local.Count);
-            // Line group of the drawing (ISO 128): every stroke scales with it; the object's own overrides still win.
             var k = ctx.Doc.Settings.LineGroup is double g && g > 0 ? g / Style.DesignLineGroup : 1;
+            if (Math.Abs(k - 1) < 1e-9 && o.Style is null) return local;
+            var result = new List<Primitive>(local.Count);
             foreach (var p in local)
             {
-                var q = o.IsPointGeometry ? p : Prim.Transform(p, m);
-                if (Math.Abs(k - 1) > 1e-9) q = Prim.ScaleStrokes(q, k);
+                var q = Math.Abs(k - 1) > 1e-9 ? Prim.ScaleStrokes(p, k) : p;
                 if (o.Style is not null) q = Prim.TextOverride(type.ApplyOverride(q, o.Style), o.Style);
                 result.Add(q);
             }
