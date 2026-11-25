@@ -31,7 +31,12 @@ namespace InventaSketch.AddIn.OnSlide
             _hooks.Install();
             _timer.Start();
             _overlay.Clear();
+            _haloPreview = null;
+            _multiHaloHidden = false;
+            ReadSlideDark();
             ShowMultiBar(view);
+            // Every selected element shows its halo, so it is clear which of overlapping elements are selected.
+            PresentHaloOnly(view);
             Log.Info("Armed multi-selection: " + units.Count + " units");
         }
 
@@ -184,7 +189,12 @@ namespace InventaSketch.AddIn.OnSlide
         private bool MultiMouse(int message, POINT pt, SlideView view)
         {
             if (HandleBar(message, pt, view, out var swallow)) return swallow;
-            if (message is WM_LBUTTONDOWN or WM_RBUTTONDOWN) HideBar();
+            if (message is WM_LBUTTONDOWN or WM_RBUTTONDOWN)
+            {
+                HideBar();
+                // PowerPoint may move the shapes now: the halo comes back where they are once the button is released.
+                if (message == WM_LBUTTONDOWN && !_multiHaloHidden) { _multiHaloHidden = true; _overlay.Clear(); }
+            }
             return false;
         }
 

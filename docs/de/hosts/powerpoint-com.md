@@ -68,7 +68,8 @@
 - **Drehen mit Fangen:** der Drehgriff wird übernommen; Fangen auf Vielfache von 15° innerhalb 4° (`Umschalt`: strikt
   15°, `Alt`: frei).
 - **Tastatur (Einheit ausgewählt, Folie im Fokus):** `R` 90° drehen (`Umschalt+R` zurück), `X` / `Y` horizontal /
-  vertikal spiegeln, `Strg+D` duplizieren mit neuen IDs, `Umschalt+F10` oder Kontextmenütaste öffnen das Kreismenü.
+  vertikal spiegeln, `Strg+D` duplizieren mit neuen IDs, `Umschalt+F10` oder Kontextmenütaste öffnen das Kreismenü,
+  Strg+Doppelklick wählt, was mit dem Element verbunden ist (unten).
   Pfeiltasten, `Entf`, `Strg+C/X/V` bleiben bei PowerPoint; eine eingefügte Kopie erhält bei Auswahl automatisch neue
   IDs.
 - **Design:** Leiste und Kreismenü folgen dem Office-Design (Dunkelgrau/Schwarz oder „Systemeinstellung“ bei dunklem
@@ -138,12 +139,34 @@
   - Stil ▸ (jede Auswahl mit ihren Optionen)
   - Löschen
   - Ansicht ▸ (Ansichten, Planmaßstab)
-  - Anordnen ▸ (drehen, spiegeln, Baugruppe wählen, als Folien animieren)
+  - Anordnen ▸ (drehen, spiegeln, „Verbundene auswählen ▸“, als Folien animieren)
 
   Die Mitte nennt das Element (oder das offene Untermenü). Plätze ohne Inhalt für dieses Element bleiben mit wenig
   Kontrast ausgegraut, und ein Klick darauf lässt das Menü offen. Untermenüs beginnen mit „← Zurück“; lange gehen in
   „Mehr ▸“ weiter. Der Eintrag unter dem Zeiger zeigt einen Hinweis in einer Zeile unter dem Ring. Esc oder ein Klick
   daneben schließt das Menü.
+
+- **Auswahldarstellung und „Verbundene auswählen“ (25.11.2026):** Regeln in
+  [docs/de/design/interaction-ux.md](../design/interaction-ux.md#6a-auswahldarstellung-und-verbundene-auswählen-25112026).
+  - Jede InventaSketch-Auswahl (ein Element, mehrere, das Ergebnis von „Verbundene auswählen“) zeigt einen weichen blauen
+    Schein entlang der genauen Kontur ihrer Elemente, auf dem Overlay unter den Griffen gezeichnet
+    (`OnSlide/SelectionHalo.cs`). Ihre eigenen Linien und das Innere ihrer geschlossenen Formen bleiben frei; über einem
+    darüberliegenden Element zeigt sich der Schein trotzdem, so ist klar, welches von übereinanderliegenden Elementen
+    gewählt ist. Helle Folien bekommen ein kräftigeres Blau, dunkle (Hintergrund von der Folie oder ihrem Master) ein
+    helleres.
+  - Der Schein wird je Auswahl, Vorschau und Ansicht einmal gezeichnet (verbreiterte Grundelemente, eine weichgezeichnete
+    Maske in halber Auflösung) und zwischengespeichert; in den Maus- und Tastatur-Hooks wird er nur aus dem Speicher
+    gezeichnet. Beim Ziehen, Skalieren und Drehen ist er ausgeblendet, ebenso solange PowerPoint eine Mehrfachauswahl
+    verschiebt.
+  - Kreismenü, Anordnen ▸ „Verbundene auswählen ▸“: die Arten, die für das Element zutreffen (`Connectivity.Options` auf
+    einem Kontextdokument mit allen Einheiten der Folie): Netz, Bewegt sich mit, Folgende Elemente, Geschlossene
+    Schleife, Raumwände. Überfahren eines Eintrags lässt die Elemente, die er dazunähme, schwächer leuchten; Wählen wählt
+    ihre Formen aus. „Baugruppe wählen“ in der Leiste ist „Bewegt sich mit“ (beim Überfahren dieselbe Vorschau).
+  - Strg+Doppelklick auf das gewählte Element wählt die sinnvollste Art (`Connectivity.AutoKind`). Strg+A bleibt bei
+    PowerPoint („Alles auswählen“).
+  - Befehls-IDs `connect:net|coupled|chain|loop|walls` (Automation `Command`; `assembly` = `connect:coupled`);
+    Protokollzeilen „Halo: selected=…; connected=…“ und „Select connected (Art): n units: …“; UI-Szenario
+    `select-connected`.
 
 ## Seitenleisten-Editor (benutzerdefinierter Aufgabenbereich)
 
