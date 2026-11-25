@@ -107,12 +107,16 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     case WM_LBUTTONDOWN: case WM_LBUTTONDBLCLK: _hostOwnsLeft = !swallow; _addinOwnsLeft = swallow; break;
                     case WM_RBUTTONDOWN: case WM_RBUTTONDBLCLK: _hostOwnsRight = !swallow; _addinOwnsRight = swallow; break;
+                    // A release is swallowed only when the add-in took its press. A press the hooks never saw (the hooks are
+                    // installed while the button is down: the click that selects the element) belongs to PowerPoint – it was
+                    // swallowed before, PowerPoint never saw the release and kept dragging the element with the pointer
+                    // (maintainer 2026-11-25: "a click on the chart, an axis or a grid line keeps it on the cursor").
                     case WM_LBUTTONUP:
-                        swallow = !_hostOwnsLeft && (swallow || _addinOwnsLeft);
+                        swallow = _addinOwnsLeft && !_hostOwnsLeft;
                         _hostOwnsLeft = _addinOwnsLeft = false;
                         break;
                     case WM_RBUTTONUP:
-                        swallow = !_hostOwnsRight && (swallow || _addinOwnsRight);
+                        swallow = _addinOwnsRight && !_hostOwnsRight;
                         _hostOwnsRight = _addinOwnsRight = false;
                         break;
                 }

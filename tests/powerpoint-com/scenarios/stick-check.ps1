@@ -23,6 +23,15 @@ $curve = $null; foreach ($l in $S.Slide.Shapes.Item($c).GroupItems) { if ($l.Tag
 $node = $curve.Nodes.Item(3).Points; $flat = @($node | ForEach-Object { $_ })
 $scr = ConvertTo-IskPixel $S @(([double]$flat[0] * 25.4 / 72), ([double]$flat[1] * 25.4 / 72))
 Click-Move 'click on a curve point' $scr[0] $scr[1] $c
+# Clicks on an axis and on a grid line (maintainer: "click on the chart, an axis or a grid line").
+foreach ($key in @('axis.x', 'grid.major')) {
+    $leaf = $null; foreach ($l in $S.Slide.Shapes.Item($c).GroupItems) { if ($l.Tags.Item('ISK_PART') -eq $key) { $leaf = $l; break } }
+    if (-not $leaf) { Write-IskInfo "no $key leaf"; continue }
+    $pts = @($leaf.Nodes.Item(1).Points | ForEach-Object { $_ }); $pts2 = @($leaf.Nodes.Item(2).Points | ForEach-Object { $_ })
+    $mx = ([double]$pts[0] + [double]$pts2[0]) / 2; $my = ([double]$pts[1] + [double]$pts2[1]) / 2
+    $p = ConvertTo-IskPixel $S @(($mx * 25.4 / 72), ($my * 25.4 / 72))
+    Click-Move "click on $key" $p[0] $p[1] $c
+}
 # Second click on the already selected chart's curve.
 $S.Slide.Shapes.Item($c).Select(); Start-Sleep 2
 Click-Move 'click on the curve of the selected chart' $scr[0] $scr[1] $c
