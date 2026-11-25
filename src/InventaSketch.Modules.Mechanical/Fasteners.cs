@@ -23,20 +23,21 @@ namespace InventaSketch.Modules.Mechanical
         {
             yield return new MechType("mech.screw", T("Hex bolt", "Sechskantschraube"), Cat,
                 new[] { "screw", "bolt", "hex bolt", "thread", "schraube", "sechskantschraube", "gewinde", "verschraubung" },
-                new ViewSpec("side", VSide, 42, 12, ScrewSide) { Anchors = AxisAnchor },
+                new ViewSpec("side", VSide, 42, 12, ScrewSide) { Anchors = ScrewAxis },
                 new ViewSpec("top", VTop, 14, 14, ScrewTop))
             {
                 Rotating = false,
             };
             yield return new MechType("mech.nut", T("Hex nut", "Sechskantmutter"), Cat,
                 new[] { "nut", "hex nut", "mutter", "sechskantmutter", "gewinde" },
-                new ViewSpec("side", VSide, 8, 14, NutSide),
-                new ViewSpec("top", VTop, 14, 14, NutTop));
+                // Bore: the nominal (major) thread radius 3.2 of the top view, so a nut fits a bolt (ShaftFit).
+                new ViewSpec("side", VSide, 8, 14, NutSide) { Bore = (p, o) => 3.2 * p.Sy },
+                new ViewSpec("top", VTop, 14, 14, NutTop) { Bore = (p, o) => 3.2 * p.K });
             yield return new MechType("mech.washer", T("Washer", "Unterlegscheibe"), Cat,
                 new[] { "washer", "unterlegscheibe", "scheibe", "beilagscheibe" },
-                new ViewSpec("side", VSide, 3, 16, (p, o) => WasherSide(p, false)),
-                new ViewSpec("section", VSection, 3, 16, (p, o) => WasherSide(p, true)),
-                new ViewSpec("top", VTop, 16, 16, WasherTop));
+                new ViewSpec("side", VSide, 3, 16, (p, o) => WasherSide(p, false)) { Bore = (p, o) => 4.4 * p.Sy },
+                new ViewSpec("section", VSection, 3, 16, (p, o) => WasherSide(p, true)) { Bore = (p, o) => 4.4 * p.Sy },
+                new ViewSpec("top", VTop, 16, 16, WasherTop) { Bore = (p, o) => 4.4 * p.K });
             yield return new MechType("mech.rivet", T("Rivet", "Niet"), Cat,
                 new[] { "rivet", "niet", "halbrundniet", "nietverbindung" },
                 new ViewSpec("side", VSide, 16, 10, RivetSide) { Anchors = AxisAnchor },
@@ -77,6 +78,17 @@ namespace InventaSketch.Modules.Mechanical
             yield return Anchor.Segment(AnchorRole.Axis, new Vec2(-hw, 0), new Vec2(hw, 0));
         }
 
+        /// <summary>
+        /// Bolt axis with its radii (<see cref="ShaftFit"/>): the head section (design x -21 to -14, radius 6) and the shank
+        /// (radius 4, the nominal thread), so nuts and washers fit the thread.
+        /// </summary>
+        private static IEnumerable<Anchor> ScrewAxis(Pen p, SketchObject o)
+        {
+            var hw = p.W / 2;
+            var head = 7.0 / 42;
+            yield return Anchor.Shaft(new Vec2(-hw, 0), new Vec2(hw, 0), 4 * p.Sy, new[] { new AxisStep(0, head, 6 * p.Sy), new AxisStep(head, 1, 4 * p.Sy) });
+        }
+
         /// <summary>Hex bolt: head on the left, shank with thread to the right (thin root lines, thick thread limit).</summary>
         private static void ScrewSide(Pen p, SketchObject o)
         {
@@ -112,7 +124,7 @@ namespace InventaSketch.Modules.Mechanical
         private static void NutTop(Pen p, SketchObject o)
         {
             p.PolyD(Frag.Hexagon(0, 0, 7), S.Vis, true, "body");
-            p.Circle(0, 0, 2.6, S.Vis, "minor");
+            p.Hole(0, 0, 2.6, S.Vis, "minor");
             p.Arc(0, 0, 3.2, 3.2, -80, 270, S.Thin, "major");
             p.CenterCross(0, 0, 7, 6.2);
         }
@@ -137,7 +149,7 @@ namespace InventaSketch.Modules.Mechanical
         private static void WasherTop(Pen p, SketchObject o)
         {
             p.Circle(0, 0, 7.6, S.Vis, "outer");
-            p.Circle(0, 0, 4.4, S.Vis, "inner");
+            p.Hole(0, 0, 4.4, S.Vis, "inner");
             p.CenterCross(0, 0, 8, 8);
         }
 

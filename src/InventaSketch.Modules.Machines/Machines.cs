@@ -289,7 +289,7 @@ namespace InventaSketch.Modules.Machines
                     p.PolyD(core, Mag.Underlay, true, "underlay");
                     p.PolyD(core, Mag.Iron(p, o, Mag.StatorHatch), true, "core");
                 }
-                p.Circle(0, 0, 6, S.Vis, "shaft");
+                p.Round(new Vec2(0, 0), 6, S.Vis, "shaft");
             }
             else
             {
@@ -309,8 +309,8 @@ namespace InventaSketch.Modules.Machines
                         var at = G.P(30.5, k * alpha);
                         p.Add(Prim.Text(at.X * p.Sx, at.Y * p.Sy, k % 2 == 0 ? "N" : "S", new TextStyle { Size = ts * p.K, Bold = true, Color = k % 2 == 0 ? "#ffffff" : "#000000" }), "pole");
                     }
-                p.Circle(0, 0, 9, S.Vis, "hub");
-                p.Circle(0, 0, 6, S.Vis, "shaft");
+                p.Round(new Vec2(0, 0), 9, S.Vis, "hub");
+                p.Round(new Vec2(0, 0), 6, S.Vis, "shaft");
             }
             p.CenterCross(0, 0, 50, 50);
         }

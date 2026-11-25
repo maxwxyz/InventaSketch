@@ -121,6 +121,14 @@ namespace InventaSketch.Modules.Mechanical
 
         public void Circle(double cx, double cy, double r, Style? s = null, string? tag = null) => Ellipse(cx, cy, r, r, s, tag);
 
+        /// <summary>
+        /// Round feature (rolling element, bore, hole, pin, hub circle) at a design centre: the centre follows the stretch,
+        /// the radius the uniform detail scale <see cref="K"/>, so it stays a circle when the part is stretched
+        /// non-uniformly (only the outline stretches).
+        /// </summary>
+        public void Hole(double cx, double cy, double r, Style? s = null, string? tag = null)
+            => Add(Prim.Circle(cx * Sx, cy * Sy, r * K, s ?? S.Vis), tag);
+
         /// <summary>True circle (detail scale) around an actual centre.</summary>
         public void Round(Vec2 c, double r, Style? s = null, string? tag = null)
             => Add(Prim.Circle(c.X, c.Y, r * K, s ?? S.Vis), tag);
@@ -193,10 +201,14 @@ namespace InventaSketch.Modules.Mechanical
             }
         }
 
-        /// <summary>Bore circle with optional keyway notch at the top (design coordinates).</summary>
+        /// <summary>
+        /// Bore circle at the centre with optional keyway notch at the top (design radius). The bore stays round under
+        /// non-uniform stretch (radius times the detail scale <see cref="Pen.K"/>).
+        /// </summary>
         public static void Bore(Pen p, double r, bool keyway)
         {
-            if (!keyway) { p.Circle(0, 0, r, S.Vis, "bore"); return; }
+            if (!keyway) { p.Hole(0, 0, r, S.Vis, "bore"); return; }
+            r *= p.K;
             var kw = r * 0.3;
             var kd = r * 0.35;
             var ar = -Math.Acos(kw / r);
@@ -204,12 +216,13 @@ namespace InventaSketch.Modules.Mechanical
             var pts = Geo.ArcPoints(Vec2.Zero, r, r, ar, al + 2 * Math.PI - ar, 48);
             pts.Add(new Vec2(-kw, -(r + kd)));
             pts.Add(new Vec2(kw, -(r + kd)));
-            p.PolyD(pts, S.Vis, true, "bore");
+            p.PolyP(pts, S.Vis, true, "bore");
         }
 
         /// <summary>
         /// Rectangle x0..x1 between yFar (away from the bite) and yEdge, with a circular bite of the circle (c, r)
-        /// cut into the edge at yEdge. Used for bearing rings around rolling elements. Design coordinates.
+        /// cut into the edge at yEdge. Used for bearing rings around rolling elements. Any one coordinate system (the
+        /// detailed bearing passes actual coordinates so the bite stays round when the bearing is stretched).
         /// </summary>
         public static List<Vec2> NotchedRect(double x0, double x1, double yFar, double yEdge, Vec2 c, double r)
         {

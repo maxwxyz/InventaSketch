@@ -82,7 +82,7 @@ namespace InventaSketch.Modules.Mechanical
         /// <summary>Axis direction symbols: dot = pointing toward the viewer, cross = away from the viewer.</summary>
         private static void AxisSymbol(Pen p, bool away)
         {
-            p.Circle(0, 0, 5, S.Vis, "circle");
+            p.Hole(0, 0, 5, S.Vis, "circle");
             var c = p.V(0, 0);
             if (away)
             {

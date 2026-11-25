@@ -54,9 +54,17 @@ namespace InventaSketch.Modules.Mechanical
 
         private static MechType Bearing(string id, I18nText name, Kind kind, params string[] keywords) => new(
             id, name, Cat, keywords,
-            new ViewSpec("stick", VStick, 6, 16, (p, o) => BearingStick(p, kind)),
-            new ViewSpec("simplified", VSimple, 8, 30, (p, o) => BearingSimplified(p, kind)),
-            new ViewSpec("detailed", VDetail, 8, 30, (p, o) => BearingDetailed(p, kind)));
+            new ViewSpec("stick", VStick, 6, 16, (p, o) => BearingStick(p, kind)) { Bore = RingBore },
+            new ViewSpec("simplified", VSimple, 8, 30, (p, o) => BearingSimplified(p, kind)) { Bore = RingBore },
+            new ViewSpec("detailed", VDetail, 8, 30, (p, o) => BearingDetailed(p, kind)) { Bore = RingBore });
+
+        /// <summary>
+        /// Bore across the axis: the inner edge of the rings in the simplified and detailed views (and the seal). The
+        /// schematic shows no bore; it takes the same design value, the bore the bearing has after a view switch
+        /// (<see cref="Registry.WithView"/> keeps the visual scale between the 6 x 16 schematic and the 8 x 30 views), so the
+        /// fit carries over and the symbol sits close around the shaft line.
+        /// </summary>
+        private static double RingBore(Pen p, SketchObject o) => Rb * p.Sy;
 
         /// <summary>Schematic: race lines with the rolling element between, above and below the shaft.</summary>
         private static void BearingStick(Pen p, Kind kind)
@@ -137,14 +145,19 @@ namespace InventaSketch.Modules.Mechanical
                     case Kind.Ball:
                     case Kind.Angular:
                         {
-                            const double r = 2.6;
-                            p.PolyD(Frag.NotchedRect(-4, 4, Y(Ro), Y(Yc + 0.5), c, r), hOut, true, "outer-ring");
-                            p.PolyD(Frag.NotchedRect(-4, 4, Y(Rb), Y(Yc - 0.5), c, r), hIn, true, "inner-ring");
-                            p.Circle(c.X, c.Y, r, S.Vis, "rolling");
+                            // Balls stay round when the bearing is stretched: rings and bites in actual coordinates, the ball
+                            // radius at the detail scale (the rings stretch).
+                            var r = 2.6 * p.K;
+                            var ca = p.V(c);
+                            double X(double x) => x * p.Sx;
+                            double YA(double y) => s * y * p.Sy;
+                            p.PolyP(Frag.NotchedRect(X(-4), X(4), YA(Ro), YA(Yc + 0.5), ca, r), hOut, true, "outer-ring");
+                            p.PolyP(Frag.NotchedRect(X(-4), X(4), YA(Rb), YA(Yc - 0.5), ca, r), hIn, true, "inner-ring");
+                            p.Round(ca, 2.6, S.Vis, "rolling");
                             if (kind == Kind.Angular)
                             {
-                                var d = new Vec2(Math.Sin(Geo.DegToRad(30)), Math.Cos(Geo.DegToRad(30)) * s);
-                                p.PolyD(new[] { c - d * 3.4, c + d * 3.4 }, S.Thin, false, "contact");
+                                var d = new Vec2(Math.Sin(Geo.DegToRad(30)), Math.Cos(Geo.DegToRad(30)) * s) * p.K;
+                                p.PolyP(new[] { ca - d * 3.4, ca + d * 3.4 }, S.Thin, false, "contact");
                             }
                             break;
                         }
@@ -178,7 +191,7 @@ namespace InventaSketch.Modules.Mechanical
                     case Kind.Thrust:
                         p.Box(-4, Y(Rb + 0.6), -2.4, Y(13), hIn, "shaft-washer");
                         p.Box(2.4, Y(8), 4, Y(Ro), hOut, "housing-washer");
-                        p.Circle(0, c.Y, 2.35, S.Vis, "rolling");
+                        p.Hole(0, c.Y, 2.35, S.Vis, "rolling");
                         break;
                     case Kind.Plain:
                         p.Box(-4, Y(Ro), 4, Y(Rb), hOut, "bushing");
@@ -189,6 +202,7 @@ namespace InventaSketch.Modules.Mechanical
 
         // ------------------------------------------------------------------ kinematic supports
 
+        // Support symbols touch the shaft line with their tip: they have no meaningful bore and keep their size on a shaft.
         private static MechType Support(string id, I18nText name, bool floating, params string[] keywords) => new(
             id, name, Cat, keywords,
             new ViewSpec("stick", VStick, 12, 20, (p, o) => SupportDraw(p, floating)));
@@ -217,8 +231,8 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Seal() => new(
             "mech.seal", T("Radial shaft seal", "Radialwellendichtring"), Cat,
             new[] { "seal", "lip seal", "oil seal", "shaft seal", "dichtung", "wellendichtring", "simmerring", "radialwellendichtring" },
-            new ViewSpec("simplified", VSimple, 6, 30, SealSimplified),
-            new ViewSpec("detailed", VDetail, 6, 30, SealDetailed));
+            new ViewSpec("simplified", VSimple, 6, 30, SealSimplified) { Bore = RingBore },
+            new ViewSpec("detailed", VDetail, 6, 30, SealDetailed) { Bore = RingBore });
 
         private static void SealSimplified(Pen p, SketchObject o)
         {
@@ -300,8 +314,8 @@ namespace InventaSketch.Modules.Mechanical
         {
             p.Poly(p.Hatch(135), true, -9, -8, 9, -8, 9, 2, 6, 2, 6, -3, -6, -3, -6, 2, -9, 2);
             p.Box(-4.5, -2, 4.5, 8, p.Hatch(45), "rail");
-            p.Circle(-5.25, 0, 0.7, S.Vis, "ball");
-            p.Circle(5.25, 0, 0.7, S.Vis, "ball");
+            p.Hole(-5.25, 0, 0.7, S.Vis, "ball");
+            p.Hole(5.25, 0, 0.7, S.Vis, "ball");
             p.Line(0, -8, 0, 8, S.Ctr, "center");
         }
 

@@ -23,6 +23,14 @@ namespace InventaSketch.Modules.Mechanical
         public bool Fluid { get; init; }
         /// <summary>View-specific anchors in local coordinates.</summary>
         public Func<Pen, SketchObject, IEnumerable<Anchor>>? Anchors { get; init; }
+        /// <summary>
+        /// Bore radius (actual mm at the current size) carried by the hub anchor, so the part fits onto a shaft
+        /// (<see cref="ShaftFit"/>). Views with the axis in the drawing plane measure it across the axis (design radius
+        /// times <see cref="Pen.Sy"/>; schematic views, which draw no bore, use the value that gives the bore of the type's
+        /// side or section view after a view switch with <see cref="Registry.WithView"/>, so the fit carries over), axial views
+        /// give the round bore (times <see cref="Pen.K"/>). Null: no meaningful bore, the part keeps its size on a shaft.
+        /// </summary>
+        public Func<Pen, SketchObject, double>? Bore { get; init; }
     }
 
     /// <summary>
@@ -105,9 +113,10 @@ namespace InventaSketch.Modules.Mechanical
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
             var v = Spec(o);
-            if (Rotating) yield return Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub");
+            var pen = PenFor(o, v);
+            if (Rotating) yield return v.Bore is null ? Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub") : Anchor.Hub(Vec2.Zero, v.Bore(pen, o));
             if (v.Anchors is null) yield break;
-            foreach (var a in v.Anchors(PenFor(o, v), o)) yield return a;
+            foreach (var a in v.Anchors(pen, o)) yield return a;
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)

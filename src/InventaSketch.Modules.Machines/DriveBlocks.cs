@@ -276,12 +276,14 @@ namespace InventaSketch.Modules.Machines
                 p.Circle(0, 0, 15, S.Vis, "tyre");
                 p.Circle(0, 0, 10, S.Vis, "rim");
                 p.Circle(0, 0, 9, S.Thin, "rim");
-                p.Circle(0, 0, 3, S.Vis, "hub");
+                p.Round(new Vec2(0, 0), 3, S.Vis, "hub");
                 for (var i = 0; i < 5; i++) p.Round(G.P(5.5, i * 72), 0.8, S.Thin, "bolt");
                 p.CenterCross(0, 0, 15, 15);
             })
             {
                 Hub = true,
+                // Bore: the hub circle (radius 3 of the tyre radius 15), round in this face-on view.
+                Bore = (p, o) => 3 * p.K,
                 Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Port, p.V(-15, 0), "w"), Anchor.Point(AnchorRole.Port, p.V(15, 0), "e") },
             },
             new ViewSpec("top", T("Top view", "Draufsicht"), IconIds.Top, 12, 30, (p, o) =>
@@ -292,11 +294,13 @@ namespace InventaSketch.Modules.Machines
             })
             {
                 Hub = true,
+                Bore = (p, o) => 3 * p.Sy,
                 Anchors = (p, o) => WheelAxisAnchors(p, 6),
             },
             new ViewSpec("schematic", T("Drivetrain schematic", "Antriebsstrangschema"), IconIds.Schematic, 8, 30, WheelSchematic)
             {
                 Hub = true,
+                Bore = (p, o) => 3 * p.Sy,
                 Anchors = (p, o) => WheelAxisAnchors(p, 4),
             })
         {

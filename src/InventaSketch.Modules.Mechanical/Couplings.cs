@@ -19,43 +19,54 @@ namespace InventaSketch.Modules.Mechanical
         {
             yield return new MechType("mech.coupling.rigid", T("Rigid coupling", "Starre Kupplung"), Cat,
                 new[] { "coupling", "rigid coupling", "flange coupling", "kupplung", "starre kupplung", "scheibenkupplung", "flanschkupplung" },
-                new ViewSpec("stick", VStick, 12, 20, RigidStick),
-                new ViewSpec("side", VSide, 20, 24, (p, o) => CouplingSide(p, false)));
+                new ViewSpec("stick", VStick, 12, 20, RigidStick) { Bore = StickBore },
+                new ViewSpec("side", VSide, 20, 24, (p, o) => CouplingSide(p, false)) { Bore = SideBore });
             yield return new MechType("mech.coupling.flexible", T("Flexible coupling", "Elastische Kupplung"), Cat,
                 new[] { "coupling", "flexible coupling", "elastic coupling", "kupplung", "elastische kupplung", "nachgiebige kupplung" },
-                new ViewSpec("stick", VStick, 12, 20, FlexibleStick),
-                new ViewSpec("side", VSide, 20, 24, (p, o) => CouplingSide(p, true)));
+                new ViewSpec("stick", VStick, 12, 20, FlexibleStick) { Bore = StickBore },
+                new ViewSpec("side", VSide, 20, 24, (p, o) => CouplingSide(p, true)) { Bore = SideBore });
             yield return new MechType("mech.joint.universal", T("Universal joint", "Kardangelenk"), Cat,
                 new[] { "universal joint", "cardan", "u-joint", "hooke", "kardangelenk", "kreuzgelenk", "gelenkwelle", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
-                new ViewSpec("stick", VStick, 12, 20, UniversalStick));
+                new ViewSpec("stick", VStick, 12, 20, UniversalStick) { Bore = StickBore });
             yield return new MechType("mech.clutch.disc", T("Disc clutch", "Scheibenkupplung (schaltbar)"), Cat,
                 new[] { "clutch", "disc clutch", "friction clutch", "kupplung", "schaltkupplung", "reibungskupplung", "einscheibenkupplung", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
-                new ViewSpec("stick", VStick, 12, 20, DiscClutchStick),
-                new ViewSpec("side", VSide, 16, 24, DiscClutchSide))
+                new ViewSpec("stick", VStick, 12, 20, DiscClutchStick) { Bore = StickBore },
+                new ViewSpec("side", VSide, 16, 24, DiscClutchSide) { Bore = SideBore })
             {
                 CompanionTypes = new[] { "mech.shaft", Drivetrain.Engine, "mech.flywheel", Drivetrain.EMachine, "mech.gear.spur" },
             };
             yield return new MechType("mech.clutch.multidisc", T("Multi-disc clutch", "Lamellenkupplung"), Cat,
                 new[] { "clutch", "multi-disc", "multiplate", "wet clutch", "lamellenkupplung", "lamellen", "schaltkupplung", Drivetrain.Kw1, Drivetrain.Kw2, Drivetrain.Kw3 },
-                new ViewSpec("stick", VStick, 20, 24, MultiDiscStick));
+                new ViewSpec("stick", VStick, 20, 24, MultiDiscStick) { Bore = (p, o) => 1.5 * p.Sy });
             yield return new MechType("mech.brake", T("Brake", "Bremse"), Cat,
                 new[] { "brake", "disc brake", "holding brake", "bremse", "scheibenbremse", "lamellenbremse" },
-                new ViewSpec("stick", VStick, 16, 20, BrakeStick),
-                new ViewSpec("side", VSide, 16, 30, BrakeSide));
+                new ViewSpec("stick", VStick, 16, 20, BrakeStick) { Bore = (p, o) => 2.5 * p.Sy },
+                new ViewSpec("side", VSide, 16, 30, BrakeSide) { Bore = (p, o) => 2.5 * p.Sy });
             yield return new MechType("mech.sync", T("Synchroniser / shift sleeve", "Synchronisierung / Schaltmuffe"), Cat,
                 new[] { "synchroniser", "synchronizer", "shift sleeve", "dog clutch", "gear shift", "synchronisierung", "schaltmuffe", "klauenkupplung", "schaltgabel" },
-                new ViewSpec("stick", VStick, 12, 24, SyncStick),
-                new ViewSpec("side", VSide, 10, 16, SyncSide));
+                new ViewSpec("stick", VStick, 12, 24, SyncStick) { Bore = (p, o) => 2.6 * 24 / 16 * p.Sy },
+                new ViewSpec("side", VSide, 10, 16, SyncSide) { Bore = (p, o) => 2.6 * p.Sy });
             yield return new MechType("mech.flywheel", T("Flywheel", "Schwungrad"), Cat,
                 new[] { "flywheel", "inertia", "mass", "schwungrad", "schwungscheibe", "schwungmasse" },
-                new ViewSpec("stick", VStick, 10, 40, FlywheelStick),
-                new ViewSpec("axial", T("Axial view", "Stirnansicht"), 40, 40, FlywheelAxial),
-                new ViewSpec("section", T("Section", "Schnitt"), 12, 40, FlywheelSection))
+                new ViewSpec("stick", VStick, 10, 40, FlywheelStick) { Bore = (p, o) => 2.5 * p.Sy },
+                new ViewSpec("axial", T("Axial view", "Stirnansicht"), 40, 40, FlywheelAxial) { Bore = (p, o) => 2.5 * p.K },
+                new ViewSpec("section", T("Section", "Schnitt"), 12, 40, FlywheelSection) { Bore = (p, o) => 2.5 * p.Sy })
             {
                 Params = new[] { Common.Hub },
                 Extra = o => new[] { Common.HubCycle(o) },
             };
         }
+
+        /// <summary>
+        /// Bores (<see cref="ShaftFit"/>), across the axis: 3 inside the hub of the 24 high side views. The schematics show no
+        /// bore; they take the value that gives the side view's bore after a view switch (<see cref="Registry.WithView"/>:
+        /// the box is kept when the target view has no library preset, as for these side views, else the visual scale), so
+        /// the fit carries over: 3 x 20 / 24 = 2.5 for the 20 high schematics. Brake, synchroniser and flywheel follow the
+        /// same rule with their own bores; the multi-disc clutch (schematic only) uses the inside of its hub.
+        /// </summary>
+        private static double SideBore(Pen p, SketchObject o) => 3 * p.Sy;
+
+        private static double StickBore(Pen p, SketchObject o) => 2.5 * p.Sy;
 
         private static void Stubs(Pen p, double gap)
         {
@@ -209,8 +220,8 @@ namespace InventaSketch.Modules.Mechanical
         {
             p.Circle(0, 0, 19, S.Vis, "rim");
             p.Circle(0, 0, 15.5, S.Vis, "rim");
-            p.Circle(0, 0, 5, S.Vis, "hub");
-            p.Circle(0, 0, 2.5, S.Vis, "bore");
+            p.Hole(0, 0, 5, S.Vis, "hub");
+            p.Hole(0, 0, 2.5, S.Vis, "bore");
             for (var i = 0; i < 4; i++)
             {
                 var a = Math.PI / 4 + i * Math.PI / 2;

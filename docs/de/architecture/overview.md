@@ -125,7 +125,20 @@ ihr. Hosts rufen sie über `EditorSession.Apply` (Engine, `couple: false` für f
 (`Attachments.For`). `Links` listet, wo sich Objekte berühren und einander folgen (mechanische Paare und angedockte
 Linienenden), für Schloss-Marker, und löst oder koppelt ein Paar (`SketchObject.Released`, von `Coupling` bereinigt,
 sobald sich das Paar nicht mehr berührt). `Fitting.Place` setzt ein eingefügtes Teil passend zur Auswahl (auf die Welle,
-in Eingriff, durch die Nabe). `Polylines` fügt Ecken ein, entfernt sie und setzt Abzweige,
+in Eingriff, durch die Nabe); mit einem Bevorzugungspunkt (`toward`, wo der Nutzer geklickt hat) kommt ein Zahnrad im
+Eingriff in diese Richtung (beliebiger Winkel; in Seitenansichten quer zur Achse; freie Seiten als Rückfall) und ein Teil
+auf einer Welle an die Achsposition, die dem Punkt am nächsten ist, neben die Naben, die schon dort sitzen.
+`Fitting.PlaceNear` liefert Hosts nach derselben Regel das Teil passend auf der Welle, die dem Zeiger am nächsten ist
+(Live-Vorschau beim Einfügen, in der Ansichtsart der Welle). Teile passen auf ihre Welle (`ShaftFit`,
+25.11.2026): ein Nabenanker trägt den Bohrungsradius des Teils in seiner aktuellen Ansicht (`Anchor.Hub`; Stirnansichten
+die runde Bohrung, Seiten-, Schnitt- und Schemaansichten die Bohrung quer zur Achse, Schemata mit dem Verhältnis, das die
+Passung über einen Ansichtswechsel hält) und eine Wellenachse den Wellenradius (`Anchor.Shaft`, bei einer abgesetzten
+Welle je Abschnitt, `Anchor.RadiusAt`); ein Teil, das auf eine Welle eingefügt, an ihrem Ende angebaut oder auf sie
+gezogen wird (`Coupling.Propagate`, auch eine durch eine Nabe gezogene Welle), wird gleichmäßig skaliert (Size × k), so
+dass seine Bohrung dem Wellendurchmesser entspricht; eine durch ein Teil gesetzte Welle erhält den Bohrungsdurchmesser.
+Anker ohne Radius bleiben unberührt. Von Natur aus runde Merkmale (Wälzkörper, Bohrungen, Löcher, Bolzen, Naben- und
+Wellenkreise) werden im Detailmaßstab gezeichnet und bleiben bei ungleichmäßiger Streckung eines Teils rund.
+`Polylines` fügt Ecken ein, entfernt sie und setzt Abzweige,
 verlängert, teilt und verbindet Linien; angedockte Abzweige bleiben an ihrem Platz. `Building` liefert die Andockpunkte
 eines Elements (Eingriffsseiten, Hohlrad innen, freie Achsenden, freie Nabe), die dazu passenden Bibliothekselemente und
 setzt sie gekoppelt; `Attachments.OnSurface` dockt Beschriftungsenden irgendwo auf dem Element darunter an. `Crossings` findet Kreuzungen
