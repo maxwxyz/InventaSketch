@@ -1115,8 +1115,12 @@ mit dem Kennzeichen des Elements („*U*(R1) = …"), da die Spannung jedes Wide
   beide Enden melden, werden einmal aufgenommen.
 - **Offen (Calc 6):** die Host-Seite (COM: „Rechenblatt …“ in der Wertekarte und im Menü Mehr mit Kopieren/Speichern
   und „als Tabelle einfügen“; ein Quellenbereich in der Stufe Ingenieur), Prüfeinstellungen (eigene Grenzen,
-  Stummschalten), Einheitenvorlieben (bar/MPa, min⁻¹/s⁻¹, kWh/MJ) und die Entscheidung zu Normreihen (E-Reihen) und
-  ihrer Lizenz.
+  Stummschalten), Einheitenvorlieben (bar/MPa, min⁻¹/s⁻¹, kWh/MJ).
+- **Entscheidung zu Normreihen (E-Reihen), 26.11.2026:** InventaSketch liefert keine E-Reihen oder andere
+  Vorzugszahlen-Tabellen mit: sie sind Tabelleninhalt von IEC 60063 [S5], und CLAUDE.md verbietet das Kopieren von
+  Normtabellen. Werte erscheinen mit drei gültigen Stellen und rasten beim Ziehen in dieser Auflösung ein; jeder Wert
+  lässt sich eintippen. Soll später eine Reihe dazukommen, stammt sie aus einer Datei des Benutzers (ein Wert je Zeile),
+  nie aus dem Repository.
 
 ## 11. Umsetzungsnotizen: Calc 2 in PowerPoint (COM) (25.11.2026)
 
