@@ -43,7 +43,8 @@ namespace InventaSketch.Modules.Robotics
 
         private static IEnumerable<Anchor> SideAnchors(Pad p, double top, double tcpY, double tcpX = 0)
         {
-            yield return RoboBoxType.Mount(p, 0, top, "flange");
+            // The mount faces up, back to the robot flange (a "+" on the flange turns the tool to match).
+            yield return Anchor.Directed(AnchorRole.Mount, p.V(0, top), new Vec2(0, -1), "flange");
             yield return RoboBoxType.Port(p, tcpX, tcpY, "tcp");
         }
 

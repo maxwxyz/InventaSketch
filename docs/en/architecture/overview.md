@@ -115,7 +115,10 @@ where it fits the selection (on the shaft, in mesh, through the hub). `Polylines
 branches, extends, splits and joins lines, keeping docked branches in place. `Building` lists the build ports of an
 element (mesh sides, ring inside, free axis ends, free hub), the library items that fit a port and places them coupled;
 `Attachments.OnSurface` docks annotation ends anywhere on the element below them. `Crossings` finds where wires or pipes
-cross (the upper one hops) and connects them at a crossing. `GearTrain` solves the angular speeds of a gear train
+cross (the upper one hops; one rule for every line family that hops – fluid power, electrical, building services,
+process and energy lines hop over each other, 2026-11-25) and connects them at a crossing. Directed anchors
+(`Anchor.Directed`) carry the outward direction of a connection face; a directed mount offers a build port where a
+part is placed facing it (robot flange → tool). `GearTrain` solves the angular speeds of a gear train
 (linear system over mesh, Willis, shaft, compound, belt, bevel pair and fixed constraints) and turns it; `Assemblies` explodes
 predefined assemblies into coupled parts. `Linkage` recognises self-built linkages (links docked on joints, fixed pivots,
 sliders, pins in the slots of other links), computes their degree of freedom and drags them with constant link lengths.

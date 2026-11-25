@@ -58,7 +58,7 @@ export interface ArrangeOption { id: string; label: string; icon: string }
 export interface TraceInfo { points: Vec2[]; closed: boolean }
 
 /**
- * Build "+" port of an element (engine `buildPorts`): kind (Mesh, InnerMesh, AxisEnd, Hub, Pin, Bevel, Joint), position
+ * Build "+" port of an element (engine `buildPorts`): kind (Mesh, InnerMesh, AxisEnd, Hub, Pin, Bevel, Joint, Mount), position
  * and outward direction in page mm; `stretch` for a shaft end that can be dragged longer or shorter.
  */
 export interface BuildPortInfo { id: string; kind: string; x: number; y: number; dx: number; dy: number; stretch: boolean }

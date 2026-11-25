@@ -334,6 +334,20 @@ namespace InventaSketch.Core
         /// <summary>Id of the object that contributed the anchor (set by <see cref="Snapper.Targets"/>; null for page anchors).</summary>
         public string? Owner { get; init; }
         public static Anchor Point(AnchorRole role, Vec2 p, string? id = null) => new(AnchorKind.Point, role, p) { Id = id };
+
+        /// <summary>
+        /// A point anchor with a direction (<see cref="Q"/> = a point one unit along it): the outward direction of a connection
+        /// face, e.g. a robot flange along the tool axis, or a tool's mount pointing back to the flange. Parts docked there
+        /// with "+" are turned so the two directions face each other (<see cref="Building"/>).
+        /// </summary>
+        public static Anchor Directed(AnchorRole role, Vec2 p, Vec2 dir, string? id = null)
+            => new(AnchorKind.Point, role, p, p + dir.Normalized()) { Id = id, HasDirection = true };
+
+        /// <summary>True for point anchors with a direction (<see cref="Directed"/>).</summary>
+        public bool HasDirection { get; init; }
+
+        /// <summary>The unit direction of a directed point anchor, else null.</summary>
+        public Vec2? Direction => HasDirection && (Q - P).Length > 1e-9 ? (Q - P).Normalized() : null;
         public static Anchor Circle(AnchorRole role, Vec2 c, double r) => new(AnchorKind.Circle, role, c, default, r);
         public static Anchor Segment(AnchorRole role, Vec2 a, Vec2 b) => new(AnchorKind.Segment, role, a, b);
         /// <summary>A <see cref="AnchorRole.Rail"/> segment from <paramref name="a"/> to <paramref name="b"/>.</summary>
@@ -351,7 +365,7 @@ namespace InventaSketch.Core
 
         public Anchor Transform(Matrix2D m) => Kind switch
         {
-            AnchorKind.Point => this with { P = m.Apply(P) },
+            AnchorKind.Point => HasDirection ? this with { P = m.Apply(P), Q = m.Apply(Q) } : this with { P = m.Apply(P) },
             AnchorKind.Segment => this with { P = m.Apply(P), Q = m.Apply(Q) },
             // Circles: radius scales with the mean linear scale (free scaling may make it an ellipse visually). A circle with Q
             // set carries an axis direction (pitch circle of a gear seen from the side, see AxisOf).

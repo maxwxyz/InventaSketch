@@ -126,6 +126,9 @@ namespace InventaSketch.AddIn.OnSlide
             PortKind.InnerMesh => T("Add a planet here", "Planet hier einsetzen"),
             PortKind.Hub => T("Add a shaft through the hub", "Welle durch die Nabe"),
             PortKind.Joint => T("Add the next link, a fixed pivot or a slider here", "Nächstes Glied, Gestelldrehpunkt oder Schieber anfügen"),
+            PortKind.Pin => T("Add a planet on this pin", "Planet auf diesen Bolzen setzen"),
+            PortKind.Bevel => T("Add a mating bevel gear here", "Gegen-Kegelrad hier anfügen"),
+            PortKind.Mount => T("Add a tool here, facing along the flange", "Werkzeug hier anbauen, ausgerichtet am Flansch"),
             _ => StretchablePort(p)
                 ? T("Add at the shaft end (click) · lengthen the shaft (drag)", "Am Wellenende anfügen (Klick) · Welle verlängern (ziehen)")
                 : T("Add at the shaft end", "Am Wellenende anfügen"),

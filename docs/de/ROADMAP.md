@@ -219,8 +219,10 @@ Leisten-IDs jetzt direkt.
 **Als Nächstes, in dieser Reihenfolge:**
 1. Web: Prüfung in PowerPoint im Web – braucht das Entwicklerzertifikat des Maintainers (`npm run certs` in
    `hosts/office-web`) oder ein hochgeladenes Webspace-Paket.
-2. Konsistenz über Module: eine Kreuzungs-/Sprungregel für alle Leitungsfamilien, Anschlüsse mit Richtung
-   (Roboterflansch → Werkzeug), Farbakzente je Modul als Teil des Folienstils.
+2. Konsistenz über Module: eine Kreuzungs-/Sprungregel für alle Leitungsfamilien und Anschlüsse mit Richtung
+   (Roboterflansch → Werkzeug, mit „+“ gedreht gesetzt) erledigt 25.11.2026 (dazu: der Render-Kontext trägt die
+   Registry, das beendete reihenfolgeabhängige Tests); offen: Farbakzente je Modul als Teil des Folienstils, Werkzeuge,
+   die späteren Gelenkänderungen folgen und die Flanschgröße übernehmen.
 3. LibreOffice: Overlay auf der Arbeitsfläche (Einrasten beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 4. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
 

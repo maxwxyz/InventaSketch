@@ -194,8 +194,10 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
 **Next, in this order:**
 1. Web: check in PowerPoint on the web – needs the maintainer's dev certificate (`npm run certs` in
    `hosts/office-web`) or an uploaded webspace package.
-2. Cross-module consistency: one crossing/hop rule for all line families, mounts with a direction (robot flange → tool),
-   colour accents per module as part of the slide style.
+2. Cross-module consistency: one crossing/hop rule for all line families and mounts with a direction (robot flange →
+   tool, placed turned with "+") done 2026-11-25 (also: the render context carries the registry, which ended
+   order-dependent tests); open: colour accents per module as part of the slide style, tools following later joint
+   changes and taking the flange size.
 3. LibreOffice: on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
 4. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
