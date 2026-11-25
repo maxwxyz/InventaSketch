@@ -21,7 +21,7 @@ namespace InventaSketch.Modules.Mechanical
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
 
         public string Id => "mechanical";
-        public I18nText Name => new("Mechanical", "Mechanik");
+        public I18nText Name => new("Machine elements", "Maschinenelemente");
         public string Version => "0.1.0";
         public IEnumerable<ObjectType> Types => AllTypes.Value;
 

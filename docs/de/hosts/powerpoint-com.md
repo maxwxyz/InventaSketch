@@ -445,6 +445,13 @@ werden in den Gerätepixeln des Bildschirms gezeichnet (scharf auf hochauflösen
 untere Zeile der ersten Spalte enthält den Auswahlbereich, PowerPoints Formenkatalog und „Tabelle“ (nur Symbole);
 „Gleiche Höhe“, „Gleiche Breite“ und „Gleiche Größe“ stehen links neben „Positionen tauschen“. Info-Dialog: „Copyright ©
 2026 Max Wilfinger“.
+Danach erneut (Maintainer): Die erste Gruppe heißt „Grundlagen“ und beginnt mit PowerPoints Formenkatalog (Symbol); das
+Menü „Mechanik“ vereint Maschinenelemente (Modul „Maschinenelemente“, vorher „Mechanik“) und Getriebe (Kinematik), die
+technische Mechanik ist aus den Grundlagen dorthin gewandert, die Kategorien sind nach Häufigkeit geordnet (Zahnräder,
+Wellen, Lager, Kupplungen, Riemen- und Kettentriebe, Gewindetriebe, Federn, Verbindungselemente, Gehäuse,
+Antriebspfeile, Mechanismen, Gelenke, Glieder, Bewegung, technische Mechanik); der Umschalter für die Kontextleiste ist
+im Menü Extras; die untere Zeile der Gruppe Layout enthält PowerPoints Tabellen-Dropdown, den Auswahlbereich und Bild
+einfügen.
 
 Gruppe Prüfen (25.11.2026): Die Befehle, die auf der fertigen Zeichnung arbeiten, stehen gemeinsam am Ende der
 Registerkarte – *Kompatibilität* (die Prüfung gegen die Zeichnungsvorschriften von DPMA, EPA, PCT und USPTO; früher anders

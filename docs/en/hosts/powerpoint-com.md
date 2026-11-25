@@ -446,6 +446,12 @@ group; "Modules …", "Line weights" and "Accent colour" moved into it. All ribb
 screen's device pixels (sharp on high-DPI screens). Layout group: the bottom row of the first column holds the
 selection pane, PowerPoint's shapes gallery and "Table" (icons only); "Same height", "Same width" and "Same size" sit
 left of "Swap positions". About box: "Copyright © 2026 Max Wilfinger".
+Later again (maintainer): the first group is called "Basics" and starts with PowerPoint's shapes gallery (icon); the
+"Mechanics" menu joins machine elements (module "Machine elements", formerly "Mechanical") and mechanisms
+(kinematics), with technical mechanics moved there from the basics and its categories ordered by use (gears, shafts,
+bearings, couplings, belt and chain drives, screw drives, springs, fasteners, housings, drive arrows, mechanisms,
+joints, links, motion, technical mechanics); the context bar switch moved into Extras; the Layout bottom row holds
+PowerPoint's table dropdown, the selection pane and picture insert.
 
 Review group (2026-11-25): the commands that work on the finished drawing sit together at the end of the tab –
 *Compatibility* (the drawing-rules check of DPMA, EPO, PCT and USPTO; renamed from its earlier name) and *Compare*
