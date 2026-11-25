@@ -411,6 +411,14 @@ namespace InventaSketch.AddIn.OnSlide
             if (view is null) return false;
             if (ForeignForeground(view)) return false;
             if (_mode == Mode.Place && !_loggedPlaceMessage) { _loggedPlaceMessage = true; Log.Info("Place: first mouse message 0x" + message.ToString("X4") + " at " + pt.X + "," + pt.Y); }
+            // A press-and-drag whose release never reached the hooks (it went to another window): the first move with the
+            // left button up ends it like a release, so nothing keeps hanging on the pointer (maintainer 2026-11-25).
+            if (message == WM_MOUSEMOVE && _mode is Mode.Drag or Mode.Grip or Mode.Port or Mode.Resize or Mode.Rotate or Mode.EditPoint or Mode.Band or Mode.Turn
+                && !KeyDownNow(0x01))
+            {
+                Log.Info("Release missed in " + _mode + ": ending the drag");
+                return OnMouse(WM_LBUTTONUP, pt, hwnd);
+            }
             switch (_mode)
             {
                 case Mode.Place when IsTwoPoint(_item):

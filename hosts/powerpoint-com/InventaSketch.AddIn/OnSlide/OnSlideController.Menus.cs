@@ -218,6 +218,10 @@ namespace InventaSketch.AddIn.OnSlide
                 main = Labelled(style, ShortLabel(style.Tip.Split(':')[0], 20));   // no cut-off labels (UX review G9)
             main ??= insert with { ShowLabel = true };
             list.Add((main, true));
+            // Charts: drawing a curve by hand comes right after "Data" (maintainer 2026-11-25: it had dropped out of the bar).
+            var sketchable = InventaSketch.Modules.Charts.ChartSketchInput.Supports(first);
+            if (sketchable)
+                list.Add((new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Pencil }, false));
 
             var choiceKeys = new HashSet<string>(BarChoices(first, int.MaxValue).Select(c => c.Key));
             // Choice options never become single buttons (a choice is a dropdown; the pie has them as "Label ▸").
@@ -232,13 +236,11 @@ namespace InventaSketch.AddIn.OnSlide
                 }
             if (viewChip is not null) list.Add((viewChip, false));
             list.Add((insert, false));
-            if (InventaSketch.Modules.Charts.ChartSketchInput.Supports(first))
-                list.Add((new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Pencil }, false));
             if (first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
                 && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { Dof: 1 })
             {
                 list.Add((new BarButton("trace", "", CommandLabel("trace") + ": " + CommandHint("trace")) { IconId = IconIds.Trace }, false));
-                list.Add((new BarButton("ghosts", "", CommandLabel("ghosts") + ": " + CommandHint("ghosts")) { IconId = IconIds.Animate }, false));
+                list.Add((new BarButton("ghosts", "", CommandLabel("ghosts") + ": " + CommandHint("ghosts")) { IconId = IconIds.Ghosts }, false));
             }
             if (Assemblies.CanExplode(registry, first))
                 list.Add((new BarButton("explode", "", CommandLabel("explode")) { IconId = IconIds.Explode }, false));
