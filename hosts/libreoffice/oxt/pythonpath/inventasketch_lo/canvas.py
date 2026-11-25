@@ -147,6 +147,7 @@ class _Attachment:
         self.kind = kind
         self.press = None
         self.undo_mark = None
+        self.swallow_release = False
         self.glow = glow.Glow()
         self.glow_pending = False
         self.mouse = _Mouse(self)
@@ -234,9 +235,12 @@ class _SelectionGlow(unohelper.Base, XSelectionChangeListener):
 
 
 # Before these document events the glow is removed (nothing saved, exported or printed glows); after saving it returns.
-_GLOW_OFF = ("OnSave", "OnSaveAs", "OnSaveTo")
+# Verified with LibreOffice 26.8: store() sends OnSave, storeAsURL OnSaveAs, storeToURL (save a copy, PDF and picture
+# exports) OnCopyTo, each followed by its "…Done" event.
+_GLOW_OFF = ("OnSave", "OnSaveAs", "OnSaveTo", "OnCopyTo")
 _GLOW_ONCE = ("OnPrint", "OnPrepareUnload", "OnUnload")
-_GLOW_BACK = ("OnSaveDone", "OnSaveAsDone", "OnSaveToDone", "OnSaveFailed", "OnSaveAsFailed", "OnSaveToFailed")
+_GLOW_BACK = ("OnSaveDone", "OnSaveAsDone", "OnSaveToDone", "OnCopyToDone", "OnSaveFailed", "OnSaveAsFailed",
+              "OnSaveToFailed", "OnCopyToFailed")
 
 
 class _DocEvents(unohelper.Base, XDocumentEventListener):
@@ -273,6 +277,9 @@ class _Mouse(unohelper.Base, XMouseClickHandler):
                     and not in_text_edit(self.att.frame):
                 frame = self.att.frame
                 self.att.press = None
+                # LibreOffice must see neither this press nor its release (Ctrl+click would add a shape inside the
+                # group to the selection on release).
+                self.att.swallow_release = True
                 _post(lambda: _run(frame, "connected", {"mode": "auto"}))
                 return True
             if event.Buttons & ux.MOUSE_LEFT and sidebar.BUSY["count"] == 0:
@@ -284,6 +291,9 @@ class _Mouse(unohelper.Base, XMouseClickHandler):
 
     def mouseReleased(self, event):
         try:
+            if self.att.swallow_release:
+                self.att.swallow_release = False
+                return True
             press, self.att.press = self.att.press, None
             release = (event.X, event.Y)
             if sidebar.BUSY["count"] > 0 or not ux.snaps_after_release(event.Buttons, event.Modifiers, press, release):

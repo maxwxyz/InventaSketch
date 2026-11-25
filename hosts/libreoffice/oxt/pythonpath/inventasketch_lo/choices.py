@@ -216,7 +216,8 @@ def places(info, lang=None):
     edit = []
     if not multi and info.get("hasValues"):
         edit.append(("item", i18n.text("ctxValues", lang), _url("values")))
-    edit += [("item", option_label(a), action_url(a)) for a in plain]
+    # A switch of the element that is on (header row, show label …) is checked.
+    edit += [("item", option_label(a), action_url(a), bool(a.get("active"))) for a in plain]
     if info.get("numeral"):
         edit.append(("item", i18n.text("ctxNumeral", lang), _url("numeral")))
     edit += [choice_submenu(c) for c in menus]

@@ -406,7 +406,11 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             field = self._add("vField%d" % i, "Edit", Text="", HelpText=t("valEntryTip"))
             field.addKeyListener(_Keys(lambda i=i: self._commit_value(i), lambda i=i: self._reset_value(i)))
             field.addFocusListener(_FocusLost(lambda i=i: self._commit_value(i)))
-            self._add("vUnit%d" % i, "FixedText", Label="")
+            unit = self._add("vUnit%d" % i, "FixedText", Label="")
+            try:
+                unit.getModel().VerticalAlign = uno.Enum("com.sun.star.style.VerticalAlignment", "MIDDLE")
+            except Exception:
+                pass
             self._button("vClear%d" % i, lambda i=i: self._clear_value(i), Label=t("valClear"),
                          HelpText=t("valClearTip"))
             self._add("vDetail%d" % i, "FixedText", Label="", MultiLine=True, TextColor=MUTED_COLOR)
@@ -763,9 +767,16 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             for i in range(ACTION_SLOTS):
                 model = self.controls["act%d" % i].getModel()
                 if i < len(self.actions):
-                    _, _, label, tip = self.actions[i]
+                    command, argument, label, tip = self.actions[i]
                     model.Label = ux.label_of(label, self.lang)
                     model.HelpText = ux.label_of(tip, self.lang)
+                    # A switch of the element (header row, show label …) shows its state as a pressed button.
+                    on = command == "action" and bool(argument.get("active"))
+                    try:
+                        model.Toggle = on
+                        model.State = 1 if on else 0
+                    except Exception:
+                        pass
             if self.connect:
                 box = self.controls["connected"]
                 box.getModel().StringItemList = tuple([i18n.text("ctxConnected", self.lang) + " ▸"] +
@@ -794,23 +805,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         model = box.getModel()
         model.StringItemList = tuple(rows)
         model.HelpText = i18n.text("choiceTip", self.lang) % choice["label"]
-        self._option_pictures(model, choice)
         box.selectItemPos(selected, True)
-
-    def _option_pictures(self, model, choice):
-        """Small pictures of the options that bring one (``previewSvg``) next to their rows, where LibreOffice's list
-        box shows item images."""
-        offset = 1 if choice.get("menu") else 0
-        for j, option in enumerate(choice["options"]):
-            svg = option.get("preview")
-            if not svg:
-                continue
-            try:
-                path = library.svg_path(svg, "options")
-                model.setItemImage(j + offset, uno.systemPathToFileUrl(path))
-            except Exception as ex:
-                log("option picture: %s" % ex)
-                return
 
     def load_selection(self, quiet=False):
         if self.mode == "selection":

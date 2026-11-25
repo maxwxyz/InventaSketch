@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "oxt", "pythonpath"))
 sys.path.insert(0, HERE)
 os.environ.setdefault("INVENTASKETCH_LOG_DIR", os.path.join(tempfile.gettempdir(), "inventasketch-lo-tests"))
 
-from inventasketch_lo import choices, glow, i18n, library, ux, values  # noqa: E402
+from inventasketch_lo import choices, glow, i18n, ux, values  # noqa: E402
 from inventasketch_lo.engine import Engine  # noqa: E402
 from test_engine import built_engine  # noqa: E402
 
@@ -248,8 +248,11 @@ class Glow(unittest.TestCase):
 
     def test_show_and_clear_keep_the_modified_flag(self):
         class Leaf:
+            ignores = ()
+
             def __init__(self, values_):
                 self.props = dict(zip(glow.PROPS, values_))
+                self.props.update(zip(glow.SHADOW_PROPS, glow.SHADOW_NONE))
 
             def getShapeType(self):
                 return "com.sun.star.drawing.RectangleShape"
@@ -266,8 +269,13 @@ class Glow(unittest.TestCase):
                 return self.props[name]
 
             def setPropertyValue(self, name, value):
-                self.props[name] = value
+                if name not in self.ignores:
+                    self.props[name] = value
                 doc.modified = True
+
+        class Ellipse(Leaf):
+            # LibreOffice 26.8 ignores the glow effect on ellipses: the soft shadow takes over.
+            ignores = glow.PROPS
 
         class Doc:
             modified = False
@@ -278,14 +286,17 @@ class Glow(unittest.TestCase):
             def setModified(self, value):
                 self.modified = value
         doc = Doc()
-        own, pasted = Leaf((50, 0x00FF00, 10)), Leaf(glow.SIGNATURE)
+        own, pasted, ellipse = Leaf((50, 0x00FF00, 10)), Leaf(glow.SIGNATURE), Ellipse(glow.NONE)
         g = glow.Glow()
-        self.assertEqual(g.show(doc, [own, pasted]), 2)
+        self.assertEqual(g.show(doc, [own, pasted, ellipse]), 3)
         self.assertEqual(tuple(own.props[p] for p in glow.PROPS), glow.SIGNATURE)
+        self.assertEqual(tuple(ellipse.props[p] for p in glow.SHADOW_PROPS), glow.SHADOW_SIGNATURE)
+        self.assertEqual(tuple(ellipse.props[p] for p in glow.PROPS), glow.NONE)
         self.assertFalse(doc.modified)
         g.clear()
         self.assertEqual(tuple(own.props[p] for p in glow.PROPS), (50, 0x00FF00, 10))
         self.assertEqual(tuple(pasted.props[p] for p in glow.PROPS), glow.NONE)
+        self.assertEqual(tuple(ellipse.props[p] for p in glow.SHADOW_PROPS), glow.SHADOW_NONE)
         self.assertFalse(doc.modified)
         doc.modified = True
         g.show(doc, [own])
@@ -293,16 +304,6 @@ class Glow(unittest.TestCase):
         self.assertTrue(doc.modified)                 # a modified document stays modified
         g.suspended = 1
         self.assertEqual(g.show(doc, [own]), 0)
-
-
-class OptionPictures(unittest.TestCase):
-    def test_svg_cache_by_content(self):
-        folder = tempfile.mkdtemp()
-        a = library.svg_path("<svg>a</svg>", "options", folder)
-        self.assertEqual(a, library.svg_path("<svg>a</svg>", "options", folder))
-        self.assertNotEqual(a, library.svg_path("<svg>b</svg>", "options", folder))
-        with open(a, encoding="utf-8") as f:
-            self.assertEqual(f.read(), "<svg>a</svg>")
 
 
 @unittest.skipUnless(built_engine(), "engine not built (dotnet build hosts/libreoffice/engine)")

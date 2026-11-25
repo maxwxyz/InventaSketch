@@ -217,6 +217,8 @@ def _run(ctx, frame, command, args):
         if command == "insert":
             item = args.get("item") or args.get("")
             host.insert(engine_for(ctx), controller, item, _num(args.get("x")), _num(args.get("y")), args.get("name"))
+            # The new unit is selected: the panels follow (selection changes during a command are not followed).
+            _describe(ctx, frame, controller, quiet=True)
         elif command == "library":
             _open_deck(ctx, frame)
         elif command == "quickInsert":
@@ -592,9 +594,12 @@ def _menu_lines(entries, depth=0):
 def _cmd_menu(ctx, frame, controller, args):
     """Logs the context menu of the selection (the eight places with their submenus), for tests and automation."""
     from inventasketch_lo import choices
+    import json
     info = host.describe(engine_for(ctx), controller)
     entries = choices.context_entries(info)
     log("menu: %s" % " | ".join(_menu_lines(entries)))
+    # The same entries with their commands, so a test can run an entry the way a click on it does.
+    log("menu-json: %s" % json.dumps(entries, ensure_ascii=False))
 
 
 def _cmd_values(ctx, frame, controller, args):
@@ -636,8 +641,9 @@ def _cmd_set_value(ctx, frame, controller, args):
     try:
         host.set_value(engine_for(ctx), controller, key, args.get("text") or "")
     except EngineError as ex:
-        # A refused entry shows under its row in the panel, never as a message box when the panel is there.
-        text = str(ex)
+        # A refused entry shows under its row in the panel, never as a message box when the panel is there; the row
+        # shows the engine's own message (the last line, without "The engine reported an error").
+        text = str(ex).strip().splitlines()[-1]
         panels = [p for p in sidebar.panels_for(frame) if p.mode == "values"]
         log("value %s refused: %s" % (key, text.replace("\n", " ")))
         if not panels:
