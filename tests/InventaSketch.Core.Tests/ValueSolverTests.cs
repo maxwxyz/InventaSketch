@@ -306,6 +306,26 @@ namespace InventaSketch.Core.Tests
         }
 
         [Fact]
+        public void FormulasOverSeveralElementsNameTheElements()
+        {
+            // A link between two elements: the symbols carry the designator (or an index without one), so the formula does not
+            // read "I = I".
+            var lamp = new SketchObject { Id = "L", Type = "t.lamp" }.WithParam("next", "R").WithParam("U", "12 V").WithParam("P", "6 W");
+            var res = new SketchObject { Id = "R", Type = "t.res" }.WithParam("value", "10");
+            SketchDocument Doc(SketchObject a, SketchObject c)
+            {
+                var d = SketchDocument.Create();
+                return d with { Objects = new Dictionary<string, SketchObject> { ["L"] = a, ["R"] = c }, Pages = new[] { d.Pages[0] with { Order = new[] { "L", "R" } } } };
+            }
+            var t = ValueSolver.Solve(Doc(lamp, res), Reg, new[] { "L" });
+            Assert.Equal("I₂ = I₁", t.FormulaOf(t.Get("R", "I")!, Lang.En));
+            var named = ValueSolver.Solve(Doc(lamp.WithParam("ref", "H1"), res.WithParam("ref", "R1")), Reg, new[] { "L" });
+            Assert.Equal("I_R1 = I_H1", named.FormulaOf(named.Get("R", "I")!, Lang.En));
+            // Within one element the symbols stay plain.
+            Assert.Equal("U = R·I", named.FormulaOf(named.Get("R", "U")!, Lang.En));
+        }
+
+        [Fact]
         public void ExplainGivesStepsInputsFirst()
         {
             var (doc, _) = One("t.res", ("voltage", 0.23), ("current", "2 A"));
