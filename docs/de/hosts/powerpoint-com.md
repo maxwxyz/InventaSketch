@@ -358,8 +358,10 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   Stangenende). **Kulissen:** Zweigelenkglieder und Platten bieten Schlitze entlang ihrer Kanten an (Rails `slot0` …);
   ein dort angedocktes Gliedende gleitet im Bewegungsmodus am Glied entlang (Gleitstein im Schlitz, im Freiheitsgrad als
   höheres Paar gezählt). Geprüft in PowerPoint am 21.11.2026: alle drei werden zerlegt, und das Ziehen der Kurbel des
-  zerlegten Schnellrücklaufgetriebes im Bewegungsmodus hält die Gliedlängen und den Gleitstein im Schlitz. Das Kurvengetriebe wird nicht zerlegt: kein Einzelteil bewahrt die Kurvenkontur, und der
-  Kurvenkontakt gehört noch nicht zu selbst gebauten Ketten.
+  zerlegten Schnellrücklaufgetriebes im Bewegungsmodus hält die Gliedlängen und den Gleitstein im Schlitz. Das Kurvengetriebe zerfällt (25.11.2026) in einen
+  Gestelldrehpunkt, eine Kurvenscheibe als Einzelteil (`kin.cam.disc`) und den Stößel als Gleitstein auf seiner
+  Führung; Drehen der Scheibe im Bewegungsmodus bringt den Stößel an seinen neuen Kontakt (`Cams`), mit der daran
+  angedockten Kette.
 - **Getriebe selbst bauen:** Ein Planetenträger (`mech.carrier`, Stirn- und Schemaansicht, 2–8 Bolzen, Scheibe oder
   Arme, „fester Steg“ mit Gestellsymbol) ist ein eigenes Teil. Seine Bau-„+“ bieten an jedem freien Bolzen einen Planeten
   (so groß, dass er mit vorhandener Sonne oder vorhandenem Hohlrad kämmt) und in der Mitte Sonnenrad, Hohlrad (passend zu

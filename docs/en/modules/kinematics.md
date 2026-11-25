@@ -47,7 +47,8 @@ crank are symbols only.
 | `kin.link.rocker` | Rocker / Schwinge | box | – | Port (pivot, pin), Mount |
 | `kin.link.slider` | Slider block / Gleitstein | box | – | Port + Hub (centre, snaps onto guide axes) |
 | `kin.link.piston` | Piston and cylinder / Kolben und Zylinder | box | `stroke` (0..1) | Port (both eyes), Mount, Axis |
-| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | box | `angle`, `follower` (roller/flat/knife), `base`, `lift`, `dof` | Mount + Hub (cam pivot), Port (rod end), Axis (follower guide) |
+| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | box | `angle`, `follower` (roller/flat/knife), `base`, `lift`, `dof` | Mount + Hub (cam pivot), Port (rod end), Axis (follower guide); explodes into fixed pivot, cam disc and follower slider |
+| `kin.cam.disc` | Cam disc / Kurvenscheibe (part, 2026-11-25) | schematic, detailed (hub, centre lines); box centred on the pivot, uniform | `base`, `lift`, `follower` (how followers touch it: roller with 0.3 × base, flat face, knife edge); turns with its rotation | Hub + Port (pivot); a slider whose guide runs through it and whose joint sits on the contour is its follower (`Cams`): turning the disc in motion mode moves the follower and the chain docked on it |
 | `kin.spring` | Spring / Feder | 2 points | `coils`, `width` | Port at both ends |
 | `kin.damper` | Damper / Dämpfer | 2 points | `width` | Port at both ends |
 | `kin.rope.pulley` | Rope over pulley / Seil über Rolle | box | `load` | Hub + Port (pulley), Port (rope ends), Mount (ceiling) |

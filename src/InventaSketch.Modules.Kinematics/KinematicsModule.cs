@@ -15,7 +15,7 @@ namespace InventaSketch.Modules.Kinematics
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() => Symbols.Types().Concat(new ObjectType[]
         {
-            new BinaryLinkType(), new TernaryLinkType(), new SpringType(), new DamperType(), new CamFollowerType(),
+            new BinaryLinkType(), new TernaryLinkType(), new SpringType(), new DamperType(), new CamFollowerType(), new CamDiscType(),
             new FourBarType(), new SliderCrankType(), new ScotchYokeType(), new ToggleType(), new QuickReturnType(),
             new MotionPathType(), new AngleLimitType(), new DofBadgeType(),
         }).ToList());
@@ -81,6 +81,7 @@ namespace InventaSketch.Modules.Kinematics
             Add("slider", "kin.link.slider", "Slider block", "Gleitstein", "schematic");
             Add("piston", "kin.link.piston", "Piston and cylinder", "Kolben und Zylinder", "schematic");
             Add("piston.detailed", "kin.link.piston", "Cylinder in section", "Zylinder im Schnitt", "detailed", null, "section", "schnitt");
+            Add("cam.disc", "kin.cam.disc", "Cam disc", "Kurvenscheibe", "schematic");
             Add("cam.roller", "kin.cam.follower", "Cam with roller follower", "Kurvenscheibe mit Rollenstößel", "schematic");
             Add("cam.flat", "kin.cam.follower", "Cam with flat-faced follower", "Kurvenscheibe mit Flachstößel", "schematic", P(("follower", "flat")));
             Add("cam.knife", "kin.cam.follower", "Cam with knife-edge follower", "Kurvenscheibe mit Spitzenstößel", "schematic", P(("follower", "knife")));

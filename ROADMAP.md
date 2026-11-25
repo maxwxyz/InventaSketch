@@ -118,8 +118,8 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Done since in COM: bevel pairs in coupling, exploding schematic planetary sets (through the axial view), snap labels,
   Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
   selection, build "+" and "make it" in the insert box.
-- Still open in COM: exploding cam mechanisms (needs a cam disc part;
-  differentials explode into a case part, side and spider gears since 2026-11-25), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
+- Done since in COM: exploding cam mechanisms into a cam disc part and a follower slider (2026-11-25);
+  differentials explode into a case part, side and spider gears since 2026-11-25, assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
   positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are done (stops on fixed pivots, 2026-11-25).
 - Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
   fitting parts placed in their spot, multi-selection bar, select assembly, snap labels, coupler curve, F = n and
@@ -155,11 +155,12 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 1. Web: check in PowerPoint on the web once the maintainer has installed the dev certificate (all COM features of the
    UI/UX round incl. motion mode are implemented).
 2. LibreOffice: done in the sidebar (2026-11-25); next an on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
-3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms). Done 2026-11-25: Ravigneaux
+3. COM domain gaps: none left from the list (done 2026-11-25: cam disc part with followers riding on it – turning the disc
+   moves the follower slider and its chain – and cam mechanisms explode into pivot, disc and follower; Ravigneaux
    sets (planet pairs on a carrier with paired pins, explode, Willis ratios); joint limits as stops on fixed pivots; bevel pairs in the gear train speeds by their teeth (they only have
    side views, so they do not visibly turn); the exploded differential works as one (gears loose in the case, Willis
    with the case: straight on both sides turn with the case, one side held → the other turns twice as fast); the
-   `elevation`/`section` view alias for walls with building services.
+   `elevation`/`section` view alias for walls with building services).
 4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
@@ -251,8 +252,8 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
 - **Done 2026-11-21 (Core + COM): building linkages yourself** — links dock on joints, pivots, joint symbols and sliders,
   build "+" at free joints, degree of freedom in the bar, drag in motion mode with constant lengths (see the host docs).
   Four-bar, slider-crank, toggle, quick-return and scotch yoke explode into a self-built linkage; links offer slots
-  (pin in slot) (2026-11-21). Open: a cam disc part and cam contacts in chains (then exploding the cam mechanism),
-  limits/ghosts/coupler curves for self-built chains, gear joints in chains, the engine/web side.
+  (pin in slot) (2026-11-21). Since done: the cam disc part with cam contacts and exploding the cam mechanism, limits,
+  ghosts and coupler curves for self-built chains, the engine/web side (2026-11-24/25). Open: gear joints in chains.
 - **P1 – Building linkages yourself (maintainer 2026-11-21: "only predefined ones exist"):** links, joints and fixed
   pivots exist as parts, but link ends do not dock onto each other and only the predefined mechanisms (four-bar,
   slider-crank, …) move. Plan: link ends dock onto the joints of other links (attachment to a point of a point object,

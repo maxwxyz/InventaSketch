@@ -366,8 +366,9 @@ UX round (2026-11-20, from the maintainer's feedback):
   sliders at the slot end and the rod end) explode too. **Slots:** binary links and plates offer slots along their edges
   (rails `slot0` …); a link end docked there slides along the link in motion mode (pin in slot, counted as a higher pair
   in F). Verified in PowerPoint 2026-11-21: all three explode, and dragging the exploded quick-return crank in motion
-  mode keeps the link lengths and the pin in the slot. The cam mechanism is not exploded: no single part keeps the cam profile and the cam contact is not part of
-  self-built chains yet.
+  mode keeps the link lengths and the pin in the slot. The cam mechanism explodes (2026-11-25) into a fixed pivot, a cam disc part
+  (`kin.cam.disc`) and the follower as a slider on its guide; turning the disc in motion mode moves the follower to its
+  new contact (`Cams`), with the chain docked on it.
 - **Building gear trains yourself:** a planet carrier (`mech.carrier`, axial and schematic, 2–8 pins, disc or arms,
   "fixed carrier" with a ground symbol) is a part of its own. Its build "+" offer a planet on every free pin (sized to
   mesh with the sun or ring already there) and, in the centre, a sun gear, a ring gear (sized to the planets) or a shaft;
