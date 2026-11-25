@@ -76,6 +76,13 @@ namespace InventaSketch.Engine.Tests
             var pts = after.ResolvePoints(arrow);
             Assert.True(pts[0].DistanceTo(after.Get(a.Id)!.BoxPoint(0, 0.5)) < 1e-3);
             Assert.True(pts[^1].DistanceTo(after.Get(b.Id)!.BoxPoint(0, -0.5)) < 1e-3);
+            // Left to right: the connectors dock on the facing sides (right of the source, left of the target).
+            EngineApiTests.Call(api, "arrange", new { session, ids, action = "layout:right" });
+            var row = api.Sessions.Get(session).Doc;
+            var ab = row.Objects.Values.First(o => o.IsPointGeometry && o.Attach is { } at2 && at2[0]?.ObjectId == a.Id && at2[1]?.ObjectId == b.Id);
+            Assert.Equal((0.5, 0.0), (ab.Attach![0]!.U, ab.Attach[0]!.V));
+            Assert.Equal((-0.5, 0.0), (ab.Attach![1]!.U, ab.Attach[1]!.V));
+            EngineApiTests.Call(api, "arrange", new { session, ids, action = "layout:down" });
             // Laid out once, it is not offered again.
             var again = EngineApiTests.Call(api, "arrangeOptions", new { session, ids }).EnumerateArray().Select(o => o.GetProperty("id").GetString()).ToList();
             Assert.DoesNotContain("layout:down", again);

@@ -675,12 +675,17 @@ namespace InventaSketch.Engine
                 if (action.StartsWith("layout:", StringComparison.Ordinal))
                 {
                     // Docked connectors follow their elements (the session refreshes attachments after the edit).
-                    if (DiagramLayout.Layered(doc, objs, action == "layout:down") is not { } target) return doc;
+                    var down = action == "layout:down";
+                    if (DiagramLayout.Layered(doc, objs, down) is not { } target) return doc;
                     foreach (var o in objs.Where(o => target.ContainsKey(o.Id)))
                     {
                         var d = target[o.Id] - new Vec2(o.Transform.X, o.Transform.Y);
                         if (d.Length > Arrange.Tolerance) doc = Edits.Move(doc, new[] { o.Id }, d);
                     }
+                    // Connectors dock on the facing sides (bottom → top, right → left).
+                    var nodes = new HashSet<string>(target.Keys, StringComparer.Ordinal);
+                    foreach (var line in doc.Objects.Values.Where(o => o.IsPointGeometry).ToList())
+                        if (DiagramLayout.Redock(line, nodes, down) is { } redocked && !ReferenceEquals(redocked, line)) doc = Edits.Replace(doc, redocked);
                     return doc;
                 }
                 var groups = ArrangeGroups(doc, objs);
