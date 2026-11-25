@@ -227,20 +227,6 @@ namespace InventaSketch.Modules.Charts
         /// suffix in <paramref name="units"/> is ignored. Throws a bilingual <see cref="FormatException"/> otherwise.
         /// </summary>
         public static double ParseInput(string text, Lang lang, double min, double max, params string[] units)
-        {
-            var t = (text ?? "").Trim();
-            foreach (var u in units.OrderByDescending(u => u.Length))
-                if (u.Length > 0 && t.EndsWith(u, StringComparison.OrdinalIgnoreCase)) { t = t.Substring(0, t.Length - u.Length).Trim(); break; }
-            var factor = 1.0;
-            if (t.Length > 1)
-            {
-                var last = t[t.Length - 1];
-                var f = last switch { 'k' or 'K' => 1e3, 'M' => 1e6, 'm' => 1e-3, 'µ' or 'u' => 1e-6, _ => 0.0 };
-                if (f > 0) { factor = f; t = t.Substring(0, t.Length - 1).Trim(); }
-            }
-            if (!ChartData.TryNumber(t, out var v) || !Finite(v * factor) || v * factor < min || v * factor > max)
-                throw new FormatException(lang == Lang.De ? "Keine gültige Zahl: „" + text + "“" : "Not a valid number: “" + text + "”");
-            return v * factor;
-        }
+            => ValueParser.ParseNumber(text, lang, min, max, units);
     }
 }

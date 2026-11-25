@@ -142,14 +142,9 @@ namespace InventaSketch.Modules.Architecture
         /// <summary>Reads a length in millimetres typed by the user ("1010", "1010 mm", "1,01 m", "101 cm").</summary>
         internal static double ParseMm(string text, Lang lang)
         {
-            var t = (text ?? "").Trim().ToLowerInvariant().Replace(" ", "");
-            var factor = 1.0;
-            if (t.EndsWith("mm", StringComparison.Ordinal)) t = t.Substring(0, t.Length - 2);
-            else if (t.EndsWith("cm", StringComparison.Ordinal)) { t = t.Substring(0, t.Length - 2); factor = 10; }
-            else if (t.EndsWith("m", StringComparison.Ordinal)) { t = t.Substring(0, t.Length - 1); factor = 1000; }
-            if (!double.TryParse(t.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) || v <= 0 || double.IsInfinity(v))
-                throw new FormatException(lang == Lang.De ? "Keine gültige Länge: „" + text + "“" : "Not a valid length: “" + text + "”");
-            return v * factor;
+            var v = ValueParser.ParseMillimetres(text, lang);
+            if (v <= 0) throw new FormatException(lang == Lang.De ? "Keine gültige Länge: „" + text + "“" : "Not a valid length: “" + text + "”");
+            return v;
         }
 
         /// <summary>Formats a number with fixed decimals, using a decimal comma in German.</summary>

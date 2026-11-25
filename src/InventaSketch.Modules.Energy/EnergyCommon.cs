@@ -295,8 +295,7 @@ namespace InventaSketch.Modules.Energy
             {
                 var t = (text ?? "").Trim();
                 if (p.Unit is string u && t.EndsWith(u, StringComparison.OrdinalIgnoreCase)) t = t.Substring(0, t.Length - u.Length);
-                t = t.Trim().Replace(',', '.');
-                if (!double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) || double.IsNaN(v) || double.IsInfinity(v))
+                if (!ValueParser.TryNumber(t.Trim(), out var v))
                     throw new FormatException(lang == Lang.De ? "Keine gültige Zahl: „" + text + "“" : "Not a valid number: “" + text + "”");
                 if (p.Min is double min) v = Math.Max(min, v);
                 if (p.Max is double max) v = Math.Min(max, v);

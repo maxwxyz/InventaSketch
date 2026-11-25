@@ -142,16 +142,7 @@ namespace InventaSketch.Modules.BuildingServices
 
         /// <summary>Reads a length in millimetres typed by the user ("1010", "1010 mm", "1,01 m", "101 cm", "-50").</summary>
         internal static double ParseMm(string text, Lang lang)
-        {
-            var t = (text ?? "").Trim().ToLowerInvariant().Replace(" ", "");
-            var factor = 1.0;
-            if (t.EndsWith("mm", StringComparison.Ordinal)) t = t.Substring(0, t.Length - 2);
-            else if (t.EndsWith("cm", StringComparison.Ordinal)) { t = t.Substring(0, t.Length - 2); factor = 10; }
-            else if (t.EndsWith("m", StringComparison.Ordinal)) { t = t.Substring(0, t.Length - 1); factor = 1000; }
-            if (!double.TryParse(t.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) || double.IsInfinity(v) || double.IsNaN(v))
-                throw new FormatException(lang == Lang.De ? "Keine gültige Länge: „" + text + "“" : "Not a valid length: “" + text + "”");
-            return v * factor;
-        }
+            => ValueParser.ParseMillimetres(text, lang);
 
         internal static string Mm(double v) => Math.Round(v).ToString("0", CultureInfo.InvariantCulture);
 
