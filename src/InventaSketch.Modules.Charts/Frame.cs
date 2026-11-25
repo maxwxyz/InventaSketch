@@ -14,7 +14,23 @@ namespace InventaSketch.Modules.Charts
         public Axis? Y2 { get; set; }
         public string? Y2Title { get; set; }
         public Rect Area { get; set; }
+        /// <summary>Relative height of the panel among stacked panels (figure charts; default 1 = equal heights).</summary>
+        public double Share { get; set; } = 1;
+        /// <summary>Ticks drawn instead of the axis ticks (figure charts: named marks on principle axes; empty = no ticks).</summary>
+        public IReadOnlyList<Tick>? Ticks { get; set; }
+        /// <summary>Arrowhead on this panel's y axis (principle axes) even when the frame has no arrows.</summary>
+        public bool Arrow { get; set; }
+        /// <summary>Horizontal grid lines of this panel; null = the frame setting.</summary>
+        public bool? Grid { get; set; }
+        /// <summary>Texts left of the y axis at a value, like tick labels but with their own part tag (numerals at the axis).</summary>
+        public List<AxisText> Texts { get; } = new();
+
+        /// <summary>The ticks to draw: the custom ticks if set, else the axis ticks.</summary>
+        public IReadOnlyList<Tick> TickList(Lang lang) => Ticks is null ? Y.Ticks(lang) : Ticks.Where(t => Y.Contains(t.Value)).ToList();
     }
+
+    /// <summary>A text at an axis value (drawn like a tick label, tagged with its own part key).</summary>
+    internal sealed record AxisText(double Value, string Text, string Tag);
 
     /// <summary>Legend entry: a line sample (with dash and marker) or an area sample (bars, bands).</summary>
     internal sealed record LegendEntry(string Text, Style Style, MarkerKind? Marker = null, bool FilledMarker = false, bool Area = false);
@@ -53,6 +69,28 @@ namespace InventaSketch.Modules.Charts
         public List<LegendEntry> Legend { get; } = new();
         /// <summary>Area of all panels (after <see cref="Layout"/>).</summary>
         public Rect Plot { get; private set; }
+        /// <summary>Ticks of the x axis drawn instead of the axis ticks (figure charts: named marks; empty = none).</summary>
+        public IReadOnlyList<Tick>? XTicks { get; set; }
+        /// <summary>Arrowhead on the x axes (principle axes) even when <see cref="Arrows"/> is off.</summary>
+        public bool XArrow { get; set; }
+        /// <summary>Vertical grid lines; null = <see cref="Grid"/>.</summary>
+        public bool? XGrid { get; set; }
+        /// <summary>Dash pattern of the major grid; null = solid in colour, dotted in monochrome.</summary>
+        public DashStyle? GridDash { get; set; }
+        /// <summary>Gap between stacked panels in multiples of <see cref="Fs"/>; null = 1.2.</summary>
+        public double? PanelGap { get; set; }
+        /// <summary>Caption below the plot (figure charts).</summary>
+        public string? Caption { get; set; }
+        /// <summary>Extra space right of the plot in multiples of <see cref="Fs"/> (labels at curve ends).</summary>
+        public double ExtraRight { get; set; }
+        /// <summary>Texts below the x axis of the bottom panel at an x value (like tick labels, own part tag).</summary>
+        public List<AxisText> XTexts { get; } = new();
+
+        /// <summary>The x ticks to draw: the custom ticks if set, else the axis ticks.</summary>
+        public IReadOnlyList<Tick> XTickList(Lang lang) => XTicks is null ? X.Ticks(lang) : XTicks.Where(t => X.Contains(t.Value)).ToList();
+
+        /// <summary>Height of the caption line (0 without caption).</summary>
+        private double CaptionH => string.IsNullOrEmpty(Caption) ? 0 : Fs * 1.1 + Gap;
 
         private double Pad => 0.35 * Fs;
         private double TickLen => 0.45 * Fs;
@@ -63,6 +101,11 @@ namespace InventaSketch.Modules.Charts
         private static double MaxWidth(Axis a, Lang lang, double fs)
             => a.Ticks(lang).Where(t => t.Label is not null).Select(t => Fmt.Width(t.Label!, fs)).DefaultIfEmpty(0).Max();
 
+        /// <summary>Widest tick label or axis text of a panel (left of its y axis).</summary>
+        private static double LabelWidth(Panel p, Lang lang, double fs)
+            => p.TickList(lang).Where(t => t.Label is not null).Select(t => Fmt.Width(t.Label!, fs))
+                .Concat(p.Texts.Select(t => Fmt.Width(t.Text, fs))).DefaultIfEmpty(0).Max();
+
         private double LegendWidth => Legend.Count == 0 ? 0 : Fs * 0.8 + Fs * 3.2 + Gap + Legend.Max(e => Fmt.Width(e.Text, Fs * 0.9)) + Fs * 0.6;
 
         /// <summary>Computes the plot area and the panel areas; reduces the font when the box is too small.</summary>
@@ -71,13 +114,13 @@ namespace InventaSketch.Modules.Charts
             for (var attempt = 0; attempt < 6; attempt++)
             {
                 double hw = W / 2, hh = H / 2;
-                var yw = Panels.Max(p => MaxWidth(p.Y, lang, Fs));
+                var yw = Panels.Max(p => LabelWidth(p, lang, Fs));
                 var left = Pad + (Panels.Any(p => !string.IsNullOrEmpty(p.YTitle)) ? Fs * 1.05 + Gap : 0) + yw + Gap + TickLen;
                 var right = Pad;
                 var y2 = Panels.Where(p => p.Y2 is not null).ToList();
                 if (y2.Count > 0)
                     right += y2.Max(p => MaxWidth(p.Y2!, lang, Fs)) + Gap + TickLen + (y2.Any(p => !string.IsNullOrEmpty(p.Y2Title)) ? Fs * 1.05 + Gap : 0);
-                var xt = X.Ticks(lang).Where(t => t.Label is not null && X.Kind != AxisKind.Category).ToList();
+                var xt = XTickList(lang).Where(t => t.Label is not null && X.Kind != AxisKind.Category).ToList();
                 if (xt.Count > 0)
                 {
                     // The first and last x labels are centred on their ticks: keep them inside the box.
@@ -85,10 +128,11 @@ namespace InventaSketch.Modules.Charts
                     if (firstT < 0.02) left = Math.Max(left, Pad + Fmt.Width(xt[0].Label!, Fs) / 2);
                     if (lastT > 0.98 && y2.Count == 0) right = Math.Max(right, Pad + Fmt.Width(xt[xt.Count - 1].Label!, Fs) / 2);
                 }
-                if (Arrows) right = Math.Max(right, Pad + Fs);
+                if (Arrows || XArrow) right = Math.Max(right, Pad + Fs);
                 if (ShowLegend && LegendMode == "right") right += LegendWidth + Gap;
-                var top = Pad + (string.IsNullOrEmpty(Title) ? Fs * 0.5 : Fs * 1.3 + Gap) + (Arrows ? Fs * 0.5 : 0);
-                var bottom = Pad + TickLen + Gap + Fs + (string.IsNullOrEmpty(XTitle) ? 0 : Gap + Fs * 1.05);
+                right += Math.Max(0, ExtraRight) * Fs;
+                var top = Pad + (string.IsNullOrEmpty(Title) ? Fs * 0.5 : Fs * 1.3 + Gap) + (Arrows || Panels.Count > 0 && Panels[0].Arrow ? Fs * 0.5 : 0);
+                var bottom = Pad + TickLen + Gap + Fs + (string.IsNullOrEmpty(XTitle) ? 0 : Gap + Fs * 1.05) + CaptionH;
                 var pw = W - left - right;
                 var ph = H - top - bottom;
                 if ((pw < W * 0.3 || ph < H * 0.3) && attempt < 5 && Fs > 0.8) { Fs *= 0.8; continue; }
@@ -97,9 +141,18 @@ namespace InventaSketch.Modules.Charts
                 break;
             }
             var n = Panels.Count;
-            var between = n > 1 ? Fs * 1.2 : 0;
-            var each = (Plot.H - between * (n - 1)) / n;
-            for (var i = 0; i < n; i++) Panels[i].Area = new Rect(Plot.X, Plot.Y + i * (each + between), Plot.W, Math.Max(each, 1));
+            var between = n > 1 ? Fs * (PanelGap ?? 1.2) : 0;
+            // Panel heights by share (equal shares: equal heights, as before).
+            var shares = Panels.Select(p => p.Share > 0 && Fmt.Finite(p.Share) ? p.Share : 1).ToList();
+            var total = shares.Sum();
+            var free = Math.Max(Plot.H - between * (n - 1), n);
+            var y0 = Plot.Y;
+            for (var i = 0; i < n; i++)
+            {
+                var h = free * shares[i] / total;
+                Panels[i].Area = new Rect(Plot.X, y0, Plot.W, Math.Max(h, 1));
+                y0 += h + between;
+            }
         }
 
         /// <summary>Page (local) position of a data point in a panel; <paramref name="secondary"/> uses the panel's right axis.</summary>
@@ -116,22 +169,23 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Grid lines behind the data (major and minor).</summary>
         public void DrawGrid(List<Primitive> into)
         {
-            if (!Grid) return;
+            var xGrid = XGrid ?? Grid;
+            if (!xGrid && !Panels.Any(p => p.Grid ?? Grid)) return;
             var major = new List<IReadOnlyList<Vec2>>();
             var minor = new List<IReadOnlyList<Vec2>>();
             foreach (var p in Panels)
             {
                 var a = p.Area;
-                if (X.Kind != AxisKind.Category)
-                    foreach (var t in X.Ticks(Lang.En))
+                if (X.Kind != AxisKind.Category && xGrid)
+                    foreach (var t in XTickList(Lang.En))
                     {
                         if (t.Mark == TickMark.None) continue;
                         var x = a.X + X.T(t.Value) * a.W;
                         if (Math.Abs(x - a.X) < 0.01 || Math.Abs(x - a.Right) < 0.01 && Box) continue;
                         (t.IsMajor ? major : minor).Add(new[] { new Vec2(x, a.Y), new Vec2(x, a.Bottom) });
                     }
-                if (p.Y.Kind != AxisKind.Category)
-                    foreach (var t in p.Y.Ticks(Lang.En))
+                if (p.Y.Kind != AxisKind.Category && (p.Grid ?? Grid))
+                    foreach (var t in p.TickList(Lang.En))
                     {
                         if (t.Mark == TickMark.None) continue;
                         var y = a.Bottom - p.Y.T(t.Value) * a.H;
@@ -140,7 +194,8 @@ namespace InventaSketch.Modules.Charts
                     }
             }
             if (Draw.MultiPath(minor, S.GridMinor(Mono), ChartTags.GridMinor) is { } mi) into.Add(mi);
-            if (Draw.MultiPath(major, S.Grid(Mono), ChartTags.Grid) is { } ma) into.Add(ma);
+            var majorStyle = GridDash is { } gd && !Mono ? S.Grid(Mono) with { Dash = gd } : S.Grid(Mono);
+            if (Draw.MultiPath(major, majorStyle, ChartTags.Grid) is { } ma) into.Add(ma);
         }
 
         /// <summary>Thin zero line where 0 lies strictly inside a linear value axis (bars, Bode magnitude, negative data).</summary>
@@ -180,16 +235,19 @@ namespace InventaSketch.Modules.Charts
                 else
                 {
                     var axis = S.Axis;
-                    var arrow = Arrows ? axis with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small } : axis;
-                    var ext = Arrows ? Fs * 0.8 : 0;
-                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.Right + ext, a.Bottom), arrow) with { Tag = ChartTags.Axis + ".x" + ps });
-                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.X, a.Y - ext), arrow) with { Tag = ChartTags.Axis + ".y" + ps });
+                    var withHead = axis with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small };
+                    var xArrow = Arrows || XArrow;
+                    var yArrow = Arrows || p.Arrow;
+                    var xExt = xArrow ? Fs * 0.8 : 0;
+                    var yExt = yArrow ? Fs * 0.8 : 0;
+                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.Right + xExt, a.Bottom), xArrow ? withHead : axis) with { Tag = ChartTags.Axis + ".x" + ps });
+                    into.Add(Prim.Line(new Vec2(a.X, a.Bottom), new Vec2(a.X, a.Y - yExt), yArrow ? withHead : axis) with { Tag = ChartTags.Axis + ".y" + ps });
                     if (p.Y2 is not null) into.Add(Prim.Line(new Vec2(a.Right, a.Bottom), new Vec2(a.Right, a.Y), axis) with { Tag = ChartTags.Axis + ".y2" + ps });
                 }
 
                 // X ticks (every panel) and labels (bottom panel).
                 var xl = new List<(double Pos, string Text)>();
-                foreach (var t in X.Ticks(lang))
+                foreach (var t in XTickList(lang))
                 {
                     var x = a.X + X.T(t.Value) * a.W;
                     if (t.Mark != TickMark.None)
@@ -200,8 +258,15 @@ namespace InventaSketch.Modules.Charts
                     if (last && t.Label is not null) xl.Add((x, t.Label));
                 }
                 if (last) XLabels(into, xl, a, labelColor);
+                if (last) AxisTexts(into, XTexts, a, labelColor);
 
-                YAxis(into, yticks, p.Y, a, a.X, -1, lang, labelColor, ChartTags.TickLabel + ".y" + ps);
+                YAxis(into, yticks, p.Y, a, a.X, -1, lang, labelColor, ChartTags.TickLabel + ".y" + ps, p.Ticks);
+                foreach (var t in p.Texts)
+                {
+                    if (!p.Y.Contains(t.Value)) continue;
+                    var py = Geo.Clamp(a.Bottom - p.Y.T(t.Value) * a.H, -hh + Pad + Fs / 2, hh - Pad - Fs / 2);
+                    into.Add(new TextPrim(new Vec2(a.X - TickLen - Gap, py), t.Text, new TextStyle { Size = Fs, Color = labelColor, Anchor = TextAnchor.End }) { Tag = t.Tag });
+                }
                 if (p.Y2 is not null) YAxis(into, yticks, p.Y2, a, a.Right, 1, lang, labelColor, ChartTags.TickLabel + ".y2" + ps);
 
                 // Axis titles.
@@ -221,7 +286,12 @@ namespace InventaSketch.Modules.Charts
             if (!string.IsNullOrEmpty(XTitle))
             {
                 var fs = Fit(XTitle!, Fs, Plot.W);
-                into.Add(new TextPrim(new Vec2(Plot.X + Plot.W / 2, hh - Pad - Fs * 0.5), XTitle!, new TextStyle { Size = fs, Color = labelColor }) { Tag = ChartTags.AxisTitle + ".x" });
+                into.Add(new TextPrim(new Vec2(Plot.X + Plot.W / 2, hh - Pad - CaptionH - Fs * 0.5), XTitle!, new TextStyle { Size = fs, Color = labelColor }) { Tag = ChartTags.AxisTitle + ".x" });
+            }
+            if (!string.IsNullOrEmpty(Caption))
+            {
+                var fs = Math.Max(0.05, Math.Min(Fs, (W - 2 * Pad) / (Math.Max(1, Caption!.Length) * Fmt.CharWidth)));
+                into.Add(new TextPrim(new Vec2(0, hh - Pad - Fs * 0.55), Caption!, new TextStyle { Size = fs, Color = labelColor }) { Tag = ChartTags.Caption });
             }
             if (!string.IsNullOrEmpty(Title))
             {
@@ -255,7 +325,21 @@ namespace InventaSketch.Modules.Charts
             }
         }
 
-        private void YAxis(List<Primitive> into, List<IReadOnlyList<Vec2>> ticks, Axis y, Rect a, double x0, int side, Lang lang, string color, string labelTag)
+        /// <summary>Texts below the x axis at their x values (no thinning; kept inside the box).</summary>
+        private void AxisTexts(List<Primitive> into, IReadOnlyList<AxisText> texts, Rect a, string color)
+        {
+            double hw = W / 2;
+            var y = a.Bottom + TickLen + Gap + Fs / 2;
+            foreach (var t in texts)
+            {
+                if (!X.Contains(t.Value)) continue;
+                var w = Fmt.Width(t.Text, Fs);
+                var x = Geo.Clamp(a.X + X.T(t.Value) * a.W, -hw + Pad + w / 2, hw - Pad - w / 2);
+                into.Add(new TextPrim(new Vec2(x, y), t.Text, new TextStyle { Size = Fs, Color = color }) { Tag = t.Tag });
+            }
+        }
+
+        private void YAxis(List<Primitive> into, List<IReadOnlyList<Vec2>> ticks, Axis y, Rect a, double x0, int side, Lang lang, string color, string labelTag, IReadOnlyList<Tick>? custom = null)
         {
             double hh = H / 2;
             var fs = Fs;
@@ -265,7 +349,7 @@ namespace InventaSketch.Modules.Charts
                 fs = Math.Max(0.6, Math.Min(Fs, band * 0.8));
             }
             var lastY = double.PositiveInfinity;
-            var list = y.Ticks(lang).Select(t => (t, Pos: a.Bottom - y.T(t.Value) * a.H)).OrderByDescending(x => x.Pos).ToList();
+            var list = (custom?.Where(t => y.Contains(t.Value)) ?? y.Ticks(lang)).Select(t => (t, Pos: a.Bottom - y.T(t.Value) * a.H)).OrderByDescending(x => x.Pos).ToList();
             foreach (var (t, py) in list)
             {
                 if (t.Mark != TickMark.None)
