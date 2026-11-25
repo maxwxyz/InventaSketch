@@ -47,6 +47,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `importVector` | `text` (SVG oder ASCII-DXF) | Zustand; bearbeitbare Grundformen in einer Gruppe (echte Größe, wenn die Datei Einheiten hat und passt, sonst eingepasst), ausgewählt; ein Rückgängig-Schritt |
 | `preflight` | `text` (Profil-ID, Standard "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – Kompatibilitätsprüfung der Zeichnungen |
 | `patentProfiles` | `lang` | die Ämter `{ id, name }` |
+| `sanitize` | `ids` (keine = jedes Element der Seite), `mode` ("normalised", "randomised", "none"), `value` `{ renameCategories, replaceTexts, stripMeta, seed }`, `lang` | `{ state, report: { mode, seed, elements, changed, values, texts, metadata, references, unknown, failed, byType, summary, lines } }` – „Folien bereinigen“; ein Rückgängig-Schritt |
 | `diff` | `payload` (kompaktes Modell des früheren Stands, z. B. der vorherigen Folie) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – Varianten: was sich von diesem Stand unterscheidet (Rahmen in mm, entfernte aus dem früheren Stand) |
 | `setAccent` | `text` (Voreinstellung aus `accents`, #rrggbb oder "" für die Originalfarben) | Zustand (`accent`); Akzentfarbe des Dokuments, jedes Objekt gilt als geändert |
 | `accents` | `lang` | die angebotenen Akzentfarben `{ id, color, name }` |
@@ -125,7 +126,38 @@ Folie behalten.
   ausgewählten Folie, was sich von der vorherigen unterscheidet (Engine `exportCompact` der vorherigen Folie, `diff` auf
   der aktuellen): neu grün, geändert orange, entfernt grau gestrichelt, dazu eine Legende; Formen mit dem Namen
   `ISK_DIFF …`; erneutes Klicken entfernt sie.
+- **Folien bereinigen …** (25.11.2026, wie der Prüfen-Befehl des COM-Add-ins): ein Knopf in der oberen Leiste (neben
+  Kompatibilitätsprüfung und Vergleich) öffnet ein Formular: *Was* – ausgewählte Elemente (nur mit Auswahl), aktuelle
+  Folie, alle Folien; *Diagramme* – normieren (gleiche Verhältnisse, Werte 0…1), zufällig verändern (plausible Werte,
+  gleiches Aussehen) oder Werte behalten; *Zusätzlich* – Kategorien umbenennen, Texte ersetzen, Metadaten entfernen
+  (standardmäßig an) und ein Zufallsstartwert (leer = ein neuer; ein Startwert für den ganzen Lauf, im Bericht genannt).
+  Die Arbeit macht `sanitize` der Engine (`src/ui/cleanlogic.ts` bildet das Formular ab; `Session.sanitize`).
+  Ausgewählte Elemente: die Editor-Sitzung (dort ein Rückgängig-Schritt), die auf der Folie verfolgten Einheiten werden
+  neu gezeichnet (auch bei ausgeschalteter Live-Synchronisierung). Aktuelle Folie / alle Folien (PowerPointApi 1.5 mit
+  Tags): die Einheiten jeder Folie werden so gelesen, wie sie jetzt sind (verschobene oder skalierte Einheiten werden
+  zuerst so platziert, `slideSession`), in einer temporären Sitzung bereinigt (`cleanSlide`), und nur die geänderten
+  Einheiten werden auf ihrer Folie neu gezeichnet (gleiche Einheiten-IDs, die alten Formen werden also ersetzt; native
+  Einheiten gehen direkt auf ihre Folie, ein SVG-Bild braucht die angezeigte Folie, was `writeUnits` erledigt und danach
+  wieder die vorherige zeigt). Einheiten, die der Editor hält, übernehmen das bereinigte Modell. Der Bericht ersetzt das
+  Formular: Anzahlen, Startwert, höchstens 12 verschiedene Zeilen und der Hinweis, dass native PowerPoint-Diagramme und
+  -Tabellen, Notizen, Kommentare und Dokumenteigenschaften nicht verändert werden. **Lücken:** Office.js kann die
+  Folienänderungen nicht zu einem Rückgängig-Schritt zusammenfassen (das Formular sagt das und empfiehlt, eine Kopie zu
+  bereinigen); außerhalb von PowerPoint (Entwicklungsseite) und in der Seitenleiste des COM-Add-ins (dort gehört die Folie
+  dem COM-Add-in, das einen eigenen Befehl hat) bietet das Formular nur die Auswahl und die Editor-Seite.
+- **Export-Umfang** (25.11.2026, Vorgabe des Maintainers, wie im COM-Add-in): SVG, PNG und die Fach-Datenexporte
+  umfassen immer die Auswahl – ein oder mehrere Elemente, eine Gruppe zählt einmal –, wenn es eine gibt, sonst die
+  aktuelle Folie (`src/export.ts`, `resolveExportSource`). Die obere Leiste zeigt den Umfang vor den Export-Knöpfen
+  („Export – Auswahl (3)“ / „Export – Folie“), ebenso die Knopf-Tooltips und der Abschnitt „Daten exportieren“ in den
+  Einstellungen. Mehrere auf der Folie ausgewählte Einheiten werden jetzt alle in den Editor geladen und gemeinsam
+  ausgewählt (`SlideSync.loadSelection`), die Editor-Auswahl ist also die Auswahl der Folie. Ohne Auswahl werden die
+  Einheiten der aktuellen Folie in eine temporäre Sitzung gelesen (so, wie sie jetzt auf der Folie sind) und als ganze
+  Folie exportiert; eine Folie ohne InventaSketch-Elemente meldet „Auf dieser Folie gibt es nichts zu exportieren“.
+  Außerhalb von PowerPoint und in der COM-Seitenleiste wird die Editor-Seite exportiert („Export – Seite“). Dateien heißen
+  `inventasketch-selection.*`, `inventasketch-slide-<n>.*` oder `inventasketch.*`.
 - **Abgerundete Rechtecke** bekommen ihren Eckenradius als PowerPoint-Anpassung (PowerPointApi 1.10, `adjustments.set`).
+- Folien bereinigen, Export-Umfang und das Laden mehrerer ausgewählter Einheiten sind mit Unit-Tests gegen dieselben
+  Nachbauten abgedeckt (`test/cleanslides.test.ts`, `test/exportscope.test.ts`, `test/multiselect.test.ts`); **in
+  PowerPoint noch nicht ausgeführt**.
 - Prüfung über alle Folien, Vergleich und Eckenradius sind mit Unit-Tests gegen ein nachgebautes Office.js-Objektmodell
   und eine Test-Engine abgedeckt (`test/slides.test.ts`); **in PowerPoint noch nicht ausgeführt** (braucht das
   Entwicklungszertifikat). Die Tests fanden, dass die Modellkopie der Präsentation nie zurückgelesen wurde (Tag-Schlüssel

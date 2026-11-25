@@ -3,11 +3,11 @@
 
 import { Engine, Session } from "../engine/client";
 import type { ActionInfo, ArrangeOption, BuildPortInfo, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, PreflightResult, SuggestionInfo, TraceInfo, TransformEffect } from "../engine/types";
-import { exportPng, exportSvg, download } from "../export";
+import { download, editorExportScope, exportFileStem, exportPng, exportScopeLabel, exportSvg, resolveExportSource, type ExportSource } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
 import { SlideSync } from "../office/sync";
-import { checkSlides, compareWithPrevious, goToFinding, readSlideUnits, type SlideFinding } from "../office/slides";
+import { checkSlides, cleanSlide, compareWithPrevious, goToFinding, readCurrentSlideUnits, readSlideUnits, type SlideFinding, type SlideUnits } from "../office/slides";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
@@ -15,6 +15,7 @@ import { ContextBar, InlinePrompt, type BarCommand, type ChoiceEntry } from "./c
 import { h, svgDataUrl } from "./dom";
 import { hasIcon, icon } from "./icons";
 import { canDrawGhosts } from "./buildlogic";
+import { addReport, cleanRequest, cleanScopes, defaultCleanForm, emptyTotals, formatCleanReport, type CleanForm, type CleanRequest, type CleanTotals } from "./cleanlogic";
 import { canMove } from "./motionlogic";
 import { InsertBox, insertRows, rememberRecent } from "./insertbox";
 import { Inspector } from "./inspector";
@@ -209,7 +210,7 @@ export class App {
 
   private renderTopbar(): void {
     const st = this.st;
-    const sel = st?.selection ?? [];
+    const scope = st ? exportScopeLabel(editorExportScope(st, this.slideAccess), t) : "";
     const items: (HTMLElement | false)[] = [
       this.iconButton("undo", t("cmd.undo") + " (Ctrl+Z)", () => this.edit((s) => s.undo(), true), { disabled: !st?.canUndo, "data-cmd": "undo" }),
       this.iconButton("redo", t("cmd.redo") + " (Ctrl+Y)", () => this.edit((s) => s.redo(), true), { disabled: !st?.canRedo, "data-cmd": "redo" }),
@@ -230,11 +231,14 @@ export class App {
       this.importButton(),
       this.lineGroupSelect(st?.lineGroup ?? 0.5),
       this.accentSelect(st?.accent ?? null),
-      this.office.tags && this.office.selection && this.office.shapes && !(this.sync instanceof ComSync)
+      this.slideAccess
         && this.iconButton("compare", t("cmd.compare"), () => void this.compareSlides(), { "data-cmd": "compare" }),
       this.iconButton("check", t("cmd.patentCheck"), (e) => this.togglePatentCheck(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog", "data-cmd": "patentcheck" }),
-      this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome))),
-      this.iconButton("png", t("cmd.exportPng"), () => exportPng(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome).catch((e) => this.report(e))),
+      this.iconButton("clean", t("cmd.clean"), (e) => this.toggleCleanSlides(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog", "data-cmd": "clean" }),
+      // What the export covers, stated before the buttons (COM: "Selection: n elements" / "Slide").
+      h("span", { class: "isk-export-scope", "data-cmd": "exportscope", title: t("export.scopeHint") }, scope),
+      this.iconButton("svg", `${scope}: ${t("cmd.exportSvg")}`, () => void this.exportWith((x) => exportSvg(x)), { "data-cmd": "exportsvg" }),
+      this.iconButton("png", `${scope}: ${t("cmd.exportPng")}`, () => void this.exportWith((x) => exportPng(x)), { "data-cmd": "exportpng" }),
       h("span", { class: "isk-grow" }),
       this.iconButton("settings", t("cmd.settings"), (e) => this.toggleSettings(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog" }),
     );
@@ -309,6 +313,159 @@ export class App {
   private patentProfile = "";
   /** The compatibility check covers every slide (PowerPoint only). */
   private patentAllSlides = true;
+
+  /**
+   * Office.js can read and write the slides (tags, selection API, shapes). Not in the COM add-in's sidebar, where the COM
+   * add-in owns the slide (it has its own compare and clean commands).
+   */
+  private get slideAccess(): boolean {
+    return !!(this.office.tags && this.office.selection && this.office.shapes) && this.sync instanceof SlideSync;
+  }
+
+  /** The shown slide's units, or undefined without access to the slides. */
+  private readCurrentSlide(): Promise<SlideUnits | undefined> {
+    return this.slideAccess ? readCurrentSlideUnits(this.office) : Promise.resolve(undefined);
+  }
+
+  /** The export scope as it is now: the selection, else the current slide, else the editor page (export.ts). */
+  private exportSource(): Promise<ExportSource> {
+    return resolveExportSource({
+      engine: this.engine, editor: this.sessionObj, state: this.st, slideAccess: this.slideAccess, lang: lang(),
+      readSlide: () => this.readCurrentSlide(),
+    });
+  }
+
+  /** Runs an export on the resolved scope; a slide without InventaSketch elements says so. */
+  private async exportWith(f: (source: ExportSource) => void | Promise<void>): Promise<void> {
+    let source: ExportSource | undefined;
+    try {
+      source = await this.exportSource();
+      if (source.empty) { this.setStatus(t("export.nothing")); return; }
+      await f(source);
+      this.setStatus(exportScopeLabel(source.scope, t));
+    } catch (e) {
+      this.report(e);
+    } finally {
+      source?.dispose();
+    }
+  }
+
+  /**
+   * "Clean slides …" (Review, like the COM add-in): a form for the scope (selection, current slide or all slides), the
+   * chart handling and the options, then the engine's `sanitize`; changed elements are redrawn on their slides and the
+   * report (counts, seed, lines and what is not changed) replaces the form.
+   */
+  private toggleCleanSlides(anchor: HTMLElement): void {
+    const wasClean = this.settingsEl?.dataset.kind === "clean";
+    if (this.settingsEl) { this.settingsEl.remove(); this.settingsEl = undefined; if (wasClean) return; }
+    const hasSelection = this.st.selection.length > 0;
+    const slides = this.slideAccess;
+    const form: CleanForm = defaultCleanForm(hasSelection);
+    const radio = (name: string, value: string, checked: boolean, label: string, enabled: boolean, on: () => void) => {
+      const r = h("input", { type: "radio", name, value, checked, disabled: !enabled, "data-cmd": `${name}-${value}` });
+      r.addEventListener("change", () => { if (r.checked) on(); });
+      return h("label", { class: "isk-check" }, r, h("span", {}, label));
+    };
+    const check = (checked: boolean, label: string, cmd: string, on: (v: boolean) => void) => {
+      const c = h("input", { type: "checkbox", checked, "data-cmd": cmd });
+      c.addEventListener("change", () => on(c.checked));
+      return h("label", { class: "isk-check" }, c, h("span", {}, label));
+    };
+    const seed = h("input", { class: "isk-input", type: "text", inputmode: "numeric", "aria-label": t("clean.seed"), "data-cmd": "clean-seed" });
+    seed.addEventListener("input", () => (form.seed = seed.value));
+    const body = h("div", {},
+      h("fieldset", {}, h("legend", {}, t("clean.what")),
+        ...cleanScopes(hasSelection, slides).map((o) => radio("isk-clean-scope", o.scope, form.scope === o.scope, t(o.key), o.enabled, () => (form.scope = o.scope)))),
+      h("fieldset", {}, h("legend", {}, t("clean.charts")),
+        ...(["normalised", "randomised", "none"] as const).map((m) => radio("isk-clean-mode", m, form.mode === m, t(`clean.mode.${m}`), true, () => (form.mode = m)))),
+      h("fieldset", {}, h("legend", {}, t("clean.also")),
+        check(form.renameCategories, t("clean.rename"), "clean-rename", (v) => (form.renameCategories = v)),
+        check(form.replaceTexts, t("clean.texts"), "clean-texts", (v) => (form.replaceTexts = v)),
+        check(form.stripMeta, t("clean.meta"), "clean-meta", (v) => (form.stripMeta = v)),
+        h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("clean.seed")), seed)),
+      ...(slides ? [h("p", { class: "isk-muted" }, t("clean.undo"))] : []));
+    const ok = h("button", { class: "isk-btn isk-primary", type: "button", "data-cmd": "clean-run" }, t("clean.run"));
+    const cancel = h("button", { class: "isk-btn", type: "button", "data-cmd": "clean-cancel" }, t("clean.cancel"));
+    const buttons = h("div", { class: "isk-row isk-clean-buttons" }, ok, cancel);
+    const close = h("button", { class: "isk-btn isk-icon-btn isk-close", type: "button", "aria-label": t("close"), html: icon("close", 16) });
+    const panel = h("div", { class: "isk-popover isk-clean", role: "dialog", "aria-label": t("clean.title") },
+      h("div", { class: "isk-pop-head" }, h("strong", {}, t("clean.title")), close), body, buttons);
+    panel.dataset.kind = "clean";
+    const dismiss = () => { panel.remove(); if (this.settingsEl === panel) this.settingsEl = undefined; anchor.focus(); };
+    close.addEventListener("click", dismiss);
+    cancel.addEventListener("click", dismiss);
+    panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); dismiss(); } });
+    ok.addEventListener("click", async () => {
+      ok.disabled = true;
+      body.replaceChildren(h("p", { class: "isk-pc-summary", role: "status" }, t("clean.working")));
+      buttons.replaceChildren();
+      let totals: CleanTotals | undefined;
+      try {
+        totals = await this.cleanSlides(cleanRequest(form));
+      } catch (e) {
+        this.report(e);
+      }
+      if (!totals) { dismiss(); return; }
+      const r = formatCleanReport(totals, t);
+      body.replaceChildren(
+        h("p", { class: "isk-pc-summary", role: "status" }, r.head),
+        ...(r.lines.length ? [h("ul", { class: "isk-findings isk-clean-lines" }, ...r.lines.map((l) => h("li", {}, l)))] : []),
+        h("p", { class: "isk-muted" }, r.note));
+      const done = h("button", { class: "isk-btn", type: "button", "data-cmd": "clean-close" }, t("close"));
+      done.addEventListener("click", dismiss);
+      buttons.replaceChildren(done);
+      this.setStatus(r.head);
+      done.focus();
+    });
+    this.root.append(panel);
+    this.settingsEl = panel;
+    (panel.querySelector<HTMLInputElement>("input:checked") ?? ok).focus();
+  }
+
+  /**
+   * Cleans the chosen scope. Selection (and the editor page without access to the slides): the editor session, one undo
+   * step there; the tracked units are redrawn on the slide (also with live sync off – cleaning is about the slide).
+   * Current slide / all slides: per slide a temporary session with its units as they are now; the changed units are
+   * redrawn on their slide, and units the editor holds take the cleaned model (so a later edit does not bring the old
+   * values back). One seed for the whole run.
+   */
+  private async cleanSlides(req: CleanRequest): Promise<CleanTotals> {
+    let totals = emptyTotals(req.value.seed ?? 0);
+    if (req.scope === "selection" || !this.slideAccess) {
+      const ids = req.scope === "selection" ? [...this.st.selection] : [];
+      const r = this.sessionObj.sanitize(ids, req.mode, req.value, lang());
+      totals = addReport(totals, r.report);
+      if (r.report.changed) {
+        this.apply(r.state, false);
+        await this.sync?.scheduleLive(r.state);
+      }
+      return totals;
+    }
+    const page = { w: this.st.pageWidth, h: this.st.pageHeight };
+    const list: SlideUnits[] = req.scope === "all"
+      ? await readSlideUnits(this.office)
+      : [await this.readCurrentSlide()].filter((x): x is SlideUnits => !!x);
+    const draw = drawCapabilities(this.office);
+    const sync = this.sync as SlideSync;
+    const inEditor = new Set(this.st.objects.map((o) => o.id));
+    const reload: string[] = [];
+    for (const slide of list) {
+      if (!slide.units.length) continue;
+      const cleaned = cleanSlide(this.engine, slide, page, lang(), req.mode, req.value, draw);
+      totals = addReport(totals, cleaned.report);
+      if (!cleaned.units.length) continue;
+      await sync.replaceOnSlide(cleaned.units, slide.slideId);
+      for (const u of cleaned.units) if (u.objectIds.some((id) => inEditor.has(id))) reload.push(u.payload);
+    }
+    if (reload.length) {
+      // The editor holds some of the cleaned units: they take the cleaned models; the selection stays.
+      const selection = [...this.st.selection];
+      for (const payload of reload) this.sessionObj.importCompact(payload);
+      this.sessionObj.select(selection);
+      this.apply(this.sessionObj.state(), false);
+    }
+    return totals;
+  }
 
   /** "Compare with the previous slide": marks what differs on the selected slide, or removes the marks again. */
   private async compareSlides(): Promise<void> {
@@ -401,7 +558,7 @@ export class App {
   }
 
   private toggleSettings(anchor: HTMLElement): void {
-    const wasSettings = !!this.settingsEl && this.settingsEl.dataset.kind !== "patent";
+    const wasSettings = !!this.settingsEl && !this.settingsEl.dataset.kind;
     if (this.settingsEl) { this.settingsEl.remove(); this.settingsEl = undefined; if (wasSettings) return; }
     const radio = (name: string, value: string, current: string, label: string, on: () => void) => {
       const r = h("input", { type: "radio", name, value, checked: current === value });
@@ -452,26 +609,36 @@ export class App {
     panel.querySelector<HTMLInputElement>("input")?.focus();
   }
 
-  /** "Export data": one button per domain export that applies to the selection (or the page); downloads the file. */
+  /**
+   * "Export data": the scope first ("Export \u2013 selection (3)" / "Export \u2013 slide", like the COM add-in), then one button per
+   * domain export that applies to it; a click resolves the scope again and downloads the file.
+   */
   private exportFieldset(): HTMLElement {
-    const sel = this.st.selection;
-    let list: ExporterInfo[] = [];
-    try {
-      list = this.sessionObj.exporters(sel, lang());
-    } catch (e) {
-      this.report(e);
-    }
-    const buttons = list.map((x) => {
-      const b = h("button", { class: "isk-btn", type: "button", title: x.preserves }, x.name);
-      b.addEventListener("click", () => this.guard(() => {
-        const r = this.sessionObj.exportData(sel, x.id, lang());
-        const bom = r.extension === "csv" ? "\ufeff" : "";
-        download(`sketch.${r.extension}`, new Blob([bom + r.text], { type: `${r.mime};charset=utf-8` }));
-      }));
-      return b;
-    });
-    return h("fieldset", {}, h("legend", {}, t("set.export")),
-      ...(buttons.length ? [h("div", { class: "isk-col" }, ...buttons)] : [h("p", { class: "isk-muted" }, t("set.exportNone"))]));
+    const scope = h("p", { class: "isk-muted", "data-cmd": "exportdatascope" }, exportScopeLabel(editorExportScope(this.st, this.slideAccess), t));
+    const content = h("div", { class: "isk-col" });
+    const fill = (source: ExportSource) => {
+      scope.textContent = exportScopeLabel(source.scope, t);
+      let list: ExporterInfo[] = [];
+      try {
+        list = source.empty ? [] : source.session.exporters(source.ids ?? [], lang());
+      } catch (e) {
+        this.report(e);
+      }
+      const buttons = list.map((x) => {
+        const b = h("button", { class: "isk-btn", type: "button", title: x.preserves }, x.name);
+        b.addEventListener("click", () => void this.exportWith((s) => {
+          const r = s.session.exportData(s.ids ?? [], x.id, lang());
+          const bom = r.extension === "csv" ? "\ufeff" : "";
+          download(`${exportFileStem(s.scope)}.${r.extension}`, new Blob([bom + r.text], { type: `${r.mime};charset=utf-8` }));
+        }));
+        return b;
+      });
+      content.replaceChildren(...(buttons.length ? buttons : [h("p", { class: "isk-muted" }, t("set.exportNone"))]));
+    };
+    this.exportSource()
+      .then((source) => { try { fill(source); } finally { source.dispose(); } })
+      .catch((e) => this.report(e));
+    return h("fieldset", {}, h("legend", {}, t("set.export")), scope, content);
   }
 
   private versionLine(): string {
