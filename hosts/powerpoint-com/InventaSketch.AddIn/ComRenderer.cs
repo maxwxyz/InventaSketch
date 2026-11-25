@@ -56,6 +56,14 @@ namespace InventaSketch.AddIn
                     {
                         var type = op.Radius is > 0 ? Office.MsoAutoShapeType.msoShapeRoundedRectangle : Office.MsoAutoShapeType.msoShapeRectangle;
                         var s = Named(_shapes.AddShape(type, F(op.X), F(op.Y), Math.Max(0.1f, F(op.W)), Math.Max(0.1f, F(op.H))));
+                        // The rounded rectangle's adjustment is the corner radius as a fraction of the shorter side
+                        // (PowerPoint's default 1/6 would ignore the plan's radius).
+                        var shortSide = Math.Min(F(op.W), F(op.H));
+                        if (op.Radius is > 0 && shortSide > 1e-6f)
+                        {
+                            try { s.Adjustments[1] = Math.Min(0.5f, F(op.Radius) / shortSide); }
+                            catch (Exception ex) { Log.Error("Rounded rectangle radius", ex); }
+                        }
                         Style(s, op, closed: true);
                         Rotate(s, op);
                         created.Add(s);

@@ -68,7 +68,7 @@ Ranges (`xrange`, `yrange`) accept `0;100`, `0..100`, `0,5;2,5` or `10 1000`; an
 
 ### Importing a table (2026-11-25)
 
-"Import data …" (COM: Extras menu; web: import button in the top bar; engine `importData`) reads a CSV/TSV file into the
+"Import …" (COM: Review group; web: import button in the top bar; engine `importData`) reads a CSV/TSV file into the
 selected chart, or into a new XY chart in the middle of the slide: the separator (tab, ";" or ",") is detected, quoted
 fields keep their separators, a decimal comma becomes a point (German Excel) and empty lines are dropped
 (`Imports.CsvToChartData`). Checked in PowerPoint (scenario `import`).

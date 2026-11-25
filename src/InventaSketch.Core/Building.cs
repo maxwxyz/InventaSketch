@@ -114,8 +114,11 @@ namespace InventaSketch.Core
                 list.Add(new BuildPort(pin.Id!, PortKind.Pin, at, d.Length > 1e-6 ? d * (1 / d.Length) : Turn(new Vec2(0, -1))) { AxisFrom = centre });
             }
 
-            // Free axis ends: the next shaft section or a part.
+            // Free axis ends: the next shaft section or a part. An element that marks the ends of its axes (roads: lane start
+            // and end points) gets ports there only – not at the joints of the chords that make up a curved lane or a ring,
+            // nor at the inner ends of a junction's arms.
             var axes = own.Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && !IsPin(a)).ToList();
+            var marked = own.Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.End).Select(a => a.P).ToList();
             for (var k = 0; k < axes.Count; k++)
             {
                 var ax = axes[k];
@@ -123,6 +126,7 @@ namespace InventaSketch.Core
                 if (len < 1e-6) continue;
                 foreach (var (end, from, name) in new[] { (ax.P, ax.Q, "start"), (ax.Q, ax.P, "end") })
                 {
+                    if (marked.Count > 0 && !marked.Any(m => m.DistanceTo(end) <= 0.05)) continue;
                     var dir = (end - from) * (1 / len);
                     // Taken: another axis continues here, or a part sits on this end.
                     var beyond = end + dir * 1.0;
@@ -263,6 +267,21 @@ namespace InventaSketch.Core
             if (port.Kind == PortKind.Joint) return PlaceAtJoint(registry, doc, sel, port, item, lang);
             var probe = registry.Create(item, port.At);
             if (probe.IsPointGeometry) return null;
+            // A scaled element passes its scale on: the new part fits it (lane widths, shaft diameter, tooth size). At an
+            // axis end the scale across the axis counts, elsewhere the mean of both directions.
+            if (port.Kind != PortKind.Mount && SourceScale(registry, sel) is { } sc)
+            {
+                double k;
+                if (port.Kind == PortKind.AxisEnd)
+                {
+                    var r = -Geo.DegToRad(sel.Transform.Rotation);
+                    var lx = port.Dir.X * Math.Cos(r) - port.Dir.Y * Math.Sin(r);
+                    var ly = port.Dir.X * Math.Sin(r) + port.Dir.Y * Math.Cos(r);
+                    k = Math.Sqrt(sc.X * ly * sc.X * ly + sc.Y * lx * sc.Y * lx);
+                }
+                else k = Math.Sqrt(sc.X * sc.Y);
+                if (k > 1e-6 && Math.Abs(k - 1) > 1e-3) probe = probe with { Size = new Size2(Math.Round(probe.Size.W * k, 6), Math.Round(probe.Size.H * k, 6)) };
+            }
             if (port.Kind == PortKind.Mount)
             {
                 // Turn the part so its mount direction faces the port, then put its mount on the port.
@@ -320,14 +339,32 @@ namespace InventaSketch.Core
                 case PortKind.AxisEnd:
                     if (axis is not null && hub is null)
                     {
-                        // The next shaft section: collinear, starting where this axis ends.
-                        var own = axis.Q - axis.P;
-                        if (own.Length < 1e-6) return null;
-                        var turn = (Math.Atan2(port.Dir.Y, port.Dir.X) - Math.Atan2(own.Y, own.X)) * 180 / Math.PI;
-                        var turned = probe with { Transform = probe.Transform with { Rotation = Math.Round(probe.Transform.Rotation + turn, 6) } };
-                        var ta = Anchors(registry, doc, turned, lang).First(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis);
-                        var start = (ta.P - port.At).Dot(port.Dir) < (ta.Q - port.At).Dot(port.Dir) ? ta.P : ta.Q;
-                        return Translate(turned, port.At - start);
+                        // The next shaft section (or road segment): collinear, starting where this axis ends. With several
+                        // axes (lanes) every axis of the part is tried at the port; the placement where most of its axis
+                        // ends meet the element's axis ends wins (both lanes of a road continue; an intersection arm takes
+                        // a road on the right lanes); ties prefer the axis of the same id, then the first.
+                        var axisId = PortAxisId(registry, doc, sel, port, lang);
+                        var selEnds = registry.PageAnchors(sel, new RenderContext(doc, lang)).Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && !IsPin(a))
+                            .SelectMany(a => new[] { a.P, a.Q }).ToList();
+                        SketchObject? best = null;
+                        var bestScore = -1;
+                        foreach (var cand in anchors.Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && !IsPin(a)).GroupBy(a => a.Id ?? "").Select(g => g.First()))
+                        {
+                            var own = cand.Q - cand.P;
+                            if (own.Length < 1e-6) continue;
+                            var turn = (Math.Atan2(port.Dir.Y, port.Dir.X) - Math.Atan2(own.Y, own.X)) * 180 / Math.PI;
+                            var turned = probe with { Transform = probe.Transform with { Rotation = Math.Round(probe.Transform.Rotation + turn, 6) } };
+                            var turnedAxes = Anchors(registry, doc, turned, lang).Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && !IsPin(a)).ToList();
+                            var ta = turnedAxes.FirstOrDefault(a => (a.Id ?? "") == (cand.Id ?? ""));
+                            if (ta is null) continue;
+                            var start = (ta.P - port.At).Dot(port.Dir) < (ta.Q - port.At).Dot(port.Dir) ? ta.P : ta.Q;
+                            var d = port.At - start;
+                            var placed = Translate(turned, d);
+                            var score = turnedAxes.SelectMany(a => new[] { a.P + d, a.Q + d }).Distinct().Count(p => selEnds.Any(e => e.DistanceTo(p) <= 0.5)) * 2
+                                + (axisId is not null && cand.Id == axisId ? 1 : 0);
+                            if (score > bestScore) { best = placed; bestScore = score; }
+                        }
+                        return best;
                     }
                     if (hub is null) return null;
                     {
@@ -477,6 +514,34 @@ namespace InventaSketch.Core
         {
             var tmp = Edits.Add(doc, doc.Pages[0].Id, o);
             return registry.PageAnchors(tmp.Get(o.Id)!, new RenderContext(tmp, lang)).ToList();
+        }
+
+        /// <summary>The id of the axis an <see cref="PortKind.AxisEnd"/> port ("axis{k}.start|end") sits on, or null.</summary>
+        private static string? PortAxisId(Registry registry, SketchDocument doc, SketchObject sel, BuildPort port, Lang lang)
+        {
+            if (!port.Id.StartsWith("axis", StringComparison.Ordinal)) return null;
+            var dot = port.Id.IndexOf('.');
+            if (dot < 0 || !int.TryParse(port.Id.Substring(4, dot - 4), out var k)) return null;
+            var axes = registry.PageAnchors(sel, new RenderContext(doc, lang)).Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && !IsPin(a)).ToList();
+            return k < axes.Count ? axes[k].Id : null;
+        }
+
+        /// <summary>
+        /// How much an element was scaled since it was inserted, per local direction: its size against the size of the
+        /// library item it matches (same type, view and item parameters). Null if no item matches (no reliable reference).
+        /// </summary>
+        public static Vec2? SourceScale(Registry registry, SketchObject o)
+        {
+            if (o.IsPointGeometry) return null;
+            var item = registry.Library
+                .Where(i => i.TypeId == o.Type && (i.View is null || i.View == o.View)
+                    && (i.Params is null || i.Params.All(kv => o.Params.TryGetValue(kv.Key, out var v) && v.Equals(kv.Value))))
+                .OrderByDescending(i => i.View == o.View ? 1 : 0).ThenByDescending(i => i.Params?.Count ?? 0)
+                .FirstOrDefault();
+            if (item is null) return null;
+            var reference = item.Size ?? registry.Type(o.Type)?.DefaultSize;
+            if (reference is not { } r || r.W < 1e-6 || r.H < 1e-6) return null;
+            return new Vec2(o.Size.W / r.W, o.Size.H / r.H);
         }
 
         private static SketchObject Translate(SketchObject o, Vec2 d)

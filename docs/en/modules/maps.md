@@ -82,7 +82,7 @@ reverse `IconIds.Swap`.
 
 ## Importing GeoJSON and GPX (2026-11-25)
 
-"Import data …" (COM: Extras menu; web: import button; engine `importGeo`) turns a GeoJSON file (Feature,
+"Import …" (COM: Review group; web: import button; engine `importGeo`) turns a GeoJSON file (Feature,
 FeatureCollection or geometry: line strings, polygon rings, points) or a GPX file (tracks, routes, waypoints) into map
 elements fitted into the slide (inset by a tenth, north up, equirectangular projection around the data's mean latitude
 – right for city and region maps, not for continents): every line becomes a route (dense tracks thinned to points

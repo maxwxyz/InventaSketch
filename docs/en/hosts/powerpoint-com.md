@@ -437,11 +437,31 @@ Box selection of points: with a line, polyline, wire or wall selected, Alt + dra
 inside are selected (filled handles) and move together when one of them is dragged (one undo step). Verified: two of
 four polyline points moved up 40 pt together.
 
-Data export (Extras ▸ Export data, 2026-11-20): offers the domain exports that apply to the selected units or the
+Review group (2026-11-25): the commands that work on the finished drawing sit together at the end of the tab –
+*Patent check* and *Compare* (large), *Import …* and *Export data*; they left the Extras menu, which keeps symbol,
+decimal separator, proofing language, send/save slides, plan scale and module visibility. Same names as in LibreOffice.
+
+Importing drawings (Review ▸ Import …, 2026-11-25): an SVG or DXF file becomes one unit of native, editable shapes –
+lines, polylines (arcs, curves and bulges flattened into editable points), rectangles (with their corner radius),
+ellipses and texts (`VectorImport` in Core). With units (SVG width/height in mm/cm/in, DXF `$INSUNITS`) and when it fits,
+the drawing keeps its real size; otherwise it is fitted into the slide. Colours, line types, fills, hatches, blocks and
+dimensions are not read. Verified: scenario `vector-import` (80 x 50 mm SVG at real size with a 3 mm corner radius, a
+DXF as a second unit). Found on the way and fixed: rounded rectangles of every module now get their radius (PowerPoint's
+adjustment; before, PowerPoint's default of a sixth of the short side was used).
+
+Fixes from the maintainer's test (2026-11-25):
+- The insert box (Ctrl+Space, "+" with a choice) failed the second time it opened ("Invalid parameter" while drawing
+  the list): it disposed the cached thumbnails it had borrowed. It no longer does.
+- "+" on a scaled element: the new part takes the element's scale (`Building.SourceScale`: its size against the library
+  item it matches) – the scale across the axis at an axis end, the mean of both directions elsewhere, also for quick add;
+  a road continues lane for lane. Checked for every element of the library (engine test `BuildAllElementsTests`: 861
+  placements and 169 quick adds on elements scaled by 1.5) and in PowerPoint (scenario `scaled-build`).
+
+Data export (Review ▸ Export data, 2026-11-20): offers the domain exports that apply to the selected units or the
 slide (bill of materials, connection graph as Mermaid/GraphML, netlist, reference sign list), saves the file and copies
 the text to the clipboard. Verified: two equal spur gears and a shaft gave a bill of materials with quantity 2.
 
-Variants (Extras ▸ Compare with the previous slide, 2026-11-25): a duplicated slide keeps the elements' ids, so a
+Variants (Review ▸ Compare, 2026-11-25): a duplicated slide keeps the elements' ids, so a
 "before/after" or "baseline/invention" pair can be compared. The command marks on the current slide what differs from
 the previous one (`Variants.Diff` in Core): added elements in green, changed ones (type, view, parameters, text,
 position, size or points) in orange, removed ones as a dashed grey frame where they were, plus a legend at the top

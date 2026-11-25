@@ -238,7 +238,7 @@ logistics, agriculture, marine & aerospace. Each becomes a module when a concret
 - **Import & recognition:** SVG, PDF, PNG/JPEG, TIFF, DXF, CSV; contour detection on images to hatch closed regions,
   assistive vectorisation and OCR of numerals — always confirmable, original kept. Planned.
 - **Domain exports (first exporters shipped 2026-11-20: bill of materials CSV, connection graph as Mermaid and GraphML,
-  electrical netlist CSV, reference sign list; extension point `IExportProvider`; COM: Extras ▸ Export data; web:
+  electrical netlist CSV, reference sign list; extension point `IExportProvider`; COM: Review ▸ Export data; web:
   settings ▸ Export data):** depending on the selection and object types, export the semantic content in common
   engineering formats, not only as graphics. Examples: gear sets and gearbox topologies (gear data tables, power-flow
   topology, REXS where feasible), kinematic chains and linkages (joint/link tables, URDF-like descriptions), electrical

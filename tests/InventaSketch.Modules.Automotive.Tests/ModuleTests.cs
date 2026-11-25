@@ -277,7 +277,8 @@ namespace InventaSketch.Modules.Automotive.Tests
         {
             var r = Fx.Reg();
             var road = r.Create(r.Item("auto.road.2")!, new Vec2(170, 100));
-            var car = r.Type("auto.vehicle.car")!.Create(new Vec2(150, 119));
+            var laneCentre = 100 + road.Size.H / 4;          // lower lane centre (2 lanes)
+            var car = r.Create(r.Item("auto.car.top")!, new Vec2(150, laneCentre + 1.5));
             var (doc, page) = Fx.Doc(road, car);
             var ctx = new RenderContext(doc);
             var options = new SnapOptions { Tolerance = 3 };
@@ -285,8 +286,7 @@ namespace InventaSketch.Modules.Automotive.Tests
             var moving = r.PageAnchors(car, ctx).ToList();
             var res = Snapper.SnapMove(moving, new Vec2(4, 0), targets, options);
             Assert.Equal("axis", res.Kind);
-            // lower lane centre: 100 + 35/2
-            Assert.Equal(117.5, car.Transform.Y + res.Delta.Y, 6);
+            Assert.Equal(laneCentre, car.Transform.Y + res.Delta.Y, 6);
             Assert.Equal(4, res.Delta.X, 6);
         }
 
@@ -339,14 +339,15 @@ namespace InventaSketch.Modules.Automotive.Tests
             var r = Fx.Reg();
             var t = r.Type("auto.road.straight")!;
             var road = r.Create(r.Item("auto.road.2")!, Vec2.Zero);
+            var lane = road.Size.H / 2;
             var more = t.Actions(road, Lang.En).Single(a => a.Id == "param.lanes.inc").Apply(road);
             Assert.Equal(3, more.Int("lanes", 0));
-            Assert.Equal(105, more.Size.H, 6);
+            Assert.Equal(3 * lane, more.Size.H, 6);
             var axes = t.Anchors(more, Fx.Ctx()).Where(a => a.Role == AnchorRole.Axis).ToList();
             Assert.Equal(3, axes.Count);
             var less = t.Actions(road, Lang.En).Single(a => a.Id == "param.lanes.dec").Apply(road);
             Assert.Equal(1, less.Int("lanes", 0));
-            Assert.Equal(35, less.Size.H, 6);
+            Assert.Equal(lane, less.Size.H, 6);
             var none = t.Actions(less, Lang.En).Single(a => a.Id == "param.lanes.dec").Apply(less);
             Assert.Equal(1, none.Int("lanes", 0));
         }

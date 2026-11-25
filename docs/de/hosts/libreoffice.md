@@ -82,7 +82,7 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 
 - **Menü „InventaSketch“** (Impress, Draw, Calc): *Aus Bibliothek einfügen …* (öffnet das Deck der Seitenleiste),
   *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*,
-  *Bezugszeichen hinzufügen*, *Patentprüfung (Zeichnungen) …*, *Mit vorheriger Folie vergleichen (Varianten)*,
+  *Bezugszeichen hinzufügen*, *Patentprüfung (Zeichnungen) …*, *Mit vorheriger Folie vergleichen (Varianten)*, *Zeichnung importieren (SVG, DXF) …*,
   *Daten gelöschter Einheiten entfernen*, *Über InventaSketch*.
 - **Varianten** (25.11.2026, Impress und Draw): Eine duplizierte Folie behält die IDs der Einheiten. *Mit vorheriger
   Folie vergleichen* markiert, was sich von der vorherigen Folie unterscheidet (Engine `diff`, beide Folien wie
@@ -119,7 +119,7 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   `panel?control=<Schlüssel>&item=<Eintrag>` / `panel?press=<Schlüssel, Beschriftung oder action:<id>>` (bedient ein
   Bedienelement des offenen Panels wie ein Anwender), `snapMove[?px=<Pixel>&undo=<n>]` (ausgewählte Einheit(en) nach
   einer nativen Verschiebung einrasten, wie nach dem Ziehen mit der Maus), `quickInsert[?text=<Text>]`
-  (Bibliotheks-Panel mit dem Cursor im Suchfeld, wie Strg+Leertaste), `patentCheck[?profile=<Amts-ID>]`, `compare`, `cleanup`,
+  (Bibliotheks-Panel mit dem Cursor im Suchfeld, wie Strg+Leertaste), `patentCheck[?profile=<Amts-ID>]`, `compare`, `importVector[?path=<Datei>]` (ohne Pfad mit Dateidialog), `cleanup`,
   `about`. Integrations- und
   UI-Smoke-Test benutzen diese Befehle.
 - **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in

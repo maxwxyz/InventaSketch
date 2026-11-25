@@ -44,6 +44,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `setMonochrome` | `value` (true/false) | Zustand; Schwarz-Weiß für das Dokument, jedes Objekt gilt als geändert |
 | `importData` | `text` (CSV/TSV), `id` (optional Diagramm) | Zustand; die Tabelle als Daten des ausgewählten oder eines neuen Diagramms |
 | `importGeo` | `text` (GeoJSON oder GPX) | Zustand; Routen und Marker in die Seite eingepasst, ausgewählt |
+| `importVector` | `text` (SVG oder ASCII-DXF) | Zustand; bearbeitbare Grundformen in einer Gruppe (echte Größe, wenn die Datei Einheiten hat und passt, sonst eingepasst), ausgewählt; ein Rückgängig-Schritt |
 | `preflight` | `text` (Profil-ID, Standard "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – Patent-Vorabprüfung der Zeichnungen |
 | `patentProfiles` | `lang` | die Ämter `{ id, name }` |
 | `diff` | `payload` (kompaktes Modell des früheren Stands, z. B. der vorherigen Folie) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – Varianten: was sich von diesem Stand unterscheidet (Rahmen in mm, entfernte aus dem früheren Stand) |

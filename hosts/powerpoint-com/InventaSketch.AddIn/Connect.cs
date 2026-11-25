@@ -308,6 +308,7 @@ namespace InventaSketch.AddIn
                 if (m == 0) AppendFormattingGroups(sb);
             }
             else AppendFormattingGroups(sb);
+            AppendReviewGroup(sb);
             sb.Append("</tab></tabs></ribbon></customUI>");
             return sb.ToString();
         }
@@ -361,14 +362,35 @@ namespace InventaSketch.AddIn
             sb.Append("<menuSeparator id=\"IskMenuSep1\" />");
             Item("IskMenuSend", T("Send slides \u2026", "Folien senden \u2026"), "FileSendAsAttachment");
             Item("IskMenuSave", T("Save slides \u2026", "Folien speichern \u2026"), "FileSaveAs");
-            sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" />");
             sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
             Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
-            Item("IskMenuImport", T("Import data (CSV, GeoJSON, GPX) \u2026", "Daten importieren (CSV, GeoJSON, GPX) \u2026"), "ImportTextFile");
-            Item("IskMenuPatent", T("Patent check (drawings) \u2026", "Patentpr\u00fcfung (Zeichnungen) \u2026"), "ReviewSpellingAndGrammar");
-            Item("IskMenuCompare", T("Compare with the previous slide (variants)", "Mit vorheriger Folie vergleichen (Varianten)"), "ReviewCompareTwoVersions");
             Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
             sb.Append("</menu>");
+        }
+
+        /// <summary>
+        /// The "Review" group at the end of the tab: what works on the finished drawing \u2013 patent check, comparison with the
+        /// previous slide (variants), data import and export. One place for these commands (they left the Extras menu).
+        /// </summary>
+        private void AppendReviewGroup(StringBuilder sb)
+        {
+            void Button(string id, string label, string imageMso, bool large, string tip)
+                => sb.Append("<button id=\"").Append(id).Append("\" label=\"").Append(L(label)).Append("\" imageMso=\"").Append(imageMso).Append('"')
+                     .Append(large ? " size=\"large\"" : "").Append(" onAction=\"OnToolsMenu\" supertip=\"").Append(X(tip)).Append("\" />");
+            sb.Append("<group id=\"IskReview\" label=\"").Append(L(T("Review", "Pr\u00fcfen"))).Append("\" imageMso=\"ReviewSpellingAndGrammar\">");
+            Button("IskMenuPatent", T("Patent check", "Patentpr\u00fcfung"), "ReviewSpellingAndGrammar", true,
+                T("Checks the drawings of every slide against the formal rules of DPMA, EPO, PCT or USPTO, with sources; double-click a finding to go to it. A drafting aid, not legal advice.",
+                  "Pr\u00fcft die Zeichnungen aller Folien gegen die formalen Vorschriften von DPMA, EPA, PCT oder USPTO, mit Fundstellen; Doppelklick auf einen Befund springt dorthin. Eine Zeichenhilfe, keine Rechtsberatung."));
+            Button("IskMenuCompare", T("Compare", "Vergleichen"), "ReviewCompareTwoVersions", true,
+                T("Marks what differs from the previous slide (variants: duplicate the slide, change the copy): added green, changed orange, removed dashed grey. Click again to remove the marks.",
+                  "Markiert, was sich von der vorherigen Folie unterscheidet (Varianten: Folie duplizieren, Kopie \u00e4ndern): neu gr\u00fcn, ge\u00e4ndert orange, entfernt grau gestrichelt. Erneut klicken entfernt die Markierungen."));
+            Button("IskMenuImport", T("Import \u2026", "Importieren \u2026"), "ImportTextFile", false,
+                T("CSV/TSV into the selected chart (or a new one), GeoJSON/GPX as map routes and markers, SVG/DXF drawings as editable shapes.",
+                  "CSV/TSV in das ausgew\u00e4hlte Diagramm (oder ein neues), GeoJSON/GPX als Kartenrouten und Marker, SVG-/DXF-Zeichnungen als bearbeitbare Formen."));
+            sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" supertip=\"")
+              .Append(X(T("Bill of materials, connection graph, netlist or reference sign list of the selection or the slide.",
+                          "St\u00fcckliste, Verbindungsgraph, Netzliste oder Bezugszeichenliste der Auswahl oder der Folie."))).Append("\" />");
+            sb.Append("</group>");
         }
 
         public void OnToolsMenu(Office.IRibbonControl control)
@@ -1070,13 +1092,15 @@ namespace InventaSketch.AddIn
         /// <summary>True once PowerPoint has loaded the ribbon (an invalid ribbon XML is dropped silently; UI tests check this).</summary>
         internal bool RibbonLoaded => _ribbon is not null;
 
-        /// <summary>"Import data …": asks for a CSV/TSV, GeoJSON or GPX file and imports it (<see cref="ImportData"/>).</summary>
+        /// <summary>"Import …": asks for a CSV/TSV, GeoJSON/GPX or SVG/DXF file and imports it (<see cref="ImportData"/>).</summary>
         private void ImportDataFile()
         {
             using var dialog = new OpenFileDialog
             {
-                Title = T("Import data", "Daten importieren"),
-                Filter = T("Data files", "Datendateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx|"
+                Title = T("Import", "Importieren"),
+                Filter = T("All importable files", "Alle importierbaren Dateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf|"
+                    + T("Drawings", "Zeichnungen") + " (*.svg;*.dxf)|*.svg;*.dxf|"
+                    + T("Data files", "Datendateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx|"
                     + T("All files", "Alle Dateien") + " (*.*)|*.*",
             };
             if (dialog.ShowDialog() != DialogResult.OK) return;
@@ -1094,6 +1118,22 @@ namespace InventaSketch.AddIn
             if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return T("Please select a slide first.", "Bitte zuerst eine Folie auswählen.");
             var setup = _app.ActivePresentation.PageSetup;
             var pageMm = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
+            if (VectorImport.IsVectorFile(fileName, text))
+            {
+                // A vector drawing as editable basic shapes, grouped into one unit (real size if it has units and fits).
+                VectorImport.Drawing? drawing;
+                try { drawing = VectorImport.Parse(text); }
+                catch (Exception ex) { Log.Error("Vector import", ex); return T("The drawing could not be read: ", "Die Zeichnung konnte nicht gelesen werden: ") + ex.Message; }
+                var objects = drawing is null ? new List<SketchObject>() : VectorImport.Elements(_registry, drawing, pageMm).ToList();
+                if (objects.Count == 0) return T("The drawing has no lines, shapes or texts that can be imported.", "Die Zeichnung enthält keine importierbaren Linien, Formen oder Texte.");
+                var gid = Ids.New("g");
+                var doc = SketchDocument.Create(pageMm);
+                doc = Edits.Add(doc, doc.Pages[0].Id, objects.Select(o => o with { GroupId = gid }).ToArray());
+                _app.StartNewUndoEntry();
+                OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang)?.Select(Office.MsoTriState.msoTrue);
+                Log.Info($"Imported {objects.Count} shape(s) from {System.IO.Path.GetFileName(fileName)}");
+                return null;
+            }
             if (Imports.IsGeoFile(fileName, text))
             {
                 var geo = Imports.ParseGeo(text);

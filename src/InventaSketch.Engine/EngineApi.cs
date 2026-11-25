@@ -39,6 +39,7 @@ namespace InventaSketch.Engine
                 ["importGeo"] = ImportGeoCore,
                 ["preflight"] = PreflightCore,
                 ["diff"] = DiffCore,
+                ["importVector"] = ImportVectorCore,
                 ["patentProfiles"] = PatentProfilesCore,
                 ["update"] = UpdateCore,
                 ["move"] = MoveCore,
@@ -395,6 +396,28 @@ namespace InventaSketch.Engine
             var created = Imports.GeoElements(Registry, geo, s.Page.Size);
             if (created.Count == 0) throw new ArgumentException("The file has no usable lines or points.");
             s.Apply("Import map data", d => Edits.Add(d, s.PageId, created.ToArray()));
+            s.Select(created.Select(o => o.Id));
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// A vector drawing (<c>text</c>: SVG or ASCII DXF) as editable basic shapes on the page (<see cref="VectorImport"/>):
+        /// real size when the file has units and fits, else fitted into the page; the new elements form one group and are
+        /// selected. One undo step.
+        /// </summary>
+        private object ImportVectorCore(EngineRequest r)
+        {
+            var s = S(r);
+            var drawing = VectorImport.Parse(r.Text ?? "") ?? throw new ArgumentException("Neither SVG nor DXF.");
+            if (drawing.IsEmpty) throw new ArgumentException("The drawing has no lines, shapes or texts that can be imported.");
+            var created = VectorImport.Elements(Registry, drawing, s.Page.Size);
+            if (created.Count == 0) throw new ArgumentException("The drawing has no shapes that can be imported.");
+            if (created.Count > 1)
+            {
+                var gid = Ids.New("g");
+                created = created.Select(o => o with { GroupId = gid }).ToList();
+            }
+            s.Apply("Import drawing", d => Edits.Add(d, s.PageId, created.ToArray()));
             s.Select(created.Select(o => o.Id));
             return StateOf(s, r);
         }

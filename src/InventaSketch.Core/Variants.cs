@@ -11,7 +11,7 @@ namespace InventaSketch.Core
     /// </summary>
     public static class Variants
     {
-        /// <summary>The difference from <paramref name="before"/> to <paramref name="after"/>.</summary>
+        /// <summary>The difference from an earlier state ("before") to a later one ("after").</summary>
         public sealed record Difference(IReadOnlyList<string> Added, IReadOnlyList<string> Removed, IReadOnlyList<string> Changed)
         {
             public bool None => Added.Count == 0 && Removed.Count == 0 && Changed.Count == 0;

@@ -12,9 +12,15 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 
 ## Konventionen
 
-- **Szenenmaßstab 1:100** – 10 mm auf der Folie entsprechen 1 m (ein Pkw ist in der Draufsicht 45 × 20 mm groß,
-  ein Fahrstreifen 35 mm breit, ein Erwachsener 17,5 mm hoch). Freies gleichmäßiges/ungleichmäßiges Skalieren ändert
-  nur die Boxgröße.
+- **Szenenmaßstab** – die Elemente sind im Maßstab 1:100 entworfen (10 Entwurfseinheiten = 1 m: Pkw 45 × 18,
+  Fahrstreifen 35, Erwachsener 17,5 Einheiten). Draufsichten werden mit 0,6 davon eingefügt
+  (`AutomotiveModule.TopScale`, 1:167 auf der Folie, 25.11.2026), damit eine Szene auf eine 16:9-Folie passt: Straße mit
+  2 Fahrstreifen 96 × 42 mm, Pkw 27 mm lang, Kreuzung 96 × 96 mm, Kreisverkehr 120 × 120 mm; alle Draufsichten teilen
+  den Faktor, Fahrzeuge passen also weiter in ihre Fahrstreifen. Seiten-, Vorder- und Rückansichten behalten ihre
+  Entwurfsgröße. Freies gleichmäßiges/ungleichmäßiges Skalieren ändert nur die Boxgröße.
+- **Eine Fahrstreifenbreite überall** – gerade Straßen, Kurven, Kreuzungen (bis drei Fahrstreifen je Richtung) und die
+  Zufahrten des Kreisverkehrs haben dieselbe Fahrstreifenbreite, so dass eine Straße an jedem Arm Streifen für Streifen
+  andockt (die Zufahrten des Kreisverkehrs waren vor dem 25.11.2026 schmaler).
 - **Fahrtrichtung +x** (Front rechts), y nach unten; in der Draufsicht liegt die linke Fahrzeugseite bei −y.
   Für andere Richtungen das Objekt drehen oder spiegeln.
 - Jedes Objekt ist ohne Parameter einfügbar und wird in jeder Ansicht innerhalb seiner Box gezeichnet.
@@ -87,7 +93,10 @@ Mittellinie, Einmündung, Ladeparkplatz, prädizierte Trajektorie, …). Die Suc
 - **Straßen** stellen jede Fahrstreifenmitte als `Axis`-Segment bereit (Kurven und Kreisverkehrsring als Sehnen), so
   dass der Hub eines Fahrzeugs auf den Fahrstreifen schnappt, und zusätzlich als `Rail` mit derselben Geometrie
   (`lane0.rail`, …), so dass Trajektorienpunkte, Fahrstreifenpolynome und andere Linienenden an beliebiger Stelle der
-  Fahrstreifenmitte andocken (Fangart `rail`). Fahrstreifenenden sind `End`-Punkte zum Verketten von Straßen und
+  Fahrstreifenmitte andocken (Fangart `rail`). Nur Fahrstreifenenden bekommen ein „+“ (nächster Straßenabschnitt), nicht
+  die Sehnenstöße von Kurven und Ring und nicht die inneren Enden von Kreuzungsarmen; das „+“ setzt die Straße Streifen
+  für Streifen mit der Fahrstreifenbreite des Elements fort, auch wenn es skaliert wurde (25.11.2026). Fahrstreifenenden
+  sind `End`-Punkte zum Verketten von Straßen und
   Trajektorien.
 - **Sensoren** haben hinten einen `Mount`-Punkt und an der Öffnung einen `Port`. `Mount` auf `Mount` ist ein semantischer
   Fang (Fangart `mount`, Priorität wie ein Port): Der Anbaupunkt des Sensors gewinnt gegen nähere allgemeine Ecken- oder

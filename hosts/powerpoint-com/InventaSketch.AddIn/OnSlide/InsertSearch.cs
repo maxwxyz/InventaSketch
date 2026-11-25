@@ -14,7 +14,7 @@ namespace InventaSketch.AddIn.OnSlide
     /// </summary>
     internal static class InsertSearch
     {
-        /// <summary>The chosen item, or null if cancelled.</summary>
+        /// <summary>The chosen item, or null if cancelled. <paramref name="thumb"/> returns images the caller owns (cached).</summary>
         public static LibraryItem? Ask(Registry registry, Lang lang, IReadOnlyList<string> recent, IReadOnlyList<LibraryItem> fitting, string? view, Point at, IntPtr owner, Func<LibraryItem, int, Image> thumb)
         {
             using var font = new Font("Segoe UI", 9f);
@@ -112,15 +112,10 @@ namespace InventaSketch.AddIn.OnSlide
             var area = Screen.FromPoint(at).WorkingArea;
             form.Location = new Point(Math.Max(area.Left, Math.Min(at.X, area.Right - form.Width)), Math.Max(area.Top, Math.Min(at.Y, area.Bottom - form.Height)));
             form.Shown += (_, _) => { box.Focus(); Refresh(); };
-            try
-            {
-                var result = owner != IntPtr.Zero ? form.ShowDialog(new Owner(owner)) : form.ShowDialog();
-                return result == DialogResult.OK ? chosen : null;
-            }
-            finally
-            {
-                foreach (var img in images.Values) img.Dispose();
-            }
+            // The thumbnails belong to the caller's cache (shared by later boxes): never dispose them here. Disposing them
+            // made the next box throw "Invalid parameter" while drawing its list.
+            var result = owner != IntPtr.Zero ? form.ShowDialog(new Owner(owner)) : form.ShowDialog();
+            return result == DialogResult.OK ? chosen : null;
         }
 
         private static string CategoryName(Registry registry, LibraryItem item, Lang lang)

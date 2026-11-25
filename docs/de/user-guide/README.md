@@ -52,16 +52,25 @@ aneinander einrasten. Zahlenwerte (Modul, Zähnezahl, Maße) sind optional.
 
 Die Vorabprüfung (Preflight) prüft die formalen Zeichnungsvorschriften von DPMA, EPA, PCT und USPTO mit zitierten
 Quellen. Sie ist nur eine Hilfestellung und ersetzt nicht die Prüfung durch eine Patentfachperson. In PowerPoint:
-InventaSketch ▸ Extras ▸ „Patentprüfung (Zeichnungen) …“ prüft alle Folien für das gewählte Amt und listet Fehler,
+InventaSketch ▸ Prüfen ▸ „Patentprüfung“ prüft alle Folien für das gewählte Amt und listet Fehler,
 Warnungen, Hinweise und selbst zu prüfende Punkte mit Fundstelle; ein Doppelklick auf einen Befund springt zur Folie
 und zum Element (Engine `preflight`, `patentProfiles`). Im Web-Add-in macht der Prüfknopf in der oberen Leiste dasselbe
 für die Seite; ein Klick auf einen Befund wählt sein Element aus. In LibreOffice Impress und Draw: InventaSketch ▸
 „Patentprüfung (Zeichnungen) …“ prüft alle Seiten; die Wahl eines Befunds springt zu Folie und Einheit.
 
-Varianten (vorher/nachher, Stand der Technik/Erfindung): Folie duplizieren und die Kopie ändern. InventaSketch ▸ Extras
+Varianten (vorher/nachher, Stand der Technik/Erfindung): Folie duplizieren und die Kopie ändern. InventaSketch ▸ Prüfen
 ▸ „Mit vorheriger Folie vergleichen“ markiert, was neu (grün), geändert (orange) und entfernt (grau gestrichelt) ist,
 mit Legende; ein erneuter Aufruf entfernt die Markierungen (Engine `diff`). In LibreOffice Impress und Draw:
 InventaSketch ▸ „Mit vorheriger Folie vergleichen (Varianten)“.
+
+## 6a. Zeichnungen und Daten importieren
+
+InventaSketch ▸ Prüfen ▸ „Importieren …“ (Web: Import-Knopf in der oberen Leiste; LibreOffice: InventaSketch ▸ „Zeichnung
+importieren (SVG, DXF) …“) liest SVG- und DXF-Zeichnungen als bearbeitbare Formen – Linien, Polylinien, Rechtecke,
+Ellipsen und Texte, gruppiert als ein Element. Eine Zeichnung mit Einheiten behält ihre echte Größe, wenn sie auf die
+Folie passt; sonst wird sie eingepasst. Bögen und Kurven werden zu Polylinien mit verschiebbaren Punkten. Farben,
+Linienarten, Füllungen, Schraffuren, Blöcke und Bemaßungen werden nicht importiert. Derselbe Befehl liest CSV-Tabellen
+in Diagramme und GeoJSON/GPX als Kartenrouten.
 
 ## 6. Module
 

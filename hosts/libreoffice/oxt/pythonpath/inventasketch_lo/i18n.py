@@ -121,6 +121,10 @@ TEXTS = {
                        "Vergleich mit Folie %d: %d neu, %d geändert, %d entfernt"),
     "cmpLegendPage": ("Compared with page %d: %d added, %d changed, %d removed",
                       "Vergleich mit Seite %d: %d neu, %d geändert, %d entfernt"),
+    "undoImport": ("InventaSketch: Import %s", "InventaSketch: %s importieren"),
+    "importTitle": ("Import drawing (SVG, DXF)", "Zeichnung importieren (SVG, DXF)"),
+    "importFilter": ("Drawings", "Zeichnungen"),
+    "importUnreadable": ("The file could not be read: %s", "Die Datei konnte nicht gelesen werden: %s"),
 }
 
 _STATE = {"lang": "en"}

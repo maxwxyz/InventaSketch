@@ -61,7 +61,12 @@ namespace InventaSketch.Core
             if (item is null)
                 added = src with { Id = Ids.New(), Ref = null };
             else
+            {
                 added = registry.Create(item, new Vec2(src.Transform.X, src.Transform.Y)) with { GroupId = src.GroupId };
+                // A scaled element passes its scale on (mean of both directions), so the chain keeps one size.
+                if (Building.SourceScale(registry, src) is { } sc && Math.Sqrt(sc.X * sc.Y) is var k && k > 1e-6 && Math.Abs(k - 1) > 1e-3)
+                    added = added with { Size = new Size2(Math.Round(added.Size.W * k, 6), Math.Round(added.Size.H * k, 6)) };
+            }
             var srcBox = src.Bounds();
             var size = added.Bounds();
             var along = Math.Abs(dir.X) > 0 ? (srcBox.W + size.W) / 2 : (srcBox.H + size.H) / 2;

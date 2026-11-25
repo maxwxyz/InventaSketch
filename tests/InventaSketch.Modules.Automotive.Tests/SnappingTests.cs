@@ -39,15 +39,16 @@ namespace InventaSketch.Modules.Automotive.Tests
             Assert.Equal(anchors.Count(a => a.Role == AnchorRole.Axis), anchors.Count(a => a.Role == AnchorRole.Rail));
             Assert.Contains(anchors, a => a.Role == AnchorRole.Rail && a.Id == "lane1.rail");
 
-            // A trajectory point dragged near the lower lane centre (y = 117.5) docks onto it.
+            // A trajectory point dragged near the lower lane centre docks onto it.
+            var laneCentre = 100 + road.Size.H / 4;
             var (doc, page) = Fx.Doc(road);
             var options = new SnapOptions { Tolerance = 3, Grid = null, Alignment = false, Page = false };
             var targets = Snapper.Targets(r, doc, page, new string[0], new RenderContext(doc), options);
-            var p = new Vec2(140.4, 119.1);
+            var p = new Vec2(140.4, laneCentre + 1.6);
             var res = Snapper.SnapPoint(p, targets, options);
             Assert.Equal("rail", res.Kind);
             Assert.Equal(140.4, (p + res.Delta).X, 9);
-            Assert.Equal(117.5, (p + res.Delta).Y, 9);
+            Assert.Equal(laneCentre, (p + res.Delta).Y, 9);
 
             foreach (var item in new[] { "auto.curve", "auto.intersection", "auto.roundabout" })
             {

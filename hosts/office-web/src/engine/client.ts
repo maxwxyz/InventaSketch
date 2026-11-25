@@ -85,6 +85,8 @@ export class Session {
   importData(text: string): EditorState { return this.c("importData", { text }); }
   /** GeoJSON or GPX as map routes and markers fitted into the page. */
   importGeo(text: string): EditorState { return this.c("importGeo", { text }); }
+  /** SVG or DXF drawing as editable, grouped basic shapes (real size if it has units and fits, else fitted). */
+  importVector(text: string): EditorState { return this.c("importVector", { text }); }
   /** Patent drawing preflight of the page for office `profile` – a drafting aid, not a legal certification. */
   preflight(profile: string, lang: string): PreflightResult { return this.c("preflight", { text: profile, lang }); }
   /** Sets the main text (ObjectInfo.mainText) of one object; one undo step. */

@@ -104,3 +104,14 @@ export function sourceLinks(source: string): { label: string; url?: string }[] {
     return m ? { label: m[1], url: m[2] } : { label: part.trim() };
   }).filter((x) => x.label.length > 0);
 }
+
+/** Which import a file takes: SVG/DXF drawings as shapes, GeoJSON/GPX as map data, anything else as a chart table. */
+export function importKind(name: string, text: string): "vector" | "geo" | "table" {
+  if (/\.(svg|dxf)$/i.test(name)) return "vector";
+  if (/\.(gpx|geojson)$/i.test(name)) return "geo";
+  if (/\.json$/i.test(name) && /"type"\s*:\s*"(Feature|FeatureCollection|LineString|Point|Polygon)/.test(text)) return "geo";
+  const head = text.replace(/^\uFEFF/, "").trimStart();
+  if ((head.startsWith("<") && /<svg[\s>]/i.test(head)) || /^0\s*\r?\nSECTION/.test(head)) return "vector";
+  return "table";
+}
+

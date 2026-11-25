@@ -27,6 +27,7 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
                                                   (Ctrl+Space in Impress/Draw)
   patentCheck[?profile=<office id>]               patent drawing check of every page (dialog; logged when headless)
   compare                                         mark what differs from the previous page (again: remove the marks)
+  importVector[?path=<file>]                      SVG/DXF drawing as editable shapes (without a path: file dialog)
   about                                           version and licence
 The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
 and ``buildItems`` fill the sidebar panel. The job ``CanvasJob`` (Jobs.xcu, document event "OnViewCreated") attaches
@@ -55,7 +56,7 @@ PROTOCOL = "inventasketch.libreoffice:"
 DECK = "InventaSketchDeck"
 COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
             "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
-            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare")
+            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare", "importVector")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 
@@ -243,6 +244,8 @@ def _run(ctx, frame, command, args):
             log("panel: %s -> %s" % (args, "; ".join(reports)))
         elif command == "patentCheck":
             _patent_check(ctx, frame, controller, args.get("profile") or args.get("") or None)
+        elif command == "importVector":
+            _import_vector(ctx, frame, controller, args.get("path") or args.get(""))
         elif command == "compare":
             result = host.compare_with_previous(engine_for(ctx), controller)
             log("compare: %s" % sorted(result.items()))
@@ -270,6 +273,30 @@ def _patent_check(ctx, frame, controller, profile):
         profile or "common-safe", len(findings), sum(1 for f in findings if f.get("severity") == "error"),
         result["pages"], len(located), (" (first: page %d, %s)" % (located[0]["page"], located[0]["shape"].Name))
         if located else ""))
+
+
+def _import_vector(ctx, frame, controller, path):
+    """Imports an SVG/DXF file; without a path the user picks one (file dialog)."""
+    if not path:
+        picker = ctx.ServiceManager.createInstanceWithContext("com.sun.star.ui.dialogs.FilePicker", ctx)
+        picker.initialize((uno.getConstantByName("com.sun.star.ui.dialogs.TemplateDescription.FILEOPEN_SIMPLE"),))
+        picker.setTitle(i18n.text("importTitle"))
+        picker.appendFilter(i18n.text("importFilter") + " (*.svg, *.dxf)", "*.svg;*.dxf")
+        if picker.execute() != 1 or not picker.getFiles():
+            return
+        path = uno.fileUrlToSystemPath(picker.getFiles()[0])
+    try:
+        with open(path, "rb") as f:
+            raw = f.read()
+    except OSError as ex:
+        raise host.HostError(i18n.text("importUnreadable") % ex)
+    # DXF files are often in a legacy code page; SVG is UTF-8.
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("cp1252", errors="replace")
+    drawn = host.import_vector(engine_for(ctx), controller, text, os.path.basename(path))
+    log("imported %s: %d unit(s)" % (os.path.basename(path), len(drawn)))
 
 
 def _num(value):

@@ -267,12 +267,21 @@ Seite hat kein Element, die Navigation muss also seitenweite Befunde behandeln.
 **Als Nächstes, in dieser Reihenfolge:**
 1. Web in PowerPoint (wartet auf den Maintainer: Entwicklungszertifikat über `npm run certs` in `hosts/office-web`
    oder ein hochgeladenes Webspace-Paket); danach Web-Prüfung über alle Folien und Folienvergleich über Office.js.
-2. SVG/DXF-Import als bearbeitbare Formen: ein Core-Importer (SVG-Pfad-Teilmenge, DXF LINE/LWPOLYLINE/CIRCLE/ARC/TEXT),
-   der Grundform-Elemente erzeugt, damit das Ergebnis bearbeitbar bleibt und einrastet; Engine `importSvg`/`importDxf`;
-   COM Extras ▸ Import, Web-Importknopf, LibreOffice-Menü.
-3. Menüband-Gruppe *Prüfen* in COM (siehe oben), wenn der Maintainer zustimmt.
+2. SVG/DXF-Import – erledigt 25.11.2026 (Core `VectorImport`, Engine `importVector`; COM Prüfen ▸ Importieren,
+   Web-Importknopf, LibreOffice-Menü; Szenario `vector-import`, LibreOffice-Integrationsprüfung).
+3. Menüband-Gruppe *Prüfen* in COM – erledigt 25.11.2026 (Patentprüfung, Vergleichen, Importieren, Daten exportieren).
 4. Offene Details: Schnittlinie je Wand; Grenzen der Bedienung auf der Folie in LibreOffice (Hilfslinien beim Ziehen
-   brauchen Zeichnen in die Ansicht); echte Läufe auf Webspace und mit dem Installer.
+   brauchen Zeichnen in die Ansicht); echte Läufe auf Webspace und mit dem Installer; der Web-Host setzt den Eckenradius
+   abgerundeter Rechtecke noch nicht (es gilt PowerPoints Standard; zusammen mit der Web-Prüfung in PowerPoint); Kurven und
+   Kreuzungen mit vier und mehr Fahrstreifen je Richtung verschmälern ihre Fahrstreifen, um in ihre Box zu passen.
+
+**Test des Maintainers 25.11.2026 – gefunden und behoben:** Das Einfügefeld scheiterte beim zweiten Öffnen (es gab
+gemeinsam genutzte Vorschaubilder frei); „+“ an skalierten Elementen setzte Teile in Bibliotheksgröße an (jetzt wird der
+Maßstab weitergegeben, geprüft für jedes Element: 861 Anbau-Platzierungen und 169 Quick-Adds, `BuildAllElementsTests`);
+eine Straße wurde am „+“ von Fahrstreifen 2 mit Fahrstreifen 1 fortgesetzt, und Kurven, Kreisring und Kreuzungsarme boten
+„+“ an Sehnenstößen und inneren Enden an; Straßengrößen passten nicht auf eine Folie (eine Kreuzung war 160 mm) und die
+Zufahrten des Kreisverkehrs waren schmaler als die Straßen – Draufsichten teilen jetzt den Faktor 0,6 und eine
+Fahrstreifenbreite; abgerundete Rechtecke in COM ignorierten ihren Radius.
 
 ### Weitere sinnvolle Module und Funktionen
 
