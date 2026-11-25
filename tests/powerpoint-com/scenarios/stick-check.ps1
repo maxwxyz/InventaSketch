@@ -27,8 +27,14 @@ Click-Move 'click on a curve point' $scr[0] $scr[1] $c
 foreach ($key in @('axis.x', 'grid.major')) {
     $leaf = $null; foreach ($l in $S.Slide.Shapes.Item($c).GroupItems) { if ($l.Tags.Item('ISK_PART') -eq $key) { $leaf = $l; break } }
     if (-not $leaf) { Write-IskInfo "no $key leaf"; continue }
-    $pts = @($leaf.Nodes.Item(1).Points | ForEach-Object { $_ }); $pts2 = @($leaf.Nodes.Item(2).Points | ForEach-Object { $_ })
-    $mx = ([double]$pts[0] + [double]$pts2[0]) / 2; $my = ([double]$pts[1] + [double]$pts2[1]) / 2
+    # A straight line leaf has no nodes: the middle of its frame lies on it; a freeform: the middle of its first segment.
+    $mx = $leaf.Left + $leaf.Width / 2; $my = $leaf.Top + $leaf.Height / 2
+    try {
+        if ($leaf.Nodes.Count -ge 2) {
+            $pts = @($leaf.Nodes.Item(1).Points | ForEach-Object { $_ }); $pts2 = @($leaf.Nodes.Item(2).Points | ForEach-Object { $_ })
+            $mx = ([double]$pts[0] + [double]$pts2[0]) / 2; $my = ([double]$pts[1] + [double]$pts2[1]) / 2
+        }
+    } catch { }
     $p = ConvertTo-IskPixel $S @(($mx * 25.4 / 72), ($my * 25.4 / 72))
     Click-Move "click on $key" $p[0] $p[1] $c
 }
