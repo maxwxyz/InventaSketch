@@ -37,6 +37,22 @@
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>
+          <node oor:name="m03a" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:values</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Values of Selected Element...</value>
+              <value xml:lang="de">Werte des ausgewählten Elements ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+          <node oor:name="m03b" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:tools</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Calculator with Units...</value>
+              <value xml:lang="de">Rechner mit Einheiten ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
           <node oor:name="m04" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:numeral</value></prop>
             <prop oor:name="Title" oor:type="xs:string">
@@ -53,6 +69,14 @@
             <prop oor:name="Title" oor:type="xs:string">
               <value xml:lang="en-US">Import Drawing (SVG, DXF)...</value>
               <value xml:lang="de">Zeichnung importieren (SVG, DXF) ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+          <node oor:name="m04b1" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:importCode</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Import Code (matplotlib, pgfplots, TikZ)...</value>
+              <value xml:lang="de">Code importieren (matplotlib, pgfplots, TikZ) ...</value>
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>

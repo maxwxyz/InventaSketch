@@ -158,6 +158,29 @@ def selection_actions(info):
     return out
 
 
+def panel_actions(info):
+    """The buttons of the selection panel: "Text …" (elements with a main text), the element's own engine actions that
+    are no option of a choice (``choices.element_choices``; labels from the engine), then ``selection_actions``.
+    "Select assembly" gives way to the "Select connected" list when the engine offers connected kinds (it is the
+    kind "moves along"). Entries as in ``selection_actions``; engine actions are ("action", action dict, label, tip)."""
+    if not info:
+        return []
+    from . import choices
+    out = []
+    if info.get("count", 1) == 1 and info.get("mainText"):
+        out.append(("text", None, "actText", "tipText"))
+    _, plain = choices.element_choices(info)
+    for a in plain:
+        label = choices.option_label(a)
+        tip = label + (" – " + a["input"].get("label") if a.get("input") and a["input"].get("label") else "")
+        out.append(("action", a, label, tip))
+    for entry in selection_actions(info):
+        if entry[0] == "assembly" and info.get("connect"):
+            continue
+        out.append(entry)
+    return out
+
+
 def label_of(key_or_text, lang=None):
     """i18n text for a key, otherwise the text itself (engine labels are already localised)."""
     return i18n.text(key_or_text, lang) if key_or_text in i18n.TEXTS else key_or_text
@@ -331,37 +354,35 @@ def command_url(command, **args):
     return "inventasketch.libreoffice:%s%s" % (command, "?" + query if query else "")
 
 
-def context_entries(info, lang=None):
-    """Context menu entries for the selected unit(s), the selection panel's actions in its order:
-    [("item", label, url) | ("sub", label, [("item", label, url)]) | ("sep",)]; [] without a unit.
+CHECKED_ARG = "on=1"
 
-    One unit: the other views (submenu, only with more than one view), the context-only actions of
-    ``selection_actions``, redraw from the model and the sidebar for the rest (build "+", turning). Several units: the
-    engine's selection-wide operations, select assembly and the sidebar. A separator ends the block."""
-    if not info:
-        return []
-    out = []
-    if show_views(info):
-        current = info.get("view")
-        views = [("item", label, command_url("setView", view=vid)) for vid, label in info.get("views") or []
-                 if vid != current]
-        if views:
-            out.append(("sub", i18n.text("ctxViews", lang), views))
-    for command, argument, label, tip in selection_actions(info):
-        # Mirror and rotate read better with the longer wording ("Mirror horizontally").
-        text = label_of(tip if command == "transform" else label, lang)
-        if command == "transform":
-            url = command_url(command, kind=argument)
-        elif command == "arrange":
-            url = command_url(command, action=argument)
-        else:
-            url = command_url(command)
-        out.append(("item", text, url))
-    if info.get("count", 1) == 1:
-        out.append(("item", i18n.text("redraw", lang), command_url("redraw")))
-    out.append(("item", i18n.text("ctxSidebar", lang), command_url("editModel")))
-    out.append(("sep",))
-    return out
+
+def checked_url(url):
+    """The command URL of a checked menu entry (the current option of a choice): the protocol handler reports the
+    status ``State`` = True for it, so LibreOffice draws the check mark itself."""
+    return url + ("&" if "?" in url else "?") + CHECKED_ARG
+
+
+def is_checked_url(url):
+    query = (url or "").partition("?")[2]
+    return CHECKED_ARG in query.split("&")
+
+
+def is_disabled_url(url):
+    """A greyed place of the context menu (command ``place``): its status is disabled."""
+    return (url or "").startswith("inventasketch.libreoffice:place")
+
+
+def is_select_connected_click(buttons, click_count, modifiers):
+    """Ctrl+double-click with the left button (select connected, the most meaningful kind)."""
+    return bool((buttons or 0) & MOUSE_LEFT) and (click_count or 0) == 2 and \
+        (modifiers or 0) & (MOD_SHIFT | MOD_CTRL | MOD_ALT) == MOD_CTRL
+
+
+def context_entries(info, lang=None):
+    """Context menu entries for the selected unit(s): the eight fixed places (``choices.context_entries``)."""
+    from . import choices
+    return choices.context_entries(info, lang)
 
 
 # ------------------------------------------------------------------ compatibility check

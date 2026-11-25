@@ -18,13 +18,13 @@
 | Rotation | verified 2026-11-20 (snapped rotation re-renders from the model) | not tested (PowerPointApi 1.10) | partial: a native rotation of a unit is taken into the model on redraw (verified 2026-11-20, 90°); rotated plan ops via `RotateAngle` not tested on the host |
 | Shape tags / metadata | verified (ISK_ID, ISK_TYPE, ISK_MODEL written) | not tested (tags, 1.3) | verified 2026-11-20: name `ISK:<type>:<id>` (.odp and .pptx), `UserDefinedAttributes` (.odp only) and document properties `ISK_MODEL_<id>` (.odp and .pptx); edit after reload from both formats |
 | Selection read/write | verified 2026-11-20 (selection loads into the sidebar, pasted copies get new ids) | not tested (1.5/1.6) | verified 2026-11-20 (selected unit loaded for editing, new units selected after insertion) |
-| On-slide overlay, floating bar, pie menu | partial: insert at pointer, drag and resize with snapping, two-point tool, point editing, pie menu and fading floating bar verified 2026-11-20 | unsupported → sidebar stage | planned (UNO handlers + overlay layer) |
-| Sidebar / task pane editor | verified 2026-11-20 (WebView2 task pane, live sync both ways) | in progress | partial: sidebar deck opens with the library list, preview and the selected unit's views (verified 2026-11-20, Impress, screenshots); search filter unit-tested; no parameter/style editing yet |
+| On-slide overlay, floating bar, pie menu | partial: insert at pointer, drag and resize with snapping, two-point tool, point editing, pie menu and fading floating bar verified 2026-11-20 | unsupported → sidebar stage | partial: no overlay (UNO cannot draw into the view), so no floating bar or handles; the pie's eight places are the top of the context menu, verified 2026-11-26 (`ui_smoke.py --concept-only`, real right-click; LibreOffice hides inactive places), see the LibreOffice table below |
+| Sidebar / task pane editor | verified 2026-11-20 (WebView2 task pane, live sync both ways) | in progress | partial: deck with Selection (views, every choice as a dropdown, the element's commands, select connected, insert here, build, turn), Values, Library and Calculator-and-code panels, verified 2026-11-26 (`ui_smoke.py --concept-only`, screenshots); free number/text parameters and line/fill style not editable yet |
 | SVG insert | n/a | not tested (XmlSvg coercion; not on iPad) | not tested |
 | COM precedence over web add-in | not tested (`EquivalentAddins`) | not tested | n/a |
 | Light/dark auto detection | planned | in progress | planned |
 | German/English auto detection | verified (Office UI LCID, German detected) | in progress | verified 2026-11-20 (`ooLocale` of the UI; German UI detected, German catalog names) |
-| Insert box (search, fitting parts first, Ctrl+Space) | verified 2026-11-24 (scenario `ux-round`) | partial: implemented and checked in the browser dev page, not tested in PowerPoint on the web | partial: Library panel search (engine `search`, fitting parts first), verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`); no Ctrl+Space (needs the overlay) |
+| Insert box (search, fitting parts first, Ctrl+Space) | verified 2026-11-24 (scenario `ux-round`) | partial: implemented and checked in the browser dev page, not tested in PowerPoint on the web | partial: Library panel search (engine `search`, fitting parts first), verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`); Ctrl+Space puts the cursor into that search field (verified 2026-11-25, real input); no insert box at the pointer (no overlay) |
 | Context-only transforms (mirror/rotate only when they change the drawing) | verified 2026-11-24 (`ux-round`, bar ids) | partial: implemented, browser dev page | verified 2026-11-25 (selection panel, `integration_test.py`) |
 | Multi-selection bar (one view for all, align, distribute, like the first, renumber, dimension) | verified 2026-11-24 (`ux-round`, `parts-list`, `building-services`) | partial: implemented, browser dev page | verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`) (selection panel, one undo step) |
 | Assembly view switch (gear trains axial ↔ stick, building services plan ↔ section ↔ schematic) | verified 2026-11-24 (`ux-round`, `building-services`) | partial: via the multi-selection bar, browser dev page | planned |
@@ -33,7 +33,7 @@
 | Line crossings across modules hop (fluid, electrical, building services, process, energy) | partial: engine tests; `crossings` scenario (wires) green | through the engine | through the engine |
 | Tool on a robot flange with "+", turned to the tool axis | verified 2026-11-25 (scenario `robot-tool`) | build "+" (port kind `Mount`), not tested | port list (`portMount`), not tested |
 | Diagram layout of connected elements (layered, connectors redock) | verified 2026-11-25 (scenario `diagram-layout`, also align keeps connectors) | through the engine (`arrangeOptions`), not tested | through the engine (selection panel), not tested |
-| Snap after dragging, Ctrl+Space insert, context menu | verified | partial (browser dev page) | verified 2026-11-25 (`ui_smoke.py`, real input; snapping after release, no guides while dragging) |
+| Snap after dragging, Ctrl+Space insert, context menu | verified | partial (browser dev page) | verified 2026-11-25 (`ui_smoke.py`, real input; snapping after release, no guides while dragging); context menu with the eight places verified 2026-11-26 |
 | Compatibility check of all slides with navigation to the finding | verified 2026-11-25 (scenario `compatibility-check`) | panel in the top bar for the page (checked in the browser dev page) and, in PowerPoint, across all slides (unit-tested against an Office.js stand-in, not yet run in PowerPoint) | dialog over every page with navigation (menu; `integration_test.py`, `ui_smoke.py`) |
 | Variants: compare a slide with the previous one (added / changed / removed marked) | verified 2026-11-25 (scenario `variants`, Review group) | top bar button in PowerPoint (unit-tested against an Office.js stand-in, not yet run in PowerPoint) | menu command, checked 2026-11-25 (`integration_test.py`) |
 | Import CSV (chart data), GeoJSON/GPX (map) | verified 2026-11-25 (scenario `import`) | import button (engine `importData`/`importGeo`), not tested in PowerPoint | not exposed |
@@ -50,6 +50,24 @@
 | Motion mode (turn gear trains and mechanisms, drag self-built linkages) | verified (`gear-motion`, `linkage-build`) | partial: implemented 2026-11-25, browser dev page | partial: gear trains turn by a typed angle (`motionTurn`), verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`); no dragging |
 | Coupler curve and ghost positions of self-built linkages | verified 2026-11-24 (`linkage-extras`) | partial: both in the browser dev page | verified 2026-11-25 (selection panel, `integration_test.py`) |
 | Parts list table following the parts | verified 2026-11-24 (`parts-list`) | not tested (engine redraws dependents) | not tested |
+
+### LibreOffice: interaction concept (2026-11-26)
+
+The concept of [interaction-ux.md](../design/interaction-ux.md) and the value UI of
+[engineering-calculations.md](../design/engineering-calculations.md) in the LibreOffice extension; details in
+[libreoffice.md](libreoffice.md) ("Interaction concept round"). Tests: `test_concept.py`, `integration_test.py --only
+concept`, `ui_smoke.py --concept-only` (LibreOffice 26.8.2.2, Windows 11).
+
+| Capability | LibreOffice |
+|---|---|
+| Choices as dropdowns (parameter choices, engine action choices, menus as "Label ▸"), no cycle buttons | verified 2026-11-26 (Selection panel and context menu submenus; dropdown driven in `ui_smoke.py`); options are named – no option pictograms or pictures (the extension has no pictogram set) |
+| Eight fixed places (Text, Edit, Insert, Duplicate, Style, Delete, View, Arrange) | verified 2026-11-26 as the top of the context menu (real right-click, keyboard into View); current options checked natively; a place with nothing is hidden (LibreOffice hides inactive context-menu entries unless *Show inactive menu items* is on), not greyed |
+| Values (rows, formulas, conflicts, checks, value level, values label) | verified 2026-11-26 (Values panel; level as document property `ISK_VALUES`); no ↔ grip and no ⚠ badge on the drawing (no overlay) |
+| Calculator with units, code import (matplotlib, pgfplots, TikZ) | verified 2026-11-26 (Calculator-and-code panel, menu with file dialog) |
+| Select connected (net, moves along, following, loop, room walls), Ctrl+double-click | verified 2026-11-26 (Arrange ▸ Select connected, Selection panel list, real Ctrl+double-click); no fainter hover preview (the context menu reports no hover) |
+| Selection look (soft glow along the outline) | partial, verified 2026-11-26: native glow effect on the unit's shapes, blurred shadow for ellipses (they ignore the glow), removed before save/copy/export/print; lies behind each shape (an element on top hides it) |
+| Insert between table rows/columns (`IInsertHandles`) | verified 2026-11-26 as a Selection panel list "Insert here" (engine `insertHandles`/`applyInsertHandle`); no "+" dots on the drawing |
+| Drag grips on values (`dragHandles`/`moveHandle`) | unsupported: no mouse motion events and no handles for extensions; typed values instead (Values panel, parts dialog) |
 
 Engine-only capabilities (all hosts): SVG export **verified** by unit tests (`SvgContainsHatchAndArrowheadAndIsMonochrome`,
 `DrawingTests`: every arrowhead, hollow heads, crow's-foot ends and `text-decoration` underline, also monochrome),

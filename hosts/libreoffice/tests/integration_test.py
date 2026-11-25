@@ -843,6 +843,213 @@ def canvas_phase(office, out, logs):
     office.close(doc)
 
 
+def menu_of(office, doc, logs):
+    """The context menu of the selection as the extension builds it (command ``menu``, JSON in the log)."""
+    before = len(log_lines(logs, "menu-json: "))
+    office.run(doc, "menu")
+    lines = log_lines(logs, "menu-json: ")
+    if len(lines) <= before:
+        return []
+    return json.loads(lines[-1].split("menu-json: ", 1)[1])
+
+
+def run_entry(office, doc, url):
+    """Runs a context menu entry the way a click does (its command URL)."""
+    office.run(doc, url[len(PROTOCOL):] if url.startswith(PROTOCOL) else url)
+
+
+def walk(entries, depth=0):
+    for e in entries:
+        yield depth, e
+        if e[0] == "sub":
+            yield from walk(e[2], depth + 1)
+
+
+def glow_of(shape):
+    """The glow of a unit: the values of its first leaf that has a glow effect (all leaves glow alike)."""
+    leaves = []
+
+    def collect(s):
+        if s.getShapeType() == "com.sun.star.drawing.GroupShape":
+            for i in range(s.getCount()):
+                collect(s.getByIndex(i))
+        else:
+            leaves.append(s)
+    collect(shape)
+    values, shadows = [], 0
+    for leaf in leaves:
+        try:
+            values.append((leaf.GlowEffectRadius, leaf.GlowEffectColor, leaf.GlowEffectTransparency))
+            # Ellipses ignore the glow effect: they get a blurred shadow without offset in the same colour.
+            if leaf.Shadow and leaf.ShadowBlur == 141 and leaf.ShadowXDistance == 0 and leaf.ShadowColor == 0x2F7FE8:
+                shadows += 1
+        except Exception:
+            continue
+    glowing = [v for v in values if v[0]]
+    GLOW_COUNTS[:] = [len(glowing) + shadows, len(leaves), [l.getShapeType().rsplit(".", 1)[-1] for l in leaves][:8]]
+    return glowing[0] if glowing else (values[0] if values else None)
+
+
+GLOW_COUNTS = []
+
+
+def concept_phase(office, out, logs):
+    """The interaction concept (headless, through the commands a click runs): the eight places of the context menu,
+    a choice picked from the Style place, a parameter choice, duplicate and delete, the values of a resistor (value
+    level, entered and derived values with their formula), insert a table row between existing rows, select connected
+    of two meshing gears, the calculator, the code import and the selection glow (not saved with the document)."""
+    doc = office.new("simpress")
+    page = doc.getDrawPages().getByIndex(0)
+    for i in reversed(range(page.getCount())):
+        page.remove(page.getByIndex(i))
+    controller = doc.getCurrentController()
+    undo = doc.getUndoManager()
+    # 1. The eight places for a resistor.
+    office.run(doc, "insert?item=elec.resistor&x=60&y=60")
+    resistor_name = next(iter(units_of(page)))
+    select_shapes(office, doc, [units_of(page)[resistor_name]])
+    entries = menu_of(office, doc, logs)
+    top = [e for e in entries if e[0] != "sep"]
+    labels = [e[1] for e in top]
+    check("concept.menu.eightPlaces", len(top) == 8 and labels[2] in ("Insert …", "Einfügen …")
+          and labels[3] in ("Duplicate", "Duplizieren") and labels[5] in ("Delete", "Löschen")
+          and top[1][1] in ("Edit", "Bearbeiten") and top[7][1] in ("Arrange", "Anordnen"), " | ".join(labels))
+    line = (log_lines(logs, "menu: ") or [""])[-1]
+    check("concept.menu.valuesInEdit", "Werte …" in line or "Values …" in line, line[-240:])
+    view = top[6]
+    check("concept.menu.viewChecked", view[0] == "sub" and sum(1 for e in view[2] if len(e) > 3 and e[3]) == 1,
+          json.dumps(view, ensure_ascii=False)[:160])
+    # 2. A choice from the Style place of a table: an option that is not current changes the stored model.
+    office.run(doc, "insert?item=ann.table&x=180&y=60")
+    table = unit_by_type(page, "ann.table")
+    table_name = table.Name if table is not None else ""
+    select_shapes(office, doc, [table] if table is not None else [])
+    top = [e for e in menu_of(office, doc, logs) if e[0] != "sep"]
+    style = top[4] if len(top) == 8 and top[4][0] == "sub" else None
+    option = None
+    for depth, e in walk(style[2] if style else []):
+        if e[0] == "item" and depth == 1 and not (len(e) > 3 and e[3]):
+            option = e
+            break
+    current = [e for _, e in walk(style[2] if style else []) if e[0] == "item" and len(e) > 3 and e[3]]
+    check("concept.style.currentChecked", bool(current), "current: %s" % [e[1] for e in current])
+    if option is not None:
+        model = attribute(units_of(page)[table_name], ATTR_MODEL)
+        run_entry(office, doc, option[2])
+        after = attribute(units_of(page)[table_name], ATTR_MODEL) if table_name in units_of(page) else None
+        title = undo.getCurrentUndoActionTitle() if undo.isUndoPossible() else ""
+        check("concept.style.optionRuns", after is not None and after != model and title.startswith("InventaSketch"),
+              "%s -> %s; undo '%s'" % (option[1], option[2][len(PROTOCOL):], title))
+    else:
+        check("concept.style.optionRuns", False, "no style choice: %s" % json.dumps(style)[:200])
+    select_shapes(office, doc, [units_of(page)[resistor_name]])
+    # 3. Values: level Explore, U and I entered, R derived with its formula.
+    office.run(doc, "valueLevel?level=explore")
+    check("concept.values.level", doc_props(doc).get("ISK_VALUES") == "explore", str(doc_props(doc).get("ISK_VALUES")))
+    office.run(doc, "setValue?key=U&text=230%20V")
+    office.run(doc, "setValue?key=I&text=2%20A")
+    vline = (log_lines(logs, "values (") or [""])[-1]
+    check("concept.values.derived", "115" in vline and "{R = " in vline and "✎ U" in vline, vline[-260:])
+    title = undo.getCurrentUndoActionTitle() if undo.isUndoPossible() else ""
+    check("concept.values.oneUndoStep", title in ("InventaSketch: Value", "InventaSketch: Wert"), title)
+    office.run(doc, "clearValue?key=I")
+    vline = (log_lines(logs, "values (") or [""])[-1]
+    check("concept.values.cleared", "115" not in vline and "✎ I" not in vline, vline[-200:])
+    office.run(doc, "valueLevel?level=quick")
+    check("concept.values.quickNotStored", "ISK_VALUES" not in doc_props(doc), "")
+    # 4. Duplicate and delete through the engine (a copy gets its own id).
+    select_shapes(office, doc, [units_of(page)[resistor_name]])
+    known = set(units_of(page))
+    office.run(doc, "duplicate")
+    copies = new_units(page, known)
+    copy = list(copies.values())[0] if len(copies) == 1 else None
+    check("concept.duplicate", copy is not None and attribute(copy, "isk:id") !=
+          attribute(units_of(page)[resistor_name], "isk:id"), ", ".join(copies))
+    if copy is not None:
+        select_shapes(office, doc, [copy])
+        office.run(doc, "delete")
+        check("concept.delete", set(units_of(page)) == known, ", ".join(sorted(units_of(page))))
+    # 5. The table: a row inserted between row 1 and 2 ("Insert here").
+    table = units_of(page).get(table_name)
+    select_shapes(office, doc, [table] if table is not None else [])
+    model = attribute(table, ATTR_MODEL) if table is not None else None
+    office.run(doc, "insertPlace?key=row.1")
+    after = attribute(units_of(page)[table_name], ATTR_MODEL) if table_name in units_of(page) else None
+    title = undo.getCurrentUndoActionTitle() if undo.isUndoPossible() else ""
+    check("concept.insertHere.row", model is not None and after is not None and after != model
+          and title in ("InventaSketch: Insert here", "InventaSketch: Hier einfügen"), title)
+    # 6. Select connected: two meshing gears.
+    select_shapes(office, doc, [])
+    known = set(units_of(page))
+    office.run(doc, "insert?item=mech.spur.axial&x=60&y=130")
+    g1 = new_units(page, known)
+    g1_shape = list(g1.values())[0] if g1 else None
+    select_shapes(office, doc, [g1_shape] if g1_shape is not None else [])
+    office.run(doc, "build?port=mesh.right&item=mech.spur.axial")
+    select_shapes(office, doc, [units_of(page)[list(g1)[0]]] if g1 else [])
+    entries = menu_of(office, doc, logs)
+    connected = [e for _, e in walk(entries) if e[0] == "item" and "connected?mode=" in e[2]]
+    check("concept.connected.offered", any("mode=coupled" in e[2] for e in connected),
+          ", ".join(e[1] for e in connected))
+    office.run(doc, "connected?mode=auto")
+    sel = controller.getSelection()
+    count = sel.getCount() if sel is not None and hasattr(sel, "getCount") else 0
+    check("concept.connected.selects", count == 2, "%d unit(s) selected" % count)
+    # 7. Calculator with units.
+    office.run(doc, "calc?text=230%20V%20*%2016%20A")
+    cline = (log_lines(logs, "calc '230 V * 16 A'") or [""])[-1]
+    check("concept.calc", "kW" in cline and ("3.68" in cline or "3,68" in cline), cline[-120:])
+    office.run(doc, "calc?text=1500%20rpm&unit=rad/s")
+    cline = (log_lines(logs, "calc '1500 rpm'") or [""])[-1]
+    check("concept.calc.convert", "157" in cline and "rad/s" in cline, cline[-120:])
+    # 8. Code import from a file.
+    code = os.path.join(out, "plot.py")
+    with open(code, "w", encoding="utf-8") as f:
+        f.write("import matplotlib.pyplot as plt\nplt.plot([0, 1, 2, 3], [0, 1, 4, 9], label='x²')\n"
+                "plt.xlabel('x')\nplt.legend()\nplt.show()\n")
+    select_shapes(office, doc, [])
+    known = set(units_of(page))
+    office.run(doc, "importCode?path=" + code.replace("\\", "/").replace(" ", "%20"))
+    found = new_units(page, known)
+    title = undo.getCurrentUndoActionTitle() if undo.isUndoPossible() else ""
+    check("concept.importCode", len(found) == 1 and list(found)[0].split(":")[1].startswith("chart.")
+          and "Code" in title, "%s; undo '%s'" % (", ".join(found), title))
+    # 9. Selection glow: on while selected, the document not modified by it, off when deselected, never saved.
+    select_shapes(office, doc, [])
+    time.sleep(0.5)
+    doc.setModified(False)
+    gear = units_of(page)[list(g1)[0]] if g1 else None
+    select_shapes(office, doc, [gear] if gear is not None else [])
+    for _ in range(20):
+        if gear is not None and glow_of(gear) == (141, 0x2F7FE8, 55):
+            break
+        time.sleep(0.25)
+    check("concept.glow.on", gear is not None and glow_of(gear) == (141, 0x2F7FE8, 55) and not doc.isModified()
+          and GLOW_COUNTS and GLOW_COUNTS[0] == GLOW_COUNTS[1],
+          "%s, modified %s, %s glowing leaves of %s %s" % (glow_of(gear) if gear is not None else None,
+                                                           doc.isModified(), *(GLOW_COUNTS or [0, 0, []])))
+    # A picture of the page while the gear glows (the export filter renders the shapes as they are), for review.
+    office.run(doc, "insert?item=elec.resistor&x=150&y=130")
+    select_shapes(office, doc, [gear] if gear is not None else [])
+    time.sleep(1.0)
+    export_png(office, doc, page, os.path.join(out, "concept-glow.png"), width=2400)
+    saved = os.path.join(out, "glow.odp")
+    doc.storeToURL(uno.systemPathToFileUrl(saved), (pv("FilterName", "impress8"),))
+    copy_doc = office.load(saved)
+    copy_units = units_of(copy_doc.getDrawPages().getByIndex(0))
+    glowing = [n for n, s in copy_units.items() if (glow_of(s) or (0,))[0]]
+    check("concept.glow.notSaved", copy_units and not glowing, "glowing in the saved file: %s" % glowing)
+    office.close(copy_doc)
+    time.sleep(0.5)
+    check("concept.glow.backAfterSave", gear is not None and glow_of(gear) == (141, 0x2F7FE8, 55), str(glow_of(gear)))
+    select_shapes(office, doc, [])
+    time.sleep(1.0)
+    check("concept.glow.off", gear is not None and glow_of(gear) == (0, 0, 0) and GLOW_COUNTS[0] == 0,
+          "%s, %s" % (glow_of(gear), GLOW_COUNTS))
+    export_png(office, doc, page, os.path.join(out, "concept.png"))
+    office.close(doc)
+
+
 def draw_calc_phase(office, out):
     for factory, label in (("sdraw", "draw"), ("scalc", "calc")):
         doc = office.new(factory)
@@ -869,8 +1076,9 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--from-powerpoint", help="a .pptx saved by the PowerPoint COM add-in (exchange check)")
-    ap.add_argument("--only", choices=["share"], help="run only this phase (share: clean slides, export, chart from "
-                                                       "picture)")
+    ap.add_argument("--only", choices=["share", "concept"],
+                    help="run only this phase (share: clean slides, export, chart from picture; concept: choices, "
+                         "the eight places, values, calculator, code import, select connected, insert here, glow)")
     args = ap.parse_args()
     soffice = find_soffice(args.soffice)
     work = tempfile.mkdtemp(prefix="isk-lo-")
@@ -887,15 +1095,18 @@ def main():
     try:
         proc, ctx = start_office(soffice, profile, env)
         office = Office(ctx)
-        if args.only != "share":
+        if args.only is None:
             names, odp, pptx = impress_phase(office, out)
             ux_phase(office, out, logs)
             canvas_phase(office, out, logs)
             compatibility_phase(office, logs)
             compare_phase(office, out, logs)
             import_phase(office, out, logs)
-        share_phase(office, out, logs)
-        if args.only != "share":
+        if args.only in (None, "share"):
+            share_phase(office, out, logs)
+        if args.only in (None, "concept"):
+            concept_phase(office, out, logs)
+        if args.only is None:
             reload_phase(office, odp, names, "odp", expect_attributes=True)
             reload_phase(office, pptx, names, "pptx", expect_attributes=False)
             draw_calc_phase(office, out)

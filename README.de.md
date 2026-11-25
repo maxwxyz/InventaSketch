@@ -44,7 +44,14 @@ und monochrom exportieren.
   Verfahrens- und Wärmetechnik (R&I-Apparate, Armaturen, PLT-Stellen, Lüftungsbauteile, T-s-, p-v- und p-h-Kreisprozesse),
   Energiesysteme (PV, Wind, Speicher, Elektromobilität, Wasserstoff, Wärmepumpen, Netzanschluss und Einlinienschaltbilder
   über alle Spannungsebenen) und Robotik (Knickarm-, SCARA-, Delta-, Portal- und mobile Roboter, gestellt über ihre
-  Gelenkwinkel, Greifer und Werkzeuge, Arbeitsräume, Arbeitszellen und Sicherheitstechnik).
+  Gelenkwinkel, Greifer und Werkzeuge, Arbeitsräume, Arbeitszellen und Sicherheitstechnik), Optik (Linsen, Spiegel,
+  Prismen, Gitter, Quellen und Detektoren mit live verfolgten Strahlen und konstruiertem Bild) sowie Verteiler und
+  Installation (Reiheneinbaugeräte, Reihenklemmen, Kabel; Exporte von Installationsliste, Stromkreisplan,
+  Verteilerbelegung, Klemmenplan und Kabelliste).
+- **Technische Werte (optional):** wo Elemente Werte tragen (Elektro, Maschinenelemente und Antriebe, Fluidtechnik,
+  Verfahrenstechnik, Gebäudetechnik, Energie), werden die übrigen live mit Einheiten, Toleranzbereichen, der Formel
+  Schritt für Schritt und ihrer Quelle berechnet, mit Plausibilitätsprüfungen und Rechenblatt; ein Rechner mit Einheiten
+  ist eingebaut.
 - **Aufgeräumte Oberfläche:** helles/dunkles/automatisches Design, Deutsch/Englisch (automatisch), schwebende
   Kontextleiste, Kreismenü per Rechtsklick, interaktiver Seitenleisten-Editor dort, wo der Host keine Interaktion auf
   der Folie erlaubt.

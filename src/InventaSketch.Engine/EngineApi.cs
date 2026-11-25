@@ -129,6 +129,8 @@ namespace InventaSketch.Engine
             RegisterValueMethods();
             RegisterWebMethods();
             _methods["setValueLevel"] = SetValueLevelCore;
+            _methods["insertHandles"] = InsertHandlesCore;
+            _methods["applyInsertHandle"] = ApplyInsertHandleCore;
         }
 
         /// <summary>Shared instance with <see cref="ModuleCatalog.CreateDefault"/>.</summary>
@@ -1965,6 +1967,50 @@ namespace InventaSketch.Engine
             ShowWith = h.ShowWith,
             ByPart = h.ByPart,
         };
+
+        /// <summary>
+        /// insertHandles: the insert places of the listed elements (id or ids; default the selection) in page mm – key,
+        /// position, outward direction (dx, dy) and label (<see cref="InsertHandles.Of"/>: the "+" dots between the rows and
+        /// columns of a table). Hosts without an overlay list them ("Insert a row here (before row 3)"). Elements without
+        /// insert places are left out.
+        /// </summary>
+        private object InsertHandlesCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var ids = r.Id is not null ? new List<string> { r.Id } : s.Resolve(r.Ids).ToList();
+            var ctx = new RenderContext(s.Doc, lang);
+            var list = new List<ObjectInsertHandles>();
+            foreach (var id in ids)
+            {
+                if (s.Doc.Get(id) is not { } o || o.Locked) continue;
+                var handles = InsertHandles.Of(Registry, o, ctx);
+                if (handles.Count > 0)
+                    list.Add(new ObjectInsertHandles
+                    {
+                        Id = id,
+                        Handles = handles.Select(h => new InsertHandleInfo { Key = h.Key, X = h.Position.X, Y = h.Position.Y, Dx = h.Direction.X, Dy = h.Direction.Y, Label = h.Label.Get(lang) }).ToList(),
+                    });
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// applyInsertHandle: inserts at the insert place <c>key</c> of element <c>id</c> (<see cref="InsertHandles.Apply"/>:
+        /// a row or column exactly there); one undo step, returns the state. An unknown key is an error.
+        /// </summary>
+        private object ApplyInsertHandleCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = r.Id ?? s.Resolve(r.Ids).FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
+            var o = s.Doc.Get(id) ?? throw new KeyNotFoundException($"Unknown object '{id}'.");
+            var key = r.Key ?? throw new ArgumentException("Missing 'key'.");
+            if (o.Locked) return StateOf(s, r);
+            if (InsertHandles.Of(Registry, o, new RenderContext(s.Doc, s.Lang)).All(h => h.Key != key))
+                throw new ArgumentException($"'{o.Type}' has no insert place '{key}'.");
+            s.Apply("Insert here", d => d.Get(id) is { } x ? Edits.Replace(d, InsertHandles.Apply(Registry, x, key, new RenderContext(d, s.Lang))) : d);
+            return StateOf(s, r);
+        }
 
         /// <summary>
         /// dragHandles: the interactive handles of the listed elements (id or ids; default the selection) in page mm – key,

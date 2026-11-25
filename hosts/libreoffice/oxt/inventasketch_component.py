@@ -36,6 +36,21 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
                                                   data … (dialog and save dialog for what is missing)
   chartFromPicture[?path=<file>]                  a picture (PNG, JPEG, BMP, GIF) as an editable chart (file dialog
                                                   without a path)
+  action?id=<engine action id>[&input=<t>|&ask=1] run an engine action or an option of a choice (applyAction); ask=1
+                                                  asks for the value of an action that needs one (dialog)
+  param?key=<k>&value=<v>                         set a parameter (a parameter choice) of the selected unit(s)
+  text[?text=<t>]                                 the main text of the selected element (dialog without text)
+  duplicate / delete                              copy beside it with new ids / remove (engine, one undo step)
+  connected[?mode=auto|net|coupled|chain|loop|walls]  select what is connected (Ctrl+double-click: auto)
+  insertPlace?key=<k>                             insert at a place of the selected element (table row/column here)
+  menu                                            log the context menu of the selection (the eight places, tests)
+  values / tools                                  open the deck with the Values / Calculator panel
+  setValue?key=<k>&text=<t> / clearValue?key=<k>  enter / clear a value of the selected element
+  valueLevel?level=quick|explore|engineer         the value level of the document (property ISK_VALUES)
+  showValues?on=0|1                               the values label on the drawing
+  calc?text=<t>[&unit=<u>]                        calculator with units (result in the Calculator panel and the log)
+  importCode[?path=<file>|&text=<code>]           matplotlib/pgfplots/TikZ code as charts and drawings (file dialog
+                                                  without arguments)
   about                                           version and licence
 The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
 and ``buildItems`` fill the sidebar panel. The job ``CanvasJob`` (Jobs.xcu, document event "OnViewCreated") attaches
@@ -53,7 +68,7 @@ from com.sun.star.frame import FeatureStateEvent, XDispatch, XDispatchProvider, 
 from com.sun.star.task import XJob
 from com.sun.star.lang import XInitialization, XServiceInfo
 
-from inventasketch_lo import EXTENSION_ID, VERSION, canvas, host, i18n, mainthread, sidebar
+from inventasketch_lo import EXTENSION_ID, VERSION, canvas, host, i18n, mainthread, sidebar, ux
 from inventasketch_lo.engine import Engine, EngineError, engine_command
 from inventasketch_lo.log import log, log_path
 
@@ -65,9 +80,15 @@ DECK = "InventaSketchDeck"
 COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
             "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
             "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck", "compare", "importVector", "parts",
-            "cleanSlides", "export", "chartFromPicture")
+            "cleanSlides", "export", "chartFromPicture",
+            # Interaction concept (choices, eight places, values, calculator, code import, select connected, insert here)
+            "action", "param", "text", "duplicate", "delete", "connected", "insertPlace", "place", "menu", "values",
+            "loadValues", "setValue", "clearValue", "valueLevel", "showValues", "calc", "importCode", "tools")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
+# Commands that neither read nor change units on the page (the selection glow stays).
+_QUIET = ("about", "place", "calc", "tools", "library", "quickInsert", "search", "panel", "buildItems", "describe",
+          "loadValues", "menu", "values", "editModel")
 
 _STATE = {"engine": None, "ctx": None, "terminate": None}
 
@@ -161,11 +182,22 @@ def _engine_version(ctx):
 def run(ctx, frame, command, args):
     """Executes a command on a frame; errors are shown to the user (or logged when headless). Selection changes caused
     by the command itself do not refresh the panel (sidebar.BUSY); edits refresh it once at the end."""
+    controller = None
+    try:
+        controller = frame.getController() if frame is not None else None
+    except Exception:
+        pass
+    # The selection glow is taken off before anything reads, redraws or removes units (LibreOffice's undo keeps removed
+    # shapes as they were), and put back afterwards.
+    if command not in _QUIET:
+        canvas.clear_glow(controller)
     sidebar.BUSY["count"] += 1
     try:
         _run(ctx, frame, command, args)
     finally:
         sidebar.BUSY["count"] -= 1
+        if command not in _QUIET:
+            canvas.refresh_glow(controller)
 
 
 def _run(ctx, frame, command, args):
@@ -185,6 +217,8 @@ def _run(ctx, frame, command, args):
         if command == "insert":
             item = args.get("item") or args.get("")
             host.insert(engine_for(ctx), controller, item, _num(args.get("x")), _num(args.get("y")), args.get("name"))
+            # The new unit is selected: the panels follow (selection changes during a command are not followed).
+            _describe(ctx, frame, controller, quiet=True)
         elif command == "library":
             _open_deck(ctx, frame)
         elif command == "quickInsert":
@@ -269,6 +303,8 @@ def _run(ctx, frame, command, args):
             _export(ctx, frame, controller, args)
         elif command == "chartFromPicture":
             _chart_from_picture(ctx, frame, controller, args.get("path") or args.get(""))
+        elif command in _CONCEPT:
+            _CONCEPT[command](ctx, frame, controller, args)
     except (host.HostError, EngineError) as ex:
         message(ctx, frame, str(ex), error=True)
     except Exception as ex:
@@ -452,6 +488,251 @@ def _chart_from_picture(ctx, frame, controller, path):
     _describe(ctx, frame, controller, quiet=True)
 
 
+# ------------------------------------------------------------------ interaction concept
+
+
+def _ask(ctx, frame, title, label, value="", unit=None):
+    """The input dialog in a visible window; None headless (the caller then needs the value as an argument)."""
+    if not _visible(frame):
+        return None
+    from inventasketch_lo import inputdialog
+    return inputdialog.ask(ctx, frame, title, label, value, unit)
+
+
+def _cmd_action(ctx, frame, controller, args):
+    """An engine action or an option of a choice; an action with an input asks for its value (``ask=1``)."""
+    engine = engine_for(ctx)
+    action_id = args.get("id") or args.get("")
+    text = args.get("input")
+    label = None
+    if text is None and args.get("ask"):
+        info = host.describe(engine, controller)
+        action = host.find_action(info, action_id) or {}
+        label = action.get("label")
+        spec = action.get("input") or {}
+        if spec:
+            text = _ask(ctx, frame, label, spec.get("label") or label, spec.get("value") or "", spec.get("unit"))
+            if text is None:
+                if not _visible(frame):
+                    raise host.HostError(i18n.text("needInput") % (spec.get("label") or action_id))
+                return
+    host.apply_action(engine, controller, action_id, text, label)
+    log("action %s%s" % (action_id, " (%s)" % text if text is not None else ""))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_param(ctx, frame, controller, args):
+    host.set_param(engine_for(ctx), controller, args.get("key"), args.get("value"))
+    log("param %s = %s" % (args.get("key"), args.get("value")))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_text(ctx, frame, controller, args):
+    """The main text of the selected element; without ``text`` the dialog asks (prefilled)."""
+    engine = engine_for(ctx)
+    text = args.get("text")
+    if text is None:
+        current = host.main_text(engine, controller)
+        if not current:
+            raise host.HostError(i18n.text("noMainText"))
+        text = _ask(ctx, frame, i18n.text("undoText"), current.get("label") or i18n.text("undoText"),
+                    current.get("value") or "")
+        if text is None:
+            if not _visible(frame):
+                raise host.HostError(i18n.text("needInput") % (current.get("label") or "text"))
+            return
+    host.set_main_text(engine, controller, text.replace("\\n", "\n"))
+    log("text set (%d characters)" % len(text))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_duplicate(ctx, frame, controller, args):
+    drawn = host.duplicate(engine_for(ctx), controller)
+    log("duplicate: %d unit(s) drawn" % len(drawn))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_delete(ctx, frame, controller, args):
+    host.delete(engine_for(ctx), controller)
+    log("delete done")
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_connected(ctx, frame, controller, args):
+    mode = args.get("mode") or args.get("") or "auto"
+    shapes = host.select_connected(engine_for(ctx), controller, mode)
+    log("select connected (%s): %d unit(s)" % (mode, len(shapes)))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_insert_place(ctx, frame, controller, args):
+    key = args.get("key") or args.get("")
+    host.apply_insert_place(engine_for(ctx), controller, key)
+    log("insert here: %s" % key)
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_place(ctx, frame, controller, args):
+    """A greyed place of the context menu (its status is disabled; nothing happens if it runs anyway)."""
+    log("place %s: nothing for this selection" % (args.get("name") or ""))
+
+
+def _menu_lines(entries, depth=0):
+    from inventasketch_lo import choices
+    lines = []
+    for e in entries:
+        if e[0] == "sep":
+            continue
+        mark = "[x] " if e[0] == "item" and len(e) > 3 and e[3] else ""
+        label = choices.entry_labels([e])[0]
+        lines.append("%s%s%s" % ("  " * depth, mark, label))
+        if e[0] == "sub":
+            lines.extend(_menu_lines(e[2], depth + 1))
+    return lines
+
+
+def _cmd_menu(ctx, frame, controller, args):
+    """Logs the context menu of the selection (the eight places with their submenus), for tests and automation."""
+    from inventasketch_lo import choices
+    import json
+    info = host.describe(engine_for(ctx), controller)
+    entries = choices.context_entries(info)
+    log("menu: %s" % " | ".join(_menu_lines(entries)))
+    # The same entries with their commands, so a test can run an entry the way a click on it does.
+    log("menu-json: %s" % json.dumps(entries, ensure_ascii=False))
+
+
+def _cmd_values(ctx, frame, controller, args):
+    _open_deck(ctx, frame)
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_tools(ctx, frame, controller, args):
+    _open_deck(ctx, frame)
+    for p in sidebar.panels_for(frame):
+        if p.mode == "tools":
+            p.focus_calculator(args.get("text"))
+
+
+def _load_values(ctx, frame, controller, quiet=True):
+    """Fills the Values panel(s) of the frame for the selection (logged too: the panel's content as rows)."""
+    from inventasketch_lo import values
+    data = host.element_values(engine_for(ctx), controller)
+    for p in sidebar.panels_for(frame):
+        p.show_values(data)
+    if data is None:
+        log("values: no single unit selected")
+        return data
+    obj = data.get("values") or {}
+    rows = values.rows(obj, data["level"], data.get("explained"))
+    log("values (%s, %s): %s; %s" % (data["name"], data["level"], values.status_line(obj) or obj.get("status", "-"),
+                                     " | ".join("%s = %s %s%s" % (r["head"], r["field"], r["unit"],
+                                                                  " {%s}" % r["detail"] if r["detail"] else "")
+                                                for r in rows)))
+    return data
+
+
+def _cmd_load_values(ctx, frame, controller, args):
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_set_value(ctx, frame, controller, args):
+    key = args.get("key")
+    try:
+        host.set_value(engine_for(ctx), controller, key, args.get("text") or "")
+    except EngineError as ex:
+        # A refused entry shows under its row in the panel, never as a message box when the panel is there; the row
+        # shows the engine's own message (the last line, without "The engine reported an error").
+        text = str(ex).strip().splitlines()[-1]
+        panels = [p for p in sidebar.panels_for(frame) if p.mode == "values"]
+        log("value %s refused: %s" % (key, text.replace("\n", " ")))
+        if not panels:
+            raise
+        for p in panels:
+            p.value_error(key, text)
+        return
+    log("value %s = %s" % (key, args.get("text")))
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_clear_value(ctx, frame, controller, args):
+    host.clear_value(engine_for(ctx), controller, args.get("key"))
+    log("value %s cleared" % args.get("key"))
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_value_level(ctx, frame, controller, args):
+    level = host.set_value_level(controller.getModel(), args.get("level") or args.get(""))
+    log("value level: %s" % level)
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_show_values(ctx, frame, controller, args):
+    on = (args.get("on") or args.get("") or "1") not in ("0", "false", "False", "")
+    host.show_values(engine_for(ctx), controller, on)
+    log("show values: %s" % on)
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_calc(ctx, frame, controller, args):
+    """The calculator with units; the result goes to the Calculator panel(s) and the log."""
+    text = args.get("text") or args.get("") or ""
+    unit = args.get("unit")
+    error = None
+    result, steps = "", []
+    try:
+        result, steps = host.calculate(engine_for(ctx), text, unit)
+    except EngineError as ex:
+        error = str(ex)
+    for p in sidebar.panels_for(frame):
+        p.show_calc(text, unit, result, steps, error)
+    log("calc %r%s: %s" % (text, " in %s" % unit if unit else "", error or "%s; %s" % (result, " / ".join(steps))))
+
+
+def _cmd_import_code(ctx, frame, controller, args):
+    """matplotlib, pgfplots or TikZ code: from ``text``, from the file ``path`` or a file chosen in the dialog."""
+    from inventasketch_lo import values
+    text = args.get("text")
+    path = args.get("path")
+    if text is None:
+        if not path:
+            if not _visible(frame):
+                raise host.HostError(i18n.text("codeEmpty"))
+            picker = ctx.ServiceManager.createInstanceWithContext("com.sun.star.ui.dialogs.FilePicker", ctx)
+            picker.initialize((uno.getConstantByName("com.sun.star.ui.dialogs.TemplateDescription.FILEOPEN_SIMPLE"),))
+            picker.setTitle("InventaSketch – " + i18n.text("codeTitle"))
+            patterns = ";".join("*" + e for e in values.CODE_EXTENSIONS)
+            picker.appendFilter("%s (%s)" % (i18n.text("codeFilter"), patterns.replace(";", ", ")), patterns)
+            if picker.execute() != 1 or not picker.getFiles():
+                return
+            path = uno.fileUrlToSystemPath(picker.getFiles()[0])
+        try:
+            with open(path, "rb") as f:
+                text = values.decode_code(f.read())
+        except OSError as ex:
+            raise host.HostError(i18n.text("importUnreadable") % ex)
+    if not text.strip():
+        raise host.HostError(i18n.text("codeEmpty"))
+    result = host.import_code(engine_for(ctx), controller, text)
+    lines = values.code_report_lines(result)
+    log("import code (%s): %d unit(s) drawn; %s" % (result.get("format") or "?", len(result["drawn"]),
+                                                     " | ".join(lines)))
+    shown = False
+    for p in sidebar.panels_for(frame):
+        shown = p.show_code_report(lines) or shown
+    if not shown:
+        message(ctx, frame, "\n".join(lines))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+_CONCEPT = {"action": _cmd_action, "param": _cmd_param, "text": _cmd_text, "duplicate": _cmd_duplicate,
+            "delete": _cmd_delete, "connected": _cmd_connected, "insertPlace": _cmd_insert_place,
+            "place": _cmd_place, "menu": _cmd_menu, "values": _cmd_values, "tools": _cmd_tools,
+            "loadValues": _cmd_load_values, "setValue": _cmd_set_value, "clearValue": _cmd_clear_value,
+            "valueLevel": _cmd_value_level, "showValues": _cmd_show_values, "calc": _cmd_calc,
+            "importCode": _cmd_import_code}
+
+
 def _num(value):
     try:
         return float(value) if value not in (None, "") else None
@@ -578,7 +859,10 @@ class ProtocolHandler(unohelper.Base, XDispatchProvider, XDispatch, XInitializat
         try:
             event = FeatureStateEvent()
             event.FeatureURL = url
-            event.IsEnabled = True
+            # Greyed places of the context menu are disabled; the current option of a choice is checked.
+            event.IsEnabled = not ux.is_disabled_url(url.Complete)
+            if ux.is_checked_url(url.Complete):
+                event.State = True
             event.Requery = False
             event.Source = self
             listener.statusChanged(event)
