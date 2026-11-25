@@ -30,5 +30,6 @@
     <ProjectReference Include="..\InventaSketch.Modules.Architecture\InventaSketch.Modules.Architecture.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Diagrams\InventaSketch.Modules.Diagrams.csproj" />
     <ProjectReference Include="..\InventaSketch.Modules.Optics\InventaSketch.Modules.Optics.csproj" />
+    <ProjectReference Include="..\InventaSketch.Modules.Switchgear\InventaSketch.Modules.Switchgear.csproj" />
   </ItemGroup>
 </Project>
