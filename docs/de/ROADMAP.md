@@ -311,10 +311,15 @@ Funktionsgraphen des Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vekto
    `applyPartAction`, `setPartLook`; COM: Einzelformen tragen `ISK_PART`, native Formatierung einzelner Teile geht in
    genau diese Teile, ein Klick ins ausgewählte Diagramm wählt das Teil (Leiste, Kreismenü, Liste „Teile …“, Umriss).
    Offen: Teilauswahl in Web und LibreOffice; Tab-Durchlauf durch die Teile.
-2. Abbildungsmodell (Panels, Phasenlinien, Wertlinien, Bereiche/Schraffur, Anmerkungen, Maßpfeile, Bezugszeichen;
-   Tabelleneditor; die Beispielfigur des Maintainers als Vorlage).
-3. Kurven aus Funktionen und Skizzen; Achsenbrüche.
-4. matplotlib-Export; Zusammenlegung mit Mathe.
+2. **Abbildungsmodell (erledigt 25.11.2026):** `chart.figure` mit versionierter JSON-Spezifikation – gestapelte Panels,
+   Prinzip- und Datenachsen, Markierungen über alle Panels, Wertlinien, Bereiche (auch „nur wo A über B“) mit Schraffur,
+   Anmerkungen, Maßpfeile, Bezugszeichen, Bildunterschrift; die drei Figuren des Maintainers als Vorlagen;
+   Tabelleneditor für Diagrammdaten in COM (Raster, leere Zeile = neue Reihe, Einfügen aus Excel).
+3. **Kurven aus Funktionen und Skizzen (erledigt 25.11.2026):** 13 Funktionsgeneratoren mit Textform, Skizzenerkennung
+   (10 Arten, sonst Glättung), COM „Kurve skizzieren“ in XY-Diagrammen und Abbildungen (mit echter Maus geprüft).
+   Achsenbrüche: Baustein (`AxisBreaks`, aus Slidemax übernommen) fertig, von den Diagrammtypen noch nicht gezeichnet.
+4. matplotlib- und pgfplots-Export (in Arbeit 25.11.2026); Zusammenlegung mit Mathe (Koordinatensysteme und
+   Funktionsgraphen ins Diagramm-Modul) offen.
 4a. **Bearbeitbare Exporte (Maintainer 25.11.2026):** LaTeX – jede Zeichnung (Flussdiagramme, Blockschaltbilder,
    Skizzen) als TikZ mit Texten als TikZ-Knoten (Dokumentschrift, Formatierung und Formeln bleiben in LaTeX
    bearbeitbar, Umlaute und Sonderzeichen maskiert), Diagramme und Abbildungen als pgfplots (Achsen, Teilung, Legende,
@@ -325,7 +330,9 @@ Funktionsgraphen des Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vekto
    Erledigt 25.11.2026: TikZ für jede Zeichnung (`latex.tikz`, Core `TikzExporter`), bearbeitbares SVG (Engine
    `renderPageSvg` Modus `export`, SVG-Export im Web). Offen: pgfplots für Diagramme (nach dem Abbildungsmodell),
    SVG-Exportmodus in COM/LibreOffice.
-5. Diagramme aus Bildern (Scanner-Übernahme, Kurven-Digitalisierer).
+5. **Diagramme aus Bildern (erledigt 25.11.2026 für COM):** Übernahme des Slidemax-Scanners (Balken/Säulen,
+   Ziffernbeschriftung), neuer Kurven-Digitalisierer, `ChartFromPicture`; COM Prüfen ▸ „Diagramm aus Bild …“
+   (Zwischenablage oder Datei), in PowerPoint geprüft. Offen: Engine-Methode und Befehle in Web/LibreOffice.
 
 **Flussdiagramme (Beispiel des Maintainers 25.11.2026, erledigt):** Flussdiagrammsymbole passen ihren Text ein und
 umbrechen ihn, Startkreis und Ende als Doppelkreis, Winkelverbinder führen nach ihren angedockten Seiten (C-Läufe mit
@@ -346,6 +353,40 @@ Paket-/Rahmen-/Speicherlayouts, Sequenzfragmente und Nachrichtennummerierung, Ob
 Später: digitale Zeitdiagramme (`chart.timing`, mit Diagramme v2), isometrische Teile (`mech.iso.*`), „bewegte Lage“
 als Phantomkopie, Batteriezellen-Anordnungen und Kühlplatten, Optik-Modul, Polar-/Hysterese-/Konstellations-/Augen-/
 Sankey-Diagramme.
+
+### Review am Ende des 25.11.2026 (Diagramme v2, Abbildungen, Anschlüsse) und nächste Schritte
+
+**Heute erledigt:** Teile von Elementen in allen drei Hosts; das Abbildungsmodell mit den Figuren des Maintainers;
+Kurven aus Funktionen und Skizzen; Diagramme aus Bildern; TikZ- und bearbeitbarer SVG-Export; Flussdiagramme wie von
+Hand gezeichnet (seitenbewusste Verbinder, Layout ohne Linien durch Kästen); das Fit-Gap für Abbildungen
+(Flussdiagrammsymbole, Block-/Doppel-/Paarpfeile, Abzweigpunkte und Sprünge, Tabellen, Regelkreise,
+Kommunikationssymbole, Datenlayouts, Sequenzfragmente, GUI-Wireframes, interaktive Pools und Bahnen); Anschluss-„+“ für
+jedes Modul mit Anschlüssen (PV, TGA, Elektro, Fluid, Prozess, Maschinen; in COM geprüft); Überarbeitung des COM-Menübands
+(Extras mit Logo, Module/Linienstärken/Akzentfarbe darin, Prüfen mit Kompatibilität und Diagramm aus Bild, untere Zeile
+im Layout, scharfe Symbole, Schwarz-Weiß als Umschalter je Folie); Export von Auswahl oder Folie; Dialoge über dem
+ausgewählten Element behoben; das Wort „Patent“ aus allen Texten entfernt.
+
+**PowerPoint-Szenarien grün:** chart-parts, chart-sketch, chart-picture, chart-data-editor, connect-plus,
+dialog-over-unit, diagram-layout, compatibility-check, ribbon-look.
+
+**Plan-Review – als Nächstes, in dieser Reihenfolge (erst COM, dann Web, dann LibreOffice):**
+1. Gleichstand der Hosts für die heutigen Engine-Funktionen: Anschluss-„+“ (Web: Tooltips und `medium`, LibreOffice:
+   Portbezeichnungen), Diagramm aus Bild und Skizzieren (Engine-Methoden `chartFromPicture`/`sketchCurve`, Spur im Web,
+   Dialog in LibreOffice), Export von Auswahl/Folie in Web und LibreOffice, Abbildungsvorlagen in beiden Hosts prüfen.
+2. Achsenbrüche in XY-Diagrammen und Abbildungen zeichnen; Zusammenlegung mit Mathe (Koordinatensysteme und
+   Funktionsgraphen als Diagrammvorlagen, Einträge des Mathe-Moduls treten über `LibraryItem.Alternative` zurück).
+3. Folien bereinigen zur Weitergabe (unten).
+4. Hindernisbewusste Führung bei von Hand gesetzten Flussdiagrammkästen; Tab-Durchlauf durch Diagrammteile;
+   isometrische Teile, bewegte Lagen, Batteriezellen-Anordnungen, Optik-Modul (Fit-Gap „später“).
+5. Kennfeld-Meldung (wartet auf erneuten Versuch des Maintainers), Web-Prüfung in PowerPoint (braucht das
+   Entwicklerzertifikat).
+
+**Heute bestätigte UI/UX-Regeln:** ein Platz je Befehlsfamilie in jedem Host (Prüfen: Kompatibilität, Vergleichen,
+Diagramm aus Bild, Import, Export); Umschalter zeigen den Zustand der aktuellen Folie (Schwarz-Weiß, Linienstärken,
+Akzent), Arbeitsmodi sind Nutzereinstellungen (Einrasten, Leiste, Verankern, Bewegen); jeder modale Dialog bekommt Maus
+und Tastatur (kein Hook darf Eingaben eines Dialogs im Vordergrund schlucken); Unterauswahl folgt einem Muster (Klick
+ins ausgewählte Element wählt das Teil; Leiste und Kreismenü wirken darauf; „Ganzes Element“ verlässt es); jedes „+“
+sagt, was es anfügt.
 
 ### Folien bereinigen zur Weitergabe (Maintainer 25.11.2026, geplant; wie Slidemax)
 

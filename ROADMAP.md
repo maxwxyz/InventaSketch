@@ -277,11 +277,17 @@ vectors stay in `math`.
    path; charts tag every piece (`series.0`, `marker.0`, `bar.0`, `axis.x`, `label.y`, `grid.major` …); engine `parts`,
    `partAt`, `partActions`, `applyPartAction`, `setPartLook`; COM: leaf shapes carry `ISK_PART`, native formatting of
    some parts folds into those parts, a click on the selected chart selects the part (bar, pie menu, "Parts …" list,
-   outline). Open: web and LibreOffice part selection; Tab cycling through parts.
-2. Figure model (panels, phase lines, value lines, regions/hatching, notes, dimension arrows, numerals; table editor;
-   the maintainer's example figure as a preset).
-3. Curves from functions and sketches; axis breaks.
-4. matplotlib export; math merge.
+   outline). Web (click selects the part, bar and pie) and LibreOffice ("Chart Parts..." dialog) done 2026-11-25, not yet
+   run in their hosts. Open: Tab cycling through parts.
+2. **Figure model (done 2026-11-25):** `chart.figure` with a versioned JSON spec – stacked panels, principle and data
+   axes, markers across panels, value lines, regions (also "only where A is above B") with hatching, notes, dimension
+   arrows, numerals, captions; the maintainer's three figures as presets; COM table editor for chart data (grid, empty
+   row = new series, paste from Excel).
+3. **Curves from functions and sketches (done 2026-11-25):** 13 function generators with text form, sketch recognition
+   (10 kinds, smoothing fallback), COM "Sketch a curve" on XY charts and figures (verified with the real mouse). Axis
+   breaks: building block (`AxisBreaks`, port of Slidemax) done, not yet drawn by the chart types.
+4. matplotlib and pgfplots export (in progress 2026-11-25); math merge (coordinate systems and function graphs into the
+   chart module) open.
 4a. **Editable exports (maintainer 2026-11-25):** LaTeX – every drawing (flowcharts, block diagrams, sketches) as TikZ
    with texts as TikZ nodes (document font, formatting and maths stay editable in LaTeX, umlauts and special characters
    escaped), charts and figures as pgfplots (axes, ticks, legend, labels, value lines, hatched regions as LaTeX code, data
@@ -290,7 +296,9 @@ vectors stay in `math`.
    styles can be edited in Inkscape/Illustrator. Both through the engine's exporters, offered in all three hosts.
    Done 2026-11-25: TikZ for every drawing (`latex.tikz`, Core `TikzExporter`), editable SVG (engine `renderPageSvg`
    mode `export`, web SVG export). Open: pgfplots for charts (after the figure model), SVG export mode in COM/LibreOffice.
-5. Charts from pictures (scanner port, curve digitiser).
+5. **Charts from pictures (done 2026-11-25 for COM):** Slidemax scanner port (bars/columns, digit labels), new curve
+   digitiser, `ChartFromPicture`; COM Review "Chart from picture …" (clipboard or file), verified in PowerPoint. Open:
+   engine method and web/LibreOffice commands.
 
 **Flowcharts (maintainer example 2026-11-25, done):** flowchart symbols fit and wrap their text, start circle and end
 double circle, elbow connectors route by their docked sides (C runs with clearance for "yes" exits and loops back) and
@@ -308,6 +316,37 @@ transfer function), computer-system presets and bus, communication icons (phone,
 wireless link), packet/frame/memory layouts, sequence fragments and message numbering, GUI wireframes, state circles.
 Later: digital timing diagrams (`chart.timing`, with charts v2), isometric parts (`mech.iso.*`), "moved position"
 phantom copies, battery cell arrays and cooling plates, optics module, polar/hysteresis/constellation/eye/Sankey charts.
+
+### Review at the end of 2026-11-25 (charts v2, figures, connections) and next steps
+
+**Done today:** parts of elements in all three hosts; the figure model with the maintainer's figures; curves from
+functions and sketches; charts from pictures; TikZ and editable SVG export; flowcharts as drawn by hand (side-aware
+connectors, layout without lines through boxes); the figure fit-gap (flowchart symbols, wide/double/pair arrows,
+junctions and hops, tables, control loops, communication icons, data layouts, sequence fragments, GUI wireframes,
+interactive pools and lanes); connection "+" for every module with ports (PV, building services, electrical, fluid,
+process, machines; COM verified); COM ribbon rework (Extras with logo, modules/line weights/accent inside, Review with
+Compatibility and Chart from picture, Layout bottom row, sharp icons, black-and-white toggle per slide); export of
+selection or slide; dialogs over the selected element fixed; the word "patent" removed from all texts.
+
+**PowerPoint scenarios green:** chart-parts, chart-sketch, chart-picture, chart-data-editor, connect-plus,
+dialog-over-unit, diagram-layout, compatibility-check, ribbon-look.
+
+**Plan review – what is next, in this order (COM first, then web, then LibreOffice):**
+1. Host parity for today's engine features: connection "+" (web buildlogic tooltips and `medium`, LibreOffice port
+   labels), chart from picture and sketching (engine methods `chartFromPicture`/`sketchCurve`, web canvas trail,
+   LibreOffice dialog), export of selection/slide in web and LibreOffice, figure presets checked in both hosts.
+2. Axis breaks drawn by XY charts and figures; math merge (coordinate systems and function graphs as chart presets,
+   items of the math module step back via `LibraryItem.Alternative`).
+3. Clean slides for sharing (below).
+4. Obstacle-aware routing for hand-placed flowchart boxes; Tab cycling through chart parts; isometric parts, moved
+   positions, battery cell arrays, optics module (fit-gap "later").
+5. Kennfeld report (waiting for the maintainer's retry), web check in PowerPoint (needs the dev certificate).
+
+**UI/UX consistency rules confirmed today:** one place per command family in every host (Review: compatibility,
+compare, chart from picture, import, export); toggles show the state of the current slide (black and white, line
+weights, accent) while working modes are user settings (snap, bar, anchor, move); every modal dialog lets the mouse and
+keyboard through (no hook may swallow input of a foreground dialog); sub-selection follows one pattern (click on the
+selected element selects its part; bar and pie act on it; "whole element" leaves it); every "+" says what it adds.
 
 ### Clean slides for sharing (maintainer 2026-11-25, planned; like Slidemax)
 
