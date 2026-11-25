@@ -59,7 +59,7 @@ namespace InventaSketch.Modules.Electrical
                 }))
             { Pins = Fixed(TwoH().ToArray()), RefPrefix = "F" };
 
-            yield return new ElecType("elec.breaker", T("Circuit breaker", "Leitungsschutzschalter"), Cat,
+            yield return new ElecType("elec.breaker", T("Miniature circuit breaker", "Leitungsschutzschalter"), Cat,
                 new[] { "circuit breaker", "breaker", "mcb", "leitungsschutzschalter", "ls-schalter", "sicherungsautomat", "leistungsschalter" },
                 Views.Symbol(20, 10, (p, o) =>
                 {

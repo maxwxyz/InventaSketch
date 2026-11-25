@@ -43,7 +43,7 @@ namespace InventaSketch.Modules.Process
                 Extra = o => new[] { Cycle("process.pump.kind", T("Pump type", "Pumpenbauart"), PdKind) },
             };
 
-            yield return new ProcessType("process.compressor", T("Compressor", "Verdichter"), Cat, 14, 12, Compressor,
+            yield return new ProcessType("process.compressor", T("Compressor (process)", "Verdichter (Prozess)"), Cat, 14, 12, Compressor,
                 "compressor", "turbo compressor", "centrifugal compressor", "reciprocating compressor", "blower",
                 "verdichter", "kompressor", "turboverdichter", "kolbenverdichter", "gebläse")
             {

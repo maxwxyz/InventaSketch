@@ -308,7 +308,7 @@ namespace InventaSketch.Modules.Robotics
         /// Coordinate frame symbol (right-handed): two axis arrows in the drawing plane and the third axis at the origin,
         /// a dot (towards the observer) or a cross (away from the observer).
         /// </summary>
-        private static ObjectType CoordinateFrame() => new RoboBoxType("robot.frame.coordinate", new I18nText("Coordinate frame", "Koordinatensystem"), RoboCategories.Frames,
+        private static ObjectType CoordinateFrame() => new RoboBoxType("robot.frame.coordinate", new I18nText("Coordinate frame", "Koordinatenrahmen (Roboter)"), RoboCategories.Frames,
             new[] { "frame", "coordinate system", "axes", "base frame", "tool frame", "world frame", "koordinatensystem", "basiskoordinaten", "werkzeugkoordinaten", "achsenkreuz" },
             new SymView(RoboViews.SideView, new Size2(16, 16), (p, o) =>
             {

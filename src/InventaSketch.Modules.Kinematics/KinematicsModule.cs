@@ -86,9 +86,9 @@ namespace InventaSketch.Modules.Kinematics
             Add("cam.flat", "kin.cam.follower", "Cam with flat-faced follower", "Kurvenscheibe mit Flachstößel", "schematic", P(("follower", "flat")));
             Add("cam.knife", "kin.cam.follower", "Cam with knife-edge follower", "Kurvenscheibe mit Spitzenstößel", "schematic", P(("follower", "knife")));
             Add("cam.detailed", "kin.cam.follower", "Cam and follower (detailed)", "Kurvenscheibe und Stößel (detailliert)", "detailed");
-            Add("spring", "kin.spring", "Spring", "Feder", "schematic");
+            Add("spring", "kin.spring", "Spring between two joints", "Feder zwischen zwei Gelenken", "schematic");
             Add("spring.coil", "kin.spring", "Spring (coil)", "Feder (Windungen)", "detailed");
-            Add("damper", "kin.damper", "Damper", "Dämpfer", "schematic");
+            Add("damper", "kin.damper", "Damper between two joints", "Dämpfer zwischen zwei Gelenken", "schematic");
             Add("damper.detailed", "kin.damper", "Damper (cylinder)", "Dämpfer (Zylinder)", "detailed");
             Add("rope.pulley", "kin.rope.pulley", "Rope over pulley", "Seil über Rolle", "schematic");
             Add("rope.pulley.detailed", "kin.rope.pulley", "Rope over grooved pulley", "Seil über Rillenscheibe", "detailed");

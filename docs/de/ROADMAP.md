@@ -284,6 +284,17 @@ eine Straße wurde am „+“ von Fahrstreifen 2 mit Fahrstreifen 1 fortgesetzt,
 Zufahrten des Kreisverkehrs waren schmaler als die Straßen – Draufsichten teilen jetzt den Faktor 0,6 und eine
 Fahrstreifenbreite; abgerundete Rechtecke in COM ignorierten ihren Radius.
 
+**Bibliotheks-Review (25.11.2026, Wunsch des Maintainers):** jedes Element jedes Moduls per Test geprüft
+(`LibraryAuditTests`: Einfügen, Zeichnen innerhalb der Box, jeder Parameterwert, jede Ansicht, jede Kontextaktion,
+Skalieren, Engine-Rundlauf mit Rückgängig/Wiederherstellen – 1.273 Elemente, 21.341 Prüfungen, 0 Fehler;
+`CouplingAuditTests`: eine an jedem der 2.193 Ports angedockte Linie folgt Verschieben, Drehen und Skalieren;
+`BuildAllElementsTests`: „+“ an skalierten Elementen). Überschneidungen bereinigt: `LibraryItem.Alternative` hält eine
+Doppelung aus der Bibliothek, solange ihre bessere Alternative registriert ist (Module bleiben allein nutzbar, bestehende
+Folien werden weiter gezeichnet); Namen, die Verschiedenes meinten, wurden eindeutig; ein Test verhindert, dass zwei Module
+wieder denselben Namen anbieten. Aus dem Review noch offen: die Reihenfolge der Elemente innerhalb jedes Moduls
+(Häufiges zuerst), Kopplung über Modulgrenzen über das allgemeine Andocken an Ports hinaus, ein Tabellen-Dateneditor für
+Diagramme in COM.
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,
@@ -298,7 +309,8 @@ Fahrstreifenbreite; abgerundete Rechtecke in COM ignorierten ihren Radius.
 - **Maß zwischen Teilen (P2, in COM erledigt am 24.11.2026 für zwei Teile):** zwei Teile wählen → Achsabstand, Spalt oder Winkel als mitlaufendes Maß.
 - **Folienweiter Stil (P2):** Linienbreiten nach ISO-128-Gruppen, Schwarzweiß-/Patentmodus, Farbakzente je Modul, auf
   alle Elemente der Folie auf einmal.
-- **Mathematik & Geometrie (P3):** Koordinatensysteme, Vektoren, Winkel, geometrische Konstruktionen für Lehrfolien.
+- **Mathematik & Geometrie (P3, erledigt 25.11.2026, Modul `math`, docs/de/modules/geometry.md):** Koordinatensysteme,
+  Funktionsgraphen, Vektoren, Winkel, Dreiecke und Kreise, Konstruktionen für Lehrfolien (18 Typen, 32 Elemente).
 - **Handskizzen-Look (P3):** wahlweise skizzenhafte Darstellung desselben Modells für Workshop-Folien.
 - **Optik (P3, Idee 25.11.2026):** Linsen, Spiegel, Prismen, Strahlteiler, Lichtquellen und Detektoren mit
   Strahlengängen, die den Elementen folgen – häufig in Patentfiguren und Lehrfolien.

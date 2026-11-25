@@ -28,6 +28,7 @@ namespace InventaSketch.Engine
             modules.Add(new InventaSketch.Modules.Process.ProcessModule());
             modules.Add(new InventaSketch.Modules.Energy.EnergyModule());
             modules.Add(new InventaSketch.Modules.Robotics.RoboticsModule());
+            modules.Add(new InventaSketch.Modules.Geometry.GeometryModule());
             modules.Add(new InventaSketch.Modules.Fluid.FluidModule());
             modules.Add(new InventaSketch.Modules.Automotive.AutomotiveModule());
             modules.Add(new InventaSketch.Modules.Architecture.ArchitectureModule());

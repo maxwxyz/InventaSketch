@@ -91,7 +91,7 @@ namespace InventaSketch.Modules.Process
                 },
             };
 
-            yield return new ProcessType("process.column", T("Column", "Kolonne"), Cat, 12, 50, Column,
+            yield return new ProcessType("process.column", T("Process column", "Kolonne"), Cat, 12, 50, Column,
                 "column", "tower", "distillation", "rectification", "absorber", "stripper", "tray column", "packed column", "scrubber",
                 "kolonne", "destillationskolonne", "rektifikation", "bodenkolonne", "füllkörperkolonne", "packungskolonne", "absorber", "wäscher")
             {

@@ -215,7 +215,13 @@ namespace InventaSketch.Modules.Mechanical
             Add("sump", "mech.housing.sump", "Oil sump with oil level", "Ölwanne mit Ölstand", "section", null, "ölwanne", "oil sump");
             Add("sump.stick", "mech.housing.sump", "Oil sump (schematic)", "Ölwanne (Schema)", "stick", null, "ölwanne", "oil sump");
 
-            return list;
+            // Cams are offered by the kinematics module (disc and followers with parameters and ports).
+            var alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["mech.cam"] = "kin.cam.disc",
+                ["mech.cam.follower"] = "kin.cam.roller",
+            };
+            return list.Select(i => alternatives.TryGetValue(i.Id, out var alt) ? i with { Alternative = alt } : i).ToList();
         }
     }
 }

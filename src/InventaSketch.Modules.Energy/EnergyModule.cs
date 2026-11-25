@@ -85,7 +85,7 @@ namespace InventaSketch.Modules.Energy
             Add("conv.inverter.hybrid", "energy.conv.inverter", "Hybrid inverter", "Hybridwechselrichter", P(("kind", "hybrid")), kw: new[] { "hybrid" });
             Add("conv.inverter.battery", "energy.conv.inverter", "Battery inverter", "Batteriewechselrichter", P(("kind", "battery")), kw: new[] { "battery", "batterie" });
             Add("conv.inverter.central", "energy.conv.inverter", "Central inverter 2.5 MW", "Zentralwechselrichter 2,5 MW", P(("power", 2500.0)), kw: new[] { "central", "zentral" });
-            Add("conv.converter.dcdc", "energy.conv.converter", "DC/DC converter", "Gleichspannungswandler (DC/DC)", P(("kind", "dcdc")), kw: new[] { "dc/dc", "mppt" });
+            Add("conv.converter.dcdc", "energy.conv.converter", "DC/DC converter (energy system)", "Gleichspannungswandler (Energiesystem)", P(("kind", "dcdc")), kw: new[] { "dc/dc", "mppt" });
             Add("conv.converter.acac", "energy.conv.converter", "Frequency converter", "Frequenzumrichter", P(("kind", "acac")), kw: new[] { "ac/ac", "frequenz" });
             Add("storage.battery.cabinet", "energy.storage.battery", "Storage cabinet 100 kWh", "Speicherschrank 100 kWh", P(("form", "cabinet"), ("capacity", 100.0)),
                 kw: new[] { "cabinet", "schrank", "gewerbe" });

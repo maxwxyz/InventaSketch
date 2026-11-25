@@ -21,7 +21,7 @@ namespace InventaSketch.Modules.Energy
 
         public static IEnumerable<EnergyType> Types()
         {
-            yield return new EnergyType("energy.mobility.charger", T("EV charger", "Ladestation"), EnCategories.Consumers,
+            yield return new EnergyType("energy.mobility.charger", T("EV charger", "Ladepunkt (E-Fahrzeug)"), EnCategories.Consumers,
                 new[]
                 {
                     "charger", "ev charger", "wallbox", "charging station", "charging point", "e-mobility", "electric vehicle", "dc fast charger",

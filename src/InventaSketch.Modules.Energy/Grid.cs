@@ -63,7 +63,7 @@ namespace InventaSketch.Modules.Energy
                 Extra = (o, l) => new[] { Act.Number(o, "energy.voltage.set", T("Nominal voltage…", "Nennspannung…"), GridVoltage, l) },
             };
 
-            yield return new EnergyType("energy.grid.transformer", T("Transformer", "Transformator"), EnCategories.Grid,
+            yield return new EnergyType("energy.grid.transformer", T("Power transformer", "Leistungstransformator"), EnCategories.Grid,
                 Kw("transformer", "power transformer", "distribution transformer", "mv/lv", "voltage", "kva",
                     "transformator", "trafo", "verteiltransformator", "umspanner", "ortsnetztrafo", "spannung"),
                 ViewSpec.Pictorial(30, 34, (p, o) => TransformerPictorial(p, o, false)) with
@@ -140,7 +140,7 @@ namespace InventaSketch.Modules.Energy
                 },
             };
 
-            yield return new EnergyType("energy.grid.meter", T("Energy meter", "Energiezähler"), EnCategories.Grid,
+            yield return new EnergyType("energy.grid.meter", T("Grid connection meter", "Netzanschlusszähler"), EnCategories.Grid,
                 Kw("meter", "energy meter", "electricity meter", "smart meter", "bidirectional meter", "kwh", "grid connection",
                     "zähler", "stromzähler", "energiezähler", "zweirichtungszähler", "smart meter", "netzanschluss", "messung"),
                 ViewSpec.Pictorial(20, 28, MeterPictorial) with
@@ -158,7 +158,7 @@ namespace InventaSketch.Modules.Energy
                 Extra = (o, l) => new[] { Act.Toggle(o, "energy.bidirectional", T("Bidirectional meter", "Zweirichtungszähler"), Bidirectional) },
             };
 
-            yield return new EnergyType(E.BusbarTypeId, T("Busbar", "Sammelschiene"), EnCategories.Grid,
+            yield return new EnergyType(E.BusbarTypeId, T("Grid busbar", "Netz-Sammelschiene"), EnCategories.Grid,
                 Kw("busbar", "bus bar", "bus", "node", "switchgear", "voltage level", "substation",
                     "sammelschiene", "schiene", "knoten", "schaltanlage", "spannungsebene"),
                 ViewSpec.Pictorial(60, 10, BusbarPictorial) with

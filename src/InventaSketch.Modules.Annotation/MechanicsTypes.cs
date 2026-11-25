@@ -185,7 +185,7 @@ namespace InventaSketch.Modules.Annotation
 
         public SupportType(bool roller)
             : base(roller ? "ann.support.roller" : "ann.support.pin",
-                   roller ? new I18nText("Roller support", "Loslager") : new I18nText("Pin support", "Festlager"),
+                   roller ? new I18nText("Roller support", "Bewegliches Auflager") : new I18nText("Pin support", "Festes Auflager"),
                    AnnCategories.Mechanics, "support", "lager", "bearing", roller ? "roller" : "pin", roller ? "loslager" : "festlager", "hinge", "gelenk")
         {
             _roller = roller;
@@ -253,7 +253,7 @@ namespace InventaSketch.Modules.Annotation
     {
         public DistributedLoadType() : base("ann.load.distributed", new I18nText("Distributed load", "Streckenlast"), AnnCategories.Mechanics, "load", "distributed", "streckenlast", "linienlast", "pressure", "druck") { }
 
-        public override Size2 DefaultSize => new(44, 12);
+        public override Size2 DefaultSize => new(44, 18);
         public override bool HasText => true;
         protected override bool EdgePorts => false;
 
@@ -268,15 +268,19 @@ namespace InventaSketch.Modules.Annotation
         {
             double hw = o.Size.W / 2, hh = o.Size.H / 2;
             var n = Math.Max(2, o.Int("count", 7));
-            var list = new List<Primitive> { new LinePrim(new Vec2(-hw, -hh), new Vec2(hw, -hh), Style.ThinLine with { StrokeWidth = 0.35 }) };
+            // The label sits inside the box above the load line (before 2026-11-25 it stood above the box); the line
+            // moves down by the label height, but the arrows keep at least a third of the box.
+            var label = o.Text ?? o.Str("label", "q");
+            var ts = TextSizeOf(o);
+            var top = string.IsNullOrEmpty(label) ? -hh : Math.Min(-hh + ts + 1.0, hh - o.Size.H / 3);
+            var list = new List<Primitive> { new LinePrim(new Vec2(-hw, top), new Vec2(hw, top), Style.ThinLine with { StrokeWidth = 0.35 }) };
             var arrow = Style.ThinLine with { StrokeWidth = 0.35, ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Medium };
             for (var i = 0; i < n; i++)
             {
                 var x = -hw + o.Size.W * i / (n - 1);
-                list.Add(new LinePrim(new Vec2(x, -hh), new Vec2(x, hh), arrow) { Tag = AnnTags.Main });
+                list.Add(new LinePrim(new Vec2(x, top), new Vec2(x, hh), arrow) { Tag = AnnTags.Main });
             }
-            var label = o.Text ?? o.Str("label", "q");
-            if (!string.IsNullOrEmpty(label)) list.Add(Ann.Text(new Vec2(0, -hh - 1.8 - TextSizeOf(o) * 0.5), label, TextSizeOf(o), italic: true));
+            if (!string.IsNullOrEmpty(label)) list.Add(Ann.Text(new Vec2(0, (-hh + top) / 2), label, ts, italic: true));
             return list;
         }
 
@@ -310,7 +314,7 @@ namespace InventaSketch.Modules.Annotation
     /// <summary>Helical spring (zig-zag) between the left and right ends of its box.</summary>
     public sealed class SpringType : AnnBoxType
     {
-        public SpringType() : base("ann.spring", new I18nText("Spring", "Feder"), AnnCategories.Mechanics, "spring", "feder", "stiffness", "steifigkeit") { }
+        public SpringType() : base("ann.spring", new I18nText("Spring (symbol)", "Feder (Sinnbild)"), AnnCategories.Mechanics, "spring", "feder", "stiffness", "steifigkeit") { }
 
         public override Size2 DefaultSize => new(32, 8);
         protected override bool EdgePorts => false;
@@ -341,7 +345,7 @@ namespace InventaSketch.Modules.Annotation
     /// <summary>Viscous damper (dashpot) between the left and right ends of its box.</summary>
     public sealed class DamperType : AnnBoxType
     {
-        public DamperType() : base("ann.damper", new I18nText("Damper", "Dämpfer"), AnnCategories.Mechanics, "damper", "dashpot", "dämpfer", "damping", "dämpfung") { }
+        public DamperType() : base("ann.damper", new I18nText("Damper (symbol)", "Dämpfer (Sinnbild)"), AnnCategories.Mechanics, "damper", "dashpot", "dämpfer", "damping", "dämpfung") { }
 
         public override Size2 DefaultSize => new(32, 10);
         protected override bool EdgePorts => false;

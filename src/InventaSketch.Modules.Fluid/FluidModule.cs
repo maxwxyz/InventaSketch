@@ -70,7 +70,7 @@ namespace InventaSketch.Modules.Fluid
             Add("pump", "fluid.pump", "Hydraulic pump (fixed displacement)", "Hydropumpe (Konstantpumpe)");
             Add("pump.variable", "fluid.pump", "Hydraulic pump, variable displacement", "Verstellpumpe", P(("variable", true)), null, "variable", "verstellbar");
             Add("pump.reversible", "fluid.pump", "Hydraulic pump, two flow directions", "Hydropumpe, zwei Stromrichtungen", P(("flow", "two")), null, "reversible", "reversierbar");
-            Add("compressor", "fluid.pump", "Compressor", "Verdichter (Kompressor)", P(("medium", "pneumatic")), null, "compressor", "kompressor", "pneumatic");
+            Add("compressor", "fluid.pump", "Compressor (pneumatic)", "Kompressor (Pneumatik)", P(("medium", "pneumatic")), null, "compressor", "kompressor", "pneumatic");
             Add("motor", "fluid.motor", "Hydraulic motor (fixed displacement)", "Hydromotor (Konstantmotor)");
             Add("motor.variable", "fluid.motor", "Hydraulic motor, variable displacement", "Verstellmotor", P(("variable", true)), null, "variable", "verstellbar");
             Add("motor.reversible", "fluid.motor", "Hydraulic motor, two flow directions", "Hydromotor, zwei Stromrichtungen", P(("flow", "two")), null, "reversible", "reversierbar");
@@ -161,7 +161,7 @@ namespace InventaSketch.Modules.Fluid
             Add("line.pilot", FluidLineType.TypeId, "Pilot line", "Steuerleitung", P(("kind", "pilot")), null, "pilot", "control", "steuer");
             Add("line.drain", FluidLineType.TypeId, "Drain / leakage line", "Leckölleitung", P(("kind", "drain")), null, "drain", "leakage", "lecköl");
             Add("line.hose", FluidLineType.TypeId, "Flexible hose", "Schlauchleitung", P(("kind", "hose")), null, "hose", "flexible", "schlauch");
-            Add("junction", "fluid.junction", "Junction dot", "Verbindungspunkt");
+            Add("junction", "fluid.junction", "Junction dot (fluid line)", "Verbindungspunkt (Fluidleitung)");
             Add("crossing", "fluid.crossing", "Line crossing", "Leitungskreuzung");
             Add("crossing.bridge", "fluid.crossing", "Line crossing with bridge", "Leitungskreuzung mit Brücke", P(("bridge", true)));
             Add("plug", "fluid.plug", "Plugged port", "Verschlossener Anschluss");

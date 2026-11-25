@@ -74,6 +74,12 @@ Each module has its own page with its elements, views and parameters:
 [automotive](../modules/automotive.md), [architecture](../modules/architecture.md),
 [building services](../modules/building-services.md), [fluid power](../modules/fluid.md),
 [diagrams](../modules/diagrams.md), [maps and routes](../modules/maps.md), [charts](../modules/charts.md),
-[process & thermal](../modules/process.md), [energy systems](../modules/energy.md), [robotics](../modules/robotics.md).
+[process & thermal](../modules/process.md), [energy systems](../modules/energy.md), [robotics](../modules/robotics.md), [math & geometry](../modules/geometry.md).
+
+Each element lives in one module (review 2026-11-25): installations (sanitary, heating, pipes) in building services,
+rotation and torque arrows in mechanical, cams in kinematics, the north arrow in maps. Elements with the same name but a
+different meaning carry telling names (miniature circuit breaker / power circuit breaker, process column / structural
+column, spring symbol / spring between two joints). Which modules the ribbon and the library show: InventaSketch ▸
+Modules.
 How the add-ins work on the slide (context bar, insert box with Ctrl+Space, multi-selection, assemblies, motion mode) is
 described per host: [PowerPoint COM](../hosts/powerpoint-com.md), [PowerPoint web](../hosts/office-web.md).

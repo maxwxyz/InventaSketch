@@ -10,7 +10,7 @@ namespace InventaSketch.Modules.Architecture
     {
         public static IEnumerable<ObjectType> Types()
         {
-            yield return new BoxType("arch.column", new I18nText("Column", "Stütze / Säule"), ArchCategories.Structure, new Size2(3, 3), Column,
+            yield return new BoxType("arch.column", new I18nText("Structural column", "Stütze / Säule"), ArchCategories.Structure, new Size2(3, 3), Column,
                 "column", "pillar", "post", "stütze", "säule", "pfeiler")
             {
                 Hub = true,

@@ -167,7 +167,7 @@ namespace InventaSketch.Modules.Automotive
             Add("guardrail.side", "auto.traffic.barrier", "Guardrail (side view)", "Schutzplanke (Seitenansicht)", "side");
             Add("wall.top", "auto.traffic.barrier", "Concrete wall (top view)", "Betonschutzwand (Draufsicht)", "top", P(("kind", "wall")));
             Add("boom.side", "auto.traffic.barrier", "Boom gate (side view)", "Schranke (Seitenansicht)", "side", P(("kind", "boom")));
-            Add("parking", "auto.traffic.parking", "Parking slot", "Parkplatz", "top");
+            Add("parking", "auto.traffic.parking", "Parking slot", "Parkstand", "top");
             Add("parking.charging", "auto.traffic.parking", "Parking slot with charging station", "Parkplatz mit Ladestation", "top", P(("charging", true)));
             Add("building.top", "auto.traffic.building", "Building (top view)", "Gebäude (Draufsicht)", "top");
             Add("building.side", "auto.traffic.building", "Building (side view)", "Gebäude (Seitenansicht)", "side");

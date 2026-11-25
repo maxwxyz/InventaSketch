@@ -242,24 +242,23 @@ namespace InventaSketch.AddIn
             sb.Append("<tab id=\"IskTab\" label=\"InventaSketch\">");
             AppendStructureGroup(sb);
             sb.Append("<group id=\"IskTools\" getImage=\"GetLogoImage\" label=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\">");
-            sb.Append("<button id=\"IskSearch\" label=\"").Append(L(T("Search & insert", "Suchen & einfügen"))).Append("\" size=\"large\" imageMso=\"FindDialog\" onAction=\"OnSearchInsert\" screentip=\"")
+            sb.Append("<button id=\"IskSearch\" showLabel=\"false\" label=\"").Append(L(T("Search & insert", "Suchen & einfügen"))).Append("\" size=\"large\" imageMso=\"FindDialog\" onAction=\"OnSearchInsert\" screentip=\"")
               .Append(X(T("Search & insert (Ctrl+Space)", "Suchen & einfügen (Strg+Leertaste)"))).Append("\" supertip=\"").Append(X(T("Type a name or keyword; with a selection the parts that fit it come first.", "Namen oder Stichwort tippen; mit Auswahl kommen zuerst die passenden Teile."))).Append("\" />");
-            sb.Append("<toggleButton id=\"IskEditor\" label=\"").Append(L(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
+            sb.Append("<toggleButton id=\"IskEditor\" showLabel=\"false\" label=\"").Append(L(T("Editor", "Editor"))).Append("\" size=\"large\" imageMso=\"ControlsGallery\" getPressed=\"GetEditorPressed\" onAction=\"OnEditorToggle\" screentip=\"")
               .Append(X(T("Sidebar editor", "Seitenleisten-Editor"))).Append("\" supertip=\"").Append(X(T("Library, stage and properties in a side panel; changes appear on the slide immediately.", "Bibliothek, Bühne und Eigenschaften in der Seitenleiste; Änderungen erscheinen sofort auf der Folie."))).Append("\" />");
-            sb.Append("<toggleButton id=\"IskSnap\" label=\"").Append(L(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+            sb.Append("<toggleButton id=\"IskSnap\" showLabel=\"false\" label=\"").Append(L(T("Snap", "Einrasten"))).Append("\" imageMso=\"SnapToGrid\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Magnetic snapping: gear mesh, axes, points and alignment. Hold Alt to move freely.", "Magnetisches Einrasten: Zahneingriff, Achsen, Punkte und Fluchtlinien. Alt gedrückt halten für freies Bewegen."))).Append("\" />");
-            sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+            sb.Append("<toggleButton id=\"IskBar\" showLabel=\"false\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
-            sb.Append("<button id=\"IskMonochrome\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
+            sb.Append("<button id=\"IskMonochrome\" showLabel=\"false\" label=\"").Append(L(T("Black & white", "Schwarz-Weiß"))).Append("\" imageMso=\"PictureRecolorBlackAndWhite\" onAction=\"OnMonochrome\" supertip=\"")
               .Append(X(T("Shows the InventaSketch elements of this slide in black and white (patent style): fills, text and highlighters included. Click again to restore the colours.", "Zeigt die InventaSketch-Elemente dieser Folie schwarz-weiß (Patentstil), einschließlich Füllungen, Text und Markierungen. Erneut klicken stellt die Farben wieder her."))).Append("\" />");
             AppendLineGroupMenu(sb);
             AppendAccentMenu(sb);
-            sb.Append("<toggleButton id=\"IskAnchor\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+            sb.Append("<toggleButton id=\"IskAnchor\" showLabel=\"false\" label=\"").Append(L(T("Anchor", "Verankern"))).Append("\" getImage=\"GetAnchorImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Line ends snapped to another element stay attached and follow when it is moved, rotated or resized. Moving the line itself detaches its ends.", "Eingerastete Linienenden bleiben am Element verankert und folgen, wenn es verschoben, gedreht oder skaliert wird. Wird die Linie selbst verschoben, lösen sich ihre Enden."))).Append("\" />");
-            sb.Append("<toggleButton id=\"IskMotion\" label=\"").Append(L(T("Move", "Bewegen"))).Append("\" getImage=\"GetMotionImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
+            sb.Append("<toggleButton id=\"IskMotion\" showLabel=\"false\" label=\"").Append(L(T("Move", "Bewegen"))).Append("\" getImage=\"GetMotionImage\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Motion mode: dragging turns gear trains and linkages the way they can move (gears turn with their ratios, planets orbit, centre distances stay). Off: dragging edits.", "Bewegungsmodus: Ziehen dreht Getriebe und Koppelgetriebe so, wie sie sich bewegen können (Räder drehen mit ihrer Übersetzung, Planeten laufen um, Achsabstände bleiben). Aus: Ziehen bearbeitet."))).Append("\" />");
             AppendToolsMenu(sb);
-            sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About", "Info"))).Append("\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
             sb.Append("</group>");
             if (_registry is not null)
             {
@@ -320,7 +319,7 @@ namespace InventaSketch.AddIn
         /// <summary>"Line weights": the ISO 128 line groups for the InventaSketch elements of the slide.</summary>
         private void AppendLineGroupMenu(StringBuilder sb)
         {
-            sb.Append("<menu id=\"IskLineGroup\" label=\"").Append(L(T("Line weights", "Linienstärken"))).Append("\" imageMso=\"LineStylesGallery\" supertip=\"")
+            sb.Append("<menu id=\"IskLineGroup\" showLabel=\"false\" label=\"").Append(L(T("Line weights", "Linienstärken"))).Append("\" getImage=\"GetLineGroupImage\" supertip=\"")
               .Append(X(T("ISO 128 line group for every InventaSketch element of this slide (thick lines; thin lines are half as wide). New elements on the slide take it too.",
                           "ISO-128-Liniengruppe für alle InventaSketch-Elemente dieser Folie (breite Linien; schmale Linien sind halb so breit). Neue Elemente auf der Folie übernehmen sie."))).Append("\">");
             foreach (var g in Style.LineGroups)
@@ -336,7 +335,7 @@ namespace InventaSketch.AddIn
         /// <summary>"Accent colour": one colour for the coloured parts of every InventaSketch element of the slide.</summary>
         private void AppendAccentMenu(StringBuilder sb)
         {
-            sb.Append("<menu id=\"IskAccent\" label=\"").Append(L(T("Accent colour", "Akzentfarbe"))).Append("\" imageMso=\"ShapeFillColorPicker\" supertip=\"")
+            sb.Append("<menu id=\"IskAccent\" showLabel=\"false\" label=\"").Append(L(T("Accent colour", "Akzentfarbe"))).Append("\" imageMso=\"ShapeFillColorPicker\" supertip=\"")
               .Append(X(T("One colour for the coloured parts of every InventaSketch element of this slide (hue and saturation; pale stays pale, black and grey stay). New elements on the slide take it too.",
                           "Eine Farbe für die farbigen Teile aller InventaSketch-Elemente dieser Folie (Farbton und Sättigung; Helles bleibt hell, Schwarz und Grau bleiben). Neue Elemente auf der Folie übernehmen sie."))).Append("\">");
             sb.Append("<toggleButton id=\"IskAccentNone\" tag=\"none\" label=\"").Append(L(T("Original colours", "Originalfarben"))).Append("\" getPressed=\"GetAccentPressed\" onAction=\"OnAccent\" />");
@@ -350,7 +349,7 @@ namespace InventaSketch.AddIn
             void Item(string id, string label, string? imageMso)
                 => sb.Append("<button id=\"").Append(id).Append("\" label=\"").Append(L(label)).Append('"')
                      .Append(imageMso is null ? "" : " imageMso=\"" + imageMso + "\"").Append(" onAction=\"OnToolsMenu\" />");
-            sb.Append("<menu id=\"IskToolsMenu\" label=\"").Append(L(T("Extras", "Extras"))).Append("\" getImage=\"GetToolsMenuImage\" itemSize=\"normal\">");
+            sb.Append("<menu id=\"IskToolsMenu\" showLabel=\"false\" label=\"").Append(L(T("Extras", "Extras"))).Append("\" getImage=\"GetToolsMenuImage\" itemSize=\"normal\">");
             Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
             Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
             sb.Append("<menu id=\"IskMenuLanguage\" label=\"").Append(L(T("Proofing language", "Korrektursprache"))).Append("\" imageMso=\"SetLanguage\">");
@@ -364,8 +363,15 @@ namespace InventaSketch.AddIn
             Item("IskMenuSave", T("Save slides \u2026", "Folien speichern \u2026"), "FileSaveAs");
             sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
             Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
-            Item("IskMenuModules", T("Show and hide modules \u2026", "Module ein- und ausblenden \u2026"), null);
+            // "About" at the end of the menu (2026-11-25; it was a button of the tools group).
+            sb.Append("<menuSeparator id=\"IskMenuSep3\" />");
+            sb.Append("<button id=\"IskAbout\" label=\"").Append(L(T("About InventaSketch", "Info zu InventaSketch"))).Append("\" getImage=\"GetLogoImage\" onAction=\"OnAbout\" />");
             sb.Append("</menu>");
+            // Which modules the ribbon and the library show: a button of its own (it was hidden in this menu).
+            sb.Append("<button id=\"IskMenuModules\" showLabel=\"false\" label=\"").Append(L(T("Modules", "Module"))).Append("\" imageMso=\"ApplicationOptionsDialog\" onAction=\"OnToolsMenu\" screentip=\"")
+              .Append(X(T("Modules", "Module"))).Append("\" supertip=\"")
+              .Append(X(T("Choose which modules the ribbon and the library show (for example only mechanics and annotation).",
+                          "Ausw\u00e4hlen, welche Module Men\u00fcband und Bibliothek zeigen (zum Beispiel nur Mechanik und Beschriftung)."))).Append("\" />");
         }
 
         /// <summary>
@@ -580,7 +586,8 @@ namespace InventaSketch.AddIn
         {
             sb.Append("<group id=\"IskStructure\" label=\"").Append(L(T("Structure", "Struktur"))).Append("\" imageMso=\"SlideNewGallery\">");
             sb.Append("<box id=\"IskBoxStructure\" boxStyle=\"vertical\">");
-            sb.Append("<control idMso=\"SlideNewGallery\" /><control idMso=\"PasteMenu\" /><control idMso=\"FormatPainter\" />");
+            // Pictograms only (names in the screentips), like the Text and Layout groups.
+            sb.Append("<control idMso=\"SlideNewGallery\" showLabel=\"false\" /><control idMso=\"PasteMenu\" showLabel=\"false\" /><control idMso=\"FormatPainter\" showLabel=\"false\" />");
             sb.Append("</box></group>");
         }
 
@@ -592,7 +599,8 @@ namespace InventaSketch.AddIn
         private void AppendFormattingGroups(StringBuilder sb)
         {
             sb.Append("<group id=\"IskColor\" label=\"").Append(L(T("Colour", "Farbe"))).Append("\" imageMso=\"ShapeFillColorPicker\">");
-            sb.Append("<box id=\"IskBoxColor\" boxStyle=\"vertical\"><control idMso=\"FontColorPicker\" /><control idMso=\"ShapeFillColorPicker\" /><control idMso=\"ShapeOutlineColorPicker\" /></box>");
+            // Pictograms only (names in the screentips), like the Text and Layout groups: the group stays one column wide.
+            sb.Append("<box id=\"IskBoxColor\" boxStyle=\"vertical\"><control idMso=\"FontColorPicker\" showLabel=\"false\" /><control idMso=\"ShapeFillColorPicker\" showLabel=\"false\" /><control idMso=\"ShapeOutlineColorPicker\" showLabel=\"false\" /></box>");
             sb.Append("</group>");
 
             sb.Append("<group id=\"IskText\" label=\"").Append(L(T("Text", "Text"))).Append("\" imageMso=\"Font\">");
@@ -812,6 +820,27 @@ namespace InventaSketch.AddIn
         }
 
         /// <summary>Ribbon image of the motion toggle (gear with a turning arrow) in the Office theme ink.</summary>
+        /// <summary>"Line weights": three lines of growing width (thin, medium, thick), drawn for the theme.</summary>
+        public object? GetLineGroupImage(Office.IRibbonControl control)
+        {
+            try
+            {
+                var k = DeviceScale();
+                var size = (int)Math.Round(16 * k);
+                using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+                using (var g = Graphics.FromImage(bmp))
+                {
+                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    var ink = OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
+                    foreach (var (y, w) in new[] { (3.5f, 1f), (8f, 2f), (13f, 3.2f) })
+                        using (var pen = new Pen(ink, (float)(w * k)) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round })
+                            g.DrawLine(pen, (float)(2 * k), (float)(y * k), (float)(14 * k), (float)(y * k));
+                }
+                return PictureConverter.ToPicture(bmp);
+            }
+            catch (Exception ex) { Log.Error("GetLineGroupImage", ex); return null; }
+        }
+
         public object? GetMotionImage(Office.IRibbonControl control)
         {
             try
