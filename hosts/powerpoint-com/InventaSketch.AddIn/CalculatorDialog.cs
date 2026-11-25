@@ -33,13 +33,14 @@ namespace InventaSketch.AddIn
         /// <summary>Shows the calculator with <paramref name="text"/> in the input line (the value card's "Calculator …": the chosen value).</summary>
         public static void ShowCalculator(Lang lang, string? text)
         {
-            if (_open is not { IsDisposed: false }) { _open = new CalculatorDialog(lang); _open.Show(); }
-            else _open.Activate();
+            var open = _open is { IsDisposed: false } existing ? existing : null;
+            if (open is null) { open = _open = new CalculatorDialog(lang); open.Show(); }
+            else open.Activate();
             if (!string.IsNullOrEmpty(text))
             {
-                _open._input.Text = text;
-                _open._input.SelectionStart = _open._input.Text.Length;
-                _open._input.Focus();
+                open._input.Text = text;
+                open._input.SelectionStart = open._input.Text.Length;
+                open._input.Focus();
             }
         }
 

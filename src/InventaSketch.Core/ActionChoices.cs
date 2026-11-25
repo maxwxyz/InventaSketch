@@ -21,6 +21,20 @@ namespace InventaSketch.Core
         /// Hosts show "Label ▸" (no current value) and put such menus with the element's commands, not with its style.
         /// </summary>
         public bool IsMenu { get; init; }
+
+        /// <summary>
+        /// The closed dropdown shows the current option's name ("Sine ▾") rather than its picture; the open list keeps the
+        /// pictures. For choices whose current picture would repeat a neighbouring choice's (the fitted function and the
+        /// smoothing of a curve both show the current curve, like its shape).
+        /// </summary>
+        public bool LabelInBar { get; init; }
+
+        /// <summary>
+        /// Pictogram of the choice itself (an <see cref="IconIds"/> id) for the closed dropdown instead of the current option's
+        /// picture: "Detail" (a line with its points) and "Smoothing" of a sketched curve, whose option pictures would look
+        /// like the curve-shape button next to them. The open list keeps the option pictures.
+        /// </summary>
+        public string? BarIcon { get; init; }
     }
 
     /// <summary>Building and grouping choice options (<see cref="ActionChoice"/>).</summary>

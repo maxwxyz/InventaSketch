@@ -210,6 +210,10 @@ jedes seiner Teile:
   Klappliste zeigen, ihn in `ParamKeys` nennt (eine Stelle je Auswahl), und dass keine zwei aktiven Aktionen eines
   Elements oder Teils denselben Parameter außerhalb einer Auswahl auf verschiedene feste Werte setzen (das
   Radio-Muster: getrennte Knöpfe für eine Klappliste).
+  Würde das Bild der aktuellen Möglichkeit das eines Nachbarknopfs wiederholen (Ausgleichsfunktion, Glättung und
+  Detailgrad einer skizzierten Kurve zeigen alle die aktuelle Kurve, wie der Kurvenform-Knopf), zeigt die geschlossene
+  Klappliste das eigene Piktogramm der Auswahl (`ActionChoice.BarIcon`: Glätten, Linie mit ihren Punkten) oder den
+  Namen der aktuellen Möglichkeit (`LabelInBar`: „Sinus ▾“); die offene Liste behält die Bilder.
 - Leiste: ein Klapplisten-Knopf je Auswahl mit dem Piktogramm oder Bild der aktuellen Möglichkeit (sonst einem kurzen
   Text) und einem Pfeil; ein Klick öffnet die Liste aller Möglichkeiten mit Piktogramm oder Bild und Bezeichnung, die
   aktuelle markiert (`FloatingBar.SetDropdown`, dasselbe Aussehen wie die Auswahlen des Elements). Teilauswahlen haben

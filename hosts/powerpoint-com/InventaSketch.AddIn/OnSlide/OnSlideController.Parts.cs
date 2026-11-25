@@ -110,7 +110,7 @@ namespace InventaSketch.AddIn.OnSlide
             var cur = c.CurrentOption;
             var tip = c.Tip + (cur is null ? " …" : ": " + cur.Label) + T(" – click to choose", " – klicken zum Wählen");
             return c.Pictorial
-                ? new BarButton("choice:" + c.Key, "", tip, Active: _barChoice == c.Key) { IconId = cur?.IconId, Icon = cur?.IconId is null ? cur?.Icon : null, Menu = true, Mirror = c.Mirror }
+                ? new BarButton("choice:" + c.Key, "", tip, Active: _barChoice == c.Key) { IconId = c.BarIcon ?? cur?.IconId, Icon = c.BarIcon is null && cur?.IconId is null ? cur?.Icon : null, Menu = true, Mirror = c.Mirror }
                 : new BarButton("choice:" + c.Key, ShortLabel(cur?.Label ?? c.Tip, 16), tip, Active: _barChoice == c.Key) { Menu = true };
         }
 

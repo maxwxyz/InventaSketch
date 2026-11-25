@@ -1775,7 +1775,7 @@ namespace InventaSketch.Engine
                     {
                         Id = "t:" + a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "type", Kind = "type", Active = a.IsActive, Enabled = a.IsEnabled,
                         ParamKeys = a.ParamKeys?.ToList(),
-                        Choice = a.Choice?.Key, ChoiceLabel = a.Choice?.Label.Get(lang), ChoiceMenu = a.Choice?.IsMenu == true, PreviewSvg = PreviewSvg(a),
+                        Choice = a.Choice?.Key, ChoiceLabel = a.Choice?.Label.Get(lang), ChoiceMenu = a.Choice?.IsMenu == true, ChoiceLabelInBar = a.Choice?.LabelInBar == true, ChoiceBarIcon = a.Choice?.BarIcon, PreviewSvg = PreviewSvg(a),
                         Input = a.Input is null ? null : new ActionInputInfo { Label = a.Input.Label.Get(lang), Value = a.Input.Value, Unit = a.Input.Unit },
                     });
             }
@@ -1888,7 +1888,7 @@ namespace InventaSketch.Engine
             {
                 Id = a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "part", Kind = "part", Active = a.IsActive, Enabled = a.IsEnabled,
                 ParamKeys = a.ParamKeys?.ToList(),
-                Choice = a.Choice?.Key, ChoiceLabel = a.Choice?.Label.Get(lang), ChoiceMenu = a.Choice?.IsMenu == true, PreviewSvg = PreviewSvg(a),
+                Choice = a.Choice?.Key, ChoiceLabel = a.Choice?.Label.Get(lang), ChoiceMenu = a.Choice?.IsMenu == true, ChoiceLabelInBar = a.Choice?.LabelInBar == true, ChoiceBarIcon = a.Choice?.BarIcon, PreviewSvg = PreviewSvg(a),
                 Input = a.Input is null ? null : new ActionInputInfo { Label = a.Input.Label.Get(lang), Value = a.Input.Value, Unit = a.Input.Unit },
             }).ToList();
         }

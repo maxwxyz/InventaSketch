@@ -548,7 +548,7 @@ namespace InventaSketch.Modules.Charts
             }
             if (m.Shape == CurveShape.Fitted && m.Fits.Count > 1)
             {
-                var fit = new ActionChoice(FitAction, new I18nText("Fitted function", "Ausgleichsfunktion"));
+                var fit = new ActionChoice(FitAction, new I18nText("Fitted function", "Ausgleichsfunktion")) { LabelInBar = true };
                 foreach (var spec in m.Fits)
                 {
                     var kind = spec.Kind;
@@ -560,7 +560,7 @@ namespace InventaSketch.Modules.Charts
             }
             if (m.Shape == CurveShape.Smoothed)
             {
-                var smoothing = new ActionChoice(SmoothingAction, new I18nText("Smoothing", "Glättung"));
+                var smoothing = new ActionChoice(SmoothingAction, new I18nText("Smoothing", "Glättung")) { BarIcon = IconIds.Smooth };
                 var current = Math.Max(1, Math.Min(3, m.Strength));
                 for (var k = 1; k <= 3; k++)
                 {
@@ -573,7 +573,7 @@ namespace InventaSketch.Modules.Charts
             }
             if (HasDetail(m))
             {
-                var detail = new ActionChoice(DetailAction, new I18nText("Detail", "Detailgrad"));
+                var detail = new ActionChoice(DetailAction, new I18nText("Detail", "Detailgrad")) { BarIcon = IconIds.PointsShow };
                 foreach (var d in Details)
                 {
                     var to = d;
@@ -587,7 +587,7 @@ namespace InventaSketch.Modules.Charts
 
         /// <summary>
         /// The curve of the memo as a small drawing for a dropdown option: the trail's frame scaled into 7 × 4.5 mm (centred at
-        /// 0,0, y down), one thin path as drawn (spline or straight); with <paramref name="dots"/> the stored points as small
+        /// 0,0, y down), one path about as thick as the pictograms beside it, as drawn (spline or straight); with <paramref name="dots"/> the stored points as small
         /// dots; null when the memo gives no curve.
         /// </summary>
         public static IReadOnlyList<Primitive>? Preview(CurveSketchMemo m, bool dots = false)
@@ -603,7 +603,7 @@ namespace InventaSketch.Modules.Charts
             if (page.Count < 2) return null;
             var segs = new List<PathSeg> { PathSeg.Move(page[0]) };
             segs.AddRange(page.Skip(1).Select(PathSeg.Line));
-            var list = new List<Primitive> { new PathPrim(segs, new Style { Stroke = Palette.Ink, StrokeWidth = 0.3, Role = LineRole.Visible }) };
+            var list = new List<Primitive> { new PathPrim(segs, new Style { Stroke = Palette.Ink, StrokeWidth = 0.5, Role = LineRole.Visible }) };
             if (dots)
             {
                 var dot = new Style { Stroke = "none", Fill = Fill.Solid("#1f5fbf"), Role = LineRole.Thin };

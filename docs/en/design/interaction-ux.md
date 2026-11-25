@@ -200,6 +200,10 @@ current one marked – never a cycle button.** It holds for the element and for 
   dropdown names it in `ParamKeys` (one place per choice), and that no two enabled actions of an element or part set
   the same parameter to different fixed values outside a choice (the radio pattern: separate buttons for what is one
   dropdown).
+  When the current option's picture would repeat a neighbouring button's (the fitted function, smoothing and detail of a
+  sketched curve all show the current curve, like the curve-shape button), the closed dropdown shows the choice's own
+  pictogram (`ActionChoice.BarIcon`: smoothing, a line with its points) or the current option's name
+  (`LabelInBar`: "Sine ▾"); the open list keeps the pictures.
 - Bar: one dropdown button per choice, showing the current option's pictogram or picture (else a short text) and a
   caret; a click opens the list of every option with pictogram or picture and label, the current one marked
   (`FloatingBar.SetDropdown`, the same look as the element's choices). Part choices use the key "@p.&lt;choice&gt;",
