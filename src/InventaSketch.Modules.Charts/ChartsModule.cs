@@ -126,13 +126,20 @@ namespace InventaSketch.Modules.Charts
             Add("limits", XyChart.TypeId, "Curve with limit lines", "Kurve mit Grenzlinien", P(("limits", "1.5;5.5")),
                 kw: new[] { "limit", "threshold", "grenzwert", "schwelle", "grenzlinie" });
 
-            // Figures (charts v2 stage 2): principle and technical figures from a JSON specification.
+            // Figures (charts v2 stage 2): principle and technical figures from a JSON specification. The library offers one
+            // neutral figure; the maintainer's three example figures stay resolvable by id (documents, tests) but are not
+            // offered (maintainer 2026-11-25: "take the three example charts out again").
+            Add("figure", FigureChart.TypeId, "Principle figure (stacked panels)", "Prinzipabbildung (gestapelte Bereiche)",
+                P(("spec", FigurePresets.Principle)), new Size2(100, 80), "figure", "principle", "panels", "stacked", "step response",
+                "abbildung", "prinzip", "bereiche", "sprungantwort");
+            var examples = list.Count;
             Add("figure.phases", FigureChart.TypeId, "Phases with rotor temperature (technical figure)", "Phasen mit Rotortemperatur (technische Abbildung)",
                 P(("spec", FigurePresets.Patent)), kw: new[] { "phase", "pre-conditioning", "full load", "time gained", "vorkonditionierung", "volllast", "zeitgewinn", "rotortemperatur" });
             Add("figure.timing", FigureChart.TypeId, "Timing diagram of a decision logic", "Zeitablauf einer Entscheidungslogik",
                 P(("spec", FigurePresets.Timing)), new Size2(100, 110), "timing", "pulse", "t_krit", "decision", "zeitdiagramm", "impuls", "entscheidung", "abtastsignal");
             Add("figure.temperature", FigureChart.TypeId, "Temperature over time with thresholds", "Temperaturverlauf mit Schwellen",
                 P(("spec", FigurePresets.Temperature)), new Size2(110, 75), "temperature", "threshold", "activation", "temperatur", "schwelle", "aktivierung", "aufheizen");
+            for (var i = examples; i < list.Count; i++) list[i] = list[i] with { Alternative = "chart.figure" };
             return list;
         }
     }
