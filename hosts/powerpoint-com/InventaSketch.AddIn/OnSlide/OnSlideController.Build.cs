@@ -36,7 +36,8 @@ namespace InventaSketch.AddIn.OnSlide
             _ports = new List<BuildPort>();
             _hoverPort2 = -1;
             var registry = _registry();
-            var first = unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null && (!o.IsPointGeometry || registry.Type(o.Type)!.LinkageRole(o) == LinkageRole.Link));
+            // Boxes, links of linkages and connection lines (cables, pipes, ducts: their free ends continue, 2026-11-25).
+            var first = unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             if (first is null || unit.Objects.Count() != 1) { _portOwner = null; return; }
             _portOwner = first.Id;
             try
@@ -129,6 +130,8 @@ namespace InventaSketch.AddIn.OnSlide
             PortKind.Pin => T("Add a planet on this pin", "Planet auf diesen Bolzen setzen"),
             PortKind.Bevel => T("Add a mating bevel gear here", "Gegen-Kegelrad hier anfügen"),
             PortKind.Mount => T("Add a tool here, facing along the flange", "Werkzeug hier anbauen, ausgerichtet am Flansch"),
+            PortKind.Connect => T("Connect a line or the next element here", "Leitung oder nächstes Element hier anschließen"),
+            PortKind.LineEnd => T("Continue the line or connect an element", "Leitung fortsetzen oder Element anschließen"),
             _ => StretchablePort(p)
                 ? T("Add at the shaft end (click) · lengthen the shaft (drag)", "Am Wellenende anfügen (Klick) · Welle verlängern (ziehen)")
                 : T("Add at the shaft end", "Am Wellenende anfügen"),
@@ -255,6 +258,11 @@ namespace InventaSketch.AddIn.OnSlide
             var full = SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
             var port = Building.Ports(registry, full, owner.Id, lang).FirstOrDefault(p => p.Id == parts[1]);
             if (port is null) return;
+            if (port.Kind is PortKind.Connect or PortKind.LineEnd)
+            {
+                ConnectCommand(slide, unit, full, owner, port, item);
+                return;
+            }
             var placed = Building.Place(registry, full, owner.Id, port, item, lang);
             if (placed is null) return;
             _app.StartNewUndoEntry();
@@ -268,6 +276,29 @@ namespace InventaSketch.AddIn.OnSlide
             SketchUnits.RedrawDependents(slide, registry, lang, Array.Empty<SketchDocument>(), new[] { doc });
             SketchUnits.All(slide).FirstOrDefault(u => u.Objects.Any(o => o.Id == placed.Id))?.Shape.Select(Office.MsoTriState.msoTrue);
             Log.Info($"Docked {item.Id} at {port.Id} of {owner.Type}");
+        }
+
+        /// <summary>
+        /// "+" at a connection port or a line end (<see cref="Building.Apply"/>): the connecting line docked on the port, or
+        /// the element together with its connecting line, or the line extended by a segment, or the element docked on the
+        /// line end. New objects become units of their own (docked across units), the selected unit is updated in place;
+        /// one undo step, the built part is selected.
+        /// </summary>
+        private void ConnectCommand(PowerPoint.Slide slide, SketchUnit unit, SketchDocument full, SketchObject owner, BuildPort port, LibraryItem item)
+        {
+            var registry = _registry();
+            var lang = _lang();
+            var built = Building.Apply(registry, full, owner.Id, port, item, lang);
+            if (built is null) return;
+            _app.StartNewUndoEntry();
+            var changed = unit.Objects.Where(o => built.Doc.Get(o.Id) is { } now && !ReferenceEquals(now, o)).Select(o => o.Id).ToList();
+            if (changed.Count > 0)
+                SketchUnits.Replace(slide, unit, Edits.Update(unit.Doc, changed, o => built.Doc.Get(o.Id) ?? o), registry, lang);
+            var added = built.Doc.Objects.Values.Where(o => full.Get(o.Id) is null).Select(SingleUnitDoc).ToList();
+            foreach (var doc in added) SketchUnits.Draw(slide, registry, doc, lang);
+            SketchUnits.RedrawDependents(slide, registry, lang, Array.Empty<SketchDocument>(), added.ToArray());
+            SketchUnits.All(slide).FirstOrDefault(u => u.Objects.Any(o => o.Id == built.SelectId))?.Shape.Select(Office.MsoTriState.msoTrue);
+            Log.Info($"Connected {item.Id} at {port.Id} ({port.Kind}) of {owner.Type}: {added.Count} new, {changed.Count} changed");
         }
 
         /// <summary>
