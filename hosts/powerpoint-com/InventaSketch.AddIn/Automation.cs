@@ -168,6 +168,20 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Chart from a picture file onto the current slide (UI tests); returns the note shown to the user.</summary>
+        public string ChartFromPicture(string path)
+        {
+            try
+            {
+                return _connect.ChartFromPictureFile(path) ?? "";
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.ChartFromPicture " + path, ex);
+                return "error: " + ex.Message;
+            }
+        }
+
         /// <summary>Part key of the InventaSketch unit shapeName at the slide point (xPt, yPt) in points (charts v2), "" if none.</summary>
         public string PartAt(string shapeName, double xPt, double yPt)
         {

@@ -72,6 +72,12 @@ Folie passt; sonst wird sie eingepasst. Bögen und Kurven werden zu Polylinien m
 Linienarten, Füllungen, Schraffuren, Blöcke und Bemaßungen werden nicht importiert. Derselbe Befehl liest CSV-Tabellen
 in Diagramme und GeoJSON/GPX als Kartenrouten.
 
+Diagramme aus Bildern (25.11.2026, PowerPoint): Prüfen ▸ „Diagramm aus Bild …“ nimmt das Bild aus der Zwischenablage
+(Bildschirmfoto, kopiertes Bild), sonst fragt es nach einer Bilddatei (PNG, JPG, BMP, GIF; auch der Importdialog nimmt
+Bilder an). Balken und Säulen werden ein Säulen- oder Balkendiagramm, Kurven ein XY-Diagramm mit den nachgezeichneten
+Daten; die Werte kommen aus den Achszahlen, wenn sie lesbar sind, sonst ist der größte Balken 100 (Kurven:
+Bildeinheiten) und ein Hinweis sagt das – Daten oder Achsbereiche danach anpassen.
+
 ## 6b. Export für LaTeX und Vektorprogramme (25.11.2026)
 
 „Daten exportieren“ (COM: Überprüfen ▸ Daten exportieren; Web: Export in der oberen Leiste; LibreOffice: Exportbefehl)

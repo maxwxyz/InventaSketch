@@ -419,6 +419,9 @@ namespace InventaSketch.AddIn
             Button("IskMenuImport", T("Import \u2026", "Importieren \u2026"), "ImportTextFile", false,
                 T("CSV/TSV into the selected chart (or a new one), GeoJSON/GPX as map routes and markers, SVG/DXF drawings as editable shapes.",
                   "CSV/TSV in das ausgew\u00e4hlte Diagramm (oder ein neues), GeoJSON/GPX als Kartenrouten und Marker, SVG-/DXF-Zeichnungen als bearbeitbare Formen."));
+            Button("IskChartFromPicture", T("Chart from picture \u2026", "Diagramm aus Bild \u2026"), "PictureInsertFromFile", false,
+                T("Turns a picture of a chart (from the clipboard, else a file: PNG, JPG, BMP, GIF) into an editable chart: bars and columns, or traced curves; values from the axis labels when they can be read.",
+                  "Macht aus dem Bild eines Diagramms (aus der Zwischenablage, sonst einer Datei: PNG, JPG, BMP, GIF) ein bearbeitbares Diagramm: Balken und S\u00e4ulen oder nachgezeichnete Kurven; Werte aus der Achsbeschriftung, wenn sie lesbar ist."));
             sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" invalidateContentOnDrop=\"true\" supertip=\"")
               .Append(X(T("Bill of materials, connection graph, netlist or reference sign list of the selection or the slide.",
                           "St\u00fcckliste, Verbindungsgraph, Netzliste oder Bezugszeichenliste der Auswahl oder der Folie."))).Append("\" />");
@@ -450,6 +453,7 @@ namespace InventaSketch.AddIn
                     case "IskMenuSave": Tools.SaveSlides(_app, german); break;
                     case "IskMenuPlanScale": SetPlanScale(); break;
                     case "IskMenuImport": ImportDataFile(); break;
+                    case "IskChartFromPicture": ChartFromPictureCommand(); break;
                     case "IskMenuCompare":
                         if (CompareWithPrevious() is { } note) MessageBox.Show(note, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         break;
@@ -1253,12 +1257,19 @@ namespace InventaSketch.AddIn
             using var dialog = new OpenFileDialog
             {
                 Title = T("Import", "Importieren"),
-                Filter = T("All importable files", "Alle importierbaren Dateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf|"
+                Filter = T("All importable files", "Alle importierbaren Dateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf;*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx;*.svg;*.dxf;*.png;*.jpg;*.jpeg;*.bmp;*.gif|"
+                    + T("Chart pictures", "Diagrammbilder") + " (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|"
                     + T("Drawings", "Zeichnungen") + " (*.svg;*.dxf)|*.svg;*.dxf|"
                     + T("Data files", "Datendateien") + " (*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx)|*.csv;*.tsv;*.txt;*.geojson;*.json;*.gpx|"
                     + T("All files", "Alle Dateien") + " (*.*)|*.*",
             };
             if (dialog.ShowDialog() != DialogResult.OK) return;
+            if (IsPictureFile(dialog.FileName))
+            {
+                var note = ChartFromPictureFile(dialog.FileName);
+                if (note is not null) MessageBox.Show(note, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
             var message = ImportData(dialog.FileName, System.IO.File.ReadAllText(dialog.FileName));
             if (message is not null) MessageBox.Show(message, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
@@ -1330,6 +1341,82 @@ namespace InventaSketch.AddIn
             }
             Log.Info("Imported chart data from " + System.IO.Path.GetFileName(fileName));
             return null;
+        }
+
+        private static bool IsPictureFile(string path)
+            => new[] { ".png", ".jpg", ".jpeg", ".bmp", ".gif" }.Contains(System.IO.Path.GetExtension(path).ToLowerInvariant());
+
+        /// <summary>"Chart from picture …": the clipboard picture, else a picture file chosen by the user.</summary>
+        private void ChartFromPictureCommand()
+        {
+            try
+            {
+                if (Clipboard.ContainsImage() && Clipboard.GetImage() is Bitmap clip)
+                {
+                    using (clip) ShowNote(ChartFromPicture(clip, T("clipboard", "Zwischenablage")));
+                    return;
+                }
+                using var dialog = new OpenFileDialog
+                {
+                    Title = T("Chart from picture", "Diagramm aus Bild"),
+                    Filter = T("Pictures", "Bilder") + " (*.png;*.jpg;*.jpeg;*.bmp;*.gif)|*.png;*.jpg;*.jpeg;*.bmp;*.gif|" + T("All files", "Alle Dateien") + " (*.*)|*.*",
+                };
+                if (dialog.ShowDialog() != DialogResult.OK) return;
+                ShowNote(ChartFromPictureFile(dialog.FileName));
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Chart from picture", ex);
+            }
+
+            static void ShowNote(string? note)
+            {
+                if (note is not null) MessageBox.Show(note, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
+
+        /// <summary>A picture file as a chart on the current slide (automation and the import dialog); returns the note for the user.</summary>
+        internal string? ChartFromPictureFile(string path)
+        {
+            using var bmp = new Bitmap(path);
+            return ChartFromPicture(bmp, System.IO.Path.GetFileName(path));
+        }
+
+        /// <summary>
+        /// Charts v2 stage 5: the picture becomes an editable chart in the middle of the slide (one undo step, selected);
+        /// returns what the user should know (what was read, whether values come from the axis labels).
+        /// </summary>
+        private string? ChartFromPicture(Bitmap picture, string source)
+        {
+            if (_app is null || _registry is null || CurrentSlide(_app) is not PowerPoint.Slide slide) return T("Please select a slide first.", "Bitte zuerst eine Folie ausw\u00e4hlen.");
+            var setup = _app.ActivePresentation.PageSetup;
+            var pageMm = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
+            var image = ToPixelImage(picture);
+            var result = InventaSketch.Modules.Charts.Scanning.ChartFromPicture.Build(_registry, image, new Vec2(pageMm.W / 2, pageMm.H / 2), _lang);
+            Log.Info($"Chart from picture ({source}, {picture.Width}x{picture.Height}): {(result.Chart is null ? "nothing found" : result.Chart.Type + ", " + result.Series + " series")}");
+            if (result.Chart is null) return result.Message.Get(_lang);
+            var doc = SketchDocument.Create(pageMm);
+            doc = Edits.Add(doc, doc.Pages[0].Id, result.Chart);
+            _app.StartNewUndoEntry();
+            OnSlide.SketchUnits.Draw(slide, _registry, doc, _lang)?.Select(Office.MsoTriState.msoTrue);
+            return result.Message.Get(_lang);
+        }
+
+        /// <summary>A bitmap as RGBA pixels for the scanner.</summary>
+        internal static InventaSketch.Modules.Charts.Scanning.PixelImage ToPixelImage(Bitmap source)
+        {
+            using var bmp = new Bitmap(source.Width, source.Height, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            using (var g = Graphics.FromImage(bmp)) { g.Clear(Color.White); g.DrawImage(source, 0, 0, source.Width, source.Height); }
+            var rect = new Rectangle(0, 0, bmp.Width, bmp.Height);
+            var data = bmp.LockBits(rect, System.Drawing.Imaging.ImageLockMode.ReadOnly, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+            try
+            {
+                var argb = new int[bmp.Width * bmp.Height];
+                for (var y = 0; y < bmp.Height; y++)
+                    System.Runtime.InteropServices.Marshal.Copy(data.Scan0 + y * data.Stride, argb, y * bmp.Width, bmp.Width);
+                return InventaSketch.Modules.Charts.Scanning.PixelImage.FromArgb(bmp.Width, bmp.Height, argb);
+            }
+            finally { bmp.UnlockBits(data); }
         }
 
         /// <summary>Tag of the comparison marks (native shapes, not InventaSketch units).</summary>

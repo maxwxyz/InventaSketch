@@ -66,6 +66,12 @@ as one element. A drawing with units keeps its real size when it fits on the sli
 curves become polylines whose points can be moved. Colours, line types, fills, hatches, blocks and dimensions are not
 imported. The same command reads CSV tables into charts and GeoJSON/GPX into map routes.
 
+Charts from pictures (2026-11-25, PowerPoint): Review ▸ "Chart from picture …" takes the picture in the clipboard (a
+screenshot, a copied image), else asks for a picture file (PNG, JPG, BMP, GIF; the Import dialog accepts pictures too).
+Bars and columns become a column or bar chart, curves an XY chart with the traced data; the values come from the axis
+numbers when they can be read, otherwise the largest bar is 100 (curves: picture units) and a note says so – edit the
+data or the axis ranges afterwards.
+
 ## 6b. Exporting for LaTeX and vector programs (2026-11-25)
 
 "Export data" (COM: Review ▸ Export data; web: export in the top bar; LibreOffice: export command) offers
