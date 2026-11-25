@@ -129,6 +129,10 @@ namespace InventaSketch.Modules.Energy
 
         public override IReadOnlyList<string> Companions => new[] { "energy.grid.busbar", "energy.grid.breaker", "energy.grid.transformer", "energy.grid.meter" };
 
+        /// <summary>Data lines carry data, power cables DC or AC (build "+" at their free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line)
+            => line.S(Kind) == "data" ? PortMedia.Data : line.B(Dc) ? PortMedia.ElectricDc : PortMedia.ElectricAc;
+
         public static string ColorOf(SketchObject o)
         {
             if (o.S(Kind) == "data") return "#455a64";
@@ -211,6 +215,16 @@ namespace InventaSketch.Modules.Energy
         };
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { CarrierParam, Label, ShowCode, Hops };
+
+        /// <summary>The carrier is the medium (heat, cooling, natural gas, hydrogen, water).</summary>
+        public override string? LineMedium(SketchObject line) => Carriers.Of(Carriers.Pipes, line.S(CarrierParam)).Value switch
+        {
+            "heat" => PortMedia.Heat,
+            "cooling" => PortMedia.Cooling,
+            "gas" => PortMedia.Gas,
+            "water" => PortMedia.Water,
+            _ => PortMedia.Hydrogen,
+        };
         public override IReadOnlyList<string> Companions => new[] { "energy.h2.electrolyser", "energy.h2.tank", "energy.h2.fuelcell", "energy.heat.storage" };
 
         protected override IReadOnlyList<Primitive> RenderPath(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)

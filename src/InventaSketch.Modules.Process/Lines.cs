@@ -212,6 +212,8 @@ namespace InventaSketch.Modules.Process
             "prozessleitung", "rohrleitung", "fließlinie", "hauptfließlinie", "nebenfließlinie", "begleitheizung", "r&i", "fließschema",
         };
         public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Arrow, LineNo, Routing.Param(), Hops };
+        /// <summary>Process piping (build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.Process;
         public override IReadOnlyList<string> Companions => new[]
         {
             "process.valve.manual", "process.valve.control", "process.valve.check", "process.pump.centrifugal", "process.instrument.bubble",
@@ -299,6 +301,8 @@ namespace InventaSketch.Modules.Process
             "signalleitung", "wirkungslinie", "wirklinie", "messleitung", "elektrisches signal", "pneumatisches signal", "kapillare", "datenleitung",
         };
         public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Routing.Param() };
+        /// <summary>Instrument signals (build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.Instrument;
         public override IReadOnlyList<string> Companions => new[] { Instruments.BubbleId, "process.valve.control", "process.instrument.orifice" };
 
         public static Style StyleOf(string kind) => kind == "electric" ? S.Thin with { Dash = DashStyle.Dash } : S.Thin;

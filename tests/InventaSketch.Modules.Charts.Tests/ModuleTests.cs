@@ -63,7 +63,7 @@ namespace InventaSketch.Modules.Charts.Tests
     {
         public static readonly string[] ExpectedTypes =
         {
-            "chart.xy", "chart.bar", "chart.axes", "chart.torque", "chart.efficiency", "chart.pump", "chart.bode", "chart.band",
+            "chart.xy", "chart.bar", "chart.axes", "chart.torque", "chart.efficiency", "chart.pump", "chart.bode", "chart.band", "chart.figure",
         };
 
         [Fact]
@@ -128,7 +128,7 @@ namespace InventaSketch.Modules.Charts.Tests
             foreach (var id in new[]
             {
                 "chart.line", "chart.line.multi", "chart.scatter", "chart.step", "chart.column", "chart.column.grouped", "chart.column.stacked",
-                "chart.bar.horizontal", "chart.axes", "chart.torque", "chart.efficiency", "chart.pump", "chart.fan", "chart.bode", "chart.band",
+                "chart.bar.horizontal", "chart.axes", "chart.torque", "chart.efficiency", "chart.pump", "chart.fan", "chart.bode", "chart.band", "chart.figure.phases",
                 "chart.line.logx", "chart.limits",
             })
                 Assert.NotNull(r.Item(id));

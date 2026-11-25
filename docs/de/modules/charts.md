@@ -24,6 +24,7 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.pump` | Pump / fan curve / Pumpen-/Ventilatorkennlinie | `kind` Pumpe / Ventilator, `h0` (Nullförderhöhe bzw. Nulldruck), `qmax`, `hstat` (statischer Anteil der Anlage), `qop` (Förderstrom im Betriebspunkt), `system` (Anlagenkennlinie) |
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` Tief- / Hochpass 1. oder 2. Ordnung, `fc` (Hz), `zeta` (Dämpfungsgrad, 2. Ordnung), `gain` (dB), `show` Betrag und Phase / Betrag / Phase, `marker` (Linie bei der Eckfrequenz), `xrange`, `data` (Messdaten `f;dB;°`, ersetzen das System) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (Sollkurve, siehe unten), `tol` + `tolmode` Prozent / absolut, `smooth`, `limits`, `patterns`; weitere Datenblöcke werden als Messreihen mit Markern gezeichnet |
+| `chart.figure` | Figure (principle, patent) / Prinzip- und Patentbild | `spec` (JSON-Spezifikation, siehe [Bild](#bild-diagramme-v2-stufe-2)); gestapelte Panels, Prinzip- oder Datenachsen, Wertlinien, Markierungen, Flächen, Anmerkungen, Bezugszeichen |
 
 Gemeinsame Parameter (wo sinnvoll): `title`, `xlabel`, `xunit`, `ylabel`, `yunit` (leer = zweisprachige Vorgabe
 des Typs, ausdrücklich leere Beschriftung blendet den Achsentitel aus), `xscale` / `yscale` linear / logarithmisch,
@@ -38,12 +39,12 @@ für Skizzen und ist keine Messung. Die Pumpenkennlinie ist H(Q) = H₀ (1 − (
 durch den statischen Anteil und den Betriebspunkt. Das Bode-Diagramm wird aus den Standard-Übertragungsfunktionen von
 Tief- und Hochpässen 1. und 2. Ordnung berechnet.
 
-Die Bibliothek enthält 25 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
+Die Bibliothek enthält 28 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`) in zwei Kategorien: Datendiagramme sowie Kennlinien &
-Kennfelder.
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in drei Kategorien: Datendiagramme, Kennlinien &
+Kennfelder sowie Prinzip- und Patentbilder.
 
 ## Datenformat
 
@@ -164,6 +165,79 @@ hängen die Panelnummer an: `axis.y.2`, `label.y.2`.
 - Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (siehe Entwurf
   [Diagramme v2](../design/charts-v2.md)).
 
+## Bild (Diagramme v2, Stufe 2)
+
+Der Diagrammtyp `chart.figure` zeichnet Prinzip- und Patentbilder aus einer **versionierten JSON-Spezifikation** im
+Parameter `spec` (ohne Parameter eingefügt zeigt er das Patentbild unten). Kategorie „Prinzip- und Patentbilder“ mit
+drei Vorlagen, den Prüfbildern aus dem [Entwurf Diagramme v2](../design/charts-v2.md):
+
+| Id | Name | Zeigt |
+|---|---|---|
+| `chart.figure.phases` | Phasen mit Rotortemperatur (Patentbild) | Leistung P mit den Phasen „Vorkonditionierung“ und „Volllastphase“ (Phasenlinien t0, t1 durch beide Panels); Rotortemperatur ohne (gestrichelt) und mit Vorkonditionierung (durchgezogen) bis zur Grenztemperatur, Fläche dazwischen schraffiert, Zeitgewinn als Maßpfeil mit Hilfslinien, Bezugszeichen 40–46; Prinzipachsen, schwarz-weiß |
+| `chart.figure.timing` | Zeitablauf einer Entscheidungslogik | Titel „Fig. 2 …“; drei Panels: Reifemasse gegen eine gestrichelte Grenze (Bezugszeichen 64 an der Achse, 63 an der Kurve), Wärmebedarf mit Buckel und gestrichelte Antriebsverlustwärme, nur dort schraffiert, wo der Bedarf höher ist (65–67), Abtastsignal mit durchgezogenem (68) und gestricheltem Impuls (69); t_krit als gestrichelte Markierung durch alle Panels und als Zeitpfeil unter dem ersten Panel; gedrehte Achsentitel |
+| `chart.figure.temperature` | Temperaturverlauf mit Schwellen | Datenachsen 0–200 s / 0–220 °C, nur waagerechtes gepunktetes Gitter, vier gestrichelte Bezugslinien mit Beschriftung, eine schnelle und eine langsame Kurve 1. Ordnung mit je einer Lücke und Beschriftung in der Lücke, offene Kreismarker „31 s“ / „77 s“, ein senkrechter Maßpfeil „35 K“, eine Bildunterschrift; farbig |
+
+Die Kurven der Vorlagen sind qualitativ (Verzögerungsglieder 1. Ordnung, ein Gauß-Buckel, Rechteckimpulse), keine
+Messdaten.
+
+### Spezifikation
+
+Aufbau und Beispiel wie im englischen Dokument ([Figure](../../en/modules/charts.md#figure-charts-v2-stage-2));
+die Schlüssel sind englisch:
+
+- **Achsen** (`x` und jedes Panel): `mode` `data` (Teilstriche, Beschriftung, Gitter) oder `principle` (Achspfeil,
+  keine Teilstriche, nur die benannten `marks`, gezeichnet wie Skalenbeschriftungen), `scale` `linear` / `log`, `min` /
+  `max` (Prinzipachsen standardmäßig 0 … Datenmaximum), `label` und `unit` (Titel „Größe in Einheit“ / „label (unit)“),
+  `grid` (Standard: an bei Datenachsen). Die x-Achse ist gemeinsam; die y-Achsentitel der Panels sind gedreht. Panels
+  liegen von oben nach unten, `share` ist die relative Höhe.
+- **Kurven** (`series`): Punkte als Listen `x` / `y` oder `points` (`[[x, y], …]`); `null`, Text oder fehlende Werte
+  ergeben eine Lücke. `line` solid / dash / dot / dashdot / longdash / dashdotdot; ohne Strichart und Farbe nutzt das
+  Farbschema durchgezogene Linien in den Reihenfarben, Schwarz-Weiß (`scheme: mono`) schwarze Linien mit den
+  Strichmustern der Reihen. `label` steht am Kurvenende oder bei `labelAt` (`above`, `below`, `on` – in der Lücke auf
+  weißem Grund –, `left`, `right`); mit Legende (`legend` auto / inside / right) gehen die Beschriftungen in die Legende.
+- **Bezüge** (`refs`): `h` Wertlinie (Panel, `-1` = alle Panels; Beschriftung rechts, links, unten oder `end` neben dem
+  Plot), `v` senkrechte Markierung (standardmäßig durch alle Panels, sonst `panel`; Beschriftung oben oder `axis` unter
+  der x-Achse), `point` Kreismarker auf Kurve `series` bei `x` (`fill` open / filled, Beschriftung rechts, links, oben,
+  unten).
+- **Flächen** (`regions`): `between` zwischen Kurve `a` und `b` (mit `above` nur dort, wo `a` über `b` liegt: Schnitt-
+  punkte werden berechnet, jedes Stück ist ein eigener Teilpfad), `below` unter einer Kurve (bis zum Panelboden oder
+  `base`), `span` zwischen `from` und `to` (ein Panel oder alle). Füllung `hatch` (Standard), `cross`, `solid`
+  (Deckkraft 0,3 in Farbe), `dots` (Füllarten des Kerns).
+- **Anmerkungen** (`notes`): `text`, `arrow` (Text am Pfeilende), `line` (z. B. Hilfslinien), `dim` (Pfeilspitzen an
+  beiden Enden, Text über/unter/links/rechts der Mitte), `numeral` (Bezugszeichen mit Hinweislinie). Punkte sind `x`,
+  `y`, `panel` oder statt `y` `gap` (0 … 1 im Zwischenraum unter dem Panel, z. B. ein Zeitpfeil zwischen zwei Panels).
+- **Bezugszeichen** (`numeral` an Kurven, Bezügen und Flächen, Anmerkungen der Art `numeral`): der Text steht am Ziel
+  plus (`dx`, `dy`) Schrifthöhen mit dünner Hinweislinie; `axis: true` setzt das Bezugszeichen einer Wertlinie an die
+  y-Achse.
+- **Texte** sind eine Zeichenkette oder `{ "en": …, "de": … }`; Zahlen dürfen Zeichenketten mit Dezimalkomma sein
+  (`"2,5"`).
+- **Robustheit**: unbekannte Einträge werden ignoriert, falsche Typen fallen auf Standardwerte zurück; nicht lesbares
+  JSON (oder eine Wurzel, die kein Objekt ist) zeichnet leere Prinzipachsen mit dem Hinweis „Bildspezifikation nicht
+  lesbar (JSON)“. Das Zeichnen wirft nie. Aktionen auf einem solchen Bild werfen eine zweisprachige
+  `FormatException` und lassen den Text unverändert.
+
+### Teile, Anker und Aktionen
+
+Teilschlüssel: `series.k`, `marker.k`, `curvelabel.k`, `ref.k`, `region.k`, `note.k`, `numeral.j` (fortlaufend über
+Kurven, Bezüge, Flächen und Bezugszeichen-Anmerkungen), `paneltitle.i`, `caption`, `title`, `error` und die Teile des
+Rahmens (`axis.x.1`, `axis.y.2`, `label.x`, `axistitle.y.2`, `grid.major` … – Panels ab 1 gezählt wie beim
+Bode-Diagramm). Die Teileliste nennt sie mit ihren Texten („Bezugslinie 3 – Grenztemperatur“, „Bezugszeichen 44“).
+Anker: Plotecken und -mitte, Ursprung und Achsschienen je Panel (`axis.x`, `axis.y`, `axis.x2` …), Datenports
+`s<Reihe>.<Punkt>` und `ref<k>` für Punktmarker.
+
+Elementaktionen: Wertlinie hinzufügen, senkrechte Markierung hinzufügen, zwischen Kurve 1 und 2 schraffieren
+(ausgegraut ohne zwei Kurven in einem Panel), Prinzipachsen (alle Achsen umschalten), Schwarz-Weiß, „Spezifikation
+(JSON)…“ (Eingabe). Teilaktionen: Kurven – Strichart, Marker, geglättete Kurve, Fläche unter der Kurve schraffieren;
+Wertlinien und Markierungen – Strichart bzw. gefüllter Kreis, „Beschriftung…“, entfernen; Flächen – Füllung,
+entfernen; Anmerkungen – „Text…“, entfernen; Achsen – Prinzipachsen, Wertlinie in diesem Panel bzw. senkrechte
+Markierung hinzufügen. Entfernen verschiebt die Indizes späterer Elemente (deren Teil-Aussehen gilt dann für das
+nächste Element).
+
+Hinweise zu den Hosts: alles nativ (Linien, Freihandformen, schraffierte Freihandformen, Text); kein Vektorbild.
+Erweiterungen des Rahmens (additiv): Höhenanteile der Panels, eigene Teilstriche (Marken), Achspfeile und Gitter je
+Panel, Panelabstand, Bildunterschrift, zusätzlicher rechter Rand und Achstexte. Noch nicht: Datentabellen-Editor
+(Portierung von Slidemax `ChartSheet`), Funktionsgeneratoren und Skizzenkurven (Stufe 3), Achsbrüche.
+
 ## Hinweise zu den Hosts
 
 Die gesamte Ausgabe besteht aus nativen Primitiven: eine Freihandform je Reihenlinie (geglättete Kurven als
@@ -172,6 +246,91 @@ Stufe, Grenz- und Hilfslinien, eine Freihandform je Markersatz, Rechtecke für B
 Beschriftungshintergründe, ein geschlossenes Polygon für das Band sowie Text. Die Titel der y-Achsen sind um −90°
 gedreht. Schraffur- und Punktfüllungen nutzen die Füllarten des Kerns. Ein Vektorbild ist nicht nötig. Diagramme
 hängen nicht von Nachbarobjekten ab.
+
+## Diagramme aus Bildern (Bausteine)
+
+Stufe 5 von [Diagramme v2](../design/charts-v2.md): reine Bildanalyse in `src/InventaSketch.Modules.Charts/Scanning`
+auf einem rohen `PixelImage` (Breite, Höhe, RGBA-Bytes; durchsichtige Pixel gelten als weiß). Keine Host-API, keine
+Texterkennung und kein fremder Dienst sind nötig; die Hosts liefern das Bild (Zwischenablage, Datei, Bildschirmfoto)
+und später die Anbindung an die Diagrammtypen. Nichts wirft eine Ausnahme: leere, winzige, weiße oder widersprüchliche
+Bilder ergeben zweisprachige `Warnings`.
+
+- **Balkenscanner** (`BarScanner`, portiert aus dem Diagramm-Scanner von Slidemax): Hintergrund = häufigste Farbe,
+  zusammenhängende Flächen ähnlicher Farbe, dünne lange Stücke sind Achse oder Gitternetz, die Grundlinie ist die
+  Kante, an der die meisten Flächen enden; erkennt Säulen oder Balken, gestapelt (Serien nach Farbe) oder gruppiert,
+  Teile unter der Grundlinie und den Gitterabstand. `BarScanner.Values` macht aus Pixelausdehnungen Zahlen mit einem
+  `BarScale` (Wert der Grundlinie und Wert der größten Säule oder eines Gitterschritts).
+- **Beschriftungen**: `ITextReader` ist die Schnittstelle für eine Texterkennung des Hosts; die Engine bringt
+  `DigitTextReader` mit (portierte Ziffernerkennung aus Slidemax: Ziffern, Trennzeichen, Vorzeichen und Prozent
+  gängiger Schriften per Musterkorrelation, keine Buchstaben). `BarLabelReader` bestimmt den Maßstab aus der
+  Beschriftung der Wertachse (robuste Geradenanpassung, deutsche und englische Schreibweise) oder aus
+  Wertbeschriftungen an den Säulen und liest Kategorienamen. Mit `TextReaderGate` schaltet ein Host eine scheiternde
+  Texterkennung einmalig ab.
+- **Kurvendigitalisierer** (`CurveDigitizer`, neu): findet Zeichenfläche und Achsen (unterste lange waagerechte und
+  linke lange senkrechte graue Linie; weitere lange Linien sind Gitternetz und werden ausgeblendet), gruppiert die
+  Kurvenfarben (jedes Pixel wird als Mischung aus Hintergrund und Kurvenfarbe erklärt, so bleiben Kantenglättung und
+  Unschärfe bei ihrer Kurve), verfolgt jede Farbe Spalte für Spalte (an Kreuzungen behalten beide Kurven ihre
+  Steigung, Lücken von Strichen und Kreuzungen werden überbrückt, Bruchstücke verbunden), verwirft kurze Spuren (Text,
+  Legende), meldet Gruppen kurzer paralleler gerader Spuren als `Hatches` (Schraffur) und schätzt die Strichart
+  durchgezogen / gestrichelt / gepunktet aus den Lücken. Schwarz-Weiß-Bilder ergeben eine Farbe, deren Kurven die
+  Verfolgung trennt.
+- **Kalibrierung**: `DigitizeOptions.XAxis` / `YAxis` (`AxisCalibration`: zwei Pixelpositionen mit bekannten Werten,
+  linear oder logarithmisch) oder, für Achsen ohne Angabe, die von `DigitizeOptions.TextReader` gelesenen
+  Beschriftungen (`CurveLabelCalibration`, logarithmische Achsen werden an 1, 10, 100 … erkannt). Ohne Kalibrierung
+  bleiben die Punkte in Pixeln, mit Warnung.
+- **Ergebnis**: `ScanResult` mit Zeichenfläche, Achsen, Gitterlinien, Reihen (Farbe, Strichart, Pixel- und
+  Datenpunkte), Schraffuren, Kalibrierung und Warnungen. `ScanDataText.FromCurves` schreibt den Datentext für
+  `chart.xy` (Zeilen `x;y`, Leerzeile zwischen Reihen, `#`-Kommentare mit Strichart und Farbe);
+  `ScanDataText.FromBars` schreibt eine Kategorientabelle für `chart.bar`.
+- **Genauigkeit (synthetische Tests)**: sich kreuzende Kurven in zwei Farben innerhalb 0,7 % des y-Bereichs (1,1 % nach
+  3 × 3-Kastenfilter und Rauschen; 98 % der Punkte innerhalb 0,1 %), ein sich kreuzendes schwarzes Paar durchgezogen /
+  gestrichelt innerhalb 0,8 %, eine steile Sigmoidkurve innerhalb 0,2 %, Balken nach Unschärfe innerhalb 1,4 % des
+  größten Werts, Kalibrierung aus gestempelten Ziffern innerhalb 0,8 %.
+- **Grenzen**: keine gedrehten Bilder (Achsen müssen waagerecht und senkrecht sein), gleichfarbige Kurven, die sich
+  sehr flach kreuzen, können vertauscht werden, gefüllte Flächendiagramme werden als „gefüllte Flächen“ gemeldet (dafür
+  den Balkenscanner verwenden), die Ziffernerkennung liest nur Zahlen in Schriften ähnlich den gespeicherten Mustern
+  (eine Texterkennung des Hosts lässt sich einstecken).
+
+## Kurvenfunktionen, Skizzenerkennung und Achsenbrüche (Bausteine)
+
+Diagramme v2, Stufe 3 (25.11.2026): reine, hostunabhängige Bibliotheken im Diagrammmodul; Diagrammtypen und Hosts
+nutzen sie noch nicht (die Einbindung folgt im Figurenmodell).
+
+- **Kurvenfunktionen** (`CurveFunctions`, `CurveSpec`): Konstante, Rampe (linear), Sprung, Rechteckimpuls, Pulsfolge,
+  Sägezahn, Dreieck, Sinus, exponentielle Annäherung (PT1), exponentieller Abfall, Sprungantwort zweiter Ordnung (PT2),
+  Gauß-Glocke und Kreis/Ellipse (geschlossen, parametrisch). Jede Art hat einen zweisprachigen Namen und
+  Parameterdefinitionen (Name, Vorgabe, gültiger Bereich, zweisprachige Bezeichnung; ohne Einheit – sie übernehmen die
+  Einheiten der Achsen; `ToParamDef()` für den Inspektor). Textform, kulturunabhängig: `pt1(y0=20, yinf=160, tau=12)`;
+  Werte auch nach Position (`sine(2, 10)`), Groß-/Kleinschreibung egal, fehlende Parameter erhalten ihre Vorgabe,
+  optionale Verschiebungen (`t0`, `phase`, `offset`) entfallen, solange sie neutral sind, `circle(cx, cy, r)` ergibt
+  eine Ellipse. Ein deutsches Dezimalkomma wird angenommen, wo es eindeutig ist (`tau=1,5` zwischen zwei Ziffern in
+  einem benannten Wert, oder alle Argumente mit `;` getrennt). Fehler werfen `CurveSpecFormatException` (eine
+  `FormatException`) mit englischer und deutscher Meldung. `Sample(xMin, xMax)` liefert exakte Ecken für stückweise
+  lineare Arten (ein Sprung sind zwei Punkte mit gleichem x), einen Stützpunkt am Beginn `t0` von PT1/PT2/Abfall,
+  mindestens 64 Abschnitte je Sinusperiode und ein dichtes Band um eine schmale Gauß-Glocke (höchstens 20 000 Punkte).
+- **Skizzenerkennung** (`SketchFit.Fit(trail, options)`): Eingabe ist die Mausspur in Datenkoordinaten und möglichst
+  der Plotrahmen in Datenkoordinaten (alle Toleranzen beziehen sich darauf und wirken so wie Bildschirmabstände). Die
+  Spur wird nach Bogenlänge neu abgetastet, vereinfacht (Ramer–Douglas–Peucker), auf eine geschlossene Schleife
+  geprüft und mit Konstante, Rampe, Sprung, Rechteckimpuls, Sägezahn, Dreieck, Sinus, PT1, Abfall oder (geschlossen)
+  einer achsparallelen Ellipse angepasst: Eine Rastersuche mit linearen kleinsten Quadraten liefert den Start,
+  Nelder–Mead verfeinert ihn auf einem robusten (Huber), symmetrischen Abstand Spur ↔ Kurve, so dass senkrechte
+  Flanken, Überschwinger und Absetzhaken nicht stören. Unter den Arten, deren Restfehler höchstens 1,25 × den besten
+  + 0,003 beträgt, gewinnt die mit den wenigsten Parametern; angenommen wird sie bis zu einem Restfehler von 2 % des
+  Rahmens. Das Ergebnis enthält Art, Spezifikation, Restfehler, Zuversicht, die vollständige Rangfolge, die
+  vereinfachte Spur und immer eine geglättete Spur (zentripetales Catmull–Rom; die gleichförmige Variante ist die
+  Formel von Slidemax `Smoothed`), die verwendet wird, wenn nichts passt. Alle Schwellen sind benannte Konstanten in
+  `SketchFit`.
+- **Achsenbrüche** (`BrokenAxis`, `BrokenPlot`, `AxisBreaks`, aus Slidemax übernommen und von Säulendiagrammen auf
+  jede x- oder y-Achse mit stetigen Werten verallgemeinert): Wert ↔ Lage mit einem oder mehreren Brüchen (Werte
+  `Lo … Hi` auf eine Lücke in mm gestaucht; Werte im Bruch liegen linear in der Lücke, die Umkehrung gilt),
+  Seitenpunkte auf Achsen beliebiger Richtung, XY-Abbildung, `VisibleRuns` schneidet Kurven genau an den Bruchgrenzen,
+  automatische Lage von Brüchen in datenfreien Lücken (`AxisBreaks.Spans`, die Slidemax-Regeln: eigene Höhe, ganz
+  stauchen, wirkungslose Brüche entfallen) sowie die Zickzack- oder Doppelschrägstrich-Markierungen (Maße aus
+  Slidemax: Linien 4,5 pt auseinander, Zacken 6,5 × 1,75 pt, Schrägstriche unter 15°) quer über den Plot oder kurz auf
+  der Achslinie. Nur lineare Achsen.
+
+Hosts: Die Bausteine erzeugen Daten (Spezifikationen, Polylinien, Markierungspunkte); ein Host zeichnet sie mit den
+vorhandenen nativen Primitiven (Freihandformen und geschlossene Polygone), ein Vektorbild ist nicht nötig.
 
 ## Tests und Galerie
 

@@ -101,6 +101,10 @@ namespace InventaSketch.Core
                     Attach = new[] { Attachments.For(src, aPoint, a), Attachments.For(doc.Get(added.Id)!, bPoint, b) },
                     GroupId = src.GroupId,
                 };
+                // The n-th connector leaving the element may carry its own parameters (decision exits "yes", "no").
+                var exits = doc.Objects.Values.Count(x => x.Attach is { Count: > 0 } && x.Attach[0]?.ObjectId == src.Id);
+                if (registry.Type(src.Type)?.ChainConnectorParams(src, exits) is { } extra)
+                    foreach (var kv in extra) connector = connector.WithParam(kv.Key, kv.Value);
                 connectorId = connector.Id;
                 doc = Edits.Add(doc, page.Id, connector);
                 doc = Attachments.Refresh(registry, doc, ctx);

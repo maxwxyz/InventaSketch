@@ -85,6 +85,45 @@ Der SVG-Export des Web-Add-ins schreibt Texte als Text und jedes Element und Tei
 (Inkscape-Bezeichnung mit dem Namen des Elements und dem Teilschlüssel, z. B. `series.0`), sodass Texte und Stile in
 Inkscape oder Illustrator bearbeitbar sind.
 
+## 6c. Mit „+“ weiterbauen
+
+Ein einzeln ausgewähltes Element zeigt an jeder freien Stelle, an der etwas angebaut werden kann, ein blaues „+“: ein
+Gegenrad am Zahnrad, das nächste Wellenstück oder ein Teil am Wellenende, ein Planet im Hohlrad, das nächste Glied an
+einem freien Gelenk, ein Werkzeug am Roboterflansch – und bei allem, was mit Leitungen verbunden wird, an jedem freien
+**Anschluss**:
+
+- **Welche Anschlüsse.** Elektrische Schaltzeichen, Hausinstallation, Leiterplatten-Pads, Energieelemente (PV-Module,
+  -Strings und -Felder, Wechselrichter, Batterien, Windenergieanlagen, Transformatoren, Schaltgeräte, Ladepunkte,
+  Wärmepumpen, Elektrolyseure …), Gebäudetechnik (Heizkörper, Kessel, Wärmepumpen, Verteiler, Pumpen, Ventile,
+  Sanitärobjekte, Steigleitungen, Luftdurchlässe, Lüftungsgeräte, Anschlussdosen und Melder), Fluidtechnik, Anlagen der
+  Verfahrenstechnik (Stutzen, Armaturen, Pumpen, Messstellen) sowie die elektrischen, Kühl- und Blockschaltbild-Anschlüsse
+  der elektrischen Maschinen. Ein Anschluss, an dem schon eine Leitung oder ein Element sitzt, zeigt kein „+“.
+- **Was angeboten wird.** Ein Klick auf das „+“ öffnet das Einfügefeld, zuerst mit der Leitung für das Medium des
+  Anschlusses – ein DC-Kabel an der DC-Seite von PV-Modul, Wechselrichter oder Batterie, ein AC-Kabel an der Netzseite
+  (mit der Spannung der Wicklung oder des Netzes, wo das Element sie angibt), eine Vorlaufleitung am Vorlauf und eine
+  Rücklaufleitung am Rücklauf, Kalt-, Warm-, Zirkulations- und Schmutzwasserleitungen an Sanitärobjekten, eine Zu- oder
+  Abluftleitung am Luftdurchlass, eine Installationsleitung an Steckdose, Schalter und Anschlussdosen, eine Leitung an
+  Schaltzeichen, eine Leiterbahn am Pad, eine Arbeits-, Steuer- oder Leckleitung in der Fluidtechnik, eine Prozess- oder
+  Signalleitung im R&I-Fließschema –, danach die Elemente mit einem Anschluss desselben Mediums.
+- **Leitung.** Die Wahl der Leitung zieht sie gerade aus dem Anschluss heraus, ihr Anfang am Anschluss angedockt, und
+  wählt sie aus. Ihr freies Ende zeigt wieder ein „+“: dieselbe Leitung wählen verlängert sie um ein Stück, ein Element
+  wählen setzt dessen passenden Anschluss auf das Leitungsende (die Leitung bleibt angedockt, wenn das Element bewegt
+  wird). So entsteht eine ganze PV-Anlage, ein Heizkreis oder eine Schaltung durch wiederholtes Klicken auf „+“.
+- **Element.** Die direkte Wahl eines Elements setzt es eine Leitungslänge entfernt, mit dem passenden Anschluss zurück
+  zum Ausgangselement gewandt, und verbindet beide mit der Leitung.
+- **Passende Medien.** Eine allgemeine elektrische Leitung passt an DC- und AC-Anschlüsse, eine Heizungspumpe oder ein
+  Ventil an Vor- und Rücklauf, eine Wärmepumpe an Wärme- und Kälteleitungen. Elemente anderer Module erscheinen nur, wenn
+  ihr Anschluss genau dieses Medium führt (eine Anschlussdose der Gebäudetechnik nach einer Installationsleitung, kein
+  Widerstand nach einem PV-String). Eine von Hand aus einem Anschluss gezogene Leitung führt das Medium des Anschlusses,
+  ihr freies Ende zeigt also ebenfalls das „+“.
+
+Hosts: Das PowerPoint-Web-Add-in zeigt diese „+“ an Elementen und an Leitungsenden (Engine `buildPorts`, Arten
+`Connect` und `LineEnd` mit `medium`; `buildItems`; `buildPlace` baut Leitung, Element oder verlängerte Leitung in einem
+Rückgängig-Schritt); LibreOffice listet dieselben Anschlüsse in der Seitenleiste und baut über dieselben Engine-Aufrufe.
+Im PowerPoint-COM-Add-in bietet das „+“ an Elementen Leitungen und Elemente an, ein dort gewähltes Element wird aber
+noch ohne verbindende Leitung gesetzt, und Leitungsenden zeigen noch kein „+“; beides folgt mit einer
+Host-Aktualisierung.
+
 ## 6. Module
 
 Jedes Modul hat eine eigene Seite mit Elementen, Ansichten und Parametern:

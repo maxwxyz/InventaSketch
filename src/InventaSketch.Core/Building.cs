@@ -26,6 +26,16 @@ namespace InventaSketch.Core
         /// direction faces the port's (a gripper on the flange, pointing along the tool axis).
         /// </summary>
         Mount,
+        /// <summary>
+        /// A free connection port (cable, wire, pipe, duct, signal line): the connector for the port's medium goes here (its
+        /// start docked on the port, its free end offering "+" in turn), or the next element, joined by that connector.
+        /// </summary>
+        Connect,
+        /// <summary>
+        /// The free end of a connection line: the line continues (one segment more), or an element with a port of the
+        /// line's medium docks there with that port.
+        /// </summary>
+        LineEnd,
     }
 
     /// <summary>A place on an element where a fitting part can be docked: page point, outward direction, kind.</summary>
@@ -35,7 +45,14 @@ namespace InventaSketch.Core
         public Vec2 AxisFrom { get; init; }
         /// <summary>Radius of the connection face of a <see cref="PortKind.Mount"/> port (0 = unknown).</summary>
         public double FaceRadius { get; init; }
+        /// <summary>Medium of a <see cref="PortKind.Connect"/> or <see cref="PortKind.LineEnd"/> port (<see cref="PortMedia"/>).</summary>
+        public string? Medium { get; init; }
+        /// <summary>Anchor id of a <see cref="PortKind.Connect"/> port on its element; point index of a <see cref="PortKind.LineEnd"/> ("p0", "p5").</summary>
+        public string? AnchorId { get; init; }
     }
+
+    /// <summary>Result of <see cref="Building.Apply"/>: the document with the built part(s) and the object to select next.</summary>
+    public sealed record BuildResult(SketchDocument Doc, string SelectId);
 
     /// <summary>
     /// Building assemblies with "+" handles (gearboxes, spur stages, planetary stages, drivetrains, e-drives): every element
@@ -44,7 +61,7 @@ namespace InventaSketch.Core
     /// bearing, e-machine or wheel at a free axis end, a shaft through a free hub. Ports already taken are not offered.
     /// Parts keep the view of the element (schematic stays schematic).
     /// </summary>
-    public static class Building
+    public static partial class Building
     {
         private static readonly (string Name, Vec2 Dir)[] Sides = { ("down", new Vec2(0, 1)), ("up", new Vec2(0, -1)), ("right", new Vec2(1, 0)), ("left", new Vec2(-1, 0)) };
 
@@ -54,6 +71,7 @@ namespace InventaSketch.Core
             var list = new List<BuildPort>();
             var o = doc.Get(id);
             if (o is not null && o.IsPointGeometry && registry.Type(o.Type)?.LinkageRole(o) == LinkageRole.Link) return JointPorts(registry, doc, o);
+            if (o is not null && o.IsPointGeometry && registry.Type(o.Type) is not null) return LineEndPorts(registry, doc, o, lang);
             if (o is null || o.IsPointGeometry || registry.Type(o.Type) is null) return list;
             var ctx = new RenderContext(doc, lang);
             var own = registry.PageAnchors(o, ctx).ToList();
@@ -149,6 +167,9 @@ namespace InventaSketch.Core
             if (hub is not null && axes.Count == 0
                 && !others.Any(x => x.Anchors.Any(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && Geo.ClosestOnSegment(hub.P, a.P, a.Q).Point.DistanceTo(hub.P) <= 0.3)))
                 list.Add(new BuildPort("hub", PortKind.Hub, hub.P, Turn(new Vec2(1, 0))));
+
+            // Connection ports (cables, wires, pipes, ducts, signal lines): every free port with a medium.
+            list.AddRange(ConnectPorts(registry, doc, o, own, others.SelectMany(x => x.Anchors), lang));
             return list;
         }
 
@@ -208,6 +229,7 @@ namespace InventaSketch.Core
         {
             var o = doc.Get(id);
             if (o is null) return Array.Empty<LibraryItem>();
+            if (port.Kind is PortKind.Connect or PortKind.LineEnd) return ConnectionItems(registry, doc, o, port, max, lang);
             if (port.Kind == PortKind.Joint)
             {
                 // The next link (same kind and view), a fixed pivot, a joint symbol, a slider.
@@ -259,12 +281,18 @@ namespace InventaSketch.Core
             return list;
         }
 
-        /// <summary>The new object for <paramref name="item"/> docked at <paramref name="port"/> of <paramref name="id"/>, or null if it does not fit there.</summary>
+        /// <summary>
+        /// The new object for <paramref name="item"/> docked at <paramref name="port"/> of <paramref name="id"/>, or null if it
+        /// does not fit there. At a <see cref="PortKind.Connect"/> port: the connector line (start docked on the port) or the
+        /// next element (without the connector that <see cref="Apply"/> adds); at a <see cref="PortKind.LineEnd"/>: the line
+        /// itself, one segment longer (same id), or the element whose port sits on the line end. Prefer <see cref="Apply"/>.
+        /// </summary>
         public static SketchObject? Place(Registry registry, SketchDocument doc, string id, BuildPort port, LibraryItem item, Lang lang = Lang.En)
         {
             var sel = doc.Get(id);
             if (sel is null || registry.Type(item.TypeId) is null) return null;
             if (port.Kind == PortKind.Joint) return PlaceAtJoint(registry, doc, sel, port, item, lang);
+            if (port.Kind is PortKind.Connect or PortKind.LineEnd) return PlaceConnection(registry, doc, sel, port, item, lang)?.Obj;
             var probe = registry.Create(item, port.At);
             if (probe.IsPointGeometry) return null;
             // A scaled element passes its scale on: the new part fits it (lane widths, shaft diameter, tooth size). At an

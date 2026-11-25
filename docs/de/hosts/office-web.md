@@ -66,7 +66,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `trace` | `id`, `index` (Standard: letzter Punkt), `max` (Schritte, Standard 72) | `{ points, closed }`: Bahn des Gliedpunkts, während die Kurbel der Kette dreht; leer, außer die Kette hat F = 1 |
 | `drawGhosts` | `id` (ein Glied), `max` (Standard 4) | Zustand; gestrichelte graue Kopien der Kette über den Kurbelbereich, gruppiert |
 | `couplingPreview` | `ids`, `dx`/`dy` oder `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: Nachbarn, die die Kopplung verschieben oder skalieren würde, als SVG in Seiten-mm (`svg` leer, wenn nichts folgt); nichts wird geändert |
-| `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch }]`: freie Bauanschlüsse in Seiten-mm mit der Richtung nach außen; `stretch` bei Wellenenden |
+| `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch, medium }]`: freie Bauanschlüsse in Seiten-mm mit der Richtung nach außen; `stretch` bei Wellenenden; `medium` bei Anschlüssen (`Connect`) und freien Leitungsenden (`LineEnd`) |
 | `buildItems`, `buildPlace`, `buildStretch` | `id`, `key` (Anschluss-ID), `lang`, `max`; `itemId`; `x`, `y` | Bibliothekselemente, die am Anschluss andocken (`fits` true); Zustand mit dem angedockten Teil ausgewählt; Zustand mit verschobenem Wellenende |
 | `motionInfo` | `id` | `{ kind: "gear", x, y, coupled }` (dreht um seine Mitte mit seinem Getriebezug), `{ kind: "linkage", dof }` (Glied einer selbst gebauten Kette mit F >= 1) oder `{ kind: "none" }` |
 | `motionPreview` | `id` und `degrees` (Zahnrad) oder `id`, `index`, `x`, `y` (Gelenk eines Glieds) | `{ ids, svg }`: die Objekte, die das Drehen oder Ziehen bewegen würde, als SVG in Seiten-mm; nichts wird geändert |

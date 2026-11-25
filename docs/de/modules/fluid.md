@@ -59,6 +59,11 @@ Beim Umschalten der FRL-Ansicht bleibt der optische Maßstab erhalten, die Propo
 - Das Ventil bietet `Mount`-Anker (`left`, `right`) an seinen Enden; das separate Betätigungssymbol
   (`fluid.actuation`) dockt dort mit seinem Anker `mount` an.
 
+**Weiterbauen mit „+“ (Anschlüsse).** Jeder freie Anschluss bietet eine Leitung an (Medium `fluid`): Steueranschlüsse
+X/Y/Z von Wegeventilen, entsperrbaren Rückschlagventilen und Vorsteuerungen eine Steuerleitung, Leckanschlüsse L eine
+Leckleitung, alle anderen eine Arbeitsleitung; danach die Bauteile mit einem passenden Anschluss. Das freie Ende einer
+Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Bauteils mit dem zugewandten Anschluss.
+
 ## Kontextaktionen
 
 | Aktion | Symbol | Wirkung |

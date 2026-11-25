@@ -58,6 +58,21 @@ namespace InventaSketch.Modules.Charts
         public const string LegendSample = "legend.sample";
         public const string LegendText = "legend.text";
         public const string ValueLabel = "value";
+        // Figure charts (charts v2 stage 2).
+        /// <summary>Value lines, vertical markers and point markers ("ref.0").</summary>
+        public const string Ref = "ref";
+        /// <summary>Shaded or hatched regions ("region.0").</summary>
+        public const string Region = "region";
+        /// <summary>Reference numerals with their leader lines ("numeral.0").</summary>
+        public const string Numeral = "numeral";
+        /// <summary>Label of a curve ("curvelabel.0" belongs to "series.0").</summary>
+        public const string CurveLabel = "curvelabel";
+        /// <summary>Panel title of a stacked panel ("paneltitle.0").</summary>
+        public const string PanelTitle = "paneltitle";
+        /// <summary>Caption below the figure.</summary>
+        public const string Caption = "caption";
+        /// <summary>Message of a figure whose specification cannot be read.</summary>
+        public const string Error = "error";
     }
 
     /// <summary>Marker shapes of data series (distinguishable without colour).</summary>

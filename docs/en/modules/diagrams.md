@@ -44,7 +44,11 @@ symbol is insertable without parameters; free scaling changes only the box size.
 | UML relationships | `diag.uml.relation`: association, directed association, aggregation, composition, generalization, realization, dependency, link; multiplicities and role names at both ends, label in the middle |
 | ER | `diag.er.entity` (views `diagram`/`table`/`chen`, weak entity), `diag.er.attribute` (key, multivalued, derived), `diag.er.relationship` (Chen diamond, identifying), `diag.er.connector` (crow's foot) |
 | System & architecture | `diag.sys.block` (ports per side), `diag.sys.container` (group frame with title tab or band), `diag.sys.cloud`, `diag.sys.database`, `diag.sys.queue`, `diag.sys.server`, `diag.sys.client` (browser window), `diag.sys.user`, `diag.sys.lollipop` (provided ball / required socket) |
-| BPMN-lite | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (sub-process marker), `diag.bpmn.gateway` (exclusive, parallel, inclusive, event-based) |
+| BPMN-lite | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (sub-process marker), `diag.bpmn.gateway` (exclusive, parallel, inclusive, event-based), `diag.bpmn.pool` (pool with lanes) |
+| Control loops | `diag.ctrl.sum`, `diag.ctrl.tf`, `diag.ctrl.branch`, `diag.ctrl.mult`, `diag.ctrl.signal`, `diag.ctrl.loop` (explodable) |
+| Computer systems & communication | system block presets by role, `diag.sys.bus`, `diag.sys.phone`, `.basestation`, `.router`, `.switch`, `.satellite`, `.iot`, `diag.sys.wireless` |
+| Data layouts | `diag.data.fields` (row, wrapped rows, memory map) |
+| GUI wireframes | `diag.ui.screen`, `.button`, `.field`, `.list`, `.checkbox`, `.toggle`, `.slider`, `.image`, `.icon`, `.tabs`, `.touch`, `.cursor` |
 
 ## Text conventions
 
@@ -84,6 +88,169 @@ of labels and notes takes a dashed or recoloured style (dashed note boxes). Chec
 (engine test `TheMaintainersFlowchartIsLaidOutWithoutLinesThroughBoxes`: after the layout no connector runs through a
 box). Open: obstacle-aware routing for hand-placed boxes (only the layout computes clearances).
 
+Further symbols (ISO 5807 conventions, drawn independently): predefined process / sub-process (`ann.flow.predefined`,
+two inner side lines; the text fits between them), off-page connector (`ann.flow.offpage`, pentagon pointing down,
+uniform, letter "A"), loop limit (`ann.flow.loop`, top corners cut; `ann.flow.loop.end` or parameter `edge = end`:
+bottom corners cut), preparation (`ann.flow.preparation`, hexagon), manual operation (`ann.flow.manual`, trapezoid),
+stored data (`ann.flow.database`, cylinder) and delay (`ann.flow.delay`, "D" shape). Every symbol fits its text into its
+own inner area (below the cylinder cap, above the pentagon tip, left of the delay arc) and has the four edge ports.
+Every `ann.flow.*` symbol has the parameter `optional`: an optional step is outlined dashed (action "Optional step
+(dashed)", library item `ann.flow.process.optional`).
+
+Parallel mode (`ann.flow.parallel`, fork / join): a filled bar (`style = bar`) or the two parallel lines of ISO 5807
+(`style = doubleline`); 2–6 ports (`ports`, default 3) evenly spaced on each long side; wider than high it lies
+horizontally (ports top and bottom), else upright (ports left and right). It chains with the elbow connector.
+
+Decision exits: when "+" (quick add) adds connectors to a decision, the first gets the exit label "yes", the second
+"no". The label is stored language-neutral (`exit = yes|no` on the connector) and written in the language of the
+drawing ("ja"/"nein" in German); an edited connector text wins. The parameter `exitLabels` ("a|b|c") gives other
+labels in quick-add order; the preset "Decision (compare: < = >)" (`ann.flow.decision.compare`) labels three exits
+"<", "=", ">". The library items "Connector “yes”" / "Connector “no”" carry the same language-neutral exit.
+Core hook: `ObjectType.ChainConnectorParams(o, index)` returns parameters for the index-th connector leaving an
+element; `Flow.QuickAdd` counts the connectors already leaving it and applies them.
+
+## Connectors and marks for patent figures (2026-11-25)
+
+Annotation module additions for patent figures; all are insertable without parameters, black and white, and drawn with
+native lines, freeforms and texts.
+
+- **Hops and junction dots.** The elbow connector and connector polylines (an open polyline with an arrowhead or a
+  docked end) draw a hop where they cross a connector drawn before them (parameter `hops`, default on; action "Hops
+  at crossings on/off"; the hop geometry of Core `Crossings`). Only annotation connectors take part: plain polylines
+  (drawings, imported vector graphics) neither hop nor are hopped over, and wires of other modules are not affected.
+  Their drawn segments are rails: a connector end docked on another connector's segment follows it and gets a junction
+  dot automatically. "Junction dot (lines)" (`ann.junction`) is a stand-alone dot whose centre port docks on a rail.
+- **Block arrow** (`ann.arrow.wide`): a hollow block arrow along a straight (`route = straight`) or orthogonal route as
+  one closed outline; shaft `width` 6 mm, head 2 × width wide and 1.2 × width long, heads at start and/or end, fill
+  none, hatch or dots, optional text along the shaft. Presets: double-headed (`.double`), with a bend (`.elbow`),
+  U-turn (`.uturn`).
+- **Double-line arrow ⇒** (`ann.arrow.doubleline`): two parallel strokes (`gap` 2 mm) with an open chevron head; with
+  two points it routes and docks like the elbow connector (also "C" shaped around boxes), with more points it runs
+  orthogonally through them.
+- **Arrow pair** (`ann.arrow.pair`): two parallel arrows in opposite directions (`gap` 3 mm, request / response) with
+  a label each (`labelForward`, `labelBack`) on their outer sides; action "Swap directions".
+- **Bus marks** on `ann.line`, `ann.arrow`, `ann.arrow.elbow` and `ann.polyline`: `busMark = slash` draws one oblique
+  stroke with the number of lines (`busCount`, e.g. "8" or "n") beside it, `busMark = strokes` one oblique stroke per
+  line (IEC 60617 S00002 / S00003 ideas, drawn independently), on the middle of the longest segment. Preset "Bus line
+  with slash (n lines)" (`ann.line.bus`).
+- **Table** (`ann.table`): cells as text (`cells`: rows by line break or a written "\n", columns by "|" or tab), bold
+  header row, borders all / outer / horizontal / none, column widths from the content, one text size for the table;
+  actions add/remove a row or column. Without cells it shows a small two-column table in the drawing language.
+- **View arrow** (`ann.viewarrow`): arrow with a bold capital letter; `mode = touching` puts the letter beside the
+  shaft (the head touches the outline), `freestanding` beyond the tail (`ann.viewarrow.free`).
+- **Detail view** (`ann.detail.view`): circular or rectangular frame for an enlarged detail, labelled with the letter
+  of its detail marker (`ann.detail.circle`; the n-th view without own letter takes the n-th marker's letter) and an
+  optional graphic scale bar (`scaleBar`, `scale`, `barLength`: a bar of the drawn length labelled with the real
+  length, e.g. "5 mm"), so no written scale such as "2:1" is needed.
+- **Material hatching** for `ann.hatch.*` (`pattern`): liquid, glass, rubber / plastic, wood, concrete, earth / soil –
+  simple independent patterns clipped to the region; library items `ann.hatch.rect.<pattern>`.
+- **Heat flow arrow** (`ann.arrow.heat`): wavy shaft with a straight end and a filled head, label "Q" in italics.
+
+Host notes: everything renders as native lines, freeforms, filled circles and texts; the block arrow is one freeform
+(hatch/dots fills follow the host's pattern fill support like other hatched regions). Hops are computed by the engine
+for annotation connectors only, so hosts show no "connect" icon at their crossings (that stays with wires and pipes).
+Open: hops between annotation connectors and other modules' wires, routing of the block arrow around boxes (it follows
+its points), a one-column table cannot get an empty row.
+
+## Control loops (2026-11-25)
+
+Category "Control loops": block diagrams of control engineering, drawn after the usual textbook conventions
+(independently drawn, no standard figure copied).
+
+- `diag.ctrl.sum` **summing junction**: circle Ø 6 mm in a 12 mm box, ports `left`, `top`, `right`, `bottom` on the
+  circle. Parameter `signs`, one character per input in the order left, bottom, top, right (`+-` = left plus, feedback
+  minus; space or `.` = no sign). Style `plain`: the sign stands next to the incoming line outside the circle (above a
+  horizontal input, left of a vertical one); `cross`: the circle is divided by an X and each sign sits in the sector of its
+  input. Presets with cross and with three inputs.
+- `diag.ctrl.tf` **transfer block**: content `text` (object text, else the localised name of its `role`: controller,
+  plant, actuator, sensor, else `G(s)`), `fraction` (`numerator` over `denominator` with a fraction bar) or `icon` (a
+  small step response: P, PT1, PT2, I, D, dead time, PID; the static characteristic of a saturation; an integral sign for
+  the integrator; all drawn as paths). Optional `label` (e.g. `K, T`) below the content. Ports on all sides (top:
+  disturbance, bottom: feedback).
+- `diag.ctrl.mult` multiplication point (× or ·), `diag.ctrl.branch` branch point (filled dot, ports on its four sides).
+- `diag.ctrl.signal` **signal arrow**: thin line with a filled head (switchable, e.g. into a branch point), orthogonal
+  by default. Two ends docked on the same side of two elements (both `bottom`: a feedback path) run around with an 8 mm
+  clearance instead of through the blocks. Ports named after their side also give the exit direction to the other
+  diagram connectors (`D.ExitHorizontal`).
+- Quick add ("+") chains every control element with a signal arrow.
+- `diag.ctrl.loop` **standard control loop** as one element (summing junction → controller → plant → branch point,
+  feedback below; options: sensor block in the feedback, disturbance input at the plant). "Explode" turns it into its
+  elements with the arrows docked on their ports, so the loop can be edited and extended element by element. Building
+  the loop by hand: summing junction, "+" right → controller, "+" right → plant, a branch point, then a signal arrow from
+  the branch point's `bottom` to the summing junction's `bottom` (routed around below).
+
+## Computer systems and communication (2026-11-25)
+
+Category "Computer systems & communication" (software patent FIG. 1, network sketches):
+
+- System blocks by role: processor, memory, storage, network interface, I/O interface, display, sensor(s), input
+  device (presets of `diag.sys.block` with the new `role` parameter: the localised role name is shown while the block has
+  no own text; no port squares).
+- `diag.sys.bus` **system bus**: thick line (width parameter) or hollow double line through its points, labelled "Bus"
+  (object text). Every segment is a rail: connection lines (taps) dock anywhere on it and follow the bus; corners can be
+  added like on other polylines.
+- Outline icons with the name below and ports on all four sides: `diag.sys.phone` (smartphone), `diag.sys.basestation`
+  (lattice mast with radio arcs), `diag.sys.router`, `diag.sys.switch`, `diag.sys.satellite`, `diag.sys.iot` (sensor
+  node with antenna).
+- `diag.sys.wireless` **wireless link**: line with a lightning zigzag, or dashed with radio arcs at both ends; arrowheads
+  none / end / both.
+
+## Data layouts (2026-11-25)
+
+`diag.data.fields` draws packets, frames, registers and memory maps from the `fields` parameter, e.g.
+`Preamble:8;Header:16;Payload:n;CRC:16` (sizes in bits, `0x…` hexadecimal; `n`, `*` or `var` = variable length; one
+field per line works too). Layouts: `row`; `wrapped` into rows of `rowBits` bits (a field crossing a row end continues
+in the next row, a variable field fills the rest of its row); `stack` (memory map, top-down, start addresses counted from
+`base`, `0x…` formatted like the base). Widths `proportional` (variable fields get an equal share) or `equal`. Variable
+fields carry a break mark (two slashes) on their long edges. `ruler` adds bit offsets (row: at each field start;
+wrapped: every 8 bits) or the address column (stack); `sizes` shows "16 bit" under the name. Every field has ports
+`f1.top`, `f1.bottom` … (stack also `f1.right`) for leader lines and reference numerals. Actions: layout, equal widths,
+ruler, add field (input `name:size`). Presets: register / header (32-bit rows), memory map.
+
+## Sequence fragments, step numerals and time gaps (2026-11-25)
+
+- `diag.seq.fragment` **combined fragment**: frame with a pentagon tag (`alt`, `opt`, `loop`, `par`, `break`; the object
+  text is appended, e.g. `loop 1..n`), `operands` separated by dashed lines, one guard per operand (`guards`, one line
+  each; while unset, localised placeholders `[condition]` / `[else]`). Add/remove operand grows/shrinks the frame by one
+  operand (top edge stays). Presets opt, loop, par, break.
+- Message parameter `step`: a step numeral (e.g. `302`) drawn at the start of the arrow, above the line. The document
+  action **"Number messages"** numbers all messages of the page top-down (by the height of their middle, then left to
+  right): the topmost keeps its numeral if it is a number (else 302), each next one gets 2 more (302, 304, 306 …). It is
+  idempotent, so running it with several messages selected gives the same result.
+- Lifeline parameter `breaks`: time gaps in percent of the tail (`50` or `30; 70`); the dashed tail is interrupted and
+  marked with two short slashes ("//"). Action "Time gap" switches a gap at 50 % on and off. The tail stays one rail.
+
+## GUI wireframes (2026-11-25)
+
+Category "GUI wireframes" (black on white; the automotive HMI elements `auto.hmi.*` stay in their module):
+`diag.ui.screen` (device phone, tablet, monitor, application window, browser; status bar; the object text is the title
+or address; screens chain into a screen flow with directed arrows), widgets `diag.ui.button` (rounded / pill / square,
+filled = primary), `.field` (text, search, drop-down, password), `.list` (rows from `items`, icons, chevrons, add/remove
+row), `.checkbox` (also radio button), `.toggle`, `.slider` (value 0–100 %), `.image` (frame with both diagonals),
+`.icon` (menu, search, home, user, settings, bell, star, heart, plus, close, back, share), `.tabs` (active tab bold and
+underlined), and the pointers `diag.ui.touch` (finger with ripples: tap, double tap, long press, swipe; port `tip`) and
+`diag.ui.cursor` (arrow or I-beam; port `tip` at the hot spot). Widget placeholder texts are localised.
+
+## State circles and transitions (2026-11-25)
+
+`diag.state.state` has the views `rounded` (UML) and `circle` (patent-style state diagrams: circle with the name, 8
+ports on the outline; the size adapts when switching). Library: "State (circle)" and "Transition (event [guard] /
+action)" (`diag.state.transition`, a directed UML relation with that label template).
+
+## Interactive pools and lanes (2026-11-25)
+
+`diag.bpmn.pool` (new: horizontal lanes, pool name band on the left, localised lane placeholders) and
+`diag.activity.swimlane` share the lane logic (`LaneContainerType`):
+
+- Actions "Add lane below / above" (vertical: right / left), "Remove bottom / top lane" and "Rename lane n" (input). Adding
+  or removing grows or shrinks the container by one lane about its centre, so the lanes keep their size; as a document
+  action it also moves the elements standing in the remaining lanes with their lane.
+- Each lane's middle line is an `Axis` anchor (`lane0`, `lane1` …). Flow nodes (actions, initial/final nodes, decisions,
+  fork bars, BPMN tasks, events, gateways) expose a centre `Hub`, so a dropped or moved node snaps centred onto the lane's
+  middle line, and Core coupling (hub on an axis) carries it along when the pool is moved, turned or stretched (lanes
+  scale with the pool). A frame `End` mark keeps the lane lines from offering mechanical build ports.
+- Limits (Core): only nodes centred on a lane line are carried; elements placed elsewhere in a lane or other modules'
+  elements (`ann.flow.*`) do not follow a moved pool. A general containment relation would need Core support.
 ## Context actions
 
 | Type | Actions |
@@ -91,7 +258,11 @@ box). Open: obstacle-aware routing for hand-placed boxes (only the layout comput
 | Class / interface / enum | show/hide attributes and operations, add/remove attribute (literal), add/remove operation, abstract |
 | State | show activities, add entry/exit activity, remove last exit activity |
 | Composite state | add/remove region |
-| Swimlanes | horizontal/vertical (swaps width and height), add/remove lane |
+| Swimlanes, pool | horizontal/vertical (swaps width and height), add lane at either end, remove first/last lane, rename lane n |
+| Summing junction, transfer block, signal arrow | feedback sign, input from above, cross style / content (name, fraction, characteristic), next characteristic / arrowhead, swap, orthogonal |
+| Data fields | layout, equal widths, ruler, add field |
+| Fragment, message, lifeline | operator, add/remove operand / number messages / time gap |
+| GUI widgets | device, status bar, filled, shape, kind, rows, checked, on, value ±10, next glyph, next active tab, gesture |
 | Entity | add/remove attribute, weak entity |
 | ER attribute / relationship | key, multivalued, derived / identifying |
 | UML relationship | kind (8 choices), swap direction (multiplicities and roles stay at their class ends), orthogonal routing |

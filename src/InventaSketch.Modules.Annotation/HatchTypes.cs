@@ -19,7 +19,17 @@ namespace InventaSketch.Modules.Annotation
             ("reverse", "Steel 135°", "Stahl 135°"),
             ("dotted", "Dotted", "Punktiert"),
             ("insulation", "Insulation (zig-zag)", "Dämmung (Zickzack)"),
+            // Material patterns (simple, drawn independently; a section shows what the part is made of).
+            ("liquid", "Liquid", "Flüssigkeit"),
+            ("glass", "Glass", "Glas"),
+            ("plastic", "Rubber / plastic", "Gummi / Kunststoff"),
+            ("wood", "Wood", "Holz"),
+            ("concrete", "Concrete", "Beton"),
+            ("earth", "Earth / soil", "Erdreich"),
         };
+
+        /// <summary>Material patterns drawn as explicit clipped geometry.</summary>
+        public static readonly string[] Materials = { "liquid", "glass", "plastic", "wood", "concrete", "earth" };
 
         /// <summary>Line pattern for a preset (null for dotted/insulation). Angle/spacing overrides win.</summary>
         public static HatchPattern? Pattern(string preset, double? angle = null, double? spacing = null)
@@ -32,7 +42,7 @@ namespace InventaSketch.Modules.Annotation
                 "dense" => new HatchPattern(45, 1.0),
                 "wide" => new HatchPattern(45, 4),
                 "reverse" => new HatchPattern(135, 2),
-                "dotted" or "insulation" => null,
+                "dotted" or "insulation" or "liquid" or "glass" or "plastic" or "wood" or "concrete" or "earth" => null,
                 _ => new HatchPattern(45, 2),
             };
             if (p is null) return null;
@@ -83,6 +93,8 @@ namespace InventaSketch.Modules.Annotation
                     for (var x = b.X + sp / 2 + (row % 2) * sp / 2; x < b.Right; x += sp)
                         if (Ann.Inside(new Vec2(x, y), contours)) list.Add(Prim.Circle(x, y, Math.Max(0.12, sp * 0.12), dot) with { Tag = AnnTags.Hatch });
             }
+            else if (Array.IndexOf(Materials, preset) >= 0)
+                list.AddRange(Material(preset, contours, angle, spacing, stroke));
             else
             {
                 // Insulation: parallel zig-zag rows (angle rotates the rows), clipped to the region.
@@ -104,6 +116,117 @@ namespace InventaSketch.Modules.Annotation
                 }
             }
             if (showOutline) list.Insert(0, Prim.Restyle(outline, _ => outlineStyle with { Fill = Fill.None }) with { Tag = AnnTags.Region });
+            return list;
+        }
+
+        /// <summary>
+        /// Material pattern clipped to the region (angle rotates the pattern, spacing scales it):
+        /// liquid – rows of dashes; glass – pairs of close 45° lines; rubber/plastic – 45° lines alternately solid and dashed;
+        /// wood – wavy grain lines; concrete – small triangles and dots (aggregate); earth – groups of three short 45° strokes.
+        /// </summary>
+        public static List<Primitive> Material(string preset, IReadOnlyList<IReadOnlyList<Vec2>> contours, double? angle, double? spacing, string stroke)
+        {
+            var list = new List<Primitive>();
+            var rad = -Geo.DegToRad(angle ?? 0);
+            var rot = Matrix2D.Rotation(rad);
+            var inv = Matrix2D.Rotation(-rad);
+            var b = Rect.FromPoints(contours.SelectMany(c => c).Select(inv.Apply));
+            var hs = Style.ThinLine with { Stroke = stroke, StrokeWidth = 0.25 };
+            // Pattern coordinates (u along the rows, v across them) to page coordinates.
+            Vec2 At(double u, double v) => rot.Apply(new Vec2(u, v));
+            void Clip(Vec2 a, Vec2 c, Style s)
+            {
+                foreach (var (p0, p1) in Ann.ClipSegment(a, c, contours)) list.Add(new LinePrim(p0, p1, s) { Tag = AnnTags.Hatch });
+            }
+            // Diagonal families: a 45° line through (u0, v) in pattern coordinates spans the whole box.
+            var diag = b.W + b.H;
+            // The 45° line rising to the right through (b.X + offset, b.Y); offsets 0 … W + H cover the box, a step of
+            // s·√2 gives lines s apart.
+            void Diagonal(double offset, Style s) => Clip(At(b.X + offset - diag, b.Y + diag), At(b.X + offset + diag, b.Y - diag), s);
+            // Deterministic jitter for scattered patterns.
+            double Hash(int i, int j, int k) { var x = Math.Sin(i * 127.1 + j * 311.7 + k * 74.7) * 43758.5453; return x - Math.Floor(x); }
+            switch (preset)
+            {
+                case "liquid":
+                    {
+                        var sp = spacing ?? 2.5;
+                        var dash = sp * 2; var gap = sp;
+                        var row = 0;
+                        for (var v = b.Y + sp / 2; v < b.Bottom; v += sp, row++)
+                            for (var u = b.X - (row % 2) * (dash + gap) / 2; u < b.Right; u += dash + gap)
+                                Clip(At(u, v), At(u + dash, v), hs);
+                        break;
+                    }
+                case "glass":
+                    {
+                        var sp = spacing ?? 5;
+                        for (var off = -b.H; off < b.W + b.H; off += sp * Math.Sqrt(2))
+                        {
+                            Diagonal(off, hs);
+                            Diagonal(off + Math.Min(0.9, sp * 0.18) * Math.Sqrt(2), hs);
+                        }
+                        break;
+                    }
+                case "plastic":
+                    {
+                        var sp = spacing ?? 2;
+                        var i = 0;
+                        for (var off = -b.H; off < b.W + b.H; off += sp * Math.Sqrt(2), i++)
+                            Diagonal(off, i % 2 == 0 ? hs : hs with { Dash = DashStyle.Dash });
+                        break;
+                    }
+                case "wood":
+                    {
+                        var sp = spacing ?? 2.5;
+                        var amp = sp * 0.22; var wave = sp * 4;
+                        var row = 0;
+                        for (var v = b.Y + sp / 2; v < b.Bottom; v += sp, row++)
+                        {
+                            var phase = Hash(row, 3, 1) * 2 * Math.PI;
+                            Vec2? last = null;
+                            for (var u = b.X - 1; u <= b.Right + 1; u += 0.8)
+                            {
+                                var p = At(u, v + amp * Math.Sin(2 * Math.PI * u / wave + phase));
+                                if (last is Vec2 q) Clip(q, p, hs);
+                                last = p;
+                            }
+                        }
+                        break;
+                    }
+                case "concrete":
+                    {
+                        var sp = spacing ?? 4;
+                        var dot = Style.ThinLine with { Stroke = "none", Fill = Fill.Solid(stroke) };
+                        for (var i = 0; b.X + i * sp < b.Right; i++)
+                            for (var j = 0; b.Y + j * sp < b.Bottom; j++)
+                            {
+                                var c = new Vec2(b.X + (i + 0.2 + 0.6 * Hash(i, j, 1)) * sp, b.Y + (j + 0.2 + 0.6 * Hash(i, j, 2)) * sp);
+                                var r = sp * (0.16 + 0.08 * Hash(i, j, 3));
+                                var a0 = Hash(i, j, 4) * 2 * Math.PI;
+                                var tri = Enumerable.Range(0, 3).Select(k => At(c.X + r * Math.Cos(a0 + k * 2 * Math.PI / 3), c.Y + r * Math.Sin(a0 + k * 2 * Math.PI / 3))).ToList();
+                                if (tri.All(p => Ann.Inside(p, contours))) list.Add(Prim.Polygon(tri, hs) with { Tag = AnnTags.Hatch });
+                                var d = At(b.X + (i + Hash(i, j, 5)) * sp, b.Y + (j + Hash(i, j, 6)) * sp);
+                                if (Ann.Inside(d, contours) && d.DistanceTo(At(c.X, c.Y)) > r * 1.5) list.Add(Prim.Circle(d.X, d.Y, Math.Max(0.15, sp * 0.05), dot) with { Tag = AnnTags.Hatch });
+                            }
+                        break;
+                    }
+                case "earth":
+                    {
+                        var sp = spacing ?? 5;
+                        const double len = 2.2, step = 0.7;
+                        var dir = new Vec2(1, -1).Normalized();
+                        var across = new Vec2(1, 1).Normalized();
+                        var row = 0;
+                        for (var v = b.Y + sp / 2; v < b.Bottom + sp / 2; v += sp * 0.8, row++)
+                            for (var u = b.X + (row % 2) * sp / 2; u < b.Right + sp / 2; u += sp)
+                                for (var k = -1; k <= 1; k++)
+                                {
+                                    var c = new Vec2(u, v) + across * (k * step);
+                                    Clip(At(c.X - dir.X * len / 2, c.Y - dir.Y * len / 2), At(c.X + dir.X * len / 2, c.Y + dir.Y * len / 2), hs);
+                                }
+                        break;
+                    }
+            }
             return list;
         }
 

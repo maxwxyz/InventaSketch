@@ -12,6 +12,7 @@ namespace InventaSketch.Modules.Diagrams
             "uml", "activity", "aktivität", "aktivitätsdiagramm", "action", "aktion", "step", "schritt") { }
 
         public override Size2 DefaultSize => new(36, 14);
+        protected override bool LaneNode => true;
         protected override I18nText Placeholder => new("Action", "Aktion");
         public override IReadOnlyList<ParamDef> Parameters => new[] { P.TextSize() };
 
@@ -52,6 +53,7 @@ namespace InventaSketch.Modules.Diagrams
         }
 
         public override Size2 DefaultSize => _kind == NodeKind.Initial ? new Size2(6, 6) : new Size2(7, 7);
+        protected override bool LaneNode => true;
         public override bool PreferUniformScale => true;
         public override bool HasText => false;
         public override IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o) => D.EllipsePorts(o.Size);
@@ -90,6 +92,7 @@ namespace InventaSketch.Modules.Diagrams
             "uml", "activity", "aktivität", "decision", "entscheidung", "verzweigung", "merge", "zusammenführung", "diamond", "raute", "if") { }
 
         public override Size2 DefaultSize => new(12, 12);
+        protected override bool LaneNode => true;
         public override IReadOnlyList<ParamDef> Parameters => new[] { P.TextSize() };
         public override IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o) => D.DiamondPorts(o.Size);
 
@@ -109,6 +112,7 @@ namespace InventaSketch.Modules.Diagrams
             "uml", "activity", "aktivität", "fork", "join", "gabelung", "vereinigung", "parallel", "synchronisation", "bar", "balken") { }
 
         public override Size2 DefaultSize => new(40, 2.5);
+        protected override bool LaneNode => true;
         public override bool HasText => false;
 
         public override IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o)
@@ -138,105 +142,6 @@ namespace InventaSketch.Modules.Diagrams
     }
 
     /// <summary>
-    /// Swimlane container (pool with one or more lanes), vertical (lanes side by side, headers on top) or horizontal
-    /// (lanes stacked, headers on the left). Lane names are lines of a text parameter; the object text is the optional
-    /// pool title. The lane area is not filled so objects inside remain visible.
-    /// </summary>
-    public sealed class SwimlaneType : DiagBoxType
-    {
-        private const string DefaultLanes = "Lane 1\nLane 2";
-
-        public SwimlaneType() : base("diag.activity.swimlane", new I18nText("Swimlanes", "Schwimmbahnen"), DiagCategories.Activity,
-            "uml", "bpmn", "activity", "aktivität", "swimlane", "lane", "pool", "schwimmbahn", "bahn", "partition", "verantwortlichkeit", "container") { }
-
-        public override Size2 DefaultSize => new(120, 70);
-
-        public override IReadOnlyList<ParamDef> Parameters => new[]
-        {
-            P.Text("lanes", "Lanes (one name per line)", "Bahnen (ein Name pro Zeile)", DefaultLanes),
-            P.Choice("orientation", "Orientation", "Ausrichtung", "vertical", ("vertical", "Vertical (columns)", "Senkrecht (Spalten)"), ("horizontal", "Horizontal (rows)", "Waagerecht (Zeilen)")),
-            P.Num("header", "Header size", "Kopfgröße", 8, 3, 40),
-            P.TextSize(),
-        };
-
-        public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
-        {
-            double w = o.Size.W, h = o.Size.H, hw = w / 2, hh = h / 2;
-            var lanes = D.Lines(o.Str("lanes", DefaultLanes)).ToList();
-            if (lanes.Count == 0) lanes.Add("");
-            var vertical = o.Str("orientation", "vertical") != "horizontal";
-            var band = o.Num("header", 8);
-            var size = TextSizeOf(o);
-            var frame = D.OutlineOpen;
-            var list = new List<Primitive> { Prim.Rect(-hw, -hh, w, h, frame) with { Tag = DiagTags.Outline } };
-            var title = o.Text;
-            var hasTitle = !string.IsNullOrEmpty(title);
-            if (vertical)
-            {
-                band = Math.Min(band, h / (hasTitle ? 3 : 2));
-                var top = -hh;
-                if (hasTitle)
-                {
-                    D.CenterText(list, title, size, new Vec2(0, top + band / 2), w - 2, band - 1, DiagTags.Name, bold: true);
-                    list.Add(new LinePrim(new Vec2(-hw, top + band), new Vec2(hw, top + band), frame) { Tag = DiagTags.Divider });
-                    top += band;
-                }
-                var lw = w / lanes.Count;
-                list.Add(new LinePrim(new Vec2(-hw, top + band), new Vec2(hw, top + band), frame) { Tag = DiagTags.Divider });
-                for (var i = 0; i < lanes.Count; i++)
-                {
-                    var x0 = -hw + i * lw;
-                    if (i > 0) list.Add(new LinePrim(new Vec2(x0, top), new Vec2(x0, hh), frame) { Tag = DiagTags.Divider });
-                    D.CenterText(list, lanes[i], size, new Vec2(x0 + lw / 2, top + band / 2), lw - 2, band - 1, DiagTags.Row);
-                }
-            }
-            else
-            {
-                band = Math.Min(band, w / (hasTitle ? 3 : 2));
-                var left = -hw;
-                if (hasTitle)
-                {
-                    VerticalText(list, title!, size, new Vec2(left + band / 2, 0), h - 2, band - 1, DiagTags.Name, true);
-                    list.Add(new LinePrim(new Vec2(left + band, -hh), new Vec2(left + band, hh), frame) { Tag = DiagTags.Divider });
-                    left += band;
-                }
-                var lh = h / lanes.Count;
-                list.Add(new LinePrim(new Vec2(left + band, -hh), new Vec2(left + band, hh), frame) { Tag = DiagTags.Divider });
-                for (var i = 0; i < lanes.Count; i++)
-                {
-                    var y0 = -hh + i * lh;
-                    if (i > 0) list.Add(new LinePrim(new Vec2(left, y0), new Vec2(hw, y0), frame) { Tag = DiagTags.Divider });
-                    VerticalText(list, lanes[i], size, new Vec2(left + band / 2, y0 + lh / 2), lh - 2, band - 1, DiagTags.Row, false);
-                }
-            }
-            return list;
-        }
-
-        /// <summary>Text rotated by -90° (reading bottom to top) fitted into a vertical header band.</summary>
-        private static void VerticalText(List<Primitive> list, string text, double size, Vec2 c, double length, double thickness, string tag, bool bold)
-        {
-            var lines = D.Lines(text);
-            if (lines.Count == 0) return;
-            var s = D.Fit(size, lines, length, thickness, lines.Count);
-            var rowH = s * D.LineFactor;
-            var x0 = c.X - (lines.Count - 1) * rowH / 2;
-            for (var i = 0; i < lines.Count; i++) list.Add(D.Text(new Vec2(x0 + i * rowH, c.Y), lines[i], s, tag, TextAnchor.Middle, bold, false, -90));
-        }
-
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
-        {
-            var vertical = o.Str("orientation", "vertical") != "horizontal";
-            yield return new ContextAction("diag.lanes.orientation", new I18nText("Horizontal lanes", "Waagerechte Bahnen"), IconIds.Rotate,
-                x => x.WithParam("orientation", x.Str("orientation", "vertical") == "horizontal" ? "vertical" : "horizontal")
-                      with { Size = new Size2(x.Size.H, x.Size.W) })
-            { IsActive = !vertical, Group = "orientation" };
-            var n = D.Lines(o.Str("lanes", DefaultLanes)).Count;
-            yield return D.AddRow("diag.lanes.add", new I18nText("Add lane", "Bahn hinzufügen"), "lanes", DefaultLanes, "Lane " + D.Inv(n + 1), grow: false);
-            yield return D.RemoveRow("diag.lanes.remove", new I18nText("Remove last lane", "Letzte Bahn entfernen"), "lanes", DefaultLanes, grow: false);
-        }
-    }
-
-    /// <summary>
     /// UML state: rounded rectangle with the name and optional internal activities (entry / do / exit), each a text
     /// parameter; several lines per activity are allowed.
     /// </summary>
@@ -247,6 +152,17 @@ namespace InventaSketch.Modules.Diagrams
 
         public override Size2 DefaultSize => new(36, 16);
         protected override I18nText Placeholder => new("State", "Zustand");
+
+        /// <summary>Rounded rectangle (UML) or circle with the name (patent-style state diagrams).</summary>
+        public override IReadOnlyList<ViewDef> Views => new[]
+        {
+            new ViewDef("rounded", new I18nText("Rounded rectangle", "Abgerundetes Rechteck")) { Icon = IconIds.ShapeSquare, Size = new Size2(36, 16) },
+            new ViewDef("circle", new I18nText("Circle", "Kreis")) { Icon = IconIds.ShapeCircle, Size = new Size2(20, 20) },
+        };
+
+        public static bool IsCircle(SketchObject o) => o.View == "circle";
+
+        public override IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o) => IsCircle(o) ? D.EllipsePorts(o.Size) : D.RectPorts(o.Size);
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
@@ -260,6 +176,13 @@ namespace InventaSketch.Modules.Diagrams
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
             double w = o.Size.W, h = o.Size.H;
+            if (IsCircle(o))
+            {
+                // Circle (ellipse when stretched) with the name in the inscribed square; activities are not shown.
+                var c = new List<Primitive> { Prim.Ellipse(0, 0, w / 2, h / 2, D.Outline) with { Tag = DiagTags.Outline } };
+                D.CenterText(c, Label(o, ctx), TextSizeOf(o), Vec2.Zero, w * 0.68, h * 0.68, DiagTags.Name);
+                return c;
+            }
             var list = new List<Primitive> { D.RoundedRect(-w / 2, -h / 2, w, h, Math.Min(4, Math.Min(w, h) * 0.3), D.Outline) with { Tag = DiagTags.Outline } };
             var sections = new List<IReadOnlyList<DiagRow>> { D.Header(null, Label(o, ctx)) };
             if (o.Flag("showActivities", true))

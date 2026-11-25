@@ -22,6 +22,7 @@ follow the box. Text is sized by the smaller scale factor relative to the design
 | `chart.pump` | Pump / fan curve / Pumpen-/Ventilatorkennlinie | `kind` pump / fan, `h0` (shut-off head or pressure), `qmax`, `hstat` (static part of the system), `qop` (flow at the operating point), `system` (system curve) |
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` low pass / high pass of 1st or 2nd order, `fc` (Hz), `zeta` (damping, 2nd order), `gain` (dB), `show` magnitude and phase / magnitude / phase, `marker` (corner frequency line), `xrange`, `data` (measured `f;dB;°`, replaces the system) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (nominal curve, see below), `tol` + `tolmode` percent / absolute, `smooth`, `limits`, `patterns`; further data blocks are drawn as measured series with markers |
+| `chart.figure` | Figure (principle, patent) / Prinzip- und Patentbild | `spec` (JSON specification, see [Figure](#figure-charts-v2-stage-2)); stacked panels, principle or data axes, value lines, markers, regions, notes, reference numerals |
 
 Common parameters (where they apply): `title`, `xlabel`, `xunit`, `ylabel`, `yunit` (empty = the type's
 bilingual default, an explicitly empty label hides the title), `xscale` / `yscale` linear / log, `xrange` / `yrange`
@@ -34,11 +35,11 @@ The efficiency map uses a qualitative loss model (constant losses, copper ∝ T�
 data. The pump curve is H(Q) = H₀ (1 − (Q/Q_max)²); the system curve runs through the static head and the operating
 point. The Bode plot is computed from the standard transfer functions of first- and second-order low and high passes.
 
-The library has 25 presets (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
+The library has 28 presets (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`) in two categories: data charts and characteristic curves.
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in three categories: data charts, characteristic curves and principle and patent figures.
 
 ## Data format
 
@@ -147,6 +148,85 @@ axis), `axis.box` (closed frame), `tick.x`, `tick.y`, `label.x`, `label.y` (tick
 - Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (see the design note
   [charts v2](../design/charts-v2.md)).
 
+## Figure (charts v2 stage 2)
+
+The chart type `chart.figure` draws principle and patent figures from a **versioned JSON specification** in the
+parameter `spec` (inserted without parameters it shows the patent figure below). Category "Principle and patent
+figures" with three presets, the check figures of the [charts v2 design](../design/charts-v2.md):
+
+| Id | Name | Shows |
+|---|---|---|
+| `chart.figure.phases` | Phases with rotor temperature (patent figure) | power P with the phases "pre-conditioning" and "full load" (phase lines t0, t1 through both panels); rotor temperature without (dashed) and with pre-conditioning (solid) up to the limit temperature, the region between them hatched, the time gained as a dimension arrow with extension lines, reference numerals 40–46; principle axes, monochrome |
+| `chart.figure.timing` | Timing diagram of a decision logic | "Fig. 2 …" title; three panels: maturity mass towards a dashed limit (numeral 64 at the axis, 63 on the curve), heat demand with a bump and dashed drive loss heat hatched only where the demand is higher (65–67), sampling signal with a solid (68) and a dashed pulse (69); t_krit as a dashed marker through all panels and as a time arrow below the first panel; rotated axis titles |
+| `chart.figure.temperature` | Temperature over time with thresholds | data axes 0–200 s / 0–220 °C, dotted horizontal grid only, four dashed reference lines with labels, a fast and a slow first-order curve with a gap each and inline labels, open circle markers "31 s" / "77 s", a vertical dimension "35 K", a caption; colour |
+
+The curves of the presets are qualitative (first-order lags, a Gaussian bump, rectangle pulses), not measured data.
+
+### Specification
+
+```json
+{ "version": 1, "title": "Fig. 2 …", "caption": "…", "scheme": "mono", "legend": "none", "grid": "dot", "panelGap": 3.2,
+  "x": { "mode": "principle", "min": 0, "max": 10, "label": { "en": "Time t", "de": "Zeit t" }, "marks": [ { "at": 6, "text": "t_krit" } ] },
+  "panels": [ { "mode": "principle", "max": 1.25, "label": "Power P", "share": 1.5, "title": "…" } ],
+  "series": [ { "panel": 0, "x": [0, 1, null, 3], "y": [0, 1, null, 2], "line": "dash", "width": 0.5, "color": "#1f4e9a",
+                "marker": "circle", "markerFill": "open", "step": false, "smooth": true,
+                "label": "heat demand", "labelAt": 4, "labelPos": "above", "numeral": { "text": "65", "at": 5.2, "dx": 1.3, "dy": -1 } } ],
+  "refs": [ { "kind": "h", "y": 0.9, "panel": 0, "label": "limit", "labelPos": "left", "line": "dash", "numeral": { "text": "64", "axis": true } },
+            { "kind": "v", "x": 6 },
+            { "kind": "point", "series": 0, "x": 31, "fill": "open", "label": "31 s", "labelPos": "left" } ],
+  "regions": [ { "kind": "between", "a": 1, "b": 2, "above": true, "from": 0, "to": 10, "fill": "hatch", "angle": 45, "spacing": 1.2, "opacity": 1 },
+               { "kind": "below", "a": 0, "base": 0 }, { "kind": "span", "from": 1, "to": 4, "panel": -1, "fill": "solid" } ],
+  "notes": [ { "kind": "text", "x": 2.5, "y": 1.15, "text": "pre-conditioning", "maxWidth": 2.9 },
+             { "kind": "dim", "x": 0, "gap": 0.55, "x2": 6, "gap2": 0.55, "panel2": 0, "text": "t_krit", "side": "above" },
+             { "kind": "arrow", "x": 1, "y": 1, "x2": 2, "y2": 0.5, "text": "…" }, { "kind": "line", "…": "…" },
+             { "kind": "numeral", "x": 3, "y": 0.4, "text": "70", "dx": 1.4, "dy": -1.4 } ] }
+```
+
+- **Axes** (`x` and each panel): `mode` `data` (ticks, tick labels, grid) or `principle` (axis arrow, no ticks, only
+  the named `marks`, drawn like tick labels), `scale` `linear` / `log`, `min` / `max` (principle axes default to 0 …
+  data maximum), `label` and `unit` (title "label (unit)" / "label in unit"), `grid` (default: on for data axes).
+  The x axis is shared; the panel y-axis titles are rotated. Panels stack top-down with `share` as relative height.
+- **Series**: points as `x` / `y` lists or `points` (`[[x, y], …]`); `null`, `NaN` text or missing values make a gap.
+  `line` solid / dash / dot / dashdot / longdash / dashdotdot; without a line style and colour the colour scheme uses
+  solid lines in the series colours, monochrome uses black and the series dash patterns. `label` is drawn at the curve
+  end, or at `labelAt` (`above`, `below`, `on` – inline on a white backing in a gap –, `left`, `right`); with a legend
+  (`legend` auto / inside / right) the labels go into the legend instead.
+- **Refs**: `h` value line (panel, `-1` = all panels; label right, left, below or `end` beside the plot), `v` vertical
+  marker (through all panels by default, or `panel`; label at the top or `axis` below the x axis), `point` circle marker
+  on curve `series` at `x` (`fill` open / filled, label right, left, above, below).
+- **Regions**: `between` curves `a` and `b` (with `above` only where `a` lies above `b`: crossing points are computed,
+  every part is its own sub-path), `below` a curve (down to the panel bottom or `base`), `span` between `from` and `to`
+  (one panel or all). Fill `hatch` (default), `cross`, `solid` (opacity 0.3 in colour), `dots` (core fills).
+- **Notes**: `text`, `arrow` (text at the tail), `line` (e.g. extension lines), `dim` (arrowheads at both ends, text
+  above/below/left/right of the middle), `numeral` (reference numeral with leader). Points are `x`, `y`, `panel`, or
+  `gap` (0 … 1 in the gap below the panel, e.g. a time arrow between two panels) instead of `y`.
+- **Reference numerals** (`numeral` on series, refs and regions, numeral notes): the text sits at the target plus
+  (`dx`, `dy`) font heights with a thin leader line; `axis: true` puts the numeral of a value line at the y axis.
+- **Texts** are a string or `{ "en": …, "de": … }`; numbers may be strings with a decimal comma (`"2,5"`).
+- **Robustness**: unknown members are ignored, wrong types fall back to defaults; JSON that cannot be read (or a root
+  that is not an object) renders empty principle axes with the message "Figure specification cannot be read (JSON)".
+  Rendering never throws. Actions on such a figure throw a bilingual `FormatException` and leave the text unchanged.
+
+### Parts, anchors and actions
+
+Part keys: `series.k`, `marker.k`, `curvelabel.k`, `ref.k`, `region.k`, `note.k`, `numeral.j` (running index over
+series, refs, regions and numeral notes), `paneltitle.i`, `caption`, `title`, `error` and the frame parts (`axis.x.1`,
+`axis.y.2`, `label.x`, `axistitle.y.2`, `grid.major` … – panels numbered from 1 as in the Bode plot). The parts list
+names them with their texts ("Reference line 3 – limit temperature", "Reference numeral 44"). Anchors: plot corners and
+centre, origin and axis rails per panel (`axis.x`, `axis.y`, `axis.x2` …), data ports `s<series>.<point>` and
+`ref<k>` for point markers.
+
+Element actions: add value line, add vertical marker, hatch between curves 1 and 2 (greyed out without two curves in
+one panel), principle axes (toggle all axes), monochrome, "Specification (JSON)…" (input). Part actions: curves – line
+style, markers, smooth curve, hatch below the curve; value lines and markers – line style or filled circle, "Label…",
+remove; regions – fill, remove; notes – "Text…", remove; axes – principle axes, add a value line in that panel or a
+vertical marker. Removing shifts the indices of later elements (their part looks then apply to the next element).
+
+Host notes: everything is native (lines, freeforms, hatched freeforms, text); no vector picture. Frame extensions
+(additive): panel height shares, custom ticks (marks), per-panel axis arrows and grid, panel gap, caption, extra right
+margin and axis texts. Not yet: the data table editor (Slidemax `ChartSheet` port), function generators and sketch
+curves (stage 3), axis breaks.
+
 ## Host notes
 
 All output uses native primitives: one freeform per series line (smooth curves as cubic Bézier paths), one
@@ -154,6 +234,82 @@ multi-sub-path freeform each for grid lines, ticks, contour levels, limit and he
 set, rectangles for bars, legend and label backings, a closed polygon for the band, and text. Axis titles of the
 y axes are rotated by −90°. Hatch and dot fills use the core fill kinds. No vector picture is needed. Charts do not
 depend on neighbouring objects.
+
+## Charts from pictures (building blocks)
+
+Stage 5 of [charts v2](../design/charts-v2.md): pure image analysis in `src/InventaSketch.Modules.Charts/Scanning`
+on a raw `PixelImage` (width, height, RGBA bytes; transparent pixels count as white). No host API, no OCR and no
+external service is needed; hosts supply the picture (clipboard, file, screen capture) and later the chart-type
+integration. Nothing throws: empty, tiny, blank or inconsistent pictures give bilingual `Warnings`.
+
+- **Bar scanner** (`BarScanner`, ported from the Slidemax chart scanner): background = most frequent colour,
+  connected areas of similar colour, thin long pieces are axis or gridlines, the baseline is the edge where most areas
+  end; finds columns or bars, stacked (series by colour) or clustered, parts below the baseline and the gridline step.
+  `BarScanner.Values` turns pixel extents into numbers with a `BarScale` (baseline value plus the value of the largest
+  bar or of one gridline step).
+- **Labels**: `ITextReader` is the interface for a host OCR; the engine ships `DigitTextReader` (ported Slidemax digit
+  reader: digits, separators, signs and percent in common fonts by pattern correlation, no letters).
+  `BarLabelReader` derives the scale from the value axis labels (robust line fit, German and English number styles) or
+  from value labels at the bars, and reads category names. `TextReaderGate` lets a host switch a failing OCR off once.
+- **Curve digitiser** (`CurveDigitizer`, new): finds the plot area and the axes (lowest long horizontal and leftmost
+  long vertical grey line; other long lines are gridlines and are masked out), clusters the curve colours (every pixel
+  is explained as a mix of background and curve colour, so anti-aliasing and blur stay with their curve), traces each
+  colour column by column (crossings keep the slope of both curves, gaps of dashes and crossings are bridged, fragments
+  are joined), drops short traces (text, legend), reports groups of short parallel straight traces as `Hatches` and
+  guesses the style solid / dashed / dotted from the gaps. Black-and-white pictures give one colour whose curves are
+  separated by the tracing.
+- **Calibration**: `DigitizeOptions.XAxis` / `YAxis` (`AxisCalibration`: two pixel positions with known values, linear
+  or logarithmic) or, for axes without one, the labels read by `DigitizeOptions.TextReader`
+  (`CurveLabelCalibration`, logarithmic axes recognised from 1, 10, 100 …). Without a calibration the points stay in
+  pixels with a warning.
+- **Result**: `ScanResult` with plot area, axes, gridlines, series (colour, style, pixel and data points), hatches,
+  calibration and warnings. `ScanDataText.FromCurves` writes the chart data text for `chart.xy` (rows `x;y`, a blank
+  line between series, `#` comments with style and colour); `ScanDataText.FromBars` writes a category table for
+  `chart.bar`.
+- **Accuracy (synthetic tests)**: crossing curves in two colours within 0.7 % of the y range (1.1 % after a 3 × 3 box
+  blur and noise; 98 % of the points within 0.1 %), a crossing solid / dashed black pair within 0.8 %, a steep sigmoid
+  within 0.2 %, bars within 1.4 % of the largest value after blur, calibration from stamped digit labels within 0.8 %.
+- **Limits**: no rotated pictures (axes must be horizontal and vertical), curves of the same colour crossing at a very
+  shallow angle may swap, filled area charts are reported as "filled areas" (use the bar scanner), the digit reader
+  reads only numbers in fonts similar to the stored patterns (a host OCR can be plugged in).
+
+## Curve functions, sketch recognition and axis breaks (building blocks)
+
+Charts v2 stage 3 (2026-11-25): pure, host-free libraries in the charts module; chart types and hosts do not use them
+yet (integration follows in the figure model).
+
+- **Curve functions** (`CurveFunctions`, `CurveSpec`): constant, ramp (linear), step, rectangle pulse, pulse train,
+  sawtooth, triangle, sine, exponential approach (PT1), exponential decay, second-order step response (PT2), Gaussian
+  bump and circle/ellipse (closed, parametric). Each kind has a bilingual name and parameter definitions (name,
+  default, valid range, bilingual label; unit-less – they take the units of the axes; `ToParamDef()` for the
+  inspector). Text form, invariant culture: `pt1(y0=20, yinf=160, tau=12)`; positional values (`sine(2, 10)`), case
+  does not matter, missing parameters take their defaults, optional shifts/offsets (`t0`, `phase`, `offset`) are left
+  out while neutral, `circle(cx, cy, r)` gives an ellipse. A German decimal comma is accepted where unambiguous
+  (`tau=1,5` between two digits in a named value, or all arguments separated by `;`). Errors throw
+  `CurveSpecFormatException` (a `FormatException`) with an English and a German message. `Sample(xMin, xMax)` returns
+  exact corners for piecewise-linear kinds (a jump is two points with the same x), a vertex at the start `t0` of
+  PT1/PT2/decay, at least 64 segments per sine period and a dense band around a narrow Gaussian bump (at most 20 000
+  points).
+- **Sketch recognition** (`SketchFit.Fit(trail, options)`): input is the pointer trail in data coordinates and,
+  preferably, the plot frame in data coordinates (all tolerances are relative to it, so they act like screen
+  distances). The trail is resampled by arc length, simplified (Ramer–Douglas–Peucker), checked for a closed loop and
+  fitted with constant, ramp, step, rectangle pulse, sawtooth, triangle, sine, PT1, decay or (closed) an axis-parallel
+  ellipse: a grid search with linear least squares gives the start, Nelder–Mead refines it on a robust (Huber),
+  symmetric trail ↔ curve distance, so vertical edges, overshoots and pen hooks are handled. Among the kinds whose
+  residual is at most 1.25 × the best + 0.003 the one with the fewest parameters wins; it is accepted up to a residual
+  of 2 % of the frame. The result has the kind, the spec, residual, confidence, the full ranking, the simplified trail
+  and always a smoothed trail (centripetal Catmull–Rom; the uniform variant is the Slidemax `Smoothed` formula), which
+  is the curve to use when nothing fits. All thresholds are named constants in `SketchFit`.
+- **Axis breaks** (`BrokenAxis`, `BrokenPlot`, `AxisBreaks`, ported from Slidemax and generalised from bar charts to
+  any x or y axis with continuous values): value ↔ position with one or more breaks (values `Lo … Hi` compressed into
+  a gap in mm; values inside a break map linearly into the gap, the inverse holds), page points on axes in any
+  direction, XY mapping, `VisibleRuns` cuts curves exactly at the break limits, automatic placement of breaks in
+  data-free gaps (`AxisBreaks.Spans`, the Slidemax rules: own extent, shrink to fit, drop ineffective breaks) and the
+  zigzag or double-slash markers (sizes from Slidemax: lines 4.5 pt apart, teeth 6.5 × 1.75 pt, slashes at 15°) across
+  the plot or short on the axis line. Linear axes only.
+
+Host capability: the building blocks produce data (specs, polylines, marker points); a host will draw them with the
+existing native primitives (freeforms and closed polygons), no vector picture is needed.
 
 ## Tests and gallery
 

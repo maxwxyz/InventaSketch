@@ -87,7 +87,7 @@ namespace InventaSketch.Modules.Diagrams.Tests
         {
             var r = T.Reg();
             var cats = new HashSet<string>(r.Categories.Select(c => c.Id));
-            Assert.Equal(9, cats.Count);
+            Assert.Equal(13, cats.Count);
             foreach (var t in r.Types) Assert.Contains(r.Library, i => i.TypeId == t.Id);
             foreach (var i in r.Library) Assert.Contains(i.Category, cats);
             Assert.Equal(r.Library.Count, r.Library.Select(i => i.Id).Distinct().Count());
@@ -628,9 +628,11 @@ namespace InventaSketch.Modules.Diagrams.Tests
             var type = r.TypeOf(o);
             var three = type.Actions(o, Lang.En).Single(a => a.Id == "diag.lanes.add").Apply(o);
             Assert.Equal(new[] { "Lane 1", "Lane 2", "Lane 3" }, D.Lines(three.Str("lanes", "")));
+            // The lanes keep their size: the container grows by one lane.
+            Assert.Equal(new Size2(o.Size.W * 1.5, o.Size.H), three.Size);
             var horizontal = type.Actions(three, Lang.En).Single(a => a.Id == "diag.lanes.orientation").Apply(three);
             Assert.Equal("horizontal", horizontal.Str("orientation", ""));
-            Assert.Equal(new Size2(o.Size.H, o.Size.W), horizontal.Size);
+            Assert.Equal(new Size2(three.Size.H, three.Size.W), horizontal.Size);
             var texts = T.All<TextPrim>(T.Local(r, Edits.Replace(doc, horizontal), o.Id)).ToList();
             Assert.Equal(3, texts.Count);
             Assert.All(texts, t => Assert.Equal(-90, t.Rotation));

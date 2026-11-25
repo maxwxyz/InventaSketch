@@ -205,6 +205,8 @@ namespace InventaSketch.Modules.Electrical
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-20, 0), new Vec2(20, 0) };
         public override IReadOnlyList<ParamDef> Parameters => new[] { Conductors };
+        /// <summary>An installation cable (build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.ElectricInstallation;
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
         {

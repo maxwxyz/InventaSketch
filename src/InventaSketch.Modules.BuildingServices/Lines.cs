@@ -166,6 +166,20 @@ namespace InventaSketch.Modules.BuildingServices
             "bs.heat.pump", "bs.heat.mixer", "bs.heat.trv", "bs.heat.radiator", "bs.san.basin", "bs.san.wc", "bs.san.riser",
         };
 
+        /// <summary>The connection medium of a pipe medium value ("flow" → heating flow, "cold" → cold water …).</summary>
+        public static string MediumOf(string medium) => medium switch
+        {
+            "flow" => PortMedia.HeatingFlow,
+            "return" => PortMedia.HeatingReturn,
+            "hot" => PortMedia.HotWater,
+            "circulation" => PortMedia.Circulation,
+            "waste" => PortMedia.Waste,
+            _ => PortMedia.ColdWater,
+        };
+
+        /// <summary>The pipe's medium (build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => MediumOf(line.Str("medium", "cold"));
+
         private static IReadOnlyList<Vec2> PathOf(SketchObject x, RenderContext ctx) => Clean(ctx.Doc.ResolvePoints(x));
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
@@ -228,6 +242,9 @@ namespace InventaSketch.Modules.BuildingServices
         public override IReadOnlyList<ParamDef> Parameters => new[] { KindParam, Width, Pm.Height(2400), Arrow, Pm.Scale };
 
         public override IReadOnlyList<string> Companions => new[] { "bs.vent.terminal", "bs.vent.unit" };
+
+        /// <summary>The air the duct carries ("air.supply" …; build "+" at its free ends, <see cref="Building"/>).</summary>
+        public override string? LineMedium(SketchObject line) => PortMedia.AirOf(line.Str("kind", "supply"));
 
         /// <summary>Duct width on the page (mm) at the object's plan scale.</summary>
         public static double PageWidth(SketchObject o, SketchDocument doc) => Math.Max(0.3, o.Num("width", 160) / Bs.ScaleOf(o, doc));
