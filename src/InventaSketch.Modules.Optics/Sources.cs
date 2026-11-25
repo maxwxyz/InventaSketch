@@ -59,12 +59,10 @@ namespace InventaSketch.Modules.Optics
             var pageOrigin = m.Apply(origin);
             var n = Ox.ClampInt(o.Int("rays", 5), 1, 15);
             var mode = o.Str("emission", "cone");
-            var ahead = Ahead(scene, pageOrigin, axis, o.Id);
             var rays = new List<StartRay>();
             if (mode == "parallel")
             {
-                var beam = o.Num("beam", 0);
-                var half = beam > 0 ? beam / 2 : ahead is { } a ? 0.875 * Aperture(a.E).Half : 0.6 * o.Size.H / 2;
+                var half = ParallelHalf(o, scene, pageOrigin, axis);
                 foreach (var y in n == 1 ? new[] { 0.0 } : Ox.Spaced(-half, half, n))
                     rays.Add(new StartRay(m.Apply(origin + new Vec2(radius, y)), axis, lambda));
             }
@@ -80,16 +78,7 @@ namespace InventaSketch.Modules.Optics
             }
             else
             {
-                var spread = o.Num("spread", 0);
-                double alpha;
-                if (spread > 0) alpha = Geo.DegToRad(Geo.Clamp(spread, 0.5, 80));
-                else if (ahead is { } a)
-                {
-                    var (c, _, half) = Aperture(a.E);
-                    alpha = Math.Atan2(half, Math.Max(1e-6, (c - pageOrigin).Dot(axis)));
-                }
-                else alpha = Geo.DegToRad(15);
-                alpha = Geo.Clamp(alpha, Geo.DegToRad(1), Geo.DegToRad(80));
+                var alpha = ConeAngle(o, scene, pageOrigin, axis);
                 foreach (var t in Ox.Spaced(-alpha, alpha, n))
                 {
                     var dir = new Vec2(Math.Cos(t), Math.Sin(t));
@@ -98,6 +87,64 @@ namespace InventaSketch.Modules.Optics
             }
             return new Emission(rays, o.Id);
         }
+
+        /// <summary>
+        /// Half cone angle (radians, 1° … 80°) of a lamp or LED: the parameter <c>spread</c>, or (0) just filling the lens,
+        /// mirror or aperture of the next element on the axis, or 15° when there is none.
+        /// </summary>
+        public static double ConeAngle(SketchObject o, IReadOnlyList<SceneElement> scene, Vec2 pageOrigin, Vec2 axis)
+        {
+            var spread = o.Num("spread", 0);
+            double alpha;
+            if (spread > 0) alpha = Geo.DegToRad(Geo.Clamp(spread, 0.5, 80));
+            else if (Ahead(scene, pageOrigin, axis, o.Id) is { } a)
+            {
+                var (c, _, half) = Aperture(a.E);
+                alpha = Math.Atan2(half, Math.Max(1e-6, (c - pageOrigin).Dot(axis)));
+            }
+            else alpha = Geo.DegToRad(15);
+            return Geo.Clamp(alpha, Geo.DegToRad(1), Geo.DegToRad(80));
+        }
+
+        /// <summary>
+        /// Half height of a parallel bundle of a lamp or LED: half the parameter <c>beam</c>, or (0) 87.5 % of the aperture of
+        /// the next element on the axis, or 60 % of the half box height when there is none.
+        /// </summary>
+        public static double ParallelHalf(SketchObject o, IReadOnlyList<SceneElement> scene, Vec2 pageOrigin, Vec2 axis)
+        {
+            var beam = o.Num("beam", 0);
+            if (beam > 0) return beam / 2;
+            return Ahead(scene, pageOrigin, axis, o.Id) is { } a ? 0.875 * Aperture(a.E).Half : 0.6 * o.Size.H / 2;
+        }
+
+        /// <summary>
+        /// Grips of a lamp or LED with a docked ray bundle: the edge ray of the cone (half cone angle) or the edge of the
+        /// parallel bundle (bundle height); none for emission in all directions or without docked rays.
+        /// </summary>
+        public static IEnumerable<DragHandle> EmitterGrips(SketchObject o, RenderContext ctx, Vec2 origin, double radius, bool radialAllowed)
+        {
+            if (Beams.BundlesOf(ctx.Doc, o.Id).Count == 0) yield break;
+            var mode = o.Str("emission", "cone");
+            if (mode == "radial" && radialAllowed) yield break;
+            var scene = RayTracer.Scene(ctx.Doc, o);
+            var m = o.Matrix();
+            var axis = m.ApplyLinear(new Vec2(1, 0)).Normalized();
+            var pageOrigin = m.Apply(origin);
+            if (mode == "parallel")
+            {
+                var half = ParallelHalf(o, scene, pageOrigin, axis);
+                yield return Grips.Page(o, Grips.Beam, origin + new Vec2(radius, -half), DragConstraint.Vertical, Grips.BeamLabel(2 * half));
+            }
+            else yield return Grips.Cone(o, origin, ConeAngle(o, scene, pageOrigin, axis), radius + Math.Max(8, 2 * radius));
+        }
+
+        /// <summary>A lamp's or LED's grip dragged to <paramref name="pagePos"/>: the half cone angle or the bundle height.</summary>
+        public static SketchObject MoveEmitterGrip(SketchObject o, string key, Vec2 pagePos, Vec2 origin) => key switch
+        {
+            Grips.Spread => o.WithParam("spread", Grips.ConeDegrees(Grips.ToLocal(o, pagePos), origin)),
+            Grips.Beam => o.WithParam("beam", Grips.BundleHeight(Grips.ToLocal(o, pagePos).Y - origin.Y)),
+            _ => o,
+        };
 
         public static readonly ParamDef Emission = Pm.Choice("emission", "Emission", "Abstrahlung", "cone",
             ("cone", "Cone (point source)", "Kegel (Punktquelle)"), ("parallel", "Parallel (collimated)", "Parallel (kollimiert)"), ("radial", "All directions", "In alle Richtungen"));
@@ -176,6 +223,15 @@ namespace InventaSketch.Modules.Optics
             return Sources.Emit(o, scene, new Vec2(cx, 0), r, 0, radialAllowed: true);
         }
 
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var (r, cx) = Bulb(o);
+            return Sources.EmitterGrips(o, ctx, new Vec2(cx, 0), r, radialAllowed: true);
+        }
+
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+            => Sources.MoveEmitterGrip(o, key, pagePos, new Vec2(Bulb(o).Cx, 0));
+
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
@@ -251,6 +307,15 @@ namespace InventaSketch.Modules.Optics
             return Sources.Emit(o, scene, new Vec2(xd, 0), r, Lambda(o.Str("color", "white")), radialAllowed: false);
         }
 
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var (r, xd, _) = Dome(o);
+            return Sources.EmitterGrips(o, ctx, new Vec2(xd, 0), r, radialAllowed: false);
+        }
+
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+            => Sources.MoveEmitterGrip(o, key, pagePos, new Vec2(Dome(o).Xd, 0));
+
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
@@ -325,6 +390,20 @@ namespace InventaSketch.Modules.Optics
             return new Emission(rays, o.Id);
         }
 
+        /// <summary>Half height of the beam of several rays: half the parameter <c>beam</c>, or 30 % of the half box height.</summary>
+        private static double Half(SketchObject o) => o.Num("beam", 0) is var beam && beam > 0 ? beam / 2 : 0.3 * o.Size.H / 2;
+
+        /// <summary>With several rays and a docked bundle: the edge of the beam (bundle height), at the output aperture.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            if (Ox.ClampInt(o.Int("rays", 1), 1, 15) < 2 || Beams.BundlesOf(ctx.Doc, o.Id).Count == 0) yield break;
+            var half = Half(o);
+            yield return Grips.Page(o, Grips.Beam, new Vec2(o.Size.W / 2, -half), DragConstraint.Vertical, Grips.BeamLabel(2 * half));
+        }
+
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+            => key == Grips.Beam ? o.WithParam("beam", Grips.BundleHeight(Grips.ToLocal(o, pagePos).Y)) : o;
+
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
@@ -346,20 +425,42 @@ namespace InventaSketch.Modules.Optics
         public static readonly ParamDef Bundle = Pm.Choice("bundle", "Rays from the tip", "Strahlen von der Spitze", "principal",
             ("principal", "Principal rays", "Konstruktionsstrahlen"), ("fan", "Fan filling the lens", "Fächer über die Linse"));
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Bundle, Pm.Rays(5), Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Bundle, Pm.Rays(5), Imaging.Mode, Imaging.NamesDef, Pm.Label };
         public override Size2 DefaultSize => new(4, 16);
         public override bool IsPart => false;
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Beams.AxisId, MirrorType.ConcaveId, Detectors.ScreenId };
 
+        /// <summary>
+        /// The arrow, its optional name and – with a lens or curved mirror in front of it on its axis – its image (real solid,
+        /// virtual dashed) and optionally the construction rays (<see cref="Imaging"/>). The image lies outside the box, like the
+        /// focal point marks of a lens.
+        /// </summary>
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
             var hh = o.Size.H / 2;
-            var list = new List<Primitive>
-            {
-                new LinePrim(new Vec2(0, hh), new Vec2(0, -hh), Ox.Outline with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Medium }) { Tag = OpticsTags.Body },
-            };
+            var list = new List<Primitive>();
+            list.AddRange(Imaging.Render(o, ctx));
+            list.Add(new LinePrim(new Vec2(0, hh), new Vec2(0, -hh), Ox.Outline with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Medium }) { Tag = OpticsTags.Body });
+            if (o.Flag("names", false)) list.Add(Imaging.Name(new Vec2(1.2, -hh), ctx.Lang == Lang.De ? "G" : "O"));
             list.AddRange(Ox.Label(o, new Vec2(0, -hh - 1.2 - Ox.LabelSize)));
             return list;
+        }
+
+        public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)
+        {
+            yield return new PartInfo(OpticsTags.Body, new I18nText("Object arrow", "Gegenstandspfeil"), "line");
+            if (Imaging.Shown(o) && Imaging.Find(o, ctx) is { } frame)
+            {
+                var hh = o.Size.H / 2;
+                var m = o.Matrix();
+                var tip = Imaging.Image(frame, m.Apply(new Vec2(0, -hh)));
+                if (tip is not null && Imaging.Image(frame, m.Apply(new Vec2(0, hh))) is not null)
+                    yield return new PartInfo(OpticsTags.Image, new I18nText("Image", "Bild"), "line");
+                if (o.Str("image", "image") == "construction")
+                    yield return new PartInfo(OpticsTags.Construction, new I18nText("Construction rays", "Konstruktionsstrahlen"), "line");
+            }
+            if (o.Flag("names", false)) yield return new PartInfo(OpticsTags.Names, new I18nText("Names", "Namen"), "text");
+            if (!string.IsNullOrWhiteSpace(o.Str("label", ""))) yield return new PartInfo(OpticsTags.Label, new I18nText("Label", "Beschriftung"), "text");
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
@@ -419,6 +520,8 @@ namespace InventaSketch.Modules.Optics
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
             foreach (var opt in Ox.Choice(o, "optics.bundle", new I18nText("Rays", "Strahlen"), Bundle, "rays")) yield return opt;
+            foreach (var opt in Ox.Choice(o, "optics.image", new I18nText("Image", "Bild"), Imaging.Mode, "image")) yield return opt;
+            yield return Ox.Toggle(o, "optics.names", new I18nText("Names of object and image", "Namen Gegenstand und Bild"), "names", false, "image");
         }
     }
 }

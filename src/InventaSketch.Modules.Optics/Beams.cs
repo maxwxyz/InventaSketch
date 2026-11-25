@@ -52,6 +52,17 @@ namespace InventaSketch.Modules.Optics
         /// Traces a ray object in its document: from the emitter its start is docked on (its rays and parameters), or as
         /// a single ray from its first point towards its second.
         /// </summary>
+        /// <summary>
+        /// The emitter whose bundle <paramref name="ray"/> draws (the element its start is docked on, if that element emits),
+        /// or null for a free ray.
+        /// </summary>
+        public static SketchObject? Emitter(SketchObject ray, SketchDocument doc)
+        {
+            var source = ray.Attach is { Count: > 0 } att && att[0] is { } a ? doc.Get(a.ObjectId) : null;
+            return source is { IsPointGeometry: false } && OpticsModule.TypeOf(source.Type) is OpticsType st
+                && st.Emit(source, Array.Empty<SceneElement>()) is not null ? source : null;
+        }
+
         public static TraceResult Trace(SketchObject ray, SketchDocument doc)
         {
             var pts = doc.ResolvePoints(ray);
@@ -174,6 +185,50 @@ namespace InventaSketch.Modules.Optics
                 }
             }
             return list;
+        }
+
+        /// <summary>
+        /// A free traced ray: its start direction as a grip on the drawn ray (halfway to the second point or to the first
+        /// element it meets), dragged around the start (whole degrees, the length kept). A ray docked on an emitter takes its
+        /// direction from the emitter (turn the emitter, or drag the emitter's grips) and has no grip of its own.
+        /// </summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            if (!o.Flag("trace", true) || o.Points is not { Count: >= 2 } || Beams.Emitter(o, ctx.Doc) is not null) yield break;
+            var pts = ctx.Doc.ResolvePoints(o);
+            var d = pts[1] - pts[0];
+            var len = d.Length;
+            if (len < 1e-6) yield break;
+            var reach = len;
+            try
+            {
+                if (Beams.Trace(o, ctx.Doc).Paths.FirstOrDefault() is { Points: { Count: >= 2 } } path)
+                    reach = Math.Min(len, path.Points[1].DistanceTo(pts[0]));
+            }
+            catch (Exception)
+            {
+                // A grip must never fail: stay on the stored segment.
+            }
+            var deg = Geo.RadToDeg(Math.Atan2(d.Y, d.X));
+            yield return new DragHandle(Grips.Direction, pts[0] + d * (0.5 * reach / len), DragConstraint.Free,
+                Grips.Label("Start angle", "Startwinkel", Dragging.Snap(deg, 0.1), "°")) { Part = OpticsTags.Ray };
+        }
+
+        /// <summary>The direction grip turns the second point around the first (whole degrees, clockwise on screen), keeping the length.</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            if (key != Grips.Direction || o.Points is not { Count: >= 2 } stored) return o;
+            var pts = ctx.Doc.ResolvePoints(o);
+            var len = pts[1].DistanceTo(pts[0]);
+            var v = pagePos - pts[0];
+            if (len < 1e-6 || v.Length < 1e-6) return o;
+            var rad = Geo.DegToRad(Dragging.Snap(Geo.RadToDeg(Math.Atan2(v.Y, v.X)), 1));
+            var points = stored.ToArray();
+            points[0] = pts[0];
+            points[1] = pts[0] + new Vec2(Math.Cos(rad), Math.Sin(rad)) * len;
+            // A second point docked somewhere is released: it now lies where the grip put it.
+            var attach = o.Attach is { Count: > 1 } a && a[1] is not null ? a.Select((x, i) => i == 1 ? null : x).ToArray() : o.Attach;
+            return o with { Points = points, Attach = attach };
         }
 
         public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)

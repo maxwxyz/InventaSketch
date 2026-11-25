@@ -45,7 +45,7 @@ It does not design or optimise optical systems (no aberrations, thick-lens data 
 | `optics.detector.camera` | Camera: lens barrel focused on the image sensor | `label` |
 | `optics.detector.eye` | Eye (section): cornea, iris, lens, retina, optic nerve | `label` |
 | `optics.screen.plain` | Screen | `label` |
-| `optics.object.arrow` | Object arrow standing on the axis (imaging figures) | `bundle` principal rays/fan, `rays`, `label` |
+| `optics.object.arrow` | Object arrow standing on the axis (imaging figures) | `bundle` principal rays/fan, `rays`, `image` off/image/construction (image), `names` (false), `label` |
 | `optics.ray` | Light ray (point object, page coordinates) | `trace` (true), `arrows` middle/end/none, `virtual` (true), `tail` (0 = automatic) |
 | `optics.axis.line` | Optical axis (dash-dot centre line, point object) | `label` |
 
@@ -75,9 +75,10 @@ ray object docked on the element (anchor `exit`, `o` or `tip`); when one is dock
 
 **Live tracing.** Rays are traced every time they are drawn, from the current document: every optics element on the
 page (hidden layers excluded) takes part. Every optics element reports the rays of its page as dependents
-(`ObjectType.Dependents`, `DependsOnNeighbours`), so moving, rotating, scaling or changing an element redraws the rays in
-the same undo step; the docked start point follows its emitter through the ordinary attachment. Nothing has to be
-re-traced by hand.
+(`ObjectType.Dependents`, `DependsOnNeighbours`); elements that act on light (they have an optical surface) also report
+the object arrows of the page that draw an image. So moving, rotating, scaling or changing an element, or dragging one of
+its grips, redraws the rays and images in the same undo step; the docked start point follows its emitter through the
+ordinary attachment. Nothing has to be re-traced by hand.
 
 **Physics used:**
 
@@ -97,6 +98,58 @@ re-traced by hand.
 - After the last element a ray runs on for `tail` mm; automatic (0): as long again as the way so far (30–400 mm), and the
   open ends of a bundle are lined up across it. A free ray that meets nothing ends at its second point.
 
+## Image construction
+
+An object arrow (`optics.object.arrow`) with a converging or diverging lens or a curved mirror in front of it on its axis
+(the nearest such element whose centre lies within half its larger box side of the arrow's axis line; a mirror must turn
+its reflecting side to the arrow) draws its **image** – parameter `image`, a choice in the context bar:
+
+- `off`: no image.
+- `image` (default): the image arrow only. A **real** image (light really meets there) is drawn solid, a **virtual** one
+  dashed (hidden line role).
+- `construction`: the image with the three **construction rays** from the arrow tip, one colour each: the parallel ray
+  (red: parallel to the axis up to the element, then through F′ or away from the virtual F′), the central ray (green:
+  through the optical centre or vertex, undeviated or reflected symmetrically) and the focal ray (blue: through or towards
+  F, parallel to the axis after the element). Backward extensions to a virtual image and the part of a focal ray that only
+  aims at F are dashed. As in textbook figures, the rays turn on the element's principal plane, which is extended beyond the
+  drawn aperture where needed.
+
+Each point of the arrow (foot and tip) is imaged with the thin lens equation **1/f = 1/g + 1/b** and the magnification
+**β = −b/g** (g object distance, b image distance; b > 0 behind a lens or in front of a mirror = real, b < 0 = virtual;
+`ThinLens.ImageDistance`/`Magnification`). Examples (f = 40 mm): g = 2f gives b = 2f, β = −1; g = 1.5f gives b = 3f,
+β = −2; g = f/2 gives b = −f, β = 2 (virtual, upright, magnified). A mirror folds the image space back onto its front;
+a convex mirror's image lies behind it. At g = f (image at infinity), for images farther than 5 m or magnified more than
+50 times, no image is drawn (the construction rays still are, without the focal ray).
+
+`names` (toggle **Names of object and image**) writes the names at the tips: German "G" and "B", English "O" and "I".
+The image and its rays are pure paraxial geometry from the document, drawn with the arrow (outside its box, like the focal
+point marks of a lens), and follow live when the arrow, the lens or the mirror moves or changes. A ray bundle docked on the
+arrow (principal rays, traced) still works independently: the traced rays meet in the drawn image.
+
+## Grips (drag handles)
+
+Values are dragged directly on the drawing (`ObjectType.DragHandles` / `MoveHandle`, page mm; the hosts show and drive
+them generically). A drag only writes the parameter; the box (`Size`) and the position never change.
+
+| Element | Grip (key) | Where | Moves | Writes |
+|---|---|---|---|---|
+| Lenses | `f.back`, and `f.front` when the focal points are drawn | F′ at +f (F at −f) on the axis | along the axis | `f` = distance from the lens, whole mm, 1–5000 (the sign stays with the type) |
+| Lenses with their own bundle docked | `beam` | edge of the bundle (start of the parallel rays, or on the lens plane for rays from 2f) | across the axis | `beam` = twice the distance from the axis, whole mm |
+| Concave/convex mirror | `f`, and `cc` when F and C are drawn | F (in front of a concave mirror, behind a convex one), C at 2f | along the axis | `f` = distance from the vertex (C: half of it), whole mm |
+| Aperture stop / slit | `opening` | inner edge of the upper blade | across the axis | `opening` = share of the half height, steps of 0.01, 0.02–0.95 |
+| Lamp, LED (cone) with docked rays | `spread` | on the upper edge ray of the cone, beyond the bulb | freely; the angle seen from the bulb centre counts | `spread` = half cone angle, whole degrees, 1°–80° |
+| Lamp, LED (parallel) with docked rays | `beam` | edge of the bundle at the bulb/dome | across the axis | `beam`, whole mm |
+| Laser with several rays and docked rays | `beam` | edge of the beam at the output | across the axis | `beam`, whole mm |
+| Fibre with docked rays | `spread` | on the upper edge ray of the output cone | freely, angle from the output end | `spread`, whole degrees |
+| Free traced ray | `dir` | on the drawn ray, halfway to its second point or to the first element it meets | freely, around the start (arc) | the second point turned around the first, whole degrees (clockwise on screen), length kept |
+
+Every grip carries a bilingual label with its current value ("Focal length f: 40 mm" / "Brennweite f: 40 mm", "Half cone
+angle: 12°", "Start angle: 30°"). The grips of lenses and mirrors belong to the part `focal` when the marks are drawn
+(selecting the focal points shows them). Emitter grips only appear while a ray bundle is docked (otherwise there is no cone
+to see); a ray docked on an emitter takes its direction from the emitter (turn the emitter) and has no grip of its own;
+an untraced ray is edited by its points. Prisms and gratings have no grips (no parameter maps onto a point of the drawing
+naturally); the angle of a grating's first order is set in its number field.
+
 ## Snapping anchors
 
 - Every element exposes its optical centre as a `Port` anchor (`o`; mirrors: vertex; detectors and screen: front face;
@@ -108,8 +161,9 @@ re-traced by hand.
 
 ## Parts and cleaning
 
-Part keys (`PartLooks`): `body`, `focal`, `hatch`, `detail`, `label` on elements; `ray` (all rays, each `ray.<i>`) and
-`virtual` on rays; `axis` on the optical axis. They can be restyled or hidden individually.
+Part keys (`PartLooks`): `body`, `focal`, `hatch`, `detail`, `label` on elements; `image`, `construction` and `names`
+on the object arrow (listed while drawn); `ray` (all rays, each `ray.<i>`) and `virtual` on rays; `axis` on the optical
+axis. They can be restyled or hidden individually.
 
 Clean slides (`Sanitize`): optics elements carry no values worth hiding; the generic pass replaces free-text labels
 (designators such as `L1` stay). Focal lengths, indices and positions are kept.
@@ -117,8 +171,8 @@ Clean slides (`Sanitize`): optics elements carry no values worth hiding; the gen
 ## Persistence
 
 All state is in the document model: parameters, `Size`, `Transform`, the ray's points and the attachment of its first
-point (`AnchorId` = `exit`/`o`/`tip`). The traced paths are not stored; they are recomputed from the document, so JSON
-round trips render identically.
+point (`AnchorId` = `exit`/`o`/`tip`). The traced paths, images, construction rays and grips are not stored; they are
+recomputed from the document, so JSON round trips render identically.
 
 ## Host notes
 
@@ -127,11 +181,19 @@ round trips render identically.
 - Rays depend on neighbours: hosts that keep objects in separate units (PowerPoint COM) must render rays with the other
   units of the slide as context and redraw the dependents reported after an edit, as they already do for walls and lines.
 - **Add ray bundle** inserts a new object (`ContextAction.ApplyInDocument`). The engine (Office web, LibreOffice) applies
-  that; the PowerPoint COM add-in currently keeps only the selected unit's own objects from an action result, so there the
-  action has no visible effect until the add-in inserts new objects of an action result as new units. The library item
+  that, and the PowerPoint COM add-in inserts the new objects of an action result as new units. The library item
   "Light ray (traced)" docked by dragging its start onto a source works in every host.
 - The stored points of a docked ray are not updated by the trace; hosts that show point handles show the docked start
   and the (unused) second point.
+- **Object arrows with an image depend on neighbours** like rays: render them with the slide's other units as context and
+  redraw them when a lens or mirror they image through is edited (they are reported as its dependents). The image lies
+  outside the arrow's box, so the arrow's native group grows with it (like a lens with its focal point marks).
+- **Grips:** the COM add-in shows and drags the grips of any type generically (preview of the dragged element, one undo
+  step on release, dependents redrawn then). Rays and images in *other* units follow on release, not during the drag: a
+  live follow while dragging a grip or moving a source, lens or mirror needs the host to re-render the reported
+  dependents with the moved element in its drag preview (open item). The engine's
+  `moveHandle` (web, LibreOffice) recognises a change by parameters and size only, so the free ray's direction grip, which
+  changes the ray's points, needs `moveHandle` to compare the points too.
 
 ## Limits and next steps
 
@@ -140,5 +202,6 @@ round trips render identically.
 - The fibre does not guide light from its input to its output; a bundle on the output end starts a new cone.
 - Light reaching the inside of an element from an unusual side (e.g. through the side of a lens) is treated by the
   element's single optical surface.
-- Possible next steps: image arrow construction (real/virtual image drawn automatically), thick lenses with two
-  surfaces, Michelson/Mach-Zehnder templates.
+- The image construction uses the first lens or curved mirror on the arrow's axis only (no image of an image through a
+  second element); the traced ray bundle does pass every element.
+- Possible next steps: images through several elements, thick lenses with two surfaces, Michelson/Mach-Zehnder templates.
