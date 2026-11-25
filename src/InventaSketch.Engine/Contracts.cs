@@ -443,6 +443,10 @@ namespace InventaSketch.Engine
         public string? ChoiceLabel { get; set; }
         /// <summary>The choice is a menu of commands (no current option): "Fill to ▸".</summary>
         public bool ChoiceMenu { get; set; }
+        /// <summary>The closed dropdown shows the current option's name, not its picture (it would repeat a neighbouring choice's).</summary>
+        public bool ChoiceLabelInBar { get; set; }
+        /// <summary>Pictogram id of the choice itself for the closed dropdown (instead of the current option's picture); null otherwise.</summary>
+        public string? ChoiceBarIcon { get; set; }
         /// <summary>A small drawing of the option as SVG (options without a shared pictogram: fill patterns, colours); null otherwise.</summary>
         public string? PreviewSvg { get; set; }
     }

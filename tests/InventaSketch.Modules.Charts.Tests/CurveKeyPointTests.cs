@@ -197,6 +197,7 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.Equal(CurveShapes.DetailAction + "=medium", Assert.Single(detail, a => a.IsActive).Id);
             Assert.Equal("Detail", detail[0].Choice!.Label.En);
             Assert.Equal("Detailgrad", detail[0].Choice!.Label.De);
+            Assert.Equal(IconIds.PointsShow, detail[0].Choice!.BarIcon); // not the curve picture of the shape button next to it
             Assert.Equal("Mittel (adaptiv)", detail[1].Label.De);
             Assert.All(detail, a => Assert.NotNull(a.Preview));
             Assert.DoesNotContain(actions, a => a.Icon == IconIds.Cycle);

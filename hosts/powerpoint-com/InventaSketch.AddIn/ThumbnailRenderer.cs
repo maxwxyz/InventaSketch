@@ -11,7 +11,9 @@ namespace InventaSketch.AddIn
     /// <summary>Renders engine primitives with GDI+ (ribbon images, later the on-slide overlay preview).</summary>
     internal static class ThumbnailRenderer
     {
-        public static Bitmap Render(IReadOnlyList<Primitive> prims, int size, Color ink, Color background)
+        /// <param name="lineWidthPx">Line width in pixels; null: the fixed thumbnail width (1.7 px up to 36 px, else 1.2 px).
+        /// Option pictures next to bar pictograms pass the pictograms' width so they do not look inactive.</param>
+        public static Bitmap Render(IReadOnlyList<Primitive> prims, int size, Color ink, Color background, float? lineWidthPx = null)
         {
             var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using var g = Graphics.FromImage(bmp);
@@ -29,7 +31,7 @@ namespace InventaSketch.AddIn
             g.TranslateTransform((float)(size / 2.0 - (b.X + b.W / 2) * scale), (float)(size / 2.0 - (b.Y + b.H / 2) * scale));
             g.ScaleTransform(scale, scale);
             // Thumbnails use a fixed pixel line width so tiny and large symbols stay readable.
-            var px = (size <= 36 ? 1.7f : 1.2f) / scale;
+            var px = (lineWidthPx ?? (size <= 36 ? 1.7f : 1.2f)) / scale;
             foreach (var p in Prim.Flatten(prims)) Draw(g, p, ink, px);
             return bmp;
         }

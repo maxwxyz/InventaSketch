@@ -75,6 +75,9 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.All(shapes, a => Assert.NotNull(a.Preview));
             Assert.DoesNotContain(actions, a => a.Icon == IconIds.Cycle);
             if (memo.Fits.Count > 1) Assert.Equal(memo.Fits.Count, actions.Count(a => a.Choice?.Key == CurveShapes.FitAction));
+            // The fit's picture would repeat the shape button's (both the current curve): the bar shows its name instead.
+            Assert.All(actions.Where(a => a.Choice?.Key == CurveShapes.FitAction), a => Assert.True(a.Choice!.LabelInBar));
+            Assert.False(shapes[0].Choice!.LabelInBar);
             Assert.DoesNotContain(actions, a => a.Choice?.Key == CurveShapes.SmoothingAction);
             // The markers part of the curve offers the same switch.
             Assert.Contains(r.PartActions(result.Chart, "marker.1", Fx.Ctx()), a => a.Choice?.Key == CurveShapes.ShapeAction);
@@ -146,6 +149,7 @@ namespace InventaSketch.Modules.Charts.Tests
             foreach (var p in smooth) Assert.InRange(p.Y - Wavy(p.X), -0.35, 0.35);
 
             // Smoothing: medium → strong → light → medium.
+            Assert.All(r.PartActions(o, "series.1", Fx.Ctx()).Where(a => a.Choice?.Key == CurveShapes.SmoothingAction), a => Assert.Equal(IconIds.Smooth, a.Choice!.BarIcon));
             var strong = Apply(r, o, "series.1", CurveShapes.SmoothingAction + "=3");
             Assert.Equal(3, ChartSketchInput.Memo(strong, 1)!.Strength);
             Assert.True(Turning(CurveShapes.Drawn(ChartSketchInput.Memo(strong, 1)!)) <= Turning(smooth) + 1e-9);

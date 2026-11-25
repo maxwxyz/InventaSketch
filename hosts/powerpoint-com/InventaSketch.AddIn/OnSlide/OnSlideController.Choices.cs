@@ -30,9 +30,13 @@ namespace InventaSketch.AddIn.OnSlide
         {
             public ChoiceOption? CurrentOption => IsMenu ? null : Options.FirstOrDefault(o => o.Value == Current) ?? Options.FirstOrDefault();
             /// <summary>All options have a pictogram or picture: the button shows it instead of text.</summary>
-            public bool Pictorial => !IsMenu && Options.All(o => o.IconId is not null || o.Icon is not null);
+            public bool Pictorial => !IsMenu && !LabelInBar && (BarIcon is not null || Options.All(o => o.IconId is not null || o.Icon is not null));
             /// <summary>The options are commands (nothing current): "Fill to ▸", "Add area ▸".</summary>
             public bool IsMenu { get; init; }
+            /// <summary>The button shows the current option's name, not its picture (<see cref="ActionChoice.LabelInBar"/>).</summary>
+            public bool LabelInBar { get; init; }
+            /// <summary>Pictogram of the choice itself for the closed button (<see cref="ActionChoice.BarIcon"/>); null: the current option's.</summary>
+            public string? BarIcon { get; init; }
         }
 
         /// <summary>Option pictures rendered from engine previews (<see cref="ContextAction.Preview"/>), by action id and size.</summary>
@@ -46,7 +50,8 @@ namespace InventaSketch.AddIn.OnSlide
             if (_previewCache.Count > 400) { foreach (var b in _previewCache.Values) b.Dispose(); _previewCache.Clear(); }
             try
             {
-                bmp = ThumbnailRenderer.Render(prims, size, Color.FromArgb(40, 40, 40), Color.Transparent);
+                // As thick as the bar pictograms (IconPainter: 1.7 on its 24 grid), so pictures and pictograms look alike.
+                bmp = ThumbnailRenderer.Render(prims, size, Color.FromArgb(40, 40, 40), Color.Transparent, 1.7f * size / 24f);
             }
             catch (Exception ex)
             {
@@ -70,7 +75,7 @@ namespace InventaSketch.AddIn.OnSlide
                 var options = e.Options.Select(a => new ChoiceOption(a.Id, a.Label.Get(lang) + (a.Input is not null && !a.Label.Get(lang).EndsWith("…", StringComparison.Ordinal) ? " …" : ""),
                     IsTelling(a.Icon) ? a.Icon : null, IsTelling(a.Icon) ? null : PreviewBitmap(a, size))).ToList();
                 var current = e.Options.FirstOrDefault(a => a.IsActive)?.Id ?? "";
-                return new BarChoice(ActionChoiceBar.Key(prefix, e.Choice!), e.Choice!.Label.Get(lang), current, false, options) { IsMenu = e.Choice.IsMenu };
+                return new BarChoice(ActionChoiceBar.Key(prefix, e.Choice!), e.Choice!.Label.Get(lang), current, false, options) { IsMenu = e.Choice.IsMenu, LabelInBar = e.Choice.LabelInBar, BarIcon = IsTelling(e.Choice.BarIcon ?? "") ? e.Choice.BarIcon : null };
             }).ToList();
         }
 
@@ -145,7 +150,7 @@ namespace InventaSketch.AddIn.OnSlide
                 var cur = c.CurrentOption;
                 var tip = c.Tip + (cur is null ? "" : ": " + cur.Label) + T(" – click to choose", " – klicken zum Wählen");
                 return c.Pictorial
-                    ? new BarButton("choice:" + c.Key, "", tip, Active: _barChoice == c.Key) { IconId = cur?.IconId, Icon = cur?.Icon, Menu = true, Mirror = c.Mirror }
+                    ? new BarButton("choice:" + c.Key, "", tip, Active: _barChoice == c.Key) { IconId = c.BarIcon ?? cur?.IconId, Icon = c.BarIcon is null ? cur?.Icon : null, Menu = true, Mirror = c.Mirror }
                     : new BarButton("choice:" + c.Key, ShortLabel(cur?.Label ?? c.Tip, 16), tip, Active: _barChoice == c.Key) { Menu = true };
             });
 

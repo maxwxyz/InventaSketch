@@ -135,6 +135,10 @@ export interface ActionInfo {
   choiceLabel?: string;
   /** The choice is a menu of commands ("Fill to ▸"): no current option. */
   choiceMenu?: boolean;
+  /** The closed dropdown shows the current option's name, not its picture (its picture would repeat a neighbour's). */
+  choiceLabelInBar?: boolean;
+  /** Pictogram id of the choice itself for the closed dropdown (instead of the current option's picture). */
+  choiceBarIcon?: string;
   /** A small SVG drawing of the option (fill patterns, colours, curve shapes) when no shared pictogram fits. */
   previewSvg?: string;
 }
