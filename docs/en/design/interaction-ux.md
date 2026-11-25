@@ -40,7 +40,7 @@ much text in the overlay; it must be consistent: what is found where, how is wha
 | **Pie menu** (right-click, Shift+F10, "⋯") | Everything for the element, grouped in eight fixed places. | Complete, labelled, one-line hint, the same place means the same thing for every element. |
 | **Ribbon** | Insert (library, search & insert), document- and slide-wide settings (snap, anchor, line group, accent, plan scale of the slide, black and white), tools (clean slides, compatibility, export). | Nothing element-specific. |
 | **Sidebar editor** | Every parameter (inspector), data tables, the library with search. | The "long form"; never needed for the quick sketch. |
-| **Keyboard** | R / Shift+R, X, Y, Ctrl+D, Del, Ctrl+Space, Shift+F10, Esc, Tab (next part of the assembly), Alt (no snapping), Shift (15° steps). | Shown in tooltips and pie hints. |
+| **Keyboard** | R / Shift+R, X, Y, Ctrl+D, Del, Ctrl+Space, Shift+F10, Esc, Tab (next part of the assembly), Ctrl+double-click (select connected), Alt (no snapping), Shift (15° steps). | Shown in tooltips and pie hints. |
 
 ## 3. Inventory: interactions per element family (all modules)
 
@@ -85,6 +85,8 @@ Derived from the engine (`ObjectType` actions, views, anchors, `Building.Ports`,
 | **Blue triangle** outside a side (diagram nodes) | the next element on that side | click: a connected copy; drag: connect to another element or place |
 | **Blue-rimmed square with small arrowheads** on a value (chart limit line, value line, marker) | a value that is dragged on the drawing; the arrowheads show the allowed direction | drag: the line follows (constrained), the new value shows beside the pointer and snaps (a tenth of the axis step); release = one undo step; Esc cancels; a click selects that part |
 | **Blue outline** of a part (charts) | the selected part | the bar and pie act on it |
+| **Soft blue glow** around the outline of an element | it is selected (alone, with others, or by "select connected") | – (section 6a) |
+| **Fainter blue glow** | what a hovered "Select connected" entry (or "select the assembly") would add | choosing the entry selects it |
 | **Red dashed guides, red dot, label** while dragging | snapping and what it docks to | Alt suspends |
 | **Second colour (blue) ghost** while dragging | what moves along (coupled neighbours) | |
 
@@ -165,8 +167,8 @@ left = view/arrange):
 - **Insert …** – the insert box. **Duplicate** (Ctrl+D). **Delete** (Del).
 - **Style ▸** – one entry per choice ("Line style: Dashed ▸"), each opening its options with pictograms, the current one
   marked. Actions that only set such a choice are not listed again under Edit.
-- **View ▸** – the views (current marked) and the plan scale. **Arrange ▸** – rotate 90° either way, mirror, select the
-  assembly, animate as slides.
+- **View ▸** – the views (current marked) and the plan scale. **Arrange ▸** – rotate 90° either way, mirror,
+  "Select connected ▸" (section 6a; it replaces "select the assembly"), animate as slides.
 - A place with nothing for this element stays, greyed (a click on it keeps the menu open). A place with one entry
   shows it directly, except Edit, Style and Arrange, which keep their name.
 - Submenus start with "← Back"; more than eleven entries continue in "More ▸".
@@ -174,6 +176,50 @@ left = view/arrange):
   closes the menu.
 - The centre names the element (or its selected part, or the open submenu), so it is clear what the menu acts on.
   Greyed places have low contrast, so the available ones stand out.
+
+## 6a. Selection look and "select connected" (2026-11-25)
+
+Maintainer: "Possibility to select / show connected elements: connected conductors and lines (loops), rotationally
+coupled elements e.g. on shafts / gears, closed loops, all following chain links, closed walls, networks", and: "the
+selection is shown slightly differently, e.g. like Slidemax puts a blue gradient behind it – not only connected ones, also
+single selected ones: when they lie on top of each other it is often unclear what is selected."
+
+**Selection look.**
+
+- Every InventaSketch selection – one element, several, the result of "select connected" – gets a soft blue glow along
+  the exact outline of the element: its drawn lines and shapes, widened and blurred. It is not a bounding box.
+- The element itself stays clear: its lines and the inside of its closed shapes are cut out of the glow, so the glow
+  lies around the element as if behind it.
+- Where the selected element's outline runs under another element, the glow shows over that element. So it is always
+  clear which of overlapping elements is selected; the element on top gets no glow of its own.
+- The glow is calm: one blue, at most about half opaque right at the outline, fading out within a few pixels. It is
+  deeper blue on light slides and lighter blue on dark slides (from the slide background). It lies under every handle,
+  the bar and the pie.
+- While dragging, resizing or rotating, the ghost takes over and the glow is hidden. A multi-selection that PowerPoint
+  moves gets its glow back where the shapes are once the button is released.
+- What a hovered "Select connected" entry (or the bar's "select the assembly") would add glows fainter (about half),
+  before anything is selected.
+
+**Select connected.**
+
+- The pie's Arrange place has "Select connected ▸" when anything is connected with the element. Its entries are only the
+  kinds that apply, each with a one-line hint and the number of elements:
+
+  | Entry | Selects | Typical elements |
+  |---|---|---|
+  | **Net** | every connection line and element joined to it: wires, cables, buses, pipes, ducts, process and energy lines, branches, junctions and connected crossings, and the elements on them (the whole circuit or piping) | wire, cable, pipe, PV string, pump |
+  | **Moves along** | every part that moves with it: meshing gears, the shaft and its hubs, concentric parts, belts and chains over their pulleys, linkages | gear, shaft, pulley, link |
+  | **Following elements** | everything after it along directed connectors, with the connectors; a linkage from the selected link outward (away from the frame) | flowchart step, block, process unit, connector |
+  | **Closed loop** | the loop the element is part of (only offered when there is one): a circuit, a flowchart loop, the walls around a room, a gear loop | wire in a circuit, step in a loop, wall |
+  | **Room walls** | walls joined with it at corners, ends and T joints | wall |
+
+- Hovering an entry previews it with the fainter glow; choosing it selects those elements in PowerPoint (the
+  multi-selection bar then offers one view for all, align, diagram layout …).
+- **Ctrl+double-click** on the selected element selects the most meaningful kind for it: a wire or pipe its net, a
+  gear or shaft what moves along, a flowchart step the following elements, a wall the room walls. (Ctrl+A stays
+  PowerPoint's "select all".)
+- "Select the assembly" (bar, Tab to the next part) is the same as "Moves along".
+- The rules come from the engine (`Connectivity`), so the web add-in and LibreOffice select the same sets.
 
 ## 7. Feedback and accessibility
 
@@ -224,6 +270,15 @@ Before → after, right after selecting with the pointer away from the element:
 | Flowchart box | 4 triangles, bar with text, insert, actions, mirror … | the triangle below; the others near the pointer; bar: "Text" + up to 3 + ⋯ |
 | Table | 4 "+" on the sides; bar: insert, header, remove row/column … | one "+" below (a row); the others near their side; bar: "Text" (the cells) + up to 3 + ⋯ |
 
+### Round 3 (2026-11-25): selection look and select connected
+
+- Engine: `Connectivity.Connected / AutoKind / Options` (`src/InventaSketch.Core/Connectivity.cs`) with the kinds net,
+  moves along, following elements, closed loop and room walls, built on attachments, line media, coupling, linkage roles
+  and the neighbours a type renders from.
+- COM: `OnSlide/SelectionHalo.cs` (glow, cached per selection and view, never rendered inside a hook) and
+  `OnSlideController.Connected.cs` (pie entries, hover preview, Ctrl+double-click, selecting the units); log lines
+  "Halo: selected=…; connected=…" and "Select connected (kind): n units"; UI scenario `select-connected`.
+
 ## 9. Follow-ups (phased, with acceptance criteria)
 
 **Phase 1 – finish the language in COM**
@@ -231,7 +286,8 @@ Before → after, right after selecting with the pointer away from the element:
    robot joints, gear centre distance). Accept: each such type lists its handles in `DragHandles` and the COM overlay
    needs no change; the grips keep their place in the layout.
 2. *Dependency highlight on hover*: hovering a lock badge or "Select assembly" outlines every unit that moves along in
-   the second colour. Accept: a gear on a shaft shows the shaft and its other gears outlined; nothing else.
+   the second colour. Accept: a gear on a shaft shows the shaft and its other gears outlined; nothing else. *Done for
+   "select the assembly" and the "Select connected" entries (fainter glow, section 6a); lock badges open.*
 3. *Engine icon hygiene*: every action icon id is in `IconIds.All` (or a new id with a pictogram in all three hosts);
    one pictogram, one meaning (UML relations and message kinds become choices with option pictograms; `Text` only for
    editing text). Accept: an engine test fails for an unknown icon id or one id used with two meanings in one type.
@@ -260,5 +316,7 @@ Before → after, right after selecting with the pointer away from the element:
 Unit tests (no PowerPoint): handle layout (no overlap on the short pipe of the report, priorities, hiding, PowerPoint's
 handles of thin frames), pie places and submenus, bar grouping and pictogram rule, light dismiss, table side actions
 (`tests/InventaSketch.Modules.Annotation.Tests/TableSideTests.cs`). UI scenarios in real PowerPoint (run by the
-coordinator, PowerPoint closed): `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus`; screenshots in
+coordinator, PowerPoint closed): `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus`, `select-connected`;
+connectivity (`tests/InventaSketch.Core.Tests/ConnectivityTests.cs`, `tests/InventaSketch.Engine.Tests/ConnectivityModuleTests.cs`)
+and the halo (`tests/InventaSketch.AddIn.Tests/SelectionHaloTests.cs`) without PowerPoint; screenshots in
 `local-resources/powerpoint-tests/…` show the result for review.

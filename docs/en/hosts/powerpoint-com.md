@@ -66,7 +66,8 @@
   multiples of 15° within 4° (`Shift`: strict 15° steps, `Alt`: free). The preview shows the angle; on release the
   rotation is applied to the model (box objects rotate, point objects rotate their points) and re-rendered.
 - **Keyboard (selected unit, slide focused):** `R` rotate 90° (`Shift+R` back), `X` / `Y` mirror horizontally /
-  vertically, `Ctrl+D` duplicate with new ids, `Shift+F10` or the context-menu key open the pie menu. Arrow keys, `Del`,
+  vertically, `Ctrl+D` duplicate with new ids, `Shift+F10` or the context-menu key open the pie menu, Ctrl+double-click
+  selects what is connected with the element (below). Arrow keys, `Del`,
   `Ctrl+C/X/V` stay with PowerPoint; a pasted copy gets new ids automatically when it is selected (no two units ever
   share an id).
 - **Theme:** floating bar and pie menu follow the Office theme (dark grey/black, or "use system setting" with a dark
@@ -134,12 +135,31 @@
   - Style ▸ (every choice with its options)
   - Delete
   - View ▸ (views, plan scale)
-  - Arrange ▸ (rotate, mirror, select assembly, animate as slides)
+  - Arrange ▸ (rotate, mirror, "Select connected ▸", animate as slides)
 
   The centre names the element (or the open submenu). Places without content for this element stay greyed with low
   contrast, and a click on them keeps the menu open. Submenus start with "← Back"; long ones continue in "More ▸". The
   hovered entry shows a one-line hint below the ring. Esc or a click outside closes it. The unit is re-rendered from its
   model; native moves and resizes are folded into the model first (`SketchUnits.Read`).
+
+- **Selection look and "select connected" (2026-11-25):** rules in
+  [docs/en/design/interaction-ux.md](../design/interaction-ux.md#6a-selection-look-and-select-connected-2026-11-25).
+  - Every InventaSketch selection (one element, several, the result of "select connected") shows a soft blue glow along
+    the exact outline of its elements, drawn on the overlay under the handles (`OnSlide/SelectionHalo.cs`). Their own
+    lines and the inside of their closed shapes stay clear; over an element lying on top the glow still shows, so it is
+    clear which of overlapping elements is selected. Light slides get a deeper blue, dark slides (background read from
+    the slide or its master) a lighter one.
+  - The glow is rendered once per selection, preview and view (widened primitives, a blurred half-resolution mask) and
+    cached; inside the mouse and keyboard hooks it is only drawn from the cache. It is hidden while dragging, resizing
+    and rotating, and while PowerPoint moves a multi-selection.
+  - Pie, Arrange ▸ "Select connected ▸": the kinds that apply to the element (`Connectivity.Options` on a context
+    document with every unit of the slide): Net, Moves along, Following elements, Closed loop, Room walls. Hovering an
+    entry glows the elements it would add fainter; choosing it selects their shapes. The bar's "select the assembly" is
+    "Moves along" (its hover previews the same).
+  - Ctrl+double-click on the selected element selects the most meaningful kind (`Connectivity.AutoKind`). Ctrl+A is left
+    to PowerPoint ("select all").
+  - Command ids `connect:net|coupled|chain|loop|walls` (automation `Command`; `assembly` = `connect:coupled`); log lines
+    "Halo: selected=…; connected=…" and "Select connected (kind): n units: …"; UI scenario `select-connected`.
 
 ## Sidebar editor (custom task pane)
 

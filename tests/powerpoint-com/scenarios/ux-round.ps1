@@ -55,8 +55,9 @@ $g1 = $addin.Insert('mech.spur.axial'); $s1 = $S.Slide.Shapes.Item($g1); $s1.Lef
 $s1.Select(); Start-Sleep 3
 $addin.Command('port:mesh.right:mech.spur.axial') | Out-Null; Start-Sleep 5
 @(Get-IskShapes $S 'ISK:mech.gear.spur*')[0].Select(); Start-Sleep 3
-$ids = Wait-CommandIds { param($i) $i -contains 'assembly' }
-Assert-Isk $S ($ids -contains 'assembly') 'a coupled gear offers "select assembly"'
+# "Select the assembly" is "Select connected > Moves along" (connect:coupled); the command id "assembly" still works.
+$ids = Wait-CommandIds { param($i) ($i -contains 'assembly') -or ($i -contains 'connect:coupled') }
+Assert-Isk $S (($ids -contains 'assembly') -or ($ids -contains 'connect:coupled')) 'a coupled gear offers "select assembly" (moves along)'
 $addin.Command('assembly') | Out-Null; Start-Sleep 4
 $ids = Wait-IskBarIds $S { param($i) $i -contains 'mview:stick' }
 Write-IskInfo ('assembly bar: ' + ($ids -join ' '))

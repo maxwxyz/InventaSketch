@@ -39,7 +39,7 @@ Text im Overlay; es muss konsistent sein: was findet man wo, wie bedient man was
 | **Kreismenü** (Rechtsklick, Umschalt+F10, „⋯“) | Alles zum Element, in acht festen Plätzen gruppiert. | Vollständig, beschriftet, Hinweis in einer Zeile; derselbe Platz bedeutet für jedes Element dasselbe. |
 | **Menüband** | Einfügen (Bibliothek, Suchen & Einfügen), dokument- und folienweite Einstellungen (Fangen, Verankern, Liniengruppe, Akzent, Planmaßstab, Schwarz-Weiß), Werkzeuge (Folien bereinigen, Kompatibilität, Export). | Nichts Elementspezifisches. |
 | **Seitenleisten-Editor** | Jeder Parameter (Inspektor), Datentabellen, Bibliothek mit Suche. | Die „Langform“; für die Schnellskizze nie nötig. |
-| **Tastatur** | R / Umschalt+R, X, Y, Strg+D, Entf, Strg+Leertaste, Umschalt+F10, Esc, Tab (nächstes Teil der Baugruppe), Alt (kein Fangen), Umschalt (15°-Schritte). | In Tooltips und Kreismenü-Hinweisen genannt. |
+| **Tastatur** | R / Umschalt+R, X, Y, Strg+D, Entf, Strg+Leertaste, Umschalt+F10, Esc, Tab (nächstes Teil der Baugruppe), Strg+Doppelklick (Verbundene auswählen), Alt (kein Fangen), Umschalt (15°-Schritte). | In Tooltips und Kreismenü-Hinweisen genannt. |
 
 ## 3. Bestandsaufnahme: Interaktionen je Elementfamilie (alle Module)
 
@@ -85,6 +85,8 @@ Abgeleitet aus der Engine (Aktionen, Ansichten, Anker von `ObjectType`, `Buildin
 | **Blaues Dreieck** vor einer Seite (Diagrammknoten) | das nächste Element auf dieser Seite | Klick: verbundene Kopie; Ziehen: mit anderem Element verbinden oder ablegen |
 | **Blau umrandetes Quadrat mit kleinen Pfeilspitzen** auf einem Wert (Grenzlinie, Wertlinie, Marker eines Diagramms) | ein Wert, der auf der Zeichnung gezogen wird; die Pfeilspitzen zeigen die erlaubte Richtung | ziehen: die Linie folgt (geführt), der neue Wert steht neben dem Zeiger und rastet ein (ein Zehntel des Achsschritts); loslassen = ein Rückgängig-Schritt; Esc bricht ab; ein Klick wählt dieses Teil |
 | **Blauer Umriss** eines Teils (Diagramme) | das gewählte Teil | Leiste und Kreismenü wirken darauf |
+| **Weicher blauer Schein** um die Kontur eines Elements | es ist ausgewählt (allein, mit anderen oder über „Verbundene auswählen“) | – (Abschnitt 6a) |
+| **Schwächerer blauer Schein** | was ein überfahrener Eintrag „Verbundene auswählen“ (oder „Baugruppe wählen“) dazunähme | Wählen des Eintrags wählt es aus |
 | **Rote gestrichelte Hilfslinien, roter Punkt, Beschriftung** beim Ziehen | Fangen und woran angedockt wird | Alt setzt aus |
 | **Zweitfarbige (blaue) Vorschau** beim Ziehen | was mitbewegt wird (gekoppelte Nachbarn) | |
 
@@ -170,7 +172,7 @@ unten = Stil, links = Ansicht/anordnen):
 - **Stil ▸** – ein Eintrag je Auswahl („Linienart: Gestrichelt ▸“), jeder öffnet seine Optionen mit Piktogrammen, die
   aktuelle markiert. Aktionen, die nur eine solche Auswahl setzen, stehen nicht noch einmal unter Bearbeiten.
 - **Ansicht ▸** – die Ansichten (aktuelle markiert) und der Planmaßstab. **Anordnen ▸** – um 90° in beide Richtungen
-  drehen, spiegeln, Baugruppe wählen, als Folien animieren.
+  drehen, spiegeln, „Verbundene auswählen ▸“ (Abschnitt 6a; ersetzt „Baugruppe wählen“), als Folien animieren.
 - Ein Platz ohne Inhalt für dieses Element bleibt, ausgegraut (ein Klick darauf lässt das Menü offen). Ein Platz mit
   einem Eintrag zeigt ihn direkt, außer Bearbeiten, Stil und Anordnen, die ihren Namen behalten.
 - Untermenüs beginnen mit „← Zurück“; mehr als elf Einträge gehen in „Mehr ▸“ weiter.
@@ -178,6 +180,53 @@ unten = Stil, links = Ansicht/anordnen):
   daneben oder in die Mitte schließt das Menü.
 - Die Mitte nennt das Element (oder sein gewähltes Teil, oder das offene Untermenü), damit klar ist, worauf das Menü
   wirkt. Ausgegraute Plätze haben wenig Kontrast, so heben sich die verfügbaren ab.
+
+## 6a. Auswahldarstellung und „Verbundene auswählen“ (25.11.2026)
+
+Maintainer: „Möglichkeit, verbundene Elemente auszuwählen bzw. anzuzeigen: verbundene Leiter und Leitungen (Schleifen),
+drehgekoppelte Elemente z. B. auf Wellen/Zahnrädern, geschlossene Schleifen, alle folgenden Kettenglieder, geschlossene
+Wände, Netze“, und: „die Auswahl wird etwas anders dargestellt, z. B. wie Slidemax einen blauen Verlauf dahinterlegt –
+nicht nur bei verbundenen, auch bei einzeln ausgewählten: wenn sie übereinanderliegen, ist oft unklar, was ausgewählt
+ist.“
+
+**Auswahldarstellung.**
+
+- Jede InventaSketch-Auswahl – ein Element, mehrere, das Ergebnis von „Verbundene auswählen“ – bekommt einen weichen
+  blauen Schein entlang der genauen Kontur des Elements: seine gezeichneten Linien und Formen, verbreitert und
+  weichgezeichnet. Es ist kein umgebendes Rechteck.
+- Das Element selbst bleibt frei: seine Linien und das Innere seiner geschlossenen Formen sind aus dem Schein
+  ausgespart, so liegt der Schein um das Element, als läge er dahinter.
+- Wo die Kontur des gewählten Elements unter einem anderen Element verläuft, zeigt sich der Schein über diesem Element.
+  So ist immer klar, welches von übereinanderliegenden Elementen gewählt ist; das obere Element bekommt keinen eigenen
+  Schein.
+- Der Schein ist ruhig: ein Blau, direkt an der Kontur höchstens etwa halb deckend, nach wenigen Pixeln ausgeblendet. Auf
+  hellen Folien ist er kräftiger blau, auf dunklen heller blau (nach dem Folienhintergrund). Er liegt unter allen
+  Griffen, der Leiste und dem Kreismenü.
+- Beim Ziehen, Skalieren und Drehen übernimmt die Vorschau, der Schein ist ausgeblendet. Eine Mehrfachauswahl, die
+  PowerPoint verschiebt, bekommt ihren Schein nach dem Loslassen an der neuen Stelle zurück.
+- Was ein überfahrener Eintrag „Verbundene auswählen“ (oder „Baugruppe wählen“ in der Leiste) dazunähme, leuchtet
+  schwächer (etwa halb), bevor etwas ausgewählt ist.
+
+**Verbundene auswählen.**
+
+- Der Platz Anordnen im Kreismenü hat „Verbundene auswählen ▸“, wenn etwas mit dem Element verbunden ist. Die Einträge
+  sind nur die Arten, die zutreffen, je mit einem Hinweis in einer Zeile und der Zahl der Elemente:
+
+  | Eintrag | Wählt | Typische Elemente |
+  |---|---|---|
+  | **Netz** | jede damit verbundene Verbindungslinie und jedes Element: Leitungen, Kabel, Busse, Rohre, Kanäle, Verfahrens- und Energieleitungen, Abzweige, Knoten und verbundene Kreuzungen, und die Elemente daran (der ganze Stromkreis bzw. das Rohrnetz) | Leitung, Kabel, Rohr, PV-String, Pumpe |
+  | **Bewegt sich mit** | jedes Teil, das sich mitbewegt: kämmende Zahnräder, die Welle und ihre Naben, konzentrische Teile, Riemen und Ketten über ihren Scheiben, Koppelgetriebe | Zahnrad, Welle, Riemenscheibe, Glied |
+  | **Folgende Elemente** | alles danach entlang gerichteter Verbinder, mit den Verbindern; bei einem Koppelgetriebe vom gewählten Glied nach außen (weg vom Gestell) | Ablaufschritt, Block, Verfahrenseinheit, Verbinder |
+  | **Geschlossene Schleife** | die Schleife, zu der das Element gehört (nur angeboten, wenn es eine gibt): ein Stromkreis, eine Schleife im Ablaufdiagramm, die Wände um einen Raum, eine Zahnradschleife | Leitung im Stromkreis, Schritt in einer Schleife, Wand |
+  | **Raumwände** | an Ecken, Enden und T-Stößen damit verbundene Wände | Wand |
+
+- Überfahren eines Eintrags zeigt ihn vorab mit dem schwächeren Schein; Wählen wählt diese Elemente in PowerPoint aus
+  (die Leiste der Mehrfachauswahl bietet dann eine Ansicht für alle, Ausrichten, Diagrammlayout …).
+- **Strg+Doppelklick** auf das gewählte Element wählt die sinnvollste Art: bei einer Leitung oder einem Rohr das Netz,
+  bei Zahnrad oder Welle, was sich mitbewegt, bei einem Ablaufschritt die folgenden Elemente, bei einer Wand die
+  Raumwände. (Strg+A bleibt PowerPoints „Alles auswählen“.)
+- „Baugruppe wählen“ (Leiste, Tab zum nächsten Teil) ist dasselbe wie „Bewegt sich mit“.
+- Die Regeln kommen aus der Engine (`Connectivity`), so wählen Web-Add-in und LibreOffice dieselben Mengen.
 
 ## 7. Rückmeldung und Barrierearmut
 
@@ -233,6 +282,16 @@ Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
 | Ablaufdiagramm-Kasten | 4 Dreiecke, Leiste mit Text, Einfügen, Aktionen, Spiegeln … | das Dreieck unten; die anderen nahe am Zeiger; Leiste: „Text“ + bis zu 3 + ⋯ |
 | Tabelle | 4 „+“ an den Seiten; Leiste: Einfügen, Kopfzeile, Zeile/Spalte entfernen … | ein „+“ unten (eine Zeile); die anderen nahe ihrer Seite; Leiste: „Text“ (die Zellen) + bis zu 3 + ⋯ |
 
+### Runde 3 (25.11.2026): Auswahldarstellung und Verbundene auswählen
+
+- Engine: `Connectivity.Connected / AutoKind / Options` (`src/InventaSketch.Core/Connectivity.cs`) mit den Arten Netz,
+  bewegt sich mit, folgende Elemente, geschlossene Schleife und Raumwände, aufgebaut auf Anbindungen, Leitungsmedien,
+  Kopplung, Koppelgetriebe-Rollen und den Nachbarn, aus denen ein Typ zeichnet.
+- COM: `OnSlide/SelectionHalo.cs` (Schein, je Auswahl und Ansicht zwischengespeichert, nie innerhalb eines Hooks
+  gezeichnet) und `OnSlideController.Connected.cs` (Kreismenü-Einträge, Vorschau beim Überfahren, Strg+Doppelklick,
+  Auswahl der Einheiten); Protokollzeilen „Halo: selected=…; connected=…“ und „Select connected (Art): n units“;
+  UI-Szenario `select-connected`.
+
 ## 9. Folgeschritte (in Phasen, mit Abnahmekriterien)
 
 **Phase 1 – die Sprache in COM vollenden**
@@ -241,7 +300,8 @@ Vorher → nachher, direkt nach der Auswahl mit dem Zeiger abseits des Elements:
    das COM-Overlay braucht keine Änderung; die Griffe behalten ihren Platz in der Anordnung.
 2. *Abhängigkeiten beim Überfahren hervorheben*: Überfahren eines Schlosses oder von „Baugruppe wählen“ umrandet jede
    mitbewegte Einheit in der Zweitfarbe. Abnahme: ein Rad auf einer Welle zeigt Welle und deren andere Räder, sonst
-   nichts.
+   nichts. *Umgesetzt für „Baugruppe wählen“ und die Einträge „Verbundene auswählen“ (schwächerer Schein, Abschnitt 6a);
+   Schlösser offen.*
 3. *Symbol-Hygiene in der Engine*: jede Aktions-Symbol-ID steht in `IconIds.All` (oder eine neue ID mit Piktogramm in
    allen drei Hosts); ein Piktogramm, eine Bedeutung (UML-Beziehungen und Nachrichtenarten werden Auswahlen mit
    Options-Piktogrammen; `Text` nur für Textbearbeitung). Abnahme: ein Engine-Test schlägt bei unbekannter ID oder einer
@@ -272,5 +332,7 @@ Unit-Tests (ohne PowerPoint): Griffanordnung (keine Überlappung auf dem kurzen 
 Ausblenden, PowerPoints Griffe dünner Rahmen), Kreismenüplätze und Untermenüs, Leistengruppen und Piktogrammregel,
 Schließen bei Klick daneben, Tabellenseiten-Aktionen (`tests/InventaSketch.Modules.Annotation.Tests/TableSideTests.cs`).
 UI-Szenarien in echtem PowerPoint (vom Koordinator auszuführen, PowerPoint geschlossen): `overlay-handles`,
-`pie-menu`, `insert-box-dismiss`, `table-plus`; Bildschirmfotos unter `local-resources/powerpoint-tests/…` zeigen das
-Ergebnis zur Durchsicht.
+`pie-menu`, `insert-box-dismiss`, `table-plus`, `select-connected`; Verbindungen
+(`tests/InventaSketch.Core.Tests/ConnectivityTests.cs`, `tests/InventaSketch.Engine.Tests/ConnectivityModuleTests.cs`) und
+der Schein (`tests/InventaSketch.AddIn.Tests/SelectionHaloTests.cs`) ohne PowerPoint; Bildschirmfotos unter
+`local-resources/powerpoint-tests/…` zeigen das Ergebnis zur Durchsicht.
