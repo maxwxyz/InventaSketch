@@ -292,9 +292,10 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>
         /// Generic pictograms (switch, cycle, pick option) say nothing on their own: such actions show a short text instead.
-        /// The "T" means "edit the text" only (maintainer 2026-11-25: "what is that T all the time?").
+        /// The "T" means "edit the text" only (maintainer 2026-11-25: "what is that T all the time?") – the engine test
+        /// IconHygieneTests keeps every other action off it, so it may stay a pictogram here.
         /// </summary>
-        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && !IconIds.IsLabelOnly(icon) && icon != IconIds.Text;
+        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && !IconIds.IsLabelOnly(icon);
 
         /// <summary>
         /// Type actions for the floating bar (key parameters: thicker/thinner, more/fewer, swap, hub, helix …): available ones,
