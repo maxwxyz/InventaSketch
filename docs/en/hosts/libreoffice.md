@@ -21,6 +21,8 @@ LibreOffice (Impress/Draw/Calc)
          sidebar.py   deck "InventaSketch", panels "Selection" and "Library"; library.py: catalog filter, thumbnails
          ux.py        selection panel rules, recent items, page session bookkeeping, on-canvas rules (no UNO, tested)
          canvas.py    on-canvas interaction: snap after a mouse drag, Ctrl+Space, context menu (UNO input interception)
+         clean.py, exporting.py, picture.py   rules of clean slides, export and chart from picture (no UNO, tested);
+                      cleandialog.py, exportdialog.py: their dialogs
          engine.py    engine process (JSON lines), .NET discovery, timeouts, restart
          mainthread.py  commands from the remote bridge run on the main thread
  └─ engine/portable/InventaSketch.LibreOffice.Engine.dll   (or engine/<rid>/… self-contained)
@@ -78,7 +80,33 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
 
 - **Menu "InventaSketch"** (Impress, Draw, Calc): *Insert from Library…* (opens the sidebar deck), *Edit Model of
   Selected Unit*, *Redraw Selected Unit from Model*, *Add Reference Numeral*, *Compatibility (Drawing Rules)…*, *Compare
-  with Previous Slide (Variants)*, *Import Drawing (SVG, DXF)…*, *Remove Data of Deleted Units*, *About InventaSketch*.
+  with Previous Slide (Variants)*, *Clean Slides…*, *Import Drawing (SVG, DXF)…*, *Chart from Picture…*, *Export…*,
+  *Remove Data of Deleted Units*, *About InventaSketch*.
+- **Clean slides** (2026-11-25): before slides leave the company, the InventaSketch elements of the selection, the
+  current slide/page/sheet or every slide/page are cleaned by the engine (`sanitize`), with the choices of the
+  PowerPoint COM add-in: charts normalised (same proportions, values 0…1), randomised (plausible values, same look) or
+  kept; optionally categories renamed (A, B, C …), texts replaced, metadata removed (default on) and a random seed
+  (empty = a new one, the same for every page of the run). Each page is loaded like a page session, the changed units
+  are redrawn in place (names and z-order kept), all pages in **one** undo step. A message box shows the counts, the
+  seed and the engine's report lines, and says that native LibreOffice charts and tables, notes, comments and document
+  properties are not changed. Scope and chart mode are drop-down lists (UNO dialogs group option buttons only by tab
+  order). Calc offers the selection and the current sheet.
+- **Export** (2026-11-25): exports the selected InventaSketch elements, else every element of the current slide/page
+  (Calc: of the sheet, cropped to the elements), like the Office web add-in. The dialog lists *SVG (editable)* (engine
+  `renderPageSvg` mode "export": one named group per element and part, texts stay text, for Inkscape/Illustrator) and
+  the engine's domain exports that apply (`exporters`/`export`: LaTeX TikZ, chart data for matplotlib and pgfplots,
+  bill of materials, netlists …) with what each keeps; the file is chosen in LibreOffice's save dialog with the
+  format's extension (CSV with a byte order mark). Native LibreOffice shapes are not part of the export.
+- **Chart from picture** (2026-11-25): a PNG, JPEG, BMP or GIF file becomes an editable chart in the middle of the
+  slide/page (Calc: of the visible area), one undo step, selected; the engine's note (what was read, whether the values
+  come from the axis labels) is shown. LibreOffice decodes the picture (`GraphicProvider`, `XBitmap.getDIB` and, for
+  transparent pictures, `getMaskDIB`); `picture.py` reads the DIBs in pure Python, scales pictures down to 1600 px and
+  puts transparent areas on white before calling `chartFromPicture`. The mask semantics (255 = transparent) were
+  verified with LibreOffice 26.8. Pasting a picture from the clipboard (COM add-in) is not offered.
+- **Sketching a curve into a chart** is not available in LibreOffice: the UNO input interception gives mouse presses
+  and releases but no mouse motion, the view's pixel-to-page mapping is not exposed (the UI smoke test needs a
+  calibration click for it), LibreOffice would run its own rubber-band selection during the stroke, and there is no
+  overlay to show the trail.
 - **Variants** (2026-11-25, Impress and Draw): a duplicated slide keeps the units' ids. *Compare with Previous Slide*
   marks what differs from the previous slide (engine `diff`, both slides loaded like page sessions): added units green,
   changed ones orange, removed ones as a dashed grey frame where they were, plus a legend at the top right; the marks
@@ -111,7 +139,10 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   `assembly`, `panel?control=<key>&text=<text>` / `panel?control=<key>&item=<entry>` / `panel?press=<key, label or
   action:<id>>` (operates a control of the open panel the way a user does), `snapMove[?px=<pixels>&undo=<n>]` (snap
   the selected unit(s) after a native move, as after a mouse drag), `quickInsert[?text=<text>]` (Library panel with
-  the cursor in the search field, as Ctrl+Space), `patentCheck[?profile=<office id>]`, `compare`, `importVector[?path=<file>]` (file dialog without a path), `cleanup`, `about`. The
+  the cursor in the search field, as Ctrl+Space), `patentCheck[?profile=<office id>]`, `compare`, `importVector[?path=<file>]` (file dialog without a path),
+  `cleanSlides[?scope=selection|slide|all&mode=normalised|randomised|none&rename=1&texts=1&meta=0&seed=<n>]`
+  (dialog without arguments), `export[?format=<id or extension>&path=<file>]` (dialog and save dialog for what is
+  missing; headless without arguments the formats are logged), `chartFromPicture[?path=<file>]`, `cleanup`, `about`. The
   integration and UI smoke tests use these
   commands.
 - **Recent items** (last 12 inserted library items, per user) are kept in `libreoffice-settings.json` next to the log
@@ -275,6 +306,15 @@ Verified on Windows 11 with LibreOffice 26.8.2.2 on 2026-11-20 (`tests/integrati
   "lager", Enter inserts the fitting bearing; in text edit Ctrl+Space and typing stay in the text; the 8 sidebar checks
   of the UI/UX round still pass. Screenshots reviewed.
 
+- 2026-11-25 (sharing round, Windows 11, LibreOffice 26.8.2.2, headless, German UI): `integration_test.py --only
+  share` 16 checks passed: *Clean slides* over two slides (randomised, seed 42, texts replaced) changed both chart units
+  and left the arrow, kept the unit names, was one undo step ("InventaSketch: Folien bereinigen") and undo restored
+  every stored model; with only the chart selected only the chart changed. *Export*: TikZ and matplotlib of the
+  selected chart (without the arrow), the editable SVG of the slide, the formats offered for the page logged. *Chart
+  from picture*: a PNG with five columns on a transparent background (black underneath) became a `chart.bar` unit
+  (mask used), one undo step; slide exported as `share.png` and reviewed. The two dialogs were built over the UNO bridge
+  in both languages (every control property accepted); they were not shown in a visible window.
+
 ## Tests
 
 ```powershell
@@ -287,7 +327,11 @@ Unit tests cover the plan-to-UNO mapping, metadata, library filter, texts, .NET 
 stand-in engine: errors, crash, timeout, foreign lines), main-thread marshalling, the selection panel rules and the page
 session bookkeeping (`test_ux.py`) and, if the engine is built, real draw plans of library items and the engine flows
 behind the panel with payloads drawn in separate sessions (search with fitting parts, insert fitting, arrange across
-units, a gear train turned across units, explode). The UI smoke test operates the panel's controls with the `panel`
+units, a gear train turned across units, explode). `test_share.py` covers clean slides (choices, seed, engine request,
+pages of a scope, report), export (formats, names, extensions, bytes), chart from picture (DIB decoding of 1/8/16/24/32
+bits, scaling, transparency on white) and the rule that no user-visible text says "patent", plus the engine requests of
+these modules against the built engine. `integration_test.py --only share` runs just the phase for these three
+commands. The UI smoke test operates the panel's controls with the `panel`
 command (typing into the search field and choosing a list entry go through the controls and call the same listeners
 as a user; buttons run their click handler); real mouse clicks are not simulated, because over the remote bridge the
 panel's control peers are generic windows without list box or accessibility interfaces. Its first part
