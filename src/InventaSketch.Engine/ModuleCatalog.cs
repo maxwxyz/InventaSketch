@@ -34,6 +34,7 @@ namespace InventaSketch.Engine
             modules.Add(new InventaSketch.Modules.Architecture.ArchitectureModule());
             modules.Add(new InventaSketch.Modules.Diagrams.DiagramsModule());
             modules.Add(new InventaSketch.Modules.Optics.OpticsModule());
+            modules.Add(new InventaSketch.Modules.Switchgear.SwitchgearModule());
             return Create(modules);
         }
 
