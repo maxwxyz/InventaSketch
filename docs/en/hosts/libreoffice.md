@@ -18,9 +18,15 @@ LibreOffice (Impress/Draw/Calc)
          plan.py      draw plan (pt) -> shape specifications (1/100 mm), no UNO, unit-tested
          render.py    specifications -> native UNO shapes, groups, line-end markers, metadata
          metadata.py  unit name, attributes, chunked document properties, native-edit detection, no UNO
-         sidebar.py   deck "InventaSketch", panels "Selection" and "Library"; library.py: catalog filter, thumbnails
+         sidebar.py   deck "InventaSketch", panels "Selection", "Values", "Library", "Calculator and code";
+                      library.py: catalog filter, thumbnails
          ux.py        selection panel rules, recent items, page session bookkeeping, on-canvas rules (no UNO, tested)
-         canvas.py    on-canvas interaction: snap after a mouse drag, Ctrl+Space, context menu (UNO input interception)
+         choices.py   interaction concept: choices as dropdowns, the eight places of the context menu, select
+                      connected, insert places (no UNO, tested)
+         values.py    rows of the Values panel, value level, calculator and code import report (no UNO, tested)
+         canvas.py    on-canvas interaction: snap after a mouse drag, Ctrl+Space, context menu with the eight places,
+                      Ctrl+double-click, selection glow (UNO input interception); glow.py: the glow itself
+         inputdialog.py  one-line input dialog (main text, actions that ask for a value)
          clean.py, exporting.py, picture.py   rules of clean slides, export and chart from picture (no UNO, tested);
                       cleandialog.py, exportdialog.py: their dialogs
          engine.py    engine process (JSON lines), .NET discovery, timeouts, restart
@@ -79,8 +85,9 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
 `unopkg remove org.inventasketch.libreoffice`.
 
 - **Menu "InventaSketch"** (Impress, Draw, Calc): *Insert from Library…* (opens the sidebar deck), *Edit Model of
-  Selected Unit*, *Redraw Selected Unit from Model*, *Add Reference Numeral*, *Compatibility (Drawing Rules)…*, *Compare
-  with Previous Slide (Variants)*, *Clean Slides…*, *Import Drawing (SVG, DXF)…*, *Chart from Picture…*, *Export…*,
+  Selected Unit*, *Redraw Selected Unit from Model*, *Values of Selected Element…*, *Calculator with Units…*, *Add
+  Reference Numeral*, *Compatibility (Drawing Rules)…*, *Compare with Previous Slide (Variants)*, *Clean Slides…*,
+  *Import Drawing (SVG, DXF)…*, *Import Code (matplotlib, pgfplots, TikZ)…*, *Chart from Picture…*, *Export…*,
   *Remove Data of Deleted Units*, *About InventaSketch*.
 - **Clean slides** (2026-11-25): before slides leave the company, the InventaSketch elements of the selection, the
   current slide/page/sheet or every slide/page are cleaned by the engine (`sanitize`), with the choices of the
@@ -121,17 +128,20 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   a visible window (headless, tests) the result is logged. Checked: `integration_test.py` (a gear outside the usable
   area on slide 2 found and resolved to its unit) and `ui_smoke.py` (the dialog opens in a real window, the Down key
   goes to slide 2 and selects the gear, Escape closes it).
-- **Sidebar deck "InventaSketch"**, two panels (see the UI/UX round below):
+- **Sidebar deck "InventaSketch"**, four panels (see the UI/UX round and the interaction concept round below):
   - *Selection* follows the document selection (selection listener) and shows what can be done with the selected
-    InventaSketch unit(s), context only.
+    InventaSketch unit(s), context only: every choice as a dropdown, the element's own commands, select connected,
+    insert here, build "+", turning.
+  - *Values* (2026-11-26): the values of the selected element with their formulas, the value level.
   - *Library*: one search field for the whole library (engine `search`), the category list (first entry
     *Suggestions*: the parts that fit the selection, then the recent items), the item list with preview (the engine's
     SVG thumbnail); double-click or *Insert* inserts the item – a part that fits the selected unit where it fits,
     anything else in the middle of the slide/page (Calc: of the visible cell area).
+  - *Calculator and code* (2026-11-26): the calculator with units and the code import (matplotlib, pgfplots, TikZ).
 - **On the slide/page** (Impress, Draw; see the on-canvas round below): a unit dragged with the mouse snaps on
   release (gear mesh, axes, ports, mounts …) and its coupled parts follow; Ctrl+Space opens the Library panel with the
-  cursor in the search field (type, Enter inserts); the context menu of a unit starts with the selection panel's
-  actions.
+  cursor in the search field (type, Enter inserts); the context menu of a unit starts with the eight places of the
+  pie menu (2026-11-26); Ctrl+double-click selects what is connected; selected units glow softly.
 - **Scripting API** (DispatchHelper / macros), all `inventasketch.libreoffice:<command>`:
   `insert?item=<id>[&x=<mm>&y=<mm>]`, `insertFitting?item=<id>`, `insertSearch?text=<query>`, `library`, `editModel`,
   `setView?view=<id>`, `redraw`, `numeral`, `transform?kind=mirrorH|mirrorV|rotate90`, `explode`, `drawTrace`,
@@ -142,9 +152,14 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   the cursor in the search field, as Ctrl+Space), `patentCheck[?profile=<office id>]`, `compare`, `importVector[?path=<file>]` (file dialog without a path),
   `cleanSlides[?scope=selection|slide|all&mode=normalised|randomised|none&rename=1&texts=1&meta=0&seed=<n>]`
   (dialog without arguments), `export[?format=<id or extension>&path=<file>]` (dialog and save dialog for what is
-  missing; headless without arguments the formats are logged), `chartFromPicture[?path=<file>]`, `cleanup`, `about`. The
-  integration and UI smoke tests use these
-  commands.
+  missing; headless without arguments the formats are logged), `chartFromPicture[?path=<file>]`, `cleanup`, `about`;
+  since 2026-11-26 (interaction concept): `action?id=<engine action id>[&input=<text>|&ask=1]` (an engine action or
+  an option of a choice), `param?key=<k>&value=<v>` (a parameter choice), `text[?text=<text>]`, `duplicate`,
+  `delete`, `connected[?mode=auto|net|coupled|chain|loop|walls]`, `insertPlace?key=<k>`, `menu` (logs the context
+  menu of the selection, also as JSON), `values`, `setValue?key=<k>&text=<t>`, `clearValue?key=<k>`,
+  `valueLevel?level=quick|explore|engineer`, `showValues?on=0|1`, `tools`, `calc?text=<t>[&unit=<u>]`,
+  `importCode[?path=<file>|&text=<code>]`; `panel?…&enter=1` presses Enter in a field, `control=choice:<label or
+  key>` names a choice's dropdown. The integration and UI smoke tests use these commands.
 - **Recent items** (last 12 inserted library items, per user) are kept in `libreoffice-settings.json` next to the log
   and rank higher in the search.
 - UI language: German if the LibreOffice UI locale starts with `de`, otherwise English; library names come from the
@@ -256,10 +271,87 @@ extension uses exactly that (`canvas.py`, pure rules in `ux.py`); every decision
   (`host.describe`, `ux.context_entries`) –, *Redraw from model* and *More in the InventaSketch sidebar…* (build "+",
   turning). Several units: the engine's selection-wide operations and *Select assembly*. The entries are ordinary
   dispatch commands of the extension. Building the menu runs one page session (all units of the page are imported).
+  Since 2026-11-26 the block is the pie menu's eight places (see the interaction concept round below).
 - **Not possible without an overlay (documented, not attempted):** guides and the snap label while dragging, the live
   coupling preview, "+" handles on the canvas, stretching a shaft end and motion mode by dragging, the pie menu.
   Expanding a collapsed Library panel on Ctrl+Space was dropped: `XDeck.getPanels()`/`XPanel.expand` crashed soffice
   26.8 once the deck was shown, so a Library panel the user collapsed stays collapsed.
+
+## Interaction concept round (LibreOffice, 2026-11-26)
+
+The concept of [interaction-ux.md](../design/interaction-ux.md) (sections 5a, 6, 6a) and the value UI of
+[engineering-calculations.md](../design/engineering-calculations.md) (sections 10–11), as far as LibreOffice lets an
+extension go. The Office web add-in's implementation (`barlogic.ts`, `pielogic.ts`, `valuecard.ts`, `tools.ts`) was the
+second reference. Every decision still comes from the engine; the pure rules are in `choices.py` and `values.py`
+(`tests/test_concept.py`).
+
+- **Choices are dropdowns.** The Selection panel asks the engine for the element's actions (`contextActions`) and
+  parameters (`inspector`) and shows **one dropdown per choice**: first the parameter choices (not the advanced ones),
+  then the engine's action choices (`choice`, `choiceLabel`, `choiceMenu`) whose parameter is not already a parameter
+  choice (`paramKeys`, one place per thing). The closed dropdown shows the current option, the list every option;
+  choosing an option runs it (`setParam`, or `applyAction` with the option's id; an option that asks for a value
+  opens the input dialog first), one undo step. Menus (`choiceMenu`: "Fill to", "Add area") are dropdowns whose first
+  row is "Label ▸"; choosing a row runs it and the title comes back. No cycle buttons anywhere. The element's other
+  commands are buttons with the engine's labels (a switch that is on, such as a table's header row, is a pressed
+  toggle button); "Text …" edits the main text (`setMainText`). The option pictograms (`IconIds`) and pictures
+  (`previewSvg`) of the other hosts are not shown: the extension has no pictogram set, so options are named; no element
+  choice in the catalogue carries a `previewSvg` today (those are part choices of charts).
+- **The eight places as the context menu.** Right-clicking InventaSketch unit(s) puts the pie menu's eight places on
+  top of LibreOffice's own menu, in the same order and with the same words as COM and web: *Text …*, *Edit*,
+  *Insert …*, *Duplicate*, *Style*, *Delete*, *View*, *Arrange* (LibreOffice draws the submenu arrow, so the labels carry
+  no "▸"). Edit: *Values …* (opens the Values panel), the element's own commands, *Reference numeral*, the menu
+  choices, *Explode*, *F = n* (shown, inactive), *Draw path*, *Ghost positions*, *Parts …*, *More in the InventaSketch
+  sidebar…* (build "+", turning, insert here), *Redraw from model*. Style: one submenu per state choice, "Line style:
+  Dashed", the current option **checked**. View: the views, the current one checked (several units: "one view for
+  all"). Arrange: rotate 90° either way and mirror (only where `transformEffect` says they change the drawing), the
+  host's own *Bring to front* / *Send to back* (`.uno:BringToFront`, `.uno:SendToBack`: the unit's z-order is its
+  shape's), *Select connected* (submenu) and, for several units, the engine's align/distribute/dimension operations.
+  Insert opens the Library panel with the search field (as Ctrl+Space); Duplicate and Delete go through the engine
+  (`duplicate`, `delete`: a copy gets new ids, what depends on a deleted element follows), one undo step each. A place
+  with one entry shows it directly, Edit, Style and Arrange keep their name; more than 14 entries continue in *More*.
+  The check marks and the inactive state are LibreOffice's own: the protocol handler reports the status (`State`,
+  `IsEnabled`) of the entry's command. **LibreOffice hides inactive context-menu entries** by default (*Tools ▸ Options
+  ▸ LibreOffice ▸ View ▸ Inactive menu items* shows them greyed), so a place with nothing for the selection (Text … for
+  a gear) is left out and the places below move up one row – the order never changes.
+- **Values panel.** One row per value of the selected element (`values`): marker (✎ entered, = derived, ○ default,
+  ⇄ linked, ⚠ in conflict), symbol and name, the entry field (the engine's parser: "4k7", "230 V", "1,5 kW"; Enter or
+  leaving the field stores it with `setValue`, Escape restores), the unit, × for an entered value (`clearValue`); under
+  a derived value its formula step by step (`explain`, Explore and Engineer; Engineer adds the source and a fourth
+  significant digit; the panel and engineer values are listed in Engineer only). The status line says ✓, what is
+  missing or that entries conflict; conflicts and violated checks (`checks`) follow. A refused entry shows the engine's
+  message in red under its row, never a message box. *Show values on the drawing* switches the values label
+  (`showValues`), *Calculator …* puts the first value into the calculator. The **value level** (Quick sketch, Explore,
+  Engineer) is a document setting: the user-defined document property `ISK_VALUES` (like the COM add-in's presentation
+  tag; Quick sketch removes it), so it travels with .odp and .pptx. The panel follows the selection; all units of the
+  page take part in the solve, so values linked across elements are known.
+- **Calculator and code.** The calculator with units (`calc`, the result converted with `convertUnit` when a target
+  unit is typed): "230 V * 16 A" = 3,68 kW, "1500 rpm" in rad/s = 157,1 rad/s, with the engine's steps; Enter or
+  *Calculate*. The code import pastes or opens matplotlib, pgfplots or TikZ code (`importCode`: read, never run): plots
+  become charts, drawings shapes, in the middle of the slide/page, one undo step, selected; the report (what was
+  imported, every skipped line with its reason) is shown below. The same import is in the menu (file dialog).
+- **Select connected.** Arrange ▸ *Select connected* lists the kinds that apply (`connectOptions`: net, moves along,
+  following elements, closed loop, room walls) with the number of elements; choosing one selects those units
+  (`connected`). The Selection panel has the same list ("Select connected ▸"), which replaces "Select assembly" when the
+  engine offers kinds. **Ctrl+double-click** on a selected unit selects the most meaningful kind (mode `auto`); the
+  press and the release are consumed, so LibreOffice does not also enter the group or add a shape inside it.
+- **Selection look.** Selected units glow: LibreOffice has no overlay, but its shapes have a native glow effect
+  (`GlowEffectRadius`, `GlowEffectColor`, `GlowEffectTransparency`). Every leaf shape of a selected unit gets a calm blue
+  glow (1.4 mm, 55 % transparent); **ellipses ignore the glow effect** (LibreOffice 26.8 reads it back as 0), so they
+  get the same look as a blurred shadow without offset (`ShadowBlur`). The glow is removed when the selection changes,
+  before every InventaSketch command (so LibreOffice's undo never keeps a glowing shape) and before the document is
+  saved, saved as a copy, exported or printed (document events `OnSave`, `OnSaveAs`, `OnCopyTo`, `OnPrint`; storeToURL
+  sends `OnCopyTo`, verified), and comes back afterwards. Setting it records no undo action and the document's modified
+  flag is restored. Unlike the concept, the glow lies behind each shape at its own z-position (an element on top hides
+  it), there is no fainter preview for a hovered "Select connected" entry (LibreOffice's context menu reports no
+  hover), and a unit pasted from the clipboard while it glowed keeps the glow until it has been selected once.
+- **Insert places.** The "+" dots between a table's rows and columns (Core `IInsertHandles`) cannot be drawn on the
+  slide; the Selection panel lists them instead: *Insert here* with "Insert a row here (before row 3)" … and an
+  *Insert* button (engine `insertHandles` / `applyInsertHandle`, added for this host), one undo step. They are not in
+  the context menu (a table with ten rows would list nine entries).
+- **Not in LibreOffice:** drag grips on values (`dragHandles` / `moveHandle`: a chart's limit lines, dimension values,
+  robot joints) – LibreOffice reports mouse presses and releases to an extension but no motion and draws no handles; a
+  typed value replaces them where the element has one (Values panel, parts dialog). No floating bar (no overlay), no
+  hover preview, no option pictograms (see above).
 
 ## Verified features
 
@@ -315,10 +407,33 @@ Verified on Windows 11 with LibreOffice 26.8.2.2 on 2026-11-20 (`tests/integrati
   (mask used), one undo step; slide exported as `share.png` and reviewed. The two dialogs were built over the UNO bridge
   in both languages (every control property accepted); they were not shown in a visible window.
 
+- 2026-11-26 (interaction concept round, Windows 11, LibreOffice 26.8.2.2, German UI, 200 % display scaling):
+  `integration_test.py` 118 checks passed (all phases; `--only concept` 24 checks): the context menu of a resistor has
+  the eight places in order with *Values …* under Edit and the current view checked; a table's Style place has the
+  borders choice with the current option checked and another option redraws the table in one undo step; value level
+  Explore stored as `ISK_VALUES` (Quick sketch removes it), U = 230 V and I = 2 A give R = 115 Ω with "R = U/I = 230 V/2,00
+  A = 115 Ω" in one undo step each, clearing I leaves R open; duplicate gives a new id, delete removes it; "insert a row
+  here" changes the table in one undo step; two meshing gears offer "Moves along (2 elements)" and `connected` selects
+  both; the calculator gives 3,68 kW and 157,1 rad/s; a matplotlib file becomes a `chart.figure` unit ("Import code"
+  undo step); the selected gear glows on all 6 shapes (2 lines by glow, 4 ellipses by the blurred shadow) without
+  making the document modified, the copy saved with storeToURL has no glow, the glow comes back after saving and goes
+  when deselected (page exported as `concept-glow.png` and reviewed). `ui_smoke.py` 33 checks passed (all phases; the
+  earlier context-menu check now walks to the View place; `--concept-only` alone 12 checks) with **real mouse and
+  keyboard input**: the glow after selecting, right-click on a gear shows the eight places (Text …
+  hidden as inactive) on top of LibreOffice's menu (screenshot reviewed: native submenu arrows, the order/icons/shortcuts
+  of *Bring to front*), Down to View, Right shows the views with the current one checked, Down + Enter switches the view;
+  Ctrl+double-click selects exactly the two meshing gears; in the sidebar the borders dropdown switches to "outer frame
+  only", *Insert here* adds a row, the Values panel takes "230 V" and "2 A" typed into its fields and shows R and P with
+  their formulas, "2 kg" for U is refused with the engine's message in red under the row, the calculator gives 3,68 kW.
+  Screenshots reviewed (the deck is scrolled with the mouse wheel to the Values panel; the Calculator panel below the
+  Library panel was operated but not brought into a screenshot).
+
 ## Tests
 
 ```powershell
 python -m unittest discover -s hosts/libreoffice/tests -p "test_*.py"     # unit tests, no LibreOffice
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt <oxt> --out <folder> --only concept
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt <oxt> --out <folder> --concept-only
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <folder>
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <folder>
 ```
@@ -331,7 +446,13 @@ units, a gear train turned across units, explode). `test_share.py` covers clean 
 pages of a scope, report), export (formats, names, extensions, bytes), chart from picture (DIB decoding of 1/8/16/24/32
 bits, scaling, transparency on white) and the rule that no user-visible text says "patent", plus the engine requests of
 these modules against the built engine. `integration_test.py --only share` runs just the phase for these three
-commands. The UI smoke test operates the panel's controls with the `panel`
+commands. `test_concept.py` covers the interaction concept: grouping of choices (parameter choices first, covered
+action choices left out, menus), dropdown rows and picks, the eight places and their submenus (checked current options,
+greyed places, "More"), the Values rows per level, status and conflicts, the calculator and code report lines, the
+glow (signature, shadow fallback for ellipses, modified flag) and, against the built engine, that every choice of a
+sample of the catalogue is a proper dropdown, an option runs through `applyAction`, a resistor's values, a table's
+insert places, select connected of meshing gears, the calculator and a matplotlib import. `integration_test.py --only
+concept` and `ui_smoke.py --concept-only` run the LibreOffice checks of this round. The UI smoke test operates the panel's controls with the `panel`
 command (typing into the search field and choosing a list entry go through the controls and call the same listeners
 as a user; buttons run their click handler); real mouse clicks are not simulated, because over the remote bridge the
 panel's control peers are generic windows without list box or accessibility interfaces. Its first part
@@ -346,8 +467,10 @@ headless and never touches the user's profile or files; Linux/macOS run it with 
 ## Limits (phase 1)
 
 - No overlay on the canvas (UNO cannot draw into the view): snapping happens on release, without guides or a snap
-  label while dragging; no "+" handles, pie menu or motion by dragging. Editing otherwise goes through the sidebar,
-  the context menu and the menu. Parameters, style and text editing are not exposed yet.
+  label while dragging; no "+" handles, floating bar, drag grips on values or motion by dragging; the pie menu's eight
+  places are the top of the context menu. Editing otherwise goes through the sidebar, the context menu and the menu.
+  Choice parameters, the element's commands, the main text and values are exposed (2026-11-26); free number and text
+  parameters and the line/fill style are not (no inspector yet).
 - Every edit imports all InventaSketch units of the page (one engine call per unit, plus the state); pages with very
   many units get slower. For units attached to each other in both directions the engine may start from the copy of
   the other unit's model that is stored with the first one (the import order cannot make both own models win).

@@ -272,6 +272,26 @@ namespace InventaSketch.Engine
         public List<DragHandleInfo> Handles { get; set; } = new();
     }
 
+    /// <summary>An insert place of an element (<see cref="InventaSketch.Core.InsertHandle"/>) in page mm, from <c>insertHandles</c>.</summary>
+    public sealed class InsertHandleInfo
+    {
+        public string Key { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+        /// <summary>Outward direction in page coordinates (unit vector).</summary>
+        public double Dx { get; set; }
+        public double Dy { get; set; }
+        /// <summary>What a click there inserts ("Insert a row here (before row 3)").</summary>
+        public string Label { get; set; } = "";
+    }
+
+    /// <summary>The insert places of one element (<c>insertHandles</c>).</summary>
+    public sealed class ObjectInsertHandles
+    {
+        public string Id { get; set; } = "";
+        public List<InsertHandleInfo> Handles { get; set; } = new();
+    }
+
     /// <summary>A selectable part of an element (<see cref="InventaSketch.Core.PartInfo"/>).</summary>
     public sealed class PartView
     {

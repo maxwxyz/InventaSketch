@@ -19,10 +19,16 @@ LibreOffice (Impress/Draw/Calc)
          plan.py      Zeichenplan (pt) -> Formbeschreibungen (1/100 mm), ohne UNO, mit Unit-Tests
          render.py    Formbeschreibungen -> native UNO-Formen, Gruppen, Linienenden, Metadaten
          metadata.py  Name der Einheit, Attribute, Dokumenteigenschaften in Teilstücken, Erkennen nativer Änderungen
-         sidebar.py   Deck „InventaSketch“, Panels „Auswahl“ und „Bibliothek“; library.py: Katalogfilter, Vorschaubilder
+         sidebar.py   Deck „InventaSketch“, Panels „Auswahl“, „Werte“, „Bibliothek“, „Rechner und Code“;
+                      library.py: Katalogfilter, Vorschaubilder
          ux.py        Regeln des Auswahl-Panels, zuletzt benutzte Elemente, Buchführung der Seitensitzung, Regeln der
                       Bedienung auf der Folie (ohne UNO)
-         canvas.py    Bedienung auf der Folie: Einrasten nach dem Ziehen, Strg+Leertaste, Kontextmenü (UNO-Eingabe-Abfang)
+         choices.py   Bedienkonzept: Auswahlen als Klapplisten, die acht Plätze des Kontextmenüs, Verbundene
+                      auswählen, Einfügestellen (ohne UNO, getestet)
+         values.py    Zeilen des Werte-Panels, Wertestufe, Rechner und Bericht des Code-Imports (ohne UNO, getestet)
+         canvas.py    Bedienung auf der Folie: Einrasten nach dem Ziehen, Strg+Leertaste, Kontextmenü mit den acht
+                      Plätzen, Strg+Doppelklick, Auswahlschein (UNO-Eingabe-Abfang); glow.py: der Schein selbst
+         inputdialog.py  einzeiliger Eingabedialog (Haupttext, Aktionen, die nach einem Wert fragen)
          clean.py, exporting.py, picture.py   Regeln für Folien bereinigen, Export und Diagramm aus Bild (ohne UNO,
                       getestet); cleandialog.py, exportdialog.py: ihre Dialoge
          engine.py    Engine-Prozess (JSON-Zeilen), .NET-Suche, Zeitlimit, Neustart
@@ -83,9 +89,10 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 `unopkg remove org.inventasketch.libreoffice`.
 
 - **Menü „InventaSketch“** (Impress, Draw, Calc): *Aus Bibliothek einfügen …* (öffnet das Deck der Seitenleiste),
-  *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*,
-  *Bezugszeichen hinzufügen*, *Kompatibilität (Zeichnungsregeln) …*, *Mit vorheriger Folie vergleichen (Varianten)*,
-  *Folien bereinigen …*, *Zeichnung importieren (SVG, DXF) …*, *Diagramm aus Bild …*, *Exportieren …*,
+  *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*, *Werte des
+  ausgewählten Elements …*, *Rechner mit Einheiten …*, *Bezugszeichen hinzufügen*, *Kompatibilität
+  (Zeichnungsregeln) …*, *Mit vorheriger Folie vergleichen (Varianten)*, *Folien bereinigen …*, *Zeichnung importieren
+  (SVG, DXF) …*, *Code importieren (matplotlib, pgfplots, TikZ) …*, *Diagramm aus Bild …*, *Exportieren …*,
   *Daten gelöschter Einheiten entfernen*, *Über InventaSketch*.
 - **Folien bereinigen** (25.11.2026): Bevor Folien das Unternehmen verlassen, bereinigt die Engine (`sanitize`) die
   InventaSketch-Elemente der Auswahl, der aktuellen Folie/Seite/des Tabellenblatts oder aller Folien/Seiten, mit den
@@ -132,17 +139,21 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   protokolliert. Geprüft: `integration_test.py` (ein Zahnrad außerhalb der Nutzfläche auf Folie 2 gefunden und seiner
   Einheit zugeordnet) und `ui_smoke.py` (der Dialog öffnet sich in einem echten Fenster, die Pfeiltaste nach unten
   springt zu Folie 2 und wählt das Zahnrad aus, Escape schließt ihn).
-- **Seitenleiste „InventaSketch“**, zwei Panels (siehe UI/UX-Runde unten):
+- **Seitenleiste „InventaSketch“**, vier Panels (siehe UI/UX-Runde und Runde „Bedienkonzept“ unten):
   - *Auswahl* folgt der Auswahl im Dokument (Auswahl-Listener) und zeigt, was mit den ausgewählten
-    InventaSketch-Einheiten möglich ist – nur im Kontext.
+    InventaSketch-Einheiten möglich ist – nur im Kontext: jede Auswahl als Klappliste, die eigenen Befehle des
+    Elements, Verbundene auswählen, Hier einfügen, Anbauen „+“, Drehen.
+  - *Werte* (26.11.2026): die Werte des ausgewählten Elements mit ihren Formeln, die Wertestufe.
   - *Bibliothek*: ein Suchfeld für die ganze Bibliothek (Engine-`search`), die Kategorieliste (erster Eintrag
     *Vorschläge*: die zur Auswahl passenden Teile, dann die zuletzt benutzten), die Elementliste mit Vorschau
     (SVG-Vorschaubild der Engine); Doppelklick oder *Einfügen* fügt das Element ein – ein zur ausgewählten Einheit
     passendes Teil dort, wo es passt, alles andere in der Mitte der Folie/Seite (Calc: des sichtbaren Zellbereichs).
+  - *Rechner und Code* (26.11.2026): der Rechner mit Einheiten und der Code-Import (matplotlib, pgfplots, TikZ).
 - **Auf der Folie/Seite** (Impress, Draw; siehe Runde „Bedienung auf der Folie“ unten): Eine mit der Maus gezogene
   Einheit rastet beim Loslassen ein (Zahneingriff, Achsen, Anbaustellen, Flansche …), gekoppelte Teile folgen;
   Strg+Leertaste öffnet das Bibliotheks-Panel mit dem Cursor im Suchfeld (tippen, Eingabe fügt ein); das Kontextmenü
-  einer Einheit beginnt mit den Aktionen des Auswahl-Panels.
+  einer Einheit beginnt mit den acht Plätzen des Kreismenüs (26.11.2026); Strg+Doppelklick wählt das Verbundene aus;
+  ausgewählte Einheiten haben einen sanften Schein.
 - **Skript-API** (DispatchHelper / Makros), jeweils `inventasketch.libreoffice:<Befehl>`:
   `insert?item=<id>[&x=<mm>&y=<mm>]`, `insertFitting?item=<id>`, `insertSearch?text=<Suchtext>`, `library`,
   `editModel`, `setView?view=<id>`, `redraw`, `numeral`, `transform?kind=mirrorH|mirrorV|rotate90`, `explode`,
@@ -155,7 +166,13 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   `cleanSlides[?scope=selection|slide|all&mode=normalised|randomised|none&rename=1&texts=1&meta=0&seed=<n>]`
   (ohne Argumente mit Dialog), `export[?format=<ID oder Endung>&path=<Datei>]` (Dialog und Speichern-Dialog für das,
   was fehlt; headless ohne Argumente werden die Formate protokolliert), `chartFromPicture[?path=<Datei>]`, `cleanup`,
-  `about`. Integrations- und
+  `about`; seit 26.11.2026 (Bedienkonzept): `action?id=<Engine-Aktions-ID>[&input=<Text>|&ask=1]` (eine
+  Engine-Aktion oder eine Option einer Auswahl), `param?key=<k>&value=<v>` (eine Parameter-Auswahl),
+  `text[?text=<Text>]`, `duplicate`, `delete`, `connected[?mode=auto|net|coupled|chain|loop|walls]`,
+  `insertPlace?key=<k>`, `menu` (protokolliert das Kontextmenü der Auswahl, auch als JSON), `values`,
+  `setValue?key=<k>&text=<t>`, `clearValue?key=<k>`, `valueLevel?level=quick|explore|engineer`, `showValues?on=0|1`,
+  `tools`, `calc?text=<t>[&unit=<u>]`, `importCode[?path=<Datei>|&text=<Code>]`; `panel?…&enter=1` drückt Eingabe in
+  einem Feld, `control=choice:<Beschriftung oder Schlüssel>` benennt die Klappliste einer Auswahl. Integrations- und
   UI-Smoke-Test benutzen diese Befehle.
 - **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in
   `libreoffice-settings.json` neben dem Protokoll und werden in der Suche höher eingestuft.
@@ -279,12 +296,99 @@ jede Entscheidung kommt weiterhin aus der Engine.
   wenn die Engine sagt, dass sie zutreffen (`host.describe`, `ux.context_entries`) –, *Aus dem Modell neu zeichnen*
   und *Mehr in der InventaSketch-Seitenleiste …* (Anbau-„+“, Drehen). Mehrere Einheiten: die auswahlweiten Operationen
   der Engine und *Baugruppe wählen*. Die Einträge sind gewöhnliche Dispatch-Befehle der Erweiterung. Der Aufbau des
-  Menüs kostet eine Seitensitzung (alle Einheiten der Seite werden importiert).
+  Menüs kostet eine Seitensitzung (alle Einheiten der Seite werden importiert). Seit 26.11.2026 besteht der Block aus
+  den acht Plätzen des Kreismenüs (siehe Runde „Bedienkonzept“ unten).
 - **Ohne Overlay nicht möglich (dokumentiert, nicht versucht):** Hilfslinien und Einrastbeschriftung während des
   Ziehens, die Live-Vorschau der Kopplung, „+“-Griffe auf der Folie, Strecken eines Wellenendes und Bewegungsmodus durch
   Ziehen, das Kreismenü. Das Aufklappen eines zugeklappten Bibliotheks-Panels bei Strg+Leertaste entfiel:
   `XDeck.getPanels()`/`XPanel.expand` brachte soffice 26.8 bei gezeigtem Deck zum Absturz; ein vom Anwender
   zugeklapptes Bibliotheks-Panel bleibt daher zu.
+
+## Runde „Bedienkonzept“ (LibreOffice, 26.11.2026)
+
+Das Konzept aus [interaction-ux.md](../design/interaction-ux.md) (Abschnitte 5a, 6, 6a) und die Werte-Oberfläche aus
+[engineering-calculations.md](../design/engineering-calculations.md) (Abschnitte 10–11), so weit LibreOffice eine
+Erweiterung lässt. Die Umsetzung im Office-Web-Add-in (`barlogic.ts`, `pielogic.ts`, `valuecard.ts`, `tools.ts`) war die
+zweite Vorlage. Jede Entscheidung kommt weiter von der Engine; die reinen Regeln stehen in `choices.py` und `values.py`
+(`tests/test_concept.py`).
+
+- **Auswahlen sind Klapplisten.** Das Auswahl-Panel fragt die Engine nach den Aktionen (`contextActions`) und Parametern
+  (`inspector`) des Elements und zeigt **eine Klappliste je Auswahl**: zuerst die Parameter-Auswahlen (ohne die
+  erweiterten), dann die Aktions-Auswahlen der Engine (`choice`, `choiceLabel`, `choiceMenu`), deren Parameter nicht
+  schon eine Parameter-Auswahl ist (`paramKeys`, ein Ort je Sache). Die geschlossene Klappliste zeigt die aktuelle
+  Option, die Liste alle Optionen; die Wahl einer Option führt sie aus (`setParam` oder `applyAction` mit der ID der
+  Option; eine Option, die nach einem Wert fragt, öffnet zuerst den Eingabedialog), ein Rückgängig-Schritt. Menüs
+  (`choiceMenu`: „Füllen bis“, „Fläche hinzufügen“) sind Klapplisten, deren erste Zeile „Beschriftung ▸“ ist; die Wahl
+  einer Zeile führt sie aus, danach steht wieder der Titel da. Nirgends gibt es Durchschalt-Schaltflächen. Die übrigen
+  Befehle des Elements sind Schaltflächen mit den Beschriftungen der Engine (ein eingeschalteter Schalter wie die
+  Kopfzeile einer Tabelle ist eine gedrückte Umschaltfläche); „Text …“ bearbeitet den Haupttext (`setMainText`). Die
+  Options-Piktogramme (`IconIds`) und -Bilder (`previewSvg`) der anderen Hosts werden nicht gezeigt: Die Erweiterung hat
+  keinen Piktogrammsatz, die Optionen sind also benannt; keine Element-Auswahl des Katalogs bringt heute ein
+  `previewSvg` mit (das sind Teil-Auswahlen von Diagrammen).
+- **Die acht Plätze als Kontextmenü.** Ein Rechtsklick auf InventaSketch-Einheiten setzt die acht Plätze des
+  Kreismenüs oben in das Menü von LibreOffice, in derselben Reihenfolge und mit denselben Worten wie COM und Web:
+  *Text …*, *Bearbeiten*, *Einfügen …*, *Duplizieren*, *Stil*, *Löschen*, *Ansicht*, *Anordnen* (LibreOffice zeichnet
+  den Untermenü-Pfeil selbst, deshalb tragen die Beschriftungen kein „▸“). Bearbeiten: *Werte …* (öffnet das
+  Werte-Panel), die eigenen Befehle des Elements, *Bezugszeichen*, die Menü-Auswahlen, *Zerlegen*, *F = n* (angezeigt,
+  inaktiv), *Bahn zeichnen*, *Zwischenlagen*, *Teile …*, *Mehr in der InventaSketch-Seitenleiste …* (Anbau-„+“, Drehen,
+  Hier einfügen), *Aus dem Modell neu zeichnen*. Stil: ein Untermenü je Zustands-Auswahl, „Linienart: Gestrichelt“, die
+  aktuelle Option **abgehakt**. Ansicht: die Ansichten, die aktuelle abgehakt (mehrere Einheiten: „eine Ansicht für
+  alle“). Anordnen: um 90° in beide Richtungen drehen und spiegeln (nur, wo `transformEffect` sagt, dass es die Zeichnung
+  ändert), die eigenen Befehle des Hosts *In den Vordergrund* / *In den Hintergrund* (`.uno:BringToFront`,
+  `.uno:SendToBack`: die Z-Reihenfolge einer Einheit ist die ihrer Form), *Verbundene auswählen* (Untermenü) und bei
+  mehreren Einheiten die Ausrichten-/Verteilen-/Bemaßen-Operationen der Engine. Einfügen öffnet das Bibliotheks-Panel
+  mit dem Suchfeld (wie Strg+Leertaste); Duplizieren und Löschen laufen über die Engine (`duplicate`, `delete`: eine
+  Kopie bekommt neue IDs, was von einem gelöschten Element abhängt, folgt), je ein Rückgängig-Schritt. Ein Platz mit
+  einem Eintrag zeigt ihn direkt, Bearbeiten, Stil und Anordnen behalten ihren Namen; mehr als 14 Einträge gehen in
+  *Mehr* weiter. Haken und inaktiver Zustand sind die von LibreOffice selbst: Der Protocol-Handler meldet den Status
+  (`State`, `IsEnabled`) des Befehls eines Eintrags. **LibreOffice blendet inaktive Kontextmenü-Einträge** standardmäßig
+  **aus** (*Extras ▸ Optionen ▸ LibreOffice ▸ Ansicht ▸ Inaktive Menüeinträge* zeigt sie ausgegraut), ein Platz ohne
+  Inhalt für die Auswahl (Text … bei einem Zahnrad) fehlt also, und die Plätze darunter rücken eine Zeile hoch – die
+  Reihenfolge ändert sich nie.
+- **Werte-Panel.** Eine Zeile je Wert des ausgewählten Elements (`values`): Kennzeichen (✎ eingegeben, = abgeleitet,
+  ○ Vorgabe, ⇄ verbunden, ⚠ im Widerspruch), Symbol und Name, das Eingabefeld (der Parser der Engine: „4k7“, „230 V“,
+  „1,5 kW“; Eingabe oder Verlassen des Felds speichert mit `setValue`, Escape stellt wieder her), die Einheit, × für einen
+  eingegebenen Wert (`clearValue`); unter einem abgeleiteten Wert seine Formel Schritt für Schritt (`explain`, Erkunden
+  und Ingenieur; Ingenieur ergänzt die Quelle und eine vierte geltende Ziffer; Panel- und Ingenieurswerte nur bei
+  Ingenieur). Die Statuszeile sagt ✓, was fehlt oder dass Eingaben sich widersprechen; Widersprüche und verletzte
+  Prüfungen (`checks`) folgen. Eine abgelehnte Eingabe zeigt die Meldung der Engine rot unter ihrer Zeile, nie in einem
+  Meldungsfenster. *Werte in der Zeichnung zeigen* schaltet die Werte-Beschriftung (`showValues`), *Rechner …* setzt
+  den ersten Wert in den Rechner. Die **Wertestufe** (Schnellskizze, Erkunden, Ingenieur) ist eine Einstellung des
+  Dokuments: die benutzerdefinierte Dokumenteigenschaft `ISK_VALUES` (wie die Präsentationsmarke des COM-Add-ins;
+  Schnellskizze entfernt sie), sie reist also mit .odp und .pptx. Das Panel folgt der Auswahl; alle Einheiten der Seite
+  nehmen an der Rechnung teil, über Elemente verbundene Werte sind also bekannt.
+- **Rechner und Code.** Der Rechner mit Einheiten (`calc`, das Ergebnis mit `convertUnit` umgerechnet, wenn eine
+  Zieleinheit getippt ist): „230 V * 16 A“ = 3,68 kW, „1500 rpm“ in rad/s = 157,1 rad/s, mit den Schritten der Engine;
+  Eingabe oder *Berechnen*. Der Code-Import nimmt eingefügten oder geöffneten matplotlib-, pgfplots- oder TikZ-Code
+  (`importCode`: gelesen, nie ausgeführt): Plots werden Diagramme, Zeichnungen Formen, in der Mitte der Folie/Seite, ein
+  Rückgängig-Schritt, ausgewählt; der Bericht (was importiert wurde, jede übersprungene Zeile mit Grund) steht darunter.
+  Derselbe Import steht im Menü (Dateidialog).
+- **Verbundene auswählen.** Anordnen ▸ *Verbundene auswählen* nennt die zutreffenden Arten (`connectOptions`: Netz,
+  bewegt sich mit, folgende Elemente, geschlossene Schleife, Raumwände) mit der Zahl der Elemente; die Wahl einer Art
+  wählt diese Einheiten aus (`connected`). Das Auswahl-Panel hat dieselbe Liste („Verbundene auswählen ▸“), die
+  „Baugruppe wählen“ ersetzt, sobald die Engine Arten anbietet. **Strg+Doppelklick** auf eine ausgewählte Einheit wählt
+  die sinnvollste Art (Modus `auto`); Drücken und Loslassen werden verbraucht, damit LibreOffice nicht zusätzlich die
+  Gruppe betritt oder eine Form darin der Auswahl hinzufügt.
+- **Auswahl-Aussehen.** Ausgewählte Einheiten haben einen Schein: LibreOffice hat kein Overlay, aber seine Formen haben
+  einen nativen Leuchteffekt (`GlowEffectRadius`, `GlowEffectColor`, `GlowEffectTransparency`). Jede Einzelform einer
+  ausgewählten Einheit bekommt einen ruhigen blauen Schein (1,4 mm, 55 % transparent); **Ellipsen ignorieren den
+  Leuchteffekt** (LibreOffice 26.8 liest ihn als 0 zurück), sie bekommen dasselbe Aussehen als weichgezeichneten Schatten
+  ohne Versatz (`ShadowBlur`). Der Schein verschwindet, wenn die Auswahl wechselt, vor jedem InventaSketch-Befehl (damit
+  LibreOffices Rückgängig nie eine scheinende Form aufhebt) und bevor das Dokument gespeichert, als Kopie gespeichert,
+  exportiert oder gedruckt wird (Dokumentereignisse `OnSave`, `OnSaveAs`, `OnCopyTo`, `OnPrint`; storeToURL sendet
+  `OnCopyTo`, geprüft), und kommt danach zurück. Das Setzen legt keine Rückgängig-Aktion an, das Geändert-Kennzeichen
+  des Dokuments wird wiederhergestellt. Anders als im Konzept liegt der Schein hinter jeder Form auf ihrer eigenen
+  Z-Position (ein Element darüber verdeckt ihn), es gibt keine blassere Vorschau für einen überfahrenen Eintrag
+  „Verbundene auswählen“ (das Kontextmenü von LibreOffice meldet kein Überfahren), und eine Einheit, die aus der
+  Zwischenablage eingefügt wurde, während sie schien, behält den Schein, bis sie einmal ausgewählt war.
+- **Einfügestellen.** Die „+“-Punkte zwischen den Zeilen und Spalten einer Tabelle (Core `IInsertHandles`) lassen sich
+  nicht auf die Folie zeichnen; das Auswahl-Panel listet sie stattdessen: *Hier einfügen* mit „Hier eine Zeile einfügen
+  (vor Zeile 3)“ … und einer Schaltfläche *Einfügen* (Engine `insertHandles` / `applyInsertHandle`, für diesen Host
+  ergänzt), ein Rückgängig-Schritt. Im Kontextmenü stehen sie nicht (eine Tabelle mit zehn Zeilen hätte neun Einträge).
+- **Nicht in LibreOffice:** Ziehgriffe an Werten (`dragHandles` / `moveHandle`: Grenzlinien eines Diagramms, Maßwerte,
+  Robotergelenke) – LibreOffice meldet einer Erweiterung Drücken und Loslassen der Maus, aber keine Bewegung, und
+  zeichnet keine Griffe; wo das Element einen Wert hat, ersetzt ihn ein getippter Wert (Werte-Panel, Teile-Dialog).
+  Keine schwebende Leiste (kein Overlay), keine Vorschau beim Überfahren, keine Options-Piktogramme (siehe oben).
 
 ## Verifizierte Funktionen
 
@@ -349,10 +453,36 @@ bestanden; `tests/ui_smoke.py`, Bildschirmfotos gesichtet):
   Die beiden Dialoge wurden über die UNO-Brücke in beiden Sprachen aufgebaut (alle Eigenschaften der Bedienelemente
   angenommen); in einem sichtbaren Fenster wurden sie nicht gezeigt.
 
+- 26.11.2026 (Runde „Bedienkonzept“, Windows 11, LibreOffice 26.8.2.2, deutsche Oberfläche, 200 % Anzeigeskalierung):
+  `integration_test.py` 118 Prüfungen bestanden (alle Phasen; `--only concept` 24 Prüfungen): Das Kontextmenü eines
+  Widerstands hat die acht Plätze in Reihenfolge mit *Werte …* unter Bearbeiten und abgehakter aktueller Ansicht; der
+  Platz Stil einer Tabelle hat die Auswahl Linien mit abgehakter aktueller Option, eine andere Option zeichnet die
+  Tabelle in einem Rückgängig-Schritt neu; Wertestufe Erkunden als `ISK_VALUES` gespeichert (Schnellskizze entfernt
+  sie), U = 230 V und I = 2 A ergeben R = 115 Ω mit „R = U/I = 230 V/2,00 A = 115 Ω“, je ein Rückgängig-Schritt, das
+  Löschen von I lässt R offen; Duplizieren ergibt eine neue ID, Löschen entfernt sie; „Hier eine Zeile einfügen“ ändert
+  die Tabelle in einem Rückgängig-Schritt; zwei kämmende Zahnräder bieten „Bewegt sich mit (2 Elemente)“, `connected`
+  wählt beide; der Rechner ergibt 3,68 kW und 157,1 rad/s; eine matplotlib-Datei wird eine `chart.figure`-Einheit
+  (Rückgängig-Schritt „Code importieren“); das ausgewählte Zahnrad scheint auf allen 6 Formen (2 Linien per Leuchteffekt,
+  4 Ellipsen per weichem Schatten), ohne das Dokument als geändert zu markieren, die mit storeToURL gespeicherte Kopie
+  hat keinen Schein, der Schein kehrt nach dem Speichern zurück und verschwindet beim Abwählen (Seite als
+  `concept-glow.png` exportiert und angesehen). `ui_smoke.py` 33 Prüfungen bestanden (alle Phasen; die frühere
+  Kontextmenü-Prüfung geht jetzt zum Platz Ansicht; `--concept-only` allein 12 Prüfungen) mit **echter Maus- und
+  Tastatureingabe**: der Schein nach dem Auswählen, Rechtsklick auf ein Zahnrad zeigt die acht Plätze (Text …
+  als inaktiv ausgeblendet) oben im Menü von LibreOffice (Bildschirmfoto angesehen: native Untermenü-Pfeile, Symbole und
+  Tastenkürzel bei *In den Vordergrund*), Pfeil nach unten bis Ansicht, Pfeil nach rechts zeigt die Ansichten mit der
+  aktuellen abgehakt, Pfeil nach unten + Eingabe wechselt die Ansicht; Strg+Doppelklick wählt genau die beiden
+  kämmenden Zahnräder; in der Seitenleiste schaltet die Klappliste Linien auf „Nur Außenrahmen“, *Hier einfügen* fügt
+  eine Zeile ein, das Werte-Panel nimmt „230 V“ und „2 A“ in seinen Feldern an und zeigt R und P mit ihren Formeln,
+  „2 kg“ für U wird mit der Meldung der Engine rot unter der Zeile abgelehnt, der Rechner ergibt 3,68 kW.
+  Bildschirmfotos angesehen (das Deck wird mit dem Mausrad zum Werte-Panel gescrollt; das Panel „Rechner und Code“
+  unter dem Bibliotheks-Panel wurde bedient, aber nicht ins Bildschirmfoto gebracht).
+
 ## Tests
 
 ```powershell
 python -m unittest discover -s hosts/libreoffice/tests -p "test_*.py"     # Unit-Tests, ohne LibreOffice
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt <oxt> --out <Ordner> --only concept
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt <oxt> --out <Ordner> --concept-only
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <Ordner>
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <Ordner>
 ```
@@ -366,7 +496,14 @@ Einheiten gedreht, Zerlegen). `test_share.py` deckt Folien bereinigen (Wahl, Sta
 Bereichs, Bericht), Export (Formate, Namen, Endungen, Bytes), Diagramm aus Bild (Lesen von DIBs mit 1/8/16/24/32 Bit,
 Verkleinern, Transparenz auf Weiß) und die Regel ab, dass kein sichtbarer Text „patent“ enthält, dazu die
 Engine-Anfragen dieser Module gegen die gebaute Engine. `integration_test.py --only share` führt nur die Phase dieser
-drei Befehle aus. Der UI-Smoke-Test bedient die Bedienelemente des Panels mit dem Befehl `panel` (Tippen ins
+drei Befehle aus. `test_concept.py` deckt das Bedienkonzept ab: das Gruppieren der Auswahlen (Parameter-Auswahlen
+zuerst, abgedeckte Aktions-Auswahlen weggelassen, Menüs), Zeilen und Wahl der Klapplisten, die acht Plätze und ihre
+Untermenüs (abgehakte aktuelle Optionen, ausgegraute Plätze, „Mehr“), die Zeilen des Werte-Panels je Stufe, Status und
+Widersprüche, die Zeilen von Rechner und Code-Bericht, den Schein (Signatur, Schatten für Ellipsen, Geändert-Kennzeichen)
+und gegen die gebaute Engine, dass jede Auswahl einer Stichprobe des Katalogs eine richtige Klappliste ist, eine Option
+über `applyAction` läuft, die Werte eines Widerstands, die Einfügestellen einer Tabelle, Verbundene auswählen bei
+kämmenden Zahnrädern, den Rechner und einen matplotlib-Import. `integration_test.py --only concept` und
+`ui_smoke.py --concept-only` führen die LibreOffice-Prüfungen dieser Runde aus. Der UI-Smoke-Test bedient die Bedienelemente des Panels mit dem Befehl `panel` (Tippen ins
 Suchfeld und die Wahl eines Listeneintrags laufen über die Bedienelemente und rufen dieselben Listener auf wie ein
 Anwender; Schaltflächen führen ihre Klick-Behandlung aus); echte Mausklicks werden nicht nachgestellt, weil die Peers
 der Bedienelemente über die Fernbrücke nur generische Fenster ohne Listenfeld- oder Barrierefreiheits-Schnittstellen
@@ -382,9 +519,11 @@ Linux/macOS läuft er mit einem Python, das `uno` importieren kann.
 ## Grenzen (Phase 1)
 
 - Kein Overlay auf der Folie (UNO kann nicht in die Ansicht zeichnen): Eingerastet wird beim Loslassen, ohne
-  Hilfslinien oder Einrastbeschriftung während des Ziehens; keine „+“-Griffe, kein Kreismenü, keine Bewegung durch
-  Ziehen. Sonst wird über Seitenleiste, Kontextmenü und Menü bearbeitet. Parameter, Stil und Text sind noch nicht
-  bearbeitbar.
+  Hilfslinien oder Einrastbeschriftung während des Ziehens; keine „+“-Griffe, keine schwebende Leiste, keine
+  Ziehgriffe an Werten, keine Bewegung durch Ziehen; die acht Plätze des Kreismenüs stehen oben im Kontextmenü. Sonst
+  wird über Seitenleiste, Kontextmenü und Menü bearbeitet. Auswahl-Parameter, die Befehle des Elements, der Haupttext
+  und die Werte sind bearbeitbar (26.11.2026); freie Zahl- und Textparameter sowie Linie/Füllung noch nicht (noch kein
+  Inspektor).
 - Jede Bearbeitung importiert alle InventaSketch-Einheiten der Seite (ein Engine-Aufruf je Einheit plus der Zustand);
   Seiten mit sehr vielen Einheiten werden langsamer. Bei Einheiten, die gegenseitig aneinander hängen, kann die Engine
   von der Kopie des Modells der anderen Einheit ausgehen, die bei der ersten gespeichert ist (die Importreihenfolge

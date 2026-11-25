@@ -364,10 +364,15 @@ def canvas_phase(office, out, logs):
         screenshot(window, os.path.join(out, "canvas-context-menu.png"))
         line = (log_lines(logs, "canvas: context menu") or [""])[-1]
         check("canvas.contextMenu.entries", len(log_lines(logs, "canvas: context menu")) == menus + 1 and
-              ("Ansicht wechseln" in line or "Switch view" in line) and
-              ("Baugruppe" in line or "assembly" in line), line[-200:])
-        keys(VK_DOWN)
+              ("Ansicht ▸" in line or "View ▸" in line) and
+              ("Anordnen ▸" in line or "Arrange ▸" in line), line[-200:])
+        # The View place (LibreOffice hides unavailable places): Down to it, Right, Down to the other view, Enter.
+        entries = canvas_menu_labels(line)
+        view_index = next((i for i, e in enumerate(entries) if e.startswith(("Ansicht", "View"))), 0)
+        for _ in range(view_index + 1):
+            keys(VK_DOWN)
         keys(VK_RIGHT)
+        keys(VK_DOWN)
         keys(VK_RETURN)
         wait_for(lambda: leaf_types(units_of(page)[b_name]) != before, 8)
         after = leaf_types(units_of(page)[b_name]) if b_name in units_of(page) else {}
@@ -424,6 +429,216 @@ def canvas_phase(office, out, logs):
         GUARD["window"] = None
         screen.close()
         office.close(doc)
+
+
+def canvas_menu_labels(line):
+    """The visible InventaSketch entries of a logged context menu ("(Text …)" = unavailable, hidden by LibreOffice)."""
+    tail = line.partition("unit(s): ")[2]
+    return [e.strip().rstrip(" ▸") for e in tail.split(", ") if e.strip() and not e.strip().startswith("(")]
+
+
+def wheel(p, clicks):
+    """Turns the mouse wheel over ``p`` (negative: down), e.g. to scroll the sidebar deck to a lower panel."""
+    guard(p)
+    u = user32()
+    u.SetCursorPos(int(round(p[0])), int(round(p[1])))
+    time.sleep(0.3)
+    guard(p)
+    for _ in range(abs(clicks)):
+        u.mouse_event(0x0800, 0, 0, 120 if clicks > 0 else -120, 0)
+        time.sleep(0.05)
+    time.sleep(0.6)
+
+
+def ctrl_double_click(p):
+    """Ctrl+double-click with real input (select connected)."""
+    guard(p)
+    u = user32()
+    u.SetCursorPos(int(round(p[0])), int(round(p[1])))
+    time.sleep(0.3)
+    guard(p)
+    u.keybd_event(VK_CONTROL, 0, 0, 0)
+    time.sleep(0.1)
+    for _ in range(2):
+        mouse_button(True)
+        time.sleep(0.04)
+        mouse_button(False)
+        time.sleep(0.06)
+    time.sleep(0.1)
+    u.keybd_event(VK_CONTROL, 0, 2, 0)
+    time.sleep(0.8)
+
+
+def concept_canvas_phase(office, out, logs):
+    """The interaction concept with real input in a visible Impress window: the selection glow of a gear, its context
+    menu with the eight places (screenshots of the menu and of a submenu with the checked current view), the keyboard
+    in that menu, and Ctrl+double-click selecting the meshing gear too."""
+    doc = office.desktop.loadComponentFromURL("private:factory/simpress", "_blank", 0, ())
+    office.docs.append(doc)
+    controller = doc.getCurrentController()
+    window = controller.getFrame().getContainerWindow()
+    window.setPosSize(40, 40, 1500, 950, 15)
+    time.sleep(3)
+    page = doc.getDrawPages().getByIndex(0)
+    for i in reversed(range(page.getCount())):
+        page.remove(page.getByIndex(i))
+    screen = Screen(office, doc, window)
+    GUARD["window"] = window
+    try:
+        ok = screen.calibrate(page)
+        check("concept.calibrated", ok, "origin %s, %.2f (1/100 mm)/px" % (screen.origin, screen.k or 0))
+        if not ok:
+            return
+        office.run(doc, "insert?item=mech.spur.axial&x=70&y=70")
+        a_name = next(iter(units_of(page)))
+        select_shapes(office, doc, [units_of(page)[a_name]])
+        office.run(doc, "build?port=mesh.right&item=mech.spur.axial")
+        select_shapes(office, doc, [units_of(page)[a_name]])
+        time.sleep(1.5)
+        screenshot(window, os.path.join(out, "concept-glow.png"))
+        line = (log_lines(logs, "canvas: glow on") or [""])[-1]
+        check("concept.glow.visible", "of 1 unit" in line, line[-60:])
+        # The context menu: the eight places on top, then LibreOffice's own entries.
+        a = units_of(page)[a_name]
+        menus = len(log_lines(logs, "canvas: context menu"))
+        click(screen.centre(a), right=True)
+        time.sleep(1.2)
+        screenshot(window, os.path.join(out, "concept-context-menu.png"))
+        line = (log_lines(logs, "canvas: context menu") or [""])[-1]
+        check("concept.contextMenu.places", len(log_lines(logs, "canvas: context menu")) == menus + 1 and
+              ("Bearbeiten ▸" in line or "Edit ▸" in line) and ("Anordnen ▸" in line or "Arrange ▸" in line) and
+              ("(Text …)" in line), line[-220:])
+        # The keyboard walks the visible entries (LibreOffice hides unavailable ones): the sixth is View; its submenu
+        # shows the current view checked; Right, Down, Enter switches to the next view.
+        entries = [e for e in canvas_menu_labels(line)]
+        view_index = next((i for i, e in enumerate(entries) if e.startswith(("Ansicht", "View"))), -1)
+        for _ in range(view_index + 1):
+            keys(VK_DOWN)
+        keys(VK_RIGHT)
+        time.sleep(0.6)
+        screenshot(window, os.path.join(out, "concept-context-view.png"))
+        before = leaf_types(units_of(page)[a_name])
+        keys(VK_DOWN)
+        keys(VK_RETURN)
+        wait_for(lambda: a_name in units_of(page) and leaf_types(units_of(page)[a_name]) != before, 8)
+        after = leaf_types(units_of(page)[a_name]) if a_name in units_of(page) else {}
+        check("concept.contextMenu.viewByKeyboard", view_index >= 0 and after and after != before,
+              "%s: %s -> %s" % (entries, json.dumps(before), json.dumps(after)))
+        office.run(doc, "setView?view=axial")
+        # Arrange: the host's own order commands and "Select connected".
+        select_shapes(office, doc, [units_of(page)[a_name]])
+        time.sleep(0.5)
+        click(screen.centre(units_of(page)[a_name]), right=True)
+        time.sleep(1.2)
+        arrange_index = next((i for i, e in enumerate(entries) if e.startswith(("Anordnen", "Arrange"))), -1)
+        for _ in range(arrange_index + 1):
+            keys(VK_DOWN)
+        keys(VK_RIGHT)
+        time.sleep(0.6)
+        screenshot(window, os.path.join(out, "concept-context-arrange.png"))
+        keys(VK_ESCAPE)
+        keys(VK_ESCAPE)
+        keys(VK_ESCAPE)
+        time.sleep(0.5)
+        # Ctrl+double-click: the gear and the gear meshing with it are selected.
+        select_shapes(office, doc, [units_of(page)[a_name]])
+        time.sleep(0.8)
+        before = len(log_lines(logs, "select connected (auto)"))
+        ctrl_double_click(screen.centre(units_of(page)[a_name]))
+        wait_for(lambda: len(log_lines(logs, "select connected (auto)")) > before, 8)
+        time.sleep(1.0)
+        sel = controller.getSelection()
+        names = sorted({sel.getByIndex(i).Name for i in range(sel.getCount())}) \
+            if sel is not None and hasattr(sel, "getCount") else []
+        line = (log_lines(logs, "select connected (auto)") or [""])[-1]
+        check("concept.ctrlDoubleClick.selectsConnected", len(names) == 2 and line.endswith("2 unit(s)"),
+              "%s; %s" % (names, line[-50:]))
+        screenshot(window, os.path.join(out, "concept-connected.png"))
+    except ForeignWindow as ex:
+        check("concept.foreground", False, "stopped, no input sent: %s" % ex)
+    finally:
+        GUARD["window"] = None
+        screen.close()
+        office.close(doc)
+
+
+def concept_panels_phase(office, out, logs):
+    """The sidebar of the interaction concept in a visible window, operated with the ``panel`` command: a table's
+    choice dropdown (borders) and "Insert here", the Values panel of a resistor (level, two entries, the derived value
+    with its formula) and the calculator. Screenshots of each panel."""
+    doc = office.desktop.loadComponentFromURL("private:factory/simpress", "_blank", 0, ())
+    office.docs.append(doc)
+    window = doc.getCurrentController().getFrame().getContainerWindow()
+    window.setPosSize(40, 40, 1500, 950, 15)
+    time.sleep(2)
+    page = doc.getDrawPages().getByIndex(0)
+    for i in reversed(range(page.getCount())):
+        page.remove(page.getByIndex(i))
+    office.run(doc, "insert?item=ann.table&x=80&y=60")
+    time.sleep(1)
+    table_name = next(iter(units_of(page)))
+    select_shapes(office, doc, [units_of(page)[table_name]])
+    office.run(doc, "editModel")
+    time.sleep(4)
+    screenshot(window, os.path.join(out, "concept-sidebar-table.png"))
+    # The borders choice is a dropdown with the current option selected; choosing another option redraws the table.
+    model = attribute(units_of(page)[table_name], ATTR_MODEL)
+    for label in ("Außen", "Outer", "outer"):
+        office.run(doc, "panel?control=choice:borders&item=" + label)
+        if wait_for(lambda: attribute(units_of(page)[table_name], ATTR_MODEL) != model, 3):
+            break
+    after = attribute(units_of(page)[table_name], ATTR_MODEL)
+    line = (log_lines(logs, "panel: {'control': 'choice:borders'") or [""])[-1]
+    check("panel.choiceDropdown", after != model, line[-120:])
+    time.sleep(1.5)
+    screenshot(window, os.path.join(out, "concept-sidebar-choice.png"))
+    # Insert here: the first place (a row before row 2).
+    model = attribute(units_of(page)[table_name], ATTR_MODEL)
+    office.run(doc, "panel?press=placeRun")
+    wait_for(lambda: attribute(units_of(page)[table_name], ATTR_MODEL) != model, 5)
+    check("panel.insertHere", attribute(units_of(page)[table_name], ATTR_MODEL) != model,
+          (log_lines(logs, "insert here:") or [""])[-1][-40:])
+    # Values of a resistor: level Explore, U and I typed into the panel, R derived with its formula.
+    office.run(doc, "insert?item=elec.resistor&x=200&y=60")
+    time.sleep(2)
+    office.run(doc, "panel?control=level&item=" + "Erkunden")
+    time.sleep(1)
+    if "explore" not in str((log_lines(logs, "value level:") or [""])[-1]):
+        office.run(doc, "panel?control=level&item=Explore")
+        time.sleep(1)
+    office.run(doc, "panel?control=vField1&text=230%20V&enter=1")
+    time.sleep(1.5)
+    office.run(doc, "panel?control=vField2&text=2%20A&enter=1")
+    time.sleep(2)
+    line = (log_lines(logs, "values (") or [""])[-1]
+    check("panel.values", "115" in line and "{R = U/I" in line, line[-200:])
+    # The sidebar deck scrolls to the Values panel (real mouse wheel over the deck, only into this window).
+    r = window.getPosSize()
+    # Over the deck's own scroll bar (the wheel over a field or list would go to that control).
+    over_deck = (r.X + r.Width - 80, r.Y + r.Height * 0.6)
+    GUARD["window"] = window
+    try:
+        screenshot(window, os.path.join(out, "concept-sidebar-selection.png"))
+        wheel(over_deck, -6)
+        screenshot(window, os.path.join(out, "concept-sidebar-values.png"))
+        # A refused entry shows under its row (no message box).
+        office.run(doc, "panel?control=vField1&text=2%20kg&enter=1")
+        time.sleep(1.5)
+        check("panel.valueRefused", bool(log_lines(logs, "value U refused")), "")
+        screenshot(window, os.path.join(out, "concept-sidebar-refused.png"))
+        # The calculator.
+        office.run(doc, "panel?control=calcExpr&text=230%20V%20*%2016%20A&enter=1")
+        time.sleep(1.5)
+        line = (log_lines(logs, "calc '230 V * 16 A'") or [""])[-1]
+        check("panel.calculator", "kW" in line, line[-80:])
+        wheel(over_deck, -30)
+        screenshot(window, os.path.join(out, "concept-sidebar-tools.png"))
+        wheel(over_deck, 40)
+    except ForeignWindow as ex:
+        check("panel.foreground", False, "stopped, no input sent: %s" % ex)
+    finally:
+        GUARD["window"] = None
+    office.close(doc)
 
 
 class _Win32Window:
@@ -522,6 +737,8 @@ def main():
     ap.add_argument("--soffice")
     ap.add_argument("--skip-canvas", action="store_true", help="no real mouse/keyboard input (canvas_phase)")
     ap.add_argument("--canvas-only", action="store_true", help="only the real mouse/keyboard input (canvas_phase)")
+    ap.add_argument("--concept-only", action="store_true",
+                    help="only the interaction concept (real input: glow, context menu, Ctrl+double-click; panels)")
     args = ap.parse_args()
     dpi_aware()
     soffice = find_soffice(args.soffice)
@@ -547,10 +764,15 @@ def main():
             time.sleep(0.5)
     office = Office(ctx)
     try:
-        if not args.skip_canvas:
+        if not args.skip_canvas and not args.concept_only:
             canvas_phase(office, args.out, logs)
             compatibility_dialog_phase(office, args.out)
+        if not args.skip_canvas:
+            concept_canvas_phase(office, args.out, logs)
         if args.canvas_only:
+            raise _Done()
+        if args.concept_only:
+            concept_panels_phase(office, args.out, logs)
             raise _Done()
         doc = office.desktop.loadComponentFromURL("private:factory/simpress", "_blank", 0, ())
         office.docs.append(doc)
@@ -626,6 +848,8 @@ def main():
         office.run(doc, "panel?press=turnRun")
         turned = attribute(units_of(page)[built[0]], ATTR_MODEL) if built and built[0] in units_of(page) else None
         check("panel.turn", model is not None and turned is not None and turned != model, "partner redrawn")
+        office.close(doc)
+        concept_panels_phase(office, args.out, logs)
     except _Done:
         pass
     except Exception:

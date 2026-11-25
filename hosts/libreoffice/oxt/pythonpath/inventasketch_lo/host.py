@@ -660,9 +660,12 @@ def insert_search(engine, controller, text):
 
 
 def transform(engine, controller, kind):
-    """Mirror (``mirrorH``/``mirrorV``) or rotate by 90° (``rotate90``) the selected unit(s) about their centre."""
+    """Mirror (``mirrorH``/``mirrorV``) or rotate by 90° (``rotate90``, back: ``rotate270``) the selected unit(s)
+    about their centre."""
     if kind == "rotate90":
         return run_op(engine, controller, "rotate", {"degrees": 90}, title=_title("tipRotate"))
+    if kind == "rotate270":
+        return run_op(engine, controller, "rotate", {"degrees": -90}, title=_title("ctxRotateBack"))
     if kind in ("mirrorH", "mirrorV"):
         return run_op(engine, controller, "flip", {"horizontal": kind == "mirrorH"},
                       title=_title("tipMirrorH" if kind == "mirrorH" else "tipMirrorV"))
@@ -710,12 +713,18 @@ def select_assembly(engine, controller):
         return ps.select_objects(ids)
 
 
+def _selected_object(state, oid):
+    return next((o for o in (state or {}).get("objects") or [] if o.get("id") == oid), {}) or {}
+
+
 def describe(engine, controller):
-    """What the selection panel shows for the selected unit(s), None without a unit:
+    """What the selection panel and the context menu show for the selected unit(s), None without a unit:
 
     one unit: {"count": 1, "unit", "name", "view", "views": [(id, label)], "source", "effect", "dof", "motion",
-    "ports": [{id, kind, label, …}], "assemblyExtra"}; several: {"count", "units", "arrange": [{id, label, icon}],
-    "assemblyExtra"}."""
+    "ports": [{id, kind, label, …}], "assemblyExtra", "actions" (engine ``contextActions``: views and type actions with
+    their choices), "params" (inspector), "mainText", "hasValues", "connect" (``connectOptions``), "insertPlaces"
+    (``insertHandles``), "parts" (number of parts), "numeral", "objectId"}; several: {"count", "units", "arrange":
+    [{id, label, icon}], "assemblyExtra", "actions", "connect", "numeral"}."""
     shapes = selected_unit_shapes(controller)
     if not shapes:
         return None
@@ -725,22 +734,218 @@ def describe(engine, controller):
         chosen = [e for e in ps.units if e["selected"]]
         assembly = ps.call("assembly", {"ids": ids})
         extra = ux.assembly_extra(assembly, ids)
+        actions = ps.call("contextActions", {"ids": ids, "lang": lang}) or []
+        numeral = any(a.get("id") == "numeral" and a.get("enabled") for a in actions)
+        connect = _quiet(lambda: ps.call("connectOptions", {"ids": ids, "lang": lang}), [])
         if len(chosen) >= 2:
             return {"count": len(chosen), "units": [e["unit"] for e in chosen], "unitIds": [e["id"] for e in chosen],
-                    "arrange": ps.call("arrangeOptions", {"ids": ids, "lang": lang}), "assemblyExtra": extra}
+                    "arrange": ps.call("arrangeOptions", {"ids": ids, "lang": lang}), "assemblyExtra": extra,
+                    "actions": actions, "connect": connect, "numeral": numeral}
         unit = chosen[0]["unit"]
         first = chosen[0]["own"][0]
+        obj = _selected_object(ps.state, first)
         info = ps.call("inspector", {"ids": [first], "lang": lang})
         effect = ps.call("transformEffect", {"ids": chosen[0]["own"]})
         dof = ps.call("dof", {"id": first})
         motion = ps.call("motionInfo", {"id": first})
         ports = ps.call("buildPorts", {"id": first})
+        places = _quiet(lambda: ps.call("insertHandles", {"id": first, "lang": lang}), [])
+        parts = _quiet(lambda: len(ps.call("parts", {"id": first, "lang": lang}) or []), 0)
     for i, p in enumerate(ports or []):
         p["label"] = ux.port_label(p, i, lang)
     return {"count": 1, "unit": unit, "unitIds": [unit["id"]], "name": info.get("typeName") or unit["type"],
             "view": info.get("view"), "views": [(v["id"], v["label"]) for v in info.get("views") or []],
             "source": unit["source"], "effect": effect, "dof": dof, "motion": motion, "ports": ports or [],
-            "assemblyExtra": extra}
+            "assemblyExtra": extra, "actions": actions, "params": info.get("params") or [],
+            "mainText": obj.get("mainText"), "hasValues": bool(obj.get("hasValues")), "connect": connect,
+            "insertPlaces": (places[0].get("handles") if places else []) or [], "parts": parts, "numeral": numeral,
+            "objectId": first}
+
+
+def _quiet(work, fallback):
+    """An engine query that may fail for an element (older engine, faulty type) without breaking the selection."""
+    try:
+        return work()
+    except Exception as ex:
+        log("query skipped: %s" % ex)
+        return fallback
+
+
+# ------------------------------------------------------------------ interaction concept: commands
+
+
+def apply_action(engine, controller, action_id, text=None, label=None):
+    """Runs an engine action (``applyAction``: a type action ``t:…``, an option of a choice) on the selected unit(s),
+    one undo step; ``text`` is the value of an action that asks for one."""
+    params = {"action": action_id}
+    if text is not None:
+        params["input"] = text
+    return run_op(engine, controller, "applyAction", params, force_selected=True,
+                  title=i18n.text("undoAction") % (label or action_id))
+
+
+def find_action(info, action_id):
+    """The engine action ``action_id`` among the described actions (label, input), or None."""
+    return next((a for a in (info or {}).get("actions") or [] if a.get("id") == action_id), None)
+
+
+def set_param(engine, controller, key, value, label=None):
+    """Sets a parameter (a parameter choice) of the selected unit(s), one undo step."""
+    return run_op(engine, controller, "setParam", {"key": key, "value": value}, force_selected=True,
+                  title=i18n.text("undoAction") % (label or key))
+
+
+def main_text(engine, controller):
+    """The main text of the first selected element ({key, label, value}) or None."""
+    shapes = selected_unit_shapes(controller)
+    if not shapes:
+        return None
+    with PageSession(engine, controller, shapes=shapes[:1], context=False) as ps:
+        return _selected_object(ps.state, ps.first_id()).get("mainText")
+
+
+def set_main_text(engine, controller, text):
+    """Sets the main text of the first selected element that has one (engine ``setMainText``), one undo step."""
+    return run_op(engine, controller, "setMainText", {"text": text}, force_selected=True, title=_title("undoText"))
+
+
+def duplicate(engine, controller):
+    """A copy of the selected unit(s) beside them with new ids (engine ``duplicate``), selected; one undo step."""
+    return run_op(engine, controller, "duplicate", None, title=_title("undoDuplicate"))
+
+
+def delete(engine, controller):
+    """Removes the selected unit(s) through the engine (what depends on them follows), one undo step."""
+    return run_op(engine, controller, "delete", None, title=_title("undoDelete"))
+
+
+def select_connected(engine, controller, mode="auto"):
+    """Selects the units connected with the selection (engine ``connected``: auto, net, coupled, chain, loop, walls);
+    returns the selected shapes."""
+    with PageSession(engine, controller) as ps:
+        if not ps.selected_ids():
+            raise HostError(i18n.text("noUnit"))
+        ids = ps.call("connected", {"ids": ps.selected_ids(), "mode": mode or "auto"})
+        return ps.select_objects(ids)
+
+
+def apply_insert_place(engine, controller, key):
+    """Inserts at the insert place ``key`` of the selected element (engine ``applyInsertHandle``), one undo step."""
+    return run_op(engine, controller, "applyInsertHandle", {"key": key}, ids_key="id", force_selected=True,
+                  title=_title("undoInsertHere"))
+
+
+# ------------------------------------------------------------------ values
+
+
+def value_level(doc):
+    """The value level of the document (document property ``ISK_VALUES``): quick, explore or engineer."""
+    from . import values
+    try:
+        return values.parse_level(render.get_doc_property(doc, values.LEVEL_PROPERTY))
+    except Exception:
+        return "quick"
+
+
+def set_value_level(doc, level):
+    """Stores the value level in the document (Quick sketch: the property is removed, like "not set" in the model)."""
+    from . import values
+    level = values.parse_level(level)
+    if level == "quick":
+        render.remove_doc_property(doc, values.LEVEL_PROPERTY)
+    else:
+        render.set_doc_property(doc, values.LEVEL_PROPERTY, level)
+    return level
+
+
+def element_values(engine, controller):
+    """What the Values panel shows for the selected element: None without exactly one unit, else {"name", "id",
+    "level", "values" (engine ``values`` of the element), "explained": key -> formula line, "checks", "showValues"
+    (True/False/None), "hasValues"}. All units of the page take part, so values linked across elements are known."""
+    from . import values
+    shapes = selected_unit_shapes(controller)
+    if len(shapes) != 1:
+        return None
+    doc = controller.getModel()
+    level = value_level(doc)
+    lang = i18n.language()
+    digits = values.digits(level)
+    with PageSession(engine, controller, shapes=shapes) as ps:
+        first = ps.first_id()
+        obj = _selected_object(ps.state, first)
+        info = ps.call("inspector", {"ids": [first], "lang": lang})
+        out = {"name": info.get("typeName") or obj.get("type") or "", "id": first, "level": level,
+               "hasValues": bool(obj.get("hasValues")), "values": None, "explained": {}, "checks": [],
+               "showValues": values.shows_values_switch(info.get("params"))}
+        if not out["hasValues"]:
+            return out
+        result = ps.call("values", {"id": first, "lang": lang, "digits": digits})
+        current = next((o for o in result.get("objects") or [] if o.get("id") == first), None)
+        out["values"] = current
+        for v in (current or {}).get("vars") or []:
+            if values.needs_explain(v, level):
+                try:
+                    steps = ps.call("explain", {"id": first, "key": v["key"], "lang": lang, "digits": digits})
+                    out["explained"][v["key"]] = values.explained_line(steps.get("steps"), v["key"])
+                except Exception as ex:
+                    log("explain %s: %s" % (v["key"], ex))
+        out["checks"] = _quiet(lambda: ps.call("checks", {"ids": [first], "lang": lang}) or [], [])
+    return out
+
+
+def set_value(engine, controller, key, text):
+    """Enters a value of the selected element (engine ``setValue``: the shared parser, "4k7", "230 V"; empty clears),
+    one undo step. A wrong kind or unit raises the engine's bilingual message."""
+    return run_op(engine, controller, "setValue", {"key": key, "text": text, "lang": i18n.language()}, ids_key="id",
+                  force_selected=True, title=_title("undoValue"))
+
+
+def clear_value(engine, controller, key):
+    """Clears an entered value of the selected element (engine ``clearValue``), one undo step."""
+    return run_op(engine, controller, "clearValue", {"key": key}, ids_key="id", force_selected=True,
+                  title=_title("undoValue"))
+
+
+def show_values(engine, controller, on):
+    """Switches the values label on the drawing (parameter ``showValues``)."""
+    return set_param(engine, controller, "showValues", bool(on), label=i18n.text("valShow"))
+
+
+# ------------------------------------------------------------------ calculator and code import
+
+
+def calculate(engine, text, unit=None):
+    """The calculator with units (engine ``calc``, the result converted with ``convertUnit`` when ``unit`` is given):
+    (result line, steps)."""
+    from . import values
+    lang = i18n.language()
+    result = engine.call("calc", {"text": text, "lang": lang})
+    converted = None
+    if (unit or "").strip():
+        converted = engine.call("convertUnit", {"text": result.get("text") or "", "unit": unit.strip(), "lang": lang})
+    return values.calc_lines(result, converted)
+
+
+def import_code(engine, controller, text):
+    """matplotlib, pgfplots or TikZ code as editable charts and drawings (engine ``importCode``: read, never run), in
+    the middle of the page; one undo step, the new units selected. Returns the engine's report (message, imported,
+    skipped) with "drawn" (the new shapes)."""
+    doc, page, centre, size = target(controller)
+    session = _session(engine, size)
+    try:
+        result = engine.call("importCode", {"session": session, "text": text, "lang": i18n.language(),
+                                            "includeSvg": False})
+        ids = result.get("ids") or []
+        plan = engine.call("drawPlan", {"session": session, "ids": ids}) if ids else None
+    finally:
+        _close(engine, session)
+    drawn = []
+    if plan and plan.get("units"):
+        drawn, _ = _draw_step(doc, page, plan, i18n.text("undoCode"))
+        _select(controller, drawn)
+    result.pop("state", None)
+    result["drawn"] = drawn
+    return result
 
 
 def patent_profiles(engine):

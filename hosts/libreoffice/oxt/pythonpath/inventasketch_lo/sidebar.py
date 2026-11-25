@@ -8,11 +8,21 @@ Ctrl+Space in the document (canvas.py, command ``quickInsert``) puts the cursor 
 inserts the marked item (the first hit) and gives the focus back to the document, Escape only gives it back.
 
 Selection: follows the document selection (selection listener). One unit: views (only with more than one), F = n for
-links, context-only actions in the fixed order of the UX rules (draw the path and ghost positions for F = 1, select
-assembly, explode, mirror/rotate only when they change the drawing), build "+" per port as lists (port -> parts that
-dock there -> Build), turning a coupled gear train by a typed angle, redraw from the model. Two or more units: the
+links, then **every choice as a dropdown** (parameter choices and the engine's action choices, the current option
+selected; menus as "Label ▸" whose rows run a command – ``choices.py``), the element's own actions and the context-only
+actions in the fixed order of the UX rules (text, the engine's actions, draw the path and ghost positions for F = 1,
+explode, mirror/rotate only when they change the drawing), "Select connected ▸" (the kinds that apply), "Insert here"
+(the insert places of a table: a row or column between the existing ones), build "+" per port as lists (port -> parts
+that dock there -> Build), turning a coupled gear train by a typed angle, redraw from the model. Two or more units: the
 engine's selection-wide operations (one view for all, align, distribute, like the first, dimension, renumber) and
-select assembly. Short bilingual text labels with tooltips (the extension has no icon set).
+select connected. Short bilingual text labels with tooltips (the extension has no icon set).
+
+Values: the values of the selected element (engine ``values``): one row per value with marker, symbol, name, the entry
+field, unit and × for an entered value, the formula step by step under derived values (Explore and Engineer), the
+status line and conflicts; the value level of the document; "Show values on the drawing"; "Calculator …".
+
+Calculator and code: the calculator with units (``calc``, ``convertUnit``) and the code import (``importCode``:
+matplotlib, pgfplots, TikZ – pasted or from a file).
 
 Panel plumbing (XUIElement + XToolPanel + XSidebarPanel + XComponent, container window, control helpers) ported from
 the Slidemax LibreOffice host (seitenleiste.py), translated and simplified.
@@ -22,17 +32,22 @@ import traceback
 
 import uno
 import unohelper
-from com.sun.star.awt import XActionListener, XItemListener, XKeyListener, XTextListener, XWindowListener
+from com.sun.star.awt import XActionListener, XFocusListener, XItemListener, XKeyListener, XTextListener, \
+    XWindowListener
 from com.sun.star.lang import XComponent
 from com.sun.star.ui import XSidebarPanel, XToolPanel, XUIElement, XUIElementFactory
 from com.sun.star.ui.UIElementType import TOOLPANEL
 from com.sun.star.view import XSelectionChangeListener
 
-from . import i18n, library, ux
+from . import choices, i18n, library, ux, values
 from .log import log
 
 MARGIN = 6
-ACTION_SLOTS = 12
+ACTION_SLOTS = 16
+CHOICE_SLOTS = 10
+VALUE_SLOTS = 12
+ERROR_COLOR = 0xC00000
+MUTED_COLOR = 0x606060
 _PANELS = []
 # Set by the component: {"engine": callable() -> Engine, "run": callable(frame, command, argument), "post": ...}
 SERVICES = {}
@@ -40,6 +55,7 @@ SERVICES = {}
 BUSY = {"count": 0}
 _CATALOGS = {}
 SUGGESTIONS = "\x00suggestions"
+MODES = ("Selection", "Library", "Values", "Tools")
 
 
 # Ctrl+Space before the Library panel exists: [(frame, search text or None)], taken by the panel once it is filled.
@@ -69,6 +85,12 @@ def catalog(lang):
     return _CATALOGS[lang]
 
 
+def mode_of(url):
+    """'selection', 'library', 'values' or 'tools' from the panel's resource URL."""
+    tail = (url or "").rstrip("/").rsplit("/", 1)[-1]
+    return tail.lower() if tail in MODES else "library"
+
+
 class _Listener(unohelper.Base, XActionListener, XItemListener, XTextListener):
     def __init__(self, handler):
         self.handler = handler
@@ -92,23 +114,41 @@ class _Listener(unohelper.Base, XActionListener, XItemListener, XTextListener):
         pass
 
 
-class _SearchKeys(unohelper.Base, XKeyListener):
-    """Enter in the search field inserts the marked item, Escape returns to the document."""
+class _Keys(unohelper.Base, XKeyListener):
+    """Enter and Escape in an edit field."""
 
-    def __init__(self, panel):
-        self.panel = panel
+    def __init__(self, on_enter, on_escape=None):
+        self.on_enter = on_enter
+        self.on_escape = on_escape
 
     def keyPressed(self, event):
         try:
             if event.KeyCode == ux.KEY_RETURN:
-                self.panel.insert_from_search()
-            elif event.KeyCode == ux.KEY_ESCAPE:
-                self.panel.focus_document()
+                self.on_enter()
+            elif event.KeyCode == ux.KEY_ESCAPE and self.on_escape is not None:
+                self.on_escape()
         except Exception:
-            log("sidebar search key: " + traceback.format_exc())
+            log("sidebar key: " + traceback.format_exc())
 
     def keyReleased(self, event):
         pass
+
+    def disposing(self, event):
+        pass
+
+
+class _FocusLost(unohelper.Base, XFocusListener):
+    def __init__(self, handler):
+        self.handler = handler
+
+    def focusGained(self, event):
+        pass
+
+    def focusLost(self, event):
+        try:
+            self.handler()
+        except Exception:
+            log("sidebar focus: " + traceback.format_exc())
 
     def disposing(self, event):
         pass
@@ -167,8 +207,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self.ctx = ctx
         self.frame = frame
         self.url = url
-        # Two panels of the deck share this class: "Selection" (…/Selection) and "Library" (…/Library).
-        self.mode = "selection" if (url or "").rstrip("/").endswith("Selection") else "library"
+        # Four panels of the deck share this class: Selection, Library, Values and Tools (calculator, code import).
+        self.mode = mode_of(url)
         self.disposed = False
         self.listeners = []
         self.sidebar = None
@@ -181,8 +221,15 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self.unit_views = []
         self.unit_view = None
         self.actions = []
+        self.choice_list = []
+        self.connect = []
+        self.places = []
         self.ports = []
         self.build_items = []
+        self.value_data = None
+        self.value_rows = []
+        self.value_starts = {}
+        self.value_errors = {}
         self.updating = False
         self.pending = False
         self.controller = None
@@ -204,7 +251,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self.window.addWindowListener(_Resize(self))
         except Exception:
             log("sidebar: resize not trackable")
-        if self.mode == "selection":
+        if self.mode in ("selection", "values"):
             self._listen_selection()
         _PANELS.append(self)
         try:
@@ -232,12 +279,14 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                     post(lambda: self.disposed or self.focus_search(text))
                 else:
                     self.focus_search(text)
-        else:
+        elif self.mode == "selection":
             # describe updates every panel of the frame (the library needs the selection for fitting parts).
             self.load_selection(quiet=True)
+        elif self.mode == "values":
+            self._run("loadValues", None)
 
     def _listen_selection(self):
-        """The selection panel follows the document selection."""
+        """The selection and values panels follow the document selection."""
         try:
             controller = self.frame.getController() if self.frame is not None else None
             if controller is None or (self.controller is not None and controller == self.controller):
@@ -259,8 +308,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                 pass
 
     def selection_changed(self):
-        """Refreshes the selection panel once after a burst of selection changes (not for the extension's own edits,
-        which refresh it at the end)."""
+        """Refreshes the panel once after a burst of selection changes (not for the extension's own edits, which
+        refresh it at the end)."""
         if self.disposed or BUSY["count"] > 0 or self.pending:
             return
         post = SERVICES.get("post")
@@ -270,8 +319,12 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
 
         def work():
             self.pending = False
-            if not self.disposed and BUSY["count"] == 0:
+            if self.disposed or BUSY["count"] > 0:
+                return
+            if self.mode == "selection":
                 self.load_selection(quiet=True)
+            elif self.mode == "values":
+                self._run("loadValues", None)
         post(work)
 
     # ------------------------------------------------------------ controls
@@ -294,10 +347,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         return control
 
     def _build(self):
-        if self.mode == "library":
-            self._build_library()
-        else:
-            self._build_selection()
+        getattr(self, "_build_" + self.mode)()
         self.layout(300)
 
     def _build_library(self):
@@ -305,7 +355,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self._add("searchLabel", "FixedText", Label=t("search"), HelpText=t("searchHint"))
         search = self._add("search", "Edit", Text="", HelpText=t("searchHint"))
         search.addTextListener(_Listener(lambda e: self._refilter()))
-        search.addKeyListener(_SearchKeys(self))
+        search.addKeyListener(_Keys(self.insert_from_search, self.focus_document))
         cats = self._add("category", "ListBox", Dropdown=True, LineCount=20)
         cats.addItemListener(_Listener(lambda e: self._refilter()))
         items = self._add("items", "ListBox", Dropdown=False, MultiSelection=False)
@@ -322,8 +372,17 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self._add("viewLabel", "FixedText", Label=t("view"))
         views = self._add("views", "ListBox", Dropdown=True, Enabled=False)
         views.addItemListener(_Listener(self._view_chosen))
+        for i in range(CHOICE_SLOTS):
+            self._add("choiceLabel%d" % i, "FixedText", Label="")
+            box = self._add("choice%d" % i, "ListBox", Dropdown=True, LineCount=16)
+            box.addItemListener(_Listener(lambda e, i=i: self._choice_chosen(i)))
         for i in range(ACTION_SLOTS):
             self._button("act%d" % i, lambda i=i: self._action(i), Label="")
+        connected = self._add("connected", "ListBox", Dropdown=True, LineCount=8, HelpText=t("ctxConnected"))
+        connected.addItemListener(_Listener(self._connected_chosen))
+        self._add("placesLabel", "FixedText", Label=t("insertHere"), HelpText=t("tipInsertHere"))
+        self._add("places", "ListBox", Dropdown=True, LineCount=16, HelpText=t("tipInsertHere"))
+        self._button("placeRun", self._insert_place, Label=t("insertHereRun"), HelpText=t("tipInsertHere"))
         self._add("buildLabel", "FixedText", Label=t("build"))
         ports = self._add("ports", "ListBox", Dropdown=True, LineCount=12)
         ports.addItemListener(_Listener(self._port_chosen))
@@ -334,6 +393,54 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self._button("turnRun", self._turn, Label=t("turnRun"), HelpText=t("tipTurn"))
         self._button("redraw", lambda: self._run("redraw", None), Label=t("redraw"), Enabled=False)
 
+    def _build_values(self):
+        t = lambda k: i18n.text(k, self.lang)  # noqa: E731
+        self._add("valName", "FixedText", Label=t("valNoUnit"), MultiLine=True)
+        self._add("levelLabel", "FixedText", Label=t("valLevel"), HelpText=t("valLevelHint"))
+        level = self._add("level", "ListBox", Dropdown=True, StringItemList=tuple(values.level_labels(self.lang)),
+                          HelpText=t("valLevelHint"))
+        level.addItemListener(_Listener(self._level_chosen))
+        self._add("valStatus", "FixedText", Label="", MultiLine=True)
+        for i in range(VALUE_SLOTS):
+            self._add("vHead%d" % i, "FixedText", Label="")
+            field = self._add("vField%d" % i, "Edit", Text="", HelpText=t("valEntryTip"))
+            field.addKeyListener(_Keys(lambda i=i: self._commit_value(i), lambda i=i: self._reset_value(i)))
+            field.addFocusListener(_FocusLost(lambda i=i: self._commit_value(i)))
+            unit = self._add("vUnit%d" % i, "FixedText", Label="")
+            try:
+                unit.getModel().VerticalAlign = uno.Enum("com.sun.star.style.VerticalAlignment", "MIDDLE")
+            except Exception:
+                pass
+            self._button("vClear%d" % i, lambda i=i: self._clear_value(i), Label=t("valClear"),
+                         HelpText=t("valClearTip"))
+            self._add("vDetail%d" % i, "FixedText", Label="", MultiLine=True, TextColor=MUTED_COLOR)
+        self._add("conflicts", "FixedText", Label="", MultiLine=True, TextColor=ERROR_COLOR)
+        self._add("checks", "FixedText", Label="", MultiLine=True)
+        show = self._add("showValues", "CheckBox", Label=t("valShow"), State=0)
+        show.addItemListener(_Listener(self._show_values_changed))
+        self._button("valCalc", self._open_calculator, Label=t("valCalculator"))
+
+    def _build_tools(self):
+        t = lambda k: i18n.text(k, self.lang)  # noqa: E731
+        self._add("calcTitle", "FixedText", Label=t("calcTitle"), FontWeight=150.0)
+        self._add("calcExprLabel", "FixedText", Label=t("calcExpr"))
+        expr = self._add("calcExpr", "Edit", Text="", HelpText=t("calcExamples"))
+        expr.addKeyListener(_Keys(self._calculate))
+        self._add("calcUnitLabel", "FixedText", Label=t("calcUnit"))
+        unit = self._add("calcUnit", "Edit", Text="")
+        unit.addKeyListener(_Keys(self._calculate))
+        self._button("calcRun", self._calculate, Label=t("calcRun"), DefaultButton=True)
+        self._add("calcResult", "FixedText", Label="", FontWeight=150.0)
+        self._add("calcSteps", "FixedText", Label="", MultiLine=True, TextColor=MUTED_COLOR)
+        self._add("calcExamples", "FixedText", Label=t("calcExamples"), MultiLine=True, TextColor=MUTED_COLOR)
+        self._add("codeTitle", "FixedText", Label=t("codeTitle"), FontWeight=150.0)
+        self._add("codeHint", "FixedText", Label=t("codeHint"), MultiLine=True, TextColor=MUTED_COLOR)
+        self._add("codeTextLabel", "FixedText", Label=t("codeText"))
+        self._add("codeText", "Edit", Text="", MultiLine=True, VScroll=True, HScroll=False, AutoVScroll=True)
+        self._button("codeFile", self._open_code_file, Label=t("codeFile"))
+        self._button("codeRun", self._import_code, Label=t("codeRun"))
+        self._add("codeReport", "FixedText", Label="", MultiLine=True)
+
     def _preferred(self, key, fallback):
         """Preferred height of a control in pixels (follows the UI font and the display scaling)."""
         try:
@@ -343,29 +450,46 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
 
     def _heights(self):
         if self._row_heights is None:
-            text = max(self._preferred("searchLabel", 16), self._preferred("viewLabel", 16))
-            control = max(self._preferred("search", 24), self._preferred("category", 24), self._preferred("views", 24))
-            button = max(self._preferred("insert", 26), self._preferred("edit", 26))
+            labels = [k for k in ("searchLabel", "viewLabel", "levelLabel", "calcExprLabel") if k in self.controls]
+            fields = [k for k in ("search", "category", "views", "level", "calcExpr") if k in self.controls]
+            buttons = [k for k in ("insert", "edit", "valCalc", "calcRun") if k in self.controls]
+            text = max([16] + [self._preferred(k, 16) for k in labels])
+            control = max([24] + [self._preferred(k, 24) for k in fields])
+            button = max([26] + [self._preferred(k, 26) for k in buttons])
             self._row_heights = {"label": text, "control": control, "button": button,
                                  "items": 8 * text, "preview": 5 * text, "unitName": 2 * text + 4,
-                                 "line": max(8, text // 2), "gap": max(4, text // 4)}
+                                 "line": max(8, text // 2), "gap": max(4, text // 4), "two": 2 * text + 2,
+                                 "three": 3 * text + 2, "code": 8 * text}
         return self._row_heights
 
+    def _multiline_kind(self, text):
+        lines = (text or "").count("\n") + 1
+        return "label" if lines <= 1 and len(text or "") < 44 else ("two" if lines <= 2 else "three")
+
     def _rows(self):
-        """Rows of the panel for the current content: [(keys side by side, height kind)]; hidden controls are left
-        out (context only)."""
-        if self.mode == "library":
-            return [(["searchLabel"], "label"), (["search"], "control"), (["category"], "control"),
-                    (["items"], "items"), (["count"], "label"), (["preview"], "preview"), (["insert"], "button")]
+        """Rows of the panel for the current content: [(keys side by side, height kind[, widths])]; hidden controls
+        are left out (context only). ``widths``: relative widths of the keys (default equal)."""
+        return getattr(self, "_rows_" + self.mode)()
+
+    def _rows_library(self):
+        return [(["searchLabel"], "label"), (["search"], "control"), (["category"], "control"),
+                (["items"], "items"), (["count"], "label"), (["preview"], "preview"), (["insert"], "button")]
+
+    def _rows_selection(self):
         info = self.info
         rows = [(["unitName"], "unitName"), (["edit"], "button")]
         if ux.show_views(info):
             rows += [(["viewLabel"], "label"), (["views"], "control")]
+        for i in range(min(len(self.choice_list), CHOICE_SLOTS)):
+            rows += [(["choiceLabel%d" % i], "label"), (["choice%d" % i], "control")]
         slots = ["act%d" % i for i in range(min(len(self.actions), ACTION_SLOTS))]
-        # Short own labels two per row; the engine's labels of the selection-wide operations need the full width.
-        per_row = 1 if info is not None and info.get("count", 1) >= 2 else 2
-        for i in range(0, len(slots), per_row):
-            rows.append((slots[i:i + per_row], "button"))
+        # Short own labels two per row; engine labels and the selection-wide operations need the full width.
+        for key in self._paired(slots):
+            rows.append((key, "button"))
+        if self.connect:
+            rows.append((["connected"], "control"))
+        if self.places:
+            rows += [(["placesLabel"], "label"), (["places", "placeRun"], "control", (3, 1))]
         if ux.show_build(info):
             rows += [(["buildLabel"], "label"), (["ports"], "control"), (["buildItems"], "control"),
                      (["buildPlace"], "button")]
@@ -373,6 +497,67 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             rows += [(["turnLabel"], "label"), (["turnAngle", "turnRun"], "button")]
         if info is not None and info.get("count", 1) == 1:
             rows.append((["redraw"], "button"))
+        return rows
+
+    def _paired(self, slots):
+        """Action buttons two per row when both labels are short, else one per row."""
+        out, pending = [], []
+        for key in slots:
+            label = self.controls[key].getModel().Label or ""
+            if len(label) <= 16 and (self.info or {}).get("count", 1) == 1:
+                pending.append(key)
+                if len(pending) == 2:
+                    out.append(pending)
+                    pending = []
+            else:
+                if pending:
+                    out.append(pending)
+                    pending = []
+                out.append([key])
+        if pending:
+            out.append(pending)
+        return out
+
+    def _rows_values(self):
+        data = self.value_data
+        rows = [(["valName"], "unitName")]
+        if data is None:
+            return rows
+        rows += [(["levelLabel", "level"], "control", (1, 2))]
+        if not data.get("hasValues"):
+            return rows
+        status = self.controls["valStatus"].getModel().Label
+        if status:
+            rows.append((["valStatus"], self._multiline_kind(status)))
+        for i, r in enumerate(self.value_rows[:VALUE_SLOTS]):
+            rows.append((["vHead%d" % i], "label"))
+            rows.append((["vField%d" % i, "vUnit%d" % i, "vClear%d" % i] if r["clear"] else
+                         ["vField%d" % i, "vUnit%d" % i], "control", (5, 2, 1) if r["clear"] else (5, 3)))
+            detail = self.controls["vDetail%d" % i].getModel().Label
+            if detail:
+                rows.append((["vDetail%d" % i], self._multiline_kind(detail)))
+        for key in ("conflicts", "checks"):
+            text = self.controls[key].getModel().Label
+            if text:
+                rows.append(([key], self._multiline_kind(text)))
+        if data.get("showValues") is not None:
+            rows.append((["showValues"], "control"))
+        rows.append((["valCalc"], "button"))
+        return rows
+
+    def _rows_tools(self):
+        rows = [(["calcTitle"], "label"), (["calcExprLabel"], "label"), (["calcExpr"], "control"),
+                (["calcUnitLabel", "calcUnit"], "control", (3, 2)), (["calcRun"], "button")]
+        if self.controls["calcResult"].getModel().Label:
+            rows.append((["calcResult"], "label"))
+        steps = self.controls["calcSteps"].getModel().Label
+        if steps:
+            rows.append((["calcSteps"], self._multiline_kind(steps)))
+        rows += [(["calcExamples"], "three"), (["codeTitle"], "label"), (["codeHint"], "three"),
+                 (["codeTextLabel"], "label"), (["codeText"], "code"), (["codeFile", "codeRun"], "button")]
+        report = self.controls["codeReport"].getModel().Label
+        if report:
+            rows.append((["codeReport"], "three" if report.count("\n") < 3 else "code"))
         return rows
 
     def layout(self, width=None):
@@ -385,14 +570,20 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         hs = self._heights()
         rows = self._rows()
         shown = set()
-        for keys, kind in rows:
+        for row in rows:
+            keys, kind = row[0], row[1]
+            weights = row[2] if len(row) > 2 else (1,) * len(keys)
             h = hs[kind]
             gap = hs["gap"]
-            cell = (w - gap * (len(keys) - 1)) // len(keys)
+            free = w - gap * (len(keys) - 1)
+            x = MARGIN
+            total = float(sum(weights))
             for i, key in enumerate(keys):
-                self.controls[key].setPosSize(MARGIN + i * (cell + gap), y, cell, h, 15)
+                cell = int(free * weights[i] / total) if i < len(keys) - 1 else MARGIN + w - x
+                self.controls[key].setPosSize(x, y, cell, h, 15)
                 shown.add(key)
-            y += h + (1 if keys[0].endswith("Label") else gap)
+                x += cell + gap
+            y += h + (1 if keys[0].endswith("Label") or keys[0].startswith("vHead") else gap)
         for key, control in self.controls.items():
             control.setVisible(key in shown)
         self.shown = shown
@@ -522,7 +713,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
 
     def show_unit(self, info):
         """Shows the selected unit(s) (dict from host.describe) or nothing; the library panel only keeps it (fitting
-        parts) and refreshes its suggestions when the selected units changed."""
+        parts) and refreshes its suggestions when the selected units changed; the values panel loads the values."""
         ids = tuple((info or {}).get("unitIds") or ())
         changed = ids != self.unit_ids
         self.unit_ids = ids
@@ -532,15 +723,26 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                                                  self.controls["search"].getText().strip()):
                 self._refilter()
             return
+        if self.mode == "values":
+            self.info = info
+            post = SERVICES.get("post")
+            if post is not None:
+                post(lambda: self.disposed or self._run("loadValues", None))
+            return
+        if self.mode != "selection":
+            return
         name = self.controls["unitName"].getModel()
         views = self.controls["views"]
-        # Selecting the current view programmatically fires itemStateChanged: ignore it (no redraw loop).
+        # Selecting the current entry programmatically fires itemStateChanged: ignore it (no redraw loop).
         self.updating = True
         try:
             self.info = info
             self.unit_views = []
             self.unit_view = None
-            self.actions = ux.selection_actions(info)
+            self.actions = ux.panel_actions(info)
+            self.choice_list = choices.element_choices(info)[0][:CHOICE_SLOTS]
+            self.connect = (info or {}).get("connect") or []
+            self.places = choices.insert_rows(info) if (info or {}).get("count", 1) == 1 else []
             self.ports = (info or {}).get("ports") or [] if ux.show_build(info) else []
             if info is None:
                 name.Label = i18n.text("noUnit", self.lang)
@@ -560,12 +762,29 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                     if vid == self.unit_view:
                         views.selectItemPos(i, True)
                 self.controls["redraw"].getModel().Enabled = True
+            for i, choice in enumerate(self.choice_list):
+                self._fill_choice(i, choice)
             for i in range(ACTION_SLOTS):
                 model = self.controls["act%d" % i].getModel()
                 if i < len(self.actions):
-                    _, _, label, tip = self.actions[i]
+                    command, argument, label, tip = self.actions[i]
                     model.Label = ux.label_of(label, self.lang)
                     model.HelpText = ux.label_of(tip, self.lang)
+                    # A switch of the element (header row, show label …) shows its state as a pressed button.
+                    on = command == "action" and bool(argument.get("active"))
+                    try:
+                        model.Toggle = on
+                        model.State = 1 if on else 0
+                    except Exception:
+                        pass
+            if self.connect:
+                box = self.controls["connected"]
+                box.getModel().StringItemList = tuple([i18n.text("ctxConnected", self.lang) + " ▸"] +
+                                                      [choices.connect_label(c, self.lang) for c in self.connect])
+                box.selectItemPos(0, True)
+            if self.places:
+                self.controls["places"].getModel().StringItemList = tuple(label for _, label in self.places)
+                self.controls["places"].selectItemPos(0, True)
             self.controls["ports"].getModel().StringItemList = tuple(p["label"] for p in self.ports)
             self.build_items = []
             self.controls["buildItems"].getModel().StringItemList = ()
@@ -576,6 +795,17 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self._relayout()
         if self.ports:
             self._run("buildItems", {"port": self.ports[0]["id"]})
+
+    def _fill_choice(self, i, choice):
+        """One choice as a dropdown: the options (the current one selected) or, for a menu, "Label ▸" first."""
+        rows, selected = choices.list_rows(choice)
+        label = self.controls["choiceLabel%d" % i].getModel()
+        label.Label = choice["label"]
+        box = self.controls["choice%d" % i]
+        model = box.getModel()
+        model.StringItemList = tuple(rows)
+        model.HelpText = i18n.text("choiceTip", self.lang) % choice["label"]
+        box.selectItemPos(selected, True)
 
     def load_selection(self, quiet=False):
         if self.mode == "selection":
@@ -589,6 +819,26 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         if 0 <= pos < len(self.unit_views) and self.unit_views[pos][0] != self.unit_view:
             self._run("setView", self.unit_views[pos][0])
 
+    def _choice_chosen(self, i):
+        if self.updating or i >= len(self.choice_list):
+            return
+        choice = self.choice_list[i]
+        picked = choices.pick(choice, self.controls["choice%d" % i].getSelectedItemPos())
+        if picked is None:
+            return
+        if choice.get("menu"):
+            # A menu runs its command and shows its title again.
+            self.updating = True
+            try:
+                self.controls["choice%d" % i].selectItemPos(0, True)
+            finally:
+                self.updating = False
+        if picked[0] == "param":
+            self._run("param", {"key": picked[1], "value": picked[2]})
+        else:
+            option = picked[1]
+            self._run("action", {"id": option["id"], "ask": "1" if option.get("input") else None})
+
     def _action(self, index):
         if index >= len(self.actions):
             return
@@ -597,8 +847,28 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self._run(command, {"kind": argument})
         elif command == "arrange":
             self._run(command, {"action": argument})
+        elif command == "action":
+            self._run("action", {"id": argument["id"], "ask": "1" if argument.get("input") else None})
         else:
             self._run(command, None)
+
+    def _connected_chosen(self, event):
+        if self.updating:
+            return
+        pos = self.controls["connected"].getSelectedItemPos()
+        if 1 <= pos <= len(self.connect):
+            mode = self.connect[pos - 1].get("kind")
+            self.updating = True
+            try:
+                self.controls["connected"].selectItemPos(0, True)
+            finally:
+                self.updating = False
+            self._run("connected", {"mode": mode})
+
+    def _insert_place(self):
+        pos = self.controls["places"].getSelectedItemPos()
+        if 0 <= pos < len(self.places):
+            self._run("insertPlace", {"key": self.places[pos][0]})
 
     def _port_chosen(self, event):
         if self.updating:
@@ -627,33 +897,216 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
     def _turn(self):
         self._run("turn", {"degrees": self.controls["turnAngle"].getText()})
 
+    # ------------------------------------------------------------ values
+
+    def show_values(self, data):
+        """The values of the selected element (``host.element_values``) or nothing (called by the component)."""
+        if self.mode != "values":
+            return
+        t = lambda k: i18n.text(k, self.lang)  # noqa: E731
+        previous = (self.value_data or {}).get("id")
+        self.value_data = data
+        self.updating = True
+        try:
+            if data is None:
+                self.controls["valName"].getModel().Label = t("valNoUnit")
+                self.value_rows = []
+            else:
+                if data.get("id") != previous:
+                    self.value_errors = {}
+                level = data.get("level") or "quick"
+                self.controls["level"].selectItemPos(values.LEVELS.index(level), True)
+                obj = data.get("values")
+                head = "%s – %s" % (t("valTitle"), data.get("name") or "")
+                self.controls["valName"].getModel().Label = head if data.get("hasValues") else \
+                    "%s\n%s" % (data.get("name") or "", t("valNone"))
+                self.controls["valStatus"].getModel().Label = values.status_line(obj, self.lang)
+                self.value_rows = values.rows(obj, level, data.get("explained"), self.value_errors, self.lang)
+                self.value_starts = {}
+                for i in range(VALUE_SLOTS):
+                    if i >= len(self.value_rows):
+                        continue
+                    r = self.value_rows[i]
+                    self.controls["vHead%d" % i].getModel().Label = r["head"]
+                    self.controls["vHead%d" % i].getModel().HelpText = r["tip"]
+                    self.controls["vField%d" % i].setText(r["field"])
+                    self.value_starts[i] = r["field"]
+                    self.controls["vUnit%d" % i].getModel().Label = r["unit"]
+                    detail = self.controls["vDetail%d" % i].getModel()
+                    detail.Label = r["detail"]
+                    detail.TextColor = ERROR_COLOR if r["key"] in self.value_errors or \
+                        (r["detail"] and r["detail"] == next((v.get("error") for v in (obj or {}).get("vars") or []
+                                                              if v.get("key") == r["key"]), None)) else MUTED_COLOR
+                self.controls["conflicts"].getModel().Label = "\n".join(values.conflict_lines(obj))
+                checks = data.get("checks") or []
+                self.controls["checks"].getModel().Label = "\n".join(
+                    "%s %s" % ("⚠" if c.get("severity") in ("error", "warning") else "ℹ", c.get("message") or "")
+                    for c in checks)
+                if data.get("showValues") is not None:
+                    self.controls["showValues"].getModel().State = 1 if data["showValues"] else 0
+        finally:
+            self.updating = False
+        self._relayout()
+
+    def value_error(self, key, text):
+        """A refused entry: its message under its row (called by the component)."""
+        if self.mode != "values":
+            return
+        self.value_errors[key] = text
+        for i, r in enumerate(self.value_rows[:VALUE_SLOTS]):
+            if r["key"] == key:
+                r["detail"] = text
+                detail = self.controls["vDetail%d" % i].getModel()
+                detail.Label = text
+                detail.TextColor = ERROR_COLOR
+        self._relayout()
+
+    def _commit_value(self, i):
+        """Enter or leaving a value field stores the value (only when it changed)."""
+        if self.updating or i >= len(self.value_rows):
+            return
+        text = self.controls["vField%d" % i].getText().strip()
+        if text == (self.value_starts.get(i) or "").strip():
+            return
+        key = self.value_rows[i]["key"]
+        self.value_starts[i] = text
+        self.value_errors.pop(key, None)
+        self._run("setValue", {"key": key, "text": text})
+
+    def _reset_value(self, i):
+        if i < len(self.value_rows):
+            self.controls["vField%d" % i].setText(self.value_starts.get(i) or "")
+
+    def _clear_value(self, i):
+        if i < len(self.value_rows):
+            self._run("clearValue", {"key": self.value_rows[i]["key"]})
+
+    def _level_chosen(self, event):
+        if self.updating:
+            return
+        pos = self.controls["level"].getSelectedItemPos()
+        if 0 <= pos < len(values.LEVELS):
+            self._run("valueLevel", {"level": values.LEVELS[pos]})
+
+    def _show_values_changed(self, event):
+        if self.updating:
+            return
+        self._run("showValues", {"on": "1" if self.controls["showValues"].getModel().State == 1 else "0"})
+
+    def _open_calculator(self):
+        """The calculator (Calculator panel of the deck) with the first known value of the element."""
+        text = next((r["field"] for r in self.value_rows if r["field"]), "")
+        tools = [p for p in panels_for(self.frame) if p.mode == "tools"]
+        if tools:
+            tools[0].focus_calculator(text)
+        else:
+            self._run("tools", None)
+
+    # ------------------------------------------------------------ calculator and code import
+
+    def focus_calculator(self, text=None):
+        expr = self.controls["calcExpr"]
+        if text is not None:
+            expr.setText(text)
+        expr.setFocus()
+        expr.setSelection(uno.createUnoStruct("com.sun.star.awt.Selection", 0, len(expr.getText())))
+
+    def _calculate(self):
+        text = self.controls["calcExpr"].getText().strip()
+        if text:
+            self._run("calc", {"text": text, "unit": self.controls["calcUnit"].getText().strip() or None})
+
+    def show_calc(self, text, unit, result, steps, error):
+        """The calculator's result (called by the component)."""
+        if self.mode != "tools":
+            return
+        if self.controls["calcExpr"].getText().strip() != (text or ""):
+            self.controls["calcExpr"].setText(text or "")
+        if unit is not None and self.controls["calcUnit"].getText().strip() != unit:
+            self.controls["calcUnit"].setText(unit)
+        res = self.controls["calcResult"].getModel()
+        res.Label = result if not error else ""
+        steps_model = self.controls["calcSteps"].getModel()
+        steps_model.Label = error or "\n".join(steps or [])
+        steps_model.TextColor = ERROR_COLOR if error else MUTED_COLOR
+        self._relayout()
+
+    def _open_code_file(self):
+        picker = self.ctx.ServiceManager.createInstanceWithContext("com.sun.star.ui.dialogs.FilePicker", self.ctx)
+        picker.initialize((uno.getConstantByName("com.sun.star.ui.dialogs.TemplateDescription.FILEOPEN_SIMPLE"),))
+        picker.setTitle("InventaSketch – " + i18n.text("codeTitle", self.lang))
+        patterns = ";".join("*" + e for e in values.CODE_EXTENSIONS)
+        picker.appendFilter("%s (%s)" % (i18n.text("codeFilter", self.lang), patterns.replace(";", ", ")), patterns)
+        if picker.execute() != 1 or not picker.getFiles():
+            return
+        path = uno.fileUrlToSystemPath(picker.getFiles()[0])
+        try:
+            with open(path, "rb") as f:
+                self.controls["codeText"].setText(values.decode_code(f.read()))
+        except OSError as ex:
+            self.show_code_report([str(ex)])
+
+    def _import_code(self):
+        text = self.controls["codeText"].getText()
+        if not text.strip():
+            self.show_code_report([i18n.text("codeEmpty", self.lang)])
+            return
+        self._run("importCode", {"text": text})
+
+    def show_code_report(self, lines):
+        """The report of a code import (called by the component); True when this panel shows it."""
+        if self.mode != "tools":
+            return False
+        self.controls["codeReport"].getModel().Label = "\n".join(lines[:16])
+        self._relayout()
+        return True
+
     # ------------------------------------------------------------ scripting
+
+    def _choice_slot(self, wanted):
+        """The slot of a choice given as "choice:<label or key>" (or a slot key "choice3")."""
+        name = wanted[len("choice:"):]
+        for i, c in enumerate(self.choice_list):
+            if name in (c["label"], c["key"]) or c["key"].endswith("." + name):
+                return "choice%d" % i
+        raise ValueError("no choice '%s' in %s" % (name, [c["label"] for c in self.choice_list]))
 
     def drive(self, args):
         """Operates a control of the panel the way a user does (scripting API ``panel``, used by tests/ui_smoke.py):
-        ``control`` + ``text`` types into an edit field; ``control`` + ``item`` chooses the first list entry that
-        contains the text (in the view list also a view id); ``press`` presses a visible, enabled button given by its
-        key, its label or ``action:<command or argument>`` (e.g. ``action:align:row``). Typing and choosing go through
-        the controls, which call the same listeners as a user interaction. Returns a short report."""
+        ``control`` + ``text`` types into an edit field (``enter=1`` then presses Enter there); ``control`` + ``item``
+        chooses the first list entry that contains the text (in the view list also a view id; ``choice:<label>`` names
+        a choice's dropdown); ``press`` presses a visible, enabled button given by its key, its label or
+        ``action:<command or argument>`` (e.g. ``action:align:row``). Typing and choosing go through the controls, which
+        call the same listeners as a user interaction. Returns a short report."""
         if "press" in args:
             wanted = args["press"]
             for k, handler in self.handlers.items():
                 model = self.controls[k].getModel()
                 if k not in self.shown or not model.Enabled:
                     continue
-                slot = int(k[3:]) if k.startswith("act") else -1
+                slot = int(k[3:]) if k.startswith("act") and k[3:].isdigit() else -1
                 action = self.actions[slot] if 0 <= slot < len(self.actions) else None
-                if wanted in (k, model.Label) or (action is not None and wanted in ("action:%s" % action[0],
-                                                                                    "action:%s" % action[1])):
+                ids = ()
+                if action is not None:
+                    arg = action[1]["id"] if isinstance(action[1], dict) else action[1]
+                    ids = ("action:%s" % action[0], "action:%s" % arg)
+                if wanted in (k, model.Label) or wanted in ids:
                     handler()
                     return "pressed %s (%s)" % (k, model.Label)
             raise ValueError("no button '%s'" % wanted)
         key = args.get("control") or ""
+        if key.startswith("choice:"):
+            key = self._choice_slot(key)
         control = self.controls.get(key)
         if control is None:
             raise ValueError("no control '%s'" % key)
         if "text" in args:
             control.setText(args["text"])
+            if args.get("enter"):
+                if key.startswith("vField"):
+                    self._commit_value(int(key[6:]))
+                elif key in ("calcExpr", "calcUnit"):
+                    self._calculate()
             return "typed %r into %s, list: %s" % (args["text"], key, self.items_shown()[:3])
         if "item" in args:
             items = list(control.getItems())
@@ -661,15 +1114,35 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             if key == "views":
                 pos = next((i for i, (vid, _) in enumerate(self.unit_views) if vid == args["item"]), -1)
             if pos < 0:
+                pos = next((i for i, entry in enumerate(items) if args["item"] == entry), -1)
+            if pos < 0:
                 pos = next((i for i, entry in enumerate(items) if args["item"] in entry), -1)
             if pos < 0:
-                raise ValueError("no entry '%s' in %s: %s" % (args["item"], key, items[:8]))
+                raise ValueError("no entry '%s' in %s: %s" % (args["item"], key, items[:12]))
             control.selectItemPos(pos, True)
             return "chose %s in %s" % (items[pos], key)
+        if "state" in args:
+            control.getModel().State = int(args["state"])
+            return "set %s to %s" % (key, args["state"])
         raise ValueError("nothing to do")
 
     def items_shown(self):
         return [ux.search_row(r, self.lang) for r in self.items]
+
+    def snapshot(self):
+        """What the panel shows (visible controls with their text), for the log of the tests."""
+        out = []
+        for key in sorted(self.shown):
+            model = self.controls[key].getModel()
+            text = getattr(model, "Label", None)
+            if text is None and hasattr(model, "Text"):
+                text = model.Text
+            if text is None and hasattr(model, "StringItemList"):
+                items = list(model.StringItemList)
+                sel = list(getattr(model, "SelectedItems", ()) or ())
+                text = "%s [%s]" % (items[sel[0]] if sel and sel[0] < len(items) else "", len(items))
+            out.append("%s=%s" % (key, (text or "").replace("\n", " / ")[:80]))
+        return out
 
     # ------------------------------------------------------------ UNO interfaces
 
@@ -740,7 +1213,7 @@ class PanelFactory(unohelper.Base, XUIElementFactory):
         self.ctx = ctx
 
     def createUIElement(self, url, args):
-        values = {a.Name: a.Value for a in args}
-        panel = Panel(self.ctx, values.get("Frame"), values.get("ParentWindow"), url)
-        panel.sidebar = values.get("Sidebar")
+        values_ = {a.Name: a.Value for a in args}
+        panel = Panel(self.ctx, values_.get("Frame"), values_.get("ParentWindow"), url)
+        panel.sidebar = values_.get("Sidebar")
         return panel
