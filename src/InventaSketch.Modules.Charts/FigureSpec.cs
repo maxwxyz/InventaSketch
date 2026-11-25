@@ -80,6 +80,11 @@ namespace InventaSketch.Modules.Charts
         /// <summary>above, below, on, left, right (label at x); end (default without x).</summary>
         public string? LabelPos { get; set; }
         public FigNumeral? Numeral { get; set; }
+        /// <summary>
+        /// A hand-sketched curve: its kept trail, shape and fitted functions ("sketch": {"shape", "strength", "fit", "log",
+        /// "frame", "fits", "raw"}); null for curves that were not sketched. The points (x, y) are the drawn curve.
+        /// </summary>
+        public CurveSketchMemo? Sketch { get; set; }
     }
 
     /// <summary>
@@ -317,6 +322,7 @@ namespace InventaSketch.Modules.Charts
                 LabelAt = Finite(Num(e, "labelAt")),
                 LabelPos = Str(e, "labelPos") is { } lp && (lp is "above" or "below" or "on" or "left" or "right" or "end") ? lp : null,
                 Numeral = ReadNumeral(e, "numeral"),
+                Sketch = ReadSketch(e),
             };
             if (Arr(e, "points").Any())
             {
@@ -335,6 +341,30 @@ namespace InventaSketch.Modules.Charts
                 s.X = xs.Take(n).ToList(); s.Y = ys.Take(n).ToList();
             }
             return s;
+        }
+
+        /// <summary>The memo of a sketched curve ("sketch" object); null when absent or without a usable trail.</summary>
+        private static CurveSketchMemo? ReadSketch(JsonElement e)
+        {
+            if (Obj(e, "sketch") is not { } k) return null;
+            var raw = new List<Vec2>();
+            foreach (var p in Arr(k, "raw").Take(CurveShapes.MaxRaw * 4))
+                if (p.ValueKind == JsonValueKind.Array && p.GetArrayLength() >= 2 && Number(p[0]) is var x && Number(p[1]) is var y && Fmt.Finite(x) && Fmt.Finite(y))
+                    raw.Add(new Vec2(x, y));
+            var f = Arr(k, "frame").Select(Number).ToList();
+            var log = Str(k, "log")?.ToLowerInvariant() ?? "";
+            var memo = new CurveSketchMemo
+            {
+                Shape = CurveShapes.ShapeOf(Str(k, "shape")) ?? CurveShape.Smoothed,
+                Strength = Num(k, "strength") is { } st && st >= 1 && st <= 3 ? (int)Math.Round(st) : CurveShapes.DefaultStrength,
+                Fit = CurveShapes.KindOf(Str(k, "fit")),
+                Fits = CurveShapes.ParseSpecs(Arr(k, "fits").Select(Raw)),
+                XLog = log.Contains("x"),
+                YLog = log.Contains("y"),
+                Frame = f.Count == 4 && f.All(Fmt.Finite) ? new Rect(f[0], f[1], f[2], f[3]) : default,
+                Raw = raw,
+            };
+            return memo.IsValid ? memo : null;
         }
 
         private static FigRef ReadRef(JsonElement e)
@@ -595,6 +625,29 @@ namespace InventaSketch.Modules.Charts
             WNum(w, "labelAt", s.LabelAt);
             WStr(w, "labelPos", s.LabelPos);
             WNumeral(w, s.Numeral);
+            WSketch(w, s.Sketch);
+            w.WriteEndObject();
+        }
+
+        private static void WSketch(Utf8JsonWriter w, CurveSketchMemo? m)
+        {
+            if (m is null || !m.IsValid) return;
+            w.WritePropertyName("sketch");
+            w.WriteStartObject();
+            w.WriteString("shape", CurveShapes.Id(m.Shape));
+            if (m.Strength != CurveShapes.DefaultStrength) w.WriteNumber("strength", m.Strength);
+            if (m.Fit is CurveKind k) w.WriteString("fit", CurveFunctions.Info(k).Id);
+            if (m.XLog || m.YLog) w.WriteString("log", (m.XLog ? "x" : "") + (m.YLog ? "y" : ""));
+            w.WriteStartArray("frame"); WVal(w, m.Frame.X); WVal(w, m.Frame.Y); WVal(w, m.Frame.W); WVal(w, m.Frame.H); w.WriteEndArray();
+            if (m.Fits.Count > 0)
+            {
+                w.WriteStartArray("fits");
+                foreach (var s in m.Fits) w.WriteStringValue(s.Format());
+                w.WriteEndArray();
+            }
+            w.WriteStartArray("raw");
+            foreach (var p in m.Raw) { w.WriteStartArray(); WVal(w, p.X); WVal(w, p.Y); w.WriteEndArray(); }
+            w.WriteEndArray();
             w.WriteEndObject();
         }
 

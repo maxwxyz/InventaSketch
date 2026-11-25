@@ -80,6 +80,32 @@ namespace InventaSketch.Engine
         public bool? Hidden { get; set; }
         /// <summary>sketchCurve: the pointer trail in page mm as [x, y] pairs.</summary>
         public List<double[]>? Points { get; set; }
+        /// <summary>moveHandle: true computes the dragged handle (snapped value, position) without changing the document.</summary>
+        public bool? Preview { get; set; }
+    }
+
+    /// <summary>A drag handle of an element (<see cref="InventaSketch.Core.DragHandle"/>), positions in page mm.</summary>
+    public sealed class DragHandleInfo
+    {
+        public string Key { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+        /// <summary>free, horizontal or vertical (in the element's own frame; see <see cref="Dx"/>, <see cref="Dy"/>).</summary>
+        public string Constraint { get; set; } = "free";
+        /// <summary>Unit page direction of the allowed motion (0, 0 for free handles).</summary>
+        public double Dx { get; set; }
+        public double Dy { get; set; }
+        /// <summary>What the handle changes, with its current value (localised).</summary>
+        public string Label { get; set; } = "";
+        /// <summary>Part key of the element the handle belongs to, or null.</summary>
+        public string? Part { get; set; }
+    }
+
+    /// <summary>The drag handles of one element (<c>dragHandles</c>).</summary>
+    public sealed class ObjectHandles
+    {
+        public string Id { get; set; } = "";
+        public List<DragHandleInfo> Handles { get; set; } = new();
     }
 
     /// <summary>A selectable part of an element (<see cref="InventaSketch.Core.PartInfo"/>).</summary>

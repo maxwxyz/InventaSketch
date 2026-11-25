@@ -85,6 +85,26 @@ namespace InventaSketch.Modules.Charts
 
         public static bool Mono(RenderContext ctx) => ctx.Monochrome || ctx.Doc.Settings.Monochrome;
 
+        /// <summary>
+        /// Drag handles in local coordinates with their edits (<see cref="ChartHandles"/>). Default: the limit lines of chart
+        /// types with a <c>limits</c> parameter.
+        /// </summary>
+        internal virtual IEnumerable<ChartHandle> LocalHandles(SketchObject o, RenderContext ctx)
+            => Parameters.Any(p => p.Key == "limits") ? ChartHandles.Limits(Compose(o, ctx), o).ToList() : Enumerable.Empty<ChartHandle>();
+
+        /// <summary>Interactive handles (limit lines, value lines, markers …) in page mm.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+            => LocalHandles(o, ctx).Select(h => Dragging.ToPage(h.Handle, o)).ToList();
+
+        /// <summary>Moves handle <paramref name="key"/> to the page point (constrained, value snapped to the axis resolution).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            var h = LocalHandles(o, ctx).FirstOrDefault(x => x.Handle.Key == key);
+            if (h is null) return o;
+            var local = o.Matrix().Invert().Apply(pagePos);
+            return h.Move(o, local);
+        }
+
         /// <summary>Clean slides for sharing: chart values normalised or randomised (<see cref="ChartSanitize"/>).</summary>
         public override SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng) => ChartSanitize.Apply(this, o, opt, rng);
 

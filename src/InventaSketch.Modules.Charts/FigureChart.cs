@@ -46,6 +46,16 @@ namespace InventaSketch.Modules.Charts
             }
         }
 
+        /// <summary>Value lines, markers, axis marks and span edges as drag handles (<see cref="ChartHandles.Figure"/>).</summary>
+        internal override IEnumerable<ChartHandle> LocalHandles(SketchObject o, RenderContext ctx)
+        {
+            if (!FigureSpec.TryParse(SpecText(o), out var spec, out _) || spec is null) return Enumerable.Empty<ChartHandle>();
+            Chart c;
+            try { c = new FigureComposer(o, ctx, spec, Design).Compose(); }
+            catch (Exception) { return Enumerable.Empty<ChartHandle>(); }
+            return ChartHandles.Figure(c, spec, ctx.Lang).ToList();
+        }
+
         /// <summary>Empty principle axes with the message that the specification cannot be read.</summary>
         private Chart ErrorChart(SketchObject o, RenderContext ctx)
         {
@@ -238,6 +248,8 @@ namespace InventaSketch.Modules.Charts
                 case ChartTags.Series or ChartTags.Marker or ChartTags.CurveLabel when k >= 0 && k < spec.Series.Count:
                     {
                         var s = spec.Series[k];
+                        // Sketched curves first: switch their shape (smoothed, interpolated, fitted, segments, as drawn).
+                        list.AddRange(ChartSketchInput.ShapeActions(o, k));
                         var next = Next(LineStyles, s.Line ?? "solid");
                         list.Add(Edit("chart.figure.line", new I18nText("Line: " + next.En, "Linie: " + next.De), IconIds.LineDash, lang, x => x.Series[k].Line = next.Value));
                         list.Add(Edit("chart.figure.markers", new I18nText("Markers", "Marker"), IconIds.Toggle, lang, x => x.Series[k].Marker = x.Series[k].Marker is null ? "circle" : null) with { IsActive = s.Marker is not null });

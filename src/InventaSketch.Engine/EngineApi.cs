@@ -80,6 +80,8 @@ namespace InventaSketch.Engine
                 ["applyPartAction"] = ApplyPartActionCore,
                 ["setPartLook"] = SetPartLookCore,
                 ["partOutline"] = PartOutlineCore,
+                ["dragHandles"] = DragHandlesCore,
+                ["moveHandle"] = MoveHandleCore,
                 ["sketchCurve"] = SketchCurveCore,
                 ["chartFromPicture"] = ChartFromPictureCore,
                 ["undo"] = r => { var s = S(r); s.Undo(); return StateOf(s, r); },
@@ -1814,6 +1816,76 @@ namespace InventaSketch.Engine
                     return a.Input is not null ? a.Input.Apply(o, r.Input ?? a.Input.Value) : a.Apply(o);
                 });
             });
+            return StateOf(s, r);
+        }
+
+        // ---- Drag handles (limit lines, value lines, markers of charts …) ----
+
+        private static DragHandleInfo HandleInfo(DragHandle h, Lang lang) => new()
+        {
+            Key = h.Key,
+            X = Math.Round(h.Position.X, 4),
+            Y = Math.Round(h.Position.Y, 4),
+            Constraint = h.Constraint switch { DragConstraint.Horizontal => "horizontal", DragConstraint.Vertical => "vertical", _ => "free" },
+            Dx = Math.Round(h.Direction.X, 6),
+            Dy = Math.Round(h.Direction.Y, 6),
+            Label = h.Label.Get(lang),
+            Part = h.Part,
+        };
+
+        /// <summary>
+        /// dragHandles: the interactive handles of the listed elements (id or ids; default the selection) in page mm – key,
+        /// position, constraint ("free", "horizontal", "vertical") with its page direction (dx, dy), label with the current value
+        /// and part key. Elements without handles are left out.
+        /// </summary>
+        private object DragHandlesCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var ids = r.Id is not null ? new List<string> { r.Id } : s.Resolve(r.Ids).ToList();
+            var ctx = s.Context();
+            var list = new List<ObjectHandles>();
+            foreach (var id in ids)
+            {
+                if (s.Doc.Get(id) is not { } o || o.Locked || Registry.Type(o.Type) is null) continue;
+                var handles = Registry.DragHandles(o, ctx);
+                if (handles.Count > 0) list.Add(new ObjectHandles { Id = id, Handles = handles.Select(h => HandleInfo(h, lang)).ToList() });
+            }
+            return list;
+        }
+
+        /// <summary>
+        /// moveHandle: drags handle key of element id to the page point (x, y) – the element applies the handle's constraint
+        /// and snaps the value; one undo step, returns the state. With preview=true the document stays unchanged and the
+        /// result is <c>{ handle }</c>: the handle as it would be after the move (snapped position and label), or null.
+        /// </summary>
+        private object MoveHandleCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
+            var o = PartOwner(s, r);
+            var key = r.Key ?? throw new ArgumentException("Missing 'key'.");
+            var at = new Vec2(r.X ?? 0, r.Y ?? 0);
+            if (r.Preview == true)
+            {
+                if (o.Locked || Registry.Type(o.Type) is null) return new { handle = (DragHandleInfo?)null };
+                var ctx = s.Context();
+                var moved = Registry.MoveHandle(o, key, at, ctx);
+                var h = Registry.DragHandles(moved, ctx).FirstOrDefault(x => x.Key == key);
+                return new { handle = h is null ? null : HandleInfo(h, lang) };
+            }
+            if (!o.Locked && Registry.Type(o.Type) is not null)
+            {
+                s.Apply("Move handle", d =>
+                {
+                    if (d.Get(o.Id) is not { } x) return d;
+                    var moved = Registry.MoveHandle(x, key, at, new RenderContext(d, s.Lang));
+                    // Nothing changed (unknown key, value snapped to the same number): no undo step.
+                    if (ReferenceEquals(moved, x) || moved.Params.Count == x.Params.Count && moved.Params.All(kv => x.Params.TryGetValue(kv.Key, out var v) && v.Equals(kv.Value)) && moved.Size == x.Size)
+                        return d;
+                    return Edits.Replace(d, moved);
+                });
+            }
             return StateOf(s, r);
         }
 
