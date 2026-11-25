@@ -244,6 +244,19 @@ namespace InventaSketch.Modules.Fluid
             foreach (var m in Mounts(n)) yield return Anchor.Point(AnchorRole.Mount, new Vec2(m.X * sx, m.Y * sy), m.Id);
         }
 
+        /// <summary>
+        /// Every port is a fluid connection (build "+", <see cref="Building"/>): pilot ports X/Y/Z of valves and pilot
+        /// actuators take a pilot line, leakage ports L a drain line, all others a working line.
+        /// </summary>
+        public override PortConnection? Connection(SketchObject o, Anchor port)
+        {
+            if (port.Id is null) return null;
+            var pilot = port.Id is "X" or "Y" or "Z" && (_id.StartsWith("fluid.valve.directional", StringComparison.Ordinal) || _id == "fluid.valve.check" || _id == "fluid.actuation");
+            if (pilot) return PortConnection.Of(PortMedia.Fluid, "fluid.line.pilot");
+            if (port.Id == "L") return PortConnection.Of(PortMedia.Fluid, "fluid.line.drain");
+            return PortConnection.Of(PortMedia.Fluid, "fluid.line");
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var n = Normalize(o);

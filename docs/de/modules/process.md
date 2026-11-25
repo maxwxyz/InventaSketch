@@ -135,6 +135,12 @@ gewölbten Boden) verlässt ihn in Richtung des nächsten Randes. Prozessleitung
 Begleitheizung neben der Linie; die Leitungsnummer steht entlang des längsten Abschnitts. Signalzeichen (Schrägstriche,
 Kreuze, Kreise) haben 8 mm Abstand und meiden die Ecken.
 
+**Weiterbauen mit „+“ (Anschlüsse).** Stutzen und Rohranschlüsse bieten eine Prozessleitung an (`process`),
+Messstellen und der Stellantriebsanschluss S von Stellventilen eine Signalleitung (`instrument`), danach die Apparate,
+Armaturen oder Messstellen, die dort anschließen. Die Antriebswelle eines Motors ist eine mechanische Kupplung ohne
+Leitung. Das freie Ende einer Prozess- oder Signalleitung bietet „+“ zum Verlängern oder zum Andocken des nächsten
+Elements.
+
 ## Kontextaktionen
 
 Kennzeichen (anzeigen / eingeben), Auswahlen durchschalten (Böden, Auflager, Dach, Einbauten, Rohrbündel, Zug,

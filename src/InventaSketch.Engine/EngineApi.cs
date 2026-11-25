@@ -1035,6 +1035,7 @@ namespace InventaSketch.Engine
             {
                 id = p.Id, kind = p.Kind.ToString(), x = p.At.X, y = p.At.Y, dx = p.Dir.X, dy = p.Dir.Y,
                 stretch = o is not null && Building.CanStretch(Registry, s.Doc, o, p, s.Lang),
+                medium = p.Medium,
             }).ToList();
         }
 
@@ -1054,22 +1055,21 @@ namespace InventaSketch.Engine
             }).ToList();
         }
 
-        /// <summary>Docks library item <c>itemId</c> at port <c>key</c> of object <c>id</c>, coupled; one undo step.</summary>
+        /// <summary>
+        /// Docks library item <c>itemId</c> at port <c>key</c> of object <c>id</c>, coupled (<see cref="Building.Apply"/>):
+        /// at a connection port the connector (or the next element joined by it), at a line end the line continued (or the
+        /// element docked on the end); one undo step. The built part (the connector, the element, the longer line) is selected.
+        /// </summary>
         private object BuildPlaceCore(EngineRequest r)
         {
             var s = S(r);
             var id = r.Id ?? s.Selection.FirstOrDefault() ?? throw new ArgumentException("Missing 'id'.");
             var item = Registry.Item(r.ItemId ?? "") ?? throw new KeyNotFoundException($"Unknown library item '{r.ItemId}'.");
             var port = Port(s, id, r.Key);
-            var placed = Building.Place(Registry, s.Doc, id, port, item, s.Lang);
-            if (placed is null) return StateOf(s, r);
-            s.Apply("Build " + item.Name.En, d =>
-            {
-                var doc = Edits.Add(d, s.PageId, placed);
-                // A pivot, joint or slider placed at a link's joint: the link docks onto it.
-                return port.Kind == PortKind.Joint && !placed.IsPointGeometry && Building.DockBack(Registry, doc, id, port, placed.Id, s.Lang) is { } docked ? docked : doc;
-            });
-            s.Select(new[] { placed.Id });
+            var built = Building.Apply(Registry, s.Doc, id, port, item, s.Lang);
+            if (built is null) return StateOf(s, r);
+            s.Apply("Build " + item.Name.En, _ => built.Doc);
+            s.Select(new[] { built.SelectId });
             return StateOf(s, r);
         }
 

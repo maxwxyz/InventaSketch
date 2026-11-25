@@ -146,6 +146,17 @@ Verbraucher & E-Mobilität, `energy.grid` Grid connection & single-line / Netzan
 - **Energiefluss-Pfeil:** Band der Breite `weight` mit Pfeilspitze (Gehrungsecken) in der bildhaften Ansicht; dünne
   Linie mit gefüllter Spitze im Einlinienschaltbild.
 
+**Weiterbauen mit „+“ (Anschlüsse).** Jeder freie Anschluss bietet zuerst seine Leitung an (`ObjectType.Connection`,
+siehe Benutzerhandbuch): `dc` und `bat` ein DC-Kabel, `ac`, `el`, `poc`, `hv`, `mv`, `lv` ein AC-Kabel mit der Spannung,
+die das Element für diesen Anschluss angibt (Transformatorwicklungen, Netzeinspeisung), `data` eine
+Kommunikationsleitung, `heat`, `charge`/`discharge` (Wärmespeicher) eine Wärmeleitung, `fuel` eine Gasleitung, `water`
+eine Wasserleitung, `h2` eine Wasserstoffleitung; Schaltgeräte, Zähler und Sammelschienen ein Kabel (DC bei
+DC-Sammelschienen); Umrichter je Seite DC oder AC nach ihrer Umformung; Ladepunkt und Fahrzeug DC beim DC-Laden. Der
+Wärmeanschluss der Wärmepumpe nimmt Wärme- und Kälteleitungen. Danach folgen die Elemente mit einem Anschluss desselben
+Mediums (ein PV-String nach einem PV-Modul, ein Wechselrichter oder eine Batterie nach einem DC-Kabel). Kabel führen
+`electric.dc`, `electric.ac` oder `data`, Rohrleitungen ihren Energieträger; das freie Ende eines Kabels oder einer
+Leitung bietet „+“ zum Verlängern oder zum Andocken des nächsten Elements. Energieflusspfeile führen kein eigenes Medium.
+
 ## Kontextaktionen
 
 Bemessungsdaten anzeigen und Bezeichnung… (jedes Box-Element), Eingaben für Leistung / Kapazität / Volumen /

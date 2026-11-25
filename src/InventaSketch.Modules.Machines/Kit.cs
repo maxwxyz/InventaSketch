@@ -139,6 +139,29 @@ namespace InventaSketch.Modules.Machines
             foreach (var a in v.Anchors(PenFor(o, v, ctx.Lang), o)) yield return a;
         }
 
+        /// <summary>
+        /// Electrical, coolant and block-diagram ports (build "+", <see cref="Building"/>): phase terminals u/v/w (AC),
+        /// battery and DC-link terminals (DC), coil ends, brushes and encoder signals (wires), cooling channel in/out
+        /// (water pipe), the sides of block-diagram blocks (arrows). Shaft ends (gearbox in/out, wheels, e-machines,
+        /// engine output) are mechanical: they are built on with shafts at their axis ends, no line.
+        /// </summary>
+        public override PortConnection? Connection(SketchObject o, Anchor port)
+        {
+            var id = port.Id;
+            if (id is null) return null;
+            if (IsBlock(o)) return id is "w" or "e" or "n" or "s" ? PortConnection.Of(PortMedia.Block, "ann.arrow") : null;
+            if (_id is "machines.drivetrain.emachine" or "machines.drive.wheel" or "machines.drivetrain.engine") return null;
+            if (id is "u" or "v" or "w") return PortConnection.Of(PortMedia.ElectricAc, "elec.wire");
+            if (id is "plus" or "minus" or "dc+" or "dc-") return PortConnection.Of(PortMedia.ElectricDc, "elec.wire");
+            if (id is "a" or "b" or "signal" || id.StartsWith("brush", StringComparison.Ordinal)) return PortConnection.Of(PortMedia.Electric, "elec.wire");
+            if (id is "in" or "out" && _id == "machines.part.cooling") return PortConnection.Of(PortMedia.Water, "energy.line.pipe.water");
+            return null;
+        }
+
+        /// <summary>A block of a drivetrain block diagram (block views of the drive blocks and the engine).</summary>
+        private bool IsBlock(SketchObject o)
+            => _id != "machines.drive.wheel" && (_id.StartsWith("machines.drive.", StringComparison.Ordinal) || _id == "machines.drivetrain.engine") && ViewOf(o) == "block";
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var current = ViewOf(o);

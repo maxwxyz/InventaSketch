@@ -176,6 +176,18 @@ namespace InventaSketch.Modules.Electrical
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
             => LocalPins(o).Select(p => Anchor.Point(AnchorRole.Port, p.P, p.Id));
 
+        /// <summary>
+        /// Every pin is an electrical connection (build "+", <see cref="Building"/>): a wire at schematic symbols, an
+        /// installation cable at house installation elements, a track at PCB pads and footprints.
+        /// </summary>
+        public override PortConnection? Connection(SketchObject o, Anchor port)
+        {
+            if (port.Id is null) return null;
+            if (Installation || _id.StartsWith("elec.house.", StringComparison.Ordinal)) return PortConnection.Of(PortMedia.ElectricInstallation, "elec.house.cable");
+            if (_id.StartsWith("elec.pcb.", StringComparison.Ordinal)) return PortConnection.Of(PortMedia.Pcb, "elec.pcb.track");
+            return PortConnection.Of(PortMedia.Electric, "elec.wire");
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var current = ViewOf(o);

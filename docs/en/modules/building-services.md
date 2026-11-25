@@ -144,6 +144,14 @@ Categories: `bs.heating` Heating / Heizung, `bs.plumbing` Plumbing & sanitary / 
   a single line with the air code in the schematic. Pipes: medium line in plan and section; the schematic adds the
   medium code and `DN …`.
 
+**Build "+" (connections).** The port ids name the medium: `flow`/`f1…` a heating flow pipe, `return`/`r1…` a return
+pipe, `cold`, `hot`, `circulation`, `waste` the matching water pipe, risers the pipe of their medium, air terminals the
+duct of their air kind, the ventilation unit `outdoor`/`exhaust`/`extract`/`supply` ducts; inline heating parts (pump,
+mixing valve, thermostatic valve, expansion vessel) fit flow and return; outlets, detectors, appliances and the
+equipotential bonding bar an installation cable (`electric.installation`, the cable route of the electrical module).
+Pipes and ducts carry their medium, so their free ends offer "+" to continue or to dock the next radiator, fixture or
+terminal with its fitting connection.
+
 ## Context actions
 
 Mounting height… (input, every element), cycle medium/kind (pipe, duct, riser, air terminal, outlets, detector),

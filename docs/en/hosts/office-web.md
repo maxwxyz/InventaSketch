@@ -64,7 +64,7 @@ undo step each (no step when nothing changes).
 | `trace` | `id`, `index` (default: last point), `max` (steps, default 72) | `{ points, closed }`: path of the link's point while the chain's crank turns; empty unless the chain has F = 1 |
 | `drawGhosts` | `id` (a link), `max` (default 4) | state; dashed grey copies of the chain over the crank's range, grouped |
 | `couplingPreview` | `ids`, `dx`/`dy` or `sx`/`sy`/`pivotX`/`pivotY` | `{ ids, svg }`: neighbours the coupling would move or scale, as SVG in page mm (`svg` empty when nothing follows); nothing changes |
-| `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch }]`: free build ports in page mm with the outward direction; `stretch` for shaft ends |
+| `buildPorts` | `id` | `[{ id, kind, x, y, dx, dy, stretch, medium }]`: free build ports in page mm with the outward direction; `stretch` for shaft ends; `medium` for connection ports (`Connect`) and free line ends (`LineEnd`) |
 | `buildItems`, `buildPlace`, `buildStretch` | `id`, `key` (port id), `lang`, `max`; `itemId`; `x`, `y` | library items that dock at the port (`fits` true); state with the docked part selected; state with the shaft end moved |
 | `motionInfo` | `id` | `{ kind: "gear", x, y, coupled }` (turns about its centre with its train), `{ kind: "linkage", dof }` (link of a self-built chain with F >= 1) or `{ kind: "none" }` |
 | `motionPreview` | `id` and `degrees` (gear), or `id`, `index`, `x`, `y` (joint of a link) | `{ ids, svg }`: the objects the turn or drag would move, as SVG in page mm; nothing changes |

@@ -242,6 +242,18 @@ namespace InventaSketch.Modules.Process
             foreach (var p in LocalPorts(o)) yield return Anchor.Point(AnchorRole.Port, p.P, p.Id);
         }
 
+        /// <summary>
+        /// Nozzles and pipe ports take a process line, instrument bubbles and actuator signal ports (S) a signal line (build
+        /// "+", <see cref="Building"/>). The drive shaft of a motor is a mechanical coupling, no line.
+        /// </summary>
+        public override PortConnection? Connection(SketchObject o, Anchor port)
+        {
+            if (port.Id is null || port.Id == "shaft") return null;
+            if (_id == Instruments.BubbleId || port.Id == "S" && (_id == "process.valve.control" || _id == "process.valve.threeway"))
+                return PortConnection.Of(PortMedia.Instrument, "process.line.signal");
+            return PortConnection.Of(PortMedia.Process, "process.line");
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var n = Normalize(o);

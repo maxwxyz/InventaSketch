@@ -69,6 +69,12 @@ It is a **sketching** module for slides and patent drawings. It is **not** an EC
 - Bus lines expose `Port` taps every 10 mm along their length and are rails in between; the busbar exposes five taps.
 - Objects without connection points: board outline, copper area, mounting hole, silkscreen label.
 
+**Build "+" (connections).** Every free pin offers a wire (orthogonal) and the symbols that connect there; house
+installation elements offer the installation cable route (`electric.installation`, also used by the outlets of the
+building services), PCB pads and footprints a track (`pcb`). Wires carry `electric` (they fit DC and AC ports of other
+modules), buses `data`; the free end of a wire, bus, cable route or track offers "+" to continue it or to dock the next
+symbol with its facing pin.
+
 ## Context actions
 
 | Action id | Icon | Effect |
