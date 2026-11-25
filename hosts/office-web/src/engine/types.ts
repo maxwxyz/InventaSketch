@@ -61,7 +61,8 @@ export interface TraceInfo { points: Vec2[]; closed: boolean }
  * Build "+" port of an element (engine `buildPorts`): kind (Mesh, InnerMesh, AxisEnd, Hub, Pin, Bevel, Joint, Mount), position
  * and outward direction in page mm; `stretch` for a shaft end that can be dragged longer or shorter.
  */
-export interface BuildPortInfo { id: string; kind: string; x: number; y: number; dx: number; dy: number; stretch: boolean }
+/** A build "+": kind Mesh/Hub/AxisEnd/… or Connect (connection port) / LineEnd (free end of a cable, pipe, duct); `medium` of a connection. */
+export interface BuildPortInfo { id: string; kind: string; x: number; y: number; dx: number; dy: number; stretch: boolean; medium?: string }
 
 /** Live coupling preview (engine `couplingPreview`): neighbours that would follow, as one SVG in page mm ("" for none). */
 export interface CouplingPreview { ids: string[]; svg: string }

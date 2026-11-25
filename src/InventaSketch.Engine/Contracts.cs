@@ -78,6 +78,8 @@ namespace InventaSketch.Engine
         public string? Part { get; set; }
         /// <summary>setPartLook: switch the part off (true) or on (false); null leaves it.</summary>
         public bool? Hidden { get; set; }
+        /// <summary>sketchCurve: the pointer trail in page mm as [x, y] pairs.</summary>
+        public List<double[]>? Points { get; set; }
     }
 
     /// <summary>A selectable part of an element (<see cref="InventaSketch.Core.PartInfo"/>).</summary>

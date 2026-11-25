@@ -22,6 +22,7 @@ import { Library } from "./library";
 import { PieMenu } from "./piemenu";
 import { buildPieEntries, labelEntries, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
 import { Stage, type ChainSide } from "./stage";
+import { isPictureName, pictureToRgba } from "./picture";
 import { isPartCommand, keepPart, partActionId, partActions, partListEntries, partPieEntries, type SelectedPart } from "./partlogic";
 import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, importKind, orderFindings, sourceLinks } from "./uxlogic";
 
@@ -117,6 +118,8 @@ export class App {
       dragStart: (item) => (this.dragging = item),
       pendingId: () => this.pending?.id,
     });
+    // A picture pasted while the stage has the focus becomes a chart (charts v2).
+    window.addEventListener("paste", (e) => { if (document.activeElement === this.stage.el) this.pastePicture(e); });
     this.inspector = new Inspector({ session: () => this.sessionObj, state: () => this.st, apply: (s, live) => this.apply(s, live), report: (e) => this.report(e) });
     this.pie = new PieMenu(this.root, (e) => this.pickPie(e));
     this.prompt = new InlinePrompt(this.root);
@@ -245,17 +248,39 @@ export class App {
 
   /** "Import": a CSV/TSV table into the selected chart (or a new one), GeoJSON/GPX as map routes and markers, SVG/DXF as shapes. */
   private importButton(): HTMLElement {
-    const input = h("input", { type: "file", accept: ".csv,.tsv,.txt,.geojson,.json,.gpx,.svg,.dxf", hidden: true });
+    const input = h("input", { type: "file", accept: ".csv,.tsv,.txt,.geojson,.json,.gpx,.svg,.dxf,.png,.jpg,.jpeg,.bmp,.gif,.webp", hidden: true });
     input.addEventListener("change", async () => {
       const f = input.files?.[0];
       input.value = "";
       if (!f) return;
+      if (isPictureName(f.name)) return this.chartFromPicture(f);
       const text = await f.text();
       const kind = importKind(f.name, text);
       this.edit((s) => (kind === "vector" ? s.importVector(text) : kind === "geo" ? s.importGeo(text) : s.importData(text)));
     });
     const button = this.iconButton("load", t("cmd.import"), () => input.click(), { "data-cmd": "import" });
     return h("span", {}, button, input);
+  }
+
+  /** A picture of a chart (file or pasted) as an editable chart in the middle of the page (charts v2). */
+  private async chartFromPicture(blob: Blob): Promise<void> {
+    try {
+      const { w, h, payload } = await pictureToRgba(blob);
+      const r = this.sessionObj.chartFromPicture(w, h, payload, lang());
+      this.apply(r.state, true);
+      this.setStatus(r.message);
+    } catch (e) {
+      this.report(e);
+    }
+  }
+
+  /** Ctrl+V with a picture on the clipboard (stage focused): the picture becomes a chart. */
+  private pastePicture(e: ClipboardEvent): void {
+    const item = Array.from(e.clipboardData?.items ?? []).find((i) => i.kind === "file" && i.type.startsWith("image/"));
+    const file = item?.getAsFile();
+    if (!file) return;
+    e.preventDefault();
+    void this.chartFromPicture(file);
   }
 
   /** ISO 128 line group of the drawing (a document setting, one undo step; live sync redraws every unit on the slide). */
@@ -590,6 +615,9 @@ export class App {
     if (this.objectById(sel[0])?.known && canMove(this.stage.motionOf(sel[0])))
       build.push({ id: "motion", label: t("ctx.motion"), icon: "cmd-motion", active: this.motion });
     if (info?.explodable) build.push({ id: "explode", label: t("ctx.explode"), icon: "cmd-explode" });
+    // Charts: draw a curve by hand; recognised (step, ramp, sine, PT1 …) or smoothed (charts v2).
+    const chartType = this.objectById(sel[0])?.type;
+    if (sel.length === 1 && (chartType === "chart.xy" || chartType === "chart.figure")) build.push({ id: "sketch", label: t("ctx.sketch"), icon: "cmd-trace" });
     build.push(...assembly);
     this.bar.update(key, actions, box, suppressed, this.barChoices(sel), { lead, build });
   }
@@ -725,6 +753,21 @@ export class App {
     if (id === "makeIt") return this.openMakeIt({ x: clientX, y: clientY });
     if (id === "trace") return this.drawPath();
     if (id === "info:dof" || id === "info:part") return;
+    if (id === "sketch" && sel.length === 1) {
+      const chart = sel[0];
+      this.bar.hide();
+      this.setStatus(t("sketch.hint"));
+      this.stage.startSketch((points) => {
+        try {
+          const r = this.sessionObj.sketchCurve(chart, points, lang());
+          this.apply(r.state, true);
+          this.setStatus(r.message);
+        } catch (e) {
+          this.report(e);
+        }
+      });
+      return;
+    }
     if (isPartCommand(id)) return this.partCommand(id, clientX, clientY);
     if (id === "motion") {
       this.motion = !this.motion;

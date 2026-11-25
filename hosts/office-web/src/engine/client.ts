@@ -130,6 +130,12 @@ export class Session {
   partActions(id: string, part: string, lang: string): ActionInfo[] { return this.c("partActions", { id, part, lang }); }
   /** Runs a part action (one undo step). */
   applyPartAction(id: string, part: string, action: string, input?: string): EditorState { return this.c("applyPartAction", { id, part, action, input }); }
+  /** A hand-drawn trail (page mm) into chart `id`: recognised or smoothed, added as a series; one undo step. */
+  sketchCurve(id: string, points: number[][], lang: string): { state: EditorState; message: string; kind?: string } { return this.c("sketchCurve", { id, points, lang }); }
+  /** A picture (RGBA bytes as base64, w × h) as a chart at (x, y) mm, selected; one undo step. */
+  chartFromPicture(w: number, h: number, payload: string, lang: string, x?: number, y?: number): { state: EditorState; message: string; id?: string } {
+    return this.c("chartFromPicture", { w, h, payload, lang, x, y });
+  }
   /** Outline of a part in page mm (polylines of [x, y]), for highlighting it. */
   partOutline(id: string, part: string): number[][][] { return this.c("partOutline", { id, part }); }
   inspector(ids: string[], lang: string): InspectorInfo { return this.c("inspector", { ids, lang }); }
