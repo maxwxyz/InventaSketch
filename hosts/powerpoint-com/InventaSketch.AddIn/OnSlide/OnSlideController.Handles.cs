@@ -650,7 +650,13 @@ namespace InventaSketch.AddIn.OnSlide
             var after = Dragging.Find(registry.DragHandles(moved, ctx), grip.Key);
             var label = (after ?? grip).Label.Get(lang);
             var at = view.ToScreen(after?.Position ?? _gripAt);
-            Present(view, g => ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6)), g =>
+            // What renders from the element follows live (rays through a lens whose focal length is dragged).
+            var followers = DependentsPreview(doc, new[] { moved });
+            Present(view, g =>
+            {
+                if (followers.Count > 0) ThumbnailRenderer.DrawAll(g, followers, Partner, (float)view.Mm(1.6));
+                ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6));
+            }, g =>
             {
                 if (grip.ShowWith is not null) DrawPointGrip(g, view, at, hover: true, selected: true);
                 else if (!grip.ByPart) DrawGrip(g, view, at, grip, hover: true);
