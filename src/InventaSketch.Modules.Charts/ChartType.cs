@@ -124,6 +124,7 @@ namespace InventaSketch.Modules.Charts
             string Name(IReadOnlyList<string> names, I18nText word, Lang l) => n is int k && k < names.Count ? names[k] : word.Get(l) + " " + Fmt.I((n ?? 0) + 1);
             I18nText Named(IReadOnlyList<string> names, I18nText word) => new(Name(names, word, Lang.En), Name(names, word, Lang.De));
             I18nText Prefixed(string en, string de, IReadOnlyList<string> names, I18nText word) => new(en + " – " + Name(names, word, Lang.En), de + " – " + Name(names, word, Lang.De));
+            I18nText Indexed(string en, string de) => new(en + " " + Fmt.I((n ?? 0) + 1), de + " " + Fmt.I((n ?? 0) + 1));
             // Axis direction and panel: "axis.y.2" → "y axis 2", "axis.y2" → secondary y axis.
             var dir = seg.Length > 1 ? seg[1] : "";
             var panel = seg.Length > 2 ? " " + seg[2] : "";
@@ -156,7 +157,14 @@ namespace InventaSketch.Modules.Charts
                 ChartTags.Envelope => new I18nText("Envelope", "Hüllkurve"),
                 ChartTags.Helper => new I18nText("Helper lines", "Hilfslinien"),
                 ChartTags.Point => new I18nText("Operating point", "Betriebspunkt"),
-                ChartTags.Note => new I18nText("Notes", "Anmerkungen"),
+                ChartTags.Note => n is null ? new I18nText("Notes", "Anmerkungen") : Indexed("Note", "Anmerkung"),
+                ChartTags.Ref => Indexed("Reference line", "Bezugslinie"),
+                ChartTags.Region => Indexed("Region", "Fläche"),
+                ChartTags.Numeral => Indexed("Reference numeral", "Bezugszeichen"),
+                ChartTags.CurveLabel => Prefixed("Label", "Beschriftung", lines, CurveWord),
+                ChartTags.PanelTitle => Indexed("Panel title", "Teilbildtitel"),
+                ChartTags.Caption => new I18nText("Caption", "Bildunterschrift"),
+                ChartTags.Error => new I18nText("Error message", "Fehlermeldung"),
                 _ => new I18nText(key),
             };
         }

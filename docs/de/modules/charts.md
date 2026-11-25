@@ -24,6 +24,7 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.pump` | Pump / fan curve / Pumpen-/Ventilatorkennlinie | `kind` Pumpe / Ventilator, `h0` (Nullförderhöhe bzw. Nulldruck), `qmax`, `hstat` (statischer Anteil der Anlage), `qop` (Förderstrom im Betriebspunkt), `system` (Anlagenkennlinie) |
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` Tief- / Hochpass 1. oder 2. Ordnung, `fc` (Hz), `zeta` (Dämpfungsgrad, 2. Ordnung), `gain` (dB), `show` Betrag und Phase / Betrag / Phase, `marker` (Linie bei der Eckfrequenz), `xrange`, `data` (Messdaten `f;dB;°`, ersetzen das System) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (Sollkurve, siehe unten), `tol` + `tolmode` Prozent / absolut, `smooth`, `limits`, `patterns`; weitere Datenblöcke werden als Messreihen mit Markern gezeichnet |
+| `chart.figure` | Figure (principle, patent) / Prinzip- und Patentbild | `spec` (JSON-Spezifikation, siehe [Bild](#bild-diagramme-v2-stufe-2)); gestapelte Panels, Prinzip- oder Datenachsen, Wertlinien, Markierungen, Flächen, Anmerkungen, Bezugszeichen |
 
 Gemeinsame Parameter (wo sinnvoll): `title`, `xlabel`, `xunit`, `ylabel`, `yunit` (leer = zweisprachige Vorgabe
 des Typs, ausdrücklich leere Beschriftung blendet den Achsentitel aus), `xscale` / `yscale` linear / logarithmisch,
@@ -38,12 +39,12 @@ für Skizzen und ist keine Messung. Die Pumpenkennlinie ist H(Q) = H₀ (1 − (
 durch den statischen Anteil und den Betriebspunkt. Das Bode-Diagramm wird aus den Standard-Übertragungsfunktionen von
 Tief- und Hochpässen 1. und 2. Ordnung berechnet.
 
-Die Bibliothek enthält 25 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
+Die Bibliothek enthält 28 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`) in zwei Kategorien: Datendiagramme sowie Kennlinien &
-Kennfelder.
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in drei Kategorien: Datendiagramme, Kennlinien &
+Kennfelder sowie Prinzip- und Patentbilder.
 
 ## Datenformat
 
@@ -163,6 +164,79 @@ hängen die Panelnummer an: `axis.y.2`, `label.y.2`.
   den Elementstil.
 - Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (siehe Entwurf
   [Diagramme v2](../design/charts-v2.md)).
+
+## Bild (Diagramme v2, Stufe 2)
+
+Der Diagrammtyp `chart.figure` zeichnet Prinzip- und Patentbilder aus einer **versionierten JSON-Spezifikation** im
+Parameter `spec` (ohne Parameter eingefügt zeigt er das Patentbild unten). Kategorie „Prinzip- und Patentbilder“ mit
+drei Vorlagen, den Prüfbildern aus dem [Entwurf Diagramme v2](../design/charts-v2.md):
+
+| Id | Name | Zeigt |
+|---|---|---|
+| `chart.figure.phases` | Phasen mit Rotortemperatur (Patentbild) | Leistung P mit den Phasen „Vorkonditionierung“ und „Volllastphase“ (Phasenlinien t0, t1 durch beide Panels); Rotortemperatur ohne (gestrichelt) und mit Vorkonditionierung (durchgezogen) bis zur Grenztemperatur, Fläche dazwischen schraffiert, Zeitgewinn als Maßpfeil mit Hilfslinien, Bezugszeichen 40–46; Prinzipachsen, schwarz-weiß |
+| `chart.figure.timing` | Zeitablauf einer Entscheidungslogik | Titel „Fig. 2 …“; drei Panels: Reifemasse gegen eine gestrichelte Grenze (Bezugszeichen 64 an der Achse, 63 an der Kurve), Wärmebedarf mit Buckel und gestrichelte Antriebsverlustwärme, nur dort schraffiert, wo der Bedarf höher ist (65–67), Abtastsignal mit durchgezogenem (68) und gestricheltem Impuls (69); t_krit als gestrichelte Markierung durch alle Panels und als Zeitpfeil unter dem ersten Panel; gedrehte Achsentitel |
+| `chart.figure.temperature` | Temperaturverlauf mit Schwellen | Datenachsen 0–200 s / 0–220 °C, nur waagerechtes gepunktetes Gitter, vier gestrichelte Bezugslinien mit Beschriftung, eine schnelle und eine langsame Kurve 1. Ordnung mit je einer Lücke und Beschriftung in der Lücke, offene Kreismarker „31 s“ / „77 s“, ein senkrechter Maßpfeil „35 K“, eine Bildunterschrift; farbig |
+
+Die Kurven der Vorlagen sind qualitativ (Verzögerungsglieder 1. Ordnung, ein Gauß-Buckel, Rechteckimpulse), keine
+Messdaten.
+
+### Spezifikation
+
+Aufbau und Beispiel wie im englischen Dokument ([Figure](../../en/modules/charts.md#figure-charts-v2-stage-2));
+die Schlüssel sind englisch:
+
+- **Achsen** (`x` und jedes Panel): `mode` `data` (Teilstriche, Beschriftung, Gitter) oder `principle` (Achspfeil,
+  keine Teilstriche, nur die benannten `marks`, gezeichnet wie Skalenbeschriftungen), `scale` `linear` / `log`, `min` /
+  `max` (Prinzipachsen standardmäßig 0 … Datenmaximum), `label` und `unit` (Titel „Größe in Einheit“ / „label (unit)“),
+  `grid` (Standard: an bei Datenachsen). Die x-Achse ist gemeinsam; die y-Achsentitel der Panels sind gedreht. Panels
+  liegen von oben nach unten, `share` ist die relative Höhe.
+- **Kurven** (`series`): Punkte als Listen `x` / `y` oder `points` (`[[x, y], …]`); `null`, Text oder fehlende Werte
+  ergeben eine Lücke. `line` solid / dash / dot / dashdot / longdash / dashdotdot; ohne Strichart und Farbe nutzt das
+  Farbschema durchgezogene Linien in den Reihenfarben, Schwarz-Weiß (`scheme: mono`) schwarze Linien mit den
+  Strichmustern der Reihen. `label` steht am Kurvenende oder bei `labelAt` (`above`, `below`, `on` – in der Lücke auf
+  weißem Grund –, `left`, `right`); mit Legende (`legend` auto / inside / right) gehen die Beschriftungen in die Legende.
+- **Bezüge** (`refs`): `h` Wertlinie (Panel, `-1` = alle Panels; Beschriftung rechts, links, unten oder `end` neben dem
+  Plot), `v` senkrechte Markierung (standardmäßig durch alle Panels, sonst `panel`; Beschriftung oben oder `axis` unter
+  der x-Achse), `point` Kreismarker auf Kurve `series` bei `x` (`fill` open / filled, Beschriftung rechts, links, oben,
+  unten).
+- **Flächen** (`regions`): `between` zwischen Kurve `a` und `b` (mit `above` nur dort, wo `a` über `b` liegt: Schnitt-
+  punkte werden berechnet, jedes Stück ist ein eigener Teilpfad), `below` unter einer Kurve (bis zum Panelboden oder
+  `base`), `span` zwischen `from` und `to` (ein Panel oder alle). Füllung `hatch` (Standard), `cross`, `solid`
+  (Deckkraft 0,3 in Farbe), `dots` (Füllarten des Kerns).
+- **Anmerkungen** (`notes`): `text`, `arrow` (Text am Pfeilende), `line` (z. B. Hilfslinien), `dim` (Pfeilspitzen an
+  beiden Enden, Text über/unter/links/rechts der Mitte), `numeral` (Bezugszeichen mit Hinweislinie). Punkte sind `x`,
+  `y`, `panel` oder statt `y` `gap` (0 … 1 im Zwischenraum unter dem Panel, z. B. ein Zeitpfeil zwischen zwei Panels).
+- **Bezugszeichen** (`numeral` an Kurven, Bezügen und Flächen, Anmerkungen der Art `numeral`): der Text steht am Ziel
+  plus (`dx`, `dy`) Schrifthöhen mit dünner Hinweislinie; `axis: true` setzt das Bezugszeichen einer Wertlinie an die
+  y-Achse.
+- **Texte** sind eine Zeichenkette oder `{ "en": …, "de": … }`; Zahlen dürfen Zeichenketten mit Dezimalkomma sein
+  (`"2,5"`).
+- **Robustheit**: unbekannte Einträge werden ignoriert, falsche Typen fallen auf Standardwerte zurück; nicht lesbares
+  JSON (oder eine Wurzel, die kein Objekt ist) zeichnet leere Prinzipachsen mit dem Hinweis „Bildspezifikation nicht
+  lesbar (JSON)“. Das Zeichnen wirft nie. Aktionen auf einem solchen Bild werfen eine zweisprachige
+  `FormatException` und lassen den Text unverändert.
+
+### Teile, Anker und Aktionen
+
+Teilschlüssel: `series.k`, `marker.k`, `curvelabel.k`, `ref.k`, `region.k`, `note.k`, `numeral.j` (fortlaufend über
+Kurven, Bezüge, Flächen und Bezugszeichen-Anmerkungen), `paneltitle.i`, `caption`, `title`, `error` und die Teile des
+Rahmens (`axis.x.1`, `axis.y.2`, `label.x`, `axistitle.y.2`, `grid.major` … – Panels ab 1 gezählt wie beim
+Bode-Diagramm). Die Teileliste nennt sie mit ihren Texten („Bezugslinie 3 – Grenztemperatur“, „Bezugszeichen 44“).
+Anker: Plotecken und -mitte, Ursprung und Achsschienen je Panel (`axis.x`, `axis.y`, `axis.x2` …), Datenports
+`s<Reihe>.<Punkt>` und `ref<k>` für Punktmarker.
+
+Elementaktionen: Wertlinie hinzufügen, senkrechte Markierung hinzufügen, zwischen Kurve 1 und 2 schraffieren
+(ausgegraut ohne zwei Kurven in einem Panel), Prinzipachsen (alle Achsen umschalten), Schwarz-Weiß, „Spezifikation
+(JSON)…“ (Eingabe). Teilaktionen: Kurven – Strichart, Marker, geglättete Kurve, Fläche unter der Kurve schraffieren;
+Wertlinien und Markierungen – Strichart bzw. gefüllter Kreis, „Beschriftung…“, entfernen; Flächen – Füllung,
+entfernen; Anmerkungen – „Text…“, entfernen; Achsen – Prinzipachsen, Wertlinie in diesem Panel bzw. senkrechte
+Markierung hinzufügen. Entfernen verschiebt die Indizes späterer Elemente (deren Teil-Aussehen gilt dann für das
+nächste Element).
+
+Hinweise zu den Hosts: alles nativ (Linien, Freihandformen, schraffierte Freihandformen, Text); kein Vektorbild.
+Erweiterungen des Rahmens (additiv): Höhenanteile der Panels, eigene Teilstriche (Marken), Achspfeile und Gitter je
+Panel, Panelabstand, Bildunterschrift, zusätzlicher rechter Rand und Achstexte. Noch nicht: Datentabellen-Editor
+(Portierung von Slidemax `ChartSheet`), Funktionsgeneratoren und Skizzenkurven (Stufe 3), Achsbrüche.
 
 ## Hinweise zu den Hosts
 
