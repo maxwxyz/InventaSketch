@@ -34,7 +34,10 @@ optional engineering parameters and can be checked against patent-office drawing
   and floor plans (walls, openings, rooms, stairs, furniture), diagrams (UML, ER, sequence, activity, system, BPMN),
   maps and routes, fluid power, patent figures, building services (heating, plumbing, ventilation, electrical additions
   with plan, section and schematic views of the same installation), charts and characteristic curves (XY, bar, torque–speed, efficiency map,
-  pump curve, Bode plot, tolerance bands).
+  pump curve, Bode plot, tolerance bands), process & thermal (P&ID equipment, valves, instrumentation tags, HVAC
+  items, T-s, p-v and p-h cycle diagrams), energy systems (PV, wind, storage, e-mobility, hydrogen, heat pumps, grid
+  connection and single-line diagrams across voltage levels) and robotics (articulated, SCARA, delta, gantry and mobile
+  robots posed by their joint angles, grippers and tools, reach envelopes, work cells and safety equipment).
 - **Clean UI:** light/dark/auto theme, German/English (automatic), floating context bar, right-click pie menu,
   interactive sidebar editor where the host does not allow on-slide interaction.
 

@@ -34,6 +34,23 @@ namespace InventaSketch.Engine.Tests
             Assert.All(visible, e => Assert.Equal(0.3, e.Style.EffectiveWidth, 6));
         }
 
+        /// <summary>The native draw plan (COM, web) goes through the same rendering: its line weights follow the group.</summary>
+        [Fact]
+        public void TheDrawPlanFollowsTheLineGroup()
+        {
+            var gear = Reg.Create(Reg.Library.First(i => i.TypeId == "mech.gear.spur" && i.View == "axial"), new Vec2(50, 50));
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, gear);
+            static System.Collections.Generic.IEnumerable<PlanOp> All(System.Collections.Generic.IEnumerable<PlanOp> ops)
+                => ops.SelectMany(o => new[] { o }.Concat(All(o.Children ?? new System.Collections.Generic.List<PlanOp>())));
+            double MaxWeight(SketchDocument d)
+                => All(DrawPlanBuilder.Build(new EditorSession("t", Reg, d, Lang.En), new[] { gear.Id }, DrawCapabilities.Full).Units.Single().Ops)
+                    .Where(o => o.Stroke is not null).Max(o => o.Stroke!.Weight);
+            var standard = MaxWeight(doc);
+            var heavy = MaxWeight(doc with { Settings = doc.Settings with { LineGroup = 1.0 } });
+            Assert.InRange(heavy, 2 * standard - 0.01, 2 * standard + 0.01); // plan weights are rounded
+        }
+
         [Fact]
         public void TheEngineSetsTheLineGroupAndAdoptsItFromTheSlideModel()
         {

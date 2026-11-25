@@ -60,6 +60,7 @@ Jedes Modul hat eine eigene Seite mit Elementen, Ansichten und Parametern:
 [Elektrotechnik](../modules/electrical.md), [elektrische Maschinen](../modules/machines.md),
 [Automotive](../modules/automotive.md), [Architektur](../modules/architecture.md),
 [technische Gebäudeausrüstung](../modules/building-services.md), [Fluidtechnik](../modules/fluid.md),
-[Diagramme](../modules/diagrams.md), [Karten und Routen](../modules/maps.md), [Diagramme und Kennlinien](../modules/charts.md).
+[Diagramme](../modules/diagrams.md), [Karten und Routen](../modules/maps.md), [Diagramme und Kennlinien](../modules/charts.md),
+[Verfahrens- und Wärmetechnik](../modules/process.md), [Energiesysteme](../modules/energy.md), [Robotik](../modules/robotics.md).
 Wie die Add-ins auf der Folie arbeiten (Kontextleiste, Einfügefeld mit Strg+Leertaste, Mehrfachauswahl, Baugruppen,
 Bewegungsmodus), steht je Host: [PowerPoint COM](../hosts/powerpoint-com.md), [PowerPoint im Web](../hosts/office-web.md).

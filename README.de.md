@@ -39,7 +39,11 @@ lassen sich gegen die Zeichnungsvorschriften der Patentämter prüfen und monoch
   Diagramme (UML, ER, Sequenz, Aktivität, System, BPMN), Karten und Routen, Fluidtechnik, Patentfiguren, technische
   Gebäudeausrüstung (Heizung, Sanitär, Lüftung, Elektro-Ergänzungen mit Grundriss, Schnitt und Schema derselben
   Installation), Diagramme und
-  Kennlinien (XY, Balken, Drehmoment-Drehzahl, Wirkungsgradkennfeld, Pumpenkennlinie, Bode-Diagramm, Toleranzbänder).
+  Kennlinien (XY, Balken, Drehmoment-Drehzahl, Wirkungsgradkennfeld, Pumpenkennlinie, Bode-Diagramm, Toleranzbänder),
+  Verfahrens- und Wärmetechnik (R&I-Apparate, Armaturen, PLT-Stellen, Lüftungsbauteile, T-s-, p-v- und p-h-Kreisprozesse),
+  Energiesysteme (PV, Wind, Speicher, Elektromobilität, Wasserstoff, Wärmepumpen, Netzanschluss und Einlinienschaltbilder
+  über alle Spannungsebenen) und Robotik (Knickarm-, SCARA-, Delta-, Portal- und mobile Roboter, gestellt über ihre
+  Gelenkwinkel, Greifer und Werkzeuge, Arbeitsräume, Arbeitszellen und Sicherheitstechnik).
 - **Aufgeräumte Oberfläche:** helles/dunkles/automatisches Design, Deutsch/Englisch (automatisch), schwebende
   Kontextleiste, Kreismenü per Rechtsklick, interaktiver Seitenleisten-Editor dort, wo der Host keine Interaktion auf
   der Folie erlaubt.

@@ -161,10 +161,43 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
    side views, so they do not visibly turn); the exploded differential works as one (gears loose in the case, Willis
    with the case: straight on both sides turn with the case, one side held → the other turns twice as fast); the
    `elevation`/`section` view alias for walls with building services).
-4. P2 modules: process & thermal, energy systems, robotics (in progress 2026-11-25); slide-wide style: ISO 128 line
+4. P2 modules: process & thermal (35 types), energy systems (30), robotics (25) done 2026-11-25 (engine, all hosts
+   through the catalog; module docs docs/en/modules/process.md, energy.md, robotics.md); slide-wide style: ISO 128 line
    groups and black and white as a slide style for all elements, new ones included (done 2026-11-25 in COM and web);
    open: colour accents per module.
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
+
+### Review at the end of 2026-11-25 and next steps
+
+**Done today:** LibreOffice UI/UX round (sidebar: engine search, context-only selection panel, multi-selection
+operations, page session with one undo step); the COM domain list of item 3 (cam disc part and cam mechanisms that
+explode, Ravigneaux sets, joint limits, bevel pairs and the differential in the gear train speeds, walls switching
+along with installations); three P2 modules built in parallel by agents with file ownership – process & thermal (35
+types), energy systems (30), robotics (25) –, registered in the engine and checked in PowerPoint (scenario
+`p2-modules`); ISO 128 line groups as a slide style in COM and web (scenario `line-group`).
+
+**Found by verification (and fixed):** the library search let a name prefix ("Lagertank") outrank parts fitting the
+selection – fitting parts now always lead; the differential case locked its gears in the gear train speeds – it now acts
+as a carrier; the native draw plans rendered objects on their own and ignored the line group – `Registry.RenderLocal`
+is the one rendering path now; energy single-line symbols sat off-centre so cables jogged after a view switch;
+PowerPoint scenarios read the bar from lagging log copies – the add-in now reports its bar ids directly.
+
+**Plan review – what changes in the plan:**
+- *Two rendering paths are a trap.* Every feature that changes how elements look gets a draw-plan test (the path COM and
+  web use for native shapes), not only an SVG/`Registry.Render` test.
+- *Parallel module agents work* when the coordinator owns the solution, the engine catalog and the review: every
+  gallery is looked at before merging (that is how the cable jogs were found), and every new module gets one
+  PowerPoint insert scenario.
+- *Cross-module consistency is the next quality step:* lines of fluid power, building services, process and energy do
+  not hop over each other yet; robot tools dock without the flange orientation; colour accents per module are open.
+
+**Next, in this order:**
+1. Web: check in PowerPoint on the web – needs the maintainer's dev certificate (`npm run certs` in
+   `hosts/office-web`) or an uploaded webspace package.
+2. Cross-module consistency: one crossing/hop rule for all line families, mounts with a direction (robot flange → tool),
+   colour accents per module as part of the slide style.
+3. LibreOffice: on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
+4. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 
 ### Further modules and functions worth adding
 
@@ -276,11 +309,11 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
 
 - **P1 – Charts (`chart.*`, spec §6.12):** XY/line/scatter/bar, characteristic curves (torque–speed, efficiency map),
   Bode plot, tolerance bands; data typed in or pasted from Excel; monochrome-safe.
-- **P2 – Process & thermal (`process.*`):** P&ID beyond fluid power (vessels, columns, heat exchangers, pumps,
+- **P2 – Process & thermal (`process.*`, done 2026-11-25):** P&ID beyond fluid power (vessels, columns, heat exchangers, pumps,
   instrumentation bubbles with tags), thermodynamic cycles (T-s, p-v, p-h diagrams), HVAC.
-- **P2 – Energy systems (`energy.*`):** PV, wind, battery storage, charger/wallbox, grid connection, hydrogen,
+- **P2 – Energy systems (`energy.*`, done 2026-11-25):** PV, wind, battery storage, charger/wallbox, grid connection, hydrogen,
   single-line diagrams across voltage levels.
-- **P2 – Robotics (`robot.*`):** arms from kinematic joints, frames, grippers, work cells, reach envelopes, safety zones.
+- **P2 – Robotics (`robot.*`, done 2026-11-25):** arms from kinematic joints, frames, grippers, work cells, reach envelopes, safety zones.
 - **P3 – Networks & IT (`net.*`):** servers, cloud, routers, switches, topologies, C4 context/container diagrams.
 - **P3 – Optics & physics (`optics.*`):** rays, lenses, mirrors, prisms, waves, fields.
 - **P3 – Reliability & systems engineering:** fault trees, FMEA blocks, SysML-style blocks and requirement links.

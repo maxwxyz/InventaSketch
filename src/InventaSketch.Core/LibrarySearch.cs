@@ -9,7 +9,8 @@ namespace InventaSketch.Core
     /// (both languages), keywords or category; names in the UI language that start with the query rank first, then names
     /// with a word starting with it, then other name matches, then keyword/category matches. Recently used items and
     /// items in the view of the selection rank higher. Umlauts and ß match their spelled-out forms ("stoessel" finds
-    /// "Stößel"). An empty query lists the preferred items (fitting the selection), then the recent ones.
+    /// "Stößel"). Items that fit the selection (preferred) always come
+    /// first. An empty query lists the preferred items, then the recent ones.
     /// </summary>
     public static class LibrarySearch
     {
@@ -41,7 +42,8 @@ namespace InventaSketch.Core
                 var r = IndexOf(recent, item.Id);
                 if (r >= 0) score += 30 - Math.Min(r, 10);
                 if (view is not null && item.View == view) score += 5;
-                if (liked.Contains(item.Id)) score += 40;
+                // Parts that fit the selection always come first (the insert box's promise), ranked among themselves as above.
+                if (liked.Contains(item.Id)) score += 1000;
                 hits.Add((item, score - name.Length * 0.01, order));
             }
             return hits.OrderByDescending(h => h.Score).ThenBy(h => h.Order).Take(max).Select(h => h.Item).ToList();

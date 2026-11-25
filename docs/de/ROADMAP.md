@@ -182,11 +182,47 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
    zerlegte Differential arbeitet als solches (Räder lose im Korb, Willis mit dem Korb: geradeaus drehen beide Seiten mit
    dem Korb, eine Seite festgehalten → die andere dreht doppelt so schnell); der Ansichts-Alias `elevation`/`section` für
    Wände mit Haustechnik).
-4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik (in Arbeit 25.11.2026); folienweiter Stil:
+4. P2-Module: Verfahrens- und Wärmetechnik (35 Typen), Energiesysteme (30), Robotik (25) erledigt 25.11.2026 (Engine,
+   alle Hosts über den Katalog; Moduldoku docs/de/modules/process.md, energy.md, robotics.md); folienweiter Stil:
    ISO-128-Liniengruppen und Schwarz-Weiß als Folienstil für alle Elemente, auch neue (erledigt 25.11.2026 in COM und
    Web); offen: Farbakzente je Modul.
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
    CSV).
+
+### Review am Ende des 25.11.2026 und nächste Schritte
+
+**Heute erledigt:** UI/UX-Runde in LibreOffice (Seitenleiste: Engine-Suche, kontextbezogenes Auswahl-Panel, Operationen
+für Mehrfachauswahl, Seitensitzung mit einem Rückgängig-Schritt); die COM-Liste aus Punkt 3 (Kurvenscheibe als Teil und
+zerlegbare Kurvengetriebe, Ravigneaux-Sätze, Gelenkgrenzen, Kegelradpaare und Differential in den Drehzahlen des
+Getriebezugs, Wände wechseln mit der Haustechnik die Ansicht); drei P2-Module, parallel von Agenten mit
+Dateizuständigkeit gebaut – Verfahrens- und Wärmetechnik (35 Typen), Energiesysteme (30), Robotik (25) –, in der Engine
+registriert und in PowerPoint geprüft (Szenario `p2-modules`); ISO-128-Liniengruppen als Folienstil in COM und Web
+(Szenario `line-group`).
+
+**Durch Prüfung gefunden (und behoben):** Die Bibliothekssuche ließ einen Namensanfang („Lagertank“) vor zur Auswahl
+passende Teile rutschen – passende Teile stehen jetzt immer vorn; der Differentialkorb sperrte in den Drehzahlen seine
+Räder – er wirkt jetzt als Steg; die nativen Zeichenpläne renderten selbst und übergingen die Liniengruppe –
+`Registry.RenderLocal` ist jetzt der einzige Render-Weg; Einlinien-Symbole der Energie saßen außermittig, Kabel knickten
+nach einem Ansichtswechsel; PowerPoint-Szenarien lasen die Leiste aus nachhinkenden Log-Kopien – das Add-in meldet seine
+Leisten-IDs jetzt direkt.
+
+**Plan-Review – was sich am Plan ändert:**
+- *Zwei Render-Wege sind eine Falle.* Jede Funktion, die das Aussehen ändert, bekommt einen Zeichenplan-Test (der Weg,
+  den COM und Web für native Formen nehmen), nicht nur einen SVG-/`Registry.Render`-Test.
+- *Parallele Modul-Agenten funktionieren*, wenn der Koordinator Solution, Engine-Katalog und Review behält: Jede Galerie
+  wird vor dem Merge angesehen (so wurden die Kabelknicke gefunden), und jedes neue Modul bekommt ein
+  PowerPoint-Einfügeszenario.
+- *Konsistenz über Module ist der nächste Qualitätsschritt:* Leitungen von Fluidtechnik, Haustechnik, Verfahrenstechnik
+  und Energie springen noch nicht übereinander; Roboterwerkzeuge docken ohne Flanschausrichtung an; Farbakzente je Modul
+  sind offen.
+
+**Als Nächstes, in dieser Reihenfolge:**
+1. Web: Prüfung in PowerPoint im Web – braucht das Entwicklerzertifikat des Maintainers (`npm run certs` in
+   `hosts/office-web`) oder ein hochgeladenes Webspace-Paket.
+2. Konsistenz über Module: eine Kreuzungs-/Sprungregel für alle Leitungsfamilien, Anschlüsse mit Richtung
+   (Roboterflansch → Werkzeug), Farbakzente je Modul als Teil des Folienstils.
+3. LibreOffice: Overlay auf der Arbeitsfläche (Einrasten beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
+4. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
 
 ### Weitere sinnvolle Module und Funktionen
 
@@ -312,12 +348,12 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
 - **P1 – Diagramme/Kennlinien (`chart.*`, Spezifikation §6.12):** XY/Linie/Punkte/Balken, Kennlinien
   (Drehmoment–Drehzahl, Wirkungsgradkennfeld), Bode-Diagramm, Toleranzbänder; Daten eintippen oder aus Excel einfügen;
   schwarz-weiß-tauglich.
-- **P2 – Verfahrens- und Wärmetechnik (`process.*`):** R&I-Fließbild über die Fluidtechnik hinaus (Behälter, Kolonnen,
+- **P2 – Verfahrens- und Wärmetechnik (`process.*`, erledigt 25.11.2026):** R&I-Fließbild über die Fluidtechnik hinaus (Behälter, Kolonnen,
   Wärmetauscher, Pumpen, Messstellen mit Kennzeichnung), thermodynamische Kreisprozesse (T-s-, p-v-, p-h-Diagramme),
   Klimatechnik.
-- **P2 – Energiesysteme (`energy.*`):** PV, Wind, Batteriespeicher, Ladegerät/Wallbox, Netzanschluss, Wasserstoff,
+- **P2 – Energiesysteme (`energy.*`, erledigt 25.11.2026):** PV, Wind, Batteriespeicher, Ladegerät/Wallbox, Netzanschluss, Wasserstoff,
   Übersichtsschaltpläne über Spannungsebenen.
-- **P2 – Robotik (`robot.*`):** Arme aus Kinematik-Gelenken, Koordinatensysteme, Greifer, Arbeitszellen,
+- **P2 – Robotik (`robot.*`, erledigt 25.11.2026):** Arme aus Kinematik-Gelenken, Koordinatensysteme, Greifer, Arbeitszellen,
   Reichweitenhüllen, Schutzbereiche.
 - **P3 – Netzwerke & IT (`net.*`):** Server, Cloud, Router, Switches, Topologien, C4-Kontext-/Container-Diagramme.
 - **P3 – Optik & Physik (`optics.*`):** Strahlen, Linsen, Spiegel, Prismen, Wellen, Felder.

@@ -22,6 +22,8 @@ $b = $addin.Insert('diag.er.entity.weak')
 $S.Slide.Shapes.Item($a).Left -= 180
 $S.Slide.Shapes.Item($b).Left += 120
 $S.Slide.Shapes.Item($b).Top += 60
+# Programmatic moves can swallow the next selection event: clear the selection first, then select A (as a click would).
+$S.Window.Selection.Unselect(); Start-Sleep 1
 $S.Slide.Shapes.Item($a).Select(); Start-Sleep 2
 $ra = Get-IskRect $S $a; $rb = Get-IskRect $S $b
 $before = $S.Slide.Shapes.Count

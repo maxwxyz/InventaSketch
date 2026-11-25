@@ -55,6 +55,7 @@ Each module has its own page with its elements, views and parameters:
 [electrical](../modules/electrical.md), [electric machines](../modules/machines.md),
 [automotive](../modules/automotive.md), [architecture](../modules/architecture.md),
 [building services](../modules/building-services.md), [fluid power](../modules/fluid.md),
-[diagrams](../modules/diagrams.md), [maps and routes](../modules/maps.md), [charts](../modules/charts.md).
+[diagrams](../modules/diagrams.md), [maps and routes](../modules/maps.md), [charts](../modules/charts.md),
+[process & thermal](../modules/process.md), [energy systems](../modules/energy.md), [robotics](../modules/robotics.md).
 How the add-ins work on the slide (context bar, insert box with Ctrl+Space, multi-selection, assemblies, motion mode) is
 described per host: [PowerPoint COM](../hosts/powerpoint-com.md), [PowerPoint web](../hosts/office-web.md).

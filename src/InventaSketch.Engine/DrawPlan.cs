@@ -214,8 +214,8 @@ namespace InventaSketch.Engine
             {
                 var type = registry.Type(o.Type);
                 if (type is null) { unit.Notes.Add($"{o.Id}: unknown type '{o.Type}' skipped"); continue; }
-                var local = type.Render(o, ctx);
-                if (o.Style is not null) local = local.Select(p => Prim.TextOverride(type.ApplyOverride(p, o.Style), o.Style)).ToList();
+                // Line group and the object's own style, as every renderer draws it.
+                var local = registry.RenderLocal(o, ctx);
                 var m = o.Matrix();
                 allPrims.AddRange(local.Select(p => o.IsPointGeometry ? p : Prim.Transform(p, m)));
                 if (!type.PreferNative) { needSvg = true; unit.Notes.Add($"{o.Type}: type prefers a picture"); }
