@@ -40,6 +40,28 @@ namespace InventaSketch.AddIn.OnSlide
             return true;
         }
 
+        /// <summary>Selects a part (null: the whole element) and refreshes the bar and the outline.</summary>
+        private void SelectPart(string? key)
+        {
+            _part = key;
+            Log.Info("Part: " + (key ?? "(whole element)"));
+            if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+        }
+
+        /// <summary>Tab / Shift+Tab with a part selected: the next (previous) visible part, wrapping around.</summary>
+        private void StepPart(bool back)
+        {
+            if (PartOwner() is not { } o) return;
+            var keys = _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).Where(p => !p.Hidden).Select(p => p.Key).ToList();
+            if (keys.Count == 0) return;
+            var i = _part is null ? -1 : keys.IndexOf(_part);
+            var next = i < 0 ? (back ? keys.Count - 1 : 0) : (i + (back ? keys.Count - 1 : 1)) % keys.Count;
+            SelectPart(keys[next]);
+        }
+
+        /// <summary>Selected part key, for UI tests ("" = whole element).</summary>
+        internal string SelectedPartKey() => OnUi(() => _part ?? "");
+
         private IReadOnlyList<ContextAction> PartActions(SketchObject o)
             => _part is null ? Array.Empty<ContextAction>() : _registry().PartActions(o, _part, new RenderContext(_unit!.Doc, _lang()));
 
@@ -52,7 +74,7 @@ namespace InventaSketch.AddIn.OnSlide
             if (_part is null || PartOwner() is not { } o) return null;
             var info = SelectedPartInfo(o);
             if (info is null) { _part = null; return null; }
-            var list = new List<BarButton> { new("info:part", info.Label.Get(_lang()), T("Selected part (click on the element: another part)", "Ausgewähltes Teil (Klick ins Element: anderes Teil)")) };
+            var list = new List<BarButton> { new("info:part", info.Label.Get(_lang()), T("Selected part (click or Tab: another part, Esc: whole element)", "Ausgewähltes Teil (Klick oder Tab: anderes Teil, Esc: ganzes Element)")) };
             list.Add(new BarButton("", "", "", Separator: true));
             foreach (var a in PartActions(o))
             {
@@ -97,15 +119,13 @@ namespace InventaSketch.AddIn.OnSlide
             }
             if (id.StartsWith("partsel:", StringComparison.Ordinal))
             {
-                _part = id.Substring(8);
-                if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+                SelectPart(id.Substring(8));
                 return;
             }
             var actionId = id.Substring(5);
             if (actionId == "none")
             {
-                _part = null;
-                if (_view is not null) { ShowBar(_view); DrawPointHandles(_view); }
+                SelectPart(null);
                 return;
             }
             var o = unit.Doc.ObjectsOn(unit.Doc.Pages[0]).FirstOrDefault(x => _registry().Type(x.Type) is not null);

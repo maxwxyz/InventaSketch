@@ -1615,6 +1615,7 @@ namespace InventaSketch.AddIn
         internal string ScreenRectOf(string shapeName) => _onSlide?.ScreenRectOf(shapeName) ?? "";
 
         internal string PartAtOf(string shapeName, double xPt, double yPt) => _onSlide?.PartAtOf(shapeName, xPt, yPt) ?? "";
+        internal string SelectedPartKey() => _onSlide?.SelectedPartKey() ?? "";
 
         internal string BuildPortsOf(string shapeName) => _onSlide?.BuildPortsOf(shapeName) ?? "";
 

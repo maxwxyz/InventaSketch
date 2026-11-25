@@ -210,6 +210,13 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Key of the selected chart part ("" = the whole element or no part selection).</summary>
+        public string SelectedPart()
+        {
+            try { return _connect.SelectedPartKey(); }
+            catch (Exception ex) { Log.Error("Automation.SelectedPart", ex); return ""; }
+        }
+
         /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown; "" if none yet.</summary>
         public string BarRect() => _connect.LastBarRect();
 
