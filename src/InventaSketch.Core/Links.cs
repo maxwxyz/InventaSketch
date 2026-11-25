@@ -123,10 +123,16 @@ namespace InventaSketch.Core
             return att is null ? doc : Edits.SetPoint(doc, line.Id, link.Index, p, att);
         }
 
-        /// <summary>Gear ratio i = n_self / n_other of two meshing gears (pitch radius of the other over the own).</summary>
+        /// <summary>
+        /// Gear ratio i = n_self / n_other of two meshing gears (pitch radius of the other over the own; bevel gears, which
+        /// show no pitch circle from the side: teeth of the other over the own).
+        /// </summary>
         private static double? Ratio(Registry registry, SketchDocument doc, string self, string other)
         {
             var ctx = new RenderContext(doc, Lang.En);
+            bool IsBevel(SketchObject o) => registry.PageAnchors(o, ctx).Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex);
+            if (doc.Get(self) is { } so && doc.Get(other) is { } oo && IsBevel(so) && IsBevel(oo))
+                return so.Num("teeth", 0) is var zs && oo.Num("teeth", 0) is var zo && zs > 0 && zo > 0 ? zo / zs : null;
             double? R(string id) => doc.Get(id) is { } o
                 ? registry.PageAnchors(o, ctx).FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner)?.Radius
                 : null;

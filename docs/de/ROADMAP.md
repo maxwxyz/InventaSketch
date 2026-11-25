@@ -131,7 +131,7 @@ umsetzen, dann Web, dann LibreOffice.
 - Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
   Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
   Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
-- In COM noch offen: Kegelradpaare in der Bewegung, Ravigneaux-Sätze, Zerlegen von Kurvengetrieben (braucht eine
+- In COM noch offen: Ravigneaux-Sätze, Zerlegen von Kurvengetrieben (braucht eine
   Kurvenscheibe; Differentiale zerfallen seit 25.11.2026 in Korb, Achswellen- und Ausgleichsräder), Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
   Gelenkgrenzen sind offen.
@@ -175,8 +175,9 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
 2. LibreOffice: in der Seitenleiste erledigt (25.11.2026); als Nächstes ein Overlay auf der Arbeitsfläche (Einrasten
    beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
-   Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze, Gelenkgrenzen, Kegelradpaare in der
-   Bewegung (der Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik ist erledigt, 25.11.2026).
+   Differentialkorb als Teil (dann Differentiale zerlegen), Ravigneaux-Sätze, Gelenkgrenzen (erledigt 25.11.2026: Kegelradpaare
+   in den Drehzahlen des Getriebezugs nach Zähnezahl – sie haben nur Seitenansichten und drehen sich daher nicht sichtbar –
+   und der Ansichts-Alias `elevation`/`section` für Wände mit Haustechnik).
 4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,
    Patentmodus).
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,

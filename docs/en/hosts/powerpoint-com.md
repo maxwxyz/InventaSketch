@@ -300,7 +300,8 @@ UX round (2026-11-20, from the maintainer's feedback):
 - **Motion mode ("Move" in the ribbon and in the bar of parts that can move):** dragging moves things only the way
   they can move. A gear, carrier or pulley seen along its axis turns about its centre and the whole gear train turns with
   it, live while dragging (`GearTrain`: external and internal mesh with Willis' equation for planets, parts fixed on a
-  shaft, compound gears, belts and chains, fixed carriers; open speeds are taken as 0, ring gears and carriers first, so a
+  shaft, compound gears, belts and chains, bevel pairs by their teeth (2026-11-25; bevel gears are drawn from the side only,
+  so they keep their drawing, but the ratio passes through an angle drive and the mesh tooltip shows i), fixed carriers; open speeds are taken as 0, ring gears and carriers first, so a
   ring fixed to the housing comes out). Planets orbit with their carrier; centre distances and sizes never change. A
   predefined linkage turns its input crank about its fixed pivot. Shift: 15° steps; the angle is shown at the pivot;
   release applies it (one undo step, docked lead lines follow). Not saved: PowerPoint starts in edit mode. Turning a

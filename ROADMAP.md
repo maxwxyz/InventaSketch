@@ -118,7 +118,7 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Done since in COM: bevel pairs in coupling, exploding schematic planetary sets (through the axial view), snap labels,
   Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
   selection, build "+" and "make it" in the insert box.
-- Still open in COM: bevel pairs in motion, Ravigneaux sets, exploding cam mechanisms (needs a cam disc part;
+- Still open in COM: Ravigneaux sets, exploding cam mechanisms (needs a cam disc part;
   differentials explode into a case part, side and spider gears since 2026-11-25), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
   positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are open.
 - Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
@@ -156,8 +156,9 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
    UI/UX round incl. motion mode are implemented).
 2. LibreOffice: done in the sidebar (2026-11-25); next an on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
 3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
-   (then explode differentials), Ravigneaux sets, joint limits, bevel pairs in motion (the
-   `elevation`/`section` view alias for walls with building services is done, 2026-11-25).
+   (then explode differentials), Ravigneaux sets, joint limits (done 2026-11-25: bevel pairs in the
+   gear train speeds by their teeth – they only have side views, so they do not visibly turn –, and the
+   `elevation`/`section` view alias for walls with building services).
 4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).
 5. P3: variants and states, diagram auto-layout, patent workflow panel, import (SVG/DXF, GeoJSON/GPX, CSV).
 

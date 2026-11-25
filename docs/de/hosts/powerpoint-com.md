@@ -281,7 +281,9 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
 - **Bewegungsmodus („Bewegen“ im Menüband und in der Leiste beweglicher Teile):** Ziehen bewegt nur so, wie es technisch
   geht. Ein Zahnrad, Steg oder eine Scheibe in Stirnansicht dreht sich um die eigene Mitte, und der ganze Getriebezug dreht
   live beim Ziehen mit (`GearTrain`: Außen- und Inneneingriff mit der Willis-Gleichung für Planeten, Teile fest auf einer
-  Welle, Stufenräder, Riemen und Ketten, feste Stege; offene Drehzahlen werden 0 gesetzt, Hohlräder und Stege zuerst, sodass
+  Welle, Stufenräder, Riemen und Ketten, Kegelradpaare nach Zähnezahl (25.11.2026; Kegelräder gibt es nur von der Seite, sie
+  behalten daher ihre Zeichnung, aber die Übersetzung läuft durch ein Winkelgetriebe und der Eingriffs-Tooltip zeigt i), feste
+  Stege; offene Drehzahlen werden 0 gesetzt, Hohlräder und Stege zuerst, sodass
   ein gehäusefestes Hohlrad herauskommt). Planeten laufen mit dem Steg um; Achsabstände und Größen ändern sich nie. Ein
   vordefiniertes Koppelgetriebe dreht seine Antriebskurbel um den Gestelldrehpunkt. Umschalt: 15°-Schritte; der Winkel
   steht am Drehpunkt; Loslassen übernimmt (ein Rückgängig-Schritt, angedockte Bezugslinien folgen). Nicht gespeichert:
