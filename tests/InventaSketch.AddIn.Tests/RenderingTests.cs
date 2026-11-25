@@ -90,7 +90,7 @@ namespace InventaSketch.AddIn.Tests
             Assert.True(bmp.Height > bar.Size.Height + items.Count * 50, "the list hangs below the bar");
             // Rows hit-test as dropdown entries and map to their commands.
             var b = bar.Bounds;
-            var row = new Point(b.X + 80 + 20, b.Y + bar.Size.Height + 8 + 56 * 3 + 28);
+            var row = new Point(b.X + 80 + 20, b.Y + bar.Size.Height + 8 + 64 * 3 + 32);   // rows of 32 logical px (UX review 2026-11-25)
             Assert.Equal(FloatingBar.DropBase + 3, bar.HitTest(row));
             Assert.Equal("pick:headEnd:oval", bar.IdAt(bar.HitTest(row)));
             bmp.Save(Path.Combine(Out, dark ? "dropdown-dark.png" : "dropdown-light.png"));

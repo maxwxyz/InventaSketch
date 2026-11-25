@@ -702,7 +702,7 @@ namespace InventaSketch.AddIn.OnSlide
                         if (message == WM_MOUSEMOVE)
                         {
                             var h = pie.HitTest(p);
-                            if (h != pie.Hover) { pie.Hover = h; DrawPie(view); }
+                            if (h != pie.Hover) { pie.Hover = h; DrawPie(view); ArmPieHoverOpen(pie, h, view); }
                             return false;
                         }
                         if (message is WM_LBUTTONDOWN or WM_RBUTTONDOWN)

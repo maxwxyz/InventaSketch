@@ -41,7 +41,7 @@ namespace InventaSketch.AddIn.OnSlide
         public string? Title { get; set; }
         public float Inner => (Title is null ? 28 : 42) * Scale;
         /// <summary>The ring grows with the number of entries so labels keep their room.</summary>
-        public float Outer => (Items.Count <= 6 ? 112 : Items.Count <= 8 ? 124 : 152) * Scale;
+        public float Outer => (Items.Count <= 6 ? 132 : Items.Count <= 8 ? 148 : 176) * Scale;
         public int Hover { get; set; } = -1;
 
         private double Sweep => 2 * Math.PI / Math.Max(1, Items.Count);
@@ -115,8 +115,8 @@ namespace InventaSketch.AddIn.OnSlide
 
             var sweepDeg = 360f / Math.Max(1, Items.Count);
             var sweepRad = sweepDeg * Math.PI / 180;
-            using var font = new Font("Segoe UI", 9f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
-            using var small = new Font("Segoe UI", 8f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            using var font = new Font("Segoe UI", 12f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
+            using var small = new Font("Segoe UI", 10.5f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
             using var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Near, Trimming = StringTrimming.EllipsisCharacter };
             string? hoverFull = null;
             for (var i = 0; i < Items.Count; i++)
@@ -161,7 +161,7 @@ namespace InventaSketch.AddIn.OnSlide
                     var hint = string.IsNullOrEmpty(item.Hint) || item.Hint == item.Label ? null : item.Hint;
                     hoverFull = !full && hint is not null ? item.Label + " – " + hint : !full ? item.Label : hint;
                 }
-                var icon = HasIcon(item) ? 18 * Scale : 0;
+                var icon = HasIcon(item) ? 22 * Scale : 0;
                 var gap = icon > 0 ? 3 * Scale : 0;
                 var blockH = icon + gap + textSize.Height;
                 var cx = Centre.X + (float)(Math.Cos(mid) * rc);

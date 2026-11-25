@@ -80,6 +80,32 @@ namespace InventaSketch.AddIn.OnSlide
 
         // ------------------------------------------------------------------ shared labels
 
+        /// <summary>A name cut to <paramref name="max"/> characters with "…".</summary>
+        private static string Shorten(string s, int max) => s.Length <= max ? s : s.Substring(0, max - 1).TrimEnd() + "…";
+
+        /// <summary>Opens the element's own submenu when the pointer rests on its place for half a second (UX review F1).</summary>
+        private System.Windows.Forms.Timer? _pieHoverTimer;
+
+        private void ArmPieHoverOpen(PieMenu pie, int index, SlideView view)
+        {
+            _pieHoverTimer?.Stop();
+            if (index < 0 || index >= pie.Items.Count) return;
+            var item = pie.Items[index];
+            if (!item.Enabled || item.Id != "menu:g:edit") return;
+            _pieHoverTimer ??= new System.Windows.Forms.Timer { Interval = 500 };
+            _pieHoverTimer.Tick -= PieHoverTick;
+            _pieHoverTimer.Tick += PieHoverTick;
+            _pieHoverTimer.Start();
+
+            void PieHoverTick(object? sender, EventArgs e)
+            {
+                _pieHoverTimer!.Stop();
+                _pieHoverTimer.Tick -= PieHoverTick;
+                if (_mode != Mode.Pie || _pie != pie || pie.Hover != index) return;
+                OpenPie(new POINT { X = (int)pie.Centre.X, Y = (int)pie.Centre.Y }, view, "g:edit");
+            }
+        }
+
         /// <summary>Label of a generic command, the same in bar tooltip and pie.</summary>
         private string CommandLabel(string id) => id switch
         {
@@ -307,7 +333,8 @@ namespace InventaSketch.AddIn.OnSlide
 
             // Top right: edit – the element's own commands (a selected chart part: its commands).
             var edit = new List<PieItem>();
-            var editLabel = T("Edit ▸", "Bearbeiten ▸");
+            // The element's own place carries its name ("Spur gear ▸"), so the pie says what it is about (UX review 2026-11-25, F1).
+            var editLabel = type is not null && first is not null ? Shorten(type.Name.Get(_lang()), 18) + " ▸" : T("Edit ▸", "Bearbeiten ▸");
             if (_part is not null && PartOwner() is { } owner && SelectedPartInfo(owner) is { } part)
             {
                 editLabel = part.Label.Get(_lang()) + " ▸";

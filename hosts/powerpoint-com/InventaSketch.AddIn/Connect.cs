@@ -439,8 +439,11 @@ namespace InventaSketch.AddIn
             sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
             // The check and exchange commands (maintainer 2026-11-25: the Review group moved into this menu).
-            sb.Append("<menuSeparator id=\"IskMenuSepReview\" title=\"").Append(L(T("Check and exchange", "Prüfen und Austausch"))).Append("\" />");
+            sb.Append("<menuSeparator id=\"IskMenuSepReview\" title=\"").Append(L(T("Check and share", "Prüfen und Weitergeben"))).Append("\" />");
             AppendReviewItems(sb);
+            // Sharing the slides belongs here too (maintainer 2026-11-25: send and extract slides higher up in the menu).
+            Item("IskMenuSend", T("Send slides …", "Folien senden …"), "FileSendAsAttachment");
+            Item("IskMenuSave", T("Save selected slides as a file …", "Ausgewählte Folien als Datei speichern …"), "FileSaveAs");
             sb.Append("<menuSeparator id=\"IskMenuSep0\" title=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\" />");
             Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
             Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
@@ -450,9 +453,6 @@ namespace InventaSketch.AddIn
             Item("IskLangUs", T("English (US)", "Englisch (USA)"), null);
             Item("IskLangMore", T("More languages \u2026", "Weitere Sprachen \u2026"), null);
             sb.Append("</menu>");
-            sb.Append("<menuSeparator id=\"IskMenuSep1\" />");
-            Item("IskMenuSend", T("Send slides \u2026", "Folien senden \u2026"), "FileSendAsAttachment");
-            Item("IskMenuSave", T("Save slides \u2026", "Folien speichern \u2026"), "FileSaveAs");
             sb.Append("<menuSeparator id=\"IskMenuSep2\" />");
             Item("IskMenuPlanScale", T("Plan scale of the slide \u2026", "Planma\u00dfstab der Folie \u2026"), null);
             // "About" at the end of the menu (2026-11-25; it was a button of the tools group).

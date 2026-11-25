@@ -26,13 +26,13 @@ namespace InventaSketch.AddIn.OnSlide
     internal sealed record DropItem(string Id, string Label, string? IconId, Bitmap? Icon, bool Active, bool Mirror);
 
     /// <summary>
-    /// Fade rule of the floating bar (behaviour as in Slidemax): fully opaque within 12 logical px of the bar, otherwise a
-    /// resting opacity of 0.92 that fades linearly over 180 px, measured from the smallest pointer distance seen since the
-    /// bar appeared. Below 0.1 the bar is dismissed until the next selection.
+    /// Fade rule of the floating bar (behaviour as in Slidemax, made gentler in the UX review of 2026-11-25 because a faded
+    /// bar looked inactive): fully opaque within 90 logical px of the bar, then fading linearly over 420 px, measured from
+    /// the smallest pointer distance seen since the bar appeared. Below 0.1 the bar is dismissed until the next selection.
     /// </summary>
     internal sealed class BarFade
     {
-        public const double Near = 12, Span = 180, Resting = 0.92, DismissBelow = 0.1;
+        public const double Near = 90, Span = 420, Resting = 1.0, DismissBelow = 0.1;
         private double _minDistance = double.MaxValue;
 
         public bool Dismissed { get; private set; }
@@ -75,15 +75,15 @@ namespace InventaSketch.AddIn.OnSlide
                 if (b.Separator) { _cells.Add(new Rectangle(x, pad, sep, size)); x += sep; continue; }
                 // Text buttons (view names) get a width that fits the label; symbol buttons are square; a pictogram with a
                 // label (the main action where the pictogram alone says too little) gets both.
-                var width = b.ShowLabel && b.IconId is not null ? size + (int)Math.Round(b.Glyph.Length * 6.9 * scale + 8 * scale)
-                    : b.Icon is null && b.IconId is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale))
+                var width = b.ShowLabel && b.IconId is not null ? size + (int)Math.Round(b.Glyph.Length * 7.6 * scale + 10 * scale)
+                    : b.Icon is null && b.IconId is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 7.4 * scale + 16 * scale))
                     : size;
                 if (b.Menu) width += (int)Math.Round(7 * scale);
                 _cells.Add(new Rectangle(x, pad, width, size));
                 x += width + gap;
             }
             Size = new Size(x - gap + pad, size + 2 * pad);
-            TipHeight = (int)Math.Round(26 * scale);
+            TipHeight = (int)Math.Round(30 * scale);
         }
 
         /// <summary>Height of the tooltip strip below the bar (part of the window, never hit-tested).</summary>
@@ -104,9 +104,9 @@ namespace InventaSketch.AddIn.OnSlide
             if (anchor < 0 || anchor >= _cells.Count || items.Count == 0) return;
             DropAnchor = anchor;
             DropItems = items;
-            _rowH = (int)Math.Round(28 * Scale);
+            _rowH = (int)Math.Round(32 * Scale);
             var longest = items.Max(i => i.Label.Length);
-            var width = (int)Math.Round(Math.Max(150 * Scale, 46 * Scale + longest * 6.6 * Scale));
+            var width = (int)Math.Round(Math.Max(180 * Scale, 52 * Scale + longest * 7.8 * Scale));
             var pad = (int)Math.Round(4 * Scale);
             _drop = new Rectangle(_cells[anchor].X, Size.Height + pad, width, items.Count * _rowH + 2 * pad);
         }
@@ -115,7 +115,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>Window rectangle: bar plus tooltip strip, or plus the open dropdown.</summary>
         public Rectangle WindowBounds => DropAnchor < 0
-            ? new(Bounds.X, Bounds.Y, Math.Max(Bounds.Width, (int)(260 * Scale)), Bounds.Height + TipHeight)
+            ? new(Bounds.X, Bounds.Y, Math.Max(Bounds.Width, (int)(340 * Scale)), Bounds.Height + TipHeight)
             : new(Bounds.X, Bounds.Y, Math.Max(Bounds.Width, _drop.Right + 2), Math.Max(Bounds.Height + TipHeight, _drop.Bottom + 2));
 
         /// <summary>Command id behind a hit-test index (bar button or dropdown row).</summary>
@@ -236,7 +236,7 @@ namespace InventaSketch.AddIn.OnSlide
                 g.DrawPath(p, path);
             }
             using var font = new Font("Segoe UI Symbol", 13f * Scale, GraphicsUnit.Pixel);
-            using var small = new Font("Segoe UI", 9.5f * Scale, FontStyle.Bold, GraphicsUnit.Pixel);
+            using var small = new Font("Segoe UI Semibold", 12f * Scale, FontStyle.Regular, GraphicsUnit.Pixel);
             var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
             for (var i = 0; i < Buttons.Count; i++)
             {
@@ -279,7 +279,7 @@ namespace InventaSketch.AddIn.OnSlide
                         var square = new Rectangle(content.X, content.Y, content.Height, content.Height);
                         IconPainter.Draw(g, btn.IconId, Rectangle.Inflate(square, -pad, -pad), ink, btn.Mirror);
                         using var lb = new SolidBrush(ink);
-                        using var labelFont = new Font("Segoe UI", 11f * Scale, GraphicsUnit.Pixel);
+                        using var labelFont = new Font("Segoe UI Semibold", 12.5f * Scale, GraphicsUnit.Pixel);
                         var lf = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
                         g.DrawString(btn.Glyph, labelFont, lb, new RectangleF(square.Right - 2 * Scale, content.Y, content.Right - square.Right + 2 * Scale, content.Height), lf);
                         continue;
@@ -303,7 +303,7 @@ namespace InventaSketch.AddIn.OnSlide
             // Tooltip for the hovered button, below the bar.
             if (Hover >= 0 && Hover < Buttons.Count && !string.IsNullOrEmpty(Buttons[Hover].Tip))
             {
-                using var tipFont = new Font("Segoe UI", 9f * Scale, GraphicsUnit.Pixel);
+                using var tipFont = new Font("Segoe UI", 11.5f * Scale, GraphicsUnit.Pixel);
                 var text = Buttons[Hover].Tip;
                 var sz = g.MeasureString(text, tipFont);
                 var cell = _cells[Hover];
@@ -329,8 +329,8 @@ namespace InventaSketch.AddIn.OnSlide
                 g.FillPath(b, path);
                 g.DrawPath(p, path);
             }
-            using var font = new Font("Segoe UI", 10f * Scale, GraphicsUnit.Pixel);
-            using var bold = new Font("Segoe UI", 10f * Scale, FontStyle.Bold, GraphicsUnit.Pixel);
+            using var font = new Font("Segoe UI", 12f * Scale, GraphicsUnit.Pixel);
+            using var bold = new Font("Segoe UI", 12f * Scale, FontStyle.Bold, GraphicsUnit.Pixel);
             var fmt = new StringFormat { LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisCharacter, FormatFlags = StringFormatFlags.NoWrap };
             var pad = (int)Math.Round(4 * Scale);
             for (var i = 0; i < DropItems.Count; i++)
