@@ -114,6 +114,17 @@ Die Installationsplan-Symbole orientieren sich sinngemäß an üblicher DIN/EN-P
 sich je nach Land und ist nicht normativ. Leiterplatten-Objekte sind proportional vereinfacht und enthalten keine
 Land-Pattern- oder Designregel-Daten.
 
+## Elementwerte (Calc 1)
+
+Der Widerstand (`elec.resistor`) hat die Werte *R*, *U*, *I* und *P* (technische Berechnungen, siehe
+[../design/engineering-calculations.md](../design/engineering-calculations.md), Abschnitt 10). *R* wird aus dem vorhandenen
+Text `value` gelesen („4k7", „10 kΩ", „100R"); *U*, *I* und *P* sind optionale Textparameter `voltage`, `current` und
+`power`, die das Getippte behalten („230 V"). Beziehungen: *U* = *R*·*I* und *P* = *U*·*I* = *I*²·*R* = *U*²/*R* [S7]. Zwei
+beliebige Werte ergeben die anderen beiden; drei stimmige werden als geprüft markiert, drei widersprüchliche ergeben einen
+Widerspruch, und nichts wird geändert. Ein Text in `value`, der kein Widerstand ist (z. B. „1/4 W"), wird für *R* nicht
+verwendet. Die Engine-Methoden `values`, `setValue`, `clearValue`, `explain` und `dragValue` arbeiten damit; die
+Oberfläche folgt mit Calc 2. Andere Schaltzeichen bekommen Werte mit Calc 3.
+
 ## Persistenz
 
 Der gesamte Zustand liegt im kanonischen Dokument (`type`, `view`, `params`, `points`, `attach`, `text`); es gibt keinen

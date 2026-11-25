@@ -1,6 +1,8 @@
 # Engineering values and calculations – concept and catalogue
 
-Status: concept and plan, 2026-11-25 (maintainer request). Nothing of this is implemented yet. German version:
+Status: concept and plan, 2026-11-25 (maintainer request). Calc 0 and Calc 1 (quantities, units, parser, unit
+converter and calculator, relation engine, engine API, Ohm's law on the resistor) are implemented; the design decisions
+are in section 10. Calc 2–6 are open. German version:
 [../../de/design/engineering-calculations.md](../../de/design/engineering-calculations.md).
 
 **Why.** Two maintainer requests from 2026-11-25:
@@ -655,6 +657,13 @@ never stored.
 - solver budgets of section 1.8 are met in a benchmark test
 - deterministic results (the same input gives the same trace)
 
+**Calc 0/1 addition – unit converter and calculator** (maintainer request 2026-11-25). `Units.Convert(value, from, to)`
+with kind checks and °C/°F/K offsets, the display units per kind, a safe unit-aware expression calculator
+(`UnitCalculator`: "230 V * 16 A" → 3.68 kW, "12 mm + 0.5 in", "1500 rpm in rad/s", "4k7 || 10k", "2 kWh / 230 V" → Ah)
+and the engine methods `convertUnit`, `calc` and `units`. The calculator popup (More menu, value card) comes with Calc 2.
+
+*Status:* Calc 0 and Calc 1 including the converter and calculator are done (section 10).
+
 **Calc 2 – COM user interface (Explore and Engineer).** This phase adds:
 - the level setting in the ribbon
 - the *Values* bar button
@@ -837,3 +846,151 @@ current editions.
 The existing code relations reused here are: `Linkages.Grubler` and `Linkage.Dof` (Kinematics, Core),
 `GearTrain.Speeds` and `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Process) and
 `PumpChart.OperatingPoint` (Charts).
+
+---
+
+## 10. Implementation notes: Calc 0 and Calc 1 (2026-11-25)
+
+This section records the choices made where the concept left them open. The code is the reference.
+
+### 10.1 Files
+
+| Area | Files |
+|---|---|
+| Quantities, units, lookup, conversion | `src/InventaSketch.Core/Quantities.cs` (`Dimension`, `QuantityKind`, `Unit`, `Quantities`), `Units.cs` (`UnitCatalog`, `Units`) |
+| Parser and formatter | `src/InventaSketch.Core/ValueParser.cs` (`ValueParser`, `ParsedValue`, `Tolerance`, `ValueFormat`) |
+| Calculator | `src/InventaSketch.Core/UnitCalculator.cs` |
+| Variables, relations, hooks | `src/InventaSketch.Core/Values.cs` (`VarDef`, `Relation`, `BoundRelation`, `IValueType`, `IValueLinks`, `IValueChecks`, `ValueModel`, `RootFinder`) |
+| Solver | `src/InventaSketch.Core/ValueSolver.cs` (`ValueSolver`, `ValueTable`, `ValueConflict`, `ExplainStep`) |
+| Engine API | `src/InventaSketch.Engine/EngineValues.cs` (partial `EngineApi`), DTOs in `Contracts.cs` |
+| Demonstrator | `src/InventaSketch.Modules.Electrical/ElecValues.cs` (resistor) |
+
+### 10.2 Quantities and units
+
+- **Dimension** has six exponents: length, mass, time, current, temperature and **plane angle**. SI treats the radian as
+  1, but tracking it keeps a speed of rotation (min⁻¹, rad/s) apart from a frequency (Hz) and makes "1500 rpm in rad/s"
+  convert with 2π. Internally a speed of rotation is in rad/s, so *P* = *T*·*n* holds in SI without a 2π factor. Where a
+  product needs the SI view (N·m × rad/s = W), the angle exponent is dropped when the result is named; rpm ↔ Hz stays
+  refused.
+- **Kinds** (39): ratio, efficiency, count, voltage, current, power, apparent and reactive power, heat flow, resistance,
+  capacitance, inductance, charge, resistivity, frequency, speed of rotation, angle, time, length, area, volume, mass,
+  force, torque, energy, speed, acceleration, pressure, volume flow, mass flow, temperature, temperature difference,
+  density, specific heat, heat transfer coefficient, irradiance, kinematic viscosity, moment of inertia, spring rate.
+  Torque and energy, power and heat flow, temperature and temperature difference share a dimension and are separate
+  kinds. The first unit of a kind is its default display unit (charge: Ah, speed of rotation: min⁻¹, temperature: °C).
+- **Units** have a factor and an offset to SI and an explicit list of SI prefixes they accept and show (Ω takes µ m k M
+  G, F takes p n µ m). Squared and compound units (mm², kN·m, l/min) are listed explicitly and take no prefixes.
+- **Lookup order:** exact spelling, prefix + exact spelling, then case-insensitive spelling (so "10 KW" and "1010 MM"
+  still work). Spellings are normalised: blanks and `^` removed, superscripts as digits (mm2 = mm^2 = mm²), `*`, `⋅`
+  and `.` between letters as `·` (and also without it: Nm = N·m), µ for u in prefixes, Ω sign, `º` and `℃`.
+
+### 10.3 Parser and formatter
+
+- A **bare number** takes the field's display unit (`VarDef.Unit`). A **letter code** ("4k7", "2n2", "R47") or a bare
+  prefix ("10k", "2.5k") multiplies the kind's coherent unit (Ω, F, V …), as the code means. The letter R as decimal
+  marker is accepted for resistances only.
+- **Fractions:** a `/` or `:` followed by a number separates values ("230/12 V", "20/0,4"); a `/` followed by a letter
+  belongs to a unit ("1500/min", "40 l/min"). For dimensionless kinds the result is the quotient; otherwise `Parts` holds
+  every value and `Value` the first. Parts without a unit take the unit typed last.
+- **Tolerances:** "±5 %", "+/-5%", "−20/+80 %", "±0,1 V" (absolute), and a trailing "1%" after a value ("10k 1%") for
+  kinds that have no % unit themselves (on an efficiency field "97 %" is the value).
+- **Temperature difference** accepts K; "°C" only in German (section 1.3), shown as K.
+- **Numbers:** decimal comma or point; with both, the later one is the decimal separator; repeated separators are
+  thousands separators (the rules of the former chart parser, now `ValueParser.TryNumber`).
+- **Display:** `ValueFormat.Format` rounds to significant digits (default 3), picks the prefix from the unit's list that
+  keeps the number in [1, 1000) after rounding (999.7 W → "1 kW"), trims trailing zeros unless asked to keep them (the
+  formula lines keep them: "2.00 A"), and uses the decimal comma in German. Format → parse round-trips within the shown
+  digits (tested for EN and DE).
+
+### 10.4 Unit converter and calculator
+
+- `Units.Convert(value, from, to)` is **kind-strict**: m → kg and also N·m → J are refused with a bilingual message
+  (`TryConvert`). `Units.DisplayUnits(kind)` lists a kind's units.
+- `UnitCalculator` is a recursive-descent parser (no code execution; at most 500 characters and 64 nesting levels):
+  numbers in both languages and letter codes, every catalogue unit and products/quotients of them ("kg·m/s²", "V/A",
+  "m3/h"), `+ − · × * / ÷ ^ ² ³`, `||` or `∥` (parallel), parentheses, sqrt/√, abs, sin, cos, tan (radians or an angle),
+  ln, lg/log, exp, π, and a trailing conversion "in/to/as/into/nach/->/→ unit" (the last one whose rest is a unit, so
+  "12 mm + 0.5 in" keeps the inch). It is **dimension-based**: sums need equal dimensions, conversions the same dimension
+  (the angle may be dropped, except rpm ↔ Hz).
+- **Result unit:** a sum keeps the unit typed first ("12 mm + 0.5 in" → 24.7 mm); otherwise the first kind with the
+  result's dimension names it (power before heat flow, energy before torque) in its default unit with the best prefix;
+  without a kind the coherent SI unit is written out. Temperatures typed in °C/°F are absolute: their difference is a
+  difference in K, a difference added keeps °C, two absolute temperatures cannot be added. Default precision is 4
+  significant digits.
+- The engine method is called `convertUnit`, because `convert` already converts elements between types.
+
+### 10.5 Relation engine
+
+- **Type contract.** Instead of new virtual members on `ObjectType` (`Modules.cs` is shared with parallel work), a type
+  implements `IValueType { Variables; Relations }`; `ValueModel.Variables(type)` returns an empty list for every other
+  type. That matches "default empty" in the plan. Port relations come from `IValueLinks.ValueLinks(o, ctx)` (the hook for
+  Calc 3/4: objects referenced by a link join the solver scope, breadth first), checks from `IValueChecks.ValueChecks`.
+- **`VarDef`:** key, bilingual name and symbol, kind, display unit, bound parameter (default: the key), stored unit of a
+  number parameter (e.g. kV), relevance, default (SI) and typical range (SI; also the bracket for a numeric solution).
+- **Storage decision (as in the plan):** entered values live in the **parameters**, no new model field, so old
+  documents are unchanged. A text parameter keeps the text as typed ("4k7 ±5 %", "230 V"); a number parameter holds the
+  number in its stored unit. New value parameters are optional text `ParamDef`s with a unit hint. Stored texts are read
+  leniently (German rules); a text that is not a value of the kind (e.g. "BC547") counts as not entered and the error is
+  reported. Derived values are never stored.
+- **`Relation`:** id, bilingual name, formula with keys in braces ("{U} = {R}·{I}"), explicit solvers per variable with
+  their expression ("{U}/{I}", used for the explanation), optional residual for a bracketed Brent search, relative
+  tolerance (default 1e-6), source id, validity, and `IsLink` for pass-through port relations (`Relation.Equality`).
+  Redundant forms are declared explicitly (*P* = *U*·*I* = *I*²·*R* = *U*²/*R*), so that any two values are enough for
+  local propagation.
+- **Solver** (`ValueSolver.Solve(doc, registry, ids, options)`): scope = given ids (default: the first page) plus
+  linked objects; relations in scope order, local before links; a work list solves every relation with exactly one
+  unknown (each variable once); each value records its relation, inputs and the set of entered/default values it rests
+  on (its *roots*). A fully known relation is an **independent check** only if one of its variables carries information
+  the others do not (its roots are not covered by theirs); a passed independent check gives the status *checked* (✓), a
+  failed one a **conflict** with the variable's value, the implied value and the entered values involved. Defaults are
+  tried one at a time after propagation and withdrawn when they lead to a conflict. `Missing(id)` lists the smallest sets
+  (up to three) of further variables that would determine the element. The time budget (default 50 ms) stops the pass
+  and sets `Truncated`. `Overrides` solve with a value as if entered, without touching the document (drag preview).
+- **Status per element:** empty, under, determined, checked, conflict.
+- **Explanation:** one line per derived value of the chain, inputs first: "R = U/I = 230 V/2.00 A = 115 Ω"; entered
+  values as typed ("R = 4k7"); numeric solutions "x = 2 (solved numerically: y = x³ + x)".
+- **Measured:** 1000 resistors with two entered values each (4000 relations, 2000 texts parsed) solve in about 26–35 ms
+  on .NET 10 in Release on a busy development machine (test `ThousandResistorsSolveWithinTheBudget`: best of six runs,
+  limit 50 ms in Release, 150 ms in Debug builds). The WebAssembly budget (200 ms) is not measured yet.
+
+### 10.6 Engine API (additive)
+
+| Method | Request | Result |
+|---|---|---|
+| `values` | `session`, `id` or `ids` (default: page), `lang`, `digits` | `objects[]`: `id`, `status`, `hint` ("1 more value: R, I or P", "✓", "Conflict: …"), `vars[]` (key, name, symbol, kind, relevance, unit + factor/offset, units, value SI, number, display, text, provenance, formula, relation, source, tolerance, error, conflict, param), `missing`, `conflicts[]` (relation, formula, key, value/implied with texts, involved, message); `elapsedMs`, `truncated` |
+| `setValue` | `id`, `key`, `text` | state; one undo step; wrong kind/unknown unit → bilingual error; empty text clears |
+| `clearValue` | `id`, `key` | state; one undo step |
+| `explain` | `id`, `key`, `digits` | `steps[]` and `text` |
+| `dragValue` | `id`, `key`, `value` (SI) or `text`, `preview` | preview: like `values`, document unchanged; release: stores the formatted value, one undo step |
+| `checks` | `ids` (default: page) | violated checks (empty until Calc 3 adds rules) |
+| `convertUnit` | `value` + `fromUnit` + `unit`, or `text` (+ `quantityKind`) + `unit` | `value`, `unit`, `text`, `kind`, `units` |
+| `calc` | `text`, `lang`, `digits` (default 4) | `value` (SI), `dimension`, `kind`, `unit`, `number`, `text`, `steps` |
+| `units` | `quantityKind` (optional) | kinds with name, dimension and display units |
+
+### 10.7 Demonstrator: resistor
+
+`elec.resistor` has *R* (from the existing `value` text, so "4k7" on the label is the resistance), *U*, *I* and *P* (new
+optional text parameters `voltage`, `current`, `power`). Any two give the others; three that agree give ✓; three that
+disagree give a conflict that names both values and changes nothing. A `value` text that is not a resistance (e.g. "1/4
+W") is ignored for *R*.
+
+### 10.8 Parsers that now delegate
+
+| Former parser | Now | Behaviour |
+|---|---|---|
+| Charts `Fmt.ParseInput`, `ChartData.TryNumber` | `ValueParser.ParseNumber`, `ValueParser.TryNumber` | identical code moved to Core |
+| Energy `Act.Number` | number via `ValueParser.TryNumber` (suffix and clamping unchanged) | additionally accepts thousands separators |
+| Building services `Bs.ParseMm`, Architecture `Arch.ParseMm` | `ValueParser.ParseMillimetres` (Architecture still rejects ≤ 0) | additionally accepts any length unit (km, in, ft) and blanks as thousands separators |
+
+Not switched (different purpose): Energy `Fmt.ParseRatio` (voltage lists in kV; `ValueParser` reads "20/0,4 kV" the same
+way and can replace it when the transformer gets values), `ChartBreaks.ParseInput` (ranges), `FunctionExpression`
+(chart formulas in x; the calculator is separate) and the import number test in `Imports.cs`.
+
+### 10.9 Open for later phases
+
+- Calc 2 (COM): the level setting (*Off · Explore · Engineer*) needs a document setting; the card, pie entries,
+  inspector section, grips, formula view and the calculator popup use the API above. Undo: `setValue`, `clearValue` and
+  a released `dragValue` are one step each; a "keep U and I, derive R" pick is one `clearValue`.
+- Calc 6: interval results from tolerances (tolerances are parsed and kept, not yet propagated), mute list, unit
+  preferences, E-series decision.
+- The `value.range` check ("typo?") can use `VarDef.Min/Max` when the check catalogue starts (Calc 3).

@@ -49,7 +49,7 @@ namespace InventaSketch.Modules.Electrical
     /// Data-driven box object type used for all electrical symbols: views (each with its own drawing), pins
     /// (<see cref="AnchorRole.Port"/> anchors), optional parameters, designator/value labels and context actions.
     /// </summary>
-    internal sealed class ElecType : ObjectType
+    internal sealed class ElecType : ObjectType, IValueType
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -115,6 +115,10 @@ namespace InventaSketch.Modules.Electrical
         }
 
         public IReadOnlyList<ViewSpec> ViewSpecs => _views;
+
+        /// <summary>Element values (Calc 1, <see cref="ElecValues"/>); empty for symbols without relations.</summary>
+        public IReadOnlyList<VarDef> Variables { get; init; } = Array.Empty<VarDef>();
+        public IReadOnlyList<Relation> Relations { get; init; } = Array.Empty<Relation>();
 
         public override IReadOnlyList<ParamDef> Parameters
         {

@@ -122,34 +122,7 @@ namespace InventaSketch.Modules.Charts
         /// Reads a number in invariant culture or with a German decimal comma; thousands separators, unicode minus, a
         /// trailing "%" and exponents are accepted. Quoted fields are text (false).
         /// </summary>
-        public static bool TryNumber(string? token, out double value)
-        {
-            value = double.NaN;
-            if (token is null) return false;
-            var t = token.Trim();
-            if (t.Length == 0 || t[0] == '"') return false;
-            t = t.Replace(" ", "").Replace(" ", "").Replace(" ", "").Replace("'", "").Replace(" ", "").Replace('−', '-');
-            if (t.EndsWith("%", StringComparison.Ordinal)) t = t.Substring(0, t.Length - 1);
-            if (t.Length == 0) return false;
-            var comma = t.LastIndexOf(',');
-            var dot = t.LastIndexOf('.');
-            if (comma >= 0 && dot >= 0)
-            {
-                // Both: the later one is the decimal separator.
-                t = comma > dot ? t.Replace(".", "").Replace(',', '.') : t.Replace(",", "");
-            }
-            else if (comma >= 0)
-            {
-                t = t.Count(c => c == ',') == 1 ? t.Replace(',', '.') : t.Replace(",", "");
-            }
-            else if (dot >= 0 && t.Count(c => c == '.') > 1)
-            {
-                t = t.Replace(".", ""); // "1.234.567": German thousands separators
-            }
-            if (!double.TryParse(t, NumberStyles.Float, CultureInfo.InvariantCulture, out var v) || !Fmt.Finite(v)) return false;
-            value = v;
-            return true;
-        }
+        public static bool TryNumber(string? token, out double value) => ValueParser.TryNumber(token, out value);
 
         /// <summary>
         /// XY series of the data: per block, rows "x;y" (one series), "x;y1;y2;…" (one series per y column, names from the

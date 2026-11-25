@@ -82,6 +82,162 @@ namespace InventaSketch.Engine
         public List<double[]>? Points { get; set; }
         /// <summary>moveHandle: true computes the dragged handle (snapped value, position) without changing the document.</summary>
         public bool? Preview { get; set; }
+        /// <summary>values, explain, calc: significant digits of formatted values (default 3; calc 4).</summary>
+        public int? Digits { get; set; }
+        /// <summary>convertUnit: the unit of <see cref="Value"/> (when no <see cref="Text"/> with a unit is given).</summary>
+        public string? FromUnit { get; set; }
+        /// <summary>convertUnit: the target unit.</summary>
+        public string? Unit { get; set; }
+        /// <summary>convertUnit, units: quantity kind id (<see cref="InventaSketch.Core.Quantities"/>).</summary>
+        public string? QuantityKind { get; set; }
+    }
+
+    /// <summary>One variable of an element with its value (values, dragValue preview). Numbers in SI and in the display unit.</summary>
+    public sealed class VarInfo
+    {
+        public string Key { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Symbol { get; set; } = "";
+        /// <summary>Quantity kind id ("voltage").</summary>
+        public string Kind { get; set; } = "";
+        /// <summary>"card", "panel" or "engineer".</summary>
+        public string Relevance { get; set; } = "card";
+        /// <summary>Display unit ("V"); <see cref="UnitFactor"/>/<see cref="UnitOffset"/> convert: SI = number · factor + offset.</summary>
+        public string Unit { get; set; } = "";
+        public double UnitFactor { get; set; } = 1;
+        public double UnitOffset { get; set; }
+        /// <summary>Allowed display units of the kind, default first.</summary>
+        public List<string> Units { get; set; } = new();
+        /// <summary>SI value; null when unknown.</summary>
+        public double? Value { get; set; }
+        /// <summary>The value in the display unit.</summary>
+        public double? Number { get; set; }
+        /// <summary>Formatted value with the best prefix ("4.7 kΩ"); empty when unknown.</summary>
+        public string Display { get; set; } = "";
+        /// <summary>The stored text as typed (entered text parameters, e.g. "4k7").</summary>
+        public string? Text { get; set; }
+        /// <summary>"unknown", "entered", "default", "linked" or "derived".</summary>
+        public string Provenance { get; set; } = "unknown";
+        /// <summary>Derived/linked: the formula ("R = U/I") and the relation id and source.</summary>
+        public string? Formula { get; set; }
+        public string? Relation { get; set; }
+        public string? Source { get; set; }
+        /// <summary>Tolerance of an entered value (relative: fractions; absolute: SI).</summary>
+        public Tolerance? Tolerance { get; set; }
+        /// <summary>Parse error of a stored text (the value then counts as not entered).</summary>
+        public string? Error { get; set; }
+        public bool Conflict { get; set; }
+        /// <summary>The parameter the value is stored in.</summary>
+        public string Param { get; set; } = "";
+    }
+
+    /// <summary>A relation that disagrees (values never change by themselves; the user picks what to keep).</summary>
+    public sealed class ConflictInfo
+    {
+        public string Relation { get; set; } = "";
+        public string Formula { get; set; } = "";
+        public string ObjectId { get; set; } = "";
+        public string Key { get; set; } = "";
+        /// <summary>SI value of the variable and the value the relation implies from the others.</summary>
+        public double Value { get; set; }
+        public double Implied { get; set; }
+        public string ValueText { get; set; } = "";
+        public string ImpliedText { get; set; } = "";
+        /// <summary>Entered values involved, as "objectId.key".</summary>
+        public List<string> Involved { get; set; } = new();
+        /// <summary>One-line message ("U = R·I: 230 V entered, 200 V from R and I").</summary>
+        public string Message { get; set; } = "";
+    }
+
+    /// <summary>The values of one element.</summary>
+    public sealed class ObjectValues
+    {
+        public string Id { get; set; } = "";
+        /// <summary>"empty", "under", "determined", "checked" or "conflict".</summary>
+        public string Status { get; set; } = "empty";
+        public List<VarInfo> Vars { get; set; } = new();
+        /// <summary>Smallest sets of variable keys that would determine the element ("one more value: I, R or P").</summary>
+        public List<List<string>> Missing { get; set; } = new();
+        public List<ConflictInfo> Conflicts { get; set; } = new();
+        /// <summary>Short bilingual hint for the card ("1 more value: I, R or P", "✓", "Conflict: …").</summary>
+        public string Hint { get; set; } = "";
+    }
+
+    /// <summary>Result of values / dragValue preview.</summary>
+    public sealed class ValuesResult
+    {
+        public List<ObjectValues> Objects { get; set; } = new();
+        public double ElapsedMs { get; set; }
+        public bool Truncated { get; set; }
+    }
+
+    /// <summary>One line of the step-by-step formula view.</summary>
+    public sealed class ExplainStepInfo
+    {
+        public string ObjectId { get; set; } = "";
+        public string Key { get; set; } = "";
+        public string Provenance { get; set; } = "";
+        public string Symbol { get; set; } = "";
+        public string Symbolic { get; set; } = "";
+        public string Substituted { get; set; } = "";
+        public string Result { get; set; } = "";
+        public string Text { get; set; } = "";
+        public string? Relation { get; set; }
+        public string? Source { get; set; }
+    }
+
+    public sealed class ExplainResult
+    {
+        public string Id { get; set; } = "";
+        public string Key { get; set; } = "";
+        public List<ExplainStepInfo> Steps { get; set; } = new();
+        /// <summary>All lines joined with line breaks.</summary>
+        public string Text { get; set; } = "";
+    }
+
+    /// <summary>A violated plausibility check (overlay only, never changes anything).</summary>
+    public sealed class CheckInfo
+    {
+        public string Id { get; set; } = "";
+        public string ObjectId { get; set; } = "";
+        /// <summary>"info", "hint" or "warning".</summary>
+        public string Severity { get; set; } = "hint";
+        public string Message { get; set; } = "";
+        public string Rule { get; set; } = "";
+        public string? Source { get; set; }
+    }
+
+    /// <summary>Result of convertUnit.</summary>
+    public sealed class ConvertUnitResult
+    {
+        public double Value { get; set; }
+        public string Unit { get; set; } = "";
+        public string Text { get; set; } = "";
+        public string Kind { get; set; } = "";
+        /// <summary>Display units of the kind, default first.</summary>
+        public List<string> Units { get; set; } = new();
+    }
+
+    /// <summary>Result of calc (unit-aware calculator).</summary>
+    public sealed class CalcResultInfo
+    {
+        /// <summary>SI value and its dimension ("kg·m²·s⁻³").</summary>
+        public double Value { get; set; }
+        public string Dimension { get; set; } = "";
+        public string? Kind { get; set; }
+        public string Unit { get; set; } = "";
+        public double Number { get; set; }
+        public string Text { get; set; } = "";
+        public List<string> Steps { get; set; } = new();
+    }
+
+    /// <summary>A quantity kind with its display units (units).</summary>
+    public sealed class QuantityKindInfo
+    {
+        public string Id { get; set; } = "";
+        public string Name { get; set; } = "";
+        public string Dimension { get; set; } = "";
+        public List<string> Units { get; set; } = new();
     }
 
     /// <summary>A drag handle of an element (<see cref="InventaSketch.Core.DragHandle"/>), positions in page mm.</summary>

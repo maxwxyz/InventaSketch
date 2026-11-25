@@ -14,7 +14,7 @@ namespace InventaSketch.Engine
     /// exceptions by the typed methods; <see cref="Call"/> wraps results and errors in an envelope
     /// <c>{"ok":true,"result":…}</c> / <c>{"ok":false,"error":"…"}</c> for hosts that cannot catch .NET exceptions.
     /// </summary>
-    public sealed class EngineApi
+    public sealed partial class EngineApi
     {
         private static readonly Lazy<EngineApi> LazyDefault = new(() => new EngineApi(ModuleCatalog.CreateDefault()));
         private readonly Dictionary<string, Func<EngineRequest, object?>> _methods;
@@ -126,6 +126,7 @@ namespace InventaSketch.Engine
                 ["motionDrag"] = MotionDragCore,
                 ["motionPreview"] = MotionPreviewCore,
             };
+            RegisterValueMethods();
         }
 
         /// <summary>Shared instance with <see cref="ModuleCatalog.CreateDefault"/>.</summary>

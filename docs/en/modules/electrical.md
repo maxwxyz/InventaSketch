@@ -107,6 +107,17 @@ Value text is edited in the inspector (`value`, `ref`); the context action canno
 House installation symbols follow common DIN/EN floor-plan practice in spirit; their exact appearance varies between
 countries and is not normative. PCB objects are proportionally simplified and imply no land-pattern or design-rule data.
 
+## Element values (Calc 1)
+
+The resistor (`elec.resistor`) has the values *R*, *U*, *I* and *P* (engineering calculations, see
+[../design/engineering-calculations.md](../design/engineering-calculations.md), section 10). *R* is read from the existing
+`value` text ("4k7", "10 kΩ", "100R"); *U*, *I* and *P* are optional text parameters `voltage`, `current` and `power`
+that keep what was typed ("230 V"). Relations: *U* = *R*·*I* and *P* = *U*·*I* = *I*²·*R* = *U*²/*R* [S7]. Any two values
+give the other two; three that agree are marked as checked, three that disagree give a conflict and nothing is changed.
+A `value` text that is no resistance (e.g. "1/4 W") is ignored for *R*. The engine methods `values`, `setValue`,
+`clearValue`, `explain` and `dragValue` work on it; the user interface follows with Calc 2. Other symbols get values with
+Calc 3.
+
 ## Persistence
 
 All state is in the canonical document (`type`, `view`, `params`, `points`, `attach`, `text`); there is no hidden
