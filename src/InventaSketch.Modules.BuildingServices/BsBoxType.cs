@@ -29,7 +29,7 @@ namespace InventaSketch.Modules.BuildingServices
     /// height) and <c>schematic</c> (riser/flow diagram symbol). Plan and the elevation views share the x extent (the box
     /// width is kept when the view changes); the height of the box follows the preferred size of the target view.
     /// </summary>
-    internal sealed class BsBoxType : ObjectType
+    internal sealed class BsBoxType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         /// <summary>Installations switch plan ↔ section ↔ schematic together (<see cref="ServiceViews"/>).</summary>
         public override IAssemblyViewSwitch? AssemblyViewSwitch => ServiceViews.Rule;
@@ -67,7 +67,19 @@ namespace InventaSketch.Modules.BuildingServices
         public override IReadOnlyList<string> Companions => CompanionIds;
 
         public override IReadOnlyList<ParamDef> Parameters =>
-            Params.Concat(new[] { Pm.Height(DefaultHeight), Pm.Scale }).ToList();
+            Params.Concat(new[] { Pm.Height(DefaultHeight), Pm.Scale }).Concat(ValueSpec.Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 4, BsValues)
+
+        /// <summary>Variables, relations, value parameters, port roles and checks of this type (empty for elements without values).</summary>
+        internal BsValues.Spec ValueSpec => BsValues.For(_id);
+
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : BsValues.Links(o, ctx);
 
         /// <summary>Type-specific parameters (before height and scale).</summary>
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();

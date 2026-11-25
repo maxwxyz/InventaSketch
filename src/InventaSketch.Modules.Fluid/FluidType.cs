@@ -51,7 +51,7 @@ namespace InventaSketch.Modules.Fluid
     /// (<see cref="AnchorRole.Port"/> anchors with port names), optional parameters (including the hydraulic/pneumatic
     /// medium), a designator label, port name labels and context actions.
     /// </summary>
-    internal sealed class FluidType : ObjectType
+    internal sealed class FluidType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -112,9 +112,23 @@ namespace InventaSketch.Modules.Fluid
                 if (MediumDefault is not null) list.Add(Common.MediumParam(MediumDefault));
                 if (Labeled) { list.Add(Common.Ref); list.Add(Common.ShowLabel); }
                 if (Ports is not null) list.Add(Common.ShowPorts);
+                list.AddRange(ValueSpec.Params);
                 return list;
             }
         }
+
+        // ------------------------------------------------------------------ element values (Calc 4, FluidValues)
+
+        /// <summary>Variables, relations, value parameters, port roles and checks of this type (empty for symbols without values).</summary>
+        internal FluidValues.Spec ValueSpec => FluidValues.For(_id);
+
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+
+        /// <summary>Net links (flow, pressure) for every element on a fluid net; elements without values take part as pass-through only.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+            => ValueSpec.Variables.Count == 0 ? Array.Empty<BoundRelation>() : FluidValues.Links(o, ctx);
 
         public ViewSpec Spec(string? view) => _views.FirstOrDefault(v => v.Id == view) ?? _views[0];
         public ViewSpec Spec(SketchObject o) => Spec(ViewOf(o));

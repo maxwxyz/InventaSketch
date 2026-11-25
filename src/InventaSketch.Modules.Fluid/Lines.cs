@@ -177,7 +177,7 @@ namespace InventaSketch.Modules.Fluid
     /// as a point object between ports. Orthogonal routing leaves attached ports perpendicular to the symbol edge; the
     /// routed path is a rail, so other line ends and junction dots dock anywhere on it.
     /// </summary>
-    internal sealed class FluidLineType : ObjectType
+    internal sealed class FluidLineType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         public const string TypeId = "fluid.line";
 
@@ -207,7 +207,14 @@ namespace InventaSketch.Modules.Fluid
         public override IReadOnlyList<ViewDef> Views => ViewList;
         private static readonly ParamDef Hops = Flag("hops", T("Hops at crossings", "Brücken an Kreuzungen"), true);
 
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Routing.Param(), Hops };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Routing.Param(), Hops }.Concat(FluidValues.For(TypeId).Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 4, FluidValues)
+
+        public IReadOnlyList<VarDef> Variables => FluidValues.For(TypeId).Variables;
+        public IReadOnlyList<Relation> Relations => FluidValues.For(TypeId).Relations;
+        public IEnumerable<ValueCheck> ValueChecks => FluidValues.For(TypeId).Checks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => FluidValues.Links(o, ctx);
         /// <summary>Working, pilot, drain lines and hoses all carry the fluid (build "+" at their free ends, <see cref="Building"/>).</summary>
         public override string? LineMedium(SketchObject line) => PortMedia.Fluid;
         public override bool InsertablePoints => true;

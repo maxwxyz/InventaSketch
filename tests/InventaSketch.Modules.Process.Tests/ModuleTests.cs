@@ -195,6 +195,8 @@ namespace InventaSketch.Modules.Process.Tests
             foreach (var t in r.Types)
                 foreach (var p in t.Parameters)
                 {
+                    // Engineering values (Calc 4) are optional texts: empty means "not entered".
+                    if (p.Kind == ParamKind.Text && ValueModel.Variables(t).Any(v => v.ParamKey == p.Key)) continue;
                     Assert.True(p.Default.HasValue, t.Id + "." + p.Key + " needs a default (Quick Sketch first)");
                     if (p.Kind == ParamKind.Choice) Assert.Contains(p.Options!, o => o.Value == p.Default!.Value.Text);
                     if (p.Kind is ParamKind.Number or ParamKind.Integer)

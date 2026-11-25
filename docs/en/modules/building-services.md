@@ -158,6 +158,54 @@ Mounting height… (input, every element), medium/kind as choices ▾ (pipe, duc
 flow arrow and hops (pipe), air flow arrow (duct), more/fewer circuits (manifold), heating coil (water heater),
 riser direction.
 
+## Engineering values (Calc 4)
+
+Values are optional: every element still inserts and scales without them. They are entered and shown with the Values
+card (*Edit ▸ Values ▸*, the *Values* button in Explore and Engineer) and stored in optional text parameters
+(engineering section of the inspector); the existing number parameters `dn` (pipe), `width` (duct) and `spacing` (floor
+loop) are read as values. Water: ρ = 1000 kg/m³ and *c* = 4.19 kJ/(kg·K) as defaults; air: ρ·*c*_p = 0.34 W·h/(m³·K).
+Card variables come first. Design notes:
+[engineering-calculations.md, section 13](../design/engineering-calculations.md#13-implementation-notes-calc-4-fluid-process-building-services-energy-2026-11-25).
+
+| Element | Variables (parameter) | Local relations [source] |
+|---|---|---|
+| Boiler | Φ (`heatOutput`), θ_F (`flowTemp`), θ_R (`returnTemp`), *V̇* (`flowRate`, l/h); engineer ρ (`density`), *c* (`specificHeat`) | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
+| Heat pump (outdoor unit) | Φ, *P*_el (`powerEl`), COP (`cop`), θ_F; panel θ_Q (`sourceTemp`), θ_R, *V̇*; engineer ρ, *c* | Φ = COP·*P*_el [S32]; Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
+| Radiator | Φ, Φ₅₀ (`phi50`), θ_F, θ_R; panel *V̇*, θ_i (`roomTemp`, default 20 °C), *n* (`exponent`, default 1.3), Δθ_ln (`excessTemp`); engineer ρ, *c* | Δθ_ln = (θ_F − θ_R)/ln((θ_F − θ_i)/(θ_R − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (EN 442-2 characteristic [S31]); Φ = ρ·*c*·*V̇*·(θ_F − θ_R); operating point ρ·*c*·*V̇*·(θ_F − θ_R) = Φ₅₀·(Δθ_ln/50 K)^*n*, solved numerically for θ_R [S31] |
+| Underfloor heating loop | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; panel θ_F, θ_R, *s* (`spacing`), *L* (`loopLength`); engineer ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_F − θ_R); *L* ≈ *A*/*s* [S30] |
+| Circulator pump | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); panel *P*_hyd (`powerHyd`); engineer ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
+| Mixing valve (3-way) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
+| Water heater (storage cylinder) | *V* (`volume`), Δθ (`deltaT`), *Q* (`heat`), *P* (`power`); panel *t* (`heatUpTime`); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (no losses) [S29] |
+| Air terminal | *V̇* (`flowRate`, m³/h), *A* (`roomArea`), *n* (`airChange`, per hour), *V* (`roomVolume`); panel *h* (`roomHeight`, default 2.5 m) | *V* = *A*·*h*; *V̇* = *n*·*V*/1 h [S30] |
+| Ventilation unit with heat recovery | *V̇*_SUP (`flowSupply`), η_t (`recovery`), θ_SUP (`tempSupply`), Φ_WRG (`heatRecovered`); panel *V̇*_ETA (`flowExtract`), θ_ODA (`tempOutdoor`), θ_ETA (`tempExtract`) | θ_SUP = θ_ODA + η_t·(θ_ETA − θ_ODA); Φ = 0.34 W·h/(m³·K)·*V̇*_SUP·(θ_SUP − θ_ODA) [S30] |
+| Pipe | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); panel DN (`dn`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN when no inner diameter is entered (50 % tolerance, DN is a nominal size) [S30] |
+| Air duct | *V̇*, *d* (`width`, diameter or width), *v*, *A* (`crossSection`); panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`) | *v* = *V̇*/*A*; round: *A* = π·*d*²/4, *d*_h = *d*; with a height *b* the duct is rectangular: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30] |
+
+The air change rate *n* is a plain number per hour ("1" for 1 h⁻¹): Core has no h⁻¹ unit yet. The room values sit on
+the air terminal that serves the room; a link to an architecture room (area, height) is open.
+
+**Port flows.** Pipes and ducts join ports into nets. The volume flow is passed on an unbranched run; at a branch the
+total port gets the sum of the parts: the generator's flow and return ports, the circulator's outlet, the mixer's AB port
+and the ventilation unit's spigots are totals; radiators, floor loops, the circulator's inlet, the mixer's A and B ports
+and air terminals are parts. The stream temperature is passed on an unbranched run and from the one supplying outlet (the
+generator's flow port, a consumer's return port, the mixer's AB port) to every inlet of a split. Thermostatic valves pass
+both; circulators pass the temperature. Heat losses of pipes are not modelled; mixing at a merge is only computed in the
+mixing valve.
+
+Examples (accept criteria): a boiler at 55 °C feeding a radiator (Φ₅₀ = 1000 W, *n* = 1.3, room 20 °C) over a pipe
+with 50 l/h: the radiator's return temperature solves the operating point (θ_R ≈ 46.0 °C, Φ ≈ 521 W), and the return
+pipe and the boiler take θ_R. A room of 20 m² (2.5 m high) with *n* = 1 h⁻¹ gives 50 m³/h at the terminal, in the duct
+and at the unit's supply spigot; an 80 mm duct then runs at 2.76 m/s.
+
+**Checks** (hints only, overlay, nothing changes):
+
+| Id | Rule | Severity | Source |
+|---|---|---|---|
+| `heat.velocity` | heating pipe (flow/return) outside 0.3–1.0 m/s; water pipe above 2 m/s (textbook values) | hint | [S30] |
+| `air.velocity` | duct velocity outside 2–4 m/s (residential, textbook) | hint | [S30] |
+| `heat.cop.carnot` | heat pump COP > *T*_F/(*T*_F − *T*_Q) in kelvin (impossible) | warning | [S29] |
+| `heat.balance` | entered generator output below the sum of Φ of the radiators and floor loops joined to it by heating pipes | hint | [S29] |
+
 ## Host notes
 
 All output uses native primitives (lines, polylines, polygons, rectangles, ellipses, arcs, cubic paths, text), so every

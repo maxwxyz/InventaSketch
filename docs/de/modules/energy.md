@@ -167,6 +167,55 @@ Spannungsebene, Module, Reihen und Anschlusspunkte der Sammelschiene mehr/wenige
 Kabel: Führung, Spannung, Spannung anzeigen, Leiterstriche, Kabelbezeichnung; Leitungen: Energieträger, Kürzel;
 Energieflüsse: Energieträger, breiteres/schmaleres Band, Beschriftung.
 
+## Technische Werte (Calc 4)
+
+Werte sind optional: jedes Element lässt sich weiterhin ohne sie einfügen und skalieren. Eingetragen und angezeigt werden
+sie mit der Wertekarte (*Bearbeiten ▸ Werte ▸*, die Schaltfläche *Werte* in Erkunden und Ingenieur), gespeichert in
+optionalen Textparametern (Ingenieurabschnitt des Inspektors). Die vorhandenen Bemessungsparameter werden in ihren
+gespeicherten Einheiten als Werte gelesen: `power` von Modul und String (Wp), Feld `power` (kWp), Wechselrichter und
+Ladepunkt `power` (kW), Batterie `capacity` (kWh), Wärmepumpe `power` (kW), Sammelschiene `voltage` (kV), Transformator
+`power` (kVA), `hv` und `lv` (kV), String `modules`. Weil sie beim Einfügen gespeichert werden, zeigt ein String sofort
+seine STC-Leistung und ein Transformator seine Bemessungsströme. Kartengrößen stehen vorn. Entwurfsnotizen:
+[engineering-calculations.md, Abschnitt 13](../design/engineering-calculations.md#13-umsetzungsnotizen-calc-4-fluid-prozess-gebäudetechnik-energie-25112026).
+
+| Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
+|---|---|---|
+| PV-Modul | *U*_oc,max (`vocMax`), *P*_mpp (`power`), *U*_oc (`voc`), *U*_mpp (`vmp`); Panel *I*_sc (`isc`), *I*_mpp (`imp`), β (`betaVoc`, % je K), θ_min (`tmin`), θ_max (`tmax`), *U*_mpp,min (`vmpMin`) | *P*_mpp = *U*_mpp·*I*_mpp (2 % Toleranz für gerundete Datenblattwerte); *U*_oc,max = *U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min = *U*_mpp·(1 + β·(θ_max − 25 °C)) (β von *U*_oc als Näherung) [S33] |
+| PV-String | *U*_oc,max, *U*_mpp,S (`vmpString`), *I*_sc, *P* (`powerString`); Panel *N*_s (`modules`), *P*_mpp (`power`), *U*_oc, *U*_mpp, *I*_mpp, β, θ_min, θ_max, *U*_mpp,min | *P* = *N*_s·*P*_mpp; *U*_mpp,S = *N*_s·*U*_mpp [S34]; *U*_oc,max = *N*_s·*U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min ebenso mit θ_max [S33] |
+| PV-Generator (Feld) | *P* (`power`), *N*_p (`strings`), *I*_sc (`iscArray`), *U*_oc,max; Panel *P*_S (`powerString`), *I*_sc,S (`isc`), *U*_mpp,min | *P* = *N*_p·*P*_S; *I*_sc = *N*_p·*I*_sc,S [S34] |
+| Wechselrichter | *P*_DC (`powerDc`), *P*_AC (`powerAc`), *I*_AC (`currentAc`, je Außenleiter), *U*_oc,max (von den Strings); Panel η (`efficiency`, Vorgabe 97 %), *R* (`dcAcRatio`), *P*_AC,N (`power`), *U*_AC (`voltageAc`, Außenleiterspannung, Vorgabe 400 V), cos φ (`powerFactor`, Vorgabe 1), *U*_mpp,min, *I*_sc (`iscDc`), *U*_mpp (`vmpDc`), *U*_DC,max (`udcMax`), *U*_MPPT,min/max (`mpptMin`, `mpptMax`), *I*_DC,max (`idcMax`) | *P*_AC = η·*P*_DC [S33]; *R* = *P*_DC/*P*_AC,N [S34]; dreiphasig *I*_AC = *P*_AC/(√3·*U*_AC·cos φ), einphasig *I*_AC = *P*_AC/((*U*_AC/√3)·cos φ) [S7] |
+| Netz-Sammelschiene, Netzanschlusszähler (Verteiler) | *P* (`powerIn`, Summe der Einspeisungen), *I* (`current`, je Außenleiter), *U* (Sammelschiene `voltage` in kV, Zähler `systemVoltage`); Panel cos φ (`powerFactor`, Vorgabe 1) | *I* = *P*/(√3·*U*·cos φ); DC-Sammelschiene *I* = *P*/*U* [S7] |
+| Batteriespeicher | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); Panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P* [S35] |
+| Ladepunkt | *P* (`power`), *U* (`voltage`, Vorgabe 400 V), *I* (`current`); Panel cos φ | AC: *P* = √3·*U*·*I*·cos φ; DC-Laden: *P* = *U*·*I* [S7] |
+| Wärmepumpe | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); Panel θ_VL (`flowTemp`), θ_Q (`sourceTemp`) | Φ_H = COP·*P*_el [S32] |
+| Windenergieanlage | *P* (`powerWind`), *D* (`diameter`), *v* (`windSpeed`), *c*_p (`cp`); Ingenieur ρ (`airDensity`, Vorgabe 1,225 kg/m³) | *P* = ½·ρ·π·*D*²/4·*v*³·*c*_p [S36] |
+| Leistungstransformator | *S*_r (`power`), *I*_OS (`currentHv`), *I*_US (`currentLv`); Panel *U*_OS (`hv`), *U*_US (`lv`) | *I* = *S*_r/(√3·*U*) je Seite [S7] |
+
+**Werte über Anschlüsse.** Kabel verbinden Anschlüsse zu Netzen (eine Sammelschiene verbindet alle Anschlusspunkte und
+die Schiene). DC-Seite: die Stringspannungen *U*_oc,max, *U*_mpp,min und *U*_mpp gelten im ganzen Netz (parallele
+Strings müssen übereinstimmen, sonst zeigt die Karte einen Konflikt); Kurzschlussstrom und STC-Leistung paralleler Strings
+addieren sich am Wechselrichter. AC-Seite: die Netzspannung gilt gemeinsam; die AC-Leistung der Wechselrichter addiert
+sich an einer Sammelschiene oder an der Geräteseite (Anschluss b) eines Zählers, der sie an seiner Netzseite (Anschluss a)
+weitergibt. Die 0,4 kV der Sammelschiene werden so zu *U*_AC des Wechselrichters. Die Schlüssel (`P`, `U`, `I`) sind
+dieselben wie in anderen Modulen, aber keine Verknüpfung reicht ins Elektromodul (Module hängen nie voneinander ab).
+
+Beispiele (Abnahmekriterien): 10 Module mit *U*_oc = 49,5 V, β = −0,27 %/K und θ_min = −10 °C ergeben
+*U*_oc,max = 10 · 49,5 V · 1,0945 = 541,8 V, und ein Wechselrichter mit *U*_DC,max = 500 V zeigt die Warnung
+`pv.voc.max`. 10 × 400 Wp an einem Wechselrichter mit η = 96 % an einer 0,4-kV-Sammelschiene: *P*_AC = 3,84 kW und
+*I* = 5,54 A je Außenleiter (16,6 A bei einem einphasigen Wechselrichter).
+
+**Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
+
+| Id | Regel | Schwere | Quelle |
+|---|---|---|---|
+| `pv.voc.max` | *N*_s·*U*_oc(θ_min) der angeschlossenen Strings > *U*_DC,max des Wechselrichters | Warnung | [S33] (Regel benannt in IEC 62548-1) |
+| `pv.mpp.min` | *N*_s·*U*_mpp(θ_max) < *U*_MPPT,min | Hinweis | [S33, S34] |
+| `pv.isc.max` | *N*_p·*I*_sc > *I*_DC,max | Warnung | [S33] |
+| `pv.dcac` | DC/AC-Verhältnis außerhalb 0,8–1,5 | Info | [S34] |
+| `bat.crate` | *C* > *C*_max | Hinweis | [S35] |
+| `heat.cop.carnot` | COP > *T*_VL/(*T*_VL − *T*_Q) in Kelvin (unmöglich) | Warnung | [S29] |
+| `wind.betz` | *c*_p > 16/27 (Betz-Grenze, unmöglich) | Warnung | [S36] |
+
 ## Hinweise für Hosts
 
 Alle Ausgaben sind native Primitive (Linien, Polylinien, Polygone, Rechtecke mit abgerundeten Ecken, Ellipsen,

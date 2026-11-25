@@ -723,6 +723,9 @@ see section 12.
 - a room's area and air change give the air flow and duct velocity
 - the PV → inverter → board chain shows the AC current per phase
 
+*Status:* all five accept items are done in the Fluid, Process, Building services and Energy modules, with unit tests
+(section 13); the board is the Energy module's busbar or meter, not an Electrical distribution board.
+
 **Calc 5 – Linked charts.** This phase adds:
 - linking of section 5: torque–speed, pump/system, PV I–V/P–V, Bode RC/RLC, step response, gear train diagram,
   heating curve
@@ -1154,3 +1157,108 @@ reference; the module docs list every variable ([mechanical-drives.md](../module
   - Core: `ValueSolver.Solve` creates its `RenderContext` without the registry, so `IValueLinks` fall back to
     `ObjectType.Owner` (shared by every registry the type is registered with). Passing `ctx.For(registry)` in the solver
     (and in callers of `ValueSolver.Checks`) would make this exact.
+
+---
+
+## 13. Implementation notes: Calc 4 fluid, process, building services, energy (2026-11-25)
+
+This section records the choices made for Calc 4 in the Fluid, Process, Building services and Energy modules. The code
+is the reference; the module docs list every variable, relation, link and check
+([fluid.md](../modules/fluid.md#engineering-values-calc-4), [process.md](../modules/process.md#engineering-values-calc-4),
+[building-services.md](../modules/building-services.md#engineering-values-calc-4),
+[energy.md](../modules/energy.md#engineering-values-calc-4)).
+
+### 13.1 Files
+
+| Area | Files |
+|---|---|
+| Net topology and port relations (one copy per module) | `src/InventaSketch.Modules.{Fluid,Process,BuildingServices,Energy}/ValueNets.cs` (`NetSpec`, `NetRule`, `PortVar`, `ValueNets`) |
+| Fluid variables, relations, port roles, checks | `src/InventaSketch.Modules.Fluid/FluidValues.cs`; `FluidType` and `FluidLineType` implement `IValueType`, `IValueLinks`, `IValueChecks` |
+| Process | `src/InventaSketch.Modules.Process/ProcessValues.cs`; `ProcessType`, `ProcessLineType` |
+| Building services | `src/InventaSketch.Modules.BuildingServices/BsValues.cs`; `BsBoxType`, `PipeType`, `DuctType` |
+| Energy | `src/InventaSketch.Modules.Energy/EnergyValues.cs`; `EnergyType` |
+| Tests | `tests/InventaSketch.Modules.{Fluid,Process,BuildingServices,Energy}.Tests/ValueTests.cs` |
+
+### 13.2 Decisions
+
+- **Nets from attachments.** A net is what the module's lines (fluid line, process line, pipe and duct, energy cable)
+  join: line ends docked on ports (attachments with a port id) and on other lines (tees). An end docked on a rail or on
+  a busbar without a port id counts as the element's port `*`. Elements pass value classes from port to port where they
+  are transparent (valves, couplings, a busbar's taps). The topology is built once per document (documents are
+  immutable) and cached. Every value class has a rule:
+  - *Equal* (pressure, voltage): the whole net shares the value, branches included.
+  - *Flow* (volume and mass flow, stream temperature in Process): shared when at most two elements carry the class in
+    the net; lines take it only on an unbranched run. A tee to a gauge or a relief valve does not stop the elements,
+    because these carry no flow; a split between two consumers stops it (the split is unknown).
+  - *Sum* (parallel PV strings, feeders on a board, radiators on a heating branch): a port marked *total* is the sum of
+    the *part* ports of its net; an unbranched run with two elements behaves as *Flow*.
+  - *Spread* (building services stream temperature): the single supplying outlet of a split passes its temperature to
+    every inlet; mixing at a merge is computed only in the mixing valve.
+
+  Port roles follow the drawing conventions of each module (generator flow port and pump outlet are totals, radiators are
+  parts; a meter's device side b is a total, its grid side a a part). Nothing propagates through a port without a role.
+- **Choice-dependent relations** (through-rod cylinder, pull-type cylinder, rectangular duct, single- or three-phase
+  inverter, DC busbar, DC charger) are bound per object in `IValueLinks.ValueLinks` as local relations of the element,
+  because `IValueType.Relations` is per type.
+- **Stored defaults count as entered.** Existing rating parameters (module Wp, inverter kW, busbar kV, duct width,
+  floor loop spacing …) are stored when an element is inserted, so they are entered values: a string shows its STC power
+  at once. To keep this from producing conflicts with real datasheets, *P*_mpp = *U*_mpp·*I*_mpp has a 2 % tolerance and
+  *d*_i ≈ DN a 50 % tolerance (DN is a nominal size). The value parameters added by Calc 4 are optional texts without a
+  default, so a new element carries no value of its own.
+- **Defaults that give way** (labelled *default* on the card): water ρ = 1000 kg/m³ and *c* = 4.19 kJ/(kg·K), pump and
+  motor efficiencies 100 %, radiator exponent *n* = 1.3 and room temperature 20 °C, room height 2.5 m, inverter η = 97 %
+  (typical, within the 0.95–0.98 of section 2.10), AC system voltage 400 V, cos φ = 1, air density 1.225 kg/m³.
+- **Radiator operating point.** With flow, flow temperature, room temperature and Φ₅₀/*n* known, the return temperature
+  follows from ρ·*c*·*V̇*·(θ_F − θ_R) = Φ₅₀·(Δθ_ln/50 K)^*n* (two unknowns, one equation after eliminating Φ). The relation
+  is a residual solved by Brent within the temperature range; the excess temperature is continued as 0 for θ_R ≤ θ_i so
+  the bracket always has a sign change.
+- **Heat exchanger signs.** Side 1 and side 2 instead of hot and cold: Φ > 0 means heat from side 1 to side 2; with side 1
+  colder every difference changes sign and the counter-flow LMTD stays valid. `heat.cross` fires when the two end
+  differences have different signs.
+- **Temperature coefficient and air change.** Core has no kind for %/K or h⁻¹. β is a ratio in % read as "per kelvin"
+  ("−0.27" or "−0.27 %"), the air change rate a plain number per hour ("1"). Typing "−0.27 %/K" or "1/h" is refused by
+  the parser. See 13.4.
+- **AC current.** *U*_AC is the line-to-line system voltage in both cases: three-phase *I* = *P*/(√3·*U*·cos φ),
+  single-phase (phase to neutral) *I* = *P*/((*U*/√3)·cos φ). Boards (busbar, meter) assume a symmetrical three-phase
+  load.
+- **Checks** run in `ValueSolver.Checks`: `fluid.cyl.force`, `fluid.velocity`, `fluid.pressure.relief` [S25, S26];
+  `heat.cross` [S29]; `heat.velocity`, `air.velocity` [S30], `heat.cop.carnot`, `heat.balance` [S29]; `pv.voc.max`,
+  `pv.mpp.min`, `pv.isc.max` [S33], `pv.dcac` [S34], `bat.crate` [S35]. **`wind.betz`** [S36] (*c*_p above 16/27) is new:
+  section 4 does not list it, but the Betz limit of section 2.10 makes higher values impossible. The textbook velocity
+  ranges are the defaults of section 4 until user limits exist (Calc 6). `fluid.velocity` takes the line function from
+  what the line is docked on (pump S: suction; tank, T/R or drain line: return; otherwise pressure).
+
+### 13.3 Status of the Calc 4 items
+
+- Done: the five accept items (unit tests with hand calculations):
+  - 10 modules, *U*_oc = 49.5 V, β = −0.27 %/K, θ_min = −10 °C: *U*_oc,max = 541.78 V; `pv.voc.max` against
+    *U*_DC,max = 500 V;
+  - pump 10 cm³ at 1450 min⁻¹ (14.5 l/min) through a 4/3 valve to a 50/28 mm cylinder at 100 bar: *F*_ext = 19.63 kN,
+    *F*_ret = 13.48 kN, *v*_ext = 0.123 m/s, *v*_ret = 0.179 m/s, with the pressure entered at the pump or the cylinder;
+  - boiler (55 °C) → pipe (50 l/h) → radiator (Φ₅₀ = 1000 W, *n* = 1.3): θ_R ≈ 46.0 °C, Φ ≈ 521 W, back to the boiler;
+  - 20 m² room, *n* = 1 h⁻¹: 50 m³/h at terminal, duct and unit, 2.76 m/s in an 80 mm duct;
+  - 10 × 400 Wp → inverter (η = 96 %) → 0.4 kV busbar: 3.84 kW, 5.54 A per phase (16.6 A single-phase).
+- Done: the relations of sections 2.7–2.10 and 3.5–3.8 listed in the module docs, port flows for every module, the
+  catalogue checks of section 4 for these domains, and every library item still inserts without values and triggers no
+  check (tested per module).
+- Open:
+  - Pressure drop in pipes (Darcy–Weisbach, Colebrook) and orifice/valve scaling (*K*_v, *Q*_nom); pneumatic air
+    consumption; compressors and turbines (gas properties).
+  - Heating curve, heating load (idea of EN 12831-1), underfloor manifold sums, hot water circulation.
+  - PV irradiance and cell temperature (NMOT), yield estimate, CHP, electrolyser and fuel cell, hydrogen tank, cable
+    voltage drop in the energy module, EV charging time.
+  - Room values from an architecture room (area, height) instead of the air terminal: needs the Architecture module to
+    expose its area as a variable with a shared key.
+  - Directions: nets are undirected; mixing at a merge and the split of a flow without totals need flow directions
+    (arrows or line direction), which the model does not use yet.
+
+### 13.4 Core changes that would help (not made here)
+
+- **Kinds:** a temperature coefficient (%/K, 1/K, mV/K) and an air change unit h⁻¹ (1/h) for `Frequency`; then β and
+  *n* take their units on input and display.
+- **A shared net helper:** `ValueNets.cs` is the same in four modules (modules never depend on each other). A Core
+  helper (`PortNets` with the rules Equal/Flow/Sum/Spread and port roles) would replace the copies and could serve the
+  Electrical module too.
+- **Duplicate links:** the solver collects the port relations of every object in scope, so a link between two objects is
+  added twice (once from each). It is harmless (the second copy is never independent), but deduplicating by reference
+  in `ValueSolver.Solve` would halve the link relations.

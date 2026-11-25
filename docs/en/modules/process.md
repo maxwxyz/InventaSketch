@@ -139,6 +139,41 @@ actuator, fail-safe position, instrument location and device, filter, recovery, 
 efficiency, state numbers, caption), steps (trays, packed beds, plates, compression/pressure ratio), line number and
 instrument tag inputs, orthogonal/straight routing.
 
+## Engineering values (Calc 4)
+
+Values are optional: every symbol still inserts and scales without them. They are entered and shown with the Values card
+(*Edit ▸ Values ▸*, the *Values* button in Explore and Engineer) and stored in optional text parameters (engineering
+section of the inspector). Water is the default medium: c = 4.19 kJ/(kg·K), ρ = 1000 kg/m³ (defaults that give way to
+entered values). Card variables come first. Design notes:
+[engineering-calculations.md, section 13](../design/engineering-calculations.md#13-implementation-notes-calc-4-fluid-process-building-services-energy-2026-11-25).
+
+| Element | Variables (parameter) | Local relations [source] |
+|---|---|---|
+| Centrifugal pump | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, shaft), η (`efficiency`); panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`); engineer ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
+| Displacement pump, fan | *V̇*, Δ*p*, *P*, η; panel *P*_hyd | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
+| Shell-and-tube, plate, general heat exchanger | Φ (`duty`), *U* (`u`), *A* (`area`), Δθ_lm (`lmtd`); panel ṁ₁ (`massFlow1`), θ₁,in (`temp1In`), θ₁,out (`temp1Out`), ṁ₂, θ₂,in, θ₂,out; engineer *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,in − θ₁,out); Φ = ṁ₂·*c*₂·(θ₂,out − θ₂,in); counter-flow Δθ_lm = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) with Δθ_a = θ₁,in − θ₂,out, Δθ_b = θ₁,out − θ₂,in; Φ = *U*·*A*·Δθ_lm [S29] |
+| Air cooler, cooling tower | Φ, ṁ (`massFlow`), θ_in (`tempIn`), θ_out (`tempOut`); engineer *c* | Φ = ṁ·*c*·(θ_in − θ_out) [S29] |
+| Vessels, tank, reactor, column | *V* (`volume`), *D* (`diameter`), *h* (`length`, cylindrical part), *Q* (`heat`); panel Δθ (`deltaT`); engineer ρ, *c* | *V* = π·*D*²·*h*/4 (heads not counted); *Q* = ρ·*V*·*c*·Δθ [S29] |
+| Process line | *V̇* (`flowRate`), ṁ (`massFlow`), *v* (`velocity`), θ (`temperature`); panel *d*_i (`innerDiameter`); engineer ρ | ṁ = ρ·*V̇*; *v* = 4·*V̇*/(π·*d*_i²) [S27, S29] |
+
+Side 1 of a heat exchanger is the tube side (T1 in, T2 out), the A side of the plate exchanger (A1, A2) and the primary
+side of the general symbol (P1, P2); side 2 is the shell side (S1, S2), the B side (B1, B2) and the secondary side
+(S1, S2). Φ > 0 means heat flows from side 1 to side 2; with side 1 colder all differences change sign and Φ < 0.
+Other layouts than counter-flow need a correction factor (not modelled).
+
+**Port flows.** Process lines join nozzles into nets. The classes volume flow *V̇*, mass flow ṁ and stream temperature θ
+are shared when at most two elements carry them in a net; lines take them on an unbranched run. The line converts *V̇*
+and ṁ. Manual, control and check valves, strainers, reducers and flow elements pass all three, filters and dampers
+(A1–A2) as well; pumps and fans pass the temperature. A pump feeding a heat exchanger through a valve thus sets ṁ₁, and
+the outlet temperature of side 1 becomes the inlet temperature of the next element. Heat losses and the temperature rise
+in pumps are not modelled. Compressors and turbines have no values yet (compression work needs gas properties).
+
+**Checks** (hints only, overlay, nothing changes):
+
+| Id | Rule | Severity | Source |
+|---|---|---|---|
+| `heat.cross` | heat exchanger with all four temperatures: (θ₁,in − θ₂,out)·(θ₁,out − θ₂,in) ≤ 0, a temperature cross that counter-flow cannot reach | warning | [S29] |
+
 ## Host notes
 
 All output uses native primitives (lines, polylines, polygons, rectangles, ellipses, cubic paths, text), so every

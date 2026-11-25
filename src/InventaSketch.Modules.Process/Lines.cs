@@ -183,7 +183,7 @@ namespace InventaSketch.Modules.Process
     /// future (dashed); optional flow arrow and line number along the longest segment; hops where it crosses an earlier
     /// process line.
     /// </summary>
-    internal sealed class ProcessLineType : ProcessLineBase
+    internal sealed class ProcessLineType : ProcessLineBase, IValueType, IValueLinks
     {
         public const string TypeId = "process.line";
 
@@ -210,7 +210,13 @@ namespace InventaSketch.Modules.Process
             "process line", "pipe", "pipeline", "piping", "flow line", "main line", "utility line", "heat traced", "p&id", "pfd",
             "prozessleitung", "rohrleitung", "fließlinie", "hauptfließlinie", "nebenfließlinie", "begleitheizung", "r&i", "fließschema",
         };
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Arrow, LineNo, Routing.Param(), Hops };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Arrow, LineNo, Routing.Param(), Hops }.Concat(ProcessValues.For(TypeId).Params).ToList();
+
+        // ------------------------------------------------------------------ element values (Calc 4, ProcessValues)
+
+        public IReadOnlyList<VarDef> Variables => ProcessValues.For(TypeId).Variables;
+        public IReadOnlyList<Relation> Relations => ProcessValues.For(TypeId).Relations;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => ProcessValues.Links(o, ctx);
         /// <summary>Process piping (build "+" at its free ends, <see cref="Building"/>).</summary>
         public override string? LineMedium(SketchObject line) => PortMedia.Process;
         public override IReadOnlyList<string> Companions => new[]
