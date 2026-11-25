@@ -54,7 +54,8 @@ Die Vorabprüfung (Preflight) prüft die formalen Zeichnungsvorschriften von DPM
 Quellen. Sie ist nur eine Hilfestellung und ersetzt nicht die Prüfung durch eine Patentfachperson. In PowerPoint:
 InventaSketch ▸ Extras ▸ „Patentprüfung (Zeichnungen) …“ prüft alle Folien für das gewählte Amt und listet Fehler,
 Warnungen, Hinweise und selbst zu prüfende Punkte mit Fundstelle; ein Doppelklick auf einen Befund springt zur Folie
-und zum Element (Engine `preflight`, `patentProfiles`).
+und zum Element (Engine `preflight`, `patentProfiles`). Im Web-Add-in macht der Prüfknopf in der oberen Leiste dasselbe
+für die Seite; ein Klick auf einen Befund wählt sein Element aus.
 
 Varianten (vorher/nachher, Stand der Technik/Erfindung): Folie duplizieren und die Kopie ändern. InventaSketch ▸ Extras
 ▸ „Mit vorheriger Folie vergleichen“ markiert, was neu (grün), geändert (orange) und entfernt (grau gestrichelt) ist,

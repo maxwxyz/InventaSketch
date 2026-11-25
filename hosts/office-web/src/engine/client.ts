@@ -4,7 +4,7 @@
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
   SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo, BuildPortInfo, CouplingPreview,
-  MotionInfo, MotionPreview,
+  MotionInfo, MotionPreview, PreflightResult,
 } from "./types";
 
 export interface EngineBackend {
@@ -34,6 +34,11 @@ export class Engine {
 
   catalog(lang: string): Catalog {
     return this.call("catalog", { lang });
+  }
+
+  /** The patent offices the preflight knows (`{ id, name }`, the first is the default). */
+  patentProfiles(lang: string): { id: string; name: string }[] {
+    return this.call("patentProfiles", { lang });
   }
 }
 
@@ -80,6 +85,8 @@ export class Session {
   importData(text: string): EditorState { return this.c("importData", { text }); }
   /** GeoJSON or GPX as map routes and markers fitted into the page. */
   importGeo(text: string): EditorState { return this.c("importGeo", { text }); }
+  /** Patent drawing preflight of the page for office `profile` – a drafting aid, not a legal certification. */
+  preflight(profile: string, lang: string): PreflightResult { return this.c("preflight", { text: profile, lang }); }
   /** Sets the main text (ObjectInfo.mainText) of one object; one undo step. */
   setMainText(id: string, text: string): EditorState { return this.c("setMainText", { id, text }); }
   /** Library items that fit the first of `ids` ("Insert ▸"), at most `max`. */

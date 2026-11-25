@@ -248,3 +248,26 @@ export interface PlanUnit {
 }
 
 export interface DrawPlan { unit: "pt"; pageWidth: number; pageHeight: number; revision: number; units: PlanUnit[] }
+
+/** Severity of a patent drawing preflight finding ("manual": a point to check by hand). */
+export type PreflightSeverity = "error" | "warning" | "info" | "manual";
+
+/** One finding of the patent drawing preflight (engine `preflight`). */
+export interface PreflightFinding {
+  rule: string;
+  severity: PreflightSeverity;
+  /** The element concerned, if any. */
+  id?: string;
+  page?: string;
+  message: string;
+  suggestion?: string;
+  /** The cited rule (office, regulation, paragraph). */
+  source: string;
+}
+
+/** Result of `preflight`: profile id, disclaimer (always shown) and findings. */
+export interface PreflightResult {
+  profile: string;
+  disclaimer: string;
+  findings: PreflightFinding[];
+}

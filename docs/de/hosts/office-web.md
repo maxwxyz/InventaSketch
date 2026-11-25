@@ -111,6 +111,11 @@ Folie behalten.
   geprüft (Striche bei 1 mm doppelt so breit).
 - **Akzentfarbe** (25.11.2026): eine dritte Auswahl ruft `setAccent` (Voreinstellungen aus `accents`); auf der
   Browser-Entwicklungsseite geprüft (die grüne Ladung eines Batteriespeichers wurde rot, das blaugraue Gehäuse blieb).
+- **Patentprüfung** (25.11.2026): ein Knopf in der oberen Leiste öffnet ein Panel mit dem Amt (`patentProfiles`) und
+  den Befunden der Vorabprüfung der Seite (`preflight`) – Fehler zuerst, dann Warnungen, selbst zu prüfende Punkte und
+  Hinweise, jeweils mit Vorschlag und den Fundstellen als kurze Links; ein Klick auf die Meldung eines Befunds wählt
+  sein Element aus. Der Haftungshinweis wird immer angezeigt. Auf der Browser-Entwicklungsseite geprüft (hell und
+  dunkel, Wechsel DPMA/EPA/PCT/USPTO, ein Zahnrad außerhalb der Nutzfläche über seinen Befund ausgewählt).
 - **Skalieren**: zentrierte Teile (Zahnräder, Lager, Räder: `centred`) skalieren standardmäßig um ihre Mitte, mit Strg
   von der Gegenkante; andere Objekte umgekehrt. Eine Beschriftung neben dem Mauszeiger zeigt Größe (oder Faktor) und den
   aktiven Modus mit der Strg-Alternative.

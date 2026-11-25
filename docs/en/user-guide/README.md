@@ -48,7 +48,8 @@ together. Numbers (module, tooth count, dimensions) are optional.
 The preflight checks formal drawing rules of DPMA, EPO, PCT and USPTO with cited sources. It is an aid only and
 does not replace review by a patent professional. In PowerPoint: InventaSketch ▸ Extras ▸ "Patent check (drawings) …"
 checks every slide for the chosen office and lists errors, warnings, notes and points to check by hand with their
-source; double-click a finding to go to its slide and element (engine `preflight`, `patentProfiles`).
+source; double-click a finding to go to its slide and element (engine `preflight`, `patentProfiles`). In the web
+add-in the check button in the top bar does the same for the page; clicking a finding selects its element.
 
 Variants (before/after, prior art/invention): duplicate the slide and change the copy. InventaSketch ▸ Extras ▸
 "Compare with the previous slide" marks what was added (green), changed (orange) and removed (dashed grey) with a

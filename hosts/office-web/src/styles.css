@@ -254,3 +254,23 @@ textarea.isk-input { resize: vertical; }
 .isk-drop-row:hover { background: color-mix(in srgb, var(--accent, #1f5fbf) 16%, transparent); }
 .isk-drop-row.is-active { font-weight: 600; color: var(--accent, #1f5fbf); background: color-mix(in srgb, var(--accent, #1f5fbf) 10%, transparent); }
 .isk-drop-row img { width: 22px; height: 22px; }
+
+/* Patent check: findings list with a severity badge; a finding with an element is a button that selects it. */
+.isk-pc { width: min(380px, calc(100% - 12px)); }
+.isk-pc-summary { margin: 6px 0; font-weight: 600; }
+.isk-findings { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.isk-finding { display: flex; gap: 8px; align-items: flex-start; width: 100%; padding: 6px; text-align: left; font: inherit; color: inherit; background: transparent; border: 1px solid var(--border); border-radius: 6px; }
+.isk-finding-go { padding: 0; font: inherit; color: var(--accent); text-align: left; background: none; border: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.isk-finding-go:hover, .isk-finding-go:focus-visible { text-decoration-style: solid; }
+.isk-sources { display: flex; flex-wrap: wrap; gap: 2px 8px; font-size: 11px; color: var(--muted); }
+.isk-sources a { color: var(--muted); }
+.isk-sources a:hover, .isk-sources a:focus-visible { color: var(--accent); }
+.isk-pc .isk-field { grid-template-columns: auto 1fr; }
+.isk-pc .isk-row select { flex: 1; min-width: 0; }
+.isk-pc .isk-row .isk-btn { white-space: nowrap; }
+.isk-finding-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+.isk-sev { flex: none; padding: 1px 6px; border-radius: 4px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.isk-sev-error { background: #c62828; color: #fff; }
+.isk-sev-warning { background: #f0a020; color: #1b1b1b; }
+.isk-sev-manual { background: #5c6bc0; color: #fff; }
+.isk-sev-info { background: var(--border); color: var(--text); }

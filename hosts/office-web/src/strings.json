@@ -171,5 +171,16 @@
   "office.loaded": { "en": "Drawing loaded from the slide", "de": "Zeichnung von der Folie geladen" },
   "office.adoptedEdit": { "en": "Move/resize on the slide adopted", "de": "Verschieben/Skalieren auf der Folie übernommen" },
   "set.export": { "en": "Export data", "de": "Daten exportieren" },
-  "set.exportNone": { "en": "Nothing to export for the selection or page.", "de": "Für die Auswahl bzw. die Seite gibt es nichts zu exportieren." }
+  "set.exportNone": { "en": "Nothing to export for the selection or page.", "de": "Für die Auswahl bzw. die Seite gibt es nichts zu exportieren." },
+  "cmd.patentCheck": { "en": "Patent check (drawings): formal drawing rules of an office, with sources", "de": "Patentprüfung (Zeichnungen): formale Zeichnungsvorschriften eines Amts, mit Fundstellen" },
+  "pc.title": { "en": "Patent check (drawings)", "de": "Patentprüfung (Zeichnungen)" },
+  "pc.office": { "en": "Office", "de": "Amt" },
+  "pc.recheck": { "en": "Check again", "de": "Erneut prüfen" },
+  "pc.none": { "en": "No findings.", "de": "Keine Befunde." },
+  "pc.summary": { "en": "{0} finding(s), {1} error(s), {2} warning(s)", "de": "{0} Befund(e), {1} Fehler, {2} Warnung(en)" },
+  "pc.goTo": { "en": "Select the element", "de": "Element auswählen" },
+  "pc.sev.error": { "en": "Error", "de": "Fehler" },
+  "pc.sev.warning": { "en": "Warning", "de": "Warnung" },
+  "pc.sev.manual": { "en": "Check by hand", "de": "Selbst prüfen" },
+  "pc.sev.info": { "en": "Note", "de": "Hinweis" }
 }

@@ -106,6 +106,11 @@ the units on the slide.
   sync redraws every unit with it. Checked in the browser dev page (strokes doubled at 1 mm).
 - **Accent colour** (2026-11-25): a third choice calls `setAccent` (presets from `accents`); checked in the browser dev
   page (a battery's green charge became red, its blue-grey housing stayed).
+- **Patent check** (2026-11-25): a button in the top bar opens a panel with the office (`patentProfiles`) and the
+  preflight findings of the page (`preflight`) – errors first, then warnings, points to check by hand and notes, each
+  with suggestion and the cited sources as short links; clicking a finding's message selects its element. The
+  disclaimer is always shown. Checked in the browser dev page (light and dark, DPMA/EPO/PCT/USPTO switch, a gear
+  outside the usable area selected from its finding).
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.
