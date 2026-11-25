@@ -32,7 +32,7 @@ Antriebspfeil der Kurbel sind reine Symbole.
 | Typ-ID | Name (EN / DE) | Ansichten | Fangpunkte |
 |---|---|---|---|
 | `kin.joint.revolute` | Revolute joint / Drehgelenk | Schema (Kreis), detailliert (Auge und Bolzen) | Port (Mitte) |
-| `kin.joint.ground` | Fixed pivot / Gestelldrehpunkt (Festlager) | Schema (Dreieck, schraffierte Basis), detailliert (Lagerbock) | Port (Drehpunkt), Mount (Basis) |
+| `kin.joint.ground` | Fixed pivot / Gestelldrehpunkt (Festlager) | Schema (Dreieck, schraffierte Basis), detailliert (Lagerbock); mit Anschlägen zwei dünne Anschlaglinien und ein gestrichelter Schwenkbogen | Port (Drehpunkt), Mount (Basis); optional `limited`, `limitFrom`/`limitTo` (°, im Uhrzeigersinn von rechts, Vorgabe −135…−45 = nach oben): die Glieder daran schwenken nur in diesem Bereich |
 | `kin.joint.prismatic` | Prismatic joint / Schubgelenk | Schema (Gleitstein auf schraffierter Führung), detailliert (zwei Schienen) | Port (Bolzen), Axis (Führungsachse), Mount |
 | `kin.joint.cam` | Cam joint / Kurvengelenk (höheres Paar) | Schema, detailliert (schraffierte Körper) | Port (Berührpunkt) |
 | `kin.joint.spherical` | Spherical joint / Kugelgelenk | Schema, detailliert (Kugelpfanne) | Port (Mitte) |
@@ -111,6 +111,11 @@ Die Freiheitsgrad-Anzeige zeigt den Getriebefreiheitsgrad nach Grübler/Kutzbach
 (n Glieder einschließlich Gestell, j1 Gelenke mit Freiheitsgrad 1, j2 Gelenke mit Freiheitsgrad 2). Text:
 „F = 1“ (Deutsch) bzw. „DOF = 1“ (Englisch). Die Winkelbegrenzung hat in ihrer Mitte einen `Port` und rastet so
 auf ein Gelenk ein.
+
+**Gelenkgrenzen (25.11.2026):** Ein Gestelldrehpunkt mit Anschlägen (`limited`) hält jedes Glied daran in seinem
+Winkelbereich (`ObjectType.JointLimits`, Seitengrad; der Bereich spiegelt und dreht sich mit dem Symbol). Ziehen im
+Bewegungsmodus endet an den Anschlägen, Koppelkurve und Zwischenlagen enden dort ebenfalls (die Kette wird bis zum
+Anschlag der Kurbel abgefahren).
 
 ## Kontextaktionen
 

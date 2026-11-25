@@ -31,7 +31,7 @@ crank are symbols only.
 | Type id | Name (EN / DE) | Views | Anchors |
 |---|---|---|---|
 | `kin.joint.revolute` | Revolute joint / Drehgelenk | schematic (circle), detailed (eye and pin) | Port (centre) |
-| `kin.joint.ground` | Fixed pivot (ground) / Gestelldrehpunkt (Festlager) | schematic (triangle, hatched base), detailed (bearing block) | Port (pivot), Mount (base) |
+| `kin.joint.ground` | Fixed pivot (ground) / Gestelldrehpunkt (Festlager) | schematic (triangle, hatched base), detailed (bearing block); with stops two thin stop lines and a dashed swing arc | Port (pivot), Mount (base); optional `limited`, `limitFrom`/`limitTo` (°, clockwise from right, default −135…−45 = upwards): the links on it swing only inside this range |
 | `kin.joint.prismatic` | Prismatic joint / Schubgelenk | schematic (block on hatched guide), detailed (two rails) | Port (pin), Axis (guide axis), Mount |
 | `kin.joint.cam` | Cam joint (higher pair) / Kurvengelenk | schematic, detailed (hatched bodies) | Port (contact point) |
 | `kin.joint.spherical` | Spherical joint / Kugelgelenk | schematic, detailed (ball and socket) | Port (centre) |
@@ -108,6 +108,10 @@ slider blocks snap onto them.
 The DOF badge shows the Grübler/Kutzbach mobility F = 3(n − 1) − 2·j1 − j2 (n links including the frame,
 j1 lower pairs, j2 higher pairs). Text: "DOF = 1" (English) or "F = 1" (German). The angle-limit annotation
 has a `Port` at its centre so it snaps onto a joint.
+
+**Joint limits (2026-11-25):** a fixed pivot with stops (`limited`) keeps every link on it inside its angle range
+(`ObjectType.JointLimits`, page degrees; the range mirrors and turns with the symbol). Dragging in motion mode stops at
+the stops, and the coupler curve and the ghost positions end there (the chain is walked until a stop holds the crank).
 
 ## Context actions
 

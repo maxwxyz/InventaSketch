@@ -23,7 +23,9 @@ namespace InventaSketch.Core
     /// form a chain. A joint docked onto a slot of another link (<see cref="SlotPrefix"/>, a rail along one of its edges)
     /// slides along that link (pin in slot, a sliding block in a slotted link). Dragging one joint moves the chain while every link keeps its length, fixed pivots stay and sliders
     /// stay on their guide (position-based constraint solving, started from the current position so the chain keeps its
-    /// assembly mode). The degree of freedom follows Grübler's formula.
+    /// assembly mode). The degree of freedom follows Grübler's formula. A fixed pivot with stops
+    /// (<see cref="ObjectType.JointLimits"/>) keeps the links on it inside its angle range, so dragging, coupler curves and
+    /// ghost positions end at the stops.
     /// </summary>
     public static class Linkage
     {
@@ -45,6 +47,8 @@ namespace InventaSketch.Core
             /// <summary>Box element carrying the joint (pivot, joint symbol, slider), else null.</summary>
             public string? Box;
             public (Vec2 A, Vec2 B)? Guide;
+            /// <summary>Stops of a fixed pivot (page degrees, clockwise range From → To), else null.</summary>
+            public (double From, double To)? Limits;
             /// <summary>Link points (owner, index) sitting at this joint; the first free one stores it.</summary>
             public readonly List<(string Link, int Index)> Members = new();
         }
@@ -95,11 +99,18 @@ namespace InventaSketch.Core
             var pos = chain.Nodes.ToDictionary(kv => kv.Key, kv => kv.Value.P, StringComparer.Ordinal);
             var dn = chain.Nodes[drag];
             if (dn.Fixed) return doc;
+            // Joints on a bar to a pivot with stops stay inside its angle range.
+            var stops = chain.Bars.SelectMany(b => new[] { (Pivot: b.A, Other: b.B), (Pivot: b.B, Other: b.A) })
+                .Where(x => chain.Nodes[x.Pivot].Limits is not null && !chain.Nodes[x.Other].Fixed)
+                .GroupBy(x => x.Other, StringComparer.Ordinal)
+                .ToDictionary(g => g.Key, g => g.Select(x => chain.Nodes[x.Pivot]).ToList(), StringComparer.Ordinal);
             void Project(string key)
             {
                 var n = chain.Nodes[key];
                 if (n.Fixed) pos[key] = n.P;
                 else if (n.Guide is { } g) pos[key] = Geo.ProjectOnLine(pos[key], g.A, g.B);
+                if (stops.TryGetValue(key, out var pivots))
+                    foreach (var pv in pivots) pos[key] = ClampAngle(pos[key], pv.P, pv.Limits!.Value);
             }
             double Weight(string key, int phase) => chain.Nodes[key].Fixed || phase == 0 && key == drag ? 0 : 1;
             // 1) Pull the dragged joint to the target while the bars hold the rest; 2) let it go to restore exact lengths.
@@ -147,6 +158,27 @@ namespace InventaSketch.Core
                 }
             }
             return Apply(doc, chain, pos);
+        }
+
+        /// <summary>Normalised angle in [0, 360).</summary>
+        private static double Wrap(double deg) => (deg % 360 + 360) % 360;
+
+        /// <summary>
+        /// <paramref name="p"/> turned about <paramref name="pivot"/> (radius kept) to the nearer stop if its direction lies
+        /// outside the clockwise range <c>From → To</c> (page degrees, y down).
+        /// </summary>
+        public static Vec2 ClampAngle(Vec2 p, Vec2 pivot, (double From, double To) limits)
+        {
+            var d = p - pivot;
+            var r = d.Length;
+            if (r < 1e-9) return p;
+            var a = Math.Atan2(d.Y, d.X) * 180 / Math.PI;
+            var sweep = Wrap(limits.To - limits.From);
+            var rel = Wrap(a - limits.From);
+            if (rel <= sweep + 1e-9) return p;
+            var to = rel - sweep < 360 - rel ? limits.To : limits.From;
+            var rad = to * Math.PI / 180;
+            return pivot + new Vec2(Math.Cos(rad), Math.Sin(rad)) * r;
         }
 
         /// <summary>
@@ -354,6 +386,7 @@ namespace InventaSketch.Core
                             node.Box = box.Id;
                             var role = RoleOf(box);
                             node.Fixed = role == LinkageRole.FixedPivot;
+                            if (node.Fixed) node.Limits = registry.Type(box.Type)?.JointLimits(box);
                             if (role == LinkageRole.Slider && registry.PageAnchors(box, ctx).FirstOrDefault(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis) is { } ax)
                                 node.Guide = (ax.P, ax.Q);
                         }

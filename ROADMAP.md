@@ -120,7 +120,7 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
   selection, build "+" and "make it" in the insert box.
 - Still open in COM: Ravigneaux sets, exploding cam mechanisms (needs a cam disc part;
   differentials explode into a case part, side and spider gears since 2026-11-25), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
-  positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are open.
+  positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are done (stops on fixed pivots, 2026-11-25).
 - Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
   fitting parts placed in their spot, multi-selection bar, select assembly, snap labels, coupler curve, F = n and
   explode; engine methods `search`, `transformEffect`, `arrangeOptions`/`arrange`, `assembly`, `trace`/`drawTrace`,
@@ -156,7 +156,7 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
    UI/UX round incl. motion mode are implemented).
 2. LibreOffice: done in the sidebar (2026-11-25); next an on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
 3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), differential cage part
-   (then explode differentials), Ravigneaux sets, joint limits (done 2026-11-25: bevel pairs in the
+   (then explode differentials), Ravigneaux sets (done 2026-11-25: joint limits as stops on fixed pivots, bevel pairs in the
    gear train speeds by their teeth – they only have side views, so they do not visibly turn –, and the
    `elevation`/`section` view alias for walls with building services).
 4. P2 modules: process & thermal, energy systems, robotics; slide-wide style (ISO line groups, patent mode).

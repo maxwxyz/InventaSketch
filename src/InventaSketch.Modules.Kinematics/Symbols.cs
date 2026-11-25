@@ -55,9 +55,9 @@ namespace InventaSketch.Modules.Kinematics
         private const double PivotY = -2.5, PivotR = 1.5;
 
         private static KinType GroundPivot() => new("kin.joint.ground", new I18nText("Fixed pivot (ground)", "Gestelldrehpunkt (Festlager)"), KinCategories.Joints, new Size2(12, 11),
-            new[] { "ground", "fixed pivot", "frame", "support", "gestell", "festlager", "drehpunkt", "lagerbock", "fixpunkt" },
-            ViewSpec.Schematic((p, o, c) => Frag.GroundPivot(p.Items, p.V(0, PivotY), PivotR * p.K, Down, false)),
-            ViewSpec.Detailed((p, o, c) => Frag.GroundPivot(p.Items, p.V(0, PivotY), PivotR * p.K, Down, true)))
+            new[] { "ground", "fixed pivot", "frame", "support", "gestell", "festlager", "drehpunkt", "lagerbock", "fixpunkt", "stop", "anschlag", "limit" },
+            ViewSpec.Schematic((p, o, c) => { Frag.GroundPivot(p.Items, p.V(0, PivotY), PivotR * p.K, Down, false); Stops(p, o); }),
+            ViewSpec.Detailed((p, o, c) => { Frag.GroundPivot(p.Items, p.V(0, PivotY), PivotR * p.K, Down, true); Stops(p, o); }))
         {
             AnchorsFn = (p, o) => new[]
             {
@@ -65,7 +65,43 @@ namespace InventaSketch.Modules.Kinematics
                 MountAt(p.V(0, PivotY) + new Vec2(0, 3 * PivotR * p.K), "base"),
             },
             Role = LinkageRole.FixedPivot,
+            Params = new[]
+            {
+                KP.Bool("limited", "Stops (limited swing)", "Anschläge (begrenzter Schwenkbereich)", false),
+                KP.Num("limitFrom", "Stop from (°, clockwise from right)", "Anschlag von (°, im Uhrzeigersinn von rechts)", -135, -360, 360, "°", 5),
+                KP.Num("limitTo", "Stop to (°)", "Anschlag bis (°)", -45, -360, 360, "°", 5),
+            },
+            LimitsFn = PivotLimits,
         };
+
+        /// <summary>
+        /// Page angle range of a pivot with stops: the local range mirrored with the symbol (FlipX: a → 180° − a, FlipY:
+        /// a → −a, the range reverses) and turned with it.
+        /// </summary>
+        internal static (double From, double To)? PivotLimits(SketchObject o)
+        {
+            if (!o.Flag("limited", false)) return null;
+            double from = o.Num("limitFrom", -135), to = o.Num("limitTo", -45);
+            if (o.Transform.FlipX) (from, to) = (180 - to, 180 - from);
+            if (o.Transform.FlipY) (from, to) = (-to, -from);
+            return (from + o.Transform.Rotation, to + o.Transform.Rotation);
+        }
+
+        /// <summary>Stops of a limited pivot: two thin stop lines at the range ends and a thin arc of the swing between them.</summary>
+        private static void Stops(Pen p, SketchObject o)
+        {
+            if (!o.Flag("limited", false)) return;
+            double from = o.Num("limitFrom", -135), to = o.Num("limitTo", -45);
+            var c = p.V(0, PivotY);
+            var r = 4 * PivotR * p.K;
+            Vec2 Dir(double deg) => new(Math.Cos(deg * Math.PI / 180), Math.Sin(deg * Math.PI / 180));
+            p.LineP(c + Dir(from) * (PivotR * p.K), c + Dir(from) * r, KS.Thin, "stop");
+            p.LineP(c + Dir(to) * (PivotR * p.K), c + Dir(to) * r, KS.Thin, "stop");
+            var sweep = ((to - from) % 360 + 360) % 360;
+            var arc = new List<Vec2>();
+            for (var i = 0; i <= 24; i++) arc.Add(c + Dir(from + sweep * i / 24) * (0.8 * r));
+            p.Add(Prim.Polyline(arc, KS.Thin with { Dash = DashStyle.Dash }, false), "swing");
+        }
 
         private static KinType Prismatic() => new("kin.joint.prismatic", new I18nText("Prismatic joint (slider on guide)", "Schubgelenk (Gleitstein auf Führung)"), KinCategories.Joints, new Size2(30, 10),
             new[] { "prismatic", "slider", "sliding pair", "guide", "linear", "schubgelenk", "gleitstein", "führung", "schubpaar", "schieber" },

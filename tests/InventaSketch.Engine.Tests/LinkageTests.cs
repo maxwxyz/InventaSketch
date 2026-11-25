@@ -53,6 +53,33 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void APivotWithStopsKeepsTheCrankInItsRange()
+        {
+            // Crank pointing up (-90°) on a pivot with stops from -120° to -60°.
+            var g = Pivot(new Vec2(50, 80)).WithParam("limited", true).WithParam("limitFrom", -120.0).WithParam("limitTo", -60.0);
+            var crank = Link(new Vec2(50, 80), new Vec2(50, 68), OnPivot(g, new Vec2(50, 80)));
+            var doc = Doc(g, crank);
+            Assert.Equal((-120.0, -60.0), Reg.Type(g.Type)!.JointLimits(g));
+            // Dragged to the right (0°) the crank stops at -60°, with its length kept.
+            var moved = Linkage.Drag(Reg, doc, crank.Id, 1, new Vec2(70, 80));
+            var tip = moved.ResolvePoints(moved.Get(crank.Id)!)[1] - new Vec2(50, 80);
+            Assert.Equal(12, tip.Length, 3);
+            Assert.Equal(-60, Math.Atan2(tip.Y, tip.X) * 180 / Math.PI, 1);
+            // Inside the range it follows freely.
+            var inside = Linkage.Drag(Reg, doc, crank.Id, 1, new Vec2(45, 60));
+            var t2 = inside.ResolvePoints(inside.Get(crank.Id)!)[1] - new Vec2(50, 80);
+            Assert.InRange(Math.Atan2(t2.Y, t2.X) * 180 / Math.PI, -105, -100);
+            // The stops render (two stop lines and the swing arc); without stops nothing extra is drawn.
+            var prims = Reg.Render(g, new RenderContext(doc));
+            Assert.Equal(2, prims.Count(p => p.Tag == "stop"));
+            Assert.DoesNotContain(Reg.Render(Pivot(new Vec2(50, 80)), new RenderContext(doc)), p => p.Tag == "stop");
+            // A mirrored pivot mirrors its range (-150…-90 → -90…-30, as 270…330), a turned one turns it.
+            var lop = g.WithParam("limitFrom", -150.0).WithParam("limitTo", -90.0);
+            Assert.Equal((270.0, 330.0), Reg.Type(g.Type)!.JointLimits(lop with { Transform = lop.Transform with { FlipX = true } }));
+            Assert.Equal((-60.0, 0.0), Reg.Type(g.Type)!.JointLimits(lop with { Transform = lop.Transform with { Rotation = 90 } }));
+        }
+
+        [Fact]
         public void ALinkEndDockedOnAJointFollowsIt()
         {
             var a = Link(new Vec2(0, 0), new Vec2(20, 0));

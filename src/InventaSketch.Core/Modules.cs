@@ -590,6 +590,13 @@ namespace InventaSketch.Core
         public virtual LinkageRole LinkageRole(SketchObject o) => Core.LinkageRole.None;
 
         /// <summary>
+        /// Stops of a fixed pivot (<see cref="Core.LinkageRole.FixedPivot"/>): the links on it may only point between
+        /// <c>From</c> and <c>To</c> (page degrees, clockwise on screen from +x, the range runs clockwise from From to To);
+        /// null (default) = turns freely.
+        /// </summary>
+        public virtual (double From, double To)? JointLimits(SketchObject o) => null;
+
+        /// <summary>
         /// Directions (local, before rotation) in which a meshing gear can be docked (<see cref="Building"/>): all four sides
         /// in axial views; only across the axis (up, down) where the axis lies in the drawing plane (schematic, side view).
         /// </summary>
