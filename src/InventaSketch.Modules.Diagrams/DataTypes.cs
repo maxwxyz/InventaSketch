@@ -345,13 +345,13 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.data.row", new I18nText("One row", "Eine Zeile"), IconIds.AlignRow, "layout", "row", "row", "layout");
-            yield return D.SetChoice(o, "diag.data.wrapped", new I18nText("Rows of a fixed bit width", "Zeilen fester Bitbreite"), IconIds.Table, "layout", "wrapped", "row", "layout");
-            yield return D.SetChoice(o, "diag.data.stack", new I18nText("Stack (memory map)", "Stapel (Speicherbelegung)"), IconIds.AlignColumn, "layout", "stack", "row", "layout");
+            yield return D.SetChoice(o, "diag.data.row", new I18nText("One row", "Eine Zeile"), IconIds.Option, "layout", "row", "row", "layout");
+            yield return D.SetChoice(o, "diag.data.wrapped", new I18nText("Rows of a fixed bit width", "Zeilen fester Bitbreite"), IconIds.Option, "layout", "wrapped", "row", "layout");
+            yield return D.SetChoice(o, "diag.data.stack", new I18nText("Stack (memory map)", "Stapel (Speicherbelegung)"), IconIds.Option, "layout", "stack", "row", "layout");
             yield return new ContextAction("diag.data.equal", new I18nText("Equal widths", "Gleiche Breiten"), IconIds.Toggle,
                 x => x.WithParam("widths", x.Str("widths", "proportional") == "equal" ? "proportional" : "equal")) { IsActive = o.Str("widths", "proportional") == "equal", Group = "widths" };
             yield return D.Toggle(o, "diag.data.ruler", new I18nText("Bit ruler / addresses", "Bitlineal / Adressen"), "ruler", false);
-            yield return ContextAction.WithInput("diag.data.addField", new I18nText("Add field", "Feld hinzufügen"), IconIds.Insert,
+            yield return ContextAction.WithInput("diag.data.addField", new I18nText("Add field", "Feld hinzufügen"), IconIds.ColumnAdd,
                 new I18nText("Field (name:size)", "Feld (Name:Größe)"), lang == Lang.De ? "Feld:8" : "Field:8",
                 (x, s) =>
                 {

@@ -154,8 +154,8 @@ namespace InventaSketch.Modules.Energy
         {
             if (Extra is not null)
                 foreach (var a in Extra(o, lang)) yield return a;
-            yield return Act.Toggle(o, "energy.label", new I18nText("Show rating label", "Bemessungsdaten anzeigen"), Pm.ShowLabel, IconIds.Text, "label");
-            yield return ContextAction.WithInput("energy.name.set", new I18nText("Designation…", "Bezeichnung…"), IconIds.Text,
+            yield return Act.Toggle(o, "energy.label", new I18nText("Show rating label", "Bemessungsdaten zeigen"), Pm.ShowLabel, IconIds.LabelShow, "label");
+            yield return ContextAction.WithInput("energy.name.set", new I18nText("Designation…", "Bezeichnung…"), IconIds.Name,
                 new I18nText("Designation", "Bezeichnung"), o.S(Pm.Name), (x, t) => x.WithParam(Pm.Name.Key, (t ?? "").Trim()).WithParam(Pm.ShowLabel.Key, true))
                 with { Group = "label", ParamKeys = new[] { Pm.Name.Key } };
         }

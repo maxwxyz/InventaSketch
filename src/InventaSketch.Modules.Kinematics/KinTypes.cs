@@ -54,9 +54,9 @@ namespace InventaSketch.Modules.Kinematics
         /// <summary>+15° / -15° steps of the input angle (clockwise on screen is positive).</summary>
         public static IEnumerable<ContextAction> AngleSteps(SketchObject o, double def)
         {
-            yield return new ContextAction("kin.angle.next", new I18nText("Next position (+15°)", "Nächste Stellung (+15°)"), IconIds.Rotate,
+            yield return new ContextAction("kin.angle.next", new I18nText("Next position (+15°)", "Nächste Stellung (+15°)"), IconIds.AngleNext,
                 x => x.WithParam("angle", NormAngle(x.Num("angle", def) + Step))) { Group = "angle" };
-            yield return new ContextAction("kin.angle.prev", new I18nText("Previous position (−15°)", "Vorherige Stellung (−15°)"), IconIds.Rotate,
+            yield return new ContextAction("kin.angle.prev", new I18nText("Previous position (−15°)", "Vorherige Stellung (−15°)"), IconIds.AnglePrev,
                 x => x.WithParam("angle", NormAngle(x.Num("angle", def) - Step))) { Group = "angle" };
         }
 
@@ -64,7 +64,7 @@ namespace InventaSketch.Modules.Kinematics
         public static ContextAction Ghosts(SketchObject o)
         {
             var n = o.Int("ghosts", 0);
-            return new ContextAction("kin.ghosts", new I18nText("Ghost positions", "Zwischenlagen"), IconIds.Animate, x =>
+            return new ContextAction("kin.ghosts", new I18nText("Ghost positions", "Zwischenlagen"), IconIds.Ghosts, x =>
             {
                 var cur = x.Int("ghosts", 0);
                 if (cur > 0) return x.WithParam("ghosts", 0).WithParam("ghostsLast", cur);

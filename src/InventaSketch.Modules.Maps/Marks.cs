@@ -65,7 +65,7 @@ namespace InventaSketch.Modules.Maps
                 Extra = (o, lang) => new[]
                 {
                     Prm.Cycle(o, "map.scalebar.unit", UnitDef, new I18nText("Unit", "Einheit")),
-                    ContextAction.WithInput("map.scalebar.length", new I18nText("Length…", "Länge…"), IconIds.Text,
+                    ContextAction.WithInput("map.scalebar.length", new I18nText("Length…", "Länge…"), IconIds.QtyLength,
                         new I18nText("Represented length (e.g. 2 km, 1.5 mi, 500 m)", "Dargestellte Länge (z. B. 2 km, 1,5 mi, 500 m)"),
                         Fmt.Num(LengthOf(o), lang) + " " + UnitOf(o),
                         (x, text) =>
@@ -74,8 +74,8 @@ namespace InventaSketch.Modules.Maps
                             var y = x.WithParam("length", v);
                             return unit is null ? y : y.WithParam("unit", unit);
                         }) with { Group = "length" },
-                    new ContextAction("map.scalebar.segments.inc", new I18nText("More segments", "Mehr Abschnitte"), IconIds.Increase, x => x.WithParam("segments", Math.Min(10, x.Int("segments", 4) + 1))) { Group = "segments" },
-                    new ContextAction("map.scalebar.segments.dec", new I18nText("Fewer segments", "Weniger Abschnitte"), IconIds.Decrease, x => x.WithParam("segments", Math.Max(1, x.Int("segments", 4) - 1))) { Group = "segments" },
+                    new ContextAction("map.scalebar.segments.inc", new I18nText("More segments", "Mehr Abschnitte"), IconIds.CountMore, x => x.WithParam("segments", Math.Min(10, x.Int("segments", 4) + 1))) { Group = "segments" },
+                    new ContextAction("map.scalebar.segments.dec", new I18nText("Fewer segments", "Weniger Abschnitte"), IconIds.CountFewer, x => x.WithParam("segments", Math.Max(1, x.Int("segments", 4) - 1))) { Group = "segments" },
                     Prm.Cycle(o, "map.scalebar.style", StyleDef, new I18nText("Style", "Stil")),
                 },
             };
@@ -244,8 +244,8 @@ namespace InventaSketch.Modules.Maps
                 CompanionIds = new[] { ScaleBar.TypeId, NorthArrow.TypeId, Compass.TypeId },
                 Extra = (o, lang) => new[]
                 {
-                    Prm.Toggle(o, "map.legend.auto", "auto", true, new I18nText("List the map objects", "Kartenobjekte auflisten")),
-                    ContextAction.WithInput("map.legend.title", new I18nText("Title…", "Titel…"), IconIds.Text,
+                    Prm.Toggle(o, "map.legend.auto", "auto", true, new I18nText("List the map objects", "Kartenobjekte auflisten"), IconIds.Legend),
+                    ContextAction.WithInput("map.legend.title", new I18nText("Title…", "Titel…"), IconIds.Name,
                         new I18nText("Legend title", "Titel der Legende"), o.Str("title", ""), (x, text) => x.WithParam("title", (text ?? "").Trim())) with { Group = "text" },
                 },
             };

@@ -73,7 +73,7 @@ namespace InventaSketch.Modules.Electrical
 
         /// <summary>Two-way switch of a choice parameter (polarity/channel swap).</summary>
         private static ContextAction Swap(SketchObject o, string key, string a, string b, I18nText label)
-            => new("elec." + key, label, IconIds.Swap, x => x.WithParam(key, x.Str(key, a) == a ? b : a)) { IsActive = o.Str(key, a) == b, Group = "polarity" };
+            => new("elec." + key, label, IconIds.Polarity, x => x.WithParam(key, x.Str(key, a) == a ? b : a)) { IsActive = o.Str(key, a) == b, Group = "polarity" };
 
         internal static void DiodeBody(Pen p, double cx, double h, bool filled = false)
         {

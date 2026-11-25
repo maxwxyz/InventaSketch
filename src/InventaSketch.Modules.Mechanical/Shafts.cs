@@ -52,7 +52,7 @@ namespace InventaSketch.Modules.Mechanical
         private static ContextAction HollowToggle(SketchObject o)
         {
             var on = o.View == "hollow" || o.Flag("hollow", false);
-            return new ContextAction("param.hollow", T("Hollow on/off", "Hohl an/aus"), "hollow", x =>
+            return new ContextAction("param.hollow", T("Hollow on/off", "Hohl an/aus"), IconIds.Toggle, x =>
             {
                 var now = x.View == "hollow" || x.Flag("hollow", false);
                 var next = x.WithParam("hollow", !now);

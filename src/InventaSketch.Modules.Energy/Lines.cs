@@ -184,11 +184,11 @@ namespace InventaSketch.Modules.Energy
             yield return new ContextAction("energy.route.next", Pm.OptionLabel(Route, o.S(Route) == "free" ? "orthogonal" : "free"), IconIds.Cycle,
                 x => x.WithParam(Route.Key, x.S(Route) == "free" ? "orthogonal" : "free")) { Group = "route", ParamKeys = new[] { Route.Key } };
             yield return Act.Number(o, "energy.voltage.set", new I18nText("Nominal voltage…", "Nennspannung…"), VoltageParam, lang);
-            yield return Act.Toggle(o, "energy.voltage.show", new I18nText("Show voltage", "Spannung anzeigen"), ShowVoltage, IconIds.Text, "label");
+            yield return Act.Toggle(o, "energy.voltage.show", new I18nText("Show voltage", "Spannung anzeigen"), ShowVoltage, IconIds.LabelShow, "label");
             yield return Act.Step(o, "energy.conductors.more", new I18nText("One conductor mark more", "Ein Leiterstrich mehr"), Conductors, 1);
             yield return Act.Step(o, "energy.conductors.fewer", new I18nText("One conductor mark fewer", "Ein Leiterstrich weniger"), Conductors, -1);
             yield return Act.Toggle(o, "energy.levelcolors", new I18nText("Colour by voltage level", "Farbe nach Spannungsebene"), Pm.LevelColors);
-            yield return ContextAction.WithInput("energy.cable.label", new I18nText("Cable designation…", "Kabelbezeichnung…"), IconIds.Text,
+            yield return ContextAction.WithInput("energy.cable.label", new I18nText("Cable designation…", "Kabelbezeichnung…"), IconIds.Name,
                 Label.Label, o.S(Label), (x, t) => x.WithParam(Label.Key, (t ?? "").Trim())) with { Group = "label", ParamKeys = new[] { Label.Key } };
         }
     }
@@ -253,7 +253,7 @@ namespace InventaSketch.Modules.Energy
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Act.Cycle(o, "energy.carrier.next", CarrierParam) with { Icon = IconIds.Medium };
-            yield return Act.Toggle(o, "energy.code.show", new I18nText("Show carrier code", "Kürzel anzeigen"), ShowCode, IconIds.Text, "label");
+            yield return Act.Toggle(o, "energy.code.show", new I18nText("Show carrier code", "Kürzel anzeigen"), ShowCode, IconIds.LabelShow, "label");
         }
     }
 
@@ -324,7 +324,7 @@ namespace InventaSketch.Modules.Energy
                 x => x.WithParam(Weight.Key, Math.Min(20, x.Clamped(Weight) * 1.5))) { Group = "weight", ParamKeys = new[] { Weight.Key } };
             yield return new ContextAction("energy.weight.less", new I18nText("Narrower band", "Schmaleres Band"), IconIds.Decrease,
                 x => x.WithParam(Weight.Key, Math.Max(0.3, x.Clamped(Weight) / 1.5))) { Group = "weight", ParamKeys = new[] { Weight.Key } };
-            yield return ContextAction.WithInput("energy.flow.label", new I18nText("Label…", "Beschriftung…"), IconIds.Text,
+            yield return ContextAction.WithInput("energy.flow.label", new I18nText("Label…", "Beschriftung…"), IconIds.Name,
                 Label.Label, o.S(Label), (x, t) => x.WithParam(Label.Key, (t ?? "").Trim())) with { Group = "label", ParamKeys = new[] { Label.Key } };
         }
     }

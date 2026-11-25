@@ -159,8 +159,8 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Xy(r, "0;10\n1;12\n2;95\n3;98");
             var a = Act(r, o, "chart.ybreak");
-            Assert.Equal("Axis break here…", a.Label.En);
-            Assert.Equal("Achsenbruch hier…", Act(r, o, "chart.ybreak", Lang.De).Label.De);
+            Assert.Equal("Break the y axis…", a.Label.En);
+            Assert.Equal("y-Achse unterbrechen…", Act(r, o, "chart.ybreak", Lang.De).Label.De);
             Assert.False(string.IsNullOrEmpty(a.Input!.Value));            // suggestion in the data-free gap 12 … 95
             var sug = ChartBreaks.Parse(a.Input.Value).Single();
             Assert.True(sug.Lo >= 12 && sug.Hi <= 95 && sug.Hi > sug.Lo);

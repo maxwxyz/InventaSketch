@@ -196,7 +196,7 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var (value, en, de) in Devices)
-                yield return D.SetChoice(o, "diag.screen." + value, new I18nText(en, de), IconIds.Front, "device", value, "phone", "device");
+                yield return D.SetChoice(o, "diag.screen." + value, new I18nText(en, de), IconIds.Option, "device", value, "phone", "device");
             yield return D.Toggle(o, "diag.screen.statusBar", new I18nText("Status bar", "Statusleiste"), "statusBar", true);
         }
     }
@@ -282,10 +282,10 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.field.text", new I18nText("Text", "Text"), IconIds.Text, "kind", "text", "text", "kind");
-            yield return D.SetChoice(o, "diag.field.search", new I18nText("Search", "Suche"), IconIds.Text, "kind", "search", "text", "kind");
-            yield return D.SetChoice(o, "diag.field.dropdown", new I18nText("Drop-down", "Auswahlliste"), IconIds.Text, "kind", "dropdown", "text", "kind");
-            yield return D.SetChoice(o, "diag.field.password", new I18nText("Password", "Passwort"), IconIds.Text, "kind", "password", "text", "kind");
+            yield return D.SetChoice(o, "diag.field.text", new I18nText("Text", "Text"), IconIds.Option, "kind", "text", "text", "kind");
+            yield return D.SetChoice(o, "diag.field.search", new I18nText("Search", "Suche"), IconIds.Option, "kind", "search", "text", "kind");
+            yield return D.SetChoice(o, "diag.field.dropdown", new I18nText("Drop-down", "Auswahlliste"), IconIds.Option, "kind", "dropdown", "text", "kind");
+            yield return D.SetChoice(o, "diag.field.password", new I18nText("Password", "Passwort"), IconIds.Option, "kind", "password", "text", "kind");
         }
     }
 
@@ -347,14 +347,14 @@ namespace InventaSketch.Modules.Diagrams
         {
             yield return D.Toggle(o, "diag.list.icons", new I18nText("Icons", "Symbole"), "icons", true);
             yield return D.Toggle(o, "diag.list.chevrons", new I18nText("Chevrons", "Pfeile"), "chevrons", true);
-            yield return new ContextAction("diag.list.add", new I18nText("Add row", "Zeile hinzufügen"), IconIds.Insert, x =>
+            yield return new ContextAction("diag.list.add", new I18nText("Add row", "Zeile hinzufügen"), IconIds.RowAdd, x =>
             {
                 var items = Items(x, lang).ToList();
                 var rh = x.Size.H / Math.Max(1, items.Count);
                 items.Add((lang == Lang.De ? "Eintrag " : "Item ") + D.Inv(items.Count + 1));
                 return D.GrowDown(x.WithParam("items", string.Join("\n", items)), rh);
             }) { Group = "rows" };
-            yield return new ContextAction("diag.list.remove", new I18nText("Remove last row", "Letzte Zeile entfernen"), IconIds.Delete, x =>
+            yield return new ContextAction("diag.list.remove", new I18nText("Remove last row", "Letzte Zeile entfernen"), IconIds.RowRemove, x =>
             {
                 var items = Items(x, lang).ToList();
                 if (items.Count <= 1) return x;
@@ -652,7 +652,7 @@ namespace InventaSketch.Modules.Diagrams
         {
             yield return new ContextAction("diag.tabs.next", new I18nText("Next active tab", "Nächster aktiver Reiter"), IconIds.Cycle,
                 x => x.WithParam("active", x.Int("active", 1) % Math.Max(1, Tabs(x, lang).Count) + 1)) { Group = "tabs" };
-            yield return new ContextAction("diag.tabs.add", new I18nText("Add tab", "Reiter hinzufügen"), IconIds.Insert, x =>
+            yield return new ContextAction("diag.tabs.add", new I18nText("Add tab", "Reiter hinzufügen"), IconIds.ColumnAdd, x =>
             {
                 var tabs = Tabs(x, lang).ToList();
                 tabs.Add((lang == Lang.De ? "Reiter " : "Tab ") + D.Inv(tabs.Count + 1));
@@ -749,10 +749,10 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.touch.tap", new I18nText("Tap", "Tippen"), IconIds.Actuation, "gesture", "tap", "tap", "gesture");
-            yield return D.SetChoice(o, "diag.touch.double", new I18nText("Double tap", "Doppeltippen"), IconIds.Actuation, "gesture", "double", "tap", "gesture");
-            yield return D.SetChoice(o, "diag.touch.long", new I18nText("Long press", "Lange drücken"), IconIds.Actuation, "gesture", "long", "tap", "gesture");
-            yield return D.SetChoice(o, "diag.touch.swipe", new I18nText("Swipe", "Wischen"), IconIds.Actuation, "gesture", "swipe", "tap", "gesture");
+            yield return D.SetChoice(o, "diag.touch.tap", new I18nText("Tap", "Tippen"), IconIds.Option, "gesture", "tap", "tap", "gesture");
+            yield return D.SetChoice(o, "diag.touch.double", new I18nText("Double tap", "Doppeltippen"), IconIds.Option, "gesture", "double", "tap", "gesture");
+            yield return D.SetChoice(o, "diag.touch.long", new I18nText("Long press", "Lange drücken"), IconIds.Option, "gesture", "long", "tap", "gesture");
+            yield return D.SetChoice(o, "diag.touch.swipe", new I18nText("Swipe", "Wischen"), IconIds.Option, "gesture", "swipe", "tap", "gesture");
         }
     }
 

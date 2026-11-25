@@ -90,7 +90,7 @@ namespace InventaSketch.Modules.Kinematics
         protected override IEnumerable<ContextAction> ExtraActions(SketchObject o)
         {
             var crossed = o.Str("branch", "open") == "crossed";
-            yield return new ContextAction("kin.branch", new I18nText("Crossed assembly mode", "Gekreuzte Montagelage"), IconIds.Swap,
+            yield return new ContextAction("kin.branch", new I18nText("Crossed assembly mode", "Gekreuzte Montagelage"), IconIds.Toggle,
                 x => x.WithParam("branch", x.Str("branch", "open") == "crossed" ? "open" : "crossed")) { IsActive = crossed, Group = "param" };
         }
     }

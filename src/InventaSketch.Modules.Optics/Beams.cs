@@ -24,9 +24,9 @@ namespace InventaSketch.Modules.Optics
         public static ContextAction BundleAction(SketchObject o, SketchDocument? doc, string anchorId)
         {
             if (doc is not null && BundlesOf(doc, o.Id).Count > 0)
-                return ContextAction.InDocument("optics.trace", new I18nText("Remove ray bundle", "Strahlenbündel entfernen"), IconIds.Trace,
+                return ContextAction.InDocument("optics.trace", new I18nText("Remove ray bundle", "Strahlenbündel entfernen"), IconIds.RayBundle,
                     (d, x, c) => Edits.Remove(d, BundlesOf(d, x.Id))) with { IsActive = true, Group = "rays" };
-            return ContextAction.InDocument("optics.trace", new I18nText("Add ray bundle", "Strahlenbündel einfügen"), IconIds.Trace,
+            return ContextAction.InDocument("optics.trace", new I18nText("Add ray bundle", "Strahlenbündel einfügen"), IconIds.RayBundle,
                 (d, x, c) => AddBundle(d, x, anchorId)) with { Group = "rays" };
         }
 

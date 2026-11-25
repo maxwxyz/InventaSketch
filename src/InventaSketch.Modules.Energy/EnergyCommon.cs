@@ -279,19 +279,34 @@ namespace InventaSketch.Modules.Energy
             return new ContextAction(id, next.Label, IconIds.Cycle, x => x.WithParam(choice.Key, next.Value)) { Group = group, ParamKeys = new[] { choice.Key } };
         }
 
+        /// <summary>The pictogram of a typed quantity ("energy.power.set": power …), else from the unit.</summary>
+        public static string QuantityIcon(string id, ParamDef p) => id switch
+        {
+            _ when id.Contains(".power.") => IconIds.QtyPower,
+            _ when id.Contains(".voltage") => IconIds.QtyVoltage,
+            _ when id.Contains(".capacity.") => IconIds.QtyCapacity,
+            _ when id.Contains(".soc.") => IconIds.QtyCharge,
+            _ when id.Contains(".volume.") => IconIds.QtyVolume,
+            _ when id.Contains(".mass.") => IconIds.QtyMass,
+            _ when id.Contains(".pressure.") => IconIds.QtyPressure,
+            _ => IconIds.ForQuantity(p.Unit, p.Key),
+        };
+
         /// <summary>Steps an integer parameter by <paramref name="delta"/> within its limits.</summary>
         public static ContextAction Step(SketchObject o, string id, I18nText label, ParamDef p, int delta)
         {
             var cur = o.I(p);
             var next = cur + delta;
             var ok = (p.Min is not double min || next >= min) && (p.Max is not double max || next <= max);
-            return new ContextAction(id, label, delta > 0 ? IconIds.Increase : IconIds.Decrease, x => x.WithParam(p.Key, Math.Max(p.Min ?? next, Math.Min(p.Max ?? next, x.I(p) + delta))))
+            // Connection points are ports; everything else counted here (conductor marks, modules, rows) is "one more/fewer".
+            var icon = p.Key.Contains("tap") ? (delta > 0 ? IconIds.PortAdd : IconIds.PortRemove) : delta > 0 ? IconIds.CountMore : IconIds.CountFewer;
+            return new ContextAction(id, label, icon, x => x.WithParam(p.Key, Math.Max(p.Min ?? next, Math.Min(p.Max ?? next, x.I(p) + delta))))
             { Group = "count", IsEnabled = ok, ParamKeys = new[] { p.Key } };
         }
 
         /// <summary>Typed number with an optional unit suffix ("10", "10 kW", "10,5").</summary>
         public static ContextAction Number(SketchObject o, string id, I18nText label, ParamDef p, Lang lang)
-            => ContextAction.WithInput(id, label, IconIds.Text, p.Label, Fmt.Num(o.N(p), lang, 3), (x, text) =>
+            => ContextAction.WithInput(id, label, QuantityIcon(id, p), p.Label, Fmt.Num(o.N(p), lang, 3), (x, text) =>
             {
                 var t = (text ?? "").Trim();
                 if (p.Unit is string u && t.EndsWith(u, StringComparison.OrdinalIgnoreCase)) t = t.Substring(0, t.Length - u.Length);

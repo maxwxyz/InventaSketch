@@ -115,7 +115,7 @@ namespace InventaSketch.Engine
             public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
             {
                 var hatched = o.Style?.Fill?.Kind == FillKind.Hatch;
-                yield return new ContextAction("basic.hatch", new I18nText("Hatch", "Schraffur"), "hatch",
+                yield return new ContextAction("basic.hatch", new I18nText("Hatch", "Schraffur"), IconIds.FillHatch,
                     x => x with { Style = (x.Style ?? new Style()) with { Fill = hatched ? Fill.None : Fill.Hatched(new HatchPattern(45, 2)) } })
                 { IsActive = hatched };
             }

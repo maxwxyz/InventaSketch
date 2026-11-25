@@ -371,7 +371,7 @@ namespace InventaSketch.Modules.Geometry
             yield return Mx.Cycle(o, "math.graph.function.next", new I18nText("Next function", "Nächste Funktion"), Function, "function");
             var fn = Spec(o);
             var label = new I18nText("Coefficients a; b; c; d…", "Koeffizienten a; b; c; d…");
-            yield return ContextAction.WithInput("math.graph.coefficients", label, IconIds.Text, label,
+            yield return ContextAction.WithInput("math.graph.coefficients", label, IconIds.Parameters, label,
                 string.Join("; ", new[] { fn.A, fn.B, fn.C, fn.D }.Select(v => Mx.Num(v, Lang.En, 4).Replace('−', '-'))),
                 (x, t) =>
                 {

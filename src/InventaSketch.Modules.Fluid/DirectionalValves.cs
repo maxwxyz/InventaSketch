@@ -377,7 +377,7 @@ namespace InventaSketch.Modules.Fluid
             { IsActive = o.Str("normal", "closed") == "open", IsEnabled = twoWayOrThree, Group = "param" };
             yield return Cycle("fluid.valve.actLeft.next", T("Next actuation (left)", "Nächste Betätigung (links)"), ActLeft, Operators, "actuation", IconIds.Actuation);
             yield return Cycle("fluid.valve.actRight.next", T("Next actuation (right)", "Nächste Betätigung (rechts)"), ActRight, Operators, "actuation", IconIds.Actuation);
-            yield return new ContextAction("fluid.valve.flip", T("Flip spring side (swap actuations)", "Federseite tauschen (Betätigungen tauschen)"), IconIds.Swap,
+            yield return new ContextAction("fluid.valve.flip", T("Swap sides (spring, actuation)", "Seiten tauschen (Feder, Betätigung)"), IconIds.Swap,
                 x => x.WithParam("actLeft", x.Str("actRight", "solenoid")).WithParam("actRight", x.Str("actLeft", "solenoid")))
             { Group = "actuation" };
             yield return Toggle(o, "fluid.valve.detent", T("Detent", "Rastung"), "detent", false, IconIds.Toggle, "actuation");

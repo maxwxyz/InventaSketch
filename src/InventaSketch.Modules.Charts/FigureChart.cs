@@ -109,7 +109,7 @@ namespace InventaSketch.Modules.Charts
             }) { Group = group };
 
         private static ContextAction SpecInput(SketchObject o, Lang lang)
-            => ContextAction.WithInput("chart.figure.spec", new I18nText("Specification (JSON)…", "Spezifikation (JSON)…"), IconIds.Text,
+            => ContextAction.WithInput("chart.figure.spec", new I18nText("Specification (JSON)…", "Spezifikation (JSON)…"), IconIds.Code,
                 new I18nText("Figure specification as JSON (see the charts documentation, section Figure)", "Bildspezifikation als JSON (siehe Diagramm-Dokumentation, Abschnitt Bild)"),
                 SpecText(o),
                 (x, text) =>
@@ -126,9 +126,9 @@ namespace InventaSketch.Modules.Charts
             FigureSpec.TryParse(SpecText(o), out var spec, out _);
             return new[]
             {
-                Edit("chart.figure.hline", new I18nText("Add value line", "Wertlinie hinzufügen"), IconIds.Insert, lang, s => AddHLine(s, 0)),
-                Edit("chart.figure.vline", new I18nText("Add vertical marker", "Senkrechte Markierung hinzufügen"), IconIds.Insert, lang, AddVLine),
-                Edit("chart.figure.region", new I18nText("Hatch between curves 1 and 2", "Zwischen Kurve 1 und 2 schraffieren"), IconIds.Insert, lang, AddRegion) with { IsEnabled = CanRegion(spec) },
+                Edit("chart.figure.hline", new I18nText("Add value line", "Wertlinie hinzufügen"), IconIds.ValueLine, lang, s => AddHLine(s, 0)),
+                Edit("chart.figure.vline", new I18nText("Add vertical marker", "Senkrechte Marke dazu"), IconIds.Marker, lang, AddVLine),
+                Edit("chart.figure.region", new I18nText("Hatch between curves", "Zwischen Kurven schraffieren"), IconIds.HatchBetween, lang, AddRegion) with { IsEnabled = CanRegion(spec) },
                 Edit("chart.figure.principle", new I18nText("Principle axes", "Prinzipachsen"), IconIds.Toggle, lang, TogglePrinciple, "param") with { IsActive = spec?.AllPrinciple == true },
                 Edit("chart.figure.mono", new I18nText("Monochrome", "Schwarz-Weiß"), IconIds.Toggle, lang, s => s.Scheme = s.Mono ? "color" : "mono", "param") with { IsActive = spec?.Mono == true },
                 SpecInput(o, lang),
@@ -171,12 +171,12 @@ namespace InventaSketch.Modules.Charts
                 value = ChartBreaks.Suggest(axis, data) is { } sug ? ChartBreaks.Format(new[] { sug }) : "";
             }
             var id = x ? "chart.figure.xbreak" : "chart.figure.ybreak";
-            return ContextAction.WithInput(id, ChartBreaks.Label(x), IconIds.Text, ChartBreaks.Prompt(x), value,
+            return ContextAction.WithInput(id, ChartBreaks.Label(x), x ? IconIds.BreakX : IconIds.BreakY, ChartBreaks.Prompt(x), value,
                 (obj, text) => SetSpec(obj, lang, s => BreakAxis(s, x, panel).Breaks = ChartBreaks.ParseInput(text, lang))) with { Group = "breaks" };
         }
 
         private static ContextAction BreakRemove(Lang lang, FigureSpec spec, bool x, int panel)
-            => Edit(x ? "chart.figure.xbreak.remove" : "chart.figure.ybreak.remove", ChartBreaks.RemoveLabel(x), IconIds.Delete, lang,
+            => Edit(x ? "chart.figure.xbreak.remove" : "chart.figure.ybreak.remove", ChartBreaks.RemoveLabel(x), x ? IconIds.BreakXRemove : IconIds.BreakYRemove, lang,
                 s => BreakAxis(s, x, panel).Breaks.Clear(), "breaks") with { IsEnabled = BreaksOf(spec, x, panel).Count > 0 };
 
         /// <summary>Adds a dashed value line at three quarters of the y range of panel <paramref name="panel"/>.</summary>
@@ -251,13 +251,13 @@ namespace InventaSketch.Modules.Charts
                         // Sketched curves first: switch their shape (smoothed, interpolated, fitted, segments, as drawn).
                         list.AddRange(ChartSketchInput.ShapeActions(o, k));
                         var next = Next(LineStyles, s.Line ?? "solid");
-                        list.Add(Edit("chart.figure.line", new I18nText("Line: " + next.En, "Linie: " + next.De), IconIds.LineDash, lang, x => x.Series[k].Line = next.Value));
+                        list.Add(Edit("chart.figure.line", new I18nText("Line: " + next.En, "Linie: " + next.De), IconIds.Cycle, lang, x => x.Series[k].Line = next.Value));
                         list.Add(Edit("chart.figure.markers", new I18nText("Markers", "Marker"), IconIds.Toggle, lang, x => x.Series[k].Marker = x.Series[k].Marker is null ? "circle" : null) with { IsActive = s.Marker is not null });
                         list.Add(Edit("chart.figure.smooth", new I18nText("Smooth curve", "Geglättete Kurve"), IconIds.Toggle, lang, x => x.Series[k].Smooth = !x.Series[k].Smooth) with { IsActive = s.Smooth });
-                        list.Add(Edit("chart.figure.below", new I18nText("Hatch below the curve", "Fläche unter der Kurve schraffieren"), IconIds.Insert, lang,
+                        list.Add(Edit("chart.figure.below", new I18nText("Hatch below the curve", "Unter Kurve schraffieren"), IconIds.HatchBelow, lang,
                             x => x.Regions.Add(new FigRegion { Kind = "below", A = k })));
                         if (spec.Series.Count >= 2)
-                            list.Add(Edit("chart.figure.region", new I18nText("Hatch between curves 1 and 2", "Zwischen Kurve 1 und 2 schraffieren"), IconIds.Insert, lang, AddRegion) with { IsEnabled = CanRegion(spec) });
+                            list.Add(Edit("chart.figure.region", new I18nText("Hatch between curves", "Zwischen Kurven schraffieren"), IconIds.HatchBetween, lang, AddRegion) with { IsEnabled = CanRegion(spec) });
                         break;
                     }
                 case ChartTags.Ref when k >= 0 && k < spec.Refs.Count:
@@ -266,10 +266,10 @@ namespace InventaSketch.Modules.Charts
                         if (r.Kind != "point")
                         {
                             var next = Next(LineStyles, r.Line ?? "dash");
-                            list.Add(Edit("chart.figure.line", new I18nText("Line: " + next.En, "Linie: " + next.De), IconIds.LineDash, lang, x => x.Refs[k].Line = next.Value));
+                            list.Add(Edit("chart.figure.line", new I18nText("Line: " + next.En, "Linie: " + next.De), IconIds.Cycle, lang, x => x.Refs[k].Line = next.Value));
                         }
                         else list.Add(Edit("chart.figure.fill", new I18nText("Filled circle", "Gefüllter Kreis"), IconIds.Toggle, lang, x => x.Refs[k].Filled = !x.Refs[k].Filled) with { IsActive = r.Filled });
-                        list.Add(ContextAction.WithInput("chart.figure.label", new I18nText("Label…", "Beschriftung…"), IconIds.Text, new I18nText("Label", "Beschriftung"),
+                        list.Add(ContextAction.WithInput("chart.figure.label", new I18nText("Label…", "Beschriftung…"), IconIds.Name, new I18nText("Label", "Beschriftung"),
                             r.Label?.Get(lang) ?? "", (x, text) => SetSpec(x, lang, s => s.Refs[k].Label = string.IsNullOrWhiteSpace(text) ? null : new I18nText(text.Trim()))) with { Group = "figure" });
                         list.Add(Edit("chart.figure.remove", new I18nText("Remove", "Entfernen"), IconIds.Delete, lang, x => x.Refs.RemoveAt(k)));
                         break;
@@ -295,7 +295,7 @@ namespace InventaSketch.Modules.Charts
                         list.Add(Edit("chart.figure.principle", new I18nText("Principle axes", "Prinzipachsen"), IconIds.Toggle, lang, TogglePrinciple, "param") with { IsActive = spec.AllPrinciple });
                         if (dir == "x")
                         {
-                            list.Add(Edit("chart.figure.vline", new I18nText("Add vertical marker", "Senkrechte Markierung hinzufügen"), IconIds.Insert, lang, AddVLine));
+                            list.Add(Edit("chart.figure.vline", new I18nText("Add vertical marker", "Senkrechte Marke dazu"), IconIds.Marker, lang, AddVLine));
                             list.Add(BreakInput(o, lang, spec, true, 0));
                             list.Add(BreakRemove(lang, spec, true, 0));
                         }
@@ -303,7 +303,7 @@ namespace InventaSketch.Modules.Charts
                         {
                             // "axis.y" (one panel) or "axis.y.2" (second of stacked panels).
                             var panel = seg.Length > 2 && int.TryParse(seg[2], NumberStyles.Integer, CultureInfo.InvariantCulture, out var pn) ? pn - 1 : 0;
-                            list.Add(Edit("chart.figure.hline", new I18nText("Add value line", "Wertlinie hinzufügen"), IconIds.Insert, lang, x => AddHLine(x, panel)));
+                            list.Add(Edit("chart.figure.hline", new I18nText("Add value line", "Wertlinie hinzufügen"), IconIds.ValueLine, lang, x => AddHLine(x, panel)));
                             list.Add(BreakInput(o, lang, spec, false, panel));
                             list.Add(BreakRemove(lang, spec, false, panel));
                         }

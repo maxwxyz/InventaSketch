@@ -225,7 +225,7 @@ namespace InventaSketch.Modules.Machines
                 list.AddRange(Common.Stepper(o, "poles", T("Poles", "Pole"), 16, 2, 2, 64));
                 list.AddRange(Common.Stepper(o, "coils", T("Coils", "Spulen"), 18, 3, 3, 96));
                 list.Add(new ContextAction("param.disc", o.Str("disc", "rotor") == "rotor" ? T("Show stator disc", "Statorscheibe zeigen") : T("Show rotor disc", "Rotorscheibe zeigen"),
-                    IconIds.Swap, x => x.WithParam("disc", x.Str("disc", "rotor") == "rotor" ? "stator" : "rotor")) { Group = "param" });
+                    IconIds.Cycle, x => x.WithParam("disc", x.Str("disc", "rotor") == "rotor" ? "stator" : "rotor")) { Group = "param" });
                 list.Add(Common.Toggle(o, "currents", false, T("Current directions on/off", "Stromrichtungen an/aus")));
                 list.Add(Common.Toggle(o, "cooling", false, T("Cooling channels on/off", "Kühlkanäle an/aus")));
                 return list;

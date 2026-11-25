@@ -492,10 +492,10 @@ namespace InventaSketch.Modules.Machines
         {
             var cur = o.Int(key, def);
             if (cur + step <= max)
-                yield return new ContextAction("param." + key + ".inc", new I18nText(name.En + " +" + step, (name.De ?? name.En) + " +" + step), IconIds.Increase,
+                yield return new ContextAction("param." + key + ".inc", new I18nText(name.En + " +" + step, (name.De ?? name.En) + " +" + step), IconIds.CountMore,
                     x => x.WithParam(key, Math.Min(max, x.Int(key, def) + step))) { Group = "param" };
             if (cur - step >= min)
-                yield return new ContextAction("param." + key + ".dec", new I18nText(name.En + " −" + step, (name.De ?? name.En) + " −" + step), IconIds.Decrease,
+                yield return new ContextAction("param." + key + ".dec", new I18nText(name.En + " −" + step, (name.De ?? name.En) + " −" + step), IconIds.CountFewer,
                     x => x.WithParam(key, Math.Max(min, x.Int(key, def) - step))) { Group = "param" };
         }
 
@@ -506,11 +506,11 @@ namespace InventaSketch.Modules.Machines
         }
 
         public static ContextAction LayoutSwap(SketchObject o)
-            => new("param.layout", Outer(o) ? T("Inner rotor", "Innenläufer") : T("Outer rotor", "Außenläufer"), IconIds.Swap,
+            => new("param.layout", Outer(o) ? T("Inner rotor", "Innenläufer") : T("Outer rotor", "Außenläufer"), IconIds.Cycle,
                 x => x.WithParam("layout", Outer(x) ? "inner" : "outer")) { Group = "param" };
 
         public static ContextAction ModeSwap(SketchObject o)
-            => new("param.mode", o.Str("mode", "motor") == "generator" ? T("Motor (M)", "Motor (M)") : T("Generator (G)", "Generator (G)"), IconIds.Swap,
+            => new("param.mode", o.Str("mode", "motor") == "generator" ? T("Motor (M)", "Motor (M)") : T("Generator (G)", "Generator (G)"), IconIds.Cycle,
                 x => x.WithParam("mode", x.Str("mode", "motor") == "generator" ? "motor" : "generator")) { Group = "param" };
 
         public static string L(Pen p, string en, string de) => p.Lang == Lang.De ? de : en;

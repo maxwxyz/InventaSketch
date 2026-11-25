@@ -93,7 +93,7 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             ContextAction Step(string id, string en, string de, string key, int def, int delta) =>
-                new(id, new I18nText(en, de), delta > 0 ? IconIds.Connect : IconIds.Delete, x => x.WithParam(key, Math.Max(0, Math.Min(12, x.Int(key, def) + delta)))) { Group = "ports" };
+                new(id, new I18nText(en, de), delta > 0 ? IconIds.PortAdd : IconIds.PortRemove, x => x.WithParam(key, Math.Max(0, Math.Min(12, x.Int(key, def) + delta)))) { Group = "ports" };
             yield return Step("diag.block.addLeft", "Add port left", "Port links hinzufügen", "portsLeft", 1, 1);
             yield return Step("diag.block.removeLeft", "Remove port left", "Port links entfernen", "portsLeft", 1, -1);
             yield return Step("diag.block.addRight", "Add port right", "Port rechts hinzufügen", "portsRight", 1, 1);

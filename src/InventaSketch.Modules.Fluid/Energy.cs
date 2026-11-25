@@ -66,7 +66,7 @@ namespace InventaSketch.Modules.Fluid
                 CompanionIds = CylCompanions,
                 Extra = o => new[]
                 {
-                    new ContextAction("fluid.cyl.rod", T("Single / through rod", "Einseitige / durchgehende Kolbenstange"), IconIds.Toggle,
+                    new ContextAction("fluid.cyl.rod", T("Through rod", "Durchgehende Stange"), IconIds.Toggle,
                         x => x.WithParam("rod", x.Str("rod", "single") == "double" ? "single" : "double")) { IsActive = o.Str("rod", "single") == "double", Group = "param" },
                     Cycle("fluid.cyl.cushion.next", T("Next cushioning (none / fixed / adjustable)", "Nächste Dämpfung (keine / fest / einstellbar)"), Cushion),
                 },

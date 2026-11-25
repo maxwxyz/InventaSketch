@@ -190,7 +190,7 @@ namespace InventaSketch.Modules.Machines
             },
             Extra = o => new[]
             {
-                new ContextAction("param.polarity", T("Swap polarity", "Polarität tauschen"), IconIds.Swap, x => x.WithParam("polarity", x.Str("polarity", "N") == "N" ? "S" : "N")) { Group = "param" },
+                new ContextAction("param.polarity", T("Swap polarity", "Polarität tauschen"), IconIds.Polarity, x => x.WithParam("polarity", x.Str("polarity", "N") == "N" ? "S" : "N")) { Group = "param" },
                 Common.Toggle(o, "arrow", false, T("Magnetisation arrow on/off", "Magnetisierungspfeil an/aus")),
             },
         };
@@ -443,7 +443,7 @@ namespace InventaSketch.Modules.Machines
             {
                 var l = new List<ContextAction>(Common.Stepper(o, "channels", T("Channels", "Kanäle"), 12, 1, 3, 64))
                 {
-                    new("param.direction", T("Reverse flow", "Strömung umkehren"), IconIds.Swap, x => x.WithParam("direction", x.Str("direction", "right") == "left" ? "right" : "left")) { Group = "param" },
+                    new("param.direction", T("Reverse flow", "Strömung umkehren"), IconIds.Reverse, x => x.WithParam("direction", x.Str("direction", "right") == "left" ? "right" : "left")) { Group = "param" },
                 };
                 return l;
             },
@@ -473,7 +473,7 @@ namespace InventaSketch.Modules.Machines
             },
             Extra = o => new[]
             {
-                new ContextAction("param.kind", o.Str("kind", "resolver") == "encoder" ? T("Resolver", "Resolver") : T("Optical encoder", "Optischer Drehgeber"), IconIds.Swap,
+                new ContextAction("param.kind", o.Str("kind", "resolver") == "encoder" ? T("Resolver", "Resolver") : T("Optical encoder", "Optischer Drehgeber"), IconIds.Cycle,
                     x => x.WithParam("kind", x.Str("kind", "resolver") == "encoder" ? "resolver" : "encoder")) { Group = "param" },
             },
         };

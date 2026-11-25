@@ -118,7 +118,7 @@ namespace InventaSketch.Modules.Energy
                 Extra = (o, l) => new[]
                 {
                     Act.Number(o, "energy.power.set", T("Rated power…", "Nennleistung…"), WindPower, l),
-                    new ContextAction("energy.rotor.turn", T("Turn rotor by 30°", "Rotor um 30° drehen"), IconIds.Rotate,
+                    new ContextAction("energy.rotor.turn", T("Turn rotor by 30°", "Rotor um 30° drehen"), IconIds.AngleNext,
                         x => x.WithParam(Rotor.Key, Geo.NormDeg(x.N(Rotor) + 30))) { Group = "param", ParamKeys = new[] { Rotor.Key } },
                 },
                 Frames = (o, count) => Enumerable.Range(0, count)

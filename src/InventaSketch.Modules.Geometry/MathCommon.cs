@@ -422,8 +422,8 @@ namespace InventaSketch.Modules.Geometry
 
         // ------------------------------------------------------------------ actions
 
-        public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool fallback, string? group = null)
-            => new(id, label, IconIds.Toggle, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group, ParamKeys = new[] { key } };
+        public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool fallback, string? group = null, string icon = IconIds.Toggle)
+            => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, fallback))) { IsActive = o.Flag(key, fallback), Group = group, ParamKeys = new[] { key } };
 
         /// <summary>Cycles a choice parameter through its options.</summary>
         public static ContextAction Cycle(SketchObject o, string id, I18nText label, ParamDef def, string? group = null)
@@ -438,12 +438,12 @@ namespace InventaSketch.Modules.Geometry
         }
 
         public static ContextAction TextInput(SketchObject o, string id, I18nText label, string key, string fallback, string? group = null)
-            => ContextAction.WithInput(id, label, IconIds.Text, label, o.Str(key, fallback), (x, t) => x.WithParam(key, (t ?? "").Trim()))
+            => ContextAction.WithInput(id, label, IconIds.Name, label, o.Str(key, fallback), (x, t) => x.WithParam(key, (t ?? "").Trim()))
                 with { Group = group, ParamKeys = new[] { key } };
 
         /// <summary>Number input clamped to the parameter's limits.</summary>
         public static ContextAction NumberInput(SketchObject o, string id, I18nText label, ParamDef def, string? group = null)
-            => ContextAction.WithInput(id, label, IconIds.Text, label, Num(o.Num(def.Key, def.Default?.Number ?? 0), Lang.En, 4),
+            => ContextAction.WithInput(id, label, IconIds.ForQuantity(def.Unit, def.Key), label, Num(o.Num(def.Key, def.Default?.Number ?? 0), Lang.En, 4),
                 (x, t) => x.WithParam(def.Key, Geo.Clamp(ParseNumber(t), def.Min ?? double.MinValue, def.Max ?? double.MaxValue)), def.Unit)
                 with { Group = group, ParamKeys = new[] { def.Key } };
     }

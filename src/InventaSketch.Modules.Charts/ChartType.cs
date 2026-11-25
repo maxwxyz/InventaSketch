@@ -281,14 +281,14 @@ namespace InventaSketch.Modules.Charts
         public static ContextAction DataInput(SketchObject o, string def)
         {
             var current = o.Str("data", def).Replace("\r\n", "\n").Replace('\r', '\n');
-            return ContextAction.WithInput("chart.data", new I18nText("Data…", "Daten…"), IconIds.Text,
+            return ContextAction.WithInput("chart.data", new I18nText("Data…", "Daten…"), IconIds.Data,
                 new I18nText("Data rows “x;y” separated by | (new series: ||)", "Datenzeilen „x;y“ getrennt durch | (neue Reihe: ||)"),
                 current.Replace("\n", " | "),
                 (x, text) => x.WithParam("data", string.Join("\n", (text ?? "").Split('|').Select(l => l.Trim())))) with { Group = "data" };
         }
 
-        public static ContextAction GridToggle(SketchObject o) => Prm.Toggle(o, "chart.grid", "grid", true, new I18nText("Grid", "Gitternetz"));
+        public static ContextAction GridToggle(SketchObject o) => Prm.Toggle(o, "chart.grid", "grid", true, new I18nText("Grid", "Gitternetz"), IconIds.Grid);
 
-        public static ContextAction LegendCycle(SketchObject o) => Prm.Cycle(o, "chart.legend", Legend, new I18nText("Legend", "Legende"));
+        public static ContextAction LegendCycle(SketchObject o) => Prm.Cycle(o, "chart.legend", Legend, new I18nText("Legend", "Legende"), IconIds.Legend);
     }
 }

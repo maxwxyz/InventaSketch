@@ -181,7 +181,7 @@ namespace InventaSketch.Modules.Optics
 
         /// <summary>Number input clamped to the parameter's limits.</summary>
         public static ContextAction NumberInput(SketchObject o, string id, I18nText label, ParamDef def, string? group = null)
-            => ContextAction.WithInput(id, label, IconIds.Text, label, N(o.Num(def.Key, def.Default?.Number ?? 0)),
+            => ContextAction.WithInput(id, label, IconIds.ForQuantity(def.Unit, def.Key), label, N(o.Num(def.Key, def.Default?.Number ?? 0)),
                 (x, t) => x.WithParam(def.Key, Geo.Clamp(ParseNumber(t), def.Min ?? double.MinValue, def.Max ?? double.MaxValue)), def.Unit)
                 with { Group = group, ParamKeys = new[] { def.Key } };
 
@@ -189,9 +189,9 @@ namespace InventaSketch.Modules.Optics
         public static IEnumerable<ContextAction> RayCount(SketchObject o, ParamDef def)
         {
             var n = o.Int(def.Key, (int)(def.Default?.Number ?? 1));
-            yield return new ContextAction("optics.rays.more", new I18nText("More rays", "Mehr Strahlen"), IconIds.Increase,
+            yield return new ContextAction("optics.rays.more", new I18nText("More rays", "Mehr Strahlen"), IconIds.CountMore,
                 x => x.WithParam(def.Key, Math.Min((int)(def.Max ?? 15), x.Int(def.Key, n) + 1))) { Group = "rays", IsEnabled = n < (def.Max ?? 15) };
-            yield return new ContextAction("optics.rays.less", new I18nText("Fewer rays", "Weniger Strahlen"), IconIds.Decrease,
+            yield return new ContextAction("optics.rays.less", new I18nText("Fewer rays", "Weniger Strahlen"), IconIds.CountFewer,
                 x => x.WithParam(def.Key, Math.Max((int)(def.Min ?? 1), x.Int(def.Key, n) - 1))) { Group = "rays", IsEnabled = n > (def.Min ?? 1) };
         }
     }

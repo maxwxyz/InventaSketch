@@ -92,7 +92,7 @@ namespace InventaSketch.Modules.Automotive
         {
             foreach (var a in Prm.PlusMinus("range", 60, 1, 2000, 1.25, true, T("Longer range", "Größere Reichweite"), T("Shorter range", "Kleinere Reichweite"), "range")) yield return a;
             foreach (var a in Prm.PlusMinus("angle", 50, 5, 360, 10, false, T("Wider angle", "Größerer Öffnungswinkel"), T("Narrower angle", "Kleinerer Öffnungswinkel"), "angle")) yield return a;
-            yield return new ContextAction("param.heading.rotate", T("Rotate by 15°", "Um 15° drehen"), IconIds.Rotate,
+            yield return new ContextAction("param.heading.rotate", T("Turn by 15°", "Um 15° drehen"), IconIds.AngleNext,
                 x => x.WithParam("heading", Geo.NormDeg(x.Num("heading", 0) + 15 + 180) - 180)) { Group = "heading" };
             yield return Prm.Cycle(o, FillDef, T("Next fill", "Nächste Füllung"));
         }
@@ -296,7 +296,7 @@ namespace InventaSketch.Modules.Automotive
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Prm.Toggle(o, "showValue", false, T("Show value", "Wert zeigen"));
-            yield return new ContextAction("param.offset.flip", T("Other side", "Andere Seite"), IconIds.MirrorV, x => x.WithParam("offset", -x.Num("offset", 6))) { Group = "param" };
+            yield return new ContextAction("param.offset.flip", T("Put on other side", "Auf die andere Seite"), IconIds.SideSwap, x => x.WithParam("offset", -x.Num("offset", 6))) { Group = "param" };
         }
     }
 }

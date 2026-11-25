@@ -119,6 +119,42 @@ Ein gewähltes Diagrammteil hat eine eigene Leiste (Teilname, seine Aktionen, Te
 Mehrfachauswahl hat die Gruppen eine Ansicht für alle | ausrichten und verteilen | Diagramm anordnen (Text
 „Diagramm ↓“, „Diagramm →“) | Maß, Format übertragen, neu nummerieren.
 
+### Piktogramme: ein Piktogramm, eine Bedeutung (F3, 2026-11-25)
+
+Jedes Aktions-Piktogramm ist eine Id aus `IconIds` (Core) und wird von beiden Hosts mit Piktogrammen gezeichnet: COM
+`IconPainter` und Web `icons.ts` (LibreOffice zeigt nur Textbeschriftungen). Die F3-Piktogramme sind SVG-Pfaddaten im
+24er-Raster, einmal definiert und in beide Hosts übernommen (`IconPainter.SharedPaths`, `icons.ts`); ein Web-Test prüft,
+dass beide Tabellen gleich sind. Kontaktbögen (hell und dunkel, 32 und 16 px) schreiben
+`tests/InventaSketch.AddIn.Tests/IconPainterTests.WritesIconSheet` und `hosts/office-web/test/icons.test.ts`.
+
+- **Text („T“) nur für „Text bearbeiten“.** Namen, Kennzeichen, Bezeichnungen und Titel nutzen *Name* (ein Etikett);
+  Zahlen *Wert* (Feld mit Schreibmarke) oder, wo die Größe bekannt ist, ein Größen-Piktogramm (Winkel, Länge, Breite,
+  Höhe, Dicke, Fläche, Volumen, Masse, Druck, Leistung, Spannung, Kapazität, Ladezustand, Zeit, Frequenz, Toleranz,
+  Förderstrom, x-/y-Bereich; `IconIds.ForQuantity` ordnet Einheiten zu). Beschriftung zeigen nutzt *Beschriftung
+  zeigen*, Anschlussnamen *Anschlüsse beschriften*.
+- **Aufbau:** Zeile (unten oder oben), Spalte, Operation, Anschluss, Punkt hinzufügen/entfernen; *eins mehr/eins
+  weniger* für wiederholte Teile (Zähne, Pole, Module, Stufen …). „+“/„−“ (*Erhöhen/Verringern*) nur zum Verstellen
+  eines Werts.
+- **Richtung und Lage:** *Umkehren* (Wendepfeil) kehrt eine Richtung um, *Seite wechseln* legt Maß oder Bezugslinie auf
+  die andere Seite, *Polarität* tauscht + und −, *Tauschen* tauscht zwei Dinge (Enden, Federseite), *Fließpfeil* zeigt
+  einen Richtungspfeil, *Gelenk am Anfang/Ende*, *Nächste/vorige Stellung* (Gelenk um einen Schritt gedreht),
+  *Grundstellung*, *An Wand ausrichten*. *Drehen* und *Spiegeln* bleiben die Host-Befehle für das Element.
+- **Diagramme:** *Daten*, *Legende*, *Gitternetz*, *Achsenzahlen*, *Glätten*, *Formel* (fx), *Parameter*, *Code*
+  (JSON), *Höhenlinien*, *Funktionsgenerator*, *Marke*, *Wertlinie*, *Zwischen/unter Kurven schraffieren*,
+  Achsenbruch x/y und sein Entfernen.
+- **Von Hand zeichnen:** *Stift* („Kurve skizzieren“); *Bahnkurve* nur für die Koppelkurve; *Zwischenlagen*.
+- **Nur mit Beschriftung:** *Schalter*, *Nächste Variante* und *Option* (diese Option einer Auswahl wählen:
+  Beziehungsarten haben ihre Linienende-Piktogramme, andere Arten wie Fragment- oder Bildschirmarten nutzen *Option*)
+  stehen nie allein: die Leiste zeigt diese Aktionen als kurzen Text. Schritt-Piktogramme („+“/„−“, eins mehr/weniger)
+  erscheinen mit ihrer Beschriftung.
+
+Der Engine-Test `tests/InventaSketch.Engine.Tests/IconHygieneTests.cs` prüft jede Aktion jedes Elements
+(Ausgangszustand, nach jeder Aktion, jedes Teil): bekanntes Piktogramm; `Text` nur, wenn die Aktion nach dem Text fragt;
+`Option` nur für Aktionen, die einen Parameter setzen; innerhalb eines Elements kein Piktogramm mit zwei Bedeutungen
+(Bedeutung = Id ohne Ortsangaben wie `.top`, `Left`, `.2`; ausgenommen die Marker nur mit Beschriftung und ausdrückliche
+Schrittpaare `.inc/.dec`, `.more/.fewer`); Beschriftungen höchstens 34 Zeichen (Kreismenü), die über 22 (Leiste) werden
+aufgelistet. Ansichten mit gleichem Piktogramm werden ebenfalls aufgelistet (nächste Runde der Ansichts-Piktogramme).
+
 ## 6. Kreismenü
 
 Acht feste Plätze für jedes Element, im Uhrzeigersinn ab 12 Uhr (oben = bearbeiten/Text, rechts = einfügen,
@@ -184,10 +220,9 @@ unten = Stil, links = Ansicht/anordnen):
 2. *Abhängigkeiten beim Überfahren hervorheben*: Überfahren eines Schlosses oder von „Baugruppe wählen“ umrandet jede
    mitbewegte Einheit in der Zweitfarbe. Abnahme: ein Rad auf einer Welle zeigt Welle und deren andere Räder, sonst
    nichts.
-3. *Symbol-Hygiene in der Engine*: jede Aktions-Symbol-ID steht in `IconIds.All` (oder eine neue ID mit Piktogramm in
-   allen drei Hosts); ein Piktogramm, eine Bedeutung (UML-Beziehungen und Nachrichtenarten werden Auswahlen mit
-   Options-Piktogrammen; `Text` nur für Textbearbeitung). Abnahme: ein Engine-Test schlägt bei unbekannter ID oder einer
-   ID mit zwei Bedeutungen in einem Typ fehl.
+3. *Symbol-Hygiene in der Engine* – **erledigt (F3, 2026-11-25)**, siehe „Piktogramme“ in Abschnitt 5 und
+   `IconHygieneTests`. Offen: Ansichten von neun Mechanik-Elementen teilen noch ein Ansichts-Piktogramm (vom Test
+   aufgelistet).
 4. *Aktionen, die eine Auswahl oder Ansicht doppeln*, bekommen `ParamKeys` oder entfallen (Welle hohl als Schalter und
    Ansicht, Roboter-Stil neben Ansichten, `view.*`-Aktionen in sechs Modulen, `map.point.add/remove` neben Eckpunkten).
    Abnahme: das Kreismenü dieser Elemente nennt jedes Ding einmal.

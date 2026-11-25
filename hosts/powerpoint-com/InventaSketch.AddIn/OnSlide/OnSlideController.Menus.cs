@@ -176,7 +176,9 @@ namespace InventaSketch.AddIn.OnSlide
                     var label = a.Label.Get(_lang());
                     var tip = label + (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal) ? " …" : "");
                     element.Add(pictorial
-                        ? new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
+                        ? IconIds.IsStep(a.Icon)
+                            ? new BarButton("act:" + a.Id, ShortLabel(label), tip, Active: a.IsActive) { IconId = a.Icon, ShowLabel = true }
+                            : new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
                         : new BarButton("act:" + a.Id, ShortLabel(label), tip, Active: a.IsActive));
                 }
                 // Plan elements (walls, rooms, openings): the plan scale of the slide, one click away.
@@ -187,16 +189,16 @@ namespace InventaSketch.AddIn.OnSlide
                 }
                 // Charts: draw a curve by hand; it is recognised (step, ramp, sine, PT1 …) or smoothed (charts v2).
                 if (InventaSketch.Modules.Charts.ChartSketchInput.Supports(first))
-                    element.Add(new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Trace });
+                    element.Add(new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Pencil });
                 // Self-built linkage: its degree of freedom (Grübler) at a glance, coupler curve and ghost positions.
                 if (first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
                     && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
                 {
-                    element.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom (Grübler): ", "Freiheitsgrad (Grübler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke")));
+                    element.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom F = ", "Freiheitsgrad F = ") + dof.Dof + T(" (Grübler: ", " (Grübler: ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints)", " Gelenke)")));
                     if (dof.Dof == 1)
                     {
                         element.Add(new BarButton("trace", "", CommandLabel("trace") + ": " + CommandHint("trace")) { IconId = IconIds.Trace });
-                        element.Add(new BarButton("ghosts", "", CommandLabel("ghosts") + ": " + CommandHint("ghosts")) { IconId = IconIds.Animate });
+                        element.Add(new BarButton("ghosts", "", CommandLabel("ghosts") + ": " + CommandHint("ghosts")) { IconId = IconIds.Ghosts });
                     }
                 }
                 if (Assemblies.CanExplode(registry, first))
@@ -243,8 +245,8 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Pictograms the bar or pie already has as generic commands of their own.</summary>
         private static readonly HashSet<string> NotInBar = new() { IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate };
 
-        /// <summary>Generic pictograms (switch, cycle) say nothing on their own: such actions show a short text instead.</summary>
-        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon != IconIds.Toggle && icon != IconIds.Cycle;
+        /// <summary>Generic pictograms (switch, cycle, pick option) say nothing on their own: such actions show a short text instead.</summary>
+        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && !IconIds.IsLabelOnly(icon);
 
         /// <summary>
         /// Type actions for the floating bar (key parameters: thicker/thinner, more/fewer, swap, hub, helix …): available ones,
@@ -256,7 +258,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var usable = actions.Where(a => a.IsEnabled && !NotInBar.Contains(a.Icon) && !(hasTextButton && a.Icon == IconIds.Text)).ToList();
             var shared = new HashSet<string>(usable.GroupBy(a => a.Icon).Where(g => g.Count() > 1).Select(g => g.Key));
-            bool Pictorial(ContextAction a) => IsTelling(a.Icon) && !shared.Contains(a.Icon);
+            // Step pictograms ("+"/"−", one more/fewer) are drawn with their label, so several pairs stay apart.
+            bool Pictorial(ContextAction a) => IsTelling(a.Icon) && (!shared.Contains(a.Icon) || IconIds.IsStep(a.Icon));
             return usable.Where(Pictorial).Select(a => (a, true))
                 .Concat(usable.Where(a => !Pictorial(a)).Select(a => (a, false)))
                 .Take(MaxBarActions).ToList();
@@ -313,7 +316,7 @@ namespace InventaSketch.AddIn.OnSlide
                 // Actions that only set a choice shown under "Style" stay there (no two entries for one thing).
                 edit.AddRange(actions.Where(a => a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains)).Select(ActionItem));
                 if (first is not null && Assemblies.CanExplode(registry, first)) edit.Add(PieCommand("explode", IconIds.Explode));
-                if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first)) edit.Add(PieCommand("sketch", IconIds.Trace));
+                if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first)) edit.Add(PieCommand("sketch", IconIds.Pencil));
                 if (MovablePart() is not null) edit.Add(PieCommand("motion", IconIds.Motion, active: AddInSettings.Motion));
             }
             if (PartOwner() is not null) edit.Add(new PieItem("menu:parts", T("Parts ▸", "Teile ▸")) { IconId = IconIds.Table, Hint = T("Select a part of the element (also hidden ones)", "Ein Teil des Elements auswählen (auch ausgeblendete)") });

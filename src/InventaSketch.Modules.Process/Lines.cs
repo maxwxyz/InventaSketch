@@ -268,8 +268,8 @@ namespace InventaSketch.Modules.Process
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
         {
             Cycle("process.line.kind", T("Line type", "Leitungsart"), Kind),
-            Toggle(o, "process.line.arrow", T("Flow arrow", "Fließpfeil"), "arrow", false, IconIds.ArrowEnd),
-            ContextAction.WithInput("process.line.number", T("Line number …", "Leitungsnummer …"), IconIds.Text,
+            Toggle(o, "process.line.arrow", T("Flow arrow", "Fließpfeil"), "arrow", false, IconIds.FlowArrow),
+            ContextAction.WithInput("process.line.number", T("Line number …", "Leitungsnummer …"), IconIds.Name,
                 T("Line number (e.g. 100-P-001-DN50)", "Leitungsnummer (z. B. 100-P-001-DN50)"), o.Str("lineNo", ""),
                 (x, t) => x.WithParam("lineNo", t.Trim())) with { Group = "label", ParamKeys = new[] { "lineNo" } },
             RouteAction(o),

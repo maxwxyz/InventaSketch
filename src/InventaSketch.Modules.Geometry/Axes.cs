@@ -237,15 +237,15 @@ namespace InventaSketch.Modules.Geometry
 
         internal static IEnumerable<ContextAction> AxesActions(SketchObject o, ObjectType t)
         {
-            yield return Mx.Toggle(o, "math.axes.grid", new I18nText("Grid", "Gitternetz"), "grid", true, "axes");
-            yield return Mx.Toggle(o, "math.axes.numbers", new I18nText("Tick numbers", "Achsenzahlen"), "numbers", true, "axes");
+            yield return Mx.Toggle(o, "math.axes.grid", new I18nText("Grid", "Gitternetz"), "grid", true, "axes", IconIds.Grid);
+            yield return Mx.Toggle(o, "math.axes.numbers", new I18nText("Tick numbers", "Achsenzahlen"), "numbers", true, "axes", IconIds.AxisTicks);
             var s = AxesSpec.From(o, t);
             yield return RangeInput("math.axes.xrange", new I18nText("x range…", "x-Bereich…"), "xMin", "xMax", s.X0, s.X1);
             yield return RangeInput("math.axes.yrange", new I18nText("y range…", "y-Bereich…"), "yMin", "yMax", s.Y0, s.Y1);
         }
 
         internal static ContextAction RangeInput(string id, I18nText label, string minKey, string maxKey, double min, double max)
-            => ContextAction.WithInput(id, label, IconIds.Text, label, Mx.Num(min, Lang.En, 4) + ";" + Mx.Num(max, Lang.En, 4).Replace('−', '-'),
+            => ContextAction.WithInput(id, label, id.Contains("yrange") ? IconIds.RangeY : IconIds.RangeX, label, Mx.Num(min, Lang.En, 4) + ";" + Mx.Num(max, Lang.En, 4).Replace('−', '-'),
                 (x, t) =>
                 {
                     var (a, b) = Mx.ParseRange(t);
@@ -326,9 +326,9 @@ namespace InventaSketch.Modules.Geometry
         {
             yield return Mx.Toggle(o, "math.number.numbers", new I18nText("Numbers", "Zahlen"), "numbers", true, "axes");
             yield return CartesianAxesType.RangeInput("math.number.range", new I18nText("Range…", "Bereich…"), "min", "max", o.Num("min", -5), o.Num("max", 5));
-            yield return new ContextAction("math.number.minor.more", new I18nText("More minor divisions", "Feinere Unterteilung"), IconIds.Increase,
+            yield return new ContextAction("math.number.minor.more", new I18nText("More minor divisions", "Feinere Unterteilung"), IconIds.CountMore,
                 x => x.WithParam("minor", Math.Min(9, x.Int("minor", 0) + 1))) { Group = "minor", ParamKeys = new[] { "minor" }, IsEnabled = o.Int("minor", 0) < 9 };
-            yield return new ContextAction("math.number.minor.less", new I18nText("Fewer minor divisions", "Gröbere Unterteilung"), IconIds.Decrease,
+            yield return new ContextAction("math.number.minor.less", new I18nText("Fewer minor divisions", "Gröbere Unterteilung"), IconIds.CountFewer,
                 x => x.WithParam("minor", Math.Max(0, x.Int("minor", 0) - 1))) { Group = "minor", ParamKeys = new[] { "minor" }, IsEnabled = o.Int("minor", 0) > 0 };
         }
     }
@@ -477,9 +477,9 @@ namespace InventaSketch.Modules.Geometry
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return new ContextAction("math.polar.rings.more", new I18nText("More rings", "Mehr Ringe"), IconIds.Increase,
+            yield return new ContextAction("math.polar.rings.more", new I18nText("More rings", "Mehr Ringe"), IconIds.CountMore,
                 x => x.WithParam("rings", Math.Min(10, x.Int("rings", 4) + 1))) { Group = "rings", ParamKeys = new[] { "rings" }, IsEnabled = o.Int("rings", 4) < 10 };
-            yield return new ContextAction("math.polar.rings.less", new I18nText("Fewer rings", "Weniger Ringe"), IconIds.Decrease,
+            yield return new ContextAction("math.polar.rings.less", new I18nText("Fewer rings", "Weniger Ringe"), IconIds.CountFewer,
                 x => x.WithParam("rings", Math.Max(1, x.Int("rings", 4) - 1))) { Group = "rings", ParamKeys = new[] { "rings" }, IsEnabled = o.Int("rings", 4) > 1 };
             yield return Mx.Cycle(o, "math.polar.step", new I18nText("Next angle step", "Nächster Winkelschritt"), Step, "angles");
             yield return Mx.Cycle(o, "math.polar.unit", new I18nText("Degrees / radians", "Grad / Bogenmaß"), Unit, "angles");

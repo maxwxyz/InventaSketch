@@ -172,11 +172,11 @@ namespace InventaSketch.Modules.Charts
                 Options = options.Select(x => new ParamOption(x.Value, new I18nText(x.En, x.De))).ToList(),
             };
 
-        public static ContextAction Toggle(SketchObject o, string id, string key, bool def, I18nText label)
-            => new(id, label, IconIds.Toggle, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = "param", ParamKeys = new[] { key } };
+        public static ContextAction Toggle(SketchObject o, string id, string key, bool def, I18nText label, string icon = IconIds.Toggle)
+            => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = "param", ParamKeys = new[] { key } };
 
         /// <summary>Cycles a choice parameter through its options; the label names the next option ("Style: step ▸").</summary>
-        public static ContextAction Cycle(SketchObject o, string id, ParamDef def, I18nText prefix)
+        public static ContextAction Cycle(SketchObject o, string id, ParamDef def, I18nText prefix, string icon = IconIds.Cycle)
         {
             var options = def.Options ?? Array.Empty<ParamOption>();
             var fallback = def.Default?.Text ?? (options.Count > 0 ? options[0].Value : "");
@@ -184,7 +184,7 @@ namespace InventaSketch.Modules.Charts
             var idx = options.ToList().FindIndex(p => p.Value == cur);
             var next = options.Count == 0 ? null : options[(idx + 1) % options.Count];
             var label = next is null ? prefix : new I18nText(prefix.En + ": " + next.Label.En, (prefix.De ?? prefix.En) + ": " + (next.Label.De ?? next.Label.En));
-            return new ContextAction(id, label, IconIds.Cycle, x =>
+            return new ContextAction(id, label, icon, x =>
             {
                 if (options.Count == 0) return x;
                 var c = x.Str(def.Key, fallback);

@@ -111,7 +111,7 @@ namespace InventaSketch.Modules.Geometry
             var p = ctx.Doc.ResolvePoints(o);
             var deg = p.Count >= 3 ? Measure(o, p).Degrees : 0;
             var label = new I18nText("Set angle…", "Winkel festlegen…");
-            yield return ContextAction.WithInput("math.angle.set", label, IconIds.Rotate, new I18nText("Angle in degrees", "Winkel in Grad"),
+            yield return ContextAction.WithInput("math.angle.set", label, IconIds.QtyAngle, new I18nText("Angle in degrees", "Winkel in Grad"),
                 Mx.Num(deg, Lang.En, 2), (x, t) =>
                 {
                     var val = Mx.ParseNumber(t);

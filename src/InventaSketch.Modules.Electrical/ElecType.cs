@@ -216,24 +216,24 @@ namespace InventaSketch.Modules.Electrical
                 yield return new ContextAction("elec.toggle", new I18nText("Toggle state (open/closed)", "Schaltzustand umschalten (offen/geschlossen)"), IconIds.Toggle,
                     x => x.WithParam("closed", !Common.IsClosed(x))) { IsActive = Common.IsClosed(o), Group = "state" };
             if (Polarized)
-                yield return new ContextAction("elec.polarity", new I18nText("Flip polarity", "Polarität umkehren"), IconIds.Swap,
+                yield return new ContextAction("elec.polarity", new I18nText("Flip polarity", "Polarität umkehren"), IconIds.Polarity,
                     x => x.WithParam("reverse", !x.Flag("reverse", false))) { IsActive = o.Flag("reverse", false), Group = "polarity" };
             if (Extra is not null)
                 foreach (var a in Extra(o)) yield return a;
             if (Labeled)
             {
                 var prefix = RefPrefix;
-                yield return new ContextAction("elec.label", new I18nText("Show designator/value", "Kennzeichen/Wert anzeigen"), IconIds.Text, x =>
+                yield return new ContextAction("elec.label", new I18nText("Show designator/value", "Kennzeichen/Wert zeigen"), IconIds.LabelShow, x =>
                 {
                     if (Common.LabelVisible(x)) return x.WithParam("showLabel", false);
                     var y = x.WithParam("showLabel", true);
                     return y.Str("ref", "").Trim().Length == 0 ? y.WithParam("ref", prefix + "1") : y;
                 }) { IsActive = Common.LabelVisible(o), Group = "label" };
                 // Designator and value typed directly (pie menu / bar), showing the label when set.
-                yield return ContextAction.WithInput("elec.ref.set", new I18nText("Designator …", "Kennzeichen …"), IconIds.Text,
+                yield return ContextAction.WithInput("elec.ref.set", new I18nText("Designator …", "Kennzeichen …"), IconIds.Name,
                     new I18nText("Designator", "Kennzeichen"), o.Str("ref", ""),
                     (x, t) => x.WithParam("ref", t.Trim()).WithParam("showLabel", true)) with { Group = "label" };
-                yield return ContextAction.WithInput("elec.value.set", new I18nText("Value …", "Wert …"), IconIds.Text,
+                yield return ContextAction.WithInput("elec.value.set", new I18nText("Value …", "Wert …"), IconIds.Value,
                     new I18nText("Value", "Wert"), o.Str("value", ""),
                     (x, t) => x.WithParam("value", t.Trim()).WithParam("showLabel", true)) with { Group = "label" };
             }

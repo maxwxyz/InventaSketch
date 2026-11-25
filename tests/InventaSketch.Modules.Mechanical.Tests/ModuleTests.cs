@@ -324,7 +324,7 @@ namespace InventaSketch.Modules.Mechanical.Tests
                 foreach (var v in t.Views)
                 {
                     var a = views.Single(x => x.Id == "view." + v.Id);
-                    Assert.Equal("view-" + v.Id, a.Icon);
+                    Assert.Equal(IconIds.ForView(v), a.Icon);
                     Assert.Equal(v.Id, a.Apply(o).View);
                 }
             }

@@ -312,9 +312,9 @@ namespace InventaSketch.Modules.Geometry
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var n = o.Int("sides", 6);
-            yield return new ContextAction("math.polygon.more", new I18nText("More sides", "Mehr Ecken"), IconIds.Increase,
+            yield return new ContextAction("math.polygon.more", new I18nText("More sides", "Mehr Ecken"), IconIds.CountMore,
                 x => x.WithParam("sides", Math.Min(12, x.Int("sides", 6) + 1))) { Group = "sides", ParamKeys = new[] { "sides" }, IsEnabled = n < 12 };
-            yield return new ContextAction("math.polygon.fewer", new I18nText("Fewer sides", "Weniger Ecken"), IconIds.Decrease,
+            yield return new ContextAction("math.polygon.fewer", new I18nText("Fewer sides", "Weniger Ecken"), IconIds.CountFewer,
                 x => x.WithParam("sides", Math.Max(3, x.Int("sides", 6) - 1))) { Group = "sides", ParamKeys = new[] { "sides" }, IsEnabled = n > 3 };
             yield return Mx.Toggle(o, "math.polygon.circumcircle", new I18nText("Circumcircle", "Umkreis"), "circumcircle", false, "circles");
             yield return Mx.Toggle(o, "math.polygon.incircle", new I18nText("Incircle", "Inkreis"), "incircle", false, "circles");
@@ -447,8 +447,8 @@ namespace InventaSketch.Modules.Geometry
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var def = Parameters[0];
-            yield return Mx.NumberInput(o, "math.tangent.angle", new I18nText("Point of contact at angle…", "Berührpunkt bei Winkel…"), def, "tangent");
-            yield return new ContextAction("math.tangent.turn", new I18nText("Move the point of contact", "Berührpunkt verschieben"), IconIds.RotateCcw,
+            yield return Mx.NumberInput(o, "math.tangent.angle", new I18nText("Contact point angle…", "Winkel des Berührpunkts…"), def, "tangent");
+            yield return new ContextAction("math.tangent.turn", new I18nText("Move the contact point", "Berührpunkt verschieben"), IconIds.AngleNext,
                 x => x.WithParam("angle", Geo.NormDeg(x.Num("angle", 60) + 30))) { Group = "tangent", ParamKeys = new[] { "angle" } };
             yield return Mx.Toggle(o, "math.tangent.radius", new I18nText("Radius and right angle", "Radius und rechter Winkel"), "radius", true, "tangent");
         }
@@ -511,7 +511,7 @@ namespace InventaSketch.Modules.Geometry
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Mx.NumberInput(o, "math.thales.angle", new I18nText("Position of C…", "Lage von C…"), Parameters[0], "thales");
-            yield return new ContextAction("math.thales.move", new I18nText("Move C along the circle", "C auf dem Kreis verschieben"), IconIds.RotateCcw,
+            yield return new ContextAction("math.thales.move", new I18nText("Move C on the circle", "C auf Kreis verschieben"), IconIds.AngleNext,
                 x => x.WithParam("angle", x.Num("angle", 115) + 20 > 175 ? 20 : x.Num("angle", 115) + 20)) { Group = "thales", ParamKeys = new[] { "angle" } };
             yield return Mx.Toggle(o, "math.thales.full", new I18nText("Full circle", "Vollkreis"), "full", false, "thales");
         }
@@ -651,7 +651,7 @@ namespace InventaSketch.Modules.Geometry
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Mx.NumberInput(o, "math.unit.angle", new I18nText("Angle…", "Winkel…"), Parameters[0], "unit");
-            yield return new ContextAction("math.unit.turn", new I18nText("Turn by 15°", "Um 15° drehen"), IconIds.RotateCcw,
+            yield return new ContextAction("math.unit.turn", new I18nText("Turn by 15°", "Um 15° drehen"), IconIds.AngleNext,
                 x => x.WithParam("angle", Geo.NormDeg(x.Num("angle", 40) + 15))) { Group = "unit", ParamKeys = new[] { "angle" } };
             yield return Mx.Toggle(o, "math.unit.tan", new I18nText("Tangent segment", "Tangensstrecke"), "tan", false, "unit");
             yield return Mx.Toggle(o, "math.unit.values", new I18nText("Show values", "Werte anzeigen"), "values", false, "unit");

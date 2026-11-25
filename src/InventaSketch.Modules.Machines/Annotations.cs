@@ -17,7 +17,7 @@ namespace InventaSketch.Modules.Machines
 
         private static bool Cw(SketchObject o) => o.Str("direction", "ccw") == "cw";
 
-        private static ContextAction Flip(SketchObject o) => new("param.direction", T("Reverse direction", "Richtung umkehren"), IconIds.Swap,
+        private static ContextAction Flip(SketchObject o) => new("param.direction", T("Reverse direction", "Richtung umkehren"), IconIds.Reverse,
             x => x.WithParam("direction", Cw(x) ? "ccw" : "cw")) { Group = "param" };
 
         public static IEnumerable<MachType> Types()

@@ -146,8 +146,8 @@ namespace InventaSketch.Modules.Annotation
             yield return Ann.Toggle(o, "ann.flow.optional", new I18nText("Optional step (dashed)", "Optionaler Schritt (gestrichelt)"), IconIds.LineDash, "optional", false, "flow");
             if (_shape == FlowShape.Loop)
             {
-                yield return Ann.SetChoice(o, "ann.flow.loop.begin", new I18nText("Loop begin", "Schleifenanfang"), "loop-begin", "edge", "begin", "begin", "edge");
-                yield return Ann.SetChoice(o, "ann.flow.loop.end", new I18nText("Loop end", "Schleifenende"), "loop-end", "edge", "end", "begin", "edge");
+                yield return Ann.SetChoice(o, "ann.flow.loop.begin", new I18nText("Loop begin", "Schleifenanfang"), IconIds.Option, "edge", "begin", "begin", "edge");
+                yield return Ann.SetChoice(o, "ann.flow.loop.end", new I18nText("Loop end", "Schleifenende"), IconIds.Option, "edge", "end", "begin", "edge");
             }
         }
 
@@ -385,11 +385,11 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.parallel.bar", new I18nText("Filled bar", "Gefüllter Balken"), "bar", "style", "bar", "bar", "style");
-            yield return Ann.SetChoice(o, "ann.parallel.doubleline", new I18nText("Two parallel lines", "Zwei parallele Linien"), "doubleline", "style", "doubleline", "bar", "style");
-            yield return new ContextAction("ann.parallel.more", new I18nText("One port more per side", "Ein Anschluss mehr je Seite"), IconIds.Increase,
+            yield return Ann.SetChoice(o, "ann.parallel.bar", new I18nText("Filled bar", "Gefüllter Balken"), IconIds.Option, "style", "bar", "bar", "style");
+            yield return Ann.SetChoice(o, "ann.parallel.doubleline", new I18nText("Two parallel lines", "Zwei parallele Linien"), IconIds.Option, "style", "doubleline", "bar", "style");
+            yield return new ContextAction("ann.parallel.more", new I18nText("Add a port per side", "Anschluss je Seite dazu"), IconIds.PortAdd,
                 x => x.WithParam("ports", Math.Min(6, x.Int("ports", 3) + 1))) { Group = "ports", IsEnabled = o.Int("ports", 3) < 6 };
-            yield return new ContextAction("ann.parallel.fewer", new I18nText("One port fewer per side", "Ein Anschluss weniger je Seite"), IconIds.Decrease,
+            yield return new ContextAction("ann.parallel.fewer", new I18nText("Remove a port per side", "Anschluss je Seite weg"), IconIds.PortRemove,
                 x => x.WithParam("ports", Math.Max(2, x.Int("ports", 3) - 1))) { Group = "ports", IsEnabled = o.Int("ports", 3) > 2 };
         }
     }

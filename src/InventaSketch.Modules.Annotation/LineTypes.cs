@@ -78,7 +78,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
             => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None)
-                .Append(Ann.Toggle(o, "ann.closed", new I18nText("Closed", "Geschlossen"), "polygon", "closed", false))
+                .Append(Ann.Toggle(o, "ann.closed", new I18nText("Closed", "Geschlossen"), IconIds.Toggle, "closed", false))
                 .Append(AnnConnectors.HopsAction(o, true))
                 .Append(AnnConnectors.BusAction(o));
     }
@@ -340,9 +340,9 @@ namespace InventaSketch.Modules.Annotation
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var a in Ann.ArrowActions(o, ArrowHead.None, ArrowHead.Triangle)) yield return a;
-            yield return Ann.SetChoice(o, "ann.route.auto", new I18nText("Automatic routing", "Automatische Führung"), "route-auto", "route", "auto", "auto", "route");
-            yield return Ann.SetChoice(o, "ann.route.hvh", new I18nText("Route horizontal first", "Erst waagerecht führen"), "route-hvh", "route", "hvh", "auto", "route");
-            yield return Ann.SetChoice(o, "ann.route.vhv", new I18nText("Route vertical first", "Erst senkrecht führen"), "route-vhv", "route", "vhv", "auto", "route");
+            yield return Ann.SetChoice(o, "ann.route.auto", new I18nText("Automatic routing", "Automatische Führung"), IconIds.Option, "route", "auto", "auto", "route");
+            yield return Ann.SetChoice(o, "ann.route.hvh", new I18nText("Route horizontal first", "Erst waagerecht führen"), IconIds.Option, "route", "hvh", "auto", "route");
+            yield return Ann.SetChoice(o, "ann.route.vhv", new I18nText("Route vertical first", "Erst senkrecht führen"), IconIds.Option, "route", "vhv", "auto", "route");
             yield return AnnConnectors.HopsAction(o, true);
             yield return AnnConnectors.BusAction(o);
         }
@@ -402,8 +402,8 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.break.zigzag", new I18nText("Zig-zag break", "Zickzack-Bruch"), "break-zigzag", "form", "zigzag", "zigzag", "form");
-            yield return Ann.SetChoice(o, "ann.break.wavy", new I18nText("Freehand break", "Freihand-Bruch"), "break-wavy", "form", "wavy", "zigzag", "form");
+            yield return Ann.SetChoice(o, "ann.break.zigzag", new I18nText("Zig-zag break", "Zickzack-Bruch"), IconIds.CourseZigzag, "form", "zigzag", "zigzag", "form");
+            yield return Ann.SetChoice(o, "ann.break.wavy", new I18nText("Freehand break", "Freihand-Bruch"), IconIds.CourseWavy, "form", "wavy", "zigzag", "form");
         }
     }
 
@@ -456,7 +456,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.flip", new I18nText("Flip side", "Seite wechseln"), "flip", "flip", false);
+            yield return Ann.Toggle(o, "ann.flip", new I18nText("Put on other side", "Auf die andere Seite"), IconIds.SideSwap, "flip", false);
         }
     }
 

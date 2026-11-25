@@ -472,27 +472,27 @@ namespace InventaSketch.Modules.Robotics
             var unit = j.Prismatic ? " mm" : "°";
             string En(string sign) => $"{j.Short.En} {sign}{Rb.Fmt(step)}{unit}";
             string De(string sign) => $"{j.Short.De ?? j.Short.En} {sign}{Rb.Fmt(step)}{unit}";
-            yield return new ContextAction("robot.joint.next", new I18nText(En("+"), De("+")), IconIds.Rotate,
+            yield return new ContextAction("robot.joint.next", new I18nText(En("+"), De("+")), IconIds.AngleNext,
                 x => x.WithParam(j.Key, Geo.Clamp(x.Num(j.Key, j.Default) + step, Math.Min(lo, hi), Math.Max(lo, hi)))) { Group = "joint", ParamKeys = new[] { j.Key } };
-            yield return new ContextAction("robot.joint.prev", new I18nText(En("−"), De("−")), IconIds.RotateCcw,
+            yield return new ContextAction("robot.joint.prev", new I18nText(En("−"), De("−")), IconIds.AnglePrev,
                 x => x.WithParam(j.Key, Geo.Clamp(x.Num(j.Key, j.Default) - step, Math.Min(lo, hi), Math.Max(lo, hi)))) { Group = "joint", ParamKeys = new[] { j.Key } };
             var idx = IndexOf(j);
             var next = Joints[(idx + 1) % Joints.Count];
             yield return new ContextAction("robot.motion.next", new I18nText("Move joint " + next.Short.En, "Achse " + (next.Short.De ?? next.Short.En) + " bewegen"), IconIds.Cycle,
                 x => KeepScale(x, x.WithParam("motion", next.Key))) { Group = "joint", ParamKeys = new[] { "motion" } };
-            yield return new ContextAction("robot.home", new I18nText("Home position", "Grundstellung"), IconIds.RotateCcw, x =>
+            yield return new ContextAction("robot.home", new I18nText("Home position", "Grundstellung"), IconIds.Home, x =>
             {
                 var r = x;
                 foreach (var d in Joints) r = r.WithParam(d.Key, d.Default);
                 return KeepScale(x, r);
             }) { Group = "joint" };
             var ghosts = o.Int("ghosts", 0);
-            yield return new ContextAction("robot.ghosts", new I18nText("Ghost positions", "Zwischenlagen"), IconIds.Animate,
+            yield return new ContextAction("robot.ghosts", new I18nText("Ghost positions", "Zwischenlagen"), IconIds.Ghosts,
                 x => x.WithParam("ghosts", x.Int("ghosts", 0) > 0 ? 0 : 4)) { IsActive = ghosts > 0, Group = "motion", ParamKeys = new[] { "ghosts" } };
-            yield return new ContextAction("robot.envelope", new I18nText("Reach envelope", "Arbeitsraum"), IconIds.FillTint,
+            yield return new ContextAction("robot.envelope", new I18nText("Reach envelope", "Arbeitsraum"), IconIds.Toggle,
                 x => KeepScale(x, x.WithParam("envelope", !x.Flag("envelope", false)))) { IsActive = o.Flag("envelope", false), Group = "motion", ParamKeys = new[] { "envelope" } };
             yield return Rb.Cycle(o, "robot.style", StyleParam, "style");
-            yield return Rb.Toggle(o, "robot.labels", new I18nText("Joint labels", "Achsbeschriftung"), IconIds.Text, "labels", false, "annotation");
+            yield return Rb.Toggle(o, "robot.labels", new I18nText("Joint labels", "Achsbeschriftung"), IconIds.LabelShow, "labels", false, "annotation");
         }
 
         public override Primitive ApplyOverride(Primitive p, Style over) => Rb.Override(p, over);

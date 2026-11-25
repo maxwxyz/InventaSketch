@@ -515,20 +515,20 @@ namespace InventaSketch.Modules.Charts
         {
             var current = o.Str(key, "");
             var value = Parse(current) is { Count: > 0 } now ? Format(now) : suggestion is { } s ? Format(new[] { s }) : "";
-            return ContextAction.WithInput(id, Label(x), IconIds.Text, Prompt(x), value,
+            return ContextAction.WithInput(id, Label(x), x ? IconIds.BreakX : IconIds.BreakY, Prompt(x), value,
                 (obj, text) => obj.WithParam(key, Format(ParseInput(text, Lang.En)))) with { Group = "breaks", ParamKeys = new[] { key } };
         }
 
-        public static I18nText Label(bool x) => x ? new I18nText("x-axis break here…", "Achsenbruch x hier…") : new I18nText("Axis break here…", "Achsenbruch hier…");
+        public static I18nText Label(bool x) => x ? new I18nText("Break the x axis…", "x-Achse unterbrechen…") : new I18nText("Break the y axis…", "y-Achse unterbrechen…");
 
         public static I18nText Prompt(bool x) => x
             ? new I18nText("Hidden x range “lo-hi” (several: separate with ;, empty = none)", "Ausgeblendeter x-Bereich „von-bis“ (mehrere mit ; trennen, leer = keiner)")
             : new I18nText("Hidden y range “lo-hi” (several: separate with ;, empty = none)", "Ausgeblendeter y-Bereich „von-bis“ (mehrere mit ; trennen, leer = keiner)");
 
-        public static I18nText RemoveLabel(bool x) => x ? new I18nText("Remove x-axis breaks", "Achsenbrüche x entfernen") : new I18nText("Remove axis breaks", "Achsenbrüche entfernen");
+        public static I18nText RemoveLabel(bool x) => x ? new I18nText("Remove x-axis breaks", "x-Achse ohne Bruch") : new I18nText("Remove y-axis breaks", "y-Achse ohne Bruch");
 
         public static ContextAction Remove(SketchObject o, string id, string key, bool x)
-            => new ContextAction(id, RemoveLabel(x), IconIds.Delete, obj => obj.WithParam(key, ""))
+            => new ContextAction(id, RemoveLabel(x), x ? IconIds.BreakXRemove : IconIds.BreakYRemove, obj => obj.WithParam(key, ""))
             { Group = "breaks", ParamKeys = new[] { key }, IsEnabled = Parse(o.Str(key, "")).Count > 0 };
 
         /// <summary>The four break actions of a chart with one x and one y axis.</summary>

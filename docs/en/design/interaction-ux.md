@@ -117,6 +117,38 @@ selected chart part has its own bar (part name, its actions, parts list, whole e
 the groups one view for all | align and distribute | diagram layout (text "Diagram ↓", "Diagram →") | dimension,
 format painter, renumber.
 
+### Pictograms: one pictogram, one meaning (F3, 2026-11-25)
+
+Every action pictogram is an id of `IconIds` (Core) and is drawn by both hosts that draw pictograms: COM
+`IconPainter` and web `icons.ts` (LibreOffice uses text labels only). The F3 pictograms are SVG path data on the
+24-unit grid, defined once and copied into both hosts (`IconPainter.SharedPaths`, `icons.ts`); a web test checks that
+both tables are identical. Contact sheets (light and dark, 32 and 16 px) are written by
+`tests/InventaSketch.AddIn.Tests/IconPainterTests.WritesIconSheet` and `hosts/office-web/test/icons.test.ts`.
+
+- **Text ("T") only for editing the text.** Names, designations, tags and titles use *Name* (a label tag); numbers use
+  *Value* (a field with a cursor) or, where the quantity is known, a quantity pictogram (angle, length, width, height,
+  thickness, area, volume, mass, pressure, power, voltage, capacity, state of charge, time, frequency, tolerance, flow,
+  x/y range; `IconIds.ForQuantity` maps units). Showing a label uses *Show label*, port names *Port labels*.
+- **Structure:** add/remove a row (bottom or top), a column, an operation, a port, a point; *one more/one fewer* for
+  repeated parts (teeth, poles, modules, steps …). "+"/"−" (*Increase/Decrease*) only for stepping a value.
+- **Direction and place:** *Reverse* (U-turn) reverses a direction, *Side swap* puts a dimension or a lead line on the
+  other side, *Polarity* swaps + and −, *Swap* exchanges two things (ends, spring side), *Flow arrow* shows a direction
+  arrow, *Joint at start/end*, *Next/previous position* (a joint turned one step), *Home*, *Align to wall*. *Rotate* and
+  *Mirror* stay the host's commands for the element.
+- **Charts:** *Data*, *Legend*, *Grid*, *Tick numbers*, *Smooth*, *Formula* (fx), *Parameters*, *Code* (JSON),
+  *Contour*, *Function generator*, *Marker*, *Value line*, *Hatch between/below*, x/y axis break and its removal.
+- **Drawing by hand:** *Pencil* ("sketch a curve"); *Trace* only for the coupler curve; *Ghosts* for ghost positions.
+- **Label-only markers:** *Toggle* (switch), *Cycle* (next variant) and *Option* (pick this option of a choice:
+  relation kinds have their line-end pictograms, other kinds such as fragment or screen kinds use *Option*) never stand
+  alone: the bar shows these actions as short text. Step pictograms ("+"/"−", one more/fewer) are shown with their label.
+
+The engine test `tests/InventaSketch.Engine.Tests/IconHygieneTests.cs` checks every action of every element (default
+state, after each action, each part): known pictogram; `Text` only when the action asks for the text; `Option` only for
+actions that set a parameter; within one element no pictogram with two meanings (meaning = id without place qualifiers
+such as `.top`, `Left`, `.2`; label-only markers and explicit step pairs `.inc/.dec`, `.more/.fewer` excepted); labels
+at most 34 characters (pie), the ones longer than 22 (bar limit) are listed. Views sharing a pictogram are listed too
+(next round of view pictograms).
+
 ## 6. Pie menu
 
 Eight fixed places for every element, clockwise from 12 o'clock (top = edit/text, right = insert, bottom = style,
@@ -177,9 +209,8 @@ left = view/arrange):
    needs no change; the grips keep their place in the layout.
 2. *Dependency highlight on hover*: hovering a lock badge or "Select assembly" outlines every unit that moves along in
    the second colour. Accept: a gear on a shaft shows the shaft and its other gears outlined; nothing else.
-3. *Engine icon hygiene*: every action icon id is in `IconIds.All` (or a new id with a pictogram in all three hosts);
-   one pictogram, one meaning (UML relations and message kinds become choices with option pictograms; `Text` only for
-   editing text). Accept: an engine test fails for an unknown icon id or one id used with two meanings in one type.
+3. *Engine icon hygiene* – **done (F3, 2026-11-25)**, see "Pictograms" in section 5 and `IconHygieneTests`.
+   Open: views of nine mechanical elements still share a view pictogram (listed by the test).
 4. *Actions that duplicate a choice or a view* get `ParamKeys` or are removed (shaft hollow toggle vs. hollow view,
    robot style vs. views, `view.*` actions of six modules, `map.point.add/remove` vs. corner dots). Accept: the pie of
    these elements lists each thing once.

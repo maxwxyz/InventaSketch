@@ -201,9 +201,9 @@ namespace InventaSketch.Modules.Diagrams
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return D.Toggle(o, "diag.state.activities", new I18nText("Show activities", "Aktivitäten anzeigen"), "showActivities", true, "compartments");
-            yield return D.AddRow("diag.state.addEntry", new I18nText("Add entry activity", "Eintrittsaktivität hinzufügen"), "entry", "", "action()");
-            yield return D.AddRow("diag.state.addExit", new I18nText("Add exit activity", "Austrittsaktivität hinzufügen"), "exit", "", "action()");
-            yield return D.RemoveRow("diag.state.removeExit", new I18nText("Remove last exit activity", "Letzte Austrittsaktivität entfernen"), "exit", "");
+            yield return D.AddRow("diag.state.addEntry", new I18nText("Add entry activity", "Eintrittsaktivität dazu"), "entry", "", "action()", icon: IconIds.RowAddTop);
+            yield return D.AddRow("diag.state.addExit", new I18nText("Add exit activity", "Austrittsaktivität dazu"), "exit", "", "action()");
+            yield return D.RemoveRow("diag.state.removeExit", new I18nText("Remove exit activity", "Austrittsaktivität weg"), "exit", "");
         }
     }
 
@@ -241,9 +241,9 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return new ContextAction("diag.state.addRegion", new I18nText("Add region", "Region hinzufügen"), IconIds.Text,
+            yield return new ContextAction("diag.state.addRegion", new I18nText("Add region", "Region hinzufügen"), IconIds.RowAdd,
                 x => x.WithParam("regions", Math.Min(6, x.Int("regions", 1) + 1))) { Group = "rows" };
-            yield return new ContextAction("diag.state.removeRegion", new I18nText("Remove region", "Region entfernen"), IconIds.Delete,
+            yield return new ContextAction("diag.state.removeRegion", new I18nText("Remove region", "Region entfernen"), IconIds.RowRemove,
                 x => x.WithParam("regions", Math.Max(1, x.Int("regions", 1) - 1))) { Group = "rows" };
         }
     }

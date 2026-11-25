@@ -77,11 +77,15 @@ namespace InventaSketch.AddIn.Tests
                 A("toggle", InventaSketch.Core.IconIds.Toggle), A("more2", InventaSketch.Core.IconIds.Increase),
                 A("less", InventaSketch.Core.IconIds.Decrease), A("flip", InventaSketch.Core.IconIds.Swap), A("fourth", InventaSketch.Core.IconIds.ArrowEnd),
             };
-            // Two actions share "+": both become text buttons; telling pictograms first.
+            // Step pictograms ("+"/"−") stay pictograms when shared (the bar draws them with their label); telling pictograms
+            // first, label-only ones (switch) and unknown ones as text after them.
             var withText = OnSlideController.BarActions(actions, hasTextButton: true);
-            Assert.Equal(new[] { "less", "flip", "fourth", "custom", "more" }, withText.Select(x => x.Action.Id));
-            Assert.Equal(new[] { true, true, true, false, false }, withText.Select(x => x.Pictorial));
-            Assert.Equal(new[] { "ref", "less", "flip", "fourth", "custom" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(x => x.Action.Id));
+            Assert.Equal(new[] { "more", "more2", "less", "flip", "fourth" }, withText.Select(x => x.Action.Id));
+            Assert.All(withText, x => Assert.True(x.Pictorial));
+            Assert.Equal(new[] { "ref", "more", "more2", "less", "flip" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(x => x.Action.Id));
+            // Two actions sharing a telling pictogram that is not a step: both become text.
+            var swaps = OnSlideController.BarActions(new[] { A("a", InventaSketch.Core.IconIds.Swap), A("b", InventaSketch.Core.IconIds.Swap), A("c", InventaSketch.Core.IconIds.Option) }, hasTextButton: true);
+            Assert.All(swaps, x => Assert.False(x.Pictorial));
         }
 
         [Fact]

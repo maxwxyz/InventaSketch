@@ -78,9 +78,9 @@ namespace InventaSketch.Modules.Annotation
 
         public static IEnumerable<ContextAction> TerminatorActions(SketchObject o)
         {
-            yield return Ann.SetChoice(o, "ann.dim.arrow", new I18nText("Arrow terminators", "Pfeile als Begrenzung"), "dim-arrow", "terminator", "arrow", "arrow", "terminator");
-            yield return Ann.SetChoice(o, "ann.dim.tick", new I18nText("Tick terminators", "Schrägstriche als Begrenzung"), "dim-tick", "terminator", "tick", "arrow", "terminator");
-            yield return Ann.SetChoice(o, "ann.dim.dot", new I18nText("Dot terminators", "Punkte als Begrenzung"), "dim-dot", "terminator", "dot", "arrow", "terminator");
+            yield return Ann.SetChoice(o, "ann.dim.arrow", new I18nText("Arrow terminators", "Pfeile als Begrenzung"), IconIds.HeadTriangle, "terminator", "arrow", "arrow", "terminator");
+            yield return Ann.SetChoice(o, "ann.dim.tick", new I18nText("Tick terminators", "Striche als Begrenzung"), IconIds.HeadTick, "terminator", "tick", "arrow", "terminator");
+            yield return Ann.SetChoice(o, "ann.dim.dot", new I18nText("Dot terminators", "Punkte als Begrenzung"), IconIds.HeadDot, "terminator", "dot", "arrow", "terminator");
         }
     }
 
@@ -163,7 +163,7 @@ namespace InventaSketch.Modules.Annotation
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var a in Dim.TerminatorActions(o)) yield return a;
-            yield return new ContextAction("ann.dim.flip", new I18nText("Flip side", "Seite wechseln"), "flip", x => x.WithParam("offset", -x.Num("offset", -8))) { Group = "side" };
+            yield return new ContextAction("ann.dim.flip", new I18nText("Put on other side", "Auf die andere Seite"), IconIds.SideSwap, x => x.WithParam("offset", -x.Num("offset", -8))) { Group = "side" };
         }
     }
 
@@ -244,8 +244,8 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.SetChoice(o, "ann.dim.radius", new I18nText("Radius", "Radius"), "dim-radius", "kind", "radius", "radius", "kind");
-            yield return Ann.SetChoice(o, "ann.dim.diameter", new I18nText("Diameter", "Durchmesser"), "dim-diameter", "kind", "diameter", "radius", "kind");
+            yield return Ann.SetChoice(o, "ann.dim.radius", new I18nText("Radius", "Radius"), IconIds.Option, "kind", "radius", "radius", "kind");
+            yield return Ann.SetChoice(o, "ann.dim.diameter", new I18nText("Diameter", "Durchmesser"), IconIds.Option, "kind", "diameter", "radius", "kind");
             foreach (var a in Dim.TerminatorActions(o)) yield return a;
         }
     }

@@ -180,10 +180,10 @@ namespace InventaSketch.Modules.Mechanical
             var n = Math.Max(1, Math.Min(MaxSeats, o.Int("seats", 2)));
             var name = T("Bearing seats", "Lagersitze");
             if (n < MaxSeats)
-                yield return new ContextAction("param.seats.inc", T(name.En + " +1", name.De + " +1"), IconIds.Increase,
+                yield return new ContextAction("param.seats.inc", T(name.En + " +1", name.De + " +1"), IconIds.CountMore,
                     x => x.WithParam("seats", n + 1).WithParam("seatpos", "")) { Group = "param" };
             if (n > 1)
-                yield return new ContextAction("param.seats.dec", T(name.En + " −1", name.De + " −1"), IconIds.Decrease,
+                yield return new ContextAction("param.seats.dec", T(name.En + " −1", name.De + " −1"), IconIds.CountFewer,
                     x => x.WithParam("seats", n - 1).WithParam("seatpos", "")) { Group = "param" };
             yield return ContextAction.InDocument("param.fit", T("Fit around contents", "Um Inhalt anpassen"), IconIds.FitAround, FitAround);
         }

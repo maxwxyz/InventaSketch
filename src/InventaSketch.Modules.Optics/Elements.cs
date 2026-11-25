@@ -547,7 +547,7 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             yield return Ox.NumberInput(o, "optics.grating.angle", new I18nText("First-order angle", "Winkel 1. Ordnung"), Parameters[0], "grating");
-            yield return new ContextAction("optics.grating.orders", new I18nText("More orders", "Mehr Ordnungen"), IconIds.Increase,
+            yield return new ContextAction("optics.grating.orders", new I18nText("More orders", "Mehr Ordnungen"), IconIds.CountMore,
                 x => x.WithParam("orders", x.Int("orders", 1) % 3 + 1)) { Group = "grating", ParamKeys = new[] { "orders" } };
         }
     }

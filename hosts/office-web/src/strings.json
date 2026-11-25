@@ -120,7 +120,7 @@
   "ctx.insert": { "en": "Insert … (Ctrl+Space)", "de": "Einfügen … (Strg+Leertaste)" },
   "ctx.makeIt": { "en": "Make it … (another element)", "de": "Ändern in … (anderes Element)" },
   "ctx.assembly": { "en": "Select the assembly (all coupled parts)", "de": "Baugruppe auswählen (alle gekoppelten Teile)" },
-  "ctx.dof": { "en": "Degree of freedom (Grübler): {0}", "de": "Freiheitsgrad (Grübler): {0}" },
+  "ctx.dof": { "en": "Degree of freedom F = {0} (Grübler)", "de": "Freiheitsgrad F = {0} (Grübler)" },
   "ctx.explode": { "en": "Explode into parts", "de": "In Einzelteile zerlegen" },
   "ctx.trace": { "en": "Draw the path of this link's end (coupler curve)", "de": "Bahnkurve des Gliedendes zeichnen (Koppelkurve)" },
   "trace.done": { "en": "Path drawn ({0} points)", "de": "Bahnkurve gezeichnet ({0} Punkte)" },

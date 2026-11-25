@@ -72,7 +72,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.coord.ydown", new I18nText("y axis downwards", "y-Achse nach unten"), "flip-vertical", "yDown", false);
+            yield return Ann.Toggle(o, "ann.coord.ydown", new I18nText("y axis downwards", "y-Achse nach unten"), IconIds.Toggle, "yDown", false);
         }
     }
 
@@ -117,7 +117,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.moment.ccw", new I18nText("Counter-clockwise", "Gegen den Uhrzeigersinn"), "rotate-ccw", "ccw", true);
+            yield return Ann.Toggle(o, "ann.moment.ccw", new I18nText("Counter-clockwise", "Gegen den Uhrzeigersinn"), IconIds.RotateCcw, "ccw", true);
         }
     }
 

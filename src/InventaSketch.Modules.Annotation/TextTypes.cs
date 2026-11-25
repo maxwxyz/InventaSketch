@@ -80,13 +80,13 @@ namespace InventaSketch.Modules.Annotation
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             var def = _frame != TextFrame.None;
-            yield return Ann.Toggle(o, "ann.text.frame", new I18nText("Frame", "Rahmen"), "frame", "frame", def, "frame");
-            yield return Ann.Toggle(o, "ann.text.bold", new I18nText("Bold", "Fett"), "bold", "bold", false, "font");
-            yield return Ann.Toggle(o, "ann.text.italic", new I18nText("Italic", "Kursiv"), "italic", "italic", false, "font");
+            yield return Ann.Toggle(o, "ann.text.frame", new I18nText("Frame", "Rahmen"), IconIds.Toggle, "frame", def, "frame");
+            yield return Ann.Toggle(o, "ann.text.bold", new I18nText("Bold", "Fett"), IconIds.Toggle, "bold", false, "font");
+            yield return Ann.Toggle(o, "ann.text.italic", new I18nText("Italic", "Kursiv"), IconIds.Toggle, "italic", false, "font");
             var ad = _frame == TextFrame.None ? "left" : "center";
-            yield return Ann.SetChoice(o, "ann.align.left", new I18nText("Align left", "Linksbündig"), "align-left", "align", "left", ad, "align");
-            yield return Ann.SetChoice(o, "ann.align.center", new I18nText("Centre", "Zentriert"), "align-center", "align", "center", ad, "align");
-            yield return Ann.SetChoice(o, "ann.align.right", new I18nText("Align right", "Rechtsbündig"), "align-right", "align", "right", ad, "align");
+            yield return Ann.SetChoice(o, "ann.align.left", new I18nText("Align left", "Linksbündig"), IconIds.TextAlignLeft, "align", "left", ad, "align");
+            yield return Ann.SetChoice(o, "ann.align.center", new I18nText("Centre", "Zentriert"), IconIds.TextAlignCenter, "align", "center", ad, "align");
+            yield return Ann.SetChoice(o, "ann.align.right", new I18nText("Align right", "Rechtsbündig"), IconIds.TextAlignRight, "align", "right", ad, "align");
         }
     }
 
@@ -122,7 +122,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.fig.underline", new I18nText("Underline", "Unterstreichen"), "underline", "underline", false);
+            yield return Ann.Toggle(o, "ann.fig.underline", new I18nText("Underline", "Unterstreichen"), IconIds.Toggle, "underline", false);
         }
     }
 
@@ -174,7 +174,7 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.detail.dashdot", new I18nText("Dash-dot circle", "Strichpunkt-Kreis"), "dashdot", "dashdot", false);
+            yield return Ann.Toggle(o, "ann.detail.dashdot", new I18nText("Dash-dot circle", "Strichpunkt-Kreis"), IconIds.LineDashDot, "dashdot", false);
         }
     }
 
@@ -227,8 +227,8 @@ namespace InventaSketch.Modules.Annotation
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return Ann.Toggle(o, "ann.section.flip", new I18nText("Flip view direction", "Blickrichtung umkehren"), "flip", "flip", false);
-            yield return Ann.Toggle(o, "ann.section.continuous", new I18nText("Chain line through", "Durchgehende Strichpunktlinie"), "dashdot", "continuous", true);
+            yield return Ann.Toggle(o, "ann.section.flip", new I18nText("Flip view direction", "Blickrichtung umkehren"), IconIds.Reverse, "flip", false);
+            yield return Ann.Toggle(o, "ann.section.continuous", new I18nText("Chain line through", "Strichpunkt durchgehend"), IconIds.LineDashDot, "continuous", true);
         }
     }
 }

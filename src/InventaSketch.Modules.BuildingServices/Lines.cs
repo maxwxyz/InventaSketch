@@ -212,7 +212,7 @@ namespace InventaSketch.Modules.BuildingServices
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Bs.Cycle(o, "bs.pipe.medium", MediumParam) with { Icon = IconIds.Medium };
-            yield return Bs.Toggle(o, "bs.pipe.arrow", new I18nText("Flow arrow", "Fließrichtungspfeil"), IconIds.ArrowEnd, "arrow", false);
+            yield return Bs.Toggle(o, "bs.pipe.arrow", new I18nText("Flow arrow", "Fließrichtungspfeil"), IconIds.FlowArrow, "arrow", false);
             yield return Bs.Toggle(o, "bs.pipe.hops", new I18nText("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), IconIds.Hop, "hops", true);
             yield return Bs.HeightAction(o, this, lang);
         }
@@ -298,7 +298,7 @@ namespace InventaSketch.Modules.BuildingServices
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Bs.Cycle(o, "bs.duct.kind", KindParam) with { Icon = IconIds.Medium };
-            yield return Bs.Toggle(o, "bs.duct.arrow", new I18nText("Air flow arrow", "Luftrichtungspfeil"), IconIds.ArrowEnd, "arrow", false);
+            yield return Bs.Toggle(o, "bs.duct.arrow", new I18nText("Air flow arrow", "Luftrichtungspfeil"), IconIds.FlowArrow, "arrow", false);
             yield return Bs.HeightAction(o, this, lang);
         }
     }

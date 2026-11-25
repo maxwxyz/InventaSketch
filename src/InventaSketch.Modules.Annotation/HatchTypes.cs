@@ -233,8 +233,8 @@ namespace InventaSketch.Modules.Annotation
         public static IEnumerable<ContextAction> Actions(SketchObject o)
         {
             foreach (var (value, en, de) in Options)
-                yield return Ann.SetChoice(o, "ann.hatch." + value, new I18nText(en, de), "hatch-" + value, "pattern", value, "steel", "pattern");
-            yield return Ann.Toggle(o, "ann.hatch.outline", new I18nText("Outline", "Umriss"), "outline", "outline", true);
+                yield return Ann.SetChoice(o, "ann.hatch." + value, new I18nText(en, de), IconIds.Option, "pattern", value, "steel", "pattern");
+            yield return Ann.Toggle(o, "ann.hatch.outline", new I18nText("Outline", "Umriss"), IconIds.Toggle, "outline", true);
         }
     }
 

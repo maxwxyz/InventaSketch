@@ -201,8 +201,8 @@ namespace InventaSketch.Modules.Maps
         protected IEnumerable<ContextAction> PointActions(SketchObject o, I18nText add, I18nText remove)
         {
             var count = o.Points?.Count ?? 0;
-            yield return new ContextAction("map.point.add", add, IconIds.Increase, x => PointEdit.Insert(x, ClosedOutline)) { Group = "points" };
-            yield return new ContextAction("map.point.remove", remove, IconIds.Decrease, x => PointEdit.Remove(x, ClosedOutline, ClosedOutline ? 3 : 2))
+            yield return new ContextAction("map.point.add", add, IconIds.AddPoint, x => PointEdit.Insert(x, ClosedOutline)) { Group = "points" };
+            yield return new ContextAction("map.point.remove", remove, IconIds.RemovePoint, x => PointEdit.Remove(x, ClosedOutline, ClosedOutline ? 3 : 2))
             {
                 Group = "points",
                 IsEnabled = count > (ClosedOutline ? 3 : 2),

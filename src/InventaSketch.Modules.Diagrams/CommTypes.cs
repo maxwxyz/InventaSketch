@@ -76,8 +76,8 @@ namespace InventaSketch.Modules.Diagrams
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            yield return D.SetChoice(o, "diag.bus.thick", new I18nText("Thick line", "Dicke Linie"), IconIds.LineSolid, "style", "thick", "thick", "style");
-            yield return D.SetChoice(o, "diag.bus.double", new I18nText("Hollow double line", "Hohle Doppellinie"), IconIds.WallThick, "style", "double", "thick", "style");
+            yield return D.SetChoice(o, "diag.bus.thick", new I18nText("Thick line", "Dicke Linie"), IconIds.Option, "style", "thick", "thick", "style");
+            yield return D.SetChoice(o, "diag.bus.double", new I18nText("Hollow double line", "Hohle Doppellinie"), IconIds.Option, "style", "double", "thick", "style");
         }
     }
 
@@ -158,7 +158,7 @@ namespace InventaSketch.Modules.Diagrams
                 "end" => "both",
                 _ => "none",
             })) { Group = "arrows" };
-            yield return new ContextAction("diag.swap", new I18nText("Swap direction", "Richtung umkehren"), IconIds.Swap, D.Reverse) { Group = "direction" };
+            yield return new ContextAction("diag.swap", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, D.Reverse) { Group = "direction" };
         }
     }
 
