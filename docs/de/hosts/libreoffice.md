@@ -12,14 +12,17 @@ und angepasst.
 
 ```
 LibreOffice (Impress/Draw/Calc)
- └─ inventasketch_component.py      Python-UNO: Protocol-Handler (Menü, Skript-API), Fabrik des Seitenleisten-Panels
+ └─ inventasketch_component.py      Python-UNO: Protocol-Handler (Menü, Skript-API), Fabrik des Seitenleisten-Panels,
+                                    Job CanvasJob (Jobs.xcu, OnViewCreated)
      └─ pythonpath/inventasketch_lo
          host.py      Zielseite, Einfügepunkt, Auswahl, Einfügen/Bearbeiten, ein Rückgängig-Schritt je Aktion
          plan.py      Zeichenplan (pt) -> Formbeschreibungen (1/100 mm), ohne UNO, mit Unit-Tests
          render.py    Formbeschreibungen -> native UNO-Formen, Gruppen, Linienenden, Metadaten
          metadata.py  Name der Einheit, Attribute, Dokumenteigenschaften in Teilstücken, Erkennen nativer Änderungen
          sidebar.py   Deck „InventaSketch“, Panels „Auswahl“ und „Bibliothek“; library.py: Katalogfilter, Vorschaubilder
-         ux.py        Regeln des Auswahl-Panels, zuletzt benutzte Elemente, Buchführung der Seitensitzung (ohne UNO)
+         ux.py        Regeln des Auswahl-Panels, zuletzt benutzte Elemente, Buchführung der Seitensitzung, Regeln der
+                      Bedienung auf der Folie (ohne UNO)
+         canvas.py    Bedienung auf der Folie: Einrasten nach dem Ziehen, Strg+Leertaste, Kontextmenü (UNO-Eingabe-Abfang)
          engine.py    Engine-Prozess (JSON-Zeilen), .NET-Suche, Zeitlimit, Neustart
          mainthread.py  Befehle über die Fernbrücke laufen im Hauptthread
  └─ engine/portable/InventaSketch.LibreOffice.Engine.dll   (oder engine/<rid>/… eigenständig)
@@ -87,14 +90,20 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
     *Vorschläge*: die zur Auswahl passenden Teile, dann die zuletzt benutzten), die Elementliste mit Vorschau
     (SVG-Vorschaubild der Engine); Doppelklick oder *Einfügen* fügt das Element ein – ein zur ausgewählten Einheit
     passendes Teil dort, wo es passt, alles andere in der Mitte der Folie/Seite (Calc: des sichtbaren Zellbereichs).
+- **Auf der Folie/Seite** (Impress, Draw; siehe Runde „Bedienung auf der Folie“ unten): Eine mit der Maus gezogene
+  Einheit rastet beim Loslassen ein (Zahneingriff, Achsen, Anbaustellen, Flansche …), gekoppelte Teile folgen;
+  Strg+Leertaste öffnet das Bibliotheks-Panel mit dem Cursor im Suchfeld (tippen, Eingabe fügt ein); das Kontextmenü
+  einer Einheit beginnt mit den Aktionen des Auswahl-Panels.
 - **Skript-API** (DispatchHelper / Makros), jeweils `inventasketch.libreoffice:<Befehl>`:
   `insert?item=<id>[&x=<mm>&y=<mm>]`, `insertFitting?item=<id>`, `insertSearch?text=<Suchtext>`, `library`,
   `editModel`, `setView?view=<id>`, `redraw`, `numeral`, `transform?kind=mirrorH|mirrorV|rotate90`, `explode`,
   `drawTrace`, `drawGhosts`, `build?port=<Port-ID>&item=<id>`, `turn?degrees=<Winkel>`,
   `arrange?action=<ID aus arrangeOptions>`, `assembly`, `panel?control=<Schlüssel>&text=<Text>` /
   `panel?control=<Schlüssel>&item=<Eintrag>` / `panel?press=<Schlüssel, Beschriftung oder action:<id>>` (bedient ein
-  Bedienelement des offenen Panels wie ein Anwender), `cleanup`, `about`. Integrations- und UI-Smoke-Test benutzen
-  diese Befehle.
+  Bedienelement des offenen Panels wie ein Anwender), `snapMove[?px=<Pixel>&undo=<n>]` (ausgewählte Einheit(en) nach
+  einer nativen Verschiebung einrasten, wie nach dem Ziehen mit der Maus), `quickInsert[?text=<Text>]`
+  (Bibliotheks-Panel mit dem Cursor im Suchfeld, wie Strg+Leertaste), `cleanup`, `about`. Integrations- und
+  UI-Smoke-Test benutzen diese Befehle.
 - **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in
   `libreoffice-settings.json` neben dem Protokoll und werden in der Suche höher eingestuft.
 - Sprache der Oberfläche: Deutsch, wenn die Oberflächensprache von LibreOffice mit `de` beginnt, sonst Englisch; die
@@ -173,10 +182,56 @@ Overlay auf der Folie, daher liegt alles im Deck. Alle Entscheidungen kommen aus
 - **Beschriftungen:** Die Erweiterung hat noch keinen Symbolsatz; die Schaltflächen tragen kurze zweisprachige
   Textbeschriftungen mit dem Wortlaut des COM-Add-ins als Tooltip; für die auswahlweiten Operationen werden die
   Beschriftungen der Engine verwendet (eine je Zeile).
-- **Nicht in LibreOffice (braucht das geplante Overlay):** Ziehen mit Einrasten und Einrastbeschriftungen, die
-  Live-Vorschau der Kopplung, Anbau-„+“ auf der Folie und das Strecken eines Wellenendes durch Ziehen, der
+- **Nicht in LibreOffice (braucht das geplante Overlay):** Hilfslinien und Einrastbeschriftungen *während* des
+  Ziehens, die Live-Vorschau der Kopplung, Anbau-„+“ auf der Folie und das Strecken eines Wellenendes durch Ziehen, der
   Bewegungsmodus durch Ziehen (Getriebezüge drehen stattdessen um einen eingetippten Winkel; Koppelgetriebe lassen
-  sich nicht ziehen), „Mach daraus …“ nach dem Schnellanfügen, das Kreismenü und Strg+Leertaste.
+  sich nicht ziehen), „Mach daraus …“ nach dem Schnellanfügen und das Kreismenü. Einrasten beim Loslassen,
+  Strg+Leertaste und ein Kontextmenü kamen mit der Runde „Bedienung auf der Folie“ unten hinzu.
+
+## Bedienung auf der Folie (LibreOffice, 2026-11-25)
+
+Die UNO-API von LibreOffice bietet einer Erweiterung keinen Weg, in die Dokumentansicht zu zeichnen (kein Overlay für
+Griffe, „+“-Schaltflächen oder Hilfslinien, keine Live-Vorschau, während LibreOffice eine Form zieht). Sie erlaubt
+aber, Maus und Tastatur der Ansicht zu beobachten und ihr Kontextmenü zu erweitern (`XUserInputInterception`,
+`XContextMenuInterception` am Controller). Genau das nutzt die Erweiterung (`canvas.py`, reine Regeln in `ux.py`);
+jede Entscheidung kommt weiterhin aus der Engine.
+
+- **Anmelden:** Der Job `CanvasJob` (`Jobs.xcu`, Dokumentereignis `OnViewCreated`) meldet an jeder Impress-/Draw-Ansicht
+  eine Mausklick-Behandlung, eine Tastenbehandlung und einen Kontextmenü-Interceptor an; Befehle und Seitenleisten-Panels
+  melden erneut an, falls eine Ansicht vor der Erweiterung geöffnet war (je Controller nur einmal). Calc behält nur Menü
+  und Seitenleiste (Strg+Leertaste markiert dort eine Spalte, Formen sind an Zellen verankert).
+- **Einrasten nach dem Ziehen (wie in PowerPoint):** LibreOffice verschiebt die Form selbst; ein Loslassen der linken
+  Maustaste nach einer Mausbewegung stellt den Befehl `snapMove` in den Hauptthread, der läuft, nachdem LibreOffice die
+  Verschiebung ausgeführt hat. Haben sich alle ausgewählten Einheiten um denselben Vektor verschoben (keine
+  Größenänderung, keine Drehung: `ux.drag_delta`), importiert die Seitensitzung die Einheiten mit den gezogenen an ihrer
+  gespeicherten Lage, ruft `snapMove` der Engine mit dem Zugvektor auf (Toleranz 8 Bildschirmpixel beim Zoom des
+  Ziehens, aus den Pixeln der Mausbewegung abgeleitet, wie in den anderen Hosts) und wendet den eingerasteten Vektor mit
+  `move` *mit* Kopplung an: Ein Zahnrad landet im Eingriff, auf einer Achse, an einer Anbaustelle oder einem Flansch;
+  Teile auf einer gezogenen Welle und angedockte Linien folgen. Die betroffenen Einheiten werden neu gezeichnet. Die
+  eigene Verschiebe-Aktion von LibreOffice (genau eine neue Rückgängig-Aktion seit dem Drücken der Maustaste) wird vorher
+  zurückgenommen, so dass Ziehen + Einrasten **ein** Rückgängig-Schritt ist („InventaSketch: Verschieben und
+  einrasten“), der die Einheit an ihre Lage vor dem Ziehen zurückbringt. Strg (Kopie) und Alt (freies Verschieben, wie
+  in den anderen Hosts) rasten nicht ein; Größenänderungen, Drehungen, Formen in einer betretenen Gruppe und die
+  Textbearbeitung rasten nie ein. Fehler nach dem Ziehen werden protokolliert, nicht angezeigt.
+- **Strg+Leertaste:** öffnet das InventaSketch-Deck (Seitenleisten-API: `setVisible`, `showDecks`, `XDeck.activate`,
+  weil der Dispatch `.uno:SidebarDeck.<Deck>` umschaltet und ein offenes Deck schließen würde) und setzt den Cursor mit
+  markiertem Text in das Suchfeld des Bibliotheks-Panels; gibt es das Panel noch nicht, übernimmt es die Anforderung,
+  sobald es gefüllt ist. Tippen sucht wie bisher; **Eingabe** fügt den markierten Treffer ein (ein passendes Teil dort,
+  wo es zur Auswahl passt) und gibt den Fokus an das Dokument zurück, **Esc** gibt ihn nur zurück. In der
+  Textbearbeitung bleibt Strg+Leertaste beim Text (Textbearbeitung wird am Zustand von `.uno:InsertSoftHyphen` erkannt,
+  den LibreOffice nur dann aktiviert; die Auswahl ändert sich in der Textbearbeitung nicht).
+- **Kontextmenü:** Ein Rechtsklick auf InventaSketch-Einheit(en) setzt die Aktionen des Auswahl-Panels an den Anfang
+  des LibreOffice-Menüs, gefolgt von einem Trenner: *Ansicht wechseln ▸* (die anderen Ansichten), *Bahn zeichnen*,
+  *Zwischenlagen*, *Baugruppe wählen*, *Zerlegen*, *Horizontal/Vertikal spiegeln*, *Um 90 Grad drehen* – jeweils nur,
+  wenn die Engine sagt, dass sie zutreffen (`host.describe`, `ux.context_entries`) –, *Aus dem Modell neu zeichnen*
+  und *Mehr in der InventaSketch-Seitenleiste …* (Anbau-„+“, Drehen). Mehrere Einheiten: die auswahlweiten Operationen
+  der Engine und *Baugruppe wählen*. Die Einträge sind gewöhnliche Dispatch-Befehle der Erweiterung. Der Aufbau des
+  Menüs kostet eine Seitensitzung (alle Einheiten der Seite werden importiert).
+- **Ohne Overlay nicht möglich (dokumentiert, nicht versucht):** Hilfslinien und Einrastbeschriftung während des
+  Ziehens, die Live-Vorschau der Kopplung, „+“-Griffe auf der Folie, Strecken eines Wellenendes und Bewegungsmodus durch
+  Ziehen, das Kreismenü. Das Aufklappen eines zugeklappten Bibliotheks-Panels bei Strg+Leertaste entfiel:
+  `XDeck.getPanels()`/`XPanel.expand` brachte soffice 26.8 bei gezeigtem Deck zum Absturz; ein vom Anwender
+  zugeklapptes Bibliotheks-Panel bleibt daher zu.
 
 ## Verifizierte Funktionen
 
@@ -216,6 +271,20 @@ bestanden; `tests/ui_smoke.py`, Bildschirmfotos gesichtet):
   getroffenen Mehrfachauswahl und deren *Mitten auf eine waagrechte Linie*, *Anbauen* aus der Liste der Anbaustellen
   und *Drehen* mit eingetipptem Winkel; Bildschirmfotos gesichtet.
 
+- 2026-11-25 (Bedienung auf der Folie, Windows 11, LibreOffice 26.8.2.2, deutsche Oberfläche, 200 %
+  Anzeigeskalierung): `integration_test.py` 70 Prüfungen bestanden, neu: Der Job meldet die Behandlungen vor jedem
+  Befehl an einer neuen Ansicht an, ein 1,3 mm neben der Eingriffslage einer anderen Einheit abgelegtes Zahnrad rastet
+  in einem Rückgängig-Schritt in den Eingriff ein (Achsabstand 25,20 mm), die Auswahl bleibt; eine um 20 mm verschobene
+  Welle nimmt das Zahnrad darauf mit (Kopplung); eine native Größenänderung rastet nicht ein. `ui_smoke.py`
+  19 Prüfungen bestanden (zweimal) mit **echter Maus- und Tastatureingabe** (Windows `SendInput`): Ein mit der Maus
+  bis 2,5 mm neben die Eingriffslage gezogenes Zahnrad rastet beim Loslassen in den Eingriff ein (25,20 mm, Toleranz
+  4,99 mm bei 21 % Zoom), ein Rückgängig bringt es an den Start zurück, Wiederherstellen rastet es wieder ein; ein
+  Rechtsklick auf das Zahnrad zeigt *Ansicht wechseln*, *Baugruppe wählen*, *Aus dem Modell neu zeichnen*, *Mehr in der
+  Seitenleiste* über dem LibreOffice-Menü, und Ab, Rechts, Eingabe wechselt seine Ansicht; Strg+Leertaste, „welle“
+  tippen und Eingabe fügt eine Welle ein, erneut Strg+Leertaste bei ausgewählter Welle, „lager“, Eingabe fügt das
+  passende Lager ein; in der Textbearbeitung bleiben Strg+Leertaste und Tippen im Text; die 8 Seitenleisten-Prüfungen
+  der UI/UX-Runde bestehen weiterhin. Bildschirmfotos gesichtet.
+
 ## Tests
 
 ```powershell
@@ -233,14 +302,21 @@ Einheiten gedreht, Zerlegen). Der UI-Smoke-Test bedient die Bedienelemente des P
 Suchfeld und die Wahl eines Listeneintrags laufen über die Bedienelemente und rufen dieselben Listener auf wie ein
 Anwender; Schaltflächen führen ihre Klick-Behandlung aus); echte Mausklicks werden nicht nachgestellt, weil die Peers
 der Bedienelemente über die Fernbrücke nur generische Fenster ohne Listenfeld- oder Barrierefreiheits-Schnittstellen
-sind. Der Integrationstest installiert das Paket in ein
+sind. Sein erster Teil (`canvas_phase`, Windows) schickt dagegen echte Maus- und Tastatureingaben an die
+Dokumentansicht: Eine Test-Mausbehandlung über die Brücke meldet Fensterpixel, so liefert ein Klick den Ursprung der
+Ansicht auf dem Bildschirm und ein waagrechtes Ziehen eines Hilfsrechtecks den Maßstab; Seitenkoordinaten werden dann
+über die `VisibleArea` des Controllers umgerechnet. Vor jedem Klick, Ziehen oder Tastendruck prüft der Test, dass sein
+eigenes LibreOffice-Fenster vorn und unter dem Mauszeiger ist, und bricht sonst ohne Eingabe ab (`--skip-canvas` lässt
+diesen Teil weg, `--canvas-only` führt nur ihn aus). Der Integrationstest installiert das Paket in ein
 temporäres Profil, startet soffice ohne Oberfläche und berührt nie das Profil oder Dateien des Anwenders; unter
 Linux/macOS läuft er mit einem Python, das `uno` importieren kann.
 
 ## Grenzen (Phase 1)
 
-- Noch keine Bedienung direkt auf der Folie (Overlay, Einrasten beim Ziehen, Kreismenü): Bearbeitet wird über
-  Seitenleiste und Menü; das Auswahl-Panel folgt der Auswahl. Parameter, Stil und Text sind noch nicht bearbeitbar.
+- Kein Overlay auf der Folie (UNO kann nicht in die Ansicht zeichnen): Eingerastet wird beim Loslassen, ohne
+  Hilfslinien oder Einrastbeschriftung während des Ziehens; keine „+“-Griffe, kein Kreismenü, keine Bewegung durch
+  Ziehen. Sonst wird über Seitenleiste, Kontextmenü und Menü bearbeitet. Parameter, Stil und Text sind noch nicht
+  bearbeitbar.
 - Jede Bearbeitung importiert alle InventaSketch-Einheiten der Seite (ein Engine-Aufruf je Einheit plus der Zustand);
   Seiten mit sehr vielen Einheiten werden langsamer. Bei Einheiten, die gegenseitig aneinander hängen, kann die Engine
   von der Kopie des Modells der anderen Einheit ausgehen, die bei der ersten gespeichert ist (die Importreihenfolge

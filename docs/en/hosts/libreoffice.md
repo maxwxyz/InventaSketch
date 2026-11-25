@@ -11,14 +11,16 @@ UNO shape creation, sidebar plumbing, main-thread marshalling, packaging), trans
 
 ```
 LibreOffice (Impress/Draw/Calc)
- └─ inventasketch_component.py      Python-UNO: protocol handler (menu, scripting API), sidebar panel factory
+ └─ inventasketch_component.py      Python-UNO: protocol handler (menu, scripting API), sidebar panel factory,
+                                    job CanvasJob (Jobs.xcu, OnViewCreated)
      └─ pythonpath/inventasketch_lo
          host.py      target page, insertion point, selection, insert/edit flows, one undo step per action
          plan.py      draw plan (pt) -> shape specifications (1/100 mm), no UNO, unit-tested
          render.py    specifications -> native UNO shapes, groups, line-end markers, metadata
          metadata.py  unit name, attributes, chunked document properties, native-edit detection, no UNO
          sidebar.py   deck "InventaSketch", panels "Selection" and "Library"; library.py: catalog filter, thumbnails
-         ux.py        selection panel rules, recent items, page session bookkeeping (no UNO, unit-tested)
+         ux.py        selection panel rules, recent items, page session bookkeeping, on-canvas rules (no UNO, tested)
+         canvas.py    on-canvas interaction: snap after a mouse drag, Ctrl+Space, context menu (UNO input interception)
          engine.py    engine process (JSON lines), .NET discovery, timeouts, restart
          mainthread.py  commands from the remote bridge run on the main thread
  └─ engine/portable/InventaSketch.LibreOffice.Engine.dll   (or engine/<rid>/… self-contained)
@@ -84,13 +86,19 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
     *Suggestions*: the parts that fit the selection, then the recent items), the item list with preview (the engine's
     SVG thumbnail); double-click or *Insert* inserts the item – a part that fits the selected unit where it fits,
     anything else in the middle of the slide/page (Calc: of the visible cell area).
+- **On the slide/page** (Impress, Draw; see the on-canvas round below): a unit dragged with the mouse snaps on
+  release (gear mesh, axes, ports, mounts …) and its coupled parts follow; Ctrl+Space opens the Library panel with the
+  cursor in the search field (type, Enter inserts); the context menu of a unit starts with the selection panel's
+  actions.
 - **Scripting API** (DispatchHelper / macros), all `inventasketch.libreoffice:<command>`:
   `insert?item=<id>[&x=<mm>&y=<mm>]`, `insertFitting?item=<id>`, `insertSearch?text=<query>`, `library`, `editModel`,
   `setView?view=<id>`, `redraw`, `numeral`, `transform?kind=mirrorH|mirrorV|rotate90`, `explode`, `drawTrace`,
   `drawGhosts`, `build?port=<port id>&item=<id>`, `turn?degrees=<angle>`, `arrange?action=<id of arrangeOptions>`,
   `assembly`, `panel?control=<key>&text=<text>` / `panel?control=<key>&item=<entry>` / `panel?press=<key, label or
-  action:<id>>` (operates a control of the open panel the way a user does), `cleanup`, `about`. The integration and UI
-  smoke tests use these commands.
+  action:<id>>` (operates a control of the open panel the way a user does), `snapMove[?px=<pixels>&undo=<n>]` (snap
+  the selected unit(s) after a native move, as after a mouse drag), `quickInsert[?text=<text>]` (Library panel with
+  the cursor in the search field, as Ctrl+Space), `cleanup`, `about`. The integration and UI smoke tests use these
+  commands.
 - **Recent items** (last 12 inserted library items, per user) are kept in `libreoffice-settings.json` next to the log
   and rank higher in the search.
 - UI language: German if the LibreOffice UI locale starts with `de`, otherwise English; library names come from the
@@ -162,9 +170,50 @@ yet, so everything lives in the deck. All decisions come from the engine; pure p
   runs `arrange` on all selected units in one page session and one undo step.
 - **Labels:** the extension has no icon set yet, so the buttons carry short bilingual text labels with the COM
   add-in's wording as tooltip; the engine's labels are used for the selection-wide operations (one per row).
-- **Not in LibreOffice (needs the planned overlay):** dragging with snapping and snap labels, the live coupling
+- **Not in LibreOffice (needs the planned overlay):** snap guides and snap labels *while* dragging, the live coupling
   preview, build "+" on the canvas and stretching a shaft end by dragging, motion mode by dragging (gear trains turn by
-  a typed angle instead; linkages cannot be dragged), "make it …" after a quick add, the pie menu and Ctrl+Space.
+  a typed angle instead; linkages cannot be dragged), "make it …" after a quick add and the pie menu. Snapping on
+  release, Ctrl+Space and a context menu followed in the on-canvas round below.
+
+## On-canvas round (LibreOffice, 2026-11-25)
+
+LibreOffice's UNO API gives an extension no way to draw into the document view (no overlay for handles, "+" buttons
+or snap guides, no live preview while LibreOffice drags a shape). It does let an extension watch the mouse and keyboard
+of the view and extend its context menu (`XUserInputInterception`, `XContextMenuInterception` on the controller). The
+extension uses exactly that (`canvas.py`, pure rules in `ux.py`); every decision still comes from the engine.
+
+- **Attaching:** the job `CanvasJob` (`Jobs.xcu`, document event `OnViewCreated`) attaches a mouse click handler, a
+  key handler and a context menu interceptor to every Impress/Draw view; commands and sidebar panels attach again if a
+  view was opened before the extension (idempotent per controller). Calc keeps the menu and the sidebar only (Ctrl+Space
+  selects a column there, shapes are anchored to cells).
+- **Snapping after a drag (like PowerPoint):** LibreOffice moves the shape itself; a left-button release after the
+  mouse moved posts the command `snapMove` to the main thread, which runs after LibreOffice has applied the move. If
+  every selected unit moved by the same vector (no resize, no rotation: `ux.drag_delta`), the page session imports the
+  units with the dragged ones at their stored position, runs the engine's `snapMove` with the drag vector (tolerance
+  8 screen pixels at the zoom of the drag, derived from the pixels the mouse moved, as in the other hosts) and applies
+  the snapped vector with `move` *with* coupling: a gear lands in mesh, on an axis, at a port or mount; parts on a
+  dragged shaft and docked lines follow. The touched units are redrawn. LibreOffice's own move action (exactly one new
+  undo action since the mouse press) is taken back first, so drag + snap is **one** undo step ("InventaSketch: Move and
+  snap") that returns the unit to where it was before the drag. Ctrl (copy) and Alt (free move, as in the other hosts)
+  skip the snap; resizes, rotations, shapes inside an entered group and text edit never snap. Errors after a drag are
+  logged, not shown.
+- **Ctrl+Space:** opens the InventaSketch deck (sidebar API: `setVisible`, `showDecks`, `XDeck.activate`, because the
+  dispatch `.uno:SidebarDeck.<deck>` toggles and would close an open deck) and puts the cursor into the Library
+  panel's search field with its text selected; if the panel is not created yet, it takes the request when it is
+  filled. Typing searches as before; **Enter** inserts the marked hit (a fitting part where it fits the selection) and
+  returns the focus to the document, **Escape** only returns. In text edit Ctrl+Space stays with the text (text edit is
+  recognised by the state of `.uno:InsertSoftHyphen`, which LibreOffice enables only then; the selection does not
+  change in text edit).
+- **Context menu:** right-clicking InventaSketch unit(s) puts the selection panel's actions at the top of LibreOffice's
+  menu, followed by a separator: *Switch view ▸* (the other views), *Draw path*, *Ghost positions*, *Select assembly*,
+  *Explode*, *Mirror horizontally/vertically*, *Rotate 90 degrees* – each only when the engine says it applies
+  (`host.describe`, `ux.context_entries`) –, *Redraw from model* and *More in the InventaSketch sidebar…* (build "+",
+  turning). Several units: the engine's selection-wide operations and *Select assembly*. The entries are ordinary
+  dispatch commands of the extension. Building the menu runs one page session (all units of the page are imported).
+- **Not possible without an overlay (documented, not attempted):** guides and the snap label while dragging, the live
+  coupling preview, "+" handles on the canvas, stretching a shaft end and motion mode by dragging, the pie menu.
+  Expanding a collapsed Library panel on Ctrl+Space was dropped: `XDeck.getPanels()`/`XPanel.expand` crashed soffice
+  26.8 once the deck was shown, so a Library panel the user collapsed stays collapsed.
 
 ## Verified features
 
@@ -199,6 +248,18 @@ Verified on Windows 11 with LibreOffice 26.8.2.2 on 2026-11-20 (`tests/integrati
   where it fits, the panel following a multi-selection made in the document and its *centres on one horizontal line*,
   *Build* from the port list and *Turn* with a typed angle; screenshots reviewed.
 
+- 2026-11-25 (on-canvas round, Windows 11, LibreOffice 26.8.2.2, German UI, 200 % display scaling):
+  `integration_test.py` 70 checks passed, new: the job attaches the handlers to a new view before any command, a gear
+  dropped 1.3 mm beside the meshing position of another unit snaps into mesh (centre distance 25.20 mm) in one undo
+  step with the selection kept, a shaft moved by 20 mm takes the gear on it along (coupling), a native resize does not
+  snap. `ui_smoke.py` 19 checks passed (twice) with **real mouse and keyboard input** (Windows `SendInput`): a gear
+  dragged with the mouse to 2.5 mm beside the meshing position snaps into mesh on release (25.20 mm, tolerance 4.99 mm
+  at 21 % zoom), one undo returns it to its start and redo snaps it again; right-click on the gear shows *Switch view*,
+  *Select assembly*, *Redraw from model*, *More in the sidebar* on top of LibreOffice's menu and Down, Right, Enter
+  switches its view; Ctrl+Space, typing "welle" and Enter inserts a shaft, Ctrl+Space again with the shaft selected,
+  "lager", Enter inserts the fitting bearing; in text edit Ctrl+Space and typing stay in the text; the 8 sidebar checks
+  of the UI/UX round still pass. Screenshots reviewed.
+
 ## Tests
 
 ```powershell
@@ -214,13 +275,20 @@ behind the panel with payloads drawn in separate sessions (search with fitting p
 units, a gear train turned across units, explode). The UI smoke test operates the panel's controls with the `panel`
 command (typing into the search field and choosing a list entry go through the controls and call the same listeners
 as a user; buttons run their click handler); real mouse clicks are not simulated, because over the remote bridge the
-panel's control peers are generic windows without list box or accessibility interfaces. The integration test installs the package into a temporary profile, runs soffice
+panel's control peers are generic windows without list box or accessibility interfaces. Its first part
+(`canvas_phase`, Windows) does send real mouse and keyboard input to the document view: a test mouse handler over the
+bridge reports window pixels, so a click gives the view's origin on the screen and a horizontal drag of a helper
+rectangle the scale; page coordinates then map through the controller's `VisibleArea`. Before every click, drag or key
+the test checks that its own LibreOffice window is in front and under the pointer, and stops without sending input
+otherwise (`--skip-canvas` leaves this part out, `--canvas-only` runs only it). The integration test installs the
+package into a temporary profile, runs soffice
 headless and never touches the user's profile or files; Linux/macOS run it with a Python that can import `uno`.
 
 ## Limits (phase 1)
 
-- No on-canvas interaction yet (overlay, snapping while dragging, pie menu): editing goes through the sidebar and the
-  menu; the selection panel follows the selection. Parameters, style and text editing are not exposed yet.
+- No overlay on the canvas (UNO cannot draw into the view): snapping happens on release, without guides or a snap
+  label while dragging; no "+" handles, pie menu or motion by dragging. Editing otherwise goes through the sidebar,
+  the context menu and the menu. Parameters, style and text editing are not exposed yet.
 - Every edit imports all InventaSketch units of the page (one engine call per unit, plus the state); pages with very
   many units get slower. For units attached to each other in both directions the engine may start from the copy of
   the other unit's model that is stored with the first one (the import order cannot make both own models win).
