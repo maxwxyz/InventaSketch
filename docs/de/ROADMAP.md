@@ -316,6 +316,12 @@ Mathe-Moduls ziehen ins Diagramm-Modul; Geometrie und Vektoren bleiben in `math`
 4. matplotlib-Export; Zusammenlegung mit Mathe.
 5. Diagramme aus Bildern (Scanner-Übernahme, Kurven-Digitalisierer).
 
+**Flussdiagramme (Beispiel des Maintainers 25.11.2026, erledigt):** Flussdiagrammsymbole passen ihren Text ein und
+umbrechen ihn, Startkreis und Ende als Doppelkreis, Winkelverbinder führen nach ihren angedockten Seiten (C-Läufe mit
+Abstand für „ja“-Ausgänge und Rücksprünge) und tragen eine Beschriftung „ja“/„nein“, das Diagramm-Layout dockt Zweige
+und Rücksprünge seitlich an und berechnet den Abstand, gestrichelte Notizrahmen. Offen: hindernisbewusste Führung bei von
+Hand gesetzten Kästen.
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,

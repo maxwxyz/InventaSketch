@@ -65,10 +65,28 @@ bietet „Als Diagramm anordnen, von oben nach unten“ und „… von links nac
 angedocktes Ende auf zwei ausgewählten Elementen sitzt, ist eine Kante; Zyklen werden entlang einer Tiefensuche
 aufgebrochen, die Ebenen folgen dem längsten Pfad von den Quellen, Baryzentrum-Durchläufe verringern Kreuzungen, Ebenen
 und Abstände richten sich nach der Größe der Elemente. Das Diagramm bleibt an seinem Platz (Oberkante und Mitte); die
-Verbinder folgen ihren Elementen und docken an den zugewandten Seiten an (unten → oben, rechts → links; ein Ende an
-einem Port wechselt zum nächsten Port dieser Seite). Eine lange Kette von links nach rechts kann über den Seitenrand
+Verbinder folgen ihren Elementen und docken an den Seiten an, die ein gezeichnetes Flussdiagramm verwendet (25.11.2026):
+unten → oben für einen Schritt direkt darunter, seitlich hinaus und oben hinein für einen Zweig darunter und daneben,
+beide Enden rechts um die Spalte herum, wenn andere Elemente dazwischen stehen (ein „ja“-Ausgang zu einem späteren
+Schritt), beide Enden links für einen Rücksprung zu einem früheren Schritt; solche seitlichen Läufe halten Abstand zu
+allen Elementen daneben (der Parameter `clearance` des Winkelverbinders wird gesetzt). Ein Ende an einem Port wechselt
+zum nächsten Port dieser Seite. Eine lange Kette von links nach rechts kann über den Seitenrand
 hinauslaufen. Funktioniert für die Kastenelemente aller Module, die über angedockte Linien
 verbunden sind (Prozessschritte, Flussdiagramm, UML, BPMN, ER, Blöcke).
+
+## Patent-Flussdiagramme (Modul Beschriftung, 25.11.2026)
+
+Die Flussdiagrammsymbole des Beschriftungsmoduls (`ann.flow.*`) passen ihren Text ein: Wörter werden innerhalb des
+Symbols umbrochen (bei Raute und Kreis in der eingeschriebenen Fläche), die Schrift wird kleiner, bis er passt, und erst
+unter 60 % der Größe werden lange Wörter mit Bindestrich getrennt. „Start (Kreis)“ (`ann.flow.start`) und „Ende
+(Doppelkreis)“ (`ann.flow.end`) ergänzen den Satz. Der Winkelverbinder führt nach den Seiten, an denen seine Enden
+andocken: Ausgänge auf derselben Seite laufen mit Abstand herum (C-Form), gegenüberliegende Seiten treffen sich in der
+Mitte, rechtwinklige Seiten nehmen eine Ecke, wenn sie vor beiden Enden liegt. Er trägt eine Beschriftung am Anfang; die
+Bibliothek hat „Verbinder „ja““ und „Verbinder „nein““ (`ann.arrow.elbow.yes` / `.no`). Der Rahmen von Beschriftungen und
+Notizen übernimmt einen gestrichelten oder umgefärbten Stil (gestrichelte Notizkästen). Geprüft am Flussdiagramm des
+Maintainers (Engine-Test `TheMaintainersFlowchartIsLaidOutWithoutLinesThroughBoxes`: nach dem Layout läuft kein
+Verbinder durch einen Kasten). Offen: hindernisbewusste Führung bei von Hand gesetzten Kästen (nur das Layout berechnet
+Abstände).
 
 ## Kontextaktionen
 

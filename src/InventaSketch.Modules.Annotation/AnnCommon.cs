@@ -130,6 +130,55 @@ namespace InventaSketch.Modules.Annotation
         public static TextPrim Text(Vec2 at, string text, double size, string? tag = null, TextAnchor anchor = TextAnchor.Middle, bool bold = false, bool italic = false, double rotation = 0)
             => new(at, text, Ts(size, anchor, bold, italic), rotation) { Tag = tag };
 
+        /// <summary>
+        /// Text fitted into a box of <paramref name="width"/> × <paramref name="height"/> mm: words wrapped onto lines (explicit
+        /// line breaks kept, words longer than a line split with a hyphen), the size reduced (down to 1.8 mm) until the lines
+        /// fit. Flowchart boxes use it so long German steps stay inside their box.
+        /// </summary>
+        public static (string Text, double Size) Fit(string text, double size, double width, double height)
+        {
+            text = (text ?? "").Replace("\r", "");
+            if (text.Length == 0 || width <= 0 || height <= 0) return (text, size);
+            // Smaller text first; words are split only when even 60 % of the size does not fit them.
+            for (var s = size; ; s *= 0.92)
+            {
+                var max = Math.Max(1, (int)Math.Floor(width / (s * CharWidth)));
+                var hyphenate = s < size * 0.6;
+                var wrapped = Wrap(text, max, hyphenate);
+                var lines = wrapped.Split('\n');
+                var fits = s * (1.0 + 1.2 * (lines.Length - 1)) <= height && lines.All(l => l.Length <= max);
+                if (fits || s <= 1.8) return (s <= 1.8 && !hyphenate ? Wrap(text, max) : wrapped, Math.Round(s, 3));
+            }
+        }
+
+        /// <summary>Words wrapped onto lines of at most <paramref name="max"/> characters (long words hyphenated).</summary>
+        public static string Wrap(string text, int max, bool hyphenate = true)
+        {
+            var result = new List<string>();
+            foreach (var para in text.Split('\n'))
+            {
+                var line = "";
+                foreach (var raw in para.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    var word = raw;
+                    while (true)
+                    {
+                        var candidate = line.Length == 0 ? word : line + " " + word;
+                        if (candidate.Length <= max) { line = candidate; break; }
+                        if (line.Length > 0) { result.Add(line); line = ""; continue; }
+                        if (word.Length <= max || !hyphenate) { line = word; break; }
+                        // A word longer than a line: split it with a hyphen (at least two letters on each side).
+                        var cut = Math.Max(2, max - 1);
+                        if (word.Length - cut < 2) { line = word; break; }
+                        result.Add(word.Substring(0, cut) + "-");
+                        word = word.Substring(cut);
+                    }
+                }
+                result.Add(line);
+            }
+            return string.Join("\n", result);
+        }
+
         /// <summary>Approximate text extent (width, cap-height box) for layout decisions.</summary>
         public static Vec2 TextExtent(string text, double size)
         {

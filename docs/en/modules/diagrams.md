@@ -64,10 +64,25 @@ as a diagram, top to bottom" and "… left to right" (engine `arrange` with `lay
 `DiagramLayout`). A layered layout in the manner of Sugiyama: every line whose first and last docked ends sit on two
 selected elements is an edge; cycles are broken along a depth-first search, layers follow the longest path from the
 sources, barycentre sweeps reduce crossings, and layers and gaps follow the elements' own sizes. The diagram keeps its
-place (top edge and centre); connectors follow their elements and dock on the facing sides (bottom → top, right →
-left; an end on a port moves to the nearest port of that side). A long chain laid out left to right can run past the
+place (top edge and centre); connectors follow their elements and dock on the sides a drawn flowchart uses
+(2026-11-25): bottom → top for a step straight below, out of the side and into the top for a branch below and beside it,
+both ends on the right around the column when other elements stand in between (a "yes" exit to a later step), both
+ends on the left for a loop back to an earlier step; such side runs keep clear of every element beside them (the
+elbow connector's `clearance` is set). An end on a port moves to the nearest port of that side. A long chain laid out left to right can run past the
 page edge. Works for any module's box elements joined by docked
 lines (process steps, flowchart, UML, BPMN, ER, blocks).
+
+## Patent flowcharts (annotation module, 2026-11-25)
+
+The flowchart symbols of the annotation module (`ann.flow.*`) fit their text: words wrap onto lines inside the symbol
+(the inscribed area of diamond and circle), the size goes down until it fits, and only below 60 % of the size are long
+words split with a hyphen. "Start (circle)" (`ann.flow.start`) and "End (double circle)" (`ann.flow.end`) complete the
+set. The elbow connector routes by the sides its ends are docked on: exits on the same side run around with a clearance
+("C" shape), facing sides meet in the middle, perpendicular sides take one corner when it lies ahead of both. It carries
+a label at its start; the library has "Connector “yes”" and "Connector “no”" (`ann.arrow.elbow.yes` / `.no`). The frame
+of labels and notes takes a dashed or recoloured style (dashed note boxes). Checked against the maintainer's flowchart
+(engine test `TheMaintainersFlowchartIsLaidOutWithoutLinesThroughBoxes`: after the layout no connector runs through a
+box). Open: obstacle-aware routing for hand-placed boxes (only the layout computes clearances).
 
 ## Context actions
 

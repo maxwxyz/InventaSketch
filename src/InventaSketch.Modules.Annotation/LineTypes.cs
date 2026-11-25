@@ -114,10 +114,90 @@ namespace InventaSketch.Modules.Annotation
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, -8), new Vec2(15, 8) };
 
-        public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.Triangle).Append(
+        /// <summary>A label at the start ("yes"/"no" of a decision exit), edited like any element text.</summary>
+        public override bool HasText => true;
+
+        public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.Triangle).Concat(new[]
+        {
             P.Choice("route", "Routing", "Führung", "auto", ("auto", "Automatic", "Automatisch"), ("hv", "Horizontal, then vertical", "Erst waagerecht"),
                 ("vh", "Vertical, then horizontal", "Erst senkrecht"), ("hvh", "Horizontal-vertical-horizontal", "Waagerecht-senkrecht-waagerecht"),
-                ("vhv", "Vertical-horizontal-vertical", "Senkrecht-waagerecht-senkrecht"))).ToList();
+                ("vhv", "Vertical-horizontal-vertical", "Senkrecht-waagerecht-senkrecht")),
+            P.Num("clearance", "Clearance beside the boxes", "Abstand neben den Kästen", 8, 1, 100, "mm", 1, advanced: true),
+            P.TextSize(Ann.TextSize * 0.8),
+        }).ToList();
+
+        /// <summary>
+        /// Route between two docked ends that leave their boxes on known sides (<paramref name="da"/>, <paramref name="db"/>:
+        /// outward unit vectors). Exits on the same side run around with <paramref name="clearance"/> ("C" shape: a "yes"
+        /// exit to the right that joins a lower box from the right, a loop back into the left side of an earlier box);
+        /// facing sides meet in the middle; perpendicular sides take one corner when it lies ahead of both ends.
+        /// </summary>
+        public static List<Vec2> RouteSides(Vec2 a, Vec2 da, Vec2 b, Vec2 db, double clearance)
+        {
+            var a1 = a + da * clearance; var b1 = b + db * clearance;
+            bool ha = Math.Abs(da.X) > 0.5, hb = Math.Abs(db.X) > 0.5;
+            var pts = new List<Vec2> { a };
+            if (ha && hb)
+            {
+                if (Math.Sign(da.X) == Math.Sign(db.X))
+                {
+                    var x = da.X > 0 ? Math.Max(a1.X, b1.X) : Math.Min(a1.X, b1.X);
+                    pts.Add(new Vec2(x, a.Y)); pts.Add(new Vec2(x, b.Y));
+                }
+                else if ((b.X - a.X) * da.X > 0) { var x = (a.X + b.X) / 2; pts.Add(new Vec2(x, a.Y)); pts.Add(new Vec2(x, b.Y)); }
+                else { var y = (a.Y + b.Y) / 2; pts.Add(a1); pts.Add(new Vec2(a1.X, y)); pts.Add(new Vec2(b1.X, y)); pts.Add(b1); }
+            }
+            else if (!ha && !hb)
+            {
+                if (Math.Sign(da.Y) == Math.Sign(db.Y))
+                {
+                    var y = da.Y > 0 ? Math.Max(a1.Y, b1.Y) : Math.Min(a1.Y, b1.Y);
+                    pts.Add(new Vec2(a.X, y)); pts.Add(new Vec2(b.X, y));
+                }
+                else if ((b.Y - a.Y) * da.Y > 0) { var y = (a.Y + b.Y) / 2; pts.Add(new Vec2(a.X, y)); pts.Add(new Vec2(b.X, y)); }
+                else { var x = (a.X + b.X) / 2; pts.Add(a1); pts.Add(new Vec2(x, a1.Y)); pts.Add(new Vec2(x, b1.Y)); pts.Add(b1); }
+            }
+            else if (ha)
+            {
+                if ((b.X - a.X) * da.X > 0 && (a.Y - b.Y) * db.Y > 0) pts.Add(new Vec2(b.X, a.Y));
+                else { pts.Add(a1); pts.Add(new Vec2(a1.X, b1.Y)); pts.Add(b1); }
+            }
+            else
+            {
+                if ((b.Y - a.Y) * da.Y > 0 && (a.X - b.X) * db.X > 0) pts.Add(new Vec2(a.X, b.Y));
+                else { pts.Add(a1); pts.Add(new Vec2(b1.X, a1.Y)); pts.Add(b1); }
+            }
+            pts.Add(b);
+            return Simplify(pts);
+        }
+
+        /// <summary>Drops repeated points and middle points of straight runs.</summary>
+        public static List<Vec2> Simplify(List<Vec2> pts)
+        {
+            var list = new List<Vec2>();
+            foreach (var p in pts)
+            {
+                if (list.Count > 0 && list[list.Count - 1].DistanceTo(p) < 1e-9) continue;
+                if (list.Count >= 2)
+                {
+                    var q = list[list.Count - 2]; var r = list[list.Count - 1];
+                    var cross = (r.X - q.X) * (p.Y - r.Y) - (r.Y - q.Y) * (p.X - r.X);
+                    if (Math.Abs(cross) < 1e-9) { list[list.Count - 1] = p; continue; }
+                }
+                list.Add(p);
+            }
+            return list;
+        }
+
+        /// <summary>Outward direction of a docked end from its box side (u, v = ±0.5), or null if not on a side.</summary>
+        private static Vec2? ExitSide(SketchObject o, int index)
+        {
+            var a = o.Attach is not null && index < o.Attach.Count ? o.Attach[index] : null;
+            if (a is null) return null;
+            if (Math.Abs(Math.Abs(a.U) - 0.5) < 1e-6 && Math.Abs(a.V) < 0.5 - 1e-6) return new Vec2(Math.Sign(a.U), 0);
+            if (Math.Abs(Math.Abs(a.V) - 0.5) < 1e-6 && Math.Abs(a.U) < 0.5 - 1e-6) return new Vec2(0, Math.Sign(a.V));
+            return null;
+        }
 
         /// <summary>Computes the orthogonal route. Attached ends leave their box perpendicular to the edge they sit on.</summary>
         public static List<Vec2> Route(Vec2 a, Vec2 b, string route, bool? startHorizontal = null, bool? endHorizontal = null)
@@ -151,9 +231,29 @@ namespace InventaSketch.Modules.Annotation
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {
             var a = p[0]; var b = p[p.Count - 1];
-            var pts = Route(a, b, o.Str("route", "auto"), ExitHorizontal(o, 0), ExitHorizontal(o, p.Count - 1));
+            var route = o.Str("route", "auto");
+            // Both ends docked on box sides (flowcharts): side-aware routing that never runs back through a box edge.
+            var sa = ExitSide(o, 0); var sb = ExitSide(o, p.Count - 1);
+            var pts = route == "auto" && sa is Vec2 da && sb is Vec2 db
+                ? RouteSides(a, da, b, db, o.Num("clearance", 8))
+                : Route(a, b, route, ExitHorizontal(o, 0), ExitHorizontal(o, p.Count - 1));
             var style = Style.ThinLine with { StrokeWidth = 0.35, ArrowStart = Ann.Head(o, "headStart", ArrowHead.None), ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.Triangle), ArrowSize = Ann.HeadSize(o) };
-            return new Primitive[] { Prim.Polyline(pts, style) with { Tag = AnnTags.Main } };
+            var list = new List<Primitive> { Prim.Polyline(pts, style) with { Tag = AnnTags.Main } };
+            if (!string.IsNullOrWhiteSpace(o.Text) && pts.Count >= 2)
+            {
+                // Label beside the first run, just after the start ("ja" right of a line leaving downwards, "nein" above a
+                // line leaving sideways).
+                var size = TextSizeOf(o, Ann.TextSize * 0.8);
+                var d = pts[1] - pts[0];
+                var len = d.Length;
+                var dir = len > 1e-9 ? d * (1 / len) : new Vec2(0, 1);
+                var at = pts[0] + dir * Math.Min(len * 0.5, size * 1.4);
+                var vertical = Math.Abs(dir.Y) > Math.Abs(dir.X);
+                list.Add(vertical
+                    ? Ann.Text(at + new Vec2(size * 0.45, 0), o.Text!, size, "label", TextAnchor.Start)
+                    : Ann.Text(at + new Vec2(0, -size * 0.75), o.Text!, size, "label", dir.X >= 0 ? TextAnchor.Start : TextAnchor.End));
+            }
+            return list;
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
