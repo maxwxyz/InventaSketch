@@ -20,3 +20,20 @@ if ($grippers.Count -gt 0) {
 }
 $S.Window.Selection.Unselect(); Start-Sleep 2
 Save-IskShot $S '1-robot-gripper'
+
+# The docked gripper follows when a joint of the robot turns (bar action "+" on the moved joint).
+function GripperRotation {
+    $g = @(Get-IskShapes $S 'ISK:robot.gripper*')
+    if ($g.Count -eq 0) { return $null }
+    if ((Get-IskModel $g[0]) -match '"rotation":\s*(-?[0-9.]+)') { [double]$Matches[1] } else { 0.0 }
+}
+$rot0 = GripperRotation
+$S.Window.Selection.Unselect(); Start-Sleep 1
+@(Get-IskShapes $S 'ISK:robot.arm*')[0].Select(); Start-Sleep 3
+Assert-Isk $S ($addin.Command('act:robot.joint.next')) 'the moved joint turns by one step'
+Start-Sleep 5
+$rot1 = GripperRotation
+Write-IskInfo ("gripper rotation: {0} -> {1}" -f $rot0, $rot1)
+Assert-Isk $S ($null -ne $rot1 -and [Math]::Abs($rot1 - $rot0) -gt 5) 'the gripper turns with the flange'
+$S.Window.Selection.Unselect(); Start-Sleep 2
+Save-IskShot $S '2-robot-joint-turned'

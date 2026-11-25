@@ -221,8 +221,8 @@ Leisten-IDs jetzt direkt.
    `hosts/office-web`) oder ein hochgeladenes Webspace-Paket.
 2. Konsistenz über Module: eine Kreuzungs-/Sprungregel für alle Leitungsfamilien und Anschlüsse mit Richtung
    (Roboterflansch → Werkzeug, mit „+“ gedreht gesetzt) erledigt 25.11.2026 (dazu: der Render-Kontext trägt die
-   Registry, das beendete reihenfolgeabhängige Tests); offen: Farbakzente je Modul als Teil des Folienstils, Werkzeuge,
-   die späteren Gelenkänderungen folgen und die Flanschgröße übernehmen.
+   Registry, das beendete reihenfolgeabhängige Tests); Werkzeuge folgen Gelenkänderungen und übernehmen die Flanschgröße (25.11.2026); offen:
+   Farbakzente je Modul als Teil des Folienstils.
 3. LibreOffice: Overlay auf der Arbeitsfläche (Einrasten beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
 4. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX, CSV).
 
