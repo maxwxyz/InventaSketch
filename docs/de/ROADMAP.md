@@ -120,7 +120,7 @@ umsetzen, dann Web, dann LibreOffice.
 ### Review des Plans (24.11.2026)
 
 - Seit 21.11.2026 in COM erledigt: Linien-Sprache, Anbau-Griffe, Koppelgetriebe und Getriebezüge aus Einzelteilen und
-  live bewegt, Zerlegen vordefinierter Getriebe (außer Kurvengetriebe), Einfügen per Tippen, Live-Vorschau der Kopplung,
+  live bewegt, Zerlegen vordefinierter Getriebe (seit 25.11.2026 auch Kurvengetriebe), Einfügen per Tippen, Live-Vorschau der Kopplung,
   kontextbezogene Leiste, Leiste für Mehrfachauswahl, Ansichtswechsel von Getriebezügen, PowerPoint-UI-Szenarien
   (`tests/powerpoint-com`).
 - Erledigt am 24.11.2026 (Engine, alle Hosts über die Bibliothek): Modul Diagramme/Kennlinien (`chart.*`, 25 Elemente,
@@ -131,8 +131,8 @@ umsetzen, dann Web, dann LibreOffice.
 - Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
   Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
   Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
-- In COM noch offen: Zerlegen von Kurvengetrieben (braucht eine
-  Kurvenscheibe; Differentiale zerfallen seit 25.11.2026 in Korb, Achswellen- und Ausgleichsräder), Ansichtswechsel für Haustechnik (Grundriss ↔
+- Inzwischen in COM erledigt: Zerlegen von Kurvengetrieben in eine Kurvenscheibe als Einzelteil und einen
+  Stößel-Gleitstein (25.11.2026); Differentiale zerfallen seit 25.11.2026 in Korb, Achswellen- und Ausgleichsräder, Ansichtswechsel für Haustechnik (Grundriss ↔
   Schnitt ↔ Strangschema). Zwischenlagen und Koppelkurven selbst gebauter Ketten sind erledigt (24.11.2026); explizite
   Gelenkgrenzen sind erledigt (Anschläge an Gestelldrehpunkten, 25.11.2026).
 - Web: am 24.11.2026 auf den COM-Stand der UI/UX-Runde gebracht (Spiegeln/Drehen nur mit Wirkung, Einfügefeld mit
@@ -174,13 +174,14 @@ mehr als drei Ansichten, Bewegen nur, wo es etwas zeigt); Suchen & Einfügen im 
    COM-Funktionen der UI/UX-Runde einschließlich Bewegungsmodus sind umgesetzt).
 2. LibreOffice: in der Seitenleiste erledigt (25.11.2026); als Nächstes ein Overlay auf der Arbeitsfläche (Einrasten
    beim Ziehen, „+“, Strg+Leertaste, Kreismenü).
-3. COM, fachliche Lücken: Kurvenscheibe als Teil und Kurvenkontakt in Ketten (dann Kurvengetriebe zerlegen),
-   Erledigt 25.11.2026: Ravigneaux-Sätze (Planetenpaare auf einem Steg mit Bolzenpaaren, Zerlegen, Willis-Übersetzungen);
+3. COM, fachliche Lücken: aus der Liste keine mehr offen (erledigt 25.11.2026: Kurvenscheibe als Einzelteil mit
+   aufliegenden Stößeln – Drehen der Scheibe bewegt den Stößel-Gleitstein und seine Kette –, Kurvengetriebe zerfallen in
+   Drehpunkt, Scheibe und Stößel; Ravigneaux-Sätze (Planetenpaare auf einem Steg mit Bolzenpaaren, Zerlegen, Willis-Übersetzungen);
    Gelenkgrenzen als Anschläge an Gestelldrehpunkten; Kegelradpaare in den
    Drehzahlen des Getriebezugs nach Zähnezahl (sie haben nur Seitenansichten und drehen sich daher nicht sichtbar); das
    zerlegte Differential arbeitet als solches (Räder lose im Korb, Willis mit dem Korb: geradeaus drehen beide Seiten mit
    dem Korb, eine Seite festgehalten → die andere dreht doppelt so schnell); der Ansichts-Alias `elevation`/`section` für
-   Wände mit Haustechnik.
+   Wände mit Haustechnik).
 4. P2-Module: Verfahrens- und Wärmetechnik, Energiesysteme, Robotik; folienweiter Stil (ISO-Liniengruppen,
    Patentmodus).
 5. P3: Varianten und Zustände, automatisches Diagramm-Layout, Patent-Arbeitsablauf, Import (SVG/DXF, GeoJSON/GPX,
@@ -285,8 +286,9 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
   Gelenksymbolen und Schiebern an, Bau-„+“ an freien Gelenken, Freiheitsgrad in der Leiste, Ziehen im Bewegungsmodus bei
   konstanten Längen (siehe Host-Doku). Viergelenk, Schubkurbel, Kniehebel, Schnellrücklaufgetriebe und
   Kreuzschubkurbel lassen sich in ein selbst gebautes Koppelgetriebe zerlegen; Glieder bieten Kulissen (Gleitstein im
-  Schlitz) (21.11.2026). Offen: Einzelteil Kurvenscheibe und Kurvenkontakt in Ketten (dann auch Kurvengetriebe zerlegen),
-  Grenzen/Zwischenlagen/Koppelkurven für selbst gebaute Ketten, Zahnradgelenke in Ketten, Engine/Web.
+  Schlitz) (21.11.2026). Inzwischen erledigt: Einzelteil Kurvenscheibe mit Kurvenkontakt und Zerlegen des
+  Kurvengetriebes, Grenzen/Zwischenlagen/Koppelkurven für selbst gebaute Ketten, Engine/Web (24./25.11.2026). Offen:
+  Zahnradgelenke in Ketten.
 - **P1 – Koppelgetriebe selbst bauen (Maintainer 21.11.2026: „es gibt nur vordefinierte“):** Glieder, Gelenke und
   Gestelldrehpunkte gibt es als Einzelteile, aber Gliedenden docken nicht aneinander an, und nur die vordefinierten
   Getriebe (Viergelenk, Schubkurbel …) bewegen sich. Plan: Gliedenden docken an Gelenken anderer Glieder an (Anbindung an

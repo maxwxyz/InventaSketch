@@ -490,6 +490,88 @@ namespace InventaSketch.Modules.Kinematics
     }
 
     /// <summary>
+    /// Cam disc as a part: the tangent cam of <see cref="CamFollowerType"/> about its centre (the pivot), turning with the
+    /// object's rotation. Sliders whose guide runs through it and whose joint sits on its contour are its followers
+    /// (<see cref="Cams"/>); "follower" says how they touch it (roller, flat face, knife edge).
+    /// </summary>
+    internal sealed class CamDiscType : ObjectType
+    {
+        public const string TypeId = "kin.cam.disc";
+        public override string Id => TypeId;
+        public override I18nText Name => new("Cam disc", "Kurvenscheibe");
+        public override string Category => KinCategories.Links;
+        public override IReadOnlyList<string> Keywords => new[] { "cam", "cam disc", "cam plate", "eccentric", "kurvenscheibe", "nocken", "nockenscheibe", "kurve" };
+        public override Size2 DefaultSize => new(30, 30);
+        public override bool PreferUniformScale => true;
+        public override IReadOnlyList<ViewDef> Views => new[]
+        {
+            new ViewDef("schematic", new I18nText("Schematic", "Schema")) { Icon = IconIds.Schematic },
+            new ViewDef("detailed", new I18nText("Detailed", "Detailliert")) { Icon = IconIds.Detailed },
+        };
+
+        public override IReadOnlyList<ParamDef> Parameters => new[]
+        {
+            KP.Num("base", "Base circle radius", "Grundkreisradius", 8, 0.1, 1e5),
+            KP.Num("lift", "Lift", "Hub", 7, 0, 1e5),
+            KP.Choice("follower", "Follower", "Stößel", "roller", ("roller", "Roller", "Rolle"), ("flat", "Flat-faced", "Flachstößel"), ("knife", "Knife-edge", "Spitzenstößel")),
+        };
+
+        private static (double R0, double Lift) Shape(SketchObject o) => (Math.Max(0.01, o.Num("base", 8)), Math.Max(0, o.Num("lift", 7)));
+
+        /// <summary>Local mm per model mm: the cam's reach (base + lift) fills half the box.</summary>
+        private static double Scale(SketchObject o)
+        {
+            var (r0, h) = Shape(o);
+            return Math.Min(o.Size.W, o.Size.H) / (2 * (r0 + h));
+        }
+
+        public override IReadOnlyList<Vec2>? CamContour(SketchObject o)
+        {
+            var (r0, h) = Shape(o);
+            var k = Scale(o);
+            return CamFollowerType.TangentProfile(r0, h, 0).Select(p => p * k).ToList();
+        }
+
+        public override (string Kind, double Radius) CamFollower(SketchObject o)
+        {
+            var kind = o.Str("follower", "roller");
+            return (kind, kind == "roller" ? 0.3 * Shape(o).R0 * Scale(o) : 0);
+        }
+
+        public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
+        {
+            var k = Scale(o);
+            var r0 = Shape(o).R0;
+            var list = new List<Primitive>
+            {
+                Prim.Polygon(CamContour(o)!, KS.Body) with { Tag = "cam" },
+                Prim.Circle(0, 0, Math.Max(0.4, 0.12 * r0 * k), KS.Joint) with { Tag = KinTags.Joint },
+            };
+            if ((o.View ?? "schematic") == "detailed")
+            {
+                list.Add(Prim.Circle(0, 0, 0.25 * r0 * k, KS.Thin) with { Tag = "hub" });
+                var e = 0.4 * r0 * k;
+                list.Add(Prim.Line(new Vec2(-e, 0), new Vec2(e, 0), KS.Ctr) with { Tag = "center" });
+                list.Add(Prim.Line(new Vec2(0, -e), new Vec2(0, e), KS.Ctr) with { Tag = "center" });
+            }
+            return list;
+        }
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            yield return Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub");
+            yield return Anchor.Point(AnchorRole.Port, Vec2.Zero, "c");
+        }
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+        {
+            var kinds = new[] { "roller", "flat", "knife" };
+            var next = kinds[(Array.IndexOf(kinds, o.Str("follower", "roller")) + 1) % kinds.Length];
+            yield return new ContextAction("kin.cam.follower.next", new I18nText("Next follower kind", "Nächste Stößelart"), IconIds.Toggle, x => x.WithParam("follower", next)) { Group = "param" };
+        }
+    }
+
+    /// <summary>
     /// Cam disc with follower (roller, flat-faced or knife-edge) on a vertical guide. The cam profile is a smooth
     /// tangent cam (base circle plus nose circle, lift = nose height); the follower position is computed from the actual contact at "angle".
     /// </summary>
@@ -520,8 +602,11 @@ namespace InventaSketch.Modules.Kinematics
         /// is at r0 + lift. At angle 0 the nose points up-left (-135°); the cam turns with "angle".
         /// </summary>
         private static List<Vec2> Profile(SketchObject o, double angle, int n = 72)
+            => TangentProfile(Len(o, "base", 8), Math.Max(0, o.Num("lift", 7)), angle, n);
+
+        /// <summary>The tangent cam contour about the pivot (base circle <paramref name="r0"/>, lift <paramref name="h"/>) at <paramref name="angle"/>.</summary>
+        internal static List<Vec2> TangentProfile(double r0, double h, double angle, int n = 72)
         {
-            double r0 = Len(o, "base", 8), h = Math.Max(0, o.Num("lift", 7));
             var rn = Math.Min(r0, Math.Max(0.45 * r0, r0 - 0.5 * h));
             var dir = Geo.DegToRad(angle - 135);
             var nose = Vec2.Polar(r0 + h - rn, dir);
@@ -566,6 +651,29 @@ namespace InventaSketch.Modules.Kinematics
         }
 
         private static double RollerRadius(SketchObject o) => 0.3 * Len(o, "base", 8);
+
+        /// <summary>
+        /// Cam disc (part), follower slider on its guide through the cam centre, fixed pivot under the cam: turning the cam
+        /// disc in motion mode moves the follower (<see cref="Cams"/>).
+        /// </summary>
+        protected override IReadOnlyList<PartSpec>? PartsOf(SketchObject o, Pose p, Scene s)
+        {
+            double r0 = Len(o, "base", 8), h = Math.Max(0, o.Num("lift", 7));
+            var side = 2 * (r0 + h) * s.S;
+            return new[]
+            {
+                PivotPart(s, p["O"]),
+                new PartSpec(CamDiscType.TypeId, Detailed(o) ? "detailed" : "schematic", s.L(p["O"]))
+                {
+                    Size = new Size2(side, side),
+                    Rotation = Math.Round(AngleOf(o), 6),
+                    Params = new Dictionary<string, ParamValue> { ["base"] = r0, ["lift"] = h, ["follower"] = Follower(o) },
+                },
+                SliderPart(s, p["C"], new Vec2(0, 1), new Vec2(1, 0)),
+            };
+        }
+
+        private static bool Detailed(SketchObject o) => (o.View ?? "schematic") == "detailed";
 
         /// <summary>Follower contact height (y of the roller centre, flat face or knife tip).</summary>
         private static double Contact(SketchObject o, IReadOnlyList<Vec2> profile)

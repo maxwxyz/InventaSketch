@@ -48,7 +48,8 @@ Antriebspfeil der Kurbel sind reine Symbole.
 | `kin.link.rocker` | Rocker / Schwinge | Kasten | – | Port (Drehpunkt, Bolzen), Mount |
 | `kin.link.slider` | Slider block / Gleitstein | Kasten | – | Port + Hub (Mitte, rastet auf Führungsachsen) |
 | `kin.link.piston` | Piston and cylinder / Kolben und Zylinder | Kasten | `stroke` (0..1) | Port (beide Augen), Mount, Axis |
-| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | Kasten | `angle`, `follower` (Rolle/flach/Spitze), `base`, `lift`, `dof` | Mount + Hub (Kurvendrehpunkt), Port (Stößelende), Axis (Stößelführung) |
+| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | Kasten | `angle`, `follower` (Rolle/flach/Spitze), `base`, `lift`, `dof` | Mount + Hub (Kurvendrehpunkt), Port (Stößelende), Axis (Stößelführung); zerfällt in Gestelldrehpunkt, Kurvenscheibe und Stößel-Gleitstein |
+| `kin.cam.disc` | Cam disc / Kurvenscheibe (Einzelteil, 25.11.2026) | Schema, detailliert (Nabe, Mittellinien); Kasten um den Drehpunkt, gleichmäßig | `base`, `lift`, `follower` (wie Stößel anliegen: Rolle mit 0,3 × Grundkreis, Flachstößel, Spitze); dreht sich mit seiner Drehung | Hub + Port (Drehpunkt); ein Gleitstein, dessen Führung durch die Scheibe läuft und dessen Gelenk auf der Kontur sitzt, ist ihr Stößel (`Cams`): Drehen der Scheibe im Bewegungsmodus bewegt den Stößel und die daran angedockte Kette |
 | `kin.spring` | Spring / Feder | 2 Punkte | `coils`, `width` | Port an beiden Enden |
 | `kin.damper` | Damper / Dämpfer | 2 Punkte | `width` | Port an beiden Enden |
 | `kin.rope.pulley` | Rope over pulley / Seil über Rolle | Kasten | `load` | Hub + Port (Rolle), Port (Seilenden), Mount (Decke) |

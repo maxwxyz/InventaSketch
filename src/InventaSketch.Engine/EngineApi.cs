@@ -910,6 +910,11 @@ namespace InventaSketch.Engine
                     ?? new Vec2(o.Transform.X, o.Transform.Y);
                 return new { kind = "mechanism", x = pivot.X, y = pivot.Y, coupled = true };
             }
+            if (Cams.IsCam(Registry, o))
+            {
+                // A cam disc turns about its centre; its followers (sliders on it) move with it.
+                return new { kind = "gear", x = o.Transform.X, y = o.Transform.Y, coupled = Cams.Followers(Registry, s.Doc, id, s.Lang).Count > 0 };
+            }
             if (!o.IsPointGeometry && GearTrain.Spins(Registry, o))
             {
                 var assembly = (List<string>)AssemblyCore(new EngineRequest { Session = r.Session, Ids = new List<string> { id } });
@@ -931,6 +936,8 @@ namespace InventaSketch.Engine
             if (Math.Abs(deg) < 1e-9 || s.Doc.Get(id) is not { } o) return StateOf(s, r);
             if (IsMechanism(o))
                 s.Apply("Turn", d => Edits.Update(d, new[] { id }, x => x.WithParam("angle", Math.Round(x.Num("angle", 0) + deg, 3))));
+            else if (Cams.IsCam(Registry, o))
+                s.Apply("Turn", d => Cams.Turn(Registry, d, id, deg, s.Lang));
             else
                 s.Apply("Turn", d => GearTrain.Turn(Registry, d, id, deg, s.Lang));
             return StateOf(s, r);
@@ -968,7 +975,9 @@ namespace InventaSketch.Engine
             if (r.Degrees is double deg)
                 after = IsMechanism(target)
                     ? Edits.Update(s.Doc, new[] { id }, x => x.WithParam("angle", Math.Round(x.Num("angle", 0) + deg, 3)))
-                    : GearTrain.Turn(Registry, s.Doc, id, deg, s.Lang);
+                    : Cams.IsCam(Registry, target)
+                        ? Cams.Turn(Registry, s.Doc, id, deg, s.Lang)
+                        : GearTrain.Turn(Registry, s.Doc, id, deg, s.Lang);
             else
             {
                 // Linkage drag: solve on from the last step of the same drag, so the chain cannot flip its assembly mode.

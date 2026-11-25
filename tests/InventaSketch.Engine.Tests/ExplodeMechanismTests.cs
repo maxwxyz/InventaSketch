@@ -177,10 +177,13 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
-        public void ACamMechanismIsNotExplodedBecauseNoPartKeepsItsProfile()
+        public void ACamMechanismExplodesIntoPivotCamDiscAndFollower()
         {
+            // Since 2026-11-25 the cam disc is a part that keeps the profile (CamTests checks the motion).
             var cam = Reg.Create(Reg.Library.First(i => i.TypeId == "kin.cam.follower"), new Vec2(50, 50));
-            Assert.False(Assemblies.CanExplode(Reg, cam));
+            Assert.True(Assemblies.CanExplode(Reg, cam));
+            var types = Reg.Type(cam.Type)!.Parts(cam)!.Select(p => p.TypeId).ToList();
+            Assert.Equal(new[] { "kin.joint.ground", "kin.cam.disc", "kin.joint.prismatic" }, types);
         }
 
         [Fact]

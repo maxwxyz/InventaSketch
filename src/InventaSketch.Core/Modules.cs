@@ -596,6 +596,12 @@ namespace InventaSketch.Core
         /// </summary>
         public virtual (double From, double To)? JointLimits(SketchObject o) => null;
 
+        /// <summary>A cam disc's contour in local coordinates (closed polygon, turns with the object), else null (<see cref="Cams"/>).</summary>
+        public virtual IReadOnlyList<Vec2>? CamContour(SketchObject o) => null;
+
+        /// <summary>How followers ride on this cam: "roller" with its radius, "flat" or "knife" (<see cref="Cams"/>).</summary>
+        public virtual (string Kind, double Radius) CamFollower(SketchObject o) => ("knife", 0);
+
         /// <summary>
         /// Directions (local, before rotation) in which a meshing gear can be docked (<see cref="Building"/>): all four sides
         /// in axial views; only across the axis (up, down) where the axis lies in the drawing plane (schematic, side view).
