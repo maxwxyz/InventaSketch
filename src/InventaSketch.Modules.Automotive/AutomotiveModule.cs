@@ -46,6 +46,13 @@ namespace InventaSketch.Modules.Automotive
 
         public IEnumerable<LibraryItem> Library => Items.Value;
 
+        /// <summary>
+        /// Insert size of top views relative to their design size (1 design unit = 1 mm = 0.1 m): 0.6 gives a 2-lane road of
+        /// 42 mm, a car of 27 mm and an intersection of 96 mm, so a scene fits a 16:9 slide (2026-11-25; before, an
+        /// intersection was 160 mm and taller than the slide). Applied to every top view alike, so vehicles still fit their lanes.
+        /// </summary>
+        public const double TopScale = 0.6;
+
         private static IReadOnlyDictionary<string, ParamValue> P(params (string Key, ParamValue Value)[] kv) => kv.ToDictionary(x => x.Key, x => x.Value);
 
         private static IReadOnlyList<LibraryItem> BuildLibrary()
@@ -68,6 +75,8 @@ namespace InventaSketch.Modules.Automotive
                         if (ps is not null) foreach (var kv in ps) probe = probe.WithParam(kv.Key, kv.Value);
                         s = spec.DesignFor(probe);
                     }
+                    // Top-view scenes (roads, vehicles, people, sensors) share one scale that fits a slide.
+                    if (v == "top" && s is { } sz) s = new Size2(Math.Round(sz.W * TopScale, 3), Math.Round(sz.H * TopScale, 3));
                 }
                 list.Add(new LibraryItem("auto." + id, type, new I18nText(en, de), t.Category) { View = v, Params = ps, Size = s, Text = text, Keywords = kw });
             }

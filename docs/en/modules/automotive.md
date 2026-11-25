@@ -12,8 +12,14 @@ German version: [../../de/modules/automotive.md](../../de/modules/automotive.md)
 
 ## Conventions
 
-- **Scene scale 1:100** – 10 mm on the slide correspond to 1 m (a passenger car is 45 × 20 mm in top view,
-  a lane is 35 mm wide, an adult is 17.5 mm tall). Free uniform/non-uniform scaling changes only the box size.
+- **Scene scale** – elements are designed at 1:100 (10 design units = 1 m: a car 45 × 18, a lane 35, an adult 17.5
+  units). Top views are inserted at 0.6 of that (`AutomotiveModule.TopScale`, 1:167 on the slide, 2026-11-25), so a scene
+  fits a 16:9 slide: a 2-lane road is 96 × 42 mm, a car 27 mm long, an intersection 96 × 96 mm, a roundabout 120 × 120 mm;
+  every top view shares the factor, so vehicles still fit their lanes. Side, front and rear views keep their design size.
+  Free uniform/non-uniform scaling changes only the box size.
+- **One lane width everywhere** – straight roads, curves, intersections (up to three lanes per direction) and the
+  roundabout's arms have the same lane width, so a road docks lane for lane on every arm (the roundabout's arm lanes were
+  narrower before 2026-11-25).
 - **Driving direction +x** (front on the right), y down; in the top view the vehicle's left side is −y.
   Rotate or mirror the object for other directions.
 - Every object is insertable without parameters and is drawn inside its box in every view.
@@ -85,7 +91,9 @@ T-junction, charging slot, predicted trajectory, …). Search works in English a
 - **Roads** expose every lane centreline as an `Axis` segment (curves and the roundabout ring as chords), so a
   vehicle's hub snaps onto the lane, and as a `Rail` with the same geometry (`lane0.rail`, …), so trajectory points,
   lane polynomials and other line ends dock anywhere on a lane centre (snap kind `rail`). Lane ends are `End` points for
-  chaining roads and trajectories.
+  chaining roads and trajectories; only they get a "+" (the next road segment), not the chord joints of curves and the
+  ring or the inner ends of junction arms. The "+" continues the road lane for lane with the lane width of the element,
+  also after it was scaled (2026-11-25).
 - **Sensors** have a `Mount` point at the back and a `Port` at the aperture. `Mount` onto `Mount` is a semantic snap
   (kind `mount`, priority of a port): the sensor's mount wins over closer generic corner or centre snaps.
 - **Field of view:** point 0 is the apex, point 1 a direction reference; the sector axis points from point 0 to

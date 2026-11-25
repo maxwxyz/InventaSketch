@@ -284,7 +284,9 @@ namespace InventaSketch.Modules.Automotive
 
         private static AutoType Roundabout()
         {
-            const double E = 80, Ro = 52, Ri = 24, ha = 20;
+            // Arms one lane each way at the road lane width (a 2-lane road docks on an arm; before, arm lanes were 20 wide
+            // against 35 of the roads); ring outer radius, island and arm length follow from it.
+            const double ha = LaneWidth, Ro = 70, Ri = 36, E = 100;
             var ringLanes = Prm.Int("ringLanes", "Lanes in the ring", "Fahrstreifen im Kreis", 1, 1, 2);
             var xint = Math.Sqrt(Ro * Ro - ha * ha);
             var beta = Math.Asin(ha / Ro);
@@ -303,8 +305,8 @@ namespace InventaSketch.Modules.Automotive
                 {
                     var nrm = d.Perp;
                     foreach (var s in new[] { -1.0, 1.0 }) p.Line(d * xint + nrm * s * ha, d * E + nrm * s * ha, S.Vis, AutoTags.Edge);
-                    p.Rounded(new[] { d * (Ro + 1.5) - nrm * 5, d * (Ro + 16), d * (Ro + 1.5) + nrm * 5 }, 1.5, S.Fine, "splitter");
-                    Separator(p, new[] { p.V(d * (Ro + 18)), p.V(d * E) }, false, o.Num("dash", 10), o.Num("gap", 8));
+                    p.Rounded(new[] { d * (Ro + 1.5) - nrm * 7, d * (Ro + 18), d * (Ro + 1.5) + nrm * 7 }, 1.5, S.Fine, "splitter");
+                    Separator(p, new[] { p.V(d * (Ro + 20)), p.V(d * E) }, false, o.Num("dash", 10), o.Num("gap", 8));
                     if (o.Flag("centerlines", false))
                         foreach (var s in new[] { -1.0, 1.0 }) p.Line(d * xint + nrm * s * ha / 2, d * E + nrm * s * ha / 2, S.Ctr, AutoTags.Lane);
                 }
