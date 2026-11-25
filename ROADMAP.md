@@ -429,8 +429,8 @@ in the drawing).
    centre distances), dependency highlight on hover, one pictogram one meaning (engine test), remove actions that
    duplicate a choice or view, "+" between table rows/columns, corner dot inserts where drawn; COM ribbon icons in the
    same line style everywhere (menus of the Elements group).
-2. COM: "Add ray bundle" (optics) must insert the new ray (action results with new objects become units).
-3. Host docs (powerpoint-com.md EN/DE) rewritten to the new bar, pie and handles.
+2. Done 2026-11-25: COM: "Add ray bundle" (optics) must insert the new ray (action results with new objects become units).
+3. Done 2026-11-25: Host docs (powerpoint-com.md EN/DE) rewritten to the new bar, pie and handles.
 4. Phase 2: the same concept in the web add-in (port `HandleLayout`, bar groups, pie places), code import buttons in
    web and LibreOffice, chart grips in web.
 5. Phase 3: first-use hints, larger UI size for low vision.

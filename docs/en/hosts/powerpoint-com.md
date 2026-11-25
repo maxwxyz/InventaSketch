@@ -161,6 +161,28 @@
   - Command ids `connect:net|coupled|chain|loop|walls` (automation `Command`; `assembly` = `connect:coupled`); log lines
     "Halo: selected=…; connected=…" and "Select connected (kind): n units: …"; UI scenario `select-connected`.
 
+- **Parts of an element (charts, figures):** the first click on a chart's curve, point, area, axis or limit line selects
+  that part directly (grid lines and ticks rank below curves). The selected part glows, the rest of the element faintly;
+  the bar shows the part's name, its choices as dropdowns and "⋯". Points of a curve are dragged or deleted one by one, a
+  whole curve is dragged (its data move along). "Sketch a curve" (pencil, right after "Data") draws a new series by
+  hand; it stores only the key points, the "Detail" dropdown (low, medium = adaptive, high) sets how many, and the drawing
+  speed is taken into account. "Curve shape" switches between smoothed, interpolated, fitted function, straight segments
+  and as drawn without losing the drawing.
+- **Closed choice buttons:** a closed dropdown shows the current option's pictogram or picture. Where that picture would
+  repeat its neighbour's (fitted function, smoothing and detail of a sketched curve all show the current curve), it shows
+  the choice's own pictogram (`ActionChoice.BarIcon`) or the current option's name (`LabelInBar`). Option pictures are
+  drawn as thick as the pictograms beside them.
+- **Values and calculator (Calc 2):** see [engineering-calculations.md](../design/engineering-calculations.md) section 11:
+  value level (quick sketch / explore / engineer), "Values" in the bar, Edit ▸ Values ▸ in the pie, value card, values
+  label, drag grips, conflict badge. More ▸ "Calculator with units …" opens a non-modal calculator (expressions and
+  conversions, "Show in" units, steps, history).
+- **More menu (ribbon):** "Check and exchange" (review items, send slides, save slides, import of matplotlib/pgfplots/TikZ
+  code), then tools: symbol size ×1/×1.5/×2 for every standard symbol of the slide (new symbols take it), value level,
+  calculator.
+- **Actions that add or remove elements:** a document action of an element (for example "Add ray bundle" on a light
+  source) may create objects or remove objects of other units; the created ones become one new unit, removed ones are
+  taken out of their units, all in the action's undo step (UI scenario `ray-bundle`).
+
 ## Sidebar editor (custom task pane)
 
 The ribbon toggle **Editor** opens a docked task pane (`Sidebar/TaskPaneControl`, ProgId `InventaSketch.AddIn.TaskPane`,

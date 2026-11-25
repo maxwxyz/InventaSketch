@@ -168,6 +168,31 @@
     Protokollzeilen „Halo: selected=…; connected=…“ und „Select connected (Art): n units: …“; UI-Szenario
     `select-connected`.
 
+- **Teile eines Elements (Diagramme, Abbildungen):** der erste Klick auf eine Kurve, einen Punkt, eine Fläche, eine Achse
+  oder eine Grenzlinie eines Diagramms wählt direkt dieses Teil (Gitterlinien und Teilstriche zählen weniger als Kurven).
+  Das gewählte Teil leuchtet, der Rest des Elements schwach; die Leiste zeigt den Namen des Teils, seine Auswahlen als
+  Klapplisten und „⋯“. Punkte einer Kurve werden einzeln gezogen oder gelöscht, eine ganze Kurve wird gezogen (ihre
+  Daten wandern mit). „Kurve skizzieren“ (Stift, direkt nach „Daten“) zeichnet eine neue Reihe von Hand; gespeichert
+  werden nur die Stützpunkte, die Klappliste „Detailgrad“ (gering, mittel = adaptiv, hoch) bestimmt wie viele, und die
+  Zeichengeschwindigkeit wird berücksichtigt. „Kurvenform“ schaltet zwischen geglättet, interpoliert,
+  Ausgleichsfunktion, geraden Abschnitten und wie gezeichnet um, ohne die Zeichnung zu verlieren.
+- **Geschlossene Auswahlknöpfe:** eine geschlossene Klappliste zeigt das Piktogramm oder Bild der aktuellen Möglichkeit.
+  Würde dieses Bild das des Nachbarn wiederholen (Ausgleichsfunktion, Glättung und Detailgrad einer skizzierten Kurve
+  zeigen alle die aktuelle Kurve), zeigt sie das eigene Piktogramm der Auswahl (`ActionChoice.BarIcon`) oder den Namen
+  der aktuellen Möglichkeit (`LabelInBar`). Bilder von Möglichkeiten sind so kräftig gezeichnet wie die Piktogramme
+  daneben.
+- **Werte und Rechner (Calc 2):** siehe [engineering-calculations.md](../design/engineering-calculations.md) Abschnitt 11:
+  Werte-Stufe (Schnellskizze / Erkunden / Ingenieur), „Werte“ in der Leiste, Bearbeiten ▸ Werte ▸ im Kreismenü,
+  Wertekarte, Werte-Beschriftung, Ziehgriffe, Konflikt-Abzeichen. Mehr ▸ „Rechner mit Einheiten …“ öffnet einen
+  nicht-modalen Rechner (Ausdrücke und Umrechnungen, „Anzeigen in“, Rechenschritte, Verlauf).
+- **Menü „Mehr“ (Menüband):** „Prüfen und Weitergeben“ (Prüfpunkte, Folien senden, Folien speichern, Import von
+  matplotlib-, pgfplots- und TikZ-Code), dann Werkzeuge: Symbolgröße ×1/×1,5/×2 für alle Standardsymbole der Folie (neue
+  Symbole übernehmen sie), Werte-Stufe, Rechner.
+- **Aktionen, die Elemente hinzufügen oder entfernen:** eine Dokument-Aktion eines Elements (etwa „Strahlenbündel
+  einfügen“ an einer Lichtquelle) kann Objekte erzeugen oder Objekte anderer Einheiten entfernen; erzeugte werden eine
+  neue Einheit, entfernte werden aus ihren Einheiten genommen, alles im Rückgängig-Schritt der Aktion (UI-Szenario
+  `ray-bundle`).
+
 ## Seitenleisten-Editor (benutzerdefinierter Aufgabenbereich)
 
 Der Menüband-Schalter **Editor** öffnet einen angedockten Aufgabenbereich (`Sidebar/TaskPaneControl`, ProgId

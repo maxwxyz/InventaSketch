@@ -474,9 +474,9 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
    Achsabstände), Abhängigkeiten beim Überfahren hervorheben, ein Piktogramm eine Bedeutung (Engine-Test), Aktionen
    entfernen, die eine Auswahl oder Ansicht doppeln, „+“ zwischen Tabellenzeilen/-spalten, Eckpunkt dort einfügen, wo
    er gezeichnet ist; COM-Ribbonsymbole überall im selben Linienstil (Menüs der Gruppe Elemente).
-2. COM: „Strahlenbündel einfügen“ (Optik) muss den neuen Strahl einfügen (Aktionsergebnisse mit neuen Objekten werden
+2. Erledigt 25.11.2026: COM: „Strahlenbündel einfügen“ (Optik) muss den neuen Strahl einfügen (Aktionsergebnisse mit neuen Objekten werden
    Einheiten).
-3. Host-Doku (powerpoint-com.md EN/DE) auf die neue Leiste, das Kreismenü und die Griffe umschreiben.
+3. Erledigt 25.11.2026: Host-Doku (powerpoint-com.md EN/DE) auf die neue Leiste, das Kreismenü und die Griffe umschreiben.
 4. Phase 2: dasselbe Konzept im Web-Add-in (`HandleLayout` portieren, Leistengruppen, Kreismenü-Plätze),
    Code-Import-Knöpfe in Web und LibreOffice, Diagramm-Ziehgriffe im Web.
 5. Phase 3: Hinweise bei der ersten Benutzung, größere Oberfläche für Sehschwache.
