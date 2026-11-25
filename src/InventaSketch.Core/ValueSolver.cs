@@ -202,7 +202,7 @@ namespace InventaSketch.Core
         }
 
         /// <summary>The relation's equation with the variables' symbols ("U = R·I").</summary>
-        public string Formula(BoundRelation b, Lang lang) => Substitute(b.Relation.Formula, b, x => Get(x)?.Def.Symbol.Get(lang) ?? x.Key);
+        public string Formula(BoundRelation b, Lang lang) => Substitute(b.Relation.Formula, b, x => SymbolIn(b, x, lang));
 
         /// <summary>How a derived or linked value is computed ("R = U/I"); null for entered, default and unknown values.</summary>
         public string? FormulaOf(VarValue v, Lang lang)
@@ -210,8 +210,30 @@ namespace InventaSketch.Core
             if (v.Via is null) return null;
             var key = v.Via.Map.First(kv => kv.Value == v.Ref).Key;
             var expr = v.Via.Relation.Expression(key);
-            return v.Def.Symbol.Get(lang) + " = " + (expr is null ? "f(" + Formula(v.Via, lang) + ")" : Substitute(expr, v.Via, x => Get(x)?.Def.Symbol.Get(lang) ?? x.Key));
+            return SymbolIn(v.Via, v.Ref, lang) + " = " + (expr is null ? "f(" + Formula(v.Via, lang) + ")" : Substitute(expr, v.Via, x => SymbolIn(v.Via, x, lang)));
         }
+
+        /// <summary>
+        /// The symbol of <paramref name="r"/> in relation <paramref name="b"/>: plain within one element ("U = R·I"); in a
+        /// relation over several elements qualified, so "U = I·(R + R)" reads "U = I·(R1 + R2)": the designator when it
+        /// starts with the symbol ("R1" for R), else symbol and designator ("U_R1"), and without a designator an index in
+        /// the order the elements appear (R₁, R₂).
+        /// </summary>
+        private string SymbolIn(BoundRelation b, VarRef r, Lang lang)
+        {
+            var symbol = Get(r)?.Def.Symbol.Get(lang) ?? r.Key;
+            var objects = b.Map.Values.Select(v => v.ObjectId).Distinct().ToList();
+            if (objects.Count < 2) return symbol;
+            var designator = Objects.TryGetValue(r.ObjectId, out var o) ? o.Str("ref", "").Trim() : "";
+            if (designator.Length > 0)
+                return designator.StartsWith(symbol, StringComparison.Ordinal) && designator.Length > symbol.Length && !char.IsLetter(designator[symbol.Length])
+                    ? designator : symbol + "_" + designator;
+            var index = objects.IndexOf(r.ObjectId) + 1;
+            return symbol + Subscript(index);
+        }
+
+        private static string Subscript(int n)
+            => new string(n.ToString(System.Globalization.CultureInfo.InvariantCulture).Select(c => (char)('₀' + (c - '0'))).ToArray());
 
         private VarValue? Get(VarRef r) => Index.TryGetValue(r, out var i) ? Vars[i] : null;
 
