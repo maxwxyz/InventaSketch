@@ -71,6 +71,61 @@ namespace InventaSketch.Engine.Tests
             Assert.Equal(3, t.Select(kv => System.Math.Round(kv.Value.Y, 3)).Distinct().Count());
         }
 
+        /// <summary>
+        /// The maintainer's flowchart (2026-11-25): start, a decision ("battery temperature below limit?") with "no" to the
+        /// last step, two steps, a second decision with "yes" to the last step, a step, a wait step looping back to the
+        /// first step, the last step and the end. After the layout no connector runs through a box.
+        /// </summary>
+        [Fact]
+        public void TheMaintainersFlowchartIsLaidOutWithoutLinesThroughBoxes()
+        {
+            var row = 0;
+            SketchObject Item(string id, string? text) => Reg.Create(Reg.Item(id)!, new Vec2(100, 20 + 30 * row++)) with { Text = text };
+            var start = Item("ann.flow.start", "Start");
+            var d1 = Item("ann.flow.decision", "Batterietemperatur unter Grenzwert?");
+            var p1 = Item("ann.flow.process", "Stromimpuls einprägen, Innenwiderstand je Zellblock ermitteln");
+            var p2 = Item("ann.flow.process", "Zielwiderstand aus angeforderter Rekuperationsleistung und Spannungsgrenze berechnen");
+            var d2 = Item("ann.flow.decision", "alle Zellblöcke unter Zielwiderstand?");
+            var p3 = Item("ann.flow.process", "Heizleistung dem Zellblock mit dem höchsten Innenwiderstand zuweisen");
+            var wait = Item("ann.flow.process", "Wartezeit Δt");
+            var off = Item("ann.flow.process", "Heizung aus");
+            var end = Item("ann.flow.end", null);
+            var nodes = new[] { start, d1, p1, p2, d2, p3, wait, off, end };
+            var doc = SketchDocument.Create(PageSizes.A4Portrait);
+            doc = Edits.Add(doc, doc.Pages[0].Id, nodes);
+            var links = new[] { Arrow(start, d1), Arrow(d1, p1) with { Text = "ja" }, Arrow(d1, off) with { Text = "nein" }, Arrow(p1, p2), Arrow(p2, d2),
+                Arrow(d2, p3) with { Text = "nein" }, Arrow(d2, off) with { Text = "ja" }, Arrow(p3, wait), Arrow(wait, p1), Arrow(off, end) };
+            doc = Edits.Add(doc, doc.Pages[0].Id, links);
+
+            var t = DiagramLayout.Layered(doc, nodes, down: true)!;
+            foreach (var n in nodes) doc = Edits.Move(doc, new[] { n.Id }, t[n.Id] - new Vec2(n.Transform.X, n.Transform.Y));
+            var ids = new HashSet<string>(nodes.Select(n => n.Id));
+            foreach (var l in links) if (DiagramLayout.Redock(Reg, doc, doc.Get(l.Id)!, ids, true) is { } r) doc = Edits.Replace(doc, r);
+
+            // The loop back leaves the wait step on the left and enters the first step on the left.
+            var loop = doc.Get(links[8].Id)!;
+            Assert.Equal((-0.5, 0.0), (loop.Attach![0]!.U, loop.Attach[0]!.V));
+            Assert.Equal((-0.5, 0.0), (loop.Attach[1]!.U, loop.Attach[1]!.V));
+            var ctx = new RenderContext(doc).For(Reg);
+            foreach (var l in links)
+            {
+                var line = Prim.Flatten(Reg.Render(doc.Get(l.Id)!, ctx)).OfType<PathPrim>().First();
+                var pts = PartLooks.Sample(line.Segments);
+                for (var i = 1; i < pts.Count; i++)
+                    for (var k = 0; k <= 40; k++)
+                    {
+                        var q = Vec2.Lerp(pts[i - 1], pts[i], k / 40.0);
+                        foreach (var n in nodes)
+                        {
+                            var b = doc.Get(n.Id)!.Bounds().Inflate(-0.6);
+                            Assert.False(b.W > 0 && b.H > 0 && b.Contains(q), $"connector {l.Text ?? ""} {doc.Get(l.Id)!.Attach![0]!.ObjectId}→{doc.Get(l.Id)!.Attach!.Last()!.ObjectId} runs through {n.Text ?? n.Type} at {q}; route {string.Join(" ", pts)}; nodes {string.Join(" | ", nodes.Select(x => (x.Text ?? x.Type).Substring(0, 5) + " " + doc.Get(x.Id)!.Bounds()))}; attach {string.Join(" ", doc.Get(l.Id)!.Attach!.Select(z => z is null ? "-" : z.U + "/" + z.V))}");
+                        }
+                    }
+                // The "yes"/"no" label is drawn.
+                if (l.Text is { } label) Assert.Contains(Prim.Flatten(Reg.Render(doc.Get(l.Id)!, ctx)).OfType<TextPrim>(), x => x.Text == label);
+            }
+        }
+
         [Fact]
         public void TheMultiSelectionOffersTheLayoutAndConnectorsFollow()
         {
@@ -89,13 +144,19 @@ namespace InventaSketch.Engine.Tests
             // The arrow A → B still runs from A to B.
             var arrow = after.Objects.Values.First(o => o.IsPointGeometry && o.Attach is { } at && at[0]?.ObjectId == a.Id && at[1]?.ObjectId == b.Id);
             var pts = after.ResolvePoints(arrow);
-            Assert.True(pts[0].DistanceTo(after.Get(a.Id)!.BoxPoint(0, 0.5)) < 1e-3);
+            // A branch to the side: out of A's side towards B, into B from the top (one bend, as in a drawn flowchart).
+            var side = after.Get(b.Id)!.Transform.X < after.Get(a.Id)!.Transform.X ? -0.5 : 0.5;
+            Assert.True(pts[0].DistanceTo(after.Get(a.Id)!.BoxPoint(side, 0)) < 1e-3);
             Assert.True(pts[^1].DistanceTo(after.Get(b.Id)!.BoxPoint(0, -0.5)) < 1e-3);
-            // Left to right: the connectors dock on the facing sides (right of the source, left of the target).
+            // B → D straight below (no element in between): bottom to top.
+            var bd = after.Objects.Values.First(o => o.IsPointGeometry && o.Attach is { } at3 && at3[0]?.ObjectId == b.Id && at3[1]?.ObjectId == d.Id);
+            if (System.Math.Abs(after.Get(b.Id)!.Transform.X - after.Get(d.Id)!.Transform.X) < 1)
+                Assert.Equal((0.0, 0.5), (bd.Attach![0]!.U, bd.Attach[0]!.V));
+            // Left to right: the branch leaves A's top or bottom towards B and enters B from the left.
             EngineApiTests.Call(api, "arrange", new { session, ids, action = "layout:right" });
             var row = api.Sessions.Get(session).Doc;
             var ab = row.Objects.Values.First(o => o.IsPointGeometry && o.Attach is { } at2 && at2[0]?.ObjectId == a.Id && at2[1]?.ObjectId == b.Id);
-            Assert.Equal(("right", 0.5, 0.0), (ab.Attach![0]!.AnchorId, ab.Attach[0]!.U, ab.Attach[0]!.V));
+            Assert.Equal(0.5, System.Math.Abs(ab.Attach![0]!.V));
             Assert.Equal(("left", -0.5, 0.0), (ab.Attach![1]!.AnchorId, ab.Attach[1]!.U, ab.Attach[1]!.V));
             EngineApiTests.Call(api, "arrange", new { session, ids, action = "layout:down" });
             // Laid out once, it is not offered again.

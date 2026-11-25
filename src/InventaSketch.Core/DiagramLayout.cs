@@ -155,9 +155,10 @@ namespace InventaSketch.Core
         }
 
         /// <summary>
-        /// A connector between two laid-out elements docked on their facing sides: its first docked end on the source's
-        /// bottom (right when not <paramref name="down"/>), its last on the target's top (left), so routed connectors run
-        /// between the elements instead of through them. An end docked on a named anchor (a port) moves to the element's
+        /// A connector between two laid-out elements docked on the sides a drawn flowchart uses (<see cref="Sides"/>):
+        /// mostly the source's bottom and the target's top (right and left when not <paramref name="down"/>), side exits for
+        /// branches, and both ends on one side for long jumps and loops back, so routed connectors run around the elements
+        /// instead of through them. An end docked on a named anchor (a port) moves to the element's
         /// named point anchor nearest to that side; other ends to the side's middle. Null if it joins no two of
         /// <paramref name="ids"/>; the same object if nothing changes.
         /// </summary>
@@ -189,9 +190,85 @@ namespace InventaSketch.Core
                 att[i] = next;
                 changed = true;
             }
-            if (down) { Set(first, 0, 0.5); Set(last, 0, -0.5); }
-            else { Set(first, 0.5, 0); Set(last, -0.5, 0); }
-            return changed ? line with { Attach = att } : line;
+            var (exit, entry) = Sides(doc, att[first]!.ObjectId, att[last]!.ObjectId, ids, down);
+            Set(first, exit.X * 0.5, exit.Y * 0.5);
+            Set(last, entry.X * 0.5, entry.Y * 0.5);
+            var result = changed ? line with { Attach = att } : line;
+            // Both ends on one side: the line runs around the column; connectors with a clearance parameter keep clear of
+            // every element in between (a wider step beside the loop).
+            if (exit == entry && registry.Type(line.Type)?.Parameters.Any(p => p.Key == "clearance") == true
+                && Clearance(doc, att[first]!.ObjectId, att[last]!.ObjectId, ids, exit) is double need)
+            {
+                var have = line.Num("clearance", 8);
+                if (Math.Abs(need - have) > 0.25) result = result.WithParam("clearance", need);
+            }
+            return ReferenceEquals(result, line) ? line : result;
+        }
+
+        /// <summary>
+        /// Clearance (mm) a connector leaving <paramref name="from"/> and entering <paramref name="to"/> on the same side
+        /// <paramref name="side"/> needs so its run beside them passes every element of <paramref name="ids"/> in between
+        /// with 4 mm to spare (at least 8 mm).
+        /// </summary>
+        public static double? Clearance(SketchDocument doc, string from, string to, ISet<string> ids, Vec2 side)
+        {
+            if (doc.Get(from) is not { IsPointGeometry: false } src || doc.Get(to) is not { IsPointGeometry: false } dst) return null;
+            var horizontalSide = Math.Abs(side.X) > 0.5;
+            var sb = src.Bounds(); var tb = dst.Bounds();
+            // Span along the run (perpendicular to the side) and the ends' outer coordinate on the side.
+            double lo = horizontalSide ? Math.Min(sb.Y + sb.H / 2, tb.Y + tb.H / 2) : Math.Min(sb.X + sb.W / 2, tb.X + tb.W / 2);
+            double hi = horizontalSide ? Math.Max(sb.Y + sb.H / 2, tb.Y + tb.H / 2) : Math.Max(sb.X + sb.W / 2, tb.X + tb.W / 2);
+            double Outer(Rect r) => horizontalSide ? (side.X > 0 ? r.Right : r.X) : (side.Y > 0 ? r.Bottom : r.Y);
+            var ends = side.X + side.Y > 0 ? Math.Max(Outer(sb), Outer(tb)) : Math.Min(Outer(sb), Outer(tb));
+            var extreme = ends;
+            foreach (var o in ids.Select(doc.Get))
+            {
+                if (o is not { IsPointGeometry: false }) continue;
+                var r = o.Bounds();
+                var (a, b) = horizontalSide ? (r.Y, r.Bottom) : (r.X, r.Right);
+                if (b < lo || a > hi) continue;
+                extreme = side.X + side.Y > 0 ? Math.Max(extreme, Outer(r)) : Math.Min(extreme, Outer(r));
+            }
+            return Math.Max(8, Math.Round((Math.Abs(extreme - ends) + 4) * 2) / 2);
+        }
+
+        /// <summary>
+        /// The sides a connector leaves its source and enters its target on (outward unit vectors of the two boxes), as in a
+        /// drawn flowchart (layout "down"; "right" is the same turned): a target straight below enters from the top through
+        /// the source's bottom; a target below and to the side is reached from the source's side and entered from the top
+        /// (one bend, the branch of a decision); a target straight below with other elements in between is reached around
+        /// them on the right ("yes" exit to a later step); a target above or beside it (a loop back) leaves and enters on
+        /// the left, so the routed line runs around the column.
+        /// </summary>
+        public static (Vec2 Exit, Vec2 Entry) Sides(SketchDocument doc, string from, string to, ISet<string> ids, bool down)
+        {
+            var m = down ? new Vec2(0, 1) : new Vec2(1, 0);
+            var c = down ? new Vec2(1, 0) : new Vec2(0, 1);
+            if (doc.Get(from) is not { IsPointGeometry: false } src || doc.Get(to) is not { IsPointGeometry: false } dst) return (m, -1 * m);
+            double Dot(Vec2 a, Vec2 b) => a.X * b.X + a.Y * b.Y;
+            var sb = src.Bounds(); var tb = dst.Bounds();
+            var sc = new Vec2(sb.X + sb.W / 2, sb.Y + sb.H / 2); var tc = new Vec2(tb.X + tb.W / 2, tb.Y + tb.H / 2);
+            var along = Dot(tc - sc, m); var across = Dot(tc - sc, c);
+            double HalfAlong(Rect r) => down ? r.H / 2 : r.W / 2;
+            double HalfAcross(Rect r) => down ? r.W / 2 : r.H / 2;
+            if (along > HalfAlong(sb) + HalfAlong(tb) * 0.5)
+            {
+                if (Math.Abs(across) <= Math.Min(HalfAcross(sb), HalfAcross(tb)) * 0.5)
+                {
+                    // Straight on, unless other elements stand in the corridor: then around them on the right.
+                    var corridor = down
+                        ? new Rect(Math.Min(sc.X, tc.X) - 0.5, sb.Bottom, Math.Abs(tc.X - sc.X) + 1, Math.Max(0, tb.Y - sb.Bottom))
+                        : new Rect(sb.Right, Math.Min(sc.Y, tc.Y) - 0.5, Math.Max(0, tb.X - sb.Right), Math.Abs(tc.Y - sc.Y) + 1);
+                    var blocked = ids.Where(id => id != from && id != to).Select(doc.Get)
+                        .Any(o => o is { IsPointGeometry: false } && o.Bounds().Intersects(corridor));
+                    return blocked ? (c, c) : (m, -1 * m);
+                }
+                return (across > 0 ? c : -1 * c, -1 * m);
+            }
+            if (Math.Abs(along) <= (HalfAlong(sb) + HalfAlong(tb)) * 0.5 && Math.Abs(across) > 1e-6)
+                return (across > 0 ? c : -1 * c, across > 0 ? -1 * c : c);
+            // A loop back to an earlier element: out on the left, in on the left.
+            return (-1 * c, -1 * c);
         }
 
         /// <summary>Lines whose first and last docked ends sit on two different elements of <paramref name="ids"/>.</summary>

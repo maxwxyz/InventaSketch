@@ -50,10 +50,10 @@ namespace InventaSketch.Modules.Annotation
                 var style = Style.ThinLine with { StrokeWidth = 0.35, Fill = Fill.Solid("#ffffff") };
                 list.Add(_frame switch
                 {
-                    TextFrame.Circle => Prim.Ellipse(0, 0, w / 2, h / 2, style),
+                    TextFrame.Circle => (Primitive)Prim.Ellipse(0, 0, w / 2, h / 2, style),
                     TextFrame.Rounded => Ann.RoundedRect(-w / 2, -h / 2, w, h, Math.Min(3, Math.Min(w, h) / 4), style),
                     _ => Prim.Rect(-w / 2, -h / 2, w, h, style),
-                });
+                } with { Tag = AnnTags.Main }); // tagged: a dashed or recoloured frame (note box) takes the style override
             }
             var text = TextOf(o);
             if (!string.IsNullOrEmpty(text))

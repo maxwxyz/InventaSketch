@@ -37,7 +37,7 @@ namespace InventaSketch.Modules.Annotation
             new FixedSupportType(), new DistributedLoadType(), new BeamType(), new SpringType(), new DamperType(), new MassType(),
             // Flowchart
             new FlowBoxType(FlowShape.Process), new FlowBoxType(FlowShape.Decision), new FlowBoxType(FlowShape.Terminator),
-            new FlowBoxType(FlowShape.Data), new FlowBoxType(FlowShape.Document), new FlowBoxType(FlowShape.Connector), new FlowStepType(),
+            new FlowBoxType(FlowShape.Data), new FlowBoxType(FlowShape.Document), new FlowBoxType(FlowShape.Connector), new FlowBoxType(FlowShape.End), new FlowStepType(),
         };
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -82,6 +82,12 @@ namespace InventaSketch.Modules.Annotation
                 { Params = new Dictionary<string, ParamValue> { ["form"] = "wavy" }, Keywords = new[] { "wavy", "freehand", "freihand" } };
                 yield return new LibraryItem("ann.flow.decision.yesno", "ann.flow.decision", new I18nText("Decision (yes/no)", "Verzweigung (ja/nein)"), AnnCategories.Flowchart)
                 { Text = "?", Keywords = new[] { "yes", "no", "ja", "nein" } };
+                yield return new LibraryItem("ann.flow.start", "ann.flow.connector", new I18nText("Start (circle)", "Start (Kreis)"), AnnCategories.Flowchart)
+                { Text = "Start", Size = new Size2(16, 16), Keywords = new[] { "start", "begin", "beginn", "circle", "kreis" } };
+                yield return new LibraryItem("ann.arrow.elbow.yes", "ann.arrow.elbow", new I18nText("Connector “yes”", "Verbinder „ja“"), AnnCategories.Flowchart)
+                { Text = "ja", Keywords = new[] { "yes", "ja", "branch", "zweig", "flowchart", "flussdiagramm" } };
+                yield return new LibraryItem("ann.arrow.elbow.no", "ann.arrow.elbow", new I18nText("Connector “no”", "Verbinder „nein“"), AnnCategories.Flowchart)
+                { Text = "nein", Keywords = new[] { "no", "nein", "branch", "zweig", "flowchart", "flussdiagramm" } };
             }
         }
 

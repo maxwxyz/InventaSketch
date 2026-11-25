@@ -284,6 +284,11 @@ vectors stay in `math`.
 4. matplotlib export; math merge.
 5. Charts from pictures (scanner port, curve digitiser).
 
+**Flowcharts (maintainer example 2026-11-25, done):** flowchart symbols fit and wrap their text, start circle and end
+double circle, elbow connectors route by their docked sides (C runs with clearance for "yes" exits and loops back) and
+carry a "yes"/"no" label, the diagram layout docks branches and loops on the sides and computes the clearance, dashed
+note frames. Open: obstacle-aware routing for hand-placed boxes.
+
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
