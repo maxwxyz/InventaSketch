@@ -42,6 +42,7 @@ undo step each (no step when nothing changes).
 | `setMonochrome` | `value` (true/false) | state; document black and white, every object counts as changed |
 | `importData` | `text` (CSV/TSV), `id` (optional chart) | state; the table as the data of the selected chart or a new chart |
 | `importGeo` | `text` (GeoJSON or GPX) | state; routes and markers fitted into the page, selected |
+| `importVector` | `text` (SVG or ASCII DXF) | state; editable basic shapes in one group (real size if the file has units and fits, else fitted), selected; one undo step |
 | `preflight` | `text` (profile id, default "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – patent drawing preflight |
 | `patentProfiles` | `lang` | the offices `{ id, name }` |
 | `diff` | `payload` (compact model of the earlier state, e.g. the previous slide) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – variants: what differs from that state (bounds in mm, removed ones from the earlier state) |

@@ -435,12 +435,36 @@ Rahmenauswahl von Punkten: Ist eine Linie, Polylinie, Leitung oder Wand ausgewä
 Rahmen; die Punkte darin werden ausgewählt (gefüllte Griffe) und bewegen sich gemeinsam, wenn einer davon gezogen wird
 (ein Rückgängig-Schritt). Geprüft: zwei von vier Polylinienpunkten wanderten gemeinsam 40 pt nach oben.
 
-Datenexport (Extras ▸ Daten exportieren, 2026-11-20): bietet die Fachexporte an, die zu den ausgewählten Einheiten
+Gruppe Prüfen (25.11.2026): Die Befehle, die auf der fertigen Zeichnung arbeiten, stehen gemeinsam am Ende der
+Registerkarte – *Patentprüfung* und *Vergleichen* (groß), *Importieren …* und *Daten exportieren*; sie sind aus dem Menü
+Extras herausgewandert, das Symbol, Dezimaltrennzeichen, Korrektursprache, Folien senden/speichern, Planmaßstab und
+Modulsichtbarkeit behält. Gleiche Namen wie in LibreOffice.
+
+Zeichnungen importieren (Prüfen ▸ Importieren …, 25.11.2026): Eine SVG- oder DXF-Datei wird zu einer Einheit aus
+nativen, bearbeitbaren Formen – Linien, Polylinien (Bögen, Kurven und Bulges als bearbeitbare Punkte), Rechtecke (mit
+Eckenradius), Ellipsen und Texte (`VectorImport` im Core). Mit Einheiten (SVG-Breite/-Höhe in mm/cm/in, DXF
+`$INSUNITS`) und wenn sie passt, behält die Zeichnung ihre echte Größe; sonst wird sie in die Folie eingepasst. Farben,
+Linienarten, Füllungen, Schraffuren, Blöcke und Bemaßungen werden nicht gelesen. Geprüft: Szenario `vector-import`
+(SVG 80 × 50 mm in echter Größe mit 3 mm Eckenradius, ein DXF als zweite Einheit). Unterwegs gefunden und behoben:
+Abgerundete Rechtecke aller Module bekommen jetzt ihren Radius (PowerPoint-Anpassung; vorher galt PowerPoints Standard
+von einem Sechstel der kurzen Seite).
+
+Korrekturen aus dem Test des Maintainers (25.11.2026):
+- Das Einfügefeld (Strg+Leertaste, „+“ mit Auswahl) scheiterte beim zweiten Öffnen („Ungültiger Parameter“ beim
+  Zeichnen der Liste): Es gab die zwischengespeicherten Vorschaubilder frei, die es nur geliehen hatte. Das tut es nicht
+  mehr.
+- „+“ an einem skalierten Element: Das neue Teil übernimmt den Maßstab des Elements (`Building.SourceScale`: seine Größe
+  gegenüber dem passenden Bibliothekselement) – quer zur Achse an einem Achsende, sonst das Mittel beider Richtungen,
+  auch beim Quick-Add; eine Straße wird Streifen für Streifen fortgesetzt. Geprüft für jedes Element der Bibliothek
+  (Engine-Test `BuildAllElementsTests`: 861 Platzierungen und 169 Quick-Adds an um 1,5 skalierten Elementen) und in
+  PowerPoint (Szenario `scaled-build`).
+
+Datenexport (Prüfen ▸ Daten exportieren, 2026-11-20): bietet die Fachexporte an, die zu den ausgewählten Einheiten
 oder der Folie passen (Stückliste, Verbindungsgraph als Mermaid/GraphML, Netzliste, Bezugszeichenliste), speichert die
 Datei und legt den Text in die Zwischenablage. Geprüft: zwei gleiche Stirnräder und eine Welle ergaben eine Stückliste
 mit Menge 2.
 
-Varianten (Extras ▸ Mit vorheriger Folie vergleichen, 2026-11-25): Eine duplizierte Folie behält die IDs der Elemente,
+Varianten (Prüfen ▸ Vergleichen, 2026-11-25): Eine duplizierte Folie behält die IDs der Elemente,
 so lässt sich ein Paar „vorher/nachher“ oder „Stand der Technik/Erfindung“ vergleichen. Der Befehl markiert auf der
 aktuellen Folie, was sich von der vorherigen unterscheidet (`Variants.Diff` im Core): neue Elemente grün, geänderte
 (Typ, Ansicht, Parameter, Text, Lage, Größe oder Punkte) orange, entfernte als grau gestrichelter Rahmen an ihrer

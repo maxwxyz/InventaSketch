@@ -46,17 +46,25 @@ together. Numbers (module, tooth count, dimensions) are optional.
 ## 5. Patent drawings – important note
 
 The preflight checks formal drawing rules of DPMA, EPO, PCT and USPTO with cited sources. It is an aid only and
-does not replace review by a patent professional. In PowerPoint: InventaSketch ▸ Extras ▸ "Patent check (drawings) …"
+does not replace review by a patent professional. In PowerPoint: InventaSketch ▸ Review ▸ "Patent check"
 checks every slide for the chosen office and lists errors, warnings, notes and points to check by hand with their
 source; double-click a finding to go to its slide and element (engine `preflight`, `patentProfiles`). In the web
 add-in the check button in the top bar does the same for the page; clicking a finding selects its element. In
 LibreOffice Impress and Draw: InventaSketch ▸ "Patent Check (Drawings)…" checks every page; choosing a finding goes to
 its slide and unit.
 
-Variants (before/after, prior art/invention): duplicate the slide and change the copy. InventaSketch ▸ Extras ▸
+Variants (before/after, prior art/invention): duplicate the slide and change the copy. InventaSketch ▸ Review ▸
 "Compare with the previous slide" marks what was added (green), changed (orange) and removed (dashed grey) with a
 legend; run it again to remove the marks (engine `diff`). In LibreOffice Impress and Draw: InventaSketch ▸ "Compare
 with Previous Slide (Variants)".
+
+## 6a. Importing drawings and data
+
+InventaSketch ▸ Review ▸ "Import …" (web: the import button in the top bar; LibreOffice: InventaSketch ▸ "Import Drawing
+(SVG, DXF)…") reads SVG and DXF drawings as editable shapes – lines, polylines, rectangles, ellipses and texts, grouped
+as one element. A drawing with units keeps its real size when it fits on the slide; otherwise it is fitted. Arcs and
+curves become polylines whose points can be moved. Colours, line types, fills, hatches, blocks and dimensions are not
+imported. The same command reads CSV tables into charts and GeoJSON/GPX into map routes.
 
 ## 6. Modules
 

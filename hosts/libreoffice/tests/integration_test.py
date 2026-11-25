@@ -633,6 +633,45 @@ def compare_phase(office, out, logs):
     office.close(doc)
 
 
+def import_phase(office, out, logs):
+    """SVG and DXF drawings become one unit of editable shapes each (command importVector with a path), in one undo
+    step; the SVG keeps its real size (80 x 50 mm)."""
+    doc = office.new("simpress")
+    page = doc.getDrawPages().getByIndex(0)
+    for i in reversed(range(page.getCount())):
+        page.remove(page.getByIndex(i))
+    svg = os.path.join(out, "import.svg")
+    with open(svg, "w", encoding="utf-8") as f:
+        f.write("<svg xmlns='http://www.w3.org/2000/svg' width='80mm' height='50mm' viewBox='0 0 80 50'>"
+                "<rect x='0' y='0' width='80' height='50' rx='3'/><circle cx='25' cy='25' r='12'/>"
+                "<path d='M45 40 L55 10 Q65 0 75 25'/><text x='5' y='46' font-size='4'>Fig. 1</text></svg>")
+    known = set(units_of(page))
+    office.run(doc, "importVector?path=" + svg.replace("\\", "/"))
+    new = [s for n, s in units_of(page).items() if n not in known]
+    check("import.svg.oneUnit", len(new) == 1, ", ".join(units_of(page)))
+    if new:
+        w, h = new[0].Size.Width, new[0].Size.Height
+        check("import.svg.realSize", abs(w - 8000) < 150 and abs(h - 5000) < 150, "%d x %d (1/100 mm)" % (w, h))
+        check("import.svg.native", leaf_count(new[0]) >= 4, json.dumps(leaf_types(new[0])))
+        title = doc.getUndoManager().getCurrentUndoActionTitle()
+        check("import.oneUndoStep", "import" in title.lower(), title)
+    dxf = os.path.join(out, "import.dxf")
+    with open(dxf, "w", encoding="ascii") as f:
+        f.write("\n".join(["0", "SECTION", "2", "HEADER", "9", "$INSUNITS", "70", "4", "0", "ENDSEC",
+                           "0", "SECTION", "2", "ENTITIES",
+                           "0", "LINE", "8", "0", "10", "0", "20", "0", "11", "40", "21", "0",
+                           "0", "CIRCLE", "8", "0", "10", "20", "20", "10", "40", "8",
+                           "0", "LWPOLYLINE", "8", "0", "90", "2", "70", "0", "10", "0", "20", "20", "42", "1", "10", "40", "20", "20",
+                           "0", "ENDSEC", "0", "EOF"]))
+    known = set(units_of(page))
+    office.run(doc, "importVector?path=" + dxf.replace("\\", "/"))
+    new = [s for n, s in units_of(page).items() if n not in known]
+    check("import.dxf.oneUnit", len(new) == 1 and leaf_count(new[0]) >= 3,
+          json.dumps(leaf_types(new[0])) if new else ", ".join(units_of(page)))
+    export_png(office, doc, page, os.path.join(out, "import.png"))
+    office.close(doc)
+
+
 def canvas_phase(office, out, logs):
     """On-canvas round: the job attaches the handlers to a new view; snapping after a native move (the command the
     mouse release runs) meshes a gear with another unit, coupled parts follow a dragged shaft, resizes do not snap.
@@ -751,6 +790,7 @@ def main():
         canvas_phase(office, out, logs)
         patent_phase(office, logs)
         compare_phase(office, out, logs)
+        import_phase(office, out, logs)
         reload_phase(office, odp, names, "odp", expect_attributes=True)
         reload_phase(office, pptx, names, "pptx", expect_attributes=False)
         draw_calc_phase(office, out)

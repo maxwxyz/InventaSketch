@@ -3,7 +3,7 @@ import type { ActionInfo, ArrangeOption, CatalogItem, ObjectInfo, PreflightFindi
 import { boxPosition, insertBoxKey, insertRows, rememberRecent } from "../src/ui/insertbox";
 import { hasIcon } from "../src/ui/icons";
 import {
-  assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, orderFindings, snapLabelAnchor, sourceLinks, tracedPathItem, withTracedPoints,
+  assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, importKind, multiBarGroups, orderFindings, snapLabelAnchor, sourceLinks, tracedPathItem, withTracedPoints,
 } from "../src/ui/uxlogic";
 import strings from "../src/strings.json";
 
@@ -188,3 +188,16 @@ describe("patent check sources", () => {
     ]);
   });
 });
+
+describe("import kind", () => {
+  it("routes drawings, geodata and tables", () => {
+    expect(importKind("plan.SVG", "")).toBe("vector");
+    expect(importKind("part.dxf", "")).toBe("vector");
+    expect(importKind("drawing.txt", "﻿<?xml version='1.0'?>\n<svg xmlns='http://www.w3.org/2000/svg'></svg>")).toBe("vector");
+    expect(importKind("export", "0\r\nSECTION\r\n2\r\nENTITIES")).toBe("vector");
+    expect(importKind("track.gpx", "<gpx></gpx>")).toBe("geo");
+    expect(importKind("area.json", '{"type":"FeatureCollection","features":[]}')).toBe("geo");
+    expect(importKind("data.csv", "a;b\n1;2")).toBe("table");
+  });
+});
+

@@ -78,7 +78,7 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
 
 - **Menu "InventaSketch"** (Impress, Draw, Calc): *Insert from Library…* (opens the sidebar deck), *Edit Model of
   Selected Unit*, *Redraw Selected Unit from Model*, *Add Reference Numeral*, *Patent Check (Drawings)…*, *Compare
-  with Previous Slide (Variants)*, *Remove Data of Deleted Units*, *About InventaSketch*.
+  with Previous Slide (Variants)*, *Import Drawing (SVG, DXF)…*, *Remove Data of Deleted Units*, *About InventaSketch*.
 - **Variants** (2026-11-25, Impress and Draw): a duplicated slide keeps the units' ids. *Compare with Previous Slide*
   marks what differs from the previous slide (engine `diff`, both slides loaded like page sessions): added units green,
   changed ones orange, removed ones as a dashed grey frame where they were, plus a legend at the top right; the marks
@@ -111,7 +111,7 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   `assembly`, `panel?control=<key>&text=<text>` / `panel?control=<key>&item=<entry>` / `panel?press=<key, label or
   action:<id>>` (operates a control of the open panel the way a user does), `snapMove[?px=<pixels>&undo=<n>]` (snap
   the selected unit(s) after a native move, as after a mouse drag), `quickInsert[?text=<text>]` (Library panel with
-  the cursor in the search field, as Ctrl+Space), `patentCheck[?profile=<office id>]`, `compare`, `cleanup`, `about`. The
+  the cursor in the search field, as Ctrl+Space), `patentCheck[?profile=<office id>]`, `compare`, `importVector[?path=<file>]` (file dialog without a path), `cleanup`, `about`. The
   integration and UI smoke tests use these
   commands.
 - **Recent items** (last 12 inserted library items, per user) are kept in `libreoffice-settings.json` next to the log

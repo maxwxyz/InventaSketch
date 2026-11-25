@@ -21,7 +21,7 @@ import { Library } from "./library";
 import { PieMenu } from "./piemenu";
 import { buildPieEntries, labelEntries, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
 import { Stage, type ChainSide } from "./stage";
-import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, orderFindings, sourceLinks } from "./uxlogic";
+import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, importKind, orderFindings, sourceLinks } from "./uxlogic";
 
 export interface AppOptions {
   engine: Engine;
@@ -238,16 +238,16 @@ export class App {
     this.edit((s) => s.setMonochrome(value));
   }
 
-  /** "Import data": a CSV/TSV table into the selected chart (or a new one), GeoJSON/GPX as map routes and markers. */
+  /** "Import": a CSV/TSV table into the selected chart (or a new one), GeoJSON/GPX as map routes and markers, SVG/DXF as shapes. */
   private importButton(): HTMLElement {
-    const input = h("input", { type: "file", accept: ".csv,.tsv,.txt,.geojson,.json,.gpx", hidden: true });
+    const input = h("input", { type: "file", accept: ".csv,.tsv,.txt,.geojson,.json,.gpx,.svg,.dxf", hidden: true });
     input.addEventListener("change", async () => {
       const f = input.files?.[0];
       input.value = "";
       if (!f) return;
       const text = await f.text();
-      const geo = /\.(gpx|geojson)$/i.test(f.name) || (/\.json$/i.test(f.name) && /"type"\s*:\s*"(Feature|FeatureCollection|LineString|Point|Polygon)/.test(text));
-      this.edit((s) => (geo ? s.importGeo(text) : s.importData(text)));
+      const kind = importKind(f.name, text);
+      this.edit((s) => (kind === "vector" ? s.importVector(text) : kind === "geo" ? s.importGeo(text) : s.importData(text)));
     });
     const button = this.iconButton("load", t("cmd.import"), () => input.click(), { "data-cmd": "import" });
     return h("span", {}, button, input);

@@ -239,6 +239,21 @@ def insert(engine, controller, item_id, x_mm=None, y_mm=None, name=None):
     return drawn
 
 
+def import_vector(engine, controller, text, name=""):
+    """An SVG or DXF drawing as editable basic shapes, grouped into one unit (engine ``importVector``: real size when
+    the file has units and fits, else fitted into the page; Calc: the visible area). One undo step; returns the shapes."""
+    doc, page, centre, size = target(controller)
+    session = _session(engine, size)
+    try:
+        state = engine.call("importVector", {"session": session, "text": text, "includeSvg": False})
+        plan = engine.call("drawPlan", {"session": session, "ids": state["selection"]})
+    finally:
+        _close(engine, session)
+    drawn, _ = _draw_step(doc, page, plan, i18n.text("undoImport") % (name or "SVG/DXF"))
+    _select(controller, drawn)
+    return drawn
+
+
 # ------------------------------------------------------------------ selection
 
 

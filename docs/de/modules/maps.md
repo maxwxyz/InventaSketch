@@ -87,7 +87,7 @@ zweisprachiger Meldung und ändern nichts. Schritte verwenden `IconIds.Increase`
 
 ## GeoJSON und GPX importieren (25.11.2026)
 
-„Daten importieren …“ (COM: Menü Extras; Web: Import-Knopf; Engine `importGeo`) macht aus einer GeoJSON-Datei (Feature,
+„Importieren …“ (COM: Gruppe Prüfen; Web: Import-Knopf; Engine `importGeo`) macht aus einer GeoJSON-Datei (Feature,
 FeatureCollection oder Geometrie: Linien, Polygonringe, Punkte) oder einer GPX-Datei (Tracks, Routen, Wegpunkte)
 Kartenelemente, eingepasst in die Folie (um ein Zehntel eingerückt, genordet, abstandstreue Zylinderprojektion um die
 mittlere Breite der Daten – passend für Stadt- und Regionalkarten, nicht für Kontinente): Jede Linie wird eine Route
