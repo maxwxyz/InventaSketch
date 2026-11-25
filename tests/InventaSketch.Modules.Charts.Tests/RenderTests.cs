@@ -21,7 +21,7 @@ namespace InventaSketch.Modules.Charts.Tests
                 {
                     var prims = Fx.Render(r, o, Fx.Ctx(lang, mono));
                     Fx.AssertInsideBox(prims, o.Size, $"{id} {lang} mono={mono}");
-                    Assert.Contains(Prim.Flatten(prims), p => p.Tag == ChartTags.TickLabel);
+                    Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.TickLabel));
                 }
             foreach (var size in new[] { new Size2(o.Size.W * 2, o.Size.H), new Size2(o.Size.W * 0.6, o.Size.H * 1.4), new Size2(o.Size.W * 0.35, o.Size.H * 0.35), new Size2(400, 260) })
                 Fx.AssertInsideBox(Fx.Render(r, o with { Size = size }), size, $"{id} {size.W}x{size.H}");
@@ -34,9 +34,9 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Fx.Item(r, id);
             var tags = Prim.Flatten(Fx.Render(r, o)).Select(p => p.Tag).ToList();
-            if (o.Type == "chart.axes") { Assert.Contains(ChartTags.Axis, tags); return; }
+            if (o.Type == "chart.axes") { Assert.Contains(tags, t => ChartTags.Is(t, ChartTags.Axis)); return; }
             var data = new[] { ChartTags.Series, ChartTags.Marker, ChartTags.Bar, ChartTags.Contour, ChartTags.Band };
-            Assert.True(tags.Any(data.Contains), id + " draws no data");
+            Assert.True(tags.Any(t => data.Any(d => ChartTags.Is(t, d))), id + " draws no data");
         }
 
         [Fact]
@@ -67,8 +67,8 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.line");
             var wide = o with { Size = new Size2(o.Size.W * 3, o.Size.H) };
-            var a = Prim.Flatten(Fx.Render(r, o)).OfType<TextPrim>().First(t => t.Tag == ChartTags.TickLabel);
-            var b = Prim.Flatten(Fx.Render(r, wide)).OfType<TextPrim>().First(t => t.Tag == ChartTags.TickLabel);
+            var a = Prim.Flatten(Fx.Render(r, o)).OfType<TextPrim>().First(t => ChartTags.Is(t.Tag, ChartTags.TickLabel));
+            var b = Prim.Flatten(Fx.Render(r, wide)).OfType<TextPrim>().First(t => ChartTags.Is(t.Tag, ChartTags.TickLabel));
             Assert.Equal(a.TextStyle.Size, b.TextStyle.Size, 6);
             Assert.Equal(0, b.Rotation);
         }
@@ -103,7 +103,7 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.Equal(7, ports.Count);
             Assert.All(ports, p => Assert.Equal(AnchorRole.Port, p.Role));
             // Ports lie on the drawn series line.
-            var line = (PathPrim)Prim.Flatten(Fx.Render(r, o)).First(p => p.Tag == ChartTags.Series);
+            var line = (PathPrim)Prim.Flatten(Fx.Render(r, o)).First(p => ChartTags.Is(p.Tag, ChartTags.Series));
             var vertices = line.Segments.Where(s => s.Op != SegOp.Z).Select(s => s.P).ToList();
             foreach (var p in ports) Assert.Contains(vertices, v => v.DistanceTo(p.P) < 1e-6);
             // Increasing x runs to the right, increasing y runs up.
@@ -116,15 +116,15 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.line.multi");
             var prims = Prim.Flatten(Fx.Render(r, o, Fx.Ctx(mono: true))).ToList();
-            var lines = prims.OfType<PathPrim>().Where(p => p.Tag == ChartTags.Series).ToList();
+            var lines = prims.OfType<PathPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Series)).ToList();
             Assert.Equal(3, lines.Count);
             Assert.Equal(3, lines.Select(l => l.Style.EffectiveDash).Distinct().Count());
-            var markers = prims.OfType<PathPrim>().Where(p => p.Tag == ChartTags.Marker).ToList();
+            var markers = prims.OfType<PathPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Marker)).ToList();
             Assert.Equal(3, markers.Count);
             Assert.All(SeriesLook.Colors, c => Assert.True(SvgRenderer.Luminance(c) < 0.35, c + " is too light for monochrome output"));
             // Legend with three entries.
-            Assert.Equal(3, prims.Count(p => p.Tag == ChartTags.LegendText));
-            Assert.Equal(new[] { "A", "B", "C" }, prims.OfType<TextPrim>().Where(p => p.Tag == ChartTags.LegendText).Select(t => t.Text));
+            Assert.Equal(3, prims.Count(p => ChartTags.Is(p.Tag, ChartTags.LegendText)));
+            Assert.Equal(new[] { "A", "B", "C" }, prims.OfType<TextPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.LegendText)).Select(t => t.Text));
         }
 
         [Fact]
@@ -132,13 +132,13 @@ namespace InventaSketch.Modules.Charts.Tests
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.column.grouped");
-            var colour = Prim.Flatten(Fx.Render(r, o)).OfType<RectPrim>().Where(p => p.Tag == ChartTags.Bar).ToList();
+            var colour = Prim.Flatten(Fx.Render(r, o)).OfType<RectPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Bar)).ToList();
             Assert.Equal(8, colour.Count);
             Assert.All(colour, b => Assert.Equal(FillKind.Solid, b.Style.EffectiveFill.Kind));
-            var mono = Prim.Flatten(Fx.Render(r, o, Fx.Ctx(mono: true))).OfType<RectPrim>().Where(p => p.Tag == ChartTags.Bar).ToList();
+            var mono = Prim.Flatten(Fx.Render(r, o, Fx.Ctx(mono: true))).OfType<RectPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Bar)).ToList();
             Assert.Equal(2, mono.Select(b => (b.Style.EffectiveFill.Kind, b.Style.EffectiveFill.Color)).Distinct().Count());
             var doc = SketchDocument.Create() with { Settings = new DocumentSettings { Monochrome = true } };
-            var viaDoc = Prim.Flatten(Fx.Render(r, o.WithParam("data", "A;1;2;3\nB;2;3;4"), new RenderContext(doc))).OfType<RectPrim>().Where(p => p.Tag == ChartTags.Bar).ToList();
+            var viaDoc = Prim.Flatten(Fx.Render(r, o.WithParam("data", "A;1;2;3\nB;2;3;4"), new RenderContext(doc))).OfType<RectPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Bar)).ToList();
             Assert.Contains(viaDoc, b => b.Style.EffectiveFill.Kind == FillKind.Hatch);
         }
 
@@ -147,17 +147,17 @@ namespace InventaSketch.Modules.Charts.Tests
         {
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.column.stacked").WithParam("data", "A;1;2\nB;2;2");
-            var bars = Prim.Flatten(Fx.Render(r, o)).OfType<RectPrim>().Where(p => p.Tag == ChartTags.Bar).ToList();
+            var bars = Prim.Flatten(Fx.Render(r, o)).OfType<RectPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Bar)).ToList();
             Assert.Equal(4, bars.Count);
             // Second segment of category A sits on top of the first.
             Assert.Equal(bars[0].Y, bars[1].Y + bars[1].H, 6);
             Assert.Equal(bars[0].X, bars[1].X, 6);
             var h = Fx.Item(r, "chart.bar.horizontal");
-            var hb = Prim.Flatten(Fx.Render(r, h)).OfType<RectPrim>().Where(p => p.Tag == ChartTags.Bar).ToList();
+            var hb = Prim.Flatten(Fx.Render(r, h)).OfType<RectPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Bar)).ToList();
             Assert.Equal(4, hb.Count);
             Assert.True(hb.All(b => b.W > b.H * 0.5));
             Assert.True(hb[0].Y < hb[1].Y, "first category on top");
-            Assert.Equal(4, Prim.Flatten(Fx.Render(r, h)).Count(p => p.Tag == ChartTags.ValueLabel && p is TextPrim));
+            Assert.Equal(4, Prim.Flatten(Fx.Render(r, h)).Count(p => ChartTags.Is(p.Tag, ChartTags.ValueLabel) && p is TextPrim));
         }
 
         [Fact]
@@ -168,7 +168,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var prims = Fx.Render(r, o);
             Fx.AssertInsideBox(prims, o.Size, "log y");
             Assert.Contains(Prim.Flatten(prims).OfType<TextPrim>(), t => t.Text == "1000");
-            Assert.Contains(Prim.Flatten(prims), p => p.Tag == ChartTags.GridMinor);
+            Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.GridMinor));
         }
 
         [Fact]
@@ -179,7 +179,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var prims = Fx.Render(r, o);
             var plot = Fx.Type(r, o).Anchors(o, Fx.Ctx()).ToDictionary(a => a.Id ?? Guid.NewGuid().ToString());
             var tl = plot["plot.tl"].P; var br = plot["plot.br"].P;
-            foreach (var p in Prim.Flatten(prims).Where(p => p.Tag == ChartTags.Series).SelectMany(Prim.Points))
+            foreach (var p in Prim.Flatten(prims).Where(p => ChartTags.Is(p.Tag, ChartTags.Series)).SelectMany(Prim.Points))
                 Assert.True(p.X >= tl.X - 1e-6 && p.X <= br.X + 1e-6 && p.Y >= tl.Y - 1e-6 && p.Y <= br.Y + 1e-6, "series point outside the plot " + p);
         }
 
@@ -188,10 +188,10 @@ namespace InventaSketch.Modules.Charts.Tests
         {
             var r = Fx.Reg();
             var step = Fx.Item(r, "chart.step");
-            var line = (PathPrim)Prim.Flatten(Fx.Render(r, step)).First(p => p.Tag == ChartTags.Series);
+            var line = (PathPrim)Prim.Flatten(Fx.Render(r, step)).First(p => ChartTags.Is(p.Tag, ChartTags.Series));
             Assert.Equal(13, line.Segments.Count); // 7 points, 6 risers
             Assert.All(line.Segments.Zip(line.Segments.Skip(1), (a, b) => (a, b)), s => Assert.True(Math.Abs(s.a.P.X - s.b.P.X) < 1e-9 || Math.Abs(s.a.P.Y - s.b.P.Y) < 1e-9));
-            var smooth = (PathPrim)Prim.Flatten(Fx.Render(r, Fx.Item(r, "chart.line.smooth"))).First(p => p.Tag == ChartTags.Series);
+            var smooth = (PathPrim)Prim.Flatten(Fx.Render(r, Fx.Item(r, "chart.line.smooth"))).First(p => ChartTags.Is(p.Tag, ChartTags.Series));
             Assert.Contains(smooth.Segments, s => s.Op == SegOp.C);
         }
 
@@ -204,7 +204,7 @@ namespace InventaSketch.Modules.Charts.Tests
                 var o = Fx.Item(r, id).WithParam("data", "");
                 var prims = Fx.Render(r, o);
                 Fx.AssertInsideBox(prims, o.Size, id + " empty");
-                Assert.Contains(Prim.Flatten(prims), p => p.Tag == ChartTags.Axis);
+                Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.Axis));
             }
         }
 
@@ -225,7 +225,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var named = line.WithParam("xlabel", "Time t").WithParam("xunit", "s").WithParam("ylabel", "");
             var texts = Prim.Flatten(Fx.Render(r, named)).OfType<TextPrim>().ToList();
             Assert.Contains(texts, t => t.Text == "Time t (s)");
-            Assert.DoesNotContain(texts, t => t.Tag == ChartTags.AxisTitle && t.Text == "y");
+            Assert.DoesNotContain(texts, t => ChartTags.Is(t.Tag, ChartTags.AxisTitle) && t.Text == "y");
         }
 
         [Fact]
@@ -234,8 +234,8 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.limits").WithParam("title", "Response");
             var prims = Prim.Flatten(Fx.Render(r, o)).ToList();
-            Assert.Contains(prims, p => p is TextPrim t && t.Tag == ChartTags.Title && t.Text == "Response");
-            var limit = (PathPrim)prims.First(p => p.Tag == ChartTags.Limit);
+            Assert.Contains(prims, p => p is TextPrim t && ChartTags.Is(t.Tag, ChartTags.Title) && t.Text == "Response");
+            var limit = (PathPrim)prims.First(p => ChartTags.Is(p.Tag, ChartTags.Limit));
             Assert.Equal(2, limit.Segments.Count(s => s.Op == SegOp.M));
             Assert.Equal(LineRole.Center, limit.Style.Role);
         }

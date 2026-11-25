@@ -65,11 +65,11 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.Equal(a["tmax"].P.Y, a["base"].P.Y, 6);
             Assert.True(a["end"].P.Y > a["base"].P.Y);
             var prims = Prim.Flatten(Fx.Render(r, o)).ToList();
-            Assert.Equal(2, prims.Count(p => p.Tag == ChartTags.Series));
-            Assert.Equal(2, prims.Count(p => p.Tag == ChartTags.Note));
-            Assert.Contains(prims, p => p.Tag == ChartTags.Helper);
+            Assert.Equal(2, prims.Count(p => ChartTags.Is(p.Tag, ChartTags.Series)));
+            Assert.Equal(2, prims.Count(p => ChartTags.Is(p.Tag, ChartTags.Note)));
+            Assert.Contains(prims, p => ChartTags.Is(p.Tag, ChartTags.Helper));
             var plain = Prim.Flatten(Fx.Render(r, Fx.Item(r, "chart.torque.plain"))).ToList();
-            Assert.Equal(1, plain.Count(p => p.Tag == ChartTags.Series));
+            Assert.Equal(1, plain.Count(p => ChartTags.Is(p.Tag, ChartTags.Series)));
         }
 
         [Fact]
@@ -85,14 +85,14 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.efficiency");
             var prims = Prim.Flatten(Fx.Render(r, o)).ToList();
-            var contours = prims.OfType<PathPrim>().Where(p => p.Tag == ChartTags.Contour).ToList();
+            var contours = prims.OfType<PathPrim>().Where(p => ChartTags.Is(p.Tag, ChartTags.Contour)).ToList();
             Assert.True(contours.Count >= 5, "contour count " + contours.Count);
-            Assert.Contains(prims, p => p.Tag == ChartTags.Envelope);
-            Assert.Contains(prims.OfType<TextPrim>(), t => t.Tag == ChartTags.ContourLabel && t.Text == "90 %");
+            Assert.Contains(prims, p => ChartTags.Is(p.Tag, ChartTags.Envelope));
+            Assert.Contains(prims.OfType<TextPrim>(), t => ChartTags.Is(t.Tag, ChartTags.ContourLabel) && t.Text == "90 %");
             Assert.Contains(Fx.Type(r, o).Anchors(o, Fx.Ctx()), a => a.Id == "peak");
             // Levels at or above the peak draw nothing; the German labels use a decimal comma.
             var high = o.WithParam("levels", "97;99");
-            Assert.DoesNotContain(Prim.Flatten(Fx.Render(r, high)), p => p.Tag == ChartTags.Contour);
+            Assert.DoesNotContain(Prim.Flatten(Fx.Render(r, high)), p => ChartTags.Is(p.Tag, ChartTags.Contour));
             var de = Prim.Flatten(Fx.Render(r, o.WithParam("levels", "92,5"), Fx.Ctx(Lang.De))).OfType<TextPrim>();
             Assert.Contains(de, t => t.Text == "92,5 %");
         }
@@ -127,8 +127,8 @@ namespace InventaSketch.Modules.Charts.Tests
             var a = Fx.Type(r, o).Anchors(o, Fx.Ctx()).ToDictionary(x => x.Id!);
             Assert.True(a["op"].P.X > a["h0"].P.X && a["op"].P.Y < a["qmax"].P.Y);
             var prims = Prim.Flatten(Fx.Render(r, o)).ToList();
-            Assert.Contains(prims, p => p.Tag == ChartTags.Point);
-            Assert.Equal(2, prims.Count(p => p.Tag == ChartTags.Series));
+            Assert.Contains(prims, p => ChartTags.Is(p.Tag, ChartTags.Point));
+            Assert.Equal(2, prims.Count(p => ChartTags.Is(p.Tag, ChartTags.Series)));
             Assert.Contains(prims.OfType<TextPrim>(), t => t.Text == "OP");
             Assert.Contains(Prim.Flatten(Fx.Render(r, o, Fx.Ctx(Lang.De))).OfType<TextPrim>(), t => t.Text == "BP");
             var fan = Prim.Flatten(Fx.Render(r, Fx.Item(r, "chart.fan"))).OfType<TextPrim>().ToList();
@@ -154,10 +154,10 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Fx.Item(r, "chart.band");
             var prims = Prim.Flatten(Fx.Render(r, o)).ToList();
-            var band = (PathPrim)prims.First(p => p.Tag == ChartTags.Band);
+            var band = (PathPrim)prims.First(p => ChartTags.Is(p.Tag, ChartTags.Band));
             Assert.True(band.IsClosed);
             Assert.Equal(FillKind.Solid, band.Style.EffectiveFill.Kind);
-            var mono = (PathPrim)Prim.Flatten(Fx.Render(r, o, Fx.Ctx(mono: true))).First(p => p.Tag == ChartTags.Band);
+            var mono = (PathPrim)Prim.Flatten(Fx.Render(r, o, Fx.Ctx(mono: true))).First(p => ChartTags.Is(p.Tag, ChartTags.Band));
             Assert.Equal(FillKind.Hatch, mono.Style.EffectiveFill.Kind);
             // Every nominal port lies inside the band polygon.
             var poly = Draw.Sample(band.Segments.Where(s => s.Op != SegOp.Z).ToList());
@@ -165,8 +165,8 @@ namespace InventaSketch.Modules.Charts.Tests
                 Assert.True(Geo.PointInPolygon(port.P, poly), "nominal point outside the band " + port.Id);
             var measured = Fx.Item(r, "chart.band.measured");
             var mp = Prim.Flatten(Fx.Render(r, measured)).ToList();
-            Assert.Contains(mp, p => p.Tag == ChartTags.Marker);
-            Assert.Equal(3, mp.Count(p => p.Tag == ChartTags.LegendText));
+            Assert.Contains(mp, p => ChartTags.Is(p.Tag, ChartTags.Marker));
+            Assert.Equal(3, mp.Count(p => ChartTags.Is(p.Tag, ChartTags.LegendText)));
         }
 
         [Fact]

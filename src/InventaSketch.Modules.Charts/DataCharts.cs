@@ -63,14 +63,14 @@ namespace InventaSketch.Modules.Charts
                 if (lines)
                 {
                     var path = style == "step" ? Steps(series[k].Points).Select(p => f.P(panel, p.X, p.Y)).ToList() : pts;
-                    if (Draw.Series(path, panel.Area, look.Line(0.5), smooth && style != "step") is { } line) c.Lines.Add(line);
+                    if (Draw.Series(path, panel.Area, look.Line(0.5), smooth && style != "step", ChartTags.Nth(ChartTags.Series, k)) is { } line) c.Lines.Add(line);
                     c.Avoid.Add(path);
                 }
                 else c.Avoid.Add(pts);
                 if (markers)
                 {
                     var visible = pts.Where(p => Frame.Ok(p) && panel.Area.Inflate(0.01).Contains(p)).ToList();
-                    if (visible.Count > 0) c.Lines.Add(Draw.Markers(visible, look.Marker, look.FilledMarker, look.Color, f.Fs * 0.3));
+                    if (visible.Count > 0) c.Lines.Add(Draw.Markers(visible, look.Marker, look.FilledMarker, look.Color, f.Fs * 0.3) with { Tag = ChartTags.Nth(ChartTags.Marker, k) });
                 }
                 for (var i = 0; i < pts.Count; i++) c.Port(pts[i], "s" + Fmt.I(k + 1) + "." + Fmt.I(i + 1));
             }
@@ -188,7 +188,7 @@ namespace InventaSketch.Modules.Charts
                     Vec2 p1 = horizontal ? f.P(panel, b, c1) : f.P(panel, c1, b);
                     var rx = Math.Min(p0.X, p1.X); var ry = Math.Min(p0.Y, p1.Y);
                     var rw = Math.Abs(p1.X - p0.X); var rh = Math.Abs(p1.Y - p0.Y);
-                    if (rw > 1e-6 && rh > 1e-6) c.Areas.Add(Prim.Rect(rx, ry, rw, rh, SeriesLook.Of(k).Area(mono, 0.25)) with { Tag = ChartTags.Bar });
+                    if (rw > 1e-6 && rh > 1e-6) c.Areas.Add(Prim.Rect(rx, ry, rw, rh, SeriesLook.Of(k).Area(mono, 0.25)) with { Tag = ChartTags.Nth(ChartTags.Bar, k) });
                     var mid = (c0 + c1) / 2;
                     var end = horizontal ? f.P(panel, b, mid) : f.P(panel, mid, b);
                     c.Avoid.Add(new[] { horizontal ? f.P(panel, a, mid) : f.P(panel, mid, a), end });
@@ -211,7 +211,7 @@ namespace InventaSketch.Modules.Charts
                         else if (outside)
                             at = horizontal ? end + new Vec2((up ? -1 : 1) * (tw / 2 + fs * 0.3), 0) : end + new Vec2(0, (up ? 1 : -1) * fs * 0.75);
                         var anchor = horizontal && !inside ? (up ? TextAnchor.Start : TextAnchor.End) : TextAnchor.Middle;
-                        Draw.Label(c.Over, at, text, fs, ChartTags.ValueLabel, anchor, backing: inside);
+                        Draw.Label(c.Over, at, text, fs, ChartTags.Nth(ChartTags.ValueLabel, k), anchor, backing: inside);
                     }
                 }
             }

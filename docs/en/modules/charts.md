@@ -128,6 +128,25 @@ All anchors are in local coordinates computed from the same layout as the drawin
 Invalid inputs throw `FormatException` with a bilingual message and change nothing. Cycles use `IconIds.Cycle`,
 toggles `IconIds.Toggle`, inputs `IconIds.Text`. The chart types have no view switch.
 
+## Parts (charts v2, 2026-11-25)
+
+Every drawn piece of a chart is a **part** with a key – the primitive tag: `series.0`, `series.1` (curves), `marker.0`
+(markers of curve 1), `bar.0` (bars of series 1), `value.0` (value labels), `axis.x`, `axis.y`, `axis.y2` (secondary
+axis), `axis.box` (closed frame), `tick.x`, `tick.y`, `label.x`, `label.y` (tick labels), `axistitle.x`, `axistitle.y`,
+`grid.major`, `grid.minor`, `zero`, `limit`, `legend`, `title`, `band`, `contour`, `contourlabel`, `envelope`, `helper`,
+`point`, `note`. Stacked panels (Bode plot) add the panel number: `axis.y.2`, `label.y.2`.
+
+- Each part can be switched off and styled on its own (`SketchObject.Parts`: per key a look with style or hidden). A
+  look on the kind (`series`, `grid`) applies to all parts of that kind; the indexed key wins.
+- Part actions: the chart's own ones that concern the part (curve: data, style, smoothing; axis: scale; grid: grid
+  toggle; legend: position), then show/hide, thicker, thinner, line style and reset.
+- PowerPoint: a click without dragging on the selected chart selects the part under the pointer (outlined in blue); the
+  bar shows its name and actions, "Parts …" lists every part including hidden ones, "Whole element" leaves the part.
+  Formatting one curve with PowerPoint's own tools (line colour, weight, fill, font) changes that part only and survives
+  every redraw; formatting the whole chart still changes the element style.
+- Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (see the design note
+  [charts v2](../design/charts-v2.md)).
+
 ## Host notes
 
 All output uses native primitives: one freeform per series line (smooth curves as cubic Bézier paths), one

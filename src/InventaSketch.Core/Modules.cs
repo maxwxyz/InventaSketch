@@ -749,6 +749,26 @@ namespace InventaSketch.Core
             return obj;
         }
 
+        /// <summary>
+        /// The parts of the element that can be selected and styled on their own (charts v2: each curve, axis, grid …). The
+        /// key is the tag of their primitives (<see cref="PartLooks"/>). None by default.
+        /// </summary>
+        public virtual IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx) => Array.Empty<PartInfo>();
+
+        /// <summary>
+        /// Actions of one part: the type's own (smooth a curve, add a value line …) followed by the generic ones (show/hide,
+        /// thicker, thinner, line style, reset). Override <see cref="OwnPartActions"/> to add actions.
+        /// </summary>
+        public IEnumerable<ContextAction> PartActions(SketchObject o, string part, RenderContext ctx)
+        {
+            foreach (var a in OwnPartActions(o, part, ctx)) yield return a;
+            var drawn = PartLooks.DrawnWidth(Render(o, ctx), part);
+            foreach (var a in PartLooks.Generic(o, part, drawn)) yield return a;
+        }
+
+        /// <summary>Type-specific actions of a part (see <see cref="PartActions"/>).</summary>
+        protected virtual IEnumerable<ContextAction> OwnPartActions(SketchObject o, string part, RenderContext ctx) => Array.Empty<ContextAction>();
+
         /// <summary>Applies the user's style override to rendered primitives.</summary>
         public virtual Primitive ApplyOverride(Primitive p, Style over) => Prim.Restyle(p, s => s with
         {
@@ -1072,7 +1092,7 @@ namespace InventaSketch.Core
             var local = type.Render(o, ctx);
             var k = ctx.Doc.Settings.LineGroup is double g && g > 0 ? g / Style.DesignLineGroup : 1;
             var accent = ctx.Doc.Settings.Accent;
-            if (Math.Abs(k - 1) < 1e-9 && accent is null && o.Style is null) return local;
+            if (Math.Abs(k - 1) < 1e-9 && accent is null && o.Style is null) return PartLooks.Apply(local, o.Parts);
             var result = new List<Primitive>(local.Count);
             foreach (var p in local)
             {
@@ -1081,7 +1101,29 @@ namespace InventaSketch.Core
                 if (o.Style is not null) q = Prim.TextOverride(type.ApplyOverride(q, o.Style), o.Style);
                 result.Add(q);
             }
-            return result;
+            // Part looks last: a curve recoloured on its own wins over the object's colour (charts v2).
+            return PartLooks.Apply(result, o.Parts);
+        }
+
+        /// <summary>The selectable parts of <paramref name="o"/>, with the ones switched off marked.</summary>
+        public IReadOnlyList<PartInfo> Parts(SketchObject o, RenderContext ctx)
+        {
+            ctx.For(this);
+            return TypeOf(o).Parts(o, ctx).Select(p => p with { Hidden = PartLooks.LookOf(o.Parts, p.Key)?.Hidden == true }).ToList();
+        }
+
+        /// <summary>The part of <paramref name="o"/> under the page point <paramref name="at"/> (within <paramref name="tolerance"/> mm), or null.</summary>
+        public string? PartAt(SketchObject o, Vec2 at, RenderContext ctx, double tolerance = 1.0)
+        {
+            var keys = Parts(o, ctx).Select(p => p.Key).ToList();
+            return keys.Count == 0 ? null : PartLooks.At(Render(o, ctx), at, tolerance, keys);
+        }
+
+        /// <summary>The actions of one part of <paramref name="o"/> (type actions, then show/hide, thicker, thinner, line style, reset).</summary>
+        public IReadOnlyList<ContextAction> PartActions(SketchObject o, string part, RenderContext ctx)
+        {
+            ctx.For(this);
+            return TypeOf(o).PartActions(o, part, ctx).ToList();
         }
 
         public IEnumerable<RenderedObject> RenderPage(SketchDocument doc, Page page, RenderContext ctx, Func<SketchObject, bool>? filter = null)

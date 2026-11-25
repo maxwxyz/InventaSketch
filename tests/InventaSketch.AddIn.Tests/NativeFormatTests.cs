@@ -21,6 +21,28 @@ namespace InventaSketch.AddIn.Tests
         }
 
         [Fact]
+        public void RecolouringOneCurveChangesOnlyThatPart()
+        {
+            var o = new SketchObject { Id = "c1", Type = "chart.xy" };
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, o);
+            var a = L();
+            var red = L(line: "#C00000", weight: 1.5);
+            // One of three parts changed: the look of that part, not the element style.
+            var folded = NativeFormat.FoldLooks(doc, new (string?, Look, Look)[] { ("series.0", a, red), ("series.1", a, a), ("axis.x", a, a) }).Get("c1")!;
+            Assert.Null(folded.Style);
+            Assert.Equal("#C00000", folded.Parts!["series.0"].Style!.Stroke);
+            Assert.Equal(1.5 / Geo.PtPerMm, folded.Parts["series.0"].Style!.StrokeWidth!.Value, 3);
+            Assert.False(folded.Parts.ContainsKey("series.1"));
+            // Everything changed (whole group formatted): the element style as before.
+            var all = NativeFormat.FoldLooks(doc, new (string?, Look, Look)[] { ("series.0", a, red), ("series.1", a, red), ("axis.x", a, red) }).Get("c1")!;
+            Assert.Equal("#C00000", all.Style!.Stroke);
+            Assert.Null(all.Parts);
+            // Leaves without a part key: element style.
+            Assert.Equal("#C00000", NativeFormat.FoldLooks(doc, new (string?, Look, Look)[] { (null, a, red), ("axis.x", a, a) }).Get("c1")!.Style!.Stroke);
+        }
+
+        [Fact]
         public void UnchangedShapesGiveNoOverride()
         {
             var a = L();

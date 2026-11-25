@@ -116,12 +116,12 @@ namespace InventaSketch.Modules.Charts
             }
 
             var env = Drive.Envelope(tmax, nb, nmax).Select(p => f.P(panel, p.X, p.Y)).ToList();
-            if (Draw.Series(env, a, tLook.Line(0.6), false) is { } tl) c.Lines.Add(tl);
+            if (Draw.Series(env, a, tLook.Line(0.6), false, ChartTags.Nth(ChartTags.Series, 0)) is { } tl) c.Lines.Add(tl);
             c.Avoid.Add(env);
             if (power)
             {
                 var pts = new List<Vec2> { f.P(panel, 0, 0, true), f.P(panel, nb, pmax, true), f.P(panel, nmax, pmax, true) };
-                if (Draw.Series(pts, a, pLook.Line(0.5), false) is { } pl) c.Lines.Add(pl);
+                if (Draw.Series(pts, a, pLook.Line(0.5), false, ChartTags.Nth(ChartTags.Series, 1)) is { } pl) c.Lines.Add(pl);
                 c.Avoid.Add(pts);
                 c.Port(f.P(panel, nmax, pmax, true), "pmax");
             }
@@ -342,12 +342,12 @@ namespace InventaSketch.Modules.Charts
             var c = new Chart(f, lang);
             var a = panel.Area;
             var pump = Enumerable.Range(0, 41).Select(i => qmax * i / 40).Select(v => f.P(panel, v, h0 * (1 - v * v / (qmax * qmax)))).ToList();
-            if (Draw.Series(pump, a, pLook.Line(0.6), true) is { } pl) c.Lines.Add(pl);
+            if (Draw.Series(pump, a, pLook.Line(0.6), true, ChartTags.Nth(ChartTags.Series, 0)) is { } pl) c.Lines.Add(pl);
             c.Avoid.Add(pump);
             if (system)
             {
                 var sys = Enumerable.Range(0, 41).Select(i => qmax * i / 40).Select(v => f.P(panel, v, hs + k * v * v)).ToList();
-                if (Draw.Series(sys, a, sLook.Line(0.5), true) is { } sl) c.Lines.Add(sl);
+                if (Draw.Series(sys, a, sLook.Line(0.5), true, ChartTags.Nth(ChartTags.Series, 1)) is { } sl) c.Lines.Add(sl);
                 c.Avoid.Add(sys);
                 c.Port(f.P(panel, 0, hs), "hstat");
             }
@@ -477,14 +477,14 @@ namespace InventaSketch.Modules.Charts
             if (mag is not null)
             {
                 var line = pts.Select(p => f.P(mag, p.F, p.Db)).ToList();
-                if (Draw.Series(line, mag.Area, look.Line(0.5), false) is { } ml) c.Lines.Add(ml);
-                if (useData) c.Lines.Add(Draw.Markers(line.Where(p => Frame.Ok(p) && mag.Area.Inflate(0.01).Contains(p)), look.Marker, true, look.Color, f.Fs * 0.25));
+                if (Draw.Series(line, mag.Area, look.Line(0.5), false, ChartTags.Nth(ChartTags.Series, 0)) is { } ml) c.Lines.Add(ml);
+                if (useData) c.Lines.Add(Draw.Markers(line.Where(p => Frame.Ok(p) && mag.Area.Inflate(0.01).Contains(p)), look.Marker, true, look.Color, f.Fs * 0.25) with { Tag = ChartTags.Nth(ChartTags.Marker, 0) });
             }
             if (phase is not null)
             {
                 var line = pts.Where(p => Fmt.Finite(p.Deg)).Select(p => f.P(phase, p.F, p.Deg)).ToList();
-                if (Draw.Series(line, phase.Area, look.Line(0.5), false) is { } pl) c.Lines.Add(pl);
-                if (useData) c.Lines.Add(Draw.Markers(line.Where(p => Frame.Ok(p) && phase.Area.Inflate(0.01).Contains(p)), look.Marker, true, look.Color, f.Fs * 0.25));
+                if (Draw.Series(line, phase.Area, look.Line(0.5), false, ChartTags.Nth(ChartTags.Series, 1)) is { } pl) c.Lines.Add(pl);
+                if (useData) c.Lines.Add(Draw.Markers(line.Where(p => Frame.Ok(p) && phase.Area.Inflate(0.01).Contains(p)), look.Marker, true, look.Color, f.Fs * 0.25) with { Tag = ChartTags.Nth(ChartTags.Marker, 1) });
             }
             if (!useData && x.Contains(fc))
             {
@@ -613,7 +613,7 @@ namespace InventaSketch.Modules.Charts
                 if (clipped.Count >= 3) c.Areas.Add(Prim.Polygon(clipped, bandStyle) with { Tag = ChartTags.Band });
                 if (Draw.MultiPath(Draw.Clip(up, a).Concat(Draw.Clip(dn, a)), edge, ChartTags.Limit) is { } ep) c.Lines.Add(ep);
                 var nm = nom.Select(p => f.P(panel, p.X, p.Y)).ToList();
-                if (Draw.Series(nm, a, look.Line(0.5), smooth) is { } nl) c.Lines.Add(nl);
+                if (Draw.Series(nm, a, look.Line(0.5), smooth, ChartTags.Nth(ChartTags.Series, 0)) is { } nl) c.Lines.Add(nl);
                 c.Avoid.Add(up); c.Avoid.Add(dn);
                 for (var i = 0; i < nm.Count; i++) c.Port(nm[i], "s1." + Fmt.I(i + 1));
                 c.Port(f.P(panel, hi[hi.Count / 2].X, hi[hi.Count / 2].Y), "upper");
@@ -624,9 +624,9 @@ namespace InventaSketch.Modules.Charts
             {
                 var l = SeriesLook.Of(k + 1);
                 var pts = extra[k].Points.Select(p => f.P(panel, p.X, p.Y)).ToList();
-                if (Draw.Series(pts, a, l.Line(0.35), false) is { } sl) c.Lines.Add(sl);
+                if (Draw.Series(pts, a, l.Line(0.35), false, ChartTags.Nth(ChartTags.Series, k + 1)) is { } sl) c.Lines.Add(sl);
                 var visible = pts.Where(p => Frame.Ok(p) && a.Inflate(0.01).Contains(p)).ToList();
-                if (visible.Count > 0) c.Lines.Add(Draw.Markers(visible, l.Marker, l.FilledMarker, l.Color, f.Fs * 0.3));
+                if (visible.Count > 0) c.Lines.Add(Draw.Markers(visible, l.Marker, l.FilledMarker, l.Color, f.Fs * 0.3) with { Tag = ChartTags.Nth(ChartTags.Marker, k + 1) });
                 c.Avoid.Add(pts);
                 for (var i = 0; i < pts.Count; i++) c.Port(pts[i], "s" + Fmt.I(k + 2) + "." + Fmt.I(i + 1));
             }

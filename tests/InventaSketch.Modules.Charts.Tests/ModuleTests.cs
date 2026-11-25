@@ -163,7 +163,7 @@ namespace InventaSketch.Modules.Charts.Tests
                 var o = new SketchObject { Id = "x", Type = t.Id, Size = t.DefaultSize };
                 var prims = t.Render(o, Fx.Ctx());
                 Fx.AssertInsideBox(prims, o.Size, t.Id);
-                Assert.Contains(Prim.Flatten(prims), p => p.Tag == ChartTags.Axis);
+                Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.Axis));
                 Assert.NotEmpty(t.Anchors(o, Fx.Ctx()));
             }
         }
