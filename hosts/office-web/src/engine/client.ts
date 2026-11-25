@@ -4,7 +4,7 @@
 import type {
   ActionInfo, Catalog, DrawCapabilities, DrawPlan, EditorState, HitResult, InspectorInfo, ParamValue, SnapResult, StyleInfo,
   SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo, BuildPortInfo, CouplingPreview,
-  MotionInfo, MotionPreview, PreflightResult, PartView,
+  MotionInfo, MotionPreview, PreflightResult, PartView, SanitizeMode, SanitizeOptions, SanitizeResult,
 } from "./types";
 
 export interface EngineBackend {
@@ -89,6 +89,14 @@ export class Session {
   importVector(text: string): EditorState { return this.c("importVector", { text }); }
   /** Compatibility check (drawing-rule preflight) of the page for office `profile` – a drafting aid, not a legal certification. */
   preflight(profile: string, lang: string): PreflightResult { return this.c("preflight", { text: profile, lang }); }
+  /**
+   * "Clean slides": makes the values of `ids` unrecognisable (none = every element of the page; groups expanded) –
+   * charts normalised, randomised or kept (`mode`), optionally categories renamed, texts replaced and metadata stripped.
+   * One undo step; the report names the seed used (pass it again to reproduce a randomised result).
+   */
+  sanitize(ids: string[], mode: SanitizeMode, value: SanitizeOptions, lang: string): SanitizeResult {
+    return this.c("sanitize", { ids, mode, value, lang });
+  }
   /** Sets the main text (ObjectInfo.mainText) of one object; one undo step. */
   setMainText(id: string, text: string): EditorState { return this.c("setMainText", { id, text }); }
   /** Library items that fit the first of `ids` ("Insert ▸"), at most `max`. */

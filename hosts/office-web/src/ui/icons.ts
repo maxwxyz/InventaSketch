@@ -40,6 +40,8 @@ const paths: Record<string, string> = {
   compare: "M3 5h7v14H3zM14 5h7v14h-7zM16.5 12h2M17.5 11v2",
   // Compatibility check: a sheet with a tick.
   check: "M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8.5 13.5l2.5 2.5 4.5-5",
+  // Clean slides: a broom (handle and brush head).
+  clean: "M20 3l-8.5 8.5M11.5 11.5l-2.8-0.8L4 15.4 8.6 20l4.7-4.7-0.8-2.8zM6.3 17.7l2.3-2.3",
   // Black and white: a circle, right half filled.
   mono: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 3A9 9 0 0 1 12 21Z",
   // Abstract pictograms of the engine's IconIds (same shapes as the COM add-in's IconPainter). Centre lines are drawn

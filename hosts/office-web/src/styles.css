@@ -256,6 +256,15 @@ textarea.isk-input { resize: vertical; }
 .isk-drop-row.is-active { font-weight: 600; color: var(--accent, #1f5fbf); background: color-mix(in srgb, var(--accent, #1f5fbf) 10%, transparent); }
 .isk-drop-row img { width: 22px; height: 22px; }
 
+/* Export scope before the export buttons ("Export – selection (3)" / "Export – slide"). */
+.isk-export-scope { margin: 0 2px 0 4px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+/* Clean slides: form (scope, chart handling, options, seed) and then the report in the same popover. */
+.isk-clean { width: min(360px, calc(100% - 12px)); }
+.isk-clean .isk-field { grid-template-columns: 1fr 7em; }
+.isk-clean-buttons { justify-content: flex-end; margin-top: 8px; }
+.isk-clean-lines li { padding: 2px 0; overflow-wrap: anywhere; }
+
 /* Compatibility check: findings list with a severity badge; a finding with an element is a button that selects it. */
 .isk-pc { width: min(380px, calc(100% - 12px)); }
 .isk-pc-summary { margin: 6px 0; font-weight: 600; }

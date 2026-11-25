@@ -45,6 +45,7 @@ undo step each (no step when nothing changes).
 | `importVector` | `text` (SVG or ASCII DXF) | state; editable basic shapes in one group (real size if the file has units and fits, else fitted), selected; one undo step |
 | `preflight` | `text` (profile id, default "common-safe"), `lang` | `{ profile, disclaimer, findings: [{ rule, severity, id, page, message, suggestion, source }] }` – compatibility check of the drawings |
 | `patentProfiles` | `lang` | the offices `{ id, name }` |
+| `sanitize` | `ids` (none = every element of the page), `mode` ("normalised", "randomised", "none"), `value` `{ renameCategories, replaceTexts, stripMeta, seed }`, `lang` | `{ state, report: { mode, seed, elements, changed, values, texts, metadata, references, unknown, failed, byType, summary, lines } }` – "Clean slides"; one undo step |
 | `diff` | `payload` (compact model of the earlier state, e.g. the previous slide) | `{ added, changed, removed: [{ id, x, y, w, h }] }` – variants: what differs from that state (bounds in mm, removed ones from the earlier state) |
 | `setAccent` | `text` (preset id from `accents`, #rrggbb, or "" for the original colours) | state (`accent`); accent colour of the document, every object counts as changed |
 | `accents` | `lang` | the offered accent colours `{ id, color, name }` |
@@ -118,7 +119,34 @@ the units on the slide.
 - **Compare with the previous slide** (2026-11-25, PowerPoint only): a button in the top bar marks on the selected slide
   what differs from the previous one (engine `exportCompact` of the previous slide, `diff` on the current one): added
   green, changed orange, removed dashed grey, plus a legend; shapes named `ISK_DIFF …`; clicking again removes them.
+- **Clean slides …** (2026-11-25, like the COM add-in's Review command): a button in the top bar (next to the
+  compatibility check and the comparison) opens a form: *What* – selected elements (only with a selection), current
+  slide, all slides; *Charts* – normalise (same proportions, values 0…1), randomise (plausible values, same look) or keep
+  the values; *Also* – rename categories, replace texts, remove metadata (on by default) and a random seed (empty = a new
+  one; one seed for the whole run, named in the report). The engine's `sanitize` does the work
+  (`src/ui/cleanlogic.ts` maps the form; `Session.sanitize`). Selected elements: the editor session (one undo step
+  there), the units tracked on the slide are redrawn (also with live sync off). Current slide / all slides
+  (PowerPointApi 1.5 with tags): each slide's units are read as they are now (moved or resized units are placed first,
+  `slideSession`), cleaned in a temporary session (`cleanSlide`), and only the changed units are redrawn on their slide
+  (same unit ids, so the old shapes are replaced; native units go straight to their slide, an SVG picture needs that
+  slide shown, which `writeUnits` does and then shows the previous one again). Units the editor holds take the cleaned
+  model. The report replaces the form: counts, seed, at most 12 distinct lines and the note that native PowerPoint
+  charts and tables, notes, comments and document properties are not changed. **Gaps:** Office.js has no way to make
+  the slide changes one undo step (the form says so and suggests cleaning a copy); outside PowerPoint (dev page) and in
+  the COM add-in's sidebar (where the COM add-in owns the slide and has its own command) the form offers the selection
+  and the editor page only.
+- **Export scope** (2026-11-25, maintainer requirement, as in the COM add-in): SVG, PNG and the domain data exports
+  always cover the selection – one or several elements, a group counts once – if there is one, otherwise the current
+  slide (`src/export.ts`, `resolveExportSource`). The top bar shows the scope before the export buttons ("Export –
+  selection (3)" / "Export – slide"), so do the button tooltips and the "Export data" section in Settings. Several units
+  selected on the slide are now all loaded into the editor and selected together (`SlideSync.loadSelection`), so the
+  editor selection is the slide's selection. Without a selection the current slide's units are read into a temporary
+  session (as they are on the slide now) and exported as the whole slide; a slide without InventaSketch elements says
+  "Nothing to export on this slide". Outside PowerPoint and in the COM sidebar the editor page is exported ("Export –
+  page"). Files are named `inventasketch-selection.*`, `inventasketch-slide-<n>.*` or `inventasketch.*`.
 - **Rounded rectangles** take their corner radius as PowerPoint's adjustment (PowerPointApi 1.10, `adjustments.set`).
+- Clean slides, the export scope and loading several selected units are covered by unit tests with the same stand-ins
+  (`test/cleanslides.test.ts`, `test/exportscope.test.ts`, `test/multiselect.test.ts`); **not yet run in PowerPoint**.
 - The all-slides check, the comparison and the corner radius are covered by unit tests against a stand-in of the
   Office.js object model and a stand-in engine (`test/slides.test.ts`); **not yet run in PowerPoint** (needs the dev
   certificate). The tests found that the presentation mirror was never read back (tag keys come back in upper case);
