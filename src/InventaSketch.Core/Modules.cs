@@ -602,6 +602,13 @@ namespace InventaSketch.Core
         public virtual string? LineMedium(SketchObject line) => null;
 
         /// <summary>
+        /// Quick add (<see cref="Flow"/>): parameters for the connector that becomes the <paramref name="index"/>-th one leaving
+        /// <paramref name="o"/> (0 = first), set on top of the connector item's own, e.g. the "yes" and "no" exits of a decision.
+        /// Null (default) adds nothing.
+        /// </summary>
+        public virtual IReadOnlyDictionary<string, ParamValue>? ChainConnectorParams(SketchObject o, int index) => null;
+
+        /// <summary>
         /// Point objects whose corners can be inserted and removed freely (wires, pipes, roads, polylines): hosts show "+"
         /// handles on the segments (<see cref="Polylines"/>). Lines with a fixed number of points (dimensions, arrows) say no.
         /// </summary>

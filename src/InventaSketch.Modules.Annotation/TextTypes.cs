@@ -163,6 +163,15 @@ namespace InventaSketch.Modules.Annotation
             yield return Anchor.Circle(AnchorRole.Quadrant, Vec2.Zero, Math.Min(o.Size.W, o.Size.H) / 2);
         }
 
+        /// <summary>Detail views without an own letter take this marker's letter (<see cref="DetailViewType.LetterOf"/>).</summary>
+        public override bool DependsOnNeighbours => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+        {
+            var page = ctx.Doc.Pages.FirstOrDefault(pg => pg.Order.Contains(o.Id));
+            return page is null ? Enumerable.Empty<string>() : ctx.Doc.ObjectsOn(page).Where(x => x.Type == "ann.detail.view").Select(x => x.Id).ToList();
+        }
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             yield return Ann.Toggle(o, "ann.detail.dashdot", new I18nText("Dash-dot circle", "Strichpunkt-Kreis"), "dashdot", "dashdot", false);

@@ -10,27 +10,43 @@ namespace InventaSketch.Modules.Annotation
     {
         public LineType() : base("ann.line", new I18nText("Line", "Linie"), AnnCategories.Lines, "line", "linie", "strich") { }
 
-        public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.None).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.None).Concat(AnnConnectors.BusParams()).ToList();
 
         /// <summary>Drawn on with corners, a line becomes a polyline.</summary>
         public override string? CornerType => "ann.polyline";
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
-            => new Primitive[] { new LinePrim(p[0], p[p.Count - 1], Style.Visible with { ArrowStart = Ann.Head(o, "headStart", ArrowHead.None), ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.None), ArrowSize = Ann.HeadSize(o) }) { Tag = AnnTags.Main } };
+            => new Primitive[] { new LinePrim(p[0], p[p.Count - 1], Style.Visible with { ArrowStart = Ann.Head(o, "headStart", ArrowHead.None), ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.None), ArrowSize = Ann.HeadSize(o) }) { Tag = AnnTags.Main } }
+                .Concat(AnnConnectors.BusMark(o, new[] { p[0], p[p.Count - 1] })).ToList();
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None);
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None).Append(AnnConnectors.BusAction(o));
     }
 
-    /// <summary>Open or closed polyline through all points.</summary>
-    public sealed class PolylineType : AnnPointType
+    /// <summary>
+    /// Open or closed polyline through all points. An open polyline with an arrowhead or a docked end is a connector: it
+    /// hops over earlier connectors it crosses (parameter <c>hops</c>), its segments are rails other connector ends dock
+    /// on (with a junction dot), and it may carry a bus mark. Plain polylines (drawings, imported vector graphics) stay plain.
+    /// </summary>
+    public sealed class PolylineType : AnnPointType, IAnnConnector
     {
         public PolylineType() : base("ann.polyline", new I18nText("Polyline", "Polylinie"), AnnCategories.Lines, "polyline", "linienzug") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 8), new Vec2(-5, -8), new Vec2(5, 8), new Vec2(15, -8) };
         public override bool InsertablePoints => true;
         public override bool IsClosed(SketchObject o) => o.Flag("closed", false) && o.Points is { Count: > 2 };
+        public override bool DependsOnNeighbours => true;
 
-        public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.None).Append(P.Bool("closed", "Closed", "Geschlossen", false)).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.None)
+            .Append(P.Bool("closed", "Closed", "Geschlossen", false)).Append(AnnConnectors.HopsParam(true)).Concat(AnnConnectors.BusParams()).ToList();
+
+        /// <summary>True for an open polyline with an arrowhead or a docked end (a connector line).</summary>
+        public static bool IsConnector(SketchObject o)
+            => !(o.Flag("closed", false) && o.Points is { Count: > 2 })
+               && (Ann.Head(o, "headStart", ArrowHead.None) != ArrowHead.None || Ann.Head(o, "headEnd", ArrowHead.None) != ArrowHead.None
+                   || (o.Attach is { } a && a.Count > 0 && (a[0] is not null || a[a.Count - 1] is not null)));
+
+        public IReadOnlyList<Vec2>? ConnectorPath(SketchObject o, RenderContext ctx)
+            => IsConnector(o) ? ctx.Doc.ResolvePoints(o) : null;
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {
@@ -41,11 +57,30 @@ namespace InventaSketch.Modules.Annotation
                 ArrowEnd = closed ? null : Ann.Head(o, "headEnd", ArrowHead.None),
                 ArrowSize = Ann.HeadSize(o),
             };
-            return new Primitive[] { Prim.Polyline(p, style, closed) with { Tag = AnnTags.Main } };
+            if (closed) return new Primitive[] { Prim.Polyline(p, style, true) with { Tag = AnnTags.Main } };
+            var hops = IsConnector(o) ? AnnConnectors.Hops(o, p, ctx, this, true) : new List<Crossing>();
+            var list = new List<Primitive> { AnnConnectors.MainPath(p, hops, style) };
+            list.AddRange(AnnConnectors.BranchDots(o, p));
+            list.AddRange(AnnConnectors.BusMark(o, p));
+            return list;
         }
 
+        /// <summary>Connector polylines are rails: other connector ends and junction dots dock anywhere on them.</summary>
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            foreach (var a in base.Anchors(o, ctx)) yield return a;
+            if (!o.Flag("closed", false)) foreach (var r in AnnConnectors.Rails(ctx.Doc.ResolvePoints(o))) yield return r;
+        }
+
+        /// <summary>Connectors crossing this one (their hops depend on where it runs).</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+            => ConnectorPath(o, ctx) is { Count: >= 2 } p ? AnnConnectors.Find(o, p, ctx, this).Select(c => c.Other).Distinct().ToList() : Enumerable.Empty<string>();
+
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
-            => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None).Append(Ann.Toggle(o, "ann.closed", new I18nText("Closed", "Geschlossen"), "polygon", "closed", false));
+            => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.None)
+                .Append(Ann.Toggle(o, "ann.closed", new I18nText("Closed", "Geschlossen"), "polygon", "closed", false))
+                .Append(AnnConnectors.HopsAction(o, true))
+                .Append(AnnConnectors.BusAction(o));
     }
 
     /// <summary>Straight arrow; head style per end is configurable (single or double arrow).</summary>
@@ -61,7 +96,7 @@ namespace InventaSketch.Modules.Annotation
             _start = doubleHeaded ? ArrowHead.Triangle : ArrowHead.None;
         }
 
-        public override IReadOnlyList<ParamDef> Parameters => P.Heads(_start, ArrowHead.Triangle).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => P.Heads(_start, ArrowHead.Triangle).Concat(AnnConnectors.BusParams()).ToList();
 
         /// <summary>Drawn on with corners, an arrow becomes a polyline with the same heads.</summary>
         public override string? CornerType => "ann.polyline";
@@ -76,9 +111,9 @@ namespace InventaSketch.Modules.Annotation
                     ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.Triangle),
                     ArrowSize = Ann.HeadSize(o),
                 }) { Tag = AnnTags.Main },
-            };
+            }.Concat(AnnConnectors.BusMark(o, new[] { p[0], p[p.Count - 1] })).ToList();
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, _start, ArrowHead.Triangle);
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, _start, ArrowHead.Triangle).Append(AnnConnectors.BusAction(o));
     }
 
     /// <summary>Curved arrow through three points (start, through-point, end) as a quadratic curve.</summary>
@@ -107,8 +142,12 @@ namespace InventaSketch.Modules.Annotation
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Ann.ArrowActions(o, ArrowHead.None, ArrowHead.Triangle);
     }
 
-    /// <summary>Orthogonal elbow connector routed automatically with one or two bends.</summary>
-    public sealed class ElbowArrowType : AnnPointType
+    /// <summary>
+    /// Orthogonal elbow connector routed automatically with one or two bends. It hops over earlier connectors it crosses
+    /// (parameter <c>hops</c>), its segments are rails (another connector docked onto it gets a junction dot), and a
+    /// decision exit label ("yes"/"no", parameter <c>exit</c>) is written in the language of the drawing.
+    /// </summary>
+    public sealed class ElbowArrowType : AnnPointType, IAnnConnector
     {
         public ElbowArrowType() : base("ann.arrow.elbow", new I18nText("Elbow connector", "Winkelverbinder"), AnnCategories.Lines, "elbow", "connector", "orthogonal", "verbinder", "winkel") { }
 
@@ -116,6 +155,7 @@ namespace InventaSketch.Modules.Annotation
 
         /// <summary>A label at the start ("yes"/"no" of a decision exit), edited like any element text.</summary>
         public override bool HasText => true;
+        public override bool DependsOnNeighbours => true;
 
         public override IReadOnlyList<ParamDef> Parameters => P.Heads(ArrowHead.None, ArrowHead.Triangle).Concat(new[]
         {
@@ -124,7 +164,37 @@ namespace InventaSketch.Modules.Annotation
                 ("vhv", "Vertical-horizontal-vertical", "Senkrecht-waagerecht-senkrecht")),
             P.Num("clearance", "Clearance beside the boxes", "Abstand neben den Kästen", 8, 1, 100, "mm", 1, advanced: true),
             P.TextSize(Ann.TextSize * 0.8),
-        }).ToList();
+            P.Text("exit", "Exit label (yes/no translated)", "Ausgangsbeschriftung (ja/nein übersetzt)", null),
+            AnnConnectors.HopsParam(true),
+        }).Concat(AnnConnectors.BusParams()).ToList();
+
+        /// <summary>The label of an exit: "yes"/"no" in the drawing language, any other value as written.</summary>
+        public static string ExitText(string exit, Lang lang) => exit.Trim().ToLowerInvariant() switch
+        {
+            "yes" or "ja" => lang == Lang.De ? "ja" : "yes",
+            "no" or "nein" => lang == Lang.De ? "nein" : "no",
+            _ => exit.Trim(),
+        };
+
+        /// <summary>The label drawn at the start: the element text, else the translated exit label.</summary>
+        public static string LabelOf(SketchObject o, Lang lang) => !string.IsNullOrWhiteSpace(o.Text) ? o.Text! : ExitText(o.Str("exit", ""), lang);
+
+        /// <summary>The drawn route of an elbow-routed line through its resolved points (side-aware when both ends are docked).</summary>
+        public static List<Vec2> PathOf(SketchObject o, IReadOnlyList<Vec2> p)
+        {
+            var a = p[0]; var b = p[p.Count - 1];
+            var route = o.Str("route", "auto");
+            var sa = ExitSide(o, 0); var sb = ExitSide(o, p.Count - 1);
+            return route == "auto" && sa is Vec2 da && sb is Vec2 db
+                ? RouteSides(a, da, b, db, o.Num("clearance", 8))
+                : Route(a, b, route, ExitHorizontal(o, 0), ExitHorizontal(o, p.Count - 1));
+        }
+
+        public IReadOnlyList<Vec2>? ConnectorPath(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            return p.Count < 2 ? null : PathOf(o, p);
+        }
 
         /// <summary>
         /// Route between two docked ends that leave their boxes on known sides (<paramref name="da"/>, <paramref name="db"/>:
@@ -190,9 +260,10 @@ namespace InventaSketch.Modules.Annotation
         }
 
         /// <summary>Outward direction of a docked end from its box side (u, v = ±0.5), or null if not on a side.</summary>
-        private static Vec2? ExitSide(SketchObject o, int index)
+        internal static Vec2? ExitSide(SketchObject o, int index)
         {
             var a = o.Attach is not null && index < o.Attach.Count ? o.Attach[index] : null;
+            if (a?.AnchorId is { } rid && rid.StartsWith("rail", StringComparison.Ordinal)) return null; // docked on a line, not a box side
             if (a is null) return null;
             if (Math.Abs(Math.Abs(a.U) - 0.5) < 1e-6 && Math.Abs(a.V) < 0.5 - 1e-6) return new Vec2(Math.Sign(a.U), 0);
             if (Math.Abs(Math.Abs(a.V) - 0.5) < 1e-6 && Math.Abs(a.U) < 0.5 - 1e-6) return new Vec2(0, Math.Sign(a.V));
@@ -219,9 +290,10 @@ namespace InventaSketch.Modules.Annotation
             };
         }
 
-        private static bool? ExitHorizontal(SketchObject o, int index)
+        internal static bool? ExitHorizontal(SketchObject o, int index)
         {
             var a = o.Attach is not null && index < o.Attach.Count ? o.Attach[index] : null;
+            if (a?.AnchorId is { } rid && rid.StartsWith("rail", StringComparison.Ordinal)) return null;
             if (a is null) return null;
             if (Math.Abs(Math.Abs(a.U) - 0.5) < 1e-6 && Math.Abs(a.V) < 0.5 - 1e-6) return true;
             if (Math.Abs(Math.Abs(a.V) - 0.5) < 1e-6) return false;
@@ -230,16 +302,12 @@ namespace InventaSketch.Modules.Annotation
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {
-            var a = p[0]; var b = p[p.Count - 1];
-            var route = o.Str("route", "auto");
             // Both ends docked on box sides (flowcharts): side-aware routing that never runs back through a box edge.
-            var sa = ExitSide(o, 0); var sb = ExitSide(o, p.Count - 1);
-            var pts = route == "auto" && sa is Vec2 da && sb is Vec2 db
-                ? RouteSides(a, da, b, db, o.Num("clearance", 8))
-                : Route(a, b, route, ExitHorizontal(o, 0), ExitHorizontal(o, p.Count - 1));
+            var pts = PathOf(o, p);
             var style = Style.ThinLine with { StrokeWidth = 0.35, ArrowStart = Ann.Head(o, "headStart", ArrowHead.None), ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.Triangle), ArrowSize = Ann.HeadSize(o) };
-            var list = new List<Primitive> { Prim.Polyline(pts, style) with { Tag = AnnTags.Main } };
-            if (!string.IsNullOrWhiteSpace(o.Text) && pts.Count >= 2)
+            var list = new List<Primitive> { AnnConnectors.MainPath(pts, AnnConnectors.Hops(o, pts, ctx, this, true), style) };
+            var label = LabelOf(o, ctx.Lang);
+            if (!string.IsNullOrWhiteSpace(label) && pts.Count >= 2)
             {
                 // Label beside the first run, just after the start ("ja" right of a line leaving downwards, "nein" above a
                 // line leaving sideways).
@@ -250,11 +318,24 @@ namespace InventaSketch.Modules.Annotation
                 var at = pts[0] + dir * Math.Min(len * 0.5, size * 1.4);
                 var vertical = Math.Abs(dir.Y) > Math.Abs(dir.X);
                 list.Add(vertical
-                    ? Ann.Text(at + new Vec2(size * 0.45, 0), o.Text!, size, "label", TextAnchor.Start)
-                    : Ann.Text(at + new Vec2(0, -size * 0.75), o.Text!, size, "label", dir.X >= 0 ? TextAnchor.Start : TextAnchor.End));
+                    ? Ann.Text(at + new Vec2(size * 0.45, 0), label, size, "label", TextAnchor.Start)
+                    : Ann.Text(at + new Vec2(0, -size * 0.75), label, size, "label", dir.X >= 0 ? TextAnchor.Start : TextAnchor.End));
             }
+            list.AddRange(AnnConnectors.BranchDots(o, p));
+            list.AddRange(AnnConnectors.BusMark(o, pts));
             return list;
         }
+
+        /// <summary>The routed path is a rail: other connector ends and junction dots dock anywhere on it (T junctions).</summary>
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            foreach (var a in base.Anchors(o, ctx)) yield return a;
+            if (ConnectorPath(o, ctx) is { } path) foreach (var r in AnnConnectors.Rails(path)) yield return r;
+        }
+
+        /// <summary>Connectors crossing this one (their hops depend on where it runs).</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+            => ConnectorPath(o, ctx) is { Count: >= 2 } p ? AnnConnectors.Find(o, p, ctx, this).Select(c => c.Other).Distinct().ToList() : Enumerable.Empty<string>();
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
@@ -262,6 +343,8 @@ namespace InventaSketch.Modules.Annotation
             yield return Ann.SetChoice(o, "ann.route.auto", new I18nText("Automatic routing", "Automatische Führung"), "route-auto", "route", "auto", "auto", "route");
             yield return Ann.SetChoice(o, "ann.route.hvh", new I18nText("Route horizontal first", "Erst waagerecht führen"), "route-hvh", "route", "hvh", "auto", "route");
             yield return Ann.SetChoice(o, "ann.route.vhv", new I18nText("Route vertical first", "Erst senkrecht führen"), "route-vhv", "route", "vhv", "auto", "route");
+            yield return AnnConnectors.HopsAction(o, true);
+            yield return AnnConnectors.BusAction(o);
         }
     }
 

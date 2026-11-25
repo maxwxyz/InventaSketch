@@ -1,16 +1,38 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Annotation
 {
-    /// <summary>Flowchart symbol shapes (conventions of ISO 5807; drawn independently).</summary>
-    public enum FlowShape { Process, Decision, Terminator, Data, Document, Connector, End }
+    /// <summary>
+    /// Flowchart symbol shapes (conventions of ISO 5807; drawn independently). Members are persisted through the type ids
+    /// (<c>ann.flow.&lt;shape&gt;</c>); new members are appended at the end.
+    /// </summary>
+    public enum FlowShape
+    {
+        Process, Decision, Terminator, Data, Document, Connector, End,
+        /// <summary>Predefined process (sub-process): rectangle with two inner vertical lines.</summary>
+        Predefined,
+        /// <summary>Off-page connector: pentagon pointing down with a letter.</summary>
+        OffPage,
+        /// <summary>Loop limit: rectangle with chamfered top corners (begin) or bottom corners (end, parameter <c>edge</c>).</summary>
+        Loop,
+        /// <summary>Preparation: hexagon.</summary>
+        Preparation,
+        /// <summary>Manual operation: trapezoid, wide side up.</summary>
+        Manual,
+        /// <summary>Stored data / database: upright cylinder.</summary>
+        Database,
+        /// <summary>Delay: "D" shape.</summary>
+        Delay,
+    }
 
     /// <summary>
     /// Flowchart box with text and an optional step number ("S100") written outside the upper-right corner,
-    /// the usual layout of patent method flowcharts (practice, see EP GL A-IX 8).
+    /// the usual layout of patent method flowcharts (practice, see EP GL A-IX 8). An optional step (parameter
+    /// <c>optional</c>) is drawn with a dashed outline.
     /// </summary>
     public sealed class FlowBoxType : AnnBoxType
     {
@@ -18,6 +40,27 @@ namespace InventaSketch.Modules.Annotation
 
         /// <summary>Flowchart steps chain with an elbow connector (quick add, <see cref="Flow"/>).</summary>
         public override string? ChainConnector(SketchObject o) => "ann.arrow.elbow";
+
+        /// <summary>
+        /// Exits of a decision: the first connector added with "+" is labelled "yes", the second "no" (written in the language
+        /// the drawing is rendered in), or the labels of the parameter <c>exitLabels</c> ("&lt;|=|&gt;").
+        /// </summary>
+        public override IReadOnlyDictionary<string, ParamValue>? ChainConnectorParams(SketchObject o, int index)
+        {
+            if (_shape != FlowShape.Decision) return null;
+            var labels = ExitLabels(o);
+            return index >= 0 && index < labels.Count && labels[index].Length > 0
+                ? new Dictionary<string, ParamValue> { ["exit"] = labels[index] }
+                : null;
+        }
+
+        /// <summary>Exit labels of a decision in quick-add order ("yes", "no" unless <c>exitLabels</c> gives others).</summary>
+        public static IReadOnlyList<string> ExitLabels(SketchObject o)
+        {
+            var raw = o.Str("exitLabels", "");
+            if (string.IsNullOrWhiteSpace(raw)) return new[] { "yes", "no" };
+            return raw.Split(new[] { '|', ';', '\n' }, StringSplitOptions.None).Select(s => s.Trim()).ToList();
+        }
 
         public FlowBoxType(FlowShape shape)
             : base("ann.flow." + shape.ToString().ToLowerInvariant(), Names(shape), AnnCategories.Flowchart, Keys(shape))
@@ -33,6 +76,13 @@ namespace InventaSketch.Modules.Annotation
             FlowShape.Document => new I18nText("Document", "Dokument"),
             FlowShape.Connector => new I18nText("Connector", "Verbindungsstelle"),
             FlowShape.End => new I18nText("End (double circle)", "Ende (Doppelkreis)"),
+            FlowShape.Predefined => new I18nText("Predefined process (sub-process)", "Vordefinierter Prozess (Unterprogramm)"),
+            FlowShape.OffPage => new I18nText("Off-page connector", "Seitenverbinder"),
+            FlowShape.Loop => new I18nText("Loop begin (loop limit)", "Schleifenanfang (Schleifenbegrenzung)"),
+            FlowShape.Preparation => new I18nText("Preparation (hexagon)", "Vorbereitung (Sechseck)"),
+            FlowShape.Manual => new I18nText("Manual operation", "Manuelle Verarbeitung"),
+            FlowShape.Database => new I18nText("Stored data (cylinder)", "Datenspeicher (Zylinder)"),
+            FlowShape.Delay => new I18nText("Delay", "Verzögerung (Wartezeit)"),
             _ => new I18nText("Process step", "Verarbeitungsschritt"),
         };
 
@@ -44,6 +94,13 @@ namespace InventaSketch.Modules.Annotation
             FlowShape.Document => new[] { "document", "dokument" },
             FlowShape.Connector => new[] { "connector", "verbindung", "circle", "kreis" },
             FlowShape.End => new[] { "end", "ende", "stop", "final", "double circle", "doppelkreis", "bullseye" },
+            FlowShape.Predefined => new[] { "predefined", "sub-process", "subprocess", "subroutine", "unterprogramm", "teilprozess", "vordefiniert" },
+            FlowShape.OffPage => new[] { "off-page", "offpage", "page connector", "seitenverbinder", "übergang", "fortsetzung", "pentagon" },
+            FlowShape.Loop => new[] { "loop", "schleife", "loop limit", "schleifenbegrenzung", "repeat", "wiederholung", "for", "while" },
+            FlowShape.Preparation => new[] { "preparation", "vorbereitung", "hexagon", "sechseck", "initialisation", "initialisierung" },
+            FlowShape.Manual => new[] { "manual", "manuell", "hand", "trapezoid", "trapez", "operator" },
+            FlowShape.Database => new[] { "database", "datenbank", "storage", "speicher", "cylinder", "zylinder", "stored data" },
+            FlowShape.Delay => new[] { "delay", "verzögerung", "wait", "warten", "wartezeit", "timer" },
             _ => new[] { "process", "step", "schritt", "box", "rechteck" },
         }).ToArray();
 
@@ -55,23 +112,59 @@ namespace InventaSketch.Modules.Annotation
             FlowShape.Terminator => new Size2(44, 14),
             FlowShape.Connector => new Size2(10, 10),
             FlowShape.End => new Size2(9, 9),
+            FlowShape.OffPage => new Size2(12, 12),
+            FlowShape.Database => new Size2(36, 24),
+            FlowShape.Delay => new Size2(40, 18),
             _ => new Size2(50, 18),
         };
 
         public override bool HasText => _shape != FlowShape.End;
-        public override bool PreferUniformScale => _shape is FlowShape.Connector or FlowShape.End;
+        public override bool PreferUniformScale => _shape is FlowShape.Connector or FlowShape.End or FlowShape.OffPage;
 
-        public override IReadOnlyList<ParamDef> Parameters => new[]
+        private bool SmallText => _shape is FlowShape.Connector or FlowShape.OffPage;
+
+        public override IReadOnlyList<ParamDef> Parameters
         {
-            P.Text("step", "Step number", "Schrittnummer", null),
-            P.TextSize(_shape == FlowShape.Connector ? 4.5 : Ann.TextSize),
-        };
+            get
+            {
+                var list = new List<ParamDef>
+                {
+                    P.Text("step", "Step number", "Schrittnummer", null),
+                    P.TextSize(SmallText ? 4.5 : Ann.TextSize),
+                    P.Bool("optional", "Optional step (dashed)", "Optionaler Schritt (gestrichelt)", false),
+                };
+                if (_shape == FlowShape.Loop)
+                    list.Add(P.Choice("edge", "Loop limit", "Schleifenbegrenzung", "begin", ("begin", "Begin (top corners cut)", "Anfang (oben abgeschrägt)"), ("end", "End (bottom corners cut)", "Ende (unten abgeschrägt)")));
+                if (_shape == FlowShape.Decision)
+                    list.Add(P.Text("exitLabels", "Exit labels (a|b|c)", "Ausgangsbeschriftungen (a|b|c)", null));
+                return list;
+            }
+        }
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+        {
+            yield return Ann.Toggle(o, "ann.flow.optional", new I18nText("Optional step (dashed)", "Optionaler Schritt (gestrichelt)"), IconIds.LineDash, "optional", false, "flow");
+            if (_shape == FlowShape.Loop)
+            {
+                yield return Ann.SetChoice(o, "ann.flow.loop.begin", new I18nText("Loop begin", "Schleifenanfang"), "loop-begin", "edge", "begin", "begin", "edge");
+                yield return Ann.SetChoice(o, "ann.flow.loop.end", new I18nText("Loop end", "Schleifenende"), "loop-end", "edge", "end", "begin", "edge");
+            }
+        }
+
+        private static double PredefinedInset(double w, double h) => Math.Max(1, Math.Min(Math.Min(w * 0.08, 5), h * 0.4));
+        private static double OffPageTip(double h) => h * 0.35;
+        private static double LoopChamfer(double w, double h) => Math.Min(h * 0.35, w * 0.2);
+        private static double PreparationInset(double w, double h) => Math.Min(w * 0.15, h * 0.5);
+        private static double ManualInset(double w, double h) => Math.Min(w * 0.15, h * 0.6);
+        private static double CylinderCap(double w, double h) => Math.Min(h * 0.13, w * 0.25);
+        private static double DelayRadius(double w, double h) => Math.Min(h / 2, w / 2);
 
         /// <summary>Outline of the symbol in local coordinates.</summary>
         public Primitive Outline(SketchObject o)
         {
             double w = o.Size.W, h = o.Size.H, hw = w / 2, hh = h / 2;
             var s = Style.Visible with { StrokeWidth = 0.35, Fill = Fill.Solid("#ffffff") };
+            if (o.Flag("optional", false)) s = s with { Dash = DashStyle.Dash };
             switch (_shape)
             {
                 case FlowShape.Decision:
@@ -99,12 +192,84 @@ namespace InventaSketch.Modules.Annotation
                 case FlowShape.End:
                     // Outer and inner circle (end of the method), both outlined.
                     return new GroupPrim(new Primitive[] { Prim.Ellipse(0, 0, hw, hh, s), Prim.Ellipse(0, 0, hw * 0.62, hh * 0.62, s with { Fill = null }) });
+                case FlowShape.Predefined:
+                    {
+                        var k = PredefinedInset(w, h);
+                        var inner = s with { Fill = null };
+                        return new GroupPrim(new Primitive[]
+                        {
+                            Prim.Polygon(new[] { new Vec2(-hw, -hh), new Vec2(hw, -hh), new Vec2(hw, hh), new Vec2(-hw, hh) }, s),
+                            Prim.Line(-hw + k, -hh, -hw + k, hh, inner), Prim.Line(hw - k, -hh, hw - k, hh, inner),
+                        });
+                    }
+                case FlowShape.OffPage:
+                    {
+                        var t = OffPageTip(h);
+                        return Prim.Polygon(new[] { new Vec2(-hw, -hh), new Vec2(hw, -hh), new Vec2(hw, hh - t), new Vec2(0, hh), new Vec2(-hw, hh - t) }, s);
+                    }
+                case FlowShape.Loop:
+                    {
+                        var c = LoopChamfer(w, h);
+                        var end = o.Str("edge", "begin") == "end";
+                        var pts = end
+                            ? new[] { new Vec2(-hw, -hh), new Vec2(hw, -hh), new Vec2(hw, hh - c), new Vec2(hw - c, hh), new Vec2(-hw + c, hh), new Vec2(-hw, hh - c) }
+                            : new[] { new Vec2(-hw + c, -hh), new Vec2(hw - c, -hh), new Vec2(hw, -hh + c), new Vec2(hw, hh), new Vec2(-hw, hh), new Vec2(-hw, -hh + c) };
+                        return Prim.Polygon(pts, s);
+                    }
+                case FlowShape.Preparation:
+                    {
+                        var k = PreparationInset(w, h);
+                        return Prim.Polygon(new[] { new Vec2(-hw, 0), new Vec2(-hw + k, -hh), new Vec2(hw - k, -hh), new Vec2(hw, 0), new Vec2(hw - k, hh), new Vec2(-hw + k, hh) }, s);
+                    }
+                case FlowShape.Manual:
+                    {
+                        var k = ManualInset(w, h);
+                        return Prim.Polygon(new[] { new Vec2(-hw, -hh), new Vec2(hw, -hh), new Vec2(hw - k, hh), new Vec2(-hw + k, hh) }, s);
+                    }
+                case FlowShape.Database:
+                    {
+                        // Body (top half of the upper ellipse, sides, lower half of the bottom ellipse) as one closed path, plus
+                        // the front half of the upper ellipse as an open line.
+                        var ry = CylinderCap(w, h);
+                        const double k = 0.5522847498307936;
+                        double top = -hh + ry, bottom = hh - ry;
+                        var body = new PathPrim(new[]
+                        {
+                            PathSeg.Move(new Vec2(-hw, top)),
+                            PathSeg.Cubic(new Vec2(-hw, top - ry * k), new Vec2(-hw * k, -hh), new Vec2(0, -hh)),
+                            PathSeg.Cubic(new Vec2(hw * k, -hh), new Vec2(hw, top - ry * k), new Vec2(hw, top)),
+                            PathSeg.Line(new Vec2(hw, bottom)),
+                            PathSeg.Cubic(new Vec2(hw, bottom + ry * k), new Vec2(hw * k, hh), new Vec2(0, hh)),
+                            PathSeg.Cubic(new Vec2(-hw * k, hh), new Vec2(-hw, bottom + ry * k), new Vec2(-hw, bottom)),
+                            PathSeg.Close,
+                        }, s);
+                        var front = new PathPrim(new[]
+                        {
+                            PathSeg.Move(new Vec2(-hw, top)),
+                            PathSeg.Cubic(new Vec2(-hw, top + ry * k), new Vec2(-hw * k, top + ry), new Vec2(0, top + ry)),
+                            PathSeg.Cubic(new Vec2(hw * k, top + ry), new Vec2(hw, top + ry * k), new Vec2(hw, top)),
+                        }, s with { Fill = null });
+                        return new GroupPrim(new Primitive[] { body, front });
+                    }
+                case FlowShape.Delay:
+                    {
+                        var r = DelayRadius(w, h);
+                        const double k = 0.5522847498307936;
+                        var cx = hw - r;
+                        return new PathPrim(new[]
+                        {
+                            PathSeg.Move(new Vec2(-hw, -hh)), PathSeg.Line(new Vec2(cx, -hh)),
+                            PathSeg.Cubic(new Vec2(cx + r * k, -hh), new Vec2(hw, -hh * k), new Vec2(hw, 0)),
+                            PathSeg.Cubic(new Vec2(hw, hh * k), new Vec2(cx + r * k, hh), new Vec2(cx, hh)),
+                            PathSeg.Line(new Vec2(-hw, hh)), PathSeg.Close,
+                        }, s);
+                    }
                 default:
                     return Prim.Rect(-hw, -hh, w, h, s);
             }
         }
 
-        /// <summary>Width and height available for the text inside the symbol.</summary>
+        /// <summary>Width and height available for the text inside the symbol (a rectangle centred at <see cref="TextCenter"/>).</summary>
         public (double W, double H) TextArea(SketchObject o)
         {
             double w = o.Size.W, h = o.Size.H;
@@ -115,7 +280,29 @@ namespace InventaSketch.Modules.Annotation
                 FlowShape.Data => (w * 0.72, h * 0.8),
                 FlowShape.Connector => (w * 0.74, h * 0.74),
                 FlowShape.Document => (w * 0.9, h * 0.7),
+                FlowShape.Predefined => (Math.Max(1, (w - 2 * PredefinedInset(w, h)) * 0.9), h * 0.84),
+                FlowShape.OffPage => (w * 0.8, (h - OffPageTip(h)) * 0.9),
+                FlowShape.Loop => (Math.Max(1, (w - 2 * LoopChamfer(w, h) * 0.6) * 0.92), (h - LoopChamfer(w, h) * 0.5) * 0.84),
+                FlowShape.Preparation => (Math.Max(1, (w - 1.8 * PreparationInset(w, h)) * 0.94), h * 0.8),
+                FlowShape.Manual => (Math.Max(1, (w - 2 * ManualInset(w, h)) * 0.94), h * 0.8),
+                FlowShape.Database => (w * 0.9, Math.Max(1, (h - 3 * CylinderCap(w, h)) * 0.9)),
+                FlowShape.Delay => (Math.Max(1, (w - 0.6 * DelayRadius(w, h)) * 0.88), h * 0.7),
                 _ => (w * 0.92, h * 0.84),
+            };
+        }
+
+        /// <summary>Centre of the text area in local coordinates.</summary>
+        public Vec2 TextCenter(SketchObject o)
+        {
+            double w = o.Size.W, h = o.Size.H;
+            return _shape switch
+            {
+                FlowShape.Document => new Vec2(0, -h * 0.06),
+                FlowShape.OffPage => new Vec2(0, -OffPageTip(h) / 2),
+                FlowShape.Loop => new Vec2(0, (o.Str("edge", "begin") == "end" ? -1 : 1) * LoopChamfer(w, h) * 0.25),
+                FlowShape.Database => new Vec2(0, CylinderCap(w, h) * 0.5),
+                FlowShape.Delay => new Vec2(-DelayRadius(w, h) * 0.3, 0),
+                _ => Vec2.Zero,
             };
         }
 
@@ -123,19 +310,87 @@ namespace InventaSketch.Modules.Annotation
         {
             var list = new List<Primitive> { Outline(o) with { Tag = AnnTags.Main } };
             var text = o.Text ?? "";
-            var size = TextSizeOf(o, _shape == FlowShape.Connector ? 4.5 : Ann.TextSize);
-            var cy = _shape == FlowShape.Document ? -o.Size.H * 0.06 : 0;
+            var size = TextSizeOf(o, SmallText ? 4.5 : Ann.TextSize);
             if (!string.IsNullOrEmpty(text) && _shape != FlowShape.End)
             {
                 // Wrapped and reduced to fit the inside of the symbol (diamond and circle: the inscribed area).
                 var (w, h) = TextArea(o);
                 var (fitted, fs) = Ann.Fit(text, size, w, h);
-                list.Add(Ann.Text(new Vec2(0, cy), fitted, fs));
+                list.Add(Ann.Text(TextCenter(o), fitted, fs));
             }
             var step = o.Str("step", "");
             if (!string.IsNullOrEmpty(step))
                 list.Add(Ann.Text(new Vec2(o.Size.W / 2 + 1.5, -o.Size.H / 2 - size * 0.45), step, size, AnnTags.Numeral, TextAnchor.Start));
             return list;
+        }
+    }
+
+    /// <summary>
+    /// Parallel mode (fork / join): a filled bar or the two parallel lines of ISO 5807 across several flow lines. Its long
+    /// sides carry 2–6 evenly spaced ports each; wider than high it lies horizontally (ports on top and bottom), else it
+    /// stands (ports left and right). Chains with the elbow connector.
+    /// </summary>
+    public sealed class FlowParallelType : AnnBoxType
+    {
+        public FlowParallelType() : base("ann.flow.parallel", new I18nText("Parallel mode (fork / join)", "Parallelbetrieb (Aufteilung / Zusammenführung)"), AnnCategories.Flowchart,
+            "parallel", "fork", "join", "synchronisation", "synchronization", "parallelbetrieb", "gabelung", "zusammenführung", "aufteilung", "flowchart", "flussdiagramm", "ablaufdiagramm")
+        { }
+
+        public override Size2 DefaultSize => new(60, 3);
+        protected override bool EdgePorts => false;
+        public override string? ChainConnector(SketchObject o) => "ann.arrow.elbow";
+
+        public override IReadOnlyList<ParamDef> Parameters => new[]
+        {
+            P.Choice("style", "Style", "Darstellung", "bar", ("bar", "Filled bar", "Gefüllter Balken"), ("doubleline", "Two parallel lines (ISO 5807)", "Zwei parallele Linien (ISO 5807)")),
+            P.Int("ports", "Ports per side", "Anschlüsse je Seite", 3, 2, 6),
+        };
+
+        public static bool Horizontal(SketchObject o) => o.Size.W >= o.Size.H;
+
+        public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
+        {
+            double w = o.Size.W, h = o.Size.H, hw = w / 2, hh = h / 2;
+            if (o.Str("style", "bar") == "doubleline")
+            {
+                var s = Style.Visible with { StrokeWidth = 0.35 };
+                return Horizontal(o)
+                    ? new Primitive[] { Prim.Line(-hw, -hh, hw, -hh, s) with { Tag = AnnTags.Main }, Prim.Line(-hw, hh, hw, hh, s) with { Tag = AnnTags.Main } }
+                    : new Primitive[] { Prim.Line(-hw, -hh, -hw, hh, s) with { Tag = AnnTags.Main }, Prim.Line(hw, -hh, hw, hh, s) with { Tag = AnnTags.Main } };
+            }
+            return new Primitive[] { Prim.Rect(-hw, -hh, w, h, Style.Visible with { StrokeWidth = 0.25, Fill = Fill.Solid("#000000") }) with { Tag = AnnTags.Main } };
+        }
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            double hw = o.Size.W / 2, hh = o.Size.H / 2;
+            var n = Math.Max(2, Math.Min(6, o.Int("ports", 3)));
+            var horizontal = Horizontal(o);
+            for (var i = 0; i < n; i++)
+            {
+                var f = (i + 0.5) / n - 0.5;
+                var k = i.ToString(CultureInfo.InvariantCulture);
+                if (horizontal)
+                {
+                    yield return Anchor.Point(AnchorRole.Port, new Vec2(f * 2 * hw, -hh), "top" + k);
+                    yield return Anchor.Point(AnchorRole.Port, new Vec2(f * 2 * hw, hh), "bottom" + k);
+                }
+                else
+                {
+                    yield return Anchor.Point(AnchorRole.Port, new Vec2(-hw, f * 2 * hh), "left" + k);
+                    yield return Anchor.Point(AnchorRole.Port, new Vec2(hw, f * 2 * hh), "right" + k);
+                }
+            }
+        }
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+        {
+            yield return Ann.SetChoice(o, "ann.parallel.bar", new I18nText("Filled bar", "Gefüllter Balken"), "bar", "style", "bar", "bar", "style");
+            yield return Ann.SetChoice(o, "ann.parallel.doubleline", new I18nText("Two parallel lines", "Zwei parallele Linien"), "doubleline", "style", "doubleline", "bar", "style");
+            yield return new ContextAction("ann.parallel.more", new I18nText("One port more per side", "Ein Anschluss mehr je Seite"), IconIds.Increase,
+                x => x.WithParam("ports", Math.Min(6, x.Int("ports", 3) + 1))) { Group = "ports", IsEnabled = o.Int("ports", 3) < 6 };
+            yield return new ContextAction("ann.parallel.fewer", new I18nText("One port fewer per side", "Ein Anschluss weniger je Seite"), IconIds.Decrease,
+                x => x.WithParam("ports", Math.Max(2, x.Int("ports", 3) - 1))) { Group = "ports", IsEnabled = o.Int("ports", 3) > 2 };
         }
     }
 
