@@ -41,6 +41,11 @@ export function chunkTag(key: string, value: string, size = TAG_CHUNK): [string,
   return parts;
 }
 
+/** Key of a unit's model mirror in the presentation tags as read back (tag keys come back in upper case). */
+export function mirrorKey(unitId: string): string {
+  return (TAG_MIRROR + unitId).toUpperCase();
+}
+
 export function joinTag(key: string, tags: Map<string, string>): string | undefined {
   const first = tags.get(key);
   if (first === undefined) return undefined;
@@ -68,6 +73,13 @@ export function safeBox(b: BoxPt): BoxPt {
   const width = Number.isFinite(b.width) && b.width >= MIN_EXTENT ? b.width : MIN_EXTENT;
   const height = Number.isFinite(b.height) && b.height >= MIN_EXTENT ? b.height : MIN_EXTENT;
   return { left: b.left - (width - b.width) / 2, top: b.top - (height - b.height) / 2, width, height };
+}
+
+/** Adjustment of a rounded rectangle: corner radius over the short side (at most 0.5); undefined without a radius. */
+export function cornerAdjustment(op: PlanOp): number | undefined {
+  const short = Math.min(op.w ?? 0, op.h ?? 0);
+  if (!op.radius || op.radius <= 0 || short <= 0) return undefined;
+  return Math.min(0.5, op.radius / short);
 }
 
 const dashMap: Record<string, string> = {
@@ -103,9 +115,14 @@ export function drawOp(shapes: PowerPoint.ShapeCollection, op: PlanOp, caps: Hos
     case "group":
       for (const c of op.children ?? []) drawOp(shapes, c, caps, out);
       return;
-    case "rect":
+    case "rect": {
       s = shapes.addGeometricShape((op.radius ? "RoundRectangle" : "Rectangle") as PowerPoint.GeometricShapeType, box());
+      // The corner radius as PowerPoint's adjustment (PowerPointApi 1.10, the set of shape.rotation); without it
+      // PowerPoint's default of a sixth of the short side would be drawn.
+      const adj = cornerAdjustment(op);
+      if (adj !== undefined && caps.rotation) s.adjustments.set(0, adj);
       break;
+    }
     case "ellipse":
       s = shapes.addGeometricShape("Ellipse" as PowerPoint.GeometricShapeType, box());
       break;
@@ -281,7 +298,7 @@ export async function readSelectedUnit(caps: HostCapabilities): Promise<UnitOnSl
       const unitId = tags.get(TAG_ID) ?? parsed?.unitId;
       if (!unitId) continue;
       let payload = joinTag(TAG_MODEL, tags);
-      if (!payload && caps.tags) payload = joinTag(TAG_MIRROR + unitId, await readTags(context, context.presentation.tags));
+      if (!payload && caps.tags) payload = joinTag(mirrorKey(unitId), await readTags(context, context.presentation.tags));
       let stored: UnitOnSlide["stored"];
       try {
         stored = tags.has(TAG_BOUNDS) ? JSON.parse(tags.get(TAG_BOUNDS)!) : undefined;

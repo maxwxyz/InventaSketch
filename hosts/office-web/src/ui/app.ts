@@ -7,6 +7,7 @@ import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
 import { SlideSync } from "../office/sync";
+import { checkSlides, compareWithPrevious, goToFinding, readSlideUnits, type SlideFinding } from "../office/slides";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
@@ -224,6 +225,8 @@ export class App {
       this.importButton(),
       this.lineGroupSelect(st?.lineGroup ?? 0.5),
       this.accentSelect(st?.accent ?? null),
+      this.office.tags && this.office.selection && this.office.shapes && !(this.sync instanceof ComSync)
+        && this.iconButton("compare", t("cmd.compare"), () => void this.compareSlides(), { "data-cmd": "compare" }),
       this.iconButton("check", t("cmd.patentCheck"), (e) => this.togglePatentCheck(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog", "data-cmd": "patentcheck" }),
       this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome))),
       this.iconButton("png", t("cmd.exportPng"), () => exportPng(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome).catch((e) => this.report(e))),
@@ -277,6 +280,23 @@ export class App {
 
   /** Office chosen last in the patent check (the first profile until then). */
   private patentProfile = "";
+  /** The patent check covers every slide (PowerPoint only). */
+  private patentAllSlides = true;
+
+  /** "Compare with the previous slide": marks what differs on the selected slide, or removes the marks again. */
+  private async compareSlides(): Promise<void> {
+    try {
+      const r = await compareWithPrevious(this.engine, this.office, { w: this.st.pageWidth, h: this.st.pageHeight }, lang(),
+        (d, previous) => t("cmp.legend", previous, d.added.length, d.changed.length, d.removed.length));
+      if (r === "cleared") this.setStatus(t("cmp.cleared"));
+      else if (r === "none") this.setStatus(t("cmp.none"));
+      else if (r === "first") this.setStatus(t("cmp.first"));
+      else if (r === "unsupported") this.setStatus(t("cmp.unsupported"));
+      else this.setStatus(t("cmp.done", r.added.length, r.changed.length, r.removed.length));
+    } catch (e) {
+      this.report(e);
+    }
+  }
 
   /**
    * "Patent check (drawings)": the engine's preflight of the page for an office, as a popover – office choice, findings
@@ -293,17 +313,24 @@ export class App {
     const summary = h("p", { class: "isk-pc-summary", role: "status" });
     const list = h("ul", { class: "isk-findings" });
     const disclaimer = h("p", { class: "isk-muted" });
-    const run = () => {
-      let r: PreflightResult;
-      try { r = this.sessionObj.preflight(this.patentProfile, lang()); } catch (e) { this.report(e); return; }
+    // In PowerPoint the check can cover every slide (units read from the slides, one engine session per slide).
+    const slidesBox = h("input", { type: "checkbox", checked: this.patentAllSlides, "data-cmd": "patentallslides" });
+    const scope = this.office.tags ? h("label", { class: "isk-check" }, slidesBox, h("span", {}, t("pc.allSlides"))) : undefined;
+    const show = (r: { disclaimer: string; findings: (PreflightResult["findings"][number] & Partial<SlideFinding>)[] }) => {
       disclaimer.textContent = r.disclaimer;
       const c = findingCounts(r.findings);
       summary.textContent = r.findings.length ? t("pc.summary", r.findings.length, c.error, c.warning) : t("pc.none");
-      list.replaceChildren(...orderFindings(r.findings).map((f) => {
-        // The message selects the element (if the finding has one); the cited sources are short links.
+      list.replaceChildren(...orderFindings(r.findings).map((g) => {
+        const f = g as PreflightResult["findings"][number] & Partial<SlideFinding>;
+        // The message selects the element (if the finding has one): on the page, or on its slide in PowerPoint; the
+        // cited sources are short links.
         const id = f.id;
-        let message: HTMLElement = h("span", {}, f.message);
-        if (id) {
+        const where = f.slide ? t("pc.slide", f.slide) + " · " : "";
+        let message: HTMLElement = h("span", {}, where + f.message);
+        if (f.slideId) {
+          message = h("button", { class: "isk-finding-go", type: "button", title: t("pc.goTo") }, where + f.message);
+          message.addEventListener("click", () => goToFinding(this.office, f.slideId!, f.shapeId).catch((e) => this.report(e)));
+        } else if (id) {
           message = h("button", { class: "isk-finding-go", type: "button", title: t("pc.goTo") }, f.message);
           message.addEventListener("click", () => this.guard(() => this.apply(this.sessionObj.select([id]))));
         }
@@ -317,6 +344,17 @@ export class App {
         return h("li", {}, h("div", { class: "isk-finding" }, badge, body));
       }));
     };
+    const run = () => {
+      if (this.patentAllSlides && this.office.tags) {
+        summary.textContent = t("pc.reading");
+        readSlideUnits(this.office)
+          .then((slides) => show(checkSlides(this.engine, slides, this.patentProfile, lang(), { w: this.st.pageWidth, h: this.st.pageHeight })))
+          .catch((e) => this.report(e));
+        return;
+      }
+      try { show(this.sessionObj.preflight(this.patentProfile, lang())); } catch (e) { this.report(e); }
+    };
+    slidesBox.addEventListener("change", () => { this.patentAllSlides = slidesBox.checked; run(); });
     office.addEventListener("change", () => { this.patentProfile = office.value; run(); });
     const again = h("button", { class: "isk-btn", type: "button", "data-cmd": "patentrecheck" }, t("pc.recheck"));
     again.addEventListener("click", run);
@@ -324,6 +362,7 @@ export class App {
     const panel = h("div", { class: "isk-popover isk-pc", role: "dialog", "aria-label": t("pc.title") },
       h("div", { class: "isk-pop-head" }, h("strong", {}, t("pc.title")), close),
       h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("pc.office")), h("div", { class: "isk-row" }, office, again)),
+      ...(scope ? [scope] : []),
       summary, list, disclaimer);
     panel.dataset.kind = "patent";
     close.addEventListener("click", () => { panel.remove(); this.settingsEl = undefined; anchor.focus(); });

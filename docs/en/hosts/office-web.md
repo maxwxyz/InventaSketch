@@ -111,7 +111,18 @@ the units on the slide.
   preflight findings of the page (`preflight`) – errors first, then warnings, points to check by hand and notes, each
   with suggestion and the cited sources as short links; clicking a finding's message selects its element. The
   disclaimer is always shown. Checked in the browser dev page (light and dark, DPMA/EPO/PCT/USPTO switch, a gear
-  outside the usable area selected from its finding).
+  outside the usable area selected from its finding). In PowerPoint (PowerPointApi 1.3) the panel offers **All slides**:
+  the units of every slide are read from their shapes (`src/office/slides.ts`: name plus `ISK_MODEL` tags, else the
+  presentation mirror), each slide is checked in its own engine session, findings read "Slide n · …" and go to their
+  slide and shape (PowerPointApi 1.5).
+- **Compare with the previous slide** (2026-11-25, PowerPoint only): a button in the top bar marks on the selected slide
+  what differs from the previous one (engine `exportCompact` of the previous slide, `diff` on the current one): added
+  green, changed orange, removed dashed grey, plus a legend; shapes named `ISK_DIFF …`; clicking again removes them.
+- **Rounded rectangles** take their corner radius as PowerPoint's adjustment (PowerPointApi 1.10, `adjustments.set`).
+- The all-slides check, the comparison and the corner radius are covered by unit tests against a stand-in of the
+  Office.js object model and a stand-in engine (`test/slides.test.ts`); **not yet run in PowerPoint** (needs the dev
+  certificate). The tests found that the presentation mirror was never read back (tag keys come back in upper case);
+  fixed for the selection too (`mirrorKey`).
 - **Resize**: centred parts (gears, bearings, wheels: `centred`) scale about their centre by default, Ctrl from the
   opposite edge; other objects the other way round. A label next to the pointer shows the size (or factor) and the
   active mode with its Ctrl alternative.

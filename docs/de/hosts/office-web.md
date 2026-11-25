@@ -116,7 +116,19 @@ Folie behalten.
   den Befunden der Vorabprüfung der Seite (`preflight`) – Fehler zuerst, dann Warnungen, selbst zu prüfende Punkte und
   Hinweise, jeweils mit Vorschlag und den Fundstellen als kurze Links; ein Klick auf die Meldung eines Befunds wählt
   sein Element aus. Der Haftungshinweis wird immer angezeigt. Auf der Browser-Entwicklungsseite geprüft (hell und
-  dunkel, Wechsel DPMA/EPA/PCT/USPTO, ein Zahnrad außerhalb der Nutzfläche über seinen Befund ausgewählt).
+  dunkel, Wechsel DPMA/EPA/PCT/USPTO, ein Zahnrad außerhalb der Nutzfläche über seinen Befund ausgewählt). In PowerPoint
+  (PowerPointApi 1.3) bietet das Panel **Alle Folien**: Die Einheiten jeder Folie werden aus ihren Formen gelesen
+  (`src/office/slides.ts`: Name plus `ISK_MODEL`-Tags, sonst die Modellkopie der Präsentation), jede Folie wird in einer
+  eigenen Engine-Sitzung geprüft, Befunde lauten „Folie n · …“ und springen zu Folie und Form (PowerPointApi 1.5).
+- **Mit vorheriger Folie vergleichen** (25.11.2026, nur in PowerPoint): ein Knopf in der oberen Leiste markiert auf der
+  ausgewählten Folie, was sich von der vorherigen unterscheidet (Engine `exportCompact` der vorherigen Folie, `diff` auf
+  der aktuellen): neu grün, geändert orange, entfernt grau gestrichelt, dazu eine Legende; Formen mit dem Namen
+  `ISK_DIFF …`; erneutes Klicken entfernt sie.
+- **Abgerundete Rechtecke** bekommen ihren Eckenradius als PowerPoint-Anpassung (PowerPointApi 1.10, `adjustments.set`).
+- Prüfung über alle Folien, Vergleich und Eckenradius sind mit Unit-Tests gegen ein nachgebautes Office.js-Objektmodell
+  und eine Test-Engine abgedeckt (`test/slides.test.ts`); **in PowerPoint noch nicht ausgeführt** (braucht das
+  Entwicklungszertifikat). Die Tests fanden, dass die Modellkopie der Präsentation nie zurückgelesen wurde (Tag-Schlüssel
+  kommen großgeschrieben zurück); auch für die Auswahl behoben (`mirrorKey`).
 - **Skalieren**: zentrierte Teile (Zahnräder, Lager, Räder: `centred`) skalieren standardmäßig um ihre Mitte, mit Strg
   von der Gegenkante; andere Objekte umgekehrt. Eine Beschriftung neben dem Mauszeiger zeigt Größe (oder Faktor) und den
   aktiven Modus mit der Strg-Alternative.
