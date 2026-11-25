@@ -173,6 +173,50 @@ Beschriftungshintergründe, ein geschlossenes Polygon für das Band sowie Text. 
 gedreht. Schraffur- und Punktfüllungen nutzen die Füllarten des Kerns. Ein Vektorbild ist nicht nötig. Diagramme
 hängen nicht von Nachbarobjekten ab.
 
+## Diagramme aus Bildern (Bausteine)
+
+Stufe 5 von [Diagramme v2](../design/charts-v2.md): reine Bildanalyse in `src/InventaSketch.Modules.Charts/Scanning`
+auf einem rohen `PixelImage` (Breite, Höhe, RGBA-Bytes; durchsichtige Pixel gelten als weiß). Keine Host-API, keine
+Texterkennung und kein fremder Dienst sind nötig; die Hosts liefern das Bild (Zwischenablage, Datei, Bildschirmfoto)
+und später die Anbindung an die Diagrammtypen. Nichts wirft eine Ausnahme: leere, winzige, weiße oder widersprüchliche
+Bilder ergeben zweisprachige `Warnings`.
+
+- **Balkenscanner** (`BarScanner`, portiert aus dem Diagramm-Scanner von Slidemax): Hintergrund = häufigste Farbe,
+  zusammenhängende Flächen ähnlicher Farbe, dünne lange Stücke sind Achse oder Gitternetz, die Grundlinie ist die
+  Kante, an der die meisten Flächen enden; erkennt Säulen oder Balken, gestapelt (Serien nach Farbe) oder gruppiert,
+  Teile unter der Grundlinie und den Gitterabstand. `BarScanner.Values` macht aus Pixelausdehnungen Zahlen mit einem
+  `BarScale` (Wert der Grundlinie und Wert der größten Säule oder eines Gitterschritts).
+- **Beschriftungen**: `ITextReader` ist die Schnittstelle für eine Texterkennung des Hosts; die Engine bringt
+  `DigitTextReader` mit (portierte Ziffernerkennung aus Slidemax: Ziffern, Trennzeichen, Vorzeichen und Prozent
+  gängiger Schriften per Musterkorrelation, keine Buchstaben). `BarLabelReader` bestimmt den Maßstab aus der
+  Beschriftung der Wertachse (robuste Geradenanpassung, deutsche und englische Schreibweise) oder aus
+  Wertbeschriftungen an den Säulen und liest Kategorienamen. Mit `TextReaderGate` schaltet ein Host eine scheiternde
+  Texterkennung einmalig ab.
+- **Kurvendigitalisierer** (`CurveDigitizer`, neu): findet Zeichenfläche und Achsen (unterste lange waagerechte und
+  linke lange senkrechte graue Linie; weitere lange Linien sind Gitternetz und werden ausgeblendet), gruppiert die
+  Kurvenfarben (jedes Pixel wird als Mischung aus Hintergrund und Kurvenfarbe erklärt, so bleiben Kantenglättung und
+  Unschärfe bei ihrer Kurve), verfolgt jede Farbe Spalte für Spalte (an Kreuzungen behalten beide Kurven ihre
+  Steigung, Lücken von Strichen und Kreuzungen werden überbrückt, Bruchstücke verbunden), verwirft kurze Spuren (Text,
+  Legende), meldet Gruppen kurzer paralleler gerader Spuren als `Hatches` (Schraffur) und schätzt die Strichart
+  durchgezogen / gestrichelt / gepunktet aus den Lücken. Schwarz-Weiß-Bilder ergeben eine Farbe, deren Kurven die
+  Verfolgung trennt.
+- **Kalibrierung**: `DigitizeOptions.XAxis` / `YAxis` (`AxisCalibration`: zwei Pixelpositionen mit bekannten Werten,
+  linear oder logarithmisch) oder, für Achsen ohne Angabe, die von `DigitizeOptions.TextReader` gelesenen
+  Beschriftungen (`CurveLabelCalibration`, logarithmische Achsen werden an 1, 10, 100 … erkannt). Ohne Kalibrierung
+  bleiben die Punkte in Pixeln, mit Warnung.
+- **Ergebnis**: `ScanResult` mit Zeichenfläche, Achsen, Gitterlinien, Reihen (Farbe, Strichart, Pixel- und
+  Datenpunkte), Schraffuren, Kalibrierung und Warnungen. `ScanDataText.FromCurves` schreibt den Datentext für
+  `chart.xy` (Zeilen `x;y`, Leerzeile zwischen Reihen, `#`-Kommentare mit Strichart und Farbe);
+  `ScanDataText.FromBars` schreibt eine Kategorientabelle für `chart.bar`.
+- **Genauigkeit (synthetische Tests)**: sich kreuzende Kurven in zwei Farben innerhalb 0,7 % des y-Bereichs (1,1 % nach
+  3 × 3-Kastenfilter und Rauschen; 98 % der Punkte innerhalb 0,1 %), ein sich kreuzendes schwarzes Paar durchgezogen /
+  gestrichelt innerhalb 0,8 %, eine steile Sigmoidkurve innerhalb 0,2 %, Balken nach Unschärfe innerhalb 1,4 % des
+  größten Werts, Kalibrierung aus gestempelten Ziffern innerhalb 0,8 %.
+- **Grenzen**: keine gedrehten Bilder (Achsen müssen waagerecht und senkrecht sein), gleichfarbige Kurven, die sich
+  sehr flach kreuzen, können vertauscht werden, gefüllte Flächendiagramme werden als „gefüllte Flächen“ gemeldet (dafür
+  den Balkenscanner verwenden), die Ziffernerkennung liest nur Zahlen in Schriften ähnlich den gespeicherten Mustern
+  (eine Texterkennung des Hosts lässt sich einstecken).
+
 ## Tests und Galerie
 
 `tests/InventaSketch.Modules.Charts.Tests` prüft Registrierung, zweisprachige Namen, Parameter, Optionen und

@@ -155,6 +155,44 @@ set, rectangles for bars, legend and label backings, a closed polygon for the ba
 y axes are rotated by −90°. Hatch and dot fills use the core fill kinds. No vector picture is needed. Charts do not
 depend on neighbouring objects.
 
+## Charts from pictures (building blocks)
+
+Stage 5 of [charts v2](../design/charts-v2.md): pure image analysis in `src/InventaSketch.Modules.Charts/Scanning`
+on a raw `PixelImage` (width, height, RGBA bytes; transparent pixels count as white). No host API, no OCR and no
+external service is needed; hosts supply the picture (clipboard, file, screen capture) and later the chart-type
+integration. Nothing throws: empty, tiny, blank or inconsistent pictures give bilingual `Warnings`.
+
+- **Bar scanner** (`BarScanner`, ported from the Slidemax chart scanner): background = most frequent colour,
+  connected areas of similar colour, thin long pieces are axis or gridlines, the baseline is the edge where most areas
+  end; finds columns or bars, stacked (series by colour) or clustered, parts below the baseline and the gridline step.
+  `BarScanner.Values` turns pixel extents into numbers with a `BarScale` (baseline value plus the value of the largest
+  bar or of one gridline step).
+- **Labels**: `ITextReader` is the interface for a host OCR; the engine ships `DigitTextReader` (ported Slidemax digit
+  reader: digits, separators, signs and percent in common fonts by pattern correlation, no letters).
+  `BarLabelReader` derives the scale from the value axis labels (robust line fit, German and English number styles) or
+  from value labels at the bars, and reads category names. `TextReaderGate` lets a host switch a failing OCR off once.
+- **Curve digitiser** (`CurveDigitizer`, new): finds the plot area and the axes (lowest long horizontal and leftmost
+  long vertical grey line; other long lines are gridlines and are masked out), clusters the curve colours (every pixel
+  is explained as a mix of background and curve colour, so anti-aliasing and blur stay with their curve), traces each
+  colour column by column (crossings keep the slope of both curves, gaps of dashes and crossings are bridged, fragments
+  are joined), drops short traces (text, legend), reports groups of short parallel straight traces as `Hatches` and
+  guesses the style solid / dashed / dotted from the gaps. Black-and-white pictures give one colour whose curves are
+  separated by the tracing.
+- **Calibration**: `DigitizeOptions.XAxis` / `YAxis` (`AxisCalibration`: two pixel positions with known values, linear
+  or logarithmic) or, for axes without one, the labels read by `DigitizeOptions.TextReader`
+  (`CurveLabelCalibration`, logarithmic axes recognised from 1, 10, 100 …). Without a calibration the points stay in
+  pixels with a warning.
+- **Result**: `ScanResult` with plot area, axes, gridlines, series (colour, style, pixel and data points), hatches,
+  calibration and warnings. `ScanDataText.FromCurves` writes the chart data text for `chart.xy` (rows `x;y`, a blank
+  line between series, `#` comments with style and colour); `ScanDataText.FromBars` writes a category table for
+  `chart.bar`.
+- **Accuracy (synthetic tests)**: crossing curves in two colours within 0.7 % of the y range (1.1 % after a 3 × 3 box
+  blur and noise; 98 % of the points within 0.1 %), a crossing solid / dashed black pair within 0.8 %, a steep sigmoid
+  within 0.2 %, bars within 1.4 % of the largest value after blur, calibration from stamped digit labels within 0.8 %.
+- **Limits**: no rotated pictures (axes must be horizontal and vertical), curves of the same colour crossing at a very
+  shallow angle may swap, filled area charts are reported as "filled areas" (use the bar scanner), the digit reader
+  reads only numbers in fonts similar to the stored patterns (a host OCR can be plugged in).
+
 ## Tests and gallery
 
 `tests/InventaSketch.Modules.Charts.Tests` covers registration, bilingual names, parameters, options and actions,
