@@ -15,10 +15,32 @@ und keine Normkonformität behauptet.
 |---|---|---|
 | Kleines Koordinatensystem-Symbol für Freikörperbilder (`ann.coordsys`), Winkel- und Radiusmaße (`ann.dimension.angle`, `ann.dimension.radius`) | annotation | technische Zeichnungszeichen, ohne Bereiche oder Gitter |
 | Datendiagramme (`chart.xy`, `chart.axes`, Balkendiagramme, Kennlinien) | charts | Mess- oder Auslegungsdaten mit Einheiten und Legenden |
-| Koordinatensysteme mit Gitter und Gitterpunkten zum Andocken, Funktionsgraphen aus einer Formelfamilie, Vektoren, aus der Zeichnung gemessene Winkel, Schulkonstruktionen | **math** | dieses Modul |
+| 2D-Koordinatensystem und Funktionsgraphen im Mathematikstil (`chart.math.axes`, `chart.math.function`) | charts | in Diagramme v2, Stufe 4 dorthin umgezogen, siehe [unten](#ins-diagrammmodul-umgezogen-diagramme-v2-stufe-4-25112026) |
+| Koordinatensysteme mit Gitter und Gitterpunkten zum Andocken, Funktionsgraphen aus einer Formelfamilie, Vektoren, aus der Zeichnung gemessene Winkel, Schulkonstruktionen | **math** | dieses Modul (die Typen 2D-Koordinatensystem und Funktionsgraph bleiben für bestehende Folien) |
 
 Die Module hängen nicht voneinander ab. Linien jedes Moduls docken an den Anschlüssen dieses Moduls an
 (`AnchorRole.Port`).
+
+## Ins Diagrammmodul umgezogen (Diagramme v2, Stufe 4, 25.11.2026)
+
+Das 2D-Koordinatensystem und die Funktionsgraphen bietet das Diagrammmodul an, damit alle Diagramme ein Achsensystem
+teilen (Achsenbrüche, Teile, Export): `chart.axes.math` (Koordinatensystem (2D)), `chart.axes.math.quadrant`,
+`chart.function` (Parabel), `chart.function.linear`, `chart.function.sine`, `chart.function.exponential`, dazu eine
+eingegebene Formel (`chart.function.formula`) und ein Funktionsgenerator (`chart.function.generator`); siehe
+[Diagramme](charts.md#koordinatensysteme-und-funktionsgraphen-diagramme-v2-stufe-4).
+
+- Die Einträge `math.axes.cartesian`, `math.axes.cartesian.quadrant`, `math.graph.function`,
+  `math.graph.function.linear`, `math.graph.function.sine` und `math.graph.function.exponential` nennen diese Einträge
+  als `LibraryItem.Alternative`: solange das Diagrammmodul registriert ist, fehlen sie in Galerien und Suche (die
+  Kategorie „Funktionsgraphen“ entfällt dann); per Id werden sie weiter gefunden, und die Typen `math.axes.cartesian`
+  und `math.graph.function` bleiben registriert, bestehende Folien werden also weiter gezeichnet und bearbeitet. Für
+  sich allein bietet das Mathematikmodul weiterhin alles an.
+- Punkte und Vektoren docken an der Diagrammfassung wie bisher an: der Ursprung ist ein Anschluss, die Achsen sind
+  Schienen (`axis.x`, `axis.y`), jeder Gitterpunkt ist ein Fangpunkt (`g<x>_<y>` mit den Datenwerten, z. B. `g2_3`),
+  Funktionsgraphen haben die Anschlüsse `zero0…`, `ext0…` und `yint`; Vektorenden docken auch frei auf der Fläche des
+  Diagramms an und folgen ihm (getestet in `ChartsMergeTests`). Der Vektor schlägt das Diagramm-Koordinatensystem als
+  Begleiter vor (ohne Diagrammmodul das des Mathematikmoduls).
+- Zahlenstrahl, 3D-Achsen und Polarkoordinatennetz bleiben in diesem Modul.
 
 ## Konventionen
 

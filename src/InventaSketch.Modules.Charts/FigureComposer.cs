@@ -75,8 +75,12 @@ namespace InventaSketch.Modules.Charts
             var data = s.Series.SelectMany(x => x.X)
                 .Concat(s.Refs.Where(r => r.Kind is "v" or "point").Select(r => r.X))
                 .Concat(s.Regions.Where(r => r.Kind == "span").SelectMany(r => new[] { r.From ?? double.NaN, r.To ?? double.NaN }));
-            return BuildAxis(s.X, data, 0.05);
+            return WithBreaks(BuildAxis(s.X, data, 0.05), s.X, s);
         }
+
+        /// <summary>The axis with the breaks of its specification (linear axes only).</summary>
+        private static Axis WithBreaks(Axis a, FigAxis fa, FigureSpec s)
+            => fa.Breaks.Count == 0 ? a : a.WithBreaks(fa.Breaks, ChartBreaks.StyleOf(s.BreakStyle));
 
         /// <summary>The y axis of panel <paramref name="i"/>.</summary>
         public static Axis YAxis(FigureSpec s, int i)
@@ -86,7 +90,7 @@ namespace InventaSketch.Modules.Charts
             var data = s.Series.Where(x => Clamp(x.Panel, n) == i).SelectMany(x => x.Y)
                 .Concat(s.Refs.Where(r => r.Kind == "h" && (r.Panel is null && i == 0 || r.Panel is { } p && (p < 0 || Clamp(p, n) == i))).Select(r => r.Y))
                 .Concat(s.Regions.Where(r => r.Base is not null && r.Kind == "below" && r.A >= 0 && r.A < s.Series.Count && Clamp(s.Series[r.A].Panel, n) == i).Select(r => r.Base!.Value));
-            return BuildAxis(panels[Clamp(i, n)], data, 0.12);
+            return WithBreaks(BuildAxis(panels[Clamp(i, n)], data, 0.12), panels[Clamp(i, n)], s);
         }
 
         private string? AxisTitle(FigAxis a)
@@ -357,7 +361,7 @@ namespace InventaSketch.Modules.Charts
             var points = new List<Vec2>();
             for (var i = 0; i < Math.Min(se.X.Count, se.Y.Count); i++)
             {
-                if (!Fmt.Finite(se.X[i]) || !Fmt.Finite(se.Y[i])) continue;
+                if (!Fmt.Finite(se.X[i]) || !Fmt.Finite(se.Y[i]) || !_f.IsVisible(g.Panel, se.X[i], se.Y[i])) continue;
                 var p = _f.P(g.Panel, se.X[i], se.Y[i]);
                 if (!Frame.Ok(p)) continue;
                 points.Add(p);
@@ -419,7 +423,7 @@ namespace InventaSketch.Modules.Charts
                 foreach (var pi in HPanels(r, n))
                 {
                     var p = _ps[pi];
-                    if (!p.Y.Contains(r.Y)) continue;
+                    if (!p.Y.Visible(r.Y)) continue;
                     var y = PY(pi, r.Y);
                     lines.Add(new[] { new Vec2(p.Area.X, y), new Vec2(p.Area.Right, y) });
                     first ??= pi;
@@ -449,7 +453,7 @@ namespace InventaSketch.Modules.Charts
             }
 
             // Vertical marker: through all panels (default) or one panel.
-            if (!Fmt.Finite(r.X) || !_f.X.Contains(r.X)) return;
+            if (!Fmt.Finite(r.X) || !_f.X.Visible(r.X)) return;
             var x = PX(r.X);
             int top, bottom;
             if (r.Panel is { } vp && vp >= 0) top = bottom = Clamp(vp, n);
@@ -476,7 +480,7 @@ namespace InventaSketch.Modules.Charts
         private void DrawPointRef(int k)
         {
             var r = _s.Refs[k];
-            if (r.Series < 0 || r.Series >= _s.Series.Count || _geo[r.Series] is not { } g) return;
+            if (r.Series < 0 || r.Series >= _s.Series.Count || _geo[r.Series] is not { } g || _f.X.InBreak(r.X)) return;
             if (OnSeries(r.Series, r.X) is not { } pt || !g.Panel.Area.Inflate(0.01).Contains(pt)) return;
             var tag = ChartTags.Nth(ChartTags.Ref, k);
             var color = _mono ? Palette.Ink : r.Color ?? SeriesColor(r.Series);
@@ -738,13 +742,17 @@ namespace InventaSketch.Modules.Charts
                 foreach (var piece in data)
                 {
                     var pts = s.Step ? XyChart.Steps(piece) : piece;
-                    List<Vec2>? page = null;
-                    foreach (var p in pts)
+                    // Axis breaks interrupt the curve (visible runs, cut at the break limits).
+                    foreach (var run in f.VisibleRuns(panel, pts))
                     {
-                        var q = f.P(panel, p.X, p.Y);
-                        if (!Frame.Ok(q)) { page = null; continue; }
-                        if (page is null) { page = new List<Vec2>(); g.Page.Add(page); }
-                        page.Add(q);
+                        List<Vec2>? page = null;
+                        foreach (var p in run)
+                        {
+                            var q = f.P(panel, p.X, p.Y);
+                            if (!Frame.Ok(q)) { page = null; continue; }
+                            if (page is null) { page = new List<Vec2>(); g.Page.Add(page); }
+                            page.Add(q);
+                        }
                     }
                 }
                 foreach (var piece in g.Page)

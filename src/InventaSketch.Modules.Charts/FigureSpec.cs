@@ -27,6 +27,8 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Grid lines of this axis; null = on in data mode, off in principle mode.</summary>
         public bool? Grid { get; set; }
         public List<FigMark> Marks { get; set; } = new();
+        /// <summary>Axis breaks: hidden value ranges (linear axes; "breaks": [[20, 80], …]).</summary>
+        public List<(double Lo, double Hi)> Breaks { get; set; } = new();
 
         public bool Principle => Mode == "principle";
         public bool Log => Scale == "log";
@@ -174,6 +176,7 @@ namespace InventaSketch.Modules.Charts
         public const int MaxSeries = 64;
         public const int MaxPoints = 5000;
         public const int MaxItems = 200;
+        public const int MaxBreaks = 8;
 
         public int Version { get; set; } = CurrentVersion;
         public I18nText? Title { get; set; }
@@ -186,6 +189,8 @@ namespace InventaSketch.Modules.Charts
         public string? GridStyle { get; set; }
         /// <summary>Gap between stacked panels in font heights; null = automatic.</summary>
         public double? PanelGap { get; set; }
+        /// <summary>Marker of the axis breaks: zigzag (default, across the plot) or slash (double slash on the axis).</summary>
+        public string BreakStyle { get; set; } = "zigzag";
         public FigAxis X { get; set; } = new();
         public List<FigPanel> Panels { get; set; } = new();
         public List<FigSeries> Series { get; set; } = new();
@@ -241,6 +246,7 @@ namespace InventaSketch.Modules.Charts
                 Legend = Choice(e, "legend", "none", "none", "auto", "inside", "right"),
                 GridStyle = Str(e, "grid") is { } g && (g is "solid" or "dot" or "dash") ? g : null,
                 PanelGap = Num(e, "panelGap") is { } gap && gap >= 0 && gap <= 20 ? gap : null,
+                BreakStyle = Choice(e, "breakStyle", "zigzag", "zigzag", "slash"),
             };
             if (Obj(e, "x") is { } x) ReadAxis(x, s.X);
             foreach (var p in Arr(e, "panels").Take(MaxPanels))
@@ -271,6 +277,28 @@ namespace InventaSketch.Modules.Charts
                 if (m.ValueKind != JsonValueKind.Object) continue;
                 if (Finite(Num(m, "at")) is { } at && Text(m, "text") is { } t) a.Marks.Add(new FigMark(at, t));
             }
+            a.Breaks = ReadBreaks(e);
+        }
+
+        /// <summary>
+        /// Axis breaks: an array of [lo, hi] pairs or {"from", "to"} objects, or a text "20-80; 120-180". Unreadable entries are
+        /// skipped; at most <see cref="MaxBreaks"/>.
+        /// </summary>
+        private static List<(double Lo, double Hi)> ReadBreaks(JsonElement e)
+        {
+            var list = new List<(double, double)>();
+            if (!e.TryGetProperty("breaks", out var b)) return list;
+            if (b.ValueKind == JsonValueKind.String) return ChartBreaks.Parse(b.GetString()).Take(MaxBreaks).ToList();
+            if (b.ValueKind != JsonValueKind.Array) return list;
+            foreach (var r in b.EnumerateArray().Take(MaxBreaks))
+            {
+                double lo = double.NaN, hi = double.NaN;
+                if (r.ValueKind == JsonValueKind.Array && r.GetArrayLength() >= 2) { lo = Number(r[0]); hi = Number(r[1]); }
+                else if (r.ValueKind == JsonValueKind.Object) { lo = Num(r, "from") ?? Num(r, "lo") ?? double.NaN; hi = Num(r, "to") ?? Num(r, "hi") ?? double.NaN; }
+                else if (r.ValueKind == JsonValueKind.String && ChartBreaks.TryPair(r.GetString(), out var pr)) { lo = pr.Lo; hi = pr.Hi; }
+                if (Fmt.Finite(lo) && Fmt.Finite(hi) && lo != hi) list.Add((Math.Min(lo, hi), Math.Max(lo, hi)));
+            }
+            return list;
         }
 
         private static FigSeries ReadSeries(JsonElement e)
@@ -482,6 +510,7 @@ namespace InventaSketch.Modules.Charts
                 if (Legend != "none") w.WriteString("legend", Legend);
                 if (GridStyle is not null) w.WriteString("grid", GridStyle);
                 WNum(w, "panelGap", PanelGap);
+                if (BreakStyle != "zigzag") w.WriteString("breakStyle", BreakStyle);
                 w.WritePropertyName("x");
                 w.WriteStartObject(); WAxis(w, X); w.WriteEndObject();
                 if (Panels.Count > 0)
@@ -539,6 +568,12 @@ namespace InventaSketch.Modules.Charts
             {
                 w.WriteStartArray("marks");
                 foreach (var m in a.Marks) { w.WriteStartObject(); WNum(w, "at", m.At); WText(w, "text", m.Text); w.WriteEndObject(); }
+                w.WriteEndArray();
+            }
+            if (a.Breaks.Count > 0)
+            {
+                w.WriteStartArray("breaks");
+                foreach (var (lo, hi) in a.Breaks) { w.WriteStartArray(); WVal(w, lo); WVal(w, hi); w.WriteEndArray(); }
                 w.WriteEndArray();
             }
         }

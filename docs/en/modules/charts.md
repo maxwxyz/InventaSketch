@@ -23,6 +23,10 @@ follow the box. Text is sized by the smaller scale factor relative to the design
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` low pass / high pass of 1st or 2nd order, `fc` (Hz), `zeta` (damping, 2nd order), `gain` (dB), `show` magnitude and phase / magnitude / phase, `marker` (corner frequency line), `xrange`, `data` (measured `f;dB;°`, replaces the system) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (nominal curve, see below), `tol` + `tolmode` percent / absolute, `smooth`, `limits`, `patterns`; further data blocks are drawn as measured series with markers |
 | `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON specification, see [Figure](#figure-charts-v2-stage-2)); stacked panels, principle or data axes, value lines, markers, regions, notes, reference numerals |
+| `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | math style, see [Coordinate systems and function graphs](#coordinate-systems-and-function-graphs-charts-v2-stage-4) |
+| `chart.math.function` | Function graph / Funktionsgraph | basic function, typed formula or function generator in the math-style coordinate system |
+
+`chart.xy` also takes axis breaks (`ybreaks`, `xbreaks`, `breakstyle`, see [Axis breaks](#axis-breaks-charts-v2-stage-3)).
 
 Common parameters (where they apply): `title`, `xlabel`, `xunit`, `ylabel`, `yunit` (empty = the type's
 bilingual default, an explicitly empty label hides the title), `xscale` / `yscale` linear / log, `xrange` / `yrange`
@@ -35,11 +39,12 @@ The efficiency map uses a qualitative loss model (constant losses, copper ∝ T�
 data. The pump curve is H(Q) = H₀ (1 − (Q/Q_max)²); the system curve runs through the static head and the operating
 point. The Bode plot is computed from the standard transfer functions of first- and second-order low and high passes.
 
-The library has 28 presets (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
+The library has 37 presets (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
-`chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.limits`, `chart.torque`,
+`chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.line.break`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`) in three categories: data charts, characteristic curves and principle and technical figures.
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`, the eight coordinate systems and function graphs listed below) in four categories: data
+charts, coordinate systems & function graphs, characteristic curves and principle and technical figures.
 
 ## Data format
 
@@ -147,6 +152,67 @@ axis), `axis.box` (closed frame), `tick.x`, `tick.y`, `label.x`, `label.y` (tick
   every redraw; formatting the whole chart still changes the element style.
 - Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (see the design note
   [charts v2](../design/charts-v2.md)).
+
+## Axis breaks (charts v2 stage 3)
+
+The XY chart (`chart.xy`), the figure (`chart.figure`) and the math-style coordinate systems and function graphs can
+hide value ranges of a linear axis (an axis break), so data far apart share one chart (e.g. 10–15 and 95–100 on one
+y axis).
+
+- Parameters: `ybreaks` / `xbreaks` (advanced): hidden ranges as "lo-hi" pairs separated by ";", e.g. `20-80` or
+  `-50--20; 120-180` (also `lo..hi`, `lo–hi`, a decimal comma is accepted); `breakstyle` zigzag (default: a double
+  zigzag band across the whole plot and the axis line) / slash (a short double slash on the axis line, and on the
+  opposite side of a closed frame). Unreadable pairs are ignored when drawing; log and category axes have no breaks.
+- Drawing (`Frame`): the axis maps through `BrokenAxis` (the same scale outside the breaks, each break compressed to
+  the marker band of `AxisBreaks.RequiredGap`, about 3.6 mm); curves are split into visible runs, cut exactly at the
+  break limits; data points inside a break get no marker and no port; tick labels, grid lines, limit lines, value lines
+  and texts inside a break are left out; the tick step is chosen for the visible span. The band is filled white so the
+  axis line appears interrupted.
+- Figure: per axis `"breaks": [[20, 80], …]` in `x` and in each panel (also `{"from": 20, "to": 80}` or a text
+  `"20-80; …"`), and `"breakStyle": "zigzag" | "slash"` for the figure. Optional members of version 1: older readers
+  ignore them, wrong entries are skipped.
+- Parts: `axisbreak.y` (stacked panels `axisbreak.y.1`, `axisbreak.y.2` …) and `axisbreak.x`, named "y axis break" /
+  "Achsenbruch y".
+- Actions: "Axis break here…" (`chart.ybreak`, input "lo-hi", several separated by ";", empty = none; prefilled with
+  the current breaks or a suggestion for the largest data-free gap when it covers more than 40 % of the axis),
+  "x-axis break here…" (`chart.xbreak`), "Remove axis breaks" (`chart.ybreak.remove`, `chart.xbreak.remove`). They are
+  offered on the element, on the axis parts (axis, ticks, tick labels, axis title of that direction) and on the break
+  marker. In a figure (`chart.figure.ybreak` …) the axis part of a stacked panel edits the breaks of that panel.
+- Anchors: data ports and the axis rails follow the broken mapping (a port sits where its point is drawn).
+- Export: matplotlib and pgfplots do not reproduce breaks; the axes run continuously and the chart starts with the
+  comment "Axis breaks are not exported …" naming the hidden ranges.
+
+## Coordinate systems and function graphs (charts v2 stage 4)
+
+The 2D coordinate system and the function graphs of the math module moved into the charts module, so all charts share
+one axis system (`Frame`, including axis breaks, parts and export). Category "Coordinate systems & function graphs".
+
+| Id | Name (EN / DE) | Notes |
+|---|---|---|
+| `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | math style: both axes cross at the origin (0 clamped into the ranges) and end in arrowheads beyond the plot, ticks across the axis lines, numbers below the x axis and left of the y axis, one "0" at the origin, axis names (`xname`, `yname`, italic) at the arrow tips; `xmin`/`xmax`/`ymin`/`ymax`, `xstep`/`ystep`, `grid`, `numbers`, `xpi` (x ticks at multiples of π/2, labelled π/2, π, 3π/2 …), `title`, axis breaks |
+| `chart.math.function` | Function graph / Funktionsgraph | the coordinate system with a curve: `function` = one of ten basic functions as y = a·f(b(x − c)) + d (linear, quadratic, cubic, sine, cosine, exponential, ln, square root, absolute value, reciprocal; `a`–`d`), a typed formula (`expression`, text `expr`) or a function generator (`generator`, text form of the curve functions, e.g. `pt1(y0=0, yinf=3, tau=1.5)`); `formula` shows "f(x) = …" in the plot corner that covers the least |
+
+- Formulas (`FunctionExpression`, a small safe evaluator): numbers (decimal point, or a decimal comma between digits),
+  `x`, `π`/`pi`, `e`, `+ − · × * / : ^ ** ² ³`, parentheses, `|…|`, implicit multiplication (`2x`, `3(x+1)`,
+  `x sin(x)`) and sin, cos, tan, asin, acos, atan, sinh, cosh, tanh, exp, ln, log/lg, log2, sqrt/√, cbrt, abs, sign,
+  floor, ceil, round; a leading "f(x) =" or "y =" is ignored. Nothing but arithmetic is evaluated; length (400) and
+  nesting depth are limited. A formula that cannot be read draws the axes and the message "Formula cannot be read".
+- Curves are sampled (800 points over the range), clipped to the y range at the exact crossing points and split at
+  poles and domain edges (no line through the pole of 1/x); generators are drawn with their exact vertices (jumps).
+- Ports: `origin`, the zeros (`zero0` …), extrema (`ext0` …) and the y-intercept (`yint`); the axes are rails
+  (`axis.x`, `axis.y`) and every grid point is a snap point (`g2_3` = x 2, y 3), so the math module's points and vectors
+  dock on the chart (their ends also dock anywhere on its surface) and follow it when it moves, turns or is resized.
+- Parts: the curve `series.0` (named by its formula), `formula`, axes, ticks, numbers, axis names, grid.
+- Actions: Function (cycle), "Formula f(x)…" (switches to a typed formula, prefilled with the current function),
+  "Coefficients a; b; c; d…", "Function generator…" (generators), Show formula, Grid, Tick numbers, π ticks,
+  "x range…", "y range…", axis breaks.
+- Library: `chart.axes.math`, `chart.axes.math.quadrant` (first quadrant 0…6 × 0…5), `chart.function` (parabola),
+  `chart.function.linear` (y = 0.5x + 1), `chart.function.sine` (−2π…2π, π ticks), `chart.function.exponential`,
+  `chart.function.formula` (f(x) = x³/4 − x), `chart.function.generator` (PT1 step response over t).
+- The math module keeps its types `math.axes.cartesian` and `math.graph.function` (existing slides keep rendering);
+  its library items name these charts items as `LibraryItem.Alternative` and step back while the charts module is
+  registered. Number line, 3D axes and polar grid stay in the math module.
+- Export: the curve is exported as a series (the math-style axes as frame axes, noted in a comment).
 
 ## Figure (charts v2 stage 2)
 
@@ -306,7 +372,8 @@ yet (integration follows in the figure model).
   direction, XY mapping, `VisibleRuns` cuts curves exactly at the break limits, automatic placement of breaks in
   data-free gaps (`AxisBreaks.Spans`, the Slidemax rules: own extent, shrink to fit, drop ineffective breaks) and the
   zigzag or double-slash markers (sizes from Slidemax: lines 4.5 pt apart, teeth 6.5 × 1.75 pt, slashes at 15°) across
-  the plot or short on the axis line. Linear axes only.
+  the plot or short on the axis line. Linear axes only. Drawn by the chart types since stage 3, see
+  [Axis breaks](#axis-breaks-charts-v2-stage-3).
 
 Host capability: the building blocks produce data (specs, polylines, marker points); a host will draw them with the
 existing native primitives (freeforms and closed polygons), no vector picture is needed.

@@ -11,5 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\InventaSketch.Modules.Geometry\InventaSketch.Modules.Geometry.csproj" />
+    <!-- Cross-module checks of the move of the coordinate systems and function graphs into the charts module. -->
+    <ProjectReference Include="..\..\src\InventaSketch.Modules.Charts\InventaSketch.Modules.Charts.csproj" />
   </ItemGroup>
 </Project>

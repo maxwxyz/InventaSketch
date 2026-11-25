@@ -84,7 +84,7 @@ namespace InventaSketch.Modules.Geometry
             "vector", "arrow", "vektor", "pfeil", "ortsvektor", "position vector", "components", "komponenten", "zerlegung") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 8), new Vec2(15, -8) };
-        public override IReadOnlyList<string> Companions => new[] { "math.vector.sum", "math.point.labelled", "math.axes.cartesian" };
+        public override IReadOnlyList<string> Companions => new[] { "math.vector.sum", "math.point.labelled", GeometryModule.ChartAxesType, "math.axes.cartesian" };
 
         public override IReadOnlyList<ParamDef> Parameters { get; } = new[]
         {

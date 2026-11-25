@@ -236,5 +236,7 @@ namespace InventaSketch.Modules.Charts
         public List<XItem> Items { get; } = new();
         public XBars? Bars { get; set; }
         public List<XLabel> PanelTitles { get; } = new();
+        /// <summary>Remarks written as comments at the start of the chart (what the export cannot reproduce, e.g. axis breaks).</summary>
+        public List<string> Notes { get; } = new();
     }
 }

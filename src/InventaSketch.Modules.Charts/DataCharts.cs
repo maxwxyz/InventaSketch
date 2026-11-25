@@ -29,17 +29,27 @@ namespace InventaSketch.Modules.Charts
         {
             DataDef, StyleDef, SmoothDef, Common.Title, Common.XLabel, Common.XUnit, Common.YLabel, Common.YUnit,
             Common.Grid, Common.Legend, Common.Limits, Common.XScale, Common.YScale, Common.XRange, Common.YRange, Common.Box,
+            ChartBreaks.YBreaks, ChartBreaks.XBreaks, ChartBreaks.Style,
         };
 
-        internal override Chart Compose(SketchObject o, RenderContext ctx)
+        /// <summary>The axes of the chart without breaks (also used to suggest a break).</summary>
+        private static (Axis X, Axis Y, IReadOnlyList<XySeries> Series, IReadOnlyList<double> Limits) PlainAxes(SketchObject o)
         {
-            var lang = ctx.Lang;
             var series = ChartData.Xy(ChartData.Parse(o.Str("data", DefaultData)));
             var limits = ChartData.Numbers(o.Str("limits", ""));
             var xlog = o.Str("xscale", "linear") == "log";
             var ylog = o.Str("yscale", "linear") == "log";
             var x = Axis.Of(xlog, series.SelectMany(s => s.Points.Select(p => p.X)), ChartData.Range(o.Str("xrange", "")));
             var y = Axis.Of(ylog, series.SelectMany(s => s.Points.Select(p => p.Y)).Concat(limits), ChartData.Range(o.Str("yrange", "")));
+            return (x, y, series, limits);
+        }
+
+        internal override Chart Compose(SketchObject o, RenderContext ctx)
+        {
+            var lang = ctx.Lang;
+            var (x, y, series, _) = PlainAxes(o);
+            x = ChartBreaks.Apply(x, o, ChartBreaks.XKey);
+            y = ChartBreaks.Apply(y, o, ChartBreaks.YKey);
             var panel = new Panel(y, Common.AxisTitle(o, "ylabel", "yunit", "y", null, lang));
             var f = new Frame(o.Size, Design, x, Common.AxisTitle(o, "xlabel", "xunit", "x", null, lang), panel);
             Common.Apply(f, o, ctx);
@@ -59,22 +69,38 @@ namespace InventaSketch.Modules.Charts
             for (var k = 0; k < series.Count; k++)
             {
                 var look = SeriesLook.Of(k);
-                var pts = series[k].Points.Select(p => f.P(panel, p.X, p.Y)).ToList();
+                var data = series[k].Points;
+                // Points hidden by an axis break are left out (no marker, no port).
+                var shown = data.Select(p => f.IsVisible(panel, p.X, p.Y)).ToList();
+                var pts = data.Select(p => f.P(panel, p.X, p.Y)).ToList();
                 if (lines)
                 {
-                    var path = style == "step" ? Steps(series[k].Points).Select(p => f.P(panel, p.X, p.Y)).ToList() : pts;
-                    if (Draw.Series(path, panel.Area, look.Line(0.5), smooth && style != "step", ChartTags.Nth(ChartTags.Series, k)) is { } line) c.Lines.Add(line);
-                    c.Avoid.Add(path);
+                    var tag = ChartTags.Nth(ChartTags.Series, k);
+                    var segs = new List<PathSeg>();
+                    foreach (var run in f.VisibleRuns(panel, style == "step" ? Steps(data) : data))
+                    {
+                        var path = run.Select(p => f.P(panel, p.X, p.Y)).ToList();
+                        if (Draw.Series(path, panel.Area, look.Line(0.5), smooth && style != "step", tag) is { } line) segs.AddRange(line.Segments);
+                        c.Avoid.Add(path);
+                    }
+                    if (segs.Count > 0) c.Lines.Add(new PathPrim(segs, look.Line(0.5)) { Tag = tag });
                 }
-                else c.Avoid.Add(pts);
+                else c.Avoid.Add(pts.Where((_, i) => shown[i]).ToList());
                 if (markers)
                 {
-                    var visible = pts.Where(p => Frame.Ok(p) && panel.Area.Inflate(0.01).Contains(p)).ToList();
+                    var visible = pts.Where((p, i) => shown[i] && Frame.Ok(p) && panel.Area.Inflate(0.01).Contains(p)).ToList();
                     if (visible.Count > 0) c.Lines.Add(Draw.Markers(visible, look.Marker, look.FilledMarker, look.Color, f.Fs * 0.3) with { Tag = ChartTags.Nth(ChartTags.Marker, k) });
                 }
-                for (var i = 0; i < pts.Count; i++) c.Port(pts[i], "s" + Fmt.I(k + 1) + "." + Fmt.I(i + 1));
+                for (var i = 0; i < pts.Count; i++) if (shown[i]) c.Port(pts[i], "s" + Fmt.I(k + 1) + "." + Fmt.I(i + 1));
             }
             return c;
+        }
+
+        /// <summary>Axis break actions on the parts "axis.y"/"axisbreak.y" and "axis.x"/"axisbreak.x" (see <see cref="ChartType"/>).</summary>
+        private static IEnumerable<ContextAction> BreakActions(SketchObject o)
+        {
+            var (x, y, series, limits) = PlainAxes(o);
+            return ChartBreaks.Actions(o, x, series.SelectMany(s => s.Points.Select(p => p.X)), y, series.SelectMany(s => s.Points.Select(p => p.Y)).Concat(limits));
         }
 
         /// <summary>Step curve: each value is held until the next x.</summary>
@@ -98,7 +124,7 @@ namespace InventaSketch.Modules.Charts
             Prm.Cycle(o, "chart.yscale", Common.YScale, new I18nText("y scale", "y-Skala")),
             Common.GridToggle(o),
             Common.LegendCycle(o),
-        };
+        }.Concat(BreakActions(o));
     }
 
     /// <summary>

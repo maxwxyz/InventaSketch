@@ -168,6 +168,8 @@ namespace InventaSketch.Modules.Charts
                 ChartTags.PanelTitle => Indexed("Panel title", "Teilbildtitel"),
                 ChartTags.Caption => new I18nText("Caption", "Bildunterschrift"),
                 ChartTags.Error => new I18nText("Error message", "Fehlermeldung"),
+                ChartTags.AxisBreak => Dir("axis break", "Achsenbruch"),
+                ChartTags.Formula => new I18nText("Formula", "Funktionsgleichung"),
                 _ => new I18nText(key),
             };
         }
@@ -183,7 +185,8 @@ namespace InventaSketch.Modules.Charts
             string[] ids = kind switch
             {
                 ChartTags.Series or ChartTags.Marker or ChartTags.Bar or ChartTags.ValueLabel => new[] { "chart.data", "chart.style", "chart.smooth", "chart.mode", "chart.orient", "chart.values" },
-                ChartTags.Axis or ChartTags.Tick or ChartTags.TickLabel or ChartTags.AxisTitle => dir == "x" ? new[] { "chart.xscale" } : dir.StartsWith("y", StringComparison.Ordinal) ? new[] { "chart.yscale" } : new[] { "chart.arrows" },
+                ChartTags.Axis or ChartTags.Tick or ChartTags.TickLabel or ChartTags.AxisTitle => dir == "x" ? new[] { "chart.xscale", "chart.xbreak", "chart.xbreak.remove" } : dir.StartsWith("y", StringComparison.Ordinal) ? new[] { "chart.yscale", "chart.ybreak", "chart.ybreak.remove" } : new[] { "chart.arrows" },
+                ChartTags.AxisBreak => dir == "x" ? new[] { "chart.xbreak", "chart.xbreak.remove" } : new[] { "chart.ybreak", "chart.ybreak.remove" },
                 "grid" => new[] { "chart.grid" },
                 ChartTags.Legend => new[] { "chart.legend" },
                 _ => Array.Empty<string>(),

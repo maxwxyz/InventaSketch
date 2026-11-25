@@ -156,6 +156,7 @@ namespace InventaSketch.Modules.Charts
                 var n = f.Panels.Count;
                 _sb.Append("def ").Append(_name).Append("():\n");
                 L("\"\"\"" + Comment(f.Name).Replace("\"", "'") + " [" + Comment(f.Id).Replace("\"", "'") + "]\"\"\"");
+                foreach (var note in f.Notes) L("# Note: " + Comment(note));
                 L("fs = " + N(Math.Round(f.FontMm * ExportBuilder.PT, 2)) + "  # chart font size (pt)");
                 L("plt.rcParams.update({'font.size': fs, 'hatch.linewidth': 0.5})");
                 var grid = n > 1 ? ", gridspec_kw={'height_ratios': " + PyList(f.Panels.Select(p => p.Share), I) + "}" : "";

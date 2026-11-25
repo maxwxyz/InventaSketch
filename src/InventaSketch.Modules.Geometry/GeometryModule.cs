@@ -10,6 +10,9 @@ namespace InventaSketch.Modules.Geometry
     /// function graphs, points and vectors (components, addition), angles with measured values, triangles with their
     /// classic constructions, circles (radius, tangent, Thales, unit circle), regular polygons and compass constructions.
     /// Every element is drawn with native primitives and insertable without parameters (see docs/en/modules/geometry.md).
+    /// The 2D coordinate system and the function graphs are offered by the charts module (one axis system for all charts):
+    /// their items here step back while the charts module is registered (<see cref="LibraryItem.Alternative"/>); the types stay
+    /// registered so existing slides keep rendering.
     /// </summary>
     public sealed class GeometryModule : IModule
     {
@@ -125,7 +128,24 @@ namespace InventaSketch.Modules.Geometry
             Default("math.construct.perpendicular");
             Default("math.construct.anglebisector");
             Default("math.lines.parallel");
-            return list;
+
+            // The charts module offers the 2D coordinate system and the function graphs in math style (charts v2 stage 4):
+            // these items step back while it is registered (no duplicates in galleries and search).
+            var alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["math.axes.cartesian"] = "chart.axes.math",
+                ["math.axes.cartesian.quadrant"] = "chart.axes.math.quadrant",
+                ["math.graph.function"] = "chart.function",
+                ["math.graph.function.linear"] = "chart.function.linear",
+                ["math.graph.function.sine"] = "chart.function.sine",
+                ["math.graph.function.exponential"] = "chart.function.exponential",
+            };
+            return list.Select(i => alternatives.TryGetValue(i.Id, out var alt) ? i with { Alternative = alt } : i).ToList();
         }
+
+        /// <summary>Type id of the charts module's math-style coordinate system (companion of points and vectors).</summary>
+        internal const string ChartAxesType = "chart.math.axes";
+        /// <summary>Type id of the charts module's function graph.</summary>
+        internal const string ChartFunctionType = "chart.math.function";
     }
 }

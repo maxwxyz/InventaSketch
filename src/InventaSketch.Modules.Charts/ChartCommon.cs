@@ -19,6 +19,8 @@ namespace InventaSketch.Modules.Charts
     {
         public const string Data = "chart.data";
         public const string Engineering = "chart.eng";
+        /// <summary>Coordinate systems and function graphs in math style (moved from the math module).</summary>
+        public const string Math = "chart.math";
     }
 
     /// <summary>
@@ -73,6 +75,10 @@ namespace InventaSketch.Modules.Charts
         public const string Caption = "caption";
         /// <summary>Message of a figure whose specification cannot be read.</summary>
         public const string Error = "error";
+        /// <summary>Axis break markers of an axis ("axisbreak.y", "axisbreak.y.2" for the second panel, "axisbreak.x").</summary>
+        public const string AxisBreak = "axisbreak";
+        /// <summary>Formula of a function graph.</summary>
+        public const string Formula = "formula";
     }
 
     /// <summary>Marker shapes of data series (distinguishable without colour).</summary>

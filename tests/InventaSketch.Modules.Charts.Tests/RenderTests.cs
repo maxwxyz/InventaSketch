@@ -34,7 +34,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var r = Fx.Reg();
             var o = Fx.Item(r, id);
             var tags = Prim.Flatten(Fx.Render(r, o)).Select(p => p.Tag).ToList();
-            if (o.Type == "chart.axes") { Assert.Contains(tags, t => ChartTags.Is(t, ChartTags.Axis)); return; }
+            if (o.Type is "chart.axes" or "chart.math.axes") { Assert.Contains(tags, t => ChartTags.Is(t, ChartTags.Axis)); return; }
             var data = new[] { ChartTags.Series, ChartTags.Marker, ChartTags.Bar, ChartTags.Contour, ChartTags.Band };
             Assert.True(tags.Any(t => data.Any(d => ChartTags.Is(t, d))), id + " draws no data");
         }
@@ -85,7 +85,7 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.Contains(ids, x => x is not null && x.StartsWith("origin", StringComparison.Ordinal));
             Assert.Equal(ids.Count, ids.Distinct().Count());
             foreach (var a in anchors) Assert.True(Math.Abs(a.P.X) <= o.Size.W / 2 + 1e-6 && Math.Abs(a.P.Y) <= o.Size.H / 2 + 1e-6, id + "/" + a.Id);
-            if (o.Type != "chart.axes") Assert.Contains(anchors, a => a.Role == AnchorRole.Port && a.Id is not null && !a.Id.StartsWith("origin", StringComparison.Ordinal));
+            if (o.Type is not ("chart.axes" or "chart.math.axes")) Assert.Contains(anchors, a => a.Role == AnchorRole.Port && a.Id is not null && !a.Id.StartsWith("origin", StringComparison.Ordinal));
             // The page anchors include the generic box anchors (centre "c") and transform with the object.
             var placed = o with { Transform = new Transform(100, 50) };
             var page = r.PageAnchors(placed, Fx.Ctx()).ToList();

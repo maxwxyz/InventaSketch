@@ -64,6 +64,7 @@ namespace InventaSketch.Modules.Charts.Tests
         public static readonly string[] ExpectedTypes =
         {
             "chart.xy", "chart.bar", "chart.axes", "chart.torque", "chart.efficiency", "chart.pump", "chart.bode", "chart.band", "chart.figure",
+            "chart.math.axes", "chart.math.function",
         };
 
         [Fact]
