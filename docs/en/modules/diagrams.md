@@ -57,6 +57,16 @@ symbol is insertable without parameters; free scaling changes only the box size.
 - **Relationship direction:** the decoration sits at the end point, i.e. draw from the part/child/client to the
   whole/parent/supplier.
 
+## Automatic layout (2026-11-25)
+
+Select the connected elements of a diagram (the connectors need not be selected): the multi-selection offers "Lay out
+as a diagram, top to bottom" and "… left to right" (engine `arrange` with `layout:down` / `layout:right`, Core
+`DiagramLayout`). A layered layout in the manner of Sugiyama: every line whose first and last docked ends sit on two
+selected elements is an edge; cycles are broken along a depth-first search, layers follow the longest path from the
+sources, barycentre sweeps reduce crossings, and layers and gaps follow the elements' own sizes. The diagram keeps its
+place (top edge and centre); connectors follow their elements. Works for any module's box elements joined by docked
+lines (process steps, flowchart, UML, BPMN, ER, blocks).
+
 ## Context actions
 
 | Type | Actions |
