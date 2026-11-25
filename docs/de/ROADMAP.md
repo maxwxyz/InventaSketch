@@ -451,6 +451,47 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
   im Build des Maintainers noch die alte Bezeichnung für die Kompatibilitätsprüfung (die Web-Texte sind seit 25.11.2026
   sauber; nach dem nächsten Web-Build in der COM-Seitenleiste prüfen).
 
+### Plan-Review, Ende 25.11.2026 (Nacht)
+
+**Erledigt seit dem Review am Abend (in main):**
+- Bedienkonzept für alle Elemente (docs/de/design/interaction-ux.md) und seine erste COM-Umsetzung: ein Griff-Layout
+  ohne Überlagerung (PowerPoints eigene Griffe zählen als Hindernis, 24 px Trefferfläche), ein „+“ je Bedeutung
+  (Weiterbauen und Verbinden bei Kabeln und Rohren zusammengelegt, Ecken als Punkte), Leistengruppen mit Trennern und
+  ein „⋯“, das das Kreismenü öffnet, ein Kreismenü mit acht festen beschrifteten Plätzen (Text, Bearbeiten, Einfügen,
+  Duplizieren, Stil, Löschen, Ansicht, Anordnen) und einzeiligen Hinweisen, das Einfügefeld schließt bei Klick
+  außerhalb, Tabellen bekommen Zeilen und Spalten an jeder Seite, Ziehgriffe in Diagrammen.
+- Diagramme: skizzierte Kurven wechseln zwischen geglättet, interpoliert, Ausgleichsfunktion, geraden Abschnitten und
+  wie gezeichnet, ohne die Zeichnung zu verlieren; Grenzlinien, Wertlinien, Markierungen, Achsmarken und
+  Bereichsränder werden mit Griffen gezogen (Core `DragHandles`, Engine `dragHandles`/`moveHandle`); digitale
+  Zeitdiagramme `chart.timing` (4 Vorlagen).
+- Import von matplotlib-, pgfplots- und TikZ-Code (gelesen, nie ausgeführt; Engine `importCode`; COM Prüfen ▸
+  Importieren mit Dateien und Zwischenablage; Bericht über Nicht-Importiertes).
+- Optik-Modul (22 Typen, 35 Einträge, Strahlen live durch Linsen, Spiegel, Prismen, Strahlteiler, Gitter verfolgt).
+- Web und LibreOffice: Folien bereinigen, Export von Auswahl oder Folie; LibreOffice Diagramm aus Bild.
+
+**Als Nächstes, in dieser Reihenfolge (COM zuerst):**
+1. Bedienkonzept Phase 1 (Konzept Abschnitt 9): Griffe für alle Typen mit Werten (Maße, Winkel, Gelenke,
+   Achsabstände), Abhängigkeiten beim Überfahren hervorheben, ein Piktogramm eine Bedeutung (Engine-Test), Aktionen
+   entfernen, die eine Auswahl oder Ansicht doppeln, „+“ zwischen Tabellenzeilen/-spalten, Eckpunkt dort einfügen, wo
+   er gezeichnet ist; COM-Ribbonsymbole überall im selben Linienstil (Menüs der Gruppe Elemente).
+2. COM: „Strahlenbündel einfügen“ (Optik) muss den neuen Strahl einfügen (Aktionsergebnisse mit neuen Objekten werden
+   Einheiten).
+3. Host-Doku (powerpoint-com.md EN/DE) auf die neue Leiste, das Kreismenü und die Griffe umschreiben.
+4. Phase 2: dasselbe Konzept im Web-Add-in (`HandleLayout` portieren, Leistengruppen, Kreismenü-Plätze),
+   Code-Import-Knöpfe in Web und LibreOffice, Diagramm-Ziehgriffe im Web.
+5. Phase 3: Hinweise bei der ersten Benutzung, größere Oberfläche für Sehschwache.
+6. Optik (Idee des Maintainers 25.11.2026, optional): interaktive Lichtstrahlen – Quelle, Linse oder Spiegel ziehen
+   und die Strahlen folgen live beim Ziehen; Startwinkel des Strahls oder Brennpunkt mit Griffen ziehen; Bildpunkt
+   anzeigen.
+7. Ribbon (erledigt 25.11.2026): die Gruppe Prüfen ist in das Menü „Mehr“ gewandert (vorher „Extras“, Abschnitt
+   „Prüfen und Austausch“); gezeichnete 16-px-Symbole für die Grundlagen-Kataloge und die zusammengeklappten Gruppen
+   Elemente und Text; das Tabellen-Dropdown als eigenes Menü in gleicher Breite; Fluidtechnik teilt sich ein Menü mit
+   der Verfahrens- und Wärmetechnik (zwei Abschnitte mit Titel; die Module bleiben getrennt, weil ISO 1219 und ISO 10628
+   Pumpen, Ventile und Leitungen unterschiedlich zeichnen); Katalogvorschauen füllen Ellipsen und abgerundete Rechtecke
+   als solche (keine weißen Quadrate), winzige Elemente bleiben klein.
+8. Später: Seitenleisten-Vorschau live, Ablauf-/GRAFCET-Diagramme, isometrische Teile, bewegte Lagen,
+   Batteriezellen-Anordnungen, hindernisvermeidendes Routing für von Hand platzierte Ablaufkästen.
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,

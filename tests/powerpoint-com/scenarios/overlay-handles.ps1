@@ -61,10 +61,14 @@ if ($connect) {
     $cid = ($connect -split '\|')[0]; $item = (($connect -split '\|')[2] -split ',')[0]
     $addin.Command("port:${cid}:$item") | Out-Null; Start-Sleep 3
     $cable = Get-IskSelected $S
+    $cname = $cable.Name
     # Short: about 15 mm on the slide.
     if ($cable.Width -gt $cable.Height) { $cable.Width = 42 } else { $cable.Height = 42 }
     Start-Sleep 2
     $S.Window.Selection.Unselect(); Start-Sleep 1
+    # The resize redraws the unit (a new shape): look it up again by name.
+    $cable = @(Get-IskShapes $S) | Where-Object { $_.Name -eq $cname } | Select-Object -First 1
+    if (-not $cable) { $cable = @(Get-IskShapes $S) | Select-Object -Last 1 }
     $cable.Select(); Start-Sleep 3
     $r = Get-IskRect $S $cable.Name
     Save-IskShot $S '1-short-cable' -Around ($r.CX - 200), ($r.CY - 200), 400, 400

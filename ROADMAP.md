@@ -408,6 +408,42 @@ in the drawing).
   compatibility wording in the maintainer's build (web strings are clean since 2026-11-25; check the COM sidebar after the
   next web build).
 
+### Plan review, end of 2026-11-25 (night)
+
+**Done since the evening review (merged to main):**
+- Interaction concept for every element (docs/en/design/interaction-ux.md) and its first COM implementation: one
+  handle layout without overlaps (PowerPoint's own handles count as obstacles, 24 px hit areas), one "+" per meaning
+  (extend and connect merged on cables and pipes, corners as dots), bar groups with separators and a "⋯" that opens the
+  pie, a pie with eight fixed labelled places (Text, Edit, Insert, Duplicate, Style, Delete, View, Arrange) and one-line
+  hints, insert box closes on a click outside, tables add rows and columns on every side, chart grips.
+- Charts: sketched curves switch between smoothed, interpolated, fitted function, straight segments and as drawn
+  without losing the drawing; limit lines, value lines, markers, axis marks and span edges are dragged with grips (Core
+  `DragHandles`, engine `dragHandles`/`moveHandle`); digital timing diagrams `chart.timing` (4 presets).
+- Import of matplotlib, pgfplots and TikZ code (read, never executed; engine `importCode`; COM Review ▸ Import with
+  files and clipboard; a report of what was not imported).
+- Optics module (22 types, 35 items, rays traced live through lenses, mirrors, prisms, splitters, gratings).
+- Web and LibreOffice: clean slides, export of selection or slide; LibreOffice chart from picture.
+
+**Next, in this order (COM first):**
+1. Interaction concept phase 1 (concept section 9): grips for every type with values (dimensions, angles, joints,
+   centre distances), dependency highlight on hover, one pictogram one meaning (engine test), remove actions that
+   duplicate a choice or view, "+" between table rows/columns, corner dot inserts where drawn; COM ribbon icons in the
+   same line style everywhere (menus of the Elements group).
+2. COM: "Add ray bundle" (optics) must insert the new ray (action results with new objects become units).
+3. Host docs (powerpoint-com.md EN/DE) rewritten to the new bar, pie and handles.
+4. Phase 2: the same concept in the web add-in (port `HandleLayout`, bar groups, pie places), code import buttons in
+   web and LibreOffice, chart grips in web.
+5. Phase 3: first-use hints, larger UI size for low vision.
+6. Optics (maintainer idea 2026-11-25, optional): interactive light rays – drag a source, a lens or a mirror and watch
+   the rays follow live while dragging; drag the ray's start angle or the focal point (grips); show the image point.
+7. Ribbon (done 2026-11-25): the Review group moved into the menu "More" (was "Extras", section "Check and
+   exchange"); painted 16 px icons for the basics galleries and the collapsed Elements and Text groups; the table
+   dropdown as an own menu of the same width; fluid power shares one menu with process and thermal engineering (two
+   titled sections; the modules stay separate because ISO 1219 and ISO 10628 draw pumps, valves and lines differently);
+   gallery thumbnails fill ellipses and rounded rectangles as such (no white squares), tiny elements stay small.
+8. Later: sidebar preview live, sequence/GRAFCET charts, isometric parts, moved positions, battery arrays,
+   obstacle-aware routing for hand-placed flowchart boxes.
+
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;

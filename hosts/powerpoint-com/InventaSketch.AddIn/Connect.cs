@@ -234,6 +234,9 @@ namespace InventaSketch.AddIn
             ["building-services"] = "architecture",
             // Machine elements and linkages (gears, shafts, bearings … and joints, links, mechanisms): one menu.
             ["kinematics"] = "mechanical",
+            // Fluid power (ISO 1219) with process and thermal engineering (ISO 10628): one menu, two sections; the symbols
+            // stay separate because the standards draw pumps, valves and lines differently (maintainer 2026-11-25).
+            ["fluid"] = "process",
         };
 
         /// <summary>Categories shown in another module's menu (category → module whose menu shows it).</summary>
@@ -263,6 +266,7 @@ namespace InventaSketch.AddIn
         {
             ["architecture"] = new I18nText("Building & services", "Gebäude & TGA"),
             ["mechanical"] = new I18nText("Mechanics", "Mechanik"),
+            ["process"] = new I18nText("Process & fluid", "Verfahrens- & Fluidtechnik"),
         };
 
         private List<(string Label, List<IModule> Modules)> RibbonGroups()
@@ -340,7 +344,13 @@ namespace InventaSketch.AddIn
                         // PowerPoint's own shapes first, as an icon (maintainer 2026-11-25).
                         sb.Append("<control idMso=\"ShapesInsertGallery\" showLabel=\"false\" />");
                         // PowerPoint's table dropdown right under the shapes (maintainer 2026-11-25).
-                        sb.Append("<control idMso=\"TableInsertGallery\" showLabel=\"false\" />");
+                        // An own menu (same width as the other dropdowns, maintainer 2026-11-25) around PowerPoint's table commands.
+                        sb.Append("<menu id=\"IskTableMenu\" showLabel=\"false\" label=\"").Append(L(T("Table", "Tabelle"))).Append("\" imageMso=\"TableInsert\" screentip=\"").Append(X(T("Insert a table", "Tabelle einf\u00fcgen"))).Append("\">")
+                          .Append("<control idMso=\"TableInsertGallery\" />")
+                          .Append("<control idMso=\"TableInsert\" />")
+                          .Append("<control idMso=\"TableDrawTable\" />")
+                          .Append("<control idMso=\"TableExcelSpreadsheetInsert\" />")
+                          .Append("</menu>");
                         // Icons only, like the shapes and table dropdowns (maintainer 2026-11-25); the short name is the
                         // label for screen readers and the full category list the screentip.
                         foreach (var (c, i) in cats) Gallery(c, i, inMenu: false, compact: true);
@@ -352,18 +362,27 @@ namespace InventaSketch.AddIn
                     // Domain modules: one large menu each in the "Elements" group, so the tab fits on laptop screens.
                     if (!elementsOpen)
                     {
-                        sb.Append("<group id=\"IskElements\" getImage=\"GetLogoImage\" label=\"").Append(L(T("Elements", "Elemente"))).Append("\">");
+                        sb.Append("<group id=\"IskElements\" getImage=\"GetPaintedImage\" label=\"").Append(L(T("Elements", "Elemente"))).Append("\">");
                         elementsOpen = true;
                     }
                     sb.Append("<menu id=\"IskMod_").Append(m++).Append("\" label=\"").Append(L(label)).Append("\" size=\"large\" itemSize=\"normal\" getImage=\"GetGroupImage\" getVisible=\"GetModuleVisible\">");
-                    foreach (var (c, i) in cats) Gallery(c, i, inMenu: true, compact: false);
+                    // A shared menu shows each module's part under its own title (e.g. "Fluid power" and "Process & thermal").
+                    string? lastModule = null;
+                    var shared = mods.Count > 1;
+                    foreach (var (c, i) in cats)
+                    {
+                        var owner = c.ModuleId;
+                        if (shared && owner != lastModule && mods.FirstOrDefault(x => x.Id == owner) is { } section)
+                            sb.Append("<menuSeparator id=\"IskSec_").Append(i).Append("\" title=\"").Append(L(section.Name.Get(_lang))).Append("\" />");
+                        lastModule = owner;
+                        Gallery(c, i, inMenu: true, compact: false);
+                    }
                     sb.Append("</menu>");
                 }
                 if (elementsOpen) sb.Append("</group>");
                 if (m == 0) AppendFormattingGroups(sb);
             }
             else AppendFormattingGroups(sb);
-            AppendReviewGroup(sb);
             sb.Append("</tab></tabs></ribbon></customUI>");
             return sb.ToString();
         }
@@ -405,8 +424,12 @@ namespace InventaSketch.AddIn
             void Item(string id, string label, string? imageMso)
                 => sb.Append("<button id=\"").Append(id).Append("\" label=\"").Append(L(label)).Append('"')
                      .Append(imageMso is null ? "" : " imageMso=\"" + imageMso + "\"").Append(" onAction=\"OnToolsMenu\" />");
-            // The InventaSketch logo marks the menu (maintainer 2026-11-25); modules, line weights and accent colour live here.
-            sb.Append("<menu id=\"IskToolsMenu\" showLabel=\"false\" label=\"").Append(L(T("Extras", "Extras"))).Append("\" getImage=\"GetLogoSmallImage\" itemSize=\"normal\">");
+            // The InventaSketch logo marks the menu (maintainer 2026-11-25); "More" (was "Extras"): line weights, accent colour,
+            // modules, the context bar, the check and exchange commands (the former Review group) and the tools.
+            sb.Append("<menu id=\"IskToolsMenu\" showLabel=\"false\" label=\"").Append(L(T("More", "Mehr"))).Append("\" screentip=\"").Append(X(T("More", "Mehr")))
+              .Append("\" supertip=\"").Append(X(T("Line weights, accent colour, modules, check and exchange (compatibility, compare, import, export, clean slides), tools and info.",
+                  "Linienstärken, Akzentfarbe, Module, Prüfen und Austausch (Kompatibilität, Vergleichen, Import, Export, Folien bereinigen), Werkzeuge und Info.")))
+              .Append("\" getImage=\"GetLogoSmallImage\" itemSize=\"normal\">");
             AppendLineGroupMenu(sb);
             AppendAccentMenu(sb);
             sb.Append("<button id=\"IskMenuModules\" label=\"").Append(L(T("Modules \u2026", "Module \u2026"))).Append("\" imageMso=\"ApplicationOptionsDialog\" onAction=\"OnToolsMenu\" supertip=\"")
@@ -415,7 +438,10 @@ namespace InventaSketch.AddIn
             // The floating context bar as a switch in Extras (maintainer 2026-11-25: out of the ribbon group).
             sb.Append("<toggleButton id=\"IskBar\" label=\"").Append(L(T("Context bar", "Kontextleiste"))).Append("\" imageMso=\"QuickStylesGallery\" getPressed=\"GetTogglePressed\" onAction=\"OnToggle\" supertip=\"")
               .Append(X(T("Floating bar with views and commands next to the selected element.", "Schwebende Leiste mit Ansichten und Befehlen neben dem ausgewählten Element."))).Append("\" />");
-            sb.Append("<menuSeparator id=\"IskMenuSep0\" />");
+            // The check and exchange commands (maintainer 2026-11-25: the Review group moved into this menu).
+            sb.Append("<menuSeparator id=\"IskMenuSepReview\" title=\"").Append(L(T("Check and exchange", "Prüfen und Austausch"))).Append("\" />");
+            AppendReviewItems(sb);
+            sb.Append("<menuSeparator id=\"IskMenuSep0\" title=\"").Append(L(T("Tools", "Werkzeuge"))).Append("\" />");
             Item("IskMenuSymbol", T("Insert symbol \u2026", "Symbol einf\u00fcgen \u2026"), "SymbolInsert");
             Item("IskMenuDecimals", T("Change decimal separator \u2026", "Dezimaltrennzeichen \u00e4ndern \u2026"), null);
             sb.Append("<menu id=\"IskMenuLanguage\" label=\"").Append(L(T("Proofing language", "Korrektursprache"))).Append("\" imageMso=\"SetLanguage\">");
@@ -436,16 +462,15 @@ namespace InventaSketch.AddIn
         }
 
         /// <summary>
-        /// The "Review" group at the end of the tab: what works on the finished drawing \u2013 compatibility check, comparison with the
-        /// previous slide (variants), data import and export. One place for these commands (they left the Extras menu).
+        /// The check and exchange commands of the "More" menu (the former Review group): compatibility check, comparison with
+        /// the previous slide (variants), import, chart from picture, clean slides and data export.
         /// </summary>
-        private void AppendReviewGroup(StringBuilder sb)
+        private void AppendReviewItems(StringBuilder sb)
         {
             void Button(string id, string label, string imageMso, bool large, string tip)
                 => sb.Append("<button id=\"").Append(id).Append("\" label=\"").Append(L(label)).Append("\" imageMso=\"").Append(imageMso).Append('"')
-                     .Append(large ? " size=\"large\"" : "").Append(" onAction=\"OnToolsMenu\" supertip=\"").Append(X(tip)).Append("\" />");
-            sb.Append("<group id=\"IskReview\" label=\"").Append(L(T("Review", "Pr\u00fcfen"))).Append("\" getImage=\"GetPaintedImage\">");
-            sb.Append("<button id=\"IskMenuPatent\" label=\"").Append(L(T("Compatibility", "Kompatibilit\u00e4t"))).Append("\" getImage=\"GetPaintedImage\" size=\"large\" onAction=\"OnToolsMenu\" supertip=\"")
+                     .Append(" onAction=\"OnToolsMenu\" supertip=\"").Append(X(tip)).Append("\" />");
+            sb.Append("<button id=\"IskMenuPatent\" label=\"").Append(L(T("Compatibility check \u2026", "Kompatibilit\u00e4t pr\u00fcfen \u2026"))).Append("\" getImage=\"GetPaintedImage\" onAction=\"OnToolsMenu\" supertip=\"")
               .Append(X(T("Checks the drawings of every slide against the formal drawing rules of DPMA, EPO, PCT or USPTO, with sources; double-click a finding to go to it. A drafting aid, not legal advice.",
                           "Pr\u00fcft die Zeichnungen aller Folien gegen die formalen Zeichnungsvorschriften von DPMA, EPA, PCT oder USPTO, mit Fundstellen; Doppelklick auf einen Befund springt dorthin. Eine Zeichenhilfe, keine Rechtsberatung."))).Append("\" />");
             Button("IskMenuCompare", T("Compare", "Vergleichen"), "ReviewCompareTwoVersions", true,
@@ -463,7 +488,6 @@ namespace InventaSketch.AddIn
             sb.Append("<dynamicMenu id=\"IskMenuExport\" label=\"").Append(L(T("Export data", "Daten exportieren"))).Append("\" imageMso=\"ExportTextFile\" getContent=\"GetExportMenu\" invalidateContentOnDrop=\"true\" supertip=\"")
               .Append(X(T("Bill of materials, connection graph, netlist or reference sign list of the selection or the slide.",
                           "St\u00fcckliste, Verbindungsgraph, Netzliste oder Bezugszeichenliste der Auswahl oder der Folie."))).Append("\" />");
-            sb.Append("</group>");
         }
 
         public void OnToolsMenu(Office.IRibbonControl control)
@@ -691,7 +715,7 @@ namespace InventaSketch.AddIn
             sb.Append("<box id=\"IskBoxColor\" boxStyle=\"vertical\"><control idMso=\"FontColorPicker\" showLabel=\"false\" /><control idMso=\"ShapeFillColorPicker\" showLabel=\"false\" /><control idMso=\"ShapeOutlineColorPicker\" showLabel=\"false\" /></box>");
             sb.Append("</group>");
 
-            sb.Append("<group id=\"IskText\" label=\"").Append(L(T("Text", "Text"))).Append("\" imageMso=\"Font\">");
+            sb.Append("<group id=\"IskText\" label=\"").Append(L(T("Text", "Text"))).Append("\" getImage=\"GetPaintedImage\">");
             sb.Append("<box id=\"IskBoxFont\"><control idMso=\"Font\" showLabel=\"false\" /><control idMso=\"FontSize\" showLabel=\"false\" />")
               .Append("<control idMso=\"FontSizeIncrease\" showLabel=\"false\" /><control idMso=\"FontSizeDecrease\" showLabel=\"false\" />");
             LayoutButton(sb, "IskInsertSymbol", T("Insert symbol", "Symbol einf\u00fcgen"), "SymbolInsert");
@@ -872,25 +896,67 @@ namespace InventaSketch.AddIn
         };
 
         /// <summary>The hatched-square pictogram of the shapes-and-hatching gallery.</summary>
-        private Bitmap HatchIcon(int logicalSize)
+        /// <summary>
+        /// Pictograms of the basics galleries, painted at the ribbon's 16 px (× screen scale) in the Office line style:
+        /// solid ink, strokes on whole pixels (maintainer 2026-11-25: scaled-down 32 px thumbnails looked thin, inactive and
+        /// out of place; the junction dot was too big). Null for other galleries (they keep their item thumbnail).
+        /// </summary>
+        private Bitmap? BasicsIcon(string categoryId)
         {
-            var size = (int)Math.Round(logicalSize * DeviceScale());
-            var ink = OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
+            if (categoryId is not ("ann.lines" or "ann.labels" or "ann.flow" or "basic")) return null;
+            var size = (int)Math.Round(16 * DeviceScale());
+            var k = size / 16f;
+            var ink = OfficeTheme.IsDark() ? Color.FromArgb(225, 225, 225) : Color.FromArgb(50, 50, 50);
             var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
             using var g = Graphics.FromImage(bmp);
-            g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-            var m = size * 0.16f; var w = size - 2 * m;
-            var box = new RectangleF(m, m, w, w);
-            using var pen = new Pen(ink, Math.Max(1f, size / 16f));
-            using var hatch = new Pen(ink, Math.Max(1f, size / 22f));
-            var clip = g.Clip; g.SetClip(box);
-            for (var k = -1; k <= 4; k++)
+            var stroke = (float)Math.Max(1, Math.Round(k * 1.25));
+            // A coordinate of the 16 grid on a pixel centre, so 1 px strokes stay crisp.
+            float P(float v) => (float)Math.Floor(v * k) + (stroke % 2 == 1 ? 0.5f : 0f);
+            using var pen = new Pen(ink, stroke) { LineJoin = System.Drawing.Drawing2D.LineJoin.Miter };
+            using var brush = new SolidBrush(ink);
+            switch (categoryId)
             {
-                var o = m + k * w / 3.5f;
-                g.DrawLine(hatch, o, m + w, o + w, m);
+                case "ann.lines":
+                    {
+                        // An arrow up to the right.
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        using var shaft = new Pen(ink, stroke * 1.2f) { StartCap = System.Drawing.Drawing2D.LineCap.Square };
+                        g.DrawLine(shaft, 2.5f * k, 13.5f * k, 10.5f * k, 5.5f * k);
+                        g.FillPolygon(brush, new[] { new PointF(14f * k, 2f * k), new PointF(6.8f * k, 3.6f * k), new PointF(12.4f * k, 9.2f * k) });
+                        break;
+                    }
+                case "ann.labels":
+                    {
+                        // A capital A (no underline).
+                        g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                        using var font = new Font("Segoe UI Semibold", 12.5f * k, FontStyle.Regular, GraphicsUnit.Pixel);
+                        var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                        g.DrawString("A", font, brush, new RectangleF(0, 0, size, size), fmt);
+                        break;
+                    }
+                case "ann.flow":
+                    {
+                        // A decision diamond.
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        g.DrawPolygon(pen, new[] { new PointF(8f * k, 1.5f * k), new PointF(14.5f * k, 8f * k), new PointF(8f * k, 14.5f * k), new PointF(1.5f * k, 8f * k) });
+                        break;
+                    }
+                default:
+                    {
+                        // A hatched square (shapes and hatching).
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+                        var a = P(2); var b = P(14) - (stroke % 2 == 1 ? 1 : 0);
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                        using var hatch = new Pen(ink, Math.Max(1f, k));
+                        var clip = g.Clip;
+                        g.SetClip(RectangleF.FromLTRB(a, a, b, b));
+                        for (var t = -8; t <= 16; t += 4) g.DrawLine(hatch, (t + 2) * k, 14 * k, (t + 14) * k, 2 * k);
+                        g.Clip = clip;
+                        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+                        g.DrawRectangle(pen, a, a, b - a, b - a);
+                        break;
+                    }
             }
-            g.Clip = clip;
-            g.DrawRectangle(pen, box.X, box.Y, box.Width, box.Height);
             return bmp;
         }
 
@@ -933,7 +999,7 @@ namespace InventaSketch.AddIn
             try
             {
                 var cat = CategoryOf(control);
-                if (cat is not null && GalleryCategories(cat).Any(c => c.Id == "ann.hatching")) return PictureConverter.ToPicture(HatchIcon(32));
+                if (cat is not null && BasicsIcon(cat.Id) is { } painted) return PictureConverter.ToPicture(painted);
                 var item = cat is not null && CategoryIconItem.TryGetValue(cat.Id, out var iconId) && _registry?.Item(iconId) is { } chosen
                     ? chosen : ItemsOf(control).FirstOrDefault();
                 return item is null ? null : PictureConverter.ToPicture(Thumbnail(item, 32));
@@ -966,7 +1032,7 @@ namespace InventaSketch.AddIn
         {
             try
             {
-                var large = control.Id is "IskReview" or "IskMenuPatent";
+                var large = control.Id is "IskElements" or "IskText";
                 var size = (int)Math.Round((large ? 32 : 16) * DeviceScale());
                 var ink = OfficeTheme.IsDark() ? Color.FromArgb(230, 230, 230) : Color.FromArgb(40, 40, 40);
                 using var bmp = new Bitmap(size, size, System.Drawing.Imaging.PixelFormat.Format32bppArgb);
@@ -975,6 +1041,29 @@ namespace InventaSketch.AddIn
                     g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
                     switch (control.Id)
                     {
+                        case "IskElements":
+                            {
+                                // Collapsed "Elements" group: a circle (accent blue), a square and a triangle, in the line style of the tab.
+                                var k = size / 32f;
+                                g.ScaleTransform(k, k);
+                                using var pen = new Pen(ink, 2f) { LineJoin = System.Drawing.Drawing2D.LineJoin.Round };
+                                using var accent = new SolidBrush(Color.FromArgb(43, 121, 207));
+                                g.DrawRectangle(pen, 4, 15, 13, 13);
+                                g.DrawPolygon(pen, new[] { new PointF(22, 15), new PointF(29, 28), new PointF(15, 28) });
+                                g.FillEllipse(accent, 13, 3, 12, 12);
+                                g.DrawEllipse(pen, 13, 3, 12, 12);
+                                break;
+                            }
+                        case "IskText":
+                            {
+                                // Collapsed "Text" group: a capital A (maintainer 2026-11-25: only the A, no underline).
+                                using var font = new Font("Segoe UI Semibold", size * 0.62f, FontStyle.Regular, GraphicsUnit.Pixel);
+                                using var brush = new SolidBrush(ink);
+                                g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+                                var fmt = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                                g.DrawString("A", font, brush, new RectangleF(0, 0, size, size), fmt);
+                                break;
+                            }
                         case "IskAllCaps":
                             {
                                 // "AB": two capitals.
@@ -1823,6 +1912,9 @@ namespace InventaSketch.AddIn
 
         internal string PartAtOf(string shapeName, double xPt, double yPt) => _onSlide?.PartAtOf(shapeName, xPt, yPt) ?? "";
         internal string SelectedPartKey() => _onSlide?.SelectedPartKey() ?? "";
+        internal string LastHandles() => _onSlide?.LastHandles ?? "";
+        internal string LastPieItems() => _onSlide?.LastPieItems ?? "";
+        internal string DragHandlesOf(string shapeName) => _onSlide?.DragHandlesOf(shapeName) ?? "";
 
         internal string BuildPortsOf(string shapeName) => _onSlide?.BuildPortsOf(shapeName) ?? "";
 

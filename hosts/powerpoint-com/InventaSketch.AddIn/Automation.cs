@@ -210,6 +210,19 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Visible InventaSketch handles of the selected element as last drawn: "id@x,y,r;…" (device pixels).</summary>
+        public string Handles() => _connect.LastHandles();
+
+        /// <summary>Pie menu entries as last shown: "id	label[	(off)]" per line.</summary>
+        public string PieItems() => _connect.LastPieItems();
+
+        /// <summary>Drag handles (grips) of a shape's element: "key:x,y;…" in slide points.</summary>
+        public string DragHandlesOf(string shapeName)
+        {
+            try { return _connect.DragHandlesOf(shapeName); }
+            catch (Exception ex) { Log.Error("Automation.DragHandlesOf " + shapeName, ex); return ""; }
+        }
+
         /// <summary>Imports plotting or drawing code (matplotlib, pgfplots, TikZ) onto the current slide; returns the report.</summary>
         public string ImportCode(string text)
         {

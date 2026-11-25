@@ -20,7 +20,12 @@ namespace InventaSketch.AddIn
             var bounds = Prim.Bounds(prims);
             if (bounds is not Core.Rect b || b.W <= 0 && b.H <= 0) return bmp;
             var pad = size * 0.1f;
-            var scale = (float)Math.Min((size - 2 * pad) / Math.Max(b.W, 1e-3), (size - 2 * pad) / Math.Max(b.H, 1e-3));
+            // Tiny elements (a junction dot) keep a small size instead of filling the thumbnail as a black blob
+            // (maintainer 2026-11-25): the scale treats anything smaller than MinExtent mm as that big.
+            const double MinExtent = 7;
+            var extent = Math.Max(MinExtent, Math.Max(b.W, b.H));
+            var scale = (float)Math.Min((size - 2 * pad) / Math.Max(Math.Max(b.W, 1e-3), b.W < MinExtent && b.H < MinExtent ? extent : 0),
+                                        (size - 2 * pad) / Math.Max(Math.Max(b.H, 1e-3), b.W < MinExtent && b.H < MinExtent ? extent : 0));
             g.TranslateTransform((float)(size / 2.0 - (b.X + b.W / 2) * scale), (float)(size / 2.0 - (b.Y + b.H / 2) * scale));
             g.ScaleTransform(scale, scale);
             // Thumbnails use a fixed pixel line width so tiny and large symbols stay readable.
@@ -53,6 +58,22 @@ namespace InventaSketch.AddIn
                 case LinePrim l:
                     using (var pen = PenFor(l.Style, ink, px)) g.DrawLine(pen, (float)l.A.X, (float)l.A.Y, (float)l.B.X, (float)l.B.Y);
                     break;
+                case RectPrim r when r.Radius > 0:
+                    {
+                        // Rounded corners: fill and outline the rounded shape, not its bounding rectangle.
+                        using var shape = new GraphicsPath();
+                        var d = (float)Math.Min(2 * r.Radius, Math.Min(r.W, r.H));
+                        float x = (float)r.X, y = (float)r.Y, w = (float)r.W, h = (float)r.H;
+                        shape.AddArc(x, y, d, d, 180, 90);
+                        shape.AddArc(x + w - d, y, d, d, 270, 90);
+                        shape.AddArc(x + w - d, y + h - d, d, d, 0, 90);
+                        shape.AddArc(x, y + h - d, d, d, 90, 90);
+                        shape.CloseFigure();
+                        Fill(g, r.Style, ink, shape.GetBounds(), shape);
+                        using var pen = PenFor(r.Style, ink, px);
+                        if (r.Style.HasStroke) g.DrawPath(pen, shape);
+                        break;
+                    }
                 case RectPrim r:
                     Fill(g, r.Style, ink, new RectangleF((float)r.X, (float)r.Y, (float)r.W, (float)r.H), null);
                     using (var pen = PenFor(r.Style, ink, px)) if (r.Style.HasStroke) g.DrawRectangle(pen, (float)r.X, (float)r.Y, (float)r.W, (float)r.H);
@@ -60,7 +81,8 @@ namespace InventaSketch.AddIn
                 case EllipsePrim e:
                     {
                         var rect = new RectangleF((float)(e.Center.X - e.Rx), (float)(e.Center.Y - e.Ry), (float)(2 * e.Rx), (float)(2 * e.Ry));
-                        Fill(g, e.Style, ink, rect, null);
+                        // Filled as an ellipse (it was filled as its bounding rectangle: white squares behind round symbols).
+                        using (var shape = new GraphicsPath()) { shape.AddEllipse(rect); Fill(g, e.Style, ink, rect, shape); }
                         using var pen = PenFor(e.Style, ink, px);
                         if (e.Style.HasStroke) g.DrawEllipse(pen, rect);
                         break;
