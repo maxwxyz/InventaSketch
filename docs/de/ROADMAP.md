@@ -237,6 +237,43 @@ Leisten-IDs jetzt direkt.
    und Prüfung über alle Folien im Web-Add-in (beide brauchen die Einheiten der anderen Folien über Office.js; Engine
    `diff` steht bereit), SVG/DXF-Import (Vektorzeichnungen als bearbeitbare Formen – ein eigener größerer Baustein).
 
+### Review am Ende der P3-Runde (25.11.2026) und nächste Schritte
+
+**In dieser Runde erledigt:** Varianten als Folienvergleich (Core `Variants`, Engine `diff`; COM Menü Extras, Szenario
+`variants`; LibreOffice-Menü, Integrationsprüfung), die Patentprüfung in allen drei Hosts (COM-Fenster über alle
+Folien, Web-Panel für die Seite, LibreOffice-Dialog über alle Seiten mit Tastaturnavigation, mit echter Eingabe in
+`ui_smoke.py` geprüft), automatisches Diagramm-Layout, Import von CSV/GeoJSON/GPX. Teststand am Ende: .NET 1.698 (18
+Testprojekte), Web 207, LibreOffice-Unit 110, LibreOffice-Integration 77, LibreOffice-UI-Smoke 23,
+PowerPoint-Szenarien einzeln grün.
+
+**Durch Prüfung gefunden (und behoben):** Ein neuer LibreOffice-Befehl wird stillschweigend ignoriert, wenn er nicht in
+der Befehlsliste des Protokoll-Handlers steht; LibreOffice benennt duplizierte Formen um, deren Name auf Ziffern endet,
+wodurch in .pptx die Einheiten-ID aus dem Namen abgeschnitten worden wäre – die Namen werden jetzt aus den Attributen
+wiederhergestellt; die Foto-Regel nannte nur das DPMA, obwohl sie für alle Ämter gilt; der erste Patent-Befund einer
+Seite hat kein Element, die Navigation muss also seitenweite Befunde behandeln.
+
+**Plan-Review – was sich am Plan ändert:**
+- *Gleicher Befehl, gleicher Name, gleicher Ort in jedem Host.* „Patentprüfung (Zeichnungen)“ und „Mit vorheriger Folie
+  vergleichen (Varianten)“ heißen in COM und LibreOffice jetzt gleich. In COM stehen beide im Menü Extras; mit
+  Stückliste und Datenexport bilden sie eine Familie „Prüfen“ – eine Menüband-Gruppe *Prüfen* (Patentprüfung,
+  Vergleichen, Stückliste, Daten exportieren) machte sie ohne Menü auffindbar. Zur Entscheidung durch den Maintainer
+  vorgeschlagen, nicht gebaut.
+- *Jeder Host-Befehl bekommt einen Weg ohne und einen mit sichtbarem Fenster.* Der LibreOffice-Dialog protokolliert
+  sein Ergebnis, wenn kein Fenster sichtbar ist; das hat den Integrationstest möglich gemacht, `ui_smoke.py` prüft den
+  echten Dialog.
+- *Funktionen, die andere Folien brauchen (Web),* warten auf die Office.js-Prüfung in PowerPoint; sie blind zu bauen,
+  verstieße gegen die Regel „keine Scheinfunktionen“.
+
+**Als Nächstes, in dieser Reihenfolge:**
+1. Web in PowerPoint (wartet auf den Maintainer: Entwicklungszertifikat über `npm run certs` in `hosts/office-web`
+   oder ein hochgeladenes Webspace-Paket); danach Web-Prüfung über alle Folien und Folienvergleich über Office.js.
+2. SVG/DXF-Import als bearbeitbare Formen: ein Core-Importer (SVG-Pfad-Teilmenge, DXF LINE/LWPOLYLINE/CIRCLE/ARC/TEXT),
+   der Grundform-Elemente erzeugt, damit das Ergebnis bearbeitbar bleibt und einrastet; Engine `importSvg`/`importDxf`;
+   COM Extras ▸ Import, Web-Importknopf, LibreOffice-Menü.
+3. Menüband-Gruppe *Prüfen* in COM (siehe oben), wenn der Maintainer zustimmt.
+4. Offene Details: Schnittlinie je Wand; Grenzen der Bedienung auf der Folie in LibreOffice (Hilfslinien beim Ziehen
+   brauchen Zeichnen in die Ansicht); echte Läufe auf Webspace und mit dem Installer.
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,
@@ -253,6 +290,10 @@ Leisten-IDs jetzt direkt.
   alle Elemente der Folie auf einmal.
 - **Mathematik & Geometrie (P3):** Koordinatensysteme, Vektoren, Winkel, geometrische Konstruktionen für Lehrfolien.
 - **Handskizzen-Look (P3):** wahlweise skizzenhafte Darstellung desselben Modells für Workshop-Folien.
+- **Optik (P3, Idee 25.11.2026):** Linsen, Spiegel, Prismen, Strahlteiler, Lichtquellen und Detektoren mit
+  Strahlengängen, die den Elementen folgen – häufig in Patentfiguren und Lehrfolien.
+- **Zeit- und Ablaufdiagramme (P3, Idee 25.11.2026):** Signal-Zeitdiagramme und Schritt-/Übergangsdarstellungen (in
+  Anlehnung an GRAFCET), verknüpft mit den Kennzeichen der Elektro- und Fluidmodule.
 
 ## Plan 21.11.2026: Interaktion, Module und Elemente
 
