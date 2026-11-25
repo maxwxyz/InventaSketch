@@ -1,0 +1,863 @@
+# Technische Werte und Berechnungen – Konzept und Katalog
+
+Stand: Konzept und Plan, 25.11.2026 (Wunsch des Maintainers). Noch nichts davon ist umgesetzt. Englische (maßgebliche)
+Fassung: [../../en/design/engineering-calculations.md](../../en/design/engineering-calculations.md).
+
+**Warum.** Zwei Wünsche des Maintainers vom 25.11.2026:
+
+> „E/E, Elektrik, Maschinenelemente, Maschinen, Fluidtechnik, Solar, … überall, wo man Werte eingeben kann, soll man
+> andere Parameter berechnen können, dynamisch und interaktiv, z. B. Spannung, Strom, Leistung, Widerstand, Kapazität,
+> Induktivität … Drehzahl, Drehmoment, Leistung (Achsabstand / Zähnezahl), Übersetzung, Volumenstrom, Wärmemenge …"
+
+> „Man kann schnell skizzieren, aber auch interaktiv und spielerisch lernen und verstehen, konkret, physikalisch
+> korrekt und technisch präzise zeichnen und rechnen und Dinge auf Plausibilität prüfen. Ebenso bei Diagrammen. Auch
+> modulübergreifend, wo sinnvoll, relevant und möglich."
+
+Dieses Dokument legt fest: (1) die Grundsätze einer kleinen Rechenschicht im Core und wie sie in den Hosts erscheint,
+(2) einen Katalog der Formelfamilien je Fachgebiet mit Quellen, (3) je Elementfamilie, was heute vorhanden ist und was
+fehlt, und (4) einen Stufenplan mit Abnahmekriterien. Die Quellen stehen in Abschnitt 9 und werden als [S*n*] zitiert.
+Wir setzen nur Physik und Lehrbuchbeziehungen um. Normen nennen wir, damit Nutzer wissen, wo die verbindlichen Regeln
+stehen; ihre Texte, Tabellen und Grenzwerte übernehmen wir nicht (CLAUDE.md, Abschnitt 2).
+
+---
+
+## 1. Grundsätze
+
+### 1.1 Drei Nutzungsstufen
+
+Dasselbe Element dient drei Arbeitsweisen. Die Stufe ist eine Dokumenteinstellung (Menüband: *Werte: Aus · Erkunden ·
+Ingenieur*), die der Nutzer jederzeit wechseln kann. Voreingestellt ist Aus, damit die Schnellskizze an erster Stelle
+bleibt.
+
+| Stufe | Für wen / wofür | Was der Nutzer sieht | Was der Nutzer tut |
+|---|---|---|---|
+| **Schnellskizze** (Aus) | eine Prinzipskizze in Sekunden | keine Werte, keine Karten, keine Hinweise; Beschriftungen nur, wenn getippt | zeichnen und skalieren; Werte eingeben bleibt möglich (Kreismenü *Werte ▸*), nichts ist Pflicht |
+| **Erkunden** (Lernen) | verstehen, wie Dinge voneinander abhängen | eine kompakte Wertekarte beim Überfahren; Griffe und Schieber an Werten; Formeln Schritt für Schritt ausgeschrieben; Pfeile, die zeigen, in welche Richtung sich abhängige Werte bewegen | einen Wert ziehen und zusehen, wie alles folgt (Zähne → Übersetzung → Drehzahl → Drehmoment); „Was wäre, wenn" ausprobieren, ohne etwas kaputt zu machen (Esc stellt zurück) |
+| **Ingenieur** (präzise) | konkrete, physikalisch korrekte Werte | Einheiten nach Wahl, signifikante Stellen, Toleranzen, die Quelle jeder Formel, Plausibilitätsprüfungen mit Regel und Quelle, ein Rechenblatt | Datenblattwerte eingeben, einen Entwurf prüfen, die Rechnung als Tabelle ausgeben |
+
+Erkunden und Ingenieur nutzen dieselben Beziehungen. Sie unterscheiden sich nur in der Darstellung: Erkunden zeigt
+gerundete Werte (3 signifikante Stellen), Bewegung und Formeln; Ingenieur zeigt Einheiten, Genauigkeit, Toleranzen und
+Quellen.
+
+### 1.2 Werte, Beziehungen und Herkunft
+
+- Eine **Größe** (`VarDef`) ist eine benannte, typisierte Größe eines Elements. Sie hat einen Schlüssel, einen
+  zweisprachigen Namen, ein Formelzeichen je Sprache, eine *Größenart*, eine Anzeigeeinheit, einen typischen Bereich
+  und eine Relevanz (Karte, Panel oder nur Ingenieur). Beispiel: Widerstand `R` „Resistance"/„Widerstand", Größenart
+  *elektrischer Widerstand*, Einheit Ω, Karte.
+- Formelzeichen folgen ISO/IEC 80000 und IEC 60027-1 [S2, S3]. Wo die Sprachen sich in der Konvention unterscheiden,
+  ist das Zeichen zweisprachig: Drehmoment ist im Englischen *T* und im Deutschen *M*, Drehzahl in beiden *n*.
+- Eine **Beziehung** ist eine Gleichung zwischen Größen, z. B. *U* = *R*·*I* oder *n*₂ = *n*₁·*z*₁/*z*₂. Sie hat eine
+  Id, einen zweisprachigen Namen, für jede Größe, nach der sie auflösbar ist, einen Löser (explizite Umkehrung, oder
+  eine eingegrenzte numerische Nullstellensuche, wo es keine geschlossene Form gibt), ihre Gültigkeitsbedingungen
+  („linearer, unbelasteter Teiler", „idealer Transformator") und eine Quellen-Id.
+- Jeder Wert hat eine **Herkunft**:
+
+| Herkunft | Bedeutung | Darstellung |
+|---|---|---|
+| *eingegeben* | vom Nutzer getippt, gezogen oder aus einem Datenblatt übernommen | normal |
+| *Vorgabe* | Vorgabewert des Typs (z. B. Modul 430 Wp), nicht eingegeben | grau, „Vorgabe" im Tooltip |
+| *verknüpft* | von einem verbundenen Element oder verknüpften Diagramm übernommen | Kettensymbol |
+| *abgeleitet* | durch eine Beziehung berechnet | „=" davor, Formel beim Überfahren |
+
+- **Eingegebene Werte werden nie überschrieben.** Abgeleitete Werte werden nie als Wahrheit gespeichert; die Engine
+  berechnet sie bei Bedarf neu. Vorgaben weichen, wenn sie eingegebenen Werten widersprechen, und die Karte sagt das
+  („Vorgabe 430 Wp ersetzt durch 4 × 405 Wp aus dem Strang").
+- **Auflösen in jede Richtung.** Der Nutzer gibt die Werte ein, die er kennt; die Engine berechnet den Rest, sobald
+  das System bestimmt ist. Mit *U* und *I* ergeben sich *R* und *P*; mit *P* und *R* ergeben sich *U* und *I*.
+- **Unterbestimmt:** Die Karte zeigt, wie viele Werte fehlen und welche genügen würden: „Noch ein Wert: *I*, *R* oder
+  *P*".
+- **Überbestimmt:** Stimmen alle Werte innerhalb der Toleranz der Beziehung überein, zeigt die Karte ein Häkchen ✓.
+  Sonst zeigt sie einen **Widerspruch**. Angezeigt werden der eingegebene Wert, der Wert, den die Beziehung ergibt, die
+  Beziehung und die beteiligten Eingaben. Die Engine ändert nichts. Der Nutzer wählt, welche Eingabe er löscht oder
+  welche er behält und neu berechnen lässt („*U* und *I* behalten, *R* ableiten"); diese Wahl ist ein
+  Rückgängig-Schritt.
+- **Geometrie bleibt unabhängig.** Werte verschieben oder skalieren die Zeichnung nie von selbst (Schnellskizze
+  zuerst: Skalieren ändert `Size`, nie Parameter). Wo Werte eine Größe ergeben, wendet eine ausdrückliche Aktion sie an.
+  Beispiele: „Wahre Größe aus Modul" (gibt es für Zahnräder), „Achsabstand aus Werten", „Kanalbreite aus Volumenstrom".
+
+### 1.3 Größen, Einheiten, Genauigkeit
+
+- **Intern kohärentes SI** [S1]: m, kg, s, A, K, dazu rad für ebene Winkel. Jede Größenart hat einen
+  Dimensionsvektor und eine Liste erlaubter Anzeigeeinheiten. Manche Größenarten teilen sich eine Dimension, etwa
+  Drehmoment und Energie (N·m gegenüber J) oder Frequenz und Drehzahl (Hz gegenüber 1/min). Die Größenart hält sie
+  auseinander, sodass ein Drehmomentfeld N·m und kN·m anbietet, aber nie J.
+- **Temperatur und Temperaturdifferenz** sind zwei Größenarten. *θ* nimmt °C oder K an, *Δθ* nur K. Auf Deutsch wird
+  ΔT in „°C" bei der Eingabe angenommen und als K angezeigt.
+- **Eingabe** läuft über einen gemeinsamen Parser im Core. Er ersetzt die drei eigenen: Charts `Fmt.ParseInput`,
+  Energy `Act.Number` und Gebäudetechnik `Bs.ParseMm`. Er versteht:
+  - Dezimalkomma oder -punkt
+  - SI-Vorsätze p n µ/u m k M G
+  - den Buchstabencode nach IEC 60062, bei dem der Buchstabe das Dezimalzeichen ersetzt, wie in `4k7`, `4R7` und
+    `2n2` [S4]
+  - Einheiten mit oder ohne Leerzeichen (`10µF`, `1,5 kW`, `16 A`, `1500 rpm`, `1500/min`, `40 l/min`, `2,5 mm²`,
+    `20 °C`)
+  - Brüche für Übersetzungen (`20/0,4`, `3:1`)
+
+  Eine Einheit der falschen Größenart wird mit einer Meldung abgewiesen („16 A ist ein Strom; dieses Feld erwartet
+  eine Spannung"). Eine bloße Zahl erhält die Anzeigeeinheit des Feldes.
+- **Anzeige.** Werte erscheinen mit signifikanten Stellen: 3 in Erkunden, 2–6 in Ingenieur als Dokumenteinstellung.
+  SI-Vorsätze werden innerhalb der Einheitenfamilie des Feldes automatisch gewählt (4,7 kΩ, 2,2 µF, 1,2 MW). Das
+  Dezimalzeichen folgt der Oberflächensprache. Eingegebene Werte behalten ihren Text, „4k7" bleibt also „4k7" auf der
+  Beschriftung, solange der Nutzer nicht auf die normierte Schreibweise umschaltet.
+- **Keine Rundungsdrift.** Gerechnet wird in voller double-Genauigkeit; gerundet wird nur für die Anzeige.
+  Toleranzprüfungen nutzen die Toleranz der Beziehung: 1 × 10⁻⁶ relativ für exakte Beziehungen, eine angegebene
+  Toleranz für empirische, z. B. 2 % für einen Riementrieb mit Schlupf.
+- **Toleranzen (Ingenieur).** Ein eingegebener Wert darf eine Toleranz tragen (`4k7 ±5 %`, `100 µF −20/+80 %`).
+  Abgeleitete Werte zeigen dann ein Intervall aus der Intervallarithmetik [S37], z. B. *I* = 48,9 … 54,1 mA. Das ist
+  Worst Case, keine Statistik.
+- **Normreihen** (E12/E24-Widerstandswerte, Vorzugsnennströme, Modulreihen) wären für „nächster Normwert" nützlich, sind
+  aber Normtabellen (IEC 60063, IEC 60898-1, ISO 54) [S5, S11, S16]. Das ist ein offener Punkt: Ausliefern erst nach
+  einer festgehaltenen Entscheidung (Quelle und Lizenz in `THIRD-PARTY-NOTICES.md`). Bis dahin ist freie Eingabe der
+  einzige Weg.
+
+### 1.4 Was je Element „relevant" ist
+
+Jedes Element meldet höchstens **vier Kartengrößen**, also die, die man neben das Symbol schreiben würde (Widerstand:
+*R*, *U*, *I*, *P*; Zahnrad: *z*, *m*, *n*, *M*). Alle anderen Größen stehen im Werte-Panel, reine Ingenieursgrößen
+(Toleranz, Temperaturkoeffizient, Aufteilung des Wirkungsgrads) im Ingenieur-Abschnitt. Die Reihenfolge ist je Typ
+fest. Die Karte wächst nie über fünf Zeilen; lange Listen gehören ins Panel.
+
+### 1.5 Wie es in der Oberfläche erscheint
+
+| Ort | Verhalten |
+|---|---|
+| **Schwebende Leiste** | Eine Schaltfläche *Werte* (neues Piktogramm `cmd-values`, „x=", mit kurzem Text) in Gruppe 1. Sie erscheint nur bei Elementen mit Beziehungen und nur in den Stufen Erkunden oder Ingenieur. In Aus bleibt die Leiste unverändert. |
+| **Kreismenü** | *Bearbeiten ▸ Werte ▸*: ein Eintrag je Größe („Spannung *U* … 230 V"), Eingabe per `WithInput`. Abgeleitete Größen zeigen „= 460 W" und öffnen die Erklärung. Die acht festen Plätze bleiben unverändert (interaction-ux.md, Abschnitt 6). |
+| **Wertekarte beim Überfahren** (Erkunden, Ingenieur) | Eine kleine Karte neben dem Element, 2–5 Zeilen: eingegebene Werte normal, abgeleitete mit „=", ein ✓ oder Widerspruchszeichen, „Noch ein Wert: …". Ein Klick auf einen Wert bearbeitet ihn an Ort und Stelle. In Erkunden hat jeder Wert einen kleinen Schieber oder Griff. Sie gehört nur zum Overlay und nie zur Folie. |
+| **Beschriftung am Element** | „Auf der Zeichnung zeigen" je Größe. Die Beschriftung ist ein echter Teil des Elements (Teilschlüssel `values`), wird also wie jeder andere Text formatiert, exportiert und erhalten. Bei Elektroteilen zeigt die vorhandene `value`-Beschriftung die gewählten Größen („4k7 / 0,25 W"). |
+| **Griffe auf der Zeichnung** (Erkunden) | Die vorhandenen Wertgriffe (`DragHandles`) werden auf physikalische Werte erweitert: Achsabstand eines Zahnrads, Hub eines Zylinders, Betriebspunkt eines Diagramms ziehen. Abhängige Werte folgen live. Loslassen ergibt einen Rückgängig-Schritt; Esc bricht ab. |
+| **Formel Schritt für Schritt** (Erkunden) | Erscheint bei einem Klick auf einen abgeleiteten Wert: „*P* = *U*·*I* = 230 V · 2,00 A = 460 W". Bei Ketten eine Zeile je Schritt („*n*₂ = *n*₁·*z*₁/*z*₂ = 1500 min⁻¹ · 18/54 = 500 min⁻¹"), mit Pfeilen ↑↓, die beim Ziehen zeigen, wohin sich jede abhängige Größe bewegt. |
+| **Inspektor in der Seitenleiste** | Abschnitt *Werte* mit allen Größen, Herkunft, Einheitenwahl, Toleranz (Ingenieur), Quelle jeder Beziehung (Ingenieur) und „Löschen". |
+| **Prüfungen** | Ein kleiner bernsteinfarbener Punkt am Element (nur Overlay) und eine Liste *Prüfungen* (Menüband, Werkzeuge). Siehe Abschnitt 4. |
+
+**Barrierefreiheit und Sprache.** Jeder Name, jeder Hinweis und jede Meldung ist zweisprachig (`I18nText`), mit
+einzeiligen Hinweisen im Stil von interaction-ux.md. Einheiten und Formelzeichen werden nicht übersetzt (SI), außer wo
+die Zeichenkonvention abweicht (*T*/*M*).
+
+### 1.6 Weitergabe über Verbindungen
+
+Werte gehen nur über **ausdrückliche Verbindungen** zwischen Elementen, die es im Modell schon gibt. Dazu gehören
+Eingriffe und Kupplungen (`Links`, `Coupling`), Wellenverbände (`GearTrain`), Leitungsnetze (Andockpunkte wie beim
+Netzlistenexport) sowie Rohr-, Kanal- und Kabelanschlüsse mit `PortMedia`. Jede Verbindungsart bringt
+**Anschlussbeziehungen** mit:
+
+| Verbindung | Was gleich ist oder erhalten bleibt | Vorhandene Basis |
+|---|---|---|
+| Zahneingriff, Riemen, Kette | Drehzahlverhältnis *n*₁/*n*₂ = *z*₂/*z*₁ (oder *d*₂/*d*₁); Drehmoment *M*₂ = *M*₁·*i*·*η* | `Links.Ratio`, `GearTrain.Speeds` (relative Drehzahlen, heute nur für die Animation) |
+| Welle, Kupplung, Zahnräder fest auf einer Welle | gleiches *n*; das Drehmoment geht durch, abzüglich abgezweigter Momente | `GearTrain` (Wellen, Stufenräder, Stege über Willis) |
+| Planetensatz | Willis-Gleichung *n*_s − *n*_St = −(*z*_H/*z*_s)(*n*_H − *n*_St); Momentengleichgewicht | `GearTrain` (Stege) |
+| Elektrisch in Reihe (ein Zweig) | gleicher Strom *I*; Spannungen addieren sich; *R* und *L* addieren sich, 1/*C* addiert sich | Leitungsnetze (Andockpunkte, Knoten) |
+| Elektrisch parallel (dieselben zwei Netze) | gleiche Spannung *U*; Ströme addieren sich; 1/*R* addiert sich, *C* addiert sich | Leitungsnetze |
+| Knoten mit allen Strömen bis auf einen bekannt | Knotenregel: Σ*I* = 0 | Leitungsnetze |
+| PV-Strang / -Feld | Module in Reihe: *U* addiert sich, *I* gleich; Stränge parallel: *I* addiert sich | `energy.pv.string` hat `modules` |
+| Rohr oder Kanal in Reihe | gleicher Volumenstrom *V̇* (inkompressibel); Druckverluste addieren sich | `PortMedia` `fluid`, `heating.*`, `water.*`, `air.*` |
+| Rohrabzweig | Σ*V̇* = 0; bei Wärmeträgern auch Mischung Σ(*V̇*·*θ*) | Abzweige in Fluid-/TGA-Leitungen |
+| Kabel | gleiches *I* an beiden Enden; *U*_Ende = *U*_Anfang − Δ*U* | `energy.line.cable` (kV, dc), Installationskabel |
+
+**Netzumformung statt Simulation.** Netzwerke aus Widerständen, Induktivitäten und Kapazitäten werden nur in Reihen- und
+Parallelschritten zusammengefasst. Eine Brücke oder ein vermaschtes Netz, das sich so nicht zusammenfassen lässt,
+erhält die Meldung „hier nicht zusammenfassbar – bitte einen Schaltungssimulator verwenden". Jede Anschlussbeziehung ist
+lokal, die Weitergabe ist also eine Kette von Schritten mit je einer Unbekannten (Abschnitt 1.8).
+
+### 1.7 Wo es aufhört (nicht im Umfang)
+
+- **Keine Schaltungssimulation.** Also keine Knoten- oder Maschenanalyse vermaschter Netze, keine nichtlinearen
+  Bauteilmodelle, keine Transientensimulation und keine AC-Lastflussrechnung. Geschlossene Antworten erster Ordnung
+  (RC/RL-Sprung, RLC-Resonanz) sind als Formeln und verknüpfte Diagramme im Umfang.
+- **Keine Netzberechnungen:** Kurzschlussströme (IEC 60909), Selektivität und Schutzkennlinien, Erdung und
+  Berührungsspannung.
+- **Keine Normtabellen:** Strombelastbarkeitstabellen und Umrechnungsfaktoren (IEC 60364-5-52 Anhang B),
+  Norm-Außentemperaturen und U-Werte (nationale Anhänge zu EN 12831-1), Zylinderdurchmesserreihen (ISO 3320), E-Reihen
+  (bis zur Entscheidung, Abschnitt 1.3). *I*_z, U-Werte und Auslegungstemperaturen gibt der Nutzer selbst ein.
+- **Keine Festigkeitsnachweise:** Zahnradtragfähigkeit (ISO 6336), Wellenermüdung (DIN 743), Schraubenberechnung
+  (VDI 2230), Federdauerfestigkeit (EN 13906-1 über *F* = *c*·*s* hinaus). Höchstens Nennspannungen, gekennzeichnet als
+  „Nennwert, kein Nachweis".
+- **Keine CFD, kein Druckstoß, keine Zweiphasenströmung, keine Kältemittel-Stoffdaten.** Das p-h-Diagramm bleibt
+  schematisch.
+- **Keine PV-Ertragssimulation.** Die Einstrahlung ist eine Eingabezahl, z. B. aus einem Werkzeug wie PVGIS, und wird
+  nicht mitgeliefert.
+- **Keine Konformitätsaussagen.** Kein Ergebnis heißt „normgerecht". Prüfungen sagen „Hinweis", nennen die Regel und
+  die Quelle und überlassen die Entscheidung dem Nutzer.
+
+### 1.8 Löser (Core, hostunabhängig)
+
+1. Die Größen aller Elemente im Bereich sammeln: der Verband der Auswahl, oder im Hintergrunddurchlauf die ganze Folie.
+   Dazu ihre eingegebenen, vorgegebenen und verknüpften Werte.
+2. Die Beziehungen sammeln: lokale je Element, Anschlussbeziehungen je Verbindung und Verbandsbeziehungen (absolute
+   Drehzahlen = `GearTrain.Speeds` × eine bekannte Drehzahl).
+3. **Lokale Weitergabe** [S37]. Wiederholt eine Beziehung mit genau einer Unbekannten nehmen und lösen. Dazu dient die
+   explizite Umkehrung oder eine eingegrenzte Nullstellensuche (Brent) im physikalischen Bereich der Größe, etwa für die
+   Rohrreibungszahl nach Colebrook oder eine Temperatur aus der LMTD. Jede gelöste Größe merkt sich ihren Rechenweg:
+   die Beziehung und ihre Eingaben.
+4. Beziehungen, deren Größen alle bekannt sind, werden gegen ihre Toleranz geprüft. Jede Abweichung wird ein
+   Widerspruch mit beiden Rechenwegen.
+5. Vorgaben werden erst für Größen genutzt, die nach Schritt 3 noch unbekannt sind; danach läuft der Durchgang erneut.
+   Eine Vorgabe erzeugt nie einen Widerspruch; sie weicht.
+6. Was unbekannt bleibt, wird je Element gemeldet, zusammen mit der kleinsten Menge an Größen, die es bestimmen würde.
+
+Der Löser ist deterministisch, begrenzt (jede Beziehung wird je Größe und Durchgang höchstens einmal gelöst) und
+nebenwirkungsfrei. Sein Ergebnis ist eine Wertetabelle mit Rechenweg je (Objekt-Id, Größe). Die Engine-API erhält
+diese Aufrufe: `values(objectId)`, `setValue(objectId, key, text)`, `clearValue`, `explain(objectId, key)`,
+`checks(scope)` und `dragValue(objectId, key, value)` (Live-Vorschau, ein Rückgängig-Schritt erst beim Loslassen). Die
+Zeitbudgets:
+
+- 1 000 Elemente und 5 000 Beziehungen in unter 50 ms unter .NET 10
+- unter 200 ms in WebAssembly
+- ein einzelnes Element in unter 1 ms, damit das Ziehen flüssig bleibt
+
+### 1.9 Plausibilitätsprüfungen
+
+Eine Prüfung ist eine Regel mit diesen Angaben:
+
+- Id, Elementtypen und Schwere (*Info*, *Hinweis* oder *Warnung*; nichts blockiert)
+- eine zweisprachige Meldung, die sagt, was gefunden wurde und was man tun kann
+- die Regel als Formel
+- eine Quelle
+
+Prüfungen laufen nach dem Lösen und erscheinen als bernsteinfarbener Punkt am Element (nur Overlay) und in der Liste
+*Prüfungen*. Sie lassen sich je Element oder Dokument stummschalten; das Stummschalten wird gespeichert. Prüfungen
+ändern nie Werte oder Geometrie. Der Katalog steht in Abschnitt 4.
+
+### 1.10 Diagramme, die mit Elementwerten verknüpft sind
+
+Ein Diagramm kann mit einem oder mehreren Elementen **verknüpft** werden. Die Verknüpfung wird am Diagramm als Liste von
+Objekt-Ids gespeichert, dazu die Zuordnung von Diagrammparametern zu Elementgrößen. Ein verknüpftes Diagramm:
+
+- zeichnet sich neu, wenn sich ein verknüpfter Wert ändert;
+- zeigt den **Betriebspunkt** (einen Schnittpunkt oder markierten Wert) als Marke mit Griff;
+- **schreibt zurück**: Das Ziehen der Marke trägt den neuen Wert als eingegebenen Wert in das Element ein, ein
+  Rückgängig-Schritt für beide. Beispiele: Förderstrom der Pumpe, Betriebsmoment des Motors;
+- lässt sich **entkoppeln**; dann friert es seine aktuellen Werte als eigene Parameter ein.
+
+Der Katalog steht in Abschnitt 5.
+
+### 1.11 Modulübergreifende Ketten
+
+Anschlüsse tragen Paare von **Leistungsgrößen**: eine *Potenzialgröße* (Effort) und eine *Flussgröße* (Flow), deren
+Produkt die Leistung ist. Das ist die Bondgraph-Sicht auf Mehrdomänensysteme [S38]. Jedes Element einer Kette hat eine
+Übertragungsbeziehung mit einem Wirkungsgrad:
+
+| Domäne | Potenzial × Fluss | Leistung |
+|---|---|---|
+| Elektrisch DC | *U* × *I* | *P* = *U*·*I* |
+| Elektrisch AC (1~/3~) | *U* × *I* mit cos *φ*, *f* | *P* = *U*·*I*·cos *φ* (1~), √3·*U*·*I*·cos *φ* (3~) |
+| Drehbewegung | *M* × *ω* (*ω* = 2π*n*) | *P* = *M*·*ω* |
+| Schiebebewegung | *F* × *v* | *P* = *F*·*v* |
+| Hydraulik / Pneumatik | *p* × *V̇* | *P* = Δ*p*·*V̇* |
+| Wärmeträger (Wasser, Luft) | *θ*_VL, *θ*_RL × *V̇* (oder *ṁ*) | *Φ* = *ṁ*·*c*·Δ*θ* |
+
+Die Ketten stehen in Abschnitt 6.
+
+---
+
+## 2. Katalog der Formelfamilien
+
+Spalten: Beziehung(en), Eingaben ↔ Ausgaben (in jede Richtung, die die Beziehung erlaubt), typischer Bereich, Quelle.
+Formelzeichen nach ISO/IEC 80000 [S2]. „↔" heißt: die Beziehung wird nach der jeweils fehlenden Größe aufgelöst.
+
+### 2.1 Elektrotechnik DC und AC
+
+| Familie | Beziehungen | Größen (↔) | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Ohmsches Gesetz, Leistung | *U* = *R*·*I*; *P* = *U*·*I* = *I*²*R* = *U*²/*R* | *U, I, R, P* (zwei beliebige ergeben den Rest) | mV … kV; µA … kA; mΩ … MΩ | [S7] |
+| Reihe / parallel | *R* = Σ*R*ᵢ; 1/*R* = Σ1/*R*ᵢ; *L* ebenso; *C* umgekehrt (in Reihe 1/*C* = Σ1/*C*ᵢ, parallel *C* = Σ*C*ᵢ) | Netzwerk → Ersatzwert | – | [S7] |
+| Spannungsteiler (unbelastet) | *U*₂ = *U*·*R*₂/(*R*₁+*R*₂) | *U, U*₂*, R*₁*, R*₂ | – | [S7] |
+| Zeitkonstanten | *τ* = *R*·*C*; *τ* = *L*/*R*; *u*_C(*t*) = *U*(1 − e^(−*t*/*τ*)); 63 % bei *τ*, ≈ 99 % bei 5*τ* | *R, C, L, τ, t* | µs … s | [S7] |
+| Blindwiderstand | *X*_L = 2π*f*·*L*; *X*_C = 1/(2π*f*·*C*) | *f, L, C, X* | Hz … MHz | [S7] |
+| Impedanz (Reihen-RLC) | \|*Z*\| = √(*R*² + (*X*_L − *X*_C)²); *φ* = arctan((*X*_L − *X*_C)/*R*) | *R, X*_L*, X*_C*, Z, φ* | – | [S7] |
+| Resonanz, Güte | *f*₀ = 1/(2π√(*L·C*)); *Q* = (1/*R*)√(*L*/*C*) (Reihe); Bandbreite *B* = *f*₀/*Q* | *L, C, R, f*₀*, Q, B* | – | [S7] |
+| RC/RL-Filter | *f*_g = 1/(2π*R·C*), *f*_g = *R*/(2π*L*) | *R, C, L, f*_g | – | [S7] |
+| Wechselstromleistung, Leistungsfaktor | *S* = *U*·*I*; *P* = *S*·cos *φ*; *Q* = *S*·sin *φ*; *S*² = *P*² + *Q*² | *U, I, S, P, Q, φ, λ* | cos *φ* 0,7 … 1 | [S6, S7] |
+| Drehstrom (symmetrisch) | *S* = √3·*U*_LL·*I*; *P* = √3·*U*_LL·*I*·cos *φ*; *U*_LN = *U*_LL/√3 | *U, I, P, S, cos φ* | 230/400 V [S13] | [S7] |
+| Idealer Transformator | *U*₁/*U*₂ = *N*₁/*N*₂ = *I*₂/*I*₁; *S* = √3·*U*·*I* (3~) | *U*₁*, U*₂*, N*₁*/N*₂*, I, S* | – | [S7, S15] |
+| Energie | *E* = *P*·*t*; Kosten = *E* × Preis (Preis ist Eingabe) | *P, t, E* | Wh … GWh | [S1] |
+
+### 2.2 Kabel und Schutzeinrichtungen
+
+Wir setzen die Physik um. Verbindliche Grenzwerte, Belastbarkeitstabellen und Umrechnungsfaktoren stehen in
+IEC 60364-5-52 (Abschnitt 525 Spannungsfall, Anhang G informativ; Anhang B Strombelastbarkeit) und IEC 60364-4-43 sowie
+in den nationalen Übernahmen DIN VDE 0100-520 und -430 [S8, S9]. *I*_z und den zulässigen Spannungsfall gibt der
+Nutzer ein.
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Leiterwiderstand | *R* = *ρ*·*l*/*A*; *ρ*(*θ*) = *ρ*₂₀(1 + *α*(*θ* − 20 °C)); *ρ*₂₀,Cu = 0,017241 Ω·mm²/m, *α*_Cu ≈ 0,00393 K⁻¹; Al nach [S12] | *l, A, θ, R* | 0,5 … 300 mm² | [S12] |
+| Spannungsfall (Wechselstrom, zwei Leiter) | Δ*U* = 2·*l*·*I*·(*R*′ cos *φ* + *X*′ sin *φ*); mit *X*′ ≈ 0 bei kleinen Querschnitten: Δ*U* = 2·*l*·*I*·*ρ*/*A* | *l, I, A, ΔU*, Δ*u* % | – | [S7, S8] |
+| Spannungsfall (Drehstrom, symmetrisch) | Δ*U* = √3·*l*·*I*·(*R*′ cos *φ* + *X*′ sin *φ*) | wie oben | – | [S7, S8] |
+| Querschnitt aus zulässigem Spannungsfall (Idee) | *A* = 2·*l*·*I*·*ρ*·cos *φ*/Δ*U*_zul (1~); den nächstgrößeren Querschnitt wählt der Nutzer | *l, I, ΔU*_zul → *A*_min | – | [S7] |
+| Leitungsverluste | *P*_V = *k*·*I*²·*R* (*k* = 2 bei 1~, 3 bei 3~) | *I, R, P*_V | – | [S7] |
+| Überlastkoordination (nur Prüfung) | *I*_B ≤ *I*_n ≤ *I*_z; *I*₂ ≤ 1,45·*I*_z | *I*_B (Last), *I*_n (Gerät), *I*_z (Nutzereingabe) | – | [S9] |
+| LS-Schalter, Sicherung, RCD (Beschriftungen) | LS Typ B/C/D + *I*_n (z. B. „B16"), Sicherung *I*_n + Klasse („gG 35 A"), RCD *I*_Δn („30 mA") werden in Beschriftungsgrößen geparst; keine Auslösekennlinien | *I*_n, Charakteristik, *I*_Δn | 6 … 125 A; 10/30/300 mA | [S10, S11] |
+
+### 2.3 Elektronik (nur Einfaches)
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| LED-Vorwiderstand | *R* = (*U*_S − *n*·*U*_F)/*I*_F; *P*_R = *I*_F²·*R* | *U*_S*, n, U*_F*, I*_F*, R, P*_R | *U*_F 1,8 … 3,5 V; *I*_F 2 … 20 mA (Datenblatt) | [S7] |
+| Transistor als Schalter (BJT) | *I*_B ≥ *k*·*I*_C/*B* (Übersteuerung *k* ≈ 2 … 5); *R*_B = (*U*_E − *U*_BE)/*I*_B | *U*_E*, U*_BE*, I*_C*, B, R*_B | *U*_BE ≈ 0,7 V | [S7] |
+| OPV-Verstärkung (ideal) | invertierend *A* = −*R*_f/*R*_E; nichtinvertierend *A* = 1 + *R*_f/*R*_g; dB = 20 lg\|*A*\| | *R*, *A* | – | [S7] |
+| Kondensator: Ladung, Energie | *Q* = *C*·*U*; *E* = ½*C*·*U*² | *C, U, Q, E* | – | [S7] |
+| Spule: Energie | *E* = ½*L*·*I*² | *L, I, E* | – | [S7] |
+| Batterie (Schaltzeichen) | *U* = Zellen × Zellspannung (Zellspannung ist Eingabe) | Zellen, *U* | – | [S35] |
+
+### 2.4 Maschinenelemente
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Stirnradgeometrie | *d* = *m*·*z*; *d*_a = *m*(*z* + 2); *d*_f = *m*(*z* − 2,5); *p* = π*m*; schrägverzahnt: *m*_t = *m*_n/cos *β* | *m, z, d, d*_a*, β* | *m* 0,5 … 25 mm; *z* ≥ 17 ohne Unterschnitt bei *α* = 20° | [S16, S18] |
+| Achsabstand (ohne Profilverschiebung) | *a* = *m*(*z*₁ + *z*₂)/2 außen; *a* = *m*(*z*₂ − *z*₁)/2 innen | *m, z*₁*, z*₂*, a* | – | [S16] |
+| Übersetzung, Drehzahl, Drehmoment | *i* = *n*₁/*n*₂ = *z*₂/*z*₁ (= *d*₂/*d*₁); *M*₂ = *M*₁·*i*·*η*; *P* = 2π·*n*·*M*; *P*[kW] = *M*[N·m]·*n*[min⁻¹]/9549 | *z, i, n, M, P, η* | *η* 0,97 … 0,99 je Stirnradstufe; Schnecke 0,4 … 0,9 | [S18] |
+| Mehrstufiges Getriebe | *i*_ges = Π*i*_k; *η*_ges = Π*η*_k | Stufen | – | [S18] |
+| Schneckengetriebe | *i* = *z*_Rad/*z*_Schnecke (Gangzahl); Wirkungsgrad aus Steigungswinkel und Reibung (in der ersten Fassung Eingabe *η*) | *z*₁ (Gänge), *z*₂*, i, η* | – | [S18] |
+| Planetengetriebe (Willis) | *n*_s − *n*_St = −(*z*_H/*z*_s)(*n*_H − *n*_St); Montagebedingung (*z*_s + *z*_H)/*N*_Planeten ganzzahlig; *z*_p = (*z*_H − *z*_s)/2 (ohne Profilverschiebung) | *z*_s*, z*_H*, z*_p*, n*_s*, n*_H*, n*_St | Standübersetzung 3 … 10 | [S18, S39] |
+| Zahnstange | *v* = *ω*·*d*/2; *F* = 2*M*/*d* | *m, z, n, v, F* | – | [S18] |
+| Riementrieb | *i* = *d*₂/*d*₁ (Schlupf 1 … 2 % als angegebene Toleranz); *v* = π·*d*₁·*n*₁; *F*_t = *P*/*v* | *d*₁*, d*₂*, n, v, P, F*_t | *v* ≤ 30 m/s (Keilriemen, typisch) | [S18, S20] |
+| Kettentrieb | *i* = *z*₂/*z*₁; mittleres *v* = *z*·*p*·*n*; *F*_t = *P*/*v* | *z, p, n, v, P* | – | [S18, S20] |
+| Gewindetrieb | *v* = *P*_h·*n*; *F* = 2π·*M*·*η*/*P*_h; *M* = *F*·*P*_h/(2π*η*) | *P*_h (Steigung)*, n, v, M, F, η* | Kugelgewindetrieb *η* ≈ 0,9; Trapezgewinde 0,2 … 0,6 | [S18, S23] |
+| Welle (Torsion, Nennwert) | *M* = *P*/(2π*n*); *τ*_t = 16*M*/(π*d*³) (Vollwelle); *φ* = *M*·*l*/(*G*·*I*_p), *I*_p = π*d*⁴/32 | *P, n, M, d, τ*_t*, φ, l, G* | *G*_Stahl ≈ 81 GPa | [S18] (Festigkeit: DIN 743 [S22], nicht im Umfang) |
+| Lagerlebensdauer | *L*₁₀ = (*C*/*P*)^*p* [10⁶ Umdr.], *p* = 3 Kugel, 10/3 Rolle; *L*₁₀h = 10⁶·*L*₁₀/(60·*n*) | *C, P, n, L*₁₀*, L*₁₀h | 10 000 … 100 000 h (je Anwendung) | [S19] |
+| Federn | *F* = *c*·*s*; zylindrische Druckfeder *c* = *G*·*d*⁴/(8·*D*³·*n*_f); Drehfeder *M* = *c*_φ·*φ* | *F, s, c, d, D, n*_f*, G* | – | [S21, S18] |
+| Kupplungen, Freiläufe | *n* und *M* gehen durch; Rutschkupplung *M* ≤ *M*_R; Freilauf nur in einer Richtung | *M, n* | – | [S18] |
+| Translation | *P* = *F*·*v*; *W* = *F*·*s* | *F, v, s, P, W* | – | [S1] |
+
+### 2.5 Elektrische Maschinen und Antriebe
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Synchrondrehzahl | *n*_s = 60·*f*/*p* (Polpaarzahl *p* = Polzahl/2; das Modell speichert die Polzahl) | *f*, Polzahl, *n*_s | 50/60 Hz | [S14, S15] |
+| Schlupf (Asynchronmaschine) | *s* = (*n*_s − *n*)/*n*_s; Generator bei *s* < 0 | *n*_s*, n, s* | *s* 1 … 6 % im Bemessungspunkt | [S15] |
+| Leistung, Drehmoment, Drehzahl | *P*_mech = 2π·*n*·*M*; *η* = *P*_ab/*P*_zu; *P*_el = √3·*U*·*I*·cos *φ* (3~) | *P, M, n, η, U, I, cos φ* | *η* 0,8 … 0,97 (IE-Klassen [S14]) | [S14, S15] |
+| Drehmoment-Drehzahl (ASM, Kloss) | *M*/*M*_k = 2/(*s*/*s*_k + *s*_k/*s*) | *M*_k (Kippmoment), *s*_k | – | [S15] |
+| Gleichstrom- / PM-Maschine | *U* = *R*·*I* + *k*·*ω*; *M* = *k*·*I* (in SI: Drehmomentkonstante = Spannungskonstante) | *U, I, R, k, ω, M* | – | [S15] |
+| Elektrische Frequenz (PMSM) | *f* = *n*·*p*/60 | *n*, Polzahl, *f* | – | [S15] |
+| Rad / Fahrzeug | *v* = *ω*·*r*_dyn; *F* = *M*/*r*_dyn; *P* = *F*·*v* | *r*, *n*, *M*, *v*, *F* | – | [S18] |
+| Verbrennungsmotor (Block) | *P* = 2π·*n*·*M* (keine Thermodynamik) | *n, M, P* | – | [S1] |
+
+### 2.6 Kinematik
+
+| Familie | Beziehungen | Größen | Quelle |
+|---|---|---|---|
+| Freiheitsgrad (vorhanden) | *F* = 3(*n* − 1) − 2*j*₁ − *j*₂ (Grübler/Kutzbach) | Glieder, Gelenke | [S24] |
+| Grashof-Bedingung (Code vorhanden, ungenutzt) | *s* + *l* ≤ *p* + *q* → ein Glied läuft voll um | Gliedlängen | [S24] |
+| Schubkurbel | Hub = 2*r*; *v*_max ≈ *ω*·*r* (Pleuel viel länger als Kurbel) | *r, l, ω* | [S24] |
+| Schnellrücklauf | Zeitverhältnis = (180° + *α*)/(180° − *α*) aus den Totlagen | Längen | [S24] |
+| Übertragungswinkel | *μ* aus der Lagelösung; die übliche Grenze *μ* ≥ 40° ist nur ein Hinweis | Längen, Antriebswinkel | [S24] |
+| Geschwindigkeiten | numerische Ableitung der Lagelösung × Antriebsdrehzahl (keine neue Physik) | Antriebs-*ω* | [S24] |
+
+### 2.7 Fluidtechnik (Symbole nach ISO 1219)
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Volumenstrom und Geschwindigkeit | *V̇* = *A*·*v*; *A* = π*d*_i²/4 | *V̇, d*_i*, v* | siehe Prüfungen | [S27] |
+| Zylinder | *A*₁ = π*D*²/4; *A*₂ = π(*D*² − *d*²)/4; *F* = *p*·*A*·*η*_hm (minus Gegendruck × andere Fläche); *v* = *V̇*/*A*; Flächenverhältnis *φ* = *A*₁/*A*₂ | *D, d, p, F, V̇, v, η*_hm | 10 … 350 bar (Hydraulik), 6 … 10 bar (Pneumatik) | [S26] |
+| Pumpe | *V̇* = *V*_g·*n*·*η*_v; *M* = *V*_g·Δ*p*/(2π·*η*_hm); *P*_zu = Δ*p*·*V̇*/*η*_t | *V*_g*, n, V̇, Δp, M, P, η* | *V*_g 1 … 500 cm³ | [S26] |
+| Motor | *n* = *V̇*·*η*_v/*V*_g; *M* = *V*_g·Δ*p*·*η*_hm/(2π) | wie Pumpe | – | [S26] |
+| Hydraulische Leistung | *P* = Δ*p*·*V̇*; *P*[kW] = *p*[bar]·*V̇*[l/min]/600 | *p, V̇, P* | – | [S26] |
+| Druckverlust im Rohr | Δ*p* = *λ*·(*l*/*d*)·*ρ*·*v*²/2; *Re* = *v*·*d*/*ν*; laminar *λ* = 64/*Re* (*Re* < 2300); turbulent Colebrook–White, bei glatten Rohren Blasius | *v, d, l, ν, ρ, Δp* | Öl *ν* ≈ 10 … 100 mm²/s | [S27] |
+| Blende / Ventil | *V̇* = *α*·*A*·√(2Δ*p*/*ρ*); Datenblatt-Skalierung *V̇* = *V̇*_nenn·√(Δ*p*/Δ*p*_nenn) | *A, Δp, V̇* | – | [S26] |
+| Speicher | *p*₀·*V*₀ = *p*₁·*V*₁ = *p*₂·*V*₂ (isotherm), *p*·*V*^*κ* konst. (adiabat, *κ* ≈ 1,4); Δ*V* = *V*₁ − *V*₂ | *p*₀*, p*₁*, p*₂*, V*₀*, ΔV* | – | [S26] |
+| Pneumatischer Luftverbrauch | *V̇*_n = *A*·*s*·*f*·(*p*_e + *p*_amb)/*p*_amb (je Hub und Richtung) | *A, s, f, p*_e | – | [S26] (Durchflusskennwerte: ISO 6358 [S25]) |
+
+### 2.8 Wärme- und Verfahrenstechnik (Symbole nach ISO 10628)
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Wärmemenge | *Q* = *m*·*c*·Δ*θ*; Wasser *c* ≈ 4,19 kJ/(kg·K) | *m, c, Δθ, Q* | – | [S29] |
+| Wärmestrom (Träger) | *Φ* = *ṁ*·*c*·Δ*θ* = *ρ*·*V̇*·*c*·Δ*θ*; Wasser: *Φ*[kW] ≈ 1,163·*V̇*[m³/h]·Δ*θ*[K] | *V̇, Δθ, Φ* | – | [S29, S30] |
+| Wärmeleitung / -durchgang | *Φ* = *U*·*A*·Δ*θ*; *U* = 1/(1/*h*_i + Σ*d*/*λ* + 1/*h*_a) | *U, A, Δθ, Φ* | – | [S29] |
+| Wärmeübertrager (LMTD) | *Φ* = *U*·*A*·Δ*θ*_m; Δ*θ*_m = (Δ*θ*_a − Δ*θ*_b)/ln(Δ*θ*_a/Δ*θ*_b); Gegen- und Gleichstrom; andere Bauarten über Korrekturfaktor (Eingabe) | vier Temperaturen, *U, A, Φ* | – | [S29] |
+| Kreiselpumpe | *P*_hyd = *ρ*·*g*·*V̇*·*H*; *P*_Welle = *P*_hyd/*η*; Ähnlichkeitsgesetze *V̇* ∝ *n*, *H* ∝ *n*², *P* ∝ *n*³ | *V̇, H, n, P, η* | – | [S28] |
+| Anlagenkennlinie | *H* = *H*_stat + *k*·*V̇*² (*k* aus den Druckverlusten) | *H*_stat*, k, V̇* | – | [S28] (vorhanden in `chart.pump`) |
+| Ventilator | *P* = Δ*p*·*V̇*/*η*; Ähnlichkeitsgesetze wie bei Pumpen | Δ*p, V̇, P, η* | – | [S28, S30] |
+| Behälter / Speicher | *V* = π*D*²·*h*/4 (Zylinder); gespeicherte Wärme *Q* = *ρ*·*V*·*c*·Δ*θ* | *V, D, h, Δθ, Q* | – | [S29] |
+| Thermodynamische Kreisprozesse (vorhanden) | Otto- / Diesel-Wirkungsgrad (`process.chart.pv`) | *ε*, *φ*, *κ* | – | vorhandener Code |
+
+### 2.9 Lüftung, Klima und Gebäudetechnik
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Wärmestrom Luft | *Φ* = *ρ*·*c*_p·*V̇*·Δ*θ*; Luft ≈ 0,34 W·h/(m³·K): *Φ*[W] ≈ 0,34·*V̇*[m³/h]·Δ*θ*[K] | *V̇, Δθ, Φ* | – | [S30] |
+| Luftwechsel | *V̇* = *n*·*V*_Raum (Luftwechselrate *n* in h⁻¹, Nutzereingabe; Personenluftraten aus EN 16798-1 werden nicht übernommen) | *n, V, V̇* | – | [S30, S31] |
+| Wärmerückgewinnung | *θ*_Zuluft = *θ*_Außen + *η*_t(*θ*_Abluft − *θ*_Außen) | Temperaturen, *η*_t | – | [S30] |
+| Heizlast (vereinfacht, Lernhilfe) | *Φ*_HL = (Σ*U*ᵢ·*A*ᵢ + 0,34·*n*·*V*)·(*θ*_int − *θ*_e) | Flächen, *U*-Werte, *n*, *V*, Temperaturen (alles Nutzereingaben) | – | Idee der vereinfachten Verfahren der EN 12831-1 [S31] |
+| Heizkörperleistung | *Φ* = *Φ*_50·(Δ*θ*/50 K)^*n*, *n* ≈ 1,3 (Datenblatt); Δ*θ* als logarithmische oder arithmetische Übertemperatur über Raum | *Φ*_50*, n, θ*_VL*, θ*_RL*, θ*_Raum | – | Kennlinie nach EN 442-2 [S31] |
+| Fußbodenheizkreis | *Φ* = *q*·*A*; *V̇* = *Φ*/(*ρ*·*c*·Δ*θ*); Kreislänge ≈ *A*/Verlegeabstand | *A, q, Verlegeabstand, Δθ* | – | [S30] |
+| Heizkurve | *θ*_VL(*θ*_e) aus der Heizkörperkennlinie zwischen Auslegungspunkt und *θ*_e = *θ*_Raum (Steigung und Parallelverschiebung als Parameter) | *θ*_VL,Ausl*, θ*_e,Ausl*, θ*_Raum*, n* | – | [S30] |
+| Rohr- / Kanalbemessung | *v* = 4*V̇*/(π*d*_i²); runder Kanal *d*; rechteckig *A* = *a*·*b*, *d*_h = 2*ab*/(*a* + *b*) | *V̇, d*_i*, a, b, v* | siehe Prüfungen | [S27, S30] |
+| DN und Innendurchmesser | DN ist eine Nennweite; der Innendurchmesser hängt von der Rohrreihe ab. Der Nutzer gibt *d*_i ein, oder DN dient als mit „≈" gekennzeichnete Näherung | DN, *d*_i | – | [S30] |
+| Warmwasserspeicher | *Q* = *V*·*ρ*·*c*·Δ*θ* (1000 l, 40 K → 46,5 kWh) | *V, Δθ, Q* | – | [S29] |
+
+### 2.10 Solar und Energie
+
+| Familie | Beziehungen | Größen | Typischer Bereich | Quelle |
+|---|---|---|---|---|
+| Modul bei STC | *P*_mpp = *U*_mpp·*I*_mpp; STC = 1000 W/m², 25 °C Zelle, AM 1,5 | *P, U*_oc*, U*_mpp*, I*_sc*, I*_mpp | 300 … 700 Wp | [S33] (Datenblattangaben: EN 50380) |
+| Temperaturkorrektur | *U*_oc(*θ*) = *U*_oc,STC·(1 + *β*·(*θ* − 25 °C)); ebenso *U*_mpp, *I*_sc mit *α*, *P* mit *γ* | *β* ≈ −0,25 … −0,35 %/K | – | [S33, S34] (Verfahren: IEC 60891) |
+| Zelltemperatur | *θ*_Zelle = *θ*_amb + (NMOT − 20 °C)·*G*/800 W/m² | *θ*_amb*, G*, NMOT | NMOT 40 … 47 °C | [S33, S34] |
+| Einstrahlungsskalierung | *I* ≈ *I*_STC·*G*/1000 W/m²; *U* ändert sich logarithmisch (in der ersten Fassung vernachlässigt, wird angegeben) | *G, I* | – | [S34] |
+| Strang / Feld | *U*_Strang = *N*_s·*U*_Modul; *I*_Feld = *N*_p·*I*_Strang; *P* = *N*_s·*N*_p·*P*_Modul | *N*_s (vorhanden: `modules`)*, N*_p | – | [S34] |
+| Höchste Strangspannung | *U*_oc,max = *N*_s·*U*_oc(*θ*_min); kleinste MPP-Spannung *U*_mpp,min = *N*_s·*U*_mpp(*θ*_max) | *θ*_min (Nutzer, Standort), *θ*_max | – | [S33] (IEC 62548-1, Betriebstemperatur) |
+| DC/AC-Verhältnis | *R* = *P*_DC,STC/*P*_AC,Nenn | – | typisch 1,0 … 1,3 | [S34] |
+| Ertragsabschätzung | *E* = *P*_STC·(*H*_POA/1 kW/m²)·PR; spezifischer Ertrag *E*/*P*_STC | *H*_POA (Eingabe), PR (Eingabe, typ. 0,75 … 0,9) | – | [S33] (PR: IEC 61724-1) |
+| Wechselrichter | *P*_AC = *η*·*P*_DC; *I*_AC = *P*_AC/(√3·*U*·cos *φ*) (3~) | *η, P, U, I* | *η* 0,95 … 0,98 | [S33] (EN 50530) |
+| Batterie | *E* = *U*_nenn·*Q*_n; *E*_nutzbar = *E*·DoD; C-Rate = *I*/(*Q*_n/1 h); *t* = *E*_nutzbar/*P*; Zykluswirkungsgrad *η*_rt | *U, Q*_n [Ah]*, E* [kWh]*, DoD, I, P, t* | 0,2 … 2 C | [S35] (Stromangabe: IEC 61434) |
+| E-Auto laden | *P* = √3·*U*·*I* (3~, z. B. 400 V · 16 A ≈ 11 kW); *t* ≈ Δ*E*/(*P*·*η*) (Ladekurve vernachlässigt, wird angegeben) | *P, U, I, E, t* | – | [S7] |
+| Windenergieanlage | *P* = ½·*ρ*·*A*·*v*³·*c*_p; *c*_p ≤ 16/27 (Betz) | *ρ, D, v, c*_p | *c*_p 0,35 … 0,5 | [S36] |
+| Wärmepumpe | *Φ*_H = COP·*P*_el; COP ≤ COP_Carnot = *T*_H/(*T*_H − *T*_C) (Kelvin) | COP, *P*_el*, Φ*_H*, θ*_Quelle*, θ*_VL | COP 2,5 … 5 | [S29, S32] |
+| BHKW | *η*_ges = (*P*_el + *Φ*_th)/*P*_Brennstoff; Stromkennzahl *σ* = *P*_el/*Φ*_th | *P*_el*, Φ*_th*, P*_Brennstoff | – | [S29] |
+| Elektrolyseur / Brennstoffzelle | *ṁ*_H₂ = *η*·*P*/H_u; *P* = *η*·*ṁ*·H_u (Heizwert H₂ ≈ 33,3 kWh/kg) | *P, η, ṁ* | – | [S29] |
+| Wasserstofftank | gespeicherte Energie *E* = *m*·H_u | *m, E* | – | [S29] |
+| Netztransformator | *I* = *S*/(√3·*U*) je Seite | *S, U*_OS*, U*_US*, I* | – | [S7] |
+
+---
+
+## 3. Elementfamilien: heute und benötigt
+
+„Heute" ist dem Code entnommen (25.11.2026). Die neuen Parameter sind gewöhnliche optionale `ParamDef`s mit `Unit`. Eine
+`VarDef` bindet einen vorhandenen Parameter in seiner gespeicherten Einheit, Dokumente brauchen also keine Migration.
+Zum Beispiel ist Energy `voltage` in kV gespeichert, und die Größe liest es als kV.
+
+### 3.1 Elektrotechnik (`InventaSketch.Modules.Electrical`)
+
+| Familie | Heute | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|---|
+| Widerstand, Potentiometer | `value` (freier Text, nur gezeichnet, nie geparst), `ref`, `showLabel` | Ohm, Leistung, Reihe/parallel, Teiler (Poti: Schleiferstellung) | `value` als *R* parsen (`4k7`); `voltage`, `current`, `power`, `prated` (Belastbarkeit), `tolerance`; Poti: `wiper` 0…1 |
+| Kondensator (auch gepolt) | `value` | *τ* = *RC*, *X*_C, *Q* = *CU*, *E*, Reihe/parallel | `value` als *C* parsen; `voltage`, `urated` |
+| Spule | `value`, `core` | *τ* = *L/R*, *X*_L, *E*, Resonanz mit C | `value` als *L* parsen; `current` |
+| Transformator | `core` | ideales Verhältnis, *S* | `u1`, `u2` (oder Verhältnistext „230/12 V"), `power` |
+| Quelle (dc/ac/Strom), Batterie | `kind`, `cells` | *U*, *I*, *P*; AC *f* | `value` als *U* parsen (bei Stromquelle *I*); `frequency` für ac |
+| Diode, LED | `value` | LED-Vorwiderstand | `uf`, `if` (oder „2,1 V 20 mA" parsen) |
+| Transistor (BJT/MOSFET/IGBT) | Polarität, Kanal, Gehäuse | Schalter-Basiswiderstand (nur BJT) | `beta`, `ic` (Ingenieur) |
+| Sicherung, LS-Schalter, RCD | nur `value` | Prüfung Überlastkoordination | `value` als *I*_n + Charakteristik parsen („B16", „gG 35 A"); RCD *I*_Δn („30 mA") |
+| Motor / Generator (Symbol) | `supply` | *P*, *U*, *I*, cos *φ* | `power`, `voltage`, `current`, `pf` (oder Verknüpfung mit einem Element aus Maschinen) |
+| Schalter, Schütz | `contact`, `poles` | lässt *I* durch (geschlossen) oder trennt das Netz (offen; vorhanden als `closed`) | `irated` (Ingenieur) |
+| Leitung / Netz | `route`, `hops` | Reihenstrom, Knotenregel, Netzspannung als Beschriftung | keine (Werte sitzen an Bauteilen und Netzen) |
+| Hausinstallation (Steckdose, Leuchte, Verteiler, Kabel) | Höhen, Fachzahl, Aderzahl | Last je Stromkreis, Spannungsfall, Koordination | Steckdose/Leuchte `power`; Kabel `length`, `section`, `material`; Stromkreis-Schutzorgan *I*_n |
+| OPV, Logik, Steuergeräteblock | Gatterart, Eingänge, Pins | nur OPV-Verstärkung (äußere Widerstände) | keine (die Verstärkung folgt aus den Widerständen ringsum) |
+
+### 3.2 Mechanik (`InventaSketch.Modules.Mechanical`)
+
+| Familie | Heute | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|---|
+| Stirn-/Schräg-/Hohlrad, Kegelrad | `teeth`, `module` (erweitert, ohne Vorgabe), `helix`, `hub`; „Wahre Größe aus Modul" vorhanden | Geometrie, Achsabstand, Übersetzung, Drehzahl, Drehmoment, Leistung, Wirkungsgrad | `speed`, `torque`, `power`, `efficiency` (je Eingriff, Ingenieur), `pressureAngle` (Ingenieur, Vorgabe 20°), `helixAngle` (bei Schrägverzahnung) |
+| Schnecke / Schneckenrad | `starts`, `teeth`, `module` | Schneckenübersetzung, Wirkungsgrad | `efficiency` |
+| Zahnstange | `module` | *v*, *F* vom Ritzel | `force`, `speed` (linear) |
+| Planetensatz | `planets`, `stepped`; Zähnezahlen nur in den Explosionsangaben | Willis, Montagebedingung | `zs`, `zr` (*z*_p abgeleitet) |
+| Steg | `fixed`, `innerRatio` | Willis (über `GearTrain`) | keine |
+| Riemenscheibe + Riemen | `hub`; Riemen `ratio` (Durchmesserverhältnis, nur Zeichnung) | Riementrieb | Scheibe `diameter`; Riemen `slip` (Ingenieur) |
+| Kettenrad + Kette | `teeth`; Kette keine | Kettentrieb | Kette `pitch` |
+| CVT | `ratio` (Zeichnung) | *i* | – (`ratio` wird eine Größe) |
+| Gewindetrieb | `pitch` (Steigung, erweitert), `kind` | Gewindetrieb-Beziehungen | `efficiency`, `force`, `speed` |
+| Welle | `hollow` | Torsion (Nennwert), gemeinsames *n* | `diameter`, `innerDiameter` (hohl), `length`, `material` (*G*) |
+| Lager | keine | *L*₁₀ | `c` (dynamische Tragzahl), `load` *P*, `kind` Kugel/Rolle (Exponent) |
+| Federn (Druck, Zug, Dreh) | `coils` | *F* = *c*·*s*, *c* aus der Geometrie | `rate`, `force`, `travel`, `wire`, `meanDiameter`, `material` |
+| Kupplungen, Freilauf, Schwungrad | `reverse`, `lockup`, `hub` | Durchleitung; Schwungrad *E* = ½*J*ω² | Schwungrad `inertia`; Rutschkupplung `tslip` |
+| Drehmoment- / Drehpfeile | `direction` | zeigen ein verknüpftes *M* oder *n* | `value` (Text, geparst) oder Verknüpfung mit dem Element, auf das sie zeigen |
+
+### 3.3 Maschinen (`InventaSketch.Modules.Machines`)
+
+| Familie | Heute | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|---|
+| Radial-/Axialflussmaschine (Schnitte) | `poles`, `slots`, `phases`, `mode`, `rotor`, `layout` | *n*_s, *f*, Schlupf, Nut-/Polzahlen (Lochzahl *q* = *Q*/(2*p*·*m*)) | `frequency`, `speed`, `power`, `torque`, `voltage`, `current`, `pf`, `efficiency` |
+| Antriebsstrang E-Maschine, Verbrennungsmotor | `kind`, `layout`, `cylinders` | Leistung/Drehmoment/Drehzahl | `power`, `torque`, `speed` |
+| Antriebsblöcke: Motor, Wechselrichter, Batterie, Zwischenkreis, Getriebe, Differenzial, Rad | `mode`, `phases`, `dclink`; das Getriebe hat **keine Übersetzung** | Kette Batterie → Wechselrichter → Motor → Getriebe → Differenzial → Rad | Batterie `voltage`, `capacity`; Wechselrichter `power`, `efficiency`; Getriebe `ratio`, `efficiency`; Differenzial `ratio`; Rad `radius` |
+| Annotationen (Fluss, Drehung, Drehmoment) | `direction` | zeigen verknüpfte Werte | Verknüpfung |
+
+### 3.4 Kinematik (`InventaSketch.Modules.Kinematics`)
+
+| Familie | Heute | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|---|
+| Viergelenk, Schubkurbel, Kreuzschleife, Kniehebel, Schnellrücklauf, Kurve | Längen (mm), `angle`, `dof`-Plakette (Grübler; `Linkages.Grubler`, `Linkage.Dof`) | Grashof-Klasse (`IsGrashof` vorhanden, ungenutzt), Hub, Zeitverhältnis, Übertragungswinkel, Abtriebsgeschwindigkeit | `inputSpeed` (min⁻¹) |
+| Plakette `kin.motion.dof` | `links`, `lower`, `higher`, `formula` | Grübler (vorhanden, mit Formel) | keine; sie ist das Vorbild für die Schritt-für-Schritt-Anzeige |
+
+### 3.5 Fluidtechnik (`InventaSketch.Modules.Fluid`)
+
+Heute **keine Zahlenparameter**, nur Auswahlen (Medium, verstellbar, Kolbenstange, Dämpfung, Wege, Mittelstellung, …).
+
+| Familie | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|
+| Pumpe, Motor | Verdrängung, Volumenstrom, Drehmoment, Leistung | `displacement` (cm³), `speed`, `pressure`, `efficiencyV`, `efficiencyHm` (Ingenieur) |
+| Zylinder (einfach, doppelt wirkend) | Kraft, Geschwindigkeit, Flächenverhältnis | `bore`, `rod`, `stroke`, `pressure`, `force`, `flow` |
+| Schwenkmotor | *M* = *V*_g·Δ*p*/(2π) | `displacement` |
+| Druckbegrenzungs-, Druckminder-, Zuschaltventil | Einstelldruck (begrenzt *p*) | `setPressure` |
+| Drossel, Stromventil, Wegeventil | Blendenskalierung | `qnom`, `dpnom` (Ingenieur) |
+| Speicher | Boyle / adiabat | `volume`, `p0`, `p1`, `p2` |
+| Leitung (Arbeits-, Steuer-, Leck-, Schlauch-) | *V̇* = *A*·*v*, Druckverlust | `innerDiameter`, `length` |
+| Manometer, Durchflussmesser | zeigen den Wert an ihrem Anschluss (verknüpft) | keine |
+
+### 3.6 Verfahrenstechnik (`InventaSketch.Modules.Process`)
+
+Heute nur Auswahlen. Das p-v-Diagramm berechnet bereits den Otto-/Diesel-Wirkungsgrad.
+
+| Familie | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|
+| Kreiselpumpe, Verdrängerpumpe, Verdichter, Ventilator | Pumpenleistung, Ähnlichkeit, Verknüpfung mit `chart.pump` | `flow`, `head` (oder `dp`), `power`, `efficiency`, `speed` |
+| Wärmeübertrager (Rohrbündel, Platte, Luftkühler) | *Φ* = *U*·*A*·Δ*θ*_m, Energiebilanz beider Seiten | `duty`, `area`, `u`, vier Temperaturen, Ströme |
+| Behälter, Kolonnen | Volumen, gespeicherte Wärme | `volume` (oder `diameter`, `height`) |
+| Leitungen | Volumenstrom, Geschwindigkeit | `dn`/`innerDiameter`, `flow` |
+| Armaturen | Blendenskalierung (*K*_v-Wert als Nutzereingabe) | `kv` (Ingenieur) |
+
+### 3.7 Gebäudetechnik (`InventaSketch.Modules.BuildingServices`)
+
+| Familie | Heute | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|---|
+| Rohr (`bs.pipe`) | `medium`, `dn` (mm, ohne Vorgabe), `height` | *v* aus *V̇* und *d*_i, Wärmestrom, Druckverlust | `innerDiameter` (sonst DN ≈), `flow`, `length` |
+| Kanal (`bs.duct`) | `kind`, `width` (Zeichnung) | *v* aus *V̇*, *d*_h | `shape` rund/eckig, `height2` (Rechteckseite), `flow` |
+| Kessel, Wärmepumpe | nur Höhen | Leistung, COP, Volumenstrom aus Δ*θ* | `power`, `flowTemp`, `returnTemp`, `cop` (Wärmepumpe) |
+| Heizkörper, Thermostatventil | Höhen | Heizkörperleistung | `phi50`, `exponent`, `roomTemp` |
+| Fußbodenheizkreis, Verteiler | `spacing`, `circuits` | Kreislänge, Volumenstrom | `area`, `heatFlux` |
+| Pumpe, Mischer, Ausdehnungsgefäß | Höhen | Volumenstrom, Förderhöhe; Mischtemperatur; Ausdehnungsvolumen (Idee) | `flow`, `head` |
+| Lüftungsgerät, Luftauslass | `kind` | Luftvolumenstrom, Wärmerückgewinnung | `flow`, `recovery` |
+| Warmwasserbereiter (`bs.san.heater`) | `coil` | gespeicherte Wärme, Aufheizzeit | `volume`, `power` |
+| Elektroinstallation (`bs.elec.*`) | Art | wie Hausinstallation (Elektro) | wie 3.1 |
+
+### 3.8 Energie (`InventaSketch.Modules.Energy`)
+
+Das Modul ist heute das reichste. Seine Eingabe `Act.Number` mit Begrenzung und seine Ausgabe `Fmt.Si` sind das Vorbild
+für den gemeinsamen Parser und Formatierer.
+
+| Familie | Heute | Beziehungen | Neue Parameter (Vorschlag) |
+|---|---|---|---|
+| PV-Modul | `power` (Wp, 430) | STC, Temperaturkorrektur | `voc`, `vmp`, `isc`, `imp`, `betaVoc`, `gammaP`, `alphaIsc`, `nmot` (Ingenieur) |
+| PV-Strang | `power` (Wp), `modules` (2–24); zeigt „6 × 430 Wp" und die Summe | Strangspannung, höchste/kleinste Spannung | Verknüpfung mit den Modulwerten oder eigene Kopien; `tmin`, `tmax` (Standort) |
+| PV-Feld | `power` (kWp), `rows`, `columns` (Zeichnung) | Feld = Stränge parallel | `strings` (Vorgabe = rows) |
+| Windenergieanlage | `power` (MW), `rotor` | Windleistung, Betz | `diameter`, `windSpeed`, `cp` |
+| Stromaggregat | `power` (kVA), `fuel` | *P* = *S*·cos *φ* | `pf` |
+| Wechselrichter | `power` (kW), `phases`, `kind` | DC/AC-Verhältnis, *η*, AC-Strom, Spannungsfenster des Strangs | `udcMax`, `mpptMin`, `mpptMax`, `idcMax`, `efficiency` |
+| Umrichter | `power`, `kind` | *η* | `efficiency` |
+| Batteriespeicher | `capacity` (kWh), `soc` (%) | *E* = *U*·*Q*, C-Rate, Laufzeit | `voltage`, `ah`, `dod`, `cmax`, `roundTrip` |
+| Ladepunkt, E-Auto | `power` (kW), `dc`; E-Auto `battery` (kWh) | Ladeleistung, Ladezeit | `current`, `voltage` (AC 3~ Vorgabe 400 V) |
+| Gebäudelast | `power` (kW Spitze) | Lastbilanz | `annualEnergy` (kWh/a) |
+| Netzeinspeisung, Transformator, Umspannwerk, Sammelschiene | `voltage` (kV), `hv`/`lv`, `power` (kVA/MVA) | Ströme je Seite, Spannungsabgleich | – (Werte vorhanden) |
+| Kabel (`energy.line.cable`) | `voltage` (kV), `dc`, `conductors` | Spannungsfall, Verluste | `length`, `section`, `material`, `current` |
+| Wärmepumpe, BHKW, Wärmespeicher | `power` (kW), `thermal`, `volume` (l) | COP, BHKW-Wirkungsgrad, gespeicherte Wärme | `cop`, `fuelPower`, `deltaT` |
+| Elektrolyseur, Brennstoffzelle, H₂-Tank | `power`, `mass` (kg), `pressure` (bar) | H₂-Massenstrom, gespeicherte Energie | `efficiency` |
+| Energieflusspfeil (`energy.line.flow`) | `weight` (Bandbreite, nur Grafik) | optional: Breite ∝ verknüpfte Leistung (Sankey-Art) | `value` (verknüpfte Leistung) |
+
+### 3.9 Diagramme (`InventaSketch.Modules.Charts`) und Architektur
+
+- `chart.torque` (`tmax`, `nbase`, `nmax`), `chart.efficiency` (`etamax`), `chart.pump` (`h0`, `qmax`, `hstat`, `qop`;
+  ohne Einheiten; Betriebspunkt berechnet) und `chart.bode` (`fc`, `zeta`, `gain`) sind die ersten Ziele für
+  Verknüpfungen. Ihre Parameter werden Größen mit Einheiten; das einheitenlose Pumpendiagramm erhält beim Verknüpfen
+  Einheiten.
+- Architekturräume haben ein Polygon. Fläche und Volumen (mit Raumhöhe) sind abgeleitete Werte, die Heizlast und
+  Luftwechsel speisen (modulübergreifend).
+- Bemaßungen (Annotation) messen Geometrie. Eine Bemaßung zwischen zwei Zahnradachsen zeigt den Achsabstand; in
+  Erkunden löst das Ziehen nach Modul oder Zähnezahl auf, je nach Wahl des Nutzers (Abschnitt 1.2: Geometrie nur auf
+  Wunsch).
+
+---
+
+## 4. Plausibilitätsprüfungen (Katalog)
+
+Alle Prüfungen sind Hinweise: nur Overlay, abschaltbar, und sie ändern nie etwas. „Nutzergrenze" heißt: ein Wert, den
+der Nutzer in den Prüfeinstellungen des Dokuments setzt, weil die verbindliche Grenze in einer Norm oder einem
+Datenblatt steht, das wir nicht übernehmen.
+
+| Id | Elemente | Regel | Schwere | Quelle |
+|---|---|---|---|---|
+| `mech.mesh.module` | kämmende Zahnräder | gleicher (Normal-)Modul und Eingriffswinkel | Warnung | [S16] |
+| `mech.mesh.distance` | Radpaar mit Bemaßung oder eingegebenem *a* | *a* = *m*(*z*₁ ± *z*₂)/2 (Profilverschiebung nicht modelliert) | Hinweis | [S16] |
+| `mech.gear.undercut` | Zahnrad | *z* < 2/sin²*α* (≈ 17 bei 20°) ohne Profilverschiebung | Info | [S18] |
+| `mech.planetary.assembly` | Planetensatz | (*z*_s + *z*_H)/*N*_Planeten ganzzahlig; *z*_H − *z*_s gerade | Warnung | [S18, S39] |
+| `mech.power.balance` | jede Kette | *P*_ab ≤ *P*_zu (mehr heraus als hinein ist unmöglich); *P*_ab ≈ *P*_zu·Π*η* | Warnung | [S1] |
+| `mech.bearing.life` | Lager | *L*₁₀h unter der geforderten Lebensdauer des Nutzers | Hinweis | [S19] |
+| `mech.belt.speed` | Riemen | *v* über der Nutzergrenze (typisch 30 m/s bei Keilriemen) | Hinweis | [S18] |
+| `mech.screw.selflock` | Trapezgewindetrieb | Rücktrieb möglich, wenn *η* > 0,5 (Hinweis bei senkrechter Last) | Info | [S18] |
+| `kin.grashof` | Viergelenk | kein Glied läuft voll um, aber ein Kurbelantrieb ist gesetzt | Hinweis | [S24] |
+| `kin.dof` | Getriebe mit Antrieb | *F* ≠ Zahl der Antriebe | Hinweis | [S24] |
+| `elec.coord.overload` | Schutzorgan + Kabel/Stromkreis | *I*_B ≤ *I*_n ≤ *I*_z verletzt (*I*_z vom Nutzer eingegeben) | Warnung | [S9] |
+| `elec.rcd.additional` | Steckdosenstromkreis | kein RCD mit *I*_Δn ≤ 30 mA vor einem Steckdosenstromkreis gefunden | Hinweis (nationale Regeln unterscheiden sich) | [S10] |
+| `elec.cable.drop` | Kabel | Δ*u* über der Nutzergrenze | Hinweis | [S8] |
+| `elec.r.power` | Widerstand | *P* > *P*_Nenn | Warnung | [S7] |
+| `elec.led.current` | LED | *I* > *I*_F,max des Nutzers oder Datenblatts | Warnung | [S7] |
+| `elec.voltage.mismatch` | Element ↔ Kabel/Sammelschiene | Anschlussspannung ≠ Spannung der angeschlossenen Leitung (Energy-Anschlüsse tragen heute kV) | Warnung | – (Konsistenz) |
+| `elec.kcl` | Knoten | Σ*I* ≠ 0 bei lauter eingegebenen Strömen | Warnung | [S7] |
+| `mach.slip.sign` | Asynchronmaschine im Motorbetrieb | *n* > *n*_s (das ist Generatorbetrieb) | Info | [S15] |
+| `mach.efficiency` | jeder Wandler | *η* > 1 oder *P*_ab > *P*_zu | Warnung | [S1] |
+| `fluid.cyl.force` | Zylinder | geforderte *F* > *p*_max·*A*·*η*_hm (*p*_max aus Druckbegrenzungsventil oder Pumpe) | Warnung | [S26] |
+| `fluid.velocity` | Leitung | *v* außerhalb des Nutzerbereichs je Leitungsart (Vorgaben aus Lehrbüchern: Saugleitung 0,5 … 1,5 m/s, Druckleitung 3 … 6 m/s, Rücklauf 2 … 4 m/s) | Hinweis | [S26] |
+| `fluid.pressure.relief` | Pumpe ohne Druckbegrenzung im Kreis | keine Druckbegrenzung gefunden | Hinweis | [S25] (ISO 4413) |
+| `heat.velocity` | Heizungs- / Wasserrohr | *v* außerhalb des Nutzerbereichs (Heizungsverteilung ≈ 0,3 … 1 m/s, Lehrbuch) | Hinweis | [S30] |
+| `air.velocity` | Kanal | *v* außerhalb des Nutzerbereichs (Wohnung ≈ 2 … 4 m/s, Lehrbuch) | Hinweis | [S30] |
+| `heat.cross` | Wärmeübertrager | Temperaturkreuzung (kalter Austritt über heißem Eintritt; Gleichstrom: kalter Austritt über heißem Austritt) | Warnung (unmöglich) | [S29] |
+| `heat.cop.carnot` | Wärmepumpe | COP > COP_Carnot | Warnung (unmöglich) | [S29] |
+| `heat.balance` | Wärmeerzeuger ↔ Verbraucher | Σ*Φ*_Verbraucher > *Φ*_Erzeuger | Hinweis | [S29] |
+| `pv.voc.max` | Strang ↔ Wechselrichter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | Warnung | [S33] (IEC 62548-1) |
+| `pv.mpp.min` | Strang ↔ Wechselrichter | *N*_s·*U*_mpp(*θ*_max) < MPPT-Minimum | Hinweis | [S33, S34] |
+| `pv.isc.max` | Feld ↔ Wechselrichtereingang | *N*_p·*I*_sc > *I*_DC,max | Warnung | [S33] |
+| `pv.dcac` | PV ↔ Wechselrichter | DC/AC-Verhältnis außerhalb des Nutzerbereichs (Vorgabe 0,8 … 1,5) | Info | [S34] |
+| `bat.crate` | Batterie | C-Rate über dem Maximum des Nutzers oder Datenblatts | Hinweis | [S35] |
+| `chart.nopoint` | verknüpftes Pumpen-/Anlagendiagramm | Kennlinien schneiden sich nicht (kein Betriebspunkt) | Hinweis | [S28] |
+| `value.range` | jede Größe | Wert weit außerhalb des typischen Bereichs seiner Größe (Faktor 1000), z. B. 2300 V an einer Steckdose | Info („Tippfehler?") | – |
+
+---
+
+## 5. Diagramme mit Elementwerten verknüpfen
+
+| Diagramm | Verknüpfte Elemente und Größen | Betriebspunkt | Zurückschreiben (Ziehen) |
+|---|---|---|---|
+| Drehmoment-Drehzahl (`chart.torque`) | Maschine: *M*_max, Eckdrehzahl, *n*_max, *P*; ASM: Kloss-Kurve aus *M*_k, *s*_k; Lastmoment aus der angetriebenen Kette | Schnitt von Motor- und Lastmoment | Ziehen des Punkts setzt Lastmoment oder Drehzahl |
+| Wirkungsgradkennfeld (`chart.efficiency`) | Maschine *η*_max; Betriebspunkt (*n*, *M*) | Marke | – |
+| Pumpe / Ventilator gegen Anlage (`chart.pump`) | Pumpe: *H*₀, *V̇*_max (oder Datenblattpunkte); Anlage: *H*_stat, *k* aus den Druckverlusten der angeschlossenen Rohre; Drehzahl über die Ähnlichkeitsgesetze | Schnittpunkt (vorhanden: `OperatingPoint`) | Ziehen des Punkts setzt den Förderstrom der Pumpe (vorhanden als Griff an `qop`) |
+| PV-I-U und P-U (neue Vorlage) | Modul/Strang: *U*_oc, *I*_sc, *U*_mpp, *I*_mpp, *N*_s, *θ*, *G* (Eindiodenmodell, an die Datenblattpunkte angepasst [S34]) | MPP-Marke; MPPT-Fenster des Wechselrichters als Band; *U*_DC,max als Grenzlinie | Ziehen von Temperatur oder Einstrahlung verschiebt die Kurve (Erkunden) |
+| Bode-Diagramm (`chart.bode`) | RC: *f*_g = 1/(2π*RC*); RLC: *f*₀, *ζ* = (*R*/2)√(*C*/*L*) | −3-dB-Marke | Ziehen von *f*_g ändert *C* oder *R* (nach Wahl des Nutzers; die andere Größe bleibt) |
+| Sprungantwort (Funktionsdiagramm, PT1/PT2) | RC/RL: *τ*; RLC: *f*₀, *ζ* | 63 % bei *τ* | – |
+| Drehzahl-/Drehmomentplan eines Getriebes (neue Vorlage) | Räderzug: je Welle *n*, *M*, *P* (Balken oder Stufen entlang des Zugs) | – | – |
+| Heizkurve (neue Vorlage) | Wärmeerzeuger / Heizkreis: Auslegungspunkt, Raumtemperatur, Exponent | aktuelle Außentemperatur (Eingabe) | Ziehen des Auslegungspunkts ändert die Vorlauftemperatur |
+| Erzeugungs-/Lastbilanz (neue Vorlage) | Energieelemente: Σ*P* Erzeugung gegen Σ*P* Last | – | – |
+
+Verknüpfte Diagramme nutzen das Teilemodell von Diagramme v2 (`docs/de/design/charts-v2.md`). Der Betriebspunkt ist ein
+Teil mit Griff, und die Verknüpfung erscheint als Kettensymbol in der Leiste des Diagramms mit „Verknüpft mit *Pumpe P1*
+– entkoppeln".
+
+---
+
+## 6. Modulübergreifende Ketten
+
+| Kette | Was fließt | Übertragungsbeziehungen | Module |
+|---|---|---|---|
+| E-Motor → Kupplung → Getriebe → Differenzial → Rad | *n*, *M* (→ *P*); am Rad *v*, *F* | Motor *P*_mech = *η*·*P*_el; Kupplung durchleitend; Getriebe *n*₂ = *n*₁/*i*, *M*₂ = *M*₁·*i*·*η*; Rad *v* = *ω*·*r*, *F* = *M*/*r* | Maschinen, Mechanik (`GearTrain`), Automotive |
+| Batterie → Wechselrichter → Motor (Antriebsblöcke) | *U*, *I* (DC) → *U*, *I*, *f* (AC) → *n*, *M* | *P*_AC = *η*_WR·*P*_DC; *f* = *n*·*p*/60 | Maschinen, Energie |
+| PV-Module → Strang → Wechselrichter → Verteiler → Stromkreise | *U*, *I* (DC) → *P*, *U*, *I* (AC) | Strangsummen; Wechselrichter *η*, DC/AC-Verhältnis; Verteiler: Σ*I* je Außenleiter; Stromkreise: Schutzkoordination und Spannungsfall | Energie, Elektro (Haus), Gebäudetechnik |
+| Netz → Transformator → Sammelschiene → Abgänge → Lasten | *U*, *S*, *I* | idealer Transformator; Sammelschiene Σ*I*; Last *P*, cos *φ* | Energie, Elektro |
+| Pumpe → Rohrnetz → Wärmeübertrager → Heizkörper / Fußbodenheizkreis | *V̇*, Δ*p* (→ *P*_hyd); *θ*_VL, *θ*_RL (→ *Φ*) | Pumpenkennlinie gegen Anlagenkennlinie; Rohr-Δ*p*; Wärmeübertrager LMTD; Heizkörperkennlinie; Abzweige mischen | Verfahrenstechnik, Gebäudetechnik, Energie (Wärmepumpe), Diagramme |
+| Wärmepumpe → Speicher → Heizkreis → Räume | *Φ*, *θ*, *V̇* | COP; gespeichertes *Q*; Heizkurve; Raumheizlast aus der Fläche des Architekturraums | Energie, Gebäudetechnik, Architektur |
+| Hydraulikaggregat → Ventile → Zylinder / Motor | *p*, *V̇* (→ *F*, *v* oder *M*, *n*) | Pumpe *V̇* = *V*_g·*n*; Druckbegrenzung begrenzt *p*; Zylinder *F*, *v*; Motor *M*, *n* | Fluid, Maschinen (Antriebsmotor) |
+| Motorgetriebenes Koppelgetriebe | *n* → Abtriebsgeschwindigkeit, Hubzahl | kinematische Lagelösung, Ableitung | Kinematik, Maschinen |
+| Lüftungsgerät → Kanäle → Luftauslässe → Räume | *V̇*, *θ* | Σ*V̇* an Abzweigen; Wärmerückgewinnung; Wärmestrom Luft | Gebäudetechnik, Architektur |
+
+**Regeln.** Die Kette wird nur über vorhandene Verbindungen gefunden. Werte gehen nur zwischen passenden Medien
+(`PortMedia.Fits`). Ein Anschluss ohne passende Größe beendet die Kette still; er rät nie. Der Löserbereich einer Kette
+ist die zusammenhängende Komponente der Auswahl; der Hintergrunddurchlauf deckt die Folie ab. In den ersten Fassungen
+wird nichts über Foliengrenzen weitergegeben.
+
+---
+
+## 7. Umsetzungsplan
+
+Jede Stufe folgt der Definition of Done aus CLAUDE.md:
+
+- Modell, Darstellung, Persistenz-Rundlauf und Unit-Tests
+- zweisprachige Namen
+- Dokumentation EN/DE und Hinweise zu Host-Fähigkeiten
+- Galeriefälle für Beschriftungen
+
+Die Hosts kommen in dieser Reihenfolge: zuerst COM, dann Web (WebAssembly-Engine, dieselbe API), dann LibreOffice.
+
+**Calc 0 – Größen und Einheiten (Core).** Neu sind `QuantityKind`, `Unit`, `UnitCatalog`, `ValueParser` (SI-Vorsätze,
+Dezimalkomma, Buchstabencode nach IEC 60062, Einheiten, Brüche, Toleranzen) und `ValueFormat` (signifikante Stellen,
+automatischer Vorsatz, Sprache). Die Parser von Charts, Energy und Gebäudetechnik delegieren daran, ihr Verhalten bleibt
+erhalten.
+
+*Abnahme:*
+- Parse-/Formattests für `4k7`, `4R7`, `2n2`, `10 µF`, `10uF`, `1,5 kW`, `1500 rpm`, `1500/min`, `40 l/min`,
+  `2,5 mm²`, `20 °C` (Temperatur) gegenüber `20 K` (Differenz), `230/12 V`, `4k7 ±5 %`
+- eine Einheit der falschen Größenart wird mit zweisprachiger Meldung abgewiesen
+- Rundlauf Formatieren → Parsen innerhalb der angezeigten Stellen
+- `netstandard2.0` und `net10.0` bestehen beide
+- die vorhandenen Eingabetests von Charts, Energy und Gebäudetechnik bestehen unverändert
+
+**Calc 1 – Beziehungs-Engine (Core + Engine-API).** Neu sind `VarDef`, `Relation` (mit Quellen-Id und Toleranz) und
+`ObjectType.Variables/Relations` (Vorgabe leer), dazu Anschlussbeziehungen und der Löser aus Abschnitt 1.8. Herkunft,
+Widersprüche und Rechenweg gehören dazu. Engine-Aufrufe: `values`, `setValue`, `clearValue`, `explain`, `dragValue` und
+`checks`. Eingegebene Werte liegen in Parametern (vorhandene Schlüssel mit ihren Einheiten); abgeleitete Werte werden nie
+gespeichert.
+
+*Abnahme:*
+- je zwei beliebige von *U, I, R, P* bestimmen die anderen beiden
+- drei stimmige Eingaben ergeben ✓; widersprüchliche ergeben einen Widerspruch, der beide Werte nennt und alle Parameter
+  unverändert lässt
+- Vorgaben weichen ohne Widerspruch
+- „fehlt: eines von {…}" wird gemeldet
+- der JSON-Rundlauf erhält eingegebene Werte und ihren Text
+- die Zeitbudgets aus Abschnitt 1.8 werden in einem Benchmark-Test eingehalten
+- die Ergebnisse sind deterministisch (gleiche Eingabe, gleicher Rechenweg)
+
+**Calc 2 – COM-Oberfläche (Erkunden und Ingenieur).** Diese Stufe bringt:
+- die Stufeneinstellung im Menüband
+- die Schaltfläche *Werte* in der Leiste
+- das Kreismenü *Bearbeiten ▸ Werte ▸*
+- die Wertekarte beim Überfahren mit Bearbeitung an Ort und Stelle
+- den Abschnitt *Werte* im Inspektor
+- Beschriftungen am Element (Teil `values`)
+- Griffe und Schieber an Werten mit Live-Aktualisierung
+- die Schritt-für-Schritt-Formel
+- Widerspruchszeichen
+- einen Rückgängig-Schritt je Eingabe oder Ziehen; Esc bricht ab
+
+*Abnahme (PowerPoint-Szenario `values-ohm`):*
+- ein Widerstand erhält 230 V und 2 A; die Karte zeigt *R* = 115 Ω und *P* = 460 W mit Formeln
+- Ziehen von *R* in Erkunden aktualisiert *I* und *P* live
+- Loslassen ist ein Rückgängig-Schritt, und Esc stellt zurück
+- eine exportierte Folie enthält nur die gewählten Beschriftungen, keine Karte und keine Zeichen
+- in Aus erscheint nichts Neues
+
+**Calc 3 – Elektro und Maschinenelemente, erste Ketten und Prüfungen.** Diese Stufe bringt:
+- die Elementbeziehungen aus den Abschnitten 2.1–2.6 und 3.1–3.4
+- das Parsen des elektrischen `value`
+- die Netzumformung (Reihe/parallel)
+- Spannungsteiler und LED-Vorwiderstand
+- Räderzüge mit absolutem *n*, *M*, *P* entlang `GearTrain` (mit Willis) und Wirkungsgraden
+- Riemen-, Ketten- und Gewindetriebe, Federn, Lagerlebensdauer
+- Motoren (*n*_s, Schlupf, *P*–*M*–*n*)
+- die Kette der Antriebsblöcke
+- die Prüfungen für Zahnräder, Leistungsbilanz, Überlast, RCD und Widerstandsleistung
+
+*Abnahme:*
+- ein dreistufiger Stirnradzug mit *z* und *n*_an, *M*_an zeigt *n*, *M* und *P* an jeder Welle, passend zu einer
+  Handrechnung
+- Modul 2 und 2,5 in einem Eingriff ergeben die Modulwarnung
+- ein Brückennetz meldet „nicht zusammenfassbar"
+- „4k7" an einem Widerstand in einem 5-V-Reihenkreis mit LED (2,1 V) ergibt *I* ≈ 0,62 mA
+- ein LS B16 an einem Stromkreis mit *I*_z = 13 A (Nutzer) ergibt die Koordinationswarnung
+- die Doku der Module Elektro, Mechanik und Maschinen listet die neuen Größen
+
+**Calc 4 – Fluid, Wärme/Verfahren, Gebäudetechnik, Energie/Solar, modulübergreifende Ketten.** Diese Stufe bringt:
+- die Beziehungen aus den Abschnitten 2.7–2.10 und 3.5–3.8
+- Anschlussflüsse über `PortMedia`
+- die übrigen Prüfungen
+
+*Abnahme:*
+- ein Strang aus 10 Modulen mit *U*_oc = 49,5 V, *β* = −0,27 %/K und *θ*_min = −10 °C zeigt *U*_oc,max ≈ 541,8 V und
+  warnt gegen einen Wechselrichter mit *U*_DC,max 500 V
+- eine Pumpe mit *V*_g = 10 cm³ bei 1450 min⁻¹ an einem Zylinder 50/28 mm bei 100 bar zeigt *F* und *v* in beiden
+  Richtungen
+- eine Heizkörperkette zeigt *Φ* aus Volumenstrom, Temperaturen und *Φ*₅₀/*n*
+- Fläche und Luftwechsel eines Raums ergeben Luftvolumenstrom und Kanalgeschwindigkeit
+- die Kette PV → Wechselrichter → Verteiler zeigt den AC-Strom je Außenleiter
+
+**Calc 5 – Verknüpfte Diagramme.** Diese Stufe bringt:
+- die Verknüpfungen aus Abschnitt 5: Drehmoment-Drehzahl, Pumpe/Anlage, PV I-U/P-U, Bode RC/RLC, Sprungantwort,
+  Getriebeplan, Heizkurve
+- Betriebspunkte mit Griffen
+- Zurückschreiben und Entkoppeln
+
+*Abnahme:*
+- eine Änderung von *H*₀ der Pumpe zeichnet das verknüpfte Diagramm neu und verschiebt den Betriebspunkt
+- Ziehen des Punkts ändert den Förderstrom der Pumpe (ein Rückgängig-Schritt für Diagramm und Element)
+- Entkoppeln friert die Werte ein
+- das PV-Diagramm zeigt den MPP und das Fenster des Wechselrichters
+
+**Calc 6 – Ingenieur-Extras.** Diese Stufe bringt:
+- Toleranzen mit Intervallergebnissen
+- das Rechenblatt: Tabelle auf der Folie (Annotation-Tabelle), CSV, Markdown/LaTeX
+- einen Quellenbereich: jede Beziehung mit ihrem Eintrag [S*n*], zweisprachig
+- Prüfeinstellungen (Nutzergrenzen, Stummschaltliste)
+- Einheitenvorlieben (bar/MPa, min⁻¹/s⁻¹, kWh/MJ)
+- die Entscheidung über Normreihen (E-Reihen, Vorzugsnennwerte) und deren Lizenz
+
+*Abnahme:*
+- ein Widerstand 4k7 ±5 % zeigt *I* als Intervall
+- das Rechenblatt des Zahnradbeispiels listet Größe, Zeichen, Wert, Einheit, Formel und Quelle
+- eine stummgeschaltete Prüfung bleibt nach Speichern und Neuladen stumm
+
+**Web und LibreOffice.** Sie folgen nach jeder COM-Stufe; die Engine-API ist gemeinsam. Web: die Karte in der
+Kontextleiste und im Aufgabenbereich, Griffe auf der Bühne. LibreOffice: zuerst das Werte-Panel in der Seitenleiste,
+Griffe auf der Zeichenfläche mit dem geplanten Overlay.
+
+*Abnahme:* dieselben Szenarien wie in COM ergeben dieselben Werte (die Engine-Tests sind hostfrei), und die
+Host-Hinweise nennen, was fehlt.
+
+**Parallele Arbeit.** Der Koordinator verantwortet Calc 0/1 (Core, Engine) und die Hosts. Später übernimmt je ein Agent
+ein Modul (`src/InventaSketch.Modules.<X>/Values*.cs` mit Tests und Doku) und ergänzt Beziehungen und Prüfungen, ohne
+den Core anzufassen.
+
+---
+
+## 8. Verhalten je Host (Übersicht)
+
+| Host | Oberfläche Erkunden / Ingenieur | Griffe | Beschriftungen | Prüfungen |
+|---|---|---|---|---|
+| PowerPoint COM (zuerst) | Wertekarte als selbst gezeichnetes Popup neben der schwebenden Leiste; Abschnitt im Inspektor; Kreismenü *Bearbeiten ▸ Werte ▸* | vorhandene Overlay-Griffe (`DragHandles`) erweitert | nativer Textteil `values` in der Einheit (Formatierung mit PowerPoint-Werkzeugen wird wie bei anderen Teilen übernommen) | bernsteinfarbener Punkt im Overlay, Bereich *Prüfungen* |
+| Office Web (WebAssembly) | Karte in der Kontextleisten-Ebene (`contextbar.ts`), Abschnitt im Aufgabenbereich | Griffe auf der Bühne | als SVG/Office-Formen | wie COM |
+| LibreOffice | zuerst Panel in der Seitenleiste (UNO) | mit dem geplanten Overlay auf der Zeichenfläche | nativer Text | Liste in der Seitenleiste |
+
+---
+
+## 9. Quellen
+
+Normen werden mit Nummer und Titel genannt; ihre Texte und Tabellen werden nicht wiedergegeben. Lehrbücher sind in
+ihrer jeweils aktuellen Auflage gemeint.
+
+- **[S1]** BIPM: *The International System of Units (SI)*, 9. Auflage, 2019.
+- **[S2]** ISO 80000 / IEC 80000 *Größen und Einheiten* (Teile 1 Allgemeines, 3 Raum und Zeit, 4 Mechanik,
+  5 Thermodynamik, 6 Elektromagnetismus).
+- **[S3]** IEC 60027-1 *Formelzeichen für die Elektrotechnik – Teil 1: Allgemeines*.
+- **[S4]** IEC 60062 *Kennzeichnung von Widerständen und Kondensatoren* (Buchstabencode mit dem Buchstaben als
+  Dezimalzeichen).
+- **[S5]** IEC 60063 *Vorzugsreihen für Widerstände und Kondensatoren* (E-Reihen; nicht übernommen, Abschnitt 1.3).
+- **[S6]** IEC 60050 *Internationales Elektrotechnisches Wörterbuch* (Electropedia), Begriffe zu Leistung und
+  Leistungsfaktor.
+- **[S7]** Lehrbücher der Elektrotechnik und Elektronik: G. Hagmann, *Grundlagen der Elektrotechnik* (AULA);
+  P. Horowitz, W. Hill, *The Art of Electronics*, 3. Aufl. (Cambridge University Press, 2015); U. Tietze, Ch. Schenk,
+  E. Gamm, *Halbleiter-Schaltungstechnik* (Springer Vieweg).
+- **[S8]** IEC 60364-5-52 *Errichten von Niederspannungsanlagen – Teil 5-52: Auswahl und Errichtung elektrischer
+  Betriebsmittel – Kabel- und Leitungsanlagen* (konsolidierte Ausg. 3.1, 2024; Abschnitt 525 Spannungsfall, Anhang G
+  informativ); DIN VDE 0100-520.
+- **[S9]** IEC 60364-4-43:2023 *Schutzmaßnahmen – Schutz bei Überstrom* (Koordination von Leitern und
+  Schutzeinrichtungen); DIN VDE 0100-430.
+- **[S10]** IEC 60364-4-41 *Schutzmaßnahmen – Schutz gegen elektrischen Schlag* (zusätzlicher Schutz durch
+  Fehlerstrom-Schutzeinrichtungen); DIN VDE 0100-410.
+- **[S11]** IEC 60898-1 (Leitungsschutzschalter für Hausinstallationen), IEC 60269-1 (Niederspannungssicherungen),
+  IEC 61008-1 / IEC 61009-1 (RCCB / RCBO).
+- **[S12]** IEC 60228 *Leiter für Kabel und isolierte Leitungen*; IEC 60028 *Internationaler Normwert für den
+  Widerstand von Kupfer*; IEC 60889 (hartgezogener Aluminiumdraht).
+- **[S13]** IEC 60038 *IEC-Normspannungen*.
+- **[S14]** IEC 60034-1 *Drehende elektrische Maschinen – Bemessung und Betriebsverhalten*; IEC 60034-30-1
+  (Wirkungsgradklassen).
+- **[S15]** R. Fischer, *Elektrische Maschinen* (Hanser); A. Hughes, B. Drury, *Electric Motors and Drives*, 5. Aufl.
+  (Newnes, 2019).
+- **[S16]** ISO 21771 (Stirnräder und Stirnradpaare mit Evolventenverzahnung – Begriffe und Geometrie); ISO 54
+  (Moduln); ISO 53 (Bezugsprofil); DIN 3960.
+- **[S17]** ISO 6336 (Tragfähigkeitsberechnung von Stirnrädern) – genannt als nicht im Umfang.
+- **[S18]** Roloff/Matek, *Maschinenelemente* (Springer Vieweg); Niemann, Winter, Höhn, *Maschinenelemente* (Springer);
+  K.-H. Decker, *Maschinenelemente* (Hanser).
+- **[S19]** ISO 281:2007 *Wälzlager – Dynamische Tragzahlen und nominelle Lebensdauer*.
+- **[S20]** ISO 5292 (Keil- und Keilrippenriemen – Berechnung der Nennleistung); ISO 606 (Kurzgliedrige
+  Präzisions-Rollenketten und Kettenräder); ISO 10823 (Leitfaden zur Auswahl von Rollenkettentrieben).
+- **[S21]** EN 13906-1/-2/-3 *Zylindrische Schraubenfedern aus runden Drähten und Stäben – Berechnung und Konstruktion*.
+- **[S22]** DIN 743 *Tragfähigkeitsberechnung von Wellen und Achsen* – nicht im Umfang.
+- **[S23]** ISO 3408 (Kugelgewindetriebe).
+- **[S24]** H. Kerle, B. Corves, M. Hüsing, *Getriebetechnik* (Springer Vieweg); J. J. Uicker, G. R. Pennock,
+  J. E. Shigley, *Theory of Machines and Mechanisms* (Oxford University Press).
+- **[S25]** ISO 1219-1 (Schaltzeichen); ISO 4413 (Hydraulik – allgemeine Regeln und sicherheitstechnische
+  Anforderungen); ISO 4414 (Pneumatik); ISO 3320 (Zylinderbohrungen und Kolbenstangendurchmesser – genannt, nicht
+  übernommen); ISO 6358 (pneumatische Durchflusskennwerte).
+- **[S26]** D. Will, N. Gebhardt, *Hydraulik – Grundlagen, Komponenten, Systeme* (Springer Vieweg); Bosch Rexroth,
+  *Der Hydraulik-Trainer*, Band 1.
+- **[S27]** F. M. White, *Fluid Mechanics* (McGraw-Hill); C. F. Colebrook (1939), J. Inst. Civil Eng. 11; L. F. Moody
+  (1944), Trans. ASME 66.
+- **[S28]** J. F. Gülich, *Kreiselpumpen* (Springer); ISO 9906 (Kreiselpumpen – hydraulische Abnahmeprüfungen).
+- **[S29]** VDI e. V. (Hrsg.), *VDI-Wärmeatlas* (Springer); F. P. Incropera u. a., *Fundamentals of Heat and Mass
+  Transfer* (Wiley).
+- **[S30]** Recknagel, Sprenger, Albers, *Taschenbuch für Heizung + Klimatechnik* (aktuelle Ausgabe) –
+  Handbuchwerte für Geschwindigkeiten und Wärmestrom Luft.
+- **[S31]** EN 12831-1:2017 (Norm-Heizlast, Raumheizlast; Überarbeitung prEN 12831-1:2025 in Arbeit); EN 442-2
+  (Raumheizkörper – Prüfverfahren und Leistungsangabe); EN 16798-1 / EN 16798-3 (Lüftung); DIN 1946-6 (Wohnungslüftung);
+  DIN 1988-300 / EN 806-3 (Rohrweitenermittlung Trinkwasser).
+- **[S32]** EN 14511 und EN 14825 (Wärmepumpen – Leistungsangabe, saisonale Effizienz).
+- **[S33]** IEC 60904-3 (spektrale Bezugsbestrahlungsstärke, STC); IEC 60891:2021 (Temperatur- und
+  Einstrahlungskorrektur gemessener I-U-Kennlinien); IEC 61215-2 (NMOT); EN 50380 (Datenblattangaben für PV-Module);
+  IEC 62548-1:2023 (PV-Generatoren – Auslegungsanforderungen, Betriebstemperatur); IEC 61724-1 (Leistungsverhalten von
+  PV-Anlagen, Performance Ratio); EN 50530 (Wirkungsgrad von Wechselrichtern).
+- **[S34]** K. Mertens, *Photovoltaik: Lehrbuch zu Grundlagen, Technologie und Praxis* (Hanser; engl. Wiley);
+  H. Häberlin, *Photovoltaics: System Design and Practice* (Wiley, 2012); W. De Soto, S. A. Klein, W. A. Beckman
+  (2006), „Improvement and validation of a model for photovoltaic array performance", Solar Energy 80, 78–88;
+  M. G. Villalva, J. R. Gazoli, E. R. Filho (2009), „Comprehensive approach to modeling and simulation of photovoltaic
+  arrays", IEEE Trans. Power Electronics 24(5).
+- **[S35]** IEC 61434 (Angabe von Strömen in Normen für Sekundärzellen, *I*_t = *C*_n/1 h); *Linden's Handbook of
+  Batteries* (McGraw-Hill).
+- **[S36]** E. Hau, *Windkraftanlagen* (Springer); A. Betz (1920), höchster Leistungsbeiwert 16/27.
+- **[S37]** G. L. Steele, G. J. Sussman (1980), „Constraints – a language for expressing almost-hierarchical
+  descriptions", Artificial Intelligence 14; H. Abelson, G. J. Sussman, *Structure and Interpretation of Computer
+  Programs*, 2. Aufl., Abschnitt 3.3.5 „Propagation of constraints"; R. E. Moore, *Interval Analysis* (1966).
+- **[S38]** D. C. Karnopp, D. L. Margolis, R. C. Rosenberg, *System Dynamics: Modeling, Simulation, and Control of
+  Mechatronic Systems* (Wiley) – Leistungsgrößen (Potenzial × Fluss) über Domänen hinweg.
+- **[S39]** H. W. Müller, *Die Umlaufgetriebe* (Springer) – Willis-Gleichung und Montagebedingungen von
+  Planetengetrieben.
+
+Vorhandene Code-Beziehungen, die hier wiederverwendet werden: `Linkages.Grubler` und `Linkage.Dof` (Kinematik, Core),
+`GearTrain.Speeds` und `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Verfahrenstechnik) und
+`PumpChart.OperatingPoint` (Diagramme).
