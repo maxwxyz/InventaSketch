@@ -64,3 +64,29 @@ Assert-Isk $S ($headerRow.Trim('|').Length -gt 0) "the header row stays on top (
 Select-Table
 $r = Get-IskRect $S (Get-IskSelected $S).Name
 Save-IskShot $S '2-table-grown' -Around ($r.X - 120), ($r.Y - 140), ($r.W + 240), ($r.H + 260)
+
+# "+" dots between rows and columns (concept section 9 item 5): on the left border at each inner row line and on the top
+# border at each inner column line; a click on the dot between row 2 and 3 inserts an empty row there.
+Select-Table
+$c0 = Get-Cells
+$h = Get-Handles
+$gaps = @($h | Where-Object { $_.Id -like 'gap:*' })
+Write-IskInfo ('gap dots: ' + (($gaps | ForEach-Object { '{0}@{1},{2}' -f $_.Id, $_.X, $_.Y }) -join ' '))
+Assert-Isk $S ($gaps.Count -eq ($c0.Rows - 1) + ($c0.Cols - 1)) ("one dot per inner row and column line ({0})" -f $gaps.Count)
+# The dot between row 2 and 3 is the second row dot (row dots come first, top to bottom).
+$rowDots = @($gaps | Sort-Object X | Select-Object -First ($c0.Rows - 1) | Sort-Object Y)
+if ($rowDots.Count -ge 2) {
+    $dot = $rowDots[1]
+    Move-IskMouse ($dot.X + 40) $dot.Y; Start-Sleep -Milliseconds 400
+    Move-IskMouse $dot.X $dot.Y; Start-Sleep -Milliseconds 700
+    $r = Get-IskRect $S (Get-IskSelected $S).Name
+    Save-IskShot $S '3-gap-hover' -Around ($r.X - 120), ($r.Y - 140), ($r.W + 240), ($r.H + 260)
+    Invoke-IskClick $dot.X $dot.Y -WaitMs 3000
+} else {
+    $addin.Command('gap:row.2') | Out-Null; Start-Sleep 3
+}
+$c1 = Get-Cells
+$lines = @($c1.Raw -split "`n")
+Write-IskInfo ("after the gap click: {0}x{1}; rows: {2}" -f $c1.Rows, $c1.Cols, ($lines -join ' / '))
+Assert-Isk $S ($c1.Rows -eq $c0.Rows + 1) 'the dot between rows adds one row'
+Assert-Isk $S ($lines.Count -gt 2 -and $lines[2].Trim('|').Length -eq 0) 'the new row is the third one (between row 2 and 3)'

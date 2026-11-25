@@ -30,13 +30,17 @@ namespace InventaSketch.AddIn.OnSlide
         private List<(string Side, ContextAction Action)> _sides = new();
         private int _hoverSide2 = -1;
 
+        /// <summary>Insert places of the element (<see cref="IInsertHandles"/>: between table rows and columns), page mm.</summary>
+        private List<InsertHandle> _gaps = new();
+        private int _hoverGap = -1;
+
         /// <summary>Pending tooltip of the hovered handle, drawn last so no handle covers it.</summary>
         private (PointF At, string Text)? _tip;
 
         /// <summary>The handle layout for the armed unit in the current view (cached until the unit or the view changes).</summary>
         private IReadOnlyList<PlacedHandle> Handles(SlideView view)
         {
-            var key = (_unit, _unit?.Doc, view.OffsetX, view.OffsetY, view.PixelsPerPoint, view.DeviceScale, _ports, _links, _segHandles, _sides, _chainSource, _crossings, _endHandles, _grips);
+            var key = (_unit, _unit?.Doc, view.OffsetX, view.OffsetY, view.PixelsPerPoint, view.DeviceScale, _ports, _links, _segHandles, _sides, _gaps, _chainSource, _crossings, _endHandles, _grips);
             if (_layoutKey is not null && key.Equals(_layoutKey)) return _layout;
             try
             {
@@ -280,6 +284,17 @@ namespace InventaSketch.AddIn.OnSlide
                 };
                 specs.Add(new HandleSpec("side:" + side, HandleKind.Add, anchor, dir, (float)SidePlusOffsetPx, (float)PortPx, 85) { Tip = action.Label.Get(_lang()), MaxPush = 30 });
             }
+            // Insert places on the drawing (between table rows and columns): small "+" dots right on the line.
+            for (var i = 0; i < _gaps.Count; i++)
+            {
+                var gap = _gaps[i];
+                specs.Add(new HandleSpec("gap:" + i, HandleKind.Add, view.ToScreen(gap.Position), new PointF((float)gap.Direction.X, (float)gap.Direction.Y), 0, (float)(PortPx * GapScale), 50)
+                {
+                    Tip = gap.Label.Get(_lang()),
+                    Optional = true,
+                    MaxPush = 18,
+                });
+            }
             // Lock badges where the element touches another one and follows it.
             for (var i = 0; i < _links.Count; i++)
                 specs.Add(new HandleSpec("lock:" + i, HandleKind.Lock, view.ToScreen(_links[i].At), new PointF(0.7071f, -0.7071f), (float)(BadgeOffsetPx * 1.414), (float)BadgePx, 70) { Orbit = true, MaxPush = 48 });
@@ -349,6 +364,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             _sides = new List<(string, ContextAction)>();
             _hoverSide2 = -1;
+            _gaps = new List<InsertHandle>();
+            _hoverGap = -1;
             try
             {
                 var registry = _registry();
@@ -357,6 +374,7 @@ namespace InventaSketch.AddIn.OnSlide
                 var ctx = new RenderContext(_unitContext ?? unit.Doc, _lang());
                 foreach (var a in registry.Type(objs[0].Type)!.Actions(objs[0], ctx))
                     if (SideOf(a) is { } side && a.IsEnabled && _sides.All(x => x.Side != side)) _sides.Add((side, a));
+                _gaps = InsertHandles.Of(registry, objs[0], ctx).ToList();
             }
             catch (Exception ex)
             {
@@ -367,6 +385,13 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>"top", "bottom", "left" or "right" for an action that adds at a side of its element, else null.</summary>
         internal static string? SideOf(ContextAction a)
             => a.Group is { } g && g.StartsWith("side.", StringComparison.Ordinal) && g.Substring(5) is "top" or "bottom" or "left" or "right" ? g.Substring(5) : null;
+
+        private int GapAt(POINT pt, SlideView view)
+        {
+            if (_gaps.Count == 0) return -1;
+            var hit = NearestHandle(view, pt);
+            return hit is not null && hit.Id.StartsWith("gap:", StringComparison.Ordinal) && int.TryParse(hit.Id.Substring(4), out var i) && i < _gaps.Count ? i : -1;
+        }
 
         private int SideAt(POINT pt, SlideView view)
         {
@@ -379,14 +404,26 @@ namespace InventaSketch.AddIn.OnSlide
         private bool SideMouse(int message, POINT pt, SlideView view, out bool swallow)
         {
             swallow = false;
-            if (_sides.Count == 0 || _unit is null) return false;
+            if (_sides.Count == 0 && _gaps.Count == 0 || _unit is null) return false;
             if (message == WM_MOUSEMOVE)
             {
                 var i = SideAt(pt, view);
-                if (i != _hoverSide2) { _hoverSide2 = i; DrawPointHandles(view); }
+                var gi = GapAt(pt, view);
+                if (i != _hoverSide2 || gi != _hoverGap) { _hoverSide2 = i; _hoverGap = gi; DrawPointHandles(view); }
                 return false;
             }
             if (message is not (WM_LBUTTONDOWN or WM_LBUTTONDBLCLK)) return false;
+            var gapHit = GapAt(pt, view);
+            if (gapHit >= 0)
+            {
+                var gapUnit = _unit;
+                var gapId = "gap:" + _gaps[gapHit].Key;
+                Log.Info("Insert +: " + gapId);
+                HideBar();
+                Post(() => ApplyAction(gapUnit, gapId));
+                swallow = true;
+                return true;
+            }
             var hit = SideAt(pt, view);
             if (hit < 0) return false;
             var unit = _unit;
@@ -408,7 +445,18 @@ namespace InventaSketch.AddIn.OnSlide
                 Faded(g, h.At, hover ? 1 : Reveal(view, h), AddHalf(view), (gg, c) => DrawAddHandle(gg, view, c, hover));
                 if (hover) QueueTip(view, h.At, h.Spec.Tip, (float)PortPx);
             }
+            for (var i = 0; i < _gaps.Count; i++)
+            {
+                var h = HandleById(view, "gap:" + i);
+                if (h is null || !h.Visible) continue;
+                var hover = i == _hoverGap;
+                Faded(g, h.At, hover ? 1 : Reveal(view, h), AddHalf(view), (gg, c) => DrawAddHandle(gg, view, c, hover, (float)GapScale));
+                if (hover) QueueTip(view, h.At, h.Spec.Tip, (float)(PortPx * GapScale));
+            }
         }
+
+        /// <summary>Size of an insert dot relative to a build "+" (small: a table may show many of them).</summary>
+        private const double GapScale = 0.72;
 
         // ------------------------------------------------------------------ grips: drag a value on the drawing
 
@@ -671,11 +719,11 @@ namespace InventaSketch.AddIn.OnSlide
         private static float AddHalf(SlideView view) => (float)(PortPx * 1.25 * view.DeviceScale) + 3;
 
         /// <summary>The "add here" handle: a filled blue circle with a white "+" (build ports, free ends, table sides).</summary>
-        private static void DrawAddHandle(Graphics g, SlideView view, PointF c, bool hover)
+        private static void DrawAddHandle(Graphics g, SlideView view, PointF c, bool hover, float size = 1f)
         {
             var s = (float)view.DeviceScale;
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            var r = (float)(PortPx * (hover ? 1.2 : 1.0) * s);
+            var r = (float)(PortPx * size * (hover ? 1.2 : 1.0) * s);
             using var fill = new SolidBrush(hover ? Color.FromArgb(60, 130, 230) : FlowBlue);
             using var ring = new Pen(Color.White, 1.2f * s);
             g.FillEllipse(fill, c.X - r, c.Y - r, 2 * r, 2 * r);

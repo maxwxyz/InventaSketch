@@ -37,5 +37,32 @@ namespace InventaSketch.Modules.Annotation.Tests
             var right = sides["right"].Apply(o);
             Assert.Equal(new[] { "H1", "H2", "" }, TableType.Parse(right.Str("cells", ""))[0]);
         }
+
+        [Fact]
+        public void PlusDotsBetweenRowsAndColumnsInsertExactlyThere()
+        {
+            var r = T.Reg();
+            var (_, o) = T.Insert(r, "ann.table", new Vec2(100, 100));
+            o = o.WithParam("cells", "H1|H2|H3\na|b|c\nd|e|f");
+            var ctx = new RenderContext(SketchDocument.Create(new Size2(297, 210)), Lang.En);
+            var handles = InsertHandles.Of(r, o, ctx);
+            // Two inner row lines, two inner column lines.
+            Assert.Equal(new[] { "row.1", "row.2", "col.1", "col.2" }, handles.Select(h => h.Key));
+            // Page positions: rows on the left border at the row lines, columns on the top border.
+            var rowDot = handles.Single(h => h.Key == "row.2");
+            Assert.Equal(100 - o.Size.W / 2, rowDot.Position.X, 6);
+            Assert.Equal(100 - o.Size.H / 2 + 2 * o.Size.H / 3, rowDot.Position.Y, 6);
+            Assert.Equal(-1, rowDot.Direction.X, 6);
+            Assert.All(handles.Where(h => h.Key.StartsWith("col.")), h => Assert.Equal(100 - o.Size.H / 2, h.Position.Y, 6));
+
+            // The dot between row 2 and 3 inserts a row there.
+            var rows = TableType.Parse(InsertHandles.Apply(r, o, "row.2", ctx).Str("cells", ""));
+            Assert.Equal(new[] { "H1", "a", "", "d" }, rows.Select(row => row[0]));
+            var cols = TableType.Parse(InsertHandles.Apply(r, o, "col.1", ctx).Str("cells", ""))[0];
+            Assert.Equal(new[] { "H1", "", "H2", "H3" }, cols);
+            // Unknown keys change nothing; the places are no context actions (bar and pie stay short).
+            Assert.Same(o, InsertHandles.Apply(r, o, "row.9", ctx));
+            Assert.DoesNotContain(r.Type(o.Type)!.Actions(o, Lang.En), a => a.Label.En.StartsWith("Insert a row here"));
+        }
     }
 }
