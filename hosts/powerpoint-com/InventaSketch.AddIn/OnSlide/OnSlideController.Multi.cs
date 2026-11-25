@@ -47,36 +47,38 @@ namespace InventaSketch.AddIn.OnSlide
                 var views = Arrange.CommonViews(registry, firsts!);
                 foreach (var v in views.Take(6))
                     list.Add(new BarButton("mview:" + v.Id, v.Label.Get(_lang()), T("All in view: ", "Alle in Ansicht: ") + v.Label.Get(_lang())) { IconId = IconPainter.ForView(v) });
-                if (views.Count > 0) list.Add(new BarButton("", "", "", Separator: true));
             }
+            var arrange = new List<BarButton>();
+            var layout = new List<BarButton>();
+            var tools = new List<BarButton>();
             var boxes = _multi.Select(MmRect).ToList();
             if (Arrange.Changes(Arrange.AlignCentres(boxes, row: true)))
-                list.Add(new BarButton("align:row", "", T("Centres on one horizontal line", "Mitten auf eine waagrechte Linie")) { IconId = IconIds.AlignRow });
+                arrange.Add(new BarButton("align:row", "", T("Centres on one horizontal line", "Mitten auf eine waagrechte Linie")) { IconId = IconIds.AlignRow });
             if (Arrange.Changes(Arrange.AlignCentres(boxes, row: false)))
-                list.Add(new BarButton("align:column", "", T("Centres on one vertical line", "Mitten auf eine senkrechte Linie")) { IconId = IconIds.AlignColumn });
+                arrange.Add(new BarButton("align:column", "", T("Centres on one vertical line", "Mitten auf eine senkrechte Linie")) { IconId = IconIds.AlignColumn });
             if (Arrange.Changes(Arrange.Distribute(boxes, horizontal: true)))
-                list.Add(new BarButton("dist:h", "", T("Space evenly left to right", "Gleichmäßig von links nach rechts verteilen")) { IconId = IconIds.DistributeH });
+                arrange.Add(new BarButton("dist:h", "", T("Space evenly left to right", "Gleichmäßig von links nach rechts verteilen")) { IconId = IconIds.DistributeH });
             if (Arrange.Changes(Arrange.Distribute(boxes, horizontal: false)))
-                list.Add(new BarButton("dist:v", "", T("Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen")) { IconId = IconIds.DistributeV });
+                arrange.Add(new BarButton("dist:v", "", T("Space evenly top to bottom", "Gleichmäßig von oben nach unten verteilen")) { IconId = IconIds.DistributeV });
             // Connected elements (flowchart, UML, BPMN, ER): a layered diagram layout (DiagramLayout).
             if (LayoutMoves(true, _multi) is { } down && Arrange.Changes(down.Values.Select(v => v.Move)))
-                list.Add(new BarButton("layout:down", "", T("Lay out as a diagram, top to bottom", "Als Diagramm anordnen, von oben nach unten")) { IconId = IconIds.DistributeV });
+                layout.Add(new BarButton("layout:down", T("Diagram \u2193", "Diagramm \u2193"), T("Lay out as a diagram, top to bottom", "Als Diagramm anordnen, von oben nach unten")));
             if (LayoutMoves(false, _multi) is { } right && Arrange.Changes(right.Values.Select(v => v.Move)))
-                list.Add(new BarButton("layout:right", "", T("Lay out as a diagram, left to right", "Als Diagramm anordnen, von links nach rechts")) { IconId = IconIds.DistributeH });
+                layout.Add(new BarButton("layout:right", T("Diagram \u2192", "Diagramm \u2192"), T("Lay out as a diagram, left to right", "Als Diagramm anordnen, von links nach rechts")));
             // Two parts: a dimension between their axes (or centres), docked on both so it follows them.
             if (_multi.Count == 2 && firsts.All(o => o is not null && !o.IsPointGeometry))
-                list.Add(new BarButton("dim", "", T("Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)")) { IconId = IconIds.Dimension });
+                tools.Add(new BarButton("dim", "", T("Dimension between the two (centre distance)", "Maß zwischen beiden (Achsabstand)")) { IconId = IconIds.Dimension });
             // Format painter: the first selected element's view, parameters and style for the others of its type.
             if (firsts[0] is { } source && firsts.Count > 1)
             {
                 var ctx = new RenderContext(_multi[0].Doc, _lang());
                 if (Arrange.MatchFormat(registry, source, _multi.Skip(1).SelectMany(u => u.Objects), ctx).Count > 0)
-                    list.Add(new BarButton("match", "", T("Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil")) { IconId = IconIds.MatchFormat });
+                    tools.Add(new BarButton("match", "", T("Like the first: view, parameters and style", "Wie das erste: Ansicht, Parameter und Stil")) { IconId = IconIds.MatchFormat });
             }
             if (Numerals().Count >= 2 && Arrange.Renumber(Numerals()).Count > 0)
-                list.Add(new BarButton("renumber", "", T("Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren")) { IconId = IconIds.Renumber });
-            while (list.Count > 0 && list[list.Count - 1].Separator) list.RemoveAt(list.Count - 1);
-            return list;
+                tools.Add(new BarButton("renumber", "", T("Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren")) { IconId = IconIds.Renumber });
+            // Groups: one view for all | align and distribute | diagram layout | dimension, format, numerals.
+            return JoinGroups(list, arrange, layout, tools);
         }
 
         /// <summary>

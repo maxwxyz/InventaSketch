@@ -14,6 +14,9 @@ namespace InventaSketch.AddIn.OnSlide
     {
         public static string ForView(ViewDef v) => IconIds.ForView(v);
 
+        /// <summary>Host pictograms of the pie menu's places (edit, style, view, arrange); not used by element actions.</summary>
+        public const string UiEdit = "ui-edit", UiStyle = "ui-style", UiView = "ui-view", UiArrange = "ui-arrange";
+
         /// <summary>Draws the icon into <paramref name="r"/> with the given ink.</summary>
         public static void Draw(Graphics g, string iconId, RectangleF r, Color ink, bool mirror = false)
         {
@@ -468,6 +471,30 @@ namespace InventaSketch.AddIn.OnSlide
                     break;
                 case IconIds.CourseElbow:
                     g.DrawLines(pen, new[] { new PointF(3, 18), new PointF(12, 18), new PointF(12, 6), new PointF(21, 6) });
+                    break;
+                // ---- places of the pie menu (host pictograms, not element actions)
+                case UiEdit:
+                    // A pencil.
+                    g.DrawPolygon(pen, new[] { new PointF(5, 19), new PointF(6, 15), new PointF(16, 5), new PointF(19, 8), new PointF(9, 18) });
+                    g.DrawLine(thin, 14, 7, 17, 10);
+                    break;
+                case UiStyle:
+                    // Three strokes: thick, dashed, thin.
+                    using (var heavy = new Pen(ink, 3f) { StartCap = System.Drawing.Drawing2D.LineCap.Round, EndCap = System.Drawing.Drawing2D.LineCap.Round })
+                        g.DrawLine(heavy, 4, 7, 20, 7);
+                    g.DrawLine(dash, 4, 12.5f, 20, 12.5f);
+                    g.DrawLine(thin, 4, 17.5f, 20, 17.5f);
+                    break;
+                case UiView:
+                    // An eye.
+                    g.DrawBezier(pen, 3, 12, 7, 5.5f, 17, 5.5f, 21, 12);
+                    g.DrawBezier(pen, 3, 12, 7, 18.5f, 17, 18.5f, 21, 12);
+                    g.FillEllipse(brush, 9.5f, 9.5f, 5, 5);
+                    break;
+                case UiArrange:
+                    // Two boxes, one turned.
+                    g.DrawRectangle(pen, 3, 9, 9, 9);
+                    g.DrawPolygon(pen, new[] { new PointF(16.5f, 3), new PointF(21.5f, 8), new PointF(16.5f, 13), new PointF(11.5f, 8) });
                     break;
                 default:
                     g.DrawEllipse(pen, 5, 5, 14, 14); g.FillEllipse(brush, 10.5f, 10.5f, 3, 3);

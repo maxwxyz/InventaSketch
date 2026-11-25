@@ -18,6 +18,8 @@ namespace InventaSketch.AddIn.OnSlide
         public bool Menu { get; init; }
         /// <summary>Draw the pictogram mirrored (start arrowheads point left).</summary>
         public bool Mirror { get; init; }
+        /// <summary>Show <see cref="Glyph"/> as a short label beside the pictogram (main actions whose pictogram alone says too little).</summary>
+        public bool ShowLabel { get; init; }
     }
 
     /// <summary>One row of a choice dropdown under a bar button: pictogram (or picture) and label.</summary>
@@ -70,8 +72,11 @@ namespace InventaSketch.AddIn.OnSlide
             foreach (var b in buttons)
             {
                 if (b.Separator) { _cells.Add(new Rectangle(x, pad, sep, size)); x += sep; continue; }
-                // Text buttons (view names) get a width that fits the label; symbol buttons are square.
-                var width = b.Icon is null && b.IconId is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale)) : size;
+                // Text buttons (view names) get a width that fits the label; symbol buttons are square; a pictogram with a
+                // label (the main action where the pictogram alone says too little) gets both.
+                var width = b.ShowLabel && b.IconId is not null ? size + (int)Math.Round(b.Glyph.Length * 6.4 * scale + 6 * scale)
+                    : b.Icon is null && b.IconId is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale))
+                    : size;
                 if (b.Menu) width += (int)Math.Round(7 * scale);
                 _cells.Add(new Rectangle(x, pad, width, size));
                 x += width + gap;
@@ -263,6 +268,17 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     var ink = btn.Danger ? Color.FromArgb(200, 40, 40) : btn.Active ? accent : fg;
                     var pad = (int)Math.Round(5 * Scale);
+                    if (btn.ShowLabel && btn.Glyph.Length > 0)
+                    {
+                        // Pictogram plus a short label.
+                        var square = new Rectangle(content.X, content.Y, content.Height, content.Height);
+                        IconPainter.Draw(g, btn.IconId, Rectangle.Inflate(square, -pad, -pad), ink, btn.Mirror);
+                        using var lb = new SolidBrush(ink);
+                        using var labelFont = new Font("Segoe UI", 10f * Scale, GraphicsUnit.Pixel);
+                        var lf = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
+                        g.DrawString(btn.Glyph, labelFont, lb, new RectangleF(square.Right - 2 * Scale, content.Y, content.Right - square.Right + 2 * Scale, content.Height), lf);
+                        continue;
+                    }
                     IconPainter.Draw(g, btn.IconId, Rectangle.Inflate(content, -pad, -pad), ink, btn.Mirror);
                     continue;
                 }

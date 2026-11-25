@@ -86,6 +86,24 @@ namespace InventaSketch.Modules.Annotation
             return text == raw ? r : r.WithParam("cells", text);
         }
 
+        /// <summary>An empty row inserted before row <paramref name="index"/> (clamped); the box grows by one row height.</summary>
+        public static SketchObject InsertRow(SketchObject x, Lang lang, int index)
+        {
+            var rows = CellsOf(x, lang);
+            rows.Insert(Math.Max(0, Math.Min(rows.Count, index)), Enumerable.Repeat("", rows[0].Count).ToList());
+            return x.WithParam("cells", Format(rows)) with { Size = new Size2(x.Size.W, x.Size.H * rows.Count / Math.Max(1, rows.Count - 1)) };
+        }
+
+        /// <summary>An empty column inserted before column <paramref name="index"/> (clamped); the box grows by one mean column width.</summary>
+        public static SketchObject InsertColumn(SketchObject x, Lang lang, int index)
+        {
+            var rows = CellsOf(x, lang);
+            var cols = rows[0].Count;
+            var at = Math.Max(0, Math.Min(cols, index));
+            foreach (var r in rows) r.Insert(at, "");
+            return x.WithParam("cells", Format(rows)) with { Size = new Size2(x.Size.W * (cols + 1) / Math.Max(1, cols), x.Size.H) };
+        }
+
         private static List<List<string>> CellsOf(SketchObject o, Lang lang)
         {
             var raw = o.Str("cells", "");
@@ -165,18 +183,18 @@ namespace InventaSketch.Modules.Annotation
             yield return Ann.Toggle(o, "ann.table.header", new I18nText("Header row", "Kopfzeile"), "header", "header", true, "table");
             foreach (var (value, en, de) in BorderOptions)
                 yield return Ann.SetChoice(o, "ann.table.borders." + value, new I18nText("Borders: " + en, "Linien: " + de), "borders-" + value, "borders", value, "all", "borders");
-            yield return new ContextAction("ann.table.row.add", new I18nText("Add a row", "Zeile anfügen"), IconIds.Increase, x =>
-            {
-                var rows = CellsOf(x, lang);
-                rows.Add(Enumerable.Repeat("", rows[0].Count).ToList());
-                return x.WithParam("cells", Format(rows)) with { Size = new Size2(x.Size.W, x.Size.H * rows.Count / Math.Max(1, rows.Count - 1)) };
-            }) { Group = "cells" };
-            yield return new ContextAction("ann.table.column.add", new I18nText("Add a column", "Spalte anfügen"), IconIds.Increase, x =>
-            {
-                var rows = CellsOf(x, lang);
-                foreach (var r in rows) r.Add("");
-                return x.WithParam("cells", Format(rows));
-            }) { Group = "cells" };
+            // Adding at a side (group "side.<side>"): hosts draw these as a "+" on that side of the table, one click each.
+            // A row at the top goes under the header row while there is one (the header stays the header).
+            var header = o.Flag("header", true) && CellsOf(o, lang).Count > 1;
+            yield return new ContextAction("ann.table.row.add.top",
+                header ? new I18nText("Add a row under the header", "Zeile unter der Kopfzeile einfügen") : new I18nText("Add a row at the top", "Zeile oben einfügen"),
+                IconIds.Insert, x => InsertRow(x, lang, x.Flag("header", true) && CellsOf(x, lang).Count > 1 ? 1 : 0)) { Group = "side.top" };
+            yield return new ContextAction("ann.table.row.add", new I18nText("Add a row at the bottom", "Zeile unten anfügen"), IconIds.Insert,
+                x => InsertRow(x, lang, int.MaxValue)) { Group = "side.bottom" };
+            yield return new ContextAction("ann.table.column.add.left", new I18nText("Add a column on the left", "Spalte links einfügen"), IconIds.Insert,
+                x => InsertColumn(x, lang, 0)) { Group = "side.left" };
+            yield return new ContextAction("ann.table.column.add", new I18nText("Add a column on the right", "Spalte rechts anfügen"), IconIds.Insert,
+                x => InsertColumn(x, lang, int.MaxValue)) { Group = "side.right" };
             yield return new ContextAction("ann.table.row.remove", new I18nText("Remove the last row", "Letzte Zeile entfernen"), IconIds.Decrease, x =>
             {
                 var rows = CellsOf(x, lang);

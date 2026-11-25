@@ -250,12 +250,14 @@ namespace InventaSketch.AddIn.OnSlide
             PrepareLinks(unit);
             PrepareSegments(unit);
             PreparePorts(unit);
+            PrepareSides(unit);
             _mode = Mode.Armed;
             _hooks.Install();
             _timer.Start();
             _overlay.Clear();
             ShowBar(view);
             DrawPointHandles(view);
+            if (LastHandles.Length > 0) Log.Info("Handles: " + LastHandles + (HandleLayout.AnyOverlap(Handles(view), (float)view.DeviceScale) ? " (overlap!)" : ""));
             Log.Info($"Armed {unit.Shape.Name}: {_unitAnchors.Count} anchors, {_targets.Count} targets, pane {view.PaneRect}, {view.PixelsPerPoint:0.###} px/pt, hooks {_hooks.Installed}");
         }
 
@@ -453,6 +455,8 @@ namespace InventaSketch.AddIn.OnSlide
                     if (LinkMouse(message, pt, view, out var linkSwallow)) return linkSwallow;
                     // Build "+" on gears, shafts and machines: what fits there, or stretch a shaft.
                     if (PortMouse(message, pt, view, out var portSwallow)) return portSwallow;
+                    // "+" on the sides of a table: a row or column there.
+                    if (SideMouse(message, pt, view, out var sideSwallow)) return sideSwallow;
                     // Quick add: blue triangles and connection ports of flowchart, UML, ER, BPMN and basic elements.
                     if (ChainMouse(message, pt, view, out var chainSwallow)) return chainSwallow;
                     if (_unit is null || !view.Contains(pt)) return false;
@@ -694,6 +698,8 @@ namespace InventaSketch.AddIn.OnSlide
                         if (message is WM_LBUTTONUP or WM_RBUTTONUP)
                         {
                             var idx = pie.HitTest(p);
+                            // A greyed place (nothing of that kind for this element) keeps the menu open.
+                            if (idx >= 0 && !pie.Items[idx].Enabled) return true;
                             if (idx >= 0 && pie.Items[idx].Enabled && pie.Items[idx].Id.StartsWith("menu:", StringComparison.Ordinal))
                             {
                                 var sub = pie.Items[idx].Id.Substring(5);
@@ -951,93 +957,6 @@ namespace InventaSketch.AddIn.OnSlide
 
         // ------------------------------------------------------------------ floating bar
 
-        private List<BarButton> BarButtons()
-        {
-            if (PartButtons() is { } partBar) return partBar;
-            var registry = _registry();
-            var list = new List<BarButton>();
-            var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
-            var type = first is null ? null : registry.Type(first.Type);
-            // Just added with "+": the next element is one click away (no submenu).
-            if (first is not null) list.AddRange(NextButtons(first));
-            if (type is not null && first is not null && type.Views.Count > 1 && type.Views.Count <= MaxViewButtons)
-            {
-                foreach (var v in type.Views.Take(6))
-                    list.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
-                list.Add(new BarButton("", "", "", Separator: true));
-            }
-            // Choices with pictograms (line type, arrowheads, line style, line course): icon button plus caret.
-            if (first is not null)
-            {
-                var chips = ChoiceButtons(first).ToList();
-                list.AddRange(chips);
-                if (chips.Count > 0) list.Add(new BarButton("", "", "", Separator: true));
-            }
-            // A selected corner of a wire, pipe, road, wall …: split there or remove it.
-            list.AddRange(CornerButtons());
-            var hasText = first is not null && EditableText(registry, first) is not null;
-            if (hasText)
-                list.Add(new BarButton("text", "", T("Edit text (double-click)", "Text bearbeiten (Doppelklick)")) { IconId = IconIds.Text });
-            // Key parameters straight in the bar (no submenu): actions with a telling pictogram as icons, switches and
-            // cycles (hub, helix, kind …) as short text buttons; the pie menu keeps the complete list.
-            // Actions that only set a parameter already shown as a choice button stay in the pie menu.
-            var choiceKeys = first is null ? new HashSet<string>() : new HashSet<string>(BarChoices(first).Select(c => c.Key));
-            var keyActions = BarActions(UnitActions(out _).Where(a => a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains)), hasText);
-            foreach (var a in keyActions)
-            {
-                var label = a.Label.Get(_lang());
-                var tip = label + (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal) ? " …" : "");
-                list.Add(IsTelling(a.Icon)
-                    ? new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
-                    : new BarButton("act:" + a.Id, ShortLabel(label), tip, Active: a.IsActive));
-            }
-            // Plan elements (walls, rooms, openings): the plan scale of the slide, one click away.
-            if (type?.UsesPlanScale == true && _unit is not null)
-            {
-                var scale = _unit.Doc.Settings.PlanScale ?? 100;
-                list.Add(new BarButton("planscale", "1:" + scale.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), T("Plan scale of the slide …", "Planmaßstab der Folie …")));
-            }
-            // "Insert": one button for every element; it opens the insert box (fitting parts first, then recent, typing
-            // searches the whole library) instead of growing the bar.
-            // Charts: draw a curve by hand; it is recognised (step, ramp, sine, PT1 …) or smoothed (charts v2).
-            if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first))
-                list.Add(new BarButton("sketch", "", T("Sketch a curve (draw it with the mouse)", "Kurve skizzieren (mit der Maus zeichnen)")) { IconId = IconIds.Trace });
-            if (first is not null)
-                list.Add(new BarButton("insert", "", T("Insert … (Ctrl+Space)", "Einfügen … (Strg+Leertaste)")) { IconId = IconIds.Insert });
-            // Self-built linkage: its degree of freedom (Grübler) at a glance.
-            if (first is not null && first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
-                && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
-            {
-                list.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom (Grübler): ", "Freiheitsgrad (Grübler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke")));
-                // A chain that moves with one input: the path of this link's end as the crank turns (coupler curve).
-                if (dof.Dof == 1)
-                {
-                    list.Add(new BarButton("trace", "", T("Draw the path of this link's end (coupler curve)", "Bahnkurve des Gliedendes zeichnen (Koppelkurve)")) { IconId = IconIds.Trace });
-                    list.Add(new BarButton("ghosts", "", T("Ghost positions of the linkage", "Zwischenlagen des Koppelgetriebes")) { IconId = IconIds.Animate });
-                }
-            }
-            // Motion mode for parts that can move (gear train, linkage, mechanism): drag turns them instead of moving them.
-            // A lone gear coupled with nothing only spins in place, which shows nothing: no button for it.
-            if (MovablePart() is { } movable && (movable.IsPointGeometry || registry.Type(movable.Type)?.AnimationFrames(movable, 2).Count > 1 || AssemblyOf().Count > 1))
-                list.Add(new BarButton("motion", "", T("Move: drag turns the gears / linkage", "Bewegen: Ziehen dreht Getriebe bzw. Koppelgetriebe"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
-            // Coupled with other elements (gear train, drive): select the whole assembly (then: one view for all, align …).
-            if (first is not null && AssemblyOf().Count > 1)
-                list.Add(new BarButton("assembly", "", T("Select the assembly (all coupled parts)", "Baugruppe auswählen (alle gekoppelten Teile)")) { IconId = IconIds.SelectAssembly });
-            // Predefined assemblies (planetary set …) explode into coupled parts that can be edited one by one.
-            if (first is not null && Assemblies.CanExplode(registry, first))
-                list.Add(new BarButton("explode", "", T("Explode into parts", "In Einzelteile zerlegen")) { IconId = IconIds.Explode });
-            list.Add(new BarButton("", "", "", Separator: true));
-            // Only transforms that change the drawing (a circle, a gear in axial view, a symmetric bearing: none).
-            var effect = UnitEffect();
-            if (effect.MirrorH) list.Add(new BarButton("flipH", "", T("Mirror horizontally", "Horizontal spiegeln")) { IconId = IconIds.MirrorH });
-            if (effect.MirrorV) list.Add(new BarButton("flipV", "", T("Mirror vertically", "Vertikal spiegeln")) { IconId = IconIds.MirrorV });
-            if (effect.Rotate90) list.Add(new BarButton("rot90", "", T("Rotate 90 degrees", "Um 90 Grad drehen")) { IconId = IconIds.Rotate });
-            list.Add(new BarButton("dup", "", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate });
-            list.Add(new BarButton("", "", "", Separator: true));
-            list.Add(new BarButton("delete", "", T("Delete", "L\u00f6schen"), Danger: true) { IconId = IconIds.Delete });
-            return list;
-        }
-
         /// <summary>The insert box for the ribbon button: with the armed element's fitting parts, else the whole library.</summary>
         public void OpenInsertBox()
         {
@@ -1166,15 +1085,6 @@ namespace InventaSketch.AddIn.OnSlide
             return list;
         }
 
-        /// <summary>At most this many type actions in the floating bar; the pie menu has all of them.</summary>
-        internal const int MaxBarActions = 5;
-
-        /// <summary>Pictograms the bar already has as its own buttons.</summary>
-        private static readonly HashSet<string> NotInBar = new() { IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate };
-
-        /// <summary>Generic pictograms (switch, cycle) say nothing on their own: such actions show a short text instead.</summary>
-        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon != IconIds.Toggle && icon != IconIds.Cycle;
-
         /// <summary>
         /// Short bar text of an action label: without a leading "Next", "on/off"-type suffixes and explanations in brackets,
         /// at most 22 characters (so "Next start cardinality" and "Next end cardinality" stay apart).
@@ -1195,20 +1105,6 @@ namespace InventaSketch.AddIn.OnSlide
                 if (s.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) s = s.Substring(0, s.Length - suffix.Length);
             s = s.Trim();
             return s.Length <= max ? s : s.Substring(0, max - 1).TrimEnd() + "…";
-        }
-
-        /// <summary>
-        /// Type actions for the floating bar (key parameters: thicker/thinner, more/fewer, swap, hub, helix …): available ones,
-        /// telling pictograms first (each icon once), then switches and cycles as text; text actions only when the bar has
-        /// no text button yet; at most <see cref="MaxBarActions"/>.
-        /// </summary>
-        internal static List<ContextAction> BarActions(IEnumerable<ContextAction> actions, bool hasTextButton)
-        {
-            var seen = new HashSet<string>(StringComparer.Ordinal);
-            var usable = actions.Where(a => a.IsEnabled && !NotInBar.Contains(a.Icon) && !(hasTextButton && a.Icon == IconIds.Text)).ToList();
-            var telling = usable.Where(a => IsTelling(a.Icon) && seen.Add(a.Icon));
-            var text = usable.Where(a => !IsTelling(a.Icon));
-            return telling.Concat(text).Take(MaxBarActions).ToList();
         }
 
         private RectangleF UnitScreenRect(SlideView view)
@@ -1401,126 +1297,6 @@ namespace InventaSketch.AddIn.OnSlide
             return null;
         }
 
-        /// <summary>Type actions of the armed unit's first object, evaluated with the neighbouring units as document context.</summary>
-        private List<ContextAction> UnitActions(out SketchObject? first)
-        {
-            var registry = _registry();
-            first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
-            if (first is null || _unit is null) return new List<ContextAction>();
-            var ctx = new RenderContext(_unitContext ?? _unit.Doc, _lang());
-            return registry.Type(first.Type)!.Actions(first, ctx).Where(a => a.Group != "view").ToList();
-        }
-
-        /// <summary>Pie entry of a type action: input actions open a prompt ("…"), unavailable ones are greyed.</summary>
-        private PieItem ActionItem(ContextAction a)
-        {
-            var label = a.Label.Get(_lang());
-            if (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal)) label += " …";
-            return new PieItem("act:" + a.Id, label, Enabled: a.IsEnabled, Active: a.IsActive);
-        }
-
-        private void OpenPie(POINT pt, SlideView view, string? submenu = null)
-        {
-            if (_unit is null) return;
-            var registry = _registry();
-            var pointObject = PointObject();
-            if (submenu == "insert")
-            {
-                var sub = new List<PieItem> { new("menu:back", T("\u2190 Back", "\u2190 Zur\u00fcck")) };
-                var anchor = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
-                if (anchor is not null)
-                    sub.AddRange(registry.Suggestions(anchor, MaxPieItems + 1).Select(i => new PieItem("ins:" + i.Id, i.Name.Get(_lang()))));
-                ShowPie(pt, view, sub);
-                return;
-            }
-            if (submenu == "parts" && PartListMenu() is { } partMenu)
-            {
-                HideBar();
-                ShowPie(pt, view, partMenu);
-                return;
-            }
-            if (submenu == "more")
-            {
-                var sub = new List<PieItem> { new("menu:back", T("← Back", "← Zurück")) };
-                sub.AddRange(_pieOverflow.Take(MaxPieItems + 3));
-                ShowPie(pt, view, sub);
-                return;
-            }
-            if (submenu is not null && pointObject is not null)
-            {
-                ShowPie(pt, view, SubMenu(submenu, pointObject));
-                return;
-            }
-            var (main, overflow) = PieLayout(BuildPieItems(pointObject, registry), T("More ▸", "Mehr ▸"));
-            _pieOverflow = overflow;
-            HideBar();
-            ShowPie(pt, view, main);
-        }
-
-        /// <summary>More entries than this make the ring unreadable; the rest goes into "More".</summary>
-        internal const int MaxPieItems = 8;
-
-        private List<PieItem> _pieOverflow = new();
-
-        /// <summary>All entries of the main pie in priority order (essential entries first, see <see cref="PieLayout"/>).</summary>
-        private List<(PieItem Item, bool Essential)> BuildPieItems(SketchObject? pointObject, Registry registry)
-        {
-            var items = new List<(PieItem, bool)>(PartPieItems());
-            items.Add((new PieItem("delete", T("Delete", "Löschen"), Danger: true) { IconId = IconIds.Delete }, true));
-            if (PartOwner() is not null) items.Add((new PieItem("menu:parts", T("Parts ▸", "Teile ▸")) { IconId = IconIds.Table }, true));
-            // Type conversion and the label menu belong to lines, arrows, dimensions and lead lines only.
-            if (pointObject is not null && Registry.IsConvertible(pointObject))
-            {
-                items.Add((new PieItem("menu:type", T("Type ▸", "Typ ▸")) { IconId = IconIds.Cycle }, true));
-                items.Add((new PieItem("menu:label", T("Label ▸", "Beschriftung ▸")) { IconId = IconIds.Text }, true));
-            }
-            var actions = UnitActions(out var first);
-            var type = first is null ? null : registry.Type(first.Type);
-            if (type is not null && first is not null)
-                foreach (var v in type.Views.Take(4))
-                    items.Add((new PieItem("view:" + v.Id, v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) }, true));
-            if (first is not null && EditableText(registry, first) is not null)
-                items.Add((new PieItem("text", T("Text \u2026", "Text \u2026")) { IconId = IconIds.Text }, true));
-            // Insert elements that fit the selection (shaft: gears, bearings; wire: symbols; always annotations).
-            if (first is not null)
-                items.Add((new PieItem("insert", T("Insert \u2026", "Einf\u00fcgen \u2026")) { IconId = IconIds.Insert }, true));
-            var effect = UnitEffect();
-            items.Add((new PieItem("dup", T("Duplicate", "Duplizieren")) { IconId = IconIds.Duplicate }, true));
-            if (effect.Rotate90) items.Add((new PieItem("rot90", T("Rotate 90°", "Drehen 90°")) { IconId = IconIds.Rotate }, true));
-            if (type?.UsesPlanScale == true)
-                items.Add((new PieItem("planscale", T("Plan scale …", "Planmaßstab …")) { IconId = IconIds.Plan }, false));
-            // Mechanisms: the input motion as a slide sequence with Morph transitions.
-            if (type is not null && first is not null && type.AnimationFrames(first, 2).Count > 0)
-                items.Add((new PieItem("anim", T("Animate as slides", "Als Folien animieren")) { IconId = IconIds.Animate }, false));
-            items.AddRange(actions.Select(a => (ActionItem(a), false)));
-            if (effect.MirrorH) items.Add((new PieItem("flipH", T("Mirror ↔", "Spiegeln ↔")) { IconId = IconIds.MirrorH }, false));
-            if (effect.MirrorV) items.Add((new PieItem("flipV", T("Mirror ↕", "Spiegeln ↕")) { IconId = IconIds.MirrorV }, false));
-            return items;
-        }
-
-        /// <summary>
-        /// Splits the entries into the main ring (at most <see cref="MaxPieItems"/>: essential entries first, then the
-        /// others in order) and the "More" overflow, so no entry appears twice.
-        /// </summary>
-        internal static (List<PieItem> Main, List<PieItem> Overflow) PieLayout(IReadOnlyList<(PieItem Item, bool Essential)> all, string moreLabel)
-        {
-            if (all.Count <= MaxPieItems) return (all.Select(e => e.Item).ToList(), new List<PieItem>());
-            var essential = all.Where(e => e.Essential).Select(e => e.Item).Take(MaxPieItems - 1).ToList();
-            var rest = all.Where(e => !e.Essential).Select(e => e.Item)
-                .Concat(all.Where(e => e.Essential).Select(e => e.Item).Skip(MaxPieItems - 1)).ToList();
-            var room = MaxPieItems - 1 - essential.Count;
-            var main = essential.Concat(rest.Take(room)).ToList();
-            main.Add(new PieItem("menu:more", moreLabel) { IconId = IconIds.Cycle });
-            return (main, rest.Skip(room).ToList());
-        }
-
-        private void ShowPie(POINT pt, SlideView view, List<PieItem> items)
-        {
-            _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale);
-            _mode = Mode.Pie;
-            DrawPie(view);
-        }
-
         private void DrawPie(SlideView view)
         {
             var pie = _pie;
@@ -1627,6 +1403,8 @@ namespace InventaSketch.AddIn.OnSlide
         {
             var o = PointObject();
             if (o is null) return -1;
+            // While armed: the nearest handle decides (a "+" or corner dot beside the point keeps its own clicks).
+            if (_mode == Mode.Armed) return NearestIndex(view, pt, "pt:");
             var tol = 9 * view.DeviceScale;
             var pts = _unit!.Doc.ResolvePoints(o);
             var best = -1;
@@ -1649,15 +1427,19 @@ namespace InventaSketch.AddIn.OnSlide
         {
             if (_part is not null && PartOwner() is not null) { Present(view, _ => { }, g => DrawPart(g, view)); return; }
             var o = PointObject();
+            if (_unit is not null) LastHandles = HandleLayout.Describe(Handles(view));
             if (o is null && _chainSource is not null) { DrawChainTools(view); return; }
-            if (o is null && _links.Count == 0 && _ports.Count == 0) return;
+            if (o is null && _links.Count == 0 && _ports.Count == 0 && _sides.Count == 0) return;
             var pts = o is null ? null : _unit!.Doc.ResolvePoints(o);
             Present(view, _ => { }, g =>
             {
                 if (pts is not null) DrawHandleSet(g, view, pts, _selectedPoints);
                 if (pts is not null) DrawSegmentHandles(g, view);
                 DrawPorts(g, view);
+                DrawSides(g, view);
                 DrawLinks(g, view);
+                // The hovered handle's tooltip last, so no handle covers it.
+                FlushTip(g, view);
             });
         }
 
@@ -2175,6 +1957,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void ApplyAction(SketchUnit stale, string id)
         {
+            if (id == "more") { OpenPieFromBar(); return; }
             // Opening or closing a bar choice is no edit; picking an option becomes the edit command.
             if (ChoiceCommand(id) is not { } command) return;
             id = command;

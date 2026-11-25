@@ -65,6 +65,8 @@ namespace InventaSketch.AddIn.OnSlide
             list.Add(new BarButton("", "", "", Separator: true));
             list.Add(new BarButton("partlist", "", T("Parts … (also hidden ones)", "Teile … (auch ausgeblendete)")) { IconId = IconIds.Table });
             list.Add(new BarButton("part:none", "", T("Whole element", "Ganzes Element")) { IconId = IconIds.SelectAssembly });
+            list.Add(new BarButton("", "", "", Separator: true));
+            list.Add(new BarButton("more", "⋯", T("More: all commands, grouped (right-click)", "Mehr: alle Befehle, geordnet (Rechtsklick)")));
             return list;
         }
 
@@ -82,7 +84,7 @@ namespace InventaSketch.AddIn.OnSlide
         {
             if (PartOwner() is not { } o) return null;
             var items = new List<PieItem> { new("menu:back", T("← Back", "← Zurück")) };
-            foreach (var p in _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).Take(MaxPieItems + 8))
+            foreach (var p in _registry().Parts(o, new RenderContext(_unit!.Doc, _lang())).Take(MaxSubItems))
                 items.Add(new PieItem("partsel:" + p.Key, p.Label.Get(_lang()) + (p.Hidden ? T(" (hidden)", " (ausgeblendet)") : ""), Active: p.Key == _part));
             return items;
         }

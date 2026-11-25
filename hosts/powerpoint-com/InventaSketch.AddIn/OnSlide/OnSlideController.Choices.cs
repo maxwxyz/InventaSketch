@@ -34,7 +34,7 @@ namespace InventaSketch.AddIn.OnSlide
         }
 
         /// <summary>The bar choices of an object, in order: line type, then its icon parameters, then the line style.</summary>
-        private List<BarChoice> BarChoices(SketchObject o)
+        private List<BarChoice> BarChoices(SketchObject o, int max = MaxBarChoices)
         {
             var registry = _registry();
             var lang = _lang();
@@ -80,7 +80,7 @@ namespace InventaSketch.AddIn.OnSlide
                 list.Add(new BarChoice("@dash", T("Line style", "Linienart"), (o.Style?.Dash ?? DashStyle.Solid).ToString(), false,
                     dashes.Select(d => new ChoiceOption(d.ToString(), Name(d), IconIds.ForDash(d), null)).ToList()));
             }
-            return list.Take(MaxBarChoices).ToList();
+            return list.Take(max).ToList();
         }
 
         /// <summary>Dropdown buttons for the bar: the current option's pictogram (or a short text) plus a caret.</summary>
@@ -88,7 +88,7 @@ namespace InventaSketch.AddIn.OnSlide
             => BarChoices(o).Select(c =>
             {
                 var cur = c.CurrentOption;
-                var tip = c.Tip + (cur is null ? "" : ": " + cur.Label);
+                var tip = c.Tip + (cur is null ? "" : ": " + cur.Label) + T(" – click to choose", " – klicken zum Wählen");
                 return c.Pictorial
                     ? new BarButton("choice:" + c.Key, "", tip, Active: _barChoice == c.Key) { IconId = cur?.IconId, Icon = cur?.Icon, Menu = true, Mirror = c.Mirror }
                     : new BarButton("choice:" + c.Key, ShortLabel(cur?.Label ?? c.Tip, 16), tip, Active: _barChoice == c.Key) { Menu = true };
