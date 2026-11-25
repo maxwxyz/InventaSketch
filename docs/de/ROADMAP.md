@@ -346,6 +346,15 @@ Später: digitale Zeitdiagramme (`chart.timing`, mit Diagramme v2), isometrische
 als Phantomkopie, Batteriezellen-Anordnungen und Kühlplatten, Optik-Modul, Polar-/Hysterese-/Konstellations-/Augen-/
 Sankey-Diagramme.
 
+### Folien bereinigen zur Weitergabe (Maintainer 25.11.2026, geplant; wie Slidemax)
+
+Ein Befehl „Folien bereinigen“ für Auswahl, Folie oder ganze Präsentation, bevor Folien das Unternehmen verlassen:
+Diagramme und Abbildungen entweder **normiert** (gleiche Verhältnisse und Formen, Werte und Achszahlen unkenntlich –
+z. B. auf 0…1 oder Indexwerte skaliert, Skalenbeschriftungen ersetzt) oder **randomisiert** (plausible Zufallswerte mit
+gleichem Aussehen, Kurven behalten ihren Charakter); wahlweise Texte, Bezugszeichen, Namen, Notizen, Kommentare,
+ausgeblendete Folien und Dokumenteigenschaften entfernen oder ersetzen. Ein Rückgängig-Schritt und ein Bericht, was
+geändert wurde; zuerst COM (Extras oder Gruppe Prüfen), dann Web und LibreOffice über denselben Engine-Befehl.
+
 ### Weitere sinnvolle Module und Funktionen
 
 - **Technische Gebäudeausrüstung (TGA, P1 nach den Diagrammen; erledigt am 24.11.2026, Modul `building-services`,

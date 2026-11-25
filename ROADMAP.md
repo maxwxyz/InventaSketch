@@ -309,6 +309,15 @@ wireless link), packet/frame/memory layouts, sequence fragments and message numb
 Later: digital timing diagrams (`chart.timing`, with charts v2), isometric parts (`mech.iso.*`), "moved position"
 phantom copies, battery cell arrays and cooling plates, optics module, polar/hysteresis/constellation/eye/Sankey charts.
 
+### Clean slides for sharing (maintainer 2026-11-25, planned; like Slidemax)
+
+A "Clean slides" command for the selection, the slide or the whole presentation before slides leave the company:
+charts and figures either **normalised** (same proportions and shapes, values and axis numbers made unrecognisable –
+e.g. scaled to 0…1 or to index values, tick labels replaced) or **randomised** (plausible random values with the same
+look, curves keep their character); optionally texts, reference numerals, names, notes, comments, hidden slides and
+document properties removed or replaced. One undo step, a report of what was changed; COM first (Extras or Review
+group), then web and LibreOffice through the same engine command.
+
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
