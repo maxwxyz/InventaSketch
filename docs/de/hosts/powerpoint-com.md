@@ -81,36 +81,69 @@
 - **Typ umwandeln und Beschriftung steuern (Kreismenü):** „Typ ▸“ (Linie, Pfeil, Doppelpfeil, gebogener Pfeil,
   Winkelverbinder, Bezugslinie, Bezugszeichen, lineare und schräge Bemaßung; Endpunkte, Zeichen/Text, Ebene, Gruppe und
   Farbe bleiben erhalten) und „Beschriftung ▸“ aus den optionalen Parametern des Typs.
-- **Schwebende Leiste:** über der ausgewählten Einheit (abseits des Drehgriffs); verdeckt sie dort andere Elemente der
-  Folie (ein gekoppeltes Zahnrad, die Welle), wandert sie nach unten, rechts oder links, wo sie am wenigsten verdeckt
-  (`FloatingBar.Placement`). Inhalt: die Palette „nächstes Element“ nach dem Schnell-Anfügen, Ansichten, Text bearbeiten,
-  bis zu fünf wichtige Typaktionen (aussagekräftige Piktogramme wie dicker/dünner, mehr/weniger, Richtung tauschen zuerst,
-  dann Schalter und Zyklen wie Nabe oder Schrägverzahnung als kurze Textknöpfe), bis zu drei passende Teile, die sofort
-  richtig sitzen (Rad auf der Welle, Rad im Eingriff, Lager neben dem Rad: `Fitting.Place`), „Einfügen“ (öffnet die übrigen
-  passenden Elemente als Vorschaubilder in der Leiste), Spiegeln, 90° drehen, Duplizieren, Löschen. Innerhalb von 12 logischen Pixeln voll deckend, sonst 0,92 und
-  über 180 px ausblendend; unter 0,1 bis zur nächsten Auswahl verborgen; Tippen blendet sie aus.
-- **Auswahlen als Dropdowns:** Jede Auswahl des gewählten Elements (Linientyp, Pfeilspitzen, Spitzengröße, Linienart,
-  Linienverlauf, Bauform und Art der E-Maschine, Welle-Nabe-Verbindung …) ist ein Leistenknopf mit dem aktuellen Wert als
-  Piktogramm (`ParamOption.Icon`, `ParamDef.WithOptionIcons`) oder kurzem Text und einem kleinen Pfeil. Ein Klick öffnet
-  darunter eine Liste mit Piktogramm und Beschriftung jeder Option, die aktuelle markiert; ein Klick auf eine Zeile wählt,
-  ein Klick daneben schließt. Durchschalt-Aktionen über dieselben Parameter (`ContextAction.ParamKeys`) bleiben nur im
-  Kreismenü; Schalter mit aussagekräftigem Piktogramm (Wellenstümpfe, Gehäuseanbindung, Schrägverzahnung) sind
-  Symbol-Schalter. Keine Textknöpfe, wo es ein Piktogramm gibt. Piktogramme gibt es für Formen (eckig, rund, Dreieck),
-  Füllungen (Farbton, Schraffur, Punkte, keine), Führung von Leitungen und Rohren (frei, orthogonal, 45°), Wandarten und
-  Fluid-Leitungsarten; Einheiten, Signalfarben und ähnliche Auswahlen bleiben kurzer Text.
-- **Planmaßstab auf der Folie:** Planelemente (`ObjectType.UsesPlanScale`: Wände, Räume, Öffnungen) zeigen den
-  Planmaßstab der Folie als Leistenknopf („1:50“) und im Kreismenü; beide öffnen die Eingabe und zeichnen die Folie neu.
+- **Griffe auf der Folie (schrittweise Anzeige, 25.11.2026):** das Konzept steht in
+  [docs/de/design/interaction-ux.md](../design/interaction-ux.md). Nach einer Auswahl bleibt die Folie ruhig:
+  PowerPoints Rahmen, die orangen Punktrauten einer Linie und höchstens **ein** blaues „+“ an der nützlichsten Stelle
+  zum Weiterbauen. Das ist das freie Ende einer Linie oder Leitung, die freie Seite eines Zahnrads, ein freies
+  Achsende oder ein Anschluss, die Unterseite einer Tabelle oder das Dreieck unter einem Diagrammknoten. Alle anderen
+  Griffe blenden sich ein, wenn der Mauszeiger auf etwa 40 logische px herankommt, und wieder aus; Umschalt zeigt alle.
+  Das sind weitere „+“, Eckpunkte, Abzweig- und Knotenpunkt-Griffe, Schlösser, Wertgriffe und die übrigen Dreiecke. Wo
+  das Element an einem anderen hängt, markiert ein winziger grauer Punkt die Stelle; in der Nähe erscheint das Schloss
+  (grau), unter dem Zeiger wird es blau und zeigt seine Zuleitung. Alle Griffe werden gemeinsam angeordnet
+  (`HandleLayout`): nie übereinander oder auf PowerPoints Griffen, 24 px Trefferflächen, der nächste gewinnt.
+- **Schwebende Leiste:** für jedes Element gleich aufgebaut, höchstens vier Knöpfe plus „⋯“:
+  1. Die Hauptaktion mit kurzem Text. Je nach Element ist das „Ändern in …“ nach Schnell-Anfügen, „Daten“
+     (Diagramme), „Text“ (Texte, Diagrammknoten, Tabellen: die Zellen), „Ansicht“ (Elemente mit mehreren Ansichten,
+     eine Auswahlliste) oder die erste Stil-Auswahl (Linien).
+  2. Bis zu drei Piktogramme mit Tooltips: eindeutige eigene Aktionen des Elements, Ansicht, Einfügen, Skizzieren,
+     Koppelkurve, Zerlegen, Bewegen, Baugruppe wählen, Stil-Auswahlen, 90° drehen/Spiegeln, wo es etwas ändert.
+  3. „⋯“: das Kreismenü mit allem, gruppiert.
+
+  Eine gewählte Ecke zeigt „Teilen“ und „Entfernen“. Ein gewähltes Diagrammteil zeigt seinen Namen, seine drei
+  häufigsten Befehle und „⋯“. Knöpfe sind 32 logische px groß mit deutlichem Hover. Die Leiste steht über der
+  Auswahl, abseits des Drehgriffs; verdeckt sie dort andere Elemente (ein gekoppeltes Zahnrad, die Welle), wandert sie
+  nach unten, rechts oder links, wo sie am wenigsten verdeckt (`FloatingBar.Placement`). Innerhalb von 12 logischen px
+  ist sie voll deckend, sonst 0,92 und über 180 px ausblendend; unter 0,1 ist sie bis zur nächsten Auswahl verborgen.
+  Tippen blendet sie aus. Klicks auf die Leiste erreichen nie die Folie. Jeder Befehl bleibt im Kreismenü erreichbar
+  (UI-Tests: `CommandIds`, Protokollzeile „Commands: …“).
+- **Auswahlen als Dropdowns:** eine Auswahl in der Leiste (Linientyp, Pfeilspitzen, Linienart, Führung, Ansicht …)
+  zeigt ihren aktuellen Wert als Piktogramm (`ParamOption.Icon`, `ParamDef.WithOptionIcons`) oder kurzen Text mit
+  kleinem Pfeil. Ein Klick öffnet darunter eine Liste mit Piktogramm und Beschriftung jeder Option, die aktuelle
+  markiert; ein Klick auf eine Zeile wählt, ein Klick daneben schließt. Im Kreismenü ist jede Auswahl ein Eintrag unter
+  „Stil ▸“ mit denselben Optionen. Durchschalt-Aktionen über dieselben Parameter (`ContextAction.ParamKeys`) erscheinen
+  nicht doppelt.
+- **Planmaßstab auf der Folie:** Planelemente (`ObjectType.UsesPlanScale`: Wände, Räume, Öffnungen) haben
+  „Planmaßstab …“ im Kreismenü (Ansicht ▸); es öffnet die Eingabe und zeichnet die Folie neu.
 - **Einheiten des Web-Add-ins:** vom Web-Add-in aufgeteilte Modell-Tags (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`)
   werden beim Lesen zusammengesetzt (`SketchUnits.ModelTag`).
 - **Schnell-Anfügen (Diagramme):** Ablaufdiagramm-, UML-, ER-, BPMN-, System- und Grundform-Elemente
-  (`ObjectType.ChainConnector`) zeigen blaue Dreiecke 13 logische Pixel außerhalb jeder Seite und, wenn der Mauszeiger
-  nahe ist, ihre Anschlusspunkte (blaue Kreise). Klick auf ein Dreieck: Eine Kopie entsteht auf dieser Seite (hinter
-  schon vorhandenen Elementen) mit dem passenden Verbinder zwischen den zugewandten Anschlüssen, an beiden Enden
-  angehängt (`Flow.QuickAdd`); die Leiste zeigt dann die Palette „nächstes Element“, ein Klick macht aus der Kopie ein
-  anderes Element, der Verbinder bleibt (`Flow.Replace`). Dreieck oder Anschluss ziehen: auf einem Anschluss eines
-  anderen Elements loslassen verbindet beide, auf freier Fläche entsteht dort ein neues Element. Je ein Rückgängig-Schritt.
-- **Kreismenü:** Rechtsklick auf eine ausgewählte Einheit: Löschen (oben), Ansichten, Typaktionen, Duplizieren,
-  Spiegeln, 90° drehen.
+  (`ObjectType.ChainConnector`) zeigen das blaue Dreieck unten; die Dreiecke der anderen Seiten und die Anschlusspunkte
+  erscheinen, wenn der Mauszeiger nahe kommt. Klick auf ein Dreieck: Eine Kopie entsteht auf dieser Seite (hinter schon
+  vorhandenen Elementen) mit dem passenden Verbinder zwischen den zugewandten Anschlüssen, an beiden Enden angehängt
+  (`Flow.QuickAdd`); die Leiste bietet dann „Ändern in …“, ein Klick macht aus der Kopie ein anderes Element, der
+  Verbinder bleibt (`Flow.Replace`). Dreieck oder Anschluss ziehen: auf einem Anschluss eines anderen Elements
+  loslassen verbindet beide, auf freier Fläche entsteht dort ein neues Element. Je ein Rückgängig-Schritt.
+- **Passende Teile einfügen:** „Einfügen …“ (Leiste, Kreismenü, Strg+Leertaste) nennt passende Teile zuerst. Ein
+  gewähltes Teil kommt dorthin, wo es passt: die ausgewählte Einheit wird Objekt für Objekt geprüft, Wellen zuerst, dann
+  die Welle, auf der ein gewähltes Zahnrad sitzt. Findet sich kein Platz, folgt das Teil dem Mauszeiger, und nahe einer
+  Welle zeigt die Vorschau es schon eingepasst (ein Kugellager auf der Welle, in deren Ansicht und Größe, „Passt hier –
+  Klick fügt ein“). Der Klick fügt genau das ein; Alt setzt frei. Das Einfügefeld schließt mit Esc oder einem Klick
+  daneben.
+- **Kreismenü:** Rechtsklick auf eine ausgewählte Einheit, Umschalt+F10 oder „⋯“. Es hat acht feste Plätze für jedes
+  Element, im Uhrzeigersinn ab oben:
+  - Text …
+  - Bearbeiten ▸ (die eigenen Befehle des Elements)
+  - Einfügen …
+  - Duplizieren
+  - Stil ▸ (jede Auswahl mit ihren Optionen)
+  - Löschen
+  - Ansicht ▸ (Ansichten, Planmaßstab)
+  - Anordnen ▸ (drehen, spiegeln, Baugruppe wählen, als Folien animieren)
+
+  Die Mitte nennt das Element (oder das offene Untermenü). Plätze ohne Inhalt für dieses Element bleiben mit wenig
+  Kontrast ausgegraut, und ein Klick darauf lässt das Menü offen. Untermenüs beginnen mit „← Zurück“; lange gehen in
+  „Mehr ▸“ weiter. Der Eintrag unter dem Zeiger zeigt einen Hinweis in einer Zeile unter dem Ring. Esc oder ein Klick
+  daneben schließt das Menü.
 
 ## Seitenleisten-Editor (benutzerdefinierter Aufgabenbereich)
 
@@ -228,8 +261,8 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   geprüft (Szenario `line-group`). Das Szenario prüft auch, dass das Menüband geladen ist (`RibbonLoaded`): PowerPoint
   verwirft ein ungültiges Menüband-XML stillschweigend – ein leeres `tag`-Attribut hat genau das einmal ausgelöst.
 - **Text**: Doppelklick auf eine ausgewählte Einheit, der Leistenknopf „Text“ oder „Text …“ im Kreismenü bearbeiten
-  ihren Haupttext (Objekttext, Bezugszeichen, Name oder Beschriftung).
-- **Einfügen ▸** im Kreismenü (und die Einfüge-Palette der Leiste) bietet passende Elemente zur Auswahl an
+  ihren Haupttext (Objekttext, Bezugszeichen, Name oder Beschriftung; bei Tabellen die Zellen in einer Zeile, „|“ zwischen Spalten, „\n“ zwischen Zeilen).
+- **Einfügen …** in Kreismenü und Leiste (das Einfügefeld) bietet passende Elemente zuerst an
   (`ObjectType.Companions`, sonst dieselbe Kategorie, immer Bezugszeichen/Bezugslinie/Pfeil), in derselben Art von
   Ansicht. Die Wahl setzt das Element dorthin, wo es hingehört (`Fitting.Place`), gekoppelt und ausgewählt: Zahnrad, Lager
   oder Rad auf die gewählte Welle (Nabe auf der Achse, an einer freien Stelle), Zahnrad neben Zahnrad im Eingriff (unten,

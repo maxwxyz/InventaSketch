@@ -36,7 +36,7 @@ much text in the overlay; it must be consistent: what is found where, how is wha
 | Place | What goes there | Rule |
 |---|---|---|
 | **On the element (handles)** | Everything that is done by dragging or one click *at a place*: move, resize, rotate (PowerPoint's handles, taken over), points and ends (diamonds), "+" at a place (build port, free end, table side), corner dot, branch, junction, lock badge, quick-add triangles, chart part outline. | Direct manipulation first. One look per meaning (section 4). Never two handles on top of each other. |
-| **Floating bar** | The 3–5 most frequent commands of *this* element, then its views and transforms, then its style choices, then "⋯". | Context only, small, pictograms with tooltips; a short label only where no pictogram is telling. Never grows with content. |
+| **Floating bar** | The main action of *this* element (with a short label), its next two or three commands as pictograms, then "⋯". | Context only, small, pictograms with tooltips; a short label only where no pictogram is telling. Never grows with content. |
 | **Pie menu** (right-click, Shift+F10, "⋯") | Everything for the element, grouped in eight fixed places. | Complete, labelled, one-line hint, the same place means the same thing for every element. |
 | **Ribbon** | Insert (library, search & insert), document- and slide-wide settings (snap, anchor, line group, accent, plan scale of the slide, black and white), tools (clean slides, compatibility, export). | Nothing element-specific. |
 | **Sidebar editor** | Every parameter (inspector), data tables, the library with search. | The "long form"; never needed for the quick sketch. |
@@ -99,23 +99,53 @@ direction, leaning up to 40°, locks and branches also around their anchor, corn
 a gap of at least 3 logical px. Optional handles (corner dot, branch) without a free place are hidden; on elements
 smaller than 24 px none are shown (zoom in). A "+" that had to move keeps a thin dashed lead to its port.
 
+### Calm by default: progressive disclosure (round 2, 2026-11-25)
+
+Verdict after the first round: "still the same" – the handles no longer overlapped, but a selected gear still showed
+four "+", a lock badge and lead lines, a short cable six handles. Rule: **show what the element is and the one next
+step; everything else appears where the pointer goes.**
+
+- **Always shown:** PowerPoint's frame, the point diamonds of a line, and at most **one** "+" (the primary place):
+  - the free end of a line or cable (else its start);
+  - a gear's free side to the right (else any free side);
+  - a connection port, then a free axis end, then any build port;
+  - the bottom of a table;
+  - the triangle below a diagram node.
+- **Near the pointer:** every other handle fades in from about 56 logical px and is fully there within 24 px; it fades
+  out again when the pointer leaves. These are further "+", corner dots, branches, junctions, value grips, the other
+  triangles and lock badges. Opacity follows the distance, so there is no flicker and no timer.
+- **Shift** shows all handles at once (for an overview), releasing it hides them again.
+- **Attached:** a tiny grey dot marks every joint. The lock badge appears near the joint in quiet grey, turns blue
+  under the pointer, and only then shows its lead line. A "+" pushed away from its port shows its dashed lead only
+  under the pointer.
+- **Selected chart part:** its grips stay shown.
+- Hidden handles take no clicks away: a handle can only be hit with the pointer on it, where it is fully shown.
+
 ## 5. Floating bar
 
-Order, the same for every element, groups separated by a thin line:
+The same structure for every element (round 2): **at most four buttons plus "⋯"**.
 
-1. **Element:** "Make it …" (just after a quick add, with label) · **Insert** (pictogram *and* label – the main action) ·
-   split / remove a selected corner · edit text · up to five key actions (pictogram only when telling *and* no other
-   action of the element uses it, otherwise a short text) · 1:50 · sketch a curve · F = n, coupler curve, ghosts ·
-   explode · move mode · select assembly.
-2. **View and transforms:** up to three view buttons or one view dropdown · mirror ↔ · mirror ↕ · rotate 90° – only
-   those that visibly change the drawing.
-3. **Style:** dropdowns with the current value as pictogram (line type, arrowheads, line style, routing, …).
-4. **⋯** – the pie menu (everything else, grouped). Duplicate and delete are there (and Ctrl+D, Del).
+1. **The main action, with a short label:**
+   - "Make it …" right after a quick add;
+   - else "Data" (charts);
+   - else "Text" (texts, diagram nodes, numerals, tables: their cells);
+   - else "View" (a dropdown, for elements with several views);
+   - else the first style choice (lines: e.g. the arrowheads);
+   - else "Insert".
+2. **Up to three pictograms with tooltips**, in this order of preference:
+   - the element's own actions whose pictogram is unambiguous;
+   - the view dropdown;
+   - Insert;
+   - sketch a curve, coupler curve, ghost positions, explode, move mode, select assembly;
+   - the pictorial style dropdowns;
+   - rotate 90° and mirror, where they change the drawing.
+3. **⋯** – the pie menu: everything, grouped. Duplicate and delete are there (and Ctrl+D, Del).
 
-Tooltips: "what happens" plus the shortcut ("Mirror horizontally (X)", "Line style: Dashed – click to choose"). A
-selected chart part has its own bar (part name, its actions, parts list, whole element, ⋯). The multi-selection bar has
-the groups one view for all | align and distribute | diagram layout (text "Diagram ↓", "Diagram →") | dimension,
-format painter, renumber.
+A selected corner shows "Split" (labelled) and "Remove". A selected chart part shows its name, its three most used
+commands and "⋯". Buttons are 32 logical px (targets of at least 28 px) with a tinted, outlined hover state.
+Tooltips say what happens plus the shortcut ("Mirror horizontally (X)", "Line style: Dashed – click to choose"). The
+multi-selection bar keeps its groups: one view for all | align and distribute | diagram layout ("Diagram ↓", "Diagram →")
+| dimension, format painter, renumber.
 
 ## 6. Pie menu
 
@@ -142,6 +172,8 @@ left = view/arrange):
 - Submenus start with "← Back"; more than eleven entries continue in "More ▸".
 - Hovering an entry shows its full label and a one-line hint below the ring. Esc, a click outside or on the centre
   closes the menu.
+- The centre names the element (or its selected part, or the open submenu), so it is clear what the menu acts on.
+  Greyed places have low contrast, so the available ones stand out.
 
 ## 7. Feedback and accessibility
 
@@ -168,6 +200,29 @@ left = view/arrange):
   top goes under the header row.
 - Grips on values (`OnSlideController.Handles.cs`, engine `Registry.DragHandles` / `MoveHandle`): drawn in the layout as fixed handles (priority over moving the body inside the plot), hover tooltip with the value, constrained drag with a live preview of the changed part and its new value, one undo step, Esc cancels, a click selects the part; `DragHandlesOf` for UI tests.
 - UI scenarios: `overlay-handles`, `pie-menu`, `insert-box-dismiss`, `table-plus`, `chart-drag-handles` (tests/powerpoint-com/scenarios).
+
+### Round 2 (2026-11-25): calm overlay, four-button bar, fitted insert
+
+- Progressive disclosure of every handle (`OnSlideController.Handles.cs`: `Reveal`, `PrimaryHandleId`, `UpdateReveal`,
+  faded drawing); quiet lock badges; leads only on hover; the shown handles for UI tests (`LastShownHandles`, log line
+  "Shown: …").
+- Bar: main action with label plus up to three pictograms plus "⋯" (`BarCandidates`); 32 px buttons with a clear hover;
+  every command stays reachable in the pie (`LastCommandIds`, log line "Commands: …").
+- Pie: the element's name in the centre, greyed places with low contrast, linkage and corner commands under Edit.
+- Tables: "Text" edits the cells (one line, "|" and "\n"); double-click too.
+- Fitting: the selected unit is tried object by object (shafts first, then the shaft a selected part sits on); insert
+  at the pointer previews the fitted result near a shaft ("Fits here – click to insert") and inserts exactly that
+  (`OnSlideController.Fitting.cs`; `Fitting.PlaceNear` is used once the engine has it, by reflection until then).
+
+Before → after, right after selecting with the pointer away from the element:
+
+| Element | Before (round 1) | After (round 2) |
+|---|---|---|
+| Gear with a meshing partner | 4 blue "+", 1 "+" towards the partner, lock badge with lead, PowerPoint's frame; bar with insert, views, hub, helix, mirror … (8–10 buttons) | PowerPoint's frame and one "+" (the free side to the right); a grey dot at the mesh; bar: "View ▾" + up to 3 pictograms + ⋯ |
+| Short cable docked on one end | 2 diamonds, "+", lock badge with lead, corner dot, branch | 2 diamonds and one "+" at the free end; a grey dot at the docked end; corner dot, branch and lock appear near the pointer |
+| Chart with limit lines | grips always, bar with data, sketch, insert, style … | quiet chart; grips appear near the lines (always for a selected part); bar: "Data" + up to 3 pictograms + ⋯ |
+| Flowchart box | 4 triangles, bar with text, insert, actions, mirror … | the triangle below; the others near the pointer; bar: "Text" + up to 3 + ⋯ |
+| Table | 4 "+" on the sides; bar: insert, header, remove row/column … | one "+" below (a row); the others near their side; bar: "Text" (the cells) + up to 3 + ⋯ |
 
 ## 9. Follow-ups (phased, with acceptance criteria)
 

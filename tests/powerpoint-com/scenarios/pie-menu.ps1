@@ -4,6 +4,22 @@
 # entries are read back through the automation object (PieItems()) or the add-in log ("Pie: ...").
 param($S)
 $addin = $S.AddIn
+
+# Every command of the selected element (bar and pie): automation CommandIds(), else the add-in log line "Commands: ...".
+function Get-CommandIds {
+    $raw = $null
+    try { $raw = [string]$S.AddIn.CommandIds() } catch { $raw = $null }
+    if (-not $raw) {
+        $line = Get-Content (Get-IskLog $S) | Where-Object { $_ -match 'Commands: ' } | Select-Object -Last 1
+        if ($line) { $raw = $line -replace '.*Commands: ', '' }
+    }
+    , @(($raw -split ',') | Where-Object { $_ })
+}
+function Wait-CommandIds([scriptblock]$Until, [int]$Seconds = 10) {
+    $ids = @(); $end = (Get-Date).AddSeconds($Seconds)
+    do { $ids = Get-CommandIds; if (& $Until $ids) { break }; Start-Sleep -Milliseconds 700 } while ((Get-Date) -lt $end)
+    , $ids
+}
 $k = Get-IskScale
 
 function Get-PieItems {
@@ -56,9 +72,11 @@ $g = $addin.Insert('mech.spur.axial'); $gs = $S.Slide.Shapes.Item($g); $gs.Left 
 $gs.Select(); Start-Sleep 3
 $ids = Get-IskBarIds $S
 Write-IskInfo ('gear bar: ' + ($ids -join ' '))
-Assert-Isk $S ($ids.Count -gt 0 -and $ids[0] -eq 'insert' -and $ids[$ids.Count - 1] -eq 'more') 'the bar starts with Insert and ends with "..." (more)'
+Assert-Isk $S ($ids.Count -ge 2 -and $ids.Count -le 5 -and $ids[$ids.Count - 1] -eq 'more') 'the bar has at most four buttons and ends with "..." (more)'
 Assert-Isk $S (($ids -notcontains 'delete') -and ($ids -notcontains 'dup')) 'delete and duplicate live in the pie (Del, Ctrl+D)'
 $items = Test-Pie 'gear' $g
+$titleLine = Get-LogTail 'Pie \[' 
+Assert-Isk $S ($titleLine -match 'Pie \[[^\]]+\]') "the pie names the element in its centre ($([regex]::Match([string]$titleLine, 'Pie \[[^\]]+\]').Value))"
 $r = Get-IskRect $S $g
 # Click the "edit" place (upper right): the submenu opens with "Back" first.
 Invoke-IskClick ($r.CX + 75 * $k) ($r.CY - 75 * $k) -WaitMs 1200

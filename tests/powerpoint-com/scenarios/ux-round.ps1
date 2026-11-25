@@ -1,12 +1,28 @@
-# Scenario: UI/UX round – context-only transforms, multi-selection bar, assembly view switch, insert box (Ctrl+Space).
+# Scenario: UI/UX round - context-only transforms, multi-selection bar, assembly view switch, insert box (Ctrl+Space).
 param($S)
 $addin = $S.AddIn
+
+# Every command of the selected element (bar and pie): automation CommandIds(), else the add-in log line "Commands: ...".
+function Get-CommandIds {
+    $raw = $null
+    try { $raw = [string]$S.AddIn.CommandIds() } catch { $raw = $null }
+    if (-not $raw) {
+        $line = Get-Content (Get-IskLog $S) | Where-Object { $_ -match 'Commands: ' } | Select-Object -Last 1
+        if ($line) { $raw = $line -replace '.*Commands: ', '' }
+    }
+    , @(($raw -split ',') | Where-Object { $_ })
+}
+function Wait-CommandIds([scriptblock]$Until, [int]$Seconds = 10) {
+    $ids = @(); $end = (Get-Date).AddSeconds($Seconds)
+    do { $ids = Get-CommandIds; if (& $Until $ids) { break }; Start-Sleep -Milliseconds 700 } while ((Get-Date) -lt $end)
+    , $ids
+}
 
 # 1) Context-only transforms: an axial gear (symmetric) offers no mirror/rotate, an arrow offers mirror horizontally.
 $g = $addin.Insert('mech.spur.axial')
 $gs = $S.Slide.Shapes.Item($g); $gs.Left = 80; $gs.Top = 80
 $gs.Select(); Start-Sleep 3
-$ids = Get-IskBarIds $S
+$ids = Get-CommandIds
 Write-IskInfo ('gear bar: ' + ($ids -join ' '))
 Assert-Isk $S (($ids -notcontains 'flipH') -and ($ids -notcontains 'flipV') -and ($ids -notcontains 'rot90') -and ($ids -contains 'insert')) 'an axial gear shows no mirror/rotate, but the insert button'
 Save-IskShot $S '1-gear-bar'
@@ -14,7 +30,7 @@ $S.Window.Selection.Unselect()
 $a = $addin.Insert('ann.arrow')
 $as = $S.Slide.Shapes.Item($a); $as.Left = 420; $as.Top = 80
 $as.Select(); Start-Sleep 3
-$ids = Wait-IskBarIds $S { param($i) $i -contains 'flipH' }
+$ids = Wait-CommandIds { param($i) $i -contains 'flipH' }
 Write-IskInfo ('arrow bar: ' + ($ids -join ' '))
 Assert-Isk $S ($ids -contains 'flipH') 'an arrow can be mirrored horizontally'
 foreach ($x in @($S.Slide.Shapes)) { $x.Delete() }
@@ -39,7 +55,7 @@ $g1 = $addin.Insert('mech.spur.axial'); $s1 = $S.Slide.Shapes.Item($g1); $s1.Lef
 $s1.Select(); Start-Sleep 3
 $addin.Command('port:mesh.right:mech.spur.axial') | Out-Null; Start-Sleep 5
 @(Get-IskShapes $S 'ISK:mech.gear.spur*')[0].Select(); Start-Sleep 3
-$ids = Wait-IskBarIds $S { param($i) $i -contains 'assembly' }
+$ids = Wait-CommandIds { param($i) $i -contains 'assembly' }
 Assert-Isk $S ($ids -contains 'assembly') 'a coupled gear offers "select assembly"'
 $addin.Command('assembly') | Out-Null; Start-Sleep 4
 $ids = Wait-IskBarIds $S { param($i) $i -contains 'mview:stick' }

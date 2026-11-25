@@ -81,36 +81,65 @@
   dimension; end points stay, numeral/text, layer, group and colour are kept) and "Label ▸", generated from the type's
   optional parameters: edit texts (numeral, dimension text, prefix/unit), cycle choices (line course straight/curved/
   wavy, object end, terminator, direction), toggles and text size. "← Back" returns to the main menu.
-- **Floating bar:** a selected unit shows a bar above it (clear of PowerPoint's rotation handle); when that would cover
-  other elements of the slide (a coupled gear, the shaft) it goes below, right or left, wherever it hides the least
-  (`FloatingBar.Placement`). Content: the "next element" palette after a quick add, its views, edit text, up to five key
-  type actions (telling pictograms such as thicker/thinner, more/fewer, swap direction first, then switches and cycles
-  such as hub or helix as short text buttons), up to three fitting parts that snap into place right away (gear on the
-  shaft, gear in mesh, bearing beside a gear: `Fitting.Place`), "Insert" (opens the other fitting elements as thumbnails
-  in the bar), mirror horizontally/vertically,
-  rotate 90°, duplicate, delete. Fully opaque within 12 logical px,
-  otherwise 0.92 fading over 180 px from the closest pointer distance; below 0.1 it is dismissed until the next
-  selection; typing hides it. Clicks on the bar never reach the slide.
-- **Choices as dropdowns:** every choice of the selected element (line type, arrowheads, head size, line style, line
-  course, e-machine arrangement and type, shaft-hub connection, …) is a bar button showing its current value as a
-  pictogram (`ParamOption.Icon`, `ParamDef.WithOptionIcons`) or a short text, with a caret. A click opens a list under
-  it with pictogram and label of every option, the current one marked; a click on a row picks, a click elsewhere
-  closes. Cycle actions over the same parameters (`ContextAction.ParamKeys`) stay in the pie menu only; switches with
-  a telling pictogram (shaft stubs, housing connection, helix) are icon toggles. No text buttons where a pictogram exists.
-  Pictograms exist for shapes (square, round, triangle), fills (tint, hatch, dots, none), routing of wires and pipes
-  (free, orthogonal, 45°), wall kinds and fluid line types; units, signal colours and similar choices stay short text.
-- **Plan scale on the slide:** plan elements (`ObjectType.UsesPlanScale`: walls, rooms, openings) show the slide's plan
-  scale as a bar button ("1:50") and a pie entry; both open the plan-scale prompt and re-render the slide.
+- **Handles on the slide (progressive disclosure, 2026-11-25):** the concept is in
+  [docs/en/design/interaction-ux.md](../design/interaction-ux.md). After a selection the slide stays calm: PowerPoint's
+  frame, the orange point diamonds of a line, and at most **one** blue "+", at the most useful place to build on. That
+  is the free end of a line or cable, the free side of a gear, a free axis end or connection port, the bottom of a
+  table, or the triangle below a diagram node. Every other handle fades in as the pointer comes within about 40 logical
+  px, and fades out again; Shift shows them all. These are further "+", corner dots, branch and junction handles, lock
+  badges, value grips and the other triangles. Where the element is attached to another one, a tiny grey dot marks the
+  joint; near it the lock badge appears (grey), under the pointer it turns blue and shows its lead line. All handles
+  are placed together (`HandleLayout`): never on top of each other or of PowerPoint's handles, 24 px hit targets, the
+  nearest wins.
+- **Floating bar:** the same structure for every element, at most four buttons plus "⋯":
+  1. The main action, with a short label. Depending on the element this is "Make it …" after a quick add, "Data"
+     (charts), "Text" (texts, diagram nodes, tables: the cells), "View" (elements with several views, a dropdown), or
+     the first style choice (lines).
+  2. Up to three pictograms with tooltips: the element's own telling actions, the view, Insert, sketch, coupler curve,
+     explode, motion, select assembly, style dropdowns, rotate 90°/mirror where they change the drawing.
+  3. "⋯": the pie menu with everything, grouped.
+
+  A selected corner shows "Split" and "Remove". A selected chart part shows its name, its three most used commands and
+  "⋯". Buttons are 32 logical px with a clear hover state. The bar goes above the selection, clear of PowerPoint's
+  rotation handle; when that would cover other elements (a coupled gear, the shaft) it goes below, right or left,
+  wherever it hides the least (`FloatingBar.Placement`). It is fully opaque within 12 logical px, otherwise 0.92 fading
+  over 180 px; below 0.1 it is dismissed until the next selection. Typing hides it. Clicks on the bar never reach the
+  slide. Every command stays reachable in the pie menu (UI tests: `CommandIds`, log line "Commands: …").
+- **Choices as dropdowns:** a choice in the bar (line type, arrowheads, line style, routing, view, …) shows its current
+  value as a pictogram (`ParamOption.Icon`, `ParamDef.WithOptionIcons`) or a short text, with a caret. A click opens a
+  list under it with pictogram and label of every option, the current one marked; a click on a row picks, a click
+  elsewhere closes. In the pie menu every choice is an entry under "Style ▸" with the same options. Cycle actions over
+  the same parameters (`ContextAction.ParamKeys`) are not listed twice.
+- **Plan scale on the slide:** plan elements (`ObjectType.UsesPlanScale`: walls, rooms, openings) have "Plan scale …"
+  in the pie menu (View ▸); it opens the plan-scale prompt and re-renders the slide.
 - **Web add-in units:** model tags split by the web add-in into chunks (`ISK_MODEL`, `ISK_MODEL_2` …, `ISK_MODEL_N`) are
   joined when reading (`SketchUnits.ModelTag`).
-- **Quick add (diagrams):** flowchart, UML, ER, BPMN, system and basic elements (`ObjectType.ChainConnector`) show
-  blue triangles 13 logical px outside each side, and their connection ports (blue circles) when the pointer is near.
+- **Quick add (diagrams):** flowchart, UML, ER, BPMN, system and basic elements (`ObjectType.ChainConnector`) show the
+  blue triangle below; the triangles on the other sides and the connection ports appear when the pointer comes near.
   Click a triangle: a copy is added on that side (past elements already there) with the kind's connector between the
-  facing ports, attached at both ends (`Flow.QuickAdd`); the bar then shows the "next element" palette, one click
-  turns the copy into another element and the connector stays (`Flow.Replace`). Drag a triangle or port: drop on a
-  port of another element to connect both, or on free space to add an element there. One undo step each.
-- **Pie menu:** right-click on a selected unit: delete (top), views, type actions, duplicate, mirror, rotate 90°. The unit
-  is re-rendered from its model; native moves and resizes are folded into the model first (`SketchUnits.Read`).
+  facing ports, attached at both ends (`Flow.QuickAdd`); the bar then offers "Make it …", and one click turns the copy
+  into another element while the connector stays (`Flow.Replace`). Drag a triangle or port: drop on a port of another
+  element to connect both, or on free space to add an element there. One undo step each.
+- **Insert fitting parts:** "Insert …" (bar, pie, Ctrl+Space) lists the parts that fit first. A chosen part is placed
+  where it fits: the selected unit is tried object by object, shafts first, then the shaft a selected gear sits on. If
+  no place is found, the part follows the pointer, and near a shaft the ghost already shows it fitted (a ball bearing
+  on the shaft, in the shaft's view and size, "Fits here – click to insert"). The click inserts exactly that; Alt
+  places freely. The insert box closes on Esc or a click outside.
+- **Pie menu:** right-click on a selected unit, Shift+F10 or "⋯". It has eight fixed places for every element,
+  clockwise from the top:
+  - Text …
+  - Edit ▸ (the element's own commands)
+  - Insert …
+  - Duplicate
+  - Style ▸ (every choice with its options)
+  - Delete
+  - View ▸ (views, plan scale)
+  - Arrange ▸ (rotate, mirror, select assembly, animate as slides)
+
+  The centre names the element (or the open submenu). Places without content for this element stay greyed with low
+  contrast, and a click on them keeps the menu open. Submenus start with "← Back"; long ones continue in "More ▸". The
+  hovered entry shows a one-line hint below the ring. Esc or a click outside closes it. The unit is re-rendered from its
+  model; native moves and resizes are folded into the model first (`SketchUnits.Read`).
 
 ## Sidebar editor (custom task pane)
 
@@ -253,8 +282,8 @@ UX round (2026-11-20, from the maintainer's feedback):
   also checks that the ribbon loaded (`RibbonLoaded`): PowerPoint drops an invalid ribbon XML silently – an empty `tag`
   attribute did exactly that once.
 - **Text**: double-click on a selected unit, the "Text" bar button or "Text …" in the pie menu edit its main text
-  (object text, reference numeral, name or label).
-- **Insert ▸** in the pie menu (and the insert palette of the bar) offers elements that fit the selection
+  (object text, reference numeral, name or label; the cells of a table on one line, "|" between columns, "\n" between rows).
+- **Insert …** in the pie menu and the bar (the insert box) offers elements that fit the selection first
   (`ObjectType.Companions`, else the same category, always numeral/lead line/arrow), in the selection's kind of view.
   Picking one places it where it belongs (`Fitting.Place`), coupled and selected: a gear, bearing or wheel onto the
   selected shaft (hub on the axis, at a free place along it), a gear next to a gear in mesh (below, above, right or left,
