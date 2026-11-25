@@ -212,6 +212,40 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
    check across all slides in the web add-in (both need the other slides' units through Office.js; engine `diff` is
    ready), SVG/DXF import (vector drawings as editable shapes – a larger piece of its own).
 
+### Review at the end of the P3 round (2026-11-25) and next steps
+
+**Done in this round:** variants as a slide comparison (Core `Variants`, engine `diff`; COM Extras menu, scenario
+`variants`; LibreOffice menu, integration check), the patent check in all three hosts (COM window over all slides, web
+panel for the page, LibreOffice dialog over all pages with keyboard navigation, checked with real input in
+`ui_smoke.py`), diagram auto-layout, CSV/GeoJSON/GPX import. Test totals at the end: .NET 1,698 (18 test projects), web 207, LibreOffice
+unit 110, LibreOffice integration 77, LibreOffice UI smoke 23, PowerPoint scenarios green one by one.
+
+**Found by verification (and fixed):** a new LibreOffice command is silently ignored unless it is in the protocol
+handler's command list; LibreOffice renames duplicated shapes whose names end in digits, which would have cut the unit
+id out of the name in .pptx – names are now restored from the attributes; the photographs rule named only the DPMA
+although it applies to every office; the first patent finding of a page has no element, so navigation must handle
+page-level findings.
+
+**Plan review – what changes in the plan:**
+- *Same command, same name, same place in every host.* "Patent check (drawings)" and "Compare with the previous slide
+  (variants)" now exist under the same names in COM and LibreOffice. In COM both sit in the Extras menu; with parts list
+  and data export they form a "Review" family – a ribbon group *Review* (Patent check, Compare, Parts list, Export
+  data) would make them findable without the menu. Proposed for the maintainer's decision, not built.
+- *Every host command gets a headless path and a visible path.* The LibreOffice dialog logs its result when no window
+  is visible; that made the integration test possible, and `ui_smoke.py` covers the real dialog.
+- *Features that need other slides (web)* wait for the Office.js check in PowerPoint; building them blind would break
+  the "no fake functionality" rule.
+
+**Next, in this order:**
+1. Web in PowerPoint (blocked on the maintainer: dev certificate via `npm run certs` in `hosts/office-web`, or an
+   uploaded webspace package); then the web check across all slides and the slide comparison through Office.js.
+2. SVG/DXF import as editable shapes: a Core importer (SVG path subset, DXF LINE/LWPOLYLINE/CIRCLE/ARC/TEXT) that
+   creates basic-shape elements, so the result stays editable and snappable; engine `importSvg`/`importDxf`; COM
+   Extras ▸ Import, web import button, LibreOffice menu.
+3. Ribbon group *Review* in COM (see above), if the maintainer agrees.
+4. Open details: a section line per wall; LibreOffice on-canvas limits (guides while dragging need drawing into the
+   view); real webspace and installer runs.
+
 ### Further modules and functions worth adding
 
 - **Building services (TGA, P1 after charts; done 2026-11-24, module `building-services`, docs/en/modules/building-services.md;
@@ -228,6 +262,10 @@ PowerPoint scenarios read the bar from lagging log copies – the add-in now rep
   to every element on the slide at once.
 - **Math & geometry (P3):** coordinate systems, vectors, angles, geometric constructions for teaching slides.
 - **Hand-drawn look (P3):** an optional sketchy rendering of the same model for workshop slides.
+- **Optics (P3, idea 2026-11-25):** lenses, mirrors, prisms, beam splitters, light sources and detectors with beam
+  paths that follow the elements – common in patent figures and teaching slides.
+- **Timing and sequence charts (P3, idea 2026-11-25):** signal timing diagrams and step/transition charts (GRAFCET
+  ideas) tied to the electrical and fluid modules' designators.
 
 ## Plan 2026-11-21: interaction, modules and elements
 
