@@ -235,7 +235,7 @@ namespace InventaSketch.AddIn.OnSlide
             else if (viewChip is not null)
                 main = Labelled(viewChip, T("View", "Ansicht"));
             else if (styleChips.FirstOrDefault(c => c.IconId is not null) is { } style)
-                main = Labelled(style, ShortLabel(style.Tip.Split(':')[0], 12));
+                main = Labelled(style, ShortLabel(style.Tip.Split(':')[0], 20));   // no cut-off labels (UX review G9)
             main ??= insert with { ShowLabel = true };
             list.Add((main, true));
 
@@ -284,7 +284,8 @@ namespace InventaSketch.AddIn.OnSlide
         private static readonly HashSet<string> NotInBar = new() { IconIds.Delete, IconIds.MirrorH, IconIds.MirrorV, IconIds.Rotate, IconIds.Duplicate };
 
         /// <summary>Generic pictograms (switch, cycle) say nothing on their own: such actions show a short text instead.</summary>
-        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon != IconIds.Toggle && icon != IconIds.Cycle;
+        // "+" and "−" alone say nothing (more what? fewer what? – UX review G8): such actions are not shown as bare pictograms.
+        private static bool IsTelling(string icon) => IconIds.All.Contains(icon) && icon is not (IconIds.Toggle or IconIds.Cycle or IconIds.Increase or IconIds.Decrease);
 
         /// <summary>
         /// Type actions for the floating bar (key parameters: thicker/thinner, more/fewer, swap, hub, helix …): available ones,
@@ -336,8 +337,9 @@ namespace InventaSketch.AddIn.OnSlide
 
             // Top right: edit – the element's own commands (a selected chart part: its commands).
             var edit = new List<PieItem>();
-            // The element's own place carries its name ("Spur gear ▸"), so the pie says what it is about (UX review 2026-11-25, F1).
-            var editLabel = type is not null && first is not null ? Shorten(type.Name.Get(_lang()), 18) + " ▸" : T("Edit ▸", "Bearbeiten ▸");
+            // The centre names the element (UX review F1); the place keeps its short label – the name there was cut off and
+            // said the same twice (after-run of the review). Resting on it opens the element's commands.
+            var editLabel = T("Edit ▸", "Bearbeiten ▸");
             if (_part is not null && PartOwner() is { } owner && SelectedPartInfo(owner) is { } part)
             {
                 editLabel = part.Label.Get(_lang()) + " ▸";

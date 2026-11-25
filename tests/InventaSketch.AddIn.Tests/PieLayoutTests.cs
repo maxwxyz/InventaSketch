@@ -77,11 +77,12 @@ namespace InventaSketch.AddIn.Tests
                 A("toggle", InventaSketch.Core.IconIds.Toggle), A("more2", InventaSketch.Core.IconIds.Increase),
                 A("less", InventaSketch.Core.IconIds.Decrease), A("flip", InventaSketch.Core.IconIds.Swap), A("fourth", InventaSketch.Core.IconIds.ArrowEnd),
             };
-            // Two actions share "+": both become text buttons; telling pictograms first.
+            // Telling pictograms first; "+" and "−" alone say nothing (UX review 2026-11-25), so they are text buttons.
             var withText = OnSlideController.BarActions(actions, hasTextButton: true);
-            Assert.Equal(new[] { "less", "flip", "fourth", "custom", "more" }, withText.Select(x => x.Action.Id));
-            Assert.Equal(new[] { true, true, true, false, false }, withText.Select(x => x.Pictorial));
-            Assert.Equal(new[] { "ref", "less", "flip", "fourth", "custom" }, OnSlideController.BarActions(actions, hasTextButton: false).Select(x => x.Action.Id));
+            Assert.Equal(new[] { "flip", "fourth" }, withText.Where(x => x.Pictorial).Select(x => x.Action.Id));
+            Assert.All(withText.Where(x => x.Action.Icon is InventaSketch.Core.IconIds.Increase or InventaSketch.Core.IconIds.Decrease), x => Assert.False(x.Pictorial));
+            Assert.DoesNotContain(withText, x => x.Action.Id == "off");
+            Assert.Contains(OnSlideController.BarActions(actions, hasTextButton: false), x => x.Action.Id == "ref");
         }
 
         [Fact]
