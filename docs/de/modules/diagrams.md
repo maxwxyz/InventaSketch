@@ -44,7 +44,11 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
 | UML-Beziehungen | `diag.uml.relation`: Assoziation, gerichtete Assoziation, Aggregation, Komposition, Generalisierung, Realisierung, Abhängigkeit, Verbindung; Multiplizitäten und Rollen an beiden Enden, Beschriftung in der Mitte |
 | ER | `diag.er.entity` (Ansichten `diagram`/`table`/`chen`, schwache Entität), `diag.er.attribute` (Schlüssel, mehrwertig, abgeleitet), `diag.er.relationship` (Chen-Raute, identifizierend), `diag.er.connector` (Krähenfuß) |
 | System & Architektur | `diag.sys.block` (Ports je Seite), `diag.sys.container` (Gruppenrahmen mit Titelreiter oder -band), `diag.sys.cloud`, `diag.sys.database`, `diag.sys.queue`, `diag.sys.server`, `diag.sys.client` (Browserfenster), `diag.sys.user`, `diag.sys.lollipop` (bereitgestellt Kugel / benötigt Buchse) |
-| BPMN-light | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (Teilprozess-Markierung), `diag.bpmn.gateway` (exklusiv, parallel, inklusiv, ereignisbasiert) |
+| BPMN-light | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (Teilprozess-Markierung), `diag.bpmn.gateway` (exklusiv, parallel, inklusiv, ereignisbasiert), `diag.bpmn.pool` (Pool mit Bahnen) |
+| Regelkreise | `diag.ctrl.sum`, `diag.ctrl.tf`, `diag.ctrl.branch`, `diag.ctrl.mult`, `diag.ctrl.signal`, `diag.ctrl.loop` (zerlegbar) |
+| Rechnersysteme & Kommunikation | Systemblock-Vorlagen nach Rolle, `diag.sys.bus`, `diag.sys.phone`, `.basestation`, `.router`, `.switch`, `.satellite`, `.iot`, `diag.sys.wireless` |
+| Datenformate | `diag.data.fields` (Zeile, Zeilen fester Bitbreite, Speicherbelegung) |
+| GUI-Wireframes | `diag.ui.screen`, `.button`, `.field`, `.list`, `.checkbox`, `.toggle`, `.slider`, `.image`, `.icon`, `.tabs`, `.touch`, `.cursor` |
 
 ## Textkonventionen
 
@@ -88,6 +92,113 @@ Maintainers (Engine-Test `TheMaintainersFlowchartIsLaidOutWithoutLinesThroughBox
 Verbinder durch einen Kasten). Offen: hindernisbewusste Führung bei von Hand gesetzten Kästen (nur das Layout berechnet
 Abstände).
 
+## Regelkreise (25.11.2026)
+
+Kategorie „Regelkreise“: Blockschaltbilder der Regelungstechnik nach den üblichen Lehrbuchkonventionen (eigenständig
+gezeichnet, keine Norm-Abbildung übernommen).
+
+- `diag.ctrl.sum` **Summierstelle**: Kreis Ø 6 mm in einer 12-mm-Box, Ports `left`, `top`, `right`, `bottom` auf dem
+  Kreis. Parameter `signs`, ein Zeichen je Eingang in der Reihenfolge links, unten, oben, rechts (`+-` = links plus,
+  Rückführung minus; Leerzeichen oder `.` = kein Vorzeichen). Form `plain`: das Vorzeichen steht neben der ankommenden
+  Linie außerhalb des Kreises (über einem waagerechten, links neben einem senkrechten Eingang); `cross`: ein X teilt den
+  Kreis, jedes Vorzeichen sitzt im Sektor seines Eingangs. Vorlagen mit Kreuz und mit drei Eingängen.
+- `diag.ctrl.tf` **Übertragungsglied**: Inhalt `text` (Objekttext, sonst der übersetzte Name seiner Rolle `role`:
+  Regler, Regelstrecke, Stellglied, Messglied, sonst `G(s)`), `fraction` (Zähler `numerator` über Nenner
+  `denominator` mit Bruchstrich) oder `icon` (kleine Sprungantwort: P, PT1, PT2, I, D, Totzeit, PID; die statische
+  Kennlinie einer Begrenzung; ein Integralzeichen für den Integrierer; alles als Pfade gezeichnet). Optionale
+  Beschriftung `label` (z. B. `K, T`) unter dem Inhalt. Ports auf allen Seiten (oben: Störgröße, unten: Rückführung).
+- `diag.ctrl.mult` Multiplikationsstelle (× oder ·), `diag.ctrl.branch` Verzweigungspunkt (gefüllter Punkt, Ports auf
+  seinen vier Seiten).
+- `diag.ctrl.signal` **Signalpfeil**: dünne Linie mit gefüllter Spitze (abschaltbar, z. B. in einen Verzweigungspunkt),
+  standardmäßig rechtwinklig geführt. Zwei Enden an derselben Seite zweier Elemente (beide `bottom`: eine Rückführung)
+  laufen mit 8 mm Abstand außen herum statt durch die Blöcke. Nach ihrer Seite benannte Ports geben auch den anderen
+  Diagrammverbindern die Austrittsrichtung vor (`D.ExitHorizontal`).
+- Schnelles Anfügen („+“) verkettet jedes Regelkreiselement mit einem Signalpfeil.
+- `diag.ctrl.loop` **Standardregelkreis** als ein Element (Summierstelle → Regler → Regelstrecke → Verzweigungspunkt,
+  Rückführung darunter; Optionen: Messglied in der Rückführung, Störgröße an der Strecke). „Zerlegen“ macht daraus die
+  Einzelelemente mit an ihren Ports angedockten Pfeilen, sodass der Kreis Element für Element bearbeitet und erweitert
+  werden kann. Von Hand aufbauen: Summierstelle, „+“ rechts → Regler, „+“ rechts → Strecke, ein Verzweigungspunkt, dann
+  ein Signalpfeil von `bottom` des Verzweigungspunkts zu `bottom` der Summierstelle (läuft unten herum).
+
+## Rechnersysteme und Kommunikation (25.11.2026)
+
+Kategorie „Rechnersysteme & Kommunikation“ (Softwarepatent FIG. 1, Netzwerkskizzen):
+
+- Systemblöcke nach Rolle: Prozessor, Speicher, Massenspeicher, Netzwerkschnittstelle, E/A-Schnittstelle, Anzeige,
+  Sensor(en), Eingabegerät (Vorlagen von `diag.sys.block` mit dem neuen Parameter `role`: der übersetzte Rollenname
+  erscheint, solange der Block keinen eigenen Text hat; ohne Port-Quadrate).
+- `diag.sys.bus` **Systembus**: dicke Linie (Parameter Breite) oder hohle Doppellinie durch seine Punkte, beschriftet mit
+  „Bus“ (Objekttext). Jedes Segment ist eine Rail: Verbindungslinien (Abgriffe) docken an beliebiger Stelle an und folgen
+  dem Bus; Ecken lassen sich wie bei anderen Polylinien einfügen.
+- Umriss-Symbole mit dem Namen darunter und Ports auf allen vier Seiten: `diag.sys.phone` (Smartphone),
+  `diag.sys.basestation` (Gittermast mit Funkbögen), `diag.sys.router`, `diag.sys.switch`, `diag.sys.satellite`,
+  `diag.sys.iot` (Sensorknoten mit Antenne).
+- `diag.sys.wireless` **Funkverbindung**: Linie mit Blitz-Zickzack oder gestrichelt mit Funkbögen an beiden Enden;
+  Pfeilspitzen keine / am Ende / beidseitig.
+
+## Datenformate (25.11.2026)
+
+`diag.data.fields` zeichnet Pakete, Rahmen, Register und Speicherbelegungen aus dem Parameter `fields`, z. B.
+`Präambel:8;Header:16;Nutzdaten:n;CRC:16` (Größen in Bit, `0x…` hexadezimal; `n`, `*` oder `var` = variable Länge; ein
+Feld pro Zeile geht ebenfalls). Anordnungen: `row` (eine Zeile); `wrapped`, Zeilen zu `rowBits` Bit (ein Feld über das
+Zeilenende läuft in der nächsten Zeile weiter, ein variables Feld füllt den Rest seiner Zeile); `stack` (Speicherbelegung
+von oben nach unten, Startadressen ab `base`, `0x…` im Format der Basis). Breiten `proportional` (variable Felder
+erhalten einen gleichen Anteil) oder `equal`. Variable Felder tragen eine Bruchmarke (zwei Schrägstriche) auf ihren
+Längskanten. `ruler` ergänzt Bit-Offsets (Zeile: an jedem Feldanfang; Zeilen: alle 8 Bit) bzw. die Adressspalte
+(Stapel); `sizes` zeigt „16 Bit“ unter dem Namen. Jedes Feld hat Ports `f1.top`, `f1.bottom` … (Stapel zusätzlich
+`f1.right`) für Bezugslinien und Bezugszeichen. Aktionen: Anordnung, gleiche Breiten, Lineal, Feld hinzufügen (Eingabe
+`Name:Größe`). Vorlagen: Register / Header (32-Bit-Zeilen), Speicherbelegung.
+
+## Sequenzfragmente, Schrittnummern und Zeitlücken (25.11.2026)
+
+- `diag.seq.fragment` **kombiniertes Fragment**: Rahmen mit Fünfeck-Reiter (`alt`, `opt`, `loop`, `par`, `break`; der
+  Objekttext wird angehängt, z. B. `loop 1..n`), Operanden (`operands`) durch gestrichelte Linien getrennt, eine
+  Bedingung je Operand (`guards`, je eine Zeile; solange nicht gesetzt, übersetzte Platzhalter `[Bedingung]` / `[else]`).
+  Operand hinzufügen/entfernen vergrößert/verkleinert den Rahmen um einen Operanden (Oberkante bleibt). Vorlagen opt,
+  loop, par, break.
+- Nachrichtenparameter `step`: eine Schrittnummer (z. B. `302`) am Anfang des Pfeils über der Linie. Die Dokumentaktion
+  **„Nachrichten nummerieren“** nummeriert alle Nachrichten der Seite von oben nach unten (nach der Höhe ihrer Mitte,
+  dann von links nach rechts): die oberste behält ihre Nummer, wenn sie eine Zahl ist (sonst 302), jede weitere erhält 2
+  mehr (302, 304, 306 …). Sie ist idempotent, mit mehreren ausgewählten Nachrichten ergibt sich dasselbe Ergebnis.
+- Lebenslinienparameter `breaks`: Zeitlücken in Prozent der Linie (`50` oder `30; 70`); die gestrichelte Linie wird
+  unterbrochen und mit zwei kurzen Schrägstrichen („//“) markiert. Die Aktion „Zeitlücke“ schaltet eine Lücke bei 50 %
+  ein und aus. Die Linie bleibt eine Rail.
+
+## GUI-Wireframes (25.11.2026)
+
+Kategorie „GUI-Wireframes“ (schwarz auf weiß; die Automotive-HMI-Elemente `auto.hmi.*` bleiben in ihrem Modul):
+`diag.ui.screen` (Gerät Smartphone, Tablet, Monitor, Programmfenster, Browser; Statusleiste; der Objekttext ist Titel
+oder Adresse; Bildschirme verketten sich mit gerichteten Pfeilen zu einem Bildschirmablauf), Bedienelemente
+`diag.ui.button` (abgerundet / Pille / eckig, gefüllt = primär), `.field` (Text, Suche, Auswahlliste, Passwort),
+`.list` (Zeilen aus `items`, Symbole, Pfeile, Zeile hinzufügen/entfernen), `.checkbox` (auch Optionsfeld), `.toggle`,
+`.slider` (Wert 0–100 %), `.image` (Rahmen mit beiden Diagonalen), `.icon` (Menü, Suche, Start, Benutzer,
+Einstellungen, Glocke, Stern, Herz, Plus, Schließen, Zurück, Teilen), `.tabs` (aktiver Reiter fett und unterstrichen)
+sowie die Zeiger `diag.ui.touch` (Finger mit Wellen: Tippen, Doppeltippen, lange drücken, Wischen; Port `tip`) und
+`diag.ui.cursor` (Pfeil oder I-Balken; Port `tip` am Hotspot). Platzhaltertexte der Elemente sind übersetzt.
+
+## Zustandskreise und Transitionen (25.11.2026)
+
+`diag.state.state` hat die Ansichten `rounded` (UML) und `circle` (Zustandsdiagramme im Patentstil: Kreis mit dem Namen,
+8 Ports auf dem Umriss; die Größe passt sich beim Umschalten an). Bibliothek: „Zustand (Kreis)“ und „Transition
+(Ereignis [Bedingung] / Aktion)“ (`diag.state.transition`, eine gerichtete UML-Beziehung mit dieser Beschriftungsvorlage).
+
+## Interaktive Pools und Bahnen (25.11.2026)
+
+`diag.bpmn.pool` (neu: waagerechte Bahnen, Poolname im Band links, übersetzte Bahn-Platzhalter) und
+`diag.activity.swimlane` teilen sich die Bahnlogik (`LaneContainerType`):
+
+- Aktionen „Bahn unten / oben hinzufügen“ (senkrecht: rechts / links), „Untere / obere Bahn entfernen“ und „Bahn n
+  umbenennen“ (Eingabe). Hinzufügen oder Entfernen vergrößert bzw. verkleinert den Container um eine Bahn um seine Mitte,
+  die Bahnen behalten also ihre Größe; als Dokumentaktion verschiebt es auch die Elemente der verbleibenden Bahnen mit
+  ihrer Bahn.
+- Die Mittellinie jeder Bahn ist ein `Axis`-Anker (`lane0`, `lane1` …). Ablaufknoten (Aktionen, Start-/Endknoten,
+  Verzweigungen, Gabelungsbalken, BPMN-Aufgaben, -Ereignisse, -Gateways) haben eine `Hub` in der Mitte: ein abgelegter
+  oder verschobener Knoten rastet mittig auf der Bahnlinie ein, und die Core-Kopplung (Nabe auf Achse) nimmt ihn mit,
+  wenn der Pool verschoben, gedreht oder gestreckt wird (die Bahnen skalieren mit dem Pool). Eine `End`-Marke am Rahmen
+  verhindert mechanische Anbau-Ports an den Bahnlinien.
+- Grenzen (Core): nur auf einer Bahnlinie zentrierte Knoten werden mitgenommen; anderswo in einer Bahn platzierte
+  Elemente oder Elemente anderer Module (`ann.flow.*`) folgen einem verschobenen Pool nicht. Eine allgemeine
+  Enthaltensein-Beziehung bräuchte Unterstützung im Core.
 ## Kontextaktionen
 
 | Typ | Aktionen |
@@ -95,7 +206,11 @@ Abstände).
 | Klasse / Schnittstelle / Aufzählung | Attribute und Operationen ein-/ausblenden, Attribut (Literal) hinzufügen/entfernen, Operation hinzufügen/entfernen, abstrakt |
 | Zustand | Aktivitäten anzeigen, Eintritts-/Austrittsaktivität hinzufügen, letzte Austrittsaktivität entfernen |
 | Zusammengesetzter Zustand | Region hinzufügen/entfernen |
-| Schwimmbahnen | waagerecht/senkrecht (tauscht Breite und Höhe), Bahn hinzufügen/entfernen |
+| Schwimmbahnen, Pool | waagerecht/senkrecht (tauscht Breite und Höhe), Bahn an einem der Enden hinzufügen, erste/letzte Bahn entfernen, Bahn n umbenennen |
+| Summierstelle, Übertragungsglied, Signalpfeil | Vorzeichen Rückführung, Eingang von oben, Kreuzform / Inhalt (Name, Bruch, Kennlinie), nächste Kennlinie / Pfeilspitze, Richtung umkehren, rechtwinklig |
+| Datenfelder | Anordnung, gleiche Breiten, Lineal, Feld hinzufügen |
+| Fragment, Nachricht, Lebenslinie | Operator, Operand hinzufügen/entfernen / Nachrichten nummerieren / Zeitlücke |
+| GUI-Elemente | Gerät, Statusleiste, gefüllt, Form, Art, Zeilen, ausgewählt, ein, Wert ±10, nächstes Motiv, nächster aktiver Reiter, Geste |
 | Entität | Attribut hinzufügen/entfernen, schwache Entität |
 | ER-Attribut / -Beziehung | Schlüssel, mehrwertig, abgeleitet / identifizierend |
 | UML-Beziehung | Art (8 Möglichkeiten), Richtung umkehren (Multiplizitäten und Rollen bleiben an ihren Klassenenden), rechtwinklige Führung |

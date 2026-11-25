@@ -20,9 +20,26 @@ namespace InventaSketch.Modules.Diagrams
         public override Size2 DefaultSize => new(40, 24);
         protected override I18nText Placeholder => new("Block", "Block");
 
+        public static readonly (string Value, string En, string De)[] Roles =
+        {
+            ("none", "None (Block)", "Keine (Block)"), ("processor", "Processor", "Prozessor"), ("memory", "Memory", "Speicher"),
+            ("storage", "Storage", "Massenspeicher"), ("network", "Network interface", "Netzwerkschnittstelle"), ("io", "I/O interface", "E/A-Schnittstelle"),
+            ("display", "Display", "Anzeige"), ("sensor", "Sensor(s)", "Sensor(en)"), ("input", "Input device", "Eingabegerät"),
+        };
+
+        /// <summary>The name shown: the object text, else the localised name of the role (computer block diagrams), else "Block".</summary>
+        public static string NameOf(SketchObject o, Lang lang)
+        {
+            if (o.Text is not null) return o.Text;
+            var role = o.Str("role", "none");
+            var r = Array.Find(Roles, x => x.Value == role);
+            return r.Value is null || role == "none" ? "Block" : new I18nText(r.En, r.De).Get(lang);
+        }
+
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             P.Stereotype(),
+            P.Choice("role", "Role (placeholder name)", "Rolle (Platzhaltername)", "none", Roles),
             P.Int("portsLeft", "Ports left", "Ports links", 1, 0, 12),
             P.Int("portsRight", "Ports right", "Ports rechts", 1, 0, 12),
             P.Int("portsTop", "Ports top", "Ports oben", 0, 0, 12),
@@ -60,7 +77,7 @@ namespace InventaSketch.Modules.Diagrams
             var m = PortSize / 2;
             // The body is inset by half a port so the port squares straddle its edge yet stay inside the object box.
             var list = new List<Primitive> { Prim.Rect(-w / 2 + m, -h / 2 + m, w - 2 * m, h - 2 * m, D.Outline) with { Tag = DiagTags.Outline } };
-            var rows = D.Header(o.Str("stereotype", ""), Label(o, ctx));
+            var rows = D.Header(o.Str("stereotype", ""), NameOf(o, ctx.Lang));
             list.AddRange(D.Compartments(w - 2 * PortSize - 2, h - 2 * PortSize, new[] { rows }, TextSizeOf(o)));
             foreach (var (_, p, inward) in PortPositions(o))
             {

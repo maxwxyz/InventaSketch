@@ -26,6 +26,14 @@ namespace InventaSketch.Modules.Diagrams
         public const string Er = "diag.er";
         public const string System = "diag.system";
         public const string Bpmn = "diag.bpmn";
+        /// <summary>Control loops (block diagrams of control engineering).</summary>
+        public const string Control = "diag.control";
+        /// <summary>Computer systems and communication (software patent FIG. 1, networks).</summary>
+        public const string Computer = "diag.computer";
+        /// <summary>Packet, frame, register and memory layouts.</summary>
+        public const string Data = "diag.data";
+        /// <summary>Generic GUI wireframes (screens, widgets, pointers).</summary>
+        public const string Ui = "diag.ui";
     }
 
     /// <summary>Semantic primitive tags used by the diagram types (tests, host naming, style overrides).</summary>
@@ -52,6 +60,16 @@ namespace InventaSketch.Modules.Diagrams
         public const string Port = "port";
         /// <summary>Inner marker of a symbol (gateway sign, component icon, decoration).</summary>
         public const string Marker = "marker";
+        /// <summary>Sign of a summing junction input ("+" or "−").</summary>
+        public const string Sign = "sign";
+        /// <summary>Step numeral of a sequence message (e.g. "302").</summary>
+        public const string Numeral = "numeral";
+        /// <summary>Guard of a combined fragment operand ("[x &gt; 0]").</summary>
+        public const string Guard = "guard";
+        /// <summary>Bit ruler numbers and ticks, memory map addresses.</summary>
+        public const string Ruler = "ruler";
+        /// <summary>One field of a data layout (packet, register, memory map).</summary>
+        public const string Field = "field";
     }
 
     /// <summary>
@@ -392,6 +410,12 @@ namespace InventaSketch.Modules.Diagrams
         {
             var a = o.Attach is not null && index < o.Attach.Count ? o.Attach[index] : null;
             if (a is null) return null;
+            // Ports named after their side (also ports inside the box, e.g. on a summing junction's circle).
+            switch (a.AnchorId)
+            {
+                case "left" or "right": return true;
+                case "top" or "bottom": return false;
+            }
             if (Math.Abs(Math.Abs(a.U) - 0.5) < 1e-6 && Math.Abs(a.V) < 0.5 - 1e-6) return true;
             if (Math.Abs(Math.Abs(a.V) - 0.5) < 1e-6) return false;
             return null;
@@ -611,13 +635,24 @@ namespace InventaSketch.Modules.Diagrams
         /// <summary>Connector ports in local coordinates.</summary>
         public virtual IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o) => D.RectPorts(o.Size);
 
-        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
-            => Ports(o).Select(p => Anchor.Point(AnchorRole.Port, p.P, p.Id));
+        /// <summary>
+        /// Flow nodes that are placed in swimlanes and pools (actions, tasks, events, gateways): a <see cref="AnchorRole.Hub"/>
+        /// at the centre centres them on a lane's middle line (the lane's <see cref="AnchorRole.Axis"/>), and Core coupling
+        /// carries them along when the pool moves or is stretched.
+        /// </summary>
+        protected virtual bool LaneNode => false;
 
-        /// <summary>Containers that hold other elements (swimlanes, packages, frames, lifelines): no quick add.</summary>
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            var ports = Ports(o).Select(p => Anchor.Point(AnchorRole.Port, p.P, p.Id));
+            return LaneNode ? ports.Append(Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub")) : ports;
+        }
+
+        /// <summary>Containers that hold other elements (swimlanes, packages, frames, lifelines, fragments, screens' widgets): no quick add.</summary>
         private static readonly HashSet<string> NoChain = new(StringComparer.Ordinal)
         {
             "diag.activity.swimlane", "diag.uml.package", "diag.sys.container", "diag.seq.lifeline", "diag.state.composite", "diag.bpmn.pool",
+            "diag.seq.fragment", "diag.data.fields", "diag.ctrl.loop",
         };
 
         /// <summary>
@@ -633,6 +668,9 @@ namespace InventaSketch.Modules.Diagrams
                 DiagCategories.Er => "diag.er.connector",
                 DiagCategories.Structure => "diag.uml.relation",
                 DiagCategories.Sequence or DiagCategories.Relations => null,
+                DiagCategories.Control => "diag.ctrl.signal",
+                // Widgets and pointers sit on a screen; screens chain into a screen flow (UiScreenType overrides).
+                DiagCategories.Ui or DiagCategories.Data => null,
                 _ => "diag.uml.relation.directed",
             };
         }
@@ -676,7 +714,7 @@ namespace InventaSketch.Modules.Diagrams
         protected virtual double LabelSize(SketchObject o) => Math.Min(TextSizeOf(o), 3.2);
 
         /// <summary>Routed path through the resolved points.</summary>
-        public List<Vec2> Path(SketchObject o, IReadOnlyList<Vec2> p)
+        public virtual List<Vec2> Path(SketchObject o, IReadOnlyList<Vec2> p)
         {
             if (p.Count == 2 && o.Str("route", "straight") == "orthogonal")
                 return D.Orthogonal(p[0], p[1], D.ExitHorizontal(o, 0), D.ExitHorizontal(o, 1));

@@ -36,6 +36,7 @@ namespace InventaSketch.Modules.Diagrams
         }
 
         public override Size2 DefaultSize => new(9, 9);
+        protected override bool LaneNode => true;
         public override bool PreferUniformScale => true;
         public override IReadOnlyList<ParamDef> Parameters => new[] { P.TextSize() };
         public override IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o) => D.EllipsePorts(o.Size);
@@ -73,6 +74,7 @@ namespace InventaSketch.Modules.Diagrams
             "bpmn", "process", "prozess", "geschäftsprozess", "task", "aufgabe", "activity", "aktivität", "subprocess", "teilprozess") { }
 
         public override Size2 DefaultSize => new(32, 20);
+        protected override bool LaneNode => true;
         protected override I18nText Placeholder => new("Task", "Aufgabe");
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
@@ -113,6 +115,7 @@ namespace InventaSketch.Modules.Diagrams
             "bpmn", "process", "prozess", "gateway", "verzweigung", "xor", "and", "or", "exclusive", "exklusiv", "parallel", "inclusive", "inklusiv", "diamond", "raute") { }
 
         public override Size2 DefaultSize => new(12, 12);
+        protected override bool LaneNode => true;
         public override bool PreferUniformScale => true;
         public override IEnumerable<(string Id, Vec2 P)> Ports(SketchObject o) => D.DiamondPorts(o.Size);
 
