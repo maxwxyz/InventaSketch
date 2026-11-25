@@ -147,9 +147,13 @@ namespace InventaSketch.AddIn.OnSlide
 
         // ------------------------------------------------------------------ floating bar
 
+        /// <summary>At most this many buttons in the bar before "⋯" (the main action plus three pictograms).</summary>
+        internal const int MaxBarButtons = 4;
+
         /// <summary>
-        /// The floating bar of the armed unit, in groups: element (insert, text, key actions, build and motion tools) |
-        /// view and transforms | style choices | "⋯" (everything else: the pie menu). Only what changes something here.
+        /// The floating bar of the armed unit, the same structure for every element (maintainer 2026-11-25: calm, clear,
+        /// little text): the element's main action with a short label ("Data", "Text", "View", …), its next two or three
+        /// most used commands as pictograms with tooltips, then "⋯" – the pie menu with everything, grouped.
         /// </summary>
         private List<BarButton> BarButtons()
         {
@@ -157,72 +161,79 @@ namespace InventaSketch.AddIn.OnSlide
             var registry = _registry();
             var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             var type = first is null ? null : registry.Type(first.Type);
-            var element = new List<BarButton>();
-            var viewGroup = new List<BarButton>();
-            var style = new List<BarButton>();
-            if (first is not null && type is not null)
+            var more = new List<BarButton> { MoreButton() };
+            if (first is null || type is null) return more;
+            // A selected corner of a line: split there (labelled) and remove it.
+            var corner = CornerButtons().Where(b => !b.Separator).ToList();
+            if (corner.Count > 0)
             {
-                // Just added with a triangle: "Make it …" first; then the insert box, the main action of every element.
-                element.AddRange(NextButtons(first));
-                element.Add(new BarButton("insert", T("Insert", "Einfügen"), T("Insert a fitting element …", "Passendes Element einfügen …") + Shortcut("insert")) { IconId = IconIds.Insert, ShowLabel = _nextFor != first.Id });
-                element.AddRange(CornerButtons().Where(b => !b.Separator));
-                var hasText = EditableText(registry, first) is not null;
-                if (hasText) element.Add(Command("text", IconIds.Text));
-                // Key parameters straight in the bar: a pictogram only when it is the only action with that pictogram,
-                // otherwise a short text; actions that set a parameter already shown as a style dropdown stay out.
-                var choiceKeys = new HashSet<string>(BarChoices(first, int.MaxValue).Select(c => c.Key));
-                foreach (var (a, pictorial) in BarActions(UnitActions(out _).Where(a => a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains)), hasText))
-                {
-                    var label = a.Label.Get(_lang());
-                    var tip = label + (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal) ? " …" : "");
-                    element.Add(pictorial
-                        ? new BarButton("act:" + a.Id, "", tip, Active: a.IsActive) { IconId = a.Icon }
-                        : new BarButton("act:" + a.Id, ShortLabel(label), tip, Active: a.IsActive));
-                }
-                // Plan elements (walls, rooms, openings): the plan scale of the slide, one click away.
-                if (type.UsesPlanScale && _unit is not null)
-                {
-                    var scale = _unit.Doc.Settings.PlanScale ?? 100;
-                    element.Add(new BarButton("planscale", "1:" + scale.ToString("0.##", System.Globalization.CultureInfo.CurrentCulture), CommandLabel("planscale")));
-                }
-                // Charts: draw a curve by hand; it is recognised (step, ramp, sine, PT1 …) or smoothed (charts v2).
-                if (InventaSketch.Modules.Charts.ChartSketchInput.Supports(first))
-                    element.Add(new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Trace });
-                // Self-built linkage: its degree of freedom (Grübler) at a glance, coupler curve and ghost positions.
-                if (first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
-                    && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
-                {
-                    element.Add(new BarButton("info:dof", "F = " + dof.Dof, T("Degree of freedom (Grübler): ", "Freiheitsgrad (Grübler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke")));
-                    if (dof.Dof == 1)
-                    {
-                        element.Add(new BarButton("trace", "", CommandLabel("trace") + ": " + CommandHint("trace")) { IconId = IconIds.Trace });
-                        element.Add(new BarButton("ghosts", "", CommandLabel("ghosts") + ": " + CommandHint("ghosts")) { IconId = IconIds.Animate });
-                    }
-                }
-                if (Assemblies.CanExplode(registry, first))
-                    element.Add(new BarButton("explode", "", CommandLabel("explode")) { IconId = IconIds.Explode });
-                // Motion mode only for parts that can move and show it (a lone gear coupled with nothing only spins in place).
-                if (MovablePart() is { } movable && (movable.IsPointGeometry || registry.Type(movable.Type)?.AnimationFrames(movable, 2).Count > 1 || AssemblyOf().Count > 1))
-                    element.Add(new BarButton("motion", "", CommandLabel("motion") + ": " + CommandHint("motion"), Active: AddInSettings.Motion) { IconId = IconIds.Motion });
-                if (AssemblyOf().Count > 1)
-                    element.Add(new BarButton("assembly", "", CommandLabel("assembly")) { IconId = IconIds.SelectAssembly });
-
-                // View and transforms: views (up to three as buttons, more as one chip), then only the transforms that
-                // change the drawing (a circle, a gear in axial view, a symmetric bearing: none).
-                var chips = ChoiceButtons(first).ToList();
-                if (type.Views.Count > 1 && type.Views.Count <= MaxViewButtons)
-                    foreach (var v in type.Views)
-                        viewGroup.Add(new BarButton("view:" + v.Id, v.Label.Get(_lang()), T("View: ", "Ansicht: ") + v.Label.Get(_lang()), Active: type.ViewOf(first) == v.Id) { IconId = IconPainter.ForView(v) });
-                viewGroup.AddRange(chips.Where(c => c.Id == "choice:@view"));
-                var effect = UnitEffect();
-                if (effect.MirrorH) viewGroup.Add(Command("flipH", IconIds.MirrorH));
-                if (effect.MirrorV) viewGroup.Add(Command("flipV", IconIds.MirrorV));
-                if (effect.Rotate90) viewGroup.Add(Command("rot90", IconIds.Rotate));
-                // Style: the choices as dropdowns (line type, arrowheads, line style, line course, …).
-                style.AddRange(chips.Where(c => c.Id != "choice:@view"));
+                corner[0] = corner[0] with { Glyph = T("Split", "Teilen"), ShowLabel = true };
+                return JoinGroups(corner, more);
             }
-            var more = new List<BarButton> { new("more", "⋯", T("More: all commands, grouped (right-click)", "Mehr: alle Befehle, geordnet (Rechtsklick)")) };
-            return JoinGroups(element, viewGroup, style, more);
+            var candidates = BarCandidates(first, type);
+            var main = candidates.First(c => c.Main).Button;
+            var icons = candidates.Where(c => !c.Main && c.Button.Id != main.Id).Select(c => c.Button)
+                .GroupBy(b => b.Id).Select(g => g.First()).Take(MaxBarButtons - 1).ToList();
+            return JoinGroups(new List<BarButton> { main }, icons, more);
+        }
+
+        private BarButton MoreButton() => new("more", "\u22ef", T("More: all commands, grouped (right-click)", "Mehr: alle Befehle, geordnet (Rechtsklick)"));
+
+        /// <summary>
+        /// Bar candidates in order of use. The first marked main: "Make it …" right after a quick add, else the chart data,
+        /// else the text, else the view, else the first style choice, else Insert – each with a short label. Then pictograms:
+        /// the element's own telling actions, the view, Insert, its tools (sketch, coupler curve, explode, motion, assembly),
+        /// its pictorial style choices, then rotate/mirror where they change the drawing.
+        /// </summary>
+        private List<(BarButton Button, bool Main)> BarCandidates(SketchObject first, ObjectType type)
+        {
+            var registry = _registry();
+            var list = new List<(BarButton, bool)>();
+            var actions = UnitActions(out _);
+            var chips = ChoiceButtons(first).ToList();
+            var viewChip = chips.FirstOrDefault(c => c.Id == "choice:@view");
+            var styleChips = chips.Where(c => c.Id != "choice:@view").ToList();
+            var text = EditableText(registry, first);
+            var insert = new BarButton("insert", T("Insert", "Einf\u00fcgen"), T("Insert a fitting element \u2026", "Passendes Element einf\u00fcgen \u2026") + Shortcut("insert")) { IconId = IconIds.Insert };
+
+            BarButton Labelled(BarButton b, string label) => b with { Glyph = label, ShowLabel = b.IconId is not null };
+            BarButton? main = null;
+            if (_nextFor == first.Id && NextButtons(first).FirstOrDefault() is { } next) main = next;
+            else if (actions.FirstOrDefault(a => a.Id == "chart.data" && a.IsEnabled) is { } data)
+                main = new BarButton("act:" + data.Id, T("Data", "Daten"), data.Label.Get(_lang()) + " \u2026") { IconId = IconIds.Table, ShowLabel = true };
+            else if (text is not null)
+                main = new BarButton("text", T("Text", "Text"), CommandLabel("text").Replace(" \u2026", "") + Shortcut("text")) { IconId = IconIds.Text, ShowLabel = true };
+            else if (viewChip is not null)
+                main = Labelled(viewChip, T("View", "Ansicht"));
+            else if (styleChips.FirstOrDefault(c => c.IconId is not null) is { } style)
+                main = Labelled(style, ShortLabel(style.Tip.Split(':')[0], 12));
+            main ??= insert with { ShowLabel = true };
+            list.Add((main, true));
+
+            var choiceKeys = new HashSet<string>(BarChoices(first, int.MaxValue).Select(c => c.Key));
+            foreach (var (a, pictorial) in BarActions(actions.Where(a => a.Id != "chart.data" && (a.ParamKeys is null || !a.ParamKeys.Any(choiceKeys.Contains))), text is not null))
+                if (pictorial) list.Add((new BarButton("act:" + a.Id, "", a.Label.Get(_lang()) + (a.Input is not null ? " \u2026" : ""), Active: a.IsActive) { IconId = a.Icon }, false));
+            if (viewChip is not null) list.Add((viewChip, false));
+            list.Add((insert, false));
+            if (InventaSketch.Modules.Charts.ChartSketchInput.Supports(first))
+                list.Add((new BarButton("sketch", "", CommandLabel("sketch") + ": " + CommandHint("sketch")) { IconId = IconIds.Trace }, false));
+            if (first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
+                && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { Dof: 1 })
+            {
+                list.Add((new BarButton("trace", "", CommandLabel("trace") + ": " + CommandHint("trace")) { IconId = IconIds.Trace }, false));
+                list.Add((new BarButton("ghosts", "", CommandLabel("ghosts") + ": " + CommandHint("ghosts")) { IconId = IconIds.Animate }, false));
+            }
+            if (Assemblies.CanExplode(registry, first))
+                list.Add((new BarButton("explode", "", CommandLabel("explode")) { IconId = IconIds.Explode }, false));
+            if (MovablePart() is { } movable && (movable.IsPointGeometry || registry.Type(movable.Type)?.AnimationFrames(movable, 2).Count > 1 || AssemblyOf().Count > 1))
+                list.Add((new BarButton("motion", "", CommandLabel("motion") + ": " + CommandHint("motion"), Active: AddInSettings.Motion) { IconId = IconIds.Motion }, false));
+            if (AssemblyOf().Count > 1)
+                list.Add((new BarButton("assembly", "", CommandLabel("assembly")) { IconId = IconIds.SelectAssembly }, false));
+            list.AddRange(styleChips.Where(c => c.IconId is not null).Select(c => (c, false)));
+            var effect = UnitEffect();
+            if (effect.Rotate90) list.Add((Command("rot90", IconIds.Rotate), false));
+            if (effect.MirrorH) list.Add((Command("flipH", IconIds.MirrorH), false));
+            return list;
         }
 
         /// <summary>Non-empty groups with a separator between them.</summary>
@@ -315,6 +326,15 @@ namespace InventaSketch.AddIn.OnSlide
                 if (first is not null && Assemblies.CanExplode(registry, first)) edit.Add(PieCommand("explode", IconIds.Explode));
                 if (first is not null && InventaSketch.Modules.Charts.ChartSketchInput.Supports(first)) edit.Add(PieCommand("sketch", IconIds.Trace));
                 if (MovablePart() is not null) edit.Add(PieCommand("motion", IconIds.Motion, active: AddInSettings.Motion));
+                // Self-built linkage: its degree of freedom, coupler curve and ghost positions.
+                if (first is not null && first.IsPointGeometry && Linkage.IsPart(registry, first) && _unit is not null
+                    && Linkage.Dof(registry, SketchUnits.WithContext(_unit.Doc, _otherUnits), first.Id, _lang()) is { } dof)
+                {
+                    edit.Add(new PieItem("info:dof", "F = " + dof.Dof) { Hint = T("Degree of freedom (Gr\u00fcbler): ", "Freiheitsgrad (Gr\u00fcbler): ") + dof.Links + T(" links, ", " Glieder, ") + dof.Joints + T(" joints", " Gelenke") });
+                    if (dof.Dof == 1) { edit.Add(PieCommand("trace", IconIds.Trace)); edit.Add(PieCommand("ghosts", IconIds.Animate)); }
+                }
+                // A selected corner: split there or remove it, first.
+                edit.InsertRange(0, CornerButtons().Where(b => !b.Separator).Select(b => new PieItem(b.Id, b.Tip) { IconId = b.IconId }));
             }
             if (PartOwner() is not null) edit.Add(new PieItem("menu:parts", T("Parts ▸", "Teile ▸")) { IconId = IconIds.Table, Hint = T("Select a part of the element (also hidden ones)", "Ein Teil des Elements auswählen (auch ausgeblendete)") });
 
@@ -383,40 +403,89 @@ namespace InventaSketch.AddIn.OnSlide
             if (_unit is null) return;
             var registry = _registry();
             var pointObject = PointObject();
-            var back = new PieItem("menu:back", T("← Back", "← Zurück")) { Hint = T("Back to the main ring", "Zurück zum Hauptring") };
+            var back = new PieItem("menu:back", T("\u2190 Back", "\u2190 Zur\u00fcck")) { Hint = T("Back to the main ring", "Zur\u00fcck zum Hauptring") };
             List<PieItem>? items = null;
+            string? title = null;
             if (submenu is null)
             {
-                var (ring, menus) = PieRing(PieGroups(pointObject, registry), T("More ▸", "Mehr ▸"));
+                var (ring, menus) = PieRing(PieGroups(pointObject, registry), T("More \u25b8", "Mehr \u25b8"));
                 _pieMenus = menus;
+                _pieTitles = ring.Where(i => i.Id.StartsWith("menu:g:", StringComparison.Ordinal)).ToDictionary(i => i.Id.Substring(7), i => i.Label.Replace(" \u25b8", ""));
                 items = ring;
+                title = ElementName();
             }
             else if (submenu.StartsWith("g:", StringComparison.Ordinal) && _pieMenus.TryGetValue(submenu.Substring(2), out var group))
+            {
                 items = new List<PieItem> { back }.Concat(group).ToList();
+                _pieTitles.TryGetValue(submenu.Substring(2).TrimEnd('+'), out title);
+            }
             else if (submenu.StartsWith("c:", StringComparison.Ordinal))
+            {
                 items = ChoiceMenu(submenu.Substring(2), back);
+                title = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null) is { } fo ? BarChoices(fo, int.MaxValue).FirstOrDefault(c => c.Key == submenu.Substring(2))?.Tip : null;
+            }
             else if (submenu == "parts")
+            {
                 items = PartListMenu();
+                title = T("Parts", "Teile");
+            }
             else if (submenu == "insert")
             {
                 var anchor = _unit.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
                 items = new List<PieItem> { back };
                 if (anchor is not null) items.AddRange(registry.Suggestions(anchor, MaxSubItems).Select(i => new PieItem("ins:" + i.Id, i.Name.Get(_lang()))));
+                title = T("Insert", "Einf\u00fcgen");
             }
             else if (pointObject is not null)
+            {
                 items = SubMenu(submenu, pointObject);
+                title = submenu == "type" ? T("Line type", "Linientyp") : T("Label", "Beschriftung");
+            }
             if (items is null) return;
             HideBar();
-            ShowPie(pt, view, items);
+            ShowPie(pt, view, items, title);
         }
 
-        private void ShowPie(POINT pt, SlideView view, List<PieItem> items)
+        private Dictionary<string, string> _pieTitles = new(StringComparer.Ordinal);
+
+        /// <summary>Name of the armed element (or of its selected part) for the centre of the pie menu.</summary>
+        private string? ElementName()
         {
-            _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale);
+            var registry = _registry();
+            var first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
+            if (first is null) return null;
+            if (_part is not null && PartOwner() is { } owner && SelectedPartInfo(owner) is { } part) return part.Label.Get(_lang());
+            return registry.Type(first.Type)?.Name.Get(_lang());
+        }
+
+        private void ShowPie(POINT pt, SlideView view, List<PieItem> items, string? title = null)
+        {
+            _pie = new PieMenu(new PointF(pt.X, pt.Y), items, (float)view.DeviceScale) { Title = title };
             _mode = Mode.Pie;
             LastPieItems = string.Join("\n", items.Select(i => i.Id + "\t" + i.Label + (i.Enabled ? "" : "\t(off)")));
-            Log.Info("Pie: " + string.Join("; ", items.Select(i => i.Id + "=" + i.Label + (i.Enabled ? "" : " (off)"))));
+            Log.Info("Pie" + (title is null ? "" : " [" + title + "]") + ": " + string.Join("; ", items.Select(i => i.Id + "=" + i.Label + (i.Enabled ? "" : " (off)"))));
             DrawPie(view);
+        }
+
+        /// <summary>Every command of the armed element as last shown: the bar's and the pie's (all submenus), comma-separated.</summary>
+        internal string LastCommandIds { get; private set; } = "";
+
+        /// <summary>The bar ids plus every pie entry (ring and submenus) of the armed element (UI tests: "is it reachable").</summary>
+        private string CommandIds(IEnumerable<BarButton> bar)
+        {
+            try
+            {
+                var (ring, menus) = PieRing(PieGroups(PointObject(), _registry()), "");
+                var ids = bar.Where(b => !b.Separator).Select(b => b.Id)
+                    .Concat(ring.Concat(menus.Values.SelectMany(m => m)).Where(i => i.Enabled).Select(i => i.Id))
+                    .Where(id => !id.StartsWith("menu:", StringComparison.Ordinal)).Distinct();
+                return string.Join(",", ids);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Command ids", ex);
+                return "";
+            }
         }
 
         /// <summary>"⋯" in the bar: the pie menu at the pointer (the same as a right-click on the element).</summary>

@@ -40,8 +40,8 @@ namespace InventaSketch.AddIn.OnSlide
             var lang = _lang();
             var list = new List<BarChoice>();
             var scale = _view?.DeviceScale ?? 1;
-            // Many views (a gear has five): one view chip with a list instead of a row of view buttons.
-            if (registry.Type(o.Type) is { } vt && vt.Views.Count > MaxViewButtons)
+            // Several views: one view chip with a list (the bar has room for one view button only).
+            if (registry.Type(o.Type) is { } vt && vt.Views.Count > 1)
                 list.Add(new BarChoice("@view", T("View", "Ansicht"), vt.ViewOf(o), false,
                     vt.Views.Select(v => new ChoiceOption(v.Id, v.Label.Get(lang), IconPainter.ForView(v), null)).ToList()));
             if (o.IsPointGeometry && Registry.IsConvertible(o))

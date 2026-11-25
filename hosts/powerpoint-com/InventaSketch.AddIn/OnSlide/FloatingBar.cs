@@ -67,14 +67,15 @@ namespace InventaSketch.AddIn.OnSlide
         {
             Buttons = buttons;
             Scale = scale;
-            int size = (int)Math.Round(30 * scale), gap = (int)Math.Round(2 * scale), sep = (int)Math.Round(9 * scale), pad = (int)Math.Round(4 * scale);
+            // Buttons of 32 logical px (targets of at least 28 px for older users), a little air between them.
+            int size = (int)Math.Round(32 * scale), gap = (int)Math.Round(3 * scale), sep = (int)Math.Round(11 * scale), pad = (int)Math.Round(4 * scale);
             var x = pad;
             foreach (var b in buttons)
             {
                 if (b.Separator) { _cells.Add(new Rectangle(x, pad, sep, size)); x += sep; continue; }
                 // Text buttons (view names) get a width that fits the label; symbol buttons are square; a pictogram with a
                 // label (the main action where the pictogram alone says too little) gets both.
-                var width = b.ShowLabel && b.IconId is not null ? size + (int)Math.Round(b.Glyph.Length * 6.4 * scale + 6 * scale)
+                var width = b.ShowLabel && b.IconId is not null ? size + (int)Math.Round(b.Glyph.Length * 6.9 * scale + 8 * scale)
                     : b.Icon is null && b.IconId is null && b.Glyph.Length > 2 ? (int)Math.Round(Math.Max(size, b.Glyph.Length * 6.6 * scale + 14 * scale))
                     : size;
                 if (b.Menu) width += (int)Math.Round(7 * scale);
@@ -250,9 +251,13 @@ namespace InventaSketch.AddIn.OnSlide
                 }
                 if (i == Hover || btn.Active)
                 {
-                    using var hb = new SolidBrush(Color.FromArgb(i == Hover ? 45 : 28, btn.Danger && i == Hover ? Color.Red : accent));
+                    // A clear hover state: a tinted cell with an accent outline.
+                    using var hb = new SolidBrush(Color.FromArgb(i == Hover ? 60 : 28, btn.Danger && i == Hover ? Color.Red : accent));
                     using var hp = Rounded(cell, 5 * Scale);
                     g.FillPath(hb, hp);
+                    if (i == Hover)
+                        using (var ho = new Pen(Color.FromArgb(170, accent), 1.2f * Scale))
+                            g.DrawPath(ho, hp);
                 }
                 var content = cell;
                 if (btn.Menu)
@@ -274,7 +279,7 @@ namespace InventaSketch.AddIn.OnSlide
                         var square = new Rectangle(content.X, content.Y, content.Height, content.Height);
                         IconPainter.Draw(g, btn.IconId, Rectangle.Inflate(square, -pad, -pad), ink, btn.Mirror);
                         using var lb = new SolidBrush(ink);
-                        using var labelFont = new Font("Segoe UI", 10f * Scale, GraphicsUnit.Pixel);
+                        using var labelFont = new Font("Segoe UI", 11f * Scale, GraphicsUnit.Pixel);
                         var lf = new StringFormat { LineAlignment = StringAlignment.Center, FormatFlags = StringFormatFlags.NoWrap };
                         g.DrawString(btn.Glyph, labelFont, lb, new RectangleF(square.Right - 2 * Scale, content.Y, content.Right - square.Right + 2 * Scale, content.Height), lf);
                         continue;

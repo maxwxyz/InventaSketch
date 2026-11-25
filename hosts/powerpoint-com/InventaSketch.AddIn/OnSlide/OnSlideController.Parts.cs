@@ -76,7 +76,8 @@ namespace InventaSketch.AddIn.OnSlide
             if (info is null) { _part = null; return null; }
             var list = new List<BarButton> { new("info:part", info.Label.Get(_lang()), T("Selected part (click or Tab: another part, Esc: whole element)", "Ausgewähltes Teil (Klick oder Tab: anderes Teil, Esc: ganzes Element)")) };
             list.Add(new BarButton("", "", "", Separator: true));
-            foreach (var a in PartActions(o))
+            // The same structure as every bar: the part's name, its three most used commands, "⋯" (the rest: the pie).
+            foreach (var a in PartActions(o).Where(a => a.IsEnabled).Take(MaxBarButtons - 1))
             {
                 var label = a.Label.Get(_lang());
                 var tip = label + (a.Input is not null && !label.EndsWith("…", StringComparison.Ordinal) ? " …" : "");
@@ -85,10 +86,7 @@ namespace InventaSketch.AddIn.OnSlide
                     : new BarButton("part:" + a.Id, ShortLabel(label), tip, Active: a.IsActive));
             }
             list.Add(new BarButton("", "", "", Separator: true));
-            list.Add(new BarButton("partlist", "", T("Parts … (also hidden ones)", "Teile … (auch ausgeblendete)")) { IconId = IconIds.Table });
-            list.Add(new BarButton("part:none", "", T("Whole element", "Ganzes Element")) { IconId = IconIds.SelectAssembly });
-            list.Add(new BarButton("", "", "", Separator: true));
-            list.Add(new BarButton("more", "⋯", T("More: all commands, grouped (right-click)", "Mehr: alle Befehle, geordnet (Rechtsklick)")));
+            list.Add(MoreButton());
             return list;
         }
 

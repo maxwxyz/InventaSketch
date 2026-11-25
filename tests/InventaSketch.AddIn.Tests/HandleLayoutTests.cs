@@ -96,6 +96,17 @@ namespace InventaSketch.AddIn.Tests
         }
 
         [Fact]
+        public void SecondaryHandlesFadeInNearThePointer()
+        {
+            // Progressive disclosure: fully shown within 24 logical px, gone beyond 56, linear in between.
+            Assert.Equal(1f, OnSlideController.RevealFor(0));
+            Assert.Equal(1f, OnSlideController.RevealFor(OnSlideController.RevealNear));
+            Assert.Equal(0f, OnSlideController.RevealFor(OnSlideController.RevealFar));
+            Assert.Equal(0f, OnSlideController.RevealFor(500));
+            Assert.Equal(0.5f, OnSlideController.RevealFor((OnSlideController.RevealNear + OnSlideController.RevealFar) / 2), 3);
+        }
+
+        [Fact]
         public void SegmentCodesMapHandleIds()
         {
             Assert.Equal(4, OnSlideController.SegmentCode("seg:2"));

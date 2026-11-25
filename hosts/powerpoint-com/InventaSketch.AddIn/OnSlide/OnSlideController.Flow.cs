@@ -124,31 +124,36 @@ namespace InventaSketch.AddIn.OnSlide
             var s = (float)view.DeviceScale;
             DrawLinks(g, view);
             g.SmoothingMode = SmoothingMode.AntiAlias;
-            using var blue = new SolidBrush(FlowBlue);
-            using var hover = new SolidBrush(Color.FromArgb(60, 130, 230));
-            using var white = new Pen(Color.White, 1.6f * s);
             foreach (var side in Sides)
             {
-                var c = TriangleCentre(view, side);
+                var centre = TriangleCentre(view, side);
                 var big = _hoverSide == (int)side;
-                var h = (float)(TrianglePx * (big ? 1.3 : 1.0) * s) / 2;
                 var dir = Flow.Direction(side);
-                // Triangle pointing outwards: tip in the direction of the side.
-                var tip = new PointF(c.X + (float)dir.X * h, c.Y + (float)dir.Y * h);
-                var n = new PointF((float)-dir.Y * h, (float)dir.X * h);
-                var b = new PointF(c.X - (float)dir.X * h, c.Y - (float)dir.Y * h);
-                g.FillPolygon(big ? hover : blue, new[] { tip, new PointF(b.X + n.X, b.Y + n.Y), new PointF(b.X - n.X, b.Y - n.Y) });
-                if (big)
+                // Progressive disclosure: the triangle below always, the others as the pointer comes near (or with Shift).
+                Faded(g, centre, big ? 1 : TriangleReveal(view, side), (float)(TrianglePx * 1.3 * s) + 3, (gg, c) =>
                 {
+                    gg.SmoothingMode = SmoothingMode.AntiAlias;
+                    using var blue = new SolidBrush(FlowBlue);
+                    using var hover = new SolidBrush(Color.FromArgb(60, 130, 230));
+                    using var white = new Pen(Color.White, 1.6f * s);
+                    var h = (float)(TrianglePx * (big ? 1.3 : 1.0) * s) / 2;
+                    // Triangle pointing outwards: tip in the direction of the side.
+                    var tip = new PointF(c.X + (float)dir.X * h, c.Y + (float)dir.Y * h);
+                    var n = new PointF((float)-dir.Y * h, (float)dir.X * h);
+                    var b = new PointF(c.X - (float)dir.X * h, c.Y - (float)dir.Y * h);
+                    gg.FillPolygon(big ? hover : blue, new[] { tip, new PointF(b.X + n.X, b.Y + n.Y), new PointF(b.X - n.X, b.Y - n.Y) });
+                    if (!big) return;
                     // A small "+" inside the hovered triangle: adds the next element.
                     var m = new PointF(c.X - (float)dir.X * h * 0.25f, c.Y - (float)dir.Y * h * 0.25f);
                     var p = h * 0.38f;
-                    g.DrawLine(white, m.X - p, m.Y, m.X + p, m.Y);
-                    g.DrawLine(white, m.X, m.Y - p, m.X, m.Y + p);
-                    QueueTip(view, c, T("Add the next element here (a copy, connected) · drag: connect or place it",
+                    gg.DrawLine(white, m.X - p, m.Y, m.X + p, m.Y);
+                    gg.DrawLine(white, m.X, m.Y - p, m.X, m.Y + p);
+                });
+                if (big)
+                    QueueTip(view, centre, T("Add the next element here (a copy, connected) · drag: connect or place it",
                         "Nächstes Element hier anfügen (Kopie, verbunden) · ziehen: verbinden oder ablegen"), (float)(TrianglePx * 0.6));
-                }
             }
+            using var blue = new SolidBrush(FlowBlue);
             if (_showPorts)
             {
                 using var ring = new Pen(FlowBlue, 1.4f * s);
@@ -421,7 +426,8 @@ namespace InventaSketch.AddIn.OnSlide
             var first = fresh.Objects.FirstOrDefault(o => !o.IsPointGeometry && registry.Type(o.Type) is not null);
             if (first is null) return false;
             var full = SketchUnits.WithContext(fresh.Doc, SketchUnits.All(slide, fresh.Id));
-            var placed = Fitting.Place(registry, full, first.Id, item, lang);
+            // Every object of the unit is tried (shafts first), then the shaft a selected part sits on.
+            var placed = FitToUnit(fresh, full, item);
             if (placed is null) return false;
             var doc = SingleUnitDoc(placed);
             SketchUnits.Draw(slide, registry, doc, lang);

@@ -37,7 +37,9 @@ namespace InventaSketch.AddIn.OnSlide
         public PointF Centre { get; }
         public IReadOnlyList<PieItem> Items { get; }
         public float Scale { get; }
-        public float Inner => 28 * Scale;
+        /// <summary>Name shown in the centre (the element, or the open submenu); a click there closes the menu.</summary>
+        public string? Title { get; set; }
+        public float Inner => (Title is null ? 28 : 42) * Scale;
         /// <summary>The ring grows with the number of entries so labels keep their room.</summary>
         public float Outer => (Items.Count <= 6 ? 112 : Items.Count <= 8 ? 124 : 152) * Scale;
         public int Hover { get; set; } = -1;
@@ -97,7 +99,8 @@ namespace InventaSketch.AddIn.OnSlide
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             var bg = dark ? Color.FromArgb(246, 36, 38, 42) : Color.FromArgb(248, 252, 252, 253);
             var fg = dark ? Color.FromArgb(232, 232, 236) : Color.FromArgb(36, 37, 40);
-            var muted = dark ? Color.FromArgb(105, 105, 112) : Color.FromArgb(168, 168, 174);
+            // Greyed places (nothing of that kind for this element) recede: low contrast, no pictogram weight.
+            var muted = dark ? Color.FromArgb(78, 78, 84) : Color.FromArgb(198, 198, 204);
             var accent = dark ? Color.FromArgb(110, 160, 255) : Color.FromArgb(31, 95, 191);
             var danger = dark ? Color.FromArgb(255, 110, 100) : Color.FromArgb(200, 40, 40);
             float inner = Inner, outer = Outer;
@@ -183,12 +186,22 @@ namespace InventaSketch.AddIn.OnSlide
             // Centre: a quiet cap with a close mark (clicking there or outside closes the menu).
             using (var c = new SolidBrush(bg)) g.FillEllipse(c, Centre.X - inner, Centre.Y - inner, 2 * inner, 2 * inner);
             using (var p = new Pen(Color.FromArgb(dark ? 70 : 45, fg), 1f)) g.DrawEllipse(p, Centre.X - inner, Centre.Y - inner, 2 * inner, 2 * inner);
-            using (var x = new Pen(Color.FromArgb(dark ? 120 : 110, fg), 1.4f * Scale) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+            if (Title is not null)
             {
-                var d = 5 * Scale;
-                g.DrawLine(x, Centre.X - d, Centre.Y - d, Centre.X + d, Centre.Y + d);
-                g.DrawLine(x, Centre.X + d, Centre.Y - d, Centre.X - d, Centre.Y + d);
+                // The element's name in the centre, so it is clear what the menu acts on.
+                using var titleFont = new Font("Segoe UI", 8.5f * Scale, FontStyle.Bold, GraphicsUnit.Pixel);
+                using var tb = new SolidBrush(Color.FromArgb(dark ? 200 : 190, fg));
+                using var tf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center, Trimming = StringTrimming.EllipsisWord };
+                var box = new RectangleF(Centre.X - inner * 0.86f, Centre.Y - inner * 0.62f, inner * 1.72f, inner * 1.24f);
+                g.DrawString(Title, titleFont, tb, box, tf);
             }
+            else
+                using (var x = new Pen(Color.FromArgb(dark ? 120 : 110, fg), 1.4f * Scale) { StartCap = LineCap.Round, EndCap = LineCap.Round })
+                {
+                    var d = 5 * Scale;
+                    g.DrawLine(x, Centre.X - d, Centre.Y - d, Centre.X + d, Centre.Y + d);
+                    g.DrawLine(x, Centre.X + d, Centre.Y - d, Centre.X - d, Centre.Y + d);
+                }
 
             // Full label of a shortened entry and the one-line explanation of the entry under the pointer.
             if (hoverFull is not null)

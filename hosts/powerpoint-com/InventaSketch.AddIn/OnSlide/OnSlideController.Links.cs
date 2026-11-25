@@ -13,7 +13,9 @@ namespace InventaSketch.AddIn.OnSlide
     /// <summary>
     /// "What is connected": while a unit is selected, every place where it touches another element and follows it
     /// (<see cref="Links"/>: meshing gears, gears on a shaft, concentric parts, docked line ends) shows a small lock badge
-    /// next to the contact point. Closed blue lock: coupled, moves (or scales) along. Open grey lock: touching but released.
+    /// next to the contact point. Closed lock: coupled, moves (or scales) along. Open lock: touching but released. Quiet by
+    /// default (progressive disclosure, docs/en/design/interaction-ux.md): a tiny grey dot on the contact point; the grey
+    /// badge fades in as the pointer comes near (or with Shift) and turns blue under the pointer, with its lead line.
     /// Hovering shows what it is and what a click does; a click toggles it (one undo step). The badges sit a little beside
     /// the contact point, so dragging a gear by its centre or a line by its end still works.
     /// </summary>
@@ -108,25 +110,36 @@ namespace InventaSketch.AddIn.OnSlide
             var s = (float)view.DeviceScale;
             g.SmoothingMode = SmoothingMode.AntiAlias;
             var badges = LinkBadges(view);
-            var grey = Color.FromArgb(120, 120, 120);
+            var grey = Color.FromArgb(130, 130, 130);
+            var light = Color.FromArgb(175, 175, 175);
             for (var i = 0; i < badges.Count; i++)
             {
                 var (link, at, badge) = badges[i];
-                var colour = link.Released ? grey : FlowBlue;
                 var hover = i == _hoverLink;
-                using (var lead = new Pen(Color.FromArgb(160, colour), 1f * s))
-                    g.DrawLine(lead, at, badge);
-                using (var dot = new SolidBrush(colour))
+                // Quiet state: a tiny grey dot on the contact point; the badge appears as the pointer comes near the joint
+                // (or with Shift), grey; blue only under the pointer, with the lead line to the joint.
+                using (var dot = new SolidBrush(link.Released ? light : grey))
                 {
-                    var d = 2.6f * s;
+                    var d = 2f * s;
                     g.FillEllipse(dot, at.X - d, at.Y - d, 2 * d, 2 * d);
                 }
-                var r = (float)(BadgePx * (hover ? 1.2 : 1.0) * s);
-                using (var fill = new SolidBrush(link.Released ? Color.White : colour))
-                    g.FillEllipse(fill, badge.X - r, badge.Y - r, 2 * r, 2 * r);
-                using (var ring = new Pen(colour, 1.2f * s))
-                    g.DrawEllipse(ring, badge.X - r, badge.Y - r, 2 * r, 2 * r);
-                DrawLock(g, badge, r * 0.58f, link.Released ? grey : Color.White, link.Released, s);
+                var placed = HandleById(view, "lock:" + i);
+                var alpha = hover || placed is null ? 1 : Reveal(view, placed, at);
+                if (hover)
+                    using (var lead = new Pen(Color.FromArgb(170, link.Released ? grey : FlowBlue), 1f * s))
+                        g.DrawLine(lead, at, badge);
+                var released = link.Released;
+                Faded(g, badge, alpha, (float)(BadgePx * 1.25 * s) + 3, (gg, c) =>
+                {
+                    gg.SmoothingMode = SmoothingMode.AntiAlias;
+                    var colour = hover ? (released ? grey : FlowBlue) : (released ? light : grey);
+                    var r = (float)(BadgePx * (hover ? 1.2 : 1.0) * s);
+                    using (var fill = new SolidBrush(hover && !released ? colour : Color.White))
+                        gg.FillEllipse(fill, c.X - r, c.Y - r, 2 * r, 2 * r);
+                    using (var ring = new Pen(colour, 1.2f * s))
+                        gg.DrawEllipse(ring, c.X - r, c.Y - r, 2 * r, 2 * r);
+                    DrawLock(gg, c, r * 0.58f, hover && !released ? Color.White : colour, released, s);
+                });
             }
             if (_hoverLink < 0 || _hoverLink >= badges.Count || _linkDoc is null) return;
             var h = badges[_hoverLink];

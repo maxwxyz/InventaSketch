@@ -83,11 +83,14 @@ namespace InventaSketch.AddIn.OnSlide
             for (var i = 0; i < _ports.Count; i++)
             {
                 var p = _ports[i];
-                var at = view.ToScreen(p.At);
                 var c = PortScreen(view, p);
-                // A thin dashed lead shows where the "+" belongs once the layout pushed it out of the way.
-                g.DrawLine(lead, at, c);
-                DrawAddHandle(g, view, c, i == _hoverPort2);
+                var hover = i == _hoverPort2;
+                // While hovered, a thin dashed lead shows where the "+" belongs (the layout may have pushed it out of the way).
+                if (hover) g.DrawLine(lead, view.ToScreen(p.At), c);
+                // Progressive disclosure: the primary "+" always, the others as the pointer comes near (or with Shift).
+                var h = HandleById(view, "port:" + i);
+                var alpha = hover || h is null ? 1 : Reveal(view, h);
+                Faded(g, c, alpha, AddHalf(view), (gg, cc) => DrawAddHandle(gg, view, cc, hover));
             }
             if (_hoverPort2 >= 0 && _hoverPort2 < _ports.Count)
                 QueueTip(view, PortScreen(view, _ports[_hoverPort2]), PortTip(_ports[_hoverPort2]), (float)PortPx);
