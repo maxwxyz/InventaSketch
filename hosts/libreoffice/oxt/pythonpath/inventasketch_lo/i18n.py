@@ -94,6 +94,23 @@ TEXTS = {
               "editable shapes.\n\nEngine: %s\nLicence: Apache License 2.0\n%s",
               "InventaSketch %s für LibreOffice\n\nTechnische Skizzen, Patentzeichnungen und Diagramme als native, "
               "bearbeitbare Formen.\n\nEngine: %s\nLizenz: Apache License 2.0\n%s"),
+    "pcTitle": ("Patent check (drawings)", "Patentprüfung (Zeichnungen)"),
+    "pcOffice": ("Office:", "Amt:"),
+    "pcCheck": ("Check", "Prüfen"),
+    "pcClose": ("Close", "Schließen"),
+    "pcNotHere": ("The patent check works on the pages of Impress and Draw documents.",
+                  "Die Patentprüfung arbeitet auf den Seiten von Impress- und Draw-Dokumenten."),
+    "pcNoUnits": ("No page has InventaSketch elements.", "Keine Seite enthält InventaSketch-Elemente."),
+    "pcNone": ("No findings on %d page(s).", "Keine Befunde auf %d Seite(n)."),
+    "pcSummary": ("%d finding(s), %d error(s) on %d page(s). Choose a finding to go to it.",
+                  "%d Befund(e), %d Fehler auf %d Seite(n). Einen Befund wählen springt dorthin."),
+    "pcSlide": ("Slide %d", "Folie %d"),
+    "pcPage": ("Page %d", "Seite %d"),
+    "pcSource": ("Source: %s", "Fundstelle: %s"),
+    "pcError": ("Error", "Fehler"),
+    "pcWarning": ("Warning", "Warnung"),
+    "pcManual": ("Check by hand", "Selbst prüfen"),
+    "pcInfo": ("Note", "Hinweis"),
 }
 
 _STATE = {"lang": "en"}

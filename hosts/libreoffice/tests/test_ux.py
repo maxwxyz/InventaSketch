@@ -100,6 +100,37 @@ MULTI = {"count": 2, "arrange": [{"id": "mview:stick", "label": "All in view: St
                                  {"id": "align:row", "label": "Centres on one horizontal line"}], "assemblyExtra": 2}
 
 
+class PatentCheckTexts(unittest.TestCase):
+    FINDINGS = [
+        {"severity": "info", "page": 1, "message": "note"},
+        {"severity": "error", "page": 2, "message": "late error"},
+        {"severity": "warning", "page": 1, "message": "warn"},
+        {"severity": "error", "page": 1, "message": "early error"},
+        {"severity": "manual", "page": 1, "message": "by hand"},
+    ]
+
+    def test_errors_come_first_then_page_order(self):
+        self.assertEqual([f["message"] for f in ux.order_findings(self.FINDINGS)],
+                         ["early error", "late error", "warn", "by hand", "note"])
+
+    def test_rows_name_slide_or_page_and_severity(self):
+        f = {"severity": "error", "page": 2, "message": "Sheet number missing"}
+        self.assertEqual(ux.finding_row(f, True, "en"), "Slide 2 · Error · Sheet number missing")
+        self.assertEqual(ux.finding_row(f, False, "de"), "Seite 2 · Fehler · Sheet number missing")
+        self.assertEqual(ux.severity_label("manual", "de"), "Selbst prüfen")
+
+    def test_detail_drops_the_links_of_the_sources(self):
+        f = {"suggestion": "Use A4.", "source": "DE-01: PatV § 6(2) <https://www.gesetze-im-internet.de/patv/__6.html>; "
+                                                 "US-06: 37 CFR 1.84(f)"}
+        self.assertEqual(ux.finding_detail(f, "en"), "Use A4.\nSource: DE-01: PatV § 6(2); US-06: 37 CFR 1.84(f)")
+        self.assertEqual(ux.finding_detail({}, "en"), "")
+
+    def test_summary(self):
+        self.assertEqual(ux.findings_summary([], 0, "en"), "No page has InventaSketch elements.")
+        self.assertEqual(ux.findings_summary([], 2, "en"), "No findings on 2 page(s).")
+        self.assertTrue(ux.findings_summary(self.FINDINGS, 2, "en").startswith("5 finding(s), 2 error(s) on 2 page(s)."))
+
+
 class SelectionPanel(unittest.TestCase):
     def test_gear_shows_only_what_changes_something(self):
         acts = ux.selection_actions(GEAR)

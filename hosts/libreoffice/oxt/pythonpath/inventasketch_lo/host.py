@@ -294,10 +294,16 @@ class PageSession:
     ``units``: list of dicts {id, shape, unit, own, contents, selected, moved} in import order; ``selected_ids()``: the
     own object ids of the selected units. Use as a context manager (closes the engine session)."""
 
-    def __init__(self, engine, controller, shapes=None, context=True, native_selected=True):
+    def __init__(self, engine, controller, shapes=None, context=True, native_selected=True, page=None):
         self.engine = engine
         self.controller = controller
-        self.doc, self.page, self.centre, self.size = target(controller)
+        if page is None:
+            self.doc, self.page, self.centre, self.size = target(controller)
+        else:
+            # Another page of an Impress/Draw document (patent check of every page).
+            self.doc, self.page = controller.getModel(), page
+            w, h = page.Width / 100.0, page.Height / 100.0
+            self.centre, self.size = (w / 2.0, h / 2.0), (w, h)
         self.selected_shapes = list(shapes) if shapes is not None else selected_unit_shapes(controller)
         # False: native moves of the selected units are left to the caller (a drag that is snapped and coupled).
         self.native_selected = native_selected
@@ -717,6 +723,60 @@ def describe(engine, controller):
             "view": info.get("view"), "views": [(v["id"], v["label"]) for v in info.get("views") or []],
             "source": unit["source"], "effect": effect, "dof": dof, "motion": motion, "ports": ports or [],
             "assemblyExtra": extra}
+
+
+def patent_profiles(engine):
+    """The offices of the patent drawing preflight ([{id, name}], the first is the default)."""
+    return engine.call("patentProfiles", {"lang": i18n.language()})
+
+
+def patent_check(engine, controller, profile):
+    """Patent drawing preflight of every page with InventaSketch units (Impress/Draw) for office ``profile``.
+
+    Each page is loaded like a page session (native moves applied) and checked on its own. Returns {"disclaimer",
+    "pages": number of pages checked, "findings": [{severity, message, suggestion, source, rule, id, "page": 1-based
+    page number, "shape": the unit shape of the finding's element or None}]}."""
+    doc = controller.getModel()
+    if doc_kind(doc) not in ("impress", "draw"):
+        raise HostError(i18n.text("pcNotHere"))
+    pages = doc.getDrawPages()
+    findings, disclaimer, checked = [], None, 0
+    for index in range(pages.getCount()):
+        page = pages.getByIndex(index)
+        if not page_unit_shapes(page):
+            continue
+        checked += 1
+        with PageSession(engine, controller, shapes=[], page=page) as ps:
+            result = ps.call("preflight", {"text": profile, "lang": i18n.language()})
+            disclaimer = result.get("disclaimer") or disclaimer
+            shapes = {e["id"]: e["shape"] for e in ps.units}
+            units = ps.unit_map()
+            for f in result.get("findings") or []:
+                shape = None
+                if f.get("id"):
+                    hit = ux.units_containing(units, [f["id"]])
+                    shape = shapes.get(hit[0]) if hit else None
+                entry = dict(f)
+                entry["page"], entry["shape"] = index + 1, shape
+                findings.append(entry)
+    if disclaimer is None:
+        session = _session(engine, (210.0, 297.0))
+        try:
+            disclaimer = engine.call("preflight", {"session": session, "text": profile,
+                                                   "lang": i18n.language()}).get("disclaimer")
+        finally:
+            _close(engine, session)
+    return {"disclaimer": disclaimer, "pages": checked, "findings": findings}
+
+
+def go_to(controller, page_number, shape=None):
+    """Shows page ``page_number`` (1-based) and selects ``shape`` on it."""
+    try:
+        controller.setCurrentPage(controller.getModel().getDrawPages().getByIndex(page_number - 1))
+    except Exception as ex:
+        log("go to page %s: %s" % (page_number, ex))
+    if shape is not None:
+        _select(controller, [shape])
 
 
 def cleanup_properties(doc):

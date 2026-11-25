@@ -25,6 +25,7 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
                                                   after a mouse drag), coupled, one undo step
   quickInsert[?text=<t>]                          open the Library panel with the cursor in its search field
                                                   (Ctrl+Space in Impress/Draw)
+  patentCheck[?profile=<office id>]               patent drawing check of every page (dialog; logged when headless)
   about                                           version and licence
 The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
 and ``buildItems`` fill the sidebar panel. The job ``CanvasJob`` (Jobs.xcu, document event "OnViewCreated") attaches
@@ -53,7 +54,7 @@ PROTOCOL = "inventasketch.libreoffice:"
 DECK = "InventaSketchDeck"
 COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "numeral", "cleanup", "about",
             "insertFitting", "insertSearch", "search", "transform", "explode", "drawTrace", "drawGhosts", "build",
-            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert")
+            "buildItems", "turn", "arrange", "assembly", "panel", "snapMove", "quickInsert", "patentCheck")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 
@@ -239,6 +240,8 @@ def _run(ctx, frame, command, args):
             if not reports:
                 raise host.HostError("; ".join(errors))
             log("panel: %s -> %s" % (args, "; ".join(reports)))
+        elif command == "patentCheck":
+            _patent_check(ctx, frame, controller, args.get("profile") or args.get("") or None)
         elif command == "cleanup":
             removed = host.cleanup_properties(controller.getModel())
             log("cleanup removed %d properties" % len(removed))
@@ -247,6 +250,22 @@ def _run(ctx, frame, command, args):
     except Exception as ex:
         log(traceback.format_exc())
         message(ctx, frame, i18n.text("engineFailed") % ex, error=True)
+
+
+def _patent_check(ctx, frame, controller, profile):
+    """The patent check dialog; without a visible window (headless runs, tests) the result is only logged."""
+    from inventasketch_lo import patentdialog
+    window = frame.getContainerWindow() if frame is not None else None
+    if window is not None and window.isVisible():
+        patentdialog.PatentDialog(ctx, frame, engine_for(ctx), controller, profile).execute()
+        return
+    result = host.patent_check(engine_for(ctx), controller, profile or "common-safe")
+    findings = result["findings"]
+    located = [f for f in findings if f.get("shape") is not None]
+    log("patent check (%s): %d finding(s), %d error(s) on %d page(s); %d with element%s" % (
+        profile or "common-safe", len(findings), sum(1 for f in findings if f.get("severity") == "error"),
+        result["pages"], len(located), (" (first: page %d, %s)" % (located[0]["page"], located[0]["shape"].Name))
+        if located else ""))
 
 
 def _num(value):

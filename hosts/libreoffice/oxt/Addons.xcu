@@ -48,6 +48,17 @@
           <node oor:name="m05" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>private:separator</value></prop>
           </node>
+          <node oor:name="m05a" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:patentCheck</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Patent Check (Drawings)...</value>
+              <value xml:lang="de">Patentprüfung (Zeichnungen) ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+          <node oor:name="m05b" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>private:separator</value></prop>
+          </node>
           <node oor:name="m06" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:cleanup</value></prop>
             <prop oor:name="Title" oor:type="xs:string">

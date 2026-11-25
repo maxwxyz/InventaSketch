@@ -232,8 +232,10 @@ Leisten-IDs jetzt direkt.
    COM in PowerPoint geprüft); Import von CSV (Diagrammdaten) und GeoJSON/GPX (Kartenrouten und Marker) erledigt 25.11.2026 (COM Menü Extras,
    Web-Import-Knopf; in PowerPoint geprüft); Patentprüfung aller Folien mit Sprung zum Befund (COM; Engine `preflight` für Web und LibreOffice) erledigt
    25.11.2026; Varianten und Zustände als Folienvergleich (neu/geändert/entfernt markiert; COM Menü Extras, Engine
-   `diff`) erledigt 25.11.2026; offen: ein Prüf-Panel und ein Vergleichsbefehl in Web und LibreOffice, SVG/DXF-Import
-   (Vektorzeichnungen als bearbeitbare Formen – ein eigener größerer Baustein).
+   `diff`) erledigt 25.11.2026; Patentprüfung im Web (Panel für die Seite) und in LibreOffice (Dialog über alle Seiten
+   mit Sprung zum Befund) erledigt 25.11.2026; offen: der Folienvergleich in Web und LibreOffice (Engine `diff` steht
+   bereit), die Web-Prüfung über alle Folien, SVG/DXF-Import (Vektorzeichnungen als bearbeitbare Formen – ein eigener
+   größerer Baustein).
 
 ### Weitere sinnvolle Module und Funktionen
 

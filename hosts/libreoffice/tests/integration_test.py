@@ -567,6 +567,26 @@ def distance_mm(a, b):
     return ((ax - bx) ** 2 + (ay - by) ** 2) ** 0.5
 
 
+def patent_phase(office, logs):
+    """Patent check over every slide (the dialog's check without a visible window logs its result): a gear outside
+    the usable area on slide 2 is found and its unit shape resolved; slides without units are skipped."""
+    doc = office.new("simpress")
+    pages = doc.getDrawPages()
+    pages.insertNewByIndex(0)
+    pages.insertNewByIndex(1)
+    doc.getCurrentController().setCurrentPage(pages.getByIndex(1))
+    office.run(doc, "insert?item=mech.spur.axial&x=60&y=60")
+    office.run(doc, "insert?item=mech.spur.axial&x=-5&y=60")
+    doc.getCurrentController().setCurrentPage(pages.getByIndex(0))
+    before = len(log_lines(logs, "patent check (uspto):"))
+    office.run(doc, "patentCheck?profile=uspto")
+    lines = log_lines(logs, "patent check (uspto):")
+    line = lines[-1] if len(lines) > before else ""
+    check("patent.checked", "on 1 page(s)" in line and " 0 finding(s)" not in line, line[-200:])
+    check("patent.elementFound", "(first: page 2, ISK:" in line, line[-120:])
+    office.close(doc)
+
+
 def canvas_phase(office, out, logs):
     """On-canvas round: the job attaches the handlers to a new view; snapping after a native move (the command the
     mouse release runs) meshes a gear with another unit, coupled parts follow a dragged shaft, resizes do not snap.
@@ -683,6 +703,7 @@ def main():
         names, odp, pptx = impress_phase(office, out)
         ux_phase(office, out, logs)
         canvas_phase(office, out, logs)
+        patent_phase(office, logs)
         reload_phase(office, odp, names, "odp", expect_attributes=True)
         reload_phase(office, pptx, names, "pptx", expect_attributes=False)
         draw_calc_phase(office, out)
