@@ -367,7 +367,11 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   (Bolzenradius 1,8 × Sonne). Planeten auf den Bolzen fahren mit dem Steg mit und kämmen mit Sonne und Hohlrad.
   Planetensätze haben 2–8 Planeten und Stufenplaneten (Schema- und Stirnansicht); in den Stirnansichten zerlegt das
   Leisten-Piktogramm „In Einzelteile zerlegen“ einen Satz in Sonne, Planeten, Hohlrad und Steg (`Assemblies.Explode`,
-  `ObjectType.Parts`), gekoppelt wie zuvor. Kegelräder haben ihre Kegelspitze als Anker: ihre „+“ bieten ein Gegenrad
+  `ObjectType.Parts`), gekoppelt wie zuvor. Ein Ravigneaux-Radsatz (`mech.gearset.ravigneaux`, 25.11.2026: kleine Sonne
+  14, große Sonne 20, kurze Planeten 10, lange Planeten 16, Hohlrad 52, 2–3 Planetenpaare, Schema- und Stirnansicht)
+  zerfällt in beide Sonnen, die Planetenpaare, das Hohlrad und einen Steg mit Bolzenpaaren (`mech.carrier` mit
+  `paired`, innerer Bolzenkreis und Versatzwinkel); beim Drehen werden die Paare nach Willis gelöst (Hohlrad fest,
+  kleine Sonne als Antrieb: Steg −14/38 = Rückwärtsgang; große Sonne fest: 14/34). Kegelräder haben ihre Kegelspitze als Anker: ihre „+“ bieten ein Gegenrad
   oben oder unten (Achsen unter 90°) und ein gegenüberliegendes auf derselben Achse, sodass ein Differential aus
   Achswellenrad, gegenüberliegendem Achswellenrad und Ausgleichsrädern entsteht. Bau-Griffe an Zahnrädern bieten nur
   Teile in derselben Art von Ansicht (keine Seitenansichts-Welle für ein Stirnansichts-Rad). Kegelradpaare sind noch

@@ -89,6 +89,8 @@ namespace InventaSketch.Modules.Mechanical
             Add("planetary.teeth", "mech.gearset.planetary", "Planetary set (teeth)", "Planetensatz (mit Zähnen)", "teeth");
             Add("carrier.axial", "mech.carrier", "Planet carrier", "Planetenträger (Steg)", "axial", null, "steg", "carrier");
             Add("carrier.stick", "mech.carrier", "Planet carrier (schematic)", "Planetenträger (Schema)", "stick", null, "steg", "carrier");
+            Add("ravigneaux.stick", "mech.gearset.ravigneaux", "Ravigneaux set (schematic)", "Ravigneaux-Radsatz (Schema)", "stick");
+            Add("ravigneaux.axial", "mech.gearset.ravigneaux", "Ravigneaux set", "Ravigneaux-Radsatz", "axial");
             Add("planetary.stepped", "mech.gearset.planetary", "Planetary set with stepped planets", "Planetensatz mit Stufenplaneten", "stick", P(("stepped", true)), "stufenplanet", "stepped planet");
             Add("differential.stick", "mech.gearset.differential", "Differential", "Differential", "stick");
             Add("differential.section", "mech.gearset.differential", "Differential in section", "Differential im Schnitt", "section");

@@ -115,6 +115,37 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void ARavigneauxSetExplodesIntoPlanetPairsWithTheRightRatios()
+        {
+            var item = Reg.Library.First(i => i.TypeId == "mech.gearset.ravigneaux" && i.View == "axial");
+            var set = Reg.Create(item, new Vec2(100, 100));
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, set);
+            var parts = Assemblies.Explode(Reg, doc, set.Id);
+            Assert.Single(parts, p => p.Type == "mech.carrier");
+            Assert.Single(parts, p => p.Type == "mech.gear.internal");
+            Assert.Equal(8, parts.Count(p => p.Type == "mech.gear.spur")); // two suns, three long and three short planets
+            var ex = SketchDocument.Create();
+            ex = Edits.Add(ex, ex.Pages[0].Id, parts.ToArray());
+            // Per pair: short–small sun, short–long, long–large sun, long–ring.
+            Assert.Equal(12, Coupling.Graph(Reg, ex).Count(g => g.Kind == LinkKind.Mesh));
+
+            string Teeth(int z) => parts.First(p => p.Type == "mech.gear.spur" && p.Transform.X == 100 && p.Transform.Y == 100 && p.Num("teeth", 0) == z).Id;
+            var small = Teeth(14);
+            var large = Teeth(20);
+            var ring = parts.Single(p => p.Type == "mech.gear.internal").Id;
+            var carrier = parts.Single(p => p.Type == "mech.carrier").Id;
+            // Ring held, small sun in: reverse, ω_c = −z_s / (z_r − z_s) = −14/38.
+            var reverse = Edits.Update(ex, new[] { ring }, o => o.WithParam("fixed", true));
+            Assert.Equal(-14.0 / 38, GearTrain.Speeds(Reg, reverse, small)[carrier], 6);
+            // Large sun held, small sun in: ω_c = z_s / (z_s + z_L) = 14/34.
+            var held = Edits.Update(ex, new[] { large }, o => o.WithParam("fixed", true));
+            Assert.Equal(14.0 / 34, GearTrain.Speeds(Reg, held, small)[carrier], 6);
+            // The schematic explodes through the axial view.
+            Assert.True(Assemblies.CanExplode(Reg, Reg.Create(Reg.Library.First(i => i.TypeId == "mech.gearset.ravigneaux" && i.View == "stick"), new Vec2(0, 0))));
+        }
+
+        [Fact]
         public void WithinTheSameKindOfViewNothingMoves()
         {
             var a = Gear("stick", new Vec2(50, 50), 20);

@@ -118,7 +118,7 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Done since in COM: bevel pairs in coupling, exploding schematic planetary sets (through the axial view), snap labels,
   Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
   selection, build "+" and "make it" in the insert box.
-- Still open in COM: Ravigneaux sets, exploding cam mechanisms (needs a cam disc part;
+- Still open in COM: exploding cam mechanisms (needs a cam disc part;
   differentials explode into a case part, side and spider gears since 2026-11-25), assembly view switch for building services (plan ↔ section ↔ schematic). Ghost
   positions and coupler curves of self-built chains are done (2026-11-24); explicit joint limits are done (stops on fixed pivots, 2026-11-25).
 - Web: brought to the COM state of the UI/UX round on 2026-11-24 (context-only transforms, insert box with Ctrl+Space,
@@ -155,8 +155,8 @@ positions and coupler curves; explode through another view; bevel pairs couple; 
 1. Web: check in PowerPoint on the web once the maintainer has installed the dev certificate (all COM features of the
    UI/UX round incl. motion mode are implemented).
 2. LibreOffice: done in the sidebar (2026-11-25); next an on-canvas overlay (drag snapping, "+", Ctrl+Space, pie menu).
-3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms), Ravigneaux sets. Done
-   2026-11-25: joint limits as stops on fixed pivots; bevel pairs in the gear train speeds by their teeth (they only have
+3. COM domain gaps: cam disc part and cam contacts in chains (then explode cam mechanisms). Done 2026-11-25: Ravigneaux
+   sets (planet pairs on a carrier with paired pins, explode, Willis ratios); joint limits as stops on fixed pivots; bevel pairs in the gear train speeds by their teeth (they only have
    side views, so they do not visibly turn); the exploded differential works as one (gears loose in the case, Willis
    with the case: straight on both sides turn with the case, one side held → the other turns twice as fast); the
    `elevation`/`section` view alias for walls with building services.
@@ -237,7 +237,7 @@ axis, `Anchor.SidePitch`).
 Status 2026-11-21 (Core + COM): carrier part with pins and build "+", planets sized to sun/ring, 2–8 planets, stepped
 planets, explode of planetary sets (axial views), bevel gears with apex ports (mitre pairs, differential from parts)
 done. Since done: coupling of bevel pairs, exploding the schematic set and the differential, moving gear trains, the
-differential in the gear train speeds (2026-11-24/25). Open: planet pairs (Ravigneaux).
+differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/25).
 
 - **P1 – Planet carrier (Steg) as its own part:** axial view with 2–8 arms or a disc and planet pins at a radius, side
   view with the pins as axes; planets dock on the pins and are carried; build "+" on free pins (planet) and the centre
