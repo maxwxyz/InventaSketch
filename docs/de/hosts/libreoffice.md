@@ -23,6 +23,8 @@ LibreOffice (Impress/Draw/Calc)
          ux.py        Regeln des Auswahl-Panels, zuletzt benutzte Elemente, Buchführung der Seitensitzung, Regeln der
                       Bedienung auf der Folie (ohne UNO)
          canvas.py    Bedienung auf der Folie: Einrasten nach dem Ziehen, Strg+Leertaste, Kontextmenü (UNO-Eingabe-Abfang)
+         clean.py, exporting.py, picture.py   Regeln für Folien bereinigen, Export und Diagramm aus Bild (ohne UNO,
+                      getestet); cleandialog.py, exportdialog.py: ihre Dialoge
          engine.py    Engine-Prozess (JSON-Zeilen), .NET-Suche, Zeitlimit, Neustart
          mainthread.py  Befehle über die Fernbrücke laufen im Hauptthread
  └─ engine/portable/InventaSketch.LibreOffice.Engine.dll   (oder engine/<rid>/… eigenständig)
@@ -82,8 +84,38 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 
 - **Menü „InventaSketch“** (Impress, Draw, Calc): *Aus Bibliothek einfügen …* (öffnet das Deck der Seitenleiste),
   *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*,
-  *Bezugszeichen hinzufügen*, *Kompatibilität (Zeichnungsregeln) …*, *Mit vorheriger Folie vergleichen (Varianten)*, *Zeichnung importieren (SVG, DXF) …*,
+  *Bezugszeichen hinzufügen*, *Kompatibilität (Zeichnungsregeln) …*, *Mit vorheriger Folie vergleichen (Varianten)*,
+  *Folien bereinigen …*, *Zeichnung importieren (SVG, DXF) …*, *Diagramm aus Bild …*, *Exportieren …*,
   *Daten gelöschter Einheiten entfernen*, *Über InventaSketch*.
+- **Folien bereinigen** (25.11.2026): Bevor Folien das Unternehmen verlassen, bereinigt die Engine (`sanitize`) die
+  InventaSketch-Elemente der Auswahl, der aktuellen Folie/Seite/des Tabellenblatts oder aller Folien/Seiten, mit den
+  Wahlmöglichkeiten des PowerPoint-COM-Add-ins: Diagramme normiert (gleiche Verhältnisse, Werte 0…1), zufällig
+  verändert (plausible Werte, gleiches Aussehen) oder behalten; wahlweise Kategorien umbenannt (A, B, C …), Texte
+  ersetzt, Metadaten entfernt (standardmäßig an) und ein Zufallsstartwert (leer = ein neuer, für alle Seiten des Laufs
+  derselbe). Jede Seite wird wie eine Seitensitzung geladen, die geänderten Einheiten werden an Ort und Stelle neu
+  gezeichnet (Namen und Z-Reihenfolge bleiben), alle Seiten in **einem** Rückgängig-Schritt. Ein Meldungsfenster zeigt
+  die Zahlen, den Startwert und die Berichtszeilen der Engine und sagt, dass native LibreOffice-Diagramme und
+  -Tabellen, Notizen, Kommentare und Dokumenteigenschaften nicht verändert werden. Bereich und Diagrammmodus sind
+  Klapplisten (UNO-Dialoge gruppieren Optionsfelder nur über die Tab-Reihenfolge). Calc bietet die Auswahl und das
+  aktuelle Tabellenblatt.
+- **Exportieren** (25.11.2026): exportiert die ausgewählten InventaSketch-Elemente, sonst alle Elemente der aktuellen
+  Folie/Seite (Calc: des Tabellenblatts, auf die Elemente zugeschnitten), wie das Office-Web-Add-in. Der Dialog nennt
+  *SVG (bearbeitbar)* (Engine `renderPageSvg` im Modus „export“: eine benannte Gruppe je Element und Teil, Texte
+  bleiben Text, für Inkscape/Illustrator) und die passenden Fachexporte der Engine (`exporters`/`export`: LaTeX TikZ,
+  Diagrammdaten für matplotlib und pgfplots, Stückliste, Netzlisten …) mit dem, was sie jeweils erhalten; die Datei
+  wird im Speichern-Dialog von LibreOffice mit der Endung des Formats gewählt (CSV mit Byte-Order-Mark). Native
+  LibreOffice-Formen gehören nicht zum Export.
+- **Diagramm aus Bild** (25.11.2026): Eine PNG-, JPEG-, BMP- oder GIF-Datei wird zu einem bearbeitbaren Diagramm in
+  der Mitte der Folie/Seite (Calc: des sichtbaren Bereichs), ein Rückgängig-Schritt, ausgewählt; der Hinweis der Engine
+  (was gelesen wurde, ob die Werte aus der Achsbeschriftung stammen) wird angezeigt. LibreOffice dekodiert das Bild
+  (`GraphicProvider`, `XBitmap.getDIB` und bei transparenten Bildern `getMaskDIB`); `picture.py` liest die DIBs in
+  reinem Python, verkleinert Bilder auf 1600 px und legt transparente Bereiche auf Weiß, bevor `chartFromPicture`
+  aufgerufen wird. Die Bedeutung der Maske (255 = transparent) wurde mit LibreOffice 26.8 geprüft. Ein Bild aus der
+  Zwischenablage (COM-Add-in) wird nicht angeboten.
+- **Eine Kurve ins Diagramm skizzieren** gibt es in LibreOffice nicht: Der UNO-Eingabe-Abfang liefert Drücken und
+  Loslassen der Maustaste, aber keine Mausbewegung, die Umrechnung von Pixeln der Ansicht in Seitenkoordinaten ist nicht
+  zugänglich (der UI-Smoke-Test braucht dafür einen Kalibrierklick), LibreOffice würde während des Strichs seine eigene
+  Rahmenauswahl ausführen, und es gibt keine Überlagerung, die den Strich zeigt.
 - **Varianten** (25.11.2026, Impress und Draw): Eine duplizierte Folie behält die IDs der Einheiten. *Mit vorheriger
   Folie vergleichen* markiert, was sich von der vorherigen Folie unterscheidet (Engine `diff`, beide Folien wie
   Seitensitzungen geladen): neue Einheiten grün, geänderte orange, entfernte als grau gestrichelter Rahmen an ihrer
@@ -119,7 +151,10 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   `panel?control=<Schlüssel>&item=<Eintrag>` / `panel?press=<Schlüssel, Beschriftung oder action:<id>>` (bedient ein
   Bedienelement des offenen Panels wie ein Anwender), `snapMove[?px=<Pixel>&undo=<n>]` (ausgewählte Einheit(en) nach
   einer nativen Verschiebung einrasten, wie nach dem Ziehen mit der Maus), `quickInsert[?text=<Text>]`
-  (Bibliotheks-Panel mit dem Cursor im Suchfeld, wie Strg+Leertaste), `patentCheck[?profile=<Amts-ID>]`, `compare`, `importVector[?path=<Datei>]` (ohne Pfad mit Dateidialog), `cleanup`,
+  (Bibliotheks-Panel mit dem Cursor im Suchfeld, wie Strg+Leertaste), `patentCheck[?profile=<Amts-ID>]`, `compare`, `importVector[?path=<Datei>]` (ohne Pfad mit Dateidialog),
+  `cleanSlides[?scope=selection|slide|all&mode=normalised|randomised|none&rename=1&texts=1&meta=0&seed=<n>]`
+  (ohne Argumente mit Dialog), `export[?format=<ID oder Endung>&path=<Datei>]` (Dialog und Speichern-Dialog für das,
+  was fehlt; headless ohne Argumente werden die Formate protokolliert), `chartFromPicture[?path=<Datei>]`, `cleanup`,
   `about`. Integrations- und
   UI-Smoke-Test benutzen diese Befehle.
 - **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in
@@ -303,6 +338,17 @@ bestanden; `tests/ui_smoke.py`, Bildschirmfotos gesichtet):
   passende Lager ein; in der Textbearbeitung bleiben Strg+Leertaste und Tippen im Text; die 8 Seitenleisten-Prüfungen
   der UI/UX-Runde bestehen weiterhin. Bildschirmfotos gesichtet.
 
+- 2026-11-25 (Runde „Weitergeben“, Windows 11, LibreOffice 26.8.2.2, headless, deutsche Oberfläche):
+  `integration_test.py --only share` 16 Prüfungen bestanden: *Folien bereinigen* über zwei Folien (zufällig, Startwert
+  42, Texte ersetzt) änderte beide Diagramm-Einheiten und ließ den Pfeil unverändert, behielt die Namen der Einheiten,
+  war ein Rückgängig-Schritt („InventaSketch: Folien bereinigen“), und Rückgängig stellte alle gespeicherten Modelle
+  wieder her; mit nur dem Diagramm ausgewählt änderte sich nur das Diagramm. *Exportieren*: TikZ und matplotlib des
+  ausgewählten Diagramms (ohne den Pfeil), das bearbeitbare SVG der Folie, die für die Folie angebotenen Formate
+  protokolliert. *Diagramm aus Bild*: ein PNG mit fünf Säulen auf transparentem Hintergrund (darunter schwarz) wurde zu
+  einer `chart.bar`-Einheit (Maske benutzt), ein Rückgängig-Schritt; Folie als `share.png` exportiert und gesichtet.
+  Die beiden Dialoge wurden über die UNO-Brücke in beiden Sprachen aufgebaut (alle Eigenschaften der Bedienelemente
+  angenommen); in einem sichtbaren Fenster wurden sie nicht gezeigt.
+
 ## Tests
 
 ```powershell
@@ -316,7 +362,11 @@ einer Ersatz-Engine: Fehler, Absturz, Zeitlimit, fremde Zeilen), das Weiterreich
 Auswahl-Panels und die Buchführung der Seitensitzung (`test_ux.py`) und – wenn die Engine gebaut ist – echte
 Zeichenpläne von Bibliothekselementen sowie die Engine-Abläufe hinter dem Panel mit in getrennten Sitzungen gezeichneten
 Modellen ab (Suche mit passenden Teilen, passend einfügen, Anordnen über Einheiten hinweg, ein Getriebezug über
-Einheiten gedreht, Zerlegen). Der UI-Smoke-Test bedient die Bedienelemente des Panels mit dem Befehl `panel` (Tippen ins
+Einheiten gedreht, Zerlegen). `test_share.py` deckt Folien bereinigen (Wahl, Startwert, Engine-Anfrage, Seiten eines
+Bereichs, Bericht), Export (Formate, Namen, Endungen, Bytes), Diagramm aus Bild (Lesen von DIBs mit 1/8/16/24/32 Bit,
+Verkleinern, Transparenz auf Weiß) und die Regel ab, dass kein sichtbarer Text „patent“ enthält, dazu die
+Engine-Anfragen dieser Module gegen die gebaute Engine. `integration_test.py --only share` führt nur die Phase dieser
+drei Befehle aus. Der UI-Smoke-Test bedient die Bedienelemente des Panels mit dem Befehl `panel` (Tippen ins
 Suchfeld und die Wahl eines Listeneintrags laufen über die Bedienelemente und rufen dieselben Listener auf wie ein
 Anwender; Schaltflächen führen ihre Klick-Behandlung aus); echte Mausklicks werden nicht nachgestellt, weil die Peers
 der Bedienelemente über die Fernbrücke nur generische Fenster ohne Listenfeld- oder Barrierefreiheits-Schnittstellen
