@@ -42,6 +42,8 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `setMainText` | `id` (Standard: erstes ausgewähltes Objekt mit Haupttext), `text` | Zustand; setzt den Haupttext des Objekts (unten) |
 | `setPlanScale` | `value` (> 0 setzt, null löscht den Planmaßstab des Dokuments, 100 = 1:100) | Zustand |
 | `setMonochrome` | `value` (true/false) | Zustand; Schwarz-Weiß für das Dokument, jedes Objekt gilt als geändert |
+| `importData` | `text` (CSV/TSV), `id` (optional Diagramm) | Zustand; die Tabelle als Daten des ausgewählten oder eines neuen Diagramms |
+| `importGeo` | `text` (GeoJSON oder GPX) | Zustand; Routen und Marker in die Seite eingepasst, ausgewählt |
 | `setAccent` | `text` (Voreinstellung aus `accents`, #rrggbb oder "" für die Originalfarben) | Zustand (`accent`); Akzentfarbe des Dokuments, jedes Objekt gilt als geändert |
 | `accents` | `lang` | die angebotenen Akzentfarben `{ id, color, name }` |
 | `setLineGroup` | `value` (0,25, 0,35, 0,5, 0,7 oder 1 – Breite der breiten Linie in mm) | Zustand (`lineGroup`); ISO-128-Liniengruppe des Dokuments, jedes Objekt gilt als geändert |

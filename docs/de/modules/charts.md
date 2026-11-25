@@ -74,6 +74,13 @@ Listen (`levels`, `limits`) verwenden dieselben Trennzeichen; ein einzelner Wert
 Zahl. Bereiche (`xrange`, `yrange`) akzeptieren `0;100`, `0..100`, `0,5;2,5` oder `10 1000`; alles andere bedeutet
 automatisch.
 
+### Tabelle importieren (25.11.2026)
+
+„Daten importieren …“ (COM: Menü Extras; Web: Import-Knopf in der oberen Leiste; Engine `importData`) liest eine
+CSV/TSV-Datei in das ausgewählte Diagramm oder in ein neues XY-Diagramm in der Folienmitte: Das Trennzeichen (Tab, „;“
+oder „,“) wird erkannt, Felder in Anführungszeichen behalten ihre Trennzeichen, ein Dezimalkomma wird zum Punkt
+(deutsches Excel), leere Zeilen entfallen (`Imports.CsvToChartData`). In PowerPoint geprüft (Szenario `import`).
+
 ## Achsen und Teilung
 
 Lineare Achsen wählen „runde“ Schrittweiten (1, 2, 2,5, 5 × 10ⁿ) für etwa fünf Intervalle und erweitern automatische

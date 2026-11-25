@@ -94,29 +94,64 @@ namespace InventaSketch.Core
             // Coordinates: main axis = layers, cross axis = order; gaps from the elements' sizes.
             double Main(SketchObject o) => down ? o.Size.H : o.Size.W;
             double Cross(SketchObject o) => down ? o.Size.W : o.Size.H;
-            var mainGap = Math.Max(8, 0.7 * ordered.Average(Main));
-            var crossGap = Math.Max(6, 0.4 * ordered.Average(Cross));
             var bounds = ordered.Select(o => o.Bounds()).ToList();
             var startMain = down ? bounds.Min(b => b.Y) : bounds.Min(b => b.X);
             var centreCross = down ? (bounds.Min(b => b.X) + bounds.Max(b => b.X + b.W)) / 2 : (bounds.Min(b => b.Y) + bounds.Max(b => b.Y + b.H)) / 2;
-            var result = new Dictionary<string, Vec2>(StringComparer.Ordinal);
-            var at = startMain;
-            foreach (var l in layers)
+            Dictionary<string, Vec2> Place(double mainGap, double crossGap)
             {
-                var depth = l.Max(v => Main(ordered[v]));
-                var width = l.Sum(v => Cross(ordered[v])) + crossGap * (l.Count - 1);
-                var c = centreCross - width / 2;
-                foreach (var v in l)
+                var result = new Dictionary<string, Vec2>(StringComparer.Ordinal);
+                var at = startMain;
+                foreach (var l in layers)
                 {
-                    var o = ordered[v];
-                    var mid = c + Cross(o) / 2;
-                    var main = at + depth / 2;
-                    result[o.Id] = down ? new Vec2(Math.Round(mid, 6), Math.Round(main, 6)) : new Vec2(Math.Round(main, 6), Math.Round(mid, 6));
-                    c += Cross(o) + crossGap;
+                    var depth = l.Max(v => Main(ordered[v]));
+                    var width = l.Sum(v => Cross(ordered[v])) + crossGap * (l.Count - 1);
+                    var c = centreCross - width / 2;
+                    foreach (var v in l)
+                    {
+                        var o = ordered[v];
+                        var mid = c + Cross(o) / 2;
+                        var main = at + depth / 2;
+                        result[o.Id] = down ? new Vec2(mid, main) : new Vec2(main, mid);
+                        c += Cross(o) + crossGap;
+                    }
+                    at += depth + mainGap;
                 }
-                at += depth + mainGap;
+                return result;
             }
-            return result;
+            Rect Extent(Dictionary<string, Vec2> r)
+            {
+                double x0 = double.MaxValue, y0 = double.MaxValue, x1 = double.MinValue, y1 = double.MinValue;
+                foreach (var o in ordered)
+                {
+                    var c = r[o.Id];
+                    x0 = Math.Min(x0, c.X - o.Size.W / 2); x1 = Math.Max(x1, c.X + o.Size.W / 2);
+                    y0 = Math.Min(y0, c.Y - o.Size.H / 2); y1 = Math.Max(y1, c.Y + o.Size.H / 2);
+                }
+                return new Rect(x0, y0, x1 - x0, y1 - y0);
+            }
+            // Gaps from the elements' sizes; on a page the diagram should fit, the gaps shrink (down to 3 mm) until it does,
+            // and it is shifted onto the page (a long chain left to right would otherwise run past the edge).
+            var page = doc.PageOf(ordered[0].Id);
+            double mainGap0 = Math.Max(8, 0.7 * ordered.Average(Main)), crossGap0 = Math.Max(6, 0.4 * ordered.Average(Cross));
+            var placed = Place(mainGap0, crossGap0);
+            if (page is not null)
+            {
+                const double margin = 4;
+                double pw = page.Size.W - 2 * margin, ph = page.Size.H - 2 * margin;
+                for (var f = 0.8; f >= 0.05; f -= 0.15)
+                {
+                    var e = Extent(placed);
+                    if (e.W <= pw && e.H <= ph) break;
+                    placed = Place(Math.Max(3, mainGap0 * f), Math.Max(3, crossGap0 * f));
+                }
+                var ext = Extent(placed);
+                double dx = 0, dy = 0;
+                // Too large even with small gaps: it starts at the left/top margin rather than running past both edges.
+                dx = ext.W > pw ? margin - ext.X : ext.X < margin ? margin - ext.X : ext.X + ext.W > page.Size.W - margin ? page.Size.W - margin - (ext.X + ext.W) : 0;
+                dy = ext.H > ph ? margin - ext.Y : ext.Y < margin ? margin - ext.Y : ext.Y + ext.H > page.Size.H - margin ? page.Size.H - margin - (ext.Y + ext.H) : 0;
+                if (dx != 0 || dy != 0) placed = placed.ToDictionary(kv => kv.Key, kv => kv.Value + new Vec2(dx, dy), StringComparer.Ordinal);
+            }
+            return placed.ToDictionary(kv => kv.Key, kv => new Vec2(Math.Round(kv.Value.X, 6), Math.Round(kv.Value.Y, 6)), StringComparer.Ordinal);
         }
 
         /// <summary>

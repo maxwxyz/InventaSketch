@@ -66,6 +66,13 @@ Meaning of the columns:
 Lists (`levels`, `limits`) use the same separators; a single value with a decimal comma (`92,5`) is one number.
 Ranges (`xrange`, `yrange`) accept `0;100`, `0..100`, `0,5;2,5` or `10 1000`; anything else means automatic.
 
+### Importing a table (2026-11-25)
+
+"Import data …" (COM: Extras menu; web: import button in the top bar; engine `importData`) reads a CSV/TSV file into the
+selected chart, or into a new XY chart in the middle of the slide: the separator (tab, ";" or ",") is detected, quoted
+fields keep their separators, a decimal comma becomes a point (German Excel) and empty lines are dropped
+(`Imports.CsvToChartData`). Checked in PowerPoint (scenario `import`).
+
 ## Axes and ticks
 
 Linear axes choose "nice" steps (1, 2, 2.5, 5 × 10ⁿ) for about five intervals and extend automatic ranges to the next

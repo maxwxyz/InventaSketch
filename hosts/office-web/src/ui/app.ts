@@ -221,6 +221,7 @@ export class App {
       this.iconButton("mono", t("cmd.mono"), () => this.setMonochrome(!st?.monochrome), {
         class: `isk-btn isk-icon-btn${st?.monochrome ? " is-active" : ""}`, "aria-pressed": String(!!st?.monochrome), "data-cmd": "mono",
       }),
+      this.importButton(),
       this.lineGroupSelect(st?.lineGroup ?? 0.5),
       this.accentSelect(st?.accent ?? null),
       this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome))),
@@ -234,6 +235,21 @@ export class App {
   /** Black and white is a document setting (one undo step); live sync redraws every unit on the slide. */
   private setMonochrome(value: boolean): void {
     this.edit((s) => s.setMonochrome(value));
+  }
+
+  /** "Import data": a CSV/TSV table into the selected chart (or a new one), GeoJSON/GPX as map routes and markers. */
+  private importButton(): HTMLElement {
+    const input = h("input", { type: "file", accept: ".csv,.tsv,.txt,.geojson,.json,.gpx", hidden: true });
+    input.addEventListener("change", async () => {
+      const f = input.files?.[0];
+      input.value = "";
+      if (!f) return;
+      const text = await f.text();
+      const geo = /\.(gpx|geojson)$/i.test(f.name) || (/\.json$/i.test(f.name) && /"type"\s*:\s*"(Feature|FeatureCollection|LineString|Point|Polygon)/.test(text));
+      this.edit((s) => (geo ? s.importGeo(text) : s.importData(text)));
+    });
+    const button = this.iconButton("load", t("cmd.import"), () => input.click(), { "data-cmd": "import" });
+    return h("span", {}, button, input);
   }
 
   /** ISO 128 line group of the drawing (a document setting, one undo step; live sync redraws every unit on the slide). */
