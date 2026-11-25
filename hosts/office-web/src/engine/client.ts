@@ -74,6 +74,8 @@ export class Session {
   setMonochrome(value: boolean): EditorState { return this.c("setMonochrome", { value }); }
   /** ISO 128 line group of the drawing (thick line width in mm: 0.25, 0.35, 0.5, 0.7 or 1). */
   setLineGroup(value: number): EditorState { return this.c("setLineGroup", { value }); }
+  /** Accent colour of the drawing: preset id, #rrggbb, or "" for each module's own colours. */
+  setAccent(text: string): EditorState { return this.c("setAccent", { text }); }
   /** Sets the main text (ObjectInfo.mainText) of one object; one undo step. */
   setMainText(id: string, text: string): EditorState { return this.c("setMainText", { id, text }); }
   /** Library items that fit the first of `ids` ("Insert ▸"), at most `max`. */

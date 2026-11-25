@@ -245,6 +245,13 @@ UX round (2026-11-20, from the maintainer's feedback):
   group are a **slide style** kept in the slide tag `ISK_STYLE` (`OnSlide/SlideStyle.cs`): every unit drawn on the slide
   takes it, so elements inserted later match the ones already there. Slides without the tag keep each unit's own
   settings.
+- **Accent colour** (menu next to Line weights, 2026-11-25): one colour for the coloured parts of every InventaSketch
+  element of the slide – blue, teal, green, orange, red, purple, slate or the original colours. Coloured parts take the
+  accent's hue and saturation and keep their lightness (pale fills stay pale); black, white, greys and the muted
+  blue-greys of housings stay (`Accents` in Core). Part of the slide style (`accent=` in `ISK_STYLE`); an element's own
+  formatting still wins; black and white comes after it. Checked in PowerPoint (scenario `line-group`). The scenario
+  also checks that the ribbon loaded (`RibbonLoaded`): PowerPoint drops an invalid ribbon XML silently – an empty `tag`
+  attribute did exactly that once.
 - **Text**: double-click on a selected unit, the "Text" bar button or "Text …" in the pie menu edit its main text
   (object text, reference numeral, name or label).
 - **Insert ▸** in the pie menu (and the insert palette of the bar) offers elements that fit the selection

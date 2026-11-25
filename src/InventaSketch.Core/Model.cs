@@ -173,6 +173,8 @@ namespace InventaSketch.Core
         /// (<see cref="Style.LineGroups"/>; null = 0.5, the group the elements are designed in).
         /// </summary>
         public double? LineGroup { get; init; }
+        /// <summary>Accent colour of the drawing (#rrggbb, <see cref="Accents"/>): coloured parts take its hue; null = each module's colours.</summary>
+        public string? Accent { get; init; }
         /// <summary>
         /// Plan scale denominator of the document (100 means 1:100), used by types with <see cref="ObjectType.UsesPlanScale"/>
         /// when an object has no scale of its own. Null: each module's default.

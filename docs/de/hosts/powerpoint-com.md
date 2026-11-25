@@ -220,6 +220,13 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   Schwarz-Weiß und Liniengruppe sind ein **Folienstil** im Folien-Tag `ISK_STYLE` (`OnSlide/SlideStyle.cs`): Jede auf
   der Folie gezeichnete Einheit übernimmt ihn, später eingefügte Elemente passen also zu den vorhandenen. Folien ohne
   das Tag behalten die Einstellungen jeder Einheit.
+- **Akzentfarbe** (Menü neben Linienstärken, 25.11.2026): eine Farbe für die farbigen Teile aller
+  InventaSketch-Elemente der Folie – Blau, Petrol, Grün, Orange, Rot, Violett, Schiefer oder die Originalfarben. Farbige
+  Teile übernehmen Farbton und Sättigung des Akzents und behalten ihre Helligkeit (helle Füllungen bleiben hell);
+  Schwarz, Weiß, Grautöne und die gedeckten Blaugrautöne von Gehäusen bleiben (`Accents` im Core). Teil des Folienstils
+  (`accent=` in `ISK_STYLE`); eine eigene Formatierung des Elements gilt weiter, Schwarz-Weiß kommt danach. In PowerPoint
+  geprüft (Szenario `line-group`). Das Szenario prüft auch, dass das Menüband geladen ist (`RibbonLoaded`): PowerPoint
+  verwirft ein ungültiges Menüband-XML stillschweigend – ein leeres `tag`-Attribut hat genau das einmal ausgelöst.
 - **Text**: Doppelklick auf eine ausgewählte Einheit, der Leistenknopf „Text“ oder „Text …“ im Kreismenü bearbeiten
   ihren Haupttext (Objekttext, Bezugszeichen, Name oder Beschriftung).
 - **Einfügen ▸** im Kreismenü (und die Einfüge-Palette der Leiste) bietet passende Elemente zur Auswahl an

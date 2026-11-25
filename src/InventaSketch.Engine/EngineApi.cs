@@ -54,6 +54,8 @@ namespace InventaSketch.Engine
                 ["setPlanScale"] = SetPlanScaleCore,
                 ["setMonochrome"] = SetMonochromeCore,
                 ["setLineGroup"] = SetLineGroupCore,
+                ["setAccent"] = SetAccentCore,
+                ["accents"] = AccentsCore,
                 ["setMainText"] = SetMainTextCore,
                 ["suggestions"] = SuggestionsCore,
                 ["quickAdd"] = QuickAddCore,
@@ -163,6 +165,7 @@ namespace InventaSketch.Engine
         public string SetPlanScale(string json) => Invoke("setPlanScale", json);
         public string SetMonochrome(string json) => Invoke("setMonochrome", json);
         public string SetLineGroup(string json) => Invoke("setLineGroup", json);
+        public string SetAccent(string json) => Invoke("setAccent", json);
         public string SetMainText(string json) => Invoke("setMainText", json);
         public string Suggestions(string json) => Invoke("suggestions", json);
         public string Undo(string json) => Invoke("undo", json);
@@ -220,6 +223,7 @@ namespace InventaSketch.Engine
                 PlanScale = doc.Settings.PlanScale,
                 Monochrome = doc.Settings.Monochrome,
                 LineGroup = doc.Settings.LineGroup ?? Style.DesignLineGroup,
+                Accent = doc.Settings.Accent,
                 Changed = s.LastChanged.ToList(),
                 Dependents = s.LastDependents.ToList(),
             };
@@ -482,6 +486,28 @@ namespace InventaSketch.Engine
             if (s.Doc.Settings.LineGroup != group)
                 s.Apply("Line group", d => d with { Settings = d.Settings with { LineGroup = group } });
             return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// Sets the accent colour of the drawing (<see cref="DocumentSettings.Accent"/>, <c>text</c> = #rrggbb or a preset id
+        /// of <c>accents</c>; empty or absent = each module's own colours); one undo step, every object counts as changed.
+        /// </summary>
+        private object SetAccentCore(EngineRequest r)
+        {
+            var s = S(r);
+            var text = (r.Text ?? "").Trim();
+            var preset = Accents.Presets.FirstOrDefault(p => string.Equals(p.Id, text, StringComparison.OrdinalIgnoreCase));
+            var accent = text.Length == 0 ? null : preset.Id is not null ? preset.Color : Accents.Normalize(text) ?? throw new ArgumentException("Unknown accent colour '" + text + "'.");
+            if (s.Doc.Settings.Accent != accent)
+                s.Apply("Accent colour", d => d with { Settings = d.Settings with { Accent = accent } });
+            return StateOf(s, r);
+        }
+
+        /// <summary>The offered accent colours: id, colour, name in the session language.</summary>
+        private object AccentsCore(EngineRequest r)
+        {
+            var lang = r.Lang is null ? (r.Session is null ? Lang.En : S(r).Lang) : Language.Detect(r.Lang);
+            return Accents.Presets.Select(p => new { id = p.Id, color = p.Color, name = p.Name.Get(lang) }).ToList();
         }
 
         /// <summary>Sets the main text (<see cref="MainTextOf"/>) of object <c>id</c> (default: the first selected object that has one); one undo step.</summary>
@@ -1609,8 +1635,9 @@ namespace InventaSketch.Engine
                 // Black and white is a slide-wide switch (the COM add-in sets it on every unit): the slide model decides, so
                 // live redraws keep the look of the units on the slide.
                 if (d.Settings.Monochrome != src.Settings.Monochrome) d = d with { Settings = d.Settings with { Monochrome = src.Settings.Monochrome } };
-                // So is the line group.
+                // So are the line group and the accent colour.
                 if (d.Settings.LineGroup != src.Settings.LineGroup) d = d with { Settings = d.Settings with { LineGroup = src.Settings.LineGroup } };
+                if (d.Settings.Accent != src.Settings.Accent) d = d with { Settings = d.Settings with { Accent = src.Settings.Accent } };
                 return d;
             });
             if (r.Add != false) s.Select(objs.Select(o => o.Id));
@@ -1640,8 +1667,8 @@ namespace InventaSketch.Engine
                 if (!before.Objects.TryGetValue(kv.Key, out var old) || !ReferenceEquals(old, kv.Value)) changed.Add(kv.Key);
             // Black and white changes the rendering of every object.
             if (before.Settings.Monochrome != after.Settings.Monochrome) changed.UnionWith(after.Objects.Keys);
-            // So does the line group (every stroke width).
-            if (before.Settings.LineGroup != after.Settings.LineGroup) changed.UnionWith(after.Objects.Keys);
+            // So do the line group (every stroke width) and the accent colour.
+            if (before.Settings.LineGroup != after.Settings.LineGroup || before.Settings.Accent != after.Settings.Accent) changed.UnionWith(after.Objects.Keys);
             // A new plan scale changes the rendering of every object that uses it.
             if (before.Settings.PlanScale != after.Settings.PlanScale)
                 foreach (var o in after.Objects.Values)

@@ -131,6 +131,23 @@ namespace InventaSketch.AddIn
             }
         }
 
+        /// <summary>Sets the accent colour of the current slide (preset id, #rrggbb, "" = original colours); false on failure.</summary>
+        public bool SetAccent(string value)
+        {
+            try
+            {
+                return _connect.ApplyAccent(value);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Automation.SetAccent", ex);
+                return false;
+            }
+        }
+
+        /// <summary>True once PowerPoint has loaded the InventaSketch ribbon tab (false: the ribbon XML was rejected).</summary>
+        public bool RibbonLoaded() => _connect.RibbonLoaded;
+
         /// <summary>Button ids of the floating bar as last shown, comma-separated (UI tests; no log needed).</summary>
         public string BarIds() => _connect.LastBarIds();
 

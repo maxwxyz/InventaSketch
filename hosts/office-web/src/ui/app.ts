@@ -222,6 +222,7 @@ export class App {
         class: `isk-btn isk-icon-btn${st?.monochrome ? " is-active" : ""}`, "aria-pressed": String(!!st?.monochrome), "data-cmd": "mono",
       }),
       this.lineGroupSelect(st?.lineGroup ?? 0.5),
+      this.accentSelect(st?.accent ?? null),
       this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome))),
       this.iconButton("png", t("cmd.exportPng"), () => exportPng(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome).catch((e) => this.report(e))),
       h("span", { class: "isk-grow" }),
@@ -243,6 +244,17 @@ export class App {
       sel.append(h("option", { value: String(g), selected: Math.abs(g - current) < 1e-9 }, mm));
     }
     sel.addEventListener("change", () => this.edit((s) => s.setLineGroup(Number(sel.value))));
+    return sel;
+  }
+
+  /** Accent colour of the drawing (a document setting, one undo step); the engine offers the presets (`accents`). */
+  private accentSelect(current: string | null): HTMLElement {
+    const sel = h("select", { class: "isk-input isk-linegroup", title: t("cmd.accent"), "aria-label": t("cmd.accent"), "data-cmd": "accent" });
+    sel.append(h("option", { value: "", selected: !current }, t("cmd.accentNone")));
+    let presets: { id: string; color: string; name: string }[] = [];
+    try { presets = this.engine.call<{ id: string; color: string; name: string }[]>("accents", { lang: lang() }); } catch { presets = []; }
+    for (const p of presets) sel.append(h("option", { value: p.id, selected: current === p.color }, p.name));
+    sel.addEventListener("change", () => this.edit((s) => s.setAccent(sel.value)));
     return sel;
   }
 
