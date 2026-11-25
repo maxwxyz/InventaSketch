@@ -497,7 +497,34 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
 9. UI/UX-Review aller Elemente, Kombinationen und Abläufe (25.11.2026, docs/de/design/ux-review-2026-11-25.md): lesbare
    Leiste und lesbares Kreismenü, Elementname am Bearbeiten-Platz, schrittweises Einblenden, Leiste mit vier Knöpfen;
    Folgepunkte F2 folienweite Symbolgröße, F3 Piktogramm- und Beschriftungshygiene, F4 Review der Mehrfachauswahl.
-10. Später: Seitenleisten-Vorschau live, Ablauf-/GRAFCET-Diagramme, isometrische Teile, bewegte Lagen,
+10. **Auswahldarstellung überall (Maintainer 25.11.2026):** der blaue Schein auch für jedes auswählbare Teil: Kurven,
+    Flächen, Achsen, Grenzlinien, Pfeile und Beschriftungen von Diagrammen und Abbildungen (COM: das ausgewählte Teil
+    leuchtet, der Rest des Elements schwach – umgesetzt, in PowerPoint noch zu prüfen), und dasselbe im Web-Add-in und in
+    LibreOffice.
+11. **Verbundene Elemente, erweitert (Maintainer 25.11.2026):** neben Netzen, Schleifen, „bewegt sich mit“, folgenden
+    Elementen und Raumwänden: der Kraftfluss durch mechanische Baugruppen; Leitungen bis einschließlich Gerät und
+    darüber hinaus weiter; Darstellungsoptionen je Medium, wo sinnvoll – Bus gegen Energie, DC/AC (Farben L1/L2/L3/N/PE),
+    warm/kalt (Vorlauf/Rücklauf), Druck/Rücklauf/Leckage, Signal – als folienweiter Farbmodus und als Hervorhebung der
+    verbundenen Auswahl.
+12. **Namen, die zusammengehören, auch folienübergreifend (Maintainer 25.11.2026):** jede Leitung, jedes Kabel, jedes
+    Rohr kann eine Bezeichnung tragen (und einen Wert, wo sinnvoll: Querschnitt, Typ, Bemessung, DN, Durchfluss);
+    Leitungs- und Kabelenden bekommen Endmarkierungen; gleicher Name heißt gleiche Verbindung – auch über Folien hinweg
+    (vier Wände eines Raums auf vier Folien: Wo eine Leitung die Folie verlässt, steht, wo sie weitergeht, „→ W3 Folie
+    4“, und Auswahl/Schein zeigen die Fortsetzung). Jedes Element bekommt Bezeichnung und Wertbeschriftung, wo sinnvoll
+    (Widerstand, Kondensator, Spule, Sicherung, Motor, Pumpe, Ventil, TGA-Geräte), automatisch platziert und bei
+    Änderungen erhalten.
+13. **Elektroinstallation und Schaltschrank (Maintainer 25.11.2026):** ein Modul Verteiler/Schaltschrank: Hutschienen,
+    Reihenklemmen (Durchgang, PE, N, Sicherung, Mehrstock), FI (RCD), Leitungsschutzschalter, FI/LS, Überspannungsschutz,
+    Hauptschalter, Zähler, Schütze, Relais, Bus-Aktoren und -Koppler (KNX u. a.), Netzteile, Schalter und Taster,
+    Kabelkanäle – mit Betriebsmittelkennzeichen (Ideen nach IEC 81346) und Bemessungswerten. Exporte: Liste der
+    Hausinstallation, Netz-/Stromkreisplan (welcher Stromkreis versorgt welchen Raum/welches Gerät), Verteilerbelegung
+    und -beschriftung, Klemmenplan (Klemmleiste mit Adern, Querschnitten, Farben, Zielen), Kabelliste.
+14. **Technische Berechnungen, interaktiv (Maintainer 25.11.2026):** überall, wo Werte eingegeben werden können (Elektrik
+    und Elektronik, Maschinenelemente, Maschinen, Fluidtechnik, Solar/Energie, TGA, Verfahrenstechnik), werden abgeleitete
+    Werte live berechnet und auf Wunsch angezeigt: U/I/P/R, C, L, Impedanz und Zeitkonstanten; Drehzahl, Drehmoment,
+    Leistung, Übersetzung, Achsabstand aus Modul und Zähnezahl; Durchfluss, Druck, Kraft; Wärmemenge und Wärmestrom;
+    PV-Strangspannungen und Ertrag. Konzept und Katalog: docs/de/design/engineering-calculations.md (Recherche läuft).
+15. Später: Seitenleisten-Vorschau live, Ablauf-/GRAFCET-Diagramme, isometrische Teile, bewegte Lagen,
    Batteriezellen-Anordnungen, hindernisvermeidendes Routing für von Hand platzierte Ablaufkästen.
 
 ### Weitere sinnvolle Module und Funktionen

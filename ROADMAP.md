@@ -449,7 +449,31 @@ in the drawing).
 9. UI/UX review of all elements, combinations and workflows (2026-11-25, docs/en/design/ux-review-2026-11-25.md):
    readable bar and pie, element name on the pie's edit place, progressive disclosure, four-button bar; follow-ups F2
    slide-wide symbol size, F3 pictogram and label hygiene, F4 multi-selection review.
-10. Later: sidebar preview live, sequence/GRAFCET charts, isometric parts, moved positions, battery arrays,
+10. **Selection look everywhere (maintainer 2026-11-25):** the blue halo also for every part that can be selected:
+    curves, areas, axes, limit lines, arrows and labels of charts and figures (COM: the selected part glows, the rest of
+    the element faintly – implemented, to be verified in PowerPoint), and the same in the web add-in and LibreOffice.
+11. **Connected elements, extended (maintainer 2026-11-25):** besides nets, loops, "moves along", following elements and
+    room walls: the force flow (load path) through mechanical assemblies; lines up to and including the device and on
+    beyond it; display options per medium where relevant – bus vs. power, DC/AC (L1/L2/L3/N/PE colours), warm/cold
+    (supply/return), pressure/return/drain, signal – as a slide-wide colour mode and as a highlight of the connected set.
+12. **Names that belong together, across slides (maintainer 2026-11-25):** every line, cable and pipe can carry a
+    designation (and a value where relevant: cross-section, type, rating, DN, flow); line and cable ends get end
+    markers; the same name means the same connection – also across slides (four walls of a room on four slides: where a
+    line leaves the slide it says where it continues, "→ W3 slide 4", and the selection/halo shows its continuation).
+    Every element gets its designation and value label where relevant (resistor, capacitor, inductor, fuse, motor,
+    pump, valve, building-services devices), placed automatically and kept on edits.
+13. **Electrical installation and switchgear (maintainer 2026-11-25):** a distribution board / control cabinet module:
+    DIN rails, terminal blocks (feed-through, PE, N, fused, multi-level), RCD (FI), MCBs, RCBOs, SPDs, main switch,
+    meters, contactors, relays, bus actuators and couplers (KNX and others), power supplies, switches and push buttons,
+    cable ducts – with designations (BMK/reference designations per IEC 81346 ideas) and ratings. Exports: house
+    installation plan list, network/circuit plan (which circuit feeds which room/device), distribution board layout
+    and labelling, terminal plan (terminal strip with wires, cross-sections, colours, targets), cable list.
+14. **Engineering calculations, interactive (maintainer 2026-11-25):** wherever values can be entered (electrical and
+    electronics, machine elements, machines, fluid power, solar/energy, building services, process), derived values
+    are computed live and shown on request: U/I/P/R, C, L, impedance and time constants; speed, torque, power, ratio,
+    centre distance from module and teeth; flow, pressure, force; heat quantity and heat flow; PV string voltages and
+    yield. Concept and catalogue: docs/en/design/engineering-calculations.md (research in progress).
+15. Later: sidebar preview live, sequence/GRAFCET charts, isometric parts, moved positions, battery arrays,
    obstacle-aware routing for hand-placed flowchart boxes.
 
 ### Further modules and functions worth adding
