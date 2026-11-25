@@ -59,6 +59,39 @@ namespace InventaSketch.Engine.Tests
         }
 
         [Fact]
+        public void CurvesAndJunctionsKeepTheRoadLaneWidthForAnyLaneCount()
+        {
+            var straight = Reg.Create(Reg.Item("auto.road.2")!, Vec2.Zero);
+            var lane = straight.Size.H / 2;
+            foreach (var id in new[] { "auto.curve", "auto.intersection" })
+            {
+                var o = Reg.Create(Reg.Item(id)!, new Vec2(400, 400));
+                for (var n = 2; n <= 6; n++)
+                {
+                    var doc = SketchDocument.Create(new Size2(1000, 800));
+                    doc = Edits.Add(doc, doc.Pages[0].Id, o);
+                    var ends = Reg.PageAnchors(o, new RenderContext(doc)).Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.End && a.Id!.EndsWith(".end")).Take(2).ToList();
+                    Assert.Equal(lane, ends[0].P.DistanceTo(ends[1].P), 3);
+                    o = Reg.Type(o.Type)!.Actions(o, Lang.En).Single(a => a.Id == "param.lanes.inc").Apply(o);
+                }
+            }
+            // A 4-lane road docks lane for lane on a 4-lane intersection.
+            var x = Reg.Create(Reg.Item("auto.intersection")!, new Vec2(400, 400));
+            var t = Reg.Type(x.Type)!;
+            for (var k = 0; k < 2; k++) x = t.Actions(x, Lang.En).Single(a => a.Id == "param.lanes.inc").Apply(x);
+            var d4 = SketchDocument.Create(new Size2(1000, 800));
+            d4 = Edits.Add(d4, d4.Pages[0].Id, x);
+            var port = Building.Ports(Reg, d4, x.Id).First(p => p.Kind == PortKind.AxisEnd);
+            var road4 = Reg.Item("auto.road.4")!;
+            var placed = Building.Place(Reg, d4, x.Id, port, road4)!;
+            var after = Edits.Add(d4, d4.Pages[0].Id, placed);
+            var armEnds = Reg.PageAnchors(x, new RenderContext(d4)).Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.End).Select(a => a.P).ToList();
+            var met = Reg.PageAnchors(placed, new RenderContext(after)).Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis)
+                .Count(a => armEnds.Any(e => e.DistanceTo(a.P) < 0.05 || e.DistanceTo(a.Q) < 0.05));
+            Assert.Equal(4, met);
+        }
+
+        [Fact]
         public void RoadElementsFitASlide()
         {
             // A 16:9 slide is 280 x 157.5 mm (13.333 x 7.5 in); every road element fits on it with room to spare.

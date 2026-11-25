@@ -72,6 +72,8 @@ namespace InventaSketch.Modules.Automotive
         public override IReadOnlyList<string> Keywords => _keywords;
         public override IReadOnlyList<ViewDef> Views => _viewDefs;
         public override Size2 DefaultSize => _views[0].Design;
+        /// <summary>The design size of the object's view for its parameters (lanes widen roads, curves and junctions).</summary>
+        public override Size2? NaturalSize(SketchObject o) => Spec(o).DesignFor(o);
         public override IReadOnlyList<ParamDef> Parameters => Params;
         public override bool PreferUniformScale => Uniform;
         public override bool HasText => TextEditable;

@@ -244,8 +244,8 @@ page-level findings.
 3. Ribbon group *Review* in COM – done 2026-11-25 (Patent check, Compare, Import, Export data).
 4. Open details: a section line per wall; LibreOffice on-canvas limits (guides while dragging need drawing into the
    view); real webspace and installer runs; the web host does not set the corner radius of rounded rectangles yet
-   (PowerPoint's default is used; to be done with the web check in PowerPoint); curves and intersections with four or more lanes per
-   direction narrow their lanes to fit their box.
+   (PowerPoint's default is used; to be done with the web check in PowerPoint). Curves and intersections keep the road lane
+   width for any lane count since 2026-11-25 (they grow with their lanes).
 
 **Maintainer test 2026-11-25 – found and fixed:** the insert box failed the second time (it disposed shared thumbnails);
 "+" on scaled elements placed library-sized parts (now the scale is passed on, checked for every element: 861 build

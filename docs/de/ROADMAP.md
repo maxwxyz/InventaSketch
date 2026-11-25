@@ -272,8 +272,8 @@ Seite hat kein Element, die Navigation muss also seitenweite Befunde behandeln.
 3. Menüband-Gruppe *Prüfen* in COM – erledigt 25.11.2026 (Patentprüfung, Vergleichen, Importieren, Daten exportieren).
 4. Offene Details: Schnittlinie je Wand; Grenzen der Bedienung auf der Folie in LibreOffice (Hilfslinien beim Ziehen
    brauchen Zeichnen in die Ansicht); echte Läufe auf Webspace und mit dem Installer; der Web-Host setzt den Eckenradius
-   abgerundeter Rechtecke noch nicht (es gilt PowerPoints Standard; zusammen mit der Web-Prüfung in PowerPoint); Kurven und
-   Kreuzungen mit vier und mehr Fahrstreifen je Richtung verschmälern ihre Fahrstreifen, um in ihre Box zu passen.
+   abgerundeter Rechtecke noch nicht (es gilt PowerPoints Standard; zusammen mit der Web-Prüfung in PowerPoint). Kurven und
+   Kreuzungen behalten seit 25.11.2026 bei jeder Fahrstreifenzahl die Fahrstreifenbreite (sie wachsen mit).
 
 **Test des Maintainers 25.11.2026 – gefunden und behoben:** Das Einfügefeld scheiterte beim zweiten Öffnen (es gab
 gemeinsam genutzte Vorschaubilder frei); „+“ an skalierten Elementen setzte Teile in Bibliotheksgröße an (jetzt wird der

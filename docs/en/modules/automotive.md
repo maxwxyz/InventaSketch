@@ -17,9 +17,11 @@ German version: [../../de/modules/automotive.md](../../de/modules/automotive.md)
   fits a 16:9 slide: a 2-lane road is 96 × 42 mm, a car 27 mm long, an intersection 96 × 96 mm, a roundabout 120 × 120 mm;
   every top view shares the factor, so vehicles still fit their lanes. Side, front and rear views keep their design size.
   Free uniform/non-uniform scaling changes only the box size.
-- **One lane width everywhere** – straight roads, curves, intersections (up to three lanes per direction) and the
-  roundabout's arms have the same lane width, so a road docks lane for lane on every arm (the roundabout's arm lanes were
-  narrower before 2026-11-25).
+- **One lane width everywhere** – straight roads, curves, intersections and the roundabout's arms have the same lane
+  width for any number of lanes, so a road docks lane for lane on every arm (before 2026-11-25 the roundabout's arm lanes
+  were narrower, and curves and intersections narrowed their lanes from four lanes on). Curves and intersections grow
+  with their lanes ("Add lane" scales the box with them); `ObjectType.NaturalSize` tells "+" that this growth is not a
+  scale.
 - **Driving direction +x** (front on the right), y down; in the top view the vehicle's left side is −y.
   Rotate or mirror the object for other directions.
 - Every object is insertable without parameters and is drawn inside its box in every view.
