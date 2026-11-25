@@ -72,6 +72,9 @@ namespace InventaSketch.AddIn.Tests
             Assert.Equal("series.2", ActionChoiceBar.AfterDelete("point.2.7"));
             Assert.Null(ActionChoiceBar.AfterDelete("series.2"));
             Assert.Null(ActionChoiceBar.AfterDelete("area.0"));
+            // An added area is selected: the one new part key.
+            Assert.Equal("region.1", ActionChoiceBar.Added(new[] { "series.0", "region.0" }, new[] { "series.0", "region.0", "region.1" }));
+            Assert.Null(ActionChoiceBar.Added(new[] { "series.0" }, new[] { "series.0" }));
         }
     }
 }

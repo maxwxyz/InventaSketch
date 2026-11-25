@@ -103,8 +103,7 @@ namespace InventaSketch.Modules.Charts.Tests
                 {
                     Assert.False(string.IsNullOrEmpty(a.Label.En), t.Id + "/" + a.Id);
                     Assert.False(string.IsNullOrEmpty(a.Label.De), t.Id + "/" + a.Id);
-                    // Choice options may go without a pictogram (hosts show their label or preview).
-                    if (a.Choice is null || a.Icon.Length > 0) Assert.Contains(a.Icon, IconIds.All);
+                    Assert.Contains(a.Icon, IconIds.All);
                     if (a.Input is not null) Assert.False(string.IsNullOrEmpty(a.Input.Label.De), t.Id + "/" + a.Id);
                 }
             }

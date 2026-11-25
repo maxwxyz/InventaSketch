@@ -20,7 +20,8 @@ namespace InventaSketch.Engine.Tests
     /// Exceptions: label-only markers (<see cref="IconIds.IsLabelOnly"/>: switch, next variant, pick option), which hosts
     /// never show without their label, and step pictograms (<see cref="IconIds.IsStep"/>: "+"/"−", one more/fewer) when each
     /// comes with its partner of the same value (".inc"/".dec", ".more"/".fewer" …), which hosts show with the label.
-    /// (4) <see cref="IconIds.Option"/> only for actions that set one parameter (a choice). (5) Labels fit the bar.
+    /// (4) <see cref="IconIds.Option"/> only for actions that pick a choice (set one parameter, or an option of an
+    /// <see cref="ActionChoice"/>). (5) Labels fit the bar.
     /// </para>
     /// </summary>
     public class IconHygieneTests
@@ -143,7 +144,8 @@ namespace InventaSketch.Engine.Tests
         [Fact]
         public void OptionPictogramOnlyPicksAChoice()
         {
-            var bad = AllActions().Where(x => x.Action.Icon == IconIds.Option && x.Action.ParamKeys is not { Count: > 0 })
+            // An option of a choice (ActionChoice: curve shape, fill pattern …) picks a choice too, also without a parameter.
+            var bad = AllActions().Where(x => x.Action.Icon == IconIds.Option && x.Action.ParamKeys is not { Count: > 0 } && x.Action.Choice is null)
                 .Select(x => $"{x.List.Type}: {x.Action.Id} '{x.Action.Label.En}' uses the option pictogram without setting a parameter").Distinct().ToList();
             foreach (var b in bad) _out.WriteLine(b);
             Assert.Empty(bad);

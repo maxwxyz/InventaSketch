@@ -31,14 +31,15 @@ namespace InventaSketch.Core
 
         /// <summary>
         /// One option of <paramref name="choice"/>: id "key=value", the option's label, its pictogram (an <see cref="IconIds"/>
-        /// id, or "" when no pictogram fits – hosts then show the label or <see cref="ContextAction.Preview"/>), current or not.
+        /// id; empty means <see cref="IconIds.Option"/>, the label-only option marker – hosts then show the label or
+        /// <see cref="ContextAction.Preview"/>), current or not.
         /// </summary>
         public static ContextAction Option(ActionChoice choice, string value, I18nText label, string icon, bool current, Func<SketchObject, SketchObject> apply)
-            => new(choice.Key + Separator + value, label, icon ?? "", apply) { Choice = choice, IsActive = current && !choice.IsMenu, Group = "choice:" + choice.Key };
+            => new(choice.Key + Separator + value, label, string.IsNullOrEmpty(icon) ? IconIds.Option : icon, apply) { Choice = choice, IsActive = current && !choice.IsMenu, Group = "choice:" + choice.Key };
 
         /// <summary>One command of a menu choice (<see cref="ActionChoice.IsMenu"/>) that asks for a text value first.</summary>
         public static ContextAction InputOption(ActionChoice choice, string value, I18nText label, string icon, I18nText prompt, string current, Func<SketchObject, string, SketchObject> apply, string? unit = null)
-            => ContextAction.WithInput(choice.Key + Separator + value, label, icon ?? "", prompt, current, apply, unit) with { Choice = choice, Group = "choice:" + choice.Key };
+            => ContextAction.WithInput(choice.Key + Separator + value, label, string.IsNullOrEmpty(icon) ? IconIds.Option : icon, prompt, current, apply, unit) with { Choice = choice, Group = "choice:" + choice.Key };
 
         /// <summary>
         /// The options of a choice parameter (<see cref="ParamKind.Choice"/>) as choice options: each sets the parameter to its
@@ -54,7 +55,7 @@ namespace InventaSketch.Core
             foreach (var opt in options)
             {
                 var value = opt.Value;
-                var a = Option(choice, value, opt.Label, opt.Icon ?? "", value == current, x => x.WithParam(def.Key, value)) with { ParamKeys = new[] { def.Key } };
+                var a = Option(choice, value, opt.Label, opt.Icon ?? IconIds.Option, value == current, x => x.WithParam(def.Key, value)) with { ParamKeys = new[] { def.Key } };
                 yield return group is null ? a : a with { Group = group };
             }
         }

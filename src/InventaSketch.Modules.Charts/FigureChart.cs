@@ -237,10 +237,11 @@ namespace InventaSketch.Modules.Charts
             ("triangle", new I18nText("Triangles", "Dreiecke")), ("diamond", new I18nText("Diamonds", "Rauten")), ("cross", new I18nText("Crosses", "Kreuze")), ("plus", new I18nText("Plus signs", "Pluszeichen")),
         };
 
-        /// <summary>The line style as a choice (option ids "chart.figure.line=dash" …; pictograms of the dash styles).</summary>
+        /// <summary>The line style as a choice (option ids "part.dash=dash" …, replacing the generic line style of the part; pictograms of the dash styles).</summary>
         private static IEnumerable<ContextAction> LineChoice(Lang lang, string current, Action<FigureSpec, string> set)
         {
-            var choice = new ActionChoice("chart.figure.line", new I18nText("Line style", "Linienart"));
+            // Same key as the generic line style of a part (PartLooks.DashChoice), which it replaces: stored in the specification.
+            var choice = new ActionChoice(PartLooks.DashChoice, new I18nText("Line style", "Strichart"));
             foreach (var (value, label) in LineStyles)
             {
                 var v = value;
