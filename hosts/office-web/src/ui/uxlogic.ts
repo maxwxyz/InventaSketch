@@ -1,7 +1,7 @@
 // Pure rules of the UI/UX round 2026-11-24 (ROADMAP "UX rules"): context-only transforms, the multi-selection bar,
 // "Select assembly", where the snap label goes and the motion path object of a coupler curve. No DOM access.
 
-import type { ActionInfo, ArrangeOption, ObjectInfo, SnapGuide, TraceInfo, TransformEffect, Vec2 } from "../engine/types";
+import type { ActionInfo, ArrangeOption, ObjectInfo, PreflightFinding, PreflightSeverity, SnapGuide, TraceInfo, TransformEffect, Vec2 } from "../engine/types";
 
 /** Bar/pie action ids of the quick transforms and the engine flag that says whether they change the drawing. */
 const TRANSFORMS: Record<string, keyof TransformEffect> = { flipH: "mirrorH", flipV: "mirrorV", rotate90: "rotate90" };
@@ -79,4 +79,28 @@ export function withTracedPoints(obj: Record<string, unknown>, trace: TraceInfo)
   const out: Record<string, unknown> = { ...obj, points: trace.points.map((p) => ({ x: round4(p.x), y: round4(p.y) })), params };
   delete out.attach;
   return out;
+}
+
+const SEVERITY_ORDER: Record<PreflightSeverity, number> = { error: 0, warning: 1, manual: 2, info: 3 };
+
+/** Patent check list: errors first, then warnings, points to check by hand and notes; the engine order within each. */
+export function orderFindings(findings: PreflightFinding[]): PreflightFinding[] {
+  return findings.map((f, i) => ({ f, i }))
+    .sort((a, b) => (SEVERITY_ORDER[a.f.severity] ?? 9) - (SEVERITY_ORDER[b.f.severity] ?? 9) || a.i - b.i)
+    .map((x) => x.f);
+}
+
+/** Number of findings per severity (for the summary line). */
+export function findingCounts(findings: PreflightFinding[]): Record<PreflightSeverity, number> {
+  const c: Record<PreflightSeverity, number> = { error: 0, warning: 0, manual: 0, info: 0 };
+  for (const f of findings) if (f.severity in c) c[f.severity]++;
+  return c;
+}
+
+/** A cited source as label and link: "DE-01: PatV § 6(2) <https://…>; EP-02: …" → [{ label, url }, …]. */
+export function sourceLinks(source: string): { label: string; url?: string }[] {
+  return source.split(/;\s+(?=[A-Z]{2,4}-\d)/).map((part) => {
+    const m = /^(.*?)\s*<(https?:\/\/[^>\s]+)>\s*$/.exec(part.trim());
+    return m ? { label: m[1], url: m[2] } : { label: part.trim() };
+  }).filter((x) => x.label.length > 0);
 }

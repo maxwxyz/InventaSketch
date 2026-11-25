@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { ActionInfo, ArrangeOption, CatalogItem, ObjectInfo, SnapGuide, SuggestionInfo } from "../src/engine/types";
+import type { ActionInfo, ArrangeOption, CatalogItem, ObjectInfo, PreflightFinding, SnapGuide, SuggestionInfo } from "../src/engine/types";
 import { boxPosition, insertBoxKey, insertRows, rememberRecent } from "../src/ui/insertbox";
 import { hasIcon } from "../src/ui/icons";
 import {
-  assemblyExtends, canTrace, elementCount, filterTransforms, multiBarGroups, snapLabelAnchor, tracedPathItem, withTracedPoints,
+  assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, orderFindings, snapLabelAnchor, sourceLinks, tracedPathItem, withTracedPoints,
 } from "../src/ui/uxlogic";
 import strings from "../src/strings.json";
 
@@ -157,5 +157,34 @@ describe("texts of the UI/UX round", () => {
       expect(table[key]?.de).toBeTruthy();
       expect(table[key].de).not.toBe(table[key].en);
     }
+  });
+});
+
+describe("patent check list", () => {
+  const f = (severity: PreflightFinding["severity"], rule: string): PreflightFinding => ({ rule, severity, message: rule, source: "" });
+
+  it("puts errors first and keeps the engine order within a severity", () => {
+    const list = [f("info", "i1"), f("warning", "w1"), f("error", "e1"), f("manual", "m1"), f("error", "e2")];
+    expect(orderFindings(list).map((x) => x.rule)).toEqual(["e1", "e2", "w1", "m1", "i1"]);
+  });
+
+  it("counts the findings per severity", () => {
+    expect(findingCounts([f("error", "a"), f("error", "b"), f("info", "c")])).toEqual({ error: 2, warning: 0, manual: 0, info: 1 });
+  });
+
+  it("has a label and a pictogram for the check", () => {
+    for (const s of ["error", "warning", "manual", "info"]) expect((strings as Record<string, unknown>)[`pc.sev.${s}`]).toBeTruthy();
+    expect(hasIcon("check")).toBe(true);
+  });
+});
+
+describe("patent check sources", () => {
+  it("splits cited sources into labels and links", () => {
+    const s = "DE-01: PatV § 6(2) <https://www.gesetze-im-internet.de/patv/__6.html>; EP-02: OJ EPO 2025, A49 Art. 2(1) <https://www.epo.org/a49>; US-06: 37 CFR 1.84(f)";
+    expect(sourceLinks(s)).toEqual([
+      { label: "DE-01: PatV § 6(2)", url: "https://www.gesetze-im-internet.de/patv/__6.html" },
+      { label: "EP-02: OJ EPO 2025, A49 Art. 2(1)", url: "https://www.epo.org/a49" },
+      { label: "US-06: 37 CFR 1.84(f)" },
+    ]);
   });
 });

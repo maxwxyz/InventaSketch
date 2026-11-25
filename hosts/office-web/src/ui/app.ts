@@ -2,7 +2,7 @@
 // session. Runs inside PowerPoint (Office.js present) and standalone in a browser (dev.html).
 
 import { Engine, Session } from "../engine/client";
-import type { ActionInfo, ArrangeOption, BuildPortInfo, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, SuggestionInfo, TraceInfo, TransformEffect } from "../engine/types";
+import type { ActionInfo, ArrangeOption, BuildPortInfo, Catalog, CatalogItem, DashStyle, EditorState, ExporterInfo, ObjectInfo, PreflightResult, SuggestionInfo, TraceInfo, TransformEffect } from "../engine/types";
 import { exportPng, exportSvg, download } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
@@ -21,7 +21,7 @@ import { Library } from "./library";
 import { PieMenu } from "./piemenu";
 import { buildPieEntries, labelEntries, pieSplit, submenu, type LabelChange, type PieEntry } from "./pielogic";
 import { Stage, type ChainSide } from "./stage";
-import { assemblyExtends, canTrace, elementCount, filterTransforms, multiBarGroups } from "./uxlogic";
+import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, orderFindings, sourceLinks } from "./uxlogic";
 
 export interface AppOptions {
   engine: Engine;
@@ -224,6 +224,7 @@ export class App {
       this.importButton(),
       this.lineGroupSelect(st?.lineGroup ?? 0.5),
       this.accentSelect(st?.accent ?? null),
+      this.iconButton("check", t("cmd.patentCheck"), (e) => this.togglePatentCheck(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog", "data-cmd": "patentcheck" }),
       this.iconButton("svg", t("cmd.exportSvg"), () => this.guard(() => exportSvg(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome))),
       this.iconButton("png", t("cmd.exportPng"), () => exportPng(this.sessionObj, sel.length ? sel : undefined, !!this.st.monochrome).catch((e) => this.report(e))),
       h("span", { class: "isk-grow" }),
@@ -274,8 +275,68 @@ export class App {
     return sel;
   }
 
+  /** Office chosen last in the patent check (the first profile until then). */
+  private patentProfile = "";
+
+  /**
+   * "Patent check (drawings)": the engine's preflight of the page for an office, as a popover – office choice, findings
+   * (errors first) with suggestion and cited source; a finding with an element selects it. The disclaimer is always shown.
+   */
+  private togglePatentCheck(anchor: HTMLElement): void {
+    const wasPatent = this.settingsEl?.dataset.kind === "patent";
+    if (this.settingsEl) { this.settingsEl.remove(); this.settingsEl = undefined; if (wasPatent) return; }
+    let profiles: { id: string; name: string }[] = [];
+    try { profiles = this.engine.patentProfiles(lang()); } catch (e) { this.report(e); return; }
+    if (!profiles.some((p) => p.id === this.patentProfile)) this.patentProfile = profiles[0]?.id ?? "";
+    const office = h("select", { class: "isk-input", "aria-label": t("pc.office"), "data-cmd": "patentprofile" });
+    for (const p of profiles) office.append(h("option", { value: p.id, selected: p.id === this.patentProfile }, p.name));
+    const summary = h("p", { class: "isk-pc-summary", role: "status" });
+    const list = h("ul", { class: "isk-findings" });
+    const disclaimer = h("p", { class: "isk-muted" });
+    const run = () => {
+      let r: PreflightResult;
+      try { r = this.sessionObj.preflight(this.patentProfile, lang()); } catch (e) { this.report(e); return; }
+      disclaimer.textContent = r.disclaimer;
+      const c = findingCounts(r.findings);
+      summary.textContent = r.findings.length ? t("pc.summary", r.findings.length, c.error, c.warning) : t("pc.none");
+      list.replaceChildren(...orderFindings(r.findings).map((f) => {
+        // The message selects the element (if the finding has one); the cited sources are short links.
+        const id = f.id;
+        let message: HTMLElement = h("span", {}, f.message);
+        if (id) {
+          message = h("button", { class: "isk-finding-go", type: "button", title: t("pc.goTo") }, f.message);
+          message.addEventListener("click", () => this.guard(() => this.apply(this.sessionObj.select([id]))));
+        }
+        const sources = h("span", { class: "isk-sources" }, ...sourceLinks(f.source).map((s) =>
+          s.url ? h("a", { href: s.url, target: "_blank", rel: "noopener noreferrer", title: s.url }, s.label) : h("span", {}, s.label)));
+        const body = h("span", { class: "isk-finding-text" },
+          message,
+          ...(f.suggestion ? [h("span", { class: "isk-muted" }, f.suggestion)] : []),
+          sources);
+        const badge = h("span", { class: `isk-sev isk-sev-${f.severity}` }, t(`pc.sev.${f.severity}`));
+        return h("li", {}, h("div", { class: "isk-finding" }, badge, body));
+      }));
+    };
+    office.addEventListener("change", () => { this.patentProfile = office.value; run(); });
+    const again = h("button", { class: "isk-btn", type: "button", "data-cmd": "patentrecheck" }, t("pc.recheck"));
+    again.addEventListener("click", run);
+    const close = h("button", { class: "isk-btn isk-icon-btn isk-close", type: "button", "aria-label": t("close"), html: icon("close", 16) });
+    const panel = h("div", { class: "isk-popover isk-pc", role: "dialog", "aria-label": t("pc.title") },
+      h("div", { class: "isk-pop-head" }, h("strong", {}, t("pc.title")), close),
+      h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("pc.office")), h("div", { class: "isk-row" }, office, again)),
+      summary, list, disclaimer);
+    panel.dataset.kind = "patent";
+    close.addEventListener("click", () => { panel.remove(); this.settingsEl = undefined; anchor.focus(); });
+    panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); close.click(); } });
+    this.root.append(panel);
+    this.settingsEl = panel;
+    run();
+    office.focus();
+  }
+
   private toggleSettings(anchor: HTMLElement): void {
-    if (this.settingsEl) { this.settingsEl.remove(); this.settingsEl = undefined; return; }
+    const wasSettings = !!this.settingsEl && this.settingsEl.dataset.kind !== "patent";
+    if (this.settingsEl) { this.settingsEl.remove(); this.settingsEl = undefined; if (wasSettings) return; }
     const radio = (name: string, value: string, current: string, label: string, on: () => void) => {
       const r = h("input", { type: "radio", name, value, checked: current === value });
       r.addEventListener("change", on);

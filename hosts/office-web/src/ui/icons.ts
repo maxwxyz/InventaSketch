@@ -36,6 +36,8 @@ const paths: Record<string, string> = {
   more: "M5 12h.01M12 12h.01M19 12h.01",
   type: "M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z",
   menuBack: "M19 12H5M11 6l-6 6 6 6",
+  // Patent check: a sheet with a tick.
+  check: "M9 3h6v3H9zM7 4.5H5V21h14V4.5h-2M8.5 13.5l2.5 2.5 4.5-5",
   // Black and white: a circle, right half filled.
   mono: "M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 3A9 9 0 0 1 12 21Z",
   // Abstract pictograms of the engine's IconIds (same shapes as the COM add-in's IconPainter). Centre lines are drawn
