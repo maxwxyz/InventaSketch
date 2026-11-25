@@ -58,12 +58,22 @@ namespace InventaSketch.AddIn.OnSlide
         public static SketchDocument Fold(PowerPoint.Shape unit, SketchDocument doc)
         {
             var leaves = new List<(string? Part, Look Before, Look Now)>();
-            foreach (var leaf in Leaves(unit))
+            try
             {
-                var before = Look.Decode(leaf.Tags[Tag]);
-                if (before is null) continue;
-                var part = leaf.Tags[PartTag];
-                leaves.Add((string.IsNullOrEmpty(part) ? null : part, before, Read(leaf)));
+                foreach (var leaf in Leaves(unit))
+                {
+                    var before = Look.Decode(leaf.Tags[Tag]);
+                    if (before is null) continue;
+                    var part = leaf.Tags[PartTag];
+                    leaves.Add((string.IsNullOrEmpty(part) ? null : part, before, Read(leaf)));
+                }
+            }
+            catch (System.Runtime.InteropServices.COMException ex)
+            {
+                // Right after an undo PowerPoint restores the group but its items are not reachable yet (0x800A01A8): read
+                // the model as stored; native formatting is folded in at the next read (maintainer: values lost after Ctrl+Z).
+                Log.Info("Format fold skipped (group items not reachable yet): 0x" + ex.ErrorCode.ToString("X8"));
+                return doc;
             }
             return FoldLooks(doc, leaves);
         }

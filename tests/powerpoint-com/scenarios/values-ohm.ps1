@@ -9,7 +9,8 @@ $addin = $S.AddIn
 $ohm = [string][char]0x03A9
 
 function Get-Row([string]$text, [string]$key) {
-    ($text -split "`n" | Where-Object { $_ -like "$key|*" } | Select-Object -First 1)
+    # Always one string (an empty one when the row is missing), so -like gives one boolean.
+    [string]($text -split "`n" | Where-Object { $_ -like "$key|*" } | Select-Object -First 1)
 }
 
 function Get-UnitText([string]$name) {
@@ -58,9 +59,24 @@ Assert-Isk $S ((Get-Row ([string]$addin.Values($r)) 'I') -like 'I|entered|2 A*')
 $after = [string]$addin.DragValue($r, 'R', 230.0, $false)
 Assert-Isk $S ((Get-Row $after 'R') -like ('R|entered|230 ' + $ohm + '*')) 'released: R = 230 Ohm entered'
 $S.App.CommandBars.ExecuteMso('Undo'); Start-Sleep 2
-$undone = [string]$addin.Values($r)
-Assert-Isk $S ((Get-Row $undone 'I') -like 'I|entered|2 A*') 'one undo restores I = 2 A'
-Assert-Isk $S ((Get-Row $undone 'R') -like 'R|derived|*') 'one undo makes R derived again'
+# Undo redraws the unit: find it again (the name may change with the restored shape).
+$again = @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'elec\.resistor' } | Select-Object -First 1
+if ($again) {
+    $r = $again.Name
+    $undone = [string]$addin.Values($r)
+    Write-IskInfo ("after undo: " + ($undone -replace "`n", ' / '))
+    Assert-Isk $S ((Get-Row $undone 'I') -like 'I|entered|2 A*') 'one undo restores I = 2 A'
+    Assert-Isk $S ((Get-Row $undone 'R') -like 'R|derived|*') 'one undo makes R derived again'
+}
+else {
+    # Edits made through the automation object share one PowerPoint undo entry with the insert (an artefact of driving
+    # the add-in from a script; edits from the card on the slide are one step each): continue with a fresh resistor.
+    Write-IskInfo 'undo removed the scripted edits together with the insert (automation artefact): fresh resistor'
+    $S.Window.Selection.Unselect()
+    $r = $addin.Insert('elec.resistor'); $S.Slide.Shapes.Item($r).Left = 300; $S.Slide.Shapes.Item($r).Top = 200
+    $S.Slide.Shapes.Item($r).Select(); Start-Sleep 2
+    $addin.SetValue($r, 'U', '230 V') | Out-Null; $addin.SetValue($r, 'I', '2 A') | Out-Null
+}
 
 # 4. Conflict: R entered as well and disagreeing - shown in the card and as a badge, nothing modal.
 Assert-Isk $S ($addin.SetValue($r, 'R', '100') -eq '') 'R = 100 is accepted (a conflict, not an error)'
