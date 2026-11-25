@@ -1662,7 +1662,7 @@ namespace InventaSketch.Engine
             var found = new HashSet<string>(StringComparer.Ordinal);
             foreach (var doc in new[] { before, after })
             {
-                var ctx = new RenderContext(doc, lang);
+                var ctx = new RenderContext(doc, lang).For(registry);
                 foreach (var id in touched)
                 {
                     var o = doc.Get(id);

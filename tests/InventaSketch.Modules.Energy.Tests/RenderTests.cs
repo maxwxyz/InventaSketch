@@ -100,6 +100,8 @@ namespace InventaSketch.Modules.Energy.Tests
             foreach (var t in r.Types)
                 foreach (var p in t.Parameters)
                 {
+                    // Hops only show where the line crosses another one (engine CrossModuleHopTests).
+                    if (p.Key == "hops") continue;
                     var baseObj = t.Create(Vec2.Zero);
                     // Lines: a diagonal run, so routing has something to change.
                     if (baseObj.IsPointGeometry) baseObj = baseObj with { Points = new[] { new Vec2(-15, 0), new Vec2(15, 10) } };

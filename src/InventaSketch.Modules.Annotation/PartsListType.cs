@@ -39,7 +39,8 @@ namespace InventaSketch.Modules.Annotation
         {
             double w = Math.Max(10, o.Size.W), h = Math.Max(6, o.Size.H);
             var de = ctx.Lang == Lang.De;
-            var rows = Owner is null ? new List<PartsListRow>() : PartsList.Rows(Owner, ctx.Doc.Objects.Values, ctx.Lang).ToList();
+            var registry = ctx.Registry ?? Owner;
+            var rows = registry is null ? new List<PartsListRow>() : PartsList.Rows(registry, ctx.Doc.Objects.Values, ctx.Lang).ToList();
             var header = o.Flag("header", true);
             var withNumeral = rows.Any(r => r.Numeral.Length > 0);
             var withType = o.Flag("type", false);

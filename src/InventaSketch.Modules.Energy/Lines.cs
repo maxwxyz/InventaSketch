@@ -49,8 +49,34 @@ namespace InventaSketch.Modules.Energy
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-15, 0), new Vec2(15, 0) };
         public override bool InsertablePoints => true;
 
+        /// <summary>Hops over earlier lines (of any module) at crossings, unless switched off (<c>hops</c>).</summary>
+        internal static readonly ParamDef Hops = Pm.Bool("hops", "Hops at crossings", "Brücken an Kreuzungen", true);
+
+        /// <summary>Cables and pipes hop at crossings (one rule for all line families, <see cref="Crossings"/>); flow arrows do not.</summary>
+        public override bool HopsAtCrossings => true;
+        public override bool DependsOnNeighbours => HopsAtCrossings;
+
         /// <summary>The drawn path (routing applied).</summary>
         protected virtual IReadOnlyList<Vec2> PathOf(SketchObject o, RenderContext ctx) => En.Clean(ctx.Doc.ResolvePoints(o));
+
+        /// <summary>Crossings where this line hops (it is drawn over the other line).</summary>
+        protected List<Crossing> HopsOf(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
+            => HopsAtCrossings && o.Flag(Hops.Key, true) ? Crossings.Find(ctx.Doc, o, p, x => PathOf(x, ctx), ctx.Registry ?? Owner).Where(c => c.Above).ToList() : new List<Crossing>();
+
+        /// <summary>The line itself: a polyline, with hops where it crosses earlier lines.</summary>
+        protected Primitive MainLine(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p, Style style)
+        {
+            var hops = HopsOf(o, ctx, p);
+            return hops.Count == 0 ? Prim.Polyline(p, style) : Prim.Path(Crossings.HopPath(p, hops), style);
+        }
+
+        /// <summary>Lines crossing this one (their hops depend on where this one runs).</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+        {
+            if (!HopsAtCrossings) return Array.Empty<string>();
+            var p = PathOf(o, ctx);
+            return p.Count < 2 ? Array.Empty<string>() : Crossings.Find(ctx.Doc, o, p, x => PathOf(x, ctx), ctx.Registry ?? Owner).Select(c => c.Other).Distinct();
+        }
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -99,7 +125,7 @@ namespace InventaSketch.Modules.Energy
             "kabel", "leitung", "energiekabel", "verbindung", "freileitung", "gleichstromkabel", "datenleitung", "einlinienschaltbild",
         };
 
-        public override IReadOnlyList<ParamDef> Parameters => new[] { VoltageParam, Dc, Pm.LevelColors, Kind, Conductors, Label, ShowVoltage, Route };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { VoltageParam, Dc, Pm.LevelColors, Kind, Conductors, Label, ShowVoltage, Route, Hops };
 
         public override IReadOnlyList<string> Companions => new[] { "energy.grid.busbar", "energy.grid.breaker", "energy.grid.transformer", "energy.grid.meter" };
 
@@ -124,7 +150,7 @@ namespace InventaSketch.Modules.Energy
             var color = ColorOf(o);
             var width = data ? 0.3 : pictorial ? 0.9 : 0.5;
             var style = new Style { Stroke = color, StrokeWidth = width, Role = LineRole.Visible, Dash = data ? DashStyle.Dash : DashStyle.Solid };
-            var list = new List<Primitive> { Prim.Polyline(p, style) with { Tag = EnTags.Cable } };
+            var list = new List<Primitive> { MainLine(o, ctx, p, style) with { Tag = EnTags.Cable } };
             list.AddRange(En.Junctions(ctx.Doc, o, ctx.Doc.ResolvePoints(o), pictorial ? 0.9 : 0.6, color));
             var n = data ? 0 : o.I(Conductors);
             if (n > 0) list.AddRange(Ticks(p, n, color));
@@ -184,7 +210,7 @@ namespace InventaSketch.Modules.Energy
             "rohrleitung", "leitung", "wasserstoffleitung", "gasleitung", "fernwärme", "wärmeleitung", "kälteleitung", "wasser",
         };
 
-        public override IReadOnlyList<ParamDef> Parameters => new[] { CarrierParam, Label, ShowCode };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { CarrierParam, Label, ShowCode, Hops };
         public override IReadOnlyList<string> Companions => new[] { "energy.h2.electrolyser", "energy.h2.tank", "energy.h2.fuelcell", "energy.heat.storage" };
 
         protected override IReadOnlyList<Primitive> RenderPath(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
@@ -196,13 +222,13 @@ namespace InventaSketch.Modules.Energy
             if (pictorial)
             {
                 width = 1.3;
-                list.Add(Prim.Polyline(p, new Style { Stroke = c.Color, StrokeWidth = width, Role = LineRole.Visible }) with { Tag = EnTags.Pipe });
-                list.Add(Prim.Polyline(p, new Style { Stroke = Pal.White, StrokeWidth = 0.35, Opacity = 0.55, Role = LineRole.Thin }) with { Tag = "highlight" });
+                list.Add(MainLine(o, ctx, p, new Style { Stroke = c.Color, StrokeWidth = width, Role = LineRole.Visible }) with { Tag = EnTags.Pipe });
+                list.Add(MainLine(o, ctx, p, new Style { Stroke = Pal.White, StrokeWidth = 0.35, Opacity = 0.55, Role = LineRole.Thin }) with { Tag = "highlight" });
             }
             else
             {
                 width = 0.5;
-                list.Add(Prim.Polyline(p, new Style { Stroke = c.Color, StrokeWidth = width, Dash = c.Dash, Role = LineRole.Visible }) with { Tag = EnTags.Pipe });
+                list.Add(MainLine(o, ctx, p, new Style { Stroke = c.Color, StrokeWidth = width, Dash = c.Dash, Role = LineRole.Visible }) with { Tag = EnTags.Pipe });
             }
             list.AddRange(En.Junctions(ctx.Doc, o, ctx.Doc.ResolvePoints(o), pictorial ? 1.0 : 0.6, c.Color));
             var text = LabelText(!pictorial && o.B(ShowCode) ? c.Code.Get(ctx.Lang) : "", o.S(Label));
@@ -223,6 +249,9 @@ namespace InventaSketch.Modules.Energy
     /// </summary>
     internal sealed class FlowType : EnergyLineType
     {
+        /// <summary>Flow arrows are annotations, not lines: they do not hop.</summary>
+        public override bool HopsAtCrossings => false;
+
         public const string TypeId = "energy.line.flow";
 
         internal static readonly ParamDef CarrierParam = Carriers.Param(Carriers.Flows, "electricity");

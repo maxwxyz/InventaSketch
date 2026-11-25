@@ -170,7 +170,7 @@ namespace InventaSketch.Modules.Electrical
         {
             var p = ctx.Doc.ResolvePoints(o);
             if (p.Count < 2) return Array.Empty<string>();
-            return Crossings.Find(ctx.Doc, o, RouteOf(o, p, ctx), x => PathOf(x, ctx)).Select(c => c.Other).Distinct();
+            return Crossings.Find(ctx.Doc, o, RouteOf(o, p, ctx), x => PathOf(x, ctx), ctx.Registry ?? Owner).Select(c => c.Other).Distinct();
         }
 
         /// <summary>On a wire one adds components: offered by "Insert ▸".</summary>
@@ -182,7 +182,7 @@ namespace InventaSketch.Modules.Electrical
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, IReadOnlyList<Vec2> p, RenderContext ctx)
         {
             var route = RouteOf(o, p, ctx);
-            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx)).Where(c => c.Above).ToList() : new List<Crossing>();
+            var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx), ctx.Registry ?? Owner).Where(c => c.Above).ToList() : new List<Crossing>();
             Primitive main = hops.Count == 0 ? Prim.Polyline(route, S.Wire) : Prim.Path(Crossings.HopPath(route, hops), S.Wire);
             return new[] { main with { Tag = "wire" } }.Concat(Routing.BranchDots(o, p)).ToList();
         }
