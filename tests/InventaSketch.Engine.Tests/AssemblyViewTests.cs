@@ -94,6 +94,21 @@ namespace InventaSketch.Engine.Tests
             exploded = Edits.Add(exploded, exploded.Pages[0].Id, parts.ToArray());
             // Every side gear meshes with both spider gears (common cone apex in the centre).
             Assert.Equal(4, Coupling.Graph(Reg, exploded).Count(g => g.Kind == LinkKind.Mesh));
+            // It works as a differential: the case drives both side gears alike when driving straight (spider gears still);
+            // with the case held the side gears turn opposite ways; with one side held the other turns twice as fast.
+            var cage = parts.Single(p => p.Type == "mech.diffcase").Id;
+            var left = parts.Where(p => p.Type == "mech.gear.bevel").OrderBy(p => p.Transform.X).First().Id;
+            var right = parts.Where(p => p.Type == "mech.gear.bevel").OrderBy(p => p.Transform.X).Last().Id;
+            var spider = parts.Where(p => p.Type == "mech.gear.bevel").OrderBy(p => p.Transform.Y).First().Id;
+            var straight = GearTrain.Speeds(Reg, exploded, cage);
+            Assert.Equal(1, straight[left], 6);
+            Assert.Equal(-1, straight[right], 6); // about its own axis to the apex = same sense as the case
+            Assert.Equal(0, straight[spider], 6);
+            var held = GearTrain.Speeds(Reg, Edits.Update(exploded, new[] { cage }, o => o.WithParam("fixed", true)), left);
+            Assert.Equal(0, held[cage], 6);
+            Assert.Equal(1, held[right], 6);      // opposite sense on the axle
+            var oneWheel = Edits.Update(exploded, new[] { right }, o => o.WithParam("fixed", true));
+            Assert.Equal(2, GearTrain.Speeds(Reg, oneWheel, cage)[left], 6);
             // The section view explodes through the stick view.
             var section = Reg.Library.First(i => i.TypeId == "mech.gearset.differential" && i.View == "section");
             Assert.True(Assemblies.CanExplode(Reg, Reg.Create(section, new Vec2(0, 0))));

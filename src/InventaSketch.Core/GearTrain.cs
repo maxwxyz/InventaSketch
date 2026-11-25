@@ -14,7 +14,10 @@ namespace InventaSketch.Core
     /// hubs are free;</item>
     /// <item>belts and chains: r_a ω_a = r_b ω_b (crossed belts: opposite sense);</item>
     /// <item>bevel pairs (shared cone apex, axes crossing): z_a ω_a + z_b ω_b = 0 with each speed taken about the gear's axis
-    /// pointing to the apex (so the two side gears of a differential with the cage held turn opposite ways);</item>
+    /// pointing to the apex (so the two side gears of a differential with the cage held turn opposite ways); inside a cage (a
+    /// part with crossing axes carrying bevel gears loose, the differential case) Willis applies with the cage speed
+    /// projected on each gear's axis: z_a (ω_a − (u_a·c) ω_c) + z_b (ω_b − (u_b·c) ω_c) = 0 (u: axis to the apex, c: the cage
+    /// axis) – the side gears turn with the cage when driving straight, and hold one and the other turns twice as fast;</item>
     /// <item>fixed carriers (grounded): 0.</item>
     /// </list>
     /// Speeds the system leaves open (a planetary set without a fixed member) are taken as 0, ring gears and carriers
@@ -36,6 +39,10 @@ namespace InventaSketch.Core
             public bool Spins;
             public bool Bevel;
             public double Teeth;
+            /// <summary>Bevel gear: unit axis from its centre to the cone apex.</summary>
+            public Vec2 ApexDir;
+            /// <summary>Cage (two crossing axes: differential case): its rotation axis (unit), else null.</summary>
+            public Vec2? CageAxis;
         }
 
         /// <summary>True if <paramref name="o"/> visibly turns about its own axis (seen along it: axial views).</summary>
@@ -51,7 +58,8 @@ namespace InventaSketch.Core
         {
             var bodies = Bodies(registry, doc, lang);
             if (!bodies.ContainsKey(inputId)) return new Dictionary<string, double>();
-            var eqs = Equations(registry, doc, bodies, lang);
+            var spiders = new HashSet<string>(StringComparer.Ordinal);
+            var eqs = Equations(registry, doc, bodies, lang, spiders);
             // The train: everything reachable from the input through the equations (and carrier membership).
             var adj = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
             void Edge(string a, string b)
@@ -65,8 +73,9 @@ namespace InventaSketch.Core
             for (var i = 0; i < train.Count; i++)
                 if (adj.TryGetValue(train[i], out var next))
                     foreach (var n in next) if (seen.Add(n)) train.Add(n);
-            // Column order: input, plain parts, carriers, ring gears (free columns last become 0: ring and carrier fixed).
-            var cols = train.OrderBy(id => id == inputId ? 0 : bodies[id].Pins.Count > 0 ? 2 : bodies[id].Inner ? 3 : 1).ToList();
+            // Column order: input, plain parts, carriers, ring gears, spider gears of a cage (free columns last become 0: ring
+            // and carrier fixed, a differential drives straight on).
+            var cols = train.OrderBy(id => id == inputId ? 0 : spiders.Contains(id) ? 4 : bodies[id].Pins.Count > 0 || bodies[id].CageAxis is not null ? 2 : bodies[id].Inner ? 3 : 1).ToList();
             var index = cols.Select((id, i) => (id, i)).ToDictionary(t => t.id, t => t.i, StringComparer.Ordinal);
             var rows = new List<double[]>();
             foreach (var e in eqs.Where(e => e.Keys.All(index.ContainsKey)))
@@ -142,11 +151,15 @@ namespace InventaSketch.Core
                 var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner);
                 if (pitch is not null) { b.Pitch = pitch.Radius; b.Inner = pitch.Role == AnchorRole.PitchInner; b.Centre = pitch.P; b.Side = pitch.AxisOf() is not null; }
                 var hub = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && (a.Id == "hub" || a.Id is null));
-                if (pitch is null && anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex))
+                if (pitch is null && anchors.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex) is { } apex)
                 {
                     b.Bevel = true;
                     b.Teeth = Math.Max(1, o.Num("teeth", 0));
+                    var u = apex.P - new Vec2(o.Transform.X, o.Transform.Y);
+                    b.ApexDir = u.Length > 1e-9 ? u * (1 / u.Length) : new Vec2(1, 0);
                 }
+                var axes = anchors.Where(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis && (a.Q - a.P).Length > 1e-9).Select(a => (a.Q - a.P).Normalized()).ToList();
+                if (axes.Count >= 2 && axes.Skip(1).Any(x => Math.Abs(axes[0].Cross(x)) > 0.5)) b.CageAxis = axes[0];
                 if (pitch is null && hub is not null) b.Centre = hub.P;
                 b.Pins.AddRange(anchors.Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id is { } id && id.StartsWith("pin", StringComparison.Ordinal)).Select(a => a.P));
                 b.Spins = registry.Type(o.Type)!.MeshDirections(o).Count == 4 && (pitch is not null || b.Pins.Count > 0);
@@ -159,7 +172,8 @@ namespace InventaSketch.Core
             return map;
         }
 
-        private static List<Dictionary<string, double>> Equations(Registry registry, SketchDocument doc, Dictionary<string, Body> bodies, Lang lang)
+        /// <summary>The speed equations of the document; <paramref name="spiders"/> receives the spider gears of cages.</summary>
+        private static List<Dictionary<string, double>> Equations(Registry registry, SketchDocument doc, Dictionary<string, Body> bodies, Lang lang, HashSet<string> spiders)
         {
             var eqs = new List<Dictionary<string, double>>();
             void Add(params (string Id, double K)[] terms)
@@ -168,7 +182,16 @@ namespace InventaSketch.Core
                 foreach (var (id, k) in terms) e[id] = (e.TryGetValue(id, out var v) ? v : 0) + k;
                 eqs.Add(e);
             }
-            foreach (var link in Coupling.MechanicalLinks(registry, doc, null, lang).Where(l => !l.Released))
+            var links = Coupling.MechanicalLinks(registry, doc, null, lang).Where(l => !l.Released).ToList();
+            // Bevel gears carried by a cage run loose in it (Willis with the cage, see the class).
+            var cageOf = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (var l in links.Where(l => l.Kind == LinkKind.Carried))
+                if (bodies.TryGetValue(l.A, out var ca) && ca.CageAxis is { } axis && bodies.TryGetValue(l.B, out var cb) && cb.Bevel)
+                {
+                    cageOf[l.B] = l.A;
+                    if (Math.Abs(cb.ApexDir.Dot(axis)) < 0.5) spiders.Add(l.B);
+                }
+            foreach (var link in links)
             {
                 if (!bodies.TryGetValue(link.A, out var a) || !bodies.TryGetValue(link.B, out var b)) continue;
                 switch (link.Kind)
@@ -191,9 +214,19 @@ namespace InventaSketch.Core
                             break;
                         }
                     case LinkKind.Mesh when a.Bevel && b.Bevel:
-                        // Bevel pair: speeds about the axes pointing to the shared apex (see the class).
-                        Add((a.O.Id, a.Teeth), (b.O.Id, b.Teeth));
-                        break;
+                        {
+                            // Bevel pair: speeds about the axes pointing to the shared apex, relative to their cage (see the class).
+                            var cage = cageOf.TryGetValue(a.O.Id, out var x) ? x : cageOf.TryGetValue(b.O.Id, out var y) ? y : null;
+                            if (cage is null) Add((a.O.Id, a.Teeth), (b.O.Id, b.Teeth));
+                            else
+                            {
+                                var c = bodies[cage].CageAxis!.Value;
+                                Add((a.O.Id, a.Teeth), (b.O.Id, b.Teeth), (cage, -(a.Teeth * a.ApexDir.Dot(c) + b.Teeth * b.ApexDir.Dot(c))));
+                            }
+                            break;
+                        }
+                    case LinkKind.Carried when a.CageAxis is not null && b.Bevel:
+                        break; // loose in the cage
                     case LinkKind.Carried:
                         {
                             // Shaft A carries B: fixed on it unless the hub is loose.
