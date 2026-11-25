@@ -1075,7 +1075,11 @@ voltage is called *U*.
   markings that disagree give a conflict naming both. Links that both ends report are added once.
 - **Open (Calc 6):** the host side (COM: "Calculation sheet …" in the value card and More menu with copy/save and
   "insert as table"; a sources pane in Engineer), check settings (user limits, mute list), unit preferences (bar/MPa,
-  min⁻¹/s⁻¹, kWh/MJ) and the decision on standard series (E series) and their licence.
+  min⁻¹/s⁻¹, kWh/MJ).
+- **Decision on standard series (E series), 2026-11-26:** InventaSketch ships no E-series or other preferred-number
+  tables: they are table content of IEC 60063 [S5], and CLAUDE.md forbids copying standard tables. Values are shown with
+  three significant digits and snap to that resolution when dragged; a user can type any value. If a series is wanted
+  later, it comes from a file the user provides (one value per line), never from the repository.
 
 ## 11. Implementation notes: Calc 2 in PowerPoint (COM) (2026-11-25)
 
