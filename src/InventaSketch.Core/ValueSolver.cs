@@ -380,8 +380,10 @@ namespace InventaSketch.Core
             foreach (var c in conflicts)
             {
                 table.Vars[c.Var].InConflict = true;
-                var vc = new ValueConflict(table.Relations[c.Relation], table.Vars[c.Var].Ref, st.Value[c.Var], c.Implied,
-                    c.Roots.Where(k => st.Prov[k] == Provenance.Entered).Select(k => table.Vars[k].Ref).ToList());
+                var involved = c.Roots.Where(k => st.Prov[k] == Provenance.Entered || IsMarking(st, k)).Select(k => table.Vars[k].Ref).ToList();
+                // A marking that disagrees (a relation of one variable) is itself one of the values in conflict.
+                if (relVars[c.Relation].Length == 1 && !involved.Contains(table.Vars[c.Var].Ref)) involved.Add(table.Vars[c.Var].Ref);
+                var vc = new ValueConflict(table.Relations[c.Relation], table.Vars[c.Var].Ref, st.Value[c.Var], c.Implied, involved);
                 table.ConflictList.Add(vc);
                 foreach (var oid in relVars[c.Relation].Select(k => table.Vars[k].Ref.ObjectId).Distinct())
                 {
@@ -395,6 +397,9 @@ namespace InventaSketch.Core
             table.ElapsedMs = sw.Elapsed.TotalMilliseconds;
             return table;
         }
+
+        /// <summary>A value from a relation without inputs (a marking such as "24 V"): named among the values a conflict involves.</summary>
+        private static bool IsMarking(State st, int k) => st.Via[k] >= 0 && st.Inputs[k] is { Length: 0 };
 
         private static void Propagate(ValueTable table, List<int[]> relVars, List<int>[] varRels, State st, IEnumerable<int> seed, Stopwatch sw, double budget, ref bool truncated)
         {
@@ -424,7 +429,9 @@ namespace InventaSketch.Core
                 var w = 0;
                 foreach (var v in vars) if (v != unknown) inputs[w++] = v;
                 st.Inputs[unknown] = inputs;
-                st.Roots[unknown] = Union(inputs.Select(v => st.Roots[v]));
+                // A value from a relation without inputs (a marking such as "24 V" on a lamp) is its own origin, like an entered
+                // value: two markings that disagree are then checked against each other.
+                st.Roots[unknown] = inputs.Length == 0 ? new[] { unknown } : Union(inputs.Select(v => st.Roots[v]));
                 foreach (var next in varRels[unknown]) if (next != r) pending.Add(next);
             }
         }
