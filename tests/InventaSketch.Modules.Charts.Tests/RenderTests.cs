@@ -35,7 +35,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var o = Fx.Item(r, id);
             var tags = Prim.Flatten(Fx.Render(r, o)).Select(p => p.Tag).ToList();
             if (o.Type is "chart.axes" or "chart.math.axes") { Assert.Contains(tags, t => ChartTags.Is(t, ChartTags.Axis)); return; }
-            var data = new[] { ChartTags.Series, ChartTags.Marker, ChartTags.Bar, ChartTags.Contour, ChartTags.Band };
+            var data = new[] { ChartTags.Series, ChartTags.Marker, ChartTags.Bar, ChartTags.Contour, ChartTags.Band, TimingTags.Signal };
             Assert.True(tags.Any(t => data.Any(d => ChartTags.Is(t, d))), id + " draws no data");
         }
 

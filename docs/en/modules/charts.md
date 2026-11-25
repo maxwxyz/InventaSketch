@@ -25,6 +25,7 @@ follow the box. Text is sized by the smaller scale factor relative to the design
 | `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON specification, see [Figure](#figure-charts-v2-stage-2)); stacked panels, principle or data axes, value lines, markers, regions, notes, reference numerals |
 | `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | math style, see [Coordinate systems and function graphs](#coordinate-systems-and-function-graphs-charts-v2-stage-4) |
 | `chart.math.function` | Function graph / Funktionsgraph | basic function, typed formula or function generator in the math-style coordinate system |
+| `chart.timing` | Timing diagram (digital) / Zeitdiagramm (digital) | `signals` (one signal per row, see [Digital timing diagram](#digital-timing-diagram-charttiming)), `slope` sloped / sharp, `grid`, `timelabels`, `markers`, `spans`, `title`, `dt`, `tunit` |
 
 `chart.xy` also takes axis breaks (`ybreaks`, `xbreaks`, `breakstyle`, see [Axis breaks](#axis-breaks-charts-v2-stage-3)).
 
@@ -39,11 +40,12 @@ The efficiency map uses a qualitative loss model (constant losses, copper ∝ T�
 data. The pump curve is H(Q) = H₀ (1 − (Q/Q_max)²); the system curve runs through the static head and the operating
 point. The Bode plot is computed from the standard transfer functions of first- and second-order low and high passes.
 
-The library has 37 presets (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
+The library has 41 presets (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.line.break`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`, the eight coordinate systems and function graphs listed below) in four categories: data
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`,
+`chart.timing`, `chart.timing.clock`, `chart.timing.bus`, `chart.timing.handshake`, the eight coordinate systems and function graphs listed below) in four categories: data
 charts, coordinate systems & function graphs, characteristic curves and principle and technical figures.
 
 ## Data format
@@ -293,6 +295,77 @@ Host notes: everything is native (lines, freeforms, hatched freeforms, text); no
 margin and axis texts. Not yet: the data table editor (Slidemax `ChartSheet` port), function generators and sketch
 curves (stage 3), axis breaks.
 
+## Digital timing diagram (`chart.timing`)
+
+Several signal rows on one shared time axis: the signal name at the left, the wave to the right – logic high and low,
+clocks, data values in hexagon-shaped boxes with their text, undefined stretches (hatched) and high impedance (a line in
+the middle), with sloped or sharp edges. Optional: grid lines at every time step, a time axis with labels, vertical
+markers with labels and dimension arrows between two markers. Category "Principle and technical figures"; drawn
+independently (the one-character-per-step idea is the one known from WaveDrom, no code or assets are taken over).
+
+| Id | Name (EN / DE) | Signals |
+|---|---|---|
+| `chart.timing` | Timing diagram / Zeitdiagramm | `CLK: clock`, `EN: 00111100`, `DATA: xx[A].[B].xx` (inserted without parameters) |
+| `chart.timing.clock` | Clock and enable / Takt und Freigabe | `CLK: clock`, `EN: 0011110000`, gated clock `GCLK: 00pppp0000` |
+| `chart.timing.bus` | Bus transfer / Busübertragung | CLK, CS, ADDR (`x.[A0]..[A1]..x.`), DATA (`z..[D0]..[D1]..z`), WE; markers `t1=2; t2=5` with a Δt arrow (100 × 70 mm) |
+| `chart.timing.handshake` | Handshake (REQ/ACK) / Handshake-Protokoll (REQ/ACK) | REQ, ACK, DATA; markers `t1=2; t2=3` with a Δt arrow (100 × 55 mm) |
+
+### Signal notation (`signals`)
+
+One signal per row, `name: wave`. A semicolon works instead of the colon (`CLK;clock`), so a two-column table (name,
+wave) pastes directly. Empty rows and rows starting with `#` are ignored; a row without a separator is a wave without a
+name. A wave is either a **clock** or **one character per time step**:
+
+| Written | Meaning |
+|---|---|
+| `clock` (also `clk`, `takt`) `[period] [duty] [inv]` | clock over the whole diagram; period in time steps (default 1), duty cycle `25%` or `0.25` (default 50 %), `inv` starts low – `clock 2 25%` |
+| `0` or `l` / `1` or `h` | low / high |
+| `x` | undefined (both levels, hatched between them) |
+| `z` | high impedance (line in the middle) |
+| `[A5]` | data value with the text "A5" (hexagon-shaped box); `[A][A]` are two transfers with an edge between them |
+| `=` | data value without text |
+| `p` / `n` | one clock period starting high / low (half a step each) |
+| `.` | hold the previous state one more step (after `p` or `n`: one more period) |
+| spaces | ignored (`0011 1100`) |
+
+The diagram is as long as the longest written wave (only clocks: 8 steps or four periods, at most 400 steps); shorter
+waves hold their last state to the end. Consecutive equal levels merge (`0..1` = `0001`). The parser never throws:
+problems (unknown character, missing `]`, `.` at the start, an unknown clock option, an empty wave) are reported with row
+and character ("Row 2, character 5: Unknown wave character “q” …"); the drawing shows an unknown character as undefined.
+
+Markers (`markers`): `label=time` (or `label@time`, a bare time gets t1, t2 …) separated by `;`, e.g. `t1=2; t2=5.5`
+(decimal comma accepted). Times are in axis units, i.e. time steps × `dt`. Dimension arrows (`spans`): `t1-t2` or
+`t1-t2: t_su` (text, default "Δt"), markers by label or by number (`1-2`), several separated by `;`; overlapping arrows
+get rows of their own. `dt` (time per step, default 1) and `tunit` (e.g. `ns`) label the time axis ("t (ns)" /
+"t in ns").
+
+### Layout, parts, anchors and actions
+
+Text follows the smaller scale factor relative to the design size 100 × 50 mm and the row height (many signals in a
+small box get smaller text, a one-direction stretch keeps it); names take at most 35 % of the width and are fitted;
+value texts are fitted into their box and left out where a box is too narrow to read.
+
+Part keys: `signal.k` (the wave: one open freeform for both level lines, one closed freeform per value box or undefined
+stretch, the value texts), `name.k`, `ref.k` (marker line and label), `dim.k` (dimension arrow and text), `grid.major`,
+`axis.x`, `tick.x`, `label.x`, `axistitle.x`, `title`. So one signal can be recoloured or hidden on its own; a look on
+the kind (`signal`, `name`) applies to all of them. Anchors: wave area corners and centre (`plot.tl` …), `origin` and
+the time axis rail `axis.x`; every edge is a docking port `s<signal>.<edge>` (for cause-and-effect arrows).
+
+Element actions: "Signals…" (input, id `chart.data`: one row per signal, rows separated by `|`; the PowerPoint add-in
+opens its table editor; errors are rejected with the row and character), add signal (`S4: 0…1…` as long as the
+diagram), remove last signal (greyed out with one signal), grid, time labels, edges sloped / sharp, "Markers…",
+"Dimension arrows…" (greyed out with fewer than two markers). Part actions: signal or name – "Signals…", "Name…",
+remove this signal, edges; marker – "Markers…", remove this marker, "Dimension arrows…"; dimension arrow – edit,
+remove it; grid – grid; time axis parts – time labels.
+
+Clean slides for sharing: signal names become S1, S2 … and marker labels t1, t2 … (texts replaced), data values become
+D1, D2 … (normalised) or random hexadecimal values (randomised; equal values stay equal), the time scale becomes plain
+steps (normalised: `dt` = 1, unit cleared, markers converted) or a random factor (randomised). The waves stay.
+
+Export: everything is native (freeforms, hatched freeforms, lines with arrowheads, text), so the TikZ and SVG exports
+draw it from the primitives. The matplotlib and pgfplots exports have no data axes for it and report "could not be
+exported" for a timing diagram.
+
 ## Host notes
 
 All output uses native primitives: one freeform per series line (smooth curves as cubic Bézier paths), one
@@ -450,3 +523,6 @@ engineering formulas (Bode response at the corner frequency and slopes, constant
 tracing, pump operating point, tolerance band columns and polygon clipping), all context actions and inputs, the
 core action dispatcher, JSON round trip and monochrome SVG export. The gallery test writes
 `gallery-charts/*.html` (every preset in colour, German monochrome and stretched) for visual review.
+`TimingChartTests` covers the timing diagram: every wave kind of the notation, clocks, errors reported with row and
+character, markers and dimension arrows, tagged parts, edge ports, sharp and sloped edges, text size under scaling,
+actions and inputs, cleaning, the JSON round trip and the export behaviour; it writes `gallery/timing/*.svg`.

@@ -27,6 +27,7 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON-Spezifikation, siehe [Bild](#bild-diagramme-v2-stufe-2)); gestapelte Panels, Prinzip- oder Datenachsen, Wertlinien, Markierungen, Flächen, Anmerkungen, Bezugszeichen |
 | `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | Mathematikstil, siehe [Koordinatensysteme und Funktionsgraphen](#koordinatensysteme-und-funktionsgraphen-diagramme-v2-stufe-4) |
 | `chart.math.function` | Function graph / Funktionsgraph | Grundfunktion, eingegebene Formel oder Funktionsgenerator im Koordinatensystem im Mathematikstil |
+| `chart.timing` | Timing diagram (digital) / Zeitdiagramm (digital) | `signals` (ein Signal je Zeile, siehe [Digitales Zeitdiagramm](#digitales-zeitdiagramm-charttiming)), `slope` schräg / senkrecht, `grid`, `timelabels`, `markers`, `spans`, `title`, `dt`, `tunit` |
 
 `chart.xy` nimmt auch Achsenbrüche (`ybreaks`, `xbreaks`, `breakstyle`, siehe [Achsenbrüche](#achsenbrüche-diagramme-v2-stufe-3)).
 
@@ -43,11 +44,12 @@ für Skizzen und ist keine Messung. Die Pumpenkennlinie ist H(Q) = H₀ (1 − (
 durch den statischen Anteil und den Betriebspunkt. Das Bode-Diagramm wird aus den Standard-Übertragungsfunktionen von
 Tief- und Hochpässen 1. und 2. Ordnung berechnet.
 
-Die Bibliothek enthält 37 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
+Die Bibliothek enthält 41 Vorlagen (`chart.line`, `chart.line.markers`, `chart.line.multi`, `chart.line.smooth`,
 `chart.line.logx`, `chart.scatter`, `chart.step`, `chart.column`, `chart.column.grouped`, `chart.column.stacked`,
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.line.break`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
-`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`, die acht unten genannten Koordinatensysteme und Funktionsgraphen) in vier Kategorien:
+`chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`,
+`chart.timing`, `chart.timing.clock`, `chart.timing.bus`, `chart.timing.handshake`, die acht unten genannten Koordinatensysteme und Funktionsgraphen) in vier Kategorien:
 Datendiagramme, Koordinatensysteme & Funktionsgraphen, Kennlinien & Kennfelder sowie Prinzip- und technische
 Abbildungen.
 
@@ -312,6 +314,84 @@ Erweiterungen des Rahmens (additiv): Höhenanteile der Panels, eigene Teilstrich
 Panel, Panelabstand, Bildunterschrift, zusätzlicher rechter Rand und Achstexte. Noch nicht: Datentabellen-Editor
 (Portierung von Slidemax `ChartSheet`), Funktionsgeneratoren und Skizzenkurven (Stufe 3), Achsbrüche.
 
+## Digitales Zeitdiagramm (`chart.timing`)
+
+Mehrere Signalzeilen auf einer gemeinsamen Zeitachse: links der Signalname, rechts der Verlauf – logisch High und Low,
+Takte, Datenwerte in sechseckigen Kästchen mit ihrem Text, undefinierte Abschnitte (schraffiert) und hochohmige
+Abschnitte (Linie in der Mitte), mit schrägen oder senkrechten Flanken. Wahlweise: Gitterlinien an jedem Zeitschritt,
+eine Zeitachse mit Beschriftung, senkrechte Markierungen mit Namen und Maßpfeile zwischen zwei Markierungen. Kategorie
+„Prinzip- und technische Abbildungen“; eigenständig gezeichnet (die Idee „ein Zeichen je Zeitschritt“ ist die von
+WaveDrom bekannte, Code oder Grafiken werden nicht übernommen).
+
+| Id | Name (EN / DE) | Signale |
+|---|---|---|
+| `chart.timing` | Timing diagram / Zeitdiagramm | `CLK: clock`, `EN: 00111100`, `DATA: xx[A].[B].xx` (ohne Parameter eingefügt) |
+| `chart.timing.clock` | Clock and enable / Takt und Freigabe | `CLK: clock`, `EN: 0011110000`, gegateter Takt `GCLK: 00pppp0000` |
+| `chart.timing.bus` | Bus transfer / Busübertragung | CLK, CS, ADDR (`x.[A0]..[A1]..x.`), DATA (`z..[D0]..[D1]..z`), WE; Markierungen `t1=2; t2=5` mit Δt-Pfeil (100 × 70 mm) |
+| `chart.timing.handshake` | Handshake (REQ/ACK) / Handshake-Protokoll (REQ/ACK) | REQ, ACK, DATA; Markierungen `t1=2; t2=3` mit Δt-Pfeil (100 × 55 mm) |
+
+### Signalschreibweise (`signals`)
+
+Ein Signal je Zeile, `Name: Verlauf`. Statt des Doppelpunkts geht auch ein Semikolon (`CLK;clock`), sodass eine
+zweispaltige Tabelle (Name, Verlauf) direkt eingefügt werden kann. Leere Zeilen und Zeilen, die mit `#` beginnen,
+werden übergangen; eine Zeile ohne Trennzeichen ist ein Verlauf ohne Namen. Ein Verlauf ist entweder ein **Takt** oder
+**ein Zeichen je Zeitschritt**:
+
+| Geschrieben | Bedeutung |
+|---|---|
+| `clock` (auch `clk`, `takt`) `[Periode] [Tastgrad] [inv]` | Takt über das ganze Diagramm; Periode in Zeitschritten (Standard 1), Tastgrad `25%` oder `0.25` (Standard 50 %), `inv` beginnt mit Low – `clock 2 25%` |
+| `0` oder `l` / `1` oder `h` | Low / High |
+| `x` | undefiniert (beide Pegel, dazwischen schraffiert) |
+| `z` | hochohmig (Linie in der Mitte) |
+| `[A5]` | Datenwert mit dem Text „A5“ (sechseckiges Kästchen); `[A][A]` sind zwei Übertragungen mit einer Flanke dazwischen |
+| `=` | Datenwert ohne Text |
+| `p` / `n` | eine Taktperiode, beginnend mit High / Low (je ein halber Schritt) |
+| `.` | den vorigen Zustand einen Schritt länger halten (nach `p` oder `n`: eine Periode mehr) |
+| Leerzeichen | werden übergangen (`0011 1100`) |
+
+Das Diagramm ist so lang wie der längste geschriebene Verlauf (nur Takte: 8 Schritte bzw. vier Perioden, höchstens
+400 Schritte); kürzere Verläufe halten ihren letzten Zustand bis zum Ende. Gleiche Pegel hintereinander verschmelzen
+(`0..1` = `0001`). Der Parser wirft nie: Probleme (unbekanntes Zeichen, fehlendes `]`, `.` am Anfang, unbekannte
+Taktangabe, leerer Verlauf) werden mit Zeile und Zeichen gemeldet („Zeile 2, Zeichen 5: Unbekanntes Zeichen „q“ …“);
+die Zeichnung zeigt ein unbekanntes Zeichen als undefiniert.
+
+Markierungen (`markers`): `Name=Zeit` (oder `Name@Zeit`, eine bloße Zeit heißt t1, t2 …), getrennt durch `;`, z. B.
+`t1=2; t2=5,5` (Dezimalkomma erlaubt). Zeiten in Achseinheiten, also Zeitschritte × `dt`. Maßpfeile (`spans`): `t1-t2`
+oder `t1-t2: t_su` (Text, Standard „Δt“), Markierungen über ihren Namen oder ihre Nummer (`1-2`), mehrere getrennt durch
+`;`; überlappende Pfeile erhalten eigene Zeilen. `dt` (Zeit je Schritt, Standard 1) und `tunit` (z. B. `ns`)
+beschriften die Zeitachse („t in ns“ / „t (ns)“).
+
+### Layout, Teile, Anker und Aktionen
+
+Texte folgen dem kleineren Maßstabsfaktor bezogen auf die Entwurfsgröße 100 × 50 mm und der Zeilenhöhe (viele Signale
+in einem kleinen Rahmen ergeben kleineren Text, ein Strecken in nur einer Richtung lässt ihn gleich); Namen nehmen
+höchstens 35 % der Breite ein und werden eingepasst; Werttexte werden in ihr Kästchen eingepasst und entfallen, wo ein
+Kästchen zu schmal zum Lesen ist.
+
+Teilschlüssel: `signal.k` (der Verlauf: eine offene Freihandform für beide Pegellinien, eine geschlossene Freihandform je
+Wertkästchen bzw. undefiniertem Abschnitt, die Werttexte), `name.k`, `ref.k` (Markierungslinie und Name), `dim.k`
+(Maßpfeil und Text), `grid.major`, `axis.x`, `tick.x`, `label.x`, `axistitle.x`, `title`. So lässt sich ein einzelnes
+Signal umfärben oder ausblenden; ein Aussehen auf der Art (`signal`, `name`) gilt für alle. Anker: Ecken und Mitte des
+Verlaufsbereichs (`plot.tl` …), `origin` und die Zeitachse als Schiene `axis.x`; jede Flanke ist ein Andockpunkt
+`s<Signal>.<Flanke>` (für Ursache-Wirkungs-Pfeile).
+
+Elementaktionen: „Signale…“ (Eingabe, Id `chart.data`: eine Zeile je Signal, Zeilen getrennt durch `|`; das
+PowerPoint-Add-in öffnet seinen Tabelleneditor; Fehler werden mit Zeile und Zeichen abgewiesen), Signal hinzufügen
+(`S4: 0…1…` so lang wie das Diagramm), letztes Signal entfernen (bei einem Signal ausgegraut), Gitternetz,
+Zeitbeschriftung, Flanken schräg / senkrecht, „Markierungen…“, „Maßpfeile…“ (bei weniger als zwei Markierungen
+ausgegraut). Teilaktionen: Signal oder Name – „Signale…“, „Name…“, dieses Signal entfernen, Flanken; Markierung –
+„Markierungen…“, diese Markierung entfernen, „Maßpfeile…“; Maßpfeil – bearbeiten, entfernen; Gitter – Gitternetz;
+Teile der Zeitachse – Zeitbeschriftung.
+
+Folien für die Weitergabe bereinigen: Signalnamen werden zu S1, S2 … und Markierungsnamen zu t1, t2 … (Texte ersetzen),
+Datenwerte zu D1, D2 … (normiert) oder zufälligen Hexadezimalwerten (zufällig; gleiche Werte bleiben gleich), der
+Zeitmaßstab zu reinen Schritten (normiert: `dt` = 1, Einheit gelöscht, Markierungen umgerechnet) oder einem
+Zufallsfaktor (zufällig). Die Verläufe bleiben.
+
+Export: alles ist nativ (Freihandformen, schraffierte Freihandformen, Linien mit Pfeilspitzen, Text), daher zeichnen
+der TikZ- und der SVG-Export es aus den Grundelementen. Die Exporte als matplotlib und pgfplots haben dafür keine
+Datenachsen und melden ein Zeitdiagramm als „could not be exported“ (nicht exportierbar).
+
 ## Hinweise zu den Hosts
 
 Die gesamte Ausgabe besteht aus nativen Primitiven: eine Freihandform je Reihenlinie (geglättete Kurven als
@@ -481,4 +561,7 @@ Titel, Grenzlinien, die Formeln der Kennlinien (Bode-Antwort bei der Eckfrequenz
 Bestwirkungsgrad, Höhenlinienverfolgung, Betriebspunkt der Pumpe, Spalten des Toleranzbands und Polygonbeschnitt),
 alle Kontextaktionen und Eingaben, den Aktionsverteiler des Kerns, den JSON-Rundlauf und den Schwarz-Weiß-SVG-Export.
 Der Galerietest schreibt `gallery-charts/*.html` (jede Vorlage farbig, deutsch in Schwarz-Weiß und gedehnt) zur
-Sichtprüfung.
+Sichtprüfung. `TimingChartTests` prüft das Zeitdiagramm: jede Verlaufsart der Schreibweise, Takte, Fehlermeldungen mit
+Zeile und Zeichen, Markierungen und Maßpfeile, markierte Teile, Flanken als Andockpunkte, senkrechte und schräge
+Flanken, Textgröße beim Skalieren, Aktionen und Eingaben, Bereinigen, den JSON-Rundlauf und das Exportverhalten; er
+schreibt `gallery/timing/*.svg`.

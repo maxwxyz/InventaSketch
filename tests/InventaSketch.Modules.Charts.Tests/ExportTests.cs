@@ -99,7 +99,8 @@ namespace InventaSketch.Modules.Charts.Tests
         public void EveryChartItemGivesAPlausiblePythonScript(Lang lang)
         {
             var r = Fx.Reg();
-            foreach (var item in r.Library)
+            // Timing diagrams have no data axes; they are reported as not exportable (TimingChartTests).
+            foreach (var item in r.Library.Where(i => i.TypeId != TimingChart.TypeId))
             {
                 var o = Fx.Item(r, item.Id);
                 var py = Py(r, lang, o);
@@ -120,7 +121,8 @@ namespace InventaSketch.Modules.Charts.Tests
         public void EveryChartItemGivesAPlausibleLatexDocument(Lang lang)
         {
             var r = Fx.Reg();
-            foreach (var item in r.Library)
+            // Timing diagrams have no data axes; they are reported as not exportable (TimingChartTests).
+            foreach (var item in r.Library.Where(i => i.TypeId != TimingChart.TypeId))
             {
                 var o = Fx.Item(r, item.Id);
                 var tex = Tex(r, lang, o);
