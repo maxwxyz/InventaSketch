@@ -36,12 +36,13 @@ namespace InventaSketch.Modules.Electrical
 
         public IEnumerable<LibraryCategory> Categories => new[]
         {
-            new LibraryCategory(Passive.Cat, new I18nText("Passive components", "Passive Bauelemente"), Id, 10),
-            new LibraryCategory(Semiconductors.Cat, new I18nText("Semiconductors", "Halbleiter"), Id, 20),
+            // Most used first: sources and loads (ground, battery, lamp, motor) and wires, then passive parts and switching.
+            new LibraryCategory(Passive.Cat, new I18nText("Passive components", "Passive Bauelemente"), Id, 20),
+            new LibraryCategory(Semiconductors.Cat, new I18nText("Semiconductors", "Halbleiter"), Id, 40),
             new LibraryCategory(Switching.Cat, new I18nText("Switching & protection", "Schalten & Schützen"), Id, 30),
-            new LibraryCategory(Sources.Cat, new I18nText("Sources & loads", "Quellen & Verbraucher"), Id, 40),
+            new LibraryCategory(Sources.Cat, new I18nText("Sources & loads", "Quellen & Verbraucher"), Id, 10),
             new LibraryCategory(Logic.Cat, new I18nText("Logic & ICs", "Logik & ICs"), Id, 50),
-            new LibraryCategory(Connectors.Cat, new I18nText("Wires, connectors & buses", "Leitungen, Steckverbinder & Busse"), Id, 60),
+            new LibraryCategory(Connectors.Cat, new I18nText("Wires, connectors & buses", "Leitungen, Steckverbinder & Busse"), Id, 15),
             new LibraryCategory(House.Cat, new I18nText("House installation", "Hausinstallation"), Id, 70),
             new LibraryCategory(Power.Cat, new I18nText("Power electronics", "Leistungselektronik"), Id, 80),
             new LibraryCategory(Pcb.Cat, new I18nText("PCB (illustrative)", "Leiterplatte (illustrativ)"), Id, 90),
