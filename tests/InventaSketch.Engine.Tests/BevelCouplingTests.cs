@@ -34,5 +34,36 @@ namespace InventaSketch.Engine.Tests
             twin = Edits.Add(twin, twin.Pages[0].Id, a, c);
             Assert.DoesNotContain(Coupling.Graph(Reg, twin), g => g.Kind == LinkKind.Mesh);
         }
+
+        /// <summary>An angle drive 12:36 passes the speed on with i = 3; a differential with the cage held reverses.</summary>
+        [Fact]
+        public void BevelPairsPassTheSpeedOnByTheirTeeth()
+        {
+            var item = Reg.Library.First(i => i.TypeId == "mech.gear.bevel" && i.View == "stick");
+            var pinion = Reg.Create(item, new Vec2(100, 100)).WithParam("teeth", 12.0);
+            var wheel = Reg.Create(item, new Vec2(140, 60)).WithParam("teeth", 36.0) with { Transform = new Transform(140, 60, 90) };
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, pinion, wheel);
+            doc = Edits.Move(doc, new[] { wheel.Id }, Apex(doc, pinion.Id) - Apex(doc, wheel.Id));
+            var speeds = GearTrain.Speeds(Reg, doc, pinion.Id);
+            Assert.Equal(1, speeds[pinion.Id], 6);
+            Assert.Equal(-1.0 / 3, speeds[wheel.Id], 6);
+            var link = Links.For(Reg, doc, new[] { pinion.Id }).First(g => g.Kind == LinkKind.Mesh);
+            Assert.Contains("i = 3", Links.Describe(Reg, doc, link, pinion.Id));
+
+            // Side gears facing each other on one axis, one spider gear between them (cage held): opposite senses on the axis,
+            // i.e. equal speeds about their own axes pointing to the apex.
+            var left = Reg.Create(item, new Vec2(100, 100));
+            var right = Reg.Create(item, new Vec2(100, 100)) with { Transform = new Transform(100, 100, 180) };
+            var spider = Reg.Create(item, new Vec2(100, 100)) with { Transform = new Transform(100, 100, 90) };
+            var diff = SketchDocument.Create();
+            diff = Edits.Add(diff, diff.Pages[0].Id, left, right, spider);
+            var apex = Apex(diff, left.Id);
+            diff = Edits.Move(diff, new[] { right.Id }, apex - Apex(diff, right.Id));
+            diff = Edits.Move(diff, new[] { spider.Id }, apex - Apex(diff, spider.Id));
+            var w = GearTrain.Speeds(Reg, diff, left.Id);
+            Assert.Equal(1, w[right.Id], 6);
+            Assert.Equal(-1, w[spider.Id], 6);
+        }
     }
 }

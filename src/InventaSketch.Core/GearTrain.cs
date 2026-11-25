@@ -13,6 +13,8 @@ namespace InventaSketch.Core
     /// <item>parts fixed on a shaft (hub fixed, sliding or none) and concentric gears (compound gears): same speed; loose
     /// hubs are free;</item>
     /// <item>belts and chains: r_a ω_a = r_b ω_b (crossed belts: opposite sense);</item>
+    /// <item>bevel pairs (shared cone apex, axes crossing): z_a ω_a + z_b ω_b = 0 with each speed taken about the gear's axis
+    /// pointing to the apex (so the two side gears of a differential with the cage held turn opposite ways);</item>
     /// <item>fixed carriers (grounded): 0.</item>
     /// </list>
     /// Speeds the system leaves open (a planetary set without a fixed member) are taken as 0, ring gears and carriers
@@ -32,6 +34,8 @@ namespace InventaSketch.Core
             public string? Carrier;
             public bool Fixed;
             public bool Spins;
+            public bool Bevel;
+            public double Teeth;
         }
 
         /// <summary>True if <paramref name="o"/> visibly turns about its own axis (seen along it: axial views).</summary>
@@ -138,10 +142,15 @@ namespace InventaSketch.Core
                 var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner);
                 if (pitch is not null) { b.Pitch = pitch.Radius; b.Inner = pitch.Role == AnchorRole.PitchInner; b.Centre = pitch.P; b.Side = pitch.AxisOf() is not null; }
                 var hub = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && (a.Id == "hub" || a.Id is null));
+                if (pitch is null && anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex))
+                {
+                    b.Bevel = true;
+                    b.Teeth = Math.Max(1, o.Num("teeth", 0));
+                }
                 if (pitch is null && hub is not null) b.Centre = hub.P;
                 b.Pins.AddRange(anchors.Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id is { } id && id.StartsWith("pin", StringComparison.Ordinal)).Select(a => a.P));
                 b.Spins = registry.Type(o.Type)!.MeshDirections(o).Count == 4 && (pitch is not null || b.Pins.Count > 0);
-                if (pitch is not null || hub is not null || b.Pins.Count > 0 || anchors.Any(a => a.Role == AnchorRole.Axis)) map[o.Id] = b;
+                if (pitch is not null || hub is not null || b.Bevel || b.Pins.Count > 0 || anchors.Any(a => a.Role == AnchorRole.Axis)) map[o.Id] = b;
             }
             // Planets: parts whose centre sits on a carrier pin.
             foreach (var b in map.Values)
@@ -181,6 +190,10 @@ namespace InventaSketch.Core
                             }
                             break;
                         }
+                    case LinkKind.Mesh when a.Bevel && b.Bevel:
+                        // Bevel pair: speeds about the axes pointing to the shared apex (see the class).
+                        Add((a.O.Id, a.Teeth), (b.O.Id, b.Teeth));
+                        break;
                     case LinkKind.Carried:
                         {
                             // Shaft A carries B: fixed on it unless the hub is loose.
