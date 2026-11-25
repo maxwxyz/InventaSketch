@@ -28,10 +28,65 @@ namespace InventaSketch.AddIn.OnSlide
 
         internal sealed record BarChoice(string Key, string Tip, string Current, bool Mirror, IReadOnlyList<ChoiceOption> Options)
         {
-            public ChoiceOption? CurrentOption => Options.FirstOrDefault(o => o.Value == Current) ?? Options.FirstOrDefault();
+            public ChoiceOption? CurrentOption => IsMenu ? null : Options.FirstOrDefault(o => o.Value == Current) ?? Options.FirstOrDefault();
             /// <summary>All options have a pictogram or picture: the button shows it instead of text.</summary>
-            public bool Pictorial => Options.All(o => o.IconId is not null || o.Icon is not null);
+            public bool Pictorial => !IsMenu && Options.All(o => o.IconId is not null || o.Icon is not null);
+            /// <summary>The options are commands (nothing current): "Fill to ▸", "Add area ▸".</summary>
+            public bool IsMenu { get; init; }
         }
+
+        /// <summary>Option pictures rendered from engine previews (<see cref="ContextAction.Preview"/>), by action id and size.</summary>
+        private readonly Dictionary<string, Bitmap> _previewCache = new(StringComparer.Ordinal);
+
+        private Bitmap? PreviewBitmap(ContextAction a, int size)
+        {
+            if (a.Preview is not { Count: > 0 } prims) return null;
+            var key = a.Id + "#" + size + "#" + prims.Count + "#" + (Prim.Bounds(prims)?.ToString() ?? "");
+            if (_previewCache.TryGetValue(key, out var bmp)) return bmp;
+            if (_previewCache.Count > 400) { foreach (var b in _previewCache.Values) b.Dispose(); _previewCache.Clear(); }
+            try
+            {
+                bmp = ThumbnailRenderer.Render(prims, size, Color.FromArgb(40, 40, 40), Color.Transparent);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Option preview", ex);
+                return null;
+            }
+            _previewCache[key] = bmp;
+            return bmp;
+        }
+
+        /// <summary>
+        /// The choices among <paramref name="actions"/> (<see cref="ActionChoice"/>: curve shape, line style, pattern …) as bar
+        /// choices with keys <paramref name="prefix"/> + choice key; options keep their pictogram, else their preview picture.
+        /// </summary>
+        private List<BarChoice> ActionBarChoices(IEnumerable<ContextAction> actions, string prefix)
+        {
+            var lang = _lang();
+            var size = (int)Math.Round(26 * (_view?.DeviceScale ?? 1));
+            return ActionChoiceBar.Entries(actions).Where(e => e.IsChoice).Select(e =>
+            {
+                var options = e.Options.Select(a => new ChoiceOption(a.Id, a.Label.Get(lang) + (a.Input is not null && !a.Label.Get(lang).EndsWith("…", StringComparison.Ordinal) ? " …" : ""),
+                    IsTelling(a.Icon) ? a.Icon : null, IsTelling(a.Icon) ? null : PreviewBitmap(a, size))).ToList();
+                var current = e.Options.FirstOrDefault(a => a.IsActive)?.Id ?? "";
+                return new BarChoice(ActionChoiceBar.Key(prefix, e.Choice!), e.Choice!.Label.Get(lang), current, false, options) { IsMenu = e.Choice.IsMenu };
+            }).ToList();
+        }
+
+        /// <summary>The choices of the selected part (empty without a part selection).</summary>
+        private List<BarChoice> PartChoices(SketchObject o) => _part is null ? new List<BarChoice>() : ActionBarChoices(PartActions(o), ActionChoiceBar.PartPrefix);
+
+        /// <summary>The element's action choices that are no parameter choice ("Add area ▸" …).</summary>
+        private List<BarChoice> ElementActionChoices(SketchObject o)
+        {
+            var paramKeys = new HashSet<string>(BarChoices(o, int.MaxValue).Select(c => c.Key));
+            var actions = UnitActions(out _).Where(a => a.Choice is not null && (a.ParamKeys is null || !a.ParamKeys.Any(paramKeys.Contains)));
+            return ActionBarChoices(actions, ActionChoiceBar.ElementPrefix);
+        }
+
+        /// <summary>Every choice of the armed element: its bar choices, its action choices and those of the selected part.</summary>
+        private List<BarChoice> AllChoices(SketchObject o) => BarChoices(o, int.MaxValue).Concat(ElementActionChoices(o)).Concat(PartChoices(o)).ToList();
 
         /// <summary>The bar choices of an object, in order: line type, then its icon parameters, then the line style.</summary>
         private List<BarChoice> BarChoices(SketchObject o, int max = MaxBarChoices)
@@ -98,11 +153,17 @@ namespace InventaSketch.AddIn.OnSlide
         private void AttachDropdown(FloatingBar bar, SketchObject o)
         {
             if (_barChoice is null) return;
-            var choice = BarChoices(o).FirstOrDefault(c => c.Key == _barChoice);
+            var choice = AllChoices(o).FirstOrDefault(c => c.Key == _barChoice);
             var anchor = bar.Buttons.ToList().FindIndex(b => b.Id == "choice:" + _barChoice);
             if (choice is null || anchor < 0) { _barChoice = null; return; }
-            bar.SetDropdown(anchor, choice.Options.Select(x => new DropItem("pick:" + choice.Key + ":" + x.Value, x.Label, x.IconId, x.Icon, x.Value == choice.Current, choice.Mirror)).ToList());
+            var items = choice.Options.Select(x => new DropItem("pick:" + choice.Key + ":" + x.Value, x.Label, x.IconId, x.Icon, !choice.IsMenu && x.Value == choice.Current, choice.Mirror)).ToList();
+            bar.SetDropdown(anchor, items);
+            LastDropItems = string.Join("\n", items.Select(i => i.Id + "\t" + i.Label + (i.Active ? "\t(current)" : "") + (i.IconId is null && i.Icon is null ? "" : "\t(picture)")));
+            Log.Info("Dropdown [" + choice.Tip + "]: " + string.Join("; ", items.Select(i => i.Id + "=" + i.Label + (i.Active ? " (current)" : ""))));
         }
+
+        /// <summary>Rows of the open bar dropdown as last shown: "id\tlabel[\t(current)][\t(picture)]" per line (UI tests).</summary>
+        internal string LastDropItems { get; private set; } = "";
 
         /// <summary>
         /// Bar commands of the choices: "choice:&lt;key&gt;" opens (or with an empty key closes) the icon row without an edit;
@@ -125,6 +186,8 @@ namespace InventaSketch.AddIn.OnSlide
             if (cut < 0) return null;
             var k = rest.Substring(0, cut);
             var value = rest.Substring(cut + 1);
+            // Choices among actions (a part's curve shape, pattern …; the element's "Add area ▸"): run that option.
+            if (ActionChoiceBar.Command(k, value) is { } run) return run;
             return k switch
             {
                 "@type" => "conv:" + value,

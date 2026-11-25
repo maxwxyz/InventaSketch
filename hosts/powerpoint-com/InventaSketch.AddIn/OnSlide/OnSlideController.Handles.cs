@@ -238,8 +238,11 @@ namespace InventaSketch.AddIn.OnSlide
                     specs.Add(new HandleSpec("pt:" + i, HandleKind.Point, view.ToScreen(pts[i]), default, 0, 5, 100) { Fixed = true });
             }
             // Grips on values of the element (chart limit lines, value lines, markers): on the drawing, fixed.
+            // Data points are small round grips; a whole curve has no grip of its own (dragged by pressing on the selected curve).
             for (var i = 0; i < _grips.Count; i++)
-                specs.Add(new HandleSpec("drag:" + i, HandleKind.Drag, view.ToScreen(_grips[i].Position), default, 0, (float)GripPx + 3, 95) { Fixed = true, Tip = _grips[i].Label.Get(_lang()) });
+                if (!_grips[i].ByPart)
+                    specs.Add(new HandleSpec("drag:" + i, HandleKind.Drag, view.ToScreen(_grips[i].Position), default, 0, _grips[i].ShowWith is null ? (float)GripPx + 3 : (float)PointGripPx + 1.5f, 95)
+                    { Fixed = true, Tip = _grips[i].Label.Get(_lang()) });
             if (_chainSource is not null)
                 foreach (var side in Sides)
                     specs.Add(new HandleSpec("tri:" + side, HandleKind.Triangle, TriangleCentre(view, side), default, 0, (float)(TrianglePx * 0.6), 100) { Fixed = true });
@@ -412,6 +415,12 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>Visible half size of a grip (logical pixels).</summary>
         private const double GripPx = 5.5;
 
+        /// <summary>Radius of a data point grip (logical pixels): small, a curve shows many of them.</summary>
+        private const double PointGripPx = 3.5;
+
+        /// <summary>Offset from the pointer to the dragged handle (a curve grabbed anywhere on it); zero for grips.</summary>
+        private Vec2 _gripOffset;
+
         /// <summary>Drag handles of the armed unit's element (<see cref="Registry.DragHandles"/>), page mm.</summary>
         private List<DragHandle> _grips = new();
         private string? _gripOwner;
@@ -460,15 +469,40 @@ namespace InventaSketch.AddIn.OnSlide
             }
             if (message != WM_LBUTTONDOWN) return false;
             var hit = NearestIndex(view, pt, "drag:");
-            if (hit < 0 || hit >= _grips.Count) return false;
+            if (hit < 0 || hit >= _grips.Count || _grips[hit].ByPart)
+            {
+                // A selected curve pressed anywhere on it: the whole curve is dragged (its values shift in the background).
+                if (ActionChoiceBar.BodyGrip(_grips, _part) is not { } body || !OnSelectedPart(pt, view)) return false;
+                HideBar();
+                _grip = body;
+                _gripOffset = body.Position - view.ToMm(pt);
+                _gripAt = body.Position;
+                _gripDown = pt;
+                _gripMoved = false;
+                _mode = Mode.Grip;
+                swallow = true;
+                Log.Info("Drag curve " + body.Key);
+                return true;
+            }
             HideBar();
             _grip = _grips[hit];
+            _gripOffset = Vec2.Zero;
             _gripAt = _grip.Position;
             _gripDown = pt;
             _gripMoved = false;
             _mode = Mode.Grip;
             swallow = true;
             return true;
+        }
+
+        /// <summary>True if the pointer is on the selected part of the grip owner (within about six pixels).</summary>
+        private bool OnSelectedPart(POINT pt, SlideView view)
+        {
+            if (_part is null || GripObject() is not { } o || _unit is null) return false;
+            var at = view.ToMm(pt);
+            var tolerance = Math.Max(0.4, (view.ToMm(new POINT { X = pt.X + (int)Math.Round(6 * view.DeviceScale), Y = pt.Y }) - at).Length);
+            try { return _registry().PartAt(o, at, new RenderContext(_unitContext ?? _unit.Doc, _lang()), tolerance) == _part; }
+            catch (Exception ex) { Log.Error("Part at", ex); return false; }
         }
 
         /// <summary>
@@ -483,7 +517,7 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 if (!_gripMoved && Math.Abs(pt.X - _gripDown.X) + Math.Abs(pt.Y - _gripDown.Y) < 3 * view.DeviceScale) return true;
                 _gripMoved = true;
-                _gripAt = Dragging.Constrain(grip, view.ToMm(pt));
+                _gripAt = Dragging.Constrain(grip, view.ToMm(pt) + _gripOffset);
                 DrawGripDrag(view, grip);
                 return true;
             }
@@ -496,7 +530,7 @@ namespace InventaSketch.AddIn.OnSlide
                 _mode = Mode.Armed;
                 _overlay.Clear();
                 if (moved) Post(() => ApplyGrip(unit, grip.Key, at));
-                else if (grip.Part is not null && PartOwner() is not null) Post(() => SelectPart(grip.Part));
+                else if (grip.Part is not null && !grip.ByPart && PartOwner() is not null) Post(() => SelectPart(grip.Part));
                 else { ShowBar(view); DrawPointHandles(view); }
                 return true;
             }
@@ -517,14 +551,17 @@ namespace InventaSketch.AddIn.OnSlide
             var doc = Edits.Update(ctxDoc, new[] { o.Id }, _ => moved);
             var ctx = new RenderContext(doc, lang);
             var all = Prim.Flatten(registry.Render(moved, ctx)).ToList();
-            var part = grip.Part is null ? all : all.Where(p => p.Tag is { } t && (t == grip.Part || t.StartsWith(grip.Part + ".", StringComparison.Ordinal))).ToList();
+            // A data point previews its curve (the point itself is not drawn).
+            var key = grip.ShowWith ?? grip.Part;
+            var part = key is null ? all : all.Where(p => p.Tag is { } t && (t == key || t.StartsWith(key + ".", StringComparison.Ordinal))).ToList();
             var prims = part.Count > 0 ? part : all;
             var after = Dragging.Find(registry.DragHandles(moved, ctx), grip.Key);
             var label = (after ?? grip).Label.Get(lang);
             var at = view.ToScreen(after?.Position ?? _gripAt);
             Present(view, g => ThumbnailRenderer.DrawAll(g, prims, Ghost, (float)view.Mm(1.6)), g =>
             {
-                DrawGrip(g, view, at, grip, hover: true);
+                if (grip.ShowWith is not null) DrawPointGrip(g, view, at, hover: true, selected: true);
+                else if (!grip.ByPart) DrawGrip(g, view, at, grip, hover: true);
                 DrawTag(g, view, at, label);
             });
         }
@@ -555,11 +592,37 @@ namespace InventaSketch.AddIn.OnSlide
                 if (h is null) continue;
                 var hover = i == _hoverGrip;
                 var grip = _grips[i];
-                // A grip of the selected part is always shown; the others appear as the pointer comes near.
-                var alpha = hover || (_part is not null && grip.Part == _part) ? 1 : Reveal(view, h);
-                Faded(g, h.At, alpha, (float)((GripPx * 1.15 + 8) * view.DeviceScale), (gg, c) => DrawGrip(gg, view, c, grip, hover));
+                // A grip of the selected part is always shown, and so are the point grips of a selected curve (or of the curve
+                // of a selected point); the others appear as the pointer comes near.
+                var alpha = hover || ActionChoiceBar.ShownWith(grip, _part, _grips) ? 1 : Reveal(view, h);
+                var selected = _part is not null && grip.Part == _part;
+                Faded(g, h.At, alpha, (float)((GripPx * 1.15 + 8) * view.DeviceScale), (gg, c) =>
+                {
+                    if (grip.ShowWith is not null) DrawPointGrip(gg, view, c, hover, selected);
+                    else DrawGrip(gg, view, c, grip, hover);
+                });
                 if (hover) QueueTip(view, h.At, h.Spec.Tip + T(" · drag to change", " · ziehen zum Ändern"), (float)GripPx + 4);
             }
+        }
+
+        /// <summary>
+        /// A data point grip: a small blue-rimmed white dot; the selected point is filled blue with a soft blue glow
+        /// (maintainer 2026-11-25: "points highlighted in blue").
+        /// </summary>
+        private static void DrawPointGrip(Graphics g, SlideView view, PointF c, bool hover, bool selected)
+        {
+            var s = (float)view.DeviceScale;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            var r = (float)(PointGripPx * (hover ? 1.25 : 1.0) * s);
+            if (selected)
+            {
+                using var glow = new SolidBrush(Color.FromArgb(70, 31, 95, 191));
+                g.FillEllipse(glow, c.X - 2.2f * r, c.Y - 2.2f * r, 4.4f * r, 4.4f * r);
+            }
+            using var fill = new SolidBrush(selected ? FlowBlue : hover ? Color.FromArgb(225, 236, 252) : Color.White);
+            using var rim = new Pen(FlowBlue, 1.4f * s);
+            g.FillEllipse(fill, c.X - r, c.Y - r, 2 * r, 2 * r);
+            g.DrawEllipse(rim, c.X - r, c.Y - r, 2 * r, 2 * r);
         }
 
         /// <summary>A grip: a small blue-rimmed square with small arrowheads in the directions it may move.</summary>

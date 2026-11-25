@@ -1990,6 +1990,7 @@ namespace InventaSketch.AddIn
         internal string LastHalo() => _onSlide?.LastHalo ?? "";
         internal string LastCommandIds() => _onSlide?.LastCommandIds ?? "";
         internal string LastPieItems() => _onSlide?.LastPieItems ?? "";
+        internal string LastDropItems() => _onSlide?.LastDropItems ?? "";
         internal string DragHandlesOf(string shapeName) => _onSlide?.DragHandlesOf(shapeName) ?? "";
 
         internal string BuildPortsOf(string shapeName) => _onSlide?.BuildPortsOf(shapeName) ?? "";

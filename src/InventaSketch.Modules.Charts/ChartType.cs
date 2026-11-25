@@ -134,6 +134,7 @@ namespace InventaSketch.Modules.Charts
         {
             ChartTags.Series => 0, ChartTags.Marker => 1, ChartTags.Bar => 2, ChartTags.ValueLabel => 3, ChartTags.Axis => 4,
             ChartTags.TickLabel => 5, ChartTags.Tick => 6, ChartTags.AxisTitle => 7, "grid" => 8, ChartTags.Legend => 9, ChartTags.Title => 10,
+            ChartAreas.Tag => 3,
             _ => 11,
         };
 
@@ -183,6 +184,7 @@ namespace InventaSketch.Modules.Charts
                 ChartTags.Note => n is null ? new I18nText("Notes", "Anmerkungen") : Indexed("Note", "Anmerkung"),
                 ChartTags.Ref => Indexed("Reference line", "Bezugslinie"),
                 ChartTags.Region => Indexed("Region", "Fläche"),
+                ChartAreas.Tag => Indexed("Area", "Fläche"),
                 ChartTags.Numeral => Indexed("Reference numeral", "Bezugszeichen"),
                 ChartTags.CurveLabel => Prefixed("Label", "Beschriftung", lines, CurveWord),
                 ChartTags.PanelTitle => Indexed("Panel title", "Teilbildtitel"),
@@ -212,7 +214,8 @@ namespace InventaSketch.Modules.Charts
                 _ => Array.Empty<string>(),
             };
             if (ids.Length == 0) return Array.Empty<ContextAction>();
-            return Actions(o, ctx).Where(a => ids.Contains(a.Id)).ToList();
+            // Choices (style, scale, legend position …) come with all their options.
+            return Actions(o, ctx).Where(a => ids.Contains(a.Id) || a.Choice is { } c && ids.Contains(c.Key)).ToList();
         }
     }
 
@@ -290,5 +293,7 @@ namespace InventaSketch.Modules.Charts
         public static ContextAction GridToggle(SketchObject o) => Prm.Toggle(o, "chart.grid", "grid", true, new I18nText("Grid", "Gitternetz"), IconIds.Grid);
 
         public static ContextAction LegendCycle(SketchObject o) => Prm.Cycle(o, "chart.legend", Legend, new I18nText("Legend", "Legende"), IconIds.Legend);
+        /// <summary>The legend position as a choice (automatic, inside, right, none).</summary>
+        public static IEnumerable<ContextAction> LegendChoice(SketchObject o) => Prm.Options(o, "chart.legend", Legend, new I18nText("Legend", "Legende"));
     }
 }

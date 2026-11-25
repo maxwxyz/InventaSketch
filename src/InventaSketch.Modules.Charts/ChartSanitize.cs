@@ -263,6 +263,21 @@ namespace InventaSketch.Modules.Charts
             return MapRange(ChartData.Range(v.Text), f) is { } m ? o.WithParam(key, RangeText(m)) : o;
         }
 
+        /// <summary>Maps the values of the XY chart's areas (x: spans, vertical lines; y: bases, lines, bands); labels go with the texts.</summary>
+        private static SketchObject WithAreas(SketchObject o, Func<double, double> fx, Func<double, double> fy, bool replaceTexts)
+        {
+            var areas = XyEditor.Areas(o);
+            if (areas.Count == 0) return o;
+            double? M(double? v, Func<double, double> f) => v is { } d && Fmt.Finite(d) ? f(d) : v;
+            foreach (var r in areas)
+            {
+                r.From = M(r.From, fx); r.To = M(r.To, fx); r.X2 = M(r.X2, fx);
+                r.Base = M(r.Base, fy); r.Y1 = M(r.Y1, fy); r.Y2 = M(r.Y2, fy);
+                if (replaceTexts) r.Label = null;
+            }
+            return o.WithParam("areas", FigureSpec.AreasJson(areas));
+        }
+
         /// <summary>Maps the numbers of a list parameter ("limits").</summary>
         private static SketchObject WithList(SketchObject o, string key, Func<double, double> f)
         {
@@ -303,6 +318,7 @@ namespace InventaSketch.Modules.Charts
             }
             o = o.WithParam("data", Write(blocks));
             o = WithList(o, "limits", fy);
+            o = WithAreas(o, fx, fy, c.Opt.ReplaceTexts);
             if (xs.Count > 0) o = WithRange(o, "xrange", fx);
             o = WithRange(o, "yrange", fy);
             if (c.Norm) o = NoUnits(o, xs.Count > 0 ? new[] { "xunit", "yunit" } : new[] { "yunit" });
@@ -638,8 +654,10 @@ namespace InventaSketch.Modules.Charts
             foreach (var g in s.Regions)
             {
                 var panel = g.A >= 0 && g.A < s.Series.Count ? s.Series[g.A].Panel : g.Panel;
-                g.From = MXn(g.From); g.To = MXn(g.To);
-                g.Base = MYn(g.Base, panel);
+                if (g.Kind == "hspan") panel = g.Panel;
+                g.From = MXn(g.From); g.To = MXn(g.To); g.X2 = MXn(g.X2);
+                g.Base = MYn(g.Base, panel); g.Y1 = MYn(g.Y1, panel); g.Y2 = MYn(g.Y2, panel);
+                if (c.Opt.ReplaceTexts && g.Label is not null) g.Label = null;
                 Num(g.Numeral, g.Panel ?? panel, false);
             }
             foreach (var note in s.Notes)

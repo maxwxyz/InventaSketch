@@ -335,6 +335,7 @@ namespace InventaSketch.Modules.Charts
             var lines = style != "points";
             var markers = style is "points" or "linepoints";
             Limits();
+            var drawn = new (List<double> X, List<double> Y)?[series.Count];
             for (var k = 0; k < series.Count; k++)
             {
                 var look = SeriesLook.Of(k);
@@ -343,7 +344,17 @@ namespace InventaSketch.Modules.Charts
                 var line = lines ? Stroke(key, look.Color, 0.5, look.Dash) : null;
                 var marker = markers ? Marker(mkey, MarkerName(look.Marker), look.FilledMarker, look.Color, _f.Fs * 0.3) : null;
                 var legend = Common.SeriesName(series[k].Name, k, _lang);
-                AddSeries(0, key, mkey, series[k].Points, line, marker, style == "step", smooth, legend);
+                drawn[k] = AddSeries(0, key, mkey, series[k].Points, line, marker, style == "step", smooth, legend);
+            }
+            // Areas below everything else (as drawn).
+            var areas = XyEditor.Areas(_o);
+            var areaSeries = XyEditor.Instance.Series(_o, _lang);
+            var at = 0;
+            for (var k = 0; k < areas.Count; k++)
+            {
+                var key = ChartTags.Nth(ChartAreas.Tag, k);
+                if (Hidden(key) || Area(areas[k], key, areaSeries, drawn) is not { } fill) continue;
+                _x.Items.Insert(at++, fill);
             }
         }
 
@@ -671,7 +682,7 @@ namespace InventaSketch.Modules.Charts
             {
                 var r = spec.Regions[k];
                 var key = ChartTags.Nth(ChartTags.Region, k);
-                var fill = Region(spec, r, k, n, lines, panelOf);
+                var fill = Area(r, key, FigureEditor.Series(spec, _lang), lines);
                 if (fill is null) continue;
                 if (!Hidden(key)) _x.Items.Insert(below++, fill);
                 if (r.Numeral is { } num && gNum[k] >= 0)
@@ -789,82 +800,157 @@ namespace InventaSketch.Modules.Charts
             return a / 2;
         }
 
-        /// <summary>A figure region in data coordinates (common x grid, the where-mask, the polygons); null when it cannot be drawn.</summary>
-        private XFill? Region(FigureSpec spec, FigRegion r, int k, int n, (List<double> X, List<double> Y)?[] lines, int[] panelOf)
+        /// <summary>Value of a step curve at x: "post" holds a value until the next x, "pre" from the previous x, "mid" around it.</summary>
+        internal static double StepAt(IReadOnlyList<double> xs, IReadOnlyList<double> ys, double x, string mode)
         {
-            var key = ChartTags.Nth(ChartTags.Region, k);
-            var mono = _x.Mono;
-            string baseColor = Palette.Helper;
+            var pts = Enumerable.Range(0, Math.Min(xs.Count, ys.Count)).Where(i => Fmt.Finite(xs[i]) && Fmt.Finite(ys[i])).Select(i => (X: xs[i], Y: ys[i])).ToList();
+            if (pts.Count == 0 || x < pts[0].X - 1e-12 || x > pts[pts.Count - 1].X + 1e-12) return double.NaN;
+            for (var i = 0; i < pts.Count; i++)
+            {
+                if (Math.Abs(pts[i].X - x) < 1e-12) return pts[i].Y;
+                if (i + 1 < pts.Count && x > pts[i].X && x < pts[i + 1].X)
+                    return mode switch
+                    {
+                        "pre" => pts[i + 1].Y,
+                        "mid" => x < (pts[i].X + pts[i + 1].X) / 2 ? pts[i].Y : pts[i + 1].Y,
+                        _ => pts[i].Y,
+                    };
+            }
+            return double.NaN;
+        }
+
+        /// <summary>
+        /// A filled area in data coordinates: the semantic call (fill_between with x grid, edges, where-mask and steps;
+        /// fill_betweenx; axvspan; axhspan) and the filled polygons as drawn (the renderer's geometry converted to data, for
+        /// exports without a matching call); null when it cannot be drawn.
+        /// </summary>
+        private XFill? Area(FigRegion r, string key, IReadOnlyList<AreaSeries> series, (List<double> X, List<double> Y)?[] lines)
+        {
+            var n = _f.Panels.Count;
+            var (drawn, panel) = ChartAreas.Polygons(r, _f, series);
+            if (drawn.Count == 0) return null;
+            var fill = new XFill { Key = key, Kind = r.Kind is "span" or "hspan" or "betweenx" ? r.Kind : "between", Panel = panel, Step = r.Step, WhereBelow = r.Where == "below" };
+            // Polygons as drawn, in data coordinates of their panel.
+            fill.Polygons = drawn.Select(poly =>
+            {
+                var pi = PanelAt(poly.Average(v => v.Y));
+                return poly.Select(v => new Vec2(DataX(v.X), DataY(pi, v.Y))).ToList();
+            }).ToList();
             var xa = _f.X;
             double lo = Math.Min(xa.Min, xa.Max), hi = Math.Max(xa.Min, xa.Max);
-            var fill = new XFill { Key = key, Kind = r.Kind == "span" ? "span" : "between" };
-            if (r.Kind == "span")
+            switch (r.Kind)
             {
-                double from = r.From ?? xa.Min, to = r.To ?? xa.Max;
-                fill.X0 = Geo.Clamp(Math.Min(from, to), lo, hi);
-                fill.X1 = Geo.Clamp(Math.Max(from, to), lo, hi);
-                if (!(fill.X1 > fill.X0)) return null;
-                var panels = r.Panel is { } sp && sp >= 0 ? new[] { Clamp(sp, n) } : Enumerable.Range(0, n).ToArray();
-                fill.Panel = panels[0];
-                fill.Panels = panels.ToList();
-                foreach (var pi in panels)
+                case "span":
+                    {
+                        double from = r.From ?? xa.Min, to = r.To ?? xa.Max;
+                        fill.X0 = Geo.Clamp(Math.Min(from, to), lo, hi);
+                        fill.X1 = Geo.Clamp(Math.Max(from, to), lo, hi);
+                        if (!(fill.X1 > fill.X0)) return null;
+                        fill.Panels = (r.Panel is { } sp && sp >= 0 ? new[] { Clamp(sp, n) } : Enumerable.Range(0, n).ToArray()).ToList();
+                        break;
+                    }
+                case "hspan":
+                    {
+                        var y = _f.Panels[panel].Y;
+                        double y0 = r.Y1 ?? y.Min, y1 = r.Y2 ?? y.Max;
+                        fill.Y0 = Math.Min(y0, y1);
+                        fill.Y1 = Math.Max(y0, y1);
+                        fill.X0 = r.From is { } f0 ? Geo.Clamp(f0, lo, hi) : lo;
+                        fill.X1 = r.To is { } t0 ? Geo.Clamp(t0, lo, hi) : hi;
+                        fill.FullWidth = r.From is null && r.To is null;
+                        fill.Panels = (r.Panel is { } hp && hp < 0 ? Enumerable.Range(0, n).ToArray() : new[] { Clamp(r.Panel ?? 0, n) }).ToList();
+                        break;
+                    }
+                case "betweenx":
+                    {
+                        if (r.A < 0 || r.A >= series.Count) return null;
+                        var a = series[r.A];
+                        var ys = new List<double>();
+                        var x1 = new List<double>();
+                        var x2 = new List<double>();
+                        for (var i = 0; i < Math.Min(a.X.Count, a.Y.Count); i++)
+                        {
+                            if (!Fmt.Finite(a.X[i]) || !Fmt.Finite(a.Y[i])) continue;
+                            double other;
+                            if (r.X2 is { } c) other = c;
+                            else if (r.B >= 0 && r.B < series.Count) other = Interp(series[r.B].Y, series[r.B].X, a.Y[i]);
+                            else return null;
+                            ys.Add(a.Y[i]); x1.Add(a.X[i]); x2.Add(other);
+                        }
+                        fill.X = ys; fill.Lo = x1; fill.Hi = x2;
+                        if (r.Where is not null)
+                        {
+                            fill.Where = x1.Zip(x2, (p, q) => r.Where == "below" ? p <= q : p >= q).ToList();
+                            fill.WhereText = "curve " + Fmt.I(r.A + 1) + (r.Where == "below" ? " left of " : " right of ") + (r.X2 is { } cx ? "x = " + NumText(cx) : "curve " + Fmt.I(r.B + 1));
+                        }
+                        break;
+                    }
+                default:
+                    {
+                        if (r.A < 0 || r.A >= series.Count) return null;
+                        var yAxis = _f.Panels[panel].Y;
+                        // Step areas use the data points (the export's step= draws the steps); others the curves as drawn.
+                        (List<double> X, List<double> Y) Edge(int k) => r.Step is not null || lines.Length <= k || lines[k] is not { } l
+                            ? (series[k].X.ToList(), series[k].Y.ToList()) : l;
+                        var la = Edge(r.A);
+                        (List<double> X, List<double> Y)? lb = null;
+                        double? constant = null;
+                        if (r.Kind == "below") constant = r.Base is { } bv ? Geo.Clamp(bv, yAxis.Min, yAxis.Max) : yAxis.Min;
+                        else if (r.Y2 is { } y2) constant = y2;
+                        else if (r.B >= 0 && r.B < series.Count && r.B != r.A) lb = Edge(r.B);
+                        else return null;
+                        if (r.From is { } f0) lo = Math.Max(lo, f0);
+                        if (r.To is { } t0) hi = Math.Min(hi, t0);
+                        if (!(hi > lo)) return null;
+                        var grid = new List<double>();
+                        foreach (var x in la.X.Concat(lb?.X ?? new List<double>()).Where(v => Fmt.Finite(v) && v > lo && v < hi).Concat(new[] { lo, hi }).OrderBy(v => v))
+                            if (grid.Count == 0 || x - grid[grid.Count - 1] > 1e-9 * Math.Max(1, Math.Abs(x))) grid.Add(x);
+                        double At((List<double> X, List<double> Y) l, double x) => r.Step is { } st ? StepAt(l.X, l.Y, x, st) : Interp(l.X, l.Y, x);
+                        fill.X = grid;
+                        fill.Lo = grid.Select(x => At(la, x)).ToList();
+                        fill.Hi = grid.Select(x => constant ?? At(lb!.Value, x)).ToList();
+                        if (r.Where is not null && r.Kind == "between")
+                        {
+                            fill.Where = fill.Lo.Zip(fill.Hi, (p, q) => r.Where == "below" ? p <= q : p >= q).ToList();
+                            fill.WhereText = "curve " + Fmt.I(r.A + 1) + (r.Where == "below" ? " below " : " above ") + (constant is { } cv ? "y = " + NumText(cv) : "curve " + Fmt.I(r.B + 1));
+                        }
+                        break;
+                    }
+            }
+            var mono = _x.Mono;
+            var color = ChartAreas.ColorOf(r, series, mono);
+            var look = Look(key)?.Style;
+            var face = ChartAreas.FaceStyle(r, color, mono, _f.K);
+            var edge = r.Edge is { } e ? new XStroke(look?.Stroke ?? (mono ? Palette.Black : r.EdgeColor ?? color), 0.25, FigureComposer.DashOf(e, DashStyle.Solid)) : null;
+            var opacity = look?.Opacity ?? face.Opacity;
+            if (r.Hatch is { } hatch)
+            {
+                var p = AreaPattern.Parse(hatch);
+                var first = p.Lines.Count > 0 ? p.Lines[0] : (Angle: 45.0, Count: 1);
+                fill.Fill = new XFillStyle("pattern", look?.Stroke ?? color, first.Angle, AreaPattern.LineSpacing(ChartAreas.Unit(r, _f.K), first.Count), opacity)
                 {
-                    var y = _f.Panels[pi].Y;
-                    fill.Polygons.Add(new List<Vec2> { new(fill.X0, y.Min), new(fill.X1, y.Min), new(fill.X1, y.Max), new(fill.X0, y.Max) });
-                }
+                    HatchCode = hatch,
+                    Face = r.Fill == "solid" ? (face.Fill?.Color ?? ChartAreas.Lighten(color, 0.72)) : null,
+                    Edge = edge,
+                };
             }
             else
             {
-                if (r.A < 0 || r.A >= lines.Length || lines[r.A] is not { } la) return null;
-                fill.Panel = panelOf[r.A];
-                var yAxis = _f.Panels[fill.Panel].Y;
-                (List<double> X, List<double> Y) lb;
-                if (r.Kind == "below")
+                var spacing = r.Spacing ?? Math.Max(0.6, 1.2 * _f.K);
+                fill.Fill = r.Fill switch
                 {
-                    var b = r.Base is { } bv ? Geo.Clamp(bv, yAxis.Min, yAxis.Max) : yAxis.Min;
-                    lb = (new List<double> { lo, hi }, new List<double> { b, b });
-                }
-                else
-                {
-                    if (r.B < 0 || r.B >= lines.Length || r.A == r.B || lines[r.B] is not { } lbb || panelOf[r.B] != panelOf[r.A]) return null;
-                    lb = lbb;
-                }
-                baseColor = SeriesColor(spec, r.A);
-                if (r.From is { } f0) lo = Math.Max(lo, f0);
-                if (r.To is { } t0) hi = Math.Min(hi, t0);
-                if (!(hi > lo)) return null;
-                var grid = new List<double>();
-                foreach (var x in la.X.Concat(r.Kind == "below" ? Enumerable.Empty<double>() : lb.X).Where(v => Fmt.Finite(v) && v > lo && v < hi).Concat(new[] { lo, hi }).OrderBy(v => v))
-                    if (grid.Count == 0 || x - grid[grid.Count - 1] > 1e-9 * Math.Max(1, Math.Abs(x))) grid.Add(x);
-                fill.X = grid;
-                fill.Lo = grid.Select(x => Interp(la.X, la.Y, x)).ToList();
-                fill.Hi = grid.Select(x => Interp(lb.X, lb.Y, x)).ToList();
-                if (r.Above && r.Kind == "between")
-                {
-                    fill.Where = fill.Lo.Zip(fill.Hi, (a, b) => a >= b).ToList();
-                    fill.WhereText = "curve " + Fmt.I(r.A + 1) + " above curve " + Fmt.I(r.B + 1);
-                }
-                // Polygons (data space, y up): the renderer's region builder on negated values ("above" = smaller page y).
-                var area = new Rect(lo, -yAxis.Max, hi - lo, yAxis.Max - yAxis.Min);
-                var region = new FigRegion { Kind = r.Kind, From = lo, To = hi };
-                var polys = FigureComposer.Between(x => -Interp(la.X, la.Y, x), la.X.Where(Fmt.Finite).ToList(), x => -Interp(lb.X, lb.Y, x), lb.X.Where(Fmt.Finite).ToList(),
-                    region, area, r.Above && r.Kind == "between", v => v);
-                fill.Polygons = polys.Select(p => p.Select(v => new Vec2(v.X, -v.Y)).ToList()).ToList();
-                if (fill.Polygons.Count == 0) return null;
+                    "solid" => new XFillStyle("solid", look?.Fill?.Color ?? (mono ? "#d9d9d9" : color), Opacity: opacity),
+                    "none" => new XFillStyle("none", color),
+                    "dots" => new XFillStyle("dots", look?.Stroke ?? color, 45, r.Spacing ?? Math.Max(0.6, 1.0 * _f.K), opacity),
+                    "cross" => new XFillStyle("cross", look?.Stroke ?? color, r.Angle ?? 45, spacing, opacity),
+                    _ => new XFillStyle("hatch", look?.Stroke ?? color, r.Angle ?? 45, spacing, opacity),
+                } with { Edge = edge };
             }
-            var color = mono ? Palette.Black : r.Color ?? baseColor;
-            var spacing = r.Spacing ?? Math.Max(0.6, 1.2 * _f.K);
-            var opacity = r.Opacity ?? (r.Fill == "solid" && !mono ? 0.3 : (double?)null);
-            var look = Look(key)?.Style;
-            fill.Fill = r.Fill switch
-            {
-                "solid" => new XFillStyle("solid", look?.Fill?.Color ?? (mono ? "#d9d9d9" : color), Opacity: look?.Opacity ?? opacity),
-                "dots" => new XFillStyle("dots", look?.Stroke ?? color, 45, r.Spacing ?? Math.Max(0.6, 1.0 * _f.K), look?.Opacity ?? opacity),
-                "cross" => new XFillStyle("cross", look?.Stroke ?? color, r.Angle ?? 45, spacing, look?.Opacity ?? opacity),
-                _ => new XFillStyle("hatch", look?.Stroke ?? color, r.Angle ?? 45, spacing, look?.Opacity ?? opacity),
-            };
+            fill.Legend = r.Label?.Get(_lang);
             return fill;
         }
+
+        private static string NumText(double v) => Fmt.Num(v, Lang.En, 6);
 
         private string SeriesColor(FigureSpec spec, int k) => Col(spec.Series[k].Color ?? SeriesLook.Of(k).Color);
 

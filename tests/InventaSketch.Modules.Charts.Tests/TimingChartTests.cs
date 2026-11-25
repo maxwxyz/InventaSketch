@@ -338,8 +338,11 @@ namespace InventaSketch.Modules.Charts.Tests
             var o = Fx.Item(r, "chart.timing");
             Assert.False(Act(r, o, "chart.grid").Apply(o).Flag("grid", true));
             Assert.False(Act(r, o, "chart.timing.labels").Apply(o).Flag("timelabels", true));
-            var slope = Act(r, o, "chart.timing.slope");
-            Assert.Equal("Edges: Sharp (vertical)", slope.Label.En);
+            var slope = Act(r, o, "chart.timing.slope=sharp");
+            Assert.Equal("Sharp (vertical)", slope.Label.En);
+            Assert.Equal("Edges", slope.Choice!.Label.En);
+            Assert.False(slope.IsActive);
+            Assert.True(Act(r, o, "chart.timing.slope=sloped").IsActive);
             Assert.Equal("sharp", slope.Apply(o).Str("slope", ""));
             var markers = Act(r, o, "chart.timing.markers");
             var m = markers.Input!.Apply(o, "t1=2; t2=6");

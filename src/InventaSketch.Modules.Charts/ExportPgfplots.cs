@@ -118,6 +118,13 @@ namespace InventaSketch.Modules.Charts
             {
                 var d = Mm(Math.Max(0.3, s.Spacing));
                 var op = s.Opacity is { } o ? ", fill opacity=" + N(o) : "";
+                if (s.Edge is { } edge)
+                {
+                    // The same fill with its edge line instead of "draw=none".
+                    var plain = FillOpts(s with { Edge = null });
+                    return plain.Replace(", draw=none", "") + ", draw=" + C(edge.Color) + ", line width=" + Mm(edge.Width) + ", " + Dash(edge.Dash);
+                }
+                if (s.Kind == "pattern") return PatternOpts(s, op);
                 return s.Kind switch
                 {
                     "solid" => "fill=" + C(s.Color) + ", draw=none" + op,
@@ -126,6 +133,38 @@ namespace InventaSketch.Modules.Charts
                     "cross" => "pattern={Hatch[angle=" + N(s.Angle) + ", distance=" + d + ", line width=0.15mm]}, pattern color=" + C(s.Color) + ", draw=none" + op,
                     _ => "pattern={Lines[angle=" + N(s.Angle) + ", distance=" + d + ", line width=0.15mm]}, pattern color=" + C(s.Color) + ", draw=none" + op,
                 };
+            }
+
+            /// <summary>
+            /// A matplotlib hatch pattern as a TikZ pattern (patterns.meta): one line family "Lines", two crossing families
+            /// "Hatch", dots and circles "Dots", stars "Stars"; the densest part of the pattern is taken (TikZ fills one pattern
+            /// per path). A solid face becomes the fill colour under the pattern ("postaction").
+            /// </summary>
+            private string PatternOpts(XFillStyle s, string op)
+            {
+                var p = AreaPattern.Parse(s.HatchCode);
+                var unit = s.Spacing * Math.Max(1, p.Lines.Count > 0 ? p.Lines[0].Count : 1);
+                string pattern;
+                if (p.Lines.Count >= 2)
+                {
+                    var (a, c) = p.Lines.OrderByDescending(l => l.Count).First();
+                    pattern = "Hatch[angle=" + N(a) + ", distance=" + Mm(Math.Max(0.3, AreaPattern.LineSpacing(unit, c))) + ", line width=0.15mm]";
+                }
+                else if (p.Lines.Count == 1)
+                    pattern = "Lines[angle=" + N(p.Lines[0].Angle) + ", distance=" + Mm(Math.Max(0.3, AreaPattern.LineSpacing(unit, p.Lines[0].Count))) + ", line width=0.15mm]";
+                else if (p.Shapes.Count > 0)
+                {
+                    var (shape, c) = p.Shapes[0];
+                    var dist = Math.Max(0.3, AreaPattern.ShapeSpacing(unit, c));
+                    pattern = shape == '*'
+                        ? "Stars[distance=" + Mm(dist) + ", radius=" + Mm(Math.Max(0.1, AreaPattern.ShapeSize(shape) * dist * 0.7)) + "]"
+                        : "Dots[distance=" + Mm(dist) + ", radius=" + Mm(Math.Max(0.08, AreaPattern.ShapeSize(shape) * dist / 2)) + "]";
+                }
+                else pattern = "Lines[angle=45, distance=" + Mm(Math.Max(0.3, unit)) + ", line width=0.15mm]";
+                var fill = s.Face is { } face
+                    ? "fill=" + C(face) + ", postaction={pattern={" + pattern + "}, pattern color=" + C(s.Color) + "}"
+                    : "pattern={" + pattern + "}, pattern color=" + C(s.Color);
+                return fill + ", draw=none" + op;
             }
 
             private static string Coords(IReadOnlyList<double> xs, IReadOnlyList<double> ys)
@@ -344,6 +383,13 @@ namespace InventaSketch.Modules.Charts
                         case XFill { Kind: "span" } s:
                             if (s.Panels.DefaultIfEmpty(s.Panel).Contains(panel)) Span(s, panel);
                             continue;
+                        case XFill { Kind: "hspan" } h:
+                            if (h.Panels.DefaultIfEmpty(h.Panel).Contains(panel))
+                            {
+                                L("% " + h.Key + ": a band between two y values");
+                                L("\\fill[" + FillOpts(h.Fill) + "] " + P(h.X0, h.Y0) + " rectangle " + P(h.X1, h.Y1) + ";");
+                            }
+                            continue;
                         case XSeries { Y2: true } when single && f.Panels[0].Y2 is not null:
                             continue;
                     }
@@ -419,7 +465,9 @@ namespace InventaSketch.Modules.Charts
             private void Between(XFill r)
             {
                 L("% " + r.Key + (r.Legend is { } lg ? ": " + Comment(lg) : ""));
-                var plain = r.Where is null && r.X.Count >= 2 && r.X.Concat(r.Lo).Concat(r.Hi).All(Fmt.Finite);
+                // "fill between" for plain areas between two edges over x; steps, fill_betweenx and where-conditions as the
+                // filled polygons (computed exactly like the drawing).
+                var plain = r.Kind == "between" && r.Step is null && r.Where is null && r.X.Count >= 2 && r.X.Concat(r.Lo).Concat(r.Hi).All(Fmt.Finite);
                 if (plain)
                 {
                     var a = Name("path"); var b = Name("path");

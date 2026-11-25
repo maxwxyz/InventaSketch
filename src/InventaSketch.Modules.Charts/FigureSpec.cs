@@ -110,25 +110,60 @@ namespace InventaSketch.Modules.Charts
     }
 
     /// <summary>
-    /// A shaded or hatched region: "between" two curves (optionally only where curve a lies above curve b), "below" a
-    /// curve (down to the panel bottom or <see cref="Base"/>), "span" between two x values (one panel or -1 = all).
+    /// A filled area (matplotlib's fill_between, fill_betweenx, axvspan, axhspan; docs/en/modules/charts.md "Areas"):
+    /// <list type="bullet">
+    /// <item>"below" a curve (down to the panel bottom or to <see cref="Base"/>);</item>
+    /// <item>"between" curve <see cref="A"/> and curve <see cref="B"/>, or curve A and the horizontal line y = <see cref="Y2"/>;</item>
+    /// <item>"betweenx" (fill_betweenx): horizontally between curve A and curve B, or curve A and the vertical line x = <see cref="X2"/>;</item>
+    /// <item>"span" (axvspan) between the x values <see cref="From"/> and <see cref="To"/> (one panel or -1 = all);</item>
+    /// <item>"hspan" (axhspan, a band between two value lines) between the y values <see cref="Y1"/> and <see cref="Y2"/>,
+    /// optionally only from x <see cref="From"/> to <see cref="To"/>.</item>
+    /// </list>
+    /// <see cref="Where"/> fills only where curve A lies above ("above") or below ("below") the other edge (fill_between
+    /// where=, crossings exact); <see cref="Step"/> fills along steps (pre, post, mid). The look: a matplotlib hatch pattern
+    /// (<see cref="Hatch"/>: '/', '\\', '|', '-', '+', 'x', 'o', 'O', '.', '*', repeated for density, combinable), a solid
+    /// face (<see cref="Fill"/> "solid", also under a pattern), colour, opacity, edge line and a legend label. Areas
+    /// without <see cref="Hatch"/> keep the earlier fills (hatch, cross, solid, dots with angle and spacing).
     /// </summary>
     internal sealed class FigRegion
     {
         public string Kind { get; set; } = "between";
         public int A { get; set; }
         public int B { get; set; } = 1;
-        public bool Above { get; set; }
+        /// <summary>Only where curve A lies above (or below) the other edge: "above", "below" or null (everywhere).</summary>
+        public string? Where { get; set; }
+        /// <summary>Only where curve A lies above the other edge (the earlier form of <see cref="Where"/> = "above").</summary>
+        public bool Above
+        {
+            get => Where == "above";
+            set => Where = value ? "above" : Where == "above" ? null : Where;
+        }
         public double? From { get; set; }
         public double? To { get; set; }
         public double? Base { get; set; }
+        /// <summary>hspan: lower y value.</summary>
+        public double? Y1 { get; set; }
+        /// <summary>between: the horizontal line the area reaches (instead of curve B); hspan: upper y value.</summary>
+        public double? Y2 { get; set; }
+        /// <summary>betweenx: the vertical line the area reaches (instead of curve B).</summary>
+        public double? X2 { get; set; }
+        /// <summary>Steps of the edges: pre, post, mid (matplotlib step=), or null for straight edges.</summary>
+        public string? Step { get; set; }
         public int? Panel { get; set; }
-        /// <summary>hatch (default), cross, solid, dots.</summary>
+        /// <summary>hatch (default), cross, solid, dots, none. With <see cref="Hatch"/> only "solid" counts (a solid face under the pattern).</summary>
         public string Fill { get; set; } = "hatch";
+        /// <summary>A matplotlib hatch pattern ("//", "x", "o.", …); null: the fill of <see cref="Fill"/>.</summary>
+        public string? Hatch { get; set; }
         public double? Angle { get; set; }
         public double? Spacing { get; set; }
         public string? Color { get; set; }
         public double? Opacity { get; set; }
+        /// <summary>Edge line: solid, dash, dot, dashdot … or null (no edge).</summary>
+        public string? Edge { get; set; }
+        /// <summary>Edge colour; null = the area colour.</summary>
+        public string? EdgeColor { get; set; }
+        /// <summary>Legend entry of the area.</summary>
+        public I18nText? Label { get; set; }
         public FigNumeral? Numeral { get; set; }
     }
 
@@ -387,23 +422,80 @@ namespace InventaSketch.Modules.Charts
             };
         }
 
-        private static FigRegion ReadRegion(JsonElement e) => new()
+        private static FigRegion ReadRegion(JsonElement e)
         {
-            Kind = Choice(e, "kind", "between", "between", "below", "span"),
-            A = Int(e, "a", 0),
-            B = Int(e, "b", 1),
-            Above = Bool(e, "above") ?? false,
-            From = Finite(Num(e, "from")),
-            To = Finite(Num(e, "to")),
-            Base = Finite(Num(e, "base")),
-            Panel = Has(e, "panel") ? Int(e, "panel", 0) : null,
-            Fill = Choice(e, "fill", "hatch", "hatch", "cross", "solid", "dots"),
-            Angle = Finite(Num(e, "angle")),
-            Spacing = Num(e, "spacing") is { } sp && sp > 0.05 && sp < 50 ? sp : null,
-            Color = Color(Str(e, "color")),
-            Opacity = Num(e, "opacity") is { } op && op >= 0 && op <= 1 ? op : null,
-            Numeral = ReadNumeral(e, "numeral"),
-        };
+            var kind = Str(e, "kind")?.ToLowerInvariant() switch
+            {
+                "vspan" or "axvspan" => "span",
+                "axhspan" or "band" => "hspan",
+                "fill_betweenx" => "betweenx",
+                _ => Choice(e, "kind", "between", "between", "below", "span", "hspan", "betweenx"),
+            };
+            var where = Str(e, "where")?.ToLowerInvariant() is "above" or "below" ? Str(e, "where")!.ToLowerInvariant() : (Bool(e, "above") ?? false) ? "above" : null;
+            return new FigRegion
+            {
+                Kind = kind,
+                A = Int(e, "a", 0),
+                B = Int(e, "b", 1),
+                Where = where,
+                From = Finite(Num(e, "from")),
+                To = Finite(Num(e, "to")),
+                Base = Finite(Num(e, "base")),
+                Y1 = Finite(Num(e, "y1")),
+                Y2 = Finite(Num(e, "y2")),
+                X2 = Finite(Num(e, "x2")),
+                Step = Str(e, "step")?.ToLowerInvariant() is "pre" or "post" or "mid" ? Str(e, "step")!.ToLowerInvariant() : null,
+                Panel = Has(e, "panel") ? Int(e, "panel", 0) : null,
+                Fill = Choice(e, "fill", "hatch", "hatch", "cross", "solid", "dots", "none"),
+                Hatch = AreaPattern.Clean(Str(e, "hatch")),
+                Angle = Finite(Num(e, "angle")),
+                Spacing = Num(e, "spacing") is { } sp && sp > 0.05 && sp < 50 ? sp : null,
+                Color = Color(Str(e, "color")),
+                Opacity = Num(e, "opacity") is { } op && op >= 0 && op <= 1 ? op : null,
+                Edge = LineName(Str(e, "edge")),
+                EdgeColor = Color(Str(e, "edgeColor")),
+                Label = Text(e, "label"),
+                Numeral = ReadNumeral(e, "numeral"),
+            };
+        }
+
+        /// <summary>
+        /// Areas from a JSON array of area objects (the XY chart parameter <c>areas</c>; the same members as the figure's
+        /// <c>regions</c>). Tolerant like the specification: unreadable text or entries give an empty list or are skipped.
+        /// </summary>
+        internal static List<FigRegion> ParseAreas(string? json)
+        {
+            var list = new List<FigRegion>();
+            if (string.IsNullOrWhiteSpace(json)) return list;
+            try
+            {
+                using var doc = JsonDocument.Parse(json!, DocOptions);
+                var root = doc.RootElement;
+                JsonElement arr;
+                if (root.ValueKind == JsonValueKind.Array) arr = root;
+                else if (root.ValueKind == JsonValueKind.Object && root.TryGetProperty("areas", out var inner) && inner.ValueKind == JsonValueKind.Array) arr = inner;
+                else return list;
+                foreach (var r in arr.EnumerateArray().Take(MaxItems)) if (r.ValueKind == JsonValueKind.Object) list.Add(ReadRegion(r));
+            }
+            catch (JsonException) { }
+            catch (ArgumentException) { }
+            catch (InvalidOperationException) { }
+            return list;
+        }
+
+        /// <summary>Areas as a compact JSON array ("" for none), the inverse of <see cref="ParseAreas"/>.</summary>
+        internal static string AreasJson(IReadOnlyList<FigRegion> areas)
+        {
+            if (areas.Count == 0) return "";
+            using var ms = new MemoryStream();
+            using (var w = new Utf8JsonWriter(ms, WriterOptions))
+            {
+                w.WriteStartArray();
+                foreach (var r in areas) WRegion(w, r);
+                w.WriteEndArray();
+            }
+            return Encoding.UTF8.GetString(ms.ToArray());
+        }
 
         private static FigNote ReadNote(JsonElement e) => new()
         {
@@ -673,18 +765,28 @@ namespace InventaSketch.Modules.Charts
         {
             w.WriteStartObject();
             w.WriteString("kind", r.Kind);
-            if (r.Kind != "span") w.WriteNumber("a", r.A);
-            if (r.Kind == "between") w.WriteNumber("b", r.B);
-            if (r.Above) w.WriteBoolean("above", true);
+            if (r.Kind is not ("span" or "hspan")) w.WriteNumber("a", r.A);
+            if (r.Kind is "between" or "betweenx" && (r.Kind == "between" ? r.Y2 is null : r.X2 is null)) w.WriteNumber("b", r.B);
+            // "above": true is the earlier form; it stays so documents read by older versions keep their region.
+            if (r.Where == "above") w.WriteBoolean("above", true);
+            else if (r.Where is { } wh) w.WriteString("where", wh);
             WNum(w, "from", r.From);
             WNum(w, "to", r.To);
             WNum(w, "base", r.Base);
+            WNum(w, "y1", r.Y1);
+            WNum(w, "y2", r.Y2);
+            WNum(w, "x2", r.X2);
+            WStr(w, "step", r.Step);
             if (r.Panel is { } p) w.WriteNumber("panel", p);
             if (r.Fill != "hatch") w.WriteString("fill", r.Fill);
+            WStr(w, "hatch", r.Hatch);
             WNum(w, "angle", r.Angle);
             WNum(w, "spacing", r.Spacing);
             WStr(w, "color", r.Color);
             WNum(w, "opacity", r.Opacity);
+            WStr(w, "edge", r.Edge);
+            WStr(w, "edgeColor", r.EdgeColor);
+            WText(w, "label", r.Label);
             WNumeral(w, r.Numeral);
             w.WriteEndObject();
         }

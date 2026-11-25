@@ -192,6 +192,17 @@ namespace InventaSketch.Modules.Charts
                 return x.WithParam(def.Key, options[(i + 1) % options.Count].Value);
             }) { Group = "param", ParamKeys = new[] { def.Key } };
         }
+
+        /// <summary>
+        /// A choice parameter as a choice (<see cref="ActionChoice"/> <paramref name="id"/>, one option per value, ids
+        /// "id=value", the current one active) – never a cycle (maintainer 2026-11-25: choices are dropdowns).
+        /// </summary>
+        public static IEnumerable<ContextAction> Options(SketchObject o, string id, ParamDef def, I18nText label)
+            => ActionChoices.FromParam(o, id, def, label, "param").ToList();
+
+        /// <summary>The option of choice <paramref name="id"/> that sets <paramref name="value"/> (from a list of actions), or null.</summary>
+        public static ContextAction? Option(IEnumerable<ContextAction> actions, string id, string value)
+            => actions.FirstOrDefault(a => a.Id == id + ActionChoices.Separator + value);
     }
 
     /// <summary>Number formatting (decimal comma in German) and text measuring.</summary>

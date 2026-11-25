@@ -833,6 +833,12 @@ namespace InventaSketch.AddIn.OnSlide
                     0x44 when ctrl && !shift => "dup",                // Ctrl+D: duplicate with new ids
                     _ => null,
                 };
+                // With a chart part selected, Del deletes that part (a point, a curve, an area …; else hides it), never the element.
+                if (_part is not null && IsDeleteKey(vk) && !ctrl && !shift)
+                {
+                    Post(DeletePart);
+                    return true;
+                }
                 // With a chart part selected: Tab / Shift+Tab steps through the parts, Esc returns to the whole element.
                 if (_part is not null && (vk == VK_TAB && !ctrl || vk == VK_ESCAPE && !ctrl && !shift))
                 {
@@ -2038,6 +2044,17 @@ namespace InventaSketch.AddIn.OnSlide
         private void ApplyAction(SketchUnit stale, string id)
         {
             if (id == "more") { OpenPieFromBar(); return; }
+            // A pie submenu by id ("menu:c:@p.chart.curve.shape", "menu:g:style"; automation and UI tests): opened at the pointer.
+            if (id.StartsWith("menu:", StringComparison.Ordinal))
+            {
+                if (_view is { } pv && _unit is not null && _mode is Mode.Armed or Mode.Pie)
+                {
+                    if (id.StartsWith("menu:g:", StringComparison.Ordinal)) _pieMenus = PieRing(PieGroups(PointObject(), _registry()), T("More ▸", "Mehr ▸")).Menus;
+                    GetCursorPos(out var pp);
+                    OpenPie(pp, pv, id.Substring(5));
+                }
+                return;
+            }
             // Opening or closing a bar choice is no edit; picking an option becomes the edit command.
             if (ChoiceCommand(id) is not { } command) return;
             id = command;

@@ -64,13 +64,20 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.True(memo.Raw.Count is >= 8 and <= CurveShapes.MaxRaw);
             // The default series of the chart was not sketched: no shape actions there.
             Assert.Null(ChartSketchInput.Memo(result.Chart, 0));
-            Assert.DoesNotContain(r.PartActions(result.Chart, "series.0", Fx.Ctx()), a => a.Id == CurveShapes.ShapeAction);
+            Assert.DoesNotContain(r.PartActions(result.Chart, "series.0", Fx.Ctx()), a => a.Choice?.Key == CurveShapes.ShapeAction);
             var actions = r.PartActions(result.Chart, "series.1", Fx.Ctx());
-            Assert.Contains(actions, a => a.Id == CurveShapes.ShapeAction && a.Label.En.StartsWith("Curve shape:", StringComparison.Ordinal) && a.Label.De!.StartsWith("Kurvenform:", StringComparison.Ordinal));
-            if (memo.Fits.Count > 1) Assert.Contains(actions, a => a.Id == CurveShapes.FitAction);
-            Assert.DoesNotContain(actions, a => a.Id == CurveShapes.SmoothingAction);
+            // "Curve shape" is a choice (a dropdown): one option per shape, the current one active, each with a preview.
+            var shapes = actions.Where(a => a.Choice?.Key == CurveShapes.ShapeAction).ToList();
+            Assert.Equal(CurveShapes.Offered(memo).Select(CurveShapes.ShapeOption), shapes.Select(a => a.Id));
+            Assert.Equal(CurveShapes.ShapeOption(CurveShape.Fitted), Assert.Single(shapes, a => a.IsActive).Id);
+            Assert.Equal("Curve shape", shapes[0].Choice!.Label.En);
+            Assert.Equal("Kurvenform", shapes[0].Choice!.Label.De);
+            Assert.All(shapes, a => Assert.NotNull(a.Preview));
+            Assert.DoesNotContain(actions, a => a.Icon == IconIds.Cycle);
+            if (memo.Fits.Count > 1) Assert.Equal(memo.Fits.Count, actions.Count(a => a.Choice?.Key == CurveShapes.FitAction));
+            Assert.DoesNotContain(actions, a => a.Choice?.Key == CurveShapes.SmoothingAction);
             // The markers part of the curve offers the same switch.
-            Assert.Contains(r.PartActions(result.Chart, "marker.1", Fx.Ctx()), a => a.Id == CurveShapes.ShapeAction);
+            Assert.Contains(r.PartActions(result.Chart, "marker.1", Fx.Ctx()), a => a.Choice?.Key == CurveShapes.ShapeAction);
             // The fitted curve follows the sine.
             foreach (var p in LastSeries(result.Chart)) Assert.InRange(p.Y - Sine(p.X), -0.25, 0.25);
         }
@@ -83,15 +90,15 @@ namespace InventaSketch.Modules.Charts.Tests
             var o = ChartSketchInput.Add(r, chart, Trail(r, chart, Sine, 0.2, 5.8), Fx.Ctx())!.Chart;
             var raw = ChartSketchInput.Memo(o, 1)!.Raw;
             var seen = new Dictionary<CurveShape, IReadOnlyList<Vec2>>();
-            for (var i = 0; i < CurveShapes.Order.Count; i++)
+            foreach (var shape in CurveShapes.Order.Skip(3).Concat(CurveShapes.Order.Take(3)))
             {
-                o = Apply(r, o, "series.1", CurveShapes.ShapeAction);
+                o = Apply(r, o, "series.1", CurveShapes.ShapeOption(shape));
                 var memo = ChartSketchInput.Memo(o, 1)!;
                 Assert.Equal(raw, memo.Raw); // the trail survives every switch unchanged
                 seen[memo.Shape] = LastSeries(o);
                 Fx.AssertInsideBox(Fx.Render(r, o), o.Size, memo.Shape.ToString());
             }
-            Assert.Equal(CurveShapes.Order.Count, seen.Count); // the cycle visits every shape and returns to the start
+            Assert.Equal(CurveShapes.Order.Count, seen.Count); // every option was picked, the last one the fitted shape
             Assert.Equal(CurveShape.Fitted, ChartSketchInput.Memo(o, 1)!.Shape);
             Assert.Equal(raw.Count, seen[CurveShape.Raw].Count);
             Assert.InRange(seen[CurveShape.Segments].Count, 3, 30);
@@ -131,13 +138,13 @@ namespace InventaSketch.Modules.Charts.Tests
             foreach (var p in smooth) Assert.InRange(p.Y - Wavy(p.X), -0.35, 0.35);
 
             // Smoothing: medium → strong → light → medium.
-            var strong = Apply(r, o, "series.1", CurveShapes.SmoothingAction);
+            var strong = Apply(r, o, "series.1", CurveShapes.SmoothingAction + "=3");
             Assert.Equal(3, ChartSketchInput.Memo(strong, 1)!.Strength);
             Assert.True(Turning(LastSeries(strong)) <= Turning(smooth) + 1e-9);
-            var light = Apply(r, strong, "series.1", CurveShapes.SmoothingAction);
+            var light = Apply(r, strong, "series.1", CurveShapes.SmoothingAction + "=1");
             Assert.Equal(1, ChartSketchInput.Memo(light, 1)!.Strength);
             Assert.True(Turning(LastSeries(light)) >= Turning(LastSeries(strong)));
-            Assert.Equal(2, ChartSketchInput.Memo(Apply(r, light, "series.1", CurveShapes.SmoothingAction), 1)!.Strength);
+            Assert.Equal(2, ChartSketchInput.Memo(Apply(r, light, "series.1", CurveShapes.SmoothingAction + "=2"), 1)!.Strength);
         }
 
         [Fact]
@@ -149,7 +156,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var memo = ChartSketchInput.Memo(o, 1)!;
             Assert.Equal(CurveKind.Step, memo.Fit);
             Assert.True(memo.Fits.Count >= 2);
-            var next = Apply(r, o, "series.1", CurveShapes.FitAction);
+            var next = Apply(r, o, "series.1", CurveShapes.FitAction + "=" + CurveFunctions.Info(memo.Fits[1].Kind).Id);
             var nm = ChartSketchInput.Memo(next, 1)!;
             Assert.Equal(memo.Fits[1].Kind, nm.Fit);
             Assert.Equal(CurveShape.Fitted, nm.Shape);
@@ -215,8 +222,8 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.Equal(CurveShape.Segments, sp.Series[k].Sketch!.Shape);
             Assert.Equal(memo.Raw, sp.Series[k].Sketch!.Raw);
             Assert.True(sp.Series[k].X.Count < parsed.Series[k].X.Count);
-            Assert.Contains(r.PartActions(seg, "series." + k, Fx.Ctx()), a => a.Id == CurveShapes.ShapeAction);
-            Assert.DoesNotContain(r.PartActions(seg, "series.0", Fx.Ctx()), a => a.Id == CurveShapes.ShapeAction);
+            Assert.Contains(r.PartActions(seg, "series." + k, Fx.Ctx()), a => a.Choice?.Key == CurveShapes.ShapeAction);
+            Assert.DoesNotContain(r.PartActions(seg, "series.0", Fx.Ctx()), a => a.Choice?.Key == CurveShapes.ShapeAction);
             Fx.AssertInsideBox(Fx.Render(r, seg), seg.Size, "segments figure");
 
             // Clean slides: randomised values drop the kept trail (it carries the original values).

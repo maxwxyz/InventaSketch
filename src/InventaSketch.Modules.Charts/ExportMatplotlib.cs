@@ -317,24 +317,46 @@ namespace InventaSketch.Modules.Charts
                 return string.Concat(Enumerable.Repeat(c, times));
             }
 
+            /// <summary>The edge of a filled area: no line (linewidth=0) or its width and line style.</summary>
+            private static string EdgeArgs(XFillStyle s) => s.Edge is { } e ? ", linewidth=" + Pt(e.Width) + ", linestyle=" + Ls(e.Dash) : ", linewidth=0";
+
             private static string FillArgs(XFillStyle s)
             {
-                if (s.Kind == "solid") return "facecolor=" + PyLit(s.Color) + ", linewidth=0" + (s.Opacity is { } o ? ", alpha=" + N(o) : "");
-                if (s.Kind == "none") return "facecolor='none', linewidth=0";
-                return "facecolor='none', edgecolor=" + PyLit(s.Color) + ", hatch=" + PyLit(Hatch(s)) + ", linewidth=0" + (s.Opacity is { } op ? ", alpha=" + N(op) : "");
+                var alpha = s.Opacity is { } o ? ", alpha=" + N(o) : "";
+                var edgeColor = s.Edge is { } e ? ", edgecolor=" + PyLit(e.Color) : "";
+                switch (s.Kind)
+                {
+                    case "solid": return "facecolor=" + PyLit(s.Color) + edgeColor + EdgeArgs(s) + alpha;
+                    case "none": return "facecolor='none'" + edgeColor + EdgeArgs(s) + alpha;
+                    case "pattern":
+                        // matplotlib draws the hatch in the edge colour: the pattern colour wins over a differing edge colour.
+                        return "facecolor=" + (s.Face is { } face ? PyLit(face) : "'none'") + ", edgecolor=" + PyLit(s.Color) + ", hatch=" + PyLit(s.HatchCode ?? Hatch(s)) + EdgeArgs(s) + alpha;
+                    default:
+                        return "facecolor='none', edgecolor=" + PyLit(s.Color) + ", hatch=" + PyLit(Hatch(s)) + EdgeArgs(s) + alpha;
+                }
             }
 
             private void Fill(XFill r)
             {
                 L("# " + r.Key + (r.Legend is { } lg ? " – " + Comment(lg) : ""));
                 var label = r.Legend is { } legend ? ", label=" + Py(legend) : "";
-                if (r.Kind == "span")
+                switch (r.Kind)
                 {
-                    foreach (var p in r.Panels.DefaultIfEmpty(r.Panel))
-                        L(Ax(p) + ".axvspan(" + N(r.X0) + ", " + N(r.X1) + ", " + FillArgs(r.Fill) + label + ")");
-                    return;
+                    case "span":
+                        foreach (var p in r.Panels.DefaultIfEmpty(r.Panel))
+                            L(Ax(p) + ".axvspan(" + N(r.X0) + ", " + N(r.X1) + ", " + FillArgs(r.Fill) + label + ")");
+                        return;
+                    case "hspan":
+                        foreach (var p in r.Panels.DefaultIfEmpty(r.Panel))
+                        {
+                            if (r.FullWidth) L(Ax(p) + ".axhspan(" + N(r.Y0) + ", " + N(r.Y1) + ", " + FillArgs(r.Fill) + label + ")");
+                            else L(Ax(p) + ".fill_between([" + N(r.X0) + ", " + N(r.X1) + "], " + N(r.Y0) + ", " + N(r.Y1) + ", " + FillArgs(r.Fill) + label + ")  # a band between two value lines");
+                            label = "";
+                        }
+                        return;
                 }
-                var vx = Var(r.Key, "x"); var va = Var(r.Key, "a"); var vb = Var(r.Key, "b");
+                var horizontal = r.Kind == "betweenx";
+                var vx = Var(r.Key, horizontal ? "y" : "x"); var va = Var(r.Key, "a"); var vb = Var(r.Key, "b");
                 L(vx + " = " + PyList(r.X, I));
                 L(va + " = " + PyList(r.Lo, I));
                 L(vb + " = " + PyList(r.Hi, I));
@@ -342,9 +364,10 @@ namespace InventaSketch.Modules.Charts
                 if (r.Where is not null)
                 {
                     if (r.WhereText is { } wt) L("# only where " + wt);
-                    where = ", where=[a >= b for a, b in zip(" + va + ", " + vb + ")], interpolate=True";
+                    where = ", where=[a " + (r.WhereBelow ? "<=" : ">=") + " b for a, b in zip(" + va + ", " + vb + ")], interpolate=True";
                 }
-                L(Ax(r.Panel) + ".fill_between(" + vx + ", " + va + ", " + vb + where + ", " + FillArgs(r.Fill) + label + ")");
+                var step = r.Step is { } st ? ", step=" + PyLit(st) : "";
+                L(Ax(r.Panel) + (horizontal ? ".fill_betweenx(" : ".fill_between(") + vx + ", " + va + ", " + vb + where + step + ", " + FillArgs(r.Fill) + label + ")");
             }
 
             private static string Coords(bool xf, bool yf) => xf && yf ? "'axes fraction'" : xf ? "('axes fraction', 'data')" : yf ? "('data', 'axes fraction')" : "'data'";

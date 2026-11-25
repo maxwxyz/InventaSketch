@@ -138,7 +138,7 @@ freien Skalieren:
 
 | Typ | Aktionen |
 |---|---|
-| XY-Diagramm | „Daten…“ (Eingabe), Darstellung ▸ (Linie → Linie mit Markern → Punkte → Stufen), geglättete Kurve, x-Skala ▸, y-Skala ▸, Gitternetz, Legende ▸ |
+| XY-Diagramm | „Daten…“ (Eingabe), Darstellung ▸ (Linie, Linie mit Markern, Punkte, Stufen), geglättete Kurve, x-Skala ▸, y-Skala ▸, Gitternetz, Legende ▸, Fläche hinzufügen ▸ (unter Kurve 1, zwischen zwei Kurven, senkrechter Bereich, waagerechtes Band, zwischen den Grenzlinien) |
 | Balkendiagramm | „Daten…“, Ausrichtung ▸, mehrere Reihen ▸ (gruppiert / gestapelt), Wertbeschriftung, Gitternetz, Legende ▸ |
 | Achsen | Gitternetz, Pfeilspitzen, x-Skala ▸, y-Skala ▸ |
 | Drehmomentkennlinie | Leistungskurve, Bereichshinweise, Gitternetz, Legende ▸ |
@@ -147,8 +147,19 @@ freien Skalieren:
 | Bode-Diagramm | System ▸, „Eckfrequenz…“ (Eingabe: `1 kHz`, `250 Hz`, `2.5k`, `2,5k`), Anzeigen ▸, Eckfrequenz markieren, Gitternetz |
 | Toleranzband | „Daten…“, „Toleranz…“ (`10 %` = Prozent, `0,5` = absolut), geglättete Kurven, Gitternetz, Legende ▸ |
 
-Ungültige Eingaben werfen eine `FormatException` mit zweisprachiger Meldung und ändern nichts. Zyklen verwenden
-`IconIds.Cycle`, Schalter `IconIds.Toggle`, Eingaben `IconIds.Text`. Die Diagrammtypen haben keine Ansichtsumschaltung.
+Ungültige Eingaben werfen eine `FormatException` mit zweisprachiger Meldung und ändern nichts. Schalter verwenden
+`IconIds.Toggle`, Eingaben `IconIds.Text`. Die Diagrammtypen haben keine Ansichtsumschaltung.
+
+**Auswahlen sind Klapplisten (25.11.2026).** Jede Auswahl unter mehreren Möglichkeiten (Darstellung, Skala, Lage der
+Legende, Ausrichtung, Maschine, Funktion, Flanken, Kurvenform, Ausgleichsfunktion, Glättung, Strichart, Marker,
+Füllmuster, Farbe, Deckkraft, Rand, Wo, Stufen) ist eine Aktion je Möglichkeit (`ActionChoices.Option`, Id
+`<Auswahl>=<Wert>`, z. B. `chart.style=step`, `chart.curve.shape=fitted`), alle mit derselben `ActionChoice` (Schlüssel
+und Bezeichnung), die aktuelle aktiv markiert. Die Hosts zeigen sie als eine Klappliste („Kurvenform: Geglättet ▾“) und
+im Kreismenü als „Kurvenform: Geglättet ▸“, das die Möglichkeiten öffnet – nie als Durchschalt-Knopf. Möglichkeiten
+ohne passendes gemeinsames Piktogramm tragen eine kleine Zeichnung (`ContextAction.Preview`: die Kurve in dieser Form,
+das Füllmuster, die Farbe, der Marker), die die Hosts als Bild der Möglichkeit zeigen. Auswahlen aus Befehlen
+(`ActionChoice.IsMenu`: „Darunter füllen ▸“, „Füllen bis ▸“, „Fläche hinzufügen ▸“) markieren nichts. Die Engine
+liefert zu jeder Aktion `choice`, `choiceLabel`, `choiceMenu` und `previewSvg`.
 
 ## Teile (Diagramme v2, 25.11.2026)
 
@@ -162,8 +173,12 @@ hängen die Panelnummer an: `axis.y.2`, `label.y.2`.
 - Jedes Teil lässt sich einzeln ausblenden und formatieren (`SketchObject.Parts`: je Schlüssel ein Aussehen mit Stil
   oder ausgeblendet). Ein Aussehen für die Art (`series`, `grid`) gilt für alle Teile dieser Art; der Schlüssel mit
   Index gewinnt.
-- Teilaktionen: die Diagrammaktionen, die das Teil betreffen (Kurve: Daten, Darstellung, Glättung; Achse: Skala;
-  Gitter: Gitter ein/aus; Legende: Lage), danach ein-/ausblenden, dicker, dünner, Strichart und zurücksetzen.
+- Teilaktionen: die Diagrammaktionen, die das Teil betreffen (Kurve: Daten, Darstellung, Glättung, Formauswahlen
+  skizzierter Kurven, darunter füllen ▸, füllen bis ▸, Kurve löschen; Datenpunkt: löschen, Punkt danach einfügen,
+  Wert …; Fläche: Muster, Farbe, Deckkraft, Rand, Wo, Stufen, Legendentext, löschen; Achse: Skala; Gitter: Gitter
+  ein/aus; Legende: Lage), danach ein-/ausblenden, dicker, dünner, Strichart (eine Auswahl) und zurücksetzen. Die
+  Entf-Taste mit ausgewähltem Teil führt dessen `part.delete` aus (Punkt, Kurve, Fläche, Wertlinie, Anmerkung), sonst
+  blendet sie das Teil aus – nie löscht sie das ganze Diagramm.
 - PowerPoint: Ein Klick ohne Ziehen auf das ausgewählte Diagramm wählt das Teil unter dem Mauszeiger (blau umrandet);
   die Leiste zeigt seinen Namen und seine Aktionen, „Teile …“ listet alle Teile, auch ausgeblendete, „Ganzes Element“
   verlässt das Teil. Eine Kurve mit PowerPoints eigenen Werkzeugen formatieren (Linienfarbe, Stärke, Füllung, Schrift)
@@ -171,6 +186,76 @@ hängen die Panelnummer an: `axis.y.2`, `label.y.2`.
   den Elementstil.
 - Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (siehe Entwurf
   [Diagramme v2](../design/charts-v2.md)).
+
+## Datenpunkte und Kurven auf der Zeichnung (25.11.2026)
+
+XY-Diagramme und Bilder (Maintainer: „die Werte/Punkte jeder Kurve auswählen, blau hervorgehoben; Klicken und Ziehen
+auf einer Kurve verschiebt sie, die Werte werden im Hintergrund angepasst; einzelne Punkte per Klicken und Ziehen
+verschieben oder löschen; einzelne Kurven löschen“):
+
+- Jeder Datenpunkt ist ein Teil `point.<Kurve>.<Index>` („Punkt 3 von Reihe 1 (2; 4,1)“), ein feines Teil
+  (`PartInfo.Detail`: nicht in der Teileliste und der Tab-Reihenfolge). Seine Teilform (`ObjectType.PartShapes`, ein
+  kleiner Kreis, nie gezeichnet) dient dem Treffertest (`Registry.PartAt`: ein Punkt gewinnt, wenn der Zeiger auf ihm
+  liegt), der Umrandung und dem Leuchten (`Registry.PartPrimitives`).
+- Ziehgriffe (`DragHandles`): je Punkt ein freier Griff, gezeigt mit seiner Kurve (`DragHandle.ShowWith = "series.k"`);
+  der Wert rastet auf ein Zehntel des Achsschritts (log. Achsen: zwei gültige Stellen) und bleibt im Achsbereich; auf
+  einer Kurve, deren x nie fällt, bleibt der Punkt zwischen seinen Nachbarn. Kurven mit mehr als 40 Punkten (skizzierte)
+  erhalten keine Punktgriffe – ihre Punkte bleiben auf der Zeichnung auswählbar und mit „Wert …“ änderbar. Je Kurve ein
+  Griff (`series.k`, `DragHandle.ByPart`) wird gezogen, indem man auf die ausgewählte Kurve drückt: jeder Punkt wandert
+  um den gerasteten Versatz (log. Achsen: um einen Faktor); bei deutlich senkrechtem (waagerechtem) Ziehen zählt nur
+  diese Richtung.
+- Aktionen: Punkt – löschen, Punkt danach einfügen (halbwegs zum nächsten), „Wert …“ (`x; y`); Kurve – Kurve löschen.
+  Eine gelöschte Kurve nimmt ihre Flächen und Punktmarker mit, Indizes und Teil-Aussehen späterer Kurven rücken nach.
+  Ein geänderter Punkt einer skizzierten Kurve macht sie zu reinen Daten (ihr Form-Memo entfällt); die anderen Kurven
+  behalten ihres. Die Daten des XY-Diagramms werden dann als ein Block je Kurve geschrieben (Kopfzeile „Name;“, Zeilen
+  `x;y`).
+- PowerPoint: Die Punktgriffe sind kleine blau umrandete Punkte (der ausgewählte Punkt blau gefüllt mit sanftem
+  Leuchten); sie erscheinen für die ausgewählte Kurve oder den ausgewählten Punkt, die anderen nahe am Zeiger. Ein Klick
+  auf einen Griff wählt den Punkt; Ziehen verschiebt ihn (Live-Vorschau, ein Rückgängig-Schritt, Esc bricht ab). Mit
+  ausgewählter Kurve verschiebt Drücken irgendwo auf ihr und Ziehen die Kurve. Entf löscht den ausgewählten Punkt (die
+  Kurve bleibt ausgewählt), die Kurve oder die Fläche.
+
+## Flächen (25.11.2026)
+
+Gefüllte Flächen wie in matplotlib, für XY-Diagramme (Parameter `areas`: ein JSON-Array, leer = keine; alte Dokumente
+unverändert) und Bilder (die `regions` der Spezifikation, dieselben Felder; Teilschlüssel `area.k` im XY-Diagramm,
+`region.k` im Bild, für bestehende Dokumente beibehalten):
+
+| Art | matplotlib | Felder |
+|---|---|---|
+| `below` | `fill_between(x, y)` bis zur Achse | `a`, `base` (ein y-Wert statt des Panelbodens) |
+| `between` | `fill_between(x, y1, y2)` | `a`, `b` (Kurve) oder `y2` (waagerechte Linie, z. B. eine Grenzlinie) |
+| `betweenx` | `fill_betweenx(y, x1, x2)` | `a`, `b` (Kurve) oder `x2` (senkrechte Linie) |
+| `span` | `axvspan(x0, x1)` | `from`, `to`, `panel` (-1 = alle) |
+| `hspan` | `axhspan(y0, y1)`; ein Band zwischen zwei Wertlinien | `y1`, `y2`, wahlweise `from`, `to` (x-Bereich), `panel` |
+
+- `where`: `above` (Kurve A über – rechts von – dem anderen Rand) oder `below`; Schnittpunkte werden exakt berechnet
+  (auch wo sich zwei Kurven in einem Datenpunkt treffen); das frühere `"above": true` wird weiter gelesen und geschrieben.
+- `step`: `pre`, `post`, `mid` – die Ränder folgen Stufen (`fill_between(step=)`).
+- Aussehen: `hatch` – ein matplotlib-Schraffurmuster (`/`, `\`, `|`, `-`, `+`, `x`, `o`, `O`, `.`, `*`, wiederholt für
+  größere Dichte, kombinierbar: `//`, `xx`, `/o`); `fill` `solid` (allein: eine getönte Fläche, Deckkraft 0,3 als
+  Vorgabe; mit Muster: eine helle Tönung darunter) oder `none`; `color` (Vorgabe: Farbe der Kurve A, grau für Bereiche),
+  `opacity`, `edge` (Strichart des Umrisses) und `edgeColor`, `label` (Legendeneintrag). Ohne `hatch` gelten die
+  früheren Füllungen (`hatch`, `cross`, `solid`, `dots` mit `angle` und `spacing`). Werte, die Flächen erreichen (eine
+  Basis, eine Linie, ein Band, ein Bereich), liegen wie in matplotlib in den automatischen Achsbereichen.
+- Zeichnung (nativ zuerst): die Fläche ist eine geschlossene Freihandform; eine Linienschar des Musters (oder ein
+  kreuzendes Paar) ist ihre Schraffurfüllung, die PowerPoint als Schraffurlinien erhält (der COM-Zeichenplan zeichnet
+  Schraffuren explizit), weitere Scharen sind explizite Schraffurlinien, Kreise und Sterne sind kleine geschlossene
+  Formen innerhalb der Fläche (nie über den Rand) – alle Linien und Formen bleiben in PowerPoint bearbeitbar, kein Bild.
+  Ein Zeichen hat 2,4 mm Abstand bei der Entwurfsgröße (es folgt dem Maßstab des Diagramms), „//“ 1,2 mm.
+- Anlegen: auf einer Kurve „Darunter füllen ▸“ (eine Möglichkeit je Muster, jede mit Musterfeld) und „Füllen bis ▸“
+  (eine andere Kurve ihres Panels, eine Wert- oder Grenzlinie, ein y-Wert …, eine senkrechte Linie x = … für
+  fill_betweenx); am Diagramm „Fläche hinzufügen ▸“. Jede Fläche ist ein Teil mit den Auswahlen Muster ▾ (Musterfelder),
+  Farbe ▾, Deckkraft ▾, Rand ▾, Wo ▾ und Ränder entlang der Kurve ▾ (Stufen), dem Schalter „Getönter Hintergrund“
+  (Muster), „Legendentext …“ und Löschen.
+- Exporte: matplotlib `fill_between(..., where=[a >= b …], interpolate=True, step=…, hatch=…, facecolor=…,
+  edgecolor=…, linestyle=…, label=…)`, `fill_betweenx`, `axvspan`, `axhspan` (ein Band über einen Teil von x als
+  `fill_between`); pgfplots `fill between` für einfache Flächen (Muster `Lines`, `Hatch`, `Dots`, `Stars` aus
+  `patterns.meta`, eine Tönung als `postaction`), die gefüllten Polygone für Stufen, fill_betweenx und where-Bedingungen,
+  Rechtecke für Bänder; TikZ und SVG aus der Zeichnung.
+- Import (matplotlib): `fill_between` mit `hatch`, `where` (Kurve über oder unter dem anderen Rand oder einer
+  Konstanten), `step`, `label`, `facecolor`/`edgecolor`/`linewidth`/`linestyle`; `fill_betweenx`; `axhspan` (über die
+  ganze Breite); `axvspan` mit seinem Legendeneintrag.
 
 ## Achsenbrüche (Diagramme v2, Stufe 3)
 
@@ -303,11 +388,12 @@ Anker: Plotecken und -mitte, Ursprung und Achsschienen je Panel (`axis.x`, `axis
 
 Elementaktionen: Wertlinie hinzufügen, senkrechte Markierung hinzufügen, zwischen Kurve 1 und 2 schraffieren
 (ausgegraut ohne zwei Kurven in einem Panel), Prinzipachsen (alle Achsen umschalten), Schwarz-Weiß, „Spezifikation
-(JSON)…“ (Eingabe). Teilaktionen: Kurven – Strichart, Marker, geglättete Kurve, Fläche unter der Kurve schraffieren;
-Wertlinien und Markierungen – Strichart bzw. gefüllter Kreis, „Beschriftung…“, entfernen; Flächen – Füllung,
-entfernen; Anmerkungen – „Text…“, entfernen; Achsen – Prinzipachsen, Wertlinie in diesem Panel bzw. senkrechte
-Markierung hinzufügen. Entfernen verschiebt die Indizes späterer Elemente (deren Teil-Aussehen gilt dann für das
-nächste Element).
+(JSON)…“ (Eingabe), Fläche hinzufügen ▸. Teilaktionen: Kurven – Strichart ▾, Marker ▾ (keine, Kreis, Quadrat, Dreieck,
+Raute, Kreuz, Plus), geglättete Kurve, darunter füllen ▸, füllen bis ▸, Kurve löschen; Datenpunkte – siehe
+[Datenpunkte und Kurven](#datenpunkte-und-kurven-auf-der-zeichnung-25112026); Wertlinien und Markierungen – Strichart ▾
+bzw. gefüllter Kreis, „Beschriftung…“, löschen; Flächen – siehe [Flächen](#flächen-25112026); Anmerkungen – „Text…“,
+löschen; Achsen – Prinzipachsen, Wertlinie in diesem Panel bzw. senkrechte Markierung hinzufügen. Löschen verschiebt die
+Indizes späterer Elemente (deren Teil-Aussehen gilt dann für das nächste Element).
 
 Hinweise zu den Hosts: alles nativ (Linien, Freihandformen, schraffierte Freihandformen, Text); kein Vektorbild.
 Erweiterungen des Rahmens (additiv): Höhenanteile der Panels, eigene Teilstriche (Marken), Achspfeile und Gitter je

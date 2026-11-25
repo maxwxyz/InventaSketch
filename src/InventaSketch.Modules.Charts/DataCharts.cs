@@ -19,6 +19,8 @@ namespace InventaSketch.Modules.Charts
         public static readonly ParamDef StyleDef = Prm.Choice("style", "Style", "Darstellung", "line",
             ("line", "Line", "Linie"), ("linepoints", "Line with markers", "Linie mit Markern"), ("points", "Markers (scatter)", "Punkte (Streudiagramm)"), ("step", "Steps", "Stufen"));
         public static readonly ParamDef SmoothDef = Prm.Bool("smooth", "Smooth curve", "Geglättete Kurve", false);
+        /// <summary>Filled areas (JSON array of area objects, <see cref="FigRegion"/>; empty = none).</summary>
+        public static readonly ParamDef AreasDef = Prm.Text("areas", "Areas (JSON: below, between, betweenx, span, hspan …)", "Flächen (JSON: below, between, betweenx, span, hspan …)", advanced: true);
 
         public XyChart() : base(TypeId, new I18nText("XY chart", "XY-Diagramm"), ChartCategories.Data,
             "chart", "graph", "plot", "xy", "line chart", "scatter", "step", "curve", "series", "data", "excel",
@@ -29,20 +31,39 @@ namespace InventaSketch.Modules.Charts
         {
             DataDef, StyleDef, SmoothDef, Common.Title, Common.XLabel, Common.XUnit, Common.YLabel, Common.YUnit,
             Common.Grid, Common.Legend, Common.Limits, Common.XScale, Common.YScale, Common.XRange, Common.YRange, Common.Box,
-            ChartBreaks.YBreaks, ChartBreaks.XBreaks, ChartBreaks.Style,
+            ChartBreaks.YBreaks, ChartBreaks.XBreaks, ChartBreaks.Style, AreasDef,
         };
 
-        /// <summary>The axes of the chart without breaks (also used to suggest a break).</summary>
-        private static (Axis X, Axis Y, IReadOnlyList<XySeries> Series, IReadOnlyList<double> Limits) PlainAxes(SketchObject o)
+        /// <summary>
+        /// The axes of the chart without breaks (also used to suggest a break). Like matplotlib's autoscaling, the values areas
+        /// reach (a y value, a band, a span, a vertical line) are inside the automatic ranges.
+        /// </summary>
+        internal static (Axis X, Axis Y, IReadOnlyList<XySeries> Series, IReadOnlyList<double> Limits) PlainAxes(SketchObject o)
         {
             var series = ChartData.Xy(ChartData.Parse(o.Str("data", DefaultData)));
             var limits = ChartData.Numbers(o.Str("limits", ""));
+            var areas = XyEditor.Areas(o);
             var xlog = o.Str("xscale", "linear") == "log";
             var ylog = o.Str("yscale", "linear") == "log";
-            var x = Axis.Of(xlog, series.SelectMany(s => s.Points.Select(p => p.X)), ChartData.Range(o.Str("xrange", "")));
-            var y = Axis.Of(ylog, series.SelectMany(s => s.Points.Select(p => p.Y)).Concat(limits), ChartData.Range(o.Str("yrange", "")));
+            var x = Axis.Of(xlog, series.SelectMany(s => s.Points.Select(p => p.X)).Concat(AreaX(areas)), ChartData.Range(o.Str("xrange", "")));
+            var y = Axis.Of(ylog, series.SelectMany(s => s.Points.Select(p => p.Y)).Concat(limits).Concat(AreaY(areas)), ChartData.Range(o.Str("yrange", "")));
             return (x, y, series, limits);
         }
+
+        /// <summary>x values the areas reach (span edges, the vertical line of fill_betweenx).</summary>
+        internal static IEnumerable<double> AreaX(IEnumerable<FigRegion> areas)
+            => areas.SelectMany(r => r.Kind == "span" ? new[] { r.From ?? double.NaN, r.To ?? double.NaN } : r.Kind == "betweenx" ? new[] { r.X2 ?? double.NaN } : Array.Empty<double>())
+                .Where(Fmt.Finite);
+
+        /// <summary>y values the areas reach (a base, the line of fill_between, a band).</summary>
+        internal static IEnumerable<double> AreaY(IEnumerable<FigRegion> areas)
+            => areas.SelectMany(r => r.Kind switch
+            {
+                "below" => new[] { r.Base ?? double.NaN },
+                "between" => new[] { r.Y2 ?? double.NaN },
+                "hspan" => new[] { r.Y1 ?? double.NaN, r.Y2 ?? double.NaN },
+                _ => Array.Empty<double>(),
+            }).Where(Fmt.Finite);
 
         internal override Chart Compose(SketchObject o, RenderContext ctx)
         {
@@ -63,8 +84,18 @@ namespace InventaSketch.Modules.Charts
                 f.Legend.Add(new LegendEntry(Common.SeriesName(series[k].Name, k, lang), lines ? look.Line(0.5) : look.Line(0.5) with { Stroke = "none" },
                     markers ? look.Marker : null, look.FilledMarker));
             }
+            var areas = XyEditor.Areas(o);
+            var areaSeries = XyEditor.Instance.Series(o, lang);
+            foreach (var r in areas.Where(r => r.Label is not null))
+                f.Legend.Add(new LegendEntry(r.Label!.Get(lang), ChartAreas.LegendStyle(r, ChartAreas.ColorOf(r, areaSeries, f.Mono), f.Mono, f.K), Area: true));
             f.Layout(lang);
             var c = new Chart(f, lang);
+            // Areas below the limit lines and the curves.
+            for (var k = 0; k < areas.Count; k++)
+            {
+                var (polys, _) = ChartAreas.Polygons(areas[k], f, areaSeries);
+                c.Areas.AddRange(ChartAreas.Render(areas[k], polys, ChartTags.Nth(ChartAreas.Tag, k), ChartAreas.ColorOf(areas[k], areaSeries, f.Mono), f.Mono, f.K));
+            }
             Common.DrawLimits(c, o);
             for (var k = 0; k < series.Count; k++)
             {
@@ -103,15 +134,53 @@ namespace InventaSketch.Modules.Charts
             return ChartBreaks.Actions(o, x, series.SelectMany(s => s.Points.Select(p => p.X)), y, series.SelectMany(s => s.Points.Select(p => p.Y)).Concat(limits));
         }
 
-        /// <summary>The chart actions of a part plus, on a sketched curve, the curve shape actions (<see cref="CurveShapes"/>).</summary>
+        /// <summary>
+        /// The chart actions of a part plus: on a curve its shape choices (sketched curves, <see cref="CurveShapes"/>), "Fill below ▸",
+        /// "Fill to ▸" and "Delete curve"; on a data point its actions (<see cref="ChartPoints"/>); on an area its pattern,
+        /// colour, opacity, edge … (<see cref="ChartAreas"/>).
+        /// </summary>
         protected override IEnumerable<ContextAction> OwnPartActions(SketchObject o, string part, RenderContext ctx)
         {
-            var own = base.OwnPartActions(o, part, ctx);
+            var lang = ctx.Lang;
+            if (ChartPoints.Parse(part) is { } pt) return ChartPoints.PointActions(o, pt.Series, pt.Index, XyEditor.Instance, lang).ToList();
             var seg = part.Split('.');
+            if (seg.Length == 2 && seg[0] == ChartAreas.Tag && int.TryParse(seg[1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var a))
+            {
+                var c = Compose(o, ctx);
+                return ChartAreas.PartActions(o, a, XyEditor.Instance, lang, c.F.K).ToList();
+            }
+            var own = base.OwnPartActions(o, part, ctx);
             if (seg.Length == 2 && seg[0] is ChartTags.Series or ChartTags.Marker
                 && int.TryParse(seg[1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var k))
-                return ChartSketchInput.ShapeActions(o, k).Concat(own).ToList();
+                return ChartSketchInput.ShapeActions(o, k).Concat(own).Concat(ChartAreas.CurveActions(o, k, XyEditor.Instance, lang))
+                    .Append(ChartPoints.DeleteSeries(k, XyEditor.Instance, lang)).ToList();
             return own;
+        }
+
+        /// <summary>The drawn parts plus every data point (a fine part, <see cref="ChartPoints"/>).</summary>
+        public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)
+        {
+            var c = Compose(o, ctx);
+            var areas = XyEditor.Areas(o);
+            var parts = base.Parts(o, ctx).Select(p =>
+            {
+                var seg = p.Key.Split('.');
+                return seg.Length == 2 && seg[0] == ChartAreas.Tag && int.TryParse(seg[1], System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var k) && k < areas.Count
+                    ? p with { Label = ChartAreas.Name(null, areas[k], k) } : p;
+            }).ToList();
+            parts.AddRange(ChartPoints.Parts(c, XyEditor.Instance, o));
+            return parts;
+        }
+
+        /// <summary>A small circle per data point (hit test and highlight of point parts).</summary>
+        public override IEnumerable<Primitive> PartShapes(SketchObject o, RenderContext ctx)
+            => ChartPoints.Shapes(Compose(o, ctx), XyEditor.Instance.Series(o, ctx.Lang)).ToList();
+
+        /// <summary>Limit lines, data points and whole curves as drag handles.</summary>
+        internal override IEnumerable<ChartHandle> LocalHandles(SketchObject o, RenderContext ctx)
+        {
+            var c = Compose(o, ctx);
+            return ChartHandles.Limits(c, o).Concat(ChartPoints.Handles(c, XyEditor.Instance, o, ctx.Lang)).ToList();
         }
 
         /// <summary>Step curve: each value is held until the next x.</summary>
@@ -126,16 +195,19 @@ namespace InventaSketch.Modules.Charts
             return list;
         }
 
-        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => new[]
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
-            Common.DataInput(o, DefaultData),
-            Prm.Cycle(o, "chart.style", StyleDef, new I18nText("Style", "Darstellung")),
-            Prm.Toggle(o, "chart.smooth", "smooth", false, new I18nText("Smooth curve", "Geglättete Kurve"), IconIds.Smooth),
-            Prm.Cycle(o, "chart.xscale", Common.XScale, new I18nText("x scale", "x-Skala")),
-            Prm.Cycle(o, "chart.yscale", Common.YScale, new I18nText("y scale", "y-Skala")),
-            Common.GridToggle(o),
-            Common.LegendCycle(o),
-        }.Concat(BreakActions(o));
+            var list = new List<ContextAction> { Common.DataInput(o, DefaultData) };
+            list.AddRange(Prm.Options(o, "chart.style", StyleDef, new I18nText("Style", "Darstellung")));
+            list.Add(Prm.Toggle(o, "chart.smooth", "smooth", false, new I18nText("Smooth curve", "Geglättete Kurve"), IconIds.Smooth));
+            list.AddRange(Prm.Options(o, "chart.xscale", Common.XScale, new I18nText("x scale", "x-Skala")));
+            list.AddRange(Prm.Options(o, "chart.yscale", Common.YScale, new I18nText("y scale", "y-Skala")));
+            list.Add(Common.GridToggle(o));
+            list.AddRange(Common.LegendChoice(o));
+            list.AddRange(BreakActions(o));
+            list.AddRange(ChartAreas.AddActions(o, XyEditor.Instance, lang));
+            return list;
+        }
     }
 
     /// <summary>
@@ -263,12 +335,11 @@ namespace InventaSketch.Modules.Charts
             {
                 Label = new I18nText("Data rows “label;value” separated by | (new series: ||)", "Datenzeilen „Bezeichnung;Wert“ getrennt durch | (neue Reihe: ||)"),
             } },
-            Prm.Cycle(o, "chart.orient", OrientDef, new I18nText("Orientation", "Ausrichtung")),
-            Prm.Cycle(o, "chart.mode", ModeDef, new I18nText("Several series", "Mehrere Reihen")),
             Prm.Toggle(o, "chart.values", "values", false, new I18nText("Value labels", "Wertbeschriftung"), IconIds.LabelShow),
             Common.GridToggle(o),
-            Common.LegendCycle(o),
-        };
+        }.Concat(Prm.Options(o, "chart.orient", OrientDef, new I18nText("Orientation", "Ausrichtung")))
+            .Concat(Prm.Options(o, "chart.mode", ModeDef, new I18nText("Several series", "Mehrere Reihen")))
+            .Concat(Common.LegendChoice(o));
     }
 
     /// <summary>Axes with ticks, labels, units and optional grid and arrowheads, without data (to draw on or annotate).</summary>
@@ -312,8 +383,7 @@ namespace InventaSketch.Modules.Charts
         {
             Common.GridToggle(o),
             Prm.Toggle(o, "chart.arrows", "arrows", true, new I18nText("Arrowheads", "Pfeilspitzen")),
-            Prm.Cycle(o, "chart.xscale", Common.XScale, new I18nText("x scale", "x-Skala")),
-            Prm.Cycle(o, "chart.yscale", Common.YScale, new I18nText("y scale", "y-Skala")),
-        };
+        }.Concat(Prm.Options(o, "chart.xscale", Common.XScale, new I18nText("x scale", "x-Skala")))
+            .Concat(Prm.Options(o, "chart.yscale", Common.YScale, new I18nText("y scale", "y-Skala")));
     }
 }

@@ -108,7 +108,7 @@ namespace InventaSketch.Modules.Charts.Tests
             Assert.True(ids.IndexOf("chart.smooth") < ids.IndexOf("part.hide"));
             Assert.Contains("part.thicker", ids);
             Assert.DoesNotContain("part.reset", ids);
-            Assert.Contains("chart.xscale", r.PartActions(o, "axis.x", Fx.Ctx()).Select(a => a.Id));
+            Assert.Contains("chart.xscale=log", r.PartActions(o, "axis.x", Fx.Ctx()).Select(a => a.Id));
             Assert.Contains("chart.grid", r.PartActions(o, "grid.major", Fx.Ctx()).Select(a => a.Id));
 
             var thicker = r.PartActions(o, "series.0", Fx.Ctx()).Single(a => a.Id == "part.thicker").Apply(o);

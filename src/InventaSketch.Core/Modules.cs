@@ -567,6 +567,16 @@ namespace InventaSketch.Core
         /// returns the new document (it may change the object and, where a host supports it, other objects).
         /// </summary>
         public Func<SketchDocument, SketchObject, RenderContext, SketchDocument>? ApplyInDocument { get; init; }
+        /// <summary>
+        /// The choice this action is an option of (<see cref="ActionChoice"/>): hosts group the options of one choice into a
+        /// dropdown (bar) or a "Label: Current ▸" submenu (pie), the current one marked by <see cref="IsActive"/>.
+        /// </summary>
+        public ActionChoice? Choice { get; init; }
+        /// <summary>
+        /// A small drawing of what the option gives (mm, centred at 0,0, about 6 mm wide), for options no shared pictogram
+        /// fits (fill patterns, colours); hosts render it as the option's picture. Null: the pictogram or the label.
+        /// </summary>
+        public IReadOnlyList<Primitive>? Preview { get; init; }
 
         /// <summary>Action that asks for a text value; <paramref name="apply"/> receives the object and the entered text.</summary>
         public static ContextAction WithInput(string id, I18nText label, string icon, I18nText prompt, string current, Func<SketchObject, string, SketchObject> apply, string? unit = null)
@@ -973,6 +983,14 @@ namespace InventaSketch.Core
         protected virtual IEnumerable<ContextAction> OwnPartActions(SketchObject o, string part, RenderContext ctx) => Array.Empty<ContextAction>();
 
         /// <summary>
+        /// Shapes of parts that are not drawn but can be selected (local coordinates like <see cref="Render"/>), each tagged
+        /// with its part key: the data points of a curve ("point.0.3", a small circle at the point). Hosts use them for hit
+        /// testing (<see cref="Registry.PartAt"/>), the outline and the glow of a selected part; they never reach the slide or an
+        /// export. None by default.
+        /// </summary>
+        public virtual IEnumerable<Primitive> PartShapes(SketchObject o, RenderContext ctx) => Array.Empty<Primitive>();
+
+        /// <summary>
         /// Interactive handles of the object (<see cref="DragHandle"/>, positions in page mm): values the user can drag directly
         /// on the drawing, such as the limit and value lines of a chart. None by default.
         /// </summary>
@@ -1328,11 +1346,39 @@ namespace InventaSketch.Core
             return TypeOf(o).Parts(o, ctx).Select(p => p with { Hidden = PartLooks.LookOf(o.Parts, p.Key)?.Hidden == true }).ToList();
         }
 
-        /// <summary>The part of <paramref name="o"/> under the page point <paramref name="at"/> (within <paramref name="tolerance"/> mm), or null.</summary>
+        /// <summary>
+        /// The part of <paramref name="o"/> under the page point <paramref name="at"/> (within <paramref name="tolerance"/> mm), or
+        /// null. A part shape (<see cref="ObjectType.PartShapes"/>, e.g. a data point) wins when the point lies on it.
+        /// </summary>
         public string? PartAt(SketchObject o, Vec2 at, RenderContext ctx, double tolerance = 1.0)
         {
             var keys = Parts(o, ctx).Select(p => p.Key).ToList();
-            return keys.Count == 0 ? null : PartLooks.At(Render(o, ctx), at, tolerance, keys);
+            if (keys.Count == 0) return null;
+            var shapes = PartShapes(o, ctx);
+            if (shapes.Count > 0 && PartLooks.At(shapes, at, Math.Min(tolerance, 0.25), keys) is { } fine) return fine;
+            return PartLooks.At(Render(o, ctx), at, tolerance, keys);
+        }
+
+        /// <summary>The part shapes of <paramref name="o"/> in page coordinates (<see cref="ObjectType.PartShapes"/>); empty for unknown types.</summary>
+        public IReadOnlyList<Primitive> PartShapes(SketchObject o, RenderContext ctx)
+        {
+            ctx.For(this);
+            var type = Type(o.Type);
+            if (type is null) return Array.Empty<Primitive>();
+            var local = type.PartShapes(o, ctx).ToList();
+            if (local.Count == 0 || o.IsPointGeometry) return local;
+            var m = o.Matrix();
+            return local.Select(p => Prim.Transform(p, m)).ToList();
+        }
+
+        /// <summary>
+        /// The page primitives of one part of <paramref name="o"/>: the drawn primitives tagged with <paramref name="part"/> (or a
+        /// longer key below it) plus its part shapes. Hosts outline and glow a selected part with them.
+        /// </summary>
+        public IReadOnlyList<Primitive> PartPrimitives(SketchObject o, string part, RenderContext ctx)
+        {
+            bool Of(Primitive p) => p.Tag is { } t && (t == part || t.StartsWith(part + ".", StringComparison.Ordinal));
+            return Prim.Flatten(Render(o, ctx)).Where(Of).Concat(Prim.Flatten(PartShapes(o, ctx)).Where(Of)).ToList();
         }
 
         /// <summary>The actions of one part of <paramref name="o"/> (type actions, then show/hide, thicker, thinner, line style, reset).</summary>

@@ -21,7 +21,7 @@ namespace InventaSketch.Engine.Tests
             var obj = list.EnumerateArray().Single();
             Assert.Equal(id, obj.GetProperty("id").GetString());
             var handles = obj.GetProperty("handles").EnumerateArray().ToList();
-            Assert.Equal(2, handles.Count);
+            Assert.Equal(2, handles.Count(x => x.GetProperty("part").GetString() == "limit"));
             var h = handles.Single(x => x.GetProperty("key").GetString() == "limit.1");
             Assert.Equal("vertical", h.GetProperty("constraint").GetString());
             Assert.Equal(1, h.GetProperty("dy").GetDouble(), 6);
@@ -54,7 +54,7 @@ namespace InventaSketch.Engine.Tests
         {
             var api = new EngineApi(ModuleCatalog.CreateDefault());
             var session = EngineApiTests.Call(api, "createSession", new { lang = "en" }).GetProperty("session").GetString()!;
-            var line = EngineApiTests.Insert(api, session, "chart.line", 60, 60);
+            var line = EngineApiTests.Insert(api, session, "chart.column", 60, 60);   // bars: no handles (an XY chart has its point handles)
             var limits = EngineApiTests.Insert(api, session, "chart.limits", 160, 60);
             var list = EngineApiTests.Call(api, "dragHandles", new { session, ids = new[] { line, limits } });
             Assert.Equal(new[] { limits }, list.EnumerateArray().Select(e => e.GetProperty("id").GetString()).ToArray());

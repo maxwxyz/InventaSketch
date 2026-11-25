@@ -255,6 +255,10 @@ namespace InventaSketch.Engine
         public string Label { get; set; } = "";
         /// <summary>Part key of the element the handle belongs to, or null.</summary>
         public string? Part { get; set; }
+        /// <summary>Part whose selection shows this handle too (the point handles of a selected curve), or null.</summary>
+        public string? ShowWith { get; set; }
+        /// <summary>No grip of its own: dragged by pressing on its (selected) part, e.g. a whole curve.</summary>
+        public bool ByPart { get; set; }
     }
 
     /// <summary>The drag handles of one element (<c>dragHandles</c>).</summary>
@@ -430,6 +434,17 @@ namespace InventaSketch.Engine
         public ActionInputInfo? Input { get; set; }
         /// <summary>Parameters the action sets (<see cref="ContextAction.ParamKeys"/>): hide it where those are choice buttons.</summary>
         public List<string>? ParamKeys { get; set; }
+        /// <summary>
+        /// Key of the choice this action is an option of (<see cref="InventaSketch.Core.ActionChoice"/>): hosts show the options
+        /// of one choice as one dropdown / submenu "<see cref="ChoiceLabel"/>: current ▸", the active option marked.
+        /// </summary>
+        public string? Choice { get; set; }
+        /// <summary>What the choice chooses ("Curve shape"), localised.</summary>
+        public string? ChoiceLabel { get; set; }
+        /// <summary>The choice is a menu of commands (no current option): "Fill to ▸".</summary>
+        public bool ChoiceMenu { get; set; }
+        /// <summary>A small drawing of the option as SVG (options without a shared pictogram: fill patterns, colours); null otherwise.</summary>
+        public string? PreviewSvg { get; set; }
     }
 
     public sealed class ActionInputInfo

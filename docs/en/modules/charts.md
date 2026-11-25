@@ -124,7 +124,7 @@ All anchors are in local coordinates computed from the same layout as the drawin
 
 | Type | Actions |
 |---|---|
-| XY chart | "Data…" (input), style ▸ (line → line with markers → markers → steps), smooth curve, x scale ▸, y scale ▸, grid, legend ▸ |
+| XY chart | "Data…" (input), style ▸ (line, line with markers, markers, steps), smooth curve, x scale ▸, y scale ▸, grid, legend ▸, add area ▸ (below curve 1, between two curves, vertical span, horizontal band, between the limit lines) |
 | Bar chart | "Data…", orientation ▸, several series ▸ (grouped / stacked), value labels, grid, legend ▸ |
 | Axes | grid, arrowheads, x scale ▸, y scale ▸ |
 | Torque curve | power curve, region notes, grid, legend ▸ |
@@ -133,8 +133,18 @@ All anchors are in local coordinates computed from the same layout as the drawin
 | Bode plot | system ▸, "Corner frequency…" (input: `1 kHz`, `250 Hz`, `2.5k`, `2,5k`), show ▸, corner frequency mark, grid |
 | Tolerance band | "Data…", "Tolerance…" (`10 %` = percent, `0.5` = absolute), smooth curves, grid, legend ▸ |
 
-Invalid inputs throw `FormatException` with a bilingual message and change nothing. Cycles use `IconIds.Cycle`,
-toggles `IconIds.Toggle`, inputs `IconIds.Text`. The chart types have no view switch.
+Invalid inputs throw `FormatException` with a bilingual message and change nothing. Toggles use `IconIds.Toggle`,
+inputs `IconIds.Text`. The chart types have no view switch.
+
+**Choices are dropdowns (2026-11-25).** Every choice among several options (style, scale, legend position, orientation,
+machine, function, edges, curve shape, fitted function, smoothing, line style, marker, fill pattern, colour, opacity,
+edge, where, steps) is one action per option (`ActionChoices.Option`, id `<choice>=<value>`, e.g. `chart.style=step`,
+`chart.curve.shape=fitted`), all carrying the same `ActionChoice` (key and label), the current option marked active.
+Hosts show them as one dropdown ("Curve shape: Smoothed ▾") and in the pie as "Curve shape: Smoothed ▸" opening the
+options – never as a cycle button. Options without a shared pictogram carry a small drawing (`ContextAction.Preview`:
+the curve in that shape, the fill pattern, the colour, the marker), which the hosts render as the option picture.
+Choices whose options are commands (`ActionChoice.IsMenu`: "Fill below ▸", "Fill to ▸", "Add area ▸") mark nothing.
+The engine reports `choice`, `choiceLabel`, `choiceMenu` and `previewSvg` with every action.
 
 ## Parts (charts v2, 2026-11-25)
 
@@ -146,14 +156,82 @@ axis), `axis.box` (closed frame), `tick.x`, `tick.y`, `label.x`, `label.y` (tick
 
 - Each part can be switched off and styled on its own (`SketchObject.Parts`: per key a look with style or hidden). A
   look on the kind (`series`, `grid`) applies to all parts of that kind; the indexed key wins.
-- Part actions: the chart's own ones that concern the part (curve: data, style, smoothing; axis: scale; grid: grid
-  toggle; legend: position), then show/hide, thicker, thinner, line style and reset.
+- Part actions: the chart's own ones that concern the part (curve: data, style, smoothing, shape choices of sketched
+  curves, fill below ▸, fill to ▸, delete curve; data point: delete, add a point after it, value …; area: pattern,
+  colour, opacity, edge, where, steps, legend label, delete; axis: scale; grid: grid toggle; legend: position), then
+  show/hide, thicker, thinner, line style (a choice) and reset. The Del key with a part selected runs the part's
+  `part.delete` (point, curve, area, value line, note), else hides the part – it never deletes the whole chart.
 - PowerPoint: a click without dragging on the selected chart selects the part under the pointer (outlined in blue); the
   bar shows its name and actions, "Parts …" lists every part including hidden ones, "Whole element" leaves the part.
   Formatting one curve with PowerPoint's own tools (line colour, weight, fill, font) changes that part only and survives
   every redraw; formatting the whole chart still changes the element style.
 - Engine: `parts`, `partAt`, `partActions`, `applyPartAction`, `setPartLook` (see the design note
   [charts v2](../design/charts-v2.md)).
+
+## Data points and curves on the drawing (2026-11-25)
+
+XY charts and figures (maintainer: "select the values/points of every curve, highlighted in blue; click+drag on a curve
+moves it, values adjusted in the background; single points moved by click and drag or deleted; single curves deleted"):
+
+- Every data point is a part `point.<curve>.<index>` ("Point 3 of Series 1 (2; 4.1)"), a fine part
+  (`PartInfo.Detail`: not in the parts list and the Tab order). Its part shape (`ObjectType.PartShapes`, a small circle,
+  never drawn) serves the hit test (`Registry.PartAt`: a point wins when the pointer is on it), the outline and the
+  glow (`Registry.PartPrimitives`).
+- Drag handles (`DragHandles`): one free handle per point, shown with its curve (`DragHandle.ShowWith = "series.k"`);
+  the value snaps to a tenth of the axis step (log axes: two significant digits) and stays inside the axis range; on a
+  curve whose x never falls the point stays between its neighbours. Curves with more than 40 points (sketched ones) get
+  no point handles – their points stay selectable on the drawing and editable with "Value …". One handle per curve
+  (`series.k`, `DragHandle.ByPart`) is dragged by pressing on the selected curve: every point moves by the snapped offset
+  (log axes: a factor); of a clearly vertical (horizontal) drag only that direction counts.
+- Actions: point – delete, add a point after it (halfway to the next one), "Value …" (`x; y`); curve – delete curve.
+  Deleting a curve drops its areas and point markers and moves the indices and part looks of later curves down.
+  Editing a point of a sketched curve makes it plain data (its shape memo goes); the other curves keep theirs. The XY
+  chart's data are then written as one block per curve ("Name;" header, `x;y` rows).
+- PowerPoint: the point grips are small blue-rimmed dots (the selected point filled blue with a soft glow); they appear
+  for the selected curve or point, the others near the pointer. A click on a grip selects the point; dragging moves it
+  (live preview, one undo step, Esc cancels). With a curve selected, pressing anywhere on it and dragging moves the
+  curve. Del deletes the selected point (the curve stays selected), curve or area.
+
+## Areas (2026-11-25)
+
+Filled areas as in matplotlib, for XY charts (parameter `areas`: a JSON array, empty = none; old documents unchanged)
+and figures (the specification's `regions`, same members; part keys `area.k` in the XY chart, `region.k` in the figure,
+kept for existing documents):
+
+| Kind | matplotlib | Members |
+|---|---|---|
+| `below` | `fill_between(x, y)` down to the axis | `a`, `base` (a y value instead of the panel bottom) |
+| `between` | `fill_between(x, y1, y2)` | `a`, `b` (curve) or `y2` (horizontal line, e.g. a limit line) |
+| `betweenx` | `fill_betweenx(y, x1, x2)` | `a`, `b` (curve) or `x2` (vertical line) |
+| `span` | `axvspan(x0, x1)` | `from`, `to`, `panel` (-1 = all) |
+| `hspan` | `axhspan(y0, y1)`; a band between two value lines | `y1`, `y2`, optionally `from`, `to` (x range), `panel` |
+
+- `where`: `above` (curve A above – right of – the other edge) or `below`; crossings are computed exactly (also where
+  two curves meet in a data point); the earlier `"above": true` is still read and written.
+- `step`: `pre`, `post`, `mid` – the edges follow steps (`fill_between(step=)`).
+- Look: `hatch` – a matplotlib hatch pattern (`/`, `\`, `|`, `-`, `+`, `x`, `o`, `O`, `.`, `*`, repeated for density,
+  combinable: `//`, `xx`, `/o`); `fill` `solid` (alone: a tinted face, opacity 0.3 by default; with a pattern: a light
+  tint under it) or `none`; `color` (default: the colour of curve A, grey for spans), `opacity`, `edge` (line style of
+  the outline) and `edgeColor`, `label` (legend entry). Without `hatch` the earlier fills apply (`hatch`, `cross`,
+  `solid`, `dots` with `angle` and `spacing`). Values areas reach (a base, a line, a band, a span) are inside the
+  automatic axis ranges, as in matplotlib.
+- Drawing (native first): the area is one closed freeform; one line family of the pattern (or a crossing pair) is its
+  hatch fill, which PowerPoint gets as hatch lines (the COM draw plan draws hatches explicitly), further families are
+  explicit hatch lines, circles and stars are small closed shapes inside the area (never crossing the edge) – all lines
+  and shapes stay editable in PowerPoint, no picture. One character spans 2.4 mm at the design size (it follows the
+  chart scale), "//" 1.2 mm.
+- Creating: on a curve "Fill below ▸" (one option per pattern, each with a swatch) and "Fill to ▸" (another curve of
+  its panel, a value or limit line, a y value …, a vertical line x = … for fill_betweenx); on the chart "Add area ▸".
+  Each area is a part with the choices Pattern ▾ (swatches), Colour ▾, Opacity ▾, Edge ▾, Where ▾ and Edges along the
+  curve ▾ (steps), the toggle "Tinted background" (patterns), "Legend label …" and Delete.
+- Exports: matplotlib `fill_between(..., where=[a >= b …], interpolate=True, step=…, hatch=…, facecolor=…,
+  edgecolor=…, linestyle=…, label=…)`, `fill_betweenx`, `axvspan`, `axhspan` (a band over part of x as
+  `fill_between`); pgfplots `fill between` for plain areas (patterns `Lines`, `Hatch`, `Dots`, `Stars` of
+  `patterns.meta`, a tint as `postaction`), the filled polygons for steps, fill_betweenx and where-conditions,
+  rectangles for bands; TikZ and SVG from the drawing.
+- Import (matplotlib): `fill_between` with `hatch`, `where` (curve above or below the other edge or a constant),
+  `step`, `label`, `facecolor`/`edgecolor`/`linewidth`/`linestyle`; `fill_betweenx`; `axhspan` (over the whole width);
+  `axvspan` with its label.
 
 ## Axis breaks (charts v2 stage 3)
 
@@ -285,10 +363,12 @@ centre, origin and axis rails per panel (`axis.x`, `axis.y`, `axis.x2` …), dat
 `ref<k>` for point markers.
 
 Element actions: add value line, add vertical marker, hatch between curves 1 and 2 (greyed out without two curves in
-one panel), principle axes (toggle all axes), monochrome, "Specification (JSON)…" (input). Part actions: curves – line
-style, markers, smooth curve, hatch below the curve; value lines and markers – line style or filled circle, "Label…",
-remove; regions – fill, remove; notes – "Text…", remove; axes – principle axes, add a value line in that panel or a
-vertical marker. Removing shifts the indices of later elements (their part looks then apply to the next element).
+one panel), principle axes (toggle all axes), monochrome, "Specification (JSON)…" (input), add area ▸. Part actions:
+curves – line style ▾, markers ▾ (none, circle, square, triangle, diamond, cross, plus), smooth curve, fill below ▸,
+fill to ▸, delete curve; data points – see [Data points and curves](#data-points-and-curves-on-the-drawing-2026-11-25);
+value lines and markers – line style ▾ or filled circle, "Label…", delete; regions – see [Areas](#areas-2026-11-25);
+notes – "Text…", delete; axes – principle axes, add a value line in that panel or a vertical marker. Deleting shifts
+the indices of later elements (their part looks then apply to the next element).
 
 Host notes: everything is native (lines, freeforms, hatched freeforms, text); no vector picture. Frame extensions
 (additive): panel height shares, custom ticks (marks), per-panel axis arrows and grid, panel gap, caption, extra right

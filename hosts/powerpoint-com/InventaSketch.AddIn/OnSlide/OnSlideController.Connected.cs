@@ -220,9 +220,8 @@ namespace InventaSketch.AddIn.OnSlide
         private List<Primitive> SelectedPartPrims()
         {
             if (_part is null || PartOwner() is not { } o || _unit is null) return new List<Primitive>();
-            var key = _part;
-            return Prim.Flatten(_registry().Render(o, new RenderContext(_unit.Doc, _lang())))
-                .Where(p => p.Tag is { } t && (t == key || t.StartsWith(key + ".", StringComparison.Ordinal))).ToList();
+            // Drawn primitives of the part plus its part shapes (a selected data point glows as a small circle).
+            return _registry().PartPrimitives(o, _part, new RenderContext(_unit.Doc, _lang())).ToList();
         }
 
         /// <summary>Reads whether the current slide's background is dark (UI thread, outside the hooks).</summary>

@@ -216,7 +216,8 @@ ax.fill_between(x, [0, 0, 0, 0], [5, 5, 5, 5], color='gold', alpha=0.2)
             var r0 = spec.Regions[0];
             Assert.Equal("between", r0.Kind);
             Assert.Equal(0, r0.A); Assert.Equal(1, r0.B); Assert.True(r0.Above);
-            Assert.Equal("hatch", r0.Fill); Assert.Equal(45, r0.Angle);
+            // The hatch pattern is kept as written; edgecolor without linewidth=0 draws an edge in matplotlib too.
+            Assert.Equal("//", r0.Hatch); Assert.Equal("hatch", r0.Fill); Assert.Equal("#000000", r0.Color); Assert.Equal("solid", r0.Edge);
             var r1 = spec.Regions[1];
             Assert.Equal("solid", r1.Fill); Assert.Equal("#ffd700", r1.Color);
             Assert.Equal(new[] { 2, 3 }, new[] { r1.A, r1.B });

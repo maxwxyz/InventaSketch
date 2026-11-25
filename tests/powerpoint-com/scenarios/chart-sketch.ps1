@@ -49,9 +49,9 @@ $unit.Select(); Start-Sleep 2
 $addin.Command('partsel:series.1') | Out-Null; Start-Sleep 2
 $bar = $addin.BarIds()
 Write-IskInfo ("bar of the sketched curve: " + $bar)
-Assert-Isk $S ((Get-CommandIds) -contains 'part:chart.curve.shape') 'the sketched curve offers "Curve shape"'
+Assert-Isk $S (($bar -split ',') -contains 'choice:@p.chart.curve.shape') 'the sketched curve offers the "Curve shape" dropdown'
 $m1 = Get-IskModel $unit
-$addin.Command('part:chart.curve.shape') | Out-Null; Start-Sleep 3
+$addin.Command('pick:@p.chart.curve.shape:chart.curve.shape=segments') | Out-Null; Start-Sleep 3
 $unit = @(Get-IskShapes $S) | Where-Object { (Get-IskModel $_) -match 'chart\.xy' } | Select-Object -First 1
 $m2 = Get-IskModel $unit
 Assert-Isk $S ($m2 -ne $m1 -and $m2 -match 'sketch shape=') 'switching the shape changes the curve and keeps the sketch memo'

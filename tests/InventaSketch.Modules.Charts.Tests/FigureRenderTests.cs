@@ -304,22 +304,30 @@ namespace InventaSketch.Modules.Charts.Tests
             var o = Fx.Item(r, "chart.figure.phases");
             var ctx = Fx.Ctx();
             var series = r.PartActions(o, "series.1", ctx);
-            Assert.Equal("Line: dotted", series.Single(a => a.Id == "chart.figure.line").Label.En);   // dash → dot
-            Assert.Equal("dot", SpecOf(series.Single(a => a.Id == "chart.figure.line").Apply(o)).Series[1].Line);
-            Assert.Equal("circle", SpecOf(series.Single(a => a.Id == "chart.figure.markers").Apply(o)).Series[1].Marker);
+            // Line style and markers are choices (dropdowns): the current option active, every option sets its value.
+            Assert.True(series.Single(a => a.Id == "chart.figure.line=dash").IsActive);
+            Assert.Equal("Line style", series.Single(a => a.Id == "chart.figure.line=dot").Choice!.Label.En);
+            Assert.Equal("dot", SpecOf(series.Single(a => a.Id == "chart.figure.line=dot").Apply(o)).Series[1].Line);
+            Assert.True(series.Single(a => a.Id == "chart.figure.marker=none").IsActive);
+            Assert.Equal("circle", SpecOf(series.Single(a => a.Id == "chart.figure.marker=circle").Apply(o)).Series[1].Marker);
+            Assert.NotNull(series.Single(a => a.Id == "chart.figure.marker=diamond").Preview);
             Assert.True(SpecOf(series.Single(a => a.Id == "chart.figure.smooth").Apply(o)).Series[1].Smooth);
-            var below = SpecOf(series.Single(a => a.Id == "chart.figure.below").Apply(o)).Regions.Last();
-            Assert.Equal(("below", 1), (below.Kind, below.A));
+            var below = SpecOf(series.Single(a => a.Id == "chart.area.below=//").Apply(o)).Regions.Last();
+            Assert.Equal(("below", 1, "//"), (below.Kind, below.A, below.Hatch));
+            Assert.True(series.Single(a => a.Id == "chart.area.below=//").Choice!.IsMenu);
             Assert.Contains(series, a => a.Id == "part.hide");
+            Assert.Contains(series, a => a.Id == PartLooks.DeleteAction);
 
             var refs = r.PartActions(o, "ref.2", ctx);
-            Assert.Equal(2, SpecOf(refs.Single(a => a.Id == "chart.figure.remove").Apply(o)).Refs.Count);
+            Assert.Equal(2, SpecOf(refs.Single(a => a.Id == PartLooks.DeleteAction).Apply(o)).Refs.Count);
             Assert.Equal("Limit", SpecOf(refs.Single(a => a.Id == "chart.figure.label").Input!.Apply(o, " Limit ")).Refs[2].Label!.En);
-            Assert.Equal("solid", SpecOf(refs.Single(a => a.Id == "chart.figure.line").Apply(o)).Refs[2].Line); // dashdot → solid
+            Assert.True(refs.Single(a => a.Id == "chart.figure.line=dashdot").IsActive);
+            Assert.Equal("solid", SpecOf(refs.Single(a => a.Id == "chart.figure.line=solid").Apply(o)).Refs[2].Line);
 
             var region = r.PartActions(o, "region.0", ctx);
-            Assert.Equal("cross", SpecOf(region.Single(a => a.Id == "chart.figure.fill").Apply(o)).Regions[0].Fill);
-            Assert.Empty(SpecOf(region.Single(a => a.Id == "chart.figure.remove").Apply(o)).Regions);
+            Assert.Equal("x", SpecOf(region.Single(a => a.Id == "chart.area.pattern=x").Apply(o)).Regions[0].Hatch);
+            Assert.Empty(SpecOf(region.Single(a => a.Id == PartLooks.DeleteAction).Apply(o)).Regions);
+            Assert.DoesNotContain(series.Concat(refs).Concat(region), a => a.Icon == IconIds.Cycle);
 
             var note = r.PartActions(o, "note.0", ctx);
             Assert.Equal("Phase 1", SpecOf(note.Single(a => a.Id == "chart.figure.label").Input!.Apply(o, "Phase 1")).Notes[0].Text!.En);

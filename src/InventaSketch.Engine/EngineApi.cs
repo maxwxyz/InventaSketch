@@ -1775,6 +1775,7 @@ namespace InventaSketch.Engine
                     {
                         Id = "t:" + a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "type", Kind = "type", Active = a.IsActive, Enabled = a.IsEnabled,
                         ParamKeys = a.ParamKeys?.ToList(),
+                        Choice = a.Choice?.Key, ChoiceLabel = a.Choice?.Label.Get(lang), ChoiceMenu = a.Choice?.IsMenu == true, PreviewSvg = PreviewSvg(a),
                         Input = a.Input is null ? null : new ActionInputInfo { Label = a.Input.Label.Get(lang), Value = a.Input.Value, Unit = a.Input.Unit },
                     });
             }
@@ -1887,9 +1888,14 @@ namespace InventaSketch.Engine
             {
                 Id = a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "part", Kind = "part", Active = a.IsActive, Enabled = a.IsEnabled,
                 ParamKeys = a.ParamKeys?.ToList(),
+                Choice = a.Choice?.Key, ChoiceLabel = a.Choice?.Label.Get(lang), ChoiceMenu = a.Choice?.IsMenu == true, PreviewSvg = PreviewSvg(a),
                 Input = a.Input is null ? null : new ActionInputInfo { Label = a.Input.Label.Get(lang), Value = a.Input.Value, Unit = a.Input.Unit },
             }).ToList();
         }
+
+        /// <summary>The option preview of an action as a small SVG (<see cref="ContextAction.Preview"/>), or null.</summary>
+        private static string? PreviewSvg(ContextAction a)
+            => a.Preview is { Count: > 0 } prims ? SvgRenderer.RenderPrimitives(prims, padding: 0.4) : null;
 
         /// <summary>applyPartAction: runs action (id from partActions) on part of every listed element that offers it.</summary>
         private object ApplyPartActionCore(EngineRequest r)
@@ -1924,6 +1930,8 @@ namespace InventaSketch.Engine
             Dy = Math.Round(h.Direction.Y, 6),
             Label = h.Label.Get(lang),
             Part = h.Part,
+            ShowWith = h.ShowWith,
+            ByPart = h.ByPart,
         };
 
         /// <summary>
@@ -2034,9 +2042,9 @@ namespace InventaSketch.Engine
             var lines = new List<List<double[]>>();
             if (Registry.Type(o.Type) is null) return lines;
             static double[] P(Vec2 v) => new[] { Math.Round(v.X, 3), Math.Round(v.Y, 3) };
-            foreach (var p in Prim.Flatten(Registry.Render(o, s.Context())))
+            // The drawn primitives of the part plus its part shapes (a data point: a small circle).
+            foreach (var p in Registry.PartPrimitives(o, part, s.Context()))
             {
-                if (p.Tag is not { } t || !(t == part || t.StartsWith(part + ".", StringComparison.Ordinal))) continue;
                 switch (p)
                 {
                     case LinePrim l: lines.Add(new List<double[]> { P(l.A), P(l.B) }); break;

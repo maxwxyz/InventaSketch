@@ -14,8 +14,19 @@ namespace InventaSketch.Modules.Charts
     /// <summary>A named tick of an axis (principle axes, figure marks).</summary>
     internal sealed record XMark(double At, string Text);
 
-    /// <summary>Fill of a region or a bar: solid, hatch, cross or dots; hatch angle (°, counter-clockwise), spacing (mm), colour, opacity.</summary>
-    internal sealed record XFillStyle(string Kind, string Color, double Angle = 45, double Spacing = 1.2, double? Opacity = null);
+    /// <summary>
+    /// Fill of a region or a bar: solid, hatch, cross, dots, none or "pattern" (a matplotlib hatch pattern, <see cref="HatchCode"/>);
+    /// hatch angle (°, counter-clockwise), spacing (mm), colour, opacity; a solid face under a pattern and an edge line.
+    /// </summary>
+    internal sealed record XFillStyle(string Kind, string Color, double Angle = 45, double Spacing = 1.2, double? Opacity = null)
+    {
+        /// <summary>The matplotlib hatch pattern ("//", "x.", "o") of a "pattern" fill.</summary>
+        public string? HatchCode { get; init; }
+        /// <summary>Solid face colour under a pattern, or null.</summary>
+        public string? Face { get; init; }
+        /// <summary>Edge line of the area, or null.</summary>
+        public XStroke? Edge { get; init; }
+    }
 
     /// <summary>An axis of an exported chart: scale, range, ticks, title, grid and the visibility of its pieces.</summary>
     internal sealed class XAxis
@@ -109,6 +120,15 @@ namespace InventaSketch.Modules.Charts
         public List<double> Lo { get; set; } = new();
         public List<double> Hi { get; set; } = new();
         public List<bool>? Where { get; set; }
+        /// <summary>The where-mask keeps curve A below (left of) the other edge; false: above (right of).</summary>
+        public bool WhereBelow { get; set; }
+        /// <summary>Steps of the edges (pre, post, mid) for fill_between step=; null: straight.</summary>
+        public string? Step { get; set; }
+        /// <summary>hspan: lower and upper y.</summary>
+        public double Y0 { get; set; }
+        public double Y1 { get; set; }
+        /// <summary>hspan over the whole x range (axhspan); else from <see cref="X0"/> to <see cref="X1"/>.</summary>
+        public bool FullWidth { get; set; }
         /// <summary>Description of the where-mask for comments ("curve 2 above curve 3").</summary>
         public string? WhereText { get; set; }
         public List<List<Vec2>> Polygons { get; set; } = new();
