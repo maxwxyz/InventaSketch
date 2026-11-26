@@ -85,6 +85,11 @@ undo step each (no step when nothing changes).
 | `insertCorner`, `removeCorner`, `splitLine` | `id`, `index` (segment), `points` [[x0, y0]] (the dot), `x`, `y`, `snap`, `tolerance`, `anchor`; `id`, `index`; `id`, `index` | state (one undo step each); branches docked on the line stay |
 | `branch`, `joinLines` | `id`, `points` [[from], [end]], `snap`, `tolerance`, `anchor`; `id`, `index` (an end), `x`, `y`, `snap`, `tolerance` | state with the new branch selected; `{ joined, state }` (nothing changes without a free end of the same kind there) |
 | `insertHandles`, `applyInsertHandle` | `id` or `ids`, `lang`; `id`, `key` | `[{ id, handles: [{ key, x, y, dx, dy, label }] }]`; state (one undo step) |
+| `lineEnds`, `extendLine` | `id`; `id`, `index` (an end: 0 or the last point), `points` [[x, y] …], `snap`, `tolerance`, `anchor`, `preview` | free ends that can be drawn on `[{ index, atStart, x, y, dx, dy }]`; state with the line drawn on through the points (the last one snapped and docked like a line end; a straight line or arrow becomes a polyline), one undo step, or with `preview` `{ svg, x, y }` |
+| `crossings`, `connectCrossing` | `id`; `id`, `index` | where a wire or pipe crosses another one `[{ index, other, x, y, above }]`; state (split there, both parts docked on the other line, one undo step "Connect") |
+| `setColorBy`, `mediumColours`, `insertMediumLegend` | `text` ("medium" or "" / "off"); `lang`, `mode` ("used"); `lang`, `json` (colour ids, default: those used), `x`/`y` | state (`colorBy`; every object counts as changed); the scheme `[{ id, name, color, stripe, source }]` (only the colours the session's lines use with `used`); `{ inserted, state }` with the legend as one group top right, selected (one undo step) |
+| `designations`, `setContinuations` | –; `json` ({"W3": ["4"]}: comparison key → page labels), `text` ("slide") | `[{ key, designation, ids }]`; state (draw plans carry continuation markers "→ W3, slide 4") |
+| `checks`, `muteCheck`, `setUnitPreference`, `valueSettings` | `ids`, `lang`; `key`, `text` (on/off); `quantityKind`, `unit` ("" clears); – | plausibility findings `[{ id, objectId, severity, message, rule, source }]` (muted ones left out); `{ state, muted }`; `{ state, unitPreferences }`; `{ mutedChecks, unitPreferences }` |
 | `exporters`, `export` | `ids` (selection with its groups, else the page), `lang`; `itemId` (exporter id) | domain exports that apply `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (default: document setting), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | draw plan in pt (black and white when the document is) |
@@ -92,7 +97,7 @@ undo step each (no step when nothing changes).
 
 Editor state: `session`, `revision`, `pageId`, `pageWidth`, `pageHeight`, `grid`, `selection`, `selectionBounds`,
 `canUndo`, `canRedo`, `undoLabel`, `objects`, `svg` (page SVG, black and white when the document is), `planScale`,
-`monochrome`, `valueLevel` ("quick", "explore", "engineer"), `changed` (objects added or modified by the change that produced this revision, also by undo/redo; every
+`monochrome`, `colorBy` ("medium" or absent), `valueLevel` ("quick", "explore", "engineer"), `changed` (objects added or modified by the change that produced this revision, also by undo/redo; every
 object after `setMonochrome`, every plan-scale object after `setPlanScale`) and `dependents` (further objects whose
 rendering depends on the changed or removed ones: wall joints, openings). Hosts redraw the units of `changed` plus
 `dependents` in one step. Each object carries id, type, name, kind (box/points), bounds, centre, size, rotation, flips,
@@ -360,10 +365,70 @@ Pure rules in `src/ui/handlelogic.ts` (tests `test/handlelogic.test.ts`); the en
   drawing speed hint works as in the COM add-in.
 
 Checked with unit tests (engine and TypeScript), the type check and the production build; **not yet checked in a
-browser or in PowerPoint**. Still different from the COM add-in: no junction icons where a wire crosses another, no "+"
-at free line ends without a port to keep drawing, no corner selection with split in the bar (the engine has `splitLine`);
-an unfilled closed shape keeps a faint glow inside its outline; the value level is a setting of the engine document
-(COM: a presentation tag) and `importCompact` does not carry it from a slide model.
+browser or in PowerPoint**. Still different from the COM add-in: an unfilled closed shape keeps a faint glow inside its
+outline; the value level is a setting of the engine document (COM: a presentation tag) and `importCompact` does not
+carry it from a slide model. Junction icons, the "+" at free line ends and the corner selection followed on 2026-11-26
+(next section).
+
+## Medium colours, names across slides, checks and line ends (2026-11-26, parity with the COM add-in)
+
+Follows [interaction-ux.md](../design/interaction-ux.md) section 6b and
+[engineering-calculations.md](../design/engineering-calculations.md) section 10.11. Pure rules in
+`src/office/designations.ts` and `src/ui/handlelogic.ts` (tests `test/medium-names.test.ts`); the additive engine
+methods `lineEnds`, `extendLine`, `crossings`, `connectCrossing`, `insertMediumLegend` and `valueSettings` are in
+`src/InventaSketch.Engine/EngineWeb.cs` (tests `WebDrawOnApiTests`).
+
+- **Colour by medium:** Settings ▸ "Colour by medium" ▸ Off (own colours) / By medium (`setColorBy`, one undo step).
+  Every object counts as changed, so live sync redraws every unit the task pane tracks; the colours come from the engine
+  at render time, so Off restores the original look. Like black and white, the slide model brings the mode into the
+  page session (`importCompact`). **Insert legend** (same place) lists the colours used: in PowerPoint those of every
+  unit on the shown slide (read into a temporary session, `mediumColours` mode `used`), else those of the editor page;
+  the engine builds the legend (`insertMediumLegend`, the COM add-in's `LineMedia.Legend`: title, a short line and the
+  name with its standard per colour) as one group top right, and in PowerPoint it is written onto the slide as a unit.
+  Nothing coloured yet: a short note, nothing inserted. Conductor, line role and fluid stay dropdowns from the engine's
+  action list (`line.role`), as do "Designation …", "Value label …", "End markers" and the elements' "Designation …"
+  (`line.ref`, `line.value`, `line.ref.ends`, `elem.ref`).
+- **Designations across slides:** when the task pane opens and when another slide is shown (the Office selection
+  handler checks the shown slide), the units of every slide are read (`readSlideUnits`), each other slide's designations
+  come from the engine (`designations` in a temporary session per slide) and the map "designation → slide numbers" goes
+  to the editor session (`setContinuations`, pages called slides). Units drawn from the task pane then carry the
+  continuation marker "→ W3, slide 4" at the free end nearest the slide edge. "Select connected ▸ Same name" is one of
+  the engine's kinds (`connectOptions` offers it when another element on the page has the name); for a designation that
+  also occurs on other slides the submenu adds "Same name: also on slides 2, 4" (an entry that only informs, as in the
+  COM add-in), and "Select connected ▸" shows for it even when nothing on the page shares the name. **Limits:** Office.js
+  has to read every slide's shapes and tags for the map, so it is read on these two occasions only, not after every edit
+  (a designation typed on another slide counts from the next slide change); units drawn before keep their markers until
+  they are drawn again (as in COM); the task pane's own page picture (the editor state's SVG) shows no markers, because
+  the engine's `StateOf` renders the page without the session's continuations (draw plans have them). Outside PowerPoint
+  (dev page, COM sidebar) there is no map.
+- **Checks in the value card:** below the values and conflicts the card lists the element's plausibility findings
+  (`checks`): "⚠ message (rule) [source]" for warnings, "ⓘ …" for hints, each with **Mute** (`muteCheck`, one undo step;
+  undo brings it back). The ⚠ badge on the drawing now also shows for a warning (Explore and Engineer; tooltip "Plausibility
+  warning"). **Show values in** (a fold-out in the card) sets the preferred unit per quantity kind for the drawing:
+  pressure bar/MPa/kPa, speed of rotation min⁻¹/rev/s/rad/s, energy kWh/MJ/J, power W/kW, or automatic
+  (`setUnitPreference`, one undo step; the current ones from `valueSettings`). The engine knows no unit "s⁻¹" for a speed
+  of rotation, so the web add-in offers rev/s (the COM add-in's ribbon offers "s⁻¹", which the engine refuses). Muted
+  checks and preferred units are settings of the engine document (saved with it and with every unit drawn from it);
+  `importCompact` does not carry them from a slide model, so they last for the task pane session (COM: presentation
+  tags `ISK_MUTED`, `ISK_UNITS`).
+- **Junction icons:** a selected wire or pipe shows a small ring with a cross and a dot beside each crossing with another
+  line that hops at crossings (`crossings`; layout priority 60, fades in near the pointer); a click connects the line
+  there: it is split and both parts dock onto the other line, which draws the junction dot (`connectCrossing`, one undo
+  step, the line stays selected). In PowerPoint only lines loaded into the task pane take part.
+- **"+" at free line ends:** every free end of a line that can be drawn on and has no line end port "+" (polylines,
+  roads, rails, straight lines and arrows …; `lineEnds`) shows the same blue "+" 18 px beyond the end (the end of the line
+  is the primary handle when no port "+" is). Drag it: the line runs to where it is released (snapped and docked like a
+  line end; Shift 15° steps). Click it: drawing goes on, every click adds a corner, a click on the last corner
+  (double-click), Enter, Esc or a right-click ends; the corners placed are committed at once (`extendLine`, one undo
+  step; a straight line or arrow becomes a polyline). The preview is the engine's drawing of the extended line
+  (`extendLine` with `preview`, about 15 times a second). The line end port "+" of cables, pipes and ducts keeps its
+  click (the insert box with what fits there) and draws the line on when dragged.
+- **Corner selection:** a click on a corner of a line with free corners (without moving it) selects it (orange); the bar
+  shows "Corner n", **Split the line here** (a closed outline: **Open the outline here**; `splitLine`) and **Remove this
+  corner** (`removeCorner`) where the engine allows them; a second click deselects, any edit ends the selection.
+
+Checked with unit tests (engine and TypeScript), the type check and the production build; **not yet checked in a
+browser or in PowerPoint**.
 
 ## Build and run
 
@@ -461,6 +526,7 @@ the last position).
 | Build "+" (dock, stretch), live coupling preview, ghost positions, dimension between two parts | verified in browser (dev.html, 2026-11-24); **not yet tested in PowerPoint** |
 | Motion mode (turn gear trains, drag linkages) | verified in browser (dev.html, 2026-11-25); **not yet tested in PowerPoint** |
 | Interaction concept: bar, choice dropdowns, eight-place pie, halo, select connected, parts, values, calculator, code import, handle layout, grips | unit tests, type check and build (2026-11-25); **not yet checked in a browser or in PowerPoint** |
+| Colour by medium and legend, designations across slides, checks and preferred units in the value card, junction icons, "+" at free line ends, corner split | unit tests, type check and build (2026-11-26); **not yet checked in a browser or in PowerPoint** |
 | Writing native shapes into PowerPoint | implemented, **not yet tested in PowerPoint** |
 | Local installer like the COM add-in (no admin) | implemented, dry run verified; real install pending |
 | Webspace package (download page, manifest for own URL) | implemented; checked over local HTTPS, real webspace pending |

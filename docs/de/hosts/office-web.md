@@ -87,6 +87,11 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `insertCorner`, `removeCorner`, `splitLine` | `id`, `index` (Abschnitt), `points` [[x0, y0]] (der Punkt), `x`, `y`, `snap`, `tolerance`, `anchor`; `id`, `index`; `id`, `index` | Zustand (je ein Rückgängig-Schritt); an der Linie angedockte Abzweige bleiben |
 | `branch`, `joinLines` | `id`, `points` [[Start], [Ende]], `snap`, `tolerance`, `anchor`; `id`, `index` (ein Ende), `x`, `y`, `snap`, `tolerance` | Zustand mit dem neuen Abzweig gewählt; `{ joined, state }` (ohne freies Ende gleicher Art dort ändert sich nichts) |
 | `insertHandles`, `applyInsertHandle` | `id` oder `ids`, `lang`; `id`, `key` | `[{ id, handles: [{ key, x, y, dx, dy, label }] }]`; Zustand (ein Rückgängig-Schritt) |
+| `lineEnds`, `extendLine` | `id`; `id`, `index` (ein Ende: 0 oder der letzte Punkt), `points` [[x, y] …], `snap`, `tolerance`, `anchor`, `preview` | freie Enden zum Weiterzeichnen `[{ index, atStart, x, y, dx, dy }]`; Zustand mit der durch die Punkte weitergezeichneten Linie (der letzte gefangen und angedockt wie ein Linienende; eine gerade Linie oder ein Pfeil wird zur Polylinie), ein Rückgängig-Schritt, oder mit `preview` `{ svg, x, y }` |
+| `crossings`, `connectCrossing` | `id`; `id`, `index` | wo eine Leitung oder ein Rohr eine andere Leitung kreuzt `[{ index, other, x, y, above }]`; Zustand (dort geteilt, beide Teile an der anderen Leitung angedockt, ein Rückgängig-Schritt „Connect“) |
+| `setColorBy`, `mediumColours`, `insertMediumLegend` | `text` („medium“ oder „“ / „off“); `lang`, `mode` („used“); `lang`, `json` (Farb-Ids, Standard: die verwendeten), `x`/`y` | Zustand (`colorBy`; jedes Objekt gilt als geändert); das Schema `[{ id, name, color, stripe, source }]` (mit `used` nur die Farben der Leitungen der Sitzung); `{ inserted, state }` mit der Legende als eine Gruppe oben rechts, gewählt (ein Rückgängig-Schritt) |
+| `designations`, `setContinuations` | –; `json` ({"W3": ["4"]}: Vergleichsschlüssel → Seitenbezeichnungen), `text` („slide“) | `[{ key, designation, ids }]`; Zustand (Zeichenpläne tragen Fortsetzungsmarken „→ W3, Folie 4“) |
+| `checks`, `muteCheck`, `setUnitPreference`, `valueSettings` | `ids`, `lang`; `key`, `text` (on/off); `quantityKind`, `unit` („“ löscht); – | Plausibilitätsbefunde `[{ id, objectId, severity, message, rule, source }]` (stummgeschaltete ausgelassen); `{ state, muted }`; `{ state, unitPreferences }`; `{ mutedChecks, unitPreferences }` |
 | `exporters`, `export` | `ids` (Auswahl mit ihren Gruppen, sonst die Seite), `lang`; `itemId` (Exporter-Id) | zutreffende Fachexporte `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (Standard: Dokumenteinstellung), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | Zeichenplan in pt (schwarz-weiß, wenn das Dokument es ist) |
@@ -94,7 +99,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 
 Editorzustand: `session`, `revision`, `pageId`, `pageWidth`, `pageHeight`, `grid`, `selection`, `selectionBounds`,
 `canUndo`, `canRedo`, `undoLabel`, `objects`, `svg` (Seiten-SVG, schwarz-weiß, wenn das Dokument es ist), `planScale`,
-`monochrome`, `valueLevel` („quick“, „explore“, „engineer“), `changed` (durch die Änderung dieser Revision hinzugefügte oder geänderte Objekte, auch bei
+`monochrome`, `colorBy` („medium“ oder fehlt), `valueLevel` („quick“, „explore“, „engineer“), `changed` (durch die Änderung dieser Revision hinzugefügte oder geänderte Objekte, auch bei
 Rückgängig/Wiederholen; nach `setMonochrome` alle Objekte, nach `setPlanScale` alle Objekte mit Planmaßstab) und
 `dependents` (weitere Objekte, deren Darstellung von den geänderten oder entfernten abhängt: Wandanschlüsse,
 Öffnungen). Hosts zeichnen die Einheiten aus `changed` und `dependents` in einem Schritt neu. Jedes Objekt enthält ID,
@@ -386,11 +391,76 @@ Reine Regeln in `src/ui/handlelogic.ts` (Tests `test/handlelogic.test.ts`); die 
   der Hinweis aus der Zeichengeschwindigkeit wie im COM-Add-in wirkt.
 
 Geprüft mit Unit-Tests (Engine und TypeScript), Typprüfung und Produktions-Build; **noch nicht im Browser oder in
-PowerPoint geprüft**. Weiterhin anders als im COM-Add-in: keine Knoten-Symbole, wo eine Leitung eine andere kreuzt, kein
-„+“ an freien Linienenden ohne Anschluss zum Weiterzeichnen, keine Eckenauswahl mit „Teilen“ in der Leiste (die Engine hat
-`splitLine`); eine ungefüllte geschlossene Form behält innerhalb ihres Umrisses einen schwachen Schein; die Wertestufe ist
-eine Einstellung des Engine-Dokuments (COM: ein Präsentations-Tag) und `importCompact` übernimmt sie nicht aus einem
-Folienmodell.
+PowerPoint geprüft**. Weiterhin anders als im COM-Add-in: eine ungefüllte geschlossene Form behält innerhalb ihres
+Umrisses einen schwachen Schein; die Wertestufe ist eine Einstellung des Engine-Dokuments (COM: ein Präsentations-Tag) und
+`importCompact` übernimmt sie nicht aus einem Folienmodell. Verbindungssymbole, das „+“ an freien Linienenden und die
+Eckenauswahl folgten am 26.11.2026 (nächster Abschnitt).
+
+## Medienfarben, Namen über Folien, Prüfungen und Linienenden (2026-11-26, Gleichstand mit dem COM-Add-in)
+
+Folgt [interaction-ux.md](../design/interaction-ux.md) Abschnitt 6b und
+[engineering-calculations.md](../design/engineering-calculations.md) Abschnitt 10.11. Reine Regeln in
+`src/office/designations.ts` und `src/ui/handlelogic.ts` (Tests `test/medium-names.test.ts`); die ergänzten
+Engine-Methoden `lineEnds`, `extendLine`, `crossings`, `connectCrossing`, `insertMediumLegend` und `valueSettings` stehen
+in `src/InventaSketch.Engine/EngineWeb.cs` (Tests `WebDrawOnApiTests`).
+
+- **Farbe nach Medium:** Einstellungen ▸ „Farbe nach Medium“ ▸ Aus (eigene Farben) / Nach Medium (`setColorBy`, ein
+  Rückgängig-Schritt). Jedes Objekt gilt als geändert, daher zeichnet die Live-Synchronisierung jede verfolgte Einheit neu;
+  die Farben kommen beim Zeichnen von der Engine, Aus stellt also das ursprüngliche Aussehen wieder her. Wie Schwarz-Weiß
+  bringt das Folienmodell den Modus in die Seitensitzung (`importCompact`). **Legende einfügen** (gleiche Stelle) listet die
+  verwendeten Farben: in PowerPoint die aller Einheiten der gezeigten Folie (in eine temporäre Sitzung gelesen,
+  `mediumColours` Modus `used`), sonst die der Editorseite; die Engine baut die Legende (`insertMediumLegend`,
+  `LineMedia.Legend` wie im COM-Add-in: Titel, je Farbe ein kurzer Strich und der Name mit seiner Norm) als eine Gruppe
+  oben rechts, in PowerPoint wird sie als Einheit auf die Folie geschrieben. Ist noch nichts eingefärbt: ein kurzer
+  Hinweis, nichts wird eingefügt. Leiter, Leitungsfunktion und Medium (DIN 2403) bleiben Dropdowns aus der Aktionsliste
+  der Engine (`line.role`), ebenso „Bezeichnung …“, „Wertangabe …“, „Endmarkierungen“ und die „Bezeichnung …“ der Elemente
+  (`line.ref`, `line.value`, `line.ref.ends`, `elem.ref`).
+- **Bezeichnungen über Folien:** beim Öffnen des Aufgabenbereichs und wenn eine andere Folie gezeigt wird (die
+  Office-Auswahlbehandlung prüft die gezeigte Folie) werden die Einheiten aller Folien gelesen (`readSlideUnits`), die
+  Bezeichnungen jeder anderen Folie liefert die Engine (`designations` in einer temporären Sitzung je Folie), und die
+  Zuordnung „Bezeichnung → Foliennummern“ geht an die Editorsitzung (`setContinuations`, Seiten heißen Folien). Aus dem
+  Aufgabenbereich gezeichnete Einheiten tragen dann am freien Ende nächst dem Folienrand die Fortsetzungsmarke „→ W3,
+  Folie 4“. „Verbundene auswählen ▸ Gleicher Name“ ist eine der Arten der Engine (`connectOptions` bietet sie an, wenn ein
+  anderes Element der Seite den Namen trägt); kommt die Bezeichnung auch auf anderen Folien vor, ergänzt das Untermenü
+  „Gleicher Name: auch auf Folien 2, 4“ (ein Eintrag, der nur informiert, wie im COM-Add-in), und „Verbundene auswählen ▸“
+  erscheint dafür auch dann, wenn auf der Seite nichts den Namen teilt. **Grenzen:** Office.js muss für die Zuordnung die
+  Formen und Tags aller Folien lesen, daher geschieht es nur zu diesen beiden Anlässen, nicht nach jeder Bearbeitung (eine
+  auf einer anderen Folie eingegebene Bezeichnung zählt ab dem nächsten Folienwechsel); früher gezeichnete Einheiten
+  behalten ihre Marken, bis sie neu gezeichnet werden (wie in COM); das Seitenbild im Aufgabenbereich selbst (das SVG des
+  Editorzustands) zeigt keine Marken, weil `StateOf` der Engine die Seite ohne die Fortsetzungen der Sitzung zeichnet
+  (Zeichenpläne haben sie). Außerhalb von PowerPoint (Entwicklerseite, COM-Seitenleiste) gibt es keine Zuordnung.
+- **Prüfungen in der Wertekarte:** unter den Werten und Widersprüchen listet die Karte die Plausibilitätsbefunde des
+  Elements (`checks`): „⚠ Meldung (Regel) [Quelle]“ für Warnungen, „ⓘ …“ für Hinweise, jeweils mit **Stummschalten**
+  (`muteCheck`, ein Rückgängig-Schritt; Rückgängig holt sie zurück). Die ⚠-Plakette in der Zeichnung erscheint jetzt auch
+  bei einer Warnung (Erkunden und Ingenieur; Tooltip „Plausibilitätswarnung“). **Werte zeigen in** (ausklappbar in der
+  Karte) setzt die bevorzugte Einheit je Größenart für die Zeichnung: Druck bar/MPa/kPa, Drehzahl min⁻¹/rev/s/rad/s,
+  Energie kWh/MJ/J, Leistung W/kW oder automatisch (`setUnitPreference`, ein Rückgängig-Schritt; die aktuellen aus
+  `valueSettings`). Die Engine kennt für eine Drehzahl keine Einheit „s⁻¹“, daher bietet das Web-Add-in rev/s an (das
+  Menüband des COM-Add-ins bietet „s⁻¹“, das die Engine ablehnt). Stummgeschaltete Prüfungen und bevorzugte Einheiten sind
+  Einstellungen des Engine-Dokuments (damit gespeichert und mit jeder daraus gezeichneten Einheit); `importCompact`
+  übernimmt sie nicht aus einem Folienmodell, sie gelten also für die Sitzung des Aufgabenbereichs (COM:
+  Präsentations-Tags `ISK_MUTED`, `ISK_UNITS`).
+- **Verbindungssymbole:** eine gewählte Leitung oder ein Rohr zeigt neben jeder Kreuzung mit einer anderen Leitung, die an
+  Kreuzungen springt, einen kleinen Ring mit Kreuz und Punkt (`crossings`; Anordnungspriorität 60, blendet nahe dem
+  Zeiger ein); ein Klick verbindet die Leitung dort: Sie wird geteilt, und beide Teile docken an der anderen Leitung an,
+  die den Verbindungspunkt zeichnet (`connectCrossing`, ein Rückgängig-Schritt, die Leitung bleibt gewählt). In PowerPoint
+  nehmen nur in den Aufgabenbereich geladene Leitungen teil.
+- **„+“ an freien Linienenden:** jedes freie Ende einer weiterzeichenbaren Linie ohne „+“ eines Leitungsende-Anschlusses
+  (Polylinien, Straßen, Gleise, gerade Linien und Pfeile …; `lineEnds`) zeigt dasselbe blaue „+“ 18 px hinter dem Ende (das
+  Ende der Linie ist der primäre Griff, wenn kein Anschluss-„+“ es ist). Ziehen: die Linie läuft bis zur Stelle des
+  Loslassens (gefangen und angedockt wie ein Linienende; Umschalt in 15°-Schritten). Klicken: Es wird weitergezeichnet,
+  jeder Klick setzt eine Ecke, ein Klick auf die letzte Ecke (Doppelklick), Enter, Esc oder ein Rechtsklick beendet; die
+  gesetzten Ecken werden auf einmal übernommen (`extendLine`, ein Rückgängig-Schritt; eine gerade Linie oder ein Pfeil wird
+  zur Polylinie). Die Vorschau ist die Zeichnung der verlängerten Linie durch die Engine (`extendLine` mit `preview`, etwa
+  15-mal je Sekunde). Das „+“ am Leitungsende-Anschluss von Kabeln, Rohren und Kanälen behält seinen Klick (das
+  Einfügefeld mit dem, was dort passt) und zeichnet beim Ziehen die Leitung weiter.
+- **Eckenauswahl:** ein Klick auf eine Ecke einer Linie mit freien Ecken (ohne sie zu bewegen) wählt sie (orange); die
+  Leiste zeigt „Ecke n“, **Linie hier teilen** (ein geschlossener Umriss: **Umriss hier öffnen**; `splitLine`) und **Diese
+  Ecke entfernen** (`removeCorner`), wo die Engine es erlaubt; ein zweiter Klick hebt die Wahl auf, jede Bearbeitung beendet
+  sie.
+
+Geprüft mit Unit-Tests (Engine und TypeScript), Typprüfung und Produktions-Build; **noch nicht im Browser oder in
+PowerPoint geprüft**.
 
 ## Bauen und starten
 
@@ -499,6 +569,7 @@ Lage aus).
 | Bau-„+“ (andocken, Welle ziehen), Live-Vorschau der Kopplung, Geisterstellungen, Maß zwischen zwei Teilen | im Browser geprüft (dev.html, 2026-11-24); **noch nicht in PowerPoint getestet** |
 | Bewegungsmodus (Getriebezüge drehen, Koppelgetriebe ziehen) | im Browser geprüft (dev.html, 2026-11-25); **noch nicht in PowerPoint getestet** |
 | Interaktionskonzept: Leiste, Auswahl-Dropdowns, Kreismenü mit acht Plätzen, Schein, Verbundene auswählen, Teile, Werte, Rechner, Code-Import, Griff-Anordnung, Wertgriffe | Unit-Tests, Typprüfung und Build (2026-11-25); **noch nicht im Browser oder in PowerPoint geprüft** |
+| Farbe nach Medium und Legende, Bezeichnungen über Folien, Prüfungen und bevorzugte Einheiten in der Wertekarte, Verbindungssymbole, „+“ an freien Linienenden, Teilen an einer Ecke | Unit-Tests, Typprüfung und Build (2026-11-26); **noch nicht im Browser oder in PowerPoint geprüft** |
 | Schreiben nativer Formen in PowerPoint | umgesetzt, **noch nicht in PowerPoint getestet** |
 | Lokaler Installer wie beim COM-Add-in (ohne Admin) | umgesetzt, Probelauf geprüft; echte Installation offen |
 | Webspace-Paket (Downloadseite, Manifest für eigene URL) | umgesetzt; über lokales HTTPS geprüft, echter Webspace offen |

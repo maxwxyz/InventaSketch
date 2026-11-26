@@ -5,12 +5,14 @@
 // (`values`, `setValue`, `clearValue`, `explain`); the card only shows them and passes what is typed. In Explore a ↔ grip
 // beside a positive value drags it left or right with a live preview of everything that depends on it (`dragValue`,
 // like the COM add-in); a value with tolerances shows its range; "Calculation sheet …" opens the sheet (`calcSheet`).
+// Calc 6: the element's plausibility warnings with rule and source and a "Mute" link (`checks`, `muteCheck`), and
+// "Show values in" with the preferred unit per quantity kind (`setUnitPreference`).
 
 import type { Session } from "../engine/client";
-import type { EditorState, ObjectValues, ValueLevel, VarInfo } from "../engine/types";
+import type { CheckInfo, EditorState, ObjectValues, ValueLevel, VarInfo } from "../engine/types";
 import { lang, t } from "../i18n";
 import { clamp, h } from "./dom";
-import { canDragValue, dragValueStep, rangeText } from "./handlelogic";
+import { UNIT_CHOICES, canDragValue, checkLine, dragValueStep, rangeText } from "./handlelogic";
 import { icon } from "./icons";
 
 /** Marker of a value's provenance: ✎ entered, = derived, ○ default, ⇄ linked, ⚠ in conflict. */
@@ -141,6 +143,19 @@ export class ValueCard {
         for (const c of values.conflicts) list.append(h("li", {}, `⚠ ${c.message}`));
         card.append(list);
       }
+      // Plausibility warnings of the element with rule and source, each with "Mute" (Calc 6, as the COM card).
+      const checks = this.checks(id);
+      if (checks.length) {
+        const list = h("ul", { class: "isk-val-checks", "aria-label": t("val.checks"), "data-cmd": "valuechecks" });
+        for (const c of checks) {
+          const mute = h("button", { class: "isk-link", type: "button", title: t("val.muteHint"), "data-mute": c.id }, t("val.mute"));
+          mute.addEventListener("click", () => {
+            try { this.host.apply(this.host.session().muteCheck(c.id), true); } catch (e) { this.host.report(e); }
+          });
+          list.append(h("li", { class: c.severity === "warning" ? "is-warning" : "" }, h("span", {}, checkLine(c)), mute));
+        }
+        card.append(list);
+      }
     }
     // Footer: the calculator with the focused (else the first known) value, the values label on the drawing.
     const calc = h("button", { class: "isk-btn", type: "button", "data-cmd": "valuecalc" }, t("val.calculator"));
@@ -159,12 +174,47 @@ export class ValueCard {
       foot.append(h("label", { class: "isk-check" }, box, h("span", {}, t("val.show"))));
     }
     card.append(foot);
+    if (values?.vars.length) card.append(this.unitChoices());
     card.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); this.close(); } });
     if (old) old.replaceWith(card); else this.root.append(card);
     this.el = card;
     this.place();
     const focus = (focusKey && card.querySelector<HTMLInputElement>(`input[data-key="${CSS.escape(focusKey)}"]`)) || (!old ? card.querySelector<HTMLInputElement>("input[data-key]") : null);
     if (focus) { focus.focus({ preventScroll: true }); if (!old) focus.select(); }
+  }
+
+  /** The element's plausibility findings (engine `checks`; muted checks are left out by the engine). */
+  private checks(id: string): CheckInfo[] {
+    try {
+      return this.host.session().checks([id], lang()).filter((c) => c.objectId === id);
+    } catch {
+      return [];
+    }
+  }
+
+  /** Open state of "Show values in" (kept while the card is redrawn). */
+  private unitsOpen = false;
+
+  /**
+   * "Show values in" (Calc 6, as the COM add-in's Values menu): the preferred unit per quantity kind for this drawing –
+   * pressure, speed of rotation, energy, power; "automatic" clears it. One undo step each (`setUnitPreference`).
+   */
+  private unitChoices(): HTMLElement {
+    let prefs: Record<string, string> = {};
+    try { prefs = this.host.session().valueSettings().unitPreferences ?? {}; } catch { prefs = {}; }
+    const rows = UNIT_CHOICES.map((c) => {
+      const sel = h("select", { class: "isk-input", "aria-label": `${t("val.units")}: ${t(`val.kind.${c.kind}`)}`, "data-unit-kind": c.kind });
+      sel.append(h("option", { value: "", selected: !prefs[c.kind] }, t("val.unitAuto")));
+      for (const u of c.units) sel.append(h("option", { value: u, selected: prefs[c.kind] === u }, u));
+      sel.addEventListener("change", () => {
+        try { this.host.apply(this.host.session().setUnitPreference(c.kind, sel.value), true); } catch (e) { this.host.report(e); }
+      });
+      return h("label", { class: "isk-field isk-row" }, h("span", { class: "isk-field-label" }, t(`val.kind.${c.kind}`)), sel);
+    });
+    const box = h("details", { class: "isk-val-units", "data-cmd": "valueunits" }, h("summary", {}, t("val.units")), ...rows);
+    (box as HTMLDetailsElement).open = this.unitsOpen;
+    box.addEventListener("toggle", () => (this.unitsOpen = (box as HTMLDetailsElement).open));
+    return box;
   }
 
   /** One variable: marker, symbol, name, value field, unit, × for an entered value; then its formula line and error. */

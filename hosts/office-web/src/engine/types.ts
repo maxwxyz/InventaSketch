@@ -75,6 +75,24 @@ export interface SegmentHandleInfo { index: number; x: number; y: number; nx: nu
 /** Corner dots, branch handles, removable and splittable corners of a line (engine `polylineHandles`). */
 export interface PolylineHandles { corners: boolean; branch: boolean; closed: boolean; segments: SegmentHandleInfo[]; removable: number[]; splittable: number[] }
 
+/** A free end of a line that can be drawn on (engine `lineEnds`), page mm, with the outward direction. */
+export interface LineEndInfo { index: number; atStart: boolean; x: number; y: number; dx: number; dy: number }
+
+/** Where a wire or pipe crosses another one without being connected (engine `crossings`), page mm. */
+export interface CrossingInfo { index: number; other: string; x: number; y: number; above: boolean }
+
+/** A colour of the "by medium" scheme (engine `mediumColours`): id, name, colour, stripe (green-yellow) and source. */
+export interface MediumColourInfo { id: string; name: string; color: string; stripe?: string | null; source: string }
+
+/** A designation of the document (engine `designations`): comparison key, as typed, and the ids carrying it. */
+export interface DesignationInfo { key: string; designation: string; ids: string[] }
+
+/** A violated plausibility check (engine `checks`). */
+export interface CheckInfo { id: string; objectId: string; severity: "info" | "hint" | "warning"; message: string; rule: string; source?: string | null }
+
+/** Calc 6 settings of the drawing (engine `valueSettings`): muted checks and preferred display units per quantity kind. */
+export interface ValueSettings { mutedChecks: string[]; unitPreferences: Record<string, string> }
+
 /** An insert place on an element (engine `insertHandles`: between table rows and columns), page mm. */
 export interface InsertHandleInfo { key: string; x: number; y: number; dx: number; dy: number; label: string }
 
@@ -121,6 +139,8 @@ export interface EditorState {
   lineGroup?: number;
   /** Accent colour (setAccent, #rrggbb): coloured parts of all elements take its hue; absent = each module's colours. */
   accent?: string | null;
+  /** Display mode of connection lines (setColorBy): "medium" = coloured by medium and role; absent = their own colours. */
+  colorBy?: string | null;
   /** Objects added or modified by the change that produced this revision (edit, undo, redo). */
   changed?: string[];
   /** Further objects whose rendering depends on the changed or removed ones (wall joints, openings): redraw them too. */
@@ -131,7 +151,7 @@ export interface EditorState {
 export type ValueLevel = "quick" | "explore" | "engineer";
 
 /** A kind of "select connected" that adds something (engine `connectOptions`). */
-export interface ConnectOption { kind: "net" | "coupled" | "chain" | "loop" | "walls"; label: string; hint: string; ids: string[] }
+export interface ConnectOption { kind: "net" | "coupled" | "chain" | "loop" | "walls" | "samename"; label: string; hint: string; ids: string[] }
 
 /** One variable of an element with its value (engine `values`); numbers in SI and in the display unit. */
 export interface VarInfo {
