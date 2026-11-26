@@ -97,7 +97,7 @@ namespace InventaSketch.Modules.Maps
     }
 
     /// <summary>Region / area as a closed polygon (optionally smooth) with tint, hatch or no fill and an optional name.</summary>
-    internal sealed class RegionType : MapPointType
+    internal sealed class RegionType : MapPointType, IValueType, IValueLinks
     {
         public const string TypeId = "map.region";
         public override bool InsertablePoints => true;
@@ -127,7 +127,15 @@ namespace InventaSketch.Modules.Maps
         public override bool HasText => true;
         protected override bool ClosedOutline => true;
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-30, -16), new Vec2(8, -22), new Vec2(32, -6), new Vec2(26, 18), new Vec2(-8, 22), new Vec2(-32, 8) };
-        public override IReadOnlyList<ParamDef> Parameters => new[] { KindDef, FillDef, SmoothDef };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { KindDef, FillDef, SmoothDef }.Concat(RegionValues.Params).ToList();
+
+        /// <summary>Area and perimeter at the map scale (<see cref="RegionValues"/>); the scale comes from the scale bar on the page.</summary>
+        public IReadOnlyList<VarDef> Variables => RegionValues.Vars;
+        public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => RegionValues.Links(o, ctx);
+
+        /// <summary>The values (area at the map scale) read the scale bar on the page.</summary>
+        public override bool DependsOnNeighbours => true;
         public override IReadOnlyList<string> Companions => new[] { Place.TypeId, PoiType.TypeId, RoadType.TypeId, Legend.TypeId };
 
         /// <summary>Area centroid of the polygon (mean of the points for degenerate polygons).</summary>

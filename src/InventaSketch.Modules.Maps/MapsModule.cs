@@ -20,7 +20,7 @@ namespace InventaSketch.Modules.Maps
             Frame.Create(), new RegionType(), Place.Create(),
             new RoadType(), new RailType(), new RiverType(),
             StationType.Create(), new BridgeType(), new TunnelType(), new ContourType(),
-            new RouteType(), MarkerType.Create(), StopType.Create(), Callout.Create(),
+            new RouteType(), MarkerType.Create(), StopType.Create(), Callout.Create(), new MeasureType(), Profile.Create(),
             PoiType.Create(),
             ScaleBar.Create(), NorthArrow.Create(), Compass.Create(), Legend.Create(),
         });
@@ -30,7 +30,7 @@ namespace InventaSketch.Modules.Maps
 
         public string Id => "maps";
         public I18nText Name => new("Maps & routes", "Karten & Routen");
-        public string Version => "0.3.0";
+        public string Version => "0.4.0";
         public IEnumerable<ObjectType> Types => AllTypes.Value;
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -82,6 +82,8 @@ namespace InventaSketch.Modules.Maps
             Add("region.urban", RegionType.TypeId, "Built-up area", "Bebaute Fläche", ps: P(("kind", "urban")), kw: new[] { "city", "town", "stadt", "siedlung" });
             Add("region.restricted", RegionType.TypeId, "Restricted zone / geofence", "Sperrzone / Geofence", ps: P(("kind", "restricted"), ("fill", "hatch")), kw: new[] { "no-go", "verbot" });
             Add("region.hatched", RegionType.TypeId, "Area (hatched)", "Gebiet (schraffiert)", ps: P(("fill", "hatch")), kw: new[] { "hatch", "schraffur" });
+            Add("region.values", RegionType.TypeId, "Area with size and perimeter", "Gebiet mit Fläche und Umfang", ps: P((ValueLabels.ShowParam, true)),
+                kw: new[] { "area", "size", "perimeter", "km²", "hectare", "fläche", "größe", "umfang", "hektar" });
             Add("place.capital", Place.TypeId, "Capital", "Hauptstadt", ps: P(("rank", "capital")));
             Add("place.city", Place.TypeId, "City", "Stadt", ps: P(("rank", "city")));
             Add("place.town", Place.TypeId, "Town", "Ort", ps: P(("rank", "town")), size: new Size2(30, 7));
@@ -128,6 +130,9 @@ namespace InventaSketch.Modules.Maps
             Add("marker.b", MarkerType.TypeId, "Marker B", "Marker B", "pin", P(("kind", "finish")), text: "B", kw: new[] { "letter", "buchstabe" });
             Add("stop", StopType.TypeId, "Numbered stop", "Nummerierter Halt");
             Add("stop.square", StopType.TypeId, "Numbered stop (square)", "Nummerierter Halt (Quadrat)", ps: P(("shape", "square")));
+            Add("measure", MeasureType.TypeId, "Distance measure", "Entfernungsmessung", kw: new[] { "as the crow flies", "luftlinie", "distance between markers", "abstand" });
+            Add("measure.bearing", MeasureType.TypeId, "Distance and bearing", "Entfernung und Kurswinkel", ps: P(("showBearing", true)), kw: new[] { "bearing", "azimuth", "direction", "kurswinkel", "peilung", "richtung" });
+            Add("profile", Profile.TypeId, "Elevation profile", "Höhenprofil", kw: new[] { "height profile", "ascent", "hiking", "höhenmeter", "wanderung" });
             Add("callout", Callout.TypeId, "Distance/time callout", "Entfernungs-/Zeitangabe");
             Add("callout.walk", Callout.TypeId, "Walking distance callout", "Fußweg-Angabe", ps: P(("mode", "walk"), ("distance", 800.0), ("unit", "m"), ("time", 10.0)));
 

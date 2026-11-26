@@ -63,7 +63,7 @@ namespace InventaSketch.Modules.Maps.Tests
         {
             "map.frame", "map.region", "map.place", "map.road", "map.rail", "map.river", "map.route", "map.marker", "map.stop", "map.callout",
             "map.poi", "map.scalebar", "map.north", "map.compass", "map.legend",
-            "map.station", "map.bridge", "map.tunnel", "map.contour",
+            "map.station", "map.bridge", "map.tunnel", "map.contour", "map.measure", "map.profile",
         };
 
         [Fact]

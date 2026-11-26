@@ -6,9 +6,9 @@ overlays, trajectories and HMI elements. All artwork is original, generic and br
 
 > **Limits.** The module draws *illustrative scenes*. Nothing is simulated: fields of view do not detect anything,
 > trajectories are not planned or checked for feasibility, and dimensions are not to any vehicle standard. Proportions
-> are plausible, not measured. The TTC label and the safety distance compute textbook values (time to collision,
-> stopping distance) from entered speeds and gaps (see "Values and checks"); they are sketch estimates, not a validated
-> driving function.
+> are plausible, not measured. The TTC label, the safety distance, the field of view, the battery pack and the two
+> vehicle dynamics figures (driving resistance, turning circle) compute textbook values from entered speeds, masses and
+> distances (see "Values and checks"); they are sketch estimates, not a validated driving function.
 
 German version: [../../de/modules/automotive.md](../../de/modules/automotive.md)
 
@@ -44,7 +44,7 @@ German version: [../../de/modules/automotive.md](../../de/modules/automotive.md)
 | | `auto.vehicle.box` (generic vehicle with heading arrow) | top, side, front | – |
 | Subsystems | `auto.sub.axles` (axles and wheels, matches the car footprint) | top, side | `axles` 1–5, `steer` (°), `centerline` |
 | | `auto.sub.steering` | front, side, top | – |
-| | `auto.sub.battery` | top, side | `modules` per row |
+| | `auto.sub.battery` | top, side | `modules` per row; values `energy`, `consumption`, `range`, `trip`, `showValues` |
 | | `auto.sub.edrive` (motor, gearbox, half shafts) | top, side | `inverter` |
 | | `auto.sub.seat` | side, top, front | `headrest` |
 | | `auto.sub.door` | side, top (opened, swing arc) | `open` (°) |
@@ -68,7 +68,7 @@ German version: [../../de/modules/automotive.md](../../de/modules/automotive.md)
 | | `auto.traffic.building` | top, side | `floors` |
 | | `auto.traffic.obstacle` | top, side | `kind` box/cone/debris |
 | Sensors | `auto.sensor.camera`, `.radar`, `.lidar`, `.ultrasonic` | symbol | – |
-| | `auto.fov` (**point object**, field of view sector) | – | `range` (mm), `angle` (°, 360 = full circle), `heading` (°), `fill`, `rings`, `axis`, `label` |
+| | `auto.fov` (**point object**, field of view sector) | – | `range` (mm), `angle` (°, 360 = full circle), `heading` (°), `fill`, `rings`, `axis`, `label`; values `sensorRange`, `speed`, `reaction`, `decel`, `friction`, `scale` (mm per m), `showValues` |
 | | `auto.v2x` (**point object**, V2X radio link between two participants) | – | `kind` V2V/V2I/V2P/V2N/V2X (default label), `arrows` both/end/none, `course` dashed/zigzag (option pictograms), `waves`, `label`, `textSize` |
 | Perception | `auto.det.bbox2d` | image | `label`, `confidence`, `showConfidence`, `dashed` |
 | | `auto.det.bbox3d` | iso, top | `label`, `confidence`, `showConfidence` |
@@ -78,6 +78,8 @@ German version: [../../de/modules/automotive.md](../../de/modules/automotive.md)
 | | `auto.motion.conflict` | symbol | – |
 | | `auto.motion.safetydistance` (**point object**, dimension) | – | `label`, `offset`, `showValue`, `scale` (mm per m), `textSize`; values `speed`, `reaction`, `decel`, `gap`, `stopping`, `reactionDistance`, `brakingDistance`, `showValues` |
 | | `auto.motion.ttc` (text overrides the label) | symbol | `ttc` (s, no default: the label shows 2.4 s until set), `frame`; values `vEgo`, `vTarget`, `gap`, `showValues` |
+| | `auto.motion.resistance` (driving resistance: car on the road with air drag, rolling, gradient and tractive force arrows; the road tilts with an entered gradient, at most 12° in the drawing) | side | values `speed`, `mass`, `gradient`, `cw`, `frontalArea`, `rolling`, `airDensity`, `accel`, `powerMax`, `showValues` |
+| | `auto.motion.turning` (turning circle: single-track sketch with turning centre M, radius R of the front axle centre, Ackermann wheel axes and the track of the outer front wheel; the drawn steering angle follows an entered one, 20 … 45°) | top | values `wheelbase`, `steer`, `radius`, `circle`, `track`, `speed`, `friction`, `showValues` |
 | HMI | `auto.hmi.cluster` | front | `layout` analog/digital, `value`, `speed` |
 | | `auto.hmi.display` | front, side | `content` tiles/map/none |
 | | `auto.hmi.hud` | side (optical path, eye, virtual image), front (driver's view, virtual image trapezoid) | `speed` |
@@ -113,6 +115,37 @@ and "Show values" (`showValues`) draws the values label below the element.
   catalogue (`ValueSources`) fits, so none is cited.
 - Library presets: "TTC from gap and speeds" (100 km/h, 60 km/h, 25 m → 2.25 s) and "Stopping distance check" (50 km/h,
   gap 30 m, values label on).
+
+### Vehicle dynamics, range and sensor range (round 7, 2026-11-26)
+
+| Element | Variables (card: first ones) | Relations | Check |
+|---|---|---|---|
+| `auto.motion.resistance` | `v` (km/h), `m` (kg), `F` total resistance (N), `P` power at the wheels (kW); panel: `c_w` (default 0.30), `A` frontal area (default 2.2 m²), `f_R` rolling coefficient (default 0.012), `q` gradient (default 0 %), `a` acceleration (default 0), `F_roll`, `F_air`, `F_grade`, `P_max`; engineer: `ρ` (default 1.2 kg/m³), `F_acc` | `auto.resistance.roll`: F_roll = m·g·f_R·cos α; `auto.resistance.air`: F_air = ½·ρ·c_w·A·v²; `auto.resistance.grade`: F_grade = m·g·sin α (tan α = q); `auto.resistance.accel`: F_acc = m·a; `auto.resistance.total`: F = ΣF; `auto.resistance.power`: P = F·v | `auto.drive.power` (warning): P > P_max |
+| `auto.motion.turning` | `L` wheelbase, `δ` steering angle, `R` radius of the front axle centre, `D` turning circle (track of the outer front wheel); panel: `R_r` radius of the rear axle centre, `b` track (default 1.6 m), `v`, `a_y`, `μ` | `auto.turn.radius`: R = L/sin δ; `auto.turn.rear`: R_r = L/tan δ; `auto.turn.circle`: D = 2·√((R_r + b/2)² + L²); `auto.turn.lateral`: a_y = v²/R | `auto.turn.friction` (warning): a_y > μ·g |
+| `auto.sub.battery` | `E` usable energy (kWh), `c` consumption per 100 km (entered as energy, kWh), `R` range (km); panel: `d` planned trip (km) | `auto.ev.range`: R = E/c·100 km | `auto.ev.range` (warning): R < d |
+| `auto.fov` | `v` (km/h), `r_S` sensor range (m), `s` stopping distance (m), `t_P` preview time (s); panel: `t_r`, `a`, `s_r`, `s_b`, `μ` | the three braking relations of the safety distance; `auto.fov.preview`: t_P = r_S/v | `auto.fov.range` (warning): s > r_S; `auto.braking.friction` |
+| `auto.motion.safetydistance` | as above, plus panel `μ` friction coefficient (no default) | – | `auto.braking.friction` (warning): a > μ·g |
+
+- **Driving resistance:** steady driving (no wind, no rotating masses); the defaults are typical values of a passenger
+  car on asphalt, not values from a standard — enter your own. Entering a gradient force lets the solver compute the
+  gradient (and so on for every relation). The drawing shows F_air, F_roll and F_t (EN) or F_L, F_R and F_Z (DE); the
+  gradient arrow F_grade / F_St and the slope with its percentage appear only for an entered, non-zero gradient.
+  Textbook check: 1500 kg at 100 km/h → F_roll = 176.5 N, F_air = 305.6 N, P = 13.4 kW (unit test).
+- **Turning circle:** single-track model at low speed (kinematic steering, no slip angles); D is the track circle of the
+  outer front wheel — the wall-to-wall circle adds the front overhang. An entered turning circle and wheelbase give the
+  steering angle. Example: L = 2.7 m, δ = 30° → R = 5.4 m, D = 12.2 m.
+- **Battery range:** the consumption per 100 km is entered as an energy ("16 kWh"), since the value model has no
+  energy-per-distance kind; it is the mean over the trip (speed profile, temperature and auxiliary loads included).
+- **Sensor range:** the sensor range is the drawn `range` divided by `scale` (mm per m, default 10, as for the safety
+  distance) unless it is entered (`sensorRange`). With a speed, the field of view computes the stopping distance and warns
+  when the sensor sees less far than the vehicle needs to stop; the preview time is the sensor range over the speed.
+- **Friction:** the friction coefficient μ has no default (the default deceleration of 8 m/s² already stands for a dry
+  road), so `auto.braking.friction` and `auto.turn.friction` run only once μ is entered.
+- **Sources:** textbook vehicle mechanics; the source catalogue has no vehicle dynamics textbook yet, so none is cited
+  (`g` = 9.80665 m/s², conventional value [S1]).
+- Library presets: "Driving resistance", "Driving resistance and power at 100 km/h" (1500 kg), "Driving resistance uphill
+  (8 %)", "Turning circle", "Turning circle of a car (L = 2.7 m, δ = 30°)", "Battery pack with range" (60 kWh, 16 kWh per
+  100 km → 375 km) and "Radar field of view with stopping check" (160 m at 130 km/h → s = 117.6 m, t_P = 4.4 s).
 
 ## Snapping and attachments
 

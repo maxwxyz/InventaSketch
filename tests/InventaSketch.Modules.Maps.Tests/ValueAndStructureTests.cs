@@ -26,7 +26,7 @@ namespace InventaSketch.Modules.Maps.Tests
         {
             var r = Fx.Reg();
             var t = r.Type("map.route")!;
-            Assert.Equal(new[] { "s", "v", "t" }, ValueModel.Variables(t).Select(v => v.Key));
+            Assert.Equal(new[] { "s", "v", "t", "up", "down", "gmax" }, ValueModel.Variables(t).Select(v => v.Key));
             Assert.Equal("map.route.time", Assert.Single(ValueModel.Relations(t)).Id);
             Assert.Equal("S2", ValueModel.Relations(t)[0].Source);
             Assert.Contains(t.Parameters, p => p.Key == ValueLabels.ShowParam);

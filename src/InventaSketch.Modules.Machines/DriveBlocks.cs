@@ -69,7 +69,34 @@ namespace InventaSketch.Modules.Machines
                         Anchor.Segment(AnchorRole.Axis, p.V(-20, 4), p.V(20, 4)),
                     },
                 }, companions: new[] { "machines.drive.wheel", "mech.shaft", "machines.drive.gearbox" });
+            yield return Block("machines.drive.load", T("Driven load", "Arbeitsmaschine (Last)"),
+                new[] { "load", "driven load", "inertia", "flywheel", "drum", "conveyor", "run-up", "acceleration", "last", "arbeitsmaschine", "trägheitsmoment", "schwungrad", "trommel", "hochlauf" },
+                LoadGlyph, new ViewSpec("symbol", VSymbol, IconIds.Symbol, 30, 24, LoadSymbol)
+                {
+                    Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Port, p.V(-15, 0), "in"), Anchor.Segment(AnchorRole.Axis, p.V(-15, 0), p.V(15, 0)) },
+                }, companions: new[] { "machines.drive.gearbox", "machines.drive.motor", "mech.coupling.rigid", "mech.shaft" });
             yield return Wheel();
+        }
+
+        /// <summary>Driven load: a flywheel disc with its moment of inertia J.</summary>
+        private static void LoadGlyph(Pen p, SketchObject o)
+        {
+            var at = new Vec2(0, -3.8);
+            GlyphCircle(p, at, 0, 0, 3.6);
+            GlyphCircle(p, at, 0, 0, 1.2);
+            GlyphLine(p, at, -6.5, 0, -3.6, 0);
+        }
+
+        /// <summary>Flywheel (load inertia) on a shaft, seen from the side; the input is the left shaft end.</summary>
+        private static void LoadSymbol(Pen p, SketchObject o)
+        {
+            var st = S.Vis with { StrokeWidth = 0.6 };
+            p.Axis(-15, 15);
+            p.Line(-15, 0, 15, 0, st, "shaft");
+            p.Box(-2.5, -10, 2.5, 10, S.White, "disc");
+            p.Line(-2.5, -3, 2.5, -3, S.Thin, "hub");
+            p.Line(-2.5, 3, 2.5, 3, S.Thin, "hub");
+            p.Text(8.5, -6.5, "J", 4, "label", bold: true);
         }
 
         private static readonly double[] LegX = { -16, -3, 10 };

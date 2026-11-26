@@ -165,9 +165,13 @@ namespace InventaSketch.Modules.Automotive
                 Views.TopV(30, 14, Top),
                 Views.SideV(30, 3, Side))
             {
-                Params = new[] { Modules },
+                Params = new[] { Modules }.Concat(DynValues.RangeParams).ToList(),
                 Uniform = false,
                 CenterHub = true,
+                // Range from the usable energy and the consumption per 100 km, checked against a planned trip (DynValues).
+                ValueVars = DynValues.RangeVars,
+                ValueRelations = DynValues.RangeRelations,
+                Checks = DynValues.RangeChecks,
                 Extra = o => Prm.PlusMinus("modules", 6, 1, 16, 1, false, T("More modules", "Mehr Module"), T("Fewer modules", "Weniger Module"), "param"),
             };
         }

@@ -54,16 +54,17 @@ namespace InventaSketch.Modules.Maps
                     p.TextAt(new Vec2(X(i), y), text, fs, p.W, fs, anchor, color: Palette.Ink);
                 }
             }
-            return new MapBoxType(TypeId, new I18nText("Scale bar", "Maßstabsleiste"), MapCategories.Marks,
+            return new ScaleBarType(TypeId, new I18nText("Scale bar", "Maßstabsleiste"), MapCategories.Marks,
                 new[] { "scale", "scale bar", "distance", "km", "miles", "metres", "feet", "map",
                         "maßstab", "maßstabsleiste", "maßstabsbalken", "entfernung", "kilometer", "meilen", "karte" },
                 MapViews.Plan(40, 8, Draw))
             {
-                Params = new[] { LengthDef, UnitDef, SegmentsDef, StyleDef },
+                Params = new[] { LengthDef, UnitDef, SegmentsDef, StyleDef }.Concat(ScaleBarType.ValueParams).ToList(),
                 Uniform = false,
                 CompanionIds = new[] { NorthArrow.TypeId, Compass.TypeId, Legend.TypeId },
-                // Routes on the page measure their length with this scale bar; those showing their values redraw with it.
-                MoreDependents = RoutesShowingValues,
+                // Routes and regions on the page measure with this scale bar (those showing their values redraw with it), and
+                // so do distance measures and elevation profiles.
+                MoreDependents = MapMeasure.ScaleReaders,
                 Extra = (o, lang) => new[]
                 {
                     ContextAction.WithInput("map.scalebar.length", new I18nText("Length…", "Länge…"), IconIds.QtyLength,
@@ -80,15 +81,6 @@ namespace InventaSketch.Modules.Maps
                 }.Concat(Prm.Choice(o, "map.scalebar.unit", UnitDef, new I18nText("Unit", "Einheit")))
                     .Concat(Prm.Choice(o, "map.scalebar.style", StyleDef, new I18nText("Style", "Stil"))),
             };
-        }
-
-        /// <summary>The routes on the page of the scale bar that show their values label.</summary>
-        private static IEnumerable<string> RoutesShowingValues(SketchObject o, RenderContext ctx)
-        {
-            var page = ctx.Doc.PageOf(o.Id);
-            if (page is null) yield break;
-            foreach (var x in ctx.Doc.ObjectsOn(page))
-                if (x.Type == RouteType.TypeId && ValueLabels.Shows(x)) yield return x.Id;
         }
 
         /// <summary>

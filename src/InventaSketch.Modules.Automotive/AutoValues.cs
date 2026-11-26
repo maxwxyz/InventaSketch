@@ -97,6 +97,8 @@ namespace InventaSketch.Modules.Automotive
         private static readonly I18nText ReactionDistName = T("Reaction distance", "Reaktionsweg");
         private static readonly I18nText BrakingDistName = T("Braking distance", "Bremsweg");
         private static readonly I18nText StoppingName = T("Stopping distance (reaction and braking distance)", "Anhalteweg (Reaktions- und Bremsweg)");
+        private static readonly I18nText FrictionName = T("Tyre–road friction coefficient μ (dry asphalt about 0.8 … 1.0, wet 0.5 … 0.7, snow 0.2)",
+            "Haftreibungsbeiwert μ Reifen–Fahrbahn (trockener Asphalt etwa 0,8 … 1,0, nass 0,5 … 0,7, Schnee 0,2)");
         private static readonly I18nText DrawnGapName = T("Gap (drawn length at the dimension scale, or entered)", "Abstand (gezeichnete Länge im Maßstab der Bemaßung oder eingegeben)");
 
         public static readonly IReadOnlyList<VarDef> BrakingVars = new VarDef[]
@@ -108,12 +110,16 @@ namespace InventaSketch.Modules.Automotive
             new("a", DecelName, T("a", "a"), Quantities.Acceleration) { Unit = "m/s²", Param = "decel", Relevance = VarRelevance.Panel, Default = DefaultDeceleration, Min = 0.1, Max = 20 },
             new("sR", ReactionDistName, T("s_r", "s_R"), Quantities.Length) { Unit = "m", Param = "reactionDistance", Relevance = VarRelevance.Panel, Min = 0, Max = 1e4 },
             new("sB", BrakingDistName, T("s_b", "s_B"), Quantities.Length) { Unit = "m", Param = "brakingDistance", Relevance = VarRelevance.Panel, Min = 0, Max = 1e4 },
+            // No default: the friction check runs only once a coefficient is entered (the default deceleration of 8 m/s²
+            // already stands for a dry road).
+            new("mu", FrictionName, T("μ", "μ"), Quantities.Ratio) { Param = "friction", Relevance = VarRelevance.Panel, Min = 0.05, Max = 2 },
         };
 
         public static readonly IReadOnlyList<ParamDef> BrakingParams = new[]
         {
             Text("speed", SpeedName, "km/h"), Text("reaction", ReactionName, "s"), Text("decel", DecelName, "m/s²"), Text("gap", DrawnGapName, "m"),
             Text("stopping", StoppingName, "m", true), Text("reactionDistance", ReactionDistName, "m", true), Text("brakingDistance", BrakingDistName, "m", true),
+            Text("friction", FrictionName, "", true),
             ValueLabels.ShowValues,
         };
 
@@ -152,7 +158,13 @@ namespace InventaSketch.Modules.Automotive
               "Der Anhalteweg s (Reaktions- und Bremsweg) ist länger als der Abstand d: Das Fahrzeug kann nicht vor dem Objekt anhalten. Abstand vergrößern oder Geschwindigkeit verringern."),
             "s ≤ d", c => c["s"] is double s && c["gap"] is double d && s > d * (1 + 1e-9));
 
-        public static readonly IReadOnlyList<ValueCheck> BrakingChecks = new[] { BrakingGap };
+        /// <summary>auto.braking.friction: the braking deceleration is above what the tyres can transmit (μ·g).</summary>
+        public static readonly ValueCheck BrakingFriction = new("auto.braking.friction", CheckSeverity.Warning,
+            T("The braking deceleration a is above μ·g: the tyres cannot transmit it on this road and the wheels lock (or the ABS limits the deceleration). Use a deceleration of at most μ·g for the stopping distance.",
+              "Die Bremsverzögerung a liegt über μ·g: Die Reifen können sie auf dieser Fahrbahn nicht übertragen, die Räder blockieren (oder das ABS begrenzt die Verzögerung). Für den Anhalteweg höchstens μ·g ansetzen."),
+            "a ≤ μ·g", c => c["a"] is double a && c["mu"] is double mu && a > mu * DynValues.G * (1 + 1e-9));
+
+        public static readonly IReadOnlyList<ValueCheck> BrakingChecks = new[] { BrakingGap, BrakingFriction };
 
         /// <summary>The gap of a safety distance from the drawing (m): drawn length divided by the scale (mm per m).</summary>
         public static double DrawnGap(IReadOnlyList<Vec2> p, SketchObject o)

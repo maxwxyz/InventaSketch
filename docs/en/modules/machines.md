@@ -78,6 +78,7 @@ default stator.
 | `machines.drive.gearbox` | Gearbox / Getriebe | `block`, `symbol` (gear pair schematic) |
 | `machines.drive.differential` | Differential / Differential | `block`, `symbol` (schematic) |
 | `machines.drive.wheel` | Wheel / Rad | `side`, `top`, `schematic` (see "Drivetrain schematic") |
+| `machines.drive.load` | Driven load / Arbeitsmaschine (Last) | `block` (flywheel glyph), `symbol` (flywheel disc on a shaft with "J"; input port `in` at the left, shaft axis) |
 
 Block labels follow the host language; the object text replaces the label (e.g. "HV battery").
 
@@ -242,8 +243,32 @@ an engine or a gear stage turns the shaft power into electrical power (*P*_el = 
 machine on a process turbine shaft takes the turbine's *P* over the shaft and gives *P*_el (process module). Speeds,
 torques and powers stay magnitudes; the sign of the slip is not used to switch the mode.
 
-Not yet: slot/pole numbers, Kloss torque–speed curve, DC machine
-constants, battery, inverter and DC link values (Calc 4 with the energy module).
+**Frequency, terminals, load and run-up** (round 7, 2026-11-26).
+
+| Element | New variables (parameter) | Relations [source] |
+|---|---|---|
+| E-motor block, drivetrain e-machine | panel *f* (`frequency`), pole count 2*p* (`poles`, default 4), *n*_s (`syncSpeed`); engineer *s* (`slip`) | e-motor block: *n*_s = 60·*f*/*p*, *s* = (*n*_s − *n*)/*n*_s [S15]; drivetrain e-machine by `kind`: PMSM and EESM *n* = *n*_s (`mach.speed.synchronous`), ASM with slip, SRM without a mains-frequency relation |
+| Machines, e-motor block, drivetrain e-machine | panel *U* (`voltage`, line-to-line), *I* (`current`); engineer cos φ (`powerFactor`) | three phases (default): *P*_el = √3·*U*·*I*·cos φ (`mach.power.el3`) [S15]; one phase (`phases` = 1): *P*_el = *U*·*I*·cos φ (`mach.power.el1`) [S7]; other phase counts: none |
+| Radial- and axial-flux machine | as above, plus the synchronous lock | magnet and wound-field rotors (`spm`, `ipm`, `spoke`, `eesm`; the axial-flux machine): *n* = *n*_s [S15] |
+| Machines, e-motor block, drivetrain e-machine | panel *J*_M (`rotorInertia`), *J*_L (`loadInertia`, from the drive chain or entered), *T*_M mean motor torque during the run-up (`runUpTorque`), *t*_a run-up time (`runUpTime`); engineer *J* (`inertia`) | *J* = *J*_M + *J*_L (`mach.inertia.total`); *t*_a = *J*·2π·*n*/(*T*_M − *T*) (`mach.runup`, constant torques, from standstill to *n*; the load torque is the shaft torque *T*) [S15] |
+| Gearbox, differential | panel *J*₂ (`inertiaOut`), *J*₁ (`inertiaIn`) | *J*₁ = *J*₂/*i*² (`mach.gearbox.inertia`, losses and own inertia neglected) [S18] |
+| Wheel | panel *m* (`mass`, vehicle mass driven through the wheel or axle); engineer *J* (`inertia`) | *J* = *m*·*r*² (`mach.wheel.inertia`) [S18] |
+| Driven load `machines.drive.load` (new; block and flywheel symbol) | *n*, *T* load torque, *P*, *J* (`inertia`) | *P* = 2π·*n*·*T*; mechanical input at the left |
+
+- *Inertia along the chain*: the connector that passes *n* and *T* downstream also passes the load inertia upstream: the
+  load's *J* (or the vehicle mass at the wheel) becomes the gearbox's *J*₂, its *J*₁ = *J*₂/*i*² the motor's *J*_L. Example:
+  load 2.5 kg·m² and 100 N·m behind a gearbox *i* = 5 → *J*_L = 0.1 kg·m², *T* = 20 N·m; with *J*_M = 0.02 kg·m²,
+  1500 min⁻¹ and *T*_M = 50 N·m the run-up takes 0.63 s (unit test).
+- *Check* `mach.runup.torque` (warning, [S15]): *T*_M ≤ *T* – the drive cannot accelerate the load.
+- *Joins across modules*: the terminal variables use the shared keys *U*, *I*, *f* and *P*_el (`NetKeys`), so a feeder
+  of another module that reports these values at the motor's terminals meets them without a code dependency. The
+  switchgear frequency inverter does not report an output frequency yet, so "inverter frequency → motor speed" needs a
+  value port on the switchgear side (open).
+- Library: "Driven load (block)", "Flywheel load on a shaft (symbol)", "E-motor with run-up time" (1450 min⁻¹, 20 N·m
+  load, 60 N·m during the run-up, *J* = 0.01 + 0.09 kg·m² → *t*_a = 0.38 s).
+
+Not yet: slot/pole numbers, DC machine constants, efficiency classes (IE codes need the limit table of IEC 60034-30-1,
+which is not reproduced), duty types S1–S10, battery, inverter and DC link values (Calc 4 with the energy module).
 
 ## Known limits
 
