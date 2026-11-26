@@ -3,14 +3,17 @@
 Bibliothek: `src/InventaSketch.Modules.Optics` · Tests: `tests/InventaSketch.Modules.Optics.Tests` ·
 Englische Fassung: [../../en/modules/optics.md](../../en/modules/optics.md)
 
-Das Modul liefert optische Elemente für technische Abbildungen und Lehrfolien – Linsen, Spiegel, Prismen, Strahlteiler,
-Blenden, Gitter, Filter, einen Lichtwellenleiter, Lichtquellen, Detektoren, einen Schirm, einen Gegenstandspfeil und die
-optische Achse – sowie **Lichtstrahlen, die live durch die Elemente verfolgt werden**. Alle Symbole sind eigenständig
-gezeichnet; es werden keine genormten Symbolgrafiken oder Tabellen übernommen und keine Normkonformität behauptet.
+Das Modul liefert optische Elemente für technische Abbildungen und Lehrfolien – Linsen (dünn und dick), Spiegel (auch
+einen Galvo-Scannerspiegel), Prismen, Strahlteiler, Blenden, Gitter, Filter, Polarisatoren, Verzögerungsplatten, einen
+Lichtleitstab, einen Lichtwellenleiter, Lichtquellen, Detektoren (auch ein Spektrometer), einen Schirm, einen
+Gegenstandspfeil und die optische Achse – sowie **Lichtstrahlen, die live durch die Elemente verfolgt werden**. Alle
+Symbole sind eigenständig gezeichnet; es werden keine genormten Symbolgrafiken oder Tabellen übernommen und keine
+Normkonformität behauptet.
 
-Es ist ein **Skizzen**-Modul: Die Strahlverfolgung ist zweidimensional und verwendet ideale (paraxiale) Linsen und
-gekrümmte Spiegel. Optische Systeme werden nicht ausgelegt oder optimiert (keine Abbildungsfehler, Dicklinsendaten oder
-Radiometrie).
+Es ist ein **Skizzen**-Modul: Die Strahlverfolgung ist zweidimensional und verwendet ideale (paraxiale) dünne Linsen und
+gekrümmte Spiegel; nur die dicke Linse, Prismen und der Lichtleitstab werden Fläche für Fläche mit dem Brechungsgesetz
+verfolgt. Optische Systeme werden nicht ausgelegt oder optimiert (keine Abbildungsfehleranalyse, Radiometrie oder
+Fresnel-Verluste).
 
 ## Konventionen
 
@@ -22,8 +25,8 @@ Radiometrie).
 - **Brennweiten im Zeichnungsmaßstab** (mm auf der Seite, Parameter `f`, Betrag; das Vorzeichen folgt aus dem Typ:
   Sammellinse/Hohlspiegel positiv, Zerstreuungslinse/Wölbspiegel negativ). Skalieren ändert `f` nicht.
 - **Linienarten (Ideen der ISO 128):** Umrisse breite Volllinie (0,5 mm), Details schmal (0,18–0,35 mm), optische Achse
-  schmale Strichpunktlinie, Strahlen schmale Volllinien (0,35 mm, standardmäßig rot), virtuelle Strahlen gestrichelt
-  (Linienart verdeckt). Glas ist hell getönt; Schwarzweiß-Ausgabe macht alles schwarz und weiß.
+  schmale Strichpunktlinie, Strahlen schmale Volllinien (0,35 mm, standardmäßig rot), virtuelle Strahlen und die
+  Scanfächer-Strahlen eines Scannerspiegels gestrichelt (Linienart verdeckt). Glas ist hell getönt; Schwarzweiß-Ausgabe macht alles schwarz und weiß.
 - **Beschriftung:** optionaler Parameter `label`, unter dem Element (außerhalb der Box, wie Kennzeichen in anderen Modulen).
 
 ## Objekttypen
@@ -50,11 +53,18 @@ Radiometrie).
 | `optics.object.arrow` | Gegenstandspfeil auf der Achse (Abbildungsfiguren) | `bundle` Konstruktionsstrahlen/Fächer, `rays`, `image` aus/Bild/Konstruktion (Bild), `names` (false), `label` |
 | `optics.ray` | Lichtstrahl (Punktobjekt, Seitenkoordinaten) | `trace` (true), `arrows` Mitte/Ende/keine, `virtual` (true), `tail` (0 = automatisch) |
 | `optics.axis.line` | Optische Achse (Strichpunktlinie, Punktobjekt) | `label` |
+| `optics.lens.thick` | Dicke Linse: zwei Kugelflächen, an beiden verfolgt (Boxbreite = Dicke, Boxhöhe = Apertur) | `shape` bikonvex/plankonvex/bikonkav/plankonkav, `n` (1,5), `sag` (Wölbungstiefe als Anteil der Breite, 0,35), `focal` (F, F′, Hauptebenen H, H′), `rays`, `beam`, `label` |
+| `optics.mirror.scanner` | Galvo-Scannerspiegel: Planspiegel auf einer Drehachse, in seiner Box gedreht | `angle` (Spiegelwinkel, 45°; 0° = aufrecht wie ein Planspiegel), `scan` (mechanischer Scanbereich ±, 10°), `fan` (Endlagen und Strahlenfächer, false), `label` |
+| `optics.polarizer` | Linearpolarisator: Platte mit der Durchlassrichtung als Doppelpfeil | `angle` (Durchlassrichtung, 0°), `label` |
+| `optics.waveplate` | Verzögerungsplatte: Platte mit schneller Achse (gestrichelter Doppelpfeil) und „λ/4“/„λ/2“ | `retardance` Viertel/Halb (Viertel), `angle` (schnelle Achse, 45°), `label` |
+| `optics.lightguide` | Lichtleitstab (rechteckiger Glasstab, Totalreflexion) | `n` (1,5), `label` |
+| `optics.detector.spectrometer` | Spektrometer: Gehäuse mit Eintrittsspalt, Reflexionsgitter, Detektorzeile und darin gezeichnetem zerlegtem Licht | `label` |
 
-Die 35 Bibliothekselemente umfassen die Linsenformen und -symbole, drei Spiegel, ablenkendes, Dispersions- und
-Umlenkprisma, beide Strahlteiler, Blende und Spalt, Gitter, Neutral- und Rotfilter, Lichtwellenleiter, Lampe (Kegel und
-parallel), LED, roten und grünen Laser, Fotodiode, Kamera, Auge, Schirm, verfolgten und frei gezeichneten Lichtstrahl,
-optische Achse und Gegenstandspfeil.
+Die 44 Bibliothekselemente umfassen die Linsenformen und -symbole, dicke bikonvexe und plankonvexe Linse, drei Spiegel,
+den Scannerspiegel mit und ohne Scanbereich, ablenkendes, Dispersions- und Umlenkprisma, beide Strahlteiler, Blende und
+Spalt, Gitter, Neutral- und Rotfilter, Lichtleitstab, Linearpolarisator, Viertel- und Halbwellenplatte,
+Lichtwellenleiter, Lampe (Kegel und parallel), LED, roten und grünen Laser, Fotodiode, Kamera, Auge, Schirm,
+Spektrometer, verfolgten und frei gezeichneten Lichtstrahl, optische Achse und Gegenstandspfeil.
 
 ## Lichtstrahlen und Strahlverfolgung
 
@@ -67,6 +77,7 @@ Ein Strahlobjekt (`optics.ray`) arbeitet auf eine von drei Arten:
    - Laser: ein Strahl oder `rays` über `beam` verteilt, nach Wellenlänge gefärbt.
    - Lichtwellenleiter: ein Kegel aus dem Ausgangsende.
    - Linse (`o`): ihr eigenes Demonstrationsbündel, parallel zur Achse von links oder von einem Achsenpunkt bei 2f.
+     Die dicke Linse hat dasselbe parallele Bündel (`rays`, `beam`).
    - Gegenstandspfeil (`tip`): die **Konstruktionsstrahlen** zur nächsten Linse oder zum nächsten gekrümmten Spiegel auf
      der Achse – Parallelstrahl, Mittelpunktstrahl (durch den optischen Mittelpunkt bzw. Scheitel) und Brennpunktstrahl
      (durch oder in Richtung des vorderen Brennpunkts) – oder ein Fächer über dessen Apertur.
@@ -101,6 +112,32 @@ angedockte Startpunkt folgt seinem Emitter über die normale Anbindung. Nichts m
 - Blenden lassen Strahlen innerhalb der Öffnung durch und halten die übrigen auf; Filter lassen ihr Farbband durch
   (weißes Licht nimmt die Filterfarbe an); Schirm, Detektoren, Kameragehäuse, Augapfel, Quellengehäuse und
   Faserenden halten Strahlen auf. Auge und Kamera fokussieren paralleles Licht auf Netzhaut bzw. Sensor.
+- Dicke Linse: Brechungsgesetz an beiden Kugelflächen, exakt mit den Kreisen geschnitten (keine Facetten); die Ränder
+  halten Licht auf. Die Radien folgen aus der Box und `sag` (eine Fläche der Tiefe s über der halben Apertur h hat
+  R = (s² + h²) / 2s), Skalieren der Linse ändert also ihre Brennweite. F, F′, H und H′ kommen aus der
+  Linsenschleiferformel für dicke Linsen, 1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)], bildseitige
+  Schnittweite f·(1 − (n − 1)·d / (n·R1)) (`ThickLens.FocalLength`, `BackFocalDistance`, `FrontFocalDistance`).
+  Achsnahe Strahlen treffen sich in F′, wie die Formel sagt; Randstrahlen schneiden die Achse früher (die sphärische
+  Aberration ist sichtbar, wird aber nicht ausgewertet).
+- Scannerspiegel: Reflexionsgesetz am gedrehten Spiegel, eine Drehung um Δ dreht den reflektierten Strahl also um 2Δ. Mit
+  `fan` werden die Endlagen des Spiegels (±`scan`) gestrichelt gezeichnet, und jeder an ihm reflektierte Strahl sendet
+  zwei gestrichelte **Fächerstrahlen** (die Reflexionen an beiden Bereichsenden, optisch ±2·`scan`), die durch die
+  folgenden Elemente weiterverfolgt werden (etwa ein Scanobjektiv). Fächerstrahlen verzweigen an einem zweiten Scanner
+  nicht noch einmal.
+- Lichtleitstab: Brechungsgesetz an seinen vier Flächen; Licht, das eine Seitenfläche jenseits des Grenzwinkels
+  arcsin(1/n) trifft (41,8° bei n = 1,5), wird totalreflektiert und zum anderen Ende geführt, darunter tritt es seitlich
+  aus.
+- Polarisation (Jones-Formalismus): Ein Strahl trägt seine relative Intensität (1 an der Quelle) und seine Polarisation,
+  unpolarisiert bis zum ersten Polarisator. Winkel werden quer zum Strahl von der Zeichenebene (0°) zur Senkrechten auf
+  die Zeichnung (90°) gemessen. Ein Polarisator lässt die Hälfte unpolarisierten Lichts und den Anteil cos²(θ − Achse)
+  polarisierten Lichts durch (Gesetz von Malus) und polarisiert entlang seiner Achse; bleiben weniger als 0,5 % (gekreuzte
+  Polarisatoren), endet der Strahl dort. Eine Verzögerungsplatte verzögert die Komponente entlang ihrer langsamen Achse um
+  π/2 (λ/4) oder π (λ/2): Eine Halbwellenplatte dreht lineare Polarisation (θ → 2·Achse − θ), eine Viertelwellenplatte
+  unter 45° macht sie zirkular (jeder Analysator lässt dann die Hälfte durch). Spiegel, Strahlteiler, Brechung und Gitter
+  erhalten Polarisation und Intensität (keine Fresnel-Koeffizienten, Strahlteiler halbieren die Intensität nicht).
+  Schwächeres Licht wird transparenter gezeichnet (Deckkraft = relative Intensität, mindestens 0,2).
+- Das Spektrometer ist für die Strahlverfolgung ein Detektor: Strahlen enden an seinem Gehäuse (an der Spaltwand); Gitter
+  und Spektrum im Inneren sind schematisch gezeichnet, nicht verfolgt.
 - Nach dem letzten Element läuft ein Strahl `tail` mm weiter; automatisch (0): noch einmal so lang wie der bisherige Weg
   (30–400 mm), und die offenen Enden eines Bündels werden quer dazu auf eine Linie gebracht. Ein freier Strahl, der nichts
   trifft, endet an seinem zweiten Punkt.
@@ -151,6 +188,9 @@ bedienen sie allgemein). Ein Zug schreibt nur den Parameter; Kasten (`Size`) und
 | Lampe, LED (parallel) mit angedockten Strahlen | `beam` | Rand des Bündels an Kolben/Kuppel | quer zur Achse | `beam`, ganze mm |
 | Laser mit mehreren Strahlen und angedockten Strahlen | `beam` | Rand des Strahls am Austritt | quer zur Achse | `beam`, ganze mm |
 | Lichtwellenleiter mit angedockten Strahlen | `spread` | auf dem oberen Randstrahl des Austrittskegels | frei, Winkel vom Ausgangsende | `spread`, ganze Grad |
+| Dicke Linse mit angedocktem eigenem Bündel | `beam` | Rand des Bündels an seinem Start | quer zur Achse | `beam`, ganze mm (die Brennweite folgt aus Form, Box und `n` und hat daher keinen Griff) |
+| Scannerspiegel | `angle` | oberes Ende des Spiegels | frei, um die Drehachse | `angle` = Richtung der Spiegellinie, ganze Grad, gefaltet auf −90° … 90° |
+| Polarisator, Verzögerungsplatte | `axis` | Ende des Achsen-Doppelpfeils | frei, um die Mitte | `angle` = Richtung der Achsenlinie, ganze Grad, −90° … 90° |
 | Freier verfolgter Strahl | `dir` | auf dem gezeichneten Strahl, halbwegs zum zweiten Punkt bzw. zum ersten getroffenen Element | frei, um den Start (Bogen) | zweiter Punkt um den ersten gedreht, ganze Grad (im Uhrzeigersinn am Bildschirm), Länge bleibt |
 
 Jeder Griff trägt eine zweisprachige Beschriftung mit seinem aktuellen Wert („Brennweite f: 40 mm“, „Halber Kegelwinkel:
@@ -165,7 +205,9 @@ eingestellt.
 
 - Jedes Element bietet seinen optischen Mittelpunkt als `Port`-Anker (`o`; Spiegel: Scheitel; Detektoren und Schirm:
   Vorderseite; Quellen: `exit`, Lampe/LED zusätzlich `o`; Lichtwellenleiter: `in`, `exit`; Gegenstandspfeil: `foot`, `tip`).
-- Linsen: `f1`/`f2` bei ±f und `2f1`/`2f2` bei ±2f auf der Achse; gekrümmte Spiegel: `f` und `cc` (Krümmungsmittelpunkt).
+- Linsen: `f1`/`f2` bei ±f und `2f1`/`2f2` bei ±2f auf der Achse; dicke Linse: `f1`/`f2` bei F und F′
+  (Linsenschleiferformel); gekrümmte Spiegel: `f` und `cc` (Krümmungsmittelpunkt); Scannerspiegel: `o` an der Drehachse;
+  Lichtleitstab: `in`, `exit`, `o`.
   Port-auf-Port-Fangen bringt Brennpunkte zur Deckung (Fernrohr: F′ des Objektivs auf F des Okulars).
 - Die optische Achse (`optics.axis.line`) bietet ihre Strecke als `Rail` (`axis0` …): Element-Ports docken überall darauf
   an, die Elemente stehen auf einer Achse. Rollen `Hub`/`Axis` werden nicht verwendet, daher entstehen weder mechanische
@@ -213,12 +255,16 @@ werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen we
 
 ## Grenzen und nächste Schritte
 
-- Zweidimensional, sequenziell, paraxial-ideale Linsen und Spiegel; keine dicken Linsen, Abbildungsfehler, Intensitäten,
-  Polarisation oder Interferenz.
+- Zweidimensional, sequenziell; dünne Linsen und gekrümmte Spiegel sind paraxiale Ideale. Keine Interferenz, keine
+  Fresnel-Reflexions-/Transmissionskoeffizienten, keine Polarisationsänderung bei Reflexion oder Brechung
+  (Brewster-Winkel, Phasensprung bei Totalreflexion), keine polarisierenden Strahlteiler.
+- Die Bildkonstruktion des Gegenstandspfeils verwendet nur dünne Linsen und gekrümmte Spiegel (nicht die dicke Linse; ihre
+  verfolgten Strahlen durchlaufen sie dagegen). Die dicke Linse hat keinen Brennweitengriff.
+- Das Spektrometer verfolgt das Licht in seinem Inneren nicht; sein Spektrum ist eine schematische Zeichnung.
 - Der Lichtwellenleiter führt kein Licht vom Eingang zum Ausgang; ein Bündel am Ausgangsende beginnt einen neuen Kegel.
 - Licht, das ein Element von einer ungewöhnlichen Seite erreicht (etwa durch den Rand einer Linse), wird von der einzigen
   optischen Fläche des Elements behandelt.
 - Die Bildkonstruktion verwendet nur die erste Linse bzw. den ersten gekrümmten Spiegel auf der Achse des Pfeils (kein Bild
   eines Bildes durch ein zweites Element); das verfolgte Strahlenbündel durchläuft dagegen alle Elemente.
-- Mögliche nächste Schritte: Bilder durch mehrere Elemente, dicke Linsen mit zwei Flächen, Vorlagen für
-  Michelson/Mach-Zehnder.
+- Mögliche nächste Schritte: Bilder durch mehrere Elemente, Abbildung durch die dicke Linse für den Gegenstandspfeil,
+  polarisierende Strahlteiler, Vorlagen für Michelson/Mach-Zehnder.

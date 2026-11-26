@@ -3,13 +3,15 @@
 Library: `src/InventaSketch.Modules.Optics` · Tests: `tests/InventaSketch.Modules.Optics.Tests` ·
 German version: [../../de/modules/optics.md](../../de/modules/optics.md)
 
-The module provides optical elements for technical figures and teaching slides — lenses, mirrors, prisms, beam
-splitters, stops, gratings, filters, an optical fibre, light sources, detectors, a screen, an object arrow and the
-optical axis — and **light rays that are traced live through the elements**. All symbols are drawn independently; no
-standard symbol artwork or tables are copied and no compliance with a standard is claimed.
+The module provides optical elements for technical figures and teaching slides — lenses (thin and thick), mirrors
+(also a galvo scanner mirror), prisms, beam splitters, stops, gratings, filters, polarisers, wave plates, a light guide,
+an optical fibre, light sources, detectors (also a spectrometer), a screen, an object arrow and the optical axis — and
+**light rays that are traced live through the elements**. All symbols are drawn independently; no standard symbol
+artwork or tables are copied and no compliance with a standard is claimed.
 
-It is a **sketching** module: the ray tracer is two-dimensional and uses ideal (paraxial) lenses and curved mirrors.
-It does not design or optimise optical systems (no aberrations, thick-lens data or radiometry).
+It is a **sketching** module: the ray tracer is two-dimensional and uses ideal (paraxial) thin lenses and curved mirrors;
+only the thick lens, prisms and the light guide are traced face by face with Snell's law. It does not design or optimise
+optical systems (no aberration analysis, radiometry or Fresnel losses).
 
 ## Conventions
 
@@ -20,7 +22,8 @@ It does not design or optimise optical systems (no aberrations, thick-lens data 
 - **Focal lengths are in the drawing scale** (mm on the page, parameter `f`, magnitude; the sign comes from the type:
   converging/concave positive, diverging/convex negative). Scaling an element does not change `f`.
 - **Line roles (ISO 128 ideas):** element outlines visible lines (0.5 mm), details thin (0.18–0.35 mm), the optical axis a
-  thin dash-dot centre line, rays thin continuous lines (0.35 mm, red by default), virtual rays dashed (hidden line role).
+  thin dash-dot centre line, rays thin continuous lines (0.35 mm, red by default), virtual rays and the scan fan rays of a
+  scanner mirror dashed (hidden line role).
   Glass is filled with a light tint; monochrome output turns everything black and white.
 - **Labels:** optional `label` parameter, drawn below the element (outside the box, like designators elsewhere).
 
@@ -48,10 +51,18 @@ It does not design or optimise optical systems (no aberrations, thick-lens data 
 | `optics.object.arrow` | Object arrow standing on the axis (imaging figures) | `bundle` principal rays/fan, `rays`, `image` off/image/construction (image), `names` (false), `label` |
 | `optics.ray` | Light ray (point object, page coordinates) | `trace` (true), `arrows` middle/end/none, `virtual` (true), `tail` (0 = automatic) |
 | `optics.axis.line` | Optical axis (dash-dot centre line, point object) | `label` |
+| `optics.lens.thick` | Thick lens: two spherical faces, traced at both (box width = thickness, box height = aperture) | `shape` biconvex/planoconvex/biconcave/planoconcave, `n` (1.5), `sag` (depth of the curved faces as a share of the width, 0.35), `focal` (F, F′, principal planes H, H′), `rays`, `beam`, `label` |
+| `optics.mirror.scanner` | Galvo scanner mirror: plane mirror on a pivot, turned inside its box | `angle` (mirror angle, 45°; 0° = upright like a plane mirror), `scan` (mechanical scan range ±, 10°), `fan` (end positions and ray fan, false), `label` |
+| `optics.polarizer` | Linear polariser: plate with its transmission axis as a double arrow | `angle` (transmission axis, 0°), `label` |
+| `optics.waveplate` | Wave plate: plate with its fast axis (dashed double arrow) and "λ/4"/"λ/2" | `retardance` quarter/half (quarter), `angle` (fast axis, 45°), `label` |
+| `optics.lightguide` | Light guide (rectangular glass rod, total internal reflection) | `n` (1.5), `label` |
+| `optics.detector.spectrometer` | Spectrometer: housing with entry slit, reflection grating, detector line and the dispersed light drawn inside | `label` |
 
-Library items (35) include the lens shapes and symbols, three mirrors, deviating/dispersing/right-angle prisms, both
-splitters, aperture and slit, grating, neutral and red filters, fibre, lamp (cone and parallel), LED, red and green
-laser, photodiode, camera, eye, screen, traced and freely drawn light ray, optical axis and object arrow.
+Library items (44) include the lens shapes and symbols, thick biconvex and plano-convex lenses, three mirrors, the
+scanner mirror with and without its scan range, deviating/dispersing/right-angle prisms, both splitters, aperture and
+slit, grating, neutral and red filters, light guide, linear polariser, quarter- and half-wave plate, fibre, lamp (cone
+and parallel), LED, red and green laser, photodiode, camera, eye, screen, spectrometer, traced and freely drawn light
+ray, optical axis and object arrow.
 
 ## Light rays and ray tracing
 
@@ -63,6 +74,7 @@ A ray object (`optics.ray`) works in one of three ways:
    - Laser: one ray or `rays` across `beam`, coloured by wavelength.
    - Fibre: a cone from the output end.
    - Lens (`o`): its own demonstration bundle, parallel to the axis from the left or from a point on the axis at 2f.
+     The thick lens has the same parallel bundle (`rays`, `beam`).
    - Object arrow (`tip`): the **principal rays** to the next lens or curved mirror on the axis — parallel ray, central
      ray (through the optical centre or vertex) and focal ray (through or towards the front focal point) — or a fan
      across its aperture.
@@ -95,6 +107,28 @@ ordinary attachment. Nothing has to be re-traced by hand.
 - Stops pass rays within the opening and stop the others; filters pass their colour band (white light takes the filter
   colour); screens, detectors, the camera body, the eye ball, source housings and the fibre ends stop rays. The eye and
   camera focus parallel light on the retina / sensor.
+- Thick lens: Snell's law at both spherical faces, intersected exactly with the circles (no facets); the edges stop light.
+  The radii follow from the box and `sag` (a face of depth s over the half aperture h has R = (s² + h²) / 2s), so scaling
+  the lens changes its focal length. F, F′, H and H′ come from the lensmaker's equation for a thick lens,
+  1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)], back focal distance f·(1 − (n − 1)·d / (n·R1))
+  (`ThickLens.FocalLength`, `BackFocalDistance`, `FrontFocalDistance`). Paraxial rays meet at F′ as the equation says;
+  marginal rays cross the axis earlier (spherical aberration is visible, not analysed).
+- Scanner mirror: law of reflection at the turned mirror, so turning it by Δ turns the reflected beam by 2Δ. With `fan`
+  the mirror's end positions (±`scan`) are drawn dashed, and every ray reflected by it also sends two dashed **fan rays**
+  (the reflections at both ends of the range, ±2·`scan` optical), which are traced on through the following elements
+  (e.g. a scan lens). Fan rays do not branch again at a second scanner.
+- Light guide: Snell's law at its four faces; light meeting a side face beyond the critical angle arcsin(1/n) (41.8° for
+  n = 1.5) is totally reflected and guided to the far end, below it leaves through the side.
+- Polarisation (Jones calculus): a ray carries its relative intensity (1 at the source) and its polarisation, unpolarised
+  until it meets a polariser. Angles are measured across the ray from the drawing plane (0°) towards the perpendicular to
+  the drawing (90°). A polariser passes half of unpolarised light and the share cos²(θ − axis) of polarised light (Malus's
+  law) and polarises along its axis; below 0.5 % left (crossed polarisers) the ray ends there. A wave plate retards the
+  component along its slow axis by π/2 (λ/4) or π (λ/2): a half-wave plate turns linear polarisation (θ → 2·axis − θ), a
+  quarter-wave plate at 45° makes it circular (any analyser then passes half). Mirrors, splitters, refraction and gratings
+  keep the polarisation and the intensity (no Fresnel coefficients, splitters do not halve the intensity). Weaker light is
+  drawn more transparent (opacity = relative intensity, at least 0.2).
+- The spectrometer is a detector for the tracer: rays end on its housing (at the slit wall); the grating and the spectrum
+  inside are drawn schematically, not traced.
 - After the last element a ray runs on for `tail` mm; automatic (0): as long again as the way so far (30–400 mm), and the
   open ends of a bundle are lined up across it. A free ray that meets nothing ends at its second point.
 
@@ -141,6 +175,9 @@ them generically). A drag only writes the parameter; the box (`Size`) and the po
 | Lamp, LED (parallel) with docked rays | `beam` | edge of the bundle at the bulb/dome | across the axis | `beam`, whole mm |
 | Laser with several rays and docked rays | `beam` | edge of the beam at the output | across the axis | `beam`, whole mm |
 | Fibre with docked rays | `spread` | on the upper edge ray of the output cone | freely, angle from the output end | `spread`, whole degrees |
+| Thick lens with its own bundle docked | `beam` | edge of the bundle at its start | across the axis | `beam`, whole mm (the focal length follows from shape, box and `n`, so it has no grip) |
+| Scanner mirror | `angle` | upper end of the mirror | freely, around the pivot | `angle` = direction of the mirror line, whole degrees, folded into −90° … 90° |
+| Polariser, wave plate | `axis` | end of the axis double arrow | freely, around the centre | `angle` = direction of the axis line, whole degrees, −90° … 90° |
 | Free traced ray | `dir` | on the drawn ray, halfway to its second point or to the first element it meets | freely, around the start (arc) | the second point turned around the first, whole degrees (clockwise on screen), length kept |
 
 Every grip carries a bilingual label with its current value ("Focal length f: 40 mm" / "Brennweite f: 40 mm", "Half cone
@@ -154,7 +191,8 @@ naturally); the angle of a grating's first order is set in its number field.
 
 - Every element exposes its optical centre as a `Port` anchor (`o`; mirrors: vertex; detectors and screen: front face;
   sources: `exit`, lamp/LED also `o`; fibre: `in`, `exit`; object arrow: `foot`, `tip`).
-- Lenses: `f1`/`f2` at ±f and `2f1`/`2f2` at ±2f on the axis; curved mirrors: `f` and `cc` (centre of curvature).
+- Lenses: `f1`/`f2` at ±f and `2f1`/`2f2` at ±2f on the axis; thick lens: `f1`/`f2` at F and F′ (lensmaker's equation);
+  curved mirrors: `f` and `cc` (centre of curvature); scanner mirror: `o` at the pivot; light guide: `in`, `exit`, `o`.
   Port-to-port snapping lines up focal points (telescopes: F′ of the objective on F of the eyepiece).
 - The optical axis (`optics.axis.line`) exposes its segment as a `Rail` (`axis0` …): element ports dock anywhere on it,
   so elements line up on one axis. No `Hub`/`Axis` roles are used, so no mechanical coupling or "+" build ports appear.
@@ -197,11 +235,16 @@ recomputed from the document, so JSON round trips render identically.
 
 ## Limits and next steps
 
-- Two-dimensional, sequential, paraxial ideal lenses and mirrors; no thick lenses, aberrations, intensities,
-  polarisation or interference.
+- Two-dimensional, sequential; thin lenses and curved mirrors are paraxial ideals. No interference, no Fresnel
+  reflection/transmission coefficients, no polarisation change on reflection or refraction (Brewster angle, phase shift
+  on total reflection), no polarising beam splitters.
+- The object arrow's image construction uses thin lenses and curved mirrors only (not the thick lens; its traced rays do
+  pass it). The thick lens has no focal-length grip.
+- The spectrometer does not trace the light inside; its spectrum is a schematic drawing.
 - The fibre does not guide light from its input to its output; a bundle on the output end starts a new cone.
 - Light reaching the inside of an element from an unusual side (e.g. through the side of a lens) is treated by the
   element's single optical surface.
 - The image construction uses the first lens or curved mirror on the arrow's axis only (no image of an image through a
   second element); the traced ray bundle does pass every element.
-- Possible next steps: images through several elements, thick lenses with two surfaces, Michelson/Mach-Zehnder templates.
+- Possible next steps: images through several elements, thick-lens imaging for the object arrow, polarising beam
+  splitters, Michelson/Mach-Zehnder templates.

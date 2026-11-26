@@ -128,13 +128,13 @@ namespace InventaSketch.Modules.Optics
             var pts = ctx.Doc.ResolvePoints(o);
             if (pts.Count < 2) return Array.Empty<Primitive>();
             var arrows = o.Str("arrows", "middle");
-            if (!o.Flag("trace", true)) return Draw(new[] { (pts, (string?)null) }, arrows, OpticsTags.Ray + ".0", Ox.RayRed);
+            if (!o.Flag("trace", true)) return Draw(new[] { (pts, (string?)null, 1.0) }, arrows, OpticsTags.Ray + ".0", Ox.RayRed, false);
             TraceResult result;
             try { result = Beams.Trace(o, ctx.Doc); }
             catch (Exception)
             {
                 // A drawing must never fail: fall back to the stored points.
-                return Draw(new[] { (pts, (string?)null) }, arrows, OpticsTags.Ray + ".0", Ox.RayRed);
+                return Draw(new[] { (pts, (string?)null, 1.0) }, arrows, OpticsTags.Ray + ".0", Ox.RayRed, false);
             }
             var baseColour = result.Dispersed ? Ox.RayWhite : Ox.RayRed;
             var list = new List<Primitive>();
@@ -143,42 +143,60 @@ namespace InventaSketch.Modules.Optics
                 var path = result.Paths[i];
                 if (path.Points.Count < 2) continue;
                 var tag = OpticsTags.Ray + "." + i.ToString(CultureInfo.InvariantCulture);
-                // Runs of equal colour become one polyline each.
-                var runs = new List<(IReadOnlyList<Vec2> Pts, string? Colour)>();
+                // Runs of equal colour and intensity become one polyline each.
+                var runs = new List<(IReadOnlyList<Vec2> Pts, string? Colour, double Intensity)>();
                 var cur = new List<Vec2> { path.Points[0] };
                 string? colour = Spectrum.Color(path.Lambdas[0]);
+                var intensity = Level(path.Intensities[0]);
                 for (var k = 0; k < path.Lambdas.Count; k++)
                 {
                     var c = Spectrum.Color(path.Lambdas[k]);
-                    if (c != colour)
+                    var level = Level(path.Intensities[k]);
+                    if (c != colour || level != intensity)
                     {
-                        runs.Add((cur, colour));
+                        runs.Add((cur, colour, intensity));
                         cur = new List<Vec2> { path.Points[k] };
                         colour = c;
+                        intensity = level;
                     }
                     cur.Add(path.Points[k + 1]);
                 }
-                runs.Add((cur, colour));
-                list.AddRange(Draw(runs, arrows, tag, baseColour));
+                runs.Add((cur, colour, intensity));
+                list.AddRange(Draw(runs, arrows, tag, baseColour, path.Fan));
                 foreach (var (a, b, lambda) in path.Virtual)
                     list.Add(new LinePrim(a, b, new Style { Role = LineRole.Hidden, StrokeWidth = 0.25, Stroke = Spectrum.Color(lambda) ?? baseColour }) { Tag = OpticsTags.Virtual + "." + i.ToString(CultureInfo.InvariantCulture) });
             }
             return list;
         }
 
-        /// <summary>Polylines of one ray with its arrowheads (on every segment, at the end, or none).</summary>
-        private static List<Primitive> Draw(IReadOnlyList<(IReadOnlyList<Vec2> Pts, string? Colour)> runs, string arrows, string tag, string baseColour)
+        /// <summary>Intensity rounded to a drawing level (steps of 0.01), so tiny numerical differences do not split a ray.</summary>
+        private static double Level(double intensity) => Math.Round(Geo.Clamp(intensity, 0, 1), 2);
+
+        /// <summary>
+        /// The ray style of one run: weaker light (behind a polariser) is drawn more transparent (opacity = relative intensity,
+        /// at least 0.2); scan fan rays of a scanner mirror are thin and dashed.
+        /// </summary>
+        private static Style RunStyle(string colour, double intensity, bool fan)
+        {
+            var style = RayStyle(colour);
+            if (intensity < 0.995) style = style with { Opacity = Math.Max(0.2, intensity) };
+            if (fan) style = style with { Role = LineRole.Hidden, StrokeWidth = 0.25 };
+            return style;
+        }
+
+        /// <summary>Polylines of one ray with its arrowheads (on every segment, at the end, or none; fan rays get none in the middle).</summary>
+        private static List<Primitive> Draw(IReadOnlyList<(IReadOnlyList<Vec2> Pts, string? Colour, double Intensity)> runs, string arrows, string tag, string baseColour, bool fan)
         {
             var list = new List<Primitive>();
             for (var r = 0; r < runs.Count; r++)
             {
-                var (pts, c) = runs[r];
+                var (pts, c, intensity) = runs[r];
                 if (pts.Count < 2) continue;
-                var style = RayStyle(c ?? baseColour);
+                var style = RunStyle(c ?? baseColour, intensity, fan);
                 if (arrows == "end" && r == runs.Count - 1) style = style with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Medium };
                 list.Add((pts.Count == 2 ? (Primitive)new LinePrim(pts[0], pts[1], style) : Prim.Polyline(pts, style)) with { Tag = tag });
-                if (arrows != "middle") continue;
-                var head = RayStyle(c ?? baseColour) with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Medium };
+                if (arrows != "middle" || fan) continue;
+                var head = RunStyle(c ?? baseColour, intensity, false) with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Medium };
                 for (var k = 0; k + 1 < pts.Count; k++)
                 {
                     var seg = pts[k + 1] - pts[k];

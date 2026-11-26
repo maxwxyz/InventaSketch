@@ -26,6 +26,15 @@ namespace InventaSketch.Modules.Optics
         Filter,
         /// <summary>Detector, screen, housing: the ray ends here.</summary>
         Absorb,
+        /// <summary>
+        /// Plane mirror in any direction: reflects on the side its <see cref="Surface.Normal"/> points to, absorbs on the back;
+        /// with <see cref="Surface.Fan"/> it also sends the reflections at the two ends of its scan range (dashed fan rays).
+        /// </summary>
+        Reflect,
+        /// <summary>Linear polariser: passes the share cos² of polarised light (half of unpolarised light) along its axis.</summary>
+        Polarizer,
+        /// <summary>Wave plate: retards the component along the slow axis by <see cref="Surface.Retardance"/>.</summary>
+        Retarder,
     }
 
     /// <summary>One optical surface segment of an element, in the element's local coordinates (mm, box centre at 0).</summary>
@@ -49,6 +58,21 @@ namespace InventaSketch.Modules.Optics
         public int Orders { get; init; } = 1;
         /// <summary>Filter colour ("neutral", "red", "green", "blue", "yellow").</summary>
         public string? Tint { get; init; }
+        /// <summary>
+        /// Spherical refracting face: radius of curvature (0 = flat segment A–B). The face is the part of the circle around
+        /// <see cref="Sphere"/> on the side of its vertex <see cref="Centre"/>, within <see cref="Half"/> of the axis.
+        /// </summary>
+        public double Radius { get; init; }
+        /// <summary>Centre of curvature of a spherical face.</summary>
+        public Vec2 Sphere { get; init; }
+        /// <summary>Half aperture of a spherical face (distance from the axis through the centre of curvature).</summary>
+        public double Half { get; init; }
+        /// <summary>Polariser: transmission axis; wave plate: fast axis (degrees from the in-plane direction across the ray).</summary>
+        public double Angle { get; init; }
+        /// <summary>Wave plate: retardance in radians (π/2 quarter-wave, π half-wave).</summary>
+        public double Retardance { get; init; }
+        /// <summary>Scanner mirror: mechanical half scan range in degrees (0 = no scan fan).</summary>
+        public double Fan { get; init; }
 
         /// <summary>A polyline as consecutive surface segments sharing the settings of <paramref name="proto"/>.</summary>
         public static IEnumerable<Surface> Chain(Surface proto, IReadOnlyList<Vec2> pts)
@@ -88,22 +112,94 @@ namespace InventaSketch.Modules.Optics
     /// <summary>The rays of an emitter and the element they leave (excluded from the trace), if any.</summary>
     internal sealed record Emission(IReadOnlyList<StartRay> Rays, string? Exclude);
 
-    /// <summary>One traced ray: its polyline, the wavelength of each segment and its virtual (dashed) extensions.</summary>
+    /// <summary>
+    /// Polarisation state of fully polarised light as a normalised Jones vector (complex amplitudes along the two directions
+    /// across the ray: p = in the drawing plane, s = perpendicular to it). Angles are measured from p towards s.
+    /// </summary>
+    internal readonly struct Jones
+    {
+        public Jones(double pr, double pi, double sr, double si)
+        {
+            Pr = pr; Pi = pi; Sr = sr; Si = si;
+        }
+
+        public double Pr { get; }
+        public double Pi { get; }
+        public double Sr { get; }
+        public double Si { get; }
+
+        /// <summary>Linear polarisation at <paramref name="deg"/> degrees.</summary>
+        public static Jones Linear(double deg)
+        {
+            var a = Geo.DegToRad(deg);
+            return new Jones(Math.Cos(a), 0, Math.Sin(a), 0);
+        }
+
+        /// <summary>Complex amplitude along the real unit direction (c, s).</summary>
+        private (double Re, double Im) Along(double c, double s) => (Pr * c + Sr * s, Pi * c + Si * s);
+
+        /// <summary>Share of the intensity a linear polariser with its axis at <paramref name="deg"/> passes (Malus: cos²).</summary>
+        public double Transmission(double deg)
+        {
+            var a = Geo.DegToRad(deg);
+            var (re, im) = Along(Math.Cos(a), Math.Sin(a));
+            var norm = Pr * Pr + Pi * Pi + Sr * Sr + Si * Si;
+            return norm < 1e-18 ? 0 : (re * re + im * im) / norm;
+        }
+
+        /// <summary>The state behind a wave plate with its fast axis at <paramref name="fastDeg"/> and retardance <paramref name="gamma"/> (radians).</summary>
+        public Jones Retard(double fastDeg, double gamma)
+        {
+            var a = Geo.DegToRad(fastDeg);
+            double c = Math.Cos(a), s = Math.Sin(a);
+            var (fr, fi) = Along(c, s);
+            var (qr0, qi0) = Along(-s, c);
+            double cg = Math.Cos(gamma), sg = Math.Sin(gamma);
+            var qr = qr0 * cg - qi0 * sg;
+            var qi = qr0 * sg + qi0 * cg;
+            return new Jones(fr * c - qr * s, fi * c - qi * s, fr * s + qr * c, fi * s + qi * c);
+        }
+
+        /// <summary>
+        /// Degree of circularity: 0 for linear, ±1 for circular light (normalised Stokes parameter S3/S0, sign = handedness).
+        /// </summary>
+        public double Circularity
+        {
+            get
+            {
+                var norm = Pr * Pr + Pi * Pi + Sr * Sr + Si * Si;
+                return norm < 1e-18 ? 0 : 2 * (Pr * Si - Pi * Sr) / norm;
+            }
+        }
+    }
+
+    /// <summary>
+    /// State of the light along a traced ray: wavelength (nm, 0 = white), relative intensity (1 at the source), polarisation
+    /// (null = unpolarised) and whether the ray belongs to the scan fan of a scanner mirror.
+    /// </summary>
+    internal sealed record RayState(double Lambda, double Intensity = 1, Jones? Pol = null, bool Fan = false);
+
+    /// <summary>One traced ray: its polyline, the wavelength and intensity of each segment and its virtual (dashed) extensions.</summary>
     internal sealed class TracedPath
     {
         public TracedPath(Vec2 start) => Points.Add(start);
         public List<Vec2> Points { get; } = new();
         /// <summary>Wavelength per segment (nm, 0 = white).</summary>
         public List<double> Lambdas { get; } = new();
+        /// <summary>Relative intensity per segment (1 = as emitted; polarisers lower it).</summary>
+        public List<double> Intensities { get; } = new();
         public List<(Vec2 A, Vec2 B, double Lambda)> Virtual { get; } = new();
-        /// <summary>True if the ray ended on a detector, screen, stop or housing.</summary>
+        /// <summary>True if the ray ended on a detector, screen, stop or housing (or was blocked by a polariser).</summary>
         public bool Absorbed { get; set; }
+        /// <summary>True for a ray of the scan fan of a scanner mirror (drawn dashed).</summary>
+        public bool Fan { get; set; }
 
-        public void LineTo(Vec2 p, double lambda)
+        public void LineTo(Vec2 p, double lambda, double intensity = 1)
         {
             if (p.DistanceTo(Points[Points.Count - 1]) < 1e-9) return;
             Points.Add(p);
             Lambdas.Add(lambda);
+            Intensities.Add(intensity);
         }
 
         public Vec2 Last => Points[Points.Count - 1];
@@ -163,13 +259,17 @@ namespace InventaSketch.Modules.Optics
     /// Two-dimensional sequential ray tracer of the optics module. A ray runs from its start until it meets the nearest
     /// surface of an element on the page, is changed there (thin lens, mirror, refraction, splitting …) and runs on.
     /// Lenses and curved mirrors are ideal and paraxial (slope change −y/f, so all parallel rays meet in the focal point);
-    /// plane mirrors, splitters and prism faces follow the law of reflection and Snell's law exactly.
+    /// plane mirrors, splitters, prism faces, the spherical faces of thick lenses and light guides follow the law of reflection
+    /// and Snell's law exactly. A ray carries its intensity and an optional linear/elliptical polarisation (Jones vector) that
+    /// polarisers and wave plates change; reflection and refraction keep it (no Fresnel coefficients).
     /// </summary>
     internal static class RayTracer
     {
         public const int MaxEvents = 48;
         public const int MaxPaths = 120;
         public const double MaxLength = 20000;
+        /// <summary>A ray with less than this share of its intensity left (crossed polarisers) ends.</summary>
+        public const double MinIntensity = 0.005;
 
         private sealed class Hit
         {
@@ -206,12 +306,12 @@ namespace InventaSketch.Modules.Optics
         public static TraceResult Trace(IReadOnlyList<SceneElement> scene, IEnumerable<StartRay> starts, double tail, double reach = 0, bool virtualRays = true)
         {
             var result = new TraceResult();
-            var work = new Stack<(Vec2 P, Vec2 D, double Lambda, TracedPath Path, double Travelled, SceneElement? SkipE, int SkipK, double Reach)>();
+            var work = new Stack<(Vec2 P, Vec2 D, RayState L, TracedPath Path, double Travelled, SceneElement? SkipE, int SkipK, double Reach)>();
             foreach (var s in starts.Reverse())
             {
                 if (s.D.Length < 1e-12) continue;
                 var path = new TracedPath(s.P);
-                work.Push((s.P, s.D.Normalized(), s.Lambda, path, 0, null, -1, reach));
+                work.Push((s.P, s.D.Normalized(), new RayState(s.Lambda), path, 0, null, -1, reach));
             }
             // Paths in the order of their start rays (the stack pops the first one first).
             var order = work.Select(w => w.Path).ToList();
@@ -220,11 +320,12 @@ namespace InventaSketch.Modules.Optics
             var open = new List<TracedPath>();
             while (work.Count > 0)
             {
-                var (p, d, lambda, path, travelled, skipE, skipK, minReach) = work.Pop();
+                var (p, d, st, path, travelled, skipE, skipK, minReach) = work.Pop();
                 for (var step = 0; ; step++)
                 {
                     if (step >= MaxEvents || travelled > MaxLength) break;
                     var hit = Nearest(scene, p, d, skipE, skipK);
+                    var lambda = st.Lambda;
                     if (hit is null)
                     {
                         // Automatic tail (0): as long again as the way so far (between 30 and 400 mm), so images and foci
@@ -233,23 +334,23 @@ namespace InventaSketch.Modules.Optics
                         // A free ray that meets nothing ends where it was drawn to.
                         var free = step == 0 && minReach > 0;
                         var len = free ? minReach : Math.Max(after, minReach - travelled);
-                        if (len > 1e-9) path.LineTo(p + d * len, lambda);
+                        if (len > 1e-9) path.LineTo(p + d * len, lambda, st.Intensity);
                         if (!free && tail <= 0 && path.Points.Count >= 2) open.Add(path);
                         break;
                     }
                     var at = p + d * hit.T;
-                    path.LineTo(at, lambda);
+                    path.LineTo(at, lambda, st.Intensity);
                     travelled += hit.T;
                     var e = hit.E;
                     var s = hit.S;
                     var ld = hit.LocalDir;
                     Vec2 Page(Vec2 local) => e.M.ApplyLinear(local).Normalized();
-                    void Branch(Vec2 localDir, double lam)
+                    void Branch(Vec2 localDir, RayState ls)
                     {
                         if (result.Paths.Count >= MaxPaths) return;
-                        var child = new TracedPath(at);
+                        var child = new TracedPath(at) { Fan = ls.Fan };
                         result.Paths.Add(child);
-                        work.Push((at, Page(localDir), lam, child, travelled, e, hit.K, 0));
+                        work.Push((at, Page(localDir), ls, child, travelled, e, hit.K, 0));
                     }
                     Vec2? next = null;
                     switch (s.Kind)
@@ -284,18 +385,54 @@ namespace InventaSketch.Modules.Optics
                         case SurfaceKind.Split:
                             {
                                 var n = (s.B - s.A).Perp.Normalized();
-                                Branch(ld - n * (2 * ld.Dot(n)), lambda);
+                                Branch(Mirror(ld, n), st);
                                 next = ld;
                                 break;
                             }
-                        case SurfaceKind.Refract:
-                            if (lambda <= 0 && s.Dispersion > 0 && ld.Dot(s.Normal) < 0)
+                        case SurfaceKind.Reflect:
+                            if (ld.Dot(s.Normal) < -1e-12)
                             {
-                                // White light entering a dispersing glass: one ray per colour from here on.
-                                result.Dispersed = true;
-                                foreach (var line in Spectrum.Lines) Branch(Refract(ld, s.Normal, Spectrum.Index(s.Index, s.Dispersion, line)), line);
+                                next = Mirror(ld, s.Normal);
+                                // A scanner mirror also sends the reflections at both ends of its scan range (not again for
+                                // a fan ray, so two scanners do not multiply their fans).
+                                if (s.Fan > 0 && !st.Fan)
+                                    foreach (var sign in new[] { -1.0, 1.0 })
+                                    {
+                                        var nr = Rotate(s.Normal, sign * s.Fan);
+                                        if (ld.Dot(nr) < -1e-12) Branch(Mirror(ld, nr), st with { Fan = true });
+                                    }
                             }
-                            else next = Refract(ld, s.Normal, Spectrum.Index(s.Index, s.Dispersion, lambda));
+                            else path.Absorbed = true;
+                            break;
+                        case SurfaceKind.Refract:
+                            {
+                                var normal = s.Radius > 0 ? SphereNormal(s, hit.Local) : s.Normal;
+                                if (lambda <= 0 && s.Dispersion > 0 && ld.Dot(normal) < 0)
+                                {
+                                    // White light entering a dispersing glass: one ray per colour from here on.
+                                    result.Dispersed = true;
+                                    foreach (var line in Spectrum.Lines) Branch(Refract(ld, normal, Spectrum.Index(s.Index, s.Dispersion, line)), st with { Lambda = line });
+                                }
+                                else next = Refract(ld, normal, Spectrum.Index(s.Index, s.Dispersion, lambda));
+                                break;
+                            }
+                        case SurfaceKind.Polarizer:
+                            {
+                                // Malus's law for polarised light, half of unpolarised light; behind it the light is polarised
+                                // along the axis. Practically nothing left (crossed polarisers) ends the ray.
+                                var share = st.Pol is Jones j ? j.Transmission(s.Angle) : 0.5;
+                                var intensity = st.Intensity * share;
+                                if (intensity < MinIntensity) path.Absorbed = true;
+                                else
+                                {
+                                    next = ld;
+                                    st = st with { Intensity = intensity, Pol = Jones.Linear(s.Angle) };
+                                }
+                                break;
+                            }
+                        case SurfaceKind.Retarder:
+                            next = ld;
+                            if (st.Pol is Jones jp) st = st with { Pol = jp.Retard(s.Angle, s.Retardance) };
                             break;
                         case SurfaceKind.Grating:
                             {
@@ -312,9 +449,9 @@ namespace InventaSketch.Modules.Optics
                                     if (lambda <= 0)
                                     {
                                         result.Dispersed = true;
-                                        foreach (var line in Spectrum.Lines) if (Order(m, line) is { } dl) Branch(dl, line);
+                                        foreach (var line in Spectrum.Lines) if (Order(m, line) is { } dl) Branch(dl, st with { Lambda = line });
                                     }
-                                    else if (Order(m, lambda) is { } dm) Branch(dm, lambda);
+                                    else if (Order(m, lambda) is { } dm) Branch(dm, st);
                                 }
                                 next = ld;
                                 break;
@@ -323,7 +460,7 @@ namespace InventaSketch.Modules.Optics
                             {
                                 var (pass, band) = FilterPass(s.Tint, lambda);
                                 if (!pass) path.Absorbed = true;
-                                else { next = ld; lambda = band; }
+                                else { next = ld; st = st with { Lambda = band }; }
                                 break;
                             }
                     }
@@ -403,6 +540,46 @@ namespace InventaSketch.Modules.Optics
             return (d * eta + normal * (eta * cosI - Math.Sqrt(k))).Normalized();
         }
 
+        /// <summary>Law of reflection at a surface with unit normal <paramref name="n"/> (either side).</summary>
+        internal static Vec2 Mirror(Vec2 d, Vec2 n) => d - n * (2 * d.Dot(n));
+
+        /// <summary><paramref name="v"/> turned by <paramref name="deg"/> degrees (clockwise on screen, y down).</summary>
+        internal static Vec2 Rotate(Vec2 v, double deg)
+        {
+            var a = Geo.DegToRad(deg);
+            double c = Math.Cos(a), s = Math.Sin(a);
+            return new Vec2(v.X * c - v.Y * s, v.X * s + v.Y * c);
+        }
+
+        /// <summary>Outward normal of a spherical face at <paramref name="p"/> (same side as <see cref="Surface.Normal"/> at the vertex).</summary>
+        internal static Vec2 SphereNormal(Surface s, Vec2 p)
+        {
+            var radial = (p - s.Sphere).Normalized();
+            return s.Normal.Dot(s.Centre - s.Sphere) >= 0 ? radial : radial * -1;
+        }
+
+        /// <summary>
+        /// Distance along the ray (<paramref name="lp"/>, <paramref name="ld"/>, local) to a spherical face, beyond
+        /// <paramref name="min"/>; null if the ray misses the face (the part of the circle on the vertex side within the aperture).
+        /// </summary>
+        private static double? SphereHit(Surface s, Vec2 lp, Vec2 ld, double min)
+        {
+            var w = lp - s.Sphere;
+            double a = ld.Dot(ld), b = ld.Dot(w), c = w.Dot(w) - s.Radius * s.Radius;
+            var disc = b * b - a * c;
+            if (a < 1e-18 || disc < 0) return null;
+            var sq = Math.Sqrt(disc);
+            var vertex = s.Centre - s.Sphere;
+            foreach (var t in new[] { (-b - sq) / a, (-b + sq) / a })
+            {
+                if (t <= min) continue;
+                var p = lp + ld * t;
+                if (Math.Abs(p.Y - s.Sphere.Y) > s.Half + 1e-9 || (p - s.Sphere).Dot(vertex) <= 0) continue;
+                return t;
+            }
+            return null;
+        }
+
         /// <summary>Filter: passes and the wavelength behind it.</summary>
         private static (bool Pass, double Lambda) FilterPass(string? tint, double lambda)
         {
@@ -445,15 +622,24 @@ namespace InventaSketch.Modules.Optics
                 for (var k = 0; k < e.Surfaces.Count; k++)
                 {
                     var s = e.Surfaces[k];
-                    var edge = s.B - s.A;
-                    var den = ld.Cross(edge);
-                    if (Math.Abs(den) < 1e-12) continue;
-                    var w = s.A - lp;
-                    var t = w.Cross(edge) / den;
-                    var u = w.Cross(ld) / den;
-                    if (u < -1e-9 || u > 1 + 1e-9) continue;
                     var min = ReferenceEquals(e, skipE) && k == skipK ? 1e-4 : 1e-7;
-                    if (t <= min) continue;
+                    double t;
+                    if (s.Radius > 0)
+                    {
+                        if (SphereHit(s, lp, ld, min) is not double ts) continue;
+                        t = ts;
+                    }
+                    else
+                    {
+                        var edge = s.B - s.A;
+                        var den = ld.Cross(edge);
+                        if (Math.Abs(den) < 1e-12) continue;
+                        var w = s.A - lp;
+                        t = w.Cross(edge) / den;
+                        var u = w.Cross(ld) / den;
+                        if (u < -1e-9 || u > 1 + 1e-9) continue;
+                        if (t <= min) continue;
+                    }
                     if (best is not null && t >= best.T) continue;
                     best = new Hit { E = e, K = k, S = s, T = t, Local = lp + ld * t, LocalDir = ld };
                 }

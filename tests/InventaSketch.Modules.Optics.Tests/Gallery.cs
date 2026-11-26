@@ -162,6 +162,35 @@ namespace InventaSketch.Modules.Optics.Tests
                 var d = Bundle(Bundle(Fx.Doc(Axis(85, 240, 150), led, lens, pd, fibre, l2), led.Id, "exit"), fibre.Id, "exit");
                 yield return ("LED with collimator, fibre output with symbol lens", d, new Rect(85, 130, 160, 100));
             }
+            {
+                var lens = I("optics.lens.thick", 160, 150).WithParam("focal", true);
+                var d = Bundle(Fx.Doc(Axis(100, 240, 150), lens), lens.Id, "o");
+                yield return ("Thick lens: refraction at both faces, F, F′, H, H′", d, new Rect(105, 125, 135, 50));
+            }
+            {
+                var laser = I("optics.source.laser", 70, 150);
+                var scanner = I("optics.mirror.scanner.fan", 130, 150);
+                var lens = I("optics.lens.biconvex", 130, 100).WithParam("f", 50.0) with { Transform = new Transform(130, 100, -90), Size = new Size2(8, 50) };
+                var screen = I("optics.screen", 130, 50) with { Transform = new Transform(130, 50, 90), Size = new Size2(3, 70) };
+                var d = Bundle(Fx.Doc(laser, scanner, lens, screen), laser.Id, "exit");
+                yield return ("Galvo scanner with scan fan and scan lens", d, new Rect(55, 35, 125, 130));
+            }
+            {
+                var laser = I("optics.source.laser", 60, 150);
+                var p1 = I("optics.polarizer", 100, 150);
+                var wp = I("optics.waveplate.half", 125, 150).WithParam("angle", 22.5);
+                var p2 = I("optics.polarizer", 150, 150).WithParam("angle", 30.0);
+                var pd = I("optics.detector.photodiode", 190, 150);
+                var d = Bundle(Fx.Doc(laser, p1, wp, p2, pd), laser.Id, "exit");
+                yield return ("Polariser, half-wave plate and analyser (weaker light drawn lighter)", d, new Rect(45, 125, 160, 50));
+            }
+            {
+                var laser = I("optics.source.laser", 67.3, 166.2) with { Transform = new Transform(67.3, 166.2, -25) };
+                var guide = I("optics.lightguide", 140, 150);
+                var spec = I("optics.detector.spectrometer", 220, 150);
+                var d = Bundle(Fx.Doc(laser, guide, spec), laser.Id, "exit");
+                yield return ("Light guide (total internal reflection) into a spectrometer", d, new Rect(45, 125, 200, 50));
+            }
         }
 
         [Fact]
