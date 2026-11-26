@@ -71,8 +71,8 @@ namespace InventaSketch.Modules.Machines
             Add("radial.side", R, "Radial-flux machine (longitudinal section)", "Radialflussmaschine (Längsschnitt)", "side", null, "longitudinal", "längsschnitt");
             Add("radial.side.asm", R, "Induction machine (longitudinal section)", "Asynchronmaschine (Längsschnitt)", "side", P(("rotor", "asm"), ("cooling", true)), "induction", "asynchron");
             Add("radial.side.outer", R, "Outer-rotor machine (longitudinal section)", "Außenläufermaschine (Längsschnitt)", "side", P(("layout", "outer")), "outer rotor", "außenläufer");
-            Add("motor.symbol", R, "Three-phase motor (symbol)", "Drehstrommotor (Schaltzeichen)", "schematic", null, "symbol", "schaltzeichen", "m 3~");
-            Add("generator.symbol", R, "Three-phase generator (symbol)", "Drehstromgenerator (Schaltzeichen)", "schematic", P(("mode", "generator")), "generator", "symbol");
+            Add("motor.symbol", R, "Three-phase motor with shaft (symbol)", "Drehstrommotor mit Welle (Schaltzeichen)", "schematic", null, "symbol", "schaltzeichen", "m 3~");
+            Add("generator.symbol", R, "Three-phase generator with shaft (symbol)", "Drehstromgenerator mit Welle (Schaltzeichen)", "schematic", P(("mode", "generator")), "generator", "symbol");
             const string A = "machines.axial";
             Add("axial.side", A, "Axial-flux machine, double rotor (section)", "Axialflussmaschine mit Doppelrotor (Schnitt)", "side", null, "yasa", "afpm");
             Add("axial.face", A, "Axial-flux magnet disc (face view)", "Axialfluss-Magnetscheibe (Stirnansicht)", "face", null, "magnet disc", "magnetscheibe");
