@@ -179,8 +179,16 @@ namespace InventaSketch.Modules.Charts
             double[]? ratios = null;
             if (a["height_ratios"] is { } hr) ratios = PyEval.Numbers(hr);
             if (a["gridspec_kw"] is PyDict gk && gk.Get("height_ratios") is { } ghr) ratios = PyEval.Numbers(ghr);
-            if (a["subplot_kw"] is PyDict sk && sk.Get("projection") is { } proj && proj is not PyNone)
-                throw No("Projections (polar, 3d …) are not read.", "Projektionen (polar, 3d …) werden nicht gelesen.");
+            var polar = false;
+            if (a["subplot_kw"] is PyDict sk)
+            {
+                if (sk.Get("projection") is { } proj && proj is not PyNone)
+                {
+                    if (proj is PyStr { V: "polar" }) polar = true;
+                    else throw No("Projections other than polar (3d …) are not read.", "Projektionen außer polar (3d …) werden nicht gelesen.");
+                }
+                if (sk.Get("polar") is PyBool { V: true }) polar = true;
+            }
             var grid = new List<PyVal>();
             for (var i = 0; i < rows; i++)
             {
@@ -188,6 +196,7 @@ namespace InventaSketch.Modules.Charts
                 for (var j = 0; j < cols; j++)
                 {
                     var ax = AxesAt(f, i, j);
+                    ax.Polar |= polar;
                     if (ratios is not null && i < ratios.Length && ratios[i] > 0) ax.Share = ratios[i];
                     row.Add(AxesObj(f, ax));
                 }
@@ -213,9 +222,15 @@ namespace InventaSketch.Modules.Charts
             }
             else if (a.Pos.Count >= 3) { rows = (int)PyEval.Num(a.Pos[0]); cols = (int)PyEval.Num(a.Pos[1]); index = (int)PyEval.Num(a.Pos[2]); }
             else throw No("This subplot specification is not read.", "Diese Teildiagramm-Angabe wird nicht gelesen.");
-            if (a["projection"] is { } p && p is not PyNone || a["polar"] is PyBool { V: true }) throw No("Projections (polar, 3d …) are not read.", "Projektionen (polar, 3d …) werden nicht gelesen.");
+            var polar = a["polar"] is PyBool { V: true };
+            if (a["projection"] is { } p && p is not PyNone)
+            {
+                if (p is PyStr { V: "polar" }) polar = true;
+                else throw No("Projections other than polar (3d …) are not read.", "Projektionen außer polar (3d …) werden nicht gelesen.");
+            }
             if (rows < 1 || cols < 1 || index < 1 || index > rows * cols) throw No("This subplot specification is not read.", "Diese Teildiagramm-Angabe wird nicht gelesen.");
             var ax = AxesAt(f, (index - 1) / cols, (index - 1) % cols);
+            ax.Polar |= polar;
             f.Rows = Math.Max(f.Rows, rows); f.Cols = Math.Max(f.Cols, cols);
             _fig = f; _ax = ax;
             return AxesObj(f, ax);
@@ -332,6 +347,14 @@ namespace InventaSketch.Modules.Charts
                     else if (a.Pos.FirstOrDefault() is PyStr { V: "off" }) Note("Hidden axes (axis('off')) are not imported.", "Ausgeblendete Achsen (axis('off')) werden nicht importiert.");
                     return PyNone.Instance;
                 case "twinx": throw No("A secondary y axis (twinx) is not imported.", "Eine zweite y-Achse (twinx) wird nicht importiert.");
+                case "polar":
+                    {
+                        // plt.polar(theta, r, fmt): a curve on polar axes.
+                        var g = Gca();
+                        if (!g.Ax.Polar && g.Ax.HasContent) throw No("polar() on axes that already show other content is not read.", "polar() auf Achsen mit anderem Inhalt wird nicht gelesen.");
+                        g.Ax.Polar = true;
+                        return AxesCall(g, "plot", a, true);
+                    }
                 case "figtext": throw No("Texts in figure coordinates (figtext) are not imported.", "Texte in Bildkoordinaten (figtext) werden nicht importiert.");
             }
             return AxesCall(Gca(), name, a, true);
@@ -420,8 +443,8 @@ namespace InventaSketch.Modules.Charts
 
         private static readonly HashSet<string> Unsupported = new(StringComparer.Ordinal)
         {
-            "hist", "hist2d", "pie", "boxplot", "violinplot", "contour", "contourf", "imshow", "pcolormesh", "pcolor", "quiver", "streamplot", "stackplot",
-            "stem", "hexbin", "specgram", "table", "clabel", "tricontour", "tricontourf", "polar", "matshow", "spy", "eventplot", "broken_barh", "fill",
+            "hist", "hist2d", "boxplot", "violinplot", "contour", "contourf", "imshow", "pcolormesh", "pcolor", "quiver", "streamplot", "stackplot",
+            "stem", "hexbin", "specgram", "table", "clabel", "tricontour", "tricontourf", "matshow", "spy", "eventplot", "broken_barh", "fill",
             "inset_axes", "secondary_xaxis", "secondary_yaxis", "arrow", "add_patch", "barbs", "axline", "ecdf", "stairs",
             "plot_date", "acorr", "xcorr", "psd", "csd", "cohere", "magnitude_spectrum", "angle_spectrum", "phase_spectrum", "triplot", "tripcolor",
         };
@@ -448,6 +471,36 @@ namespace InventaSketch.Modules.Charts
                         pa.Kw.AddRange(a.Kw.Where(k => k.Name is not ("yerr" or "xerr" or "fmt" or "capsize" or "ecolor" or "elinewidth" or "capthick" or "errorevery" or "barsabove" or "lolims" or "uplims" or "xlolims" or "xuplims")));
                         return Plot(ax, pa, null);
                     }
+                case "pie": return Pie(ax, a);
+                case "fill" when ax.Polar: return PolarFill(ax, a);
+                case "set_theta_zero_location":
+                    {
+                        var loc = (a.Arg(0, "loc") as PyStr)?.V ?? "E";
+                        if (loc is not ("N" or "E")) Note("Only 0° to the right (E) or at the top (N) is imported.", "Nur 0° rechts (E) oder oben (N) wird importiert.");
+                        ax.PolarTop = loc == "N";
+                        return PyNone.Instance;
+                    }
+                case "set_theta_direction":
+                    {
+                        var d = a.Arg(0, "direction");
+                        ax.PolarClockwise = d is PyStr { V: "clockwise" } || d is not null && PyEval.IsNumber(d) && PyEval.Num(d) < 0;
+                        return PyNone.Instance;
+                    }
+                case "set_rmax": ax.YMax = PyEval.Num(a.Arg(0, "rmax") ?? throw No("set_rmax needs a value.", "set_rmax braucht einen Wert."), "the radius"); return PyNone.Instance;
+                case "set_rmin": ax.YMin = PyEval.Num(a.Arg(0, "rmin") ?? throw No("set_rmin needs a value.", "set_rmin braucht einen Wert."), "the radius"); return PyNone.Instance;
+                case "set_rlim": Limits(a, out ax.YMin, out ax.YMax, ax.YMin, ax.YMax, "bottom", "top", "rmin", "rmax"); return PyNone.Instance;
+                case "set_rlabel_position": return PyNone.Instance;
+                case "set_rticks": case "set_rgrids": case "set_thetagrids": case "set_theta_offset": case "set_thetamin": case "set_thetamax":
+                    Note("This polar axis setting is not imported (ticks and the full circle are automatic).", "Diese Polarachsen-Einstellung wird nicht importiert (Teilung und Vollkreis sind automatisch).");
+                    return PyNone.Instance;
+                case "axis":
+                    if (a.Pos.FirstOrDefault() is PyStr { V: "off" }) Note("Hidden axes (axis('off')) are not imported.", "Ausgeblendete Achsen (axis('off')) werden nicht importiert.");
+                    else if (a.Pos.FirstOrDefault() is PySeq lim4 && lim4.Items.Count == 4)
+                    {
+                        var v = PyEval.Numbers(lim4);
+                        ax.XMin = v[0]; ax.XMax = v[1]; ax.YMin = v[2]; ax.YMax = v[3];
+                    }
+                    return PyNone.Instance;
                 case "bar": return Bar(ax, a, false);
                 case "barh": return Bar(ax, a, true);
                 case "bar_label": ax.BarValues = true; return PyNone.Instance;
@@ -872,6 +925,55 @@ namespace InventaSketch.Modules.Charts
             if (a.Has("yerr") || a.Has("xerr")) Note("Error bars are not imported; the bars are.", "Fehlerbalken werden nicht importiert; die Balken schon.");
             ax.Bars.Add(bars);
             return new PyObj("bars", bars);
+        }
+
+        private static readonly HashSet<string> PieKw = new(StringComparer.Ordinal)
+        {
+            "x", "explode", "labels", "colors", "autopct", "pctdistance", "shadow", "labeldistance", "startangle", "radius", "counterclock",
+            "wedgeprops", "textprops", "center", "frame", "rotatelabels", "normalize", "hatch",
+        };
+
+        /// <summary>pie(x, explode, labels, colors, autopct, …, startangle, radius, counterclock, wedgeprops): a pie or donut chart.</summary>
+        private PyVal Pie(ImpAxes ax, PyArgs a)
+        {
+            foreach (var (k, _) in a.Kw) if (!PieKw.Contains(k)) Note("The argument " + k + " is not imported.", "Das Argument " + k + " wird nicht importiert.");
+            if (ax.Pie is not null) throw No("A second pie in the same axes is not imported.", "Ein zweiter Kreis in derselben Achse wird nicht importiert.");
+            var values = PyEval.Numbers(a.Arg(0, "x") ?? throw No("pie needs values.", "pie braucht Werte."), "the pie values");
+            var pie = new ImpPie { Values = values, Line = Line };
+            if (a.Arg(2, "labels") is { } lv && lv is not PyNone) pie.Labels = _runner.Eval.Iterate(lv).Select(v => MathText(PyEval.Str(v))).ToArray();
+            if (a.Arg(4, "autopct") is { } ap && ap is not PyNone) pie.Percent = true;
+            if (a.Arg(8, "startangle") is { } sa && sa is not PyNone) pie.StartAngle = PyEval.Num(sa, "the start angle");
+            var radius = a.Arg(9, "radius") is { } rv && rv is not PyNone ? PyEval.Num(rv, "the radius") : 1;
+            if (a.Arg(10, "counterclock") is { } cc && cc is not PyNone) pie.CounterClock = PyEval.Truth(cc);
+            if (a.Arg(11, "wedgeprops") is PyDict wp && wp.Get("width") is { } width && PyEval.IsNumber(width) && radius > 0)
+                pie.Hole = Math.Max(0, Math.Min(0.9, 1 - PyEval.Num(width) / radius));
+            if (a.Arg(1, "explode") is { } ex && ex is not PyNone && PyEval.Numbers(ex).Any(v => v != 0))
+                Note("Exploded slices are drawn closed.", "Herausgezogene Segmente werden geschlossen gezeichnet.");
+            if (a.Arg(3, "colors") is { } cl && cl is not PyNone) Note("Slice colours are not imported; the chart colours are used.", "Segmentfarben werden nicht importiert; die Diagrammfarben werden verwendet.");
+            if (a["normalize"] is PyBool { V: false } && values.Where(v => v > 0).Sum() < 1 - 1e-9)
+                Note("A partial pie (normalize=False) is drawn as a full pie.", "Ein Teilkreis (normalize=False) wird als voller Kreis gezeichnet.");
+            ax.Pie = pie;
+            PyVal Artists() => new PySeq(values.Select(_ => (PyVal)new PyObj("artist")).ToList());
+            var parts = new List<PyVal> { Artists(), Artists() };
+            if (pie.Percent) parts.Add(Artists());
+            return new PySeq(parts, true);
+        }
+
+        /// <summary>fill(theta, r) on polar axes: a filled curve (radar chart); a curve plotted before with the same points is not repeated.</summary>
+        private PyVal PolarFill(ImpAxes ax, PyArgs a)
+        {
+            ax.PolarFill = true;
+            if (a.Pos.Count >= 2 && a.Pos[0] is not PyStr && a.Pos[1] is not PyStr)
+            {
+                var x = Data(a.Pos[0]); var y = Data(a.Pos[1]);
+                if (ax.Series.Any(s => s.X.SequenceEqual(x) && s.Y.SequenceEqual(y))) return new PyObj("artist");
+            }
+            var pa = new PyArgs { Line = a.Line };
+            pa.Pos.AddRange(a.Pos);
+            pa.Kw.AddRange(a.Kw.Where(k => k.Name is "color" or "c" or "label" or "alpha" or "lw" or "linewidth" or "ls" or "linestyle" or "zorder"));
+            if (a.Kw.Any(k => k.Name is "facecolor" or "fc") && !a.Kw.Any(k => k.Name is "color" or "c"))
+                pa.Kw.Add(("color", a.Kw.First(k => k.Name is "facecolor" or "fc").Value));
+            return Plot(ax, pa, null);
         }
 
         private FigRegion RegionLook(PyArgs a)

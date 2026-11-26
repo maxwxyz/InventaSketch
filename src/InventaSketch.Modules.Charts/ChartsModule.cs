@@ -7,7 +7,8 @@ namespace InventaSketch.Modules.Charts
 {
     /// <summary>
     /// Charts and characteristic curves for slides: XY line, scatter and step charts, bar/column charts, axes with grid,
-    /// torque–speed curve, efficiency map, pump/fan curve with operating point, Bode plot and tolerance band. Every chart is
+    /// torque–speed curve, efficiency map, pump/fan curve with operating point, Bode plot and tolerance band, and the
+    /// presentation charts pie/donut, polar/radar, Sankey, Gantt, box plot and histogram. Every chart is
     /// insertable without parameters and drawn with native primitives (lines, freeforms, rectangles, text); data are a
     /// text parameter (typed in or pasted from a spreadsheet, see <see cref="ChartData"/>). Series stay distinguishable in
     /// monochrome output through dash patterns, markers and fill patterns.
@@ -21,6 +22,7 @@ namespace InventaSketch.Modules.Charts
             new FigureChart(), new LinkedChart(),
             new MathAxesChart(), new FunctionChart(),
             new TimingChart(),
+            new PieChart(), new PolarChart(), new SankeyChart(), new GanttChart(), new BoxChart(), new HistogramChart(),
         });
 
         private static readonly Lazy<IReadOnlyDictionary<string, ObjectType>> ById = new(() => AllTypes.Value.ToDictionary(t => t.Id, StringComparer.Ordinal));
@@ -86,6 +88,19 @@ namespace InventaSketch.Modules.Charts
             Add("line.break", XyChart.TypeId, "Line chart with axis break", "Liniendiagramm mit Achsenbruch",
                 P(("style", "linepoints"), ("data", "0;12\n1;15\n2;14\n3;96\n4;98\n5;101\n6;99"), ("ybreaks", "25-85")),
                 kw: new[] { "axis break", "break", "broken axis", "achsenbruch", "unterbrochene achse", "bruch" });
+
+            // Presentation charts: shares, directions, flows, schedules and distributions.
+            Add("pie", PieChart.TypeId, "Pie chart", "Kreisdiagramm", kw: new[] { "pie", "torte", "kuchen" });
+            Add("pie.names", PieChart.TypeId, "Pie chart with names", "Kreisdiagramm mit Namen", P(("labels", "namepercent")),
+                kw: new[] { "labelled", "names", "beschriftet", "namen" });
+            Add("donut", PieChart.TypeId, "Donut chart", "Ringdiagramm", P(("hole", 0.55)), kw: new[] { "donut", "doughnut", "ring", "ringdiagramm" });
+            Add("polar", PolarChart.TypeId, "Polar chart", "Polardiagramm", kw: new[] { "polar", "polardiagramm" });
+            Add("polar.radar", PolarChart.TypeId, "Radar chart", "Netzdiagramm", P(("style", "area"), ("zero", "top")),
+                kw: new[] { "radar", "spider", "web", "netz", "spinnennetz", "kiviat" });
+            Add("sankey", SankeyChart.TypeId, "Sankey diagram", "Sankey-Diagramm", kw: new[] { "sankey", "flows", "flüsse" });
+            Add("gantt", GanttChart.TypeId, "Gantt chart", "Gantt-Diagramm", P(("today", "6")), kw: new[] { "gantt", "schedule", "zeitplan" });
+            Add("box", BoxChart.TypeId, "Box plot", "Boxplot", kw: new[] { "box plot", "boxplot", "quartile", "quartil" });
+            Add("histogram", HistogramChart.TypeId, "Histogram", "Histogramm", kw: new[] { "histogram", "histogramm", "häufigkeit" });
 
             // Coordinate systems and function graphs in math style (charts v2 stage 4: moved from the math module, which keeps
             // its types for existing slides; its library items step back in favour of these).

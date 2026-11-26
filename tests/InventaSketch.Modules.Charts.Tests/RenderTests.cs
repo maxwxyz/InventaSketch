@@ -21,7 +21,7 @@ namespace InventaSketch.Modules.Charts.Tests
                 {
                     var prims = Fx.Render(r, o, Fx.Ctx(lang, mono));
                     Fx.AssertInsideBox(prims, o.Size, $"{id} {lang} mono={mono}");
-                    Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.TickLabel));
+                    if (!Fx.NoAxes.Contains(o.Type)) Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.TickLabel));
                 }
             foreach (var size in new[] { new Size2(o.Size.W * 2, o.Size.H), new Size2(o.Size.W * 0.6, o.Size.H * 1.4), new Size2(o.Size.W * 0.35, o.Size.H * 0.35), new Size2(400, 260) })
                 Fx.AssertInsideBox(Fx.Render(r, o with { Size = size }), size, $"{id} {size.W}x{size.H}");
@@ -35,7 +35,7 @@ namespace InventaSketch.Modules.Charts.Tests
             var o = Fx.Item(r, id);
             var tags = Prim.Flatten(Fx.Render(r, o)).Select(p => p.Tag).ToList();
             if (o.Type is "chart.axes" or "chart.math.axes") { Assert.Contains(tags, t => ChartTags.Is(t, ChartTags.Axis)); return; }
-            var data = new[] { ChartTags.Series, ChartTags.Marker, ChartTags.Bar, ChartTags.Contour, ChartTags.Band, TimingTags.Signal };
+            var data = new[] { ChartTags.Series, ChartTags.Marker, ChartTags.Bar, ChartTags.Contour, ChartTags.Band, TimingTags.Signal, ChartTags.Slice, ChartTags.Flow, ChartTags.Box };
             Assert.True(tags.Any(t => data.Any(d => ChartTags.Is(t, d))), id + " draws no data");
         }
 
@@ -81,8 +81,12 @@ namespace InventaSketch.Modules.Charts.Tests
             var o = Fx.Item(r, id);
             var anchors = Fx.Type(r, o).Anchors(o, Fx.Ctx()).ToList();
             var ids = anchors.Select(a => a.Id).ToList();
-            foreach (var x in new[] { "plot.tl", "plot.tr", "plot.br", "plot.bl", "plot.c", "axis.x" }) Assert.Contains(x, ids);
-            Assert.Contains(ids, x => x is not null && x.StartsWith("origin", StringComparison.Ordinal));
+            foreach (var x in new[] { "plot.tl", "plot.tr", "plot.br", "plot.bl", "plot.c" }) Assert.Contains(x, ids);
+            if (!Fx.NotCartesian.Contains(o.Type))
+            {
+                Assert.Contains("axis.x", ids);
+                Assert.Contains(ids, x => x is not null && x.StartsWith("origin", StringComparison.Ordinal));
+            }
             Assert.Equal(ids.Count, ids.Distinct().Count());
             foreach (var a in anchors) Assert.True(Math.Abs(a.P.X) <= o.Size.W / 2 + 1e-6 && Math.Abs(a.P.Y) <= o.Size.H / 2 + 1e-6, id + "/" + a.Id);
             if (o.Type is not ("chart.axes" or "chart.math.axes")) Assert.Contains(anchors, a => a.Role == AnchorRole.Port && a.Id is not null && !a.Id.StartsWith("origin", StringComparison.Ordinal));

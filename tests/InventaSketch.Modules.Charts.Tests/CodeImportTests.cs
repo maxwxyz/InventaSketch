@@ -477,7 +477,7 @@ t v
         {
             var r = Reg;
             // Timing diagrams are not exported to matplotlib/pgfplots (the exporters say so), so there is nothing to import.
-            foreach (var item in r.Library.Where(i => i.TypeId != TimingChart.TypeId))
+            foreach (var item in r.Library.Where(i => !Fx.NoCodeExport.Contains(i.TypeId)))
             {
                 var o = Fx.Item(r, item.Id);
                 foreach (var lang in new[] { Lang.En, Lang.De })

@@ -2,7 +2,7 @@
 
 Technical charts for slides: XY line, scatter and step charts, bar/column charts, plain axes with grid, the
 torque–speed curve of a motor, an efficiency map, a pump/fan curve with operating point, a Bode plot and a tolerance
-band. Every chart is drawn with native primitives (lines, freeforms, rectangles, text), so it stays editable with the
+band, and the presentation charts pie and donut, polar and radar, Sankey, Gantt, box plot and histogram. Every chart is drawn with native primitives (lines, freeforms, rectangles, text), so it stays editable with the
 host's own tools, and it remains readable in monochrome output.
 
 Every chart is insertable without parameters (Quick Sketch) with sensible sample data. Charts are box objects drawn
@@ -27,6 +27,12 @@ follow the box. Text is sized by the smaller scale factor relative to the design
 | `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | math style, see [Coordinate systems and function graphs](#coordinate-systems-and-function-graphs-charts-v2-stage-4) |
 | `chart.math.function` | Function graph / Funktionsgraph | basic function, typed formula or function generator in the math-style coordinate system |
 | `chart.timing` | Timing diagram (digital) / Zeitdiagramm (digital) | `signals` (one signal per row, see [Digital timing diagram](#digital-timing-diagram-charttiming)), `slope` sloped / sharp, `grid`, `timelabels`, `markers`, `spans`, `title`, `dt`, `tunit` |
+| `chart.pie` | Pie chart / Kreisdiagramm | `data` (rows `label;value`), `hole` (donut: inner/outer radius, 0–0.9), `labels` percent / name / name and percent / value / none, `start` (° clockwise from 12 o'clock), `direction` clockwise / counter-clockwise, `center` (text in the hole), `legend`, `patterns`; see [Presentation charts](#presentation-charts-2026-11-26) |
+| `chart.polar` | Polar chart / Polardiagramm | `data` (rows `angle in °;r`, XY format), `style` line / line with markers / filled area / markers, `closed`, `zero` right counter-clockwise / up clockwise, `rrange`, `grid`, `legend` |
+| `chart.sankey` | Sankey diagram / Sankey-Diagramm | `data` (rows `source;target;value`), `values` (values at the nodes), `patterns` |
+| `chart.gantt` | Gantt chart / Gantt-Diagramm | `data` (rows `task;start;duration`, no duration = milestone, blocks = groups), `today` (today line), `xlabel`/`xunit`, `xrange`, `grid`, `legend` |
+| `chart.box` | Box plot / Boxplot | `data` (rows `category;sample;sample…`), `whis` (whiskers × IQR, 1.5), `outliers`, `yrange`, `grid`, `legend` |
+| `chart.histogram` | Histogram / Histogramm | `data` (raw samples, blocks = series), `bins` (0 = automatic, Sturges), `xrange`, `yrange`, `grid`, `legend` |
 
 `chart.xy` also takes axis breaks (`ybreaks`, `xbreaks`, `breakstyle`, see [Axis breaks](#axis-breaks-charts-v2-stage-3)).
 
@@ -46,7 +52,9 @@ The library has 41 presets (`chart.line`, `chart.line.markers`, `chart.line.mult
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.line.break`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
 `chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`,
-`chart.timing`, `chart.timing.clock`, `chart.timing.bus`, `chart.timing.handshake`, the eight coordinate systems and function graphs listed below) in four categories: data
+`chart.timing`, `chart.timing.clock`, `chart.timing.bus`, `chart.timing.handshake`, the eight coordinate systems and function graphs listed below,
+and the nine presentation charts `chart.pie`, `chart.pie.names`, `chart.donut`, `chart.polar`, `chart.polar.radar`,
+`chart.sankey`, `chart.gantt`, `chart.box`, `chart.histogram`; 51 in all) in four categories: data
 charts, coordinate systems & function graphs, characteristic curves and principle and technical figures.
 
 ## Data format
@@ -71,6 +79,12 @@ Meaning of the columns:
 | Bar chart | `label;v1;v2;…` (one series per value column); numeric first columns are used as labels when more values follow (years); several blocks are several series matched by label |
 | Tolerance band | `x;y` (band from `tol` in % of y or absolute), `x;y;±t` (symmetric), `x;y;lower;upper`; further blocks are measured series `x;y` |
 | Bode plot (`data`) | `f;dB;°` (phase optional) |
+| Pie / donut | `label;value` (first value column; zero, negative and empty values get no slice) |
+| Polar chart | as the XY chart, x = angle in degrees, y = radius |
+| Sankey diagram | `source;target;value` (one flow per row; rows without a positive value are skipped) |
+| Gantt chart | `task;start;duration` (a row without duration is a milestone); a blank line or a header line starts a group |
+| Box plot | `category;sample;sample…`, or one column per category under a header row, or one block per category |
+| Histogram | any numbers (every value of a block is a sample); several blocks are several series |
 
 Lists (`levels`, `limits`) use the same separators; a single value with a decimal comma (`92,5`) is one number.
 Ranges (`xrange`, `yrange`) accept `0;100`, `0..100`, `0,5;2,5` or `10 1000`; anything else means automatic.
@@ -133,6 +147,12 @@ All anchors are in local coordinates computed from the same layout as the drawin
 | Pump / fan curve | machine ▸ (pump / fan), "Operating flow…" (input), system curve, grid, legend ▸ |
 | Bode plot | system ▸, "Corner frequency…" (input: `1 kHz`, `250 Hz`, `2.5k`, `2,5k`), show ▸, corner frequency mark, grid |
 | Tolerance band | "Data…", "Tolerance…" (`10 %` = percent, `0.5` = absolute), smooth curves, grid, legend ▸ |
+| Pie / donut | "Data…", donut (toggle), "Hole size…" (`30 %`), "Start angle…", "Centre text…", slice labels ▸, direction ▸, legend ▸ |
+| Polar chart | "Data…", style ▸, closed curves, 0° direction ▸, "Radial range…", grid, legend ▸ |
+| Sankey diagram | "Data…" (flow rows), add flow, remove last flow, values at the nodes |
+| Gantt chart | "Data…", add task, remove last task, "Today line…" (empty = none), grid, legend ▸ |
+| Box plot | "Data…", "Whisker length…", outliers, grid, legend ▸ |
+| Histogram | "Data…", "Bins…" (`auto` or a number), more bins, fewer bins, grid, legend ▸ |
 
 Invalid inputs throw `FormatException` with a bilingual message and change nothing. Toggles use `IconIds.Toggle`,
 inputs `IconIds.Text`. The chart types have no view switch.
@@ -490,6 +510,96 @@ Export: everything is native (freeforms, hatched freeforms, lines with arrowhead
 draw it from the primitives. The matplotlib and pgfplots exports have no data axes for it and report "could not be
 exported" for a timing diagram.
 
+## Presentation charts (2026-11-26)
+
+The chart kinds presenters need besides XY and bar charts: shares (pie, donut), directions (polar, radar), flows
+(Sankey), schedules (Gantt) and distributions (box plot, histogram). All are in the data charts category, insertable
+without parameters with neutral demo data (letters as names, like the bar chart), and keep their data in the `data`
+text parameter in the [data format](#data-format) above, so the *Data…* prompt and the PowerPoint table editor work
+as for the other charts.
+
+| Library item | Name (EN / DE) | Preset |
+|---|---|---|
+| `chart.pie` | Pie chart / Kreisdiagramm | five slices A–E, percent labels, names in the legend (80 × 65 mm) |
+| `chart.pie.names` | Pie chart with names / Kreisdiagramm mit Namen | labels "name percent", no legend |
+| `chart.donut` | Donut chart / Ringdiagramm | `hole` 0.55 |
+| `chart.polar` | Polar chart / Polardiagramm | two series over eight directions, closed lines |
+| `chart.polar.radar` | Radar chart / Netzdiagramm | filled areas, 0° up and clockwise |
+| `chart.sankey` | Sankey diagram / Sankey-Diagramm | A, B, C → M → X, Y, Z |
+| `chart.gantt` | Gantt chart / Gantt-Diagramm | four tasks, a milestone, today line at 6 |
+| `chart.box` | Box plot / Boxplot | three categories with ten samples each and two outliers |
+| `chart.histogram` | Histogram / Histogramm | thirty samples, automatic bins |
+
+**Pie and donut.** One slice per category with a positive value, its angle the value's share of 360°; the first slice
+starts at `start` (degrees clockwise from 12 o'clock, default 0) and the slices run clockwise or counter-clockwise.
+`hole` > 0 makes a donut (inner radius as a fraction of the outer one); `center` writes a text into the hole. A slice
+label sits inside its slice – in the ring of a donut – where its text box fits between the radii and the slice edges;
+otherwise it moves outside with a leader line, outside labels are kept apart on each side and the pie shrinks so they
+fit. Every text stays inside the box (it shrinks before it would leave it). Colour: slices in the series colours with
+white seams and white labels; monochrome or `patterns`: the series fill patterns with black edges and labels on a white
+backing. With names on the slices the automatic legend is off; otherwise the legend lists the names.
+
+**Polar chart.** Rows `angle;r` (several y columns or blocks are several series, as in the XY chart). The radial axis
+starts at 0 in the pole (`rrange` fixes it; radii beyond it are drawn on the rim). The angular axis has spokes every
+30° (45° or 90° on a small chart) labelled in degrees outside the circle, the radial grid has rings at the radial
+ticks with their labels along the ray half a step after 0°. `zero`: 0° to the right with angles counter-clockwise
+(mathematics, matplotlib) or 0° up with angles clockwise (compass). `closed` joins the last point to the first; the
+filled style fills each series translucently (monochrome: hatches).
+
+**Sankey diagram.** Every node goes into the column of its longest path from a source; nodes without outgoing flows
+go into the last column. A node is as high as the larger of its inflow and outflow, with one scale for the whole
+diagram (chosen so the fullest column fills the height), so a node's flows stack exactly over its height on each side.
+Columns are centred and ordered by the mean position of their neighbours to reduce crossings; flows leave a node in
+the order of their targets and enter in the order of their sources. A flow is a closed freeform with two cubic edges
+in the colour of its source (35 % opacity); monochrome: black nodes and white outlined flows. Labels "name value" sit
+left of the first column and right of the other nodes. Flows that close a cycle cannot run left to right: they are not
+drawn and a note says how many were left out.
+
+**Gantt chart.** Tasks top-down on a category axis (the first row on top), time on a linear axis in any unit (the
+x-axis title names it, default "Time"/"Zeit"). A row without duration is a milestone (a diamond); blocks are groups
+with their own colour and legend entry. `today` draws a dashed today line with its label "Today"/"Heute" and a rail
+anchor `today`.
+
+**Box plot.** Per category and series the quartiles with linear interpolation (Hyndman–Fan type 7, as numpy and
+matplotlib), a box from the lower to the upper quartile with the median, whiskers to the furthest samples within
+`whis` × IQR beyond the box (Tukey, default 1.5) and the samples beyond them as hollow circles; without `outliers` the
+whiskers reach minimum and maximum. Boxes of several series stand side by side.
+
+**Histogram.** Equal-width bins over the samples' range (`xrange` fixes it); a bin holds [left, right), the last
+includes its right edge (as numpy). `bins` = 0 chooses ⌈log₂ n⌉ + 1 bins (Sturges' rule for the largest series);
+"More bins"/"Fewer bins" step by about a fifth. Several series stand side by side within each bin.
+
+**Parts.** Pie: `slice.k` (k = row of the category), `slicelabel.k` (text, backing, leader line), `centertext`,
+`legend`, `title`. Polar: `series.k`, `marker.k`, `axis.a` (circle), `axis.r` (radial axis), `label.a`, `label.r`,
+`grid.major`, `legend`. Sankey: `node.k`, `nodelabel.k`, `flow.k` (k = flow row), `note`. Gantt: `bar.g` (bars of
+group g), `milestone.g`, `today` and the axis parts. Box plot: `box.k` (boxes, medians, whiskers of series k),
+`outlier.k` and the axis parts. Histogram: `bar.k` and the axis parts. Part names use the data ("B", "Flow A → M",
+"Node M"); part actions offer the type's data and choice actions, then show/hide and the styles.
+
+**Anchors.** Every chart has `plot.tl` … `plot.c` (pie: the square around the pie, plus `centre`). Ports: pie
+`s1.<slice>` on the rim at the slice middle; polar `s<series>.<point>`, `origin` (pole) and the rail `axis.r`; Sankey
+`n<node>.in` / `n<node>.out`; Gantt bar ends and milestones `s<group>.<task>`; box plot medians `s<series>.<category>`;
+histogram bar tops `s<series>.<bin>`. Gantt, box plot and histogram also have the axis anchors (`origin`, `axis.x`,
+`axis.y`).
+
+**Clean slides for sharing.** Pie like the bar chart (values divided by the largest, category names become letters).
+Box plot and histogram: all samples through one monotone map (order, quartiles and bins keep their ranks). Gantt: times
+shifted to 0 and scaled to 0…1 (normalised) or by a random factor, the today line with them. Polar: radii divided by
+the largest (normalised) or scaled and varied, the angles stay. Sankey: node names become A, B, C …, values divided by
+the largest flow or scaled by one random factor (in/out balances stay).
+
+**Code export and import.** These charts have no matplotlib or pgfplots export yet: both exports report "could not be
+exported" for them; the TikZ and SVG exports draw them from the primitives. The matplotlib import reads `pie` (values,
+`labels`, `autopct` → percent labels, `startangle` and `counterclock` converted to the clockwise-from-12-o'clock
+convention, `wedgeprops=dict(width=…)` → donut hole; `explode`, `colors` and `normalize=False` are reported) and polar
+axes (`subplot_kw={'projection': 'polar'}`, `add_subplot(…, projection='polar')` or `polar=True`, `plt.polar`):
+`plot` curves with the angles converted from radians to degrees, `fill` → filled style, `set_theta_zero_location('N')`
+with `set_theta_direction(-1)` → compass style, `set_rmax`/`set_rlim`/`set_ylim` → `rrange`; polar tick settings
+are reported. Other projections (3d) are still reported, `hist` and `boxplot` are not imported yet.
+
+**Host notes.** Native primitives only: slices, rings and flows are closed freeforms (flows with cubic edges), nodes,
+bars and boxes rectangles, milestones closed freeforms, grids one freeform each, texts native text; no vector picture.
+
 ## Linked characteristic charts (Calc 5)
 
 A characteristic chart can be linked to an element whose values give a curve set (contract `ICharacteristics` in
@@ -695,3 +805,9 @@ core action dispatcher, JSON round trip and monochrome SVG export. The gallery t
 `TimingChartTests` covers the timing diagram: every wave kind of the notation, clocks, errors reported with row and
 character, markers and dimension arrows, tagged parts, edge ports, sharp and sloped edges, text size under scaling,
 actions and inputs, cleaning, the JSON round trip and the export behaviour; it writes `gallery/timing/*.svg`.
+`PresentationChartTests` covers the presentation charts: slice angles summing to 360° in both directions, percent
+texts, labels inside the slice or the donut ring and outside with leader lines inside the box at several sizes,
+monochrome patterns, polar angle conventions and radial scale, Sankey node heights equal to their in/out sums and
+ribbons filling each node, cycles reported, box plot quartiles, whiskers and outliers of a known sample, histogram
+counts and Sturges' rule, Gantt bars, milestones and today line, every action, rendering inside the box at extreme
+sizes, the JSON round trip, the export reports, cleaning and the import of matplotlib pie and polar scripts.

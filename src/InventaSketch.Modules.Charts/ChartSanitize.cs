@@ -43,9 +43,93 @@ namespace InventaSketch.Modules.Charts
                 BodeChart.TypeId => Bode(r, ctx),
                 BandChart.TypeId => Band(r, ctx),
                 FigureChart.TypeId => Figure(r, ctx),
+                PieChart.TypeId => Bar(r, ctx, PieChart.DefaultData),
+                BoxChart.TypeId => Samples(r, ctx, BoxChart.DefaultData, "yrange", "yunit"),
+                HistogramChart.TypeId => Samples(r, ctx, HistogramChart.DefaultData, "xrange", "xunit"),
+                GanttChart.TypeId => Gantt(r, ctx),
+                PolarChart.TypeId => Polar(r, ctx),
+                SankeyChart.TypeId => Sankey(r, ctx),
                 _ => r,
             };
             return r;
+        }
+
+        // ------------------------------------------------------------------ presentation charts
+
+        /// <summary>
+        /// Raw samples (box plot, histogram): every value through one monotone map (normalised 0…1, or randomised), so the order
+        /// of the samples, quartiles and bins stays; series and category names go with the texts.
+        /// </summary>
+        private static SketchObject Samples(SketchObject o, Ctx c, string defaultData, string rangeKey, string unitKey)
+        {
+            var blocks = Read(o.Str("data", defaultData));
+            if (blocks.Count == 0) return o;
+            if (c.Opt.ReplaceTexts) RenameSeries(blocks, c);
+            if (c.Opt.RenameCategories) RenameCategories(blocks, false);
+            if (c.Opt.Mode == SanitizeMode.None) return c.Opt.ReplaceTexts || c.Opt.RenameCategories ? o.WithParam("data", Write(blocks)) : o;
+            var all = blocks.SelectMany(b => Enumerable.Range(0, b.Cols).SelectMany(b.Column)).ToList();
+            var f = c.Norm ? NormMap(all, false) : RandMap(all, false, c);
+            foreach (var b in blocks) for (var k = 0; k < b.Cols; k++) b.MapEach(k, f);
+            o = WithRange(o.WithParam("data", Write(blocks)), rangeKey, f);
+            return c.Norm ? NoUnits(o, unitKey) : o;
+        }
+
+        /// <summary>Gantt chart: task and group names with the texts; times shifted to start at 0 and scaled to 0…1 (normalised) or by a random factor.</summary>
+        private static SketchObject Gantt(SketchObject o, Ctx c)
+        {
+            var blocks = Read(o.Str("data", GanttChart.DefaultData));
+            if (blocks.Count == 0) return o;
+            if (c.Opt.ReplaceTexts) RenameSeries(blocks, c);
+            if (c.Opt.RenameCategories) RenameCategories(blocks, false);
+            if (c.Opt.Mode == SanitizeMode.None) return c.Opt.ReplaceTexts || c.Opt.RenameCategories ? o.WithParam("data", Write(blocks)) : o;
+            var starts = blocks.SelectMany(b => b.Column(0)).ToList();
+            var ends = blocks.SelectMany(b => b.Rows.Where(r => r.V.Length > 1 && Fmt.Finite(r.V[0]) && Fmt.Finite(r.V[1])).Select(r => r.V[0] + r.V[1])).Concat(starts).ToList();
+            if (starts.Count == 0) return o.WithParam("data", Write(blocks));
+            double t0 = c.Norm ? starts.Min() : 0, span = c.Norm ? Math.Max(1e-12, ends.Max() - starts.Min()) : 1 / c.Off();
+            Func<double, double> time = v => (v - t0) / span, length = v => v / span;
+            foreach (var b in blocks) { b.MapEach(0, time); b.MapEach(1, length); }
+            o = o.WithParam("data", Write(blocks));
+            if (GanttChart.Today(o) is { } today) o = o.WithParam("today", Num(time(today)));
+            o = WithRange(o, "xrange", time);
+            return c.Norm ? NoUnits(o, "xunit") : o;
+        }
+
+        /// <summary>Polar chart: the angles stay, the radii are divided by the largest one (normalised) or scaled and varied (randomised).</summary>
+        private static SketchObject Polar(SketchObject o, Ctx c)
+        {
+            var blocks = Read(o.Str("data", PolarChart.DefaultData));
+            if (blocks.Count == 0) return o;
+            if (c.Opt.ReplaceTexts) RenameSeries(blocks, c);
+            if (c.Opt.Mode == SanitizeMode.None) return c.Opt.ReplaceTexts ? o.WithParam("data", Write(blocks)) : o;
+            var radii = blocks.SelectMany(b => b.XyColumns().Y.SelectMany(b.Column)).ToList();
+            var max = radii.Select(Math.Abs).DefaultIfEmpty(0).Max();
+            if (max <= 0) max = 1;
+            var factor = c.Norm ? 1 / max : c.Off();
+            foreach (var b in blocks)
+                foreach (var k in b.XyColumns().Y)
+                    b.MapEach(k, v => c.Norm ? v * factor : v * factor * SanitizeText.Vary(c.Rng, c.Spread));
+            o = o.WithParam("data", Write(blocks));
+            return WithRange(o, "rrange", v => v * factor);
+        }
+
+        /// <summary>Sankey diagram: node names become letters with the categories; values divided by the largest flow or scaled by one random factor (balances stay).</summary>
+        private static SketchObject Sankey(SketchObject o, Ctx c)
+        {
+            var m = SankeyModel.Parse(o.Str("data", SankeyChart.DefaultData));
+            if (m.Flows.Count == 0) return o;
+            var changed = false;
+            if (c.Opt.ReplaceTexts || c.Opt.RenameCategories)
+            {
+                for (var i = 0; i < m.Nodes.Count; i++) m.Nodes[i] = SanitizeText.Letter(i);
+                changed = true;
+            }
+            if (c.Opt.Mode != SanitizeMode.None)
+            {
+                var factor = c.Norm ? 1 / m.Flows.Max(f => f.Value) : c.Off();
+                for (var i = 0; i < m.Flows.Count; i++) m.Flows[i] = m.Flows[i] with { Value = SanitizeText.Round(m.Flows[i].Value * factor, 5) };
+                changed = true;
+            }
+            return changed ? o.WithParam("data", m.ToText()) : o;
         }
 
         private sealed class Ctx
@@ -331,9 +415,9 @@ namespace InventaSketch.Modules.Charts
             return o;
         }
 
-        private static SketchObject Bar(SketchObject o, Ctx c)
+        private static SketchObject Bar(SketchObject o, Ctx c, string defaultData = BarChart.DefaultData)
         {
-            var blocks = Read(o.Str("data", BarChart.DefaultData));
+            var blocks = Read(o.Str("data", defaultData));
             if (blocks.Count == 0) return o;
             if (c.Opt.ReplaceTexts) RenameSeries(blocks, c);
             if (c.Opt.RenameCategories) RenameCategories(blocks, true);

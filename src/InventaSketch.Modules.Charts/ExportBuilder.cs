@@ -36,6 +36,9 @@ namespace InventaSketch.Modules.Charts
             var ctx = new RenderContext(doc, lang).For(registry);
             // A linked chart exports as the figure it would become when unlinked (its current curves as data).
             if (type is LinkedChart linked && linked.Frozen(o, ctx) is { } frozen && registry.Type(frozen.Type) is ChartType figure) { o = frozen; type = figure; }
+            // Presentation charts have no matplotlib/pgfplots form yet: reported instead of exporting empty axes (pie, polar
+            // and Sankey say so from Compose).
+            if (type is BoxChart or HistogramChart or GanttChart) throw CanvasChart.NotExportable(type.Name, lang);
             var c = type.Compose(o, ctx);
             var b = new ExportBuilder(o, lang, c, type.Name.Get(lang), type.Id);
             b.Axes();

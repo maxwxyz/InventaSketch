@@ -135,7 +135,8 @@ namespace InventaSketch.Modules.Charts
 
         private static int Order(string kind) => kind switch
         {
-            ChartTags.Series => 0, ChartTags.Marker => 1, ChartTags.Bar => 2, ChartTags.ValueLabel => 3, ChartTags.Axis => 4,
+            ChartTags.Series => 0, ChartTags.Marker => 1, ChartTags.Bar or ChartTags.Box => 2, ChartTags.Milestone or ChartTags.Outlier or ChartTags.Today => 2,
+            ChartTags.ValueLabel => 3, ChartTags.Axis => 4,
             ChartTags.TickLabel => 5, ChartTags.Tick => 6, ChartTags.AxisTitle => 7, "grid" => 8, ChartTags.Legend => 9, ChartTags.Title => 10,
             ChartAreas.Tag => 3,
             _ => 11,
@@ -195,6 +196,11 @@ namespace InventaSketch.Modules.Charts
                 ChartTags.Error => new I18nText("Error message", "Fehlermeldung"),
                 ChartTags.AxisBreak => Dir("axis break", "Achsenbruch"),
                 ChartTags.Formula => new I18nText("Formula", "Funktionsgleichung"),
+                ChartTags.Box => Named(areas, Common.SeriesWord),
+                ChartTags.Outlier => Prefixed("Outliers", "Ausreißer", areas, Common.SeriesWord),
+                ChartTags.Milestone => Prefixed("Milestones", "Meilensteine", areas, Common.SeriesWord),
+                ChartTags.Today => new I18nText("Today line", "Heute-Linie"),
+                ChartTags.Slice => Named(areas, new I18nText("Slice", "Segment")),
                 _ => new I18nText(key),
             };
         }
@@ -209,8 +215,24 @@ namespace InventaSketch.Modules.Charts
             var dir = part.Split('.') is { Length: > 1 } s ? s[1] : "";
             string[] ids = kind switch
             {
-                ChartTags.Series or ChartTags.Marker or ChartTags.Bar or ChartTags.ValueLabel => new[] { "chart.data", "chart.style", "chart.smooth", "chart.mode", "chart.orient", "chart.values" },
-                ChartTags.Axis or ChartTags.Tick or ChartTags.TickLabel or ChartTags.AxisTitle => dir == "x" ? new[] { "chart.xscale", "chart.xbreak", "chart.xbreak.remove" } : dir.StartsWith("y", StringComparison.Ordinal) ? new[] { "chart.yscale", "chart.ybreak", "chart.ybreak.remove" } : new[] { "chart.arrows" },
+                ChartTags.Series or ChartTags.Marker or ChartTags.Bar or ChartTags.ValueLabel => new[]
+                {
+                    "chart.data", "chart.style", "chart.smooth", "chart.mode", "chart.orient", "chart.values", "chart.closed",
+                    "chart.bins", "chart.bins.more", "chart.bins.fewer", "chart.gantt.add", "chart.gantt.remove",
+                },
+                ChartTags.Box or ChartTags.Outlier => new[] { "chart.data", "chart.whis", "chart.outliers" },
+                ChartTags.Milestone => new[] { "chart.data", "chart.gantt.add", "chart.gantt.remove" },
+                ChartTags.Today => new[] { "chart.today" },
+                ChartTags.Slice or ChartTags.SliceLabel => new[] { "chart.data", "chart.labels", "chart.donut", "chart.hole", "chart.start", "chart.direction" },
+                ChartTags.CenterText => new[] { "chart.center.text", "chart.donut", "chart.hole" },
+                ChartTags.Node or ChartTags.NodeLabel or ChartTags.Flow => new[] { "chart.data", "chart.sankey.add", "chart.sankey.remove", "chart.values" },
+                ChartTags.Axis or ChartTags.Tick or ChartTags.TickLabel or ChartTags.AxisTitle => dir switch
+                {
+                    "x" => new[] { "chart.xscale", "chart.xbreak", "chart.xbreak.remove" },
+                    "a" => new[] { "chart.zero" },
+                    "r" => new[] { "chart.rrange", "chart.zero" },
+                    _ => dir.StartsWith("y", StringComparison.Ordinal) ? new[] { "chart.yscale", "chart.ybreak", "chart.ybreak.remove" } : new[] { "chart.arrows" },
+                },
                 ChartTags.AxisBreak => dir == "x" ? new[] { "chart.xbreak", "chart.xbreak.remove" } : new[] { "chart.ybreak", "chart.ybreak.remove" },
                 "grid" => new[] { "chart.grid" },
                 ChartTags.Legend => new[] { "chart.legend" },
