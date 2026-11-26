@@ -10,7 +10,8 @@ import { download, editorExportScope, exportFileStem, exportPng, exportScopeLabe
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
 import { drawCapabilities, noOffice, type HostCapabilities } from "../office/capabilities";
 import { SlideSync } from "../office/sync";
-import { checkSlides, cleanSlide, compareWithPrevious, goToFinding, readCurrentSlideUnits, readSlideUnits, type SlideFinding, type SlideUnits } from "../office/slides";
+import { checkSlides, cleanSlide, closeSession, compareWithPrevious, currentSlide, goToFinding, readCurrentSlideUnits, readSlideUnits, slideSession, type SlideFinding, type SlideUnits } from "../office/slides";
+import { alsoOn, continuationMap, designationOf, sameMap, slideDesignations } from "../office/designations";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
@@ -24,6 +25,7 @@ import { CalcSheet, Calculator, CodeImport, isCodeName } from "./tools";
 import { h, svgDataUrl } from "./dom";
 import { hasIcon, icon } from "./icons";
 import { canDrawGhosts } from "./buildlogic";
+import { badgeKind, cornerCommands } from "./handlelogic";
 import { addReport, cleanRequest, cleanScopes, defaultCleanForm, emptyTotals, formatCleanReport, type CleanForm, type CleanRequest, type CleanTotals } from "./cleanlogic";
 import { canMove } from "./motionlogic";
 import { InsertBox, insertRows, rememberRecent } from "./insertbox";
@@ -143,7 +145,8 @@ export class App {
         const info = this.sessionObj.parts(id, lang()).find((p) => p.key === key);
         if (info) this.setPart({ id, key, label: info.label });
       }),
-      valueConflict: (id) => this.valueConflict(id),
+      valueAlert: (id) => this.valueAlert(id),
+      cornerChanged: () => this.updateBar(),
       openValues: () => this.openValues(),
       report: (e) => this.report(e),
     });
@@ -216,6 +219,7 @@ export class App {
     this.updateLayoutMode();
     this.apply(first);
     this.setStatus(opts.loadMillis !== undefined ? t("status.ready", Math.round(opts.loadMillis)) : "");
+    if (this.slideAccess) void this.refreshContinuations();
   }
 
   // ------------------------------------------------------------------ layout
@@ -675,6 +679,7 @@ export class App {
         check(this.settings.anchor, t("set.anchor"), (v) => { this.settings.anchor = v; saveSettings(this.settings); }),
         h("label", { class: "isk-field" }, h("span", { class: "isk-field-label" }, t("set.grid")), grid),
         check(!!this.st.monochrome, t("set.mono"), (v) => this.setMonochrome(v))),
+      this.colorByFieldset(),
       h("fieldset", {}, h("legend", {}, t("val.level")),
         ...(["quick", "explore", "engineer"] as const).map((v) => radio("isk-level", v, this.st.valueLevel ?? "quick", t(`val.level.${v}`), () => this.setValueLevel(v))),
         h("p", { class: "isk-muted" }, t("val.levelHint"))),
@@ -687,6 +692,44 @@ export class App {
     this.root.append(panel);
     this.settingsEl = panel;
     panel.querySelector<HTMLInputElement>("input")?.focus();
+  }
+
+  /**
+   * "Colour by medium" (interaction-ux.md section 6b, the COM add-in's More ▸ Colour by medium): Off / By medium for the
+   * drawing (`setColorBy`, one undo step; every unit is redrawn) and "Insert legend" with the colours used.
+   */
+  private colorByFieldset(): HTMLElement {
+    const sel = h("select", { class: "isk-input", "aria-label": t("set.colorBy"), title: t("set.colorByHint"), "data-cmd": "colorby" });
+    sel.append(h("option", { value: "", selected: !this.st.colorBy }, t("set.colorBy.off")), h("option", { value: "medium", selected: this.st.colorBy === "medium" }, t("set.colorBy.medium")));
+    sel.addEventListener("change", () => this.edit((s) => s.setColorBy(sel.value === "medium" ? "medium" : "")));
+    const legend = h("button", { class: "isk-btn", type: "button", "data-cmd": "colorbylegend", html: `${icon("cmd-legend")}<span>${t("set.legend")}</span>` });
+    legend.addEventListener("click", () => void this.insertLegend());
+    return h("fieldset", {}, h("legend", {}, t("set.colorBy")),
+      h("div", { class: "isk-row" }, sel, legend),
+      h("p", { class: "isk-muted" }, t("set.colorByHint")));
+  }
+
+  /**
+   * "Insert legend": the medium colours used on the current slide (PowerPoint: read from every unit on it), else on the
+   * editor page, as one group top right (engine `insertMediumLegend`); in PowerPoint it is written onto the slide.
+   */
+  private async insertLegend(): Promise<void> {
+    try {
+      let colours: string[] | undefined;
+      const slide = this.slideAccess ? await this.readCurrentSlide() : undefined;
+      if (slide?.units.length) {
+        const { session } = slideSession(this.engine, slide.units, { w: this.st.pageWidth, h: this.st.pageHeight }, lang());
+        try { colours = session.mediumColours(lang(), true).map((c) => c.id); } finally { closeSession(this.engine, session); }
+      } else colours = this.sessionObj.mediumColours(lang(), true).map((c) => c.id);
+      if (!colours.length) { this.toast(t("legend.none")); return; }
+      const r = this.sessionObj.insertMediumLegend(lang(), colours);
+      if (!r.inserted) { this.toast(t("legend.none")); return; }
+      this.apply(r.state, true);
+      if (this.sync) await this.sync.insert(r.state.selection);
+      this.toast(t("legend.done", colours.length));
+    } catch (e) {
+      this.report(e);
+    }
   }
 
   /**
@@ -806,6 +849,15 @@ export class App {
     if (!sel.length) return this.bar.show("", [], undefined, true);
     const part = this.partFor(sel);
     if (part) return this.bar.show(`${key}#${part.key}`, this.partBar(part), box, suppressed);
+    // A selected corner of a line: its number, split here (or open the outline) and remove (COM `CornerButtons`).
+    const corner = this.stage.corner;
+    if (corner && sel.length === 1 && sel[0] === corner.id) {
+      const cmds = cornerCommands(this.stage.polylineInfo(corner.id), corner.index);
+      if (cmds.length) {
+        const items: BarItem[] = cmds.map((c) => ({ kind: "command", cmd: { id: `corner:${c}`, label: t(`corner.${c}`), icon: c === "remove" ? "cmd-point-remove" : "cmd-split" } }));
+        return this.bar.show(`${key}@corner${corner.index}`, [[{ kind: "command", cmd: { id: "info:corner", label: t("corner.selected", corner.index + 1), icon: "", text: t("corner.selected", corner.index + 1) } }], items], box, suppressed);
+      }
+    }
     const known = sel.some((id) => this.objectById(id)?.known);
     if (elementCount(this.st.objects, sel) >= 2) {
       let options: ArrangeOption[] = [];
@@ -1103,6 +1155,15 @@ export class App {
     if (id === "format") return this.openInspectorStyle();
     if (id === "rotm90") { this.edit((s) => s.rotate(sel, -90)); return; }
     if (id.startsWith("info:")) return;
+    if (id.startsWith("corner:")) {
+      const corner = this.stage.corner;
+      this.stage.clearCorner();
+      if (!corner) return this.updateBar();
+      const what = id.slice(7);
+      this.edit((s) => (what === "remove" ? s.removeCorner(corner.id, corner.index) : s.splitLine(corner.id, corner.index)));
+      this.stage.el.focus({ preventScroll: true });
+      return;
+    }
     if (id === "sketch" && sel.length === 1) {
       const chart = sel[0];
       this.bar.hide();
@@ -1318,24 +1379,27 @@ export class App {
     this.edit((s) => s.setValueLevel(level), false);
   }
 
-  /** The element's values label switch (parameter showValues), undefined when its type has none. */
-  /** Whether the entered values of element `id` conflict (Explore and Engineer), cached per revision: the ⚠ badge. */
-  private conflictCache = { key: "", value: false };
+  /**
+   * The ⚠ badge of element `id` (Explore and Engineer), cached per revision: "conflict" when its entered values conflict,
+   * "warning" when a plausibility check that is not muted warns about it (as the COM add-in), else "".
+   */
+  private alertCache: { key: string; value: "conflict" | "warning" | "" } = { key: "", value: "" };
 
-  private valueConflict(id: string): boolean {
+  private valueAlert(id: string): "conflict" | "warning" | "" {
     const level = this.st.valueLevel ?? "quick";
-    if (level === "quick") return false;
+    if (level === "quick") return "";
     const key = `${id}@${this.st.revision}@${level}`;
-    if (this.conflictCache.key !== key) {
-      let value = false;
+    if (this.alertCache.key !== key) {
+      let value: "conflict" | "warning" | "" = "";
       try {
-        value = this.sessionObj.values(id, lang()).objects.find((o) => o.id === id)?.status === "conflict";
+        const status = this.sessionObj.values(id, lang()).objects.find((o) => o.id === id)?.status;
+        value = badgeKind(status, status === "conflict" ? [] : this.sessionObj.checks([id], lang()), id);
       } catch {
-        value = false;
+        value = "";
       }
-      this.conflictCache = { key, value };
+      this.alertCache = { key, value };
     }
-    return this.conflictCache.value;
+    return this.alertCache.value;
   }
 
   private showsValues(id: string): boolean | undefined {
@@ -1452,6 +1516,13 @@ export class App {
   private pieLabels: { entry: PieEntry; change?: LabelChange }[] = [];
   /** "Select connected" kinds of the open pie. */
   private pieConnect: ConnectOption[] = [];
+  /** Other slides with the selected element's designation (1-based numbers). */
+  private pieAlso: string[] = [];
+
+  /** "Same name: also on slides 2, 4". */
+  private alsoOnText(): string {
+    return this.pieAlso.length === 1 ? t("connect.alsoOn1", this.pieAlso[0]) : t("connect.alsoOn", this.pieAlso.join(", "));
+  }
 
   private menuEntry(id: string, label: string, icon?: string, hint?: string, extra: Partial<PieEntry> = {}): PieEntry {
     return { id, label, icon, enabled: true, active: false, hint, ...extra };
@@ -1555,9 +1626,13 @@ export class App {
     for (const id of ["flipH", "flipV"]) { const a = by(id); if (a) arrange.push(this.actionPieEntry(a, t(`pie.hint.${id}`))); }
     for (const id of ["front", "back", "group", "ungroup"]) { const a = by(id); if (a?.enabled) arrange.push(this.actionPieEntry(a)); }
     this.pieConnect = [];
+    this.pieAlso = [];
     if (m.known) {
       try { this.pieConnect = this.sessionObj.connectOptions(sel, lang()); } catch { this.pieConnect = []; }
-      if (this.pieConnect.length) arrange.push(entry("menu:connected", t("pie.connected"), "cmd-select-assembly", this.pieConnect.map((c) => c.label).join(", ")));
+      // The same designation on other slides (COM "Same name: also on slides 2, 4").
+      if (sel.length === 1) try { this.pieAlso = alsoOn(this.elsewhere, designationOf(this.sessionObj.designations(), sel[0])?.key); } catch { this.pieAlso = []; }
+      if (this.pieConnect.length || this.pieAlso.length)
+        arrange.push(entry("menu:connected", t("pie.connected"), "cmd-select-assembly", [...this.pieConnect.map((c) => c.label), ...(this.pieAlso.length ? [this.alsoOnText()] : [])].join(", ")));
     }
 
     return [
@@ -1648,6 +1723,7 @@ export class App {
     }
     if (e.id === "menu:connected") {
       const items = this.pieConnect.map((c) => this.menuEntry(`connect:${c.kind}`, `${c.label} (${c.ids.length})`, "cmd-select-assembly", c.hint));
+      if (this.pieAlso.length) items.push(this.menuEntry("info:samename", this.alsoOnText(), undefined, t("connect.alsoOnHint")));
       return this.showSubmenu("connected", items, t("pie.connectedTitle"));
     }
     if (e.id.startsWith("connect:")) {
@@ -1846,9 +1922,41 @@ export class App {
     }
   }
 
-  /** Office selection-changed handler. */
+  /** Office selection-changed handler (also tells a slide change: the continuation map is read again then). */
   onOfficeSelectionChanged(): void {
     this.sync?.loadSelection().catch((e) => this.report(e));
+    if (this.slideAccess) void this.refreshContinuations();
+  }
+
+  /** Designations on the other slides (comparison key → 1-based slide numbers), for the slide shown. */
+  private elsewhere: Record<string, string[]> = {};
+  private elsewhereSlide?: string;
+  private continuationsBusy = false;
+
+  /**
+   * Designations across slides (interaction-ux.md section 6b): when the task pane opens and when another slide is shown,
+   * the designations of every other slide's units are read (one temporary engine session per slide) and passed to the
+   * editor session (`setContinuations`), so lines drawn from it carry continuation markers ("→ W3, slide 4") and "Select
+   * connected" reports the same name on other slides. Office.js reads every slide's shapes and tags for it, so it runs
+   * only then, not after every edit.
+   */
+  private async refreshContinuations(): Promise<void> {
+    if (this.continuationsBusy) return;
+    this.continuationsBusy = true;
+    try {
+      const cur = await currentSlide(this.office);
+      if (!cur || cur.id === this.elsewhereSlide) return;
+      const slides = await readSlideUnits(this.office);
+      const map = continuationMap(slideDesignations(this.engine, slides, { w: this.st.pageWidth, h: this.st.pageHeight }, lang()), cur.index);
+      this.elsewhereSlide = cur.id;
+      if (sameMap(this.elsewhere, map)) return;
+      this.elsewhere = map;
+      this.sessionObj.setContinuations(map, "slide");
+    } catch (e) {
+      console.warn("InventaSketch: designations of the other slides could not be read", e);
+    } finally {
+      this.continuationsBusy = false;
+    }
   }
 
   // ------------------------------------------------------------------ keyboard

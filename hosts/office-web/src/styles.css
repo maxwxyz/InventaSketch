@@ -389,3 +389,25 @@ textarea.isk-input { resize: vertical; }
 .isk-sheet-actions { gap: 6px; flex-wrap: wrap; }
 /* Option pictures (engine previews, library thumbnails) are drawn dark on transparent: inverted on dark panels. */
 :root[data-theme="dark"] .isk-ctxbar img, :root[data-theme="dark"] .isk-dropdown img { filter: invert(1) hue-rotate(180deg); }
+
+/* Value card, Calc 6: plausibility warnings with "Mute", and "Show values in" (preferred units). */
+.isk-val-checks { margin: 6px 0; padding-left: 4px; list-style: none; font-size: 12px; color: var(--muted); display: flex; flex-direction: column; gap: 2px; }
+.isk-val-checks li { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+.isk-val-checks li.is-warning { color: #b26a00; }
+.isk-val-checks li > span { min-width: 0; overflow-wrap: anywhere; }
+.isk-val-checks .isk-link { flex: none; font-size: 11px; background: none; border: 0; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.isk-val-units { margin-top: 6px; font-size: 12px; }
+.isk-val-units summary { cursor: pointer; color: var(--muted); }
+.isk-val-units .isk-field { grid-template-columns: 1fr 8em; margin-top: 4px; }
+/* Junction icon beside a crossing of wires or pipes ("Connect here"): two strokes and a dot in a ring. */
+.isk-junction { cursor: pointer; }
+.isk-junction circle { fill: #ffffff; stroke: #1f5fbf; stroke-width: 1.3px; vector-effect: non-scaling-stroke; }
+.isk-junction:hover circle { fill: #e1ecfc; }
+.isk-junction circle.isk-junction-dot { fill: #1f5fbf; stroke: none; }
+.isk-junction path { stroke: #1f5fbf; stroke-width: 1.4px; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+.isk-junction-lead { stroke: rgba(31, 95, 191, 0.5); stroke-width: 1px; vector-effect: non-scaling-stroke; stroke-dasharray: 2 2; pointer-events: none; }
+/* Drawing a line on from a free end: the line as it will be (engine preview) and the corners placed so far. */
+.isk-draw-preview { pointer-events: none; opacity: 0.75; }
+.isk-draw-corner { fill: #1f5fbf; stroke: #ffffff; stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+/* A selected corner of a line (split or remove in the bar). */
+.isk-handle-point.is-selected { fill: #f58000; stroke: #ffffff; stroke-width: 2px; }

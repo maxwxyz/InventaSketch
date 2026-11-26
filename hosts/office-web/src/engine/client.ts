@@ -7,6 +7,7 @@ import type {
   MotionInfo, MotionPreview, PreflightResult, PartView, SanitizeMode, SanitizeOptions, SanitizeResult,
   CalcResult, CodeImportResult, ConnectOption, ConvertUnitResult, DragHandleInfo, ExplainResult, ObjectHandles, ValueLevel, ValuesResult,
   CalcSheetMode, CalcSheetResult, InsertHandleInfo, LinkInfo, PolylineHandles, Vec2,
+  CheckInfo, CrossingInfo, DesignationInfo, LineEndInfo, MediumColourInfo, ValueSettings,
 } from "./types";
 
 export interface EngineBackend {
@@ -273,6 +274,42 @@ export class Session {
   }
   /** Inserts at place `key` of element `id` (a row, a column); one undo step. */
   applyInsertHandle(id: string, key: string): EditorState { return this.c("applyInsertHandle", { id, key }); }
+  /** Free ends of line `id` that can be drawn on, with the outward direction. */
+  lineEnds(id: string): LineEndInfo[] { return this.c("lineEnds", { id }); }
+  /** Draws line `id` on from end `index` through `points` (the last one snapped and docked with `snap`); one undo step. */
+  extendLine(id: string, index: number, points: Vec2[], snap: boolean, tolerance?: number, anchor = true): EditorState {
+    return this.c("extendLine", { id, index, points: points.map((p) => [p.x, p.y]), snap, tolerance, anchor });
+  }
+  /** SVG (page mm) of line `id` drawn on from end `index` through `points`; nothing changes. */
+  extendLinePreview(id: string, index: number, points: Vec2[]): string {
+    return this.c<{ svg: string }>("extendLine", { id, index, points: points.map((p) => [p.x, p.y]), snap: false, preview: true }).svg;
+  }
+  /** Where wire or pipe `id` crosses another one (junction icons). */
+  crossings(id: string): CrossingInfo[] { return this.c("crossings", { id }); }
+  /** Connects line `id` at crossing `index` (split there, both parts docked on the other line); one undo step. */
+  connectCrossing(id: string, index: number): EditorState { return this.c("connectCrossing", { id, index }); }
+  /** Display mode of connection lines: "medium" colours them by medium and role, "" restores their own colours. */
+  setColorBy(mode: "" | "medium"): EditorState { return this.c("setColorBy", { text: mode }); }
+  /** The colour scheme by medium; `used` only the colours the connection lines of this session use (a legend). */
+  mediumColours(lang: string, used = false): MediumColourInfo[] { return this.c("mediumColours", { lang, mode: used ? "used" : undefined }); }
+  /** Inserts the legend of medium colours (`colours`: scheme ids, default: those used) as one group, top right. */
+  insertMediumLegend(lang: string, colours?: string[]): { inserted: boolean; state: EditorState } {
+    return this.c("insertMediumLegend", { lang, json: colours ? JSON.stringify(colours) : undefined });
+  }
+  /** The designations of the session's document (comparison key, as typed, ids). */
+  designations(): DesignationInfo[] { return this.c("designations"); }
+  /** Where else designations occur (comparison key → page labels) for continuation markers; null clears. */
+  setContinuations(map: Record<string, string[]> | null, pages: "slide" | "page" = "slide"): EditorState {
+    return this.c("setContinuations", { json: map && Object.keys(map).length ? JSON.stringify(map) : undefined, text: pages, includeSvg: false });
+  }
+  /** Violated plausibility checks of `ids` (none: the page); muted checks are left out. */
+  checks(ids: string[] | undefined, lang: string): CheckInfo[] { return this.c("checks", { ids, lang }); }
+  /** Mutes (or with `mute` false unmutes) check `key` for the drawing; one undo step. */
+  muteCheck(key: string, mute = true): EditorState { return this.c<{ state: EditorState }>("muteCheck", { key, text: mute ? "on" : "off" }).state; }
+  /** The preferred display unit of `quantityKind` ("" clears it); one undo step. */
+  setUnitPreference(quantityKind: string, unit: string): EditorState { return this.c<{ state: EditorState }>("setUnitPreference", { quantityKind, unit }).state; }
+  /** Muted checks and preferred units of the drawing. */
+  valueSettings(): ValueSettings { return this.c("valueSettings"); }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */
   update(object: unknown): EditorState { return this.c("update", { object }); }
 }

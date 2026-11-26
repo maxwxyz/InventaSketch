@@ -3,7 +3,7 @@
 // selection, everything else fades in near the pointer, Shift shows all), the primary "+", where a corner dot puts its
 // corner, the value card's ↔ drag and its range line. Screen pixels and page mm; no DOM (unit-tested).
 
-import type { BuildPortInfo, DragHandleInfo, ValueLevel, VarInfo, Vec2 } from "../engine/types";
+import type { BuildPortInfo, CheckInfo, DragHandleInfo, LineEndInfo, PolylineHandles, ValueLevel, VarInfo, Vec2 } from "../engine/types";
 
 /**
  * Pointer distance (px) within which a secondary handle is fully shown, and beyond which it is gone; in between it fades
@@ -130,4 +130,68 @@ export function shownWith(grip: Pick<DragHandleInfo, "part" | "showWith">, selec
 /** Corner `index` of a line can be removed by a double-click (the engine's `removable` list). */
 export function canRemoveCorner(removable: readonly number[] | undefined, index: number): boolean {
   return !!removable && removable.includes(index);
+}
+
+/** Size of a junction icon (px) and its distance from the crossing (COM `SegHandlePx`, the layout's junction priority 60). */
+export const JUNCTION_PX = 5, JUNCTION_OFFSET_PX = 12;
+/** Distance of the "+" at a free line end without a port beyond the end (px, COM "end:" handle). */
+export const END_OFFSET_PX = 18;
+
+/**
+ * The ⚠ badge of an element (COM `ValueBadge`): "conflict" when its entered values conflict, "warning" when a plausibility
+ * check that is not muted warns about it (the engine leaves muted ones out), else "".
+ */
+export function badgeKind(status: string | undefined, checks: readonly Pick<CheckInfo, "objectId" | "severity">[], id: string): "conflict" | "warning" | "" {
+  if (status === "conflict") return "conflict";
+  return checks.some((c) => c.objectId === id && c.severity === "warning") ? "warning" : "";
+}
+
+/** The card line of a check (COM `CheckLines`): "⚠ message (rule) [source]" for warnings, "ⓘ …" for hints. */
+export function checkLine(c: Pick<CheckInfo, "severity" | "message" | "rule" | "source">): string {
+  return (c.severity === "warning" ? "⚠ " : "ⓘ ") + c.message + (c.rule?.trim() ? ` (${c.rule})` : "") + (c.source?.trim() ? ` [${c.source}]` : "");
+}
+
+/**
+ * The preferred display units offered under "Show values in" (COM `ValueDocSettings.Offered`): quantity kind and unit
+ * symbols as the engine knows them (speed of rotation: min⁻¹, rev/s, rad/s).
+ */
+export const UNIT_CHOICES: readonly { kind: string; units: readonly string[] }[] = [
+  { kind: "pressure", units: ["bar", "MPa", "kPa"] },
+  { kind: "rotationalSpeed", units: ["min⁻¹", "rev/s", "rad/s"] },
+  { kind: "energy", units: ["kWh", "MJ", "J"] },
+  { kind: "power", units: ["W", "kW"] },
+];
+
+/** Shift while drawing a line on: the direction from `from` to `p` in 15° steps, the length kept (COM `AngleStep`). */
+export function angleStep(from: Vec2, p: Vec2): Vec2 {
+  const step = Math.PI / 12;
+  const a = Math.round(Math.atan2(p.y - from.y, p.x - from.x) / step) * step;
+  const len = Math.hypot(p.x - from.x, p.y - from.y);
+  return { x: from.x + Math.cos(a) * len, y: from.y + Math.sin(a) * len };
+}
+
+/**
+ * The free line ends that get their own "+" (COM `_endHandles` without a port "+" there): those of `ends` with no
+ * `LineEnd` build port within half a millimetre (a connection line's port "+" draws on itself).
+ */
+export function endsWithoutPort<T extends Pick<LineEndInfo, "x" | "y">>(ends: readonly T[], ports: readonly Pick<BuildPortInfo, "kind" | "x" | "y">[]): T[] {
+  return ends.filter((e) => !ports.some((p) => p.kind === "LineEnd" && Math.hypot(p.x - e.x, p.y - e.y) < 0.5));
+}
+
+/** The point index a `LineEnd` port "+" draws the line on from: its start ("line.start") or its last point. */
+export function portEndIndex(port: Pick<BuildPortInfo, "id" | "kind">, pointCount: number): number | undefined {
+  if (port.kind !== "LineEnd" || pointCount < 2) return undefined;
+  return port.id === "line.start" ? 0 : pointCount - 1;
+}
+
+/**
+ * The bar of a selected corner (COM `CornerButtons`): split (or open a closed outline) where the engine says it can,
+ * remove where it can; empty when neither applies.
+ */
+export function cornerCommands(info: Pick<PolylineHandles, "closed" | "splittable" | "removable"> | undefined, index: number): ("split" | "open" | "remove")[] {
+  if (!info) return [];
+  const out: ("split" | "open" | "remove")[] = [];
+  if (info.splittable.includes(index)) out.push(info.closed ? "open" : "split");
+  if (info.removable.includes(index)) out.push("remove");
+  return out;
 }

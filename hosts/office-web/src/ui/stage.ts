@@ -3,13 +3,13 @@
 // previews drags with SVG transforms and commits the result through the session.
 
 import type { Session } from "../engine/client";
-import type { BuildPortInfo, CatalogItem, DragHandleInfo, EditorState, InsertHandleInfo, LinkInfo, MotionInfo, ObjectInfo, PolylineHandles, SegmentHandleInfo, SnapGuide, Vec2 } from "../engine/types";
+import type { BuildPortInfo, CatalogItem, CrossingInfo, DragHandleInfo, EditorState, InsertHandleInfo, LineEndInfo, LinkInfo, MotionInfo, ObjectInfo, PolylineHandles, SegmentHandleInfo, SnapGuide, Vec2 } from "../engine/types";
 import { lang, t } from "../i18n";
 import { COUPLING_PREVIEW_MS, HUB_CORNER_PX, PORT_OFFSET_PX, PORT_RADIUS_PX, Throttle, portTipKey, stretchTarget } from "./buildlogic";
 import { PRIORITY, resolveHandles, type LayoutSpec } from "./handlelayout";
 import {
-  BADGE_OFFSET_PX, BADGE_PX, BRANCH_OFFSET_PX, BRANCH_PX, CORNER_DOT_PX, GAP_SCALE, MIN_SEGMENT_PX, SMALL_ELEMENT_PX, VALUE_BADGE_PX,
-  bodyGrip, canRemoveCorner, cornerAt, primaryPort, revealOpacity, shownWith,
+  BADGE_OFFSET_PX, BADGE_PX, BRANCH_OFFSET_PX, BRANCH_PX, CORNER_DOT_PX, END_OFFSET_PX, GAP_SCALE, JUNCTION_OFFSET_PX, JUNCTION_PX, MIN_SEGMENT_PX, SMALL_ELEMENT_PX, VALUE_BADGE_PX,
+  angleStep, bodyGrip, canRemoveCorner, cornerAt, cornerCommands, endsWithoutPort, portEndIndex, primaryPort, revealOpacity, shownWith,
 } from "./handlelogic";
 import { clamp, s, svgChildren, svgDataUrl, viewBoxOf } from "./dom";
 import { TurnTracker, canMove, insideBounds, nearestJoint, stepTurn, turnLabel } from "./motionlogic";
@@ -43,8 +43,10 @@ export interface StageHost {
   selectedPart?(id: string): string | undefined;
   /** A click on a grip: select its part of element `id`. */
   selectPart?(id: string, part: string): void;
-  /** The entered values of element `id` conflict (Explore and Engineer): the stage shows the ⚠ badge. */
-  valueConflict?(id: string): boolean;
+  /** The ⚠ badge of element `id` (Explore and Engineer): "conflict" (entered values conflict), "warning" (a plausibility check warns), "" none. */
+  valueAlert?(id: string): "conflict" | "warning" | "";
+  /** A corner of the selected line was selected or deselected (the bar offers split and remove). */
+  cornerChanged?(): void;
   /** A click on the ⚠ badge: the value card of the selected element. */
   openValues?(): void;
   report(error: unknown): void;
@@ -55,7 +57,8 @@ interface Frame { cx: number; cy: number; w: number; h: number; rot: number }
 export type ChainSide = "left" | "top" | "right" | "bottom";
 
 type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide } | { kind: "port"; index: number } | { kind: "grip"; index: number }
-  | { kind: "lock"; index: number } | { kind: "corner"; index: number } | { kind: "branch"; index: number } | { kind: "gap"; index: number } | { kind: "valuebadge" };
+  | { kind: "lock"; index: number } | { kind: "corner"; index: number } | { kind: "branch"; index: number } | { kind: "gap"; index: number } | { kind: "valuebadge" }
+  | { kind: "junction"; index: number } | { kind: "end"; index: number };
 
 /** A handle that fades in near the pointer (progressive disclosure): its element, where it is and where it belongs (page mm). */
 interface Revealable { el: SVGElement; at: Vec2; anchor?: Vec2; primary: boolean }
@@ -81,12 +84,19 @@ type Drag =
   | { kind: "corner"; obj: ObjectInfo; seg: SegmentHandleInfo; start: Vec2; pos: Vec2; startClient: Vec2; moved: boolean; snapped: boolean }
   /** A branch dragged out of a line (a click adds a short stub). */
   | { kind: "branch"; id: string; seg: SegmentHandleInfo; from: Vec2; end: Vec2; startClient: Vec2; moved: boolean; snapped: boolean }
+  /**
+   * Drawing a line on from free end `index` (point index): `pts` the corners placed so far, `cur` the pointer (snapped).
+   * A drag sets one new end on release; a click on an end "+" keeps drawing (`sticky`: every click adds a corner; a
+   * double-click, Enter, Esc or a right-click ends). Dragging a line end port "+" starts it too.
+   */
+  | { kind: "draw"; id: string; index: number; from: Vec2; pts: Vec2[]; cur: Vec2; startClient: Vec2; moved: boolean; sticky: boolean; snapped: boolean; lastSnapped: boolean }
   /** A click target (lock badge, insert dot, ⚠ badge): runs on release when the pointer did not move away. */
   | { kind: "tap"; run: () => void; startClient: Vec2 }
   /** Motion mode: a gear turned about its centre (`turn`), or joint `index` of a link pulled to `target`. */
   | { kind: "motion"; id: string; turn?: TurnTracker; degrees: number; index: number; from?: Vec2; target: Vec2; startClient: Vec2; moved: boolean; dimmed: string[] };
 
 type MotionDrag = Extract<Drag, { kind: "motion" }>;
+type DrawDrag = Extract<Drag, { kind: "draw" }>;
 type MovingInfo = Exclude<MotionInfo, { kind: "none" }>;
 
 const HANDLE_PX = 9;
@@ -183,6 +193,15 @@ export class Stage {
   private links?: { key: string; list: LinkInfo[] };
   private poly?: { key: string; info?: PolylineHandles };
   private gaps?: { key: string; list: InsertHandleInfo[] };
+  /** Crossings (junction icons) and free ends without a port "+" of a selected line, fetched once per selection and revision. */
+  private crossings?: { key: string; list: CrossingInfo[] };
+  private ends?: { key: string; list: LineEndInfo[] };
+  private shownCrossings: CrossingInfo[] = [];
+  private shownEnds: LineEndInfo[] = [];
+  /** The selected corner of the selected line (bar: split, remove), valid for one revision. */
+  private selectedCorner?: { id: string; index: number; revision: number };
+  /** Preview of a line drawn on (engine `extendLine` with preview), at the coupling preview rate. */
+  private readonly drawThrottle = new Throttle((d: DrawDrag) => this.showDraw(d), COUPLING_PREVIEW_MS);
   /** What the drawn handles stand for, in `data-handle` index order, and where the corner dots were placed (page mm). */
   private shownLinks: LinkInfo[] = [];
   private shownSegs: SegmentHandleInfo[] = [];
@@ -243,6 +262,8 @@ export class Stage {
     this.el.append(this.svg, this.scaleLabelEl, this.snapLabelEl);
     window.addEventListener("keydown", (e) => this.onModifier(e));
     window.addEventListener("keydown", (e) => { if (e.key === "Escape" && this.sketch) { this.cancelSketch(); e.preventDefault(); } });
+    // Enter ends drawing a line on (Esc too, through the app's cancel).
+    window.addEventListener("keydown", (e) => { if (e.key === "Enter" && this.drag?.kind === "draw" && this.drag.sticky) { e.preventDefault(); this.endDraw(); } });
     window.addEventListener("keyup", (e) => this.onModifier(e));
     // Shift shows every handle of the selection; released, only those near the pointer stay.
     for (const type of ["keydown", "keyup"] as const)
@@ -512,6 +533,8 @@ export class Stage {
     this.shownSegs = [];
     this.segPlaced = [];
     this.shownGaps = [];
+    this.shownCrossings = [];
+    this.shownEnds = [];
     this.drawOverlayCore(previewFrame, previewPoints);
     if (!previewFrame && !previewPoints && !this.drag) this.drawValueBadge();
     this.updateReveal();
@@ -534,8 +557,9 @@ export class Stage {
     if (single?.kind === "points" && !previewFrame) {
       const pts = previewPoints?.obj.id === single.id ? previewPoints.pts : single.points ?? [];
       this.overlay.append(s("polyline", { class: "isk-sel-path", points: pts.map((p) => `${p.x},${p.y}`).join(" ") }));
+      const corner = this.corner?.id === single.id ? this.corner.index : -1;
       pts.forEach((p, i) => {
-        const c = s("circle", { class: `isk-handle isk-handle-point${motion ? " isk-motion-joint" : ""}`, cx: p.x, cy: p.y, r: (HANDLE_PX / 2 + 1) * px });
+        const c = s("circle", { class: `isk-handle isk-handle-point${motion ? " isk-motion-joint" : ""}${i === corner ? " is-selected" : ""}`, cx: p.x, cy: p.y, r: (HANDLE_PX / 2 + 1) * px });
         c.dataset.handle = JSON.stringify({ kind: "point", index: i } satisfies HandleSpec);
         this.overlay.append(c);
       });
@@ -732,6 +756,56 @@ export class Stage {
     return this.poly.info;
   }
 
+  /** Crossings of a selected wire or pipe with others (engine `crossings`): a junction icon at each. */
+  private crossingsOf(obj: ObjectInfo): CrossingInfo[] {
+    if (!obj.known || obj.kind !== "points") return [];
+    const key = `${obj.id}@${this.host.state().revision}`;
+    if (this.crossings?.key !== key) {
+      let list: CrossingInfo[] = [];
+      try {
+        list = this.host.session().crossings(obj.id);
+      } catch {
+        list = [];
+      }
+      this.crossings = { key, list };
+    }
+    return this.crossings.list;
+  }
+
+  /** Free ends of a selected line that can be drawn on (engine `lineEnds`). */
+  private endsOf(obj: ObjectInfo): LineEndInfo[] {
+    if (!obj.known || obj.kind !== "points") return [];
+    const key = `${obj.id}@${this.host.state().revision}`;
+    if (this.ends?.key !== key) {
+      let list: LineEndInfo[] = [];
+      try {
+        list = this.host.session().lineEnds(obj.id);
+      } catch {
+        list = [];
+      }
+      this.ends = { key, list };
+    }
+    return this.ends.list;
+  }
+
+  /** Corner info of line `id` (engine `polylineHandles`), for the corner bar. */
+  polylineInfo(id: string): PolylineHandles | undefined {
+    const obj = this.objects([id])[0];
+    return obj ? this.polyOf(obj) : undefined;
+  }
+
+  /** The selected corner of the selected line, while it is selected alone and nothing changed since. */
+  get corner(): { id: string; index: number } | undefined {
+    const c = this.selectedCorner;
+    const st = this.host.state();
+    if (!c || c.revision !== st.revision || st.selection.length !== 1 || st.selection[0] !== c.id) return undefined;
+    return { id: c.id, index: c.index };
+  }
+
+  clearCorner(): void {
+    this.selectedCorner = undefined;
+  }
+
   /** Insert places of a selected element (engine `insertHandles`: between table rows and columns). */
   private gapsOf(obj: ObjectInfo): InsertHandleInfo[] {
     if (!obj.known || obj.kind !== "box") return [];
@@ -777,6 +851,12 @@ export class Stage {
     });
     gaps.forEach((g, i) => specs.push({ id: `gap:${i}`, kind: "add", anchor: toPx(g), dir: { x: g.dx, y: g.dy }, offset: 0, radius: PORT_RADIUS_PX * GAP_SCALE, priority: 50, optional: true, maxPush: 18 }));
     links.forEach((l, i) => specs.push({ id: `lock:${i}`, kind: "lock", anchor: toPx(l), dir: { x: Math.SQRT1_2, y: -Math.SQRT1_2 }, offset: BADGE_OFFSET_PX * Math.SQRT2, radius: BADGE_PX, priority: PRIORITY.lock, orbit: true, maxPush: 48 }));
+    // Free ends without a port "+" (polylines, roads, straight lines …): the same "+", it draws the line on (COM "end:").
+    const ends = obj.kind === "points" ? endsWithoutPort(this.endsOf(obj), ports) : [];
+    ends.forEach((e, i) => specs.push({ id: `end:${i}`, kind: "add", anchor: toPx(e), dir: { x: e.dx, y: e.dy }, offset: END_OFFSET_PX, radius: PORT_RADIUS_PX, priority: 88, maxPush: 60 }));
+    // Junction icons beside each crossing with another wire or pipe ("Connect here", COM "cross:").
+    const crossings = small ? [] : this.crossingsOf(obj);
+    crossings.forEach((c, i) => specs.push({ id: `junction:${i}`, kind: "junction", anchor: toPx(c), dir: { x: Math.SQRT1_2, y: -Math.SQRT1_2 }, offset: JUNCTION_OFFSET_PX, radius: JUNCTION_PX, priority: PRIORITY.junction, orbit: true, maxPush: 40 }));
     const segs: SegmentHandleInfo[] = [];
     for (const seg of poly?.segments ?? []) {
       const a = toPx({ x: seg.ax, y: seg.ay }), b = toPx({ x: seg.bx, y: seg.by });
@@ -849,6 +929,21 @@ export class Stage {
       this.revealables.push({ el: g, at: h.at, anchor: { x: link.x, y: link.y }, primary: false });
     });
     this.shownLinks = links;
+    crossings.forEach((cr, i) => {
+      const h = at(`junction:${i}`);
+      if (!h?.visible) return;
+      const r = JUNCTION_PX * px, k = r * 0.55, d = 1.5 * px;
+      const g = s("g", { class: "isk-junction" });
+      g.dataset.handle = JSON.stringify({ kind: "junction", index: i } satisfies HandleSpec);
+      const title = s("title");
+      title.textContent = t("handle.junction");
+      g.append(title, s("line", { class: "isk-junction-lead", x1: cr.x, y1: cr.y, x2: h.at.x, y2: h.at.y }), s("circle", { cx: h.at.x, cy: h.at.y, r }),
+        s("path", { d: `M${h.at.x - k} ${h.at.y}H${h.at.x + k}M${h.at.x} ${h.at.y - k}V${h.at.y + k}` }),
+        s("circle", { class: "isk-junction-dot", cx: h.at.x, cy: h.at.y, r: d }));
+      this.overlay.append(g);
+      this.revealables.push({ el: g, at: h.at, anchor: { x: cr.x, y: cr.y }, primary: false });
+    });
+    this.shownCrossings = crossings;
     this.portPlus = [];
     ports.forEach((port, i) => {
       const h = at(`port:${i}`);
@@ -861,11 +956,28 @@ export class Stage {
       g.dataset.handle = JSON.stringify({ kind: "port", index: i } satisfies HandleSpec);
       g.dataset.port = port.id;
       const title = s("title");
-      title.textContent = t(portTipKey(port));
+      // A line end "+": a click offers what fits there, a drag draws the line on (as in the COM add-in).
+      title.textContent = t(port.kind === "LineEnd" ? "port.LineEnd.draw" : portTipKey(port));
       g.append(title, s("circle", { cx: c.x, cy: c.y, r }), s("path", { d: `M${c.x - k} ${c.y}H${c.x + k}M${c.x} ${c.y - k}V${c.y + k}` }));
       this.overlay.append(g);
       this.revealables.push({ el: g, at: c, anchor: { x: port.x, y: port.y }, primary: i === primary });
     });
+    // The "+" at free ends without a port: the end of the line is primary when no port "+" is (COM `PrimaryHandleId`).
+    const endPrimary = primary >= 0 ? -1 : Math.max(0, ends.findIndex((e) => !e.atStart));
+    ends.forEach((end, i) => {
+      const h = at(`end:${i}`);
+      if (!h) return;
+      const c = h.at;
+      const g = s("g", { class: "isk-port isk-port-end" });
+      const r = PORT_RADIUS_PX * px, k = r * 0.55;
+      g.dataset.handle = JSON.stringify({ kind: "end", index: i } satisfies HandleSpec);
+      const title = s("title");
+      title.textContent = t("handle.drawOn");
+      g.append(title, s("line", { class: "isk-port-lead", x1: end.x, y1: end.y, x2: c.x, y2: c.y }), s("circle", { cx: c.x, cy: c.y, r }), s("path", { d: `M${c.x - k} ${c.y}H${c.x + k}M${c.x} ${c.y - k}V${c.y + k}` }));
+      this.overlay.append(g);
+      this.revealables.push({ el: g, at: c, anchor: { x: end.x, y: end.y }, primary: i === endPrimary });
+    });
+    this.shownEnds = ends;
   }
 
   /** A padlock centred at `c` (page mm): body and shackle, the shackle lifted and open when released (COM `DrawLock`). */
@@ -884,30 +996,33 @@ export class Stage {
 
   /**
    * The ⚠ badge (like the COM add-in): a small amber triangle just outside the top right corner of a selected element
-   * whose entered values conflict, in Explore and Engineer; a click opens its value card.
+   * whose entered values conflict or that a plausibility check warns about, in Explore and Engineer; a click opens its
+   * value card.
    */
   private drawValueBadge(): void {
     const st = this.host.state();
-    if (st.selection.length !== 1 || !this.host.valueConflict) return;
+    if (st.selection.length !== 1 || !this.host.valueAlert) return;
     const o = this.objects(st.selection)[0];
-    if (!o?.hasValues || !this.host.valueConflict(o.id)) return;
+    const kind = o?.hasValues ? this.host.valueAlert(o.id) : "";
+    if (!o || !kind) return;
     const f = o.kind === "box" ? this.frameOf(st.selection) : undefined;
     const pts = f ? [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => this.framePoint(f, u, v)) : [{ x: o.bounds.x, y: o.bounds.y }, { x: o.bounds.x + o.bounds.w, y: o.bounds.y }];
     const px = 1 / this.scale, off = VALUE_BADGE_PX * px, hgt = 11 * px;
     const c = { x: Math.max(...pts.map((p) => p.x)) + off, y: Math.min(...pts.map((p) => p.y)) - off };
-    const g = s("g", { class: "isk-value-badge" });
+    const g = s("g", { class: `isk-value-badge is-${kind}` });
     g.dataset.handle = JSON.stringify({ kind: "valuebadge" } satisfies HandleSpec);
+    g.dataset.badge = kind;
     const title = s("title");
-    title.textContent = t("val.badge");
+    title.textContent = t(kind === "conflict" ? "val.badge" : "val.badgeWarn");
     g.append(title,
       s("path", { d: `M${c.x} ${c.y - hgt / 2}L${c.x + hgt * 0.58} ${c.y + hgt / 2}L${c.x - hgt * 0.58} ${c.y + hgt / 2}Z` }),
       s("path", { class: "isk-value-badge-ink", d: `M${c.x} ${c.y - hgt * 0.18}V${c.y + hgt * 0.18}M${c.x} ${c.y + hgt * 0.3}V${c.y + hgt * 0.36}` }));
     this.overlay.append(g);
   }
 
-  /** The ⚠ badge as last drawn (UI checks): "conflict" or "". */
+  /** The ⚠ badge as last drawn (UI checks): "conflict", "warning" or "". */
   get valueBadge(): string {
-    return this.overlay.querySelector(".isk-value-badge") ? "conflict" : "";
+    return (this.overlay.querySelector(".isk-value-badge") as SVGElement | null)?.dataset.badge ?? "";
   }
 
   /**
@@ -1180,6 +1295,24 @@ export class Stage {
       return;
     }
     if (this.sketch && e.button === 2) { this.cancelSketch(); return; }
+    // Drawing on after a click on an end "+": every click adds a corner; a click on the last corner (double-click) or a
+    // right-click ends (COM `DrawMouse`).
+    const dd = this.drag;
+    if (dd?.kind === "draw" && dd.sticky) {
+      e.preventDefault();
+      if (e.button === 2) { this.endDraw(); return; }
+      if (e.button !== 0) return;
+      this.trackDraw(dd, p, e);
+      const last = dd.pts[dd.pts.length - 1];
+      if (last) {
+        const lc = this.toClient(last);
+        if (e.detail >= 2 || Math.hypot(lc.x - e.clientX, lc.y - e.clientY) < 6) { this.endDraw(); return; }
+      }
+      dd.pts.push(dd.cur);
+      dd.lastSnapped = dd.snapped;
+      this.drawThrottle.push(dd);
+      return;
+    }
     const session = this.host.session();
     const st = this.host.state();
     if (e.button === 1 || (e.button === 0 && this.spaceDown)) {
@@ -1313,6 +1446,17 @@ export class Stage {
       this.drag = { kind: "tap", startClient: client, run: () => this.host.openValues?.() };
       return;
     }
+    if (h.kind === "junction" && objs.length === 1) {
+      // Connect at the crossing: the line is split there and both parts dock onto the other line (one undo step).
+      const c = this.shownCrossings[h.index];
+      if (c) this.drag = { kind: "tap", startClient: client, run: () => this.host.apply(this.host.session().connectCrossing(objs[0].id, c.index), true) };
+      return;
+    }
+    if (h.kind === "end" && objs.length === 1) {
+      const end = this.shownEnds[h.index];
+      if (end) this.drag = { kind: "draw", id: objs[0].id, index: end.index, from: { x: end.x, y: end.y }, pts: [], cur: { x: end.x, y: end.y }, startClient: client, moved: false, sticky: false, snapped: false, lastSnapped: false };
+      return;
+    }
     if (h.kind === "corner" && objs.length === 1) {
       const seg = this.shownSegs[h.index];
       if (!seg) return;
@@ -1397,8 +1541,27 @@ export class Stage {
           this.gripThrottle.push(d.id, d.grip, d.to, { x: e.clientX, y: e.clientY });
           return;
         }
+        case "draw": {
+          if (!d.sticky && !d.moved) {
+            if (Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < 4) return;
+            d.moved = true;
+          }
+          this.trackDraw(d, p, e);
+          this.drawThrottle.push(d);
+          if (d.sticky) this.showScaleLabel(t("draw.hint"), { x: e.clientX, y: e.clientY });
+          return;
+        }
         case "port": {
           if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < 5) return;
+          // One "+" per free line end: dragging it draws the line on (the click opens what fits there, COM `PortDragMouse`).
+          const end = portEndIndex(d.port, this.objects([d.id])[0]?.points?.length ?? 0);
+          if (end !== undefined && !d.port.stretch) {
+            const draw: DrawDrag = { kind: "draw", id: d.id, index: end, from: { x: d.port.x, y: d.port.y }, pts: [], cur: p, startClient: d.startClient, moved: true, sticky: false, snapped: false, lastSnapped: false };
+            this.drag = draw;
+            this.trackDraw(draw, p, e);
+            this.drawThrottle.push(draw);
+            return;
+          }
           // Only a shaft end stretches; any other "+" is click-only.
           if (!d.port.stretch) return;
           d.moved = true;
@@ -1616,6 +1779,17 @@ export class Stage {
       return;
     }
     const d = this.drag;
+    if (d?.kind === "draw" && (d.sticky || !d.moved)) {
+      // Drawing on: in sticky mode the presses add corners; a click on an end "+" without moving starts it.
+      if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
+      if (!d.sticky) {
+        d.sticky = true;
+        this.host.hideBar?.();
+        this.trackDraw(d, this.toPage(e.clientX, e.clientY), e);
+        this.showScaleLabel(t("draw.hint"), { x: e.clientX, y: e.clientY });
+      }
+      return;
+    }
     this.drag = undefined;
     // The handles near the pointer stay shown after the edit.
     this.revealPointer = this.toPage(e.clientX, e.clientY);
@@ -1676,7 +1850,16 @@ export class Stage {
           else this.resetPreview(d.ids);
           break;
         case "point": {
-          if (!d.moved) { this.drawOverlay(); break; }
+          if (!d.moved) {
+            // A click on a corner of a line with free corners selects it (the bar offers split and remove), a second
+            // click deselects it (COM `SelectCorner`).
+            const again = this.corner?.id === d.obj.id && this.corner.index === d.index;
+            const can = cornerCommands(this.polyOf(d.obj), d.index).length > 0;
+            this.selectedCorner = !again && can ? { id: d.obj.id, index: d.index, revision: this.host.state().revision } : undefined;
+            this.drawOverlay();
+            this.host.cornerChanged?.();
+            break;
+          }
           const snap = this.host.snapEnabled() && !e.altKey;
           const n = d.obj.points?.length ?? 0;
           // An end dropped on a free end of a line of the same kind joins both lines (as in the COM add-in).
@@ -1692,6 +1875,11 @@ export class Stage {
           else this.drawOverlay();
           break;
         }
+        case "draw":
+          // A drag from the end: one new end where it was released (snapped and docked like a line end).
+          this.trackDraw(d, this.toPage(e.clientX, e.clientY), e);
+          this.finishDraw(d, [...d.pts, d.cur], d.snapped);
+          break;
         case "corner": {
           // Click: a corner where the dot is drawn; drag: bent to the pointer (snapped, docked). One undo step.
           const to = d.moved ? d.pos : d.start;
@@ -1733,8 +1921,76 @@ export class Stage {
     this.drawOverlay();
   }
 
+  /** Where the pointer puts the next point of a line drawn on: Shift 15° steps from the last corner, else snapped. */
+  private trackDraw(d: DrawDrag, p: Vec2, e: { shiftKey: boolean; altKey: boolean }): void {
+    const last = d.pts.length ? d.pts[d.pts.length - 1] : d.from;
+    d.snapped = false;
+    if (e.shiftKey) {
+      d.cur = angleStep(last, p);
+      this.guides.replaceChildren();
+    } else if (this.host.snapEnabled() && !e.altKey) {
+      const r = this.host.session().snapPoint(p.x, p.y, [d.id], this.tolerance());
+      d.cur = { x: r.x, y: r.y };
+      d.snapped = true;
+      this.drawGuides(r.guides);
+    } else {
+      d.cur = p;
+      this.guides.replaceChildren();
+    }
+  }
+
+  /** Preview of the line drawn on: the engine's drawing of the extended line, plus the corners placed so far. */
+  private showDraw(d: DrawDrag): void {
+    if (this.drag !== d) return;
+    const pts = [...d.pts, d.cur];
+    let nodes: Node[] = [];
+    try {
+      const svg = this.host.session().extendLinePreview(d.id, d.index, pts);
+      if (svg) nodes = svgChildren(svg);
+    } catch {
+      nodes = [];
+    }
+    const g = s("g", { class: "isk-draw-preview" });
+    if (nodes.length) g.append(...nodes);
+    else g.append(s("polyline", { class: "isk-branch-preview", points: [d.from, ...pts].map((q) => `${q.x},${q.y}`).join(" ") }));
+    this.ghost.replaceChildren(g, ...d.pts.map((q) => s("circle", { class: "isk-draw-corner", cx: q.x, cy: q.y, r: 2 / this.scale })));
+  }
+
+  /** Ends drawing on (double-click, right-click, Enter, Esc): the corners placed so far, the last one docked. */
+  endDraw(): void {
+    const d = this.drag;
+    if (d?.kind !== "draw") return;
+    this.drag = undefined;
+    this.finishDraw(d, d.pts, d.lastSnapped);
+  }
+
+  /** Drawing on, as it is now (UI checks): the corners placed and whether clicks add corners. */
+  get drawing(): { corners: number; sticky: boolean } | undefined {
+    const d = this.drag;
+    return d?.kind === "draw" ? { corners: d.pts.length, sticky: d.sticky } : undefined;
+  }
+
+  /** Commits a line drawn on (one undo step); nothing placed: nothing changes. */
+  private finishDraw(d: DrawDrag, pts: Vec2[], snap: boolean): void {
+    this.drawThrottle.cancel();
+    this.ghost.replaceChildren();
+    this.guides.replaceChildren();
+    this.hideScaleLabel();
+    if (this.drag === d) this.drag = undefined;
+    if (!pts.length) { this.drawOverlay(); this.host.cornerChanged?.(); return; }
+    try {
+      this.host.apply(this.host.session().extendLine(d.id, d.index, pts, snap, this.tolerance(), this.host.anchorEnabled()), true);
+    } catch (err) {
+      this.host.report(err);
+      this.render();
+    }
+  }
+
   cancelDrag(): void {
     const d = this.drag;
+    // Esc while drawing on ends it with the corners placed so far (as in the COM add-in).
+    if (d?.kind === "draw" && d.sticky) { this.endDraw(); return; }
+    if (d?.kind === "draw") { this.drawThrottle.cancel(); this.ghost.replaceChildren(); }
     this.drag = undefined;
     this.guides.replaceChildren();
     this.hideScaleLabel();

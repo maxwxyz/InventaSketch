@@ -44,6 +44,34 @@ namespace InventaSketch.Engine
         public double By { get; set; }
     }
 
+    /// <summary>A free end of a line that can be drawn on (engine <c>lineEnds</c>): the "+" there extends it.</summary>
+    public sealed class LineEndInfo
+    {
+        /// <summary>Point index of the end (0 or the last point); pass it to <c>extendLine</c>.</summary>
+        public int Index { get; set; }
+        public bool AtStart { get; set; }
+        /// <summary>The end (page mm).</summary>
+        public double X { get; set; }
+        public double Y { get; set; }
+        /// <summary>Unit direction out of the line at that end.</summary>
+        public double Dx { get; set; }
+        public double Dy { get; set; }
+    }
+
+    /// <summary>Where the line crosses another wire or pipe without being connected (engine <c>crossings</c>).</summary>
+    public sealed class CrossingInfo
+    {
+        /// <summary>Pass it to <c>connectCrossing</c>.</summary>
+        public int Index { get; set; }
+        /// <summary>Id of the crossed line.</summary>
+        public string Other { get; set; } = "";
+        /// <summary>The crossing (page mm).</summary>
+        public double X { get; set; }
+        public double Y { get; set; }
+        /// <summary>This line lies on top there (it draws the hop).</summary>
+        public bool Above { get; set; }
+    }
+
     /// <summary>Corner and branch handles of a line with free corners (engine <c>polylineHandles</c>).</summary>
     public sealed class PolylineHandlesInfo
     {

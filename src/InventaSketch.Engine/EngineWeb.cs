@@ -25,12 +25,28 @@ namespace InventaSketch.Engine
     /// line of the same kind lying there: <c>{ joined, state }</c>; nothing changes when there is none.</item>
     /// <item><c>insertCalcTable</c> {ids, x, y, digits}: the calculation sheet of <c>ids</c> as an annotation table (cells of
     /// <c>calcSheet</c> mode "table") right of the elements (or at x/y); one undo step, the table selected.</item>
+    /// <item><c>lineEnds</c> {id}: the free ends of a line that can be drawn on (<see cref="Polylines.CanExtend"/>), with the
+    /// outward direction.</item>
+    /// <item><c>extendLine</c> {id, index (an end), points [[x, y] …], snap, tolerance, anchor, preview}: draws the line on from
+    /// that end through the points (<see cref="Polylines.Extend"/>; the last one snapped and docked like a line end); one undo
+    /// step, the line selected; with <c>preview</c> only <c>{ svg }</c> of the line as it would be.</item>
+    /// <item><c>crossings</c> {id}: where a wire or pipe crosses another one (<c>Crossings.Find</c>);
+    /// <c>connectCrossing</c> {id, index}: connects it there (<see cref="Crossings.Connect"/>), one undo step.</item>
+    /// <item><c>insertMediumLegend</c> {json (colour ids, default: those used), x, y}: the legend of the medium colours
+    /// (<see cref="LineMedia.Legend"/>) as one group, top right; <c>{ inserted, state }</c>, one undo step.</item>
+    /// <item><c>valueSettings</c>: the drawing's muted checks and preferred units (Calc 6).</item>
     /// </list>
     /// </summary>
     public sealed partial class EngineApi
     {
         private void RegisterWebMethods()
         {
+            _methods["lineEnds"] = LineEndsCore;
+            _methods["extendLine"] = ExtendLineCore;
+            _methods["crossings"] = CrossingsCore;
+            _methods["connectCrossing"] = ConnectCrossingCore;
+            _methods["insertMediumLegend"] = InsertMediumLegendCore;
+            _methods["valueSettings"] = ValueSettingsCore;
             _methods["links"] = LinksCore;
             _methods["toggleLink"] = ToggleLinkCore;
             _methods["polylineHandles"] = PolylineHandlesCore;
@@ -218,6 +234,121 @@ namespace InventaSketch.Engine
             var joined = s.Apply("Join", d => Polylines.Join(Registry, Edits.SetPoint(d, o.Id, index, at), o.Id, index == 0, t.Id, t.AtStart, lang));
             if (joined) s.Select(new[] { o.Id });
             return new { joined, state = (EditorState?)StateOf(s, r) };
+        }
+
+        // ------------------------------------------------------------------ draw on from a free end
+
+        private object LineEndsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var list = new List<LineEndInfo>();
+            var o = s.Doc.Get(r.Id ?? s.Selection.FirstOrDefault() ?? "");
+            if (o is null || !Polylines.CanExtend(Registry, o)) return list;
+            var pts = s.Doc.ResolvePoints(o);
+            if (pts.Count < 2) return list;
+            foreach (var atStart in new[] { true, false })
+            {
+                var i = atStart ? 0 : pts.Count - 1;
+                var docked = o.Attach is not null && i < o.Attach.Count && o.Attach[i] is not null;
+                var dir = pts[i] - pts[atStart ? 1 : pts.Count - 2];
+                if (docked || dir.Length < 1e-6) continue;
+                var u = dir * (1 / dir.Length);
+                list.Add(new LineEndInfo { Index = i, AtStart = atStart, X = pts[i].X, Y = pts[i].Y, Dx = u.X, Dy = u.Y });
+            }
+            return list;
+        }
+
+        private object ExtendLineCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = LangOf(r, s);
+            var o = Line(s, r);
+            if (!Polylines.CanExtend(Registry, o)) throw new ArgumentException($"'{o.Type}' cannot be drawn on.");
+            var n = o.Points!.Count;
+            var index = r.Index ?? n - 1;
+            if (index != 0 && index != n - 1) throw new ArgumentException("'index' must be an end of the line (0 or the last point).");
+            if (r.Points is not { Count: > 0 } raw || raw.Any(p => p.Length < 2)) throw new ArgumentException("Missing 'points' ([[x, y], …]).");
+            var pts = raw.Select(p => new Vec2(p[0], p[1])).ToList();
+            var (last, attach) = SnapLinePoint(s, o, pts[pts.Count - 1], r);
+            pts[pts.Count - 1] = last;
+            SketchDocument Extend(SketchDocument d)
+            {
+                for (var i = 0; i < pts.Count; i++)
+                    d = Polylines.Extend(Registry, d, o.Id, index == 0, pts[i], i == pts.Count - 1 ? attach : null, lang).Doc;
+                return d;
+            }
+            if (r.Preview == true)
+            {
+                var doc = Extend(s.Doc);
+                var line = doc.Get(o.Id);
+                return new { svg = line is null ? "" : SvgRenderer.RenderPrimitives(Registry.Render(line, new RenderContext(doc, lang))), x = last.X, y = last.Y };
+            }
+            s.Apply("Draw on", Extend);
+            s.Select(new[] { o.Id });
+            return StateOf(s, r);
+        }
+
+        // ------------------------------------------------------------------ crossings of wires and pipes
+
+        private object CrossingsCore(EngineRequest r)
+        {
+            var s = S(r);
+            var o = s.Doc.Get(r.Id ?? s.Selection.FirstOrDefault() ?? "");
+            if (o is null || !o.IsPointGeometry) return new List<CrossingInfo>();
+            return Crossings.Find(Registry, s.Doc, o, LangOf(r, s))
+                .Select((c, i) => new CrossingInfo { Index = i, Other = c.Other, X = c.At.X, Y = c.At.Y, Above = c.Above }).ToList();
+        }
+
+        private object ConnectCrossingCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = LangOf(r, s);
+            var o = Line(s, r);
+            var index = r.Index ?? throw new ArgumentException("Missing 'index' (crossing).");
+            var list = Crossings.Find(Registry, s.Doc, o, lang);
+            if (index < 0 || index >= list.Count) throw new ArgumentException("Unknown crossing: " + index.ToString(CultureInfo.InvariantCulture));
+            var crossing = list[index];
+            s.Apply("Connect", d => Crossings.Connect(Registry, d, o.Id, crossing, lang));
+            s.Select(new[] { o.Id });
+            return StateOf(s, r);
+        }
+
+        // ------------------------------------------------------------------ colour by medium: legend
+
+        /// <summary>Distance of the legend from the right page edge and from the top (mm), as in the COM add-in.</summary>
+        private const double LegendFromRightMm = 75, LegendTopMm = 12;
+
+        private object InsertMediumLegendCore(EngineRequest r)
+        {
+            var s = S(r);
+            var lang = LangOf(r, s);
+            IReadOnlyList<MediumColour> entries;
+            if (!string.IsNullOrWhiteSpace(r.Json))
+            {
+                var ids = new HashSet<string>(System.Text.Json.JsonSerializer.Deserialize<List<string>>(r.Json!) ?? new List<string>(), StringComparer.Ordinal);
+                entries = LineMedia.Scheme.Where(c => ids.Contains(c.Id)).ToList();
+            }
+            else entries = LineMedia.Used(Registry, s.Doc, lang);
+            var page = s.Page.Size;
+            var at = r.X is double x && r.Y is double y ? new Vec2(x, y) : new Vec2(Math.Max(2, page.W - LegendFromRightMm), LegendTopMm);
+            var objects = entries.Count == 0 ? Array.Empty<SketchObject>() : LineMedia.Legend(Registry, entries, at, lang);
+            if (objects.Count == 0) return new { inserted = false, state = StateOf(s, r) };
+            // One group: the legend moves as a whole.
+            s.Apply("Legend", d => Edits.Group(Edits.Add(d, s.PageId, objects.ToArray()), objects.Select(o => o.Id).ToList()));
+            s.Select(objects.Select(o => o.Id).ToList());
+            return new { inserted = true, state = StateOf(s, r) };
+        }
+
+        // ------------------------------------------------------------------ Calc 6 settings
+
+        private object ValueSettingsCore(EngineRequest r)
+        {
+            var s = S(r);
+            return new
+            {
+                mutedChecks = s.Doc.Settings.MutedChecks ?? Array.Empty<string>(),
+                unitPreferences = s.Doc.Settings.UnitPreferences ?? new Dictionary<string, string>(),
+            };
         }
 
         // ------------------------------------------------------------------ calculation sheet as a table
