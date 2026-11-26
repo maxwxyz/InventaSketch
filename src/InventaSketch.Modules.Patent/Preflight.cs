@@ -426,7 +426,7 @@ namespace InventaSketch.Modules.Patent
                     var nameDe = Exports.Label(c.Reg, o, Lang.De);
                     c.Add(PreflightRules.PartUnnumbered, Severity.Info, o.Id, page.Id,
                         new I18nText($"Part \"{name}\" has no reference numeral.", $"Teil \"{nameDe}\" hat kein Bezugszeichen."),
-                        new I18nText("Add a numeral, or number all parts of the page at once (numeral menu: Number all parts).", "Bezugszeichen ergänzen oder alle Teile der Seite auf einmal nummerieren (Menü des Bezugszeichens: Alle Teile nummerieren)."));
+                        new I18nText("Add a numeral, or number all parts of the page at once (Number all parts: page menu, or the menu of a numeral).", "Bezugszeichen ergänzen oder alle Teile der Seite auf einmal nummerieren (Alle Teile nummerieren: Seitenmenü oder Menü eines Bezugszeichens)."));
                 }
         }
 

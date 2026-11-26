@@ -87,6 +87,9 @@ live in `Contracts.cs` and `hosts/office-web/src/engine/types.ts`. Decision reco
   receive the whole document (e.g. architecture "align to wall"). `ContextActions.Run` in Core executes all three
   forms, so the COM add-in and the engine behave the same. `ObjectType.Actions(o, RenderContext)` lets labels and
   enabled states depend on the document.
+- **Page actions** (`pageActions`, `applyPageAction`): commands that need no selection, listed per page with kind
+  `page`, a menu of choices and a pictogram (e.g. "Number all parts ▸ 10, 20, 30 … / 1, 2, 3 …" from the reference
+  numerals module). Hosts show them only while they apply; `applyPageAction` runs one as a single undo step.
 - **Change sets** (`EditorState.changed`, `EditorState.dependents`): after every edit, undo or redo the state lists
   the objects added or modified by that change and the further objects whose rendering depends on the touched ones
   (`ObjectType.Dependents`, evaluated before and after the change, e.g. walls joined to an edited wall and the doors

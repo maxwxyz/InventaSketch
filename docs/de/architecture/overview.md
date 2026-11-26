@@ -97,6 +97,9 @@ Vertragstypen stehen in `Contracts.cs` und `hosts/office-web/src/engine/types.ts
   das ganze Dokument erhalten (z. B. „An Wand ausrichten“ der Architektur). `ContextActions.Run` im Kern führt alle
   drei Formen aus, sodass sich COM-Add-in und Engine gleich verhalten. `ObjectType.Actions(o, RenderContext)` erlaubt
   dokumentabhängige Beschriftungen und Aktivzustände.
+- **Seitenaktionen** (`pageActions`, `applyPageAction`): Befehle ohne Auswahl, je Seite mit Art `page`, einem Menü
+  von Auswahlen und einem Piktogramm (z. B. „Alle Teile nummerieren ▸ 10, 20, 30 … / 1, 2, 3 …“ aus dem Modul
+  Bezugszeichen). Hosts zeigen sie nur, solange sie zutreffen; `applyPageAction` führt sie als einen Rückgängig-Schritt aus.
 - **Änderungsmengen** (`EditorState.changed`, `EditorState.dependents`): Nach jeder Bearbeitung, jedem Rückgängig
   und Wiederholen nennt der Zustand die von dieser Änderung hinzugefügten oder geänderten Objekte und die weiteren
   Objekte, deren Darstellung von den berührten abhängt (`ObjectType.Dependents`, vor und nach der Änderung
