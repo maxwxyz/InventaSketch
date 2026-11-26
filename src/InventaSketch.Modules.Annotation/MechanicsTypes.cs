@@ -394,7 +394,10 @@ namespace InventaSketch.Modules.Annotation
         }
     }
 
-    /// <summary>Beam (bar) for free-body diagrams; a <see cref="BeamDiagramType"/> below it shows its shear force and bending moment.</summary>
+    /// <summary>
+    /// Beam (bar) for free-body diagrams; a <see cref="BeamDiagramType"/> below it shows its normal force, shear force, bending
+    /// moment and deflection line, stretched to the beam's ends.
+    /// </summary>
     public sealed class BeamType : AnnBoxType
     {
         public BeamType() : base("ann.beam", new I18nText("Beam", "Balken"), AnnCategories.Mechanics, "beam", "balken", "bar", "träger", "stab") { }

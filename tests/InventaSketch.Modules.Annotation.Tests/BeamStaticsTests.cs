@@ -101,13 +101,14 @@ namespace InventaSketch.Modules.Annotation.Tests
         }
 
         [Fact]
-        public void IndeterminateOrUnstableBeamsAreNotSolved()
+        public void UnstableBeamsAreNotSolvedIndeterminateOnesAre()
         {
             var none = new BeamModel(4, Array.Empty<BeamSupport>(), new[] { new BeamPointLoad(2, 1) }, Array.Empty<BeamLineLoad>());
             var one = new BeamModel(4, new[] { new BeamSupport(BeamSupportKind.Pin, 0) }, Array.Empty<BeamPointLoad>(), Array.Empty<BeamLineLoad>());
             var propped = new BeamModel(4, new[] { new BeamSupport(BeamSupportKind.Fixed, 0), new BeamSupport(BeamSupportKind.Roller, 4) }, Array.Empty<BeamPointLoad>(), Array.Empty<BeamLineLoad>());
             var three = new BeamModel(4, new[] { new BeamSupport(BeamSupportKind.Pin, 0), new BeamSupport(BeamSupportKind.Roller, 2), new BeamSupport(BeamSupportKind.Roller, 4) }, Array.Empty<BeamPointLoad>(), Array.Empty<BeamLineLoad>());
-            foreach (var m in new[] { none, one, propped, three }) Assert.Null(BeamStatics.Solve(m));
+            foreach (var m in new[] { none, one }) Assert.Null(BeamStatics.Solve(m));
+            foreach (var m in new[] { propped, three }) Assert.Equal(BeamStatus.Indeterminate, BeamStatics.Solve(m)!.Check.Status);
             Assert.False(BeamStatics.IsDeterminate(propped, out var reason));
             Assert.Equal("indeterminate", reason);
         }
@@ -314,14 +315,18 @@ namespace InventaSketch.Modules.Annotation.Tests
         }
 
         [Fact]
-        public void IndeterminateBeamShowsANote()
+        public void IndeterminateBeamIsSolvedWithANote()
         {
+            // Two-span continuous beam (spans L/2), F in the middle of the first span: M at the middle support
+            // = −3·F·l/32 with l = L/2, i.e. −3·F·L/64; under the load 13·F·l/64 = 13·F·L/128 (the largest).
             var s = new Scene();
             s.Beam(); s.Pin(20); s.Roller(60); s.Roller(100); s.Force(40);
             var d = s.Diagram();
-            Assert.Equal("statically indeterminate (degree 1)", s.Text(d, "note"));
-            Assert.Equal("1-fach statisch unbestimmt", s.Text(d, "note", Lang.De));
-            Assert.DoesNotContain(T.All<PathPrim>(s.Render(d)), p => p.Tag == "moment");
+            Assert.Equal("statically indeterminate (degree 1), EI constant", s.Text(d, "status"));
+            Assert.Equal("1-fach statisch unbestimmt, EI konstant", s.Text(d, "status", Lang.De));
+            Assert.Contains(T.All<PathPrim>(s.Render(d)), p => p.Tag == "moment");
+            Assert.Equal("max M = 13·F·L/128", s.Text(d, "mmax"));
+            Assert.Equal("x = L/4", s.Text(d, "mpos"));
         }
 
         [Fact]
@@ -358,7 +363,7 @@ namespace InventaSketch.Modules.Annotation.Tests
             var d = s.Diagram();
             var actions = s.R.Actions(s.Doc.Get(d.Id)!, new RenderContext(s.Doc)).ToList();
             var support = actions.Where(a => a.Choice?.Key == "ann.beamdiagram.support").ToList();
-            Assert.Equal(4, support.Count);
+            Assert.Equal(7, support.Count);
             Assert.All(support, a => Assert.NotNull(a.Preview));
             var load = actions.Where(a => a.Choice?.Key == "ann.beamdiagram.load").ToList();
             Assert.Equal(5, load.Count);

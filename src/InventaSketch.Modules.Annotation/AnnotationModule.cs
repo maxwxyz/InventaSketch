@@ -144,6 +144,18 @@ namespace InventaSketch.Modules.Annotation
                     new Dictionary<string, ParamValue> { ["support"] = "cantilever", ["load"] = "moment", ["at"] = 1.0 }, "end moment", "couple", "endmoment", "kragträger", "einzelmoment");
                 yield return Preset("ann.beam.diagram.gerber", BeamDiagramType.TypeId, "Gerber beam diagrams (hinge)", "Gerberträger-Verläufe (Gelenk)", AnnCategories.Mechanics,
                     new Dictionary<string, ParamValue> { ["support"] = "gerber", ["load"] = "uniform" }, "gerber", "hinge", "gerberträger", "gelenkträger", "gelenk");
+                yield return Preset("ann.beam.diagram.propped", BeamDiagramType.TypeId, "Propped cantilever diagrams (uniform load)", "Verläufe einseitig eingespannter Träger (Streckenlast)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["support"] = "propped", ["load"] = "uniform" }, "propped cantilever", "statically indeterminate", "eingespannt", "statisch unbestimmt", "einfeldträger");
+                yield return Preset("ann.beam.diagram.continuous", BeamDiagramType.TypeId, "Two-span continuous beam diagrams", "Zweifeldträger-Verläufe (Durchlaufträger)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["support"] = "continuous", ["load"] = "uniform" }, "continuous beam", "two-span", "statically indeterminate", "durchlaufträger", "zweifeldträger", "statisch unbestimmt");
+                yield return Preset("ann.beam.diagram.fixed", BeamDiagramType.TypeId, "Fixed–fixed beam diagrams (centre load)", "Verläufe beidseitig eingespannter Träger (Einzellast)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["support"] = "fixedFixed" }, "fixed-fixed", "clamped both ends", "statically indeterminate", "beidseitig eingespannt", "statisch unbestimmt");
+                yield return new LibraryItem("ann.beam.diagram.deflection", BeamDiagramType.TypeId, new I18nText("Cantilever diagrams with deflection line", "Kragträger-Verläufe mit Biegelinie"), AnnCategories.Mechanics)
+                {
+                    Params = new Dictionary<string, ParamValue> { ["support"] = "cantilever", ["at"] = 1.0, ["deflection"] = true },
+                    Size = new Size2(60, 66),
+                    Keywords = new[] { "deflection", "deflection line", "elastic line", "biegelinie", "durchbiegung", "kragträger" },
+                };
                 yield return Preset("ann.load.distributed.triangle", "ann.load.distributed", "Triangular load", "Dreieckslast", AnnCategories.Mechanics,
                     new Dictionary<string, ParamValue> { ["shape"] = "rising" }, "triangular load", "dreieckslast", "linear", "hydrostatic", "hydrostatisch");
                 yield return Preset("ann.load.distributed.trapezoid", "ann.load.distributed", "Trapezoidal load", "Trapezlast", AnnCategories.Mechanics,
