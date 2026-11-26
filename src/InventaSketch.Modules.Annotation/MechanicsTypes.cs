@@ -90,8 +90,14 @@ namespace InventaSketch.Modules.Annotation
         {
             P.Text("label", "Label", "Beschriftung", "M"),
             P.Bool("ccw", "Counter-clockwise", "Gegen den Uhrzeigersinn", true),
+            P.Num("value", "Magnitude (beam diagrams)", "Betrag (Schnittgrößenverläufe)", null, -1e9, 1e9, null, advanced: true),
             P.TextSize(Ann.TextSize),
         };
+
+        /// <summary>A moment centred on a beam is an applied couple for the beam diagrams on the page (<see cref="BeamScene"/>).</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => BeamScene.DiagramsNear(o, ctx.Doc);
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -258,21 +264,47 @@ namespace InventaSketch.Modules.Annotation
         }
     }
 
-    /// <summary>Distributed load: row of arrows with a connecting line and label "q".</summary>
+    /// <summary>
+    /// Distributed load: row of arrows with a connecting line and label "q"; uniform (default), triangular (rising or falling
+    /// to the right) or trapezoidal, the arrow lengths following the intensity.
+    /// </summary>
     public sealed class DistributedLoadType : AnnBoxType
     {
-        public DistributedLoadType() : base("ann.load.distributed", new I18nText("Distributed load", "Streckenlast"), AnnCategories.Mechanics, "load", "distributed", "streckenlast", "linienlast", "pressure", "druck") { }
+        public DistributedLoadType() : base("ann.load.distributed", new I18nText("Distributed load", "Streckenlast"), AnnCategories.Mechanics, "load", "distributed", "streckenlast", "linienlast", "pressure", "druck",
+            "triangular", "trapezoidal", "dreieckslast", "trapezlast") { }
 
         public override Size2 DefaultSize => new(44, 18);
         public override bool HasText => true;
         protected override bool EdgePorts => false;
 
+        internal static readonly (string, string, string)[] ShapeOptions =
+        {
+            ("uniform", "Uniform", "Gleichmäßig"), ("rising", "Triangle rising to the right", "Dreieck nach rechts steigend"),
+            ("falling", "Triangle falling to the right", "Dreieck nach rechts fallend"), ("trapezoid", "Trapezoid", "Trapez"),
+        };
+
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             P.Int("count", "Arrows", "Pfeile", 7, 2, 50),
             P.Text("label", "Label", "Beschriftung", "q"),
+            P.Choice("shape", "Shape", "Form", "uniform", ShapeOptions),
+            P.Num("low", "Low end of the trapezoid (share of q)", "Niedriges Ende des Trapezes (Anteil von q)", 0.4, 0, 1, null, 0.05),
             P.Num("value", "Load per length (beam diagrams)", "Last je Länge (Schnittgrößenverläufe)", null, -1e9, 1e9, null, advanced: true),
             P.TextSize(Ann.TextSize),
+        };
+
+        /// <summary>
+        /// Intensity at the left and right edge of the box as shares of the peak q: uniform (1, 1), rising (0, 1), falling (1, 0),
+        /// trapezoid (low, 1); a mirrored load is read from the mirrored edges.
+        /// </summary>
+        public static (double Left, double Right) Shares(SketchObject o) => Shares(o.Str("shape", "uniform"), Geo.Clamp(o.Num("low", 0.4), 0, 1));
+
+        private static (double, double) Shares(string shape, double low) => shape switch
+        {
+            "rising" => (0, 1),
+            "falling" => (1, 0),
+            "trapezoid" => (low, 1),
+            _ => (1, 1),
         };
 
         /// <summary>Beam diagrams on the page read this element (<see cref="BeamScene"/>).</summary>
@@ -289,20 +321,76 @@ namespace InventaSketch.Modules.Annotation
             var label = o.Text ?? o.Str("label", "q");
             var ts = TextSizeOf(o);
             var top = string.IsNullOrEmpty(label) ? -hh : Math.Min(-hh + ts + 1.0, hh - o.Size.H / 3);
-            var list = new List<Primitive> { new LinePrim(new Vec2(-hw, top), new Vec2(hw, top), Style.ThinLine with { StrokeWidth = 0.35 }) };
+            var (sl, sr) = Shares(o);
+            double Top(double s) => hh - (hh - top) * s;
+            var list = new List<Primitive> { new LinePrim(new Vec2(-hw, Top(sl)), new Vec2(hw, Top(sr)), Style.ThinLine with { StrokeWidth = 0.35 }) };
             var arrow = Style.ThinLine with { StrokeWidth = 0.35, ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Medium };
             for (var i = 0; i < n; i++)
             {
-                var x = -hw + o.Size.W * i / (n - 1);
-                list.Add(new LinePrim(new Vec2(x, top), new Vec2(x, hh), arrow) { Tag = AnnTags.Main });
+                var f = (double)i / (n - 1);
+                var x = -hw + o.Size.W * f;
+                var y = Top(sl + (sr - sl) * f);
+                if (hh - y < 1.5) continue; // too short for an arrow (the zero end of a triangle)
+                list.Add(new LinePrim(new Vec2(x, y), new Vec2(x, hh), arrow) { Tag = AnnTags.Main });
             }
-            if (!string.IsNullOrEmpty(label)) list.Add(Ann.Text(new Vec2(0, (-hh + top) / 2), label, ts, italic: true));
+            // The label stands above the higher part of a triangular or trapezoidal load.
+            var lx = Math.Abs(sr - sl) < 1e-9 ? 0 : (sr > sl ? hw / 3 : -hw / 3);
+            if (!string.IsNullOrEmpty(label)) list.Add(Ann.Text(new Vec2(lx, (-hh + top) / 2), label, ts, italic: true));
             return list;
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
             yield return Anchor.Segment(AnchorRole.Mount, new Vec2(-o.Size.W / 2, o.Size.H / 2), new Vec2(o.Size.W / 2, o.Size.H / 2));
+        }
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+            => Ann.Choice(o, "ann.load.shape", new I18nText("Shape", "Form"), "shape", "uniform", "shape",
+                ShapeOptions.Select(x => (x.Item1, new I18nText(x.Item2, x.Item3), (string?)null)).ToList(), ShapePreview);
+
+        /// <summary>Option pictures of the shape choice: the arrows of the load (about 6 mm wide).</summary>
+        internal static IReadOnlyList<Primitive> ShapePreview(string value)
+        {
+            var s = Style.Visible with { StrokeWidth = 0.3 };
+            var arrow = s with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small };
+            var (l, r) = Shares(value, 0.4);
+            double Y(double share) => 1.5 - 3.5 * share;
+            var list = new List<Primitive> { Prim.Line(-3, 1.5, 3, 1.5, s), Prim.Line(-3, Y(l), 3, Y(r), s) };
+            foreach (var f in new[] { 0.0, 0.25, 0.5, 0.75, 1.0 })
+            {
+                var y = Y(l + (r - l) * f);
+                if (1.5 - y > 0.9) list.Add(Prim.Line(-3 + 6 * f, y, -3 + 6 * f, 1.3, arrow));
+            }
+            return list;
+        }
+    }
+
+    /// <summary>
+    /// Internal hinge of a beam (Gerber hinge): a small open circle on the beam axis. Beam diagrams read it as a moment-free
+    /// joint (<see cref="BeamScene"/>).
+    /// </summary>
+    public sealed class BeamHingeType : AnnBoxType
+    {
+        public const string TypeId = "ann.beam.hinge";
+
+        public BeamHingeType() : base(TypeId, new I18nText("Internal hinge (beam)", "Zwischengelenk (Balken)"), AnnCategories.Mechanics,
+            "hinge", "internal hinge", "gerber", "joint", "gelenk", "zwischengelenk", "gerbergelenk", "gerberträger", "beam", "balken") { }
+
+        public override Size2 DefaultSize => new(5, 5);
+        public override bool PreferUniformScale => true;
+        protected override bool EdgePorts => false;
+
+        /// <summary>Beam diagrams on the page read this element (<see cref="BeamScene"/>).</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => BeamScene.DiagramsNear(o, ctx.Doc);
+
+        public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
+            => new Primitive[] { Prim.Ellipse(0, 0, o.Size.W / 2, o.Size.H / 2, Style.Visible with { StrokeWidth = 0.35, Fill = Fill.Solid("#ffffff") }) with { Tag = AnnTags.Main } };
+
+        public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
+        {
+            yield return Anchor.Point(AnchorRole.Hub, Vec2.Zero, "centre");
         }
     }
 
@@ -317,7 +405,10 @@ namespace InventaSketch.Modules.Annotation
         /// <summary>Real length for the values of beam diagrams (<see cref="BeamDiagramType"/>); without it they are multiples of L.</summary>
         public override IReadOnlyList<ParamDef> Parameters => new[] { P.Num("length", "Length L (beam diagrams)", "Länge L (Schnittgrößenverläufe)", null, 0.001, 1e6, "m", advanced: true) };
 
-        public override IReadOnlyList<string> Companions => new[] { "ann.support.pin", "ann.support.roller", "ann.support.fixed", "ann.force", "ann.load.distributed", BeamDiagramType.TypeId };
+        public override IReadOnlyList<string> Companions => new[]
+        {
+            "ann.support.pin", "ann.support.roller", "ann.support.fixed", "ann.force", "ann.load.distributed", "ann.moment", BeamHingeType.TypeId, BeamDiagramType.TypeId,
+        };
 
         /// <summary>Beam diagrams on the page read this element (<see cref="BeamScene"/>).</summary>
         public override bool HasDependents => true;

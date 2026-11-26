@@ -319,8 +319,8 @@ namespace InventaSketch.Modules.Annotation.Tests
             var s = new Scene();
             s.Beam(); s.Pin(20); s.Roller(60); s.Roller(100); s.Force(40);
             var d = s.Diagram();
-            Assert.Equal("not statically determinate", s.Text(d, "note"));
-            Assert.Equal("nicht statisch bestimmt", s.Text(d, "note", Lang.De));
+            Assert.Equal("statically indeterminate (degree 1)", s.Text(d, "note"));
+            Assert.Equal("1-fach statisch unbestimmt", s.Text(d, "note", Lang.De));
             Assert.DoesNotContain(T.All<PathPrim>(s.Render(d)), p => p.Tag == "moment");
         }
 
@@ -358,9 +358,11 @@ namespace InventaSketch.Modules.Annotation.Tests
             var d = s.Diagram();
             var actions = s.R.Actions(s.Doc.Get(d.Id)!, new RenderContext(s.Doc)).ToList();
             var support = actions.Where(a => a.Choice?.Key == "ann.beamdiagram.support").ToList();
-            Assert.Equal(3, support.Count);
+            Assert.Equal(4, support.Count);
             Assert.All(support, a => Assert.NotNull(a.Preview));
-            Assert.Equal(3, actions.Count(a => a.Choice?.Key == "ann.beamdiagram.load"));
+            var load = actions.Where(a => a.Choice?.Key == "ann.beamdiagram.load").ToList();
+            Assert.Equal(5, load.Count);
+            Assert.All(load, a => Assert.NotNull(a.Preview));
 
             s.Beam(); s.Pin(20); s.Roller(100); s.Force(60);
             actions = s.R.Actions(s.Doc.Get(d.Id)!, new RenderContext(s.Doc)).ToList();

@@ -39,6 +39,7 @@ namespace InventaSketch.Modules.Annotation
             // Technical mechanics
             new ForceType(), new MomentType(), new CoordSysType(), new CogType(), new GroundType(), new SupportType(false), new SupportType(true),
             new FixedSupportType(), new DistributedLoadType(), new BeamType(), new SpringType(), new DamperType(), new MassType(), new BeamDiagramType(),
+            new BeamHingeType(),
             // Flowchart
             new FlowBoxType(FlowShape.Process), new FlowBoxType(FlowShape.Decision), new FlowBoxType(FlowShape.Terminator),
             new FlowBoxType(FlowShape.Data), new FlowBoxType(FlowShape.Document), new FlowBoxType(FlowShape.Connector), new FlowBoxType(FlowShape.End), new FlowStepType(),
@@ -137,6 +138,16 @@ namespace InventaSketch.Modules.Annotation
                     new Dictionary<string, ParamValue> { ["support"] = "cantilever", ["at"] = 1.0 }, "cantilever", "kragträger", "kragarm");
                 yield return Preset("ann.beam.diagram.uniform", BeamDiagramType.TypeId, "Beam diagrams (uniform load)", "Balken-Verläufe (Streckenlast)", AnnCategories.Mechanics,
                     new Dictionary<string, ParamValue> { ["load"] = "uniform" }, "uniform load", "streckenlast", "gleichlast");
+                yield return Preset("ann.beam.diagram.triangle", BeamDiagramType.TypeId, "Beam diagrams (triangular load)", "Balken-Verläufe (Dreieckslast)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["load"] = "triangle" }, "triangular load", "dreieckslast", "linear load");
+                yield return Preset("ann.beam.diagram.moment", BeamDiagramType.TypeId, "Cantilever diagrams (end moment)", "Kragträger-Verläufe (Endmoment)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["support"] = "cantilever", ["load"] = "moment", ["at"] = 1.0 }, "end moment", "couple", "endmoment", "kragträger", "einzelmoment");
+                yield return Preset("ann.beam.diagram.gerber", BeamDiagramType.TypeId, "Gerber beam diagrams (hinge)", "Gerberträger-Verläufe (Gelenk)", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["support"] = "gerber", ["load"] = "uniform" }, "gerber", "hinge", "gerberträger", "gelenkträger", "gelenk");
+                yield return Preset("ann.load.distributed.triangle", "ann.load.distributed", "Triangular load", "Dreieckslast", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["shape"] = "rising" }, "triangular load", "dreieckslast", "linear", "hydrostatic", "hydrostatisch");
+                yield return Preset("ann.load.distributed.trapezoid", "ann.load.distributed", "Trapezoidal load", "Trapezlast", AnnCategories.Mechanics,
+                    new Dictionary<string, ParamValue> { ["shape"] = "trapezoid" }, "trapezoidal load", "trapezlast", "linear");
                 yield return new LibraryItem("ann.line.bus", "ann.line", new I18nText("Bus line with slash (n lines)", "Sammelleitung mit Schrägstrich (n Leitungen)"), AnnCategories.Lines)
                 { Params = new Dictionary<string, ParamValue> { ["busMark"] = "slash", ["busCount"] = "n" }, Keywords = new[] { "bus", "bundle", "n lines", "bündel", "sammelleitung", "mehrfachleitung" } };
             }
