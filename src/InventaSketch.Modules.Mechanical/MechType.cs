@@ -31,7 +31,12 @@ namespace InventaSketch.Modules.Mechanical
         /// give the round bore (times <see cref="Pen.K"/>). Null: no meaningful bore, the part keeps its size on a shaft.
         /// </summary>
         public Func<Pen, SketchObject, double>? Bore { get; init; }
+        /// <summary>Drag handles of this view in local coordinates with their edits (the hubs of a serpentine belt).</summary>
+        public Func<Pen, SketchObject, IEnumerable<MechGrip>>? Grips { get; init; }
     }
+
+    /// <summary>A drag handle of a mechanical symbol in local coordinates and its edit (object, pen, local pointer position → object).</summary>
+    internal sealed record MechGrip(DragHandle Handle, Func<SketchObject, Pen, Vec2, SketchObject> Move);
 
     /// <summary>
     /// Data-driven object type used for all mechanical symbols: a list of views (each with its own drawing),
@@ -132,6 +137,23 @@ namespace InventaSketch.Modules.Mechanical
             if (Rotating) yield return v.Bore is null ? Anchor.Point(AnchorRole.Hub, Vec2.Zero, "hub") : Anchor.Hub(Vec2.Zero, v.Bore(pen, o));
             if (v.Anchors is null) yield break;
             foreach (var a in v.Anchors(pen, o)) yield return a;
+        }
+
+        /// <summary>The grips of the current view (<see cref="ViewSpec.Grips"/>) in page mm.</summary>
+        public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
+        {
+            var v = Spec(o);
+            return v.Grips is null ? Array.Empty<DragHandle>() : v.Grips(PenFor(o, v), o).Select(g => Dragging.ToPage(g.Handle, o)).ToList();
+        }
+
+        /// <summary>Applies grip <paramref name="key"/> dragged to the page point (converted to local coordinates for the grip's edit).</summary>
+        public override SketchObject MoveHandle(SketchObject o, string key, Vec2 pagePos, RenderContext ctx)
+        {
+            var v = Spec(o);
+            if (v.Grips is null) return o;
+            var pen = PenFor(o, v);
+            var g = v.Grips(pen, o).FirstOrDefault(x => x.Handle.Key == key);
+            return g is null ? o : g.Move(o, pen, o.Matrix().Invert().Apply(pagePos));
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)

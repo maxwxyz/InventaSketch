@@ -145,6 +145,9 @@ namespace InventaSketch.Modules.Mechanical
             ["mech.sprocket"] = Sprocket,
             ["mech.belt"] = Belt,
             ["mech.chain"] = Chain,
+            [Drives.IdlerId] = Idler,
+            [Drives.TensionerId] = Idler,
+            ["mech.spring.torsion"] = TorsionSpring,
             ["mech.screwdrive.screw"] = Screw,
             ["mech.screwdrive.nut"] = Nut,
             ["mech.spring.compression"] = Spring,
@@ -268,6 +271,20 @@ namespace InventaSketch.Modules.Mechanical
             return new Spec(new[] { d, Speed(), Torque(), Power() }, new[] { RotPower }, WithShow(PPulleyDiameter, PSpeed, PTorque, PPower), Array.Empty<ValueCheck>());
         }
 
+        /// <summary>
+        /// Idler pulley and the idler of a tensioner: effective diameter and speed only. An idler passes no torque (no effective
+        /// pull difference across it), so it takes the belt speed and never changes the ratio between the driving and the driven
+        /// pulleys.
+        /// </summary>
+        private static Spec Idler(MechType type)
+        {
+            var d = V("d", T("Effective diameter", "Wirkdurchmesser"), T("d", "d"), Quantities.Length, "mm", "diameter") with { Min = 1e-4, Max = 100 };
+            return new Spec(new[] { d, Speed() }, Array.Empty<Relation>(), WithShow(PPulleyDiameter, PSpeed), Array.Empty<ValueCheck>());
+        }
+
+        /// <summary>Types that run in a belt without taking or giving torque.</summary>
+        public static bool IsIdler(string typeId) => typeId is Drives.IdlerId or Drives.TensionerId;
+
         private static Spec Sprocket(MechType type)
             => new(new[] { Teeth(18), Speed(), Torque(), Power() }, new[] { RotPower }, WithShow(PSpeed, PTorque, PPower), Array.Empty<ValueCheck>());
 
@@ -354,6 +371,27 @@ namespace InventaSketch.Modules.Mechanical
                 Text("activeCoils", T("Active coils", "Federnde Windungen"), ""),
                 Text("shearModulus", T("Shear modulus", "Schubmodul"), "N/mm²"));
             return new Spec(vars, new[] { SpringLaw, SpringGeometry }, ps, Array.Empty<ValueCheck>());
+        }
+
+        /// <summary>Torsion spring law M = c_φ·φ (φ in radians) [S21, S18].</summary>
+        private static readonly Relation TorsionLaw =
+            new Relation("mech.spring.torsionrate", T("Torsion spring law", "Drehfedergesetz"), "{T} = {c}·{phi}", "T", "c", "phi") { Source = "S21" }
+                .Solve("T", "{c}·{phi}", v => v("c") * v("phi"))
+                .Solve("c", "{T}/{phi}", v => v("T") / v("phi"))
+                .Solve("phi", "{T}/{c}", v => v("T") / v("c"));
+
+        private static Spec TorsionSpring(MechType type)
+        {
+            var vars = new[]
+            {
+                V("T", T("Spring torque", "Federmoment"), SymT, Quantities.Torque, "N·m", "torque") with { Min = 0, Max = 1e6 },
+                V("phi", T("Angle of twist", "Verdrehwinkel"), T("φ", "φ"), Quantities.Angle, "°", "angle") with { Min = 0, Max = 20 * Math.PI },
+                V("c", T("Torsional spring rate", "Drehfederrate"), T("c_φ", "c_φ"), Quantities.TorsionalRate, "N·m/rad", "rate") with { Min = 1e-6, Max = 1e7 },
+            };
+            var ps = WithShow(
+                Text("torque", T("Spring torque", "Federmoment"), "N·m"), Text("angle", T("Angle of twist", "Verdrehwinkel"), "°"),
+                Text("rate", T("Torsional spring rate", "Drehfederrate"), "N·m/rad"));
+            return new Spec(vars, new[] { TorsionLaw }, ps, Array.Empty<ValueCheck>());
         }
 
         // bearings ----------------------------------------------------------------

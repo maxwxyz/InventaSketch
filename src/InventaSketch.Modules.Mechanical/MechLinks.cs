@@ -46,6 +46,8 @@ namespace InventaSketch.Modules.Mechanical
         private readonly Dictionary<string, List<string>> _nuts = new(StringComparer.Ordinal);
         private readonly Dictionary<string, string> _screwOf = new(StringComparer.Ordinal);
         private readonly Func<string, string, bool> _has;
+        private readonly HashSet<(string Strand, string Part)> _backSide = new();
+        private readonly Func<string, string, bool> _idler;
 
         private MechTopology(Registry registry, SketchDocument doc)
         {
@@ -124,6 +126,34 @@ namespace InventaSketch.Modules.Mechanical
                 }
             }
 
+            // Serpentine belts and chains: the core coupling links a strand to the parts on its first two hubs; the parts on
+            // its further hubs are found here (same tolerance), and parts on a hub the route marks as back side are idlers.
+            var serpentines = doc.Objects.Values
+                .Where(o => !o.IsPointGeometry && registry.Type(o.Type) is MechType { Spans: true } && o.View == Drives.Serpentine).ToList();
+            if (serpentines.Count > 0)
+            {
+                var ctx = new RenderContext(doc, Lang.En).For(registry);
+                List<Vec2> HubsOf(SketchObject o)
+                    => registry.PageAnchors(o, ctx).Where(x => x.Kind == AnchorKind.Point && x.Role == AnchorRole.Hub).Select(x => x.P).ToList();
+                var parts = doc.Objects.Values
+                    .Where(o => !o.IsPointGeometry && registry.Type(o.Type) is { SpansHubs: false })
+                    .Select(o => (o.Id, Hubs: HubsOf(o))).Where(x => x.Hubs.Count > 0).ToList();
+                foreach (var s in serpentines)
+                {
+                    var route = BeltRoute.Of(s);
+                    var hubs = HubsOf(s);
+                    for (var i = 0; i < hubs.Count; i++)
+                        foreach (var (pid, ph) in parts)
+                        {
+                            if (!ph.Any(h => h.DistanceTo(hubs[i]) <= 0.3)) continue;
+                            Add(_strandParts, s.Id, pid);
+                            Add(_strandsOf, pid, s.Id);
+                            if (i < route.Count && route[i].Back) _backSide.Add((s.Id, pid));
+                        }
+                }
+            }
+            _idler = (strand, part) => MechValues.IsIdler(TypeOf(part)) || _backSide.Contains((strand, part));
+
             foreach (var g in parent.Keys.ToList().GroupBy(Find))
             {
                 var members = g.OrderBy(x => x, StringComparer.Ordinal).ToList();
@@ -154,6 +184,15 @@ namespace InventaSketch.Modules.Mechanical
         public IReadOnlyList<string> StrandParts(string strand) => _strandParts.TryGetValue(strand, out var l) ? l : (IReadOnlyList<string>)Array.Empty<string>();
 
         public IReadOnlyList<string> StrandsOf(string part) => _strandsOf.TryGetValue(part, out var l) ? l : (IReadOnlyList<string>)Array.Empty<string>();
+
+        /// <summary>
+        /// <paramref name="part"/> runs in <paramref name="strand"/> as an idler (idler pulley, tensioner, or any part on a hub the
+        /// serpentine route marks as back side): it takes the strand speed but no torque.
+        /// </summary>
+        public bool IsIdler(string strand, string part) => _idler(strand, part);
+
+        /// <summary>Parts of <paramref name="strand"/> that take or give torque through it (not idlers) and have variable <paramref name="key"/>.</summary>
+        public IReadOnlyList<string> Drivers(string strand, string key) => StrandParts(strand).Where(p => _has(p, key) && !_idler(strand, p)).ToList();
 
         public IReadOnlyList<string> NutsOf(string screw) => _nuts.TryGetValue(screw, out var l) ? l : (IReadOnlyList<string>)Array.Empty<string>();
 
@@ -276,18 +315,24 @@ namespace InventaSketch.Modules.Mechanical
         private static IEnumerable<BoundRelation> Strand(MechTopology topo, SketchDocument doc, string strand, string part)
         {
             var kind = doc.Get(strand)?.Type;
+            // Idlers take the strand speed only. One effective pull F stands for the whole strand only with at most two parts
+            // taking or giving torque (a driving and a driven one); with more, the pulls differ per strand section and no torque
+            // relation is set (as at a shaft branch).
+            var idler = topo.IsIdler(strand, part);
             if (kind == "mech.belt" && topo.Has(part, "d"))
             {
                 yield return Bind(BeltSpeed, ("v", strand, "v"), ("d", part, "d"), ("n", part, "n"));
-                yield return Bind(BeltTorque, ("T", part, "T"), ("F", strand, "F"), ("d", part, "d"));
+                if (!idler && topo.Drivers(strand, "d").Count <= 2)
+                    yield return Bind(BeltTorque, ("T", part, "T"), ("F", strand, "F"), ("d", part, "d"));
             }
             else if (kind == "mech.chain" && topo.Has(part, "z"))
             {
                 yield return Bind(ChainSpeed, ("v", strand, "v"), ("z", part, "z"), ("p", strand, "p"), ("n", part, "n"));
-                yield return Bind(ChainForce, ("T", part, "T"), ("F", strand, "F"), ("z", part, "z"), ("p", strand, "p"));
+                var ends = topo.Drivers(strand, "z");
+                if (!idler && ends.Count <= 2)
+                    yield return Bind(ChainForce, ("T", part, "T"), ("F", strand, "F"), ("z", part, "z"), ("p", strand, "p"));
                 // Without a pitch the two sprockets still keep z·n and the torque ratio.
-                var ends = topo.StrandParts(strand).Where(x => topo.Has(x, "z")).ToList();
-                if (ends.Count == 2)
+                if (!idler && ends.Count == 2)
                 {
                     var other = ends[0] == part ? ends[1] : ends[0];
                     yield return Bind(MeshSpeed, ("na", part, "n"), ("za", part, "z"), ("nb", other, "n"), ("zb", other, "z"));

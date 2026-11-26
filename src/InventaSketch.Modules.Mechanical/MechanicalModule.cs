@@ -6,8 +6,8 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Mechanical
 {
     /// <summary>
-    /// Mechanical module: gears, gear sets, shafts, bearings, couplings, clutches, brakes, belt and chain drives,
-    /// fasteners, joints, springs, cams, drive arrows, screw drives, transmission elements (freewheel, torque converter, CVT,
+    /// Mechanical module: gears, gear sets, shafts, bearings, seals, couplings, clutches, brakes, belt and chain drives (also
+    /// serpentine drives over several pulleys with idlers and tensioners), fasteners, retaining rings, pins, joints, springs, cams, drive arrows, screw drives, transmission elements (freewheel, torque converter, CVT,
     /// strain wave and cycloidal drives, park lock) and gearbox housings. Every symbol is insertable without parameters and is
     /// drawn inside its box, so free uniform and non-uniform scaling just stretches it.
     /// </summary>
@@ -119,6 +119,8 @@ namespace InventaSketch.Modules.Mechanical
             Add("support.fixed", "mech.support.fixed", "Fixed bearing", "Festlager", "stick");
             Add("support.floating", "mech.support.floating", "Floating bearing", "Loslager", "stick");
             Add("seal", "mech.seal", "Shaft seal", "Wellendichtring", "detailed");
+            Add("oring", "mech.oring", "O-ring (section)", "O-Ring (Schnitt)", "section");
+            Add("oring.top", "mech.oring", "O-ring (top view)", "O-Ring (Draufsicht)", "top");
             Add("ground", "mech.housing.ground", "Housing / ground", "Gehäuse / Gestell", "hatch");
             Add("guide.stick", "mech.guide.linear", "Linear guide (schematic)", "Linearführung (Schema)", "stick");
             Add("guide.profile", "mech.guide.linear", "Linear guide (profile)", "Linearführung (Profil)", "profile");
@@ -144,6 +146,15 @@ namespace InventaSketch.Modules.Mechanical
             Add("sprocket.teeth", "mech.sprocket", "Sprocket", "Kettenrad", "teeth");
             Add("sprocket.stick", "mech.sprocket", "Sprocket (schematic)", "Kettenrad (Schema)", "stick");
             Add("chain", "mech.chain", "Roller chain", "Rollenkette", "links");
+            Add("belt.serpentine", "mech.belt", "Serpentine belt drive", "Riementrieb über mehrere Scheiben", "serpentine", null,
+                "serpentine", "poly-v", "accessory drive", "keilrippenriemen", "nebenaggregate", "mehrscheibentrieb");
+            Add("chain.serpentine", "mech.chain", "Chain over several sprockets", "Kette über mehrere Kettenräder", "serpentine", null,
+                "chain drive", "kettentrieb", "steuerkette", "timing chain");
+            Add("idler.axial", "mech.pulley.idler", "Idler pulley", "Umlenkrolle", "axial");
+            Add("idler.grooved", "mech.pulley.idler", "Grooved idler pulley", "Umlenkrolle mit Rillen", "axial", P(("back", false)), "rillen", "grooved");
+            Add("idler.section", "mech.pulley.idler", "Idler pulley in section", "Umlenkrolle im Schnitt", "section");
+            Add("tensioner", "mech.tensioner", "Belt tensioner", "Riemenspanner", "axial");
+            Add("tensioner.stick", "mech.tensioner", "Belt tensioner (schematic)", "Riemenspanner (Schema)", "stick");
 
             // fasteners and joints
             Add("screw", "mech.screw", "Hex bolt", "Sechskantschraube", "side");
@@ -152,6 +163,11 @@ namespace InventaSketch.Modules.Mechanical
             Add("nut.top", "mech.nut", "Hex nut (top view)", "Sechskantmutter (Draufsicht)", "top");
             Add("washer", "mech.washer", "Washer", "Unterlegscheibe", "section");
             Add("rivet", "mech.rivet", "Rivet", "Niet", "side");
+            Add("circlip", "mech.circlip", "Retaining ring (circlip)", "Sicherungsring", "axial");
+            Add("circlip.side", "mech.circlip", "Retaining ring on shaft (side view)", "Sicherungsring auf Welle (Seitenansicht)", "side");
+            Add("pin.cylindrical", "mech.pin", "Cylindrical pin", "Zylinderstift", "side");
+            Add("pin.taper", "mech.pin", "Taper pin", "Kegelstift", "side", P(("kind", "taper")));
+            Add("pin.split", "mech.pin", "Split pin", "Splint", "side", P(("kind", "split")));
             Add("weld.symbol", "mech.join.weld", "Fillet weld (symbol)", "Kehlnaht (Symbol)", "symbol");
             Add("weld.seam", "mech.join.weld", "Weld seam (section)", "Schweißnaht (Schnitt)", "seam");
             Add("adhesive", "mech.join.adhesive", "Adhesive joint", "Klebeverbindung", "joint");

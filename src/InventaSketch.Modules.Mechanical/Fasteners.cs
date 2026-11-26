@@ -45,6 +45,20 @@ namespace InventaSketch.Modules.Mechanical
             {
                 Rotating = false,
             };
+            yield return new MechType("mech.circlip", T("Retaining ring (circlip)", "Sicherungsring"), Cat,
+                new[] { "circlip", "retaining ring", "snap ring", "shaft circlip", "sicherungsring", "seegerring", "wellensicherungsring", "sprengring" },
+                // Bore: the inner radius of the ring, so it fits the shaft (groove) it is put on (ShaftFit).
+                new ViewSpec("axial", T("Axial view", "Stirnansicht"), 22, 22, CirclipAxial) { Bore = (p, o) => ClipIn * p.K },
+                new ViewSpec("side", VSide, 3, 22, CirclipSide) { Bore = (p, o) => ClipIn * p.Sy });
+            yield return new MechType("mech.pin", T("Pin", "Stift"), Cat,
+                new[] { "pin", "dowel pin", "cylindrical pin", "taper pin", "split pin", "cotter pin", "stift", "zylinderstift", "passstift", "kegelstift", "splint" },
+                new ViewSpec("side", VSide, 30, 8, PinSide) { Anchors = AxisAnchor },
+                new ViewSpec("top", T("End view", "Stirnansicht"), 8, 8, PinTop))
+            {
+                Params = new[] { PinKind },
+                Rotating = false,
+                Extra = o => ActionChoices.FromParam(o, "param.kind", PinKind, null, "param", PinKinds),
+            };
             yield return new MechType("mech.join.weld", T("Weld", "Schweißnaht"), Cat,
                 new[] { "weld", "fillet weld", "welding", "schweißnaht", "kehlnaht", "schweißen", "schweissnaht" },
                 new ViewSpec("symbol", T("Symbol", "Symbol"), 16, 8, WeldSymbol),
@@ -159,6 +173,98 @@ namespace InventaSketch.Modules.Mechanical
             p.PolyD(pts, S.Vis, true, "head");
             p.Box(-3.5, -2.5, 7.5, 2.5, S.Vis, "shank");
             p.Line(-8, 0, 8, 0, S.Ctr, "axis");
+        }
+
+        // ------------------------------------------------------------------ retaining ring and pins
+
+        /// <summary>Inner and outer radius of the retaining ring (design mm).</summary>
+        private const double ClipIn = 6.6, ClipOut = 10;
+
+        /// <summary>Open ring with the gap at the top and the two lugs with their holes for the circlip pliers.</summary>
+        private static void CirclipAxial(Pen p, SketchObject o)
+        {
+            var ring = Pen.ArcD(0, 0, ClipOut, ClipOut, -70, 320);
+            ring.AddRange(Pen.ArcD(0, 0, ClipIn, ClipIn, 250, -320));
+            p.PolyD(ring, S.Vis, true, "ring");
+            foreach (var a in new[] { -68.0, -112.0 })
+            {
+                var c = Frag.Polar(8.4, Geo.DegToRad(a));
+                p.Hole(c.X, c.Y, 2.3, S.Vis, "lug");
+                p.Hole(c.X, c.Y, 0.9, S.Vis, "hole");
+            }
+            p.CenterCross(0, 0, 11, 11);
+        }
+
+        /// <summary>Ring seen from the side, sitting in the shaft groove: the two rectangular sections blackened.</summary>
+        private static void CirclipSide(Pen p, SketchObject o)
+        {
+            foreach (var s in new[] { -1.0, 1.0 }) p.Box(-1, s * ClipIn, 1, s * ClipOut, S.Black, "ring");
+            p.Axis(1.5);
+        }
+
+        private static readonly string[] PinKinds = { "cylindrical", "taper", "split" };
+
+        private static readonly ParamDef PinKind = new ParamDef("kind", T("Pin type", "Stiftart"), ParamKind.Choice)
+        {
+            Default = "cylindrical",
+            Options = new[]
+            {
+                new ParamOption("cylindrical", T("Cylindrical pin", "Zylinderstift")),
+                new ParamOption("taper", T("Taper pin", "Kegelstift")),
+                new ParamOption("split", T("Split pin", "Splint")),
+            },
+        }.WithOptionIcons(v => v switch { "taper" => IconIds.ShapeTriangle, "split" => IconIds.Split, _ => IconIds.ShapeSquare });
+
+        private static string PinKindOf(SketchObject o) => o.Str("kind", "cylindrical");
+
+        /// <summary>
+        /// Pin from the side: cylindrical pin with chamfered ends, taper pin (taper exaggerated so it shows), split pin with the
+        /// eye on the left and two half-round legs of unequal length.
+        /// </summary>
+        private static void PinSide(Pen p, SketchObject o)
+        {
+            switch (PinKindOf(o))
+            {
+                case "taper":
+                    p.Poly(S.Vis, true, -14.6, -3, 14.6, -2.3, 15, -1.9, 15, 1.9, 14.6, 2.3, -14.6, 3, -15, 2.6, -15, -2.6);
+                    p.Line(-15, 0, 15, 0, S.Ctr, "axis");
+                    break;
+                case "split":
+                    {
+                        var eye = new List<Vec2> { new(-8, -2.6) };
+                        eye.AddRange(Pen.ArcD(-11.4, 0, 3.6, 3.6, -90, -180));
+                        eye.Add(new Vec2(-8, 2.6));
+                        p.PolyD(eye, S.Vis, false, "eye");
+                        p.Ellipse(-11.6, 0, 1.8, 1.2, S.Vis, "eye");
+                        p.Poly(S.Vis, true, -8, -2.6, 12.2, -2.6, 13, -1.3, 12.2, 0, -8, 0);
+                        p.Poly(S.Vis, true, -8, 0, 14.2, 0, 15, 1.3, 14.2, 2.6, -8, 2.6);
+                        break;
+                    }
+                default:
+                    p.Poly(S.Vis, true, -14.4, -3, 14.4, -3, 15, -2.4, 15, 2.4, 14.4, 3, -14.4, 3, -15, 2.4, -15, -2.4);
+                    p.Line(-15, 0, 15, 0, S.Ctr, "axis");
+                    break;
+            }
+        }
+
+        private static void PinTop(Pen p, SketchObject o)
+        {
+            switch (PinKindOf(o))
+            {
+                case "taper":
+                    p.Circle(0, 0, 3, S.Vis, "large-end");
+                    p.Circle(0, 0, 2.3, S.Hid, "small-end");
+                    break;
+                case "split":
+                    p.Circle(0, 0, 2.6, S.Vis, "legs");
+                    p.Line(-2.6, 0, 2.6, 0, S.Vis, "split");
+                    break;
+                default:
+                    p.Circle(0, 0, 3, S.Vis, "pin");
+                    p.Circle(0, 0, 2.4, S.Thin, "chamfer");
+                    break;
+            }
+            p.CenterCross(0, 0, 3.8, 3.8);
         }
 
         /// <summary>Fillet weld symbol (triangle) on the reference line.</summary>
