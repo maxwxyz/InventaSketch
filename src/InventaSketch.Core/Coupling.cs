@@ -74,6 +74,8 @@ namespace InventaSketch.Core
             public Vec2? Apex;
             /// <summary>Pitch line of a rack (<see cref="AnchorRole.PitchLine"/>) with the unit normal to its teeth, else null.</summary>
             public (Vec2 A, Vec2 B, Vec2 N)? Rack;
+            /// <summary>The part's <c>fixed</c> flag (a grounded rack stays when its pinion grows: the pinion moves instead).</summary>
+            public bool Fixed;
             public bool Any => Pitch is not null || Hubs.Count > 0 || Axes.Count > 0 || Apex is not null || Rack is not null;
         }
 
@@ -85,6 +87,7 @@ namespace InventaSketch.Core
             f.Span = type.SpansHubs;
             f.Meshes = type is not IPitchMesh pm || pm.MeshesAtPitch(o);
             f.Routed = type is ISpanRoute route && route.IsRouted(o);
+            f.Fixed = o.Flag("fixed", false);
             foreach (var a in registry.PageAnchors(o, ctx))
             {
                 if (a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner && f.Pitch is null)
@@ -204,7 +207,9 @@ namespace InventaSketch.Core
                 // Objects only in the new state (none for a pure turn) stay as they are.
                 foreach (var o in after.Objects.Values.Where(o => turned.Get(o.Id) is null))
                     turned = Edits.Add(turned, turned.Pages[0].Id, o);
-                return Edits.Update(turned, new[] { t1.Id }, o => o with { Transform = t1.Transform });
+                // The input keeps the user's edit; a pinion rolling along a fixed rack keeps the place the train gave it (it travels).
+                var rolls = GearTrain.Travel(registry, before, t1.Id, lang) is not null;
+                return Edits.Update(turned, new[] { t1.Id }, o => o with { Transform = rolls ? t1.Transform with { X = o.Transform.X, Y = o.Transform.Y } : t1.Transform });
             }
 
             var ctx0 = new RenderContext(before, lang);
@@ -569,11 +574,17 @@ namespace InventaSketch.Core
                     var b = Now(partner);
                     if (b.Pitch is null && b.Rack is { } rack)
                     {
-                        // A grown or shrunk pinion keeps touching its rack: the rack moves along its normal (the pinion stays).
+                        // A grown or shrunk pinion keeps touching its rack: the rack moves along its normal (the pinion stays);
+                        // a fixed rack stays and the pinion moves away from it instead, with its train.
                         if (Math.Abs(r1 - r0) > Eps)
                         {
                             var gap = (a1.Centre - rack.A).Dot(rack.N) - r1;
-                            RigidMove(partner, rack.N * gap);
+                            if (b.Fixed)
+                            {
+                                visited.Add(partner);
+                                RigidMove(id, rack.N * -gap);
+                            }
+                            else RigidMove(partner, rack.N * gap);
                         }
                         continue;
                     }

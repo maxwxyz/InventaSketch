@@ -59,8 +59,11 @@ namespace InventaSketch.Modules.Mechanical.Tests
             Assert.Equal(1000, Rpm(t, "p", "ns"), 9);
             Assert.Equal(1000.0 * 20 / 72, Rpm(t, "p", "nc"), 9);
             Assert.Equal(1000.0 * 20 / 72, Rpm(t, "out"), 9);
-            // Taken as the magnitude of the signed carrier speed: a derived value, not a plain link.
-            Assert.Equal(Provenance.Derived, t.Get("out", "n")!.Provenance);
+            // Taken as the magnitude of the signed carrier speed: passed on through the port, so it shows as linked (as the
+            // CVT's plain equalities), while the carrier's own speed is derived by Willis.
+            Assert.Equal(Provenance.Linked, t.Get("out", "n")!.Provenance);
+            Assert.Equal(Provenance.Linked, t.Get("out", "T")!.Provenance);
+            Assert.Equal(Provenance.Derived, t.Get("p", "nc")!.Provenance);
             Assert.Equal(-36, Val(t, "p", "Tc"), 9);
             Assert.Equal(36, Val(t, "out", "T"), 9);
             Assert.Equal(Val(t, "in", "P"), Val(t, "out", "P"), 6);
@@ -75,8 +78,8 @@ namespace InventaSketch.Modules.Mechanical.Tests
             var ctx = new RenderContext(SketchDocument.Create()).For(r);
             foreach (var (item, ids) in new[]
             {
-                ("mech.planetary.stick", new[] { "sun", "carrier" }), ("mech.ravigneaux.stick", new[] { "sun1", "sun2" }),
-                ("mech.differential.stick", new[] { "left", "right" }), ("mech.differential.section", new[] { "left", "right" }),
+                ("mech.planetary.stick", new[] { "sun", "carrier", "ring" }), ("mech.ravigneaux.stick", new[] { "sun1", "sun2", "carrier", "ring" }),
+                ("mech.differential.stick", new[] { "left", "right", "case" }), ("mech.differential.section", new[] { "left", "right", "case" }),
                 ("mech.harmonic.stick", new[] { "in", "out" }), ("mech.cycloidal.stick", new[] { "in", "out" }), ("mech.cvt.stick", new[] { "hub", "hub2" }),
             })
             {

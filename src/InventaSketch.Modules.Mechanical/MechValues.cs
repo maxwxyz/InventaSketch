@@ -285,6 +285,16 @@ namespace InventaSketch.Modules.Mechanical
                 .Solve("Tc", "−{Ts}·(1 + {k}·{zr}/{zs})", v => -v("Ts") * (1 + v("k") * v("zr") / v("zs")))
                 .Solve("Ts", "−{Tc}/(1 + {k}·{zr}/{zs})", v => -v("Tc") / (1 + v("k") * v("zr") / v("zs")));
 
+        /// <summary>
+        /// Teeth of the outer teeth of the ring gear (planetary and Ravigneaux sets, parameter <c>outer</c>): a gear meshing there
+        /// keeps z_g·n_g = z_o·|n_r| (<see cref="MechTopology"/>). Default 66 as drawn in the axial views.
+        /// </summary>
+        private static VarDef OuterTeeth()
+            => V("zo", T("Outer teeth of the ring gear", "Zähnezahl der Außenverzahnung am Hohlrad"), T("z_o", "z_o"), Quantities.Count, "", "zo", VarRelevance.Panel)
+                with { Default = 66, Min = 1, Max = 1000 };
+
+        private static readonly ParamDef POuterTeeth = Text("zo", T("Outer teeth of the ring gear", "Zähnezahl der Außenverzahnung am Hohlrad"), "");
+
         private static Spec Planetary(MechType type)
         {
             VarDef SignedSpeed(string key, I18nText name, string sym, VarRelevance rel) =>
@@ -295,6 +305,7 @@ namespace InventaSketch.Modules.Mechanical
             {
                 V("zs", T("Teeth of the sun", "Zähnezahl Sonnenrad"), T("z_s", "z_s"), Quantities.Count, "", "zs") with { Default = 20, Min = 1, Max = 1000 },
                 V("zr", T("Teeth of the ring gear", "Zähnezahl Hohlrad"), T("z_r", "z_r"), Quantities.Count, "", "zr") with { Default = 52, Min = 1, Max = 1000 },
+                OuterTeeth(),
                 SignedSpeed("ns", T("Speed of the sun", "Drehzahl Sonnenrad"), "n_s", VarRelevance.Card),
                 SignedSpeed("nc", T("Speed of the carrier", "Drehzahl Steg"), "n_c", VarRelevance.Card),
                 SignedSpeed("nr", T("Speed of the ring gear", "Drehzahl Hohlrad"), "n_r", VarRelevance.Panel),
@@ -306,6 +317,7 @@ namespace InventaSketch.Modules.Mechanical
             var ps = WithShow(
                 Text("zs", T("Teeth of the sun", "Zähnezahl Sonnenrad"), ""),
                 Text("zr", T("Teeth of the ring gear", "Zähnezahl Hohlrad"), ""),
+                POuterTeeth,
                 Text("speeds", T("Speed of the sun", "Drehzahl Sonnenrad"), "min⁻¹"),
                 Text("speedc", T("Speed of the carrier", "Drehzahl Steg"), "min⁻¹"),
                 Text("speedr", T("Speed of the ring gear", "Drehzahl Hohlrad"), "min⁻¹"),
@@ -817,6 +829,7 @@ namespace InventaSketch.Modules.Mechanical
                 Z("zs1", T("Teeth of the small sun", "Zähnezahl der kleinen Sonne"), "z_s1", 14),
                 Z("zs2", T("Teeth of the large sun", "Zähnezahl der großen Sonne"), "z_s2", 20),
                 Z("zr", T("Teeth of the ring gear", "Zähnezahl des Hohlrads"), "z_r", 52),
+                OuterTeeth(),
             };
             var ps = WithShow(
                 Text("speeds1", T("Speed of the small sun", "Drehzahl der kleinen Sonne"), "min⁻¹"),
@@ -825,7 +838,8 @@ namespace InventaSketch.Modules.Mechanical
                 Text("speedc", T("Speed of the carrier", "Drehzahl des Stegs"), "min⁻¹"),
                 Text("zs1", T("Teeth of the small sun", "Zähnezahl der kleinen Sonne"), ""),
                 Text("zs2", T("Teeth of the large sun", "Zähnezahl der großen Sonne"), ""),
-                Text("zr", T("Teeth of the ring gear", "Zähnezahl des Hohlrads"), ""));
+                Text("zr", T("Teeth of the ring gear", "Zähnezahl des Hohlrads"), ""),
+                POuterTeeth);
             return new Spec(vars, new[] { RavigneauxLarge, RavigneauxSmall }, ps, Array.Empty<ValueCheck>());
         }
 

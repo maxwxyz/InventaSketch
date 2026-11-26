@@ -23,7 +23,11 @@ namespace InventaSketch.Core
     /// that member (<see cref="GearUnitDocking"/>), and the members follow the unit's own speed relations (fixed ratio:
     /// ω_out = ω_in/i; planetary or differential: Willis) instead of turning all docked parts rigidly together;</item>
     /// <item>rack and pinion (a pitch circle touching a rack's <see cref="AnchorRole.PitchLine"/>): the rack travels
-    /// v = ω·r along its pitch line.</item>
+    /// v = ω·r along its pitch line; a rack marked <c>fixed</c> stays and the pinion rolls along it instead: the pinion's
+    /// centre, and with it every part of the train that is not fixed (the carriage: its shaft, the gears driving it), travels
+    /// v = ω·r the other way (<see cref="Travel"/>);</item>
+    /// <item>a gear meshing with a pitch circle of a gear unit that belongs to one member (<see cref="GearUnitDocking.MeshPort"/>:
+    /// the outer teeth of a ring gear) meshes with that member.</item>
     /// </list>
     /// Speeds the system leaves open (a planetary set without a fixed member) are taken as 0, ring gears and carriers
     /// first, so the usual case (ring fixed to the housing) comes out. Gear units are the exception: what depends on a free
@@ -54,6 +58,8 @@ namespace InventaSketch.Core
             public (Vec2 A, Vec2 B, Vec2 N)? Rack;
             /// <summary>Member ports of a gear unit (<see cref="IGearUnit"/>), empty for other parts.</summary>
             public IReadOnlyList<GearUnitPort> Ports = Array.Empty<GearUnitPort>();
+            /// <summary>Gear unit whose pitch circle belongs to one member (outer teeth of a ring gear): that member, else null.</summary>
+            public string? PitchMember;
             public IReadOnlyList<Anchor> Anchors = Array.Empty<Anchor>();
             public bool IsUnit => Ports.Count > 0;
         }
@@ -77,11 +83,33 @@ namespace InventaSketch.Core
         /// train, and parts whose speed depends on a free member of a gear unit, are not listed.
         /// </summary>
         public static IReadOnlyDictionary<string, double> Speeds(Registry registry, SketchDocument doc, string inputId, Lang lang = Lang.En)
+            => Solve(registry, doc, inputId, lang).Speeds;
+
+        /// <summary>
+        /// Travel of the pinion's centre (mm per radian of the input, page coordinates) when the train of
+        /// <paramref name="inputId"/> rolls along a fixed rack (a rack whose <c>fixed</c> flag is set): v = ω·r opposite to
+        /// the way a free rack would travel. Every part of the train that is not fixed travels with it. Null if the train
+        /// meshes with no fixed rack, or with several whose travels disagree (it cannot roll).
+        /// </summary>
+        public static Vec2? Travel(Registry registry, SketchDocument doc, string inputId, Lang lang = Lang.En)
+            => Solve(registry, doc, inputId, lang).Travel;
+
+        private sealed class Result
         {
-            var bodies = Bodies(registry, doc, lang);
-            if (!bodies.ContainsKey(inputId)) return new Dictionary<string, double>();
+            public Dictionary<string, double> Speeds = new(StringComparer.Ordinal);
+            public Dictionary<string, Body> Bodies = new(StringComparer.Ordinal);
+            /// <summary>Travel of the carriage along fixed racks (mm per radian of the input), else null.</summary>
+            public Vec2? Travel;
+        }
+
+        private static Result Solve(Registry registry, SketchDocument doc, string inputId, Lang lang)
+        {
+            var result = new Result { Bodies = Bodies(registry, doc, lang) };
+            var bodies = result.Bodies;
+            if (!bodies.ContainsKey(inputId)) return result;
             var spiders = new HashSet<string>(StringComparer.Ordinal);
-            var eqs = Equations(registry, doc, bodies, lang, spiders);
+            var rolling = new List<(string Column, double R, Vec2 N)>();
+            var eqs = Equations(registry, doc, bodies, lang, spiders, rolling);
             // The train: everything reachable from the input through the equations (and carrier membership).
             var adj = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
             void Edge(string a, string b)
@@ -119,8 +147,20 @@ namespace InventaSketch.Core
             rows.Insert(0, input);
             var soft = cols.Select(IsMemberColumn).ToArray();
             var (w, determined) = Solve(rows, cols.Count, soft);
-            return cols.Select((id, i) => (id, i)).Where(t => !soft[t.i] && determined[t.i])
+            result.Speeds = cols.Select((id, i) => (id, i)).Where(t => !soft[t.i] && determined[t.i])
                 .ToDictionary(t => t.id, t => w[t.i], StringComparer.Ordinal);
+            // Rolling along fixed racks: the pinion's centre travels against the way a free rack would (v = ω·r); all contacts
+            // must agree, else the train cannot roll.
+            Vec2? travel = null;
+            foreach (var (col, r, n) in rolling)
+            {
+                if (!index.TryGetValue(col, out var k) || !determined[k]) continue;
+                var d = RackTravel(n) * (-r * w[k]);
+                if (travel is null) travel = d;
+                else if ((travel.Value - d).Length > 1e-6) { travel = null; break; }
+            }
+            result.Travel = travel is { } tv && tv.Length > 1e-12 ? tv : null;
+            return result;
         }
 
         /// <summary>
@@ -129,9 +169,12 @@ namespace InventaSketch.Core
         /// </summary>
         public static SketchDocument Turn(Registry registry, SketchDocument doc, string inputId, double degrees, Lang lang = Lang.En)
         {
-            var speeds = Speeds(registry, doc, inputId, lang);
+            var solved = Solve(registry, doc, inputId, lang);
+            var speeds = solved.Speeds;
             if (speeds.Count == 0) return doc;
-            var bodies = Bodies(registry, doc, lang);
+            var bodies = solved.Bodies;
+            // Rolling along a fixed rack: every part of the train that is not fixed travels with the pinion (the carriage).
+            var carriage = solved.Travel is { } v ? v * (degrees * Math.PI / 180) : Vec2.Zero;
             var result = doc;
             foreach (var kv in speeds)
             {
@@ -155,6 +198,7 @@ namespace InventaSketch.Core
                     var q = pivot + new Vec2(p.X * Math.Cos(a) - p.Y * Math.Sin(a), p.X * Math.Sin(a) + p.Y * Math.Cos(a));
                     t = t with { X = Math.Round(q.X, 6), Y = Math.Round(q.Y, 6) };
                 }
+                if (carriage.Length > 0 && !b.Fixed) t = t with { X = Math.Round(t.X + carriage.X, 6), Y = Math.Round(t.Y + carriage.Y, 6) };
                 if (t != o.Transform) result = Edits.Update(result, new[] { kv.Key }, x => x with { Transform = t });
             }
             return result;
@@ -180,6 +224,7 @@ namespace InventaSketch.Core
                 var anchors = registry.PageAnchors(o, ctx).ToList();
                 var b = new Body { O = o, Centre = new Vec2(o.Transform.X, o.Transform.Y), Fixed = o.Flag("fixed", false), Anchors = anchors };
                 b.Ports = GearUnitDocking.PortsOf(registry, o);
+                if (b.Ports.Count > 0) b.PitchMember = GearUnitDocking.MeshPort(registry, o, anchors)?.Member;
                 if (anchors.FirstOrDefault(a => a.TeethSide() is not null) is { } line) b.Rack = (line.P, line.Q, line.TeethSide()!.Value);
                 var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner);
                 if (pitch is not null) { b.Pitch = pitch.Radius; b.Inner = pitch.Role == AnchorRole.PitchInner; b.Centre = pitch.P; b.Side = pitch.AxisOf() is not null; }
@@ -205,8 +250,12 @@ namespace InventaSketch.Core
             return map;
         }
 
-        /// <summary>The speed equations of the document; <paramref name="spiders"/> receives the spider gears of cages.</summary>
-        private static List<Dictionary<string, double>> Equations(Registry registry, SketchDocument doc, Dictionary<string, Body> bodies, Lang lang, HashSet<string> spiders)
+        /// <summary>
+        /// The speed equations of the document; <paramref name="spiders"/> receives the spider gears of cages,
+        /// <paramref name="rolling"/> the pinions on fixed racks (column, pitch radius, teeth normal of the rack).
+        /// </summary>
+        private static List<Dictionary<string, double>> Equations(Registry registry, SketchDocument doc, Dictionary<string, Body> bodies, Lang lang, HashSet<string> spiders,
+            List<(string Column, double R, Vec2 N)> rolling)
         {
             var eqs = new List<Dictionary<string, double>>();
             void Add(params (string Id, double K)[] terms)
@@ -228,6 +277,13 @@ namespace InventaSketch.Core
             var units = new HashSet<string>(StringComparer.Ordinal);
             GearUnitPort? Docked(Body unit, Body part)
                 => GearUnitDocking.DockedPort(registry, unit.O, part.O, o => bodies.TryGetValue(o.Id, out var x) ? x.Anchors : Array.Empty<Anchor>());
+            // The column a mesh acts on: the member whose teeth the unit's pitch circle is (outer teeth of a ring), else the part.
+            string Col(Body x)
+            {
+                if (x.PitchMember is not { } m) return x.O.Id;
+                units.Add(x.O.Id);
+                return MemberColumn(x.O.Id, m);
+            }
             // A unit drawn with a centre bore (axial views) turns as a whole with the member at the bore, as it did before.
             foreach (var u in bodies.Values.Where(x => x.IsUnit))
                 if (u.Ports.FirstOrDefault(p => p.Centre && u.Anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == p.AnchorId)) is { } bore)
@@ -263,24 +319,26 @@ namespace InventaSketch.Core
                 }
                 switch (link.Kind)
                 {
-                    case LinkKind.Mesh when a.Pitch is double rg && !a.Inner && b.Rack is not null:
-                        // Rack and pinion: the rack travels r·ω along its pitch line.
-                        Add((b.O.Id, 1), (a.O.Id, -rg));
+                    case LinkKind.Mesh when a.Pitch is double rg && !a.Inner && b.Rack is { } rk:
+                        // Rack and pinion: the rack travels r·ω along its pitch line; a fixed rack stays and the pinion rolls.
+                        if (b.Fixed) rolling.Add((Col(a), rg, rk.N));
+                        else Add((b.O.Id, 1), (Col(a), -rg));
                         break;
                     case LinkKind.Mesh when a.Pitch is double ra && b.Pitch is double rb:
                         {
                             var c = a.Carrier ?? b.Carrier;
+                            string ca = Col(a), cb = Col(b);
                             if (a.Inner == b.Inner)
                             {
-                                if (c is null) Add((a.O.Id, ra), (b.O.Id, rb));
-                                else Add((a.O.Id, ra), (b.O.Id, rb), (c, -(ra + rb)));
+                                if (c is null) Add((ca, ra), (cb, rb));
+                                else Add((ca, ra), (cb, rb), (c, -(ra + rb)));
                             }
                             else
                             {
                                 // Ring (inner) and gear inside it turn the same way.
-                                var (ring, rr, gear, rg) = a.Inner ? (a, ra, b, rb) : (b, rb, a, ra);
-                                if (c is null) Add((ring.O.Id, rr), (gear.O.Id, -rg));
-                                else Add((ring.O.Id, rr), (gear.O.Id, -rg), (c, -(rr - rg)));
+                                var (ring, rr, gear, rg) = a.Inner ? (ca, ra, cb, rb) : (cb, rb, ca, ra);
+                                if (c is null) Add((ring, rr), (gear, -rg));
+                                else Add((ring, rr), (gear, -rg), (c, -(rr - rg)));
                             }
                             break;
                         }
