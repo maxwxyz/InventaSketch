@@ -140,7 +140,9 @@ namespace InventaSketch.AddIn.OnSlide
             var foot = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, _em / 4, 0, 0) };
             _calc = new LinkLabel { Text = T("Calculator …", "Rechner …"), AutoSize = true, Margin = new Padding(0, 3, _em, 0), LinkBehavior = LinkBehavior.HoverUnderline };
             _label = new CheckBox { Text = T("Show on drawing", "Auf der Zeichnung zeigen"), AutoSize = true, Margin = Padding.Empty };
+            var sheet = new LinkLabel { Text = T("Calculation sheet …", "Rechenblatt …"), AutoSize = true, Margin = new Padding(0, 3, _em, 0), LinkBehavior = LinkBehavior.HoverUnderline };
             foot.Controls.Add(_calc);
+            foot.Controls.Add(sheet);
             foot.Controls.Add(_label);
             outer.Controls.Add(_title);
             outer.Controls.Add(_table);
@@ -155,6 +157,8 @@ namespace InventaSketch.AddIn.OnSlide
             Apply(model);
 
             _calc.LinkClicked += (_, _) => OpenCalculator();
+            _tips.SetToolTip(sheet, T("All values with formula, origin and source as CSV, Markdown, LaTeX or a table on the slide", "Alle Werte mit Formel, Herkunft und Quelle als CSV, Markdown, LaTeX oder Tabelle auf der Folie"));
+            sheet.LinkClicked += (_, _) => { _calculator = SheetCommand; Dismiss("sheet"); };
             _label.CheckedChanged += (_, _) =>
             {
                 if (_updating) return;
@@ -381,6 +385,9 @@ namespace InventaSketch.AddIn.OnSlide
             }
             Dismiss("Esc");
         }
+
+        /// <summary>Returned instead of a calculator text when "Calculation sheet …" was chosen.</summary>
+        internal const string SheetCommand = "sheet";
 
         private void OpenCalculator()
         {
