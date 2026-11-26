@@ -9,8 +9,8 @@ Normbilder. Eine Normkonformität wird nicht behauptet.
 
 **Umfang und Grenzen.** Es handelt sich um eine *kinematische Skizze*, keine Dynamiksimulation: Stellungen werden
 per geschlossener Schleifengleichung für einen Antriebswinkel berechnet. Es gibt keine Massen, Kräfte,
-Zeitintegration, Kollisionsprüfung oder Toleranzanalyse; Geschwindigkeiten gibt es nur als Elementwerte erster
-Ordnung in der aktuellen Stellung (siehe „Elementwerte“). Der Kraftpfeil am Kniehebel und der
+Zeitintegration, Kollisionsprüfung oder Toleranzanalyse; Geschwindigkeiten und Beschleunigungen gibt es nur als
+Elementwerte in der aktuellen Stellung bei konstanter Antriebsdrehzahl (siehe „Elementwerte“). Der Kraftpfeil am Kniehebel und der
 Antriebspfeil der Kurbel sind reine Symbole.
 
 ## Konventionen
@@ -49,7 +49,7 @@ Antriebspfeil der Kurbel sind reine Symbole.
 | `kin.link.rocker` | Rocker / Schwinge | Kasten | – | Port (Drehpunkt, Bolzen), Mount |
 | `kin.link.slider` | Slider block / Gleitstein | Kasten | – | Port + Hub (Mitte, rastet auf Führungsachsen) |
 | `kin.link.piston` | Piston and cylinder / Kolben und Zylinder | Kasten | `stroke` (0..1) | Port (beide Augen), Mount, Axis |
-| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | Kasten | `angle`, `follower` (Rolle/flach/Spitze), `base`, `lift`, `dof` | Mount + Hub (Kurvendrehpunkt), Port (Stößelende), Axis (Stößelführung); zerfällt in Gestelldrehpunkt, Kurvenscheibe und Stößel-Gleitstein |
+| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | Kasten | `angle`, `follower` (Rolle/flach/Spitze), `base`, `lift`, `dof`, Werte `inputSpeed`, `followerSpeed` | Mount + Hub (Kurvendrehpunkt), Port (Stößelende), Axis (Stößelführung); zerfällt in Gestelldrehpunkt, Kurvenscheibe und Stößel-Gleitstein |
 | `kin.cam.disc` | Cam disc / Kurvenscheibe (Einzelteil, 25.11.2026) | Schema, detailliert (Nabe, Mittellinien); Kasten um den Drehpunkt, gleichmäßig | `base`, `lift`, `follower` (wie Stößel anliegen: Rolle mit 0,3 × Grundkreis, Flachstößel, Spitze); dreht sich mit seiner Drehung | Hub + Port (Drehpunkt); ein Gleitstein, dessen Führung durch die Scheibe läuft und dessen Gelenk auf der Kontur sitzt, ist ihr Stößel (`Cams`): Drehen der Scheibe im Bewegungsmodus bewegt den Stößel und die daran angedockte Kette |
 | `kin.spring` | Spring / Feder | 2 Punkte | `coils`, `width` | Port an beiden Enden |
 | `kin.damper` | Damper / Dämpfer | 2 Punkte | `width` | Port an beiden Enden |
@@ -78,7 +78,8 @@ Jeder Mechanismus ist ein Kastenobjekt mit den Ansichten `schematic` (Strichsche
 | `kin.mech.sixbar` | Six-bar linkage / Sechsgliedriges Koppelgetriebe (26.11.2026) | `kind` watt/stephenson, `ground` 40, `crank` 12, `coupler` 36, `rocker` 30; Watt: `arm` 24, `armAngle` 60°, `ground2` 36, `coupler2` 28, `rocker2` 22; Stephenson: `cpu` 0,5, `cpv` −0,3, `link5` 40, `link6` 22, `x6` 62, `y6` −6 | Kurbelwinkel, Vorgabe −60° | 1 |
 | `kin.mech.pantograph` | Pantograph / Storchschnabel (Pantograph) (26.11.2026) | `length` 40, `scale` 2, `reach` 20, `trace` 5 | Lage des Fahrstifts auf dem abgefahrenen Kreis, Vorgabe −90° | 2 |
 
-Gemeinsame Parameter: `angle`, `ghosts` (0–12), `path` (Bahnkurve), `dof` (Freiheitsgrad-Anzeige). Malteserkreuz
+Gemeinsame Parameter: `angle`, `ghosts` (0–12), `path` (Bahnkurve), `dof` (Freiheitsgrad-Anzeige); Viergelenk und
+Schubkurbel zusätzlich `pole` (Momentanpol der Koppel, siehe unten). Malteserkreuz
 und Klinkengesperre haben keine Zwischenlagen und keine Bahnkurve (ein zweites Rad würde die Zeichnung verdecken); sie
 lassen sich wie die anderen animieren. Das Viergelenk hat zusätzlich `grashof` (Plakette mit der Grashof-Klasse oben
 rechts, z. B. „Kurbelschwinge“ / „Crank-rocker“).
@@ -134,6 +135,24 @@ außerhalb des Stabs, gezeichnet als Koppeldreieck), der Pleuelmitte (Schubkurbe
 `Port`-Anker, sodass Gliedenden, Drehgelenke und Federn Gelenk an Gelenk einrasten; Führungen von Gleitsteinen
 sind `Axis`-Strecken, auf die Gleitsteine einrasten.
 
+**Kurbelnabe (26.11.2026).** Der Kurbeldrehpunkt von Viergelenk (O2), Schubkurbel (O), Kreuzschubkurbel (O) und
+sechsgliedrigem Koppelgetriebe (O2) ist zusätzlich ein `Hub`-Anker („hub“), wie der Drehpunkt der Kurvenscheibe und die
+Drehpunkte des Malteserkreuzes. Ein Zahnrad oder eine Riemenscheibe des Mechanikmoduls in Achsansicht dockt dort
+konzentrisch an, eine Wellenachse (Welle, Motorwelle des Maschinenmoduls) trägt ihn, sodass die Wellenstränge des Kerns
+(`ShaftLines`) sie verbinden: die Antriebsdrehzahl `n` des Mechanismus ist die Drehzahl des Wellenstrangs (Beziehung
+`kin.shaft.speed`, eine Gleichheit); z. B. dreht eine mit 90 min⁻¹ angetriebene Riemenscheibe die Kurbel mit 90 min⁻¹, und
+die Koppelgeschwindigkeiten folgen. Mechanismen haben keine Drehmomentvariable, daher wird kein Moment weitergegeben.
+
+**Momentanpol (26.11.2026).** Mit `pole` (Aktion „Momentanpol“ / „Instant centre“) zeichnet das Viergelenk den
+Momentanpol P₁₃ (englische Beschriftung I₁₃; Gestell 1, Kurbel 2, Koppel 3, Schwinge 4) der Koppel gegenüber dem Gestell
+in der aktuellen Stellung: den Schnittpunkt der Kurbelgeraden O2–A mit der Schwingengeraden O4–B (Kennedy [S24]); die
+Schubkurbel zeichnet den Pol der Koppel (Pleuel) auf der Kurbelgeraden O–A und der Normalen zur Führung durch B. Die
+Konstruktionslinien sind dünne Strichlinien vom Festpunkt über das Gelenk bis zum Pol, an der Box abgeschnitten; der Pol
+wird nur markiert (kleiner Kreis und Beschriftung), wenn er innerhalb der Box liegt: er wandert ins Unendliche, wo Kurbel
+und Schwinge parallel sind (`Linkages.CouplerPole` / `RodPole` liefern dann null). Jeder Koppelpunkt bewegt sich
+senkrecht zu seinem Strahl vom Pol mit |v_P| = |ω₃|·|P − P₁₃| (geprüft). Bibliothekseinträge „Viergelenkgetriebe mit
+Momentanpol der Koppel“ (Antriebswinkel 120°) und „Schubkurbel mit Momentanpol der Koppel“ (−165°).
+
 ### Bewegungsangaben (`kin.motion`)
 
 | Typ-ID | Name (EN / DE) | Geometrie | Parameter |
@@ -163,11 +182,12 @@ ihr folgen die Geschwindigkeiten in der aktuellen Stellung. Das Werteetikett (`s
 
 | Element | Variablen (Kartenwerte **fett**) | Beziehungen |
 |---|---|---|
-| Viergelenk | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, Klasse (Text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄ | Δ_G = (p + q) − (s + l); μ aus dem Kosinussatz cos μ = (b² + c² − x²)/(2bc) mit x = \|A O4\| über [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; nur Kurbelschwinge: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) in der aktuellen Stellung und Montagelage; ω₄ = i·n |
-| Schubkurbel | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v** | H = √((l + r)² − e²) − √((l − r)² − e²) (ohne Versatz 2r); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ |
+| Viergelenk | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, Klasse (Text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄, ω₃, v_P, a_P | Δ_G = (p + q) − (s + l); μ aus dem Kosinussatz cos μ = (b² + c² − x²)/(2bc) mit x = \|A O4\| über [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; nur Kurbelschwinge: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) in der aktuellen Stellung und Montagelage; ω₄ = i·n; Koppel ω₃ = n·dθ₃/dφ (für die Montagelage); Koppelpunkt P (`cpu`, `cpv`, der Punkt der Bahnkurve): v_P = \|n\|·\|dP/dφ\|, a_P = n²·\|d²P/dφ²\| bei konstantem n |
+| Schubkurbel | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v**, v_max, a | H = √((l + r)² − e²) − √((l − r)² − e²) (ohne Versatz 2r); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ; v_max = \|n\|·max\|dx_B/dφ\| über eine Umdrehung (Textparameter `maxSliderSpeed`; eingegeben ergibt er n); a = n²·d²x_B/dφ² bei konstantem n (nur lesend) |
 | Schnellrücklauf | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 für r/d = 1/2); H aus der Lageanalyse über eine Umdrehung |
 | Kreuzschubkurbel | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
 | Malteserkreuzgetriebe | z (`slots`), C (`centre`), φ (`angle`, Antrieb), n, **β**, **α_s**, α_r, **τ**, a, i, **ω₂** | β = 360°/z (Schaltwinkel); α_s = 180° − 360°/z (Antriebswinkel während der Schaltung), α_r = 180° + 360°/z (während der Rast); τ = α_s/α_r = (z − 2)/(z + 2) (z = 4: 90°/270° = 1/3, z = 6: 1/2); a = C·sin(180°/z); i = ω₂/ω₁ = −λ·(cos φ − λ)/(1 − 2λ·cos φ + λ²) mit λ = sin(180°/z), solange \|φ\| ≤ 90° − 180°/z, sonst 0 (gesperrt; φ = 0 auf der Mittellinie, Spitzenwert −λ/(1 − λ) = −2,414 für z = 4); ω₂ = i·n (negativ: das Rad dreht gegen den Antrieb) |
+| Kurvenscheibe mit Stößel | r₀, h (`base`, `lift`), φ (`angle`), n, **H**, **s**, **v**, **α_max**, α | exakte Berührung des Tangentennockens (Grundkreis r₀ und Nockenkreis r_n = min(r₀, max(0,45·r₀, r₀ − h/2)), durch Tangentenflanken verbunden) mit dem mittigen Schubstößel: Rollenmitte auf der Hülle beider um r_R = 0,3·r₀ vergrößerten Kreise, Spitze auf der Hülle, Flachstößel auf ihrem höchsten Punkt; s = (Abstand der Berührung von der Scheibenmitte) − R_p, R_p = r₀ + r_R (Rolle) oder r₀; H = max s; v = n·ds/dφ (Textparameter `followerSpeed`; eingegeben ergibt er n); tan α = \|ds/dφ\|/(R_p + s) bei Rolle und Spitze, α = 0 beim Flachstößel; α_max über eine Umdrehung |
 | Sechsgliedriges Koppelgetriebe | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ, n, **θ₆**, **μ₁**, **μ₂**, i, **ω₆** | θ₆ = Richtung der Abtriebsschwinge O6 → D (Watt) bzw. O6 → C (Stephenson), gemessen wie φ, aus dem Maschenschluss; μ₁ bei B zwischen Koppel und Schwinge: cos μ₁ = (b² + c² − a² − d² + 2ad·cos φ)/(2bc); μ₂ am Abtriebsgelenk zwischen Abtriebskoppel (Watt C-D, Stephenson P-C) und Abtriebsschwinge; i = dθ₆/dφ (zentraler Differenzenquotient über ±0,01°); ω₆ = i·n. Die weiteren Glieder der Kette stammen aus den Parametern des Elements |
 
 Die Grashof-Klasse ist seit 26.11.2026 auch ein Elementwert: die textwertige Panel-Variable `cls` („Class“ /
@@ -189,12 +209,24 @@ aktuellen Stellung (noch keine Prüfung über die ganze Bewegung).
 |---|---|---|---|---|
 | `kin.transmission` | Viergelenk, Schubkurbel | μ verlässt irgendwo in der Bewegung 40° … 140° (μ_min < 40° oder μ_max > 140°) | Warnung | [S24] |
 | `kin.grashof` | Viergelenk | die Kurbel kann nicht umlaufen (nicht Grashof mit Kurbel oder Gestell als kürzestem Glied) | Hinweis | [S24] |
+| `kin.cam.pressure` | Kurvenscheibe mit Stößel | α_max > 30° (übliche Grenze für Schubstößel; der Standard-Tangentennocken r₀ = 8, h = 7 erreicht mit Rolle etwa 43°, daher ein Hinweis) | Hinweis | [S24] |
+
+Ableitungen (ω₃, v_P, a_P, a, v der Kurvenscheibe) sind zentrale Differenzenquotienten der exakten Lageanalyse mit einer
+Schrittweite von 10⁻³ rad (`Linkages.Derivatives`, `CouplerPointDerivatives`, `CouplerRate`, `SliderAccelerationFactor`);
+die Tests vergleichen sie mit den geschlossenen Geschwindigkeits- und Beschleunigungsgleichungen. Im Kern gibt es noch
+keine Größenart Winkelbeschleunigung, daher wird α₄ der Schwinge nicht angeboten (die Bahnbeschleunigung des Koppelpunkts
+schon).
 
 **Verknüpftes Diagramm.** Das Viergelenk implementiert `ICharacteristics` (Calc 5): den Satz `transfer`,
 „Abtriebswinkel über Antriebswinkel“ / „Output angle over input angle“, Abtriebswinkel ψ₄ über dem Antriebswinkel φ
 (−180° … 180°, ein Punkt je Grad, Lücken wo nicht montierbar) und den Übertragungswinkel μ in einem zweiten Feld mit
 Linien bei 40° und 140°. Die aktuelle Stellung ist ein Punkt; Ziehen längs φ trägt einen neuen Antriebswinkel ein.
 „Kennlinie ▸“ fügt das Diagramm ein; das Viergelenk nennt seine verknüpften Diagramme als abhängige Objekte.
+
+Die Kurvenscheibe mit Stößel hat den Satz `displacement`, „Hubdiagramm“ / „Displacement diagram“: den Stößelweg s (mm)
+über dem Nockenwinkel 0° … 360° (ein Punkt je Grad) mit dem Druckwinkel α in einem zweiten Feld und einer Linie bei 30°;
+die aktuelle Stellung ist ein Punkt, der längs des Nockenwinkels gezogen wird (schreibt φ); beim Flachstößel steht der
+Hinweis, dass sein Druckwinkel 0° ist.
 
 ## Kontextaktionen
 
@@ -205,9 +237,11 @@ Linien bei 40° und 140°. Die aktuelle Stellung ist ein Punkt; Ziehen längs φ
 | `kin.path` | Motion path / Bahnkurve | `cmd-toggle` | Mechanismen |
 | `kin.dof` | Degree of freedom badge / Freiheitsgrad-Anzeige | `cmd-text` | Mechanismen, Kurvenscheibe |
 | `kin.grashof.badge` | Show Grashof class / Grashof-Klasse zeigen | `cmd-values` | Viergelenk |
+| `kin.pole` | Instant centre / Momentanpol | `cmd-toggle` | Viergelenk, Schubkurbel |
 | `kin.slots=4/6` | Number of slots ▾ / Schlitzanzahl ▾ (Auswahl) | `cmd-option` | Malteserkreuz |
 | `kin.sixbar.kind=watt/stephenson` | Chain ▾ / Kette ▾ (Auswahl) | `cmd-option` | Sechsgliedriges Koppelgetriebe |
 | `values.chart=transfer` | Characteristic chart ▸ / Kennlinie ▸ (Menü, braucht das Charts-Modul) | `cmd-option` | Viergelenk |
+| `values.chart=displacement` | Characteristic chart ▸ / Kennlinie ▸ (Hubdiagramm, braucht das Charts-Modul) | `cmd-option` | Kurvenscheibe mit Stößel |
 | `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage (nennt `branch` in `ParamKeys`: Hosts, die die Auswahl der Montagelage zeigen, lassen sie weg) | `cmd-swap` | Viergelenk |
 | `kin.follower=roller/flat/knife` | Follower ▾ / Stößel ▾ (Auswahl) | `cmd-option` | Stößel, Kurvenscheibe |
 | `kin.joint.start` / `kin.joint.end` | Gelenk am Anfang / Ende | `cmd-arrow-start` / `cmd-arrow-end` | Starres Glied |

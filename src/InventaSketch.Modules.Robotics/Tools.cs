@@ -85,7 +85,8 @@ namespace InventaSketch.Modules.Robotics
                     p.Arrow(-xi - 1.6, -2.2, -xi - 4.6, -2.2, 1.0, RS.Thin);
                     p.Arrow(xi + 1.6, -2.2, xi + 4.6, -2.2, 1.0, RS.Thin);
                 }
-            }, (p, o) => SideAnchors(p, -11, 9.2)) { Open = new OpenGrip(new Vec2(1.9, 9.5), new Vec2(5.4, 0)) },
+                AirFitting(p, 9, -5.5);
+            }, (p, o) => SideAnchors(p, -11, 9.2).Append(RoboBoxType.Port(p, AirEnd(9), -5.5, AirPort))) { Open = new OpenGrip(new Vec2(1.9, 9.5), new Vec2(5.4, 0)) },
             new SymView(RoboViews.AxialView, new Size2(20, 20), (p, o) =>
             {
                 var open = Geo.Clamp(o.Num("open", 0.6), 0, 1);
@@ -100,6 +101,8 @@ namespace InventaSketch.Modules.Robotics
             CompanionIds = Companions,
             HasMass = true,
             ToolSide = true,
+            Values = GripValues.FrictionGrip,
+            Media = AirMedia,
             Extra = o => OpenActions(o).Concat(new[] { Rb.Toggle(o, "robot.gripper.arrows", new I18nText("Stroke arrows", "Hubpfeile"), IconIds.FlowArrow, "arrows", false) }),
         };
 
@@ -121,7 +124,7 @@ namespace InventaSketch.Modules.Robotics
                     var span = 14.0;
                     for (var i = 0; i < n; i++) Cup(p, -span / 2 + span * i / (n - 1), 0.62);
                 }
-            }, (p, o) => SideAnchors(p, -11, 10.6)),
+            }, (p, o) => SideAnchors(p, -11, 10.6).Append(RoboBoxType.Port(p, 8.8, -6.2, VacuumPort))),
             new SymView(RoboViews.AxialView, new Size2(20, 20), (p, o) =>
             {
                 var n = Math.Max(1, Math.Min(4, o.Int("cups", 1)));
@@ -139,6 +142,8 @@ namespace InventaSketch.Modules.Robotics
             CompanionIds = Companions,
             HasMass = true,
             ToolSide = true,
+            Values = GripValues.VacuumGrip,
+            Media = new Dictionary<string, PortConnection> { [VacuumPort] = GripValues.Air },
             Extra = o => new[]
             {
                 new ContextAction("robot.cups.more", new I18nText("More cups", "Mehr Saugnäpfe"), IconIds.CountMore, x => x.WithParam("cups", Math.Min(4, x.Int("cups", 1) + 1))) { Group = "param", ParamKeys = new[] { "cups" }, IsEnabled = o.Int("cups", 1) < 4 },
@@ -203,7 +208,8 @@ namespace InventaSketch.Modules.Robotics
                 Finger(p, 0, open, RS.Hidden);
                 Finger(p, -1, open, RS.White);
                 Finger(p, 1, open, RS.White);
-            }, (p, o) => SideAnchors(p, -11, 10.0)) { Open = new OpenGrip(new Vec2(1.3, 10.0), new Vec2(4.4, 0)) },
+                AirFitting(p, 8, -5.5);
+            }, (p, o) => SideAnchors(p, -11, 10.0).Append(RoboBoxType.Port(p, AirEnd(8), -5.5, AirPort))) { Open = new OpenGrip(new Vec2(1.3, 10.0), new Vec2(4.4, 0)) },
             new SymView(RoboViews.AxialView, new Size2(20, 20), (p, o) =>
             {
                 var open = Geo.Clamp(o.Num("open", 0.6), 0, 1);
@@ -225,8 +231,28 @@ namespace InventaSketch.Modules.Robotics
             CompanionIds = Companions,
             HasMass = true,
             ToolSide = true,
+            Values = GripValues.FrictionGrip,
+            Media = AirMedia,
             Extra = OpenActions,
         };
+
+        // ------------------------------------------------------------------ compressed air and vacuum ports
+
+        /// <summary>Port id of the compressed-air connection of pneumatic grippers.</summary>
+        public const string AirPort = "air";
+        /// <summary>Port id of the vacuum hose of the vacuum gripper.</summary>
+        public const string VacuumPort = "vacuum";
+
+        private static readonly IReadOnlyDictionary<string, PortConnection> AirMedia = new Dictionary<string, PortConnection> { [AirPort] = GripValues.Air };
+
+        /// <summary>Outer end (design x) of the air fitting on a gripper body side at <paramref name="x"/>.</summary>
+        private static double AirEnd(double x) => x + 1.0;
+
+        /// <summary>A small air fitting on the body side at design (x, y): the port sits at its outer end.</summary>
+        private static void AirFitting(Pad p, double x, double y)
+        {
+            p.Box(x, y - 0.6, AirEnd(x), y + 0.6, RS.Dark, RoboTags.Base);
+        }
 
         /// <summary>Two-segment finger (side view); side −1/1 left/right, 0 = centre finger behind.</summary>
         private static void Finger(Pad p, int side, double open, Style s)

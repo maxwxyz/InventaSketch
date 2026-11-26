@@ -27,12 +27,20 @@ namespace InventaSketch.Modules.Robotics.Tests
             var r = Fx.Reg();
             foreach (var arm in Fx.Arms(r))
             {
-                Assert.Equal(new[] { "payload", "load", "reach" }, ValueModel.Variables(arm).Select(v => v.Key));
+                var keys = ValueModel.Variables(arm).Select(v => v.Key).ToList();
+                foreach (var k in new[] { "payload", "load", "reach", "moment", "momentMax", "cog" }) Assert.Contains(k, keys);
+                // Forward kinematics: the flange position of every robot (the planar arms have their own x, z, φ).
+                foreach (var k in new[] { "fx", "fy", "fz" }) Assert.Equal(arm is not PlanarArmType, keys.Contains(k));
+                Assert.InRange(ValueModel.Variables(arm).Count(v => v.Relevance == VarRelevance.Card), 1, 4);
                 Assert.Contains(arm.Parameters, p => p.Key == ValueLabels.ShowParam);
-                Assert.Equal(new[] { "robot.payload", "robot.reach" }, ((IValueChecks)arm).ValueChecks.Select(c => c.Id));
+                Assert.Equal(arm is PlanarArmType ? new[] { "robot.payload", "robot.reach", "robot.moment", "robot.ik.reach" } : new[] { "robot.payload", "robot.reach", "robot.moment" },
+                    ((IValueChecks)arm).ValueChecks.Select(c => c.Id));
             }
-            foreach (var id in new[] { "robot.gripper.parallel", "robot.tool.changer", "robot.sensor.ft", "robot.sensor.vision", "robot.tool.weldgun", "robot.tool.dispenser", "robot.cell.workpiece" })
+            foreach (var id in new[] { "robot.tool.changer", "robot.sensor.ft", "robot.sensor.vision", "robot.tool.weldgun", "robot.tool.dispenser", "robot.cell.workpiece" })
                 Assert.Equal("mass", Assert.Single(ValueModel.Variables(r.Type(id))).Key);
+            foreach (var id in new[] { "robot.gripper.parallel", "robot.gripper.threefinger" })
+                Assert.Equal(new[] { "mass", "force", "required", "mu", "safety", "acc", "held" }, ValueModel.Variables(r.Type(id)).Select(v => v.Key));
+            Assert.Equal(new[] { "mass", "holding", "required", "cupDia", "vacuum", "cups", "safety", "acc", "held" }, ValueModel.Variables(r.Type("robot.gripper.vacuum")).Select(v => v.Key));
             Assert.False(ValueModel.HasValues(r.Type("robot.safety.estop")));
             Assert.False(ValueModel.HasValues(r.Type(Track.TrackId)));
         }

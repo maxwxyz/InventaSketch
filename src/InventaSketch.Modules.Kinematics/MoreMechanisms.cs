@@ -418,8 +418,11 @@ namespace InventaSketch.Modules.Kinematics
         public IReadOnlyList<Relation> Relations => MoreKinValues.SixBar.Relations;
         public IEnumerable<ValueCheck> ValueChecks => MoreKinValues.SixBar.Checks;
 
-        /// <summary>Output angle, second transmission angle and velocity ratio from the loop closure of this element's chain.</summary>
-        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => MoreKinValues.SixBarLinks(o);
+        /// <summary>
+        /// Output angle, second transmission angle and velocity ratio from the loop closure of this element's chain, and the
+        /// shaft line on the crank pivot's hub.
+        /// </summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => MoreKinValues.SixBarLinks(o).Concat(KinShaft.Links(o, ctx, Owner));
 
         private static bool Watt(SketchObject o) => o.Str("kind", "watt") != "stephenson";
 
@@ -555,6 +558,7 @@ namespace InventaSketch.Modules.Kinematics
             yield return Mount(s, p["O2"], "O2");
             yield return Mount(s, p["O4"], "O4");
             yield return Mount(s, p["O6"], "O6");
+            yield return Anchor.Point(AnchorRole.Hub, s.L(p["O2"]), "hub");
             foreach (var k in new[] { "O2", "A", "B", "O4", "C", "D", "P", "O6" })
                 if (p.Has(k)) yield return Port(s, p[k], k);
         }

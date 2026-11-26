@@ -48,7 +48,7 @@ namespace InventaSketch.Modules.Robotics.Tests
     {
         public static readonly string[] AllTypeIds =
         {
-            "robot.arm.articulated", "robot.arm.cobot", "robot.arm.scara", "robot.arm.delta", "robot.arm.gantry", "robot.mobile.agv", "robot.track.linear",
+            "robot.arm.articulated", "robot.arm.cobot", "robot.arm.scara", "robot.arm.delta", "robot.arm.gantry", "robot.arm.planar2r", "robot.arm.planar3r", "robot.mobile.agv", "robot.track.linear",
             "robot.gripper.parallel", "robot.gripper.vacuum", "robot.gripper.magnetic", "robot.gripper.threefinger", "robot.tool.torch", "robot.tool.spindle",
             "robot.tool.weldgun", "robot.tool.dispenser", "robot.tool.changer", "robot.sensor.ft", "robot.sensor.vision", "robot.cable.dragchain",
             "robot.frame.coordinate", "robot.frame.tcp", "robot.reach.envelope",

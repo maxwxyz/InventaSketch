@@ -9,8 +9,8 @@ standard's figures. No claim of standards compliance is made.
 
 **Scope and limits.** This is a *kinematic sketch*, not a dynamics simulation: positions are computed by
 closed-form loop closure at one input angle. There are no masses, forces, time integration, collision checks
-or tolerance analysis; speeds exist only as first-order element values at the current position (see "Element
-values"). The input force arrow of the toggle mechanism and the drive arrow of the
+or tolerance analysis; speeds and accelerations exist only as element values at the current position and a constant
+input speed (see "Element values"). The input force arrow of the toggle mechanism and the drive arrow of the
 crank are symbols only.
 
 ## Conventions
@@ -48,7 +48,7 @@ crank are symbols only.
 | `kin.link.rocker` | Rocker / Schwinge | box | – | Port (pivot, pin), Mount |
 | `kin.link.slider` | Slider block / Gleitstein | box | – | Port + Hub (centre, snaps onto guide axes) |
 | `kin.link.piston` | Piston and cylinder / Kolben und Zylinder | box | `stroke` (0..1) | Port (both eyes), Mount, Axis |
-| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | box | `angle`, `follower` (roller/flat/knife), `base`, `lift`, `dof` | Mount + Hub (cam pivot), Port (rod end), Axis (follower guide); explodes into fixed pivot, cam disc and follower slider |
+| `kin.cam.follower` | Cam disc with follower / Kurvenscheibe mit Stößel | box | `angle`, `follower` (roller/flat/knife), `base`, `lift`, `dof`, values `inputSpeed`, `followerSpeed` | Mount + Hub (cam pivot), Port (rod end), Axis (follower guide); explodes into fixed pivot, cam disc and follower slider |
 | `kin.cam.disc` | Cam disc / Kurvenscheibe (part, 2026-11-25) | schematic, detailed (hub, centre lines); box centred on the pivot, uniform | `base`, `lift`, `follower` (how followers touch it: roller with 0.3 × base, flat face, knife edge); turns with its rotation | Hub + Port (pivot); a slider whose guide runs through it and whose joint sits on the contour is its follower (`Cams`): turning the disc in motion mode moves the follower and the chain docked on it |
 | `kin.spring` | Spring / Feder | 2 points | `coils`, `width` | Port at both ends |
 | `kin.damper` | Damper / Dämpfer | 2 points | `width` | Port at both ends |
@@ -77,7 +77,8 @@ bearing blocks, hatched sliders).
 | `kin.mech.sixbar` | Six-bar linkage / Sechsgliedriges Koppelgetriebe (2026-11-26) | `kind` watt/stephenson, `ground` 40, `crank` 12, `coupler` 36, `rocker` 30; Watt: `arm` 24, `armAngle` 60°, `ground2` 36, `coupler2` 28, `rocker2` 22; Stephenson: `cpu` 0.5, `cpv` −0.3, `link5` 40, `link6` 22, `x6` 62, `y6` −6 | crank angle, default −60° | 1 |
 | `kin.mech.pantograph` | Pantograph / Storchschnabel (Pantograph) (2026-11-26) | `length` 40, `scale` 2, `reach` 20, `trace` 5 | position of the tracer on the traced circle, default −90° | 2 |
 
-Common parameters: `angle`, `ghosts` (0–12), `path` (motion path), `dof` (degree-of-freedom badge). The Geneva drive
+Common parameters: `angle`, `ghosts` (0–12), `path` (motion path), `dof` (degree-of-freedom badge); the four-bar and the
+slider-crank also `pole` (instant centre of the coupler, see below). The Geneva drive
 and the ratchet have no ghosts and no motion path (a second wheel would cover the drawing); they animate like the
 others. The four-bar also has `grashof` (Grashof class badge at the top right, e.g. "Crank-rocker" / "Kurbelschwinge").
 
@@ -130,6 +131,23 @@ quick-return) or the knee (toggle).
 anchors, so link ends, revolute joints and springs snap joint to joint; slider guides are `Axis` segments, so
 slider blocks snap onto them.
 
+**Crank hub (2026-11-26).** The crank pivot of the four-bar (O2), slider-crank (O), scotch yoke (O) and six-bar (O2) is
+also a `Hub` anchor ("hub"), like the cam pivot and the Geneva pivots. A gear or pulley of the mechanical module seen
+along its axis docks concentric on it, a shaft axis (mechanical shaft, motor shaft of the machines module) carries it, so
+the core shaft lines (`ShaftLines`) join them: the input speed `n` of the mechanism is the speed of the shaft line
+(relation `kin.shaft.speed`, an equality), e.g. a pulley driven at 90 min⁻¹ turns the crank at 90 min⁻¹ and the
+coupler speeds follow. Mechanisms have no torque variable, so no torque is passed.
+
+**Instant centre (2026-11-26).** With `pole` (action "Instant centre" / "Momentanpol") the four-bar draws the instant
+centre I₁₃ (German label P₁₃; frame 1, crank 2, coupler 3, rocker 4) of the coupler relative to the frame at the current
+position: the intersection of the crank line O2–A and the rocker line O4–B (Kennedy [S24]); the slider-crank draws the
+pole of the connecting rod on the crank line O–A and the normal to the guide through B. The construction lines are thin
+dashed lines from the fixed point through the joint to the pole, clipped to the box; the pole is marked (small circle
+and label) only when it lies inside the box: it runs to infinity where crank and rocker are parallel (`Linkages.CouplerPole`
+/ `RodPole` return null). Every coupler point moves at right angles to its ray from the pole with |v_P| = |ω₃|·|P − I₁₃|
+(tested). Library items "Four-bar with instant centre of the coupler" (input angle 120°) and "Slider-crank with instant
+centre of the rod" (−165°).
+
 ### Motion annotations (`kin.motion`)
 
 | Type id | Name (EN / DE) | Geometry | Parameters |
@@ -157,11 +175,12 @@ The values label (`showValues`) shows the card values.
 
 | Element | Variables (card values in **bold**) | Relations |
 |---|---|---|
-| Four-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, class (text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄ | Δ_G = (p + q) − (s + l); μ from the cosine rule cos μ = (b² + c² − x²)/(2bc) with x = \|A O4\| over [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; crank-rocker only: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) at the current position and assembly mode; ω₄ = i·n |
-| Slider-crank | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v** | H = √((l + r)² − e²) − √((l − r)² − e²) (2r without offset); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ |
+| Four-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, class (text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄, ω₃, v_P, a_P | Δ_G = (p + q) − (s + l); μ from the cosine rule cos μ = (b² + c² − x²)/(2bc) with x = \|A O4\| over [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; crank-rocker only: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) at the current position and assembly mode; ω₄ = i·n; coupler ω₃ = n·dθ₃/dφ (for the assembly mode); coupler point P (`cpu`, `cpv`, the point the motion path traces): v_P = \|n\|·\|dP/dφ\|, a_P = n²·\|d²P/dφ²\| at constant n |
+| Slider-crank | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v**, v_max, a | H = √((l + r)² − e²) − √((l − r)² − e²) (2r without offset); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ; v_max = \|n\|·max\|dx_B/dφ\| over a turn (text parameter `maxSliderSpeed`; entering it gives n); a = n²·d²x_B/dφ² at constant n (read-only) |
 | Quick-return | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 for r/d = 1/2); H from the position analysis over a turn |
 | Scotch yoke | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
 | Geneva drive | z (`slots`), C (`centre`), φ (`angle`, driver), n, **β**, **α_m**, α_d, **τ**, a, i, **ω₂** | β = 360°/z (indexing angle); α_m = 180° − 360°/z (driver angle while the wheel moves), α_d = 180° + 360°/z (at rest); τ = α_m/α_d = (z − 2)/(z + 2) (z = 4: 90°/270° = 1/3, z = 6: 1/2); a = C·sin(180°/z); i = ω₂/ω₁ = −λ·(cos φ − λ)/(1 − 2λ·cos φ + λ²) with λ = sin(180°/z) while \|φ\| ≤ 90° − 180°/z, else 0 (locked; φ = 0 on the line of centres, peak −λ/(1 − λ) = −2.414 for z = 4); ω₂ = i·n (negative: the wheel turns against the driver) |
+| Cam with follower | r₀, h (`base`, `lift`), φ (`angle`), n, **H**, **s**, **v**, **α_max**, α | exact contact of the tangent cam (base circle r₀ and nose circle r_n = min(r₀, max(0.45·r₀, r₀ − h/2)) joined by tangent flanks) with the in-line translating follower: roller centre on the hull of both circles enlarged by r_R = 0.3·r₀, knife tip on the hull, flat face on its highest point; s = (contact distance from the cam centre) − R_p, R_p = r₀ + r_R (roller) or r₀; H = max s; v = n·ds/dφ (text parameter `followerSpeed`; entering it gives n); tan α = \|ds/dφ\|/(R_p + s) for roller and knife edge, α = 0 for the flat face; α_max over a turn |
 | Six-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ, n, **θ₆**, **μ₁**, **μ₂**, i, **ω₆** | θ₆ = direction of the output rocker O6 → D (Watt) or O6 → C (Stephenson), measured like φ, from the loop closure; μ₁ at B between coupler and rocker: cos μ₁ = (b² + c² − a² − d² + 2ad·cos φ)/(2bc); μ₂ at the output joint between the output coupler (Watt C-D, Stephenson P-C) and the output rocker; i = dθ₆/dφ (central difference over ±0.01°); ω₆ = i·n. The further links of the chain are read from the element's parameters |
 
 The Grashof class is also an element value (since 2026-11-26): the text-valued panel variable `cls` ("Class" /
@@ -183,12 +202,23 @@ motion yet).
 |---|---|---|---|---|
 | `kin.transmission` | four-bar, slider-crank | μ leaves 40° … 140° somewhere in the motion (μ_min < 40° or μ_max > 140°) | warning | [S24] |
 | `kin.grashof` | four-bar | the crank cannot turn fully (not Grashof with the crank or the frame shortest) | hint | [S24] |
+| `kin.cam.pressure` | cam with follower | α_max > 30° (usual limit for translating followers; the default tangent cam r₀ = 8, h = 7 with a roller reaches about 43°, so this is a hint) | hint | [S24] |
+
+Derivatives (ω₃, v_P, a_P, a, v of the cam) are central differences of the exact position analysis with a step of 10⁻³ rad
+(`Linkages.Derivatives`, `CouplerPointDerivatives`, `CouplerRate`, `SliderAccelerationFactor`); the tests compare them with
+the closed-form velocity and acceleration loops. There is no angular-acceleration kind in Core yet, so the rocker's α₄ is
+not offered (the coupler point's linear acceleration is).
 
 **Linked chart.** The four-bar implements `ICharacteristics` (Calc 5): the set `transfer`, "Output angle over input
 angle" / "Abtriebswinkel über Antriebswinkel", output angle ψ₄ over the input angle φ (−180° … 180°, one sample per
 degree, gaps where it cannot be assembled) and the transmission angle μ in a second panel with lines at 40° and 140°.
 The current position is a point; dragging it along φ enters a new input angle. "Characteristic chart ▸" inserts the
 chart; the four-bar names its linked charts as dependents.
+
+The cam with follower has the set `displacement`, "Displacement diagram" / "Hubdiagramm": the follower displacement s (mm)
+over the cam angle 0° … 360° (one sample per degree) with the pressure angle α in a second panel and a line at 30°; the
+current position is a point that is dragged along the cam angle (writes φ); the flat-faced follower adds the note that its
+pressure angle is 0°.
 
 ## Context actions
 
@@ -199,9 +229,11 @@ chart; the four-bar names its linked charts as dependents.
 | `kin.path` | Motion path / Bahnkurve | `cmd-toggle` | mechanisms |
 | `kin.dof` | Degree of freedom badge / Freiheitsgrad-Anzeige | `cmd-text` | mechanisms, cam follower |
 | `kin.grashof.badge` | Show Grashof class / Grashof-Klasse zeigen | `cmd-values` | four-bar |
+| `kin.pole` | Instant centre / Momentanpol | `cmd-toggle` | four-bar, slider-crank |
 | `kin.slots=4/6` | Number of slots ▾ / Schlitzanzahl ▾ (choice) | `cmd-option` | Geneva drive |
 | `kin.sixbar.kind=watt/stephenson` | Chain ▾ / Kette ▾ (choice) | `cmd-option` | six-bar |
 | `values.chart=transfer` | Characteristic chart ▸ / Kennlinie ▸ (menu, needs the Charts module) | `cmd-option` | four-bar |
+| `values.chart=displacement` | Characteristic chart ▸ / Kennlinie ▸ (displacement diagram, needs the Charts module) | `cmd-option` | cam with follower |
 | `kin.branch` | Crossed assembly mode / Gekreuzte Montagelage (names `branch` in `ParamKeys`: hosts that show the assembly mode dropdown leave it out) | `cmd-swap` | four-bar |
 | `kin.follower=roller/flat/knife` | Follower ▾ / Stößel ▾ (choice) | `cmd-option` | cam follower, cam disc |
 | `kin.joint.start` / `kin.joint.end` | Joint at start / end | `cmd-arrow-start` / `cmd-arrow-end` | rigid link |

@@ -44,7 +44,7 @@ namespace InventaSketch.Modules.Robotics
     /// Data-driven box symbol of the robotics module: views with their own design size (the drawing is stretched to the
     /// object box), optional parameters, anchors and context actions. Symbols without views have a single drawing.
     /// </summary>
-    internal sealed class RoboBoxType : ObjectType, IValueType
+    internal sealed class RoboBoxType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -65,7 +65,15 @@ namespace InventaSketch.Modules.Robotics
         public override IReadOnlyList<string> Keywords => _keywords;
         public override IReadOnlyList<ViewDef> Views => NoViews ? Array.Empty<ViewDef>() : _views.Select(v => v.Def).ToList();
         public override Size2 DefaultSize => _views[0].Design;
-        public override IReadOnlyList<ParamDef> Parameters => _parameters ??= HasMass ? Params.Concat(RoboValues.MassParams).ToList() : Params;
+        public override IReadOnlyList<ParamDef> Parameters => _parameters ??= BuildParameters();
+
+        private IReadOnlyList<ParamDef> BuildParameters()
+        {
+            if (!HasMass && Values is null) return Params;
+            var extra = Values?.Params ?? Array.Empty<ParamDef>();
+            // The mass parameters end with the values-label switch; without a mass it is added on its own.
+            return Params.Concat(extra).Concat(HasMass ? RoboValues.MassParams : new[] { ValueLabels.ShowValues }).ToList();
+        }
         public override bool PreferUniformScale => Uniform;
         public override IReadOnlyList<string> Companions => CompanionIds;
         public override bool IsPart => Part;
@@ -91,8 +99,22 @@ namespace InventaSketch.Modules.Robotics
         /// <summary>The mount ids a tool-side part's flange accepts besides its own (<see cref="Anchor.Accepts"/>).</summary>
         private static readonly IReadOnlyList<string> AcceptsToolSide = new[] { RoboValues.ToolMount };
 
-        public IReadOnlyList<VarDef> Variables => HasMass ? RoboValues.MassVars : Array.Empty<VarDef>();
-        public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
+        /// <summary>Further values (holding forces of grippers): variables, relations, parameters, checks and links.</summary>
+        public RoboValueSpec? Values { get; init; }
+
+        /// <summary>
+        /// Medium connections of ports (<see cref="Connection"/>): port id → what flows there, e.g. the compressed air of a
+        /// pneumatic gripper ("air"), so a fluid power line docks with "+".
+        /// </summary>
+        public IReadOnlyDictionary<string, PortConnection>? Media { get; init; }
+
+        public IReadOnlyList<VarDef> Variables => (HasMass ? RoboValues.MassVars : Array.Empty<VarDef>()).Concat(Values?.Vars ?? Array.Empty<VarDef>()).ToList();
+        public IReadOnlyList<Relation> Relations => Values?.Relations ?? Array.Empty<Relation>();
+        public IEnumerable<ValueCheck> ValueChecks => Values?.Checks ?? Array.Empty<ValueCheck>();
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => Values?.Links?.Invoke(o, ctx) ?? Array.Empty<BoundRelation>();
+
+        public override PortConnection? Connection(SketchObject o, Anchor port)
+            => port.Id is { } id && Media is { } m && m.TryGetValue(id, out var c) ? c : null;
 
         public SymView Spec(SketchObject o) => _views.FirstOrDefault(v => v.Def.Id == ViewOf(o)) ?? _views[0];
 

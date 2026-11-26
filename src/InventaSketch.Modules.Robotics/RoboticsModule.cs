@@ -6,18 +6,19 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Robotics
 {
     /// <summary>
-    /// Robotics module: predefined robots (articulated, cobot, SCARA, delta, gantry, mobile robot) posed by forward
+    /// Robotics module: predefined robots (articulated, cobot, SCARA, delta, gantry, planar 2R/3R arm, mobile robot) posed by forward
     /// kinematics from their joint values in side and top view, with reach envelopes computed from the link lengths;
     /// grippers and end effectors docking on the flange, also through tool changers and force-torque sensors; linear axis
     /// (7th axis) and mobile robot carrying a robot; coordinate frames and TCP markers; work cell periphery (energy chain)
-    /// and safety devices (fence, door, light curtain, laser scanner fields, zones, emergency stop); payload and reach values
-    /// with their checks (<see cref="RoboValues"/>). Sketches for slides, not a simulation or a safety layout tool; symbols
+    /// and safety devices (fence, door, light curtain, laser scanner fields, zones, emergency stop); payload, reach, flange
+    /// position and load moment values with their checks (<see cref="RoboValues"/>), forward and inverse kinematics of the
+    /// planar arms (<see cref="PlanarValues"/>), gripping forces (<see cref="GripValues"/>) and compressed-air ports. Sketches for slides, not a simulation or a safety layout tool; symbols
     /// are drawn independently and no standard compliance is claimed.
     /// </summary>
     public sealed class RoboticsModule : IModule
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
-            new ObjectType[] { new ArticulatedArmType(), new CobotType(), new ScaraType(), new DeltaType(), new GantryType(), Track.Linear() }
+            new ObjectType[] { new ArticulatedArmType(), new CobotType(), new ScaraType(), new DeltaType(), new GantryType(), new PlanarArmType(2), new PlanarArmType(3), Track.Linear() }
                 .Concat(Tools.Types())
                 .Concat(Cell.Types())
                 .Concat(new ObjectType[] { new DragChainType(), new FenceType(), new ZoneType(), new ReachEnvelopeType() })
@@ -66,7 +67,8 @@ namespace InventaSketch.Modules.Robotics
             }
 
             // Robots in their second view and with envelope / schematic presets.
-            foreach (var t in AllTypes.Value.OfType<RobotArmType>())
+            // (The planar arms move in the plane of the side view: no top-view preset.)
+            foreach (var t in AllTypes.Value.OfType<RobotArmType>().Where(t => t is not PlanarArmType))
             {
                 var second = t.Views[1];
                 Add(t.Id + "." + second.Id, t.Id, t.Name.En + " (" + second.Label.En.ToLowerInvariant() + ")", (t.Name.De ?? t.Name.En) + " (" + (second.Label.De ?? second.Label.En) + ")", second.Id,
@@ -82,6 +84,12 @@ namespace InventaSketch.Modules.Robotics
                 P(("envelope", true)), "reach", "working range", "arbeitsraum");
             Add("robot.arm.cobot.schematic", "robot.arm.cobot", "Cobot (kinematic schematic)", "Cobot (kinematisches Schema)", RoboViews.Side,
                 P(("style", "schematic"), ("labels", true)), "schematic", "schema");
+            Add("robot.arm.planar2r.schematic", PlanarArmType.Id2, "Planar arm 2R (kinematic schematic)", "Planarer Arm 2R (kinematisches Schema)", RoboViews.Side,
+                P(("style", "schematic"), ("labels", true)), "schematic", "two-link", "schema", "zweigelenk");
+            Add("robot.arm.planar3r.schematic", PlanarArmType.Id3, "Planar arm 3R (kinematic schematic)", "Planarer Arm 3R (kinematisches Schema)", RoboViews.Side,
+                P(("style", "schematic"), ("labels", true)), "schematic", "three-link", "schema", "dreigelenk");
+            Add("robot.arm.planar2r.envelope", PlanarArmType.Id2, "Planar arm 2R with working range", "Planarer Arm 2R mit Arbeitsraum", RoboViews.Side,
+                P(("style", "schematic"), ("envelope", true)), "reach", "working range", "workspace", "arbeitsraum", "reichweite");
 
             // Gripper and tool variants.
             Add("robot.gripper.parallel.closed", "robot.gripper.parallel", "Parallel gripper (closed)", "Parallelgreifer (geschlossen)", ps: P(("open", 0.0)), kw: new[] { "closed", "geschlossen" });

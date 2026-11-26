@@ -40,35 +40,36 @@ namespace InventaSketch.Modules.Kinematics
 
         // ------------------------------------------------------------------ parameters
 
-        private static ParamDef Text(string key, I18nText label, string unit) => new(key, label, ParamKind.Text) { Unit = unit, Advanced = true };
+        internal static ParamDef Text(string key, I18nText label, string unit) => new(key, label, ParamKind.Text) { Unit = unit, Advanced = true };
 
-        private static readonly ParamDef PInputSpeed = Text("inputSpeed", T("Input speed", "Antriebsdrehzahl"), "min⁻¹");
+        internal static readonly ParamDef PInputSpeed = Text("inputSpeed", T("Input speed", "Antriebsdrehzahl"), "min⁻¹");
         private static readonly ParamDef POutputSpeed = Text("outputSpeed", T("Output angular velocity", "Abtriebswinkelgeschwindigkeit"), "rad/s");
         private static readonly ParamDef PSliderSpeed = Text("sliderSpeed", T("Slider speed", "Schiebergeschwindigkeit"), "m/s");
+        private static readonly ParamDef PMaxSliderSpeed = Text("maxSliderSpeed", T("Largest slider speed", "Größte Schiebergeschwindigkeit"), "m/s");
 
         // ------------------------------------------------------------------ variables
 
         /// <summary>A link length bound to the mechanism's own number parameter (mm).</summary>
-        private static VarDef Length(string key, string param, I18nText name, string symbol, double defMm) =>
+        internal static VarDef Length(string key, string param, I18nText name, string symbol, double defMm) =>
             new(key, name, T(symbol, symbol), Quantities.Length)
             {
                 Unit = "mm", StoredUnit = "mm", Param = param, Relevance = VarRelevance.Panel, Default = defMm / 1000, Min = 1e-7, Max = 100,
             };
 
         /// <summary>The input angle, bound to the parameter "angle" (degrees).</summary>
-        private static VarDef Phi(double defDeg) =>
+        internal static VarDef Phi(double defDeg) =>
             new("phi", T("Input angle", "Antriebswinkel"), T("φ", "φ"), Quantities.Angle)
             {
                 Unit = "°", StoredUnit = "°", Param = "angle", Relevance = VarRelevance.Panel, Default = defDeg * Deg, Min = -2 * Math.PI, Max = 2 * Math.PI,
             };
 
-        private static VarDef InputSpeed() =>
+        internal static VarDef InputSpeed() =>
             new("n", T("Input speed", "Antriebsdrehzahl"), T("n", "n"), Quantities.RotationalSpeed)
             {
                 Unit = "min⁻¹", Param = "inputSpeed", Relevance = VarRelevance.Panel, Min = -1e5, Max = 1e5,
             };
 
-        private static VarDef Angle(string key, I18nText name, I18nText symbol, VarRelevance rel, double max = Math.PI) =>
+        internal static VarDef Angle(string key, I18nText name, I18nText symbol, VarRelevance rel, double max = Math.PI) =>
             new(key, name, symbol, Quantities.Angle) { Unit = "°", Relevance = rel, Min = 0, Max = max };
 
         private static VarDef TimeRatioVar() =>
@@ -201,6 +202,51 @@ namespace InventaSketch.Modules.Kinematics
                 .Solve("n", "{v}/(−{r}·sin {phi} + {r}·cos {phi}·({e} − {r}·sin {phi})/√({l}² − ({e} − {r}·sin {phi})²))",
                     v => v("v") / Linkages.SliderSpeedFactor(v("r"), v("l"), v("e"), v("phi") / Deg));
 
+        private static readonly I18nText ConstantSpeed = T("constant input speed n; derivatives of the exact position analysis (central differences)",
+            "konstante Antriebsdrehzahl n; Ableitungen der exakten Lageanalyse (zentrale Differenzen)");
+
+        private static readonly Relation SliderAcc =
+            new Relation("kin.slidercrank.acc", T("Slider acceleration at this position", "Schieberbeschleunigung in dieser Stellung"),
+                "{acc} = {n}²·d²x_B/dφ²", "acc", "n", "r", "l", "e", "phi") { Source = "S24", Validity = ConstantSpeed }
+                .Solve("acc", "{n}²·d²x_B/dφ²", v => v("n") * v("n") * Linkages.SliderAccelerationFactor(v("r"), v("l"), v("e"), v("phi") / Deg));
+
+        private static readonly Relation SliderVmax =
+            new Relation("kin.slidercrank.vmax", T("Largest slider speed over a turn", "Größte Schiebergeschwindigkeit über eine Umdrehung"),
+                "{vmax} = |{n}|·max|dx_B/dφ|", "vmax", "n", "r", "l", "e") { Source = "S24", Validity = ConstantSpeed }
+                .Solve("vmax", "|{n}|·max|dx_B/dφ|", v => Math.Abs(v("n")) * (Linkages.SliderMaxSpeedFactor(v("r"), v("l"), v("e")) ?? double.NaN))
+                .Solve("n", "{vmax}/max|dx_B/dφ|", v => v("vmax") / (Linkages.SliderMaxSpeedFactor(v("r"), v("l"), v("e")) ?? double.NaN));
+
+        // four-bar: coupler speed, coupler point speed and acceleration (bound per element in FourBarType.ValueLinks) -------
+
+        private static Relation CouplerSpeed(bool crossed) =>
+            new Relation(crossed ? "kin.fourbar.coupler.crossed" : "kin.fourbar.coupler.open",
+                crossed ? T("Angular velocity of the coupler (crossed)", "Winkelgeschwindigkeit der Koppel (gekreuzt)") : T("Angular velocity of the coupler", "Winkelgeschwindigkeit der Koppel"),
+                "{w3} = {n}·dθ₃/dφ", "w3", "n", "a", "b", "c", "d", "phi") { Source = "S24", Validity = ConstantSpeed }
+                .Solve("w3", "{n}·dθ₃/dφ", v => v("n") * Linkages.CouplerRate(v("d"), v("a"), v("b"), v("c"), v("phi") / Deg, crossed));
+
+        public static readonly Relation CouplerSpeedOpen = CouplerSpeed(false);
+        public static readonly Relation CouplerSpeedCrossed = CouplerSpeed(true);
+
+        /// <summary>Speed of the coupler point (u along, v across the coupler) at the current position: |n|·|dP/dφ|.</summary>
+        public static Relation CouplerPointSpeed(bool crossed, double u, double cv) =>
+            new Relation("kin.fourbar.point.speed", T("Speed of the coupler point", "Geschwindigkeit des Koppelpunkts"),
+                "{vP} = |{n}|·|dP/dφ|", "vP", "n", "a", "b", "c", "d", "phi") { Source = "S24", Validity = ConstantSpeed }
+                .Solve("vP", "|{n}|·|dP/dφ|", v =>
+                {
+                    var d = Linkages.CouplerPointDerivatives(v("d"), v("a"), v("b"), v("c"), v("phi") / Deg, crossed, u, cv);
+                    return d is null ? double.NaN : Math.Abs(v("n")) * d.Value.D1.Length;
+                });
+
+        /// <summary>Acceleration of the coupler point at constant input speed: n²·|d²P/dφ²|.</summary>
+        public static Relation CouplerPointAcc(bool crossed, double u, double cv) =>
+            new Relation("kin.fourbar.point.acc", T("Acceleration of the coupler point", "Beschleunigung des Koppelpunkts"),
+                "{aP} = {n}²·|d²P/dφ²|", "aP", "n", "a", "b", "c", "d", "phi") { Source = "S24", Validity = ConstantSpeed }
+                .Solve("aP", "{n}²·|d²P/dφ²|", v =>
+                {
+                    var d = Linkages.CouplerPointDerivatives(v("d"), v("a"), v("b"), v("c"), v("phi") / Deg, crossed, u, cv);
+                    return d is null ? double.NaN : v("n") * v("n") * d.Value.D2.Length;
+                });
+
         // quick return -------------------------------------------------------------
 
         private static readonly Relation LeverSwing =
@@ -302,6 +348,12 @@ namespace InventaSketch.Modules.Kinematics
                     { Relevance = VarRelevance.Panel, Min = -1e6, Max = 1e6 },
                 new VarDef("w", T("Output angular velocity at this position", "Abtriebswinkelgeschwindigkeit in dieser Stellung"), T("ω₄", "ω₄"), Quantities.RotationalSpeed)
                     { Unit = "rad/s", Param = "outputSpeed", Relevance = VarRelevance.Panel, Min = -1e5, Max = 1e5 },
+                new VarDef("w3", T("Angular velocity of the coupler at this position", "Winkelgeschwindigkeit der Koppel in dieser Stellung"), T("ω₃", "ω₃"), Quantities.RotationalSpeed)
+                    { Unit = "rad/s", Relevance = VarRelevance.Panel, Min = -1e5, Max = 1e5 },
+                new VarDef("vP", T("Speed of the coupler point at this position", "Geschwindigkeit des Koppelpunkts in dieser Stellung"), T("v_P", "v_P"), Quantities.Speed)
+                    { Unit = "m/s", Relevance = VarRelevance.Panel, Min = 0, Max = 1e4 },
+                new VarDef("aP", T("Acceleration of the coupler point at this position (constant n)", "Beschleunigung des Koppelpunkts in dieser Stellung (n konstant)"), T("a_P", "a_P"), Quantities.Acceleration)
+                    { Unit = "m/s²", Relevance = VarRelevance.Panel, Min = 0, Max = 1e7 },
             },
             new[] { GrashofMargin, GrashofClassRelation, MuMin, MuMax, Swing, FourBarAlpha, TimeRatio, OutputSpeed },
             WithShow(PInputSpeed, POutputSpeed),
@@ -321,9 +373,13 @@ namespace InventaSketch.Modules.Kinematics
                 TimeRatioVar(),
                 Angle("mumin", T("Smallest transmission angle", "Kleinster Übertragungswinkel"), T("μ_min", "μ_min"), VarRelevance.Card),
                 SliderSpeedVar(),
+                new VarDef("vmax", T("Largest slider speed over a turn", "Größte Schiebergeschwindigkeit über eine Umdrehung"), T("v_max", "v_max"), Quantities.Speed)
+                    { Unit = "m/s", Param = "maxSliderSpeed", Relevance = VarRelevance.Panel, Min = 0, Max = 1e4 },
+                new VarDef("acc", T("Slider acceleration at this position (constant n)", "Schieberbeschleunigung in dieser Stellung (n konstant)"), T("a", "a"), Quantities.Acceleration)
+                    { Unit = "m/s²", Relevance = VarRelevance.Panel, ReadOnly = true, Min = -1e7, Max = 1e7 },
             },
-            new[] { SliderStroke, SliderAlpha, TimeRatio, SliderMu, SliderSpeed },
-            WithShow(PInputSpeed, PSliderSpeed),
+            new[] { SliderStroke, SliderAlpha, TimeRatio, SliderMu, SliderSpeed, SliderVmax, SliderAcc },
+            WithShow(PInputSpeed, PSliderSpeed, PMaxSliderSpeed),
             new[] { Transmission });
 
         /// <summary>Crank and slotted lever: lengths and input angle; lever swing, time ratio and ram stroke.</summary>

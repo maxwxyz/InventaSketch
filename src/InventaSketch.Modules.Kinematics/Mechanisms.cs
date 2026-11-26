@@ -29,6 +29,7 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("cpu", "Coupler point along coupler", "Koppelpunkt längs Koppel", 0.5, -2, 3, null, 0.05, advanced: true),
             KP.Num("cpv", "Coupler point offset (× coupler)", "Koppelpunkt-Versatz (× Koppel)", 0, -3, 3, null, 0.05, advanced: true),
             GrashofParam,
+            KinPole.Param,
         }).Concat(KinValues.FourBar.Params).ToList();
 
         private static readonly ParamDef GrashofParam = KP.Bool("grashof", "Show Grashof class", "Grashof-Klasse zeigen", false);
@@ -37,10 +38,19 @@ namespace InventaSketch.Modules.Kinematics
         public IReadOnlyList<Relation> Relations => KinValues.FourBar.Relations;
         public IEnumerable<ValueCheck> ValueChecks => KinValues.FourBar.Checks;
 
-        /// <summary>The velocity ratio at the current position, for the assembly mode of the element.</summary>
+        /// <summary>
+        /// The velocity ratio, the coupler's angular velocity and the coupler point's speed and acceleration at the current
+        /// position (for the assembly mode and coupler point of the element), and the shaft line on the crank pivot's hub.
+        /// </summary>
         public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
         {
-            yield return BoundRelation.Local(o.Str("branch", "open") == "crossed" ? KinValues.RatioCrossed : KinValues.RatioOpen, o.Id);
+            var crossed = o.Str("branch", "open") == "crossed";
+            yield return BoundRelation.Local(crossed ? KinValues.RatioCrossed : KinValues.RatioOpen, o.Id);
+            yield return BoundRelation.Local(crossed ? KinValues.CouplerSpeedCrossed : KinValues.CouplerSpeedOpen, o.Id);
+            double u = o.Num("cpu", 0.5), v = o.Num("cpv", 0);
+            yield return BoundRelation.Local(KinValues.CouplerPointSpeed(crossed, u, v), o.Id);
+            yield return BoundRelation.Local(KinValues.CouplerPointAcc(crossed, u, v), o.Id);
+            foreach (var l in KinShaft.Links(o, ctx, Owner)) yield return l;
         }
 
         /// <summary>Link lengths (frame, crank, coupler, rocker) of the element in model mm.</summary>
@@ -55,9 +65,18 @@ namespace InventaSketch.Modules.Kinematics
 
         protected override bool ReservesTop(SketchObject o) => base.ReservesTop(o) || o.Flag("grashof", false);
 
-        /// <summary>The Grashof class badge ("Crank-rocker" / "Kurbelschwinge") at the top right when "grashof" is on.</summary>
+        /// <summary>
+        /// The instant centre of the coupler when "pole" is on, and the Grashof class badge ("Crank-rocker" /
+        /// "Kurbelschwinge") at the top right when "grashof" is on.
+        /// </summary>
         protected override void DrawAnnotations(Scene s, SketchObject o, Lang lang, double used)
         {
+            if (KinPole.Shown(o))
+            {
+                var (d, a, b, c) = Lengths(o);
+                if (Linkages.FourBar(d, a, b, c, AngleOf(o), o.Str("branch", "open") == "crossed") is { } p)
+                    KinPole.Draw(s, Linkages.CouplerPole(p), (p.O2, p.A), (p.O4, p.B), lang);
+            }
             if (o.Flag("grashof", false)) RightBadge(s, Linkages.ClassName(ClassOf(o)).Get(lang), KinTags.Grashof, used);
         }
 
@@ -121,6 +140,8 @@ namespace InventaSketch.Modules.Kinematics
         {
             yield return Mount(s, p["O2"], "O2");
             yield return Mount(s, p["O4"], "O4");
+            // The crank pivot's hub: a gear, pulley or motor shaft docked there drives the crank (shaft line, speed n).
+            yield return Anchor.Point(AnchorRole.Hub, s.L(p["O2"]), "hub");
             foreach (var k in new[] { "O2", "A", "B", "O4", "P" })
                 if (p.Has(k)) yield return Port(s, p[k], k);
         }
@@ -131,11 +152,12 @@ namespace InventaSketch.Modules.Kinematics
             yield return new ContextAction("kin.branch", new I18nText("Crossed assembly mode", "Gekreuzte Montagelage"), IconIds.Toggle,
                 x => x.WithParam("branch", x.Str("branch", "open") == "crossed" ? "open" : "crossed")) { IsActive = crossed, Group = "param", ParamKeys = new[] { "branch" } };
             yield return KA.Toggle(o, "kin.grashof.badge", new I18nText("Show Grashof class", "Grashof-Klasse zeigen"), IconIds.Values, "grashof", false, "annotation");
+            yield return KinPole.Action(o);
         }
     }
 
     /// <summary>Slider-crank (crank O-A, connecting rod A-B, slider B on a guide, optional offset).</summary>
-    internal sealed class SliderCrankType : MechanismType, IValueType, IValueChecks
+    internal sealed class SliderCrankType : MechanismType, IValueType, IValueChecks, IValueLinks
     {
         public SliderCrankType() : base("kin.mech.slidercrank", new I18nText("Slider-crank", "Schubkurbel"), KinCategories.Mechanisms, new Size2(70, 34),
             "slider-crank", "slider crank", "crank", "piston", "connecting rod", "engine", "schubkurbel", "kurbeltrieb", "pleuel", "kolben", "schubkurbelgetriebe")
@@ -149,12 +171,29 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("crank", "Crank length", "Kurbellänge", 12, 0.1, 1e5),
             KP.Num("rod", "Connecting rod length", "Pleuellänge", 36, 0.1, 1e5),
             KP.Num("offset", "Offset (eccentricity)", "Versatz (Exzentrizität)", 0, -1e5, 1e5),
+            KinPole.Param,
         }).Concat(KinValues.SliderCrank.Params).ToList();
 
         /// <summary>Stroke, time ratio, smallest transmission angle and slider speed (<see cref="KinValues.SliderCrank"/>).</summary>
         public IReadOnlyList<VarDef> Variables => KinValues.SliderCrank.Variables;
         public IReadOnlyList<Relation> Relations => KinValues.SliderCrank.Relations;
         public IEnumerable<ValueCheck> ValueChecks => KinValues.SliderCrank.Checks;
+
+        /// <summary>The shaft line on the crank pivot's hub (a motor or gear docked there shares the speed n).</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => KinShaft.Links(o, ctx, Owner);
+
+        /// <summary>The instant centre of the connecting rod when "pole" is on.</summary>
+        protected override void DrawAnnotations(Scene s, SketchObject o, Lang lang, double used)
+        {
+            if (!KinPole.Shown(o)) return;
+            if (Linkages.SliderCrank(Len(o, "crank", 12), Len(o, "rod", 36), o.Num("offset", 0), AngleOf(o)) is { } p)
+                KinPole.Draw(s, Linkages.RodPole(p), (p.O, p.A), (p.B, p.B + new Vec2(0, 1)), lang);
+        }
+
+        protected override IEnumerable<ContextAction> ExtraActions(SketchObject o)
+        {
+            yield return KinPole.Action(o);
+        }
 
         /// <summary>Input grip on the crank pin A, turning the crank about O.</summary>
         protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O", "A") ? (p["O"], p["A"]) : null;
@@ -219,6 +258,7 @@ namespace InventaSketch.Modules.Kinematics
         protected override IEnumerable<Anchor> PoseAnchors(Scene s, SketchObject o, Pose p, Rect model)
         {
             yield return Mount(s, p["O"], "O");
+            yield return Anchor.Point(AnchorRole.Hub, s.L(p["O"]), "hub");
             foreach (var k in new[] { "O", "A", "B" })
                 if (p.Has(k)) yield return Port(s, p[k], k);
             var (min, max) = Stroke(o);
@@ -229,7 +269,7 @@ namespace InventaSketch.Modules.Kinematics
     }
 
     /// <summary>Scotch yoke: crank pin slides in a slotted yoke that translates on a guide (pure harmonic motion).</summary>
-    internal sealed class ScotchYokeType : MechanismType, IValueType
+    internal sealed class ScotchYokeType : MechanismType, IValueType, IValueLinks
     {
         public ScotchYokeType() : base("kin.mech.scotchyoke", new I18nText("Scotch yoke", "Kreuzschubkurbel"), KinCategories.Mechanisms, new Size2(64, 34),
             "scotch yoke", "slotted link", "harmonic", "yoke", "kreuzschleife", "kreuzschubkurbel", "kurbelschleife", "schleife")
@@ -246,6 +286,9 @@ namespace InventaSketch.Modules.Kinematics
         /// <summary>Stroke H = 2r and the yoke speed (<see cref="KinValues.ScotchYoke"/>).</summary>
         public IReadOnlyList<VarDef> Variables => KinValues.ScotchYoke.Variables;
         public IReadOnlyList<Relation> Relations => KinValues.ScotchYoke.Relations;
+
+        /// <summary>The shaft line on the crank pivot's hub (a motor or gear docked there shares the speed n).</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => KinShaft.Links(o, ctx, Owner);
 
         /// <summary>Input grip on the crank pin A, turning the crank about O.</summary>
         protected override (Vec2 Pivot, Vec2 Tip)? InputLever(SketchObject o, Pose p) => p.Has("O", "A") ? (p["O"], p["A"]) : null;
@@ -310,6 +353,7 @@ namespace InventaSketch.Modules.Kinematics
         protected override IEnumerable<Anchor> PoseAnchors(Scene s, SketchObject o, Pose p, Rect model)
         {
             yield return Mount(s, p["O"], "O");
+            yield return Anchor.Point(AnchorRole.Hub, s.L(p["O"]), "hub");
             yield return Port(s, p["O"], "O");
             yield return Port(s, p["A"], "A");
             yield return Port(s, p["E"], "E");
@@ -637,7 +681,7 @@ namespace InventaSketch.Modules.Kinematics
     /// Cam disc with follower (roller, flat-faced or knife-edge) on a vertical guide. The cam profile is a smooth
     /// tangent cam (base circle plus nose circle, lift = nose height); the follower position is computed from the actual contact at "angle".
     /// </summary>
-    internal sealed class CamFollowerType : MechanismType
+    internal sealed partial class CamFollowerType : MechanismType
     {
         public CamFollowerType() : base("kin.cam.follower", new I18nText("Cam disc with follower", "Kurvenscheibe mit Stößel"), KinCategories.Links, new Size2(36, 50),
             "cam", "follower", "roller follower", "flat follower", "tappet", "kurvenscheibe", "nocken", "stößel", "rollenstößel", "flachstößel", "kurvengetriebe")
@@ -655,7 +699,7 @@ namespace InventaSketch.Modules.Kinematics
             KP.Num("base", "Base circle radius", "Grundkreisradius", 8, 0.1, 1e5),
             KP.Num("lift", "Lift", "Hub", 7, 0, 1e5),
             KP.Dof,
-        };
+        }.Concat(CamValues.Params).ToList();
 
         private static string Follower(SketchObject o) => o.Str("follower", "roller");
 

@@ -46,18 +46,52 @@ namespace InventaSketch.Modules.Robotics
         private static readonly I18nText PayloadName = T("Rated payload (datasheet)", "Nenntraglast (Datenblatt)");
         private static readonly I18nText LoadName = T("Load: tool chain and workpiece (docked parts with a mass)", "Last: Werkzeugkette und Werkstück (angedockte Teile mit Masse)");
         private static readonly I18nText ReachName = T("Reach (largest horizontal distance of the reach envelope from the base axis)", "Reichweite (größter waagerechter Abstand des Arbeitsraums von der Grundachse)");
+        private static readonly I18nText MomentName = T("Static load moment at the flange (m_L·g·d)", "Statisches Lastmoment am Flansch (m_L·g·d)");
+        private static readonly I18nText MomentMaxName = T("Permissible moment at the flange (datasheet)", "Zulässiges Moment am Flansch (Datenblatt)");
+        private static readonly I18nText CogName = T("Centre-of-gravity distance of the load from the flange", "Schwerpunktabstand der Last vom Flansch");
+
+        /// <summary>Standard gravity g (m/s²), the conventional value of the SI brochure [S1].</summary>
+        public const double G = 9.80665;
+
+        private static VarDef Flange(string axis) =>
+            new("f" + axis, T("Flange position " + axis + " (forward kinematics, base frame)", "Flanschposition " + axis + " (Vorwärtskinematik, Basiskoordinaten)"), T(axis + "_F", axis + "_F"), Quantities.Length)
+            {
+                Unit = "mm", Relevance = VarRelevance.Panel, ReadOnly = true, Min = -1e3, Max = 1e3,
+            };
 
         public static readonly IReadOnlyList<VarDef> ArmVars = new[]
         {
             V("payload", PayloadName, "m_max", Quantities.Mass_, "kg", 1e5),
             V("load", LoadName, "m_L", Quantities.Mass_, "kg", 1e5),
             V("reach", ReachName, "R", Quantities.Length, "mm", 1e3),
+            V("moment", MomentName, "M_L", Quantities.Torque, "N·m", 1e7),
+            V("momentMax", MomentMaxName, "M_max", Quantities.Torque, "N·m", 1e7) with { Relevance = VarRelevance.Panel },
+            V("cog", CogName, "d", Quantities.Length, "mm", 100) with { Relevance = VarRelevance.Panel },
+            Flange("x"), Flange("y"), Flange("z"),
         };
+
+        /// <summary>The robot values with only <paramref name="card"/> left on the card (types that add card values of their own).</summary>
+        public static IReadOnlyList<VarDef> ArmVarsWithCard(params string[] card)
+            => ArmVars.Select(v => v.Relevance == VarRelevance.Card && !card.Contains(v.Key) ? v with { Relevance = VarRelevance.Panel } : v).ToList();
 
         public static readonly IReadOnlyList<ParamDef> ArmParams = new[]
         {
-            Text("payload", PayloadName, "kg"), Text("load", LoadName, "kg"), Text("reach", ReachName, "mm"), ValueLabels.ShowValues,
+            Text("payload", PayloadName, "kg"), Text("load", LoadName, "kg"), Text("reach", ReachName, "mm"),
+            Text("moment", MomentName, "N·m"), Text("momentMax", MomentMaxName, "N·m"), Text("cog", CogName, "mm"), ValueLabels.ShowValues,
         };
+
+        /// <summary>M_L = m_L·g·d: the static moment of the load at the flange [S1].</summary>
+        private static readonly Relation Moment =
+            new Relation("robot.moment", T("Static load moment at the flange", "Statisches Lastmoment am Flansch"), "{moment} = {load}·g·{cog}", "moment", "load", "cog")
+            {
+                Source = "S1",
+                Validity = T("load at rest, centre of gravity d from the flange across the tool axis (worst case: horizontal lever arm)", "Last in Ruhe, Schwerpunkt im Abstand d vom Flansch quer zur Werkzeugachse (ungünstigster Fall: waagerechter Hebelarm)"),
+            }
+                .Solve("moment", "{load}·g·{cog}", v => v("load") * G * v("cog"))
+                .Solve("cog", "{moment}/({load}·g)", v => v("moment") / (v("load") * G))
+                .Solve("load", "{moment}/(g·{cog})", v => v("moment") / (G * v("cog")));
+
+        public static readonly IReadOnlyList<Relation> ArmRelations = new[] { Moment };
 
         private static bool Above(double? value, double? limit) => value is double v && limit is double l && v > l * (1 + 1e-9);
 
@@ -73,7 +107,13 @@ namespace InventaSketch.Modules.Robotics
               "Ein Werkstück oder Zielpunkt bei diesem Roboter liegt außerhalb seines Arbeitsraums (wie gezeichnet, zuzüglich Hand- und Werkzeuglänge). Roboter oder Ziel verschieben oder die Gliedlängen und Achsgrenzen prüfen."),
             "target ∈ reach envelope", c => c.Context.Registry is { } r && r.Type(c.Object.Type) is RobotArmType arm && arm.TargetOutOfReach(c.Object, c.Context));
 
-        public static readonly IReadOnlyList<ValueCheck> ArmChecks = new[] { PayloadExceeded, OutOfReach };
+        /// <summary>robot.moment: the static moment of the load at the flange is above the permissible moment.</summary>
+        public static readonly ValueCheck MomentExceeded = new("robot.moment", CheckSeverity.Warning,
+            T("The static moment of the load at the flange M_L = m_L·g·d is above the permissible moment M_max of the robot. Bring the centre of gravity closer to the flange, use lighter tooling or a larger robot (dynamic moments in motion come on top).",
+              "Das statische Lastmoment am Flansch M_L = m_L·g·d liegt über dem zulässigen Moment M_max des Roboters. Den Schwerpunkt näher an den Flansch bringen, leichtere Werkzeuge oder einen größeren Roboter wählen (dynamische Momente in der Bewegung kommen hinzu)."),
+            "M_L ≤ M_max", c => Above(c["moment"], c["momentMax"])) { Source = "S1" };
+
+        public static readonly IReadOnlyList<ValueCheck> ArmChecks = new[] { PayloadExceeded, OutOfReach, MomentExceeded };
 
         /// <summary>s = a1 + … + an (the masses of the docked parts).</summary>
         private static Relation Sum(int n)
@@ -89,6 +129,14 @@ namespace InventaSketch.Modules.Robotics
         {
             var text = mm.ToString("0", CultureInfo.InvariantCulture) + " mm";
             return new Relation("robot.reach.geometry", T("Reach from the link lengths and joint limits", "Reichweite aus den Gliedlängen und Achsgrenzen"), "{x} = " + text, "x")
+                .Solve("x", text, _ => mm / 1000);
+        }
+
+        /// <summary>A flange coordinate from forward kinematics: x = value (SI), shown with its millimetre value.</summary>
+        private static Relation FlangeConstant(string axis, double mm)
+        {
+            var text = mm.ToString("0.#", CultureInfo.InvariantCulture) + " mm";
+            return new Relation("robot.flange." + axis, T("Flange position from the joint values (forward kinematics)", "Flanschposition aus den Gelenkwerten (Vorwärtskinematik)"), "{x} = " + text, "x")
                 .Solve("x", text, _ => mm / 1000);
         }
 
@@ -110,6 +158,12 @@ namespace InventaSketch.Modules.Robotics
             }
             if (ValueModel.ReadEntered(o, ArmVars[2]).Value is null && type.ReachOf(o) is double r && r > 0)
                 yield return new BoundRelation(ReachConstant(r), new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["x"] = new VarRef(o.Id, "reach") });
+            if (type.FlangeValues && type.Pose(o, type.Q(o)) is { Ok: true } pose)
+            {
+                var f = pose.Flange;
+                foreach (var (axis, mm) in new[] { ("x", f.X), ("y", f.Y), ("z", f.Z) })
+                    yield return new BoundRelation(FlangeConstant(axis, mm), new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["x"] = new VarRef(o.Id, "f" + axis) });
+            }
         }
 
         // ------------------------------------------------------------------ the docked tool chain

@@ -11,5 +11,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\InventaSketch.Modules.Kinematics\InventaSketch.Modules.Kinematics.csproj" />
+    <!-- Cross-module shaft lines: a pulley or gear of the mechanical module on the crank pivot. -->
+    <ProjectReference Include="..\..\src\InventaSketch.Modules.Mechanical\InventaSketch.Modules.Mechanical.csproj" />
   </ItemGroup>
 </Project>
