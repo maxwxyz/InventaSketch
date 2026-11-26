@@ -79,7 +79,7 @@ namespace InventaSketch.Modules.Automotive
         public static readonly Relation RollRelation =
             new Relation("auto.resistance.roll", RRollF, "{FR} = {m}·g·{fr}·cos(arctan {q})", "FR", "m", "fr", "q")
             {
-                Validity = T("Free rolling, rolling resistance coefficient independent of speed", "Freies Rollen, Rollwiderstandsbeiwert unabhängig von der Geschwindigkeit"),
+                Source = "S45", Validity = T("Free rolling, rolling resistance coefficient independent of speed", "Freies Rollen, Rollwiderstandsbeiwert unabhängig von der Geschwindigkeit"),
             }
             .Solve("FR", "{m}·g·{fr}·cos(arctan {q})", v => v("m") * G * v("fr") * Cos(v("q")))
             .Solve("m", "{FR}/(g·{fr}·cos(arctan {q}))", v => v("FR") / (G * v("fr") * Cos(v("q"))))
@@ -89,7 +89,7 @@ namespace InventaSketch.Modules.Automotive
         public static readonly Relation AirRelation =
             new Relation("auto.resistance.air", RAirF, "{FL} = ½·{rho}·{cw}·{A}·{v}²", "FL", "rho", "cw", "A", "v")
             {
-                Validity = T("Still air (no wind), speed relative to the air", "Ruhende Luft (kein Wind), Geschwindigkeit gegenüber der Luft"),
+                Source = "S45", Validity = T("Still air (no wind), speed relative to the air", "Ruhende Luft (kein Wind), Geschwindigkeit gegenüber der Luft"),
             }
             .Solve("FL", "½·{rho}·{cw}·{A}·{v}²", v => 0.5 * v("rho") * v("cw") * v("A") * v("v") * v("v"))
             .Solve("v", "√(2·{FL}/({rho}·{cw}·{A}))", v => Math.Sqrt(2 * v("FL") / (v("rho") * v("cw") * v("A"))))
@@ -99,7 +99,7 @@ namespace InventaSketch.Modules.Automotive
 
         /// <summary>auto.resistance.grade: F_grade = m·g·sin α with tan α = q (negative downhill).</summary>
         public static readonly Relation GradeRelation =
-            new Relation("auto.resistance.grade", RGradeF, "{FSt} = {m}·g·sin(arctan {q})", "FSt", "m", "q")
+            new Relation("auto.resistance.grade", RGradeF, "{FSt} = {m}·g·sin(arctan {q})", "FSt", "m", "q") { Source = "S45" }
             .Solve("FSt", "{m}·g·sin(arctan {q})", v => v("m") * G * Sin(v("q")))
             .Solve("q", "tan(arcsin({FSt}/({m}·g)))", v => Math.Tan(Math.Asin(Geo.Clamp(v("FSt") / (v("m") * G), -0.999, 0.999))))
             .Solve("m", "{FSt}/(g·sin(arctan {q}))", v => v("FSt") / (G * Sin(v("q"))));
@@ -108,7 +108,7 @@ namespace InventaSketch.Modules.Automotive
         public static readonly Relation AccelRelation =
             new Relation("auto.resistance.accel", RAccF, "{FA} = {m}·{a}", "FA", "m", "a")
             {
-                Validity = T("Translational mass only; the rotating masses (wheels, drivetrain) add a few per cent", "Nur translatorische Masse; die rotierenden Massen (Räder, Antriebsstrang) kommen mit einigen Prozent hinzu"),
+                Source = "S45", Validity = T("Translational mass only; the rotating masses (wheels, drivetrain) add a few per cent", "Nur translatorische Masse; die rotierenden Massen (Räder, Antriebsstrang) kommen mit einigen Prozent hinzu"),
             }
             .Solve("FA", "{m}·{a}", v => v("m") * v("a"))
             .Solve("a", "{FA}/{m}", v => v("FA") / v("m"))
@@ -116,7 +116,7 @@ namespace InventaSketch.Modules.Automotive
 
         /// <summary>auto.resistance.total: F = F_roll + F_air + F_grade + F_acc.</summary>
         public static readonly Relation TotalRelation =
-            new Relation("auto.resistance.total", RTotal, "{F} = {FR} + {FL} + {FSt} + {FA}", "F", "FR", "FL", "FSt", "FA")
+            new Relation("auto.resistance.total", RTotal, "{F} = {FR} + {FL} + {FSt} + {FA}", "F", "FR", "FL", "FSt", "FA") { Source = "S45" }
             .Solve("F", "{FR} + {FL} + {FSt} + {FA}", v => v("FR") + v("FL") + v("FSt") + v("FA"))
             .Solve("FR", "{F} − {FL} − {FSt} − {FA}", v => v("F") - v("FL") - v("FSt") - v("FA"))
             .Solve("FL", "{F} − {FR} − {FSt} − {FA}", v => v("F") - v("FR") - v("FSt") - v("FA"))
@@ -125,7 +125,7 @@ namespace InventaSketch.Modules.Automotive
 
         /// <summary>auto.resistance.power: P = F·v (power at the wheels).</summary>
         public static readonly Relation PowerRelation =
-            new Relation("auto.resistance.power", RPower, "{P} = {F}·{v}", "P", "F", "v")
+            new Relation("auto.resistance.power", RPower, "{P} = {F}·{v}", "P", "F", "v") { Source = "S45" }
             .Solve("P", "{F}·{v}", v => v("F") * v("v"))
             .Solve("F", "{P}/{v}", v => v("P") / v("v"))
             .Solve("v", "{P}/{F}", v => v("P") / v("F"));
@@ -179,14 +179,14 @@ namespace InventaSketch.Modules.Automotive
 
         /// <summary>auto.turn.radius: R = L / sin δ (front axle centre).</summary>
         public static readonly Relation RadiusRelation =
-            new Relation("auto.turn.radius", TRadius, "{R} = {L}/sin {delta}", "R", "L", "delta") { Validity = SingleTrack }
+            new Relation("auto.turn.radius", TRadius, "{R} = {L}/sin {delta}", "R", "L", "delta") { Source = "S45", Validity = SingleTrack }
             .Solve("R", "{L}/sin {delta}", v => v("L") / Math.Sin(v("delta")))
             .Solve("L", "{R}·sin {delta}", v => v("R") * Math.Sin(v("delta")))
             .Solve("delta", "arcsin({L}/{R})", v => Math.Asin(Geo.Clamp(v("L") / v("R"), -1, 1)));
 
         /// <summary>auto.turn.rear: R_r = L / tan δ (rear axle centre, on the line of the rear axle).</summary>
         public static readonly Relation RearRadiusRelation =
-            new Relation("auto.turn.rear", TRearRadius, "{Rh} = {L}/tan {delta}", "Rh", "L", "delta") { Validity = SingleTrack }
+            new Relation("auto.turn.rear", TRearRadius, "{Rh} = {L}/tan {delta}", "Rh", "L", "delta") { Source = "S45", Validity = SingleTrack }
             .Solve("Rh", "{L}/tan {delta}", v => v("L") / Math.Tan(v("delta")))
             .Solve("L", "{Rh}·tan {delta}", v => v("Rh") * Math.Tan(v("delta")))
             .Solve("delta", "arctan({L}/{Rh})", v => Math.Atan(v("L") / v("Rh")));
@@ -195,14 +195,14 @@ namespace InventaSketch.Modules.Automotive
         public static readonly Relation CircleRelation =
             new Relation("auto.turn.circle", TCircle, "{D} = 2·√(({Rh} + {b}/2)² + {L}²)", "D", "Rh", "b", "L")
             {
-                Validity = T("Track circle of the outer front wheel; the wall-to-wall circle adds the front overhang", "Spurkreis des kurvenäußeren Vorderrads; der Wendekreis von Wand zu Wand kommt um den vorderen Überhang hinzu"),
+                Source = "S45", Validity = T("Track circle of the outer front wheel; the wall-to-wall circle adds the front overhang", "Spurkreis des kurvenäußeren Vorderrads; der Wendekreis von Wand zu Wand kommt um den vorderen Überhang hinzu"),
             }
             .Solve("D", "2·√(({Rh} + {b}/2)² + {L}²)", v => 2 * Math.Sqrt(Math.Pow(v("Rh") + v("b") / 2, 2) + v("L") * v("L")))
             .Solve("Rh", "√(({D}/2)² − {L}²) − {b}/2", v => Math.Sqrt(Math.Max(0, Math.Pow(v("D") / 2, 2) - v("L") * v("L"))) - v("b") / 2);
 
         /// <summary>auto.turn.lateral: a_y = v²/R.</summary>
         public static readonly Relation LateralRelation =
-            new Relation("auto.turn.lateral", TLateral, "{ay} = {v}²/{R}", "ay", "v", "R")
+            new Relation("auto.turn.lateral", TLateral, "{ay} = {v}²/{R}", "ay", "v", "R") { Source = "S45" }
             .Solve("ay", "{v}²/{R}", v => v("v") * v("v") / v("R"))
             .Solve("v", "√({ay}·{R})", v => Math.Sqrt(v("ay") * v("R")))
             .Solve("R", "{v}²/{ay}", v => v("v") * v("v") / v("ay"));
@@ -242,7 +242,7 @@ namespace InventaSketch.Modules.Automotive
         public static readonly Relation RangeRelation =
             new Relation("auto.ev.range", T("Range from battery energy and consumption", "Reichweite aus Batterieenergie und Verbrauch"), "{R} = {E}/{c}·100 km", "R", "E", "c")
             {
-                Validity = T("Mean consumption over the trip (speed profile, temperature and auxiliary loads included in c)", "Mittlerer Verbrauch über die Fahrt (Geschwindigkeitsprofil, Temperatur und Nebenverbraucher in c enthalten)"),
+                Source = "S45", Validity = T("Mean consumption over the trip (speed profile, temperature and auxiliary loads included in c)", "Mittlerer Verbrauch über die Fahrt (Geschwindigkeitsprofil, Temperatur und Nebenverbraucher in c enthalten)"),
             }
             .Solve("R", "{E}/{c}·100 km", v => v("E") / v("c") * 1e5)
             .Solve("E", "{R}·{c}/100 km", v => v("R") * v("c") / 1e5)
@@ -286,7 +286,7 @@ namespace InventaSketch.Modules.Automotive
 
         /// <summary>auto.fov.preview: t_P = r_S / v.</summary>
         public static readonly Relation PreviewRelation =
-            new Relation("auto.fov.preview", FPreview, "{tP} = {rS}/{v}", "tP", "rS", "v")
+            new Relation("auto.fov.preview", FPreview, "{tP} = {rS}/{v}", "tP", "rS", "v") { Source = "S45" }
             .Solve("tP", "{rS}/{v}", v => v("rS") / v("v"))
             .Solve("rS", "{tP}·{v}", v => v("tP") * v("v"))
             .Solve("v", "{rS}/{tP}", v => v("rS") / v("tP"));

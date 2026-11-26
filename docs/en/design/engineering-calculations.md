@@ -621,6 +621,15 @@ in the document's check settings, because the binding limit is in a standard or 
 | `robot.grip.force` | parallel, three-finger gripper | *F*_req = *m*_W·(*g* + *a*)·*S*/*μ* > *F*_G | warning | [S44] |
 | `robot.vacuum.force` | vacuum gripper | *F*_req = *m*_W·(*g* + *a*)·*S* > *F*_th = Δ*p*·*n*·π·*d*²/4 | warning | [S44] |
 | `kin.cam.pressure` | cam with follower | *α*_max > 30° | hint | [S24] |
+| `auto.ttc.low` | time-to-collision sketch | TTC below the entered limit | warning | – (user limit) |
+| `auto.braking.gap` | safety distance | stopping distance > drawn or entered gap | warning | [S45] |
+| `auto.braking.friction` | safety distance, field of view | deceleration *a* > *μ*·*g* | warning | [S45] |
+| `auto.drive.power` | driving resistance | *P* = *F*·*v* > *P*_max | warning | [S45] |
+| `auto.turn.friction` | turning circle | lateral acceleration *a*_y = *v*²/*R* > *μ*·*g* | warning | [S45] |
+| `auto.ev.range` | battery pack | range *R* = *E*/*c*·100 km < planned distance *d* | warning | [S45] |
+| `auto.fov.range` | sensor field of view | stopping distance *s* > sensor range *r*_S | warning | [S45] |
+| `map.scale.plan` | scale bar | \|*N*/*N*_plan − 1\| > 2 % (scale bar disagrees with the page scale) | hint | – (consistency) |
+| `mach.runup.torque` | machines, motor block, e-machine | motor torque *T*_M ≤ load torque *T* (no run-up) | warning | [S15] |
 | `optics.light.none` | detector, lens, arrow | the page has traced rays, none ends at the element | info | – (consistency) |
 | `optics.light.nosource` | detector | only rays without a light source arrive (power unknown) | info | – (consistency) |
 | `optics.light.estimate` | detector | power passed a schematic splitter or grating (equal shares assumed) | hint | – (assumption) |
@@ -1018,6 +1027,8 @@ current editions.
 - **[S44]** J. J. Craig, *Introduction to Robotics: Mechanics and Control* (Pearson); G. J. Monkman, S. Hesse,
   R. Steinmann, H. Schunk, *Robot Grippers* (Wiley-VCH) – forward and inverse kinematics of planar arms, gripping and
   holding forces (bibliographic data only).
+- **[S45]** M. Mitschke, H. Wallentowitz, *Dynamik der Kraftfahrzeuge* (Springer Vieweg) – driving resistances,
+  required power, steady-state cornering and turning circle (bibliographic data only).
 
 The existing code relations reused here are: `Linkages.Grubler` and `Linkage.Dof` (Kinematics, Core),
 `GearTrain.Speeds` and `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Process) and

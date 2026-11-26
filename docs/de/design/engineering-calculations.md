@@ -641,6 +641,15 @@ Datenblatt steht, das wir nicht übernehmen.
 | `robot.grip.force` | Parallel-, Dreifingergreifer | *F*_erf = *m*_W·(*g* + *a*)·*S*/*μ* > *F*_G | Warnung | [S44] |
 | `robot.vacuum.force` | Vakuumgreifer | *F*_erf = *m*_W·(*g* + *a*)·*S* > *F*_th = Δ*p*·*n*·π·*d*²/4 | Warnung | [S44] |
 | `kin.cam.pressure` | Kurvenscheibe mit Stößel | *α*_max > 30° | Hinweis | [S24] |
+| `auto.ttc.low` | Skizze Zeit bis Kollision | TTC unter der eingegebenen Grenze | Warnung | – (Nutzergrenze) |
+| `auto.braking.gap` | Sicherheitsabstand | Anhalteweg > gezeichneter oder eingegebener Abstand | Warnung | [S45] |
+| `auto.braking.friction` | Sicherheitsabstand, Sichtbereich | Verzögerung *a* > *μ*·*g* | Warnung | [S45] |
+| `auto.drive.power` | Fahrwiderstand | *P* = *F*·*v* > *P*_max | Warnung | [S45] |
+| `auto.turn.friction` | Wendekreis | Querbeschleunigung *a*_y = *v*²/*R* > *μ*·*g* | Warnung | [S45] |
+| `auto.ev.range` | Batteriepack | Reichweite *R* = *E*/*c*·100 km < geplante Strecke *d* | Warnung | [S45] |
+| `auto.fov.range` | Sichtbereich eines Sensors | Anhalteweg *s* > Sensorreichweite *r*_S | Warnung | [S45] |
+| `map.scale.plan` | Maßstabsleiste | \|*N*/*N*_Plan − 1\| > 2 % (Maßstabsleiste passt nicht zum Seitenmaßstab) | Hinweis | – (Konsistenz) |
+| `mach.runup.torque` | Maschinen, Motorblock, E-Maschine | Motormoment *T*_M ≤ Lastmoment *T* (kein Hochlauf) | Warnung | [S15] |
 | `optics.light.none` | Detektor, Linse, Pfeil | die Seite hat verfolgte Strahlen, keiner endet am Element | Info | – (Konsistenz) |
 | `optics.light.nosource` | Detektor | nur Strahlen ohne Lichtquelle kommen an (Leistung unbekannt) | Info | – (Konsistenz) |
 | `optics.light.estimate` | Detektor | Leistung lief über schematischen Strahlteiler oder Gitter (gleiche Anteile angenommen) | Hinweis | – (Annahme) |
@@ -1054,6 +1063,8 @@ ihrer jeweils aktuellen Auflage gemeint.
 - **[S44]** J. J. Craig, *Introduction to Robotics: Mechanics and Control* (Pearson); G. J. Monkman, S. Hesse,
   R. Steinmann, H. Schunk, *Robot Grippers* (Wiley-VCH) – Vorwärts- und Rückwärtskinematik ebener Arme, Greif- und
   Haltekräfte (nur bibliografische Angaben).
+- **[S45]** M. Mitschke, H. Wallentowitz, *Dynamik der Kraftfahrzeuge* (Springer Vieweg) – Fahrwiderstände,
+  Leistungsbedarf, stationäre Kreisfahrt und Wendekreis (nur bibliografische Angaben).
 
 Vorhandene Code-Beziehungen, die hier wiederverwendet werden: `Linkages.Grubler` und `Linkage.Dof` (Kinematik, Core),
 `GearTrain.Speeds` und `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Verfahrenstechnik) und
