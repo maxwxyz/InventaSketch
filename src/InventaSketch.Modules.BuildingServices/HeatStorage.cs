@@ -29,6 +29,20 @@ namespace InventaSketch.Modules.BuildingServices
                 CompanionIds = new[] { PipeType.TypeId, "bs.heat.heatpump", "bs.heat.boiler", "bs.heat.solarthermal", "bs.heat.pump", "bs.heat.mixer" },
             };
 
+            // Hydraulic separator (low-loss header): a vertical tube between the generator circuit (f1/r1, left) and the
+            // consumer circuit (f2/r2, right); a symbol, not to scale.
+            yield return new BsBoxType(BsValues.SeparatorId, new I18nText("Hydraulic separator (low-loss header)", "Hydraulische Weiche"), Cat,
+                new Size2(6, 4), new Size2(6, 10), new Size2(6, 8), SeparatorPlan, SeparatorSection, SeparatorSchematic,
+                "hydraulic separator", "low-loss header", "low loss header", "hydraulic decoupler", "decoupler", "hydraulische weiche",
+                "weiche", "entkopplung", "hydraulische entkopplung", "heizung", "tga")
+            {
+                Mount = Mounting.Wall, ToScale = false, DefaultHeight = 1000,
+                Ports = BsBoxType.Uv(
+                    new[] { (-0.5, -0.2, "f1"), (-0.5, 0.2, "r1"), (0.5, -0.2, "f2"), (0.5, 0.2, "r2") },
+                    new[] { (-0.5, -0.3, "f1"), (-0.5, 0.3, "r1"), (0.5, -0.3, "f2"), (0.5, 0.3, "r2") }),
+                CompanionIds = new[] { PipeType.TypeId, "bs.heat.boiler", "bs.heat.heatpump", "bs.heat.pump", "bs.heat.mixer", "bs.meter.heat" },
+            };
+
             yield return new BsBoxType("bs.heat.solarthermal", new I18nText("Solar thermal collector", "Solarkollektor (Solarthermie)"), Cat,
                 new Size2(20, 8), new Size2(20, 9), new Size2(20, 7), SolarPlan, SolarSection, SolarSchematic,
                 "solar collector", "solar thermal", "flat plate collector", "solar panel", "solarkollektor", "solarthermie",
@@ -87,6 +101,48 @@ namespace InventaSketch.Modules.BuildingServices
             }
             foreach (var v in new[] { 0.05, 0.2 }) c.LineN(-0.3, v, 0.3, v, FineDash, "layer");
             c.Text(c.N(0, -0.15), BufferLabel(ctx.Lang), 2.5, 0.6 * c.W, 0.14 * c.H);
+        }
+
+        // ------------------------------------------------------------------ hydraulic separator
+
+        /// <summary>Plan: the tube seen from above with the four stubs.</summary>
+        private static void SeparatorPlan(Canvas c, SketchObject o, RenderContext ctx)
+        {
+            var r = 0.3 * c.K;
+            c.Circle(Vec2.Zero, r, St.Thin, BsTags.Outline);
+            foreach (var v in new[] { -0.2, 0.2 })
+            {
+                var x = Math.Sqrt(Math.Max(0, r * r - v * v * c.H * c.H)) / c.W;
+                c.LineN(-0.5, v, -x, v, St.Thin, BsTags.Stub);
+                c.LineN(x, v, 0.5, v, St.Thin, BsTags.Stub);
+            }
+        }
+
+        /// <summary>Section: a vertical tube with closed ends, flow stubs at the top and return stubs at the bottom.</summary>
+        private static void SeparatorSection(Canvas c, SketchObject o, RenderContext ctx) => SeparatorTube(c, ctx, St.Thin, -0.3, 0.3);
+
+        /// <summary>Schematic: the tube with flow directions on the stubs (into f1 and r2, out of f2 and r1).</summary>
+        private static void SeparatorSchematic(Canvas c, SketchObject o, RenderContext ctx)
+        {
+            SeparatorTube(c, ctx, St.Medium, -0.3, 0.3);
+            var head = 0.12 * c.W;
+            c.Head(c.N(-0.25, -0.3), new Vec2(1, 0), head, "direction");
+            c.Head(c.N(0.45, -0.3), new Vec2(1, 0), head, "direction");
+            c.Head(c.N(0.25, 0.3), new Vec2(-1, 0), head, "direction");
+            c.Head(c.N(-0.45, 0.3), new Vec2(-1, 0), head, "direction");
+        }
+
+        private static void SeparatorTube(Canvas c, RenderContext ctx, Style s, double vFlow, double vReturn)
+        {
+            const double u = 0.17;
+            c.RectN(-u, -0.5, u, 0.5, s, BsTags.Outline);
+            foreach (var v in new[] { vFlow, vReturn })
+            {
+                c.LineN(-0.5, v, -u, v, s, BsTags.Stub);
+                c.LineN(u, v, 0.5, v, s, BsTags.Stub);
+            }
+            // The short circuit between the circuits: a vertical arrow inside the tube.
+            c.Arrow(c.N(0, vFlow + 0.08), c.N(0, vReturn - 0.08), St.Fine, 0.18 * c.W, "bypass");
         }
 
         // ------------------------------------------------------------------ solar thermal collector

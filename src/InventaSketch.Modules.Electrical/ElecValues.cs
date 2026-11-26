@@ -38,9 +38,65 @@ namespace InventaSketch.Modules.Electrical
 
         public static readonly IReadOnlyList<ParamDef> LampParams = new[] { Voltage, Current, Power, Txt("resistance", "Resistance", "Widerstand", "Ω"), ValueLabels.ShowValues };
 
-        public static readonly IReadOnlyList<ParamDef> CapacitorParams = new[] { Voltage, Txt("charge", "Charge", "Ladung", "C"), Txt("energy", "Energy", "Energie", "J"), ValueLabels.ShowValues };
+        // Time constant, cut-off frequency and reactance (RC/RL elements, section 2.1): the resistance in series is taken from
+        // the resistors wired in series with the capacitor or inductor, or entered.
+        private static readonly ParamDef RSeries = Txt("rseries", "Resistance in series R (time constant)", "Widerstand in Reihe R (Zeitkonstante)", "Ω");
+        private static readonly ParamDef Tau = Txt("tau", "Time constant τ", "Zeitkonstante τ", "s");
+        private static readonly ParamDef Cutoff = Txt("cutoff", "Cut-off frequency f_c", "Grenzfrequenz f_g", "Hz");
+        private static readonly ParamDef Frequency = Txt("frequency", "Frequency f", "Frequenz f", "Hz");
+        private static readonly ParamDef Reactance = Txt("reactance", "Reactance X at f", "Blindwiderstand X bei f", "Ω");
 
-        public static readonly IReadOnlyList<ParamDef> InductorParams = new[] { Current, Txt("energy", "Energy", "Energie", "J"), ValueLabels.ShowValues };
+        public static readonly IReadOnlyList<ParamDef> CapacitorParams = new[]
+        {
+            Voltage, Txt("charge", "Charge", "Ladung", "C"), Txt("energy", "Energy", "Energie", "J"), RSeries, Tau, Cutoff, Frequency, Reactance, ValueLabels.ShowValues,
+        };
+
+        public static readonly IReadOnlyList<ParamDef> InductorParams = new[]
+        {
+            Current, Txt("energy", "Energy", "Energie", "J"), RSeries, Tau, Cutoff, Frequency, Reactance, ValueLabels.ShowValues,
+        };
+
+        /// <summary>Potentiometer: resistance (value text), voltage across the track, wiper position and the divider values.</summary>
+        public static readonly IReadOnlyList<ParamDef> PotentiometerParams = new[]
+        {
+            Voltage, Current, Power,
+            new ParamDef("wiper", T("Wiper position k (0 at pin 1, 100 % at pin 2)", "Schleiferstellung k (0 an Pin 1, 100 % an Pin 2)"), ParamKind.Text) { Unit = "%" },
+            Txt("r1", "Resistance pin 1 – wiper R₁", "Widerstand Pin 1 – Schleifer R₁", "Ω"),
+            Txt("r2", "Resistance wiper – pin 2 R₂", "Widerstand Schleifer – Pin 2 R₂", "Ω"),
+            Txt("uwiper", "Wiper voltage U₂ (to pin 2, unloaded)", "Schleiferspannung U₂ (gegen Pin 2, unbelastet)", "V"),
+            ValueLabels.ShowValues,
+        };
+
+        /// <summary>Bipolar transistor as a switch: base resistor from the input voltage, collector current and current gain.</summary>
+        public static readonly IReadOnlyList<ParamDef> BjtParams = new[]
+        {
+            Txt("ic", "Collector current I_C", "Kollektorstrom I_C", "A"),
+            new ParamDef("beta", T("Current gain B (h_FE, datasheet)", "Stromverstärkung B (h_FE, Datenblatt)"), ParamKind.Text),
+            Txt("uin", "Input voltage U_in (before the base resistor)", "Eingangsspannung U_in (vor dem Basiswiderstand)", "V"),
+            Txt("rb", "Base resistor R_B", "Basiswiderstand R_B", "Ω"),
+            Txt("ib", "Base current I_B", "Basisstrom I_B", "A"),
+            Txt("ube", "Base-emitter voltage U_BE", "Basis-Emitter-Spannung U_BE", "V"),
+            new ParamDef("overdrive", T("Overdrive factor k", "Übersteuerungsfaktor k"), ParamKind.Text),
+            ValueLabels.ShowValues,
+        };
+
+        public static readonly ParamDef OpAmpCircuit = Choice("circuit", T("Circuit (for the gain)", "Schaltung (für die Verstärkung)"), "auto",
+            ("auto", "From the wiring", "Aus der Verdrahtung"), ("inverting", "Inverting amplifier", "Invertierender Verstärker"),
+            ("noninverting", "Non-inverting amplifier", "Nichtinvertierender Verstärker"), ("follower", "Voltage follower", "Spannungsfolger (Impedanzwandler)"),
+            ("open", "None (comparator, open loop)", "Keine (Komparator, offen)"));
+
+        /// <summary>Op-amp basic circuits (ideal op-amp): gain from the feedback and input resistors, output from input voltage.</summary>
+        public static readonly IReadOnlyList<ParamDef> OpAmpParams = new[]
+        {
+            OpAmpCircuit,
+            new ParamDef("gain", T("Voltage gain A", "Spannungsverstärkung V"), ParamKind.Text),
+            Txt("uin", "Input voltage U_in", "Eingangsspannung U_e", "V"),
+            Txt("uout", "Output voltage U_out", "Ausgangsspannung U_a", "V"),
+            Txt("rf", "Feedback resistor R_f", "Rückkopplungswiderstand R_f", "Ω"),
+            Txt("rin", "Input resistor R_in (inverting) / R_g (non-inverting)", "Eingangswiderstand R_e (invertierend) / R_g (nichtinvertierend)", "Ω"),
+            Txt("usupply", "Supply voltage ±U_S", "Versorgungsspannung ±U_B", "V"),
+            ValueLabels.ShowValues,
+        };
 
         public static readonly IReadOnlyList<ParamDef> DiodeParams = new[]
         {
@@ -113,13 +169,56 @@ namespace InventaSketch.Modules.Electrical
             U(),
             V("Q", "Charge", "Ladung", "Q", Quantities.Charge, "charge", "C"),
             V("E", "Stored energy", "Gespeicherte Energie", "E", Quantities.Energy, "energy", "J"),
-        };
+        }.Concat(Dynamics("X_C")).ToList();
 
         public static readonly IReadOnlyList<VarDef> InductorVariables = new[]
         {
             new VarDef("L", T("Inductance", "Induktivität"), T("L", "L"), Quantities.Inductance) { Param = "value", OnTypeLabel = true, Unit = "H", Min = 1e-12, Max = 1e4 },
             I(),
             V("E", "Stored energy", "Gespeicherte Energie", "E", Quantities.Energy, "energy", "J"),
+        }.Concat(Dynamics("X_L")).ToList();
+
+        /// <summary>Resistance in series, time constant, cut-off frequency, frequency and reactance (panel values).</summary>
+        private static IEnumerable<VarDef> Dynamics(string reactance) => new[]
+        {
+            V("Rt", "Resistance in series (time constant)", "Widerstand in Reihe (Zeitkonstante)", "R", Quantities.Resistance, "rseries", "Ω") with { Relevance = VarRelevance.Panel, Min = 1e-6, Max = 1e12 },
+            V("tau", "Time constant", "Zeitkonstante", "τ", Quantities.Time_, "tau", "s") with { Relevance = VarRelevance.Panel, Min = 1e-15, Max = 1e9 },
+            new VarDef("fc", T("Cut-off frequency (−3 dB)", "Grenzfrequenz (−3 dB)"), T("f_c", "f_g"), Quantities.Frequency) { Param = "cutoff", Unit = "Hz", Relevance = VarRelevance.Panel, Min = 1e-9, Max = 1e15 },
+            V("f", "Frequency", "Frequenz", "f", Quantities.Frequency, "frequency", "Hz") with { Relevance = VarRelevance.Panel, Min = 1e-9, Max = 1e15 },
+            V("X", "Reactance at f", "Blindwiderstand bei f", reactance, Quantities.Resistance, "reactance", "Ω") with { Relevance = VarRelevance.Panel, Min = 1e-12, Max = 1e15 },
+        };
+
+        public static readonly IReadOnlyList<VarDef> PotentiometerVariables = new[]
+        {
+            new VarDef("R", T("Resistance (track)", "Widerstand (Bahn)"), T("R", "R"), Quantities.Resistance) { Param = "value", OnTypeLabel = true, Unit = "Ω", Min = 1e-6, Max = 1e12 },
+            U(),
+            new VarDef("k", T("Wiper position", "Schleiferstellung"), T("k", "k"), Quantities.Ratio) { Param = "wiper", Unit = "%", Min = 0, Max = 1 },
+            V("Uw", "Wiper voltage (unloaded)", "Schleiferspannung (unbelastet)", "U₂", Quantities.Voltage, "uwiper", "V"),
+            I() with { Relevance = VarRelevance.Panel }, P() with { Relevance = VarRelevance.Panel },
+            V("R1", "Resistance pin 1 – wiper", "Widerstand Pin 1 – Schleifer", "R₁", Quantities.Resistance, "r1", "Ω") with { Relevance = VarRelevance.Panel, Min = 0, Max = 1e12 },
+            V("R2", "Resistance wiper – pin 2", "Widerstand Schleifer – Pin 2", "R₂", Quantities.Resistance, "r2", "Ω") with { Relevance = VarRelevance.Panel, Min = 0, Max = 1e12 },
+        };
+
+        public static readonly IReadOnlyList<VarDef> BjtVariables = new[]
+        {
+            V("Rb", "Base resistor", "Basiswiderstand", "R_B", Quantities.Resistance, "rb", "Ω") with { Min = 1e-3, Max = 1e12 },
+            V("Ic", "Collector current", "Kollektorstrom", "I_C", Quantities.Current, "ic", "A") with { Min = 0, Max = 1e6 },
+            new VarDef("B", T("Current gain (h_FE)", "Stromverstärkung (h_FE)"), T("B", "B"), Quantities.Ratio) { Param = "beta", Min = 1, Max = 1e5 },
+            V("Uin", "Input voltage", "Eingangsspannung", "U_in", Quantities.Voltage, "uin", "V"),
+            V("Ib", "Base current", "Basisstrom", "I_B", Quantities.Current, "ib", "A") with { Relevance = VarRelevance.Panel, Min = 0, Max = 1e6 },
+            V("Ube", "Base-emitter voltage", "Basis-Emitter-Spannung", "U_BE", Quantities.Voltage, "ube", "V") with { Relevance = VarRelevance.Panel, Default = 0.7, Min = 0, Max = 10 },
+            new VarDef("k", T("Overdrive factor", "Übersteuerungsfaktor"), T("k", "k"), Quantities.Ratio) { Param = "overdrive", Relevance = VarRelevance.Panel, Default = 3, Min = 0.01, Max = 100 },
+        };
+
+        public static readonly IReadOnlyList<VarDef> OpAmpVariables = new[]
+        {
+            new VarDef("A", T("Voltage gain", "Spannungsverstärkung"), T("A", "V_u"), Quantities.Ratio) { Param = "gain", Min = -1e7, Max = 1e7 },
+            V("Uin", "Input voltage", "Eingangsspannung", "U_in", Quantities.Voltage, "uin", "V") with { Symbol = T("U_in", "U_e"), Min = -1e6, Max = 1e6 },
+            V("Uout", "Output voltage", "Ausgangsspannung", "U_out", Quantities.Voltage, "uout", "V") with { Symbol = T("U_out", "U_a"), Min = -1e6, Max = 1e6 },
+            V("Rf", "Feedback resistor", "Rückkopplungswiderstand", "R_f", Quantities.Resistance, "rf", "Ω") with { Min = 1e-6, Max = 1e12 },
+            V("Rin", "Input resistor (inverting) / R_g (non-inverting)", "Eingangswiderstand (invertierend) / R_g (nichtinvertierend)", "R_in", Quantities.Resistance, "rin", "Ω")
+                with { Relevance = VarRelevance.Panel, Min = 1e-6, Max = 1e12 },
+            V("Us", "Supply voltage (±)", "Versorgungsspannung (±)", "U_S", Quantities.Voltage, "usupply", "V") with { Symbol = T("U_S", "U_B"), Relevance = VarRelevance.Panel, Min = 0, Max = 1e6 },
         };
 
         public static readonly IReadOnlyList<VarDef> DiodeVariables = new[]
@@ -239,7 +338,104 @@ namespace InventaSketch.Modules.Electrical
                 .Solve("E", "½·{L}·{I}²", v => 0.5 * v("L") * v("I") * v("I"))
                 .Solve("L", "2·{E}/{I}²", v => 2 * v("E") / (v("I") * v("I")))
                 .Solve("I", "√(2·{E}/{L})", v => Math.Sqrt(2 * v("E") / v("L"))),
+            new Relation("elec.rl.tau", T("Time constant of an RL element", "Zeitkonstante eines RL-Glieds"), "{tau} = {L}/{Rt}", "tau", "L", "Rt") { Source = "S7" }
+                .Solve("tau", "{L}/{Rt}", v => v("L") / v("Rt"))
+                .Solve("L", "{tau}·{Rt}", v => v("tau") * v("Rt"))
+                .Solve("Rt", "{L}/{tau}", v => v("L") / v("tau")),
+            CutOff(),
+            new Relation("elec.reactance.l", T("Inductive reactance", "Induktiver Blindwiderstand"), "{X} = 2π·{f}·{L}", "X", "f", "L") { Source = "S7" }
+                .Solve("X", "2π·{f}·{L}", v => TwoPi * v("f") * v("L"))
+                .Solve("f", "{X}/(2π·{L})", v => v("X") / (TwoPi * v("L")))
+                .Solve("L", "{X}/(2π·{f})", v => v("X") / (TwoPi * v("f"))),
         };
+
+        private const double TwoPi = 2 * Math.PI;
+
+        /// <summary>Cut-off (−3 dB) frequency of a first-order RC or RL element f_c = 1/(2π·τ) [S7].</summary>
+        private static Relation CutOff() =>
+            new Relation("elec.cutoff", T("Cut-off frequency (first order)", "Grenzfrequenz (1. Ordnung)"), "{fc} = 1/(2π·{tau})", "fc", "tau") { Source = "S7" }
+                .Solve("fc", "1/(2π·{tau})", v => 1 / (TwoPi * v("tau")))
+                .Solve("tau", "1/(2π·{fc})", v => 1 / (TwoPi * v("fc")));
+
+        /// <summary>RC element: τ = R·C, f_c = 1/(2π·τ); capacitive reactance X_C = 1/(2π·f·C) [S7].</summary>
+        public static readonly IReadOnlyList<Relation> CapacitorDynamics = new[]
+        {
+            new Relation("elec.rc.tau", T("Time constant of an RC element", "Zeitkonstante eines RC-Glieds"), "{tau} = {Rt}·{C}", "tau", "Rt", "C") { Source = "S7" }
+                .Solve("tau", "{Rt}·{C}", v => v("Rt") * v("C"))
+                .Solve("Rt", "{tau}/{C}", v => v("tau") / v("C"))
+                .Solve("C", "{tau}/{Rt}", v => v("tau") / v("Rt")),
+            CutOff(),
+            new Relation("elec.reactance.c", T("Capacitive reactance", "Kapazitiver Blindwiderstand"), "{X} = 1/(2π·{f}·{C})", "X", "f", "C") { Source = "S7" }
+                .Solve("X", "1/(2π·{f}·{C})", v => 1 / (TwoPi * v("f") * v("C")))
+                .Solve("f", "1/(2π·{X}·{C})", v => 1 / (TwoPi * v("X") * v("C")))
+                .Solve("C", "1/(2π·{f}·{X})", v => 1 / (TwoPi * v("f") * v("X"))),
+        };
+
+        /// <summary>
+        /// Potentiometer: Ohm's law over the whole track, the wiper position splits it (R₁ = k·R, R₂ = R − R₁) and the
+        /// unloaded divider gives the wiper voltage U₂ = U·R₂/R [S7].
+        /// </summary>
+        public static readonly IReadOnlyList<Relation> Potentiometer = Ohm.Concat(new[]
+        {
+            new Relation("elec.pot.r1", T("Wiper position", "Schleiferstellung"), "{R1} = {k}·{R}", "R1", "k", "R") { Source = "S7" }
+                .Solve("R1", "{k}·{R}", v => v("k") * v("R"))
+                .Solve("k", "{R1}/{R}", v => v("R1") / v("R"))
+                .Solve("R", "{R1}/{k}", v => v("R1") / v("k")),
+            new Relation("elec.pot.r2", T("Track split by the wiper", "Durch den Schleifer geteilte Bahn"), "{R2} = {R} − {R1}", "R2", "R", "R1") { Source = "S7" }
+                .Solve("R2", "{R} − {R1}", v => v("R") - v("R1"))
+                .Solve("R", "{R1} + {R2}", v => v("R1") + v("R2"))
+                .Solve("R1", "{R} − {R2}", v => v("R") - v("R2")),
+            new Relation("elec.divider", T("Voltage divider (unloaded)", "Spannungsteiler (unbelastet)"), "{Uw} = {U}·{R2}/{R}", "Uw", "U", "R2", "R")
+            { Source = "S7", Validity = T("unloaded: no current drawn from the wiper", "unbelastet: dem Schleifer wird kein Strom entnommen") }
+                .Solve("Uw", "{U}·{R2}/{R}", v => v("U") * v("R2") / v("R"))
+                .Solve("U", "{Uw}·{R}/{R2}", v => v("Uw") * v("R") / v("R2"))
+                .Solve("R2", "{Uw}·{R}/{U}", v => v("Uw") * v("R") / v("U")),
+        }).ToList();
+
+        /// <summary>
+        /// Bipolar transistor as a switch: I_B = k·I_C/B with an overdrive factor k (≈ 2 … 5), R_B = (U_in − U_BE)/I_B [S7].
+        /// </summary>
+        public static readonly IReadOnlyList<Relation> Bjt = new[]
+        {
+            new Relation("elec.bjt.ib", T("Base current for switching", "Basisstrom zum Schalten"), "{Ib} = {k}·{Ic}/{B}", "Ib", "k", "Ic", "B")
+            { Source = "S7", Validity = T("transistor as a saturated switch", "Transistor als übersteuerter Schalter") }
+                .Solve("Ib", "{k}·{Ic}/{B}", v => v("k") * v("Ic") / v("B"))
+                .Solve("Ic", "{Ib}·{B}/{k}", v => v("Ib") * v("B") / v("k"))
+                .Solve("k", "{Ib}·{B}/{Ic}", v => v("Ib") * v("B") / v("Ic"))
+                .Solve("B", "{k}·{Ic}/{Ib}", v => v("k") * v("Ic") / v("Ib")),
+            new Relation("elec.bjt.rb", T("Base resistor", "Basiswiderstand"), "{Rb} = ({Uin} − {Ube})/{Ib}", "Rb", "Uin", "Ube", "Ib") { Source = "S7" }
+                .Solve("Rb", "({Uin} − {Ube})/{Ib}", v => (v("Uin") - v("Ube")) / v("Ib"))
+                .Solve("Ib", "({Uin} − {Ube})/{Rb}", v => (v("Uin") - v("Ube")) / v("Rb"))
+                .Solve("Uin", "{Ube} + {Rb}·{Ib}", v => v("Ube") + v("Rb") * v("Ib")),
+        };
+
+        /// <summary>Ideal op-amp: U_out = A·U_in [S7].</summary>
+        public static readonly IReadOnlyList<Relation> OpAmp = new[]
+        {
+            new Relation("elec.opamp.out", T("Amplifier output", "Verstärkerausgang"), "{Uout} = {A}·{Uin}", "Uout", "A", "Uin") { Source = "S7", Validity = T("ideal op-amp, output within the supply", "idealer Operationsverstärker, Ausgang innerhalb der Versorgung") }
+                .Solve("Uout", "{A}·{Uin}", v => v("A") * v("Uin"))
+                .Solve("A", "{Uout}/{Uin}", v => v("Uout") / v("Uin"))
+                .Solve("Uin", "{Uout}/{A}", v => v("Uout") / v("A")),
+        };
+
+        /// <summary>Gain of the inverting amplifier A = −R_f/R_in [S7].</summary>
+        public static readonly Relation InvertingGain =
+            new Relation("elec.opamp.inverting", T("Inverting amplifier", "Invertierender Verstärker"), "{A} = −{Rf}/{Rin}", "A", "Rf", "Rin") { Source = "S7", Validity = T("ideal op-amp", "idealer Operationsverstärker") }
+                .Solve("A", "−{Rf}/{Rin}", v => -v("Rf") / v("Rin"))
+                .Solve("Rf", "−{A}·{Rin}", v => -v("A") * v("Rin"))
+                .Solve("Rin", "−{Rf}/{A}", v => -v("Rf") / v("A"));
+
+        /// <summary>Gain of the non-inverting amplifier A = 1 + R_f/R_g [S7].</summary>
+        public static readonly Relation NonInvertingGain =
+            new Relation("elec.opamp.noninverting", T("Non-inverting amplifier", "Nichtinvertierender Verstärker"), "{A} = 1 + {Rf}/{Rin}", "A", "Rf", "Rin") { Source = "S7", Validity = T("ideal op-amp", "idealer Operationsverstärker") }
+                .Solve("A", "1 + {Rf}/{Rin}", v => 1 + v("Rf") / v("Rin"))
+                .Solve("Rf", "({A} − 1)·{Rin}", v => (v("A") - 1) * v("Rin"))
+                .Solve("Rin", "{Rf}/({A} − 1)", v => v("Rf") / (v("A") - 1));
+
+        /// <summary>Voltage follower A = 1 [S7].</summary>
+        public static readonly Relation FollowerGain =
+            new Relation("elec.opamp.follower", T("Voltage follower", "Spannungsfolger"), "{A} = 1", "A") { Source = "S7" }
+                .Solve("A", "1", _ => 1);
 
         /// <summary>Ideal transformer: n = U₁/U₂ = I₂/I₁ [S7, S15].</summary>
         public static readonly IReadOnlyList<Relation> Transformer = new[]
@@ -434,8 +630,8 @@ namespace InventaSketch.Modules.Electrical
         public static Func<SketchObject, NetSpec> Two(string a, string b, BranchDef def) => _ => NetSpec.Branch(def with { PinA = a, PinB = b });
 
         public static BranchDef Resistive => new("1", "2") { U = "U", I = "I", R = "R" };
-        public static BranchDef Capacitive => new("1", "2") { U = "U", C = "C", Q = "Q" };
-        public static BranchDef Inductive => new("1", "2") { I = "I" };
+        public static BranchDef Capacitive => new("1", "2") { U = "U", C = "C", Q = "Q", Rt = "Rt" };
+        public static BranchDef Inductive => new("1", "2") { I = "I", L = "L", Rt = "Rt" };
         public static BranchDef Drop => new("1", "2") { U = "U", I = "I" };
         public static BranchDef SourceBranch => new("+", "-") { U = "U", I = "I", Source = true };
         /// <summary>A two-terminal element without values: it keeps the circuit reducible, but no value passes through it.</summary>

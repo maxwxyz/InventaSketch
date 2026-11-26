@@ -266,6 +266,113 @@ namespace InventaSketch.Modules.BuildingServices
                 .Solve("Vdot", "π·{di}²·{v}/4", v => Math.PI * v("di") * v("di") * v("v") / 4)
                 .Solve("di", "√(4·{Vdot}/(π·{v}))", v => Math.Sqrt(4 * v("Vdot") / (Math.PI * v("v"))));
 
+        // ------------------------------------------------------------------ pressure drop, expansion vessel, hot water, separator (round 5)
+
+        /// <summary>Ambient pressure for absolute pressures (1.013 bar) [S30].</summary>
+        private const double Ambient = 101325;
+
+        /// <summary>
+        /// Darcy friction factor: laminar λ = 64/Re below Re = 2320, turbulent the explicit Haaland approximation of the
+        /// Colebrook–White equation 1/√λ = −1.8·lg((k/d/3.7)^1.11 + 6.9/Re) [S27].
+        /// </summary>
+        internal static double Friction(double re, double k, double d)
+        {
+            if (!(re > 0) || !(d > 0)) return double.NaN;
+            if (re < 2320) return 64 / re;
+            var x = -1.8 * Math.Log10(Math.Pow(Math.Max(k, 0) / d / 3.7, 1.11) + 6.9 / re);
+            return 1 / (x * x);
+        }
+
+        private static Relation Reynolds(string d) =>
+            new Relation("bs.flow.reynolds", T("Reynolds number", "Reynolds-Zahl"), "{Re} = {v}·{" + d + "}/{nu}", "Re", "v", d, "nu") { Source = "S27" }
+                .Solve("Re", "{v}·{" + d + "}/{nu}", v => v("v") * v(d) / v("nu"))
+                .Solve("v", "{Re}·{nu}/{" + d + "}", v => v("Re") * v("nu") / v(d))
+                .Solve("nu", "{v}·{" + d + "}/{Re}", v => v("v") * v(d) / v("Re"));
+
+        private static Relation FrictionRel(string d) =>
+            new Relation("bs.flow.friction", T("Friction factor (laminar 64/Re, turbulent Haaland)", "Rohrreibungszahl (laminar 64/Re, turbulent Haaland)"),
+                "{lambda} = 64/{Re} (Re < 2320) or 1/(−1.8·lg(({k}/{" + d + "}/3.7)^1.11 + 6.9/{Re}))²", "lambda", "Re", "k", d) { Source = "S27" }
+                .Solve("lambda", "64/{Re} or Haaland({Re}, {k}/{" + d + "})", v => Friction(v("Re"), v("k"), v(d)));
+
+        /// <summary>Darcy–Weisbach Δp = λ·(L/d)·ρ·v²/2 for a straight run (fittings not counted) [S27].</summary>
+        private static Relation Darcy(string d) =>
+            new Relation("bs.flow.loss", T("Pressure drop (Darcy–Weisbach)", "Druckverlust (Darcy–Weisbach)"),
+                "{dp} = {lambda}·{L}/{" + d + "}·{rho}·{v}²/2", "dp", "lambda", "L", d, "rho", "v") { Source = "S27", Validity = T("straight run, fittings not counted", "gerade Strecke, Formteile nicht gerechnet") }
+                .Solve("dp", "{lambda}·{L}/{" + d + "}·{rho}·{v}²/2", v => v("lambda") * v("L") / v(d) * v("rho") * v("v") * v("v") / 2)
+                .Solve("L", "2·{dp}·{" + d + "}/({lambda}·{rho}·{v}²)", v => 2 * v("dp") * v(d) / (v("lambda") * v("rho") * v("v") * v("v")));
+
+        /// <summary>Variables of the pressure drop: length and Δp (panel), Re, λ, ν, roughness and density (engineer).</summary>
+        private static IEnumerable<VarDef> LossVars(double nu, double k, VarDef rho) => new[]
+        {
+            V("L", T("Length", "Länge"), T("L", "L"), Quantities.Length, "m", "length", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
+            V("dp", T("Pressure drop", "Druckverlust"), T("Δp", "Δp"), Quantities.Pressure, "Pa", "pressureDrop", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+            V("Re", T("Reynolds number", "Reynolds-Zahl"), T("Re", "Re"), Quantities.Ratio, null, "reynolds", VarRelevance.Engineer) with { Min = 0, Max = 1e9 },
+            V("lambda", T("Friction factor", "Rohrreibungszahl"), T("λ", "λ"), Quantities.Ratio, null, "friction", VarRelevance.Engineer) with { Min = 1e-4, Max = 100 },
+            V("nu", T("Kinematic viscosity", "Kinematische Viskosität"), T("ν", "ν"), Quantities.Viscosity, "mm²/s", "viscosity", VarRelevance.Engineer) with { Default = nu, Min = 1e-8, Max = 1 },
+            V("k", T("Wall roughness", "Wandrauigkeit"), T("k", "k"), Quantities.Length, "mm", "roughness", VarRelevance.Engineer) with { Default = k, Min = 0, Max = 0.1 },
+            rho,
+        };
+
+        /// <summary>Membrane expansion vessel: V_e = e·V_A; V_n = (V_e + V_V)·(p_e + p_amb)/(p_e − p₀) (gauge pressures) [S30].</summary>
+        private static readonly Relation Expansion =
+            new Relation("bs.expansion.volume", T("Expansion volume", "Ausdehnungsvolumen"), "{Ve} = {e}·{VA}", "Ve", "e", "VA") { Source = "S30" }
+                .Solve("Ve", "{e}·{VA}", v => v("e") * v("VA"))
+                .Solve("VA", "{Ve}/{e}", v => v("Ve") / v("e"))
+                .Solve("e", "{Ve}/{VA}", v => v("Ve") / v("VA"));
+
+        private static readonly Relation VesselNominal =
+            new Relation("bs.expansion.nominal", T("Nominal volume of the vessel", "Nennvolumen des Gefäßes"), "{Vn} = ({Ve} + {VV})·({pe} + p_amb)/({pe} − {p0})",
+                "Vn", "Ve", "VV", "pe", "p0") { Source = "S30", Validity = T("membrane vessel, gauge pressures, p_amb = 1.013 bar", "Membrangefäß, Überdrücke, p_amb = 1,013 bar") }
+                .Solve("Vn", "({Ve} + {VV})·({pe} + p_amb)/({pe} − {p0})", v => (v("Ve") + v("VV")) * (v("pe") + Ambient) / (v("pe") - v("p0")))
+                .Solve("Ve", "{Vn}·({pe} − {p0})/({pe} + p_amb) − {VV}", v => v("Vn") * (v("pe") - v("p0")) / (v("pe") + Ambient) - v("VV"))
+                .Solve("VV", "{Vn}·({pe} − {p0})/({pe} + p_amb) − {Ve}", v => v("Vn") * (v("pe") - v("p0")) / (v("pe") + Ambient) - v("Ve"))
+                .Solve("p0", "{pe} − ({Ve} + {VV})·({pe} + p_amb)/{Vn}", v => v("pe") - (v("Ve") + v("VV")) * (v("pe") + Ambient) / v("Vn"));
+
+        /// <summary>Storage temperature over cold water: Δθ = θ_S − θ_C [S29].</summary>
+        private static readonly Relation StoreSpread =
+            new Relation("bs.dhw.spread", T("Heating of the stored water", "Erwärmung des Speicherwassers"), "{dT} = {thS} − {thC}", "dT", "thS", "thC") { Source = "S29" }
+                .Solve("dT", "{thS} − {thC}", v => v("thS") - v("thC"))
+                .Solve("thS", "{thC} + {dT}", v => v("thC") + v("dT"))
+                .Solve("thC", "{thS} − {dT}", v => v("thS") - v("dT"));
+
+        /// <summary>Mixed water at the tap: V_mix = V·(θ_S − θ_C)/(θ_T − θ_C) (mixing with cold water, no losses) [S29].</summary>
+        private static readonly Relation MixedWater =
+            new Relation("bs.dhw.mixed", T("Mixed water at tap temperature", "Mischwasser bei Zapftemperatur"), "{Vmix} = {V}·({thS} − {thC})/({thT} − {thC})", "Vmix", "V", "thS", "thC", "thT")
+            { Source = "S29", Validity = T("mixed with cold water, no losses", "mit Kaltwasser gemischt, ohne Verluste") }
+                .Solve("Vmix", "{V}·({thS} − {thC})/({thT} − {thC})", v => v("V") * (v("thS") - v("thC")) / (v("thT") - v("thC")))
+                .Solve("V", "{Vmix}·({thT} − {thC})/({thS} − {thC})", v => v("Vmix") * (v("thT") - v("thC")) / (v("thS") - v("thC")))
+                .Solve("thS", "{thC} + {Vmix}·({thT} − {thC})/{V}", v => v("thC") + v("Vmix") * (v("thT") - v("thC")) / v("V"));
+
+        /// <summary>Continuous draw at tap temperature from the heating power: V̇ = P/(ρ·c·(θ_T − θ_C)) [S29].</summary>
+        private static readonly Relation ContinuousDraw =
+            new Relation("bs.dhw.continuous", T("Continuous draw at tap temperature", "Dauerleistung bei Zapftemperatur"), "{Vtap} = {P}/({rho}·{c}·({thT} − {thC}))", "Vtap", "P", "rho", "c", "thT", "thC")
+            { Source = "S29", Validity = T("heating power fully used for the draw, no losses", "Heizleistung ganz für das Zapfen genutzt, ohne Verluste") }
+                .Solve("Vtap", "{P}/({rho}·{c}·({thT} − {thC}))", v => v("P") / (v("rho") * v("c") * (v("thT") - v("thC"))))
+                .Solve("P", "{rho}·{c}·{Vtap}·({thT} − {thC})", v => v("rho") * v("c") * v("Vtap") * (v("thT") - v("thC")));
+
+        /// <summary>
+        /// Hydraulic separator (low-loss header), equal ρ·c: with V̇_P ≥ V̇_S the secondary flow takes the primary flow
+        /// temperature and the surplus mixes into the primary return; with V̇_P &lt; V̇_S secondary return water mixes into the
+        /// secondary flow [S30].
+        /// </summary>
+        private static readonly Relation SeparatorFlow =
+            new Relation("bs.separator.flow", T("Secondary flow temperature", "Vorlauftemperatur sekundär"),
+                "{thf2} = {thf1} (V̇_P ≥ V̇_S) or ({Vp}·{thf1} + ({Vs} − {Vp})·{thr2})/{Vs}", "thf2", "thf1", "Vp", "Vs", "thr2") { Source = "S30" }
+                .Solve("thf2", "{thf1} or ({Vp}·{thf1} + ({Vs} − {Vp})·{thr2})/{Vs}",
+                    v => v("Vp") >= v("Vs") ? v("thf1") : (v("Vp") * v("thf1") + (v("Vs") - v("Vp")) * v("thr2")) / v("Vs"));
+
+        private static readonly Relation SeparatorReturn =
+            new Relation("bs.separator.return", T("Primary return temperature", "Rücklauftemperatur primär"),
+                "{thr1} = ({Vs}·{thr2} + ({Vp} − {Vs})·{thf1})/{Vp} (V̇_P ≥ V̇_S) or {thr2}", "thr1", "thf1", "Vp", "Vs", "thr2") { Source = "S30" }
+                .Solve("thr1", "({Vs}·{thr2} + ({Vp} − {Vs})·{thf1})/{Vp} or {thr2}",
+                    v => v("Vp") >= v("Vs") ? (v("Vs") * v("thr2") + (v("Vp") - v("Vs")) * v("thf1")) / v("Vp") : v("thr2"));
+
+        /// <summary>Heat passed to the secondary circuit Φ = ρ·c·V̇_S·(θ_F2 − θ_R2) [S29].</summary>
+        private static readonly Relation SeparatorHeat =
+            new Relation("bs.separator.heat", T("Heat to the consumer circuit", "Wärme an den Verbraucherkreis"), "{Phi} = {rho}·{c}·{Vs}·({thf2} − {thr2})", "Phi", "rho", "c", "Vs", "thf2", "thr2") { Source = "S29" }
+                .Solve("Phi", "{rho}·{c}·{Vs}·({thf2} − {thr2})", v => v("rho") * v("c") * v("Vs") * (v("thf2") - v("thr2")))
+                .Solve("Vs", "{Phi}/({rho}·{c}·({thf2} − {thr2}))", v => v("Phi") / (v("rho") * v("c") * (v("thf2") - v("thr2"))));
+
         // ------------------------------------------------------------------ specs per type
 
         private static readonly Dictionary<string, Spec> Specs = new(StringComparer.Ordinal);
@@ -294,6 +401,8 @@ namespace InventaSketch.Modules.BuildingServices
             "bs.vent.terminal" => Terminal(),
             "bs.vent.unit" => VentUnit(),
             "bs.elec.appliance" => Appliance(),
+            "bs.heat.expansion" => ExpansionVessel(),
+            SeparatorId => Separator(),
             PipeType.TypeId => Pipe(),
             DuctType.TypeId => Duct(),
             _ => Spec.Empty,
@@ -468,12 +577,75 @@ namespace InventaSketch.Modules.BuildingServices
             {
                 V("V", T("Storage volume", "Speichervolumen"), T("V", "V"), Quantities.Volume, "l", "volume") with { Min = 1e-4, Max = 1e3 },
                 V("dT", T("Heating by", "Erwärmung um"), T("Δθ", "Δθ"), Quantities.TemperatureDifference, "K", "deltaT") with { Min = 0, Max = 200 },
-                V("Q", T("Stored heat", "Gespeicherte Wärme"), T("Q", "Q"), Quantities.Energy, "kWh", "heat") with { Min = 0, Max = 1e15 },
+                V("Vmix", T("Mixed water at tap temperature", "Mischwasser bei Zapftemperatur"), T("V_mix", "V_M"), Quantities.Volume, "l", "mixedVolume") with { Min = 0, Max = 1e4 },
                 V("P", T("Heating power", "Heizleistung"), T("P", "P"), Quantities.Power, "W", "power") with { Min = 0, Max = 1e9 },
+                V("Q", T("Stored heat", "Gespeicherte Wärme"), T("Q", "Q"), Quantities.Energy, "kWh", "heat", VarRelevance.Panel) with { Min = 0, Max = 1e15 },
                 V("t", T("Heat-up time", "Aufheizzeit"), T("t", "t"), Quantities.Time_, "h", "heatUpTime", VarRelevance.Panel) with { Min = 0, Max = 1e8 },
+                // Domestic hot water sizing (round 5): storage, cold water and tap temperatures, continuous draw.
+                Temp("thS", T("Storage temperature", "Speichertemperatur"), T("θ_S", "θ_Sp"), "storeTemp", VarRelevance.Panel),
+                Temp("thC", T("Cold water temperature", "Kaltwassertemperatur"), T("θ_C", "θ_KW"), "coldTemp", VarRelevance.Panel, C0 + 10),
+                Temp("thT", T("Tap (mixed) temperature", "Zapftemperatur (gemischt)"), T("θ_T", "θ_Z"), "tapTemp", VarRelevance.Panel, C0 + 40),
+                Flow("l/min", "Vtap", "continuousFlow", T("Continuous draw at tap temperature", "Dauerzapfmenge bei Zapftemperatur")),
                 Rho(), Cp(),
             };
-            return new Spec(vars, new[] { Stored, HeatUp }, Params(vars), Array.Empty<ValueCheck>());
+            return new Spec(vars, new[] { Stored, HeatUp, StoreSpread, MixedWater, ContinuousDraw }, Params(vars), Array.Empty<ValueCheck>());
+        }
+
+        /// <summary>
+        /// Membrane expansion vessel: system volume and expansion coefficient give the expansion volume, with the water seal
+        /// and the pre-charge and final pressures the required nominal volume; a chosen vessel is checked against it [S30].
+        /// </summary>
+        private static Spec ExpansionVessel()
+        {
+            VarDef Vol(string key, I18nText name, string sym, string param, VarRelevance rel) => V(key, name, T(sym, sym), Quantities.Volume, "l", param, rel) with { Min = 0, Max = 1e5 };
+            VarDef Gauge(string key, I18nText name, I18nText sym, string param) => V(key, name, sym, Quantities.Pressure, "bar", param, VarRelevance.Panel) with { Min = 0, Max = 1e8 };
+            var vars = new[]
+            {
+                Vol("VA", T("Water volume of the system", "Wasserinhalt der Anlage"), "V_A", "systemVolume", VarRelevance.Card),
+                V("e", T("Expansion coefficient (from cold to the highest temperature)", "Ausdehnungskoeffizient (von kalt bis zur höchsten Temperatur)"), T("e", "e"),
+                    Quantities.Ratio, "%", "expansion") with { Min = 0, Max = 0.2 },
+                Vol("Vn", T("Required nominal volume", "Erforderliches Nennvolumen"), "V_n", "nominalVolume", VarRelevance.Card),
+                Vol("Vsel", T("Chosen vessel (nominal volume)", "Gewähltes Gefäß (Nennvolumen)"), "V_n,sel", "chosenVolume", VarRelevance.Card) with { Symbol = T("V_n,sel", "V_n,gew") },
+                Vol("Ve", T("Expansion volume", "Ausdehnungsvolumen"), "V_e", "expansionVolume", VarRelevance.Panel),
+                Vol("VV", T("Water seal", "Wasservorlage"), "V_V", "waterSeal", VarRelevance.Panel),
+                Gauge("p0", T("Pre-charge pressure (gauge)", "Vordruck (Überdruck)"), T("p₀", "p₀"), "prePressure"),
+                Gauge("pe", T("Final pressure (gauge)", "Enddruck (Überdruck)"), T("p_e", "p_e"), "finalPressure"),
+            };
+            return new Spec(vars, new[] { Expansion, VesselNominal }, Params(vars), new[] { VesselSize() });
+        }
+
+        /// <summary>Type id of the hydraulic separator (low-loss header).</summary>
+        public const string SeparatorId = "bs.heat.separator";
+
+        /// <summary>
+        /// Hydraulic separator: the generator circuit (f1/r1, a consumer of the generator) and the consumer circuit (f2/r2, a
+        /// generator for the consumers) meet in the separator; flows and temperatures pass along the pipes [S30].
+        /// </summary>
+        private static Spec Separator()
+        {
+            VarDef F(string key, I18nText name, I18nText sym, string param) => Flow(key: key, param: param, name: name, rel: VarRelevance.Card) with { Symbol = sym };
+            var vars = new[]
+            {
+                F("Vp", T("Primary (generator) flow", "Volumenstrom primär (Erzeuger)"), T("V̇_P", "V̇_P"), "flowPrimary"),
+                F("Vs", T("Secondary (consumer) flow", "Volumenstrom sekundär (Verbraucher)"), T("V̇_S", "V̇_S"), "flowSecondary"),
+                Temp("thf2", T("Secondary flow temperature", "Vorlauftemperatur sekundär"), T("θ_F2", "θ_VL2"), "flowTemp2", VarRelevance.Card),
+                Temp("thr1", T("Primary return temperature", "Rücklauftemperatur primär"), T("θ_R1", "θ_RL1"), "returnTemp1", VarRelevance.Card),
+                Temp("thf1", T("Primary flow temperature", "Vorlauftemperatur primär"), T("θ_F1", "θ_VL1"), "flowTemp1", VarRelevance.Panel),
+                Temp("thr2", T("Secondary return temperature", "Rücklauftemperatur sekundär"), T("θ_R2", "θ_RL2"), "returnTemp2", VarRelevance.Panel),
+                HeatOut(T("Heat to the consumer circuit", "Wärme an den Verbraucherkreis"), VarRelevance.Panel),
+                Rho(), Cp(),
+            };
+            return new Spec(vars, new[] { SeparatorFlow, SeparatorReturn, SeparatorHeat }, Params(vars), new[] { SeparatorFlowCheck() })
+            {
+                Ports = (_, p) => p switch
+                {
+                    "f1" => new[] { new PortVar("Vdot", "Vp", PortRole.Part), new PortVar("theta", "thf1", PortRole.Part) },
+                    "r1" => new[] { new PortVar("Vdot", "Vp", PortRole.Part), new PortVar("theta", "thr1", PortRole.Total) },
+                    "f2" => new[] { new PortVar("Vdot", "Vs", PortRole.Total), new PortVar("theta", "thf2", PortRole.Total) },
+                    "r2" => new[] { new PortVar("Vdot", "Vs", PortRole.Total), new PortVar("theta", "thr2", PortRole.Part) },
+                    _ => Array.Empty<PortVar>(),
+                },
+            };
         }
 
         /// <summary>Buffer tank: stored heat of the volume over a temperature spread (no losses, no heat-up time).</summary>
@@ -564,9 +736,14 @@ namespace InventaSketch.Modules.BuildingServices
                 Velocity(),
                 Temp("theta", T("Water temperature", "Wassertemperatur"), T("θ", "θ"), "temperature", VarRelevance.Card),
                 V("DN", T("Nominal size DN", "Nennweite DN"), T("DN", "DN"), Quantities.Length, "mm", "dn", VarRelevance.Panel) with { StoredUnit = "mm", Min = 1e-3, Max = 5 },
-            };
-            return new Spec(vars, new[] { PipeVelocity, Nominal }, Params(vars, "dn"), new[] { WaterVelocity() });
+            }.Concat(LossVars(WaterNu, PipeK, Rho())).ToArray();
+            return new Spec(vars, new[] { PipeVelocity, Nominal, Reynolds("di"), FrictionRel("di"), Darcy("di") }, Params(vars, "dn"), new[] { WaterVelocity() });
         }
+
+        /// <summary>Water at 20 °C ν ≈ 1.0 mm²/s; smooth pipe (copper, plastic) k = 0.0015 mm [S27, S30].</summary>
+        private const double WaterNu = 1.0e-6, PipeK = 0.0015e-3;
+        /// <summary>Air at 20 °C ρ = 1.2 kg/m³, ν ≈ 15 mm²/s; galvanised sheet duct k = 0.15 mm [S27, S30].</summary>
+        private const double AirRho = 1.2, AirNu = 15e-6, DuctK = 0.15e-3;
 
         private static Spec Duct()
         {
@@ -578,8 +755,9 @@ namespace InventaSketch.Modules.BuildingServices
                 V("A", T("Cross-section", "Querschnitt"), T("A", "A"), Quantities.Area, "cm²", "crossSection") with { Min = 1e-6, Max = 100 },
                 V("b", T("Duct height (rectangular)", "Kanalhöhe (rechteckig)"), T("b", "b"), Quantities.Length, "mm", "ductHeight", VarRelevance.Panel) with { Min = 1e-3, Max = 10 },
                 V("dh", T("Hydraulic diameter", "Hydraulischer Durchmesser"), T("d_h", "d_h"), Quantities.Length, "mm", "hydraulicDiameter", VarRelevance.Panel) with { Min = 1e-3, Max = 10 },
-            };
-            return new Spec(vars, new[] { VelocityArea }, Params(vars, "width"), new[] { AirVelocity() })
+            }.Concat(LossVars(AirNu, DuctK,
+                V("rho", T("Density of air", "Dichte der Luft"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = AirRho, Min = 0.01, Max = 100 })).ToArray();
+            return new Spec(vars, new[] { VelocityArea, Reynolds("dh"), FrictionRel("dh"), Darcy("dh") }, Params(vars, "width"), new[] { AirVelocity() })
             {
                 // A height b makes the duct rectangular (a = width); otherwise it is round.
                 Local = o => o.Params.TryGetValue("ductHeight", out var b) && !string.IsNullOrWhiteSpace(b.Text)
@@ -731,7 +909,28 @@ namespace InventaSketch.Modules.BuildingServices
             c => c["cop"] is double cop && c["thf"] is double tf && c["ths"] is double ts && tf > ts && cop > tf / (tf - ts) * (1 + Rel))
         { Source = "S29" };
 
-        private static readonly HashSet<string> Consumers = new(StringComparer.Ordinal) { "bs.heat.radiator", "bs.heat.floorloop" };
+        /// <summary>heat.expansion.size: the chosen vessel is smaller than the required nominal volume [S30].</summary>
+        private static ValueCheck VesselSize() => new(
+            "heat.expansion.size", CheckSeverity.Warning,
+            T("The chosen expansion vessel is smaller than the required nominal volume. Choose the next larger vessel.",
+              "Das gewählte Ausdehnungsgefäß ist kleiner als das erforderliche Nennvolumen. Das nächstgrößere Gefäß wählen."),
+            "V_n,sel ≥ V_n",
+            c => c["Vsel"] is double sel && c["Vn"] is double need && need > 0 && sel < need * (1 - Rel))
+        { Source = "S30" };
+
+        /// <summary>
+        /// heat.separator.flow: the primary flow is smaller than the secondary flow, so return water mixes into the consumer
+        /// flow and its temperature drops (the generator side is usually laid out for a slightly larger flow) [S30].
+        /// </summary>
+        private static ValueCheck SeparatorFlowCheck() => new(
+            "heat.separator.flow", CheckSeverity.Hint,
+            T("The generator flow is smaller than the consumer flow: return water mixes into the consumer flow and lowers its temperature. Check the pump flows.",
+              "Der Volumenstrom des Erzeugers ist kleiner als der der Verbraucher: Rücklaufwasser mischt sich in den Verbrauchervorlauf und senkt seine Temperatur. Pumpenförderströme prüfen."),
+            "V̇_P ≥ V̇_S",
+            c => c["Vp"] is double vp && c["Vs"] is double vs && vp < vs * (1 - Rel))
+        { Source = "S30" };
+
+        private static readonly HashSet<string> Consumers =new(StringComparer.Ordinal) { "bs.heat.radiator", "bs.heat.floorloop" };
 
         /// <summary>heat.balance: the consumers on the generator's heating circuit need more than the generator gives [S29].</summary>
         private static ValueCheck Balance() => new(

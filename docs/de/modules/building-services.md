@@ -113,6 +113,7 @@ Größen: Grundriss / Schnitt / Schema bei 1:100 (B x H, mm auf der Seite).
 | `bs.meter.heat` | Heat meter / Wärmemengenzähler | 4x3 (Symbol) | in der Leitung | in, out | Beschriftung HM/WMZ |
 | `bs.meter.water` | Water meter / Wasserzähler | 3x3 (Symbol) | in der Leitung | in, out (Trinkwasser) | Beschriftung WM/WZ |
 | `bs.heat.buffer` | Buffer tank / Pufferspeicher | 8x8 / 8x18 / 8x12 | Boden | f1, r1 (Erzeugerseite, links), f2, r2 (Verbraucherseite, rechts) | Beschriftung BUF/PS |
+| `bs.heat.separator` | Hydraulic separator (low-loss header) / Hydraulische Weiche | 6x4 / 6x10 / 6x8 (Symbol) | Wand | f1, r1 (Erzeugerseite, links), f2, r2 (Verbraucherseite, rechts) | – (senkrechtes Rohr; im Schema mit Strömungsrichtungen) |
 | `bs.heat.solarthermal` | Solar thermal collector / Solarkollektor (Solarthermie) | 20x8 / 20x9 / 20x7 | Boden | flow, return | – |
 | `bs.san.wc` | WC / WC | 3,6x5,4 / 3,6x4 / 3,6x3,6 | Boden | waste, cold | – |
 | `bs.san.basin` | Washbasin / Waschbecken | 6x4,5 / 6x4 / 6x3,5 | Wand | waste, hot, cold | – |
@@ -181,7 +182,7 @@ Zuluftleitungen; Inline-Teile der Heizung (Pumpe, Mischventil, Thermostatventil,
 passen an Vor- und Rücklauf; Kugelhahn, Rückschlagventil, Sicherheitsventil (Eintritt) und Schmutzfänger passen mit
 `service` = heating (Vorgabe) an Vor- und Rücklauf und mit `service` = water an jede Trinkwasserleitung (`water`: kalt,
 warm, Zirkulation; „+“ zeichnet eine Kaltwasserleitung), der Wasserzähler immer an letztere; das Sicherheitsventil bläst
-über seinen Anschluss `waste` ab; die Kreise `f1`/`r1`/`f2`/`r2` des Pufferspeichers nehmen Vor- und Rücklaufleitungen wie
+über seinen Anschluss `waste` ab; die Kreise `f1`/`r1`/`f2`/`r2` des Pufferspeichers und der hydraulischen Weiche nehmen Vor- und Rücklaufleitungen wie
 die Heizkreise des Verteilers; die Kanalteile (Lüftungsklappe, Brandschutzklappe, Schalldämpfer) haben `inlet`/`outlet`
 auf der Kanalachse, passend an jede Luftleitung (`air`; „+“ zeichnet eine Luftleitung ihrer Luftart `kind`); das
 Split-Klimagerät führt sein Kondensat in eine Schmutzwasserleitung und nimmt eine Zuleitung; Anschlussdosen, Melder, Geräte und die Potentialausgleichsschiene eine Installationsleitung
@@ -212,14 +213,16 @@ als Vorgaben; Luft: ρ·*c*_p = 0,34 W·h/(m³·K). Kartengrößen stehen vorn. 
 | Fußbodenheizung (Heizkreis) | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; Panel θ_VL, θ_RL, *s* (`spacing`), *L* (`loopLength`); Ingenieur ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); *L* ≈ *A*/*s* [S30] |
 | Umwälzpumpe | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); Panel *P*_hyd (`powerHyd`); Ingenieur ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
 | Mischventil (3-Wege) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); Panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
-| Warmwasserspeicher | *V* (`volume`), Δθ (`deltaT`), *Q* (`heat`), *P* (`power`); Panel *t* (`heatUpTime`); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (ohne Verluste) [S29] |
+| Warmwasserspeicher | *V* (`volume`), Δθ (`deltaT`), *V*_M (`mixedVolume`, Mischwasser bei Zapftemperatur), *P* (`power`); Panel *Q* (`heat`), *t* (`heatUpTime`), θ_Sp (`storeTemp`), θ_KW (`coldTemp`, Vorgabe 10 °C), θ_Z (`tapTemp`, Vorgabe 40 °C), *V̇*_Z (`continuousFlow`, l/min); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (ohne Verluste); Δθ = θ_Sp − θ_KW; *V*_M = *V*·(θ_Sp − θ_KW)/(θ_Z − θ_KW); *V̇*_Z = *P*/(ρ·*c*·(θ_Z − θ_KW)) [S29] |
+| Ausdehnungsgefäß | *V*_A (`systemVolume`), *e* (`expansion`, %), *V*_n (`nominalVolume`, erforderlich), *V*_n,gew (`chosenVolume`); Panel *V*_e (`expansionVolume`), *V*_V (`waterSeal`), *p*₀ (`prePressure`), *p*_e (`finalPressure`, beide Überdruck) | *V*_e = *e*·*V*_A; *V*_n = (*V*_e + *V*_V)·(*p*_e + *p*_amb)/(*p*_e − *p*₀), *p*_amb = 1,013 bar [S30] |
+| Hydraulische Weiche | *V̇*_P (`flowPrimary`), *V̇*_S (`flowSecondary`), θ_VL2 (`flowTemp2`), θ_RL1 (`returnTemp1`); Panel θ_VL1 (`flowTemp1`), θ_RL2 (`returnTemp2`), Φ (`heatOutput`); Ingenieur ρ, *c* | *V̇*_P ≥ *V̇*_S: θ_VL2 = θ_VL1, θ_RL1 = (*V̇*_S·θ_RL2 + (*V̇*_P − *V̇*_S)·θ_VL1)/*V̇*_P; *V̇*_P < *V̇*_S: θ_RL1 = θ_RL2, θ_VL2 = (*V̇*_P·θ_VL1 + (*V̇*_S − *V̇*_P)·θ_RL2)/*V̇*_S [S30]; Φ = ρ·*c*·*V̇*_S·(θ_VL2 − θ_RL2) [S29] |
 | Pufferspeicher | *V* (`volume`, l), Δθ (`deltaT`, Temperaturspreizung), *Q* (`heat`, kWh); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
 | Wärmemengenzähler | Φ (`heatOutput`, Wärmeleistung), *V̇* (`flowRate`), θ_VL (`flowTemp`), θ_RL (`returnTemp`); Ingenieur ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
 | Wasserzähler | *V̇* (`flowRate`, m³/h) | – (der Volumenstrom seines Strangs) |
 | Luftdurchlass | *V̇* (`flowRate`, m³/h), *A* (`roomArea`), *n* (`airChange`, je Stunde), *V* (`roomVolume`); Panel *h* (`roomHeight`, Vorgabe 2,5 m) | *V* = *A*·*h*; *V̇* = *n*·*V*/1 h [S30] |
 | Lüftungsgerät mit Wärmerückgewinnung | *V̇*_ZUL (`flowSupply`), η_t (`recovery`), θ_ZUL (`tempSupply`), Φ_WRG (`heatRecovered`); Panel *V̇*_ABL (`flowExtract`), θ_AUL (`tempOutdoor`), θ_ABL (`tempExtract`) | θ_ZUL = θ_AUL + η_t·(θ_ABL − θ_AUL); Φ = 0,34 W·h/(m³·K)·*V̇*_ZUL·(θ_ZUL − θ_AUL) [S30] |
-| Rohr | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); Panel DN (`dn`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN, wenn kein Innendurchmesser eingetragen ist (50 % Toleranz, DN ist eine Nennweite) [S30] |
-| Luftleitung | *V̇*, *d* (`width`, Durchmesser oder Breite), *v*, *A* (`crossSection`); Panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`) | *v* = *V̇*/*A*; rund: *A* = π·*d*²/4, *d*_h = *d*; mit einer Höhe *b* ist der Kanal rechteckig: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30] |
+| Rohr | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); Panel DN (`dn`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); Ingenieur *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, Vorgabe 1,0 mm²/s: Wasser bei 20 °C), *k* (`roughness`, Vorgabe 0,0015 mm: Kupfer, Kunststoff; Stahl ≈ 0,045 mm), ρ (`density`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN, wenn kein Innendurchmesser eingetragen ist (50 % Toleranz, DN ist eine Nennweite) [S30]; Druckverlust wie bei der Luftleitung mit *d*_i |
+| Luftleitung | *V̇*, *d* (`width`, Durchmesser oder Breite), *v*, *A* (`crossSection`); Panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); Ingenieur *Re*, λ, ν (Vorgabe 15 mm²/s: Luft bei 20 °C), *k* (Vorgabe 0,15 mm: verzinktes Blech), ρ (Vorgabe 1,2 kg/m³) | *v* = *V̇*/*A*; rund: *A* = π·*d*²/4, *d*_h = *d*; mit einer Höhe *b* ist der Kanal rechteckig: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30]; *Re* = *v*·*d*_h/ν; λ = 64/*Re* unter *Re* = 2320, darüber die explizite Näherung nach Haaland für Colebrook–White; Δ*p* = λ·(*L*/*d*_h)·ρ·*v*²/2 (gerade Strecke, Formteile nicht gerechnet) [S27] |
 | Geräteanschlussdose (elektrischer Verbraucher) | *P* (`power`), *I* (`current`, je Außenleiter); Panel *U* (`voltage`, Außenleiter–Neutralleiter, Vorgabe 230 V), cos φ (`powerFactor`, Vorgabe 1) | einphasig *I* = *P*/(*U*·cos φ); mit `phase` dreiphasig *I* = *P*/(3·*U*·cos φ) [S7] |
 
 Die Luftwechselzahl *n* ist eine reine Zahl je Stunde („1“ für 1 h⁻¹): Core hat noch keine Einheit h⁻¹. Die Raumwerte
@@ -242,8 +245,12 @@ Mischers) an jeden Eintritt einer Verzweigung. Thermostatventile, Kugelhähne, R
 beides weiter; Umwälzpumpen, Wärmemengen- und Wasserzähler die Temperatur, ihr Eintritt (Teil) und Austritt (Summe)
 tragen einen eigenen Volumenstrom, sodass ein Zähler den Volumenstrom seines Strangs zeigt; Lüftungsklappen,
 Brandschutzklappen und Schalldämpfer geben den Luftvolumenstrom weiter. Der Pufferspeicher entkoppelt seine Kreise
-(keine Werte an seinen Anschlüssen).
-Wärmeverluste der Rohre werden nicht abgebildet; Mischung an einer Zusammenführung rechnet nur das Mischventil. An einem
+(keine Werte an seinen Anschlüssen). Die hydraulische Weiche ist Verbraucher des Erzeugerkreises (`f1` übernimmt die
+Vorlauftemperatur, `r1` gibt ihre Rücklauftemperatur) und Quelle des Verbraucherkreises (`f2` gibt die
+Vorlauftemperatur und den Summenvolumenstrom der Verbraucher, `r2` übernimmt deren Rücklauftemperatur); ein Kessel mit
+70 °C, eine Weiche und Heizkörper geben Volumenströme und Temperaturen so durch sie hindurch.
+Wärmeverluste der Rohre werden nicht abgebildet; Druckverluste sind Werte jedes Rohrs und jeder Luftleitung (nicht über
+einen Kreis aufsummiert); Mischung an einer Zusammenführung rechnen nur das Mischventil und die Weiche. An einem
 Anschluss eines Elements eines anderen Moduls (ein Wärmeanschluss der Energietechnik nimmt Vor- und Rücklauf) bleiben
 Rohre verschiedener Medien getrennte Netze; nur der Heizungsvorlauf übernimmt die Werte dieses Anschlusses
 (engineering-calculations.md Abschnitt 6.1).
@@ -262,6 +269,14 @@ Luftleitung und am Zuluftstutzen des Geräts; eine Leitung mit 80 mm hat dann 2,
 | `heat.cop.carnot` | Leistungszahl der Wärmepumpe > *T*_VL/(*T*_VL − *T*_Q) in Kelvin (unmöglich) | Warnung | [S29] |
 | `heat.balance` | eingetragene Erzeugerleistung unter der Summe Φ der Heizkörper und Fußbodenheizkreise, die über Heizungsrohre mit ihm verbunden sind | Hinweis | [S29] |
 | `heat.roomload` | die Heizkörper und Fußbodenheizkreise in einem Raum geben weniger ab als die Heizlast-Schätzung Φ_HL des Raums (nur beurteilt, wenn alle ihre Leistungen bekannt sind) | Hinweis | [S30] |
+| `heat.expansion.size` | Ausdehnungsgefäß: das gewählte Nennvolumen liegt unter dem erforderlichen | Warnung | [S30] |
+| `heat.separator.flow` | hydraulische Weiche: Erzeugervolumenstrom kleiner als der Verbrauchervolumenstrom (Rücklaufwasser mischt sich in den Verbrauchervorlauf) | Hinweis | [S30] |
+
+**Auslegungsbeispiele (Runde 5, Abnahmekriterien):** 1 m³/h in einem 26-mm-Rohr ergibt 0,52 m/s und über 20 m den
+Druckverlust nach Darcy; eine Luftleitung 300 × 200 mm mit 1000 m³/h hat 4,6 m/s bei *d*_h = 240 mm; 200 l Anlagenwasser
+mit *e* = 2,9 %, 3 l Wasservorlage, 1,5 bar Vordruck und 2,5 bar Enddruck brauchen *V*_n = 30,9 l (ein 25-l-Gefäß
+bekommt die Warnung); ein 300-l-Speicher mit 60 °C ergibt 500 l Mischwasser mit 40 °C (Kaltwasser 10 °C), und 24 kW
+liefern dauerhaft 11,5 l/min.
 
 ## Hinweise für Hosts
 

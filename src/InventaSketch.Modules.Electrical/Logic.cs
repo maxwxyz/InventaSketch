@@ -42,9 +42,17 @@ namespace InventaSketch.Modules.Electrical
             };
 
             yield return new ElecType("elec.opamp", T("Operational amplifier", "Operationsverstärker"), Cat,
-                new[] { "op-amp", "opamp", "operational amplifier", "amplifier", "operationsverstärker", "opv", "verstärker", "comparator", "komparator" },
+                new[] { "op-amp", "opamp", "operational amplifier", "amplifier", "operationsverstärker", "opv", "verstärker", "comparator", "komparator",
+                    "inverting amplifier", "non-inverting amplifier", "voltage follower", "buffer", "gain", "invertierender verstärker", "nichtinvertierender verstärker",
+                    "spannungsfolger", "impedanzwandler", "verstärkung" },
                 Views.Symbol(30, 20, (p, o) => OpAmp(p, false)), Views.Ansi(30, 20, (p, o) => OpAmp(p, true)))
-            { Pins = Fixed(new Pin("-", -0.5, -0.25), new Pin("+", -0.5, 0.25), new Pin("out", 0.5, 0)), RefPrefix = "U" };
+            {
+                Pins = Fixed(new Pin("-", -0.5, -0.25), new Pin("+", -0.5, 0.25), new Pin("out", 0.5, 0)), RefPrefix = "U",
+                // Basic circuits (section 2.3): the gain from R_f and R_in, read from the wired resistors or entered.
+                Params = ElecValues.OpAmpParams, Variables = ElecValues.OpAmpVariables, Relations = ElecValues.OpAmp, Links = CircuitLinks.OpAmp,
+                Checks = new[] { CircuitLinks.OpAmpSaturation },
+                Extra = o => Choice(o, "elec.opamp.circuit", T("Circuit", "Schaltung"), ElecValues.OpAmpCircuit),
+            };
 
             // Three-terminal voltage regulator (78xx/LM317 style block). In a circuit it is a multi-pin part (terminal of
             // unknown current); its own relation links the input/output voltages, the output current and the power loss.

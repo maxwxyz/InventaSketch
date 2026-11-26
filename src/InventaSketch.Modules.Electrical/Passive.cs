@@ -67,14 +67,20 @@ namespace InventaSketch.Modules.Electrical
             yield return new ElecType("elec.potentiometer", T("Potentiometer", "Potentiometer"), Cat,
                 new[] { "potentiometer", "poti", "trimmer", "variable resistor", "einstellbarer widerstand", "schleifer", "wiper" },
                 Views.Symbol(20, 10, (p, o) => Pot(p, false)), Views.Ansi(20, 10, (p, o) => Pot(p, true)))
-            { Pins = Fixed(new Pin("1", -0.5, 0), new Pin("2", 0.5, 0), new Pin("wiper", 0, 0.5)), RefPrefix = "R" };
+            {
+                Pins = Fixed(new Pin("1", -0.5, 0), new Pin("2", 0.5, 0), new Pin("wiper", 0, 0.5)), RefPrefix = "R",
+                Params = ElecValues.PotentiometerParams, Variables = ElecValues.PotentiometerVariables, Relations = ElecValues.Potentiometer,
+                // The track is a resistive branch; the wiper is a terminal of unknown current when something is wired to it, so
+                // a loaded divider is not reduced (the unloaded divider relation stays on the element).
+                Net = ElecValues.Two("1", "2", ElecValues.Resistive), Checks = ElecValues.ReducibleOnly,
+            };
 
             yield return new ElecType("elec.capacitor", T("Capacitor", "Kondensator"), Cat,
                 new[] { "capacitor", "kondensator", "kapazität", "c" },
                 Views.Symbol(20, 10, Capacitor))
             {
-                Pins = Fixed(TwoH().ToArray()), RefPrefix = "C", Params = ElecValues.CapacitorParams, Variables = ElecValues.CapacitorVariables, Relations = ElecValues.Capacitor,
-                Net = ElecValues.Two("1", "2", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
+                Pins = Fixed(TwoH().ToArray()), RefPrefix = "C", Params = ElecValues.CapacitorParams, Variables = ElecValues.CapacitorVariables,
+                Relations = ElecValues.Capacitor.Concat(ElecValues.CapacitorDynamics).ToList(), Net = ElecValues.Two("1", "2", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
             };
 
             yield return new ElecType("elec.capacitor.polarized", T("Polarized capacitor", "Gepolter Kondensator"), Cat,
@@ -82,7 +88,7 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, (p, o) => PolarCap(p, false)), Views.Ansi(20, 10, (p, o) => PolarCap(p, true)))
             {
                 Pins = Fixed(TwoH("+", "-").ToArray()), Polarized = true, RefPrefix = "C", Params = ElecValues.CapacitorParams, Variables = ElecValues.CapacitorVariables,
-                Relations = ElecValues.Capacitor, Net = ElecValues.Two("+", "-", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
+                Relations = ElecValues.Capacitor.Concat(ElecValues.CapacitorDynamics).ToList(), Net = ElecValues.Two("+", "-", ElecValues.Capacitive), Checks = ElecValues.ReducibleOnly,
             };
 
             yield return new ElecType("elec.inductor", T("Inductor", "Spule"), Cat,

@@ -287,7 +287,8 @@ namespace InventaSketch.Modules.Electrical.Tests
             Assert.Equal(0.5e-6, V(t, "C1", "Q"), 15);
             Assert.Equal(1.25e-6, V(t, "C1", "E"), 15);
             Assert.Equal(0.02, V(t, "L1", "E"), 12);
-            Assert.Equal(ValueStatus.Determined, t.Status("L1"));
+            // The time constant, cut-off frequency and reactance stay open without a resistance or a frequency.
+            Assert.Empty(t.Conflicts);
             // Any two give the rest: E and Q give C and U.
             var back = new Circuit().Part("C1", "elec.capacitor", ("energy", "1,25 mJ"), ("charge", "0,5 mC")).Solve();
             Assert.Equal(100e-6, V(back, "C1", "C"), 15);
@@ -518,13 +519,16 @@ namespace InventaSketch.Modules.Electrical.Tests
             {
                 "elec.battery", "elec.breaker", "elec.capacitor", "elec.capacitor.polarized", "elec.diode", "elec.diode.led",
                 "elec.diode.schottky", "elec.diode.zener", "elec.fuse", "elec.house.light", "elec.house.socket", "elec.inductor", "elec.lamp",
-                "elec.rcd", "elec.regulator", "elec.resistor", "elec.resistor.ldr", "elec.resistor.thermistor", "elec.sld.feeder", "elec.source",
-                "elec.transformer",
+                "elec.opamp", "elec.potentiometer", "elec.rcd", "elec.regulator", "elec.resistor", "elec.resistor.ldr", "elec.resistor.thermistor",
+                "elec.sld.feeder", "elec.source", "elec.transformer", "elec.transistor.bjt",
             }, withValues);
             var c = new Circuit();
             foreach (var id in withValues) c.Part(id, id);
             var t = c.Solve();
-            foreach (var id in withValues) Assert.Equal(ValueStatus.Empty, t.Status(id));
+            // Nothing is entered or derived: at most the defaults of a type (the transistor's U_BE and overdrive factor) show.
+            foreach (var id in withValues)
+                Assert.All(reg.Type(id) is { } ty ? ValueModel.Variables(ty) : Array.Empty<VarDef>(),
+                    v => Assert.True(t.Get(id, v.Key)?.Value is null || t.Get(id, v.Key)!.Provenance == Provenance.Default, id + "." + v.Key));
             Assert.Empty(c.Checks());
             foreach (var id in withValues)
             {
@@ -549,7 +553,7 @@ namespace InventaSketch.Modules.Electrical.Tests
         {
             var reg = Fx.Reg();
             var checks = reg.Types.OfType<IValueChecks>().SelectMany(t => t.ValueChecks).Distinct().ToList();
-            Assert.Equal(new[] { "elec.coord.overload", "elec.led.current", "elec.net.reducible", "elec.r.power", "elec.rcd.additional" },
+            Assert.Equal(new[] { "elec.bjt.overdrive", "elec.coord.overload", "elec.led.current", "elec.net.reducible", "elec.opamp.saturation", "elec.r.power", "elec.rcd.additional" },
                 checks.Select(c => c.Id).Distinct().OrderBy(x => x).ToArray());
             foreach (var c in checks)
             {

@@ -84,6 +84,7 @@ symbol with its facing pin.
 | `elec.polarity` | `Swap` | flip polarity (`reverse`: mirrors symbol and pins) — diodes, thyristor, polarised capacitor, source, battery |
 | `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N ↔ P channel (MOSFET) |
 | `elec.<choice>=<value>` | `Option` | choices (dropdowns): gate function, contact type, earth symbol, source type, supply, plug/socket, package, bus protocol, thermistor NTC/PTC (`elec.thermistor.kind`), TVS direction (`elec.tvs.direction`), JFET channel (`elec.jfet.channel`), … |
+| `elec.opamp.circuit=<auto/inverting/noninverting/follower/open>` | `Option` | circuit of the op-amp for its gain (from the wiring by default) |
 | `elec.meter.quantity=<v/a/w/ohm>` | option pictograms (`Preview`: the instrument circle with its letter) | measured quantity of the measuring instrument |
 | `elec.wire.hops` | `Hop` | hops of a wire at crossings on/off |
 | `elec.route=free/orthogonal/45` | route pictograms | wire/track routing as a choice |
@@ -121,8 +122,11 @@ marked as checked, values that disagree give a conflict and nothing is changed.
 |---|---|---|
 | Resistor `elec.resistor`, thermistor `elec.resistor.thermistor`, photoresistor `elec.resistor.ldr` | *R* (`value`, "4k7"; for thermistor and photoresistor the resistance at the operating point), *U* (`voltage`), *I* (`current`), *P* (`power`); rating `prated` for the check | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
 | Lamp `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, hot); marking in `value` ("12 V 5 W") | as the resistor |
-| Capacitor `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, "100n"), *U*, *Q* (`charge`), *E* (`energy`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*) |
-| Inductor `elec.inductor` | *L* (`value`, "10 mH"), *I*, *E* (`energy`) | *E* = ½*L*·*I*² |
+| Capacitor `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, "100n"), *U*, *Q* (`charge`), *E* (`energy`); panel *R* (`rseries`, resistance in series), *τ* (`tau`), *f*_c (`cutoff`), *f* (`frequency`), *X*_C (`reactance`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*); *τ* = *R*·*C*; *f*_c = 1/(2π·*τ*); *X*_C = 1/(2π·*f*·*C*) |
+| Inductor `elec.inductor` | *L* (`value`, "10 mH"), *I*, *E* (`energy`); panel *R* (`rseries`), *τ*, *f*_c, *f*, *X*_L as for the capacitor | *E* = ½*L*·*I*²; *τ* = *L*/*R*; *f*_c = 1/(2π·*τ*); *X*_L = 2π·*f*·*L* |
+| Potentiometer `elec.potentiometer` | *R* (`value`, track), *U* (`voltage`, across pins 1–2), *k* (`wiper`, 0 at pin 1 … 100 % at pin 2), *U*₂ (`uwiper`, wiper to pin 2); panel *I*, *P*, *R*₁ (`r1`), *R*₂ (`r2`) | Ohm's law over the track; *R*₁ = *k*·*R*; *R*₂ = *R* − *R*₁; unloaded divider *U*₂ = *U*·*R*₂/*R* |
+| Bipolar transistor `elec.transistor.bjt` (as a switch) | *R*_B (`rb`), *I*_C (`ic`), *B* (`beta`, h_FE from the datasheet), *U*_in (`uin`); panel *I*_B (`ib`), *U*_BE (`ube`, default 0.7 V), *k* (`overdrive`, default 3) | *I*_B = *k*·*I*_C/*B*; *R*_B = (*U*_in − *U*_BE)/*I*_B |
+| Op-amp `elec.opamp` (ideal) | *A* (`gain`), *U*_in (`uin`), *U*_out (`uout`), *R*_f (`rf`); panel *R*_in (`rin`, *R*_g for the non-inverting amplifier), *U*_S (`usupply`, ±supply); choice `circuit` | *U*_out = *A*·*U*_in; inverting *A* = −*R*_f/*R*_in; non-inverting *A* = 1 + *R*_f/*R*_g; follower *A* = 1 |
 | Diode, LED, Schottky diode `elec.diode`, `elec.diode.led`, `elec.diode.schottky` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); marking "2.1 V 20 mA"; LED: `ifmax` for the check | *P* = *U*·*I* |
 | Zener diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
 | Source `elec.source`, battery `elec.battery` | *U*, *I*, *P*; marking "5 V", "10 mA" (current source), "12 V 2 A" | *P* = *U*·*I* |
@@ -164,6 +168,26 @@ through them; three-phase machines, transistors, triacs, optocouplers, bridge re
 other multi-pin parts are terminals of unknown current, so the network around them is
 not reduced.
 
+**Basic circuits (round 5, 2026-11-26).** Values that read the parts wired around an element (design: section 2.3):
+
+- **RC and RL elements.** A series group of resistors and exactly one capacitor or inductor (an RC or RL element charged
+  from a source, a first-order low-pass) gives the capacitor's or inductor's "resistance in series" *R* as the equivalent
+  resistance of those resistors (relation `elec.net.rtau`), so *τ* and the cut-off frequency *f*_c follow: 10 kΩ in
+  series with 100 nF give *τ* = 1 ms and *f*_c = 159 Hz. *R* may also be entered (no wiring needed), and the reactance
+  at a frequency *f* follows from *C* or *L* alone.
+- **Potentiometer as a voltage divider.** The track is a resistive branch between pins 1 and 2; the wiper position *k*
+  splits it, and the unloaded divider gives the wiper voltage: 10 V across a 10 kΩ potentiometer at *k* = 30 % gives
+  *U*₂ = 7 V. A part wired to the wiper makes it a terminal of unknown current, so a loaded divider is not reduced (the
+  unloaded relation stays, stated as its validity).
+- **Op-amp basic circuits.** The choice **Circuit** (`circuit`, action `elec.opamp.circuit=…`) is "from the wiring"
+  (default), inverting, non-inverting, voltage follower or none (comparator, open loop). From the wiring: a single
+  resistor between − and the output is *R*_f, a single other resistor at − is *R*_in; *R*_in going to earth (an earth
+  symbol or a net label "GND") makes it non-inverting, + on earth inverting, and an output wired straight to − a follower.
+  The wired resistors' values are taken over (relation `elec.link.part`): 10 kΩ and 100 kΩ around an inverting op-amp give
+  *A* = −10, and 0.5 V in gives −5 V out. A bare op-amp has no gain relation.
+- **Transistor as a switch.** A single resistor wired alone to the base is the base resistor: its resistance is *R*_B and
+  its current *I*_B. With *I*_C and *B* the overdrive factor *k* = *I*_B·*B*/*I*_C follows (check `elec.bjt.overdrive`).
+
 **Checks** (hints only, overlay, never change anything; catalogue in the design document, section 4):
 
 | Id | Element | Rule | Severity | Source |
@@ -173,6 +197,8 @@ not reduced.
 | `elec.coord.overload` | fuse, MCB, feeder | *I*_B ≤ *I*_n ≤ *I*_z (*I*_z entered by the user, no ampacity tables) | warning | [S9] |
 | `elec.rcd.additional` | socket outlet | its circuit has an overcurrent device drawn but no RCD with *I*_Δn ≤ 30 mA (an RCD without rating counts as present; national rules differ) | hint | [S10] |
 | `elec.net.reducible` | elements in an irreducible loop | not a series/parallel network | info | section 1.6 |
+| `elec.opamp.saturation` | op-amp | \|*U*_out\| ≤ *U*_S (the output cannot go beyond the supply) | warning | [S7] |
+| `elec.bjt.overdrive` | bipolar transistor | *k* = *I*_B·*B*/*I*_C ≥ 1 (otherwise it does not switch fully on) | warning | [S7] |
 
 ## Overlaps with other modules (one element, one item)
 
@@ -203,9 +229,11 @@ module state. A JSON round trip reproduces the document and the rendered SVG exa
 - A wire end docked on another wire or a bus (its rail) is attached to that rail (a branch): it follows when the
   other wire moves or changes, and the netlist joins both wires into one net.
 - Labels lie outside the object box, so host selection frames do not include them.
-- Values (Calc 3): no AC impedance, reactance, time constants or resonance yet (no frequency variable); no equivalent
-  inductance; no polarity (magnitudes only); motor and generator values are left to the Machines module; potentiometer,
-  transistor base resistor and op-amp gain are open. Two markings that disagree (e.g. a 24 V lamp on a 12 V transformer
+- Values (Calc 3): reactance, time constants and cut-off frequencies exist per element (round 5), but no AC network
+  analysis (impedance of series RLC, resonance, phase); no equivalent inductance; no polarity (magnitudes only, the
+  op-amp gain keeps its sign); motor and generator values are left to the Machines module; three-phase power and
+  star-delta are open. The op-amp and the transistor read only resistors that are clearly in place (one feedback
+  resistor, one input resistor, one base resistor alone on the base net). Two markings that disagree (e.g. a 24 V lamp on a 12 V transformer
   secondary) are not reported as a conflict yet, because a value read from a marking does not count as entered in the
   solver's consistency check (Core change proposed). Cable voltage drop (`elec.cable.drop`) waits for cable values.
 - Visual review: `dotnet test` writes an SVG gallery to

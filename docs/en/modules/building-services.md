@@ -110,6 +110,7 @@ Sizes are plan / section / schematic at 1:100 (W x H, mm on the page).
 | `bs.meter.heat` | Heat meter / Wärmemengenzähler | 4x3 (symbol) | inline | in, out | label HM/WMZ |
 | `bs.meter.water` | Water meter / Wasserzähler | 3x3 (symbol) | inline | in, out (drinking water) | label WM/WZ |
 | `bs.heat.buffer` | Buffer tank / Pufferspeicher | 8x8 / 8x18 / 8x12 | floor | f1, r1 (generator side, left), f2, r2 (consumer side, right) | label BUF/PS |
+| `bs.heat.separator` | Hydraulic separator (low-loss header) / Hydraulische Weiche | 6x4 / 6x10 / 6x8 (symbol) | wall | f1, r1 (generator side, left), f2, r2 (consumer side, right) | – (vertical tube; schematic with flow directions) |
 | `bs.heat.solarthermal` | Solar thermal collector / Solarkollektor (Solarthermie) | 20x8 / 20x9 / 20x7 | floor | flow, return | – |
 | `bs.san.wc` | WC / WC | 3.6x5.4 / 3.6x4 / 3.6x3.6 | floor | waste, cold | – |
 | `bs.san.basin` | Washbasin / Waschbecken | 6x4.5 / 6x4 / 6x3.5 | wall | waste, hot, cold | – |
@@ -176,7 +177,7 @@ duct of their air kind, the ventilation unit `outdoor`/`exhaust`/`extract`/`supp
 mixing valve, thermostatic valve, expansion vessel, heat meter) fit flow and return; ball valve, check valve, safety
 valve (inlet) and strainer fit flow and return with `service` = heating (default) and every drinking water pipe
 (`water`: cold, hot, circulation; "+" draws a cold water pipe) with `service` = water, the water meter always the latter;
-the safety valve blows off into its `waste` port; buffer tank circuits `f1`/`r1`/`f2`/`r2` take flow and return pipes
+the safety valve blows off into its `waste` port; buffer tank and hydraulic separator circuits `f1`/`r1`/`f2`/`r2` take flow and return pipes
 like the manifold circuits; the duct parts (damper, fire damper, silencer) have `inlet`/`outlet` on the duct axis that
 fit every air duct (`air`; "+" draws a duct of their `kind`); the split air conditioner drains its condensate into a
 waste pipe and takes a power cable; outlets, detectors, appliances and the
@@ -208,14 +209,16 @@ Card variables come first. Design notes:
 | Underfloor heating loop | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; panel θ_F, θ_R, *s* (`spacing`), *L* (`loopLength`); engineer ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_F − θ_R); *L* ≈ *A*/*s* [S30] |
 | Circulator pump | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); panel *P*_hyd (`powerHyd`); engineer ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
 | Mixing valve (3-way) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
-| Water heater (storage cylinder) | *V* (`volume`), Δθ (`deltaT`), *Q* (`heat`), *P* (`power`); panel *t* (`heatUpTime`); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (no losses) [S29] |
+| Water heater (storage cylinder) | *V* (`volume`), Δθ (`deltaT`), *V*_mix (`mixedVolume`, mixed water at tap temperature), *P* (`power`); panel *Q* (`heat`), *t* (`heatUpTime`), θ_S (`storeTemp`), θ_C (`coldTemp`, default 10 °C), θ_T (`tapTemp`, default 40 °C), *V̇*_tap (`continuousFlow`, l/min); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (no losses); Δθ = θ_S − θ_C; *V*_mix = *V*·(θ_S − θ_C)/(θ_T − θ_C); *V̇*_tap = *P*/(ρ·*c*·(θ_T − θ_C)) [S29] |
+| Expansion vessel | *V*_A (`systemVolume`), *e* (`expansion`, %), *V*_n (`nominalVolume`, required), *V*_n,sel (`chosenVolume`); panel *V*_e (`expansionVolume`), *V*_V (`waterSeal`), *p*₀ (`prePressure`), *p*_e (`finalPressure`, both gauge) | *V*_e = *e*·*V*_A; *V*_n = (*V*_e + *V*_V)·(*p*_e + *p*_amb)/(*p*_e − *p*₀), *p*_amb = 1.013 bar [S30] |
+| Hydraulic separator | *V̇*_P (`flowPrimary`), *V̇*_S (`flowSecondary`), θ_F2 (`flowTemp2`), θ_R1 (`returnTemp1`); panel θ_F1 (`flowTemp1`), θ_R2 (`returnTemp2`), Φ (`heatOutput`); engineer ρ, *c* | *V̇*_P ≥ *V̇*_S: θ_F2 = θ_F1, θ_R1 = (*V̇*_S·θ_R2 + (*V̇*_P − *V̇*_S)·θ_F1)/*V̇*_P; *V̇*_P < *V̇*_S: θ_R1 = θ_R2, θ_F2 = (*V̇*_P·θ_F1 + (*V̇*_S − *V̇*_P)·θ_R2)/*V̇*_S [S30]; Φ = ρ·*c*·*V̇*_S·(θ_F2 − θ_R2) [S29] |
 | Buffer tank | *V* (`volume`, l), Δθ (`deltaT`, temperature spread), *Q* (`heat`, kWh); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
 | Heat meter | Φ (`heatOutput`, thermal power), *V̇* (`flowRate`), θ_F (`flowTemp`), θ_R (`returnTemp`); engineer ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
 | Water meter | *V̇* (`flowRate`, m³/h) | – (the flow of the run it sits in) |
 | Air terminal | *V̇* (`flowRate`, m³/h), *A* (`roomArea`), *n* (`airChange`, per hour), *V* (`roomVolume`); panel *h* (`roomHeight`, default 2.5 m) | *V* = *A*·*h*; *V̇* = *n*·*V*/1 h [S30] |
 | Ventilation unit with heat recovery | *V̇*_SUP (`flowSupply`), η_t (`recovery`), θ_SUP (`tempSupply`), Φ_WRG (`heatRecovered`); panel *V̇*_ETA (`flowExtract`), θ_ODA (`tempOutdoor`), θ_ETA (`tempExtract`) | θ_SUP = θ_ODA + η_t·(θ_ETA − θ_ODA); Φ = 0.34 W·h/(m³·K)·*V̇*_SUP·(θ_SUP − θ_ODA) [S30] |
-| Pipe | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); panel DN (`dn`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN when no inner diameter is entered (50 % tolerance, DN is a nominal size) [S30] |
-| Air duct | *V̇*, *d* (`width`, diameter or width), *v*, *A* (`crossSection`); panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`) | *v* = *V̇*/*A*; round: *A* = π·*d*²/4, *d*_h = *d*; with a height *b* the duct is rectangular: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30] |
+| Pipe | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); panel DN (`dn`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); engineer *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, default 1.0 mm²/s: water at 20 °C), *k* (`roughness`, default 0.0015 mm: copper, plastic; steel ≈ 0.045 mm), ρ (`density`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN when no inner diameter is entered (50 % tolerance, DN is a nominal size) [S30]; pressure drop as for the duct with *d*_i |
+| Air duct | *V̇*, *d* (`width`, diameter or width), *v*, *A* (`crossSection`); panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); engineer *Re*, λ, ν (default 15 mm²/s: air at 20 °C), *k* (default 0.15 mm: galvanised sheet), ρ (default 1.2 kg/m³) | *v* = *V̇*/*A*; round: *A* = π·*d*²/4, *d*_h = *d*; with a height *b* the duct is rectangular: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30]; *Re* = *v*·*d*_h/ν; λ = 64/*Re* below *Re* = 2320, above it the explicit Haaland approximation of Colebrook–White; Δ*p* = λ·(*L*/*d*_h)·ρ·*v*²/2 (straight run, fittings not counted) [S27] |
 | Appliance outlet (electrical load) | *P* (`power`), *I* (`current`, per phase); panel *U* (`voltage`, phase to neutral, default 230 V), cos φ (`powerFactor`, default 1) | single-phase *I* = *P*/(*U*·cos φ); with `phase` three-phase *I* = *P*/(3·*U*·cos φ) [S7] |
 
 The air change rate *n* is a plain number per hour ("1" for 1 h⁻¹): Core has no h⁻¹ unit yet. The room values sit on
@@ -235,8 +238,12 @@ and air terminals are parts. The stream temperature is passed on an unbranched r
 generator's flow port, a consumer's return port, the mixer's AB port) to every inlet of a split. Thermostatic valves, ball
 valves, check valves and strainers pass both; circulators, heat meters and water meters pass the temperature, and their
 inlet (part) and outlet (total) carry their own volume flow, so a meter shows the flow of its run; dampers, fire dampers
-and silencers pass the air flow. The buffer tank decouples its circuits (no values at its ports). Heat losses of pipes are not modelled; mixing at a merge is only computed in the
-mixing valve. At a port of another module's element (an energy heat port takes flow and return), pipes of different
+and silencers pass the air flow. The buffer tank decouples its circuits (no values at its ports). The hydraulic
+separator is a consumer of the generator circuit (`f1` takes the flow temperature, `r1` gives its return temperature) and
+the source of the consumer circuit (`f2` gives the flow temperature and the total flow of the consumers, `r2` takes their
+return temperature), so a boiler at 70 °C, a separator and radiators pass flows and temperatures through it. Heat losses
+of pipes are not modelled; pressure drops are values of each pipe and duct (not summed along a circuit); mixing at a
+merge is only computed in the mixing valve and the separator. At a port of another module's element (an energy heat port takes flow and return), pipes of different
 media stay separate nets; only the heating flow takes that port's values (engineering-calculations.md section 6.1).
 
 Examples (accept criteria): a boiler at 55 °C feeding a radiator (Φ₅₀ = 1000 W, *n* = 1.3, room 20 °C) over a pipe
@@ -253,6 +260,13 @@ and at the unit's supply spigot; an 80 mm duct then runs at 2.76 m/s.
 | `heat.cop.carnot` | heat pump COP > *T*_F/(*T*_F − *T*_Q) in kelvin (impossible) | warning | [S29] |
 | `heat.balance` | entered generator output below the sum of Φ of the radiators and floor loops joined to it by heating pipes | hint | [S29] |
 | `heat.roomload` | the radiators and floor loops standing in a room give less than the room's heating load estimate Φ_HL (judged only when all their outputs are known) | hint | [S30] |
+| `heat.expansion.size` | expansion vessel: the chosen nominal volume is below the required one | warning | [S30] |
+| `heat.separator.flow` | hydraulic separator: generator flow below the consumer flow (return water mixes into the consumer flow) | hint | [S30] |
+
+**Sizing examples (round 5, accept criteria):** 1 m³/h in a 26 mm pipe gives 0.52 m/s and, over 20 m, the Darcy pressure
+drop; a 300 × 200 mm duct with 1000 m³/h runs at 4.6 m/s with *d*_h = 240 mm; 200 l of system water with *e* = 2.9 %, a
+3 l water seal, 1.5 bar pre-charge and 2.5 bar final pressure need *V*_n = 30.9 l (a 25 l vessel gets the warning); a
+300 l cylinder at 60 °C gives 500 l of 40 °C mixed water (cold 10 °C), and 24 kW heat 11.5 l/min continuously.
 
 ## Host notes
 

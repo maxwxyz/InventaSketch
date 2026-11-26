@@ -32,7 +32,7 @@ namespace InventaSketch.Modules.Electrical.Tests
             // The rating is a plain parameter for the power check, not a variable (Calc 3).
             Assert.Contains(t.Parameters, p => p.Key == "prated" && p.Unit == "W");
             // Symbols without relations have no values.
-            Assert.False(ValueModel.HasValues(Fx.Reg().Type("elec.opamp")));
+            Assert.False(ValueModel.HasValues(Fx.Reg().Type("elec.flipflop")));
         }
 
         [Fact]

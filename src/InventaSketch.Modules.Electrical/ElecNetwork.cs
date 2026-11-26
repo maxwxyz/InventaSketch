@@ -21,6 +21,13 @@ namespace InventaSketch.Modules.Electrical
         /// <summary>Capacitance and charge keys: the branch is capacitive (Q = C·U), so it takes part in the equivalent capacitance.</summary>
         public string? C { get; init; }
         public string? Q { get; init; }
+        /// <summary>Inductance key: an inductor in series with resistors gets the time constant L/R.</summary>
+        public string? L { get; init; }
+        /// <summary>
+        /// Key of the "resistance in series" variable of a capacitor or inductor: in a series group with resistors only, it is
+        /// the equivalent resistance of those resistors (time constant τ = R·C or L/R).
+        /// </summary>
+        public string? Rt { get; init; }
         /// <summary>A source (voltage/current source, battery, generator, transformer secondary).</summary>
         public bool Source { get; init; }
     }
@@ -88,6 +95,16 @@ namespace InventaSketch.Modules.Electrical
         public IReadOnlyList<string> CircuitOf(string id)
             => _componentOf.TryGetValue(id, out var c) ? _components[c] : new[] { id };
 
+        private readonly Dictionary<string, string> _pinNet = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<(string Obj, string Pin)>> _netPins = new(StringComparer.Ordinal);
+
+        /// <summary>The wired net of a pin (an id stable within this analysis), or null when no wire reaches the pin.</summary>
+        public string? NetOfPin(string obj, string pin) => _pinNet.TryGetValue(PinKey(obj, pin), out var n) ? n : null;
+
+        /// <summary>The element pins on a wired net (wires and buses themselves are not listed).</summary>
+        public IReadOnlyList<(string Obj, string Pin)> PinsOn(string? net)
+            => net is not null && _netPins.TryGetValue(net, out var l) ? l : (IReadOnlyList<(string, string)>)Array.Empty<(string, string)>();
+
         // ------------------------------------------------------------------ construction
 
         private sealed class Tree
@@ -98,6 +115,8 @@ namespace InventaSketch.Modules.Electrical
             public string? Obj;
             public BranchDef? Def;
             public bool Source;
+            /// <summary>Merged into a larger group of the same kind (its kids moved there): only a part of that group.</summary>
+            public bool Absorbed;
             public List<VarRef>? UMemo, IMemo, QMemo;
             public bool UDone, IDone, QDone;
         }
@@ -184,6 +203,14 @@ namespace InventaSketch.Modules.Electrical
                 var root = nets.Find(key);
                 return wired.Contains(root) ? root : null;
             }
+            foreach (var kv in specs)
+                foreach (var p in kv.Value.Pins)
+                    if (NetOf(kv.Key, p) is string pn)
+                    {
+                        _pinNet[PinKey(kv.Key, p)] = pn;
+                        if (!_netPins.TryGetValue(pn, out var pl)) _netPins[pn] = pl = new List<(string, string)>();
+                        pl.Add((kv.Key, p));
+                    }
 
             // Circuits (element level): an element joins the nets of its wired pins.
             var circuits = new UnionFind();
@@ -361,7 +388,7 @@ namespace InventaSketch.Modules.Electrical
             var t = new Tree { Kind = kind };
             foreach (var p in parts)
             {
-                if (p.Kind == kind) foreach (var k in p.Kids) { t.Kids.Add(k); k.Parent = t; }
+                if (p.Kind == kind) { foreach (var k in p.Kids) { t.Kids.Add(k); k.Parent = t; } p.Absorbed = true; }
                 else { t.Kids.Add(p); p.Parent = t; }
             }
             t.Source = t.Kids.All(k => k.Source);
@@ -487,6 +514,7 @@ namespace InventaSketch.Modules.Electrical
                 case 'S':
                     Equalities("elec.net.series", SeriesName, t.Kids.Select(I), into);
                     Equalities("elec.net.charge", ChargeName, t.Kids.Select(Q), into);
+                    Add(SeriesResistance(t), into);
                     break;
                 case 'C':
                     Equalities("elec.net.closed", ClosedName, t.Kids.Select(U), into);
@@ -616,6 +644,46 @@ namespace InventaSketch.Modules.Electrical
             for (var k = 0; k < y.Count; k++) map[ys[k]] = y[k];
             for (var k = 0; k < x.Count; k++) map[xs[k]] = x[k];
             for (var k = 0; k < leaves.Count; k++) map[zs[k]] = new VarRef(leaves[k].Obj!, key(leaves[k]));
+            return new BoundRelation(rel, map);
+        }
+
+        private static readonly I18nText RtName = new("Resistance in series (time constant)", "Widerstand in Reihe (Zeitkonstante)");
+
+        /// <summary>
+        /// A series group of resistors and exactly one capacitor or inductor (an RC or RL element, e.g. charged from a source):
+        /// the reactive part's "resistance in series" R_τ is the equivalent resistance of the resistors, so it gets τ = R·C or
+        /// τ = L/R and the cut-off frequency. Null for any other series group.
+        /// </summary>
+        private static BoundRelation? SeriesResistance(Tree t)
+        {
+            if (t.Absorbed) return null;
+            var reactive = t.Kids.Where(k => k.Kind == 'L' && k.Def!.Rt is not null).ToList();
+            if (reactive.Count != 1) return null;
+            var resistive = t.Kids.Where(k => !ReferenceEquals(k, reactive[0])).ToList();
+            if (resistive.Count == 0 || !resistive.All(k => Leaves(k).All(l => l.Def!.R is not null))) return null;
+            var leaves = resistive.SelectMany(Leaves).ToList();
+            var index = new Dictionary<Tree, string>();
+            for (var k = 0; k < leaves.Count; k++) index[leaves[k]] = "z" + k;
+
+            string Text(Tree n)
+            {
+                if (n.Kind == 'L') return "{" + index[n] + "}";
+                var s = string.Join(n.Kind == 'S' ? " + " : " ∥ ", n.Kids.Select(Text));
+                return n.Kids.Count == 1 ? s : "(" + s + ")";
+            }
+            double Eval(Tree n, Func<string, double> v)
+            {
+                if (n.Kind == 'L') return v(index[n]);
+                return n.Kind == 'S' ? n.Kids.Sum(k => Eval(k, v)) : 1 / n.Kids.Sum(k => 1 / Eval(k, v));
+            }
+            var sum = string.Join(" + ", resistive.Select(Text));
+            var zs = index.Values.ToArray();
+            var rel = new Relation("elec.net.rtau", RtName, "{t} = " + sum, new[] { "t" }.Concat(zs).ToArray()) { Source = "S7" }
+                .Solve("t", sum, v => resistive.Sum(k => Eval(k, v)));
+            if (zs.Length == 1) rel.Solve(zs[0], "{t}", v => v("t"));
+            rel.WithResidual(v => v("t") - resistive.Sum(k => Eval(k, v)));
+            var map = new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["t"] = new VarRef(reactive[0].Obj!, reactive[0].Def!.Rt!) };
+            foreach (var kv in index) map[kv.Value] = new VarRef(kv.Key.Obj!, kv.Key.Def!.R!);
             return new BoundRelation(rel, map);
         }
 

@@ -90,6 +90,7 @@ zugewandten Anschluss.
 | `elec.polarity` | `Swap` | Polarität umkehren (`reverse`: spiegelt Symbol und Anschlüsse) – Dioden, Thyristor, Elko, Quelle, Batterie |
 | `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N- ↔ P-Kanal (MOSFET) |
 | `elec.<Auswahl>=<Wert>` | `Option` | Auswahlen (Dropdowns): Gatterfunktion, Kontaktart, Erdungszeichen, Quellenart, Stromart, Stecker/Buchse, Gehäuse, Busprotokoll, Thermistor NTC/PTC (`elec.thermistor.kind`), TVS-Richtung (`elec.tvs.direction`), JFET-Kanal (`elec.jfet.channel`), … |
+| `elec.opamp.circuit=<auto/inverting/noninverting/follower/open>` | `Option` | Schaltung des Operationsverstärkers für die Verstärkung (Vorgabe: aus der Verdrahtung) |
 | `elec.meter.quantity=<v/a/w/ohm>` | Options-Piktogramme (`Preview`: Messgerätekreis mit Buchstaben) | Messgröße des Messgeräts |
 | `elec.wire.hops` | `Hop` | Brücken einer Leitung an Kreuzungen an/aus |
 | `elec.route=free/orthogonal/45` | Führungs-Piktogramme | Leitungs-/Leiterbahnführung als Auswahl |
@@ -129,8 +130,11 @@ markiert, widersprüchliche ergeben einen Widerspruch, und nichts wird geändert
 |---|---|---|
 | Widerstand `elec.resistor`, Thermistor `elec.resistor.thermistor`, Fotowiderstand `elec.resistor.ldr` | *R* (`value`, „4k7"; bei Thermistor und Fotowiderstand der Widerstand im Arbeitspunkt), *U* (`voltage`), *I* (`current`), *P* (`power`); Nennleistung `prated` für die Prüfung | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
 | Lampe `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, warm); Kennzeichnung in `value` („12 V 5 W") | wie beim Widerstand |
-| Kondensator `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, „100n"), *U*, *Q* (`charge`), *E* (`energy`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*) |
-| Spule `elec.inductor` | *L* (`value`, „10 mH"), *I*, *E* (`energy`) | *E* = ½*L*·*I*² |
+| Kondensator `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, „100n"), *U*, *Q* (`charge`), *E* (`energy`); Panel *R* (`rseries`, Widerstand in Reihe), *τ* (`tau`), *f*_g (`cutoff`), *f* (`frequency`), *X*_C (`reactance`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*); *τ* = *R*·*C*; *f*_g = 1/(2π·*τ*); *X*_C = 1/(2π·*f*·*C*) |
+| Spule `elec.inductor` | *L* (`value`, „10 mH"), *I*, *E* (`energy`); Panel *R* (`rseries`), *τ*, *f*_g, *f*, *X*_L wie beim Kondensator | *E* = ½*L*·*I*²; *τ* = *L*/*R*; *f*_g = 1/(2π·*τ*); *X*_L = 2π·*f*·*L* |
+| Potentiometer `elec.potentiometer` | *R* (`value`, Bahn), *U* (`voltage`, zwischen Pin 1 und 2), *k* (`wiper`, 0 an Pin 1 … 100 % an Pin 2), *U*₂ (`uwiper`, Schleifer gegen Pin 2); Panel *I*, *P*, *R*₁ (`r1`), *R*₂ (`r2`) | Ohmsches Gesetz über die Bahn; *R*₁ = *k*·*R*; *R*₂ = *R* − *R*₁; unbelasteter Teiler *U*₂ = *U*·*R*₂/*R* |
+| Bipolartransistor `elec.transistor.bjt` (als Schalter) | *R*_B (`rb`), *I*_C (`ic`), *B* (`beta`, h_FE aus dem Datenblatt), *U*_in (`uin`); Panel *I*_B (`ib`), *U*_BE (`ube`, Vorgabe 0,7 V), *k* (`overdrive`, Vorgabe 3) | *I*_B = *k*·*I*_C/*B*; *R*_B = (*U*_in − *U*_BE)/*I*_B |
+| Operationsverstärker `elec.opamp` (ideal) | *V*_u (`gain`), *U*_e (`uin`), *U*_a (`uout`), *R*_f (`rf`); Panel *R*_e (`rin`, beim nichtinvertierenden Verstärker *R*_g), *U*_B (`usupply`, ±Versorgung); Auswahl `circuit` | *U*_a = *V*_u·*U*_e; invertierend *V*_u = −*R*_f/*R*_e; nichtinvertierend *V*_u = 1 + *R*_f/*R*_g; Spannungsfolger *V*_u = 1 |
 | Diode, LED, Schottky-Diode `elec.diode`, `elec.diode.led`, `elec.diode.schottky` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); Kennzeichnung „2,1 V 20 mA"; LED: `ifmax` für die Prüfung | *P* = *U*·*I* |
 | Z-Diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
 | Quelle `elec.source`, Batterie `elec.battery` | *U*, *I*, *P*; Kennzeichnung „5 V", „10 mA" (Stromquelle), „12 V 2 A" | *P* = *U*·*I* |
@@ -173,6 +177,30 @@ reduzierbar, aber kein Wert geht durch sie hindurch; Drehstrommaschinen, Transis
 Brückengleichrichter, Spannungsregler, ICs und andere mehrpolige Teile sind Anschlüsse mit unbekanntem
 Strom, sodass das Netz um sie herum nicht reduziert wird.
 
+**Grundschaltungen (Runde 5, 2026-11-26).** Werte, die die um ein Element verdrahteten Bauteile lesen (Konzept:
+Abschnitt 2.3):
+
+- **RC- und RL-Glieder.** Eine Reihengruppe aus Widerständen und genau einem Kondensator oder einer Spule (ein RC- oder
+  RL-Glied, das eine Quelle lädt, ein Tiefpass 1. Ordnung) ergibt den „Widerstand in Reihe" *R* des Kondensators oder der
+  Spule als Ersatzwiderstand dieser Widerstände (Beziehung `elec.net.rtau`); *τ* und die Grenzfrequenz *f*_g folgen:
+  10 kΩ in Reihe mit 100 nF ergeben *τ* = 1 ms und *f*_g = 159 Hz. *R* lässt sich auch eingeben (ohne Verdrahtung), und
+  der Blindwiderstand bei einer Frequenz *f* folgt allein aus *C* oder *L*.
+- **Potentiometer als Spannungsteiler.** Die Bahn ist ein ohmscher Zweig zwischen Pin 1 und 2; die Schleiferstellung *k*
+  teilt sie, und der unbelastete Teiler ergibt die Schleiferspannung: 10 V an einem 10-kΩ-Potentiometer bei *k* = 30 %
+  ergeben *U*₂ = 7 V. Ein am Schleifer angeschlossenes Bauteil macht ihn zum Anschluss mit unbekanntem Strom, ein
+  belasteter Teiler wird daher nicht reduziert (die unbelastete Beziehung bleibt, mit ihrer Gültigkeit angegeben).
+- **Grundschaltungen des Operationsverstärkers.** Die Auswahl **Schaltung** (`circuit`, Aktion `elec.opamp.circuit=…`)
+  ist „aus der Verdrahtung" (Vorgabe), invertierend, nichtinvertierend, Spannungsfolger oder keine (Komparator, offen).
+  Aus der Verdrahtung: ein einzelner Widerstand zwischen − und Ausgang ist *R*_f, ein einzelner weiterer Widerstand an −
+  ist *R*_e; führt *R*_e zur Masse (Erdungszeichen oder Netzname „GND"), ist die Schaltung nichtinvertierend, liegt + an
+  Masse, invertierend, und ein direkt mit − verbundener Ausgang ergibt einen Spannungsfolger. Die Werte der verdrahteten
+  Widerstände werden übernommen (Beziehung `elec.link.part`): 10 kΩ und 100 kΩ an einem invertierenden
+  Operationsverstärker ergeben *V*_u = −10, 0,5 V am Eingang ergeben −5 V am Ausgang. Ein Operationsverstärker ohne
+  Beschaltung hat keine Verstärkungsbeziehung.
+- **Transistor als Schalter.** Ein einzelner, allein an die Basis angeschlossener Widerstand ist der Basiswiderstand:
+  sein Widerstand ist *R*_B, sein Strom *I*_B. Mit *I*_C und *B* folgt der Übersteuerungsfaktor *k* = *I*_B·*B*/*I*_C
+  (Prüfung `elec.bjt.overdrive`).
+
 **Prüfungen** (nur Hinweise, Overlay, ändern nie etwas; Katalog im Konzept, Abschnitt 4):
 
 | Id | Element | Regel | Schwere | Quelle |
@@ -182,6 +210,8 @@ Strom, sodass das Netz um sie herum nicht reduziert wird.
 | `elec.coord.overload` | Sicherung, LS-Schalter, Abgang | *I*_B ≤ *I*_n ≤ *I*_z (*I*_z vom Benutzer eingegeben, keine Belastbarkeitstabellen) | Warnung | [S9] |
 | `elec.rcd.additional` | Steckdose | ihr Stromkreis hat ein Überstromschutzorgan, aber keinen RCD mit *I*_Δn ≤ 30 mA (ein RCD ohne Angabe zählt als vorhanden; nationale Regeln weichen ab) | Hinweis | [S10] |
 | `elec.net.reducible` | Elemente in einer nicht reduzierbaren Masche | kein Reihen-/Parallelnetz | Info | Abschnitt 1.6 |
+| `elec.opamp.saturation` | Operationsverstärker | \|*U*_a\| ≤ *U*_B (der Ausgang kann nicht über die Versorgung hinaus) | Warnung | [S7] |
+| `elec.bjt.overdrive` | Bipolartransistor | *k* = *I*_B·*B*/*I*_C ≥ 1 (sonst schaltet er nicht voll durch) | Warnung | [S7] |
 
 ## Überschneidungen mit anderen Modulen (ein Element, ein Eintrag)
 
@@ -216,10 +246,12 @@ versteckten Modulzustand. Ein JSON-Round-Trip reproduziert Dokument und gerender
   (Abzweig): Es folgt, wenn die andere Leitung verschoben oder geändert wird, und die Netzliste fasst beide Leitungen
   zu einem Netz zusammen.
 - Beschriftungen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
-- Werte (Calc 3): noch keine Wechselstrom-Impedanz, Blindwiderstände, Zeitkonstanten oder Resonanz (keine
-  Frequenzvariable); keine Ersatzinduktivität; keine Polarität (nur Beträge); Werte von Motor und Generator bleiben dem
-  Modul Maschinen überlassen; Potentiometer, Basiswiderstand des Transistors und Verstärkung des Operationsverstärkers sind
-  offen. Zwei widersprüchliche Kennzeichnungen (z. B. eine 24-V-Lampe an einer 12-V-Sekundärwicklung) werden noch nicht als
+- Werte (Calc 3): Blindwiderstände, Zeitkonstanten und Grenzfrequenzen gibt es je Element (Runde 5), aber keine
+  Wechselstrom-Netzberechnung (Impedanz der RLC-Reihenschaltung, Resonanz, Phase); keine Ersatzinduktivität; keine
+  Polarität (nur Beträge, die Verstärkung des Operationsverstärkers behält ihr Vorzeichen); Werte von Motor und Generator
+  bleiben dem Modul Maschinen überlassen; Drehstromleistung und Stern-Dreieck sind offen. Operationsverstärker und
+  Transistor lesen nur eindeutig verdrahtete Widerstände (ein Rückkopplungs-, ein Eingangswiderstand, ein Basiswiderstand
+  allein am Basisnetz). Zwei widersprüchliche Kennzeichnungen (z. B. eine 24-V-Lampe an einer 12-V-Sekundärwicklung) werden noch nicht als
   Widerspruch gemeldet, weil ein aus einer Kennzeichnung gelesener Wert bei der Stimmigkeitsprüfung des Lösers nicht als
   eingegeben zählt (Core-Änderung vorgeschlagen). Der Spannungsfall der Leitung (`elec.cable.drop`) wartet auf
   Leitungswerte.
