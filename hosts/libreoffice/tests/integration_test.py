@@ -1050,6 +1050,210 @@ def concept_phase(office, out, logs):
     office.close(doc)
 
 
+def stored_settings(shape):
+    """The document settings in a unit's stored model (isk1: base64 of gzip JSON)."""
+    import base64
+    import gzip
+    payload = attribute(shape, ATTR_MODEL) or ""
+    try:
+        return json.loads(gzip.decompress(base64.b64decode(payload[5:])).decode("utf-8")).get("settings") or {}
+    except Exception:
+        return {}
+
+
+def leaf_colours(shape):
+    out = []
+
+    def collect(s):
+        if s.getShapeType() == "com.sun.star.drawing.GroupShape":
+            for i in range(s.getCount()):
+                collect(s.getByIndex(i))
+        else:
+            try:
+                out.append(s.LineColor)
+            except Exception:
+                pass
+    collect(shape)
+    return out
+
+
+def leaf_texts(shape):
+    out = []
+
+    def collect(s):
+        if s.getShapeType() == "com.sun.star.drawing.GroupShape":
+            for i in range(s.getCount()):
+                collect(s.getByIndex(i))
+        else:
+            try:
+                if s.getString():
+                    out.append(s.getString())
+            except Exception:
+                pass
+    collect(shape)
+    return out
+
+
+def last_undo(doc):
+    undo = doc.getUndoManager()
+    return undo.getCurrentUndoActionTitle() if undo.isUndoPossible() else ""
+
+
+def drawing_phase(office, out, logs):
+    """Drawing-wide settings (headless, through the commands the menu, the context menu and the panels run): colour by
+    medium on and off (stored with the units, a new unit takes it, one undo step), the legend, a designation on another
+    slide as a continuation marker and "Same name on slide 2", a plausibility warning muted and a preferred unit
+    (document properties ISK_MUTED and ISK_UNITS, kept after saving and reloading), the values label redrawn in the
+    preferred unit, and the calculation sheet as CSV, Markdown, LaTeX, copied and as a table."""
+    doc = office.new("simpress")
+    pages = doc.getDrawPages()
+    page = pages.getByIndex(0)
+    for i in reversed(range(page.getCount())):
+        page.remove(page.getByIndex(i))
+    controller = doc.getCurrentController()
+    # 1. A wire L1 with the designation W3; colour by medium on.
+    office.run(doc, "insert?item=elec.wire&x=200&y=60")
+    wire_name = next(iter(units_of(page)))
+    select_shapes(office, doc, [units_of(page)[wire_name]])
+    office.run(doc, "action?id=t%3Aline.role%3DL1")
+    office.run(doc, "action?id=t%3Aline.ref&input=W3")
+    office.run(doc, "colorBy?mode=medium")
+    wire = units_of(page).get(wire_name)
+    title = last_undo(doc)
+    check("drawing.colorBy.on", wire is not None and stored_settings(wire).get("colorBy") == "medium"
+          and 0x8D5524 in leaf_colours(wire) and title.startswith("InventaSketch:")
+          and ("Medium" in title or "medium" in title),
+          "colours %s, undo '%s'" % ([hex(c) for c in leaf_colours(wire)] if wire is not None else None, title))
+    # A new unit on the page takes the mode.
+    known = set(units_of(page))
+    office.run(doc, "insert?item=elec.wire&x=200&y=100")
+    fresh = new_units(page, known)
+    check("drawing.colorBy.newUnitTakesIt", len(fresh) == 1 and
+          stored_settings(list(fresh.values())[0]).get("colorBy") == "medium", ", ".join(fresh))
+    # 2. The legend of the colours used.
+    known = set(units_of(page))
+    select_shapes(office, doc, [])
+    office.run(doc, "legend")
+    legend = new_units(page, known)
+    lline = (log_lines(logs, "legend: ") or [""])[-1]
+    check("drawing.legend", len(legend) == 1 and "L1" in lline and "IEC 60445" in lline
+          and any("IEC 60445" in t for t in leaf_texts(list(legend.values())[0])),
+          "%s; %s; undo '%s'" % (", ".join(legend), lline[-120:], last_undo(doc)))
+    export_png(office, doc, page, os.path.join(out, "drawing-medium.png"))
+    # Off again: the own colours come back, one undo step.
+    office.run(doc, "colorBy?mode=off")
+    wire = units_of(page).get(wire_name)
+    check("drawing.colorBy.off", wire is not None and "colorBy" not in stored_settings(wire)
+          and 0x8D5524 not in leaf_colours(wire), str([hex(c) for c in leaf_colours(wire)] if wire else None))
+    # 3. The same designation on slide 2: a continuation marker on slide 1, "Same name on slide 2" goes there.
+    pages.insertNewByIndex(0)
+    page2 = pages.getByIndex(1)
+    controller.setCurrentPage(page2)
+    office.run(doc, "insert?item=elec.wire&x=100&y=60")
+    w2 = list(units_of(page2).values())[0] if units_of(page2) else None
+    select_shapes(office, doc, [w2] if w2 is not None else [])
+    office.run(doc, "action?id=t%3Aline.ref&input=-w3")
+    controller.setCurrentPage(page)
+    select_shapes(office, doc, [units_of(page)[wire_name]])
+    office.run(doc, "redraw")
+    texts = leaf_texts(units_of(page)[wire_name])
+    check("drawing.continuation", any(("slide 2" in t or "Folie 2" in t) and "W3" in t for t in texts), str(texts))
+    select_shapes(office, doc, [units_of(page)[wire_name]])
+    entries = menu_of(office, doc, logs)
+    same = [e for _, e in walk(entries) if e[0] == "item" and "sameName?" in e[2]]
+    check("drawing.sameName.offered", len(same) == 1 and "2" in same[0][1], ", ".join(e[1] for e in same))
+    if same:
+        run_entry(office, doc, same[0][2])
+        sel = controller.getSelection()
+        chosen = [sel.getByIndex(i).Name for i in range(sel.getCount())] if sel is not None and \
+            hasattr(sel, "getCount") else []
+        check("drawing.sameName.goes", controller.getCurrentPage().Number == 2 and w2 is not None
+              and chosen == [units_of(page2) and list(units_of(page2))[0]], "page %s, %s" % (
+                  controller.getCurrentPage().Number, chosen))
+    controller.setCurrentPage(page)
+    # 4. A resistor with too much power: the warning, muted and unmuted; the preferred unit of power.
+    office.run(doc, "insert?item=elec.resistor&x=80&y=120")
+    resistor = unit_by_type(page, "elec.resistor")
+    rname = resistor.Name if resistor is not None else ""
+    select_shapes(office, doc, [resistor] if resistor is not None else [])
+    office.run(doc, "param?key=prated&value=0.25%20W")
+    office.run(doc, "setValue?key=U&text=230%20V")
+    office.run(doc, "setValue?key=R&text=100")
+    vline = (log_lines(logs, "values (") or [""])[-1]
+    check("drawing.check.shown", "checks: elec.r.power" in vline, vline[-160:])
+    office.run(doc, "muteCheck?key=elec.r.power")
+    vline = (log_lines(logs, "values (") or [""])[-1]
+    check("drawing.check.muted", doc_props(doc).get("ISK_MUTED") == "elec.r.power" and "checks: -" in vline
+          and "muted: elec.r.power" in vline, vline[-160:])
+    office.run(doc, "muteCheck?mute=0")
+    vline = (log_lines(logs, "values (") or [""])[-1]
+    check("drawing.check.unmuted", "ISK_MUTED" not in doc_props(doc) and "checks: elec.r.power" in vline, vline[-120:])
+    office.run(doc, "showValues?on=1")
+    before = attribute(units_of(page)[rname], ATTR_MODEL)
+    office.run(doc, "unitPref?kind=power&unit=kW")
+    uline = (log_lines(logs, "unit preference power") or [""])[-1]
+    vline = (log_lines(logs, "values (") or [""])[-1]
+    texts = leaf_texts(units_of(page)[rname])
+    check("drawing.units.kW", doc_props(doc).get("ISK_UNITS") == "power=kW" and "kW" in vline
+          and "1 unit(s) redrawn" in uline and any("kW" in t for t in texts),
+          "%s | %s | %s" % (uline[-80:], vline[-120:], texts))
+    check("drawing.units.oneUndoStep", last_undo(doc) in ("InventaSketch: Show values in",
+                                                         "InventaSketch: Werte anzeigen in")
+          and attribute(units_of(page)[rname], ATTR_MODEL) != before, last_undo(doc))
+    office.run(doc, "unitPref?kind=rotationalSpeed&unit=rad/s")
+    uline = (log_lines(logs, "unit preference rotationalSpeed") or [""])[-1]
+    check("drawing.units.nothingToRedraw", "0 unit(s) redrawn" in uline and "rotationalSpeed=rad/s" in
+          doc_props(doc).get("ISK_UNITS", ""), uline[-120:])
+    office.run(doc, "muteCheck?key=elec.r.power")
+    # 5. Calculation sheet of the resistor: CSV file (with BOM), Markdown and LaTeX, copied, as a table.
+    select_shapes(office, doc, [units_of(page)[rname]])
+    csv = os.path.join(out, "sheet.csv")
+    office.run(doc, "calcSheet?mode=csv&path=" + csv.replace("\\", "/").replace(" ", "%20"))
+    data = open(csv, "rb").read() if os.path.isfile(csv) else b""
+    text = data.decode("utf-8-sig", "replace")
+    check("drawing.sheet.csv", data.startswith(b"\xef\xbb\xbf") and
+          ("Widerstand" in text or "Resistor" in text) and "P = U·I" in text and "kW" in text, text[:160])
+    office.run(doc, "calcSheet?mode=markdown&copy=1")
+    mline = (log_lines(logs, "calculation sheet markdown (") or [""])[-1]
+    clip = ""
+    try:
+        board = office.smgr.createInstanceWithContext("com.sun.star.datatransfer.clipboard.SystemClipboard", office.ctx)
+        content = board.getContents()
+        flavor = next(f for f in content.getTransferDataFlavors() if f.MimeType.startswith("text/plain"))
+        clip = content.getTransferData(flavor)
+    except Exception as ex:
+        clip = "clipboard: %s" % ex
+    check("drawing.sheet.markdown", "selection, 4 rows" in mline and "| P = U·I |" in mline.replace("  ", " "),
+          mline[-200:])
+    check("drawing.sheet.copied", isinstance(clip, str) and clip.startswith("| "), str(clip)[:80])
+    office.run(doc, "calcSheet?mode=latex")
+    tline = (log_lines(logs, "calculation sheet latex (") or [""])[-1]
+    check("drawing.sheet.latex", "\\toprule" in tline, tline[-160:])
+    known = set(units_of(page))
+    office.run(doc, "calcSheet?mode=table")
+    table = new_units(page, known)
+    check("drawing.sheet.table", len(table) == 1 and list(table)[0].split(":")[1] == "ann.table"
+          and last_undo(doc) in ("InventaSketch: Calculation sheet", "InventaSketch: Rechenblatt"),
+          "%s; undo '%s'" % (", ".join(table), last_undo(doc)))
+    export_png(office, doc, page, os.path.join(out, "drawing.png"))
+    # 6. Saved and reloaded (.odp and .pptx): the muted check and the preferred units stay.
+    for ext, flt in (("odp", "impress8"), ("pptx", "Impress Office Open XML")):
+        saved = os.path.join(out, "drawing." + ext)
+        doc.storeToURL(uno.systemPathToFileUrl(saved), (pv("FilterName", flt),))
+        again = office.load(saved)
+        props = doc_props(again)
+        rpage = again.getDrawPages().getByIndex(0)
+        target = unit_by_type(rpage, "elec.resistor")
+        select_shapes(office, again, [target] if target is not None else [])
+        office.run(again, "loadValues")
+        vline = (log_lines(logs, "values (") or [""])[-1]
+        check("drawing.settings.reload." + ext, props.get("ISK_MUTED") == "elec.r.power"
+              and "power=kW" in props.get("ISK_UNITS", "") and "checks: -" in vline and " kW" in vline,
+              "%s; %s" % ({k: v for k, v in props.items() if k in ("ISK_MUTED", "ISK_UNITS")}, vline[-120:]))
+        office.close(again)
+    office.close(doc)
+
+
 def draw_calc_phase(office, out):
     for factory, label in (("sdraw", "draw"), ("scalc", "calc")):
         doc = office.new(factory)
@@ -1076,8 +1280,10 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--keep", action="store_true")
     ap.add_argument("--from-powerpoint", help="a .pptx saved by the PowerPoint COM add-in (exchange check)")
-    ap.add_argument("--only", choices=["share", "concept"],
-                    help="run only this phase (share: clean slides, export, chart from picture; concept: choices, "
+    ap.add_argument("--only", choices=["share", "concept", "drawing"],
+                    help="run only this phase (drawing: colour by medium, legend, names across slides, muted checks, "
+                         "preferred units, calculation sheet; share: clean slides, export, chart from picture; "
+                         "concept: choices, "
                          "the eight places, values, calculator, code import, select connected, insert here, glow)")
     args = ap.parse_args()
     soffice = find_soffice(args.soffice)
@@ -1106,6 +1312,8 @@ def main():
             share_phase(office, out, logs)
         if args.only in (None, "concept"):
             concept_phase(office, out, logs)
+        if args.only in (None, "drawing"):
+            drawing_phase(office, out, logs)
         if args.only is None:
             reload_phase(office, odp, names, "odp", expect_attributes=True)
             reload_phase(office, pptx, names, "pptx", expect_attributes=False)

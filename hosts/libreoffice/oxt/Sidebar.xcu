@@ -42,8 +42,8 @@
       </node>
       <node oor:name="InventaSketchToolsPanel" oor:op="replace">
         <prop oor:name="Title" oor:type="xs:string">
-          <value xml:lang="en-US">Calculator and code</value>
-          <value xml:lang="de">Rechner und Code</value>
+          <value xml:lang="en-US">Drawing, calculator and code</value>
+          <value xml:lang="de">Zeichnung, Rechner und Code</value>
         </prop>
         <prop oor:name="Id" oor:type="xs:string"><value>InventaSketchToolsPanel</value></prop>
         <prop oor:name="DeckId" oor:type="xs:string"><value>InventaSketchDeck</value></prop>

@@ -18,12 +18,16 @@ LibreOffice (Impress/Draw/Calc)
          plan.py      draw plan (pt) -> shape specifications (1/100 mm), no UNO, unit-tested
          render.py    specifications -> native UNO shapes, groups, line-end markers, metadata
          metadata.py  unit name, attributes, chunked document properties, native-edit detection, no UNO
-         sidebar.py   deck "InventaSketch", panels "Selection", "Values", "Library", "Calculator and code";
+         sidebar.py   deck "InventaSketch", panels "Selection", "Values", "Library", "Drawing, calculator and
+                      code";
                       library.py: catalog filter, thumbnails
          ux.py        selection panel rules, recent items, page session bookkeeping, on-canvas rules (no UNO, tested)
          choices.py   interaction concept: choices as dropdowns, the eight places of the context menu, select
                       connected, insert places (no UNO, tested)
          values.py    rows of the Values panel, value level, calculator and code import report (no UNO, tested)
+         drawing.py   drawing-wide settings: colour by medium, designations across pages, muted checks and
+                      preferred units (document properties), calculation sheet (no UNO, tested);
+                      calcsheetdialog.py: the calculation sheet dialog (copy, save, insert as table)
          canvas.py    on-canvas interaction: snap after a mouse drag, Ctrl+Space, context menu with the eight places,
                       Ctrl+double-click, selection glow (UNO input interception); glow.py: the glow itself
          inputdialog.py  one-line input dialog (main text, actions that ask for a value)
@@ -85,7 +89,8 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
 `unopkg remove org.inventasketch.libreoffice`.
 
 - **Menu "InventaSketch"** (Impress, Draw, Calc): *Insert from Library…* (opens the sidebar deck), *Edit Model of
-  Selected Unit*, *Redraw Selected Unit from Model*, *Values of Selected Element…*, *Calculator with Units…*, *Add
+  Selected Unit*, *Redraw Selected Unit from Model*, *Values of Selected Element…*, *Calculator with Units…*, *Calculation Sheet…*,
+  *Colour by Medium ▸ Off (Own Colours) / By Medium / Insert Legend*, *Add
   Reference Numeral*, *Compatibility (Drawing Rules)…*, *Compare with Previous Slide (Variants)*, *Clean Slides…*,
   *Import Drawing (SVG, DXF)…*, *Import Code (matplotlib, pgfplots, TikZ)…*, *Chart from Picture…*, *Export…*,
   *Remove Data of Deleted Units*, *About InventaSketch*.
@@ -137,7 +142,9 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
     *Suggestions*: the parts that fit the selection, then the recent items), the item list with preview (the engine's
     SVG thumbnail); double-click or *Insert* inserts the item – a part that fits the selected unit where it fits,
     anything else in the middle of the slide/page (Calc: of the visible cell area).
-  - *Calculator and code* (2026-11-26): the calculator with units and the code import (matplotlib, pgfplots, TikZ).
+  - *Drawing, calculator and code* (2026-11-26): the page's colour by medium with *Insert legend* and *Calculation
+    sheet …* (see the drawing-wide settings round below), the calculator with units and the code import (matplotlib,
+    pgfplots, TikZ).
 - **On the slide/page** (Impress, Draw; see the on-canvas round below): a unit dragged with the mouse snaps on
   release (gear mesh, axes, ports, mounts …) and its coupled parts follow; Ctrl+Space opens the Library panel with the
   cursor in the search field (type, Enter inserts); the context menu of a unit starts with the eight places of the
@@ -158,7 +165,10 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   `delete`, `connected[?mode=auto|net|coupled|chain|loop|walls]`, `insertPlace?key=<k>`, `menu` (logs the context
   menu of the selection, also as JSON), `values`, `setValue?key=<k>&text=<t>`, `clearValue?key=<k>`,
   `valueLevel?level=quick|explore|engineer`, `showValues?on=0|1`, `tools`, `calc?text=<t>[&unit=<u>]`,
-  `importCode[?path=<file>|&text=<code>]`; `panel?…&enter=1` presses Enter in a field, `control=choice:<label or
+  `importCode[?path=<file>|&text=<code>]`; since 2026-11-26 (drawing-wide settings): `colorBy?mode=medium|off`,
+  `legend`, `sameName?key=<designation>&page=<n>`, `muteCheck?key=<check id>[&mute=0]` (`mute=0` without a key
+  unmutes all), `unitPref?kind=<quantity kind>&unit=<unit>`, `calcSheet[?mode=csv|markdown|latex|table&path=<file>&
+  copy=1]` (dialog without arguments, logged when headless); `panel?…&enter=1` presses Enter in a field, `control=choice:<label or
   key>` names a choice's dropdown. The integration and UI smoke tests use these commands.
 - **Recent items** (last 12 inserted library items, per user) are kept in `libreoffice-settings.json` next to the log
   and rank higher in the search.
@@ -353,6 +363,57 @@ second reference. Every decision still comes from the engine; the pure rules are
   typed value replaces them where the element has one (Values panel, parts dialog). No floating bar (no overlay), no
   hover preview, no option pictograms (see above).
 
+## Drawing-wide settings round (LibreOffice, 2026-11-26)
+
+The UI for the engine features of [interaction-ux.md](../design/interaction-ux.md) section 6b (colour by medium, names
+that belong together) and [engineering-calculations.md](../design/engineering-calculations.md) section 10.11 (Calc 6:
+check settings, preferred units, calculation sheet), with the words of the COM add-in. Pure rules in `drawing.py`
+(`tests/test_drawing.py`); every decision comes from the engine.
+
+- **Colour by medium.** *Drawing, calculator and code ▸ Colour by medium* (dropdown *Off (own colours)* / *By medium*)
+  and the menu *Colour by Medium ▸ Off / By Medium*: the page session runs `setColorBy` and every unit of the slide/page
+  is redrawn in one undo step ("InventaSketch: Colour by medium"); units drawn in another mode than the session adopted
+  are redrawn too. The mode lives in the units' stored models (the engine adopts it from every imported unit, as the
+  COM add-in's slide style does), so a page shows the mode of its units and the dropdown reads it from a unit's stored
+  model without the engine; a unit inserted on a coloured page takes the mode (`insert` sets it before drawing).
+  *Insert legend* (panel and menu) inserts the colours used on the page as one unit at the top right (new engine
+  method `insertLegend`: `LineMedia.Used` and `LineMedia.Legend`, grouped; one undo step, selected). LibreOffice text
+  boxes do not wrap, so the engine moves the legend left until its longest name, estimated at 0.6 em per character,
+  ends inside the page. Without a coloured line on the page the engine's message is shown.
+- **Designations across pages (Impress, Draw).** Every page session asks the engine for the page's designations
+  (`designations`); if there are any, the designations of the other pages' units are read from their stored models
+  (new engine method `designationsOf`: the designations of each compact model without a session; cached per model in
+  the extension) and passed to `setContinuations` with the page numbers and "slide"/"page", so lines whose designation
+  also occurs on another page draw "→ W3, slide 2" ("→ W3, Folie 2") whenever they are drawn. Markers of other pages
+  are refreshed when their units are drawn again (as in COM). The designation actions themselves (*Designation …*,
+  *Value label …*, *End markers*, *Conductor ▸*, *Line role ▸*, *Fluid (DIN 2403) ▸*) are the engine's generic actions
+  `line.ref`, `line.value`, `line.ref.ends`, `elem.ref`, `line.role` and already appear as buttons and dropdowns of the
+  Selection panel and in the Edit and Style places.
+- **Same name.** *Select connected ▸ Same name* (engine mode `samename`) is offered with the other kinds where the
+  engine offers it. For each other page that has the selection's designation the list (Selection panel) and the
+  Arrange ▸ Select connected submenu add "Same name on slide 2: W3"; choosing it shows that slide and selects the units
+  with that designation there (command `sameName`). This replaces the COM add-in's report "Same name: also on slides
+  2, 4" with an entry that goes there.
+- **Plausibility warnings in the Values panel.** Up to four rows "⚠ message (rule) [source]" (the engine's `checks` of
+  the element, as in the COM value card), each with *Mute*; more warnings are listed below without a button. *Mute*
+  stores the check id in the user-defined document property `ISK_MUTED` (ids separated by ";", the format of the COM
+  add-in's presentation tag); *Unmute n muted check(s)* clears it.
+- **Show values in.** Dropdowns for pressure (bar, MPa, kPa), speed of rotation (min⁻¹, rev/s, rad/s), energy (kWh,
+  MJ, J) and power (W, kW); the first unit is the default and is stored as "not set". The choice is checked by the
+  engine (`setUnitPreference`), stored in the document property `ISK_UNITS` ("pressure=MPa;power=kW"), and the units
+  of the page whose drawing changes with it (a values label on the drawing: two draw plans compared) are redrawn in one
+  undo step ("InventaSketch: Show values in"). The COM add-in offers "s⁻¹" for the speed of rotation, which the engine
+  does not know; LibreOffice offers the engine's "rev/s".
+- **Document settings.** `ISK_MUTED` and `ISK_UNITS` are applied to every page session (`muteCheck`,
+  `setUnitPreference` after the units are imported), like the value level `ISK_VALUES` they are document properties
+  and travel with .odp and .pptx (checked: both survive saving and reloading).
+- **Calculation sheet.** *Calculation sheet …* (Tools panel and menu) opens a dialog with the sheet of the selected
+  elements, else of every element of the slide/page (Calc: of the sheet's elements): format *CSV (spreadsheet)*,
+  *Markdown* or *LaTeX (booktabs)* (engine `calcSheet`, digits by the value level), the text (read-only), the number
+  of rows and sources, *Copy* (system clipboard, plain text), *Save …* (LibreOffice's save dialog with the format's
+  extension; CSV with a byte order mark) and *Insert as table* (engine `insertCalcTable`: an annotation table beside
+  the elements, one undo step "InventaSketch: Calculation sheet", selected).
+
 ## Verified features
 
 Verified on Windows 11 with LibreOffice 26.8.2.2 on 2026-11-20 (`tests/integration_test.py`, 43 checks passed;
@@ -428,12 +489,33 @@ Verified on Windows 11 with LibreOffice 26.8.2.2 on 2026-11-20 (`tests/integrati
   Screenshots reviewed (the deck is scrolled with the mouse wheel to the Values panel; the Calculator panel below the
   Library panel was operated but not brought into a screenshot).
 
+- 2026-11-26 (drawing-wide settings round, Windows 11, LibreOffice 26.8.2.2, German UI): `integration_test.py --only
+  drawing` 22 checks passed: a wire with *Conductor ▸ L1* and the designation W3 turns brown (#8d5524) with colour by
+  medium in one undo step ("Farben nach Medium"), a wire inserted afterwards takes the mode, the legend is one unit with
+  "Außenleiter L1 (IEC 60445)", *Off* restores the own colours; the same designation on slide 2 draws "→ W3, Folie 2"
+  on slide 1 and the context menu's "Gleicher Name auf Folie 2: W3" shows slide 2 with that wire selected; a resistor
+  with 529 W at 0.25 W shows `elec.r.power`, muting stores `ISK_MUTED` and the warning goes, unmuting brings it back;
+  power in kW stores `ISK_UNITS`, redraws the resistor's values label ("P = 0,529 kW") in one undo step and leaves
+  everything else alone (speed of rotation: 0 units redrawn); the calculation sheet as CSV file (byte order mark, kW),
+  Markdown (copied to the clipboard and read back), LaTeX (`\toprule`) and as an annotation table (one undo step);
+  `ISK_MUTED` and `ISK_UNITS` survive saving and reloading as .odp and .pptx (warning still muted, power still in kW).
+  Pages exported as `drawing-medium.png` and `drawing.png` and reviewed (legend inside the page after the engine moved
+  it left). `ui_smoke.py --drawing-only` 9 checks passed in a visible window (German UI, 200 % display scaling): "Gleicher
+  Name auf Folie 2: W3" chosen in the Selection panel's list shows slide 2 with the wire selected, *Nach Medium* in the
+  Tools panel's dropdown colours the page, *Legende einfügen* adds the legend, the Values panel shows the resistor's
+  warning with rule and source beside *Stumm* and *Stumm* mutes it, *Leistung: kW* stores the preference, *Rechenblatt …*
+  opens the dialog and **real keys** (Tab ×4, Space) press *Als Tabelle einfügen*, which inserts the table. Screenshots
+  of the Tools panel, the Values panel and the dialog reviewed (the full run of all phases: `integration_test.py` 138
+  checks passed).
+
 ## Tests
 
 ```powershell
 python -m unittest discover -s hosts/libreoffice/tests -p "test_*.py"     # unit tests, no LibreOffice
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt <oxt> --out <folder> --only concept
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt <oxt> --out <folder> --concept-only
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt <oxt> --out <folder> --only drawing
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt <oxt> --out <folder> --drawing-only
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <folder>
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <folder>
 ```
@@ -452,7 +534,13 @@ greyed places, "More"), the Values rows per level, status and conflicts, the cal
 glow (signature, shadow fallback for ellipses, modified flag) and, against the built engine, that every choice of a
 sample of the catalogue is a proper dropdown, an option runs through `applyAction`, a resistor's values, a table's
 insert places, select connected of meshing gears, the calculator and a matplotlib import. `integration_test.py --only
-concept` and `ui_smoke.py --concept-only` run the LibreOffice checks of this round. The UI smoke test operates the panel's controls with the `panel`
+concept` and `ui_smoke.py --concept-only` run the LibreOffice checks of this round. `test_drawing.py` covers the
+drawing-wide settings: colour modes and the mode in a stored model, changed plan units, the continuation map and the
+"Same name" rows, muted checks and preferred units (parse, update, the default clears, the engine calls of a page
+session), the check rows, sheet formats and names and, against the built engine, the colour mode travelling with a
+stored model and the legend, designations of stored models as continuation markers, the document settings applied to
+a fresh session (every offered unit accepted by the engine) and the calculation sheet in every format and as a table.
+`integration_test.py --only drawing` and `ui_smoke.py --drawing-only` run the LibreOffice checks of that round. The UI smoke test operates the panel's controls with the `panel`
 command (typing into the search field and choosing a list entry go through the controls and call the same listeners
 as a user; buttons run their click handler); real mouse clicks are not simulated, because over the remote bridge the
 panel's control peers are generic windows without list box or accessibility interfaces. Its first part

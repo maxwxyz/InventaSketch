@@ -9,7 +9,8 @@
   Text …, Edit, Insert …, Duplicate, Style, Delete, View, Arrange. LibreOffice draws the submenu arrow itself, so the
   places that open a submenu carry no "▸". A place with nothing for the selection stays, greyed (a command whose status
   is disabled); a place with one entry shows it directly, except Edit, Style and Arrange, which keep their name.
-- **Select connected** (``connectOptions``): one entry per kind that applies, with the number of elements.
+- **Select connected** (``connectOptions``): one entry per kind that applies, with the number of elements; the
+  selection's designations on other pages follow as "Same name on slide 4: W3".
 
 Every decision comes from the engine; this module only arranges its answers. Entries of the context menu are
 ``("item", label, url[, checked])``, ``("sub", label, [entries])``, ``("off", label, url)`` (greyed) and ``("sep",)``.
@@ -179,10 +180,19 @@ def connect_label(option, lang=None):
     return i18n.text("connectedRow", lang) % (option.get("label") or option.get("kind"), n)
 
 
+def same_name_rows(info, lang=None):
+    """[(label, url)] "Same name on slide 4: W3" for the selection's designations that occur on other pages
+    (``info["elsewhere"]`` from host.describe); choosing one shows that page with those elements selected."""
+    from . import drawing
+    kind = (info or {}).get("kind")
+    return [(drawing.same_name_label(designation, label, kind, lang), _url("sameName", key=key, page=label))
+            for key, designation, pages in (info or {}).get("elsewhere") or [] for label in pages]
+
+
 def connect_entries(info, lang=None):
-    """Context menu entries "Select connected" for the kinds that apply."""
+    """Context menu entries "Select connected" for the kinds that apply, then "Same name on slide 4: W3"."""
     return [("item", connect_label(o, lang), _url("connected", mode=o.get("kind"))) for o in (info or {}).get("connect")
-            or []]
+            or []] + [("item", label, url) for label, url in same_name_rows(info, lang)]
 
 
 # ------------------------------------------------------------------ insert places
@@ -263,7 +273,7 @@ def places(info, lang=None):
     arrange.append(("item", i18n.text("ctxBack", lang), ".uno:SendToBack"))
     connected = connect_entries(info, lang)
     if connected:
-        arrange.append(("sub", i18n.text("ctxConnected", lang), connected))
+        arrange.append(("sub", i18n.text("ctxConnected", lang), paged(connected, lang=lang)))
     groups = {"text": text, "edit": edit, "insert": insert, "duplicate": duplicate, "style": style, "delete": delete,
               "view": view, "arrange": arrange}
     return [_place(k, groups[k], lang) for k in PLACES]

@@ -51,6 +51,15 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
   calc?text=<t>[&unit=<u>]                        calculator with units (result in the Calculator panel and the log)
   importCode[?path=<file>|&text=<code>]           matplotlib/pgfplots/TikZ code as charts and drawings (file dialog
                                                   without arguments)
+  colorBy?mode=medium|off                         colour by medium for the current page (every unit redrawn)
+  legend                                          legend of the medium colours used on the page, as one unit
+  sameName?key=<designation>&page=<n>             show page n with the units of that designation selected
+  muteCheck?key=<check id>[&mute=0]               mute / unmute a plausibility check (property ISK_MUTED);
+                                                  mute=0 without a key unmutes all
+  unitPref?kind=<quantity kind>&unit=<u>          preferred display unit (property ISK_UNITS; the default clears it)
+  calcSheet[?mode=csv|markdown|latex|table&path=<file>&copy=1]
+                                                  calculation sheet of the selection or the page (dialog without
+                                                  arguments; table: inserted as a table; logged when headless)
   about                                           version and licence
 The same commands are the scripting API (DispatchHelper), used by tests/integration_test.py. ``describe``, ``search``
 and ``buildItems`` fill the sidebar panel. The job ``CanvasJob`` (Jobs.xcu, document event "OnViewCreated") attaches
@@ -83,7 +92,9 @@ COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "
             "cleanSlides", "export", "chartFromPicture",
             # Interaction concept (choices, eight places, values, calculator, code import, select connected, insert here)
             "action", "param", "text", "duplicate", "delete", "connected", "insertPlace", "place", "menu", "values",
-            "loadValues", "setValue", "clearValue", "valueLevel", "showValues", "calc", "importCode", "tools")
+            "loadValues", "setValue", "clearValue", "valueLevel", "showValues", "calc", "importCode", "tools",
+            # Drawing-wide settings (colour by medium, names across pages, check settings, units, calculation sheet)
+            "colorBy", "legend", "sameName", "muteCheck", "unitPref", "calcSheet")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 # Commands that neither read nor change units on the page (the selection glow stays).
@@ -625,10 +636,11 @@ def _load_values(ctx, frame, controller, quiet=True):
         return data
     obj = data.get("values") or {}
     rows = values.rows(obj, data["level"], data.get("explained"))
-    log("values (%s, %s): %s; %s" % (data["name"], data["level"], values.status_line(obj) or obj.get("status", "-"),
-                                     " | ".join("%s = %s %s%s" % (r["head"], r["field"], r["unit"],
-                                                                  " {%s}" % r["detail"] if r["detail"] else "")
-                                                for r in rows)))
+    log("values (%s, %s): %s; %s; checks: %s; muted: %s" % (
+        data["name"], data["level"], values.status_line(obj) or obj.get("status", "-"),
+        " | ".join("%s = %s %s%s" % (r["head"], r["field"], r["unit"], " {%s}" % r["detail"] if r["detail"] else "")
+                   for r in rows),
+        ", ".join(c.get("id") or "?" for c in data.get("checks") or []) or "-", ", ".join(data.get("muted") or []) or "-"))
     return data
 
 
@@ -725,12 +737,102 @@ def _cmd_import_code(ctx, frame, controller, args):
     _describe(ctx, frame, controller, quiet=True)
 
 
+# ------------------------------------------------------------------ drawing-wide settings (colour by medium, names
+# across pages, check settings, preferred units, calculation sheet)
+
+
+def _cmd_color_by(ctx, frame, controller, args):
+    mode = args.get("mode") or args.get("") or "medium"
+    drawn = host.set_color_by(engine_for(ctx), controller, mode)
+    log("colour by medium: %s, %d unit(s) redrawn" % (mode, len(drawn)))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_legend(ctx, frame, controller, args):
+    from inventasketch_lo import drawing
+    engine = engine_for(ctx)
+    drawn = host.insert_legend(engine, controller)
+    log("legend: %d unit(s) drawn; %s" % (len(drawn), " | ".join(drawing.legend_lines(
+        host.medium_colours(engine, controller)))))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_same_name(ctx, frame, controller, args):
+    shapes = host.go_same_name(engine_for(ctx), controller, args.get("key") or "", args.get("page") or "")
+    log("same name %s on page %s: %d unit(s) selected" % (args.get("key"), args.get("page"), len(shapes)))
+    _describe(ctx, frame, controller, quiet=True)
+
+
+def _cmd_mute_check(ctx, frame, controller, args):
+    """Mutes (``mute=1``, default) or unmutes (``mute=0``) the check ``key``; ``mute=0`` without a key unmutes all."""
+    doc = controller.getModel()
+    key = args.get("key") or args.get("") or ""
+    mute = (args.get("mute") or "1") not in ("0", "false", "False")
+    if not key and not mute:
+        host.unmute_all(doc)
+        muted = []
+    else:
+        muted = host.mute_check(doc, key, mute)
+    log("muted checks: %s" % (", ".join(muted) or "-"))
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_unit_pref(ctx, frame, controller, args):
+    kind = args.get("kind") or ""
+    unit = args.get("unit") or ""
+    drawn = host.set_unit_preference(engine_for(ctx), controller, kind, unit)
+    log("unit preference %s = %s (%s); %d unit(s) redrawn" % (kind, unit or "-",
+                                                               host.unit_preferences(controller.getModel()) or "-",
+                                                               len(drawn)))
+    _load_values(ctx, frame, controller)
+
+
+def _cmd_calc_sheet(ctx, frame, controller, args):
+    """The calculation sheet: the dialog (visible window, no ``mode``); ``mode=table`` inserts it as a table;
+    ``mode=csv|markdown|latex`` with ``path`` saves it, with ``copy=1`` copies it; otherwise the text is logged."""
+    from inventasketch_lo import calcsheetdialog, drawing
+    engine = engine_for(ctx)
+    wanted = args.get("mode") or args.get("")
+    try:
+        mode = drawing.parse_sheet_mode(wanted) if wanted else None
+    except ValueError as ex:
+        raise host.HostError(str(ex))
+    if mode == "table":
+        drawn = host.insert_calc_table(engine, controller)
+        log("calculation sheet as a table: %d unit(s) drawn" % len(drawn))
+        _describe(ctx, frame, controller, quiet=True)
+        return
+    sheet = host.calc_sheet(engine, controller, mode or "csv")
+    if not sheet.get("rows"):
+        raise host.HostError(i18n.text("sheetNoValues"))
+    if mode is None and _visible(frame):
+        dialog = calcsheetdialog.CalcSheetDialog(ctx, frame, lambda m: host.calc_sheet(engine, controller, m), sheet,
+                                                 lambda text: message(ctx, frame, text, error=True))
+        if dialog.execute() == "table":
+            drawn = host.insert_calc_table(engine, controller)
+            log("calculation sheet as a table: %d unit(s) drawn" % len(drawn))
+            _describe(ctx, frame, controller, quiet=True)
+        return
+    mode = mode or "csv"
+    if args.get("path"):
+        size = calcsheetdialog.write_sheet(args["path"], sheet["text"], mode)
+        log("calculation sheet %s: %d bytes -> %s" % (mode, size, args["path"]))
+    if args.get("copy"):
+        calcsheetdialog.copy_text(ctx, sheet["text"])
+        log("calculation sheet %s copied" % mode)
+    log("calculation sheet %s (%s, %d rows, %d sources): %s" % (
+        mode, "selection" if sheet["selection"] else "page", sheet.get("rows") or 0, len(sheet.get("sources") or []),
+        (sheet.get("text") or "").replace("\r", "").replace("\n", " ⏎ ")[:1500]))
+
+
 _CONCEPT = {"action": _cmd_action, "param": _cmd_param, "text": _cmd_text, "duplicate": _cmd_duplicate,
             "delete": _cmd_delete, "connected": _cmd_connected, "insertPlace": _cmd_insert_place,
             "place": _cmd_place, "menu": _cmd_menu, "values": _cmd_values, "tools": _cmd_tools,
             "loadValues": _cmd_load_values, "setValue": _cmd_set_value, "clearValue": _cmd_clear_value,
             "valueLevel": _cmd_value_level, "showValues": _cmd_show_values, "calc": _cmd_calc,
-            "importCode": _cmd_import_code}
+            "importCode": _cmd_import_code, "colorBy": _cmd_color_by, "legend": _cmd_legend,
+            "sameName": _cmd_same_name, "muteCheck": _cmd_mute_check, "unitPref": _cmd_unit_pref,
+            "calcSheet": _cmd_calc_sheet}
 
 
 def _num(value):

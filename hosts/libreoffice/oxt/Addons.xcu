@@ -53,6 +53,51 @@
             </prop>
             <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
           </node>
+          <node oor:name="m03c" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:calcSheet</value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Calculation Sheet...</value>
+              <value xml:lang="de">Rechenblatt ...</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+          </node>
+          <node oor:name="m03d" oor:op="replace">
+            <prop oor:name="URL" oor:type="xs:string"><value></value></prop>
+            <prop oor:name="Title" oor:type="xs:string">
+              <value xml:lang="en-US">Colour by Medium</value>
+              <value xml:lang="de">Farben nach Medium</value>
+            </prop>
+            <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+            <node oor:name="Submenu">
+              <node oor:name="c1" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:colorBy?mode=off</value></prop>
+                <prop oor:name="Title" oor:type="xs:string">
+                  <value xml:lang="en-US">Off (Own Colours)</value>
+                  <value xml:lang="de">Aus (eigene Farben)</value>
+                </prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+              </node>
+              <node oor:name="c2" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:colorBy?mode=medium</value></prop>
+                <prop oor:name="Title" oor:type="xs:string">
+                  <value xml:lang="en-US">By Medium</value>
+                  <value xml:lang="de">Nach Medium</value>
+                </prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+              </node>
+              <node oor:name="c3" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>private:separator</value></prop>
+              </node>
+              <node oor:name="c4" oor:op="replace">
+                <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:legend</value></prop>
+                <prop oor:name="Title" oor:type="xs:string">
+                  <value xml:lang="en-US">Insert Legend</value>
+                  <value xml:lang="de">Legende einfügen</value>
+                </prop>
+                <prop oor:name="Target" oor:type="xs:string"><value>_self</value></prop>
+              </node>
+            </node>
+          </node>
           <node oor:name="m04" oor:op="replace">
             <prop oor:name="URL" oor:type="xs:string"><value>inventasketch.libreoffice:numeral</value></prop>
             <prop oor:name="Title" oor:type="xs:string">
