@@ -191,6 +191,28 @@ namespace InventaSketch.Modules.Optics.Tests
                 var d = Bundle(Fx.Doc(laser, guide, spec), laser.Id, "exit");
                 yield return ("Light guide (total internal reflection) into a spectrometer", d, new Rect(45, 125, 200, 50));
             }
+            {
+                var laser = I("optics.source.laser", 60, 150).WithParam("rays", 3).WithParam("beam", 8.0);
+                var w1 = I("optics.window.brewster", 110, 150);
+                var w2 = I("optics.window.brewster", 145, 150);
+                var p = I("optics.polarizer", 185, 150).WithParam("angle", 90.0);
+                var pd = I("optics.detector.photodiode", 220, 150);
+                var d = Bundle(Fx.Doc(laser, w1, w2, p, pd), laser.Id, "exit");
+                var ray = d.Objects.Values.Single(o => o.Type == RayType.TypeId);
+                d = Edits.Replace(d, ray.WithParam(ValueLabels.ShowParam, true));
+                yield return ("Two Brewster windows and an analyser across p (intensity labels)", d, new Rect(45, 120, 190, 60));
+            }
+            {
+                var laser = I("optics.source.laser", 60, 150);
+                var p = I("optics.polarizer", 90, 150).WithParam("angle", 30.0);
+                var pbs = I("optics.splitter.pbs", 130, 150);
+                var s1 = I("optics.screen", 180, 150);
+                var s2 = I("optics.screen", 130, 100) with { Transform = new Transform(130, 100, 90) };
+                var d = Bundle(Fx.Doc(laser, p, pbs, s1, s2), laser.Id, "exit");
+                var ray = d.Objects.Values.Single(o => o.Type == RayType.TypeId);
+                d = Edits.Replace(d, ray.WithParam(ValueLabels.ShowParam, true));
+                yield return ("Polarizing beam splitter: p transmitted, s reflected", d, new Rect(45, 85, 150, 85));
+            }
         }
 
         [Fact]

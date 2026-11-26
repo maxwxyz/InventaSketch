@@ -31,7 +31,7 @@ namespace InventaSketch.Modules.Optics
             Parameters = new[]
             {
                 Shape, Pm.FocalLength(40), Pm.Focal,
-                Pm.Rays(5), Bundle, Pm.Beam, Pm.Label,
+                Pm.Rays(5), Bundle, Pm.Beam, CoatingDef, Pm.Label,
             };
         }
 
@@ -40,6 +40,9 @@ namespace InventaSketch.Modules.Optics
 
         public static readonly ParamDef Bundle = Pm.Choice("bundle", "Incoming bundle", "Einfallendes Bündel", "parallel",
             ("parallel", "Parallel to the axis", "Parallel zur Achse"), ("point", "From a point at 2f", "Von einem Punkt bei 2f"));
+
+        /// <summary>Glass surfaces of the thin lens (two faces of n = 1.5 for the Fresnel losses); ideal by default, set in the inspector.</summary>
+        public static readonly ParamDef CoatingDef = Pm.Coating("ideal");
 
         public override IReadOnlyList<ParamDef> Parameters { get; }
         public override Size2 DefaultSize => new(8, 34);
@@ -106,7 +109,7 @@ namespace InventaSketch.Modules.Optics
         internal override IReadOnlyList<Surface> Surfaces(SketchObject o)
         {
             var hh = o.Size.H / 2;
-            return new[] { new Surface(SurfaceKind.ThinLens, new Vec2(0, -hh), new Vec2(0, hh)) { F = F(o), Centre = Vec2.Zero } };
+            return new[] { new Surface(SurfaceKind.ThinLens, new Vec2(0, -hh), new Vec2(0, hh)) { F = F(o), Centre = Vec2.Zero, Coating = Fresnel.Of(o) } };
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
@@ -378,8 +381,11 @@ namespace InventaSketch.Modules.Optics
             Pm.Num("n", "Refractive index n (d line)", "Brechzahl n (d-Linie)", 1.5, 1.0, 3.0, null, 0.01),
             Pm.Bool("dispersion", "Dispersion (split white light)", "Dispersion (weißes Licht zerlegen)", false),
             Pm.Num("dn", "Dispersion n(F) − n(C)", "Dispersion n(F) − n(C)", 0.03, 0, 0.3, null, 0.005, advanced: true),
+            CoatingDef,
             Pm.Label,
         };
+
+        public static readonly ParamDef CoatingDef = Pm.Coating("ideal");
 
         public override Size2 DefaultSize => new(30, 26);
         public override IReadOnlyList<string> Companions => new[] { Sources.LampId, Sources.LaserId, Detectors.ScreenId, Beams.AxisId };
@@ -411,7 +417,7 @@ namespace InventaSketch.Modules.Optics
                 var a = c[i]; var b = c[(i + 1) % c.Count];
                 var normal = (b - a).Perp.Normalized();
                 if (normal.Dot(Vec2.Lerp(a, b, 0.5) - centroid) < 0) normal = normal * -1;
-                list.Add(new Surface(SurfaceKind.Refract, a, b) { Normal = normal, Index = n, Dispersion = dn });
+                list.Add(new Surface(SurfaceKind.Refract, a, b) { Normal = normal, Index = n, Dispersion = dn, Coating = Fresnel.Of(o) });
             }
             return list;
         }
@@ -432,10 +438,16 @@ namespace InventaSketch.Modules.Optics
             yield return Ox.Toggle(o, "optics.dispersion", new I18nText("Dispersion", "Dispersion"), "dispersion", false, "prism");
             yield return Ox.NumberInput(o, "optics.n", new I18nText("Refractive index", "Brechzahl"), Parameters[1], "prism");
             foreach (var opt in Ox.Choice(o, "optics.prism.shape", new I18nText("Prism shape", "Prismenform"), ShapeDef, "prism")) yield return opt;
+            foreach (var opt in Ox.CoatingChoice(o, CoatingDef, "prism")) yield return opt;
         }
     }
 
-    /// <summary>Beam splitter cube or plate: the diagonal surface (bottom left to top right) transmits and reflects.</summary>
+    /// <summary>
+    /// Beam splitter cube or plate: the diagonal surface (bottom left to top right) transmits and reflects. Schematic by
+    /// default (both rays at full intensity, as drawn before intensities were traced); non-polarising (the share
+    /// <c>reflectance</c> reflected, the rest transmitted, polarisation kept) or polarising (PBS: p transmitted, s reflected;
+    /// drawn with a doubled splitting surface).
+    /// </summary>
     internal sealed class SplitterType : OpticsType
     {
         public const string CubeId = "optics.splitter.cube";
@@ -452,7 +464,21 @@ namespace InventaSketch.Modules.Optics
             _cube = cube;
         }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label };
+        public static readonly ParamDef SplitDef = Pm.Choice("split", "Splitting", "Teilung", "schematic",
+            ("schematic", "Schematic (both rays at full intensity)", "Schematisch (beide Strahlen mit voller Intensität)"),
+            ("nonpolarizing", "Non-polarizing (intensity divided)", "Nicht polarisierend (Intensität geteilt)"),
+            ("polarizing", "Polarizing (p transmitted, s reflected)", "Polarisierend (p durchgelassen, s reflektiert)"));
+
+        public static readonly ParamDef ReflectanceDef = Pm.Num("reflectance", "Reflected share (non-polarizing)", "Reflektierter Anteil (nicht polarisierend)", 0.5, 0.05, 0.95, null, 0.05, advanced: true);
+
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { SplitDef, ReflectanceDef, Pm.Label };
+
+        internal static SplitMode Mode(SketchObject o) => o.Str("split", "schematic") switch
+        {
+            "nonpolarizing" => SplitMode.NonPolarizing,
+            "polarizing" => SplitMode.Polarizing,
+            _ => SplitMode.Schematic,
+        };
         public override Size2 DefaultSize => new(16, 16);
         public override bool PreferUniformScale => true;
         public override IReadOnlyList<string> Companions => new[] { MirrorType.PlaneId, Sources.LaserId, Detectors.ScreenId, Detectors.PhotodiodeId };
@@ -474,15 +500,27 @@ namespace InventaSketch.Modules.Optics
             double w = o.Size.W, h = o.Size.H;
             var list = new List<Primitive>();
             var (a, b) = Diagonal(o);
+            var polarizing = Mode(o) == SplitMode.Polarizing;
             if (_cube)
             {
                 list.Add(Prim.Rect(-w / 2, -h / 2, w, h, Ox.GlassBody) with { Tag = OpticsTags.Body });
-                list.Add(new LinePrim(a, b, Style.ThinLine with { StrokeWidth = 0.35 }) { Tag = OpticsTags.Detail });
+                var line = Style.ThinLine with { StrokeWidth = 0.35 };
+                if (!polarizing) list.Add(new LinePrim(a, b, line) { Tag = OpticsTags.Detail });
+                else
+                {
+                    // Polarising cube: the splitting surface drawn double (a thin film stack), shortened to stay in the box.
+                    var gap = Math.Min(0.45, 0.03 * Math.Min(w, h));
+                    var n = (b - a).Perp.Normalized() * gap;
+                    var u = (b - a).Normalized() * (gap * 1.5);
+                    list.Add(new LinePrim(a + u + n, b - u + n, line with { StrokeWidth = 0.25 }) { Tag = OpticsTags.Detail });
+                    list.Add(new LinePrim(a + u - n, b - u - n, line with { StrokeWidth = 0.25 }) { Tag = OpticsTags.Detail });
+                }
             }
             else
             {
                 var n = (b - a).Perp.Normalized() * (Thickness(o) / 2);
                 list.Add(Prim.Polygon(new[] { a + n, b + n, b - n, a - n }, Ox.GlassBody) with { Tag = OpticsTags.Body });
+                if (polarizing) list.Add(new LinePrim(a, b, Style.ThinLine with { StrokeWidth = 0.2 }) { Tag = OpticsTags.Detail });
             }
             list.AddRange(Ox.Label(o));
             return list;
@@ -491,7 +529,7 @@ namespace InventaSketch.Modules.Optics
         internal override IReadOnlyList<Surface> Surfaces(SketchObject o)
         {
             var (a, b) = Diagonal(o);
-            return new[] { new Surface(SurfaceKind.Split, a, b) };
+            return new[] { new Surface(SurfaceKind.Split, a, b) { Split = Mode(o), Reflectance = Geo.Clamp(o.Num("reflectance", 0.5), 0.05, 0.95) } };
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
@@ -502,7 +540,15 @@ namespace InventaSketch.Modules.Optics
         public override IEnumerable<PartInfo> Parts(SketchObject o, RenderContext ctx)
         {
             yield return new PartInfo(OpticsTags.Body, new I18nText("Body", "Körper"), "shape");
-            if (_cube) yield return new PartInfo(OpticsTags.Detail, new I18nText("Splitting surface", "Teilerfläche"), "line");
+            if (_cube || Mode(o) == SplitMode.Polarizing) yield return new PartInfo(OpticsTags.Detail, new I18nText("Splitting surface", "Teilerfläche"), "line");
+            if (!string.IsNullOrWhiteSpace(o.Str("label", ""))) yield return new PartInfo(OpticsTags.Label, new I18nText("Label", "Beschriftung"), "text");
+        }
+
+        protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
+        {
+            foreach (var opt in Ox.Choice(o, "optics.splitter.split", new I18nText("Splitting", "Teilung"), SplitDef, "splitter")) yield return opt;
+            if (Mode(o) == SplitMode.NonPolarizing)
+                yield return Ox.NumberInput(o, "optics.splitter.reflectance", new I18nText("Reflected share", "Reflektierter Anteil"), ReflectanceDef, "splitter");
         }
     }
 

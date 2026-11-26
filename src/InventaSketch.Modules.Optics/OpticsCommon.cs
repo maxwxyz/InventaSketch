@@ -79,6 +79,8 @@ namespace InventaSketch.Modules.Optics
         public const string AxisAngle = "axis";
         /// <summary>Upper end of a scanner mirror (mirror angle, parameter <c>angle</c>).</summary>
         public const string MirrorAngle = "angle";
+        /// <summary>Upper end of a glass plate (window tilt, parameter <c>tilt</c>).</summary>
+        public const string Tilt = "tilt";
 
         /// <summary>
         /// Unit direction (local) of a line drawn at <paramref name="deg"/> degrees from the element's height direction:
@@ -192,6 +194,15 @@ namespace InventaSketch.Modules.Optics
         public static readonly ParamDef Spread = Num("spread", "Half cone angle (0 = fill the next element)", "Halber Kegelwinkel (0 = nächstes Element ausleuchten)", 0, 0, 80, "°", 1);
         public static readonly ParamDef Focal = Bool("focal", "Focal points F, F′", "Brennpunkte F, F′", false);
         public static ParamDef FocalLength(double def) => Num("f", "Focal length (drawing scale)", "Brennweite (Zeichnungsmaßstab)", def, 1, 5000, "mm", 1);
+
+        /// <summary>
+        /// How the glass faces treat the light: ideal (no losses, the default of the elements that existed before Fresnel
+        /// losses, so their drawings stay unchanged), uncoated (Fresnel equations) or anti-reflection coated (λ/4 layer).
+        /// </summary>
+        public static ParamDef Coating(string def) => Choice("coating", "Glass surfaces", "Glasoberflächen", def,
+            ("ideal", "Ideal (no reflection losses)", "Ideal (ohne Reflexionsverluste)"),
+            ("none", "Uncoated (Fresnel reflection)", "Unvergütet (Fresnel-Reflexion)"),
+            ("ar", "Anti-reflection coated (λ/4 layer)", "Entspiegelt (λ/4-Schicht)"));
     }
 
     /// <summary>Shared colours, styles and drawing helpers.</summary>
@@ -297,6 +308,10 @@ namespace InventaSketch.Modules.Optics
             => ContextAction.WithInput(id, label, IconIds.ForQuantity(def.Unit, def.Key), label, N(o.Num(def.Key, def.Default?.Number ?? 0)),
                 (x, t) => x.WithParam(def.Key, Geo.Clamp(ParseNumber(t), def.Min ?? double.MinValue, def.Max ?? double.MaxValue)), def.Unit)
                 with { Group = group, ParamKeys = new[] { def.Key } };
+
+        /// <summary>The glass surfaces (parameter <c>coating</c>) as a choice in the context bar.</summary>
+        public static IEnumerable<ContextAction> CoatingChoice(SketchObject o, ParamDef def, string group)
+            => Choice(o, "optics.coating", new I18nText("Glass surfaces", "Glasoberflächen"), def, group);
 
         /// <summary>One more / one less ray (integer parameter "rays").</summary>
         public static IEnumerable<ContextAction> RayCount(SketchObject o, ParamDef def)

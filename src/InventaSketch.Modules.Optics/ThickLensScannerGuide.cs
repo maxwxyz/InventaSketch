@@ -53,8 +53,10 @@ namespace InventaSketch.Modules.Optics
         {
             ShapeDef, IndexDef, SagDef,
             Pm.Bool("focal", "Focal points F, F′ and principal planes H, H′", "Brennpunkte F, F′ und Hauptebenen H, H′", false),
-            Pm.Rays(5), Pm.Beam, Pm.Label,
+            Pm.Rays(5), Pm.Beam, CoatingDef, Pm.Label,
         };
+
+        public static readonly ParamDef CoatingDef = Pm.Coating("ideal");
 
         public override Size2 DefaultSize => new(10, 34);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Beams.AxisId, Sources.LaserId, Detectors.ScreenId };
@@ -126,7 +128,7 @@ namespace InventaSketch.Modules.Optics
             var g = Of(o);
             Surface Face(double xc, double xe, double r, Vec2 outward)
             {
-                var proto = new Surface(SurfaceKind.Refract, new Vec2(xe, -g.Hh), new Vec2(xe, g.Hh)) { Normal = outward, Index = g.N, Centre = new Vec2(xc, 0) };
+                var proto = new Surface(SurfaceKind.Refract, new Vec2(xe, -g.Hh), new Vec2(xe, g.Hh)) { Normal = outward, Index = g.N, Centre = new Vec2(xc, 0), Coating = Fresnel.Of(o) };
                 return double.IsInfinity(r) ? proto : proto with { Radius = Math.Abs(r), Sphere = new Vec2(xc + r, 0), Half = g.Hh };
             }
             return new[]
@@ -195,6 +197,7 @@ namespace InventaSketch.Modules.Optics
             yield return Ox.NumberInput(o, "optics.n", new I18nText("Refractive index", "Brechzahl"), IndexDef, "lens");
             // The depth of the curved faces (sag) is set in the inspector: one value pictogram per element means one value.
             foreach (var opt in Ox.Choice(o, "optics.shape", new I18nText("Lens shape", "Linsenform"), ShapeDef, "lens")) yield return opt;
+            foreach (var opt in Ox.CoatingChoice(o, CoatingDef, "lens")) yield return opt;
             foreach (var a in Ox.RayCount(o, Parameters[4])) yield return a;
         }
     }
@@ -338,7 +341,9 @@ namespace InventaSketch.Modules.Optics
 
         public static readonly ParamDef IndexDef = Pm.Num("n", "Refractive index n", "Brechzahl n", 1.5, 1.01, 3.0, null, 0.01);
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { IndexDef, Pm.Label };
+        public static readonly ParamDef CoatingDef = Pm.Coating("ideal");
+
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { IndexDef, CoatingDef, Pm.Label };
         public override Size2 DefaultSize => new(80, 8);
         public override IReadOnlyList<string> Companions => new[] { Sources.LaserId, LensType.ConvergingId, Detectors.PhotodiodeId, Detectors.ScreenId };
 
@@ -357,7 +362,8 @@ namespace InventaSketch.Modules.Optics
         {
             double hw = o.Size.W / 2, hh = o.Size.H / 2;
             var n = Geo.Clamp(o.Num("n", 1.5), 1.01, 3.0);
-            Surface Face(Vec2 a, Vec2 b, Vec2 outward) => new(SurfaceKind.Refract, a, b) { Normal = outward, Index = n };
+            var coating = Fresnel.Of(o);
+            Surface Face(Vec2 a, Vec2 b, Vec2 outward) => new(SurfaceKind.Refract, a, b) { Normal = outward, Index = n, Coating = coating };
             return new[]
             {
                 Face(new Vec2(-hw, -hh), new Vec2(hw, -hh), new Vec2(0, -1)),
@@ -384,6 +390,7 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             yield return Ox.NumberInput(o, "optics.n", new I18nText("Refractive index", "Brechzahl"), IndexDef, "guide");
+            foreach (var opt in Ox.CoatingChoice(o, CoatingDef, "guide")) yield return opt;
         }
     }
 }

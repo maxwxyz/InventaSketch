@@ -4,16 +4,18 @@ Bibliothek: `src/InventaSketch.Modules.Optics` · Tests: `tests/InventaSketch.Mo
 Englische Fassung: [../../en/modules/optics.md](../../en/modules/optics.md)
 
 Das Modul liefert optische Elemente für technische Abbildungen und Lehrfolien – Linsen (dünn und dick), Spiegel (auch
-einen Galvo-Scannerspiegel), Prismen, Strahlteiler, Blenden, Gitter, Filter, Polarisatoren, Verzögerungsplatten, einen
-Lichtleitstab, einen Lichtwellenleiter, Lichtquellen, Detektoren (auch ein Spektrometer), einen Schirm, einen
-Gegenstandspfeil und die optische Achse – sowie **Lichtstrahlen, die live durch die Elemente verfolgt werden**. Alle
-Symbole sind eigenständig gezeichnet; es werden keine genormten Symbolgrafiken oder Tabellen übernommen und keine
-Normkonformität behauptet.
+einen Galvo-Scannerspiegel), Prismen, Strahlteiler (schematisch, nicht polarisierend und polarisierend), Blenden, Gitter,
+Filter, Polarisatoren, Verzögerungsplatten, eine Glasplatte (auch als Brewster-Fenster), einen Lichtleitstab, einen
+Lichtwellenleiter, Lichtquellen, Detektoren (auch ein Spektrometer), einen Schirm, einen Gegenstandspfeil und die optische
+Achse – sowie **Lichtstrahlen, die live durch die Elemente verfolgt werden** und dabei ihre Intensität und Polarisation
+mitführen. Alle Symbole sind eigenständig gezeichnet; es werden keine genormten Symbolgrafiken oder Tabellen übernommen
+und keine Normkonformität behauptet.
 
 Es ist ein **Skizzen**-Modul: Die Strahlverfolgung ist zweidimensional und verwendet ideale (paraxiale) dünne Linsen und
-gekrümmte Spiegel; nur die dicke Linse, Prismen und der Lichtleitstab werden Fläche für Fläche mit dem Brechungsgesetz
-verfolgt. Optische Systeme werden nicht ausgelegt oder optimiert (keine Abbildungsfehleranalyse, Radiometrie oder
-Fresnel-Verluste).
+gekrümmte Spiegel; nur die dicke Linse, Prismen, die Glasplatte und der Lichtleitstab werden Fläche für Fläche mit dem
+Brechungsgesetz verfolgt. Fresnel-Reflexionsverluste und die durch sie entstehende Polarisation sind je Element wählbar
+(Abschnitt „Fresnel-Verluste und Vergütung“). Optische Systeme werden nicht ausgelegt oder optimiert (keine
+Abbildungsfehleranalyse, keine Radiometrie in absoluten Einheiten).
 
 ## Konventionen
 
@@ -33,12 +35,12 @@ Fresnel-Verluste).
 
 | Typ-Id | Element | Parameter (alle optional) |
 |---|---|---|
-| `optics.lens.converging` | Sammellinse; Ansichten `shape` (Schnitt) und `symbol` (Doppelpfeil, Spitzen nach außen) | `shape` bikonvex/plankonvex/Meniskus, `f` (40), `focal` (Marken F, F′), `rays`, `bundle`, `beam`, `label` |
+| `optics.lens.converging` | Sammellinse; Ansichten `shape` (Schnitt) und `symbol` (Doppelpfeil, Spitzen nach außen) | `shape` bikonvex/plankonvex/Meniskus, `f` (40), `focal` (Marken F, F′), `rays`, `bundle`, `beam`, `coating` (ideal, nur im Inspektor), `label` |
 | `optics.lens.diverging` | Zerstreuungslinse; Ansichten `shape` und `symbol` (Spitzen nach innen) | `shape` bikonkav/plankonkav/Meniskus, wie oben |
 | `optics.mirror.plane` | Planspiegel mit schraffierter Rückseite | `label` |
 | `optics.mirror.concave` / `optics.mirror.convex` | Gekrümmte Spiegel | `f` (40), `focal` (F und Krümmungsmittelpunkt C/M), `label` |
-| `optics.prism.triangle` | Prisma, gleichseitig (ablenkend) oder rechtwinklig (umlenkend) | `shape`, `n` (1,5, d-Linie), `dispersion`, `dn` = n(F) − n(C) (0,03), `label` |
-| `optics.splitter.cube` / `optics.splitter.plate` | Strahlteiler: die Diagonale (links unten nach rechts oben) lässt durch und reflektiert | `label` |
+| `optics.prism.triangle` | Prisma, gleichseitig (ablenkend) oder rechtwinklig (umlenkend) | `shape`, `n` (1,5, d-Linie), `dispersion`, `dn` = n(F) − n(C) (0,03), `coating` (ideal), `label` |
+| `optics.splitter.cube` / `optics.splitter.plate` | Strahlteiler: die Diagonale (links unten nach rechts oben) lässt durch und reflektiert; der polarisierende zeichnet seine Teilerfläche doppelt (Würfel) bzw. mit Mittellinie (Platte) | `split` schematisch/nicht polarisierend/polarisierend (schematisch), `reflectance` (reflektierter Anteil, nicht polarisierend, 0,5), `label` |
 | `optics.stop.aperture` | Blende / Spalt (zwei Backen) | `opening` (Anteil der Höhe, 0,35), `label` |
 | `optics.grating.transmission` | Transmissionsgitter (Platte mit Furchen) | `angle` (Winkel 1. Ordnung bei 550 nm, 20°), `orders` (1–3), `label` |
 | `optics.filter.plate` | Filterplatte, neutral oder farbig | `tint` neutral/rot/grün/blau/gelb, `label` |
@@ -51,19 +53,21 @@ Fresnel-Verluste).
 | `optics.detector.eye` | Auge (Schnitt): Hornhaut, Iris, Linse, Netzhaut, Sehnerv | `label` |
 | `optics.screen.plain` | Schirm | `label` |
 | `optics.object.arrow` | Gegenstandspfeil auf der Achse (Abbildungsfiguren) | `bundle` Konstruktionsstrahlen/Fächer, `rays`, `image` aus/Bild/Konstruktion (Bild), `names` (false), `label` |
-| `optics.ray` | Lichtstrahl (Punktobjekt, Seitenkoordinaten) | `trace` (true), `arrows` Mitte/Ende/keine, `virtual` (true), `tail` (0 = automatisch) |
+| `optics.ray` | Lichtstrahl (Punktobjekt, Seitenkoordinaten) | `trace` (true), `arrows` Mitte/Ende/keine, `virtual` (true), `tail` (0 = automatisch), `showValues` (Intensität und Polarisation an den Strahlenden, false) |
 | `optics.axis.line` | Optische Achse (Strichpunktlinie, Punktobjekt) | `label` |
-| `optics.lens.thick` | Dicke Linse: zwei Kugelflächen, an beiden verfolgt (Boxbreite = Dicke, Boxhöhe = Apertur) | `shape` bikonvex/plankonvex/bikonkav/plankonkav, `n` (1,5), `sag` (Wölbungstiefe als Anteil der Breite, 0,35), `focal` (F, F′, Hauptebenen H, H′), `rays`, `beam`, `label` |
+| `optics.lens.thick` | Dicke Linse: zwei Kugelflächen, an beiden verfolgt (Boxbreite = Dicke, Boxhöhe = Apertur) | `shape` bikonvex/plankonvex/bikonkav/plankonkav, `n` (1,5), `sag` (Wölbungstiefe als Anteil der Breite, 0,35), `focal` (F, F′, Hauptebenen H, H′), `rays`, `beam`, `coating` (ideal), `label` |
 | `optics.mirror.scanner` | Galvo-Scannerspiegel: Planspiegel auf einer Drehachse, in seiner Box gedreht | `angle` (Spiegelwinkel, 45°; 0° = aufrecht wie ein Planspiegel), `scan` (mechanischer Scanbereich ±, 10°), `fan` (Endlagen und Strahlenfächer, false), `label` |
 | `optics.polarizer` | Linearpolarisator: Platte mit der Durchlassrichtung als Doppelpfeil | `angle` (Durchlassrichtung, 0°), `label` |
 | `optics.waveplate` | Verzögerungsplatte: Platte mit schneller Achse (gestrichelter Doppelpfeil) und „λ/4“/„λ/2“ | `retardance` Viertel/Halb (Viertel), `angle` (schnelle Achse, 45°), `label` |
-| `optics.lightguide` | Lichtleitstab (rechteckiger Glasstab, Totalreflexion) | `n` (1,5), `label` |
+| `optics.lightguide` | Lichtleitstab (rechteckiger Glasstab, Totalreflexion) | `n` (1,5), `coating` (ideal), `label` |
+| `optics.window.plate` | Glasplatte (Fenster): planparallele Platte, in ihrer Box geneigt; die Kanten halten Licht auf | `n` (1,5), `tilt` (Einfallswinkel entlang der Achse, 0°, −80° … 80°), `brewster` (Neigung = arctan n, false), `coating` (standardmäßig **unvergütet**), `label` |
 | `optics.detector.spectrometer` | Spektrometer: Gehäuse mit Eintrittsspalt, Reflexionsgitter, Detektorzeile und darin gezeichnetem zerlegtem Licht | `label` |
 
-Die 44 Bibliothekselemente umfassen die Linsenformen und -symbole, dicke bikonvexe und plankonvexe Linse, drei Spiegel,
-den Scannerspiegel mit und ohne Scanbereich, ablenkendes, Dispersions- und Umlenkprisma, beide Strahlteiler, Blende und
-Spalt, Gitter, Neutral- und Rotfilter, Lichtleitstab, Linearpolarisator, Viertel- und Halbwellenplatte,
-Lichtwellenleiter, Lampe (Kegel und parallel), LED, roten und grünen Laser, Fotodiode, Kamera, Auge, Schirm,
+Die 48 Bibliothekselemente umfassen die Linsenformen und -symbole, dicke bikonvexe und plankonvexe Linse, drei Spiegel,
+den Scannerspiegel mit und ohne Scanbereich, ablenkendes, Dispersions- und Umlenkprisma, beide Strahlteiler
+(schematisch), den 50:50-Würfel (nicht polarisierend) und den Polarisationsstrahlteilerwürfel (PBS), Blende und Spalt,
+Gitter, Neutral- und Rotfilter, Lichtleitstab, Linearpolarisator, Viertel- und Halbwellenplatte, Glasplatte und
+Brewster-Fenster, Lichtwellenleiter, Lampe (Kegel und parallel), LED, roten und grünen Laser, Fotodiode, Kamera, Auge, Schirm,
 Spektrometer, verfolgten und frei gezeichneten Lichtstrahl, optische Achse und Gegenstandspfeil.
 
 ## Lichtstrahlen und Strahlverfolgung
@@ -103,7 +107,12 @@ angedockte Startpunkt folgt seinem Emitter über die normale Anbindung. Nichts m
 - Gekrümmte Spiegel: ideal, als dünner Spiegel in der Scheitelebene mit Brennweite f (C bei 2f); der Strahl knickt auf der
   gezeichneten Fläche und wird so ausgerichtet, dass sich parallele Strahlen genau in F treffen. Wölbspiegel zeichnen
   virtuelle Strahlen.
-- Planspiegel, Strahlteiler: Reflexionsgesetz, exakt. Die Spiegelrückseite hält Licht auf.
+- Planspiegel, Strahlteiler: Reflexionsgesetz, exakt. Die Spiegelrückseite hält Licht auf. Spiegel sind ideal (alles Licht
+  reflektiert, Polarisation erhalten). Strahlteiler (`split`): **schematisch** (Standard, wie bisher: durchgelassener und
+  reflektierter Strahl behalten beide die volle Intensität), **nicht polarisierend** (der Anteil `reflectance` wird
+  reflektiert, der Rest durchgelassen, beide mit der einfallenden Polarisation) oder **polarisierend** (idealer PBS: der
+  p-Anteil wird durchgelassen, p-polarisiert, der s-Anteil reflektiert, s-polarisiert; unpolarisiertes Licht wird
+  halbiert). Ein Anteil unter 0,5 % wird nicht gezeichnet.
 - Prismen: Brechungsgesetz (Snellius) an jeder Fläche, Totalreflexion, wo sie auftritt. Mit Dispersion zerfällt weißes
   Licht beim Eintritt in fünf Farben (656, 589, 546, 486, 436 nm), n(λ) aus einer zweigliedrigen Cauchy-Anpassung durch
   `n` und `dn`. Das Element „Dispersionsprisma“ verwendet `dn` = 0,05 (starke, flintartige Dispersion, der Sichtbarkeit
@@ -133,14 +142,56 @@ angedockte Startpunkt folgt seinem Emitter über die normale Anbindung. Nichts m
   polarisierten Lichts durch (Gesetz von Malus) und polarisiert entlang seiner Achse; bleiben weniger als 0,5 % (gekreuzte
   Polarisatoren), endet der Strahl dort. Eine Verzögerungsplatte verzögert die Komponente entlang ihrer langsamen Achse um
   π/2 (λ/4) oder π (λ/2): Eine Halbwellenplatte dreht lineare Polarisation (θ → 2·Achse − θ), eine Viertelwellenplatte
-  unter 45° macht sie zirkular (jeder Analysator lässt dann die Hälfte durch). Spiegel, Strahlteiler, Brechung und Gitter
-  erhalten Polarisation und Intensität (keine Fresnel-Koeffizienten, Strahlteiler halbieren die Intensität nicht).
-  Schwächeres Licht wird transparenter gezeichnet (Deckkraft = relative Intensität, mindestens 0,2).
+  unter 45° macht sie zirkular (jeder Analysator lässt dann die Hälfte durch). Der Zustand ist eine Kohärenzmatrix, Licht
+  kann also auch **teilweise polarisiert** sein (hinter einem Brewster-Fenster). Spiegel und Gitter erhalten Polarisation
+  und Intensität; Strahlteiler und Glasflächen ändern sie wie oben und unten beschrieben. Schwächeres Licht wird
+  transparenter gezeichnet (Deckkraft = relative Intensität, mindestens 0,2); Licht mit voller Intensität wird genau wie
+  bisher gezeichnet.
 - Das Spektrometer ist für die Strahlverfolgung ein Detektor: Strahlen enden an seinem Gehäuse (an der Spaltwand); Gitter
   und Spektrum im Inneren sind schematisch gezeichnet, nicht verfolgt.
 - Nach dem letzten Element läuft ein Strahl `tail` mm weiter; automatisch (0): noch einmal so lang wie der bisherige Weg
   (30–400 mm), und die offenen Enden eines Bündels werden quer dazu auf eine Linie gebracht. Ein freier Strahl, der nichts
   trifft, endet an seinem zweiten Punkt.
+- **Werte an den Strahlenden** (`showValues`, Schalter **Werte an Strahlenden**, standardmäßig aus):
+  Jeder verfolgte Strahl (nicht die Fächerstrahlen) schreibt an sein Ende seine relative Intensität und Polarisation
+  (Teil `values`, Schrift 2,5 mm, über dem Ende; rechts daneben bei Strahlen, die nach oben oder unten laufen):
+  „50 % (linear 0°)“, „25 % (zirkular)“, „86 % (16 % polarisiert)“ (Polarisationsgrad), „100 %“ bei unpolarisiertem
+  Licht; englisch „polarised“, „circular“, „elliptical“, Dezimalpunkt. Ein Strahl, der auf einem Detektor endet, zeigt
+  so, was der Detektor empfängt.
+
+### Fresnel-Verluste und Vergütung
+
+Glasflächen (Prisma, dicke Linse, Lichtleitstab, Glasplatte) und dünne Linsen haben den Parameter `coating`
+(**Glasoberflächen**, eine Auswahl in der Kontextleiste, außer bei dünnen Linsen, wo er im Inspektor eingestellt wird):
+
+| Wert | Bedeutung |
+|---|---|
+| `ideal` | Ideale Flächen: keine Reflexionsverluste und keine Änderung der Polarisation, auch nicht bei Totalreflexion. **Standard aller bereits vorhandenen Elemente**, damit bestehende Zeichnungen unverändert dargestellt werden. |
+| `none` | Unvergütetes Glas: die Fresnel-Gleichungen für s und p an jeder Fläche (Standard der Glasplatte). |
+| `ar` | Entspiegelt: eine λ/4-Schicht der Brechzahl √n, ausgelegt für 550 nm, als dünne Schicht verfolgt (keine Reflexion bei 550 nm und senkrechtem Einfall, etwas bei anderen Wellenlängen und Winkeln); Totalreflexion wie unvergütet. |
+
+Die Physik (`Fresnel`, alle Winkel gegen die Flächennormale, verlustfreie Medien n1 → n2):
+
+- Reflexionsgrade R_s = r_s², R_p = r_p² mit r_s = (n1·cos θi − n2·cos θt) / (n1·cos θi + n2·cos θt) und
+  r_p = (n1·cos θt − n2·cos θi) / (n1·cos θt + n2·cos θi); Transmissionsgrade T = 1 − R. Unvergütetes Glas n = 1,5
+  reflektiert bei senkrechtem Einfall 4 % je Fläche (eine dünne Linse lässt auf der Achse daher 0,96² = 92,2 % durch),
+  bei 45° 9,2 % (s) und 0,85 % (p).
+- Brewster-Winkel tan θB = n2 / n1 (56,31° bei n = 1,5): p wird gar nicht reflektiert, s etwa 14,8 % je Fläche. Eine auf
+  den Brewster-Winkel geneigte Platte (`brewster`, Bibliothekselement **Brewster-Fenster**) lässt p-polarisiertes Licht
+  verlustfrei durch; innen trifft das Licht die zweite Fläche unter dem inneren Brewster-Winkel 90° − θB, auch diese
+  reflektiert also kein p. Unpolarisiertes Licht verlässt sie teilweise p-polarisiert: Intensität (1 + T_s²)/2 = 86 % mit
+  dem Polarisationsgrad (1 − T_s²)/(1 + T_s²) = 16 %; ein Polarisator dahinter lässt entlang p 50 % und entlang s 36,3 %
+  durch.
+- Totalreflexion jenseits des Grenzwinkels sin θc = n2 / n1 (41,8° bei n = 1,5): Alles Licht wird reflektiert, mit einer
+  Phasendifferenz zwischen p und s (`Fresnel.ReflectionPhase`). Winkel werden im eigenen Bezugssystem jedes Strahls
+  gemessen, in dem ein idealer Spiegel nichts ändert; darin verschiebt eine Totalreflexion unter 45° in n = 1,5 p gegen s
+  um 180° − 36,87° (Lehrbuch: tan(Δ/2) = cos θ·√(sin²θ − (n2/n1)²) / sin²θ, dazu die 180° des Bezugssystems), und zwei
+  Totalreflexionen unter 54,6° in n = 1,51 ergeben zusammen eine Viertelwelle (Fresnel-Rhombus). Ein Umlenkprisma mit
+  unvergüteten Flächen macht linear unter 45° polarisiertes Licht daher elliptisch.
+- Eine dünne Linse gilt als zwei ebene Flächen aus Glas n = 1,5 quer zu ihrer Achse, getroffen unter dem Winkel des
+  Strahls zur Achse.
+- Teilreflexionen an Glasflächen schwächen den durchgelassenen Strahl; sie werden nicht als eigene Strahlen verfolgt
+  (keine Geisterbilder). Licht, das (praktisch) verschwunden ist, unter 0,5 %, beendet den Strahl.
 
 ## Bildkonstruktion
 
@@ -191,6 +242,7 @@ bedienen sie allgemein). Ein Zug schreibt nur den Parameter; Kasten (`Size`) und
 | Dicke Linse mit angedocktem eigenem Bündel | `beam` | Rand des Bündels an seinem Start | quer zur Achse | `beam`, ganze mm (die Brennweite folgt aus Form, Box und `n` und hat daher keinen Griff) |
 | Scannerspiegel | `angle` | oberes Ende des Spiegels | frei, um die Drehachse | `angle` = Richtung der Spiegellinie, ganze Grad, gefaltet auf −90° … 90° |
 | Polarisator, Verzögerungsplatte | `axis` | Ende des Achsen-Doppelpfeils | frei, um die Mitte | `angle` = Richtung der Achsenlinie, ganze Grad, −90° … 90° |
+| Glasplatte (Fenster) | `tilt` | oberes Ende der Platte | frei, um die Mitte | `tilt` = Richtung der Platte, ganze Grad, −80° … 80°; hebt `brewster` auf |
 | Freier verfolgter Strahl | `dir` | auf dem gezeichneten Strahl, halbwegs zum zweiten Punkt bzw. zum ersten getroffenen Element | frei, um den Start (Bogen) | zweiter Punkt um den ersten gedreht, ganze Grad (im Uhrzeigersinn am Bildschirm), Länge bleibt |
 
 Jeder Griff trägt eine zweisprachige Beschriftung mit seinem aktuellen Wert („Brennweite f: 40 mm“, „Halber Kegelwinkel:
@@ -216,8 +268,8 @@ eingestellt.
 ## Teile und Bereinigen
 
 Teileschlüssel (`PartLooks`): `body`, `focal`, `hatch`, `detail`, `label` an Elementen; `image`, `construction` und
-`names` am Gegenstandspfeil (aufgeführt, solange gezeichnet); `ray` (alle Strahlen, einzeln `ray.<i>`) und `virtual` an
-Strahlen; `axis` an der optischen Achse. Sie lassen sich einzeln umgestalten oder ausblenden.
+`names` am Gegenstandspfeil (aufgeführt, solange gezeichnet); `ray` (alle Strahlen, einzeln `ray.<i>`), `virtual` und
+`values` (die Werte an den Enden, solange gezeigt) an Strahlen; `axis` an der optischen Achse. Sie lassen sich einzeln umgestalten oder ausblenden.
 
 Folien bereinigen (`Sanitize`): Optik-Elemente enthalten keine schützenswerten Werte; der allgemeine Durchgang ersetzt
 Freitext-Beschriftungen (Kennzeichen wie `L1` bleiben). Brennweiten, Brechzahlen und Positionen bleiben erhalten.
@@ -255,9 +307,12 @@ werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen we
 
 ## Grenzen und nächste Schritte
 
-- Zweidimensional, sequenziell; dünne Linsen und gekrümmte Spiegel sind paraxiale Ideale. Keine Interferenz, keine
-  Fresnel-Reflexions-/Transmissionskoeffizienten, keine Polarisationsänderung bei Reflexion oder Brechung
-  (Brewster-Winkel, Phasensprung bei Totalreflexion), keine polarisierenden Strahlteiler.
+- Zweidimensional, sequenziell; dünne Linsen und gekrümmte Spiegel sind paraxiale Ideale. Keine Interferenz.
+  Fresnel-Verluste nur, wo `coating` nicht ideal ist; Teilreflexionen an Glasflächen werden nicht als Strahlen gezeichnet
+  (keine Geisterbilder). Spiegel sind ideal (keine Metallreflexion oder -phase), Strahlteiler ideal (kein
+  Auslöschungsverhältnis, keine Absorption). Die Entspiegelung ist eine idealisierte Einzelschicht (Brechzahl √n).
+- Die Strahlwerte sind eine Beschriftung an den Strahlenden; Optikelemente haben keine Wertekarte (Detektoren melden die
+  empfangene Intensität noch nicht als Wert).
 - Die Bildkonstruktion des Gegenstandspfeils verwendet nur dünne Linsen und gekrümmte Spiegel (nicht die dicke Linse; ihre
   verfolgten Strahlen durchlaufen sie dagegen). Die dicke Linse hat keinen Brennweitengriff.
 - Das Spektrometer verfolgt das Licht in seinem Inneren nicht; sein Spektrum ist eine schematische Zeichnung.
@@ -267,4 +322,4 @@ werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen we
 - Die Bildkonstruktion verwendet nur die erste Linse bzw. den ersten gekrümmten Spiegel auf der Achse des Pfeils (kein Bild
   eines Bildes durch ein zweites Element); das verfolgte Strahlenbündel durchläuft dagegen alle Elemente.
 - Mögliche nächste Schritte: Bilder durch mehrere Elemente, Abbildung durch die dicke Linse für den Gegenstandspfeil,
-  polarisierende Strahlteiler, Vorlagen für Michelson/Mach-Zehnder.
+  empfangene Intensität als Detektorwert, Geisterreflexe, Vorlagen für Michelson/Mach-Zehnder.

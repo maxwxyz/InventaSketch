@@ -107,6 +107,7 @@ namespace InventaSketch.Modules.Optics
             Arrows,
             Pm.Bool("virtual", "Virtual rays (dashed extensions)", "Virtuelle Strahlen (gestrichelte Verlängerungen)", true),
             Pm.Num("tail", "Length after the last element (0 = automatic)", "Länge nach dem letzten Element (0 = automatisch)", 0, 0, 5000, "mm", 5),
+            ValueLabels.ShowValues,
         };
 
         public override GeometryKind Geometry => GeometryKind.Points;
@@ -165,8 +166,59 @@ namespace InventaSketch.Modules.Optics
                 list.AddRange(Draw(runs, arrows, tag, baseColour, path.Fan));
                 foreach (var (a, b, lambda) in path.Virtual)
                     list.Add(new LinePrim(a, b, new Style { Role = LineRole.Hidden, StrokeWidth = 0.25, Stroke = Spectrum.Color(lambda) ?? baseColour }) { Tag = OpticsTags.Virtual + "." + i.ToString(CultureInfo.InvariantCulture) });
+                if (ValueLabels.Shows(o) && !path.Fan) list.Add(EndLabel(path, ctx.Lang));
             }
             return list;
+        }
+
+        /// <summary>
+        /// The values label at the end of a traced ray: its relative intensity and polarisation there ("46 % (linear 0°)"),
+        /// above the last point (right of it for a ray running up or down).
+        /// </summary>
+        private static TextPrim EndLabel(TracedPath path, Lang lang)
+        {
+            var k = path.Intensities.Count - 1;
+            var end = path.Last;
+            var d = (end - path.Points[path.Points.Count - 2]).Normalized();
+            var text = Readout(path.Intensities[k], path.Polarizations[k], lang);
+            TextStyle style;
+            Vec2 at;
+            if (Math.Abs(d.X) >= 0.3)
+            {
+                // A ray running sideways: the text above its end, ending (or starting) there.
+                at = end + new Vec2(0, -0.8);
+                style = new TextStyle { Size = ValueLabels.TextSize, Anchor = d.X > 0 ? TextAnchor.End : TextAnchor.Start, Baseline = TextBaseline.Bottom };
+            }
+            else
+            {
+                // A ray running up or down: the text to the right of its end.
+                at = end + new Vec2(0.8, 0);
+                style = new TextStyle { Size = ValueLabels.TextSize, Anchor = TextAnchor.Start, Baseline = TextBaseline.Middle };
+            }
+            return new TextPrim(at, text, style) { Tag = ValueLabels.Part };
+        }
+
+        /// <summary>"46 %", "50 % (linear 0°)", "25 % (circular)", "86 % (16 % polarised)" in the language of the page.</summary>
+        internal static string Readout(double intensity, Coherency? pol, Lang lang)
+        {
+            var de = lang == Lang.De;
+            var pct = 100 * Geo.Clamp(intensity, 0, 1);
+            var text = Percent(pct, de);
+            if (pol is not Coherency c || c.Degree < 0.005) return text;
+            if (c.Degree < 0.995) return text + (de ? " (" + Percent(100 * c.Degree, de) + " polarisiert)" : " (" + Percent(100 * c.Degree, de) + " polarised)");
+            var circ = Math.Abs(c.Circularity);
+            if (circ > 0.995) return text + (de ? " (zirkular)" : " (circular)");
+            if (circ > 0.02) return text + (de ? " (elliptisch)" : " (elliptical)");
+            var angle = Math.Round(c.Orientation, MidpointRounding.AwayFromZero);
+            if (angle <= -90) angle += 180;
+            if (angle == 0) angle = 0;   // no "-0"
+            return text + " (linear " + angle.ToString("0", CultureInfo.InvariantCulture) + "°)";
+        }
+
+        private static string Percent(double pct, bool de)
+        {
+            var s = Math.Round(pct, pct < 9.95 ? 1 : 0, MidpointRounding.AwayFromZero).ToString(pct < 9.95 ? "0.0" : "0", CultureInfo.InvariantCulture);
+            return (de ? s.Replace('.', ',') : s) + " %";
         }
 
         /// <summary>Intensity rounded to a drawing level (steps of 0.01), so tiny numerical differences do not split a ray.</summary>
@@ -258,6 +310,8 @@ namespace InventaSketch.Modules.Optics
             yield return new PartInfo(OpticsTags.Ray, new I18nText("Rays", "Strahlen"), "line");
             if (o.Flag("trace", true) && o.Flag("virtual", true))
                 yield return new PartInfo(OpticsTags.Virtual, new I18nText("Virtual rays", "Virtuelle Strahlen"), "line");
+            if (o.Flag("trace", true) && ValueLabels.Shows(o))
+                yield return new PartInfo(ValueLabels.Part, new I18nText("Intensity and polarisation", "Intensität und Polarisation"), "label");
         }
 
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
@@ -266,6 +320,8 @@ namespace InventaSketch.Modules.Optics
             foreach (var opt in Ox.Choice(o, "optics.ray.arrows", new I18nText("Arrowheads", "Pfeilspitzen"), Arrows, "ray")) yield return opt;
             yield return Ox.Toggle(o, "optics.ray.virtual", new I18nText("Virtual rays", "Virtuelle Strahlen"), "virtual", true, "ray");
             yield return Ox.NumberInput(o, "optics.ray.tail", new I18nText("Length after the last element", "Länge nach dem letzten Element"), Parameters[3], "ray");
+            if (o.Flag("trace", true))
+                yield return Ox.Toggle(o, "optics.ray.values", new I18nText("Values at ray ends", "Werte an Strahlenden"), ValueLabels.ShowParam, false, "ray");
         }
     }
 
