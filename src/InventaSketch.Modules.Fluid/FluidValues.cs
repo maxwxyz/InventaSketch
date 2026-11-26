@@ -15,7 +15,8 @@ namespace InventaSketch.Modules.Fluid
     /// elements carry it in a net; class <c>p</c> (pressure) and <c>pmax</c> (the relief setting) are shared by the whole net.
     /// Directional, non-return and flow valves, couplings, inline conditioning parts and flow meters pass the classes from
     /// port to port (a throttle passes the flow, not the pressure; a reducing valve passes the flow and sets the outlet
-    /// pressure). Losses in lines and valves are not modelled.
+    /// pressure). Pressure drops of lines and valves stay values of their own; a cylinder sums those of its supply path
+    /// (<see cref="FluidCircuits"/>, round 6).
     /// </para>
     /// </summary>
     internal static class FluidValues
@@ -41,6 +42,11 @@ namespace InventaSketch.Modules.Fluid
             public Func<SketchObject, IEnumerable<Relation>>? Local { get; init; }
             /// <summary>Links to the lines docked on the element (the throttle reads flow and pressures of its inlet and outlet lines).</summary>
             public Func<SketchObject, RenderContext, IEnumerable<BoundRelation>>? Docked { get; init; }
+            /// <summary>
+            /// Parameters that make the element's (or line's) pressure drop <c>dp</c> count in a cylinder's supply path
+            /// (<see cref="FluidCircuits"/>): the drop counts when one of them is entered (round 6).
+            /// </summary>
+            public IReadOnlyList<string> LossParams { get; init; } = Array.Empty<string>();
         }
 
         // ------------------------------------------------------------------ parameters and variables
@@ -263,6 +269,28 @@ namespace InventaSketch.Modules.Fluid
                 .Solve("dp", "{lambda}·{L}/{di}·{rho}·{v}²/2", v => v("lambda") * v("L") / v("di") * v("rho") * v("v") * v("v") / 2)
                 .Solve("L", "2·{dp}·{di}/({lambda}·{rho}·{v}²)", v => 2 * v("dp") * v("di") / (v("lambda") * v("rho") * v("v") * v("v")));
 
+        /// <summary>Single loss (bend, tee, valve) Δp = ζ·ρ·v²/2 [S27].</summary>
+        private static Relation ZetaLoss(string dp) =>
+            new Relation("fluid.loss.zeta", T("Single loss (loss coefficient ζ)", "Einzelwiderstand (Widerstandsbeiwert ζ)"), "{" + dp + "} = {zeta}·{rho}·{v}²/2", dp, "zeta", "rho", "v") { Source = "S27" }
+                .Solve(dp, "{zeta}·{rho}·{v}²/2", v => v("zeta") * v("rho") * v("v") * v("v") / 2)
+                .Solve("zeta", "2·{" + dp + "}/({rho}·{v}²)", v => 2 * v(dp) / (v("rho") * v("v") * v("v")));
+
+        private static readonly Relation ElementZeta = ZetaLoss("dp");
+        private static readonly Relation LineZeta = ZetaLoss("dpz");
+
+        /// <summary>Valve datasheet point: Δp = Δp_N·(Q/Q_N)² (turbulent flow through the valve) [S26].</summary>
+        private static readonly Relation Datasheet =
+            new Relation("fluid.loss.datasheet", T("Pressure drop from the datasheet point", "Druckverlust aus dem Datenblattpunkt"), "{dp} = {dpN}·({Q}/{QN})²", "dp", "dpN", "Q", "QN")
+            { Source = "S26", Validity = T("turbulent flow through the valve, same fluid as on the datasheet", "turbulente Durchströmung, gleiches Fluid wie im Datenblatt") }
+                .Solve("dp", "{dpN}·({Q}/{QN})²", v => v("dpN") * Math.Pow(v("Q") / v("QN"), 2))
+                .Solve("Q", "{QN}·√({dp}/{dpN})", v => v("QN") * Math.Sqrt(v("dp") / v("dpN")))
+                .Solve("dpN", "{dp}·({QN}/{Q})²", v => v("dp") * Math.Pow(v("QN") / v("Q"), 2));
+
+        /// <summary>Pressure available at the cylinder p_av = p_supply − ΣΔp of the supply path [S26].</summary>
+        internal static readonly Relation Available =
+            new Relation("fluid.circuit.available", T("Pressure available at the cylinder", "Am Zylinder verfügbarer Druck"), "{pav} = {ps} − {dpS}", "pav", "ps", "dpS") { Source = "S26" }
+                .Solve("pav", "{ps} − {dpS}", v => v("ps") - v("dpS"));
+
         /// <summary>Orifice A₀ = π·d₀²/4 and Q = α·A₀·√(2Δp/ρ) [S26].</summary>
         private static readonly Relation OrificeArea = CircleArea("fluid.orifice.area", "A0", "d0", T("Orifice cross-section", "Drosselquerschnitt"));
 
@@ -343,6 +371,7 @@ namespace InventaSketch.Modules.Fluid
             "fluid.flowmeter" => FlowMeter(),
             "fluid.accumulator" => Accumulator(),
             "fluid.valve.throttle" => Throttle(),
+            DirectionalValves.TypeId or "fluid.valve.check" or "fluid.valve.pilotcheck" or "fluid.filter" or "fluid.cooler" or "fluid.heater" => InlineLoss(),
             PowerUnitId => PowerUnit(),
             FluidLineType.TypeId => Line(),
             _ => Spec.Empty,
@@ -402,9 +431,9 @@ namespace InventaSketch.Modules.Fluid
                 EtaHm(),
                 Force("Freq", T("Required force", "Erforderliche Kraft"), "F_req", "forceReq", VarRelevance.Engineer) with { Symbol = T("F_req", "F_erf") },
                 Pmax(),
-            }.Concat(AirVars()).ToArray();
+            }.Concat(AirVars()).Concat(SupplyVars()).ToArray();
             var rels = new[] { Annulus, AreaRatio, ForceExt, ForceRet, SpeedExt, SpeedRet, TimeExt, TimeRet, Swept("fluid.cyl.swept", "A1", "A2"), AirPerCycle, AirFlow };
-            return new Spec(vars, rels, Params(vars), new[] { CylinderForce("A1") })
+            return new Spec(vars, rels, Params(vars), new[] { CylinderForce("A1"), SupplyLosses(), ForceAfterLosses("A1", "A2") })
             {
                 Ports = (_, port) => CylinderPort(port),
                 Local = o => new[] { o.Str("rod", "single") == "double" ? ThroughArea : PistonArea },
@@ -426,8 +455,9 @@ namespace InventaSketch.Modules.Fluid
                 EtaHm(),
                 Force("Freq", T("Required force", "Erforderliche Kraft"), "F_req", "forceReq", VarRelevance.Engineer) with { Symbol = T("F_req", "F_erf") },
                 Pmax(),
-            }.Concat(AirVars()).ToArray();
-            return new Spec(vars, new[] { SingleForce, SingleSpeed, SingleTime, Swept("fluid.cyl.swept.single", "A", null), AirPerCycle, AirFlow }, Params(vars), new[] { CylinderForce("A") })
+            }.Concat(AirVars()).Concat(SupplyVars()).ToArray();
+            return new Spec(vars, new[] { SingleForce, SingleSpeed, SingleTime, Swept("fluid.cyl.swept.single", "A", null), AirPerCycle, AirFlow }, Params(vars),
+                new[] { CylinderForce("A"), SupplyLosses(), ForceAfterLosses("A", "A") })
             {
                 Ports = (_, port) => CylinderPort(port),
                 // Pull type (spring extends): the pressure acts on the annulus.
@@ -508,8 +538,14 @@ namespace InventaSketch.Modules.Fluid
                 V("nu", T("Kinematic viscosity", "Kinematische Viskosität"), T("ν", "ν"), Quantities.Viscosity, "mm²/s", "viscosity", VarRelevance.Engineer) with { Default = OilNu, Min = 1e-8, Max = 1 },
                 V("rho", T("Density", "Dichte"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = OilRho, Min = 0.01, Max = 3e4 },
                 V("k", T("Wall roughness", "Wandrauigkeit"), T("k", "k"), Quantities.Length, "mm", "roughness", VarRelevance.Engineer) with { Default = TubeK, Min = 0, Max = 0.1 },
+                // Single losses of the run (round 6): bends, tees and screw fittings as Σζ.
+                V("zeta", T("Sum of the loss coefficients Σζ (bends, tees, fittings)", "Summe der Widerstandsbeiwerte Σζ (Bögen, T-Stücke, Verschraubungen)"), T("Σζ", "Σζ"), Quantities.Ratio, null, "lossCoefficient", VarRelevance.Panel) with { Min = 0, Max = 1e4 },
+                V("dpz", T("Pressure drop of the single losses", "Druckverlust der Einzelwiderstände"), T("Δp_ζ", "Δp_ζ"), Quantities.Pressure, "bar", "pressureDropSingle", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
             };
-            return new Spec(vars, new[] { LineVelocity, Reynolds, FrictionRel, DarcyRel }, Params(vars), new[] { LineSpeed() });
+            return new Spec(vars, new[] { LineVelocity, Reynolds, FrictionRel, DarcyRel, LineZeta }, Params(vars), new[] { LineSpeed() })
+            {
+                LossParams = new[] { "length", "pressureDrop" },
+            };
         }
 
         /// <summary>
@@ -531,8 +567,71 @@ namespace InventaSketch.Modules.Fluid
             return new Spec(vars, new[] { OrificeArea, Orifice, PressureDifference }, Params(vars), Array.Empty<ValueCheck>())
             {
                 Docked = (o, ctx) => DockedLines(o, ctx, ("P", "Q", "Q"), ("A", "Q", "Q"), ("P", "p", "p1"), ("A", "p", "p2")),
+                LossParams = new[] { "orificeDiameter", "orificeArea", "pressureDrop" },
             };
         }
+
+        /// <summary>
+        /// Directional, non-return and pilot-operated check valves, filters, coolers and heaters (round 6): the pressure drop from
+        /// a loss coefficient Δp = ζ·ρ·v²/2 [S27] or from a datasheet point Δp = Δp_N·(Q/Q_N)² [S26]; flow, velocity and density
+        /// come from the line docked at P (else A, A1).
+        /// </summary>
+        private static Spec InlineLoss()
+        {
+            var vars = new[]
+            {
+                V("dp", T("Pressure drop", "Druckverlust"), T("Δp", "Δp"), Quantities.Pressure, "bar", "pressureDrop") with { Min = 0, Max = 1e9 },
+                V("zeta", T("Loss coefficient ζ", "Widerstandsbeiwert ζ"), T("ζ", "ζ"), Quantities.Ratio, null, "lossCoefficient", VarRelevance.Panel) with { Min = 0, Max = 1e4 },
+                V("dpN", T("Pressure drop at the nominal flow (datasheet)", "Druckverlust beim Nennvolumenstrom (Datenblatt)"), T("Δp_N", "Δp_N"), Quantities.Pressure, "bar", "pressureDropNominal", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                V("QN", T("Nominal flow (datasheet)", "Nennvolumenstrom (Datenblatt)"), T("Q_N", "Q_N"), Quantities.VolumeFlow, "l/min", "flowNominal", VarRelevance.Panel) with { Min = 1e-9, Max = 1 },
+                Flow(VarRelevance.Panel),
+                Velocity("v", T("Flow velocity in the line", "Strömungsgeschwindigkeit in der Leitung"), "v", "velocity", VarRelevance.Engineer),
+                V("rho", T("Density", "Dichte"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = OilRho, Min = 0.01, Max = 3e4 },
+            };
+            return new Spec(vars, new[] { ElementZeta, Datasheet }, Params(vars), Array.Empty<ValueCheck>())
+            {
+                Docked = (o, ctx) => DockedLines(o, ctx, ("P", "Q", "Q"), ("A", "Q", "Q"), ("A1", "Q", "Q"), ("P", "v", "v"), ("A", "v", "v"), ("A1", "v", "v"),
+                    ("P", "rho", "rho"), ("A", "rho", "rho"), ("A1", "rho", "rho")),
+                LossParams = new[] { "pressureDrop", "lossCoefficient", "pressureDropNominal" },
+            };
+        }
+
+        /// <summary>Cylinder values of the supply path (round 6): its summed pressure drop and the pressure left at the cylinder (computed only).</summary>
+        private static IEnumerable<VarDef> SupplyVars() => new[]
+        {
+            V("dpS", T("Pressure drop of the supply path", "Druckverlust des Zulaufwegs"), T("ΣΔp", "ΣΔp"), Quantities.Pressure, "bar", "supplyPressureDrop", VarRelevance.Panel) with { Min = 0, Max = 1e9, ReadOnly = true },
+            V("pav", T("Pressure available at the cylinder", "Am Zylinder verfügbarer Druck"), T("p_av", "p_verf"), Quantities.Pressure, "bar", "pressureAvailable", VarRelevance.Panel) with { Min = -1e9, Max = 1e9, ReadOnly = true },
+        };
+
+        /// <summary>fluid.circuit.losses: the summed pressure drops of the supply path reach the supply pressure [S26].</summary>
+        private static ValueCheck SupplyLosses() => new(
+            "fluid.circuit.losses", CheckSeverity.Warning,
+            T("The pressure drops on the way from the supply to this cylinder use up the supply pressure. Choose larger lines and valves or a higher pressure.",
+              "Die Druckverluste auf dem Weg von der Versorgung zu diesem Zylinder zehren den Versorgungsdruck auf. Größere Leitungen und Ventile oder höheren Druck wählen."),
+            "p_supply ≤ ΣΔp",
+            c => c["pav"] is double pav && c["dpS"] is double dps && dps > 0 && pav <= 0)
+        { Source = "S26" };
+
+        /// <summary>
+        /// fluid.cyl.force.losses: the required force is above p_av·A·η_hm with the pressure left after the supply path's losses
+        /// (not reported when <c>fluid.cyl.force</c> already is) [S26].
+        /// </summary>
+        private static ValueCheck ForceAfterLosses(string areaA, string areaB) => new(
+            "fluid.cyl.force.losses", CheckSeverity.Warning,
+            T("With the pressure drops of the supply path the cylinder no longer reaches the required force (p_av·A·η_hm). Reduce the losses or raise the pressure.",
+              "Mit den Druckverlusten des Zulaufwegs erreicht der Zylinder die erforderliche Kraft nicht mehr (p_verf·A·η_hm). Verluste verringern oder Druck erhöhen."),
+            "F_req > p_av·A·η_hm",
+            c =>
+            {
+                if (c["Freq"] is not double f || c["pav"] is not double pav || !(pav > 0)) return false;
+                var area = FluidCircuits.Of(c.Context.Doc, c.Object)?.Port == "B" ? areaB : areaA;
+                if (c[area] is not double a) return false;
+                var eta = c["etaHm"] ?? 1;
+                // The setting check already reports a force the set pressure cannot give.
+                if ((c["pmax"] ?? c["p"]) is double p && f > p * a * eta * (1 + Rel)) return false;
+                return f > pav * a * eta * (1 + Rel);
+            })
+        { Source = "S26" };
 
         private static readonly Relation FromLine = Relation.Equality("fluid.line.docked", T("Taken from the docked line", "Von der angeschlossenen Leitung übernommen"));
 
@@ -623,6 +722,9 @@ namespace InventaSketch.Modules.Fluid
             return FluidModule.TypeById(o.Type) is FluidType { Passages: { } passages } ? passages(o) : Array.Empty<string[]>();
         }
 
+        /// <summary>The port groups an element passes the flow through (the supply paths of <see cref="FluidCircuits"/>).</summary>
+        internal static IEnumerable<string[]> Passages(SketchObject o) => Through(o, "Q");
+
         internal static readonly NetSpec Nets = new()
         {
             Prefix = "fluid",
@@ -649,6 +751,8 @@ namespace InventaSketch.Modules.Fluid
             if (spec.Docked is not null)
                 foreach (var b in spec.Docked(o, ctx)) yield return b;
             foreach (var b in ValueNets.Of(ctx.Doc, Nets).For(o.Id)) yield return b;
+            if (o.Type is "fluid.cylinder.double" or "fluid.cylinder.single")
+                foreach (var b in FluidCircuits.Links(ctx.Doc, o)) yield return b;
         }
 
         // ------------------------------------------------------------------ checks (section 4)

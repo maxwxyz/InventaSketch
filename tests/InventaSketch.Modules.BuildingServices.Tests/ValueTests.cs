@@ -44,7 +44,7 @@ namespace InventaSketch.Modules.BuildingServices.Tests
         public void ValueTypesDeclareBilingualVariablesWithParametersAndSources()
         {
             var r = Fx.Reg();
-            foreach (var id in new[] { "bs.heat.boiler", "bs.heat.heatpump", "bs.heat.radiator", "bs.heat.floorloop", "bs.heat.pump", "bs.heat.mixer", "bs.san.heater", "bs.vent.terminal", "bs.vent.unit", "bs.pipe", "bs.duct", "bs.heat.buffer", "bs.meter.heat", "bs.meter.water" })
+            foreach (var id in new[] { "bs.heat.boiler", "bs.heat.heatpump", "bs.heat.radiator", "bs.heat.floorloop", "bs.heat.pump", "bs.heat.mixer", "bs.san.heater", "bs.vent.terminal", "bs.vent.unit", "bs.pipe", "bs.duct", "bs.heat.buffer", "bs.meter.heat", "bs.meter.water", "bs.heat.trv", "bs.valve.ball", "bs.valve.check", "bs.strainer" })
             {
                 var t = r.Type(id)!;
                 Assert.True(ValueModel.HasValues(t), id);

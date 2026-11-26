@@ -149,17 +149,18 @@ section of the inspector). Speeds are magnitudes, *P* = 2π·*n*·*T* (German *M
 |---|---|---|
 | Pump / compressor (`fluid.pump`) | *V*_g (`displacement`, cm³), *n* (`speed`), *Q* (`flowRate`, l/min), *p* (`pressure`, bar); panel *T* (`torque`, drive), *P* (`power`, drive), *P*_hyd (`powerHyd`); engineer η_v (`efficiencyV`), η_hm (`efficiencyHm`), both default 100 % | *Q* = *V*_g·*n*·η_v; *T* = *V*_g·*p*/(2π·η_hm); *P* = 2π·*n*·*T*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd/(η_v·η_hm) [S26] |
 | Motor (`fluid.motor`) | as the pump; *T* and *P* are output values | *n* = *Q*·η_v/*V*_g; *T* = *V*_g·*p*·η_hm/(2π); *P* = 2π·*n*·*T*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd·η_v·η_hm [S26] |
-| Double-acting cylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_ext (`forceExt`), *v*_ext (`speedExt`); panel *p*, *Q*, *F*_ret (`forceRet`), *v*_ret (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_ext (`timeExt`), *t*_ret (`timeRet`); engineer η_hm, *F*_req (`forceReq`), *p*_max (`pmax`, linked) | *A*₁ = π·*D*²/4 (through rod: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm and *v* = *Q*/*A* both ways; *t* = *s*/*v* [S26] |
-| Single-acting cylinder | *D*, *F* (`force`, spring force not included), *v* (`speed`), *p*; panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`); engineer η_hm, *F*_req, *p*_max | *A* = π·*D*²/4 (spring extend: annulus); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
+| Double-acting cylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_ext (`forceExt`), *v*_ext (`speedExt`); panel *p*, *Q*, *F*_ret (`forceRet`), *v*_ret (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_ext (`timeExt`), *t*_ret (`timeRet`), ΣΔ*p* (`supplyPressureDrop`) and *p*_av (`pressureAvailable`), both computed from the supply path (see below); engineer η_hm, *F*_req (`forceReq`), *p*_max (`pmax`, linked) | *A*₁ = π·*D*²/4 (through rod: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm and *v* = *Q*/*A* both ways; *t* = *s*/*v* [S26] |
+| Single-acting cylinder | *D*, *F* (`force`, spring force not included), *v* (`speed`), *p*; panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`), ΣΔ*p*, *p*_av; engineer η_hm, *F*_req, *p*_max | *A* = π·*D*²/4 (spring extend: annulus); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
 | Both cylinders: pneumatic air consumption (engineer) | *V*_s (`sweptVolume`), *V*_air (`airPerCycle`, free air per cycle), *Q*_n (`airFlow`, free air flow during a stroke) | *V*_s = (*A*₁ + *A*₂)·*s* (single-acting: *A*·*s*); *V*_air = *V*_s·(*p* + *p*_amb)/*p*_amb; *Q*_n = *Q*·(*p* + *p*_amb)/*p*_amb (*p* gauge, *p*_amb = 1.013 bar, isothermal) [S26] |
 | Rotary actuator | *V*_g, *p*, *T*; engineer η_hm | *T* = *V*_g·*p*·η_hm/(2π) [S26] |
 | Relief, reducing, sequence valve | *p*_set (`setPressure`) | – |
 | Throttle (`fluid.valve.throttle`) | *Q* (`flowRate`), Δ*p* (`pressureDrop`), *d*₀ (`orificeDiameter`); panel *p*₁ (`pressureIn`, at P), *p*₂ (`pressureOut`, at A), *A*₀ (`orificeArea`); engineer α (`flowCoefficient`, default 0.6), ρ (`density`, default 870 kg/m³) | *A*₀ = π·*d*₀²/4; *Q* = α·*A*₀·√(2Δ*p*/ρ) (sharp-edged orifice, incompressible); Δ*p* = *p*₁ − *p*₂ [S26] |
+| Directional valve, non-return valve, pilot-operated check valve, filter, cooler, heater (round 6) | Δ*p* (`pressureDrop`); panel ζ (`lossCoefficient`), Δ*p*_N (`pressureDropNominal`) at *Q*_N (`flowNominal`, the datasheet point), *Q* (`flowRate`, from the line at P, else A/A1); engineer *v* (`velocity`, from the line), ρ (`density`, from the line, default 870 kg/m³) | Δ*p* = ζ·ρ·*v*²/2 [S27]; Δ*p* = Δ*p*_N·(*Q*/*Q*_N)² (turbulent flow, the datasheet's fluid) [S26] |
 | Hydraulic power unit (`fluid.powerunit`) | *Q* (`flowRate`), *p* (`pressure`), *P* (`power`, drive), *V*_T (`tankVolume`); panel *P*_hyd (`powerHyd`), η_t (`efficiency`, default 100 %), *p*_set (`setPressure`, the built-in relief valve) | *P*_hyd = *p*·*Q*; *P* = *P*_hyd/η_t [S26] |
 | Gauge, pressure switch, pressure source | *p* (shown from the net) | – |
 | Flow meter | *Q* (shown from the net) | – |
 | Accumulator | *V*₀ (`volume`), *p*₀ (`p0`), Δ*V* (`volumeUsable`); panel *p*₁, *p*₂, *V*₁, *V*₂ (absolute pressures) | *p*₀·*V*₀ = *p*₁·*V*₁ = *p*₂·*V*₂ (isothermal); Δ*V* = *V*₁ − *V*₂ [S26] |
-| Line (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); panel *p*, *L* (`length`), Δ*p* (`pressureDrop`); engineer *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, default 46 mm²/s: oil of viscosity grade VG 46 at 40 °C), ρ (`density`, default 870 kg/m³), *k* (`roughness`, default 0.0015 mm, drawn tube) | *v* = 4·*Q*/(π·*d*_i²); *Re* = *v*·*d*_i/ν; λ = 64/*Re* below *Re* = 2320, above it the explicit Haaland approximation of Colebrook–White; Δ*p* = λ·(*L*/*d*_i)·ρ·*v*²/2 (straight line, fittings not counted) [S27] |
+| Line (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); panel *p*, *L* (`length`), Δ*p* (`pressureDrop`); engineer *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, default 46 mm²/s: oil of viscosity grade VG 46 at 40 °C), ρ (`density`, default 870 kg/m³), *k* (`roughness`, default 0.0015 mm, drawn tube); panel Σζ (`lossCoefficient`, bends, tees and screw fittings of the run) and Δ*p*_ζ (`pressureDropSingle`) | *v* = 4·*Q*/(π·*d*_i²); *Re* = *v*·*d*_i/ν; λ = 64/*Re* below *Re* = 2320, above it the explicit Haaland approximation of Colebrook–White; Δ*p* = λ·(*L*/*d*_i)·ρ·*v*²/2 (straight line) [S27]; single losses Δ*p*_ζ = Σζ·ρ·*v*²/2 [S27] |
 
 **Port flows.** Lines join ports into nets (line ends docked on ports and on other lines). Per net:
 
@@ -176,8 +177,23 @@ section of the inspector). Speeds are magnitudes, *P* = 2π·*n*·*T* (German *M
   `fluid.line.docked`): a 100 bar supply, a 2 mm throttle and a single-acting cylinder at 60 bar give Δ*p* = 40 bar, the
   flow and the cylinder speed. The power unit gives *Q* and *p* at P like a pump and its set pressure as *p*_max, so the
   cylinders it feeds get their force limit.
-- Pressure drops are values of the line and of the throttle; they are not subtracted from the net pressures, which stay
-  one value per net. Losses of directional valves are not modelled.
+- Pressure drops are values of the lines, valves and the throttle; they are not subtracted from the net pressures, which
+  stay one value per net. The supply path below sums them for each cylinder.
+
+**Supply path of a cylinder** (round 6, `FluidCircuits`). From the first supply (by id) whose pressure port P reaches the
+cylinder — pump, hydraulic power unit or pressure source — the module follows the lines (also lines docked on lines and
+several lines on one port) and the passages of the elements (as for the flow *Q* above: directional valve P–A–B,
+non-return and pilot-operated check valves, filters, coolers, heaters, throttles, couplings, crossings) to the cylinder's
+port A (else B). Every path sums the pressure drops it passes, but only of the parts that carry an entered loss: lines
+with an entered *L* or Δ*p* (their Δ*p*) or Σζ (their Δ*p*_ζ), valves and conditioning parts with an entered Δ*p*, ζ
+or datasheet point, the throttle with an entered orifice or Δ*p*; other parts count zero. The cylinder's ΣΔ*p* is the
+largest path sum (relation `fluid.circuit.sum`), so it is known once every counted drop on every path is known, and the
+pressure available at the cylinder is *p*_av = *p*_supply − ΣΔ*p* (`fluid.circuit.available`, *p*_supply the supply's *p*)
+[S26]. A relief valve or gauge on a tee ends its path there (no passage). Elements of other modules end a path; the
+search stops after 256 paths or 50 000 steps (no sum then). Example (accept criterion): the 14.5 l/min pump above at
+100 bar, a 2 m line of 10 mm to the 4/3 valve (laminar, Δ*p* = 0.79 bar), the valve's datasheet point 6 bar at
+30 l/min (1.40 bar) and 1.5 bar entered on the line to A give ΣΔ*p* = 3.69 bar and *p*_av = 96.3 bar; a required force
+of 19.3 kN is then out of reach (`fluid.cyl.force.losses`) although 100 bar·*A*₁ = 19.6 kN would give it.
 
 Example (accept criterion): a pump with *V*_g = 10 cm³ at 1450 min⁻¹ gives *Q* = 14.5 l/min; through a 4/3 valve to a
 50/28 mm cylinder at 100 bar: *F*_ext = 19.6 kN, *F*_ret = 13.5 kN, *v*_ext = 0.123 m/s, *v*_ret = 0.179 m/s, whether
@@ -191,6 +207,8 @@ the 100 bar is entered at the pump or at the cylinder.
 | `fluid.velocity` | line velocity outside the textbook range of its function: suction 0.5–1.5 m/s (docked on a pump's S), return 2–4 m/s (drain line, tank, T/R port), pressure 3–6 m/s | hint | [S26] |
 | `fluid.pressure.relief` | a pump with values whose pressure net (through valves) contains no relief valve | hint | [S25] (ISO 4413) |
 | `fluid.tank.volume` | power unit: *V*_T < 3·*Q*·1 min (textbook rule of thumb for stationary units: 3–5 × the flow per minute) | hint | [S26] |
+| `fluid.circuit.losses` | cylinder: the summed pressure drops of the supply path reach the supply pressure (*p*_av ≤ 0) | warning | [S26] |
+| `fluid.cyl.force.losses` | cylinder: *F*_req > *p*_av·*A*·η_hm (*A*₁ or *A*₂ by the port reached; not reported when `fluid.cyl.force` is) | warning | [S26] |
 
 ## Host notes
 
@@ -201,8 +219,9 @@ picture fallback is needed. Rounded rectangles (closed reservoir, accumulator) u
 
 - No numeric port identification (`1`, `2`, `3`, `12`, `14` …), no servo/proportional valves, no logic-element blocks.
 - The power unit is one symbol: its motor, pump, relief valve and filter are drawn, not separate elements (no shaft, no
-  own ports for them); the pump flow is entered on the unit. Pressure drops of fittings, valve datasheet curves
-  (Δ*p* over *Q*) and the compressibility of air in the orifice relation are not modelled.
+  own ports for them); the pump flow is entered on the unit. Valve losses use one datasheet point (Δ*p* ∝ *Q*²), not a
+  measured curve; the compressibility of air in the orifice relation and the return-side back pressure of a cylinder are
+  not modelled.
 - A line end docked on another line (its rail) is attached to it (a branch): it follows the line and the connection
   list joins both lines; a junction dot is optional.
 - Labels and port names lie outside the object box, so host selection frames do not include them.

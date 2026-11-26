@@ -203,22 +203,23 @@ Card variables come first. Design notes:
 
 | Element | Variables (parameter) | Local relations [source] |
 |---|---|---|
-| Boiler | Φ (`heatOutput`), θ_F (`flowTemp`), θ_R (`returnTemp`), *V̇* (`flowRate`, l/h); engineer ρ (`density`), *c* (`specificHeat`) | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
-| Heat pump (outdoor unit) | Φ, *P*_el (`powerEl`), COP (`cop`), θ_F; panel θ_Q (`sourceTemp`), θ_R, *V̇*; engineer ρ, *c* | Φ = COP·*P*_el [S32]; Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
-| Radiator | Φ, Φ₅₀ (`phi50`), θ_F, θ_R; panel *V̇*, θ_i (`roomTemp`, default 20 °C), *n* (`exponent`, default 1.3), Δθ_ln (`excessTemp`), Φ_HL (`roomHeatLoad`, from the room); engineer ρ, *c* | Δθ_ln = (θ_F − θ_R)/ln((θ_F − θ_i)/(θ_R − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (EN 442-2 characteristic [S31]); Φ = ρ·*c*·*V̇*·(θ_F − θ_R); operating point ρ·*c*·*V̇*·(θ_F − θ_R) = Φ₅₀·(Δθ_ln/50 K)^*n*, solved numerically for θ_R [S31] |
-| Underfloor heating loop | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; panel θ_F, θ_R, *s* (`spacing`), *L* (`loopLength`); engineer ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_F − θ_R); *L* ≈ *A*/*s* [S30] |
-| Circulator pump | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); panel *P*_hyd (`powerHyd`); engineer ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
-| Mixing valve (3-way) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
-| Water heater (storage cylinder) | *V* (`volume`), Δθ (`deltaT`), *V*_mix (`mixedVolume`, mixed water at tap temperature), *P* (`power`); panel *Q* (`heat`), *t* (`heatUpTime`), θ_S (`storeTemp`), θ_C (`coldTemp`, default 10 °C), θ_T (`tapTemp`, default 40 °C), *V̇*_tap (`continuousFlow`, l/min); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (no losses); Δθ = θ_S − θ_C; *V*_mix = *V*·(θ_S − θ_C)/(θ_T − θ_C); *V̇*_tap = *P*/(ρ·*c*·(θ_T − θ_C)) [S29] |
+| Boiler | Φ (`heatOutput`), θ_F (`flowTemp`), θ_R (`returnTemp`), *V̇* (`flowRate`, l/h); panel Δ*p* (`pressureDrop`, kPa, water side); engineer ρ (`density`), *c* (`specificHeat`) | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
+| Heat pump (outdoor unit) | Φ, *P*_el (`powerEl`), COP (`cop`), θ_F; panel θ_Q (`sourceTemp`), θ_R, *V̇*, Δ*p* (`pressureDrop`, water side); engineer ρ, *c* | Φ = COP·*P*_el [S32]; Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
+| Radiator | Φ, Φ₅₀ (`phi50`), θ_F, θ_R; panel *V̇*, θ_i (`roomTemp`, default 20 °C), *n* (`exponent`, default 1.3), Δθ_ln (`excessTemp`), Φ_HL (`roomHeatLoad`, from the room), Δ*p* (`pressureDrop`, radiator with its valve); engineer ρ, *c* | Δθ_ln = (θ_F − θ_R)/ln((θ_F − θ_i)/(θ_R − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (EN 442-2 characteristic [S31]); Φ = ρ·*c*·*V̇*·(θ_F − θ_R); operating point ρ·*c*·*V̇*·(θ_F − θ_R) = Φ₅₀·(Δθ_ln/50 K)^*n*, solved numerically for θ_R [S31] |
+| Underfloor heating loop | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; panel θ_F, θ_R, *s* (`spacing`), *L* (`loopLength`), *d*_i (`innerDiameter`, loop pipe), Δ*p* (`pressureDrop`); engineer *v*, *Re*, λ, ν, *k*, ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_F − θ_R); *L* ≈ *A*/*s* [S30]; with *d*_i the loop's pressure drop as for the pipe over *L* [S27] |
+| Circulator pump | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); panel *P*_hyd (`powerHyd`), ΣΔ*p* (`circuitPressureDrop`, index circuit) and *H*_req (`headRequired`), both computed; engineer ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η; *H*_req = ΣΔ*p*/(ρ·*g*) [S28]; ΣΔ*p* see "Circuits" below |
+| Mixing valve (3-way) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); panel *V̇*_A (`flowA`), *V̇*_B (`flowB`), Δ*p* (`pressureDrop`), *k*_v (`kvValue`); engineer ρ | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29]; Δ*p* = 1 bar·(ρ/1000 kg/m³)·(*V̇*_AB/*k*_v)² [S30] |
+| Water heater (storage cylinder) | *V* (`volume`), Δθ (`deltaT`), *V*_mix (`mixedVolume`, mixed water at tap temperature), *P* (`power`); panel *Q* (`heat`), *t* (`heatUpTime`), θ_S (`storeTemp`), θ_C (`coldTemp`, default 10 °C), θ_T (`tapTemp`, default 40 °C), *V̇*_tap (`continuousFlow`, l/min), Δ*p* (`pressureDrop`, heating coil); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (no losses); Δθ = θ_S − θ_C; *V*_mix = *V*·(θ_S − θ_C)/(θ_T − θ_C); *V̇*_tap = *P*/(ρ·*c*·(θ_T − θ_C)) [S29] |
 | Expansion vessel | *V*_A (`systemVolume`), *e* (`expansion`, %), *V*_n (`nominalVolume`, required), *V*_n,sel (`chosenVolume`); panel *V*_e (`expansionVolume`), *V*_V (`waterSeal`), *p*₀ (`prePressure`), *p*_e (`finalPressure`, both gauge) | *V*_e = *e*·*V*_A; *V*_n = (*V*_e + *V*_V)·(*p*_e + *p*_amb)/(*p*_e − *p*₀), *p*_amb = 1.013 bar [S30] |
 | Hydraulic separator | *V̇*_P (`flowPrimary`), *V̇*_S (`flowSecondary`), θ_F2 (`flowTemp2`), θ_R1 (`returnTemp1`); panel θ_F1 (`flowTemp1`), θ_R2 (`returnTemp2`), Φ (`heatOutput`); engineer ρ, *c* | *V̇*_P ≥ *V̇*_S: θ_F2 = θ_F1, θ_R1 = (*V̇*_S·θ_R2 + (*V̇*_P − *V̇*_S)·θ_F1)/*V̇*_P; *V̇*_P < *V̇*_S: θ_R1 = θ_R2, θ_F2 = (*V̇*_P·θ_F1 + (*V̇*_S − *V̇*_P)·θ_R2)/*V̇*_S [S30]; Φ = ρ·*c*·*V̇*_S·(θ_F2 − θ_R2) [S29] |
 | Buffer tank | *V* (`volume`, l), Δθ (`deltaT`, temperature spread), *Q* (`heat`, kWh); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
-| Heat meter | Φ (`heatOutput`, thermal power), *V̇* (`flowRate`), θ_F (`flowTemp`), θ_R (`returnTemp`); engineer ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
-| Water meter | *V̇* (`flowRate`, m³/h) | – (the flow of the run it sits in) |
+| Heat meter | Φ (`heatOutput`, thermal power), *V̇* (`flowRate`), θ_F (`flowTemp`), θ_R (`returnTemp`); panel Δ*p* (`pressureDrop`), *k*_v (`kvValue`); engineer ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29]; Δ*p* = 1 bar·(ρ/1000 kg/m³)·(*V̇*/*k*_v)² [S30] |
+| Water meter | *V̇* (`flowRate`, m³/h); panel Δ*p*, *k*_v; engineer ρ | the flow of the run it sits in; Δ*p* from *k*_v as for the heat meter [S30] |
+| Thermostatic valve, ball valve, check valve, strainer (round 6) | Δ*p* (`pressureDrop`, kPa), *k*_v (`kvValue`, m³/h at 1 bar), ζ (`lossCoefficient`); panel *V̇* (`flowRate`, from the pipe at `in`, else `out`); engineer *v* (`velocity`, from the pipe), ρ (`density`, from the pipe) | Δ*p* = ζ·ρ·*v*²/2 [S27]; Δ*p* = 1 bar·(ρ/1000 kg/m³)·(*V̇*/*k*_v)² (water-like liquids, turbulent) [S30] |
 | Air terminal | *V̇* (`flowRate`, m³/h), *A* (`roomArea`), *n* (`airChange`, per hour), *V* (`roomVolume`); panel *h* (`roomHeight`, default 2.5 m) | *V* = *A*·*h*; *V̇* = *n*·*V*/1 h [S30] |
 | Ventilation unit with heat recovery | *V̇*_SUP (`flowSupply`), η_t (`recovery`), θ_SUP (`tempSupply`), Φ_WRG (`heatRecovered`); panel *V̇*_ETA (`flowExtract`), θ_ODA (`tempOutdoor`), θ_ETA (`tempExtract`) | θ_SUP = θ_ODA + η_t·(θ_ETA − θ_ODA); Φ = 0.34 W·h/(m³·K)·*V̇*_SUP·(θ_SUP − θ_ODA) [S30] |
-| Pipe | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); panel DN (`dn`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); engineer *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, default 1.0 mm²/s: water at 20 °C), *k* (`roughness`, default 0.0015 mm: copper, plastic; steel ≈ 0.045 mm), ρ (`density`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN when no inner diameter is entered (50 % tolerance, DN is a nominal size) [S30]; pressure drop as for the duct with *d*_i |
-| Air duct | *V̇*, *d* (`width`, diameter or width), *v*, *A* (`crossSection`); panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); engineer *Re*, λ, ν (default 15 mm²/s: air at 20 °C), *k* (default 0.15 mm: galvanised sheet), ρ (default 1.2 kg/m³) | *v* = *V̇*/*A*; round: *A* = π·*d*²/4, *d*_h = *d*; with a height *b* the duct is rectangular: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30]; *Re* = *v*·*d*_h/ν; λ = 64/*Re* below *Re* = 2320, above it the explicit Haaland approximation of Colebrook–White; Δ*p* = λ·(*L*/*d*_h)·ρ·*v*²/2 (straight run, fittings not counted) [S27] |
+| Pipe | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); panel DN (`dn`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); engineer *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, default 1.0 mm²/s: water at 20 °C), *k* (`roughness`, default 0.0015 mm: copper, plastic; steel ≈ 0.045 mm), ρ (`density`); panel Σζ (`lossCoefficient`, bends and tees of the run) and Δ*p*_ζ (`pressureDropSingle`, Pa) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN when no inner diameter is entered (50 % tolerance, DN is a nominal size) [S30]; pressure drop as for the duct with *d*_i; Δ*p*_ζ = Σζ·ρ·*v*²/2 [S27]; with an entered water temperature θ: ρ = 1000 kg/m³ − 0.0178·\|θ − 4 °C\|^1.7 [S27] and ν from the Vogel equation (see below) [S29] |
+| Air duct | *V̇*, *d* (`width`, diameter or width), *v*, *A* (`crossSection`); panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); engineer *Re*, λ, ν (default 15 mm²/s: air at 20 °C), *k* (default 0.15 mm: galvanised sheet), ρ (default 1.2 kg/m³); panel Σζ (`lossCoefficient`), Δ*p*_ζ (`pressureDropSingle`) | *v* = *V̇*/*A*; round: *A* = π·*d*²/4, *d*_h = *d*; with a height *b* the duct is rectangular: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30]; *Re* = *v*·*d*_h/ν; λ = 64/*Re* below *Re* = 2320, above it the explicit Haaland approximation of Colebrook–White; Δ*p* = λ·(*L*/*d*_h)·ρ·*v*²/2 (straight run) [S27]; Δ*p*_ζ = Σζ·ρ·*v*²/2 [S27] |
 | Appliance outlet (electrical load) | *P* (`power`), *I* (`current`, per phase); panel *U* (`voltage`, phase to neutral, default 230 V), cos φ (`powerFactor`, default 1) | single-phase *I* = *P*/(*U*·cos φ); with `phase` three-phase *I* = *P*/(3·*U*·cos φ) [S7] |
 
 The air change rate *n* is a plain number per hour ("1" for 1 h⁻¹): Core has no h⁻¹ unit yet. The room values sit on
@@ -242,7 +243,8 @@ and silencers pass the air flow. The buffer tank decouples its circuits (no valu
 separator is a consumer of the generator circuit (`f1` takes the flow temperature, `r1` gives its return temperature) and
 the source of the consumer circuit (`f2` gives the flow temperature and the total flow of the consumers, `r2` takes their
 return temperature), so a boiler at 70 °C, a separator and radiators pass flows and temperatures through it. Heat losses
-of pipes are not modelled; pressure drops are values of each pipe and duct (not summed along a circuit); mixing at a
+of pipes are not modelled; pressure drops are values of each pipe, duct and element, summed per circulator pump (see
+"Circuits"); mixing at a
 merge is only computed in the mixing valve and the separator. At a port of another module's element (an energy heat port takes flow and return), pipes of different
 media stay separate nets; only the heating flow takes that port's values (engineering-calculations.md section 6.1).
 
@@ -250,6 +252,34 @@ Examples (accept criteria): a boiler at 55 °C feeding a radiator (Φ₅₀ = 10
 with 50 l/h: the radiator's return temperature solves the operating point (θ_R ≈ 46.0 °C, Φ ≈ 521 W), and the return
 pipe and the boiler take θ_R. A room of 20 m² (2.5 m high) with *n* = 1 h⁻¹ gives 50 m³/h at the terminal, in the duct
 and at the unit's supply spigot; an 80 mm duct then runs at 2.76 m/s.
+
+**Water properties** (round 6). A pipe with an entered water temperature θ takes the density and the kinematic viscosity
+of liquid water from it, used by Reynolds number, friction factor and pressure drop: density by
+the textbook fit ρ ≈ 1000 kg/m³ − 0.0178·|θ − 4 °C|^1.7 (±0.2 % between 0 and 100 °C) [S27]; dynamic viscosity by the
+Vogel equation μ = 2.414·10⁻⁵ Pa·s·10^(247.8 K/(*T* − 140 K)) with ν = μ/ρ, within 1 % of the water tables of [S29]
+between 10 and 100 °C (unit tests compare 20, 50, 70 and 80 °C with the table values). 70 °C gives ρ = 977.8 kg/m³ and
+ν = 0.41 mm²/s. Without an entered temperature the 20 °C defaults stay (1000 kg/m³, 1.0 mm²/s), also when the pipe's θ is passed on
+along the net: such a temperature may become known only while the solver fills defaults, and the result must not depend
+on that order. An entered ρ or ν that differs
+from the fit by more than 1 % (ν: 3 %) is a conflict. The pump's ρ (for *H*_req) keeps its own value (default
+1000 kg/m³).
+
+**Circuits** (round 6, `BsCircuits`). Each circulator pump sums the pressure drops of its circuits: the paths of water
+from its `out` port back to its `in` port through pipes (also pipes docked on pipes, several pipes on one port and the
+rails of a riser) and through the elements on the way in their direction of flow — generators (boiler, heat pump, solar
+collector) return → flow, radiators, floor loops and the cylinder coil flow → return, the pump in → out, the mixing
+valve A or B → AB, the manifold flow → each outlet `f1…` and each `r1…` → return, hydraulic separator and buffer tank
+primary `f1` → `r1` and secondary `r2` → `f2`; valves, strainers and meters either way. A path counts the pressure drop of
+every part with an entered loss: pipes with an entered *L* or Δ*p* (their Δ*p*) or Σζ (their Δ*p*_ζ), elements with an
+entered Δ*p*, *k*_v or ζ (the floor loop also with *d*_i); other parts count zero. The pump's ΣΔ*p* is the largest path
+sum, the index circuit (relation `bs.circuit.sum`, [S30]); it is known once every counted drop on every path is known (a
+trunk pipe on a branch takes no flow from its net: enter its flow or its Δ*p*). *H*_req = ΣΔ*p*/(ρ·*g*). A pump
+without a closed path back to its inlet has no sum; elements of other modules end a path; the search stops after 256
+paths or 50 000 steps (no sum then). Example (accept criterion): boiler 5 kPa, pump, a flow trunk (2 kPa) to thermostatic
+valve 1 (8 kPa) and radiator 1 (1 kPa), a branch (3 kPa) to valve 2 (1 kPa) and radiator 2 (1 kPa), returns 2 and 3 kPa
+and 1 kPa from the boiler to the pump: circuit 1 = 19 kPa, circuit 2 = 18 kPa, so ΣΔ*p* = 19 kPa and *H*_req = 1.94 m (a
+1.5 m pump gets `heat.pump.head`); valve 1 at 30 kPa makes circuit 1 41 kPa and circuit 2 (18 kPa) gets
+`heat.circuit.balance`. A thermostatic valve with *k*_v = 0.5 m³/h and 200 l/h has Δ*p* = 16 kPa.
 
 **Checks** (hints only, overlay, nothing changes):
 
@@ -262,6 +292,8 @@ and at the unit's supply spigot; an 80 mm duct then runs at 2.76 m/s.
 | `heat.roomload` | the radiators and floor loops standing in a room give less than the room's heating load estimate Φ_HL (judged only when all their outputs are known) | hint | [S30] |
 | `heat.expansion.size` | expansion vessel: the chosen nominal volume is below the required one | warning | [S30] |
 | `heat.separator.flow` | hydraulic separator: generator flow below the consumer flow (return water mixes into the consumer flow) | hint | [S30] |
+| `heat.pump.head` | circulator pump: *H* < *H*_req = ΣΔ*p*/(ρ·*g*) of the index circuit | warning | [S28] |
+| `heat.circuit.balance` | circulator pump: per consumer (radiator, floor loop, cylinder coil) the largest fully known circuit sum; the smallest is more than 25 % below the largest (threshold chosen by InventaSketch, not from a standard): balance hydraulically by presetting the valves | hint | [S30] |
 
 **Sizing examples (round 5, accept criteria):** 1 m³/h in a 26 mm pipe gives 0.52 m/s and, over 20 m, the Darcy pressure
 drop; a 300 × 200 mm duct with 1000 m³/h runs at 4.6 m/s with *d*_h = 240 mm; 200 l of system water with *e* = 2.9 %, a

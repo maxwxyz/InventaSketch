@@ -17,7 +17,8 @@ namespace InventaSketch.Modules.BuildingServices
     /// unbranched run and summed at a branch (the generator's port, the pump's outlet, the ventilation unit's spigot and the
     /// mixer outlet are the totals of the radiators, loops and terminals on the branches). The stream temperature (<c>theta</c>)
     /// is passed on an unbranched run and from the single supplying outlet to every inlet of a split. Thermostatic valves pass
-    /// both; pumps pass the temperature. Heat losses of pipes are not modelled. Pipes of different media (flow, return,
+    /// both; pumps pass the temperature. Heat losses of pipes are not modelled; each circulator pump sums the pressure drops
+    /// of its circuits (<see cref="BsCircuits"/>, round 6). Pipes of different media (flow, return,
     /// water kinds) and ducts of different air kinds stay separate nets where they meet only at a port of another module's
     /// element; the heating flow takes that port's values (an energy heat port).
     /// </para>
@@ -51,6 +52,13 @@ namespace InventaSketch.Modules.BuildingServices
             /// the same key and quantity kind.
             /// </summary>
             public IReadOnlyList<string> RoomKeys { get; init; } = Array.Empty<string>();
+            /// <summary>
+            /// Parameters that make the element's (or line's) pressure drop <c>dp</c> count in a pump's circuit sum
+            /// (<see cref="BsCircuits"/>): the drop counts when one of them is entered (round 6).
+            /// </summary>
+            public IReadOnlyList<string> LossParams { get; init; } = Array.Empty<string>();
+            /// <summary>Variables linked to the pipe docked at the element's ports (port, pipe variable, element variable), round 6.</summary>
+            public IReadOnlyList<(string Port, string PipeKey, string Key)> Docked { get; init; } = Array.Empty<(string, string, string)>();
         }
 
         // ------------------------------------------------------------------ parameters and variables
@@ -82,6 +90,10 @@ namespace InventaSketch.Modules.BuildingServices
         private static VarDef Rho() => V("rho", T("Density of water", "Dichte des Wassers"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = WaterRho, Min = 1, Max = 3e4 };
         private static VarDef Cp() => V("c", T("Specific heat capacity of water", "Spezifische Wärmekapazität des Wassers"), T("c", "c"), Quantities.SpecificHeat, "kJ/(kg·K)", "specificHeat", VarRelevance.Engineer) with { Default = WaterC, Min = 1, Max = 1e5 };
         private static VarDef Velocity(VarRelevance rel = VarRelevance.Card) => V("v", T("Flow velocity", "Strömungsgeschwindigkeit"), T("v", "v"), Quantities.Speed, "m/s", "velocity", rel) with { Min = 0, Max = 100 };
+        private static VarDef Drop(VarRelevance rel, I18nText? name = null)
+            => V("dp", name ?? T("Pressure drop", "Druckverlust"), T("Δp", "Δp"), Quantities.Pressure, "kPa", "pressureDrop", rel) with { Min = 0, Max = 1e9 };
+        private static VarDef Zeta(VarRelevance rel) => V("zeta", T("Loss coefficient ζ", "Widerstandsbeiwert ζ"), T("ζ", "ζ"), Quantities.Ratio, null, "lossCoefficient", rel) with { Min = 0, Max = 1e4 };
+        private static VarDef Kv(VarRelevance rel) => V("kv", T("Flow coefficient kv (m³/h at 1 bar)", "Durchflusskoeffizient kv (m³/h bei 1 bar)"), T("k_v", "k_v"), Quantities.VolumeFlow, "m³/h", "kvValue", rel) with { Min = 1e-9, Max = 10 };
 
         // ------------------------------------------------------------------ relations
 
@@ -301,17 +313,74 @@ namespace InventaSketch.Modules.BuildingServices
                 .Solve("dp", "{lambda}·{L}/{" + d + "}·{rho}·{v}²/2", v => v("lambda") * v("L") / v(d) * v("rho") * v("v") * v("v") / 2)
                 .Solve("L", "2·{dp}·{" + d + "}/({lambda}·{rho}·{v}²)", v => 2 * v("dp") * v(d) / (v("lambda") * v("rho") * v("v") * v("v")));
 
-        /// <summary>Variables of the pressure drop: length and Δp (panel), Re, λ, ν, roughness and density (engineer).</summary>
+        /// <summary>
+        /// Variables of the pressure drop: length and Δp (panel), the sum of the loss coefficients of the run's bends and tees
+        /// Σζ and their pressure drop (panel, round 6), Re, λ, ν, roughness and density (engineer).
+        /// </summary>
         private static IEnumerable<VarDef> LossVars(double nu, double k, VarDef rho) => new[]
         {
             V("L", T("Length", "Länge"), T("L", "L"), Quantities.Length, "m", "length", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
             V("dp", T("Pressure drop", "Druckverlust"), T("Δp", "Δp"), Quantities.Pressure, "Pa", "pressureDrop", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+            V("zeta", T("Sum of the loss coefficients Σζ (bends, tees)", "Summe der Widerstandsbeiwerte Σζ (Bögen, T-Stücke)"), T("Σζ", "Σζ"), Quantities.Ratio, null, "lossCoefficient", VarRelevance.Panel) with { Min = 0, Max = 1e4 },
+            V("dpz", T("Pressure drop of the single losses", "Druckverlust der Einzelwiderstände"), T("Δp_ζ", "Δp_ζ"), Quantities.Pressure, "Pa", "pressureDropSingle", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
             V("Re", T("Reynolds number", "Reynolds-Zahl"), T("Re", "Re"), Quantities.Ratio, null, "reynolds", VarRelevance.Engineer) with { Min = 0, Max = 1e9 },
             V("lambda", T("Friction factor", "Rohrreibungszahl"), T("λ", "λ"), Quantities.Ratio, null, "friction", VarRelevance.Engineer) with { Min = 1e-4, Max = 100 },
             V("nu", T("Kinematic viscosity", "Kinematische Viskosität"), T("ν", "ν"), Quantities.Viscosity, "mm²/s", "viscosity", VarRelevance.Engineer) with { Default = nu, Min = 1e-8, Max = 1 },
             V("k", T("Wall roughness", "Wandrauigkeit"), T("k", "k"), Quantities.Length, "mm", "roughness", VarRelevance.Engineer) with { Default = k, Min = 0, Max = 0.1 },
             rho,
         };
+
+        // ------------------------------------------------------------------ single losses, valves, water properties (round 6)
+
+        /// <summary>Single loss (bend, tee, valve) Δp = ζ·ρ·v²/2 [S27].</summary>
+        private static Relation ZetaLoss(string dp) =>
+            new Relation("bs.loss.zeta", T("Single loss (loss coefficient ζ)", "Einzelwiderstand (Widerstandsbeiwert ζ)"), "{" + dp + "} = {zeta}·{rho}·{v}²/2", dp, "zeta", "rho", "v") { Source = "S27" }
+                .Solve(dp, "{zeta}·{rho}·{v}²/2", v => v("zeta") * v("rho") * v("v") * v("v") / 2)
+                .Solve("zeta", "2·{" + dp + "}/({rho}·{v}²)", v => 2 * v(dp) / (v("rho") * v("v") * v("v")));
+
+        private static readonly Relation ElementZeta = ZetaLoss("dp");
+        private static readonly Relation RunZeta = ZetaLoss("dpz");
+
+        /// <summary>
+        /// Valve flow coefficient: V̇ = k_v·√(Δp/1 bar·1000 kg/m³/ρ), so Δp = 100·ρ·(V̇/k_v)² in pascals with V̇ and k_v in
+        /// the same unit (k_v is the flow in m³/h at 1 bar) [S30].
+        /// </summary>
+        private static Relation KvLoss(string flow) =>
+            new Relation("bs.loss.kv", T("Pressure drop from the kv value", "Druckverlust aus dem kv-Wert"), "{dp} = 1 bar·{rho}/(1000 kg/m³)·({" + flow + "}/{kv})²", "dp", flow, "kv", "rho")
+            { Source = "S30", Validity = T("water-like liquids, turbulent flow through the valve", "wasserähnliche Flüssigkeiten, turbulente Durchströmung") }
+                .Solve("dp", "1 bar·{rho}/(1000 kg/m³)·({" + flow + "}/{kv})²", v => 100 * v("rho") * Math.Pow(v(flow) / v("kv"), 2))
+                .Solve("kv", "{" + flow + "}·√(1 bar·{rho}/(1000 kg/m³·{dp}))", v => v(flow) * Math.Sqrt(100 * v("rho") / v("dp")))
+                .Solve(flow, "{kv}·√({dp}·1000 kg/m³/(1 bar·{rho}))", v => v("kv") * Math.Sqrt(v("dp") / (100 * v("rho"))));
+
+        private static readonly Relation KvLossFlow = KvLoss("Vdot");
+        private static readonly Relation KvLossMixer = KvLoss("Vab");
+
+        /// <summary>
+        /// Density of liquid water from its temperature: ρ ≈ 1000 − 0.0178·|θ − 4 °C|^1.7 kg/m³ (textbook fit, ±0.2 %
+        /// between 0 and 100 °C) [S27].
+        /// </summary>
+        internal static double WaterDensity(double t) => 1000 - 0.0178 * Math.Pow(Math.Abs(t - C0 - 4), 1.7);
+
+        /// <summary>
+        /// Kinematic viscosity of liquid water: dynamic viscosity by the Vogel equation μ = 2.414·10⁻⁵ Pa·s·10^(247.8 K/(T − 140 K)),
+        /// ν = μ/ρ; within 1 % of the water tables [S29] between 10 and 100 °C.
+        /// </summary>
+        internal static double WaterViscosity(double t) => t > 140 ? 2.414e-5 * Math.Pow(10, 247.8 / (t - 140)) / WaterDensity(t) : double.NaN;
+
+        private static readonly Relation WaterDensityRel =
+            new Relation("bs.water.density", T("Density of water from its temperature", "Dichte des Wassers aus der Temperatur"), "{rho} = 1000 kg/m³ − 0.0178·|{theta} − 4 °C|^1.7", "rho", "theta")
+            { Source = "S27", Tolerance = 0.01, Validity = T("liquid water, fit for 0–100 °C (±0.2 %)", "flüssiges Wasser, Näherung für 0–100 °C (±0,2 %)") }
+                .Solve("rho", "1000 kg/m³ − 0.0178·|{theta} − 4 °C|^1.7", v => WaterDensity(v("theta")));
+
+        private static readonly Relation WaterViscosityRel =
+            new Relation("bs.water.viscosity", T("Viscosity of water from its temperature", "Viskosität des Wassers aus der Temperatur"), "{nu} = 2.414·10⁻⁵ Pa·s·10^(247.8 K/({theta} − 140 K))/ρ_w({theta})", "nu", "theta")
+            { Source = "S29", Tolerance = 0.03, Validity = T("liquid water, Vogel equation, 0–100 °C (within 1 % of the tables)", "flüssiges Wasser, Vogel-Gleichung, 0–100 °C (auf 1 % an den Tafelwerten)") }
+                .Solve("nu", "2.414·10⁻⁵ Pa·s·10^(247.8 K/({theta} − 140 K))/ρ_w({theta})", v => WaterViscosity(v("theta")));
+
+        /// <summary>Required head of the pump H_req = ΣΔp/(ρ·g) [S28].</summary>
+        private static readonly Relation RequiredHead =
+            new Relation("bs.pump.required", T("Required head", "Erforderliche Förderhöhe"), "{Hreq} = {dpC}/({rho}·g)", "Hreq", "dpC", "rho") { Source = "S28" }
+                .Solve("Hreq", "{dpC}/({rho}·g)", v => v("dpC") / (v("rho") * G));
 
         /// <summary>Membrane expansion vessel: V_e = e·V_A; V_n = (V_e + V_V)·(p_e + p_amb)/(p_e − p₀) (gauge pressures) [S30].</summary>
         private static readonly Relation Expansion =
@@ -394,6 +463,7 @@ namespace InventaSketch.Modules.BuildingServices
             "bs.heat.floorloop" => FloorLoop(),
             "bs.heat.pump" => Pump(),
             "bs.heat.mixer" => Mixer(),
+            "bs.heat.trv" or "bs.valve.ball" or "bs.valve.check" or "bs.strainer" => InlineValve(),
             "bs.san.heater" => WaterHeater(),
             "bs.heat.buffer" => Buffer(),
             "bs.meter.heat" => HeatMeter(),
@@ -472,8 +542,8 @@ namespace InventaSketch.Modules.BuildingServices
 
         private static Spec Boiler()
         {
-            var vars = new[] { HeatOut(), FlowTemp(), ReturnTemp(), Flow(rel: VarRelevance.Card), Rho(), Cp() };
-            return new Spec(vars, new[] { Carrier }, Params(vars), new[] { Balance() }) { Ports = (_, p) => GeneratorPort(p) };
+            var vars = new[] { HeatOut(), FlowTemp(), ReturnTemp(), Flow(rel: VarRelevance.Card), Drop(VarRelevance.Panel, GeneratorDrop), Rho(), Cp() };
+            return new Spec(vars, new[] { Carrier }, Params(vars), new[] { Balance() }) { Ports = (_, p) => GeneratorPort(p), LossParams = DropOnly };
         }
 
         private static Spec HeatPump()
@@ -485,9 +555,9 @@ namespace InventaSketch.Modules.BuildingServices
                 V("cop", T("Coefficient of performance", "Leistungszahl"), T("COP", "COP"), Quantities.Ratio, null, "cop") with { Min = 0.1, Max = 100 },
                 FlowTemp(),
                 Temp("ths", T("Source temperature (outdoor air)", "Quellentemperatur (Außenluft)"), T("θ_Q", "θ_Q"), "sourceTemp", VarRelevance.Panel),
-                ReturnTemp(VarRelevance.Panel), Flow(), Rho(), Cp(),
+                ReturnTemp(VarRelevance.Panel), Flow(), Drop(VarRelevance.Panel, GeneratorDrop), Rho(), Cp(),
             };
-            return new Spec(vars, new[] { Cop, Carrier }, Params(vars), new[] { Carnot(), Balance() }) { Ports = (_, p) => GeneratorPort(p) };
+            return new Spec(vars, new[] { Cop, Carrier }, Params(vars), new[] { Carnot(), Balance() }) { Ports = (_, p) => GeneratorPort(p), LossParams = DropOnly };
         }
 
         private static Spec Radiator()
@@ -502,11 +572,13 @@ namespace InventaSketch.Modules.BuildingServices
                 V("dT", T("Logarithmic excess temperature", "Logarithmische Übertemperatur"), T("Δθ_ln", "Δθ_ln"), Quantities.TemperatureDifference, "K", "excessTemp", VarRelevance.Panel) with { Min = 0.01, Max = 200 },
                 Rho(), Cp(),
                 V("PhiHL", T("Heating load of the room (estimate)", "Heizlast des Raums (Schätzwert)"), T("Φ_HL", "Φ_HL"), Quantities.HeatFlow, "W", "roomHeatLoad", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                Drop(VarRelevance.Panel, T("Pressure drop (radiator with its valve)", "Druckverlust (Heizkörper mit Ventil)")),
             };
             return new Spec(vars, new[] { Excess, Characteristic, Carrier, Operating }, Params(vars), new[] { RoomLoad() })
             {
                 Ports = (_, p) => ConsumerPort(p),
                 RoomKeys = new[] { "PhiHL" },
+                LossParams = DropOnly,
             };
         }
 
@@ -520,9 +592,21 @@ namespace InventaSketch.Modules.BuildingServices
                 Flow(rel: VarRelevance.Card), FlowTemp(VarRelevance.Panel), ReturnTemp(VarRelevance.Panel),
                 V("s", T("Pipe spacing", "Verlegeabstand"), T("s", "s"), Quantities.Length, "mm", "spacing", VarRelevance.Panel) with { Min = 1e-3, Max = 2 },
                 V("L", T("Loop length", "Rohrlänge des Heizkreises"), T("L", "L"), Quantities.Length, "m", "loopLength", VarRelevance.Panel) with { Min = 0, Max = 1e4 },
+                // Pressure drop of the loop pipe (round 6): Darcy over the loop length with the pipe's inner diameter.
+                V("di", T("Inner diameter of the loop pipe", "Innendurchmesser des Heizrohrs"), T("d_i", "d_i"), Quantities.Length, "mm", "innerDiameter", VarRelevance.Panel) with { Min = 1e-4, Max = 1 },
+                V("dp", T("Pressure drop of the loop", "Druckverlust des Heizkreises"), T("Δp", "Δp"), Quantities.Pressure, "kPa", "pressureDrop", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                Velocity(VarRelevance.Engineer),
+                V("Re", T("Reynolds number", "Reynolds-Zahl"), T("Re", "Re"), Quantities.Ratio, null, "reynolds", VarRelevance.Engineer) with { Min = 0, Max = 1e9 },
+                V("lambda", T("Friction factor", "Rohrreibungszahl"), T("λ", "λ"), Quantities.Ratio, null, "friction", VarRelevance.Engineer) with { Min = 1e-4, Max = 100 },
+                V("nu", T("Kinematic viscosity", "Kinematische Viskosität"), T("ν", "ν"), Quantities.Viscosity, "mm²/s", "viscosity", VarRelevance.Engineer) with { Default = WaterNu, Min = 1e-8, Max = 1 },
+                V("k", T("Wall roughness", "Wandrauigkeit"), T("k", "k"), Quantities.Length, "mm", "roughness", VarRelevance.Engineer) with { Default = PipeK, Min = 0, Max = 0.1 },
                 Rho(), Cp(),
             };
-            return new Spec(vars, new[] { Flux, Carrier, LoopLength }, Params(vars, "spacing"), Array.Empty<ValueCheck>()) { Ports = (_, p) => ConsumerPort(p) };
+            return new Spec(vars, new[] { Flux, Carrier, LoopLength, PipeVelocity, Reynolds("di"), FrictionRel("di"), Darcy("di") }, Params(vars, "spacing"), Array.Empty<ValueCheck>())
+            {
+                Ports = (_, p) => ConsumerPort(p),
+                LossParams = new[] { "pressureDrop", "innerDiameter" },
+            };
         }
 
         private static Spec Pump()
@@ -534,9 +618,12 @@ namespace InventaSketch.Modules.BuildingServices
                 V("Pel", T("Electrical power", "Elektrische Leistung"), T("P_el", "P_el"), Quantities.Power, "W", "powerEl") with { Min = 0, Max = 1e9 },
                 V("eta", T("Efficiency", "Wirkungsgrad"), T("η", "η"), Quantities.Efficiency, "%", "efficiency") with { Min = 0, Max = 1 },
                 V("Phyd", T("Hydraulic power", "Hydraulische Leistung"), T("P_hyd", "P_hyd"), Quantities.Power, "W", "powerHyd", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
+                // Circuit sum (round 6): the index circuit's pressure drop and the head it needs (computed only).
+                V("dpC", T("Pressure drop of the index circuit", "Druckverlust des ungünstigsten Kreises"), T("ΣΔp", "ΣΔp"), Quantities.Pressure, "kPa", "circuitPressureDrop", VarRelevance.Panel) with { Min = 0, Max = 1e9, ReadOnly = true },
+                V("Hreq", T("Required head", "Erforderliche Förderhöhe"), T("H_req", "H_erf"), Quantities.Length, "m", "headRequired", VarRelevance.Panel) with { Min = 0, Max = 1e5, ReadOnly = true },
                 Rho(),
             };
-            return new Spec(vars, new[] { Head, PumpPower }, Params(vars), Array.Empty<ValueCheck>())
+            return new Spec(vars, new[] { Head, PumpPower, RequiredHead }, Params(vars), new[] { PumpHead(), CircuitBalance() })
             {
                 Ports = (_, p) => p switch
                 {
@@ -558,9 +645,11 @@ namespace InventaSketch.Modules.BuildingServices
                 F("Vab", T("Volume flow AB", "Volumenstrom AB"), "flowAB", VarRelevance.Card),
                 F("Va", T("Volume flow A", "Volumenstrom A"), "flowA", VarRelevance.Panel),
                 F("Vb", T("Volume flow B", "Volumenstrom B"), "flowB", VarRelevance.Panel),
+                Drop(VarRelevance.Panel, T("Pressure drop (A → AB)", "Druckverlust (A → AB)")), Kv(VarRelevance.Panel), Rho(),
             };
-            return new Spec(vars, new[] { MixFlow, MixTemp }, Params(vars), Array.Empty<ValueCheck>())
+            return new Spec(vars, new[] { MixFlow, MixTemp, KvLossMixer }, Params(vars), Array.Empty<ValueCheck>())
             {
+                LossParams = KvParams,
                 Ports = (_, p) => p switch
                 {
                     "a" => new[] { new PortVar("Vdot", "Va", PortRole.Part), new PortVar("theta", "tha", PortRole.Part) },
@@ -586,9 +675,10 @@ namespace InventaSketch.Modules.BuildingServices
                 Temp("thC", T("Cold water temperature", "Kaltwassertemperatur"), T("θ_C", "θ_KW"), "coldTemp", VarRelevance.Panel, C0 + 10),
                 Temp("thT", T("Tap (mixed) temperature", "Zapftemperatur (gemischt)"), T("θ_T", "θ_Z"), "tapTemp", VarRelevance.Panel, C0 + 40),
                 Flow("l/min", "Vtap", "continuousFlow", T("Continuous draw at tap temperature", "Dauerzapfmenge bei Zapftemperatur")),
+                Drop(VarRelevance.Panel, T("Pressure drop of the heating coil", "Druckverlust der Heizwendel")),
                 Rho(), Cp(),
             };
-            return new Spec(vars, new[] { Stored, HeatUp, StoreSpread, MixedWater, ContinuousDraw }, Params(vars), Array.Empty<ValueCheck>());
+            return new Spec(vars, new[] { Stored, HeatUp, StoreSpread, MixedWater, ContinuousDraw }, Params(vars), Array.Empty<ValueCheck>()) { LossParams = DropOnly };
         }
 
         /// <summary>
@@ -612,6 +702,28 @@ namespace InventaSketch.Modules.BuildingServices
                 Gauge("pe", T("Final pressure (gauge)", "Enddruck (Überdruck)"), T("p_e", "p_e"), "finalPressure"),
             };
             return new Spec(vars, new[] { Expansion, VesselNominal }, Params(vars), new[] { VesselSize() });
+        }
+
+        private static readonly I18nText GeneratorDrop = T("Pressure drop of the generator (water side)", "Druckverlust des Erzeugers (wasserseitig)");
+        private static readonly string[] DropOnly = { "pressureDrop" };
+        private static readonly string[] KvParams = { "pressureDrop", "kvValue" };
+
+        /// <summary>
+        /// Thermostatic valve, ball valve, check valve and strainer (round 6): the single loss Δp = ζ·ρ·v²/2 [S27] or from the
+        /// valve's k_v value [S30]; flow, velocity and density come from the pipe docked at <c>in</c> (else <c>out</c>).
+        /// </summary>
+        private static Spec InlineValve()
+        {
+            var vars = new[]
+            {
+                Drop(VarRelevance.Card), Kv(VarRelevance.Card), Zeta(VarRelevance.Card),
+                Flow(), Velocity(VarRelevance.Engineer), Rho(),
+            };
+            return new Spec(vars, new[] { ElementZeta, KvLossFlow }, Params(vars), Array.Empty<ValueCheck>())
+            {
+                LossParams = new[] { "pressureDrop", "kvValue", "lossCoefficient" },
+                Docked = new[] { ("in", "Vdot", "Vdot"), ("out", "Vdot", "Vdot"), ("in", "v", "v"), ("out", "v", "v"), ("in", "rho", "rho"), ("out", "rho", "rho") },
+            };
         }
 
         /// <summary>Type id of the hydraulic separator (low-loss header).</summary>
@@ -674,16 +786,17 @@ namespace InventaSketch.Modules.BuildingServices
         {
             var vars = new[]
             {
-                HeatOut(T("Thermal power", "Wärmeleistung")), Flow(rel: VarRelevance.Card), FlowTemp(), ReturnTemp(), Rho(), Cp(),
+                HeatOut(T("Thermal power", "Wärmeleistung")), Flow(rel: VarRelevance.Card), FlowTemp(), ReturnTemp(),
+                Drop(VarRelevance.Panel), Kv(VarRelevance.Panel), Rho(), Cp(),
             };
-            return new Spec(vars, new[] { Carrier }, Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => InlinePort(p) };
+            return new Spec(vars, new[] { Carrier, KvLossFlow }, Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => InlinePort(p), LossParams = KvParams };
         }
 
         /// <summary>Water meter: shows the volume flow passing through it.</summary>
         private static Spec WaterMeter()
         {
-            var vars = new[] { Flow("m³/h", rel: VarRelevance.Card) };
-            return new Spec(vars, Array.Empty<Relation>(), Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => InlinePort(p) };
+            var vars = new[] { Flow("m³/h", rel: VarRelevance.Card), Drop(VarRelevance.Panel), Kv(VarRelevance.Panel), Rho() };
+            return new Spec(vars, new[] { KvLossFlow }, Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => InlinePort(p), LossParams = KvParams };
         }
 
         private static Spec Terminal()
@@ -737,7 +850,15 @@ namespace InventaSketch.Modules.BuildingServices
                 Temp("theta", T("Water temperature", "Wassertemperatur"), T("θ", "θ"), "temperature", VarRelevance.Card),
                 V("DN", T("Nominal size DN", "Nennweite DN"), T("DN", "DN"), Quantities.Length, "mm", "dn", VarRelevance.Panel) with { StoredUnit = "mm", Min = 1e-3, Max = 5 },
             }.Concat(LossVars(WaterNu, PipeK, Rho())).ToArray();
-            return new Spec(vars, new[] { PipeVelocity, Nominal, Reynolds("di"), FrictionRel("di"), Darcy("di") }, Params(vars, "dn"), new[] { WaterVelocity() });
+            return new Spec(vars, new[] { PipeVelocity, Nominal, Reynolds("di"), FrictionRel("di"), Darcy("di"), RunZeta }, Params(vars, "dn"), new[] { WaterVelocity() })
+            {
+                LossParams = new[] { "length", "pressureDrop" },
+                // Water properties from the pipe's own entered temperature only: a temperature passed on along the net may
+                // become known only while the solver fills defaults, after ρ and ν took theirs (the fit would then disagree).
+                Local = o => o.Params.TryGetValue("temperature", out var th) && (th.Number.HasValue || !string.IsNullOrWhiteSpace(th.Text))
+                    ? new[] { WaterDensityRel, WaterViscosityRel }
+                    : Array.Empty<Relation>(),
+            };
         }
 
         /// <summary>Water at 20 °C ν ≈ 1.0 mm²/s; smooth pipe (copper, plastic) k = 0.0015 mm [S27, S30].</summary>
@@ -757,7 +878,7 @@ namespace InventaSketch.Modules.BuildingServices
                 V("dh", T("Hydraulic diameter", "Hydraulischer Durchmesser"), T("d_h", "d_h"), Quantities.Length, "mm", "hydraulicDiameter", VarRelevance.Panel) with { Min = 1e-3, Max = 10 },
             }.Concat(LossVars(AirNu, DuctK,
                 V("rho", T("Density of air", "Dichte der Luft"), T("ρ", "ρ"), Quantities.Density, "kg/m³", "density", VarRelevance.Engineer) with { Default = AirRho, Min = 0.01, Max = 100 })).ToArray();
-            return new Spec(vars, new[] { VelocityArea, Reynolds("dh"), FrictionRel("dh"), Darcy("dh") }, Params(vars, "width"), new[] { AirVelocity() })
+            return new Spec(vars, new[] { VelocityArea, Reynolds("dh"), FrictionRel("dh"), Darcy("dh"), RunZeta }, Params(vars, "width"), new[] { AirVelocity() })
             {
                 // A height b makes the duct rectangular (a = width); otherwise it is round.
                 Local = o => o.Params.TryGetValue("ductHeight", out var b) && !string.IsNullOrWhiteSpace(b.Text)
@@ -801,6 +922,33 @@ namespace InventaSketch.Modules.BuildingServices
                 foreach (var r in spec.Local(o)) yield return BoundRelation.Local(r, o.Id);
             foreach (var b in ValueNets.Of(ctx.Doc, Nets).For(o.Id)) yield return b;
             foreach (var b in RoomLinks(o, spec, ctx)) yield return b;
+            foreach (var b in DockedPipes(o, spec, ctx)) yield return b;
+            if (o.Type == PumpId && BsCircuits.Sum(ctx.Doc, o) is { } sum) yield return sum;
+        }
+
+        /// <summary>Type id of the circulator pump (the circuit sum sits on it).</summary>
+        public const string PumpId = "bs.heat.pump";
+
+        private static readonly Relation FromPipe = Relation.Equality("bs.pipe.docked", T("Taken from the docked pipe", "Vom angeschlossenen Rohr übernommen"));
+
+        /// <summary>
+        /// Links from an element's variables to the pipe docked on its ports (<see cref="Spec.Docked"/>): a variable is linked
+        /// once, to the first docked pipe (by id) of its first port that has one.
+        /// </summary>
+        private static IEnumerable<BoundRelation> DockedPipes(SketchObject o, Spec spec, RenderContext ctx)
+        {
+            if (spec.Docked.Count == 0) yield break;
+            var pipes = ctx.Doc.Objects.Values.Where(x => x.Type == PipeType.TypeId && x.Attach is { } a && a.Any(t => t?.ObjectId == o.Id))
+                .OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
+            var done = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (port, pipeKey, key) in spec.Docked)
+            {
+                if (done.Contains(key)) continue;
+                var pipe = pipes.FirstOrDefault(l => l.Attach!.Any(t => t?.ObjectId == o.Id && t.AnchorId == port));
+                if (pipe is null) continue;
+                done.Add(key);
+                yield return new BoundRelation(FromPipe, new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["a"] = new VarRef(o.Id, key), ["b"] = new VarRef(pipe.Id, pipeKey) });
+            }
         }
 
         // ------------------------------------------------------------------ room values by containment
@@ -930,7 +1078,31 @@ namespace InventaSketch.Modules.BuildingServices
             c => c["Vp"] is double vp && c["Vs"] is double vs && vp < vs * (1 - Rel))
         { Source = "S30" };
 
-        private static readonly HashSet<string> Consumers =new(StringComparer.Ordinal) { "bs.heat.radiator", "bs.heat.floorloop" };
+        /// <summary>heat.pump.head: the pump's head is below the head the index circuit needs (ΣΔp/(ρ·g)) [S28].</summary>
+        private static ValueCheck PumpHead() => new(
+            "heat.pump.head", CheckSeverity.Warning,
+            T("The pump's head is below what the index circuit needs (sum of its pressure drops). Choose a stronger pump or reduce the losses.",
+              "Die Förderhöhe der Pumpe liegt unter dem, was der ungünstigste Kreis braucht (Summe seiner Druckverluste). Stärkere Pumpe wählen oder Verluste verringern."),
+            "H < ΣΔp/(ρ·g)",
+            c => c["H"] is double h && c["Hreq"] is double need && need > 0 && h < need * (1 - Rel))
+        { Source = "S28" };
+
+        /// <summary>Share of the index circuit below which a parallel circuit counts as unbalanced (InventaSketch choice).</summary>
+        internal const double BalanceShare = 0.25;
+
+        /// <summary>
+        /// heat.circuit.balance: the circuits through the pump's consumers (radiators, floor loops, cylinder coils) differ by more
+        /// than 25 % of the index circuit; judged on the circuits whose every counted pressure drop is known [S30].
+        /// </summary>
+        private static ValueCheck CircuitBalance() => new(
+            "heat.circuit.balance", CheckSeverity.Hint,
+            T("The circuits through this pump's consumers have very different pressure drops (one is more than 25 % below the index circuit). Balance them hydraulically: preset the valves of the shorter circuits.",
+              "Die Kreise über die Verbraucher dieser Pumpe haben sehr unterschiedliche Druckverluste (einer liegt mehr als 25 % unter dem ungünstigsten Kreis). Hydraulisch abgleichen: Ventile der kürzeren Kreise voreinstellen."),
+            "min ΣΔp(consumer) < 75 % · max ΣΔp(consumer)",
+            c => BsCircuits.Unbalanced(c.Context.Doc, c.Object, c.Table, BalanceShare))
+        { Source = "S30" };
+
+        internal static readonly HashSet<string> Consumers = new(StringComparer.Ordinal) { "bs.heat.radiator", "bs.heat.floorloop" };
 
         /// <summary>heat.balance: the consumers on the generator's heating circuit need more than the generator gives [S29].</summary>
         private static ValueCheck Balance() => new(

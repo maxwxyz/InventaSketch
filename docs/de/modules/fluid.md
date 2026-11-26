@@ -156,17 +156,18 @@ stehen vorn. Entwurfsnotizen:
 |---|---|---|
 | Pumpe / Verdichter (`fluid.pump`) | *V*_g (`displacement`, cm³), *n* (`speed`), *Q* (`flowRate`, l/min), *p* (`pressure`, bar); Panel *M* (`torque`, Antrieb), *P* (`power`, Antrieb), *P*_hyd (`powerHyd`); Ingenieur η_v (`efficiencyV`), η_hm (`efficiencyHm`), beide Vorgabe 100 % | *Q* = *V*_g·*n*·η_v; *M* = *V*_g·*p*/(2π·η_hm); *P* = 2π·*n*·*M*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd/(η_v·η_hm) [S26] |
 | Motor (`fluid.motor`) | wie die Pumpe; *M* und *P* sind Abtriebswerte | *n* = *Q*·η_v/*V*_g; *M* = *V*_g·*p*·η_hm/(2π); *P* = 2π·*n*·*M*; *P*_hyd = *p*·*Q*; *P* = *P*_hyd·η_v·η_hm [S26] |
-| Doppeltwirkender Zylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_aus (`forceExt`), *v*_aus (`speedExt`); Panel *p*, *Q*, *F*_ein (`forceRet`), *v*_ein (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_aus (`timeExt`), *t*_ein (`timeRet`); Ingenieur η_hm, *F*_erf (`forceReq`), *p*_max (`pmax`, verknüpft) | *A*₁ = π·*D*²/4 (durchgehende Stange: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm und *v* = *Q*/*A* in beide Richtungen; *t* = *s*/*v* [S26] |
-| Einfachwirkender Zylinder | *D*, *F* (`force`, ohne Federkraft), *v* (`speed`), *p*; Panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`); Ingenieur η_hm, *F*_erf, *p*_max | *A* = π·*D*²/4 (Federvorhub: Ringfläche); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
+| Doppeltwirkender Zylinder | *D* (`bore`), *d* (`rodDiameter`), *F*_aus (`forceExt`), *v*_aus (`speedExt`); Panel *p*, *Q*, *F*_ein (`forceRet`), *v*_ein (`speedRet`), *A*₁ (`areaExt`), *A*₂ (`areaRet`), φ (`areaRatio`), *s* (`stroke`), *t*_aus (`timeExt`), *t*_ein (`timeRet`), ΣΔ*p* (`supplyPressureDrop`) und *p*_verf (`pressureAvailable`), beide aus dem Zulaufweg berechnet (siehe unten); Ingenieur η_hm, *F*_erf (`forceReq`), *p*_max (`pmax`, verknüpft) | *A*₁ = π·*D*²/4 (durchgehende Stange: *A*₁ = *A*₂); *A*₂ = π·(*D*² − *d*²)/4; φ = *A*₁/*A*₂; *F* = *p*·*A*·η_hm und *v* = *Q*/*A* in beide Richtungen; *t* = *s*/*v* [S26] |
+| Einfachwirkender Zylinder | *D*, *F* (`force`, ohne Federkraft), *v* (`speed`), *p*; Panel *Q*, *d*, *A* (`area`), *s*, *t* (`time`), ΣΔ*p*, *p*_verf; Ingenieur η_hm, *F*_erf, *p*_max | *A* = π·*D*²/4 (Federvorhub: Ringfläche); *F* = *p*·*A*·η_hm; *v* = *Q*/*A*; *t* = *s*/*v* [S26] |
 | Beide Zylinder: Luftverbrauch Pneumatik (Ingenieur) | *V*_H (`sweptVolume`), *V*_L (`airPerCycle`, freie Luft je Arbeitsspiel), *Q*_n (`airFlow`, Luftverbrauch während eines Hubs) | *V*_H = (*A*₁ + *A*₂)·*s* (einfachwirkend: *A*·*s*); *V*_L = *V*_H·(*p* + *p*_amb)/*p*_amb; *Q*_n = *Q*·(*p* + *p*_amb)/*p*_amb (*p* Überdruck, *p*_amb = 1,013 bar, isotherm) [S26] |
 | Schwenkantrieb | *V*_g, *p*, *M*; Ingenieur η_hm | *M* = *V*_g·*p*·η_hm/(2π) [S26] |
 | Druckbegrenzungs-, Druckminder-, Zuschaltventil | *p*_E (`setPressure`) | – |
 | Drossel (`fluid.valve.throttle`) | *Q* (`flowRate`), Δ*p* (`pressureDrop`), *d*₀ (`orificeDiameter`); Panel *p*₁ (`pressureIn`, an P), *p*₂ (`pressureOut`, an A), *A*₀ (`orificeArea`); Ingenieur α (`flowCoefficient`, Vorgabe 0,6), ρ (`density`, Vorgabe 870 kg/m³) | *A*₀ = π·*d*₀²/4; *Q* = α·*A*₀·√(2Δ*p*/ρ) (scharfkantige Blende, inkompressibel); Δ*p* = *p*₁ − *p*₂ [S26] |
+| Wegeventil, Rückschlagventil, entsperrbares Rückschlagventil, Filter, Kühler, Heizer (Runde 6) | Δ*p* (`pressureDrop`); Panel ζ (`lossCoefficient`), Δ*p*_N (`pressureDropNominal`) bei *Q*_N (`flowNominal`, der Datenblattpunkt), *Q* (`flowRate`, von der Leitung an P, sonst A/A1); Ingenieur *v* (`velocity`, von der Leitung), ρ (`density`, von der Leitung, Vorgabe 870 kg/m³) | Δ*p* = ζ·ρ·*v*²/2 [S27]; Δ*p* = Δ*p*_N·(*Q*/*Q*_N)² (turbulente Durchströmung, Fluid des Datenblatts) [S26] |
 | Hydraulikaggregat (`fluid.powerunit`) | *Q* (`flowRate`), *p* (`pressure`), *P* (`power`, Antrieb), *V*_T (`tankVolume`); Panel *P*_hyd (`powerHyd`), η_t (`efficiency`, Vorgabe 100 %), *p*_E (`setPressure`, das eingebaute Druckbegrenzungsventil) | *P*_hyd = *p*·*Q*; *P* = *P*_hyd/η_t [S26] |
 | Manometer, Druckschalter, Druckquelle | *p* (aus dem Netz angezeigt) | – |
 | Durchflussmesser | *Q* (aus dem Netz angezeigt) | – |
 | Hydrospeicher | *V*₀ (`volume`), *p*₀ (`p0`), Δ*V* (`volumeUsable`); Panel *p*₁, *p*₂, *V*₁, *V*₂ (absolute Drücke) | *p*₀·*V*₀ = *p*₁·*V*₁ = *p*₂·*V*₂ (isotherm); Δ*V* = *V*₁ − *V*₂ [S26] |
-| Leitung (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); Panel *p*, *L* (`length`), Δ*p* (`pressureDrop`); Ingenieur *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, Vorgabe 46 mm²/s: Öl der Viskositätsklasse VG 46 bei 40 °C), ρ (`density`, Vorgabe 870 kg/m³), *k* (`roughness`, Vorgabe 0,0015 mm, gezogenes Rohr) | *v* = 4·*Q*/(π·*d*_i²); *Re* = *v*·*d*_i/ν; λ = 64/*Re* unter *Re* = 2320, darüber die explizite Näherung nach Haaland für Colebrook–White; Δ*p* = λ·(*L*/*d*_i)·ρ·*v*²/2 (gerade Leitung, Formteile nicht gerechnet) [S27] |
+| Leitung (`fluid.line`) | *Q* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`); Panel *p*, *L* (`length`), Δ*p* (`pressureDrop`); Ingenieur *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, Vorgabe 46 mm²/s: Öl der Viskositätsklasse VG 46 bei 40 °C), ρ (`density`, Vorgabe 870 kg/m³), *k* (`roughness`, Vorgabe 0,0015 mm, gezogenes Rohr); Panel Σζ (`lossCoefficient`, Bögen, T-Stücke und Verschraubungen des Strangs) und Δ*p*_ζ (`pressureDropSingle`) | *v* = 4·*Q*/(π·*d*_i²); *Re* = *v*·*d*_i/ν; λ = 64/*Re* unter *Re* = 2320, darüber die explizite Näherung nach Haaland für Colebrook–White; Δ*p* = λ·(*L*/*d*_i)·ρ·*v*²/2 (gerade Leitung) [S27]; Einzelwiderstände Δ*p*_ζ = Σζ·ρ·*v*²/2 [S27] |
 
 **Werte über Anschlüsse.** Leitungen verbinden Anschlüsse zu Netzen (Leitungsenden an Anschlüssen und an anderen
 Leitungen). Je Netz gilt:
@@ -187,8 +188,25 @@ Leitungen). Je Netz gilt:
   Zylinder bei 60 bar ergeben Δ*p* = 40 bar, den Volumenstrom und die Zylindergeschwindigkeit. Das Hydraulikaggregat gibt
   *Q* und *p* an P wie eine Pumpe und seinen Einstelldruck als *p*_max weiter, die versorgten Zylinder erhalten so ihre
   Kraftgrenze.
-- Druckverluste sind Werte der Leitung und der Drossel; sie werden nicht von den Netzdrücken abgezogen, die je Netz ein
-  Wert bleiben. Verluste in Wegeventilen werden nicht abgebildet.
+- Druckverluste sind Werte der Leitungen, Ventile und der Drossel; sie werden nicht von den Netzdrücken abgezogen, die je
+  Netz ein Wert bleiben. Der Zulaufweg unten summiert sie je Zylinder.
+
+**Zulaufweg eines Zylinders** (Runde 6, `FluidCircuits`). Von der ersten Versorgung (nach Id), deren Druckanschluss P den
+Zylinder erreicht – Pumpe, Hydraulikaggregat oder Druckquelle –, folgt das Modul den Leitungen (auch auf Leitungen
+angedockten Leitungen und mehreren Leitungen an einem Anschluss) und den Durchgängen der Elemente (wie für den
+Volumenstrom *Q* oben: Wegeventil P–A–B, Rückschlag- und entsperrbare Rückschlagventile, Filter, Kühler, Heizer,
+Drosseln, Kupplungen, Kreuzungen) bis zum Anschluss A des Zylinders (sonst B). Jeder Weg summiert die Druckverluste, die
+er passiert, aber nur die der Teile mit eingegebenem Verlust: Leitungen mit eingegebener *L* oder Δ*p* (ihr Δ*p*) oder Σζ
+(ihr Δ*p*_ζ), Ventile und Aufbereitungsteile mit eingegebenem Δ*p*, ζ oder Datenblattpunkt, die Drossel mit eingegebener
+Blende oder Δ*p*; andere Teile zählen null. ΣΔ*p* des Zylinders ist die größte Wegsumme (Beziehung `fluid.circuit.sum`),
+also bekannt, sobald jeder gezählte Verlust auf jedem Weg bekannt ist, und der am Zylinder verfügbare Druck ist
+*p*_verf = *p*_Versorgung − ΣΔ*p* (`fluid.circuit.available`, *p*_Versorgung das *p* der Versorgung) [S26]. Ein
+Druckbegrenzungsventil oder Manometer an einem Abzweig beendet seinen Weg dort (kein Durchgang). Elemente anderer Module
+beenden einen Weg; die Suche endet nach 256 Wegen oder 50 000 Schritten (dann keine Summe). Beispiel
+(Abnahmekriterium): die Pumpe mit 14,5 l/min von oben bei 100 bar, eine 2 m lange Leitung mit 10 mm zum 4/3-Wegeventil
+(laminar, Δ*p* = 0,79 bar), der Datenblattpunkt des Ventils 6 bar bei 30 l/min (1,40 bar) und 1,5 bar eingetragen an der
+Leitung nach A ergeben ΣΔ*p* = 3,69 bar und *p*_verf = 96,3 bar; eine erforderliche Kraft von 19,3 kN ist dann nicht mehr
+erreichbar (`fluid.cyl.force.losses`), obwohl 100 bar·*A*₁ = 19,6 kN sie gäbe.
 
 Beispiel (Abnahmekriterium): eine Pumpe mit *V*_g = 10 cm³ bei 1450 min⁻¹ liefert *Q* = 14,5 l/min; über ein
 4/3-Wegeventil an einen Zylinder 50/28 mm bei 100 bar: *F*_aus = 19,6 kN, *F*_ein = 13,5 kN, *v*_aus = 0,123 m/s,
@@ -202,6 +220,8 @@ Beispiel (Abnahmekriterium): eine Pumpe mit *V*_g = 10 cm³ bei 1450 min⁻¹ li
 | `fluid.velocity` | Leitungsgeschwindigkeit außerhalb des Lehrbuchbereichs ihrer Funktion: Saugleitung 0,5–1,5 m/s (an S einer Pumpe), Rücklauf 2–4 m/s (Leckölleitung, Tank, Anschluss T/R), Druckleitung 3–6 m/s | Hinweis | [S26] |
 | `fluid.pressure.relief` | eine Pumpe mit Werten, in deren Drucknetz (über Ventile) kein Druckbegrenzungsventil liegt | Hinweis | [S25] (ISO 4413) |
 | `fluid.tank.volume` | Hydraulikaggregat: *V*_T < 3·*Q*·1 min (Faustregel aus dem Lehrbuch für stationäre Aggregate: 3–5-facher Förderstrom je Minute) | Hinweis | [S26] |
+| `fluid.circuit.losses` | Zylinder: die summierten Druckverluste des Zulaufwegs erreichen den Versorgungsdruck (*p*_verf ≤ 0) | Warnung | [S26] |
+| `fluid.cyl.force.losses` | Zylinder: *F*_erf > *p*_verf·*A*·η_hm (*A*₁ oder *A*₂ je nach erreichtem Anschluss; nicht gemeldet, wenn `fluid.cyl.force` gemeldet wird) | Warnung | [S26] |
 
 ## Hinweise für Hosts
 
@@ -214,9 +234,9 @@ Speicher) nutzen den Eckenradius des Rechtecks.
 - Keine numerische Anschlusskennzeichnung (`1`, `2`, `3`, `12`, `14` …), keine Servo-/Proportionalventile, keine
   Logikbausteine.
 - Das Hydraulikaggregat ist ein Symbol: Motor, Pumpe, Druckbegrenzungsventil und Filter sind gezeichnet, keine eigenen
-  Elemente (keine Welle, keine eigenen Anschlüsse); der Förderstrom wird am Aggregat eingetragen. Druckverluste von
-  Formteilen, Kennlinien von Ventilen aus dem Datenblatt (Δ*p* über *Q*) und die Kompressibilität der Luft in der
-  Blendenbeziehung werden nicht abgebildet.
+  Elemente (keine Welle, keine eigenen Anschlüsse); der Förderstrom wird am Aggregat eingetragen. Ventilverluste nutzen
+  einen Datenblattpunkt (Δ*p* ∝ *Q*²), keine gemessene Kennlinie; die Kompressibilität der Luft in der Blendenbeziehung
+  und der rücklaufseitige Gegendruck eines Zylinders werden nicht abgebildet.
 - Ein auf einer anderen Leitung (deren Schiene) angedocktes Leitungsende hängt an ihr (Abzweig): Es folgt der Leitung,
   und die Verbindungsliste fasst beide Leitungen zusammen; ein Verbindungspunkt ist optional.
 - Kennzeichen und Anschlussnamen liegen außerhalb der Objektbox; Auswahlrahmen der Hosts schließen sie nicht ein.
