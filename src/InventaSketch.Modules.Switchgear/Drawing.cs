@@ -175,6 +175,28 @@ namespace InventaSketch.Modules.Switchgear
                         p.Line(cx - 2.2, 1.5, cx + 2.2, -5.5, thin, SwTags.Symbol);
                         p.Line(cx, 3, cx, 10, s, SwTags.Symbol);
                         break;
+                    case ColumnKind.Thermal:
+                        // Thermal (bimetal) element: a box with the stepped conductor through it.
+                        p.Line(cx, Top, cx, -6, s, SwTags.Symbol);
+                        p.Line(cx, Bottom, cx, 6, s, SwTags.Symbol);
+                        p.Rect(cx - 2.2, -6, 4.4, 12, thin, 0, SwTags.Symbol);
+                        p.Poly(s, false, SwTags.Symbol, (cx, -6), (cx, -2.5), (cx + 1.4, -2.5), (cx + 1.4, 2.5), (cx, 2.5), (cx, 6));
+                        break;
+                    case ColumnKind.FuseSwitch:
+                        {
+                            // Switch-disconnector whose blade carries the fuse.
+                            p.Line(cx, Top, cx, -6, s, SwTags.Symbol);
+                            p.Line(cx, Bottom, cx, 6, s, SwTags.Symbol);
+                            p.Line(cx - 1.4, -6, cx + 1.4, -6, s, SwTags.Symbol);
+                            p.Line(cx, 6, cx - 4, -5, s, SwTags.Symbol);
+                            double ux = -4 / Math.Sqrt(137), uy = -11 / Math.Sqrt(137), nx = -uy, ny = ux;
+                            double mx = cx - 2, my = 0.5, hl = 3.2, hw = 1.1;
+                            p.Poly(s with { Fill = Fill.Solid("#ffffff") }, true, SwTags.Symbol,
+                                (mx - ux * hl - nx * hw, my - uy * hl - ny * hw), (mx + ux * hl - nx * hw, my + uy * hl - ny * hw),
+                                (mx + ux * hl + nx * hw, my + uy * hl + ny * hw), (mx - ux * hl + nx * hw, my - uy * hl + ny * hw));
+                            contacts.Add(cx);
+                            break;
+                        }
                     case ColumnKind.Changeover:
                         {
                             var right = left + Slot;
@@ -214,7 +236,7 @@ namespace InventaSketch.Modules.Switchgear
                 }
                 else p.FitText((bf + bt) / 2, 0, text, 3.4, bt - bf - 1.2, tag: SwTags.Symbol);
             }
-            var coil = cols.Select((c, i) => (c, i)).FirstOrDefault(x => x.c.Kind == ColumnKind.Coil);
+            var coil = cols.Select((c, i) => (c, i)).FirstOrDefault(x => x.c.Kind is ColumnKind.Coil or ColumnKind.Thermal);
             if (spec.Linked && (contacts.Count > 1 || coil.c is not null || spec.Residual) && contacts.Count > 0)
             {
                 var from = coil.c is not null ? x0 + (cols.Take(coil.i).Sum(c => c.Slots) + 0.5) * Slot + 3 : contacts.Min() - 2.2;

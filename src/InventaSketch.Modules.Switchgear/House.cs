@@ -8,9 +8,10 @@ namespace InventaSketch.Modules.Switchgear
     /// <summary>
     /// Installation devices in the rooms (socket outlet, switch, light outlet, appliance connection) as plan symbols in
     /// the manner of IEC 60617-11 (drawn independently), each with its room and the designation of the protective device
-    /// that feeds its circuit ("-F3"): the data of the house installation list and the circuit plan.
+    /// that feeds its circuit ("-F3"): the data of the house installation list and the circuit plan. Each is a load of its
+    /// circuit with optional values (power, current, voltage, power factor) and a phase (<see cref="SwValues"/>).
     /// </summary>
-    internal sealed class HouseType : ObjectType
+    internal sealed class HouseType : ObjectType, IValueType, IValueLinks
     {
         public const string SocketId = "sw.house.socket";
         public const string SwitchId = "sw.house.switch";
@@ -48,9 +49,16 @@ namespace InventaSketch.Modules.Switchgear
                 list.Add(Pm.Room);
                 list.Add(FeedParam);
                 list.Add(DeviceRef);
+                list.Add(SwValues.LoadPhase);
+                list.AddRange(ValueSpec.Params);
                 return list;
             }
         }
+
+        internal SwValueSpec ValueSpec => SwValues.For(this);
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => SwValues.Links(o, ValueSpec, ctx);
 
         public ParamDef? KindParam => _kind;
 
@@ -69,6 +77,9 @@ namespace InventaSketch.Modules.Switchgear
             // Circuit (feeding device) at the top left, small.
             var feed = o.Str("feed", "").Trim();
             if (feed.Length > 0) pen.Text(-5.8, -5.0, Pen.Fit(feed, 2.0, 5.4).Text, Pen.Fit(feed, 2.0, 5.4).Size, anchor: TextAnchor.Start, tag: SwTags.Label);
+            // A phase chosen for the load itself, small at the top right.
+            var phase = o.Str(SwValues.PhaseKey, SwValues.FromCircuit);
+            if (phase != SwValues.FromCircuit) pen.Text(5.8, -5.0, phase == SwValues.ThreePhase ? "3~" : phase, 2.0, anchor: TextAnchor.End, tag: SwTags.Label);
             return pen.Items;
         }
 
@@ -83,6 +94,7 @@ namespace InventaSketch.Modules.Switchgear
         {
             if (_kind is not null)
                 foreach (var a in ActionChoices.FromParam(o, "sw." + _kind.Key, _kind, _kind.Label, "param", null)) yield return a;
+            foreach (var a in ActionChoices.FromParam(o, "sw." + SwValues.PhaseKey, SwValues.LoadPhase, SwValues.LoadPhase.Label, "param", null)) yield return a;
             yield return ContextAction.WithInput("sw.room", new I18nText("Room …", "Raum …"), IconIds.Home, new I18nText("Room", "Raum"), o.Str("room", ""),
                 (x, t) => x.WithParam("room", t.Trim())) with { Group = "label" };
             yield return ContextAction.WithInput("sw.feed", new I18nText("Circuit …", "Stromkreis …"), IconIds.Name, new I18nText("Circuit (fed from)", "Stromkreis (gespeist von)"),

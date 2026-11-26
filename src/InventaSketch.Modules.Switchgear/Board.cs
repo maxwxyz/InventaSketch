@@ -153,7 +153,7 @@ namespace InventaSketch.Modules.Switchgear
             public string? Upstream { get; set; }
             public string Source { get; set; } = "";
             public List<Node> Children { get; } = new();
-            /// <summary>Room devices fed by this node.</summary>
+            /// <summary>Loads fed by this node: room devices and drives (frequency inverters).</summary>
             public List<SketchObject> Loads { get; } = new();
             public bool Drawn => Objects.Count > 0;
         }
@@ -164,7 +164,7 @@ namespace InventaSketch.Modules.Switchgear
         /// The feed tree: protective devices, RCDs, main switches, meters and surge protection by designation; each one's
         /// upstream device from its "fed from" parameter, else from the wiring (a wire or cable from a bottom pin of the
         /// upstream device to a top pin), else, for circuit breakers, the nearest RCD to the left on the same rail (assumed,
-        /// as with a comb busbar). Room devices hang below the designation they name.
+        /// as with a comb busbar). Room devices and drives hang below the designation they name (or are wired to).
         /// </summary>
         public IReadOnlyList<Node> FeedTree()
         {
@@ -199,8 +199,8 @@ namespace InventaSketch.Modules.Switchgear
                     }
                 }
             }
-            // Room devices: their circuit, else the protective device a cable from them is docked on.
-            foreach (var (o, _) in HouseDevices())
+            // Room devices and drives (loads): their circuit, else the protective device a cable or wire from them is docked on.
+            foreach (var o in HouseDevices().Select(h => h.Obj).Concat(Devices().Where(d => d.Type.Spec.Role == DeviceRole.Drive).Select(d => d.Obj)))
             {
                 var feed = o.Str("feed", "").Trim();
                 if (feed.Length == 0 && WiredUpstream(o) is { } up) feed = KeyOf(up);

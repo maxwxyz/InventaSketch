@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using InventaSketch.Core;
 
@@ -32,14 +33,22 @@ namespace InventaSketch.Modules.Switchgear
         Socket,
         /// <summary>Terminal blocks.</summary>
         Terminal,
-        /// <summary>End clamps, plug-in bridges.</summary>
+        /// <summary>End clamps, plug-in bridges, comb busbars, blanking plates.</summary>
         Accessory,
+        /// <summary>Frequency inverters (a load of its circuit).</summary>
+        Drive,
+        /// <summary>PLC modules, safety relays.</summary>
+        Automation,
     }
 
     /// <summary>How a column of a device is drawn in the circuit symbol view.</summary>
     internal enum ColumnKind
     {
         Breaker, Disconnector, Contactor, NormallyOpen, NormallyClosed, PushOpen, PushClosed, Changeover, Coil, Fuse, Terminal, Spd, Box,
+        /// <summary>Thermal (bimetal) element of an overload relay.</summary>
+        Thermal,
+        /// <summary>Fuse on the blade of a switch-disconnector.</summary>
+        FuseSwitch,
     }
 
     /// <summary>
@@ -101,6 +110,8 @@ namespace InventaSketch.Modules.Switchgear
         public bool HasSymbol { get; init; } = true;
         /// <summary>Extra actions of the type (terminal numbering).</summary>
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
+        /// <summary>Mount anchors at the left and right edge on the centre line (not for a comb busbar above the devices).</summary>
+        public bool Mounts { get; init; } = true;
     }
 
     /// <summary>
@@ -109,7 +120,7 @@ namespace InventaSketch.Modules.Switchgear
     /// (wires dock there, "+" builds on); in the front view the left and right edges on the rail centre line are
     /// <see cref="AnchorRole.Mount"/> anchors, so devices snap onto the rail grid and side by side.
     /// </summary>
-    internal sealed class DeviceType : ObjectType
+    internal sealed class DeviceType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         public const string FrontView = "front";
         public const string SymbolView = "symbol";
@@ -148,6 +159,7 @@ namespace InventaSketch.Modules.Switchgear
                 if (_spec.Role != DeviceRole.Accessory) list.Add(_spec.Role == DeviceRole.Terminal ? Terminals.StripRef : Pm.Ref);
                 if (HasCircuit) { list.Add(Pm.Circuit); list.Add(Pm.Feed); }
                 if (HasRoom) list.Add(Pm.Room);
+                list.AddRange(ValueSpec.Params);
                 return list;
             }
         }
@@ -216,7 +228,27 @@ namespace InventaSketch.Modules.Switchgear
             return after with { Size = size, Transform = t };
         }
 
-        public override SketchObject OnParamChanged(SketchObject before, SketchObject after, string key) => Adapt(before, after);
+        /// <summary>
+        /// After a parameter changed: a number written into a choice parameter (a value entered for I_n, which is bound to
+        /// the rating choice) is stored as its text ("20"), so the device shows it; then the box follows (<see cref="Adapt"/>).
+        /// </summary>
+        public override SketchObject OnParamChanged(SketchObject before, SketchObject after, string key)
+        {
+            var def = _spec.Params.FirstOrDefault(p => p.Key == key);
+            if (def is { Kind: ParamKind.Choice } && after.Params.TryGetValue(key, out var v) && v.Number is double n && !double.IsNaN(n) && !double.IsInfinity(n))
+                after = after.WithParam(key, n.ToString("0.###", CultureInfo.InvariantCulture));
+            return Adapt(before, after);
+        }
+
+        // ------------------------------------------------------------------ element values (SwValues)
+
+        /// <summary>Variables, value parameters and checks of this type (empty for devices without values).</summary>
+        internal SwValueSpec ValueSpec => SwValues.For(this);
+
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => SwValues.Links(o, ValueSpec, ctx);
 
         // ------------------------------------------------------------------ pins
 
@@ -271,7 +303,7 @@ namespace InventaSketch.Modules.Switchgear
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
             foreach (var p in Pins(o)) yield return Anchor.Point(AnchorRole.Port, new Vec2(p.U * o.Size.W, p.V * o.Size.H), p.Id);
-            if (ViewOf(o) == SymbolView) yield break;
+            if (ViewOf(o) == SymbolView || !_spec.Mounts) yield break;
             // On the rail centre line: neighbours and rail grid points snap here.
             yield return Anchor.Point(AnchorRole.Mount, new Vec2(-o.Size.W / 2, 0), "left");
             yield return Anchor.Point(AnchorRole.Mount, new Vec2(o.Size.W / 2, 0), "right");
@@ -317,11 +349,15 @@ namespace InventaSketch.Modules.Switchgear
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {
             foreach (var def in _spec.Params.Where(p => p.Kind == ParamKind.Choice && p.Options is { Count: > 1 } && !p.Advanced))
+            {
+                // A multi-pole device carries all phases: no phase choice.
+                if (def.Key == SwValues.PhaseKey && SwValues.IsThreePhase(o)) continue;
                 foreach (var a in ActionChoices.FromParam(o, "sw." + def.Key, def, def.Label, "param", null))
                 {
                     var inner = a.Apply;
                     yield return a with { Apply = x => Adapt(x, inner(x)) };
                 }
+            }
             if (_spec.Lever)
                 yield return new ContextAction("sw.on", new I18nText("Switched on", "Eingeschaltet"), IconIds.Toggle, x => x.WithParam("on", !x.Flag("on", true)))
                 { IsActive = o.Flag("on", true), Group = "state" };

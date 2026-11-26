@@ -6,12 +6,15 @@ Englische Fassung (maßgeblich): [../../en/modules/switchgear.md](../../en/modul
 
 Das Modul zeichnet **Verteiler und Schaltschränke auf Hutschienen TS35** und die **Installationsgeräte in den Räumen**,
 die sie versorgen: Reiheneinbaugeräte mit Frontansichten, die wie die echten Geräte aussehen (Schaltknebel, Bemessung
-„B16“, „30 mA“, Prüftaste, Schraubklemmen), Schaltzeichen-Ansichten, Reihenklemmen mit Brücken, Schienen, Kanäle,
-Endhalter und Beschriftung, Adern und Kabel. Kennzeichen und Bemessungswerte sind optionale Parameter und erscheinen auf
-den Geräten; fünf **Installationsberichte** (CSV und Markdown) entstehen aus der Folie.
+„B16“, „30 mA“, Prüftaste, Schraubklemmen), Industriegeräte (Motorschutzschalter, Überlastrelais,
+NH-Sicherungslasttrenner, Frequenzumrichter, SPS-Baugruppen, Sicherheitsrelais), Schaltzeichen-Ansichten, Reihenklemmen
+mit Brücken, Schienen, Phasenschienen, Abdeckstreifen, Kanäle, Endhalter und Beschriftung, Adern und Kabel. Kennzeichen
+und Bemessungswerte sind optionale Parameter und erscheinen auf den Geräten; fünf **Installationsberichte** (CSV und
+Markdown) entstehen aus der Folie. Optionale **Elementwerte** summieren die Verbraucher je Stromkreis und je
+Außenleiter und prüfen einige Plausibilitätsregeln (siehe „Werte und Prüfungen“).
 
-Es ist ein Modul zum **Skizzieren und Dokumentieren**: Es bemisst keine Stromkreise, prüft keine Selektivität oder
-Schutzmaßnahmen und beansprucht keine Normkonformität. Die Frontansichten sind eigenständig nach dem üblichen Aussehen
+Es ist ein Modul zum **Skizzieren und Dokumentieren**: Es summiert eingegebene Lasten, bemisst aber keine Leitungen,
+prüft keine Selektivität oder Schutzmaßnahmen und beansprucht keine Normkonformität. Die Frontansichten sind eigenständig nach dem üblichen Aussehen
 von Reiheneinbaugeräten gezeichnet; keine Herstellergestaltung und keine Normgrafik wird übernommen. Das Modul zeichnet
 alles selbst und hängt von keinem anderen Modul ab (die Schaltzeichen sind eigene, nicht die des Elektromoduls).
 
@@ -31,28 +34,42 @@ alles selbst und hängt von keinem anderen Modul ab (die Schaltzeichen sind eige
   (Verbinder: Kabel `sw.line.cable`). Ader- und Kabelenden docken dort an und folgen dem Gerät; „+“ baut weiter.
   Anschlussnamen folgen den üblichen Klemmenbezeichnungen: Pole `1/2`, `3/4`, `5/6`, Neutralleiter `N1` (oben) / `N2`
   (unten), Spulen `A1/A2`, Wechsler `11/12/14`, Zeitrelais `15/16/18`, Überspannungsschutz `L1…L3`, `N`, `PE`, Bus
-  `bus`, Kanäle der Busaktoren `A1/A2`, `B1/B2` …, Klemmen `1/2` (Etagen `3/4`, `5/6`).
+  `bus`, Kanäle der Busaktoren `A1/A2`, `B1/B2` …, Klemmen `1/2` (Etagen `3/4`, `5/6`); Motorschutzschalter,
+  Überlastrelais und NH-Lasttrenner `1/2`, `3/4`, `5/6` (Hilfskontakte des Überlastrelais `95/96` Öffner, `97/98`
+  Schließer), Frequenzumrichter `L1…L3` (einphasig `L`, `N`) → `U`, `V`, `W`, SPS-Baugruppen `L+`, `M` und die Kanäle
+  `I0…`, `Q0…`, `AI0…`, `AQ0…` (CPU: Netzwerk `X1`, Medium `data`), Sicherheitsrelais `A1/A2`, `S11/S12`, `S21/S22`,
+  `13/14`, `23/24`, Zähne der Phasenschiene `t1…tn` (an ihrer Unterkante in TE-Mitte, wo die oberen Anschlüsse
+  einteiliger Geräte liegen).
 - **Ansichten:** Reiheneinbaugeräte und Klemmen haben eine *Frontansicht* (Standard) und eine *Schaltzeichen*-Ansicht
   (Kontakte, Spulen, Klemmen nach Art von IEC 60617, unbetätigt gezeichnet, mit gestrichelter Wirkverbindung,
   Summenstromwandler und IΔ-Auslöser, Kennzeichen und Bemessung rechts). Beide Ansichten haben dieselben Anschlussnamen;
   der Wechsel behält den optischen Maßstab.
-- **Kennzeichen** folgen den Ideen von IEC 81346 (Kennbuchstaben nach IEC 81346-2): `-F` Schützen (LS, FI, FI/LS, SPD),
-  `-Q` Energie schalten (Hauptschalter, Schütz), `-K` Signale verarbeiten (Relais, Zeitrelais, Busgeräte), `-P`
-  Darstellen (Zähler, Leuchtmelder), `-T` Umformen (Netzteile), `-S` Handbetätigung (Taster, Schalter), `-X` Verbinden
+- **Kennzeichen** folgen den Ideen von IEC 81346 (Kennbuchstaben nach IEC 81346-2): `-F` Schützen (LS, FI, FI/LS, SPD,
+  Überlastrelais, NH-Lasttrenner), `-Q` Energie schalten (Hauptschalter, Schütz, Motorschutzschalter), `-K` Signale
+  verarbeiten (Relais, Zeitrelais, Busgeräte, SPS-Baugruppen, Sicherheitsrelais), `-P` Darstellen (Zähler,
+  Leuchtmelder), `-T` Umformen (Netzteile, Frequenzumrichter), `-S` Handbetätigung (Taster, Schalter), `-X` Verbinden
   (Klemmen, Steckdosen), `-W` Kabel. Sie sind freier Text; „Kennzeichen …“ schlägt den Kennbuchstaben vor.
   **Gleiche Kennzeichen gehören zusammen** (ein Knoten im Stromkreisplan, ein Kabel in der Kabelliste).
-- **Auswahlen sind Dropdowns** (`ActionChoices.FromParam`): Pole, Charakteristik, Bemessungsstrom, Fehlerstrom, FI-Typ,
-  Spulenspannung, Kontakte, Funktion, Farbe, Querschnitt … Die Knebelstellung ist ein Umschalter („Eingeschaltet“).
+- **Auswahlen sind Dropdowns** (`ActionChoices.FromParam`): Pole, Charakteristik, Bemessungsstrom, Phase, Fehlerstrom,
+  FI-Typ, Spulenspannung, Kontakte, Funktion, Farbe, Querschnitt … Die Knebelstellung ist ein Umschalter („Eingeschaltet“).
 
 ## Objekttypen
 
 | Typ-Id | Element (DE / EN) | Parameter (alle optional) |
 |---|---|---|
-| `sw.protection.mcb` | Leitungsschutzschalter / Miniature circuit breaker | `char` B/C/D, `rating` 6–63 A, `poles` 1, 1+N, 2, 3, 3+N, `on` |
+| `sw.protection.mcb` | Leitungsschutzschalter / Miniature circuit breaker | `char` B/C/D, `rating` 6–63 A, `poles` 1, 1+N, 2, 3, 3+N, `phase` L1/L2/L3 (nicht bei 3 Polen), `on` |
 | `sw.protection.rcd` | Fehlerstromschutzschalter / Residual current device | `poles` 2/4, `rating` 25–100 A, `idn` 10–500 mA, `rcdType` AC/A/F/B, `on` |
-| `sw.protection.rcbo` | FI/LS-Schalter / RCBO | `poles` 1+N, 3+N, `char`, `rating`, `idn`, `rcdType`, `on` |
+| `sw.protection.rcbo` | FI/LS-Schalter / RCBO | `poles` 1+N, 3+N, `char`, `rating`, `idn`, `rcdType`, `phase` (1+N), `on` |
 | `sw.protection.spd` | Überspannungsschutz / Surge protective device | `spdType` 1, 1+2, 2, 3, `poles` 1, 1+N, 3, 3+N |
 | `sw.switch.main` | Hauptschalter (Lasttrennschalter) / Main switch | `poles` 1–4, `rating` 32–125 A, `on` |
+| `sw.protection.mpcb` | Motorschutzschalter / Motor protection circuit breaker | `rating` Einstellstrom 0,4–32 A, `on` (Drehgriff I/O); 3 TE |
+| `sw.protection.overload` | Überlastrelais (thermisch) / Thermal overload relay | `rating` Einstellstrom 0,4–32 A; 2 TE |
+| `sw.fuse.nh` | NH-Sicherungslasttrenner / NH fuse switch-disconnector | `size` NH000/NH00, `rating` 16–160 A (gG), `on` (Deckel zu/offen); 6 TE |
+| `sw.drive.vfd` | Frequenzumrichter / Frequency inverter | `power` 0,37–7,5 kW (4–6 TE), `supply` dreiphasig 400 V / einphasig 230 V |
+| `sw.plc.module` | SPS-Baugruppe / PLC module | `kind` CPU, Digitaleingänge, Digitalausgänge, Analogeingänge, Analogausgänge, `channels` 8/16 (2 oder 4 TE; CPU 4) |
+| `sw.safety.relay` | Sicherheitsrelais / Safety relay | `function` Not-Halt, Schutztür, Lichtvorhang (Piktogramm), `coil` 24 V DC / 230 V AC; 2 TE |
+| `sw.busbar.comb` | Phasenschiene (Kammschiene) / Comb busbar | `phases` 1, 1+N, 3, 3+N (Zahnbeschriftung L1 L2 L3 …), `positions` 2–24 TE, `section` 10/16 mm² |
+| `sw.blank` | Abdeckstreifen / Blanking plate | `modules` 1–24 (45 mm hoch, der Ausschnitt der Abdeckung) |
 | `sw.meter.energy` | Energiezähler / Energy meter | `phases` 1/3 |
 | `sw.supply.psu` | Hutschienennetzteil / DIN-rail power supply | `voltage` 5–48 V, `power` 15–120 W (1–4 TE) |
 | `sw.switching.contactor` | Installationsschütz / Installation contactor | `contacts` 2 S, 4 S, 2 S + 2 Ö, `coil` |
@@ -78,32 +95,82 @@ alles selbst und hängt von keinem anderen Modul ab (die Schaltzeichen sind eige
 | `sw.label.strip` | Beschriftungsstreifen / Labelling strip | `content` Kennzeichen und Stromkreis / Kennzeichen / Stromkreis |
 | `sw.label.plate` | Bezeichnungsschild / Label plate | freier Text |
 | `sw.line.wire` | Ader / Wire (core) | `colour` (Kurzzeichen nach IEC 60757: BK, BN, GY, BU, GNYE, RD, DBU, WH, VT, OG), `section`, `ref` (Adernummer) |
-| `sw.line.cable` | Kabel / Cable | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to` |
-| `sw.house.socket` | Steckdose (Raum/Stromkreis) / Socket outlet | `gangs` 1–3, `room`, `feed`, `ref` |
-| `sw.house.switch` | Lichtschalter (Raum/Stromkreis) / Light switch | `kind` Aus-, Wechsel-, Kreuzschalter, Taster, Dimmer, `room`, `feed`, `ref` |
-| `sw.house.light` | Leuchtenauslass (Raum/Stromkreis) / Light outlet | `kind` Decke/Wand, `room`, `feed`, `ref` |
-| `sw.house.appliance` | Geräteanschluss (Raum/Stromkreis) / Appliance connection | `kind` Herd, Waschmaschine, Trockner, Geschirrspüler, Durchlauferhitzer, Gerät, `room`, `feed`, `ref` |
+| `sw.line.cable` | Kabel / Cable | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to`, `iz` (Strombelastbarkeit, A) |
+| `sw.house.socket` | Steckdose (Raum/Stromkreis) / Socket outlet | `gangs` 1–3, `room`, `feed`, `ref`, `phase` |
+| `sw.house.switch` | Lichtschalter (Raum/Stromkreis) / Light switch | `kind` Aus-, Wechsel-, Kreuzschalter, Taster, Dimmer, `room`, `feed`, `ref`, `phase` |
+| `sw.house.light` | Leuchtenauslass (Raum/Stromkreis) / Light outlet | `kind` Decke/Wand, `room`, `feed`, `ref`, `phase` |
+| `sw.house.appliance` | Geräteanschluss (Raum/Stromkreis) / Appliance connection | `kind` Herd, Waschmaschine, Trockner, Geschirrspüler, Durchlauferhitzer, Gerät, `room`, `feed`, `ref`, `phase` |
 
 Jedes Reiheneinbaugerät hat außerdem `ref` (Kennzeichen), `circuit` (Stromkreisname, der Beschriftungstext) und `feed`
 (Kennzeichen des vorgeschalteten Geräts); Leitungsschutzschalter und FI/LS zusätzlich `room`. Klemmen nutzen `ref` für
-das Leistenkennzeichen („-X1“) und `number` für die Klemmennummer.
+das Leistenkennzeichen („-X1“) und `number` für die Klemmennummer. Die Wertparameter (`ib`, `power`, `iz`, `current`,
+`voltage` …, siehe „Werte und Prüfungen“) sind optionale Textparameter im erweiterten Teil des Inspektors.
 
-Die Bibliothek bietet 71 Elemente (35 Typen) in sieben Kategorien (Schutz- & Trenngeräte; Schalten & Steuern;
-Zähler, Netzteile & Busgeräte; Reihenklemmen; Schienen, Kanäle & Beschriftung; Adern & Kabel; Installationsgeräte in den
-Räumen), z. B. „Leitungsschutzschalter B16, 1-polig“, „FI-Schutzschalter 40 A 30 mA, 4-polig“, „KNX-Schaltaktor,
-4-fach“, „Doppelstockklemme 2,5 mm²“, „Kabel NYM-J 5×2,5“.
+Die Bibliothek bietet 88 Elemente (43 Typen) in acht Kategorien (Schutz- & Trenngeräte; Schalten & Steuern; Zähler,
+Netzteile & Busgeräte; Antriebe & Automatisierung; Reihenklemmen; Schienen, Kanäle & Beschriftung; Adern & Kabel;
+Installationsgeräte in den Räumen), z. B. „Leitungsschutzschalter B16, 1-polig“, „FI-Schutzschalter 40 A 30 mA,
+4-polig“, „Motorschutzschalter 4 A“, „NH00-Sicherungslasttrenner 63 A“, „Frequenzumrichter 0,75 kW, 3~“,
+„SPS-Digitaleingabe, 8 Kanäle“, „Phasenschiene 3-phasig (12 TE)“, „Abdeckstreifen (6 TE)“, „KNX-Schaltaktor, 4-fach“,
+„Kabel NYM-J 5×2,5“.
 
 ## Aktionen
 
 - Auswahlen (Dropdowns) für jeden Auswahlparameter; Pole, Kanäle, Leistung oder Querschnitt ändern die Rahmenbreite
   (linke Kante bleibt).
 - **Eingeschaltet** (Umschalter): Knebel oben/unten, Schaltstellungsanzeige rot/grün (LS, FI, FI/LS, Hauptschalter,
-  Schalter).
+  Schalter); Drehgriff senkrecht/waagerecht (Motorschutzschalter); Deckel zu/offen (NH-Lasttrenner).
 - **Kennzeichen …** (alle Geräte, Klemmen, Adern, Kabel), **Schienenname …**, **Länge …** (Kabel).
 - **Leiste nummerieren** (Klemmen): nummeriert die Klemmen mit demselben Leistenkennzeichen auf der Folie (ohne
   Kennzeichen: die Klemmen derselben Reihe) von links nach rechts mit 1, 2, 3 …
-- **Ein Pol mehr / weniger** (Steckbrücke).
-- Raumgeräte: **Raum …** und **Stromkreis …** (Kennzeichen des speisenden Geräts, z. B. „-F3“, am Symbol angezeigt).
+- **Ein Pol mehr / weniger** (Steckbrücke); **Eine TE mehr / weniger** (Phasenschiene, Abdeckstreifen), die Breite
+  ändert sich, die linke Kante bleibt.
+- **Phase** (Dropdown): L1/L2/L3 bei einpoligen Leitungsschutzschaltern und FI/LS 1+N (bei dreiphasigen Geräten nicht
+  angeboten); Vom Stromkreis / L1 / L2 / L3 / Dreiphasig bei Raumgeräten.
+- Raumgeräte: **Raum …** und **Stromkreis …** (Kennzeichen des speisenden Geräts, z. B. „-F3“, am Symbol angezeigt);
+  eine am Raumgerät selbst gewählte Phase steht oben rechts („L2“, „3~“).
+
+## Werte und Prüfungen
+
+Das Modul nimmt an den Ingenieurberechnungen teil (Elementwerte im Werte-Bereich, Werteschild, Prüfungen;
+`docs/de/design/engineering-calculations.md`). Jeder Wert ist optional, jedes Element lässt sich weiter ohne Werte
+einfügen; abgeleitete Werte werden nie gespeichert.
+
+| Element | Variablen (Kartenwerte zuerst) | Parameter |
+|---|---|---|
+| LS, FI/LS, Motorschutzschalter, Überlastrelais, NH-Lasttrenner | I_n Bemessungsstrom (Motorschutzschalter und Überlastrelais: Einstellstrom I_r), I_B Betriebsstrom des Stromkreises, P Leistung des Stromkreises; I_z Strombelastbarkeit der Leitung, I_a Sofortauslösestrom (LS, FI/LS), I_Δn (FI/LS) | `rating` (die Bemessungsauswahl selbst), `ib`, `power`, `iz`, `ia`, `idn` |
+| FI | I_n, I_B, P; I_Δn | `rating`, `ib`, `power`, `idn` |
+| Hauptschalter | I_n, I_B, P | `rating`, `ib`, `power` |
+| Raumgeräte, Frequenzumrichter | P Leistung (Umrichter: Bemessungsleistung, die Auswahl `power` in kW), I Strom je Außenleiter; U Spannung Außenleiter–Neutralleiter (Vorgabe 230 V), cos φ (Vorgabe 1) | `power`, `current`, `voltage`, `powerFactor` |
+| Hutschiene | I_L1, I_L2, I_L3 Strom je Außenleiter, P Leistung der Verteilung; ΔI Schieflast, ΔI_max zulässige Schieflast (Vorgabe 20 A) | `currentL1` … `currentL3`, `power`, `imbalance`, `imbalanceMax` |
+
+- **Verbraucher:** I = P/(U·cos φ) einphasig, I = P/(3·U·cos φ) dreiphasig (symmetrisch, U Außenleiter–Neutralleiter)
+  [S7].
+- **Stromkreise:** Der Stromkreis eines Geräts ist sein Teil des Einspeisebaums aus dem Stromkreisplan (dieselben
+  Regeln: „Gespeist von“, Verdrahtung, Schienenreihenfolge); ein FI oder Hauptschalter umfasst alles darunter, ein
+  Frequenzumrichter ist ein Verbraucher des Geräts, das ihn speist. P = Summe der Verbraucherleistungen; I_B = Summe der
+  Verbraucherströme bei einem einphasigen Gerät, die größte Außenleitersumme bei einem dreiphasigen Gerät (ein
+  dreiphasiger Verbraucher zählt auf jedem Außenleiter) [S7]. Es zählen nur Verbraucher mit eingegebener Leistung oder
+  eingegebenem Strom; ein Stromkreis ohne sie hat kein I_B. Ein Gleichzeitigkeitsfaktor wird nicht angewandt.
+- **Sofortauslösung:** I_a = 5·I_n, 10·I_n, 20·I_n für Charakteristik B, C, D (obere Grenze des Bereichs) [S11].
+- **Bemessungsstrom:** I_n wird aus der Bemessungsauswahl gelesen („16“ → 16 A); ein im Werte-Bereich eingegebener Wert
+  wird als Text in die Auswahl zurückgeschrieben („20“), das Gerät zeigt ihn an.
+- **Leitung:** I_z wird am Gerät oder an einem Kabel des Stromkreises eingetragen (Kabelparameter `iz`; ein Kabel an
+  einem unteren Anschluss des Geräts oder an einem seiner Verbraucher, der kleinste Wert gilt). Das Modul kennt den
+  Querschnitt, leitet I_z aber nicht daraus ab: Die Strombelastbarkeit hängt von Verlegeart, Häufung und
+  Umgebungstemperatur ab (Tabellen der IEC 60364-5-52, nicht übernommen).
+- **Phasen:** In einem einphasigen Stromkreis entscheidet die `phase` des Geräts; in einem dreiphasigen Stromkreis die
+  eigene `phase` des Verbrauchers („Vom Stromkreis“ = dreiphasig); ein Verbraucher ohne gezeichnetes speisendes Gerät
+  nutzt seine eigene Wahl („Vom Stromkreis“ = L1). Ein Umrichter folgt seiner Einspeisung (dreiphasig oder die Phase
+  seines Stromkreises).
+- **Summen der Schiene:** I_Lk = Summe der Ströme der Verbraucher auf Außenleiter k, P = Summe der Leistungen; jeder
+  Verbraucher zählt einmal, über das nächstgelegene Gerät auf einer Schiene, das ihn speist; ΔI = größter − kleinster
+  Außenleiterstrom.
+
+| Prüfung | Stufe | Regel | Quelle |
+|---|---|---|---|
+| `sw.load.rating` | Warnung | I_B ≤ I_n (Schutzorgane, FI, Hauptschalter): die Verbraucher ziehen mehr als die Bemessung | S9 |
+| `sw.rating.cable` | Warnung | I_n ≤ I_z (Überstromschutzorgane; nur wenn ein I_z bekannt ist) | S9 |
+| `sw.phase.imbalance` | Warnung | I_max − I_min ≤ ΔI_max auf einer Schiene; die Vorgabe 20 A ist ein Plausibilitätswert, die Grenze des Netzbetreibers eintragen | – |
 
 ## Beschriftungsstreifen
 
@@ -122,8 +189,8 @@ ihren Anschlüssen angedockt sind.
 | Id | Bericht | Inhalt |
 |---|---|---|
 | `sw.installation` | Hausinstallationsliste | Räume → Stromkreise (Kennzeichen, Name, Schutzorgan und Bemessung) → Geräte mit Mengen. Markdown: je Raum ein Abschnitt mit verschachtelter Liste. |
-| `sw.circuits` | Stromkreisplan | Einspeisebaum: Hauptschalter, Zähler, SPD, FI, LS und FI/LS nach Kennzeichen, jeweils mit dem speisenden Gerät und **woher diese Zuordnung stammt**; Stromkreise mit Räumen und Geräten. Markdown: verschachtelte Liste und Tabelle. |
-| `sw.layout` | Verteilerbelegung und Beschriftungsstreifen | Je Schiene (von oben nach unten, benannt nach `ref` oder „Schiene n“): Geräte von links nach rechts mit Platz, erster TE, Breite in TE, Kennzeichen, Gerät, Bemessung, Beschriftung; belegte / verfügbare TE; der Beschriftungsstreifen als zweizeilige Tabelle. Geräte auf keiner Schiene stehen am Ende. |
+| `sw.circuits` | Stromkreisplan | Einspeisebaum: Hauptschalter, Zähler, SPD, FI, LS, FI/LS, Motorschutzschalter, Überlastrelais und NH-Lasttrenner nach Kennzeichen, jeweils mit dem speisenden Gerät und **woher diese Zuordnung stammt**; Stromkreise mit Räumen und Geräten (Raumgeräte und Frequenzumrichter). Markdown: verschachtelte Liste und Tabelle. |
+| `sw.layout` | Verteilerbelegung und Beschriftungsstreifen | Je Schiene (von oben nach unten, benannt nach `ref` oder „Schiene n“): Geräte von links nach rechts mit Platz, erster TE, Breite in TE, Kennzeichen, Gerät, Bemessung, Beschriftung; belegte / verfügbare TE (Abdeckstreifen zählen als frei); der Beschriftungsstreifen als zweizeilige Tabelle. Zubehör (Endhalter, Brücken, Phasenschienen, Abdeckstreifen) wird nicht aufgeführt. Geräte auf keiner Schiene stehen am Ende. |
 | `sw.terminals` | Klemmenplan | Je Leiste die Klemmen in Nummernfolge (natürliche Sortierung), je Etage und Seite (oben/unten): Ader oder Kabel, Ziel (Kennzeichen und Anschluss am anderen Ende, z. B. „-F2:2“), Querschnitt, Farbe, Brücke. Das `target` einer Klemme nennt das äußere Ziel, wenn keine Leitung angedockt ist. |
 | `sw.cables` | Kabelliste | Kennzeichen, Typ, Adern × Querschnitt, Länge (m), von, nach, Anzahl Abschnitte. Abschnitte mit gleichem Kennzeichen (z. B. auf mehreren Folien) sind ein Kabel: Längen werden addiert, die äußeren Enden sind „von“ und „nach“. |
 
@@ -138,8 +205,9 @@ erfunden.
 ## Speicherung
 
 Alles steht in Parametern (dazu Punkte und Andockungen der Adern und Kabel); JSON- und Kompakt-Rundreisen zeichnen
-identisch (Tests). Nichts wird abgeleitet gespeichert: Beschriftungsstreifen und Berichte werden aus dem Dokument neu
-berechnet.
+identisch (Tests). Nichts wird abgeleitet gespeichert: Beschriftungsstreifen, Berichte und abgeleitete Werte werden aus
+dem Dokument neu berechnet. Eingegebene Werte sind Textparameter („2 kW“, „13 A“); der Bemessungsstrom bleibt in der
+Bemessungsauswahl.
 
 ## Host-Fähigkeiten
 
@@ -156,12 +224,14 @@ Alles wird mit nativen Grundformen gezeichnet. Schwarz-Weiß-Ausgabe übernehmen
 
 ## Grenzen und nächste Schritte
 
-- Keine Berechnungen: kein Spannungsfall, keine Leitungsbemessung, Selektivität, Schleifenimpedanz oder FI-Zuordnungs-
-  prüfung (Kandidaten für die Ingenieurberechnungen, Roadmap-Punkt 14, z. B. „Sicherung unter der Leitungsbelastung“).
+- Die Berechnungen beschränken sich auf Lastsummen je Stromkreis und Außenleiter und die drei Prüfungen: kein
+  Spannungsfall, keine Leitungsbemessung, Selektivität, Schleifenimpedanz oder FI-Zuordnungsprüfung; I_z wird
+  eingegeben, nicht nachgeschlagen.
 - Die Schienenregel für LS-Schalter ist eine Annahme; für Gewissheit Adern zeichnen oder „Gespeist von“ setzen.
 - Kabellängen werden eingegeben (m), nicht aus der Zeichnung gemessen.
 - Die Schaltzeichen-Ansicht ist ein kompaktes Gerätesymbol, kein vollständiger mehrpoliger Stromlaufplan; die
   Stromkreisstruktur steht in den Berichten.
-- Mögliche nächste Schritte: Blindabdeckungen und Phasenschienen als Elemente, Phasenzuordnung (L1/L2/L3) im
-  Stromkreisplan, Last- und Leistungssummen je Stromkreis, Verweis von Raumgeräten auf Grundrissfolien zur Verteilung
-  („→ -F3 Folie 4“).
+- Die Phasen-Dropdowns zeigen Textbeschriftungen: Optionspiktogramme für L1/L2/L3 bräuchten neue Icon-Ids in Core und
+  in den Hosts.
+- Mögliche nächste Schritte: die Phase eines einpoligen Geräts aus dem Zahn der Phasenschiene darüber, Phasen- und
+  Lastspalten im Stromkreisplan, Verweis von Raumgeräten auf Grundrissfolien zur Verteilung („→ -F3 Folie 4“).

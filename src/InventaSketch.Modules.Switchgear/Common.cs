@@ -20,6 +20,8 @@ namespace InventaSketch.Modules.Switchgear
         public const string Protection = "sw.protection";
         public const string Switching = "sw.switching";
         public const string Supply = "sw.supply";
+        /// <summary>Industrial devices: frequency inverters, PLC modules, safety relays.</summary>
+        public const string Automation = "sw.automation";
         public const string Terminals = "sw.terminals";
         public const string Mounting = "sw.mounting";
         public const string Wiring = "sw.wiring";
@@ -77,6 +79,10 @@ namespace InventaSketch.Modules.Switchgear
         public const string Rail = "#cfd8dc";
         public const string Duct = "#cfd8dc";
         public const string Bridge = "#e53935";
+        public const string Copper = "#c77d3a";
+        public const string Insulation = "#546e7a";
+        public const string SafetyYellow = "#ffd54f";
+        public const string Blank = "#e0e0e0";
 
         public static Style Fill(string fill) => Style.Visible with { Fill = Core.Fill.Solid(fill) };
         public static Style ThinFill(string fill) => Style.ThinLine with { Fill = Core.Fill.Solid(fill) };
@@ -166,6 +172,14 @@ namespace InventaSketch.Modules.Switchgear
 
         public void Poly(Style s, bool closed, string? tag, params (double X, double Y)[] pts)
             => Add(Prim.Polyline(pts.Select(p => P(p.X, p.Y)), s, closed), tag);
+
+        /// <summary>A bar of <paramref name="len"/> × <paramref name="wid"/> centred at (cx, cy), turned by <paramref name="angleDeg"/> (clockwise on screen).</summary>
+        public void Bar(double cx, double cy, double len, double wid, double angleDeg, Style s, string? tag = SwTags.Body)
+        {
+            var a = Geo.DegToRad(angleDeg);
+            double ux = Math.Cos(a) * len / 2, uy = Math.Sin(a) * len / 2, nx = -Math.Sin(a) * wid / 2, ny = Math.Cos(a) * wid / 2;
+            Poly(s, true, tag, (cx - ux - nx, cy - uy - ny), (cx + ux - nx, cy + uy - ny), (cx + ux + nx, cy + uy + ny), (cx - ux + nx, cy - uy + ny));
+        }
 
         public void Arc(double cx, double cy, double r, double startDeg, double sweepDeg, Style s, string? tag = SwTags.Body)
             => Add(Prim.Arc(cx * SX, cy * SY, r * K, r * K, Geo.DegToRad(startDeg), Geo.DegToRad(sweepDeg), s), tag);

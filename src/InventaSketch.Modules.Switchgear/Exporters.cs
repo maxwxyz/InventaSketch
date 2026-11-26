@@ -261,7 +261,8 @@ namespace InventaSketch.Modules.Switchgear
                     i++;
                 }
                 if (rows.Count == 0) continue;
-                var used = row.Devices.Sum(x => x.Width);
+                // Blanking plates cover free modules: they are not counted as used.
+                var used = row.Devices.Where(x => x.Obj.Type != Industrial.Blank).Sum(x => x.Width);
                 var text = new List<string>();
                 if (row.Rail is not null)
                 {
