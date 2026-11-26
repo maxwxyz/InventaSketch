@@ -32,5 +32,7 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["test/**/*.test.ts"],
+    // Tests that start the .NET engine take seconds on a cold CI runner; the 5 s default timed out there.
+    testTimeout: 60000,
   },
 } as Parameters<typeof defineConfig>[0]);

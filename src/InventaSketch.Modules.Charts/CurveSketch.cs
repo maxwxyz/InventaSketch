@@ -325,6 +325,9 @@ namespace InventaSketch.Modules.Charts
                 for (var k = 1; k <= stepsPerSegment; k++)
                     result.Add(CatmullRomAt(p0, p1, p2, p3, (double)k / stepsPerSegment, alpha));
             }
+            // A closed curve ends exactly where it starts (the last spline step only reaches it up to rounding, which
+            // differs between platforms).
+            if (closed) result[result.Count - 1] = pts[0];
             return result;
         }
 
