@@ -81,6 +81,27 @@ der Gebäudetechnik genutzt), Pads und Bauformen der Leiterplatte eine Leiterbah
 Leitungsführung oder Leiterbahn bietet „+“ zum Verlängern oder zum Andocken des nächsten Schaltzeichens mit dem
 zugewandten Anschluss.
 
+**Aderfarben und Querschnitt (26.11.2026).** Die Leitung ist der eine Leitungstyp aller Module: Auch die Geräte des
+Verteilermoduls schließen sie an (dessen eigene Ader-Einträge treten zurück, siehe Verteilermodul). Optionale Parameter
+`colour` (`auto` – schwarz bzw. die Medienfarbe bei Färbung nach Medium – und die Kennbuchstaben nach IEC 60757 BK, BN,
+GY, BU, GNYE, RD, DBU, WH, VT, OG; Grün-gelb wird grün mit gelben Strichen gezeichnet) und `section` (mm², standardmäßig
+ohne). Eine Leitung mit Farbe behält sie bei Färbung nach Medium (`MediumRole` = eigene Farbe). Die Adernummer ist die
+allgemeine Bezeichnung (`ref`, „Bezeichnung …“), gezeichnet von `Designations`. Bibliothekseinträge „Ader schwarz
+(Schaltschrank)“, „Ader braun (L)“, „Ader blau (N)“, „Ader grün-gelb (PE)“ (`elec.wire.bk`, `.bn`, `.bu`, `.pe`;
+1,5 mm²). Farben helfen auch in der Elektronik (rote/schwarze Versorgungsleitungen …).
+
+**Abzweig ⇄ Brücke (26.11.2026).** Eine über eine andere gezogene Leitung springt mit einer Brücke (`HopsAtCrossings`,
+Core `Crossings`); die Hosts bieten an einer Kreuzung das Verbinden an (dort geteilt, beide Teile angedockt: ein Abzweig
+mit Punkt) und für zwei ausgewählte, sich kreuzende Leitungen „Verbinden (Abzweig)“ (`Crossings.ConnectBetween`). Die
+Umkehrung ist „Als Brücke (nicht verbunden)“ (Aktion `elec.bridge`, Piktogramm `Bridge`, `Crossings.Disconnect`):
+angeboten von einer Leitung, deren eigenes Ende an einer anderen Leitung angedockt ist (T- oder X-Abzweig), und von einem
+Verbindungspunkt (`elec.junction`), durch den Leitungen gehen. Zwei Enden, die von gegenüberliegenden Seiten kommen,
+werden zu einer Leitung verbunden, die die andere mit einer Brücke kreuzt (der am Abzweig verbleibende Eckpunkt entfällt,
+wenn die Leitung gerade weiterläuft, sonst rückt er 3 mm von der anderen Leitung ab); ein einzelner Abzweig wird gelöst
+und 3 mm (`Crossings.BridgeOvershoot`) über die andere Leitung hinaus verlängert, sodass er sie kreuzt; der
+Verbindungspunkt entfällt. Ein Verbindungspunkt nennt die an ihm angedockten Leitungen als abhängig (`HasDependents`),
+damit Hosts mit getrennten Einheiten sie sehen.
+
 ## Kontextaktionen
 
 | Aktions-ID | Icon | Wirkung |
@@ -93,6 +114,9 @@ zugewandten Anschluss.
 | `elec.opamp.circuit=<auto/inverting/noninverting/follower/open>` | `Option` | Schaltung des Operationsverstärkers für die Verstärkung (Vorgabe: aus der Verdrahtung) |
 | `elec.meter.quantity=<v/a/w/ohm>` | Options-Piktogramme (`Preview`: Messgerätekreis mit Buchstaben) | Messgröße des Messgeräts |
 | `elec.wire.hops` | `Hop` | Brücken einer Leitung an Kreuzungen an/aus |
+| `elec.wire.colour=<auto/BK/BN/GY/BU/GNYE/RD/DBU/WH/VT/OG>` | Optionsbilder (`Preview`: ein Strich in der Farbe) | Aderfarbe einer Leitung |
+| `elec.wire.section=<–/0,14 … 16>` | `Option` | Querschnitt einer Leitung (mm²) |
+| `elec.bridge` | `Bridge` | Abzweig wieder zur Brücke machen (nicht verbunden): Leitung mit einem Ende am Abzweig, Verbindungspunkt |
 | `elec.route=free/orthogonal/45` | Führungs-Piktogramme | Leitungs-/Leiterbahnführung als Auswahl |
 | `elec.label` | `Text` | Kennzeichen/Wert anzeigen (setzt `ref` = Präfix + `1`, falls leer) oder ausblenden |
 | `elec.envelope` | `Toggle` | Gehäusekreis bei Transistoren |
@@ -108,7 +132,7 @@ Werte werden im Inspektor bearbeitet (`value`, `ref`); Kontextaktionen können n
 | Schalten & Schützen | `switch` (`contact` Schließer/Öffner/Wechsler; auch für Relaiskontakte), `pushbutton`, `relay.coil`, `contactor` (1–3 Pole), `fuse`, `breaker`, `rcd` |
 | Quellen & Verbraucher | `ground` (Erde/PE/Gehäuse), `source` (DC/AC/Strom), `battery` (1–4 Zellen), `lamp`, `motor` und `generator` (`supply` ohne/DC/AC/3~; 3~ mit U/V/W), `sensor`, `actuator` (allgemeiner Aktorblock, optional `label`), `solenoid` (Hubmagnet: zweipolige Betätigungsspule mit Anker), `meter` (Messgerät, `quantity` V/A/W/Ω), `speaker`, `microphone`, `antenna` |
 | Logik & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC-Rechteck und ANSI-Form), `flipflop` (D/JK/RS/T), `opamp` (IEC / Dreieck), `regulator` (Spannungsregler mit drei Anschlüssen `IN`/`OUT`/`GND`), `block.ecu` (Steuergerät/IC/MCU-Block mit `pinsLeft`/`pinsRight` und `label`) |
-| Leitungen, Steckverbinder & Busse | `wire` (Punktobjekt, `route` frei/orthogonal/45), `junction`, `netlabel` (Text = Netzname), `connector` (Stecker/Buchse/Paar, 1–12 Pole), `terminal`, `testpoint`, `bus` (Punktobjekt; Beschriftung CAN/LIN/Ethernet/FlexRay/allgemein) |
+| Leitungen, Steckverbinder & Busse | `wire` (Punktobjekt, `route` frei/orthogonal/45, `hops`, `colour`, `section`), `junction`, `netlabel` (Text = Netzname), `connector` (Stecker/Buchse/Paar, 1–12 Pole), `terminal`, `testpoint`, `bus` (Punktobjekt; Beschriftung CAN/LIN/Ethernet/FlexRay/allgemein) |
 | Hausinstallation | `house.socket` (1–4 Steckdosen, Schutzkontakt), `house.switch` (Aus-/Wechsel-/Kreuzschalter/Taster/Dimmer), `house.light`, `house.junction`, `house.board`, `house.cable` (Punktobjekt mit Adernstrichen), `sld.busbar`, `sld.feeder` (Leistungsschalter/Sicherung/ohne), `sld.meter` |
 | Leistungselektronik | `pe.inverter`, `pe.rectifier` (AC-Seite 1- oder 3-phasig), `pe.dcdc`, `pe.dclink`, `pe.gatedriver`, `pe.module` (Halbbrücke mit Freilaufdioden) |
 | Leiterplatte (illustrativ) | `pcb.board`, `pcb.pad` (rechteckig/rund/langrund, THT), `pcb.via`, `pcb.track` (Punktobjekt, `width`, Führung frei/orthogonal/45), `pcb.copper`, `pcb.footprint` (SOIC-8, QFP-32, SOT-23, 0603, DIP-8; Pads sind Ports), `pcb.hole`, `pcb.silk` |

@@ -2336,7 +2336,8 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>
         /// Runs a type context action on the unit's objects with the shared engine runner: input actions ask for their value
         /// first (cancel = no change), document-aware actions see the neighbouring units. Only the unit's own objects take the
-        /// result. Returns null if nothing is to be applied.
+        /// result (other units through <see cref="ApplyOutsideOwn"/>; a unit whose own elements the action removed is deleted).
+        /// Returns null if nothing is to be applied.
         /// </summary>
         private SketchDocument? RunTypeAction(PowerPoint.Slide slide, SketchUnit unit, string actionId)
         {
@@ -2363,6 +2364,13 @@ namespace InventaSketch.AddIn.OnSlide
             {
                 var ran = ContextActions.Run(registry, full, own.Objects.Keys.ToList(), actionId, input, lang);
                 ApplyOutsideOwn(slide, unit, full, ran);
+                // The action removed the unit's own element (a junction dot made a bridge): its shape goes too.
+                if (own.Objects.Count > 0 && own.Objects.Keys.All(k => ran.Get(k) is null))
+                {
+                    unit.Shape.Delete();
+                    Log.Info("Action " + actionId + " removed unit " + unit.Id);
+                    return null;
+                }
                 return Edits.Update(own, own.Objects.Keys.ToList(), o => ran.Get(o.Id) ?? o);
             }
             catch (FormatException ex)

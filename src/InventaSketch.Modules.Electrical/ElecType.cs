@@ -97,6 +97,12 @@ namespace InventaSketch.Modules.Electrical
         /// </summary>
         public bool Installation { get; init; }
 
+        /// <summary>
+        /// A junction dot element: the wires docked on it pass through one node. It offers "Make bridge (not connected)"
+        /// (<see cref="Bridges"/>) and names those wires as dependents, so hosts with separate units see them.
+        /// </summary>
+        public bool JunctionNode { get; init; }
+
         public override IAssemblyViewSwitch? AssemblyViewSwitch => Installation ? InstallationViews.Rule : null;
 
         /// <summary>

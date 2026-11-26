@@ -315,7 +315,7 @@ namespace InventaSketch.Modules.Switchgear
             if (port.Id is null) return null;
             var pin = Pins(o).FirstOrDefault(p => p.Id == port.Id);
             if (pin.Id is null) return null;
-            return Lines.ConnectionFor(pin.Medium);
+            return Lines.ConnectionFor(pin.Medium, Lines.CoreFor(o.Type, pin.Id));
         }
 
         // ------------------------------------------------------------------ rendering

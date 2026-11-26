@@ -258,7 +258,9 @@ Overlay auf der Folie, daher liegt alles im Deck. Alle Entscheidungen kommen aus
   Modell neu zeichnen* wie bisher.
 - **Panel Auswahl, zwei oder mehr Einheiten:** die auswahlweiten Operationen der Engine aus `arrangeOptions` mit ihren
   Beschriftungen – eine Ansicht für alle (Mechanismus bleibt erhalten), Mitten auf eine Zeile oder Spalte, gleichmäßig
-  verteilen, wie das erste, Maß zwischen beiden, Bezugszeichen neu nummerieren –, jeweils nur, wenn sie etwas ändern,
+  verteilen, wie das erste, Maß zwischen beiden, Bezugszeichen neu nummerieren, zwei sich kreuzende Leitungen oder Rohre
+  verbinden („Verbinden (Abzweig)“), Linien an einem gemeinsamen Abzweig wieder zur Brücke machen („Als Brücke (nicht
+  verbunden)“) –, jeweils nur, wenn sie etwas ändern,
   dazu *Baugruppe wählen*. Ein Klick führt `arrange` auf allen ausgewählten Einheiten in einer Seitensitzung und einem
   Rückgängig-Schritt aus.
 - **Beschriftungen:** Die Erweiterung hat noch keinen Symbolsatz; die Schaltflächen tragen kurze zweisprachige

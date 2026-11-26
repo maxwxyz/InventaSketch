@@ -1004,7 +1004,9 @@ namespace InventaSketch.Engine
         /// Selection-wide operations that change something for the selection (<see cref="Arrange"/>): one view for all
         /// ("mview:&lt;view&gt;"), centres on a row/column ("align:row", "align:column"), even spacing ("dist:h", "dist:v"),
         /// "like the first" ("match"), renumber reference numerals ("renumber"), a layered diagram layout of connected
-        /// elements ("layout:down", "layout:right", <see cref="DiagramLayout"/>).
+        /// elements ("layout:down", "layout:right", <see cref="DiagramLayout"/>), two crossing wires or pipes connected
+        /// ("junction", <see cref="Crossings.ConnectBetween"/>) and lines meeting at a junction made a bridge again ("bridge",
+        /// <see cref="Crossings.Disconnect"/>).
         /// </summary>
         private object ArrangeOptionsCore(EngineRequest r)
         {
@@ -1030,6 +1032,12 @@ namespace InventaSketch.Engine
                 if (DiagramLayout.Layered(s.Doc, objs, down) is { } target && Arrange.Changes(objs.Where(o => target.ContainsKey(o.Id)).Select(o => target[o.Id] - new Vec2(o.Transform.X, o.Transform.Y))))
                     Opt(id, en, german, down ? IconIds.DistributeV : IconIds.DistributeH);
             if (Arrange.Renumber(Numerals(s, objs)).Count > 0) Opt("renumber", "Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren", IconIds.Renumber);
+            // Wires and pipes (Crossings): two that cross get a junction there; lines meeting at a junction become a bridge.
+            var lines = objs.Where(o => o.IsPointGeometry).Select(o => o.Id).ToList();
+            if (objs.Count == 2 && lines.Count == 2 && Crossings.Between(Registry, s.Doc, lines[0], lines[1], lang).Count > 0)
+                Opt("junction", "Connect (junction)", "Verbinden (Abzweig)", IconIds.Junction);
+            if (lines.Count >= 2 && Crossings.SharedJunctions(Registry, s.Doc, lines, lang).Count > 0)
+                Opt("bridge", "Make bridge (not connected)", "Als Brücke (nicht verbunden)", IconIds.Bridge);
             return list;
         }
 
@@ -1074,6 +1082,13 @@ namespace InventaSketch.Engine
                     foreach (var line in doc.Objects.Values.Where(o => o.IsPointGeometry).ToList())
                         if (DiagramLayout.Redock(Registry, doc, line, nodes, down) is { } redocked && !ReferenceEquals(redocked, line)) doc = Edits.Replace(doc, redocked);
                     return doc;
+                }
+                if (action == "junction")
+                    return objs.Count == 2 ? Crossings.ConnectBetween(Registry, doc, objs[0].Id, objs[1].Id, s.Lang) : doc;
+                if (action == "bridge")
+                {
+                    var lines = objs.Where(o => o.IsPointGeometry).Select(o => o.Id).ToList();
+                    return Crossings.DisconnectAll(Registry, doc, Crossings.SharedJunctions(Registry, doc, lines, s.Lang), lines.FirstOrDefault(), s.Lang);
                 }
                 var groups = ArrangeGroups(doc, objs);
                 if (action == "dim")

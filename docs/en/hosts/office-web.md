@@ -60,7 +60,7 @@ undo step each (no step when nothing changes).
 | `quickAdd`, `nextItems`, `replaceItem` | `id`, `side` (left/top/right/bottom), optional `x`/`y`, `itemId`; `id`, `max`; `id`, `itemId` | state with the new element selected (copy plus connector, one undo step); library items for the next element; state (element replaced, connectors stay) |
 | `search` | `ids`, `text`, `lang`, `recent` (item ids, most recent first), `max` (default 30) | library hits (`suggestions` shape plus `fits`): without text the parts that fit the first selected object, then the recent items; with text the whole library (`LibrarySearch`: both languages, umlaut folding, fitting and recent items and the selection's view ranked higher) |
 | `transformEffect` | `ids` | `{ mirrorH, mirrorV, rotate90 }`: whether the transform changes the rendered drawing (`Symmetry`, arrowheads included) |
-| `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | selection-wide operations that change something `{ id, label, icon }` (`mview:<view>` one view for all with the mechanism kept, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); state (one undo step) |
+| `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | selection-wide operations that change something `{ id, label, icon }` (`mview:<view>` one view for all with the mechanism kept, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`, `junction` two crossing wires or pipes connected, `bridge` lines meeting at a junction made a bridge again); state (one undo step) |
 | `assembly` | `ids` | ids of the selection plus every object coupled with it (gear train, drive), selection first |
 | `connected`, `connectOptions` | `ids`, `mode` (auto, net, coupled, chain, loop, walls); `ids`, `lang` | "Select connected": the ids, the given ones first; the kinds that add something `{ kind, label, hint, ids }` |
 | `parts`, `partAt`, `partActions`, `applyPartAction`, `partOutline` | `id`, `lang`; `id`, `x`, `y`, `tolerance`; `id`, `part`; `id`, `part`, `action`, `input`; `id`, `part` | parts of a chart `{ key, label, kind, hidden }`; `{ part }`; the part's actions (with the choice fields); state; outline polylines in page mm |
@@ -218,8 +218,11 @@ Follows the binding UX rules in the roadmap ("Plan 2026-11-24"). Pure rules in `
   (localStorage); library inserts count too.
 - **Multi-selection bar:** with two or more elements selected (a group counts as one), the bar shows the operations of
   `arrangeOptions` as icons with tooltips – one view for all (the mechanism kept), centres on a row or column, even
-  spacing, like the first, renumber reference numerals – each only when it changes something; a click runs `arrange`
-  (one undo step). Style and the pie menu stay available.
+  spacing, like the first, renumber reference numerals, "Connect (junction)" for two crossing wires or pipes
+  (pictogram `cmd-junction`) and "Make bridge (not connected)" for lines meeting at a junction (pictogram `cmd-bridge`,
+  2026-11-26) – each only when it changes something; a click runs `arrange` (one undo step). Style and the pie menu stay
+  available. A single wire whose own end sits at a junction, and a junction dot, offer "Make bridge (not connected)" as
+  a type action (`t:elec.bridge`).
 - **Select assembly:** shown when the selection is coupled with parts that are not selected yet (`assembly`); a click
   selects all coupled objects, which then get the multi-selection bar.
 - **Snap labels:** while dragging, the label from `snapMove` ("axis", "pitch circle", "pin 2") is shown next to the

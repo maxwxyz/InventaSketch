@@ -62,7 +62,7 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `quickAdd`, `nextItems`, `replaceItem` | `id`, `side` (left/top/right/bottom), optional `x`/`y`, `itemId`; `id`, `max`; `id`, `itemId` | Zustand mit dem neuen Element ausgewählt (Kopie plus Verbinder, ein Rückgängig-Schritt); Bibliothekselemente für das nächste Element; Zustand (Element ersetzt, Verbinder bleiben) |
 | `search` | `ids`, `text`, `lang`, `recent` (Element-IDs, zuletzt verwendetes zuerst), `max` (Standard 30) | Bibliothekstreffer (Form wie `suggestions` plus `fits`): ohne Text die zum ersten ausgewählten Objekt passenden Teile, dann die zuletzt verwendeten; mit Text die ganze Bibliothek (`LibrarySearch`: beide Sprachen, Umlaute = ae/oe/ue/ss, passende und zuletzt verwendete Elemente sowie die Ansicht der Auswahl höher gewichtet) |
 | `transformEffect` | `ids` | `{ mirrorH, mirrorV, rotate90 }`: ob die Transformation die gezeichnete Geometrie ändert (`Symmetry`, Pfeilspitzen eingeschlossen) |
-| `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | auswahlweite Operationen, die etwas ändern `{ id, label, icon }` (`mview:<view>` eine Ansicht für alle mit erhaltenem Mechanismus, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`); Zustand (ein Rückgängig-Schritt) |
+| `arrangeOptions`, `arrange` | `ids`, `lang`; `ids`, `action` | auswahlweite Operationen, die etwas ändern `{ id, label, icon }` (`mview:<view>` eine Ansicht für alle mit erhaltenem Mechanismus, `align:row`/`align:column`, `dist:h`/`dist:v`, `match`, `renumber`, `junction` zwei sich kreuzende Leitungen oder Rohre verbinden, `bridge` Linien an einem gemeinsamen Abzweig wieder zur Brücke machen); Zustand (ein Rückgängig-Schritt) |
 | `assembly` | `ids` | IDs der Auswahl und aller damit gekoppelten Objekte (Getriebezug, Antrieb), Auswahl zuerst |
 | `connected`, `connectOptions` | `ids`, `mode` (auto, net, coupled, chain, loop, walls); `ids`, `lang` | „Verbundene auswählen“: die IDs, die gegebenen zuerst; die Arten, die etwas hinzufügen `{ kind, label, hint, ids }` |
 | `parts`, `partAt`, `partActions`, `applyPartAction`, `partOutline` | `id`, `lang`; `id`, `x`, `y`, `tolerance`; `id`, `part`; `id`, `part`, `action`, `input`; `id`, `part` | Teile eines Diagramms `{ key, label, kind, hidden }`; `{ part }`; die Aktionen des Teils (mit den Auswahlfeldern); Zustand; Umriss als Polylinien in Seiten-mm |
@@ -232,8 +232,12 @@ Folgt den verbindlichen UX-Regeln im Fahrplan („Plan 2026-11-24“). Reine Reg
   Bibliothek zählt mit.
 - **Leiste für Mehrfachauswahl:** Bei zwei oder mehr ausgewählten Elementen (eine Gruppe zählt als eins) zeigt die
   Leiste die Operationen aus `arrangeOptions` als Symbole mit Tooltips – eine Ansicht für alle (Mechanismus bleibt),
-  Mitten auf eine Zeile oder Spalte, gleichmäßige Abstände, wie das erste, Bezugszeichen neu nummerieren – jeweils nur,
-  wenn sie etwas ändern; ein Klick führt `arrange` aus (ein Rückgängig-Schritt). Stil und Kreismenü bleiben verfügbar.
+  Mitten auf eine Zeile oder Spalte, gleichmäßige Abstände, wie das erste, Bezugszeichen neu nummerieren, „Verbinden
+  (Abzweig)“ für zwei sich kreuzende Leitungen oder Rohre (Piktogramm `cmd-junction`) und „Als Brücke (nicht verbunden)“
+  für Linien an einem gemeinsamen Abzweig (Piktogramm `cmd-bridge`, 26.11.2026) – jeweils nur, wenn sie etwas ändern; ein
+  Klick führt `arrange` aus (ein Rückgängig-Schritt). Stil und Kreismenü bleiben verfügbar. Eine einzelne Leitung, deren
+  eigenes Ende an einem Abzweig sitzt, und ein Verbindungspunkt bieten „Als Brücke (nicht verbunden)“ als Typaktion
+  (`t:elec.bridge`) an.
 - **Baugruppe auswählen:** erscheint, wenn die Auswahl mit noch nicht ausgewählten Teilen gekoppelt ist (`assembly`);
   ein Klick wählt alle gekoppelten Objekte aus, die dann die Leiste für Mehrfachauswahl bekommen.
 - **Fangbeschriftung:** Beim Ziehen steht die Beschriftung aus `snapMove` („Achse“, „Teilkreis“, „Bolzen 2“) neben

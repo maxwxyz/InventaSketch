@@ -138,20 +138,116 @@ namespace InventaSketch.Modules.Electrical
         }
     }
 
-    /// <summary>Wire: polyline between pins with free, orthogonal or 45 degree routing. Ends snap to symbol pins.</summary>
+    /// <summary>
+    /// Core colours of a wire (IEC 60757 codes) for cabinet wiring and electronics, with their drawing colours. "auto" (the
+    /// default) draws the wire as before: black, or in the colour of its medium when lines are coloured by medium.
+    /// </summary>
+    internal static class WireColours
+    {
+        public const string Auto = "auto";
+
+        public static readonly (string Code, string En, string De, string Colour)[] All =
+        {
+            ("BK", "Black", "Schwarz", "#212121"),
+            ("BN", "Brown", "Braun", "#6d4c41"),
+            ("GY", "Grey", "Grau", "#9e9e9e"),
+            ("BU", "Blue", "Blau", "#1e88e5"),
+            ("GNYE", "Green-yellow", "Grün-gelb", "#43a047"),
+            ("RD", "Red", "Rot", "#e53935"),
+            ("DBU", "Dark blue", "Dunkelblau", "#1a237e"),
+            ("WH", "White", "Weiß", "#bdbdbd"),
+            ("VT", "Violet", "Violett", "#8e24aa"),
+            ("OG", "Orange", "Orange", "#fb8c00"),
+        };
+
+        /// <summary>The second colour of the green-yellow protective conductor (dashed over the green).</summary>
+        public const string Yellow = "#fdd835";
+
+        /// <summary>The drawing colour of a code, null for "auto" and unknown codes.</summary>
+        public static string? ColourOf(string code) => All.FirstOrDefault(c => c.Code == code).Colour;
+
+        public static readonly ParamDef Param = Choice("colour", T("Core colour", "Aderfarbe"), Auto,
+            new[] { (Auto, "Standard (black / by medium)", "Standard (schwarz / nach Medium)") }
+                .Concat(All.Select(c => (c.Code, c.Code + " " + c.En, c.Code + " " + c.De))).ToArray());
+
+        /// <summary>A short stroke in the colour (option picture of the colour choice).</summary>
+        public static IReadOnlyList<Primitive> Preview(string code)
+        {
+            var colour = ColourOf(code);
+            var line = Prim.Line(new Vec2(-3, 0), new Vec2(3, 0), S.Wire with { Stroke = colour ?? S.Wire.Stroke, StrokeWidth = 0.9 });
+            return code == "GNYE"
+                ? new Primitive[] { line, Prim.Line(new Vec2(-3, 0), new Vec2(3, 0), S.Wire with { Stroke = Yellow, StrokeWidth = 0.9, Dash = DashStyle.Dash }) }
+                : new Primitive[] { line };
+        }
+    }
+
+    /// <summary>
+    /// "Make bridge (not connected)": a junction of wires (a docked T or X junction drawn with a dot, or a junction dot
+    /// element) turned back into a crossing with a hop (<see cref="Crossings.Disconnect"/>), the reverse of connecting at a
+    /// crossing.
+    /// </summary>
+    internal static class Bridges
+    {
+        public const string ActionId = "elec.bridge";
+
+        public static readonly I18nText Label = T("Make bridge (not connected)", "Als Brücke (nicht verbunden)");
+
+        /// <summary>The junctions at the docked ends of line <paramref name="o"/> that can become a bridge.</summary>
+        public static List<Junction> OfLine(Registry registry, SketchDocument doc, SketchObject o, Lang lang)
+            => Crossings.Junctions(registry, doc, o).Where(j => j.Ends.Any(e => e.Line == o.Id) && Crossings.CanDisconnect(registry, doc, j, lang)).ToList();
+
+        /// <summary>The action for a wire whose own ends sit at junctions, else null.</summary>
+        public static ContextAction? ForLine(SketchObject o, RenderContext ctx, Registry? owner)
+        {
+            var registry = ctx.Registry ?? owner;
+            if (registry is null || OfLine(registry, ctx.Doc, o, ctx.Lang).Count == 0) return null;
+            return ContextAction.InDocument(ActionId, Label, IconIds.Bridge, (doc, x, c) =>
+            {
+                var reg = c.Registry ?? registry;
+                foreach (var j in OfLine(reg, doc, x, c.Lang)) doc = Crossings.Disconnect(reg, doc, j, x.Id, c.Lang);
+                return doc;
+            }) with { Group = "connect" };
+        }
+
+        /// <summary>The action for a junction dot element with wires passing it, else null (the dot is removed).</summary>
+        public static ContextAction? ForElement(SketchObject o, RenderContext ctx, Registry? owner)
+        {
+            var registry = ctx.Registry ?? owner;
+            if (registry is null || Crossings.JunctionAt(registry, ctx.Doc, o.Id, null) is not { } j || !Crossings.CanDisconnect(registry, ctx.Doc, j, ctx.Lang)) return null;
+            return ContextAction.InDocument(ActionId, Label, IconIds.Bridge, (doc, x, c) =>
+            {
+                var reg = c.Registry ?? registry;
+                return Crossings.JunctionAt(reg, doc, x.Id, null) is { } now ? Crossings.Disconnect(reg, doc, now, null, c.Lang) : doc;
+            }) with { Group = "connect" };
+        }
+    }
+
+    /// <summary>
+    /// Wire: polyline between pins with free, orthogonal or 45 degree routing. Ends snap to symbol pins. Optional core colour
+    /// (cabinet wiring: brown L, blue N, green-yellow PE …) and cross-section; the wire number is the generic designation
+    /// (<see cref="Designations"/>, parameter <c>ref</c>). The switchgear devices connect with these wires and read colour,
+    /// cross-section and wire number in their terminal plans.
+    /// </summary>
     internal sealed class WireType : ElecPointType
     {
         public const string TypeId = "elec.wire";
 
         public WireType() : base(TypeId, T("Wire", "Leitung"), Connectors.Cat, new ViewDef("symbol", T("Wire", "Leitung")) { Icon = IconIds.Symbol },
-            "wire", "connection", "conductor", "net", "leitung", "verbindung", "draht", "verdrahtung") { }
+            "wire", "connection", "conductor", "net", "core", "leitung", "verbindung", "draht", "verdrahtung", "ader", "litze") { }
 
         private static readonly ParamDef Hops = Flag("hops", T("Hops at crossings", "Brücken an Kreuzungen"), true);
 
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal"), Hops };
+        /// <summary>Cross-section in mm² (optional; the switchgear terminal plan lists it).</summary>
+        public static readonly ParamDef Section = Choice("section", T("Cross-section (mm²)", "Querschnitt (mm²)"), "",
+            new[] { ("", "–", "–") }.Concat(new[] { "0.14", "0.25", "0.5", "0.75", "1", "1.5", "2.5", "4", "6", "10", "16" }
+                .Select(v => (v, v + " mm²", v.Replace('.', ',') + " mm²"))).ToArray());
+
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Routing.Param("orthogonal"), Hops, WireColours.Param, Section };
         public override bool InsertablePoints => true;
         /// <summary>A wire carries any electrical connection (build "+" at its free ends, <see cref="Building"/>).</summary>
         public override string? LineMedium(SketchObject line) => PortMedia.Electric;
+        /// <summary>A wire with a core colour is drawn in it: colouring by medium leaves it (<see cref="LineMedia"/>).</summary>
+        public override string? MediumRole(SketchObject line) => WireColours.ColourOf(line.Str("colour", WireColours.Auto)) is null ? null : LineMedia.OwnColour;
 
         /// <summary>Drawn path of a wire (routed).</summary>
         private static IReadOnlyList<Vec2> PathOf(SketchObject x, RenderContext ctx)
@@ -182,8 +278,15 @@ namespace InventaSketch.Modules.Electrical
         {
             var route = RouteOf(o, p, ctx);
             var hops = o.Flag("hops", true) ? Crossings.Find(ctx.Doc, o, route, x => PathOf(x, ctx), ctx.Registry ?? Owner).Where(c => c.Above).ToList() : new List<Crossing>();
-            Primitive main = hops.Count == 0 ? Prim.Polyline(route, S.Wire) : Prim.Path(Crossings.HopPath(route, hops), S.Wire);
-            return new[] { main with { Tag = "wire" } }.Concat(Routing.BranchDots(o, p)).ToList();
+            var code = o.Str("colour", WireColours.Auto);
+            var colour = WireColours.ColourOf(code);
+            var style = colour is null ? S.Wire : S.Wire with { Stroke = colour };
+            Primitive Stroke(Style st) => hops.Count == 0 ? Prim.Polyline(route, st) : Prim.Path(Crossings.HopPath(route, hops), st);
+            var list = new List<Primitive> { Stroke(style) with { Tag = "wire" } };
+            // Green-yellow: yellow dashes over the green core.
+            if (code == "GNYE") list.Add(Stroke(style with { Stroke = WireColours.Yellow, Dash = DashStyle.Dash }) with { Tag = "wire" });
+            list.AddRange(Routing.BranchDots(o, p));
+            return list;
         }
 
         /// <summary>The routed path is a rail: other wire ends and junction dots dock anywhere on it (T junctions).</summary>
@@ -194,8 +297,19 @@ namespace InventaSketch.Modules.Electrical
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
-            => Routing.RouteActions(o, "orthogonal")
-                .Append(Toggle(o, "elec.wire.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop));
+        {
+            foreach (var a in Routing.RouteActions(o, "orthogonal")) yield return a;
+            yield return Toggle(o, "elec.wire.hops", T("Hops at crossings on/off", "Brücken an Kreuzungen an/aus"), "hops", true, IconIds.Hop);
+            foreach (var a in Choice(o, "elec.wire.colour", WireColours.Param.Label, WireColours.Param, WireColours.Preview)) yield return a;
+            foreach (var a in Choice(o, "elec.wire.section", Section.Label, Section)) yield return a;
+        }
+
+        /// <summary>The wire's actions plus "Make bridge (not connected)" where one of its ends sits at a junction.</summary>
+        public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx)
+        {
+            foreach (var a in Actions(o, ctx.Lang)) yield return a;
+            if (Bridges.ForLine(o, ctx, Owner) is { } bridge) yield return bridge;
+        }
     }
 
     /// <summary>

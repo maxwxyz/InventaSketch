@@ -52,7 +52,7 @@ namespace InventaSketch.Modules.Electrical
             yield return new ElecType("elec.junction", T("Junction dot", "Verbindungspunkt"), Cat,
                 new[] { "junction", "dot", "node", "connection", "verbindungspunkt", "knoten", "abzweig" },
                 Views.Symbol(2, 2, (p, o) => p.Dot(0, 0, 0.8, "junction")))
-            { Pins = Fixed(new Pin("1", 0, 0)), Labeled = false, Net = _ => NetSpec.Short("1") };
+            { Pins = Fixed(new Pin("1", 0, 0)), Labeled = false, Net = _ => NetSpec.Short("1"), JunctionNode = true };
 
             yield return new ElecType("elec.netlabel", T("Net label", "Netzname"), Cat,
                 new[] { "net label", "net", "label", "netzname", "signalname", "potential", "vcc", "gnd" },

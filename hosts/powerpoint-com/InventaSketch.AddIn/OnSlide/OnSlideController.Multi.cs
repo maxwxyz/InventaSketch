@@ -12,7 +12,8 @@ namespace InventaSketch.AddIn.OnSlide
     /// <summary>
     /// Several InventaSketch elements selected: a small bar with the selection-wide operations that change something
     /// (<see cref="Arrange"/>): one view for all, centres on a row or column, even spacing, numerals renumbered in reading
-    /// order. PowerPoint's own formatting stays available for the native side of the shapes.
+    /// order, two crossing wires connected and a junction made a bridge again (<see cref="JunctionButtons"/>). PowerPoint's
+    /// own formatting stays available for the native side of the shapes.
     /// </summary>
     internal sealed partial class OnSlideController
     {
@@ -82,6 +83,8 @@ namespace InventaSketch.AddIn.OnSlide
             }
             if (Numerals().Count >= 2 && Arrange.Renumber(Numerals()).Count > 0)
                 tools.Add(new BarButton("renumber", "", T("Renumber reference numerals in reading order", "Bezugszeichen in Lesereihenfolge neu nummerieren")) { IconId = IconIds.Renumber });
+            // Wires and pipes: two that cross get a junction there, lines meeting at a junction become a bridge.
+            tools.AddRange(JunctionButtons());
             // Groups: one view for all | align and distribute | diagram layout | dimension, format, numerals.
             return JoinGroups(list, arrange, layout, tools);
         }
@@ -295,6 +298,10 @@ namespace InventaSketch.AddIn.OnSlide
                     var doc = Edits.Update(u.Doc, changed.Select(o => o.Id).ToList(), o => changed.First(x => x.Id == o.Id));
                     if (SketchUnits.Replace(slide, u, doc, registry, lang) is { } s) shapes.Add(s);
                 }
+            }
+            else if (id is "junction" or "bridge")
+            {
+                shapes.AddRange(ApplyJunctionAction(slide, units, id));
             }
             else if (id == "renumber")
             {

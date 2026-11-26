@@ -175,6 +175,16 @@ namespace InventaSketch.Modules.Electrical
             // wires, connectors & buses
             Add("wire", "elec.wire", "Wire", "Leitung");
             Add("wire.free", "elec.wire", "Wire (straight)", "Leitung (gerade)", null, P(("route", "free")));
+            // Core colours (cabinet wiring, also usable in electronics): the switchgear devices connect with these wires; the
+            // switchgear module's own core items give way to them (LibraryItem.Alternative).
+            Add("wire.bk", "elec.wire", "Wire, black (cabinet)", "Ader schwarz (Schaltschrank)", null, P(("colour", "BK"), ("section", "1.5")), null, null,
+                "core", "cabinet", "black", "ader", "verdrahtung", "schaltschrank", "schwarz", "l");
+            Add("wire.bn", "elec.wire", "Wire, brown (L)", "Ader braun (L)", null, P(("colour", "BN"), ("section", "1.5")), null, null,
+                "core", "brown", "phase", "line conductor", "ader", "braun", "außenleiter", "phase");
+            Add("wire.bu", "elec.wire", "Wire, blue (N)", "Ader blau (N)", null, P(("colour", "BU"), ("section", "1.5")), null, null,
+                "core", "blue", "neutral", "ader", "blau", "neutralleiter", "n");
+            Add("wire.pe", "elec.wire", "Wire, green-yellow (PE)", "Ader grün-gelb (PE)", null, P(("colour", "GNYE"), ("section", "1.5")), null, null,
+                "core", "green-yellow", "protective earth", "earth", "ader", "grün-gelb", "schutzleiter", "pe");
             Add("junction", "elec.junction", "Junction dot (circuit)", "Verbindungspunkt (Schaltplan)");
             Add("netlabel", "elec.netlabel", "Net label", "Netzname");
             Add("netlabel.vcc", "elec.netlabel", "Net label VCC", "Netzname VCC", null, null, "VCC", null, "supply", "versorgung");

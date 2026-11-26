@@ -60,13 +60,21 @@ namespace InventaSketch.Modules.Electrical
             return key == BodeSet ? Bode(net) : Step(net);
         }
 
-        public override bool HasDependents => IsPassive;
+        /// <summary>Passive parts name their linked charts; a junction dot names the wires docked on it (<see cref="ElecType.JunctionNode"/>).</summary>
+        public override bool HasDependents => IsPassive || JunctionNode;
 
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
-            => IsPassive ? Characteristics.LinkedCharts(ctx.Doc, o.Id) : Array.Empty<string>();
+            => IsPassive ? Characteristics.LinkedCharts(ctx.Doc, o.Id)
+                : JunctionNode ? ctx.Doc.Objects.Values.Where(x => x.Id != o.Id && x.Attach is not null && x.Attach.Any(a => a?.ObjectId == o.Id)).Select(x => x.Id).ToList()
+                : Array.Empty<string>();
 
+        /// <summary>Passive parts add their characteristic charts; a junction dot with wires passing it adds "Make bridge (not connected)".</summary>
         public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx)
-            => IsPassive ? base.Actions(o, ctx).Concat(Characteristics.InsertActions(this, o, ctx)) : base.Actions(o, ctx);
+        {
+            if (IsPassive) return base.Actions(o, ctx).Concat(Characteristics.InsertActions(this, o, ctx));
+            if (JunctionNode && Bridges.ForElement(o, ctx, Owner) is { } bridge) return base.Actions(o, ctx).Append(bridge);
+            return base.Actions(o, ctx);
+        }
 
         // ------------------------------------------------------------------ the network
 

@@ -238,7 +238,9 @@ yet, so everything lives in the deck. All decisions come from the engine; pure p
   ratios). *Redraw from model* as before.
 - **Selection panel, two or more units:** the engine's selection-wide operations from `arrangeOptions` with their
   labels – one view for all (the mechanism kept), centres on a row or column, even spacing, like the first, dimension
-  between the two, renumber reference numerals –, each only when it changes something, plus *Select assembly*. A click
+  between the two, renumber reference numerals, connect two crossing wires or pipes ("Connect (junction)"), make lines
+  meeting at a junction a bridge again ("Make bridge (not connected)") –, each only when it changes something, plus
+  *Select assembly*. A click
   runs `arrange` on all selected units in one page session and one undo step.
 - **Labels:** the extension has no icon set yet, so the buttons carry short bilingual text labels with the COM
   add-in's wording as tooltip; the engine's labels are used for the selection-wide operations (one per row).

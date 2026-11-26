@@ -49,6 +49,7 @@ namespace InventaSketch.AddIn.OnSlide
             _segHandles = new List<(int, Vec2, Vec2)>();
             _endHandles = new List<(bool, Vec2, Vec2)>();
             _crossings = new List<Crossing>();
+            _junctions = new List<Junction>();
             _canBranch = false;
             _hoverSeg = -1;
             var o = PointObject();
@@ -73,6 +74,8 @@ namespace InventaSketch.AddIn.OnSlide
                 // Crossings with other wires or pipes: a connect icon at each.
                 var full = _unitContext ?? SketchUnits.WithContext(unit.Doc, _otherUnits);
                 _crossings = Crossings.Find(registry, full, full.Get(o.Id) ?? o, _lang()).ToList();
+                // Junctions it takes part in: a bridge icon at each ("Make bridge here (not connected)").
+                _junctions = Crossings.Junctions(registry, full, full.Get(o.Id) ?? o).Where(j => Crossings.CanDisconnect(registry, full, j, _lang())).ToList();
                 // Free ends (not docked) of open lines: "+" to extend or keep drawing.
                 if (Polylines.CanExtend(registry, o))
                     foreach (var atStart in new[] { true, false })
@@ -97,7 +100,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// </summary>
         private IEnumerable<(int Code, PointF At)> SegmentHandlesOnScreen(SlideView view)
         {
-            if (PointObject() is null || _unit is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0)) yield break;
+            if (PointObject() is null || _unit is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0 && _junctions.Count == 0)) yield break;
             foreach (var h in Handles(view))
             {
                 if (!h.Visible) continue;
@@ -106,13 +109,14 @@ namespace InventaSketch.AddIn.OnSlide
             }
         }
 
-        /// <summary>Hover/hit code of a segment handle id ("cross:i", "end:k", "seg:i", "branch:i"), -1 for other handles.</summary>
+        /// <summary>Hover/hit code of a segment handle id ("bridge:i", "cross:i", "end:k", "seg:i", "branch:i"), -1 for other handles.</summary>
         internal static int SegmentCode(string id)
         {
             var cut = id.IndexOf(':');
             if (cut < 0 || !int.TryParse(id.Substring(cut + 1), out var n)) return -1;
             return id.Substring(0, cut) switch
             {
+                "bridge" => BridgeCode + n,
                 "cross" => CrossCode + n,
                 "end" => EndCode + n,
                 "seg" => 2 * n,
@@ -127,7 +131,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private int SegmentHandleAt(POINT pt, SlideView view)
         {
-            if (PointObject() is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0)) return -1;
+            if (PointObject() is null || (_segHandles.Count == 0 && _endHandles.Count == 0 && _crossings.Count == 0 && _junctions.Count == 0)) return -1;
             var h = NearestHandle(view, pt);
             return h is null ? -1 : SegmentCode(h.Id);
         }
@@ -178,7 +182,17 @@ namespace InventaSketch.AddIn.OnSlide
             g.FillEllipse(hover ? hot : fill, c.X - r, c.Y - r, 2 * r, 2 * r);
             g.DrawEllipse(ring, c.X - r, c.Y - r, 2 * r, 2 * r);
             var k = r * 0.55f;
-            if (code >= CrossCode)
+            if (code >= BridgeCode)
+            {
+                // Bridge: a stroke hopping over a crossing stroke (not connected).
+                g.DrawLine(glyph, c.X, c.Y - k, c.X, c.Y + k);
+                var hy = c.Y + k * 0.35f;
+                var hr = k * 0.5f;
+                g.DrawLine(glyph, c.X - k, hy, c.X - hr, hy);
+                g.DrawLine(glyph, c.X + hr, hy, c.X + k, hy);
+                g.DrawArc(glyph, c.X - hr, hy - hr, 2 * hr, 2 * hr, 180, 180);
+            }
+            else if (code >= CrossCode)
             {
                 // Junction: two crossing strokes and a dot.
                 g.DrawLine(glyph, c.X - k, c.Y, c.X + k, c.Y);
@@ -203,6 +217,14 @@ namespace InventaSketch.AddIn.OnSlide
             if (code < 0) return false;
             var o = PointObject();
             if (o is null) return false;
+            if (code >= BridgeCode)
+            {
+                var unit = _unit;
+                var junction = _junctions[code - BridgeCode];
+                HideBar();
+                Post(() => ApplyBridge(unit, junction));
+                return true;
+            }
             if (code >= CrossCode)
             {
                 var unit = _unit;
