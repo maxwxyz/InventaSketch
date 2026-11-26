@@ -218,6 +218,10 @@ namespace InventaSketch.Core
 
     public sealed record SvgOptions
     {
+        /// <summary>Designation → page names for continuation markers (<see cref="RenderContext.Continuations"/>); null: none.</summary>
+        public IReadOnlyDictionary<string, IReadOnlyList<string>>? Continuations { get; init; }
+        /// <summary>How continuation markers name the pages (<see cref="RenderContext.PageNames"/>).</summary>
+        public PageNames? PageNames { get; init; }
         /// <summary>Converts all colours to black/white (monochrome export).</summary>
         public bool Monochrome { get; init; }
         /// <summary>Writes explicit hatch lines instead of SVG patterns (best compatibility, required for PowerPoint SVG import).</summary>
@@ -244,7 +248,7 @@ namespace InventaSketch.Core
         public static string RenderPage(Registry registry, SketchDocument doc, Page page, SvgOptions? options = null, Lang lang = Lang.En)
         {
             options ??= new SvgOptions();
-            var ctx = new RenderContext(doc, lang, options.Monochrome);
+            var ctx = new RenderContext(doc, lang, options.Monochrome) { Continuations = options.Continuations, PageNames = options.PageNames };
             var vb = options.ViewBox ?? new Rect(0, 0, page.Size.W, page.Size.H);
             var sb = new StringBuilder();
             sb.Append("<svg xmlns=\"http://www.w3.org/2000/svg\" version=\"1.1\" ");

@@ -284,7 +284,8 @@ namespace InventaSketch.Engine
                 });
             }
             if (r?.IncludeSvg != false)
-                st.Svg = SvgRenderer.RenderPage(Registry, doc, s.Page, new SvgOptions { Background = null, Monochrome = doc.Settings.Monochrome }, s.Lang);
+                // The session's continuations (designations on other slides) show in the page drawing too.
+                st.Svg = SvgRenderer.RenderPage(Registry, doc, s.Page, new SvgOptions { Background = null, Monochrome = doc.Settings.Monochrome, Continuations = s.Continuations, PageNames = s.PageNames }, s.Lang);
             return st;
         }
 
@@ -2363,6 +2364,9 @@ namespace InventaSketch.Engine
                 if (d.Settings.LineGroup != src.Settings.LineGroup) d = d with { Settings = d.Settings with { LineGroup = src.Settings.LineGroup } };
                 if (d.Settings.Accent != src.Settings.Accent) d = d with { Settings = d.Settings with { Accent = src.Settings.Accent } };
                 if (d.Settings.ColorBy != src.Settings.ColorBy) d = d with { Settings = d.Settings with { ColorBy = src.Settings.ColorBy } };
+                // Calc 6 settings of the slide model (muted checks, preferred units) come along as well.
+                if (src.Settings.MutedChecks is { Count: > 0 } || src.Settings.UnitPreferences is { Count: > 0 })
+                    d = d with { Settings = d.Settings with { MutedChecks = src.Settings.MutedChecks ?? d.Settings.MutedChecks, UnitPreferences = src.Settings.UnitPreferences ?? d.Settings.UnitPreferences } };
                 return d;
             });
             if (r.Add != false) s.Select(objs.Select(o => o.Id));

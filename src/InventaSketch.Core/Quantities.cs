@@ -248,7 +248,8 @@ namespace InventaSketch.Core
             Frequency.Add("h⁻¹", 1.0 / 3600, new[] { "1/h" });
             RotationalSpeed.Add("min⁻¹", 2 * Pi / 60, new[] { "rpm", "RPM", "1/min", "/min", "U/min", "r/min", "rev/min" });
             RotationalSpeed.Add("rad/s", 1);
-            RotationalSpeed.Add("rev/s", 2 * Pi, new[] { "rps", "r/s", "U/s" });
+            // "s⁻¹" for a speed of rotation (DIN 1301 usage: revolutions per second) reads as rev/s.
+            RotationalSpeed.Add("rev/s", 2 * Pi, new[] { "rps", "r/s", "U/s", "s⁻¹", "1/s" });
             Angle.Add("°", Pi / 180, new[] { "deg" });
             Angle.Add("rad", 1, null, 0, "m");
             Angle.Add("rev", 2 * Pi, new[] { "turn" });
