@@ -131,7 +131,11 @@ element (mesh sides, ring inside, free axis ends, free hub), the library items t
 cross (the upper one hops; one rule for every line family that hops – fluid power, electrical, building services,
 process and energy lines hop over each other, 2026-11-25) and connects them at a crossing. Directed anchors
 (`Anchor.Directed`) carry the outward direction of a connection face; a directed mount offers a build port where a
-part is placed facing it (robot flange → tool). `GearTrain` solves the angular speeds of a gear train
+part is placed facing it (robot flange → tool). Mount ids stay unique per element; a mount names the further ids it
+docks on in `Anchor.Accepts` (a gripper's `flange` also accepts a tool changer's `tool`), which `Building` ("+" items and
+placement) and `Snapper` (preference for fitting faces) use. Pitch circles that do not mesh (pulleys, sprockets,
+idlers: `IPitchMesh`) are marked `Anchor.NoMesh` by `Registry.PageAnchors`; `Snapper` and `Building` then offer no mesh
+with them, so a pulley snaps onto a belt hub instead. `GearTrain` solves the angular speeds of a gear train
 (linear system over mesh, Willis, shaft, compound, belt, bevel pair and fixed constraints) and turns it; `Assemblies` explodes
 predefined assemblies into coupled parts. `Linkage` recognises self-built linkages (links docked on joints, fixed pivots,
 sliders, pins in the slots of other links), computes their degree of freedom and drags them with constant link lengths.

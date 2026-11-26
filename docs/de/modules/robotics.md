@@ -219,11 +219,13 @@ schweißzange, klebedüse, energiekette, …).
   (Anbau-Port `mount.tool`) mit Greifern, Werkzeugen, Sensoren und Wechslern; Arm → Werkzeugwechsler →
   Kraft-Momenten-Sensor → Greifer entsteht also mit drei Klicks, jedes Teil zur Werkzeugachse gedreht und auf den
   Roboterflansch skaliert (alle Flanschplatten haben dieselbe Entwurfsbreite). Die ganze Kette folgt, wenn sich ein
-  Gelenk dreht (der gerichtete Mount jedes Teils sitzt dem vorigen gegenüber). Core ordnet Anbau-Ports nur über die
-  Mount-Id zu; ein Teil bietet seinen Flansch daher auch als `tool` an, solange es Kandidat eines Anbau-Ports ist (nicht im
-  Dokument oder in einer temporären Kopie geprüft: auf den Blattursprung zentriert oder mit einem Flansch-/Werkzeug-Mount
-  eines anderen Teils deutlich innerhalb seiner Box); platzierte Teile behalten eindeutige Mount-Ids, da `Coupling`
-  angedockte Teile über die Id findet.
+  Gelenk dreht (der gerichtete Mount jedes Teils sitzt dem vorigen gegenüber). Seit 26.11.2026 ist die Verträglichkeit
+  Daten: Der Flansch-Mount jedes werkzeugseitigen Teils (Greifer, Werkzeuge, Sensoren, Wechsler) **akzeptiert** die Id
+  `tool` (`Anchor.Accepts`); „+“ und Fangen docken es daher am Roboterflansch (`flange`) wie an einer Werkzeugseite
+  (`tool`) an, und jedes Teil behält eindeutige Mount-Ids (`flange`, bei Wechslern und Sensoren dazu `tool`). Ein
+  Wechsler an der Werkzeugseite eines anderen Wechslers dockt mit seinem Flansch an (dem Mount, der `tool` akzeptiert),
+  nicht mit seiner eigenen Werkzeugseite. Beim Ziehen eines Teils hat eine passende, ihm zugewandte Fläche (gleiche oder
+  akzeptierte Id) Vorrang vor anderen Mounts in der Nähe.
 - Werkzeuge: Port `tcp` am Greifpunkt / an der Drahtspitze / an der Werkzeugspitze; der Port `tcp` der TCP-Marke rastet
   dort ein, ebenso der Port `grip` eines Werkstücks (das Werkstück gilt als gegriffen: seine Masse zählt zur Last des
   Roboters).

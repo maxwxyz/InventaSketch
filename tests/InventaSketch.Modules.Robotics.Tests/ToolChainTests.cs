@@ -78,18 +78,43 @@ namespace InventaSketch.Modules.Robotics.Tests
             var ports = Building.Ports(r, doc, changer.Id).Where(p => p.Kind == PortKind.Mount).Select(p => p.Id).ToList();
             Assert.Equal(ports.Distinct().Count(), ports.Count);
             Assert.Contains("mount.tool", ports);
-            // A build-port candidate (centred on the port, as Building probes it) also offers its flange as "tool", so "+"
-            // on a tool side finds grippers; a free gripper in the document does not.
-            var toolSide = r.PageAnchors(changer, new RenderContext(doc).For(r)).Single(a => a.Role == AnchorRole.Mount && a.Id == "tool").P;
-            var probe = Side(r, "robot.gripper.parallel", toolSide);
-            var withProbe = Edits.Add(doc, doc.Pages[0].Id, probe);
-            var probeMounts = r.PageAnchors(probe, new RenderContext(withProbe).For(r)).Where(a => a.Role == AnchorRole.Mount).ToList();
-            Assert.Contains(probeMounts, a => a.Id == "tool" && a.Direction is not null);
-            Assert.True(probeMounts.Single(a => a.Id == "tool").P.DistanceTo(probeMounts.Single(a => a.Id == "flange").P) < 1e-9);
+            // A tool-side part keeps the single mount id "flange" wherever it is; that mount accepts the tool side
+            // (Anchor.Accepts), so "+" on a tool side finds grippers, sensors and changers.
             var free = Side(r, "robot.gripper.parallel", new Vec2(150, 50));
             var withFree = Edits.Add(doc, doc.Pages[0].Id, free);
-            Assert.DoesNotContain(r.PageAnchors(free, new RenderContext(withFree).For(r)), a => a.Id == "tool");
+            var freeMounts = r.PageAnchors(free, new RenderContext(withFree).For(r)).Where(a => a.Role == AnchorRole.Mount && a.Id is not null).ToList();
+            Assert.Equal("flange", Assert.Single(freeMounts).Id);
+            Assert.True(freeMounts[0].DocksOn("tool"));
             Assert.Single(Building.Ports(r, withFree, free.Id), p => p.Kind == PortKind.Mount);
+            var port = Building.Ports(r, doc, changer.Id).Single(p => p.Id == "mount.tool");
+            var items = Building.Items(r, doc, changer.Id, port, 20).Select(i => i.TypeId).ToList();
+            Assert.Contains("robot.gripper.parallel", items);
+            Assert.Contains("robot.sensor.ft", items);
+            Assert.Contains("robot.tool.changer", items);
+        }
+
+        [Fact]
+        public void AGripperDraggedNearAToolSideSnapsItsFlangeOntoIt()
+        {
+            var r = Fx.Reg();
+            var (doc0, _, _, sensor, gripper) = Chain(r);
+            // Without the gripper: drag a new gripper next to the sensor's tool side.
+            var doc = Edits.Remove(doc0, new[] { gripper.Id });
+            var tool = MountOf(r, doc, doc.Get(sensor.Id)!, "tool");
+            var item = r.Library.First(i => i.TypeId == "robot.gripper.parallel" && (i.View is null || i.View == "side"));
+            var placed = Building.Place(r, doc, sensor.Id, Building.Ports(r, doc, sensor.Id).Single(p => p.Id == "mount.tool"), item)!;
+            // Same pose as "+" would give, but away from the sensor; then dragged back with a small offset.
+            var away = placed with { Transform = placed.Transform with { X = placed.Transform.X + 200, Y = placed.Transform.Y + 200 } };
+            doc = Edits.Add(doc, doc.Pages[0].Id, away);
+            var ctx = new RenderContext(doc).For(r);
+            var moving = r.PageAnchors(away, ctx).ToList();
+            var targets = Snapper.Targets(r, doc, doc.Pages[0], new[] { away.Id }, ctx, new SnapOptions { Grid = null, Alignment = false, Page = false });
+            var snap = Snapper.SnapMove(moving, new Vec2(-200.4, -199.7), targets, new SnapOptions { Grid = null, Alignment = false, Page = false, Tolerance = 3 });
+            Assert.Equal("mount", snap.Kind);
+            Assert.Equal("tool", snap.Target?.Id);
+            Assert.Equal(sensor.Id, snap.Target?.Owner);
+            var flange = moving.Single(a => a.Role == AnchorRole.Mount && a.Id == "flange");
+            Assert.True((flange.P + snap.Delta).DistanceTo(tool.P) < 1e-9);
         }
 
         [Fact]

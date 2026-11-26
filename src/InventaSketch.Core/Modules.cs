@@ -516,6 +516,26 @@ namespace InventaSketch.Core
         /// <summary>True for point anchors with a direction (<see cref="Directed"/>).</summary>
         public bool HasDirection { get; init; }
 
+        /// <summary>
+        /// Further mount ids a <see cref="AnchorRole.Mount"/> anchor docks onto besides its own <see cref="Id"/> (null = only its
+        /// own id). Ids stay unique per object (attachments, build ports and <see cref="Coupling"/> refer to them); this names
+        /// the compatible faces instead: a gripper's mount "flange" that accepts "tool" docks with "+" on a robot flange
+        /// ("flange") and on the tool side of a tool changer or sensor ("tool"); snapping prefers such compatible faces. When
+        /// a part has several mounts that dock on a port, the one that accepts the port's id explicitly is used (a tool changer
+        /// docks on another changer's tool side with its flange, not with its own tool side).
+        /// </summary>
+        public IReadOnlyList<string>? Accepts { get; init; }
+
+        /// <summary>True if this mount docks onto a mount with id <paramref name="mountId"/>: its own id or one it <see cref="Accepts"/>.</summary>
+        public bool DocksOn(string? mountId) => mountId is not null && (Id == mountId || Accepts is { } acc && acc.Contains(mountId));
+
+        /// <summary>
+        /// True for a pitch circle that does not mesh (belt pulley, chain sprocket, idler: it only sizes the strand). Set by
+        /// <see cref="Registry.PageAnchors"/> from <see cref="IPitchMesh"/>; <see cref="Snapper"/> and <see cref="Building"/> offer
+        /// no mesh with it.
+        /// </summary>
+        public bool NoMesh { get; init; }
+
         /// <summary>The unit direction of a directed point anchor, else null.</summary>
         public Vec2? Direction => HasDirection && (Q - P).Length > 1e-9 ? (Q - P).Normalized() : null;
         public static Anchor Circle(AnchorRole role, Vec2 c, double r) => new(AnchorKind.Circle, role, c, default, r);
@@ -1526,7 +1546,13 @@ namespace InventaSketch.Core
             yield return Anchor.Point(AnchorRole.EdgeMid, m.Apply(new Vec2(0, hh)));
             yield return Anchor.Point(AnchorRole.EdgeMid, m.Apply(new Vec2(-hw, 0)));
             if (type is null) yield break;
-            foreach (var a in type.Anchors(o, ctx)) yield return a.Transform(m);
+            // Pitch circles of pulleys and sprockets are marked: they size the strand but do not mesh (IPitchMesh).
+            var noMesh = type is IPitchMesh pm && !pm.MeshesAtPitch(o);
+            foreach (var a in type.Anchors(o, ctx))
+            {
+                var t = a.Transform(m);
+                yield return noMesh && t.Kind == AnchorKind.Circle && t.Role is AnchorRole.Pitch or AnchorRole.PitchInner ? t with { NoMesh = true } : t;
+            }
         }
     }
 }
