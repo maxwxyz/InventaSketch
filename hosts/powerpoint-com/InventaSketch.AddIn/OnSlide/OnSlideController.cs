@@ -1132,7 +1132,8 @@ namespace InventaSketch.AddIn.OnSlide
             AddInSettings.RecentItems = LibrarySearch.Remember(AddInSettings.RecentItems, chosen.Id);
             Log.Info("Insert by typing: " + chosen.Id);
             if (unit is not null && InsertFitting(slide, unit, chosen)) return;
-            BeginPlacement(chosen);
+            // Inserted at once beside the selection (on the side the pie was opened), nothing follows the pointer.
+            InsertNow(chosen, _insertToward, unit);
         }
 
         /// <summary>
@@ -1459,6 +1460,73 @@ namespace InventaSketch.AddIn.OnSlide
             var h = (_view?.SlideHeight ?? 540) / Geo.PtPerMm;
             list.Add(Anchor.Point(AnchorRole.Center, new Vec2(w / 2, h / 2), "page"));
             return list;
+        }
+
+        /// <summary>
+        /// Inserts a library item at once and selects it (maintainer 2026-11-26: nothing hangs on the pointer after a pick
+        /// in the gallery, the sidebar or the insert box). Placed beside <paramref name="beside"/> (the selected unit, on the
+        /// side of <paramref name="toward"/>), else at <paramref name="toward"/>, else in the middle of the visible slide; a
+        /// spot already taken by an earlier insert moves on diagonally. Returns false if no slide is visible.
+        /// </summary>
+        public bool InsertNow(LibraryItem item, Vec2? toward = null, SketchUnit? beside = null)
+        {
+            if (_overlay.InvokeRequired) return (bool)_overlay.Invoke(new Func<bool>(() => InsertNow(item, toward, beside)));
+            var slide = CurrentSlide();
+            if (slide is null) return false;
+            Cancel("insert now");
+            var setup = _app.ActivePresentation.PageSetup;
+            double w = setup.SlideWidth / Geo.PtPerMm, h = setup.SlideHeight / Geo.PtPerMm;
+            var at = InsertSpot(slide, toward, beside, w, h);
+            InsertAt(item, at);
+            return true;
+        }
+
+        /// <summary>Where <see cref="InsertNow"/> puts a new element (mm on the slide).</summary>
+        private Vec2 InsertSpot(PowerPoint.Slide slide, Vec2? toward, SketchUnit? beside, double w, double h)
+        {
+            Vec2 at;
+            if (beside is not null)
+            {
+                var b = beside.BoundsPt;
+                double l = b.Left / Geo.PtPerMm, t = b.Top / Geo.PtPerMm, r = b.Right / Geo.PtPerMm, bo = b.Bottom / Geo.PtPerMm;
+                var c = new Vec2((l + r) / 2, (t + bo) / 2);
+                var d = (toward ?? new Vec2(r + 1, c.Y)) - c;
+                const double gap = 15;
+                // The side the pie was opened on (right, left, below, above), clamped to the slide.
+                at = Math.Abs(d.X) * (bo - t) >= Math.Abs(d.Y) * (r - l)
+                    ? new Vec2(d.X >= 0 ? r + gap : l - gap, c.Y)
+                    : new Vec2(c.X, d.Y >= 0 ? bo + gap : t - gap);
+            }
+            else if (toward is { } p) at = p;
+            else
+            {
+                // The middle of the visible part of the slide (zoomed in), else of the slide.
+                var view = _view ?? SlideView.Current(_app);
+                at = new Vec2(w / 2, h / 2);
+                if (view is not null && view.PaneRect.Width > 0 && view.PaneRect.Height > 0)
+                {
+                    var pr = view.PaneRect;
+                    var a = view.ToMm(new POINT { X = pr.Left, Y = pr.Top });
+                    var z = view.ToMm(new POINT { X = pr.Right, Y = pr.Bottom });
+                    var mid = new Vec2((Math.Max(0, a.X) + Math.Min(w, z.X)) / 2, (Math.Max(0, a.Y) + Math.Min(h, z.Y)) / 2);
+                    if (mid.X > 0 && mid.X < w && mid.Y > 0 && mid.Y < h) at = mid;
+                }
+            }
+            at = new Vec2(Math.Max(5, Math.Min(w - 5, at.X)), Math.Max(5, Math.Min(h - 5, at.Y)));
+            // Repeated inserts do not land exactly on each other.
+            var taken = new List<Vec2>();
+            foreach (PowerPoint.Shape s in slide.Shapes)
+            {
+                try
+                {
+                    if (!SketchUnits.IsUnit(s)) continue;
+                    taken.Add(new Vec2((s.Left + s.Width / 2) / Geo.PtPerMm, (s.Top + s.Height / 2) / Geo.PtPerMm));
+                }
+                catch { }
+            }
+            for (var i = 0; i < 12 && taken.Any(q => (q - at).Length < 3); i++)
+                at = new Vec2(Math.Min(w - 5, at.X + 8), Math.Min(h - 5, at.Y + 8));
+            return at;
         }
 
         private void InsertAt(LibraryItem item, Vec2 at)
@@ -2159,9 +2227,9 @@ namespace InventaSketch.AddIn.OnSlide
             }
             if (id.StartsWith("ins:", StringComparison.Ordinal))
             {
-                // Placed where it fits (gear on the shaft, gear in mesh, bearing beside the gear …), else at the pointer
-                // with snapping (onto the axis, ports and mounts of the selection).
-                if (registry.Item(id.Substring(4)) is { } item && !InsertFitting(slide, unit, item)) BeginPlacement(item);
+                // Placed where it fits (gear on the shaft, gear in mesh, bearing beside the gear …), else at once beside
+                // the selection (nothing follows the pointer).
+                if (registry.Item(id.Substring(4)) is { } item && !InsertFitting(slide, unit, item)) InsertNow(item, _insertToward, unit);
                 return;
             }
             if (id == "planscale")

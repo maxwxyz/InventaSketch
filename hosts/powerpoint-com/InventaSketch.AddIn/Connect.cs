@@ -95,7 +95,7 @@ namespace InventaSketch.AddIn
                 });
                 if (addInInst is Office.COMAddIn comAddIn) comAddIn.Object = new Automation(this);
                 _onSlide = new OnSlide.OnSlideController(_app, () => _registry!, () => _lang);
-                _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang, BeginPlacement);
+                _bridge = new Sidebar.SidebarBridge(_app, () => _registry!, () => _lang, InsertNow);
                 _onSlide.UnitArmed += u => _bridge.UnitSelected(u);
                 _onSlide.PlanScaleRequested += SetPlanScale;
                 _onSlide.MotionToggled += () => _ribbon?.InvalidateControl("IskMotion");
@@ -237,6 +237,9 @@ namespace InventaSketch.AddIn
             // Fluid power (ISO 1219) with process and thermal engineering (ISO 10628): one menu, two sections; the symbols
             // stay separate because the standards draw pumps, valves and lines differently (maintainer 2026-11-25).
             ["fluid"] = "process",
+            // Electrical installation and distribution boards with electrical engineering and electronics: one menu
+            // (maintainer 2026-11-26: "should switchgear not be part of electrical?").
+            ["switchgear"] = "electrical",
         };
 
         /// <summary>Categories shown in another module's menu (category → module whose menu shows it).</summary>
@@ -267,6 +270,7 @@ namespace InventaSketch.AddIn
             ["architecture"] = new I18nText("Building & services", "Gebäude & TGA"),
             ["mechanical"] = new I18nText("Mechanics", "Mechanik"),
             ["process"] = new I18nText("Process & fluid", "Verfahrens- & Fluidtechnik"),
+            ["electrical"] = new I18nText("Electrical & installation", "Elektro & Installation"),
         };
 
         private List<(string Label, List<IModule> Modules)> RibbonGroups()
@@ -324,8 +328,8 @@ namespace InventaSketch.AddIn
                     if (!inMenu) sb.Append(" size=\"normal\" showLabel=\"").Append(compact ? "false" : "true").Append('"');
                     sb.Append(" getImage=\"GetCategoryImage\" columns=\"6\" itemWidth=\"40\" itemHeight=\"40\" showItemLabel=\"false\"")
                       .Append(" screentip=\"").Append(X(GalleryLabel(c))).Append("\" supertip=\"")
-                      .Append(X(T("Pick an element, then click on the slide to place it (snaps to other elements). Esc cancels.",
-                          "Element wählen, dann auf die Folie klicken (rastet an anderen Elementen ein). Esc bricht ab."))).Append('"')
+                      .Append(X(T("Pick an element: it is inserted in the middle of the visible slide and selected; drag it where it belongs (it snaps to other elements).",
+                          "Element wählen: Es wird in der Mitte der sichtbaren Folie eingefügt und ausgewählt; dann an seinen Platz ziehen (rastet an anderen Elementen ein)."))).Append('"')
                       .Append(" getItemCount=\"GetItemCount\" getItemImage=\"GetGalleryItemImage\" getItemScreentip=\"GetItemScreentip\"")
                       .Append(" getItemID=\"GetGalleryItemId\" onAction=\"OnGalleryAction\" />");
                 }
@@ -1528,7 +1532,8 @@ namespace InventaSketch.AddIn
             {
                 var item = _registry?.Item(selectedId);
                 if (item is null) return;
-                if (_onSlide?.BeginPlacement(item) == true) return;
+                // Inserted at once and selected (maintainer 2026-11-26: nothing hangs on the pointer, the gallery closes).
+                if (_onSlide?.InsertNow(item) == true) return;
                 InsertItem(item.Id);
             }
             catch (Exception ex)
@@ -1609,6 +1614,16 @@ namespace InventaSketch.AddIn
             return last;
         }
 
+        /// <summary>Inserts a library item at once in the visible part of the slide and selects it (gallery, sidebar).</summary>
+        internal bool InsertNow(string itemId)
+        {
+            var item = _registry?.Item(itemId);
+            if (item is null) return false;
+            if (_onSlide?.InsertNow(item) == true) return true;
+            return InsertItem(itemId) is not null;
+        }
+
+        /// <summary>Insert-at-pointer (outline follows the pointer until a click); kept for automation and UI tests.</summary>
         internal bool BeginPlacement(string itemId)
         {
             var item = _registry?.Item(itemId);

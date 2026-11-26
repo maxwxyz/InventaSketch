@@ -201,7 +201,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>
         /// The insert box at a build "+": the parts that dock there first (docked and coupled when chosen), typing searches
-        /// the whole library (anything else is placed at the pointer).
+        /// the whole library (anything else is inserted at once beside the unit).
         /// </summary>
         private void OpenPortInsert(SketchUnit unit, BuildPort port, Point at)
         {
@@ -226,7 +226,7 @@ namespace InventaSketch.AddIn.OnSlide
             AddInSettings.RecentItems = LibrarySearch.Remember(AddInSettings.RecentItems, chosen.Id);
             Log.Info("Port insert: " + port.Id + " " + chosen.Id);
             if (items.Any(i => i.Id == chosen.Id)) ApplyAction(unit, "port:" + port.Id + ":" + chosen.Id);
-            else BeginPlacement(chosen);
+            else InsertNow(chosen, _view?.ToMm(new POINT { X = at.X, Y = at.Y }), unit);
         }
 
         /// <summary>Build ports of a unit with the items they offer, for UI tests ("id|kind|item,item…" per line).</summary>

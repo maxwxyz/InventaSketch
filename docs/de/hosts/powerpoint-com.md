@@ -55,9 +55,14 @@
   Modus läuft oder eine InventaSketch-Einheit ausgewählt ist. Hooks rechnen und zeichnen nur; Objektmodellaufrufe laufen
   über `BeginInvoke`. Drücken/Loslassen-Paare werden nie zwischen PowerPoint und Add-in aufgeteilt.
 - **Overlay:** ein durchklickbares Layered Window über dem Folienbereich (`UpdateLayeredWindow`, Alpha je Pixel).
-- **Einfügen am Mauszeiger:** nach Auswahl eines Menüband-Elements folgt ein oranger Umriss dem Mauszeiger und rastet
-  ein (Zahneingriff, Nabe auf Wellenachse, Punkte, Ausrichtungslinien); Klick fügt ein, `Esc` bricht ab, `Alt`
-  setzt das Fangen aus.
+- **Sofort einfügen (26.11.2026):** Ein Element aus einer Menüband-Galerie, der Seitenleiste, dem Einfügefeld (Kreismenü,
+  Strg+Leertaste) oder an einem Bau-„+“ wird sofort eingefügt und ausgewählt; nichts hängt am Mauszeiger, die Galerie
+  schließt sich. Ohne Auswahl landet es in der Mitte der sichtbaren Folie, mit Auswahl daneben (auf der Seite, auf der
+  das Kreismenü geöffnet wurde); passende Teile werden weiterhin dort platziert, wo sie passen (Zahnrad auf der Welle,
+  Lager neben dem Zahnrad). Beim anschließenden Ziehen rastet es wie gewohnt ein. Das Einfügen am Mauszeiger (Umriss
+  folgt dem Zeiger, Klick platziert) bleibt nur für Automatisierung und UI-Tests.
+- **Menüband-Menüs:** Elektroinstallation und Verteiler teilen sich das Menü der Elektrotechnik und Elektronik
+  („Elektro & Installation“).
 - **Ziehen mit Fangen:** Drücken innerhalb einer ausgewählten Einheit verschiebt sie mit demselben Fangen und roten
   Hilfslinien; ein Rückgängig-Schritt beim Loslassen.
 - **Größe ändern mit Fangen:** die Größengriffe von PowerPoint werden übernommen. Eckgriffe skalieren gleichmäßig
@@ -259,7 +264,7 @@ Der Menüband-Schalter **Editor** öffnet einen angedockten Aufgabenbereich (`Si
 `AddIn\App` lädt. Der Editor spricht über `window.chrome.webview` mit dem Add-in (`combridge.ts` ↔ `SidebarBridge`):
 `units`-Nachrichten tragen kompakte Modelle, die das Add-in mit der vollen C#-Engine nativ zeichnet; die ausgewählte
 Einheit wird als `selection` zurückgemeldet. Live-Synchronisation ist standardmäßig an. Ein Klick auf ein
-Bibliothekselement startet das Einfügen am Mauszeiger auf der Folie.
+Bibliothekselement fügt es sofort auf der Folie ein und wählt es aus.
 
 ## Installation (pro Benutzer, ohne Administratorrechte)
 

@@ -53,8 +53,14 @@
   or an InventaSketch unit is selected. Hooks only compute and draw; object-model calls run via `BeginInvoke`.
   Press/release pairs are never split between PowerPoint and the add-in.
 - **Overlay:** a click-through layered window over the slide pane (`UpdateLayeredWindow`, per-pixel alpha).
-- **Insert at pointer:** picking a ribbon item shows an orange outline that follows the pointer and snaps (gear mesh,
-  hub on shaft axis, points, alignment guides); click inserts, `Esc` cancels, `Alt` suspends snapping.
+- **Insert at once (2026-11-26):** picking an item in a ribbon gallery, the sidebar, the insert box (pie menu,
+  Ctrl+Space) or at a build "+" inserts it immediately and selects it; nothing follows the pointer and the gallery closes.
+  Without a selection it lands in the middle of the visible slide, with a selection beside it (on the side the pie was
+  opened); parts that fit the selection are still placed where they fit (gear on the shaft, bearing beside the gear).
+  Dragging it afterwards snaps as usual. Insert-at-pointer (outline follows the pointer, click places) remains for
+  automation and UI tests only.
+- **Ribbon menus:** electrical installation and distribution boards share the menu of electrical engineering and
+  electronics ("Electrical & installation").
 - **Drag with snapping:** pressing inside a selected unit (PowerPoint keeps the handles on the border) moves it with
   the same snapping and red guides; one undo step on release.
 - **Resize with snapping:** PowerPoint's resize handles of a selected unit are taken over. Corner handles scale
@@ -246,7 +252,7 @@ The editor talks to the add-in through `window.chrome.webview` (`combridge.ts` �
 `units` messages carry compact model payloads that the add-in draws natively with the full C# engine (new units are
 drawn, existing ISK_IDs replaced, removed units deleted — one undo step); the add-in pushes the selected unit back as
 `selection`. Live sync is on by default, so edits in the sidebar update the slide immediately. A click on a library
-item in the sidebar starts insert-at-pointer on the slide (snapping, `Esc` cancels), exactly like the ribbon galleries;
+item in the sidebar inserts it on the slide at once and selects it, exactly like the ribbon galleries;
 dragging an item into the sidebar stage adds it to the editor instead.
 
 Verified 2026-11-20 (keyboard and placement): `R` rotated a shaft (340 × 0 → 0 × 340 pt), `Ctrl+D` produced a copy with
