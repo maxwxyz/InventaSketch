@@ -118,7 +118,9 @@ BESS), `energy.heat.heatpump.ground`, `energy.heat.chp.biogas`, `energy.h2.elect
 `energy.load.industry`, `energy.grid.infeed.lv` (Hausanschluss 0,4 kV), `energy.grid.infeed.hv` (110 kV),
 `energy.grid.transformer.hvmv` (110/20 kV, 40 MVA), `energy.grid.transformer.ehv` (380/110 kV, 300 MVA),
 `energy.grid.busbar.mv` / `.hv` / `.dc` (20 kV, 110 kV, 800 V DC), `energy.grid.breaker.square`,
-`energy.grid.disconnector.loadbreak`, `energy.grid.disconnector.fuse`, Kabel `energy.line.cable.lv` / `.mv` / `.hv` /
+`energy.grid.disconnector.loadbreak`, `energy.grid.disconnector.fuse`, `energy.pv.array.yield` (10 kWp, Jahresertrag),
+`energy.storage.battery.home` (10 kWh bei 50 %), `energy.grid.connection.point` (0,4 kV, Einspeisegrenze und
+Eigenverbrauch), Kabel `energy.line.cable.lv` / `.mv` / `.hv` /
 `.ehv` / `.dc` / `.data`, Leitungen `energy.line.pipe.<carrier>` und Energieflüsse `energy.line.flow.<carrier>`.
 
 Suchbegriffe decken beide Sprachen ab, z. B. Photovoltaik, Wechselrichter, Speicher, Ladestation, Wallbox,
@@ -188,11 +190,11 @@ seine STC-Leistung und ein Transformator seine Bemessungsströme. Kartengrößen
 | Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
 |---|---|---|
 | PV-Modul | *U*_oc,max (`vocMax`), *P*_mpp (`power`), *U*_oc (`voc`), *U*_mpp (`vmp`); Panel *I*_sc (`isc`), *I*_mpp (`imp`), β (`betaVoc`, % je K), θ_min (`tmin`), θ_max (`tmax`), *U*_mpp,min (`vmpMin`) | *P*_mpp = *U*_mpp·*I*_mpp (2 % Toleranz für gerundete Datenblattwerte); *U*_oc,max = *U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min = *U*_mpp·(1 + β·(θ_max − 25 °C)) (β von *U*_oc als Näherung) [S33] |
-| PV-String | *U*_oc,max, *U*_mpp,S (`vmpString`), *I*_sc, *P* (`powerString`); Panel *N*_s (`modules`), *P*_mpp (`power`), *U*_oc, *U*_mpp, *I*_mpp, β, θ_min, θ_max, *U*_mpp,min | *P* = *N*_s·*P*_mpp; *U*_mpp,S = *N*_s·*U*_mpp [S34]; *U*_oc,max = *N*_s·*U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min ebenso mit θ_max [S33] |
-| PV-Generator (Feld) | *P* (`power`), *N*_p (`strings`), *I*_sc (`iscArray`), *U*_oc,max; Panel *P*_S (`powerString`), *I*_sc,S (`isc`), *U*_mpp,min | *P* = *N*_p·*P*_S; *I*_sc = *N*_p·*I*_sc,S [S34] |
+| PV-String | *U*_oc,max, *U*_mpp,S (`vmpString`), *I*_sc, *P* (`powerString`); Panel *N*_s (`modules`), *P*_mpp (`power`), *U*_oc, *U*_mpp, *I*_mpp, β, θ_min, θ_max, *U*_mpp,min, Ertragswerte wie beim Feld | *P* = *N*_s·*P*_mpp; *U*_mpp,S = *N*_s·*U*_mpp [S34]; *U*_oc,max = *N*_s·*U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min ebenso mit θ_max [S33]; Ertrag wie beim Feld |
+| PV-Generator (Feld) | *P* (`power`), *N*_p (`strings`), *I*_sc (`iscArray`), *U*_oc,max; Panel *P*_S (`powerString`), *I*_sc,S (`isc`), *U*_mpp,min, *E*_a (`annualYield`, Jahresertrag), *Y*_f (`specificYield`, kWh/kWp im Jahr, als Volllaststunden h angezeigt), *H*_POA (`irradiation`, Jahreseinstrahlung in Modulebene als Volllaststunden: kWh/m² ÷ 1 kW/m², Eingabe in h), PR (`performanceRatio`, Vorgabe 80 %) | *P* = *N*_p·*P*_S; *I*_sc = *N*_p·*I*_sc,S [S34]; *Y*_f = *H*_POA·PR; *E*_a = *P*·*Y*_f [S33] (PR wie in IEC 61724-1) |
 | Wechselrichter | *P*_DC (`powerDc`), *P*_AC (`powerAc`), *I*_AC (`currentAc`, je Außenleiter), *U*_oc,max (von den Strings); Panel η (`efficiency`, Vorgabe 97 %), *R* (`dcAcRatio`), *P*_AC,N (`power`), *U*_AC (`voltageAc`, Außenleiterspannung, Vorgabe 400 V), cos φ (`powerFactor`, Vorgabe 1), *U*_mpp,min, *I*_sc (`iscDc`), *U*_mpp (`vmpDc`), *U*_DC,max (`udcMax`), *U*_MPPT,min/max (`mpptMin`, `mpptMax`), *I*_DC,max (`idcMax`) | *P*_AC = η·*P*_DC [S33]; *R* = *P*_DC/*P*_AC,N [S34]; dreiphasig *I*_AC = *P*_AC/(√3·*U*_AC·cos φ), einphasig *I*_AC = *P*_AC/((*U*_AC/√3)·cos φ) [S7] |
 | Netz-Sammelschiene, Netzanschlusszähler (Verteiler) | *P* (`powerIn`, Summe der Einspeisungen), *I* (`current`, je Außenleiter), *U* (Sammelschiene `voltage` in kV, Zähler `systemVoltage`); Panel cos φ (`powerFactor`, Vorgabe 1) | *I* = *P*/(√3·*U*·cos φ); DC-Sammelschiene *I* = *P*/*U* [S7] |
-| Batteriespeicher | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); Panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P* [S35] |
+| Batteriespeicher | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); Panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`), SoC (`soc`, der gezeichnete Füllstand), *E*_sp (`energyStored`, aktuell gespeichert), *t*_rest (`timeLeft`), η_rt (`roundTrip`, Zyklus-Wirkungsgrad), *E*_in (`energyCharge`, Ladeenergie von leer bis voll) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P*; *E*_sp = SoC·*E*_nutz; *t*_rest = *E*_sp/*P*; *E*_nutz = η_rt·*E*_in [S35] |
 | Ladepunkt | *P* (`power`), *U* (`voltage`, Vorgabe 400 V), *I* (`current`), *t* (`chargeTime`); Panel cos φ, *E* (`chargeEnergy`, zu ladende Energie) | AC: *P* = √3·*U*·*I*·cos φ; DC-Laden: *P* = *U*·*I* [S7]; *t* = *E*/*P* (konstante Leistung, ohne Verluste) [S35] |
 | Wärmepumpe | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); Panel θ_Q (`sourceTemp`), Heizwasser: θ_VL (`flowTemp`), θ_RL (`returnTemp`), V̇ (`flowRate`); Ingenieur ρ (`density`, 1000 kg/m³), *c* (`specificHeat`, 4,19 kJ/(kg·K)) | Φ_H = COP·*P*_el [S32]; Φ_H = ρ·*c*·V̇·(θ_VL − θ_RL) [S29] |
 | BHKW | *P*_el (`power`), Φ_th (`thermal`), *P*_B (`powerFuel`, Brennstoffleistung, Heizwert), η_el (`efficiencyEl`); Panel η_th (`efficiencyTh`), Heizwasser wie bei der Wärmepumpe | *P*_el = η_el·*P*_B; Φ_th = η_th·*P*_B [S38]; Φ_th = ρ·*c*·V̇·(θ_VL − θ_RL) [S29] |
@@ -203,6 +205,7 @@ seine STC-Leistung und ein Transformator seine Bemessungsströme. Kartengrößen
 | Wasserkraftanlage | *P* (`powerHydro`, Leistung aus dem Wasser; die Nennleistung `power` bleibt Beschriftung), *Q* (`flow`), *H* (`head`, Nettofallhöhe), η (`efficiency`, gesamt); Ingenieur ρ (`waterDensity`, 1000 kg/m³) | *P* = ρ·*g*·*Q*·*H*·η, *g* = 9,80665 m/s² [S27] |
 | Pumpspeicherkraftwerk | *E*_el (`capacity`), *P* (`power`, Turbine), *V* (`reservoirVolume`, Nutzinhalt des Oberbeckens), *H* (`head`); Panel *E*_pot (`energyPotential`), η_T (`efficiency`, Turbinenbetrieb, gesamt), *Q* (`flow`), *t* (`generatingTime`); Ingenieur ρ | *E*_pot = ρ·*g*·*V*·*H* [S27]; *E*_el = η_T·*E*_pot [S38]; *P* = ρ·*g*·*Q*·*H*·η_T [S27]; *t* = *E*_el/*P* [S1] |
 | Leistungstransformator | *S*_r (`power`), *I*_OS (`currentHv`), *I*_US (`currentLv`); Panel *U*_OS (`hv`), *U*_US (`lv`) | *I* = *S*_r/(√3·*U*) je Seite [S7] |
+| Netzeinspeisung (Netzanschlusspunkt) | *P*_Erz (`powerFeed`, AC-Leistung der Wechselrichter im Netz von `poc`), *P*_max,E (`feedLimit`, Einspeisegrenze des Netzbetreibers), *r*_EV (`selfConsumption`), *r*_Aut (`autarky`); Panel je Jahr: *E*_PV (`energyPv`), *E*_V (`energyLoad`), *E*_EV (`energySelf`, selbst genutzt), *E*_Einsp (`energyFeed`), *E*_Bezug (`energyGrid`) | *r*_EV = *E*_EV/*E*_PV; *r*_Aut = *E*_EV/*E*_V; *E*_Einsp = *E*_PV − *E*_EV; *E*_Bezug = *E*_V − *E*_EV [S34] |
 
 **Werte über Anschlüsse.** Kabel verbinden Anschlüsse zu Netzen (eine Sammelschiene verbindet alle Anschlusspunkte und
 die Schiene). DC-Seite: die Stringspannungen *U*_oc,max, *U*_mpp,min und *U*_mpp gelten im ganzen Netz (parallele
@@ -254,6 +257,22 @@ Beispiele (Abnahmekriterien): 10 Module mit *U*_oc = 49,5 V, β = −0,27 %/K un
 | `bat.crate` | *C* > *C*_max | Hinweis | [S35] |
 | `heat.cop.carnot` | COP > *T*_VL/(*T*_VL − *T*_Q) in Kelvin (unmöglich) | Warnung | [S29] |
 | `wind.betz` | *c*_p > 16/27 (Betz-Grenze, unmöglich) | Warnung | [S36] |
+| `energy.feedin.limit` | *P*_Erz der Wechselrichter am Netzanschlusspunkt > *P*_max,E (ohne Eigenverbrauch muss die Einspeisung begrenzt werden) | Hinweis | – (Grenze des Netzbetreibers) |
+| `energy.balance` | selbst genutzte Energie > PV-Erzeugung oder Verbrauch (unmöglich) | Warnung | [S1] |
+
+**Speicher, Ertrag und Energiebilanz (2026-11-26).** Der Ladezustand der Batterie ist ihr gezeichneter Füllstand
+(`soc`, auch über *Ladezustand…*): ein Heimspeicher mit 10 kWh bei 50 % zeigt 5 kWh gespeichert und mit 2,5 kW 2 h
+Restlaufzeit; ein Zyklus-Wirkungsgrad von 90 % ergibt 11,1 kWh Ladeenergie von leer bis voll. PV-Strings und -Felder
+schätzen den Jahresertrag: die Einstrahlung in Modulebene wird als Volllaststunden eingegeben (1100 kWh/m² im Jahr →
+`1100 h`; Core hat noch keine Einheit kWh/m²), PR ist mit 80 % vorbelegt, also ergeben 10 kWp *Y*_f = 880 h
+(880 kWh/kWp) und *E*_a = 8800 kWh. Die Netzeinspeisung dient zugleich als Netzanschlusspunkt: ihr Anschluss `poc`
+summiert die AC-Leistung der Wechselrichter in ihrem Netz (wie eine Sammelschiene; ein unverzweigter Strang übergibt
+das *P*_AC eines Wechselrichters), die Einspeisegrenze wird damit verglichen, und aus den Jahresenergien folgen
+Eigenverbrauchsanteil und Autarkiegrad (9000 kWh erzeugt, 5000 kWh verbraucht, 3000 kWh selbst genutzt: 33 % und 60 %,
+6000 kWh eingespeist, 2000 kWh bezogen). Die Energien werden je Jahr eingetragen; sie kommen nicht über den
+Wechselrichter von den PV-Feldern (der Wechselrichter trennt DC- und AC-Netz). Bibliothekseinträge:
+`energy.storage.battery.home`, `energy.pv.array.yield`, `energy.grid.connection.point`. Der Wärmespeicher hatte seine
+Werte bereits (*Q* = ρ·*V*·*c*·Δθ).
 
 ## Hinweise für Hosts
 

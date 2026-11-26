@@ -79,6 +79,8 @@ namespace InventaSketch.Modules.Energy
             Add("pv.array.large", "energy.pv.array", "PV array 100 kWp", "PV-Feld 100 kWp", P(("power", 100.0), ("rows", 3), ("columns", 8)), kw: new[] { "100", "large", "groß" });
             Add("pv.park", "energy.pv.array", "Solar park 10 MWp", "Solarpark 10 MWp", P(("power", 10000.0), ("rows", 4), ("columns", 10)), new Size2(60, 36),
                 kw: new[] { "solar park", "solarpark", "freifläche", "mwp" });
+            Add("pv.array.yield", "energy.pv.array", "PV array (annual yield)", "PV-Feld (Jahresertrag)", P(("power", 10.0), ("rows", 2), ("columns", 6)),
+                kw: new[] { "yield", "annual yield", "specific yield", "kwh/kwp", "performance ratio", "ertrag", "jahresertrag", "spezifischer ertrag", "volllaststunden" });
             Add("wind.offshore", "energy.wind.turbine", "Offshore wind turbine 15 MW", "Offshore-Windenergieanlage 15 MW", P(("power", 15.0)), kw: new[] { "offshore", "15" });
             Add("gen.genset.gas", "energy.gen.genset", "Gas genset", "Gas-Stromaggregat", P(("fuel", "gas"), ("power", 500.0)), kw: new[] { "gas" });
 
@@ -92,6 +94,10 @@ namespace InventaSketch.Modules.Energy
                 kw: new[] { "cabinet", "schrank", "gewerbe" });
             Add("storage.battery.container", "energy.storage.battery", "Container storage 2 MWh (BESS)", "Containerspeicher 2 MWh (BESS)", P(("form", "container"), ("capacity", 2000.0)),
                 new Size2(44, 24), kw: new[] { "container", "bess", "großspeicher", "mwh" });
+
+            Add("storage.battery.home", "energy.storage.battery", "Home battery 10 kWh (state of charge, round trip)", "Heimspeicher 10 kWh (Ladezustand, Zyklus-Wirkungsgrad)",
+                P(("capacity", 10.0), ("soc", 50.0)),
+                kw: new[] { "home battery", "state of charge", "soc", "round trip", "time left", "heimspeicher", "hausspeicher", "ladezustand", "wirkungsgrad", "restlaufzeit" });
 
             // Sector coupling.
             Add("heat.heatpump.ground", "energy.heat.heatpump", "Ground-source heat pump", "Sole-Wasser-Wärmepumpe", P(("source", "ground")), kw: new[] { "ground", "sole", "erdwärme" });
@@ -108,6 +114,10 @@ namespace InventaSketch.Modules.Energy
 
             // Grid connection & single-line.
             Add("grid.infeed.lv", "energy.grid.infeed", "House connection 0.4 kV", "Hausanschluss 0,4 kV", P(("voltage", 0.4)), kw: new[] { "house connection", "hausanschluss", "niederspannung" });
+            Add("grid.connection.point", "energy.grid.infeed", "Grid connection point (feed-in limit, self-consumption)", "Netzanschlusspunkt (Einspeisegrenze, Eigenverbrauch)",
+                P(("voltage", 0.4)),
+                kw: new[] { "feed-in limit", "export limit", "self-consumption", "autarky", "self-sufficiency", "energy balance",
+                    "einspeisebegrenzung", "einspeisegrenze", "eigenverbrauch", "autarkie", "autarkiegrad", "energiebilanz", "netzverknüpfungspunkt" });
             Add("grid.infeed.hv", "energy.grid.infeed", "Transmission grid 110 kV", "Hochspannungsnetz 110 kV", P(("voltage", 110.0)), kw: new[] { "high voltage", "hochspannung", "110" });
             Add("grid.transformer.hvmv", "energy.grid.transformer", "Transformer 110/20 kV, 40 MVA", "Transformator 110/20 kV, 40 MVA", P(("hv", 110.0), ("lv", 20.0), ("power", 40000.0)),
                 kw: new[] { "110", "umspannwerk", "hv/mv" });

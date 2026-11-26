@@ -111,7 +111,9 @@ and variants: `energy.pv.string.10`, `energy.pv.array.large` (100 kWp), `energy.
 `energy.load.industry`, `energy.grid.infeed.lv` (house connection 0.4 kV), `energy.grid.infeed.hv` (110 kV),
 `energy.grid.transformer.hvmv` (110/20 kV, 40 MVA), `energy.grid.transformer.ehv` (380/110 kV, 300 MVA),
 `energy.grid.busbar.mv` / `.hv` / `.dc` (20 kV, 110 kV, 800 V DC), `energy.grid.breaker.square`,
-`energy.grid.disconnector.loadbreak`, `energy.grid.disconnector.fuse`, cables `energy.line.cable.lv` / `.mv` / `.hv` /
+`energy.grid.disconnector.loadbreak`, `energy.grid.disconnector.fuse`, `energy.pv.array.yield` (10 kWp, annual yield),
+`energy.storage.battery.home` (10 kWh at 50 %), `energy.grid.connection.point` (0.4 kV, feed-in limit and
+self-consumption), cables `energy.line.cable.lv` / `.mv` / `.hv` /
 `.ehv` / `.dc` / `.data`, pipes `energy.line.pipe.<carrier>` and flows `energy.line.flow.<carrier>`.
 
 Search keywords cover both languages, e.g. Photovoltaik, Wechselrichter, Speicher, Ladestation, Wallbox,
@@ -176,11 +178,11 @@ away. Card variables come first. Design notes:
 | Element | Variables (parameter) | Local relations [source] |
 |---|---|---|
 | PV module | *U*_oc,max (`vocMax`), *P*_mpp (`power`), *U*_oc (`voc`), *U*_mpp (`vmp`); panel *I*_sc (`isc`), *I*_mpp (`imp`), β (`betaVoc`, % per K), θ_min (`tmin`), θ_max (`tmax`), *U*_mpp,min (`vmpMin`) | *P*_mpp = *U*_mpp·*I*_mpp (2 % tolerance for rounded datasheet values); *U*_oc,max = *U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min = *U*_mpp·(1 + β·(θ_max − 25 °C)) (β of *U*_oc as an approximation) [S33] |
-| PV string | *U*_oc,max, *U*_mpp,S (`vmpString`), *I*_sc, *P* (`powerString`); panel *N*_s (`modules`), *P*_mpp (`power`), *U*_oc, *U*_mpp, *I*_mpp, β, θ_min, θ_max, *U*_mpp,min | *P* = *N*_s·*P*_mpp; *U*_mpp,S = *N*_s·*U*_mpp [S34]; *U*_oc,max = *N*_s·*U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min likewise with θ_max [S33] |
-| PV array | *P* (`power`), *N*_p (`strings`), *I*_sc (`iscArray`), *U*_oc,max; panel *P*_S (`powerString`), *I*_sc,S (`isc`), *U*_mpp,min | *P* = *N*_p·*P*_S; *I*_sc = *N*_p·*I*_sc,S [S34] |
+| PV string | *U*_oc,max, *U*_mpp,S (`vmpString`), *I*_sc, *P* (`powerString`); panel *N*_s (`modules`), *P*_mpp (`power`), *U*_oc, *U*_mpp, *I*_mpp, β, θ_min, θ_max, *U*_mpp,min, yield values as on the array | *P* = *N*_s·*P*_mpp; *U*_mpp,S = *N*_s·*U*_mpp [S34]; *U*_oc,max = *N*_s·*U*_oc·(1 + β·(θ_min − 25 °C)); *U*_mpp,min likewise with θ_max [S33]; yield as on the array |
+| PV array | *P* (`power`), *N*_p (`strings`), *I*_sc (`iscArray`), *U*_oc,max; panel *P*_S (`powerString`), *I*_sc,S (`isc`), *U*_mpp,min, *E*_a (`annualYield`, annual yield), *Y*_f (`specificYield`, kWh/kWp per year shown as full-load hours h), *H*_POA (`irradiation`, annual in-plane irradiation as peak-sun hours: kWh/m² ÷ 1 kW/m², entered in h), PR (`performanceRatio`, default 80 %) | *P* = *N*_p·*P*_S; *I*_sc = *N*_p·*I*_sc,S [S34]; *Y*_f = *H*_POA·PR; *E*_a = *P*·*Y*_f [S33] (PR as in IEC 61724-1) |
 | Inverter | *P*_DC (`powerDc`), *P*_AC (`powerAc`), *I*_AC (`currentAc`, per phase), *U*_oc,max (from the strings); panel η (`efficiency`, default 97 %), *R* (`dcAcRatio`), *P*_AC,N (`power`), *U*_AC (`voltageAc`, line-to-line, default 400 V), cos φ (`powerFactor`, default 1), *U*_mpp,min, *I*_sc (`iscDc`), *U*_mpp (`vmpDc`), *U*_DC,max (`udcMax`), *U*_MPPT,min/max (`mpptMin`, `mpptMax`), *I*_DC,max (`idcMax`) | *P*_AC = η·*P*_DC [S33]; *R* = *P*_DC/*P*_AC,N [S34]; three-phase *I*_AC = *P*_AC/(√3·*U*_AC·cos φ), single-phase *I*_AC = *P*_AC/((*U*_AC/√3)·cos φ) [S7] |
 | Grid busbar, grid connection meter (boards) | *P* (`powerIn`, sum of the feeders), *I* (`current`, per phase), *U* (busbar `voltage` in kV, meter `systemVoltage`); panel cos φ (`powerFactor`, default 1) | *I* = *P*/(√3·*U*·cos φ); DC busbar *I* = *P*/*U* [S7] |
-| Battery storage | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P* [S35] |
+| Battery storage | *E*_nutz (`capacity`), *P* (`powerBat`), *C* (`crate`), *t* (`runtime`); panel *U* (`voltage`), *Q* (`ah`), *E* (`energyNominal`), DoD (`dod`), *I* (`current`), *C*_max (`cmax`), SoC (`soc`, the drawn fill level), *E*_st (`energyStored`, stored now), *t*_rest (`timeLeft`), η_rt (`roundTrip`, round-trip efficiency), *E*_in (`energyCharge`, energy drawn to charge fully from empty) | *E* = *U*·*Q*; *E*_nutz = *E*·DoD; *P* = *U*·*I*; *I* = *C*·*Q*/1 h; *t* = *E*_nutz/*P*; *E*_st = SoC·*E*_nutz; *t*_rest = *E*_st/*P*; *E*_nutz = η_rt·*E*_in [S35] |
 | EV charger | *P* (`power`), *U* (`voltage`, default 400 V), *I* (`current`), *t* (`chargeTime`); panel cos φ, *E* (`chargeEnergy`, energy to charge) | AC: *P* = √3·*U*·*I*·cos φ; DC charging: *P* = *U*·*I* [S7]; *t* = *E*/*P* (constant power, no losses) [S35] |
 | Heat pump | Φ_H (`power`), *P*_el (`powerEl`), COP (`cop`); panel θ_Q (`sourceTemp`), heating water: θ_F (`flowTemp`), θ_R (`returnTemp`), V̇ (`flowRate`); engineer ρ (`density`, 1000 kg/m³), *c* (`specificHeat`, 4.19 kJ/(kg·K)) | Φ_H = COP·*P*_el [S32]; Φ_H = ρ·*c*·V̇·(θ_F − θ_R) [S29] |
 | CHP unit | *P*_el (`power`), Φ_th (`thermal`), *P*_F (`powerFuel`, fuel power, lower heating value), η_el (`efficiencyEl`); panel η_th (`efficiencyTh`), heating water as on the heat pump | *P*_el = η_el·*P*_F; Φ_th = η_th·*P*_F [S38]; Φ_th = ρ·*c*·V̇·(θ_F − θ_R) [S29] |
@@ -191,6 +193,7 @@ away. Card variables come first. Design notes:
 | Hydro power plant | *P* (`powerHydro`, power from the water; the rated `power` stays a label), *Q* (`flow`), *H* (`head`, net head), η (`efficiency`, overall); engineer ρ (`waterDensity`, 1000 kg/m³) | *P* = ρ·*g*·*Q*·*H*·η, *g* = 9.80665 m/s² [S27] |
 | Pumped storage plant | *E*_el (`capacity`), *P* (`power`, turbine), *V* (`reservoirVolume`, usable volume of the upper reservoir), *H* (`head`); panel *E*_pot (`energyPotential`), η_T (`efficiency`, generating, overall), *Q* (`flow`), *t* (`generatingTime`); engineer ρ | *E*_pot = ρ·*g*·*V*·*H* [S27]; *E*_el = η_T·*E*_pot [S38]; *P* = ρ·*g*·*Q*·*H*·η_T [S27]; *t* = *E*_el/*P* [S1] |
 | Power transformer | *S*_r (`power`), *I*_HV (`currentHv`), *I*_LV (`currentLv`); panel *U*_HV (`hv`), *U*_LV (`lv`) | *I* = *S*_r/(√3·*U*) per side [S7] |
+| Utility grid (grid connection point) | *P*_gen (`powerFeed`, AC power of the inverters on the net of `poc`), *P*_lim (`feedLimit`, the grid operator's feed-in limit), *r*_SC (`selfConsumption`), *r*_SS (`autarky`); panel per year: *E*_PV (`energyPv`), *E*_L (`energyLoad`), *E*_SC (`energySelf`, self-consumed), *E*_feed (`energyFeed`), *E*_grid (`energyGrid`) | *r*_SC = *E*_SC/*E*_PV; *r*_SS = *E*_SC/*E*_L; *E*_feed = *E*_PV − *E*_SC; *E*_grid = *E*_L − *E*_SC [S34] |
 
 **Port flows.** Cables join ports into nets (a busbar joins all its taps and its bar). DC side: the string voltages
 *U*_oc,max, *U*_mpp,min and *U*_mpp are shared by the whole net (parallel strings have to agree, otherwise the card shows a
@@ -236,6 +239,20 @@ single-phase inverter).
 | `bat.crate` | *C* > *C*_max | hint | [S35] |
 | `heat.cop.carnot` | COP > *T*_F/(*T*_F − *T*_Q) in kelvin (impossible) | warning | [S29] |
 | `wind.betz` | *c*_p > 16/27 (Betz limit, impossible) | warning | [S36] |
+| `energy.feedin.limit` | *P*_gen of the inverters at the grid connection point > *P*_lim (feed-in must be curtailed without own consumption) | hint | – (grid operator's limit) |
+| `energy.balance` | self-consumed energy > PV generation or consumption (impossible) | warning | [S1] |
+
+**Storage, yield and energy balance (2026-11-26).** The battery's state of charge is its drawn fill level (`soc`, also
+set with *State of charge…*), so a home battery of 10 kWh at 50 % shows 5 kWh stored and, with 2.5 kW, 2 h left; a
+round-trip efficiency of 90 % gives 11.1 kWh drawn to charge it from empty. PV strings and arrays estimate the annual
+yield: the in-plane irradiation is entered as peak-sun hours (1100 kWh/m² per year → `1100 h`; Core has no kWh/m² unit
+yet), PR defaults to 80 %, so 10 kWp give *Y*_f = 880 h (880 kWh/kWp) and *E*_a = 8800 kWh. The utility grid element
+doubles as the grid connection point: its port `poc` adds the AC power of the inverters on its net (as a busbar does;
+an unbranched run passes one inverter's *P*_AC), the feed-in limit is compared with it, and the annual energies give the
+self-consumption share and the self-sufficiency (9000 kWh generated, 5000 kWh consumed, 3000 kWh self-consumed: 33 % and
+60 %, 6000 kWh fed in, 2000 kWh drawn). The energies are entered per year; they are not taken from the PV arrays
+across the inverter (the inverter separates the DC and AC nets). Library items: `energy.storage.battery.home`,
+`energy.pv.array.yield`, `energy.grid.connection.point`. The thermal storage already had its values (*Q* = ρ·*V*·*c*·Δθ).
 
 ## Host notes
 
