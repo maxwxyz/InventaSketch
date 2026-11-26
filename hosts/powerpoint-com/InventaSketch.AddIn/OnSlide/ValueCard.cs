@@ -20,6 +20,8 @@ namespace InventaSketch.AddIn.OnSlide
         public Func<string, double, ValueCardModel?> Preview { get; init; } = (_, _) => null;
         /// <summary>Release of a drag: the value is stored, values that gave way are cleared (one undo step).</summary>
         public Func<string, double, ValueCardModel?> Commit { get; init; } = (_, _) => null;
+        /// <summary>Mute a plausibility check for this drawing (Calc 6; one undo step, saved with the presentation).</summary>
+        public Func<string, ValueCardModel?> Mute { get; init; } = _ => null;
     }
 
     /// <summary>
@@ -75,6 +77,8 @@ namespace InventaSketch.AddIn.OnSlide
         private readonly Label _title;
         private readonly Label _status;
         private readonly Label _conflicts;
+        private readonly FlowLayoutPanel _checks;
+        private string _checksKey = "";
         private readonly CheckBox _label;
         private readonly LinkLabel _calc;
         private readonly ToolTip _tips = new();
@@ -137,6 +141,7 @@ namespace InventaSketch.AddIn.OnSlide
             _table = new TableLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 7, Margin = Padding.Empty };
             _status = new Label { AutoSize = true, MaximumSize = new Size(_em * 26, 0), Margin = new Padding(0, _em / 4, 0, 0) };
             _conflicts = new Label { AutoSize = true, MaximumSize = new Size(_em * 26, 0), ForeColor = Amber, Margin = Padding.Empty };
+            _checks = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, FlowDirection = FlowDirection.TopDown, WrapContents = false, Margin = new Padding(0, _em / 4, 0, 0) };
             var foot = new FlowLayoutPanel { AutoSize = true, WrapContents = false, Margin = new Padding(0, _em / 4, 0, 0) };
             _calc = new LinkLabel { Text = T("Calculator …", "Rechner …"), AutoSize = true, Margin = new Padding(0, 3, _em, 0), LinkBehavior = LinkBehavior.HoverUnderline };
             _label = new CheckBox { Text = T("Show on drawing", "Auf der Zeichnung zeigen"), AutoSize = true, Margin = Padding.Empty };
@@ -148,6 +153,7 @@ namespace InventaSketch.AddIn.OnSlide
             outer.Controls.Add(_table);
             outer.Controls.Add(_status);
             outer.Controls.Add(_conflicts);
+            outer.Controls.Add(_checks);
             outer.Controls.Add(foot);
             Controls.Add(outer);
             _tips.SetToolTip(_calc, T("Opens the calculator with units, starting from the selected value", "Öffnet den Rechner mit Einheiten mit dem gewählten Wert"));
@@ -314,12 +320,41 @@ namespace InventaSketch.AddIn.OnSlide
                 _status.Visible = model.Status.Length > 0;
                 _conflicts.Text = string.Join(Environment.NewLine, model.Conflicts);
                 _conflicts.Visible = model.Conflicts.Count > 0;
+                ApplyChecks(model.Checks);
                 _label.Checked = model.ShowsLabel;
             }
             finally
             {
                 _updating = false;
             }
+        }
+
+        /// <summary>The plausibility warnings, each with "Mute" (rebuilt only when they change).</summary>
+        private void ApplyChecks(IReadOnlyList<CardCheck> checks)
+        {
+            var key = string.Join("|", checks.Select(c => c.Id + ":" + c.Text));
+            if (key == _checksKey) return;
+            _checksKey = key;
+            _checks.SuspendLayout();
+            _checks.Controls.Clear();
+            foreach (var check in checks)
+            {
+                var row = new FlowLayoutPanel { AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, WrapContents = false, Margin = Padding.Empty };
+                var text = new Label
+                {
+                    AutoSize = true, MaximumSize = new Size(_em * 22, 0), Text = check.Text, Margin = new Padding(0, 0, _em / 2, 0),
+                    ForeColor = check.Severity == CheckSeverity.Warning ? Amber : SystemColors.GrayText,
+                };
+                var mute = new LinkLabel { Text = T("Mute", "Stummschalten"), AutoSize = true, Margin = Padding.Empty, LinkBehavior = LinkBehavior.HoverUnderline };
+                _tips.SetToolTip(mute, T("Do not show this check again in this presentation (undo brings it back)", "Diese Prüfung in dieser Präsentation nicht mehr zeigen (Rückgängig holt sie zurück)"));
+                var id = check.Id;
+                mute.LinkClicked += (_, _) => Run(() => _actions.Mute(id));
+                row.Controls.Add(text);
+                row.Controls.Add(mute);
+                _checks.Controls.Add(row);
+            }
+            _checks.Visible = checks.Count > 0;
+            _checks.ResumeLayout();
         }
 
         private void FocusRow(string? key)

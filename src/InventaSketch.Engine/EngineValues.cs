@@ -38,6 +38,37 @@ namespace InventaSketch.Engine
             _methods["calc"] = CalcCore;
             _methods["units"] = UnitsCore;
             _methods["calcSheet"] = CalcSheetCore;
+            _methods["muteCheck"] = MuteCheckCore;
+            _methods["setUnitPreference"] = SetUnitPreferenceCore;
+        }
+
+        /// <summary>
+        /// muteCheck: mutes (<c>text</c> "on", default) or unmutes ("off") the plausibility check <c>key</c> ("elec.r.power")
+        /// for the drawing (Calc 6); one undo step; saved with the document. Returns the state and the muted ids.
+        /// </summary>
+        private object MuteCheckCore(EngineRequest r)
+        {
+            var s = S(r);
+            var id = (r.Key ?? "").Trim();
+            if (id.Length == 0) throw new ArgumentException("Missing 'key' (the check id).");
+            var mute = !string.Equals((r.Text ?? "on").Trim(), "off", StringComparison.OrdinalIgnoreCase);
+            var now = s.Doc.Settings.MutedChecks?.Contains(id) == true;
+            if (now != mute) s.Apply(mute ? "Mute check" : "Unmute check", d => d with { Settings = d.Settings.WithMutedCheck(id, mute) });
+            return new { state = StateOf(s, r), muted = s.Doc.Settings.MutedChecks ?? Array.Empty<string>() };
+        }
+
+        /// <summary>
+        /// setUnitPreference: the preferred display unit <c>unit</c> for <c>quantityKind</c> ("pressure" → "MPa"; empty clears
+        /// it) in this drawing (Calc 6); one undo step. Unknown kinds or units of another kind are refused.
+        /// </summary>
+        private object SetUnitPreferenceCore(EngineRequest r)
+        {
+            var s = S(r);
+            var kind = Quantities.Get(r.QuantityKind) ?? throw new ArgumentException($"Unknown quantity kind '{r.QuantityKind}'.");
+            var unit = string.IsNullOrWhiteSpace(r.Unit) ? null : (UnitCatalog.Find(r.Unit!, kind) ?? throw new ArgumentException($"'{r.Unit}' is no unit of {kind.Id}.")).Symbol;
+            var current = s.Doc.Settings.UnitPreferences is { } p && p.TryGetValue(kind.Id, out var u) ? u : null;
+            if (current != unit) s.Apply("Unit preference", d => d with { Settings = d.Settings.WithUnitPreference(kind.Id, unit) });
+            return new { state = StateOf(s, r), unitPreferences = s.Doc.Settings.UnitPreferences ?? new Dictionary<string, string>() };
         }
 
         public string Values(string json) => Invoke("values", json);
@@ -112,7 +143,7 @@ namespace InventaSketch.Engine
                 var ov = new ObjectValues { Id = id, Status = Camel(table.Status(id).ToString()) };
                 foreach (var v in table.Of(id))
                 {
-                    var unit = v.Def.DisplayUnit;
+                    var unit = table.UnitOf(v);
                     ov.Vars.Add(new VarInfo
                     {
                         Key = v.Def.Key,
@@ -146,8 +177,8 @@ namespace InventaSketch.Engine
                 {
                     var cv = table.Get(c.Var.ObjectId, c.Var.Key)!;
                     var formula = table.Formula(c.Relation, lang);
-                    var vt = ValueFormat.Format(c.Value, cv.Def.DisplayUnit, lang, digits);
-                    var it = ValueFormat.Format(c.Implied, cv.Def.DisplayUnit, lang, digits);
+                    var vt = ValueFormat.Format(c.Value, table.UnitOf(cv), lang, digits);
+                    var it = ValueFormat.Format(c.Implied, table.UnitOf(cv), lang, digits);
                     ov.Conflicts.Add(new ConflictInfo
                     {
                         Relation = c.Relation.Relation.Id, Formula = formula, ObjectId = c.Var.ObjectId, Key = c.Var.Key,

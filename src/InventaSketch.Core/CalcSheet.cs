@@ -32,7 +32,7 @@ namespace InventaSketch.Core
                 {
                     if (v.Value is not double si) continue;
                     // One unit per row (with the prefix the value is shown in), the range in the same unit.
-                    var (_, unit) = ValueFormat.Scale(si, v.Def.DisplayUnit, digits);
+                    var (_, unit) = ValueFormat.Scale(si, table.UnitOf(v), digits);
                     string Num(double x) => StripUnit(ValueFormat.Format(x, unit, lang, digits), unit.Symbol);
                     var number = Num(si);
                     var range = v.Interval is { } iv ? Num(iv.Lo) + " … " + Num(iv.Hi) : "";

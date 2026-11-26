@@ -72,6 +72,17 @@ namespace InventaSketch.Core
     /// </summary>
     public sealed class ValueTable
     {
+        /// <summary>Settings of the solved document (unit preferences and muted checks, Calc 6).</summary>
+        public DocumentSettings Settings { get; internal set; } = new();
+
+        /// <summary>
+        /// The unit <paramref name="v"/> is shown in: the drawing's preferred unit for its quantity kind (bar/MPa, min⁻¹/s⁻¹,
+        /// kWh/MJ) if it has one, else the value's own display unit.
+        /// </summary>
+        public Unit UnitOf(VarValue v)
+            => Settings.UnitPreferences is { } prefs && prefs.TryGetValue(v.Def.Kind.Id, out var symbol) && UnitCatalog.Find(symbol, v.Def.Kind) is { } u
+                ? u : v.Def.DisplayUnit;
+
         internal readonly List<VarValue> Vars = new();
         internal readonly Dictionary<VarRef, int> Index = new();
         internal readonly List<BoundRelation> Relations = new();
@@ -237,8 +248,8 @@ namespace InventaSketch.Core
 
         private VarValue? Get(VarRef r) => Index.TryGetValue(r, out var i) ? Vars[i] : null;
 
-        private static string Show(VarValue v, Lang lang, int digits, bool keepZeros)
-            => v.Value is double d ? ValueFormat.Format(d, v.Def.DisplayUnit, lang, digits, keepZeros) : "?";
+        private string Show(VarValue v, Lang lang, int digits, bool keepZeros)
+            => v.Value is double d ? ValueFormat.Format(d, UnitOf(v), lang, digits, keepZeros) : "?";
 
         private static string Substitute(string template, BoundRelation b, Func<VarRef, string> text)
         {
@@ -280,7 +291,7 @@ namespace InventaSketch.Core
         {
             var opt = options ?? new ValueSolveOptions();
             var sw = Stopwatch.StartNew();
-            var table = new ValueTable();
+            var table = new ValueTable { Settings = doc.Settings };
             // The context names the registry: links and checks of the types read their neighbours through it.
             var ctx = new RenderContext(doc, lang).For(registry);
 
@@ -632,8 +643,11 @@ namespace InventaSketch.Core
                 var o = table.Objects[id];
                 if (registry.Type(o.Type) is not IValueChecks checks) continue;
                 var c = new ValueCheckContext(o, table, ctx.Registry is null ? ctx.For(registry) : ctx);
+                var muted = table.Settings.MutedChecks;
                 foreach (var rule in checks.ValueChecks)
                 {
+                    // Checks the user muted for this drawing are not reported (Calc 6).
+                    if (muted is not null && muted.Contains(rule.Id)) continue;
                     bool violated;
                     try { violated = rule.Violated(c); }
                     catch (ArithmeticException) { violated = false; }

@@ -481,7 +481,49 @@ namespace InventaSketch.AddIn
                 sb.Append("<toggleButton id=\"IskValues_").Append(tag).Append("\" tag=\"").Append(tag).Append("\" label=\"").Append(L(OnSlide.ValueLevelSetting.Label(level, _lang)))
                   .Append("\" supertip=\"").Append(X(OnSlide.ValueLevelSetting.Hint(level, _lang))).Append("\" getPressed=\"GetValueLevelPressed\" onAction=\"OnValueLevel\" />");
             }
+            // Preferred display units of the presentation (Calc 6): one group per quantity, the first unit is the default.
+            sb.Append("<menuSeparator id=\"IskUnitsSep\" title=\"").Append(L(T("Show values in", "Werte anzeigen in"))).Append("\" />");
+            var k = 0;
+            foreach (var (kind, units) in OnSlide.ValueDocSettings.Offered)
+            {
+                var name = Quantities.Get(kind)?.Name.Get(_lang) ?? kind;
+                foreach (var unit in units)
+                    sb.Append("<toggleButton id=\"IskUnit_").Append(k++).Append("\" tag=\"").Append(X(kind + "=" + unit)).Append("\" label=\"").Append(L(name + ": " + unit))
+                      .Append("\" getPressed=\"GetUnitPrefPressed\" onAction=\"OnUnitPref\" />");
+            }
             sb.Append("</menu>");
+        }
+
+        /// <summary>The preferred unit toggles: pressed when the tag's unit is the presentation's choice (the first unit when none is set).</summary>
+        public bool GetUnitPrefPressed(Office.IRibbonControl control)
+        {
+            try
+            {
+                var kv = (control.Tag ?? "").Split(new[] { '=' }, 2);
+                if (kv.Length != 2 || _app is null) return false;
+                PowerPoint.Presentation? p = null;
+                try { p = _app.ActivePresentation; } catch { /* none open */ }
+                var current = OnSlide.ValueDocSettings.UnitOf(p, kv[0]) ?? OnSlide.ValueDocSettings.Offered.First(o => o.Kind == kv[0]).Units[0];
+                return current == kv[1];
+            }
+            catch (Exception ex) { Log.Error("GetUnitPrefPressed", ex); return false; }
+        }
+
+        public void OnUnitPref(Office.IRibbonControl control, bool pressed)
+        {
+            try
+            {
+                var kv = (control.Tag ?? "").Split(new[] { '=' }, 2);
+                if (kv.Length != 2 || _app is null) return;
+                PowerPoint.Presentation p;
+                try { p = _app.ActivePresentation; } catch { return; }
+                var isDefault = OnSlide.ValueDocSettings.Offered.First(o => o.Kind == kv[0]).Units[0] == kv[1];
+                OnSlide.ValueDocSettings.SetUnit(p, kv[0], isDefault ? null : kv[1]);
+                Log.Info("Unit preference: " + kv[0] + " = " + kv[1]);
+                _ribbon?.Invalidate();
+                _onSlide?.OnUi(() => { _onSlide.LevelChanged(); return true; });
+            }
+            catch (Exception ex) { Log.Error("OnUnitPref", ex); }
         }
 
         public bool GetValueLevelPressed(Office.IRibbonControl control)
@@ -2170,6 +2212,9 @@ namespace InventaSketch.AddIn
 
         // Element values (Calc 2) for the automation object.
         internal string ValuesOf(string shapeName) => _onSlide?.ValuesOf(shapeName) ?? "";
+        internal string ChecksOf(string shapeName) => _onSlide?.ChecksOf(shapeName) ?? "";
+        internal bool MuteCheckOf(string checkId, bool mute) => _onSlide?.MuteCheckOf(checkId, mute) ?? false;
+        internal bool SetUnitPreferenceOf(string kind, string? unit) => _onSlide?.SetUnitPreferenceOf(kind, unit) ?? false;
         internal string SetValueOf(string shapeName, string key, string text) => _onSlide?.SetValueOf(shapeName, key, text) ?? "no on-slide controller";
         internal bool ClearValueOf(string shapeName, string key) => _onSlide?.ClearValueOf(shapeName, key) ?? false;
         internal bool ShowValuesOf(string shapeName, bool on) => _onSlide?.ShowValuesOf(shapeName, on) ?? false;

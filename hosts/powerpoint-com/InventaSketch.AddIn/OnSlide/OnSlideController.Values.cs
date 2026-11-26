@@ -129,11 +129,16 @@ namespace InventaSketch.AddIn.OnSlide
             if (unit is null || o is null) return null;
             var registry = _registry();
             var lang = _lang();
-            table ??= ValueSolver.Solve(ValueDoc(unit), registry, new[] { objectId }, null, lang);
+            var doc = ValueDoc(unit);
+            table ??= ValueSolver.Solve(doc, registry, new[] { objectId }, null, lang);
             var name = registry.Type(o.Type)?.Name.Get(lang) ?? o.Type;
             var designator = o.Str("ref", "").Trim();
             var title = name + (designator.Length > 0 ? " " + designator : "") + " · " + T("Values", "Werte");
-            return ValueCardModel.Build(table, objectId, title, Level(), lang, ValueLabels.Shows(o));
+            // Plausibility warnings of the element (Calc 3/4 checks) with rule and source; muted ones are left out.
+            IReadOnlyList<CardCheck> checks = Array.Empty<CardCheck>();
+            try { checks = ValueCardModel.CheckLines(ValueSolver.Checks(table, registry, new RenderContext(doc, lang)), objectId, lang); }
+            catch (Exception ex) { Log.Error("Value checks", ex); }
+            return ValueCardModel.Build(table, objectId, title, Level(), lang, ValueLabels.Shows(o)) with { Checks = checks };
         }
 
         /// <summary>Applies <paramref name="change"/> to the object as one undo step (redrawn with its dependents); returns the new card content.</summary>
@@ -199,6 +204,15 @@ namespace InventaSketch.AddIn.OnSlide
                     if (slide is null || UnitHolding(slide, objectId) is not { } unit) return null;
                     var plan = ValueDrag.Plan(ValueDoc(unit), registry, objectId, key, si, lang);
                     return EditValues(objectId, o => ValueDrag.Apply(registry, o, key, si, plan.Released, lang, ValueLevelSetting.Digits(Level())), "drag " + key);
+                },
+                Mute = checkId =>
+                {
+                    if (Presentation() is not { } p) return null;
+                    _app.StartNewUndoEntry();
+                    ValueDocSettings.Mute(p, checkId, true);
+                    _badgeDoc = null;
+                    Log.Info("Check muted: " + checkId);
+                    return CardModelFor(objectId);
                 },
             };
             Log.Info("Value card: " + model.Title + (focusKey is null ? "" : " [" + focusKey + "]"));
@@ -320,13 +334,21 @@ namespace InventaSketch.AddIn.OnSlide
             try
             {
                 var slide = CurrentSlide();
-                return slide is null ? unit.Doc : SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+                var doc = slide is null ? unit.Doc : SketchUnits.WithContext(unit.Doc, SketchUnits.All(slide, unit.Id));
+                // The presentation's muted checks and preferred units (Calc 6).
+                return doc with { Settings = ValueDocSettings.Apply(Presentation(), doc.Settings) };
             }
             catch (Exception ex)
             {
                 Log.Error("Value context", ex);
                 return unit.Doc;
             }
+        }
+
+        /// <summary>The active presentation, or null.</summary>
+        private PowerPoint.Presentation? Presentation()
+        {
+            try { return _app.ActivePresentation; } catch { return null; }
         }
 
         /// <summary>The armed element's entered values conflict and the level shows values.</summary>
@@ -341,7 +363,13 @@ namespace InventaSketch.AddIn.OnSlide
                 {
                     var o = ValueObject();
                     if (o is not null && Level() != ValueLevel.QuickSketch)
-                        _badgeConflict = ValueSolver.Solve(ValueDoc(_unit), _registry(), new[] { o.Id }, null, _lang()).Status(o.Id) == ValueStatus.Conflict;
+                    {
+                        // A conflict, or a plausibility warning that is not muted (Calc 3/4 checks), shows the badge.
+                        var doc = ValueDoc(_unit);
+                        var table = ValueSolver.Solve(doc, _registry(), new[] { o.Id }, null, _lang());
+                        _badgeConflict = table.Status(o.Id) == ValueStatus.Conflict
+                            || ValueSolver.Checks(table, _registry(), new RenderContext(doc, _lang())).Any(f => f.ObjectId == o.Id && f.Severity == CheckSeverity.Warning);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -402,6 +430,32 @@ namespace InventaSketch.AddIn.OnSlide
             var slide = CurrentSlide();
             if (slide is null || ValueObjectOf(slide, shapeName, out _) is not { } o) return "";
             return CardModelFor(o.Id)?.Describe() ?? "";
+        });
+
+        /// <summary>The element's plausibility warnings as the card lists them ("id|text" per line; automation).</summary>
+        internal string ChecksOf(string shapeName) => OnUi(() =>
+        {
+            var slide = CurrentSlide();
+            if (slide is null || ValueObjectOf(slide, shapeName, out _) is not { } o) return "";
+            return string.Join("\n", (CardModelFor(o.Id)?.Checks ?? Array.Empty<CardCheck>()).Select(c => c.Id + "|" + c.Text));
+        });
+
+        /// <summary>Mutes or unmutes a check in the presentation (automation, as the card's "Mute").</summary>
+        internal bool MuteCheckOf(string checkId, bool mute) => OnUi(() =>
+        {
+            if (Presentation() is not { } p) return false;
+            ValueDocSettings.Mute(p, checkId, mute);
+            _badgeDoc = null;
+            return true;
+        });
+
+        /// <summary>Sets the preferred unit of a quantity kind in the presentation (automation, as the Values menu).</summary>
+        internal bool SetUnitPreferenceOf(string kind, string? unit) => OnUi(() =>
+        {
+            if (Presentation() is not { } p) return false;
+            ValueDocSettings.SetUnit(p, kind, string.IsNullOrWhiteSpace(unit) ? null : unit);
+            _badgeDoc = null;
+            return true;
         });
 
         /// <summary>Enters a value as the card does (one undo step); "" on success, else the message.</summary>
