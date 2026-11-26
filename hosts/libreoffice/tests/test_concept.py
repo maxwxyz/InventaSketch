@@ -350,7 +350,9 @@ class EngineAnswers(unittest.TestCase):
                 found, _ = choices.element_choices(self.info_of(s, oid))
                 for c in found:
                     seen += 1
-                    self.assertGreaterEqual(len(c["options"]), 2, (item["id"], c["key"]))
+                    # A menu of commands ("Characteristic chart ▸" with one chart) may have a single entry, as in the
+                    # engine's ChoiceRuleTests; a choice among states needs two options.
+                    self.assertGreaterEqual(len(c["options"]), 1 if c["menu"] else 2, (item["id"], c["key"]))
                     rows, selected = choices.list_rows(c)
                     self.assertTrue(0 <= selected < len(rows))
                     if not c["menu"]:
