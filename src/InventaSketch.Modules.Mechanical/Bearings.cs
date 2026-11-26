@@ -43,6 +43,7 @@ namespace InventaSketch.Modules.Mechanical
             yield return Support("mech.support.floating", T("Floating bearing (non-locating)", "Loslager"), true,
                 "floating bearing", "non-locating bearing", "support", "loslager", "lagerung", "auflager");
             yield return Seal();
+            yield return ORing();
             yield return Ground();
             yield return Guide();
         }
@@ -253,6 +254,32 @@ namespace InventaSketch.Modules.Mechanical
                 p.Box(-3, s * Ro, -2.2, s * 10.4, S.Black, "case");
                 p.Round(p.V(2.2, s * 9.8), 0.7, S.Vis, "spring");
             }
+        }
+
+        // ------------------------------------------------------------------ O-ring
+
+        /// <summary>O-ring proportions (design mm): centre radius of the cord and cord radius; inner radius = bore.</summary>
+        private const double OrC = 9.5, OrCord = 2.4;
+
+        private static MechType ORing() => new(
+            "mech.oring", T("O-ring", "O-Ring"), Cat,
+            new[] { "o-ring", "oring", "o ring", "seal", "toroidal seal", "rundring", "dichtring", "dichtung" },
+            // Section: the axis horizontal, the two cord sections blackened (thin sections, as small cut faces are drawn).
+            new ViewSpec("section", T("Section", "Schnitt"), 6, 24, ORingSection) { Bore = (p, o) => (OrC - OrCord) * p.Sy },
+            new ViewSpec("top", T("Top view", "Draufsicht"), 24, 24, ORingTop) { Bore = (p, o) => (OrC - OrCord) * p.K });
+
+        private static void ORingSection(Pen p, SketchObject o)
+        {
+            foreach (var s in new[] { -1.0, 1.0 }) p.Round(p.V(0, s * OrC), OrCord, S.Black, "cord");
+            p.Axis(3);
+        }
+
+        private static void ORingTop(Pen p, SketchObject o)
+        {
+            p.Circle(0, 0, OrC + OrCord, S.Vis, "outer");
+            p.Circle(0, 0, OrC - OrCord, S.Vis, "inner");
+            p.Circle(0, 0, OrC, S.Ctr, "cord-centre");
+            p.CenterCross(0, 0, 12, 12);
         }
 
         // ------------------------------------------------------------------ housing / ground
