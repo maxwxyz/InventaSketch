@@ -253,8 +253,8 @@ namespace InventaSketch.AddIn.OnSlide
                     Problem = problem,
                     Conflict = v.InConflict,
                     CanClear = v.Provenance == Provenance.Entered || v.Error is not null,
-                    CanDrag = level == ValueLevel.Explore && v.Value is double x && x > 0 && !v.Def.Kind.IsText,
-                    ReadOnly = v.Def.Kind.IsText,
+                    CanDrag = level == ValueLevel.Explore && v.Value is double x && x > 0 && !v.Def.IsReadOnly,
+                    ReadOnly = v.Def.IsReadOnly,
                     Si = v.Value,
                     Display = display,
                 });

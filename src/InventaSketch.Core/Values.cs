@@ -45,6 +45,14 @@ namespace InventaSketch.Core
         public VarRelevance Relevance { get; init; } = VarRelevance.Card;
         /// <summary>True if the variable is text-valued (its kind is <see cref="QuantityKind.IsText"/>): computed, shown as a label.</summary>
         public bool IsText => Kind.IsText;
+        /// <summary>
+        /// The variable is a result the element computes from the drawing or a simulation (a detector's received share of
+        /// light, a drawn image distance): hosts show it but offer no field to type into and no drag. Text-valued variables
+        /// are always read-only (<see cref="IsReadOnly"/>).
+        /// </summary>
+        public bool ReadOnly { get; init; }
+        /// <summary>True if hosts must not let the user enter the variable: <see cref="ReadOnly"/> or <see cref="IsText"/>.</summary>
+        public bool IsReadOnly => ReadOnly || IsText;
         /// <summary>Default value (SI), used only when nothing determines the variable.</summary>
         public double? Default { get; init; }
         /// <summary>Typical range (SI), also the bracket of a numeric root search.</summary>

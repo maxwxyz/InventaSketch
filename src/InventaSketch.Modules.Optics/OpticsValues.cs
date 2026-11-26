@@ -245,10 +245,10 @@ namespace InventaSketch.Modules.Optics
         public static readonly IReadOnlyList<VarDef> DetectorVariables = new[]
         {
             new VarDef("Prx", T("Received power", "Empfangene Leistung"), T("P_e", "P_E"), Quantities.Power) { Unit = "mW", Min = 0, Max = 1e3 },
-            new VarDef("eta", T("Share of the emitted light", "Anteil des ausgesandten Lichts"), T("η", "η"), Quantities.Ratio) { Unit = "%", Min = 0, Max = 1 },
-            new VarDef("V", T("Degree of polarisation", "Polarisationsgrad"), T("V", "V"), Quantities.Ratio) { Unit = "%", Min = 0, Max = 1 },
+            new VarDef("eta", T("Share of the emitted light", "Anteil des ausgesandten Lichts"), T("η", "η"), Quantities.Ratio) { Unit = "%", Min = 0, Max = 1, ReadOnly = true },
+            new VarDef("V", T("Degree of polarisation", "Polarisationsgrad"), T("V", "V"), Quantities.Ratio) { Unit = "%", Min = 0, Max = 1, ReadOnly = true },
             new VarDef("theta", T("Polarisation angle (0° = in the drawing plane)", "Polarisationswinkel (0° = in der Zeichenebene)"), T("θ", "θ"), Quantities.Angle)
-                { Unit = "°", Min = -Math.PI / 2, Max = Math.PI / 2 },
+                { Unit = "°", Min = -Math.PI / 2, Max = Math.PI / 2, ReadOnly = true },
             new VarDef("pol", T("Polarisation", "Polarisation"), T("Pol.", "Pol."), PolarisationKind) { Relevance = VarRelevance.Panel },
         };
 
@@ -386,16 +386,16 @@ namespace InventaSketch.Modules.Optics
         {
             new VarDef("f", converging ? T("Focal length", "Brennweite") : T("Focal length (amount; the lens diverges, f < 0)", "Brennweite (Betrag; die Linse zerstreut, f < 0)"),
                 T("f", "f"), Quantities.Length) { Unit = "mm", StoredUnit = "mm", Param = "f", Default = 0.04, Min = 1e-3, Max = 5 },
-            new VarDef("D", T("Refractive power in dioptres (1/m)", "Brechkraft in Dioptrien (1/m)"), T("D", "D"), Quantities.Ratio) { Min = -1000, Max = 1000 },
+            new VarDef("D", T("Refractive power", "Brechkraft"), T("D", "D"), Quantities.OpticalPower) { Unit = "dpt", Min = -1000, Max = 1000 },
             new VarDef("g", T("Object distance", "Gegenstandsweite"), T("g", "g"), Quantities.Length) { Unit = "mm", Param = "g", Min = -100, Max = 100 },
             new VarDef("b", T("Image distance", "Bildweite"), T("b", "b"), Quantities.Length) { Unit = "mm", Param = "b", Min = -100, Max = 100 },
             new VarDef("beta", T("Magnification", "Abbildungsmaßstab"), T("β", "β"), Quantities.Ratio) { Relevance = VarRelevance.Panel, Min = -1e4, Max = 1e4 },
             new VarDef("fs", T("System focal length with the next lens", "Systembrennweite mit der nächsten Linse"), T("f_s", "f_s"), Quantities.Length)
-                { Unit = "mm", Relevance = VarRelevance.Panel, Min = -100, Max = 100 },
+                { Unit = "mm", Relevance = VarRelevance.Panel, Min = -100, Max = 100, ReadOnly = true },
             new VarDef("d", T("Distance to the next lens", "Abstand zur nächsten Linse"), T("d", "d"), Quantities.Length)
-                { Unit = "mm", Relevance = VarRelevance.Panel, Min = 0, Max = 100 },
+                { Unit = "mm", Relevance = VarRelevance.Panel, Min = 0, Max = 100, ReadOnly = true },
             new VarDef("sF", T("Back focal distance of the system (behind the next lens)", "Bildseitige Schnittweite des Systems (hinter der nächsten Linse)"),
-                T("s′_F", "s′_F"), Quantities.Length) { Unit = "mm", Relevance = VarRelevance.Panel, Min = -100, Max = 100 },
+                T("s′_F", "s′_F"), Quantities.Length) { Unit = "mm", Relevance = VarRelevance.Panel, Min = -100, Max = 100, ReadOnly = true },
         };
 
         /// <summary>D = ±1/f, the thin lens equation and the magnification, with the sign of the lens type.</summary>
@@ -407,15 +407,15 @@ namespace InventaSketch.Modules.Optics
             double Positive(double v) => v > 0 ? v : double.NaN;
             return new[]
             {
-                new Relation("optics.lens.power", T("Refractive power", "Brechkraft"), "{D} = 1/" + sf, "D", "f")
+                new Relation("optics.lens.power", T("Refractive power", "Brechkraft"), "{D} = 1/" + sf, "D", "f") { Source = "S41" }
                     .Solve("D", "1/" + sf, v => Div(1, s * v("f")))
                     .Solve("f", converging ? "1/{D}" : "−1/{D}", v => Positive(Div(s, v("D")))),
                 new Relation("optics.lens.imaging", T("Thin lens equation", "Linsengleichung"), "1/" + sf + " = 1/{g} + 1/{b}", "f", "g", "b")
-                    { Validity = T("ideal thin lens, paraxial; g > 0 in front of the lens, b > 0 behind it (real image)", "ideale dünne Linse, paraxial; g > 0 vor der Linse, b > 0 dahinter (reelles Bild)") }
+                    { Source = "S41", Validity = T("ideal thin lens, paraxial; g > 0 in front of the lens, b > 0 behind it (real image)", "ideale dünne Linse, paraxial; g > 0 vor der Linse, b > 0 dahinter (reelles Bild)") }
                     .Solve("b", "{g}·" + sf + "/({g} − " + sf + ")", v => Div(v("g") * s * v("f"), v("g") - s * v("f")))
                     .Solve("g", "{b}·" + sf + "/({b} − " + sf + ")", v => Div(v("b") * s * v("f"), v("b") - s * v("f")))
                     .Solve("f", (converging ? "" : "−") + "{g}·{b}/({g} + {b})", v => Positive(s * Div(v("g") * v("b"), v("g") + v("b")))),
-                new Relation("optics.lens.magnification", T("Magnification", "Abbildungsmaßstab"), "{beta} = −{b}/{g}", "beta", "b", "g")
+                new Relation("optics.lens.magnification", T("Magnification", "Abbildungsmaßstab"), "{beta} = −{b}/{g}", "beta", "b", "g") { Source = "S41" }
                     .Solve("beta", "−{b}/{g}", v => -Div(v("b"), v("g")))
                     .Solve("b", "−{beta}·{g}", v => -v("beta") * v("g"))
                     .Solve("g", "−{b}/{beta}", v => -Div(v("b"), v("beta"))),
@@ -472,10 +472,10 @@ namespace InventaSketch.Modules.Optics
             var validity = T("two thin lenses in air on one axis (Gullstrand)", "zwei dünne Linsen in Luft auf einer Achse (Gullstrand)");
             double Den(Func<string, double> v) => s1 * v("f1") + s2 * v("f2") - v("d");
             var system = new Relation("optics.lens.system", T("System focal length", "Systembrennweite"), "{fs} = " + f1 + "·" + f2 + "/(" + f1 + " + " + f2 + " − {d})", "fs", "f1", "f2", "d")
-                { Validity = validity }
+                { Source = "S41", Validity = validity }
                 .Solve("fs", f1 + "·" + f2 + "/(" + f1 + " + " + f2 + " − {d})", v => Math.Abs(Den(v)) < 1e-12 ? double.NaN : s1 * v("f1") * s2 * v("f2") / Den(v));
             var back = new Relation("optics.lens.backfocus", T("Back focal distance of the system", "Bildseitige Schnittweite des Systems"),
-                    "{sF} = " + f2 + "·(" + f1 + " − {d})/(" + f1 + " + " + f2 + " − {d})", "sF", "f1", "f2", "d") { Validity = validity }
+                    "{sF} = " + f2 + "·(" + f1 + " − {d})/(" + f1 + " + " + f2 + " − {d})", "sF", "f1", "f2", "d") { Source = "S41", Validity = validity }
                 .Solve("sF", f2 + "·(" + f1 + " − {d})/(" + f1 + " + " + f2 + " − {d})", v => Math.Abs(Den(v)) < 1e-12 ? double.NaN : s2 * v("f2") * (s1 * v("f1") - v("d")) / Den(v));
             yield return new BoundRelation(system, map.Where(kv => system.Vars.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value));
             yield return new BoundRelation(back, map.Where(kv => back.Vars.Contains(kv.Key)).ToDictionary(kv => kv.Key, kv => kv.Value));
@@ -510,16 +510,16 @@ namespace InventaSketch.Modules.Optics
 
         public static readonly IReadOnlyList<VarDef> ThickLensVariables = new[]
         {
-            new VarDef("f", T("Focal length (lensmaker's equation)", "Brennweite (Linsenschleiferformel)"), T("f", "f"), Quantities.Length) { Unit = "mm", Min = -100, Max = 100 },
-            new VarDef("D", T("Refractive power in dioptres (1/m)", "Brechkraft in Dioptrien (1/m)"), T("D", "D"), Quantities.Ratio) { Min = -1000, Max = 1000 },
+            new VarDef("f", T("Focal length (lensmaker's equation)", "Brennweite (Linsenschleiferformel)"), T("f", "f"), Quantities.Length) { Unit = "mm", Min = -100, Max = 100, ReadOnly = true },
+            new VarDef("D", T("Refractive power", "Brechkraft"), T("D", "D"), Quantities.OpticalPower) { Unit = "dpt", Min = -1000, Max = 1000 },
             new VarDef("n", T("Refractive index", "Brechzahl"), T("n", "n"), Quantities.Ratio) { Param = "n", Default = 1.5, Min = 1.01, Max = 3, Relevance = VarRelevance.Panel },
             new VarDef("bfd", T("Back focal distance (rear vertex to F′)", "Bildseitige Schnittweite (hinterer Scheitel bis F′)"), T("s′_F", "s′_F"), Quantities.Length)
-                { Unit = "mm", Min = -100, Max = 100, Relevance = VarRelevance.Panel },
+                { Unit = "mm", Min = -100, Max = 100, Relevance = VarRelevance.Panel, ReadOnly = true },
         };
 
         public static readonly IReadOnlyList<Relation> ThickLensRelations = new[]
         {
-            new Relation("optics.thicklens.power", T("Refractive power", "Brechkraft"), "{D} = 1/{f}", "D", "f")
+            new Relation("optics.thicklens.power", T("Refractive power", "Brechkraft"), "{D} = 1/{f}", "D", "f") { Source = "S41" }
                 .Solve("D", "1/{f}", v => Math.Abs(v("f")) < 1e-15 ? double.NaN : 1 / v("f"))
                 .Solve("f", "1/{D}", v => Math.Abs(v("D")) < 1e-15 ? double.NaN : 1 / v("D")),
         };
@@ -535,10 +535,10 @@ namespace InventaSketch.Modules.Optics
             var validity = T("radii and centre thickness from the drawn lens (box and sag)", "Radien und Mittendicke aus der gezeichneten Linse (Box und Wölbungstiefe)");
             double Finite(double v) => double.IsInfinity(v) || Math.Abs(v) > 1e5 ? double.NaN : v;
             var focal = new Relation("optics.thicklens.focal", T("Lensmaker's equation", "Linsenschleiferformel"),
-                    "1/{f} = ({n} − 1)·[1/R₁ − 1/R₂ + ({n} − 1)·d/({n}·R₁·R₂)]", "f", "n") { Validity = validity }
+                    "1/{f} = ({n} − 1)·[1/R₁ − 1/R₂ + ({n} − 1)·d/({n}·R₁·R₂)]", "f", "n") { Source = "S41", Validity = validity }
                 .Solve("f", "1/(({n} − 1)·[1/R₁ − 1/R₂ + ({n} − 1)·d/({n}·R₁·R₂)])", v => Finite(ThickLens.FocalLength(v("n"), r1, r2, d)));
             var back = new Relation("optics.thicklens.bfd", T("Back focal distance", "Bildseitige Schnittweite"), "{bfd} = {f}·(1 − ({n} − 1)·d/({n}·R₁))", "bfd", "f", "n")
-                    { Validity = validity }
+                    { Source = "S41", Validity = validity }
                 .Solve("bfd", "{f}·(1 − ({n} − 1)·d/({n}·R₁))", v => v("f") * (1 - (v("n") - 1) * d / (v("n") * r1)));
             yield return BoundRelation.Local(focal, o.Id);
             yield return BoundRelation.Local(back, o.Id);
@@ -548,25 +548,25 @@ namespace InventaSketch.Modules.Optics
 
         public static readonly IReadOnlyList<VarDef> ArrowVariables = new[]
         {
-            new VarDef("g", T("Object distance", "Gegenstandsweite"), T("g", "g"), Quantities.Length) { Unit = "mm", Min = 0, Max = 100 },
-            new VarDef("b", T("Image distance", "Bildweite"), T("b", "b"), Quantities.Length) { Unit = "mm", Min = -100, Max = 100 },
-            new VarDef("beta", T("Magnification", "Abbildungsmaßstab"), T("β", "β"), Quantities.Ratio) { Min = -1e4, Max = 1e4 },
+            new VarDef("g", T("Object distance", "Gegenstandsweite"), T("g", "g"), Quantities.Length) { Unit = "mm", Min = 0, Max = 100, ReadOnly = true },
+            new VarDef("b", T("Image distance", "Bildweite"), T("b", "b"), Quantities.Length) { Unit = "mm", Min = -100, Max = 100, ReadOnly = true },
+            new VarDef("beta", T("Magnification", "Abbildungsmaßstab"), T("β", "β"), Quantities.Ratio) { Min = -1e4, Max = 1e4, ReadOnly = true },
             new VarDef("image", T("Image", "Bild"), T("Image", "Bild"), ImageKind),
             new VarDef("f", T("Focal length of the imaging element", "Brennweite des abbildenden Elements"), T("f", "f"), Quantities.Length)
-                { Unit = "mm", Min = -100, Max = 100, Relevance = VarRelevance.Panel },
-            new VarDef("y", T("Object size", "Gegenstandsgröße"), T("G", "G"), Quantities.Length) { Unit = "mm", Min = 0, Max = 100, Relevance = VarRelevance.Panel },
+                { Unit = "mm", Min = -100, Max = 100, Relevance = VarRelevance.Panel, ReadOnly = true },
+            new VarDef("y", T("Object size", "Gegenstandsgröße"), T("G", "G"), Quantities.Length) { Unit = "mm", Min = 0, Max = 100, Relevance = VarRelevance.Panel, ReadOnly = true },
             new VarDef("yi", T("Image size (negative = inverted)", "Bildgröße (negativ = umgekehrt)"), T("B", "B"), Quantities.Length)
-                { Unit = "mm", Min = -1e4, Max = 1e4, Relevance = VarRelevance.Panel },
+                { Unit = "mm", Min = -1e4, Max = 1e4, Relevance = VarRelevance.Panel, ReadOnly = true },
         };
 
         public static readonly IReadOnlyList<Relation> ArrowRelations = new[]
         {
             new Relation("optics.image.distance", T("Thin lens equation", "Abbildungsgleichung"), "1/{f} = 1/{g} + 1/{b}", "b", "f", "g")
-                { Validity = T("ideal thin lens or curved mirror, paraxial; b > 0 real image", "ideale dünne Linse oder gewölbter Spiegel, paraxial; b > 0 reelles Bild") }
+                { Source = "S41", Validity = T("ideal thin lens or curved mirror, paraxial; b > 0 real image", "ideale dünne Linse oder gewölbter Spiegel, paraxial; b > 0 reelles Bild") }
                 .Solve("b", "{g}·{f}/({g} − {f})", v => Math.Abs(v("g") - v("f")) < 1e-12 ? double.NaN : v("g") * v("f") / (v("g") - v("f"))),
-            new Relation("optics.image.magnification", T("Magnification", "Abbildungsmaßstab"), "{beta} = −{b}/{g}", "beta", "b", "g")
+            new Relation("optics.image.magnification", T("Magnification", "Abbildungsmaßstab"), "{beta} = −{b}/{g}", "beta", "b", "g") { Source = "S41" }
                 .Solve("beta", "−{b}/{g}", v => v("g") > 0 ? -v("b") / v("g") : double.NaN),
-            new Relation("optics.image.size", T("Image size", "Bildgröße"), "{yi} = {beta}·{y}", "yi", "beta", "y")
+            new Relation("optics.image.size", T("Image size", "Bildgröße"), "{yi} = {beta}·{y}", "yi", "beta", "y") { Source = "S41" }
                 .Solve("yi", "{beta}·{y}", v => v("beta") * v("y")),
             new Relation("optics.image.kind", T("Real or virtual image", "Reelles oder virtuelles Bild"), "{image} = real if {b} > 0, else virtual", "image", "b")
                 .Solve("image", "real if {b} > 0", v => v("b") > 0 ? 0 : 1),

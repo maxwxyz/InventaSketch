@@ -19,6 +19,25 @@ namespace InventaSketch.Modules.Optics.Tests
 
         private static double Val(ValueTable t, string id, string key) => t.Get(id, key)?.Value ?? throw new Xunit.Sdk.XunitException(id + "." + key + " unknown");
 
+        [Fact]
+        public void TraceResultsAreReadOnlyAndLensPowerIsInDioptres()
+        {
+            var det = OpticsValues.DetectorVariables.ToDictionary(v => v.Key);
+            Assert.False(det["Prx"].IsReadOnly);   // a wanted detector power gives the source power
+            Assert.True(det["eta"].IsReadOnly);
+            Assert.True(det["V"].IsReadOnly);
+            Assert.True(det["theta"].IsReadOnly);
+            Assert.True(det["pol"].IsReadOnly);   // text-valued
+            Assert.All(OpticsValues.ArrowVariables, v => Assert.True(v.IsReadOnly, v.Key));
+            var lens = OpticsValues.LensVariables(true).ToDictionary(v => v.Key);
+            Assert.False(lens["f"].IsReadOnly);
+            Assert.False(lens["g"].IsReadOnly);
+            Assert.Same(Quantities.OpticalPower, lens["D"].Kind);
+            Assert.Equal("dpt", lens["D"].DisplayUnit.Symbol);
+            Assert.All(OpticsValues.LensRelations(true), r => Assert.Equal("S41", r.Source));
+            Assert.NotNull(ValueSources.Get("S41"));
+        }
+
         /// <summary>A new element of type <paramref name="type"/> (its defaults) at (x, y).</summary>
         private static SketchObject At(Registry r, string type, double x, double y, string id, double rotation = 0)
             => r.Type(type)!.Create(new Vec2(x, y)) with { Id = id, Transform = new Transform(x, y, rotation) };

@@ -86,6 +86,11 @@ significant digits), motion and formulas, while Engineer shows units, precision,
   never names a result by them. Host note: hosts should not offer a drag handle or an input field for a variable whose
   `kind` is not one of the `units` kinds (the COM card offers dragging for positive derived values; a drag on the class
   is ignored by the engine).
+- **Read-only results** (2026-11-26). A numeric variable may be marked `VarDef.ReadOnly` when the element computes it
+  from the drawing or a trace (optics: a detector's share of light, degree and angle of polarisation, the drawn object and
+  image distances of an object arrow, the thick lens's focal length from its drawn faces). `VarDef.IsReadOnly` covers
+  these and text-valued variables; the engine reports it as `readOnly` and every host shows the value without an input
+  field or drag handle. New kind `opticalPower` (refractive power, dpt = 1/m) for lenses.
 
 ### 1.3 Quantities, units, precision
 
@@ -970,6 +975,9 @@ current editions.
 - **[S40]** Textbooks of technical thermodynamics: H. D. Baehr, S. Kabelac, *Thermodynamik – Grundlagen und technische
   Anwendungen* (Springer Vieweg); Y. A. Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach* (McGraw-Hill) –
   ideal gas, isentropic change of state, compressors and turbines (bibliographic data only; no tables copied).
+- **[S41]** Optics textbooks: E. Hecht, *Optics* (Pearson); F. L. Pedrotti, L. M. Pedrotti, L. S. Pedrotti,
+  *Introduction to Optics* (Cambridge University Press) – thin lens and lensmaker's equations, magnification, two-lens
+  systems, Fresnel equations (bibliographic data only).
 
 The existing code relations reused here are: `Linkages.Grubler` and `Linkage.Dof` (Kinematics, Core),
 `GearTrain.Speeds` and `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Process) and

@@ -93,6 +93,11 @@ Quellen.
   benennt also kein Ergebnis danach. Host-Hinweis: Hosts sollten für eine Größe, deren `kind` keine der `units`-Arten
   ist, weder Ziehgriff noch Eingabefeld anbieten (die COM-Karte bietet Ziehen für positive abgeleitete Werte an; die
   Engine ignoriert ein Ziehen an der Klasse).
+- **Schreibgeschützte Ergebnisse** (26.11.2026). Eine Zahlengröße kann `VarDef.ReadOnly` tragen, wenn das Element sie
+  aus der Zeichnung oder einer Strahlverfolgung berechnet (Optik: Lichtanteil, Polarisationsgrad und -winkel am Detektor,
+  gezeichnete Gegenstands- und Bildweite am Gegenstandspfeil, Brennweite der dicken Linse aus ihren gezeichneten
+  Flächen). `VarDef.IsReadOnly` umfasst diese und textwertige Größen; die Engine meldet sie als `readOnly`, und jeder Host
+  zeigt den Wert ohne Eingabefeld und Ziehgriff. Neue Größenart `opticalPower` (Brechkraft, dpt = 1/m) für Linsen.
 
 ### 1.3 Größen, Einheiten, Genauigkeit
 
@@ -1006,6 +1011,9 @@ ihrer jeweils aktuellen Auflage gemeint.
   technische Anwendungen* (Springer Vieweg); Y. A. Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach*
   (McGraw-Hill) – ideales Gas, isentrope Zustandsänderung, Verdichter und Turbinen (nur bibliografische Angaben; keine
   Tabellen übernommen).
+- **[S41]** Lehrbücher der Optik: E. Hecht, *Optik* (De Gruyter); F. L. Pedrotti, L. M. Pedrotti, L. S. Pedrotti,
+  *Introduction to Optics* (Cambridge University Press) – Linsengleichung und Linsenschleiferformel,
+  Abbildungsmaßstab, Zwei-Linsen-Systeme, Fresnel-Gleichungen (nur bibliografische Angaben).
 
 Vorhandene Code-Beziehungen, die hier wiederverwendet werden: `Linkages.Grubler` und `Linkage.Dof` (Kinematik, Core),
 `GearTrain.Speeds` und `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Verfahrenstechnik) und

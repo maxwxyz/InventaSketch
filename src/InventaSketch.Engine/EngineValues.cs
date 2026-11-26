@@ -155,7 +155,7 @@ namespace InventaSketch.Engine
                         UnitFactor = unit.Factor,
                         UnitOffset = unit.Offset,
                         Units = Units.DisplayUnits(v.Def.Kind).ToList(),
-                        ReadOnly = v.Def.Kind.IsText,
+                        ReadOnly = v.Def.IsReadOnly,
                         Value = v.Value,
                         Number = v.Value is double d ? unit.FromSi(d) : null,
                         Display = v.Value is double x ? ValueFormat.Format(x, unit, lang, digits) : "",

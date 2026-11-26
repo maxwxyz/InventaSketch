@@ -267,7 +267,8 @@ namespace InventaSketch.Core.Tests
             Assert.Contains("Baehr", s.En);
             Assert.Contains("Çengel", s.En);
             Assert.Contains("Thermodynamik", s.De);
-            Assert.Equal("S40", ValueSources.Ids.Last());
+            Assert.Contains("S40", ValueSources.Ids);
+            Assert.Contains("Hecht", ValueSources.Get("S41")!.En);
         }
     }
 }

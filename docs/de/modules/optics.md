@@ -206,7 +206,8 @@ Die Physik (`Fresnel`, alle Winkel gegen die Flächennormale, verlustfreie Medie
 Optikelemente sind Werttypen (`IValueType`, `IValueLinks`, `IValueChecks`; Konventionen der Ingenieurberechnungen: intern
 SI, Anzeigeeinheiten wie angegeben). Jeder Wert ist optional; die Zeichnung braucht keinen. `showValues` (**Werte
 zeigen**) schreibt die bekannten Kartenwerte unter das Element. Werte, die Ergebnisse der Verfolgung oder der Zeichnung
-sind, sind abgeleitet; wer einen davon überschreibt, erhält auf der Karte einen Widerspruch.
+sind, sind schreibgeschützt (`VarDef.ReadOnly`): Jeder Host zeigt sie ohne Eingabefeld und Ziehgriff. Die empfangene
+Leistung bleibt eingebbar, sodass eine gewünschte Detektorleistung die Quellenleistung ergibt.
 
 | Element | Kartenwerte | Werte im Bereich „Werte“ | Beziehungen |
 |---|---|---|---|
@@ -250,9 +251,9 @@ es kommen nur Strahlen ohne Quelle an; die Leistung lief über einen schematisch
 gleiche Anteile, ein Hinweis); eine Wellenlänge außerhalb von etwa 380 bis 780 nm (in der nächsten Farbe gezeichnet).
 
 Die an einem Laser oder einer LED eingegebene Wellenlänge verwendet auch die Strahlverfolgung (405 nm wird violett
-gezeichnet, und ein Dispersionsprisma bricht es mit n(405 nm)); die Wahl einer Farbe in der Kontextleiste löscht sie. Die
-Einheit Dioptrie und die Größe „Brechkraft“ fehlen noch im Größenkatalog der Engine; D erscheint deshalb als reine Zahl in
-1/m.
+gezeichnet, und ein Dispersionsprisma bricht es mit n(405 nm)); die Wahl einer Farbe in der Kontextleiste löscht sie. D verwendet
+die Größenart „Brechkraft“ (`opticalPower`, Einheit dpt = 1/m). Die Linsenbeziehungen zitieren [S41]
+(Lehrbücher der Optik).
 
 Solange seine Werteschrift gezeigt wird, meldet jedes Optikelement seiner Seite einen Detektor, eine Linse oder einen
 Gegenstandspfeil als abhängiges Objekt, die Beschriftung folgt also jeder Änderung des Strahlengangs.
@@ -379,9 +380,9 @@ Brennweite in `f`, die Brechzahl in `n`); abgeleitete Werte werden nie gespeiche
   -phase), Strahlteiler ideal (kein Auslöschungsverhältnis, keine Absorption). Die Entspiegelung ist eine idealisierte
   Einzelschicht (Brechzahl √n).
 - Elementwerte: Die empfangene Leistung zählt nur die gezeichneten Strahlen (eine Stichprobe des Bündels, keine
-  Radiometrie: keine Bestrahlungsstärke, kein Lichtleitwert); Ergebnisse der Verfolgung (empfangene Leistung, Anteil,
-  Polarisation, das Bild des Pfeils) lassen sich auf der Wertekarte überschreiben, die dann einen Widerspruch meldet, weil
-  die Engine noch keine Kennzeichnung „nur lesen“ für Variablen hat. Gekrümmte Spiegel, Prisma und Gitter haben noch keine
+  Radiometrie: keine Bestrahlungsstärke, kein Lichtleitwert); Ergebnisse der Verfolgung und der Zeichnung sind
+  schreibgeschützt (Anteil, Polarisation, das Bild des Pfeils, die Brennweite der dicken Linse; die empfangene Leistung
+  bleibt eingebbar). Gekrümmte Spiegel, Prisma und Gitter haben noch keine
   Werte; die Systembrennweite gilt für zwei dünne Linsen (nicht die dicke Linse).
 - Die Bildkonstruktion des Gegenstandspfeils verwendet nur dünne Linsen und gekrümmte Spiegel (nicht die dicke Linse; ihre
   verfolgten Strahlen durchlaufen sie dagegen). Die dicke Linse hat keinen Brennweitengriff.

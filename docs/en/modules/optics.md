@@ -189,7 +189,8 @@ The physics (`Fresnel`, all angles from the face normal, loss-free media n1 → 
 Optics elements are value types (`IValueType`, `IValueLinks`, `IValueChecks`; engineering-calculations conventions: SI
 internally, display units as listed). Every value is optional; the drawing never needs one. `showValues` (**Show
 values**) draws the known card values below the element. Values that are results of the trace or of the drawing are
-derived; typing over one of them gives a conflict on the card.
+read-only (`VarDef.ReadOnly`): every host shows them without an input field or drag handle. The received power stays
+enterable, so a wanted detector power gives the source power.
 
 | Element | Card values | Panel values | Relations |
 |---|---|---|---|
@@ -232,8 +233,8 @@ went through a schematic splitter or a grating (assumed equal shares, a hint); a
 (drawn in the nearest colour).
 
 The wavelength entered on a laser or LED is also what the tracer uses (405 nm is drawn violet, and a dispersing prism
-refracts it with n(405 nm)); choosing a colour in the context bar clears it. The unit dioptre and the quantity "optical
-power" are not in the engine's quantity catalogue yet, so D is shown as a plain number in 1/m.
+refracts it with n(405 nm)); choosing a colour in the context bar clears it. D uses the quantity kind "refractive power"
+(`opticalPower`, unit dpt = 1/m). The lens relations cite [S41] (optics textbooks).
 
 While its values label is shown, a detector, a lens or an object arrow is reported as a dependent of every optics element
 of its page, so the label follows any change of the beam path.
@@ -348,8 +349,8 @@ recomputed from the document, so JSON round trips render identically. Entered va
   practice, not at thin lenses). Mirrors are ideal (no metal reflectance or phase), splitters ideal (no extinction ratio,
   no absorption). The anti-reflection coating is an idealised single layer (index √n).
 - Element values: the received power counts only the drawn rays (a sample of the bundle, not radiometry: no irradiance,
-  no étendue); results of the trace (received power, share, polarisation, the arrow's image) can be typed over on the
-  value card, which then reports a conflict, because the engine has no read-only flag for variables yet. Curved mirrors,
+  no étendue); results of the trace and of the drawing are read-only (share, polarisation, the arrow's image, the thick
+  lens's focal length; the received power stays enterable). Curved mirrors,
   the prism and the grating have no values yet; the system focal length covers two thin lenses (not the thick lens).
 - The object arrow's image construction uses thin lenses and curved mirrors only (not the thick lens; its traced rays do
   pass it). The thick lens has no focal-length grip.
