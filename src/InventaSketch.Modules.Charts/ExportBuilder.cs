@@ -36,9 +36,8 @@ namespace InventaSketch.Modules.Charts
             var ctx = new RenderContext(doc, lang).For(registry);
             // A linked chart exports as the figure it would become when unlinked (its current curves as data).
             if (type is LinkedChart linked && linked.Frozen(o, ctx) is { } frozen && registry.Type(frozen.Type) is ChartType figure) { o = frozen; type = figure; }
-            // Pie and polar charts have no Cartesian frame: their own models. The Sankey diagram has no code form (its Compose
-            // says so).
-            if (type is PieChart or PolarChart) return CanvasExport.Build(o, (CanvasChart)type, ctx);
+            // Pie, polar and Sankey charts have no Cartesian frame: their own models.
+            if (type is PieChart or PolarChart or SankeyChart) return CanvasExport.Build(o, (CanvasChart)type, ctx);
             var c = type.Compose(o, ctx);
             var b = new ExportBuilder(o, lang, c, type.Name.Get(lang), type.Id);
             b.Axes();

@@ -11,7 +11,8 @@ namespace InventaSketch.Modules.Charts
     // Code import (roadmap 4b), the neutral model: what a matplotlib script or a pgfplots axis says about
     // a figure (axes in a grid, curves, bars, value lines, filled areas, notes), and the conversion into
     // chart elements: a "chart.figure" (FigureSpec) for curves, stacked panels, value lines, regions and
-    // notes; a "chart.bar" for bars. Both readers fill this model; nothing here reads code.
+    // notes; a "chart.bar" for bars; the presentation charts (pie, polar, histogram, box plot, Gantt, Sankey) for their
+    // forms. Both readers fill this model; nothing here reads code.
     // =============================================================================================
 
     /// <summary>A bar series of an axes: positions (numbers) or category names, values, base values, width, look.</summary>
@@ -23,6 +24,8 @@ namespace InventaSketch.Modules.Charts
         public double[]? Bottom;
         public bool Horizontal;
         public string? Label;
+        /// <summary>Fill colour (#rrggbb) when one colour is given: the group of a Gantt chart.</summary>
+        public string? Color;
         public int Line;
     }
 
@@ -67,6 +70,12 @@ namespace InventaSketch.Modules.Charts
         public bool Percent;
         /// <summary>The names are not drawn on the pie (labeldistance=None): a legend shows them.</summary>
         public bool NamesOnly;
+        /// <summary>The label mode of the chart when the code names it (pgfplots data key, pgf-pie): percent, name, namepercent, value, none.</summary>
+        public string? LabelMode;
+        /// <summary>The centre text (pgfplots data key).</summary>
+        public string? Center;
+        /// <summary>The legend when the code names it: right or none.</summary>
+        public string? Legend;
         public int Line;
     }
 
@@ -94,6 +103,33 @@ namespace InventaSketch.Modules.Charts
         public int Line;
     }
 
+    /// <summary>A process diagram of matplotlib's Sankey class (one add call): its flows (positive in, negative out), their labels and its link to an earlier diagram.</summary>
+    internal sealed class ImpSankeyDiagram
+    {
+        public string? Name;
+        public double[] Flows = Array.Empty<double>();
+        public string?[] Labels = Array.Empty<string?>();
+        public int? Prior;
+        /// <summary>Flow of the prior diagram and flow of this diagram that join.</summary>
+        public (int Prior, int This) Connect;
+        public int Line;
+    }
+
+    /// <summary>
+    /// A Sankey diagram of an axes: the flows of the own export form (source, target, value) or the process diagrams of
+    /// matplotlib's Sankey class, resolved into flows when the chart is built.
+    /// </summary>
+    internal sealed class ImpSankey
+    {
+        public List<(string Source, string Target, double Value)> Flows { get; } = new();
+        public List<ImpSankeyDiagram> Diagrams { get; } = new();
+        /// <summary>The own export form: the texts of the axes are the chart's labels (drawn by the chart again).</summary>
+        public bool Own;
+        /// <summary>Values at the nodes (from the data key or the labels); null = default.</summary>
+        public bool? Values;
+        public int Line;
+    }
+
     /// <summary>One axes (plot area) of a figure.</summary>
     internal sealed class ImpAxes
     {
@@ -103,6 +139,20 @@ namespace InventaSketch.Modules.Charts
         public ImpHist? Hist;
         /// <summary>Box plots, one call per series (the axes shows nothing else).</summary>
         public List<ImpBoxes> Boxes { get; } = new();
+        /// <summary>A Sankey diagram (the axes shows nothing else).</summary>
+        public ImpSankey? Sankey;
+        /// <summary>pgfplots: horizontal bars from filled rectangles in axis coordinates (a Gantt chart).</summary>
+        public bool GanttRects;
+        /// <summary>The y axis runs downwards (invert_yaxis, y dir=reverse or a reversed range).</summary>
+        public bool YInverted;
+        /// <summary>Where the y axis was inverted (reported unless the chart is a Gantt chart).</summary>
+        public (int Line, string Code)? YInvertedAt;
+        /// <summary>Where the axes were hidden (axis('off'); reported unless the chart is a Sankey diagram).</summary>
+        public (int Line, string Code)? AxisOff;
+        /// <summary>The bar call (index into <see cref="Bars"/>) drawn before a curve, −1 for none: the group of a Gantt milestone.</summary>
+        public Dictionary<FigSeries, int> AfterBars { get; } = new();
+        /// <summary>The legend texts of legend images without a plot (pgfplots \addlegendimage), in order.</summary>
+        public List<string?> LegendImages { get; } = new();
         /// <summary>Polar projection: the series are (angle in radians, radius).</summary>
         public bool Polar;
         /// <summary>Polar: 0° at the top (set_theta_zero_location('N')).</summary>
@@ -136,7 +186,7 @@ namespace InventaSketch.Modules.Charts
         public List<double>? XTicks, YTicks;
         public List<string>? XTickLabels, YTickLabels;
 
-        public bool HasContent => Series.Count > 0 || Bars.Count > 0 || Refs.Count > 0 || Spans.Count > 0 || Fills.Count > 0 || Notes.Count > 0 || Pie is not null || Hist is not null || Boxes.Count > 0;
+        public bool HasContent => Series.Count > 0 || Bars.Count > 0 || Refs.Count > 0 || Spans.Count > 0 || Fills.Count > 0 || Notes.Count > 0 || Pie is not null || Hist is not null || Boxes.Count > 0 || Sankey is not null;
 
         /// <summary>True if an axis range was set (empty axes with ranges are imported as a coordinate system).</summary>
         public bool HasRange => XMin is not null || XMax is not null || YMin is not null || YMax is not null;
@@ -236,7 +286,14 @@ namespace InventaSketch.Modules.Charts
         {
             var axes = f.Axes.Where(a => a.HasContent || a.XLabel is not null || a.YLabel is not null || a.Title is not null || a.HasRange).ToList();
             if (axes.Count == 0) yield break;
-            var bars = axes.Where(a => a.Bars.Count > 0 || a.Pie is not null || a.Polar || a.Hist is not null || a.Boxes.Count > 0).ToList();
+            var bars = axes.Where(a => a.Bars.Count > 0 || a.Pie is not null || a.Polar || a.Hist is not null || a.Boxes.Count > 0 || a.Sankey is not null).ToList();
+            foreach (var a in axes)
+            {
+                if (a.AxisOff is { } off && a.Sankey is null)
+                    report.Skip(off.Line, off.Code, new I18nText("Hidden axes (axis('off')) are not imported.", "Ausgeblendete Achsen (axis('off')) werden nicht importiert."));
+                if (a.YInvertedAt is { } inv && !IsGantt(a))
+                    report.Skip(inv.Line, inv.Code, new I18nText("Reversed axes are not imported.", "Umgekehrte Achsen werden nicht importiert."));
+            }
             var stack = f.Cols == 1 && bars.Count == 0 && axes.Count <= FigureSpec.MaxPanels;
             if (stack)
             {
@@ -254,6 +311,8 @@ namespace InventaSketch.Modules.Charts
                 else if (a.Hist is not null) o = HistogramOf(registry, f, a, report, out summary);
                 else if (a.Boxes.Count > 0) o = BoxPlotOf(registry, f, a, report, out summary);
                 else if (a.Polar) o = PolarOf(registry, f, a, report, out summary);
+                else if (a.Sankey is not null) o = SankeyOf(registry, f, a, report, out summary);
+                else if (IsGantt(a)) o = GanttOf(registry, f, a, report, out summary);
                 else if (a.Bars.Count > 0) o = BarChartOf(registry, f, a, report, out summary);
                 else o = Figure(registry, f, new List<ImpAxes> { a }, report, false, out summary);
                 if (o is not null) yield return (o, summary);
@@ -443,7 +502,8 @@ namespace InventaSketch.Modules.Charts
         private static string Plural(string de) => de switch
         {
             "Kurve" => "Kurven", "Wertlinie" => "Wertlinien", "senkrechte Linie" => "senkrechten Linien", "Fläche" => "Flächen", "Anmerkung" => "Anmerkungen",
-            "Balkenreihe" => "Balkenreihen", "Kategorie" => "Kategorien", "Segment" => "Segmente", "Messwert" => "Messwerte", "Reihe" => "Reihen", "Box" => "Boxen", _ => de,
+            "Balkenreihe" => "Balkenreihen", "Kategorie" => "Kategorien", "Segment" => "Segmente", "Messwert" => "Messwerte", "Reihe" => "Reihen", "Box" => "Boxen",
+            "Vorgang" => "Vorgänge", "Meilenstein" => "Meilensteine", "Fluss" => "Flüsse", _ => de,
         };
 
         /// <summary>Index of a series of the panel whose curve passes through every (x, y) of the data (within a small tolerance).</summary>
@@ -682,14 +742,19 @@ namespace InventaSketch.Modules.Charts
             // matplotlib: degrees counter-clockwise from 3 o'clock; here: degrees clockwise from 12 o'clock.
             var start = ((90 - pie.StartAngle) % 360 + 360) % 360;
             if (start > 180) start -= 360;
-            var labels = pie.Labels is not null && !pie.NamesOnly ? (pie.Percent ? "namepercent" : "name") : pie.Percent ? "percent" : "none";
+            var labels = pie.LabelMode ?? (pie.Labels is not null && !pie.NamesOnly ? (pie.Percent ? "namepercent" : "name") : pie.Percent ? "percent" : "none");
             o = o.WithParam("data", string.Join("\n", rows))
                 .WithParam("hole", Math.Round(Geo.Clamp(pie.Hole, 0, 0.9), 3))
                 .WithParam("start", Math.Round(start, 3))
                 .WithParam("direction", pie.CounterClock ? "ccw" : "cw")
                 .WithParam("labels", labels);
             var legend = a.Legend || f.Legend;
-            o = o.WithParam("legend", legend ? "right" : labels is "name" or "namepercent" ? "auto" : "none");
+            o = o.WithParam("legend", pie.Legend ?? (legend ? "right" : labels is "name" or "namepercent" ? "auto" : "none"));
+            // The centre text: named by the code, or a text at the centre of the pie (the export writes it there).
+            var centre = pie.Center ?? a.Notes.FirstOrDefault(n => n.Note.Kind == "text" && !n.XFrac && !n.YFrac && n.Note.P1.X is { } px && n.Note.P1.Y is { } py && Math.Abs(px) < 1e-9 && Math.Abs(py) < 1e-9)?.Note.Text?.En;
+            if (!string.IsNullOrWhiteSpace(centre)) o = o.WithParam("center", centre!.Trim());
+            if (a.Notes.Count(n => n.Note.Text?.En != centre) > 0)
+                report.Skip(a.Line, "", new I18nText("Texts next to a pie are not imported (the centre text is).", "Texte neben einem Kreis werden nicht importiert (der Text in der Mitte schon)."));
             var title = f.Title ?? a.Title;
             if (!string.IsNullOrWhiteSpace(title)) o = o.WithParam("title", title!.Trim());
             if (pie.Values.Any(v => !(v > 0))) report.Skip(pie.Line, "", new I18nText("Slices without a positive value are not drawn.", "Segmente ohne positiven Wert werden nicht gezeichnet."));
@@ -844,6 +909,242 @@ namespace InventaSketch.Modules.Charts
             o = o.WithParam("data", string.Join("\n\n", blocks)).WithParam("whis", Math.Round(Geo.Clamp(first.Whis, 0, 10), 6)).WithParam("outliers", !first.MinMax);
             o = StatParams(o, f, a, (a.Legend || f.Legend) && many);
             summary = Summary(new I18nText("box plot", "Boxplot"), new[] { (a.Boxes.Sum(b => b.Data.Count), "box", "Box") });
+            return o;
+        }
+
+        // ------------------------------------------------------------------ Sankey diagram
+
+        /// <summary>
+        /// The flows of matplotlib's Sankey process diagrams: every diagram is a node (its patch label or label, else "P1" …);
+        /// flows joined by prior/connect link two diagrams (from the one whose flow is an output); every other input comes from
+        /// a node named by its label, every other output goes to one.
+        /// </summary>
+        private static List<(string Source, string Target, double Value)> Resolve(ImpSankey sk, CodeImportReport report)
+        {
+            var list = new List<(string, string, double)>();
+            var ds = sk.Diagrams;
+            var names = ds.Select((d, i) => d.Name ?? "P" + Fmt.I(i + 1)).ToList();
+            // (diagram, flow) of the prior side of a connection → the later diagram that joins it.
+            var joined = new Dictionary<(int, int), (int Diagram, int Flow)>();
+            for (var j = 0; j < ds.Count; j++)
+                if (ds[j].Prior is { } p && ds[j].Connect.Prior >= 0 && ds[j].Connect.Prior < ds[p].Flows.Length && ds[j].Connect.This >= 0 && ds[j].Connect.This < ds[j].Flows.Length)
+                    joined[(p, ds[j].Connect.Prior)] = (j, ds[j].Connect.This);
+                else if (ds[j].Prior is not null)
+                    report.Skip(ds[j].Line, "", new I18nText("The flows of a connection do not exist; the diagram is not connected.", "Die Flüsse einer Verbindung gibt es nicht; das Diagramm wird nicht verbunden."));
+            var later = new HashSet<(int, int)>(joined.Values.Select(v => (v.Diagram, v.Flow)));
+            for (var d = 0; d < ds.Count; d++)
+                for (var i = 0; i < ds[d].Flows.Length; i++)
+                {
+                    var v = ds[d].Flows[i];
+                    if (!Fmt.Finite(v) || v == 0 || later.Contains((d, i))) continue;
+                    var label = ds[d].Labels[i] is { Length: > 0 } l ? l.Trim() : null;
+                    if (joined.TryGetValue((d, i), out var other))
+                    {
+                        // An output of d joins an input of the later diagram, or an input of d an output of it.
+                        if (v < 0) list.Add((names[d], names[other.Diagram], -v));
+                        else list.Add((names[other.Diagram], names[d], v));
+                        continue;
+                    }
+                    if (v > 0) list.Add((label ?? (names[d] + " in " + Fmt.I(i + 1)), names[d], v));
+                    else list.Add((names[d], label ?? (names[d] + " out " + Fmt.I(i + 1)), -v));
+                }
+            return list;
+        }
+
+        private static SketchObject? SankeyOf(Registry registry, ImpFigure f, ImpAxes a, CodeImportReport report, out I18nText summary)
+        {
+            summary = new I18nText("");
+            var type = registry.Type(SankeyChart.TypeId);
+            if (type is null) return null;
+            var sk = a.Sankey!;
+            if (a.Series.Count > 0 || a.Bars.Count > 0 || a.Fills.Count > 0 || a.Refs.Count > 0 || a.Spans.Count > 0 || a.Pie is not null || a.Hist is not null || a.Boxes.Count > 0)
+                report.Skip(a.Line, "", new I18nText("Curves, bars and lines next to a Sankey diagram are not imported (the flows are).", "Kurven, Balken und Linien neben einem Sankey-Diagramm werden nicht importiert (die Flüsse schon)."));
+            if (!sk.Own && a.Notes.Count > 0)
+                report.Skip(a.Notes[0].Line, a.Notes[0].Code, new I18nText("Texts and arrows on a Sankey diagram are not imported (the chart labels the nodes).", "Texte und Pfeile auf einem Sankey-Diagramm werden nicht importiert (das Diagramm beschriftet die Knoten)."));
+            var flows = sk.Flows.Concat(sk.Diagrams.Count > 0 ? Resolve(sk, report) : new List<(string, string, double)>()).ToList();
+            var m = new SankeyModel();
+            var index = new Dictionary<string, int>(StringComparer.Ordinal);
+            int Node(string name)
+            {
+                var n = string.IsNullOrWhiteSpace(name) ? "?" : name.Replace("\n", " ").Trim();
+                if (!index.TryGetValue(n, out var i)) { i = m.Nodes.Count; m.Nodes.Add(n); index[n] = i; }
+                return i;
+            }
+            var skipped = 0;
+            foreach (var (s, t, v) in flows)
+            {
+                if (!Fmt.Finite(v) || v <= 0) { skipped++; continue; }
+                m.Flows.Add(new SankeyFlow(Node(s), Node(t), v, m.Flows.Count));
+            }
+            if (skipped > 0) report.Skip(sk.Line, "", new I18nText("Flows without a positive value are not imported.", "Flüsse ohne positiven Wert werden nicht importiert."));
+            if (m.Flows.Count == 0) return null;
+            // Values at the nodes: the data key, or the chart's own labels ("name value" or the name alone).
+            var values = sk.Values;
+            if (values is null && sk.Own)
+            {
+                var texts = a.Notes.Where(n => n.Note.Kind == "text" && n.Note.Text is not null).Select(n => n.Note.Text!.En.Trim()).ToList();
+                if (texts.Any(t => m.Nodes.Any(nm => t.StartsWith(nm + " ", StringComparison.Ordinal) && ChartData.TryNumber(t.Substring(nm.Length + 1), out _)))) values = true;
+                else if (texts.Any(t => m.Nodes.Contains(t))) values = false;
+            }
+            var o = type.Create(new Vec2(0, 0)) with { Size = SizeOf(f, 1) };
+            o = o.WithParam("data", m.ToText());
+            if (values is { } vs) o = o.WithParam("values", vs);
+            var title = f.Title ?? a.Title;
+            if (!string.IsNullOrWhiteSpace(title)) o = o.WithParam("title", title!.Trim());
+            summary = Summary(new I18nText("Sankey diagram", "Sankey-Diagramm"), new[] { (m.Flows.Count, "flow", "Fluss"), (m.Nodes.Count, "node", "Knoten") });
+            return o;
+        }
+
+        // ------------------------------------------------------------------ Gantt chart
+
+        /// <summary>
+        /// True if the horizontal bars of the axes are a Gantt chart: bars from filled rectangles (pgfplots), or bars with a
+        /// start (barh left=…) where every row holds one bar (a stacked bar chart repeats its categories in every series).
+        /// </summary>
+        internal static bool IsGantt(ImpAxes a)
+        {
+            if (a.Bars.Count == 0 || a.Bars.Any(b => !b.Horizontal) || a.Pie is not null || a.Hist is not null || a.Boxes.Count > 0 || a.Polar || a.Sankey is not null) return false;
+            if (a.GanttRects) return true;
+            if (!a.Bars.Any(b => b.Bottom is { } bt && bt.Any(v => Fmt.Finite(v) && v != 0))) return false;
+            var rows = a.Bars.SelectMany(b => b.Cats is not null ? b.Cats.Select(c => "c:" + c) : b.Pos.Select(p => "p:" + Num(Math.Round(p, 6)))).ToList();
+            return rows.Distinct().Count() == rows.Count;
+        }
+
+        private static readonly HashSet<string> TodayTexts = new(StringComparer.Ordinal) { "Today", "Heute" };
+
+        private static SketchObject? GanttOf(Registry registry, ImpFigure f, ImpAxes a, CodeImportReport report, out I18nText summary)
+        {
+            summary = new I18nText("");
+            var type = registry.Type(GanttChart.TypeId);
+            if (type is null) return null;
+            // Groups: one per bar call (pgfplots: per run of rectangles of one colour); milestones (diamonds without a line)
+            // join the group of their colour.
+            var groups = a.Bars.Select(b => (Name: b.Label, Color: b.Color)).ToList();
+            var cats = new List<string>();
+            var tasks = new List<(double Row, double Start, double Duration, int Group, bool Milestone)>();
+            for (var g = 0; g < a.Bars.Count; g++)
+            {
+                var b = a.Bars[g];
+                for (var i = 0; i < b.Values.Length; i++)
+                {
+                    double row;
+                    if (b.Cats is not null)
+                    {
+                        var c = i < b.Cats.Length ? b.Cats[i] : "";
+                        var k = cats.IndexOf(c);
+                        if (k < 0) { k = cats.Count; cats.Add(c); }
+                        row = k;
+                    }
+                    else if (i < b.Pos.Length && Fmt.Finite(b.Pos[i])) row = b.Pos[i];
+                    else continue;
+                    var start = b.Bottom is { } bt && i < bt.Length && Fmt.Finite(bt[i]) ? bt[i] : 0;
+                    var d = b.Values[i];
+                    if (!Fmt.Finite(d)) continue;
+                    if (d < 0) { start += d; d = -d; }
+                    tasks.Add((row, start, d, g, false));
+                }
+            }
+            var curves = 0;
+            for (var k = 0; k < a.Series.Count; k++)
+            {
+                var se = a.Series[k];
+                if (se.Marker != "diamond" || !a.HiddenLines.Contains(k)) { curves++; continue; }
+                // The group: the one with the nearest bar row (the tasks of a group are on rows next to each other); between
+                // two groups the bars drawn just before the milestones, then the bars of the milestones' colour (monochrome
+                // diamonds are black whatever their group); a new group when there are no bars.
+                var bars = tasks.Where(t => !t.Milestone).ToList();
+                var before = a.AfterBars.TryGetValue(se, out var ab) ? ab : -1;
+                bool Same(int grp) => groups[grp].Color is { } gc && se.Color is not null && string.Equals(gc, se.Color, StringComparison.OrdinalIgnoreCase);
+                for (var i = 0; i < Math.Min(se.X.Count, se.Y.Count); i++)
+                {
+                    if (!Fmt.Finite(se.X[i]) || !Fmt.Finite(se.Y[i])) continue;
+                    var y = se.Y[i];
+                    int g;
+                    if (bars.Count > 0)
+                        g = bars.OrderBy(t => Math.Round(Math.Abs(t.Row - y), 9)).ThenBy(t => t.Group == before ? 0 : 1).ThenBy(t => Same(t.Group) ? 0 : 1).ThenBy(t => t.Row).First().Group;
+                    else
+                    {
+                        g = groups.FindIndex(x => x.Name == se.Label?.En && x.Color == se.Color && x.Name is not null);
+                        if (g < 0) { groups.Add((se.Label?.En, se.Color)); g = groups.Count - 1; }
+                    }
+                    tasks.Add((y, se.X[i], 0, g, true));
+                }
+            }
+            if (curves > 0 || a.Fills.Count > 0 || a.Spans.Count > 0 || a.Refs.Any(r => r.Kind != "v"))
+                report.Skip(a.Line, "", new I18nText("Curves, areas and value lines in a Gantt chart are not imported (bars, milestones and the today line are).",
+                    "Kurven, Flächen und Wertlinien in einem Gantt-Diagramm werden nicht importiert (Balken, Meilensteine und die Heute-Linie schon)."));
+            var today = a.Refs.FirstOrDefault(r => r.Kind == "v" && Fmt.Finite(r.X));
+            if (a.Refs.Count(r => r.Kind == "v") > 1)
+                report.Skip(a.Line, "", new I18nText("Only the first vertical line becomes the today line.", "Nur die erste senkrechte Linie wird die Heute-Linie."));
+            // The today label is drawn by the chart; other notes are reported.
+            var notes = a.Notes.Where(n => !(n.Note.Kind == "text" && n.Note.Text is { } t && TodayTexts.Contains(t.En.Trim()))).ToList();
+            if (notes.Count > 0)
+                report.Skip(notes[0].Line, notes[0].Code, new I18nText("Notes in a Gantt chart are not imported.", "Anmerkungen in einem Gantt-Diagramm werden nicht importiert."));
+            if (tasks.Count == 0) return null;
+            if (a.Legend && a.LegendImages.Count > 0)
+                for (var g = 0; g < Math.Min(groups.Count, a.LegendImages.Count); g++)
+                    if (groups[g].Name is null && a.LegendImages[g] is { } nm) groups[g] = (nm, groups[g].Color);
+
+            // The first task on top: an inverted y axis lists the rows top-down, a normal one bottom-up.
+            var down = a.YInverted || a.YMin is { } y0 && a.YMax is { } y1 && y0 > y1;
+            var ordered = tasks.Select((t, i) => (t, i)).OrderBy(x => down ? x.t.Row : -x.t.Row).ThenBy(x => x.i).Select(x => x.t).ToList();
+            string Name(double row)
+            {
+                if (a.YTicks is { } yt && a.YTickLabels is { } yl && yl.Count == yt.Count && yt.Count > 0)
+                {
+                    var best = Enumerable.Range(0, yt.Count).OrderBy(i => Math.Abs(yt[i] - row)).First();
+                    if (Math.Abs(yt[best] - row) < 0.5 + 1e-9) return yl[best];
+                }
+                var k = (int)Math.Round(row);
+                return cats.Count > 0 && Math.Abs(row - k) < 1e-9 && k >= 0 && k < cats.Count ? cats[k] : "";
+            }
+            // Calendar dates: the x ticks are the chart's date labels.
+            var dates = a.XTicks is { Count: >= 2 } xt && a.XTickLabels is { } xl && xl.Count == xt.Count && xt.Zip(xl, (d, l) => ChartDates.IsLabel(d, l)).All(x => x)
+                && ordered.All(t => Math.Abs(t.Start - Math.Round(t.Start)) < 1e-9);
+            string Time(double v) => dates ? ChartDates.Iso(v) : Num(v);
+            var lines = new List<string>();
+            var many = groups.Count > 1;
+            var seen = new HashSet<int>();
+            var split = false;
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                var t = ordered[i];
+                if (i == 0 || ordered[i - 1].Group != t.Group)
+                {
+                    if (!seen.Add(t.Group)) split = true;
+                    if (i > 0) lines.Add("");
+                    if (groups[t.Group].Name is { Length: > 0 } gn) lines.Add(Field(gn));
+                }
+                var name = Name(t.Row);
+                var row = (name.Length > 0 ? Field(name) + ";" : "") + Time(t.Start) + (t.Milestone ? "" : ";" + Num(t.Duration));
+                lines.Add(row);
+            }
+            if (split)
+                report.Skip(a.Line, "", new I18nText("Tasks of one group on rows that do not follow each other are imported as several groups.", "Vorgänge einer Gruppe in nicht aufeinanderfolgenden Zeilen werden als mehrere Gruppen importiert."));
+            var o = type.Create(new Vec2(0, 0)) with { Size = SizeOf(f, 1) };
+            o = o.WithParam("data", string.Join("\n", lines));
+            if (today is not null) o = o.WithParam("today", Time(today.X));
+            var title = f.Title ?? a.Title;
+            if (!string.IsNullOrWhiteSpace(title)) o = o.WithParam("title", title!.Trim());
+            if (a.XLabel is { } xlabel && !string.IsNullOrWhiteSpace(xlabel) && !(xlabel.Trim() is "Time" or "Zeit" or "Date" or "Datum"))
+                o = o.WithParam("xlabel", xlabel.Trim()).WithParam("xunit", "");
+            var legend = a.Legend || f.Legend;
+            o = o.WithParam("legend", legend ? (a.LegendWhere == "right" || f.LegendWhere == "right" ? "right" : "inside") : many ? "none" : "auto");
+            if (a.XGrid is not null || a.YGrid is not null) o = o.WithParam("grid", a.XGrid == true || a.YGrid == true);
+            else o = o.WithParam("grid", false);
+            // A range that differs from the automatic one is kept.
+            if (Lim(a.XMin) is { } lo && Lim(a.XMax) is { } hi && hi > lo && type is ChartType ct)
+            {
+                try
+                {
+                    var auto = ct.Compose(o, new RenderContext(SketchDocument.Create(), Lang.En).For(registry)).F.X;
+                    var tol = 1e-6 * Math.Max(1, hi - lo);
+                    if (Math.Abs(auto.Min - lo) > tol || Math.Abs(auto.Max - hi) > tol) o = o.WithParam("xrange", Time(lo) + ";" + Time(hi));
+                }
+                catch (Exception ex) when (ex is ArgumentException or InvalidOperationException) { o = o.WithParam("xrange", Time(lo) + ";" + Time(hi)); }
+            }
+            summary = Summary(new I18nText("Gantt chart", "Gantt-Diagramm"),
+                new[] { (ordered.Count(t => !t.Milestone), "task", "Vorgang"), (ordered.Count(t => t.Milestone), "milestone", "Meilenstein") });
             return o;
         }
     }

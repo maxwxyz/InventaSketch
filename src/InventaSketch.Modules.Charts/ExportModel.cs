@@ -363,6 +363,49 @@ namespace InventaSketch.Modules.Charts
         public bool RadiusLabels { get; set; } = true;
     }
 
+    /// <summary>A node of an exported Sankey diagram: its name and its bar as drawn (lower left corner, mm from the centre, y up).</summary>
+    internal sealed class XSankeyNode
+    {
+        public string Key { get; set; } = "";
+        public string Name { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+        public double W { get; set; }
+        public double H { get; set; }
+        /// <summary>Fill with its edge; null when the node is hidden.</summary>
+        public XFillStyle? Fill { get; set; }
+    }
+
+    /// <summary>
+    /// A flow of an exported Sankey diagram: source, target and value (the data), and the ribbon as drawn – the upper edges at
+    /// the source (X0, Y0) and the target (X1, Y1) in mm from the centre (y up) and its width – or no ribbon (a flow against
+    /// the direction, which the chart does not draw, or a hidden flow).
+    /// </summary>
+    internal sealed class XSankeyFlow
+    {
+        public string Key { get; set; } = "";
+        public string Source { get; set; } = "";
+        public string Target { get; set; } = "";
+        public double Value { get; set; }
+        public bool Drawn { get; set; }
+        public double X0 { get; set; }
+        public double Y0 { get; set; }
+        public double X1 { get; set; }
+        public double Y1 { get; set; }
+        public double Width { get; set; }
+        public XFillStyle Fill { get; set; } = null!;
+    }
+
+    /// <summary>A Sankey diagram: the flows in data order, the node bars and the texts as drawn (labels, cycle note, title).</summary>
+    internal sealed class XSankey
+    {
+        public List<XSankeyNode> Nodes { get; } = new();
+        public List<XSankeyFlow> Flows { get; } = new();
+        public List<XText> Texts { get; } = new();
+        /// <summary>The node labels show the values.</summary>
+        public bool Values { get; set; } = true;
+    }
+
     /// <summary>Contour lines of a field Z[i, j] over X[i], Y[j] (NaN = outside), with the traced pieces and label positions.</summary>
     internal sealed class XContours : XItem
     {
@@ -413,6 +456,8 @@ namespace InventaSketch.Modules.Charts
         public XPie? Pie { get; set; }
         /// <summary>A polar chart (no Cartesian axes: <see cref="Panels"/> is empty).</summary>
         public XPolar? Polar { get; set; }
+        /// <summary>A Sankey diagram (no axes: <see cref="Panels"/> is empty).</summary>
+        public XSankey? Sankey { get; set; }
         public List<XLabel> PanelTitles { get; } = new();
         /// <summary>Remarks written as comments at the start of the chart (what the export cannot reproduce, e.g. axis breaks).</summary>
         public List<string> Notes { get; } = new();

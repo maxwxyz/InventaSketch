@@ -598,27 +598,86 @@ shifted to 0 and scaled to 0…1 (normalised) or by a random factor, the today l
 the largest (normalised) or scaled and varied, the angles stay. Sankey: node names become A, B, C …, values divided by
 the largest flow or scaled by one random factor (in/out balances stay).
 
-**Code export and import (2026-11-26).** Pie, polar, box plot, histogram and Gantt charts are exported as matplotlib and
-pgfplots/TikZ code (see the table in [Export as matplotlib and pgfplots](#export-as-matplotlib-and-pgfplots-charts-v2-stage-4)).
-The Sankey diagram is still reported as "could not be exported" by both: `matplotlib.sankey` builds a diagram from
-flows that turn by fixed angles around one node at a time and places further nodes relative to earlier ones, so a
-column layout with nodes as high as their flows cannot be expressed without re-implementing the layout in the script,
-and pgfplots has no Sankey form; the TikZ and SVG exports draw it from the primitives. The matplotlib import reads `pie`
-(values, `labels`, `autopct` → percent labels, `labeldistance=None` → names only in the legend, `startangle` and
-`counterclock` converted to the clockwise-from-12-o'clock convention, `wedgeprops=dict(width=…)` → donut hole;
-`explode`, `colors` other than the chart colours and `normalize=False` are reported), polar axes
-(`subplot_kw={'projection': 'polar'}`, `add_subplot(…, projection='polar')` or `polar=True`, `plt.polar`): `plot`
-curves with the angles converted from radians to degrees (a repeated closing point is left out, the curve is closed),
-`fill` → filled style, `set_theta_zero_location('N')` with `set_theta_direction(-1)` → compass style,
-`set_rmax`/`set_rlim`/`set_ylim` → `rrange`; polar tick settings are reported), `hist` (one data set or a list of
-them → `chart.histogram` with one series each; `bins` as a count, or as edges → their count and range; `range` →
-`xrange`; `label` → series names; `density`, `weights`, `cumulative`, other `histtype`s, `orientation='horizontal'`,
-`stacked`, `log`, named bin rules and unequal bins are reported) and `boxplot` (raw samples → `chart.box`; categories
-from `tick_labels`/`labels`, the tick labels at the box positions or the positions; one call per series, named by a
-legend over the boxes; `whis` → `whis`, `whis=(0, 100)` or `showfliers=False` → whiskers to minimum and maximum
-(`showfliers=False` reported); horizontal boxes, notches and means are reported). A histogram or box plot next to other
-content in the same axes is reported. Other projections (3d) are still reported. The pgfplots import does not read
-the pie (TikZ arcs), `polaraxis`, `boxplot prepared` and `hist` forms.
+**Code export and import (2026-11-26).** All six presentation charts are exported as matplotlib and pgfplots/TikZ code
+(see the table in [Export as matplotlib and pgfplots](#export-as-matplotlib-and-pgfplots-charts-v2-stage-4)), and both
+imports read every exported form back (round trips without report lines in English and German).
+
+*Sankey diagram (round 4).* Neither library has a form that keeps the chart's layout: `matplotlib.sankey.Sankey` builds a
+chain of process diagrams whose flows turn by fixed angles around one node at a time (a diagram joins only one earlier
+diagram), and pgfplots/TikZ has no standard Sankey form (the CTAN package `sankey` has a node language of its own). Both
+exports therefore draw the diagram as the chart lays it out and keep the data with it. The matplotlib script defines two
+small helpers, `sankey_flow(ax, source, target, value, ribbon, **style)` (a `PathPatch` with two cubic Bézier edges;
+`ribbon` = upper edges at the source and the target and the width, in mm around the centre, y up) and
+`sankey_node(ax, name, x, y, w, h, **style)` (a `Rectangle`), and calls them once per flow and node; the labels are
+`ax.text`, the title `fig.suptitle`. The TikZ picture fills every ribbon with `.. controls ..` curves and carries the
+flow in the data key `sankey flow={source}{target}{value}`; nodes are filled rectangles, labels TikZ nodes, and the picture
+option `sankey chart={values=…, title=…}` keeps the settings. A flow the chart does not draw (against the direction, or
+hidden) is listed without a ribbon (`sankey_flow(ax, 'C', 'A', 4)`, `\path[sankey flow={C}{A}{4}] (0,0);`).
+
+*Data keys (round 4).* Where the TikZ drawing shows the data only approximately, the pgfplots document keeps them in TikZ
+keys that draw nothing, defined in the preamble only when used
+(`\tikzset{pie chart/.style={}, pie slice/.style 2 args={}, sankey chart/.style={}, sankey flow/.style n args={3}{}, box samples/.style={}}`):
+`pie chart={hole=…, start=…, direction=…, labels=…, legend=…, center={…}, title={…}}` on the pie picture and
+`pie slice={name}{value}` on every slice (the arcs show the shares only), `sankey chart` and `sankey flow` as above, and
+`box samples={…}` with the raw samples of every `boxplot prepared` plot (the prepared values are the drawing;
+`whisker range` names the whisker rule and is left out for whiskers to the minimum and maximum). The import reads these
+keys, never the comments.
+
+*Import (matplotlib).* `pie` (values, `labels`, `autopct` → percent labels, `labeldistance=None` → names only in the
+legend, `startangle` and `counterclock` converted to the clockwise-from-12-o'clock convention, `wedgeprops=dict(width=…)`
+→ donut hole, a text at the centre → centre text; `explode`, `colors` other than the chart colours (in colour or in
+monochrome) and `normalize=False` are reported), polar axes (`subplot_kw={'projection': 'polar'}`,
+`add_subplot(…, projection='polar')` or `polar=True`, `plt.polar`): `plot` curves with the angles converted from radians
+to degrees (a repeated closing point is left out, the curve is closed), `fill` → filled style,
+`set_theta_zero_location('N')` with `set_theta_direction(-1)` → compass style, `set_rmax`/`set_rlim`/`set_ylim` →
+`rrange`; polar tick settings are reported), `hist` (one data set or a list of them → `chart.histogram` with one series
+each; `bins` as a count, or as edges → their count and range; `range` → `xrange`; `label` → series names; `density`,
+`weights`, `cumulative`, other `histtype`s, `orientation='horizontal'`, `stacked`, `log`, named bin rules and unequal
+bins are reported), `boxplot` (raw samples → `chart.box`; categories from `tick_labels`/`labels`, the tick labels at the
+box positions or the positions; one call per series, named by a legend over the boxes; `whis` → `whis`,
+`whis=(0, 100)` or `showfliers=False` → whiskers to minimum and maximum (`showfliers=False` reported); horizontal boxes,
+notches and means are reported). Round 4 adds:
+
+- `barh` with starts (`left=`) where every row holds one bar → `chart.gantt` (a stacked bar chart repeats its rows in
+  every series and stays a bar chart): one group per `barh` call (named by its `label`, its `color` recorded), rows from
+  the tick labels or the string categories, listed top-down as drawn (with `invert_yaxis` or a reversed `ylim` the first
+  row is on top, otherwise the last one); diamond markers without a line (`'D'`) →
+  milestones of the group with the nearest bar row (between two groups: the bars drawn just before the markers, then
+  the bars of their colour; monochrome diamonds are black whatever their group); the first `axvline` → today line; the
+  chart's own label "Today"/"Heute" is dropped; `xlim` → `xrange` only where it differs from the automatic axis; x tick
+  labels that are the chart's date labels → calendar dates (ISO) for starts, today and range; a title other than
+  Time/Zeit/Date/Datum → `xlabel`. Other curves, areas, value lines and notes in a Gantt chart are reported; a group whose
+  tasks are not on neighbouring rows is reported and split. `invert_yaxis` elsewhere is reported as before.
+- `matplotlib.sankey.Sankey` (`Sankey(ax=…, flows=…, …)`, `add(patchlabel, flows, orientations, labels, …, prior,
+  connect)`, `finish()`) → `chart.sankey`: every process diagram is a node (its `patchlabel` or `label`, else P1, P2 …);
+  flows joined by `prior`/`connect` link two nodes (from the diagram whose flow is the output); every other input comes
+  from a node named by its label (else "P1 in 1" …) and every other output goes to one; flows without a positive value
+  are reported; orientations, trunk and path lengths and rotation are reported once (the chart lays the flows out in
+  columns); texts on the diagram are reported. The own export form is read from its `sankey_flow` calls (their bodies
+  are not run), and its labels tell whether the nodes show values; `axis('off')` is not reported for a Sankey diagram.
+
+*Import (pgfplots, round 4).*
+
+- `polaraxis` → `chart.polar`: angles in degrees (`data cs=polarrad`: radians), also expressions over the angle;
+  `rotate=90` → 0° up and `x dir=reverse` → clockwise, only both together are the compass style (either alone is
+  reported); a filled plot without a line that repeats a curve → filled style; `ymin`/`ymax` → radial range.
+- `hist={bins=…, data min=…, data max=…}` (or `hist/…` keys, `data=x`) over an inline table or coordinates →
+  `chart.histogram`, one series per plot, legend entries as names; `density`, `cumulative` and own handlers are reported,
+  as are other bins in the same axis (the first bins count).
+- `boxplot` with raw samples and `boxplot prepared={…}` → `chart.box`: one series per look (fill, draw, pattern),
+  positions from `draw position` (else 1, 2 …), categories from the tick labels, `whisker range` → `whis`; the exported
+  `box samples` are the raw samples (whiskers at the minimum and maximum although the rule leaves outliers → no
+  outliers); prepared values alone become representative samples – n = 4j + 1 values that put the quartiles at the
+  indices j, 2j and 3j, keep the whiskers and the outliers – which is reported.
+- Filled rectangles over part of the height in an axis that holds only them and diamond marks → `chart.gantt`: one group
+  per run of rectangles of one look, milestones as in matplotlib, `y dir=reverse` = first row on top, the vertical
+  `\draw` → today line, `\addlegendimage` entries name the groups (and the series of box plots); with anything else in
+  the axis the rectangles are reported as before.
+- Pictures without an axis: the exported pie and Sankey diagrams from their data keys; pgf-pie
+  `\pie[options]{value/name, …}` inside or outside a `tikzpicture` → `chart.pie` (counter-clockwise from `rotate`;
+  numbers are percentages unless `after number` names another unit, then values – next to names reported; `hide number`;
+  `text=legend` → names in a legend; a `sum` (100 by default) larger than the values → partial pie, reported; `explode`
+  and the `polar`/`square`/`cloud` forms reported). Diagrams of the `sankey` package are reported.
 
 **Host notes.** Native primitives only: slices, rings and flows are closed freeforms (flows with cubic edges), nodes,
 bars and boxes rectangles, milestones closed freeforms, grids one freeform each, texts native text; no vector picture.
@@ -798,11 +857,12 @@ override colour, width and dash.
 | Torque power curve | `twinx` | an overlaid axis with `axis y line=right` |
 | Tolerance band | `fill_between` lower/upper | `fill between` of both limit curves |
 | Title, caption, panel titles | `suptitle`, `supxlabel`, texts in the panels | `title`, a node below the picture, nodes |
-| Pie, donut | `pie` with the names (`labeldistance=None` when only the legend shows them), `autopct` percent labels (value labels by a function), `startangle` = 90° − start, `counterclock`, `wedgeprops=dict(width=1 − hole)`, slice colours, hatches in monochrome, centre text, legend | TikZ arcs in mm (pgfplots has no pie): slices, labels, leader lines and legend where the chart draws them |
+| Pie, donut | `pie` with the names (`labeldistance=None` when only the legend shows them), `autopct` percent labels (value labels by a function), `startangle` = 90° − start, `counterclock`, `wedgeprops=dict(width=1 − hole)`, slice colours, hatches in monochrome, centre text, legend | TikZ arcs in mm (pgfplots has no pie): slices, labels, leader lines and legend where the chart draws them; the data keys `pie chart` (settings) and `pie slice={name}{value}` |
 | Polar chart | polar axes (`projection='polar'`), angles in degrees converted with `rad`, `set_theta_zero_location('N')` and `set_theta_direction(-1)` for the compass style, `set_rlim`, angle and radius steps, `fill` for filled areas | `polaraxis` (library `polar`), angles in degrees; compass style as `rotate=90, x dir=reverse` |
-| Box plot | `boxplot` of the raw samples per series at the box positions, `whis` (or `whis=(0, 100)` for minimum/maximum), `showfliers`, box, median, whisker and outlier looks | `boxplot prepared` (library `statistics`) with the quartiles, whiskers and outliers as drawn |
+| Box plot | `boxplot` of the raw samples per series at the box positions, `whis` (or `whis=(0, 100)` for minimum/maximum), `showfliers`, box, median, whisker and outlier looks | `boxplot prepared` (library `statistics`) with the quartiles, whiskers and outliers as drawn, `whisker range` for the rule, the raw samples in the data key `box samples` |
 | Histogram | `hist` of the raw samples with `bins` and `range` as drawn, several series side by side (`rwidth=1`) | `hist={bins, data min, data max}` (library `statistics`); several series overlap translucently |
 | Gantt chart | `barh` with `left=` the starts per group, milestones as `D` markers, today line and label; dates as named ticks | filled rectangles in axis coordinates, milestones as `diamond*` marks, today line and label |
+| Sankey diagram | the layout as drawn: `sankey_flow(ax, source, target, value, ribbon, **style)` (a `PathPatch` with cubic Bézier edges) per flow and `sankey_node` (a `Rectangle`) per node, helpers defined in the script; labels as `ax.text` (`matplotlib.sankey` cannot lay out columns) | TikZ paths in mm: ribbons with `.. controls ..` edges carrying `sankey flow={source}{target}{value}`, node rectangles, label nodes, `sankey chart` settings (no Sankey form in pgfplots/TikZ) |
 
 Approximations: layout details (label positions shrunk to fit, the white backing of labels, maximum widths of notes,
 the exact spacing of hatch lines and arrowheads) follow each library's own layout; font sizes are relative (the
@@ -847,4 +907,11 @@ sizes, the JSON round trip, the export reports, cleaning and the import of matpl
 box plot, histogram and Gantt charts (libraries only when needed), export → import round trips of pie, polar, histogram
 and box plot (slices and angles, points and conventions, samples, bins and counts, categories and whisker rules), the
 import of `hist` and `boxplot` scripts with their reports, calendar dates in Gantt charts (day numbers, date ticks, today
-line, actions, cleaning) and the milestone at the end of the time axis.
+line, actions, cleaning) and the milestone at the end of the time axis. `PresentationChartImportTests` (round 4) covers the
+Sankey export (helpers, data keys, flows not drawn, monochrome), export → import round trips of all six forms in
+matplotlib and pgfplots/TikZ, English and German (Sankey flows, values and title; pie slices, angles, hole, labels,
+centre text and title; polar points and conventions; histogram samples, bins and counts; box plot samples, categories
+and whisker rules; Gantt tasks, groups, milestones, dates, today line, time axis), every presentation chart in colour and
+monochrome without report lines, and the hand-written forms: matplotlib `Sankey` with `prior`/`connect`, `barh` Gantt
+charts (inverted or not, stacked bars stay bar charts), pgf-pie, `polaraxis` with an expression, `hist` and `boxplot`
+(raw and prepared) in pgfplots, the representative samples and the reports.

@@ -413,13 +413,10 @@ namespace InventaSketch.Modules.Charts.Tests
         }
 
         [Fact]
-        public void OnlyTheSankeyDiagramIsReportedByTheCodeExports()
+        public void EveryPresentationChartHasACodeForm()
         {
             var r = Fx.Reg();
-            var sankey = Fx.Item(r, "chart.sankey");
-            Assert.Contains("could not be exported", ExportTests.Py(r, Lang.En, sankey));
-            Assert.Contains("could not be exported", ExportTests.Tex(r, Lang.De, sankey));
-            foreach (var id in new[] { "chart.pie", "chart.donut", "chart.polar", "chart.polar.radar", "chart.gantt", "chart.box", "chart.histogram" })
+            foreach (var id in new[] { "chart.pie", "chart.donut", "chart.polar", "chart.polar.radar", "chart.sankey", "chart.gantt", "chart.box", "chart.histogram" })
             {
                 var o = Fx.Item(r, id);
                 foreach (var lang in new[] { Lang.En, Lang.De })
