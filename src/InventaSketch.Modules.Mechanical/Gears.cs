@@ -365,18 +365,26 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Rack() => new(
             "mech.gear.rack", T("Gear rack", "Zahnstange"), Cat,
             new[] { "rack", "rack and pinion", "linear gear", "zahnstange", "zahnstangengetriebe" },
-            new ViewSpec("teeth", VTeeth, 60, 10, (p, o) => RackDraw(p, o, true)) { Fluid = true, Anchors = RackAnchors },
-            new ViewSpec("side", VSide, 60, 10, (p, o) => RackDraw(p, o, false)) { Fluid = true, Anchors = RackAnchors },
-            new ViewSpec("stick", VStick, 60, 10, RackStick) { Fluid = true, Anchors = RackAnchors })
+            new ViewSpec("teeth", VTeeth, 60, 10, (p, o) => RackDraw(p, o, true)) { Fluid = true, Anchors = (p, o) => RackAnchors(p, "teeth") },
+            new ViewSpec("side", VSide, 60, 10, (p, o) => RackDraw(p, o, false)) { Fluid = true, Anchors = (p, o) => RackAnchors(p, "side") },
+            new ViewSpec("stick", VStick, 60, 10, RackStick) { Fluid = true, Anchors = (p, o) => RackAnchors(p, "stick") })
         {
             Params = new[] { Common.Module },
             Rotating = false,
         };
 
-        private static IEnumerable<Anchor> RackAnchors(Pen p, SketchObject o)
+        /// <summary>
+        /// The rack's ends and its pitch line (core <see cref="AnchorRole.PitchLine"/>, teeth towards −y): a pinion snaps tangent
+        /// to it, the coupling keeps it there, the moving gear train moves the rack along it and the values take the pinion
+        /// from that mesh (<see cref="MechTopology"/>).
+        /// </summary>
+        private static IEnumerable<Anchor> RackAnchors(Pen p, string view)
         {
             yield return Anchor.Point(AnchorRole.End, new Vec2(-p.W / 2, 0), "left");
             yield return Anchor.Point(AnchorRole.End, new Vec2(p.W / 2, 0), "right");
+            // The teeth lie to the left of the line's direction on screen (y down): left to right puts them at −y.
+            var y = RackPitchY(p.H, view);
+            yield return Anchor.PitchLine(new Vec2(-p.W / 2, y), new Vec2(p.W / 2, y));
         }
 
         /// <summary>

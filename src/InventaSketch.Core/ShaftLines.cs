@@ -29,8 +29,9 @@ namespace InventaSketch.Core
     /// elements with a speed variable <c>n</c> that are carried by a shaft or concentric with each other (a loose hub turns
     /// freely) turn together. Members and pass-through parts (<see cref="IShaftPart"/>) join a line; leaves (bearings) take the
     /// speed of the part they sit on; outside parts stay out. On a line the torque <c>T</c> passes when at most two members
-    /// take or give it (with a branch it splits in an unknown way). Every module emits the same star of equalities
-    /// (<see cref="Links"/>) with its own relations, so the solver joins elements of any module on one shaft.
+    /// take or give it (with a branch it splits in an unknown way); a member of a gear unit docked on the line
+    /// (<see cref="IGearUnit"/>, <see cref="GearUnitDocking"/>) counts as one of them. Every module emits the same star of
+    /// equalities (<see cref="Links"/>) with its own relations, so the solver joins elements of any module on one shaft.
     /// Built once per document and registry (documents are immutable).
     /// </summary>
     public sealed class ShaftLines
@@ -38,9 +39,9 @@ namespace InventaSketch.Core
         /// <summary>A set of parts that turn together.</summary>
         public sealed class Line
         {
-            internal Line(IReadOnlyList<string> members, IReadOnlyList<string> torque, IReadOnlyList<string> pass, string rep, string? torqueRep)
+            internal Line(IReadOnlyList<string> members, IReadOnlyList<string> torque, IReadOnlyList<string> pass, string rep, string? torqueRep, int ports = 0)
             {
-                Members = members; Torque = torque; Pass = pass; Rep = rep; TorqueRep = torqueRep;
+                Members = members; Torque = torque; Pass = pass; Rep = rep; TorqueRep = torqueRep; Ports = ports;
             }
 
             /// <summary>All parts of the line (ordinal order).</summary>
@@ -53,8 +54,16 @@ namespace InventaSketch.Core
             public string Rep { get; }
             /// <summary>The torque representative (first of <see cref="Pass"/>, else of <see cref="Torque"/>), null without torque.</summary>
             public string? TorqueRep { get; }
-            /// <summary>The torque passes along the line: at most two torque members and at least two parts with a torque.</summary>
-            public bool CarriesTorque => Torque.Count <= 2 && Torque.Count + Pass.Count >= 2;
+            /// <summary>
+            /// Members of gear units (gear sets, CVT) docked on the line (<see cref="GearUnitDocking"/>): each takes or gives
+            /// torque, so they count towards the "at most two" rule, as in the mechanical module's own topology.
+            /// </summary>
+            public int Ports { get; }
+            /// <summary>
+            /// The torque passes along the line: at most two parts take or give it (torque members and docked unit members) and
+            /// at least two parts of the line have a torque.
+            /// </summary>
+            public bool CarriesTorque => Torque.Count + Ports <= 2 && Torque.Count + Pass.Count >= 2;
         }
 
         private static readonly ConditionalWeakTable<SketchDocument, ConditionalWeakTable<Registry, ShaftLines>> Cache = new();
@@ -124,6 +133,8 @@ namespace InventaSketch.Core
                 if (Joins(a) && Joins(b)) Union(a, b);
             }
 
+            var ports = DockedPorts(registry, doc, graph, Joins, Find);
+
             foreach (var g in parent.Keys.ToList().GroupBy(Find))
             {
                 var members = g.OrderBy(x => x, StringComparer.Ordinal).ToList();
@@ -131,10 +142,42 @@ namespace InventaSketch.Core
                 var torque = members.Where(m => Info(m) is (_, true, ShaftPart.Member)).ToList();
                 var pass = members.Where(m => Info(m) is (_, true, ShaftPart.PassThrough)).ToList();
                 var rep = members.FirstOrDefault(m => Info(m).Part == ShaftPart.PassThrough) ?? members[0];
-                var line = new Line(members, torque, pass, rep, pass.Count > 0 ? pass[0] : torque.FirstOrDefault());
+                var line = new Line(members, torque, pass, rep, pass.Count > 0 ? pass[0] : torque.FirstOrDefault(), ports.TryGetValue(g.Key, out var pc) ? pc : 0);
                 _lines.Add(line);
                 foreach (var m in members) _lineOf[m] = line;
             }
+        }
+
+        /// <summary>
+        /// Gear unit members docked on parts that join a line: the number per line root (<paramref name="find"/>). Leaves and
+        /// outside parts do not count; a unit docked on another unit neither (the two share their members directly).
+        /// </summary>
+        private static Dictionary<string, int> DockedPorts(Registry registry, SketchDocument doc, IReadOnlyList<(LinkKind Kind, string A, string B)> graph,
+            Func<string, bool> joins, Func<string, string> find)
+        {
+            var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+            var seen = new HashSet<(string, string)>();
+            RenderContext? ctx = null;
+            var anchors = new Dictionary<string, IReadOnlyList<Anchor>>(StringComparer.Ordinal);
+            IReadOnlyList<Anchor> AnchorsOf(SketchObject o)
+            {
+                if (anchors.TryGetValue(o.Id, out var l)) return l;
+                ctx ??= new RenderContext(doc, Lang.En).For(registry);
+                return anchors[o.Id] = registry.Type(o.Type) is null ? Array.Empty<Anchor>() : registry.PageAnchors(o, ctx).ToList();
+            }
+            foreach (var (kind, a, b) in graph)
+            {
+                if (kind is not (LinkKind.Carried or LinkKind.Bonded)) continue;
+                SketchObject? oa = doc.Get(a), ob = doc.Get(b);
+                bool ua = GearUnitDocking.IsUnit(registry, oa), ub = GearUnitDocking.IsUnit(registry, ob);
+                if (ua == ub) continue;
+                var (unit, part) = ua ? (oa!, ob) : (ob!, oa);
+                if (part is null || !joins(part.Id) || !seen.Add((unit.Id, part.Id))) continue;
+                if (GearUnitDocking.DockedPort(registry, unit, part, AnchorsOf) is null) continue;
+                var root = find(part.Id);
+                counts[root] = (counts.TryGetValue(root, out var c) ? c : 0) + 1;
+            }
+            return counts;
         }
 
         /// <summary>All lines (two or more parts).</summary>

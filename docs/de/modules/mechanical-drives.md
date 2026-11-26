@@ -223,21 +223,36 @@ bewegt sich mit“):
   Körperlinie und Zahnköpfen), ist das Ritzel der Zahnstange: sie übernimmt *n*_p, *M*_p, *z*_p und *d*_p von diesem
   Rad, so folgt *v* = ω·*r* dem Ritzel (und der Wellenstrang des Ritzels erhält seine Drehzahl aus einer eingetragenen
   Zahnstangengeschwindigkeit). Bei zwei oder mehr solchen Rädern übernimmt die Zahnstange keines (Ritzelwerte an der
-  Zahnstange eintragen).
+  Zahnstange eintragen). Die Zahnstange bietet diese Linie als Anker ihrer Wälzgeraden an (Kern `AnchorRole.PitchLine`,
+  Id `pitch`, Zahnseite gekennzeichnet): ein Ritzel, das in ihre Nähe gezogen wird, fängt tangential an ihr (Fangart
+  „mesh“, Beschriftung „Wälzgerade“), die Kopplung hält das Paar (ein wachsendes Ritzel schiebt die Zahnstange entlang
+  ihrer Normalen weg), und die Werte finden das Ritzel über eben diesen Kopplungseingriff.
 - Antriebsstrangteile des Maschinenmoduls (E-Maschine, Verbrennungsmotor, Rad) auf einer Welle gehören mit denselben
   Schlüsseln zum Wellenstrang.
 
 **Wellenstränge über Modulgrenzen.** Die Regel des Wellenstrangs teilen alle Module (Kern `ShaftLines`, auf den
 Kopplungsbeziehungen aufgebaut): Wellen, Keilwellen, Kupplungen, Rutschkupplungen und Kardangelenke geben das Moment unverändert weiter,
 Lager übernehmen nur die Drehzahl, Planetenträger, Differentialkorb, Radsätze und die Gewindetrieb-Mutter bleiben
-draußen (Radsätze und der CVT setzen ihre Glieder stattdessen auf Wellen; die Kernregel für Elemente anderer Module
-zählt ein angeschlossenes Glied noch nicht als Momentteil). Elemente beliebiger Module mit einer Drehzahl *n* (und einem Moment *T*), deren Nabe auf einer Wellenachse
+draußen (Radsätze und der CVT setzen ihre Glieder stattdessen auf Wellen). Ein an einen Strang angedocktes Glied zählt
+auch in der Kernregel als ein Teil, das Moment aufnimmt oder abgibt (Kern `IGearUnit`, `GearUnitDocking`, 26.11.2026),
+so zählt eine Pumpe des Prozessmoduls auf einer Welle an einem Sonnenanschluss genauso wie hier. Elemente beliebiger Module mit einer Drehzahl *n* (und einem Moment *T*), deren Nabe auf einer Wellenachse
 oder einer anderen Nabe sitzt, gehören zum Strang. Jedes Modul verknüpft seine Elemente sternförmig mit der Welle oder
 Kupplung des Strangs, so teilen eine E-Maschine des Maschinenmoduls, eine mechanische Welle und eine Pumpe des Prozess-
 oder Fluidmoduls *n* und, bei höchstens zwei Momentgliedern, *T*: die Leistung 2π·*n*·*T* des Antriebs wird zur
 Wellenleistung der Pumpe. Riemenscheiben, Kettenräder, Umlenkrollen und Riemenspanner haben einen Teilkreis, der nur den
 Riemen oder die Kette bemisst: zwei davon, deren Teilkreise sich berühren, kämmen nicht wie Zahnräder (keine
 Übersetzung, kein Mitskalieren beim Verschieben).
+
+**Bewegter Räderzug** (Drehen eines Rads in Stirnansicht, Animationsbilder; Kern `GearTrain`, 26.11.2026). Ein Radsatz
+oder CVT dreht nicht mehr alle angedockten Teile starr mit: jedes angedockte Teil dreht mit seinem Glied, und die Glieder
+folgen der Drehzahlbeziehung der Einheit (`IGearUnit.SpeedRelations`, aus den eingetragenen Zähnezahlen und
+Übersetzungen oder ihren Vorgaben): Planetensatz Willis *z*_s·ω_s + *k*·*z*_r·ω_r − (*z*_s + *k*·*z*_r)·ω_c = 0,
+Ravigneaux-Satz beide Willis-Gleichungen, Differential ω₁ + ω₂ = 2·ω_c, Wellgetriebe, Zykloidgetriebe und CVT
+ω_an = *i*·ω_ab (eingetragenes *i*, sonst aus den Zähnezahlen bzw. dem Parameter `ratio` des CVT). Ein Glied, dessen
+Drehzahl mit 0 eingetragen ist, steht fest (`speedr` = 0 hält das Hohlrad). Ein Satz mit zwei Freiheitsgraden ohne
+festgehaltenes Glied lässt die Teile dahinter unbestimmt: sie bewegen sich nicht. Eine Zahnstange verschiebt sich entlang
+ihrer Wälzgeraden, wenn ihr Ritzel dreht, *s* = φ·*r* (eine Vierteldrehung bei 20 mm Teilkreisradius verschiebt sie um
+31,4 mm).
 
 **Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
 
@@ -256,9 +271,7 @@ Noch nicht vorhanden: Momentbeziehungen des Ravigneaux-Radsatzes (nur Drehzahlen
 Differentialkorb (Tellerrad, von einem Kegelritzel getrieben) und den Steg des Ravigneaux-Satzes; Eingriffe mit einem
 Radsatz (ein Rad an der Außenseite des Hohlrads); der Drehsinn einer Welle (eine Welle übernimmt den Betrag eines
 vorzeichenbehafteten Glieds; werden An- und Abtriebsdrehzahl eines Satzes eingetragen, dessen Abtrieb rückwärts dreht,
-entsteht ein Widerspruch: den Abtrieb am Satz eintragen); die Verknüpfungen von Zahnstange und Radsatz im bewegten
-Räderzug des Kerns (Drehen eines Teils verschiebt keine Zahnstange, und der Kern behandelt einen Radsatz im Schema, den
-zwei Wellen tragen, als einen starren Körper); Willis über getrennte Planetenteile; Momentaufteilung an
+entsteht ein Widerspruch: den Abtrieb am Satz eintragen); Willis über getrennte Planetenteile; Momentaufteilung an
 Verzweigungen (Wellenstränge und Trume mit drei oder mehr momentführenden Teilen). Kein Festigkeitsnachweis (ISO 6336,
 DIN 743, EN 13906 über *F* = *c*·*s* und *M* = *c*_φ·φ hinaus), keine Auslegung des Rutschmoments (Reibradius,
 Reibflächenzahl, Federkraft).

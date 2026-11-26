@@ -231,6 +231,8 @@ namespace InventaSketch.Core
         public static readonly QuantityKind TemperatureDifference = new("temperatureDifference", T("Temperature difference", "Temperaturdifferenz"), Temp, difference: true);
         public static readonly QuantityKind Density = new("density", T("Density", "Dichte"), Mass / Len.Pow(3));
         public static readonly QuantityKind SpecificHeat = new("specificHeat", T("Specific heat capacity", "Spezifische Wärmekapazität"), Energy_ / Mass / Temp);
+        /// <summary>Energy per mass (specific work of a compressor or turbine w = c_p·ΔT, enthalpy differences): J/kg, kJ/kg.</summary>
+        public static readonly QuantityKind SpecificEnergy = new("specificEnergy", T("Specific energy", "Spezifische Energie"), Energy_ / Mass);
         public static readonly QuantityKind HeatTransfer = new("heatTransfer", T("Heat transfer coefficient", "Wärmedurchgangskoeffizient"), Power_ / Len.Pow(2) / Temp);
         public static readonly QuantityKind Irradiance = new("irradiance", T("Irradiance", "Bestrahlungsstärke"), Power_ / Len.Pow(2));
         public static readonly QuantityKind Viscosity = new("kinematicViscosity", T("Kinematic viscosity", "Kinematische Viskosität"), Len.Pow(2) / Time);
@@ -341,6 +343,10 @@ namespace InventaSketch.Core
             Density.Add("kg/l", 1e3, new[] { "kg/L" });
             SpecificHeat.Add("kJ/(kg·K)", 1e3, new[] { "kJ/kgK", "kJ/(kgK)" });
             SpecificHeat.Add("J/(kg·K)", 1, new[] { "J/kgK", "J/(kgK)" });
+            SpecificEnergy.Add("kJ/kg", 1e3);
+            SpecificEnergy.Add("J/kg", 1);
+            SpecificEnergy.Add("MJ/kg", 1e6);
+            SpecificEnergy.Add("kWh/kg", 3.6e6);
             HeatTransfer.Add("W/(m²·K)", 1, new[] { "W/m²K", "W/(m²K)" });
             Irradiance.Add("W/m²", 1);
             Irradiance.Add("kW/m²", 1e3);
@@ -362,7 +368,7 @@ namespace InventaSketch.Core
                 Ratio, Efficiency, Count, Voltage, Current, Power, ApparentPower, ReactivePower, HeatFlow, Resistance, Capacitance,
                 Inductance, Charge, Resistivity, Frequency, RotationalSpeed, Angle, Time_, Length, Area, Volume, Mass_, Force,
                 Energy, Torque, Speed, Acceleration, Pressure, VolumeFlow, MassFlow, Temperature, TemperatureDifference, Density,
-                SpecificHeat, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate, TorsionalRate, TemperatureCoefficient,
+                SpecificHeat, SpecificEnergy, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate, TorsionalRate, TemperatureCoefficient,
             });
         }
 

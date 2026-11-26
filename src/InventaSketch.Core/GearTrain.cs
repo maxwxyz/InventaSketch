@@ -18,11 +18,18 @@ namespace InventaSketch.Core
     /// part with crossing axes carrying bevel gears loose, the differential case) Willis applies with the cage speed
     /// projected on each gear's axis: z_a (ω_a − (u_a·c) ω_c) + z_b (ω_b − (u_b·c) ω_c) = 0 (u: axis to the apex, c: the cage
     /// axis) – the side gears turn with the cage when driving straight, and hold one and the other turns twice as fast;</item>
-    /// <item>fixed carriers (grounded): 0.</item>
+    /// <item>fixed carriers (grounded): 0;</item>
+    /// <item>gear units (<see cref="IGearUnit"/>: gear set elements, a CVT): every part docked on a member port turns with
+    /// that member (<see cref="GearUnitDocking"/>), and the members follow the unit's own speed relations (fixed ratio:
+    /// ω_out = ω_in/i; planetary or differential: Willis) instead of turning all docked parts rigidly together;</item>
+    /// <item>rack and pinion (a pitch circle touching a rack's <see cref="AnchorRole.PitchLine"/>): the rack travels
+    /// v = ω·r along its pitch line.</item>
     /// </list>
     /// Speeds the system leaves open (a planetary set without a fixed member) are taken as 0, ring gears and carriers
-    /// first, so the usual case (ring fixed to the housing) comes out. Planets on a carrier orbit with it. Only parts seen
-    /// along their axis (axial views) visibly turn; side views keep their drawing.
+    /// first, so the usual case (ring fixed to the housing) comes out. Gear units are the exception: what depends on a free
+    /// member of a unit (a planetary set element with no member held, a differential with its case free) stays unresolved
+    /// and does not move. Planets on a carrier orbit with it. Only parts seen along their axis (axial views) visibly turn;
+    /// side views keep their drawing; racks translate.
     /// </summary>
     public static class GearTrain
     {
@@ -43,7 +50,21 @@ namespace InventaSketch.Core
             public Vec2 ApexDir;
             /// <summary>Cage (two crossing axes: differential case): its rotation axis (unit), else null.</summary>
             public Vec2? CageAxis;
+            /// <summary>Rack: its pitch line and the unit normal to its teeth, else null.</summary>
+            public (Vec2 A, Vec2 B, Vec2 N)? Rack;
+            /// <summary>Member ports of a gear unit (<see cref="IGearUnit"/>), empty for other parts.</summary>
+            public IReadOnlyList<GearUnitPort> Ports = Array.Empty<GearUnitPort>();
+            public IReadOnlyList<Anchor> Anchors = Array.Empty<Anchor>();
+            public bool IsUnit => Ports.Count > 0;
         }
+
+        /// <summary>Column id of member <paramref name="member"/> of gear unit <paramref name="unit"/> (no object id contains U+0001).</summary>
+        private static string MemberColumn(string unit, string member) => unit + "\u0001" + member;
+
+        private static bool IsMemberColumn(string id) => id.IndexOf('\u0001') >= 0;
+
+        /// <summary>Travel direction of a rack for a positive speed of its pinion (the teeth normal turned by +90° on screen).</summary>
+        private static Vec2 RackTravel(Vec2 n) => new(n.Y, -n.X);
 
         /// <summary>True if <paramref name="o"/> visibly turns about its own axis (seen along it: axial views).</summary>
         public static bool Spins(Registry registry, SketchObject o)
@@ -52,7 +73,8 @@ namespace InventaSketch.Core
 
         /// <summary>
         /// Angular speed of every part of the train of <paramref name="inputId"/> relative to the input (input = 1; same
-        /// sense = positive). Parts outside the train are not listed.
+        /// sense = positive). Racks give their travel along the pitch line in mm per radian of the input. Parts outside the
+        /// train, and parts whose speed depends on a free member of a gear unit, are not listed.
         /// </summary>
         public static IReadOnlyDictionary<string, double> Speeds(Registry registry, SketchDocument doc, string inputId, Lang lang = Lang.En)
         {
@@ -75,7 +97,8 @@ namespace InventaSketch.Core
                     foreach (var n in next) if (seen.Add(n)) train.Add(n);
             // Column order: input, plain parts, carriers, ring gears, spider gears of a cage (free columns last become 0: ring
             // and carrier fixed, a differential drives straight on).
-            var cols = train.OrderBy(id => id == inputId ? 0 : spiders.Contains(id) ? 4 : bodies[id].Pins.Count > 0 || bodies[id].CageAxis is not null ? 2 : bodies[id].Inner ? 3 : 1).ToList();
+            // Members of gear units come after everything else: when free they stay unresolved (not 0).
+            var cols = train.OrderBy(id => id == inputId ? 0 : IsMemberColumn(id) ? 5 : spiders.Contains(id) ? 4 : bodies[id].Pins.Count > 0 || bodies[id].CageAxis is not null ? 2 : bodies[id].Inner ? 3 : 1).ToList();
             var index = cols.Select((id, i) => (id, i)).ToDictionary(t => t.id, t => t.i, StringComparer.Ordinal);
             var rows = new List<double[]>();
             foreach (var e in eqs.Where(e => e.Keys.All(index.ContainsKey)))
@@ -84,7 +107,7 @@ namespace InventaSketch.Core
                 foreach (var kv in e) r[index[kv.Key]] += kv.Value;
                 rows.Add(r);
             }
-            foreach (var id in cols.Where(id => bodies[id].Fixed && id != inputId))
+            foreach (var id in cols.Where(id => !IsMemberColumn(id) && bodies[id].Fixed && id != inputId))
             {
                 var r = new double[cols.Count + 1];
                 r[index[id]] = 1;
@@ -94,8 +117,10 @@ namespace InventaSketch.Core
             input[0] = 1;
             input[cols.Count] = 1;
             rows.Insert(0, input);
-            var w = Solve(rows, cols.Count);
-            return cols.Select((id, i) => (id, w[i])).ToDictionary(t => t.id, t => t.Item2, StringComparer.Ordinal);
+            var soft = cols.Select(IsMemberColumn).ToArray();
+            var (w, determined) = Solve(rows, cols.Count, soft);
+            return cols.Select((id, i) => (id, i)).Where(t => !soft[t.i] && determined[t.i])
+                .ToDictionary(t => t.id, t => w[t.i], StringComparer.Ordinal);
         }
 
         /// <summary>
@@ -115,6 +140,12 @@ namespace InventaSketch.Core
                 var o = result.Get(kv.Key)!;
                 var t = o.Transform;
                 if (b.Spins) t = t with { Rotation = Math.Round(t.Rotation + turn, 6) };
+                // A rack travels along its pitch line (speed in mm per radian of the input).
+                if (b.Rack is { } rack)
+                {
+                    var d = RackTravel(rack.N) * (kv.Value * degrees * Math.PI / 180);
+                    t = t with { X = Math.Round(t.X + d.X, 6), Y = Math.Round(t.Y + d.Y, 6) };
+                }
                 // Planets orbit about their carrier's centre.
                 if (b.Carrier is { } c && speeds.TryGetValue(c, out var wc) && bodies[c].Spins)
                 {
@@ -147,7 +178,9 @@ namespace InventaSketch.Core
             foreach (var o in doc.Objects.Values.Where(o => !o.IsPointGeometry && registry.Type(o.Type) is not null))
             {
                 var anchors = registry.PageAnchors(o, ctx).ToList();
-                var b = new Body { O = o, Centre = new Vec2(o.Transform.X, o.Transform.Y), Fixed = o.Flag("fixed", false) };
+                var b = new Body { O = o, Centre = new Vec2(o.Transform.X, o.Transform.Y), Fixed = o.Flag("fixed", false), Anchors = anchors };
+                b.Ports = GearUnitDocking.PortsOf(registry, o);
+                if (anchors.FirstOrDefault(a => a.TeethSide() is not null) is { } line) b.Rack = (line.P, line.Q, line.TeethSide()!.Value);
                 var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner);
                 if (pitch is not null) { b.Pitch = pitch.Radius; b.Inner = pitch.Role == AnchorRole.PitchInner; b.Centre = pitch.P; b.Side = pitch.AxisOf() is not null; }
                 var hub = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && (a.Id == "hub" || a.Id is null));
@@ -163,7 +196,7 @@ namespace InventaSketch.Core
                 if (pitch is null && hub is not null) b.Centre = hub.P;
                 b.Pins.AddRange(anchors.Where(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id is { } id && id.StartsWith("pin", StringComparison.Ordinal)).Select(a => a.P));
                 b.Spins = registry.Type(o.Type)!.MeshDirections(o).Count == 4 && (pitch is not null || b.Pins.Count > 0);
-                if (pitch is not null || hub is not null || b.Bevel || b.Pins.Count > 0 || anchors.Any(a => a.Role == AnchorRole.Axis)) map[o.Id] = b;
+                if (pitch is not null || hub is not null || b.Bevel || b.Pins.Count > 0 || b.Rack is not null || b.IsUnit || anchors.Any(a => a.Role == AnchorRole.Axis)) map[o.Id] = b;
             }
             // Planets: parts whose centre sits on a carrier pin.
             foreach (var b in map.Values)
@@ -191,11 +224,49 @@ namespace InventaSketch.Core
                     cageOf[l.B] = l.A;
                     if (Math.Abs(cb.ApexDir.Dot(axis)) < 0.5) spiders.Add(l.B);
                 }
+            // Gear units with a docked part: their member relations join the docked parts.
+            var units = new HashSet<string>(StringComparer.Ordinal);
+            GearUnitPort? Docked(Body unit, Body part)
+                => GearUnitDocking.DockedPort(registry, unit.O, part.O, o => bodies.TryGetValue(o.Id, out var x) ? x.Anchors : Array.Empty<Anchor>());
+            // A unit drawn with a centre bore (axial views) turns as a whole with the member at the bore, as it did before.
+            foreach (var u in bodies.Values.Where(x => x.IsUnit))
+                if (u.Ports.FirstOrDefault(p => p.Centre && u.Anchors.Any(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub && a.Id == p.AnchorId)) is { } bore)
+                {
+                    Add((u.O.Id, 1), (MemberColumn(u.O.Id, bore.Member), -1));
+                    units.Add(u.O.Id);
+                }
             foreach (var link in links)
             {
                 if (!bodies.TryGetValue(link.A, out var a) || !bodies.TryGetValue(link.B, out var b)) continue;
+                if ((a.IsUnit || b.IsUnit) && link.Kind is LinkKind.Carried or LinkKind.Bonded)
+                {
+                    // A loose hub turns freely on its shaft; otherwise the part turns with the member it is docked on (none:
+                    // not docked on a port, or a shaft through two members, which would lock the unit).
+                    if (link.Kind == LinkKind.Carried && b.O.Str("hub", "fixed") == "loose") continue;
+                    if (a.IsUnit && b.IsUnit)
+                    {
+                        if (Docked(a, b) is { } pa && Docked(b, a) is { } pb)
+                        {
+                            Add((MemberColumn(a.O.Id, pa.Member), 1), (MemberColumn(b.O.Id, pb.Member), -1));
+                            units.Add(a.O.Id);
+                            units.Add(b.O.Id);
+                        }
+                        continue;
+                    }
+                    var (unit, part) = a.IsUnit ? (a, b) : (b, a);
+                    if (Docked(unit, part) is { } port)
+                    {
+                        Add((part.O.Id, 1), (MemberColumn(unit.O.Id, port.Member), -1));
+                        units.Add(unit.O.Id);
+                    }
+                    continue;
+                }
                 switch (link.Kind)
                 {
+                    case LinkKind.Mesh when a.Pitch is double rg && !a.Inner && b.Rack is not null:
+                        // Rack and pinion: the rack travels r·ω along its pitch line.
+                        Add((b.O.Id, 1), (a.O.Id, -rg));
+                        break;
                     case LinkKind.Mesh when a.Pitch is double ra && b.Pitch is double rb:
                         {
                             var c = a.Carrier ?? b.Carrier;
@@ -244,6 +315,10 @@ namespace InventaSketch.Core
                         }
                 }
             }
+            foreach (var id in units)
+                if (registry.Type(bodies[id].O.Type) is IGearUnit gu)
+                    foreach (var row in gu.SpeedRelations(bodies[id].O))
+                        if (row.Count > 0) Add(row.Select(kv => (MemberColumn(id, kv.Key), kv.Value)).ToArray());
             // Belts and chains: both pulleys of one strand.
             foreach (var strand in Coupling.MechanicalLinks(registry, doc, null, lang).Where(l => l.Kind == LinkKind.Spanned && !l.Released).GroupBy(l => l.A))
             {
@@ -255,8 +330,12 @@ namespace InventaSketch.Core
             return eqs;
         }
 
-        /// <summary>Gauss–Jordan elimination with partial pivoting; free columns (no pivot) are 0. Rows: coefficients + right side.</summary>
-        private static double[] Solve(List<double[]> rows, int n)
+        /// <summary>
+        /// Gauss–Jordan elimination with partial pivoting; free columns (no pivot) are 0. Rows: coefficients + right side.
+        /// <paramref name="soft"/> marks columns that must not be fixed at 0 when free (members of gear units): they and every
+        /// pivot column that depends on a free one of them come back as not determined.
+        /// </summary>
+        private static (double[] W, bool[] Determined) Solve(List<double[]> rows, int n, bool[] soft)
         {
             var m = rows.Select(r => (double[])r.Clone()).ToList();
             var pivotCol = new List<int>();
@@ -280,7 +359,13 @@ namespace InventaSketch.Core
             }
             var w = new double[n];
             for (var i = 0; i < pivotCol.Count; i++) w[pivotCol[i]] = m[i][n];
-            return w;
+            var determined = Enumerable.Repeat(true, n).ToArray();
+            var pivots = new HashSet<int>(pivotCol);
+            var freeSoft = Enumerable.Range(0, n).Where(c => soft[c] && !pivots.Contains(c)).ToList();
+            foreach (var c in freeSoft) determined[c] = false;
+            for (var i = 0; i < pivotCol.Count; i++)
+                if (freeSoft.Any(c => Math.Abs(m[i][c]) > 1e-9)) determined[pivotCol[i]] = false;
+            return (w, determined);
         }
     }
 }

@@ -72,7 +72,9 @@ namespace InventaSketch.Core
             public readonly List<(Vec2 A, Vec2 B)> Axes = new();
             /// <summary>Cone apex of a bevel gear seen from the side (<see cref="AnchorRole.Apex"/>), else null.</summary>
             public Vec2? Apex;
-            public bool Any => Pitch is not null || Hubs.Count > 0 || Axes.Count > 0 || Apex is not null;
+            /// <summary>Pitch line of a rack (<see cref="AnchorRole.PitchLine"/>) with the unit normal to its teeth, else null.</summary>
+            public (Vec2 A, Vec2 B, Vec2 N)? Rack;
+            public bool Any => Pitch is not null || Hubs.Count > 0 || Axes.Count > 0 || Apex is not null || Rack is not null;
         }
 
         private static Features Read(Registry registry, SketchObject o, RenderContext ctx)
@@ -95,6 +97,7 @@ namespace InventaSketch.Core
                 else if (a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub) f.Hubs.Add(a.P);
                 else if (a.Kind == AnchorKind.Point && a.Role == AnchorRole.Apex && f.Apex is null) f.Apex = a.P;
                 else if (a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis) f.Axes.Add((a.P, a.Q));
+                else if (a.TeethSide() is { } n && f.Rack is null) f.Rack = (a.P, a.Q, n);
             }
             return f;
         }
@@ -312,6 +315,10 @@ namespace InventaSketch.Core
                             list.Add(new Pair(LinkKind.Mesh, ids[i], ids[j], at));
                         }
                     }
+                    // Rack and pinion: a gear seen along its axis whose pitch circle touches the rack's pitch line on the teeth side
+                    // (the gear centre within the rack's length) meshes with the rack: A gear, B rack, contact on the line.
+                    if (a.Pitch is double rp && !a.Inner && a.Meshes && a.Axis is null && b.Rack is { } rack && RackContact(a.Centre, rp, rack) is { } touch)
+                        list.Add(new Pair(LinkKind.Mesh, ids[i], ids[j], touch));
                     // Bevel gears mesh where their cone apexes meet and their axes cross (angle drive, differential).
                     if (j > i && a.Pitch is null && b.Pitch is null && a.Apex is Vec2 pa && b.Apex is Vec2 pb && pa.DistanceTo(pb) <= 0.3)
                     {
@@ -334,6 +341,22 @@ namespace InventaSketch.Core
                     }
                 }
             return list;
+        }
+
+        /// <summary>
+        /// The contact point of a pitch circle (centre <paramref name="c"/>, radius <paramref name="r"/>) with a rack pitch line
+        /// when the circle touches the line on its teeth side (within 0.3 mm or 3 % of the radius) and its centre lies within
+        /// the rack's length; else null.
+        /// </summary>
+        internal static Vec2? RackContact(Vec2 c, double r, (Vec2 A, Vec2 B, Vec2 N) rack)
+        {
+            var len = rack.A.DistanceTo(rack.B);
+            if (len < Eps || r < Eps) return null;
+            var u = (rack.B - rack.A) * (1 / len);
+            var d = c - rack.A;
+            var t = d.Dot(u);
+            if (t < 0 || t > len || Math.Abs(d.Dot(rack.N) - r) > Math.Max(0.3, 0.03 * r)) return null;
+            return rack.A + u * t;
         }
 
         private static (Dictionary<string, List<string>> Mesh, Dictionary<string, List<string>> Carried, Dictionary<string, List<string>> Carrier, Dictionary<string, List<string>> Bonded)
@@ -544,6 +567,16 @@ namespace InventaSketch.Core
                 {
                     if (visited.Contains(partner) || a0.Pitch is not double r0 || a1.Pitch is not double r1) continue;
                     var b = Now(partner);
+                    if (b.Pitch is null && b.Rack is { } rack)
+                    {
+                        // A grown or shrunk pinion keeps touching its rack: the rack moves along its normal (the pinion stays).
+                        if (Math.Abs(r1 - r0) > Eps)
+                        {
+                            var gap = (a1.Centre - rack.A).Dot(rack.N) - r1;
+                            RigidMove(partner, rack.N * gap);
+                        }
+                        continue;
+                    }
                     if (b.Pitch is not double rb) continue;
                     if (Math.Abs(r1 - r0) > Eps)
                     {

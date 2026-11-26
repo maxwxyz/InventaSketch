@@ -211,8 +211,8 @@ entered values). Card variables come first. Design notes:
 |---|---|---|
 | Centrifugal pump | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, shaft), η (`efficiency`); panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`), *n* (`speed`), *T* (`torque`); engineer ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*T* [S18] |
 | Displacement pump, fan | *V̇*, Δ*p*, *P*, η; panel *P*_hyd, *n*, *T* | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*T* [S18] |
-| Compressor | *P* (`power`, drive), ṁ (`massFlow`, kg/s), π = *p*₂/*p*₁ (`pressureRatio`), θ₂ (`tempOut`); panel θ₁ (`tempIn`, default 20 °C), *p*₁ (`pressureIn`, absolute, default 1.01325 bar), *p*₂ (`pressureOut`), η_s (`efficiency`, isentropic), Δ*T* (`deltaT`, rise), *V̇*₁ (`flowIn`), θ_max (`tempMax`, permissible outlet temperature), *n*, *T*; engineer θ₂s (`tempOutIs`), *P*_s (`powerIs`), *V̇*₂ (`flowOut`), κ (`kappa`), *R* (`gasConstant`), *c*_p (`specificHeat`); choice gas (`gas`, air) | see "Gas machines" [S29]; *P* = 2π·*n*·*T* [S18] |
-| Turbine / expander | *P* (`power`, output), ṁ, π = *p*₁/*p*₂, θ₁; panel θ₂, *p*₁, *p*₂, η_s, Δ*T* (drop), *V̇*₁, θ_max (permissible inlet temperature), *n*, *T*; engineer as the compressor; no defaults at the inlet | see "Gas machines" [S29]; *P* = 2π·*n*·*T* [S18] |
+| Compressor | *P* (`power`, drive), ṁ (`massFlow`, kg/s), π = *p*₂/*p*₁ (`pressureRatio`), θ₂ (`tempOut`); panel θ₁ (`tempIn`, default 20 °C), *p*₁ (`pressureIn`, absolute, default 1.01325 bar), *p*₂ (`pressureOut`), η_s (`efficiency`, isentropic), Δ*T* (`deltaT`, rise), *w* (`specificWork`, specific work, kJ/kg), *V̇*₁ (`flowIn`), θ_max (`tempMax`, permissible outlet temperature), *n*, *T*; engineer θ₂s (`tempOutIs`), *P*_s (`powerIs`), *V̇*₂ (`flowOut`), κ (`kappa`), *R* (`gasConstant`), *c*_p (`specificHeat`); choice gas (`gas`, air) | see "Gas machines" [S40]; *P* = 2π·*n*·*T* [S18] |
+| Turbine / expander | *P* (`power`, output), ṁ, π = *p*₁/*p*₂, θ₁; panel θ₂, *p*₁, *p*₂, η_s, Δ*T* (drop), *w* (`specificWork`), *V̇*₁, θ_max (permissible inlet temperature), *n*, *T*; engineer as the compressor; no defaults at the inlet | see "Gas machines" [S40]; *P* = 2π·*n*·*T* [S18] |
 | Drive motor | *P* (`power`, output), *n*, *T*; panel η (`efficiency`), *P*_el (`powerEl`, electrical input) | *P* = 2π·*n*·*T* [S18]; *P* = η·*P*_el [S15] |
 | Generator | *P*_el (`powerEl`, electrical output), *P* (`power`, shaft input), η (`efficiency`), *n*; panel *T* | *P* = 2π·*n*·*T* [S18]; *P*_el = η·*P* [S15] |
 | Shell-and-tube, plate, general heat exchanger | Φ (`duty`), *U* (`u`), *A* (`area`), Δθ_lm (`lmtd`); panel ṁ₁ (`massFlow1`), θ₁,in (`temp1In`), θ₁,out (`temp1Out`), ṁ₂, θ₂,in, θ₂,out; engineer *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,in − θ₁,out); Φ = ṁ₂·*c*₂·(θ₂,out − θ₂,in); counter-flow Δθ_lm = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) with Δθ_a = θ₁,in − θ₂,out, Δθ_b = θ₁,out − θ₂,in; Φ = *U*·*A*·Δθ_lm [S29] |
@@ -238,7 +238,7 @@ unchanged, which is right for liquids only), so a process line next to a gas mac
 (water by default: enter ρ on the line for a gas). Steam traps, rupture discs, cyclones and silos have no values.
 
 **Gas machines (compressor, turbine).** An ideal gas with constant properties, adiabatic machine, absolute pressures and
-temperatures [S29]:
+temperatures [S40]:
 
 | Relation | Compressor | Turbine / expander |
 |---|---|---|
@@ -248,12 +248,14 @@ temperatures [S29]:
 | Isentropic efficiency | η_s = (*T*₂s − *T*₁)/(*T*₂ − *T*₁) | η_s = (*T*₁ − *T*₂)/(*T*₁ − *T*₂s) |
 | Temperature change | Δ*T* = *T*₂ − *T*₁ | Δ*T* = *T*₁ − *T*₂ |
 | Power (drive / expansion work per second) | *P* = ṁ·*c*_p·Δ*T* | *P* = ṁ·*c*_p·Δ*T* |
+| Specific work (kJ/kg) | *w* = *c*_p·Δ*T* | *w* = *c*_p·Δ*T* |
 | Isentropic power | *P*_s = ṁ·*c*_p·(*T*₂s − *T*₁) = η_s·*P* | *P*_s = ṁ·*c*_p·(*T*₁ − *T*₂s) = *P*/η_s |
 | Volume flows | *V̇*₁ = ṁ·*R*·*T*₁/*p*₁, *V̇*₂ = ṁ·*R*·*T*₂/*p*₂ | same |
 
 Every relation is solved for each of its variables, so a measured outlet temperature gives η_s, a known power gives ṁ.
-The specific work (*w* = *c*_p·Δ*T*, in kJ/kg) is not a variable of its own: Core has no quantity kind for J/kg yet; it
-follows from Δ*T* and *c*_p. Mechanical losses, cooling of the casing, real-gas behaviour and wet steam are not modelled.
+The specific work *w* (`specificWork`, Core quantity kind specific energy: kJ/kg, J/kg, MJ/kg) is the work per kilogram
+of gas (taken in by the compressor, given out by the turbine): an entered *w* gives Δ*T* and, with ṁ, the power.
+Mechanical losses, cooling of the casing, real-gas behaviour and wet steam are not modelled.
 Air at 20 °C and π = 4 with η_s = 80 %: *T*₂s = 435.6 K, θ₂ = 198.1 °C, *P* = 178.9 kW per kg/s. A turbine with 900 °C,
 10 bar → 1 bar, η_s = 88 %: θ₂ = 402.3 °C, *P* = 2.50 MW for 5 kg/s.
 
@@ -261,7 +263,7 @@ The gas (`gas`, engineering section) gives κ and *R* as values without inputs; 
 the table, "Other gas" leaves both to the user. Values for the ideal gas at about 300 K and low pressure (*R* = *R*_m/*M*
 with *R*_m = 8.314 J/(mol·K)), as tabulated in the ideal-gas property tables of the thermodynamics textbooks (Y. A.
 Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach*, McGraw-Hill, table of ideal-gas specific heats of common
-gases at 300 K; H. D. Baehr, S. Kabelac, *Thermodynamik*, Springer; property data also in the VDI Heat Atlas [S29]):
+gases at 300 K; H. D. Baehr, S. Kabelac, *Thermodynamik*, Springer; property data also in the VDI Heat Atlas [S29]; [S40]):
 
 | Gas (`gas`) | κ | *R* in J/(kg·K) | *c*_p in kJ/(kg·K) (= κ·*R*/(κ − 1)) |
 |---|---|---|---|
@@ -282,7 +284,9 @@ the wet region need steam tables (not modelled).
 **Shaft links.** Speed, torque and power pass across drive shafts as described in "Drive shafts" (relations
 `process.shaft.speed`, `process.shaft.torque`, `process.shaft.power`); solving one machine pulls its drive and shaft line
 into the scope. A motor driving a compressor shows the compressor's drive power (and, with its efficiency, the electrical
-input); a turbine driving the generator gives it its shaft power, *P*_el = η·*P*.
+input); a turbine driving the generator gives it its shaft power, *P*_el = η·*P*. A machines-module e-machine on the
+turbine shaft works the same way when its operating mode is "generator" (parameter `mode`, see the machines module):
+it takes the turbine's *P* and gives *P*_el = η·*P* (in motor mode it would draw *P*/η).
 
 **Joins across modules.** The generator terminal `el` names *P*_el for the physical key *P*
 ([engineering-calculations.md, section 6.1](../design/engineering-calculations.md#61-joins-across-modules-core-2026-11-26)):
@@ -295,9 +299,9 @@ machines motor on a compressor shaft takes the compressor's power as its mechani
 |---|---|---|---|
 | `heat.cross` | heat exchanger with all four temperatures: (θ₁,in − θ₂,out)·(θ₁,out − θ₂,in) ≤ 0, a temperature cross that counter-flow cannot reach | warning | [S29] |
 | `process.efficiency` | pumps, fans, motor, generator, compressor and turbine (isentropic): η ≤ 0 or η > 1 (also when η follows from the temperatures, e.g. an outlet colder than the isentropic one) | warning | [S1] |
-| `gas.ratio` | compressor *p*₂ < *p*₁, turbine *p*₂ > *p*₁ (π < 1) | warning | [S29] |
-| `gas.temperature` | compressor θ₂ > θ_max, turbine θ₁ > θ_max (the permissible temperature is entered from the datasheet; no limit is assumed) | warning | [S29] |
-| `gas.kappa` | κ ≤ 1 or κ > 5/3 (no gas) | warning | [S29] |
+| `gas.ratio` | compressor *p*₂ < *p*₁, turbine *p*₂ > *p*₁ (π < 1) | warning | [S40] |
+| `gas.temperature` | compressor θ₂ > θ_max, turbine θ₁ > θ_max (the permissible temperature is entered from the datasheet; no limit is assumed) | warning | [S40] |
+| `gas.kappa` | κ ≤ 1 or κ > 5/3 (no gas) | warning | [S40] |
 
 ## Host notes
 
@@ -320,7 +324,8 @@ turbine (coupling and shared *n*, *T*, *P*). `GasMachineTests` check the gas for
 compressor, gas turbine, efficiency from a measured outlet temperature, every gas of the choice, entered κ, "other gas"),
 the checks, ṁ/θ/*p* from a compressor outlet to a turbine inlet and the pressure stopped by a valve, a machines motor
 that sees a compressor's power without a speed, and a turbine driving the generator whose terminal feeds an energy
-meter through an energy cable. The tests reference the mechanical, machines and energy modules as test dependencies only
+meter through an energy cable, a turbine driving the machines module's generator symbol (generator mode), the specific
+work *w* both ways (S40 cited by every gas relation and check). The tests reference the mechanical, machines and energy modules as test dependencies only
 (the module itself depends on Core alone). The gallery test writes
 `gallery/*.html` into the test output folder (every type in each view, stretched, presets, a distillation sample and
 an air handling unit sample).

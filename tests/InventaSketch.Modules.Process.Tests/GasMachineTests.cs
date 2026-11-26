@@ -274,6 +274,67 @@ namespace InventaSketch.Modules.Process.Tests
             Assert.Equal("net.cross.P", t.Get("meter", "P")!.Via!.Relation.Id);
         }
 
+        /// <summary>
+        /// The machines module's generator (radial machine, schematic, mode generator) on the turbine shaft: the turbine output
+        /// P reaches it over the shaft and it gives P_el = η·P (generator rule, not the motor rule P = η·P_el).
+        /// </summary>
+        [Fact]
+        public void ATurbineDrivesAMachinesGeneratorInGeneratorMode()
+        {
+            var r = Reg();
+            var tb = Make(r, "process.turbine", "tb", 100, 40).WithParam("tempIn", "900 °C").WithParam("pressureIn", "10 bar").WithParam("pressureOut", "1 bar")
+                .WithParam("efficiency", "88 %").WithParam("massFlow", "5 kg/s");
+            var gen = Dock(r, Make(r, "machines.generator.symbol", "gen"), ShaftEnd(r, tb)).WithParam("efficiency", "96 %");
+            Assert.Equal("generator", gen.Str("mode", ""));
+            var doc = Doc(tb, gen);
+            Assert.Contains(Coupling.Graph(r, doc), l => l.Kind == LinkKind.Carried && l.A == "tb" && l.B == "gen");
+            var t = Solve(doc, r, new[] { "tb" });
+            Assert.Empty(t.Conflicts);
+            var p = Val(t, "tb", "P");
+            Assert.Equal(p, Val(t, "gen", "P"), 6);
+            Assert.Equal(0.96 * p, Val(t, "gen", "Pel"), 3);
+        }
+
+        /// <summary>
+        /// Specific work w = c_p·ΔT in kJ/kg: the air compressor of the first test (π = 4, η_s = 80 %) takes 178.9 kJ/kg; an
+        /// entered w gives ΔT and, with ṁ, the power.
+        /// </summary>
+        [Fact]
+        public void SpecificWorkIsCpTimesTheTemperatureChange()
+        {
+            var r = Reg();
+            var k = Make(r, "process.compressor", "k").WithParam("pressureRatio", "4").WithParam("efficiency", "80 %");
+            var t = Solve(Doc(k), r);
+            Assert.Empty(t.Conflicts);
+            var t1 = 20 + C0;
+            var t2 = t1 + (t1 * Math.Pow(4, 0.4 / 1.4) - t1) / 0.8;
+            Assert.Equal(CpAir * (t2 - t1), Val(t, "k", "w"), 6);
+            var w = ProcessValues.For("process.compressor").Variables.Single(v => v.Key == "w");
+            Assert.Same(Quantities.SpecificEnergy, w.Kind);
+            Assert.Equal("kJ/kg", w.Unit);
+            // Backwards: a turbine with 400 kJ/kg and 2 kg/s gives ΔT = 400/1.0045 = 398.2 K and P = 800 kW.
+            var tb = Make(r, "process.turbine", "tb").WithParam("specificWork", "400 kJ/kg").WithParam("massFlow", "2 kg/s");
+            var tt = Solve(Doc(tb), r);
+            Assert.Empty(tt.Conflicts);
+            Assert.Equal(400e3 / CpAir, Val(tt, "tb", "dT"), 6);
+            Assert.Equal(800e3, Val(tt, "tb", "P"), 3);
+            Assert.Contains(tt.Explain("tb", "dT", Lang.En), s => s.RelationId == "process.gas.work.expansion" && s.Source == "S40");
+        }
+
+        /// <summary>The gas relations and checks cite the thermodynamics textbooks (S40); the heat exchangers keep the heat atlas (S29).</summary>
+        [Fact]
+        public void GasRelationsCiteTheThermodynamicsTextbooks()
+        {
+            foreach (var id in new[] { "process.compressor", "process.turbine" })
+            {
+                var spec = ProcessValues.For(id);
+                Assert.All(spec.Relations.Where(rel => rel.Id.StartsWith("process.gas.", StringComparison.Ordinal)), rel => Assert.Equal("S40", rel.Source));
+                Assert.All(spec.Checks.Where(c => c.Id.StartsWith("gas.", StringComparison.Ordinal)), c => Assert.Equal("S40", c.Source));
+            }
+            Assert.Equal("S29", ProcessValues.For("process.hx.shelltube").Relations.First(rel => rel.Id == "process.hx.transfer").Source);
+            Assert.NotNull(ValueSources.Get("S40"));
+        }
+
         [Fact]
         public void TheProcessMotorShowsItsElectricalInput()
         {

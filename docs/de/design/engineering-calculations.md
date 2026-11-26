@@ -165,6 +165,8 @@ Netzlistenexport) sowie Rohr-, Kanal- und Kabelanschlüsse mit `PortMedia`. Jede
 | Zahneingriff, Riemen, Kette | Drehzahlverhältnis *n*₁/*n*₂ = *z*₂/*z*₁ (oder *d*₂/*d*₁); Drehmoment *M*₂ = *M*₁·*i*·*η* | `Links.Ratio`, `GearTrain.Speeds` (relative Drehzahlen, heute nur für die Animation) |
 | Welle, Kupplung, Zahnräder fest auf einer Welle | gleiches *n*; das Drehmoment geht durch, abzüglich abgezweigter Momente | `GearTrain` (Wellen, Stufenräder, Stege über Willis) |
 | Planetensatz | Willis-Gleichung *n*_s − *n*_St = −(*z*_H/*z*_s)(*n*_H − *n*_St); Momentengleichgewicht | `GearTrain` (Stege) |
+| Getriebeeinheit als Element (Planeten-, Ravigneaux-Satz, Differential, Wellgetriebe, Zykloidgetriebe, CVT) mit Wellen an den Gliedanschlüssen | jede angedockte Welle dreht mit ihrem Glied; die Glieder folgen den Drehzahlbeziehungen der Einheit; ein angedocktes Glied zählt als ein Momententeil der Wellenlinie | Core `IGearUnit`, `GearUnitDocking` (genutzt von `GearTrain` und `ShaftLines`, 26.11.2026) |
+| Zahnstange und Ritzel | *v* = *ω*·*r* entlang der Wälzgeraden der Zahnstange | Core `AnchorRole.PitchLine` (Kopplungseingriff, Fangen, `GearTrain` verschiebt die Zahnstange) |
 | Elektrisch in Reihe (ein Zweig) | gleicher Strom *I*; Spannungen addieren sich; *R* und *L* addieren sich, 1/*C* addiert sich | Leitungsnetze (Andockpunkte, Knoten) |
 | Elektrisch parallel (dieselben zwei Netze) | gleiche Spannung *U*; Ströme addieren sich; 1/*R* addiert sich, *C* addiert sich | Leitungsnetze |
 | Knoten mit allen Strömen bis auf einen bekannt | Knotenregel: Σ*I* = 0 | Leitungsnetze |
@@ -351,6 +353,7 @@ Nutzer ein.
 | Elektrische Frequenz (PMSM) | *f* = *n*·*p*/60 | *n*, Polzahl, *f* | – | [S15] |
 | Rad / Fahrzeug | *v* = *ω*·*r*_dyn; *F* = *M*/*r*_dyn; *P* = *F*·*v* | *r*, *n*, *M*, *v*, *F* | – | [S18] |
 | Verbrennungsmotor (Block) | *P* = 2π·*n*·*M* (keine Thermodynamik) | *n, M, P* | – | [S1] |
+| Motor- oder Generatorbetrieb (Maschinenmodul, Parameter `mode`; 26.11.2026) | Motor (Standard): *P*_mech = *η*·*P*_el (`mach.efficiency.motor`); Generator, angetrieben von einer Turbine oder einem Verbrennungsmotor: *P*_el = *η*·*P*_mech (`mach.efficiency.generator`) | *P, P*_el*, η* | – | [S14] |
 
 ### 2.6 Kinematik
 
@@ -390,6 +393,8 @@ Nutzer ein.
 | Ventilator | *P* = Δ*p*·*V̇*/*η*; Ähnlichkeitsgesetze wie bei Pumpen | Δ*p, V̇, P, η* | – | [S28, S30] |
 | Behälter / Speicher | *V* = π*D*²·*h*/4 (Zylinder); gespeicherte Wärme *Q* = *ρ*·*V*·*c*·Δ*θ* | *V, D, h, Δθ, Q* | – | [S29] |
 | Thermodynamische Kreisprozesse (vorhanden) | Otto- / Diesel-Wirkungsgrad (`process.chart.pv`) | *ε*, *φ*, *κ* | – | vorhandener Code |
+| Gasverdichter und -turbine (ideales Gas, konstantes *κ*; 26.11.2026) | *c*_p = *κ*·*R*/(*κ* − 1); Verdichter *p*₂ = *π*·*p*₁, Turbine *p*₁ = *π*·*p*₂; isentroper Austritt *T*₂s = *T*₁·*π*^(±(*κ*−1)/*κ*); isentroper Wirkungsgrad Verdichtung *η*_s = (*T*₂s − *T*₁)/(*T*₂ − *T*₁), Entspannung *η*_s = (*T*₁ − *T*₂)/(*T*₁ − *T*₂s); Δ*T* = Erhöhung bzw. Absenkung; Leistung *P* = *ṁ*·*c*_p·Δ*T*; spezifische Arbeit *w* = *c*_p·Δ*T* (kJ/kg, Größenart spezifische Energie); isentrope Leistung *P*_s; Volumenstrom *V̇* = *ṁ*·*R*·*T*/*p* (absolute *p*, *T*) | *ṁ, π, p*₁*, p*₂*, θ*₁*, θ*₂*, θ*₂s*, η*_s*, ΔT, w, P, P*_s*, V̇*₁*, V̇*₂*, κ, R, c*_p; Gaswahl (Luft, N₂, O₂, CO₂, CH₄, H₂, He, Ar, Dampf) | Luft bei 20 °C, *π* = 4, *η*_s = 80 %: *w* = 178,9 kJ/kg | [S40] |
+| Generator (Verfahrenstechnik, angetrieben) | *P*_el = *η*·*P* (Wellenleistung hinein, elektrische Leistung heraus; die Klemme `el` gibt *P*_el an ein Energiekabel); der Verfahrensmotor *P* = *η*·*P*_el | *P, P*_el*, η, n, M* | – | [S15] |
 
 ### 2.9 Lüftung, Klima und Gebäudetechnik
 
@@ -602,6 +607,10 @@ Datenblatt steht, das wir nicht übernehmen.
 | `heat.cross` | Wärmeübertrager | Temperaturkreuzung (kalter Austritt über heißem Eintritt; Gleichstrom: kalter Austritt über heißem Austritt) | Warnung (unmöglich) | [S29] |
 | `heat.cop.carnot` | Wärmepumpe | COP > COP_Carnot | Warnung (unmöglich) | [S29] |
 | `heat.balance` | Wärmeerzeuger ↔ Verbraucher | Σ*Φ*_Verbraucher > *Φ*_Erzeuger | Hinweis | [S29] |
+| `process.efficiency` | Verfahrenspumpen, Ventilatoren, Motor, Generator; Verdichter und Turbine (isentrop) | *η* ≤ 0 oder *η* > 1 (auch wenn *η* aus den Temperaturen folgt, z. B. ein Austritt kälter als der isentrope) | Warnung | [S1] |
+| `gas.ratio` | Verdichter, Turbine | Verdichter *p*₂ < *p*₁, Turbine *p*₂ > *p*₁ (Druckverhältnis *π* < 1) | Warnung | [S40] |
+| `gas.temperature` | Verdichter, Turbine | Verdichter *θ*₂ > *θ*_max, Turbine *θ*₁ > *θ*_max (*θ*_max aus dem Datenblatt eingegeben, keine Grenze angenommen) | Warnung | [S40] |
+| `gas.kappa` | Verdichter, Turbine | *κ* ≤ 1 oder *κ* > 5/3 (kein ideales Gas) | Warnung | [S40] |
 | `heat.roomload` | Heizkörper ↔ Raum | Σ*Φ* der Heizflächen im Raum < *Φ*_HL des Raums (Schätzung *q*·*A*) | Hinweis | [S30] |
 | `pv.voc.max` | Strang ↔ Wechselrichter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | Warnung | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | Strang ↔ Wechselrichter | *N*_s·*U*_mpp(*θ*_max) < MPPT-Minimum | Hinweis | [S33, S34] |
@@ -993,6 +1002,10 @@ ihrer jeweils aktuellen Auflage gemeint.
   Mechatronic Systems* (Wiley) – Leistungsgrößen (Potenzial × Fluss) über Domänen hinweg.
 - **[S39]** H. W. Müller, *Die Umlaufgetriebe* (Springer) – Willis-Gleichung und Montagebedingungen von
   Planetengetrieben.
+- **[S40]** Lehrbücher der technischen Thermodynamik: H. D. Baehr, S. Kabelac, *Thermodynamik – Grundlagen und
+  technische Anwendungen* (Springer Vieweg); Y. A. Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach*
+  (McGraw-Hill) – ideales Gas, isentrope Zustandsänderung, Verdichter und Turbinen (nur bibliografische Angaben; keine
+  Tabellen übernommen).
 
 Vorhandene Code-Beziehungen, die hier wiederverwendet werden: `Linkages.Grubler` und `Linkage.Dof` (Kinematik, Core),
 `GearTrain.Speeds` und `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Verfahrenstechnik) und
@@ -1027,7 +1040,9 @@ Dieser Abschnitt hält die Entscheidungen fest, die das Konzept offen ließ. Ma�
   Wärmestrom, Widerstand, Kapazität, Induktivität, Ladung, spezifischer Widerstand, Frequenz, Drehzahl, Winkel, Zeit,
   Länge, Fläche, Volumen, Masse, Kraft, Drehmoment, Energie, Geschwindigkeit, Beschleunigung, Druck, Volumenstrom,
   Massenstrom, Temperatur, Temperaturdifferenz, Dichte, spezifische Wärmekapazität, Wärmedurchgangskoeffizient,
-  Bestrahlungsstärke, kinematische Viskosität, Trägheitsmoment, Federrate. Drehmoment und Energie, Leistung und
+  Bestrahlungsstärke, kinematische Viskosität, Trägheitsmoment, Federrate (später auch Drehfederrate,
+  Temperaturkoeffizient und seit Runde 4 vom 26.11.2026 **spezifische Energie**: kJ/kg (Standard), J/kg, MJ/kg, kWh/kg,
+  für die spezifische Arbeit von Verdichtern und Turbinen). Drehmoment und Energie, Leistung und
   Wärmestrom, Temperatur und Temperaturdifferenz teilen sich eine Dimension und sind getrennte Größenarten. Die erste
   Einheit einer Größenart ist ihre Anzeigeeinheit (Ladung: Ah, Drehzahl: min⁻¹, Temperatur: °C).
 - **Einheiten** haben Faktor und Nullpunkt zum SI und eine ausdrückliche Liste der SI-Vorsätze, die sie annehmen und

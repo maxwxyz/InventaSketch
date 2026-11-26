@@ -225,8 +225,8 @@ optionalen Textparametern (Ingenieurabschnitt des Inspektors). Wasser ist das vo
 |---|---|---|
 | Kreiselpumpe | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, Welle), η (`efficiency`); Panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`), *n* (`speed`), *M* (`torque`); Ingenieur ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*M* [S18] |
 | Verdrängerpumpe, Ventilator | *V̇*, Δ*p*, *P*, η; Panel *P*_hyd, *n*, *M* | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*M* [S18] |
-| Verdichter | *P* (`power`, Antrieb), ṁ (`massFlow`, kg/s), π = *p*₂/*p*₁ (`pressureRatio`), θ₂ (`tempOut`); Panel θ₁ (`tempIn`, Vorgabe 20 °C), *p*₁ (`pressureIn`, absolut, Vorgabe 1,01325 bar), *p*₂ (`pressureOut`), η_s (`efficiency`, isentrop), Δ*T* (`deltaT`, Erhöhung), *V̇*₁ (`flowIn`), θ_max (`tempMax`, zulässige Austrittstemperatur), *n*, *M*; Ingenieur θ₂s (`tempOutIs`), *P*_s (`powerIs`), *V̇*₂ (`flowOut`), κ (`kappa`), *R*_s (`gasConstant`), *c*_p (`specificHeat`); Auswahl Gas (`gas`, Luft) | siehe „Gasmaschinen“ [S29]; *P* = 2π·*n*·*M* [S18] |
-| Turbine / Entspannungsmaschine | *P* (`power`, Abgabe), ṁ, π = *p*₁/*p*₂, θ₁; Panel θ₂, *p*₁, *p*₂, η_s, Δ*T* (Absenkung), *V̇*₁, θ_max (zulässige Eintrittstemperatur), *n*, *M*; Ingenieur wie beim Verdichter; keine Vorgaben am Eintritt | siehe „Gasmaschinen“ [S29]; *P* = 2π·*n*·*M* [S18] |
+| Verdichter | *P* (`power`, Antrieb), ṁ (`massFlow`, kg/s), π = *p*₂/*p*₁ (`pressureRatio`), θ₂ (`tempOut`); Panel θ₁ (`tempIn`, Vorgabe 20 °C), *p*₁ (`pressureIn`, absolut, Vorgabe 1,01325 bar), *p*₂ (`pressureOut`), η_s (`efficiency`, isentrop), Δ*T* (`deltaT`, Erhöhung), *w* (`specificWork`, spezifische Arbeit, kJ/kg), *V̇*₁ (`flowIn`), θ_max (`tempMax`, zulässige Austrittstemperatur), *n*, *M*; Ingenieur θ₂s (`tempOutIs`), *P*_s (`powerIs`), *V̇*₂ (`flowOut`), κ (`kappa`), *R*_s (`gasConstant`), *c*_p (`specificHeat`); Auswahl Gas (`gas`, Luft) | siehe „Gasmaschinen“ [S40]; *P* = 2π·*n*·*M* [S18] |
+| Turbine / Entspannungsmaschine | *P* (`power`, Abgabe), ṁ, π = *p*₁/*p*₂, θ₁; Panel θ₂, *p*₁, *p*₂, η_s, Δ*T* (Absenkung), *w* (`specificWork`), *V̇*₁, θ_max (zulässige Eintrittstemperatur), *n*, *M*; Ingenieur wie beim Verdichter; keine Vorgaben am Eintritt | siehe „Gasmaschinen“ [S40]; *P* = 2π·*n*·*M* [S18] |
 | Antriebsmotor | *P* (`power`, Abgabe), *n*, *M*; Panel η (`efficiency`), *P*_el (`powerEl`, elektrische Aufnahme) | *P* = 2π·*n*·*M* [S18]; *P* = η·*P*_el [S15] |
 | Generator | *P*_el (`powerEl`, elektrische Abgabe), *P* (`power`, Wellenaufnahme), η (`efficiency`), *n*; Panel *M* | *P* = 2π·*n*·*M* [S18]; *P*_el = η·*P* [S15] |
 | Rohrbündel-, Platten-, allgemeiner Wärmeübertrager | Φ (`duty`), *k* (`u`), *A* (`area`), Δθ_m (`lmtd`); Panel ṁ₁ (`massFlow1`), θ₁,ein (`temp1In`), θ₁,aus (`temp1Out`), ṁ₂, θ₂,ein, θ₂,aus; Ingenieur *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,ein − θ₁,aus); Φ = ṁ₂·*c*₂·(θ₂,aus − θ₂,ein); Gegenstrom Δθ_m = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) mit Δθ_a = θ₁,ein − θ₂,aus, Δθ_b = θ₁,aus − θ₂,ein; Φ = *k*·*A*·Δθ_m [S29] |
@@ -255,7 +255,7 @@ Dichte um (voreingestellt Wasser: für ein Gas ρ an der Leitung eintragen). Kon
 Silos haben keine Werte.
 
 **Gasmaschinen (Verdichter, Turbine).** Ideales Gas mit konstanten Stoffwerten, adiabate Maschine, absolute Drücke und
-Temperaturen [S29]:
+Temperaturen [S40]:
 
 | Beziehung | Verdichter | Turbine / Entspannungsmaschine |
 |---|---|---|
@@ -265,12 +265,14 @@ Temperaturen [S29]:
 | Isentroper Wirkungsgrad | η_s = (*T*₂s − *T*₁)/(*T*₂ − *T*₁) | η_s = (*T*₁ − *T*₂)/(*T*₁ − *T*₂s) |
 | Temperaturänderung | Δ*T* = *T*₂ − *T*₁ | Δ*T* = *T*₁ − *T*₂ |
 | Leistung (Antrieb / Expansionsarbeit je Sekunde) | *P* = ṁ·*c*_p·Δ*T* | *P* = ṁ·*c*_p·Δ*T* |
+| Spezifische Arbeit (kJ/kg) | *w* = *c*_p·Δ*T* | *w* = *c*_p·Δ*T* |
 | Isentrope Leistung | *P*_s = ṁ·*c*_p·(*T*₂s − *T*₁) = η_s·*P* | *P*_s = ṁ·*c*_p·(*T*₁ − *T*₂s) = *P*/η_s |
 | Volumenströme | *V̇*₁ = ṁ·*R*_s·*T*₁/*p*₁, *V̇*₂ = ṁ·*R*_s·*T*₂/*p*₂ | ebenso |
 
 Jede Beziehung wird nach jeder ihrer Größen gelöst: eine gemessene Austrittstemperatur ergibt η_s, eine bekannte Leistung
-ergibt ṁ. Die spezifische Arbeit (*w* = *c*_p·Δ*T*, in kJ/kg) ist keine eigene Größe: der Kern hat noch keine Größenart für
-J/kg; sie folgt aus Δ*T* und *c*_p. Mechanische Verluste, Gehäusekühlung, Realgasverhalten und Nassdampf werden nicht
+ergibt ṁ. Die spezifische Arbeit *w* (`specificWork`, Größenart spezifische Energie des Kerns: kJ/kg, J/kg, MJ/kg) ist
+die Arbeit je Kilogramm Gas (vom Verdichter aufgenommen, von der Turbine abgegeben): ein eingetragenes *w* ergibt Δ*T*
+und mit ṁ die Leistung. Mechanische Verluste, Gehäusekühlung, Realgasverhalten und Nassdampf werden nicht
 abgebildet. Luft bei 20 °C und π = 4 mit η_s = 80 %: *T*₂s = 435,6 K, θ₂ = 198,1 °C, *P* = 178,9 kW je kg/s. Eine Turbine
 mit 900 °C, 10 bar → 1 bar, η_s = 88 %: θ₂ = 402,3 °C, *P* = 2,50 MW bei 5 kg/s.
 
@@ -279,7 +281,7 @@ Tabelle vor, „Anderes Gas“ überlässt beide dem Anwender. Werte für das id
 (*R*_s = *R*_m/*M* mit *R*_m = 8,314 J/(mol·K)), wie in den Stoffwerttabellen idealer Gase der Thermodynamik-Lehrbücher
 angegeben (Y. A. Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach*, McGraw-Hill, Tabelle der spezifischen
 Wärmekapazitäten gebräuchlicher idealer Gase bei 300 K; H. D. Baehr, S. Kabelac, *Thermodynamik*, Springer; Stoffwerte
-auch im VDI-Wärmeatlas [S29]):
+auch im VDI-Wärmeatlas [S29]; [S40]):
 
 | Gas (`gas`) | κ | *R*_s in J/(kg·K) | *c*_p in kJ/(kg·K) (= κ·*R*_s/(κ − 1)) |
 |---|---|---|---|
@@ -301,7 +303,9 @@ Dampfturbinen im Nassdampfgebiet brauchen Dampftafeln (nicht abgebildet).
 beschrieben (Beziehungen `process.shaft.speed`, `process.shaft.torque`, `process.shaft.power`); das Lösen einer Maschine
 holt ihren Antrieb und ihren Wellenstrang in den Umfang. Ein Motor, der einen Verdichter antreibt, zeigt dessen
 Antriebsleistung (und mit seinem Wirkungsgrad die elektrische Aufnahme); eine Turbine, die den Generator antreibt, gibt
-ihm ihre Wellenleistung, *P*_el = η·*P*.
+ihm ihre Wellenleistung, *P*_el = η·*P*. Eine E-Maschine des Maschinenmoduls an der Turbinenwelle verhält sich ebenso,
+wenn ihre Betriebsart „Generator“ ist (Parameter `mode`, siehe Maschinenmodul): sie übernimmt die *P* der Turbine und
+gibt *P*_el = η·*P* ab (im Motorbetrieb nähme sie *P*/η auf).
 
 **Modulübergreifend.** Der Generatoranschluss `el` nennt *P*_el für den physikalischen Schlüssel *P*
 ([engineering-calculations.md, Abschnitt 6.1](../design/engineering-calculations.md#61-verknüpfung-über-modulgrenzen-core-26112026)):
@@ -315,9 +319,9 @@ Verdichters als seine mechanische *P* (sein *P*_el = *P*/η).
 |---|---|---|---|
 | `heat.cross` | Wärmeübertrager mit allen vier Temperaturen: (θ₁,ein − θ₂,aus)·(θ₁,aus − θ₂,ein) ≤ 0, eine Temperaturkreuzung, die im Gegenstrom nicht erreichbar ist | Warnung | [S29] |
 | `process.efficiency` | Pumpen, Ventilatoren, Motor, Generator, Verdichter und Turbine (isentrop): η ≤ 0 oder η > 1 (auch wenn η aus den Temperaturen folgt, z. B. ein Austritt kälter als der isentrope) | Warnung | [S1] |
-| `gas.ratio` | Verdichter *p*₂ < *p*₁, Turbine *p*₂ > *p*₁ (π < 1) | Warnung | [S29] |
-| `gas.temperature` | Verdichter θ₂ > θ_max, Turbine θ₁ > θ_max (die zulässige Temperatur wird aus dem Datenblatt eingetragen; es wird kein Grenzwert angenommen) | Warnung | [S29] |
-| `gas.kappa` | κ ≤ 1 oder κ > 5/3 (kein Gas) | Warnung | [S29] |
+| `gas.ratio` | Verdichter *p*₂ < *p*₁, Turbine *p*₂ > *p*₁ (π < 1) | Warnung | [S40] |
+| `gas.temperature` | Verdichter θ₂ > θ_max, Turbine θ₁ > θ_max (die zulässige Temperatur wird aus dem Datenblatt eingetragen; es wird kein Grenzwert angenommen) | Warnung | [S40] |
+| `gas.kappa` | κ ≤ 1 oder κ > 5/3 (kein Gas) | Warnung | [S40] |
 
 ## Hinweise für Hosts
 
@@ -342,6 +346,7 @@ Maschinenmoduls, einen Wellenstrang mit E-Maschine, den Prozessmotor und eine Tu
 einer gemessenen Austrittstemperatur, jedes Gas der Auswahl, eingetragenes κ, „Anderes Gas“), die Prüfungen, ṁ/θ/*p* vom
 Verdichteraustritt zum Turbineneintritt und den an einer Armatur gestoppten Druck, einen Motor des Maschinenmoduls, der
 die Leistung eines Verdichters ohne Drehzahl sieht, und eine Turbine, die den Generator antreibt, dessen Anschluss über
-ein Energiekabel einen Zähler speist. Die Tests nutzen das Mechanik-, das Maschinen- und das Energiemodul nur als
+ein Energiekabel einen Zähler speist, eine Turbine, die das Generatorsymbol des Maschinenmoduls antreibt
+(Generatorbetrieb), und die spezifische Arbeit *w* in beide Richtungen (S40 bei jeder Gasbeziehung und -prüfung). Die Tests nutzen das Mechanik-, das Maschinen- und das Energiemodul nur als
 Testabhängigkeiten (das Modul selbst hängt allein vom Kern ab). Der Galerie-Test schreibt `gallery/*.html` in den Testausgabeordner (jeder Typ in jeder Ansicht,
 gestreckt, Vorlagen, ein Destillations- und ein Lüftungsgeräte-Beispiel).
