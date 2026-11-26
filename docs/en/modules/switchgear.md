@@ -6,12 +6,15 @@ installation and switchgear".
 
 The module draws **distribution boards and control cabinets on TS35 DIN rails** and the **installation devices in the
 rooms** they feed: modular devices with front views that look like the real devices (lever, rating "B16", "30 mA", test
-button, screw terminals), circuit symbol views, terminal blocks with bridges, rails, ducts, end clamps and labels, wires
-and cables. Designations and ratings are optional parameters shown on the devices; five **installation reports** (CSV
-and Markdown) are generated from the page.
+button, screw terminals), industrial devices (motor protection circuit breaker, overload relay, NH fuse
+switch-disconnector, frequency inverter, PLC modules, safety relay), circuit symbol views, terminal blocks with bridges,
+rails, comb busbars, blanking plates, ducts, end clamps and labels, wires and cables. Designations and ratings are
+optional parameters shown on the devices; five **installation reports** (CSV and Markdown) are generated from the page.
+Optional **element values** add up the loads per circuit and per phase and check a few plausibility rules (see "Values
+and checks").
 
-It is a **sketching and documentation** module: it does not dimension circuits, check selectivity or verify protective
-measures, and it claims no compliance with a standard. Front views are drawn independently after the common look of
+It is a **sketching and documentation** module: it sums entered loads, but it does not size cables, check selectivity
+or verify protective measures, and it claims no compliance with a standard. Front views are drawn independently after the common look of
 modular devices; no manufacturer design or standard artwork is copied. The module draws everything itself and depends
 on no other module (its circuit symbols are its own, not the electrical module's).
 
@@ -30,27 +33,41 @@ on no other module (its circuit symbols are its own, not the electrical module's
   `electric.installation` (connector: cable `sw.line.cable`). Wire and cable ends dock there and follow the device; "+"
   builds on (connector, next element). Pin ids follow the usual terminal markings: poles `1/2`, `3/4`, `5/6`, neutral
   `N1` (top) / `N2` (bottom), coils `A1/A2`, changeover contacts `11/12/14`, timer `15/16/18`, surge protection
-  `L1…L3`, `N`, `PE`, bus `bus`, bus actuator channels `A1/A2`, `B1/B2` …, terminals `1/2` (levels `3/4`, `5/6`).
+  `L1…L3`, `N`, `PE`, bus `bus`, bus actuator channels `A1/A2`, `B1/B2` …, terminals `1/2` (levels `3/4`, `5/6`);
+  motor protection, overload relay and NH fuse switch `1/2`, `3/4`, `5/6` (overload relay auxiliary contacts `95/96`
+  NC, `97/98` NO), frequency inverter `L1…L3` (single-phase `L`, `N`) → `U`, `V`, `W`, PLC modules `L+`, `M` and the
+  channels `I0…`, `Q0…`, `AI0…`, `AQ0…` (CPU: network `X1`, medium `data`), safety relay `A1/A2`, `S11/S12`,
+  `S21/S22`, `13/14`, `23/24`, comb busbar teeth `t1…tn` (on its bottom edge at the module centres, where the top pins
+  of single-module devices are).
 - **Views:** modular devices and terminals have a *front view* (default) and a *circuit symbol* view (IEC 60617-like
   contacts, coils, terminals, drawn open/unoperated, with dashed mechanical link, residual current toroid and IΔ release,
   designation and rating at the right). Both views have the same pin ids; switching keeps the visual scale.
 - **Designations** follow the ideas of IEC 81346 (letter codes after IEC 81346-2): `-F` protecting (MCB, RCD, RCBO,
-  SPD), `-Q` switching energy (main switch, contactor), `-K` processing signals (relays, timer relays, bus devices),
-  `-P` presenting (meter, indicator lamp), `-T` converting (power supplies), `-S` manual input (push button, switch),
+  SPD, overload relay, NH fuse switch), `-Q` switching energy (main switch, contactor, motor protection), `-K` processing
+  signals (relays, timer relays, bus devices, PLC modules, safety relay), `-P` presenting (meter, indicator lamp), `-T`
+  converting (power supplies, frequency inverter), `-S` manual input (push button, switch),
   `-X` connecting (terminals, sockets), `-W` cables. They are free text: "Designation …" pre-fills the letter code.
   **Equal designations belong together** (one node in the circuit plan, one cable in the cable list).
-- **Choices are dropdowns** (`ActionChoices.FromParam`): poles, characteristic, rating, residual current, RCD type,
-  coil voltage, contacts, function, colour, cross-section … The lever state is a toggle ("Switched on").
+- **Choices are dropdowns** (`ActionChoices.FromParam`): poles, characteristic, rating, phase, residual current, RCD
+  type, coil voltage, contacts, function, colour, cross-section … The lever state is a toggle ("Switched on").
 
 ## Object types
 
 | Type id | Element (EN / DE) | Parameters (all optional) |
 |---|---|---|
-| `sw.protection.mcb` | Miniature circuit breaker / Leitungsschutzschalter | `char` B/C/D, `rating` 6–63 A, `poles` 1, 1+N, 2, 3, 3+N, `on` |
+| `sw.protection.mcb` | Miniature circuit breaker / Leitungsschutzschalter | `char` B/C/D, `rating` 6–63 A, `poles` 1, 1+N, 2, 3, 3+N, `phase` L1/L2/L3 (not for 3 poles), `on` |
 | `sw.protection.rcd` | Residual current device / Fehlerstromschutzschalter | `poles` 2/4, `rating` 25–100 A, `idn` 10–500 mA, `rcdType` AC/A/F/B, `on` |
-| `sw.protection.rcbo` | RCBO / FI/LS-Schalter | `poles` 1+N, 3+N, `char`, `rating`, `idn`, `rcdType`, `on` |
+| `sw.protection.rcbo` | RCBO / FI/LS-Schalter | `poles` 1+N, 3+N, `char`, `rating`, `idn`, `rcdType`, `phase` (1+N), `on` |
 | `sw.protection.spd` | Surge protective device / Überspannungsschutz | `spdType` 1, 1+2, 2, 3, `poles` 1, 1+N, 3, 3+N |
 | `sw.switch.main` | Main switch (switch-disconnector) / Hauptschalter | `poles` 1–4, `rating` 32–125 A, `on` |
+| `sw.protection.mpcb` | Motor protection circuit breaker / Motorschutzschalter | `rating` set current 0.4–32 A, `on` (rotary handle I/O); 3 modules |
+| `sw.protection.overload` | Thermal overload relay / Überlastrelais (thermisch) | `rating` set current 0.4–32 A; 2 modules |
+| `sw.fuse.nh` | NH fuse switch-disconnector / NH-Sicherungslasttrenner | `size` NH000/NH00, `rating` 16–160 A (gG), `on` (cover closed/open); 6 modules |
+| `sw.drive.vfd` | Frequency inverter / Frequenzumrichter | `power` 0.37–7.5 kW (4–6 modules), `supply` three-phase 400 V / single-phase 230 V |
+| `sw.plc.module` | PLC module / SPS-Baugruppe | `kind` CPU, digital inputs, digital outputs, analogue inputs, analogue outputs, `channels` 8/16 (2 or 4 modules; CPU 4) |
+| `sw.safety.relay` | Safety relay / Sicherheitsrelais | `function` emergency stop, guard door, light curtain (pictogram), `coil` 24 V DC / 230 V AC; 2 modules |
+| `sw.busbar.comb` | Comb busbar / Phasenschiene (Kammschiene) | `phases` 1, 1+N, 3, 3+N (tooth labels L1 L2 L3 …), `positions` 2–24 modules, `section` 10/16 mm² |
+| `sw.blank` | Blanking plate / Abdeckstreifen | `modules` 1–24 (45 mm high, the front plate opening) |
 | `sw.meter.energy` | Energy meter / Energiezähler | `phases` 1/3 |
 | `sw.supply.psu` | DIN-rail power supply / Hutschienennetzteil | `voltage` 5–48 V, `power` 15–120 W (1–4 modules) |
 | `sw.switching.contactor` | Installation contactor / Installationsschütz | `contacts` 2 NO, 4 NO, 2 NO + 2 NC, `coil` |
@@ -76,30 +93,77 @@ on no other module (its circuit symbols are its own, not the electrical module's
 | `sw.label.strip` | Labelling strip / Beschriftungsstreifen | `content` designation and circuit / designation / circuit |
 | `sw.label.plate` | Label plate / Bezeichnungsschild | free text |
 | `sw.line.wire` | Wire (core) / Ader | `colour` (IEC 60757 codes BK, BN, GY, BU, GNYE, RD, DBU, WH, VT, OG), `section`, `ref` (wire number) |
-| `sw.line.cable` | Cable / Kabel | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to` |
-| `sw.house.socket` | Socket outlet (room/circuit) / Steckdose (Raum/Stromkreis) | `gangs` 1–3, `room`, `feed`, `ref` |
-| `sw.house.switch` | Light switch (room/circuit) / Lichtschalter | `kind` one-way, two-way, intermediate, push button, dimmer, `room`, `feed`, `ref` |
-| `sw.house.light` | Light outlet (room/circuit) / Leuchtenauslass | `kind` ceiling/wall, `room`, `feed`, `ref` |
-| `sw.house.appliance` | Appliance connection (room/circuit) / Geräteanschluss | `kind` cooker, washing machine, dryer, dishwasher, water heater, appliance, `room`, `feed`, `ref` |
+| `sw.line.cable` | Cable / Kabel | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to`, `iz` (current-carrying capacity, A) |
+| `sw.house.socket` | Socket outlet (room/circuit) / Steckdose (Raum/Stromkreis) | `gangs` 1–3, `room`, `feed`, `ref`, `phase` |
+| `sw.house.switch` | Light switch (room/circuit) / Lichtschalter | `kind` one-way, two-way, intermediate, push button, dimmer, `room`, `feed`, `ref`, `phase` |
+| `sw.house.light` | Light outlet (room/circuit) / Leuchtenauslass | `kind` ceiling/wall, `room`, `feed`, `ref`, `phase` |
+| `sw.house.appliance` | Appliance connection (room/circuit) / Geräteanschluss | `kind` cooker, washing machine, dryer, dishwasher, water heater, appliance, `room`, `feed`, `ref`, `phase` |
 
 Every modular device also has `ref` (designation), `circuit` (circuit name, the label text) and `feed` (designation of
 the device that feeds it); circuit breakers and RCBOs also `room`. Terminals use `ref` for the strip designation
-("-X1") and `number` for the terminal number.
+("-X1") and `number` for the terminal number. The value parameters (`ib`, `power`, `iz`, `current`, `voltage` …, see
+"Values and checks") are optional text parameters in the advanced part of the inspector.
 
-The library offers 71 items (35 types) in seven categories (protection & isolation; switching & control; meters, supplies & bus
-devices; terminal blocks; rails, ducts & labels; wires & cables; installation devices in the rooms), e.g. "MCB B16,
-1-pole", "RCD 40 A 30 mA, 4-pole", "KNX switch actuator, 4-fold", "Double-level terminal 2.5 mm²", "Cable NYM-J 5×2.5".
+The library offers 88 items (43 types) in eight categories (protection & isolation; switching & control; meters,
+supplies & bus devices; drives & automation; terminal blocks; rails, ducts & labels; wires & cables; installation devices
+in the rooms), e.g. "MCB B16, 1-pole", "RCD 40 A 30 mA, 4-pole", "Motor protection circuit breaker 4 A", "NH00 fuse
+switch-disconnector 63 A", "Frequency inverter 0.75 kW, 3~", "PLC digital input module, 8 channels", "Comb busbar
+3-phase (12 modules)", "Blanking plate (6 modules)", "KNX switch actuator, 4-fold", "Cable NYM-J 5×2.5".
 
 ## Actions
 
 - Choices (dropdowns) for every choice parameter of the element; changing poles, channels, power or cross-section
   resizes the box (left edge kept).
-- **Switched on** (toggle): lever up/down, contact window red/green (circuit breakers, RCDs, RCBOs, main switch, switch).
+- **Switched on** (toggle): lever up/down, contact window red/green (circuit breakers, RCDs, RCBOs, main switch, switch);
+  rotary handle upright/across (motor protection); cover closed/open (NH fuse switch).
 - **Designation …** (all devices, terminals, wires, cables), **Rail name …**, **Length …** (cables).
 - **Number the strip** (terminals): numbers the terminals with the same strip designation on the page (without a
   designation: the terminals of the same row) 1, 2, 3 … from left to right.
-- **One position more / fewer** (plug-in bridge).
-- Room devices: **Room …** and **Circuit …** (the designation of the feeding device, e.g. "-F3", shown at the symbol).
+- **One position more / fewer** (plug-in bridge); **One module more / fewer** (comb busbar, blanking plate), resizing
+  the box with its left edge kept.
+- **Phase** (dropdown): L1/L2/L3 on single-pole circuit breakers and RCBOs 1+N (not offered for three-phase devices);
+  From the circuit / L1 / L2 / L3 / Three-phase on room devices.
+- Room devices: **Room …** and **Circuit …** (the designation of the feeding device, e.g. "-F3", shown at the symbol);
+  a phase chosen for the room device itself is shown at its top right ("L2", "3~").
+
+## Values and checks
+
+The module takes part in the engineering calculations (element values in the Values panel, the values label, checks;
+`docs/en/design/engineering-calculations.md`). Every value is optional and every item still inserts without one;
+derived values are never stored.
+
+| Element | Variables (card values first) | Parameters |
+|---|---|---|
+| MCB, RCBO, motor protection, overload relay, NH fuse switch | I_n rated current (motor protection and overload relay: set current I_r), I_B operating current of the circuit, P power of the circuit; I_z current-carrying capacity of the cable, I_a instantaneous tripping current (MCB, RCBO), I_Δn (RCBO) | `rating` (the rating choice itself), `ib`, `power`, `iz`, `ia`, `idn` |
+| RCD | I_n, I_B, P; I_Δn | `rating`, `ib`, `power`, `idn` |
+| Main switch | I_n, I_B, P | `rating`, `ib`, `power` |
+| Room devices, frequency inverter | P power (inverter: rated power, the `power` choice in kW), I current per phase; U voltage phase to neutral (default 230 V), cos φ (default 1) | `power`, `current`, `voltage`, `powerFactor` |
+| DIN rail | I_L1, I_L2, I_L3 current per phase, P power of the board; ΔI imbalance, ΔI_max permitted imbalance (default 20 A) | `currentL1` … `currentL3`, `power`, `imbalance`, `imbalanceMax` |
+
+- **Loads:** I = P/(U·cos φ) single-phase, I = P/(3·U·cos φ) three-phase (symmetrical, U phase to neutral) [S7].
+- **Circuits:** the circuit of a device is its part of the feed tree of the circuit plan (same rules: "fed from",
+  wiring, rail order); an RCD or main switch covers everything below it, a frequency inverter is a load of the device
+  that feeds it. P = sum of the load powers; I_B = sum of the load currents for a single-phase device, the largest
+  phase sum for a three-phase device (a three-phase load counts on every phase) [S7]. Only loads with a power or a
+  current entered count; a circuit without them has no I_B. No diversity (simultaneity) factor is applied.
+- **Instantaneous tripping:** I_a = 5·I_n, 10·I_n, 20·I_n for characteristic B, C, D (upper limit of the range) [S11].
+- **Rated current:** I_n is read from the rating choice ("16" → 16 A); a value entered in the Values panel is written
+  back into the choice as text ("20"), so the device shows it.
+- **Cable:** I_z is typed on the device or on a cable of the circuit (cable parameter `iz`; a cable docked at a bottom
+  pin of the device or at one of its loads, the smallest value wins). The module knows the cross-section but does not
+  derive I_z from it: the current-carrying capacity depends on the installation method, grouping and ambient
+  temperature (IEC 60364-5-52 tables, not copied).
+- **Phases:** in a single-phase circuit the device's `phase` decides; in a three-phase circuit the load's own `phase`
+  ("from the circuit" = three-phase); a load without a drawn feeding device uses its own choice ("from the circuit" =
+  L1). An inverter follows its supply (three-phase, or the phase of its circuit).
+- **Rail totals:** I_Lk = sum of the currents of the loads on phase k, P = sum of the powers, each load counted once
+  through the nearest device on a rail that feeds it; ΔI = largest − smallest phase current.
+
+| Check | Severity | Rule | Source |
+|---|---|---|---|
+| `sw.load.rating` | warning | I_B ≤ I_n (protective devices, RCD, main switch): the loads draw more than the rating | S9 |
+| `sw.rating.cable` | warning | I_n ≤ I_z (overcurrent protective devices; only when an I_z is known) | S9 |
+| `sw.phase.imbalance` | warning | I_max − I_min ≤ ΔI_max on a rail; the default 20 A is a plausibility value, enter your grid operator's limit | – |
 
 ## Labelling strip
 
@@ -117,8 +181,8 @@ parameters of the elements on the page (or the selection) and from the wires and
 | Id | Report | Content |
 |---|---|---|
 | `sw.installation` | House installation list | Rooms → circuits (designation, name, protective device and rating) → devices with quantities. Markdown: one section per room with a nested list. |
-| `sw.circuits` | Circuit plan | Feed tree: main switch, meter, SPD, RCDs, circuit breakers and RCBOs by designation, each with the device feeding it and **where that link comes from**; circuits with rooms and devices. Markdown: nested list plus the table. |
-| `sw.layout` | Board layout and labelling strip | Per rail (top to bottom, named by `ref` or "Rail n"): devices left to right with position, first module, width in modules, designation, device, rating, label; modules used / available; the labelling strip as a two-row table. Devices on no rail are listed last. |
+| `sw.circuits` | Circuit plan | Feed tree: main switch, meter, SPD, RCDs, circuit breakers, RCBOs, motor protection, overload relays and NH fuse switches by designation, each with the device feeding it and **where that link comes from**; circuits with rooms and devices (room devices and frequency inverters). Markdown: nested list plus the table. |
+| `sw.layout` | Board layout and labelling strip | Per rail (top to bottom, named by `ref` or "Rail n"): devices left to right with position, first module, width in modules, designation, device, rating, label; modules used / available (blanking plates count as free); the labelling strip as a two-row table. Accessories (end clamps, bridges, comb busbars, blanking plates) are not listed. Devices on no rail are listed last. |
 | `sw.terminals` | Terminal plan | Per strip, terminals in number order (natural order), per level and side (top/bottom): wire or cable, target (designation and pin at the other end, e.g. "-F2:2"), cross-section, colour, bridge. A terminal's `target` gives the outside target when no line is docked. |
 | `sw.cables` | Cable list | Designation, type, cores × cross-section, length (m), from, to, number of segments. Segments with the same designation (e.g. on several slides) are one cable: lengths add up, the outer ends are from and to. |
 
@@ -131,8 +195,9 @@ designation in their `feed`; a designation that is named but not drawn appears a
 ## Persistence
 
 Everything is stored in parameters (plus the line points and attachments of wires and cables); JSON and compact round
-trips render identically (tests). Nothing is derived and stored: the labelling strip and the reports are recomputed
-from the document.
+trips render identically (tests). Nothing is derived and stored: the labelling strip, the reports and the derived values
+are recomputed from the document. Entered values are text parameters ("2 kW", "13 A"); the rated current stays in the
+rating choice.
 
 ## Host capabilities
 
@@ -150,11 +215,12 @@ black and white).
 
 ## Limits and next steps
 
-- No calculations: no voltage drop, cable sizing, selectivity, loop impedance or RCD coverage checks (candidates for
-  the engineering calculations, roadmap item 14, e.g. "a fuse below the cable load").
+- Calculations are limited to load sums per circuit and phase and the three checks: no voltage drop, cable sizing,
+  selectivity, loop impedance or RCD coverage checks; I_z is entered, not looked up.
 - The rail-order rule for MCBs is an assumption; draw wires or set "Fed from" for certainty.
 - Cable lengths are typed (m); they are not measured from the drawing.
 - The circuit symbol view is a compact per-device symbol, not a full multi-line circuit diagram; the reports, not the
   symbols, carry the circuit structure.
-- Possible next steps: blanking plates and comb busbars as elements, phase assignment (L1/L2/L3) in the circuit plan,
-  load and power totals per circuit, link from room devices on floor-plan slides to the board ("→ -F3 slide 4").
+- The phase dropdowns show text labels: option pictograms for L1/L2/L3 would need new icon ids in Core and the hosts.
+- Possible next steps: the phase of a single-pole device from the comb busbar tooth it sits under, phase and load
+  columns in the circuit plan, link from room devices on floor-plan slides to the board ("→ -F3 slide 4").

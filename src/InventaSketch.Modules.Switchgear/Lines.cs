@@ -163,8 +163,16 @@ namespace InventaSketch.Modules.Switchgear
         public static readonly ParamDef Length = Pm.Num("length", "Length (m)", "Länge (m)", 0, 0, 10000, "m", 0.5);
         public static readonly ParamDef From = Pm.Text("from", "From (when not docked)", "Von (wenn nicht angedockt)");
         public static readonly ParamDef To = Pm.Text("to", "To (when not docked)", "Nach (wenn nicht angedockt)");
+        /// <summary>
+        /// Current-carrying capacity I_z as determined by the user for the installation method (the tables are not copied):
+        /// the protective device of the circuit is checked against it (<see cref="SwValues.RatingAboveCable"/>).
+        /// </summary>
+        public static readonly ParamDef Capacity = new("iz", Pm.T("Current-carrying capacity I_z (A, for the installation method)", "Strombelastbarkeit I_z (A, für die Verlegeart)"), ParamKind.Text)
+        {
+            Unit = "A", Advanced = true,
+        };
 
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Cores, Section, CableRef, Length, From, To };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Kind, Cores, Section, CableRef, Length, From, To, Capacity };
 
         public static bool IsData(SketchObject o) => o.Str("cableType", "nymj") is "jysty" or "cat";
 

@@ -24,7 +24,11 @@ namespace InventaSketch.Modules.Switchgear
     /// TS35 top-hat rail (35 mm): metal profile with its lips and slots. Mount points every module (17.5 mm, half the rail
     /// height, so a scaled board keeps its grid) along the centre line: devices snap onto the grid and side by side.
     /// </summary>
-    internal sealed class RailType : SwBoxType
+    /// <remarks>
+    /// Values (<see cref="SwValues"/>): the current per phase and the power of the loads fed from the rail's devices, and
+    /// the phase imbalance with its plausibility check.
+    /// </remarks>
+    internal sealed class RailType : SwBoxType, IValueType, IValueLinks, IValueChecks
     {
         public RailType() : base(Rails.RailId, new I18nText("DIN rail TS35", "Hutschiene TS35"), SwCategories.Mounting,
             "din rail", "top hat rail", "hutschiene", "tragschiene", "ts35", "ts 35", "rail") { }
@@ -32,7 +36,13 @@ namespace InventaSketch.Modules.Switchgear
         public static readonly ParamDef RailName = Pm.Text("ref", "Rail name (e.g. Row 1)", "Bezeichnung (z. B. Reihe 1)");
 
         public override Size2 DefaultSize => new(12 * Modular.Unit + 15, Modular.RailHeight);
-        public override IReadOnlyList<ParamDef> Parameters => new[] { RailName };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { RailName }.Concat(ValueSpec.Params).ToList();
+
+        internal SwValueSpec ValueSpec => SwValues.For(this);
+        public IReadOnlyList<VarDef> Variables => ValueSpec.Variables;
+        public IReadOnlyList<Relation> Relations => ValueSpec.Relations;
+        public IEnumerable<ValueCheck> ValueChecks => ValueSpec.Checks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => SwValues.Links(o, ValueSpec, ctx);
         public override IReadOnlyList<string> Companions => Devices.BoardCompanions;
 
         /// <summary>Module pitch of the rail (mm on the page, before rotation).</summary>

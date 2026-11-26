@@ -9,15 +9,18 @@ namespace InventaSketch.Modules.Switchgear
     /// Electrical installation and switchgear: distribution boards and control cabinets on TS35 DIN rails. Modular devices
     /// (circuit breakers, RCDs, RCBOs, surge protection, main switch, meter, contactors, relays, timer relays, bus devices,
     /// power supplies, push buttons, switches, lamps, rail socket) in whole modules of 17.5 mm with front views that look
-    /// like the real devices and circuit symbol views; terminal blocks with bridges; rails, ducts, end clamps and labels;
-    /// wires and cables; installation devices in the rooms. Designations (IEC 81346 ideas) and ratings are optional
-    /// parameters. Exports: house installation list, circuit plan, board layout with labelling strip, terminal plan and
-    /// cable list (CSV and Markdown). Draws everything itself; no dependency on other modules.
+    /// like the real devices and circuit symbol views; industrial devices (motor protection circuit breaker, overload relay,
+    /// NH fuse switch-disconnector, frequency inverter, PLC modules, safety relay); terminal blocks with bridges; rails,
+    /// comb busbars, blanking plates, ducts, end clamps and labels; wires and cables; installation devices in the rooms.
+    /// Designations (IEC 81346 ideas) and ratings are optional parameters. Element values (<see cref="SwValues"/>): rated
+    /// and operating current, power and phase per circuit and load, totals per phase on a rail, with plausibility checks.
+    /// Exports: house installation list, circuit plan, board layout with labelling strip, terminal plan and cable list
+    /// (CSV and Markdown). Draws everything itself; no dependency on other modules.
     /// </summary>
     public sealed class SwitchgearModule : IModule, IExportProvider
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
-            Devices.Specs().Concat(Terminals.Specs()).Concat(Accessories.Specs()).Select(s => (ObjectType)new DeviceType(s))
+            Devices.Specs().Concat(Industrial.Specs()).Concat(Terminals.Specs()).Concat(Accessories.Specs()).Concat(Industrial.AccessorySpecs()).Select(s => (ObjectType)new DeviceType(s))
                 .Concat(new ObjectType[] { new RailType(), new DuctType(), new StripType(), new PlateType(), new WireType(), new CableType() })
                 .Concat(HouseType.Types())
                 .ToList());
@@ -39,6 +42,7 @@ namespace InventaSketch.Modules.Switchgear
             new LibraryCategory(SwCategories.Protection, new I18nText("Protection & isolation", "Schutz- & Trenngeräte"), Id, 10),
             new LibraryCategory(SwCategories.Switching, new I18nText("Switching & control (DIN rail)", "Schalten & Steuern (Hutschiene)"), Id, 20),
             new LibraryCategory(SwCategories.Supply, new I18nText("Meters, supplies & bus devices", "Zähler, Netzteile & Busgeräte"), Id, 30),
+            new LibraryCategory(SwCategories.Automation, new I18nText("Drives & automation (industrial)", "Antriebe & Automatisierung (Industrie)"), Id, 35),
             new LibraryCategory(SwCategories.Terminals, new I18nText("Terminal blocks", "Reihenklemmen"), Id, 40),
             new LibraryCategory(SwCategories.Mounting, new I18nText("Rails, ducts & labels", "Schienen, Kanäle & Beschriftung"), Id, 50),
             new LibraryCategory(SwCategories.Wiring, new I18nText("Wires & cables", "Adern & Kabel"), Id, 60),
@@ -92,6 +96,12 @@ namespace InventaSketch.Modules.Switchgear
             Add("sw.protection.spd", Devices.Spd, "SPD type 2, 3+N", "Überspannungsschutz Typ 2, 3+N", kw: new[] { "spd", "typ 2" });
             Add("sw.protection.spd.t12", Devices.Spd, "SPD type 1+2, 3+N", "Überspannungsschutz Typ 1+2, 3+N", P(("spdType", "12")), kw: new[] { "spd", "kombiableiter", "blitzstrom" });
             Add("sw.switch.main", Devices.MainSwitch, "Main switch 63 A, 3-pole", "Hauptschalter 63 A, 3-polig", kw: new[] { "hauptschalter", "trennschalter" });
+            Add("sw.protection.mpcb", Industrial.Mpcb, "Motor protection circuit breaker 4 A", "Motorschutzschalter 4 A", kw: new[] { "motorschutzschalter", "mpcb" });
+            Add("sw.protection.mpcb.10", Industrial.Mpcb, "Motor protection circuit breaker 10 A", "Motorschutzschalter 10 A", P(("rating", "10")), kw: new[] { "motorschutzschalter", "mpcb" });
+            Add("sw.protection.overload", Industrial.Overload, "Thermal overload relay 4 A", "Überlastrelais 4 A", kw: new[] { "überlastrelais", "motorschutzrelais" });
+            Add("sw.fuse.nh", Industrial.NhFuse, "NH00 fuse switch-disconnector 63 A", "NH00-Sicherungslasttrenner 63 A", kw: new[] { "nh", "lasttrenner", "hauptsicherung" });
+            Add("sw.fuse.nh.000.35", Industrial.NhFuse, "NH000 fuse switch-disconnector 35 A", "NH000-Sicherungslasttrenner 35 A", P(("size", "000"), ("rating", "35")),
+                kw: new[] { "nh", "lasttrenner", "hausanschluss", "vorsicherung" });
 
             // Switching & control.
             Add("sw.switching.contactor", Devices.Contactor, "Installation contactor 2 NO", "Installationsschütz 2 Schließer", kw: new[] { "schütz" });
@@ -122,6 +132,18 @@ namespace InventaSketch.Modules.Switchgear
             Add("sw.bus.actuator.generic", Devices.BusActuator, "Bus actuator, 4 channels (generic)", "Busaktor, 4 Kanäle (allgemein)", P(("bus", "generic")), kw: new[] { "bus", "aktor", "modbus", "dali" });
             Add("sw.bus.power.generic", Devices.BusPower, "Bus power supply (generic)", "Busnetzteil (allgemein)", P(("bus", "generic")), kw: new[] { "bus" });
 
+            // Drives & automation.
+            Add("sw.drive.vfd", Industrial.Vfd, "Frequency inverter 0.75 kW, 3~", "Frequenzumrichter 0,75 kW, 3~", kw: new[] { "frequenzumrichter", "fu", "vfd" });
+            Add("sw.drive.vfd.1ph", Industrial.Vfd, "Frequency inverter 0.37 kW, 1~ 230 V", "Frequenzumrichter 0,37 kW, 1~ 230 V", P(("power", "0.37"), ("supply", "1")),
+                kw: new[] { "frequenzumrichter", "fu", "einphasig" });
+            Add("sw.drive.vfd.4kw", Industrial.Vfd, "Frequency inverter 4 kW, 3~", "Frequenzumrichter 4 kW, 3~", P(("power", "4")), kw: new[] { "frequenzumrichter", "fu", "vfd" });
+            Add("sw.plc.module", Industrial.Plc, "PLC digital input module, 8 channels", "SPS-Digitaleingabe, 8 Kanäle", kw: new[] { "sps", "plc", "di" });
+            Add("sw.plc.module.cpu", Industrial.Plc, "PLC CPU", "SPS-CPU", P(("kind", "cpu")), kw: new[] { "sps", "plc", "cpu", "steuerung" });
+            Add("sw.plc.module.do", Industrial.Plc, "PLC digital output module, 8 channels", "SPS-Digitalausgabe, 8 Kanäle", P(("kind", "do")), kw: new[] { "sps", "plc", "do" });
+            Add("sw.plc.module.ai", Industrial.Plc, "PLC analogue input module, 8 channels", "SPS-Analogeingabe, 8 Kanäle", P(("kind", "ai")), kw: new[] { "sps", "plc", "ai", "analog" });
+            Add("sw.safety.relay", Industrial.SafetyRelay, "Safety relay (emergency stop)", "Sicherheitsrelais (Not-Halt)", kw: new[] { "sicherheitsrelais", "not-halt" });
+            Add("sw.safety.relay.door", Industrial.SafetyRelay, "Safety relay (guard door)", "Sicherheitsrelais (Schutztür)", P(("function", "door")), kw: new[] { "sicherheitsrelais", "schutztür" });
+
             // Terminal blocks.
             Add("sw.terminal.feedthrough", Terminals.FeedThrough, "Feed-through terminal 2.5 mm²", "Durchgangsklemme 2,5 mm²", kw: new[] { "klemme" });
             Add("sw.terminal.feedthrough.4", Terminals.FeedThrough, "Feed-through terminal 4 mm²", "Durchgangsklemme 4 mm²", P(("section", "4")), kw: new[] { "klemme" });
@@ -140,6 +162,10 @@ namespace InventaSketch.Modules.Switchgear
             Add("sw.rail.ts35", Rails.RailId, "DIN rail TS35 (12 modules)", "Hutschiene TS35 (12 TE)", kw: new[] { "hutschiene" });
             Add("sw.rail.ts35.24", Rails.RailId, "DIN rail TS35 (24 modules)", "Hutschiene TS35 (24 TE)", size: new Size2(24 * Modular.Unit + 15, Modular.RailHeight), kw: new[] { "hutschiene" });
             Add("sw.rail.endclamp", Accessories.EndClampId, "End clamp", "Endhalter", kw: new[] { "endhalter" });
+            Add("sw.busbar.comb", Industrial.CombBusbar, "Comb busbar 3-phase (12 modules)", "Phasenschiene 3-phasig (12 TE)", kw: new[] { "phasenschiene", "kammschiene" });
+            Add("sw.busbar.comb.1n", Industrial.CombBusbar, "Comb busbar 1-phase + N (12 modules)", "Phasenschiene 1-phasig + N (12 TE)", P(("phases", "1N")), kw: new[] { "phasenschiene", "kammschiene", "fi/ls" });
+            Add("sw.blank", Industrial.Blank, "Blanking plate (1 module)", "Abdeckstreifen (1 TE)", kw: new[] { "abdeckstreifen", "blindabdeckung" });
+            Add("sw.blank.6", Industrial.Blank, "Blanking plate (6 modules)", "Abdeckstreifen (6 TE)", P(("modules", 6)), kw: new[] { "abdeckstreifen", "blindabdeckung" });
             Add("sw.duct.slotted", Rails.DuctId, "Slotted cable duct (horizontal)", "Verdrahtungskanal (waagerecht)", kw: new[] { "kanal" });
             Add("sw.duct.slotted.vertical", Rails.DuctId, "Slotted cable duct (vertical)", "Verdrahtungskanal (senkrecht)", size: new Size2(40, 12 * Modular.Unit + 15), kw: new[] { "kanal", "senkrecht" });
             Add("sw.label.strip", Labels.StripId, "Labelling strip (reads the devices)", "Beschriftungsstreifen (liest die Geräte)", kw: new[] { "beschriftung" });

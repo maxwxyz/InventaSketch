@@ -135,7 +135,7 @@ namespace InventaSketch.Modules.Switchgear
             yield return new DeviceSpec(Mcb, T("Miniature circuit breaker (DIN rail)", "Leitungsschutzschalter (Hutschiene)"), SwCategories.Protection, DeviceRole.Protection, "-F")
             {
                 Keywords = new[] { "mcb", "breaker", "ls", "leitungsschutzschalter", "sicherungsautomat", "b16", "c16" },
-                Params = new[] { Characteristic, McbRating, McbPoles },
+                Params = new[] { Characteristic, McbRating, McbPoles, SwValues.DevicePhase },
                 Natural = o => { var (ph, n) = Poles(o.Str("poles", "1")); return Mod(ph + (n ? 1 : 0)); },
                 Columns = o => { var (ph, n) = Poles(o.Str("poles", "1")); return PoleColumns(ph, n, ColumnKind.Breaker, ColumnKind.Disconnector); },
                 Rating = o => o.Str("char", "B") + o.Str("rating", "16"),
@@ -173,7 +173,7 @@ namespace InventaSketch.Modules.Switchgear
             yield return new DeviceSpec(Rcbo, T("RCBO (RCD with circuit breaker)", "FI/LS-Schalter (Hutschiene)"), SwCategories.Protection, DeviceRole.Rcbo, "-F")
             {
                 Keywords = new[] { "rcbo", "fi/ls", "fi-ls", "kombischalter", "residual", "breaker" },
-                Params = new[] { RcboPoles, Characteristic, RcboRating, RcboResidual, RcdType },
+                Params = new[] { RcboPoles, Characteristic, RcboRating, RcboResidual, RcdType, SwValues.DevicePhase },
                 Natural = o => Mod(o.Str("poles", "1N") == "3N" ? 4 : 2),
                 Columns = o => o.Str("poles", "1N") == "3N" ? PoleColumns(3, true, ColumnKind.Breaker, ColumnKind.Disconnector) : PoleColumns(1, true, ColumnKind.Breaker, ColumnKind.Disconnector),
                 Rating = o => o.Str("char", "B") + o.Str("rating", "16") + " " + o.Str("idn", "30") + " mA",
