@@ -258,7 +258,9 @@ namespace InventaSketch.AddIn.OnSlide
             _dark = OfficeTheme.IsDark();
             ReadSlideDark();
             var registry = _registry();
-            var ctx = new RenderContext(unit.Doc, _lang());
+            // Designations found on other slides: continuation markers glow with the line, "Same name" reports them.
+            _elsewhere = Continuations.For(slide, unit.Doc, registry, _lang());
+            var ctx = new RenderContext(unit.Doc, _lang()) { Continuations = _elsewhere, PageNames = PageNames.Slides };
             _unitPrims = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.Render(o, ctx)).ToList();
             _unitAnchors = unit.Objects.Where(o => registry.Type(o.Type) is not null).SelectMany(o => registry.PageAnchors(o, ctx)).ToList();
             UpdateChainSource(unit);
@@ -2056,6 +2058,17 @@ namespace InventaSketch.AddIn.OnSlide
             }
         });
 
+        /// <summary>A value for the next input action instead of its prompt (automation), consumed by <see cref="RunTypeAction"/>.</summary>
+        private string? _scriptedInput;
+
+        /// <summary>Runs an input command with <paramref name="input"/> instead of asking (automation); false if no unit is armed.</summary>
+        public bool RunCommand(string id, string input)
+        {
+            if (_unit is null) return false;
+            Post(() => _scriptedInput = input);
+            return RunCommand(id);
+        }
+
         /// <summary>Runs a bar/pie command on the armed unit (automation); false if no unit is armed.</summary>
         public bool RunCommand(string id)
         {
@@ -2325,11 +2338,14 @@ namespace InventaSketch.AddIn.OnSlide
             var own = unit.Doc;
             var full = SketchUnits.NeedsContext(registry, own) ? SketchUnits.WithContext(own, SketchUnits.All(slide, unit.Id)) : own;
             var first = own.ObjectsOn(own.Pages[0]).FirstOrDefault(o => registry.Type(o.Type) is not null);
-            var action = first is null ? null : registry.Type(first.Type)!.Actions(first, new RenderContext(full, lang)).FirstOrDefault(a => a.Id == actionId);
+            var action = first is null ? null : registry.Actions(first, new RenderContext(full, lang)).FirstOrDefault(a => a.Id == actionId);
+            var scripted = _scriptedInput;
+            _scriptedInput = null;
             if (action is null || !action.IsEnabled) return null;
             var owner = _view?.MainWindow ?? IntPtr.Zero;
             string? input = null;
-            if (action.Input is not null)
+            if (action.Input is not null && scripted is not null) input = scripted;
+            else if (action.Input is not null)
             {
                 // Chart data: the table editor instead of the one-line prompt (charts v2).
                 input = action.Id == "chart.data" ? DataEditor.Ask(action.Label.Get(lang), action.Input.Value, owner)

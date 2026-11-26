@@ -282,6 +282,7 @@ single selected ones: when they lie on top of each other it is often unclear wha
   | **Following elements** | everything after it along directed connectors, with the connectors; a linkage from the selected link outward (away from the frame) | flowchart step, block, process unit, connector |
   | **Closed loop** | the loop the element is part of (only offered when there is one): a circuit, a flowchart loop, the walls around a room, a gear loop | wire in a circuit, step in a loop, wall |
   | **Room walls** | walls joined with it at corners, ends and T joints | wall |
+  | **Same name** | lines and elements with the same designation on the slide; the same designation on other slides is reported ("also on slides 2, 4", section 6b) | wire W3, pipe H1, relay K1 |
 
 - Hovering an entry previews it with the fainter glow; choosing it selects those elements in PowerPoint (the
   multi-selection bar then offers one view for all, align, diagram layout …).
@@ -290,6 +291,72 @@ single selected ones: when they lie on top of each other it is often unclear wha
   PowerPoint's "select all".)
 - "Select the assembly" (bar, Tab to the next part) is the same as "Moves along".
 - The rules come from the engine (`Connectivity`), so the web add-in and LibreOffice select the same sets.
+
+## 6b. Colour by medium and names that belong together (2026-11-26)
+
+Maintainer (plan review 2026-11-25 night, items 11 and 12): "display options per medium where relevant – bus vs. power,
+DC/AC (L1/L2/L3/N/PE colours), warm/cold (supply/return), pressure/return/drain, signal – as a slide-wide colour mode",
+and "every line, cable and pipe can carry a designation (and a value where relevant); the same name means the same
+connection – also across slides: where a line leaves the slide it says where it continues, '→ W3 slide 4'".
+
+**Colour by medium (display mode).**
+
+- A slide-wide switch (More ▸ Colour by medium ▸ Off / By medium; slide style like the accent colour). It colours every
+  connection line – wires, cables, buses, pipes, ducts, fluid, process and energy lines – by its medium and role. Only
+  the rendering changes: the elements keep their parameters and colours, and "Off" restores the original look. An
+  element's own formatting (done with PowerPoint's tools) still wins, black and white still comes last, and the accent
+  colour leaves lines coloured by medium alone.
+- Medium and role come from the engine (`LineMedia.Of`), module-agnostic: the medium of the line type or of the port it is
+  docked on (`Building.LineMedium`), the role from the generic parameter `lineRole`, a type's `MediumRole` (pilot and
+  drain lines; cabinet cores report "own": they are drawn in their real core colour and stay) or the medium itself
+  (heating flow/return, hot/cold water, air kinds, data → bus, DC → polarity not set).
+- Lines whose role the medium does not tell offer a dropdown (`line.role`, never a cycle): electrical lines
+  "Conductor ▸ Not set / L1 / L2 / L3 / N / PE / PEN / L+ / L− / M", fluid lines "Line role ▸ pressure (P) / return (T)",
+  process lines "Fluid (DIN 2403) ▸ water / steam / air / flammable gas / acid / alkali / flammable liquid / oxygen".
+- Colour scheme (`LineMedia.Scheme`, bilingual names, each with its source):
+
+  | Role | Colour | Source |
+  |---|---|---|
+  | L1 / L2 / L3 | brown / black / grey | IEC 60445 |
+  | N, mid-point conductor M | blue | IEC 60445 |
+  | PE, PEN | green-yellow (PEN with blue marks at the ends) | IEC 60445 |
+  | DC L+ / L− / polarity not set | red / dark blue / orange | convention |
+  | power (AC, conductor not set) | black | convention |
+  | bus / data line, signal / instrument line | violet, orange | convention |
+  | heating flow / return, heat / cooling | warm red / cold blue | convention |
+  | domestic hot / cold water, circulation, waste water | orange-red / green, pink, brown | convention |
+  | supply / extract / outdoor / exhaust air | blue / yellow / green / brown | convention |
+  | water, flammable gas | green, yellow | DIN 2403 |
+  | hydraulic pressure (P) / return (T) / pilot / drain | red / blue / orange / teal | convention |
+  | process lines by fluid | water green, steam red, air grey, flammable gas yellow, acid orange, alkali violet, flammable liquid brown, oxygen blue | DIN 2403 |
+
+  Lines without a role in the scheme (a plain process line, PCB tracks) keep their colours.
+- "Colour by medium ▸ Insert legend" adds a legend of the colours used on the slide (one line and name per colour, with
+  the standard where there is one) as an ordinary drawing.
+- Highlighting a connected set by medium is "Select connected ▸ Net" (section 6a); the halo works the same with the
+  colour mode on.
+
+**Names that belong together.**
+
+- Every connection line carries a designation and an optional value label (cross-section, type, rating, DN, flow).
+  Types that already have one keep theirs and draw it themselves (cabinet wire and cable `ref`, energy cable `label`,
+  process line `lineNo`); every other line gets the generic `ref` and `value`: "Designation …" and "Value label …" in the
+  label group (bar, pie Edit). The label "W3 · 3×1.5 mm²" sits below the longest segment, upright, and follows every
+  edit – it is drawn, not stored as a separate shape.
+- "End markers" (a switch, offered once a line has a designation) put the designation at both ends of the line as well.
+- Elements with connection ports and no designator of their own (pumps, valves and devices of building services …) get
+  "Designation …" too, drawn above them; electrical symbols (designator and value), fluid symbols (designator) and process
+  instruments (tag) keep their own labels, and values stay with the values label (Calc 2).
+- Equal designations are the same connection (compared without case and without a leading IEC 81346 sign: "-W1" = "W1").
+  "Select connected ▸ Same name" selects the lines and elements with that designation on the slide; the same designation
+  on other slides is reported in the menu ("Same name: also on slides 2, 4").
+- Across slides (PowerPoint): every unit stores its designations in a shape tag, so the add-in knows on which other slides
+  a designation occurs. A line with such a designation shows a continuation marker at its free end nearest the slide edge:
+  "→ W3, slide 4" ("→ W3, Folie 4" in German); a free end at the slide edge without a known continuation says "→ W3". The
+  marker is part of the line, so the selection halo covers it. Markers are refreshed when a unit is drawn (inserted,
+  edited, restyled).
+- Engine-first: `Designations` and `LineMedia` in Core; hosts pass the page map for continuation markers
+  (`RenderContext.Continuations`, engine `setContinuations`).
 
 ## 7. Feedback and accessibility
 

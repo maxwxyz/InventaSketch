@@ -122,6 +122,8 @@ namespace InventaSketch.Modules.Switchgear
 
         public override IReadOnlyList<ParamDef> Parameters => new[] { Colour, Section, WireRef };
         public override string? LineMedium(SketchObject line) => PortMedia.Electric;
+        /// <summary>A core is drawn in its real colour: colour by medium leaves it (<see cref="LineMedia"/>).</summary>
+        public override string? MediumRole(SketchObject line) => LineMedia.OwnColour;
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, IReadOnlyList<Vec2> p)
         {

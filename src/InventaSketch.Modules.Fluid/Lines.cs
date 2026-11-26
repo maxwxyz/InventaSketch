@@ -217,6 +217,8 @@ namespace InventaSketch.Modules.Fluid
         public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => FluidValues.Links(o, ctx);
         /// <summary>Working, pilot, drain lines and hoses all carry the fluid (build "+" at their free ends, <see cref="Building"/>).</summary>
         public override string? LineMedium(SketchObject line) => PortMedia.Fluid;
+        /// <summary>Pilot and drain lines say their role themselves (colour by medium, <see cref="LineMedia"/>).</summary>
+        public override string? MediumRole(SketchObject line) => KindOf(line) is "pilot" or "drain" ? KindOf(line) : null;
         public override bool InsertablePoints => true;
 
         /// <summary>A line drawn over an earlier line hops over it (unless switched off); hosts offer to connect there.</summary>

@@ -308,7 +308,8 @@ namespace InventaSketch.AddIn.OnSlide
             first = _unit?.Objects.FirstOrDefault(o => registry.Type(o.Type) is not null);
             if (first is null || _unit is null) return new List<ContextAction>();
             var ctx = new RenderContext(_unitContext ?? _unit.Doc, _lang());
-            return registry.Type(first.Type)!.Actions(first, ctx).Where(a => a.Group != "view" && SideOf(a) is null).ToList();
+            // The type's actions plus the generic ones (designation, value label, end markers, conductor/line role).
+            return registry.Actions(first, ctx).Where(a => a.Group != "view" && SideOf(a) is null).ToList();
         }
 
         /// <summary>Pie entry of a type action: input actions open a prompt ("…"), unavailable ones are greyed.</summary>
@@ -411,11 +412,14 @@ namespace InventaSketch.AddIn.OnSlide
             if (effect.MirrorV) arrange.Add(PieCommand("flipV", IconIds.MirrorV));
             // Select connected: the kinds that apply (net, moves along – the assembly –, following elements, loop, room walls).
             var connected = first is null ? new List<(ConnectKind Kind, List<SketchUnit> Units)>() : ConnectOptions();
-            if (connected.Count > 0)
+            // The same designation on other slides counts too (the submenu reports where).
+            var elsewhere = first is null ? "" : SameNameElsewhere();
+            if (connected.Count > 0 || elsewhere.Length > 0)
                 arrange.Add(new PieItem("menu:connected", T("Select connected ▸", "Verbundene auswählen ▸"))
                 {
                     IconId = IconIds.SelectAssembly,
-                    Hint = string.Join(", ", connected.Select(c => Connectivity.Label(c.Kind).Get(_lang()))),
+                    Hint = string.Join(", ", connected.Select(c => Connectivity.Label(c.Kind).Get(_lang()))
+                        .Concat(elsewhere.Length > 0 && connected.All(c => c.Kind != ConnectKind.SameName) ? new[] { Connectivity.Label(ConnectKind.SameName).Get(_lang()) + " (" + elsewhere + ")" } : Array.Empty<string>())),
                 });
             if (type is not null && first is not null && type.AnimationFrames(first, 2).Count > 0) arrange.Add(PieCommand("anim", IconIds.Animate));
 
@@ -481,7 +485,7 @@ namespace InventaSketch.AddIn.OnSlide
             else if (submenu == "connected")
             {
                 items = new List<PieItem> { back };
-                items.AddRange(ConnectItems(ConnectOptions().Select(c => (c.Kind, c.Units.Count)), _lang()));
+                items.AddRange(ConnectItems(ConnectOptions().Select(c => (c.Kind, c.Units.Count)), _lang(), SameNameElsewhere()));
                 title = T("Select connected", "Verbundene auswählen");
             }
             else if (submenu == "values")

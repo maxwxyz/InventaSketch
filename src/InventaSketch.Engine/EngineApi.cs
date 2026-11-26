@@ -64,6 +64,11 @@ namespace InventaSketch.Engine
                 ["setLineGroup"] = SetLineGroupCore,
                 ["setAccent"] = SetAccentCore,
                 ["accents"] = AccentsCore,
+                ["setColorBy"] = SetColorByCore,
+                ["mediumColours"] = MediumColoursCore,
+                ["lineMedia"] = LineMediaCore,
+                ["designations"] = DesignationsCore,
+                ["setContinuations"] = SetContinuationsCore,
                 ["setMainText"] = SetMainTextCore,
                 ["suggestions"] = SuggestionsCore,
                 ["quickAdd"] = QuickAddCore,
@@ -190,6 +195,8 @@ namespace InventaSketch.Engine
         public string SetMonochrome(string json) => Invoke("setMonochrome", json);
         public string SetLineGroup(string json) => Invoke("setLineGroup", json);
         public string SetAccent(string json) => Invoke("setAccent", json);
+        public string SetColorBy(string json) => Invoke("setColorBy", json);
+        public string Designations(string json) => Invoke("designations", json);
         public string SetMainText(string json) => Invoke("setMainText", json);
         public string Suggestions(string json) => Invoke("suggestions", json);
         public string Undo(string json) => Invoke("undo", json);
@@ -248,6 +255,7 @@ namespace InventaSketch.Engine
                 Monochrome = doc.Settings.Monochrome,
                 LineGroup = doc.Settings.LineGroup ?? Style.DesignLineGroup,
                 Accent = doc.Settings.Accent,
+                ColorBy = doc.Settings.ColorBy,
                 ValueLevel = ValueLevelId(doc.Settings.EffectiveValueLevel),
                 Changed = s.LastChanged.ToList(),
                 Dependents = s.LastDependents.ToList(),
@@ -805,6 +813,75 @@ namespace InventaSketch.Engine
             return StateOf(s, r);
         }
 
+        /// <summary>
+        /// Sets the display mode of connection lines (<see cref="DocumentSettings.ColorBy"/>): <c>text</c> = "medium" colours
+        /// them by medium and role (<see cref="LineMedia"/>), empty or "off" restores their own colours; one undo step, every
+        /// object counts as changed.
+        /// </summary>
+        private object SetColorByCore(EngineRequest r)
+        {
+            var s = S(r);
+            var text = (r.Text ?? "").Trim().ToLowerInvariant();
+            var mode = text is "" or "off" or "none" ? null : text == LineMedia.ByMedium ? LineMedia.ByMedium : throw new ArgumentException("Unknown colour mode '" + r.Text + "' (off, medium).");
+            if (s.Doc.Settings.ColorBy != mode)
+                s.Apply("Colour by medium", d => d with { Settings = d.Settings with { ColorBy = mode } });
+            return StateOf(s, r);
+        }
+
+        /// <summary>
+        /// The colour scheme "by medium" (<see cref="LineMedia.Scheme"/>): id, name, colour, stripe colour (green-yellow) and
+        /// source (IEC 60445, DIN 2403 or convention) in the language; with <c>mode</c> = "used" only the entries used by the
+        /// connection lines of the session's document (a legend).
+        /// </summary>
+        private object MediumColoursCore(EngineRequest r)
+        {
+            var lang = r.Lang is null ? (r.Session is null ? Lang.En : S(r).Lang) : Language.Detect(r.Lang);
+            var list = r.Mode == "used" ? LineMedia.Used(Registry, S(r).Doc, lang) : LineMedia.Scheme;
+            return list.Select(c => new { id = c.Id, name = c.Name.Get(lang), color = c.Color, stripe = c.Stripe, source = c.Source.Get(lang) }).ToList();
+        }
+
+        /// <summary>Medium, role and scheme colour of each of <c>ids</c> that is a connection line: {id, medium, role, colour, color}.</summary>
+        private object LineMediaCore(EngineRequest r)
+        {
+            var s = S(r);
+            var list = new List<object>();
+            foreach (var id in s.Resolve(r.Ids))
+                if (s.Doc.Get(id) is { } o && LineMedia.Of(Registry, s.Doc, o, s.Lang) is { } info)
+                    list.Add(new { id, medium = info.Medium, role = info.Role, colour = info.Colour?.Id, color = info.Colour?.Color });
+            return list;
+        }
+
+        /// <summary>
+        /// The designations of the session's document (<see cref="Core.Designations"/>): {key (comparison form), designation
+        /// (as typed), ids}, so a host can map designations across its pages (continuation markers, "same name" elsewhere).
+        /// </summary>
+        private object DesignationsCore(EngineRequest r)
+        {
+            var s = S(r);
+            return Core.Designations.Index(Registry, s.Doc, s.Lang)
+                .Select(kv => new { key = kv.Key, designation = Core.Designations.Of(Registry, s.Doc.Get(kv.Value[0])!), ids = kv.Value })
+                .OrderBy(x => x.key, StringComparer.Ordinal).ToList();
+        }
+
+        /// <summary>
+        /// Sets where else designations occur, for continuation markers (<see cref="RenderContext.Continuations"/>): <c>json</c> =
+        /// {"W3": ["4"], ...} (designation to page labels), <c>text</c> = how pages are called ("slide" or "page"); empty json
+        /// clears.
+        /// </summary>
+        private object SetContinuationsCore(EngineRequest r)
+        {
+            var s = S(r);
+            Dictionary<string, IReadOnlyList<string>>? map = null;
+            if (!string.IsNullOrWhiteSpace(r.Json))
+            {
+                var raw = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, List<string>>>(r.Json!) ?? new Dictionary<string, List<string>>();
+                map = raw.Where(kv => kv.Value is { Count: > 0 }).ToDictionary(kv => Core.Designations.Normalize(kv.Key), kv => (IReadOnlyList<string>)kv.Value, StringComparer.Ordinal);
+            }
+            s.Continuations = map is { Count: > 0 } ? map : null;
+            s.PageNames = (r.Text ?? "").Trim().ToLowerInvariant() == "slide" ? PageNames.Slides : null;
+            return StateOf(s, r);
+        }
+
         /// <summary>The offered accent colours: id, colour, name in the session language.</summary>
         private object AccentsCore(EngineRequest r)
         {
@@ -1044,8 +1121,8 @@ namespace InventaSketch.Engine
             var kind = (r.Mode ?? "auto").Trim().ToLowerInvariant() switch
             {
                 "net" => ConnectKind.Net, "coupled" => ConnectKind.Coupled, "chain" => ConnectKind.Chain,
-                "loop" => ConnectKind.Loop, "walls" => ConnectKind.Walls, "auto" or "" => ConnectKind.Auto,
-                _ => throw new ArgumentException("Unknown mode '" + r.Mode + "' (auto, net, coupled, chain, loop, walls)."),
+                "loop" => ConnectKind.Loop, "walls" => ConnectKind.Walls, "samename" => ConnectKind.SameName, "auto" or "" => ConnectKind.Auto,
+                _ => throw new ArgumentException("Unknown mode '" + r.Mode + "' (auto, net, coupled, chain, loop, walls, samename)."),
             };
             var ctx = new RenderContext(s.Doc, s.Lang);
             var seen = new List<string>();
@@ -1803,7 +1880,7 @@ namespace InventaSketch.Engine
                 var current = type.ViewOf(objs[0]);
                 foreach (var v in type.Views)
                     list.Add(new ActionInfo { Id = "view:" + v.Id, Label = v.Label.Get(lang), Icon = IconIds.ForView(v), Group = "view", Kind = "view", Active = v.Id == current });
-                foreach (var a in type.Actions(objs[0], ctx))
+                foreach (var a in Registry.Actions(objs[0], ctx))
                     list.Add(new ActionInfo
                     {
                         Id = "t:" + a.Id, Label = a.Label.Get(lang), Icon = a.Icon, Group = a.Group ?? "type", Kind = "type", Active = a.IsActive, Enabled = a.IsEnabled,
@@ -2281,6 +2358,7 @@ namespace InventaSketch.Engine
                 // So are the line group and the accent colour.
                 if (d.Settings.LineGroup != src.Settings.LineGroup) d = d with { Settings = d.Settings with { LineGroup = src.Settings.LineGroup } };
                 if (d.Settings.Accent != src.Settings.Accent) d = d with { Settings = d.Settings with { Accent = src.Settings.Accent } };
+                if (d.Settings.ColorBy != src.Settings.ColorBy) d = d with { Settings = d.Settings with { ColorBy = src.Settings.ColorBy } };
                 return d;
             });
             if (r.Add != false) s.Select(objs.Select(o => o.Id));
@@ -2312,6 +2390,8 @@ namespace InventaSketch.Engine
             if (before.Settings.Monochrome != after.Settings.Monochrome) changed.UnionWith(after.Objects.Keys);
             // So do the line group (every stroke width) and the accent colour.
             if (before.Settings.LineGroup != after.Settings.LineGroup || before.Settings.Accent != after.Settings.Accent) changed.UnionWith(after.Objects.Keys);
+            // And the colour mode by medium.
+            if (before.Settings.ColorBy != after.Settings.ColorBy) changed.UnionWith(after.Objects.Keys);
             // A new plan scale changes the rendering of every object that uses it.
             if (before.Settings.PlanScale != after.Settings.PlanScale)
                 foreach (var o in after.Objects.Values)

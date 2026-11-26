@@ -634,7 +634,7 @@ namespace InventaSketch.Core
                 var type = o is null ? null : registry.Type(o.Type);
                 if (o is null || type is null) continue;
                 var ctx = new RenderContext(doc, lang);
-                var a = type.Actions(o, ctx).FirstOrDefault(x => x.Id == actionId);
+                var a = registry.Actions(o, ctx).FirstOrDefault(x => x.Id == actionId);
                 if (a is null || !a.IsEnabled) continue;
                 doc = a.Run(doc, o, ctx, input);
             }
@@ -658,6 +658,16 @@ namespace InventaSketch.Core
         /// it rather than <see cref="ObjectType.Owner"/>, which is shared by every registry the type is registered with.
         /// </summary>
         public Registry? Registry { get; internal set; }
+
+        /// <summary>
+        /// Where else each designation occurs (comparison form, <see cref="Designations.Normalize"/>) → page labels ("2", "4"),
+        /// passed by hosts that keep pages apart (PowerPoint slides): connection lines with such a designation show a
+        /// continuation marker "→ W3, slide 4" (<see cref="Designations"/>). Null: no continuations known.
+        /// </summary>
+        public IReadOnlyDictionary<string, IReadOnlyList<string>>? Continuations { get; set; }
+
+        /// <summary>How continuation markers name the pages ("slide"/"Folie" in PowerPoint); null = "page".</summary>
+        public PageNames? PageNames { get; set; }
 
         /// <summary>A context for <paramref name="registry"/>.</summary>
         public RenderContext For(Registry registry)
@@ -787,6 +797,14 @@ namespace InventaSketch.Core
         /// connection port then carries that port's medium (<see cref="Building.LineMedium"/>).
         /// </summary>
         public virtual string? LineMedium(SketchObject line) => null;
+
+        /// <summary>
+        /// The role of a connection line within its medium when the type knows it from its own parameters (a pilot or drain
+        /// line, <see cref="LineMedia"/>), or <see cref="LineMedia.OwnColour"/> for lines that already show their real conductor
+        /// colour (the colour mode "by medium" leaves them). Null: the role comes from the generic parameter
+        /// <see cref="LineMedia.RoleParam"/> or the medium itself.
+        /// </summary>
+        public virtual string? MediumRole(SketchObject line) => null;
 
         /// <summary>
         /// Quick add (<see cref="Flow"/>): parameters for the connector that becomes the <paramref name="index"/>-th one leaving
@@ -1335,8 +1353,14 @@ namespace InventaSketch.Core
         {
             var type = TypeOf(o);
             ctx.For(this);
+            var drawn = type.Render(o, ctx);
+            // Colour by medium (slide-wide display mode): connection lines take the scheme colour of their medium and role.
+            var medium = LineMedia.ColourFor(this, ctx.Doc, o, ctx.Lang);
+            if (medium is not null) drawn = LineMedia.Apply(drawn, medium);
             // The values label (part "values", Calc 2) of types with element values, when the object asks for it.
-            var local = ValueLabels.Append(this, o, ctx, type.Render(o, ctx));
+            var local = ValueLabels.Append(this, o, ctx, drawn);
+            // Designations, end markers and continuation markers of connection lines and elements (generic, never stored).
+            local = Designations.Append(this, o, ctx, local);
             var k = ctx.Doc.Settings.LineGroup is double g && g > 0 ? g / Style.DesignLineGroup : 1;
             var accent = ctx.Doc.Settings.Accent;
             if (Math.Abs(k - 1) < 1e-9 && accent is null && o.Style is null) return PartLooks.Apply(local, o.Parts);
@@ -1344,12 +1368,30 @@ namespace InventaSketch.Core
             foreach (var p in local)
             {
                 var q = Math.Abs(k - 1) > 1e-9 ? Prim.ScaleStrokes(p, k) : p;
-                if (accent is not null) q = Accents.Apply(q, accent);
+                // Media colours are meaningful: the accent leaves a line coloured by medium as it is.
+                if (accent is not null && medium is null) q = Accents.Apply(q, accent);
                 if (o.Style is not null) q = Prim.TextOverride(type.ApplyOverride(q, o.Style), o.Style);
                 result.Add(q);
             }
             // Part looks last: a curve recoloured on its own wins over the object's colour (charts v2).
             return PartLooks.Apply(result, o.Parts);
+        }
+
+        /// <summary>
+        /// The context actions of <paramref name="o"/>: its type's actions plus the generic ones every host offers alike – the
+        /// designation, value label and end markers of connection lines and elements (<see cref="Designations"/>) and the role
+        /// of a connection line (<see cref="LineMedia"/>). Hosts and the shared runner (<see cref="ContextActions.Run"/>) use this.
+        /// </summary>
+        public IReadOnlyList<ContextAction> Actions(SketchObject o, RenderContext ctx)
+        {
+            ctx.For(this);
+            var type = Type(o.Type);
+            if (type is null) return Array.Empty<ContextAction>();
+            var own = type.Actions(o, ctx).ToList();
+            var list = new List<ContextAction>(own);
+            list.AddRange(Designations.Actions(this, o, ctx, own));
+            if (!own.Any(a => a.Choice?.Key == "line.role")) list.AddRange(LineMedia.Actions(this, o, ctx));
+            return list;
         }
 
         /// <summary>The selectable parts of <paramref name="o"/>, with the ones switched off marked.</summary>
