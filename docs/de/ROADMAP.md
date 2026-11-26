@@ -776,13 +776,26 @@ Aus dieser Runde noch offen:
   Operationsverstärker und Transistor als Schalter; Leitungsverluste, Drosselblende, Hydraulikaggregat und
   Luftverbrauch in der Fluidtechnik; Druckverlust in Rohr und Kanal, Ausdehnungsgefäß, Warmwasserauslegung und
   hydraulische Weiche in der Haustechnik.
-- **Noch offen:** Anschlüsse für Hohlrad und Differentialkorb, ein Ritzel, das auf einer festen Zahnstange abrollt; ein
-  Kern-Hook, der ein Objekt mitwachsen lässt, wenn sich sein Nachbar ändert (Kasten der Balkenlinie unter einem
-  breiteren Träger); Radiometrie (Bestrahlungsstärke) und Werte für gewölbte Spiegel, Prismen und Gitter;
-  Wechselstrom-Netzberechnung (RLC-Impedanz, Resonanz, Phase), Drehstromleistung und Stern-Dreieck; aufsummierte
-  Druckverluste gegen die Pumpenförderhöhe (Fluid- und Heizkreise), Einzelwiderstände; Ausführen des exportierten
-  Diagrammcodes mit LaTeX/matplotlib (weder auf dem Build-Rechner noch in der CI vorhanden); das Web-Add-in in der
-  COM-Seitenleiste sieht beim Nummerieren nur die angezeigte Folie.
+- Am selben Tag in einer sechsten Runde erledigt: Zeigerwerte für eine Wechselstromquelle (|Z|, φ, Ströme und Phasen
+  je Element), Resonanz mit Güte und Bandbreite, S/P/Q und cos φ, Werte von Motor/Generator mit Stern-Dreieck-Anlauf,
+  Spannungsfall der Leitung (`elec.cable.drop`, `elec.ac.resonance`); aufsummierte Druckverluste gegen die
+  Pumpenförderhöhe (ungünstigster Heizkreis) und den Versorgungsdruck (Fluid-Zylinder), Einzelwiderstände über ζ, kv
+  oder einen Datenblattpunkt, Dichte und Viskosität des Wassers aus der Temperatur; Werte für gewölbte Spiegel, Prismen
+  (minimale Ablenkung, Abbe-Zahl), Gitter (Größenart `lineDensity`), Bestrahlungsstärke am Detektor (Schätzung) und
+  Systeme mit dicker Linse; Anschlüsse an Hohlrad, Differentialkorb und Steg, ein Ritzel, das an einer festen
+  Zahnstange abrollt, Außenverzahnung am Hohlrad; Ladezustand und Restlaufzeit der Batterie, PV-Jahresertrag,
+  Netzanschlusspunkt mit Einspeisegrenze, Eigenverbrauch und Autarkie; Kurzschlussschätzung an der Verteilung mit
+  Prüfungen für Abschaltbedingung, Schaltvermögen, Selektivität und FI-Typ; Netzpläne mit kritischem Pfad,
+  BPMN-Ereignisse, -Datenobjekte und -Flüsse, UML-Pseudozustände.
+- **Noch offen:** ein Kern-Hook, der ein Objekt mitwachsen lässt, wenn sich sein Nachbar ändert (Kasten der Balkenlinie
+  unter einem breiteren Träger); Stern-Dreieck-Umwandlung von Impedanzen, Wechselstromberechnung mit mehreren Quellen
+  oder einer Trafo-Sekundärwicklung als Einspeisung; Radiometrie über die Schätzung hinaus, Systemwerte für drei und mehr
+  Linsen oder Spiegel, Gitter bei schrägem Einfall; Einheiten kWh/m² und kWh/kWp (PV-Einstrahlung und spezifischer
+  Ertrag werden heute als Volllaststunden eingegeben); PV-Ertrag über den Wechselrichter in die Netzbilanz;
+  Schleifenimpedanz der Endstromkreise und echte Auslösekennlinien; Kanalnetze gegen die Ventilatorpressung;
+  Ravigneaux-Momente, Kegelritzel am Tellerrad; Nummerierung der Entscheidungen im Flussdiagramm; Ausführen des
+  exportierten Diagrammcodes mit LaTeX/matplotlib (weder auf dem Build-Rechner noch in der CI vorhanden); das Web-Add-in
+  in der COM-Seitenleiste sieht beim Nummerieren nur die angezeigte Folie.
 - **Sichtprüfung in PowerPoint:** die neuen Elemente sind per Unit-Test und gerasterter Galerie geprüft; die
   PowerPoint-Szenarien decken Andocken, Werte und verknüpfte Diagramme ab, nicht jedes neue Symbol.
 

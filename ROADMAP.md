@@ -695,10 +695,22 @@ Still open from this round:
   hosts, continuing across slides/pages, identical parts keep their numeral, cross-page preflight; RC/RL, voltage
   divider, op-amp and transistor-switch values; fluid line losses, orifice, hydraulic power unit, air consumption;
   pipe and duct pressure drop, expansion vessel, hot-water sizing, hydraulic separator.
-- **Still open:** ring-gear and differential-case ports, a pinion rolling on a fixed rack; a Core hook that resizes an
-  object when its neighbour changes (beam diagram box under a wider beam); radiometry (irradiance) and values for curved
-  mirrors, prisms and gratings; AC network analysis (RLC impedance, resonance, phase), three-phase power and
-  star-delta; summed pressure drops against the pump head (fluid and heating circuits), fitting losses; LaTeX/matplotlib
+- Done in a sixth round the same day: AC phasor values for one AC source (|Z|, φ, currents and phases per element),
+  resonance with Q and bandwidth, S/P/Q and cos φ, motor/generator values with star-delta starting, cable voltage drop
+  (`elec.cable.drop`, `elec.ac.resonance`); circuit pressure-drop sums against the pump head (heating index circuit) and
+  the supply pressure (fluid cylinders), single losses with ζ, kv or a datasheet point, water density and viscosity from
+  temperature; values for curved mirrors, prisms (minimum deviation, Abbe number), gratings (kind `lineDensity`),
+  detector irradiance (sample estimate) and thick-lens systems; ring, case and carrier ports, a pinion rolling on a
+  fixed rack, outer ring teeth; battery state of charge and remaining time, PV annual yield, grid connection point with
+  feed-in limit, self-consumption and autarky; short-circuit estimate at the board with disconnection, breaking capacity,
+  selectivity and RCD-type checks; network plans with critical path, BPMN events, data objects and flows, UML
+  pseudostates.
+- **Still open:** a Core hook that resizes an object when its neighbour changes (beam diagram box under a wider beam);
+  Y–Δ conversion of impedances, AC analysis with several sources or a transformer secondary as the feed; radiometry
+  beyond the sample estimate, system values for three or more lenses or mirrors, gratings at oblique incidence; units
+  kWh/m² and kWh/kWp (PV irradiation and specific yield are entered as full-load hours today); PV yield through the
+  inverter into the grid balance; loop impedance of final circuits and real tripping curves; duct circuits against a
+  fan pressure; Ravigneaux torques, bevel pinion on the crown wheel; flowchart decision numbering; LaTeX/matplotlib
   execution of the exported chart code (no matplotlib/pdflatex on the build machine or CI); the web add-in inside the
   COM sidebar sees only the shown slide for numbering.
 - **Checks by eye in PowerPoint:** the new elements are unit-tested and checked in rasterised galleries; the
