@@ -597,6 +597,11 @@ in the document's check settings, because the binding limit is in a standard or 
 | `gas.temperature` | compressor, turbine | compressor *θ*₂ > *θ*_max, turbine *θ*₁ > *θ*_max (*θ*_max entered from the datasheet, no limit assumed) | warning | [S40] |
 | `gas.kappa` | compressor, turbine | *κ* ≤ 1 or *κ* > 5/3 (no ideal gas) | warning | [S40] |
 | `heat.roomload` | radiator ↔ room | Σ*Φ* of the heating surfaces in the room < *Φ*_HL of the room (estimate *q*·*A*) | hint | [S30] |
+| `elec.opamp.saturation` | op-amp basic circuit | \|*U*_out\| above the supply voltage (output saturates; 2026-11-26) | warning | [S7] |
+| `elec.bjt.overdrive` | bipolar transistor as a switch | base current below *k*·*I*_C/*B* (not saturated) | warning | [S7] |
+| `fluid.tank.volume` | hydraulic power unit | tank volume < 3 × pump flow per minute (rule of thumb) | hint | [S26] |
+| `heat.expansion.size` | expansion vessel | chosen nominal volume below the required volume | warning | [S30] |
+| `heat.separator.flow` | hydraulic separator | generator flow smaller than consumer flow (mixed flow temperature drops) | hint | [S30] |
 | `pv.voc.max` | string ↔ inverter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | warning | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | string ↔ inverter | *N*_s·*U*_mpp(*θ*_max) < MPPT minimum | hint | [S33, S34] |
 | `pv.isc.max` | array ↔ inverter input | *N*_p·*I*_sc > *I*_DC,max | warning | [S33] |

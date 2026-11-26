@@ -617,6 +617,11 @@ Datenblatt steht, das wir nicht übernehmen.
 | `gas.temperature` | Verdichter, Turbine | Verdichter *θ*₂ > *θ*_max, Turbine *θ*₁ > *θ*_max (*θ*_max aus dem Datenblatt eingegeben, keine Grenze angenommen) | Warnung | [S40] |
 | `gas.kappa` | Verdichter, Turbine | *κ* ≤ 1 oder *κ* > 5/3 (kein ideales Gas) | Warnung | [S40] |
 | `heat.roomload` | Heizkörper ↔ Raum | Σ*Φ* der Heizflächen im Raum < *Φ*_HL des Raums (Schätzung *q*·*A*) | Hinweis | [S30] |
+| `elec.opamp.saturation` | Operationsverstärker-Grundschaltung | \|*U*_aus\| über der Versorgungsspannung (Ausgang übersteuert; 26.11.2026) | Warnung | [S7] |
+| `elec.bjt.overdrive` | Bipolartransistor als Schalter | Basisstrom unter *k*·*I*_C/*B* (nicht gesättigt) | Warnung | [S7] |
+| `fluid.tank.volume` | Hydraulikaggregat | Tankvolumen < 3 × Pumpenförderstrom je Minute (Faustregel) | Hinweis | [S26] |
+| `heat.expansion.size` | Ausdehnungsgefäß | gewähltes Nennvolumen unter dem erforderlichen Volumen | Warnung | [S30] |
+| `heat.separator.flow` | Hydraulische Weiche | Erzeugerstrom kleiner als Verbraucherstrom (Mischvorlauftemperatur sinkt) | Hinweis | [S30] |
 | `pv.voc.max` | Strang ↔ Wechselrichter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | Warnung | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | Strang ↔ Wechselrichter | *N*_s·*U*_mpp(*θ*_max) < MPPT-Minimum | Hinweis | [S33, S34] |
 | `pv.isc.max` | Feld ↔ Wechselrichtereingang | *N*_p·*I*_sc > *I*_DC,max | Warnung | [S33] |
