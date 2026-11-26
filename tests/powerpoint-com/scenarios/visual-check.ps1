@@ -13,7 +13,8 @@ foreach ($id in @('mech.spur.axial', 'elec.resistor', 'map.route', 'kin.fourbar'
     $n = $addin.Insert($id); $sh = $S.Slide.Shapes.Item($n); $sh.Left = 300; $sh.Top = 220
     $sh.Select(); Start-Sleep 2
     Shot-Unit $n ("1-bar-" + $id)
-    $sh.Delete(); Start-Sleep 1
+    # Re-find by name: a move can redraw the unit (a route with dependents), which replaces the shape object.
+    try { $S.Slide.Shapes.Item($n).Delete() } catch { foreach ($shp in @($S.Slide.Shapes)) { $shp.Delete() } }; Start-Sleep 1
 }
 # 2. A click right on the curve of a line chart selects the curve at once.
 $S.Window.Selection.Unselect(); Start-Sleep 1
