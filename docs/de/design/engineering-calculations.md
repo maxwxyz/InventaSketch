@@ -597,7 +597,8 @@ Datenblatt steht, das wir nicht übernehmen.
 | `kin.dof` | Getriebe mit Antrieb | *F* ≠ Zahl der Antriebe | Hinweis | [S24] |
 | `elec.coord.overload` | Schutzorgan + Kabel/Stromkreis | *I*_B ≤ *I*_n ≤ *I*_z verletzt (*I*_z vom Nutzer eingegeben) | Warnung | [S9] |
 | `elec.rcd.additional` | Steckdosenstromkreis | kein RCD mit *I*_Δn ≤ 30 mA vor einem Steckdosenstromkreis gefunden | Hinweis (nationale Regeln unterscheiden sich) | [S10] |
-| `elec.cable.drop` | Kabel | Δ*u* über der Nutzergrenze | Hinweis | [S8] |
+| `elec.cable.drop` | Installationsleitung (`elec.house.cable`) | Δ*u* > Δ*u*_max (Nutzergrenze; ΔU = 2·R·I·cos φ bei 1~, √3·R·I·cos φ bei 3~, 2·R·I bei DC) | Hinweis | [S8] |
+| `elec.ac.resonance` | Kondensator eines Schwingkreises | \|*f* − *f*₀\| ≤ *B*/2 (Betrieb in der Resonanzbandbreite: Spannungen/Ströme an L und C weit über der Quelle) | Info | [S7] |
 | `elec.r.power` | Widerstand | *P* > *P*_Nenn | Warnung | [S7] |
 | `elec.led.current` | LED | *I* > *I*_F,max des Nutzers oder Datenblatts | Warnung | [S7] |
 | `elec.voltage.mismatch` | Element ↔ Kabel/Sammelschiene | Anschlussspannung ≠ Spannung der angeschlossenen Leitung (Energy-Anschlüsse tragen heute kV) | Warnung | – (Konsistenz) |
@@ -1234,10 +1235,12 @@ Entscheidungen:
 - **Richtung.** Spannungen und Ströme sind Beträge in Verbraucherrichtung, gültig für Reihen-Parallel-Netze mit einer
   speisenden Quelle; Quellen in Reihe gelten als gleichsinnig.
 
-Offen (Elektrotechnik): Wechselstrom-Impedanz, Blindwiderstände, Zeitkonstanten und Resonanz (braucht eine
-Frequenzvariable, Calc-5-Diagramme); Ersatzinduktivität; Schleiferstellung des Potentiometers, Basiswiderstand des
-Bipolartransistors und Verstärkung des Operationsverstärkers; Werte von Motor/Generator (Maschinen); Leitungswerte und
-`elec.cable.drop`; `elec.kcl` (braucht Stromrichtungen); `elec.voltage.mismatch`. **Vorgeschlagene Core-Änderung:** Ein
+Offen (Elektrotechnik): erledigt am 26.11.2026 – Zeitkonstanten, Schleiferstellung des Potentiometers, Basiswiderstand
+des Bipolartransistors und Verstärkung des Operationsverstärkers (Runde 5); Wechselstrom-Impedanz und Phase für eine
+Wechselstromquelle, Resonanz mit Güte und Bandbreite, Schein-/Blindleistung und cos φ, Werte von Motor/Generator mit
+Stern-Dreieck-Anlauf, Leitungswerte und `elec.cable.drop` (Runde 6). Noch offen: Ersatzinduktivität;
+Stern-Dreieck-Umwandlung (Y–Δ) von Impedanzen; Wechselstromberechnung mit mehreren Quellen oder einer
+Trafo-Sekundärwicklung als Einspeisung; `elec.kcl` (braucht Stromrichtungen); `elec.voltage.mismatch`. **Vorgeschlagene Core-Änderung:** Ein
 Wert, den eine Beziehung ohne Eingänge löst (eine Kennzeichnung), sollte wie ein eingegebener Wert in sich selbst
 wurzeln, damit zwei widersprüchliche Kennzeichnungen (eine 24-V-Lampe an einer 12-V-Sekundärwicklung) einen Widerspruch
 ergeben; heute wird ein solches Paar nicht geprüft. Ebenfalls nützlich in Core: Symbole in elementübergreifenden Formeln

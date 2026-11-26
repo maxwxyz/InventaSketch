@@ -577,7 +577,8 @@ in the document's check settings, because the binding limit is in a standard or 
 | `kin.dof` | mechanism with a drive | *F* ≠ number of drives | hint | [S24] |
 | `elec.coord.overload` | protective device + cable/circuit | *I*_B ≤ *I*_n ≤ *I*_z violated (*I*_z user-entered) | warning | [S9] |
 | `elec.rcd.additional` | socket circuit | no RCD with *I*_Δn ≤ 30 mA found upstream of a socket circuit | hint (national rules differ) | [S10] |
-| `elec.cable.drop` | cable | Δ*u* above the user limit | hint | [S8] |
+| `elec.cable.drop` | installation cable route (`elec.house.cable`) | Δ*u* > Δ*u*_max (user limit; ΔU = 2·R·I·cos φ for 1~, √3·R·I·cos φ for 3~, 2·R·I for DC) | hint | [S8] |
+| `elec.ac.resonance` | capacitor of a resonant circuit | \|*f* − *f*₀\| ≤ *B*/2 (works within the resonance bandwidth: voltages/currents at L and C far above the source) | info | [S7] |
 | `elec.r.power` | resistor | *P* > *P*_rated | warning | [S7] |
 | `elec.led.current` | LED | *I* > the user's or datasheet *I*_F,max | warning | [S7] |
 | `elec.voltage.mismatch` | element ↔ cable/busbar | port voltage ≠ connected line voltage (Energy ports carry kV today) | warning | – (consistency) |
@@ -1187,9 +1188,11 @@ Decisions:
 - **Orientation.** Voltages and currents are magnitudes in consumer orientation, valid for series-parallel networks driven
   by one source; sources in series are taken as aiding.
 
-Open (electrical): AC impedance, reactance, time constants and resonance (needs a frequency variable, Calc 5 charts);
-equivalent inductance; potentiometer wiper ratio, BJT base resistor and op-amp gain; motor/generator values (Machines);
-cable values and `elec.cable.drop`; `elec.kcl` (needs current directions); `elec.voltage.mismatch`. **Core change
+Open (electrical): done on 2026-11-26 – time constants, potentiometer wiper ratio, BJT base resistor and op-amp gain
+(round 5); AC impedance and phase for one AC source, resonance with Q and bandwidth, apparent/reactive power and cos φ,
+motor/generator values with star-delta starting, cable values and `elec.cable.drop` (round 6). Still open: equivalent
+inductance; star-delta (Y–Δ) conversion of impedances; AC analysis with several sources or a transformer secondary as
+the feed; `elec.kcl` (needs current directions); `elec.voltage.mismatch`. **Core change
 proposed:** a value solved by a relation without inputs (a marking) should root in itself like an entered value, so two
 markings that disagree (a 24 V lamp on a 12 V secondary) give a conflict; today such a pair is not checked. Also useful
 in Core: symbols qualified by the element's designator in cross-element formulas ("*U*(R1) = …"), since every resistor's
