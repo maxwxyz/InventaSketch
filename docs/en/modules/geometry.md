@@ -107,9 +107,57 @@ curve nor an axis; tick numbers move to the other side of their axis where the c
 with "0" when it is the origin. Ranges with more than 100 ticks double the step. `xPi` labels the x axis in
 multiples of π/2 (π for wide ranges): "π/2", "π", "3π/2", "−π".
 
+## Solids, sectors, Pythagoras, sets and probability (2026-11-26)
+
+| Id | Name (EN / DE) | Size | Parameters |
+|---|---|---|---|
+| `math.solid.cube` | Cube (cuboid) / Würfel (Quader) | 44x44 | `projection` cabinet (depth ½, 45°) / cavalier (depth 1, 45°), `hidden` (hidden edges dashed, true), `labels` (a, h) |
+| `math.solid.cylinder` | Cylinder / Zylinder | 36x44 | as the cube; labels r, h |
+| `math.solid.cone` | Cone / Kegel | 36x42 | as the cube; labels r, h (radius and height dashed inside) |
+| `math.solid.sphere` | Sphere / Kugel | 40x40 | as the cube; label r |
+| `math.solid.pyramid` | Square pyramid / Quadratische Pyramide | 40x40 | as the cube; labels a, h |
+| `math.arc.sector` | Circle sector / Kreissektor (Kreisausschnitt) | 40x40 | `kind` sector / segment, `angle` (central angle, 70°, 1–359), `start` (direction of the first radius, 20°), `angleLabel` value (70°) / letter (α) / none, `circle` (rest of the circle), `fill`, `labels` (r) |
+| `math.shape.pythagoras` | Pythagoras (squares on the sides) / Satz des Pythagoras (Quadrate) | 50x54 | legs `a` (3) and `b` (4), `areas` a², b², c² / values (9, 16, 25) / none, `labels` (a, b, c), `grid` (unit squares for whole-number sides), `fill` |
+| `math.venn.diagram` | Venn diagram / Venn-Diagramm (Mengendiagramm) | 60x44 | `sets` (2–3), `labelA`/`labelB`/`labelC`, `universe` (frame), `universeLabel` (empty: U in English, G in German), `fill` (translucent tints) |
+| `math.tree.probability` | Probability tree / Baumdiagramm (Wahrscheinlichkeit) | 84x54 | `levels` (stages, 1–3), `branches` (2–3 per node), `e1`…`e3` (outcomes per stage, "A; Ā"), `p1`…`p3` (probabilities per stage), `products` (path probabilities) |
+
+**Solids (oblique view, German "Schrägbild"):** the front plane is drawn in true shape, depth recedes at 45° to the
+upper right, shortened by q = ½ (cabinet projection, default) or q = 1 (cavalier projection). Polyhedra (cube,
+pyramid) decide visibility per face: a face is visible when its outward normal points towards the viewer of the
+projection, an edge when one of its faces is; hidden edges are drawn with `LineRole.Hidden` (dashed). Cylinder and
+cone use the exact projection of the base circle (a slightly tilted ellipse), the cylinder's silhouettes touch it at
+its widest points and the cone's sides are the tangents from the apex; the back part of the base is hidden. The sphere
+is drawn the conventional way (outline circle, equator as an ellipse whose depth follows q, back half dashed): its exact
+oblique outline would be a skewed ellipse. The solid fills its box: a square box gives a cube; free (also non-uniform)
+scaling makes a cuboid with a square base, a taller or flatter cylinder, cone or pyramid (the sphere stays round).
+Anchors: polyhedron vertices as ports `v0…`, apex (`AnchorRole.Apex`), centres of top and bottom faces.
+Context actions: projection (choice), hidden edges, labels.
+
+**Sector and segment:** the sector is bounded by two radii and the arc (closed outline from the centre), the segment by
+the chord and the arc (radii as thin construction lines). The central angle is marked by an arc and labelled with its
+value (decimal comma in German) or α. Grips: the first radius turns the figure (`start`), the second sets the angle.
+Context actions: sector or segment, "Central angle…", angle label, rest of the circle, tint, radius label.
+
+**Pythagoras:** right angle at C, hypotenuse c horizontal at the bottom with its square below, the squares on the legs
+outward; side letters inside the squares along the triangle's sides. The figure keeps its shape (uniform fit).
+Context actions: square labels, side labels, unit squares, tint.
+
+**Venn diagram:** circles of equal radius with centre distance = radius (two sets side by side, three sets in a
+triangle), names in the exclusive parts, tints drawn as separate translucent circles below the outlines, the
+universal set as the frame of the box. Context actions: two/three sets, "Set names…" ("A; B; C"), universal set, tint.
+
+**Probability tree:** leaves are spaced evenly, every node is centred over its children; outcomes stand at the
+nodes, probabilities on the branches (above rising branches, below falling ones; the middle one of three branches in
+the wedge above it), path probabilities ("= 0.18", product rule) after the leaves. Probabilities are typed per stage
+separated by ";" ("0.3; 0.7", "0,3", "30 %", "1/6"); several nodes of one stage are separated by "|" ("0.6 | 0.2"), the
+last group applies to the remaining nodes. Missing values share what is left of 1 (one missing value is the
+complement); fractions stay exact ("1/3", product "1/12"), percentages stay percentages, an impossible remainder
+shows "?". Text that is no probability is ignored. Context actions: more/fewer stages, two/three branches,
+"Probabilities of stage n…", "Outcomes of stage n…", path probabilities.
+
 ## Library
 
-32 items: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (first quadrant 0…6 x 0…5), `math.axes.number`,
+45 items: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (first quadrant 0…6 x 0…5), `math.axes.number`,
 `math.axes.spatial`, `math.axes.spatial.isometric`, `math.axes.polar`; graphs `math.graph.function` (parabola y = x²),
 `math.graph.function.linear` (y = 0.5x + 1), `math.graph.function.sine` (−2π…2π, π ticks, 90x45),
 `math.graph.function.exponential`; `math.point.labelled`, `math.vector.arrow`, `math.vector.arrow.position` (position
@@ -118,16 +166,21 @@ vector from O to P with dots), `math.vector.arrow.components`, `math.vector.sum`
 `math.angle.mark.value` ("α = 45°"), `math.angle.mark.arc` (arc only, for marking an existing figure); figures
 `math.shape.triangle`, `math.shape.triangle.right` (with angle marks), `math.shape.triangle.incircle`,
 `math.shape.triangle.circumcircle`, `math.shape.polygon` (hexagon), `math.circle.basic`, `math.circle.tangent`,
-`math.circle.thales`, `math.circle.unit`; constructions `math.construct.perpendicular`, `math.construct.anglebisector`,
-`math.lines.parallel`.
+`math.circle.thales`, `math.circle.unit`, `math.arc.sector`, `math.arc.sector.segment` (110°), `math.shape.pythagoras`;
+constructions `math.construct.perpendicular`, `math.construct.anglebisector`, `math.lines.parallel`; solids
+`math.solid.cube`, `math.solid.cuboid` (56x36), `math.solid.cylinder`, `math.solid.cone`, `math.solid.sphere`,
+`math.solid.pyramid`; sets and probability `math.venn.diagram`, `math.venn.diagram.three`, `math.tree.probability`,
+`math.tree.probability.dice` (one stage, outcomes 1, 2, 3 with 1/6, 1/3, 1/2).
 
 Categories: `math.axes` Coordinate systems / Koordinatensysteme, `math.graphs` Function graphs / Funktionsgraphen,
 `math.vectors` Points & vectors / Punkte & Vektoren, `math.angles` Angles / Winkel, `math.figures` Figures & circles /
-Figuren & Kreise, `math.constructions` Constructions / Konstruktionen.
+Figuren & Kreise, `math.constructions` Constructions / Konstruktionen, `math.solids` Solids / Körper,
+`math.stochastics` Sets & probability / Mengen & Wahrscheinlichkeit.
 
 Search keywords cover both languages, e.g. Koordinatensystem, Zahlenstrahl, Schrägbild, Parabel, Sinus, Ortsvektor,
 Kräfteparallelogramm, rechter Winkel, Dreieck, Inkreis, Umkreis, Höhe, Schwerpunkt, Thaleskreis, Einheitskreis,
-Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwinkel.
+Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwinkel, Würfel, Quader, Zylinder,
+Kegel, Kugel, Pyramide, Kreisausschnitt, Kreisabschnitt, Satz des Pythagoras, Mengendiagramm, Baumdiagramm.
 
 ## Anchors
 
@@ -202,7 +255,7 @@ so they have no grip.
 
 ## Tests and gallery
 
-`tests/InventaSketch.Modules.Geometry.Tests` (120 tests): registration, id conventions, bilingual names, parameters,
+`tests/InventaSketch.Modules.Geometry.Tests` (180 tests): registration, id conventions, bilingual names, parameters,
 options and actions; insertion without parameters; library items resolve to valid parameters; every library item
 inside its box in both languages, stretched, squashed and with every parameter variant; every parameter changes the
 drawing; free scaling changes `Size` and keeps parameters; anchors inside the box with unique ids; ports at the key
@@ -216,7 +269,10 @@ stretching, equilateral triangle, incircle tangent to all sides, circumcircle th
 altitudes (also obtuse), regular polygons stay regular, unit circle sine/cosine lengths, Thales right angle, tangent
 perpendicular to the radius, round circles, perpendicular and angle bisector geometry, parallel-line angle marks; a
 composed slide where a vector addition and an angle docked on grid points follow the coordinate system when it is
-moved and stretched.
+moved and stretched. `NewFigureTests`: visible and hidden edges of cube and pyramid, the depth factor at 45° of both
+projections, cylinder silhouettes, cone sides tangent to the base, round sphere, sector/segment outline, angle label
+and grip, Pythagoras areas (a² + b² = c²) and unit squares, Venn layout and set-name input, probability tree
+complements, products, fractions, percentages and layout, probability parsing and the JSON round trip.
 
 The gallery test writes `gallery/*.html` into the test output folder (one page per category: every library item in
 English and German, stretched and squashed, plus the choices of the main parameters) and `gallery/index.html` with a

@@ -85,6 +85,9 @@ namespace InventaSketch.Modules.Geometry.Tests
             "math.angle.mark",
             "math.shape.triangle", "math.shape.polygon", "math.circle.basic", "math.circle.tangent", "math.circle.thales", "math.circle.unit",
             "math.construct.perpendicular", "math.construct.anglebisector", "math.lines.parallel",
+            "math.arc.sector", "math.shape.pythagoras",
+            "math.solid.cube", "math.solid.cylinder", "math.solid.cone", "math.solid.sphere", "math.solid.pyramid",
+            "math.venn.diagram", "math.tree.probability",
         };
 
         [Fact]
@@ -92,7 +95,7 @@ namespace InventaSketch.Modules.Geometry.Tests
         {
             var r = Fx.Reg();
             Assert.Equal(AllTypeIds.OrderBy(x => x), r.Types.Select(t => t.Id).OrderBy(x => x));
-            Assert.Equal(6, r.Categories.Count);
+            Assert.Equal(8, r.Categories.Count);
             Assert.All(r.Types, t => Assert.Contains(r.Categories, c => c.Id == t.Category));
             Assert.All(r.Library, i => Assert.Contains(r.Categories, c => c.Id == i.Category));
             Assert.All(r.Categories, c => Assert.Contains(r.Types, t => t.Category == c.Id));
@@ -101,7 +104,7 @@ namespace InventaSketch.Modules.Geometry.Tests
             Assert.Equal("Math & geometry", m.Name.En);
             Assert.Equal("Mathematik & Geometrie", m.Name.De);
             Assert.False(string.IsNullOrWhiteSpace(m.Version));
-            Assert.InRange(r.Library.Count, 20, 40);
+            Assert.InRange(r.Library.Count, 20, 60);
         }
 
         [Fact]
@@ -214,6 +217,20 @@ namespace InventaSketch.Modules.Geometry.Tests
         [InlineData("mittelsenkrechte", "math.construct.perpendicular")]
         [InlineData("winkelhalbierende", "math.construct.anglebisector")]
         [InlineData("stufenwinkel", "math.lines.parallel")]
+        [InlineData("kreisausschnitt", "math.arc.sector")]
+        [InlineData("kreisabschnitt", "math.arc.sector.segment")]
+        [InlineData("satz des pythagoras", "math.shape.pythagoras")]
+        [InlineData("würfel", "math.solid.cube")]
+        [InlineData("quader", "math.solid.cuboid")]
+        [InlineData("zylinder", "math.solid.cylinder")]
+        [InlineData("kegel", "math.solid.cone")]
+        [InlineData("kugel", "math.solid.sphere")]
+        [InlineData("pyramid", "math.solid.pyramid")]
+        [InlineData("schrägbild", "math.solid.cube")]
+        [InlineData("mengendiagramm", "math.venn.diagram")]
+        [InlineData("venn", "math.venn.diagram.three")]
+        [InlineData("baumdiagramm", "math.tree.probability")]
+        [InlineData("probability tree", "math.tree.probability.dice")]
         public void SearchFindsElementsInBothLanguages(string query, string itemId)
             => Assert.Contains(Fx.Reg().Search(query), i => i.Id == itemId);
 

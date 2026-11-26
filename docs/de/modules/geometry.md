@@ -115,9 +115,59 @@ verdeckt; Achsenzahlen wechseln auf die andere Seite ihrer Achse, wo die Kurve d
 einmal mit „0“ beschriftet, wenn er der Ursprung ist. Bereiche mit mehr als 100 Teilstrichen verdoppeln die Teilung.
 `xPi` beschriftet die x-Achse in Vielfachen von π/2 (π bei breiten Bereichen): „π/2“, „π“, „3π/2“, „−π“.
 
+## Körper, Kreissektoren, Pythagoras, Mengen und Wahrscheinlichkeit (26.11.2026)
+
+| Id | Name (EN / DE) | Größe | Parameter |
+|---|---|---|---|
+| `math.solid.cube` | Cube (cuboid) / Würfel (Quader) | 44x44 | `projection` Kabinettprojektion (Tiefe ½, 45°) / Kavalierprojektion (Tiefe 1, 45°), `hidden` (verdeckte Kanten gestrichelt, true), `labels` (a, h) |
+| `math.solid.cylinder` | Cylinder / Zylinder | 36x44 | wie Würfel; Beschriftung r, h |
+| `math.solid.cone` | Cone / Kegel | 36x42 | wie Würfel; Beschriftung r, h (Radius und Höhe innen gestrichelt) |
+| `math.solid.sphere` | Sphere / Kugel | 40x40 | wie Würfel; Beschriftung r |
+| `math.solid.pyramid` | Square pyramid / Quadratische Pyramide | 40x40 | wie Würfel; Beschriftung a, h |
+| `math.arc.sector` | Circle sector / Kreissektor (Kreisausschnitt) | 40x40 | `kind` Sektor / Segment, `angle` (Mittelpunktswinkel, 70°, 1–359), `start` (Richtung des ersten Radius, 20°), `angleLabel` Wert (70°) / Buchstabe (α) / keine, `circle` (restlicher Kreis), `fill`, `labels` (r) |
+| `math.shape.pythagoras` | Pythagoras (squares on the sides) / Satz des Pythagoras (Quadrate) | 50x54 | Katheten `a` (3) und `b` (4), `areas` a², b², c² / Werte (9, 16, 25) / keine, `labels` (a, b, c), `grid` (Einheitsquadrate bei ganzzahligen Seiten), `fill` |
+| `math.venn.diagram` | Venn diagram / Venn-Diagramm (Mengendiagramm) | 60x44 | `sets` (2–3), `labelA`/`labelB`/`labelC`, `universe` (Rahmen), `universeLabel` (leer: U auf Englisch, G auf Deutsch), `fill` (durchscheinende Tönung) |
+| `math.tree.probability` | Probability tree / Baumdiagramm (Wahrscheinlichkeit) | 84x54 | `levels` (Stufen, 1–3), `branches` (2–3 je Knoten), `e1`…`e3` (Ergebnisse je Stufe, „A; Ā“), `p1`…`p3` (Wahrscheinlichkeiten je Stufe), `products` (Pfadwahrscheinlichkeiten) |
+
+**Körper (Schrägbild):** Die Frontebene wird in wahrer Größe gezeichnet, die Tiefe läuft unter 45° nach rechts oben,
+verkürzt um q = ½ (Kabinettprojektion, Vorgabe) oder q = 1 (Kavalierprojektion). Bei Polyedern (Würfel, Pyramide)
+wird die Sichtbarkeit je Fläche bestimmt: Eine Fläche ist sichtbar, wenn ihre äußere Normale zum Betrachter der
+Projektion zeigt, eine Kante, wenn eine ihrer Flächen sichtbar ist; verdeckte Kanten erhalten `LineRole.Hidden`
+(gestrichelt). Zylinder und Kegel verwenden die exakte Projektion des Grundkreises (eine leicht gekippte Ellipse); die
+Mantellinien des Zylinders berühren sie an den breitesten Stellen, die Mantellinien des Kegels sind die Tangenten von
+der Spitze; der hintere Teil des Grundkreises ist verdeckt. Die Kugel wird wie üblich gezeichnet (Umrisskreis, Äquator
+als Ellipse mit der Tiefe nach q, hintere Hälfte gestrichelt), denn ihr exakter Schrägbild-Umriss wäre eine schiefe
+Ellipse. Der Körper füllt seine Box: Eine quadratische Box ergibt einen Würfel; freies (auch ungleichmäßiges) Skalieren
+ergibt einen Quader mit quadratischer Grundfläche bzw. einen höheren oder flacheren Zylinder, Kegel oder eine Pyramide
+(die Kugel bleibt rund). Anker: Ecken der Polyeder als Anschlüsse `v0…`, Spitze (`AnchorRole.Apex`), Mittelpunkte von
+Deck- und Grundfläche. Kontextaktionen: Projektion (Auswahl), verdeckte Kanten, Beschriftung.
+
+**Sektor und Segment:** Der Sektor wird von zwei Radien und dem Bogen begrenzt (geschlossener Umriss ab dem
+Mittelpunkt), das Segment von Sehne und Bogen (Radien als dünne Konstruktionslinien). Der Mittelpunktswinkel ist mit
+einem Bogen markiert und mit seinem Wert (Dezimalkomma auf Deutsch) oder α beschriftet. Griffe: Der erste Radius dreht
+die Figur (`start`), der zweite legt den Winkel fest. Kontextaktionen: Sektor oder Segment, „Mittelpunktswinkel…“,
+Winkelbeschriftung, restlicher Kreis, Tönung, Radiusbeschriftung.
+
+**Pythagoras:** rechter Winkel bei C, Hypotenuse c waagrecht unten mit ihrem Quadrat darunter, die Kathetenquadrate
+nach außen; die Seitenbuchstaben stehen in den Quadraten entlang der Dreiecksseiten. Die Figur behält ihre Form
+(gleichmäßig eingepasst). Kontextaktionen: Beschriftung der Quadrate, Seitenbeschriftung, Einheitsquadrate, Tönung.
+
+**Venn-Diagramm:** gleich große Kreise mit Mittelpunktsabstand = Radius (zwei Mengen nebeneinander, drei im Dreieck),
+Namen in den Teilen, die nur zu einer Menge gehören, Tönungen als eigene durchscheinende Kreise unter den Umrissen, die
+Grundmenge als Rahmen der Box. Kontextaktionen: zwei/drei Mengen, „Mengennamen…“ („A; B; C“), Grundmenge, Tönung.
+
+**Baumdiagramm:** Die Blätter sind gleichmäßig verteilt, jeder Knoten steht mittig über seinen Kindern; Ergebnisse an
+den Knoten, Wahrscheinlichkeiten an den Ästen (über steigenden, unter fallenden Ästen; der mittlere von drei Ästen im
+Keil darüber), Pfadwahrscheinlichkeiten („= 0,18“, Pfadregel) hinter den Blättern. Wahrscheinlichkeiten werden je Stufe
+durch „;“ getrennt eingegeben („0.3; 0.7“, „0,3“, „30 %“, „1/6“); mehrere Knoten einer Stufe durch „|“ („0.6 | 0.2“), die
+letzte Gruppe gilt für die übrigen Knoten. Fehlende Werte teilen sich den Rest bis 1 (ein fehlender Wert ist das
+Gegenereignis); Brüche bleiben exakt („1/3“, Produkt „1/12“), Prozente bleiben Prozente, ein unmöglicher Rest zeigt
+„?“. Text, der keine Wahrscheinlichkeit ist, wird ignoriert. Kontextaktionen: mehr/weniger Stufen, zwei/drei Äste,
+„Wahrscheinlichkeiten Stufe n…“, „Ergebnisse Stufe n…“, Pfadwahrscheinlichkeiten.
+
 ## Bibliothek
 
-32 Einträge: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (erster Quadrant 0…6 x 0…5), `math.axes.number`,
+45 Einträge: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (erster Quadrant 0…6 x 0…5), `math.axes.number`,
 `math.axes.spatial`, `math.axes.spatial.isometric`, `math.axes.polar`; Graphen `math.graph.function` (Parabel
 y = x²), `math.graph.function.linear` (y = 0,5x + 1), `math.graph.function.sine` (−2π…2π, π-Teilung, 90x45),
 `math.graph.function.exponential`; `math.point.labelled`, `math.vector.arrow`, `math.vector.arrow.position` (Ortsvektor
@@ -126,16 +176,21 @@ von O nach P mit Punkten), `math.vector.arrow.components`, `math.vector.sum` (Pa
 („α = 45°“), `math.angle.mark.arc` (nur Bogen, zum Markieren einer vorhandenen Figur); Figuren `math.shape.triangle`,
 `math.shape.triangle.right` (mit Winkelmarkierungen), `math.shape.triangle.incircle`,
 `math.shape.triangle.circumcircle`, `math.shape.polygon` (Sechseck), `math.circle.basic`, `math.circle.tangent`,
-`math.circle.thales`, `math.circle.unit`; Konstruktionen `math.construct.perpendicular`,
-`math.construct.anglebisector`, `math.lines.parallel`.
+`math.circle.thales`, `math.circle.unit`, `math.arc.sector`, `math.arc.sector.segment` (110°), `math.shape.pythagoras`;
+Konstruktionen `math.construct.perpendicular`, `math.construct.anglebisector`, `math.lines.parallel`; Körper
+`math.solid.cube`, `math.solid.cuboid` (56x36), `math.solid.cylinder`, `math.solid.cone`, `math.solid.sphere`,
+`math.solid.pyramid`; Mengen und Wahrscheinlichkeit `math.venn.diagram`, `math.venn.diagram.three`,
+`math.tree.probability`, `math.tree.probability.dice` (einstufig, Ergebnisse 1, 2, 3 mit 1/6, 1/3, 1/2).
 
 Kategorien: `math.axes` Coordinate systems / Koordinatensysteme, `math.graphs` Function graphs / Funktionsgraphen,
 `math.vectors` Points & vectors / Punkte & Vektoren, `math.angles` Angles / Winkel, `math.figures` Figures & circles /
-Figuren & Kreise, `math.constructions` Constructions / Konstruktionen.
+Figuren & Kreise, `math.constructions` Constructions / Konstruktionen, `math.solids` Solids / Körper,
+`math.stochastics` Sets & probability / Mengen & Wahrscheinlichkeit.
 
 Suchbegriffe decken beide Sprachen ab, z. B. Koordinatensystem, Zahlenstrahl, Schrägbild, Parabel, Sinus, Ortsvektor,
 Kräfteparallelogramm, rechter Winkel, Dreieck, Inkreis, Umkreis, Höhe, Schwerpunkt, Thaleskreis, Einheitskreis,
-Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwinkel.
+Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwinkel, Würfel, Quader, Zylinder,
+Kegel, Kugel, Pyramide, Kreisausschnitt, Kreisabschnitt, Satz des Pythagoras, Mengendiagramm, Baumdiagramm.
 
 ## Anker
 
@@ -214,7 +269,7 @@ keine Parameter, daher ohne Griff.
 
 ## Tests und Galerie
 
-`tests/InventaSketch.Modules.Geometry.Tests` (120 Tests): Registrierung, Id-Konventionen, zweisprachige Namen,
+`tests/InventaSketch.Modules.Geometry.Tests` (180 Tests): Registrierung, Id-Konventionen, zweisprachige Namen,
 Parameter, Optionen und Aktionen; Einfügen ohne Parameter; Bibliothekseinträge verweisen auf gültige Parameter; jeder
 Bibliothekseintrag in seiner Box in beiden Sprachen, gestreckt, gestaucht und mit jeder Parametervariante; jeder
 Parameter ändert die Zeichnung; freies Skalieren ändert `Size` und behält Parameter; Anker in der Box mit eindeutigen
@@ -229,7 +284,11 @@ Dreieck, Inkreis berührt alle Seiten, Umkreis durch die Ecken, Höhenschnittpun
 regelmäßige Vielecke bleiben regelmäßig, Sinus-/Kosinuslängen am Einheitskreis, rechter Winkel bei Thales, Tangente
 senkrecht zum Radius, runde Kreise, Geometrie von Mittelsenkrechter und Winkelhalbierender, Winkelmarken an
 Parallelen; eine zusammengesetzte Folie, auf der eine an Gitterpunkten angedockte Vektoraddition und ein Winkel dem
-Koordinatensystem beim Verschieben und Strecken folgen.
+Koordinatensystem beim Verschieben und Strecken folgen. `NewFigureTests`: sichtbare und verdeckte Kanten von Würfel
+und Pyramide, der Tiefenfaktor unter 45° beider Projektionen, Mantellinien des Zylinders, Kegelmantel tangential an
+den Grundkreis, runde Kugel, Umriss von Sektor/Segment, Winkelbeschriftung und Griff, Pythagoras-Flächen (a² + b² = c²)
+und Einheitsquadrate, Venn-Anordnung und Eingabe der Mengennamen, Gegenwahrscheinlichkeiten, Pfadprodukte, Brüche,
+Prozente und Anordnung im Baumdiagramm, Lesen von Wahrscheinlichkeiten und der JSON-Rundlauf.
 
 Der Galerietest schreibt `gallery/*.html` in den Testausgabeordner (eine Seite je Kategorie: jeder Bibliothekseintrag
 auf Englisch und Deutsch, gestreckt und gestaucht, dazu die Auswahlwerte der wichtigsten Parameter) und

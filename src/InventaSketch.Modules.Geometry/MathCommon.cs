@@ -23,6 +23,8 @@ namespace InventaSketch.Modules.Geometry
         public const string Angles = "math.angles";
         public const string Figures = "math.figures";
         public const string Constructions = "math.constructions";
+        public const string Solids = "math.solids";
+        public const string Stochastics = "math.stochastics";
     }
 
     /// <summary>Semantic primitive tags of the module (tests, host naming, style overrides).</summary>
