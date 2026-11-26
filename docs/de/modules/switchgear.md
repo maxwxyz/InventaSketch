@@ -143,11 +143,35 @@ einfügen; abgeleitete Werte werden nie gespeichert.
 | LS, FI/LS, Motorschutzschalter, Überlastrelais, NH-Lasttrenner | I_n Bemessungsstrom (Motorschutzschalter und Überlastrelais: Einstellstrom I_r), I_B Betriebsstrom des Stromkreises, P Leistung des Stromkreises; I_z Strombelastbarkeit der Leitung, I_a Sofortauslösestrom (LS, FI/LS), I_Δn (FI/LS); nicht beim Überlastrelais: I_k1 und I_k3 an der Verteilung (vom vorgeschalteten Hauptschalter), I_cn Bemessungsschaltvermögen; Engineer (nur lesbar, vom vorgeschalteten Gerät) I_n,up, I_a,up | `rating` (die Bemessungsauswahl selbst), `ib`, `power`, `iz`, `ia`, `idn`, `ik1`, `ik3`, `icn`, `inUp`, `iaUp` |
 | FI | I_n, I_B, P; I_Δn | `rating`, `ib`, `power`, `idn` |
 | Hauptschalter | I_n, I_B, P, I_k1 Kurzschlussstrom Außenleiter–PE an der Verteilung; I_k3 dreipoliger Kurzschlussstrom, Z_s Schleifenimpedanz, S_r und u_k des Einspeisetransformators, l und A der Zuleitung; Engineer U_n (Vorgabe 400 V), ρ (Kupfer bei 20 °C, Vorgabe 0,017241 Ω·mm²/m), Z_T, Z_L | `rating`, `ib`, `power`, `ik1`, `ik3`, `zs`, `trafoPower`, `uk`, `supplyLength`, `supplySection`, `systemVoltage`, `resistivity`, `zTrafo`, `zLine` |
-| Raumgeräte, Frequenzumrichter | P Leistung (Umrichter: Bemessungsleistung, die Auswahl `power` in kW), I Strom je Außenleiter; U Spannung Außenleiter–Neutralleiter (Vorgabe 230 V), cos φ (Vorgabe 1) | `power`, `current`, `voltage`, `powerFactor` |
+| Raumgeräte | P Leistung, I Strom je Außenleiter; U Spannung Außenleiter–Neutralleiter (Vorgabe 230 V), cos φ (Vorgabe 1) | `power`, `current`, `voltage`, `powerFactor` |
+| Frequenzumrichter | P_N Bemessungsleistung (die Auswahl `power` in kW), f Ausgangsfrequenz (Sollwert), P_out Ausgangsleistung, I Eingangsstrom je Außenleiter; P Eingangsleistung, U Netzspannung Außenleiter–Neutralleiter (Vorgabe 230 V), cos φ Leistungsfaktor am Eingang (Vorgabe 1), η Wirkungsgrad (Vorgabe 100 %: Verluste vernachlässigt), U_out Ausgangsspannung (verkettet), I_out Ausgangsstrom, f_min und f_max Einstellbereich, P_N,M Bemessungsleistung des angeschlossenen Motors (nur lesbar); Ingenieur f_b Eckfrequenz (Vorgabe 50 Hz), U_b Ausgangsspannung bei f_b (Vorgabe 400 V, einphasige Einspeisung 230 V) | `power`, `frequency`, `powerOut`, `current`, `powerIn`, `voltage`, `powerFactor`, `efficiency`, `voltageOut`, `currentOut`, `frequencyMin`, `frequencyMax`, `motorPower`, `baseFrequency`, `baseVoltage` |
 | Hutschiene | I_L1, I_L2, I_L3 Strom je Außenleiter, P Leistung der Verteilung; ΔI Schieflast, ΔI_max zulässige Schieflast (Vorgabe 20 A) | `currentL1` … `currentL3`, `power`, `imbalance`, `imbalanceMax` |
 
 - **Verbraucher:** I = P/(U·cos φ) einphasig, I = P/(3·U·cos φ) dreiphasig (symmetrisch, U Außenleiter–Neutralleiter)
   [S7].
+- **Frequenzumrichter (2026-11-26, Runde 8):** Netzseite als Verbraucher (I = P/(3·U·cos φ) dreiphasig, P/(U·cos φ)
+  einphasig), P_out = η·P [S15], Ausgangsspannung nach einer linearen U/f-Kennlinie U_out = U_b·min(f, f_b)/f_b,
+  oberhalb der Eckfrequenz konstant (Feldschwächung; keine Spannungsanhebung bei kleiner Frequenz) [S15]. Die Anzeige
+  zeigt den eingegebenen Sollwert („35.0 Hz“; ohne Sollwert 50.0 Hz).
+- **Werte-Port an den Motorklemmen:** Das eine Element eines anderen Moduls, das an den Ausgangsklemmen `U`, `V`, `W`
+  angeschlossen ist (Adern und Kabel beliebiger Module, von Ende zu Ende und über daran angedockte Linien, und durch
+  Reihenklemmen oben ↔ unten; ein anderes Gerät dieses Moduls beendet die Suche), ist der Motor. Er übernimmt f
+  (`sw.vfd.port.f`), U_out als Klemmenspannung `U` (`sw.vfd.port.u`) und P_out als elektrische Leistung (`Pel`, sonst
+  `P`: die Namensliste von `NetKeys`; `sw.vfd.port.p`) und gibt seinen Leiterstrom (I_out) und seine
+  Bemessungsleistung `PN` (P_N,M) zurück. So erhält ein Motorblock oder eine E-Maschine des Maschinenmoduls die
+  Synchrondrehzahl n_s = 60·f/p und mit einer Drehzahl den Schlupf aus dem Umrichter (35 Hz, 4 Pole: 1050 min⁻¹), der
+  Drehstrommotor `elec.motor` (Stromart 3~) des Elektromoduls Spannung und Leistung. Die Leistung wird nur
+  weitergegeben, wenn sie auf einer Seite bekannt ist (Leistung oder Strom am Motor eingegeben, oder Ein-/
+  Ausgangsleistung oder Strom am Umrichter); sonst gilt der Umrichter mit seiner Bemessungsleistung, P_out = P_N
+  (`sw.vfd.rated`, eine Bemessungsannahme wie bisher), und diese Annahme geht nicht an den Motor. Mehrere Motoren an
+  einem Umrichter (Gruppenantrieb) ergeben keinen Port. Das Modul des Motors findet den Umrichter auch selbst an seinen
+  Phasenklemmen (über die Typ-ID `sw.drive.vfd`), sodass das Werte-Etikett des Motors allein auch mit Leitungen des
+  Elektromoduls die Frequenz (Maschinen) bzw. die Spannung (Elektro) des Umrichters zeigt. Ein Motor, an dem die
+  Typenschildspannung eingetragen ist, während der Umrichter unterhalb der Eckfrequenz läuft, zeigt einen Widerspruch:
+  die Klemmenspannung ist dort U_out.
+- **Summen:** Eingangsleistung und -strom des Umrichters zählen in den Summen von Stromkreis und Schiene, wenn an ihm
+  Ein- oder Ausgangsleistung, Strom oder Bemessung eingegeben ist (die Bibliothekseinträge tragen die Bemessung) oder
+  am Motor an seinem Ausgang eine Leistung oder ein Strom.
 - **Stromkreise:** Der Stromkreis eines Geräts ist sein Teil des Einspeisebaums aus dem Stromkreisplan (dieselben
   Regeln: „Gespeist von“, Verdrahtung, Schienenreihenfolge); ein FI oder Hauptschalter umfasst alles darunter, ein
   Frequenzumrichter ist ein Verbraucher des Geräts, das ihn speist. P = Summe der Verbraucherleistungen; I_B = Summe der
@@ -179,6 +203,8 @@ einfügen; abgeleitete Werte werden nie gespeichert.
 | `sw.selectivity` | Hinweis | I_n,up ≥ 1,6·I_n gegenüber dem vorgeschalteten Überstromschutzorgan (Faustregel für gG-Sicherungen; ein Hinweis, keine Selektivitätsuntersuchung) | S11 |
 | `sw.selectivity.instant` | Hinweis | I_k3 an der Verteilung < I_a,up eines vorgeschalteten LS-Schalters (sonst lösen beide gleichzeitig aus: keine Stromselektivität) | S11 |
 | `sw.rcd.type` | Hinweis | FI- bzw. FI/LS-Typ ≥ dem Typ, den ein Frequenzumrichter darunter braucht (dreiphasig B, einphasig F; Reihenfolge AC < A < F < B) | S11 |
+| `sw.vfd.rating` | Warnung | P_N,M ≤ P_N und P_out ≤ P_N: der Motor (seine Bemessungsleistung oder seine elektrische Leistung im Betriebspunkt) braucht mehr als die Bemessungsleistung des Umrichters | – |
+| `sw.vfd.range` | Warnung | f_min ≤ f ≤ f_max (nur die eingegebenen Grenzen) | – |
 
 **Kurzschluss, Selektivität und FI-Typ (2026-11-26).** Der Hauptschalter trägt eine Schätzung der Kurzschlussströme an
 der Verteilung: Z_T = u_k·U_n²/S_r [S7], Z_L = ρ·l/A [S12], Z_s = Z_T + 2·Z_L (Außen- und Schutzleiter mit gleichem
@@ -282,6 +308,9 @@ Alles wird mit nativen Grundformen gezeichnet. Schwarz-Weiß-Ausgabe übernehmen
   ist offen).
 - Die Schienenregel für LS-Schalter ist eine Annahme; für Gewissheit Adern zeichnen oder „Gespeist von“ setzen.
 - Kabellängen werden eingegeben (m), nicht aus der Zeichnung gemessen.
+- Frequenzumrichter: nur lineare U/f-Kennlinie (kein Boost, keine Vektorregelung, kein Schlupfausgleich); der
+  Leistungsfaktor am Eingang ist ein einfaches cos φ (Oberschwingungen des Gleichrichters nicht modelliert); ein Motor je
+  Umrichter für den Leistungs-Port; Ausgangsstromgrenzen und der Bemessungsstrom des Umrichters werden nicht geprüft.
 - Die Schaltzeichen-Ansicht ist ein kompaktes Gerätesymbol, kein vollständiger mehrpoliger Stromlaufplan; die
   Stromkreisstruktur steht in den Berichten.
 - Mögliche nächste Schritte: die Phase eines einpoligen Geräts aus dem Zahn der Phasenschiene darüber, Phasen- und

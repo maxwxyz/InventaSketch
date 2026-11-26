@@ -139,10 +139,32 @@ derived values are never stored.
 | MCB, RCBO, motor protection, overload relay, NH fuse switch | I_n rated current (motor protection and overload relay: set current I_r), I_B operating current of the circuit, P power of the circuit; I_z current-carrying capacity of the cable, I_a instantaneous tripping current (MCB, RCBO), I_Δn (RCBO); not on the overload relay: I_k1 and I_k3 at the board (from the main switch upstream), I_cn rated short-circuit capacity; engineer (read-only, from the device upstream) I_n,up, I_a,up | `rating` (the rating choice itself), `ib`, `power`, `iz`, `ia`, `idn`, `ik1`, `ik3`, `icn`, `inUp`, `iaUp` |
 | RCD | I_n, I_B, P; I_Δn | `rating`, `ib`, `power`, `idn` |
 | Main switch | I_n, I_B, P, I_k1 short-circuit current phase to PE at the board; I_k3 three-phase short-circuit current, Z_s loop impedance, S_r and u_k of the supply transformer, l and A of the supply cable; engineer U_n (default 400 V), ρ (copper at 20 °C, default 0.017241 Ω·mm²/m), Z_T, Z_L | `rating`, `ib`, `power`, `ik1`, `ik3`, `zs`, `trafoPower`, `uk`, `supplyLength`, `supplySection`, `systemVoltage`, `resistivity`, `zTrafo`, `zLine` |
-| Room devices, frequency inverter | P power (inverter: rated power, the `power` choice in kW), I current per phase; U voltage phase to neutral (default 230 V), cos φ (default 1) | `power`, `current`, `voltage`, `powerFactor` |
+| Room devices | P power, I current per phase; U voltage phase to neutral (default 230 V), cos φ (default 1) | `power`, `current`, `voltage`, `powerFactor` |
+| Frequency inverter | P_N rated power (the `power` choice in kW), f output frequency (set point), P_out output power, I input current per phase; P input power, U supply voltage phase to neutral (default 230 V), cos φ input power factor (default 1), η efficiency (default 100 %: losses neglected), U_out output voltage (line-to-line), I_out output current, f_min and f_max set range, P_N,M rated power of the connected motor (read-only); engineer f_b base frequency (default 50 Hz), U_b output voltage at f_b (default 400 V, single-phase supply 230 V) | `power`, `frequency`, `powerOut`, `current`, `powerIn`, `voltage`, `powerFactor`, `efficiency`, `voltageOut`, `currentOut`, `frequencyMin`, `frequencyMax`, `motorPower`, `baseFrequency`, `baseVoltage` |
 | DIN rail | I_L1, I_L2, I_L3 current per phase, P power of the board; ΔI imbalance, ΔI_max permitted imbalance (default 20 A) | `currentL1` … `currentL3`, `power`, `imbalance`, `imbalanceMax` |
 
 - **Loads:** I = P/(U·cos φ) single-phase, I = P/(3·U·cos φ) three-phase (symmetrical, U phase to neutral) [S7].
+- **Frequency inverter (2026-11-26, round 8):** supply side as a load (I = P/(3·U·cos φ) three-phase, P/(U·cos φ)
+  single-phase), P_out = η·P [S15], output voltage after a linear V/f characteristic U_out = U_b·min(f, f_b)/f_b, constant
+  above the base frequency (field weakening; no voltage boost at low frequency) [S15]. The display shows the entered
+  set point ("35.0 Hz"; 50.0 Hz without one).
+- **Value port at the motor terminals:** the one element of another module wired to the output pins `U`, `V`, `W`
+  (wires and cables of any module, end to end and through lines docked on them, and through terminal blocks top ↔
+  bottom; another switchgear device ends the search) is the motor. It takes f (`sw.vfd.port.f`), U_out as its terminal
+  voltage `U` (`sw.vfd.port.u`) and P_out as its electrical power (`Pel`, else `P`: the `NetKeys` name list;
+  `sw.vfd.port.p`), and gives back its line current (I_out) and its rated power `PN` (P_N,M). So a motor block or
+  e-machine of the machines module gets its synchronous speed n_s = 60·f/p and, with a speed, its slip from the
+  inverter (35 Hz, 4 poles: 1050 min⁻¹), and the three-phase motor `elec.motor` (supply 3~) of the electrical module
+  its voltage and power. The power passes only when it is known on one side (a power or current entered on the motor,
+  or an input/output power or current on the inverter); otherwise the inverter is taken at its rated power,
+  P_out = P_N (`sw.vfd.rated`, a sizing assumption as before), and that assumption is not passed to the motor. Several
+  motors on one inverter (group drive) give no port. The motor's own module also finds the inverter at its phase
+  terminals (by the type id `sw.drive.vfd`), so the motor's value label alone shows the inverter's frequency (machines)
+  or voltage (electrical) with electrical wires as well. A motor entered with its nameplate voltage while the inverter
+  runs below the base frequency shows a conflict: the terminal voltage there is U_out.
+- **Totals:** the inverter's input power and current count in the circuit and rail totals when its input or output
+  power, current or rating is entered (the library items carry the rating) or the motor at its output has a power or
+  current entered.
 - **Circuits:** the circuit of a device is its part of the feed tree of the circuit plan (same rules: "fed from",
   wiring, rail order); an RCD or main switch covers everything below it, a frequency inverter is a load of the device
   that feeds it. P = sum of the load powers; I_B = sum of the load currents for a single-phase device, the largest
@@ -171,6 +193,8 @@ derived values are never stored.
 | `sw.selectivity` | hint | I_n,up ≥ 1.6·I_n against the overcurrent device upstream (rule of thumb for gG fuses; a hint, not a selectivity study) | S11 |
 | `sw.selectivity.instant` | hint | I_k3 at the board < I_a,up of a circuit breaker upstream (otherwise both trip at once: no current selectivity) | S11 |
 | `sw.rcd.type` | hint | RCD/RCBO type ≥ the type a frequency inverter below needs (three-phase B, single-phase F; order AC < A < F < B) | S11 |
+| `sw.vfd.rating` | warning | P_N,M ≤ P_N and P_out ≤ P_N: the motor (its rated power or its electrical power at the operating point) needs more than the inverter's rated power | – |
+| `sw.vfd.range` | warning | f_min ≤ f ≤ f_max (only the limits entered) | – |
 
 **Short circuit, selectivity and RCD type (2026-11-26).** The main switch carries an estimate of the short-circuit
 currents at the board: Z_T = u_k·U_n²/S_r [S7], Z_L = ρ·l/A [S12], Z_s = Z_T + 2·Z_L (phase and protective conductor of
@@ -269,6 +293,9 @@ black and white).
   coordination with the back-up fuse is open).
 - The rail-order rule for MCBs is an assumption; draw wires or set "Fed from" for certainty.
 - Cable lengths are typed (m); they are not measured from the drawing.
+- Frequency inverter: linear V/f only (no boost, no vector control, no slip compensation); the input power factor is a
+  plain cos φ (harmonics of the rectifier are not modelled); one motor per inverter for the power port; output
+  current limits and the inverter's rated current are not checked.
 - The circuit symbol view is a compact per-device symbol, not a full multi-line circuit diagram; the reports, not the
   symbols, carry the circuit structure.
 - Possible next steps: the phase of a single-pole device from the comb busbar tooth it sits under, phase and load

@@ -236,6 +236,7 @@ magnitudes; *P* = 2π·*n*·*T*. Card variables come first. Design notes:
 | `mach.slip.sign` | induction machine (`rotor` = `asm`) in motor mode with *n* > *n*_s (generator operation) | info | [S15] |
 | `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (gearbox, differential), *P* > *P*_el (motor) or *P*_el > *P* (generator) | warning | [S1] |
 | `mach.overload` | *P* > *P*_N or *T* > *T*_N (rating entered by the user) | warning | [S14] |
+| `mach.speed.max` | *n* > *n*_max or *n*_s > *n*_max (maximum permissible speed `maxSpeed` entered; e.g. a frequency inverter's output frequency drives the synchronous speed above it) | warning | [S14] |
 
 **Generator mode** (2026-11-26). The operating mode (`mode`: motor by default, generator) decides the efficiency rule:
 a motor turns electrical into mechanical power (*P* = η·*P*_el, `mach.efficiency.motor`), a generator driven by a turbine,
@@ -261,9 +262,15 @@ torques and powers stay magnitudes; the sign of the slip is not used to switch t
   1500 min⁻¹ and *T*_M = 50 N·m the run-up takes 0.63 s (unit test).
 - *Check* `mach.runup.torque` (warning, [S15]): *T*_M ≤ *T* – the drive cannot accelerate the load.
 - *Joins across modules*: the terminal variables use the shared keys *U*, *I*, *f* and *P*_el (`NetKeys`), so a feeder
-  of another module that reports these values at the motor's terminals meets them without a code dependency. The
-  switchgear frequency inverter does not report an output frequency yet, so "inverter frequency → motor speed" needs a
-  value port on the switchgear side (open).
+  of another module that reports these values at the motor's terminals meets them without a code dependency.
+- *Frequency inverter* (round 8, 2026-11-26): the switchgear inverter `sw.drive.vfd` wired to the phase terminals u, v, w
+  (symbol views) passes its output frequency *f*, its V/f output voltage as *U* and, when a power is known, its output
+  power as *P*_el; it reads back *I* and *P*_N (switchgear module, "Value port at the motor terminals"). So *n*_s and,
+  with a speed or slip, *n* follow from the inverter: 35 Hz on a 4-pole motor give *n*_s = 1050 min⁻¹. The machine also
+  finds the inverter itself (lines of any module from u, v, w to the inverter's output pins U, V, W; known by its type
+  id, `mach.link.drive.f`), so the motor's value label alone shows the inverter frequency. New on machines, the e-motor
+  block and the drivetrain e-machine: panel *n*_max (`maxSpeed`, maximum permissible speed from the datasheet) for the
+  check `mach.speed.max`.
 - Library: "Driven load (block)", "Flywheel load on a shaft (symbol)", "E-motor with run-up time" (1450 min⁻¹, 20 N·m
   load, 60 N·m during the run-up, *J* = 0.01 + 0.09 kg·m² → *t*_a = 0.38 s).
 

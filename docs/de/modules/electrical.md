@@ -238,6 +238,14 @@ Abschnitt 2.3):
   Gleichstrommotor eine Last mit *U* und *I* (eine Wechselstromlast mit eigenem Leistungsfaktor, also mit nichts anderem
   in Phase), ein Wechsel- oder Gleichstromgenerator eine Quelle; Drehstrommaschinen bleiben Anschlüsse mit unbekanntem
   Strom. Drehzahl und Drehmoment bleiben im Modul Maschinen.
+- **Motor am Frequenzumrichter** (2026-11-26). Ein Drehstrommotor (`supply` 3~), dessen Klemmen U, V, W an den
+  Ausgangsklemmen des Frequenzumrichters `sw.drive.vfd` der Schaltanlage angeschlossen sind (Leitungen beliebiger
+  Module), übernimmt die U/f-Ausgangsspannung des Umrichters als *U* und gibt, wenn auf einer Seite eine Leistung
+  bekannt ist, seine elektrische Leistung *P* als Ausgangsleistung des Umrichters (und seinen Leiterstrom zurück); der
+  Eingangsstrom des Umrichters zählt dann in den Stromkreissummen der Schaltanlage (Schaltanlagenmodul, „Werte-Port an
+  den Motorklemmen“). Der Motor findet den Umrichter auch selbst (über seine Typ-ID, Relation `elec.motor.drive.u`),
+  sodass schon sein Werte-Etikett die Umrichterspannung zeigt. Der Motor hat keine Frequenz- oder Drehzahlwerte; für die
+  Synchrondrehzahl einen Motor des Moduls Maschinen verwenden.
 - **Spannungsfall auf Leitungen.** Die Leitungsführung der Hausinstallation hat optionale Leitungswerte (Tabelle oben):
   aus Länge, Querschnitt und Strom den Leiterwiderstand, den Spannungsfall mit cos *φ* (Wechselstrom 2·*R*·*I*·cos *φ*,
   Drehstrom √3·*R*·*I*·cos *φ*, Gleichstrom 2·*R*·*I*; Leitungsreaktanz vernachlässigt), den relativen Spannungsfall und

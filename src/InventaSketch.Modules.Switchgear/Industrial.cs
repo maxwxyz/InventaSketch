@@ -58,6 +58,15 @@ namespace InventaSketch.Modules.Switchgear
 
         private static string SupplyText(SketchObject o) => o.Str("coil", "24dc") == "230ac" ? "230 V AC" : "24 V DC";
 
+        /// <summary>The inverter's display: the output frequency set point entered (value parameter "frequency"), else 50.0 Hz.</summary>
+        internal static string DisplayFrequency(SketchObject o)
+        {
+            var text = o.Str("frequency", "").Trim();
+            return text.Length > 0 && ValueParser.TryParse(text, Quantities.Frequency, out var pv, out _, Lang.De, "Hz") && pv!.Value >= 0 && pv.Value < 1e4
+                ? pv.Value.ToString("0.0", CultureInfo.InvariantCulture) + " Hz"
+                : "50.0 Hz";
+        }
+
         /// <summary>Pin prefix and short name of a PLC module kind ("I", "DI").</summary>
         private static (string Pin, string Short) PlcIo(string kind) => kind switch
         {
@@ -194,7 +203,7 @@ namespace InventaSketch.Modules.Switchgear
                     Fronts.LabelField(p, p.W, o.Str("ref", ""));
                     var dw = Math.Min(p.W - 8, 36);
                     p.Rect(-dw / 2, -14, dw, 9.5, Sx.ThinFill(Sx.Display), 0.5, SwTags.Front);
-                    p.FitText(0, -9.3, "50.0 Hz", 3.6, dw - 3, colour: Sx.DisplayFrame, tag: SwTags.Front);
+                    p.FitText(0, -9.3, DisplayFrequency(o), 3.6, dw - 3, colour: Sx.DisplayFrame, tag: SwTags.Front);
                     // Keypad: run (green), stop (red), up, down.
                     var keys = new[] { Sx.LedGreen, Sx.Led, "#b0bec5", "#b0bec5" };
                     for (var i = 0; i < keys.Length; i++) p.Circle(-dw / 2 + dw * (i + 0.5) / keys.Length, 1.5, 2.1, Sx.ThinFill(keys[i]), SwTags.Lever);
