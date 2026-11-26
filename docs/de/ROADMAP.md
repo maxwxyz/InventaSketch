@@ -477,7 +477,7 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
 2. Erledigt 25.11.2026: COM: „Strahlenbündel einfügen“ (Optik) muss den neuen Strahl einfügen (Aktionsergebnisse mit neuen Objekten werden
    Einheiten).
 3. Erledigt 25.11.2026: Host-Doku (powerpoint-com.md EN/DE) auf die neue Leiste, das Kreismenü und die Griffe umschreiben.
-4. Erledigt 26.11.2026 (Web, mit Unit-Tests; Prüfung im Browser offen; LibreOffice in Arbeit): Phase 2: dasselbe Konzept im Web-Add-in (`HandleLayout` portieren, Leistengruppen, Kreismenü-Plätze),
+4. Erledigt 26.11.2026 (Web: zwei Runden, mit Unit-Tests, Prüfung im Browser offen; LibreOffice: Klapplisten, acht Kontextplätze, Werte-Panel, Rechner, Code-Import, Verbundene auswählen, Schein, Einfügestellen): Phase 2: dasselbe Konzept im Web-Add-in (`HandleLayout` portieren, Leistengruppen, Kreismenü-Plätze),
    Code-Import-Knöpfe in Web und LibreOffice, Diagramm-Ziehgriffe im Web.
 5. Erledigt 26.11.2026 (COM): Phase 3: Hinweise bei der ersten Benutzung, größere Oberfläche für Sehschwache (Mehr ▸ „Größere Bedienelemente (125 %)“).
 6. Erledigt 26.11.2026 (Engine: Griffe für Brennpunkte, Bündel, Strahlrichtung; Bildkonstruktion; COM: Abhängiges folgt beim Ziehen live): Optik (Idee des Maintainers 25.11.2026, optional): interaktive Lichtstrahlen – Quelle, Linse oder Spiegel ziehen
@@ -497,16 +497,16 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
 9. UI/UX-Review aller Elemente, Kombinationen und Abläufe (25.11.2026, docs/de/design/ux-review-2026-11-25.md): lesbare
    Leiste und lesbares Kreismenü, Elementname am Bearbeiten-Platz, schrittweises Einblenden, Leiste mit vier Knöpfen;
    Folgepunkte F2 folienweite Symbolgröße, F3 Piktogramm- und Beschriftungshygiene, F4 Review der Mehrfachauswahl.
-10. **Auswahldarstellung überall (Maintainer 25.11.2026):** der blaue Schein auch für jedes auswählbare Teil: Kurven,
+10. **Erledigt 26.11.2026 (COM-Schein je Teil, Web-Schein, LibreOffice-Leuchteffekt): Auswahldarstellung überall (Maintainer 25.11.2026):** der blaue Schein auch für jedes auswählbare Teil: Kurven,
     Flächen, Achsen, Grenzlinien, Pfeile und Beschriftungen von Diagrammen und Abbildungen (COM: das ausgewählte Teil
     leuchtet, der Rest des Elements schwach – umgesetzt, in PowerPoint noch zu prüfen), und dasselbe im Web-Add-in und in
     LibreOffice.
-11. **Verbundene Elemente, erweitert (Maintainer 25.11.2026):** neben Netzen, Schleifen, „bewegt sich mit“, folgenden
+11. **Erledigt 26.11.2026 (Engine + COM: Mehr ▸ „Farbe nach Medium“ mit Farben nach IEC 60445/DIN 2403 und Legende; Oberfläche Web/LO offen): Verbundene Elemente, erweitert (Maintainer 25.11.2026):** neben Netzen, Schleifen, „bewegt sich mit“, folgenden
     Elementen und Raumwänden: der Kraftfluss durch mechanische Baugruppen; Leitungen bis einschließlich Gerät und
     darüber hinaus weiter; Darstellungsoptionen je Medium, wo sinnvoll – Bus gegen Energie, DC/AC (Farben L1/L2/L3/N/PE),
     warm/kalt (Vorlauf/Rücklauf), Druck/Rücklauf/Leckage, Signal – als folienweiter Farbmodus und als Hervorhebung der
     verbundenen Auswahl.
-12. **Namen, die zusammengehören, auch folienübergreifend (Maintainer 25.11.2026):** jede Leitung, jedes Kabel, jedes
+12. **Erledigt 26.11.2026 (Engine + COM: Bezeichnungen, Endmarkierungen, Fortsetzungsmarken „→ W3, Folie 4“, Verbundene auswählen ▸ Gleicher Name; Oberfläche Web/LO offen): Namen, die zusammengehören, auch folienübergreifend (Maintainer 25.11.2026):** jede Leitung, jedes Kabel, jedes
     Rohr kann eine Bezeichnung tragen (und einen Wert, wo sinnvoll: Querschnitt, Typ, Bemessung, DN, Durchfluss);
     Leitungs- und Kabelenden bekommen Endmarkierungen; gleicher Name heißt gleiche Verbindung – auch über Folien hinweg
     (vier Wände eines Raums auf vier Folien: Wo eine Leitung die Folie verlässt, steht, wo sie weitergeht, „→ W3 Folie
@@ -537,9 +537,9 @@ mechanische Parameter als Beschriftung); Winkelmaße behalten ihren Wert (der Wi
     - **Calc 3 (erledigt 26.11.2026)** Elektro und Maschinenelemente (Reihe/parallel, LED, Räderzüge n/M/P, Riemen, Ketten, Gewindetriebe,
       Federn, Lager, Motoren) mit Prüfungen.
     - **Calc 4 (erledigt 26.11.2026)** Fluid, Wärme/Verfahren, Gebäudetechnik, Energie/Solar und modulübergreifende Ketten.
-    - **Calc 5** verknüpfte Diagramme (Drehmoment-Drehzahl, Pumpe/Anlage, PV I-U, Bode, Sprungantwort, Getriebeplan,
+    - **Calc 5 (erledigt 26.11.2026, Engine + COM-Griffe für den Betriebspunkt)** verknüpfte Diagramme (Drehmoment-Drehzahl, Pumpe/Anlage, PV I-U, Bode, Sprungantwort, Getriebeplan,
       Heizkurve).
-    - **Calc 6** Ingenieur-Extras (Toleranzintervalle, Rechenblatt, Quellenbereich, Prüfeinstellungen).
+    - **Calc 6 (erledigt 26.11.2026 außer Prüfeinstellungen und Einheitenvorlieben)** Ingenieur-Extras (Toleranzintervalle, Rechenblatt, Quellenbereich, Prüfeinstellungen).
     **Leitbild (Maintainer 25.11.2026):** schnell skizzieren, aber auch interaktiv und spielerisch lernen und verstehen,
     und physikalisch korrekt und technisch präzise zeichnen und rechnen, mit Plausibilitätsprüfungen (behutsame Hinweise
     mit Regel und Quelle: Zahnräder mit unterschiedlichem Modul, Sicherung kleiner als die Leitungslast, PV-Strang über
@@ -711,6 +711,36 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
 - **Beschriftung (P3):** Tabellen, vergrößerte Einzelheit mit Verknüpfung zur Quelle, Revisionswolken.
 
 ## Offene Punkte
+
+### Nach dem Lauf vom 26.11.2026 (Stand für den eigenen Test des Maintainers)
+
+Am 26.11.2026 erledigt und auf `main`: Calc 3–6 in der Engine (Calc 5 verknüpfte Diagramme und Calc 6 Rechenblatt auch in
+COM), das Modul Verteiler mit fünf Exporten, Farbe nach Medium und Bezeichnungen folienübergreifend (COM), Griffe für
+Maße, Roboter, Getriebe, Geometrie und Optik, live mitlaufende Strahlen und Bilder, „+“ zwischen Tabellenzeilen und
+-spalten, größere Bedienelemente, Hinweis beim ersten Mal, Web-Gleichstand des Bedienkonzepts (zwei Runden) und
+LibreOffice-Gleichstand (Klapplisten, acht Kontextplätze, Werte-Panel, Rechner, Code-Import, Verbundene auswählen,
+Schein, Einfügestellen). Noch offen:
+
+- **Sichtprüfung:** die neue Bedienung im Web-Add-in (Leiste, Kreismenü, Schein, Griffe, Wertekarte, Rechenblatt) hat
+  nur Unit-Tests – in der Entwicklerseite und in PowerPoint (Web) prüfen. LibreOffice wurde mit seinen eigenen
+  UI-Smoke-Tests geprüft.
+- **Calc 6, Host-Seite:** Prüfeinstellungen (eigene Grenzen, Stummschalten je Dokument) und Einheitenvorlieben (bar/MPa,
+  min⁻¹/s⁻¹, kWh/MJ); ein Quellenbereich in der Stufe Ingenieur (das Rechenblatt nennt die Quellen bereits).
+- **Calc 5:** Live-Vorschau des Diagramms beim Ziehen des Betriebspunkts; transitives Neuzeichnen, wenn sich ein Wert
+  über einen Nachbarn ändert; Wirkungsgradkennfeld, Affinitätsgesetze, PV bei anderer Einstrahlung/Temperatur.
+- **Farbe nach Medium und Bezeichnungen:** Oberfläche in Web und LibreOffice (die Engine-Methoden gibt es: `setColorBy`,
+  `mediumColours`, `designations`, `setContinuations`); Fortsetzungsmarken auf anderen Folien aktualisieren sich, wenn
+  ihre Einheit neu gezeichnet wird.
+- **Lücken im Web:** Knotensymbole an Leitungskreuzungen, „+“ an freien Linienenden zum Weiterzeichnen, „hier teilen“
+  an einer gewählten Ecke.
+- **Grenzen in LibreOffice (dokumentiert):** keine Ziehgriffe oder Griffe auf der Zeichenfläche (Erweiterungen bekommen
+  keine Mausbewegungen), keine Options-Piktogramme in Klapplisten, leere Kontextplätze werden ausgeblendet statt
+  ausgegraut.
+- **Engine-Nacharbeit:** Modultypen behalten ihre eigenen `view.*`-Aktionen (von `Registry.Actions` ausgeblendet);
+  Kloss-/Pumpen-/PV-Parameter für weitere Elementfamilien; Spannungsfall auf Kabeln (`elec.cable.drop`),
+  Wechselstrom-Impedanz und Resonanz.
+
+### Frühere Notizen
 
 - **Skizzierte Kurven: Stützpunkte (25.11.2026, `CurveKeyPoints`):** Kurven speichern nur ihre Stützpunkte, mit der
   Auswahl „Detailgrad“ und der Zeichengeschwindigkeit als Hinweis (Zeitstempel der COM-Spur). Offen: das Szenario

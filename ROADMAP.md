@@ -431,7 +431,7 @@ in the drawing).
    same line style everywhere (menus of the Elements group).
 2. Done 2026-11-25: COM: "Add ray bundle" (optics) must insert the new ray (action results with new objects become units).
 3. Done 2026-11-25: Host docs (powerpoint-com.md EN/DE) rewritten to the new bar, pie and handles.
-4. Done 2026-11-26 (web, unit-tested; browser check open; LibreOffice in progress): Phase 2: the same concept in the web add-in (port `HandleLayout`, bar groups, pie places), code import buttons in
+4. Done 2026-11-26 (web: two rounds, unit-tested, browser check open; LibreOffice: dropdowns, eight context places, values panel, calculator, code import, select connected, glow, insert places): Phase 2: the same concept in the web add-in (port `HandleLayout`, bar groups, pie places), code import buttons in
    web and LibreOffice, chart grips in web.
 5. Done 2026-11-26 (COM): Phase 3: first-use hints, larger UI size for low vision (More ▸ "Larger controls (125 %)").
 6. Done 2026-11-26 (engine: grips for focal points, beams, ray direction; image construction; COM: dependents follow live while dragging): Optics (maintainer idea 2026-11-25, optional): interactive light rays – drag a source, a lens or a mirror and watch
@@ -449,14 +449,14 @@ in the drawing).
 9. UI/UX review of all elements, combinations and workflows (2026-11-25, docs/en/design/ux-review-2026-11-25.md):
    readable bar and pie, element name on the pie's edit place, progressive disclosure, four-button bar; follow-ups F2
    slide-wide symbol size, F3 pictogram and label hygiene, F4 multi-selection review.
-10. **Selection look everywhere (maintainer 2026-11-25):** the blue halo also for every part that can be selected:
+10. **Done 2026-11-26 (COM halo per part, web halo, LibreOffice native glow): Selection look everywhere (maintainer 2026-11-25):** the blue halo also for every part that can be selected:
     curves, areas, axes, limit lines, arrows and labels of charts and figures (COM: the selected part glows, the rest of
     the element faintly – implemented, to be verified in PowerPoint), and the same in the web add-in and LibreOffice.
-11. **Connected elements, extended (maintainer 2026-11-25):** besides nets, loops, "moves along", following elements and
+11. **Done 2026-11-26 (engine + COM: More ▸ "Colour by medium" with IEC 60445/DIN 2403 colours and a legend; web/LO UI open): Connected elements, extended (maintainer 2026-11-25):** besides nets, loops, "moves along", following elements and
     room walls: the force flow (load path) through mechanical assemblies; lines up to and including the device and on
     beyond it; display options per medium where relevant – bus vs. power, DC/AC (L1/L2/L3/N/PE colours), warm/cold
     (supply/return), pressure/return/drain, signal – as a slide-wide colour mode and as a highlight of the connected set.
-12. **Names that belong together, across slides (maintainer 2026-11-25):** every line, cable and pipe can carry a
+12. **Done 2026-11-26 (engine + COM: designations, end markers, continuation markers "→ W3, slide 4", Select connected ▸ Same name; web/LO UI open): Names that belong together, across slides (maintainer 2026-11-25):** every line, cable and pipe can carry a
     designation (and a value where relevant: cross-section, type, rating, DN, flow); line and cable ends get end
     markers; the same name means the same connection – also across slides (four walls of a room on four slides: where a
     line leaves the slide it says where it continues, "→ W3 slide 4", and the selection/halo shows its continuation).
@@ -485,8 +485,8 @@ in the drawing).
     - **Calc 3 (done 2026-11-26)** electrical and machine elements (series/parallel, LED, gear trains n/T/P, belts, chains, screws,
       springs, bearings, motors) with checks.
     - **Calc 4 (done 2026-11-26)** fluid, thermal/process, building services, energy/solar and cross-module chains.
-    - **Calc 5** linked charts (torque–speed, pump/system, PV I–V, Bode, step response, gear train, heating curve).
-    - **Calc 6** engineer extras (tolerance intervals, calculation sheet, sources pane, check settings).
+    - **Calc 5 (done 2026-11-26, engine + COM operating-point grips)** linked charts (torque–speed, pump/system, PV I–V, Bode, step response, gear train, heating curve).
+    - **Calc 6 (done 2026-11-26 except check settings and unit preferences)** engineer extras (tolerance intervals, calculation sheet, sources pane, check settings).
     **Guiding idea (maintainer 2026-11-25):** sketch fast, but also learn and understand interactively and playfully,
     and draw and compute physically correct and technically precise, with plausibility checks (gentle warnings with
     their rule and source: gear modules that do not match, a fuse below the cable load, a PV string above the
@@ -641,6 +641,30 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
 - **Annotation (P3):** tables, magnified detail view linked to its source, revision clouds.
 
 ## Open items
+
+### After the run of 2026-11-26 (state for the maintainer's own test)
+
+Done on 2026-11-26 and on `main`: Calc 3–6 in the engine (Calc 5 linked charts and Calc 6 calculation sheet also in
+COM), the switchgear module with five exports, colour by medium and designations across slides (COM), grips for
+dimensions, robots, mechanisms, geometry and optics, live rays and images, "+" between table rows/columns, larger
+controls, first-use hint, web parity of the interaction concept (two rounds) and LibreOffice parity (dropdowns, eight
+context places, values panel, calculator, code import, select connected, glow, insert places). Still open:
+
+- **Checks by eye:** the web add-in's new interaction (bar, pie, halo, handles, value card, calculation sheet) has only
+  unit tests – check it in the dev page and in PowerPoint (web). LibreOffice was checked with its own UI smoke tests.
+- **Calc 6 host side:** check settings (user limits, mute list per document) and unit preferences (bar/MPa, min⁻¹/s⁻¹,
+  kWh/MJ); a sources pane in Engineer (the calculation sheet already names the sources).
+- **Calc 5:** live preview of the chart while dragging the operating point; transitive redraw when a value changes
+  through a neighbour; efficiency map, pump affinity laws, PV at other irradiance/temperature.
+- **Colour by medium and designations:** web and LibreOffice UI (engine methods exist: `setColorBy`, `mediumColours`,
+  `designations`, `setContinuations`); continuation markers on other slides update when their unit is redrawn.
+- **Web gaps:** junction icons at wire crossings, "+" at free line ends to draw on, "split here" on a selected corner.
+- **LibreOffice limits (documented):** no drag grips or on-canvas handles (extensions get no mouse moves), no option
+  pictograms in dropdowns, empty context places are hidden instead of greyed.
+- **Engine follow-ups:** module types keep their own `view.*` actions (hidden by `Registry.Actions`); Kloss/pump/PV
+  parameters for more element families; cable voltage drop (`elec.cable.drop`), AC impedance and resonance.
+
+### Earlier notes
 
 - **Sketched curves: key points (2026-11-25, `CurveKeyPoints`):** curves store only their key points, with a "Detail"
   choice and the drawing speed as a hint (COM trail time stamps). Open: the `chart-sketch` scenario (row count, Detail
