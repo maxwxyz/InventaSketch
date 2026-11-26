@@ -17,7 +17,7 @@ namespace InventaSketch.Modules.Process
     /// <see cref="AnchorRole.Port"/> anchors (the same ids in every view), optional parameters and an equipment tag
     /// (e.g. "P-101") written outside the box, upright on the page.
     /// </summary>
-    internal sealed class ProcessType : ObjectType, IValueType, IValueLinks, IValueChecks
+    internal sealed partial class ProcessType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         public const string TagKey = "tag";
         public const string ShowTagKey = "showTag";
@@ -69,7 +69,7 @@ namespace InventaSketch.Modules.Process
         private static readonly ParamDef TagParam = P.Text(TagKey, "Tag (equipment number)", "Kennzeichen (Anlagenkennzeichen)", "");
         private static readonly ParamDef ShowTagParam = P.Flag(ShowTagKey, "Show tag", "Kennzeichen anzeigen", true);
 
-        public override IReadOnlyList<ParamDef> Parameters => _allParams ??= (TagPrefix is null ? Params : Params.Concat(new[] { TagParam, ShowTagParam })).Concat(ValueSpec.Params).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => _allParams ??= (TagPrefix is null ? Params : Params.Concat(new[] { TagParam, ShowTagParam })).Concat(ValueSpec.Params).Concat(CurveParams).ToList();
 
         private IReadOnlyList<ParamDef>? _allParams;
 

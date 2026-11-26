@@ -1368,3 +1368,124 @@ ist der Code; die Moduldokumente nennen jede Größe, Beziehung, Verknüpfung un
 - **Doppelte Verknüpfungen:** der Löser sammelt die Anschlussbeziehungen jedes Objekts im Umfang, eine Verknüpfung zwischen
   zwei Objekten kommt also zweimal hinzu (von jedem einmal). Das schadet nicht (die zweite Kopie ist nie unabhängig), eine
   Entdoppelung nach Referenz in `ValueSolver.Solve` würde die Verknüpfungsbeziehungen aber halbieren.
+
+---
+
+## 14. Umsetzungsnotizen: Calc 5 verknüpfte Diagramme (26.11.2026)
+
+Dieser Abschnitt hält die Entscheidungen für Calc 5 fest (Abschnitt 5 und die Calc-5-Punkte von Abschnitt 7). Maßgeblich
+ist der Code; die Diagrammseite beschreibt [charts.md](../modules/charts.md#verknüpfte-kennlinien-calc-5).
+
+### 14.1 Dateien
+
+| Bereich | Dateien |
+|---|---|
+| Kernvertrag: Kennliniensätze, Punkte, Schreibvorgänge, Verknüpfungen, Griffe auf Dokumentebene | `src/InventaSketch.Core/Characteristics.cs` (`ICharacteristics`, `CharacteristicSet`, `CharacteristicPoint`, `ValueWrite`, `Characteristics`, `IDocumentHandles`, `DocumentHandles`) |
+| Pumpen- und Anlagenkennlinie, von zwei Modulen genutzt | `src/InventaSketch.Core/CharacteristicKit.cs` |
+| Verknüpftes Diagramm, Aufbau als Bild, „Mit Element verknüpfen ▸“ | `src/InventaSketch.Modules.Charts/LinkedChart.cs` (`LinkedChart`, `LinkedFigure`, `ChartLinks`); `ChartType.Actions(o, ctx)`, Registrierung in `ChartsModule`, Export in `ExportBuilder` |
+| Kennlinienlieferanten (partielle Klassen der Modultypen) | `Process/PumpCurves.cs`, `BuildingServices/HeatingCurves.cs`, `Machines/MachCurves.cs`, `Energy/PvCurves.cs`, `Electrical/ElecCurves.cs`, `Mechanical/GearCurves.cs` |
+| Einhängepunkte in den Typklassen | `partial` an `ProcessType`, `BsBoxType`, `MachType`, `EnergyType`, `ElecType`, `MechType`; `.Concat(CurveParams)` in `Parameters` von `ProcessType`, `BsBoxType` und `MachType` |
+| Tests | `tests/InventaSketch.Modules.Charts.Tests/LinkedChartTests.cs` (Vertrag mit einem Testelement), `CurveTests.cs` in den Testprojekten von Prozess, Gebäudetechnik, Maschinen, Energie, Elektrotechnik und Mechanik, `tests/InventaSketch.Engine.Tests/LinkedChartAcceptTests.cs` (Abnahmepunkte mit dem ganzen Katalog) |
+
+### 14.2 Entscheidungen
+
+- **Vertrag statt Modulverweise.** Module hängen nie voneinander ab, daher liest das Diagrammmodul Kennlinien nur über
+  `ICharacteristics` im Kern: Ein Typ listet die Sätze, die ein Element anbietet (`CharacteristicSets`, darf vom Dokument
+  abhängen: ein Widerstand bietet das Bode-Diagramm nur in einem Stromkreis mit Kondensator oder Spule), und berechnet
+  einen aus einem `CharacteristicContext` (Element, Dokument, Registry und die gelösten Werte seines Löserumfangs). Ein
+  Satz hat eine x-Achse, je Panel eine y-Achse (Beschriftung und Anzeigeeinheit; die Zahlen der Kurven sind in diesen
+  Einheiten), Kurven (Punktlisten), Punkte, Bänder, Grenzlinien und Hinweise. Alle Namen sind zweisprachig.
+- **Die Verknüpfung ist ein Parameter.** `chart.linked` speichert `link` = „&lt;Element-Id&gt;#&lt;Satz-Schlüssel&gt;“ und
+  sonst nichts von den Kurven. `Characteristics.Resolve` löst das Element (Budget 200 ms) und berechnet den Satz; das
+  Ergebnis wird je Dokumentinstanz und Registry zwischengespeichert (Dokumente sind unveränderlich), daher löst ein
+  Zeichendurchgang mit mehreren Aufrufen nur einmal.
+- **Neuzeichnen.** Die Elementtypen geben ihre verknüpften Diagramme aus `Dependents` zurück und setzen
+  `DependsOnNeighbours` (nur die Instanzen, die Sätze anbieten; andere Symbole derselben Klasse zeichnen weiter ohne
+  Kontext); auch das Diagramm setzt `DependsOnNeighbours`. `ChangeSet` der Engine und die abhängigen Einheiten des
+  COM-Hosts zeichnen das Diagramm dann im Rückgängig-Schritt der Elementänderung neu. Ein Wert des Elements, der sich
+  ändert, weil sich ein *Nachbar* geändert hat (ein über ein Rohr übernommener Volumenstrom), erreicht das Diagramm erst,
+  wenn Element oder Diagramm neu gezeichnet werden (offen, 14.4).
+- **Zeichnen als Bild.** Das verknüpfte Diagramm baut aus dem Satz eine Bildspezifikation (`LinkedFigure`) und zeichnet
+  sie mit dem Bildsetzer, daher sind Achsen, Panels, Legende, Teile und Teilformate die von `chart.figure`. Punkte
+  werden Ein-Punkt-Reihen mit Marker (der Griff findet den Marker über sein Teilkennzeichen). Lösen speichert genau
+  diese Spezifikation in einem `chart.figure` (Lage, Größe und Teilformate bleiben): das eingefrorene Diagramm ist ein
+  gewöhnliches Bild.
+- **Griffe schreiben Werte, nicht das Diagramm.** Ein Punkt trägt die Bewegung (entlang x oder y) und eine Funktion von
+  der neuen Koordinate zu `ValueWrite`s. `Characteristics.Apply` speichert Variablen wie einen gezogenen Wert
+  (`ValueDrag.Plan` + `Apply`, drei signifikante Stellen; eingegebene Werte, die das Element überbestimmen würden,
+  weichen) und Parameter als formatierten Text. Wo die Kurve auf angenommenen Daten beruht (V̇_max der Pumpe,
+  Bemessungspunkt eines Motors), speichert das erste Ziehen sie mit, damit die Kurve unter dem Zeiger nicht wandert.
+  Das Diagramm bleibt beim Ziehen unverändert; die Dokumentänderung betrifft nur das Element, das Diagramm folgt als
+  abhängiges Objekt: ein Rückgängig-Schritt für beide.
+- **Griffe auf Dokumentebene.** `ObjectType.MoveHandle` gibt nur das Objekt zurück. `IDocumentHandles.MoveHandleInDocument`
+  (Kern) gibt das Dokument zurück; `DocumentHandles.Move` ruft es auf und fällt für alle anderen Typen auf `MoveHandle`
+  zurück. Hosts und `moveHandle` der Engine müssen es aufrufen (14.4); bis dahin bewirken die Griffe der verknüpften
+  Kennlinie in den Hosts nichts (keine Scheinwirkung: die objektbezogene Bewegung gibt das Diagramm unverändert zurück).
+- **Einfügen und Verknüpfen.** **Kennlinie ▸** am Element ist eine Menüauswahl (`values.chart`, ein Befehl je Satz,
+  `ApplyInDocument`), die das Diagramm rechts neben dem Element einfügt; das Diagramm wird über die Registry erzeugt
+  (`ctx.Registry ?? type.Owner`), daher braucht das Modul des Elements keinen Verweis auf das Diagrammmodul, und das
+  Menü fehlt, wenn kein Diagrammtyp registriert ist. **Mit Element verknüpfen ▸** (`chart.link`) an den Diagrammen
+  listet die Sätze der Elemente auf derselben Folie; **Lösen (Werte einfrieren)** ist ausgegraut, wenn das Element fehlt.
+- **Kennlinienparameter.** Kennliniendaten, die keine Elementwerte sind, sind optionale Textparameter des Elements
+  (Inspektor, erweitert; standardmäßig leer, eingefügte Elemente tragen also nichts Neues): Pumpe `curveH0`,
+  `curveQmax`, `curveHstat`; Maschine `curveKloss` (M_k/M_N), `curveNmax`; Wärmeerzeuger `curveDesignOutdoor`,
+  `curveRoomTemp`, `curveExponent`, `curveOutdoor`.
+
+### 14.3 Kennlinienfamilien
+
+| Familie (Satz-Schlüssel) | Elemente | Formeln | Rückschreiben (Griff) | Quelle |
+|---|---|---|---|---|
+| Pumpen- und Anlagenkennlinie (`pump`) | `process.pump.centrifugal`, `bs.heat.pump` | H(V̇) = H₀·(1 − (V̇/V̇_max)²); Betriebspunkt beim V̇ der Pumpe (sonst 0,7·V̇_max), H aus der Kurve; Anlagenkennlinie H_stat + k·V̇² durch ihn (H_stat ohne Eingabe H₀/4); ohne H₀ verläuft die Kurve durch (V̇, H) der Pumpe; V̇_max ohne Eingabe V̇/0,7 | entlang der Pumpenkennlinie: setzt V̇ und H | [S28] |
+| Drehmoment-Drehzahl, Asynchronmaschine (`torque`) | `machines.radial`/`.axial` mit Läufer `asm` | s = 1 − n/n_s; M = 2·M_k/(s/s_k + s_k/s), M_k = λ·M_N, s_k = s_N·(λ + √(λ² − 1)) (Kurve durch (n_N, M_N)); λ ohne Eingabe 2,5; Bemessungspunkt aus M_N und P_N, sonst der Betriebspunkt; konstantes Lastmoment durch den Betriebspunkt (gestrichelt) | entlang der Kurve: setzt n und M (speichert M_N, P_N, wenn angenommen) | [S14, S15] |
+| Drehmoment-Drehzahl, Momentengrenze (`torque`) | andere Querschnitte, `machines.drive.motor`, `machines.drivetrain.emachine` | M_max = M_N bis n_b = P_N/M_N, darüber M_max·n_b/n, bis n_max (ohne Eingabe 3·n_b) | waagrecht: setzt n (und M, auf die Grenze begrenzt) | [S14, S15] |
+| PV I–U und P–U (`pv`) | `energy.pv.module`, `energy.pv.string` | I(U) = I_sc·(1 − C₁·(e^(U/(C₂·U_oc)) − 1)), C₂ = (U_mpp/U_oc − 1)/ln(1 − I_mpp/I_sc), C₁ = (1 − I_mpp/I_sc)·e^(−U_mpp/(C₂·U_oc)); String: U × N_s; MPP per Goldener-Schnitt-Suche; MPP-Bereich und U_DC,max des Wechselrichters im Löserumfang; U_oc bei θ_min | – (Ziehen von θ und G im Erkunden-Modus offen) | [S33, S34] |
+| Bode-Diagramm (`bode`) | Widerstand, Kondensator, Spule in einem Kreis mit R und C oder L | RC: f_c = 1/(2πRC); RL: f_c = R/(2πL); erste Ordnung −10·lg(1 + r²), φ = −arctan r; RLC: f₀ = 1/(2π√(LC)), ζ = (R/2)√(C/L), −10·lg((1 − r²)² + (2ζr)²), φ = −arctan2(2ζr, 1 − r²) | entlang f: setzt C (RC, RLC) oder L (RL); R bleibt | [S7] |
+| Sprungantwort (`step`) | wie Bode | 1 − e^(−t/τ), τ = RC oder L/R (Punkt bei 63,2 %); PT2 unterkritisch, aperiodischer Grenzfall und überkritisch (Punkt beim Überschwingen) | – | [S7] |
+| Getriebe (`train`) | Zahnräder, Wellen | Wellen = Gruppen gleicher gelöster n im Umfang, nach fallendem n; M = größtes Moment der Glieder; P = 2π·n·M | – | [S16, S18] |
+| Heizkurve (`heating`) | `bs.heat.boiler`, `bs.heat.heatpump` | q = (θ_i − θ_e)/(θ_i − θ_e,d); θ_VL,RL = θ_i + Δθ_m,d·q^(1/n) ± ½(θ_VL,d − θ_RL,d)·q; θ_VL,d = θ_VL des Erzeugers (ohne Eingabe 55 °C), θ_RL,d sein θ_RL (ohne Eingabe θ_VL,d − 10 K), θ_e,d ohne Eingabe −12 °C, θ_i 20 °C, n 1,3 | Auslegungspunkt senkrecht: setzt θ_VL; aktueller Punkt entlang der Kurve: speichert θ_e | [S29, S31] |
+
+**Abnahmepunkte (Tests mit Handrechnung):**
+
+- „Eine Änderung von H₀ der Pumpe zeichnet das verknüpfte Diagramm neu und verschiebt den Betriebspunkt“: H₀ 40 m,
+  V̇_max 100 m³/h, H_stat 10 m, V̇ 70 m³/h → Betriebspunkt (70 m³/h; 20,4 m); H₀ 50 m → (70 m³/h; 25,5 m); das `ChangeSet`
+  der Engine zu dieser Änderung nennt das Diagramm als abhängiges Objekt, und seine Zeichnung ändert sich.
+- „Ziehen des Punkts ändert den Förderstrom der Pumpe (ein Rückgängig-Schritt für Diagramm und Element)“: der bei
+  50 m³/h losgelassene Griff ergibt eine Dokumentänderung, die nur die Pumpe betrifft (V̇ = 50 m³/h und H = 30 m
+  eingegeben); das Diagramm steht unter den abhängigen Objekten dieser Änderung.
+- „Lösen friert die Werte ein“: die Zeichnung des eingefrorenen Bilds bleibt gleich, wenn sich H₀ ändert, und die Pumpe
+  führt es nicht mehr als abhängiges Objekt.
+- „Das PV-Diagramm zeigt den MPP und den Bereich des Wechselrichters“: 10 Module (U_oc 49,5 V, U_mpp 41,6 V, I_sc 13,9 A,
+  I_mpp 13,0 A) an einem Wechselrichter mit MPP-Bereich 200–480 V und U_DC,max 600 V: Band 200–480 V, Linie bei 600 V,
+  U_oc bei θ_min 541,78 V, MPP ≈ 5,41 kW bei ≈ 416 V (im Bereich).
+- Weitere Handrechnungen: RC 1 kΩ/100 nF: f_c = 1591,5 Hz bei −3,01 dB und −45°, τ = 100 µs bei 63,2 %; Ziehen von f_c
+  auf 1 kHz setzt C = 159 nF; RLC 100 Ω/10 mH/100 nF: f₀ = 5032,9 Hz, ζ = 0,158, Überschwingen 60,1 %;
+  Asynchronmaschine 50 Hz, 4 Pole, 1440 min⁻¹, 100 N·m: s_k = 0,1917, Kippmoment 250 N·m bei 1212,5 min⁻¹; Motorblock
+  M_N 200 N·m, Eckdrehzahl 3000 min⁻¹: 100 N·m bei 6000 min⁻¹; dreistufiges Getriebe 1500/750/250/83,3 min⁻¹ und
+  10/20/60/180 N·m; Heizkurve 55/45 °C, Auslegung −12 °C, +4 °C → θ_VL = 40,10 °C.
+
+### 14.4 Nötige Host-Änderungen und offene Punkte
+
+- **`moveHandle` der Engine (hier nicht geändert):** In `EngineApi.MoveHandleCore` sollte der Zweig beim Loslassen
+  `s.Apply("Move handle", d => DocumentHandles.Move(Registry, d, o.Id, key, at, s.Lang))` statt
+  `Edits.Replace(d, Registry.MoveHandle(…))` anwenden (die Prüfung auf ein unverändertes Dokument bleibt:
+  `DocumentHandles.Move` gibt dasselbe Dokument zurück, wenn sich nichts ändert). Die `dependents` des Zustands nennen
+  dann das Diagramm, und die Hosts zeichnen es neu.
+- **COM-Host (hier nicht geändert):** Das Loslassen eines Griffs (`OnSlideController.Handles.cs`, die Stelle mit
+  `ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { o.Id }, _ => moved))`) muss `DocumentHandles.Move`
+  auf dem Foliendokument aufrufen (die Objekte der Einheit plus die der anderen Einheiten, wie `WithContext` es baut) und
+  die Objekte übernehmen, die es **in anderen Einheiten geändert** hat (die Pumpe liegt in einer anderen Einheit als ihr
+  Diagramm). `ApplyOutsideOwn` übernimmt heute nur hinzugefügte und entfernte Objekte; es braucht einen dritten Zweig:
+  für jede andere Einheit mit einem Objekt, dessen Instanz sich zwischen vorher und nachher unterscheidet,
+  `SketchUnits.Replace` dieser Einheit mit den geänderten Objekten im selben Rückgängig-Schritt, danach
+  `RedrawDependents`. Derselbe Zweig lässt allgemein Dokumentaktionen wirken, die Nachbarn ändern.
+- **Live-Vorschau eines Griffs:** Die Vorschau von `moveHandle` der Engine und die Ziehvorschau in COM zeigen das Diagramm
+  beim Ziehen unverändert; eine Vorschau würde mit `ValueSolveOptions.Overrides` lösen und den Satz aus dieser Tabelle
+  zeichnen.
+- **Änderungen von Nachbarn:** Ein Wert, den das Element von einem verbundenen Element übernimmt (ein Volumenstrom aus
+  einem Rohr), ändert das Diagramm nur, wenn das Element selbst zur Änderung gehört; eine transitive Regel („Diagramme
+  jedes Elements im Löserumfang der berührten Objekte“) gehört in den Abhängigkeitsdurchgang der Hosts oder der Engine.
+- **Nicht umgesetzt:** Fluidtechnik (Verdrängerpumpen haben keine H(Q)-Kennlinie; eine p–Q-Kennlinie mit
+  Druckbegrenzungsventil kommt später), das Wirkungsgradkennfeld und die Bilanz aus Last und Erzeugung aus Abschnitt 5,
+  Drehzahländerungen der Pumpe über die Affinitätsgesetze, die PV-Kennlinie bei anderer Einstrahlung und Zelltemperatur
+  (Ziehen von θ und G im Erkunden-Modus), Bode-Griffe, die R statt C ändern, und die Eingabe der Kennlinienparameter in
+  der Wertekarte. Abschnitt 7 behält den Plantext zu Calc 5; dieser Abschnitt ist sein Stand.

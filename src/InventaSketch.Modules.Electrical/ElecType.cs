@@ -49,7 +49,7 @@ namespace InventaSketch.Modules.Electrical
     /// Data-driven box object type used for all electrical symbols: views (each with its own drawing), pins
     /// (<see cref="AnchorRole.Port"/> anchors), optional parameters, designator/value labels and context actions.
     /// </summary>
-    internal sealed class ElecType : ObjectType, IValueType, IValueLinks, IValueChecks
+    internal sealed partial class ElecType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;

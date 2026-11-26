@@ -18,7 +18,7 @@ namespace InventaSketch.Modules.Charts
         {
             new XyChart(), new BarChart(), new AxesChart(),
             new TorqueChart(), new EfficiencyChart(), new PumpChart(), new BodeChart(), new BandChart(),
-            new FigureChart(),
+            new FigureChart(), new LinkedChart(),
             new MathAxesChart(), new FunctionChart(),
             new TimingChart(),
         });

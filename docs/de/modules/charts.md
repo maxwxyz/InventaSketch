@@ -25,6 +25,7 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` Tief- / Hochpass 1. oder 2. Ordnung, `fc` (Hz), `zeta` (Dämpfungsgrad, 2. Ordnung), `gain` (dB), `show` Betrag und Phase / Betrag / Phase, `marker` (Linie bei der Eckfrequenz), `xrange`, `data` (Messdaten `f;dB;°`, ersetzen das System) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (Sollkurve, siehe unten), `tol` + `tolmode` Prozent / absolut, `smooth`, `limits`, `patterns`; weitere Datenblöcke werden als Messreihen mit Markern gezeichnet |
 | `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON-Spezifikation, siehe [Bild](#bild-diagramme-v2-stufe-2)); gestapelte Panels, Prinzip- oder Datenachsen, Wertlinien, Markierungen, Flächen, Anmerkungen, Bezugszeichen |
+| `chart.linked` | Characteristic chart (linked) / Kennlinie (verknüpft) | `link` (`<Element-Id>#<Satz-Schlüssel>`, erweitert), `title`, `grid`, `legend`; gezeichnet aus dem Kennliniensatz des verknüpften Elements, siehe [Verknüpfte Kennlinien](#verknüpfte-kennlinien-calc-5); nicht in der Bibliothek, wird von einem Element aus eingefügt |
 | `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | Mathematikstil, siehe [Koordinatensysteme und Funktionsgraphen](#koordinatensysteme-und-funktionsgraphen-diagramme-v2-stufe-4) |
 | `chart.math.function` | Function graph / Funktionsgraph | Grundfunktion, eingegebene Formel oder Funktionsgenerator im Koordinatensystem im Mathematikstil |
 | `chart.timing` | Timing diagram (digital) / Zeitdiagramm (digital) | `signals` (ein Signal je Zeile, siehe [Digitales Zeitdiagramm](#digitales-zeitdiagramm-charttiming)), `slope` schräg / senkrecht, `grid`, `timelabels`, `markers`, `spans`, `title`, `dt`, `tunit` |
@@ -526,6 +527,51 @@ Export: alles ist nativ (Freihandformen, schraffierte Freihandformen, Linien mit
 der TikZ- und der SVG-Export es aus den Grundelementen. Die Exporte als matplotlib und pgfplots haben dafür keine
 Datenachsen und melden ein Zeitdiagramm als „could not be exported“ (nicht exportierbar).
 
+## Verknüpfte Kennlinien (Calc 5)
+
+Eine Kennlinie kann mit einem Element verknüpft werden, dessen Werte einen Kennliniensatz ergeben (Vertrag
+`ICharacteristics` in `src/InventaSketch.Core/Characteristics.cs`; Entwurfsnotizen in Abschnitt 14 von
+[engineering-calculations.md](../design/engineering-calculations.md)). Das Diagramm (`chart.linked`) speichert nur die
+Verknüpfung `<Element-Id>#<Satz-Schlüssel>` im Parameter `link`. Bei jedem Zeichnen fragt es das Element nach dem Satz,
+berechnet aus den gelösten Werten des Elements, und zeichnet ihn wie ein Bild: ein Panel je y-Achse, die Kurven (die
+eigene Kennlinie durchgezogen, Last- und Anlagenkennlinien gestrichelt), Bänder (der MPP-Bereich des
+Wechselrichters), Grenzlinien und die markierten Punkte (Betriebspunkt gefüllt, Auslegungs- und Kipppunkt offen).
+Hinweise auf angenommene Werte stehen als Bildunterschrift darunter. Das Element führt das Diagramm als abhängiges
+Objekt, daher zeichnen die Hosts es bei jeder Änderung des Elements neu.
+
+| Element (Modul) | Satz | Kurven und Punkte |
+|---|---|---|
+| Kreiselpumpe (Prozess), Umwälzpumpe (Gebäudetechnik) | Pumpen- und Anlagenkennlinie | H(V̇) = H₀·(1 − (V̇/V̇_max)²), Anlagenkennlinie H_stat + k·V̇² durch den Betriebspunkt; Betriebspunkt beim Förderstrom der Pumpe (Griff) |
+| Maschinenquerschnitte, Motor- und E-Maschinenblock (Maschinen) | Drehmoment-Drehzahl-Kennlinie | Kloss-Kennlinie durch n_s und den Bemessungspunkt beim Käfigläufer, sonst Momentengrenze; Betriebspunkt (Griff), Kipppunkt |
+| PV-Modul und -String (Energie) | PV-Kennlinien I–U und P–U | I(U) und P(U) bei STC (zwei Panels), MPP, MPP-Bereich des Wechselrichters, U_DC,max und U_oc bei θ_min |
+| Widerstand, Kondensator, Spule in einem RC-/RL-/RLC-Kreis (Elektrotechnik) | Bode-Diagramm, Sprungantwort | Betrag und Phase mit Eck- bzw. Kennfrequenz (Griff: setzt C oder L); Sprungantwort mit τ (63,2 %) oder dem Überschwingen |
+| Zahnräder und Wellen (Mechanik) | Drehzahlen und Momente des Getriebes | ein Balken je Welle für n, M und P |
+| Heizkessel, Wärmepumpe (Gebäudetechnik) | Heizkurve | Vor- und Rücklauftemperatur über der Außentemperatur; Auslegungspunkt (Griff: setzt die Vorlauftemperatur), aktueller Betriebspunkt (Griff: die Außentemperatur) |
+
+Aktionen:
+
+- Am Element: **Kennlinie ▸** (ein Menü, ein Befehl je Satz) fügt rechts neben dem Element ein damit verknüpftes
+  Diagramm ein, in einem Rückgängig-Schritt.
+- An Pumpen-, Drehmoment-, Bode-, Bild- und verknüpften Diagrammen: **Mit Element verknüpfen ▸** listet die
+  Kennliniensätze der Elemente derselben Folie (nächste zuerst, höchstens acht Elemente); die Wahl macht das Diagramm
+  zu einer verknüpften Kennlinie (Lage, Größe und Titel bleiben).
+- An der verknüpften Kennlinie: **Lösen (Werte einfrieren)** macht daraus ein Bild (`chart.figure`), dessen
+  Spezifikation die aktuellen Kurven, Punkte, Bänder und Grenzlinien als einfache Daten enthält; spätere Änderungen
+  des Elements erreichen es nicht mehr. Solange das Element fehlt, ist die Aktion ausgegraut.
+
+Griffe: Jeder ziehbare Punkt hat einen Griff `op.<Punkt>` auf seinem Marker, der sich entlang x (auf der Kurve) oder
+entlang y bewegt. Beim Loslassen erhält der Punkt den neuen Wert (auf die Achsenauflösung gerundet) und gibt die zu
+schreibenden Werte zurück; sie werden im Element wie ein gezogener Wert gespeichert (drei signifikante Stellen;
+eingegebene Werte, die das Element überbestimmen würden, weichen, `ValueDrag`). Angenommene Kennliniendaten werden
+beim ersten Ziehen mitgespeichert, damit die Kurve bleibt, wo sie ist. Das Diagramm selbst ändert sich nicht, es folgt
+dem Element. Das ist eine Änderung auf Dokumentebene: Hosts rufen `DocumentHandles.Move(registry, doc, chartId, key,
+position, lang)` auf (für alle anderen Typen fällt es auf `ObjectType.MoveHandle` zurück) und wenden das Ergebnis als
+einen Rückgängig-Schritt an; das objektbezogene `MoveHandle` der verknüpften Kennlinie ändert nichts.
+
+Ein fehlendes Element oder eine unlesbare Verknüpfung zeigt eine Meldung in einem leeren Rahmen („Verknüpftes Element
+fehlt: lösen oder neu verknüpfen“). Die Exporte nach matplotlib und pgfplots schreiben eine verknüpfte Kennlinie als
+das Bild, das beim Lösen entstünde.
+
 ## Hinweise zu den Hosts
 
 Die gesamte Ausgabe besteht aus nativen Primitiven: eine Freihandform je Reihenlinie (geglättete Kurven als
@@ -533,7 +579,9 @@ kubische Bézierpfade), je eine Freihandform mit mehreren Teilpfaden für Gitter
 Stufe, Grenz- und Hilfslinien, eine Freihandform je Markersatz, Rechtecke für Balken, Legende und
 Beschriftungshintergründe, ein geschlossenes Polygon für das Band sowie Text. Die Titel der y-Achsen sind um −90°
 gedreht. Schraffur- und Punktfüllungen nutzen die Füllarten des Kerns. Ein Vektorbild ist nicht nötig. Diagramme
-hängen nicht von Nachbarobjekten ab.
+hängen nicht von Nachbarobjekten ab, außer der verknüpften Kennlinie (`chart.linked`), die aus dem verknüpften Element
+gezeichnet wird (`DependsOnNeighbours`; das Element nennt sie als abhängiges Objekt). Ihre Griffe am Betriebspunkt
+ändern das Element: Hosts wenden sie mit `DocumentHandles.Move` an (siehe oben).
 
 ## Diagramme aus Bildern (Bausteine)
 

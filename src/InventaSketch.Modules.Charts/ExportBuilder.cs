@@ -34,6 +34,8 @@ namespace InventaSketch.Modules.Charts
         {
             if (registry.Type(o.Type) is not ChartType type) return null;
             var ctx = new RenderContext(doc, lang).For(registry);
+            // A linked chart exports as the figure it would become when unlinked (its current curves as data).
+            if (type is LinkedChart linked && linked.Frozen(o, ctx) is { } frozen && registry.Type(frozen.Type) is ChartType figure) { o = frozen; type = figure; }
             var c = type.Compose(o, ctx);
             var b = new ExportBuilder(o, lang, c, type.Name.Get(lang), type.Id);
             b.Axes();

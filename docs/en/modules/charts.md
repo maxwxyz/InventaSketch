@@ -23,6 +23,7 @@ follow the box. Text is sized by the smaller scale factor relative to the design
 | `chart.bode` | Bode plot / Bode-Diagramm | `system` low pass / high pass of 1st or 2nd order, `fc` (Hz), `zeta` (damping, 2nd order), `gain` (dB), `show` magnitude and phase / magnitude / phase, `marker` (corner frequency line), `xrange`, `data` (measured `f;dB;°`, replaces the system) |
 | `chart.band` | Tolerance band / Toleranzband | `data` (nominal curve, see below), `tol` + `tolmode` percent / absolute, `smooth`, `limits`, `patterns`; further data blocks are drawn as measured series with markers |
 | `chart.figure` | Figure (principle, technical) / Prinzip- und technische Abbildung | `spec` (JSON specification, see [Figure](#figure-charts-v2-stage-2)); stacked panels, principle or data axes, value lines, markers, regions, notes, reference numerals |
+| `chart.linked` | Characteristic chart (linked) / Kennlinie (verknüpft) | `link` (`<element id>#<set key>`, advanced), `title`, `grid`, `legend`; drawn from the curve set of the linked element, see [Linked characteristic charts](#linked-characteristic-charts-calc-5); not in the library, inserted from an element |
 | `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | math style, see [Coordinate systems and function graphs](#coordinate-systems-and-function-graphs-charts-v2-stage-4) |
 | `chart.math.function` | Function graph / Funktionsgraph | basic function, typed formula or function generator in the math-style coordinate system |
 | `chart.timing` | Timing diagram (digital) / Zeitdiagramm (digital) | `signals` (one signal per row, see [Digital timing diagram](#digital-timing-diagram-charttiming)), `slope` sloped / sharp, `grid`, `timelabels`, `markers`, `spans`, `title`, `dt`, `tunit` |
@@ -489,13 +490,58 @@ Export: everything is native (freeforms, hatched freeforms, lines with arrowhead
 draw it from the primitives. The matplotlib and pgfplots exports have no data axes for it and report "could not be
 exported" for a timing diagram.
 
+## Linked characteristic charts (Calc 5)
+
+A characteristic chart can be linked to an element whose values give a curve set (contract `ICharacteristics` in
+`src/InventaSketch.Core/Characteristics.cs`; design notes in section 14 of
+[engineering-calculations.md](../design/engineering-calculations.md)). The chart (`chart.linked`) stores only the link
+`<element id>#<set key>` in its parameter `link`. At every render it asks the element for the set, computed from the
+element's solved values, and draws it like a figure: one panel per y axis, the curves (the element's own curve solid,
+load and system curves dashed), bands (the inverter's MPP window), limit lines and the marked points (operating point
+filled, design and breakdown points open). Notes on assumed values appear as the caption. The element lists the chart
+as a dependent, so hosts redraw the chart with every change of the element.
+
+| Element (module) | Set | Curves and points |
+|---|---|---|
+| Centrifugal pump (Process), circulator (Building services) | Pump and system curve | H(V̇) = H₀·(1 − (V̇/V̇_max)²), system curve H_stat + k·V̇² through the operating point; operating point at the pump's flow (grip) |
+| Machine cross-sections, motor and e-machine blocks (Machines) | Torque–speed curve | Kloss curve through n_s and the rated point for the squirrel-cage rotor, torque envelope otherwise; operating point (grip), breakdown point |
+| PV module and string (Energy) | PV I–V and P–V curves | I(U) and P(U) at STC (two panels), MPP, inverter MPP window, U_DC,max and U_oc at θ_min |
+| Resistor, capacitor, inductor in an RC/RL/RLC circuit (Electrical) | Bode plot, step response | magnitude and phase with the corner (natural) frequency (grip: enters C or L); step response with τ (63.2 %) or the overshoot |
+| Gears and shafts (Mechanical) | Gear train speeds and torques | one bar per shaft for n, T and P |
+| Boiler, heat pump (Building services) | Heating curve | flow and return temperature over the outdoor temperature; design point (grip: enters the flow temperature), current operating point (grip: the outdoor temperature) |
+
+Actions:
+
+- On the element: **Characteristic chart ▸** (a menu, one command per set) adds a chart linked to that set right of
+  the element, in one undo step.
+- On the pump, torque–speed, Bode, figure and linked charts: **Link to element ▸** lists the curve sets of the elements
+  on the same slide (nearest first, at most eight elements); choosing one turns the chart into a linked chart (position,
+  size and title stay).
+- On the linked chart: **Unlink (freeze values)** turns it into a figure (`chart.figure`) whose specification holds the
+  current curves, points, bands and limit lines as plain data; later changes of the element no longer reach it. It is
+  greyed out while the element is missing.
+
+Grips: every draggable point has a handle `op.<point>` on its marker, moving along x (along the curve) or along y. On
+drop the new value (snapped to the axis resolution) is handed to the point, which returns the values to write; they
+are stored in the element like a dragged value (three significant digits; entered values that would over-determine
+the element give way, `ValueDrag`). Curve data that were assumed are stored with the first drag, so the curve stays
+where it is. The chart itself does not change: it follows the element. This is a document-level change: hosts call
+`DocumentHandles.Move(registry, doc, chartId, key, position, lang)` (it falls back to `ObjectType.MoveHandle` for
+every other type) and apply the result as one undo step; the object-level `MoveHandle` of the linked chart changes
+nothing.
+
+A missing element or an unreadable link shows a message in an empty frame ("Linked element not found: unlink or link
+again"). The matplotlib and pgfplots exports write a linked chart as the figure it would become when unlinked.
+
 ## Host notes
 
 All output uses native primitives: one freeform per series line (smooth curves as cubic Bézier paths), one
 multi-sub-path freeform each for grid lines, ticks, contour levels, limit and helper lines, one freeform per marker
 set, rectangles for bars, legend and label backings, a closed polygon for the band, and text. Axis titles of the
 y axes are rotated by −90°. Hatch and dot fills use the core fill kinds. No vector picture is needed. Charts do not
-depend on neighbouring objects.
+depend on neighbouring objects, except the linked characteristic chart (`chart.linked`), which renders from the linked
+element (`DependsOnNeighbours`; the element names it as a dependent). Its operating point grips change the element:
+hosts apply them with `DocumentHandles.Move` (see above).
 
 ## Charts from pictures (building blocks)
 

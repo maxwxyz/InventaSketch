@@ -29,7 +29,7 @@ namespace InventaSketch.Modules.BuildingServices
     /// height) and <c>schematic</c> (riser/flow diagram symbol). Plan and the elevation views share the x extent (the box
     /// width is kept when the view changes); the height of the box follows the preferred size of the target view.
     /// </summary>
-    internal sealed class BsBoxType : ObjectType, IValueType, IValueLinks, IValueChecks
+    internal sealed partial class BsBoxType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         /// <summary>Installations switch plan ↔ section ↔ schematic together (<see cref="ServiceViews"/>).</summary>
         public override IAssemblyViewSwitch? AssemblyViewSwitch => ServiceViews.Rule;
@@ -67,7 +67,7 @@ namespace InventaSketch.Modules.BuildingServices
         public override IReadOnlyList<string> Companions => CompanionIds;
 
         public override IReadOnlyList<ParamDef> Parameters =>
-            Params.Concat(new[] { Pm.Height(DefaultHeight), Pm.Scale }).Concat(ValueSpec.Params).ToList();
+            Params.Concat(new[] { Pm.Height(DefaultHeight), Pm.Scale }).Concat(ValueSpec.Params).Concat(CurveParams).ToList();
 
         // ------------------------------------------------------------------ element values (Calc 4, BsValues)
 

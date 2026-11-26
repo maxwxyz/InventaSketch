@@ -48,7 +48,7 @@ namespace InventaSketch.Modules.Energy
     /// Port convention: the grid-side port at the top edge, the device side at the bottom edge, other media (heat,
     /// hydrogen, water, fuel) at the left and right edges.
     /// </summary>
-    internal sealed class EnergyType : ObjectType, IValueType, IValueLinks, IValueChecks
+    internal sealed partial class EnergyType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;

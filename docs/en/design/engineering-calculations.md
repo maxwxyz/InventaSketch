@@ -1312,3 +1312,118 @@ is the reference; the module docs list every variable, relation, link and check
 - **Duplicate links:** the solver collects the port relations of every object in scope, so a link between two objects is
   added twice (once from each). It is harmless (the second copy is never independent), but deduplicating by reference
   in `ValueSolver.Solve` would halve the link relations.
+
+---
+
+## 14. Implementation notes: Calc 5 linked charts (2026-11-26)
+
+This section records the choices made for Calc 5 (section 5 and the Calc 5 items of section 7). The code is the
+reference; the chart side is described in [charts.md](../modules/charts.md#linked-characteristic-charts-calc-5).
+
+### 14.1 Files
+
+| Area | Files |
+|---|---|
+| Core contract: curve sets, points, writes, links, document-level grips | `src/InventaSketch.Core/Characteristics.cs` (`ICharacteristics`, `CharacteristicSet`, `CharacteristicPoint`, `ValueWrite`, `Characteristics`, `IDocumentHandles`, `DocumentHandles`) |
+| Pump and system curve shared by two modules | `src/InventaSketch.Core/CharacteristicKit.cs` |
+| Linked chart, figure building, "Link to element ▸" | `src/InventaSketch.Modules.Charts/LinkedChart.cs` (`LinkedChart`, `LinkedFigure`, `ChartLinks`); `ChartType.Actions(o, ctx)`, registration in `ChartsModule`, export in `ExportBuilder` |
+| Curve providers (partial classes of the module types) | `Process/PumpCurves.cs`, `BuildingServices/HeatingCurves.cs`, `Machines/MachCurves.cs`, `Energy/PvCurves.cs`, `Electrical/ElecCurves.cs`, `Mechanical/GearCurves.cs` |
+| Hooks in the type classes | `partial` on `ProcessType`, `BsBoxType`, `MachType`, `EnergyType`, `ElecType`, `MechType`; `.Concat(CurveParams)` in `Parameters` of `ProcessType`, `BsBoxType` and `MachType` |
+| Tests | `tests/InventaSketch.Modules.Charts.Tests/LinkedChartTests.cs` (contract with a test element), `CurveTests.cs` in the Process, Building services, Machines, Energy, Electrical and Mechanical test projects, `tests/InventaSketch.Engine.Tests/LinkedChartAcceptTests.cs` (accept items with the full catalogue) |
+
+### 14.2 Decisions
+
+- **Contract instead of module links.** Modules never depend on each other, so the Charts module reads curves only
+  through `ICharacteristics` in Core: a type lists the sets an element offers (`CharacteristicSets`, may depend on the
+  document: a resistor offers the Bode plot only in a circuit with a capacitor or an inductor) and computes one from a
+  `CharacteristicContext` (the element, its document and registry, and the solved values of its solver scope). A set
+  has an x axis, one y axis per panel (label and display unit; the numbers of the curves are in these units), curves
+  (point lists), points, bands, limit lines and notes. Bilingual names throughout.
+- **The link is a parameter.** `chart.linked` stores `link` = "&lt;element id&gt;#&lt;set key&gt;" and nothing else of the
+  curves. `Characteristics.Resolve` solves the element (budget 200 ms) and computes the set; the result is cached per
+  document instance and registry (documents are immutable), so the several calls of one render pass solve once.
+- **Redraw.** The element types return their linked charts from `Dependents` and set `DependsOnNeighbours` (only the
+  instances that offer sets, so other symbols of the same class keep rendering without context); the chart sets
+  `DependsOnNeighbours` too. The engine's `ChangeSet` and the COM host's dependent units then redraw the chart in the
+  undo step of the element's change. A value of the element that changes because a *neighbour* changed (a flow passed
+  on through a pipe) does not reach the chart until the element or the chart is redrawn (open, 14.4).
+- **Rendering as a figure.** The linked chart builds a figure specification from the set (`LinkedFigure`) and draws it
+  with the figure composer, so axes, panels, legend, parts and part looks are those of `chart.figure`. Points become
+  one-point series with a marker (the grip finds the marker by its part tag). Unlink stores exactly this specification
+  in a `chart.figure` (position, size and part looks stay): the frozen chart is an ordinary figure.
+- **Grips write values, not the chart.** A point carries the motion (along x or y) and a function from the new
+  coordinate to `ValueWrite`s. `Characteristics.Apply` stores variables like a dragged value (`ValueDrag.Plan` +
+  `Apply`, three significant digits; entered values that would over-determine the element give way) and parameters as
+  formatted text. Where the curve rests on assumed data (pump V̇_max, rated point of a motor), the first drag stores
+  them, so the curve does not move under the pointer. The chart is unchanged by the drag; the document change touches
+  only the element, and the chart follows as its dependent: one undo step for both.
+- **Document-level handles.** `ObjectType.MoveHandle` returns only the object. `IDocumentHandles.MoveHandleInDocument`
+  (Core) returns the document; `DocumentHandles.Move` calls it and falls back to `MoveHandle` for every other type.
+  The hosts and the engine's `moveHandle` must call it (14.3); until then the linked chart's grips do nothing in the
+  hosts (no fake effect: the object-level move returns the chart unchanged).
+- **Insert and link actions.** The element's **Characteristic chart ▸** is a menu choice (`values.chart`, one command
+  per set, `ApplyInDocument`) that adds the chart right of the element; the chart is created through the registry
+  (`ctx.Registry ?? type.Owner`), so the element's module needs no reference to Charts, and the menu is missing when
+  no chart type is registered. The charts' **Link to element ▸** (`chart.link`) lists the sets of the elements on the
+  same slide; **Unlink (freeze values)** is greyed out when the element is missing.
+- **Curve parameters.** Curve data that are no element values are optional text parameters of the element (inspector,
+  advanced; empty by default so inserted elements carry nothing new): pump `curveH0`, `curveQmax`, `curveHstat`;
+  machine `curveKloss` (T_k/T_N), `curveNmax`; heat generator `curveDesignOutdoor`, `curveRoomTemp`, `curveExponent`,
+  `curveOutdoor`.
+
+### 14.3 Curve families
+
+| Family (set key) | Elements | Formulas | Read back (grip) | Source |
+|---|---|---|---|---|
+| Pump and system curve (`pump`) | `process.pump.centrifugal`, `bs.heat.pump` | H(V̇) = H₀·(1 − (V̇/V̇_max)²); operating point at the pump's V̇ (else 0.7·V̇_max), H from the curve; system H_stat + k·V̇² through it (H_stat default H₀/4); without H₀ the curve runs through the pump's (V̇, H); V̇_max default V̇/0.7 | along the pump curve: enters V̇ and H | [S28] |
+| Torque–speed, induction machine (`torque`) | `machines.radial`/`.axial` with rotor `asm` | s = 1 − n/n_s; T = 2·T_k/(s/s_k + s_k/s), T_k = λ·T_N, s_k = s_N·(λ + √(λ² − 1)) (curve through (n_N, T_N)); λ default 2.5; rated point from T_N and P_N, else the operating point; constant load torque through the operating point (dashed) | along the curve: enters n and T (stores T_N, P_N when assumed) | [S14, S15] |
+| Torque–speed, envelope (`torque`) | other cross-sections, `machines.drive.motor`, `machines.drivetrain.emachine` | T_max = T_N up to n_b = P_N/T_N, T_max·n_b/n above, up to n_max (default 3·n_b) | horizontal: enters n (and T, limited to the envelope) | [S14, S15] |
+| PV I–V and P–V (`pv`) | `energy.pv.module`, `energy.pv.string` | I(U) = I_sc·(1 − C₁·(e^(U/(C₂·U_oc)) − 1)), C₂ = (U_mpp/U_oc − 1)/ln(1 − I_mpp/I_sc), C₁ = (1 − I_mpp/I_sc)·e^(−U_mpp/(C₂·U_oc)); string: U × N_s; MPP by golden-section search; MPP window and U_DC,max of the inverter in the solver scope; U_oc at θ_min | – (Explore drag of θ and G open) | [S33, S34] |
+| Bode plot (`bode`) | resistor, capacitor, inductor in a circuit with R and C or L | RC: f_c = 1/(2πRC); RL: f_c = R/(2πL); first order −10·lg(1 + r²), φ = −arctan r; RLC: f₀ = 1/(2π√(LC)), ζ = (R/2)√(C/L), −10·lg((1 − r²)² + (2ζr)²), φ = −arctan2(2ζr, 1 − r²) | along f: enters C (RC, RLC) or L (RL); R stays | [S7] |
+| Step response (`step`) | as Bode | 1 − e^(−t/τ), τ = RC or L/R (point at 63.2 %); PT2 under-, critically and over-damped forms (point at the overshoot) | – | [S7] |
+| Gear train (`train`) | gears, shafts | shafts = groups of equal solved n in the scope, by falling n; T = largest member torque; P = 2π·n·T | – | [S16, S18] |
+| Heating curve (`heating`) | `bs.heat.boiler`, `bs.heat.heatpump` | q = (θ_i − θ_e)/(θ_i − θ_e,d); θ_F,R = θ_i + Δθ_m,d·q^(1/n) ± ½(θ_F,d − θ_R,d)·q; θ_F,d = the generator's θ_F (default 55 °C), θ_R,d its θ_R (default θ_F,d − 10 K), θ_e,d default −12 °C, θ_i 20 °C, n 1.3 | design point vertical: enters θ_F; current point along the curve: stores θ_e | [S29, S31] |
+
+**Accept items (tests with hand calculations):**
+
+- "Changing the pump's H₀ redraws the linked chart and moves the operating point": H₀ 40 m, V̇_max 100 m³/h, H_stat 10 m,
+  V̇ 70 m³/h → operating point (70 m³/h, 20.4 m); H₀ 50 m → (70 m³/h, 25.5 m); the engine's `ChangeSet` of the edit
+  lists the chart as a dependent and its drawing changes.
+- "Dragging the point changes the pump flow (one undo step for chart and element)": the grip dropped at 50 m³/h gives
+  one document change that touches only the pump (V̇ = 50 m³/h and H = 30 m entered); the chart is in the dependents of
+  that change.
+- "Unlinking freezes the values": the frozen figure's drawing stays the same when H₀ changes, and the pump no longer has
+  it as a dependent.
+- "The PV chart shows the MPP and the inverter window": 10 modules (U_oc 49.5 V, U_mpp 41.6 V, I_sc 13.9 A,
+  I_mpp 13.0 A) on an inverter with MPP range 200–480 V and U_DC,max 600 V: band 200–480 V, line at 600 V, U_oc at
+  θ_min 541.78 V, MPP ≈ 5.41 kW at ≈ 416 V (inside the window).
+- Further hand checks: RC 1 kΩ/100 nF: f_c = 1591.5 Hz at −3.01 dB and −45°, τ = 100 µs at 63.2 %; dragging f_c to
+  1 kHz enters C = 159 nF; RLC 100 Ω/10 mH/100 nF: f₀ = 5032.9 Hz, ζ = 0.158, overshoot 60.1 %; induction machine 50 Hz,
+  4 poles, 1440 min⁻¹, 100 N·m: s_k = 0.1917, breakdown 250 N·m at 1212.5 min⁻¹; motor block T_N 200 N·m, base 3000 min⁻¹:
+  100 N·m at 6000 min⁻¹; three-stage train 1500/750/250/83.3 min⁻¹ and 10/20/60/180 N·m; heating curve 55/45 °C,
+  −12 °C design, +4 °C → θ_F = 40.10 °C.
+
+### 14.4 Host changes needed and open points
+
+- **Engine `moveHandle` (not changed here):** in `EngineApi.MoveHandleCore` the release branch should apply
+  `s.Apply("Move handle", d => DocumentHandles.Move(Registry, d, o.Id, key, at, s.Lang))` instead of
+  `Edits.Replace(d, Registry.MoveHandle(…))` (the unchanged-document check stays: `DocumentHandles.Move` returns the
+  same document when nothing changes). The state's `dependents` then name the chart, so hosts redraw it.
+- **COM host (not changed here):** the handle drop (`OnSlideController.Handles.cs`, the release that calls
+  `ReplaceWithDependents(slide, unit, Edits.Update(unit.Doc, new[] { o.Id }, _ => moved))`) must call
+  `DocumentHandles.Move` on the slide document (the unit's objects plus the other units, as `WithContext` builds it)
+  and take over the objects it **changed in other units** (the pump lives in another unit than its chart).
+  `ApplyOutsideOwn` takes over only added and removed objects today; it needs a third branch: for every other unit with
+  an object whose instance differs between before and after, `SketchUnits.Replace` that unit with the changed objects,
+  in the same undo step, followed by `RedrawDependents`. The same branch makes document actions that change
+  neighbours work generally.
+- **Live preview of a grip:** the engine's `moveHandle` preview and the COM drag preview show the chart unchanged while
+  dragging; a preview would solve with `ValueSolveOptions.Overrides` and render the set from that table.
+- **Neighbour changes:** a value the element takes over from a connected element (a flow from a pipe) changes the chart
+  only when the element itself is in the change; a transitive dependent rule ("charts of every element in the solver
+  scope of the touched objects") belongs to the hosts' or the engine's dependents pass.
+- **Not done:** Fluid (displacement pumps have no H(Q) curve; a p–Q curve with the relief valve is a later item), the
+  efficiency map and the load/generation balance of section 5, speed changes of the pump by the affinity laws, the PV
+  curve at other irradiance and cell temperature (Explore drag of θ and G), Bode grips that change R instead of C, and
+  the inspector entry of curve parameters on the card. Section 7 keeps the Calc 5 plan text; this section is its
+  status.
