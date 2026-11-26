@@ -222,8 +222,8 @@ namespace InventaSketch.Modules.Mechanical
 
         /// <summary>
         /// Rack: P = F·v; the module for the drawing pitch. The pinion that drives it is described on the rack (teeth, speed,
-        /// torque): v = ω·r and F = T/r with r = m·z_p/2. A drawn pinion gear is not linked to the rack (no rack mesh in the
-        /// topology): enter its values on the rack.
+        /// torque): v = ω·r and F = T/r with r = m·z_p/2. A drawn spur gear (axial view) whose pitch circle touches the rack's
+        /// pitch line is its pinion: n_p, T_p, z_p and d_p are taken from it (<see cref="MechTopology"/>).
         /// </summary>
         private static Spec Rack(MechType type)
         {
@@ -275,6 +275,16 @@ namespace InventaSketch.Modules.Mechanical
                 .Solve("Ts", "−({Tr} + {Tc})", v => -(v("Tr") + v("Tc")))
                 .Solve("Tr", "−({Ts} + {Tc})", v => -(v("Ts") + v("Tc")));
 
+        /// <summary>
+        /// Carrier torque from the sun torque: T_c = −T_s·(1 + k·z_r/z_s) (the ring ratio in the balance) [S39]. It lets a torque
+        /// entered or linked at the carrier (a carrier shaft) give the sun and ring torques without solving the two equations
+        /// above together.
+        /// </summary>
+        private static readonly Relation PlanetTorqueCarrier =
+            new Relation("mech.planetary.torque.carrier", T("Torque ratio sun : carrier", "Momentenverhältnis Sonne : Steg"), "{Tc} = −{Ts}·(1 + {k}·{zr}/{zs})", "Tc", "Ts", "zr", "zs", "k") { Source = "S39" }
+                .Solve("Tc", "−{Ts}·(1 + {k}·{zr}/{zs})", v => -v("Ts") * (1 + v("k") * v("zr") / v("zs")))
+                .Solve("Ts", "−{Tc}/(1 + {k}·{zr}/{zs})", v => -v("Tc") / (1 + v("k") * v("zr") / v("zs")));
+
         private static Spec Planetary(MechType type)
         {
             VarDef SignedSpeed(string key, I18nText name, string sym, VarRelevance rel) =>
@@ -303,7 +313,7 @@ namespace InventaSketch.Modules.Mechanical
                 Text("torquer", T("Torque on the ring gear", "Moment am Hohlrad"), "N·m"),
                 Text("torquec", T("Torque on the carrier", "Moment am Steg"), "N·m"),
                 Text("stepRatio", T("Stepped planets z_p1/z_p2", "Stufenplaneten z_p1/z_p2"), ""));
-            return new Spec(vars, new[] { Willis, PlanetTorqueRing, PlanetTorqueBalance }, ps, new[] { PlanetaryAssembly() });
+            return new Spec(vars, new[] { Willis, PlanetTorqueRing, PlanetTorqueBalance, PlanetTorqueCarrier }, ps, new[] { PlanetaryAssembly() });
         }
 
         // shafts and couplings --------------------------------------------------

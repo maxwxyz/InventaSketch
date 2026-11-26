@@ -437,7 +437,8 @@ namespace InventaSketch.Modules.Mechanical
                 "strain wave gear", "harmonic drive", "harmonic gear", "wave generator", "flexspline", "circular spline", "robot joint",
                 "wellgetriebe", "spannungswellengetriebe", "wellgenerator", "flexrad", "hohlrad", "robotergelenk", "getriebe",
             },
-            new ViewSpec("stick", VStick, 24, 40, StrainWaveStick) { Anchors = (p, o) => new[] { Mount(p, -5, -17, "ground") } },
+            // Member ports at the ends of the input (wave generator) and output (flexspline) shafts.
+            new ViewSpec("stick", VStick, 24, 40, StrainWaveStick) { Anchors = (p, o) => new[] { Mount(p, -5, -17, "ground"), Gears.MemberPort(p, -12, "in"), Gears.MemberPort(p, 12, "out") } },
             new ViewSpec("axial", VAxial, 40, 40, StrainWaveAxial) { Anchors = (p, o) => new[] { Mount(p, 0, -19, "ground") } })
         {
             CompanionTypes = new[] { "mech.shaft", Drivetrain.EMachine, "mech.bearing.angular", "mech.housing.ground" },
@@ -494,7 +495,8 @@ namespace InventaSketch.Modules.Mechanical
                 "cycloidal drive", "cycloid", "cyclo", "cycloidal disc", "eccentric", "pin wheel", "pin ring", "robot joint",
                 "zykloidgetriebe", "zykloidscheibe", "exzenter", "bolzenring", "triebstockgetriebe", "robotergelenk", "getriebe",
             },
-            new ViewSpec("stick", VStick, 24, 40, CycloidalStick) { Anchors = (p, o) => new[] { Mount(p, -2, -18.5, "ground") } },
+            // Member ports at the ends of the input (eccentric) and output shafts.
+            new ViewSpec("stick", VStick, 24, 40, CycloidalStick) { Anchors = (p, o) => new[] { Mount(p, -2, -18.5, "ground"), Gears.MemberPort(p, -12, "in"), Gears.MemberPort(p, 12, "out") } },
             new ViewSpec("axial", VAxial, 40, 40, CycloidalAxial) { Anchors = (p, o) => new[] { Mount(p, 0, -19, "ground") } })
         {
             Params = new[] { Common.Count("lobes", T("Lobes of the cycloid disc", "Höcker der Zykloidscheibe"), 11, 5, 29) },
