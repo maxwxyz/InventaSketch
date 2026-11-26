@@ -65,6 +65,32 @@ namespace InventaSketch.Modules.Charts
         public bool CounterClock = true;
         /// <summary>Percent labels (autopct).</summary>
         public bool Percent;
+        /// <summary>The names are not drawn on the pie (labeldistance=None): a legend shows them.</summary>
+        public bool NamesOnly;
+        public int Line;
+    }
+
+    /// <summary>A histogram of an axes (matplotlib hist): raw samples per series, the bins (a count or edges), the range, names.</summary>
+    internal sealed class ImpHist
+    {
+        public List<double[]> Data { get; } = new();
+        public List<string?> Labels { get; } = new();
+        public int? Bins;
+        public double[]? Edges;
+        public (double Min, double Max)? Range;
+        public int Line;
+    }
+
+    /// <summary>A box plot call of an axes (matplotlib boxplot): samples per box, positions, names, whisker rule.</summary>
+    internal sealed class ImpBoxes
+    {
+        public List<double[]> Data { get; } = new();
+        public double[]? Positions;
+        public string[]? Labels;
+        public double Whis = 1.5;
+        /// <summary>Whiskers at the minimum and maximum (whis=(0, 100), or no outliers shown).</summary>
+        public bool MinMax;
+        public string? Label;
         public int Line;
     }
 
@@ -73,6 +99,10 @@ namespace InventaSketch.Modules.Charts
     {
         /// <summary>A pie (the axes shows nothing else).</summary>
         public ImpPie? Pie;
+        /// <summary>A histogram (the axes shows nothing else).</summary>
+        public ImpHist? Hist;
+        /// <summary>Box plots, one call per series (the axes shows nothing else).</summary>
+        public List<ImpBoxes> Boxes { get; } = new();
         /// <summary>Polar projection: the series are (angle in radians, radius).</summary>
         public bool Polar;
         /// <summary>Polar: 0° at the top (set_theta_zero_location('N')).</summary>
@@ -106,7 +136,7 @@ namespace InventaSketch.Modules.Charts
         public List<double>? XTicks, YTicks;
         public List<string>? XTickLabels, YTickLabels;
 
-        public bool HasContent => Series.Count > 0 || Bars.Count > 0 || Refs.Count > 0 || Spans.Count > 0 || Fills.Count > 0 || Notes.Count > 0 || Pie is not null;
+        public bool HasContent => Series.Count > 0 || Bars.Count > 0 || Refs.Count > 0 || Spans.Count > 0 || Fills.Count > 0 || Notes.Count > 0 || Pie is not null || Hist is not null || Boxes.Count > 0;
 
         /// <summary>True if an axis range was set (empty axes with ranges are imported as a coordinate system).</summary>
         public bool HasRange => XMin is not null || XMax is not null || YMin is not null || YMax is not null;
@@ -206,7 +236,7 @@ namespace InventaSketch.Modules.Charts
         {
             var axes = f.Axes.Where(a => a.HasContent || a.XLabel is not null || a.YLabel is not null || a.Title is not null || a.HasRange).ToList();
             if (axes.Count == 0) yield break;
-            var bars = axes.Where(a => a.Bars.Count > 0 || a.Pie is not null || a.Polar).ToList();
+            var bars = axes.Where(a => a.Bars.Count > 0 || a.Pie is not null || a.Polar || a.Hist is not null || a.Boxes.Count > 0).ToList();
             var stack = f.Cols == 1 && bars.Count == 0 && axes.Count <= FigureSpec.MaxPanels;
             if (stack)
             {
@@ -221,6 +251,8 @@ namespace InventaSketch.Modules.Charts
                 SketchObject? o;
                 I18nText summary;
                 if (a.Pie is not null) o = PieOf(registry, f, a, report, out summary);
+                else if (a.Hist is not null) o = HistogramOf(registry, f, a, report, out summary);
+                else if (a.Boxes.Count > 0) o = BoxPlotOf(registry, f, a, report, out summary);
                 else if (a.Polar) o = PolarOf(registry, f, a, report, out summary);
                 else if (a.Bars.Count > 0) o = BarChartOf(registry, f, a, report, out summary);
                 else o = Figure(registry, f, new List<ImpAxes> { a }, report, false, out summary);
@@ -402,7 +434,7 @@ namespace InventaSketch.Modules.Charts
             var en = new List<string>(); var de = new List<string>();
             foreach (var (c, e, d) in counts.Where(x => x.N > 0))
             {
-                en.Add(c + " " + (c == 1 || e.EndsWith("series", StringComparison.Ordinal) ? e : e.EndsWith("y", StringComparison.Ordinal) ? e.Substring(0, e.Length - 1) + "ies" : e + "s"));
+                en.Add(c + " " + (c == 1 || e.EndsWith("series", StringComparison.Ordinal) ? e : e.EndsWith("y", StringComparison.Ordinal) ? e.Substring(0, e.Length - 1) + "ies" : e.EndsWith("x", StringComparison.Ordinal) ? e + "es" : e + "s"));
                 de.Add(c + " " + (c == 1 ? d : Plural(d)));
             }
             return new I18nText(kind.En + (en.Count > 0 ? " with " + string.Join(", ", en) : ""), kind.Get(Lang.De) + (de.Count > 0 ? " mit " + string.Join(", ", de) : ""));
@@ -411,7 +443,7 @@ namespace InventaSketch.Modules.Charts
         private static string Plural(string de) => de switch
         {
             "Kurve" => "Kurven", "Wertlinie" => "Wertlinien", "senkrechte Linie" => "senkrechten Linien", "Fläche" => "Flächen", "Anmerkung" => "Anmerkungen",
-            "Balkenreihe" => "Balkenreihen", "Kategorie" => "Kategorien", "Segment" => "Segmente", _ => de,
+            "Balkenreihe" => "Balkenreihen", "Kategorie" => "Kategorien", "Segment" => "Segmente", "Messwert" => "Messwerte", "Reihe" => "Reihen", "Box" => "Boxen", _ => de,
         };
 
         /// <summary>Index of a series of the panel whose curve passes through every (x, y) of the data (within a small tolerance).</summary>
@@ -650,7 +682,7 @@ namespace InventaSketch.Modules.Charts
             // matplotlib: degrees counter-clockwise from 3 o'clock; here: degrees clockwise from 12 o'clock.
             var start = ((90 - pie.StartAngle) % 360 + 360) % 360;
             if (start > 180) start -= 360;
-            var labels = pie.Labels is not null ? (pie.Percent ? "namepercent" : "name") : pie.Percent ? "percent" : "none";
+            var labels = pie.Labels is not null && !pie.NamesOnly ? (pie.Percent ? "namepercent" : "name") : pie.Percent ? "percent" : "none";
             o = o.WithParam("data", string.Join("\n", rows))
                 .WithParam("hole", Math.Round(Geo.Clamp(pie.Hole, 0, 0.9), 3))
                 .WithParam("start", Math.Round(start, 3))
@@ -673,12 +705,18 @@ namespace InventaSketch.Modules.Charts
             if (a.Bars.Count > 0 || a.Fills.Count > 0 || a.Refs.Count > 0 || a.Spans.Count > 0 || a.Notes.Count > 0)
                 report.Skip(a.Line, "", new I18nText("Bars, areas, lines and notes on polar axes are not imported (the curves are).", "Balken, Flächen, Linien und Anmerkungen auf Polarachsen werden nicht importiert (die Kurven schon)."));
             var blocks = new List<string>();
+            // A curve whose last point repeats the first is closed; otherwise it stays open (as matplotlib draws it). The
+            // repeated point is left out: the chart closes the curve itself.
+            static bool Repeats(FigSeries s) => s.X.Count > 2 && s.Y.Count == s.X.Count && Math.Abs(s.Y[0] - s.Y[s.Y.Count - 1]) < 1e-9
+                && Math.Abs(Math.IEEERemainder(s.X[0] - s.X[s.X.Count - 1], 2 * Math.PI)) < 1e-6;
+            var closed = a.Series.Count > 0 && a.Series.All(Repeats) || a.PolarFill;
             for (var k = 0; k < a.Series.Count; k++)
             {
                 var se = a.Series[k];
                 var lines = new List<string>();
                 if (se.Label is { } l && l.En.Length > 0) lines.Add(l.En.Replace(";", ",").Replace("\n", " ").Trim() + ";");
                 var n = Math.Min(se.X.Count, se.Y.Count);
+                if (closed && Repeats(se)) n--;
                 for (var i = 0; i < n; i++)
                     if (Fmt.Finite(se.X[i]) && Fmt.Finite(se.Y[i])) lines.Add(Num(Math.Round(se.X[i] * 180 / Math.PI, 9)) + ";" + Num(se.Y[i]));
                 if (lines.Count > 0) blocks.Add(string.Join("\n", lines));
@@ -687,9 +725,6 @@ namespace InventaSketch.Modules.Charts
             var markersOnly = a.Series.Count > 0 && a.HiddenLines.Count == a.Series.Count;
             var markers = a.Series.Any(s => s.Marker is not null);
             var style = a.PolarFill ? "area" : markersOnly ? "points" : markers ? "linepoints" : "line";
-            // A curve whose last point repeats the first is closed; otherwise it stays open (as matplotlib draws it).
-            var closed = a.Series.Count > 0 && a.Series.All(s => s.X.Count > 2 && Math.Abs(s.Y[0] - s.Y[s.Y.Count - 1]) < 1e-9
-                && Math.Abs(Math.IEEERemainder(s.X[0] - s.X[s.X.Count - 1], 2 * Math.PI)) < 1e-6) || a.PolarFill;
             o = o.WithParam("data", string.Join("\n\n", blocks)).WithParam("style", style).WithParam("closed", closed);
             if (a.PolarTop != a.PolarClockwise)
                 report.Skip(a.Line, "", new I18nText("This combination of the 0° direction and the angle direction is drawn with 0° right and counter-clockwise angles, or with 0° up and clockwise angles.",
@@ -703,6 +738,112 @@ namespace InventaSketch.Modules.Charts
             o = o.WithParam("legend", legend ? "right" : "none");
             o = o.WithParam("grid", a.XGrid != false && a.YGrid != false);
             summary = Summary(new I18nText("polar chart", "Polardiagramm"), new[] { (a.Series.Count, "curve", "Kurve") });
+            return o;
+        }
+
+        // ------------------------------------------------------------------ histogram and box plot
+
+        /// <summary>Samples as data rows of up to ten numbers.</summary>
+        private static IEnumerable<string> SampleRows(IEnumerable<double> values)
+        {
+            var row = new List<string>();
+            foreach (var v in values.Where(Fmt.Finite))
+            {
+                row.Add(Num(v));
+                if (row.Count == 10) { yield return string.Join(";", row); row.Clear(); }
+            }
+            if (row.Count > 0) yield return string.Join(";", row);
+        }
+
+        /// <summary>Title, axis titles, value range, grid and legend of a histogram or box plot from its axes.</summary>
+        private static SketchObject StatParams(SketchObject o, ImpFigure f, ImpAxes a, bool legend)
+        {
+            var title = f.Title ?? a.Title;
+            if (!string.IsNullOrWhiteSpace(title)) o = o.WithParam("title", title!.Trim());
+            if (!string.IsNullOrWhiteSpace(a.XLabel)) o = o.WithParam("xlabel", a.XLabel!.Trim());
+            if (!string.IsNullOrWhiteSpace(a.YLabel)) o = o.WithParam("ylabel", a.YLabel!.Trim());
+            if (Lim(a.YMin) is { } lo && Lim(a.YMax) is { } hi && lo != hi) o = o.WithParam("yrange", Num(Math.Min(lo, hi)) + ";" + Num(Math.Max(lo, hi)));
+            if (a.XGrid is not null || a.YGrid is not null) o = o.WithParam("grid", a.XGrid == true || a.YGrid == true);
+            return o.WithParam("legend", legend ? "auto" : "none");
+        }
+
+        private static SketchObject? HistogramOf(Registry registry, ImpFigure f, ImpAxes a, CodeImportReport report, out I18nText summary)
+        {
+            summary = new I18nText("");
+            var type = registry.Type(HistogramChart.TypeId);
+            var h = a.Hist!;
+            if (type is null) return null;
+            if (a.Series.Count > 0 || a.Bars.Count > 0 || a.Fills.Count > 0 || a.Refs.Count > 0 || a.Spans.Count > 0 || a.Boxes.Count > 0)
+                report.Skip(a.Line, "", new I18nText("Curves, bars and lines next to a histogram are not imported (the histogram is).", "Kurven, Balken und Linien neben einem Histogramm werden nicht importiert (das Histogramm schon)."));
+            var blocks = new List<string>();
+            for (var k = 0; k < h.Data.Count; k++)
+            {
+                var lines = new List<string>();
+                if (k < h.Labels.Count && !string.IsNullOrWhiteSpace(h.Labels[k])) lines.Add(Field(h.Labels[k]!) + ";");
+                lines.AddRange(SampleRows(h.Data[k]));
+                if (lines.Count > 0) blocks.Add(string.Join("\n", lines));
+            }
+            var o = type.Create(new Vec2(0, 0)) with { Size = SizeOf(f, 1) };
+            o = o.WithParam("data", string.Join("\n\n", blocks));
+            var range = h.Range;
+            if (h.Edges is { Length: >= 2 } edges)
+            {
+                var w = (edges[edges.Length - 1] - edges[0]) / (edges.Length - 1);
+                if (edges.Zip(edges.Skip(1), (p, q) => q - p).Any(d => Math.Abs(d - w) > 1e-9 * Math.Max(1, Math.Abs(w))))
+                    report.Skip(h.Line, "", new I18nText("Bins of different widths are drawn with equal widths over the same range.", "Klassen verschiedener Breite werden mit gleicher Breite über denselben Bereich gezeichnet."));
+                o = o.WithParam("bins", (double)Math.Min(200, edges.Length - 1));
+                range = (edges[0], edges[edges.Length - 1]);
+            }
+            else if (h.Bins is { } n) o = o.WithParam("bins", (double)Math.Max(1, Math.Min(200, n)));
+            if (range is { } r && r.Max > r.Min) o = o.WithParam("xrange", Num(r.Min) + ";" + Num(r.Max));
+            o = StatParams(o, f, a, (a.Legend || f.Legend) && h.Data.Count > 1);
+            summary = Summary(new I18nText("histogram", "Histogramm"), new[] { (h.Data.Sum(d => d.Count(Fmt.Finite)), "sample", "Messwert"), (h.Data.Count, "series", "Reihe") });
+            return o;
+        }
+
+        private static SketchObject? BoxPlotOf(Registry registry, ImpFigure f, ImpAxes a, CodeImportReport report, out I18nText summary)
+        {
+            summary = new I18nText("");
+            var type = registry.Type(BoxChart.TypeId);
+            if (type is null) return null;
+            if (a.Series.Count > 0 || a.Bars.Count > 0 || a.Fills.Count > 0 || a.Refs.Count > 0 || a.Spans.Count > 0)
+                report.Skip(a.Line, "", new I18nText("Curves, bars and lines next to box plots are not imported (the boxes are).", "Kurven, Balken und Linien neben Boxplots werden nicht importiert (die Boxen schon)."));
+            // Categories: the tick labels at the box positions, the labels of the call, or the positions.
+            var ticks = a.XTicks is { } xt && a.XTickLabels is { } xl && xl.Count == xt.Count && xt.Count > 0 ? xt.Zip(xl, (t, l) => (t, l)).ToList() : null;
+            var cats = new List<string>();
+            string Category(ImpBoxes b, int i, double pos)
+            {
+                if (ticks is not null)
+                {
+                    var best = ticks.OrderBy(t => Math.Abs(t.t - pos)).First();
+                    if (Math.Abs(best.t - pos) < 0.5 + 1e-9) return best.l;
+                }
+                if (b.Labels is { } l && i < l.Length && !string.IsNullOrWhiteSpace(l[i])) return l[i];
+                return Num(Math.Round(pos, 6));
+            }
+            var blocks = new List<string>();
+            var many = a.Boxes.Count > 1;
+            foreach (var b in a.Boxes)
+            {
+                var lines = new List<string>();
+                if (many) lines.Add(Field(b.Label ?? Num(blocks.Count + 1)) + ";");
+                for (var i = 0; i < b.Data.Count; i++)
+                {
+                    var pos = b.Positions is { } p && i < p.Length ? p[i] : i + 1;
+                    var cat = Category(b, i, pos);
+                    if (!cats.Contains(cat)) cats.Add(cat);
+                    var values = b.Data[i].Where(Fmt.Finite).Select(Num).ToList();
+                    if (values.Count > 0) lines.Add(Field(cat) + ";" + string.Join(";", values));
+                }
+                if (lines.Count > (many ? 1 : 0)) blocks.Add(string.Join("\n", lines));
+            }
+            var first = a.Boxes[0];
+            if (a.Boxes.Any(b => b.MinMax != first.MinMax || Math.Abs(b.Whis - first.Whis) > 1e-9))
+                report.Skip(first.Line, "", new I18nText("Box plots with different whisker rules are drawn with the rule of the first one.", "Boxplots mit verschiedenen Whisker-Regeln werden mit der Regel des ersten gezeichnet."));
+            var o = type.Create(new Vec2(0, 0)) with { Size = SizeOf(f, 1) };
+            o = o.WithParam("data", string.Join("\n\n", blocks)).WithParam("whis", Math.Round(Geo.Clamp(first.Whis, 0, 10), 6)).WithParam("outliers", !first.MinMax);
+            o = StatParams(o, f, a, (a.Legend || f.Legend) && many);
+            summary = Summary(new I18nText("box plot", "Boxplot"), new[] { (a.Boxes.Sum(b => b.Data.Count), "box", "Box") });
             return o;
         }
     }

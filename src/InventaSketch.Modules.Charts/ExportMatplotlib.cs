@@ -109,6 +109,7 @@ namespace InventaSketch.Modules.Charts
             private readonly XFigure _f;
             private readonly string _name;
             private readonly HashSet<string> _vars = new(StringComparer.Ordinal);
+            private readonly Dictionary<string, string> _boxVars = new(StringComparer.Ordinal);
             private readonly bool _de;
 
             public Fig(StringBuilder sb, XFigure f, string name) { _sb = sb; _f = f; _name = name; _de = f.Lang == Lang.De; }
@@ -159,6 +160,8 @@ namespace InventaSketch.Modules.Charts
                 foreach (var note in f.Notes) L("# Note: " + Comment(note));
                 L("fs = " + N(Math.Round(f.FontMm * ExportBuilder.PT, 2)) + "  # chart font size (pt)");
                 L("plt.rcParams.update({'font.size': fs, 'hatch.linewidth': 0.5})");
+                if (f.Pie is { } pie) { Pie(pie); return; }
+                if (f.Polar is { } polar) { Polar(polar); return; }
                 var grid = n > 1 ? ", gridspec_kw={'height_ratios': " + PyList(f.Panels.Select(p => p.Share), I) + "}" : "";
                 L("fig, axs = plt.subplots(" + Fmt.I(n) + ", 1, sharex=True, squeeze=False, figsize=(" + N(Math.Round(f.WidthMm, 2)) + " * MM, " + N(Math.Round(f.HeightMm, 2)) + " * MM), layout='constrained'" + grid + ")");
                 L("axs = [row[0] for row in axs]");
@@ -198,6 +201,9 @@ namespace InventaSketch.Modules.Charts
 
                 // Items.
                 if (f.Bars is { } bars) Bars(bars);
+                if (f.Hist is { } hist) Hist(hist);
+                if (f.Boxes is { } boxes) Boxes(boxes);
+                if (f.Gantt is { } gantt) Gantt(gantt);
                 foreach (var item in f.Items)
                 {
                     L("");
@@ -223,12 +229,20 @@ namespace InventaSketch.Modules.Charts
                     for (var i = 0; i < n; i++)
                     {
                         var labeled = f.Items.Any(x => x.Panel == i && (x is XSeries { Legend: not null } || x is XFill { Legend: not null }))
-                            || i == 0 && f.Bars is { } b && b.Series.Any(s => s.InLegend);
-                        if (!labeled) continue;
+                            || i == 0 && f.Bars is { } b && b.Series.Any(s => s.InLegend)
+                            || i == 0 && (f.Hist?.Series.Any(s => s.InLegend) == true || f.Gantt?.Groups.Any(g => g.InLegend && g.Key.Length > 0) == true);
+                        var boxLegend = i == 0 && f.Boxes is { } bx && bx.Series.Any(s => s.InLegend);
+                        if (!labeled && !boxLegend) continue;
                         var where = f.Legend == "right" ? "loc='upper left', bbox_to_anchor=(1.02, 1), borderaxespad=0" : "loc=" + PyLit(f.LegendCorner);
                         L("");
                         L("# legend");
-                        if (f.Panels[i].Y2 is not null)
+                        if (boxLegend && !labeled)
+                        {
+                            // Box plots have no label: the first box of every series stands for it.
+                            var series = f.Boxes!.Series.Where(s => s.InLegend).ToList();
+                            L(Ax(i) + ".legend([" + string.Join(", ", series.Select(s => _boxVars[s.Key] + "['boxes'][0]")) + "], [" + string.Join(", ", series.Select(s => Py(s.Name))) + "], " + where + ", fontsize=fs * 0.9)");
+                        }
+                        else if (f.Panels[i].Y2 is not null)
                         {
                             L("h1, l1 = " + Ax(i) + ".get_legend_handles_labels()");
                             L("h2, l2 = tw" + Fmt.I(i) + ".get_legend_handles_labels()");
@@ -447,6 +461,242 @@ namespace InventaSketch.Modules.Charts
                     if (s.Labels is { } labels)
                         L(ax + ".bar_label(" + vb + ", labels=[" + string.Join(", ", labels.Select(Py)) + "], label_type=" + (bars.Stacked ? "'center'" : "'edge'") + ", padding=2, fontsize=fs * 0.8)");
                 }
+            }
+
+            // ------------------------------------------------------------------ presentation charts
+
+            /// <summary>Face of a patch: its colour, or white under a hatch.</summary>
+            private static string Face(XFillStyle s) => s.Kind switch { "solid" => PyLit(s.Color), "none" => "'none'", _ => "'white'" };
+
+            private static string HatchOf(XFillStyle s) => s.Kind is "solid" or "none" ? "''" : PyLit(Hatch(s));
+
+            private void Hist(XHist h)
+            {
+                if (h.Series.Count == 0 || h.Edges.Count < 2) return;
+                var ax = Ax(0);
+                var bins = h.Edges.Count - 1;
+                double lo = h.Edges[0], hi = h.Edges[bins];
+                L("");
+                L("# histogram: " + Fmt.I(bins) + " bins of equal width from " + N(lo) + " to " + N(hi) + " (a bin holds [left, right), the last one its right edge too)");
+                var vars = new List<string>();
+                foreach (var s in h.Series)
+                {
+                    L("# " + s.Key + " – " + Comment(s.Name));
+                    var v = Var(s.Key, "samples");
+                    L(v + " = " + PyList(s.Samples, I));
+                    vars.Add(v);
+                }
+                var many = h.Series.Count > 1;
+                string Each(Func<XHistSeries, string> f) => many ? "[" + string.Join(", ", h.Series.Select(f)) + "]" : f(h.Series[0]);
+                var first = h.Series[0];
+                var args = new List<string> { many ? "[" + string.Join(", ", vars) + "]" : vars[0], "bins=" + Fmt.I(bins), "range=(" + N(lo) + ", " + N(hi) + ")" };
+                args.Add("color=" + Each(s => Face(s.Fill)));
+                args.Add("edgecolor=" + PyLit(first.Fill.Kind is "solid" or "none" ? first.Edge : first.Fill.Color));
+                args.Add("linewidth=" + Pt(first.EdgeWidth));
+                if (many) args.Add("rwidth=1");
+                if (h.Series.Any(s => s.InLegend)) args.Add("label=" + Each(s => Py(s.Name)));
+                var hv = Var("hist", "result");
+                L(hv + " = " + ax + ".hist(" + string.Join(", ", args) + ")");
+                if (h.Series.All(s => s.Fill.Kind is "solid" or "none")) return;
+                if (many)
+                {
+                    L("for bars, hatch in zip(" + hv + "[2], [" + string.Join(", ", h.Series.Select(s => HatchOf(s.Fill))) + "]):");
+                    L(I + "for bar in bars:");
+                    L(I + I + "bar.set_hatch(hatch)");
+                }
+                else
+                {
+                    L("for bar in " + hv + "[2]:");
+                    L(I + "bar.set_hatch(" + HatchOf(first.Fill) + ")");
+                }
+            }
+
+            private void Boxes(XBoxes b)
+            {
+                var ax = Ax(0);
+                L("");
+                L("# box plots: category i is centred at i; matplotlib computes the quartiles (linear interpolation), the whiskers ("
+                    + (b.Outliers ? N(b.Whis) + " × IQR" : "minimum and maximum") + ") and the outliers from the samples, as drawn");
+                foreach (var s in b.Series)
+                {
+                    L("# " + s.Key + " – " + Comment(s.Name));
+                    if (s.OutlierKey is { } ok && b.Outliers) L("# " + ok + ": the samples beyond the whiskers");
+                    var data = Var(s.Key, "data");
+                    L(data + " = [");
+                    foreach (var smp in s.Samples) L(I + PyList(smp, I + I) + ",");
+                    L("]");
+                    var bp = Var(s.Key, "bp");
+                    _boxVars[s.Key] = bp;
+                    var col = PyLit(s.Line.Color);
+                    var lw = Pt(s.Line.Width);
+                    var face = "facecolor=" + Face(s.Fill) + (s.Fill.Kind is "solid" or "none" ? "" : ", hatch=" + HatchOf(s.Fill));
+                    var args = new List<string>
+                    {
+                        data, "positions=" + PyList(s.Positions, I), "widths=" + N(s.Width), "whis=" + (b.Outliers ? N(b.Whis) : "(0, 100)"),
+                        "showfliers=" + (b.Outliers && s.OutlierKey is not null ? "True" : "False"), "patch_artist=True", "manage_ticks=False",
+                        "boxprops=dict(" + face + ", edgecolor=" + col + ", linewidth=" + lw + ", linestyle=" + Ls(s.Line.Dash) + ")",
+                        "medianprops=dict(color=" + col + ", linewidth=" + Pt(2 * s.Line.Width) + ")",
+                        "whiskerprops=dict(color=" + col + ", linewidth=" + lw + ")",
+                        "capprops=dict(color=" + col + ", linewidth=" + lw + ")",
+                        "flierprops=dict(marker='o', markerfacecolor='none', markeredgecolor=" + PyLit(s.OutlierColor) + ", markersize=" + Pt(0.44 * _f.FontMm) + ")",
+                    };
+                    L(bp + " = " + ax + ".boxplot(" + string.Join(", ", args) + ")");
+                }
+            }
+
+            private void Gantt(XGantt g)
+            {
+                var ax = Ax(0);
+                L("");
+                L("# Gantt chart: task i is centred at i (the first task on top); a bar runs from the start over the duration");
+                foreach (var grp in g.Groups)
+                {
+                    if (grp.Bars.Count > 0)
+                    {
+                        L("# " + grp.Key + " – " + Comment(grp.Name) + ": " + Comment(string.Join(", ", grp.Bars.Select(b => b.Task))));
+                        var args = new List<string>
+                        {
+                            PyList(grp.Bars.Select(b => b.Row), I), PyList(grp.Bars.Select(b => b.Duration), I), N(g.Height), "left=" + PyList(grp.Bars.Select(b => b.Start), I),
+                            grp.Fill.Kind == "solid" ? "color=" + PyLit(grp.Fill.Color) : "color=" + Face(grp.Fill) + ", hatch=" + HatchOf(grp.Fill),
+                            "edgecolor=" + PyLit(grp.Fill.Kind is "solid" or "none" ? grp.Edge : grp.Fill.Color), "linewidth=" + Pt(grp.EdgeWidth),
+                        };
+                        if (grp.InLegend) args.Add("label=" + Py(grp.Name));
+                        L(ax + ".barh(" + string.Join(", ", args) + ")");
+                    }
+                    if (grp.Milestones.Count > 0)
+                    {
+                        L("# " + grp.MilestoneKey + " – " + Comment(string.Join(", ", grp.Milestones.Select(m => m.Task))));
+                        var col = PyLit(grp.MilestoneColor);
+                        L(ax + ".plot(" + PyList(grp.Milestones.Select(m => m.At), I) + ", " + PyList(grp.Milestones.Select(m => m.Row), I) + ", ls='none', marker='D', ms="
+                            + Pt(1.414 * grp.MilestoneSize) + ", color=" + col + ", mec=" + col + ", clip_on=False" + (grp.Bars.Count == 0 && grp.InLegend ? ", label=" + Py(grp.Name) : "") + ")");
+                    }
+                }
+            }
+
+            /// <summary>The figure and its single axes of a chart without Cartesian axes.</summary>
+            private void CanvasFigure(string extra)
+                => L("fig, ax = plt.subplots(" + extra + "figsize=(" + N(Math.Round(_f.WidthMm, 2)) + " * MM, " + N(Math.Round(_f.HeightMm, 2)) + " * MM), layout='constrained')");
+
+            private void CanvasEnd()
+            {
+                if (_f.Title is { } title) { L(""); L("fig.suptitle(" + Py(title) + ", fontsize=fs, fontweight='bold')"); }
+                L("return fig");
+            }
+
+            private void Pie(XPie p)
+            {
+                CanvasFigure("");
+                L("");
+                L("# slices " + (p.Clockwise ? "clockwise" : "counter-clockwise") + " from " + N(Math.Round(p.Start, 3)) + "° (clockwise from 12 o'clock); matplotlib's startangle runs counter-clockwise from 3 o'clock");
+                foreach (var s in p.Slices) L("# " + s.Key + " – " + Comment(s.Name));
+                L("slice_names = [" + string.Join(", ", p.Slices.Select(s => Py(s.Name))) + "]");
+                L("slice_values = " + PyList(p.Slices.Select(s => s.Value), I));
+                L("slice_colors = [" + string.Join(", ", p.Slices.Select(s => Face(s.Fill))) + "]");
+                var start = ((90 - p.Start) % 360 + 360) % 360;
+                if (start > 180) start -= 360;
+                var inside = p.Hole > 0 ? (1 + p.Hole) / 2 : 0.62;
+                var names = p.Labels is "name" or "namepercent";
+                var auto = p.Labels is "percent" or "namepercent" or "value";
+                // The names always go with the wedges; without name labels they are not drawn (labeldistance=None), only listed in the legend.
+                var args = new List<string> { "slice_values", "labels=slice_names" };
+                if (!names) args.Add("labeldistance=None");
+                if (p.Labels == "value")
+                    args.Add("autopct=lambda pct: " + (_de ? "('%g' % round(pct * sum(slice_values) / 100, 6)).replace('.', ',')" : "'%g' % round(pct * sum(slice_values) / 100, 6)"));
+                else if (auto) args.Add("autopct=" + (_de ? "'%1.0f %%'" : "'%1.0f%%'"));
+                if (auto) args.Add("pctdistance=" + N(Math.Round(inside, 4)));
+                if (p.Labels == "name") args.Add("labeldistance=" + N(Math.Round(inside, 4)));
+                var edge = p.Slices.Select(s => s.Edge).FirstOrDefault(e => e != "none") ?? Palette.White;
+                args.Add("startangle=" + N(Math.Round(start, 6)));
+                args.Add("counterclock=" + (p.Clockwise ? "False" : "True"));
+                args.Add("colors=slice_colors");
+                args.Add("wedgeprops=dict(" + (p.Hole > 0 ? "width=" + N(Math.Round(1 - p.Hole, 6)) + ", " : "") + "edgecolor=" + PyLit(edge) + ", linewidth=" + Pt(p.Slices[0].EdgeWidth) + ")");
+                args.Add("textprops=dict(fontsize=fs * 0.85)");
+                L("pie = ax.pie(" + string.Join(", ", args) + ")");
+                var mono = p.LabelColor != Palette.White;
+                if (auto)
+                {
+                    L("for text in pie[2]:  # the labels inside the slices");
+                    L(I + "text.set_color(" + PyLit(p.LabelColor) + ")");
+                    if (mono) L(I + "text.set_bbox(BOX)");
+                }
+                if (p.Labels == "name")
+                {
+                    L("for text in pie[1]:  # the names inside the slices");
+                    L(I + "text.set_color(" + PyLit(p.LabelColor) + ")");
+                    L(I + "text.set_horizontalalignment('center')");
+                    if (mono) L(I + "text.set_bbox(BOX)");
+                }
+                if (p.Slices.Any(s => s.Fill.Kind is not ("solid" or "none")))
+                {
+                    L("for wedge, hatch in zip(pie[0], [" + string.Join(", ", p.Slices.Select(s => HatchOf(s.Fill))) + "]):");
+                    L(I + "wedge.set_hatch(hatch)");
+                }
+                L("ax.set_aspect('equal')");
+                if (p.Center is { } centre)
+                {
+                    L("");
+                    L("# " + ChartTags.CenterText);
+                    L("ax.text(0, 0, " + Py(centre) + ", ha='center', va='center', fontsize=fs * " + (p.Hole > 0 ? "1.1, fontweight='bold'" : "0.85, bbox=BOX") + ")");
+                }
+                if (_f.Legend != "none")
+                {
+                    L("");
+                    L("# legend");
+                    L("ax.legend(pie[0], slice_names, loc='center left', bbox_to_anchor=(1.02, 0.5), fontsize=fs * 0.9)");
+                }
+                CanvasEnd();
+            }
+
+            private void Polar(XPolar p)
+            {
+                CanvasFigure("subplot_kw={'projection': 'polar'}, ");
+                L("rad = 3.141592653589793 / 180  # radians per degree (the angles below are in degrees)");
+                L("");
+                L("# polar axes: " + (p.Top ? "0° up, angles clockwise (compass)" : "0° right, angles counter-clockwise"));
+                if (p.Top)
+                {
+                    L("ax.set_theta_zero_location('N')");
+                    L("ax.set_theta_direction(-1)");
+                }
+                L("ax.set_rlim(" + N(p.RMin) + ", " + N(p.RMax) + ")");
+                L("ax.xaxis.set_major_locator(MultipleLocator(" + N(p.AngleStep) + " * rad))");
+                if (p.RStep > 0) L("ax.yaxis.set_major_locator(MultipleLocator(" + N(p.RStep) + "))");
+                if (_de) L("ax.yaxis.set_major_formatter(FuncFormatter(comma))");
+                L("ax.set_rlabel_position(" + N(p.AngleStep / 2) + ")");
+                L(p.Grid ? "ax.grid(True, " + StrokeArgs(_f.GridStroke) + ")" : "ax.grid(False)");
+                if (!p.AngleLabels) L("ax.tick_params(axis='x', labelbottom=False)");
+                if (!p.RadiusLabels) L("ax.tick_params(axis='y', labelleft=False)");
+                foreach (var s in p.Series)
+                {
+                    L("");
+                    L("# " + s.Key + (s.Legend is { } lg ? " – " + Comment(lg) : ""));
+                    var va = Var(s.Key, "deg"); var vr = Var(s.Key, "r");
+                    L(va + " = " + PyList(s.Angles, I));
+                    L(vr + " = " + PyList(s.R, I));
+                    var theta = "[a * rad for a in " + va + "]";
+                    if (s.Line is not null || s.Marker is not null)
+                    {
+                        var args = new List<string> { theta, vr };
+                        args.Add(s.Line is { } line ? StrokeArgs(line) : "ls='none'");
+                        if (s.Marker is { } m)
+                        {
+                            L("# " + s.MarkerKey);
+                            args.Add("marker=" + Mk(m.Kind) + ", ms=" + Pt(2 * m.Size) + ", mec=" + PyLit(m.Color) + ", mfc=" + (m.Filled ? PyLit(m.Color) : "'none'") + ", mew=0.8");
+                            if (s.Line is null) args.Add("color=" + PyLit(m.Color));
+                        }
+                        if (s.Legend is { } legend) args.Add("label=" + Py(legend));
+                        L("ax.plot(" + string.Join(", ", args) + ")");
+                    }
+                    if (s.Fill is { } fill)
+                        L("ax.fill(" + theta + ", " + vr + ", " + FillArgs(fill) + (s.Line is null && s.Marker is null && s.Legend is { } fl ? ", label=" + Py(fl) : "") + ")");
+                }
+                if (_f.Legend != "none" && p.Series.Any(s => s.Legend is not null))
+                {
+                    L("");
+                    L("# legend");
+                    L("ax.legend(loc='upper left', bbox_to_anchor=(1.1, 1), borderaxespad=0, fontsize=fs * 0.9)");
+                }
+                CanvasEnd();
             }
         }
     }

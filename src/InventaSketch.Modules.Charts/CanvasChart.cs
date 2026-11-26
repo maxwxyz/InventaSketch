@@ -164,8 +164,9 @@ namespace InventaSketch.Modules.Charts
 
     /// <summary>
     /// Base of the chart types without Cartesian axes (pie, polar, Sankey): drawn on a <see cref="Canvas"/>, never throwing
-    /// while rendering, with every tagged piece a part. They have no axis frame, so the matplotlib and pgfplots exports report
-    /// them as not exportable (the TikZ and SVG exports draw them from the primitives).
+    /// while rendering, with every tagged piece a part. They have no axis frame: pie and polar charts have their own code
+    /// export models (<see cref="CanvasExport"/>), the Sankey diagram is reported as not exportable by the matplotlib and
+    /// pgfplots exports (the TikZ and SVG exports draw it from the primitives).
     /// </summary>
     internal abstract class CanvasChart : ChartType
     {

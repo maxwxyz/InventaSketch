@@ -443,7 +443,7 @@ namespace InventaSketch.Modules.Charts
 
         private static readonly HashSet<string> Unsupported = new(StringComparer.Ordinal)
         {
-            "hist", "hist2d", "boxplot", "violinplot", "contour", "contourf", "imshow", "pcolormesh", "pcolor", "quiver", "streamplot", "stackplot",
+            "hist2d", "violinplot", "contour", "contourf", "imshow", "pcolormesh", "pcolor", "quiver", "streamplot", "stackplot",
             "stem", "hexbin", "specgram", "table", "clabel", "tricontour", "tricontourf", "matshow", "spy", "eventplot", "broken_barh", "fill",
             "inset_axes", "secondary_xaxis", "secondary_yaxis", "arrow", "add_patch", "barbs", "axline", "ecdf", "stairs",
             "plot_date", "acorr", "xcorr", "psd", "csd", "cohere", "magnitude_spectrum", "angle_spectrum", "phase_spectrum", "triplot", "tripcolor",
@@ -472,6 +472,8 @@ namespace InventaSketch.Modules.Charts
                         return Plot(ax, pa, null);
                     }
                 case "pie": return Pie(ax, a);
+                case "hist": return Hist(ax, a);
+                case "boxplot": return BoxPlot(ax, a);
                 case "fill" when ax.Polar: return PolarFill(ax, a);
                 case "set_theta_zero_location":
                     {
@@ -552,6 +554,7 @@ namespace InventaSketch.Modules.Charts
                         {
                             for (var i = 0; i < hs.Items.Count; i++)
                                 if (((PyObj)hs.Items[i]).Data is FigSeries fs) fs.Label = new I18nText(MathText(((PyStr)hl.Items[i]).V));
+                                else if (((PyObj)hs.Items[i]).Data is ImpBoxes ib) ib.Label = MathText(((PyStr)hl.Items[i]).V);
                         }
                         else if (labels is PySeq ls && ls.Items.All(x => x is PyStr))
                         {
@@ -941,6 +944,8 @@ namespace InventaSketch.Modules.Charts
             var values = PyEval.Numbers(a.Arg(0, "x") ?? throw No("pie needs values.", "pie braucht Werte."), "the pie values");
             var pie = new ImpPie { Values = values, Line = Line };
             if (a.Arg(2, "labels") is { } lv && lv is not PyNone) pie.Labels = _runner.Eval.Iterate(lv).Select(v => MathText(PyEval.Str(v))).ToArray();
+            // labeldistance=None: the names are not drawn on the pie (only in a legend).
+            if (a.Arg(7, "labeldistance") is PyNone && pie.Labels is not null) pie.NamesOnly = true;
             if (a.Arg(4, "autopct") is { } ap && ap is not PyNone) pie.Percent = true;
             if (a.Arg(8, "startangle") is { } sa && sa is not PyNone) pie.StartAngle = PyEval.Num(sa, "the start angle");
             var radius = a.Arg(9, "radius") is { } rv && rv is not PyNone ? PyEval.Num(rv, "the radius") : 1;
@@ -949,7 +954,13 @@ namespace InventaSketch.Modules.Charts
                 pie.Hole = Math.Max(0, Math.Min(0.9, 1 - PyEval.Num(width) / radius));
             if (a.Arg(1, "explode") is { } ex && ex is not PyNone && PyEval.Numbers(ex).Any(v => v != 0))
                 Note("Exploded slices are drawn closed.", "Herausgezogene Segmente werden geschlossen gezeichnet.");
-            if (a.Arg(3, "colors") is { } cl && cl is not PyNone) Note("Slice colours are not imported; the chart colours are used.", "Segmentfarben werden nicht importiert; die Diagrammfarben werden verwendet.");
+            // The chart colours themselves (an own export) or white slices (monochrome) need no remark.
+            if (a.Arg(3, "colors") is { } cl && cl is not PyNone)
+            {
+                var cols = _runner.Eval.Iterate(cl).Select(c => Color(c) ?? "").ToList();
+                var own = cols.Select((c, i) => string.Equals(c, SeriesLook.Of(i).Color, StringComparison.OrdinalIgnoreCase)).All(x => x) || cols.All(c => c == "#ffffff");
+                if (!own) Note("Slice colours are not imported; the chart colours are used.", "Segmentfarben werden nicht importiert; die Diagrammfarben werden verwendet.");
+            }
             if (a["normalize"] is PyBool { V: false } && values.Where(v => v > 0).Sum() < 1 - 1e-9)
                 Note("A partial pie (normalize=False) is drawn as a full pie.", "Ein Teilkreis (normalize=False) wird als voller Kreis gezeichnet.");
             ax.Pie = pie;
@@ -957,6 +968,113 @@ namespace InventaSketch.Modules.Charts
             var parts = new List<PyVal> { Artists(), Artists() };
             if (pie.Percent) parts.Add(Artists());
             return new PySeq(parts, true);
+        }
+
+        /// <summary>One data set per entry of a list of lists (or arrays), else the values as one data set.</summary>
+        private static List<double[]> DataSets(PyVal v)
+        {
+            if (v is PySeq s && s.Items.Count > 0 && s.Items.All(x => x is PySeq || x is PyArr)) return s.Items.Select(x => PyEval.Numbers(x, "the samples")).ToList();
+            return new List<double[]> { PyEval.Numbers(v, "the samples") };
+        }
+
+        private static readonly HashSet<string> HistKw = new(StringComparer.Ordinal)
+        {
+            "x", "bins", "range", "density", "weights", "cumulative", "bottom", "histtype", "align", "orientation", "rwidth", "log", "color", "label", "stacked",
+            "edgecolor", "ec", "facecolor", "fc", "linewidth", "lw", "alpha", "hatch", "zorder", "linestyle", "ls", "fill",
+        };
+
+        /// <summary>hist(x, bins, range, …, label): a histogram of the raw samples (one data set per series).</summary>
+        private PyVal Hist(ImpAxes ax, PyArgs a)
+        {
+            foreach (var (k, _) in a.Kw) if (!HistKw.Contains(k)) Note("The argument " + k + " is not imported.", "Das Argument " + k + " wird nicht importiert.");
+            if (ax.Hist is not null) throw No("A second histogram in the same axes is not imported.", "Ein zweites Histogramm in derselben Achse wird nicht importiert.");
+            if (ax.Polar || ax.Pie is not null || ax.Series.Count > 0 || ax.Bars.Count > 0 || ax.Boxes.Count > 0)
+                throw No("A histogram next to other content is not imported (a histogram chart shows the histogram only).", "Ein Histogramm neben anderem Inhalt wird nicht importiert (ein Histogrammdiagramm zeigt nur das Histogramm).");
+            var data = DataSets(a.Arg(0, "x") ?? throw No("hist needs samples.", "hist braucht Messwerte."));
+            var h = new ImpHist { Line = Line };
+            h.Data.AddRange(data);
+            var bins = a.Arg(1, "bins");
+            if (bins is PyStr) Note("Named bin rules are not imported; the bins are chosen automatically (Sturges rule).", "Benannte Klassenregeln werden nicht importiert; die Klassen werden automatisch gewählt (Sturges-Regel).");
+            else if (bins is not null && bins is not PyNone)
+            {
+                if (PyEval.IsNumber(bins)) h.Bins = (int)Math.Round(PyEval.Num(bins, "the bins"));
+                else h.Edges = PyEval.Numbers(bins, "the bin edges").Where(Fmt.Finite).OrderBy(v => v).ToArray();
+            }
+            if (a.Arg(2, "range") is { } rv && rv is not PyNone)
+            {
+                var r = PyEval.Numbers(rv, "the range");
+                if (r.Length == 2 && r[1] > r[0]) h.Range = (r[0], r[1]);
+            }
+            if (a["density"] is { } dn && PyEval.Truth(dn)) Note("A density histogram is drawn with counts.", "Ein Dichte-Histogramm wird mit Anzahlen gezeichnet.");
+            if (a["weights"] is { } wt && wt is not PyNone) Note("Weights are not imported; every sample counts once.", "Gewichte werden nicht importiert; jeder Messwert zählt einmal.");
+            if (a["cumulative"] is { } cu && PyEval.Truth(cu)) Note("A cumulative histogram is drawn per bin.", "Ein kumulatives Histogramm wird je Klasse gezeichnet.");
+            if (a["histtype"] is PyStr { V: not "bar" }) Note("This histogram type is drawn as bars.", "Diese Histogrammart wird als Balken gezeichnet.");
+            if (a["orientation"] is PyStr { V: "horizontal" }) Note("A horizontal histogram is drawn vertically.", "Ein liegendes Histogramm wird stehend gezeichnet.");
+            if (a["stacked"] is { } st && PyEval.Truth(st)) Note("Stacked series are drawn side by side.", "Gestapelte Reihen werden nebeneinander gezeichnet.");
+            if (a["log"] is { } lg && PyEval.Truth(lg)) Note("A log count axis is drawn linear.", "Eine logarithmische Anzahlachse wird linear gezeichnet.");
+            if (a["label"] is { } lv && lv is not PyNone)
+            {
+                if (lv is PySeq ls) h.Labels.AddRange(ls.Items.Select(x => x is PyNone ? null : MathText(PyEval.Str(x, "the label"))));
+                else h.Labels.Add(MathText(PyEval.Str(lv, "the label")));
+            }
+            ax.Hist = h;
+            // (n, bins, patches): counts, edges and one bar per bin (per data set).
+            var count = h.Edges is { Length: >= 2 } e ? e.Length - 1 : h.Bins ?? 10;
+            (double, double)? range = h.Edges is { Length: >= 2 } e2 ? (e2[0], e2[e2.Length - 1]) : h.Range;
+            var (edges, counts) = Stats.Histogram(data.Select(d => (IReadOnlyList<double>)d).ToList(), count, range);
+            PyVal Bars(int n) => new PySeq(Enumerable.Range(0, n).Select(_ => (PyVal)new PyObj("artist")).ToList());
+            var nb = edges.Length - 1;
+            PyVal n0 = data.Count == 1 ? new PyArr(counts[0].Select(c => (double)c).ToArray()) : new PySeq(counts.Select(c => (PyVal)new PyArr(c.Select(v => (double)v).ToArray())).ToList());
+            PyVal patches = data.Count == 1 ? Bars(nb) : new PySeq(data.Select(_ => Bars(nb)).ToList());
+            return new PySeq(new List<PyVal> { n0, new PyArr(edges), patches }, true);
+        }
+
+        private static readonly HashSet<string> BoxKw = new(StringComparer.Ordinal)
+        {
+            "x", "notch", "sym", "vert", "orientation", "whis", "positions", "widths", "patch_artist", "bootstrap", "usermedians", "conf_intervals", "meanline",
+            "showmeans", "showcaps", "showbox", "showfliers", "boxprops", "labels", "tick_labels", "flierprops", "medianprops", "meanprops", "capprops",
+            "whiskerprops", "manage_ticks", "autorange", "zorder", "capwidths", "label",
+        };
+
+        /// <summary>boxplot(x, …, whis, positions, …, showfliers, labels): box plots of raw samples (one call per series).</summary>
+        private PyVal BoxPlot(ImpAxes ax, PyArgs a)
+        {
+            foreach (var (k, _) in a.Kw) if (!BoxKw.Contains(k)) Note("The argument " + k + " is not imported.", "Das Argument " + k + " wird nicht importiert.");
+            if (ax.Polar || ax.Pie is not null || ax.Hist is not null || ax.Series.Count > 0 || ax.Bars.Count > 0)
+                throw No("Box plots next to other content are not imported (a box plot chart shows the boxes only).", "Boxplots neben anderem Inhalt werden nicht importiert (ein Boxplot zeigt nur die Boxen).");
+            var b = new ImpBoxes { Line = Line };
+            b.Data.AddRange(DataSets(a.Arg(0, "x") ?? throw No("boxplot needs samples.", "boxplot braucht Messwerte.")));
+            if (a["positions"] is { } pv && pv is not PyNone)
+            {
+                b.Positions = PyEval.Numbers(pv, "the positions");
+                if (b.Positions.Length != b.Data.Count) throw No("Positions and boxes have different counts.", "Positionen und Boxen sind verschieden viele.");
+            }
+            if ((a["tick_labels"] ?? a["labels"]) is { } lv && lv is not PyNone) b.Labels = _runner.Eval.Iterate(lv).Select(v => MathText(PyEval.Str(v))).ToArray();
+            if (a.Arg(3, "whis") is { } wv && wv is not PyNone)
+            {
+                if (PyEval.IsNumber(wv)) b.Whis = PyEval.Num(wv, "the whiskers");
+                else
+                {
+                    var p = PyEval.Numbers(wv, "the whisker percentiles");
+                    if (p.Length == 2 && p[0] <= 0 && p[1] >= 100) b.MinMax = true;
+                    else Note("Whiskers at percentiles are drawn at 1.5 × IQR.", "Whisker an Perzentilen werden bei 1,5 × IQR gezeichnet.");
+                }
+            }
+            if (a["showfliers"] is PyBool { V: false } && !b.MinMax)
+            {
+                b.MinMax = true;
+                Note("Without outliers the whiskers reach the minimum and maximum.", "Ohne Ausreißer reichen die Whisker bis zum Minimum und Maximum.");
+            }
+            if (a["vert"] is PyBool { V: false } || a["orientation"] is PyStr { V: "horizontal" }) Note("Horizontal box plots are drawn vertically.", "Liegende Boxplots werden stehend gezeichnet.");
+            if (a.Arg(1, "notch") is { } nv && PyEval.Truth(nv)) Note("Notches are not drawn.", "Kerben werden nicht gezeichnet.");
+            if (a["showmeans"] is { } sm && PyEval.Truth(sm)) Note("Means are not drawn.", "Mittelwerte werden nicht gezeichnet.");
+            if (a["label"] is { } lb && lb is not PyNone) b.Label = MathText(PyEval.Str(lb, "the label"));
+            ax.Boxes.Add(b);
+            PyVal Artists(int n) => new PySeq(Enumerable.Range(0, n).Select(_ => (PyVal)new PyObj("artist")).ToList());
+            var d = new PyDict();
+            foreach (var (key, n) in new[] { ("whiskers", 2), ("caps", 2), ("boxes", 1), ("medians", 1), ("fliers", 1), ("means", 0) })
+                d.Items.Add(new KeyValuePair<PyVal, PyVal>(new PyStr(key), key == "boxes" ? new PySeq(b.Data.Select(_ => (PyVal)new PyObj("artist", b)).ToList()) : Artists(n * b.Data.Count)));
+            return d;
         }
 
         /// <summary>fill(theta, r) on polar axes: a filled curve (radar chart); a curve plotted before with the same points is not repeated.</summary>

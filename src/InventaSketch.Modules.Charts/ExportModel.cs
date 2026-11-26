@@ -212,6 +212,157 @@ namespace InventaSketch.Modules.Charts
         public List<string>? Labels { get; set; }
     }
 
+    /// <summary>A histogram: the raw samples of every series and the bin edges (equal widths); several series stand side by side.</summary>
+    internal sealed class XHist
+    {
+        public List<double> Edges { get; set; } = new();
+        public List<XHistSeries> Series { get; } = new();
+    }
+
+    internal sealed class XHistSeries
+    {
+        public string Key { get; set; } = "";
+        public string Name { get; set; } = "";
+        public List<double> Samples { get; set; } = new();
+        public XFillStyle Fill { get; set; } = null!;
+        public string Edge { get; set; } = Palette.White;
+        public double EdgeWidth { get; set; } = 0.2;
+        public bool InLegend { get; set; }
+    }
+
+    /// <summary>Box plots from raw samples: per series one box per category at its position (category i is centred at i).</summary>
+    internal sealed class XBoxes
+    {
+        public double Whis { get; set; } = 1.5;
+        public bool Outliers { get; set; } = true;
+        public List<XBoxSeries> Series { get; } = new();
+    }
+
+    internal sealed class XBoxSeries
+    {
+        public string Key { get; set; } = "";
+        /// <summary>Part key of the outlier markers, or null when they are hidden.</summary>
+        public string? OutlierKey { get; set; }
+        public string Name { get; set; } = "";
+        public double Width { get; set; }
+        public List<double> Positions { get; set; } = new();
+        public List<List<double>> Samples { get; set; } = new();
+        /// <summary>The summary of every box as drawn (quartiles, whiskers, outliers).</summary>
+        public List<BoxStats> Stats { get; set; } = new();
+        public XFillStyle Fill { get; set; } = null!;
+        public XStroke Line { get; set; } = null!;
+        public string OutlierColor { get; set; } = Palette.Black;
+        public bool InLegend { get; set; }
+    }
+
+    /// <summary>A Gantt chart: per group the task bars (row i is centred at i) and the milestones.</summary>
+    internal sealed class XGantt
+    {
+        /// <summary>Height of a bar in rows.</summary>
+        public double Height { get; set; } = 0.6;
+        public List<XGanttGroup> Groups { get; } = new();
+    }
+
+    internal sealed class XGanttGroup
+    {
+        /// <summary>Part key of the bars ("bar.g"; empty when they are hidden).</summary>
+        public string Key { get; set; } = "";
+        /// <summary>Part key of the milestones ("milestone.g"; empty when they are hidden).</summary>
+        public string MilestoneKey { get; set; } = "";
+        public string Name { get; set; } = "";
+        public List<(double Row, double Start, double Duration, string Task)> Bars { get; } = new();
+        public List<(double Row, double At, string Task)> Milestones { get; } = new();
+        public XFillStyle Fill { get; set; } = null!;
+        public string Edge { get; set; } = Palette.Black;
+        public double EdgeWidth { get; set; } = 0.25;
+        public string MilestoneColor { get; set; } = Palette.Black;
+        /// <summary>Half diagonal of a milestone diamond (mm).</summary>
+        public double MilestoneSize { get; set; } = 1.5;
+        public bool InLegend { get; set; }
+    }
+
+    /// <summary>A slice of an exported pie: clock angles (degrees clockwise from 12 o'clock), fill and edge.</summary>
+    internal sealed class XSlice
+    {
+        public string Key { get; set; } = "";
+        public string Name { get; set; } = "";
+        public double Value { get; set; }
+        public double Start { get; set; }
+        public double End { get; set; }
+        public XFillStyle Fill { get; set; } = null!;
+        public string Edge { get; set; } = Palette.White;
+        public double EdgeWidth { get; set; } = 0.3;
+    }
+
+    /// <summary>A text of a drawing without axes: position in mm from the centre (y up), anchor, size relative to the chart font.</summary>
+    internal sealed class XText
+    {
+        public string Key { get; set; } = "";
+        public double X { get; set; }
+        public double Y { get; set; }
+        public string Text { get; set; } = "";
+        /// <summary>left, center or right.</summary>
+        public string HAlign { get; set; } = "center";
+        public double Size { get; set; } = 1;
+        public string Color { get; set; } = Palette.Ink;
+        public bool Bold { get; set; }
+        public bool Box { get; set; }
+    }
+
+    /// <summary>
+    /// A pie or donut: slices, hole, start and direction, the label mode (matplotlib) and the drawn geometry in mm around
+    /// the centre (y up) for the TikZ form: radii, slice and centre texts and leader lines.
+    /// </summary>
+    internal sealed class XPie
+    {
+        public List<XSlice> Slices { get; } = new();
+        public double Hole { get; set; }
+        /// <summary>Start of the first slice in degrees clockwise from 12 o'clock.</summary>
+        public double Start { get; set; }
+        public bool Clockwise { get; set; } = true;
+        /// <summary>percent, name, namepercent, value or none.</summary>
+        public string Labels { get; set; } = "percent";
+        /// <summary>Label colour inside the slices (white in colour, ink in monochrome).</summary>
+        public string LabelColor { get; set; } = Palette.White;
+        public string? Center { get; set; }
+        public double RadiusMm { get; set; }
+        /// <summary>Texts as drawn: slice labels, centre text, title and legend texts.</summary>
+        public List<XText> Texts { get; } = new();
+        public List<(string Key, List<Vec2> Points)> Leaders { get; } = new();
+        /// <summary>Rectangles of the legend (frame and samples): lower left corner, width, height (mm, y up) and fill with edge.</summary>
+        public List<(string Key, double X, double Y, double W, double H, XFillStyle Fill)> Rects { get; } = new();
+    }
+
+    /// <summary>A series of a polar chart: angles in degrees, radii, line, markers and the fill of a filled area.</summary>
+    internal sealed class XPolarSeries
+    {
+        public string Key { get; set; } = "";
+        public string MarkerKey { get; set; } = "";
+        public List<double> Angles { get; set; } = new();
+        public List<double> R { get; set; } = new();
+        public XStroke? Line { get; set; }
+        public XMarker? Marker { get; set; }
+        public XFillStyle? Fill { get; set; }
+        public string? Legend { get; set; }
+    }
+
+    /// <summary>A polar chart: series, the 0° direction (up and clockwise, or right and counter-clockwise), radial range and grid steps.</summary>
+    internal sealed class XPolar
+    {
+        public List<XPolarSeries> Series { get; } = new();
+        /// <summary>0° up and angles clockwise (compass); false: 0° right, counter-clockwise.</summary>
+        public bool Top { get; set; }
+        public double RMin { get; set; }
+        public double RMax { get; set; } = 1;
+        public double RStep { get; set; }
+        public double AngleStep { get; set; } = 30;
+        /// <summary>Radius of the drawn circle (mm).</summary>
+        public double RadiusMm { get; set; } = 25;
+        public bool Grid { get; set; } = true;
+        public bool AngleLabels { get; set; } = true;
+        public bool RadiusLabels { get; set; } = true;
+    }
+
     /// <summary>Contour lines of a field Z[i, j] over X[i], Y[j] (NaN = outside), with the traced pieces and label positions.</summary>
     internal sealed class XContours : XItem
     {
@@ -255,6 +406,13 @@ namespace InventaSketch.Modules.Charts
         public XStroke MinorGridStroke { get; set; } = new(Palette.GridMinor, 0.1, DashStyle.Dot);
         public List<XItem> Items { get; } = new();
         public XBars? Bars { get; set; }
+        public XHist? Hist { get; set; }
+        public XBoxes? Boxes { get; set; }
+        public XGantt? Gantt { get; set; }
+        /// <summary>A pie (no axes: <see cref="Panels"/> is empty).</summary>
+        public XPie? Pie { get; set; }
+        /// <summary>A polar chart (no Cartesian axes: <see cref="Panels"/> is empty).</summary>
+        public XPolar? Polar { get; set; }
         public List<XLabel> PanelTitles { get; } = new();
         /// <summary>Remarks written as comments at the start of the chart (what the export cannot reproduce, e.g. axis breaks).</summary>
         public List<string> Notes { get; } = new();

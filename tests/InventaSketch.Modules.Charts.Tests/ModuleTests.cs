@@ -18,11 +18,11 @@ namespace InventaSketch.Modules.Charts.Tests
 
         public static ChartType Type(Registry r, SketchObject o) => (ChartType)r.TypeOf(o);
 
-        /// <summary>Chart types without a matplotlib/pgfplots form: the code exports report them (timing diagram, presentation charts).</summary>
-        public static readonly HashSet<string> NoCodeExport = new()
-        {
-            TimingChart.TypeId, PieChart.TypeId, PolarChart.TypeId, SankeyChart.TypeId, GanttChart.TypeId, BoxChart.TypeId, HistogramChart.TypeId,
-        };
+        /// <summary>Chart types without a matplotlib/pgfplots form: the code exports report them (timing diagram, Sankey diagram).</summary>
+        public static readonly HashSet<string> NoCodeExport = new() { TimingChart.TypeId, SankeyChart.TypeId };
+
+        /// <summary>Chart types whose pgfplots form the pgfplots import does not read (pie as TikZ arcs, polaraxis, boxplot, hist).</summary>
+        public static readonly HashSet<string> NoTexImport = new() { PieChart.TypeId, PolarChart.TypeId, BoxChart.TypeId, HistogramChart.TypeId };
 
         /// <summary>Chart types without axes and ticks (pie, Sankey).</summary>
         public static readonly HashSet<string> NoAxes = new() { PieChart.TypeId, SankeyChart.TypeId };

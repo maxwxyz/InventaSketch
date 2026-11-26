@@ -33,7 +33,7 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.pie` | Pie chart / Kreisdiagramm | `data` (Zeilen `Bezeichnung;Wert`), `hole` (Ring: Innen-/Außenradius, 0–0,9), `labels` Prozent / Name / Name und Prozent / Wert / keine, `start` (° im Uhrzeigersinn ab 12 Uhr), `direction` im / gegen den Uhrzeigersinn, `center` (Text im Loch), `legend`, `patterns`; siehe [Präsentationsdiagramme](#präsentationsdiagramme-2026-11-26) |
 | `chart.polar` | Polar chart / Polardiagramm | `data` (Zeilen `Winkel in °;r`, XY-Format), `style` Linie / Linie mit Markern / gefüllte Fläche / Punkte, `closed`, `zero` rechts gegen den Uhrzeigersinn / oben im Uhrzeigersinn, `rrange`, `grid`, `legend` |
 | `chart.sankey` | Sankey diagram / Sankey-Diagramm | `data` (Zeilen `Quelle;Ziel;Wert`), `values` (Werte an den Knoten), `patterns` |
-| `chart.gantt` | Gantt chart / Gantt-Diagramm | `data` (Zeilen `Vorgang;Start;Dauer`, ohne Dauer = Meilenstein, Blöcke = Gruppen), `today` (Heute-Linie), `xlabel`/`xunit`, `xrange`, `grid`, `legend` |
+| `chart.gantt` | Gantt chart / Gantt-Diagramm | `data` (Zeilen `Vorgang;Start;Dauer`, Start als Zahl oder Datum `jjjj-mm-tt` / `tt.mm.jjjj` mit der Dauer in Tagen, ohne Dauer = Meilenstein, Blöcke = Gruppen), `today` (Heute-Linie, Zahl oder Datum), `xlabel`/`xunit`, `xrange` (Zahlen oder Daten), `grid`, `legend` |
 | `chart.box` | Box plot / Boxplot | `data` (Zeilen `Kategorie;Wert;Wert…`), `whis` (Whisker × IQR, 1,5), `outliers`, `yrange`, `grid`, `legend` |
 | `chart.histogram` | Histogram / Histogramm | `data` (Rohwerte, Blöcke = Reihen), `bins` (0 = automatisch, Sturges), `xrange`, `yrange`, `grid`, `legend` |
 
@@ -90,7 +90,7 @@ Bedeutung der Spalten:
 | Kreis- / Ringdiagramm | `Bezeichnung;Wert` (erste Wertespalte; Null, negative und leere Werte ergeben kein Segment) |
 | Polardiagramm | wie das XY-Diagramm, x = Winkel in Grad, y = Radius |
 | Sankey-Diagramm | `Quelle;Ziel;Wert` (ein Fluss je Zeile; Zeilen ohne positiven Wert werden übersprungen) |
-| Gantt-Diagramm | `Vorgang;Start;Dauer` (eine Zeile ohne Dauer ist ein Meilenstein); eine Leerzeile oder Kopfzeile beginnt eine Gruppe |
+| Gantt-Diagramm | `Vorgang;Start;Dauer` (eine Zeile ohne Dauer ist ein Meilenstein); der Start ist eine Zahl oder ein Kalenderdatum (`2026-11-02` oder `02.11.2026`), die Dauer dann in Tagen; eine Leerzeile oder Kopfzeile beginnt eine Gruppe |
 | Boxplot | `Kategorie;Wert;Wert…`, oder eine Spalte je Kategorie unter einer Kopfzeile, oder ein Block je Kategorie |
 | Histogramm | beliebige Zahlen (jeder Wert eines Blocks ist ein Messwert); mehrere Blöcke sind mehrere Reihen |
 
@@ -165,7 +165,7 @@ freien Skalieren:
 | Kreis- / Ringdiagramm | „Daten…“, Ring (Schalter), „Lochgröße…“ (`30 %`), „Startwinkel…“, „Text in der Mitte…“, Segmentbeschriftung ▸, Richtung ▸, Legende ▸ |
 | Polardiagramm | „Daten…“, Darstellung ▸, geschlossene Kurven, Richtung von 0° ▸, „Radialbereich…“, Gitternetz, Legende ▸ |
 | Sankey-Diagramm | „Daten…“ (Flusszeilen), Fluss hinzufügen, letzten Fluss entfernen, Werte an den Knoten |
-| Gantt-Diagramm | „Daten…“, Vorgang hinzufügen, letzten Vorgang entfernen, „Heute-Linie…“ (leer = keine), Gitternetz, Legende ▸ |
+| Gantt-Diagramm | „Daten…“, Vorgang hinzufügen (mit Daten: Beginn am letzten Ende als ISO-Datum), letzten Vorgang entfernen, „Heute-Linie…“ (Zahl oder Datum; leer = keine), Gitternetz, Legende ▸ |
 | Boxplot | „Daten…“, „Whiskerlänge…“, Ausreißer, Gitternetz, Legende ▸ |
 | Histogramm | „Daten…“, „Klassen…“ (`auto` oder eine Zahl), mehr Klassen, weniger Klassen, Gitternetz, Legende ▸ |
 
@@ -599,7 +599,19 @@ links nach rechts laufen: sie werden nicht gezeichnet, ein Hinweis nennt ihre Za
 **Gantt-Diagramm.** Vorgänge von oben nach unten auf einer Kategorieachse (die erste Zeile oben), die Zeit auf einer
 linearen Achse in beliebiger Einheit (der x-Achsentitel nennt sie, Vorgabe „Zeit“/„Time“). Eine Zeile ohne Dauer ist
 ein Meilenstein (eine Raute); Blöcke sind Gruppen mit eigener Farbe und eigenem Legendeneintrag. `today` zeichnet eine
-gestrichelte Heute-Linie mit der Beschriftung „Heute“/„Today“ und dem Schienenanker `today`.
+gestrichelte Heute-Linie mit der Beschriftung „Heute“/„Today“ und dem Schienenanker `today`. Ein Meilenstein am Ende
+einer automatischen Zeitachse verlängert die Achse um einen Schritt, sodass seine Raute an ihrem Zeitpunkt und innerhalb
+der Plotfläche liegt; endet ein fester Bereich an einem Meilenstein, rückt die Raute um höchstens ihre halbe Breite nach
+innen.
+
+*Kalenderdaten (2026-11-26).* Ein Start (und `today`, `xrange`) darf ein Datum sein, ISO `2026-11-02` oder deutsch
+`02.11.2026` (in beiden Sprachen); die Dauer ist dann eine Zahl von Tagen. Daten werden als Tageszahlen gelesen (Tage
+seit dem 1.1.1970, die Datumszahlen von matplotlib), sodass einfache Zahlen weiter funktionieren und beides gemischt
+werden darf. Mit einem Datum zeigt die Achse Daten: Teilstriche auf Tagen (1 oder 2), Wochen (Montage, 7 oder 14 Tage),
+Monaten (1, 2, 3 oder 6) oder Jahren, der feinste Schritt mit höchstens sieben Abschnitten; Beschriftungen „9.11.“ /
+„Nov 9“ für Tage, „Nov.“ / „Nov“ für Monate und „2026“ für Jahre, der erste Teilstrich und der Januar mit dem Jahr; der
+Achsentitel ist dann „Datum“/„Date“. „Vorgang hinzufügen“ schreibt den neuen Start als ISO-Datum. Folien bereinigen
+macht aus Daten einfache Zahlen (auf 0 verschoben), nur das Umbenennen der Texte behält sie.
 
 **Boxplot.** Je Kategorie und Reihe die Quartile mit linearer Interpolation (Hyndman–Fan Typ 7, wie numpy und
 matplotlib), eine Box vom unteren zum oberen Quartil mit dem Median, Whisker bis zu den äußersten Werten innerhalb von
@@ -632,15 +644,29 @@ die Heute-Linie mit ihnen. Polar: Radien durch den größten geteilt (normiert) 
 bleiben. Sankey: Knotennamen werden A, B, C …, Werte durch den größten Fluss geteilt oder mit einem Zufallsfaktor
 skaliert (Zu-/Abflussbilanzen bleiben).
 
-**Codeexport und -import.** Für diese Diagramme gibt es noch keinen matplotlib- oder pgfplots-Export: beide Exporte
-melden sie als „could not be exported“ (nicht exportierbar, mit deutscher Begründung); TikZ- und SVG-Export zeichnen sie aus den Primitiven. Der
-matplotlib-Import liest `pie` (Werte, `labels`, `autopct` → Prozentbeschriftung, `startangle` und `counterclock`
-umgerechnet auf „im Uhrzeigersinn ab 12 Uhr“, `wedgeprops=dict(width=…)` → Ringloch; `explode`, `colors` und
-`normalize=False` werden gemeldet) und Polarachsen (`subplot_kw={'projection': 'polar'}`,
-`add_subplot(…, projection='polar')` oder `polar=True`, `plt.polar`): `plot`-Kurven mit den Winkeln von Bogenmaß in
-Grad umgerechnet, `fill` → gefüllte Darstellung, `set_theta_zero_location('N')` mit `set_theta_direction(-1)` →
+**Codeexport und -import (2026-11-26).** Kreis-, Polar-, Box-, Histogramm- und Gantt-Diagramme werden als matplotlib-
+und pgfplots/TikZ-Code exportiert (siehe die Tabelle in
+[Export als matplotlib und pgfplots](#export-als-matplotlib-und-pgfplots-diagramme-v2-stufe-4)). Das Sankey-Diagramm
+melden beide weiterhin als „could not be exported“ (nicht exportierbar, mit deutscher Begründung): `matplotlib.sankey`
+baut ein Diagramm aus Flüssen, die um je einen Knoten in festen Winkeln abbiegen, und setzt weitere Knoten relativ zu
+früheren, sodass ein Spaltenlayout mit Knoten so hoch wie ihre Flüsse nur durch Nachbau des Layouts im Skript möglich
+wäre, und pgfplots hat keine Sankey-Form; TikZ- und SVG-Export zeichnen es aus den Primitiven. Der matplotlib-Import
+liest `pie` (Werte, `labels`, `autopct` → Prozentbeschriftung, `labeldistance=None` → Namen nur in der Legende,
+`startangle` und `counterclock` umgerechnet auf „im Uhrzeigersinn ab 12 Uhr“, `wedgeprops=dict(width=…)` → Ringloch;
+`explode`, andere `colors` als die Diagrammfarben und `normalize=False` werden gemeldet), Polarachsen
+(`subplot_kw={'projection': 'polar'}`, `add_subplot(…, projection='polar')` oder `polar=True`, `plt.polar`):
+`plot`-Kurven mit den Winkeln von Bogenmaß in Grad umgerechnet (ein wiederholter Schlusspunkt entfällt, die Kurve ist
+geschlossen), `fill` → gefüllte Darstellung, `set_theta_zero_location('N')` mit `set_theta_direction(-1)` →
 Kompassdarstellung, `set_rmax`/`set_rlim`/`set_ylim` → `rrange`; Teilungseinstellungen der Polarachsen werden
-gemeldet. Andere Projektionen (3d) werden weiter gemeldet, `hist` und `boxplot` werden noch nicht importiert.
+gemeldet), `hist` (ein Datensatz oder eine Liste davon → `chart.histogram` mit je einer Reihe; `bins` als Anzahl oder
+als Grenzen → deren Anzahl und Bereich; `range` → `xrange`; `label` → Reihennamen; `density`, `weights`,
+`cumulative`, andere `histtype`, `orientation='horizontal'`, `stacked`, `log`, benannte Klassenregeln und ungleiche
+Klassen werden gemeldet) und `boxplot` (Rohwerte → `chart.box`; Kategorien aus `tick_labels`/`labels`, den
+Teilstrichbeschriftungen an den Boxpositionen oder den Positionen; ein Aufruf je Reihe, benannt über eine Legende der
+Boxen; `whis` → `whis`, `whis=(0, 100)` oder `showfliers=False` → Whisker bis Minimum und Maximum (`showfliers=False`
+wird gemeldet); liegende Boxen, Kerben und Mittelwerte werden gemeldet). Ein Histogramm oder Boxplot neben anderem
+Inhalt derselben Achse wird gemeldet. Andere Projektionen (3d) werden weiter gemeldet. Der pgfplots-Import liest die
+Formen Kreis (TikZ-Bögen), `polaraxis`, `boxplot prepared` und `hist` nicht.
 
 **Hinweise für die Hosts.** Nur native Primitive: Segmente, Ringe und Flüsse sind geschlossene Freihandformen (Flüsse
 mit kubischen Kanten), Knoten, Balken und Boxen Rechtecke, Meilensteine geschlossene Freihandformen, Netze je eine
@@ -798,7 +824,8 @@ ein Diagramm als Code nachbauen lässt, in dem jeder Text bearbeitbar bleibt:
   zeigt die Diagramme, `python skript.py out/bild.pdf` speichert `out/bild-1.pdf`, `out/bild-2.pdf` … (die Endung
   wählt das Format). Texte sind gewöhnliche matplotlib-Texte, mathtext-sicher gemacht (`$` maskiert).
 - **Diagramme als LaTeX (pgfplots)** (`chart.pgfplots`, `.tex`): ein `standalone`-Dokument (pdfLaTeX oder LuaLaTeX,
-  pgfplots-Kompatibilität 1.18, Bibliotheken `fillbetween`, `groupplots`, `arrows.meta`, `patterns.meta`) mit einem
+  pgfplots-Kompatibilität 1.18, Bibliotheken `fillbetween`, `groupplots`, `arrows.meta`, `patterns.meta`, dazu `polar`
+  für Polardiagramme und `statistics` für Boxplots und Histogramme nur, wenn das Dokument sie enthält) mit einem
   `tikzpicture` je Diagramm (je eine Seite); das `tikzpicture` lässt sich in jedes Dokument kopieren. Jeder Text –
   Achsentitel, benannte Teilstriche, Legendeneinträge, Titel, Anmerkungen, Bezugszeichen – ist LaTeX-Text in der
   Dokumentschrift. Sonderzeichen werden maskiert, griechische Buchstaben und Symbole werden LaTeX-Befehle
@@ -832,13 +859,22 @@ Aussehen der Teile gilt: ausgeblendete Teile entfallen, Teilestile ersetzen Farb
 | Leistungskurve (Drehmoment) | `twinx` | überlagerte Achse mit `axis y line=right` |
 | Toleranzband | `fill_between` unten/oben | `fill between` der beiden Grenzkurven |
 | Titel, Bildunterschrift, Teilbildtitel | `suptitle`, `supxlabel`, Texte in den Teilbildern | `title`, Knoten unter dem Bild, Knoten |
+| Kreis, Ring | `pie` mit den Namen (`labeldistance=None`, wenn nur die Legende sie zeigt), `autopct`-Prozentbeschriftung (Wertbeschriftung über eine Funktion), `startangle` = 90° − Start, `counterclock`, `wedgeprops=dict(width=1 − Loch)`, Segmentfarben, Schraffuren in Schwarz-Weiß, Text in der Mitte, Legende | TikZ-Bögen in mm (pgfplots hat keinen Kreis): Segmente, Beschriftungen, Führungslinien und Legende dort, wo das Diagramm sie zeichnet |
+| Polardiagramm | Polarachsen (`projection='polar'`), Winkel in Grad mit `rad` umgerechnet, `set_theta_zero_location('N')` und `set_theta_direction(-1)` für die Kompassdarstellung, `set_rlim`, Winkel- und Radiusschritte, `fill` für gefüllte Flächen | `polaraxis` (Bibliothek `polar`), Winkel in Grad; Kompassdarstellung als `rotate=90, x dir=reverse` |
+| Boxplot | `boxplot` der Rohwerte je Reihe an den Boxpositionen, `whis` (bzw. `whis=(0, 100)` für Minimum/Maximum), `showfliers`, Aussehen von Box, Median, Whiskern und Ausreißern | `boxplot prepared` (Bibliothek `statistics`) mit Quartilen, Whiskern und Ausreißern wie gezeichnet |
+| Histogramm | `hist` der Rohwerte mit `bins` und `range` wie gezeichnet, mehrere Reihen nebeneinander (`rwidth=1`) | `hist={bins, data min, data max}` (Bibliothek `statistics`); mehrere Reihen überlagern sich durchscheinend |
+| Gantt-Diagramm | `barh` mit `left=` den Starts je Gruppe, Meilensteine als `D`-Marker, Heute-Linie und Beschriftung; Daten als benannte Teilstriche | gefüllte Rechtecke in Achsenkoordinaten, Meilensteine als `diamond*`-Marken, Heute-Linie und Beschriftung |
 
 Näherungen: Layoutdetails (verkleinerte Beschriftungen, weiße Hinterlegung, Höchstbreiten von Anmerkungen, genauer
 Abstand der Schraffurlinien und Pfeilspitzen) folgen dem Layout der jeweiligen Bibliothek; Schriftgrößen sind relativ
 (Diagrammschrift in matplotlib, `\footnotesize` und kleiner in LaTeX). Gestapelte Balken mit negativen Werten stapelt
 pgfplots in Datenreihenfolge. Die Lage von Texten, die nur im Layout existieren (Bereichshinweise der
 Drehmomentkennlinie, Betriebspunkt- und Eckfrequenzbeschriftung), wird aus dem berechneten Diagramm übernommen und in
-Datenkoordinaten umgerechnet. Ein Bild mit unlesbarer Spezifikation exportiert seine Meldung.
+Datenkoordinaten umgerechnet. Ein Bild mit unlesbarer Spezifikation exportiert seine Meldung. Präsentationsdiagramme:
+matplotlib setzt die Kreisbeschriftungen selbst (innen im Ring bzw. bei 62 % des Radius, ganze Prozent; Beschriftungen,
+die das Diagramm nach außen rückt, bleiben innen), die Radiusbeschriftung des Polardiagramms und die Heute-Beschriftung
+folgen dem Layout der Bibliothek, und in pgfplots überlagern sich mehrere Histogrammreihen, statt nebeneinander zu
+stehen.
 
 Tests (`ExportTests`, `ExportRunTests`): Jede Bibliotheksvorlage ergibt auf Englisch und Deutsch ein plausibles
 Skript (ausgeglichene Klammern, jede sichtbare Kurve, jeder Balken, jede Fläche, Bezugslinie und jedes Bezugszeichen
@@ -872,3 +908,9 @@ Knotenhöhen des Sankey-Diagramms gleich den Zu- und Abflusssummen und Bänder, 
 Kreisläufe, Quartile, Whisker und Ausreißer einer bekannten Stichprobe, Histogrammzählungen und Sturges-Regel,
 Gantt-Balken, Meilensteine und Heute-Linie, jede Aktion, das Zeichnen innerhalb der Box bei extremen Größen, den
 JSON-Rundlauf, die Exportmeldungen, das Bereinigen und den Import von matplotlib-Kreis- und Polarskripten.
+`PresentationChartExportTests` prüft ihre Codeformen: die matplotlib- und pgfplots/TikZ-Texte von Kreis-, Ring-,
+Polar-, Box-, Histogramm- und Gantt-Diagrammen (Bibliotheken nur bei Bedarf), Rundläufe Export → Import für Kreis,
+Polar, Histogramm und Boxplot (Segmente und Winkel, Punkte und Konventionen, Messwerte, Klassen und Zählungen,
+Kategorien und Whisker-Regeln), den Import von `hist`- und `boxplot`-Skripten mit ihren Meldungen, Kalenderdaten im
+Gantt-Diagramm (Tageszahlen, Datumsteilung, Heute-Linie, Aktionen, Bereinigen) und den Meilenstein am Ende der
+Zeitachse.

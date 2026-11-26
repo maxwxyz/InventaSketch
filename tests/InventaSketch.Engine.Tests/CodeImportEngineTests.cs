@@ -19,7 +19,7 @@ namespace InventaSketch.Engine.Tests
         public void AMatplotlibScriptBecomesASelectedChartWithAReport()
         {
             var (api, session) = NewSession("de");
-            const string code = "import matplotlib.pyplot as plt\nimport numpy as np\nx = np.linspace(0, 1, 11)\nplt.plot(x, x ** 2, label='quadratisch')\nplt.hist(x)\nplt.legend()\n";
+            const string code = "import matplotlib.pyplot as plt\nimport numpy as np\nx = np.linspace(0, 1, 11)\nplt.plot(x, x ** 2, label='quadratisch')\nplt.stem(x)\nplt.legend()\n";
             var res = EngineApiTests.Call(api, "importCode", new { session, text = code });
             Assert.Equal("matplotlib", res.GetProperty("format").GetString());
             var ids = res.GetProperty("ids").EnumerateArray().Select(e => e.GetString()!).ToList();
@@ -30,7 +30,7 @@ namespace InventaSketch.Engine.Tests
             var skipped = res.GetProperty("skipped");
             Assert.Equal(1, skipped.GetArrayLength());
             Assert.Equal(5, skipped[0].GetProperty("line").GetInt32());
-            Assert.Contains("hist", skipped[0].GetProperty("code").GetString());
+            Assert.Contains("stem", skipped[0].GetProperty("code").GetString());
             Assert.Contains("nicht importiert", skipped[0].GetProperty("reason").GetString());
             // One undo step removes the import.
             EngineApiTests.Call(api, "undo", new { session });

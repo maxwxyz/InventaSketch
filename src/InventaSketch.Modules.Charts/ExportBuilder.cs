@@ -36,9 +36,9 @@ namespace InventaSketch.Modules.Charts
             var ctx = new RenderContext(doc, lang).For(registry);
             // A linked chart exports as the figure it would become when unlinked (its current curves as data).
             if (type is LinkedChart linked && linked.Frozen(o, ctx) is { } frozen && registry.Type(frozen.Type) is ChartType figure) { o = frozen; type = figure; }
-            // Presentation charts have no matplotlib/pgfplots form yet: reported instead of exporting empty axes (pie, polar
-            // and Sankey say so from Compose).
-            if (type is BoxChart or HistogramChart or GanttChart) throw CanvasChart.NotExportable(type.Name, lang);
+            // Pie and polar charts have no Cartesian frame: their own models. The Sankey diagram has no code form (its Compose
+            // says so).
+            if (type is PieChart or PolarChart) return CanvasExport.Build(o, (CanvasChart)type, ctx);
             var c = type.Compose(o, ctx);
             var b = new ExportBuilder(o, lang, c, type.Name.Get(lang), type.Id);
             b.Axes();
@@ -55,6 +55,9 @@ namespace InventaSketch.Modules.Charts
                 case FigureChart: b.Figure(); break;
                 case MathAxesChart: break;
                 case FunctionChart fc: b.Function(fc); break;
+                case HistogramChart: b.Histogram(); break;
+                case BoxChart: b.BoxPlot(); break;
+                case GanttChart: b.Gantt(); break;
             }
             return b._x;
         }
@@ -90,7 +93,7 @@ namespace InventaSketch.Modules.Charts
             return new XMarker(kind, filled, look?.Style?.Stroke ?? Col(color), size);
         }
 
-        private static string MarkerName(MarkerKind k) => k switch
+        internal static string MarkerName(MarkerKind k) => k switch
         {
             MarkerKind.Square => "square",
             MarkerKind.Triangle => "triangle",
@@ -379,7 +382,7 @@ namespace InventaSketch.Modules.Charts
             foreach (var t in ComposedTexts(ChartTags.Formula)) Add(t);
         }
 
-        private static XFillStyle FillOf(Fill? fill, string stroke)
+        internal static XFillStyle FillOf(Fill? fill, string stroke)
         {
             if (fill is null || fill.Kind == FillKind.None) return new XFillStyle("none", stroke);
             return fill.Kind switch
@@ -429,6 +432,116 @@ namespace InventaSketch.Modules.Charts
                 });
             }
             _x.Bars = bars;
+        }
+
+        /// <summary>The fill and edge of an area part: the part style wins over the drawn style.</summary>
+        private (XFillStyle Fill, string Edge, double EdgeWidth) AreaLook(string key, Style drawn)
+        {
+            var look = Look(key)?.Style;
+            var edge = look?.Stroke ?? drawn.Stroke ?? Palette.Black;
+            return (FillOf(look?.Fill ?? drawn.Fill, edge), edge, look?.StrokeWidth ?? drawn.StrokeWidth ?? 0.25);
+        }
+
+        /// <summary>Histogram: the raw samples with the bin edges as drawn (several series side by side).</summary>
+        private void Histogram()
+        {
+            var samples = HistogramChart.Samples(_o.Str("data", HistogramChart.DefaultData));
+            var bins = HistogramChart.BinCount(_o, samples);
+            var (edges, _) = Stats.Histogram(samples.Select(s => (IReadOnlyList<double>)s.Values).ToList(), bins, ChartData.Range(_o.Str("xrange", "")));
+            var mono = _f.Mono || _o.Flag("patterns", false);
+            var h = new XHist { Edges = edges.ToList() };
+            for (var k = 0; k < samples.Count; k++)
+            {
+                var key = ChartTags.Nth(ChartTags.Bar, k);
+                if (Hidden(key)) continue;
+                var (fill, edge, width) = AreaLook(key, HistogramChart.BarStyle(k, mono));
+                h.Series.Add(new XHistSeries
+                {
+                    Key = key, Name = Common.SeriesName(samples[k].Name, k, _lang), Samples = samples[k].Values.ToList(),
+                    Fill = fill, Edge = edge, EdgeWidth = width, InLegend = _x.Legend != "none",
+                });
+            }
+            _x.Hist = h;
+        }
+
+        /// <summary>Box plot: per series the raw samples of every category at the box positions as drawn.</summary>
+        private void BoxPlot()
+        {
+            var (cats, series) = BoxChart.Groups(_o.Str("data", BoxChart.DefaultData));
+            var whis = _o.Num("whis", 1.5);
+            var outliers = _o.Flag("outliers", true);
+            var mono = _f.Mono || _o.Flag("patterns", false);
+            var m = series.Count;
+            var group = m == 1 ? 0.55 : Math.Min(0.84, 0.5 + 0.1 * m);
+            var w = group / Math.Max(1, m);
+            var boxes = new XBoxes { Whis = whis, Outliers = outliers };
+            for (var k = 0; k < m; k++)
+            {
+                var key = ChartTags.Nth(ChartTags.Box, k);
+                if (Hidden(key)) continue;
+                var drawn = BoxChart.BoxStyle(k, mono);
+                var (fill, edge, width) = AreaLook(key, drawn);
+                var okey = ChartTags.Nth(ChartTags.Outlier, k);
+                var s = new XBoxSeries
+                {
+                    Key = key, OutlierKey = Hidden(okey) ? null : okey, Name = Common.SeriesName(series[k].Name, k, _lang), Width = Math.Round(w * 0.84, 6),
+                    Fill = fill, Line = new XStroke(edge, width, Look(key)?.Style?.Dash ?? DashStyle.Solid),
+                    OutlierColor = Look(okey)?.Style?.Stroke ?? (mono ? Palette.Black : SeriesLook.Of(k).Color), InLegend = _x.Legend != "none",
+                };
+                for (var i = 0; i < cats.Count; i++)
+                {
+                    if (!series[k].Samples.TryGetValue(i, out var values) || Stats.Box(values, whis, outliers) is not { } st) continue;
+                    s.Positions.Add(Math.Round(i + (1 - group) / 2 + k * w + w * 0.5 - 0.5, 6));
+                    s.Samples.Add(values.Where(Fmt.Finite).ToList());
+                    s.Stats.Add(st);
+                }
+                if (s.Positions.Count > 0) boxes.Series.Add(s);
+            }
+            _x.Boxes = boxes;
+        }
+
+        /// <summary>Gantt chart: task bars from their start over their duration, milestones and the today line with its label.</summary>
+        private void Gantt()
+        {
+            var (tasks, groups) = GanttChart.Tasks(_o.Str("data", GanttChart.DefaultData), _lang);
+            var mono = _f.Mono || _o.Flag("patterns", false);
+            var panel = _f.Panels[0];
+            var size = GanttChart.MilestoneSize(_f, panel, tasks.Count);
+            var g = new XGantt { Height = 0.6 };
+            for (var k = 0; k < groups.Count; k++)
+            {
+                var key = ChartTags.Nth(ChartTags.Bar, k);
+                var mkey = ChartTags.Nth(ChartTags.Milestone, k);
+                var (fill, edge, width) = AreaLook(key, SeriesLook.Of(k).Area(mono, 0.25));
+                var drawnColor = mono ? Palette.Black : SeriesLook.Of(k).Color;
+                var group = new XGanttGroup
+                {
+                    Key = Hidden(key) ? "" : key, MilestoneKey = Hidden(mkey) ? "" : mkey, Name = Common.SeriesName(groups[k], k, _lang),
+                    Fill = fill, Edge = edge, EdgeWidth = width, MilestoneColor = Look(mkey)?.Style?.Fill?.Color ?? Look(mkey)?.Style?.Stroke ?? drawnColor,
+                    MilestoneSize = size, InLegend = _x.Legend != "none",
+                };
+                for (var i = 0; i < tasks.Count; i++)
+                {
+                    var t = tasks[i];
+                    if (t.Group != k) continue;
+                    if (t.Milestone) { if (group.MilestoneKey.Length > 0) group.Milestones.Add((i, t.Start, t.Name)); }
+                    else if (group.Key.Length > 0) group.Bars.Add((i, t.Start, t.Duration, t.Name));
+                }
+                if (group.Bars.Count > 0 || group.Milestones.Count > 0) g.Groups.Add(group);
+            }
+            _x.Gantt = g;
+            if (GanttChart.Today(_o) is { } now && _f.X.Contains(now) && !Hidden(ChartTags.Today))
+            {
+                var stroke = Stroke(ChartTags.Today, mono ? Palette.Black : "#b03a2e", 0.4, DashStyle.Dash);
+                if (stroke is not null) Add(new XVLine { Panel = 0, LastPanel = 0, Key = ChartTags.Today, X = now, Stroke = stroke });
+                // The label at the top of the plot; the task axis runs top-down with task i centred at i.
+                foreach (var t in Prim.Flatten(_c.Over).OfType<TextPrim>().Where(t => t.Tag == ChartTags.Today))
+                {
+                    var row = -0.5 + (panel.Area.H > 0 ? (t.Position.Y - panel.Area.Y) / panel.Area.H : 0) * Math.Max(1, tasks.Count);
+                    Add(Label(ChartTags.Today, 0, DataX(t.Position.X), Math.Round(row, 4), t.Text, t.TextStyle.Anchor == TextAnchor.End ? "right" : "left", "center",
+                        box: true, size: t.TextStyle.Size / _f.Fs));
+                }
+            }
         }
 
         private void Torque()
