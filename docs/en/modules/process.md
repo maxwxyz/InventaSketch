@@ -149,9 +149,21 @@ compressor, axial fan, globe/ball/butterfly valves, gate valve normally closed, 
 fail-closed control valve, motorised three-way valve (HVAC category), eccentric reducer, Y-strainer, instrument
 presets (TIC control room, PI, FT, LIC on the DCS, PT, PLC function), venturi, secondary/traced/future lines and a
 line with flow arrow, pneumatic/impulse/capillary/data signal lines, cooling coil, motorised damper, bag filter,
-rotary wheel, spray humidifier, supply/extract air fan (HVAC category), Carnot and saturated Rankine T-s, Diesel and
+rotary wheel, spray humidifier (the HVAC items named "… (AHU)"), Carnot and saturated Rankine T-s, Diesel and
 Carnot p-v and a heat pump cycle (log p-h), and a silo with fill level (`process.silo.level`). Search keywords exist in both languages (e.g. "Behälter", "Kolonne",
 "Wärmeübertrager", "Pumpe", "Messstelle", "Stellventil", "Kreisprozess", "Wärmepumpe").
+
+### Overlaps with other modules (one element, one item)
+
+- The default fan item `process.fan` also answers to "supply air", "extract air", "Zuluft", "Abluft"; the former
+  `process.hvac.fan` (the same fan once more, in the HVAC category) steps back in its favour (`LibraryItem.Alternative`)
+  and is still found by id.
+- The air handling items are sections of an AHU schematic (air path left to right), not the duct parts of a building
+  plan (building services `bs.vent.damper`, `bs.vent.unit`): they are kept and named "… (AHU)" / "… (RLT)", e.g. "Air
+  damper (AHU)" next to the building services' "Duct damper".
+- `process.motor` is the P&ID drive symbol that docks on a pump or fan shaft, not the drive train block of the machines
+  module (`machines.block.motor`, "E-motor (block)") nor the circuit symbol (`elec.motor`): kept and named "Electric
+  motor (P&ID drive)" / "Elektromotor (R&I-Antrieb)".
 
 ## Lines
 

@@ -24,6 +24,14 @@ Normkonformität behauptet.
 | Steckdose, Lichtschalter, Leuchte, Abzweigdose, Verteiler, Leitungsführung (`elec.house.*`), Übersichtsschaltplan | Elektro | hier **nicht doppelt** |
 | Kommunikationsanschluss, Melder, Geräteanschlussdose, Potentialausgleichsschiene | TGA | fehlten bisher im Elektromodul |
 
+Ein Element, ein Eintrag: die Raumgeräte des Verteilermoduls treten für diese maßgeblichen Einträge zurück, solange beide
+registriert sind (`LibraryItem.Alternative`): Steckdose, Schalter und Leuchte für `elec.house.*`, Herd- und
+Waschmaschinenanschluss (`sw.house.appliance`, `.washer`) für `bs.elec.appliance`, `bs.elec.appliance.washer`, die
+deshalb auch auf „cooker connection“, „Herdanschluss“, „washing machine connection“ und „Waschmaschinenanschluss“
+hören. Die RLT-Komponenten des Verfahrensmoduls (`process.hvac.*`, benannt „… (RLT)“) werden nicht mit den
+Luftleitungsteilen hier zusammengelegt: sie sind Abschnitte eines RLT-Schemas, keine Teile einer Luftleitung im
+Gebäudeplan.
+
 Folgewunsch (Eigentümer des Elektromoduls): `elec.house.socket/switch/light/junction/board/cable` erhalten die
 Ansichten `section` und `schematic` sowie einen Parameter `height` nach den Konventionen unten, damit die
 Elektroinstallation mit dem übrigen Haus umschaltet.

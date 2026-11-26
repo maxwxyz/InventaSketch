@@ -174,6 +174,14 @@ not reduced.
 | `elec.rcd.additional` | socket outlet | its circuit has an overcurrent device drawn but no RCD with *I*_Δn ≤ 30 mA (an RCD without rating counts as present; national rules differ) | hint | [S10] |
 | `elec.net.reducible` | elements in an irreducible loop | not a series/parallel network | info | section 1.6 |
 
+## Overlaps with other modules (one element, one item)
+
+The house installation symbols (`elec.house.socket`, `.socket.double`, `.switch`, `.switch.twoway`, `.switch.push`,
+`.light`) are the canonical room devices of the catalogue: the switchgear module's room devices (`sw.house.*`) give way
+to them while this module is registered (`LibraryItem.Alternative`, mapping in the switchgear documentation). Their
+items carry the switchgear names as keywords ("Zweifachsteckdose", "Lichtschalter", "Deckenauslass", "light outlet"), so
+search still finds them by those names. The appliance outlet is offered by the building services (`bs.elec.appliance`).
+
 ## Persistence
 
 All state is in the canonical document (`type`, `view`, `params`, `points`, `attach`, `text`); there is no hidden

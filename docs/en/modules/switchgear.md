@@ -192,6 +192,25 @@ pin), source "wiring"; (3) for circuit breakers only: the nearest RCD to the lef
 (assumed)" – the usual layout with a comb busbar; the report marks it as assumed. Room devices hang below the
 designation in their `feed`; a designation that is named but not drawn appears as "(not drawn)", nothing is invented.
 
+## Overlaps with other modules (one element, one item)
+
+The room devices draw the same elements as the house installation symbols of the electrical module and the appliance
+outlet of the building services. Those are the canonical items (plan, section and schematic views, mounting height,
+pins and circuit values), so while their module is registered the room device items step back from galleries and search
+(`LibraryItem.Alternative`):
+
+| Item here | gives way to |
+|---|---|
+| `sw.house.socket`, `sw.house.socket.double` | `elec.house.socket`, `elec.house.socket.double` |
+| `sw.house.switch`, `.twoway`, `.push` | `elec.house.switch`, `.twoway`, `.push` |
+| `sw.house.light` | `elec.house.light` |
+| `sw.house.appliance`, `sw.house.appliance.washer` | `bs.elec.appliance`, `bs.elec.appliance.washer` |
+
+`sw.house.light.wall` has no counterpart and stays. The types stay registered: existing slides with room devices load,
+render and feed the installation list and the circuit plan as before, and the module on its own still offers every
+item. Open: the reports read only `sw.house.*` objects; room and circuit (`room`, `feed`) on the electrical symbols are
+a follow-up for the electrical and switchgear owners.
+
 ## Persistence
 
 Everything is stored in parameters (plus the line points and attachments of wires and cables); JSON and compact round

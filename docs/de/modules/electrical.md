@@ -183,6 +183,15 @@ Strom, sodass das Netz um sie herum nicht reduziert wird.
 | `elec.rcd.additional` | Steckdose | ihr Stromkreis hat ein Überstromschutzorgan, aber keinen RCD mit *I*_Δn ≤ 30 mA (ein RCD ohne Angabe zählt als vorhanden; nationale Regeln weichen ab) | Hinweis | [S10] |
 | `elec.net.reducible` | Elemente in einer nicht reduzierbaren Masche | kein Reihen-/Parallelnetz | Info | Abschnitt 1.6 |
 
+## Überschneidungen mit anderen Modulen (ein Element, ein Eintrag)
+
+Die Installationsplansymbole (`elec.house.socket`, `.socket.double`, `.switch`, `.switch.twoway`, `.switch.push`,
+`.light`) sind die maßgeblichen Raumgeräte des Katalogs: die Raumgeräte des Verteilermoduls (`sw.house.*`) treten für
+sie zurück, solange dieses Modul registriert ist (`LibraryItem.Alternative`, Zuordnung in der Doku des Verteilermoduls).
+Ihre Einträge tragen die Namen des Verteilermoduls als Suchwörter („Zweifachsteckdose“, „Lichtschalter“,
+„Deckenauslass“, „light outlet“), die Suche findet sie also auch so. Die Geräteanschlussdose kommt aus der TGA
+(`bs.elec.appliance`).
+
 ## Persistenz
 
 Der gesamte Zustand liegt im kanonischen Dokument (`type`, `view`, `params`, `points`, `attach`, `text`); es gibt keinen

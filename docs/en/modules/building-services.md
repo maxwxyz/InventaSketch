@@ -23,6 +23,13 @@ following common drawing practice; no standard tables or texts are reproduced an
 | Socket, light switch, luminaire, junction box, distribution board, cable route (`elec.house.*`), single-line diagram | electrical | **not duplicated** here |
 | Communication outlet, detector, appliance outlet, equipotential bonding bar | building services | missing in the electrical module so far |
 
+One element, one item: the switchgear module's room devices give way to these canonical items while both are registered
+(`LibraryItem.Alternative`): socket, switch and light to `elec.house.*`, and the cooker / washing machine connections
+(`sw.house.appliance`, `.washer`) to `bs.elec.appliance`, `bs.elec.appliance.washer`, which therefore also answer to
+"cooker connection", "Herdanschluss", "washing machine connection" and "Waschmaschinenanschluss". The air handling
+sections of the process module (`process.hvac.*`, named "… (AHU)") are not merged with the duct parts here: they are
+sections of an AHU schematic, not parts of a duct run in a building plan.
+
 Requested follow-up (electrical module owner): give `elec.house.socket/switch/light/junction/board/cable` the views
 `section` and `schematic` and a `height` parameter with the conventions below, so electrical installations switch with
 the rest of the house.

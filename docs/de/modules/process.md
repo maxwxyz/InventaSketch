@@ -158,10 +158,22 @@ Absperrschieber normal geschlossen, Stellventil mit Elektroantrieb und Magnetven
 Ausfall“, Dreiwegeventil mit Stellantrieb (Kategorie RLT), exzentrisches Reduzierstück, Y-Schmutzfänger,
 Messstellen-Vorlagen (TIC Leitwarte, PI, FT, LIC im Prozessleitsystem, PT, SPS-Funktion), Venturirohr,
 Neben-/beheizte/geplante Leitung und Leitung mit Fließpfeil, pneumatische/Wirkdruck-/Kapillar-/Datenleitung,
-Luftkühler, Luftklappe mit Antrieb, Taschenfilter, Rotationswärmeübertrager, Sprühbefeuchter, Zu-/Abluftventilator
-(Kategorie RLT), Carnot und Clausius-Rankine ohne Überhitzung (T-s), Diesel und Carnot (p-v), ein
+Luftkühler, Luftklappe mit Antrieb, Taschenfilter, Rotationswärmeübertrager, Sprühbefeuchter (die RLT-Einträge heißen
+„… (RLT)“), Carnot und Clausius-Rankine ohne Überhitzung (T-s), Diesel und Carnot (p-v), ein
 Wärmepumpenprozess (log p-h) sowie ein Silo mit Füllstand (`process.silo.level`). Suchbegriffe gibt es in beiden Sprachen (z. B. „Behälter“, „Kolonne“,
 „Wärmeübertrager“, „Pumpe“, „Messstelle“, „Stellventil“, „Kreisprozess“, „Wärmepumpe“).
+
+### Überschneidungen mit anderen Modulen (ein Element, ein Eintrag)
+
+- Der Standard-Ventilator `process.fan` hört auch auf „supply air“, „extract air“, „Zuluft“, „Abluft“; der frühere
+  Eintrag `process.hvac.fan` (derselbe Ventilator noch einmal, in der RLT-Kategorie) tritt für ihn zurück
+  (`LibraryItem.Alternative`) und wird per Id weiterhin gefunden.
+- Die RLT-Komponenten sind Abschnitte eines RLT-Schemas (Luftweg von links nach rechts), keine Luftleitungsteile eines
+  Gebäudeplans (TGA `bs.vent.damper`, `bs.vent.unit`): sie bleiben und heißen „… (RLT)“ / „… (AHU)“, z. B.
+  „Luftklappe (RLT)“ neben der „Lüftungsklappe“ der TGA.
+- `process.motor` ist das R&I-Antriebssymbol, das an eine Pumpen- oder Ventilatorwelle andockt, weder der
+  Antriebsstrang-Block des Maschinenmoduls (`machines.block.motor`, „E-Motor (Block)“) noch das Schaltzeichen
+  (`elec.motor`): es bleibt und heißt „Elektromotor (R&I-Antrieb)“ / „Electric motor (P&ID drive)“.
 
 ## Leitungen
 

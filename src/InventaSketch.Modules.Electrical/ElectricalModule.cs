@@ -189,14 +189,15 @@ namespace InventaSketch.Modules.Electrical
             Add("bus.lin", "elec.bus", "LIN bus", "LIN-Bus", null, P(("protocol", "lin")), null, null, "lin");
             Add("bus.ethernet", "elec.bus", "Automotive Ethernet", "Automotive Ethernet", null, P(("protocol", "ethernet")), null, null, "ethernet");
 
-            // house installation & single-line
-            Add("house.socket", "elec.house.socket", "Socket outlet (earthed)", "Schutzkontaktsteckdose");
-            Add("house.socket.double", "elec.house.socket", "Double socket outlet", "Doppelsteckdose", null, P(("gangs", 2)), null, null, "double", "doppel");
+            // house installation & single-line: the canonical room devices (the switchgear module's room devices give way to
+            // them while this module is registered, LibraryItem.Alternative), so they also answer to the switchgear names.
+            Add("house.socket", "elec.house.socket", "Socket outlet (earthed)", "Schutzkontaktsteckdose", null, null, null, null, "room", "raum", "stromkreis");
+            Add("house.socket.double", "elec.house.socket", "Double socket outlet", "Doppelsteckdose", null, P(("gangs", 2)), null, null, "double", "doppel", "zweifachsteckdose");
             Add("house.socket.plain", "elec.house.socket", "Socket outlet (no earth)", "Steckdose ohne Schutzkontakt", null, P(("protected", false)));
-            Add("house.switch", "elec.house.switch", "One-way switch", "Ausschalter");
-            Add("house.switch.twoway", "elec.house.switch", "Two-way switch", "Wechselschalter", null, P(("kind", "twoway")), null, null, "two-way", "wechsel");
+            Add("house.switch", "elec.house.switch", "One-way switch", "Ausschalter", null, null, null, null, "light switch", "lichtschalter");
+            Add("house.switch.twoway", "elec.house.switch", "Two-way switch", "Wechselschalter", null, P(("kind", "twoway")), null, null, "two-way", "wechsel", "wechsel-lichtschalter");
             Add("house.switch.push", "elec.house.switch", "Push button (plan)", "Taster (Installationsplan)", null, P(("kind", "push")), null, null, "push", "taster");
-            Add("house.light", "elec.house.light", "Luminaire", "Leuchte");
+            Add("house.light", "elec.house.light", "Luminaire", "Leuchte", null, null, null, null, "light outlet", "ceiling light outlet", "leuchtenauslass", "deckenauslass", "brennstelle");
             Add("house.junction", "elec.house.junction", "Junction box", "Abzweigdose");
             Add("house.board", "elec.house.board", "Distribution board", "Verteiler");
             Add("house.cable", "elec.house.cable", "Cable route", "Leitungsführung");
