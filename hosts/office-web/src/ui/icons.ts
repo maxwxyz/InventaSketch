@@ -249,6 +249,8 @@ const paths: Record<string, string> = {
   "phase-l3": "M3 5h10M3 10h10M3 15h17v2.5M20 21.5l-1.8 -3.6h3.6Z",
   "phase-3": "M3 5h18v12.5M3 10h13.5v7.5M3 15h9v2.5M21 21.5l-1.6 -3.6h3.2ZM16.5 21.5l-1.6 -3.6h3.2ZM12 21.5l-1.6 -3.6h3.2Z",
   "phase-circuit": "M12 2.5V8M10.4 6.4l3.2 3.2M13.6 6.4l-3.2 3.2M12 15.5l4.2 -6.3M12 15.5V21.5",
+  // Junction made a bridge again (a hop over the other line, "not connected" cross), round of 2026-11-26.
+  "cmd-bridge": "M12 4v17M3 15h5M16 15h5M8 15C8 9.7 16 9.7 16 15M17.5 3.5l3 3M20.5 3.5l-3 3",
   // </shared-paths>
 };
 

@@ -113,6 +113,12 @@ namespace InventaSketch.AddIn.Tests
             Assert.Equal(5, OnSlideController.SegmentCode("branch:2"));
             Assert.Equal(-1, OnSlideController.SegmentCode("port:2"));
             Assert.Equal(-1, OnSlideController.SegmentCode("pt:0"));
+            // Connect icons at crossings and bridge icons at junctions have codes of their own, bridges above crossings.
+            var cross = OnSlideController.SegmentCode("cross:1");
+            var bridge = OnSlideController.SegmentCode("bridge:1");
+            Assert.True(cross > OnSlideController.SegmentCode("end:1"));
+            Assert.True(bridge > cross);
+            Assert.Equal(bridge + 1, OnSlideController.SegmentCode("bridge:2"));
         }
 
         [Fact]

@@ -15,7 +15,9 @@ namespace InventaSketch.Modules.Switchgear
     /// Designations (IEC 81346 ideas) and ratings are optional parameters. Element values (<see cref="SwValues"/>): rated
     /// and operating current, power and phase per circuit and load, totals per phase on a rail, with plausibility checks.
     /// Exports: house installation list, circuit plan, board layout with labelling strip, terminal plan and cable list
-    /// (CSV and Markdown). Draws everything itself; no dependency on other modules.
+    /// (CSV and Markdown). Draws everything itself; no dependency on other modules: the cabinet cores are the electrical
+    /// module's wires, known by their id and parameters (<see cref="Lines.ElecWireId"/>), with this module's own core type
+    /// as the fallback for existing slides and for use without the electrical module.
     /// </summary>
     public sealed class SwitchgearModule : IModule, IExportProvider
     {
@@ -206,9 +208,15 @@ namespace InventaSketch.Modules.Switchgear
             return list.Select(i => Alternatives.TryGetValue(i.Id, out var alt) ? i with { Alternative = alt } : i).ToList();
         }
 
-        /// <summary>Room device items that give way to the canonical item of another module (item id → alternative item id).</summary>
+        /// <summary>Items that give way to the canonical item of another module (item id → alternative item id): cores and room devices.</summary>
         internal static readonly IReadOnlyDictionary<string, string> Alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
         {
+            // One wire type: the cabinet cores are the electrical module's wires (core colour, cross-section, hops at
+            // crossings, junctions and bridges); the switchgear devices connect with them (Lines.ConnectionFor).
+            ["sw.line.wire"] = "elec.wire.bk",
+            ["sw.line.wire.bn"] = "elec.wire.bn",
+            ["sw.line.wire.bu"] = "elec.wire.bu",
+            ["sw.line.wire.pe"] = "elec.wire.pe",
             ["sw.house.socket"] = "elec.house.socket",
             ["sw.house.socket.double"] = "elec.house.socket.double",
             ["sw.house.switch"] = "elec.house.switch",

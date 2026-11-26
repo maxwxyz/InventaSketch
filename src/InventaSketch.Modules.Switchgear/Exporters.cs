@@ -319,8 +319,8 @@ namespace InventaSketch.Modules.Switchgear
                             any = true;
                             var far = b.EndText(line, Board.Other(line, end), end == 0 ? "to" : "from");
                             var wire = line.Str("ref", "").Trim();
-                            var colour = line.Type == Lines.WireId ? line.Str("colour", "BK") : "";
-                            var section = line.Str("section", line.Type == Lines.WireId ? "1.5" : "1.5");
+                            var colour = Lines.IsWire(line.Type) ? Lines.CoreOf(line) : "";
+                            var section = Lines.SectionOf(line);
                             if (line.Type == Lines.CableId) wire = (wire.Length > 0 ? wire + " " : "") + CableType.Spec(line);
                             rows.Add(new[] { number, levels > 1 ? level : "", side, wire, far, section, colour, bridgeText });
                         }

@@ -40,7 +40,7 @@ namespace InventaSketch.AddIn.OnSlide
         /// <summary>The handle layout for the armed unit in the current view (cached until the unit or the view changes).</summary>
         private IReadOnlyList<PlacedHandle> Handles(SlideView view)
         {
-            var key = (_unit, _unit?.Doc, view.OffsetX, view.OffsetY, view.PixelsPerPoint, view.DeviceScale, _ports, _links, _segHandles, _sides, _gaps, _chainSource, _crossings, _endHandles, _grips);
+            var key = (_unit, _unit?.Doc, view.OffsetX, view.OffsetY, view.PixelsPerPoint, view.DeviceScale, _ports, _links, _segHandles, _sides, _gaps, _chainSource, _crossings, _endHandles, _grips, _junctions);
             if (_layoutKey is not null && key.Equals(_layoutKey)) return _layout;
             try
             {
@@ -305,6 +305,14 @@ namespace InventaSketch.AddIn.OnSlide
                     Orbit = true,
                     MaxPush = 30,
                     Tip = T("Connect here (junction)", "Hier verbinden (Knotenpunkt)"),
+                });
+            // Junctions the line takes part in: make a bridge (a crossing with a hop, not connected) again.
+            for (var i = 0; i < _junctions.Count; i++)
+                specs.Add(new HandleSpec("bridge:" + i, HandleKind.Junction, view.ToScreen(_junctions[i].At), new PointF(0.7071f, -0.7071f), (float)(BranchOffsetPx * 1.1), (float)SegHandlePx, 60)
+                {
+                    Orbit = true,
+                    MaxPush = 30,
+                    Tip = T("Make bridge here (not connected)", "Hier Brücke (nicht verbunden)"),
                 });
             // Corner dots and branch handles: optional, none on very small elements or on segments too short on screen.
             if (o is not null && !small && _segHandles.Count > 0)

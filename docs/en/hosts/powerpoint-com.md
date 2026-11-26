@@ -432,6 +432,14 @@ UX round (2026-11-20, from the maintainer's feedback):
   a click splits the line there and docks both parts onto the other line (`Crossings.Connect`): junction dots, and
   connection exports count it. Units render with the other units in slide z-order (`SketchUnits.WithContext(own, others,
   z)`). Verified in PowerPoint 2026-11-21: the upper wire hops, connect makes three wires with docked ends, undo restores.
+  **Junction ⇄ bridge (2026-11-26):** the selected line also shows a bridge icon (a stroke hopping over another, tooltip
+  "Make bridge here (not connected)") at every junction it takes part in – its own end docked onto another line, or other
+  ends docked onto it; a click turns the junction back into a crossing with a hop (`Crossings.Disconnect`: two ends
+  meeting from opposite sides are joined into one line, a single branch is carried 3 mm beyond the other line), one undo
+  step, written back across the units (`CommitAcrossUnits`). A wire whose own end sits at a junction and a junction dot
+  (`elec.junction`, removed then) also offer "Make bridge (not connected)" in the bar (type action `elec.bridge`). With
+  two crossing wires or pipes selected the multi-selection bar offers "Connect (junction)" (`Crossings.ConnectBetween`),
+  with lines meeting at a junction "Make bridge (not connected)". Not yet checked in PowerPoint.
 - **Build handles for assemblies (gearboxes, drivetrains, e-drives):** a selected gear, ring gear, shaft, e-machine or
   engine shows a blue "+" at every free build port (`Building.Ports`): the sides of a gear (all four in axial view,
   above and below where the axis lies in the drawing, `ObjectType.MeshDirections`), inside a ring gear (planet), the

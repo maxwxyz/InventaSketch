@@ -75,6 +75,25 @@ building services), PCB pads and footprints a track (`pcb`). Wires carry `electr
 modules), buses `data`; the free end of a wire, bus, cable route or track offers "+" to continue it or to dock the next
 symbol with its facing pin.
 
+**Core colours and cross-section (2026-11-26).** The wire is the one wire type of every module: the switchgear devices
+connect with it as well (their own core items give way, see the switchgear module). Optional parameters `colour`
+(`auto` – black, or the medium colour when lines are coloured by medium – and the IEC 60757 codes BK, BN, GY, BU,
+GNYE, RD, DBU, WH, VT, OG; green-yellow is drawn green with yellow dashes) and `section` (mm², none by default). A wire
+with a colour keeps it when lines are coloured by medium (`MediumRole` = own colour). The wire number is the generic
+designation (`ref`, "Designation …"), drawn by `Designations`. Library items "Wire, black (cabinet)", "Wire, brown
+(L)", "Wire, blue (N)", "Wire, green-yellow (PE)" (`elec.wire.bk`, `.bn`, `.bu`, `.pe`; 1.5 mm²). Colours are useful in
+electronics too (red/black supply wires, …).
+
+**Junction ⇄ bridge (2026-11-26).** A wire drawn over another one hops (`HopsAtCrossings`, Core `Crossings`); hosts
+offer to connect at a crossing (split there, both parts docked: a junction with a dot) and, for two selected wires that
+cross, "Connect (junction)" (`Crossings.ConnectBetween`). The reverse is "Make bridge (not connected)" (action
+`elec.bridge`, pictogram `Bridge`, `Crossings.Disconnect`): offered by a wire whose own end is docked onto another wire
+(a T or X junction) and by a junction dot (`elec.junction`) with wires passing it. Two ends meeting from opposite sides
+are joined into one wire that crosses the other with a hop (the corner left at the junction is removed when the wire
+runs straight on, else moved 3 mm off the other wire); a single branch is undocked and carried 3 mm
+(`Crossings.BridgeOvershoot`) beyond the other wire, so it crosses it; the junction dot is removed. A junction dot
+names the wires docked on it as dependents (`HasDependents`), so hosts with separate units see them.
+
 ## Context actions
 
 | Action id | Icon | Effect |
@@ -87,6 +106,9 @@ symbol with its facing pin.
 | `elec.opamp.circuit=<auto/inverting/noninverting/follower/open>` | `Option` | circuit of the op-amp for its gain (from the wiring by default) |
 | `elec.meter.quantity=<v/a/w/ohm>` | option pictograms (`Preview`: the instrument circle with its letter) | measured quantity of the measuring instrument |
 | `elec.wire.hops` | `Hop` | hops of a wire at crossings on/off |
+| `elec.wire.colour=<auto/BK/BN/GY/BU/GNYE/RD/DBU/WH/VT/OG>` | option pictures (`Preview`: a stroke in the colour) | core colour of a wire |
+| `elec.wire.section=<–/0.14 … 16>` | `Option` | cross-section of a wire (mm²) |
+| `elec.bridge` | `Bridge` | make a junction a bridge again (not connected): wire with an end at a junction, junction dot |
 | `elec.route=free/orthogonal/45` | route pictograms | wire/track routing as a choice |
 | `elec.label` | `Text` | show designator/value (adds `ref` = prefix + `1` if empty) or hide labels |
 | `elec.envelope` | `Toggle` | envelope circle of transistors |
@@ -102,7 +124,7 @@ Value text is edited in the inspector (`value`, `ref`); the context action canno
 | Switching & protection | `switch` (`contact` no/nc/changeover; also used for relay contacts), `pushbutton`, `relay.coil`, `contactor` (1–3 poles), `fuse`, `breaker`, `rcd` |
 | Sources & loads | `ground` (earth/PE/chassis), `source` (DC/AC/current), `battery` (1–4 cells), `lamp`, `motor` and `generator` (`supply` none/DC/AC/3~; 3~ exposes U/V/W), `sensor`, `actuator` (generic actuator block, optional `label`), `solenoid` (two-terminal actuating coil with plunger), `meter` (measuring instrument, `quantity` V/A/W/Ω), `speaker`, `microphone`, `antenna` |
 | Logic & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC rectangular and ANSI distinctive shapes), `flipflop` (D/JK/SR/T), `opamp` (IEC / triangle), `regulator` (three-terminal voltage regulator `IN`/`OUT`/`GND`), `block.ecu` (ECU/IC/MCU block with `pinsLeft`/`pinsRight` and `label`) |
-| Wires, connectors & buses | `wire` (point object, `route` free/orthogonal/45), `junction`, `netlabel` (text = net name), `connector` (plug/socket/pair, 1–12 poles), `terminal`, `testpoint`, `bus` (point object; CAN/LIN/Ethernet/FlexRay/generic label) |
+| Wires, connectors & buses | `wire` (point object, `route` free/orthogonal/45, `hops`, `colour`, `section`), `junction`, `netlabel` (text = net name), `connector` (plug/socket/pair, 1–12 poles), `terminal`, `testpoint`, `bus` (point object; CAN/LIN/Ethernet/FlexRay/generic label) |
 | House installation | `house.socket` (1–4 outlets, protective contact), `house.switch` (one-way/two-way/intermediate/push/dimmer), `house.light`, `house.junction`, `house.board`, `house.cable` (point object with conductor marks), `sld.busbar`, `sld.feeder` (breaker/fuse/none), `sld.meter` |
 | Power electronics | `pe.inverter`, `pe.rectifier` (1- or 3-phase AC side), `pe.dcdc`, `pe.dclink`, `pe.gatedriver`, `pe.module` (half bridge with freewheeling diodes) |
 | PCB (illustrative) | `pcb.board`, `pcb.pad` (rect/round/oblong, THT), `pcb.via`, `pcb.track` (point object, `width`, routing free/orthogonal/45), `pcb.copper`, `pcb.footprint` (SOIC-8, QFP-32, SOT-23, 0603, DIP-8; pads are ports), `pcb.hole`, `pcb.silk` |

@@ -28,8 +28,10 @@ on no other module (its circuit symbols are its own, not the electrical module's
 - **Rail and snapping:** the TS35 rail (35 mm) has `Mount` anchors every module along its centre line (the grid is
   centred on the rail; its pitch is half the rail height, so a scaled board keeps its grid). Devices and terminals have
   `Mount` anchors at the left and right edge on their centre line: they snap onto the rail grid and side by side.
-- **Pins:** every connection point is a `Port` anchor with a medium: screw terminals `electric` (connector: wire
-  `sw.line.wire`), bus terminals `data` (connector: bus cable item `sw.line.cable.knx`), room devices
+- **Pins:** every connection point is a `Port` anchor with a medium: screw terminals `electric` (connector: the
+  electrical module's wire, item `elec.wire.bk` – blue `elec.wire.bu` at `N…` pins and neutral terminals,
+  green-yellow `elec.wire.pe` at `PE` pins and PE terminals; without the electrical module the switchgear's own cores),
+  bus terminals `data` (connector: bus cable item `sw.line.cable.knx`), room devices
   `electric.installation` (connector: cable `sw.line.cable`). Wire and cable ends dock there and follow the device; "+"
   builds on (connector, next element). Pin ids follow the usual terminal markings: poles `1/2`, `3/4`, `5/6`, neutral
   `N1` (top) / `N2` (bottom), coils `A1/A2`, changeover contacts `11/12/14`, timer `15/16/18`, surge protection
@@ -92,8 +94,21 @@ on no other module (its circuit symbols are its own, not the electrical module's
 | `sw.duct.slotted` | Slotted cable duct / Verdrahtungskanal | – (vertical when taller than wide) |
 | `sw.label.strip` | Labelling strip / Beschriftungsstreifen | `content` designation and circuit / designation / circuit |
 | `sw.label.plate` | Label plate / Bezeichnungsschild | free text |
-| `sw.line.wire` | Wire (core) / Ader | `colour` (IEC 60757 codes BK, BN, GY, BU, GNYE, RD, DBU, WH, VT, OG), `section`, `ref` (wire number) |
-| `sw.line.cable` | Cable / Kabel | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to`, `iz` (current-carrying capacity, A) |
+| `sw.line.wire` | Wire (core) / Ader – kept for existing slides; new cores are the electrical module's `elec.wire` | `colour` (IEC 60757 codes BK, BN, GY, BU, GNYE, RD, DBU, WH, VT, OG), `section`, `ref` (wire number), `hops` |
+| `sw.line.cable` | Cable / Kabel | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to`, `iz` (current-carrying capacity, A), `hops` |
+
+**One wire type (2026-11-26).** The cores in the cabinet are the electrical module's wires (`elec.wire` with core
+colour, cross-section, the generic designation as wire number, hops at crossings, junction dots and "Make bridge (not
+connected)"). The four core items of this module (`sw.line.wire`, `.bn`, `.bu`, `.pe`) give way to the electrical
+items "Wire, black (cabinet)", "Wire, brown (L)", "Wire, blue (N)", "Wire, green-yellow (PE)" while the electrical
+module is registered (`LibraryItem.Alternative`, as for the room devices); the type `sw.line.wire` stays registered, so
+existing slides keep loading and feeding the reports, and it now hops at crossings and draws junction dots like the
+electrical wire. Modules do not reference each other: the switchgear knows the electrical wire by its id and its
+parameters (`colour`, `section`, `ref`). The reports, the feed tree, the circuit values and the inverter's value port
+follow both wire types; the terminal plan lists an electrical wire's colour and cross-section only when they are set.
+The cable (`sw.line.cable`, also the KNX bus cable) is a different thing – a sheathed multi-core cable with
+designation, type, cores × cross-section and length for the cable list, not a single core and not the floor-plan cable
+route `elec.house.cable` – and stays; it hops at crossings too (`hops`, "Hops at crossings on/off").
 | `sw.house.socket` | Socket outlet (room/circuit) / Steckdose (Raum/Stromkreis) | `gangs` 1–3, `room`, `feed`, `ref`, `phase` |
 | `sw.house.switch` | Light switch (room/circuit) / Lichtschalter | `kind` one-way, two-way, intermediate, push button, dimmer, `room`, `feed`, `ref`, `phase` |
 | `sw.house.light` | Light outlet (room/circuit) / Leuchtenauslass | `kind` ceiling/wall, `room`, `feed`, `ref`, `phase` |
@@ -108,7 +123,9 @@ The library offers 88 items (43 types) in eight categories (protection & isolati
 supplies & bus devices; drives & automation; terminal blocks; rails, ducts & labels; wires & cables; installation devices
 in the rooms), e.g. "MCB B16, 1-pole", "RCD 40 A 30 mA, 4-pole", "Motor protection circuit breaker 4 A", "NH00 fuse
 switch-disconnector 63 A", "Frequency inverter 0.75 kW, 3~", "PLC digital input module, 8 channels", "Comb busbar
-3-phase (12 modules)", "Blanking plate (6 modules)", "KNX switch actuator, 4-fold", "Cable NYM-J 5×2.5".
+3-phase (12 modules)", "Blanking plate (6 modules)", "KNX switch actuator, 4-fold", "Cable NYM-J 5×2.5". With the
+electrical module registered, the four core items and the eight room devices step back from galleries and search in
+favour of the canonical items of the electrical module and the building services.
 
 ## Actions
 

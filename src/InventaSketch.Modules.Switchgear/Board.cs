@@ -45,7 +45,7 @@ namespace InventaSketch.Modules.Switchgear
 
         public IEnumerable<SketchObject> Rails() => _objects.Where(o => o.Type == Switchgear.Rails.RailId && !o.IsPointGeometry);
         public IEnumerable<SketchObject> Cables() => _objects.Where(o => o.Type == Lines.CableId && o.IsPointGeometry);
-        public IEnumerable<SketchObject> Wires() => _objects.Where(o => o.Type == Lines.WireId && o.IsPointGeometry);
+        public IEnumerable<SketchObject> Wires() => _objects.Where(o => Lines.IsWire(o.Type) && o.IsPointGeometry);
 
         // ------------------------------------------------------------------ rails
 

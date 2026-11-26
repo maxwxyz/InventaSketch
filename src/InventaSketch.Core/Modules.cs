@@ -187,6 +187,8 @@ namespace InventaSketch.Core
         public const string Explode = "cmd-explode";
         public const string Motion = "cmd-motion";
         public const string Junction = "cmd-junction";
+        /// <summary>Make a junction a bridge (a hop, not connected): the reverse of <see cref="Junction"/>.</summary>
+        public const string Bridge = "cmd-bridge";
         public const string RemovePoint = "cmd-point-remove";
         public const string ShapeSquare = "shape-square";
         public const string ShapeCircle = "shape-circle";
@@ -425,7 +427,7 @@ namespace InventaSketch.Core
             CourseStraight, CourseCurved, CourseWavy, CourseZigzag, CourseElbow,
             MachInner, MachOuter, MachAxial, MachAxialDoubleRotor, MachAxialDoubleStator, MachMagnet, MachWound, MachCage, MachReluctance,
             HubNone, HubFixed, HubSliding, HubLoose, Helix, ShaftEnds, Ground,
-            Split, RemovePoint, Hop, Junction, Explode, Motion,
+            Split, RemovePoint, Hop, Junction, Bridge, Explode, Motion,
             ShapeSquare, ShapeCircle, ShapeTriangle, FillTint, FillHatch, FillDots, FillNone, RouteFree, RouteOrthogonal, Route45,
             WallThick, WallMedium, WallThin,
             Option, Value, Values, Name, LabelShow, PortLabels, Formula, Parameters, Code, Data, Legend, Visibility, Grid, AxisTicks, Smooth, PointsShow,

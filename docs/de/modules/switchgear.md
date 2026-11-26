@@ -29,8 +29,10 @@ alles selbst und hängt von keinem anderen Modul ab (die Schaltzeichen sind eige
   ist auf der Schiene zentriert; sein Abstand ist die halbe Schienenhöhe, eine skalierte Verteilung behält ihr Raster).
   Geräte und Klemmen haben `Mount`-Anker an der linken und rechten Kante auf ihrer Mittellinie: Sie rasten im Raster der
   Schiene und nebeneinander ein.
-- **Anschlüsse:** Jeder Anschlusspunkt ist ein `Port`-Anker mit Medium: Schraubklemmen `electric` (Verbinder: Ader
-  `sw.line.wire`), Busklemmen `data` (Verbinder: Buskabel `sw.line.cable.knx`), Raumgeräte `electric.installation`
+- **Anschlüsse:** Jeder Anschlusspunkt ist ein `Port`-Anker mit Medium: Schraubklemmen `electric` (Verbinder: die
+  Leitung des Elektromoduls, Eintrag `elec.wire.bk` – blau `elec.wire.bu` an `N…`-Anschlüssen und N-Klemmen, grün-gelb
+  `elec.wire.pe` an `PE`-Anschlüssen und PE-Klemmen; ohne Elektromodul die eigenen Adern des Verteilermoduls),
+  Busklemmen `data` (Verbinder: Buskabel `sw.line.cable.knx`), Raumgeräte `electric.installation`
   (Verbinder: Kabel `sw.line.cable`). Ader- und Kabelenden docken dort an und folgen dem Gerät; „+“ baut weiter.
   Anschlussnamen folgen den üblichen Klemmenbezeichnungen: Pole `1/2`, `3/4`, `5/6`, Neutralleiter `N1` (oben) / `N2`
   (unten), Spulen `A1/A2`, Wechsler `11/12/14`, Zeitrelais `15/16/18`, Überspannungsschutz `L1…L3`, `N`, `PE`, Bus
@@ -94,8 +96,22 @@ alles selbst und hängt von keinem anderen Modul ab (die Schaltzeichen sind eige
 | `sw.duct.slotted` | Verdrahtungskanal / Slotted cable duct | – (senkrecht, wenn höher als breit) |
 | `sw.label.strip` | Beschriftungsstreifen / Labelling strip | `content` Kennzeichen und Stromkreis / Kennzeichen / Stromkreis |
 | `sw.label.plate` | Bezeichnungsschild / Label plate | freier Text |
-| `sw.line.wire` | Ader / Wire (core) | `colour` (Kurzzeichen nach IEC 60757: BK, BN, GY, BU, GNYE, RD, DBU, WH, VT, OG), `section`, `ref` (Adernummer) |
-| `sw.line.cable` | Kabel / Cable | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to`, `iz` (Strombelastbarkeit, A) |
+| `sw.line.wire` | Ader / Wire (core) – bleibt für bestehende Folien; neue Adern sind `elec.wire` des Elektromoduls | `colour` (Kurzzeichen nach IEC 60757: BK, BN, GY, BU, GNYE, RD, DBU, WH, VT, OG), `section`, `ref` (Adernummer), `hops` |
+| `sw.line.cable` | Kabel / Cable | `cableType` NYM-J, NYY-J, H07V-K, H05VV-F, J-Y(ST)Y, Cat, `cores`, `section`, `ref`, `length` (m), `from`, `to`, `iz` (Strombelastbarkeit, A), `hops` |
+
+**Ein Leitungstyp (26.11.2026).** Die Adern im Schaltschrank sind die Leitungen des Elektromoduls (`elec.wire` mit
+Aderfarbe, Querschnitt, der allgemeinen Bezeichnung als Adernummer, Brücken an Kreuzungen, Verbindungspunkten und „Als
+Brücke (nicht verbunden)“). Die vier Ader-Einträge dieses Moduls (`sw.line.wire`, `.bn`, `.bu`, `.pe`) treten zugunsten
+der Elektro-Einträge „Ader schwarz (Schaltschrank)“, „Ader braun (L)“, „Ader blau (N)“, „Ader grün-gelb (PE)“ zurück,
+solange das Elektromodul registriert ist (`LibraryItem.Alternative`, wie bei den Raumgeräten); der Typ `sw.line.wire`
+bleibt registriert, damit bestehende Folien weiter laden und in die Berichte eingehen, und er springt jetzt ebenfalls
+mit Brücken an Kreuzungen und zeichnet Verbindungspunkte wie die Elektro-Leitung. Module verweisen nicht aufeinander:
+Das Verteilermodul kennt die Elektro-Leitung an ihrer Id und ihren Parametern (`colour`, `section`, `ref`). Berichte,
+Einspeisebaum, Stromkreiswerte und der Werte-Anschluss des Umrichters folgen beiden Leitungstypen; der Klemmenplan
+nennt Farbe und Querschnitt einer Elektro-Leitung nur, wenn sie gesetzt sind. Das Kabel (`sw.line.cable`, auch das
+KNX-Buskabel) ist etwas anderes – ein ummanteltes mehradriges Kabel mit Kennzeichen, Typ, Adern × Querschnitt und Länge
+für die Kabelliste, keine einzelne Ader und nicht die Leitungsführung `elec.house.cable` im Installationsplan – und
+bleibt; auch es springt an Kreuzungen (`hops`, „Brücken an Kreuzungen an/aus“).
 | `sw.house.socket` | Steckdose (Raum/Stromkreis) / Socket outlet | `gangs` 1–3, `room`, `feed`, `ref`, `phase` |
 | `sw.house.switch` | Lichtschalter (Raum/Stromkreis) / Light switch | `kind` Aus-, Wechsel-, Kreuzschalter, Taster, Dimmer, `room`, `feed`, `ref`, `phase` |
 | `sw.house.light` | Leuchtenauslass (Raum/Stromkreis) / Light outlet | `kind` Decke/Wand, `room`, `feed`, `ref`, `phase` |
@@ -111,7 +127,8 @@ Netzteile & Busgeräte; Antriebe & Automatisierung; Reihenklemmen; Schienen, Kan
 Installationsgeräte in den Räumen), z. B. „Leitungsschutzschalter B16, 1-polig“, „FI-Schutzschalter 40 A 30 mA,
 4-polig“, „Motorschutzschalter 4 A“, „NH00-Sicherungslasttrenner 63 A“, „Frequenzumrichter 0,75 kW, 3~“,
 „SPS-Digitaleingabe, 8 Kanäle“, „Phasenschiene 3-phasig (12 TE)“, „Abdeckstreifen (6 TE)“, „KNX-Schaltaktor, 4-fach“,
-„Kabel NYM-J 5×2,5“.
+„Kabel NYM-J 5×2,5“. Ist das Elektromodul registriert, treten die vier Ader-Einträge und die acht Raumgeräte in
+Galerien und Suche zugunsten der maßgeblichen Einträge des Elektromoduls und der Gebäudetechnik zurück.
 
 ## Aktionen
 

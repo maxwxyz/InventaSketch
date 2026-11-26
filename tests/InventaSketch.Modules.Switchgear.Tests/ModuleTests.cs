@@ -148,7 +148,8 @@ namespace InventaSketch.Modules.Switchgear.Tests
             Assert.Equal(new[] { "1", "2" }, ports.Select(p => p.Id).OrderBy(x => x));
             Assert.True(ports.First(p => p.Id == "1").P.Y < ports.First(p => p.Id == "2").P.Y);
             Assert.All(ports, p => Assert.Equal(PortMedia.Electric, type.Connection(mcb, p)!.Medium));
-            Assert.Equal("sw.line.wire", type.Connection(mcb, ports[0])!.Connector);
+            // One wire type: the screw terminals connect with the electrical module's core items (black by default).
+            Assert.Equal("elec.wire.bk", type.Connection(mcb, ports[0])!.Connector);
 
             var knx = Fx.Item("sw.bus.actuator");
             var bus = Reg.Type(knx.Type)!.Anchors(knx, Fx.Ctx(Fx.Doc(knx))).First(a => a.Id == "bus");

@@ -427,6 +427,16 @@ UX-Runde (2026-11-20, nach Rückmeldung des Maintainers):
   (`Crossings.Connect`): Verbindungspunkte, und Verbindungsexporte zählen es. Einheiten rendern mit den anderen Einheiten in
   der Stapelreihenfolge der Folie (`SketchUnits.WithContext(own, others, z)`). Geprüft in PowerPoint am 21.11.2026: die obere
   Leitung springt, Verbinden ergibt drei Leitungen mit angedockten Enden, Rückgängig stellt her.
+  **Abzweig ⇄ Brücke (26.11.2026):** Die ausgewählte Linie zeigt außerdem an jedem Abzweig, an dem sie beteiligt ist (ihr
+  eigenes Ende an einer anderen Linie angedockt oder fremde Enden an ihr), ein Brücken-Symbol (ein Strich, der über einen
+  anderen springt; Tooltip „Hier Brücke (nicht verbunden)“); ein Klick macht aus dem Abzweig wieder eine Kreuzung mit
+  Brücke (`Crossings.Disconnect`: zwei Enden, die von gegenüberliegenden Seiten kommen, werden zu einer Linie verbunden,
+  ein einzelner Abzweig wird 3 mm über die andere Linie hinaus verlängert), ein Rückgängig-Schritt, über alle Einheiten
+  zurückgeschrieben (`CommitAcrossUnits`). Eine Leitung, deren eigenes Ende an einem Abzweig sitzt, und ein
+  Verbindungspunkt (`elec.junction`, er wird dabei entfernt) bieten „Als Brücke (nicht verbunden)“ auch in der Leiste an
+  (Typaktion `elec.bridge`). Bei zwei ausgewählten, sich kreuzenden Leitungen oder Rohren bietet die
+  Mehrfachauswahl-Leiste „Verbinden (Abzweig)“ (`Crossings.ConnectBetween`), bei Linien an einem gemeinsamen Abzweig
+  „Als Brücke (nicht verbunden)“. In PowerPoint noch nicht geprüft.
 - **Bau-Griffe für Baugruppen (Getriebe, Antriebsstränge, E-Antriebe):** Ein ausgewähltes Zahnrad, Hohlrad, eine Welle,
   E-Maschine oder ein Verbrennungsmotor zeigt an jedem freien Andockpunkt ein blaues „+“ (`Building.Ports`): die Seiten
   eines Zahnrads (alle vier in Stirnansicht, oben und unten, wo die Achse in der Zeichenebene liegt,
