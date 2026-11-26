@@ -51,7 +51,7 @@ namespace InventaSketch.Modules.Robotics
             new Relation("robot.grip.friction", T("Required gripping force of a friction grip", "Erforderliche Greifkraft beim Reibschluss"),
                 "{required} = {held}·(g + {acc})·{safety}/{mu}", "required", "held", "acc", "safety", "mu")
             {
-                Validity = T("force-closed grip by friction, workpiece hanging between the jaws, acceleration along the weight", "kraftschlüssiges Greifen durch Reibung, Werkstück hängt zwischen den Backen, Beschleunigung in Richtung der Gewichtskraft"),
+                Source = "S44", Validity = T("force-closed grip by friction, workpiece hanging between the jaws, acceleration along the weight", "kraftschlüssiges Greifen durch Reibung, Werkstück hängt zwischen den Backen, Beschleunigung in Richtung der Gewichtskraft"),
             }
                 .Solve("required", "{held}·(g + {acc})·{safety}/{mu}", v => v("held") * (RoboValues.G + v("acc")) * v("safety") / v("mu"))
                 .Solve("held", "{required}·{mu}/((g + {acc})·{safety})", v => v("required") * v("mu") / ((RoboValues.G + v("acc")) * v("safety")));
@@ -60,7 +60,7 @@ namespace InventaSketch.Modules.Robotics
             new Relation("robot.vacuum.holding", T("Holding force of the suction cups", "Haltekraft der Saugnäpfe"),
                 "{holding} = {vacuum}·{cups}·π·{cupDia}²/4", "holding", "vacuum", "cups", "cupDia")
             {
-                Validity = T("theoretical force from the pressure difference over the cup area (no seal losses)", "theoretische Kraft aus der Druckdifferenz über der Saugfläche (ohne Dichtverluste)"),
+                Source = "S44", Validity = T("theoretical force from the pressure difference over the cup area (no seal losses)", "theoretische Kraft aus der Druckdifferenz über der Saugfläche (ohne Dichtverluste)"),
             }
                 .Solve("holding", "{vacuum}·{cups}·π·{cupDia}²/4", v => v("vacuum") * v("cups") * Math.PI * v("cupDia") * v("cupDia") / 4)
                 .Solve("vacuum", "4·{holding}/({cups}·π·{cupDia}²)", v => 4 * v("holding") / (v("cups") * Math.PI * v("cupDia") * v("cupDia")))
@@ -70,7 +70,7 @@ namespace InventaSketch.Modules.Robotics
             new Relation("robot.vacuum.required", T("Required holding force of a vacuum grip", "Erforderliche Haltekraft beim Vakuumgreifen"),
                 "{required} = {held}·(g + {acc})·{safety}", "required", "held", "acc", "safety")
             {
-                Validity = T("load lifted perpendicular to the suction faces, acceleration along the weight", "Last senkrecht zur Saugfläche angehoben, Beschleunigung in Richtung der Gewichtskraft"),
+                Source = "S44", Validity = T("load lifted perpendicular to the suction faces, acceleration along the weight", "Last senkrecht zur Saugfläche angehoben, Beschleunigung in Richtung der Gewichtskraft"),
             }
                 .Solve("required", "{held}·(g + {acc})·{safety}", v => v("held") * (RoboValues.G + v("acc")) * v("safety"))
                 .Solve("held", "{required}/((g + {acc})·{safety})", v => v("required") / ((RoboValues.G + v("acc")) * v("safety")));

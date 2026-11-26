@@ -302,12 +302,12 @@ namespace InventaSketch.Modules.Robotics
             var validity = T("angles clockwise on screen from the x axis; position relative to joint 1, z up", "Winkel im Uhrzeigersinn ab der x-Achse; Lage bezogen auf Gelenk 1, z nach oben");
             return new[]
             {
-                new Relation("robot.planar.fk.x", T("Forward kinematics: flange x", "Vorwärtskinematik: Flansch x"), "{x} = " + ex, new[] { "x" }.Concat(keys).ToArray()) { Validity = validity }
+                new Relation("robot.planar.fk.x", T("Forward kinematics: flange x", "Vorwärtskinematik: Flansch x"), "{x} = " + ex, new[] { "x" }.Concat(keys).ToArray()) { Source = "S44", Validity = validity }
                     .Solve("x", ex, v => Enumerable.Range(1, n).Sum(i => v("L" + N(i)) * Math.Cos(Cum(v, i)))),
-                new Relation("robot.planar.fk.z", T("Forward kinematics: flange z", "Vorwärtskinematik: Flansch z"), "{z} = " + ez, new[] { "z" }.Concat(keys).ToArray()) { Validity = validity }
+                new Relation("robot.planar.fk.z", T("Forward kinematics: flange z", "Vorwärtskinematik: Flansch z"), "{z} = " + ez, new[] { "z" }.Concat(keys).ToArray()) { Source = "S44", Validity = validity }
                     .Solve("z", ez, v => -Enumerable.Range(1, n).Sum(i => v("L" + N(i)) * Math.Sin(Cum(v, i)))),
                 new Relation("robot.planar.fk.phi", T("Forward kinematics: direction of the last link", "Vorwärtskinematik: Richtung des letzten Glieds"), "{phi} = " + ephi,
-                    new[] { "phi" }.Concat(Enumerable.Range(1, n).Select(i => "th" + N(i))).ToArray()) { Validity = validity }
+                    new[] { "phi" }.Concat(Enumerable.Range(1, n).Select(i => "th" + N(i))).ToArray()) { Source = "S44", Validity = validity }
                     .Solve("phi", ephi, v => Cum(v, n)),
             }.Concat(RoboValues.ArmRelations).ToList();
         }
@@ -366,7 +366,7 @@ namespace InventaSketch.Modules.Robotics
                         2 => (elbowUp ? "+" : "−") + "arccos((x_W² + z_W² − {L1}² − {L2}²)/(2·{L1}·{L2}))",
                         _ => "{tphi} − θ₁ − θ₂",
                     };
-                    list.Add(new Relation("robot.planar.ik." + key + (elbowUp ? ".up" : ".down"), name, "{" + key + "} = " + formula, new[] { key }.Concat(inputs).ToArray()) { Validity = validity }
+                    list.Add(new Relation("robot.planar.ik." + key + (elbowUp ? ".up" : ".down"), name, "{" + key + "} = " + formula, new[] { key }.Concat(inputs).ToArray()) { Source = "S44", Validity = validity }
                         .Solve(key, formula, v =>
                         {
                             var l = Enumerable.Range(1, n).Select(j => v("L" + N(j))).ToArray();

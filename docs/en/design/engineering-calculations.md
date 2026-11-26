@@ -616,6 +616,11 @@ in the document's check settings, because the binding limit is in a standard or 
 | `sw.rcd.type` | RCD, RCBO | a frequency converter below needs type F (single-phase) or B (three-phase) | hint | [S11] |
 | `arch.stair.steprule` | stair with an entered or linked storey or riser height | 2h + g outside 59 … 65 cm (step rule 2h + g ≈ 63 cm) | hint | [S42] |
 | `arch.ramp.slope` | ramp | *s* > 6 % (common limit for wheelchair ramps; national rules differ) | hint | – (national rules) |
+| `robot.moment` | robots | static load moment *M*_L = *m*_L·*g*·*d* > *M*_max | warning | [S1] |
+| `robot.ik.reach` | planar arms | the entered target has no inverse-kinematics solution | warning | [S44] |
+| `robot.grip.force` | parallel, three-finger gripper | *F*_req = *m*_W·(*g* + *a*)·*S*/*μ* > *F*_G | warning | [S44] |
+| `robot.vacuum.force` | vacuum gripper | *F*_req = *m*_W·(*g* + *a*)·*S* > *F*_th = Δ*p*·*n*·π·*d*²/4 | warning | [S44] |
+| `kin.cam.pressure` | cam with follower | *α*_max > 30° | hint | [S24] |
 | `optics.light.none` | detector, lens, arrow | the page has traced rays, none ends at the element | info | – (consistency) |
 | `optics.light.nosource` | detector | only rays without a light source arrive (power unknown) | info | – (consistency) |
 | `optics.light.estimate` | detector | power passed a schematic splitter or grating (equal shares assumed) | hint | – (assumption) |
@@ -1010,6 +1015,9 @@ current editions.
   2h + g ≈ 63 cm for stairs (bibliographic data only).
 - **[S43]** I. N. Bronstein, K. A. Semendjajew et al., *Taschenbuch der Mathematik* (Europa-Lehrmittel) – plane
   trigonometry: laws of sines and cosines, triangle area (bibliographic data only).
+- **[S44]** J. J. Craig, *Introduction to Robotics: Mechanics and Control* (Pearson); G. J. Monkman, S. Hesse,
+  R. Steinmann, H. Schunk, *Robot Grippers* (Wiley-VCH) – forward and inverse kinematics of planar arms, gripping and
+  holding forces (bibliographic data only).
 
 The existing code relations reused here are: `Linkages.Grubler` and `Linkage.Dof` (Kinematics, Core),
 `GearTrain.Speeds` and `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Process) and

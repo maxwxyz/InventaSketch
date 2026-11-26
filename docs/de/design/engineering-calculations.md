@@ -636,6 +636,11 @@ Datenblatt steht, das wir nicht übernehmen.
 | `sw.rcd.type` | FI, FI/LS | ein Frequenzumrichter darunter braucht Typ F (einphasig) oder B (dreiphasig) | Hinweis | [S11] |
 | `arch.stair.steprule` | Treppe mit eingegebener oder verknüpfter Geschoss- oder Steigungshöhe | 2s + a außerhalb 59 … 65 cm (Schrittmaßregel 2s + a ≈ 63 cm) | Hinweis | [S42] |
 | `arch.ramp.slope` | Rampe | *s* > 6 % (übliche Grenze für Rollstuhlrampen; nationale Regeln unterscheiden sich) | Hinweis | – (nationale Regeln) |
+| `robot.moment` | Roboter | statisches Lastmoment *M*_L = *m*_L·*g*·*d* > *M*_max | Warnung | [S1] |
+| `robot.ik.reach` | ebene Arme | das eingegebene Ziel hat keine Lösung der Rückwärtskinematik | Warnung | [S44] |
+| `robot.grip.force` | Parallel-, Dreifingergreifer | *F*_erf = *m*_W·(*g* + *a*)·*S*/*μ* > *F*_G | Warnung | [S44] |
+| `robot.vacuum.force` | Vakuumgreifer | *F*_erf = *m*_W·(*g* + *a*)·*S* > *F*_th = Δ*p*·*n*·π·*d*²/4 | Warnung | [S44] |
+| `kin.cam.pressure` | Kurvenscheibe mit Stößel | *α*_max > 30° | Hinweis | [S24] |
 | `optics.light.none` | Detektor, Linse, Pfeil | die Seite hat verfolgte Strahlen, keiner endet am Element | Info | – (Konsistenz) |
 | `optics.light.nosource` | Detektor | nur Strahlen ohne Lichtquelle kommen an (Leistung unbekannt) | Info | – (Konsistenz) |
 | `optics.light.estimate` | Detektor | Leistung lief über schematischen Strahlteiler oder Gitter (gleiche Anteile angenommen) | Hinweis | – (Annahme) |
@@ -1046,6 +1051,9 @@ ihrer jeweils aktuellen Auflage gemeint.
   Schrittmaßregel 2s + a ≈ 63 cm für Treppen (nur bibliografische Angaben).
 - **[S43]** I. N. Bronstein, K. A. Semendjajew u. a., *Taschenbuch der Mathematik* (Europa-Lehrmittel) – ebene
   Trigonometrie: Sinus- und Kosinussatz, Dreiecksfläche (nur bibliografische Angaben).
+- **[S44]** J. J. Craig, *Introduction to Robotics: Mechanics and Control* (Pearson); G. J. Monkman, S. Hesse,
+  R. Steinmann, H. Schunk, *Robot Grippers* (Wiley-VCH) – Vorwärts- und Rückwärtskinematik ebener Arme, Greif- und
+  Haltekräfte (nur bibliografische Angaben).
 
 Vorhandene Code-Beziehungen, die hier wiederverwendet werden: `Linkages.Grubler` und `Linkage.Dof` (Kinematik, Core),
 `GearTrain.Speeds` und `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Verfahrenstechnik) und
