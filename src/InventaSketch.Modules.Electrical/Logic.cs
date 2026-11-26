@@ -46,12 +46,35 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(30, 20, (p, o) => OpAmp(p, false)), Views.Ansi(30, 20, (p, o) => OpAmp(p, true)))
             { Pins = Fixed(new Pin("-", -0.5, -0.25), new Pin("+", -0.5, 0.25), new Pin("out", 0.5, 0)), RefPrefix = "U" };
 
-            yield return new ElecType("elec.block.ecu", T("Control unit (ECU) block", "Steuergerät (ECU) Block"), Cat,
+            // Three-terminal voltage regulator (78xx/LM317 style block). In a circuit it is a multi-pin part (terminal of
+            // unknown current); its own relation links the input/output voltages, the output current and the power loss.
+            yield return new ElecType("elec.regulator", T("Voltage regulator", "Spannungsregler"), Cat,
+                new[] { "voltage regulator", "regulator", "ldo", "linear regulator", "78xx", "7805", "lm317", "spannungsregler", "festspannungsregler", "linearregler", "spannungsstabilisierung" },
+                Views.Symbol(20, 15, (p, o) => Regulator(p)))
+            {
+                Pins = Fixed(new Pin("IN", -0.5, 0), new Pin("OUT", 0.5, 0), new Pin("GND", 0, 0.5)), RefPrefix = "U",
+                Params = ElecValues.RegulatorParams, Variables = ElecValues.RegulatorVariables, Relations = ElecValues.Regulator,
+                // A voltage in the value text ("5 V", "LM7805 5 V") is the output voltage; a part number alone gives nothing.
+                Marking = ElecValues.ByKind((Quantities.Voltage, "Uout")),
+            };
+
+            yield return new ElecType("elec.block.ecu",T("Control unit (ECU) block", "Steuergerät (ECU) Block"), Cat,
                 new[] { "ecu", "control unit", "steuergerät", "controller", "ic", "chip", "microcontroller", "mikrocontroller", "block", "module", "baustein" },
                 Views.Block(30, 20, Ecu))
             {
                 Pins = EcuPins, Params = new[] { Label, PinsLeft, PinsRight }, Uniform = false, RefPrefix = "A",
             };
+        }
+
+        private static void Regulator(Pen p)
+        {
+            p.Line(-10, 0, -6, 0, null, "lead");
+            p.Line(6, 0, 10, 0, null, "lead");
+            p.Line(0, 4.5, 0, 7.5, null, "lead");
+            p.Rect(-6, -4.5, 6, 4.5, null, "body");
+            p.Text(-5.2, -1.6, "IN", 2, TextAnchor.Start, false, "pin");
+            p.Text(5.2, -1.6, "OUT", 2, TextAnchor.End, false, "pin");
+            p.Text(0, 2.9, "GND", 2, TextAnchor.Middle, false, "pin");
         }
 
         // ---------------------------------------------------------------- gates

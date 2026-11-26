@@ -14,6 +14,9 @@ namespace InventaSketch.Modules.Electrical
         private static readonly ParamDef Core = Choice("core", T("Core", "Kern"), "none",
             ("none", "Air (none)", "Luft (ohne)"), ("iron", "Iron core", "Eisenkern"), ("ferrite", "Ferrite core", "Ferritkern"));
 
+        private static readonly ParamDef Coefficient = Choice("coefficient", T("Temperature coefficient", "Temperaturkoeffizient"), "ntc",
+            ("ntc", "NTC (resistance falls when hot)", "Heißleiter (NTC)"), ("ptc", "PTC (resistance rises when hot)", "Kaltleiter (PTC)"));
+
         public static IEnumerable<ElecType> Types()
         {
             yield return new ElecType("elec.resistor", T("Resistor", "Widerstand"), Cat,
@@ -23,6 +26,43 @@ namespace InventaSketch.Modules.Electrical
                 Pins = Fixed(TwoH().ToArray()), RefPrefix = "R", Params = ElecValues.ResistorParams, Variables = ElecValues.ResistorVariables, Relations = ElecValues.Ohm,
                 Net = ElecValues.Two("1", "2", ElecValues.Resistive), Checks = new[] { ElecValues.ResistorPower, ElecValues.NotReducible },
             };
+
+            // Resistors with an inherent variability (drawn independently): the oblique stroke with a foot marks a
+            // non-linear dependence on temperature (thermistor) or voltage (varistor); the arrows a light-dependent one.
+            yield return new ElecType("elec.resistor.thermistor", T("Thermistor (NTC/PTC)", "Thermistor (Heißleiter/Kaltleiter)"), Cat,
+                new[] { "thermistor", "ntc", "ptc", "heißleiter", "kaltleiter", "temperature", "temperatur", "temperaturabhängiger widerstand", "widerstand", "resistor" },
+                Views.Symbol(20, 10, (p, o) => { ResistorIec(p, o); Variability(p, CoefficientMark(o)); }),
+                Views.Ansi(20, 10, (p, o) => { ResistorAnsi(p, o); Variability(p, CoefficientMark(o)); }))
+            {
+                Pins = Fixed(TwoH().ToArray()), RefPrefix = "R", Params = new[] { Coefficient }.Concat(ElecValues.ResistorParams).ToList(),
+                Variables = ElecValues.ResistorVariables, Relations = ElecValues.Ohm,
+                Net = ElecValues.Two("1", "2", ElecValues.Resistive), Checks = new[] { ElecValues.ResistorPower, ElecValues.NotReducible },
+                Extra = o => Choice(o, "elec.thermistor.kind", T("Temperature coefficient", "Temperaturkoeffizient"), Coefficient),
+            };
+
+            yield return new ElecType("elec.resistor.ldr", T("Photoresistor (LDR)", "Fotowiderstand (LDR)"), Cat,
+                new[] { "ldr", "photoresistor", "light dependent resistor", "photocell", "fotowiderstand", "lichtabhängiger widerstand", "licht", "widerstand", "resistor" },
+                Views.Symbol(20, 12, (p, o) => { ResistorIec(p, o); LightArrows(p); }),
+                Views.Ansi(20, 12, (p, o) => { ResistorAnsi(p, o); LightArrows(p); }))
+            {
+                Pins = Fixed(TwoH().ToArray()), RefPrefix = "R", Params = ElecValues.ResistorParams,
+                Variables = ElecValues.ResistorVariables, Relations = ElecValues.Ohm,
+                Net = ElecValues.Two("1", "2", ElecValues.Resistive), Checks = new[] { ElecValues.ResistorPower, ElecValues.NotReducible },
+            };
+
+            // The varistor's value text is its rated voltage ("275 V"), not a resistance, and it does not conduct in normal
+            // operation: no R variable, open in a circuit.
+            yield return new ElecType("elec.resistor.varistor", T("Varistor (VDR)", "Varistor (VDR)"), Cat,
+                new[] { "varistor", "vdr", "mov", "voltage dependent resistor", "surge", "overvoltage", "spannungsabhängiger widerstand", "überspannung", "überspannungsschutz", "widerstand" },
+                Views.Symbol(20, 10, (p, o) => { ResistorIec(p, o); Variability(p, "U"); }),
+                Views.Ansi(20, 10, (p, o) => { ResistorAnsi(p, o); Variability(p, "U"); }))
+            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "RV", Net = _ => NetSpec.Open("1", "2") };
+
+            yield return new ElecType("elec.crystal", T("Quartz crystal", "Schwingquarz"), Cat,
+                new[] { "crystal", "quartz", "xtal", "resonator", "oscillator", "clock", "quarz", "schwingquarz", "taktgeber", "takt" },
+                Views.Symbol(20, 10, Crystal))
+            // A crystal blocks direct current.
+            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "Y", Net = _ => NetSpec.Open("1", "2") };
 
             yield return new ElecType("elec.potentiometer", T("Potentiometer", "Potentiometer"), Cat,
                 new[] { "potentiometer", "poti", "trimmer", "variable resistor", "einstellbarer widerstand", "schleifer", "wiper" },
@@ -86,6 +126,31 @@ namespace InventaSketch.Modules.Electrical
             p.Line(-10, 0, -6, 0, null, "lead");
             p.Line(6, 0, 10, 0, null, "lead");
             p.PolyD(Frag.Zigzag(-6, 6, 0, 2.5, 4), S.Sym, false, "body");
+        }
+
+        private static string CoefficientMark(SketchObject o) => o.Str("coefficient", "ntc") == "ptc" ? "+ϑ" : "−ϑ";
+
+        /// <summary>Oblique stroke with a foot across the resistor body and the quantity it depends on (ϑ, U) top right.</summary>
+        private static void Variability(Pen p, string mark)
+        {
+            p.Poly(S.Sym, false, "variability", -7.5, 3.6, -5, 3.6, 5, -3.6);
+            p.Text(8.2, -3.2, mark, 2.4, TextAnchor.Middle, false, "quantity");
+        }
+
+        /// <summary>Two light rays falling onto the body (photoresistor).</summary>
+        private static void LightArrows(Pen p)
+        {
+            p.Arrow(-5, -5.7, -2.4, -2.9, 1.2, 0.5, null, "ray");
+            p.Arrow(-1.8, -5.7, 0.8, -2.9, 1.2, 0.5, null, "ray");
+        }
+
+        private static void Crystal(Pen p, SketchObject o)
+        {
+            p.Line(-10, 0, -3, 0, null, "lead");
+            p.Line(3, 0, 10, 0, null, "lead");
+            p.Line(-3, -3.5, -3, 3.5, S.Sym, "plate");
+            p.Line(3, -3.5, 3, 3.5, S.Sym, "plate");
+            p.Rect(-1.7, -4.2, 1.7, 4.2, null, "body");
         }
 
         private static void Pot(Pen p, bool ansi)

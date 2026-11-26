@@ -19,6 +19,19 @@ namespace InventaSketch.Modules.Electrical
         private static readonly ParamDef Supply = Choice("supply", T("Supply", "Stromart"), "none",
             ("none", "Unspecified", "Ohne Angabe"), ("dc", "DC (=)", "Gleichstrom (=)"), ("ac", "AC (~)", "Wechselstrom (~)"), ("ac3", "Three-phase (3~)", "Drehstrom (3~)"));
         private static readonly ParamDef Label = Text("label", T("Label", "Beschriftung"), "");
+        private static readonly ParamDef MeterQuantity = Choice("quantity", T("Measured quantity", "Messgröße"), "v",
+            ("v", "Voltmeter (V)", "Spannungsmesser (V)"), ("a", "Ammeter (A)", "Strommesser (A)"),
+            ("w", "Wattmeter (W)", "Leistungsmesser (W)"), ("ohm", "Ohmmeter (Ω)", "Widerstandsmesser (Ω)"));
+
+        /// <summary>The letter in the instrument circle (unit symbol of the measured quantity).</summary>
+        private static string MeterLetter(string quantity) => quantity switch { "a" => "A", "w" => "W", "ohm" => "Ω", _ => "V" };
+
+        /// <summary>Option pictogram: the instrument circle with its letter (about 6 mm).</summary>
+        private static IReadOnlyList<Primitive> MeterPreview(string quantity) => new Primitive[]
+        {
+            Prim.Circle(0, 0, 2.8, S.Sym),
+            Prim.Text(0, 0, MeterLetter(quantity), new TextStyle { Size = 3, Anchor = TextAnchor.Middle, Baseline = TextBaseline.Middle }),
+        };
 
         /// <summary>A source's value text as a marking: "5 V" (voltage source, battery), "10 mA" (current source), "12 V 2 A".</summary>
         private static readonly Func<SketchObject, IEnumerable<MarkingValue>> SourceMarking =
@@ -80,10 +93,32 @@ namespace InventaSketch.Modules.Electrical
                 Views.Symbol(20, 10, Sensor))
             { Pins = Fixed(new Pin("out", 0.5, 0), new Pin("gnd", 0, 0.5)), Params = new[] { Label }, RefPrefix = "B" };
 
+            // Generic actuator block (input and ground); the two-terminal solenoid is elec.solenoid.
             yield return new ElecType("elec.actuator", T("Actuator", "Aktor"), Cat,
-                new[] { "actuator", "solenoid", "valve", "aktor", "aktuator", "stellglied", "magnet", "hubmagnet", "ventil" },
+                new[] { "actuator", "valve", "aktor", "aktuator", "stellglied", "ventil", "stellantrieb" },
                 Views.Symbol(20, 10, Actuator))
             { Pins = Fixed(new Pin("in", -0.5, 0), new Pin("gnd", 0, 0.5)), Params = new[] { Label }, RefPrefix = "Y" };
+
+            yield return new ElecType("elec.solenoid", T("Solenoid (actuating coil)", "Hubmagnet (Betätigungsspule)"), Cat,
+                new[] { "solenoid", "actuating coil", "plunger", "electromagnet", "magnet", "hubmagnet", "betätigungsspule", "elektromagnet", "magnetspule", "zugmagnet" },
+                Views.Symbol(20, 10, Solenoid))
+            // Like the relay coil: keeps the circuit reducible, no values of its own.
+            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "Y", Net = ElecValues.Two("1", "2", ElecValues.Opaque) };
+
+            yield return new ElecType("elec.meter", T("Measuring instrument", "Messgerät"), Cat,
+                new[] { "meter", "measuring instrument", "voltmeter", "ammeter", "wattmeter", "ohmmeter", "multimeter", "messgerät", "spannungsmesser", "strommesser", "leistungsmesser", "widerstandsmesser", "messinstrument" },
+                Views.Symbol(20, 10, Meter))
+            {
+                Pins = Fixed(TwoH().ToArray()), Params = new[] { MeterQuantity }, RefPrefix = "P",
+                // Ideal instruments: a voltmeter or ohmmeter draws no current, an ammeter has no voltage drop.
+                Net = o => o.Str("quantity", "v") switch
+                {
+                    "a" => NetSpec.Short("1", "2"),
+                    "w" => NetSpec.Branch(ElecValues.Opaque),
+                    _ => NetSpec.Open("1", "2"),
+                },
+                Extra = o => Choice(o, "elec.meter.quantity", T("Measured quantity", "Messgröße"), MeterQuantity, MeterPreview),
+            };
 
             yield return new ElecType("elec.speaker", T("Loudspeaker", "Lautsprecher"), Cat,
                 new[] { "speaker", "loudspeaker", "buzzer", "lautsprecher", "summer", "audio" },
@@ -232,6 +267,24 @@ namespace InventaSketch.Modules.Electrical
                 p.Arc(0, 1.8, 3, 3, 180, 180, null, "gauge");
                 p.Line(0, 1.8, 1.9, -0.6, null, "needle");
             }
+        }
+
+        private static void Meter(Pen p, SketchObject o)
+        {
+            p.Line(-10, 0, -4.5, 0, null, "lead");
+            p.Line(4.5, 0, 10, 0, null, "lead");
+            p.Circle(0, 0, 4.5, null, "body");
+            p.Text(0, 0, MeterLetter(o.Str("quantity", "v")), 4.5, TextAnchor.Middle, false, "letter");
+        }
+
+        /// <summary>Coil with a plunger above it and the direction of its stroke.</summary>
+        private static void Solenoid(Pen p, SketchObject o)
+        {
+            p.Line(-10, 0, -6, 0, null, "lead");
+            p.Line(6, 0, 10, 0, null, "lead");
+            p.PolyD(Frag.HumpsH(-6, 6, 0, 4), S.Sym, false, "coil");
+            p.Rect(-4.5, -3.8, 3.5, -2.4, null, "plunger");
+            p.Arrow(3.5, -3.1, 9.6, -3.1, 1.6, 0.7, null, "stroke");
         }
 
         private static void Actuator(Pen p, SketchObject o)

@@ -331,6 +331,10 @@ namespace InventaSketch.Modules.Electrical
         public static IEnumerable<ContextAction> Choice(SketchObject o, string id, I18nText label, ParamDef def)
             => ActionChoices.FromParam(o, id, def, label, "param", null);
 
+        /// <summary>A choice parameter as a choice whose options show a small drawing of their value (<see cref="ContextAction.Preview"/>).</summary>
+        public static IEnumerable<ContextAction> Choice(SketchObject o, string id, I18nText label, ParamDef def, Func<string, IReadOnlyList<Primitive>> preview)
+            => Choice(o, id, label, def).Select(a => a with { Preview = preview(ActionChoices.ValueOf(a.Id) ?? "") });
+
         public static ContextAction Toggle(SketchObject o, string id, I18nText label, string key, bool def, string icon = IconIds.Toggle)
             => new(id, label, icon, x => x.WithParam(key, !x.Flag(key, def))) { IsActive = o.Flag(key, def), Group = "param" };
 
