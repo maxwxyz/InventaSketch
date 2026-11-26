@@ -13,6 +13,8 @@ namespace InventaSketch.Modules.Patent
         public const string Numeral = "patent.numeral";
         public const string Sheet = "patent.sheet";
         public const string PageNumber = "patent.pagenumber";
+        public const string AssemblyAxis = "patent.exploded.axis";
+        public const string Shading = "patent.shading";
         public const string Category = "patent.drawing";
     }
 
@@ -90,6 +92,37 @@ namespace InventaSketch.Modules.Patent
             foreach (var a in LeaderType.LeaderActions(o, "curved")) yield return a;
             yield return new ContextAction("patent.numeral.underline", new I18nText("Surface numeral (underlined)", "Flächen-Bezugszeichen (unterstrichen)"), IconIds.Toggle,
                 x => x.WithParam("underline", !x.Flag("underline", false))) { IsActive = o.Flag("underline", false) };
+            foreach (var a in SuffixActions(o)) yield return a;
+        }
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx)
+        {
+            foreach (var a in Actions(o, ctx.Lang)) yield return a;
+            yield return ExplodedViews.AxisAction(o, ctx, Owner);
+            foreach (var a in PartNumbering.Actions(o, ctx, Owner)) yield return a;
+        }
+
+        /// <summary>
+        /// "Variant ▸ 10 / 10a / 10b … / 10' / 10''": the variant suffix of the numeral (repeated or modified parts). The
+        /// reference list groups the variants of one number; a new variant gets the part name of its number. Offered for
+        /// numerals that are a number (with or without a suffix).
+        /// </summary>
+        public static IEnumerable<ContextAction> SuffixActions(SketchObject o)
+        {
+            var (number, current) = ReferenceNumerals.SplitSuffix(NumeralOf(o));
+            if (!Regex.IsMatch(number, @"^\d+$")) yield break;
+            var choice = new ActionChoice("patent.numeral.suffix", new I18nText("Variant", "Variante")) { LabelInBar = true };
+            foreach (var suffix in ReferenceNumerals.Suffixes)
+            {
+                var sfx = suffix;
+                var label = sfx.Length == 0 ? new I18nText(number + " (no variant)", number + " (keine Variante)") : new I18nText(number + sfx, number + sfx);
+                yield return ActionChoices.Option(choice, sfx.Length == 0 ? "none" : sfx, label, IconIds.Option, sfx == current,
+                    x => ReferenceNumerals.SetNumeral(x, ReferenceNumerals.WithSuffix(NumeralOf(x), sfx))) with
+                {
+                    Group = "numeral",
+                    ApplyInDocument = (d, x, _) => ReferenceNumerals.SetSuffix(d, x.Id, sfx),
+                };
+            }
         }
     }
 
@@ -115,6 +148,8 @@ namespace InventaSketch.Modules.Patent
                 Options = PatentProfiles.All.Select(p => new ParamOption(p.Id, p.Name)).ToList(),
             },
         };
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx) => PartNumbering.Actions(o, ctx, Owner);
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -161,6 +196,8 @@ namespace InventaSketch.Modules.Patent
             return PatentProfiles.Get(doc.Settings.Profile).FormatSheetNumber(idx + 1, doc.Pages.Count);
         }
 
+        public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx) => PartNumbering.Actions(o, ctx, Owner);
+
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
             => new Primitive[] { Prim.Text(0, 0, TextOf(o, ctx.Doc), new TextStyle { Size = o.Num("textSize", DefaultTextSize) }) with { Tag = "sheetnumber" } };
     }
@@ -168,11 +205,11 @@ namespace InventaSketch.Modules.Patent
     /// <summary>Figures module: reference numerals, sheet helper, sheet numbers, profiles, preflight and export.</summary>
     public sealed class PatentModule : IModule, IExportProvider
     {
-        private static readonly ObjectType[] AllTypes = { new NumeralType(), new SheetType(), new PageNumberType() };
+        private static readonly ObjectType[] AllTypes = { new NumeralType(), new SheetType(), new PageNumberType(), new AssemblyAxisType(), new ShadingType() };
 
         public string Id => "patent";
         public I18nText Name => new("Figures", "Abbildungen");
-        public string Version => "0.2.0";
+        public string Version => "0.3.0";
         public IEnumerable<ObjectType> Types => AllTypes;
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -194,6 +231,15 @@ namespace InventaSketch.Modules.Patent
             { Params = new Dictionary<string, ParamValue> { ["end"] = "arrow" } },
             new LibraryItem(PatentIds.Numeral + ".surface", PatentIds.Numeral, new I18nText("Underlined surface numeral", "Unterstrichenes Flächen-Bezugszeichen"), PatentIds.Category)
             { Params = new Dictionary<string, ParamValue> { ["underline"] = true } },
+            new LibraryItem(PatentIds.AssemblyAxis, PatentIds.AssemblyAxis, new I18nText("Assembly axis (exploded view)", "Montageachse (Explosionsdarstellung)"), PatentIds.Category),
+            new LibraryItem(PatentIds.Shading + ".cylinder", PatentIds.Shading, new I18nText("Surface shading (cylinder)", "Oberflächenschattierung (Zylinder)"), PatentIds.Category)
+            { Params = new Dictionary<string, ParamValue> { ["form"] = "cylinder" } },
+            new LibraryItem(PatentIds.Shading + ".cone", PatentIds.Shading, new I18nText("Surface shading (cone)", "Oberflächenschattierung (Kegel)"), PatentIds.Category)
+            { Params = new Dictionary<string, ParamValue> { ["form"] = "cone" } },
+            new LibraryItem(PatentIds.Shading + ".sphere", PatentIds.Shading, new I18nText("Surface shading (sphere)", "Oberflächenschattierung (Kugel)"), PatentIds.Category)
+            { Params = new Dictionary<string, ParamValue> { ["form"] = "sphere" } },
+            new LibraryItem(PatentIds.Shading + ".flat", PatentIds.Shading, new I18nText("Surface shading (flat face)", "Oberflächenschattierung (ebene Fläche)"), PatentIds.Category)
+            { Params = new Dictionary<string, ParamValue> { ["form"] = "flat" } },
             new LibraryItem(PatentIds.PageNumber, PatentIds.PageNumber, new I18nText("Sheet number", "Blattnummer"), PatentIds.Category),
             new LibraryItem(PatentIds.Sheet, PatentIds.Sheet, new I18nText("Drawing sheet frame (helper)", "Zeichnungsblatt-Rahmen (Hilfslinie)"), PatentIds.Category),
         };

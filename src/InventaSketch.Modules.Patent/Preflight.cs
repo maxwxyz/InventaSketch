@@ -42,10 +42,13 @@ namespace InventaSketch.Modules.Patent
             public PreflightOptions Options { get; }
             public List<Finding> Findings { get; } = new();
 
-            /// <summary>Adds a finding. Rules without a cited source for the profile's office do not apply to it.</summary>
+            /// <summary>
+            /// Adds a finding. Rules without a cited source for the profile's office do not apply to it; drafting aids
+            /// (rules without any source) apply to every profile.
+            /// </summary>
             public void Add(PreflightRule rule, Severity sev, string? objectId, string? pageId, I18nText message, I18nText? suggestion = null)
             {
-                if (rule.For(Profile.Office).Count == 0) return;
+                if (!rule.IsDraftingAid && rule.For(Profile.Office).Count == 0) return;
                 Findings.Add(new Finding(rule.Id, sev, objectId, pageId, message, suggestion, rule.SourceText(Profile.Office)));
             }
         }
@@ -75,10 +78,12 @@ namespace InventaSketch.Modules.Patent
                 CheckPage(c, page);
                 foreach (var po in objs) CheckObject(c, page, po);
                 CheckLeadCrossings(c, page, objs);
+                CheckNumeralTargets(c, page, objs);
                 CheckSheetNumber(c, page, objs);
             }
             CheckFigures(c, pages);
             CheckReferences(c);
+            CheckUnnumberedParts(c);
             if (options.IncludeManual) AddManual(c);
             return c.Findings;
         }
@@ -235,12 +240,6 @@ namespace InventaSketch.Modules.Patent
                 c.Add(PreflightRules.CentreLines, Severity.Warning, o.Id, page.Id,
                     new I18nText("Centre line present. USPTO drawings must not contain centre lines.", "Mittellinie vorhanden. USPTO-Zeichnungen dürfen keine Mittellinien enthalten."),
                     new I18nText("Remove centre lines or use a profile that allows them (EPO, PCT).", "Mittellinien entfernen oder ein Profil verwenden, das sie erlaubt (EPA, PCT)."));
-
-            // Lead line not attached.
-            if (ReferenceNumerals.IsNumeralType(o.Type) && !o.Flag("underline", false) && (o.Attach is null || o.Attach.Count == 0 || o.Attach[0] is null))
-                c.Add(PreflightRules.LeadDangling, Severity.Info, o.Id, page.Id,
-                    new I18nText($"Lead line of {ReferenceNumerals.NumeralOf(o)} is not attached to a part.", $"Bezugslinie von {ReferenceNumerals.NumeralOf(o)} ist mit keinem Teil verbunden."),
-                    new I18nText("Snap the line end onto the part so it follows when the part moves.", "Linienende auf das Teil einrasten, damit es beim Verschieben folgt."));
         }
 
         private static bool IsNumberingText(SketchObject o) => o.Type is PatentIds.PageNumber or "ann.figlabel" or "ann.flow.step";
@@ -378,6 +377,59 @@ namespace InventaSketch.Modules.Patent
             }
         }
 
+        // ------------------------------------------------------------------------------------------ numeral targets
+
+        /// <summary>
+        /// Lead lines of numerals: attached to an element that no longer exists, or loose and ending on no drawn element
+        /// ("points at nothing", warning); loose but ending on an element ("not attached", info).
+        /// </summary>
+        private static void CheckNumeralTargets(Ctx c, Page page, List<PageObject> objs)
+        {
+            foreach (var po in objs)
+            {
+                var o = po.Obj;
+                if (!ReferenceNumerals.IsNumeralType(o.Type) || o.Flag("underline", false)) continue;
+                var n = ReferenceNumerals.NumeralOf(o);
+                var a = o.Attach is { Count: > 0 } att ? att[0] : null;
+                if (a is not null && c.Doc.Get(a.ObjectId) is not null) continue;
+                var pts = c.Doc.ResolvePoints(o);
+                var onSomething = a is null && pts.Count > 0 && objs.Any(x => x.Obj.Id != o.Id && !ReferenceNumerals.IsNumeralType(x.Obj.Type) && x.Bounds is Rect b && b.Inflate(1).Contains(pts[0]));
+                if (onSomething)
+                    c.Add(PreflightRules.LeadDangling, Severity.Info, o.Id, page.Id,
+                        new I18nText($"Lead line of {n} is not attached to a part.", $"Bezugslinie von {n} ist mit keinem Teil verbunden."),
+                        new I18nText("Snap the line end onto the part so it follows when the part moves.", "Linienende auf das Teil einrasten, damit es beim Verschieben folgt."));
+                else
+                    c.Add(PreflightRules.LeadTarget, Severity.Warning, o.Id, page.Id,
+                        a is null
+                            ? new I18nText($"Numeral {n} points at nothing: its lead line ends on no element.", $"Bezugszeichen {n} zeigt ins Leere: seine Bezugslinie endet auf keinem Element.")
+                            : new I18nText($"Numeral {n} points at an element that no longer exists.", $"Bezugszeichen {n} zeigt auf ein Element, das es nicht mehr gibt."),
+                        new I18nText("Draw the lead line to the part it names, or delete the numeral.", "Bezugslinie bis zum bezeichneten Teil ziehen oder das Bezugszeichen löschen."));
+            }
+        }
+
+        /// <summary>Parts (parts-list elements) that no numeral points at and that carry no numeral themselves (drafting aid).</summary>
+        private static void CheckUnnumberedParts(Ctx c)
+        {
+            var numbered = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var (_, part, numeralId) in ReferenceNumerals.NumberedParts(c.Doc))
+            {
+                numbered.Add(part.Id);
+                // A numeral with an arrow names the whole assembly (group) it points at.
+                if (numeralId is not null && c.Doc.Get(numeralId) is { } nobj && nobj.Str("end", "none") == "arrow" && part.GroupId is not null)
+                    foreach (var m in c.Doc.Objects.Values.Where(x => x.GroupId == part.GroupId)) numbered.Add(m.Id);
+            }
+            foreach (var page in c.Doc.Pages)
+                foreach (var o in c.Doc.ObjectsOn(page))
+                {
+                    if (numbered.Contains(o.Id) || PatentExport.IsExcluded(c.Doc, o) || !PartsList.IsPart(c.Reg, o)) continue;
+                    var name = Exports.Label(c.Reg, o, Lang.En);
+                    var nameDe = Exports.Label(c.Reg, o, Lang.De);
+                    c.Add(PreflightRules.PartUnnumbered, Severity.Info, o.Id, page.Id,
+                        new I18nText($"Part \"{name}\" has no reference numeral.", $"Teil \"{nameDe}\" hat kein Bezugszeichen."),
+                        new I18nText("Add a numeral, or number all parts of the page at once (numeral menu: Number all parts).", "Bezugszeichen ergänzen oder alle Teile der Seite auf einmal nummerieren (Menü des Bezugszeichens: Alle Teile nummerieren)."));
+                }
+        }
+
         // ------------------------------------------------------------------------------------------ references
 
         private static void CheckReferences(Ctx c)
@@ -389,6 +441,7 @@ namespace InventaSketch.Modules.Patent
                     ReferenceIssueKind.SameNumeralDifferentLabels => (PreflightRules.RefConflict, Severity.Error),
                     ReferenceIssueKind.NumeralWithoutEntry => (PreflightRules.RefMissing, Severity.Error),
                     ReferenceIssueKind.LabelWithDifferentNumerals => (PreflightRules.RefLabel, Severity.Warning),
+                    ReferenceIssueKind.SameNumeralDifferentParts => (PreflightRules.RefDuplicate, Severity.Error),
                     _ => (PreflightRules.RefUnused, Severity.Warning),
                 };
                 var obj = issue.ObjectIds.FirstOrDefault();

@@ -12,8 +12,17 @@ namespace InventaSketch.Modules.Patent
     /// <summary>Numbering scheme: main parts Start, Start+Step, …; sub-parts parent+SubStep, … below the next main.</summary>
     public sealed record NumeralScheme(int Start = 10, int Step = 10, int SubStep = 1)
     {
+        /// <summary>10, 20, 30 … with sub-numerals 11, 12 … in between.</summary>
         public static readonly NumeralScheme Default = new();
+
+        /// <summary>1, 2, 3 … (no room for sub-numerals).</summary>
+        public static readonly NumeralScheme Consecutive = new(1, 1, 1);
     }
+
+    /// <summary>
+    /// A line of the grouped reference list: the variants of one numeral that name the same part ("10, 10a, 10' housing").
+    /// </summary>
+    public sealed record ReferenceGroup(string Base, IReadOnlyList<string> Numerals, string Label);
 
     /// <summary>A drawn reference numeral on a page.</summary>
     public sealed record NumeralUse(string Numeral, string ObjectId, string PageId, string TypeId, string? Label);
@@ -28,6 +37,8 @@ namespace InventaSketch.Modules.Patent
         NumeralWithoutEntry,
         /// <summary>Reference list entry never drawn.</summary>
         EntryUnused,
+        /// <summary>One numeral on parts of different kinds (same character for different parts, 37 CFR 1.84(p)(4)).</summary>
+        SameNumeralDifferentParts,
     }
 
     public sealed record ReferenceIssue(ReferenceIssueKind Kind, string? Numeral, string? Label, IReadOnlyList<string> ObjectIds, I18nText Message);
@@ -58,6 +69,63 @@ namespace InventaSketch.Modules.Patent
 
         /// <summary>Normalised key (enclosures removed) used for comparisons.</summary>
         public static string Key(string numeral) => NumeralType.StripEnclosure(numeral);
+
+        private static readonly Regex VariantPattern = new(@"^(\d+)([A-Za-z]?)(['’′″]*)$", RegexOptions.Compiled);
+
+        /// <summary>
+        /// Variant suffixes offered for a numeral: none, letters a–d and primes (10a, 10b, 10', 10''). Primes are written
+        /// as ASCII apostrophes so they compare equal however they were typed.
+        /// </summary>
+        public static readonly IReadOnlyList<string> Suffixes = new[] { "", "a", "b", "c", "d", "'", "''" };
+
+        /// <summary>
+        /// Splits a numeral into its number and its variant suffix ("10a" → ("10", "a"), "12'" → ("12", "'")). Numerals
+        /// that are not a number with an optional letter and primes are returned whole with an empty suffix.
+        /// </summary>
+        public static (string Base, string Suffix) SplitSuffix(string numeral)
+        {
+            var k = Key(numeral);
+            var m = VariantPattern.Match(k);
+            if (!m.Success) return (k, "");
+            var primes = new string('\'', m.Groups[3].Value.Sum(c => c == '″' ? 2 : 1));
+            return (m.Groups[1].Value, m.Groups[2].Value + primes);
+        }
+
+        /// <summary>The number a variant belongs to ("10a" → "10").</summary>
+        public static string BaseOf(string numeral) => SplitSuffix(numeral).Base;
+
+        /// <summary>The numeral <paramref name="numeral"/> with its variant suffix replaced ("10a", "b" → "10b").</summary>
+        public static string WithSuffix(string numeral, string suffix) => BaseOf(numeral) + suffix;
+
+        /// <summary>
+        /// Sets the variant suffix of a numeral object: the numeral (Ref, text and parameter), the part it points at when
+        /// that part carries the old numeral, and a reference list entry for the variant named like its base entry.
+        /// </summary>
+        public static SketchDocument SetSuffix(SketchDocument doc, string numeralObjectId, string suffix)
+        {
+            var o = doc.Get(numeralObjectId);
+            if (o is null || !IsNumeralType(o.Type)) return doc;
+            var old = Key(NumeralOf(o) ?? "");
+            var next = WithSuffix(old, suffix);
+            if (old.Length == 0 || next == old) return doc;
+            doc = Edits.Replace(doc, SetNumeral(o, next));
+            if (o.Attach is { Count: > 0 } att && att[0] is { } a && doc.Get(a.ObjectId) is { IsPointGeometry: false } part && part.Ref is not null && Key(part.Ref) == old)
+                doc = Edits.Replace(doc, part with { Ref = next });
+            if (!doc.References.Keys.Any(k => Key(k) == next))
+            {
+                var label = LabelOf(o) ?? doc.References.Values.Where(e => Key(e.Numeral) == old || Key(e.Numeral) == BaseOf(old)).Select(e => e.Label).FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
+                if (label is not null) doc = Edits.SetReference(doc, next, label);
+            }
+            return doc;
+        }
+
+        /// <summary>A numeral object showing <paramref name="numeral"/> (Ref, text if set, and the "numeral" parameter).</summary>
+        public static SketchObject SetNumeral(SketchObject o, string numeral)
+        {
+            var r = o with { Ref = numeral };
+            if (!string.IsNullOrEmpty(o.Text)) r = r with { Text = numeral };
+            return r.WithParam("numeral", numeral);
+        }
 
         /// <summary>All drawn numerals in page order and z-order.</summary>
         public static IReadOnlyList<NumeralUse> Uses(SketchDocument doc)
@@ -212,16 +280,33 @@ namespace InventaSketch.Modules.Patent
         public static IReadOnlyList<ReferenceEntry> List(SketchDocument doc)
             => doc.References.Values.OrderBy(e => Parse(Key(e.Numeral)).Number ?? int.MaxValue).ThenBy(e => e.Numeral, StringComparer.Ordinal).ToList();
 
-        /// <summary>Exports the reference sign list as plain text ("10 housing" per line) or CSV ("numeral,label").</summary>
+        /// <summary>
+        /// The reference list with variants grouped: entries of one number whose part names agree form one line
+        /// ("10, 10a, 10b housing"); variants with their own name stay separate lines below their number.
+        /// </summary>
+        public static IReadOnlyList<ReferenceGroup> Groups(SketchDocument doc)
+        {
+            var groups = new List<ReferenceGroup>();
+            foreach (var byBase in List(doc).GroupBy(e => BaseOf(e.Numeral)))
+                foreach (var byLabel in byBase.GroupBy(e => (e.Label ?? "").Trim(), StringComparer.OrdinalIgnoreCase))
+                    groups.Add(new ReferenceGroup(byBase.Key, byLabel.Select(e => e.Numeral).ToList(), byLabel.First().Label ?? ""));
+            return groups;
+        }
+
+        /// <summary>
+        /// Exports the reference sign list as plain text (one line per part, variants grouped: "10, 10a housing") or CSV
+        /// ("numeral,label", one row per numeral, variants below their number).
+        /// </summary>
         public static string Export(SketchDocument doc, ReferenceListFormat format = ReferenceListFormat.Text)
         {
             var sb = new StringBuilder();
-            if (format == ReferenceListFormat.Csv) sb.Append("numeral,label\r\n");
-            foreach (var e in List(doc))
+            if (format == ReferenceListFormat.Csv)
             {
-                if (format == ReferenceListFormat.Csv) sb.Append(Csv(e.Numeral)).Append(',').Append(Csv(e.Label)).Append("\r\n");
-                else sb.Append(e.Numeral).Append(' ').Append(e.Label).Append('\n');
+                sb.Append("numeral,label\r\n");
+                foreach (var e in List(doc)) sb.Append(Csv(e.Numeral)).Append(',').Append(Csv(e.Label)).Append("\r\n");
+                return sb.ToString();
             }
+            foreach (var g in Groups(doc)) sb.Append(string.Join(", ", g.Numerals)).Append(' ').Append(g.Label).Append('\n');
             return sb.ToString();
         }
 
@@ -257,11 +342,52 @@ namespace InventaSketch.Modules.Patent
             foreach (var g in byLabel)
             {
                 var nums = g.Select(x => x.Numeral).Distinct().ToList();
-                if (nums.Count > 1)
+                // Variants of one number (10, 10a, 10') may share the part name.
+                if (nums.Select(BaseOf).Distinct().Count() > 1)
                     issues.Add(new ReferenceIssue(ReferenceIssueKind.LabelWithDifferentNumerals, string.Join(", ", nums), g.Key, g.Where(x => x.Id is not null).Select(x => x.Id!).Distinct().ToList(),
                         new I18nText($"Part \"{g.Key}\" has different numerals: {string.Join(", ", nums)}.", $"Teil \"{g.Key}\" hat verschiedene Bezugszeichen: {string.Join(", ", nums)}.")));
             }
+            // One numeral on parts of different kinds (identical parts may share a numeral).
+            foreach (var g in NumberedParts(doc).GroupBy(x => x.Numeral))
+            {
+                var parts = g.Select(x => x.Part).GroupBy(p => p.Id).Select(p => p.First()).ToList();
+                if (parts.Select(PartKind).Distinct().Count() < 2) continue;
+                var ids = parts.Select(p => p.Id).Concat(g.Select(x => x.NumeralId).Where(id => id is not null).Select(id => id!)).Distinct().ToList();
+                issues.Add(new ReferenceIssue(ReferenceIssueKind.SameNumeralDifferentParts, g.Key, null, ids,
+                    new I18nText($"Numeral {g.Key} points at {parts.Count} different parts. Use one numeral per part, or variants (10a, 10b) for related parts.",
+                                 $"Bezugszeichen {g.Key} zeigt auf {parts.Count} verschiedene Teile. Ein Bezugszeichen je Teil verwenden oder Varianten (10a, 10b) für verwandte Teile.")));
+            }
             return issues;
         }
+
+        /// <summary>
+        /// Numbered parts: box objects a numeral's lead line is attached to, and box objects carrying a numeral themselves
+        /// (<see cref="SketchObject.Ref"/>, set by automatic numbering). <c>NumeralId</c> is the numeral object, if any.
+        /// </summary>
+        public static IReadOnlyList<(string Numeral, SketchObject Part, string? NumeralId)> NumberedParts(SketchDocument doc)
+        {
+            var list = new List<(string, SketchObject, string?)>();
+            foreach (var page in doc.Pages)
+                foreach (var o in doc.ObjectsOn(page))
+                {
+                    if (IsNumeralType(o.Type))
+                    {
+                        if (TargetOf(doc, o) is { } part && NumeralOf(o) is { } n && !string.IsNullOrWhiteSpace(n)) list.Add((Key(n), part, o.Id));
+                    }
+                    else if (!o.IsPointGeometry && !string.IsNullOrWhiteSpace(o.Ref)) list.Add((Key(o.Ref!), o, null));
+                }
+            return list;
+        }
+
+        /// <summary>The existing box object the lead line of a numeral is attached to, or null.</summary>
+        public static SketchObject? TargetOf(SketchDocument doc, SketchObject numeral)
+            => numeral.Attach is { Count: > 0 } att && att[0] is { } a && doc.Get(a.ObjectId) is { IsPointGeometry: false } t ? t : null;
+
+        /// <summary>
+        /// Kind of a part for numbering: type, text and semantic parameters (size, position and view do not count, so copies
+        /// of one part and the same part in another figure are the same kind, like one row of the parts list).
+        /// </summary>
+        public static string PartKind(SketchObject o)
+            => o.Type + "|" + (o.Text ?? "") + "|" + string.Join(";", o.Params.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => p.Key + "=" + (p.Value.ToString() ?? "")));
     }
 }
