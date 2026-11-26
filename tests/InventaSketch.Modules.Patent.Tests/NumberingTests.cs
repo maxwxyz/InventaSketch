@@ -174,7 +174,7 @@ namespace InventaSketch.Modules.Patent.Tests
             Assert.All(commands, c => Assert.Same(PartNumbering.Menu, c.Choice));
             Assert.Equal("1, 2, 3 …", commands[1].Label.De);
 
-            var ones = commands[1].Run(r, doc, page.Id, Lang.De);
+            var ones = commands[1].Run(r, doc, page.Id, new PageCommandContext(Lang.De));
             Assert.Equal(new[] { "1", "2", "3", "4", "5" },
                 ones.Objects.Values.Where(o => o.Type == PatentIds.Numeral).Select(o => ReferenceNumerals.NumeralOf(o)).OrderBy(n => int.Parse(n!)));
 
@@ -418,6 +418,161 @@ namespace InventaSketch.Modules.Patent.Tests
             Assert.Equal(DocumentJson.Serialize(doc), DocumentJson.Serialize(back));
             Assert.Equal(ReferenceNumerals.Export(doc), ReferenceNumerals.Export(back));
             Assert.Equal(PatentExport.AllPagesSvg(r, doc), PatentExport.AllPagesSvg(r, back));
+        }
+    }
+
+    /// <summary>
+    /// Numbering and checks across pages that hosts keep in models of their own (one model per slide): the numerals of the
+    /// other pages are passed in as <see cref="OtherPage"/>.
+    /// </summary>
+    public class NumeralsAcrossPagesTests
+    {
+        private static SketchDocument PageWith(Registry r, params SketchObject[] parts)
+        {
+            var doc = SketchDocument.Create(PageSizes.A4Portrait);
+            return Edits.Add(doc, doc.Pages[0].Id, parts);
+        }
+
+        /// <summary>A page where <paramref name="part"/> carries numeral <paramref name="numeral"/> named <paramref name="label"/>.</summary>
+        private static SketchDocument NumberedPage(Registry r, SketchObject part, string numeral, string label)
+        {
+            var doc = PageWith(r, part);
+            return ReferenceNumerals.Insert(r, doc, doc.Pages[0].Id, part.BoxPoint(0, 0), new Vec2(20, 20), label, part.Id, numeral).Doc;
+        }
+
+        [Fact]
+        public void SummariesNameNumeralsPartsAndListEntries()
+        {
+            var r = Parts.Reg();
+            var a = Parts.Block(r, 60, 60, "a");
+            var doc = NumberedPage(r, a, "10", "Housing");
+            doc = ReferenceNumerals.Insert(r, doc, doc.Pages[0].Id, new Vec2(120, 120), new Vec2(140, 100), "Loose", null, "20").Doc;
+            doc = Edits.SetReference(doc, "90", "Listed only");
+            var list = NumeralsElsewhere.Of(doc);
+            Assert.Contains(list, n => n.Numeral == "10" && n.Label == "Housing" && n.Kind == ReferenceNumerals.PartKind(a));
+            Assert.Contains(list, n => n.Numeral == "20" && n.Label == "Loose" && n.Kind is null);
+            Assert.Contains(list, n => n.Numeral == "90" && n.Label == "Listed only" && n.Kind is null);
+            // A numeral with its part is not listed a second time without it.
+            Assert.Single(list, n => n.Numeral == "10");
+        }
+
+        [Fact]
+        public void NumberingContinuesAfterTheNumeralsOfOtherPages()
+        {
+            var r = Parts.Reg();
+            var other = NumberedPage(r, Parts.Block(r, 60, 60, "b"), "10", "Shaft");
+            other = Edits.SetReference(other, "20", "Cover");
+            var doc = PageWith(r, Parts.Block(r, 60, 60, "a"));
+            var (numbered, list) = PartNumbering.NumberParts(r, doc, doc.Pages[0].Id, new NumberingOptions { Elsewhere = new[] { OtherPage.Of("1", other) } });
+            Assert.Equal("30", Assert.Single(list).Numeral);
+            // Only the entry of the new numeral is added: the other page's entries stay there.
+            Assert.Equal(new[] { "30" }, numbered.References.Keys);
+            // Without them, the page alone starts again at 10.
+            Assert.Equal("10", Assert.Single(PartNumbering.NumberParts(r, doc, doc.Pages[0].Id).Numbered).Numeral);
+        }
+
+        [Fact]
+        public void IdenticalPartsOnOtherPagesKeepTheirNumeral()
+        {
+            var r = Parts.Reg();
+            var other = NumberedPage(r, Parts.Block(r, 60, 60, "a"), "40", "Housing");
+            var doc = PageWith(r, Parts.Block(r, 60, 60, "a"), Parts.Block(r, 150, 60, "a"), Parts.Block(r, 60, 150, "b"));
+            var elsewhere = new[] { OtherPage.Of("1", other) };
+            var (shared, list) = PartNumbering.NumberParts(r, doc, doc.Pages[0].Id, new NumberingOptions { Elsewhere = elsewhere });
+            // Both copies of the housing take over 40 and its name; the other part gets the first number free in the whole
+            // document (as without other pages: 10, 20 … fill up before 50).
+            Assert.Equal(new[] { "40", "40", "10" }, list.Select(x => x.Numeral));
+            Assert.Equal("Housing", shared.References["40"].Label);
+            Assert.Equal(new[] { "10", "40" }, shared.References.Keys.OrderBy(k => k));
+            Assert.Empty(ReferenceNumerals.CheckAcrossPages(shared, elsewhere));
+
+            var (suffixed, variants) = PartNumbering.NumberParts(r, doc, doc.Pages[0].Id, new NumberingOptions { Elsewhere = elsewhere, Repeated = RepeatedParts.Suffixed });
+            Assert.Equal(new[] { "40a", "40b", "10" }, variants.Select(x => x.Numeral));
+            Assert.Equal("Housing", suffixed.References["40a"].Label);
+        }
+
+        [Fact]
+        public void PartNamesStayUniqueAcrossPages()
+        {
+            var r = Parts.Reg();
+            // Another kind of block is "Block" on the other page: this one becomes "Block 2".
+            var other = NumberedPage(r, Parts.Block(r, 60, 60, "b"), "10", "Block");
+            var doc = PageWith(r, Parts.Block(r, 60, 60, "a"));
+            var (numbered, list) = PartNumbering.NumberParts(r, doc, doc.Pages[0].Id, new NumberingOptions { Elsewhere = new[] { OtherPage.Of("1", other) } });
+            Assert.Equal("Block 2", numbered.References[Assert.Single(list).Numeral].Label);
+        }
+
+        [Fact]
+        public void PageCommandsPassTheOtherPagesOn()
+        {
+            var r = Parts.Reg();
+            var other = NumberedPage(r, Parts.Block(r, 60, 60, "a"), "40", "Housing");
+            var doc = PageWith(r, Parts.Block(r, 60, 60, "a"));
+            var command = PartNumbering.PageCommands(r, doc, doc.Pages[0])[0];
+            var ran = command.Run(r, doc, doc.Pages[0].Id, new PageCommandContext(Lang.En) { Elsewhere = new[] { OtherPage.Of("2", other) } });
+            Assert.Equal(new[] { "40" }, ran.References.Keys);
+        }
+
+        [Fact]
+        public void ChecksNumeralsAgainstOtherPages()
+        {
+            var r = Parts.Reg();
+            var a = Parts.Block(r, 60, 60, "a");
+            var doc = NumberedPage(r, a, "10", "Housing");
+            var sameKind = new OtherPage("2", new[] { new OtherNumeral("10", "Housing", ReferenceNumerals.PartKind(a)) });
+            Assert.Empty(ReferenceNumerals.CheckAcrossPages(doc, new[] { sameKind }));
+
+            // Numeral 10 names another kind of part on slide 3.
+            var otherPart = new OtherPage("3", new[] { new OtherNumeral("10", "Shaft", ReferenceNumerals.PartKind(Parts.Block(r, 0, 0, "b"))) });
+            var dup = Assert.Single(ReferenceNumerals.CheckAcrossPages(doc, new[] { otherPart }, PageNames.Slides));
+            Assert.Equal(ReferenceIssueKind.SameNumeralDifferentParts, dup.Kind);
+            Assert.Contains(a.Id, dup.ObjectIds);
+            Assert.Contains("slide 3", dup.Message.En);
+            Assert.Contains("Folie 3", dup.Message.De);
+
+            // The housing is 30 on page 4.
+            var otherNumeral = new OtherPage("4", new[] { new OtherNumeral("30", "Housing", ReferenceNumerals.PartKind(a)) });
+            var diff = Assert.Single(ReferenceNumerals.CheckAcrossPages(doc, new[] { otherNumeral }));
+            Assert.Equal(ReferenceIssueKind.SamePartDifferentNumerals, diff.Kind);
+            Assert.Contains("page 4", diff.Message.En);
+            var finding = Fx.Auto(r, doc, null).Where(f => f.RuleId == "PF-REF-LABEL").ToList();
+            Assert.Empty(finding);
+            var withOthers = Preflight.Run(r, doc, PatentProfiles.CommonSafe, new PreflightOptions { Elsewhere = new[] { otherNumeral, otherPart } });
+            Assert.Contains(withOthers, f => f.RuleId == "PF-REF-LABEL" && f.Severity == Severity.Warning && f.ObjectId == a.Id);
+            Assert.Contains(withOthers, f => f.RuleId == "PF-REF-DUPLICATE" && f.Severity == Severity.Error);
+
+            // Variants of one number are the same numeral; parts numbered separately on purpose (10 and 20) are fine as long
+            // as the other page uses one of their numbers.
+            Assert.Empty(ReferenceNumerals.CheckAcrossPages(doc, new[] { new OtherPage("5", new[] { new OtherNumeral("10a", null, ReferenceNumerals.PartKind(a)) }) }));
+            var b = Parts.Block(r, 150, 60, "a");
+            var two = ReferenceNumerals.Insert(r, Edits.Add(doc, doc.Pages[0].Id, b), doc.Pages[0].Id, b.BoxPoint(0, 0), new Vec2(170, 20), "Housing 2", b.Id, "20").Doc;
+            Assert.Empty(ReferenceNumerals.CheckAcrossPages(two, new[] { new OtherPage("6", new[] { new OtherNumeral("20", "Housing 2", ReferenceNumerals.PartKind(a)) }) }));
+        }
+
+        [Fact]
+        public void ChecksThePagesOfOneDocumentAmongEachOther()
+        {
+            var r = Parts.Reg();
+            var a1 = Parts.Block(r, 60, 60, "a");
+            var a2 = Parts.Block(r, 60, 60, "a");
+            var doc = NumberedPage(r, a1, "10", "Housing");
+            doc = doc with { Pages = new[] { doc.Pages[0], new Page { Id = "p2", Name = "Page 2", Size = PageSizes.A4Portrait } } };
+            doc = Edits.Add(doc, "p2", a2);
+            // The second page's numeral has no part name.
+            doc = ReferenceNumerals.Insert(r, doc, "p2", a2.BoxPoint(0, 0), new Vec2(20, 20), null, a2.Id, "30").Doc;
+            var issues = ReferenceNumerals.CheckAcrossPages(doc);
+            Assert.Equal(2, issues.Count(i => i.Kind == ReferenceIssueKind.SamePartDifferentNumerals));
+            Assert.Contains(issues, i => i.ObjectIds.Contains(a1.Id) && i.Message.En.Contains("page 2"));
+            Assert.Contains(issues, i => i.ObjectIds.Contains(a2.Id) && i.Message.En.Contains("page 1"));
+            // With one part name the label check already says it (no second finding).
+            var named = doc with { References = new Dictionary<string, ReferenceEntry> { ["10"] = new("10", "Housing"), ["30"] = new("30", "Housing") } };
+            named = Edits.Update(named, named.Objects.Values.Where(o => o.Type == PatentIds.Numeral).Select(o => o.Id).ToList(), o => o.WithParam("label", "Housing"));
+            Assert.Empty(ReferenceNumerals.CheckAcrossPages(named));
+            Assert.Contains(ReferenceNumerals.Check(named), i => i.Kind == ReferenceIssueKind.LabelWithDifferentNumerals);
+            // Differently named parts of one kind (a hatched housing and a hatched cover) are different parts.
+            var distinct = Edits.Update(named, named.Objects.Values.Where(o => o.Type == PatentIds.Numeral && o.Ref == "30").Select(o => o.Id).ToList(), o => o.WithParam("label", "Cover"))
+                with { References = new Dictionary<string, ReferenceEntry> { ["10"] = new("10", "Housing"), ["30"] = new("30", "Cover") } };
+            Assert.Empty(ReferenceNumerals.CheckAcrossPages(distinct));
         }
     }
 }

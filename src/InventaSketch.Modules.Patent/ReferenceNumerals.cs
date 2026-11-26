@@ -39,6 +39,11 @@ namespace InventaSketch.Modules.Patent
         EntryUnused,
         /// <summary>One numeral on parts of different kinds (same character for different parts, 37 CFR 1.84(p)(4)).</summary>
         SameNumeralDifferentParts,
+        /// <summary>
+        /// The same kind of part with unrelated numerals on different pages (same feature, same sign throughout the
+        /// drawings): no numeral (variants count as one) of a page is used for that part on another page.
+        /// </summary>
+        SamePartDifferentNumerals,
     }
 
     public sealed record ReferenceIssue(ReferenceIssueKind Kind, string? Numeral, string? Label, IReadOnlyList<string> ObjectIds, I18nText Message);
@@ -358,6 +363,119 @@ namespace InventaSketch.Modules.Patent
                                  $"Bezugszeichen {g.Key} zeigt auf {parts.Count} verschiedene Teile. Ein Bezugszeichen je Teil verwenden oder Varianten (10a, 10b) für verwandte Teile.")));
             }
             return issues;
+        }
+
+        /// <summary>A numbered part on a page for <see cref="CheckAcrossPages"/>: numeral, kind, name and the objects (own pages only).</summary>
+        private sealed record PagePart(string Numeral, string Kind, string? Label, IReadOnlyList<string> Ids);
+
+        /// <summary>
+        /// Consistency of numerals between pages: the pages of <paramref name="doc"/> among each other and with the other
+        /// pages or slides a host keeps in models of their own (<paramref name="others"/>). Reported on the pages of
+        /// <paramref name="doc"/>: a numeral that names a different kind of part on another (separately kept) page
+        /// (<see cref="ReferenceIssueKind.SameNumeralDifferentParts"/>; within <paramref name="doc"/> <see cref="Check"/> reports
+        /// it), and a kind of part (<see cref="PartKind"/>) whose numerals on a page share no number with its numerals on
+        /// another page (<see cref="ReferenceIssueKind.SamePartDifferentNumerals"/>; parts numbered separately on purpose, 10
+        /// and 20 for two identical gears, stay fine as long as the pages use the same numbers for them). Page labels are
+        /// the 1-based page numbers of <paramref name="doc"/> and the hosts' labels of the other pages.
+        /// </summary>
+        public static IReadOnlyList<ReferenceIssue> CheckAcrossPages(SketchDocument doc, IReadOnlyList<OtherPage>? others = null, PageNames? names = null)
+        {
+            names ??= PageNames.Pages;
+            var issues = new List<ReferenceIssue>();
+            string? Listed(string n) => doc.References.Values.Where(e => Key(e.Numeral) == n).Select(e => e.Label).FirstOrDefault(l => !string.IsNullOrWhiteSpace(l))?.Trim();
+            // Own pages with their numbered parts (one line per numeral and part kind).
+            var own = doc.Pages.Select((p, i) => (Page: p, Label: (i + 1).ToString(CultureInfo.InvariantCulture), Parts: new List<PagePart>())).ToList();
+            foreach (var (n, part, numeralId) in NumberedParts(doc))
+            {
+                var page = doc.PageOf(numeralId ?? part.Id) ?? doc.PageOf(part.Id);
+                var entry = own.FirstOrDefault(x => x.Page.Id == page?.Id);
+                if (entry.Page is null) continue;
+                var label = (numeralId is not null && doc.Get(numeralId) is { } no ? LabelOf(no) : null) ?? Listed(n);
+                entry.Parts.Add(new PagePart(n, PartKind(part), label, numeralId is null ? new[] { part.Id } : new[] { part.Id, numeralId }));
+            }
+            var foreign = (others ?? Array.Empty<OtherPage>())
+                .Select(p => (p.Page, Parts: p.Numerals.Where(x => x.Kind is not null).Select(x => new PagePart(Key(x.Numeral), x.Kind!, x.Label, Array.Empty<string>())).ToList()))
+                .Where(p => p.Parts.Count > 0).ToList();
+            foreach (var (page, label, parts) in own)
+            {
+                if (parts.Count == 0) continue;
+                // A numeral that names another kind of part on a separately kept page.
+                foreach (var g in parts.GroupBy(p => p.Numeral))
+                {
+                    var kinds = new HashSet<string>(g.Select(p => p.Kind), StringComparer.Ordinal);
+                    var hits = foreign.Select(f => (f.Page, Other: f.Parts.Where(x => x.Numeral == g.Key && !kinds.Contains(x.Kind)).ToList())).Where(f => f.Other.Count > 0).ToList();
+                    if (hits.Count == 0) continue;
+                    var what = hits.SelectMany(h => h.Other).Select(x => x.Label).Where(l => l is not null).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                    var (en, de) = PagesText(names, hits.Select(h => h.Page));
+                    var suffix = what.Count > 0 ? " (" + string.Join(", ", what) + ")" : "";
+                    issues.Add(new ReferenceIssue(ReferenceIssueKind.SameNumeralDifferentParts, g.Key, null, g.SelectMany(p => p.Ids).Distinct().ToList(),
+                        new I18nText($"Numeral {g.Key} names a different part on {en}{suffix}. Use one numeral per part throughout the drawings.",
+                                     $"Bezugszeichen {g.Key} bezeichnet auf {de} ein anderes Teil{suffix}. Ein Bezugszeichen je Teil in allen Zeichnungen verwenden.")));
+                }
+                // The same kind of part with unrelated numerals on another page.
+                foreach (var g in parts.GroupBy(p => p.Kind))
+                {
+                    var bases = new HashSet<string>(g.Select(p => BaseOf(p.Numeral)), StringComparer.Ordinal);
+                    var mine = g.Select(p => p.Numeral).Distinct().ToList();
+                    var myNames = new HashSet<string>(g.Select(p => p.Label).Where(l => l is not null).Select(l => l!), StringComparer.OrdinalIgnoreCase);
+                    // Unrelated numerals for this kind on another page – unless both pages name the parts and the names differ:
+                    // generic shapes (a hatched rectangle) are one kind, but "housing" and "cover" are different parts.
+                    List<string>? Unrelated(IEnumerable<PagePart> other)
+                    {
+                        var same = other.Where(x => x.Kind == g.Key).ToList();
+                        if (same.Count == 0 || same.Any(t => bases.Contains(BaseOf(t.Numeral)))) return null;
+                        var names = same.Select(x => x.Label).Where(l => l is not null).ToList();
+                        if (myNames.Count > 0 && names.Count > 0 && !names.Any(myNames.Contains)) return null;
+                        return same.Select(x => x.Numeral).Distinct().ToList();
+                    }
+                    var hits = new List<(string Page, List<string> Numerals)>();
+                    foreach (var (otherPage, otherLabel, otherParts) in own)
+                    {
+                        if (otherPage.Id == page.Id || Unrelated(otherParts) is not { } theirs) continue;
+                        // Within the document a shared part name already says it (LabelWithDifferentNumerals of Check).
+                        if (SameName(doc, mine.Concat(theirs))) continue;
+                        hits.Add((otherLabel, theirs));
+                    }
+                    foreach (var (otherPage, otherParts) in foreign)
+                        if (Unrelated(otherParts) is { } theirs) hits.Add((otherPage, theirs));
+                    if (hits.Count == 0) continue;
+                    var name = g.Select(p => p.Label).FirstOrDefault(l => l is not null);
+                    var here = string.Join(", ", mine);
+                    var there = string.Join(", ", hits.SelectMany(h => h.Numerals).Distinct());
+                    var (en, de) = PagesText(names, hits.Select(h => h.Page));
+                    issues.Add(new ReferenceIssue(ReferenceIssueKind.SamePartDifferentNumerals, here + " / " + there, name, g.SelectMany(p => p.Ids).Distinct().ToList(),
+                        name is null
+                            ? new I18nText($"This part has numeral {here} here but {there} on {en}. The same part keeps its numeral throughout the drawings.",
+                                           $"Dieses Teil hat hier Bezugszeichen {here}, auf {de} aber {there}. Dasselbe Teil behält sein Bezugszeichen in allen Zeichnungen.")
+                            : new I18nText($"Part \"{name}\" has numeral {here} here but {there} on {en}. The same part keeps its numeral throughout the drawings.",
+                                           $"Teil \"{name}\" hat hier Bezugszeichen {here}, auf {de} aber {there}. Dasselbe Teil behält sein Bezugszeichen in allen Zeichnungen.")));
+                }
+            }
+            return issues;
+        }
+
+        /// <summary>True if all <paramref name="numerals"/> carry one and the same part name in the document.</summary>
+        private static bool SameName(SketchDocument doc, IEnumerable<string> numerals)
+        {
+            var uses = Uses(doc);
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var n in numerals.Distinct())
+            {
+                var label = uses.Where(u => u.Numeral == n && u.Label is not null).Select(u => u.Label!).FirstOrDefault()
+                    ?? doc.References.Values.Where(e => Key(e.Numeral) == n).Select(e => e.Label).FirstOrDefault(l => !string.IsNullOrWhiteSpace(l));
+                if (label is null) return false;
+                names.Add(label.Trim());
+            }
+            return names.Count == 1;
+        }
+
+        /// <summary>"slide 3" / "slides 2, 4" in both languages.</summary>
+        private static (string En, string De) PagesText(PageNames names, IEnumerable<string> pages)
+        {
+            var list = pages.Distinct().ToList();
+            var en = (list.Count == 1 ? names.One.En : names.Many.En) + " " + string.Join(", ", list);
+            var de = (list.Count == 1 ? names.One.Get(Lang.De) : names.Many.Get(Lang.De)) + " " + string.Join(", ", list);
+            return (en, de);
         }
 
         /// <summary>

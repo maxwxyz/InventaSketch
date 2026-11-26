@@ -39,12 +39,15 @@ namespace InventaSketch.AddIn.Tests
             var other = SketchUnits.Combined(new[] { Unit(Part(60, 60)) });
             other = ReferenceNumerals.Insert(Reg, other, other.Pages[0].Id, new Vec2(60, 60), new Vec2(80, 40), "Gear", null, "10").Doc;
             other = Edits.SetReference(other, "20", "Shaft");
-            var doc = SlideNumbering.WithUsedNumerals(slide, other);
-            Assert.True(doc.References.ContainsKey("10") && doc.References.ContainsKey("20"));
+            var elsewhere = new[] { OtherPage.Of("1", other) };
+            Assert.Equal(new[] { "10", "20" }, elsewhere[0].Numerals.Select(n => n.Numeral).OrderBy(n => n));
+            var doc = slide;
 
             var commands = PageActions.For(Reg, doc, doc.Pages[0].Id);
             Assert.Equal(2, commands.Count);
-            var ran = PageActions.Run(Reg, doc, doc.Pages[0].Id, PartNumbering.ActionKey + "=tens", Lang.En);
+            var ran = PageActions.Run(Reg, doc, doc.Pages[0].Id, PartNumbering.ActionKey + "=tens", Lang.En, elsewhere);
+            // The other slide's entries are not copied into this slide; only the new numeral's entry is.
+            Assert.Equal(new[] { "30" }, ran.References.Keys);
             var (changed, added) = SlideNumbering.Split(doc, ran, units);
             // Both parts got a numeral (their units are redrawn), each new numeral is its own unit, after 10 and 20.
             Assert.Equal(2, changed.Count);
@@ -52,6 +55,21 @@ namespace InventaSketch.AddIn.Tests
             Assert.All(added, n => Assert.Equal(PatentIds.Numeral, n.Type));
             // The two identical parts share one numeral (same feature, same sign), the first free one after 10 and 20.
             Assert.All(added, n => Assert.Equal("30", ReferenceNumerals.NumeralOf(n)));
+        }
+
+        [Fact]
+        public void APartNumberedOnAnotherSlideKeepsItsNumeral()
+        {
+            var units = new[] { Unit(Part(60, 60)) };
+            var slide = SketchUnits.Combined(units);
+            // Slide 1 shows the same part with numeral 40 "Gear".
+            var other = SketchUnits.Combined(new[] { Unit(Part(60, 60)) });
+            var part = other.ObjectsOn(other.Pages[0]).Single();
+            other = ReferenceNumerals.Insert(Reg, other, other.Pages[0].Id, new Vec2(part.Transform.X, part.Transform.Y), new Vec2(80, 40), "Gear", part.Id, "40").Doc;
+            var ran = PageActions.Run(Reg, slide, slide.Pages[0].Id, PartNumbering.ActionKey + "=tens", Lang.En, new[] { OtherPage.Of("1", other) });
+            var (_, added) = SlideNumbering.Split(slide, ran, units);
+            Assert.Equal("40", ReferenceNumerals.NumeralOf(Assert.Single(added)));
+            Assert.Equal("Gear", ran.References["40"].Label);
         }
 
         [Fact]

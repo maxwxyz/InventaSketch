@@ -553,7 +553,8 @@ namespace InventaSketch.Engine
         /// <summary>
         /// Compatibility check (preflight) of the session's page against profile <c>text</c> (an id of <c>patentProfiles</c>,
         /// default "common-safe"): the findings in page and rule order with severity, element, message, suggestion and the
-        /// cited source, and the disclaimer – a drafting aid, not a legal certification.
+        /// cited source, and the disclaimer – a drafting aid, not a legal certification. <c>elsewhere</c> (numeralsOf of the
+        /// other slides or pages) and <c>pageName</c> ("slide"/"page") add the reference checks across pages.
         /// </summary>
         private object PreflightCore(EngineRequest r)
         {
@@ -561,7 +562,10 @@ namespace InventaSketch.Engine
             var lang = r.Lang is null ? s.Lang : Language.Detect(r.Lang);
             var id = string.IsNullOrWhiteSpace(r.Text) ? "common-safe" : r.Text!.Trim();
             var profile = InventaSketch.Modules.Patent.PatentProfiles.All.FirstOrDefault(p => p.Id == id) ?? throw new ArgumentException("Unknown office profile '" + id + "'.");
-            var findings = InventaSketch.Modules.Patent.Preflight.Run(Registry, s.Doc, profile);
+            // The numerals of the other slides or pages (numeralsOf) take part in the reference checks across pages.
+            var names = r.PageName is { } pn ? (pn.Trim().ToLowerInvariant() == "slide" ? PageNames.Slides : PageNames.Pages) : s.PageNames ?? PageNames.Pages;
+            var findings = InventaSketch.Modules.Patent.Preflight.Run(Registry, s.Doc, profile,
+                new InventaSketch.Modules.Patent.PreflightOptions { Elsewhere = PageActions.Elsewhere(r.Elsewhere), PageNames = names });
             return new
             {
                 profile = profile.Id,
@@ -1924,6 +1928,9 @@ namespace InventaSketch.Engine
             if (action.StartsWith("t:", StringComparison.Ordinal))
             {
                 var id = action.Substring(2);
+                // "Number all parts" from a numeral's menu with the numerals of the other slides or pages: the page command,
+                // so numbering continues across the document (the numeral's own action sees this page only).
+                if (r.Elsewhere is { Count: > 0 } && PageActions.IsPageCommandId(id) && TryRunPageCommand(s, id, r)) return StateOf(s, r);
                 s.Apply("Action", d => InventaSketch.Core.ContextActions.Run(Registry, d, ids, id, r.Input, s.Lang));
                 return StateOf(s, r);
             }

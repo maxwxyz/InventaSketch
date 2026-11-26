@@ -25,16 +25,29 @@ namespace InventaSketch.AddIn
             var list = new List<Item>();
             var setup = pres.PageSetup;
             var size = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
+            var slides = new List<(PowerPoint.Slide Slide, IReadOnlyList<OnSlide.SketchUnit> Units, OtherPage? Numerals)>();
             foreach (PowerPoint.Slide slide in pres.Slides)
             {
                 var units = OnSlide.SketchUnits.All(slide);
-                if (units.Count == 0) continue;
+                if (units.Count > 0) slides.Add((slide, units, SlideNumbering.Of(slide.SlideIndex, units)));
+            }
+            foreach (var (slide, units, mine) in slides)
+            {
                 var doc = SketchDocument.Create(size);
                 var seen = new HashSet<string>(StringComparer.Ordinal);
                 doc = Edits.Add(doc, doc.Pages[0].Id, units.SelectMany(u => u.Objects).Where(o => seen.Add(o.Id)).ToArray());
+                // The reference lists of the units belong to the slide (numerals placed by numbering carry their entry).
+                foreach (var e in units.SelectMany(u => u.Doc.References.Values))
+                    if (!doc.References.ContainsKey(e.Numeral)) doc = Edits.SetReference(doc, e.Numeral, e.Label);
                 // The slide style (black and white, line group) is part of what the office sees.
                 doc = OnSlide.SlideStyle.Apply(slide, doc);
-                foreach (var f in Preflight.Run(registry, doc, profile))
+                // The numerals of the other slides: one numeral per part throughout the presentation.
+                var options = new PreflightOptions
+                {
+                    Elsewhere = slides.Where(x => x.Numerals is not null && !ReferenceEquals(x.Numerals, mine)).Select(x => x.Numerals!).ToList(),
+                    PageNames = PageNames.Slides,
+                };
+                foreach (var f in Preflight.Run(registry, doc, profile, options))
                 {
                     var unit = f.ObjectId is null ? null : units.FirstOrDefault(u => u.Objects.Any(o => o.Id == f.ObjectId));
                     list.Add(new Item(slide.SlideIndex, unit?.Shape.Name, f));

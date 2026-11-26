@@ -25,6 +25,12 @@ namespace InventaSketch.Modules.Patent
         public Lang Lang { get; init; } = Lang.En;
         /// <summary>Distance of the numeral from the part's bounding box (mm).</summary>
         public double Offset { get; init; } = 10;
+        /// <summary>
+        /// The numerals of the other pages or slides of the document that live in models of their own (hosts with one model
+        /// per slide or page): new numerals continue after them, and a part of the same kind as a part numbered there
+        /// (<see cref="ReferenceNumerals.PartKind"/>) takes over its numeral (shared and suffixed numbering).
+        /// </summary>
+        public IReadOnlyList<OtherPage> Elsewhere { get; init; } = Array.Empty<OtherPage>();
     }
 
     /// <summary>A part numbered by <see cref="PartNumbering.NumberParts"/>.</summary>
@@ -71,7 +77,9 @@ namespace InventaSketch.Modules.Patent
         /// Numbers all parts on <paramref name="pageId"/> that have no numeral yet (see <see cref="PartNumbering"/>). A part
         /// that already carries a numeral of its own (<see cref="SketchObject.Ref"/>) keeps it and only gets the lead line.
         /// New numerals are written to the part (parts list), to the numeral object and to the reference list (part name).
-        /// Returns the unchanged document instance when there is nothing to number.
+        /// Numerals of the document's other pages count as used, and a part of the same kind as a part numbered on another
+        /// page (also <see cref="NumberingOptions.Elsewhere"/>) takes over that numeral and its name (shared and suffixed
+        /// numbering). Returns the unchanged document instance when there is nothing to number.
         /// </summary>
         public static (SketchDocument Doc, IReadOnlyList<NumberedPart> Numbered) NumberParts(Registry registry, SketchDocument doc, string pageId, NumberingOptions? options = null)
         {
@@ -79,16 +87,25 @@ namespace InventaSketch.Modules.Patent
             var page = doc.Pages.FirstOrDefault(p => p.Id == pageId) ?? throw new KeyNotFoundException($"Page '{pageId}' not found.");
             var parts = PartsInReadingOrder(registry, doc, page);
             var numbered = NumberedPartIds(doc);
-            // Numerals already used per part kind (shared or suffixed numbering continues them).
+            var open = parts.Where(p => !numbered.Contains(p.Id)).ToList();
+            if (open.Count == 0) return (doc, Array.Empty<NumberedPart>());
+            var original = doc;
+            // The numerals of the other pages and slides count as used: reference entries while numbering, of which only the
+            // entries of the numerals given out here stay.
+            doc = NumeralsElsewhere.WithUsed(doc, options.Elsewhere);
+            // Numerals already used per part kind (shared or suffixed numbering continues them): this document first, then the
+            // other pages in their order.
             var byKind = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var (n, part, _) in ReferenceNumerals.NumberedParts(doc))
             {
                 var k = ReferenceNumerals.PartKind(part);
                 if (!byKind.ContainsKey(k)) byKind[k] = n;
             }
-            var open = parts.Where(p => !numbered.Contains(p.Id)).ToList();
+            foreach (var n in options.Elsewhere.SelectMany(p => p.Numerals))
+                if (n.Kind is not null && !byKind.ContainsKey(n.Kind)) byKind[n.Kind] = n.Numeral;
             var openPerKind = open.GroupBy(ReferenceNumerals.PartKind).ToDictionary(g => g.Key, g => g.Count(), StringComparer.Ordinal);
             var result = new List<NumberedPart>();
+            var labels = new Dictionary<string, string>(StringComparer.Ordinal);
             foreach (var part in open)
             {
                 var kind = ReferenceNumerals.PartKind(part);
@@ -104,10 +121,24 @@ namespace InventaSketch.Modules.Patent
                 if (!byKind.ContainsKey(kind)) byKind[kind] = numeral;
 
                 var label = UniqueLabel(doc, Exports.Label(registry, part, options.Lang), numeral);
+                if (!labels.ContainsKey(numeral)) labels[numeral] = label;
                 var (attach, at) = Placement(doc, page, part, options.Offset);
                 var (d, n) = ReferenceNumerals.Insert(registry, doc, pageId, attach, at, label, part.Id, numeral, options.Scheme);
                 doc = Edits.Replace(d, d.Get(part.Id)! with { Ref = numeral });
                 result.Add(new NumberedPart(part.Id, numeral, n.Id));
+            }
+            if (options.Elsewhere.Count > 0)
+            {
+                // Back to the document's own reference list plus the entries of the numerals given out here (an entry taken
+                // over from another page without a name gets the part's name).
+                var refs = new Dictionary<string, ReferenceEntry>();
+                foreach (var kv in doc.References)
+                {
+                    if (original.References.ContainsKey(kv.Key)) refs[kv.Key] = kv.Value;
+                    else if (labels.TryGetValue(ReferenceNumerals.Key(kv.Key), out var label))
+                        refs[kv.Key] = string.IsNullOrWhiteSpace(kv.Value.Label) ? kv.Value with { Label = label } : kv.Value;
+                }
+                doc = doc with { References = refs };
             }
             return (doc, result);
         }
@@ -190,7 +221,7 @@ namespace InventaSketch.Modules.Patent
             {
                 var scheme = s.Scheme;
                 return new PageCommand(ActionKey + ActionChoices.Separator + s.Value, s.Label, Menu, enabled,
-                    (reg, d, pageId, lang) => NumberParts(reg, d, pageId, new NumberingOptions { Scheme = scheme, Lang = lang }).Doc);
+                    (reg, d, pageId, c) => NumberParts(reg, d, pageId, new NumberingOptions { Scheme = scheme, Lang = c.Lang, Elsewhere = c.Elsewhere }).Doc);
             }).ToList();
         }
 
@@ -221,7 +252,17 @@ namespace InventaSketch.Modules.Patent
     /// <summary>
     /// A command of a whole page, run without a selected element (<see cref="PartNumbering.PageCommands"/>): id
     /// ("key=value" of its <see cref="Choice"/>), label, the menu it belongs to, whether it can do anything now, and the
-    /// edit (registry, document, page id, language of new texts) – one document edit, so hosts record one undo step.
+    /// edit (registry, document, page id, context) – one document edit, so hosts record one undo step.
     /// </summary>
-    public sealed record PageCommand(string Id, I18nText Label, ActionChoice Choice, bool IsEnabled, Func<Registry, SketchDocument, string, Lang, SketchDocument> Run);
+    public sealed record PageCommand(string Id, I18nText Label, ActionChoice Choice, bool IsEnabled, Func<Registry, SketchDocument, string, PageCommandContext, SketchDocument> Run);
+
+    /// <summary>
+    /// What a page command needs beyond the page: the language of new texts and the numerals of the document's other pages
+    /// or slides that live in models of their own (<see cref="NumberingOptions.Elsewhere"/>; empty when the document holds
+    /// every page).
+    /// </summary>
+    public sealed record PageCommandContext(Lang Lang)
+    {
+        public IReadOnlyList<OtherPage> Elsewhere { get; init; } = Array.Empty<OtherPage>();
+    }
 }

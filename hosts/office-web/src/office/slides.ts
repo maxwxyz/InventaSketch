@@ -8,6 +8,7 @@ import { Session } from "../engine/client";
 import type { DrawCapabilities, EditorState, PlanUnit, PreflightFinding, SanitizeMode, SanitizeOptions, SanitizeReport } from "../engine/types";
 import type { HostCapabilities } from "./capabilities";
 import { joinTag, mirrorKey, nativelyEdited, parseName, TAG_BOUNDS, TAG_ID, TAG_MODEL, type BoxPt } from "./powerpoint";
+import { otherThan, slideNumerals } from "./numerals";
 
 type Bounds = BoxPt & { rotation?: number };
 
@@ -115,18 +116,21 @@ function close(engine: Engine, session: Session): void {
 
 /**
  * Compatibility check (preflight) of every slide with units, one engine session per slide (the office's page rules apply to each
- * sheet). Findings carry the slide number and the shape of their element.
+ * sheet), with the numerals of the other slides (`numeralsOf`), so the reference checks compare numerals between slides.
+ * Findings carry the slide number and the shape of their element.
  */
 export function checkSlides(engine: Engine, slides: SlideUnits[], profile: string, lang: string, page: { w: number; h: number }): { disclaimer: string; findings: SlideFinding[]; slides: number } {
   const findings: SlideFinding[] = [];
   let disclaimer = "";
   let checked = 0;
+  const numerals = slideNumerals(engine, slides);
   for (const s of slides) {
     if (!s.units.length) continue;
     checked++;
     const { session, owner } = slideSession(engine, s.units, page, lang);
     try {
-      const r = session.preflight(profile, lang);
+      const others = otherThan(numerals, s.index);
+      const r = session.preflight(profile, lang, others.length ? others : undefined);
       disclaimer = r.disclaimer || disclaimer;
       for (const f of r.findings) findings.push({ ...f, slide: s.index + 1, slideId: s.slideId, shapeId: f.id ? owner.get(f.id) : undefined });
     } finally {

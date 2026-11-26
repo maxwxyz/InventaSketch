@@ -90,6 +90,31 @@ namespace InventaSketch.Engine
         public string? Unit { get; set; }
         /// <summary>convertUnit, units: quantity kind id (<see cref="InventaSketch.Core.Quantities"/>).</summary>
         public string? QuantityKind { get; set; }
+        /// <summary>
+        /// applyPageAction, applyAction ("Number all parts" of a numeral), preflight: the numerals of the document's other
+        /// pages or slides that the host keeps in models of their own (from <c>numeralsOf</c>), so numbering continues across
+        /// the document and the preflight compares numerals between pages.
+        /// </summary>
+        public List<OtherPageInfo>? Elsewhere { get; set; }
+        /// <summary>preflight: how findings name other pages, "slide" or "page" (default: the session's, see setContinuations).</summary>
+        public string? PageName { get; set; }
+    }
+
+    /// <summary>A numeral of another page or slide (engine <c>numeralsOf</c>; <see cref="InventaSketch.Modules.Patent.OtherNumeral"/>).</summary>
+    public sealed class NumeralInfo
+    {
+        public string Numeral { get; set; } = "";
+        /// <summary>Part name, if known.</summary>
+        public string? Label { get; set; }
+        /// <summary>The kind of part it points at (parts-list identity: type, text, parameters); null without a part.</summary>
+        public string? Kind { get; set; }
+    }
+
+    /// <summary>The numerals of another page or slide, with the host's label of it ("2").</summary>
+    public sealed class OtherPageInfo
+    {
+        public string Page { get; set; } = "";
+        public List<NumeralInfo> Numerals { get; set; } = new();
     }
 
     /// <summary>One variable of an element with its value (values, dragValue preview). Numbers in SI and in the display unit.</summary>

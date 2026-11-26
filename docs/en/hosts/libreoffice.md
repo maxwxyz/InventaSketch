@@ -424,8 +424,15 @@ check settings, preferred units, calculation sheet), with the words of the COM a
   keeps the commands that can do something now). Choosing a row runs command `pageAction?id=<id>&label=<l>` (engine
   `applyPageAction`): the parts that get a numeral are redrawn, the new numerals drawn as new units, one undo step
   ("InventaSketch: Number all parts: 10, 20, 30 …"); the panel then asks again. The menu is the one a selected numeral
-  offers (`patent.numerals.auto=tens` / `=ones`). Numbering covers the current page: numerals of other pages are not
-  known to the page session, so a second page starts again at 10 (the COM add-in continues across slides).
+  offers (`patent.numerals.auto=tens` / `=ones`).
+- **Numerals across pages** (2026-11-26, round 5): `host.page_numerals` reads the unit models of the other pages
+  (Impress/Draw, labelled with their numbers) or sheets (Calc, labelled with their names), lets the engine summarise
+  them (`numeralsOf`, cached per model like `designationsOf`; `drawing.numerals_elsewhere` merges them per page) and
+  passes them as `elsewhere` to `applyPageAction` and to a numeral's own *Number all parts ▸* (`applyAction`,
+  `drawing.is_numbering_action`). Numbering continues after the other pages' numerals and identical parts keep their
+  numeral and name. The compatibility check of every page (Impress/Draw) passes each page the numerals of the others
+  (`pageName` "slide"/"page"), so numerals that name different parts, or the same part with unrelated numerals, are
+  reported across pages. Unit- and engine-tested (`test_concept`); not yet run in LibreOffice.
 - **Pictograms.** LibreOffice has no icon set: the new option pictograms of the travel modes and phases (round 4) appear
   as their option names in the dropdowns.
 

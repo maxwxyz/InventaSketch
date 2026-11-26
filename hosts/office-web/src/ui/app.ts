@@ -4,7 +4,7 @@
 import { Engine, Session } from "../engine/client";
 import type {
   ActionInfo, ArrangeOption, BuildPortInfo, Catalog, CatalogItem, ConnectOption, DashStyle, EditorState, ExporterInfo, InspectorInfo, ObjectInfo, PreflightResult,
-  SuggestionInfo, TraceInfo, TransformEffect, ValueLevel,
+  SuggestionInfo, TraceInfo, TransformEffect, ValueLevel, OtherPageNumerals,
 } from "../engine/types";
 import { download, editorExportScope, exportFileStem, exportPng, exportScopeLabel, exportSvg, resolveExportSource, type ExportSource } from "../export";
 import { lang, resolveLang, setLang, t, type Lang } from "../i18n";
@@ -12,6 +12,7 @@ import { drawCapabilities, noOffice, type HostCapabilities } from "../office/cap
 import { SlideSync } from "../office/sync";
 import { checkSlides, cleanSlide, closeSession, compareWithPrevious, currentSlide, goToFinding, readCurrentSlideUnits, readSlideUnits, slideSession, type SlideFinding, type SlideUnits } from "../office/slides";
 import { alsoOn, continuationMap, designationOf, sameMap, slideDesignations } from "../office/designations";
+import { isNumberingAction, slideNumerals } from "../office/numerals";
 import { ComSync, type ComSyncBridge } from "../office/combridge";
 import { loadSettings, saveSettings, type Settings } from "../settings";
 import { applyTheme, resolveTheme } from "../theme";
@@ -338,7 +339,11 @@ export class App {
     const dismiss = () => { panel.remove(); if (this.settingsEl === panel) this.settingsEl = undefined; anchor.focus(); };
     const rows = menu.options.map((o) => {
       const b = h("button", { class: "isk-btn isk-page-option", type: "button", role: "menuitem", disabled: !o.enabled, "data-cmd": `pageaction-${o.id}` }, o.label);
-      b.addEventListener("click", () => { dismiss(); this.edit((s) => s.applyPageAction(o.id)); });
+      b.addEventListener("click", () => {
+        dismiss();
+        // With the numerals of the other slides: numbering continues after them, identical parts keep their numeral.
+        void this.numeralsElsewhere().then((elsewhere) => this.edit((s) => s.applyPageAction(o.id, elsewhere)));
+      });
       return b;
     });
     const panel = h("div", { class: "isk-popover isk-page-menu", role: "menu", "aria-label": menu.label },
@@ -657,7 +662,10 @@ export class App {
           .catch((e) => this.report(e));
         return;
       }
-      try { show(this.sessionObj.preflight(this.patentProfile, lang())); } catch (e) { this.report(e); }
+      // This slide, compared with the numerals of the other slides when they can be read.
+      void this.numeralsElsewhere()
+        .then((elsewhere) => show(this.sessionObj.preflight(this.patentProfile, lang(), elsewhere?.length ? elsewhere : undefined)))
+        .catch((e) => this.report(e));
     };
     slidesBox.addEventListener("change", () => { this.patentAllSlides = slidesBox.checked; run(); });
     office.addEventListener("change", () => { this.patentProfile = office.value; run(); });
@@ -1514,8 +1522,30 @@ export class App {
       });
       return;
     }
+    if (isNumberingAction(a.id)) {
+      // A numeral's "Number all parts ▸": like the page command, with the numerals of the other slides.
+      void this.numeralsElsewhere().then((elsewhere) => this.edit((s) => s.applyAction(sel, a.id, undefined, elsewhere)));
+      this.stage.el.focus({ preventScroll: true });
+      return;
+    }
     this.edit((s) => s.applyAction(sel, a.id));
     this.stage.el.focus({ preventScroll: true });
+  }
+
+  /**
+   * The numerals of the other slides (engine `numeralsOf` over their units) for numbering and the compatibility check;
+   * undefined without access to the slides (PowerPointApi 1.3/1.5) or when they cannot be read: the slide then counts alone.
+   */
+  private async numeralsElsewhere(): Promise<OtherPageNumerals[] | undefined> {
+    if (!this.slideAccess) return undefined;
+    try {
+      const cur = await currentSlide(this.office);
+      if (!cur) return undefined;
+      return slideNumerals(this.engine, await readSlideUnits(this.office), cur.index);
+    } catch (e) {
+      console.warn("InventaSketch: numerals of the other slides could not be read", e);
+      return undefined;
+    }
   }
 
   /**

@@ -467,9 +467,16 @@ Medium, Namen, die zusammengehören) und [engineering-calculations.md](../design
   `pageAction?id=<id>&label=<l>` aus (Engine `applyPageAction`): Die Teile, die ein Bezugszeichen erhalten, werden neu
   gezeichnet, die neuen Bezugszeichen als neue Einheiten, ein Rückgängig-Schritt („InventaSketch: Alle Teile
   nummerieren: 10, 20, 30 …“); danach fragt der Bereich erneut. Das Menü ist dasselbe, das ein ausgewähltes
-  Bezugszeichen anbietet (`patent.numerals.auto=tens` / `=ones`). Nummeriert wird die aktuelle Seite: Die Bezugszeichen
-  anderer Seiten kennt die Seitensitzung nicht, eine zweite Seite beginnt also wieder bei 10 (das COM-Add-in setzt über
-  Folien hinweg fort).
+  Bezugszeichen anbietet (`patent.numerals.auto=tens` / `=ones`).
+- **Bezugszeichen über Seiten hinweg** (26.11.2026, Runde 5): `host.page_numerals` liest die Einheitenmodelle der anderen
+  Seiten (Impress/Draw, mit ihren Nummern bezeichnet) oder Tabellen (Calc, mit ihren Namen bezeichnet), lässt die Engine
+  sie zusammenfassen (`numeralsOf`, je Modell zwischengespeichert wie `designationsOf`; `drawing.numerals_elsewhere`
+  fasst sie je Seite zusammen) und übergibt sie als `elsewhere` an `applyPageAction` und an das eigene Menü *Alle Teile
+  nummerieren ▸* eines Bezugszeichens (`applyAction`, `drawing.is_numbering_action`). Die Nummerierung schließt an die
+  Bezugszeichen der anderen Seiten an, gleiche Teile behalten Bezugszeichen und Namen. Die Kompatibilitätsprüfung aller
+  Seiten (Impress/Draw) übergibt jeder Seite die Bezugszeichen der anderen (`pageName` „slide“/„page“), sodass
+  Bezugszeichen für verschiedene Teile und dasselbe Teil mit unabhängigen Bezugszeichen über Seiten hinweg gemeldet
+  werden. Unit- und Engine-getestet (`test_concept`); in LibreOffice noch nicht ausgeführt.
 - **Piktogramme.** LibreOffice hat keinen Piktogrammsatz: Die neuen Options-Piktogramme der Verkehrsmittel und Phasen
   (Runde 4) erscheinen in den Klapplisten als Optionsnamen.
 

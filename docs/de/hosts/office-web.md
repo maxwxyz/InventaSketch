@@ -143,7 +143,17 @@ Folie behalten.
   Seite ohne Teile oder wenn jedes Teil nummeriert ist, gibt es keinen Knopf (nur im passenden Kontext). Der Knopf öffnet
   das Menü „Alle Teile nummerieren“ mit *10, 20, 30 …* und *1, 2, 3 …*; eine Zeile führt `applyPageAction` aus (ein
   Rückgängig-Schritt, die Live-Synchronisierung zeichnet die Folie neu). Dasselbe Menü bietet ein ausgewähltes
-  Bezugszeichen. Nummeriert wird die Seite des Editors; Bezugszeichen anderer Folien kennt die Sitzung nicht.
+  Bezugszeichen.
+- **Bezugszeichen über Folien hinweg** (26.11.2026, Runde 5): Vor „Alle Teile nummerieren“ (Menü der oberen Leiste und
+  Menü eines Bezugszeichens, `numerals.isNumberingAction`) und vor der Kompatibilitätsprüfung liest das Add-in die
+  Einheiten aller Folien (`readSlideUnits`), lässt die Engine die Bezugszeichen der anderen Folien in einem Aufruf
+  zusammenfassen (`numeralsOf` über ihre kompakten Modelle; `office/numerals.ts` `slideNumerals`) und übergibt sie als
+  `elsewhere` an `applyPageAction` / `applyAction` / `preflight` (mit `pageName: "slide"`). Die Nummerierung schließt dann
+  an die Bezugszeichen der anderen Folien an, gleiche Teile behalten Bezugszeichen und Namen; die Prüfung meldet ein
+  Bezugszeichen, das auf einer anderen Folie ein anderes Teil bezeichnet, und dasselbe Teil mit unabhängigen
+  Bezugszeichen („Folie 3“). „Alle Folien“ prüft jede Folie gegen die anderen. Braucht PowerPointApi 1.3 (Tags) und 1.5
+  (gewählte Folie); ohne sie oder in der Seitenleiste des COM-Add-ins (kein eigener Folienzugriff) zählt die Seite des
+  Editors allein. Unit-getestet; im Browser noch nicht ausgeführt.
 - **Options-Piktogramme der Verkehrsmittel und Phasen** (Runde 4): `travel-walk`, `travel-bike`, `travel-car`,
   `travel-transit`, `travel-none`, `phase-l1`, `phase-l2`, `phase-l3`, `phase-3`, `phase-circuit` stehen in der mit dem
   COM-Add-in geteilten Tabelle (`src/ui/icons.ts`, `test/icons.test.ts` vergleicht beide).

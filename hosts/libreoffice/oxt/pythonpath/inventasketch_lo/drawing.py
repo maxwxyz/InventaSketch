@@ -104,6 +104,28 @@ def continuation_map(pages, current):
     return out
 
 
+def is_numbering_action(action_id):
+    """True for "Number all parts" (the page command, or the same menu of a numeral: ``t:patent.numerals.auto=tens``)."""
+    action_id = action_id or ""
+    if action_id.startswith("t:"):
+        action_id = action_id[2:]
+    return action_id.startswith("patent.numerals.auto=")
+
+
+def numerals_elsewhere(pages, current):
+    """The engine's ``elsewhere`` for numbering and the compatibility check: [{"page": label, "numerals": [...]}] from
+    ``pages`` = [(label, [numeral lists of the page's units, as ``numeralsOf`` returns them])] in page order; the page
+    ``current`` (its label) and pages without numerals are left out."""
+    out = []
+    for label, lists in pages:
+        if label == current:
+            continue
+        numerals = [n for found in lists or () for n in found or ()]
+        if numerals:
+            out.append({"page": label, "numerals": numerals})
+    return out
+
+
 def elsewhere(designations, selected_ids, cmap):
     """[(key, designation as typed, [page labels])] of the selection's designations that also occur on other pages
     (``designations``: the engine's {key, designation, ids} of the page)."""

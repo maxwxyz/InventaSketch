@@ -60,6 +60,18 @@ class NamesAcrossPages(unittest.TestCase):
         self.assertEqual(drawing.page_word("impress"), "slide")
         self.assertEqual(drawing.page_word("draw"), "page")
 
+    def test_numerals_of_the_other_pages_for_numbering_and_the_check(self):
+        ten = {"numeral": "10", "label": "Gear", "kind": "k1"}
+        twenty = {"numeral": "20", "label": "Shaft", "kind": None}
+        pages = [("1", [[ten], [twenty]]), ("2", [[]]), ("3", [[ten]])]
+        self.assertEqual(drawing.numerals_elsewhere(pages, "3"), [{"page": "1", "numerals": [ten, twenty]}])
+        self.assertEqual([p["page"] for p in drawing.numerals_elsewhere(pages, "2")], ["1", "3"])
+        self.assertEqual(drawing.numerals_elsewhere([], "1"), [])
+        self.assertTrue(drawing.is_numbering_action("patent.numerals.auto=tens"))
+        self.assertTrue(drawing.is_numbering_action("t:patent.numerals.auto=ones"))
+        self.assertFalse(drawing.is_numbering_action("t:patent.numerals.renumber"))
+        self.assertFalse(drawing.is_numbering_action(None))
+
     def test_same_name_rows_for_the_selection(self):
         designations = [{"key": "W3", "designation": "-W3", "ids": ["o1"]}, {"key": "H1", "designation": "H1",
                                                                               "ids": ["o2"]}]

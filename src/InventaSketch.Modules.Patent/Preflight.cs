@@ -18,6 +18,13 @@ namespace InventaSketch.Modules.Patent
         /// <summary>Maximum words per free text (flowchart boxes use <see cref="MaxWordsFlowchart"/>).</summary>
         public int MaxWords { get; init; } = 4;
         public int MaxWordsFlowchart { get; init; } = 12;
+        /// <summary>
+        /// The numerals of the document's other pages or slides that a host keeps in models of their own: the reference checks
+        /// compare the checked pages with them (<see cref="ReferenceNumerals.CheckAcrossPages"/>).
+        /// </summary>
+        public IReadOnlyList<OtherPage> Elsewhere { get; init; } = Array.Empty<OtherPage>();
+        /// <summary>How findings name other pages ("page 2" or "slide 2").</summary>
+        public PageNames PageNames { get; init; } = PageNames.Pages;
     }
 
     /// <summary>
@@ -434,13 +441,14 @@ namespace InventaSketch.Modules.Patent
 
         private static void CheckReferences(Ctx c)
         {
-            foreach (var issue in ReferenceNumerals.Check(c.Doc))
+            foreach (var issue in ReferenceNumerals.Check(c.Doc).Concat(ReferenceNumerals.CheckAcrossPages(c.Doc, c.Options.Elsewhere, c.Options.PageNames)))
             {
                 var (rule, sev) = issue.Kind switch
                 {
                     ReferenceIssueKind.SameNumeralDifferentLabels => (PreflightRules.RefConflict, Severity.Error),
                     ReferenceIssueKind.NumeralWithoutEntry => (PreflightRules.RefMissing, Severity.Error),
                     ReferenceIssueKind.LabelWithDifferentNumerals => (PreflightRules.RefLabel, Severity.Warning),
+                    ReferenceIssueKind.SamePartDifferentNumerals => (PreflightRules.RefLabel, Severity.Warning),
                     ReferenceIssueKind.SameNumeralDifferentParts => (PreflightRules.RefDuplicate, Severity.Error),
                     _ => (PreflightRules.RefUnused, Severity.Warning),
                 };

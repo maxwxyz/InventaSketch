@@ -7,7 +7,7 @@ import type {
   MotionInfo, MotionPreview, PreflightResult, PartView, SanitizeMode, SanitizeOptions, SanitizeResult,
   CalcResult, CodeImportResult, ConnectOption, ConvertUnitResult, DragHandleInfo, ExplainResult, ObjectHandles, ValueLevel, ValuesResult,
   CalcSheetMode, CalcSheetResult, InsertHandleInfo, LinkInfo, PolylineHandles, Vec2,
-  CheckInfo, CrossingInfo, DesignationInfo, LineEndInfo, MediumColourInfo, ValueSettings,
+  CheckInfo, CrossingInfo, DesignationInfo, LineEndInfo, MediumColourInfo, ValueSettings, OtherPageNumerals,
 } from "./types";
 
 export interface EngineBackend {
@@ -74,8 +74,13 @@ export class Session {
   setPoint(id: string, index: number, x: number, y: number, snap: boolean, tolerance?: number, anchor = true): EditorState {
     return this.c("setPoint", { id, index, x, y, snap, tolerance, anchor });
   }
-  /** Runs a context action; actions whose info carries `input` need the entered text. */
-  applyAction(ids: string[], action: string, input?: string): EditorState { return this.c("applyAction", { ids, action, input }); }
+  /**
+   * Runs a context action; actions whose info carries `input` need the entered text. `elsewhere` (the numerals of the other
+   * slides) is used by a numeral's "Number all parts".
+   */
+  applyAction(ids: string[], action: string, input?: string, elsewhere?: OtherPageNumerals[]): EditorState {
+    return this.c("applyAction", { ids, action, input, elsewhere });
+  }
   /** Sets the document plan scale denominator (100 = 1:100); null clears it. One undo step. */
   setPlanScale(value: number | null): EditorState { return this.c("setPlanScale", { value }); }
   /** Switches the document's black-and-white setting; one undo step, every object counts as changed. */
@@ -91,14 +96,20 @@ export class Session {
   /** SVG or DXF drawing as editable, grouped basic shapes (real size if it has units and fits, else fitted). */
   importVector(text: string): EditorState { return this.c("importVector", { text }); }
   /** Compatibility check (drawing-rule preflight) of the page for office `profile` – a drafting aid, not a legal certification. */
-  preflight(profile: string, lang: string): PreflightResult { return this.c("preflight", { text: profile, lang }); }
+  preflight(profile: string, lang: string, elsewhere?: OtherPageNumerals[]): PreflightResult {
+    // With the numerals of the other slides the reference checks compare numerals between slides ("slide 2").
+    return this.c("preflight", elsewhere ? { text: profile, lang, elsewhere, pageName: "slide" } : { text: profile, lang });
+  }
   /**
    * Commands of the whole page without a selection (kind "page"; today "Number all parts ▸ 10, 20, 30 … / 1, 2, 3 …", a menu
    * choice): empty when the page offers none, greyed out (`enabled` false) when they cannot do anything now.
    */
   pageActions(lang: string): ActionInfo[] { return this.c("pageActions", { lang }); }
-  /** Runs a page command (an id of `pageActions`) on the page; one undo step. */
-  applyPageAction(action: string): EditorState { return this.c("applyPageAction", { action }); }
+  /**
+   * Runs a page command (an id of `pageActions`) on the page; one undo step. `elsewhere`: the numerals of the other slides
+   * (`slideNumerals`), so "Number all parts" continues after them and identical parts keep their numeral.
+   */
+  applyPageAction(action: string, elsewhere?: OtherPageNumerals[]): EditorState { return this.c("applyPageAction", { action, elsewhere }); }
   /**
    * "Clean slides": makes the values of `ids` unrecognisable (none = every element of the page; groups expanded) –
    * charts normalised, randomised or kept (`mode`), optionally categories renamed, texts replaced and metadata stripped.
