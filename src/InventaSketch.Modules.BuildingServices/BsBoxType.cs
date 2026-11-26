@@ -100,6 +100,12 @@ namespace InventaSketch.Modules.BuildingServices
         public Func<Canvas, SketchObject, string, IEnumerable<(Vec2 A, Vec2 B)>>? Rails { get; init; }
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
         public IReadOnlyList<string> CompanionIds { get; init; } = Array.Empty<string>();
+        /// <summary>
+        /// Pipe system of the inline ports <c>in</c>/<c>out</c> of valves, strainers and meters: the default of their optional
+        /// <c>service</c> parameter, "heating" (either heating pipe) or "water" (any drinking water pipe). Null for the heating
+        /// parts (pump, mixer, thermostatic valve), which always take a heating pipe.
+        /// </summary>
+        public string? Service { get; init; }
 
         public Size2 PreferredSize(string view) => view switch
         {
@@ -161,9 +167,11 @@ namespace InventaSketch.Modules.BuildingServices
 
         /// <summary>
         /// What a port carries (build "+", <see cref="Building"/>): the port ids name the medium (heating flow/return incl.
-        /// manifold circuits f1/r1 …, cold and hot water, circulation, waste, the air of a ventilation unit), risers and air
-        /// terminals carry their own medium parameter, inline heating parts (pump, mixer, valve, expansion vessel) take
-        /// either heating pipe, electrical outlets an installation cable.
+        /// manifold and buffer circuits f1/r1 …, cold and hot water, circulation, waste, the air of a ventilation unit), risers
+        /// and air terminals carry their own medium parameter, inline heating parts (pump, mixer, valve, expansion vessel)
+        /// take either heating pipe, inline valves, strainers and meters either heating pipe or any water pipe (by their
+        /// <see cref="Service"/>), inline duct parts (<c>inlet</c>/<c>outlet</c>: dampers, silencer) any air duct,
+        /// electrical outlets an installation cable.
         /// </summary>
         public override PortConnection? Connection(SketchObject o, Anchor port)
         {
@@ -182,8 +190,13 @@ namespace InventaSketch.Modules.BuildingServices
                 case "extract":
                 case "supply":
                     return Duct(id);
+                case "inlet":
+                case "outlet":
+                    return AirInline(o.Str("kind", "supply"));
                 case "in":
                 case "out":
+                    if (Service is not null && o.Str("service", Service) == "water") return Water();
+                    return PortConnection.Of(PortMedia.Heating, "bs.pipe.flow");
                 case "a":
                 case "ab":
                 case "b":
@@ -199,6 +212,14 @@ namespace InventaSketch.Modules.BuildingServices
 
         private static PortConnection Pipe(string medium)
             => PortConnection.Of(PipeType.MediumOf(medium), "bs.pipe." + medium, new Dictionary<string, ParamValue> { ["medium"] = medium });
+
+        /// <summary>Inline fitting of a drinking water line: fits cold and hot water and circulation; "+" draws a cold water pipe.</summary>
+        private static PortConnection Water()
+            => PortConnection.Of(PortMedia.Water, "bs.pipe.cold", new Dictionary<string, ParamValue> { ["medium"] = "cold" });
+
+        /// <summary>Inline duct part: fits every air duct; "+" draws a duct of the part's air kind.</summary>
+        private static PortConnection AirInline(string kind)
+            => PortConnection.Of(PortMedia.Air, "bs.duct." + kind, new Dictionary<string, ParamValue> { ["kind"] = kind });
 
         private static PortConnection Duct(string kind)
             => PortConnection.Of(PortMedia.AirOf(kind), "bs.duct." + kind, new Dictionary<string, ParamValue> { ["kind"] = kind });

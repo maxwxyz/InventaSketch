@@ -1,6 +1,6 @@
 # Building services module (`building-services`)
 
-Heating, plumbing, ventilation and electrical house installation (German: *Technische Gebäudeausrüstung, TGA*)
+Heating, plumbing, ventilation, cooling (split air conditioner) and electrical house installation (German: *Technische Gebäudeausrüstung, TGA*)
 for slides and quick technical sketches. Every element has the **same three views** of one installation:
 
 | View id | Label (EN / DE) | Icon | What it shows |
@@ -94,6 +94,14 @@ Sizes are plan / section / schematic at 1:100 (W x H, mm on the page).
 | `bs.heat.mixer` | Mixing valve (3-way) / Mischventil (3-Wege) | 4x4 (symbol) | inline | a, ab, b | – |
 | `bs.heat.expansion` | Expansion vessel / Ausdehnungsgefäß | 3.6x3.6 / 3.6x5 / 3.6x4.4 | wall | pipe | – |
 | `bs.heat.trv` | Thermostatic valve / Thermostatventil | 3x3 (symbol) | inline | in, out | – |
+| `bs.valve.ball` | Ball valve (heating) / Kugelhahn (Heizung) | 3x3 (symbol) | inline | in, out | `service` heating/water |
+| `bs.valve.check` | Check valve (heating) / Rückschlagventil (Heizung) | 3x3 (symbol) | inline | in, out (flow from in to out, outlet triangle filled) | `service` heating/water |
+| `bs.valve.safety` | Safety valve (heating) / Sicherheitsventil (Heizung) | 3x3 (symbol) | inline | in (below), waste (blow-off, right) | `service` heating/water |
+| `bs.strainer` | Strainer (heating) / Schmutzfänger (Heizung) | 3x3 (symbol) | inline | in, out | `service` heating/water |
+| `bs.meter.heat` | Heat meter / Wärmemengenzähler | 4x3 (symbol) | inline | in, out | label HM/WMZ |
+| `bs.meter.water` | Water meter / Wasserzähler | 3x3 (symbol) | inline | in, out (drinking water) | label WM/WZ |
+| `bs.heat.buffer` | Buffer tank / Pufferspeicher | 8x8 / 8x18 / 8x12 | floor | f1, r1 (generator side, left), f2, r2 (consumer side, right) | label BUF/PS |
+| `bs.heat.solarthermal` | Solar thermal collector / Solarkollektor (Solarthermie) | 20x8 / 20x9 / 20x7 | floor | flow, return | – |
 | `bs.san.wc` | WC / WC | 3.6x5.4 / 3.6x4 / 3.6x3.6 | floor | waste, cold | – |
 | `bs.san.basin` | Washbasin / Waschbecken | 6x4.5 / 6x4 / 6x3.5 | wall | waste, hot, cold | – |
 | `bs.san.shower` | Shower / Dusche | 9x9 / 9x22 / 9x8 | floor | waste, hot, cold | – |
@@ -103,6 +111,10 @@ Sizes are plan / section / schematic at 1:100 (W x H, mm on the page).
 | `bs.san.riser` | Riser (vertical pipe) / Steigleitung / Fallleitung | 2x2 / 2x28 / 2x28 | floor | plan: riser; section/schematic: bottom, top + rail | `medium`, `dir` up/down/through |
 | `bs.vent.terminal` | Air terminal (valve / grille) / Luftdurchlass (Ventil / Gitter) | 3x3 / 3x1.6 / 3x3 (symbol) | ceiling | duct | `kind` supply/extract |
 | `bs.vent.unit` | Ventilation unit with heat recovery / Lüftungsgerät mit Wärmerückgewinnung | 7x4.5 / 7x8 / 7x5 | wall | outdoor, exhaust, extract, supply | – |
+| `bs.vent.damper` | Duct damper / Lüftungsklappe | 4x2.4 / 4x2.4 / 4x3 (symbol) | inline | inlet, outlet (on the duct axis) | `kind` supply/extract/outdoor/exhaust (colour) |
+| `bs.vent.firedamper` | Fire damper / Brandschutzklappe | 4x2.4 / 4x2.4 / 4x4 (symbol) | inline | inlet, outlet | `kind`; label FD/BSK |
+| `bs.vent.silencer` | Duct silencer (sound attenuator) / Schalldämpfer (Lüftung) | 6x2.4 / 6x2.4 / 6x3 (symbol) | inline | inlet, outlet | `kind` |
+| `bs.cool.split` | Split air conditioner / Split-Klimagerät | 18x8 / 18x22 / 18x8 | floor | waste (condensate of the indoor unit), cable (outdoor unit) | – |
 | `bs.elec.data` | Communication outlet / Kommunikationsanschluss | 4x4 (symbol) | wall | cable | `kind` data/phone/tv |
 | `bs.elec.detector` | Detector / Melder | 4x4 / 4x1.4 / 4x4 (symbol) | ceiling | cable | `kind` smoke/heat/motion |
 | `bs.elec.appliance` | Appliance outlet / Geräteanschlussdose | 4x4 (symbol) | wall | cable | `kind` cooker/washer/dryer/dishwasher/generic |
@@ -110,7 +122,11 @@ Sizes are plan / section / schematic at 1:100 (W x H, mm on the page).
 
 Every box type also has `height` and the advanced `scale`. Labels in drawings follow the UI language (HP/WP, DHW/WW,
 codes F/VL, R/RL, CW/KW, HW/WW, HWC/Z, W/SW, SUP/ZUL, ETA/ABL, ODA/AUL, EHA/FOL, LAN/TEL/TAE/TV/SAT, S/RM, H/WM,
-PIR/BM, CK/HE, …). Pipe colours follow the architecture module (flow red, return blue dashed, cold green, hot
+PIR/BM, CK/HE, HM/WMZ, WM/WZ, BUF/PS, FD/BSK, …). The 3-way mixing valve and the expansion vessel already exist as
+`bs.heat.mixer` and `bs.heat.expansion`. The split air conditioner is one element: the wall-mounted indoor unit (with a
+snowflake in the schematic) and the outdoor unit (fan) joined by the refrigerant lines drawn inside the element; plan:
+indoor unit on the room side (bottom), outdoor unit outside (top right), so the element is placed across the wall.
+Pipe colours follow the architecture module (flow red, return blue dashed, cold green, hot
 magenta dash-dot, waste brown, wider); circulation is violet dash-dot-dot. Air colours: supply blue, extract ochre,
 outdoor green, exhaust brown. Colours and codes are common practice, not a cited standard.
 
@@ -122,10 +138,11 @@ the heating category), ducts per air kind (`bs.duct.supply` …), and variants: 
 `bs.heat.manifold.8`, `bs.heat.floorloop.small`, `bs.san.riser.waste` (soil stack), `bs.san.riser.hot`,
 `bs.san.riser.flow`, `bs.san.riser.return`, `bs.san.heater.electric`, `bs.vent.terminal.extract`,
 `bs.elec.data.phone`, `bs.elec.data.tv`, `bs.elec.detector.heat`, `bs.elec.detector.motion`,
-`bs.elec.appliance.washer`, `bs.elec.appliance.dishwasher`.
+`bs.elec.appliance.washer`, `bs.elec.appliance.dishwasher`, and the drinking water fittings (plumbing category,
+`service` = water) `bs.valve.ball.water`, `bs.valve.check.water` (Rückflussverhinderer), `bs.strainer.water` (filter).
 
 Categories: `bs.heating` Heating / Heizung, `bs.plumbing` Plumbing & sanitary / Sanitär & Trinkwasser,
-`bs.ventilation` Ventilation / Lüftung, `bs.electrical` Electrical installation (additions) / Elektroinstallation
+`bs.ventilation` Ventilation / Lüftung, `bs.cooling` Cooling & air conditioning / Kälte & Klima, `bs.electrical` Electrical installation (additions) / Elektroinstallation
 (Ergänzungen).
 
 ## Anchors and line language
@@ -147,14 +164,21 @@ Categories: `bs.heating` Heating / Heizung, `bs.plumbing` Plumbing & sanitary / 
 **Build "+" (connections).** The port ids name the medium: `flow`/`f1…` a heating flow pipe, `return`/`r1…` a return
 pipe, `cold`, `hot`, `circulation`, `waste` the matching water pipe, risers the pipe of their medium, air terminals the
 duct of their air kind, the ventilation unit `outdoor`/`exhaust`/`extract`/`supply` ducts; inline heating parts (pump,
-mixing valve, thermostatic valve, expansion vessel) fit flow and return; outlets, detectors, appliances and the
+mixing valve, thermostatic valve, expansion vessel, heat meter) fit flow and return; ball valve, check valve, safety
+valve (inlet) and strainer fit flow and return with `service` = heating (default) and every drinking water pipe
+(`water`: cold, hot, circulation; "+" draws a cold water pipe) with `service` = water, the water meter always the latter;
+the safety valve blows off into its `waste` port; buffer tank circuits `f1`/`r1`/`f2`/`r2` take flow and return pipes
+like the manifold circuits; the duct parts (damper, fire damper, silencer) have `inlet`/`outlet` on the duct axis that
+fit every air duct (`air`; "+" draws a duct of their `kind`); the split air conditioner drains its condensate into a
+waste pipe and takes a power cable; outlets, detectors, appliances and the
 equipotential bonding bar an installation cable (`electric.installation`, the cable route of the electrical module).
 Pipes and ducts carry their medium, so their free ends offer "+" to continue or to dock the next radiator, fixture or
 terminal with its fitting connection.
 
 ## Context actions
 
-Mounting height… (input, every element), medium/kind as choices ▾ (pipe, duct, riser, air terminal, outlets, detector),
+Mounting height… (input, every element), medium/kind as choices ▾ (pipe, duct, riser, air terminal, duct parts, outlets,
+detector), pipe system heating/drinking water ▾ (ball valve, check valve, safety valve, strainer),
 flow arrow and hops (pipe), air flow arrow (duct), more/fewer circuits (manifold), heating coil (water heater),
 riser direction.
 
@@ -176,6 +200,9 @@ Card variables come first. Design notes:
 | Circulator pump | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); panel *P*_hyd (`powerHyd`); engineer ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
 | Mixing valve (3-way) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
 | Water heater (storage cylinder) | *V* (`volume`), Δθ (`deltaT`), *Q* (`heat`), *P* (`power`); panel *t* (`heatUpTime`); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (no losses) [S29] |
+| Buffer tank | *V* (`volume`, l), Δθ (`deltaT`, temperature spread), *Q* (`heat`, kWh); engineer ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
+| Heat meter | Φ (`heatOutput`, thermal power), *V̇* (`flowRate`), θ_F (`flowTemp`), θ_R (`returnTemp`); engineer ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
+| Water meter | *V̇* (`flowRate`, m³/h) | – (the flow of the run it sits in) |
 | Air terminal | *V̇* (`flowRate`, m³/h), *A* (`roomArea`), *n* (`airChange`, per hour), *V* (`roomVolume`); panel *h* (`roomHeight`, default 2.5 m) | *V* = *A*·*h*; *V̇* = *n*·*V*/1 h [S30] |
 | Ventilation unit with heat recovery | *V̇*_SUP (`flowSupply`), η_t (`recovery`), θ_SUP (`tempSupply`), Φ_WRG (`heatRecovered`); panel *V̇*_ETA (`flowExtract`), θ_ODA (`tempOutdoor`), θ_ETA (`tempExtract`) | θ_SUP = θ_ODA + η_t·(θ_ETA − θ_ODA); Φ = 0.34 W·h/(m³·K)·*V̇*_SUP·(θ_SUP − θ_ODA) [S30] |
 | Pipe | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); panel DN (`dn`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN when no inner diameter is entered (50 % tolerance, DN is a nominal size) [S30] |
@@ -188,8 +215,10 @@ the air terminal that serves the room; a link to an architecture room (area, hei
 total port gets the sum of the parts: the generator's flow and return ports, the circulator's outlet, the mixer's AB port
 and the ventilation unit's spigots are totals; radiators, floor loops, the circulator's inlet, the mixer's A and B ports
 and air terminals are parts. The stream temperature is passed on an unbranched run and from the one supplying outlet (the
-generator's flow port, a consumer's return port, the mixer's AB port) to every inlet of a split. Thermostatic valves pass
-both; circulators pass the temperature. Heat losses of pipes are not modelled; mixing at a merge is only computed in the
+generator's flow port, a consumer's return port, the mixer's AB port) to every inlet of a split. Thermostatic valves, ball
+valves, check valves and strainers pass both; circulators, heat meters and water meters pass the temperature, and their
+inlet (part) and outlet (total) carry their own volume flow, so a meter shows the flow of its run; dampers, fire dampers
+and silencers pass the air flow. The buffer tank decouples its circuits (no values at its ports). Heat losses of pipes are not modelled; mixing at a merge is only computed in the
 mixing valve.
 
 Examples (accept criteria): a boiler at 55 °C feeding a radiator (Φ₅₀ = 1000 W, *n* = 1.3, room 20 °C) over a pipe
@@ -220,6 +249,9 @@ with their icons, plan scale and `height` on every type, every library item rend
 inside its box (also stretched, squashed and with every choice), scaling changes `Size` not parameters, views draw
 different symbols, ports with the same ids in every view, mounts, rails, line language (corners, extend, branches,
 junction dots, hops), duct width at the plan scale, the view switch (x kept, height mapping, docked pipes, rail docking
-on the riser, round trip back to plan, height from dragging in section, rotation) and the JSON round trip. The gallery
+on the riser, round trip back to plan, height from dragging in section, rotation) and the JSON round trip; for the
+valves, strainer, meters, buffer tank, solar collector, duct parts and split unit (`FittingTests`) the port media, docking
+on a free end of the existing pipes and ducts of every fitting medium, "+" at every port, the service choice and the
+values of buffer tank and meters in a pipe run. The gallery
 test writes `gallery/*.html` (every type in its three views, stretched, presets, and a sample bathroom in plan,
 section and schematic).

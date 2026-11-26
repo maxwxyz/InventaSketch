@@ -16,7 +16,8 @@ namespace InventaSketch.Modules.BuildingServices
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
             new ObjectType[] { new PipeType(), new DuctType() }
-                .Concat(Heating.Types()).Concat(Plumbing.Types()).Concat(Ventilation.Types()).Concat(ElectricalAdditions.Types()).ToList());
+                .Concat(Heating.Types()).Concat(Fittings.Types()).Concat(HeatStorage.Types()).Concat(Plumbing.Types())
+                .Concat(Ventilation.Types()).Concat(DuctFittings.Types()).Concat(Cooling.Types()).Concat(ElectricalAdditions.Types()).ToList());
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
 
@@ -30,6 +31,7 @@ namespace InventaSketch.Modules.BuildingServices
             new LibraryCategory(BsCategories.Heating, new I18nText("Heating", "Heizung"), Id, 10),
             new LibraryCategory(BsCategories.Plumbing, new I18nText("Plumbing & sanitary", "Sanitär & Trinkwasser"), Id, 20),
             new LibraryCategory(BsCategories.Ventilation, new I18nText("Ventilation", "Lüftung"), Id, 30),
+            new LibraryCategory(BsCategories.Cooling, new I18nText("Cooling & air conditioning", "Kälte & Klima"), Id, 35),
             new LibraryCategory(BsCategories.Electrical, new I18nText("Electrical installation (additions)", "Elektroinstallation (Ergänzungen)"), Id, 40),
         };
 
@@ -79,6 +81,14 @@ namespace InventaSketch.Modules.BuildingServices
             Add("heat.manifold.8", "bs.heat.manifold", "Manifold (8 circuits)", "Heizkreisverteiler (8 Heizkreise)", P(("circuits", 8)), size: new Size2(9, 1.2), kw: new[] { "8" });
             Add("heat.floorloop.small", "bs.heat.floorloop", "Underfloor heating loop (bathroom)", "Fußbodenheizung (Bad)", P(("spacing", 100.0)), size: new Size2(20, 25),
                 kw: new[] { "bathroom", "bad", "100" });
+
+            // Fittings in drinking water lines.
+            Add("valve.ball.water", "bs.valve.ball", "Ball valve (drinking water)", "Kugelhahn (Trinkwasser)", P(("service", "water")), category: BsCategories.Plumbing,
+                kw: new[] { "drinking water", "trinkwasser", "water", "wasser" });
+            Add("valve.check.water", "bs.valve.check", "Check valve (drinking water)", "Rückflussverhinderer (Trinkwasser)", P(("service", "water")), category: BsCategories.Plumbing,
+                kw: new[] { "drinking water", "trinkwasser", "backflow", "rückflussverhinderer" });
+            Add("strainer.water", "bs.strainer", "Filter (drinking water)", "Filter (Trinkwasser)", P(("service", "water")), category: BsCategories.Plumbing,
+                kw: new[] { "drinking water", "trinkwasser", "filter", "hauswasserfilter" });
 
             // Plumbing variants.
             Add("san.riser.waste", "bs.san.riser", "Soil stack (waste)", "Fallleitung (Schmutzwasser)", P(("medium", "waste"), ("dir", "down")), kw: new[] { "soil stack", "fallleitung", "fallrohr" });

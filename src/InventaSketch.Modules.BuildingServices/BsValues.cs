@@ -9,7 +9,7 @@ namespace InventaSketch.Modules.BuildingServices
     /// Element values of the building services elements (Calc 4, engineering-calculations.md sections 2.9 and 3.7): heat
     /// generators (boiler, heat pump with COP), radiators (EN 442 characteristic Φ = Φ₅₀·(Δθ/50 K)^n with the logarithmic excess
     /// temperature, and the operating return temperature from flow and characteristic), underfloor loop, circulator pump,
-    /// mixing valve, water heater, air terminal (room area, height and air change give the air flow), ventilation unit (heat
+    /// mixing valve, water heater, buffer tank (stored heat), heat meter (power from flow and temperatures), water meter, air terminal (room area, height and air change give the air flow), ventilation unit (heat
     /// recovery), pipes (velocity, DN as approximation of the inner diameter) and ducts (round or rectangular). Every value is
     /// optional. Water: ρ = 1000 kg/m³ and c = 4.19 kJ/(kg·K) as defaults; air: ρ·c_p = 0.34 W·h/(m³·K).
     /// <para>
@@ -277,6 +277,9 @@ namespace InventaSketch.Modules.BuildingServices
             "bs.heat.pump" => Pump(),
             "bs.heat.mixer" => Mixer(),
             "bs.san.heater" => WaterHeater(),
+            "bs.heat.buffer" => Buffer(),
+            "bs.meter.heat" => HeatMeter(),
+            "bs.meter.water" => WaterMeter(),
             "bs.vent.terminal" => Terminal(),
             "bs.vent.unit" => VentUnit(),
             PipeType.TypeId => Pipe(),
@@ -410,6 +413,44 @@ namespace InventaSketch.Modules.BuildingServices
             return new Spec(vars, new[] { Stored, HeatUp }, Params(vars), Array.Empty<ValueCheck>());
         }
 
+        /// <summary>Buffer tank: stored heat of the volume over a temperature spread (no losses, no heat-up time).</summary>
+        private static Spec Buffer()
+        {
+            var vars = new[]
+            {
+                V("V", T("Storage volume", "Speichervolumen"), T("V", "V"), Quantities.Volume, "l", "volume") with { Min = 1e-4, Max = 1e3 },
+                V("dT", T("Temperature spread", "Temperaturspreizung"), T("Δθ", "Δθ"), Quantities.TemperatureDifference, "K", "deltaT") with { Min = 0, Max = 200 },
+                V("Q", T("Stored heat", "Gespeicherte Wärme"), T("Q", "Q"), Quantities.Energy, "kWh", "heat") with { Min = 0, Max = 1e15 },
+                Rho(), Cp(),
+            };
+            return new Spec(vars, new[] { Stored }, Params(vars), Array.Empty<ValueCheck>());
+        }
+
+        /// <summary>Inline meter ports like the circulator: the inlet is a part, the outlet the total of what flows on.</summary>
+        private static IEnumerable<PortVar> InlinePort(string port) => port switch
+        {
+            "in" => new[] { new PortVar("Vdot", "Vdot", PortRole.Part) },
+            "out" => new[] { new PortVar("Vdot", "Vdot", PortRole.Total) },
+            _ => Array.Empty<PortVar>(),
+        };
+
+        /// <summary>Heat meter: shows the thermal power from volume flow and the flow/return temperatures it measures.</summary>
+        private static Spec HeatMeter()
+        {
+            var vars = new[]
+            {
+                HeatOut(T("Thermal power", "Wärmeleistung")), Flow(rel: VarRelevance.Card), FlowTemp(), ReturnTemp(), Rho(), Cp(),
+            };
+            return new Spec(vars, new[] { Carrier }, Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => InlinePort(p) };
+        }
+
+        /// <summary>Water meter: shows the volume flow passing through it.</summary>
+        private static Spec WaterMeter()
+        {
+            var vars = new[] { Flow("m³/h", rel: VarRelevance.Card) };
+            return new Spec(vars, Array.Empty<Relation>(), Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => InlinePort(p) };
+        }
+
         private static Spec Terminal()
         {
             var vars = new[]
@@ -486,8 +527,9 @@ namespace InventaSketch.Modules.BuildingServices
 
         private static IEnumerable<string[]> Through(SketchObject o, string cls) => o.Type switch
         {
-            "bs.heat.trv" => new[] { new[] { "in", "out" } },
-            "bs.heat.pump" when cls == "theta" => new[] { new[] { "in", "out" } },
+            "bs.heat.trv" or "bs.valve.ball" or "bs.valve.check" or "bs.strainer" => new[] { new[] { "in", "out" } },
+            "bs.heat.pump" or "bs.meter.heat" or "bs.meter.water" when cls == "theta" => new[] { new[] { "in", "out" } },
+            "bs.vent.damper" or "bs.vent.firedamper" or "bs.vent.silencer" when cls == "Vdot" => new[] { new[] { "inlet", "outlet" } },
             _ => Array.Empty<string[]>(),
         };
 

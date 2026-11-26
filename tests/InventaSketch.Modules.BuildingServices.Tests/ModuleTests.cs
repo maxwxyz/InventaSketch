@@ -56,8 +56,11 @@ namespace InventaSketch.Modules.BuildingServices.Tests
             "bs.pipe", "bs.duct",
             "bs.heat.boiler", "bs.heat.heatpump", "bs.heat.radiator", "bs.heat.floorloop", "bs.heat.manifold", "bs.heat.pump",
             "bs.heat.mixer", "bs.heat.expansion", "bs.heat.trv",
+            "bs.valve.ball", "bs.valve.check", "bs.valve.safety", "bs.strainer", "bs.meter.heat", "bs.meter.water",
+            "bs.heat.buffer", "bs.heat.solarthermal",
             "bs.san.wc", "bs.san.basin", "bs.san.shower", "bs.san.bathtub", "bs.san.heater", "bs.san.drain", "bs.san.riser",
-            "bs.vent.terminal", "bs.vent.unit",
+            "bs.vent.terminal", "bs.vent.unit", "bs.vent.damper", "bs.vent.firedamper", "bs.vent.silencer",
+            "bs.cool.split",
             "bs.elec.data", "bs.elec.detector", "bs.elec.appliance", "bs.elec.bonding",
         };
 
@@ -66,7 +69,7 @@ namespace InventaSketch.Modules.BuildingServices.Tests
         {
             var r = Fx.Reg();
             Assert.Equal(AllTypeIds.OrderBy(x => x), r.Types.Select(t => t.Id).OrderBy(x => x));
-            Assert.Equal(4, r.Categories.Count);
+            Assert.Equal(5, r.Categories.Count);
             Assert.All(r.Types, t => Assert.Contains(r.Categories, c => c.Id == t.Category));
             Assert.All(r.Library, i => Assert.Contains(r.Categories, c => c.Id == i.Category));
         }
@@ -153,6 +156,18 @@ namespace InventaSketch.Modules.BuildingServices.Tests
         [InlineData("rauchmelder", "bs.elec.detector")]
         [InlineData("fallleitung", "bs.san.riser.waste")]
         [InlineData("heat pump", "bs.heat.heatpump")]
+        [InlineData("kugelhahn", "bs.valve.ball")]
+        [InlineData("rückschlagventil", "bs.valve.check")]
+        [InlineData("sicherheitsventil", "bs.valve.safety")]
+        [InlineData("schmutzfänger", "bs.strainer")]
+        [InlineData("wärmemengenzähler", "bs.meter.heat")]
+        [InlineData("wasserzähler", "bs.meter.water")]
+        [InlineData("pufferspeicher", "bs.heat.buffer")]
+        [InlineData("solar collector", "bs.heat.solarthermal")]
+        [InlineData("brandschutzklappe", "bs.vent.firedamper")]
+        [InlineData("schalldämpfer", "bs.vent.silencer")]
+        [InlineData("klappe", "bs.vent.damper")]
+        [InlineData("split", "bs.cool.split")]
         public void SearchFindsElementsInBothLanguages(string query, string itemId)
             => Assert.Contains(Fx.Reg().Search(query), i => i.Id == itemId);
 
