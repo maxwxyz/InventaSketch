@@ -182,7 +182,7 @@ ihr folgen die Geschwindigkeiten in der aktuellen Stellung. Das Werteetikett (`s
 
 | Element | Variablen (Kartenwerte **fett**) | Beziehungen |
 |---|---|---|
-| Viergelenk | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, Klasse (Text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄, ω₃, v_P, a_P | Δ_G = (p + q) − (s + l); μ aus dem Kosinussatz cos μ = (b² + c² − x²)/(2bc) mit x = \|A O4\| über [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; nur Kurbelschwinge: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) in der aktuellen Stellung und Montagelage; ω₄ = i·n; Koppel ω₃ = n·dθ₃/dφ (für die Montagelage); Koppelpunkt P (`cpu`, `cpv`, der Punkt der Bahnkurve): v_P = \|n\|·\|dP/dφ\|, a_P = n²·\|d²P/dφ²\| bei konstantem n |
+| Viergelenk | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, Klasse (Text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄, ω₃, α₃, α₄, v_P, a_P | Δ_G = (p + q) − (s + l); μ aus dem Kosinussatz cos μ = (b² + c² − x²)/(2bc) mit x = \|A O4\| über [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; nur Kurbelschwinge: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) in der aktuellen Stellung und Montagelage; ω₄ = i·n; Koppel ω₃ = n·dθ₃/dφ (für die Montagelage); Winkelbeschleunigungen bei konstantem n: Koppel α₃ = n²·d²θ₃/dφ², Schwinge α₄ = n²·d²θ₄/dφ² (rad/s², Größenart `angularAcceleration`); Koppelpunkt P (`cpu`, `cpv`, der Punkt der Bahnkurve): v_P = \|n\|·\|dP/dφ\|, a_P = n²·\|d²P/dφ²\| bei konstantem n |
 | Schubkurbel | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v**, v_max, a | H = √((l + r)² − e²) − √((l − r)² − e²) (ohne Versatz 2r); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ; v_max = \|n\|·max\|dx_B/dφ\| über eine Umdrehung (Textparameter `maxSliderSpeed`; eingegeben ergibt er n); a = n²·d²x_B/dφ² bei konstantem n (nur lesend) |
 | Schnellrücklauf | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 für r/d = 1/2); H aus der Lageanalyse über eine Umdrehung |
 | Kreuzschubkurbel | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
@@ -211,11 +211,13 @@ aktuellen Stellung (noch keine Prüfung über die ganze Bewegung).
 | `kin.grashof` | Viergelenk | die Kurbel kann nicht umlaufen (nicht Grashof mit Kurbel oder Gestell als kürzestem Glied) | Hinweis | [S24] |
 | `kin.cam.pressure` | Kurvenscheibe mit Stößel | α_max > 30° (übliche Grenze für Schubstößel; der Standard-Tangentennocken r₀ = 8, h = 7 erreicht mit Rolle etwa 43°, daher ein Hinweis) | Hinweis | [S24] |
 
-Ableitungen (ω₃, v_P, a_P, a, v der Kurvenscheibe) sind zentrale Differenzenquotienten der exakten Lageanalyse mit einer
-Schrittweite von 10⁻³ rad (`Linkages.Derivatives`, `CouplerPointDerivatives`, `CouplerRate`, `SliderAccelerationFactor`);
-die Tests vergleichen sie mit den geschlossenen Geschwindigkeits- und Beschleunigungsgleichungen. Im Kern gibt es noch
-keine Größenart Winkelbeschleunigung, daher wird α₄ der Schwinge nicht angeboten (die Bahnbeschleunigung des Koppelpunkts
-schon).
+Ableitungen (ω₃, α₃, α₄, v_P, a_P, a, v der Kurvenscheibe) sind zentrale Differenzenquotienten der exakten Lageanalyse
+mit einer Schrittweite von 10⁻³ rad (`Linkages.Derivatives`, `CouplerPointDerivatives`, `CouplerRate`,
+`LinkAngleDerivatives`, `SliderAccelerationFactor`); die Tests vergleichen sie mit den geschlossenen Geschwindigkeits- und
+Beschleunigungsgleichungen (α₃ und α₄ mit der Cramerschen Regel aus der zweimal abgeleiteten Schleifengleichung, Runde 8
+vom 26.11.2026). Diese Einweg-Ergebnisse der Zeichnung bei gegebener Antriebsdrehzahl (ω₃, α₃, α₄, v_P, a_P am
+Viergelenk, a an der Schubkurbel) sind schreibgeschützt (`VarDef.ReadOnly`): Hosts zeigen sie ohne Eingabefeld; ω₄ der
+Schwinge und die Schiebergeschwindigkeiten bleiben eingebbar, weil sie n zurückgeben.
 
 **Verknüpftes Diagramm.** Das Viergelenk implementiert `ICharacteristics` (Calc 5): den Satz `transfer`,
 „Abtriebswinkel über Antriebswinkel“ / „Output angle over input angle“, Abtriebswinkel ψ₄ über dem Antriebswinkel φ

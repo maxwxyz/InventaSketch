@@ -98,6 +98,53 @@ namespace InventaSketch.Modules.Kinematics.Tests
         }
 
         /// <summary>
+        /// Round eight: the loop a·e^{iθ₂} + b·e^{iθ₃} − c·e^{iθ₄} − d = 0 differentiated twice at constant ω₂ (α₂ = 0):
+        /// −b·sin θ₃·α₃ + c·sin θ₄·α₄ = a·ω₂²·cos θ₂ + b·ω₃²·cos θ₃ − c·ω₄²·cos θ₄ and
+        /// b·cos θ₃·α₃ − c·cos θ₄·α₄ = a·ω₂²·sin θ₂ + b·ω₃²·sin θ₃ − c·ω₄²·sin θ₄, solved by Cramer's rule.
+        /// </summary>
+        [Fact]
+        public void AngularAccelerationsFollowTheAccelerationLoop()
+        {
+            foreach (var (angle, crossed) in new[] { (-60.0, false), (10.0, false), (140.0, false), (-60.0, true) })
+            {
+                double a = 12, b = 36, c = 30;
+                var p = Linkages.FourBar(40, a, b, c, angle, crossed)!.Value;
+                double t2 = Math.Atan2(p.A.Y, p.A.X), t3 = Math.Atan2(p.B.Y - p.A.Y, p.B.X - p.A.X), t4 = Math.Atan2(p.B.Y - p.O4.Y, p.B.X - p.O4.X);
+                const double w2 = 1;
+                var w3 = a * Math.Sin(t4 - t2) / (b * Math.Sin(t3 - t4)) * w2;
+                var w4 = a * Math.Sin(t2 - t3) / (c * Math.Sin(t4 - t3)) * w2;
+                double r1 = a * w2 * w2 * Math.Cos(t2) + b * w3 * w3 * Math.Cos(t3) - c * w4 * w4 * Math.Cos(t4);
+                double r2 = a * w2 * w2 * Math.Sin(t2) + b * w3 * w3 * Math.Sin(t3) - c * w4 * w4 * Math.Sin(t4);
+                double m11 = -b * Math.Sin(t3), m12 = c * Math.Sin(t4), m21 = b * Math.Cos(t3), m22 = -c * Math.Cos(t4);
+                var det = m11 * m22 - m12 * m21;
+                var alpha3 = (r1 * m22 - m12 * r2) / det;
+                var alpha4 = (m11 * r2 - r1 * m21) / det;
+                var d3 = Linkages.LinkAngleDerivatives(40, a, b, c, angle, crossed, false)!.Value;
+                var d4 = Linkages.LinkAngleDerivatives(40, a, b, c, angle, crossed, true)!.Value;
+                Assert.Equal(w3, d3.D1, 5);
+                Assert.Equal(w4, d4.D1, 5);
+                Assert.Equal(alpha3, d3.D2, 4);
+                Assert.Equal(alpha4, d4.D2, 4);
+            }
+
+            // In the values: α = n²·d²θ/dφ² at 120 min⁻¹, read-only results of the drawing, shown in rad/s².
+            var n = 120 * RpmToSi;
+            var (r, doc, o) = One("kin.fourbar");
+            doc = Edits.Replace(doc, ValueEdits.Set(r, o, "n", "120 min⁻¹", Lang.En));
+            var t = Solve(r, doc);
+            Assert.Equal(n * n * Linkages.LinkAngleDerivatives(40, 12, 36, 30, -60, false, true)!.Value.D2, Val(t, "alpha4")!.Value, 6);
+            Assert.Equal(n * n * Linkages.LinkAngleDerivatives(40, 12, 36, 30, -60, false, false)!.Value.D2, Val(t, "alpha3")!.Value, 6);
+            Assert.Equal(Provenance.Derived, t.Get("m", "alpha4")!.Provenance);
+            var def = t.Get("m", "alpha4")!.Def;
+            Assert.Same(Quantities.AngularAcceleration, def.Kind);
+            Assert.True(def.IsReadOnly);
+            Assert.Equal("rad/s²", def.Unit);
+            // Without an input speed there is no angular acceleration.
+            var (r0, doc0, _) = One("kin.fourbar");
+            Assert.Null(Val(Solve(r0, doc0), "alpha4"));
+        }
+
+        /// <summary>
         /// Kennedy: the coupler turns about the pole I₁₃ on the crank and rocker lines, so every coupler point moves with
         /// |v_P| = |ω₃|·|P − I₁₃| (checked for an off-coupler point).
         /// </summary>

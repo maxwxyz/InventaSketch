@@ -88,7 +88,40 @@ namespace InventaSketch.Core
 
         /// <summary>The label text: "R = 4.7 kΩ, P = 0.25 W"; empty when nothing is known.</summary>
         public static string Text(SketchObject o, ValueTable table, Lang lang, int digits = 3)
-            => string.Join(", ", Shown(o, table).Select(v => v.Def.Symbol.Get(lang) + " = " + Display(v, lang, digits, table)));
+            => string.Join(", ", Entries(o, table, lang, digits));
+
+        /// <summary>The entries of the label, one per value: "R = 4.7 kΩ".</summary>
+        public static IReadOnlyList<string> Entries(SketchObject o, ValueTable table, Lang lang, int digits = 3)
+            => Shown(o, table).Select(v => v.Def.Symbol.Get(lang) + " = " + Display(v, lang, digits, table)).ToList();
+
+        /// <summary>Line pitch of a wrapped label as a multiple of the text size.</summary>
+        public const double LineSpacing = 1.2;
+
+        /// <summary>Estimated width of a label line in mm (the estimate of <see cref="Prim.Bounds"/> for text).</summary>
+        public static double Width(string line) => Math.Max(1, line.Length) * TextSize * 0.55;
+
+        /// <summary>
+        /// The label lines for an available width (mm): one line "R = 4.7 kΩ, P = 0.25 W" while it fits, else the entries
+        /// packed greedily into lines no wider than <paramref name="maxWidth"/> (an entry wider than that gets a line of its
+        /// own; entries are never split). A non-positive or infinite width keeps one line.
+        /// </summary>
+        public static IReadOnlyList<string> Wrap(IReadOnlyList<string> entries, double maxWidth)
+        {
+            if (entries.Count == 0) return Array.Empty<string>();
+            var one = string.Join(", ", entries);
+            if (!(maxWidth > 0) || double.IsInfinity(maxWidth) || Width(one) <= maxWidth + 1e-9) return new[] { one };
+            var lines = new List<string>();
+            var current = "";
+            foreach (var e in entries)
+            {
+                if (current.Length == 0) { current = e; continue; }
+                var next = current + ", " + e;
+                if (Width(next) <= maxWidth + 1e-9) current = next;
+                else { lines.Add(current); current = e; }
+            }
+            if (current.Length > 0) lines.Add(current);
+            return lines;
+        }
 
         /// <summary>Solves the values of <paramref name="o"/> as it is now (also when the document holds an older copy of it).</summary>
         public static ValueTable SolveOne(Registry registry, SketchObject o, SketchDocument doc, Lang lang, ValueSolveOptions? options = null)
@@ -113,13 +146,13 @@ namespace InventaSketch.Core
             try
             {
                 var table = SolveOne(registry, o, ctx.Doc, ctx.Lang);
-                var text = Text(o, table, ctx.Lang);
-                if (text.Length == 0) return local;
-                var label = Place(o, local, text);
-                if (label is null) return local;
-                var list = new List<Primitive>(local.Count + 1);
+                var entries = Entries(o, table, ctx.Lang);
+                if (entries.Count == 0) return local;
+                var label = Place(o, local, entries);
+                if (label.Count == 0) return local;
+                var list = new List<Primitive>(local.Count + label.Count);
                 list.AddRange(local);
-                list.Add(label);
+                list.AddRange(label);
                 return list;
             }
             catch (Exception ex) when (ex is FormatException or ArgumentException or InvalidOperationException or ArithmeticException or NotSupportedException)
@@ -128,19 +161,38 @@ namespace InventaSketch.Core
             }
         }
 
-        /// <summary>The label primitive (tag <see cref="Part"/>) in the object's local coordinates, below the drawn bounds on the page.</summary>
-        internal static TextPrim? Place(SketchObject o, IReadOnlyList<Primitive> local, string text)
+        /// <summary>
+        /// The label primitives (tag <see cref="Part"/>) in the object's local coordinates, below the drawn bounds on the page:
+        /// one line, or for a box element whose label is wider than both its box and its drawing on the page, the entries
+        /// stacked in lines no wider than that (<see cref="Wrap"/>), each centred. Point elements (lines, routes) keep one line.
+        /// </summary>
+        internal static IReadOnlyList<TextPrim> Place(SketchObject o, IReadOnlyList<Primitive> local, IReadOnlyList<string> entries)
         {
             var m = o.IsPointGeometry ? Matrix2D.Identity : o.Matrix();
             var page = Prim.Bounds(o.IsPointGeometry ? local : local.Select(p => Prim.Transform(p, m)));
-            if (page is not Rect b) return null;
+            if (page is not Rect b || entries.Count == 0) return Array.Empty<TextPrim>();
+            var lines = Wrap(entries, o.IsPointGeometry ? double.PositiveInfinity : Math.Max(b.W, BoxWidthOnPage(o, m)));
             const double gap = 1.0;
-            var at = new Vec2(b.X + b.W / 2, b.Bottom + gap + TextSize / 2);
             var mirrored = m.Determinant < 0;
-            var pos = o.IsPointGeometry ? at : m.Invert().Apply(at);
             var rotation = o.IsPointGeometry || mirrored ? 0 : -m.RotationDegrees;
             if (Math.Abs(rotation) < 1e-9) rotation = 0;
-            return new TextPrim(pos, text, new TextStyle { Size = TextSize, Anchor = TextAnchor.Middle }, rotation) { Tag = Part };
+            var inverse = o.IsPointGeometry ? Matrix2D.Identity : m.Invert();
+            var result = new List<TextPrim>(lines.Count);
+            for (var i = 0; i < lines.Count; i++)
+            {
+                var at = new Vec2(b.X + b.W / 2, b.Bottom + gap + TextSize / 2 + i * TextSize * LineSpacing);
+                var pos = o.IsPointGeometry ? at : inverse.Apply(at);
+                result.Add(new TextPrim(pos, lines[i], new TextStyle { Size = TextSize, Anchor = TextAnchor.Middle }, rotation) { Tag = Part });
+            }
+            return result;
+        }
+
+        /// <summary>Width on the page of the object's box (its rotated outline's horizontal extent).</summary>
+        private static double BoxWidthOnPage(SketchObject o, Matrix2D m)
+        {
+            double w = o.Size.W / 2, h = o.Size.H / 2;
+            var xs = new[] { m.Apply(new Vec2(-w, -h)).X, m.Apply(new Vec2(w, -h)).X, m.Apply(new Vec2(w, h)).X, m.Apply(new Vec2(-w, h)).X };
+            return xs.Max() - xs.Min();
         }
 
         /// <summary>The part entry of the label while it is shown (selectable, styled and hidden like any other part).</summary>

@@ -125,7 +125,7 @@ Werte-Solver, und „Werte zeigen“ (`showValues`) zeichnet die Wertebeschriftu
 |---|---|---|---|
 | `auto.motion.resistance` | `v` (km/h), `m` (kg), `F_W` Fahrwiderstand gesamt (N), `P` Leistung an den Rädern (kW); Panel: `c_w` (Vorgabe 0,30), `A` Stirnfläche (Vorgabe 2,2 m²), `f_R` Rollwiderstandsbeiwert (Vorgabe 0,012), `q` Steigung (Vorgabe 0 %), `a` Beschleunigung (Vorgabe 0), `F_R`, `F_L`, `F_St`, `P_max`; Ingenieur: `ρ` (Vorgabe 1,2 kg/m³), `F_B` | `auto.resistance.roll`: F_R = m·g·f_R·cos α; `auto.resistance.air`: F_L = ½·ρ·c_w·A·v²; `auto.resistance.grade`: F_St = m·g·sin α (tan α = q); `auto.resistance.accel`: F_B = m·a; `auto.resistance.total`: F_W = ΣF; `auto.resistance.power`: P = F_W·v | `auto.drive.power` (Warnung): P > P_max |
 | `auto.motion.turning` | `L` Radstand, `δ` Lenkwinkel, `R` Radius der Vorderachsmitte, `D` Spurkreis (Spur des kurvenäußeren Vorderrads); Panel: `R_h` Radius der Hinterachsmitte, `b` Spurweite (Vorgabe 1,6 m), `v`, `a_y`, `μ` | `auto.turn.radius`: R = L/sin δ; `auto.turn.rear`: R_h = L/tan δ; `auto.turn.circle`: D = 2·√((R_h + b/2)² + L²); `auto.turn.lateral`: a_y = v²/R | `auto.turn.friction` (Warnung): a_y > μ·g |
-| `auto.sub.battery` | `E` nutzbare Energie (kWh), `c` Verbrauch je 100 km (als Energie eingegeben, kWh), `R` Reichweite (km); Panel: `d` geplante Fahrstrecke (km) | `auto.ev.range`: R = E/c·100 km | `auto.ev.range` (Warnung): R < d |
+| `auto.sub.battery` | `E` nutzbare Energie (kWh), `c` Verbrauch (Energie je Strecke, kWh/100 km), `R` Reichweite (km); Panel: `d` geplante Fahrstrecke (km) | `auto.ev.range`: R = E/c | `auto.ev.range` (Warnung): R < d |
 | `auto.fov` | `v` (km/h), `r_S` Sensorreichweite (m), `s` Anhalteweg (m), `t_V` Vorausschauzeit (s); Panel: `t_R`, `a`, `s_R`, `s_B`, `μ` | die drei Bremsbeziehungen des Sicherheitsabstands; `auto.fov.preview`: t_V = r_S/v | `auto.fov.range` (Warnung): s > r_S; `auto.braking.friction` |
 | `auto.motion.safetydistance` | wie oben, zusätzlich Panel `μ` Haftreibungsbeiwert (ohne Vorgabe) | – | `auto.braking.friction` (Warnung): a > μ·g |
 
@@ -137,9 +137,11 @@ Werte-Solver, und „Werte zeigen“ (`showValues`) zeichnet die Wertebeschriftu
 - **Wendekreis:** Einspurmodell bei kleiner Geschwindigkeit (kinematische Lenkung, ohne Schräglaufwinkel); D ist der
   Spurkreis des kurvenäußeren Vorderrads – der Wendekreis von Wand zu Wand kommt um den vorderen Überhang hinzu. Ein
   eingegebener Spurkreis und Radstand ergeben den Lenkwinkel. Beispiel: L = 2,7 m, δ = 30° → R = 5,4 m, D = 12,2 m.
-- **Batteriereichweite:** Der Verbrauch je 100 km wird als Energie eingegeben („16 kWh“), weil das Wertemodell keine
-  Größenart Energie je Strecke hat; er ist der Mittelwert über die Fahrt (Geschwindigkeitsprofil, Temperatur und
-  Nebenverbraucher eingeschlossen).
+- **Batteriereichweite:** Der Verbrauch ist eine Energie je Strecke (Kern-Größenart `energyPerDistance`, Runde 8 vom
+  26.11.2026): „16 kWh/100 km“ (Standardeinheit), „160 Wh/km“ oder „0,16 kWh/km“; er ist der Mittelwert über die Fahrt
+  (Geschwindigkeitsprofil, Temperatur und Nebenverbraucher eingeschlossen). Dokumente aus Runde 7 speicherten ihn als
+  Energie („16 kWh“, gemeint je 100 km); dieser Text wird weiter als 16 kWh/100 km gelesen (Alt-Einheit der
+  Größenart), sie laden und rechnen also unverändert.
 - **Sensorreichweite:** Die Sensorreichweite ist die gezeichnete Reichweite `range` geteilt durch `scale` (mm je m,
   Vorgabe 10 wie beim Sicherheitsabstand), sofern sie nicht eingegeben ist (`sensorRange`). Mit einer Geschwindigkeit
   berechnet der Sichtbereich den Anhalteweg und warnt, wenn der Sensor weniger weit sieht, als das Fahrzeug zum Anhalten
@@ -149,8 +151,8 @@ Werte-Solver, und „Werte zeigen“ (`showValues`) zeichnet die Wertebeschriftu
 - **Quellen:** Lehrbuch-Fahrzeugmechanik; der Quellenkatalog enthält noch kein Fahrdynamik-Lehrbuch, daher wird keines
   zitiert (`g` = 9,80665 m/s², konventioneller Wert [S1]).
 - Bibliotheksvorlagen: „Fahrwiderstand“, „Fahrwiderstand und Leistung bei 100 km/h“ (1500 kg), „Fahrwiderstand bergauf
-  (8 %)“, „Wendekreis“, „Wendekreis eines Pkw (L = 2,7 m, δ = 30°)“, „Batteriepack mit Reichweite“ (60 kWh, 16 kWh je
-  100 km → 375 km) und „Radar-Sichtbereich mit Anhalteprüfung“ (160 m bei 130 km/h → s = 117,6 m, t_V = 4,4 s).
+  (8 %)“, „Wendekreis“, „Wendekreis eines Pkw (L = 2,7 m, δ = 30°)“ (Wertebeschriftung mit R und D), „Batteriepack mit Reichweite“ (60 kWh, 16 kWh/100 km
+  → 375 km; doppelter Szenenmaßstab, Wertebeschriftung mit E und R) und „Radar-Sichtbereich mit Anhalteprüfung“ (160 m bei 130 km/h → s = 117,6 m, t_V = 4,4 s).
 
 ## Fangen und Anhängen
 

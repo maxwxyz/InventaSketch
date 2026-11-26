@@ -227,6 +227,29 @@ namespace InventaSketch.Modules.Kinematics
         public static readonly Relation CouplerSpeedOpen = CouplerSpeed(false);
         public static readonly Relation CouplerSpeedCrossed = CouplerSpeed(true);
 
+        /// <summary>Angular acceleration of the coupler (α₃) or the rocker (α₄) at constant input speed: n²·d²θ/dφ².</summary>
+        private static Relation LinkAcceleration(bool crossed, bool rocker)
+        {
+            var key = rocker ? "alpha4" : "alpha3";
+            var theta = rocker ? "θ₄" : "θ₃";
+            var name = rocker
+                ? (crossed ? T("Angular acceleration of the rocker (crossed)", "Winkelbeschleunigung der Schwinge (gekreuzt)") : T("Angular acceleration of the rocker", "Winkelbeschleunigung der Schwinge"))
+                : (crossed ? T("Angular acceleration of the coupler (crossed)", "Winkelbeschleunigung der Koppel (gekreuzt)") : T("Angular acceleration of the coupler", "Winkelbeschleunigung der Koppel"));
+            var id = "kin.fourbar." + (rocker ? "rocker" : "coupler") + ".acc." + (crossed ? "crossed" : "open");
+            var formula = "{" + key + "} = {n}²·d²" + theta + "/dφ²";
+            return new Relation(id, name, formula, key, "n", "a", "b", "c", "d", "phi") { Source = "S24", Validity = ConstantSpeed }
+                .Solve(key, "{n}²·d²" + theta + "/dφ²", v =>
+                {
+                    var d = Linkages.LinkAngleDerivatives(v("d"), v("a"), v("b"), v("c"), v("phi") / Deg, crossed, rocker);
+                    return d is null ? double.NaN : v("n") * v("n") * d.Value.D2;
+                });
+        }
+
+        public static readonly Relation CouplerAccOpen = LinkAcceleration(false, false);
+        public static readonly Relation CouplerAccCrossed = LinkAcceleration(true, false);
+        public static readonly Relation RockerAccOpen = LinkAcceleration(false, true);
+        public static readonly Relation RockerAccCrossed = LinkAcceleration(true, true);
+
         /// <summary>Speed of the coupler point (u along, v across the coupler) at the current position: |n|·|dP/dφ|.</summary>
         public static Relation CouplerPointSpeed(bool crossed, double u, double cv) =>
             new Relation("kin.fourbar.point.speed", T("Speed of the coupler point", "Geschwindigkeit des Koppelpunkts"),
@@ -348,12 +371,17 @@ namespace InventaSketch.Modules.Kinematics
                     { Relevance = VarRelevance.Panel, Min = -1e6, Max = 1e6 },
                 new VarDef("w", T("Output angular velocity at this position", "Abtriebswinkelgeschwindigkeit in dieser Stellung"), T("ω₄", "ω₄"), Quantities.RotationalSpeed)
                     { Unit = "rad/s", Param = "outputSpeed", Relevance = VarRelevance.Panel, Min = -1e5, Max = 1e5 },
+                // Results of the drawing at the given input speed (one-way relations): read-only.
                 new VarDef("w3", T("Angular velocity of the coupler at this position", "Winkelgeschwindigkeit der Koppel in dieser Stellung"), T("ω₃", "ω₃"), Quantities.RotationalSpeed)
-                    { Unit = "rad/s", Relevance = VarRelevance.Panel, Min = -1e5, Max = 1e5 },
+                    { Unit = "rad/s", Relevance = VarRelevance.Panel, ReadOnly = true, Min = -1e5, Max = 1e5 },
+                new VarDef("alpha3", T("Angular acceleration of the coupler at this position (constant n)", "Winkelbeschleunigung der Koppel in dieser Stellung (n konstant)"), T("α₃", "α₃"), Quantities.AngularAcceleration)
+                    { Unit = "rad/s²", Relevance = VarRelevance.Engineer, ReadOnly = true, Min = -1e9, Max = 1e9 },
+                new VarDef("alpha4", T("Angular acceleration of the rocker at this position (constant n)", "Winkelbeschleunigung der Schwinge in dieser Stellung (n konstant)"), T("α₄", "α₄"), Quantities.AngularAcceleration)
+                    { Unit = "rad/s²", Relevance = VarRelevance.Panel, ReadOnly = true, Min = -1e9, Max = 1e9 },
                 new VarDef("vP", T("Speed of the coupler point at this position", "Geschwindigkeit des Koppelpunkts in dieser Stellung"), T("v_P", "v_P"), Quantities.Speed)
-                    { Unit = "m/s", Relevance = VarRelevance.Panel, Min = 0, Max = 1e4 },
+                    { Unit = "m/s", Relevance = VarRelevance.Panel, ReadOnly = true, Min = 0, Max = 1e4 },
                 new VarDef("aP", T("Acceleration of the coupler point at this position (constant n)", "Beschleunigung des Koppelpunkts in dieser Stellung (n konstant)"), T("a_P", "a_P"), Quantities.Acceleration)
-                    { Unit = "m/s²", Relevance = VarRelevance.Panel, Min = 0, Max = 1e7 },
+                    { Unit = "m/s²", Relevance = VarRelevance.Panel, ReadOnly = true, Min = 0, Max = 1e7 },
             },
             new[] { GrashofMargin, GrashofClassRelation, MuMin, MuMax, Swing, FourBarAlpha, TimeRatio, OutputSpeed },
             WithShow(PInputSpeed, POutputSpeed),

@@ -353,6 +353,7 @@ adoptions DIN VDE 0100-520 and -430 [S8, S9]. The user enters *I*_z and the perm
 | Quick return | time ratio = (180° + *α*)/(180° − *α*) from the extreme positions | lengths | [S24] |
 | Transmission angle | *μ* from the position solution; usual design limit *μ* ≥ 40° is a hint only | lengths, input angle | [S24] |
 | Velocities | numerical derivative of the position solution × input speed (no new physics) | input *ω* | [S24] |
+| Angular accelerations (four-bar, round 8 of 2026-11-26) | at constant input speed *n*: coupler *α*₃ = *n*²·d²*θ*₃/d*φ*², rocker *α*₄ = *n*²·d²*θ*₄/d*φ*² (`kin.fourbar.coupler.acc.*`, `kin.fourbar.rocker.acc.*`; central differences of the exact position analysis; kind `angularAcceleration`, rad/s²; read-only results like *ω*₃, *v*_P, *a*_P) | *n*, lengths, *φ* | [S24] |
 
 ### 2.7 Fluid power (ISO 1219 symbols)
 
@@ -626,7 +627,7 @@ in the document's check settings, because the binding limit is in a standard or 
 | `auto.braking.friction` | safety distance, field of view | deceleration *a* > *μ*·*g* | warning | [S45] |
 | `auto.drive.power` | driving resistance | *P* = *F*·*v* > *P*_max | warning | [S45] |
 | `auto.turn.friction` | turning circle | lateral acceleration *a*_y = *v*²/*R* > *μ*·*g* | warning | [S45] |
-| `auto.ev.range` | battery pack | range *R* = *E*/*c*·100 km < planned distance *d* | warning | [S45] |
+| `auto.ev.range` | battery pack | range *R* = *E*/*c* < planned distance *d* (consumption *c* as energy per distance, kind `energyPerDistance`, kWh/100 km; round 8) | warning | [S45] |
 | `auto.fov.range` | sensor field of view | stopping distance *s* > sensor range *r*_S | warning | [S45] |
 | `map.scale.plan` | scale bar | \|*N*/*N*_plan − 1\| > 2 % (scale bar disagrees with the page scale) | hint | – (consistency) |
 | `mach.runup.torque` | machines, motor block, e-machine | motor torque *T*_M ≤ load torque *T* (no run-up) | warning | [S15] |
@@ -1070,7 +1071,13 @@ This section records the choices made where the concept left them open. The code
   Specific yield is dimensionally a time (kWh/kWp = h) but a kind of its own, so time fields do not offer kWh/kWp and a
   yield reads "950 kWh/kWp"; *E* = *P*·*Y*_f stays a plain product. Irradiation shares its dimension (kg·s⁻²) with the
   spring rate. Both new kinds come after the existing ones in the preference order, so a calculated time stays a time
-  and a calculated N/m stays a spring rate.
+  and a calculated N/m stays a spring rate. Since round 8 of 2026-11-26 also **angular acceleration** (rad/s² (default),
+  °/s²; dimension rad·s⁻², for the four-bar's *α*₃ and *α*₄) and **energy per distance** (vehicle consumption:
+  kWh/100 km (default), Wh/km, kWh/km, J/m; SI J/m). Energy per distance shares its dimension (kg·m·s⁻²) with the
+  force and comes last, so a calculated N stays a force. "16 kWh/100 km" is read as one value (a unit with a number after
+  its slash is not split as a fraction). A kind may keep **legacy units** (`QuantityKind.LegacyUnit`): accepted on input
+  for that kind only, never offered and unknown to the unit catalogue. The EV consumption stored as "16 kWh" before
+  round 8 (meaning per 100 km) is read as 16 kWh/100 km this way, while "kWh" stays an energy everywhere else.
   Torque and energy, power and heat flow, temperature and temperature difference share a dimension and are separate
   kinds. The first unit of a kind is its default display unit (charge: Ah, speed of rotation: min⁻¹, temperature: °C).
 - **Units** have a factor and an offset to SI and an explicit list of SI prefixes they accept and show (Ω takes µ m k M
@@ -1337,7 +1344,11 @@ This section records the choices made where the plan left them open. The code is
     the resistor's *R* is its value text "4k7");
   - `valueLabelKeys` ("R,P") chooses the variables explicitly (model and tests; the card offers the switch for the whole
     element);
-  - shows entered texts with a unit as typed.
+  - shows entered texts with a unit as typed;
+  - wraps where it would be wider than the element (round 8 of 2026-11-26): for a box element whose label is wider than
+    both its box and its drawing on the page, the entries ("R = 4.7 kΩ") are packed into centred lines no wider than that,
+    line pitch 1.2 × the text size (`ValueLabels.Wrap`); an entry is never split. Labels that fit stay one line, and
+    point elements (lines, routes) keep one line. Each line is a text of the part `values`.
 
   The label is content: it shows at every level, is printed and exported, and stays with the element when it moves. The
   resistor lists `showValues` among its parameters, so the inspector shows it too.

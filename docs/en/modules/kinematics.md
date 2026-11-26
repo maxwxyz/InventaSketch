@@ -175,7 +175,7 @@ The values label (`showValues`) shows the card values.
 
 | Element | Variables (card values in **bold**) | Relations |
 |---|---|---|
-| Four-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, class (text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄, ω₃, v_P, a_P | Δ_G = (p + q) − (s + l); μ from the cosine rule cos μ = (b² + c² − x²)/(2bc) with x = \|A O4\| over [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; crank-rocker only: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) at the current position and assembly mode; ω₄ = i·n; coupler ω₃ = n·dθ₃/dφ (for the assembly mode); coupler point P (`cpu`, `cpv`, the point the motion path traces): v_P = \|n\|·\|dP/dφ\|, a_P = n²·\|d²P/dφ²\| at constant n |
+| Four-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, class (text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄, ω₃, α₃, α₄, v_P, a_P | Δ_G = (p + q) − (s + l); μ from the cosine rule cos μ = (b² + c² − x²)/(2bc) with x = \|A O4\| over [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; crank-rocker only: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) at the current position and assembly mode; ω₄ = i·n; coupler ω₃ = n·dθ₃/dφ (for the assembly mode); angular accelerations at constant n: coupler α₃ = n²·d²θ₃/dφ², rocker α₄ = n²·d²θ₄/dφ² (rad/s², kind `angularAcceleration`); coupler point P (`cpu`, `cpv`, the point the motion path traces): v_P = \|n\|·\|dP/dφ\|, a_P = n²·\|d²P/dφ²\| at constant n |
 | Slider-crank | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v**, v_max, a | H = √((l + r)² − e²) − √((l − r)² − e²) (2r without offset); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ; v_max = \|n\|·max\|dx_B/dφ\| over a turn (text parameter `maxSliderSpeed`; entering it gives n); a = n²·d²x_B/dφ² at constant n (read-only) |
 | Quick-return | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 for r/d = 1/2); H from the position analysis over a turn |
 | Scotch yoke | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
@@ -204,10 +204,12 @@ motion yet).
 | `kin.grashof` | four-bar | the crank cannot turn fully (not Grashof with the crank or the frame shortest) | hint | [S24] |
 | `kin.cam.pressure` | cam with follower | α_max > 30° (usual limit for translating followers; the default tangent cam r₀ = 8, h = 7 with a roller reaches about 43°, so this is a hint) | hint | [S24] |
 
-Derivatives (ω₃, v_P, a_P, a, v of the cam) are central differences of the exact position analysis with a step of 10⁻³ rad
-(`Linkages.Derivatives`, `CouplerPointDerivatives`, `CouplerRate`, `SliderAccelerationFactor`); the tests compare them with
-the closed-form velocity and acceleration loops. There is no angular-acceleration kind in Core yet, so the rocker's α₄ is
-not offered (the coupler point's linear acceleration is).
+Derivatives (ω₃, α₃, α₄, v_P, a_P, a, v of the cam) are central differences of the exact position analysis with a step of
+10⁻³ rad (`Linkages.Derivatives`, `CouplerPointDerivatives`, `CouplerRate`, `LinkAngleDerivatives`,
+`SliderAccelerationFactor`); the tests compare them with the closed-form velocity and acceleration loops (α₃ and α₄ by
+Cramer's rule from the twice-differentiated loop, round 8 of 2026-11-26). These one-way results of the drawing at the
+given input speed (ω₃, α₃, α₄, v_P, a_P on the four-bar, a on the slider-crank) are read-only (`VarDef.ReadOnly`): hosts
+show them without an input field; the rocker's ω₄ and the slider speeds stay editable because they give n back.
 
 **Linked chart.** The four-bar implements `ICharacteristics` (Calc 5): the set `transfer`, "Output angle over input
 angle" / "Abtriebswinkel über Antriebswinkel", output angle ψ₄ over the input angle φ (−180° … 180°, one sample per

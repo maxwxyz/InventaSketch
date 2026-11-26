@@ -220,33 +220,35 @@ namespace InventaSketch.Modules.Automotive
         // ------------------------------------------------------------------ battery range
 
         private static readonly I18nText EEnergy = T("Usable battery energy", "Nutzbare Batterieenergie");
-        private static readonly I18nText EConsumption = T("Energy consumption per 100 km", "Energieverbrauch je 100 km");
+        private static readonly I18nText EConsumption = T("Energy consumption (e.g. kWh/100 km)", "Energieverbrauch (z. B. kWh/100 km)");
         private static readonly I18nText ERange = T("Range", "Reichweite");
         private static readonly I18nText ETrip = T("Planned trip distance", "Geplante Fahrstrecke");
 
         public static readonly IReadOnlyList<VarDef> RangeVars = new[]
         {
             V("E", EEnergy, T("E", "E"), Quantities.Energy, "kWh", "energy") with { Min = 0, Max = 1e10 },
-            V("c", EConsumption, T("c", "c"), Quantities.Energy, "kWh", "consumption") with { Min = 1e5, Max = 1e9 },
+            // Energy per distance (SI J/m, shown in kWh/100 km); a value stored before round 8 as an energy ("16 kWh", meaning per
+            // 100 km) still reads as kWh/100 km (legacy unit of Quantities.EnergyPerDistance).
+            V("c", EConsumption, T("c", "c"), Quantities.EnergyPerDistance, "kWh/100 km", "consumption") with { Min = 1, Max = 1e5 },
             V("R", ERange, T("R", "R"), Quantities.Length, "km", "range") with { Min = 0, Max = 1e8 },
             V("d", ETrip, T("d", "d"), Quantities.Length, "km", "trip", VarRelevance.Panel) with { Min = 0, Max = 1e8 },
         };
 
         public static readonly IReadOnlyList<ParamDef> RangeParams = new[]
         {
-            Text("energy", EEnergy, "kWh"), Text("consumption", EConsumption, "kWh"), Text("range", ERange, "km"), Text("trip", ETrip, "km"),
+            Text("energy", EEnergy, "kWh"), Text("consumption", EConsumption, "kWh/100 km"), Text("range", ERange, "km"), Text("trip", ETrip, "km"),
             ValueLabels.ShowValues,
         };
 
-        /// <summary>auto.ev.range: R = E / c · 100 km.</summary>
+        /// <summary>auto.ev.range: R = E / c (c as energy per distance, e.g. kWh/100 km).</summary>
         public static readonly Relation RangeRelation =
-            new Relation("auto.ev.range", T("Range from battery energy and consumption", "Reichweite aus Batterieenergie und Verbrauch"), "{R} = {E}/{c}·100 km", "R", "E", "c")
+            new Relation("auto.ev.range", T("Range from battery energy and consumption", "Reichweite aus Batterieenergie und Verbrauch"), "{R} = {E}/{c}", "R", "E", "c")
             {
                 Source = "S45", Validity = T("Mean consumption over the trip (speed profile, temperature and auxiliary loads included in c)", "Mittlerer Verbrauch über die Fahrt (Geschwindigkeitsprofil, Temperatur und Nebenverbraucher in c enthalten)"),
             }
-            .Solve("R", "{E}/{c}·100 km", v => v("E") / v("c") * 1e5)
-            .Solve("E", "{R}·{c}/100 km", v => v("R") * v("c") / 1e5)
-            .Solve("c", "{E}·100 km/{R}", v => v("E") * 1e5 / v("R"));
+            .Solve("R", "{E}/{c}", v => v("E") / v("c"))
+            .Solve("E", "{R}·{c}", v => v("R") * v("c"))
+            .Solve("c", "{E}/{R}", v => v("E") / v("R"));
 
         public static readonly IReadOnlyList<Relation> RangeRelations = new[] { RangeRelation };
 

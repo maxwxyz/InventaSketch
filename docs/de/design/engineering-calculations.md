@@ -370,6 +370,7 @@ Nutzer ein.
 | Schnellrücklauf | Zeitverhältnis = (180° + *α*)/(180° − *α*) aus den Totlagen | Längen | [S24] |
 | Übertragungswinkel | *μ* aus der Lagelösung; die übliche Grenze *μ* ≥ 40° ist nur ein Hinweis | Längen, Antriebswinkel | [S24] |
 | Geschwindigkeiten | numerische Ableitung der Lagelösung × Antriebsdrehzahl (keine neue Physik) | Antriebs-*ω* | [S24] |
+| Winkelbeschleunigungen (Viergelenk, Runde 8 vom 26.11.2026) | bei konstanter Antriebsdrehzahl *n*: Koppel *α*₃ = *n*²·d²*θ*₃/d*φ*², Schwinge *α*₄ = *n*²·d²*θ*₄/d*φ*² (`kin.fourbar.coupler.acc.*`, `kin.fourbar.rocker.acc.*`; zentrale Differenzen der exakten Lageanalyse; Größenart `angularAcceleration`, rad/s²; schreibgeschützte Ergebnisse wie *ω*₃, *v*_P, *a*_P) | *n*, Längen, *φ* | [S24] |
 
 ### 2.7 Fluidtechnik (Symbole nach ISO 1219)
 
@@ -646,7 +647,7 @@ Datenblatt steht, das wir nicht übernehmen.
 | `auto.braking.friction` | Sicherheitsabstand, Sichtbereich | Verzögerung *a* > *μ*·*g* | Warnung | [S45] |
 | `auto.drive.power` | Fahrwiderstand | *P* = *F*·*v* > *P*_max | Warnung | [S45] |
 | `auto.turn.friction` | Wendekreis | Querbeschleunigung *a*_y = *v*²/*R* > *μ*·*g* | Warnung | [S45] |
-| `auto.ev.range` | Batteriepack | Reichweite *R* = *E*/*c*·100 km < geplante Strecke *d* | Warnung | [S45] |
+| `auto.ev.range` | Batteriepack | Reichweite *R* = *E*/*c* < geplante Strecke *d* (Verbrauch *c* als Energie je Strecke, Größenart `energyPerDistance`, kWh/100 km; Runde 8) | Warnung | [S45] |
 | `auto.fov.range` | Sichtbereich eines Sensors | Anhalteweg *s* > Sensorreichweite *r*_S | Warnung | [S45] |
 | `map.scale.plan` | Maßstabsleiste | \|*N*/*N*_Plan − 1\| > 2 % (Maßstabsleiste passt nicht zum Seitenmaßstab) | Hinweis | – (Konsistenz) |
 | `mach.runup.torque` | Maschinen, Motorblock, E-Maschine | Motormoment *T*_M ≤ Lastmoment *T* (kein Hochlauf) | Warnung | [S15] |
@@ -1107,7 +1108,15 @@ Dieser Abschnitt hält die Entscheidungen fest, die das Konzept offen ließ. Ma�
   Ertrag ist von der Dimension her eine Zeit (kWh/kWp = h), aber eine eigene Größenart, damit Zeitfelder kein kWh/kWp
   anbieten und ein Ertrag „950 kWh/kWp“ zeigt; *E* = *P*·*Y*_f bleibt ein einfaches Produkt. Die Einstrahlung teilt ihre
   Dimension (kg·s⁻²) mit der Federrate. Beide neuen Größenarten stehen in der Vorzugsreihenfolge hinter den bisherigen,
-  so bleibt eine berechnete Zeit eine Zeit und ein berechnetes N/m eine Federrate. Drehmoment und Energie, Leistung und
+  so bleibt eine berechnete Zeit eine Zeit und ein berechnetes N/m eine Federrate. Seit Runde 8 vom 26.11.2026 auch
+  **Winkelbeschleunigung** (rad/s² (Standard), °/s²; Dimension rad·s⁻², für *α*₃ und *α*₄ des Viergelenks) und
+  **Energie je Strecke** (Fahrzeugverbrauch: kWh/100 km (Standard), Wh/km, kWh/km, J/m; SI J/m). Die Energie je Strecke
+  teilt ihre Dimension (kg·m·s⁻²) mit der Kraft und steht zuletzt, so bleibt ein berechnetes N eine Kraft.
+  „16 kWh/100 km“ wird als ein Wert gelesen (eine Einheit mit einer Zahl nach ihrem Schrägstrich wird nicht als Bruch
+  geteilt). Eine Größenart kann **Alt-Einheiten** behalten (`QuantityKind.LegacyUnit`): nur für diese Größenart bei der
+  Eingabe angenommen, nie angeboten und dem Einheitenkatalog unbekannt. So wird der vor Runde 8 als „16 kWh“
+  gespeicherte E-Auto-Verbrauch (gemeint je 100 km) als 16 kWh/100 km gelesen, während „kWh“ überall sonst eine Energie
+  bleibt. Drehmoment und Energie, Leistung und
   Wärmestrom, Temperatur und Temperaturdifferenz teilen sich eine Dimension und sind getrennte Größenarten. Die erste
   Einheit einer Größenart ist ihre Anzeigeeinheit (Ladung: Ah, Drehzahl: min⁻¹, Temperatur: °C).
 - **Einheiten** haben Faktor und Nullpunkt zum SI und eine ausdrückliche Liste der SI-Vorsätze, die sie annehmen und
@@ -1391,7 +1400,12 @@ Dieser Abschnitt hält die Entscheidungen fest, die der Plan offenließ. Maßgeb
     (`VarDef.OnTypeLabel`: *R* des Widerstands ist sein Werttext „4k7");
   - `valueLabelKeys` („R,P") wählt die Variablen ausdrücklich (Modell und Tests; die Karte bietet den Schalter für das
     ganze Element);
-  - zeigt eingegebene Texte mit Einheit wie getippt.
+  - zeigt eingegebene Texte mit Einheit wie getippt;
+  - bricht um, wo sie breiter als das Element wäre (Runde 8 vom 26.11.2026): Ist die Beschriftung eines Kastenelements
+    breiter als sein Kasten und seine Zeichnung auf der Seite, werden die Einträge („R = 4.7 kΩ“) in mittige Zeilen
+    gepackt, die nicht breiter sind (Zeilenabstand 1,2 × Schriftgröße, `ValueLabels.Wrap`); ein Eintrag wird nie
+    geteilt. Passende Beschriftungen bleiben einzeilig, Punktelemente (Linien, Routen) ebenso. Jede Zeile ist ein Text
+    des Teils `values`.
 
   Die Beschriftung ist Inhalt: Sie erscheint auf jeder Stufe, wird gedruckt und exportiert und bleibt beim Verschieben am
   Element. Der Widerstand führt `showValues` unter seinen Parametern, daher zeigt ihn auch der Inspektor.

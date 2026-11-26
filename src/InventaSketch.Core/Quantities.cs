@@ -129,6 +129,25 @@ namespace InventaSketch.Core
             return -1;
         }
 
+        private readonly List<Unit> _legacy = new();
+
+        /// <summary>
+        /// A unit accepted on input for this kind only, for values stored before the kind existed (an EV consumption stored
+        /// as "18 kWh" meant kWh per 100 km). It shows as <paramref name="symbol"/>, is not offered, never shown in unit lists
+        /// and not known to the unit catalogue (so "kWh" stays an energy everywhere else).
+        /// </summary>
+        internal void AddLegacy(string symbol, double factor, params string[] spellings)
+            => _legacy.Add(new Unit(symbol, factor, 0, this, spellings, ""));
+
+        /// <summary>The legacy unit of this kind spelled <paramref name="spelling"/> (<see cref="AddLegacy"/>), or null.</summary>
+        public Unit? LegacyUnit(string spelling)
+        {
+            if (_legacy.Count == 0) return null;
+            var n = UnitCatalog.Norm(spelling ?? "");
+            return _legacy.FirstOrDefault(u => u.Spellings.Skip(1).Any(s => UnitCatalog.Norm(s) == n))
+                ?? _legacy.FirstOrDefault(u => u.Spellings.Skip(1).Any(s => string.Equals(UnitCatalog.Norm(s), n, StringComparison.OrdinalIgnoreCase)));
+        }
+
         internal Unit Add(string symbol, double factor, string[]? spellings = null, double offset = 0, string? prefixes = null)
         {
             var u = new Unit(symbol, factor, offset, this, spellings ?? Array.Empty<string>(), prefixes ?? "");
@@ -213,6 +232,8 @@ namespace InventaSketch.Core
         public static readonly QuantityKind Resistivity = new("resistivity", T("Resistivity", "Spezifischer Widerstand"), Volt_ / Cur * Len);
         public static readonly QuantityKind Frequency = new("frequency", T("Frequency", "Frequenz"), Dimension.None / Time);
         public static readonly QuantityKind RotationalSpeed = new("rotationalSpeed", T("Speed of rotation", "Drehzahl"), Ang / Time);
+        /// <summary>Angular acceleration α (rad/s², °/s²): the rate of change of an angular velocity.</summary>
+        public static readonly QuantityKind AngularAcceleration = new("angularAcceleration", T("Angular acceleration", "Winkelbeschleunigung"), Ang / Time.Pow(2));
         public static readonly QuantityKind Angle = new("angle", T("Angle", "Winkel"), Ang);
         public static readonly QuantityKind Time_ = new("time", T("Time", "Zeit"), Time);
         public static readonly QuantityKind Length = new("length", T("Length", "Länge"), Len);
@@ -260,6 +281,12 @@ namespace InventaSketch.Core
         /// </summary>
         public static readonly QuantityKind SpecificYield = new("specificYield", T("Specific yield", "Spezifischer Ertrag"), Time);
 
+        /// <summary>
+        /// Energy per distance (J/m): the energy consumption of a vehicle, shown in kWh/100 km. Shares its dimension
+        /// (kg·m·s⁻²) with the force; listed after it, so a calculated N stays a force.
+        /// </summary>
+        public static readonly QuantityKind EnergyPerDistance = new("energyPerDistance", T("Energy consumption (per distance)", "Energieverbrauch (je Strecke)"), Energy_ / Len);
+
         private static readonly List<QuantityKind> AllKinds = new();
 
         static Quantities()
@@ -294,6 +321,8 @@ namespace InventaSketch.Core
             RotationalSpeed.Add("rad/s", 1);
             // "s⁻¹" for a speed of rotation (DIN 1301 usage: revolutions per second) reads as rev/s.
             RotationalSpeed.Add("rev/s", 2 * Pi, new[] { "rps", "r/s", "U/s", "s⁻¹", "1/s" });
+            AngularAcceleration.Add("rad/s²", 1, new[] { "rad/s2", "1/s²", "s⁻²" });
+            AngularAcceleration.Add("°/s²", Pi / 180, new[] { "°/s2", "deg/s²", "deg/s2" });
             Angle.Add("°", Pi / 180, new[] { "deg" });
             Angle.Add("rad", 1, null, 0, "m");
             Angle.Add("rev", 2 * Pi, new[] { "turn" });
@@ -389,16 +418,22 @@ namespace InventaSketch.Core
             SpecificYield.Add("kWh/kWp", 3600, new[] { "kWh/kW", "Wh/Wp", "MWh/MWp" });
             // Full-load hours: the same value (kWh per kWp = h).
             SpecificYield.Add("h", 3600);
+            EnergyPerDistance.Add("kWh/100 km", 3.6e6 / 1e5, new[] { "kWh/100km", "kWh/(100 km)" });
+            EnergyPerDistance.Add("Wh/km", 3.6);
+            EnergyPerDistance.Add("kWh/km", 3.6e3);
+            EnergyPerDistance.Add("J/m", 1);
+            // Before round 8 of 2026-11-26 the EV consumption was entered as an energy ("18 kWh", meaning per 100 km).
+            EnergyPerDistance.AddLegacy("kWh/100 km", 3.6e6 / 1e5, "kWh");
 
             // Preference order when a calculation result has to be named by its dimension (power before heat flow,
             // energy before torque, frequency before nothing).
             AllKinds.AddRange(new[]
             {
                 Ratio, Efficiency, Count, Voltage, Current, Power, ApparentPower, ReactivePower, HeatFlow, Resistance, Capacitance,
-                Inductance, Charge, Resistivity, Frequency, RotationalSpeed, Angle, Time_, Length, Area, Volume, Mass_, Force,
+                Inductance, Charge, Resistivity, Frequency, RotationalSpeed, AngularAcceleration, Angle, Time_, Length, Area, Volume, Mass_, Force,
                 Energy, Torque, Speed, Acceleration, Pressure, VolumeFlow, MassFlow, Temperature, TemperatureDifference, Density,
                 SpecificHeat, SpecificEnergy, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate, TorsionalRate, TemperatureCoefficient,
-                OpticalPower, LineDensity, Irradiation, SpecificYield,
+                OpticalPower, LineDensity, Irradiation, SpecificYield, EnergyPerDistance,
             });
         }
 
