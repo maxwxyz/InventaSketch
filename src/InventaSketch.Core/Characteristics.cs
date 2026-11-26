@@ -270,7 +270,8 @@ namespace InventaSketch.Core
             {
                 set = null;
             }
-            lock (map) map[cacheKey] = set;
+            // Computed while the coupling graph of this document is still being built (shaft links missing): not cached.
+            if (!Coupling.GraphPending(doc)) lock (map) map[cacheKey] = set;
             return set;
         }
 
