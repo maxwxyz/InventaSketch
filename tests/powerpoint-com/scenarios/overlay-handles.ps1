@@ -105,6 +105,9 @@ $S.Window.Selection.Unselect()
 foreach ($x in @($S.Slide.Shapes)) { $x.Delete() }
 $pipe = $addin.Insert('fluid.line'); $ps = $S.Slide.Shapes.Item($pipe)
 $ps.Left = 300; $ps.Top = 250
+# Lines render from their neighbours: a move redraws the unit, so the shape is looked up again.
+Start-Sleep 2
+$ps = Get-IskShapes $S 'ISK:fluid*' | Select-Object -First 1
 if ($ps.Width -gt $ps.Height) { $ps.Width = 36 } else { $ps.Height = 36 }
 Start-Sleep 2
 $S.Window.Selection.Unselect(); Start-Sleep 1

@@ -28,6 +28,22 @@ namespace InventaSketch.AddIn.Tests
         }
 
         [Fact]
+        public void TextValuedVariablesAreShownButNeitherTypedNorDragged()
+        {
+            // The four-bar's Grashof class is a text-valued variable ("Crank-rocker"): the card shows it read-only.
+            var o = Registry.Create(Registry.Library.First(i => i.TypeId == "kin.mech.fourbar"), new Vec2(50, 50));
+            var doc = SketchDocument.Create();
+            doc = Edits.Add(doc, doc.Pages[0].Id, o);
+            var table = ValueSolver.Solve(doc, Registry, new[] { o.Id }, null, Lang.En);
+            var card = ValueCardModel.Build(table, o.Id, "Four-bar · Values", ValueLevel.Explore, Lang.En, false);
+            var cls = card.Rows.Single(r => r.Key == "cls");
+            Assert.True(cls.ReadOnly);
+            Assert.False(cls.CanDrag);
+            Assert.False(string.IsNullOrEmpty(cls.Field));
+            Assert.All(card.Rows.Where(r => r.Key != "cls"), r => Assert.False(r.ReadOnly));
+        }
+
+        [Fact]
         public void OhmCardShowsDerivedValuesWithFormulas()
         {
             var card = Card(ValueLevel.Explore, Lang.En, ("voltage", "230 V"), ("current", "2 A"));

@@ -82,7 +82,8 @@ def status_line(obj, lang=None):
 
 
 def rows(obj, level, explained=None, errors=None, lang=None):
-    """Panel rows of one element's values: [{key, head ("✎ U Voltage"), field, unit, clear (bool), detail, tip}].
+    """Panel rows of one element's values: [{key, head ("✎ U Voltage"), field, unit, clear (bool), readonly (bool),
+    detail, tip}]; ``readonly`` marks a text-valued variable (a class such as the Grashof class) that is never typed.
     ``explained``: key -> explanation line; ``errors``: key -> message of a refused entry (shown under the row)."""
     explained = explained or {}
     errors = errors or {}
@@ -92,7 +93,7 @@ def rows(obj, level, explained=None, errors=None, lang=None):
         head = " ".join(x for x in (mark, v.get("symbol") or "", v.get("name") or v.get("key")) if x)
         detail = errors.get(v["key"]) or v.get("error") or formula_line(v, level, explained.get(v["key"]))
         out.append({"key": v["key"], "head": head, "field": field_text(v), "unit": v.get("unit") or "",
-                    "clear": v.get("provenance") == "entered", "detail": detail,
+                    "clear": v.get("provenance") == "entered", "readonly": bool(v.get("readOnly")), "detail": detail,
                     "tip": "%s – %s" % (v.get("name") or v["key"], provenance_text(v, lang))})
     return out
 

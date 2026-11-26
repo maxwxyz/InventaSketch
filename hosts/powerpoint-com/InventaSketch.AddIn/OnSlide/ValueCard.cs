@@ -308,6 +308,7 @@ namespace InventaSketch.AddIn.OnSlide
                     c.Shown = r.Field;
                     c.Field.ForeColor = r.Provenance == Provenance.Entered ? SystemColors.WindowText : SystemColors.GrayText;
                     c.Grip.Visible = r.CanDrag || _dragKey == r.Key;
+                    c.Field.ReadOnly = r.ReadOnly;
                     c.Clear.Enabled = r.CanClear;
                     c.Clear.ForeColor = r.CanClear ? SystemColors.WindowText : SystemColors.Window;
                     var note = r.Problem ?? r.Formula;
@@ -385,7 +386,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         private void CommitField(string key)
         {
-            if (_updating || !_rows.TryGetValue(key, out var c)) return;
+            if (_updating || !_rows.TryGetValue(key, out var c) || c.Field.ReadOnly) return;
             var text = c.Field.Text.Trim();
             if (text == c.Shown.Trim()) return;
             string? error = null;

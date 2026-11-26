@@ -748,19 +748,24 @@ Unit-Tests und Moduldoku EN/DE:
 
 Aus dieser Runde noch offen:
 
-- **Hausgeräte in Verteiler-Berichten:** Steckdosen, Schalter und Leuchten aus der Galerie sind jetzt
-  `elec.house.*`; ihre Parameter `room`/`feed` und das Einlesen in die Verteiler-Berichte sind in Arbeit
-  (Folge-Agent).
-- **Kern:** Anschlusszuordnung über verträgliche Mount-Ids (Werkzeugwechsler und Kraft-Momenten-Sensor nutzen heute
-  eine Probe-Heuristik); eine Textgröße als Variablenart (Grashof-Klasse im Werte-Panel); Raumwerte (A, h, V) als
-  Netzschlüssel für die Haustechnik; ein fremder Anschluss mit angedocktem Vor- und Rücklaufrohr darf diese nicht
-  verbinden (Energie-Wärmeanschlüsse).
-- **Exporte:** Matplotlib-/pgfplots-Export der sechs neuen Diagrammarten; Import von `hist`/`boxplot`; Kalenderdaten
-  im Gantt-Diagramm.
-- **Noch fehlende Werte:** Malteserkreuz und Sechsgelenk, Beschleunigungen; Rutschkupplung; Gaseigenschaften für
-  Verdichter und Turbinen; Polarisation bei Reflexion, Fresnel-Verluste; Balkenlinien mit Momenten, Trapezlasten
-  und Gelenken.
-- **Sichtprüfung in PowerPoint:** die neuen Elemente sind nur per Unit-Test und gerasterter Galerie geprüft.
+- Am selben Tag in einer dritten Runde erledigt: Hausgeräte aus der Galerie in Verteiler-Berichten und Lastsummen;
+  verträgliche Mount-Ids (`Anchor.Accepts`, keine Probe-Heuristik mehr in der Robotik) und Riemenscheiben, die weder
+  kämmen noch als Zahnräder einrasten; Vor- und Rücklauf an einem fremden Anschluss bleiben getrennt
+  (`NetSpec.Medium`/`Leads`); Raumwerte speisen Luftdurchlässe und eine Heizlast-Schätzung (Enthaltensein,
+  `bs.room.link`, Prüfung `heat.roomload`); Textwerte (Grashof-Klasse, schreibgeschützt in COM, Web und LibreOffice:
+  `VarInfo.readOnly`); Matplotlib-/pgfplots-Export der Präsentationsdiagramme, Import von `hist`/`boxplot`,
+  Kalenderdaten im Gantt-Diagramm; Werte für Schwungrad, Wellgetriebe, Zykloidgetriebe, Differential, Ravigneaux
+  (Drehzahlen), CVT und Zahnstange, Rutschkupplung, Werte für Malteserkreuz und Sechsgelenk; Routenlänge und
+  Fahrzeit, Haltestellen, Brücken, Tunnel, Höhenlinien; TTC und Anhalteweg mit Prüfungen, V2X, Rollstuhl,
+  Straßenbahn; automatische Bezugszeichen, Varianten (10a, 10'), Achsen für Explosionsansichten, Oberflächen-
+  schraffur und drei neue Vorabprüfungen.
+- **Noch offen:** Getriebesätze, CVT und Zahnstange mit ihren Wellen und Zahnrädern verknüpfen (`MechLinks`); ein
+  Befehl „Alle Teile nummerieren“ auf Seitenebene in den Hosts; Piktogramme für die Verkehrsmittel der Route und die
+  Phasen im Verteiler (neue `IconIds` und Zeichnungen in den Hosts); Gaseigenschaften für Verdichter und Turbinen;
+  Polarisation bei Reflexion, Fresnel-Verluste; Balkenlinien mit Momenten, Trapezlasten und Gelenken;
+  Sankey-Export; pgfplots-Import der neuen Diagrammformen.
+- **Sichtprüfung in PowerPoint:** die neuen Elemente sind per Unit-Test und gerasterter Galerie geprüft; die
+  PowerPoint-Szenarien decken Andocken, Werte und verknüpfte Diagramme ab, nicht jedes neue Symbol.
 
 ### Nach dem Lauf vom 26.11.2026 (Stand für den eigenen Test des Maintainers)
 

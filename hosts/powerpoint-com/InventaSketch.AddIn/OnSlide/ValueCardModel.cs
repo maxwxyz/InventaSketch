@@ -165,6 +165,8 @@ namespace InventaSketch.AddIn.OnSlide
         public bool CanClear { get; init; }
         /// <summary>A known value can be dragged (Explore).</summary>
         public bool CanDrag { get; init; }
+        /// <summary>A text-valued variable (a class such as the Grashof class): shown, never typed or dragged.</summary>
+        public bool ReadOnly { get; init; }
         /// <summary>The value in SI, null when unknown.</summary>
         public double? Si { get; init; }
         /// <summary>The value formatted for the label, the pie and the calculator ("115 Ω"); empty when unknown.</summary>
@@ -251,7 +253,8 @@ namespace InventaSketch.AddIn.OnSlide
                     Problem = problem,
                     Conflict = v.InConflict,
                     CanClear = v.Provenance == Provenance.Entered || v.Error is not null,
-                    CanDrag = level == ValueLevel.Explore && v.Value is double x && x > 0,
+                    CanDrag = level == ValueLevel.Explore && v.Value is double x && x > 0 && !v.Def.Kind.IsText,
+                    ReadOnly = v.Def.Kind.IsText,
                     Si = v.Value,
                     Display = display,
                 });

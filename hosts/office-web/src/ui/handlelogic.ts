@@ -105,8 +105,8 @@ export function dragValueStep(from: number, dx: number, scale = 1): number {
 }
 
 /** A value row offers the ↔ grip: Explore level and a positive number (COM `CanDrag`). */
-export function canDragValue(v: Pick<VarInfo, "value">, level: ValueLevel): boolean {
-  return level === "explore" && typeof v.value === "number" && v.value > 0;
+export function canDragValue(v: Pick<VarInfo, "value" | "readOnly">, level: ValueLevel): boolean {
+  return level === "explore" && !v.readOnly && typeof v.value === "number" && v.value > 0;
 }
 
 /** The range line under a value with tolerances ("180 V … 220 V"), "" without one. */

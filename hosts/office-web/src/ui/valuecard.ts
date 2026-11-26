@@ -222,13 +222,14 @@ export class ValueCard {
     const input = h("input", {
       class: "isk-input isk-val-input", type: "text", value: fieldText(v), "data-key": v.key, autocomplete: "off", spellcheck: "false",
       "aria-label": `${v.name} ${v.symbol}`, placeholder: v.provenance === "unknown" ? "–" : undefined,
+      readonly: v.readOnly ? true : undefined,
     });
     input.value = fieldText(v);
     const start = input.value;
     let done = false;
     const commit = () => {
       const text = input.value.trim();
-      if (done || text === start.trim()) return;
+      if (done || v.readOnly || text === start.trim()) return;
       done = true;
       try {
         const next = this.host.session().setValue(id, v.key, text);

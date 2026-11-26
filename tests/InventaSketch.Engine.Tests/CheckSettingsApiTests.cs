@@ -84,6 +84,19 @@ namespace InventaSketch.Engine.Tests
             Assert.False(type.DependsOnNeighbours, itemId);
         }
 
+        [Fact]
+        public void TextValuedVariablesAreMarkedReadOnly()
+        {
+            var api = Api.Value;
+            var session = Call(api, "createSession", new { lang = "en" }).GetProperty("session").GetString()!;
+            var id = EngineApiTests.Insert(api, session, "kin.fourbar", 50, 50);
+            var vars = Call(api, "values", new { session, id }).GetProperty("objects").EnumerateArray().Single().GetProperty("vars").EnumerateArray().ToList();
+            var cls = vars.Single(v => v.GetProperty("key").GetString() == "cls");
+            Assert.True(cls.GetProperty("readOnly").GetBoolean());
+            Assert.False(string.IsNullOrEmpty(cls.GetProperty("display").GetString()));
+            Assert.All(vars.Where(v => v.GetProperty("key").GetString() != "cls"), v => Assert.False(v.GetProperty("readOnly").GetBoolean()));
+        }
+
         private static void ThrowIfError(string json)
         {
             using var doc = JsonDocument.Parse(json);

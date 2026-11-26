@@ -80,6 +80,8 @@ describe("corners, grips and values", () => {
     expect(canDragValue({ value: 4.7 }, "engineer")).toBe(false);
     expect(canDragValue({ value: -1 }, "explore")).toBe(false);
     expect(canDragValue({ value: null }, "explore")).toBe(false);
+    // A text-valued variable (Grashof class: the value is a label index) is never dragged.
+    expect(canDragValue({ value: 2, readOnly: true }, "explore")).toBe(false);
     expect(rangeText({ range: "180 V … 220 V" })).toBe("180 V … 220 V");
     expect(rangeText({ range: null })).toBe("");
   });

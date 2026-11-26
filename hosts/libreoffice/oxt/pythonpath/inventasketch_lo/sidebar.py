@@ -978,6 +978,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                     self.controls["vHead%d" % i].getModel().Label = r["head"]
                     self.controls["vHead%d" % i].getModel().HelpText = r["tip"]
                     self.controls["vField%d" % i].setText(r["field"])
+                    self.controls["vField%d" % i].getModel().ReadOnly = r.get("readonly", False)
                     self.value_starts[i] = r["field"]
                     self.controls["vUnit%d" % i].getModel().Label = r["unit"]
                     detail = self.controls["vDetail%d" % i].getModel()
@@ -1021,7 +1022,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
 
     def _commit_value(self, i):
         """Enter or leaving a value field stores the value (only when it changed)."""
-        if self.updating or i >= len(self.value_rows):
+        if self.updating or i >= len(self.value_rows) or self.value_rows[i].get("readonly"):
             return
         text = self.controls["vField%d" % i].getText().strip()
         if text == (self.value_starts.get(i) or "").strip():

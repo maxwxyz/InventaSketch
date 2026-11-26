@@ -195,6 +195,13 @@ class Values(unittest.TestCase):
         refused = values.rows(self.OBJ, "explore", errors={"U": "Not a voltage"})
         self.assertEqual(refused[1]["detail"], "Not a voltage")
         self.assertIn("Entered", quick[0]["tip"])
+        self.assertEqual([r["readonly"] for r in quick], [False, False, False])
+        # A text-valued variable (the Grashof class) is shown read-only.
+        cls = {"key": "cls", "symbol": "", "name": "Grashof class", "provenance": "derived", "display": "Crank-rocker",
+               "unit": "", "relevance": "card", "readOnly": True}
+        row = values.rows({"vars": [cls]}, "explore")[0]
+        self.assertTrue(row["readonly"])
+        self.assertEqual(row["field"], "Crank-rocker")
 
     def test_status_and_conflicts(self):
         self.assertEqual(values.status_line({"status": "checked"}, "de"), "✓ alle Werte stimmen überein")

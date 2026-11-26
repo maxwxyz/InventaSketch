@@ -164,6 +164,8 @@ export interface VarInfo {
   unitFactor: number;
   unitOffset: number;
   units: string[];
+  /** A text-valued variable (a class such as the Grashof class): shown, never typed or dragged. */
+  readOnly?: boolean;
   value?: number | null;
   number?: number | null;
   display: string;

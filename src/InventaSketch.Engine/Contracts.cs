@@ -108,6 +108,11 @@ namespace InventaSketch.Engine
         public double UnitOffset { get; set; }
         /// <summary>Allowed display units of the kind, default first.</summary>
         public List<string> Units { get; set; } = new();
+        /// <summary>
+        /// A text-valued variable (a class such as the Grashof class; <see cref="Display"/> is the label, <see cref="Value"/>
+        /// the label index): hosts show it, never offer typing or dragging.
+        /// </summary>
+        public bool ReadOnly { get; set; }
         /// <summary>SI value; null when unknown.</summary>
         public double? Value { get; set; }
         /// <summary>The value in the display unit.</summary>

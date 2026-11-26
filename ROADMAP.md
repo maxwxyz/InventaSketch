@@ -672,15 +672,21 @@ and EN/DE module docs:
 
 Still open from this round:
 
-- **House devices in switchgear reports:** gallery sockets, switches and lights are now `elec.house.*`; their
-  `room`/`feed` parameters and the switchgear reports reading them are in progress (follow-up agent).
-- **Core:** port matching by compatible mount ids (robot tool changer/F-T sensor use a probing heuristic today);
-  a text-valued variable kind (Grashof class in the values panel); room values (A, h, V) as net keys for building
-  services; a foreign port with flow and return pipes docked must not join them (energy heat ports).
-- **Exports:** matplotlib/pgfplots export of the six new chart kinds; `hist`/`boxplot` import; calendar dates in Gantt.
-- **Values still missing:** Geneva and six-bar values, accelerations; slip clutch; compressor/turbine gas properties;
-  polarisation on reflection, Fresnel losses; beam diagrams with moments, trapezoid loads and hinges.
-- **Checks by eye in PowerPoint:** the new elements are unit-tested and checked in rasterised galleries only.
+- Done in a third round the same day: gallery house devices in the switchgear reports and load totals; compatible
+  mount ids (`Anchor.Accepts`, no probing heuristic in robotics) and pulleys that neither mesh nor snap as gears;
+  flow and return pipes on one foreign port stay apart (`NetSpec.Medium`/`Leads`); room values feed air terminals and
+  a heating-load estimate (containment, `bs.room.link`, check `heat.roomload`); text-valued variables (Grashof class,
+  read-only in COM, web and LibreOffice: `VarInfo.readOnly`); matplotlib/pgfplots export of the presentation charts,
+  `hist`/`boxplot` import, Gantt calendar dates; flywheel, strain wave, cycloidal, differential, Ravigneaux (speeds),
+  CVT and rack values, slip clutch, Geneva and six-bar values; route length and travel time, stations, bridges,
+  tunnels, contours; TTC and stopping distance with checks, V2X, wheelchair, tram; automatic reference numerals,
+  variants (10a, 10'), exploded-view axes, surface shading and three new preflight rules.
+- **Still open:** linking gear sets, the CVT and the rack to the shafts and gears they sit on (`MechLinks`); a
+  page-level "Number all parts" command in the hosts; pictograms for the route travel modes and the switchgear phases
+  (new `IconIds` plus host drawings); compressor/turbine gas properties; polarisation on reflection, Fresnel losses;
+  beam diagrams with moments, trapezoid loads and hinges; Sankey export; pgfplots import of the new chart forms.
+- **Checks by eye in PowerPoint:** the new elements are unit-tested and checked in rasterised galleries; the
+  PowerPoint scenarios cover docking, values and linked charts, not every new symbol.
 
 ### After the run of 2026-11-26 (state for the maintainer's own test)
 
