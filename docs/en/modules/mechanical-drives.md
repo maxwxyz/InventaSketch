@@ -204,19 +204,32 @@ along"):
   (within the rack's length; 45 % of the tooth depth below the tips, schematic: midway between body line and tips) is the
   rack's pinion: the rack takes its *n*_p, *T*_p, *z*_p and *d*_p from the gear, so *v* = ω·*r* follows the pinion (and
   the pinion's shaft line takes its speed back from an entered rack speed). With two or more such gears the rack takes
-  none (enter the pinion values on the rack).
+  none (enter the pinion values on the rack). The rack exposes this line as its pitch line anchor (core
+  `AnchorRole.PitchLine`, id `pitch`, teeth side marked): a pinion dragged near it snaps tangent to it (snap kind "mesh",
+  label "pitch line"), the coupling keeps the pair (a pinion that grows pushes the rack away along its normal) and the
+  values find the pinion from that same coupling mesh.
 - Drivetrain parts of the machines module (e-machine, engine, wheel) on a shaft join the shaft line with the same keys.
 
 **Shaft lines across modules.** The shaft line rule is shared by all modules (core `ShaftLines`, built on the coupling
 relations): shafts, spline shafts, couplings, slip clutches and universal joints pass the torque on unchanged, bearings take the speed
 only, planet carriers, differential cases, gear sets and the screw-drive nut stay out (gear sets and the CVT dock their
-members on shafts instead; the core rule of other modules' elements does not yet count a docked member as a torque
-part). Elements of any module with a
+members on shafts instead). A member docked on a line counts as one part taking or giving torque in the core rule as
+well (core `IGearUnit`, `GearUnitDocking`, 2026-11-26), so a pump of the process module on a shaft docked on a sun port
+counts the same way as here. Elements of any module with a
 speed *n* (and a torque *T*) whose hub sits on a shaft axis or on another hub join the line. Every module links its
 elements as a star around the line's shaft or coupling, so an e-machine of the machines module, a mechanical shaft and a
 pump of the process or fluid module share *n* and, with at most two torque members, *T*: the drive's power 2π·*n*·*T*
 becomes the pump's shaft power. Pulleys, sprockets, idler pulleys and tensioners have a pitch circle that sizes the belt
 or chain only: two of them whose pitch circles touch do not mesh like gears (no gear ratio, no scaling when one moves).
+
+**Moving gear train** (turning a gear seen along its axis, animation frames; core `GearTrain`, 2026-11-26). A gear set or
+CVT no longer turns all parts docked on it rigidly together: each docked part turns with its member and the members
+follow the unit's speed relation (`IGearUnit.SpeedRelations`, from the entered teeth and ratios or their defaults):
+planetary set Willis *z*_s·ω_s + *k*·*z*_r·ω_r − (*z*_s + *k*·*z*_r)·ω_c = 0, Ravigneaux set both Willis equations,
+differential ω₁ + ω₂ = 2·ω_c, strain wave gear, cycloidal drive and CVT ω_in = *i*·ω_out (entered *i*, else from the
+teeth or the CVT's `ratio`). A member whose speed is entered as 0 is held (`speedr` = 0 holds the ring). A set with two
+degrees of freedom and no member held leaves the parts behind it unresolved: they do not move. A rack travels along its
+pitch line when its pinion turns, *s* = φ·*r* (a quarter turn of a 20 mm pitch radius moves it 31.4 mm).
 
 **Checks** (hints only, overlay, nothing changes):
 
@@ -234,9 +247,8 @@ or chain only: two of them whose pitch circles touch do not mesh like gears (no 
 Not yet available: torque relations of the Ravigneaux set (speeds only); ports for the ring gears, the differential case
 (crown wheel driven by a bevel pinion) and the Ravigneaux carrier; meshes with a gear set (a gear on the ring's outside);
 the sense of rotation of a shaft (a shaft takes the magnitude of a signed member, so entering both the input and the
-output shaft speed of a set whose output turns backwards gives a conflict: enter the output on the set); the rack and
-gear set links in the moving gear train of the core (turning a part does not move a rack, and the core treats a
-schematic gear set carried by two shafts as one rigid body); Willis across separate planetary parts; torque split at
+output shaft speed of a set whose output turns backwards gives a conflict: enter the output on the set); Willis across
+separate planetary parts; torque split at
 branches (shaft lines and strands with three or more parts taking
 torque). No strength verification (ISO 6336, DIN 743, EN 13906 beyond *F* = *c*·*s* and *T* = *c*_φ·φ), no slip
 torque design (friction radius, number of faces, spring force).

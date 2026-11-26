@@ -157,6 +157,26 @@ namespace InventaSketch.Core
                                 Consider(t.P + dir * required - m.P, SemanticTier, MeshWeight, "mesh", t, new SnapGuide(GuideKind.Circle, t.P, t.P + dir * required, required));
                             }
                         }
+                        // Rack and pinion: a gear seen along its axis tangent to a rack's pitch line on the teeth side, or the
+                        // rack's pitch line moved onto such a gear (the gear's centre within the rack's length).
+                        if (m.Kind == AnchorKind.Circle && m.Role == AnchorRole.Pitch && !m.NoMesh && m.AxisOf() is null && m.Radius > Geo.Eps
+                            && t.TeethSide() is { } tn)
+                        {
+                            var (foot, _) = Geo.ClosestOnSegment(m.P, t.P, t.Q);
+                            var target = foot + tn * m.Radius;
+                            Consider(target - m.P, SemanticTier, MeshWeight, "mesh", t,
+                                new SnapGuide(GuideKind.Segment, t.P, t.Q), new SnapGuide(GuideKind.Circle, target, foot, m.Radius));
+                        }
+                        if (m.TeethSide() is { } mn && t.Kind == AnchorKind.Circle && t.Role == AnchorRole.Pitch && !t.NoMesh && t.AxisOf() is null && t.Radius > Geo.Eps)
+                        {
+                            // Shift along the normal so the line touches the circle, then along the line so the contact lies on it.
+                            var s = (t.P - m.P).Dot(mn);
+                            var shift = mn * (s - t.Radius);
+                            var (foot, _) = Geo.ClosestOnSegment(t.P - mn * t.Radius, m.P + shift, m.Q + shift);
+                            shift += t.P - mn * t.Radius - foot;
+                            Consider(shift, SemanticTier, MeshWeight, "mesh", t,
+                                new SnapGuide(GuideKind.Segment, m.P + shift, m.Q + shift), new SnapGuide(GuideKind.Circle, t.P, t.P - mn * t.Radius, t.Radius));
+                        }
                         // Hub/centre onto a shaft axis.
                         if (m.Kind == AnchorKind.Point && m.Role is AnchorRole.Hub && t.Kind == AnchorKind.Segment && t.Role == AnchorRole.Axis)
                             Consider(Geo.ProjectOnLine(m.P, t.P, t.Q) - m.P, SemanticTier, AxisWeight, "axis", t, new SnapGuide(GuideKind.Segment, t.P, t.Q));

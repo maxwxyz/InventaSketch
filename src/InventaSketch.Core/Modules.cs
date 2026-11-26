@@ -449,6 +449,12 @@ namespace InventaSketch.Core
         Rail,
         /// <summary>Cone apex of a bevel gear (on its axis): a mating bevel gear shares it (<see cref="Building"/>).</summary>
         Apex,
+        /// <summary>
+        /// Pitch line of a rack (segment, <see cref="Anchor.PitchLine"/>): a gear seen along its axis whose pitch circle touches
+        /// it on the teeth side (<see cref="Anchor.TeethSide"/>) is its pinion: snapping places the gear tangent to the line,
+        /// the coupling keeps it there and the moving gear train moves the rack (<see cref="GearTrain"/>).
+        /// </summary>
+        PitchLine,
     }
 
     /// <summary>
@@ -553,8 +559,25 @@ namespace InventaSketch.Core
         /// <summary>Unit axis direction of a side-view pitch circle (<see cref="SidePitch"/>), else null.</summary>
         public Vec2? AxisOf() => Kind == AnchorKind.Circle && Q != default && Q.DistanceTo(P) > 1e-9 ? (Q - P) * (1 / Q.DistanceTo(P)) : null;
 
+        /// <summary>
+        /// The pitch line of a rack from <paramref name="a"/> to <paramref name="b"/> (<see cref="AnchorRole.PitchLine"/>). The
+        /// teeth (and the pinion) lie to the left of a → b on screen (y down): (b − a) turned by −90°, see <see cref="TeethSide"/>.
+        /// A mirrored placement keeps the side (<see cref="Transform"/> swaps the ends).
+        /// </summary>
+        public static Anchor PitchLine(Vec2 a, Vec2 b, string? id = "pitch") => new(AnchorKind.Segment, AnchorRole.PitchLine, a, b) { Id = id };
+
+        /// <summary>Unit normal of a rack pitch line towards its teeth (the side its pinion sits on), else null.</summary>
+        public Vec2? TeethSide()
+        {
+            if (Role != AnchorRole.PitchLine || Kind != AnchorKind.Segment || (Q - P).Length < 1e-9) return null;
+            var d = (Q - P).Normalized();
+            return new Vec2(d.Y, -d.X);
+        }
+
         public Anchor Transform(Matrix2D m) => Kind switch
         {
+            // A rack pitch line keeps its teeth side: a mirroring placement swaps its ends.
+            AnchorKind.Segment when Role == AnchorRole.PitchLine && m.Determinant < 0 => this with { P = m.Apply(Q), Q = m.Apply(P) },
             // Point and segment radii (bore, shaft, face) scale with the mean linear scale; page placement is rigid.
             AnchorKind.Point => HasDirection ? this with { P = m.Apply(P), Q = m.Apply(Q), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) }
                 : Radius > 0 ? this with { P = m.Apply(P), Radius = Radius * Math.Sqrt(Math.Abs(m.Determinant)) } : this with { P = m.Apply(P) },

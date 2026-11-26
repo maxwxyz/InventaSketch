@@ -213,8 +213,8 @@ magnitudes; *P* = 2π·*n*·*T*. Card variables come first. Design notes:
 
 | Element | Variables (parameter) | Local relations [source] |
 |---|---|---|
-| Radial- and axial-flux machine (`machines.radial`, `machines.axial`) | *n* (`speed`), *T* (`torque`), *P* (`power`), *f* (`frequency`); panel *n*_s (`syncSpeed`), *s* (`slip`), pole count 2*p* (`poles`); engineer η (`efficiency`), *P*_el (`powerEl`), *P*_N (`ratedPower`), *T*_N (`ratedTorque`) | *n*_s = 60·*f*/*p* (*p* = pole count/2) [S15]; *s* = (*n*_s − *n*)/*n*_s [S15]; *P* = 2π·*n*·*T*; motor operation *P* = η·*P*_el [S14] |
-| E-motor block, drivetrain e-machine | *n*, *T*, *P*, η; engineer *P*_el, *P*_N, *T*_N | *P* = 2π·*n*·*T*; *P* = η·*P*_el |
+| Radial- and axial-flux machine (`machines.radial`, `machines.axial`) | *n* (`speed`), *T* (`torque`), *P* (`power`), *f* (`frequency`); panel *n*_s (`syncSpeed`), *s* (`slip`), pole count 2*p* (`poles`); engineer η (`efficiency`), *P*_el (`powerEl`), *P*_N (`ratedPower`), *T*_N (`ratedTorque`) | *n*_s = 60·*f*/*p* (*p* = pole count/2) [S15]; *s* = (*n*_s − *n*)/*n*_s [S15]; *P* = 2π·*n*·*T*; motor operation *P* = η·*P*_el, generator operation (`mode` = generator, the generator symbol) *P*_el = η·*P* [S14] |
+| E-motor block, drivetrain e-machine | *n*, *T*, *P*, η; engineer *P*_el, *P*_N, *T*_N; operating mode `mode` (the e-motor block's own choice; for the drivetrain e-machine an engineering parameter, motor by default) | *P* = 2π·*n*·*T*; motor *P* = η·*P*_el, generator *P*_el = η·*P* [S14] |
 | Combustion engine | *n*, *T*, *P*; engineer *P*_N, *T*_N | *P* = 2π·*n*·*T* (no thermodynamics) |
 | Gearbox, differential (blocks) | *i* (`ratio`), η (`efficiency`, default 100 %), *n*₂ (`speedOut`), *T*₂ (`torqueOut`); panel *n*₁ (`speedIn`), *T*₁ (`torqueIn`), *P*₁ (`powerIn`), *P*₂ (`powerOut`) | *n*₁ = *i*·*n*₂; *T*₂ = *T*₁·*i*·η [S18]; *P*₁ = 2π·*n*₁·*T*₁; *P*₂ = 2π·*n*₂·*T*₂ |
 | Wheel | *r* (`radius`, dynamic rolling radius), *n*, *T*, *v* (`linSpeed`, km/h); panel *F* (`force`), *P* | *v* = 2π·*n*·*r*; *F* = *T*/*r* [S18]; *P* = 2π·*n*·*T* |
@@ -233,10 +233,16 @@ magnitudes; *P* = 2π·*n*·*T*. Card variables come first. Design notes:
 | Id | Rule | Severity | Source |
 |---|---|---|---|
 | `mach.slip.sign` | induction machine (`rotor` = `asm`) in motor mode with *n* > *n*_s (generator operation) | info | [S15] |
-| `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (gearbox, differential) or *P* > *P*_el (motor) | warning | [S1] |
+| `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (gearbox, differential), *P* > *P*_el (motor) or *P*_el > *P* (generator) | warning | [S1] |
 | `mach.overload` | *P* > *P*_N or *T* > *T*_N (rating entered by the user) | warning | [S14] |
 
-Not yet: generator operation in the efficiency relation, slot/pole numbers, Kloss torque–speed curve, DC machine
+**Generator mode** (2026-11-26). The operating mode (`mode`: motor by default, generator) decides the efficiency rule:
+a motor turns electrical into mechanical power (*P* = η·*P*_el, `mach.efficiency.motor`), a generator driven by a turbine,
+an engine or a gear stage turns the shaft power into electrical power (*P*_el = η·*P*, `mach.efficiency.generator`). A
+machine on a process turbine shaft takes the turbine's *P* over the shaft and gives *P*_el (process module). Speeds,
+torques and powers stay magnitudes; the sign of the slip is not used to switch the mode.
+
+Not yet: slot/pole numbers, Kloss torque–speed curve, DC machine
 constants, battery, inverter and DC link values (Calc 4 with the energy module).
 
 ## Known limits

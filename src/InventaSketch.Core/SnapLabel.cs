@@ -14,6 +14,7 @@ namespace InventaSketch.Core
             {
                 AnchorRole.Pitch => de ? "Teilkreis" : "pitch circle",
                 AnchorRole.PitchInner => de ? "Teilkreis innen" : "inner pitch circle",
+                AnchorRole.PitchLine => de ? "Wälzgerade" : "pitch line",
                 AnchorRole.Axis => de ? "Achse" : "axis",
                 AnchorRole.Hub => de ? "Nabe" : "hub",
                 AnchorRole.Mount => de ? "Befestigung" : "mount",

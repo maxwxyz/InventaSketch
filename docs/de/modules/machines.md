@@ -216,8 +216,8 @@ Drehmomente *M* und Leistungen sind Beträge; *P* = 2π·*n*·*M*. Kartengröße
 
 | Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
 |---|---|---|
-| Radial- und Axialflussmaschine (`machines.radial`, `machines.axial`) | *n* (`speed`), *M* (`torque`), *P* (`power`), *f* (`frequency`); Panel *n*_s (`syncSpeed`), *s* (`slip`), Polzahl 2*p* (`poles`); Ingenieur η (`efficiency`), *P*_el (`powerEl`), *P*_N (`ratedPower`), *M*_N (`ratedTorque`) | *n*_s = 60·*f*/*p* (*p* = Polzahl/2) [S15]; *s* = (*n*_s − *n*)/*n*_s [S15]; *P* = 2π·*n*·*M*; Motorbetrieb *P* = η·*P*_el [S14] |
-| E-Motor-Block, E-Maschine (Antriebsstrang) | *n*, *M*, *P*, η; Ingenieur *P*_el, *P*_N, *M*_N | *P* = 2π·*n*·*M*; *P* = η·*P*_el |
+| Radial- und Axialflussmaschine (`machines.radial`, `machines.axial`) | *n* (`speed`), *M* (`torque`), *P* (`power`), *f* (`frequency`); Panel *n*_s (`syncSpeed`), *s* (`slip`), Polzahl 2*p* (`poles`); Ingenieur η (`efficiency`), *P*_el (`powerEl`), *P*_N (`ratedPower`), *M*_N (`ratedTorque`) | *n*_s = 60·*f*/*p* (*p* = Polzahl/2) [S15]; *s* = (*n*_s − *n*)/*n*_s [S15]; *P* = 2π·*n*·*M*; Motorbetrieb *P* = η·*P*_el, Generatorbetrieb (`mode` = Generator, das Generatorsymbol) *P*_el = η·*P* [S14] |
+| E-Motor-Block, E-Maschine (Antriebsstrang) | *n*, *M*, *P*, η; Ingenieur *P*_el, *P*_N, *M*_N; Betriebsart `mode` (beim E-Motor-Block dessen eigene Auswahl; bei der E-Maschine des Antriebsstrangs ein Ingenieurparameter, Standard Motor) | *P* = 2π·*n*·*M*; Motor *P* = η·*P*_el, Generator *P*_el = η·*P* [S14] |
 | Verbrennungsmotor | *n*, *M*, *P*; Ingenieur *P*_N, *M*_N | *P* = 2π·*n*·*M* (keine Thermodynamik) |
 | Getriebe, Differential (Blöcke) | *i* (`ratio`), η (`efficiency`, Vorgabe 100 %), *n*₂ (`speedOut`), *M*₂ (`torqueOut`); Panel *n*₁ (`speedIn`), *M*₁ (`torqueIn`), *P*₁ (`powerIn`), *P*₂ (`powerOut`) | *n*₁ = *i*·*n*₂; *M*₂ = *M*₁·*i*·η [S18]; *P*₁ = 2π·*n*₁·*M*₁; *P*₂ = 2π·*n*₂·*M*₂ |
 | Rad | *r* (`radius`, dynamischer Rollradius), *n*, *M*, *v* (`linSpeed`, km/h); Panel *F* (`force`), *P* | *v* = 2π·*n*·*r*; *F* = *M*/*r* [S18]; *P* = 2π·*n*·*M* |
@@ -237,10 +237,17 @@ Drehmomente *M* und Leistungen sind Beträge; *P* = 2π·*n*·*M*. Kartengröße
 | Id | Regel | Schwere | Quelle |
 |---|---|---|---|
 | `mach.slip.sign` | Asynchronmaschine (`rotor` = `asm`) im Motorbetrieb mit *n* > *n*_s (Generatorbetrieb) | Info | [S15] |
-| `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (Getriebe, Differential) oder *P* > *P*_el (Motor) | Warnung | [S1] |
+| `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (Getriebe, Differential), *P* > *P*_el (Motor) oder *P*_el > *P* (Generator) | Warnung | [S1] |
 | `mach.overload` | *P* > *P*_N oder *M* > *M*_N (Bemessung vom Nutzer eingetragen) | Warnung | [S14] |
 
-Noch nicht: Generatorbetrieb in der Wirkungsgradbeziehung, Nut-/Polzahlen, Kloss-Kennlinie, Konstanten der
+**Generatorbetrieb** (26.11.2026). Die Betriebsart (`mode`: Standard Motor, Generator) bestimmt die
+Wirkungsgradbeziehung: ein Motor wandelt elektrische in mechanische Leistung (*P* = η·*P*_el, `mach.efficiency.motor`),
+ein Generator, angetrieben von einer Turbine, einem Verbrennungsmotor oder einer Getriebestufe, die Wellenleistung in
+elektrische Leistung (*P*_el = η·*P*, `mach.efficiency.generator`). Eine Maschine an einer Turbinenwelle der
+Verfahrenstechnik übernimmt die *P* der Turbine über die Welle und gibt *P*_el ab (Verfahrenstechnikmodul). Drehzahlen,
+Momente und Leistungen bleiben Beträge; das Vorzeichen des Schlupfs schaltet die Betriebsart nicht um.
+
+Noch nicht: Nut-/Polzahlen, Kloss-Kennlinie, Konstanten der
 Gleichstrommaschine, Werte für Batterie, Wechselrichter und Zwischenkreis (Calc 4 mit dem Energiemodul).
 
 ## Bekannte Grenzen

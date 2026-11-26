@@ -155,6 +155,8 @@ relations**:
 | Gear mesh, belt, chain | speed ratio *n*₁/*n*₂ = *z*₂/*z*₁ (or *d*₂/*d*₁); torque *T*₂ = *T*₁·*i*·*η* | `Links.Ratio`, `GearTrain.Speeds` (relative speeds, today only for animation) |
 | Shaft, coupling, gears fixed on a shaft | same *n*; torque passes through, minus branch torques | `GearTrain` (shafts, compound gears, carriers via Willis) |
 | Planetary set | Willis equation *n*_s − *n*_c = −(*z*_r/*z*_s)(*n*_r − *n*_c); torque balance | `GearTrain` (carriers) |
+| Gear unit element (planetary, Ravigneaux, differential, strain wave, cycloidal, CVT) with shafts on its member ports | each docked shaft turns with its member; the members follow the unit's speed relations; a docked member counts as one torque part of the shaft line | Core `IGearUnit`, `GearUnitDocking` (used by `GearTrain` and `ShaftLines`, 2026-11-26) |
+| Rack and pinion | *v* = *ω*·*r* along the rack's pitch line | Core `AnchorRole.PitchLine` (coupling mesh, snapping, `GearTrain` moves the rack) |
 | Electrical series (one branch) | same current *I*; voltages add; *R*, *L* add, 1/*C* adds | wire nets (attachments, junctions) |
 | Electrical parallel (same two nets) | same voltage *U*; currents add; 1/*R* adds, *C* adds | wire nets |
 | Node with all but one current known | Kirchhoff's current law: Σ*I* = 0 | wire nets |
@@ -334,6 +336,7 @@ adoptions DIN VDE 0100-520 and -430 [S8, S9]. The user enters *I*_z and the perm
 | Electrical frequency (PMSM) | *f* = *n*·*p*_pairs/60 | *n*, poles, *f* | – | [S15] |
 | Wheel / vehicle | *v* = *ω*·*r*_dyn; *F* = *T*/*r*_dyn; *P* = *F*·*v* | *r*, *n*, *T*, *v*, *F* | – | [S18] |
 | Combustion engine (block) | *P* = 2π·*n*·*T* (no thermodynamics) | *n, T, P* | – | [S1] |
+| Motor or generator operation (machines module, parameter `mode`; 2026-11-26) | motor (default): *P*_mech = *η*·*P*_el (`mach.efficiency.motor`); generator, driven by a turbine or an engine: *P*_el = *η*·*P*_mech (`mach.efficiency.generator`) | *P, P*_el*, η* | – | [S14] |
 
 ### 2.6 Kinematics
 
@@ -373,6 +376,8 @@ adoptions DIN VDE 0100-520 and -430 [S8, S9]. The user enters *I*_z and the perm
 | Fan | *P* = Δ*p*·*V̇*/*η*; affinity laws as for pumps | Δ*p, V̇, P, η* | – | [S28, S30] |
 | Vessel / storage | *V* = π*D*²·*h*/4 (cylinder); stored heat *Q* = *ρ*·*V*·*c*·Δ*θ* | *V, D, h, Δθ, Q* | – | [S29] |
 | Thermodynamic cycles (exist) | Otto / Diesel efficiency (`process.chart.pv`) | *ε*, *φ*, *κ* | – | existing code |
+| Gas compressor and turbine (ideal gas, constant *κ*; 2026-11-26) | *c*_p = *κ*·*R*/(*κ* − 1); compressor *p*₂ = *π*·*p*₁, turbine *p*₁ = *π*·*p*₂; isentropic outlet *T*₂s = *T*₁·*π*^(±(*κ*−1)/*κ*); isentropic efficiency compression *η*_s = (*T*₂s − *T*₁)/(*T*₂ − *T*₁), expansion *η*_s = (*T*₁ − *T*₂)/(*T*₁ − *T*₂s); Δ*T* = rise or drop; power *P* = *ṁ*·*c*_p·Δ*T*; specific work *w* = *c*_p·Δ*T* (kJ/kg, quantity kind specific energy); isentropic power *P*_s; volume flow *V̇* = *ṁ*·*R*·*T*/*p* (absolute *p*, *T*) | *ṁ, π, p*₁*, p*₂*, θ*₁*, θ*₂*, θ*₂s*, η*_s*, ΔT, w, P, P*_s*, V̇*₁*, V̇*₂*, κ, R, c*_p; gas choice (air, N₂, O₂, CO₂, CH₄, H₂, He, Ar, steam) | air at 20 °C, *π* = 4, *η*_s = 80 %: *w* = 178.9 kJ/kg | [S40] |
+| Generator (process, driven) | *P*_el = *η*·*P* (shaft power in, electrical power out; the terminal `el` passes *P*_el to an energy cable); the process motor *P* = *η*·*P*_el | *P, P*_el*, η, n, T* | – | [S15] |
 
 ### 2.9 HVAC and building services
 
@@ -582,6 +587,10 @@ in the document's check settings, because the binding limit is in a standard or 
 | `heat.cross` | heat exchanger | temperature cross (cold outlet above hot inlet; parallel flow: cold outlet above hot outlet) | warning (impossible) | [S29] |
 | `heat.cop.carnot` | heat pump | COP > COP_Carnot | warning (impossible) | [S29] |
 | `heat.balance` | heat source ↔ consumers | Σ*Φ*_consumers > *Φ*_source | hint | [S29] |
+| `process.efficiency` | process pumps, fans, motor, generator; compressor and turbine (isentropic) | *η* ≤ 0 or *η* > 1 (also when *η* follows from the temperatures, e.g. an outlet colder than the isentropic one) | warning | [S1] |
+| `gas.ratio` | compressor, turbine | compressor *p*₂ < *p*₁, turbine *p*₂ > *p*₁ (pressure ratio *π* < 1) | warning | [S40] |
+| `gas.temperature` | compressor, turbine | compressor *θ*₂ > *θ*_max, turbine *θ*₁ > *θ*_max (*θ*_max entered from the datasheet, no limit assumed) | warning | [S40] |
+| `gas.kappa` | compressor, turbine | *κ* ≤ 1 or *κ* > 5/3 (no ideal gas) | warning | [S40] |
 | `heat.roomload` | radiator ↔ room | Σ*Φ* of the heating surfaces in the room < *Φ*_HL of the room (estimate *q*·*A*) | hint | [S30] |
 | `pv.voc.max` | string ↔ inverter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | warning | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | string ↔ inverter | *N*_s·*U*_mpp(*θ*_max) < MPPT minimum | hint | [S33, S34] |
@@ -958,6 +967,9 @@ current editions.
 - **[S38]** D. C. Karnopp, D. L. Margolis, R. C. Rosenberg, *System Dynamics: Modeling, Simulation, and Control of
   Mechatronic Systems* (Wiley) – power variables (effort × flow) across domains.
 - **[S39]** H. W. Müller, *Die Umlaufgetriebe* (Springer) – Willis equation and planetary assembly conditions.
+- **[S40]** Textbooks of technical thermodynamics: H. D. Baehr, S. Kabelac, *Thermodynamik – Grundlagen und technische
+  Anwendungen* (Springer Vieweg); Y. A. Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach* (McGraw-Hill) –
+  ideal gas, isentropic change of state, compressors and turbines (bibliographic data only; no tables copied).
 
 The existing code relations reused here are: `Linkages.Grubler` and `Linkage.Dof` (Kinematics, Core),
 `GearTrain.Speeds` and `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Process) and
@@ -991,7 +1003,9 @@ This section records the choices made where the concept left them open. The code
 - **Kinds** (39): ratio, efficiency, count, voltage, current, power, apparent and reactive power, heat flow, resistance,
   capacitance, inductance, charge, resistivity, frequency, speed of rotation, angle, time, length, area, volume, mass,
   force, torque, energy, speed, acceleration, pressure, volume flow, mass flow, temperature, temperature difference,
-  density, specific heat, heat transfer coefficient, irradiance, kinematic viscosity, moment of inertia, spring rate.
+  density, specific heat, heat transfer coefficient, irradiance, kinematic viscosity, moment of inertia, spring rate
+  (later also torsional spring rate, temperature coefficient and, since round 4 of 2026-11-26, **specific energy**:
+  kJ/kg (default), J/kg, MJ/kg, kWh/kg, for the specific work of compressors and turbines).
   Torque and energy, power and heat flow, temperature and temperature difference share a dimension and are separate
   kinds. The first unit of a kind is its default display unit (charge: Ah, speed of rotation: min⁻¹, temperature: °C).
 - **Units** have a factor and an offset to SI and an explicit list of SI prefixes they accept and show (Ω takes µ m k M

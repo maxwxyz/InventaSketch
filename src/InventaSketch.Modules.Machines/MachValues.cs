@@ -8,7 +8,8 @@ namespace InventaSketch.Modules.Machines
 {
     /// <summary>
     /// Element values of electric machines and drive blocks (Calc 3, engineering-calculations.md sections 2.5 and 3.3):
-    /// synchronous speed and slip of the machine cross-sections, P = 2π·n·T and the efficiency of motors, ratio and
+    /// synchronous speed and slip of the machine cross-sections, P = 2π·n·T and the efficiency of motors (P = η·P_el) or, in
+    /// generator mode (parameter <c>mode</c>), of generators (P_el = η·P), ratio and
     /// efficiency of the gearbox and differential blocks, wheel speed and force. Speeds, torques and powers are magnitudes
     /// (n in rad/s internally, so P = T·n holds in SI). Every value is optional.
     /// <para>
@@ -40,6 +41,8 @@ namespace InventaSketch.Modules.Machines
             public (string N, string T)? Input { get; }
             /// <summary>Variable keys of the mechanical output of a drive block, null if none.</summary>
             public (string N, string T)? Output { get; }
+            /// <summary>Relations that depend on the object (the efficiency rule of its operating mode); null = none.</summary>
+            public Func<SketchObject, IEnumerable<Relation>>? Local { get; init; }
         }
 
         // ------------------------------------------------------------------ parameters and variables
@@ -94,6 +97,26 @@ namespace InventaSketch.Modules.Machines
                 .Solve("P", "{eta}·{Pel}", v => v("eta") * v("Pel"))
                 .Solve("Pel", "{P}/{eta}", v => v("P") / v("eta"))
                 .Solve("eta", "{P}/{Pel}", v => v("P") / v("Pel"));
+
+        /// <summary>Generator operation: P_el = η·P_mech (driven, e.g. by a turbine or an engine) [S14].</summary>
+        private static readonly Relation GeneratorEfficiency =
+            new Relation("mach.efficiency.generator", T("Generator efficiency", "Generatorwirkungsgrad"), "{Pel} = {eta}·{P}", "Pel", "eta", "P")
+            {
+                Source = "S14",
+                Validity = T("generator operation (mechanical power in, electrical power out)", "Generatorbetrieb (mechanische Leistung hinein, elektrische heraus)"),
+            }
+                .Solve("Pel", "{eta}·{P}", v => v("eta") * v("P"))
+                .Solve("P", "{Pel}/{eta}", v => v("Pel") / v("eta"))
+                .Solve("eta", "{Pel}/{P}", v => v("Pel") / v("P"));
+
+        /// <summary>True if the machine runs as a generator (parameter <c>mode</c>; motor by default).</summary>
+        internal static bool IsGenerator(SketchObject o) => o.Str("mode", "motor") == "generator";
+
+        /// <summary>The efficiency rule of the operating mode: motor P = η·P_el (default), generator P_el = η·P.</summary>
+        private static IEnumerable<Relation> ModeEfficiency(SketchObject o) => new[] { IsGenerator(o) ? GeneratorEfficiency : MotorEfficiency };
+
+        /// <summary>The operating mode as a value parameter of machines that do not draw it (the drivetrain e-machine).</summary>
+        private static readonly ParamDef PMode = Common.Mode with { Advanced = true };
 
         /// <summary>Synchronous speed n_s = 60·f/p with p = pole count / 2 [S14, S15].</summary>
         private static readonly Relation SyncSpeed =
@@ -159,7 +182,8 @@ namespace InventaSketch.Modules.Machines
         private static Spec Build(string typeId) => typeId switch
         {
             "machines.radial" or "machines.axial" => Machine(),
-            "machines.drive.motor" or "machines.drivetrain.emachine" => Motor(),
+            "machines.drive.motor" => Motor(false),
+            "machines.drivetrain.emachine" => Motor(true),
             "machines.drivetrain.engine" => Engine(),
             "machines.drive.gearbox" => Box(T("Gear ratio", "Übersetzung")),
             "machines.drive.differential" => Box(T("Axle ratio", "Achsübersetzung")),
@@ -181,14 +205,20 @@ namespace InventaSketch.Modules.Machines
             var ps = WithShow(PSpeed, PTorque, PPower, Text("frequency", T("Supply frequency", "Speisefrequenz"), "Hz"),
                 Text("syncSpeed", T("Synchronous speed", "Synchrondrehzahl"), "min⁻¹"), Text("slip", T("Slip", "Schlupf"), "%"),
                 PEta, PElPower, PRatedPower, PRatedTorque);
-            return new Spec(vars, new[] { PowerRel, SyncSpeed, Slip, MotorEfficiency }, ps, new[] { SlipSign(), Efficiency(), Overload() }, null, Shaft);
+            return new Spec(vars, new[] { PowerRel, SyncSpeed, Slip }, ps, new[] { SlipSign(), Efficiency(), Overload() }, null, Shaft) { Local = ModeEfficiency };
         }
 
-        private static Spec Motor()
+        /// <summary>
+        /// Drive motor block and drivetrain e-machine: P = 2π·n·T and the efficiency rule of the operating mode (motor by default,
+        /// generator P_el = η·P when driven). The drivetrain e-machine does not draw its mode: it gets the choice as a value
+        /// parameter (<paramref name="modeParam"/>).
+        /// </summary>
+        private static Spec Motor(bool modeParam)
         {
             var vars = new[] { Speed(), Torque(), Power(), Eta(VarRelevance.Card), ElPower(), RatedPower(), RatedTorque() };
-            return new Spec(vars, new[] { PowerRel, MotorEfficiency }, WithShow(PSpeed, PTorque, PPower, PEta, PElPower, PRatedPower, PRatedTorque),
-                new[] { Efficiency(), Overload() }, null, Shaft);
+            var ps = new List<ParamDef> { PSpeed, PTorque, PPower, PEta, PElPower, PRatedPower, PRatedTorque };
+            if (modeParam) ps.Add(PMode);
+            return new Spec(vars, new[] { PowerRel }, WithShow(ps.ToArray()), new[] { Efficiency(), Overload() }, null, Shaft) { Local = ModeEfficiency };
         }
 
         private static Spec Engine()
@@ -246,7 +276,9 @@ namespace InventaSketch.Modules.Machines
                  && c["n"] is double n && c["ns"] is double ns && n > ns * (1 + Rel))
         { Source = "S15" };
 
-        /// <summary>mach.efficiency: η &gt; 1 or more power out than in [S1].</summary>
+        /// <summary>
+        /// mach.efficiency: η &gt; 1 or more power out than in (motor: P &gt; P_el; generator: P_el &gt; P; gearbox P₂ &gt; P₁) [S1].
+        /// </summary>
         private static ValueCheck Efficiency() => new(
             "mach.efficiency", CheckSeverity.Warning,
             T("More power out than in: an efficiency above 100 % is impossible. Check the entered efficiency, torques or powers.",
@@ -254,7 +286,7 @@ namespace InventaSketch.Modules.Machines
             "η ≤ 1; P_out ≤ P_in",
             c => c["eta"] is double eta && eta > 1 + Rel
                  || c["P2"] is double p2 && c["P1"] is double p1 && p2 > p1 * (1 + Rel)
-                 || c["P"] is double p && c["Pel"] is double pel && p > pel * (1 + Rel))
+                 || c["P"] is double p && c["Pel"] is double pel && (IsGenerator(c.Object) ? pel > p * (1 + Rel) : p > pel * (1 + Rel)))
         { Source = "S1" };
 
         /// <summary>mach.overload: power or torque above the entered rating [S14].</summary>
@@ -308,6 +340,9 @@ namespace InventaSketch.Modules.Machines
             var doc = ctx.Doc;
             var registry = ctx.Registry ?? type.Owner;
             var list = new List<BoundRelation>();
+            // The efficiency rule of the operating mode (motor or generator) belongs to the element itself.
+            if (MachValues.For(type.Id).Local is { } local)
+                foreach (var r in local(o)) list.Add(BoundRelation.Local(r, o.Id));
             foreach (var (up, down) in ChainOf(doc))
             {
                 if (up != o.Id && down != o.Id) continue;
