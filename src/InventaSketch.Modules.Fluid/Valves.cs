@@ -111,6 +111,124 @@ namespace InventaSketch.Modules.Fluid
                 Ports = Fixed(new Port("P", -7.5, 0), new Port("A", 7.5, 0), new Port("R", 0, 5)),
                 CompanionIds = LineCompanions,
             };
+
+            yield return new FluidType("fluid.valve.pilotcheck", T("Pilot-operated check valve", "Entsperrbares Rückschlagventil"), Cat,
+                new[] { "pilot operated check valve", "pilot check", "load holding valve", "double pilot check", "lock valve",
+                    "entsperrbares rückschlagventil", "entsperrbar", "doppelt entsperrbares rückschlagventil", "sperrblock", "lasthalteventil" },
+                new ViewSpec("symbol", T("Circuit symbol", "Schaltzeichen"), IconIds.Symbol, 15, 15, PilotCheck)
+                {
+                    DesignFor = o => new Size2(15, o.Flag("twin", false) ? 20 : 15),
+                })
+            {
+                Params = new[] { Twin, SpringOn }, RefPrefix = "1V2",
+                Ports = o => o.Flag("twin", false)
+                    ? new[] { new Port("A1", -7.5, -5), new Port("A2", 7.5, -5), new Port("B1", -7.5, 5), new Port("B2", 7.5, 5) }
+                    : new[] { new Port("P", -7.5, -2.5), new Port("A", 7.5, -2.5), new Port("X", 0, 7.5) },
+                CompanionIds = new[] { "fluid.cylinder.double", "fluid.valve.directional", "fluid.line", "fluid.gauge" },
+                Extra = o => new[]
+                {
+                    Toggle(o, "fluid.pilotcheck.twin", T("Single / double (cross-piloted)", "Einfach / doppelt (gegenseitig entsperrt)"), "twin", false),
+                    Toggle(o, "fluid.spring", T("Spring loaded", "Federbelastet"), "spring", true),
+                },
+            };
+
+            yield return new FluidType("fluid.valve.counterbalance", T("Counterbalance valve", "Senkbremsventil"), Cat,
+                new[] { "counterbalance valve", "overcentre valve", "over-center valve", "load control valve", "brake valve",
+                    "senkbremsventil", "lasthalteventil", "gegenhalteventil", "bremsventil", "senkbremse" },
+                Views.Symbol(25, 15, Counterbalance))
+            {
+                Params = new[] { AdjustableOn }, RefPrefix = "1V9",
+                Ports = Fixed(new Port("C", -2.5, 7.5), new Port("V", -2.5, -7.5), new Port("X", -12.5, -2.5)),
+                CompanionIds = new[] { "fluid.cylinder.double", "fluid.motor", "fluid.valve.directional", "fluid.line" },
+                Extra = o => new[] { Toggle(o, "fluid.adjustable", T("Fixed / adjustable", "Fest / einstellbar"), "adjustable", true) },
+            };
+        }
+
+        private static readonly ParamDef Twin = Flag("twin", T("Double, cross-piloted (two channels)", "Doppelt, gegenseitig entsperrt (zwei Kanäle)"), false);
+        private static readonly ParamDef SpringOn = Flag("spring", T("Spring loaded", "Federbelastet"), true);
+
+        /// <summary>
+        /// Check valve channel at height cy with the ball centred at x = 0 (free flow left to right) and an optional spring
+        /// behind the ball.
+        /// </summary>
+        private static void CheckChannel(Pen p, double cy, bool spring)
+        {
+            const double r = 1.8;
+            var vx = -SeatOffset(r);
+            p.Line(-7.5, cy, vx, cy, null, "line");
+            var edge = Seat(p, vx, cy, 1, r);
+            if (spring)
+            {
+                p.SpringH(edge, 5.2, cy, 1.2, 3);
+                p.Line(5.2, cy, 7.5, cy, null, "line");
+            }
+            else p.Line(edge, cy, 7.5, cy, null, "line");
+        }
+
+        /// <summary>
+        /// Pilot-operated check valve: the check valve with its pilot piston, whose push rod lifts the ball off the seat when the
+        /// pilot pressure at X rises. Double (twin): two channels A1→A2 and B1→B2, each unlocked by the pressure in the other
+        /// one through a common floating pilot piston between them.
+        /// </summary>
+        private static void PilotCheck(Pen p, SketchObject o)
+        {
+            var spring = o.Flag("spring", true);
+            if (o.Flag("twin", false))
+            {
+                CheckChannel(p, -5, spring);
+                CheckChannel(p, 5, spring);
+                // Floating pilot piston with push rods to both balls; each side is piloted from the other channel's inlet.
+                p.Rect(-1.6, -1.0, 1.6, 1.0, S.Thin, "piston");
+                p.Line(0, -1.0, 0, -5 + 1.8, S.Thin, "rod");
+                p.Line(0, 1.0, 0, 5 - 1.8, S.Thin, "rod");
+                p.Poly(S.Pilot, false, "pilot", -5.5, -5, -5.5, -0.5, -1.6, -0.5);
+                p.Poly(S.Pilot, false, "pilot", -4.2, 5, -4.2, 0.5, -1.6, 0.5);
+                p.Dot(-5.5, -5, 0.45);
+                p.Dot(-4.2, 5, 0.45);
+                p.Rect(-6.6, -7.6, 6.9, 7.6, S.Enclosure, "enclosure");
+                return;
+            }
+            CheckChannel(p, -2.5, spring);
+            // Pilot piston below the ball, its push rod against the ball, piloted from X.
+            p.Rect(-1.8, 2.0, 1.8, 3.6, S.Thin, "piston");
+            p.Line(0, 2.0, 0, -2.5 + 1.8, S.Thin, "rod");
+            p.Line(0, 7.5, 0, 3.6, S.Pilot, "pilot");
+            p.Rect(-5.0, -5.6, 6.0, 5.0, S.Thin, "piloted");
+        }
+
+        /// <summary>
+        /// Counterbalance valve: a normally closed pressure valve between the load port C (below) and the valve port V (above),
+        /// opened by the load pressure (internal pilot) and assisted by the external pilot X; spring on the right; a bypass
+        /// check valve gives free flow from V to C (lifting the load).
+        /// </summary>
+        private static void Counterbalance(Pen p, SketchObject o)
+        {
+            const double cx = -2.5;
+            p.Rect(cx - 5, -5, cx + 5, 5, null, "box");
+            p.Line(cx, 5, cx, 7.5, null, "port");
+            p.Line(cx, -5, cx, -7.5, null, "port");
+            // Normally closed: flow arrow offset from the port axis (C → V).
+            p.Arrow(cx - 2.5, 5, cx - 2.5, -5);
+            // Internal pilot from the load port, external pilot from X.
+            p.Poly(S.Pilot, false, "pilot", cx, 6.25, cx - 7.5, 6.25, cx - 7.5, 2.0, cx - 5, 2.0);
+            p.Line(-12.5, -2.5, cx - 5, -2.5, S.Pilot, "pilot");
+            p.SpringH(cx + 5, cx + 9, 0, 2, 3);
+            if (o.Flag("adjustable", true)) p.Adjust(cx + 5.4, 3.6, cx + 8.8, -3.6);
+            // Bypass check valve (free flow V → C, i.e. downwards) on the right.
+            const double bx = 9.5, r = 1.3;
+            p.Line(cx, 6.25, bx, 6.25, null, "bypass");
+            p.Line(cx, -6.25, bx, -6.25, null, "bypass");
+            // Seat vertex upstream (top), the V opening downwards with the ball resting in it.
+            const double vy = -2.0, arm = 2.4;
+            var t = Math.Tan(35 * Math.PI / 180);
+            var by = vy + SeatOffset(r);
+            p.Line(bx, -6.25, bx, vy, null, "bypass");
+            p.Line(bx, vy, bx - arm * t, vy + arm, null, "seat");
+            p.Line(bx, vy, bx + arm * t, vy + arm, null, "seat");
+            p.Circle(bx, by, r, null, "ball");
+            p.Line(bx, by + r, bx, 6.25, null, "bypass");
+            p.Dot(cx, 6.25, 0.5);
+            p.Dot(cx, -6.25, 0.5);
         }
 
         /// <summary>

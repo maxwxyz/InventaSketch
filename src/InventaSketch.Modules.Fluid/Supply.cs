@@ -109,6 +109,35 @@ namespace InventaSketch.Modules.Fluid
                 CompanionIds = Companions,
                 Extra = o => ChoiceActions(o, "fluid.accumulator", null, AccuKind),
             };
+
+            yield return new FluidType("fluid.vacuum.generator", T("Vacuum generator (ejector)", "Vakuumerzeuger (Ejektor)"), Cat,
+                new[] { "vacuum generator", "ejector", "venturi nozzle", "vacuum", "vacuum ejector", "vakuumerzeuger", "ejektor", "vakuumdüse", "venturidüse", "vakuum" },
+                Views.Symbol(15, 10, VacuumGenerator))
+            {
+                RefPrefix = "1Z2",
+                Ports = Fixed(new Port("P", -7.5, 0), new Port("R", 7.5, 0), new Port("V", 0, 5)),
+                CompanionIds = new[] { "fluid.suctioncup", "fluid.line", "fluid.silencer", "fluid.valve.directional", "fluid.pressureswitch" },
+            };
+        }
+
+        /// <summary>
+        /// Vacuum generator (ejector): housing with the driving nozzle (compressed air in at P), the diffuser towards the exhaust R
+        /// and the suction channel from the vacuum port V into the gap between them.
+        /// </summary>
+        private static void VacuumGenerator(Pen p, SketchObject o)
+        {
+            p.Rect(-5, -3.5, 5, 3.5, null, "body");
+            p.Line(-7.5, 0, -5, 0, null, "port");
+            p.Line(5, 0, 7.5, 0, null, "port");
+            p.Line(0, 3.5, 0, 5, null, "port");
+            // Driving nozzle (converging) and diffuser (diverging).
+            p.Line(-5, -2.2, -0.9, -0.6, null, "nozzle");
+            p.Line(-5, 2.2, -0.9, 0.6, null, "nozzle");
+            p.Line(0.9, -0.6, 5, -2.2, null, "diffuser");
+            p.Line(0.9, 0.6, 5, 2.2, null, "diffuser");
+            // Suction into the jet.
+            p.Line(0, 3.5, 0, 1.6, S.Thin, "suction");
+            p.Head(0, 0.8, 0, 3.0, 1.1, 0.45, "suction");
         }
 
         /// <summary>Inline conditioning element (diamond with ports left and right).</summary>

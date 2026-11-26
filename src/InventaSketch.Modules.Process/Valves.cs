@@ -110,6 +110,66 @@ namespace InventaSketch.Modules.Process
                 TagPrefix = "S-101", CompanionIds = Companions,
                 Extra = o => Choice(o, "process.strainer.kind", null, StrainerKind),
             };
+
+            yield return new ProcessType("process.valve.steamtrap", T("Steam trap", "Kondensatableiter"), Cat, 10, 6, SteamTrap,
+                "steam trap", "condensate trap", "trap", "float trap", "thermodynamic trap", "condensate drain",
+                "kondensatableiter", "kondensatableitung", "schwimmerableiter", "kondenstopf", "kondensat", "dampf")
+            {
+                Ports = Fixed(new Port("1", -5, 0), new Port("2", 5, 0)),
+                TagPrefix = "ST-101", CompanionIds = Companions,
+            };
+
+            yield return new ProcessType("process.rupturedisc", T("Rupture disc", "Berstscheibe"), Cat, 8, 10, RuptureDisc,
+                "rupture disc", "bursting disc", "burst disc", "pressure safety element", "overpressure protection",
+                "berstscheibe", "berstsicherung", "reißscheibe", "überdrucksicherung", "druckentlastung")
+            {
+                Ports = Fixed(new Port("in", 0, 5), new Port("out", 0, -5)),
+                TagPrefix = "PSE-101", CompanionIds = new[] { "process.line", "process.valve.safety", "process.vessel.vertical", "process.vessel.horizontal" },
+            };
+
+            yield return new ProcessType("process.sightglass", T("Sight glass", "Schauglas"), Cat, 10, 6, SightGlass,
+                "sight glass", "sight flow indicator", "inspection glass", "flow indicator", "viewing window",
+                "schauglas", "durchflussschauglas", "strömungsanzeiger", "beobachtungsfenster", "sichtfenster")
+            {
+                Ports = Fixed(new Port("1", -5, 0), new Port("2", 5, 0)),
+                TagPrefix = "SG-101", CompanionIds = Companions,
+            };
+        }
+
+        /// <summary>Steam trap: a round body between the pipe ends with the float (filled ball) collecting condensate at the bottom.</summary>
+        private static void SteamTrap(Pen p, SketchObject o)
+        {
+            const double r = 2.9;
+            p.Line(-5, 0, -r, 0, S.Sym, "pipe");
+            p.Line(r, 0, 5, 0, S.Sym, "pipe");
+            p.Circle(0, 0, r, S.Sym, ProcessTags.Body);
+            p.Line(-2.2, 0.9, 2.2, 0.9, S.Thin, "level");
+            p.Round(0, 1.6, 0.85, S.Black, "float");
+        }
+
+        /// <summary>
+        /// Rupture disc between two holder flanges, domed towards the outlet (inlet below, outlet above), as it bulges under
+        /// the pressure it protects against.
+        /// </summary>
+        private static void RuptureDisc(Pen p, SketchObject o)
+        {
+            p.Line(0, 5, 0, 1.4, S.Sym, "pipe");
+            p.Line(0, -1.4, 0, -5, S.Sym, "pipe");
+            p.Line(-3.2, 1.4, 3.2, 1.4, S.Sym, "holder");
+            p.Line(-3.2, -1.4, 3.2, -1.4, S.Sym, "holder");
+            p.Arc(0, 1.4, 2.8, 2.4, 180, 180, S.Bold, "disc");
+        }
+
+        /// <summary>Sight glass: a round housing between the pipe ends with the two glass panes as chords.</summary>
+        private static void SightGlass(Pen p, SketchObject o)
+        {
+            const double r = 2.9, x = 1.1;
+            p.Line(-5, 0, -r, 0, S.Sym, "pipe");
+            p.Line(r, 0, 5, 0, S.Sym, "pipe");
+            p.Circle(0, 0, r, S.Sym, ProcessTags.Body);
+            var h = Math.Sqrt(r * r - x * x);
+            p.Line(-x, -h, -x, h, S.Thin, "glass");
+            p.Line(x, -h, x, h, S.Thin, "glass");
         }
 
         private static void Manual(Pen p, SketchObject o)

@@ -16,6 +16,10 @@ namespace InventaSketch.Modules.Process
     /// them). The line converts volume and mass flow (ṁ = ρ·V̇). Valves, strainers, reducers and flow elements pass all
     /// three; pumps and fans pass the temperature. Heat losses of lines and the temperature rise in pumps are not modelled.
     /// </para>
+    /// <para>
+    /// Shaft (<see cref="ShaftLinks"/>): pumps, fans, compressors, turbines and the drive motor carry speed n, torque T and
+    /// shaft power P = 2π·n·T; a machine docked on a drive or a mechanical shaft shares n (and T over a direct coupling).
+    /// </para>
     /// </summary>
     internal static class ProcessValues
     {
@@ -62,6 +66,10 @@ namespace InventaSketch.Modules.Process
         private static VarDef Dp(VarRelevance rel) => V("dp", T("Pressure rise", "Druckerhöhung"), T("Δp", "Δp"), Quantities.Pressure, "bar", "pressureRise", rel) with { Min = 0, Max = 1e9 };
         private static VarDef Eta() => V("eta", T("Efficiency", "Wirkungsgrad"), T("η", "η"), Quantities.Efficiency, "%", "efficiency", VarRelevance.Panel) with { Min = 0, Max = 1 };
         private static VarDef Len(string key, I18nText name, string sym, string param, VarRelevance rel) => V(key, name, T(sym, sym), Quantities.Length, "m", param, rel) with { Min = 1e-4, Max = 1e3 };
+        /// <summary>Shaft speed n (same key and quantity as the shafts and drives of the mechanical and machines modules).</summary>
+        private static VarDef Speed(VarRelevance rel) => V("n", T("Speed of rotation", "Drehzahl"), T("n", "n"), Quantities.RotationalSpeed, "min⁻¹", "speed", rel) with { Min = 0, Max = 1e5 };
+        /// <summary>Shaft torque T (German symbol M).</summary>
+        private static VarDef Torque(VarRelevance rel) => V("T", T("Torque", "Drehmoment"), T("T", "M"), Quantities.Torque, "N·m", "torque", rel) with { Min = 0, Max = 1e7 };
 
         // ------------------------------------------------------------------ relations
 
@@ -85,6 +93,13 @@ namespace InventaSketch.Modules.Process
                 .Solve("P", "{Phyd}/{eta}", v => v("Phyd") / v("eta"))
                 .Solve("Phyd", "{P}·{eta}", v => v("P") * v("eta"))
                 .Solve("eta", "{Phyd}/{P}", v => v("Phyd") / v("P"));
+
+        /// <summary>P = 2π·n·T (n in rad/s internally) [S18]: the shaft power from speed and torque.</summary>
+        private static readonly Relation RotPower =
+            new Relation("process.power.rot", T("Shaft power from speed and torque", "Wellenleistung aus Drehzahl und Drehmoment"), "{P} = 2π·{n}·{T}", "P", "n", "T") { Source = "S18" }
+                .Solve("P", "2π·{n}·{T}", v => v("n") * v("T"))
+                .Solve("T", "{P}/(2π·{n})", v => v("P") / v("n"))
+                .Solve("n", "{P}/(2π·{T})", v => v("P") / v("T"));
 
         /// <summary>Φ = ṁ·c·(θ_in − θ_out) for the stream that gives off heat (sign: positive = cooled) [S29].</summary>
         private static Relation Stream(string id, I18nText name, string m, string c, string hot, string cold) =>
@@ -175,6 +190,9 @@ namespace InventaSketch.Modules.Process
             "process.pump.centrifugal" => CentrifugalPump(),
             "process.pump.displacement" => Machine(("S", "D")),
             "process.fan" => Machine(("I", "O")),
+            "process.compressor" => ShaftOnly(T("Shaft power (drive)", "Wellenleistung (Antrieb)")),
+            "process.turbine" => ShaftOnly(T("Shaft power (output)", "Wellenleistung (Abgabe)")),
+            "process.motor" => ShaftOnly(T("Shaft power (output)", "Wellenleistung (Abgabe)"), VarRelevance.Card),
             "process.hx.shelltube" => Exchanger(("T1", "T2"), ("S1", "S2")),
             "process.hx.plate" => Exchanger(("A1", "A2"), ("B1", "B2")),
             "process.hx.general" => Exchanger(("P1", "P2"), ("S1", "S2")),
@@ -194,9 +212,17 @@ namespace InventaSketch.Modules.Process
             {
                 VolFlow(), Len("H", T("Head", "Förderhöhe"), "H", "head", VarRelevance.Card), PowerVar("P", T("Shaft power", "Wellenleistung"), "P", "power", VarRelevance.Card),
                 Eta() with { Relevance = VarRelevance.Card }, Dp(VarRelevance.Panel),
-                PowerVar("Phyd", T("Hydraulic power", "Hydraulische Leistung"), "P_hyd", "powerHyd", VarRelevance.Panel), Rho(),
+                PowerVar("Phyd", T("Hydraulic power", "Hydraulische Leistung"), "P_hyd", "powerHyd", VarRelevance.Panel),
+                Speed(VarRelevance.Panel), Torque(VarRelevance.Panel), Rho(),
             };
-            return new Spec(vars, new[] { HeadRel, HydPower, ShaftPower }, Params(vars), Array.Empty<ValueCheck>()) { Ports = FlowPorts("S", "D") };
+            return new Spec(vars, new[] { HeadRel, HydPower, ShaftPower, RotPower }, Params(vars), Array.Empty<ValueCheck>()) { Ports = FlowPorts("S", "D") };
+        }
+
+        /// <summary>Machines with a shaft but no flow model (compressor, turbine: gas properties needed; drive motor): P = 2π·n·T.</summary>
+        private static Spec ShaftOnly(I18nText powerName, VarRelevance torque = VarRelevance.Panel)
+        {
+            var vars = new[] { PowerVar("P", powerName, "P", "power", VarRelevance.Card), Speed(VarRelevance.Card), Torque(torque) };
+            return new Spec(vars, new[] { RotPower }, Params(vars), Array.Empty<ValueCheck>());
         }
 
         private static Spec Machine((string In, string Out) ports)
@@ -206,8 +232,9 @@ namespace InventaSketch.Modules.Process
                 VolFlow(), Dp(VarRelevance.Card), PowerVar("P", T("Shaft power", "Wellenleistung"), "P", "power", VarRelevance.Card),
                 Eta() with { Relevance = VarRelevance.Card },
                 PowerVar("Phyd", T("Hydraulic power", "Hydraulische Leistung"), "P_hyd", "powerHyd", VarRelevance.Panel),
+                Speed(VarRelevance.Panel), Torque(VarRelevance.Panel),
             };
-            return new Spec(vars, new[] { HydPower, ShaftPower }, Params(vars), Array.Empty<ValueCheck>()) { Ports = FlowPorts(ports.In, ports.Out) };
+            return new Spec(vars, new[] { HydPower, ShaftPower, RotPower }, Params(vars), Array.Empty<ValueCheck>()) { Ports = FlowPorts(ports.In, ports.Out) };
         }
 
         private static Spec Exchanger((string In, string Out) side1, (string In, string Out) side2)
@@ -292,7 +319,7 @@ namespace InventaSketch.Modules.Process
         private static IEnumerable<string[]> Through(SketchObject o, string cls) => o.Type switch
         {
             "process.valve.manual" or "process.valve.control" or "process.valve.check" or "process.fitting.reducer" or "process.fitting.strainer"
-                or "process.instrument.orifice" => new[] { new[] { "1", "2" } },
+                or "process.instrument.orifice" or "process.sightglass" => new[] { new[] { "1", "2" } },
             "process.hvac.filter" or "process.hvac.damper" => new[] { new[] { "A1", "A2" } },
             "process.pump.centrifugal" or "process.pump.displacement" when cls == "theta" => new[] { new[] { "S", "D" } },
             "process.fan" when cls == "theta" => new[] { new[] { "I", "O" } },

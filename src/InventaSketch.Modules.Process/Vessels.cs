@@ -118,6 +118,30 @@ namespace InventaSketch.Modules.Process
                     Toggle(o, "process.reactor.jacket", T("Jacket", "Doppelmantel"), "jacket", false),
                 },
             };
+
+            yield return new ProcessType("process.cyclone", T("Cyclone separator", "Zyklonabscheider"), Cat, 14, 30, Cyclone,
+                "cyclone", "cyclone separator", "dust separator", "centrifugal separator", "hydrocyclone", "solids separation",
+                "zyklon", "zyklonabscheider", "fliehkraftabscheider", "staubabscheider", "hydrozyklon", "feststoffabscheidung")
+            {
+                Ports = Fixed(new Port("N1", -7, -9), new Port("N2", 0, -15), new Port("N3", 0, 15)),
+                Block = true, TagPrefix = "CY-101", Uniform = false,
+                CompanionIds = new[] { "process.line", "process.fan", "process.silo", "process.valve.manual" },
+            };
+
+            yield return new ProcessType("process.silo", T("Silo (bulk solids)", "Silo (Schüttgut)"), Cat, 16, 34, Silo,
+                "silo", "bulk silo", "hopper", "bin", "bulk storage", "powder", "granulate",
+                "silo", "schüttgutsilo", "bunker", "schüttgut", "pulver", "granulat", "vorratsbehälter")
+            {
+                Params = new[] { SiloLegs, FillLevel },
+                Ports = Fixed(new Port("N1", 0, -17), new Port("N2", 0, 17)),
+                Block = true, TagPrefix = "SI-101", Uniform = false,
+                CompanionIds = new[] { "process.line", "process.cyclone", "process.valve.manual", "process.instrument.bubble" },
+                Extra = o => new[]
+                {
+                    Toggle(o, "process.silo.legs", T("Legs", "Füße"), "legs", true),
+                    Toggle(o, "process.silo.level", T("Fill level", "Füllstand"), "level", false),
+                },
+            };
         }
 
         // ------------------------------------------------------------------ vertical vessel
@@ -338,6 +362,53 @@ namespace InventaSketch.Modules.Process
                 p.Line(-4, yi - 1, -4, yi + 1, S.Bold, "impeller");
                 p.Line(4, yi - 1, 4, yi + 1, S.Bold, "impeller");
             }
+        }
+
+        // ------------------------------------------------------------------ cyclone and silo
+
+        /// <summary>
+        /// Cyclone separator: cylindrical top with a tangential inlet (left), conical bottom with the solids outlet, the vortex
+        /// finder (dip tube) as gas outlet at the top and a swirl arrow. Design box 14x30.
+        /// </summary>
+        private static void Cyclone(Pen p, SketchObject o)
+        {
+            const double r = 6, roof = -12, shoulder = -2, tip = 12, outlet = 1.2;
+            p.Poly(S.Sym, true, ProcessTags.Body, -r, roof, r, roof, r, shoulder, outlet, tip, -outlet, tip, -r, shoulder);
+            // Tangential inlet duct on the left.
+            p.Line(-7, -10.6, -r, -10.6, S.Sym, "inlet");
+            p.Line(-7, -7.4, -r, -7.4, S.Sym, "inlet");
+            // Vortex finder: pipe through the roof, its immersed part dashed.
+            p.Line(-2, -15, -2, roof, S.Sym, "outlet");
+            p.Line(2, -15, 2, roof, S.Sym, "outlet");
+            p.Line(-2, roof, -2, -6, S.Dashed, "outlet");
+            p.Line(2, roof, 2, -6, S.Dashed, "outlet");
+            // Solids outlet nozzle.
+            p.Line(0, tip, 0, 15, S.Sym, "nozzle");
+            // Swirl of the gas vortex: an open ellipse with an arrow head.
+            var swirl = Pen.ArcPts(0, 2, 3.4, 1.3, 200, 290);
+            p.PolyD(swirl, S.Thin, false, "swirl");
+            var n = swirl.Count;
+            p.Head(swirl[n - 1].X, swirl[n - 1].Y, swirl[n - 2].X, swirl[n - 2].Y, 1.1, 0.4, "swirl");
+        }
+
+        internal static readonly ParamDef SiloLegs = Flag("legs", "Legs", "Füße", true);
+        internal static readonly ParamDef FillLevel = Flag("level", "Fill level", "Füllstand", false);
+
+        /// <summary>Silo: tall cylinder with a cone roof and a hopper (conical) bottom, optionally on legs. Design box 16x34.</summary>
+        private static void Silo(Pen p, SketchObject o)
+        {
+            const double r = 8, eave = -14, shoulder = 6, tip = 13, outlet = 1.5;
+            p.Poly(S.Sym, true, ProcessTags.Body, 0, -17, r, eave, r, shoulder, outlet, tip, -outlet, tip, -r, shoulder, -r, eave);
+            p.Line(-r, eave, r, eave, S.Thin, "roof");
+            p.Line(0, tip, 0, 17, S.Sym, "nozzle");
+            if (o.Flag("legs", true))
+            {
+                p.Line(-r, shoulder, -r, 17, S.Sym, "legs");
+                p.Line(r, shoulder, r, 17, S.Sym, "legs");
+                p.Line(-r, 17, -r + 1.6, 17, S.Sym, "legs");
+                p.Line(r - 1.6, 17, r, 17, S.Sym, "legs");
+            }
+            if (o.Flag("level", false)) LevelMark(p, -r, r, -6);
         }
     }
 }

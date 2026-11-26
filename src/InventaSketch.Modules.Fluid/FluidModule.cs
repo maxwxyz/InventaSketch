@@ -87,6 +87,8 @@ namespace InventaSketch.Modules.Fluid
             Add("cylinder.single.extend", "fluid.cylinder.single", "Single-acting cylinder, spring extend", "Einfachwirkender Zylinder, Federvorhub", P(("spring", "extend")), null, "pull", "ziehend");
             Add("cylinder.single.nospring", "fluid.cylinder.single", "Single-acting cylinder, external return", "Einfachwirkender Zylinder, Rückstellung durch äußere Kraft", P(("spring", "none")), null, "plunger", "plunger");
             Add("rotary", "fluid.rotary", "Rotary actuator", "Schwenkantrieb");
+            Add("suctioncup", "fluid.suctioncup", "Suction cup", "Sauggreifer");
+            Add("suctioncup.bellows", "fluid.suctioncup", "Bellows suction cup", "Faltenbalgsauger", P(("bellows", true)), null, "bellows", "faltenbalg");
 
             // Directional control valves
             const string dcv = DirectionalValves.TypeId;
@@ -137,6 +139,9 @@ namespace InventaSketch.Modules.Fluid
             Add("shuttle", "fluid.valve.shuttle", "Shuttle valve (OR)", "Wechselventil (ODER)");
             Add("twopressure", "fluid.valve.twopressure", "Two-pressure valve (AND)", "Zweidruckventil (UND)");
             Add("quickexhaust", "fluid.valve.quickexhaust", "Quick exhaust valve", "Schnellentlüftungsventil");
+            Add("pilotcheck", "fluid.valve.pilotcheck", "Pilot-operated check valve (with pilot piston)", "Entsperrbares Rückschlagventil (mit Steuerkolben)");
+            Add("pilotcheck.double", "fluid.valve.pilotcheck", "Double pilot-operated check valve", "Doppelt entsperrbares Rückschlagventil", P(("twin", true)), null, "double", "twin", "doppelt", "sperrblock");
+            Add("counterbalance", "fluid.valve.counterbalance", "Counterbalance valve", "Senkbremsventil");
 
             // Supply, conditioning & accumulators
             Add("tank", "fluid.tank", "Tank (open reservoir)", "Tank (offener Behälter)");
@@ -154,6 +159,7 @@ namespace InventaSketch.Modules.Fluid
             Add("heater", "fluid.heater", "Heater", "Heizer");
             Add("accumulator", "fluid.accumulator", "Accumulator (gas loaded)", "Hydrospeicher (gasbelastet)");
             Add("accumulator.spring", "fluid.accumulator", "Accumulator (spring loaded)", "Hydrospeicher (federbelastet)", P(("kind", "spring")));
+            Add("vacuum", "fluid.vacuum.generator", "Vacuum generator (ejector)", "Vakuumerzeuger (Ejektor)");
 
             // Measuring & signalling
             Add("gauge", "fluid.gauge", "Pressure gauge", "Manometer");

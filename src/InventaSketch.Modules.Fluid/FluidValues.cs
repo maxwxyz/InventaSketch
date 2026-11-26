@@ -434,6 +434,11 @@ namespace InventaSketch.Modules.Fluid
                 case "fluid.valve.throttle":
                 case "fluid.valve.flow":
                     return cls == "p" ? Array.Empty<string[]>() : new[] { new[] { "P", "A" } };
+                case "fluid.valve.pilotcheck":
+                    return o.Flag("twin", false) ? new[] { new[] { "A1", "A2" }, new[] { "B1", "B2" } } : new[] { new[] { "P", "A" } };
+                case "fluid.valve.counterbalance":
+                    // The load pressure is held back: only the flow passes.
+                    return cls == "Q" ? new[] { new[] { "C", "V" } } : Array.Empty<string[]>();
                 case "fluid.valve.reducing":
                     return cls == "Q" ? new[] { new[] { "P", "A" } } : Array.Empty<string[]>();
             }

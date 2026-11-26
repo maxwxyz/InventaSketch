@@ -46,17 +46,19 @@ nozzle that lies inside the symbol box (on a dished head) moves to the nearest e
 | `process.vessel.tank` | Storage tank / Lagertank | 24x20 | N1 roof, N2, N3 near the bottom | `roof` cone/dome/floating, `level` |
 | `process.column` | Column / Kolonne | 12x50 | N1 top, N2 bottom, N3 feed, N4 reflux, N5 reboiler return | `internals` trays/packed, `trays` (8, 2–30), `beds` (2, 1–4) |
 | `process.reactor` | Stirred tank reactor / Rührkesselreaktor | 16x30 | N1, N3 top nozzles, N2 bottom, J1/J2 with jacket | `agitator` (true), `jacket` |
+| `process.cyclone` | Cyclone separator / Zyklonabscheider | 14x30 | N1 tangential inlet (left), N2 gas outlet (vortex finder, top), N3 solids outlet (bottom) | – |
+| `process.silo` | Silo (bulk solids) / Silo (Schüttgut) | 16x34 | N1 filling (roof apex), N2 discharge (hopper outlet) | `legs` (true), `level` (fill level) |
 | `process.hx.shelltube` | Shell-and-tube heat exchanger / Rohrbündel-Wärmeübertrager | 32x12 | T1, T2 tube side, S1, S2 shell side | `bundle` utube/fixed |
 | `process.hx.plate` | Plate heat exchanger / Plattenwärmeübertrager | 14x16 | A1, A2, B1, B2 | `plates` shown (7, 3–15) |
 | `process.hx.general` | Heat exchanger (general symbol) / Wärmeübertrager (allgemein) | 12x12 | P1, P2 coil, S1, S2 shell | – |
 | `process.hx.aircooler` | Air cooler (fin-fan) / Luftkühler (Rippenrohr mit Ventilator) | 24x14 | P1, P2 | – |
 | `process.hx.coolingtower` | Cooling tower / Kühlturm | 20x24 | W1 hot water in, W2 basin outlet | `draft` natural/mechanical |
-| `process.pump.centrifugal` | Centrifugal pump / Kreiselpumpe | 12x12 | S suction, D discharge (tangential) | `base` (true) |
-| `process.pump.displacement` | Positive displacement pump / Verdrängerpumpe | 12x12 | S, D | `kind` gear/screw/piston/diaphragm |
-| `process.compressor` | Compressor / Verdichter | 14x12 | S, D | `kind` dynamic/reciprocating |
-| `process.turbine` | Turbine / expander / Turbine / Entspannungsmaschine | 14x12 | I, O | – |
-| `process.fan` | Fan / Ventilator | 12x12 | I, O | `kind` radial/axial |
-| `process.motor` | Electric motor (drive) / Elektromotor (Antrieb) | 10x10 | shaft | – |
+| `process.pump.centrifugal` | Centrifugal pump / Kreiselpumpe | 12x12 | S suction, D discharge (tangential); shaft hub right (opposite the suction) | `base` (true) |
+| `process.pump.displacement` | Positive displacement pump / Verdrängerpumpe | 12x12 | S, D; shaft hub on top | `kind` gear/screw/piston/diaphragm |
+| `process.compressor` | Compressor / Verdichter | 14x12 | S, D; shaft hub on top | `kind` dynamic/reciprocating |
+| `process.turbine` | Turbine / expander / Turbine / Entspannungsmaschine | 14x12 | I, O; output shaft stub below (axis + hub) | – |
+| `process.fan` | Fan / Ventilator | 12x12 | I, O; shaft hub right (radial) or on top (axial) | `kind` radial/axial |
+| `process.motor` | Electric motor (drive) / Elektromotor (Antrieb) | 10x10 | shaft (port, kept for old attachments); shaft stub right (axis + hub) | – |
 | `process.valve.manual` | Valve (manual) / Armatur (handbetätigt) | 10x6 | 1, 2 | `kind` gate/globe/ball/butterfly, `closed` |
 | `process.valve.control` | Control valve / Stellventil (Regelventil) | 12x13 | 1, 2, S (signal on the actuator) | `actuator` diaphragm/motor/solenoid/piston, `fail` none/open/close/last (FO/FC/FL) |
 | `process.valve.check` | Check valve / Rückschlagarmatur | 10x6 | 1, 2 (flow 1 → 2) | – |
@@ -64,6 +66,9 @@ nozzle that lies inside the symbol box (on a dished head) moves to the nearest e
 | `process.valve.threeway` | Three-way valve / Dreiwegeventil | 9x7 (9x12 motorised) | A, AB, B, S when motorised | `actuated` |
 | `process.fitting.reducer` | Reducer / Reduzierstück | 8x6 | 1, 2 | `eccentric` |
 | `process.fitting.strainer` | Strainer / filter / Schmutzfänger / Filter | 10x8 | 1, 2 | `kind` filter/y |
+| `process.valve.steamtrap` | Steam trap / Kondensatableiter | 10x6 | 1, 2 | – |
+| `process.rupturedisc` | Rupture disc / Berstscheibe | 8x10 | in (bottom), out (top) | – |
+| `process.sightglass` | Sight glass / Schauglas | 10x6 | 1, 2 | – |
 | `process.instrument.bubble` | Instrument (tag bubble) / Messstelle (PLT-Stelle) | 12x12 | B, T, L, R | `tag` (TIC 101), `location` field/central/local/behind, `shape` discrete/shared/computer/plc |
 | `process.instrument.orifice` | Flow element (orifice / venturi) / Durchflussmessglied (Blende / Venturi) | 10x6 | 1, 2 | `kind` orifice/venturi |
 | `process.line` | Process line / Prozessleitung (Fließlinie) | points | rails along the routed path | `kind` main/secondary/traced/future, `arrow`, `lineNo`, `route` orthogonal/free, `hops` |
@@ -77,9 +82,40 @@ nozzle that lies inside the symbol box (on a dished head) moves to the nearest e
 | `process.chart.pv` | p-v diagram (cycle) / p-v-Diagramm (Kreisprozess) | 80x60 | – | `cycle` otto/diesel/carnot, `ratio` (8), `cutoff` (2), `pressureRatio` (2.5, advanced), `gamma` (1.4, advanced), `efficiency`, `labels`, `caption` |
 | `process.chart.ph` | log p-h diagram (refrigeration cycle) / log p-h-Diagramm (Kältekreisprozess) | 80x60 | – | `ratio` p_high/p_low (4, 1.5–7.5), `superheat`, `subcool`, `labels`, `caption` |
 
+New symbols (drawn independently): the steam trap is a round body with the float (filled ball) and a condensate level;
+the rupture disc a domed disc between two holder flanges, bulging towards the outlet; the sight glass a round housing
+with two glass panes; the cyclone a cylinder with a tangential inlet, a cone, the dashed vortex finder and a swirl arrow;
+the silo a cone-roof cylinder with a hopper bottom on legs.
+
 Instrument location bars: field = no line, control room (accessible) = solid line, local panel = double line, behind
 the panel = dashed line. Device shapes: discrete instrument = circle, shared display / DCS = circle in a square,
 computer function = hexagon, PLC = diamond in a square.
+
+## Drive shafts (a motor drives the pump)
+
+Pumps, fans, compressors, turbines and the drive motor have a real mechanical shaft with the same contract as the shafts
+and drives of the mechanical and machines modules ([mechanical-drives.md](mechanical-drives.md)):
+
+- **Driven machines** (`process.pump.centrifugal`, `process.pump.displacement`, `process.compressor`, `process.fan`)
+  expose a `Hub` anchor (id `hub`) where the shaft leaves the body. A shaft axis through this point carries the machine:
+  a mechanical shaft (`mech.shaft`), the shaft of an e-machine, the shaft stub of the machines motor symbol, or the stub
+  of the process motor or turbine.
+- **Drives** (`process.motor`, `process.turbine`; `ObjectType.DrivesShaft`) expose their shaft stub as an `Axis` segment
+  (id `shaft`) with the hub and an `End` mark at the outer end. A driven machine docks with its hub on the stub; a
+  mechanical shaft continued from the shaft end carries the drive, and moving the drive takes the shaft (and everything
+  on it) along. "Build +" continues the shaft only at the outer end.
+- The hub has no bore radius (0), so a machine seated on a shaft keeps its size. Docking uses the normal snapping (hub
+  onto an axis) and the core coupling ("moves along"). In the block view the hub moves to the nearest block edge.
+- The shaft sides follow the symbols: centrifugal pump and radial fan on the right (opposite the axial suction), the other
+  driven machines on top, the turbine shaft below (a compressor or pump below the turbine docks without turning), the
+  motor shaft to the right. Flip a symbol to dock on the other side.
+- **Values:** every machine with a shaft carries speed *n* (`speed`), torque *T* (`torque`) and shaft power *P* (`power`)
+  with *P* = 2π·*n*·*T* [S18]. A machine shares *n* with the element it is coupled to (carried or concentric). *T* is passed
+  over a direct one-to-one coupling (a motor on the pump hub, neither coupled to a third element with a torque) and from
+  the mechanical shaft or coupling the machine sits on when that shaft line has at most two members that take or give
+  torque (the rule of the mechanical module; with a branch no torque is passed). The drive's power thus becomes the
+  pump's shaft power: a motor at 1450 min⁻¹ and 50 N·m gives the pump *P* = 7.59 kW; with *V̇* = 100 m³/h and *H* = 20 m
+  the pump efficiency follows as η = 71.8 %.
 
 ## Thermodynamic diagrams
 
@@ -114,7 +150,7 @@ fail-closed control valve, motorised three-way valve (HVAC category), eccentric 
 presets (TIC control room, PI, FT, LIC on the DCS, PT, PLC function), venturi, secondary/traced/future lines and a
 line with flow arrow, pneumatic/impulse/capillary/data signal lines, cooling coil, motorised damper, bag filter,
 rotary wheel, spray humidifier, supply/extract air fan (HVAC category), Carnot and saturated Rankine T-s, Diesel and
-Carnot p-v and a heat pump cycle (log p-h). Search keywords exist in both languages (e.g. "Behälter", "Kolonne",
+Carnot p-v and a heat pump cycle (log p-h), and a silo with fill level (`process.silo.level`). Search keywords exist in both languages (e.g. "Behälter", "Kolonne",
 "Wärmeübertrager", "Pumpe", "Messstelle", "Stellventil", "Kreisprozess", "Wärmepumpe").
 
 ## Lines
@@ -128,7 +164,8 @@ Signal marks (slashes, crosses, circles) are spaced 8 mm and kept off the corner
 
 **Build "+" (connections).** Nozzles and pipe ports offer a process line (`process`), instrument bubbles and the actuator
 port S of control valves a signal line (`instrument`), then the equipment, valves or instruments that connect there. The
-drive shaft of a motor is a mechanical coupling without a line. The free end of a process or signal line offers "+" to
+drive shaft of a motor or turbine is a mechanical coupling without a line (see "Drive shafts"); a driven machine's free
+hub offers a shaft through it. The free end of a process or signal line offers "+" to
 continue it or to dock the next element.
 
 ## Context actions
@@ -149,8 +186,10 @@ entered values). Card variables come first. Design notes:
 
 | Element | Variables (parameter) | Local relations [source] |
 |---|---|---|
-| Centrifugal pump | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, shaft), η (`efficiency`); panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`); engineer ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
-| Displacement pump, fan | *V̇*, Δ*p*, *P*, η; panel *P*_hyd | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
+| Centrifugal pump | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, shaft), η (`efficiency`); panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`), *n* (`speed`), *T* (`torque`); engineer ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*T* [S18] |
+| Displacement pump, fan | *V̇*, Δ*p*, *P*, η; panel *P*_hyd, *n*, *T* | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*T* [S18] |
+| Compressor, turbine | *P* (`power`, shaft power: drive of the compressor, output of the turbine), *n* (`speed`); panel *T* (`torque`) | *P* = 2π·*n*·*T* [S18] |
+| Drive motor | *P* (`power`, output), *n*, *T* | *P* = 2π·*n*·*T* [S18] |
 | Shell-and-tube, plate, general heat exchanger | Φ (`duty`), *U* (`u`), *A* (`area`), Δθ_lm (`lmtd`); panel ṁ₁ (`massFlow1`), θ₁,in (`temp1In`), θ₁,out (`temp1Out`), ṁ₂, θ₂,in, θ₂,out; engineer *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,in − θ₁,out); Φ = ṁ₂·*c*₂·(θ₂,out − θ₂,in); counter-flow Δθ_lm = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) with Δθ_a = θ₁,in − θ₂,out, Δθ_b = θ₁,out − θ₂,in; Φ = *U*·*A*·Δθ_lm [S29] |
 | Air cooler, cooling tower | Φ, ṁ (`massFlow`), θ_in (`tempIn`), θ_out (`tempOut`); engineer *c* | Φ = ṁ·*c*·(θ_in − θ_out) [S29] |
 | Vessels, tank, reactor, column | *V* (`volume`), *D* (`diameter`), *h* (`length`, cylindrical part), *Q* (`heat`); panel Δθ (`deltaT`); engineer ρ, *c* | *V* = π·*D*²·*h*/4 (heads not counted); *Q* = ρ·*V*·*c*·Δθ [S29] |
@@ -163,10 +202,14 @@ Other layouts than counter-flow need a correction factor (not modelled).
 
 **Port flows.** Process lines join nozzles into nets. The classes volume flow *V̇*, mass flow ṁ and stream temperature θ
 are shared when at most two elements carry them in a net; lines take them on an unbranched run. The line converts *V̇*
-and ṁ. Manual, control and check valves, strainers, reducers and flow elements pass all three, filters and dampers
-(A1–A2) as well; pumps and fans pass the temperature. A pump feeding a heat exchanger through a valve thus sets ṁ₁, and
-the outlet temperature of side 1 becomes the inlet temperature of the next element. Heat losses and the temperature rise
-in pumps are not modelled. Compressors and turbines have no values yet (compression work needs gas properties).
+and ṁ. Manual, control and check valves, strainers, reducers, flow elements and sight glasses pass all three, filters and
+dampers (A1–A2) as well; pumps and fans pass the temperature. A pump feeding a heat exchanger through a valve thus sets
+ṁ₁, and the outlet temperature of side 1 becomes the inlet temperature of the next element. Heat losses and the
+temperature rise in pumps are not modelled. Compressors and turbines have shaft values only (compression and expansion
+work need gas properties); steam traps, rupture discs, cyclones and silos have no values.
+
+**Shaft links.** Speed, torque and power pass across drive shafts as described in "Drive shafts" (relations
+`process.shaft.speed`, `process.shaft.torque`); solving one machine pulls its drive and shaft line into the scope.
 
 **Checks** (hints only, overlay, nothing changes):
 
@@ -189,6 +232,9 @@ its box (also bare, stretched, squashed, scaled), every parameter value changes 
 external tag placement and upright text, instrument tag split and location bars, ports (named, unique, inside the box,
 mostly on the edge, same ids in every view, scaled with the box), snapping a line onto a nozzle, docked lines following
 equipment and leaving nozzles perpendicular, rails, hops, line kinds, signal marks, the JSON round trip of a sample
-flow sheet, and the cycle formulas (Otto, Diesel, Carnot p-v and T-s, Rankine, refrigeration). The gallery test writes
+flow sheet, and the cycle formulas (Otto, Diesel, Carnot p-v and T-s, Rankine, refrigeration). `ShaftTests` dock pumps,
+compressors and fans on a mechanical shaft, the machines motor symbol, an e-machine shaft line, the process motor and a
+turbine (coupling and shared *n*, *T*, *P*); they reference the mechanical and machines modules as test dependencies only
+(the module itself depends on Core alone). The gallery test writes
 `gallery/*.html` into the test output folder (every type in each view, stretched, presets, a distillation sample and
 an air handling unit sample).

@@ -34,6 +34,8 @@ namespace InventaSketch.Modules.Fluid
             {
                 MediumDefault = "hydraulic", Params = new[] { Variable, Flow }, RefPrefix = "0P1",
                 Ports = o => new[] { new Port("P", -2.5, -5), new Port("S", -2.5, 5) },
+                // Drive shaft to the right: the motor's shaft docks on its end (hub).
+                Shaft = _ => new ShaftEnd(7.5, 0, 2.5, 0),
                 CompanionIds = RotCompanions,
                 Extra = o => new[]
                 {
@@ -47,6 +49,8 @@ namespace InventaSketch.Modules.Fluid
             {
                 MediumDefault = "hydraulic", Params = new[] { Variable, Flow }, RefPrefix = "1A1",
                 Ports = o => new[] { new Port("A", -2.5, -5), new Port("B", -2.5, 5) },
+                // Output shaft to the right: a driven pump, a mechanical shaft or a part docks on it.
+                Shaft = _ => new ShaftEnd(7.5, 0, 2.5, 0), Drive = true,
                 CompanionIds = RotCompanions,
                 Extra = o => new[]
                 {
@@ -84,6 +88,40 @@ namespace InventaSketch.Modules.Fluid
                 Ports = Fixed(new Port("A", -5, 5), new Port("B", 0, 5)),
                 CompanionIds = RotCompanions,
             };
+
+            yield return new FluidType("fluid.suctioncup", T("Suction cup (vacuum gripper)", "Sauggreifer (Saugnapf)"), Cat,
+                new[] { "suction cup", "vacuum cup", "vacuum gripper", "suction pad", "bellows cup", "sauggreifer", "saugnapf", "vakuumsauger", "sauger", "faltenbalgsauger" },
+                Views.Symbol(10, 10, SuctionCup))
+            {
+                Params = new[] { Bellows }, RefPrefix = "1A2",
+                Ports = Fixed(new Port("V", 0, -5)),
+                CompanionIds = new[] { "fluid.vacuum.generator", "fluid.line", "fluid.valve.directional", "fluid.pressureswitch" },
+                Extra = o => new[] { Toggle(o, "fluid.suctioncup.bellows", T("Bellows", "Faltenbalg"), "bellows", false) },
+            };
+        }
+
+        private static readonly ParamDef Bellows = Flag("bellows", T("Bellows (height compensation)", "Faltenbalg (Höhenausgleich)"), false);
+
+        /// <summary>
+        /// Suction cup: connection from above, the cup opening downwards onto the workpiece (a bell), optionally with bellows
+        /// between the stem and the cup.
+        /// </summary>
+        private static void SuctionCup(Pen p, SketchObject o)
+        {
+            if (o.Flag("bellows", false))
+            {
+                p.Line(0, -5, 0, -4.2, null, "stem");
+                p.PolyD(new[]
+                {
+                    new Vec2(-1.2, -4.2), new Vec2(1.2, -4.2), new Vec2(2.0, -3.4), new Vec2(1.2, -2.6), new Vec2(2.0, -1.8), new Vec2(1.2, -1.0),
+                    new Vec2(-1.2, -1.0), new Vec2(-2.0, -1.8), new Vec2(-1.2, -2.6), new Vec2(-2.0, -3.4),
+                }, null, true, "bellows");
+            }
+            else p.Line(0, -5, 0, -1.0, null, "stem");
+            // Cup (bell) open towards the workpiece, with a lip line at the sealing edge.
+            p.Poly(S.Sym, false, "cup", -4.5, 3.5, -1.2, -1.0, 1.2, -1.0, 4.5, 3.5);
+            p.Line(-4.5, 3.5, -3.3, 3.5, S.Bold, "lip");
+            p.Line(3.3, 3.5, 4.5, 3.5, S.Bold, "lip");
         }
 
         /// <summary>Pump or motor: circle with energy triangles (out for pumps, in for motors), shaft and optional variable arrow.</summary>

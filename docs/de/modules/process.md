@@ -51,17 +51,19 @@ des Blocks.
 | `process.vessel.tank` | Storage tank / Lagertank | 24x20 | N1 Dach, N2, N3 nahe dem Boden | `roof` cone/dome/floating, `level` |
 | `process.column` | Column / Kolonne | 12x50 | N1 Kopf, N2 Sumpf, N3 Zulauf, N4 Rücklauf, N5 Rückführung Verdampfer | `internals` trays/packed, `trays` (8, 2–30), `beds` (2, 1–4) |
 | `process.reactor` | Stirred tank reactor / Rührkesselreaktor | 16x30 | N1, N3 Deckelstutzen, N2 unten, J1/J2 mit Doppelmantel | `agitator` (true), `jacket` |
+| `process.cyclone` | Cyclone separator / Zyklonabscheider | 14x30 | N1 tangentialer Einlauf (links), N2 Gasaustritt (Tauchrohr, oben), N3 Feststoffaustrag (unten) | – |
+| `process.silo` | Silo (bulk solids) / Silo (Schüttgut) | 16x34 | N1 Befüllung (Dachspitze), N2 Austrag (Trichterauslauf) | `legs` (true), `level` (Füllstand) |
 | `process.hx.shelltube` | Shell-and-tube heat exchanger / Rohrbündel-Wärmeübertrager | 32x12 | T1, T2 Rohrseite, S1, S2 Mantelseite | `bundle` utube/fixed |
 | `process.hx.plate` | Plate heat exchanger / Plattenwärmeübertrager | 14x16 | A1, A2, B1, B2 | `plates` dargestellt (7, 3–15) |
 | `process.hx.general` | Heat exchanger (general symbol) / Wärmeübertrager (allgemein) | 12x12 | P1, P2 Schlange, S1, S2 Mantel | – |
 | `process.hx.aircooler` | Air cooler (fin-fan) / Luftkühler (Rippenrohr mit Ventilator) | 24x14 | P1, P2 | – |
 | `process.hx.coolingtower` | Cooling tower / Kühlturm | 20x24 | W1 Warmwasser-Zulauf, W2 Ablauf Becken | `draft` natural/mechanical |
-| `process.pump.centrifugal` | Centrifugal pump / Kreiselpumpe | 12x12 | S Saugseite, D Druckseite (tangential) | `base` (true) |
-| `process.pump.displacement` | Positive displacement pump / Verdrängerpumpe | 12x12 | S, D | `kind` gear/screw/piston/diaphragm |
-| `process.compressor` | Compressor / Verdichter | 14x12 | S, D | `kind` dynamic/reciprocating |
-| `process.turbine` | Turbine / expander / Turbine / Entspannungsmaschine | 14x12 | I, O | – |
-| `process.fan` | Fan / Ventilator | 12x12 | I, O | `kind` radial/axial |
-| `process.motor` | Electric motor (drive) / Elektromotor (Antrieb) | 10x10 | shaft | – |
+| `process.pump.centrifugal` | Centrifugal pump / Kreiselpumpe | 12x12 | S Saugseite, D Druckseite (tangential); Wellennabe rechts (gegenüber dem Saugstutzen) | `base` (true) |
+| `process.pump.displacement` | Positive displacement pump / Verdrängerpumpe | 12x12 | S, D; Wellennabe oben | `kind` gear/screw/piston/diaphragm |
+| `process.compressor` | Compressor / Verdichter | 14x12 | S, D; Wellennabe oben | `kind` dynamic/reciprocating |
+| `process.turbine` | Turbine / expander / Turbine / Entspannungsmaschine | 14x12 | I, O; Abtriebswellenstumpf unten (Achse + Nabe) | – |
+| `process.fan` | Fan / Ventilator | 12x12 | I, O; Wellennabe rechts (radial) oder oben (axial) | `kind` radial/axial |
+| `process.motor` | Electric motor (drive) / Elektromotor (Antrieb) | 10x10 | shaft (Anschluss, bleibt für alte Anbindungen); Wellenstumpf rechts (Achse + Nabe) | – |
 | `process.valve.manual` | Valve (manual) / Armatur (handbetätigt) | 10x6 | 1, 2 | `kind` gate/globe/ball/butterfly, `closed` |
 | `process.valve.control` | Control valve / Stellventil (Regelventil) | 12x13 | 1, 2, S (Signal am Antrieb) | `actuator` diaphragm/motor/solenoid/piston, `fail` none/open/close/last (FO/FC/FL) |
 | `process.valve.check` | Check valve / Rückschlagarmatur | 10x6 | 1, 2 (Durchfluss 1 → 2) | – |
@@ -69,6 +71,9 @@ des Blocks.
 | `process.valve.threeway` | Three-way valve / Dreiwegeventil | 9x7 (9x12 mit Antrieb) | A, AB, B, S mit Antrieb | `actuated` |
 | `process.fitting.reducer` | Reducer / Reduzierstück | 8x6 | 1, 2 | `eccentric` |
 | `process.fitting.strainer` | Strainer / filter / Schmutzfänger / Filter | 10x8 | 1, 2 | `kind` filter/y |
+| `process.valve.steamtrap` | Steam trap / Kondensatableiter | 10x6 | 1, 2 | – |
+| `process.rupturedisc` | Rupture disc / Berstscheibe | 8x10 | in (unten), out (oben) | – |
+| `process.sightglass` | Sight glass / Schauglas | 10x6 | 1, 2 | – |
 | `process.instrument.bubble` | Instrument (tag bubble) / Messstelle (PLT-Stelle) | 12x12 | B, T, L, R | `tag` (TIC 101), `location` field/central/local/behind, `shape` discrete/shared/computer/plc |
 | `process.instrument.orifice` | Flow element (orifice / venturi) / Durchflussmessglied (Blende / Venturi) | 10x6 | 1, 2 | `kind` orifice/venturi |
 | `process.line` | Process line / Prozessleitung (Fließlinie) | Punkte | Schienen entlang des Verlaufs | `kind` main/secondary/traced/future, `arrow`, `lineNo`, `route` orthogonal/free, `hops` |
@@ -85,6 +90,39 @@ des Blocks.
 Anordnungsstriche der Messstelle: vor Ort = ohne Strich, Leitwarte (zugänglich) = Vollstrich, örtliche Tafel =
 Doppelstrich, hinter der Tafel = Strichlinie. Geräteformen: Einzelgerät = Kreis, Prozessleitsystem = Kreis im Quadrat,
 Rechnerfunktion = Sechseck, SPS = Raute im Quadrat.
+
+Neue Symbole (eigenständig gezeichnet): der Kondensatableiter ist ein runder Körper mit Schwimmer (gefüllte Kugel) und
+Kondensatspiegel; die Berstscheibe eine gewölbte Scheibe zwischen zwei Halterflanschen, zur Austrittsseite gewölbt; das
+Schauglas ein rundes Gehäuse mit zwei Glasscheiben; der Zyklon ein Zylinder mit tangentialem Einlauf, Konus,
+gestricheltem Tauchrohr und Drallpfeil; das Silo ein Zylinder mit Kegeldach und Trichterboden auf Füßen.
+
+## Antriebswellen (ein Motor treibt die Pumpe)
+
+Pumpen, Ventilatoren, Verdichter, Turbinen und der Antriebsmotor haben eine echte mechanische Welle mit demselben
+Vertrag wie die Wellen und Antriebe des Mechanik- und des Maschinenmoduls ([mechanical-drives.md](mechanical-drives.md)):
+
+- **Angetriebene Maschinen** (`process.pump.centrifugal`, `process.pump.displacement`, `process.compressor`,
+  `process.fan`) haben einen `Hub`-Anker (Id `hub`), wo die Welle den Körper verlässt. Eine Wellenachse durch diesen
+  Punkt trägt die Maschine: eine mechanische Welle (`mech.shaft`), die Welle einer E-Maschine, der Wellenstumpf des
+  Motorsymbols im Maschinenmodul oder der Stumpf des Prozessmotors oder der Turbine.
+- **Antriebe** (`process.motor`, `process.turbine`; `ObjectType.DrivesShaft`) bieten ihren Wellenstumpf als
+  `Axis`-Segment (Id `shaft`) mit Nabe und `End`-Marke am äußeren Ende. Eine angetriebene Maschine dockt mit ihrer Nabe
+  am Stumpf an; eine vom Wellenende fortgesetzte mechanische Welle trägt den Antrieb, und Verschieben des Antriebs nimmt
+  die Welle (und alles darauf) mit. „+“ setzt die Welle nur am äußeren Ende fort.
+- Die Nabe hat keinen Bohrungsradius (0): eine Maschine auf einer Welle behält ihre Größe. Angedockt wird mit dem
+  normalen Fangen (Nabe auf Achse) und der Kopplung des Kerns („bewegt sich mit“). In der Blockansicht rückt die Nabe an
+  den nächsten Blockrand.
+- Die Wellenseiten folgen den Symbolen: Kreiselpumpe und Radialventilator rechts (gegenüber dem axialen Saugstutzen), die
+  übrigen angetriebenen Maschinen oben, die Turbinenwelle unten (ein Verdichter oder eine Pumpe unter der Turbine dockt
+  ohne Drehen an), die Motorwelle rechts. Zum Andocken auf der anderen Seite das Symbol spiegeln.
+- **Werte:** jede Maschine mit Welle führt Drehzahl *n* (`speed`), Drehmoment *M* (`torque`) und Wellenleistung *P*
+  (`power`) mit *P* = 2π·*n*·*M* [S18]. Eine Maschine teilt *n* mit dem Element, mit dem sie gekoppelt ist (getragen oder
+  konzentrisch). *M* geht über eine direkte Eins-zu-eins-Kupplung (Motor an der Pumpennabe, keines von beiden mit einem
+  dritten Element mit Moment gekoppelt) und von der mechanischen Welle oder Kupplung, auf der die Maschine sitzt, wenn
+  dieser Wellenstrang höchstens zwei Glieder hat, die Moment aufnehmen oder abgeben (die Regel des Mechanikmoduls; bei
+  einer Verzweigung wird kein Moment weitergegeben). So wird die Leistung des Antriebs zur Wellenleistung der Pumpe: ein
+  Motor mit 1450 min⁻¹ und 50 N·m gibt der Pumpe *P* = 7,59 kW; mit *V̇* = 100 m³/h und *H* = 20 m folgt der
+  Pumpenwirkungsgrad η = 71,8 %.
 
 ## Thermodynamische Diagramme
 
@@ -121,8 +159,8 @@ Ausfall“, Dreiwegeventil mit Stellantrieb (Kategorie RLT), exzentrisches Reduz
 Messstellen-Vorlagen (TIC Leitwarte, PI, FT, LIC im Prozessleitsystem, PT, SPS-Funktion), Venturirohr,
 Neben-/beheizte/geplante Leitung und Leitung mit Fließpfeil, pneumatische/Wirkdruck-/Kapillar-/Datenleitung,
 Luftkühler, Luftklappe mit Antrieb, Taschenfilter, Rotationswärmeübertrager, Sprühbefeuchter, Zu-/Abluftventilator
-(Kategorie RLT), Carnot und Clausius-Rankine ohne Überhitzung (T-s), Diesel und Carnot (p-v) sowie ein
-Wärmepumpenprozess (log p-h). Suchbegriffe gibt es in beiden Sprachen (z. B. „Behälter“, „Kolonne“,
+(Kategorie RLT), Carnot und Clausius-Rankine ohne Überhitzung (T-s), Diesel und Carnot (p-v), ein
+Wärmepumpenprozess (log p-h) sowie ein Silo mit Füllstand (`process.silo.level`). Suchbegriffe gibt es in beiden Sprachen (z. B. „Behälter“, „Kolonne“,
 „Wärmeübertrager“, „Pumpe“, „Messstelle“, „Stellventil“, „Kreisprozess“, „Wärmepumpe“).
 
 ## Leitungen
@@ -137,8 +175,9 @@ Kreuze, Kreise) haben 8 mm Abstand und meiden die Ecken.
 
 **Weiterbauen mit „+“ (Anschlüsse).** Stutzen und Rohranschlüsse bieten eine Prozessleitung an (`process`),
 Messstellen und der Stellantriebsanschluss S von Stellventilen eine Signalleitung (`instrument`), danach die Apparate,
-Armaturen oder Messstellen, die dort anschließen. Die Antriebswelle eines Motors ist eine mechanische Kupplung ohne
-Leitung. Das freie Ende einer Prozess- oder Signalleitung bietet „+“ zum Verlängern oder zum Andocken des nächsten
+Armaturen oder Messstellen, die dort anschließen. Die Antriebswelle eines Motors oder einer Turbine ist eine
+mechanische Kupplung ohne Leitung (siehe „Antriebswellen“); die freie Nabe einer angetriebenen Maschine bietet eine Welle
+durch sie an. Das freie Ende einer Prozess- oder Signalleitung bietet „+“ zum Verlängern oder zum Andocken des nächsten
 Elements.
 
 ## Kontextaktionen
@@ -160,8 +199,10 @@ optionalen Textparametern (Ingenieurabschnitt des Inspektors). Wasser ist das vo
 
 | Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
 |---|---|---|
-| Kreiselpumpe | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, Welle), η (`efficiency`); Panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`); Ingenieur ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
-| Verdrängerpumpe, Ventilator | *V̇*, Δ*p*, *P*, η; Panel *P*_hyd | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28] |
+| Kreiselpumpe | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, Welle), η (`efficiency`); Panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`), *n* (`speed`), *M* (`torque`); Ingenieur ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*M* [S18] |
+| Verdrängerpumpe, Ventilator | *V̇*, Δ*p*, *P*, η; Panel *P*_hyd, *n*, *M* | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*M* [S18] |
+| Verdichter, Turbine | *P* (`power`, Wellenleistung: Antrieb des Verdichters, Abgabe der Turbine), *n* (`speed`); Panel *M* (`torque`) | *P* = 2π·*n*·*M* [S18] |
+| Antriebsmotor | *P* (`power`, Abgabe), *n*, *M* | *P* = 2π·*n*·*M* [S18] |
 | Rohrbündel-, Platten-, allgemeiner Wärmeübertrager | Φ (`duty`), *k* (`u`), *A* (`area`), Δθ_m (`lmtd`); Panel ṁ₁ (`massFlow1`), θ₁,ein (`temp1In`), θ₁,aus (`temp1Out`), ṁ₂, θ₂,ein, θ₂,aus; Ingenieur *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,ein − θ₁,aus); Φ = ṁ₂·*c*₂·(θ₂,aus − θ₂,ein); Gegenstrom Δθ_m = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) mit Δθ_a = θ₁,ein − θ₂,aus, Δθ_b = θ₁,aus − θ₂,ein; Φ = *k*·*A*·Δθ_m [S29] |
 | Luftkühler, Kühlturm | Φ, ṁ (`massFlow`), θ_ein (`tempIn`), θ_aus (`tempOut`); Ingenieur *c* | Φ = ṁ·*c*·(θ_ein − θ_aus) [S29] |
 | Behälter, Tank, Reaktor, Kolonne | *V* (`volume`), *D* (`diameter`), *h* (`length`, zylindrischer Teil), *Q* (`heat`); Panel Δθ (`deltaT`); Ingenieur ρ, *c* | *V* = π·*D*²·*h*/4 (Böden nicht mitgerechnet); *Q* = ρ·*V*·*c*·Δθ [S29] |
@@ -175,11 +216,16 @@ das Vorzeichen und Φ < 0. Andere Bauarten als Gegenstrom brauchen einen Korrekt
 **Werte über Anschlüsse.** Prozessleitungen verbinden Stutzen zu Netzen. Volumenstrom *V̇*, Massenstrom ṁ und
 Stofftemperatur θ gelten gemeinsam, wenn höchstens zwei Elemente sie im Netz führen; Leitungen übernehmen sie auf einem
 unverzweigten Strang. Die Leitung rechnet *V̇* und ṁ ineinander um. Hand-, Stell- und Rückschlagarmaturen,
-Schmutzfänger, Reduzierstücke und Durchflussmessglieder geben alle drei weiter, Luftfilter und Luftklappen (A1–A2)
-ebenso; Pumpen und Ventilatoren geben die Temperatur weiter. Eine Pumpe, die über eine Armatur einen Wärmeübertrager
-speist, setzt so ṁ₁, und die Austrittstemperatur der Seite 1 wird zur Eintrittstemperatur des nächsten Elements.
-Wärmeverluste und die Erwärmung in Pumpen werden nicht abgebildet. Verdichter und Turbinen haben noch keine Werte (die
-Verdichtungsarbeit braucht Gaseigenschaften).
+Schmutzfänger, Reduzierstücke, Durchflussmessglieder und Schaugläser geben alle drei weiter, Luftfilter und Luftklappen
+(A1–A2) ebenso; Pumpen und Ventilatoren geben die Temperatur weiter. Eine Pumpe, die über eine Armatur einen
+Wärmeübertrager speist, setzt so ṁ₁, und die Austrittstemperatur der Seite 1 wird zur Eintrittstemperatur des nächsten
+Elements. Wärmeverluste und die Erwärmung in Pumpen werden nicht abgebildet. Verdichter und Turbinen haben nur
+Wellenwerte (Verdichtungs- und Entspannungsarbeit brauchen Gaseigenschaften); Kondensatableiter, Berstscheiben, Zyklone
+und Silos haben keine Werte.
+
+**Wellenverknüpfungen.** Drehzahl, Drehmoment und Leistung gehen über Antriebswellen wie unter „Antriebswellen“
+beschrieben (Beziehungen `process.shaft.speed`, `process.shaft.torque`); das Lösen einer Maschine holt ihren Antrieb und
+ihren Wellenstrang in den Umfang.
 
 **Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
 
@@ -204,5 +250,8 @@ Text, Aufteilung des Messstellen-Kennzeichens und Anordnungsstriche, Stutzen (be
 dem Rand, gleiche Ids in jeder Ansicht, mit der Box skaliert), Fangen einer Leitung an einem Stutzen, angedockte
 Leitungen folgen dem Apparat und verlassen Stutzen senkrecht, Schienen, Brücken, Leitungsarten, Signalzeichen,
 JSON-Rundlauf eines Beispiel-Fließschemas und die Kreisprozess-Formeln (Otto, Diesel, Carnot p-v und T-s, Rankine,
-Kältekreis). Der Galerie-Test schreibt `gallery/*.html` in den Testausgabeordner (jeder Typ in jeder Ansicht,
+Kältekreis). `ShaftTests` docken Pumpen, Verdichter und Ventilatoren an eine mechanische Welle, das Motorsymbol des
+Maschinenmoduls, einen Wellenstrang mit E-Maschine, den Prozessmotor und eine Turbine an (Kopplung und gemeinsame *n*,
+*M*, *P*); sie nutzen das Mechanik- und das Maschinenmodul nur als Testabhängigkeiten (das Modul selbst hängt allein vom
+Kern ab). Der Galerie-Test schreibt `gallery/*.html` in den Testausgabeordner (jeder Typ in jeder Ansicht,
 gestreckt, Vorlagen, ein Destillations- und ein Lüftungsgeräte-Beispiel).
