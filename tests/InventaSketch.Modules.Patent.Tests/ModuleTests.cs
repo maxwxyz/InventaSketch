@@ -104,6 +104,14 @@ namespace InventaSketch.Modules.Patent.Tests
             foreach (var rule in PreflightRules.All)
             {
                 Assert.Matches(@"^PF-[A-Z-]+$", rule.Id);
+                Assert.False(string.IsNullOrEmpty(rule.Title.De));
+                if (rule.IsDraftingAid)
+                {
+                    // Drafting aids claim no office rule and no research row.
+                    Assert.Empty(rule.Research);
+                    Assert.Equal(PreflightRule.DraftingAidSource, rule.SourceText(Office.Epo));
+                    continue;
+                }
                 Assert.Matches(@"^P\d+$", rule.Research);
                 Assert.NotEmpty(rule.Sources);
                 Assert.All(rule.Sources.Values.SelectMany(c => c), c => Assert.StartsWith("https://", c.Url));

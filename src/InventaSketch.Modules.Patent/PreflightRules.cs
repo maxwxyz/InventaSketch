@@ -5,9 +5,18 @@ using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Patent
 {
-    /// <summary>A preflight rule: id, research reference (P-number), title and the official sources per office.</summary>
+    /// <summary>
+    /// A preflight rule: id, research reference (P-number), title and the official sources per office. A rule without
+    /// any source is a drafting aid (<see cref="IsDraftingAid"/>): it applies to every profile and never claims an office rule.
+    /// </summary>
     public sealed record PreflightRule(string Id, string Research, I18nText Title, IReadOnlyDictionary<Office, IReadOnlyList<Citation>> Sources)
     {
+        /// <summary>Source text of drafting aids.</summary>
+        public const string DraftingAidSource = "Drafting aid (no office rule)";
+
+        /// <summary>True for checks that help drafting but rest on no office rule (no sources, no research row).</summary>
+        public bool IsDraftingAid => Sources.Count == 0;
+
         /// <summary>Sources for a profile's office; the common profile cites all offices.</summary>
         public IReadOnlyList<Citation> For(Office office)
         {
@@ -15,7 +24,7 @@ namespace InventaSketch.Modules.Patent
             return Sources.TryGetValue(office, out var list) ? list : Array.Empty<Citation>();
         }
 
-        public string SourceText(Office office) => string.Join("; ", For(office).Select(c => c.ToString()));
+        public string SourceText(Office office) => IsDraftingAid ? DraftingAidSource : string.Join("; ", For(office).Select(c => c.ToString()));
     }
 
     /// <summary>
@@ -95,6 +104,9 @@ namespace InventaSketch.Modules.Patent
         public static readonly PreflightRule LeadDangling = R("PF-LEAD-FREE", "P11", "Lead line not attached to a part", "Bezugslinie nicht mit Teil verbunden",
             null, new[] { Ep("EP-16", "Guidelines A-IX 7.5.1", EpGl) }, null, new[] { Us("US-20", "37 CFR 1.84(q)") });
 
+        public static readonly PreflightRule LeadTarget = R("PF-LEAD-TARGET", "P11", "Numeral points at nothing", "Bezugszeichen zeigt ins Leere",
+            null, new[] { Ep("EP-16", "Guidelines A-IX 7.5.1", EpGl) }, null, new[] { Us("US-20", "37 CFR 1.84(q)") });
+
         public static readonly PreflightRule FigMissing = R("PF-FIG-MISSING", "P13", "Figure label missing", "Figurenbezeichnung fehlt",
             new[] { De("DE-10", "PatV Anlage 2 Nr. 6") }, new[] { Ep("EP-13", "Guidelines A-IX 5.2", EpGl) }, new[] { Pc("PCT-12", "Rule 11.13(k) PCT") }, new[] { Us("US-24", "37 CFR 1.84(u)") });
 
@@ -129,6 +141,14 @@ namespace InventaSketch.Modules.Patent
             new[] { De("DE-12", "PatV Anlage 2 Nr. 7") }, new[] { Ep("EP-15", "OJ EPO 2025, A49 Art. 1(2)(i)"), Ep("EP-15", "Guidelines A-IX 7.5.4", EpGl) },
             new[] { Pc("PCT-13", "Rule 11.13(m) PCT") }, new[] { Us("US-19", "37 CFR 1.84(p)(4)") });
 
+        public static readonly PreflightRule RefDuplicate = R("PF-REF-DUPLICATE", "P19", "Same numeral on different parts", "Gleiches Bezugszeichen an verschiedenen Teilen",
+            new[] { De("DE-12", "PatV Anlage 2 Nr. 7") }, new[] { Ep("EP-15", "OJ EPO 2025, A49 Art. 1(2)(i)"), Ep("EP-15", "Guidelines A-IX 7.5.4", EpGl) },
+            new[] { Pc("PCT-13", "Rule 11.13(m) PCT") }, new[] { Us("US-19", "37 CFR 1.84(p)(4)") });
+
+        /// <summary>Drafting aid: no office requires a numeral on every part, but an unnumbered part is often an oversight.</summary>
+        public static readonly PreflightRule PartUnnumbered = new("PF-PART-UNNUMBERED", "", new I18nText("Part without numeral", "Teil ohne Bezugszeichen"),
+            new Dictionary<Office, IReadOnlyList<Citation>>());
+
         public static readonly PreflightRule RefLabel = R("PF-REF-LABEL", "P19", "Same part with different numerals", "Gleiches Teil mit verschiedenen Bezugszeichen",
             new[] { De("DE-12", "PatV Anlage 2 Nr. 7") }, new[] { Ep("EP-15", "Guidelines A-IX 7.5.4–7.5.5", EpGl) },
             new[] { Pc("PCT-13", "Rule 11.13(m) PCT") }, new[] { Us("US-19", "37 CFR 1.84(p)(4)") });
@@ -159,9 +179,9 @@ namespace InventaSketch.Modules.Patent
 
         public static IReadOnlyList<PreflightRule> All { get; } = new[]
         {
-            PageSize, PageOrientation, Margins, Frame, Colour, Greyscale, SolidBlack, TextHeight, LineWidth, EnclosedNumeral, LeadCrossing, LeadDangling,
+            PageSize, PageOrientation, Margins, Frame, Colour, Greyscale, SolidBlack, TextHeight, LineWidth, EnclosedNumeral, LeadCrossing, LeadDangling, LeadTarget,
             FigMissing, FigDuplicate, FigSequence, FigSingle, FigSize, SheetNumber, TextWords, ScaleText, CentreLines,
-            RefConflict, RefLabel, RefMissing, RefUnused, ManualLines, ManualContent, ManualText, ManualPriorArt, ManualPhotos,
+            RefConflict, RefDuplicate, RefLabel, RefMissing, RefUnused, PartUnnumbered, ManualLines, ManualContent, ManualText, ManualPriorArt, ManualPhotos,
         };
     }
 }
