@@ -42,7 +42,7 @@ namespace InventaSketch.Modules.Mechanical
     /// Data-driven object type used for all mechanical symbols: a list of views (each with its own drawing),
     /// optional parameters, anchors and context actions.
     /// </summary>
-    internal sealed partial class MechType : ObjectType, IValueType, IValueLinks, IValueChecks
+    internal sealed partial class MechType : ObjectType, IValueType, IValueLinks, IValueChecks, ISpanRoute
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -92,6 +92,10 @@ namespace InventaSketch.Modules.Mechanical
         /// <summary>Belt or chain between two hubs (<see cref="ObjectType.SpansHubs"/>).</summary>
         public bool Spans { get; init; }
         public override bool SpansHubs => Spans;
+
+        public bool IsRouted(SketchObject o) => Spans && Drives.IsRouted(o);
+
+        public SketchObject RouteThrough(SketchObject o, IReadOnlyList<Vec2> pageHubs, RenderContext ctx) => Drives.RouteThrough(o, pageHubs);
         /// <summary>Type-specific context actions in addition to the view switches.</summary>
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
 

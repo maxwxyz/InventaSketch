@@ -74,9 +74,9 @@ Library items: `mech.freewheel`, `mech.freewheel.section`, `mech.freewheel.axial
 - **Editing.** Grips: each hub centre (free) and its running radius (horizontal grip on the right of the circle).
   Context actions in the serpentine view: "Add idler" (a back-side idler between the last and the first hub), "Remove last
   hub" (at least two stay).
-- **Limit (core coupling).** The core coupling still treats a belt as running between its first two hubs: moving the
-  pulley on hub 1 or 2 stretches and turns the whole drawn route, pulleys on further hubs do not move the belt. Re-route
-  with the grips; following over all hubs needs a change of `Coupling` in the core (open item).
+- **Following moved pulleys.** A serpentine belt or chain implements the core's `ISpanRoute`: the coupling counts every
+  hub, and when a pulley, sprocket or idler on any hub moves, the strand is routed through the hubs' new places (its box
+  becomes the hull of the hub circles, radii stay). Two-pulley belts keep the stretch-and-turn rule.
 - Library items: `mech.belt.serpentine`, `mech.chain.serpentine`, `mech.idler.axial`, `mech.idler.grooved`,
   `mech.idler.section`, `mech.tensioner`, `mech.tensioner.stick`. Context actions: idler "Shaft connection" (hub
   pictograms) and "Runs on belt back" (on/off).

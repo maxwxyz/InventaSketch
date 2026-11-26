@@ -21,6 +21,22 @@ namespace InventaSketch.Core
     /// </list>
     /// Everything that moves along is translated as a whole, so meshes further down the train stay intact.
     /// </summary>
+    /// <summary>
+    /// A belt or chain that runs over more than two hubs (a serpentine drive): every <see cref="AnchorRole.Hub"/> anchor
+    /// carries a pulley, and when pulleys move the strand is routed through the hubs' new places.
+    /// </summary>
+    public interface ISpanRoute
+    {
+        /// <summary>True if <paramref name="o"/> is currently routed over its hub list (else the two-end-hub rule applies).</summary>
+        bool IsRouted(SketchObject o);
+
+        /// <summary>
+        /// The strand routed through <paramref name="pageHubs"/> (page mm, in the order of its hub anchors; radii unchanged):
+        /// box, position and route adapt so every hub stays inside.
+        /// </summary>
+        SketchObject RouteThrough(SketchObject o, IReadOnlyList<Vec2> pageHubs, RenderContext ctx);
+    }
+
     public static class Coupling
     {
         private const double Eps = 1e-6;
@@ -36,6 +52,8 @@ namespace InventaSketch.Core
             public bool Drives;
             /// <summary><see cref="ObjectType.SpansHubs"/>.</summary>
             public bool Span;
+            /// <summary>A strand routed over all its hubs (<see cref="ISpanRoute"/>), not only the first two.</summary>
+            public bool Routed;
             public readonly List<Vec2> Hubs = new();
             public readonly List<(Vec2 A, Vec2 B)> Axes = new();
             /// <summary>Cone apex of a bevel gear seen from the side (<see cref="AnchorRole.Apex"/>), else null.</summary>
@@ -49,6 +67,7 @@ namespace InventaSketch.Core
             if (o.IsPointGeometry || registry.Type(o.Type) is not { } type) return f;
             f.Drives = type.DrivesShaft;
             f.Span = type.SpansHubs;
+            f.Routed = type is ISpanRoute route && route.IsRouted(o);
             foreach (var a in registry.PageAnchors(o, ctx))
             {
                 if (a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner && f.Pitch is null)
@@ -223,7 +242,7 @@ namespace InventaSketch.Core
                     {
                         if (a.Span && !b.Span)
                         {
-                            var end = a.Hubs.Take(2).Where(h => b.Hubs.Any(k => h.DistanceTo(k) <= 0.3)).Select(h => (Vec2?)h).FirstOrDefault();
+                            var end = (a.Routed ? a.Hubs : a.Hubs.Take(2)).Where(h => b.Hubs.Any(k => h.DistanceTo(k) <= 0.3)).Select(h => (Vec2?)h).FirstOrDefault();
                             if (end is not null) list.Add(new Pair(LinkKind.Spanned, ids[i], ids[j], end.Value));
                         }
                         continue;
@@ -326,6 +345,29 @@ namespace InventaSketch.Core
             {
                 var id = group.Key;
                 if (changed.Contains(id) || !f0.TryGetValue(id, out var fs) || fs.Hubs.Count < 2) continue;
+                if (fs.Routed && doc.Get(id) is { } strand && registry.Type(strand.Type) is ISpanRoute route)
+                {
+                    // A serpentine strand: every hub goes to where its part's hub is now; the module re-routes.
+                    var hubs = fs.Hubs.ToList();
+                    var moved = false;
+                    foreach (var p in group)
+                    {
+                        if (doc.Get(p.B) is not { } part || !f0.TryGetValue(p.B, out var fb)) continue;
+                        var k = fb.Hubs.FindIndex(h => h.DistanceTo(p.At) <= 0.3);
+                        var now = Read(registry, part, ctx);
+                        if (k < 0 || k >= now.Hubs.Count) continue;
+                        var i = hubs.FindIndex(h => h.DistanceTo(p.At) <= 0.3);
+                        if (i < 0 || now.Hubs[k].DistanceTo(hubs[i]) < Eps) continue;
+                        hubs[i] = now.Hubs[k];
+                        moved = true;
+                    }
+                    if (moved)
+                    {
+                        var routed = route.RouteThrough(strand, hubs, ctx);
+                        if (!ReferenceEquals(routed, strand)) doc = Edits.Update(doc, new[] { id }, _ => routed);
+                    }
+                    continue;
+                }
                 Vec2 l0 = fs.Hubs[0], r0 = fs.Hubs[1], l1 = l0, r1 = r0;
                 foreach (var p in group)
                 {

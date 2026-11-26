@@ -154,6 +154,32 @@ namespace InventaSketch.Modules.Mechanical.Tests
         }
 
         [Fact]
+        public void MovingAPulleyOnAnyHubReroutesTheSerpentine()
+        {
+            var r = Fx.Reg();
+            var belt = Make(r, "mech.belt.serpentine", "belt", new Vec2(100, 80));
+            var doc = Drive(r, belt,
+                ("mech.pulley.axial", "crank", Array.Empty<(string, string)>()),
+                ("mech.pulley.axial", "pump", Array.Empty<(string, string)>()),
+                ("mech.pulley.axial", "alternator", Array.Empty<(string, string)>()),
+                ("mech.idler.axial", "idler", Array.Empty<(string, string)>()));
+            var before = Hubs(r, doc.Get("belt")!);
+            // The idler sits on the fourth hub (the two-end-hub rule never saw it): moved 6 mm left and 25 mm up, out of the
+            // old box, the belt's fourth hub goes with it and the other hubs stay. (Default pump and alternator pulleys touch,
+            // so they couple as a mesh; the idler and the crank are free.)
+            var shift = new Vec2(-6, -25);
+            var after = Coupling.Propagate(r, doc, Edits.Move(doc, new[] { "idler" }, shift));
+            var now = Hubs(r, after.Get("belt")!);
+            Assert.Equal(before.Count, now.Count);
+            Assert.True(now[3].DistanceTo(before[3] + shift) < 0.05, $"hub 4 at {now[3]}, expected {before[3] + shift}");
+            foreach (var i in new[] { 0, 1, 2 }) Assert.True(now[i].DistanceTo(before[i]) < 0.05, $"hub {i + 1} moved to {now[i]}");
+            Fx.AssertInsideBox(r.Type("mech.belt")!.Render(after.Get("belt")!, Fx.Ctx()), after.Get("belt")!.Size, "rerouted belt");
+            // A pulley on the first hub works the same way.
+            var again = Coupling.Propagate(r, after, Edits.Move(after, new[] { "crank" }, new Vec2(-15, 0)));
+            Assert.True(Hubs(r, again.Get("belt")!)[0].DistanceTo(now[0] + new Vec2(-15, 0)) < 0.05);
+        }
+
+        [Fact]
         public void ThreePulleysAndAnIdlerShareTheBeltSpeedAndTheRatioFollowsTheDiameters()
         {
             var r = Fx.Reg();

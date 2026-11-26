@@ -100,9 +100,10 @@ namespace InventaSketch.Modules.Mechanical
         /// <summary>Keeps a hub inside the box: radius 0.01 to 0.5 of the smaller side, centre so the circle fits.</summary>
         public static Hub Clamp(Hub h)
         {
+            // Only the coarse range: Place keeps every circle inside the actual box (u and v are fractions of width and
+            // height, k of the smaller side, so a tighter bound here would pull hubs inwards in wide boxes).
             var k = Geo.Clamp(h.K, 0.01, 0.5);
-            var m = 0.5 - k;
-            return new Hub(Geo.Clamp(h.U, -m, m), Geo.Clamp(h.V, -m, m), k, h.Back);
+            return new Hub(Geo.Clamp(h.U, -0.5, 0.5), Geo.Clamp(h.V, -0.5, 0.5), k, h.Back);
         }
 
         public static string Format(IEnumerable<Hub> hubs)

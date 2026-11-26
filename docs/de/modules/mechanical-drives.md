@@ -78,10 +78,10 @@ Bibliothekselemente: `mech.freewheel`, `mech.freewheel.section`, `mech.freewheel
 - **Bearbeiten.** Griffe: jede Nabenmitte (frei) und ihr Laufradius (waagerechter Griff rechts am Kreis).
   Kontextaktionen in der Ansicht `serpentine`: „Umlenkrolle hinzufügen“ (eine Rückenrolle zwischen der letzten und der
   ersten Nabe), „Letzte Nabe entfernen“ (mindestens zwei bleiben).
-- **Grenze (Kern-Kopplung).** Die Kopplung im Kern behandelt einen Riemen weiterhin als Trum zwischen seinen ersten beiden
-  Naben: Verschieben der Scheibe auf Nabe 1 oder 2 streckt und dreht den ganzen gezeichneten Verlauf, Scheiben auf
-  weiteren Naben bewegen den Riemen nicht. Den Verlauf mit den Griffen anpassen; ein Nachführen über alle Naben braucht
-  eine Änderung von `Coupling` im Kern (offener Punkt).
+- **Verschobene Scheiben.** Ein Riemen oder eine Kette über mehrere Scheiben implementiert `ISpanRoute` des Kerns: Die
+  Kopplung zählt jede Nabe, und wird eine Scheibe, ein Kettenrad oder eine Umlenkrolle auf irgendeiner Nabe verschoben,
+  läuft das Trum durch die neuen Nabenorte (sein Rahmen wird die Hülle der Nabenkreise, die Radien bleiben). Riemen über
+  zwei Scheiben behalten die Regel „strecken und drehen“.
 - Bibliothekselemente: `mech.belt.serpentine`, `mech.chain.serpentine`, `mech.idler.axial`, `mech.idler.grooved`,
   `mech.idler.section`, `mech.tensioner`, `mech.tensioner.stick`. Kontextaktionen: Umlenkrolle
   „Welle-Nabe-Verbindung“ (Nabensymbole) und „Läuft auf Riemenrücken“ (an/aus).

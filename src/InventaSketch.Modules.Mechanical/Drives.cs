@@ -113,6 +113,42 @@ namespace InventaSketch.Modules.Mechanical
 
         private static bool IsSerpentine(SketchObject o) => o.View == Serpentine;
 
+        /// <summary>A belt or chain drawn over its route hubs (Core <see cref="ISpanRoute"/>).</summary>
+        public static bool IsRouted(SketchObject o) => IsSerpentine(o) && o.Type is "mech.belt" or "mech.chain";
+
+        /// <summary>
+        /// The serpentine routed through <paramref name="pageHubs"/> (page mm, route order; radii kept): the box becomes the
+        /// hull of the hub circles (plus the chain plates), so pulleys moved anywhere keep the strand on them.
+        /// </summary>
+        public static SketchObject RouteThrough(SketchObject o, IReadOnlyList<Vec2> pageHubs)
+        {
+            var pen = new Pen(o.Size, o.Size);
+            var placed = PlacedFor(pen, o);
+            if (pageHubs.Count != placed.Count || placed.Count < 2) return o;
+            var margin = o.Type == "mech.chain" ? ChainHalf(pen) : 0;
+            var pad = margin + 0.5;
+            var inv = o.Matrix().Invert();
+            var local = pageHubs.Select(p => inv.Apply(p)).ToList();
+            double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+            for (var i = 0; i < local.Count; i++)
+            {
+                var r = placed[i].R + pad;
+                minX = Math.Min(minX, local[i].X - r); maxX = Math.Max(maxX, local[i].X + r);
+                minY = Math.Min(minY, local[i].Y - r); maxY = Math.Max(maxY, local[i].Y + r);
+            }
+            double w = maxX - minX, h = maxY - minY, min = Math.Min(w, h);
+            if (w < 1 || h < 1) return o;
+            var bc = new Vec2((minX + maxX) / 2, (minY + maxY) / 2);
+            var route = BeltRoute.Of(o);
+            var hubs = local.Select((c, i) => new BeltRoute.Hub((c.X - bc.X) / w, (c.Y - bc.Y) / h, placed[i].R / min, route[i].Back)).ToList();
+            var centre = o.Matrix().Apply(bc);
+            return o.WithParam("route", BeltRoute.Format(hubs.Select(BeltRoute.Clamp))) with
+            {
+                Transform = o.Transform with { X = Math.Round(centre.X, 6), Y = Math.Round(centre.Y, 6) },
+                Size = new Size2(Math.Round(w, 6), Math.Round(h, 6)),
+            };
+        }
+
         /// <summary>The route hubs placed in the actual box (chains keep room for their plates).</summary>
         private static List<BeltRoute.Placed> Placed(Pen p, SketchObject o, double margin = 0) => BeltRoute.Place(BeltRoute.Of(o), p.W, p.H, margin);
 
