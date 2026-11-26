@@ -96,6 +96,11 @@ namespace InventaSketch.Modules.Switchgear
             Add("sw.protection.spd", Devices.Spd, "SPD type 2, 3+N", "Überspannungsschutz Typ 2, 3+N", kw: new[] { "spd", "typ 2" });
             Add("sw.protection.spd.t12", Devices.Spd, "SPD type 1+2, 3+N", "Überspannungsschutz Typ 1+2, 3+N", P(("spdType", "12")), kw: new[] { "spd", "kombiableiter", "blitzstrom" });
             Add("sw.switch.main", Devices.MainSwitch, "Main switch 63 A, 3-pole", "Hauptschalter 63 A, 3-polig", kw: new[] { "hauptschalter", "trennschalter" });
+            Add("sw.switch.main.supply", Devices.MainSwitch, "Main switch 63 A (short-circuit current at the board)", "Hauptschalter 63 A (Kurzschlussstrom an der Verteilung)",
+                kw: new[] { "short-circuit", "short circuit current", "loop impedance", "transformer", "ik", "selectivity",
+                    "kurzschluss", "kurzschlussstrom", "schleifenimpedanz", "abschaltbedingung", "selektivität", "transformator" });
+            Add("sw.protection.rcd.f", Devices.Rcd, "RCD 40 A 30 mA type F, 2-pole", "FI-Schutzschalter 40 A 30 mA Typ F, 2-polig", P(("rcdType", "F")),
+                kw: new[] { "fi", "typ f", "type f", "frequenzumrichter", "einphasig", "mischfrequenz" });
             Add("sw.protection.mpcb", Industrial.Mpcb, "Motor protection circuit breaker 4 A", "Motorschutzschalter 4 A", kw: new[] { "motorschutzschalter", "mpcb" });
             Add("sw.protection.mpcb.10", Industrial.Mpcb, "Motor protection circuit breaker 10 A", "Motorschutzschalter 10 A", P(("rating", "10")), kw: new[] { "motorschutzschalter", "mpcb" });
             Add("sw.protection.overload", Industrial.Overload, "Thermal overload relay 4 A", "Überlastrelais 4 A", kw: new[] { "überlastrelais", "motorschutzrelais" });

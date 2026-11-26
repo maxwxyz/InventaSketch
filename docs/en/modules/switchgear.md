@@ -136,9 +136,9 @@ derived values are never stored.
 
 | Element | Variables (card values first) | Parameters |
 |---|---|---|
-| MCB, RCBO, motor protection, overload relay, NH fuse switch | I_n rated current (motor protection and overload relay: set current I_r), I_B operating current of the circuit, P power of the circuit; I_z current-carrying capacity of the cable, I_a instantaneous tripping current (MCB, RCBO), I_Δn (RCBO) | `rating` (the rating choice itself), `ib`, `power`, `iz`, `ia`, `idn` |
+| MCB, RCBO, motor protection, overload relay, NH fuse switch | I_n rated current (motor protection and overload relay: set current I_r), I_B operating current of the circuit, P power of the circuit; I_z current-carrying capacity of the cable, I_a instantaneous tripping current (MCB, RCBO), I_Δn (RCBO); not on the overload relay: I_k1 and I_k3 at the board (from the main switch upstream), I_cn rated short-circuit capacity; engineer (read-only, from the device upstream) I_n,up, I_a,up | `rating` (the rating choice itself), `ib`, `power`, `iz`, `ia`, `idn`, `ik1`, `ik3`, `icn`, `inUp`, `iaUp` |
 | RCD | I_n, I_B, P; I_Δn | `rating`, `ib`, `power`, `idn` |
-| Main switch | I_n, I_B, P | `rating`, `ib`, `power` |
+| Main switch | I_n, I_B, P, I_k1 short-circuit current phase to PE at the board; I_k3 three-phase short-circuit current, Z_s loop impedance, S_r and u_k of the supply transformer, l and A of the supply cable; engineer U_n (default 400 V), ρ (copper at 20 °C, default 0.017241 Ω·mm²/m), Z_T, Z_L | `rating`, `ib`, `power`, `ik1`, `ik3`, `zs`, `trafoPower`, `uk`, `supplyLength`, `supplySection`, `systemVoltage`, `resistivity`, `zTrafo`, `zLine` |
 | Room devices, frequency inverter | P power (inverter: rated power, the `power` choice in kW), I current per phase; U voltage phase to neutral (default 230 V), cos φ (default 1) | `power`, `current`, `voltage`, `powerFactor` |
 | DIN rail | I_L1, I_L2, I_L3 current per phase, P power of the board; ΔI imbalance, ΔI_max permitted imbalance (default 20 A) | `currentL1` … `currentL3`, `power`, `imbalance`, `imbalanceMax` |
 
@@ -166,6 +166,22 @@ derived values are never stored.
 | `sw.load.rating` | warning | I_B ≤ I_n (protective devices, RCD, main switch): the loads draw more than the rating | S9 |
 | `sw.rating.cable` | warning | I_n ≤ I_z (overcurrent protective devices; only when an I_z is known) | S9 |
 | `sw.phase.imbalance` | warning | I_max − I_min ≤ ΔI_max on a rail; the default 20 A is a plausibility value, enter your grid operator's limit | – |
+| `sw.disconnect` | warning | I_k1 at the board ≥ I_a (MCB, RCBO): a fault phase to PE trips the device instantaneously (automatic disconnection, Z_s·I_a ≤ U_0) | S10 |
+| `sw.breaking` | warning | I_k3 at the board ≤ I_cn (only when an I_cn is entered) | S11 |
+| `sw.selectivity` | hint | I_n,up ≥ 1.6·I_n against the overcurrent device upstream (rule of thumb for gG fuses; a hint, not a selectivity study) | S11 |
+| `sw.selectivity.instant` | hint | I_k3 at the board < I_a,up of a circuit breaker upstream (otherwise both trip at once: no current selectivity) | S11 |
+| `sw.rcd.type` | hint | RCD/RCBO type ≥ the type a frequency inverter below needs (three-phase B, single-phase F; order AC < A < F < B) | S11 |
+
+**Short circuit, selectivity and RCD type (2026-11-26).** The main switch carries an estimate of the short-circuit
+currents at the board: Z_T = u_k·U_n²/S_r [S7], Z_L = ρ·l/A [S12], Z_s = Z_T + 2·Z_L (phase and protective conductor of
+the same cross-section) [S10], I_k1 = U_n/(√3·Z_s) and I_k3 = U_n/(√3·(Z_T + Z_L)) [S7, S10]. Impedances are added as
+magnitudes; the upstream grid, reactances and the voltage factor c are neglected and the conductor is at 20 °C, so this is
+an estimate, not a short-circuit calculation (IEC 60909 is not implemented). A measured loop impedance can be entered as
+Z_s directly. Example: 630 kVA, u_k = 4 %, 50 m of 95 mm² copper give Z_s = 28.3 mΩ, I_k1 ≈ 8.2 kA and I_k3 ≈ 12.0 kA.
+Every overcurrent device below the main switch in the feed tree receives I_k1 and I_k3 (values at the board: the circuit's
+own cable lowers I_k further, which is not modelled) and the rated and instantaneous tripping currents of the nearest
+overcurrent device above it (not an RCD, main switch or overload relay). An RCD or RCBO looks at the frequency inverters
+below it. Library items: `sw.switch.main.supply` (main switch with short-circuit keywords), `sw.protection.rcd.f` (type F).
 
 ## Labelling strip
 
@@ -247,8 +263,10 @@ black and white).
 
 ## Limits and next steps
 
-- Calculations are limited to load sums per circuit and phase and the three checks: no voltage drop, cable sizing,
-  selectivity, loop impedance or RCD coverage checks; I_z is entered, not looked up.
+- Calculations are limited to load sums per circuit and phase, a short-circuit estimate at the board and the checks
+  above: no voltage drop, cable sizing, tripping curves (selectivity is a rule-of-thumb hint), loop impedance of the
+  final circuits or RCD coverage checks; I_z is entered, not looked up. Surge protective devices carry no values (their
+  coordination with the back-up fuse is open).
 - The rail-order rule for MCBs is an assumption; draw wires or set "Fed from" for certainty.
 - Cable lengths are typed (m); they are not measured from the drawing.
 - The circuit symbol view is a compact per-device symbol, not a full multi-line circuit diagram; the reports, not the
