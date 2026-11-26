@@ -623,6 +623,10 @@ Datenblatt steht, das wir nicht übernehmen.
 | `fluid.tank.volume` | Hydraulikaggregat | Tankvolumen < 3 × Pumpenförderstrom je Minute (Faustregel) | Hinweis | [S26] |
 | `heat.expansion.size` | Ausdehnungsgefäß | gewähltes Nennvolumen unter dem erforderlichen Volumen | Warnung | [S30] |
 | `heat.separator.flow` | Hydraulische Weiche | Erzeugerstrom kleiner als Verbraucherstrom (Mischvorlauftemperatur sinkt) | Hinweis | [S30] |
+| `heat.pump.head` | Umwälzpumpe | *H* < *H*_erf = ΣΔ*p*(ungünstigster Kreis)/(*ρ*·*g*); nur eingegebene Verluste zählen | Warnung | [S28] |
+| `heat.circuit.balance` | Umwälzpumpe | die kleinste Kreissumme eines Verbrauchers liegt mehr als 25 % unter der größten (eigene Schwelle, nicht aus einer Norm) | Hinweis | [S30] |
+| `fluid.circuit.losses` | Zylinder | *p*_verf = *p*_Versorgung − ΣΔ*p* ≤ 0 | Warnung | [S26] |
+| `fluid.cyl.force.losses` | Zylinder | *F*_erf > *p*_verf·*A*·*η*_hm (unterdrückt, wenn `fluid.cyl.force` anschlägt) | Warnung | [S26] |
 | `optics.light.none` | Detektor, Linse, Pfeil | die Seite hat verfolgte Strahlen, keiner endet am Element | Info | – (Konsistenz) |
 | `optics.light.nosource` | Detektor | nur Strahlen ohne Lichtquelle kommen an (Leistung unbekannt) | Info | – (Konsistenz) |
 | `optics.light.estimate` | Detektor | Leistung lief über schematischen Strahlteiler oder Gitter (gleiche Anteile angenommen) | Hinweis | – (Annahme) |

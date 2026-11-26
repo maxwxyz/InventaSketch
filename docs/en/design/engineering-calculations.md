@@ -603,6 +603,10 @@ in the document's check settings, because the binding limit is in a standard or 
 | `fluid.tank.volume` | hydraulic power unit | tank volume < 3 × pump flow per minute (rule of thumb) | hint | [S26] |
 | `heat.expansion.size` | expansion vessel | chosen nominal volume below the required volume | warning | [S30] |
 | `heat.separator.flow` | hydraulic separator | generator flow smaller than consumer flow (mixed flow temperature drops) | hint | [S30] |
+| `heat.pump.head` | circulator pump | *H* < *H*_req = ΣΔ*p*(index circuit)/(*ρ*·*g*); only entered losses count | warning | [S28] |
+| `heat.circuit.balance` | circulator pump | the smallest consumer circuit sum is more than 25 % below the largest (own threshold, not from a standard) | hint | [S30] |
+| `fluid.circuit.losses` | cylinder | *p*_av = *p*_supply − ΣΔ*p* ≤ 0 | warning | [S26] |
+| `fluid.cyl.force.losses` | cylinder | *F*_req > *p*_av·*A*·*η*_hm (suppressed when `fluid.cyl.force` fires) | warning | [S26] |
 | `optics.light.none` | detector, lens, arrow | the page has traced rays, none ends at the element | info | – (consistency) |
 | `optics.light.nosource` | detector | only rays without a light source arrive (power unknown) | info | – (consistency) |
 | `optics.light.estimate` | detector | power passed a schematic splitter or grating (equal shares assumed) | hint | – (assumption) |
