@@ -1388,6 +1388,10 @@ namespace InventaSketch.Core
             var type = Type(o.Type);
             if (type is null) return Array.Empty<ContextAction>();
             var own = type.Actions(o, ctx).ToList();
+            // "view.<id>" actions of a view the type declares duplicate every host's view control (dropdown, pie View ▸):
+            // left out here (interaction concept section 9 item 4; the type keeps them for its own size rules and tests).
+            var views = new HashSet<string>(type.Views.Select(v => "view." + v.Id), StringComparer.Ordinal);
+            if (views.Count > 1) own = own.Where(a => !(a.Group == "view" && views.Contains(a.Id))).ToList();
             var list = new List<ContextAction>(own);
             list.AddRange(Designations.Actions(this, o, ctx, own));
             if (!own.Any(a => a.Choice?.Key == "line.role")) list.AddRange(LineMedia.Actions(this, o, ctx));
