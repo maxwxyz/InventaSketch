@@ -26,7 +26,9 @@ following common drawing practice; no standard tables or texts are reproduced an
 One element, one item: the switchgear module's room devices give way to these canonical items while both are registered
 (`LibraryItem.Alternative`): socket, switch and light to `elec.house.*`, and the cooker / washing machine connections
 (`sw.house.appliance`, `.washer`) to `bs.elec.appliance`, `bs.elec.appliance.washer`, which therefore also answer to
-"cooker connection", "Herdanschluss", "washing machine connection" and "Waschmaschinenanschluss". The air handling
+"cooker connection", "Herdanschluss", "washing machine connection" and "Waschmaschinenanschluss". Like the room devices
+the appliance outlet carries `room` (**Room …**), `feed` (**Circuit …**, the feeding protective device, e.g. "-F3") and
+`phase`, so the switchgear installation list, circuit plan and the operating current I_B of its breaker include it. The air handling
 sections of the process module (`process.hvac.*`, named "… (AHU)") are not merged with the duct parts here: they are
 sections of an AHU schematic, not parts of a duct run in a building plan.
 
@@ -124,7 +126,7 @@ Sizes are plan / section / schematic at 1:100 (W x H, mm on the page).
 | `bs.cool.split` | Split air conditioner / Split-Klimagerät | 18x8 / 18x22 / 18x8 | floor | waste (condensate of the indoor unit), cable (outdoor unit) | – |
 | `bs.elec.data` | Communication outlet / Kommunikationsanschluss | 4x4 (symbol) | wall | cable | `kind` data/phone/tv |
 | `bs.elec.detector` | Detector / Melder | 4x4 / 4x1.4 / 4x4 (symbol) | ceiling | cable | `kind` smoke/heat/motion |
-| `bs.elec.appliance` | Appliance outlet / Geräteanschlussdose | 4x4 (symbol) | wall | cable | `kind` cooker/washer/dryer/dishwasher/generic |
+| `bs.elec.appliance` | Appliance outlet / Geräteanschlussdose | 4x4 (symbol) | wall | cable | `kind` cooker/washer/dryer/dishwasher/generic; `room`, `feed`, `phase` (from the circuit / L1–L3 / three-phase); load values `power`, `current`, `voltage`, `powerFactor` |
 | `bs.elec.bonding` | Equipotential bonding bar / Potentialausgleichsschiene | 6x2 / 6x2 / 6x3 (symbol) | wall | earth + rail along the bar | – |
 
 Every box type also has `height` and the advanced `scale`. Labels in drawings follow the UI language (HP/WP, DHW/WW,
@@ -214,6 +216,7 @@ Card variables come first. Design notes:
 | Ventilation unit with heat recovery | *V̇*_SUP (`flowSupply`), η_t (`recovery`), θ_SUP (`tempSupply`), Φ_WRG (`heatRecovered`); panel *V̇*_ETA (`flowExtract`), θ_ODA (`tempOutdoor`), θ_ETA (`tempExtract`) | θ_SUP = θ_ODA + η_t·(θ_ETA − θ_ODA); Φ = 0.34 W·h/(m³·K)·*V̇*_SUP·(θ_SUP − θ_ODA) [S30] |
 | Pipe | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); panel DN (`dn`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN when no inner diameter is entered (50 % tolerance, DN is a nominal size) [S30] |
 | Air duct | *V̇*, *d* (`width`, diameter or width), *v*, *A* (`crossSection`); panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`) | *v* = *V̇*/*A*; round: *A* = π·*d*²/4, *d*_h = *d*; with a height *b* the duct is rectangular: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30] |
+| Appliance outlet (electrical load) | *P* (`power`), *I* (`current`, per phase); panel *U* (`voltage`, phase to neutral, default 230 V), cos φ (`powerFactor`, default 1) | single-phase *I* = *P*/(*U*·cos φ); with `phase` three-phase *I* = *P*/(3·*U*·cos φ) [S7] |
 
 The air change rate *n* is a plain number per hour ("1" for 1 h⁻¹): Core has no h⁻¹ unit yet. The room values sit on
 the air terminal that serves the room; a link to an architecture room (area, height) is open.

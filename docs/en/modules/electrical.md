@@ -102,7 +102,7 @@ Value text is edited in the inspector (`value`, `ref`); the context action canno
 | Sources & loads | `ground` (earth/PE/chassis), `source` (DC/AC/current), `battery` (1–4 cells), `lamp`, `motor` and `generator` (`supply` none/DC/AC/3~; 3~ exposes U/V/W), `sensor`, `actuator` (generic actuator block, optional `label`), `solenoid` (two-terminal actuating coil with plunger), `meter` (measuring instrument, `quantity` V/A/W/Ω), `speaker`, `microphone`, `antenna` |
 | Logic & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC rectangular and ANSI distinctive shapes), `flipflop` (D/JK/SR/T), `opamp` (IEC / triangle), `regulator` (three-terminal voltage regulator `IN`/`OUT`/`GND`), `block.ecu` (ECU/IC/MCU block with `pinsLeft`/`pinsRight` and `label`) |
 | Wires, connectors & buses | `wire` (point object, `route` free/orthogonal/45), `junction`, `netlabel` (text = net name), `connector` (plug/socket/pair, 1–12 poles), `terminal`, `testpoint`, `bus` (point object; CAN/LIN/Ethernet/FlexRay/generic label) |
-| House installation | `house.socket` (1–4 outlets, protective contact), `house.switch` (one-way/two-way/push), `house.light`, `house.junction`, `house.board`, `house.cable` (point object with conductor marks), `sld.busbar`, `sld.feeder` (breaker/fuse/none), `sld.meter` |
+| House installation | `house.socket` (1–4 outlets, protective contact), `house.switch` (one-way/two-way/intermediate/push/dimmer), `house.light`, `house.junction`, `house.board`, `house.cable` (point object with conductor marks), `sld.busbar`, `sld.feeder` (breaker/fuse/none), `sld.meter` |
 | Power electronics | `pe.inverter`, `pe.rectifier` (1- or 3-phase AC side), `pe.dcdc`, `pe.dclink`, `pe.gatedriver`, `pe.module` (half bridge with freewheeling diodes) |
 | PCB (illustrative) | `pcb.board`, `pcb.pad` (rect/round/oblong, THT), `pcb.via`, `pcb.track` (point object, `width`, routing free/orthogonal/45), `pcb.copper`, `pcb.footprint` (SOIC-8, QFP-32, SOT-23, 0603, DIP-8; pads are ports), `pcb.hole`, `pcb.silk` |
 
@@ -181,6 +181,14 @@ The house installation symbols (`elec.house.socket`, `.socket.double`, `.switch`
 to them while this module is registered (`LibraryItem.Alternative`, mapping in the switchgear documentation). Their
 items carry the switchgear names as keywords ("Zweifachsteckdose", "Lichtschalter", "Deckenauslass", "light outlet"), so
 search still finds them by those names. The appliance outlet is offered by the building services (`bs.elec.appliance`).
+
+Like the room devices they carry the optional parameters `room` (**Room …**) and `feed` (**Circuit …**, the designation
+of the feeding protective device, e.g. "-F3", shown small at the top left of the plan symbol); socket outlet and luminaire
+also `phase` (from the circuit / L1 / L2 / L3). The switchgear reports (house installation list, circuit plan) and
+circuit values read them: the power or current entered on a socket outlet or luminaire counts in the operating current
+I_B of the breaker named in `feed` (or wired to it), at 230 V when no voltage is entered. The switch kinds match the
+switchgear light switch: one-way, two-way, intermediate (all four levers), push button, dimmer (adjustment wedge; a
+rotary knob in the section view); the kind choice shows each kind's plan symbol as its pictogram.
 
 ## Persistence
 
