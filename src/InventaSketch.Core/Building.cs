@@ -80,8 +80,9 @@ namespace InventaSketch.Core
             var rad = Geo.DegToRad(o.Transform.Rotation);
             Vec2 Turn(Vec2 v) => new(v.X * Math.Cos(rad) - v.Y * Math.Sin(rad), v.X * Math.Sin(rad) + v.Y * Math.Cos(rad));
 
-            // Gears: a meshing gear on each free side; ring gears: a planet inside.
-            var pitch = own.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
+            // Gears: a meshing gear on each free side; ring gears: a planet inside. Pulleys and sprockets do not mesh
+            // (Anchor.NoMesh): they offer their hub, not their pitch circle.
+            var pitch = own.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch && !a.NoMesh);
             var meshDirs = registry.Type(o.Type)!.MeshDirections(o);
             if (pitch is not null)
                 foreach (var (name, d) in Sides.Where(s => meshDirs.Any(m => m.DistanceTo(s.Dir) < 1e-6)))
@@ -93,8 +94,8 @@ namespace InventaSketch.Core
                     if (others.Any(x => Covers(x.Obj, x.Anchors, probe))) continue;
                     list.Add(new BuildPort("mesh." + name, PortKind.Mesh, at, dir));
                 }
-            var ring = own.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.PitchInner);
-            if (ring is not null && pitch is null)
+            var ring = own.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.PitchInner && !a.NoMesh);
+            if (ring is not null && pitch is null && !own.Any(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch))
                 foreach (var (name, d) in Sides)
                 {
                     var dir = Turn(d);
@@ -241,8 +242,9 @@ namespace InventaSketch.Core
             }
             if (port.Kind == PortKind.Mount)
             {
-                // Parts with a directed mount of the same id (tools for a flange): the element's suggestions first, then the
-                // other types of its module (directed mounts are a module's own connection faces, so the search stays small).
+                // Parts with a directed mount that docks on this id (its own id or one it accepts, Anchor.Accepts: tools for a
+                // flange or a tool changer's tool side): the element's suggestions first, then the other types of its module
+                // (directed mounts are a module's own connection faces, so the search stays small).
                 var mountId = port.Id.Substring("mount.".Length);
                 var prefix = o.Type.Split('.')[0] + ".";
                 var firsts = registry.Suggestions(o, 14)
@@ -254,7 +256,7 @@ namespace InventaSketch.Core
                     if (fits.Any(i => i.TypeId == item.TypeId) || registry.Type(item.TypeId) is null) continue;
                     var probe = registry.Create(item, Vec2.Zero);
                     if (probe.IsPointGeometry) continue;
-                    if (!Anchors(registry, doc, probe, lang).Any(a => a.Role == AnchorRole.Mount && a.Id == mountId && a.Direction is not null)) continue;
+                    if (!Anchors(registry, doc, probe, lang).Any(a => a.Role == AnchorRole.Mount && a.DocksOn(mountId) && a.Direction is not null)) continue;
                     if (Place(registry, doc, id, port, item, lang) is not null) fits.Add(item);
                 }
                 return fits;
@@ -312,9 +314,12 @@ namespace InventaSketch.Core
             }
             if (port.Kind == PortKind.Mount)
             {
-                // Turn the part so its mount direction faces the port, then put its mount on the port.
+                // Turn the part so its mount direction faces the port, then put its mount on the port. A mount that declares
+                // the id as accepted (Anchor.Accepts) goes first, then the mount of the same id: an adapter on another
+                // adapter's tool side docks with its input face, not with its own tool side.
                 var mountId = port.Id.Substring("mount.".Length);
-                var mount = Anchors(registry, doc, probe, lang).FirstOrDefault(a => a.Role == AnchorRole.Mount && a.Id == mountId && a.Direction is not null);
+                var mount = Anchors(registry, doc, probe, lang).Where(a => a.Role == AnchorRole.Mount && a.DocksOn(mountId) && a.Direction is not null)
+                    .OrderBy(a => a.Accepts is { } acc && acc.Contains(mountId) ? 0 : 1).FirstOrDefault();
                 if (mount is null) return null;
                 var want = port.Dir * -1;
                 var have = mount.Direction!.Value;
@@ -326,12 +331,13 @@ namespace InventaSketch.Core
                     var k = port.FaceRadius / mount.Radius;
                     turned = turned with { Size = new Size2(turned.Size.W * k, turned.Size.H * k) };
                 }
-                var tm = Anchors(registry, doc, turned, lang).First(a => a.Role == AnchorRole.Mount && a.Id == mountId);
+                var tm = Anchors(registry, doc, turned, lang).First(a => a.Role == AnchorRole.Mount && a.Id == mount.Id && a.DocksOn(mountId) && a.Direction is not null);
                 return Translate(turned, port.At - tm.P);
             }
             probe = probe with { Transform = probe.Transform with { Rotation = sel.Transform.Rotation } };
             var anchors = Anchors(registry, doc, probe, lang);
-            var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
+            // Only a meshing pitch circle docks at a mesh port or a carrier pin (no pulley meshing with a gear).
+            var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch && !a.NoMesh);
             var axis = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Segment && a.Role == AnchorRole.Axis);
             var hub = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub);
             switch (port.Kind)
@@ -456,11 +462,12 @@ namespace InventaSketch.Core
         private static SketchObject? Concentric(Registry registry, SketchDocument doc, SketchObject sel, SketchObject probe, BuildPort port, Lang lang)
         {
             var pa = Anchors(registry, doc, probe, lang);
-            var pPitch = pa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
-            var pRing = pa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.PitchInner);
+            // Sun, ring and planets mesh: pulleys and sprockets (Anchor.NoMesh) take no part.
+            var pPitch = pa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch && !a.NoMesh);
+            var pRing = pa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.PitchInner && !a.NoMesh);
             var pPins = pa.Where(IsPin).ToList();
             var sa = registry.PageAnchors(sel, new RenderContext(doc, lang)).ToList();
-            var selPitch = sa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
+            var selPitch = sa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch && !a.NoMesh);
             var selPin = sa.FirstOrDefault(IsPin);
             var type = registry.Type(probe.Type)!;
             SketchObject sized;
@@ -498,7 +505,7 @@ namespace InventaSketch.Core
             {
                 var xa = registry.PageAnchors(x, ctx).ToList();
                 var h = xa.FirstOrDefault(a => a.Kind == AnchorKind.Point && a.Role == AnchorRole.Hub);
-                var pc = xa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch);
+                var pc = xa.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role == AnchorRole.Pitch && !a.NoMesh);
                 if (h is null || pc is null) continue;
                 if (pins.Any(pin => pin.Kind == AnchorKind.Point ? pin.P.DistanceTo(h.P) <= 0.5 : Geo.ClosestOnSegment(h.P, pin.P, pin.Q).Point.DistanceTo(h.P) <= 0.3))
                     return pc.Radius;
@@ -512,7 +519,7 @@ namespace InventaSketch.Core
             var ctx = new RenderContext(doc, lang);
             double? sun = null, ring = null;
             foreach (var x in doc.Objects.Values.Where(x => x.Id != except.Id && !x.IsPointGeometry && registry.Type(x.Type) is not null))
-                foreach (var a in registry.PageAnchors(x, ctx).Where(a => a.Kind == AnchorKind.Circle && a.P.DistanceTo(centre) <= 0.5))
+                foreach (var a in registry.PageAnchors(x, ctx).Where(a => a.Kind == AnchorKind.Circle && !a.NoMesh && a.P.DistanceTo(centre) <= 0.5))
                 {
                     if (a.Role == AnchorRole.Pitch) sun ??= a.Radius;
                     else if (a.Role == AnchorRole.PitchInner) ring ??= a.Radius;

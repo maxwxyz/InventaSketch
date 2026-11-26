@@ -148,7 +148,12 @@ setzt sie gekoppelt; `Attachments.OnSurface` dockt Beschriftungsenden irgendwo a
 von Leitungen und Rohren (die obere springt; eine Regel für alle springenden Leitungsfamilien – Leitungen von
 Fluidtechnik, Elektrotechnik, Haustechnik, Verfahrenstechnik und Energie springen übereinander, 25.11.2026) und verbindet
 sie an einer Kreuzung. Gerichtete Anker (`Anchor.Directed`) tragen die Außenrichtung einer Anschlussfläche; ein
-gerichteter Mount bietet einen Anbau-Port, an dem ein Teil ihm zugewandt gesetzt wird (Roboterflansch → Werkzeug). `GearTrain` löst die Drehzahlen eines
+gerichteter Mount bietet einen Anbau-Port, an dem ein Teil ihm zugewandt gesetzt wird (Roboterflansch → Werkzeug).
+Mount-Ids bleiben je Element eindeutig; ein Mount nennt die weiteren Ids, an denen er andockt, in `Anchor.Accepts` (der
+`flange` eines Greifers akzeptiert auch den `tool` eines Werkzeugwechslers); `Building` („+“-Einträge und Platzierung) und
+`Snapper` (Vorrang passender Flächen) nutzen das. Teilkreise, die nicht kämmen (Riemenscheiben, Kettenräder,
+Umlenkrollen: `IPitchMesh`), markiert `Registry.PageAnchors` mit `Anchor.NoMesh`; `Snapper` und `Building` bieten mit
+ihnen keinen Eingriff an, eine Riemenscheibe rastet also auf einer Riemennabe ein. `GearTrain` löst die Drehzahlen eines
 Getriebezugs (lineares Gleichungssystem aus Eingriff, Willis, Welle, Stufenrad, Riemen, Kegelradpaar und festen Teilen) und dreht ihn;
 `Assemblies` zerlegt vordefinierte Baugruppen in gekoppelte Einzelteile. `Linkage` erkennt selbst gebaute
 Koppelgetriebe (an Gelenken angedockte Glieder, Gestellpunkte, Schieber, Gleitsteine in Schlitzen anderer Glieder),

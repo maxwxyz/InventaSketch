@@ -209,10 +209,12 @@ kraft-momenten-sensor, kamera, schweißzange, klebedüse, energiekette, …).
   (bottom, directed to the tool) takes the next part. Each offers a "+" (build port `mount.tool`) with grippers, tools,
   sensors and changers, so arm → tool changer → force-torque sensor → gripper is built with three clicks, every part
   turned to the tool axis and scaled to the robot's flange (all flange plates span the same design width). The whole
-  chain follows when a joint turns (each part's directed mount sits on the previous one, facing it). Core matches build
-  ports by mount id only, so a part offers its flange also as `tool` while it is a build-port candidate (not in the
-  document, or probed in a temporary copy: centred on the page origin or with a flange/tool mount of another part well
-  inside its box); placed parts keep unique mount ids, as `Coupling` finds docked parts by id.
+  chain follows when a joint turns (each part's directed mount sits on the previous one, facing it). Since 2026-11-26
+  the compatibility is data: the flange mount of every tool-side part (grippers, tools, sensors, changers) **accepts**
+  the id `tool` (`Anchor.Accepts`), so "+" and snapping dock it on a robot flange (`flange`) and on a tool side (`tool`)
+  alike, while every part keeps unique mount ids (`flange`, plus `tool` for changers and sensors). A changer placed on
+  another changer's tool side docks with its flange (the mount that accepts `tool`), not with its own tool side. When a
+  part is dragged, a fitting face pointing at it (same id or an accepted one) is preferred over other mounts nearby.
 - Tools: port `tcp` at the gripping point / wire tip / tool tip; the TCP marker's port `tcp` snaps there, and so does a
   workpiece's port `grip` (the workpiece counts as held: its mass is part of the robot's load).
 - **Robots on carriers:** floor-standing robots (articulated, cobot, SCARA) have, besides the mount `base`, a directed

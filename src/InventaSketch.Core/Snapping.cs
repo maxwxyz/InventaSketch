@@ -50,11 +50,11 @@ namespace InventaSketch.Core
     /// guides apply, then the grid.
     /// </para>
     /// <list type="table">
-    /// <item><term>mesh (0)</term><description>Pitch circle touching a Pitch circle, or inside a PitchInner circle of clearly larger radius.</description></item>
+    /// <item><term>mesh (0)</term><description>Pitch circle touching a Pitch circle, or inside a PitchInner circle of clearly larger radius; never with a pulley or sprocket (<see cref="Anchor.NoMesh"/>).</description></item>
     /// <item><term>axis (0.1 / 0.2)</term><description>Hub point onto an Axis segment, Axis onto a Hub, collinear Axis segments (0.2).</description></item>
     /// <item><term>concentric (0.15)</term><description>Pitch/PitchInner/Hub centre onto a circle centre or Hub (also a rotor in a stator: see <see cref="InternalMeshMaxRatio"/>).</description></item>
     /// <item><term>port (0.15)</term><description>Port onto Port/End; End onto Port.</description></item>
-    /// <item><term>mount (0.15)</term><description>Mount point onto Mount point.</description></item>
+    /// <item><term>mount (0.15 / 0.14)</term><description>Mount point onto Mount point; directed faces that fit each other (<see cref="Anchor.Accepts"/>) 0.14.</description></item>
     /// <item><term>rail (0.15 / 0.45)</term><description>End/Port onto a Rail segment: its end points like ports (0.15), anywhere in between (0.45).</description></item>
     /// <item><term>point (0.3 / 0.4)</term><description>Generic point onto point; centre onto centre is preferred (0.3).</description></item>
     /// </list>
@@ -100,6 +100,14 @@ namespace InventaSketch.Core
         private static bool IsDocking(Anchor m) => m.Kind == AnchorKind.Point && m.Role is AnchorRole.End or AnchorRole.Port;
 
         /// <summary>
+        /// Two directed mounts with ids that dock on each other (<see cref="Anchor.DocksOn"/> either way) and face each other.
+        /// Mounts without an id or a direction never count, so only directed connection faces get the preference.
+        /// </summary>
+        private static bool Fits(Anchor m, Anchor t)
+            => m.Id is not null && t.Id is not null && m.Direction is { } dm && t.Direction is { } dt && dm.Dot(dt) < -0.5
+               && (m.DocksOn(t.Id) || t.DocksOn(m.Id));
+
+        /// <summary>
         /// Snaps a move. <paramref name="moving"/> are the anchors of the moving selection at the drag start;
         /// <paramref name="delta"/> is the raw pointer delta. Returns the corrected delta.
         /// </summary>
@@ -124,7 +132,9 @@ namespace InventaSketch.Core
                     foreach (var t in targets)
                     {
                         // Gear meshing: pitch circles touch (external) or a clearly smaller planet inside a ring (internal).
-                        if (m.Kind == AnchorKind.Circle && m.Role == AnchorRole.Pitch && t.Kind == AnchorKind.Circle && t.Role is AnchorRole.Pitch or AnchorRole.PitchInner)
+                        // Pulleys and sprockets do not mesh (Anchor.NoMesh): they snap concentric onto hubs instead.
+                        if (m.Kind == AnchorKind.Circle && m.Role == AnchorRole.Pitch && t.Kind == AnchorKind.Circle && t.Role is AnchorRole.Pitch or AnchorRole.PitchInner
+                            && !m.NoMesh && !t.NoMesh)
                         {
                             var external = t.Role == AnchorRole.Pitch;
                             // Nearly equal radii inside a ring are a fit (rotor in stator), handled by the concentric rule.
@@ -171,9 +181,10 @@ namespace InventaSketch.Core
                         // Ports (electrical pins, diagram connection points): Port onto Port/End, End onto Port.
                         if (t.Kind == AnchorKind.Point && (m.Role == AnchorRole.Port && t.Role is AnchorRole.Port or AnchorRole.End || m.Role == AnchorRole.End && t.Role == AnchorRole.Port))
                             Consider(t.P - m.P, SemanticTier, PortWeight, "port", t, PointGuide(t.P));
-                        // Mounts (sensor onto vehicle, wall end onto wall end).
+                        // Mounts (sensor onto vehicle, wall end onto wall end). Directed faces that fit each other (same id or
+                        // an accepted one, facing each other: a gripper's flange onto a tool changer's tool side) go first.
                         if (m.Role == AnchorRole.Mount && t.Kind == AnchorKind.Point && t.Role == AnchorRole.Mount)
-                            Consider(t.P - m.P, SemanticTier, MountWeight, "mount", t, PointGuide(t.P));
+                            Consider(t.P - m.P, SemanticTier, Fits(m, t) ? MountWeight - 0.01 : MountWeight, "mount", t, PointGuide(t.P));
                         // Rails: end points like ports, anywhere in between with a lower priority.
                         if (IsDocking(m) && t.Kind == AnchorKind.Segment && t.Role == AnchorRole.Rail)
                         {

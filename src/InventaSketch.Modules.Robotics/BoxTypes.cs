@@ -82,12 +82,14 @@ namespace InventaSketch.Modules.Robotics
         public bool HasMass { get; init; }
 
         /// <summary>
-        /// The element docks at a robot flange with its directed mount "flange" (tools, sensors, tool changers). It also
-        /// docks with "+" on the tool-side mount "tool" of a tool changer or sensor: while it is a candidate of a build port
-        /// (<see cref="IsCandidate"/>) its flange mount is offered under the id "tool" as well. Placed parts keep unique
-        /// mount ids, as <see cref="Coupling"/> finds docked parts by id and build ports are named after them.
+        /// The element docks at a robot flange with its directed mount "flange" (tools, sensors, tool changers). That mount
+        /// also accepts the tool-side mount "tool" of a tool changer or sensor (<see cref="Anchor.Accepts"/>), so "+" and
+        /// snapping dock it there as well; mount ids stay unique per object.
         /// </summary>
         public bool ToolSide { get; init; }
+
+        /// <summary>The mount ids a tool-side part's flange accepts besides its own (<see cref="Anchor.Accepts"/>).</summary>
+        private static readonly IReadOnlyList<string> AcceptsToolSide = new[] { RoboValues.ToolMount };
 
         public IReadOnlyList<VarDef> Variables => HasMass ? RoboValues.MassVars : Array.Empty<VarDef>();
         public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
@@ -103,57 +105,15 @@ namespace InventaSketch.Modules.Robotics
             return pad.Items;
         }
 
-        /// <summary>The view's own anchors (local coordinates), without the tool-side alias.</summary>
-        public List<Anchor> OwnAnchors(SketchObject o, Lang lang)
-        {
-            var spec = Spec(o);
-            return spec.Anchors is null ? new List<Anchor>() : spec.Anchors(PadFor(o, lang), o).ToList();
-        }
-
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
         {
-            var list = OwnAnchors(o, ctx.Lang);
-            if (ToolSide && IsCandidate(o, ctx))
-            {
-                var i = list.FindIndex(a => a.Role == AnchorRole.Mount && a.Id == "flange" && a.Direction is not null);
-                if (i >= 0) list.Insert(i + 1, list[i] with { Id = RoboValues.ToolMount });
-            }
-            return list;
-        }
-
-        /// <summary>
-        /// True while the part is a candidate for a build port: not in the document, or as <see cref="Building"/> probes it
-        /// in a temporary copy of the document – centred on the page origin (the item filter) or with a robot flange or a
-        /// tool-side mount of another part well inside its box (centred on the port). A part docked on such a mount has it
-        /// on its box edge and a free part has none, so placed parts keep unique mount ids. (Core matches build ports by
-        /// mount id only; ToolChainTests fail if its probing changes.)
-        /// </summary>
-        private static bool IsCandidate(SketchObject o, RenderContext ctx)
-        {
-            if (ctx.Doc.PageOf(o.Id) is not { } page) return true;
-            if (o.Transform.X == 0 && o.Transform.Y == 0) return true;
-            if (ctx.Registry is not { } reg) return false;
-            var reach = Math.Sqrt(o.Size.W * o.Size.W + o.Size.H * o.Size.H) / 2;
-            foreach (var x in ctx.Doc.ObjectsOn(page))
-            {
-                if (x.Id == o.Id || x.IsPointGeometry) continue;
-                var near = reach + Math.Sqrt(x.Size.W * x.Size.W + x.Size.H * x.Size.H) / 2;
-                if (new Vec2(x.Transform.X - o.Transform.X, x.Transform.Y - o.Transform.Y).Length > near) continue;
-                IEnumerable<Anchor> local = reg.Type(x.Type) switch
-                {
-                    RoboBoxType rb => rb.OwnAnchors(x, ctx.Lang),
-                    RobotArmType arm => arm.Anchors(x, ctx),
-                    _ => Array.Empty<Anchor>(),
-                };
-                var m = x.Matrix();
-                foreach (var a in local)
-                {
-                    if (a.Kind != AnchorKind.Point || a.Role != AnchorRole.Mount || a.Direction is null || a.Id is not ("flange" or RoboValues.ToolMount)) continue;
-                    var (u, v) = o.ToBox(m.Apply(a.P));
-                    if (Math.Abs(u) < 0.4 && Math.Abs(v) < 0.4) return true;
-                }
-            }
-            return false;
+            var spec = Spec(o);
+            if (spec.Anchors is null) return Array.Empty<Anchor>();
+            var list = spec.Anchors(PadFor(o, ctx.Lang), o);
+            // Tool-side parts: the directed flange also docks on a tool changer's or sensor's tool side.
+            return ToolSide
+                ? list.Select(a => a.Role == AnchorRole.Mount && a.Id == "flange" &&a.Direction is not null ? a with { Accepts = AcceptsToolSide } : a)
+                : list;
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang) => Extra?.Invoke(o) ?? Array.Empty<ContextAction>();
