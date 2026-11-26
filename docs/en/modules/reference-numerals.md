@@ -47,7 +47,14 @@ findings.
 
 API (`ReferenceNumerals`, `PartNumbering`, `ExplodedViews`): `NextFree`, `Insert`, `Rename`, `Renumber`, `Apply`, `Sync`,
 `List`, `Groups`, `Export`, `Check`, `SplitSuffix`, `WithSuffix`, `SetSuffix`, `NumberedParts`, `PartKind`,
-`PartsInReadingOrder`, `NumberParts`, `AddAxis`, `NearestPart`.
+`PartsInReadingOrder`, `NumberParts`, `PageCommands`, `AddAxis`, `NearestPart`.
+
+**Number all parts without a selected numeral** (round 4, 2026-11-26): the same menu is a command of the whole page
+(`PartNumbering.PageCommands`, engine `pageActions` / `applyPageAction`, same ids `patent.numerals.auto=tens` /
+`=ones`). It is offered only on a page with parts and greyed out once every part has a numeral. Hosts: COM add-in
+*More ▸ Number all parts ▸* (the slide; new numerals continue after those of the other slides), web add-in a top bar
+button with the renumber pictogram while a part lacks a numeral, LibreOffice dropdown *Number all parts ▸* in the
+panel *Drawing, calculator and code* (see the host documents).
 
 ## Reference list
 

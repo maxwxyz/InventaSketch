@@ -168,7 +168,8 @@ The version comes from `Directory.Build.props`. The package script needs a .NET 
   `importCode[?path=<file>|&text=<code>]`; since 2026-11-26 (drawing-wide settings): `colorBy?mode=medium|off`,
   `legend`, `sameName?key=<designation>&page=<n>`, `muteCheck?key=<check id>[&mute=0]` (`mute=0` without a key
   unmutes all), `unitPref?kind=<quantity kind>&unit=<unit>`, `calcSheet[?mode=csv|markdown|latex|table&path=<file>&
-  copy=1]` (dialog without arguments, logged when headless); `panel?…&enter=1` presses Enter in a field, `control=choice:<label or
+  copy=1]` (dialog without arguments, logged when headless); since round 4 `pageAction?id=<page command id>[&label=<l>]`
+  (a command of the whole page, e.g. `patent.numerals.auto=tens`); `panel?…&enter=1` presses Enter in a field, `control=choice:<label or
   key>` names a choice's dropdown. The integration and UI smoke tests use these commands.
 - **Recent items** (last 12 inserted library items, per user) are kept in `libreoffice-settings.json` next to the log
   and rank higher in the search.
@@ -413,6 +414,20 @@ check settings, preferred units, calculation sheet), with the words of the COM a
   of rows and sources, *Copy* (system clipboard, plain text), *Save …* (LibreOffice's save dialog with the format's
   extension; CSV with a byte order mark) and *Insert as table* (engine `insertCalcTable`: an annotation table beside
   the elements, one undo step "InventaSketch: Calculation sheet", selected).
+
+## Page commands round (LibreOffice, 2026-11-26, round 4)
+
+- **Number all parts without a selection.** The panel *Drawing, calculator and code* shows the dropdown *Number all
+  parts ▸* (rows *10, 20, 30 …* / *1, 2, 3 …*) below *Calculation sheet …* while the slide/page has a part without a
+  reference numeral; on a page without parts, or once every part is numbered, there is no dropdown (context-only). It
+  comes from the engine's page commands (`pageActions`, a page session without a selected unit; `choices.page_choices`
+  keeps the commands that can do something now). Choosing a row runs command `pageAction?id=<id>&label=<l>` (engine
+  `applyPageAction`): the parts that get a numeral are redrawn, the new numerals drawn as new units, one undo step
+  ("InventaSketch: Number all parts: 10, 20, 30 …"); the panel then asks again. The menu is the one a selected numeral
+  offers (`patent.numerals.auto=tens` / `=ones`). Numbering covers the current page: numerals of other pages are not
+  known to the page session, so a second page starts again at 10 (the COM add-in continues across slides).
+- **Pictograms.** LibreOffice has no icon set: the new option pictograms of the travel modes and phases (round 4) appear
+  as their option names in the dropdowns.
 
 ## Verified features
 

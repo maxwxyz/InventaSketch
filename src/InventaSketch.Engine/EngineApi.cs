@@ -134,6 +134,7 @@ namespace InventaSketch.Engine
             RegisterValueMethods();
             RegisterWebMethods();
             RegisterLoMethods();
+            RegisterPageMethods();
             _methods["setValueLevel"] = SetValueLevelCore;
             _methods["insertHandles"] = InsertHandlesCore;
             _methods["applyInsertHandle"] = ApplyInsertHandleCore;

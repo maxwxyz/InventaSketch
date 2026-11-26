@@ -122,7 +122,9 @@ switch-disconnector 63 A", "Frequency inverter 0.75 kW, 3~", "PLC digital input 
 - **One position more / fewer** (plug-in bridge); **One module more / fewer** (comb busbar, blanking plate), resizing
   the box with its left edge kept.
 - **Phase** (dropdown): L1/L2/L3 on single-pole circuit breakers and RCBOs 1+N (not offered for three-phase devices);
-  From the circuit / L1 / L2 / L3 / Three-phase on room devices.
+  From the circuit / L1 / L2 / L3 / Three-phase on room devices. Every option has a pictogram (`IconIds.ForPhase`):
+  three busbar stubs of which the chosen one runs on and down to an arrow (`phase-l1`, `phase-l2`, `phase-l3`), all
+  three for three-phase (`phase-3`), the circuit-breaker symbol for "From the circuit" (`phase-circuit`).
 - Room devices: **Room …** and **Circuit …** (the designation of the feeding device, e.g. "-F3", shown at the symbol);
   a phase chosen for the room device itself is shown at its top right ("L2", "3~").
 
@@ -251,6 +253,5 @@ black and white).
 - Cable lengths are typed (m); they are not measured from the drawing.
 - The circuit symbol view is a compact per-device symbol, not a full multi-line circuit diagram; the reports, not the
   symbols, carry the circuit structure.
-- The phase dropdowns show text labels: option pictograms for L1/L2/L3 would need new icon ids in Core and the hosts.
 - Possible next steps: the phase of a single-pole device from the comb busbar tooth it sits under, phase and load
   columns in the circuit plan, link from room devices on floor-plan slides to the board ("→ -F3 slide 4").

@@ -63,9 +63,10 @@ zeichnet „s = 4,72 km, v = 50 km/h, t = 5,66 min“ unter die Route.
   die Länge).
 - Die Route hängt von Nachbarn ab (sie liest die Maßstabsleiste); die Maßstabsleiste meldet die Routen ihrer Seite, die
   ihre Werte zeigen, als abhängige Objekte (`HasDependents`), sodass eine geänderte Leiste deren Beschriftung neu zeichnet.
-- Das Verkehrsmittel ist eine Auswahl in der schwebenden Leiste. Options-Piktogramme (Fußgänger, Fahrrad, Auto) brauchen
-  neue Ids im gemeinsamen `IconIds`-Vokabular (Core) und Zeichnungen in den Hosts; bis dahin werden die Optionen als Text
-  gezeigt.
+- Das Verkehrsmittel ist eine Auswahl in der schwebenden Leiste, ein Dropdown mit Options-Piktogrammen aus dem
+  gemeinsamen `IconIds`-Vokabular: `travel-walk` (Fußgänger), `travel-bike` (Fahrrad), `travel-car` (Auto); das
+  Verkehrsmittel der Entfernungsangabe nutzt zusätzlich `travel-transit` (Front eines Busses oder einer Straßenbahn) und
+  `travel-none` (Kreis mit Schrägstrich). Die COM- und Web-Add-ins zeichnen sie; LibreOffice zeigt die Optionsnamen.
 
 ## Stationen, Brücken, Tunnel und Höhenlinien (26.11.2026)
 

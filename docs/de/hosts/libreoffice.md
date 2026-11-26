@@ -182,7 +182,8 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   Einstellungen): `colorBy?mode=medium|off`, `legend`, `sameName?key=<Bezeichnung>&page=<n>`,
   `muteCheck?key=<Prüfungs-Id>[&mute=0]` (`mute=0` ohne Schlüssel schaltet alle wieder ein),
   `unitPref?kind=<Größenart>&unit=<Einheit>`, `calcSheet[?mode=csv|markdown|latex|table&path=<Datei>&copy=1]` (Dialog
-  ohne Argumente, ohne Oberfläche protokolliert); `panel?…&enter=1` drückt Eingabe in
+  ohne Argumente, ohne Oberfläche protokolliert); seit Runde 4 `pageAction?id=<Seitenbefehls-Id>[&label=<l>]` (ein
+  Befehl der ganzen Seite, z. B. `patent.numerals.auto=tens`); `panel?…&enter=1` drückt Eingabe in
   einem Feld, `control=choice:<Beschriftung oder Schlüssel>` benennt die Klappliste einer Auswahl. Integrations- und
   UI-Smoke-Test benutzen diese Befehle.
 - **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in
@@ -455,6 +456,22 @@ Medium, Namen, die zusammengehören) und [engineering-calculations.md](../design
   (Speicherdialog von LibreOffice mit der Endung des Formats; CSV mit Byte-Order-Mark) und *Als Tabelle einfügen*
   (Engine `insertCalcTable`: eine Beschriftungstabelle neben den Elementen, ein Rückgängig-Schritt „InventaSketch:
   Rechenblatt“, ausgewählt).
+
+## Runde der Seitenbefehle (LibreOffice, 26.11.2026, Runde 4)
+
+- **Alle Teile nummerieren ohne Auswahl.** Der Bereich *Zeichnung, Rechner und Code* zeigt unter *Rechenblatt …* die
+  Klappliste *Alle Teile nummerieren ▸* (Zeilen *10, 20, 30 …* / *1, 2, 3 …*), solange die Folie/Seite ein Teil ohne
+  Bezugszeichen hat; auf einer Seite ohne Teile oder wenn jedes Teil nummeriert ist, gibt es keine Klappliste (nur im
+  passenden Kontext). Sie stammt aus den Seitenbefehlen der Engine (`pageActions`, eine Seitensitzung ohne ausgewählte
+  Einheit; `choices.page_choices` behält die Befehle, die gerade etwas bewirken). Eine Zeile führt den Befehl
+  `pageAction?id=<id>&label=<l>` aus (Engine `applyPageAction`): Die Teile, die ein Bezugszeichen erhalten, werden neu
+  gezeichnet, die neuen Bezugszeichen als neue Einheiten, ein Rückgängig-Schritt („InventaSketch: Alle Teile
+  nummerieren: 10, 20, 30 …“); danach fragt der Bereich erneut. Das Menü ist dasselbe, das ein ausgewähltes
+  Bezugszeichen anbietet (`patent.numerals.auto=tens` / `=ones`). Nummeriert wird die aktuelle Seite: Die Bezugszeichen
+  anderer Seiten kennt die Seitensitzung nicht, eine zweite Seite beginnt also wieder bei 10 (das COM-Add-in setzt über
+  Folien hinweg fort).
+- **Piktogramme.** LibreOffice hat keinen Piktogrammsatz: Die neuen Options-Piktogramme der Verkehrsmittel und Phasen
+  (Runde 4) erscheinen in den Klapplisten als Optionsnamen.
 
 ## Verifizierte Funktionen
 

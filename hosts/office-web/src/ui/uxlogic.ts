@@ -115,3 +115,24 @@ export function importKind(name: string, text: string): "vector" | "geo" | "tabl
   return "table";
 }
 
+/** One menu of page commands ("Number all parts ▸"): its options and whether any of them can do something now. */
+export interface PageMenu { key: string; label: string; icon: string; enabled: boolean; options: ActionInfo[] }
+
+/**
+ * The engine's page commands (`pageActions`, no selection needed) as menus, one per choice in engine order (a command
+ * without a choice is a menu of its own). The top bar shows a menu button only for an `enabled` menu (context-only: on a
+ * page without parts, or once every part has a numeral, "Number all parts" can do nothing, so there is no button).
+ */
+export function pageMenus(actions: ActionInfo[]): PageMenu[] {
+  const menus: PageMenu[] = [];
+  for (const a of actions) {
+    const key = a.choice ?? a.id;
+    let m = menus.find((x) => x.key === key);
+    // The menu button's pictogram comes from the engine (choiceBarIcon), else the generic "more".
+    if (!m) { m = { key, label: a.choiceLabel ?? a.label, icon: a.choiceBarIcon ?? "more", enabled: false, options: [] }; menus.push(m); }
+    m.options.push(a);
+    m.enabled ||= a.enabled;
+  }
+  return menus;
+}
+

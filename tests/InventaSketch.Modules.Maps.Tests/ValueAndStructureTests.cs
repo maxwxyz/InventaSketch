@@ -148,6 +148,11 @@ namespace InventaSketch.Modules.Maps.Tests
             var route = Route(r);
             var actions = r.Type("map.route")!.Actions(route, Lang.En).Where(a => a.Id.StartsWith("map.route.mode", StringComparison.Ordinal)).ToList();
             Assert.Equal(3, actions.Count);
+            // Every travel mode has its own pictogram (dropdown with option pictograms).
+            Assert.Equal(new[] { IconIds.TravelWalk, IconIds.TravelBike, IconIds.TravelCar }, actions.Select(a => a.Icon));
+            Assert.True(RouteValues.ModeDef.HasOptionIcons);
+            var callout = r.Type("map.callout")!.Actions(Fx.Item(r, "map.callout.walk", Vec2.Zero), Lang.En).Where(a => a.Id.StartsWith("map.callout.mode=", StringComparison.Ordinal)).ToList();
+            Assert.Equal(new[] { IconIds.TravelCar, IconIds.TravelWalk, IconIds.TravelBike, IconIds.TravelTransit, IconIds.TravelNone }, callout.Select(a => a.Icon));
             var walk = actions.Single(a => a.Id.EndsWith("walk", StringComparison.Ordinal)).Apply(route);
             Assert.Equal("walk", walk.Str("mode", ""));
             Assert.Equal("walk", Fx.Item(r, "map.route.dotted", Vec2.Zero).Str("mode", ""));

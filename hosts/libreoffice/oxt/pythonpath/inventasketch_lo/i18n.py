@@ -311,6 +311,10 @@ TEXTS = {
                  "LaTeX to copy or save, or as a table on the slide/page.",
                  "Alle Werte der Auswahl (sonst der Folie/Seite) mit Formel, Herkunft und Quelle: CSV, Markdown oder "
                  "LaTeX zum Kopieren oder Speichern, oder als Tabelle auf der Folie/Seite."),
+    "pageMenuTip": ("Number all parts: every part of this slide/page without a reference numeral gets one, with a lead "
+                    "line, in reading order (10, 20, 30 … or 1, 2, 3 …); one undo step.",
+                    "Alle Teile nummerieren: jedes Teil dieser Folie/Seite ohne Bezugszeichen erhält eines, mit "
+                    "Bezugslinie, in Leserichtung (10, 20, 30 … oder 1, 2, 3 …); ein Rückgängig-Schritt."),
     "sheetFormat": ("Format", "Format"),
     "sheet_csv": ("CSV (spreadsheet)", "CSV (Tabellenkalkulation)"),
     "sheet_markdown": ("Markdown", "Markdown"),

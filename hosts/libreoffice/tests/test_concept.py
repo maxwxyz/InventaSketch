@@ -105,6 +105,23 @@ class Choices(unittest.TestCase):
         self.assertEqual(len(paged[-1][2]), 14)
         self.assertEqual(paged[-1][2][-1][2][-1][1], "29")
 
+    def test_page_commands_are_a_menu_only_while_they_can_do_something(self):
+        page = [act("patent.numerals.auto=tens", "10, 20, 30 …", "patent.numerals.auto", menu=True, kind="page",
+                    choice_label="Number all parts"),
+                act("patent.numerals.auto=ones", "1, 2, 3 …", "patent.numerals.auto", menu=True, kind="page",
+                    choice_label="Number all parts")]
+        found = choices.page_choices(page)
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["key"], choices.PAGE + "patent.numerals.auto")
+        self.assertEqual(choices.list_rows(found[0]), (["Number all parts ▸", "10, 20, 30 …", "1, 2, 3 …"], 0))
+        self.assertEqual(choices.pick(found[0], 2)[1]["id"], "patent.numerals.auto=ones")
+        self.assertIsNone(choices.pick(found[0], 0))
+        # Every part numbered (greyed out) or no parts: no menu.
+        for a in page:
+            a["enabled"] = False
+        self.assertEqual(choices.page_choices(page), [])
+        self.assertEqual(choices.page_choices([]), [])
+
 
 class Places(unittest.TestCase):
     def test_the_eight_places_in_the_order_of_the_pie(self):
@@ -344,6 +361,25 @@ class EngineAnswers(unittest.TestCase):
                 "params": self.call("inspector", session, ids=[oid], lang=lang).get("params") or [],
                 "mainText": obj.get("mainText"), "hasValues": obj.get("hasValues"), "views": [], "effect": {},
                 "dof": {}, "motion": {}, "ports": [], "connect": []}
+
+    def test_number_all_parts_is_a_page_command_without_a_selection(self):
+        s = self.session("de")
+        try:
+            self.assertEqual(choices.page_choices(self.call("pageActions", s)), [])
+            gear = next(i["id"] for i in self.items if i["typeId"] == "mech.gear.spur")
+            self.insert(s, gear, 60, 60)
+            self.insert(s, gear, 200, 60)
+            self.call("select", s, ids=[])
+            found = choices.page_choices(self.call("pageActions", s))
+            self.assertEqual(len(found), 1)
+            self.assertEqual(choices.menu_title(found[0]), "Alle Teile nummerieren ▸")
+            option = choices.pick(found[0], 1)[1]
+            state = self.call("applyPageAction", s, action=option["id"])
+            self.assertTrue(any(o["type"] == "patent.numeral" for o in state["objects"]))
+            # Every part has a numeral now: the panel offers no menu any more.
+            self.assertEqual(choices.page_choices(self.call("pageActions", s)), [])
+        finally:
+            self.call("closeSession", s)
 
     def test_every_choice_of_sampled_elements_is_a_proper_dropdown(self):
         s = self.session()

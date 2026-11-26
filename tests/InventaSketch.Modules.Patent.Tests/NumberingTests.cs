@@ -154,6 +154,34 @@ namespace InventaSketch.Modules.Patent.Tests
             var numeral = history.Current.Objects.Values.First(o => o.Type == PatentIds.Numeral);
             Assert.False(r.Actions(numeral, new RenderContext(history.Current)).Single(a => a.Id == PartNumbering.ActionKey + "=ones").IsEnabled);
         }
+
+        /// <summary>
+        /// "Number all parts" without a selected element: page commands with the numeral's ids and menu, only on a page with
+        /// parts, greyed out once every part has a numeral; running one numbers like the numeral's menu.
+        /// </summary>
+        [Fact]
+        public void PageCommandsNumberWithoutASelection()
+        {
+            var r = Parts.Reg();
+            var empty = SketchDocument.Create(PageSizes.A4Portrait);
+            Assert.Empty(PartNumbering.PageCommands(r, empty, empty.Pages[0]));
+
+            var doc = Parts.Rows(r, out _);
+            var page = doc.Pages[0];
+            var commands = PartNumbering.PageCommands(r, doc, page);
+            Assert.Equal(new[] { PartNumbering.ActionKey + "=tens", PartNumbering.ActionKey + "=ones" }, commands.Select(c => c.Id));
+            Assert.All(commands, c => Assert.True(c.IsEnabled));
+            Assert.All(commands, c => Assert.Same(PartNumbering.Menu, c.Choice));
+            Assert.Equal("1, 2, 3 …", commands[1].Label.De);
+
+            var ones = commands[1].Run(r, doc, page.Id, Lang.De);
+            Assert.Equal(new[] { "1", "2", "3", "4", "5" },
+                ones.Objects.Values.Where(o => o.Type == PatentIds.Numeral).Select(o => ReferenceNumerals.NumeralOf(o)).OrderBy(n => int.Parse(n!)));
+
+            var after = PartNumbering.PageCommands(r, ones, ones.Pages[0]);
+            Assert.Equal(2, after.Count);
+            Assert.All(after, c => Assert.False(c.IsEnabled));
+        }
     }
 
     public class NumeralVariantTests

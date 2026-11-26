@@ -678,8 +678,8 @@ namespace InventaSketch.AddIn
             // The InventaSketch logo marks the menu (maintainer 2026-11-25); "More" (was "Extras"): line weights, accent colour,
             // modules, the context bar, the check and exchange commands (the former Review group) and the tools.
             sb.Append("<menu id=\"IskToolsMenu\" showLabel=\"false\" label=\"").Append(L(T("More", "Mehr"))).Append("\" screentip=\"").Append(X(T("More", "Mehr")))
-              .Append("\" supertip=\"").Append(X(T("Line weights, accent colour, modules, check and exchange (compatibility, compare, import, export, clean slides), tools and info.",
-                  "Linienstärken, Akzentfarbe, Module, Prüfen und Austausch (Kompatibilität, Vergleichen, Import, Export, Folien bereinigen), Werkzeuge und Info.")))
+              .Append("\" supertip=\"").Append(X(T("Line weights, accent colour, modules, check and exchange (compatibility, number all parts, compare, import, export, clean slides), tools and info.",
+                  "Linienstärken, Akzentfarbe, Module, Prüfen und Austausch (Kompatibilität, alle Teile nummerieren, Vergleichen, Import, Export, Folien bereinigen), Werkzeuge und Info.")))
               .Append("\" getImage=\"GetLogoSmallImage\" itemSize=\"normal\">");
             AppendLineGroupMenu(sb);
             AppendAccentMenu(sb);
@@ -736,6 +736,11 @@ namespace InventaSketch.AddIn
             sb.Append("<button id=\"IskMenuPatent\" label=\"").Append(L(T("Compatibility check \u2026", "Kompatibilit\u00e4t pr\u00fcfen \u2026"))).Append("\" getImage=\"GetPaintedImage\" onAction=\"OnToolsMenu\" supertip=\"")
               .Append(X(T("Checks the drawings of every slide against the formal drawing rules of DPMA, EPO, PCT or USPTO, with sources; double-click a finding to go to it. A drafting aid, not legal advice.",
                           "Pr\u00fcft die Zeichnungen aller Folien gegen die formalen Zeichnungsvorschriften von DPMA, EPA, PCT oder USPTO, mit Fundstellen; Doppelklick auf einen Befund springt dorthin. Eine Zeichenhilfe, keine Rechtsberatung."))).Append("\" />");
+            // "Number all parts ▸" of the slide without a selected numeral (engine page command, round 4): what the check reports
+            // as "part without a reference numeral", fixed for the whole slide.
+            sb.Append("<dynamicMenu id=\"IskMenuNumberParts\" label=\"").Append(L(T("Number all parts", "Alle Teile nummerieren"))).Append("\" getImage=\"GetPaintedImage\" getContent=\"GetNumberPartsMenu\" invalidateContentOnDrop=\"true\" supertip=\"")
+              .Append(X(T("Gives every part of this slide that has no reference numeral one, with a lead line, in reading order (rows top to bottom, left to right): 10, 20, 30 … or 1, 2, 3 …, after the numerals of the other slides. One undo step.",
+                          "Gibt jedem Teil dieser Folie ohne Bezugszeichen eines, mit Bezugslinie, in Leserichtung (Zeilen von oben nach unten, von links nach rechts): 10, 20, 30 … oder 1, 2, 3 …, nach den Bezugszeichen der anderen Folien. Ein Rückgängig-Schritt."))).Append("\" />");
             Button("IskMenuCompare", T("Compare", "Vergleichen"), "ReviewCompareTwoVersions", true,
                 T("Marks what differs from the previous slide (variants: duplicate the slide, change the copy): added green, changed orange, removed dashed grey. Click again to remove the marks.",
                   "Markiert, was sich von der vorherigen Folie unterscheidet (Varianten: Folie duplizieren, Kopie \u00e4ndern): neu gr\u00fcn, ge\u00e4ndert orange, entfernt grau gestrichelt. Erneut klicken entfernt die Markierungen."));
@@ -876,6 +881,45 @@ namespace InventaSketch.AddIn
             if (units.Count > 0) return (units, true);
             foreach (PowerPoint.Shape s in slide.Shapes) Collect(s);
             return (units, false);
+        }
+
+        /// <summary>
+        /// "Number all parts ▸": the engine's page commands of the current slide (built when the menu opens): "10, 20, 30 …" and
+        /// "1, 2, 3 …", greyed out with a note when every part already has a numeral; a note alone on a slide without parts.
+        /// </summary>
+        public string GetNumberPartsMenu(Office.IRibbonControl control)
+        {
+            var sb = new StringBuilder("<menu xmlns=\"http://schemas.microsoft.com/office/2009/07/customui\">");
+            try
+            {
+                var commands = _registry is not null && _app is not null && CurrentSlide(_app) is PowerPoint.Slide slide
+                    ? SlideNumbering.Commands(_registry, slide) : Array.Empty<InventaSketch.Modules.Patent.PageCommand>();
+                if (commands.Count == 0)
+                    sb.Append("<button id=\"IskNumberPartsNone\" label=\"").Append(L(T("No parts on this slide", "Auf dieser Folie gibt es keine Teile"))).Append("\" enabled=\"false\" />");
+                else if (!commands.Any(c => c.IsEnabled))
+                    sb.Append("<button id=\"IskNumberPartsDone\" label=\"").Append(L(T("Every part on this slide has a numeral", "Jedes Teil dieser Folie hat ein Bezugszeichen"))).Append("\" enabled=\"false\" />");
+                var i = 0;
+                foreach (var c in commands)
+                    sb.Append("<button id=\"IskNumberParts_").Append(i++).Append("\" tag=\"").Append(X(c.Id)).Append("\" label=\"").Append(L(c.Label.Get(_lang)))
+                      .Append("\" enabled=\"").Append(c.IsEnabled ? "true" : "false").Append("\" onAction=\"OnNumberParts\" />");
+            }
+            catch (Exception ex) { Log.Error("GetNumberPartsMenu", ex); }
+            return sb.Append("</menu>").ToString();
+        }
+
+        /// <summary>Runs "Number all parts" with the chosen scheme on the current slide (one undo step).</summary>
+        public void OnNumberParts(Office.IRibbonControl control)
+        {
+            try
+            {
+                if (_registry is null || _app is null || CurrentSlide(_app) is not PowerPoint.Slide slide || string.IsNullOrEmpty(control.Tag)) return;
+                SlideNumbering.Run(_app, _registry, _lang, slide, control.Tag);
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Number all parts", ex);
+                MessageBox.Show(ex.Message, "InventaSketch", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
         }
 
         /// <summary>"Export data ▸": the domain exports that apply to the selection or the slide (built when the menu opens).</summary>
@@ -1340,6 +1384,10 @@ namespace InventaSketch.AddIn
                                 g.DrawString("AB", font, brush, new RectangleF(-size * 0.1f, 0, size * 1.2f, size), fmt);
                                 break;
                             }
+                        case "IskMenuNumberParts":
+                            // The renumber pictogram of the on-slide bar (numerals in reading order).
+                            OnSlide.IconPainter.Draw(g, IconIds.Renumber, new RectangleF(0, 0, size, size), ink);
+                            break;
                         case "IskCleanSlides":
                             {
                                 // A sheet with an eraser (clean slides).

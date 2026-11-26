@@ -163,6 +163,37 @@ namespace InventaSketch.Modules.Patent
         private static HashSet<string> NumberedPartIds(SketchDocument doc)
             => new(ReferenceNumerals.NumberedParts(doc).Where(x => x.NumeralId is not null).Select(x => x.Part.Id), StringComparer.Ordinal);
 
+        /// <summary>The menu "Number all parts ▸" (one menu of commands, nothing current).</summary>
+        public static readonly ActionChoice Menu = new(ActionKey, new I18nText("Number all parts", "Alle Teile nummerieren")) { IsMenu = true };
+
+        /// <summary>The options of <see cref="Menu"/>: value, numbering scheme and label.</summary>
+        private static readonly (string Value, NumeralScheme Scheme, I18nText Label)[] Schemes =
+        {
+            ("tens", NumeralScheme.Default, new I18nText("10, 20, 30 …", "10, 20, 30 …")),
+            ("ones", NumeralScheme.Consecutive, new I18nText("1, 2, 3 …", "1, 2, 3 …")),
+        };
+
+        /// <summary>
+        /// "Number all parts ▸ 10, 20, 30 … / 1, 2, 3 …" as commands of the whole page, without a selected element (hosts
+        /// show them with their page-level commands; the reference numeral offers the same menu, see <see cref="Actions"/>).
+        /// Only for a page with parts (nothing otherwise: no command that cannot do anything); greyed out
+        /// (<see cref="PageCommand.IsEnabled"/> false) when every part of the page already has a numeral. Ids are
+        /// "patent.numerals.auto=tens" and "=ones", as on the numeral.
+        /// </summary>
+        public static IReadOnlyList<PageCommand> PageCommands(Registry registry, SketchDocument doc, Page page)
+        {
+            var parts = PartsInReadingOrder(registry, doc, page);
+            if (parts.Count == 0) return Array.Empty<PageCommand>();
+            var numbered = NumberedPartIds(doc);
+            var enabled = parts.Any(p => !numbered.Contains(p.Id));
+            return Schemes.Select(s =>
+            {
+                var scheme = s.Scheme;
+                return new PageCommand(ActionKey + ActionChoices.Separator + s.Value, s.Label, Menu, enabled,
+                    (reg, d, pageId, lang) => NumberParts(reg, d, pageId, new NumberingOptions { Scheme = scheme, Lang = lang }).Doc);
+            }).ToList();
+        }
+
         /// <summary>
         /// "Number all parts ▸ 10, 20, 30 … / 1, 2, 3 …": document actions on the page of <paramref name="o"/>; greyed out
         /// when every part on the page already has a numeral.
@@ -173,15 +204,10 @@ namespace InventaSketch.Modules.Patent
             var page = ctx.Doc.PageOf(o.Id);
             if (registry is null || page is null) yield break;
             var enabled = HasUnnumbered(registry, ctx.Doc, page);
-            var choice = new ActionChoice(ActionKey, new I18nText("Number all parts", "Alle Teile nummerieren")) { IsMenu = true };
-            foreach (var (value, scheme, label) in new[]
-            {
-                ("tens", NumeralScheme.Default, new I18nText("10, 20, 30 …", "10, 20, 30 …")),
-                ("ones", NumeralScheme.Consecutive, new I18nText("1, 2, 3 …", "1, 2, 3 …")),
-            })
+            foreach (var (value, scheme, label) in Schemes)
             {
                 var reg = registry;
-                yield return ActionChoices.Option(choice, value, label, IconIds.Option, false, x => x) with
+                yield return ActionChoices.Option(Menu, value, label, IconIds.Option, false, x => x) with
                 {
                     IsEnabled = enabled,
                     ApplyInDocument = (d, x, c) => d.PageOf(x.Id) is { } p
@@ -191,4 +217,11 @@ namespace InventaSketch.Modules.Patent
             }
         }
     }
+
+    /// <summary>
+    /// A command of a whole page, run without a selected element (<see cref="PartNumbering.PageCommands"/>): id
+    /// ("key=value" of its <see cref="Choice"/>), label, the menu it belongs to, whether it can do anything now, and the
+    /// edit (registry, document, page id, language of new texts) – one document edit, so hosts record one undo step.
+    /// </summary>
+    public sealed record PageCommand(string Id, I18nText Label, ActionChoice Choice, bool IsEnabled, Func<Registry, SketchDocument, string, Lang, SketchDocument> Run);
 }

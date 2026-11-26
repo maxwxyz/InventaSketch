@@ -63,11 +63,13 @@ namespace InventaSketch.Modules.Switchgear
         // ------------------------------------------------------------------ phase parameters
 
         /// <summary>Phase of a single-pole circuit (circuit breaker, RCBO 1+N): the loads of the circuit are on it.</summary>
-        public static readonly ParamDef DevicePhase = Pm.Choice(PhaseKey, "Phase", "Phase", "L1", ("L1", "L1", "L1"), ("L2", "L2", "L2"), ("L3", "L3", "L3"));
+        public static readonly ParamDef DevicePhase = Pm.Choice(PhaseKey, "Phase", "Phase", "L1", ("L1", "L1", "L1"), ("L2", "L2", "L2"), ("L3", "L3", "L3"))
+            .WithOptionIcons(IconIds.ForPhase);
 
         /// <summary>Phase of a load: from its circuit (default), L1, L2, L3 or three-phase.</summary>
         public static readonly ParamDef LoadPhase = Pm.Choice(PhaseKey, "Phase", "Phase", FromCircuit,
-            (FromCircuit, "From the circuit", "Vom Stromkreis"), ("L1", "L1", "L1"), ("L2", "L2", "L2"), ("L3", "L3", "L3"), (ThreePhase, "Three-phase", "Dreiphasig"));
+            (FromCircuit, "From the circuit", "Vom Stromkreis"), ("L1", "L1", "L1"), ("L2", "L2", "L2"), ("L3", "L3", "L3"), (ThreePhase, "Three-phase", "Dreiphasig"))
+            .WithOptionIcons(IconIds.ForPhase);
 
         private static bool IsSingle(string phase) => phase is "L1" or "L2" or "L3";
 

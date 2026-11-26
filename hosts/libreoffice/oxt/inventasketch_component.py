@@ -53,6 +53,8 @@ Commands (Addons.xcu), all as ``inventasketch.libreoffice:<command>[?<arguments>
                                                   without arguments)
   colorBy?mode=medium|off                         colour by medium for the current page (every unit redrawn)
   legend                                          legend of the medium colours used on the page, as one unit
+  pageAction?id=<page command id>[&label=<l>]     a command of the whole page without a selection (engine
+                                                  applyPageAction, e.g. patent.numerals.auto=tens: number all parts)
   sameName?key=<designation>&page=<n>             show page n with the units of that designation selected
   muteCheck?key=<check id>[&mute=0]               mute / unmute a plausibility check (property ISK_MUTED);
                                                   mute=0 without a key unmutes all
@@ -94,7 +96,9 @@ COMMANDS = ("insert", "library", "editModel", "describe", "setView", "redraw", "
             "action", "param", "text", "duplicate", "delete", "connected", "insertPlace", "place", "menu", "values",
             "loadValues", "setValue", "clearValue", "valueLevel", "showValues", "calc", "importCode", "tools",
             # Drawing-wide settings (colour by medium, names across pages, check settings, units, calculation sheet)
-            "colorBy", "legend", "sameName", "muteCheck", "unitPref", "calcSheet")
+            "colorBy", "legend", "sameName", "muteCheck", "unitPref", "calcSheet",
+            # Commands of the whole page without a selection (number all parts)
+            "pageAction")
 # Commands that change the selected unit(s); the panel is refreshed afterwards.
 _EDITS = {"explode": "tipExplode", "drawTrace": "tipTrace", "drawGhosts": "tipGhosts"}
 # Commands that neither read nor change units on the page (the selection glow stays).
@@ -757,6 +761,18 @@ def _cmd_legend(ctx, frame, controller, args):
     _describe(ctx, frame, controller, quiet=True)
 
 
+def _cmd_page_action(ctx, frame, controller, args):
+    """A command of the whole page without a selection (``id`` from the engine's ``pageActions``); the Tools panel shows
+    the page commands again afterwards (a page whose parts are all numbered offers none)."""
+    action_id = args.get("id") or args.get("") or ""
+    engine = engine_for(ctx)
+    drawn = host.apply_page_action(engine, controller, action_id, args.get("label"))
+    log("page action %s: %d unit(s) drawn" % (action_id, len(drawn)))
+    for p in sidebar.panels_for(frame):
+        p.show_page_actions()
+    _describe(ctx, frame, controller, quiet=True)
+
+
 def _cmd_same_name(ctx, frame, controller, args):
     shapes = host.go_same_name(engine_for(ctx), controller, args.get("key") or "", args.get("page") or "")
     log("same name %s on page %s: %d unit(s) selected" % (args.get("key"), args.get("page"), len(shapes)))
@@ -832,7 +848,7 @@ _CONCEPT = {"action": _cmd_action, "param": _cmd_param, "text": _cmd_text, "dupl
             "valueLevel": _cmd_value_level, "showValues": _cmd_show_values, "calc": _cmd_calc,
             "importCode": _cmd_import_code, "colorBy": _cmd_color_by, "legend": _cmd_legend,
             "sameName": _cmd_same_name, "muteCheck": _cmd_mute_check, "unitPref": _cmd_unit_pref,
-            "calcSheet": _cmd_calc_sheet}
+            "calcSheet": _cmd_calc_sheet, "pageAction": _cmd_page_action}
 
 
 def _num(value):

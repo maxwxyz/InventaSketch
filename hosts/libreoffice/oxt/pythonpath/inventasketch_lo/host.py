@@ -1084,6 +1084,28 @@ def insert_legend(engine, controller):
         return ps.commit(i18n.text("legendRun"), state, title=_title("legendRun"))
 
 
+def page_actions(engine, controller):
+    """The commands of the current slide/page/sheet without a selection (engine ``pageActions``: "Number all parts ▸
+    10, 20, 30 … / 1, 2, 3 …", each with ``enabled``); [] without units on the page or outside a drawing."""
+    try:
+        with PageSession(engine, controller, shapes=[]) as ps:
+            if not ps.units:
+                return []
+            return ps.call("pageActions", {"lang": i18n.language()}) or []
+    except HostError:
+        return []
+
+
+def apply_page_action(engine, controller, action_id, label=None):
+    """Runs a page command (an id of ``page_actions``, engine ``applyPageAction``) on the current page: the parts that
+    get a numeral are redrawn, the new numerals drawn as new units, one undo step. Returns the drawn shapes."""
+    with PageSession(engine, controller, shapes=[]) as ps:
+        if not ps.units:
+            raise HostError(i18n.text("noUnitsOnPage"))
+        state = ps.call("applyPageAction", {"action": action_id})
+        return ps.commit(label or action_id, state, title=i18n.text("undoAction") % (label or action_id))
+
+
 _DESIGNATIONS = {}
 _DESIGNATIONS_MAX = 4096
 

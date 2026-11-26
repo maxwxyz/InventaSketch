@@ -125,7 +125,10 @@ Installationsgeräte in den Räumen), z. B. „Leitungsschutzschalter B16, 1-pol
 - **Ein Pol mehr / weniger** (Steckbrücke); **Eine TE mehr / weniger** (Phasenschiene, Abdeckstreifen), die Breite
   ändert sich, die linke Kante bleibt.
 - **Phase** (Dropdown): L1/L2/L3 bei einpoligen Leitungsschutzschaltern und FI/LS 1+N (bei dreiphasigen Geräten nicht
-  angeboten); Vom Stromkreis / L1 / L2 / L3 / Dreiphasig bei Raumgeräten.
+  angeboten); Vom Stromkreis / L1 / L2 / L3 / Dreiphasig bei Raumgeräten. Jede Option hat ein Piktogramm
+  (`IconIds.ForPhase`): drei Sammelschienen-Stummel, von denen die gewählte weiter und nach unten zu einem Pfeil läuft
+  (`phase-l1`, `phase-l2`, `phase-l3`), bei dreiphasig alle drei (`phase-3`), das Leitungsschutzschalter-Symbol für
+  „Vom Stromkreis“ (`phase-circuit`).
 - Raumgeräte: **Raum …** und **Stromkreis …** (Kennzeichen des speisenden Geräts, z. B. „-F3“, am Symbol angezeigt);
   eine am Raumgerät selbst gewählte Phase steht oben rechts („L2“, „3~“).
 
@@ -262,7 +265,5 @@ Alles wird mit nativen Grundformen gezeichnet. Schwarz-Weiß-Ausgabe übernehmen
 - Kabellängen werden eingegeben (m), nicht aus der Zeichnung gemessen.
 - Die Schaltzeichen-Ansicht ist ein kompaktes Gerätesymbol, kein vollständiger mehrpoliger Stromlaufplan; die
   Stromkreisstruktur steht in den Berichten.
-- Die Phasen-Dropdowns zeigen Textbeschriftungen: Optionspiktogramme für L1/L2/L3 bräuchten neue Icon-Ids in Core und
-  in den Hosts.
 - Mögliche nächste Schritte: die Phase eines einpoligen Geräts aus dem Zahn der Phasenschiene darüber, Phasen- und
   Lastspalten im Stromkreisplan, Verweis von Raumgeräten auf Grundrissfolien zur Verteilung („→ -F3 Folie 4“).

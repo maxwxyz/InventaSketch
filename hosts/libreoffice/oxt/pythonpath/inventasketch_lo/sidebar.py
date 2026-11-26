@@ -237,6 +237,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self.value_errors = {}
         self.check_list = []
         self.unit_list = []
+        # Tools panel: the page command menu shown (choices.page_choices), or None.
+        self.page_choice = None
         self.updating = False
         self.pending = False
         self.controller = None
@@ -293,6 +295,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self._run("loadValues", None)
         elif self.mode == "tools":
             self.show_color_mode(None)
+            self.show_page_actions()
 
     def _listen_selection(self):
         """The selection and values panels follow the document selection."""
@@ -448,6 +451,9 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         colour.addItemListener(_Listener(self._color_chosen))
         self._button("legend", lambda: self._run("legend", None), Label=t("legendRun"), HelpText=t("legendTip"))
         self._button("sheet", lambda: self._run("calcSheet", None), Label=t("sheetOpen"), HelpText=t("sheetTip"))
+        # Page commands without a selection (engine pageActions): "Number all parts ▸" as a menu dropdown.
+        page = self._add("pageMenu", "ListBox", Dropdown=True, LineCount=8, HelpText=t("pageMenuTip"))
+        page.addItemListener(_Listener(self._page_chosen))
         self._add("calcTitle", "FixedText", Label=t("calcTitle"), FontWeight=150.0)
         self._add("calcExprLabel", "FixedText", Label=t("calcExpr"))
         expr = self._add("calcExpr", "Edit", Text="", HelpText=t("calcExamples"))
@@ -586,8 +592,12 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
 
     def _rows_tools(self):
         rows = [(["drawingTitle"], "label"), (["colorByLabel", "colorBy"], "control", (1, 1)), (["legend"], "button"),
-                (["sheet"], "button"), (["calcTitle"], "label"), (["calcExprLabel"], "label"), (["calcExpr"], "control"),
-                (["calcUnitLabel", "calcUnit"], "control", (3, 2)), (["calcRun"], "button")]
+                (["sheet"], "button")]
+        # Page commands ("Number all parts ▸") only while they can do something (context-only).
+        if self.page_choice is not None:
+            rows.append((["pageMenu"], "control"))
+        rows += [(["calcTitle"], "label"), (["calcExprLabel"], "label"), (["calcExpr"], "control"),
+                 (["calcUnitLabel", "calcUnit"], "control", (3, 2)), (["calcRun"], "button")]
         if self.controls["calcResult"].getModel().Label:
             rows.append((["calcResult"], "label"))
         steps = self.controls["calcSteps"].getModel().Label
@@ -771,6 +781,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             return
         if self.mode == "tools":
             self.show_color_mode((info or {}).get("colorBy"))
+            self.show_page_actions()
             return
         if self.mode != "selection":
             return
@@ -1102,6 +1113,45 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self._run("colorBy", {"mode": drawing.COLOR_MODES[pos]})
             # The page's mode again (also when nothing could be coloured: an empty page shows "Off").
             self.show_color_mode(None)
+
+    def show_page_actions(self, actions=None):
+        """The page commands of the current page ("Number all parts ▸", ``actions`` from the engine; None: asked now) as
+        a menu dropdown, shown only while a command can do something (context-only)."""
+        if self.mode != "tools" or self.disposed:
+            return
+        if actions is None:
+            try:
+                from . import host
+                actions = host.page_actions(SERVICES["engine"](), self.frame.getController())
+            except Exception as ex:
+                log("page commands: %s" % ex)
+                actions = []
+        found = choices.page_choices(actions)
+        self.page_choice = found[0] if found else None
+        if self.page_choice is not None:
+            rows, selected = choices.list_rows(self.page_choice)
+            self.updating = True
+            try:
+                self.controls["pageMenu"].getModel().StringItemList = tuple(rows)
+                self.controls["pageMenu"].selectItemPos(selected, True)
+            finally:
+                self.updating = False
+        self._relayout()
+
+    def _page_chosen(self, event):
+        """A row of the page command menu runs it on the page; the menu shows its title again."""
+        if self.updating or self.page_choice is None:
+            return
+        choice = self.page_choice
+        picked = choices.pick(choice, self.controls["pageMenu"].getSelectedItemPos())
+        self.updating = True
+        try:
+            self.controls["pageMenu"].selectItemPos(0, True)
+        finally:
+            self.updating = False
+        if picked is not None and picked[0] == "action":
+            option = picked[1]
+            self._run("pageAction", {"id": option["id"], "label": "%s: %s" % (choice["label"], option["label"])})
 
     def focus_calculator(self, text=None):
         expr = self.controls["calcExpr"]

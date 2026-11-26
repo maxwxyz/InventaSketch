@@ -216,6 +216,19 @@
 - **Menü „Mehr“ (Menüband):** „Prüfen und Weitergeben“ (Prüfpunkte, Folien senden, Folien speichern, Import von
   matplotlib-, pgfplots- und TikZ-Code), dann Werkzeuge: Symbolgröße ×1/×1,5/×2 für alle Standardsymbole der Folie (neue
   Symbole übernehmen sie), Werte-Stufe, Rechner.
+- **Alle Teile nummerieren ohne Auswahl** (26.11.2026, Runde 4): Mehr ▸ „Prüfen und Weitergeben“ ▸ „Alle Teile
+  nummerieren ▸“ direkt unter „Kompatibilität prüfen …“ (Umnummerieren-Piktogramm). Das Untermenü wird beim Öffnen aus
+  den Seitenbefehlen der Engine gebaut (`PageActions`, `SlideNumbering.cs`): „10, 20, 30 …“ und „1, 2, 3 …“ für die
+  aktuelle Folie; ausgegraut mit dem Hinweis „Jedes Teil dieser Folie hat ein Bezugszeichen“, wenn nichts zu tun ist,
+  nur „Auf dieser Folie gibt es keine Teile“ ohne Teile. Die Einheiten der Folie bilden eine Seite; die Bezugszeichen der
+  anderen Folien zählen als belegt, neue Bezugszeichen schließen also an. Teile, die ein Bezugszeichen erhalten, werden
+  in ihren Einheiten neu gezeichnet (die Stückliste folgt), jedes neue Bezugszeichen wird eine eigene Einheit (es folgt
+  seinem Teil wie ein von Hand gesetztes), ein Rückgängig-Schritt. Gleiche Teile teilen sich ein Bezugszeichen; dass
+  gleiche Teile auf anderen Folien deren Bezugszeichen übernehmen, gibt es noch nicht.
+- **Options-Piktogramme** (Runde 4): Verkehrsmittel der Route und der Entfernungsangabe (`travel-walk`, `travel-bike`,
+  `travel-car`, `travel-transit`, `travel-none`) und Phasen der Schaltgeräte und Raumgeräte (`phase-l1`, `phase-l2`,
+  `phase-l3`, `phase-3`, `phase-circuit`) in `IconPainter.SharedPaths`; diese Auswahlen erscheinen damit als Klappliste
+  mit Piktogrammen.
 - **Größere Bedienelemente und Hinweis beim ersten Mal:** Mehr ▸ „Größere Bedienelemente (125 %)“ macht Leiste,
   Kreismenü, Griffe und ihre Trefferflächen ein Viertel größer (Einstellung je Benutzer in `settings.json`; das Layout
   hält auch die größeren Griffe auseinander, UI-Szenario `control-size`). Die erste Auswahl eines Elements mit blauem „+“
