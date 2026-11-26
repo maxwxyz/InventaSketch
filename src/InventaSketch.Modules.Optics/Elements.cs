@@ -10,7 +10,7 @@ namespace InventaSketch.Modules.Optics
     /// meniscus) or as the schematic double-arrow symbol. Traced as an ideal thin lens in its centre plane with the focal
     /// length <c>f</c> (drawing scale); the box height is its aperture. The optical axis is the local x axis.
     /// </summary>
-    internal sealed class LensType : OpticsType
+    internal sealed class LensType : OpticsType, IValueType, IValueLinks, IValueChecks, ITraceValues
     {
         public const string ConvergingId = "optics.lens.converging";
         public const string DivergingId = "optics.lens.diverging";
@@ -23,6 +23,9 @@ namespace InventaSketch.Modules.Optics
                 : new[] { "lens", "diverging", "concave", "negative", "linse", "zerstreuungslinse", "konkav", "streulinse" })
         {
             Converging = converging;
+            Variables = OpticsValues.LensVariables(converging);
+            Relations = OpticsValues.LensRelations(converging);
+            ValueChecks = OpticsValues.LensChecks(converging);
             Shape = converging
                 ? Pm.Choice("shape", "Lens shape", "Linsenform", "biconvex",
                     ("biconvex", "Biconvex", "Bikonvex"), ("planoconvex", "Plano-convex", "Plankonvex"), ("meniscus", "Meniscus (positive)", "Meniskus (positiv)"))
@@ -32,11 +35,23 @@ namespace InventaSketch.Modules.Optics
             {
                 Shape, Pm.FocalLength(40), Pm.Focal,
                 Pm.Rays(5), Bundle, Pm.Beam, CoatingDef, Pm.Label,
+                OpticsValues.ObjectDistanceParam, OpticsValues.ImageDistanceParam, ValueLabels.ShowValues,
             };
         }
 
         public bool Converging { get; }
         public ParamDef Shape { get; }
+
+        /// <summary>
+        /// f (the parameter, drawing scale), refractive power D, object and image distance g, b (values only), magnification
+        /// and, with a second thin lens on the axis, the system focal length (<see cref="OpticsValues"/>).
+        /// </summary>
+        public IReadOnlyList<VarDef> Variables { get; }
+        public IReadOnlyList<Relation> Relations { get; }
+        public IEnumerable<ValueCheck> ValueChecks { get; }
+
+        /// <summary>Distance and system focal length with the next thin lens on the axis.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.LensLinks(o, ctx, Converging);
 
         public static readonly ParamDef Bundle = Pm.Choice("bundle", "Incoming bundle", "Einfallendes Bündel", "parallel",
             ("parallel", "Parallel to the axis", "Parallel zur Achse"), ("point", "From a point at 2f", "Von einem Punkt bei 2f"));

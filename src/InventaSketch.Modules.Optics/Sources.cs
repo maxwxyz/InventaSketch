@@ -154,15 +154,22 @@ namespace InventaSketch.Modules.Optics
     }
 
     /// <summary>Incandescent lamp: bulb with filament and socket; emits a cone (filling the next element), parallel or all around.</summary>
-    internal sealed class LampType : OpticsType
+    internal sealed class LampType : OpticsType, ILightSource, IValueType, IValueLinks
     {
         public LampType() : base(Sources.LampId, new I18nText("Lamp (light source)", "Lampe (Lichtquelle)"), OpticsCategories.Sources,
             "lamp", "bulb", "light source", "white light", "lampe", "glühlampe", "lichtquelle", "weißes licht") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Sources.Emission, Pm.Rays(5), Pm.Spread, Pm.Beam, Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Sources.Emission, Pm.Rays(5), Pm.Spread, Pm.Beam, Pm.Label, OpticsValues.PowerParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(18, 12);
         public override bool PreferUniformScale => true;
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Beams.RayItem, Beams.AxisId, Detectors.ScreenId, PrismType.TypeId };
+
+        /// <summary>Optical power P (white light, no wavelength).</summary>
+        public IReadOnlyList<VarDef> Variables => OpticsValues.LampVariables;
+        public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
+
+        /// <summary>The received power of the elements its light reaches.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.SourceLinks(o, ctx, 0, false);
 
         private static (double R, double Cx) Bulb(SketchObject o)
         {
@@ -241,7 +248,7 @@ namespace InventaSketch.Modules.Optics
     }
 
     /// <summary>Light-emitting diode with dome, flange and leads; white or coloured light.</summary>
-    internal sealed class LedType : OpticsType
+    internal sealed class LedType : OpticsType, ILightSource, IValueType, IValueLinks, IValueChecks
     {
         public LedType() : base(Sources.LedId, new I18nText("LED light source", "LED-Lichtquelle"), OpticsCategories.Sources,
             "led", "light emitting diode", "light source", "diode", "leuchtdiode", "lichtquelle", "led-lichtquelle") { }
@@ -249,13 +256,28 @@ namespace InventaSketch.Modules.Optics
         public static readonly ParamDef Colour = Pm.Choice("color", "Light colour", "Lichtfarbe", "white",
             ("white", "White", "Weiß"), ("red", "Red", "Rot"), ("green", "Green", "Grün"), ("blue", "Blue", "Blau"));
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Sources.EmissionNoRadial, Pm.Rays(5), Pm.Spread, Pm.Beam, Colour, Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Sources.EmissionNoRadial, Pm.Rays(5), Pm.Spread, Pm.Beam, Colour, Pm.Label, OpticsValues.PowerParam, OpticsValues.LambdaParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(16, 10);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Beams.RayItem, Beams.AxisId, Detectors.PhotodiodeId };
 
         private static double Lambda(string c) => c switch { "red" => 630, "green" => 525, "blue" => 465, _ => 0 };
 
+        /// <summary>The emitted wavelength (nm): the one entered, else the colour's (0 = white light).</summary>
+        internal static double Lambda(SketchObject o) => OpticsValues.EnteredWavelength(o) ?? Lambda(o.Str("color", "white"));
+
         private static string Tint(string c) => c switch { "red" => "#ffcdd2", "green" => "#c8e6c9", "blue" => "#bbdefb", _ => "#fffde7" };
+
+        /// <summary>The body tint: the colour choice, or the light colour of an entered wavelength (lightened).</summary>
+        private static string Tint(SketchObject o) => OpticsValues.EnteredWavelength(o) is double nm
+            ? (Spectrum.Color(nm) switch { "#e53935" => Tint("red"), "#43a047" => Tint("green"), "#1e88e5" or "#8e24aa" => Tint("blue"), _ => "#fff9c4" })
+            : Tint(o.Str("color", "white"));
+
+        /// <summary>Optical power P, wavelength λ (entered, else the colour's; none for white light) and photon energy.</summary>
+        public IReadOnlyList<VarDef> Variables => OpticsValues.ColourSourceVariables;
+        public IReadOnlyList<Relation> Relations => OpticsValues.ColourSourceRelations;
+        public IEnumerable<ValueCheck> ValueChecks => OpticsValues.SourceChecks;
+
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.SourceLinks(o, ctx, Lambda(o.Str("color", "white")), true);
 
         private static (double R, double Xd, double Xb) Dome(SketchObject o)
         {
@@ -275,10 +297,10 @@ namespace InventaSketch.Modules.Optics
             var rim = Math.Min(0.8, Math.Max(0.2, xb + hw));
             foreach (var sy in new[] { -0.45, 0.45 })
                 list.Add(new LinePrim(new Vec2(-hw, sy * r), new Vec2(xb - rim, sy * r), lead) { Tag = OpticsTags.Detail });
-            list.Add(Prim.Rect(xb - rim, -Math.Min(hh, r + 0.6), rim, 2 * Math.Min(hh, r + 0.6), Ox.Filled(Tint(o.Str("color", "white")))) with { Tag = OpticsTags.Body });
+            list.Add(Prim.Rect(xb - rim, -Math.Min(hh, r + 0.6), rim, 2 * Math.Min(hh, r + 0.6), Ox.Filled(Tint(o))) with { Tag = OpticsTags.Body });
             var outline = new List<Vec2> { new(xb, r), new(xb, -r) };
             outline.AddRange(Geo.ArcPoints(new Vec2(xd, 0), r, r, -Math.PI / 2, Math.PI, 16));
-            list.Add(Prim.Polygon(outline, Ox.Filled(Tint(o.Str("color", "white")))) with { Tag = OpticsTags.Body });
+            list.Add(Prim.Polygon(outline, Ox.Filled(Tint(o))) with { Tag = OpticsTags.Body });
             list.AddRange(Ox.Label(o));
             return list;
         }
@@ -304,7 +326,7 @@ namespace InventaSketch.Modules.Optics
         internal override Emission? Emit(SketchObject o, IReadOnlyList<SceneElement> scene)
         {
             var (r, xd, _) = Dome(o);
-            return Sources.Emit(o, scene, new Vec2(xd, 0), r, Lambda(o.Str("color", "white")), radialAllowed: false);
+            return Sources.Emit(o, scene, new Vec2(xd, 0), r, Lambda(o), radialAllowed: false);
         }
 
         public override IEnumerable<DragHandle> DragHandles(SketchObject o, RenderContext ctx)
@@ -320,13 +342,13 @@ namespace InventaSketch.Modules.Optics
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
             foreach (var opt in Ox.Choice(o, "optics.emission", new I18nText("Emission", "Abstrahlung"), Sources.EmissionNoRadial, "rays")) yield return opt;
-            foreach (var opt in Ox.Choice(o, "optics.color", new I18nText("Light colour", "Lichtfarbe"), Colour, "rays")) yield return opt;
+            foreach (var opt in OpticsValues.ColourChoice(o, "optics.color", new I18nText("Light colour", "Lichtfarbe"), Colour, "rays")) yield return opt;
             foreach (var a in Ox.RayCount(o, Parameters[1])) yield return a;
         }
     }
 
     /// <summary>Laser: housing with output aperture; a parallel beam (one ray, or several across the beam height).</summary>
-    internal sealed class LaserType : OpticsType
+    internal sealed class LaserType : OpticsType, ILightSource, IValueType, IValueLinks, IValueChecks
     {
         public LaserType() : base(Sources.LaserId, new I18nText("Laser", "Laser"), OpticsCategories.Sources,
             "laser", "beam", "coherent", "monochromatic", "laserstrahl", "kohärent", "monochromatisch", "strahlquelle") { }
@@ -334,11 +356,21 @@ namespace InventaSketch.Modules.Optics
         public static readonly ParamDef Colour = Pm.Choice("color", "Wavelength", "Wellenlänge", "red",
             ("red", "Red (650 nm)", "Rot (650 nm)"), ("green", "Green (532 nm)", "Grün (532 nm)"), ("blue", "Blue (445 nm)", "Blau (445 nm)"));
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Rays(1), Pm.Beam, Colour, Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Rays(1), Pm.Beam, Colour, Pm.Label, OpticsValues.PowerParam, OpticsValues.LambdaParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(28, 10);
         public override IReadOnlyList<string> Companions => new[] { MirrorType.PlaneId, SplitterType.CubeId, LensType.ConvergingId, Beams.RayItem, Detectors.ScreenId };
 
         internal static double Lambda(string c) => c switch { "green" => 532, "blue" => 445, _ => 650 };
+
+        /// <summary>The emitted wavelength (nm): the one entered, else the colour choice's.</summary>
+        internal static double Wavelength(SketchObject o) => OpticsValues.EnteredWavelength(o) ?? Lambda(o.Str("color", "red"));
+
+        /// <summary>Optical power P, wavelength λ (entered, else the colour choice's) and photon energy.</summary>
+        public IReadOnlyList<VarDef> Variables => OpticsValues.ColourSourceVariables;
+        public IReadOnlyList<Relation> Relations => OpticsValues.ColourSourceRelations;
+        public IEnumerable<ValueCheck> ValueChecks => OpticsValues.SourceChecks;
+
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.SourceLinks(o, ctx, Lambda(o.Str("color", "red")), true);
 
         private static double Nozzle(SketchObject o) => Math.Min(4, o.Size.W * 0.15);
 
@@ -356,7 +388,7 @@ namespace InventaSketch.Modules.Optics
             var cap = -hw + Math.Min(3, o.Size.W * 0.1);
             list.Add(new LinePrim(new Vec2(cap, -bh), new Vec2(cap, bh), Style.ThinLine) { Tag = OpticsTags.Detail });
             var dot = Math.Min(0.9, bh * 0.4);
-            var colour = Spectrum.Color(Lambda(o.Str("color", "red")))!;
+            var colour = Spectrum.Color(Wavelength(o))!;
             list.Add(new EllipsePrim(new Vec2(hw - nz - dot - 1.2, 0), dot, dot, new Style { Role = LineRole.Thin, StrokeWidth = 0.15, Stroke = Ox.Black, Fill = Fill.Solid(colour) }) { Tag = OpticsTags.Detail });
             list.AddRange(Ox.Label(o));
             return list;
@@ -383,7 +415,7 @@ namespace InventaSketch.Modules.Optics
             var n = Ox.ClampInt(o.Int("rays", 1), 1, 15);
             var beam = o.Num("beam", 0);
             var half = beam > 0 ? beam / 2 : n > 1 ? 0.3 * o.Size.H / 2 : 0;
-            var lambda = Lambda(o.Str("color", "red"));
+            var lambda = Wavelength(o);
             var axis = m.ApplyLinear(new Vec2(1, 0)).Normalized();
             var rays = (n == 1 ? new[] { 0.0 } : Ox.Spaced(-half, half, n))
                 .Select(y => new StartRay(m.Apply(new Vec2(o.Size.W / 2, y)), axis, lambda)).ToList();
@@ -407,7 +439,7 @@ namespace InventaSketch.Modules.Optics
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
             foreach (var a in base.OwnActions(o, doc)) yield return a;
-            foreach (var opt in Ox.Choice(o, "optics.color", new I18nText("Wavelength", "Wellenlänge"), Colour, "rays")) yield return opt;
+            foreach (var opt in OpticsValues.ColourChoice(o, "optics.color", new I18nText("Wavelength", "Wellenlänge"), Colour, "rays")) yield return opt;
             foreach (var a in Ox.RayCount(o, Parameters[0])) yield return a;
         }
     }
@@ -417,7 +449,7 @@ namespace InventaSketch.Modules.Optics
     /// source. A docked ray bundle draws the principal rays (parallel, central, focal ray) to the next lens or curved
     /// mirror on the axis, or a fan filling it.
     /// </summary>
-    internal sealed class ObjectArrowType : OpticsType
+    internal sealed class ObjectArrowType : OpticsType, IValueType, IValueLinks, IValueChecks, ITraceValues
     {
         public ObjectArrowType() : base(Sources.ObjectId, new I18nText("Object (arrow)", "Gegenstand (Pfeil)"), OpticsCategories.Beams,
             "object", "arrow", "imaging", "principal rays", "gegenstand", "pfeil", "abbildung", "hauptstrahlen", "konstruktionsstrahlen") { }
@@ -425,7 +457,13 @@ namespace InventaSketch.Modules.Optics
         public static readonly ParamDef Bundle = Pm.Choice("bundle", "Rays from the tip", "Strahlen von der Spitze", "principal",
             ("principal", "Principal rays", "Konstruktionsstrahlen"), ("fan", "Fan filling the lens", "Fächer über die Linse"));
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Bundle, Pm.Rays(5), Imaging.Mode, Imaging.NamesDef, Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Bundle, Pm.Rays(5), Imaging.Mode, Imaging.NamesDef, Pm.Label, ValueLabels.ShowValues };
+
+        /// <summary>Object and image distance, magnification and kind of the drawn image (from the drawing; read only).</summary>
+        public IReadOnlyList<VarDef> Variables => OpticsValues.ArrowVariables;
+        public IReadOnlyList<Relation> Relations => OpticsValues.ArrowRelations;
+        public IEnumerable<ValueCheck> ValueChecks => OpticsValues.ArrowChecks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.ArrowLinks(o, ctx);
         public override Size2 DefaultSize => new(4, 16);
         public override bool IsPart => false;
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Beams.AxisId, MirrorType.ConcaveId, Detectors.ScreenId };

@@ -34,7 +34,7 @@ namespace InventaSketch.Modules.Optics
     /// <c>sag</c> sets how deep the curved faces are, so the radii, and with them the focal length, follow from the box and
     /// scale with it. Focal points F, F′ and the principal planes H, H′ come from the lensmaker's equation.
     /// </summary>
-    internal sealed class ThickLensType : OpticsType
+    internal sealed class ThickLensType : OpticsType, IValueType, IValueLinks
     {
         public const string TypeId = "optics.lens.thick";
 
@@ -53,10 +53,15 @@ namespace InventaSketch.Modules.Optics
         {
             ShapeDef, IndexDef, SagDef,
             Pm.Bool("focal", "Focal points F, F′ and principal planes H, H′", "Brennpunkte F, F′ und Hauptebenen H, H′", false),
-            Pm.Rays(5), Pm.Beam, CoatingDef, Pm.Label,
+            Pm.Rays(5), Pm.Beam, CoatingDef, Pm.Label, ValueLabels.ShowValues,
         };
 
         public static readonly ParamDef CoatingDef = Pm.Coating("ideal");
+
+        /// <summary>Focal length from the lensmaker's equation (index n and the drawn faces), refractive power, back focal distance.</summary>
+        public IReadOnlyList<VarDef> Variables => OpticsValues.ThickLensVariables;
+        public IReadOnlyList<Relation> Relations => OpticsValues.ThickLensRelations;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.ThickLensLinks(o);
 
         public override Size2 DefaultSize => new(10, 34);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Beams.AxisId, Sources.LaserId, Detectors.ScreenId };

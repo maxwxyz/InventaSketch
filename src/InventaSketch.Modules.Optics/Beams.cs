@@ -69,16 +69,17 @@ namespace InventaSketch.Modules.Optics
             var scene = RayTracer.Scene(doc, ray);
             var tail = Geo.Clamp(ray.Num("tail", 0), 0, 5000);
             var virtualRays = ray.Flag("virtual", true);
+            var ghosts = ray.Flag(RayType.GhostsKey, false);
             var source = ray.Attach is { Count: > 0 } att && att[0] is { } a ? doc.Get(a.ObjectId) : null;
             if (source is { IsPointGeometry: false } && OpticsModule.TypeOf(source.Type) is OpticsType st && st.Emit(source, scene) is { } em)
             {
                 var sc = em.Exclude is null ? scene : scene.Where(e => e.Object.Id != em.Exclude).ToList();
-                return RayTracer.Trace(sc, em.Rays, tail, 0, virtualRays);
+                return RayTracer.Trace(sc, em.Rays, tail, 0, virtualRays, ghosts);
             }
             if (pts.Count < 2) return new TraceResult();
             var d = pts[1] - pts[0];
             if (d.Length < 1e-9) d = new Vec2(1, 0);
-            return RayTracer.Trace(scene, new[] { new StartRay(pts[0], d.Normalized()) }, tail, (pts[1] - pts[0]).Length, virtualRays);
+            return RayTracer.Trace(scene, new[] { new StartRay(pts[0], d.Normalized()) }, tail, (pts[1] - pts[0]).Length, virtualRays, ghosts);
         }
     }
 
@@ -108,7 +109,14 @@ namespace InventaSketch.Modules.Optics
             Pm.Bool("virtual", "Virtual rays (dashed extensions)", "Virtuelle Strahlen (gestrichelte Verlängerungen)", true),
             Pm.Num("tail", "Length after the last element (0 = automatic)", "Länge nach dem letzten Element (0 = automatisch)", 0, 0, 5000, "mm", 5),
             ValueLabels.ShowValues,
+            Pm.Bool(GhostsKey, "Ghost reflections at glass faces", "Geisterreflexe an Glasflächen", false, advanced: true),
         };
+
+        /// <summary>
+        /// Boolean parameter: trace the light that uncoated or coated glass faces reflect partially as rays of their own
+        /// (ghosts). Faces with ideal glass reflect nothing, thin lenses are not included.
+        /// </summary>
+        public const string GhostsKey = "ghosts";
 
         public override GeometryKind Geometry => GeometryKind.Points;
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-20, 0), new Vec2(20, 0) };
@@ -321,7 +329,10 @@ namespace InventaSketch.Modules.Optics
             yield return Ox.Toggle(o, "optics.ray.virtual", new I18nText("Virtual rays", "Virtuelle Strahlen"), "virtual", true, "ray");
             yield return Ox.NumberInput(o, "optics.ray.tail", new I18nText("Length after the last element", "Länge nach dem letzten Element"), Parameters[3], "ray");
             if (o.Flag("trace", true))
+            {
                 yield return Ox.Toggle(o, "optics.ray.values", new I18nText("Values at ray ends", "Werte an Strahlenden"), ValueLabels.ShowParam, false, "ray");
+                yield return Ox.Toggle(o, "optics.ray.ghosts", new I18nText("Ghost reflections", "Geisterreflexe"), GhostsKey, false, "ray");
+            }
         }
     }
 
