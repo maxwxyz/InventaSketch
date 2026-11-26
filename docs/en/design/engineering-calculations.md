@@ -602,6 +602,15 @@ in the document's check settings, because the binding limit is in a standard or 
 | `fluid.tank.volume` | hydraulic power unit | tank volume < 3 × pump flow per minute (rule of thumb) | hint | [S26] |
 | `heat.expansion.size` | expansion vessel | chosen nominal volume below the required volume | warning | [S30] |
 | `heat.separator.flow` | hydraulic separator | generator flow smaller than consumer flow (mixed flow temperature drops) | hint | [S30] |
+| `optics.light.none` | detector, lens, arrow | the page has traced rays, none ends at the element | info | – (consistency) |
+| `optics.light.nosource` | detector | only rays without a light source arrive (power unknown) | info | – (consistency) |
+| `optics.light.estimate` | detector | power passed a schematic splitter or grating (equal shares assumed) | hint | – (assumption) |
+| `optics.source.invisible` | light source | wavelength outside 380 … 780 nm (drawn in the nearest colour) | hint | [S41] |
+| `optics.lens.virtual` / `optics.mirror.virtual` / `optics.image.virtual` | lens, curved mirror, object arrow | image distance *b* < 0 (virtual image) | info | [S41] |
+| `optics.lens.focalplane` / `optics.mirror.focalplane` / `optics.image.infinity` | lens, curved mirror, object arrow | object in the focal plane (image at infinity) | info | [S41] |
+| `optics.lens.afocal` | two lenses (thin or thick) | *f*₁ + *f*₂ = *d* (afocal system, telescope) | info | [S41] |
+| `optics.prism.nominimum` | prism | *n*·sin(*A*/2) ≥ 1 (no symmetric passage, no minimum deviation) | info | [S41] |
+| `optics.grating.beyond` | grating | a drawn order has *m*·*λ* ≥ *d* (beyond 90°) | info | [S41] |
 | `pv.voc.max` | string ↔ inverter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | warning | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | string ↔ inverter | *N*_s·*U*_mpp(*θ*_max) < MPPT minimum | hint | [S33, S34] |
 | `pv.isc.max` | array ↔ inverter input | *N*_p·*I*_sc > *I*_DC,max | warning | [S33] |

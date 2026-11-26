@@ -829,10 +829,10 @@ namespace InventaSketch.Modules.Optics
 
         public static readonly ParamDef GratingLambdaParam = Text("lambda", T("Wavelength for the values (empty = from the light reaching the grating)", "Wellenlänge für die Werte (leer = aus dem Licht am Gitter)"), "nm");
 
-        /// <summary>Line density in lines per mm (a number; entered in <c>lines</c>, it sets the drawn orders).</summary>
-        public static readonly VarDef Lines = new("N", T("Line density (lines per mm)", "Strichdichte (Striche pro mm)"), T("N", "N"), Quantities.Ratio)
+        /// <summary>Line density (kind <see cref="Quantities.LineDensity"/>, shown in lines/mm; entered in <c>lines</c>, it sets the drawn orders).</summary>
+        public static readonly VarDef Lines = new("N", T("Line density", "Strichdichte"), T("N", "N"), Quantities.LineDensity)
         {
-            Param = "lines", Min = 1, Max = 1e4,
+            Unit = "lines/mm", Param = "lines", Min = 1e3, Max = 1e7,
         };
 
         public static readonly VarDef GratingLambda = new("lambda", T("Wavelength", "Wellenlänge"), T("λ", "λ"), Quantities.Length)
@@ -867,14 +867,15 @@ namespace InventaSketch.Modules.Optics
         public static double? EnteredLines(SketchObject o)
         {
             var (value, _, _, error) = ValueModel.ReadEntered(o, Lines);
-            return error is null && value is double n && n > 0 && n <= 1e5 ? n : null;
+            // SI value in lines per metre; the drawing works in lines per mm.
+            return error is null && value is double n && n > 0 && n <= 1e8 ? n / 1e3 : null;
         }
 
         public static readonly IReadOnlyList<Relation> GratingRelations = new[]
         {
-            new Relation("optics.grating.period", T("Grating period", "Gitterkonstante"), "{d} = 1 mm/{N}", "d", "N") { Source = "S41" }
-                .Solve("d", "1 mm/{N}", v => v("N") > 0 ? 1e-3 / v("N") : double.NaN)
-                .Solve("N", "1 mm/{d}", v => v("d") > 0 ? 1e-3 / v("d") : double.NaN),
+            new Relation("optics.grating.period", T("Grating period", "Gitterkonstante"), "{d} = 1/{N}", "d", "N") { Source = "S41" }
+                .Solve("d", "1/{N}", v => v("N") > 0 ? 1 / v("N") : double.NaN)
+                .Solve("N", "1/{d}", v => v("d") > 0 ? 1 / v("d") : double.NaN),
             new Relation("optics.grating.reference", T("First order at 550 nm", "Erste Ordnung bei 550 nm"), "{d}·sin {s550} = 550 nm", "d", "s550")
                 { Source = "S41", Validity = T("normal incidence", "senkrechter Einfall") }
                 .Solve("d", "550 nm/sin {s550}", v => Math.Sin(v("s550")) > 1e-9 ? GratingReferenceNm * 1e-9 / Math.Sin(v("s550")) : double.NaN)

@@ -299,8 +299,8 @@ jenseits von 90°; sie wird nicht gezeichnet). Prüfungskennungen: `optics.mirro
 Die an einem Laser oder einer LED eingegebene Wellenlänge verwendet auch die Strahlverfolgung (405 nm wird violett
 gezeichnet, und ein Dispersionsprisma bricht es mit n(405 nm)); die Wahl einer Farbe in der Kontextleiste löscht sie. D verwendet
 die Größenart „Brechkraft“ (`opticalPower`, Einheit dpt = 1/m). Die Beziehungen von Linsen, Spiegeln, Prisma, Gitter
-und Bestrahlungsstärke zitieren [S41] (Lehrbücher der Optik). Die Strichdichte ist eine reine Zahl von Strichen pro mm
-(der Größenkatalog hat dafür keine Größenart).
+und Bestrahlungsstärke zitieren [S41] (Lehrbücher der Optik). Die Strichdichte verwendet die Größenart `lineDensity`
+(angezeigt in Striche/mm).
 
 Schreibgeschützt (Ergebnisse der Verfolgung oder der Zeichnung): η, V, θ, die Polarisation, E_e; die Bildwerte des
 Pfeils; f, s′_F, s_H, s′_H der dicken Linse; die Systemwerte f_s, d/e, s′_F; R des Spiegels; γ, n_F, n_C, ν_d, Δδ_FC des

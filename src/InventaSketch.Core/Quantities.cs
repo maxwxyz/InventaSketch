@@ -234,6 +234,8 @@ namespace InventaSketch.Core
         /// <summary>Energy per mass (specific work of a compressor or turbine w = c_p·ΔT, enthalpy differences): J/kg, kJ/kg.</summary>
         /// <summary>Refractive power of a lens or optical system (dioptres, 1/m).</summary>
         public static readonly QuantityKind OpticalPower = new("opticalPower", T("Refractive power", "Brechkraft"), Dimension.None / Len);
+        /// <summary>Line density or spatial frequency (diffraction gratings: lines per mm).</summary>
+        public static readonly QuantityKind LineDensity = new("lineDensity", T("Line density", "Strichdichte"), Dimension.None / Len);
         public static readonly QuantityKind SpecificEnergy = new("specificEnergy", T("Specific energy", "Spezifische Energie"), Energy_ / Mass);
         public static readonly QuantityKind HeatTransfer = new("heatTransfer", T("Heat transfer coefficient", "Wärmedurchgangskoeffizient"), Power_ / Len.Pow(2) / Temp);
         public static readonly QuantityKind Irradiance = new("irradiance", T("Irradiance", "Bestrahlungsstärke"), Power_ / Len.Pow(2));
@@ -346,6 +348,8 @@ namespace InventaSketch.Core
             SpecificHeat.Add("kJ/(kg·K)", 1e3, new[] { "kJ/kgK", "kJ/(kgK)" });
             SpecificHeat.Add("J/(kg·K)", 1, new[] { "J/kgK", "J/(kgK)" });
             OpticalPower.Add("dpt", 1, new[] { "1/m", "m⁻¹", "dioptre", "dioptres", "Dioptrien" });
+            LineDensity.Add("lines/mm", 1e3, new[] { "L/mm", "Striche/mm", "1/mm", "mm⁻¹" });
+            LineDensity.Add("lines/m", 1, new[] { "Striche/m" });
             SpecificEnergy.Add("kJ/kg", 1e3);
             SpecificEnergy.Add("J/kg", 1);
             SpecificEnergy.Add("MJ/kg", 1e6);
@@ -372,7 +376,7 @@ namespace InventaSketch.Core
                 Inductance, Charge, Resistivity, Frequency, RotationalSpeed, Angle, Time_, Length, Area, Volume, Mass_, Force,
                 Energy, Torque, Speed, Acceleration, Pressure, VolumeFlow, MassFlow, Temperature, TemperatureDifference, Density,
                 SpecificHeat, SpecificEnergy, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate, TorsionalRate, TemperatureCoefficient,
-                OpticalPower,
+                OpticalPower, LineDensity,
             });
         }
 

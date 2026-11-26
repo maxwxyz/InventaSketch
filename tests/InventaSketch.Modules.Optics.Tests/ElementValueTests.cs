@@ -168,7 +168,7 @@ namespace InventaSketch.Modules.Optics.Tests
             // 20° at 550 nm: d = 550 nm / sin 20° = 1.60809 µm, N = 621.8 lines/mm.
             var d = 550e-9 / Math.Sin(20 * Deg);
             Assert.Equal(d, Val(t, "G", "d"), 15);
-            Assert.Equal(1e-3 / d, Val(t, "G", "N"), 9);
+            Assert.Equal(1 / d, Val(t, "G", "N"), 6);   // lines per metre (SI)
             // Without light the values use 550 nm: the first order lies at the drawn 20°.
             Assert.Equal(550e-9, Val(t, "G", "lambda"), 15);
             Assert.Equal(Provenance.Default, t.Get("G", "lambda")!.Provenance);
@@ -188,7 +188,7 @@ namespace InventaSketch.Modules.Optics.Tests
             var t = Solve(r, withRay);
             Assert.Empty(t.Conflicts);
             // N = 600 lines/mm: d = 1.6667 µm; λ = 650 nm from the traced light.
-            Assert.Equal(600, Val(t, "G", "N"), 9);
+            Assert.Equal(600e3, Val(t, "G", "N"), 6);   // 600 lines/mm
             Assert.Equal(Provenance.Entered, t.Get("G", "N")!.Provenance);
             Assert.Equal(1e-3 / 600, Val(t, "G", "d"), 15);
             Assert.Equal(650e-9, Val(t, "G", "lambda"), 15);

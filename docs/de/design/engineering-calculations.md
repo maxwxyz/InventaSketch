@@ -622,6 +622,15 @@ Datenblatt steht, das wir nicht übernehmen.
 | `fluid.tank.volume` | Hydraulikaggregat | Tankvolumen < 3 × Pumpenförderstrom je Minute (Faustregel) | Hinweis | [S26] |
 | `heat.expansion.size` | Ausdehnungsgefäß | gewähltes Nennvolumen unter dem erforderlichen Volumen | Warnung | [S30] |
 | `heat.separator.flow` | Hydraulische Weiche | Erzeugerstrom kleiner als Verbraucherstrom (Mischvorlauftemperatur sinkt) | Hinweis | [S30] |
+| `optics.light.none` | Detektor, Linse, Pfeil | die Seite hat verfolgte Strahlen, keiner endet am Element | Info | – (Konsistenz) |
+| `optics.light.nosource` | Detektor | nur Strahlen ohne Lichtquelle kommen an (Leistung unbekannt) | Info | – (Konsistenz) |
+| `optics.light.estimate` | Detektor | Leistung lief über schematischen Strahlteiler oder Gitter (gleiche Anteile angenommen) | Hinweis | – (Annahme) |
+| `optics.source.invisible` | Lichtquelle | Wellenlänge außerhalb 380 … 780 nm (in der nächsten Farbe gezeichnet) | Hinweis | [S41] |
+| `optics.lens.virtual` / `optics.mirror.virtual` / `optics.image.virtual` | Linse, gewölbter Spiegel, Gegenstandspfeil | Bildweite *b* < 0 (virtuelles Bild) | Info | [S41] |
+| `optics.lens.focalplane` / `optics.mirror.focalplane` / `optics.image.infinity` | Linse, gewölbter Spiegel, Gegenstandspfeil | Gegenstand in der Brennebene (Bild im Unendlichen) | Info | [S41] |
+| `optics.lens.afocal` | zwei Linsen (dünn oder dick) | *f*₁ + *f*₂ = *d* (afokales System, Fernrohr) | Info | [S41] |
+| `optics.prism.nominimum` | Prisma | *n*·sin(*γ*/2) ≥ 1 (kein symmetrischer Durchgang, keine minimale Ablenkung) | Info | [S41] |
+| `optics.grating.beyond` | Gitter | eine gezeichnete Ordnung hat *m*·*λ* ≥ *d* (jenseits von 90°) | Info | [S41] |
 | `pv.voc.max` | Strang ↔ Wechselrichter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | Warnung | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | Strang ↔ Wechselrichter | *N*_s·*U*_mpp(*θ*_max) < MPPT-Minimum | Hinweis | [S33, S34] |
 | `pv.isc.max` | Feld ↔ Wechselrichtereingang | *N*_p·*I*_sc > *I*_DC,max | Warnung | [S33] |

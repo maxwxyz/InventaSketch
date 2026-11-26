@@ -277,7 +277,7 @@ exist at the wavelength (m·λ ≥ d, beyond 90°; it is not drawn). Check ids: 
 The wavelength entered on a laser or LED is also what the tracer uses (405 nm is drawn violet, and a dispersing prism
 refracts it with n(405 nm)); choosing a colour in the context bar clears it. D uses the quantity kind "refractive power"
 (`opticalPower`, unit dpt = 1/m). The lens, mirror, prism, grating and irradiance relations cite [S41] (optics
-textbooks). The line density is a plain number of lines per mm (the quantity catalogue has no kind for it).
+textbooks). The line density uses the quantity kind `lineDensity` (shown in lines/mm).
 
 Read-only (results of the trace or of the drawing): η, V, θ, the polarisation, E_e; the arrow's image values; the thick
 lens's f, s′_F, s_H, s′_H; the system values f_s, d/e, s′_F; the mirror's R; the prism's A, n_F, n_C, ν_d, Δδ_FC; the
