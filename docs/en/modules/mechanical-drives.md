@@ -161,6 +161,15 @@ along"):
 - *Screw and nut*: the nut on the spindle takes its *v* and *F*.
 - Drivetrain parts of the machines module (e-machine, engine, wheel) on a shaft join the shaft line with the same keys.
 
+**Shaft lines across modules.** The shaft line rule is shared by all modules (core `ShaftLines`, built on the coupling
+relations): shafts, spline shafts, couplings and universal joints pass the torque on unchanged, bearings take the speed
+only, planet carriers, differential cases, gear sets and the screw-drive nut stay out. Elements of any module with a
+speed *n* (and a torque *T*) whose hub sits on a shaft axis or on another hub join the line. Every module links its
+elements as a star around the line's shaft or coupling, so an e-machine of the machines module, a mechanical shaft and a
+pump of the process or fluid module share *n* and, with at most two torque members, *T*: the drive's power 2π·*n*·*T*
+becomes the pump's shaft power. Pulleys, sprockets, idler pulleys and tensioners have a pitch circle that sizes the belt
+or chain only: two of them whose pitch circles touch do not mesh like gears (no gear ratio, no scaling when one moves).
+
 **Checks** (hints only, overlay, nothing changes):
 
 | Id | Rule | Severity | Source |

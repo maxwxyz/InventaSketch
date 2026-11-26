@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 
 namespace InventaSketch.Core
 {
@@ -37,6 +38,17 @@ namespace InventaSketch.Core
         SketchObject RouteThrough(SketchObject o, IReadOnlyList<Vec2> pageHubs, RenderContext ctx);
     }
 
+    /// <summary>
+    /// Optional for types with a <see cref="AnchorRole.Pitch"/> circle that is no mesh: a belt pulley or chain sprocket whose
+    /// pitch circle only sizes the belt or chain does not mesh with a pitch circle it touches (<see cref="Coupling"/>,
+    /// <see cref="Coupling.AlignTeeth"/>). Types without this interface mesh (gears, friction wheels).
+    /// </summary>
+    public interface IPitchMesh
+    {
+        /// <summary>True if the pitch circle of <paramref name="o"/> meshes with a touching pitch circle.</summary>
+        bool MeshesAtPitch(SketchObject o);
+    }
+
     public static class Coupling
     {
         private const double Eps = 1e-6;
@@ -52,6 +64,8 @@ namespace InventaSketch.Core
             public bool Drives;
             /// <summary><see cref="ObjectType.SpansHubs"/>.</summary>
             public bool Span;
+            /// <summary>The pitch circle meshes (not a pulley or sprocket, see <see cref="IPitchMesh"/>).</summary>
+            public bool Meshes = true;
             /// <summary>A strand routed over all its hubs (<see cref="ISpanRoute"/>), not only the first two.</summary>
             public bool Routed;
             public readonly List<Vec2> Hubs = new();
@@ -67,6 +81,7 @@ namespace InventaSketch.Core
             if (o.IsPointGeometry || registry.Type(o.Type) is not { } type) return f;
             f.Drives = type.DrivesShaft;
             f.Span = type.SpansHubs;
+            f.Meshes = type is not IPitchMesh pm || pm.MeshesAtPitch(o);
             f.Routed = type is ISpanRoute route && route.IsRouted(o);
             foreach (var a in registry.PageAnchors(o, ctx))
             {
@@ -210,8 +225,47 @@ namespace InventaSketch.Core
         /// The coupling relations of a document's box objects (mesh, carried, bonded, spanned) without released pairs, as
         /// (kind, a, b): for a carried pair a carries b (shaft, gear).
         /// </summary>
+        /// <remarks>
+        /// Cached per document instance, registry and language (documents are immutable). Re-entrancy safe: reading the
+        /// anchors of every object can solve values again (a linked characteristic chart solves its pump, whose shaft links ask
+        /// for this graph); such a nested request for a document whose graph is being built gets an empty graph (not cached)
+        /// instead of recursing without end. Callers that cache results derived from the graph check <see cref="GraphPending"/>.
+        /// </remarks>
         public static IReadOnlyList<(LinkKind Kind, string A, string B)> Graph(Registry registry, SketchDocument doc, Lang lang = Lang.En)
-            => Pairs(FeaturesOf(registry, doc, lang)).Where(p => !IsReleased(doc, p.A, p.B)).Select(p => (p.Kind, p.A, p.B)).ToList();
+        {
+            var slot = Graphs.GetValue(doc, _ => new ConditionalWeakTable<Registry, Dictionary<Lang, IReadOnlyList<(LinkKind, string, string)>>>())
+                .GetValue(registry, _ => new Dictionary<Lang, IReadOnlyList<(LinkKind, string, string)>>());
+            lock (slot)
+                if (slot.TryGetValue(lang, out var cached)) return cached;
+            if (GraphPending(doc)) return Array.Empty<(LinkKind, string, string)>();
+            var building = _building ??= new List<SketchDocument>();
+            building.Add(doc);
+            IReadOnlyList<(LinkKind, string, string)> graph;
+            try
+            {
+                graph = Pairs(FeaturesOf(registry, doc, lang)).Where(p => !IsReleased(doc, p.A, p.B)).Select(p => (p.Kind, p.A, p.B)).ToList().AsReadOnly();
+            }
+            finally { building.RemoveAt(building.Count - 1); }
+            lock (slot) slot[lang] = graph;
+            return graph;
+        }
+
+        private static readonly ConditionalWeakTable<SketchDocument, ConditionalWeakTable<Registry, Dictionary<Lang, IReadOnlyList<(LinkKind, string, string)>>>> Graphs = new();
+
+        /// <summary>Documents whose <see cref="Graph"/> is being built on this thread (innermost last).</summary>
+        [ThreadStatic] private static List<SketchDocument>? _building;
+
+        /// <summary>
+        /// True while <see cref="Graph"/> of <paramref name="doc"/> is being built on this thread: a nested request gets an empty
+        /// graph, so results derived from it must not be cached.
+        /// </summary>
+        public static bool GraphPending(SketchDocument doc)
+        {
+            var building = _building;
+            if (building is null) return false;
+            foreach (var d in building) if (ReferenceEquals(d, doc)) return true;
+            return false;
+        }
 
         /// <summary>True if the user released the pair (<see cref="SketchObject.Released"/> on either object).</summary>
         public static bool IsReleased(SketchDocument doc, string a, string b)
@@ -247,7 +301,7 @@ namespace InventaSketch.Core
                         }
                         continue;
                     }
-                    if (j > i && a.Pitch is double ra && b.Pitch is double rb && SameMeshKind(a, b))
+                    if (j > i && a.Pitch is double ra && b.Pitch is double rb && a.Meshes && b.Meshes && SameMeshKind(a, b))
                     {
                         var d = a.Centre.DistanceTo(b.Centre);
                         var need = MeshDistance(ra, a.Inner, rb, b.Inner);
@@ -568,7 +622,7 @@ namespace InventaSketch.Core
             {
                 if (registry.Type(o.Type)?.ToothPhase(o) is not { } tp || tp.Teeth < 3) continue;
                 var f = Read(registry, o, ctx);
-                if (f.Pitch is null || f.Inner) continue;
+                if (f.Pitch is null || f.Inner || !f.Meshes) continue;
                 gears[o.Id] = (f, tp.Teeth, tp.ToothDeg);
             }
             if (gears.Count < 2) return after;

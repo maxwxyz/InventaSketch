@@ -174,6 +174,17 @@ bewegt sich mit“):
 - Antriebsstrangteile des Maschinenmoduls (E-Maschine, Verbrennungsmotor, Rad) auf einer Welle gehören mit denselben
   Schlüsseln zum Wellenstrang.
 
+**Wellenstränge über Modulgrenzen.** Die Regel des Wellenstrangs teilen alle Module (Kern `ShaftLines`, auf den
+Kopplungsbeziehungen aufgebaut): Wellen, Keilwellen, Kupplungen und Kardangelenke geben das Moment unverändert weiter,
+Lager übernehmen nur die Drehzahl, Planetenträger, Differentialkorb, Radsätze und die Gewindetrieb-Mutter bleiben
+draußen. Elemente beliebiger Module mit einer Drehzahl *n* (und einem Moment *T*), deren Nabe auf einer Wellenachse
+oder einer anderen Nabe sitzt, gehören zum Strang. Jedes Modul verknüpft seine Elemente sternförmig mit der Welle oder
+Kupplung des Strangs, so teilen eine E-Maschine des Maschinenmoduls, eine mechanische Welle und eine Pumpe des Prozess-
+oder Fluidmoduls *n* und, bei höchstens zwei Momentgliedern, *T*: die Leistung 2π·*n*·*T* des Antriebs wird zur
+Wellenleistung der Pumpe. Riemenscheiben, Kettenräder, Umlenkrollen und Riemenspanner haben einen Teilkreis, der nur den
+Riemen oder die Kette bemisst: zwei davon, deren Teilkreise sich berühren, kämmen nicht wie Zahnräder (keine
+Übersetzung, kein Mitskalieren beim Verschieben).
+
 **Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
 
 | Id | Regel | Schwere | Quelle |

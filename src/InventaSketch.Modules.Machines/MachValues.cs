@@ -280,13 +280,6 @@ namespace InventaSketch.Modules.Machines
         /// <summary>Connectors between drive blocks, per document: (upstream, downstream).</summary>
         private static readonly ConditionalWeakTable<SketchDocument, List<(string Up, string Down)>> Chains = new();
 
-        private static readonly ConditionalWeakTable<SketchDocument, ConditionalWeakTable<Registry, IReadOnlyList<(LinkKind Kind, string A, string B)>>> Graphs = new();
-
-        /// <summary>The core coupling relations of a document (cached per document and registry).</summary>
-        private static IReadOnlyList<(LinkKind Kind, string A, string B)> GraphOf(Registry registry, SketchDocument doc)
-            => Graphs.GetValue(doc, _ => new ConditionalWeakTable<Registry, IReadOnlyList<(LinkKind, string, string)>>())
-                .GetValue(registry, r => Coupling.Graph(r, doc, Lang.En));
-
         private static BoundRelation Eq(Relation r, string a, string ka, string b, string kb)
             => new(r, new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["a"] = new VarRef(a, ka), ["b"] = new VarRef(b, kb) });
 
@@ -324,16 +317,10 @@ namespace InventaSketch.Modules.Machines
                 list.Add(Eq(SameTorque, up, to, down, ti));
             }
 
-            // Drivetrain parts on a mechanical shaft share its speed (the torque along the shaft line comes from the shaft).
+            // Drivetrain parts on a mechanical shaft share the speed of its shaft line (Core ShaftLines; the torque along the
+            // line comes from the shaft).
             if (registry is not null && (type.DrivesShaft || type.Id == "machines.drive.wheel"))
-                foreach (var (kind, a, b) in GraphOf(registry, doc))
-                {
-                    if (kind is not (LinkKind.Carried or LinkKind.Bonded) || a != o.Id && b != o.Id) continue;
-                    var other = a == o.Id ? b : a;
-                    if (kind == LinkKind.Carried && b == other && doc.Get(other)?.Str("hub", "fixed") == "loose") continue;
-                    if (doc.Get(other) is { } x && ValueModel.Variable(registry.Type(x.Type), "n") is not null)
-                        list.Add(Eq(ShaftSpeed, o.Id, "n", other, "n"));
-                }
+                list.AddRange(ShaftLines.Of(registry, doc).Links(o.Id, ShaftSpeed, null));
             return list;
         }
     }
