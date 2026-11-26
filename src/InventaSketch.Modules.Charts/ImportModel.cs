@@ -53,9 +53,34 @@ namespace InventaSketch.Modules.Charts
         public string Code = "";
     }
 
+    /// <summary>A pie of an axes (matplotlib pie): values, labels, hole, start angle and direction, label mode.</summary>
+    internal sealed class ImpPie
+    {
+        public double[] Values = Array.Empty<double>();
+        public string[]? Labels;
+        /// <summary>Inner radius / outer radius (wedgeprops width).</summary>
+        public double Hole;
+        /// <summary>matplotlib start angle: degrees counter-clockwise from the positive x axis.</summary>
+        public double StartAngle;
+        public bool CounterClock = true;
+        /// <summary>Percent labels (autopct).</summary>
+        public bool Percent;
+        public int Line;
+    }
+
     /// <summary>One axes (plot area) of a figure.</summary>
     internal sealed class ImpAxes
     {
+        /// <summary>A pie (the axes shows nothing else).</summary>
+        public ImpPie? Pie;
+        /// <summary>Polar projection: the series are (angle in radians, radius).</summary>
+        public bool Polar;
+        /// <summary>Polar: 0° at the top (set_theta_zero_location('N')).</summary>
+        public bool PolarTop;
+        /// <summary>Polar: angles clockwise (set_theta_direction(-1)).</summary>
+        public bool PolarClockwise;
+        /// <summary>Polar: the curves are filled (fill).</summary>
+        public bool PolarFill;
         public int Row, Col;
         public int Line;
         public string? Title, XLabel, YLabel;
@@ -81,7 +106,7 @@ namespace InventaSketch.Modules.Charts
         public List<double>? XTicks, YTicks;
         public List<string>? XTickLabels, YTickLabels;
 
-        public bool HasContent => Series.Count > 0 || Bars.Count > 0 || Refs.Count > 0 || Spans.Count > 0 || Fills.Count > 0 || Notes.Count > 0;
+        public bool HasContent => Series.Count > 0 || Bars.Count > 0 || Refs.Count > 0 || Spans.Count > 0 || Fills.Count > 0 || Notes.Count > 0 || Pie is not null;
 
         /// <summary>True if an axis range was set (empty axes with ranges are imported as a coordinate system).</summary>
         public bool HasRange => XMin is not null || XMax is not null || YMin is not null || YMax is not null;
@@ -181,7 +206,7 @@ namespace InventaSketch.Modules.Charts
         {
             var axes = f.Axes.Where(a => a.HasContent || a.XLabel is not null || a.YLabel is not null || a.Title is not null || a.HasRange).ToList();
             if (axes.Count == 0) yield break;
-            var bars = axes.Where(a => a.Bars.Count > 0).ToList();
+            var bars = axes.Where(a => a.Bars.Count > 0 || a.Pie is not null || a.Polar).ToList();
             var stack = f.Cols == 1 && bars.Count == 0 && axes.Count <= FigureSpec.MaxPanels;
             if (stack)
             {
@@ -195,7 +220,9 @@ namespace InventaSketch.Modules.Charts
             {
                 SketchObject? o;
                 I18nText summary;
-                if (a.Bars.Count > 0) o = BarChartOf(registry, f, a, report, out summary);
+                if (a.Pie is not null) o = PieOf(registry, f, a, report, out summary);
+                else if (a.Polar) o = PolarOf(registry, f, a, report, out summary);
+                else if (a.Bars.Count > 0) o = BarChartOf(registry, f, a, report, out summary);
                 else o = Figure(registry, f, new List<ImpAxes> { a }, report, false, out summary);
                 if (o is not null) yield return (o, summary);
             }
@@ -384,7 +411,7 @@ namespace InventaSketch.Modules.Charts
         private static string Plural(string de) => de switch
         {
             "Kurve" => "Kurven", "Wertlinie" => "Wertlinien", "senkrechte Linie" => "senkrechten Linien", "Fläche" => "Flächen", "Anmerkung" => "Anmerkungen",
-            "Balkenreihe" => "Balkenreihen", "Kategorie" => "Kategorien", _ => de,
+            "Balkenreihe" => "Balkenreihen", "Kategorie" => "Kategorien", "Segment" => "Segmente", _ => de,
         };
 
         /// <summary>Index of a series of the panel whose curve passes through every (x, y) of the data (within a small tolerance).</summary>
@@ -600,5 +627,83 @@ namespace InventaSketch.Modules.Charts
         }
 
         internal static string Num(double v) => ExportText.N(v);
+
+        private static string Field(string s) => "\"" + s.Replace("\"", "'").Replace(";", ",").Replace("|", "/").Replace("\n", " ").Trim() + "\"";
+
+        // ------------------------------------------------------------------ pie and polar charts
+
+        private static SketchObject? PieOf(Registry registry, ImpFigure f, ImpAxes a, CodeImportReport report, out I18nText summary)
+        {
+            summary = new I18nText("");
+            var type = registry.Type(PieChart.TypeId);
+            var pie = a.Pie!;
+            if (type is null) return null;
+            if (a.Series.Count > 0 || a.Bars.Count > 0 || a.Fills.Count > 0 || a.Refs.Count > 0 || a.Spans.Count > 0)
+                report.Skip(a.Line, "", new I18nText("Curves, bars and lines next to a pie are not imported (a pie chart shows the pie only).", "Kurven, Balken und Linien neben einem Kreis werden nicht importiert (ein Kreisdiagramm zeigt nur den Kreis)."));
+            var rows = new List<string>();
+            for (var i = 0; i < pie.Values.Length; i++)
+            {
+                var label = pie.Labels is { } l && i < l.Length && !string.IsNullOrWhiteSpace(l[i]) ? l[i] : Fmt.I(i + 1);
+                rows.Add(Field(label) + ";" + (Fmt.Finite(pie.Values[i]) ? Num(pie.Values[i]) : ""));
+            }
+            var o = type.Create(new Vec2(0, 0)) with { Size = SizeOf(f, 1) };
+            // matplotlib: degrees counter-clockwise from 3 o'clock; here: degrees clockwise from 12 o'clock.
+            var start = ((90 - pie.StartAngle) % 360 + 360) % 360;
+            if (start > 180) start -= 360;
+            var labels = pie.Labels is not null ? (pie.Percent ? "namepercent" : "name") : pie.Percent ? "percent" : "none";
+            o = o.WithParam("data", string.Join("\n", rows))
+                .WithParam("hole", Math.Round(Geo.Clamp(pie.Hole, 0, 0.9), 3))
+                .WithParam("start", Math.Round(start, 3))
+                .WithParam("direction", pie.CounterClock ? "ccw" : "cw")
+                .WithParam("labels", labels);
+            var legend = a.Legend || f.Legend;
+            o = o.WithParam("legend", legend ? "right" : labels is "name" or "namepercent" ? "auto" : "none");
+            var title = f.Title ?? a.Title;
+            if (!string.IsNullOrWhiteSpace(title)) o = o.WithParam("title", title!.Trim());
+            if (pie.Values.Any(v => !(v > 0))) report.Skip(pie.Line, "", new I18nText("Slices without a positive value are not drawn.", "Segmente ohne positiven Wert werden nicht gezeichnet."));
+            summary = Summary(new I18nText(pie.Hole > 0 ? "donut chart" : "pie chart", pie.Hole > 0 ? "Ringdiagramm" : "Kreisdiagramm"), new[] { (pie.Values.Length, "slice", "Segment") });
+            return o;
+        }
+
+        private static SketchObject? PolarOf(Registry registry, ImpFigure f, ImpAxes a, CodeImportReport report, out I18nText summary)
+        {
+            summary = new I18nText("");
+            var type = registry.Type(PolarChart.TypeId);
+            if (type is null) return null;
+            if (a.Bars.Count > 0 || a.Fills.Count > 0 || a.Refs.Count > 0 || a.Spans.Count > 0 || a.Notes.Count > 0)
+                report.Skip(a.Line, "", new I18nText("Bars, areas, lines and notes on polar axes are not imported (the curves are).", "Balken, Flächen, Linien und Anmerkungen auf Polarachsen werden nicht importiert (die Kurven schon)."));
+            var blocks = new List<string>();
+            for (var k = 0; k < a.Series.Count; k++)
+            {
+                var se = a.Series[k];
+                var lines = new List<string>();
+                if (se.Label is { } l && l.En.Length > 0) lines.Add(l.En.Replace(";", ",").Replace("\n", " ").Trim() + ";");
+                var n = Math.Min(se.X.Count, se.Y.Count);
+                for (var i = 0; i < n; i++)
+                    if (Fmt.Finite(se.X[i]) && Fmt.Finite(se.Y[i])) lines.Add(Num(Math.Round(se.X[i] * 180 / Math.PI, 9)) + ";" + Num(se.Y[i]));
+                if (lines.Count > 0) blocks.Add(string.Join("\n", lines));
+            }
+            var o = type.Create(new Vec2(0, 0)) with { Size = SizeOf(f, 1) };
+            var markersOnly = a.Series.Count > 0 && a.HiddenLines.Count == a.Series.Count;
+            var markers = a.Series.Any(s => s.Marker is not null);
+            var style = a.PolarFill ? "area" : markersOnly ? "points" : markers ? "linepoints" : "line";
+            // A curve whose last point repeats the first is closed; otherwise it stays open (as matplotlib draws it).
+            var closed = a.Series.Count > 0 && a.Series.All(s => s.X.Count > 2 && Math.Abs(s.Y[0] - s.Y[s.Y.Count - 1]) < 1e-9
+                && Math.Abs(Math.IEEERemainder(s.X[0] - s.X[s.X.Count - 1], 2 * Math.PI)) < 1e-6) || a.PolarFill;
+            o = o.WithParam("data", string.Join("\n\n", blocks)).WithParam("style", style).WithParam("closed", closed);
+            if (a.PolarTop != a.PolarClockwise)
+                report.Skip(a.Line, "", new I18nText("This combination of the 0° direction and the angle direction is drawn with 0° right and counter-clockwise angles, or with 0° up and clockwise angles.",
+                    "Diese Kombination aus 0°-Richtung und Winkelrichtung wird mit 0° rechts und Winkeln gegen den Uhrzeigersinn oder 0° oben und Winkeln im Uhrzeigersinn gezeichnet."));
+            o = o.WithParam("zero", a.PolarTop ? "top" : "right");
+            if (Lim(a.YMin) is { } lo && Lim(a.YMax) is { } hi && lo != hi) o = o.WithParam("rrange", Num(Math.Min(lo, hi)) + ";" + Num(Math.Max(lo, hi)));
+            else if (Lim(a.YMax) is { } top && top > 0) o = o.WithParam("rrange", "0;" + Num(top));
+            var title = f.Title ?? a.Title;
+            if (!string.IsNullOrWhiteSpace(title)) o = o.WithParam("title", title!.Trim());
+            var legend = a.Legend || f.Legend;
+            o = o.WithParam("legend", legend ? "right" : "none");
+            o = o.WithParam("grid", a.XGrid != false && a.YGrid != false);
+            summary = Summary(new I18nText("polar chart", "Polardiagramm"), new[] { (a.Series.Count, "curve", "Kurve") });
+            return o;
+        }
     }
 }

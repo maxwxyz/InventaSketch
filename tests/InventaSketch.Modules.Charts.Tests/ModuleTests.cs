@@ -18,6 +18,18 @@ namespace InventaSketch.Modules.Charts.Tests
 
         public static ChartType Type(Registry r, SketchObject o) => (ChartType)r.TypeOf(o);
 
+        /// <summary>Chart types without a matplotlib/pgfplots form: the code exports report them (timing diagram, presentation charts).</summary>
+        public static readonly HashSet<string> NoCodeExport = new()
+        {
+            TimingChart.TypeId, PieChart.TypeId, PolarChart.TypeId, SankeyChart.TypeId, GanttChart.TypeId, BoxChart.TypeId, HistogramChart.TypeId,
+        };
+
+        /// <summary>Chart types without axes and ticks (pie, Sankey).</summary>
+        public static readonly HashSet<string> NoAxes = new() { PieChart.TypeId, SankeyChart.TypeId };
+
+        /// <summary>Chart types without an x axis and a Cartesian origin (pie, Sankey, polar).</summary>
+        public static readonly HashSet<string> NotCartesian = new() { PieChart.TypeId, SankeyChart.TypeId, PolarChart.TypeId };
+
         public static void AssertFinite(IEnumerable<Primitive> prims, string what)
         {
             foreach (var p in Prim.Flatten(prims))
@@ -65,6 +77,7 @@ namespace InventaSketch.Modules.Charts.Tests
         {
             "chart.xy", "chart.bar", "chart.axes", "chart.torque", "chart.efficiency", "chart.pump", "chart.bode", "chart.band", "chart.figure",
             "chart.math.axes", "chart.math.function", "chart.timing", "chart.linked",
+            "chart.pie", "chart.polar", "chart.sankey", "chart.gantt", "chart.box", "chart.histogram",
         };
 
         [Fact]
@@ -155,6 +168,13 @@ namespace InventaSketch.Modules.Charts.Tests
         [InlineData("toleranzband")]
         [InlineData("koordinatensystem")]
         [InlineData("excel")]
+        [InlineData("kreisdiagramm")]
+        [InlineData("donut")]
+        [InlineData("polardiagramm")]
+        [InlineData("sankey")]
+        [InlineData("gantt")]
+        [InlineData("boxplot")]
+        [InlineData("histogramm")]
         public void SearchFindsEnglishAndGerman(string q) => Assert.NotEmpty(Fx.Reg().Search(q));
 
         [Fact]
@@ -166,7 +186,7 @@ namespace InventaSketch.Modules.Charts.Tests
                 var o = new SketchObject { Id = "x", Type = t.Id, Size = t.DefaultSize };
                 var prims = t.Render(o, Fx.Ctx());
                 Fx.AssertInsideBox(prims, o.Size, t.Id);
-                Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.Axis));
+                if (!Fx.NoAxes.Contains(t.Id)) Assert.Contains(Prim.Flatten(prims), p => ChartTags.Is(p.Tag, ChartTags.Axis));
                 Assert.NotEmpty(t.Anchors(o, Fx.Ctx()));
             }
         }

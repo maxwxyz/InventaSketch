@@ -79,6 +79,27 @@ namespace InventaSketch.Modules.Charts
         public const string AxisBreak = "axisbreak";
         /// <summary>Formula of a function graph.</summary>
         public const string Formula = "formula";
+        // Presentation charts (pie, polar, Sankey, Gantt, box plot, histogram).
+        /// <summary>Slice of a pie or donut ("slice.0").</summary>
+        public const string Slice = "slice";
+        /// <summary>Label of a slice with its leader line ("slicelabel.0").</summary>
+        public const string SliceLabel = "slicelabel";
+        /// <summary>Text in the hole of a donut.</summary>
+        public const string CenterText = "centertext";
+        /// <summary>Node of a Sankey diagram ("node.0").</summary>
+        public const string Node = "node";
+        /// <summary>Label of a Sankey node ("nodelabel.0").</summary>
+        public const string NodeLabel = "nodelabel";
+        /// <summary>Flow (ribbon) of a Sankey diagram ("flow.0").</summary>
+        public const string Flow = "flow";
+        /// <summary>Boxes, medians and whiskers of a box plot series ("box.0").</summary>
+        public const string Box = "box";
+        /// <summary>Outliers of a box plot series ("outlier.0").</summary>
+        public const string Outlier = "outlier";
+        /// <summary>Milestones of a Gantt group ("milestone.0").</summary>
+        public const string Milestone = "milestone";
+        /// <summary>Today line of a Gantt chart with its label.</summary>
+        public const string Today = "today";
     }
 
     /// <summary>Marker shapes of data series (distinguishable without colour).</summary>

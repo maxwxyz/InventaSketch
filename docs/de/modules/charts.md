@@ -2,7 +2,8 @@
 
 Technische Diagramme für Folien: XY-Linien-, Streu- und Stufendiagramme, Säulen-/Balkendiagramme, leere Achsen mit
 Gitter, die Drehmoment-Drehzahl-Kennlinie eines Motors, ein Wirkungsgradkennfeld, eine Pumpen-/Ventilatorkennlinie mit
-Betriebspunkt, ein Bode-Diagramm und ein Toleranzband. Jedes Diagramm besteht aus nativen Primitiven (Linien,
+Betriebspunkt, ein Bode-Diagramm und ein Toleranzband sowie die Präsentationsdiagramme Kreis- und Ringdiagramm, Polar-
+und Netzdiagramm, Sankey-Diagramm, Gantt-Diagramm, Boxplot und Histogramm. Jedes Diagramm besteht aus nativen Primitiven (Linien,
 Freihandformen, Rechtecke, Text), bleibt also mit den Werkzeugen des Hosts bearbeitbar, und ist auch in
 Schwarz-Weiß-Ausgabe lesbar.
 
@@ -29,6 +30,12 @@ Schrift. Diagramme sind Abbildungen, keine Bauteile (`IsPart = false`).
 | `chart.math.axes` | Coordinate system (2D) / Koordinatensystem (2D) | Mathematikstil, siehe [Koordinatensysteme und Funktionsgraphen](#koordinatensysteme-und-funktionsgraphen-diagramme-v2-stufe-4) |
 | `chart.math.function` | Function graph / Funktionsgraph | Grundfunktion, eingegebene Formel oder Funktionsgenerator im Koordinatensystem im Mathematikstil |
 | `chart.timing` | Timing diagram (digital) / Zeitdiagramm (digital) | `signals` (ein Signal je Zeile, siehe [Digitales Zeitdiagramm](#digitales-zeitdiagramm-charttiming)), `slope` schräg / senkrecht, `grid`, `timelabels`, `markers`, `spans`, `title`, `dt`, `tunit` |
+| `chart.pie` | Pie chart / Kreisdiagramm | `data` (Zeilen `Bezeichnung;Wert`), `hole` (Ring: Innen-/Außenradius, 0–0,9), `labels` Prozent / Name / Name und Prozent / Wert / keine, `start` (° im Uhrzeigersinn ab 12 Uhr), `direction` im / gegen den Uhrzeigersinn, `center` (Text im Loch), `legend`, `patterns`; siehe [Präsentationsdiagramme](#präsentationsdiagramme-2026-11-26) |
+| `chart.polar` | Polar chart / Polardiagramm | `data` (Zeilen `Winkel in °;r`, XY-Format), `style` Linie / Linie mit Markern / gefüllte Fläche / Punkte, `closed`, `zero` rechts gegen den Uhrzeigersinn / oben im Uhrzeigersinn, `rrange`, `grid`, `legend` |
+| `chart.sankey` | Sankey diagram / Sankey-Diagramm | `data` (Zeilen `Quelle;Ziel;Wert`), `values` (Werte an den Knoten), `patterns` |
+| `chart.gantt` | Gantt chart / Gantt-Diagramm | `data` (Zeilen `Vorgang;Start;Dauer`, ohne Dauer = Meilenstein, Blöcke = Gruppen), `today` (Heute-Linie), `xlabel`/`xunit`, `xrange`, `grid`, `legend` |
+| `chart.box` | Box plot / Boxplot | `data` (Zeilen `Kategorie;Wert;Wert…`), `whis` (Whisker × IQR, 1,5), `outliers`, `yrange`, `grid`, `legend` |
+| `chart.histogram` | Histogram / Histogramm | `data` (Rohwerte, Blöcke = Reihen), `bins` (0 = automatisch, Sturges), `xrange`, `yrange`, `grid`, `legend` |
 
 `chart.xy` nimmt auch Achsenbrüche (`ybreaks`, `xbreaks`, `breakstyle`, siehe [Achsenbrüche](#achsenbrüche-diagramme-v2-stufe-3)).
 
@@ -50,7 +57,9 @@ Die Bibliothek enthält 41 Vorlagen (`chart.line`, `chart.line.markers`, `chart.
 `chart.bar.horizontal`, `chart.axes`, `chart.axes.plain`, `chart.axes.loglog`, `chart.line.break`, `chart.limits`, `chart.torque`,
 `chart.torque.plain`, `chart.efficiency`, `chart.pump`, `chart.fan`, `chart.bode`, `chart.bode.lowpass1`,
 `chart.bode.highpass1`, `chart.band`, `chart.band.measured`, `chart.figure.phases`, `chart.figure.timing`, `chart.figure.temperature`,
-`chart.timing`, `chart.timing.clock`, `chart.timing.bus`, `chart.timing.handshake`, die acht unten genannten Koordinatensysteme und Funktionsgraphen) in vier Kategorien:
+`chart.timing`, `chart.timing.clock`, `chart.timing.bus`, `chart.timing.handshake`, die acht unten genannten Koordinatensysteme und Funktionsgraphen
+und die neun Präsentationsdiagramme `chart.pie`, `chart.pie.names`, `chart.donut`, `chart.polar`, `chart.polar.radar`,
+`chart.sankey`, `chart.gantt`, `chart.box`, `chart.histogram`; zusammen 51) in vier Kategorien:
 Datendiagramme, Koordinatensysteme & Funktionsgraphen, Kennlinien & Kennfelder sowie Prinzip- und technische
 Abbildungen.
 
@@ -78,6 +87,12 @@ Bedeutung der Spalten:
 | Balkendiagramm | `Bezeichnung;w1;w2;…` (eine Reihe je Wertspalte); eine numerische erste Spalte dient als Bezeichnung, wenn weitere Werte folgen (Jahreszahlen); mehrere Blöcke sind mehrere Reihen, zugeordnet über die Bezeichnung |
 | Toleranzband | `x;y` (Band aus `tol` in % von y oder absolut), `x;y;±t` (symmetrisch), `x;y;unten;oben`; weitere Blöcke sind Messreihen `x;y` |
 | Bode-Diagramm (`data`) | `f;dB;°` (Phase optional) |
+| Kreis- / Ringdiagramm | `Bezeichnung;Wert` (erste Wertespalte; Null, negative und leere Werte ergeben kein Segment) |
+| Polardiagramm | wie das XY-Diagramm, x = Winkel in Grad, y = Radius |
+| Sankey-Diagramm | `Quelle;Ziel;Wert` (ein Fluss je Zeile; Zeilen ohne positiven Wert werden übersprungen) |
+| Gantt-Diagramm | `Vorgang;Start;Dauer` (eine Zeile ohne Dauer ist ein Meilenstein); eine Leerzeile oder Kopfzeile beginnt eine Gruppe |
+| Boxplot | `Kategorie;Wert;Wert…`, oder eine Spalte je Kategorie unter einer Kopfzeile, oder ein Block je Kategorie |
+| Histogramm | beliebige Zahlen (jeder Wert eines Blocks ist ein Messwert); mehrere Blöcke sind mehrere Reihen |
 
 Listen (`levels`, `limits`) verwenden dieselben Trennzeichen; ein einzelner Wert mit Dezimalkomma (`92,5`) ist eine
 Zahl. Bereiche (`xrange`, `yrange`) akzeptieren `0;100`, `0..100`, `0,5;2,5` oder `10 1000`; alles andere bedeutet
@@ -147,6 +162,12 @@ freien Skalieren:
 | Pumpen-/Ventilatorkennlinie | Maschine ▸ (Pumpe / Ventilator), „Förderstrom im Betriebspunkt…“ (Eingabe), Anlagenkennlinie, Gitternetz, Legende ▸ |
 | Bode-Diagramm | System ▸, „Eckfrequenz…“ (Eingabe: `1 kHz`, `250 Hz`, `2.5k`, `2,5k`), Anzeigen ▸, Eckfrequenz markieren, Gitternetz |
 | Toleranzband | „Daten…“, „Toleranz…“ (`10 %` = Prozent, `0,5` = absolut), geglättete Kurven, Gitternetz, Legende ▸ |
+| Kreis- / Ringdiagramm | „Daten…“, Ring (Schalter), „Lochgröße…“ (`30 %`), „Startwinkel…“, „Text in der Mitte…“, Segmentbeschriftung ▸, Richtung ▸, Legende ▸ |
+| Polardiagramm | „Daten…“, Darstellung ▸, geschlossene Kurven, Richtung von 0° ▸, „Radialbereich…“, Gitternetz, Legende ▸ |
+| Sankey-Diagramm | „Daten…“ (Flusszeilen), Fluss hinzufügen, letzten Fluss entfernen, Werte an den Knoten |
+| Gantt-Diagramm | „Daten…“, Vorgang hinzufügen, letzten Vorgang entfernen, „Heute-Linie…“ (leer = keine), Gitternetz, Legende ▸ |
+| Boxplot | „Daten…“, „Whiskerlänge…“, Ausreißer, Gitternetz, Legende ▸ |
+| Histogramm | „Daten…“, „Klassen…“ (`auto` oder eine Zahl), mehr Klassen, weniger Klassen, Gitternetz, Legende ▸ |
 
 Ungültige Eingaben werfen eine `FormatException` mit zweisprachiger Meldung und ändern nichts. Schalter verwenden
 `IconIds.Toggle`, Eingaben `IconIds.Text`. Die Diagrammtypen haben keine Ansichtsumschaltung.
@@ -527,6 +548,104 @@ Export: alles ist nativ (Freihandformen, schraffierte Freihandformen, Linien mit
 der TikZ- und der SVG-Export es aus den Grundelementen. Die Exporte als matplotlib und pgfplots haben dafür keine
 Datenachsen und melden ein Zeitdiagramm als „could not be exported“ (nicht exportierbar).
 
+## Präsentationsdiagramme (2026-11-26)
+
+Die Diagrammarten, die Vortragende neben XY- und Balkendiagrammen brauchen: Anteile (Kreis, Ring), Richtungen (Polar,
+Netz), Flüsse (Sankey), Zeitpläne (Gantt) und Verteilungen (Boxplot, Histogramm). Alle stehen in der Kategorie
+Datendiagramme, sind ohne Parameter mit neutralen Beispieldaten einfügbar (Buchstaben als Namen, wie beim
+Balkendiagramm) und halten ihre Daten im Textparameter `data` im obigen [Datenformat](#datenformat), sodass die
+Eingabe *Daten…* und der Tabelleneditor in PowerPoint wie bei den anderen Diagrammen arbeiten.
+
+| Bibliothekseintrag | Name (EN / DE) | Vorlage |
+|---|---|---|
+| `chart.pie` | Pie chart / Kreisdiagramm | fünf Segmente A–E, Prozentbeschriftung, Namen in der Legende (80 × 65 mm) |
+| `chart.pie.names` | Pie chart with names / Kreisdiagramm mit Namen | Beschriftung „Name Prozent“, keine Legende |
+| `chart.donut` | Donut chart / Ringdiagramm | `hole` 0,55 |
+| `chart.polar` | Polar chart / Polardiagramm | zwei Reihen über acht Richtungen, geschlossene Linien |
+| `chart.polar.radar` | Radar chart / Netzdiagramm | gefüllte Flächen, 0° oben und im Uhrzeigersinn |
+| `chart.sankey` | Sankey diagram / Sankey-Diagramm | A, B, C → M → X, Y, Z |
+| `chart.gantt` | Gantt chart / Gantt-Diagramm | vier Vorgänge, ein Meilenstein, Heute-Linie bei 6 |
+| `chart.box` | Box plot / Boxplot | drei Kategorien mit je zehn Werten und zwei Ausreißern |
+| `chart.histogram` | Histogram / Histogramm | dreißig Messwerte, automatische Klassen |
+
+**Kreis und Ring.** Ein Segment je Kategorie mit positivem Wert, sein Winkel ist der Anteil des Werts an 360°; das
+erste Segment beginnt bei `start` (Grad im Uhrzeigersinn ab 12 Uhr, Vorgabe 0), die Segmente laufen im oder gegen den
+Uhrzeigersinn. `hole` > 0 ergibt einen Ring (Innenradius als Anteil des Außenradius); `center` schreibt einen Text in
+das Loch. Eine Segmentbeschriftung steht im Segment – beim Ring im Ring –, wo ihr Textrahmen zwischen die Radien und
+die Segmentkanten passt; sonst rückt sie mit einer Führungslinie nach außen, äußere Beschriftungen werden je Seite
+auseinandergeschoben und der Kreis wird kleiner, damit sie passen. Jeder Text bleibt in der Box (er wird kleiner, bevor
+er sie verlassen würde). Farbig: Segmente in den Reihenfarben mit weißen Fugen und weißer Beschriftung; Schwarz-Weiß
+oder `patterns`: die Füllmuster der Reihen mit schwarzen Kanten und Beschriftungen auf weißem Grund. Stehen die Namen an
+den Segmenten, ist die automatische Legende aus; sonst nennt die Legende die Namen.
+
+**Polardiagramm.** Zeilen `Winkel;r` (mehrere y-Spalten oder Blöcke sind mehrere Reihen, wie im XY-Diagramm). Die
+Radialachse beginnt mit 0 im Pol (`rrange` legt sie fest; Radien darüber hinaus liegen auf dem Rand). Die Winkelachse
+hat Speichen alle 30° (45° oder 90° bei kleinen Diagrammen), außen in Grad beschriftet; das Radialnetz hat Ringe an den
+Radialteilungen, beschriftet entlang des Strahls einen halben Schritt nach 0°. `zero`: 0° rechts mit Winkeln gegen den
+Uhrzeigersinn (Mathematik, matplotlib) oder 0° oben mit Winkeln im Uhrzeigersinn (Kompass). `closed` verbindet den
+letzten Punkt mit dem ersten; die Darstellung „gefüllte Fläche“ füllt jede Reihe durchscheinend (Schwarz-Weiß:
+Schraffuren).
+
+**Sankey-Diagramm.** Jeder Knoten kommt in die Spalte seines längsten Wegs von einer Quelle; Knoten ohne abgehende
+Flüsse kommen in die letzte Spalte. Ein Knoten ist so hoch wie der größere Wert aus Zu- und Abfluss, mit einem Maßstab
+für das ganze Diagramm (so gewählt, dass die vollste Spalte die Höhe füllt); die Flüsse eines Knotens liegen also auf
+jeder Seite genau über seiner Höhe. Spalten werden mittig gesetzt und nach der mittleren Lage ihrer Nachbarn
+geordnet, damit sich wenig kreuzt; Flüsse verlassen einen Knoten in der Reihenfolge ihrer Ziele und erreichen ihn in
+der Reihenfolge ihrer Quellen. Ein Fluss ist eine geschlossene Freihandform mit zwei kubischen Kanten in der Farbe
+seiner Quelle (35 % Deckkraft); Schwarz-Weiß: schwarze Knoten und weiße, umrandete Flüsse. Beschriftungen „Name Wert“
+stehen links der ersten Spalte und rechts der übrigen Knoten. Flüsse, die einen Kreislauf schließen, können nicht von
+links nach rechts laufen: sie werden nicht gezeichnet, ein Hinweis nennt ihre Zahl.
+
+**Gantt-Diagramm.** Vorgänge von oben nach unten auf einer Kategorieachse (die erste Zeile oben), die Zeit auf einer
+linearen Achse in beliebiger Einheit (der x-Achsentitel nennt sie, Vorgabe „Zeit“/„Time“). Eine Zeile ohne Dauer ist
+ein Meilenstein (eine Raute); Blöcke sind Gruppen mit eigener Farbe und eigenem Legendeneintrag. `today` zeichnet eine
+gestrichelte Heute-Linie mit der Beschriftung „Heute“/„Today“ und dem Schienenanker `today`.
+
+**Boxplot.** Je Kategorie und Reihe die Quartile mit linearer Interpolation (Hyndman–Fan Typ 7, wie numpy und
+matplotlib), eine Box vom unteren zum oberen Quartil mit dem Median, Whisker bis zu den äußersten Werten innerhalb von
+`whis` × IQR jenseits der Box (Tukey, Vorgabe 1,5) und die Werte darüber hinaus als hohle Kreise; ohne `outliers`
+reichen die Whisker bis Minimum und Maximum. Boxen mehrerer Reihen stehen nebeneinander.
+
+**Histogramm.** Klassen gleicher Breite über den Bereich der Messwerte (`xrange` legt ihn fest); eine Klasse umfasst
+[links, rechts), die letzte schließt ihren rechten Rand ein (wie numpy). `bins` = 0 wählt ⌈log₂ n⌉ + 1 Klassen
+(Sturges-Regel für die größte Reihe); „Mehr Klassen“/„Weniger Klassen“ ändern um etwa ein Fünftel. Mehrere Reihen
+stehen in jeder Klasse nebeneinander.
+
+**Teile.** Kreis: `slice.k` (k = Zeile der Kategorie), `slicelabel.k` (Text, Hinterlegung, Führungslinie),
+`centertext`, `legend`, `title`. Polar: `series.k`, `marker.k`, `axis.a` (Kreis), `axis.r` (Radialachse), `label.a`,
+`label.r`, `grid.major`, `legend`. Sankey: `node.k`, `nodelabel.k`, `flow.k` (k = Zeile des Flusses), `note`. Gantt:
+`bar.g` (Balken der Gruppe g), `milestone.g`, `today` und die Achsenteile. Boxplot: `box.k` (Boxen, Mediane, Whisker
+der Reihe k), `outlier.k` und die Achsenteile. Histogramm: `bar.k` und die Achsenteile. Teilnamen kommen aus den Daten
+(„B“, „Fluss A → M“, „Knoten M“); Teilaktionen bieten die Daten- und Auswahlaktionen des Typs, dann Ein-/Ausblenden und
+die Stile.
+
+**Anker.** Jedes Diagramm hat `plot.tl` … `plot.c` (Kreis: das Quadrat um den Kreis, dazu `centre`). Andockpunkte:
+Kreis `s1.<Segment>` auf dem Rand in der Segmentmitte; Polar `s<Reihe>.<Punkt>`, `origin` (Pol) und die Schiene
+`axis.r`; Sankey `n<Knoten>.in` / `n<Knoten>.out`; Gantt Balkenenden und Meilensteine `s<Gruppe>.<Vorgang>`; Boxplot
+Mediane `s<Reihe>.<Kategorie>`; Histogramm Balkenoberkanten `s<Reihe>.<Klasse>`. Gantt, Boxplot und Histogramm haben
+außerdem die Achsenanker (`origin`, `axis.x`, `axis.y`).
+
+**Folien bereinigen.** Kreis wie das Balkendiagramm (Werte durch den größten geteilt, Kategorienamen werden
+Buchstaben). Boxplot und Histogramm: alle Werte durch eine monotone Abbildung (Reihenfolge, Quartile und Klassen
+behalten ihre Ränge). Gantt: Zeiten auf 0 verschoben und auf 0…1 skaliert (normiert) oder mit einem Zufallsfaktor,
+die Heute-Linie mit ihnen. Polar: Radien durch den größten geteilt (normiert) oder skaliert und variiert, die Winkel
+bleiben. Sankey: Knotennamen werden A, B, C …, Werte durch den größten Fluss geteilt oder mit einem Zufallsfaktor
+skaliert (Zu-/Abflussbilanzen bleiben).
+
+**Codeexport und -import.** Für diese Diagramme gibt es noch keinen matplotlib- oder pgfplots-Export: beide Exporte
+melden sie als „could not be exported“ (nicht exportierbar, mit deutscher Begründung); TikZ- und SVG-Export zeichnen sie aus den Primitiven. Der
+matplotlib-Import liest `pie` (Werte, `labels`, `autopct` → Prozentbeschriftung, `startangle` und `counterclock`
+umgerechnet auf „im Uhrzeigersinn ab 12 Uhr“, `wedgeprops=dict(width=…)` → Ringloch; `explode`, `colors` und
+`normalize=False` werden gemeldet) und Polarachsen (`subplot_kw={'projection': 'polar'}`,
+`add_subplot(…, projection='polar')` oder `polar=True`, `plt.polar`): `plot`-Kurven mit den Winkeln von Bogenmaß in
+Grad umgerechnet, `fill` → gefüllte Darstellung, `set_theta_zero_location('N')` mit `set_theta_direction(-1)` →
+Kompassdarstellung, `set_rmax`/`set_rlim`/`set_ylim` → `rrange`; Teilungseinstellungen der Polarachsen werden
+gemeldet. Andere Projektionen (3d) werden weiter gemeldet, `hist` und `boxplot` werden noch nicht importiert.
+
+**Hinweise für die Hosts.** Nur native Primitive: Segmente, Ringe und Flüsse sind geschlossene Freihandformen (Flüsse
+mit kubischen Kanten), Knoten, Balken und Boxen Rechtecke, Meilensteine geschlossene Freihandformen, Netze je eine
+Freihandform, Texte native Texte; kein Vektorbild.
+
 ## Verknüpfte Kennlinien (Calc 5)
 
 Eine Kennlinie kann mit einem Element verknüpft werden, dessen Werte einen Kennliniensatz ergeben (Vertrag
@@ -746,4 +865,10 @@ Der Galerietest schreibt `gallery-charts/*.html` (jede Vorlage farbig, deutsch i
 Sichtprüfung. `TimingChartTests` prüft das Zeitdiagramm: jede Verlaufsart der Schreibweise, Takte, Fehlermeldungen mit
 Zeile und Zeichen, Markierungen und Maßpfeile, markierte Teile, Flanken als Andockpunkte, senkrechte und schräge
 Flanken, Textgröße beim Skalieren, Aktionen und Eingaben, Bereinigen, den JSON-Rundlauf und das Exportverhalten; er
-schreibt `gallery/timing/*.svg`.
+schreibt `gallery/timing/*.svg`. `PresentationChartTests` prüft die Präsentationsdiagramme: Segmentwinkel mit der Summe
+360° in beiden Richtungen, Prozenttexte, Beschriftungen im Segment bzw. im Ring und außen mit Führungslinie innerhalb
+der Box bei mehreren Größen, Schwarz-Weiß-Muster, Winkelkonventionen und Radialmaßstab des Polardiagramms,
+Knotenhöhen des Sankey-Diagramms gleich den Zu- und Abflusssummen und Bänder, die jeden Knoten genau füllen, gemeldete
+Kreisläufe, Quartile, Whisker und Ausreißer einer bekannten Stichprobe, Histogrammzählungen und Sturges-Regel,
+Gantt-Balken, Meilensteine und Heute-Linie, jede Aktion, das Zeichnen innerhalb der Box bei extremen Größen, den
+JSON-Rundlauf, die Exportmeldungen, das Bereinigen und den Import von matplotlib-Kreis- und Polarskripten.

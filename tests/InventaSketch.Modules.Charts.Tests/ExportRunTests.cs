@@ -48,7 +48,7 @@ namespace InventaSketch.Modules.Charts.Tests
             return dir;
         }
 
-        public static SketchObject[] AllItems(Registry r) => r.Library.Where(i => i.TypeId != TimingChart.TypeId).Select(i => Fx.Item(r, i.Id)).ToArray();
+        public static SketchObject[] AllItems(Registry r) => r.Library.Where(i => !Fx.NoCodeExport.Contains(i.TypeId)).Select(i => Fx.Item(r, i.Id)).ToArray();
     }
 
     /// <summary>A test that needs Python (skipped when it is not installed).</summary>

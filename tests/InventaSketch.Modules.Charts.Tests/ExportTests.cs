@@ -100,7 +100,7 @@ namespace InventaSketch.Modules.Charts.Tests
         {
             var r = Fx.Reg();
             // Timing diagrams have no data axes; they are reported as not exportable (TimingChartTests).
-            foreach (var item in r.Library.Where(i => i.TypeId != TimingChart.TypeId))
+            foreach (var item in r.Library.Where(i => !Fx.NoCodeExport.Contains(i.TypeId)))
             {
                 var o = Fx.Item(r, item.Id);
                 var py = Py(r, lang, o);
@@ -122,7 +122,7 @@ namespace InventaSketch.Modules.Charts.Tests
         {
             var r = Fx.Reg();
             // Timing diagrams have no data axes; they are reported as not exportable (TimingChartTests).
-            foreach (var item in r.Library.Where(i => i.TypeId != TimingChart.TypeId))
+            foreach (var item in r.Library.Where(i => !Fx.NoCodeExport.Contains(i.TypeId)))
             {
                 var o = Fx.Item(r, item.Id);
                 var tex = Tex(r, lang, o);
