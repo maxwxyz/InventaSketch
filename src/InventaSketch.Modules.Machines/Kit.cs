@@ -75,7 +75,7 @@ namespace InventaSketch.Modules.Machines
     /// Data-driven object type used for all machine symbols: a list of views (each with its own drawing and icon),
     /// optional parameters, anchors and context actions.
     /// </summary>
-    internal sealed class MachType : ObjectType, IValueType, IValueLinks, IValueChecks
+    internal sealed partial class MachType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -100,7 +100,7 @@ namespace InventaSketch.Modules.Machines
 
         /// <summary>Default size of a view: design box times <see cref="Scale"/>.</summary>
         public Size2 SizeOf(ViewSpec v) => new(v.Design.W * Scale, v.Design.H * Scale);
-        public override IReadOnlyList<ParamDef> Parameters => ValueSpec.Params.Count == 0 ? Params : _allParams ??= Params.Concat(ValueSpec.Params).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => ValueSpec.Params.Count == 0 ? Params : _allParams ??= Params.Concat(ValueSpec.Params).Concat(CurveParams).ToList();
 
         // ------------------------------------------------------------------ element values (Calc 3, MachValues)
 

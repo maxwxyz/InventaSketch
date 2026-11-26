@@ -105,6 +105,9 @@ namespace InventaSketch.Modules.Charts
             return h.Move(o, local);
         }
 
+        /// <summary>The chart's actions plus "Link to element ▸" for characteristic charts with elements to link to (<see cref="ChartLinks"/>).</summary>
+        public override IEnumerable<ContextAction> Actions(SketchObject o, RenderContext ctx) => base.Actions(o, ctx).Concat(ChartLinks.Offer(this, o, ctx));
+
         /// <summary>Clean slides for sharing: chart values normalised or randomised (<see cref="ChartSanitize"/>).</summary>
         public override SketchObject Sanitize(SketchObject o, SanitizeOptions opt, Random rng) => ChartSanitize.Apply(this, o, opt, rng);
 

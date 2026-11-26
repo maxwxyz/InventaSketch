@@ -64,7 +64,7 @@ namespace InventaSketch.Modules.Charts.Tests
         public static readonly string[] ExpectedTypes =
         {
             "chart.xy", "chart.bar", "chart.axes", "chart.torque", "chart.efficiency", "chart.pump", "chart.bode", "chart.band", "chart.figure",
-            "chart.math.axes", "chart.math.function", "chart.timing",
+            "chart.math.axes", "chart.math.function", "chart.timing", "chart.linked",
         };
 
         [Fact]
@@ -98,7 +98,9 @@ namespace InventaSketch.Modules.Charts.Tests
                     Assert.False(string.IsNullOrEmpty(p.Label.De), t.Id + "/" + p.Key);
                     foreach (var opt in p.Options ?? Array.Empty<ParamOption>()) Assert.False(string.IsNullOrEmpty(opt.Label.De), t.Id + "/" + p.Key + "/" + opt.Value);
                 }
-                var o = r.Create(r.Library.First(i => i.TypeId == t.Id), new Vec2(50, 50));
+                // The linked characteristic chart has no library item: it is inserted from an element (Calc 5).
+                var item = r.Library.FirstOrDefault(i => i.TypeId == t.Id);
+                var o = item is null ? t.Create(new Vec2(50, 50)) : r.Create(item, new Vec2(50, 50));
                 foreach (var a in t.Actions(o, Fx.Ctx()))
                 {
                     Assert.False(string.IsNullOrEmpty(a.Label.En), t.Id + "/" + a.Id);
@@ -118,7 +120,7 @@ namespace InventaSketch.Modules.Charts.Tests
                     foreach (var kv in item.Params) Assert.Contains(t.Parameters, p => p.Key == kv.Key);
             }
             foreach (var c in r.Categories) Assert.Contains(r.Library, i => i.Category == c.Id);
-            foreach (var t in r.Types) Assert.Contains(r.Library, i => i.TypeId == t.Id);
+            foreach (var t in r.Types.Where(t => t.Id != LinkedChart.TypeId)) Assert.Contains(r.Library, i => i.TypeId == t.Id);
             Assert.Equal(r.Library.Count, r.Library.Select(i => i.Id).Distinct().Count());
         }
 

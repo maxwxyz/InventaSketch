@@ -37,7 +37,7 @@ namespace InventaSketch.Modules.Mechanical
     /// Data-driven object type used for all mechanical symbols: a list of views (each with its own drawing),
     /// optional parameters, anchors and context actions.
     /// </summary>
-    internal sealed class MechType : ObjectType, IValueType, IValueLinks, IValueChecks
+    internal sealed partial class MechType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
