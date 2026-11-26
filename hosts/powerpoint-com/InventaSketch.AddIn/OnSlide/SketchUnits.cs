@@ -144,7 +144,7 @@ namespace InventaSketch.AddIn.OnSlide
 
         /// <summary>True if any object of the model renders from its neighbours.</summary>
         public static bool NeedsContext(Registry registry, SketchDocument? doc)
-            => doc is not null && (doc.Objects.Values.Any(o => registry.Type(o.Type)?.DependsOnNeighbours == true) || HasExternalAttachments(doc));
+            => doc is not null && (doc.Objects.Values.Any(o => registry.Type(o.Type)?.RendersFromNeighbours(o, doc) == true) || HasExternalAttachments(doc));
 
         /// <summary>
         /// True if an object of the model names dependents in other units (<see cref="ObjectType.HasDependents"/>: the source

@@ -84,6 +84,9 @@ namespace InventaSketch.Modules.Annotation
         /// <summary>A flow box rereads the flow when step numbering or automatic exit labels are on (see <see cref="FlowNumbering"/>).</summary>
         public override bool DependsOnNeighbours => true;
 
+        /// <summary>Only while step numbering or automatic exit labels are on somewhere in the document.</summary>
+        public override bool RendersFromNeighbours(SketchObject o, SketchDocument doc) => FlowNumbering.IsActive(doc);
+
         /// <summary>The other numbered steps of its flow and, for a decision, its exit connectors (their labels follow it).</summary>
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => FlowNumbering.DependentsOfBox(o, ctx);
 
@@ -611,6 +614,11 @@ namespace InventaSketch.Modules.Annotation
         }
 
         /// <summary>Objects to redraw when a flow box changes: the steps numbered with it, and a decision's exit connectors.</summary>
+        /// <summary>True if some flow element of <paramref name="doc"/> numbers steps or labels exits automatically.</summary>
+        public static bool IsActive(SketchDocument doc)
+            => doc.Objects.Values.Any(o => (FlowBoxType.ShapeOf(o.Type) is not null || o.Type == "ann.flow.parallel")
+                && (o.Flag(NumberParam, false) || o.Flag(AutoExitsParam, false)));
+
         public static IEnumerable<string> DependentsOfBox(SketchObject o, RenderContext ctx)
         {
             var g = Graph(ctx.Doc);

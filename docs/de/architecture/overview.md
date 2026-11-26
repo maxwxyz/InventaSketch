@@ -109,7 +109,8 @@ Vertragstypen stehen in `Contracts.cs` und `hosts/office-web/src/engine/types.ts
   übrigen Einheiten der Folie als Kontext und zeichnen sie beim Verschieben neu. Typen, die abhängige Objekte nennen,
   aber für sich zeichnen (ein optisches Element, die Quelle eines verknüpften Diagramms), setzen stattdessen
   `ObjectType.HasDependents`: Beim Verschieben bleibt ihre Form erhalten, nur die abhängigen Objekte werden neu
-  gezeichnet.
+  gezeichnet. Wo das Lesen der Nachbarn optional ist, verfeinert `ObjectType.RendersFromNeighbours(o, doc)` die Angabe je
+  Objekt (Flussdiagramm-Kästen nur, solange Schrittnummern oder automatische Ausgangsbeschriftungen eingeschaltet sind).
 - **Dokumenteinstellungen:** `DocumentSettings.PlanScale` (Maßstabszahl, 100 = 1:100, optional) wird mit dem Dokument
   und jeder kompakten Folien-Nutzlast gespeichert. `setPlanScale {value}` setzt oder löscht ihn (ein
   Rückgängig-Schritt, alle Objekte mit `ObjectType.UsesPlanScale` gelten als geändert); `EditorState.planScale` und

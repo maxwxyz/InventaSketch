@@ -97,7 +97,8 @@ live in `Contracts.cs` and `hosts/office-web/src/engine/types.ts`. Decision reco
   `ObjectType.DependsOnNeighbours`; hosts with one model per shape (PowerPoint COM) render such units with the other
   units of the slide as context and redraw them when they move. Types that name dependents but render on their own (an
   optical element, the source of a linked chart) set `ObjectType.HasDependents` instead: a move keeps their shape and
-  redraws only the dependents.
+  redraws only the dependents. Where reading neighbours is optional, `ObjectType.RendersFromNeighbours(o, doc)` refines
+  the flag per object (flowchart boxes only while step numbers or automatic exit labels are on).
 - **Document settings:** `DocumentSettings.PlanScale` (denominator, 100 = 1:100, optional) is persisted with the
   document and every compact slide payload. `setPlanScale {value}` sets or clears it (one undo step, all objects with
   `ObjectType.UsesPlanScale` are reported as changed); `EditorState.planScale` and `inspector.planScale` /

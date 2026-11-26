@@ -56,7 +56,11 @@ namespace InventaSketch.Modules.Annotation.Tests
             var (doc, ids) = Method(r);
             Assert.All(new[] { "start", "A", "B", "D", "C", "end" }, k => Assert.Equal("", Step(r, doc, ids[k])));
 
+            // Hosts with separate units (PowerPoint) keep a box's shapes on a move while nothing is numbered.
+            var box = r.Type(doc.Get(ids["A"])!.Type)!;
+            Assert.False(box.RendersFromNeighbours(doc.Get(ids["A"])!, doc));
             doc = Edits.Update(doc, new[] { ids["start"] }, x => x.WithParam(FlowNumbering.NumberParam, true));
+            Assert.True(box.RendersFromNeighbours(doc.Get(ids["A"])!, doc));
             // Start and end are passed through; the loop back from the decision does not renumber A.
             Assert.Equal("", Step(r, doc, ids["start"]));
             Assert.Equal("S100", Step(r, doc, ids["A"]));

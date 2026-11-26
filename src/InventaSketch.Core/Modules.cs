@@ -811,6 +811,13 @@ namespace InventaSketch.Core
         public virtual bool DependsOnNeighbours => false;
 
         /// <summary>
+        /// Per object: true if <paramref name="o"/> currently renders from its neighbours in <paramref name="doc"/>. Defaults
+        /// to <see cref="DependsOnNeighbours"/>; a type whose neighbour reading is optional (flowchart step numbers, off by
+        /// default) returns false while the option is off, so hosts with separate units keep its shapes on a move.
+        /// </summary>
+        public virtual bool RendersFromNeighbours(SketchObject o, SketchDocument doc) => DependsOnNeighbours;
+
+        /// <summary>
         /// True if <see cref="Dependents"/> can return objects. Defaults to <see cref="DependsOnNeighbours"/>; hosts that keep
         /// objects in separate units evaluate the dependents of an edit only for such types.
         /// </summary>
