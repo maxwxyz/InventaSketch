@@ -20,6 +20,7 @@ namespace InventaSketch.Modules.BuildingServices
         public const string Heating = "bs.heating";
         public const string Plumbing = "bs.plumbing";
         public const string Ventilation = "bs.ventilation";
+        public const string Cooling = "bs.cooling";
         public const string Electrical = "bs.electrical";
     }
 

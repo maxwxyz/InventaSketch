@@ -1,6 +1,6 @@
 # Modul Technische Gebäudeausrüstung (`building-services`)
 
-Heizung, Sanitär, Lüftung und Elektroinstallation im Haus (TGA) für Folien und schnelle technische Skizzen. Jedes
+Heizung, Sanitär, Lüftung, Kälte (Split-Klimagerät) und Elektroinstallation im Haus (TGA) für Folien und schnelle technische Skizzen. Jedes
 Element hat **dieselben drei Ansichten** einer Installation:
 
 | View-Id | Bezeichnung (EN / DE) | Icon | Inhalt |
@@ -96,6 +96,14 @@ Größen: Grundriss / Schnitt / Schema bei 1:100 (B x H, mm auf der Seite).
 | `bs.heat.mixer` | Mixing valve (3-way) / Mischventil (3-Wege) | 4x4 (Symbol) | in der Leitung | a, ab, b | – |
 | `bs.heat.expansion` | Expansion vessel / Ausdehnungsgefäß | 3,6x3,6 / 3,6x5 / 3,6x4,4 | Wand | pipe | – |
 | `bs.heat.trv` | Thermostatic valve / Thermostatventil | 3x3 (Symbol) | in der Leitung | in, out | – |
+| `bs.valve.ball` | Ball valve (heating) / Kugelhahn (Heizung) | 3x3 (Symbol) | in der Leitung | in, out | `service` Heizung/Trinkwasser |
+| `bs.valve.check` | Check valve (heating) / Rückschlagventil (Heizung) | 3x3 (Symbol) | in der Leitung | in, out (Durchfluss von in nach out, Austrittsdreieck gefüllt) | `service` Heizung/Trinkwasser |
+| `bs.valve.safety` | Safety valve (heating) / Sicherheitsventil (Heizung) | 3x3 (Symbol) | in der Leitung | in (unten), waste (Abblasen, rechts) | `service` Heizung/Trinkwasser |
+| `bs.strainer` | Strainer (heating) / Schmutzfänger (Heizung) | 3x3 (Symbol) | in der Leitung | in, out | `service` Heizung/Trinkwasser |
+| `bs.meter.heat` | Heat meter / Wärmemengenzähler | 4x3 (Symbol) | in der Leitung | in, out | Beschriftung HM/WMZ |
+| `bs.meter.water` | Water meter / Wasserzähler | 3x3 (Symbol) | in der Leitung | in, out (Trinkwasser) | Beschriftung WM/WZ |
+| `bs.heat.buffer` | Buffer tank / Pufferspeicher | 8x8 / 8x18 / 8x12 | Boden | f1, r1 (Erzeugerseite, links), f2, r2 (Verbraucherseite, rechts) | Beschriftung BUF/PS |
+| `bs.heat.solarthermal` | Solar thermal collector / Solarkollektor (Solarthermie) | 20x8 / 20x9 / 20x7 | Boden | flow, return | – |
 | `bs.san.wc` | WC / WC | 3,6x5,4 / 3,6x4 / 3,6x3,6 | Boden | waste, cold | – |
 | `bs.san.basin` | Washbasin / Waschbecken | 6x4,5 / 6x4 / 6x3,5 | Wand | waste, hot, cold | – |
 | `bs.san.shower` | Shower / Dusche | 9x9 / 9x22 / 9x8 | Boden | waste, hot, cold | – |
@@ -105,6 +113,10 @@ Größen: Grundriss / Schnitt / Schema bei 1:100 (B x H, mm auf der Seite).
 | `bs.san.riser` | Riser (vertical pipe) / Steigleitung / Fallleitung | 2x2 / 2x28 / 2x28 | Boden | Grundriss: riser; Schnitt/Schema: bottom, top + Schiene | `medium`, `dir` steigend/fallend/durchgehend |
 | `bs.vent.terminal` | Air terminal (valve / grille) / Luftdurchlass (Ventil / Gitter) | 3x3 / 3x1,6 / 3x3 (Symbol) | Decke | duct | `kind` Zuluft/Abluft |
 | `bs.vent.unit` | Ventilation unit with heat recovery / Lüftungsgerät mit Wärmerückgewinnung | 7x4,5 / 7x8 / 7x5 | Wand | outdoor, exhaust, extract, supply | – |
+| `bs.vent.damper` | Duct damper / Lüftungsklappe | 4x2,4 / 4x2,4 / 4x3 (Symbol) | in der Leitung | inlet, outlet (auf der Kanalachse) | `kind` Zuluft/Abluft/Außenluft/Fortluft (Farbe) |
+| `bs.vent.firedamper` | Fire damper / Brandschutzklappe | 4x2,4 / 4x2,4 / 4x4 (Symbol) | in der Leitung | inlet, outlet | `kind`; Beschriftung FD/BSK |
+| `bs.vent.silencer` | Duct silencer (sound attenuator) / Schalldämpfer (Lüftung) | 6x2,4 / 6x2,4 / 6x3 (Symbol) | in der Leitung | inlet, outlet | `kind` |
+| `bs.cool.split` | Split air conditioner / Split-Klimagerät | 18x8 / 18x22 / 18x8 | Boden | waste (Kondensat der Inneneinheit), cable (Außeneinheit) | – |
 | `bs.elec.data` | Communication outlet / Kommunikationsanschluss | 4x4 (Symbol) | Wand | cable | `kind` Daten/Telefon/TV |
 | `bs.elec.detector` | Detector / Melder | 4x4 / 4x1,4 / 4x4 (Symbol) | Decke | cable | `kind` Rauch/Wärme/Bewegung |
 | `bs.elec.appliance` | Appliance outlet / Geräteanschlussdose | 4x4 (Symbol) | Wand | cable | `kind` Herd/Waschmaschine/Trockner/Geschirrspüler/allgemein |
@@ -112,7 +124,11 @@ Größen: Grundriss / Schnitt / Schema bei 1:100 (B x H, mm auf der Seite).
 
 Jeder Box-Typ hat außerdem `height` und den erweiterten Parameter `scale`. Beschriftungen in Zeichnungen folgen der
 UI-Sprache (HP/WP, DHW/WW, Kürzel F/VL, R/RL, CW/KW, HW/WW, HWC/Z, W/SW, SUP/ZUL, ETA/ABL, ODA/AUL, EHA/FOL,
-LAN/TEL/TAE/TV/SAT, S/RM, H/WM, PIR/BM, CK/HE, …). Rohrfarben wie im Architekturmodul (Vorlauf rot, Rücklauf blau
+LAN/TEL/TAE/TV/SAT, S/RM, H/WM, PIR/BM, CK/HE, HM/WMZ, WM/WZ, BUF/PS, FD/BSK, …). Mischventil (3-Wege) und
+Ausdehnungsgefäß gibt es bereits als `bs.heat.mixer` und `bs.heat.expansion`. Das Split-Klimagerät ist ein Element:
+Wand-Inneneinheit (im Schema mit Schneeflocke) und Außeneinheit (Ventilator), verbunden durch die im Element gezeichneten
+Kältemittelleitungen; im Grundriss liegt die Inneneinheit raumseitig (unten), die Außeneinheit außen (oben rechts), das
+Element wird also über die Wand gelegt. Rohrfarben wie im Architekturmodul (Vorlauf rot, Rücklauf blau
 gestrichelt, Kaltwasser grün, Warmwasser magenta Strich-Punkt, Schmutzwasser braun, breiter); Zirkulation violett
 Strich-Punkt-Punkt. Luftfarben: Zuluft blau, Abluft ocker, Außenluft grün, Fortluft braun. Farben und Kürzel sind
 übliche Praxis, keine zitierte Norm.
@@ -125,10 +141,11 @@ der Kategorie Heizung), Luftleitungen je Luftart (`bs.duct.supply` …) und Vari
 `bs.heat.manifold.8`, `bs.heat.floorloop.small`, `bs.san.riser.waste` (Fallleitung), `bs.san.riser.hot`,
 `bs.san.riser.flow`, `bs.san.riser.return`, `bs.san.heater.electric`, `bs.vent.terminal.extract`,
 `bs.elec.data.phone`, `bs.elec.data.tv`, `bs.elec.detector.heat`, `bs.elec.detector.motion`,
-`bs.elec.appliance.washer`, `bs.elec.appliance.dishwasher`.
+`bs.elec.appliance.washer`, `bs.elec.appliance.dishwasher` sowie die Trinkwasserarmaturen (Kategorie Sanitär,
+`service` = water) `bs.valve.ball.water`, `bs.valve.check.water` (Rückflussverhinderer), `bs.strainer.water` (Filter).
 
 Kategorien: `bs.heating` Heating / Heizung, `bs.plumbing` Plumbing & sanitary / Sanitär & Trinkwasser,
-`bs.ventilation` Ventilation / Lüftung, `bs.electrical` Electrical installation (additions) / Elektroinstallation
+`bs.ventilation` Ventilation / Lüftung, `bs.cooling` Cooling & air conditioning / Kälte & Klima, `bs.electrical` Electrical installation (additions) / Elektroinstallation
 (Ergänzungen).
 
 ## Anker und Linienlogik
@@ -150,16 +167,22 @@ Kategorien: `bs.heating` Heating / Heizung, `bs.plumbing` Plumbing & sanitary / 
 **Weiterbauen mit „+“ (Anschlüsse).** Die Anschluss-IDs nennen das Medium: `flow`/`f1…` eine Vorlaufleitung,
 `return`/`r1…` eine Rücklaufleitung, `cold`, `hot`, `circulation`, `waste` die passende Wasserleitung, Steigleitungen die
 Leitung ihres Mediums, Luftdurchlässe die Luftleitung ihrer Luftart, das Lüftungsgerät Außen-, Fort-, Ab- und
-Zuluftleitungen; Inline-Teile der Heizung (Pumpe, Mischventil, Thermostatventil, Ausdehnungsgefäß) passen an Vor- und
-Rücklauf; Anschlussdosen, Melder, Geräte und die Potentialausgleichsschiene eine Installationsleitung
+Zuluftleitungen; Inline-Teile der Heizung (Pumpe, Mischventil, Thermostatventil, Ausdehnungsgefäß, Wärmemengenzähler)
+passen an Vor- und Rücklauf; Kugelhahn, Rückschlagventil, Sicherheitsventil (Eintritt) und Schmutzfänger passen mit
+`service` = heating (Vorgabe) an Vor- und Rücklauf und mit `service` = water an jede Trinkwasserleitung (`water`: kalt,
+warm, Zirkulation; „+“ zeichnet eine Kaltwasserleitung), der Wasserzähler immer an letztere; das Sicherheitsventil bläst
+über seinen Anschluss `waste` ab; die Kreise `f1`/`r1`/`f2`/`r2` des Pufferspeichers nehmen Vor- und Rücklaufleitungen wie
+die Heizkreise des Verteilers; die Kanalteile (Lüftungsklappe, Brandschutzklappe, Schalldämpfer) haben `inlet`/`outlet`
+auf der Kanalachse, passend an jede Luftleitung (`air`; „+“ zeichnet eine Luftleitung ihrer Luftart `kind`); das
+Split-Klimagerät führt sein Kondensat in eine Schmutzwasserleitung und nimmt eine Zuleitung; Anschlussdosen, Melder, Geräte und die Potentialausgleichsschiene eine Installationsleitung
 (`electric.installation`, die Leitungsführung des Elektromoduls). Rohr- und Luftleitungen führen ihr Medium; ihre freien
 Enden bieten „+“ zum Verlängern oder zum Andocken des nächsten Heizkörpers, Sanitärobjekts oder Luftdurchlasses mit dem
 passenden Anschluss.
 
 ## Kontextaktionen
 
-Montagehöhe… (Eingabe, jedes Element), Medium/Art als Auswahl ▾ (Rohr, Luftleitung, Strang, Luftdurchlass, Dosen,
-Melder), Fließpfeil und Brücken (Rohr), Luftrichtungspfeil (Luftleitung), mehr/weniger Heizkreise (Verteiler),
+Montagehöhe… (Eingabe, jedes Element), Medium/Art als Auswahl ▾ (Rohr, Luftleitung, Strang, Luftdurchlass, Kanalteile,
+Dosen, Melder), Leitungssystem Heizung/Trinkwasser ▾ (Kugelhahn, Rückschlagventil, Sicherheitsventil, Schmutzfänger), Fließpfeil und Brücken (Rohr), Luftrichtungspfeil (Luftleitung), mehr/weniger Heizkreise (Verteiler),
 Heizwendel (Speicher), Strangrichtung.
 
 ## Technische Werte (Calc 4)
@@ -180,6 +203,9 @@ als Vorgaben; Luft: ρ·*c*_p = 0,34 W·h/(m³·K). Kartengrößen stehen vorn. 
 | Umwälzpumpe | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); Panel *P*_hyd (`powerHyd`); Ingenieur ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
 | Mischventil (3-Wege) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); Panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
 | Warmwasserspeicher | *V* (`volume`), Δθ (`deltaT`), *Q* (`heat`), *P* (`power`); Panel *t* (`heatUpTime`); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (ohne Verluste) [S29] |
+| Pufferspeicher | *V* (`volume`, l), Δθ (`deltaT`, Temperaturspreizung), *Q* (`heat`, kWh); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
+| Wärmemengenzähler | Φ (`heatOutput`, Wärmeleistung), *V̇* (`flowRate`), θ_VL (`flowTemp`), θ_RL (`returnTemp`); Ingenieur ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
+| Wasserzähler | *V̇* (`flowRate`, m³/h) | – (der Volumenstrom seines Strangs) |
 | Luftdurchlass | *V̇* (`flowRate`, m³/h), *A* (`roomArea`), *n* (`airChange`, je Stunde), *V* (`roomVolume`); Panel *h* (`roomHeight`, Vorgabe 2,5 m) | *V* = *A*·*h*; *V̇* = *n*·*V*/1 h [S30] |
 | Lüftungsgerät mit Wärmerückgewinnung | *V̇*_ZUL (`flowSupply`), η_t (`recovery`), θ_ZUL (`tempSupply`), Φ_WRG (`heatRecovered`); Panel *V̇*_ABL (`flowExtract`), θ_AUL (`tempOutdoor`), θ_ABL (`tempExtract`) | θ_ZUL = θ_AUL + η_t·(θ_ABL − θ_AUL); Φ = 0,34 W·h/(m³·K)·*V̇*_ZUL·(θ_ZUL − θ_AUL) [S30] |
 | Rohr | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); Panel DN (`dn`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN, wenn kein Innendurchmesser eingetragen ist (50 % Toleranz, DN ist eine Nennweite) [S30] |
@@ -194,7 +220,11 @@ Rücklaufanschluss des Wärmeerzeugers, der Austritt der Umwälzpumpe, der AB-An
 Lüftungsgeräts sind Summen; Heizkörper, Fußbodenheizkreise, der Eintritt der Umwälzpumpe, die Anschlüsse A und B des
 Mischers und Luftdurchlässe sind Teile. Die Stofftemperatur wird auf einem unverzweigten Strang weitergegeben und vom
 einen speisenden Austritt (Vorlaufanschluss des Wärmeerzeugers, Rücklaufanschluss eines Verbrauchers, AB-Anschluss des
-Mischers) an jeden Eintritt einer Verzweigung. Thermostatventile geben beides weiter, Umwälzpumpen die Temperatur.
+Mischers) an jeden Eintritt einer Verzweigung. Thermostatventile, Kugelhähne, Rückschlagventile und Schmutzfänger geben
+beides weiter; Umwälzpumpen, Wärmemengen- und Wasserzähler die Temperatur, ihr Eintritt (Teil) und Austritt (Summe)
+tragen einen eigenen Volumenstrom, sodass ein Zähler den Volumenstrom seines Strangs zeigt; Lüftungsklappen,
+Brandschutzklappen und Schalldämpfer geben den Luftvolumenstrom weiter. Der Pufferspeicher entkoppelt seine Kreise
+(keine Werte an seinen Anschlüssen).
 Wärmeverluste der Rohre werden nicht abgebildet; Mischung an einer Zusammenführung rechnet nur das Mischventil.
 
 Beispiele (Abnahmekriterien): ein Heizkessel mit 55 °C speist über ein Rohr mit 50 l/h einen Heizkörper (Φ₅₀ = 1000 W,
@@ -227,6 +257,9 @@ Sprachen innerhalb seiner Box (auch gestreckt, gestaucht und mit jeder Auswahl),
 Parameter, Ansichten zeichnen unterschiedliche Symbole, Anschlüsse mit gleichen Ids in jeder Ansicht, Befestigungen,
 Schienen, Linienlogik (Ecken, Verlängern, Abzweige, Verbindungspunkte, Brücken), Breite der Luftleitung im
 Planmaßstab, der Ansichtswechsel (x bleibt, Höhenabbildung, angedockte Rohre, Andocken an die Strangschiene,
-Rückweg in den Grundriss, Höhe aus Verschieben im Schnitt, Drehung) und der JSON-Rundlauf. Der Galerietest schreibt
+Rückweg in den Grundriss, Höhe aus Verschieben im Schnitt, Drehung) und der JSON-Rundlauf; für Armaturen,
+Schmutzfänger, Zähler, Pufferspeicher, Solarkollektor, Kanalteile und Split-Gerät (`FittingTests`) die Anschlussmedien,
+das Andocken an ein freies Ende der vorhandenen Rohre und Luftleitungen jedes passenden Mediums, „+“ an jedem Anschluss,
+die Auswahl des Leitungssystems und die Werte von Pufferspeicher und Zählern in einem Strang. Der Galerietest schreibt
 `gallery/*.html` (jeder Typ in seinen drei Ansichten, gestreckt, Vorlagen und ein Beispielbad in Grundriss, Schnitt
 und Schema).

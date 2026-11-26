@@ -44,7 +44,7 @@ namespace InventaSketch.Modules.BuildingServices.Tests
         public void ValueTypesDeclareBilingualVariablesWithParametersAndSources()
         {
             var r = Fx.Reg();
-            foreach (var id in new[] { "bs.heat.boiler", "bs.heat.heatpump", "bs.heat.radiator", "bs.heat.floorloop", "bs.heat.pump", "bs.heat.mixer", "bs.san.heater", "bs.vent.terminal", "bs.vent.unit", "bs.pipe", "bs.duct" })
+            foreach (var id in new[] { "bs.heat.boiler", "bs.heat.heatpump", "bs.heat.radiator", "bs.heat.floorloop", "bs.heat.pump", "bs.heat.mixer", "bs.san.heater", "bs.vent.terminal", "bs.vent.unit", "bs.pipe", "bs.duct", "bs.heat.buffer", "bs.meter.heat", "bs.meter.water" })
             {
                 var t = r.Type(id)!;
                 Assert.True(ValueModel.HasValues(t), id);
@@ -230,6 +230,53 @@ namespace InventaSketch.Modules.BuildingServices.Tests
             // Q = 1000 kg · 4.19 kJ/(kg·K) · 40 K = 167.6 MJ = 46.6 kWh; t = Q/P = 4.66 h.
             Assert.Equal(1000 * 4190.0 * 40, Val(t, "h", "Q"), 3);
             Assert.Equal(1000 * 4190.0 * 40 / 1e4, Val(t, "h", "t"), 6);
+        }
+
+        [Fact]
+        public void BufferTankStoredHeat()
+        {
+            var r = Fx.Reg();
+            var b = Make(r, "bs.heat.buffer", "b").WithParam("volume", "800 l").WithParam("deltaT", "30 K");
+            var t = Solve(Doc(b), r);
+            // Q = 800 kg · 4.19 kJ/(kg·K) · 30 K = 100.56 MJ = 27.9 kWh.
+            Assert.Equal(800 * 4190.0 * 30, Val(t, "b", "Q"), 3);
+        }
+
+        [Fact]
+        public void HeatMeterShowsThePowerFromFlowAndTemperatures()
+        {
+            var r = Fx.Reg();
+            var m = Make(r, "bs.meter.heat", "m").WithParam("flowRate", "500 l/h").WithParam("flowTemp", "55 °C").WithParam("returnTemp", "45 °C");
+            var t = Solve(Doc(m), r);
+            // Φ = ρ·c·V̇·Δθ = 4.19e6 J/(m³·K) · (0.5/3600 m³/s) · 10 K = 5819 W.
+            Assert.Equal(RhoC * 0.5 / 3600 * 10, Val(t, "m", "Phi"), 6);
+        }
+
+        [Fact]
+        public void MetersAndValvesInARunPassTheFlowOn()
+        {
+            var r = Fx.Reg();
+            // Pump → ball valve → heat meter → radiator: the radiator's flow reaches the meter and the pump through the valve.
+            var doc = Doc(
+                Make(r, "bs.heat.pump", "pump"),
+                Make(r, "bs.valve.ball", "valve"),
+                Make(r, "bs.meter.heat", "meter"),
+                Make(r, "bs.heat.radiator", "rad").WithParam("flowRate", "120 l/h"),
+                Pipe(r, "flow", "p1", ("pump", "out"), ("valve", "in")),
+                Pipe(r, "flow", "p2", ("valve", "out"), ("meter", "in")),
+                Pipe(r, "flow", "p3", ("meter", "out"), ("rad", "flow")));
+            var t = Solve(doc, r);
+            Assert.Empty(t.Conflicts);
+            Assert.Equal(120e-3 / 3600, Val(t, "meter", "Vdot"), 12);
+            Assert.Equal(120e-3 / 3600, Val(t, "p1", "Vdot"), 12);
+            Assert.Equal(120e-3 / 3600, Val(t, "pump", "Vdot"), 12);
+
+            // Water meter in a cold water line.
+            var w = Doc(
+                Make(r, "bs.meter.water", "wm"),
+                Make(r, "bs.valve.ball.water", "v"),
+                Pipe(r, "cold", "c1", ("v", "out"), ("wm", "in")).WithParam("flowRate", "1500 l/h"));
+            Assert.Equal(1.5 / 3600, Val(Solve(w, r), "wm", "Vdot"), 12);
         }
 
         [Fact]
