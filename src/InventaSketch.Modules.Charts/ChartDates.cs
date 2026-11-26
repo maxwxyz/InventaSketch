@@ -128,6 +128,20 @@ namespace InventaSketch.Modules.Charts
             return Array.Empty<Tick>();
         }
 
+        /// <summary>True if <paramref name="label"/> is a date tick label of the day (any step, with or without the year, English or German).</summary>
+        public static bool IsLabel(double day, string? label)
+        {
+            if (label is null || !Fmt.Finite(day) || Math.Abs(day - Math.Round(day)) > 1e-9 || day < -719000 || day > 2900000) return false;
+            var t = label.Trim();
+            var d = Date(day);
+            foreach (var lang in new[] { Lang.En, Lang.De })
+                foreach (var unit in new[] { "day", "month", "year" })
+                    foreach (var first in new[] { false, true })
+                        if (unit == "day" || d.Day == 1 && (unit == "month" || d.Month == 1))
+                            if (Label(day, unit, first, lang) == t) return true;
+            return false;
+        }
+
         /// <summary>The ticks with labels; the first tick not before <paramref name="from"/> names the year.</summary>
         private static IReadOnlyList<Tick> Make(List<double> seq, string unit, double from, Lang lang, out double tickLo, out double tickHi)
         {

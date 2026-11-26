@@ -73,6 +73,7 @@ namespace InventaSketch.Modules.Charts
             sb.Append("def comma(v, pos=None):\n    \"\"\"Tick label with a decimal comma.\"\"\"\n    return ('%g' % v).replace('.', ',')\n\n\n");
             sb.Append("def arrow_x(ax):\n    \"\"\"Arrowhead at the end of the x axis (principle axes).\"\"\"\n    ax.plot(1, 0, '>', color='#222222', ms=4, transform=ax.transAxes, clip_on=False)\n\n\n");
             sb.Append("def arrow_y(ax):\n    \"\"\"Arrowhead at the end of the y axis (principle axes).\"\"\"\n    ax.plot(0, 1, '^', color='#222222', ms=4, transform=ax.transAxes, clip_on=False)\n\n\n");
+            if (charts.Any(c => c.Figure?.Sankey is not null)) SankeyHelpers(sb);
             var names = new List<string>();
             var k = 0;
             foreach (var (o, fig, error) in charts)
@@ -101,6 +102,28 @@ namespace InventaSketch.Modules.Charts
         }
 
         private static string Comment(string s) => s.Replace("\r", " ").Replace("\n", " ");
+
+        /// <summary>
+        /// The drawing helpers of Sankey diagrams: a flow carries its data (source, target, value) and its ribbon as laid out by
+        /// the chart (two cubic Bézier edges, as the chart draws them); a node is a bar.
+        /// </summary>
+        private static void SankeyHelpers(StringBuilder sb)
+        {
+            sb.Append("from matplotlib.patches import PathPatch, Rectangle\nfrom matplotlib.path import Path\n\n\n");
+            sb.Append("def sankey_flow(ax, source, target, value, ribbon=None, **style):\n");
+            sb.Append(I).Append("\"\"\"A flow of a Sankey diagram from source to target with its value. ribbon = (x0, y0, x1, y1, width): the upper\n");
+            sb.Append(I).Append("edges at the source and at the target (mm, y up) and the width as laid out; None: not drawn (a flow against\n");
+            sb.Append(I).Append("the direction or a hidden flow).\"\"\"\n");
+            sb.Append(I).Append("if ribbon is None:\n").Append(I).Append(I).Append("return\n");
+            sb.Append(I).Append("x0, y0, x1, y1, w = ribbon\n");
+            sb.Append(I).Append("xm = (x0 + x1) / 2\n");
+            sb.Append(I).Append("verts = [(x0, y0), (xm, y0), (xm, y1), (x1, y1), (x1, y1 - w), (xm, y1 - w), (xm, y0 - w), (x0, y0 - w), (x0, y0)]\n");
+            sb.Append(I).Append("codes = [Path.MOVETO, Path.CURVE4, Path.CURVE4, Path.CURVE4, Path.LINETO, Path.CURVE4, Path.CURVE4, Path.CURVE4, Path.CLOSEPOLY]\n");
+            sb.Append(I).Append("ax.add_patch(PathPatch(Path(verts, codes), **style))\n\n\n");
+            sb.Append("def sankey_node(ax, name, x, y, w, h, **style):\n");
+            sb.Append(I).Append("\"\"\"A node of a Sankey diagram as a bar: lower left corner, width and height (mm, y up).\"\"\"\n");
+            sb.Append(I).Append("ax.add_patch(Rectangle((x, y), w, h, **style))\n\n\n");
+        }
 
         /// <summary>Writer of one figure function.</summary>
         private sealed class Fig
@@ -162,6 +185,7 @@ namespace InventaSketch.Modules.Charts
                 L("plt.rcParams.update({'font.size': fs, 'hatch.linewidth': 0.5})");
                 if (f.Pie is { } pie) { Pie(pie); return; }
                 if (f.Polar is { } polar) { Polar(polar); return; }
+                if (f.Sankey is { } sankey) { Sankey(sankey); return; }
                 var grid = n > 1 ? ", gridspec_kw={'height_ratios': " + PyList(f.Panels.Select(p => p.Share), I) + "}" : "";
                 L("fig, axs = plt.subplots(" + Fmt.I(n) + ", 1, sharex=True, squeeze=False, figsize=(" + N(Math.Round(f.WidthMm, 2)) + " * MM, " + N(Math.Round(f.HeightMm, 2)) + " * MM), layout='constrained'" + grid + ")");
                 L("axs = [row[0] for row in axs]");
@@ -643,6 +667,45 @@ namespace InventaSketch.Modules.Charts
                     L("");
                     L("# legend");
                     L("ax.legend(pie[0], slice_names, loc='center left', bbox_to_anchor=(1.02, 0.5), fontsize=fs * 0.9)");
+                }
+                CanvasEnd();
+            }
+
+            private void Sankey(XSankey k)
+            {
+                double hw = Math.Round(_f.WidthMm / 2, 3), hh = Math.Round(_f.HeightMm / 2, 3);
+                L("fig, ax = plt.subplots(figsize=(" + N(Math.Round(_f.WidthMm, 2)) + " * MM, " + N(Math.Round(_f.HeightMm, 2)) + " * MM))");
+                L("fig.subplots_adjust(left=0, right=1, bottom=0, top=1)");
+                L("ax.set_xlim(" + N(-hw) + ", " + N(hw) + ")  # mm around the centre of the chart, y up");
+                L("ax.set_ylim(" + N(-hh) + ", " + N(hh) + ")");
+                L("ax.set_aspect('equal')");
+                L("ax.axis('off')");
+                L("");
+                L("# Sankey diagram: every flow (source, target, value) as in the chart data with its ribbon as the chart lays it out in");
+                L("# columns (matplotlib.sankey.Sankey draws a chain of process diagrams; it cannot place several sources and targets in columns)");
+                foreach (var fl in k.Flows)
+                {
+                    L("# " + fl.Key + " – " + Comment(fl.Source) + " → " + Comment(fl.Target) + (fl.Drawn ? "" : " (not drawn)"));
+                    var head = "sankey_flow(ax, " + PyLit(fl.Source) + ", " + PyLit(fl.Target) + ", " + N(fl.Value);
+                    if (!fl.Drawn) { L(head + ")"); continue; }
+                    L(head + ", (" + N(fl.X0) + ", " + N(fl.Y0) + ", " + N(fl.X1) + ", " + N(fl.Y1) + ", " + N(fl.Width) + "), " + FillArgs(fl.Fill) + ")");
+                }
+                L("");
+                foreach (var nd in k.Nodes)
+                {
+                    if (nd.Fill is not { } fill) continue;
+                    L("# " + nd.Key + " – " + Comment(nd.Name));
+                    L("sankey_node(ax, " + PyLit(nd.Name) + ", " + N(nd.X) + ", " + N(nd.Y) + ", " + N(nd.W) + ", " + N(nd.H) + ", " + FillArgs(fill) + ")");
+                }
+                foreach (var t in k.Texts)
+                {
+                    if (t.Key == ChartTags.Title) continue;
+                    L("");
+                    L("# " + t.Key);
+                    var args = new List<string> { N(t.X), N(t.Y), Py(t.Text), "ha='" + t.HAlign + "'", "va='center'", "fontsize=" + Size(t.Size), "color=" + PyLit(t.Color) };
+                    if (t.Bold) args.Add("fontweight='bold'");
+                    if (t.Box) args.Add("bbox=BOX");
+                    L("ax.text(" + string.Join(", ", args) + ")");
                 }
                 CanvasEnd();
             }

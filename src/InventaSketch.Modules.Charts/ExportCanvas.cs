@@ -6,9 +6,10 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Charts
 {
     /// <summary>
-    /// Export models of the charts without Cartesian axes that have a code form: pie/donut (matplotlib <c>pie</c>, TikZ arcs)
-    /// and polar charts (matplotlib polar axes, pgfplots <c>polaraxis</c>). The data come from the chart model, the layout
-    /// (radius, label positions, legend) from the drawn canvas; part looks apply as in <see cref="ExportBuilder"/>.
+    /// Export models of the charts without Cartesian axes: pie/donut (matplotlib <c>pie</c>, TikZ arcs), polar charts
+    /// (matplotlib polar axes, pgfplots <c>polaraxis</c>) and Sankey diagrams (node bars and ribbons as laid out, in matplotlib
+    /// patches and TikZ paths). The data come from the chart model, the layout (radius, label positions, legend, ribbons)
+    /// from the drawn canvas; part looks apply as in <see cref="ExportBuilder"/>.
     /// </summary>
     internal sealed class CanvasExport
     {
@@ -22,13 +23,14 @@ namespace InventaSketch.Modules.Charts
         {
             var lang = ctx.Lang;
             var cv = type.DrawCanvas(o, ctx);
-            if (cv.Model is null && type is PieChart || Prim.Flatten(cv.Over).Any(p => p.Tag == ChartTags.Error))
+            if (cv.Model is null && type is PieChart or SankeyChart || Prim.Flatten(cv.Over).Any(p => p.Tag == ChartTags.Error))
                 throw new InvalidOperationException(lang == Lang.De ? "Die Daten des Diagramms lassen sich nicht lesen" : "The chart data cannot be read");
             var x = new XFigure { Name = type.Name.Get(lang), Id = o.Id, Type = type.Id, Lang = lang, WidthMm = cv.W, HeightMm = cv.H, FontMm = cv.Fs, Mono = cv.Mono };
             var b = new CanvasExport(o, cv, x);
             x.Title = string.IsNullOrEmpty(cv.Title) || b.Hidden(ChartTags.Title) ? null : cv.Title;
             x.Legend = cv.ShowLegend && !b.Hidden(ChartTags.Legend) ? "right" : "none";
             if (type is PieChart) b.Pie();
+            else if (type is SankeyChart) b.Sankey();
             else b.Polar();
             return x;
         }
@@ -110,6 +112,72 @@ namespace InventaSketch.Modules.Charts
                     pie.Rects.Add((r.Tag!, corner.X, corner.Y, Math.Round(r.W, 3), Math.Round(r.H, 3), ExportBuilder.FillOf(r.Style.Fill, r.Style.Stroke ?? Palette.Black) with { Edge = edge }));
                 }
             _x.Pie = pie;
+        }
+
+        // ------------------------------------------------------------------ Sankey
+
+        private void Sankey()
+        {
+            var d = (SankeyChart.Drawing)_cv.Model!;
+            var m = d.Model;
+            var l = d.Layout;
+            if (m.Flows.Count == 0)
+                throw new InvalidOperationException(_x.Lang == Lang.De ? "Das Sankey-Diagramm hat keine Flüsse" : "The Sankey diagram has no flows");
+            var mono = _cv.Mono || _o.Flag("patterns", false);
+            var sk = new XSankey { Values = _o.Flag("values", true) };
+            var w = l.NodeWidth;
+            for (var i = 0; i < m.Nodes.Count; i++)
+            {
+                var key = ChartTags.Nth(ChartTags.Node, i);
+                var look = Look(key);
+                var h = Math.Max(l.H[i], 0.05);
+                var color = mono ? Palette.Black : SeriesLook.Of(i).Color;
+                var edge = look?.Style?.Stroke ?? color;
+                var fill = look?.Hidden == true ? null
+                    : ExportBuilder.FillOf(look?.Style?.Fill ?? Fill.Solid(color), edge) with { Edge = edge == "none" ? null : new XStroke(edge, look?.Style?.StrokeWidth ?? 0.1, look?.Style?.Dash ?? DashStyle.Solid) };
+                var corner = Rel(new Vec2(l.X[i], l.Y[i] + h), new Vec2(0, 0));
+                sk.Nodes.Add(new XSankeyNode { Key = key, Name = m.Nodes[i], X = corner.X, Y = corner.Y, W = Math.Round(w, 3), H = Math.Round(h, 3), Fill = fill });
+            }
+            var ribbons = l.Ribbons.ToDictionary(r => r.Flow, r => r);
+            for (var k = 0; k < m.Flows.Count; k++)
+            {
+                var f = m.Flows[k];
+                var key = ChartTags.Nth(ChartTags.Flow, k);
+                var look = Look(key);
+                var s = look?.Style;
+                // As drawn: translucent in the colour of the source, outlined white ribbons in monochrome output.
+                var edgeColor = s?.Stroke ?? (mono ? Palette.Black : "none");
+                var fill = ExportBuilder.FillOf(s?.Fill ?? Fill.Solid(mono ? Palette.White : SeriesLook.Of(f.Source).Color), edgeColor == "none" ? Palette.Black : edgeColor) with
+                {
+                    Edge = edgeColor == "none" ? null : new XStroke(edgeColor, s?.StrokeWidth ?? 0.15, s?.Dash ?? DashStyle.Solid),
+                    Opacity = s?.Opacity ?? (mono ? null : 0.35),
+                };
+                var flow = new XSankeyFlow { Key = key, Source = m.Nodes[f.Source], Target = m.Nodes[f.Target], Value = f.Value, Fill = fill };
+                if (look?.Hidden != true && ribbons.TryGetValue(f, out var r))
+                {
+                    var a = Rel(new Vec2(l.X[f.Source] + w, r.Y0), new Vec2(0, 0));
+                    var b = Rel(new Vec2(l.X[f.Target], r.Y1), new Vec2(0, 0));
+                    flow.Drawn = true;
+                    flow.X0 = a.X; flow.Y0 = a.Y; flow.X1 = b.X; flow.Y1 = b.Y; flow.Width = Math.Round(r.T, 3);
+                }
+                sk.Flows.Add(flow);
+            }
+            var prims = Prim.Flatten(_cv.Render()).ToList();
+            foreach (var t in prims.OfType<TextPrim>())
+            {
+                if (t.Tag is not { } tag || Hidden(tag)) continue;
+                if (!(ChartTags.Is(tag, ChartTags.NodeLabel) || tag == ChartTags.Note || tag == ChartTags.Title && _x.Title is not null)) continue;
+                var at = Rel(t.Position, new Vec2(0, 0));
+                var box = prims.OfType<RectPrim>().Any(r => r.Tag == tag && r.Style.Fill?.Color == Palette.White);
+                var st = Look(tag)?.Style;
+                sk.Texts.Add(new XText
+                {
+                    Key = tag, X = at.X, Y = at.Y, Text = t.Text, HAlign = t.TextStyle.Anchor switch { TextAnchor.Start => "left", TextAnchor.End => "right", _ => "center" },
+                    Size = Math.Round(t.TextStyle.Size / _cv.Fs * (st?.FontScale ?? 1), 3), Color = st?.TextColor ?? t.TextStyle.Color ?? Palette.Ink,
+                    Bold = st?.Bold ?? t.TextStyle.Bold, Box = box,
+                });
+            }
+            _x.Sankey = sk;
         }
 
         // ------------------------------------------------------------------ polar

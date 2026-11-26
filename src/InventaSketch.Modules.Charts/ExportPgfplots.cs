@@ -60,6 +60,14 @@ namespace InventaSketch.Modules.Charts
                 + (figures.Any(f => f!.Boxes is not null || f.Hist is not null) ? ",statistics" : "");
             sb.Append("\\pgfplotsset{compat=1.18}\n\\usepgfplotslibrary{" + libs + "}\n\\usetikzlibrary{arrows.meta,patterns.meta}\n");
             sb.Append("\\pgfplotsset{every axis/.append style={font=\\footnotesize}, every axis legend/.append style={font=\\footnotesize}}\n");
+            // Data keys: they draw nothing and keep the chart data that the drawing does not show exactly (values of pie
+            // slices and Sankey flows, raw samples of box plots) readable for an import of this document.
+            var keys = new List<string>();
+            if (figures.Any(f => f!.Pie is not null)) { keys.Add("pie chart/.style={}"); keys.Add("pie slice/.style 2 args={}"); }
+            if (figures.Any(f => f!.Sankey is not null)) { keys.Add("sankey chart/.style={}"); keys.Add("sankey flow/.style n args={3}{}"); }
+            if (figures.Any(f => f!.Boxes is not null)) keys.Add("box samples/.style={}");
+            if (keys.Count > 0)
+                sb.Append("% data keys (they draw nothing; they keep the chart data for an import)\n\\tikzset{").Append(string.Join(", ", keys)).Append("}\n");
             foreach (var c in colors) sb.Append("\\definecolor{").Append(c.Value).Append("}{HTML}{").Append(c.Key).Append("}\n");
             sb.Append("\\begin{document}\n");
             sb.Append(body);
@@ -219,6 +227,7 @@ namespace InventaSketch.Modules.Charts
                 foreach (var note in f.Notes) L("% Note: " + Comment(note));
                 if (f.Pie is { } pie) { Pie(pie); return; }
                 if (f.Polar is { } polar) { Polar(polar); return; }
+                if (f.Sankey is { } sankey) { Sankey(sankey); return; }
                 L("\\begin{tikzpicture}");
                 var common = CommonOptions();
                 if (n > 1)
@@ -663,10 +672,12 @@ namespace InventaSketch.Modules.Charts
                     for (var j = 0; j < s.Positions.Count; j++)
                     {
                         var st = s.Stats[j];
+                        // whisker range: the rule of the whiskers (pgfplots only uses it for raw data; here it documents the rule).
                         var prepared = "boxplot prepared={draw position=" + N(s.Positions[j]) + ", box extend=" + N(s.Width) + ", lower whisker=" + N(st.Low) + ", lower quartile=" + N(st.Q1)
-                            + ", median=" + N(st.Median) + ", upper quartile=" + N(st.Q3) + ", upper whisker=" + N(st.High) + "}";
+                            + ", median=" + N(st.Median) + ", upper quartile=" + N(st.Q3) + ", upper whisker=" + N(st.High) + (b.Outliers ? ", whisker range=" + N(b.Whis) : "") + "}";
                         var outliers = b.Outliers && s.OutlierKey is not null ? st.Outliers : Array.Empty<double>();
-                        var head = "\\addplot[" + prepared + ", " + opts + ", boxplot/every median/.style={line width=" + Mm(2 * s.Line.Width) + "}, " + mark + ", forget plot]";
+                        var samples = "box samples={" + string.Join(",", s.Samples[j].Select(N)) + "}";
+                        var head = "\\addplot[" + prepared + ", " + samples + ", " + opts + ", boxplot/every median/.style={line width=" + Mm(2 * s.Line.Width) + "}, " + mark + ", forget plot]";
                         if (outliers.Count == 0) L(head + " coordinates {};");
                         else
                         {
@@ -713,7 +724,15 @@ namespace InventaSketch.Modules.Charts
             /// <summary>Pie or donut as TikZ arcs (pgfplots has no pie); texts and the legend where the chart draws them (mm, y up).</summary>
             private void Pie(XPie p)
             {
-                L("\\begin{tikzpicture}[x=1mm, y=1mm, font=\\footnotesize]");
+                // The chart settings and the slice values as data keys (the arcs show the shares only).
+                var settings = new List<string>
+                {
+                    "hole=" + N(Math.Round(p.Hole, 6)), "start=" + N(Math.Round(p.Start, 6)), "direction=" + (p.Clockwise ? "cw" : "ccw"), "labels=" + p.Labels,
+                    "legend=" + _f.Legend,
+                };
+                if (p.Center is { } centre) settings.Add("center={" + Tex(centre) + "}");
+                if (_f.Title is { } title) settings.Add("title={" + Tex(title) + "}");
+                L("\\begin{tikzpicture}[x=1mm, y=1mm, font=\\footnotesize, pie chart={" + string.Join(", ", settings) + "}]");
                 L("% slices " + (p.Clockwise ? "clockwise" : "counter-clockwise") + " from " + N(Math.Round(p.Start, 3)) + " degrees clockwise from 12 o'clock (TikZ angles run counter-clockwise from 3 o'clock); radius "
                     + N(p.RadiusMm) + " mm" + (p.Hole > 0 ? ", hole " + N(Math.Round(p.Hole * p.RadiusMm, 3)) + " mm" : ""));
                 var r = N(p.RadiusMm);
@@ -725,13 +744,50 @@ namespace InventaSketch.Modules.Charts
                     var path = p.Hole > 0
                         ? "(" + a0 + ":" + r + ") arc[start angle=" + a0 + ", end angle=" + a1 + ", radius=" + r + "] -- (" + a1 + ":" + ri + ") arc[start angle=" + a1 + ", end angle=" + a0 + ", radius=" + ri + "] -- cycle"
                         : "(0,0) -- (" + a0 + ":" + r + ") arc[start angle=" + a0 + ", end angle=" + a1 + ", radius=" + r + "] -- cycle";
-                    L("\\fill[" + AreaOpts(s.Fill, s.Edge, s.EdgeWidth) + "] " + path + ";");
+                    L("\\fill[pie slice={" + Tex(s.Name) + "}{" + N(s.Value) + "}, " + AreaOpts(s.Fill, s.Edge, s.EdgeWidth) + "] " + path + ";");
                 }
                 foreach (var (key, pts) in p.Leaders)
                     L("\\draw[" + C(Palette.Ink) + ", line width=0.15mm] " + string.Join(" -- ", pts.Select(v => "(" + N(v.X) + "," + N(v.Y) + ")")) + "; % " + key);
                 foreach (var (key, x, y, w, h, fill) in p.Rects)
                     L("\\fill[" + FillOpts(fill) + "] (" + N(x) + "," + N(y) + ") rectangle ++(" + N(w) + "," + N(h) + "); % " + key);
                 foreach (var t in p.Texts)
+                {
+                    var o = new List<string> { "anchor=" + Anchor(t.HAlign, "center") };
+                    var font = Font(t.Size, t.Bold, false);
+                    if (font.Length > 0) o.Add("font=" + font);
+                    o.Add("text=" + C(t.Color));
+                    if (t.Box) o.Add("fill=white");
+                    o.Add("inner sep=1pt");
+                    L("\\node[" + string.Join(", ", o) + "] at (" + N(t.X) + "," + N(t.Y) + ") {" + Tex(t.Text) + "}; % " + t.Key);
+                }
+                L("\\end{tikzpicture}");
+                L("");
+            }
+
+            /// <summary>
+            /// Sankey diagram as TikZ paths (neither pgfplots nor TikZ has a standard Sankey form): node bars, ribbons with two
+            /// cubic Bézier edges as the chart lays them out, labels where the chart draws them (mm from the centre, y up). Every
+            /// flow carries its data (source, target, value) in the data key "sankey flow"; a flow that is not drawn (against the
+            /// direction, or hidden) is an empty path with that key.
+            /// </summary>
+            private void Sankey(XSankey k)
+            {
+                var settings = "values=" + (k.Values ? "true" : "false") + (_f.Title is { } title ? ", title={" + Tex(title) + "}" : "");
+                L("\\begin{tikzpicture}[x=1mm, y=1mm, font=\\footnotesize, sankey chart={" + settings + "}]");
+                L("% Sankey diagram: every flow (source, target, value) as in the chart data with its ribbon as the chart lays it out in columns");
+                foreach (var fl in k.Flows)
+                {
+                    var key = "sankey flow={" + Tex(fl.Source) + "}{" + Tex(fl.Target) + "}{" + N(fl.Value) + "}";
+                    L("% " + fl.Key + ": " + Comment(fl.Source) + " -> " + Comment(fl.Target) + (fl.Drawn ? "" : " (not drawn)"));
+                    if (!fl.Drawn) { L("\\path[" + key + "] (0,0);"); continue; }
+                    double xm = Math.Round((fl.X0 + fl.X1) / 2, 3), b0 = Math.Round(fl.Y0 - fl.Width, 3), b1 = Math.Round(fl.Y1 - fl.Width, 3);
+                    string Pt(double x, double y) => "(" + N(x) + "," + N(y) + ")";
+                    L("\\fill[" + key + ", " + FillOpts(fl.Fill) + "] " + Pt(fl.X0, fl.Y0) + " .. controls " + Pt(xm, fl.Y0) + " and " + Pt(xm, fl.Y1) + " .. " + Pt(fl.X1, fl.Y1)
+                        + " -- " + Pt(fl.X1, b1) + " .. controls " + Pt(xm, b1) + " and " + Pt(xm, b0) + " .. " + Pt(fl.X0, b0) + " -- cycle;");
+                }
+                foreach (var nd in k.Nodes)
+                    if (nd.Fill is { } fill) L("\\fill[" + FillOpts(fill) + "] (" + N(nd.X) + "," + N(nd.Y) + ") rectangle ++(" + N(nd.W) + "," + N(nd.H) + "); % " + nd.Key + ": " + Comment(nd.Name));
+                foreach (var t in k.Texts)
                 {
                     var o = new List<string> { "anchor=" + Anchor(t.HAlign, "center") };
                     var font = Font(t.Size, t.Bold, false);

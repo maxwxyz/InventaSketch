@@ -644,29 +644,93 @@ die Heute-Linie mit ihnen. Polar: Radien durch den größten geteilt (normiert) 
 bleiben. Sankey: Knotennamen werden A, B, C …, Werte durch den größten Fluss geteilt oder mit einem Zufallsfaktor
 skaliert (Zu-/Abflussbilanzen bleiben).
 
-**Codeexport und -import (2026-11-26).** Kreis-, Polar-, Box-, Histogramm- und Gantt-Diagramme werden als matplotlib-
-und pgfplots/TikZ-Code exportiert (siehe die Tabelle in
-[Export als matplotlib und pgfplots](#export-als-matplotlib-und-pgfplots-diagramme-v2-stufe-4)). Das Sankey-Diagramm
-melden beide weiterhin als „could not be exported“ (nicht exportierbar, mit deutscher Begründung): `matplotlib.sankey`
-baut ein Diagramm aus Flüssen, die um je einen Knoten in festen Winkeln abbiegen, und setzt weitere Knoten relativ zu
-früheren, sodass ein Spaltenlayout mit Knoten so hoch wie ihre Flüsse nur durch Nachbau des Layouts im Skript möglich
-wäre, und pgfplots hat keine Sankey-Form; TikZ- und SVG-Export zeichnen es aus den Primitiven. Der matplotlib-Import
-liest `pie` (Werte, `labels`, `autopct` → Prozentbeschriftung, `labeldistance=None` → Namen nur in der Legende,
-`startangle` und `counterclock` umgerechnet auf „im Uhrzeigersinn ab 12 Uhr“, `wedgeprops=dict(width=…)` → Ringloch;
-`explode`, andere `colors` als die Diagrammfarben und `normalize=False` werden gemeldet), Polarachsen
-(`subplot_kw={'projection': 'polar'}`, `add_subplot(…, projection='polar')` oder `polar=True`, `plt.polar`):
-`plot`-Kurven mit den Winkeln von Bogenmaß in Grad umgerechnet (ein wiederholter Schlusspunkt entfällt, die Kurve ist
-geschlossen), `fill` → gefüllte Darstellung, `set_theta_zero_location('N')` mit `set_theta_direction(-1)` →
-Kompassdarstellung, `set_rmax`/`set_rlim`/`set_ylim` → `rrange`; Teilungseinstellungen der Polarachsen werden
-gemeldet), `hist` (ein Datensatz oder eine Liste davon → `chart.histogram` mit je einer Reihe; `bins` als Anzahl oder
-als Grenzen → deren Anzahl und Bereich; `range` → `xrange`; `label` → Reihennamen; `density`, `weights`,
-`cumulative`, andere `histtype`, `orientation='horizontal'`, `stacked`, `log`, benannte Klassenregeln und ungleiche
-Klassen werden gemeldet) und `boxplot` (Rohwerte → `chart.box`; Kategorien aus `tick_labels`/`labels`, den
-Teilstrichbeschriftungen an den Boxpositionen oder den Positionen; ein Aufruf je Reihe, benannt über eine Legende der
-Boxen; `whis` → `whis`, `whis=(0, 100)` oder `showfliers=False` → Whisker bis Minimum und Maximum (`showfliers=False`
-wird gemeldet); liegende Boxen, Kerben und Mittelwerte werden gemeldet). Ein Histogramm oder Boxplot neben anderem
-Inhalt derselben Achse wird gemeldet. Andere Projektionen (3d) werden weiter gemeldet. Der pgfplots-Import liest die
-Formen Kreis (TikZ-Bögen), `polaraxis`, `boxplot prepared` und `hist` nicht.
+**Codeexport und -import (2026-11-26).** Alle sechs Präsentationsdiagramme werden als matplotlib- und
+pgfplots/TikZ-Code exportiert (siehe die Tabelle in
+[Export als matplotlib und pgfplots](#export-als-matplotlib-und-pgfplots-diagramme-v2-stufe-4)), und beide Importe lesen
+jede exportierte Form zurück (Rundläufe ohne Meldungen auf Deutsch und Englisch).
+
+*Sankey-Diagramm (Runde 4).* Keine der beiden Bibliotheken hat eine Form, die das Layout des Diagramms erhält:
+`matplotlib.sankey.Sankey` baut eine Kette von Prozessdiagrammen, deren Flüsse um je einen Knoten in festen Winkeln
+abbiegen (ein Diagramm schließt nur an ein früheres an), und pgfplots/TikZ hat keine Standardform für Sankey-Diagramme
+(das CTAN-Paket `sankey` hat eine eigene Knotensprache). Beide Exporte zeichnen das Diagramm daher so, wie das Diagramm es
+anordnet, und behalten die Daten dabei. Das matplotlib-Skript definiert zwei kleine Hilfsfunktionen,
+`sankey_flow(ax, source, target, value, ribbon, **style)` (ein `PathPatch` mit zwei kubischen Bézier-Kanten;
+`ribbon` = obere Kanten an Quelle und Ziel und die Breite, in mm um die Mitte, y nach oben) und
+`sankey_node(ax, name, x, y, w, h, **style)` (ein `Rectangle`), und ruft sie je Fluss und Knoten einmal auf; die
+Beschriftungen sind `ax.text`, der Titel `fig.suptitle`. Das TikZ-Bild füllt jedes Band mit `.. controls ..`-Kurven und
+trägt den Fluss im Datenschlüssel `sankey flow={Quelle}{Ziel}{Wert}`; Knoten sind gefüllte Rechtecke, Beschriftungen
+TikZ-Knoten, und die Bildoption `sankey chart={values=…, title=…}` hält die Einstellungen. Ein Fluss, den das Diagramm
+nicht zeichnet (gegen die Richtung oder ausgeblendet), steht ohne Band in der Liste (`sankey_flow(ax, 'C', 'A', 4)`,
+`\path[sankey flow={C}{A}{4}] (0,0);`).
+
+*Datenschlüssel (Runde 4).* Wo die TikZ-Zeichnung die Daten nur angenähert zeigt, hält das pgfplots-Dokument sie in
+TikZ-Schlüsseln, die nichts zeichnen und nur bei Bedarf in der Präambel definiert werden
+(`\tikzset{pie chart/.style={}, pie slice/.style 2 args={}, sankey chart/.style={}, sankey flow/.style n args={3}{}, box samples/.style={}}`):
+`pie chart={hole=…, start=…, direction=…, labels=…, legend=…, center={…}, title={…}}` am Kreisbild und
+`pie slice={Name}{Wert}` an jedem Segment (die Bögen zeigen nur die Anteile), `sankey chart` und `sankey flow` wie oben
+und `box samples={…}` mit den Rohwerten jedes `boxplot prepared`-Plots (die vorbereiteten Werte sind die Zeichnung;
+`whisker range` nennt die Whisker-Regel und fehlt bei Whiskern bis Minimum und Maximum). Der Import liest diese
+Schlüssel, nie die Kommentare.
+
+*Import (matplotlib).* `pie` (Werte, `labels`, `autopct` → Prozentbeschriftung, `labeldistance=None` → Namen nur in der
+Legende, `startangle` und `counterclock` umgerechnet auf „im Uhrzeigersinn ab 12 Uhr“, `wedgeprops=dict(width=…)` →
+Ringloch, ein Text in der Mitte → Text in der Mitte; `explode`, andere `colors` als die Diagrammfarben (farbig oder
+schwarz-weiß) und `normalize=False` werden gemeldet), Polarachsen (`subplot_kw={'projection': 'polar'}`,
+`add_subplot(…, projection='polar')` oder `polar=True`, `plt.polar`): `plot`-Kurven mit den Winkeln von Bogenmaß in Grad
+umgerechnet (ein wiederholter Schlusspunkt entfällt, die Kurve ist geschlossen), `fill` → gefüllte Darstellung,
+`set_theta_zero_location('N')` mit `set_theta_direction(-1)` → Kompassdarstellung, `set_rmax`/`set_rlim`/`set_ylim` →
+`rrange`; Teilungseinstellungen der Polarachsen werden gemeldet), `hist` (ein Datensatz oder eine Liste davon →
+`chart.histogram` mit je einer Reihe; `bins` als Anzahl oder als Grenzen → deren Anzahl und Bereich; `range` → `xrange`;
+`label` → Reihennamen; `density`, `weights`, `cumulative`, andere `histtype`, `orientation='horizontal'`, `stacked`,
+`log`, benannte Klassenregeln und ungleiche Klassen werden gemeldet), `boxplot` (Rohwerte → `chart.box`; Kategorien aus
+`tick_labels`/`labels`, den Teilstrichbeschriftungen an den Boxpositionen oder den Positionen; ein Aufruf je Reihe,
+benannt über eine Legende der Boxen; `whis` → `whis`, `whis=(0, 100)` oder `showfliers=False` → Whisker bis Minimum und
+Maximum (`showfliers=False` wird gemeldet); liegende Boxen, Kerben und Mittelwerte werden gemeldet). Runde 4 ergänzt:
+
+- `barh` mit Starts (`left=`), bei dem jede Zeile einen Balken hat → `chart.gantt` (ein gestapeltes Balkendiagramm
+  wiederholt seine Zeilen in jeder Reihe und bleibt ein Balkendiagramm): eine Gruppe je `barh`-Aufruf (benannt nach
+  seinem `label`, seine `color` wird gemerkt), Zeilen aus den Teilstrichbeschriftungen oder den Textkategorien, von oben
+  nach unten wie gezeichnet (mit `invert_yaxis` oder einem umgekehrten `ylim` steht die erste Zeile oben, sonst die
+  letzte); Rautenmarker ohne Linie (`'D'`) → Meilensteine der Gruppe mit der nächsten
+  Balkenzeile (zwischen zwei Gruppen: die direkt davor gezeichneten Balken, dann die Balken ihrer Farbe; schwarz-weiße
+  Rauten sind in jeder Gruppe schwarz); die erste `axvline` → Heute-Linie; die eigene Beschriftung „Today“/„Heute“ des
+  Diagramms entfällt; `xlim` → `xrange` nur, wo es von der automatischen Achse abweicht; x-Teilstrichbeschriftungen, die
+  die Datumsbeschriftungen des Diagramms sind → Kalenderdaten (ISO) für Starts, Heute-Linie und Bereich; ein Titel außer
+  Time/Zeit/Date/Datum → `xlabel`. Andere Kurven, Flächen, Wertlinien und Anmerkungen in einem Gantt-Diagramm werden
+  gemeldet; eine Gruppe, deren Vorgänge nicht in benachbarten Zeilen stehen, wird gemeldet und geteilt. `invert_yaxis`
+  wird sonst wie bisher gemeldet.
+- `matplotlib.sankey.Sankey` (`Sankey(ax=…, flows=…, …)`, `add(patchlabel, flows, orientations, labels, …, prior,
+  connect)`, `finish()`) → `chart.sankey`: jedes Prozessdiagramm ist ein Knoten (sein `patchlabel` oder `label`, sonst
+  P1, P2 …); über `prior`/`connect` verbundene Flüsse verbinden zwei Knoten (vom Diagramm, dessen Fluss der Abfluss ist);
+  jeder andere Zufluss kommt von einem Knoten mit seiner Beschriftung (sonst „P1 in 1“ …), jeder andere Abfluss geht zu
+  einem; Flüsse ohne positiven Wert werden gemeldet; Richtungen, Stamm- und Pfadlängen und Drehung werden einmal
+  gemeldet (das Diagramm ordnet die Flüsse in Spalten an); Texte auf dem Diagramm werden gemeldet. Die eigene Exportform
+  wird aus ihren `sankey_flow`-Aufrufen gelesen (deren Rumpf läuft nicht), und ihre Beschriftungen sagen, ob die Knoten
+  Werte zeigen; `axis('off')` wird bei einem Sankey-Diagramm nicht gemeldet.
+
+*Import (pgfplots, Runde 4).*
+
+- `polaraxis` → `chart.polar`: Winkel in Grad (`data cs=polarrad`: Bogenmaß), auch Ausdrücke über dem Winkel;
+  `rotate=90` → 0° oben und `x dir=reverse` → im Uhrzeigersinn, nur beide zusammen sind die Kompassdarstellung (eines
+  allein wird gemeldet); ein gefüllter Plot ohne Linie, der eine Kurve wiederholt → gefüllte Darstellung;
+  `ymin`/`ymax` → Radialbereich.
+- `hist={bins=…, data min=…, data max=…}` (oder `hist/…`-Schlüssel, `data=x`) über einer eingebetteten Tabelle oder
+  Koordinaten → `chart.histogram`, eine Reihe je Plot, Legendeneinträge als Namen; `density`, `cumulative` und eigene
+  Darstellungen werden gemeldet, ebenso andere Klassen in derselben Achse (die ersten Klassen gelten).
+- `boxplot` mit Rohwerten und `boxplot prepared={…}` → `chart.box`: eine Reihe je Aussehen (Füllung, Linie, Muster),
+  Positionen aus `draw position` (sonst 1, 2 …), Kategorien aus den Teilstrichbeschriftungen, `whisker range` → `whis`;
+  die exportierten `box samples` sind die Rohwerte (Whisker bei Minimum und Maximum, obwohl die Regel Ausreißer ließe →
+  ohne Ausreißer); vorbereitete Werte allein werden zu stellvertretenden Messwerten – n = 4j + 1 Werte, die die Quartile
+  an die Stellen j, 2j und 3j setzen und Whisker und Ausreißer erhalten –, was gemeldet wird.
+- Gefüllte Rechtecke über einen Teil der Höhe in einer Achse, die nur sie und Rautenmarken enthält → `chart.gantt`: eine
+  Gruppe je Folge von Rechtecken gleichen Aussehens, Meilensteine wie bei matplotlib, `y dir=reverse` = erste Zeile oben,
+  das senkrechte `\draw` → Heute-Linie, `\addlegendimage`-Einträge benennen die Gruppen (und die Reihen von Boxplots);
+  mit anderem Inhalt in der Achse werden die Rechtecke wie bisher gemeldet.
+- Bilder ohne Achse: die exportierten Kreis- und Sankey-Diagramme aus ihren Datenschlüsseln; pgf-pie
+  `\pie[Optionen]{Wert/Name, …}` in oder außerhalb eines `tikzpicture` → `chart.pie` (gegen den Uhrzeigersinn ab
+  `rotate`; Zahlen sind Prozent, außer `after number` nennt eine andere Einheit, dann Werte – neben Namen gemeldet;
+  `hide number`; `text=legend` → Namen in einer Legende; eine `sum` (Vorgabe 100) größer als die Werte → Teilkreis,
+  gemeldet; `explode` und die Formen `polar`/`square`/`cloud` gemeldet). Diagramme des Pakets `sankey` werden gemeldet.
 
 **Hinweise für die Hosts.** Nur native Primitive: Segmente, Ringe und Flüsse sind geschlossene Freihandformen (Flüsse
 mit kubischen Kanten), Knoten, Balken und Boxen Rechtecke, Meilensteine geschlossene Freihandformen, Netze je eine
@@ -859,11 +923,12 @@ Aussehen der Teile gilt: ausgeblendete Teile entfallen, Teilestile ersetzen Farb
 | Leistungskurve (Drehmoment) | `twinx` | überlagerte Achse mit `axis y line=right` |
 | Toleranzband | `fill_between` unten/oben | `fill between` der beiden Grenzkurven |
 | Titel, Bildunterschrift, Teilbildtitel | `suptitle`, `supxlabel`, Texte in den Teilbildern | `title`, Knoten unter dem Bild, Knoten |
-| Kreis, Ring | `pie` mit den Namen (`labeldistance=None`, wenn nur die Legende sie zeigt), `autopct`-Prozentbeschriftung (Wertbeschriftung über eine Funktion), `startangle` = 90° − Start, `counterclock`, `wedgeprops=dict(width=1 − Loch)`, Segmentfarben, Schraffuren in Schwarz-Weiß, Text in der Mitte, Legende | TikZ-Bögen in mm (pgfplots hat keinen Kreis): Segmente, Beschriftungen, Führungslinien und Legende dort, wo das Diagramm sie zeichnet |
+| Kreis, Ring | `pie` mit den Namen (`labeldistance=None`, wenn nur die Legende sie zeigt), `autopct`-Prozentbeschriftung (Wertbeschriftung über eine Funktion), `startangle` = 90° − Start, `counterclock`, `wedgeprops=dict(width=1 − Loch)`, Segmentfarben, Schraffuren in Schwarz-Weiß, Text in der Mitte, Legende | TikZ-Bögen in mm (pgfplots hat keinen Kreis): Segmente, Beschriftungen, Führungslinien und Legende dort, wo das Diagramm sie zeichnet; die Datenschlüssel `pie chart` (Einstellungen) und `pie slice={Name}{Wert}` |
 | Polardiagramm | Polarachsen (`projection='polar'`), Winkel in Grad mit `rad` umgerechnet, `set_theta_zero_location('N')` und `set_theta_direction(-1)` für die Kompassdarstellung, `set_rlim`, Winkel- und Radiusschritte, `fill` für gefüllte Flächen | `polaraxis` (Bibliothek `polar`), Winkel in Grad; Kompassdarstellung als `rotate=90, x dir=reverse` |
-| Boxplot | `boxplot` der Rohwerte je Reihe an den Boxpositionen, `whis` (bzw. `whis=(0, 100)` für Minimum/Maximum), `showfliers`, Aussehen von Box, Median, Whiskern und Ausreißern | `boxplot prepared` (Bibliothek `statistics`) mit Quartilen, Whiskern und Ausreißern wie gezeichnet |
+| Boxplot | `boxplot` der Rohwerte je Reihe an den Boxpositionen, `whis` (bzw. `whis=(0, 100)` für Minimum/Maximum), `showfliers`, Aussehen von Box, Median, Whiskern und Ausreißern | `boxplot prepared` (Bibliothek `statistics`) mit Quartilen, Whiskern und Ausreißern wie gezeichnet, `whisker range` für die Regel, die Rohwerte im Datenschlüssel `box samples` |
 | Histogramm | `hist` der Rohwerte mit `bins` und `range` wie gezeichnet, mehrere Reihen nebeneinander (`rwidth=1`) | `hist={bins, data min, data max}` (Bibliothek `statistics`); mehrere Reihen überlagern sich durchscheinend |
 | Gantt-Diagramm | `barh` mit `left=` den Starts je Gruppe, Meilensteine als `D`-Marker, Heute-Linie und Beschriftung; Daten als benannte Teilstriche | gefüllte Rechtecke in Achsenkoordinaten, Meilensteine als `diamond*`-Marken, Heute-Linie und Beschriftung |
+| Sankey-Diagramm | das Layout wie gezeichnet: `sankey_flow(ax, source, target, value, ribbon, **style)` (ein `PathPatch` mit kubischen Bézier-Kanten) je Fluss und `sankey_node` (ein `Rectangle`) je Knoten, Hilfsfunktionen im Skript definiert; Beschriftungen als `ax.text` (`matplotlib.sankey` kann keine Spalten anordnen) | TikZ-Pfade in mm: Bänder mit `.. controls ..`-Kanten, die `sankey flow={Quelle}{Ziel}{Wert}` tragen, Knotenrechtecke, Beschriftungsknoten, Einstellungen in `sankey chart` (keine Sankey-Form in pgfplots/TikZ) |
 
 Näherungen: Layoutdetails (verkleinerte Beschriftungen, weiße Hinterlegung, Höchstbreiten von Anmerkungen, genauer
 Abstand der Schraffurlinien und Pfeilspitzen) folgen dem Layout der jeweiligen Bibliothek; Schriftgrößen sind relativ
@@ -913,4 +978,11 @@ Polar-, Box-, Histogramm- und Gantt-Diagrammen (Bibliotheken nur bei Bedarf), Ru
 Polar, Histogramm und Boxplot (Segmente und Winkel, Punkte und Konventionen, Messwerte, Klassen und Zählungen,
 Kategorien und Whisker-Regeln), den Import von `hist`- und `boxplot`-Skripten mit ihren Meldungen, Kalenderdaten im
 Gantt-Diagramm (Tageszahlen, Datumsteilung, Heute-Linie, Aktionen, Bereinigen) und den Meilenstein am Ende der
-Zeitachse.
+Zeitachse. `PresentationChartImportTests` (Runde 4) prüft den Sankey-Export (Hilfsfunktionen, Datenschlüssel, nicht
+gezeichnete Flüsse, Schwarz-Weiß), Rundläufe Export → Import aller sechs Formen in matplotlib und pgfplots/TikZ, auf
+Deutsch und Englisch (Sankey-Flüsse, Werte und Titel; Kreissegmente, Winkel, Loch, Beschriftung, Text in der Mitte und
+Titel; Polarpunkte und Konventionen; Histogramm-Messwerte, Klassen und Zählungen; Boxplot-Messwerte, Kategorien und
+Whisker-Regeln; Gantt-Vorgänge, Gruppen, Meilensteine, Daten, Heute-Linie, Zeitachse), jedes Präsentationsdiagramm
+farbig und schwarz-weiß ohne Meldungen sowie die handgeschriebenen Formen: matplotlib-`Sankey` mit `prior`/`connect`,
+`barh`-Gantt-Diagramme (umgekehrt oder nicht, gestapelte Balken bleiben Balkendiagramme), pgf-pie, `polaraxis` mit einem
+Ausdruck, `hist` und `boxplot` (roh und vorbereitet) in pgfplots, die stellvertretenden Messwerte und die Meldungen.

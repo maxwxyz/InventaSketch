@@ -164,9 +164,8 @@ namespace InventaSketch.Modules.Charts
 
     /// <summary>
     /// Base of the chart types without Cartesian axes (pie, polar, Sankey): drawn on a <see cref="Canvas"/>, never throwing
-    /// while rendering, with every tagged piece a part. They have no axis frame: pie and polar charts have their own code
-    /// export models (<see cref="CanvasExport"/>), the Sankey diagram is reported as not exportable by the matplotlib and
-    /// pgfplots exports (the TikZ and SVG exports draw it from the primitives).
+    /// while rendering, with every tagged piece a part. They have no axis frame: their code exports have their own models
+    /// (<see cref="CanvasExport"/>), never a composed <see cref="Chart"/>.
     /// </summary>
     internal abstract class CanvasChart : ChartType
     {
@@ -174,7 +173,7 @@ namespace InventaSketch.Modules.Charts
 
         internal sealed override Chart Compose(SketchObject o, RenderContext ctx) => throw NotExportable(Name, ctx.Lang);
 
-        /// <summary>The exception of the code exports for a chart that has no matplotlib/pgfplots form yet.</summary>
+        /// <summary>The exception of the code exports for a chart that has no matplotlib/pgfplots form (a chart without an export model).</summary>
         internal static InvalidOperationException NotExportable(I18nText name, Lang lang)
             => new(lang == Lang.De
                 ? name.Get(Lang.De) + " lässt sich nicht als matplotlib- oder pgfplots-Code ausgeben; bitte als TikZ oder SVG exportieren"

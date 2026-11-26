@@ -10,7 +10,8 @@ namespace InventaSketch.Modules.Charts
     /// Reads a matplotlib script (roadmap 4b) into the neutral figure model: pyplot style (plt.plot …) and object style
     /// (fig, ax = plt.subplots(); ax.plot …), stacked subplots, plot/scatter/step/errorbar/semilog/loglog curves, bar/barh,
     /// fill_between, axhline/axvline/axvspan, hlines/vlines, annotate and text, labels, titles, ranges, log scales, grids and
-    /// legends. The script is evaluated by <see cref="PyEval"/> (literal subset, never executed); unsupported calls and
+    /// legends; pie, polar axes, hist, boxplot, barh with starts (Gantt charts), matplotlib.sankey.Sankey and the helpers of
+    /// an exported Sankey diagram (sankey_flow, sankey_node). The script is evaluated by <see cref="PyEval"/> (literal subset, never executed); unsupported calls and
     /// arguments are reported.
     /// </summary>
     internal sealed class MatplotlibReader : IPyHost
@@ -32,6 +33,9 @@ namespace InventaSketch.Modules.Charts
             catch (PyUnsupported ex) { report.Skip(1, "", ex.Reason); return host._figures; }
             var eval = new PyEval(host);
             host._runner = new PyRunner(eval, host, report);
+            // The drawing helpers of an exported Sankey diagram carry its flows: their calls are read, their bodies not run.
+            var call = eval.Invoke!;
+            eval.Invoke = (f, a) => f.Name is "sankey_flow" or "sankey_node" ? host.SankeyHelper(f.Name, a) : call(f, a);
             try { host._runner.Run(stmts); }
             catch (PyReturn) { }
             return host._figures.Where(f => f.Axes.Any(a => a.HasContent || a.XLabel is not null || a.YLabel is not null || a.HasRange)).ToList();
@@ -77,7 +81,8 @@ namespace InventaSketch.Modules.Charts
             "math" => MathModule,
             "matplotlib.patches" => new PyObj("module:patches"),
             "matplotlib.ticker" => new PyObj("module:ticker"),
-            "matplotlib.lines" or "matplotlib.colors" or "matplotlib.gridspec" => new PyObj("module:other:" + dotted),
+            "matplotlib.sankey" => new PyObj("module:sankey"),
+            "matplotlib.lines" or "matplotlib.colors" or "matplotlib.gridspec" or "matplotlib.path" => new PyObj("module:other:" + dotted),
             "os" or "sys" or "os.path" or "__future__" or "typing" or "warnings" => new PyObj("module:ignored:" + dotted),
             _ => null,
         };
@@ -94,9 +99,9 @@ namespace InventaSketch.Modules.Charts
                 case "module:matplotlib":
                     if (name == "pyplot") return Plt;
                     if (name == "rcParams") return new PyObj("rc");
-                    if (name is "patches" or "ticker") return new PyObj("module:" + name);
+                    if (name is "patches" or "ticker" or "sankey") return new PyObj("module:" + name);
                     return new PyFunc(obj, name);
-                case "module:patches": case "module:ticker": case "style": case "rc":
+                case "module:patches": case "module:ticker": case "style": case "rc": case "module:sankey": case "sankey":
                     return new PyFunc(obj, name);
                 case "figure": case "axes": case "axis": case "spine": case "artist": case "bars": case "patch": case "legend":
                     switch (name)
@@ -264,6 +269,11 @@ namespace InventaSketch.Modules.Charts
                     throw No("Calls of os/sys are not read.", "Aufrufe von os/sys werden nicht gelesen.");
                 case "module:ticker":
                     return new PyObj("ticker");
+                case "module:sankey":
+                    if (name == "Sankey") return NewSankey(a);
+                    throw No(name + "() of matplotlib.sankey is not read.", name + "() aus matplotlib.sankey wird nicht gelesen.");
+                case "sankey":
+                    return SankeyCall((SankeyRef)self!.Data!, name, a);
                 case "module:patches":
                     if (name == "ConnectionPatch") return new PyObj("patch", a);
                     throw No("The patch “" + name + "” is not imported.", "Die Form „" + name + "“ wird nicht importiert.");
@@ -287,7 +297,7 @@ namespace InventaSketch.Modules.Charts
             if (Cosmetic.Contains(name) && kind is "plt" or "figure" or "axes") return PyNone.Instance;
             switch (kind)
             {
-                case "plt": return PltCall(name, a);
+                case "plt": { var v = PltCall(name, a); if (_ax is not null) Stamp(_ax); return v; }
                 case "figure": return FigureCall((ImpFigure)self!.Data!, name, a);
                 case "axes":
                     {
@@ -295,10 +305,18 @@ namespace InventaSketch.Modules.Charts
                         if (r.Twin && name == "get_legend_handles_labels")
                             return new PySeq(new List<PyVal> { new PySeq(new List<PyVal>()), new PySeq(new List<PyVal>()) }, true);
                         if (r.Twin) throw No("A secondary y axis (twinx) is not imported.", "Eine zweite y-Achse (twinx) wird nicht importiert.");
-                        return AxesCall(r, name, a, false);
+                        var v = AxesCall(r, name, a, false);
+                        Stamp(r.Ax);
+                        return v;
                     }
             }
             throw No(name + "() is not read.", name + "() wird nicht gelesen.");
+        }
+
+        /// <summary>Notes for every new curve the bar call drawn before it (milestones of a Gantt chart follow the bars of their group).</summary>
+        private static void Stamp(ImpAxes ax)
+        {
+            foreach (var s in ax.Series) if (!ax.AfterBars.ContainsKey(s)) ax.AfterBars[s] = ax.Bars.Count - 1;
         }
 
         private PyVal PltCall(string name, PyArgs a)
@@ -344,7 +362,7 @@ namespace InventaSketch.Modules.Charts
                         var ax = Gca().Ax;
                         ax.XMin = v[0]; ax.XMax = v[1]; ax.YMin = v[2]; ax.YMax = v[3];
                     }
-                    else if (a.Pos.FirstOrDefault() is PyStr { V: "off" }) Note("Hidden axes (axis('off')) are not imported.", "Ausgeblendete Achsen (axis('off')) werden nicht importiert.");
+                    else if (a.Pos.FirstOrDefault() is PyStr { V: "off" }) Gca().Ax.AxisOff ??= (Line, Code);
                     return PyNone.Instance;
                 case "twinx": throw No("A secondary y axis (twinx) is not imported.", "Eine zweite y-Achse (twinx) wird nicht importiert.");
                 case "polar":
@@ -496,7 +514,8 @@ namespace InventaSketch.Modules.Charts
                     Note("This polar axis setting is not imported (ticks and the full circle are automatic).", "Diese Polarachsen-Einstellung wird nicht importiert (Teilung und Vollkreis sind automatisch).");
                     return PyNone.Instance;
                 case "axis":
-                    if (a.Pos.FirstOrDefault() is PyStr { V: "off" }) Note("Hidden axes (axis('off')) are not imported.", "Ausgeblendete Achsen (axis('off')) werden nicht importiert.");
+                    // Hidden axes are reported when the chart is built (a Sankey diagram has none).
+                    if (a.Pos.FirstOrDefault() is PyStr { V: "off" }) ax.AxisOff ??= (Line, Code);
                     else if (a.Pos.FirstOrDefault() is PySeq lim4 && lim4.Items.Count == 4)
                     {
                         var v = PyEval.Numbers(lim4);
@@ -587,7 +606,12 @@ namespace InventaSketch.Modules.Charts
                             new PySeq(labeled.Select(x => (PyVal)new PyStr(x.Label!.En)).ToList()),
                         }, true);
                     }
-                case "invert_xaxis": case "invert_yaxis":
+                case "invert_yaxis":
+                    // Read for Gantt charts (the first task on top); other charts report it.
+                    ax.YInverted = true;
+                    ax.YInvertedAt ??= (Line, Code);
+                    return PyNone.Instance;
+                case "invert_xaxis":
                     throw No("Reversed axes are not imported.", "Umgekehrte Achsen werden nicht importiert.");
                 case "get_xlim": return new PySeq(new List<PyVal> { new PyNum(ax.XMin ?? double.NaN), new PyNum(ax.XMax ?? double.NaN) }, true);
                 case "get_ylim": return new PySeq(new List<PyVal> { new PyNum(ax.YMin ?? double.NaN), new PyNum(ax.YMax ?? double.NaN) }, true);
@@ -925,6 +949,8 @@ namespace InventaSketch.Modules.Charts
                 if (horizontal) { ax.YTicks = bars.Pos.ToList(); ax.YTickLabels = labels; } else { ax.XTicks = bars.Pos.ToList(); ax.XTickLabels = labels; }
             }
             if (a["label"] is { } lv && lv is not PyNone) bars.Label = MathText(PyEval.Str(lv, "the label"));
+            // One colour for all bars: the group colour of a Gantt chart (milestones of that colour join the group).
+            if ((a["color"] ?? a["facecolor"]) is PyStr bc) bars.Color = Color(bc);
             if (a.Has("yerr") || a.Has("xerr")) Note("Error bars are not imported; the bars are.", "Fehlerbalken werden nicht importiert; die Balken schon.");
             ax.Bars.Add(bars);
             return new PyObj("bars", bars);
@@ -958,7 +984,10 @@ namespace InventaSketch.Modules.Charts
             if (a.Arg(3, "colors") is { } cl && cl is not PyNone)
             {
                 var cols = _runner.Eval.Iterate(cl).Select(c => Color(c) ?? "").ToList();
-                var own = cols.Select((c, i) => string.Equals(c, SeriesLook.Of(i).Color, StringComparison.OrdinalIgnoreCase)).All(x => x) || cols.All(c => c == "#ffffff");
+                // Monochrome: the solid black or white faces, white under a hatch.
+                static string Mono(int i) => SeriesLook.Of(i).MonoFill is { Kind: FillKind.Solid, Color: { } mc } ? mc : Palette.White;
+                var own = cols.Select((c, i) => string.Equals(c, SeriesLook.Of(i).Color, StringComparison.OrdinalIgnoreCase)).All(x => x) || cols.All(c => c == "#ffffff")
+                    || cols.Select((c, i) => string.Equals(c, Mono(i), StringComparison.OrdinalIgnoreCase)).All(x => x);
                 if (!own) Note("Slice colours are not imported; the chart colours are used.", "Segmentfarben werden nicht importiert; die Diagrammfarben werden verwendet.");
             }
             if (a["normalize"] is PyBool { V: false } && values.Where(v => v > 0).Sum() < 1 - 1e-9)
@@ -968,6 +997,100 @@ namespace InventaSketch.Modules.Charts
             var parts = new List<PyVal> { Artists(), Artists() };
             if (pie.Percent) parts.Add(Artists());
             return new PySeq(parts, true);
+        }
+
+        // ------------------------------------------------------------------ Sankey diagrams
+
+        /// <summary>A Sankey object of matplotlib.sankey: the axes it draws into.</summary>
+        private sealed class SankeyRef
+        {
+            public SankeyRef(ImpAxes ax) { Ax = ax; }
+            public ImpAxes Ax { get; }
+            public int Diagrams;
+            public bool Noted;
+        }
+
+        private ImpSankey SankeyOf(ImpAxes ax) => ax.Sankey ??= new ImpSankey { Line = Line };
+
+        /// <summary>Sankey(ax=…, scale=…, unit=…, …, **kwargs): the diagram; keyword arguments of add() make its first process diagram.</summary>
+        private PyVal NewSankey(PyArgs a)
+        {
+            ImpAxes ax;
+            if (a.Arg(0, "ax") is PyObj { Kind: "axes", Data: AxesRef r }) ax = r.Ax;
+            else
+            {
+                // Without axes matplotlib makes a new figure.
+                var f = NewFigure(new PyArgs());
+                ax = AxesAt(f, 0, 0);
+                _ax = ax;
+            }
+            SankeyOf(ax);
+            var s = new SankeyRef(ax);
+            var adds = new PyArgs { Line = a.Line };
+            foreach (var (k, v) in a.Kw)
+                if (k is "flows" or "labels" or "orientations" or "patchlabel" or "label" or "prior" or "connect" or "trunklength" or "pathlengths" or "rotation") adds.Kw.Add((k, v));
+            if (adds.Kw.Any(k => k.Name == "flows")) Add(s, adds);
+            return new PyObj("sankey", s);
+        }
+
+        private PyVal SankeyCall(SankeyRef s, string name, PyArgs a)
+        {
+            switch (name)
+            {
+                case "add": Add(s, a); return new PyObj("sankey", s);
+                case "finish": return new PySeq(Enumerable.Range(0, s.Diagrams).Select(_ => (PyVal)new PyObj("artist")).ToList());
+            }
+            throw No("Sankey." + name + "() is not read.", "Sankey." + name + "() wird nicht gelesen.");
+        }
+
+        /// <summary>add(patchlabel, flows, orientations, labels, trunklength, pathlengths, prior, connect, rotation, **kwargs): a process diagram.</summary>
+        private void Add(SankeyRef s, PyArgs a)
+        {
+            var sk = SankeyOf(s.Ax);
+            var flows = a.Arg(1, "flows") is { } fv && fv is not PyNone ? PyEval.Numbers(fv, "the flows") : new[] { 1.0, -1.0 };
+            var d = new ImpSankeyDiagram { Flows = flows, Labels = new string?[flows.Length], Line = Line };
+            var labels = a.Arg(3, "labels");
+            if (labels is PySeq ls)
+                for (var i = 0; i < Math.Min(flows.Length, ls.Items.Count); i++) d.Labels[i] = ls.Items[i] is PyNone ? null : MathText(PyEval.Str(ls.Items[i]));
+            else if (labels is PyStr one && one.V.Length > 0)
+                for (var i = 0; i < flows.Length; i++) d.Labels[i] = MathText(one.V);
+            var patch = a.Arg(0, "patchlabel") is PyStr pl && pl.V.Trim().Length > 0 ? MathText(pl.V.Trim()) : null;
+            var label = a["label"] is PyStr lb && lb.V.Trim().Length > 0 && !lb.V.StartsWith("_", StringComparison.Ordinal) ? MathText(lb.V.Trim()) : null;
+            d.Name = patch ?? label;
+            if (a.Arg(6, "prior") is { } pv && pv is not PyNone)
+            {
+                var prior = (int)PyEval.Num(pv, "prior");
+                if (prior < 0 || prior >= s.Diagrams) Note("The prior diagram does not exist; this diagram is not connected.", "Das vorige Diagramm gibt es nicht; dieses Diagramm wird nicht verbunden.");
+                else
+                {
+                    d.Prior = prior;
+                    var c = a.Arg(7, "connect") is { } cv && cv is not PyNone ? PyEval.Numbers(cv, "connect") : new[] { 0.0, 0.0 };
+                    d.Connect = ((int)(c.Length > 0 ? c[0] : 0), (int)(c.Length > 1 ? c[1] : 0));
+                }
+            }
+            if ((a.Has("orientations") || a.Pos.Count > 2 || a.Has("trunklength") || a.Has("pathlengths") || a.Has("rotation")) && !s.Noted)
+            {
+                s.Noted = true;
+                Note("Orientations and lengths of the flows are not imported; the chart lays the flows out in columns from left to right.",
+                    "Richtungen und Längen der Flüsse werden nicht importiert; das Diagramm ordnet die Flüsse in Spalten von links nach rechts an.");
+            }
+            sk.Diagrams.Add(d);
+            s.Diagrams++;
+        }
+
+        /// <summary>The helpers of an exported Sankey diagram: sankey_flow(ax, source, target, value, ribbon, **style) carries a flow, sankey_node only draws.</summary>
+        internal PyVal SankeyHelper(string name, PyArgs a)
+        {
+            if (a.Arg(0, "ax") is not PyObj { Kind: "axes", Data: AxesRef r }) throw No(name + "() needs the axes first.", name + "() braucht zuerst die Achse.");
+            var sk = SankeyOf(r.Ax);
+            sk.Own = true;
+            if (name == "sankey_node") return PyNone.Instance;
+            // The names are data (plain string literals), not drawn texts.
+            var source = PyEval.Str(a.Arg(1, "source") ?? throw No("sankey_flow needs source, target and value.", "sankey_flow braucht Quelle, Ziel und Wert."));
+            var target = PyEval.Str(a.Arg(2, "target") ?? throw No("sankey_flow needs source, target and value.", "sankey_flow braucht Quelle, Ziel und Wert."));
+            var value = PyEval.Num(a.Arg(3, "value") ?? throw No("sankey_flow needs source, target and value.", "sankey_flow braucht Quelle, Ziel und Wert."), "the value");
+            sk.Flows.Add((source, target, value));
+            return PyNone.Instance;
         }
 
         /// <summary>One data set per entry of a list of lists (or arrays), else the values as one data set.</summary>
