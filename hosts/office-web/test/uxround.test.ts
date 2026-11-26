@@ -3,7 +3,7 @@ import type { ActionInfo, ArrangeOption, CatalogItem, ObjectInfo, PreflightFindi
 import { boxPosition, insertBoxKey, insertRows, rememberRecent } from "../src/ui/insertbox";
 import { hasIcon } from "../src/ui/icons";
 import {
-  assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, importKind, multiBarGroups, orderFindings, snapLabelAnchor, sourceLinks, tracedPathItem, withTracedPoints,
+  assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, importKind, multiBarGroups, orderFindings, pageMenus, snapLabelAnchor, sourceLinks, tracedPathItem, withTracedPoints,
 } from "../src/ui/uxlogic";
 import strings from "../src/strings.json";
 
@@ -198,6 +198,26 @@ describe("import kind", () => {
     expect(importKind("track.gpx", "<gpx></gpx>")).toBe("geo");
     expect(importKind("area.json", '{"type":"FeatureCollection","features":[]}')).toBe("geo");
     expect(importKind("data.csv", "a;b\n1;2")).toBe("table");
+  });
+});
+
+describe("page commands", () => {
+  const page = (id: string, enabled: boolean): ActionInfo => ({
+    ...a(id, "page"), enabled, label: id.endsWith("tens") ? "10, 20, 30 …" : "1, 2, 3 …",
+    choice: "patent.numerals.auto", choiceLabel: "Number all parts", choiceMenu: true, choiceBarIcon: "cmd-renumber",
+  });
+
+  it("groups the engine's page commands into one menu with the engine's pictogram", () => {
+    const menus = pageMenus([page("patent.numerals.auto=tens", true), page("patent.numerals.auto=ones", true)]);
+    expect(menus).toHaveLength(1);
+    expect(menus[0]).toMatchObject({ key: "patent.numerals.auto", label: "Number all parts", icon: "cmd-renumber", enabled: true });
+    expect(menus[0].options.map((o) => o.label)).toEqual(["10, 20, 30 …", "1, 2, 3 …"]);
+    expect(hasIcon(menus[0].icon)).toBe(true);
+  });
+
+  it("disables a menu whose commands cannot do anything (the top bar then shows no button)", () => {
+    expect(pageMenus([page("patent.numerals.auto=tens", false), page("patent.numerals.auto=ones", false)])[0].enabled).toBe(false);
+    expect(pageMenus([])).toEqual([]);
   });
 });
 

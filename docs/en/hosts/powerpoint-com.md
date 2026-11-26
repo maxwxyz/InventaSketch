@@ -205,6 +205,18 @@
 - **More menu (ribbon):** "Check and exchange" (review items, send slides, save slides, import of matplotlib/pgfplots/TikZ
   code), then tools: symbol size ×1/×1.5/×2 for every standard symbol of the slide (new symbols take it), value level,
   calculator.
+- **Number all parts without a selection** (2026-11-26, round 4): More ▸ "Check and share" ▸ "Number all parts ▸" right
+  below "Compatibility check …" (renumber pictogram). The submenu is built when it opens from the engine's page commands
+  (`PageActions`, `SlideNumbering.cs`): "10, 20, 30 …" and "1, 2, 3 …" for the current slide; greyed out with the note
+  "Every part on this slide has a numeral" when there is nothing to do, only "No parts on this slide" without parts. The
+  slide's units form one page; the numerals of the other slides count as used, so new numerals continue after them.
+  Parts that get a numeral are redrawn in their units (the parts list follows), every new numeral becomes a unit of its
+  own (it follows its part like one placed by hand), one undo step. Identical parts share a numeral; identical parts on
+  other slides do not yet take over their numeral.
+- **Option pictograms** (round 4): travel modes of the route and the distance callout (`travel-walk`, `travel-bike`,
+  `travel-car`, `travel-transit`, `travel-none`) and phases of switchgear and room devices (`phase-l1`, `phase-l2`,
+  `phase-l3`, `phase-3`, `phase-circuit`) in `IconPainter.SharedPaths`; these choices now appear as dropdowns with
+  pictograms.
 - **Larger controls and first-use hint:** More ▸ "Larger controls (125 %)" makes the bar, the pie menu, the handles and
   their hit areas a quarter larger (setting per user in `settings.json`; the layout keeps the larger handles apart, UI
   scenario `control-size`). The first selection of an element with a blue "+" shows "Blue + adds what fits here" next to

@@ -102,6 +102,17 @@ def element_choices(info):
     return params + achoices, plain
 
 
+PAGE = "@p."
+
+
+def page_choices(actions):
+    """The page commands (engine ``pageActions``, no selection needed: "Number all parts ▸ 10, 20, 30 … / 1, 2, 3 …") as
+    dropdown menus for the Tools panel, one per choice. Context-only: only the commands that can do something now, so a
+    page without parts, or whose parts all have a numeral, offers no menu (the dropdown is hidden)."""
+    found, _ = group_action_choices([a for a in actions or [] if a.get("enabled", True)], prefix=PAGE)
+    return found
+
+
 def current_option(choice):
     """The current option of a choice (None for a menu; the first option when the engine marks none)."""
     if choice.get("menu") or not choice.get("options"):

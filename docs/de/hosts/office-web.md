@@ -137,6 +137,16 @@ Folie behalten.
   ihren Formen gelesen (`src/office/slides.ts`: Name plus `ISK_MODEL`-Tags, sonst die Modellkopie der Präsentation),
   jede Folie wird in einer eigenen Engine-Sitzung geprüft, Befunde lauten „Folie n · …“ und springen zu Folie und Form
   (PowerPointApi 1.5).
+- **Alle Teile nummerieren** (26.11.2026, Runde 4): Rechts neben der Kompatibilitätsprüfung zeigt die obere Leiste einen
+  Knopf mit dem Umnummerieren-Piktogramm, solange ein Teil der Seite kein Bezugszeichen hat (Seitenbefehle der Engine
+  `pageActions`, ohne Auswahl; `uxlogic.pageMenus`; das Piktogramm liefert die Engine als `choiceBarIcon`). Auf einer
+  Seite ohne Teile oder wenn jedes Teil nummeriert ist, gibt es keinen Knopf (nur im passenden Kontext). Der Knopf öffnet
+  das Menü „Alle Teile nummerieren“ mit *10, 20, 30 …* und *1, 2, 3 …*; eine Zeile führt `applyPageAction` aus (ein
+  Rückgängig-Schritt, die Live-Synchronisierung zeichnet die Folie neu). Dasselbe Menü bietet ein ausgewähltes
+  Bezugszeichen. Nummeriert wird die Seite des Editors; Bezugszeichen anderer Folien kennt die Sitzung nicht.
+- **Options-Piktogramme der Verkehrsmittel und Phasen** (Runde 4): `travel-walk`, `travel-bike`, `travel-car`,
+  `travel-transit`, `travel-none`, `phase-l1`, `phase-l2`, `phase-l3`, `phase-3`, `phase-circuit` stehen in der mit dem
+  COM-Add-in geteilten Tabelle (`src/ui/icons.ts`, `test/icons.test.ts` vergleicht beide).
 - **Mit vorheriger Folie vergleichen** (25.11.2026, nur in PowerPoint): ein Knopf in der oberen Leiste markiert auf der
   ausgewählten Folie, was sich von der vorherigen unterscheidet (Engine `exportCompact` der vorherigen Folie, `diff` auf
   der aktuellen): neu grün, geändert orange, entfernt grau gestrichelt, dazu eine Legende; Formen mit dem Namen

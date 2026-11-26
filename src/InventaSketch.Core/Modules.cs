@@ -289,6 +289,18 @@ namespace InventaSketch.Core
         public const string HeadOpenDashed = "head-open-dashed";             // dashed line with an open arrowhead (dependency, reply)
         public const string HeadTriangleHollowDashed = "head-triangle-hollow-dashed"; // dashed line with a hollow triangle (realization)
         public const string CreateObject = "cmd-create-object"; // a message creating an object (dashed arrow into a box)
+        // Travel modes of a route or a distance callout (options of the "Travel mode" choice)
+        public const string TravelWalk = "travel-walk";       // walking (a pedestrian)
+        public const string TravelBike = "travel-bike";       // bicycle (two wheels and a frame)
+        public const string TravelCar = "travel-car";         // car (side view with two wheels)
+        public const string TravelTransit = "travel-transit"; // public transport (front of a bus or tram)
+        public const string TravelNone = "travel-none";       // no travel mode pictogram (a circle with a slash)
+        // Phases of a circuit or a load (options of the "Phase" choice): three busbars with the tapped one(s) dotted
+        public const string PhaseL1 = "phase-l1";             // tap on the first busbar
+        public const string PhaseL2 = "phase-l2";             // tap on the second busbar
+        public const string PhaseL3 = "phase-l3";             // tap on the third busbar
+        public const string PhaseThree = "phase-3";           // three-phase: a tap on every busbar
+        public const string PhaseCircuit = "phase-circuit";   // from the circuit: the phase of the feeding breaker (breaker symbol)
 
         /// <summary>
         /// Pictograms hosts never show without their label: they say "switch", "next variant" or "pick" but not what. Actions
@@ -369,6 +381,28 @@ namespace InventaSketch.Core
             _ => null,
         };
 
+        /// <summary>Pictogram of a travel mode ("walk", "bike", "car", "transit", "none"); null if unknown.</summary>
+        public static string? ForTravelMode(string value) => value switch
+        {
+            "walk" or "foot" or "walking" => TravelWalk,
+            "bike" or "bicycle" or "cycle" => TravelBike,
+            "car" or "drive" => TravelCar,
+            "transit" or "train" or "bus" or "tram" => TravelTransit,
+            "none" => TravelNone,
+            _ => null,
+        };
+
+        /// <summary>Pictogram of a phase ("L1", "L2", "L3", three-phase "L123"/"3", "circuit" = from the circuit); null if unknown.</summary>
+        public static string? ForPhase(string value) => value switch
+        {
+            "L1" => PhaseL1,
+            "L2" => PhaseL2,
+            "L3" => PhaseL3,
+            "L123" or "3" or "3N" => PhaseThree,
+            "circuit" => PhaseCircuit,
+            _ => null,
+        };
+
         /// <summary>Pictogram of a line style.</summary>
         public static string ForDash(DashStyle dash) => dash switch
         {
@@ -402,6 +436,7 @@ namespace InventaSketch.Core
             AddPoint, RowAdd, RowAddTop, RowRemove, ColumnAdd, ColumnRemove, OperationAdd, OperationRemove, PortAdd, PortRemove, CountMore, CountFewer,
             Reverse, SideSwap, Polarity, FlowArrow, JointStart, JointEnd, AngleNext, AnglePrev, Home, AlignWall,
             TextAlignLeft, TextAlignCenter, TextAlignRight, HeadOpenDashed, HeadTriangleHollowDashed, CreateObject,
+            TravelWalk, TravelBike, TravelCar, TravelTransit, TravelNone, PhaseL1, PhaseL2, PhaseL3, PhaseThree, PhaseCircuit,
         };
 
         private static readonly Dictionary<string, string> ViewAliases = new(StringComparer.OrdinalIgnoreCase)

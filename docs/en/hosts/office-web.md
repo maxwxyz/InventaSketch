@@ -132,6 +132,16 @@ the units on the slide.
   slides**: the units of every slide are read from their shapes (`src/office/slides.ts`: name plus `ISK_MODEL` tags,
   else the presentation mirror), each slide is checked in its own engine session, findings read "Slide n · …" and go to
   their slide and shape (PowerPointApi 1.5).
+- **Number all parts** (2026-11-26, round 4): right of the compatibility check the top bar shows a button with the
+  renumber pictogram while a part of the page has no reference numeral (the engine's page commands `pageActions`, no
+  selection needed; `uxlogic.pageMenus`; the engine gives the pictogram as `choiceBarIcon`). On a page without parts, or
+  once every part is numbered, there is no button (context-only). The button opens the menu "Number all parts" with
+  *10, 20, 30 …* and *1, 2, 3 …*; a row runs `applyPageAction` (one undo step, live sync redraws the slide). A selected
+  numeral offers the same menu. Numbering covers the editor's page; the session does not know the numerals of other
+  slides.
+- **Option pictograms of the travel modes and phases** (round 4): `travel-walk`, `travel-bike`, `travel-car`,
+  `travel-transit`, `travel-none`, `phase-l1`, `phase-l2`, `phase-l3`, `phase-3`, `phase-circuit` are in the table
+  shared with the COM add-in (`src/ui/icons.ts`, `test/icons.test.ts` compares both).
 - **Compare with the previous slide** (2026-11-25, PowerPoint only): a button in the top bar marks on the selected slide
   what differs from the previous one (engine `exportCompact` of the previous slide, `diff` on the current one): added
   green, changed orange, removed dashed grey, plus a legend; shapes named `ISK_DIFF …`; clicking again removes them.

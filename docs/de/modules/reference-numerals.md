@@ -51,7 +51,15 @@ Grauflächen bleiben Preflight-Befunde.
 
 API (`ReferenceNumerals`, `PartNumbering`, `ExplodedViews`): `NextFree`, `Insert`, `Rename`, `Renumber`, `Apply`, `Sync`,
 `List`, `Groups`, `Export`, `Check`, `SplitSuffix`, `WithSuffix`, `SetSuffix`, `NumberedParts`, `PartKind`,
-`PartsInReadingOrder`, `NumberParts`, `AddAxis`, `NearestPart`.
+`PartsInReadingOrder`, `NumberParts`, `PageCommands`, `AddAxis`, `NearestPart`.
+
+**Alle Teile nummerieren ohne ausgewähltes Bezugszeichen** (Runde 4, 26.11.2026): dasselbe Menü ist ein Befehl der ganzen
+Seite (`PartNumbering.PageCommands`, Engine `pageActions` / `applyPageAction`, dieselben Ids `patent.numerals.auto=tens`
+/ `=ones`). Es wird nur auf einer Seite mit Teilen angeboten und ist ausgegraut, sobald jedes Teil ein Bezugszeichen hat.
+Hosts: COM-Add-in *Mehr ▸ Alle Teile nummerieren ▸* (die Folie; neue Bezugszeichen schließen an die der anderen Folien
+an), Web-Add-in eine Schaltfläche der oberen Leiste mit dem Umnummerieren-Piktogramm, solange einem Teil ein
+Bezugszeichen fehlt, LibreOffice Klappliste *Alle Teile nummerieren ▸* im Bereich *Zeichnung, Rechner und Code* (siehe
+die Host-Dokumente).
 
 ## Bezugszeichenliste
 

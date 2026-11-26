@@ -70,6 +70,21 @@ namespace InventaSketch.AddIn.Tests
             Assert.Equal(renders.Count, new HashSet<string>(renders).Count);
         }
 
+        /// <summary>The travel-mode and phase pictograms (option pictograms of one dropdown each) differ from each other.</summary>
+        [Fact]
+        public void TravelModeAndPhasePictogramsAreDistinct()
+        {
+            foreach (var family in new[]
+            {
+                new[] { IconIds.TravelWalk, IconIds.TravelBike, IconIds.TravelCar, IconIds.TravelTransit, IconIds.TravelNone },
+                new[] { IconIds.PhaseCircuit, IconIds.PhaseL1, IconIds.PhaseL2, IconIds.PhaseL3, IconIds.PhaseThree },
+            })
+            {
+                var renders = new HashSet<string>();
+                foreach (var id in family) Assert.True(renders.Add(System.Convert.ToBase64String(Render(id))), id);
+            }
+        }
+
         /// <summary>Contact sheet of the curve-shape pictograms at 24 and 36 px, light and dark (ui-renders/curve-shapes.png).</summary>
         [Fact]
         public void WritesCurveShapeSheet()

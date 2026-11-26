@@ -238,6 +238,17 @@ const paths: Record<string, string> = {
   "head-triangle-hollow-dashed": "M3 12h3M8 12h3M13.5 7.5l7.5 4.5-7.5 4.5z",
   "cmd-create-object": "M2 12h2.5M6.5 12h2.5M11 12h1.5M10 9l3 3-3 3M15 6.5h7v11h-7z",
   "cmd-pencil": "M15 3.5l4 4L8.5 18 3.5 19.5 5 14.5zM13 5.5l4 4M12.5 21c2.5-2 4.5 1.5 8.5-1",
+  // Travel modes (route, distance callout) and phases (switchgear devices and loads), round 4.
+  "travel-walk": "M13 2.5a2 2 0 1 0 0 4a2 2 0 1 0 0 -4zM12.2 8.5L10.6 14.5L8 21M10.6 14.5l3.6 2.6l.6 3.9M12 9.5L8.2 12.3M12 9.5l3.6 3",
+  "travel-bike": "M6 12.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0 -7zM18 12.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0 -7zM6 16l4 -6.5h6l2 6.5M10 9.5l1.5 6.5l4.5 -6.5M11.5 16H6M16 9.5l-1 -3h-2M10 9.5V7.5M8.5 7.5h3",
+  "travel-car": "M4.8 16.5H2.5v-4l2 -1.5l2.5 -4.5h9.5l3 4.5l2 1.5v4h-2.3M9.2 16.5h5.6M4.5 11h15M12 6.5V11M7 14.3a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0 -4.4zM17 14.3a2.2 2.2 0 1 0 0 4.4a2.2 2.2 0 1 0 0 -4.4z",
+  "travel-transit": "M6.5 3h11a2.5 2.5 0 0 1 2.5 2.5V17H4V5.5A2.5 2.5 0 0 1 6.5 3zM4 11h16M9 5.5h6M7.5 14h.01M16.5 14h.01M7 17v3.5M17 17v3.5",
+  "travel-none": "M12 4a8 8 0 1 0 0 16a8 8 0 1 0 0 -16zM6.35 17.65L17.65 6.35",
+  "phase-l1": "M3 5h17v12.5M3 10h10M3 15h10M20 21.5l-1.8 -3.6h3.6Z",
+  "phase-l2": "M3 5h10M3 10h17v7.5M3 15h10M20 21.5l-1.8 -3.6h3.6Z",
+  "phase-l3": "M3 5h10M3 10h10M3 15h17v2.5M20 21.5l-1.8 -3.6h3.6Z",
+  "phase-3": "M3 5h18v12.5M3 10h13.5v7.5M3 15h9v2.5M21 21.5l-1.6 -3.6h3.2ZM16.5 21.5l-1.6 -3.6h3.2ZM12 21.5l-1.6 -3.6h3.2Z",
+  "phase-circuit": "M12 2.5V8M10.4 6.4l3.2 3.2M13.6 6.4l-3.2 3.2M12 15.5l4.2 -6.3M12 15.5V21.5",
   // </shared-paths>
 };
 

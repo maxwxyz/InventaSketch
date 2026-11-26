@@ -36,7 +36,7 @@ import { addMenu, entryOf, labelEntries, pieRing, withBack, type LabelChange, ty
 import { Stage, type ChainSide } from "./stage";
 import { isPictureName, pictureToRgba } from "./picture";
 import { PART_PREFIX, addedPart, isPartCommand, keepPart, partActionId, partAfterDelete, partDeleteAction, partListEntries, type SelectedPart } from "./partlogic";
-import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, importKind, orderFindings, sourceLinks } from "./uxlogic";
+import { assemblyExtends, canTrace, elementCount, filterTransforms, findingCounts, multiBarGroups, importKind, orderFindings, pageMenus, sourceLinks, type PageMenu } from "./uxlogic";
 
 export interface AppOptions {
   engine: Engine;
@@ -300,6 +300,8 @@ export class App {
       this.slideAccess
         && this.iconButton("compare", t("cmd.compare"), () => void this.compareSlides(), { "data-cmd": "compare" }),
       this.iconButton("check", t("cmd.patentCheck"), (e) => this.togglePatentCheck(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog", "data-cmd": "patentcheck" }),
+      // Page commands without a selection ("Number all parts ▸"), only while they can do something.
+      ...this.pageMenuButtons(),
       this.iconButton("clean", t("cmd.clean"), (e) => this.toggleCleanSlides(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog", "data-cmd": "clean" }),
       // What the export covers, stated before the buttons (COM: "Selection: n elements" / "Slide").
       h("span", { class: "isk-export-scope", "data-cmd": "exportscope", title: t("export.scopeHint") }, scope),
@@ -309,6 +311,44 @@ export class App {
       this.iconButton("settings", t("cmd.settings"), (e) => this.toggleSettings(e.currentTarget as HTMLElement), { "aria-haspopup": "dialog" }),
     );
     this.topbar.replaceChildren(...items.filter((x): x is HTMLElement => !!x));
+  }
+
+  /**
+   * The page commands of the engine (`pageActions`, no selection needed) as top bar buttons, one per menu that can do
+   * something now: "Number all parts" (renumber pictogram) on a page with parts that lack a numeral. Context-only: no
+   * button on a page without parts or once every part is numbered.
+   */
+  private pageMenuButtons(): HTMLElement[] {
+    if (!this.st) return [];
+    let menus: PageMenu[];
+    try { menus = pageMenus(this.sessionObj.pageActions(lang())).filter((m) => m.enabled); } catch { return []; }
+    return menus.map((m) => this.iconButton(m.icon, m.label, (e) => this.togglePageMenu(m, e.currentTarget as HTMLElement),
+      { "aria-haspopup": "menu", "data-cmd": `page-${m.key}` }));
+  }
+
+  /**
+   * A page command menu as a popover under its button: one row per option ("10, 20, 30 …", "1, 2, 3 …"); a row runs the
+   * command on the page (one undo step, live sync redraws the slide) and closes the menu.
+   */
+  private togglePageMenu(menu: PageMenu, anchor: HTMLElement): void {
+    const kind = `page:${menu.key}`;
+    const was = this.settingsEl?.dataset.kind === kind;
+    if (this.settingsEl) { this.settingsEl.remove(); this.settingsEl = undefined; if (was) return; }
+    const close = h("button", { class: "isk-btn isk-icon-btn isk-close", type: "button", "aria-label": t("close"), html: icon("close", 16) });
+    const dismiss = () => { panel.remove(); if (this.settingsEl === panel) this.settingsEl = undefined; anchor.focus(); };
+    const rows = menu.options.map((o) => {
+      const b = h("button", { class: "isk-btn isk-page-option", type: "button", role: "menuitem", disabled: !o.enabled, "data-cmd": `pageaction-${o.id}` }, o.label);
+      b.addEventListener("click", () => { dismiss(); this.edit((s) => s.applyPageAction(o.id)); });
+      return b;
+    });
+    const panel = h("div", { class: "isk-popover isk-page-menu", role: "menu", "aria-label": menu.label },
+      h("div", { class: "isk-pop-head" }, h("strong", {}, menu.label), close), ...rows);
+    panel.dataset.kind = kind;
+    close.addEventListener("click", dismiss);
+    panel.addEventListener("keydown", (e) => { if (e.key === "Escape") { e.stopPropagation(); dismiss(); } });
+    this.root.append(panel);
+    this.settingsEl = panel;
+    rows.find((r) => !(r as HTMLButtonElement).disabled)?.focus();
   }
 
   /** A top bar button with a short text label. */

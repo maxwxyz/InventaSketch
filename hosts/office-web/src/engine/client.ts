@@ -93,6 +93,13 @@ export class Session {
   /** Compatibility check (drawing-rule preflight) of the page for office `profile` – a drafting aid, not a legal certification. */
   preflight(profile: string, lang: string): PreflightResult { return this.c("preflight", { text: profile, lang }); }
   /**
+   * Commands of the whole page without a selection (kind "page"; today "Number all parts ▸ 10, 20, 30 … / 1, 2, 3 …", a menu
+   * choice): empty when the page offers none, greyed out (`enabled` false) when they cannot do anything now.
+   */
+  pageActions(lang: string): ActionInfo[] { return this.c("pageActions", { lang }); }
+  /** Runs a page command (an id of `pageActions`) on the page; one undo step. */
+  applyPageAction(action: string): EditorState { return this.c("applyPageAction", { action }); }
+  /**
    * "Clean slides": makes the values of `ids` unrecognisable (none = every element of the page; groups expanded) –
    * charts normalised, randomised or kept (`mode`), optionally categories renamed, texts replaced and metadata stripped.
    * One undo step; the report names the seed used (pass it again to reproduce a randomised result).

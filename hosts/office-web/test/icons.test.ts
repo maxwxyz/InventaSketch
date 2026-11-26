@@ -11,7 +11,7 @@ const { mkdirSync, writeFileSync } = (await load("node:fs")) as NodeFs;
 
 // The engine sends abstract icon ids (InventaSketch.Core.IconIds); the task pane must draw every one of them.
 describe("icons", () => {
-  const ids = [...core.matchAll(/public const string \w+ = "((?:view|cmd|head|size|line|course|mach|hub|shape|fill|route|wall|qty|text|curve)-[a-z0-9-]+)"/g)].map((m) => m[1]);
+  const ids = [...core.matchAll(/public const string \w+ = "((?:view|cmd|head|size|line|course|mach|hub|shape|fill|route|wall|qty|text|curve|travel|phase)-[a-z0-9-]+)"/g)].map((m) => m[1]);
 
   it("finds the IconIds vocabulary", () => {
     expect(ids.length).toBeGreaterThan(150);

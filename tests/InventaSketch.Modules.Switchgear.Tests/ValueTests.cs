@@ -198,6 +198,9 @@ namespace InventaSketch.Modules.Switchgear.Tests
             var loadActions = Reg.Type(a.Type)!.Actions(a, Lang.En).Where(x => x.Id.StartsWith("sw.phase=", StringComparison.Ordinal)).ToList();
             Assert.Equal(5, loadActions.Count);
             Assert.Single(loadActions, x => x.IsActive);
+            // Every phase option has its own pictogram (dropdown with option pictograms).
+            Assert.Equal(new[] { IconIds.PhaseCircuit, IconIds.PhaseL1, IconIds.PhaseL2, IconIds.PhaseL3, IconIds.PhaseThree }, loadActions.Select(x => x.Icon));
+            Assert.Equal(new[] { IconIds.PhaseL1, IconIds.PhaseL2, IconIds.PhaseL3 }, actions.Where(x => x.Id.StartsWith("sw.phase=", StringComparison.Ordinal)).Select(x => x.Icon));
         }
 
         /// <summary>

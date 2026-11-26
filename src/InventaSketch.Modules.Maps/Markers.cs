@@ -313,7 +313,8 @@ namespace InventaSketch.Modules.Maps
         private static readonly ParamDef UnitDef = Prm.Choice("unit", "Unit", "Einheit", "km", ("km", "Kilometres", "Kilometer"), ("mi", "Miles", "Meilen"), ("m", "Metres", "Meter"));
         private static readonly ParamDef TimeDef = Prm.Num("time", "Travel time", "Fahrzeit", 15, 0, 100000, "min", 1);
         private static readonly ParamDef ModeDef = Prm.Choice("mode", "Mode", "Verkehrsmittel", "car",
-            ("car", "Car", "Auto"), ("walk", "Walking", "Zu Fuß"), ("bike", "Bicycle", "Fahrrad"), ("transit", "Public transport", "ÖPNV"), ("none", "None", "Keins"));
+            ("car", "Car", "Auto"), ("walk", "Walking", "Zu Fuß"), ("bike", "Bicycle", "Fahrrad"), ("transit", "Public transport", "ÖPNV"), ("none", "None", "Keins"))
+            .WithOptionIcons(IconIds.ForTravelMode);
         private static readonly ParamDef TailDef = Prm.Choice("tail", "Pointer", "Zeiger", "left", ("left", "Bottom left", "Unten links"), ("right", "Bottom right", "Unten rechts"), ("none", "None", "Keiner"));
 
         public static string DistanceText(SketchObject o, Lang lang)

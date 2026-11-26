@@ -99,7 +99,7 @@ namespace InventaSketch.Modules.Maps
         };
 
         public static readonly ParamDef ModeDef = Prm.Choice(ModeParam, "Travel mode (speed preset)", "Verkehrsmittel (Geschwindigkeitsvorgabe)", "car",
-            Modes.Select(m => (m.Value, m.En, m.De)).ToArray());
+            Modes.Select(m => (m.Value, m.En, m.De)).ToArray()).WithOptionIcons(IconIds.ForTravelMode);
 
         /// <summary>Preset speed of a travel mode in km/h (car for unknown values).</summary>
         public static double PresetKmh(string mode) => Modes.FirstOrDefault(m => m.Value == mode).Kmh is double v && v > 0 ? v : 50;

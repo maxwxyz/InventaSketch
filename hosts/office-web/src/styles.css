@@ -181,6 +181,9 @@ textarea.isk-input { resize: vertical; }
 .isk-pop-head { display: flex; align-items: center; justify-content: space-between; }
 .isk-popover fieldset { border: 0; padding: 0; margin: 8px 0; }
 .isk-popover legend { font-weight: 600; margin-bottom: 2px; }
+/* Page command menu ("Number all parts ▸"): one full-width row per option, one text size. */
+.isk-page-menu { width: min(220px, calc(100% - 12px)); }
+.isk-page-option { display: block; width: 100%; margin-top: 6px; text-align: left; }
 .isk-muted { color: var(--muted); font-size: 11px; }
 .isk-toast { position: absolute; z-index: 60; left: 50%; bottom: 14px; transform: translateX(-50%); max-width: calc(100% - 24px); padding: 8px 12px; border-radius: 8px; background: var(--text); color: var(--bg); box-shadow: var(--shadow); }
 .isk-toast[hidden] { display: none; }

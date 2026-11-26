@@ -59,8 +59,10 @@ t = 5.66 min" below the route.
 - **Travel time:** derived; entering it gives the speed (or, with the mode preset, the length).
 - The route depends on its neighbours (it reads the scale bar); the scale bar reports the routes on its page that show
   their values as dependents (`HasDependents`), so changing the scale bar redraws their labels.
-- The travel mode is a choice in the floating bar. Option pictograms (walker, bicycle, car) need new ids in the shared
-  `IconIds` vocabulary (Core) and host drawings; until then the options are shown as text.
+- The travel mode is a choice in the floating bar, a dropdown with option pictograms from the shared `IconIds`
+  vocabulary: `travel-walk` (pedestrian), `travel-bike` (bicycle), `travel-car` (car); the distance callout's mode also
+  uses `travel-transit` (front of a bus or tram) and `travel-none` (circle with a slash). The COM and web add-ins draw
+  them; LibreOffice shows the option names.
 
 ## Stations, bridges, tunnels and contour lines (2026-11-26)
 

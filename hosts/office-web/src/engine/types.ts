@@ -248,7 +248,7 @@ export interface ActionInfo {
   enabled: boolean;
   active: boolean;
   group: string;
-  kind: "generic" | "view" | "type" | "option";
+  kind: "generic" | "view" | "type" | "option" | "page";
   /** Present for actions that need a text value: prompt for it and pass it to applyAction. */
   input?: { label: string; value: string; unit?: string };
   /** Parameters the action sets: the bar hides it when those are shown as choice buttons. */
