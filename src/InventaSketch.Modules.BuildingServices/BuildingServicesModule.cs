@@ -108,7 +108,15 @@ namespace InventaSketch.Modules.BuildingServices
             Add("elec.detector.motion", "bs.elec.detector", "Motion detector", "Bewegungsmelder", P(("kind", "motion")), kw: new[] { "motion", "pir", "bewegung", "präsenz" });
             Add("elec.appliance.washer", "bs.elec.appliance", "Washing machine outlet", "Anschluss Waschmaschine", P(("kind", "washer")), kw: new[] { "washer", "waschmaschine" });
             Add("elec.appliance.dishwasher", "bs.elec.appliance", "Dishwasher outlet", "Anschluss Geschirrspüler", P(("kind", "dishwasher")), kw: new[] { "dishwasher", "spülmaschine" });
-            return list;
+
+            // The appliance outlet is the canonical one: the switchgear module's appliance connections give way to it while this
+            // module is registered (LibraryItem.Alternative), so it also answers to their names.
+            var extra = new Dictionary<string, string[]>(StringComparer.Ordinal)
+            {
+                ["bs.elec.appliance"] = new[] { "cooker connection", "appliance connection", "geräteanschluss" },
+                ["bs.elec.appliance.washer"] = new[] { "washing machine connection", "waschmaschinenanschluss" },
+            };
+            return list.Select(i => extra.TryGetValue(i.Id, out var kw) ? i with { Keywords = i.Keywords.Concat(kw).ToList() } : i).ToList();
         }
     }
 }

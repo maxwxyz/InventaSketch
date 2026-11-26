@@ -152,7 +152,43 @@ namespace InventaSketch.Modules.Process
             Add("chart.pv.carnot", PvChartType.TypeId, "Carnot cycle (p-v)", "Carnot-Prozess (p-v)", P(("cycle", "carnot")), kw: new[] { "carnot" });
             Add("chart.ph.heatpump", PhChartType.TypeId, "Heat pump cycle (log p-h, subcooled)", "Wärmepumpenprozess (log p-h, unterkühlt)",
                 P(("ratio", 5.0), ("subcool", true)), kw: new[] { "heat pump", "wärmepumpe" });
-            return list;
+
+            // One element, one item. The air handling items are sections of an AHU schematic (air path left to right), not the
+            // duct parts of a building plan (building services: duct damper, ventilation unit) and the P&ID motor is the drive
+            // symbol that docks on a pump shaft, not the drive train block of the machines module: they keep their items, named
+            // so that search tells them apart. The "supply / extract air fan" was the default fan once more; it steps back in
+            // favour of the fan item (LibraryItem.Alternative), which takes over its keywords.
+            return list.Select(i =>
+            {
+                if (Renamed.TryGetValue(i.Id, out var n)) i = i with { Name = n.Name ?? i.Name, Keywords = i.Keywords.Concat(n.Keywords).Distinct().ToList() };
+                if (Alternatives.TryGetValue(i.Id, out var alt)) i = i with { Alternative = alt };
+                return i;
+            }).ToList();
         }
+
+        private static readonly string[] Ahu = { "ahu", "air handling unit", "rlt", "rlt-gerät", "lüftungsgerät" };
+
+        /// <summary>Items named apart from the same-looking elements of other modules (item id → name, null keeps it, and extra keywords).</summary>
+        internal static readonly IReadOnlyDictionary<string, (I18nText? Name, string[] Keywords)> Renamed = new Dictionary<string, (I18nText?, string[])>(StringComparer.Ordinal)
+        {
+            ["process.hvac.coil"] = (new I18nText("Air heating / cooling coil (AHU)", "Lufterhitzer / Luftkühler (RLT)"), Ahu),
+            ["process.hvac.coil.cooling"] = (new I18nText("Cooling coil (AHU)", "Kühlregister (RLT)"), Ahu),
+            ["process.hvac.damper"] = (new I18nText("Air damper (AHU)", "Luftklappe (RLT)"), Ahu),
+            ["process.hvac.damper.motorised"] = (new I18nText("Motorised damper (AHU)", "Luftklappe mit Stellantrieb (RLT)"), Ahu),
+            ["process.hvac.filter"] = (new I18nText("Air filter (AHU)", "Luftfilter (RLT)"), Ahu),
+            ["process.hvac.filter.bag"] = (new I18nText("Bag filter (AHU)", "Taschenfilter (RLT)"), Ahu),
+            ["process.hvac.recovery"] = (new I18nText("Heat recovery section (AHU)", "Wärmerückgewinnung (RLT)"), Ahu),
+            ["process.hvac.recovery.wheel"] = (new I18nText("Rotary heat wheel (AHU)", "Rotationswärmeübertrager (RLT)"), Ahu),
+            ["process.hvac.humidifier"] = (new I18nText("Humidifier (AHU)", "Luftbefeuchter (RLT)"), Ahu),
+            ["process.hvac.humidifier.spray"] = (new I18nText("Spray humidifier (AHU)", "Sprühbefeuchter (RLT)"), Ahu),
+            ["process.motor"] = (new I18nText("Electric motor (P&ID drive)", "Elektromotor (R&I-Antrieb)"), new[] { "p&id", "r&i", "flow sheet", "fließschema", "pump drive", "pumpenantrieb" }),
+            ["process.fan"] = (null, new[] { "supply air", "extract air", "zuluft", "abluft", "zu- / abluftventilator" }),
+        };
+
+        /// <summary>Items that give way to another item offering the same element (item id → alternative item id).</summary>
+        internal static readonly IReadOnlyDictionary<string, string> Alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["process.hvac.fan"] = "process.fan",
+        };
     }
 }

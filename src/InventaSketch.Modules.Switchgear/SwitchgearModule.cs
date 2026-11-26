@@ -192,7 +192,26 @@ namespace InventaSketch.Modules.Switchgear
             Add("sw.house.light.wall", HouseType.LightId, "Wall light outlet (room/circuit)", "Wandauslass (Raum/Stromkreis)", P(("kind", "wall")), kw: new[] { "leuchte", "wandauslass" });
             Add("sw.house.appliance", HouseType.ApplianceId, "Cooker connection (room/circuit)", "Herdanschluss (Raum/Stromkreis)", kw: new[] { "herd" });
             Add("sw.house.appliance.washer", HouseType.ApplianceId, "Washing machine connection (room/circuit)", "Waschmaschinenanschluss (Raum/Stromkreis)", P(("kind", "washer")), kw: new[] { "waschmaschine" });
-            return list;
+
+            // One element, one item: the installation plan symbols of the electrical module (plan, section and schematic views,
+            // mounting height, pins and circuit values) and the appliance outlet of the building services (same three views)
+            // are the canonical room devices. While those modules are registered the room devices here step back from galleries
+            // and search (LibraryItem.Alternative); their types stay registered, so existing slides keep loading, rendering and
+            // feeding the installation reports. The wall light outlet has no counterpart and stays.
+            return list.Select(i => Alternatives.TryGetValue(i.Id, out var alt) ? i with { Alternative = alt } : i).ToList();
         }
+
+        /// <summary>Room device items that give way to the canonical item of another module (item id → alternative item id).</summary>
+        internal static readonly IReadOnlyDictionary<string, string> Alternatives = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            ["sw.house.socket"] = "elec.house.socket",
+            ["sw.house.socket.double"] = "elec.house.socket.double",
+            ["sw.house.switch"] = "elec.house.switch",
+            ["sw.house.switch.twoway"] = "elec.house.switch.twoway",
+            ["sw.house.switch.push"] = "elec.house.switch.push",
+            ["sw.house.light"] = "elec.house.light",
+            ["sw.house.appliance"] = "bs.elec.appliance",
+            ["sw.house.appliance.washer"] = "bs.elec.appliance.washer",
+        };
     }
 }

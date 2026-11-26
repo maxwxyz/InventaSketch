@@ -202,6 +202,25 @@ Leitungsschutzschalter: der nächste FI links auf derselben Schiene, Herkunft �
 ihrem `feed`; ein genanntes, aber nicht gezeichnetes Kennzeichen erscheint als „(nicht gezeichnet)“ – nichts wird
 erfunden.
 
+## Überschneidungen mit anderen Modulen (ein Element, ein Eintrag)
+
+Die Installationsgeräte in den Räumen zeichnen dieselben Elemente wie die Installationsplansymbole des Elektromoduls und
+die Geräteanschlussdose der TGA. Diese sind die maßgeblichen Einträge (Grundriss-, Schnitt- und Schemaansicht,
+Montagehöhe, Anschlüsse und Stromkreiswerte); solange ihr Modul registriert ist, treten die Raumgeräte hier aus Galerien
+und Suche zurück (`LibraryItem.Alternative`):
+
+| Eintrag hier | weicht für |
+|---|---|
+| `sw.house.socket`, `sw.house.socket.double` | `elec.house.socket`, `elec.house.socket.double` |
+| `sw.house.switch`, `.twoway`, `.push` | `elec.house.switch`, `.twoway`, `.push` |
+| `sw.house.light` | `elec.house.light` |
+| `sw.house.appliance`, `sw.house.appliance.washer` | `bs.elec.appliance`, `bs.elec.appliance.washer` |
+
+`sw.house.light.wall` hat kein Gegenstück und bleibt. Die Typen bleiben registriert: bestehende Folien mit Raumgeräten
+laden, zeichnen und speisen Hausinstallationsliste und Stromkreisplan wie bisher, und das Modul allein bietet weiterhin
+alle Einträge an. Offen: die Berichte lesen nur `sw.house.*`-Objekte; Raum und Stromkreis (`room`, `feed`) an den
+Elektrosymbolen sind ein Folgeauftrag für die Eigentümer von Elektro- und Verteilermodul.
+
 ## Speicherung
 
 Alles steht in Parametern (dazu Punkte und Andockungen der Adern und Kabel); JSON- und Kompakt-Rundreisen zeichnen
