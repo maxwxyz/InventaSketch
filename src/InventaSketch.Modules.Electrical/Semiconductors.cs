@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InventaSketch.Core;
 using static InventaSketch.Modules.Electrical.Common;
 
@@ -43,11 +44,33 @@ namespace InventaSketch.Modules.Electrical
 
             yield return new ElecType("elec.diode.zener", T("Zener diode", "Z-Diode"), Cat,
                 new[] { "zener", "z-diode", "zenerdiode", "diode", "reference" },
-                Views.Symbol(20, 8, (p, o) => Diode(p, zener: true)))
+                Views.Symbol(20, 8, (p, o) => Diode(p, Bar.Zener)))
             {
                 Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D", Params = ElecValues.ZenerParams, Variables = ElecValues.ZenerVariables,
                 Relations = ElecValues.PowerRelations, Marking = DiodeMarking, Net = ElecValues.Two("A", "K", ElecValues.Drop), Checks = ElecValues.ReducibleOnly,
             };
+
+            yield return new ElecType("elec.diode.schottky", T("Schottky diode", "Schottky-Diode"), Cat,
+                new[] { "schottky", "schottky diode", "schottky-diode", "diode", "low drop", "freilaufdiode" },
+                Views.Symbol(20, 8, (p, o) => Diode(p, Bar.Schottky)))
+            {
+                Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D", Params = ElecValues.DiodeParams, Variables = ElecValues.DiodeVariables,
+                Relations = ElecValues.PowerRelations, Marking = DiodeMarking, Net = ElecValues.Two("A", "K", ElecValues.Drop), Checks = ElecValues.ReducibleOnly,
+            };
+
+            // A suppressor diode does not conduct in normal operation: open in a circuit.
+            yield return new ElecType("elec.diode.tvs", T("TVS diode (suppressor)", "Suppressordiode (TVS)"), Cat,
+                new[] { "tvs", "suppressor", "transient voltage suppressor", "transil", "esd", "surge", "suppressordiode", "schutzdiode", "überspannungsschutz", "diode" },
+                Views.Symbol(20, 8, Tvs))
+            {
+                Pins = Fixed(DiodePins), Polarized = true, RefPrefix = "D", Params = new[] { TvsDirection }, Net = _ => NetSpec.Open("A", "K"),
+                Extra = o => Choice(o, "elec.tvs.direction", T("Direction", "Richtung"), TvsDirection),
+            };
+
+            yield return new ElecType("elec.diode.bridge", T("Bridge rectifier", "Brückengleichrichter"), Cat,
+                new[] { "bridge rectifier", "rectifier", "graetz", "diode bridge", "brückengleichrichter", "gleichrichter", "graetzbrücke", "diodenbrücke", "b2u" },
+                Views.Symbol(20, 20, (p, o) => Bridge(p)))
+            { Pins = Fixed(new Pin("AC1", -0.5, 0), new Pin("AC2", 0.5, 0), new Pin("+", 0, -0.5), new Pin("-", 0, 0.5)), RefPrefix = "D" };
 
             yield return new ElecType("elec.diode.photo", T("Photodiode", "Fotodiode"), Cat,
                 new[] { "photodiode", "fotodiode", "photo", "light sensor", "lichtsensor", "diode" },
@@ -82,6 +105,121 @@ namespace InventaSketch.Modules.Electrical
                 new[] { "thyristor", "scr", "silicon controlled rectifier", "thyristor" },
                 Views.Symbol(20, 10, (p, o) => Thyristor(p)))
             { Pins = Fixed(new Pin("A", -0.5, 0), new Pin("K", 0.5, 0), new Pin("G", 0.25, 0.5)), Polarized = true, RefPrefix = "Q" };
+
+            yield return new ElecType("elec.triac", T("Triac", "Triac"), Cat,
+                new[] { "triac", "bidirectional thyristor", "ac switch", "zweirichtungs-thyristortriode", "dimmer", "thyristor" },
+                Views.Symbol(20, 10, (p, o) => Triac(p, true)))
+            { Pins = Fixed(new Pin("A1", -0.5, 0), new Pin("A2", 0.5, 0), new Pin("G", -0.25, 0.5)), RefPrefix = "Q" };
+
+            yield return new ElecType("elec.diac", T("Diac", "Diac"), Cat,
+                new[] { "diac", "trigger diode", "triggerdiode", "zweirichtungsdiode", "dimmer" },
+                Views.Symbol(20, 10, (p, o) => Triac(p, false)))
+            { Pins = Fixed(TwoH().ToArray()), RefPrefix = "D", Net = ElecValues.Two("1", "2", ElecValues.Opaque) };
+
+            yield return new ElecType("elec.transistor.jfet", T("JFET", "Sperrschicht-FET (JFET)"), Cat,
+                new[] { "jfet", "junction fet", "fet", "transistor", "n-channel", "p-channel", "n-kanal", "p-kanal", "sperrschicht-feldeffekttransistor", "sperrschicht-fet" },
+                Views.Symbol(20, 20, Jfet))
+            {
+                Pins = Fixed(FetPins), Params = new[] { Channel, Envelope }, RefPrefix = "Q",
+                Extra = o => Choice(o, "elec.jfet.channel", T("Channel", "Kanal"), Channel)
+                    .Append(Toggle(o, "elec.envelope", T("Envelope circle", "Gehäusekreis"), "envelope", false)),
+            };
+
+            yield return new ElecType("elec.optocoupler", T("Optocoupler", "Optokoppler"), Cat,
+                new[] { "optocoupler", "opto-isolator", "optoisolator", "photocoupler", "optokoppler", "galvanic isolation", "galvanische trennung", "led", "phototransistor" },
+                Views.Symbol(30, 20, (p, o) => Optocoupler(p)))
+            { Pins = Fixed(new Pin("A", -0.5, -0.25), new Pin("K", -0.5, 0.25), new Pin("C", 0.5, -0.25), new Pin("E", 0.5, 0.25)), RefPrefix = "U" };
+        }
+
+        private enum Bar { Plain, Zener, Schottky }
+
+        private static readonly ParamDef TvsDirection = Choice("direction", T("Direction", "Richtung"), "uni",
+            ("uni", "Unidirectional", "Unidirektional"), ("bi", "Bidirectional", "Bidirektional"));
+
+        private static void Tvs(Pen p, SketchObject o)
+        {
+            if (o.Str("direction", "uni") != "bi") { Diode(p, Bar.Zener); return; }
+            p.Line(-10, 0, -6, 0, null, "lead");
+            p.Line(6, 0, 10, 0, null, "lead");
+            p.Poly(S.Sym, true, "body", -6, -3, -6, 3, 0, 0);
+            p.Poly(S.Sym, true, "body", 6, -3, 6, 3, 0, 0);
+            p.Poly(S.Sym, false, "bar", -1, -3.6, 0, -3, 0, 3, 1, 3.6);
+        }
+
+        /// <summary>Small diode on the line from a to b, conducting from a to b (bridge rectifier).</summary>
+        private static void DiodeAlong(Pen p, Vec2 a, Vec2 b, double h)
+        {
+            var m = (a + b) * 0.5;
+            var d = (b - a).Normalized();
+            var n = d.Perp;
+            var baseC = m - d * h;
+            var tip = m + d * h;
+            p.Line(a.X, a.Y, baseC.X, baseC.Y, null, "edge");
+            p.Line(tip.X, tip.Y, b.X, b.Y, null, "edge");
+            var b1 = baseC + n * h;
+            var b2 = baseC - n * h;
+            p.Poly(S.Sym, true, "body", b1.X, b1.Y, b2.X, b2.Y, tip.X, tip.Y);
+            var t1 = tip + n * h;
+            var t2 = tip - n * h;
+            p.Line(t1.X, t1.Y, t2.X, t2.Y, null, "bar");
+        }
+
+        /// <summary>Four diodes in a diamond: AC on the left and right corners, + on top, − at the bottom.</summary>
+        private static void Bridge(Pen p)
+        {
+            Vec2 top = new(0, -7), right = new(7, 0), bottom = new(0, 7), left = new(-7, 0);
+            p.Line(-10, 0, -7, 0, null, "lead");
+            p.Line(7, 0, 10, 0, null, "lead");
+            p.Line(0, -10, 0, -7, null, "lead");
+            p.Line(0, 7, 0, 10, null, "lead");
+            DiodeAlong(p, left, top, 1.6);
+            DiodeAlong(p, right, top, 1.6);
+            DiodeAlong(p, bottom, left, 1.6);
+            DiodeAlong(p, bottom, right, 1.6);
+            p.Text(-8.5, -1.8, "~", 2.5, TextAnchor.Middle, false, "terminal");
+            p.Text(8.5, -1.8, "~", 2.5, TextAnchor.Middle, false, "terminal");
+            p.Text(1.8, -8.5, "+", 2.5, TextAnchor.Middle, false, "terminal");
+            p.Text(1.8, 8.5, "−", 2.5, TextAnchor.Middle, false, "terminal");
+        }
+
+        /// <summary>Two antiparallel triangles between two bars; with a gate (triac) or without (diac).</summary>
+        private static void Triac(Pen p, bool gate)
+        {
+            p.Line(-10, 0, -3, 0, null, "lead");
+            p.Line(3, 0, 10, 0, null, "lead");
+            p.Line(-3, -4, -3, 4, null, "bar");
+            p.Line(3, -4, 3, 4, null, "bar");
+            p.Poly(S.Sym, true, "body", -3, -4, -3, 0, 3, -2);
+            p.Poly(S.Sym, true, "body", 3, 0, 3, 4, -3, 2);
+            if (gate) p.Poly(S.Sym, false, "gate", -3, 2.5, -5, 3.8, -5, 5);
+        }
+
+        private static void Jfet(Pen p, SketchObject o)
+        {
+            if (o.Flag("envelope", false)) p.Circle(1.5, 0, 7.5, S.Sym, "envelope");
+            p.Line(-10, 0, -2, 0, null, "gate");
+            p.Line(-2, -4.5, -2, 4.5, S.Bold, "channel");
+            p.Poly(S.Sym, false, "drain", -2, -3.4, 5, -3.4, 5, -10);
+            p.Poly(S.Sym, false, "source", -2, 3.4, 5, 3.4, 5, 10);
+            // The gate arrow points into the channel for N, out of it for P.
+            if (o.Str("channel", "n") == "p") p.Head(-5.8, 0, -2, 0, 1.8, 0.75, "arrow");
+            else p.Head(-2.4, 0, -6, 0, 1.8, 0.75, "arrow");
+        }
+
+        /// <summary>LED (A/K, left) shining onto a phototransistor (C/E, right) inside one package.</summary>
+        private static void Optocoupler(Pen p)
+        {
+            p.Rect(-11, -9, 11, 9, null, "package");
+            p.Poly(S.Sym, false, "lead", -15, -5, -6, -5, -6, -2);
+            p.Poly(S.Sym, false, "lead", -15, 5, -6, 5, -6, 1.8);
+            p.Poly(S.Sym, true, "led", -8.2, -2, -3.8, -2, -6, 1.8);
+            p.Line(-8.2, 1.8, -3.8, 1.8, null, "led");
+            p.Arrow(-2.6, -1, 1.4, -1, 1.2, 0.5, null, "ray");
+            p.Arrow(-2.6, 1.4, 1.4, 1.4, 1.2, 0.5, null, "ray");
+            p.Line(3, -4, 3, 4, S.Bold, "base");
+            p.Poly(S.Sym, false, "collector", 3, -1.5, 7, -5, 15, -5);
+            p.Poly(S.Sym, false, "emitter", 3, 1.5, 7, 5, 15, 5);
+            p.Head(6.4, 4.5, 3, 1.5, 1.6, 0.7, "arrow");
         }
 
         /// <summary>Two-way switch of a choice parameter (polarity/channel swap).</summary>
@@ -94,13 +232,18 @@ namespace InventaSketch.Modules.Electrical
             p.Line(cx + h, -h, cx + h, h, null, "bar");
         }
 
-        private static void Diode(Pen p, bool zener = false)
+        private static void Diode(Pen p, Bar bar = Bar.Plain)
         {
             p.Line(-10, 0, -3, 0, null, "lead");
             p.Line(3, 0, 10, 0, null, "lead");
             p.Poly(S.Sym, true, "body", -3, -3, -3, 3, 3, 0);
-            if (zener) p.Poly(S.Sym, false, "bar", 2, -3.6, 3, -3, 3, 3, 4, 3.6);
-            else p.Line(3, -3, 3, 3, null, "bar");
+            switch (bar)
+            {
+                case Bar.Zener: p.Poly(S.Sym, false, "bar", 2, -3.6, 3, -3, 3, 3, 4, 3.6); break;
+                // Schottky: the bar ends in two small hooks (an S shape).
+                case Bar.Schottky: p.Poly(S.Sym, false, "bar", 1.8, -2.2, 1.8, -3, 3, -3, 3, 3, 4.2, 3, 4.2, 2.2); break;
+                default: p.Line(3, -3, 3, 3, null, "bar"); break;
+            }
         }
 
         /// <summary>Two light rays: emitted (LED) or received (photodiode).</summary>

@@ -82,8 +82,10 @@ symbol with its facing pin.
 | `view.<id>` | view icon | switch representation (IEC/ANSI, coils/circles, …) |
 | `elec.toggle` | `Toggle` | switch state open/closed (`closed`; NC contacts default to closed) — switch, push button, contactor, breaker, RCD |
 | `elec.polarity` | `Swap` | flip polarity (`reverse`: mirrors symbol and pins) — diodes, thyristor, polarised capacitor, source, battery |
-| `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N ↔ P channel |
-| `elec.<choice>=<value>` | `Option` | choices (dropdowns): gate function, contact type, earth symbol, source type, supply, plug/socket, package, bus protocol, … |
+| `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N ↔ P channel (MOSFET) |
+| `elec.<choice>=<value>` | `Option` | choices (dropdowns): gate function, contact type, earth symbol, source type, supply, plug/socket, package, bus protocol, thermistor NTC/PTC (`elec.thermistor.kind`), TVS direction (`elec.tvs.direction`), JFET channel (`elec.jfet.channel`), … |
+| `elec.meter.quantity=<v/a/w/ohm>` | option pictograms (`Preview`: the instrument circle with its letter) | measured quantity of the measuring instrument |
+| `elec.wire.hops` | `Hop` | hops of a wire at crossings on/off |
 | `elec.route=free/orthogonal/45` | route pictograms | wire/track routing as a choice |
 | `elec.label` | `Text` | show designator/value (adds `ref` = prefix + `1` if empty) or hide labels |
 | `elec.envelope` | `Toggle` | envelope circle of transistors |
@@ -94,11 +96,11 @@ Value text is edited in the inspector (`value`, `ref`); the context action canno
 
 | Category | Types (`elec.*`) |
 |---|---|
-| Passive components | `resistor` (IEC rectangle / ANSI zigzag), `potentiometer`, `capacitor`, `capacitor.polarized`, `inductor` (`core`: none/iron/ferrite), `transformer` (coils / circles, `core`) |
-| Semiconductors | `diode`, `diode.led`, `diode.zener`, `diode.photo`, `transistor.bjt` (`polarity` npn/pnp), `transistor.mosfet` (`channel` n/p, enhancement), `transistor.igbt`, `thyristor`; optional `envelope` circle |
+| Passive components | `resistor` (IEC rectangle / ANSI zigzag), `resistor.thermistor` (`coefficient` ntc/ptc: NTC/PTC thermistor, oblique stroke with −ϑ/+ϑ), `resistor.ldr` (photoresistor, light arrows), `resistor.varistor` (VDR, oblique stroke with U), `potentiometer`, `capacitor`, `capacitor.polarized`, `inductor` (`core`: none/iron/ferrite), `transformer` (coils / circles, `core`), `crystal` (quartz crystal); the resistor kinds have the IEC and ANSI views of the resistor |
+| Semiconductors | `diode`, `diode.led`, `diode.zener`, `diode.schottky`, `diode.tvs` (suppressor, `direction` uni/bi), `diode.bridge` (bridge rectifier: `AC1`/`AC2` left/right, `+` top, `-` bottom), `diode.photo`, `transistor.bjt` (`polarity` npn/pnp), `transistor.mosfet` (`channel` n/p, enhancement), `transistor.jfet` (`channel` n/p), `transistor.igbt`, `thyristor`, `triac` (`A1`/`A2`/`G`), `diac`, `optocoupler` (LED `A`/`K` left, phototransistor `C`/`E` right); optional `envelope` circle |
 | Switching & protection | `switch` (`contact` no/nc/changeover; also used for relay contacts), `pushbutton`, `relay.coil`, `contactor` (1–3 poles), `fuse`, `breaker`, `rcd` |
-| Sources & loads | `ground` (earth/PE/chassis), `source` (DC/AC/current), `battery` (1–4 cells), `lamp`, `motor` and `generator` (`supply` none/DC/AC/3~; 3~ exposes U/V/W), `sensor`, `actuator` (optional `label`), `speaker`, `microphone`, `antenna` |
-| Logic & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC rectangular and ANSI distinctive shapes), `flipflop` (D/JK/SR/T), `opamp` (IEC / triangle), `block.ecu` (ECU/IC/MCU block with `pinsLeft`/`pinsRight` and `label`) |
+| Sources & loads | `ground` (earth/PE/chassis), `source` (DC/AC/current), `battery` (1–4 cells), `lamp`, `motor` and `generator` (`supply` none/DC/AC/3~; 3~ exposes U/V/W), `sensor`, `actuator` (generic actuator block, optional `label`), `solenoid` (two-terminal actuating coil with plunger), `meter` (measuring instrument, `quantity` V/A/W/Ω), `speaker`, `microphone`, `antenna` |
+| Logic & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC rectangular and ANSI distinctive shapes), `flipflop` (D/JK/SR/T), `opamp` (IEC / triangle), `regulator` (three-terminal voltage regulator `IN`/`OUT`/`GND`), `block.ecu` (ECU/IC/MCU block with `pinsLeft`/`pinsRight` and `label`) |
 | Wires, connectors & buses | `wire` (point object, `route` free/orthogonal/45), `junction`, `netlabel` (text = net name), `connector` (plug/socket/pair, 1–12 poles), `terminal`, `testpoint`, `bus` (point object; CAN/LIN/Ethernet/FlexRay/generic label) |
 | House installation | `house.socket` (1–4 outlets, protective contact), `house.switch` (one-way/two-way/push), `house.light`, `house.junction`, `house.board`, `house.cable` (point object with conductor marks), `sld.busbar`, `sld.feeder` (breaker/fuse/none), `sld.meter` |
 | Power electronics | `pe.inverter`, `pe.rectifier` (1- or 3-phase AC side), `pe.dcdc`, `pe.dclink`, `pe.gatedriver`, `pe.module` (half bridge with freewheeling diodes) |
@@ -117,13 +119,14 @@ marked as checked, values that disagree give a conflict and nothing is changed.
 
 | Element | Variables (parameter) | Relations [S7] |
 |---|---|---|
-| Resistor `elec.resistor` | *R* (`value`, "4k7"), *U* (`voltage`), *I* (`current`), *P* (`power`); rating `prated` for the check | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
+| Resistor `elec.resistor`, thermistor `elec.resistor.thermistor`, photoresistor `elec.resistor.ldr` | *R* (`value`, "4k7"; for thermistor and photoresistor the resistance at the operating point), *U* (`voltage`), *I* (`current`), *P* (`power`); rating `prated` for the check | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
 | Lamp `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, hot); marking in `value` ("12 V 5 W") | as the resistor |
 | Capacitor `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, "100n"), *U*, *Q* (`charge`), *E* (`energy`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*) |
 | Inductor `elec.inductor` | *L* (`value`, "10 mH"), *I*, *E* (`energy`) | *E* = ½*L*·*I*² |
-| Diode, LED `elec.diode`, `elec.diode.led` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); marking "2.1 V 20 mA"; LED: `ifmax` for the check | *P* = *U*·*I* |
+| Diode, LED, Schottky diode `elec.diode`, `elec.diode.led`, `elec.diode.schottky` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); marking "2.1 V 20 mA"; LED: `ifmax` for the check | *P* = *U*·*I* |
 | Zener diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
 | Source `elec.source`, battery `elec.battery` | *U*, *I*, *P*; marking "5 V", "10 mA" (current source), "12 V 2 A" | *P* = *U*·*I* |
+| Voltage regulator `elec.regulator` | *U*_out (`uout`), *U*_in (`uin`), *I*_out (`current`), *P* (`power`, loss); a voltage in `value` ("LM7805 5 V") is *U*_out | *P* = (*U*_in − *U*_out)·*I*_out (linear regulator, quiescent current neglected) |
 | Transformer `elec.transformer` | *U*₁ (`u1`), *U*₂ (`u2`), *I*₁ (`i1`), *I*₂ (`i2`), *n* (`ratio`, panel); marking "230/12 V" | ideal: *n* = *U*₁/*U*₂ = *I*₂/*I*₁ [S7, S15] |
 | Fuse, MCB, feeder `elec.fuse`, `elec.breaker`, `elec.sld.feeder` | *I*_B (`current`), *I*_n (`rated`); marking "B16", "C 10 A", "gG 35 A"; `iz` (*I*_z of the cable, user) for the check | – |
 | RCD `elec.rcd` | *I*_n (`rated`), *I*_Δn (`idn`); marking "40 A 30 mA", "40/0,03 A", "30 mA" | – |
@@ -138,7 +141,9 @@ error.
 dots, closed contacts, a mated plug and socket, busbars, junction boxes, distribution boards and energy meters join
 nets; earth symbols of the same kind and net labels of the same name join nets on a page (a net label used once leads
 elsewhere). Open contacts and test points carry no current. Protective devices are drawn in their rest position by
-convention, so they conduct unless the parameter `closed` is set to false explicitly. The network is reduced only by
+convention, so they conduct unless the parameter `closed` is set to false explicitly. Varistors, TVS diodes and quartz
+crystals do not conduct (direct current, normal operation); measuring instruments are ideal: a voltmeter or ohmmeter
+carries no current, an ammeter joins its nets (no voltage drop), a wattmeter keeps the circuit reducible. The network is reduced only by
 series and parallel steps (no circuit simulation):
 
 - series elements share the current, parallel elements share the voltage;
@@ -154,8 +159,9 @@ series and parallel steps (no circuit simulation):
 Voltages and currents are magnitudes in consumer orientation; this holds for series-parallel networks driven by one
 source. A loop that these steps cannot reduce (a bridge, sources in several places) gets the hint `elec.net.reducible`
 ("not reducible here – use a circuit simulator"); the element relations still work. Elements without values in a
-circuit (motor, generator, relay coil, photodiode) keep it reducible, but no value passes through them; three-phase
-machines, transistors, ICs and other multi-pin parts are terminals of unknown current, so the network around them is
+circuit (motor, generator, relay coil, solenoid, photodiode, diac, wattmeter) keep it reducible, but no value passes
+through them; three-phase machines, transistors, triacs, optocouplers, bridge rectifiers, voltage regulators, ICs and
+other multi-pin parts are terminals of unknown current, so the network around them is
 not reduced.
 
 **Checks** (hints only, overlay, never change anything; catalogue in the design document, section 4):
@@ -175,7 +181,9 @@ module state. A JSON round trip reproduces the document and the rendered SVG exa
 
 ## Limits and next steps
 
-- No auto-junctions or crossing jumps yet; the rule check knows no pin types (output against output, unpowered nets).
+- A wire end docked onto another wire (T junction) is drawn with a junction dot, and a wire drawn over an earlier wire
+  hops over it at the crossing (`hops`, on by default, action `elec.wire.hops`); wires that merely cross are never
+  connected. The rule check knows no pin types (output against output, unpowered nets).
 - A wire end docked on another wire or a bus (its rail) is attached to that rail (a branch): it follows when the
   other wire moves or changes, and the netlist joins both wires into one net.
 - Labels lie outside the object box, so host selection frames do not include them.

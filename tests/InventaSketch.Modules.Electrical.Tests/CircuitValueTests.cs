@@ -517,8 +517,9 @@ namespace InventaSketch.Modules.Electrical.Tests
             Assert.Equal(new[]
             {
                 "elec.battery", "elec.breaker", "elec.capacitor", "elec.capacitor.polarized", "elec.diode", "elec.diode.led",
-                "elec.diode.zener", "elec.fuse", "elec.house.light", "elec.house.socket", "elec.inductor", "elec.lamp", "elec.rcd",
-                "elec.resistor", "elec.sld.feeder", "elec.source", "elec.transformer",
+                "elec.diode.schottky", "elec.diode.zener", "elec.fuse", "elec.house.light", "elec.house.socket", "elec.inductor", "elec.lamp",
+                "elec.rcd", "elec.regulator", "elec.resistor", "elec.resistor.ldr", "elec.resistor.thermistor", "elec.sld.feeder", "elec.source",
+                "elec.transformer",
             }, withValues);
             var c = new Circuit();
             foreach (var id in withValues) c.Part(id, id);

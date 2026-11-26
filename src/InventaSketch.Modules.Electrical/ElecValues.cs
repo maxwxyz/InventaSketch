@@ -55,6 +55,12 @@ namespace InventaSketch.Modules.Electrical
 
         public static readonly IReadOnlyList<ParamDef> SourceParams = new[] { Voltage, Current, Power, ValueLabels.ShowValues };
 
+        public static readonly IReadOnlyList<ParamDef> RegulatorParams = new[]
+        {
+            Txt("uout", "Output voltage U_out", "Ausgangsspannung U_out", "V"), Txt("uin", "Input voltage U_in", "Eingangsspannung U_in", "V"),
+            Txt("current", "Output current I_out", "Ausgangsstrom I_out", "A"), Txt("power", "Power loss P", "Verlustleistung P", "W"), ValueLabels.ShowValues,
+        };
+
         public static readonly IReadOnlyList<ParamDef> DeviceParams = new[]
         {
             Txt("current", "Operating current I_B", "Betriebsstrom I_B", "A"),
@@ -130,6 +136,14 @@ namespace InventaSketch.Modules.Electrical
 
         public static readonly IReadOnlyList<VarDef> SourceVariables = new[] { U(), I(), P() };
 
+        public static readonly IReadOnlyList<VarDef> RegulatorVariables = new[]
+        {
+            V("Uout", "Output voltage", "Ausgangsspannung", "U_out", Quantities.Voltage, "uout", "V"),
+            V("Uin", "Input voltage", "Eingangsspannung", "U_in", Quantities.Voltage, "uin", "V"),
+            V("I", "Output current", "Ausgangsstrom", "I_out", Quantities.Current, "current", "A"),
+            V("P", "Power loss", "Verlustleistung", "P", Quantities.Power, "power", "W"),
+        };
+
         public static readonly IReadOnlyList<VarDef> LoadVariables = new[] { U(), I(), P() };
 
         public static readonly IReadOnlyList<VarDef> DeviceVariables = new[]
@@ -182,6 +196,20 @@ namespace InventaSketch.Modules.Electrical
 
         /// <summary>P = U·I (DC power of a source, a diode or a load).</summary>
         public static readonly IReadOnlyList<Relation> PowerRelations = new[] { PowerUi() };
+
+        /// <summary>
+        /// Linear voltage regulator: the voltage difference across it times the output current is its power loss,
+        /// P = (U_in − U_out)·I_out (P = U·I applied to the series element; quiescent current neglected) [S7].
+        /// </summary>
+        public static readonly IReadOnlyList<Relation> Regulator = new[]
+        {
+            new Relation("elec.regulator.loss", T("Power loss of a linear regulator", "Verlustleistung eines Linearreglers"), "{P} = ({Uin} − {Uout})·{I}", "P", "Uin", "Uout", "I")
+            { Source = "S7", Validity = T("linear regulator, quiescent current neglected", "Linearregler, Eigenstromverbrauch vernachlässigt") }
+                .Solve("P", "({Uin} − {Uout})·{I}", v => (v("Uin") - v("Uout")) * v("I"))
+                .Solve("I", "{P}/({Uin} − {Uout})", v => v("P") / (v("Uin") - v("Uout")))
+                .Solve("Uin", "{Uout} + {P}/{I}", v => v("Uout") + v("P") / v("I"))
+                .Solve("Uout", "{Uin} − {P}/{I}", v => v("Uin") - v("P") / v("I")),
+        };
 
         /// <summary>Q = C·U; E = ½·C·U² = ½·Q·U = Q²/(2C) [S7].</summary>
         public static readonly IReadOnlyList<Relation> Capacitor = new[]

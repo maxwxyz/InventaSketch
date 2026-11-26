@@ -81,24 +81,38 @@ namespace InventaSketch.Modules.Electrical
             Add("resistor", "elec.resistor", "Resistor", "Widerstand");
             Add("resistor.ansi", "elec.resistor", "Resistor (ANSI zigzag)", "Widerstand (ANSI-Zickzack)", "ansi", null, null, null, "zigzag", "ansi", "us");
             Add("potentiometer", "elec.potentiometer", "Potentiometer", "Potentiometer");
+            Add("resistor.ntc", "elec.resistor.thermistor", "NTC thermistor", "Heißleiter (NTC)", null, P(("coefficient", "ntc")), null, null, "ntc", "heißleiter");
+            Add("resistor.ptc", "elec.resistor.thermistor", "PTC thermistor", "Kaltleiter (PTC)", null, P(("coefficient", "ptc")), null, null, "ptc", "kaltleiter");
+            Add("resistor.ldr", "elec.resistor.ldr", "Photoresistor (LDR)", "Fotowiderstand (LDR)");
+            Add("resistor.varistor", "elec.resistor.varistor", "Varistor (VDR)", "Varistor (VDR)");
             Add("capacitor", "elec.capacitor", "Capacitor", "Kondensator");
             Add("capacitor.polarized", "elec.capacitor.polarized", "Electrolytic capacitor", "Elektrolytkondensator");
             Add("inductor", "elec.inductor", "Inductor", "Spule");
             Add("inductor.iron", "elec.inductor", "Inductor with iron core", "Spule mit Eisenkern", null, P(("core", "iron")), null, null, "choke", "drossel");
             Add("transformer", "elec.transformer", "Transformer", "Transformator");
             Add("transformer.circles", "elec.transformer", "Transformer (single-line)", "Transformator (einpolig)", "circles", null, null, null, "single-line", "einpolig");
+            Add("crystal", "elec.crystal", "Quartz crystal", "Schwingquarz (Quarz)");
 
             // semiconductors
             Add("diode", "elec.diode", "Diode", "Diode");
             Add("led", "elec.diode.led", "LED", "Leuchtdiode (LED)");
             Add("zener", "elec.diode.zener", "Zener diode", "Z-Diode");
             Add("photodiode", "elec.diode.photo", "Photodiode", "Fotodiode");
+            Add("schottky", "elec.diode.schottky", "Schottky diode", "Schottky-Diode");
+            Add("tvs", "elec.diode.tvs", "TVS diode (unidirectional)", "Suppressordiode (unidirektional)");
+            Add("tvs.bi", "elec.diode.tvs", "TVS diode (bidirectional)", "Suppressordiode (bidirektional)", null, P(("direction", "bi")), null, null, "bidirectional", "bidirektional");
+            Add("bridge", "elec.diode.bridge", "Bridge rectifier", "Brückengleichrichter");
             Add("npn", "elec.transistor.bjt", "NPN transistor", "NPN-Transistor", null, P(("polarity", "npn")), null, null, "npn");
             Add("pnp", "elec.transistor.bjt", "PNP transistor", "PNP-Transistor", null, P(("polarity", "pnp")), null, null, "pnp");
             Add("nmos", "elec.transistor.mosfet", "N-channel MOSFET", "N-Kanal-MOSFET", null, P(("channel", "n")), null, null, "nmos", "n-channel");
             Add("pmos", "elec.transistor.mosfet", "P-channel MOSFET", "P-Kanal-MOSFET", null, P(("channel", "p")), null, null, "pmos", "p-channel");
+            Add("njfet", "elec.transistor.jfet", "N-channel JFET", "N-Kanal-JFET", null, P(("channel", "n")), null, null, "njfet", "n-channel");
+            Add("pjfet", "elec.transistor.jfet", "P-channel JFET", "P-Kanal-JFET", null, P(("channel", "p")), null, null, "pjfet", "p-channel");
             Add("igbt", "elec.transistor.igbt", "IGBT", "IGBT");
             Add("thyristor", "elec.thyristor", "Thyristor", "Thyristor");
+            Add("triac", "elec.triac", "Triac", "Triac");
+            Add("diac", "elec.diac", "Diac", "Diac");
+            Add("optocoupler", "elec.optocoupler", "Optocoupler", "Optokoppler");
 
             // switching & protection
             Add("switch.no", "elec.switch", "Switch (normally open)", "Schalter (Schließer)", null, P(("contact", "no")), null, null, "make", "schließer");
@@ -132,7 +146,12 @@ namespace InventaSketch.Modules.Electrical
             Add("generator.3ph", "elec.generator", "Three-phase generator", "Drehstromgenerator", null, P(("supply", "ac3")), null, null, "3~", "alternator", "drehstrom");
             Add("sensor", "elec.sensor", "Sensor", "Sensor");
             Add("sensor.temperature", "elec.sensor", "Temperature sensor", "Temperatursensor", null, P(("label", "T")), null, null, "temperature", "temperatur", "ntc");
-            Add("actuator", "elec.actuator", "Actuator (solenoid)", "Aktor (Hubmagnet)");
+            Add("actuator", "elec.actuator", "Actuator", "Aktor");
+            Add("solenoid", "elec.solenoid", "Solenoid", "Hubmagnet");
+            Add("meter.v", "elec.meter", "Voltmeter", "Spannungsmesser", null, P(("quantity", "v")), null, null, "voltmeter", "spannungsmesser");
+            Add("meter.a", "elec.meter", "Ammeter", "Strommesser", null, P(("quantity", "a")), null, null, "ammeter", "strommesser", "amperemeter");
+            Add("meter.w", "elec.meter", "Wattmeter", "Leistungsmesser", null, P(("quantity", "w")), null, null, "wattmeter", "leistungsmesser");
+            Add("meter.ohm", "elec.meter", "Ohmmeter", "Widerstandsmesser", null, P(("quantity", "ohm")), null, null, "ohmmeter", "widerstandsmesser");
             Add("speaker", "elec.speaker", "Loudspeaker", "Lautsprecher");
             Add("microphone", "elec.microphone", "Microphone", "Mikrofon");
             Add("antenna", "elec.antenna", "Antenna", "Antenne");
@@ -148,6 +167,7 @@ namespace InventaSketch.Modules.Electrical
             Add("flipflop.sr", "elec.flipflop", "SR latch", "RS-Flipflop", null, P(("kind", "sr")));
             Add("opamp", "elec.opamp", "Op-amp (IEC)", "Operationsverstärker (IEC)");
             Add("opamp.ansi", "elec.opamp", "Op-amp (triangle)", "Operationsverstärker (Dreieck)", "ansi", null, null, null, "triangle", "dreieck");
+            Add("regulator", "elec.regulator", "Voltage regulator", "Spannungsregler");
             Add("ecu", "elec.block.ecu", "Control unit (ECU)", "Steuergerät (ECU)");
             Add("ic", "elec.block.ecu", "IC (8 pins)", "IC (8 Pins)", null, P(("label", "IC"), ("pinsLeft", 4), ("pinsRight", 4)), null, new Size2(30, 25), "chip", "ic");
             Add("mcu", "elec.block.ecu", "Microcontroller", "Mikrocontroller", null, P(("label", "MCU"), ("pinsLeft", 6), ("pinsRight", 6)), null, new Size2(30, 35), "mcu", "µc");

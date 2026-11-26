@@ -88,8 +88,10 @@ zugewandten Anschluss.
 | `view.<id>` | View-Icon | Darstellung wechseln (IEC/ANSI, Spulen/Kreise, …) |
 | `elec.toggle` | `Toggle` | Schaltzustand offen/geschlossen (`closed`; Öffner standardmäßig geschlossen) – Schalter, Taster, Schütz, LS-Schalter, RCD |
 | `elec.polarity` | `Swap` | Polarität umkehren (`reverse`: spiegelt Symbol und Anschlüsse) – Dioden, Thyristor, Elko, Quelle, Batterie |
-| `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N- ↔ P-Kanal |
-| `elec.<Auswahl>=<Wert>` | `Option` | Auswahlen (Dropdowns): Gatterfunktion, Kontaktart, Erdungszeichen, Quellenart, Stromart, Stecker/Buchse, Gehäuse, Busprotokoll, … |
+| `elec.polarity`/`elec.channel` | `Swap` | NPN ↔ PNP, N- ↔ P-Kanal (MOSFET) |
+| `elec.<Auswahl>=<Wert>` | `Option` | Auswahlen (Dropdowns): Gatterfunktion, Kontaktart, Erdungszeichen, Quellenart, Stromart, Stecker/Buchse, Gehäuse, Busprotokoll, Thermistor NTC/PTC (`elec.thermistor.kind`), TVS-Richtung (`elec.tvs.direction`), JFET-Kanal (`elec.jfet.channel`), … |
+| `elec.meter.quantity=<v/a/w/ohm>` | Options-Piktogramme (`Preview`: Messgerätekreis mit Buchstaben) | Messgröße des Messgeräts |
+| `elec.wire.hops` | `Hop` | Brücken einer Leitung an Kreuzungen an/aus |
 | `elec.route=free/orthogonal/45` | Führungs-Piktogramme | Leitungs-/Leiterbahnführung als Auswahl |
 | `elec.label` | `Text` | Kennzeichen/Wert anzeigen (setzt `ref` = Präfix + `1`, falls leer) oder ausblenden |
 | `elec.envelope` | `Toggle` | Gehäusekreis bei Transistoren |
@@ -100,11 +102,11 @@ Werte werden im Inspektor bearbeitet (`value`, `ref`); Kontextaktionen können n
 
 | Kategorie | Typen (`elec.*`) |
 |---|---|
-| Passive Bauelemente | `resistor` (IEC-Rechteck / ANSI-Zickzack), `potentiometer`, `capacitor`, `capacitor.polarized`, `inductor` (`core`: ohne/Eisen/Ferrit), `transformer` (Spulen / Kreise, `core`) |
-| Halbleiter | `diode`, `diode.led`, `diode.zener`, `diode.photo`, `transistor.bjt` (`polarity` npn/pnp), `transistor.mosfet` (`channel` n/p, Anreicherungstyp), `transistor.igbt`, `thyristor`; optionaler Gehäusekreis `envelope` |
+| Passive Bauelemente | `resistor` (IEC-Rechteck / ANSI-Zickzack), `resistor.thermistor` (`coefficient` ntc/ptc: Heißleiter/Kaltleiter, schräger Strich mit −ϑ/+ϑ), `resistor.ldr` (Fotowiderstand, Lichtpfeile), `resistor.varistor` (VDR, schräger Strich mit U), `potentiometer`, `capacitor`, `capacitor.polarized`, `inductor` (`core`: ohne/Eisen/Ferrit), `transformer` (Spulen / Kreise, `core`), `crystal` (Schwingquarz); die Widerstandsarten haben die IEC- und ANSI-Darstellung des Widerstands |
+| Halbleiter | `diode`, `diode.led`, `diode.zener`, `diode.schottky`, `diode.tvs` (Suppressordiode, `direction` uni/bi), `diode.bridge` (Brückengleichrichter: `AC1`/`AC2` links/rechts, `+` oben, `-` unten), `diode.photo`, `transistor.bjt` (`polarity` npn/pnp), `transistor.mosfet` (`channel` n/p, Anreicherungstyp), `transistor.jfet` (`channel` n/p), `transistor.igbt`, `thyristor`, `triac` (`A1`/`A2`/`G`), `diac`, `optocoupler` (Optokoppler: LED `A`/`K` links, Fototransistor `C`/`E` rechts); optionaler Gehäusekreis `envelope` |
 | Schalten & Schützen | `switch` (`contact` Schließer/Öffner/Wechsler; auch für Relaiskontakte), `pushbutton`, `relay.coil`, `contactor` (1–3 Pole), `fuse`, `breaker`, `rcd` |
-| Quellen & Verbraucher | `ground` (Erde/PE/Gehäuse), `source` (DC/AC/Strom), `battery` (1–4 Zellen), `lamp`, `motor` und `generator` (`supply` ohne/DC/AC/3~; 3~ mit U/V/W), `sensor`, `actuator` (optional `label`), `speaker`, `microphone`, `antenna` |
-| Logik & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC-Rechteck und ANSI-Form), `flipflop` (D/JK/RS/T), `opamp` (IEC / Dreieck), `block.ecu` (Steuergerät/IC/MCU-Block mit `pinsLeft`/`pinsRight` und `label`) |
+| Quellen & Verbraucher | `ground` (Erde/PE/Gehäuse), `source` (DC/AC/Strom), `battery` (1–4 Zellen), `lamp`, `motor` und `generator` (`supply` ohne/DC/AC/3~; 3~ mit U/V/W), `sensor`, `actuator` (allgemeiner Aktorblock, optional `label`), `solenoid` (Hubmagnet: zweipolige Betätigungsspule mit Anker), `meter` (Messgerät, `quantity` V/A/W/Ω), `speaker`, `microphone`, `antenna` |
+| Logik & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC-Rechteck und ANSI-Form), `flipflop` (D/JK/RS/T), `opamp` (IEC / Dreieck), `regulator` (Spannungsregler mit drei Anschlüssen `IN`/`OUT`/`GND`), `block.ecu` (Steuergerät/IC/MCU-Block mit `pinsLeft`/`pinsRight` und `label`) |
 | Leitungen, Steckverbinder & Busse | `wire` (Punktobjekt, `route` frei/orthogonal/45), `junction`, `netlabel` (Text = Netzname), `connector` (Stecker/Buchse/Paar, 1–12 Pole), `terminal`, `testpoint`, `bus` (Punktobjekt; Beschriftung CAN/LIN/Ethernet/FlexRay/allgemein) |
 | Hausinstallation | `house.socket` (1–4 Steckdosen, Schutzkontakt), `house.switch` (Aus-/Wechselschalter/Taster), `house.light`, `house.junction`, `house.board`, `house.cable` (Punktobjekt mit Adernstrichen), `sld.busbar`, `sld.feeder` (Leistungsschalter/Sicherung/ohne), `sld.meter` |
 | Leistungselektronik | `pe.inverter`, `pe.rectifier` (AC-Seite 1- oder 3-phasig), `pe.dcdc`, `pe.dclink`, `pe.gatedriver`, `pe.module` (Halbbrücke mit Freilaufdioden) |
@@ -125,13 +127,14 @@ markiert, widersprüchliche ergeben einen Widerspruch, und nichts wird geändert
 
 | Element | Variablen (Parameter) | Beziehungen [S7] |
 |---|---|---|
-| Widerstand `elec.resistor` | *R* (`value`, „4k7"), *U* (`voltage`), *I* (`current`), *P* (`power`); Nennleistung `prated` für die Prüfung | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
+| Widerstand `elec.resistor`, Thermistor `elec.resistor.thermistor`, Fotowiderstand `elec.resistor.ldr` | *R* (`value`, „4k7"; bei Thermistor und Fotowiderstand der Widerstand im Arbeitspunkt), *U* (`voltage`), *I* (`current`), *P* (`power`); Nennleistung `prated` für die Prüfung | *U* = *R*·*I*; *P* = *U*·*I* = *I*²·*R* = *U*²/*R* |
 | Lampe `elec.lamp` | *U*, *I*, *P*, *R* (`resistance`, warm); Kennzeichnung in `value` („12 V 5 W") | wie beim Widerstand |
 | Kondensator `elec.capacitor`, `elec.capacitor.polarized` | *C* (`value`, „100n"), *U*, *Q* (`charge`), *E* (`energy`) | *Q* = *C*·*U*; *E* = ½*C*·*U*² = ½*Q*·*U* = *Q*²/(2*C*) |
 | Spule `elec.inductor` | *L* (`value`, „10 mH"), *I*, *E* (`energy`) | *E* = ½*L*·*I*² |
-| Diode, LED `elec.diode`, `elec.diode.led` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); Kennzeichnung „2,1 V 20 mA"; LED: `ifmax` für die Prüfung | *P* = *U*·*I* |
+| Diode, LED, Schottky-Diode `elec.diode`, `elec.diode.led`, `elec.diode.schottky` | *U*_F (`uf`), *I*_F (`if`), *P* (`power`); Kennzeichnung „2,1 V 20 mA"; LED: `ifmax` für die Prüfung | *P* = *U*·*I* |
 | Z-Diode `elec.diode.zener` | *U*_Z (`uz`), *I* (`current`), *P* | *P* = *U*·*I* |
 | Quelle `elec.source`, Batterie `elec.battery` | *U*, *I*, *P*; Kennzeichnung „5 V", „10 mA" (Stromquelle), „12 V 2 A" | *P* = *U*·*I* |
+| Spannungsregler `elec.regulator` | *U*_out (`uout`), *U*_in (`uin`), *I*_out (`current`), *P* (`power`, Verlust); eine Spannung in `value` („LM7805 5 V") ist *U*_out | *P* = (*U*_in − *U*_out)·*I*_out (Linearregler, Eigenstromverbrauch vernachlässigt) |
 | Transformator `elec.transformer` | *U*₁ (`u1`), *U*₂ (`u2`), *I*₁ (`i1`), *I*₂ (`i2`), *ü* (`ratio`, Panel); Kennzeichnung „230/12 V" | ideal: *ü* = *U*₁/*U*₂ = *I*₂/*I*₁ [S7, S15] |
 | Sicherung, LS-Schalter, Abgang `elec.fuse`, `elec.breaker`, `elec.sld.feeder` | *I*_B (`current`), *I*_n (`rated`); Kennzeichnung „B16", „C 10 A", „gG 35 A"; `iz` (*I*_z der Leitung, Benutzer) für die Prüfung | – |
 | RCD `elec.rcd` | *I*_n (`rated`), *I*_Δn (`idn`); Kennzeichnung „40 A 30 mA", „40/0,03 A", „30 mA" | – |
@@ -147,7 +150,9 @@ Netzlistenexport; Verbindungspunkte, geschlossene Kontakte, eine gesteckte Steck
 Verteiler und Energiezähler verbinden Netze; Erdungszeichen derselben Art und Netznamen mit gleichem Namen verbinden
 Netze auf einer Folie (ein nur einmal verwendeter Netzname führt woandershin). Offene Kontakte und Messpunkte führen
 keinen Strom. Schutzorgane werden üblicherweise in Ruhestellung gezeichnet; sie leiten daher, außer der Parameter
-`closed` ist ausdrücklich auf falsch gesetzt. Das Netz wird nur schrittweise über Reihen- und Parallelschaltungen
+`closed` ist ausdrücklich auf falsch gesetzt. Varistoren, Suppressordioden und Schwingquarze leiten nicht (Gleichstrom,
+Normalbetrieb); Messgeräte sind ideal: Spannungs- und Widerstandsmesser führen keinen Strom, ein Strommesser verbindet
+seine Netze (kein Spannungsfall), ein Leistungsmesser hält den Stromkreis reduzierbar. Das Netz wird nur schrittweise über Reihen- und Parallelschaltungen
 reduziert (keine Schaltungssimulation):
 
 - Elemente in Reihe haben denselben Strom, parallele Elemente dieselbe Spannung;
@@ -163,8 +168,9 @@ reduziert (keine Schaltungssimulation):
 Spannungen und Ströme sind Beträge in Verbraucherrichtung; das gilt für Reihen-Parallel-Netze, die eine Quelle speist.
 Eine Masche, die diese Schritte nicht reduzieren (eine Brücke, Quellen an mehreren Stellen), bekommt den Hinweis
 `elec.net.reducible` („hier nicht reduzierbar – Schaltungssimulator verwenden"); die Elementbeziehungen wirken weiter.
-Elemente ohne Werte im Stromkreis (Motor, Generator, Relaisspule, Fotodiode) halten ihn reduzierbar, aber kein Wert geht
-durch sie hindurch; Drehstrommaschinen, Transistoren, ICs und andere mehrpolige Teile sind Anschlüsse mit unbekanntem
+Elemente ohne Werte im Stromkreis (Motor, Generator, Relaisspule, Hubmagnet, Fotodiode, Diac, Leistungsmesser) halten ihn
+reduzierbar, aber kein Wert geht durch sie hindurch; Drehstrommaschinen, Transistoren, Triacs, Optokoppler,
+Brückengleichrichter, Spannungsregler, ICs und andere mehrpolige Teile sind Anschlüsse mit unbekanntem
 Strom, sodass das Netz um sie herum nicht reduziert wird.
 
 **Prüfungen** (nur Hinweise, Overlay, ändern nie etwas; Katalog im Konzept, Abschnitt 4):
@@ -184,8 +190,10 @@ versteckten Modulzustand. Ein JSON-Round-Trip reproduziert Dokument und gerender
 
 ## Grenzen und nächste Schritte
 
-- Noch keine automatischen Verbindungspunkte und keine Kreuzungsbögen; die Regelprüfung kennt keine Pin-Typen (Ausgang
-  gegen Ausgang, unversorgte Netze).
+- Ein an einer anderen Leitung angedocktes Leitungsende (T-Abzweig) wird mit einem Verbindungspunkt gezeichnet, und eine
+  über eine frühere Leitung gezogene Leitung überspringt sie an der Kreuzung mit einer Brücke (`hops`, standardmäßig an,
+  Aktion `elec.wire.hops`); sich nur kreuzende Leitungen werden nie verbunden. Die Regelprüfung kennt keine Pin-Typen
+  (Ausgang gegen Ausgang, unversorgte Netze).
 - Ein an einer anderen Leitung oder einem Bus (deren Schiene) angedocktes Leitungsende hängt an dieser Schiene
   (Abzweig): Es folgt, wenn die andere Leitung verschoben oder geändert wird, und die Netzliste fasst beide Leitungen
   zu einem Netz zusammen.
