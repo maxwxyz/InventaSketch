@@ -178,6 +178,9 @@ namespace InventaSketch.Modules.Robotics
             return (rin, rout);
         }
 
+        /// <summary>The envelope describes the wrist centre: the flange is d6 further.</summary>
+        protected override double EnvelopeToFlange(SketchObject o) => new Geo6(o).D6;
+
         public override Area2? Envelope(SketchObject o, string view, double[] q)
         {
             if (view == RoboViews.Top) return TopRegion(o);
@@ -307,6 +310,13 @@ namespace InventaSketch.Modules.Robotics
             var (a, b) = ArticulatedArmType.Order(o.Num("j2min", -110), o.Num("j2max", 110));
             var (c, d) = ArticulatedArmType.Order(o.Num("j3min", -160), o.Num("j3max", 160));
             return Reach.TwoLink(new Vec2(0, -g.D1), g.A2, g.A3, -90 + a, -90 + b, 90 + c, 90 + d);
+        }
+
+        /// <summary>The envelope describes the J4 axis: the flange is at most d5 + d6 further.</summary>
+        protected override double EnvelopeToFlange(SketchObject o)
+        {
+            var g = new G(o);
+            return g.D5 + g.D6;
         }
 
         public override Area2? Envelope(SketchObject o, string view, double[] q)
@@ -701,6 +711,9 @@ namespace InventaSketch.Modules.Robotics
             p.FlangeRadius = 50 * u;
             return p;
         }
+
+        /// <summary>A gantry has no radial reach (its working range is the stroke box).</summary>
+        public override double? ReachOf(SketchObject o) => null;
 
         /// <summary>Working range of the flange: the stroke box (exact).</summary>
         public override Area2? Envelope(SketchObject o, string view, double[] q)

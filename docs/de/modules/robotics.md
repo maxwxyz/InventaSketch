@@ -120,6 +120,33 @@ Standardwerte: Knickarm `j1lim` 170°, A2 −70 … 110°, A3 −80 … 70°; Co
 Der Arbeitsraum wird mit dem Parameter `envelope` gezeigt (getönte Fläche mit blauer Kontur) oder als eigenes Element
 `robot.reach.envelope` (Knickarm-Parameter, Füllung getönt/schraffiert/keine, Radienangaben „R …“ in mm).
 
+**Entlang einer Linearachse** (`travel` > 0 bei `robot.reach.envelope`): der Bereich, den der Arbeitsraum überstreicht,
+wenn der Sockel um 0 … Verfahrweg entlang x fährt, gezeichnet mit seiner äußeren Grenze. Draufsicht: konvexe Hülle der
+Fläche an beiden Enden des Verfahrwegs (exakt für den konvexen Sektor der Standardgrenzen; eine Lücke hinter dem Roboter
+wird geschlossen). Seitenansicht: Zeile für Zeile vom am weitesten links zum am weitesten rechts erreichbaren Punkt plus
+Verfahrweg (innere unerreichbare Taschen werden gefüllt). Der Verfahrweg des Sockels ist als Mittellinie gezeichnet.
+
+## Werte und Prüfungen
+
+Werte der Ingenieurberechnungen (optional; als Text mit Einheit, deutsches oder englisches Zahlenformat):
+
+| Element | Variable | Bedeutung |
+|---|---|---|
+| Werkzeuge, Werkzeugwechsler, Kraft-Momenten-Sensor, Bildverarbeitungssensor, Werkstück | `mass` m (kg) | Masse des Teils |
+| Roboter | `payload` m_max (kg) | Nenntraglast aus dem Datenblatt (kein Standardwert) |
+| Roboter | `load` m_L (kg) | Summe der eingetragenen Massen der am Flansch angedockten Werkzeugkette (Flansch → Wechsler → Sensor → Greifer …) und des Werkstücks, dessen Port `grip` am TCP der Kette sitzt; Teile ohne Masse bleiben außen vor |
+| Roboter | `reach` R (mm) | aus der Geometrie: größter Abstand des Arbeitsraums in der Draufsicht von der Grundachse (Handmittelpunkt beim Knickarm, Achse A4 beim Cobot, Flansch bei SCARA und Delta); beim Portal keiner; ein eingetragener Wert hat Vorrang |
+
+Prüfungen (Warnungen, zweisprachige Meldungen):
+
+- `robot.payload` – m_L > m_max (nur wenn beide bekannt sind). Das Traglastdiagramm im Datenblatt begrenzt zusätzlich den
+  Schwerpunktabstand; das wird nicht geprüft.
+- `robot.reach` – ein Werkstück (Port `grip`) oder eine TCP-Marke auf derselben Seite und in derselben Ansicht, dem
+  nächstgelegenen Roboter (Abstand zum Sockel) zugeordnet, liegt um mehr als die Handlänge (Knickarm: d6; Cobot:
+  d5 + d6), die angedockte Werkzeuglänge (Flansch bis TCP der Kette) und 1 % der Arbeitsraumgröße außerhalb des
+  gezeichneten Arbeitsraums dieses Roboters. Eine Plausibilitätsprüfung für Skizzen, keine Erreichbarkeitsanalyse
+  (Orientierung, Kollisionen und Singularitäten bleiben unberücksichtigt).
+
 ## Bibliothekskategorien und Objekttypen
 
 Roboter haben die Ansichten `side` (`IconIds.Side`) und `top` (`IconIds.Top`); SCARA öffnet in der Draufsicht.
@@ -133,20 +160,27 @@ Werkzeuge haben `side` und `axial` (in Werkzeugachse, `IconIds.Axial`). Zellen- 
 | `robot.arm.scara` | SCARA robot / SCARA-Roboter | top, side | ebenso | `j1`, `j2` (°), `j3` (mm), `j4`, `height`, `inner`, `outer`, `stroke`, … `motion` (A2), `j1lim`, `j2lim` |
 | `robot.arm.delta` | Delta robot (parallel) / Delta-Roboter (Parallelkinematik) | side, top | ebenso (Sockel oben) | `j1`…`j3`, `height`, `baseRadius`, `upper`, `fore`, `platform`, … `motion` (A1) |
 | `robot.arm.gantry` | Cartesian / gantry robot / Linear- / Portalroboter | side, top | ebenso | `x`, `y`, `z` (mm), `strokeX/Y/Z`, `height`, … `motion` (X) |
-| `robot.mobile.agv` | Mobile robot (AGV / AMR) / Mobiler Roboter (FTF / AMR) | top, side | Mounts `deck`, `scanner1`, `scanner2` | `arrow` |
+| `robot.mobile.agv` | Mobile robot (AGV / AMR) / Mobiler Roboter (FTF / AMR) | top, side | Mounts `deck` (+ Träger-Mount), `scanner1`, `scanner2` | `arrow` |
+| `robot.track.linear` | Linear axis (7th axis) / Linearachse (7. Achse) | side, top | Mount `carriage` (+ Träger-Mount), Port `chain` am Schlitten, Schiene `rail` und Mount `floor` (Seitenansicht) | `pos` (0 … 1, 0,25), `ends` |
 | `robot.gripper.parallel` | Parallel gripper / Parallelgreifer | side, axial | Mount `flange`, Port `tcp` | `open` (0…1), `arrows` |
 | `robot.gripper.vacuum` | Vacuum gripper / Vakuumgreifer (Sauggreifer) | side, axial | ebenso | `cups` (1–4) |
 | `robot.gripper.magnetic` | Magnetic gripper / Magnetgreifer | side, axial | ebenso | – |
 | `robot.gripper.threefinger` | Three-finger gripper / Dreifingergreifer | side, axial | ebenso | `open` |
 | `robot.tool.torch` | Welding torch / Schweißbrenner | side, axial | Mount `flange`, Port `tcp` an der Drahtspitze | – |
 | `robot.tool.spindle` | Spindle (milling / drilling) / Spindel (Fräsen / Bohren) | side, axial | Mount `flange`, Port `tcp` | `arrow` |
+| `robot.tool.weldgun` | Welding gun / torch / Schweißzange / Schweißbrenner | side, axial | Mount `flange`, Port `tcp` zwischen den Elektrodenspitzen (Punkt) bzw. an der Drahtspitze (Lichtbogen) | `kind` spot/arc |
+| `robot.tool.dispenser` | Adhesive dispenser / Klebedüse (Dosierventil) | side, axial | Mount `flange`, Port `tcp` an der Düsenspitze | `bead` |
+| `robot.tool.changer` | Tool changer / Werkzeugwechsler | side, axial | Mount `flange` (Roboterseite, oben), Mount `tool` (Werkzeugseite, unten) | `utility` (Medienmodul) |
+| `robot.sensor.ft` | Force-torque sensor / Kraft-Momenten-Sensor | side, axial | Mount `flange` (oben), Mount `tool` (unten) | `label` (F/T) |
+| `robot.sensor.vision` | Vision sensor (camera) / Bildverarbeitungssensor (Kamera) | side, axial | Mount `flange`, Port `view` am Ende des Sichtfelds | `angle` (50°), `cone` |
 | `robot.frame.coordinate` | Coordinate frame / Koordinatensystem | – | Port `origin` | `kind` world/base/tool/user/object, `axes` xz/xy/yz, `name` |
 | `robot.frame.tcp` | Tool centre point (TCP) / Werkzeugarbeitspunkt (TCP) | – | Port `tcp` | `name` |
-| `robot.reach.envelope` | Reach envelope (working range) / Arbeitsraum (Reichweite) | side, top | Mount `base` | Knickarm-Geometrie und -Grenzen, `fill`, `labels` |
+| `robot.reach.envelope` | Reach envelope (working range) / Arbeitsraum (Reichweite) | side, top | Mount `base` | Knickarm-Geometrie und -Grenzen, `fill`, `labels`, `travel` (mm, 0) |
 | `robot.cell.workpiece` | Workpiece / Werkstück | top, side | Port `grip` (+ `bottom` in der Seitenansicht) | `shape` box/cylinder |
 | `robot.cell.conveyor` | Belt conveyor / Gurtförderer (Förderband) | top, side | Ports `in`, `out`, Schiene `belt` (+ Mount `floor`) | `dir`, `arrow`, `legs` |
 | `robot.cell.pallet` | Pallet / Palette | top, side | Port `load` (+ Schiene `deck`, Mount `floor`) | – |
 | `robot.cell.pedestal` | Robot pedestal / Robotersockel | side, top | Mount `top` (+ `floor`) | – |
+| `robot.cable.dragchain` | Energy chain (drag chain) / Energiekette (Schleppkette) | Punkte | ihre Enden (docken wie Linienenden an) | `radius` (4), `width` (2,4), `pitch` (2,4) (Blatt-mm) |
 | `robot.safety.fence` | Safety fence / Schutzzaun | Punkte | Schienen entlang jedes Abschnitts | `closed`, `panel` (Blatt-mm), `mesh` |
 | `robot.safety.door` | Safety fence door / Schutztür (Schutzzaun) | top, side | Ports `hinge`, `latch` | `kind` hinged/sliding |
 | `robot.safety.curtain` | Safety light curtain / Sicherheits-Lichtvorhang | top, side | Ports `emitter`, `receiver` | `beams`, `field` |
@@ -159,13 +193,16 @@ und jeder Roboter in seiner zweiten Ansicht (`<id>.top` / `<id>.side`), Knickarm
 Knickarm und Cobot als kinematisches Schema mit Beschriftung, SCARA mit Arbeitsraum, geschlossener Parallelgreifer,
 Vakuumgreifer mit 4 Saugnäpfen, zylindrisches Werkstück, geschlossener Zaun, Schiebetür, Scanner mit rechteckigen
 Feldern, Bereiche (Warnfeld, Schutzfeld, eingeschränkter Raum, Kollaborationsraum), Werkzeug- und Weltkoordinatensystem,
-Arbeitsraum in der Draufsicht. Suchbegriffe in beiden Sprachen (roboter, knickarm, greifer, sauggreifer, schutzzaun,
-lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, …).
+Arbeitsraum in der Draufsicht, Klebedüse mit Kleberaupe, Linearachse in der Draufsicht, Arbeitsraum entlang einer
+Linearachse (Draufsicht, `travel` 2000 mm). Suchbegriffe in beiden Sprachen (roboter, knickarm, greifer, sauggreifer, schutzzaun,
+lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, linearachse, werkzeugwechsler, kraft-momenten-sensor, kamera,
+schweißzange, klebedüse, energiekette, …).
 
 ## Anker (Andocken)
 
 - Robotersockel: **Mount** `base` (Fuß auf dem Boden; beim Delta oben auf der Grundplatte). Er rastet auf dem Mount
-  `top` des Robotersockels oder dem Mount `deck` des mobilen Roboters ein (mobiler Manipulator).
+  `top` des Robotersockels, dem Mount `deck` des mobilen Roboters (mobiler Manipulator, z. B. Cobot auf FTF) oder dem
+  Mount `carriage` der Linearachse ein (siehe „Roboter auf Trägern“ unten).
 - Roboterflansch: **Mount** `flange` – der eigene Mount `flange` eines Greifers oder Werkzeugs rastet dort ein (Mount auf
   Mount); dazu **Port** `tcp` am selben Punkt für TCP-Marken und Koordinatensysteme (Port auf Port). Seit 25.11.2026 ist
   der Flansch-Mount entlang der Werkzeugachse **gerichtet** (`Anchor.Directed`, wo die Achse in der Ansicht sichtbar ist),
@@ -176,8 +213,28 @@ lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, …).
   Flansch angedocktes Werkzeug **folgt**, wenn sich ein Gelenk dreht oder der Roboter bewegt wird (`Coupling.Propagate`
   dreht und verschiebt an einem gerichteten Mount angedockte Teile; in PowerPoint geprüft: A5 + 15° dreht den Greifer am
   Flansch von −30° auf −15°).
+- **Werkzeugkette** (seit 26.11.2026): Werkzeugwechsler und Kraft-Momenten-Sensoren sitzen zwischen Flansch und
+  Werkzeug. Ihr Mount `flange` (oben, zum Roboter gerichtet) dockt am Roboterflansch oder an der Werkzeugseite eines
+  anderen Teils an; ihr Mount `tool` (unten, zum Werkzeug gerichtet) nimmt das nächste Teil auf. Jeder bietet ein „+“
+  (Anbau-Port `mount.tool`) mit Greifern, Werkzeugen, Sensoren und Wechslern; Arm → Werkzeugwechsler →
+  Kraft-Momenten-Sensor → Greifer entsteht also mit drei Klicks, jedes Teil zur Werkzeugachse gedreht und auf den
+  Roboterflansch skaliert (alle Flanschplatten haben dieselbe Entwurfsbreite). Die ganze Kette folgt, wenn sich ein
+  Gelenk dreht (der gerichtete Mount jedes Teils sitzt dem vorigen gegenüber). Core ordnet Anbau-Ports nur über die
+  Mount-Id zu; ein Teil bietet seinen Flansch daher auch als `tool` an, solange es Kandidat eines Anbau-Ports ist (nicht im
+  Dokument oder in einer temporären Kopie geprüft: auf den Blattursprung zentriert oder mit einem Flansch-/Werkzeug-Mount
+  eines anderen Teils deutlich innerhalb seiner Box); platzierte Teile behalten eindeutige Mount-Ids, da `Coupling`
+  angedockte Teile über die Id findet.
 - Werkzeuge: Port `tcp` am Greifpunkt / an der Drahtspitze / an der Werkzeugspitze; der Port `tcp` der TCP-Marke rastet
-  dort ein.
+  dort ein, ebenso der Port `grip` eines Werkstücks (das Werkstück gilt als gegriffen: seine Masse zählt zur Last des
+  Roboters).
+- **Roboter auf Trägern:** bodenstehende Roboter (Knickarm, Cobot, SCARA) haben neben dem Mount `base` einen gerichteten
+  Mount ohne Id am Sockel (nach unten); das Deck des mobilen Roboters und der Schlitten der Linearachse haben einen
+  passenden (nach oben). Ein Roboter, dessen Sockel auf dem Deck oder dem Schlitten einrastet (Mount auf Mount), fährt
+  daher mit, wenn der mobile Roboter fährt oder dreht oder der Schlitten verfährt (`pos`, auch über seinen Griff), und
+  – wie bei Werkzeugen am Flansch – folgt der Träger, wenn der angedockte Roboter verschoben wird. Ohne Id bieten diese
+  Mounts kein „+“.
+- Linearachse: Port `chain` am Schlitten und Schiene `rail` entlang der Schienenoberseite für die Enden einer
+  Energiekette; ein angedocktes Kettenende folgt dem Schlitten (Anheftung mit der Anker-Id).
 - Zaun: Schienen entlang jedes Abschnitts; die Ports `hinge`/`latch` der Tür und die Ports des Lichtvorhangs docken
   beliebig darauf an.
 - Förderband: Schiene `belt` entlang der Gurtoberfläche (Werkstück-Ports docken beliebig darauf an).
@@ -188,7 +245,9 @@ Roboter: `A… +15°` / `A… −15°` (50 mm bei Linearachsen) an der bewegten 
 bewegten Achse), „Grundstellung“, „Zwischenlagen“ (0 ↔ 4, über den Bereich der bewegten Achse), „Arbeitsraum“,
 Darstellung Körperkontur ↔ kinematisches Schema (Options-Piktogramme detailliert/Schema), „Achsbeschriftung“
 (J1… / A1… je nach UI-Sprache, zusammenfallende Achsen teilen sich eine Beschriftung „A5/A6“). Greifer:
-öffnen/schließen, Hubpfeile, mehr/weniger Saugnäpfe. Übrige: Art ▾ / Form ▾ / Achsen ▾ (Auswahlen), Schalter für Namen, Pfeile,
+öffnen/schließen, Hubpfeile, mehr/weniger Saugnäpfe. Werkzeugwechsler: Medienmodul; Kraft-Momenten-Sensor:
+Beschriftung F/T; Bildverarbeitungssensor: Sichtfeld; Schweißzange: Verfahren ▾ (Punktschweißzange /
+Lichtbogen-Schweißbrenner); Klebedüse: Kleberaupe; Linearachse: Endlagen (Strich-Zweipunkt-Linien). Übrige: Art ▾ / Form ▾ / Achsen ▾ (Auswahlen), Schalter für Namen, Pfeile,
 Gitterband, Feldtönung, geschlossenen Zaun, Förderrichtung umkehren.
 
 ## Griffe (Ziehgriffe)
@@ -200,6 +259,7 @@ Gitterband, Feldtönung, geschlossenen Zaun, Förderrichtung umkehren.
 | Roboter: Drehachse, deren Achse zum Betrachter zeigt (Seitenansicht: Schulter, Ellbogen, Hand schwenken; Draufsicht: Grundachse, SCARA-Arme) | `joint.j1` … | frei; die Achse dreht sich um ihre Achse zum Zeiger hin (an der projizierten Stellung, daher auch bei geneigten Achsen) | `j1` … | 1°, in die Achsgrenzen umgerechnet und begrenzt |
 | Roboter: Linearachse, die sich quer zur Blickrichtung bewegt (Portal X/Y/Z, SCARA-Pinole in der Seitenansicht) | `joint.x`, `joint.j3` … | längs der projizierten Achse | `x`, `y`, `z`, `j3` | 5 mm, auf den Hub begrenzt |
 | Parallel- und Dreifingergreifer (Seiten- und Axialansicht) | `open` | längs des Backenhubs | `open` | 5 %, 0 … 1 |
+| Linearachse (Seiten- und Draufsicht) | `pos` | längs der Schiene („Schlittenposition: 25 %“ / „Carriage position: 25 %“) | `pos` | 5 %, 0 … 1 |
 
 Der Griff sitzt am ersten Punkt weiter unten in der Kette, der sich mit der Achse bewegt (nächste Achse, sonst der
 Flansch); Ziehen fühlt sich an, als nähme man den Arm an diesem Punkt. Achsen, deren Bewegung in der Ansicht nicht zu
@@ -227,5 +287,10 @@ Vorwärtskinematik aller Roboter bei bekannten Winkeln, Schleifenschluss des Del
 der Achswerte; Arbeitsraumradien aus den Gliedlängen (Zweigliederkette, Knickarm, SCARA, Portal, Kreisring); der
 Ausschnitt enthält jede Stellung der bewegten Achse; Maßstab und Sockel bleiben bei Parameteränderungen und
 Ansichtswechseln; Animationsbilder teilen die Box; Zwischenlagen sind Strich-Zweipunkt-Gruppen; Aktionen; Zaunpfosten
-und Bereichsfüllungen. Der Galerietest schreibt `gallery/*.html` (jeder Typ in jeder Ansicht, gestreckt,
+und Bereichsfüllungen; die Werkzeugkette Arm → Werkzeugwechsler → Kraft-Momenten-Sensor → Greifer per „+“, eindeutige
+Mount-Ids, die Kette folgt einem Gelenk, Kette und gegriffenes Werkstück werden der Reihe nach gefunden; ein Cobot rastet
+auf dem mobilen Roboter ein und fährt mit, ein Roboter fährt auf dem Schlitten der Linearachse mit, ein Energiekettenende
+folgt dem Schlitten, Biegeradius der Energiekette, überstrichener Arbeitsraum; Lastsumme, Traglast- und
+Reichweitenprüfung, Reichweite aus der Geometrie oder eingetragen, Zuordnung zum nächsten Roboter, JSON-Rundlauf von
+Massen und Schlittenposition (`ToolChainTests`, `ValueTests`). Der Galerietest schreibt `gallery/*.html` (jeder Typ in jeder Ansicht, gestreckt,
 Schema-/Arbeitsraum-/Zwischenlagen-Varianten, Vorlagen, Stellungsfolgen, Animationsbilder und eine Beispielzelle).

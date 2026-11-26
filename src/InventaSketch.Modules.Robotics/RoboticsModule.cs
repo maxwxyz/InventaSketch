@@ -8,17 +8,19 @@ namespace InventaSketch.Modules.Robotics
     /// <summary>
     /// Robotics module: predefined robots (articulated, cobot, SCARA, delta, gantry, mobile robot) posed by forward
     /// kinematics from their joint values in side and top view, with reach envelopes computed from the link lengths;
-    /// grippers and end effectors docking on the flange; coordinate frames and TCP markers; work cell periphery and safety
-    /// devices (fence, door, light curtain, laser scanner fields, zones, emergency stop). Sketches for slides, not a
-    /// simulation or a safety layout tool; symbols are drawn independently and no standard compliance is claimed.
+    /// grippers and end effectors docking on the flange, also through tool changers and force-torque sensors; linear axis
+    /// (7th axis) and mobile robot carrying a robot; coordinate frames and TCP markers; work cell periphery (energy chain)
+    /// and safety devices (fence, door, light curtain, laser scanner fields, zones, emergency stop); payload and reach values
+    /// with their checks (<see cref="RoboValues"/>). Sketches for slides, not a simulation or a safety layout tool; symbols
+    /// are drawn independently and no standard compliance is claimed.
     /// </summary>
     public sealed class RoboticsModule : IModule
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
-            new ObjectType[] { new ArticulatedArmType(), new CobotType(), new ScaraType(), new DeltaType(), new GantryType() }
+            new ObjectType[] { new ArticulatedArmType(), new CobotType(), new ScaraType(), new DeltaType(), new GantryType(), Track.Linear() }
                 .Concat(Tools.Types())
                 .Concat(Cell.Types())
-                .Concat(new ObjectType[] { new FenceType(), new ZoneType(), new ReachEnvelopeType() })
+                .Concat(new ObjectType[] { new DragChainType(), new FenceType(), new ZoneType(), new ReachEnvelopeType() })
                 .ToList());
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
@@ -84,6 +86,14 @@ namespace InventaSketch.Modules.Robotics
             // Gripper and tool variants.
             Add("robot.gripper.parallel.closed", "robot.gripper.parallel", "Parallel gripper (closed)", "Parallelgreifer (geschlossen)", ps: P(("open", 0.0)), kw: new[] { "closed", "geschlossen" });
             Add("robot.gripper.vacuum.4", "robot.gripper.vacuum", "Vacuum gripper with 4 cups", "Vakuumgreifer mit 4 Saugnäpfen", ps: P(("cups", 4)), kw: new[] { "4", "multiple", "mehrfach" });
+            Add("robot.tool.dispenser.bead", "robot.tool.dispenser", "Adhesive dispenser with bead", "Klebedüse mit Kleberaupe", ps: P(("bead", true)), kw: new[] { "bead", "raupe" });
+
+            // Linear axis in the top view; reach envelope swept along a linear axis.
+            Add("robot.track.linear.top", Track.TrackId, "Linear axis (7th axis, top view)", "Linearachse (7. Achse, Draufsicht)", RoboViews.Top, kw: new[] { "top", "draufsicht" });
+            Add("robot.reach.envelope.track", "robot.reach.envelope", "Reach envelope along a linear axis (top view)", "Arbeitsraum entlang einer Linearachse (Draufsicht)", RoboViews.Top,
+                P(("travel", 2000.0)), "linear axis", "7th axis", "track", "linearachse", "7. achse", "verfahrweg");
+            // Wider box for the swept range (default reach ≈ 1.5 m on both sides of a 2 m travel).
+            list[list.Count - 1] = list[list.Count - 1] with { Size = new Size2(66, 40) };
 
             // Cell variants.
             Add("robot.cell.workpiece.cylinder", "robot.cell.workpiece", "Workpiece (cylinder)", "Werkstück (Zylinder)", ps: P(("shape", "cylinder")), kw: new[] { "cylinder", "round", "zylinder", "rund" });

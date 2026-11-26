@@ -7,9 +7,11 @@ namespace InventaSketch.Modules.Robotics
 {
     /// <summary>
     /// Grippers and end effectors. Side view: the flange is at the top edge (mount anchor "flange"), the tool points down;
-    /// the port "tcp" marks the tool centre point. View "axial": seen along the tool axis from the flange.
+    /// the port "tcp" marks the tool centre point. View "axial": seen along the tool axis from the flange. Tool changers and
+    /// force-torque sensors sit between flange and tool: their mount "flange" on top, their tool-side mount "tool" at the
+    /// bottom, where the next part's mount "flange" docks.
     /// </summary>
-    internal static class Tools
+    internal static partial class Tools
     {
         private static readonly string[] Companions = { "robot.frame.tcp", "robot.cell.workpiece", "robot.arm.articulated" };
 
@@ -21,6 +23,11 @@ namespace InventaSketch.Modules.Robotics
             yield return ThreeFinger();
             yield return Torch();
             yield return Spindle();
+            yield return WeldGun();
+            yield return Dispenser();
+            yield return Changer();
+            yield return FtSensor();
+            yield return Vision();
             yield return CoordinateFrame();
             yield return TcpMarker();
         }
@@ -91,6 +98,8 @@ namespace InventaSketch.Modules.Robotics
         {
             Params = new[] { OpenParam, Pm.Bool("arrows", "Stroke arrows", "Hubpfeile", false) },
             CompanionIds = Companions,
+            HasMass = true,
+            ToolSide = true,
             Extra = o => OpenActions(o).Concat(new[] { Rb.Toggle(o, "robot.gripper.arrows", new I18nText("Stroke arrows", "Hubpfeile"), IconIds.FlowArrow, "arrows", false) }),
         };
 
@@ -128,6 +137,8 @@ namespace InventaSketch.Modules.Robotics
         {
             Params = new[] { Pm.Int("cups", "Suction cups", "Saugnäpfe", 1, 1, 4) },
             CompanionIds = Companions,
+            HasMass = true,
+            ToolSide = true,
             Extra = o => new[]
             {
                 new ContextAction("robot.cups.more", new I18nText("More cups", "Mehr Saugnäpfe"), IconIds.CountMore, x => x.WithParam("cups", Math.Min(4, x.Int("cups", 1) + 1))) { Group = "param", ParamKeys = new[] { "cups" }, IsEnabled = o.Int("cups", 1) < 4 },
@@ -175,6 +186,8 @@ namespace InventaSketch.Modules.Robotics
             }, (p, o) => AxialAnchors(p)))
         {
             CompanionIds = Companions,
+            HasMass = true,
+            ToolSide = true,
         };
 
         // ------------------------------------------------------------------ three-finger gripper
@@ -210,6 +223,8 @@ namespace InventaSketch.Modules.Robotics
         {
             Params = new[] { OpenParam },
             CompanionIds = Companions,
+            HasMass = true,
+            ToolSide = true,
             Extra = OpenActions,
         };
 
@@ -230,33 +245,41 @@ namespace InventaSketch.Modules.Robotics
         private static readonly Vec2 NeckDir = new(Math.Sin(Geo.DegToRad(35)), Math.Cos(Geo.DegToRad(35)));
         private static Vec2 TorchTip => NeckDir * (6 + 4.2 + 1.6);
 
+        /// <summary>Arc welding torch in the side view (design 20 × 26, flange at y −13): clamp, hose package, bent neck, nozzle, wire.</summary>
+        private static void TorchSide(Pad p)
+        {
+            p.Box(-5, -13, 5, -11.6, RS.White, RoboTags.Flange);
+            p.Box(-4, -11.6, 4, -7, RS.Dark, RoboTags.Base);
+            // Hose package leaving the clamp to the side.
+            p.PolyD(new[] { new Vec2(-4, -9.4), new Vec2(-6.5, -10.2), new Vec2(-8.6, -12.4) }, RS.Medium, false, RoboTags.Link);
+            p.PolyD(new[] { new Vec2(-4, -8.2), new Vec2(-7.2, -9.2), new Vec2(-9.6, -11.6) }, RS.Medium, false, RoboTags.Link);
+            p.Box(-2.2, -7, 2.2, 0.4, RS.Body, RoboTags.Link);
+            var n0 = new Vec2(0, 0); var n1 = NeckDir * 6; var n2 = n1 + NeckDir * 4.2;
+            p.PolyD(Rb.Capsule(n0, n1, 1.7, 6), RS.Body, true, RoboTags.Link);
+            var v = NeckDir.Perp;
+            p.PolyD(new[] { n1 - v * 2.1, n2 - v * 1.4, n2 + v * 1.4, n1 + v * 2.1 }, RS.Dark, true, RoboTags.Jaw);
+            p.Add(Prim.Line(p.V(n2), p.V(TorchTip), RS.Medium), RoboTags.Jaw);
+        }
+
+        /// <summary>Arc welding torch seen along the tool axis (design 20 × 20).</summary>
+        private static void TorchAxial(Pad p)
+        {
+            p.Round(0, 0, 4, RS.Dark, RoboTags.Base);
+            p.Round(0, 0, 2.2, RS.Body, RoboTags.Link);
+            var x = TorchTip.X;
+            p.Round(x, 0, 2.1, RS.Dark, RoboTags.Jaw);
+            p.Round(x, 0, 1.1, RS.White, RoboTags.Jaw);
+            p.Round(x, 0, 0.3, RS.Black, RoboTags.Jaw);
+        }
+
         private static ObjectType Torch() => new RoboBoxType("robot.tool.torch", new I18nText("Welding torch", "Schweißbrenner"), RoboCategories.Tools,
             new[] { "welding", "torch", "mig", "mag", "arc welding", "schweißen", "schweißbrenner", "brenner", "schutzgas", "endeffektor" },
-            new SymView(RoboViews.SideView, new Size2(20, 26), (p, o) =>
-            {
-                p.Box(-5, -13, 5, -11.6, RS.White, RoboTags.Flange);
-                p.Box(-4, -11.6, 4, -7, RS.Dark, RoboTags.Base);
-                // Hose package leaving the clamp to the side.
-                p.PolyD(new[] { new Vec2(-4, -9.4), new Vec2(-6.5, -10.2), new Vec2(-8.6, -12.4) }, RS.Medium, false, RoboTags.Link);
-                p.PolyD(new[] { new Vec2(-4, -8.2), new Vec2(-7.2, -9.2), new Vec2(-9.6, -11.6) }, RS.Medium, false, RoboTags.Link);
-                p.Box(-2.2, -7, 2.2, 0.4, RS.Body, RoboTags.Link);
-                var n0 = new Vec2(0, 0); var n1 = NeckDir * 6; var n2 = n1 + NeckDir * 4.2;
-                p.PolyD(Rb.Capsule(n0, n1, 1.7, 6), RS.Body, true, RoboTags.Link);
-                var v = NeckDir.Perp;
-                p.PolyD(new[] { n1 - v * 2.1, n2 - v * 1.4, n2 + v * 1.4, n1 + v * 2.1 }, RS.Dark, true, RoboTags.Jaw);
-                p.Add(Prim.Line(p.V(n2), p.V(TorchTip), RS.Medium), RoboTags.Jaw);
-            }, (p, o) => SideAnchors(p, -13, TorchTip.Y, TorchTip.X)),
-            new SymView(RoboViews.AxialView, new Size2(20, 20), (p, o) =>
-            {
-                p.Round(0, 0, 4, RS.Dark, RoboTags.Base);
-                p.Round(0, 0, 2.2, RS.Body, RoboTags.Link);
-                var x = TorchTip.X;
-                p.Round(x, 0, 2.1, RS.Dark, RoboTags.Jaw);
-                p.Round(x, 0, 1.1, RS.White, RoboTags.Jaw);
-                p.Round(x, 0, 0.3, RS.Black, RoboTags.Jaw);
-            }, (p, o) => AxialAnchors(p, TorchTip.X)))
+            new SymView(RoboViews.SideView, new Size2(20, 26), (p, o) => TorchSide(p), (p, o) => SideAnchors(p, -13, TorchTip.Y, TorchTip.X)),
+            new SymView(RoboViews.AxialView, new Size2(20, 20), (p, o) => TorchAxial(p), (p, o) => AxialAnchors(p, TorchTip.X)))
         {
             CompanionIds = Companions,
+            HasMass = true,
+            ToolSide = true,
         };
 
         // ------------------------------------------------------------------ spindle
@@ -291,6 +314,8 @@ namespace InventaSketch.Modules.Robotics
         {
             Params = new[] { Pm.Bool("arrow", "Rotation arrow", "Drehrichtungspfeil", false) },
             CompanionIds = Companions,
+            HasMass = true,
+            ToolSide = true,
             Extra = o => new[] { Rb.Toggle(o, "robot.spindle.arrow", new I18nText("Rotation arrow", "Drehrichtungspfeil"), IconIds.FlowArrow, "arrow", false) },
         };
 

@@ -204,7 +204,50 @@ namespace InventaSketch.Modules.Robotics
         public override IReadOnlyList<string> Companions => new[] { ArticulatedArmType.TypeId, "robot.safety.zone", "robot.safety.fence" };
 
         public override IReadOnlyList<ParamDef> Parameters =>
-            ArticulatedArmType.GeometryDefs.Concat(new[] { Pm.FillChoice("tint"), Pm.Bool("labels", "Radius labels", "Radienangaben", true) }).Concat(ArticulatedArmType.Limits).ToList();
+            ArticulatedArmType.GeometryDefs.Concat(new[]
+            {
+                Pm.FillChoice("tint"), Pm.Bool("labels", "Radius labels", "Radienangaben", true),
+                Pm.Num("travel", "Travel of a linear axis (range swept along x)", "Verfahrweg einer Linearachse (Bereich entlang x überstrichen)", 0, 0, 50000, "mm", 100),
+            }).Concat(ArticulatedArmType.Limits).ToList();
+
+        private static double Travel(SketchObject o) => Geo.Clamp(o.Num("travel", 0), 0, 50000);
+
+        /// <summary>
+        /// The area swept when the base moves by 0 … <paramref name="dx"/> along x (a robot on a linear axis), drawn by its
+        /// outer limit: in the top view the convex hull of the area at both ends of the travel (exact for the convex sector of
+        /// the default limits), in the side view row by row from the leftmost to the rightmost reachable point (inner
+        /// unreachable pockets are filled).
+        /// </summary>
+        internal static Area2 Sweep(Area2 area, double dx, bool convex)
+        {
+            if (dx <= 1e-9 || area.Fill.Count < 3) return area;
+            if (convex) return Area2.Polygon(Rb.Hull(area.Fill.Concat(area.Fill.Select(p => new Vec2(p.X + dx, p.Y)))));
+            var b = Rect.FromPoints(area.Fill);
+            const int rows = 160;
+            var ys = Enumerable.Range(0, rows + 1).Select(k => b.Y + b.H * Geo.Clamp(k / (double)rows, 1e-6, 1 - 1e-6)).ToList();
+            // Rows right beside the leftmost and rightmost points, so the swept width is exact.
+            foreach (var p in new[] { area.Fill.OrderBy(q => q.X).First(), area.Fill.OrderBy(q => q.X).Last() })
+                foreach (var e in new[] { -1e-7, 1e-7 }) ys.Add(Geo.Clamp(p.Y + e * Math.Max(1, b.H), b.Y + 1e-6 * b.H, b.Bottom - 1e-6 * b.H));
+            ys.Sort();
+            var left = new List<Vec2>(); var right = new List<Vec2>();
+            foreach (var y in ys)
+            {
+                double lo = double.MaxValue, hi = double.MinValue;
+                var poly = area.Fill;
+                for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+                {
+                    Vec2 a = poly[i], c = poly[j];
+                    if ((a.Y > y) == (c.Y > y)) continue;
+                    var x = a.X + (c.X - a.X) * (y - a.Y) / (c.Y - a.Y);
+                    lo = Math.Min(lo, x); hi = Math.Max(hi, x);
+                }
+                if (lo > hi) continue;
+                left.Add(new Vec2(lo, y)); right.Add(new Vec2(hi + dx, y));
+            }
+            if (left.Count < 2) return area;
+            right.Reverse();
+            return Area2.Polygon(left.Concat(right).ToList());
+        }
 
         private static Rect Model(SketchObject o, string view, Area2 area)
         {
@@ -214,7 +257,9 @@ namespace InventaSketch.Modules.Robotics
             return r.Inflate(Math.Max(r.W, r.H) * 0.04);
         }
 
-        private static Area2 AreaOf(SketchObject o, string view) => view == RoboViews.Top ? ArticulatedArmType.TopRegion(o) : ArticulatedArmType.SideRegion(o);
+        private static Area2 AreaOf(SketchObject o, string view) => view == RoboViews.Top
+            ? Sweep(ArticulatedArmType.TopRegion(o), Travel(o), true)
+            : Sweep(ArticulatedArmType.SideRegion(o), Travel(o), false);
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -236,6 +281,13 @@ namespace InventaSketch.Modules.Robotics
                 var k = 1.6 * s.R;
                 s.Add(Prim.Line(c - new Vec2(k, 0), c + new Vec2(k, 0), RS.Center), RoboTags.Axis);
                 s.Add(Prim.Line(c - new Vec2(0, k), c + new Vec2(0, k), RS.Center), RoboTags.Axis);
+                if (Travel(o) > 1e-9)
+                {
+                    // The base's travel along the linear axis, with the axis cross at its end.
+                    var e = s.L(new Vec2(Travel(o), 0));
+                    s.Add(Prim.Line(c, e, RS.Center), RoboTags.Axis);
+                    s.Add(Prim.Line(e - new Vec2(0, k), e + new Vec2(0, k), RS.Center), RoboTags.Axis);
+                }
                 var (rin, rout) = ArticulatedArmType.HorizontalRange(ArticulatedArmType.SideRegion(o));
                 if (labels)
                 {
