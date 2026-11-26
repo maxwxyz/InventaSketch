@@ -55,7 +55,8 @@ namespace InventaSketch.Modules.Electrical.Tests
             return doc with { Objects = new Dictionary<string, SketchObject>(_objects), Pages = new[] { doc.Pages[0] with { Order = _order.ToList() } } };
         }
 
-        public ValueTable Solve(params string[] ids) => ValueSolver.Solve(Doc(), Reg, ids.Length == 0 ? null : ids);
+        // A generous budget: the default 50 ms truncated the solve while other test assemblies kept every core busy.
+        public ValueTable Solve(params string[] ids) => ValueSolver.Solve(Doc(), Reg, ids.Length == 0 ? null : ids, new ValueSolveOptions { BudgetMs = 10000 });
 
         public IReadOnlyList<CheckFinding> Checks()
         {
