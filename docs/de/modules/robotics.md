@@ -8,8 +8,8 @@ Draufsicht** gezeichnet; die Zeichnung ist daher für beliebige Winkel geometris
 Gliedlängen und Achsgrenzen berechnet.
 
 **Umfang und Grenzen.** Ein Skizzenmodul, keine Robotersimulation, keine Offline-Programmierung und kein Werkzeug für
-Sicherheitsauslegung: keine Dynamik, keine Kollisionsprüfung, keine inverse Kinematik der Arme, keine
-Sicherheitsabstandsberechnung. Die Standardproportionen sind für die Roboterklasse plausibel, aber keinem Datenblatt
+Sicherheitsauslegung: keine Dynamik, keine Kollisionsprüfung, inverse Kinematik nur für die planaren 2R/3R-Arme
+(geschlossene Lösung), keine Sicherheitsabstandsberechnung. Die Standardproportionen sind für die Roboterklasse plausibel, aber keinem Datenblatt
 eines Herstellers entnommen. Symbole (Greifer, Lichtvorhang, Scannerfelder, Not-Halt, Zaun) sind eigenständig nach
 üblicher Zeichenpraxis gezeichnet; es wird keine Norm wiedergegeben und **keine Normkonformität behauptet**.
 Bereichsnamen („Eingeschränkter Raum“, „Kollaborationsraum“) sind reine Beschriftungen.
@@ -96,6 +96,30 @@ den Hinweis „Pose nicht erreichbar“ / „pose not reachable“. Der Werkzeug
 Achsen `x`, `y`, `z` in mm vom Hubanfang (`strokeX` 1200, `strokeY` 800, `strokeZ` 500, `height` 1500); z fährt den
 Hub nach unten. Der Flansch bewegt sich exakt um (Δx, Δy, −Δz).
 
+### Planarer Arm 2R / 3R, `robot.arm.planar2r` / `robot.arm.planar3r` (26.11.2026)
+
+Der Lehrbuch-Arm der Kinematik: Gelenk 1 auf einem Sockel der Höhe `base` (150 mm), Glieder `l1` 400, `l2` 300 (3R: `l3`
+120, bis zum Flansch) in der senkrechten x-z-Ebene, alle Gelenkachsen entlang y. Winkel im Uhrzeigersinn auf dem
+Bildschirm ab der x-Achse (Projektkonvention: ein nach oben zeigendes Glied hat einen negativen Winkel); Standardwerte
+A1 −40°, A2 70°, A3 40°, Grenzen ±180° (A1), ±170°. Kette: `Rot(y, j1)`, Glied 1 entlang x, `Rot(y, j2)`, Glied 2,
+(`Rot(y, j3)`, Glied 3); der Flansch sitzt am Ende des letzten Glieds mit der Werkzeugachse entlang des Glieds, Werkzeuge,
+Wechsler und Sensoren docken also wie bei jedem Roboter an. Gezeichnet als Körper oder kinematisches Schema, mit Griffen
+an jedem Gelenk, Zwischenlagen, Beschriftung und Arbeitsraum wie die anderen Roboter.
+
+**Vorwärtskinematik** (Werte `x`, `z`, `φ`, bezogen auf Gelenk 1, z nach oben): Θᵢ = θ₁ + … + θᵢ,
+x = Σ Lᵢ·cos Θᵢ, z = −Σ Lᵢ·sin Θᵢ, φ = Θₙ (Richtung des letzten Glieds). Gegen die gezeichnete Stellung bei zufälligen
+Winkeln geprüft.
+
+**Rückwärtskinematik** (geschlossene Lösung): ein Ziel (`targetX`, `targetZ` ab Gelenk 1; bei 3R zusätzlich die Richtung
+`targetPhi` des letzten Glieds) ergibt die Gelenkwinkel θᵢ,T für die Ellbogenlage `elbow` (oben: θ₂ ≥ 0, der Ellbogen liegt
+auf der Gegenuhrzeigerseite der Linie von Gelenk 1 zum Ziel; unten: θ₂ < 0). In Bildschirmkoordinaten (y = −z) mit dem
+Handpunkt W = T − L3·(cos φ_T, sin φ_T) bei 3R (W = T bei 2R): cos θ₂ = (x_W² + y_W² − L1² − L2²)/(2·L1·L2),
+θ₁ = atan2(y_W, x_W) − atan2(L2·sin θ₂, L1 + L2·cos θ₂), θ₃ = φ_T − θ₁ − θ₂. Die Aktion **„Zum Zielpunkt fahren“**
+setzt die Gelenke (die Box folgt, der Sockel bleibt), das Ziel wird in der Seitenansicht als roter Kreis mit Kreuz
+gezeichnet (innerhalb der Box), und die Prüfung `robot.ik.reach` warnt, wenn es keine Lösung gibt (|W| außerhalb
+|L1 − L2| … L1 + L2; 3R ohne Richtung: nur jenseits von L1 + L2 + L3). Vorwärts- nach Rückwärtskinematik ergibt das Ziel
+wieder (für 200 zufällige Stellungen geprüft).
+
 ## Arbeitsräume
 
 Eine ebene Zweigliederkette (inneres Glied L1, äußeres Glied L2, Schulterwinkel θ, Ellbogenwinkel φ ab gestreckter
@@ -115,6 +139,7 @@ beider Intervalle gezeichnet – eine Überschätzung.
 | SCARA | Rechteck R_in … R_out × Pinolenhub, auf der Armseite | klassische Zweigliederfläche: L1 = a1, L2 = a2, θ ∈ ±`j1lim`, φ ∈ ±`j2lim` |
 | Delta | **konvexe Hülle** der über die Armgrenzen abgetasteten Flanschpositionen (11³ Stichproben) – eine Näherung | ebenso, projiziert |
 | Portal | Hubquader des Flansches (exakt) | Hubrechteck (exakt) |
+| Planar 2R / 3R | Zweigliederfläche von Glied 1 und 2 über die Gelenkbereiche (2R: Flansch; 3R: Gelenk 3, der Flansch liegt höchstens L3 weiter) | der Streifen der waagerechten Ausdehnung der Seitenfläche, so breit wie das Gehäuse von Gelenk 1 (der Arm bewegt sich in der Ebene der Seitenansicht) |
 
 Standardwerte: Knickarm `j1lim` 170°, A2 −70 … 110°, A3 −80 … 70°; Cobot ±360°, A2 ±110°, A3 ±160°; SCARA ±132°/±145°.
 Der Arbeitsraum wird mit dem Parameter `envelope` gezeigt (getönte Fläche mit blauer Kontur) oder als eigenes Element
@@ -135,7 +160,13 @@ Werte der Ingenieurberechnungen (optional; als Text mit Einheit, deutsches oder 
 | Werkzeuge, Werkzeugwechsler, Kraft-Momenten-Sensor, Bildverarbeitungssensor, Werkstück | `mass` m (kg) | Masse des Teils |
 | Roboter | `payload` m_max (kg) | Nenntraglast aus dem Datenblatt (kein Standardwert) |
 | Roboter | `load` m_L (kg) | Summe der eingetragenen Massen der am Flansch angedockten Werkzeugkette (Flansch → Wechsler → Sensor → Greifer …) und des Werkstücks, dessen Port `grip` am TCP der Kette sitzt; Teile ohne Masse bleiben außen vor |
-| Roboter | `reach` R (mm) | aus der Geometrie: größter Abstand des Arbeitsraums in der Draufsicht von der Grundachse (Handmittelpunkt beim Knickarm, Achse A4 beim Cobot, Flansch bei SCARA und Delta); beim Portal keiner; ein eingetragener Wert hat Vorrang |
+| Roboter | `reach` R (mm) | aus der Geometrie: größter Abstand des Arbeitsraums in der Draufsicht von der Grundachse (Handmittelpunkt beim Knickarm, Achse A4 beim Cobot, Flansch bei SCARA und Delta; L1 + L2 (+ L3) bei den planaren Armen); beim Portal keiner; ein eingetragener Wert hat Vorrang |
+| Roboter | `moment` M_L (N·m) | statisches Lastmoment am Flansch M_L = m_L·g·d [S1] (g = 9,80665 m/s²; auch nach d oder m_L lösbar) |
+| Roboter | `momentMax` M_max (N·m), `cog` d (mm) | zulässiges Flanschmoment (Datenblatt, kein Standardwert) und Schwerpunktabstand der Last vom Flansch (eingetragen; ungünstigster Fall: waagerechter Hebelarm) |
+| Roboter (nicht die planaren Arme) | `fx`, `fy`, `fz` (mm, nur lesend) | Flanschposition aus der Vorwärtskinematik in Basiskoordinaten (x nach vorn, y, z nach oben; dieselbe Kette, die den Roboter zeichnet) |
+| planare Arme | `L1` … `L3`, `θ1` … `θ3` (Gliedlängen und Gelenkwinkel, die eigenen Parameter des Typs), **`x`**, **`z`**, **`φ`** (nur lesend), `x_T`, `z_T`, `φ_T` (Ziel), `θ1,T` … (nur lesend) | Vorwärts- und Rückwärtskinematik, siehe „Planarer Arm 2R / 3R“; Traglast, Last und Moment wandern ins Werte-Panel (die Karte zeigt x, z, φ und R) |
+| Parallel- und Dreifingergreifer | **`force`** F_G (N, Datenblatt: Summe der Backenkräfte), **`required`** F_req (N), `mu` μ, `safety` S (Standard 2), `acc` a (m/s², Standard 0), `held` m_W (kg) | Reibschluss: μ·F_G ≥ m_W·(g + a)·S, also F_req = m_W·(g + a)·S/μ (Werkstück hängt zwischen den Backen, Beschleunigung in Richtung der Gewichtskraft); m_W ist mit der Masse des Werkstücks verknüpft, dessen Port `grip` am TCP des Greifers sitzt |
+| Vakuumgreifer | **`holding`** F_th (N), **`required`** F_req (N), `cupDia` d (mm), `vacuum` Δp (bar), `cups` n (der Parameter des Typs), `safety`, `acc`, `held` | F_th = Δp·n·π·d²/4 (theoretisch, ohne Dichtverluste; nach Δp oder d lösbar), F_req = m_W·(g + a)·S (Last senkrecht zu den Saugnäpfen angehoben) |
 
 Prüfungen (Warnungen, zweisprachige Meldungen):
 
@@ -146,6 +177,15 @@ Prüfungen (Warnungen, zweisprachige Meldungen):
   d5 + d6), die angedockte Werkzeuglänge (Flansch bis TCP der Kette) und 1 % der Arbeitsraumgröße außerhalb des
   gezeichneten Arbeitsraums dieses Roboters. Eine Plausibilitätsprüfung für Skizzen, keine Erreichbarkeitsanalyse
   (Orientierung, Kollisionen und Singularitäten bleiben unberücksichtigt).
+- `robot.moment` – M_L > M_max (nur wenn beide bekannt sind) [S1]; dynamische Momente in der Bewegung kommen hinzu.
+- `robot.ik.reach` (planare Arme) – das für die Rückwärtskinematik eingegebene Ziel ist nicht erreichbar.
+- `robot.grip.force` (Parallel-, Dreifingergreifer) – F_req > F_G.
+- `robot.vacuum.force` (Vakuumgreifer) – F_req > F_th.
+
+Die Beziehungen für Greifkraft und Rückwärtskinematik nennen noch keine Quelle: Sie folgen aus der Coulombschen Reibung,
+dem Druck über der Saugfläche und dem Kosinussatz; ein Robotik-Lehrbuch (z. B. J. J. Craig, *Introduction to Robotics*;
+G. J. Monkman u. a., *Robot Grippers*) ist für das Quellenverzeichnis von engineering-calculations.md (Abschnitt 9)
+vorgeschlagen.
 
 ## Bibliothekskategorien und Objekttypen
 
@@ -160,12 +200,14 @@ Werkzeuge haben `side` und `axial` (in Werkzeugachse, `IconIds.Axial`). Zellen- 
 | `robot.arm.scara` | SCARA robot / SCARA-Roboter | top, side | ebenso | `j1`, `j2` (°), `j3` (mm), `j4`, `height`, `inner`, `outer`, `stroke`, … `motion` (A2), `j1lim`, `j2lim` |
 | `robot.arm.delta` | Delta robot (parallel) / Delta-Roboter (Parallelkinematik) | side, top | ebenso (Sockel oben) | `j1`…`j3`, `height`, `baseRadius`, `upper`, `fore`, `platform`, … `motion` (A1) |
 | `robot.arm.gantry` | Cartesian / gantry robot / Linear- / Portalroboter | side, top | ebenso | `x`, `y`, `z` (mm), `strokeX/Y/Z`, `height`, … `motion` (X) |
+| `robot.arm.planar2r` | Planar arm (2 joints, 2R) / Planarer Arm (2 Gelenke, 2R) | side, top | ebenso | `j1`, `j2` (°), `base`, `l1`, `l2`, … `motion` (A2), `elbow` up/down, `targetX`, `targetZ` |
+| `robot.arm.planar3r` | Planar arm (3 joints, 3R) / Planarer Arm (3 Gelenke, 3R) | side, top | ebenso | `j1`…`j3`, `base`, `l1`…`l3`, … `motion` (A2), `elbow`, `targetX`, `targetZ`, `targetPhi` |
 | `robot.mobile.agv` | Mobile robot (AGV / AMR) / Mobiler Roboter (FTF / AMR) | top, side | Mounts `deck` (+ Träger-Mount), `scanner1`, `scanner2` | `arrow` |
 | `robot.track.linear` | Linear axis (7th axis) / Linearachse (7. Achse) | side, top | Mount `carriage` (+ Träger-Mount), Port `chain` am Schlitten, Schiene `rail` und Mount `floor` (Seitenansicht) | `pos` (0 … 1, 0,25), `ends` |
-| `robot.gripper.parallel` | Parallel gripper / Parallelgreifer | side, axial | Mount `flange`, Port `tcp` | `open` (0…1), `arrows` |
-| `robot.gripper.vacuum` | Vacuum gripper / Vakuumgreifer (Sauggreifer) | side, axial | ebenso | `cups` (1–4) |
+| `robot.gripper.parallel` | Parallel gripper / Parallelgreifer | side, axial | Mount `flange`, Port `tcp`, Port `air` (Seitenansicht) | `open` (0…1), `arrows` |
+| `robot.gripper.vacuum` | Vacuum gripper / Vakuumgreifer (Sauggreifer) | side, axial | Mount `flange`, Port `tcp`, Port `vacuum` (Seitenansicht) | `cups` (1–4) |
 | `robot.gripper.magnetic` | Magnetic gripper / Magnetgreifer | side, axial | ebenso | – |
-| `robot.gripper.threefinger` | Three-finger gripper / Dreifingergreifer | side, axial | ebenso | `open` |
+| `robot.gripper.threefinger` | Three-finger gripper / Dreifingergreifer | side, axial | Mount `flange`, Port `tcp`, Port `air` (Seitenansicht) | `open` |
 | `robot.tool.torch` | Welding torch / Schweißbrenner | side, axial | Mount `flange`, Port `tcp` an der Drahtspitze | – |
 | `robot.tool.spindle` | Spindle (milling / drilling) / Spindel (Fräsen / Bohren) | side, axial | Mount `flange`, Port `tcp` | `arrow` |
 | `robot.tool.weldgun` | Welding gun / torch / Schweißzange / Schweißbrenner | side, axial | Mount `flange`, Port `tcp` zwischen den Elektrodenspitzen (Punkt) bzw. an der Drahtspitze (Lichtbogen) | `kind` spot/arc |
@@ -194,7 +236,8 @@ Knickarm und Cobot als kinematisches Schema mit Beschriftung, SCARA mit Arbeitsr
 Vakuumgreifer mit 4 Saugnäpfen, zylindrisches Werkstück, geschlossener Zaun, Schiebetür, Scanner mit rechteckigen
 Feldern, Bereiche (Warnfeld, Schutzfeld, eingeschränkter Raum, Kollaborationsraum), Werkzeug- und Weltkoordinatensystem,
 Arbeitsraum in der Draufsicht, Klebedüse mit Kleberaupe, Linearachse in der Draufsicht, Arbeitsraum entlang einer
-Linearachse (Draufsicht, `travel` 2000 mm). Suchbegriffe in beiden Sprachen (roboter, knickarm, greifer, sauggreifer, schutzzaun,
+Linearachse (Draufsicht, `travel` 2000 mm), planare Arme 2R und 3R als kinematisches Schema mit Beschriftung und der
+2R-Arm mit seinem Arbeitsraum. Suchbegriffe in beiden Sprachen (roboter, knickarm, greifer, sauggreifer, schutzzaun,
 lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, linearachse, werkzeugwechsler, kraft-momenten-sensor, kamera,
 schweißzange, klebedüse, energiekette, …).
 
@@ -240,13 +283,20 @@ schweißzange, klebedüse, energiekette, …).
 - Zaun: Schienen entlang jedes Abschnitts; die Ports `hinge`/`latch` der Tür und die Ports des Lichtvorhangs docken
   beliebig darauf an.
 - Förderband: Schiene `belt` entlang der Gurtoberfläche (Werkstück-Ports docken beliebig darauf an).
+- **Druckluft und Vakuum** (26.11.2026): Parallel- und Dreifingergreifer haben einen Port `air` an einem kleinen
+  Anschluss seitlich am Gehäuse, der Vakuumgreifer einen Port `vacuum` an seinem Schlauchstutzen (Seitenansicht). Es sind
+  Medienanschlüsse (`Connection`, Medium `fluid.pneumatic`, Verbinder `fluid.line`): „+“ dort beginnt eine Fluidtechnik-
+  Leitung des Fluidmoduls, und Leitungen und Ports dieses Moduls (`fluid`) sowie die Druckluft der Anlage
+  (`air.compressed`, gleichwertig zu `fluid.pneumatic`) passen; ein 5/2-Wegeventil des Fluidmoduls versorgt so einen
+  pneumatischen Greifer am Roboter.
 
 ## Kontextaktionen
 
 Roboter: `A… +15°` / `A… −15°` (50 mm bei Linearachsen) an der bewegten Achse, Achse ▾ (Auswahl der
 bewegten Achse), „Grundstellung“, „Zwischenlagen“ (0 ↔ 4, über den Bereich der bewegten Achse), „Arbeitsraum“,
 Darstellung Körperkontur ↔ kinematisches Schema (Options-Piktogramme detailliert/Schema), „Achsbeschriftung“
-(J1… / A1… je nach UI-Sprache, zusammenfallende Achsen teilen sich eine Beschriftung „A5/A6“). Greifer:
+(J1… / A1… je nach UI-Sprache, zusammenfallende Achsen teilen sich eine Beschriftung „A5/A6“); planare Arme zusätzlich „Zum Zielpunkt fahren“ (aktiv, wenn ein erreichbares Ziel
+eingetragen ist) und Ellbogen ▾ (oben/unten). Greifer:
 öffnen/schließen, Hubpfeile, mehr/weniger Saugnäpfe. Werkzeugwechsler: Medienmodul; Kraft-Momenten-Sensor:
 Beschriftung F/T; Bildverarbeitungssensor: Sichtfeld; Schweißzange: Verfahren ▾ (Punktschweißzange /
 Lichtbogen-Schweißbrenner); Klebedüse: Kleberaupe; Linearachse: Endlagen (Strich-Zweipunkt-Linien). Übrige: Art ▾ / Form ▾ / Achsen ▾ (Auswahlen), Schalter für Namen, Pfeile,
@@ -294,5 +344,9 @@ Mount-Ids, die Kette folgt einem Gelenk, Kette und gegriffenes Werkstück werden
 auf dem mobilen Roboter ein und fährt mit, ein Roboter fährt auf dem Schlitten der Linearachse mit, ein Energiekettenende
 folgt dem Schlitten, Biegeradius der Energiekette, überstrichener Arbeitsraum; Lastsumme, Traglast- und
 Reichweitenprüfung, Reichweite aus der Geometrie oder eingetragen, Zuordnung zum nächsten Roboter, JSON-Rundlauf von
-Massen und Schlittenposition (`ToolChainTests`, `ValueTests`). Der Galerietest schreibt `gallery/*.html` (jeder Typ in jeder Ansicht, gestreckt,
+Massen und Schlittenposition (`ToolChainTests`, `ValueTests`); Flanschposition jedes Roboters aus seiner Stellung,
+Lastmoment und Prüfung, planare Vorwärtskinematik gegen die gezeichnete Stellung, Rückwärtskinematik als Umkehrung der
+Vorwärtskinematik (200 zufällige Stellungen, beide Ellbogenlagen, 2R und 3R), „Zum Zielpunkt fahren“ setzt den Flansch
+auf das Ziel, unerreichbare Ziele, Greifkräfte bei Reibschluss und Vakuum mit verknüpfter Werkstückmasse, Druckluft- und
+Vakuumports mit ihrem Medium (`RoundSevenTests`). Der Galerietest schreibt `gallery/*.html` (jeder Typ in jeder Ansicht, gestreckt,
 Schema-/Arbeitsraum-/Zwischenlagen-Varianten, Vorlagen, Stellungsfolgen, Animationsbilder und eine Beispielzelle).

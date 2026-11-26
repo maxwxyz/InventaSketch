@@ -7,8 +7,8 @@ predefined robots are posed by **forward kinematics** from their joint values an
 drawing is geometrically correct for any angles. Reach envelopes are computed from the link lengths and joint limits.
 
 **Scope and limits.** This is a sketching module, not a robot simulation, an offline programming tool or a safety
-layout tool: there are no dynamics, no collision checks, no inverse kinematics for the arms, no safety distance
-calculation. Default proportions are plausible for the robot class, not taken from a manufacturer's datasheet. Symbols
+layout tool: there are no dynamics, no collision checks, inverse kinematics only for the planar 2R/3R arms (closed
+form), no safety distance calculation. Default proportions are plausible for the robot class, not taken from a manufacturer's datasheet. Symbols
 (grippers, light curtain, scanner fields, emergency stop, fence) are drawn independently following common drawing
 practice; no standard is reproduced and **no standard compliance is claimed**. Zone names ("restricted space",
 "collaborative workspace") are plain descriptive labels.
@@ -92,6 +92,27 @@ erreichbar". The tool flange is 60·u below P.
 Axes `x`, `y`, `z` in mm from the start of each stroke (`strokeX` 1200, `strokeY` 800, `strokeZ` 500, `height` 1500);
 z moves the ram down. The flange moves exactly by (Δx, Δy, −Δz).
 
+### Planar arm 2R / 3R, `robot.arm.planar2r` / `robot.arm.planar3r` (2026-11-26)
+
+The textbook arm of kinematics lessons: joint 1 on a pedestal of height `base` (150 mm), links `l1` 400, `l2` 300 (3R:
+`l3` 120, to the flange) in the vertical x–z plane, every joint axis along y. Angles are clockwise on screen from the
+x axis (project convention: an upward link has a negative angle); defaults J1 −40°, J2 70°, J3 40°, limits ±180° (J1),
+±170°. Chain: `Rot(y, j1)`, link 1 along x, `Rot(y, j2)`, link 2, (`Rot(y, j3)`, link 3); the flange sits at the end of the
+last link with the tool axis along it, so tools, tool changers and sensors dock as on every robot. Drawn as bodies or as
+kinematic schematic, with grips on every joint, ghosts, labels and the envelope like the other robots.
+
+**Forward kinematics** (values `x`, `z`, `φ`, relative to joint 1, z up): Θᵢ = θ₁ + … + θᵢ,
+x = Σ Lᵢ·cos Θᵢ, z = −Σ Lᵢ·sin Θᵢ, φ = Θₙ (direction of the last link). Checked against the drawn pose for random angles.
+
+**Inverse kinematics** (closed form): a target (`targetX`, `targetZ` from joint 1; 3R also the direction `targetPhi` of
+the last link) gives the joint angles θᵢ,T for the elbow configuration `elbow` (up: θ₂ ≥ 0, the elbow lies on the
+counter-clockwise side of the line from joint 1 to the target; down: θ₂ < 0). In screen coordinates (y = −z) with the wrist
+W = T − L3·(cos φ_T, sin φ_T) for 3R (W = T for 2R): cos θ₂ = (x_W² + y_W² − L1² − L2²)/(2·L1·L2),
+θ₁ = atan2(y_W, x_W) − atan2(L2·sin θ₂, L1 + L2·cos θ₂), θ₃ = φ_T − θ₁ − θ₂. The action **"Move to target"** sets the
+joints (box follows, base stays), the target is drawn as a red cross circle in the side view (inside the box), and the
+check `robot.ik.reach` warns when no solution exists (|W| outside |L1 − L2| … L1 + L2; 3R without a direction: only
+beyond L1 + L2 + L3). Forward of inverse gives the target back (tested for 200 random poses).
+
 ## Reach envelopes
 
 A planar two-link chain (inner link L1, outer link L2, shoulder angle θ, elbow angle φ from the stretched position)
@@ -110,6 +131,7 @@ hull of both intervals is drawn – an over-estimate.
 | SCARA | rectangle R_in … R_out × the quill stroke, on the arm side | classic two-link area: L1 = a1, L2 = a2, θ ∈ ±`j1lim`, φ ∈ ±`j2lim` |
 | Delta | **convex hull** of flange positions sampled over the arm limits (11³ samples) – an approximation | same, projected |
 | Gantry | stroke box of the flange (exact) | stroke rectangle (exact) |
+| Planar 2R / 3R | two-link area of links 1 and 2 over the joint ranges (2R: the flange; 3R: joint 3, the flange is at most L3 further) | the strip of the side area's horizontal extent, as wide as the housing of joint 1 (the arm moves in the plane of the side view) |
 
 Defaults: articulated `j1lim` 170°, J2 −70 … 110°, J3 −80 … 70°; cobot ±360°, J2 ±110°, J3 ±160°; SCARA ±132°/±145°.
 The envelope is shown with the parameter `envelope` (tinted area with a blue outline) or as the stand-alone element
@@ -129,7 +151,13 @@ Engineering-calculation values (optional; entered as text with units, German or 
 | tools, tool changer, force-torque sensor, vision sensor, workpiece | `mass` m (kg) | mass of the part |
 | robots | `payload` m_max (kg) | rated payload from the datasheet (no default) |
 | robots | `load` m_L (kg) | sum of the masses entered on the tool chain docked at the flange (flange → changer → sensor → gripper …) and on the workpiece whose port `grip` sits on the chain's TCP; parts without a mass are left out |
-| robots | `reach` R (mm) | from the geometry: the largest distance of the top-view reach envelope from the base axis (wrist centre for the articulated arm, J4 axis for the cobot, flange for SCARA and delta); none for the gantry; an entered value wins |
+| robots | `reach` R (mm) | from the geometry: the largest distance of the top-view reach envelope from the base axis (wrist centre for the articulated arm, J4 axis for the cobot, flange for SCARA and delta; L1 + L2 (+ L3) for the planar arms); none for the gantry; an entered value wins |
+| robots | `moment` M_L (N·m) | static load moment at the flange M_L = m_L·g·d [S1] (g = 9.80665 m/s²; solvable for d or m_L too) |
+| robots | `momentMax` M_max (N·m), `cog` d (mm) | permissible flange moment (datasheet, no default) and the centre-of-gravity distance of the load from the flange (entered; worst case: horizontal lever arm) |
+| robots (not the planar arms) | `fx`, `fy`, `fz` (mm, read-only) | flange position from forward kinematics in the base frame (x forward, y, z up; the same chain that draws the robot) |
+| planar arms | `L1` … `L3`, `θ1` … `θ3` (link lengths and joint angles, the type's own parameters), **`x`**, **`z`**, **`φ`** (read-only), `x_T`, `z_T`, `φ_T` (target), `θ1,T` … (read-only) | forward and inverse kinematics, see "Planar arm 2R / 3R"; payload, load and moment move to the panel (the card shows x, z, φ and R) |
+| parallel and three-finger gripper | **`force`** F_G (N, datasheet: sum of the jaw forces), **`required`** F_req (N), `mu` μ, `safety` S (default 2), `acc` a (m/s², default 0), `held` m_W (kg) | friction grip: μ·F_G ≥ m_W·(g + a)·S, so F_req = m_W·(g + a)·S/μ (workpiece hanging between the jaws, acceleration along the weight); m_W is linked to the mass of the workpiece whose port `grip` sits on the gripper's TCP |
+| vacuum gripper | **`holding`** F_th (N), **`required`** F_req (N), `cupDia` d (mm), `vacuum` Δp (bar), `cups` n (the type's parameter), `safety`, `acc`, `held` | F_th = Δp·n·π·d²/4 (theoretical, no seal losses; solvable for Δp or d), F_req = m_W·(g + a)·S (load lifted perpendicular to the cups) |
 
 Checks (warnings, bilingual messages):
 
@@ -139,6 +167,14 @@ Checks (warnings, bilingual messages):
   robot by base distance, lies outside that robot's reach envelope as drawn by more than the wrist length (articulated:
   d6; cobot: d5 + d6), the docked tool length (flange to the chain's TCP) and 1 % of the envelope size. A sketch-level
   plausibility check, not a reachability analysis (orientation, collisions and singularities are ignored).
+- `robot.moment` – M_L > M_max (only when both are known) [S1]; dynamic moments in motion come on top.
+- `robot.ik.reach` (planar arms) – the target entered for the inverse kinematics cannot be reached.
+- `robot.grip.force` (parallel, three-finger gripper) – F_req > F_G.
+- `robot.vacuum.force` (vacuum gripper) – F_req > F_th.
+
+The gripping-force and inverse-kinematics relations cite no source yet: they follow from Coulomb friction, the pressure
+over the cup area and the cosine rule; a robotics textbook (e.g. J. J. Craig, *Introduction to Robotics*; G. J. Monkman
+et al., *Robot Grippers*) is proposed for the source list of engineering-calculations.md (section 9).
 
 ## Library categories and object types
 
@@ -153,12 +189,14 @@ TCP marker have one drawing; fence and zone are point (polyline) elements.
 | `robot.arm.scara` | SCARA robot / SCARA-Roboter | top, side | same | `j1`, `j2` (°), `j3` (mm), `j4`, `height`, `inner`, `outer`, `stroke`, … `motion` (J2), `j1lim`, `j2lim` |
 | `robot.arm.delta` | Delta robot (parallel) / Delta-Roboter (Parallelkinematik) | side, top | same (base on top) | `j1`…`j3`, `height`, `baseRadius`, `upper`, `fore`, `platform`, … `motion` (J1) |
 | `robot.arm.gantry` | Cartesian / gantry robot / Linear- / Portalroboter | side, top | same | `x`, `y`, `z` (mm), `strokeX/Y/Z`, `height`, … `motion` (X) |
+| `robot.arm.planar2r` | Planar arm (2 joints, 2R) / Planarer Arm (2 Gelenke, 2R) | side, top | same | `j1`, `j2` (°), `base`, `l1`, `l2`, … `motion` (J2), `elbow` up/down, `targetX`, `targetZ` |
+| `robot.arm.planar3r` | Planar arm (3 joints, 3R) / Planarer Arm (3 Gelenke, 3R) | side, top | same | `j1`…`j3`, `base`, `l1`…`l3`, … `motion` (J2), `elbow`, `targetX`, `targetZ`, `targetPhi` |
 | `robot.mobile.agv` | Mobile robot (AGV / AMR) / Mobiler Roboter (FTF / AMR) | top, side | mounts `deck` (+ carrier mount), `scanner1`, `scanner2` | `arrow` |
 | `robot.track.linear` | Linear axis (7th axis) / Linearachse (7. Achse) | side, top | mount `carriage` (+ carrier mount), port `chain` on the carriage, rail `rail` and mount `floor` (side view) | `pos` (0 … 1, 0.25), `ends` |
-| `robot.gripper.parallel` | Parallel gripper / Parallelgreifer | side, axial | mount `flange`, port `tcp` | `open` (0…1), `arrows` |
-| `robot.gripper.vacuum` | Vacuum gripper / Vakuumgreifer (Sauggreifer) | side, axial | same | `cups` (1–4) |
+| `robot.gripper.parallel` | Parallel gripper / Parallelgreifer | side, axial | mount `flange`, port `tcp`, port `air` (side view) | `open` (0…1), `arrows` |
+| `robot.gripper.vacuum` | Vacuum gripper / Vakuumgreifer (Sauggreifer) | side, axial | mount `flange`, port `tcp`, port `vacuum` (side view) | `cups` (1–4) |
 | `robot.gripper.magnetic` | Magnetic gripper / Magnetgreifer | side, axial | same | – |
-| `robot.gripper.threefinger` | Three-finger gripper / Dreifingergreifer | side, axial | same | `open` |
+| `robot.gripper.threefinger` | Three-finger gripper / Dreifingergreifer | side, axial | mount `flange`, port `tcp`, port `air` (side view) | `open` |
 | `robot.tool.torch` | Welding torch / Schweißbrenner | side, axial | mount `flange`, port `tcp` at the wire tip | – |
 | `robot.tool.spindle` | Spindle (milling / drilling) / Spindel (Fräsen / Bohren) | side, axial | mount `flange`, port `tcp` | `arrow` |
 | `robot.tool.weldgun` | Welding gun / torch / Schweißzange / Schweißbrenner | side, axial | mount `flange`, port `tcp` between the electrode tips (spot) or at the wire tip (arc) | `kind` spot/arc |
@@ -186,7 +224,8 @@ plus every robot in its second view (`<id>.top` / `<id>.side`), articulated with
 cobot as kinematic schematic with labels, SCARA with working range, closed parallel gripper, vacuum gripper with 4 cups,
 cylindrical workpiece, closed fence, sliding door, scanner with rectangular fields, zones (warning, protective,
 restricted, collaborative), tool and world frames, envelope in top view, dispenser with bead, linear axis in top view, envelope
-swept along a linear axis (top view, `travel` 2000 mm). Keywords in both languages (roboter, knickarm,
+swept along a linear axis (top view, `travel` 2000 mm), planar arms 2R and 3R as kinematic schematic with labels and the
+2R arm with its working range. Keywords in both languages (roboter, knickarm,
 greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, linearachse, werkzeugwechsler,
 kraft-momenten-sensor, kamera, schweißzange, klebedüse, energiekette, …).
 
@@ -226,13 +265,19 @@ kraft-momenten-sensor, kamera, schweißzange, klebedüse, energiekette, …).
   chain end follows the carriage (attachment with the anchor id).
 - Fence: rails along every segment; door ports `hinge`/`latch` and light-curtain ports dock anywhere on them.
 - Conveyor: rail `belt` along the belt surface (workpiece ports dock anywhere on it).
+- **Compressed air and vacuum** (2026-11-26): the parallel and the three-finger gripper have a port `air` on a small
+  fitting at the body side, the vacuum gripper a port `vacuum` at its hose stub (side view). They are medium connections
+  (`Connection`, medium `fluid.pneumatic`, connector `fluid.line`): "+" there starts a fluid power line of the fluid module,
+  and lines and ports of that module (`fluid`) as well as the plant's compressed air (`air.compressed`, equivalent to
+  `fluid.pneumatic`) fit, so a 5/2 valve of the fluid module supplies a pneumatic gripper on the robot.
 
 ## Context actions
 
 Robots: `J… +15°` / `J… −15°` (50 mm for linear axes) on the moved joint, joint ▾ (choice of the moved joint),
 "Home position", "Ghost positions" (0 ↔ 4, over the moved joint's range), "Reach envelope", drawing style body ↔
 kinematic schematic (option pictograms detailed/schematic), "Joint labels" (J1… / A1… by UI language, coinciding joints
-share a label "J5/J6"). Grippers: open/close, stroke arrows, more/fewer cups. Tool changer: media module; force-torque
+share a label "J5/J6"); planar arms also "Move to target" (enabled when a reachable target is entered) and Elbow ▾
+(up/down). Grippers: open/close, stroke arrows, more/fewer cups. Tool changer: media module; force-torque
 sensor: label F/T; vision sensor: field of view; welding gun: process ▾ (spot welding gun / arc welding torch);
 dispenser: adhesive bead; linear axis: end positions (phantom lines). Others: kind ▾ / shape ▾ / axes ▾ (choices), toggles for
 names, arrows, mesh band, field tint, closed fence, reverse conveyor.
@@ -276,6 +321,10 @@ arm → tool changer → force-torque sensor → gripper built with "+", unique 
 chain and held workpiece found in order; a cobot snapping onto and riding on the mobile robot, a robot riding on the
 linear axis's carriage, an energy chain end following the carriage, the energy chain's bend radius, the swept envelope;
 load sum, payload and reach checks, reach from the geometry or entered, nearest-robot assignment, JSON round trip of
-masses and carriage position (`ToolChainTests`, `ValueTests`). The gallery
+masses and carriage position (`ToolChainTests`, `ValueTests`); flange position of every robot from its pose, load
+moment and check, planar forward kinematics against the drawn pose, inverse kinematics as the inverse of forward
+kinematics (200 random poses, both elbows, 2R and 3R), "Move to target" puts the flange on the target, unreachable
+targets, friction and vacuum gripping forces with the held workpiece's mass linked, air and vacuum ports with their
+medium (`RoundSevenTests`). The gallery
 test writes `gallery/*.html` (every type in each view, stretched, schematic/envelope/ghost variants, presets, pose
 sequences, animation frames and a sample work cell).

@@ -344,6 +344,92 @@ namespace InventaSketch.Modules.Kinematics
             var p = tracer * k;
             return (c.Value, b, tracer + c.Value * (k - 1), p);
         }
+
+        // ------------------------------------------------------------------ instant centres and derivatives [S24]
+
+        /// <summary>Intersection of the lines a0–a1 and b0–b1; null if they are (nearly) parallel or degenerate.</summary>
+        public static Vec2? LineIntersection(Vec2 a0, Vec2 a1, Vec2 b0, Vec2 b1)
+        {
+            var d1 = a1 - a0; var d2 = b1 - b0;
+            var den = d1.Cross(d2);
+            if (d1.Length < 1e-12 || d2.Length < 1e-12 || Math.Abs(den) < 1e-9 * d1.Length * d2.Length) return null;
+            var t = (b0 - a0).Cross(d2) / den;
+            return a0 + d1 * t;
+        }
+
+        /// <summary>
+        /// Instant centre of the coupler A–B relative to the frame (Kennedy: on the line O2–A of the crank and on the line
+        /// O4–B of the rocker); null when crank and rocker are parallel (the coupler translates for an instant).
+        /// </summary>
+        public static Vec2? CouplerPole(FourBarPose p) => LineIntersection(p.O2, p.A, p.O4, p.B);
+
+        /// <summary>
+        /// Instant centre of the connecting rod A–B of a slider-crank relative to the frame: on the line O–A of the crank and
+        /// on the normal to the (horizontal) guide through the slider joint B; null when the crank is vertical.
+        /// </summary>
+        public static Vec2? RodPole(SliderCrankPose p) => LineIntersection(p.O, p.A, p.B, p.B + new Vec2(0, 1));
+
+        /// <summary>Step (radians) of the central differences of the motion derivatives.</summary>
+        public const double DerivativeStep = 1e-3;
+
+        /// <summary>
+        /// First and second derivative of a position function of the input angle by central differences (per radian, the
+        /// angle in degrees); null where the function is undefined at one of the three samples.
+        /// </summary>
+        public static (double D1, double D2)? Derivatives(Func<double, double?> f, double angleDeg)
+        {
+            var h = DerivativeStep;
+            var hd = Geo.RadToDeg(h);
+            if (f(angleDeg) is not double y0 || f(angleDeg + hd) is not double yp || f(angleDeg - hd) is not double ym) return null;
+            if (double.IsNaN(y0) || double.IsNaN(yp) || double.IsNaN(ym)) return null;
+            return ((yp - ym) / (2 * h), (yp - 2 * y0 + ym) / (h * h));
+        }
+
+        /// <summary>
+        /// First and second derivative (per radian of the input angle) of a point of the four-bar's coupler given in the
+        /// coupler frame: P = A + u·(B − A) − v·(B − A)⊥ (as drawn: u along the coupler, v across it). Null where a sample
+        /// cannot be assembled.
+        /// </summary>
+        public static (Vec2 D1, Vec2 D2)? CouplerPointDerivatives(double ground, double crank, double coupler, double rocker, double angleDeg, bool crossed, double u, double v)
+        {
+            Vec2? P(double a)
+            {
+                var p = FourBar(ground, crank, coupler, rocker, a, crossed);
+                if (p is null) return null;
+                var ab = p.Value.B - p.Value.A;
+                return p.Value.A + ab * u - ab.Perp * v;
+            }
+            var dx = Derivatives(a => P(a)?.X, angleDeg);
+            var dy = Derivatives(a => P(a)?.Y, angleDeg);
+            if (dx is null || dy is null) return null;
+            return (new Vec2(dx.Value.D1, dy.Value.D1), new Vec2(dx.Value.D2, dy.Value.D2));
+        }
+
+        /// <summary>
+        /// dθ₃/dφ of the four-bar's coupler (its angular velocity per unit crank angular velocity, same sense positive): from
+        /// the coupler direction A → B at neighbouring input angles. NaN where it cannot be assembled.
+        /// </summary>
+        public static double CouplerRate(double ground, double crank, double coupler, double rocker, double angleDeg, bool crossed)
+        {
+            var h = Geo.RadToDeg(DerivativeStep);
+            double? T(double a) => FourBar(ground, crank, coupler, rocker, a, crossed) is { } p ? Math.Atan2(p.B.Y - p.A.Y, p.B.X - p.A.X) : null;
+            if (T(angleDeg + h) is not double tp || T(angleDeg - h) is not double tm) return double.NaN;
+            var d = tp - tm;
+            while (d > Math.PI) d -= 2 * Math.PI;
+            while (d <= -Math.PI) d += 2 * Math.PI;
+            return d / (2 * DerivativeStep);
+        }
+
+        /// <summary>d²x_B/dφ² of the slider-crank (mm per radian²); NaN where it cannot be assembled.</summary>
+        public static double SliderAccelerationFactor(double crank, double rod, double offset, double angleDeg)
+        {
+            double? X(double a) => SliderCrank(crank, rod, offset, a)?.B.X;
+            return Derivatives(X, angleDeg)?.D2 ?? double.NaN;
+        }
+
+        /// <summary>Largest |dx_B/dφ| of the slider-crank over a turn (mm per radian); null if no position can be assembled.</summary>
+        public static double? SliderMaxSpeedFactor(double crank, double rod, double offset)
+            => Extremes(a => SliderSpeedFactor(crank, rod, offset, a) is var v && !double.IsNaN(v) ? Math.Abs(v) : null)?.Max;
     }
 
     /// <summary>Grashof class of a crank-driven four-bar (frame d, crank a, coupler b, rocker c).</summary>

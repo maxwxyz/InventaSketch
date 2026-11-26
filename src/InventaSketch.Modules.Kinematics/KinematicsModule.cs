@@ -9,7 +9,8 @@ namespace InventaSketch.Modules.Kinematics
     /// Kinematics module: kinematic diagram symbols in the style of ISO 3952 (drawn independently) – joints and
     /// supports, links and bodies – plus predefined planar mechanisms (four-bar, slider-crank, scotch yoke, toggle,
     /// quick-return, Geneva drive, ratchet, Watt and Stephenson six-bar, pantograph) rendered at an input angle with exact
-    /// loop closure, element values of the linkages (Grashof class, transmission angles, stroke, time ratio, speeds), and
+    /// loop closure, element values of the linkages (Grashof class, transmission angles, stroke, time ratio, speeds and
+    /// accelerations, cam displacement and pressure angle), instant centres, crank hubs on shaft lines, and
     /// motion annotations (paths, ghost positions, angle limits, degree-of-freedom badge). Kinematic sketches only, not a
     /// dynamics simulation.
     /// </summary>
@@ -112,6 +113,10 @@ namespace InventaSketch.Modules.Kinematics
             Add("toggle.ghosts", "kin.mech.toggle", "Toggle mechanism with stroke", "Kniehebel mit Hubstellungen", "schematic", P(("ghosts", 2)));
             Add("quickreturn", "kin.mech.quickreturn", "Quick-return mechanism", "Schnellrücklaufgetriebe", "schematic");
             Add("fourbar.grashof", "kin.mech.fourbar", "Four-bar with Grashof class", "Viergelenkgetriebe mit Grashof-Klasse", "schematic", P(("grashof", true)), "grashof", "crank-rocker", "kurbelschwinge");
+            Add("fourbar.pole", "kin.mech.fourbar", "Four-bar with instant centre of the coupler", "Viergelenkgetriebe mit Momentanpol der Koppel", "schematic", P(("pole", true), ("angle", 120.0)),
+                "instant centre", "instantaneous centre", "pole", "velocity pole", "kennedy", "momentanpol", "geschwindigkeitspol", "pol");
+            Add("slidercrank.pole", "kin.mech.slidercrank", "Slider-crank with instant centre of the rod", "Schubkurbel mit Momentanpol der Koppel", "schematic", P(("pole", true), ("angle", -165.0)),
+                "instant centre", "instantaneous centre", "pole", "momentanpol", "pol");
             Add("geneva", "kin.mech.geneva", "Geneva drive (4 slots)", "Malteserkreuzgetriebe (4 Schlitze)", "schematic");
             Add("geneva.6", "kin.mech.geneva", "Geneva drive (6 slots)", "Malteserkreuzgetriebe (6 Schlitze)", "schematic", P(("slots", "6")), "6 slots", "6 schlitze");
             Add("geneva.detailed", "kin.mech.geneva", "Geneva drive (detailed)", "Malteserkreuzgetriebe (detailliert)", "detailed");

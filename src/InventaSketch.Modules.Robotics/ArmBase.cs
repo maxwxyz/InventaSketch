@@ -117,10 +117,13 @@ namespace InventaSketch.Modules.Robotics
 
         // ------------------------------------------------------------------ values (RoboValues)
 
-        public IReadOnlyList<VarDef> Variables => RoboValues.ArmVars;
-        public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
-        public IEnumerable<ValueCheck> ValueChecks => RoboValues.ArmChecks;
-        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => RoboValues.ArmLinks(this, o, ctx);
+        public virtual IReadOnlyList<VarDef> Variables => RoboValues.ArmVars;
+        public virtual IReadOnlyList<Relation> Relations => RoboValues.ArmRelations;
+        public virtual IEnumerable<ValueCheck> ValueChecks => RoboValues.ArmChecks;
+        public virtual IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => RoboValues.ArmLinks(this, o, ctx);
+
+        /// <summary>The robot offers the flange position from forward kinematics as values (x, y, z in the base frame).</summary>
+        public virtual bool FlangeValues => true;
 
         /// <summary>
         /// Reach (model mm) from the geometry: the largest distance of the top-view reach envelope from the base axis; null
@@ -200,6 +203,8 @@ namespace InventaSketch.Modules.Robotics
         protected abstract IReadOnlyList<ParamDef> GeometryParams { get; }
         /// <summary>Joint limit parameters (advanced).</summary>
         protected virtual IReadOnlyList<ParamDef> LimitParams => Array.Empty<ParamDef>();
+        /// <summary>Further parameters of a robot type (before the value parameters).</summary>
+        protected virtual IReadOnlyList<ParamDef> ExtraParams => Array.Empty<ParamDef>();
         /// <summary>Joint swept by ghost positions, steps and the animation unless "motion" is set.</summary>
         protected abstract string DefaultMotion { get; }
 
@@ -218,6 +223,7 @@ namespace InventaSketch.Modules.Robotics
                 .Concat(GeometryParams)
                 .Concat(new[] { StyleParam, EnvelopeParam, LabelsParam, GhostsParam, MotionParam })
                 .Concat(LimitParams)
+                .Concat(ExtraParams)
                 .Concat(RoboValues.ArmParams).ToList();
 
         /// <summary>Limits of a joint for this object (parameters may narrow or widen them within the joint's range).</summary>
@@ -282,7 +288,7 @@ namespace InventaSketch.Modules.Robotics
         }
 
         /// <summary>Model rectangle mapped into the box: the frame and the envelope (when shown).</summary>
-        public Rect ModelRect(SketchObject o, string view, ArmPose pose, double[] q)
+        public virtual Rect ModelRect(SketchObject o, string view, ArmPose pose, double[] q)
         {
             var r = Frame(o, view, q);
             if (o.Flag("envelope", false) && Envelope(o, view, q) is { } env && env.Fill.Count > 0) r = r.Union(Rect.FromPoints(env.Points));
