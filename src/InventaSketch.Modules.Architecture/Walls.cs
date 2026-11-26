@@ -467,8 +467,13 @@ namespace InventaSketch.Modules.Architecture
         }
     }
 
-    /// <summary>Room: polygon point object with name and area (computed from the points and the plan scale).</summary>
-    internal sealed class RoomType : PointType
+    /// <summary>
+    /// Room: polygon point object with name and area (computed from the points and the plan scale). Element values: floor
+    /// area <c>A</c> (m², from the outline at the plan scale, a marking relation of the room itself), room height <c>h</c>
+    /// (m, optional parameter, default 2.5 m) and volume <c>V = A·h</c> (m³). The keys and quantities match the building
+    /// services' room values (air terminal), so a cross-module join can pass them on later.
+    /// </summary>
+    internal sealed class RoomType : PointType, IValueType, IValueLinks
     {
         public static readonly (string Value, string En, string De)[] Functions =
         {
@@ -494,7 +499,54 @@ namespace InventaSketch.Modules.Architecture
             Pm.Bool("fill", "Tinted floor", "Boden getönt", false),
             Pm.Num("textSize", "Text height", "Schrifthöhe", 3.5, 1, 50, "mm", 0.5),
             Pm.Scale,
+            // No default on purpose: unset, the value default h = 2.5 m applies (and gives way to an entered volume).
+            new ParamDef(HeightParam, new I18nText("Room height (default 2.5 m)", "Raumhöhe (Vorgabe 2,5 m)"), ParamKind.Number) { Min = 0.5, Max = 100, Unit = "m", Step = 0.05 },
+            new ParamDef(VolumeParam, new I18nText("Room volume", "Raumvolumen"), ParamKind.Text) { Unit = "m³", Advanced = true },
+            ValueLabels.ShowValues,
         };
+
+        // ------------------------------------------------------------------ element values
+
+        public const string HeightParam = "height";
+        public const string VolumeParam = "volume";
+        /// <summary>Default room height in metres.</summary>
+        public const double DefaultHeight = 2.5;
+
+        private static I18nText T(string en, string de) => new(en, de);
+
+        private static readonly VarDef[] Vars =
+        {
+            new("A", T("Floor area", "Grundfläche"), T("A", "A"), Quantities.Area) { Unit = "m²", Param = "area", Min = 1e-4, Max = 1e7 },
+            new("h", T("Room height", "Raumhöhe"), T("h", "h"), Quantities.Length) { Unit = "m", Param = HeightParam, Default = DefaultHeight, Min = 0.1, Max = 1000 },
+            new("V", T("Room volume", "Raumvolumen"), T("V", "V"), Quantities.Volume) { Unit = "m³", Param = VolumeParam, Min = 1e-4, Max = 1e10 },
+        };
+
+        /// <summary>Room volume V = A·h [S1].</summary>
+        private static readonly Relation VolumeRelation =
+            new Relation("arch.room.volume", T("Room volume", "Raumvolumen"), "{V} = {A}·{h}", "V", "A", "h") { Source = "S1" }
+                .Solve("V", "{A}·{h}", v => v("A") * v("h"))
+                .Solve("A", "{V}/{h}", v => v("V") / v("h"))
+                .Solve("h", "{V}/{A}", v => v("V") / v("A"));
+
+        private static readonly Relation[] Rels = { VolumeRelation };
+
+        private static readonly I18nText OutlineName = T("Floor area from the outline at the plan scale", "Grundfläche aus dem Umriss im Planmaßstab");
+
+        public IReadOnlyList<VarDef> Variables => Vars;
+        public IReadOnlyList<Relation> Relations => Rels;
+
+        /// <summary>The floor area from the outline (page mm² times the plan scale squared): a relation of the room alone.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx)
+        {
+            var p = ctx.Doc.ResolvePoints(o);
+            if (p.Count < 3) yield break;
+            var scale = Arch.ScaleOf(o, ctx.Doc);
+            var area = AreaM2(p, scale);
+            if (!(area > 0) || double.IsInfinity(area)) yield break;
+            var expr = "A_outline·" + scale.ToString("0.###", CultureInfo.InvariantCulture) + "²";
+            var rel = new Relation("arch.room.area", OutlineName, "{A} = " + expr, "A").Solve("A", expr, _ => area);
+            yield return BoundRelation.Local(rel, o.Id);
+        }
 
         /// <summary>Room area in square metres for page points at the given plan scale denominator.</summary>
         public static double AreaM2(IReadOnlyList<Vec2> pts, double scale) => Math.Abs(Geo.PolygonArea(pts)) * scale * scale / 1e6;

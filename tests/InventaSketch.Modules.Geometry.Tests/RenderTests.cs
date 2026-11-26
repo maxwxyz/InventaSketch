@@ -101,9 +101,13 @@ namespace InventaSketch.Modules.Geometry.Tests
                     // Some parameters only show in a state that is off by default.
                     if (t.Id == "math.vector.arrow" && p.Key is "notation" or "textSize") o = o.WithParam("components", true);
                     if (t.Id == "math.circle.unit" && p.Key == "values") o = o.WithParam("tan", true);
+                    if (t.Id == "math.venn.diagram" && p.Key == "labelC") o = o.WithParam("sets", 3);
+                    if (t.Id == "math.tree.probability" && p.Key is "e3" or "p3") o = o.WithParam("levels", 3);
                     var before = Fx.Signature(r, o);
                     // "auto" draws an arc at 45°, like "arc": compare with the double arc instead.
-                    var value = t.Id == "math.angle.mark" && p.Key == "mark" ? (ParamValue)"double" : Other(p, o);
+                    var value = t.Id == "math.angle.mark" && p.Key == "mark" ? (ParamValue)"double"
+                        : t.Id == "math.tree.probability" && p.Key == "p3" ? "0.1" // a typed probability (text that is no number is ignored)
+                        : Other(p, o);
                     var after = Fx.Signature(r, r.SetParam(o, p.Key, value));
                     Assert.True(before != after, $"{t.Id}.{p.Key} does not change the drawing");
                 }

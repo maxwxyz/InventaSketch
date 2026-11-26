@@ -1,9 +1,9 @@
 # Modul Grundrisse & Gebäude (`architecture`)
 
 Schematische Hausplanung für Folien und schnelle technische Skizzen: Wände mit sauberen Anschlüssen, Räume mit
-Fläche, Türen, Fenster, Treppen, Stützen, Unterzüge, Möbel, Sanitär, Heizungs-/Leitungssymbole und
-Lageplanzeichen. Es ist **kein BIM**: Hinter dem Plan steht kein Gebäudemodell, nur gut gezeichnete, editierbare
-Symbole.
+Fläche, Türen, Fenster, Treppen, Rampen, Aufzüge, Geländer, Schächte, Deckenöffnungen, Dachaufsichten, Stützen,
+Unterzüge, Möbel, Sanitär, Heizungs-/Leitungssymbole und Lageplanzeichen. Es ist **kein BIM**:
+Hinter dem Plan steht kein Gebäudemodell, nur gut gezeichnete, editierbare Symbole.
 
 Elektro-Grundrisssymbole liegen im Elektro-Modul, Bemaßungen im Beschriftungsmodul; dieses Modul dupliziert sie
 nicht.
@@ -25,7 +25,8 @@ Türen, Fenster), in einem Rückgängig-Schritt.
 | Größe | Umrechnung |
 |---|---|
 | Wanddicke, Unterzugbreite | `thickness / scale` mm auf dem Blatt (240 mm bei 1:100 = 2,4 mm) |
-| Raumfläche | Polygonfläche in mm² auf dem Blatt x `scale²`, Anzeige in m² |
+| Raumfläche | Polygonfläche in mm² auf dem Blatt x `scale²`, Anzeige in m² (auch der Raumwert `A`) |
+| Pfostenabstand des Geländers | `spacing / scale` mm auf dem Blatt |
 | Tür-/Fensterbreite | Boxbreite x `scale` (in den Breiten-Aktionen und der Eingabe „Breite…“ angezeigt) |
 
 Freies Skalieren von Box-Objekten ändert nur `Size`, nie Parameter.
@@ -35,12 +36,18 @@ Freies Skalieren von Box-Objekten ändert nur `Size`, nie Parameter.
 | Id | Name (EN / DE) | Geometrie | Ansichten | Hinweise |
 |---|---|---|---|---|
 | `arch.wall` | Wall / Wand | Punkte (Achse) | Grundriss, Ansicht | `thickness` (240), `kind` Außen-/Innen-/Trennwand, `closed`, `height`, `scale` |
-| `arch.room` | Room / Raum | Punkte (Polygon) | Grundriss | Name (Text oder `function`), Fläche in m², getönter Boden |
+| `arch.room` | Room / Raum | Punkte (Polygon) | Grundriss | Name (Text oder `function`), Fläche in m², getönter Boden; Werte A, h, V (siehe [Raumwerte](#raumwerte)) |
 | `arch.beam` | Beam / Unterzug | Punkte | Grundriss | gestrichelter Umriss + Achse, `width` |
 | `arch.column` | Column / Stütze | Box | Grundriss | rechteckig/rund; Stahlbeton (schwarz), Mauerwerk (schraffiert), Stahl (I-Profil) |
 | `arch.door.single` / `.double` / `.sliding` / `.opening` | Türen | Box | Grundriss, Ansicht | `hingeRight`, `swingOut`, Aufschlagbogen |
 | `arch.window.single` / `.double` / `.french` | Fenster | Box | Grundriss, Ansicht | `hingeRight`, `flip` (innen/außen), Fensterbank |
 | `arch.stair.straight` / `.l` / `.u` / `.spiral` | Treppen | Box | Grundriss | `steps`, `down` (Lauflinie umgekehrt) |
+| `arch.lift` | Lift (shaft with car) / Aufzug (Schacht mit Kabine) | Box | Grundriss | Schachtumriss, Kabine mit Diagonalkreuz, `counterweight` (Gegengewicht), `door` (zweiteilige Schachttür); 2,0 x 2,2 m |
+| `arch.ramp` | Ramp / Rampe | Box | Grundriss | Umriss, Pfeil bergauf (Startkreis wie bei Treppen), `slope` in % (6, angezeigt als „6 %“, Dezimalkomma auf Deutsch), `down`, `showSlope`; verläuft entlang der längeren Boxseite |
+| `arch.railing` | Railing / Geländer | Punkte | Grundriss | mittlere Linie mit Pfosten an den Eckpunkten und alle `spacing` (1000 mm im Planmaßstab), `posts`, `scale`; Schienen je Segment |
+| `arch.shaft` | Shaft (building) / Schacht (Gebäude) | Box | Grundriss | Rechteck mit durchgezogenem Diagonalkreuz (`cross`) |
+| `arch.void` | Slab opening (void) / Deckenöffnung (Luftraum) | Box | Grundriss | dünner Umriss mit gestrichelten Diagonalen (verdeckte Linie) |
+| `arch.roof` | Roof plan / Dachaufsicht | Box | Grundriss | `kind` Satteldach / Walmdach, `ridge` parallel zur langen oder kurzen Seite (Satteldach), `arrows` (Gefällepfeile), `walls` (Außenwände darunter, gestrichelt) |
 | `arch.furniture.*` | Bett, Sofa, Tisch, Schreibtisch, Schrank, Küchenzeile, Spüle, Herd, Kühlschrank | Box | Grundriss | Bett `pillows`, Sofa `seats`, Tisch `chairs`/`round`, Spüle `basins` |
 | `arch.sanitary.*` | WC, Waschbecken, Dusche, Badewanne | Box | Grundriss | |
 | `arch.hvac.radiator` / `.heatpump` / `.boiler` | Heizungssymbole | Box | Grundriss | Wärmepumpe beschriftet WP/HP je nach UI-Sprache |
@@ -104,6 +111,40 @@ Breitenschritten mit den Flügeln).
   aufschlagenden Flügeln. Ansichten zeigen Rahmen, Glas und das gestrichelte Öffnungsdreieck, dessen Spitze zur
   Bandseite zeigt.
 
+## Aufzüge, Rampen, Geländer, Schächte, Öffnungen und Dächer
+
+- **Aufzug:** Schachtumriss (mittlere Linie), die Kabine als dünnes Rechteck mit Diagonalkreuz, das Gegengewicht als
+  grauer Block hinter der Kabine und eine zweiteilige Schiebe-Schachttür davor. Ohne Gegengewicht oder Tür nimmt die
+  Kabine den Platz ein.
+- **Rampe:** Umriss, eine Lauflinie vom Startkreis zu einem Pfeil bergauf (`down` kehrt sie um) und die Steigung in
+  Prozent darüber. Hochkant gestellte Boxen verlaufen entlang y.
+- **Geländer:** ein Punktobjekt wie Wände und Leitungen (Ecken, Verlängern, Schienen je Segment zum Fangen); Pfosten
+  sind kleine gefüllte Punkte an jedem Eckpunkt und dazwischen gleichmäßig im Abstand von etwa `spacing` realen
+  Millimetern.
+- **Schacht / Deckenöffnung:** Rechteck mit durchgezogenem Diagonalkreuz (Schacht) oder gestrichelten Diagonalen
+  (Öffnung in der Decke, Luftraum).
+- **Dachaufsicht:** Traufumriss und First; ein Walmdach ergänzt die vier Grate unter 45° im Grundriss, also gleiche
+  Neigung aller Dachflächen, daher verläuft sein First entlang der längeren Seite und ist (Länge − Breite) lang, ein
+  Quadrat ergibt ein Zeltdach. Gefällepfeile zeigen jede Dachfläche hinab. Der First eines Satteldachs kann entlang
+  beider Seiten laufen.
+
+Keines dieser Elemente überschneidet sich mit den Modulen Haustechnik oder Karten, daher tragen sie kein `Alternative`.
+
+## Raumwerte
+
+Räume sind Elemente mit Werten (`IValueType`, siehe Entwurf der technischen Berechnungen): Grundfläche `A` (m²),
+Raumhöhe `h` (m) und Volumen `V` (m³) mit der Beziehung V = A·h. Die Fläche kommt aus dem Umriss: Der Raum meldet eine
+eigene Beziehung (`IValueLinks`, „Grundfläche aus dem Umriss im Planmaßstab“), die `A` auf die Polygonfläche mal dem
+Quadrat des Planmaßstabs setzt (eigener `scale`, sonst `DocumentSettings.PlanScale`, sonst 1:100). Die Höhe ist der
+optionale Zahlenparameter `height` (m) ohne Vorgabewert, damit der Wertvorgabe h = 2,5 m gilt, bis eine Höhe oder ein
+Volumen eingegeben wird; ein eingegebenes Volumen (Textparameter `volume`, z. B. „33 m³“) ergibt dann die Höhe. Eine
+eingegebene Fläche, die dem Umriss widerspricht, wird als Widerspruch gemeldet. `showValues` zeichnet das Werte-Label
+unter den Raum. Beispiel: Ein Umriss von 40 x 30 mm bei 1:100 ist 4 m x 3 m, A = 12 m², mit h = 2,5 m ist V = 30 m³.
+
+Schlüssel und Größenarten (`A` Fläche, `h` Länge, `V` Volumen) entsprechen den Raumwerten der Haustechnik
+(Luftdurchlass), sodass eine spätere modulübergreifende Verknüpfung (`NetKeys`) sie weitergeben kann; Core wurde dafür
+nicht geändert.
+
 ## Kontextaktionen
 
 | Typ | Aktionen |
@@ -112,6 +153,8 @@ Breitenschritten mit den Flügeln).
 | Türen | Anschlagseite wechseln, Aufschlagrichtung wechseln, breiter/schmaler (±125 mm; Flügeltiefe wächst mit), „Breite…“ (Eingabe, mm), an Wand ausrichten |
 | Fenster | Anschlagseite wechseln, innen/außen tauschen, breiter/schmaler, „Breite…“ (Eingabe, mm), an Wand ausrichten |
 | Treppen | Laufrichtung umkehren, mehr/weniger Stufen |
+| Aufzug, Rampe, Geländer, Schacht | Gegengewicht, Schachttür; Richtung umkehren, Steigung anzeigen; Pfosten; Diagonalkreuz |
+| Dachaufsicht | Dachform ▾ (Auswahl), Gefällepfeile, Außenwände darunter |
 | Raum | „Name…“ (Eingabe), Fläche anzeigen, getönter Boden |
 | Stütze, Baum, Leitung | Form ▾ / Material ▾, Art ▾, Medium ▾ (Auswahlen; die Medien zeigen ihre Linie); Fließrichtungspfeil |
 | Schnittlinie, Grundstücksgrenze | Blickrichtung umkehren; geschlossen, Grenzpunkte |
@@ -140,6 +183,10 @@ Bézierpfade, Text) und expliziten Schraffurlinien und ist damit in jedem Host n
 `tests/InventaSketch.Modules.Architecture.Tests` prüft Registrierung, zweisprachige Namen, jedes Box-Element in
 seiner Box (auch gestreckt) und Punktobjekte nahe ihren Punkten, Wandanschlüsse (L, T, geschlossen), Endpunktfang
 von Wänden, Öffnungs-Hubs auf Wandachsen, Raumfläche, Höhenkotentexte, Kontextaktionen und den JSON-Roundtrip;
+`BuildingTests` prüft Aufzug, Rampe (Steigungstext in beiden Sprachen, Richtung, hochkant), Geländerpfosten nach
+Abstand und Planmaßstab, Diagonalen von Schacht und Deckenöffnung, Sattel- und Walmdach sowie die Raumwerte (12 m² und
+30 m³ für ein bekanntes Rechteck bei 1:100, eingegebene Höhe, Dokument- und eigener Planmaßstab, eingegebenes Volumen
+ergibt die Höhe, widersprüchliche Fläche, Werte-Label, JSON);
 `DocumentAwareTests` prüft das Ausrichten an Wänden, abhängige Objekte, den Dokument-Planmaßstab, Eingabeaktionen
 und die Größen je Ansicht.
 Der Galerietest schreibt `gallery/*.html` (alle Typen, Vorlagen, Anschlussstudie und ein Beispielhaus auf Englisch

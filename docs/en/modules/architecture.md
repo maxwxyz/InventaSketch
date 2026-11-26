@@ -1,7 +1,8 @@
 # Floor plans & building module (`architecture`)
 
 Schematic house planning for slides and quick technical sketches: walls with clean joints, rooms with area,
-doors, windows, stairs, columns, beams, furniture, sanitary, heating/plumbing symbols and site marks.
+doors, windows, stairs, ramps, lifts, railings, shafts, slab openings, roof plans, columns, beams, furniture,
+sanitary, heating/plumbing symbols and site marks.
 It is **not BIM**: there is no building model behind the plan, only well-drawn, editable symbols.
 
 Electrical floor-plan symbols live in the Electrical module, dimensions in the Annotation module; this module
@@ -23,7 +24,8 @@ undo step.
 | Quantity | Conversion |
 |---|---|
 | Wall thickness, beam width | `thickness / scale` page mm (240 mm at 1:100 = 2.4 mm) |
-| Room area | polygon area in page mm² x `scale²`, shown in m² |
+| Room area | polygon area in page mm² x `scale²`, shown in m² (also the room value `A`) |
+| Railing post spacing | `spacing / scale` page mm |
 | Door/window width | box width x `scale` (shown in the width actions and the "Width…" prompt) |
 
 Free scaling of box objects changes `Size` only, never parameters.
@@ -33,12 +35,18 @@ Free scaling of box objects changes `Size` only, never parameters.
 | Id | Name (EN / DE) | Geometry | Views | Notes |
 |---|---|---|---|---|
 | `arch.wall` | Wall / Wand | points (centre line) | plan, elevation | `thickness` (240), `kind` exterior/interior/partition, `closed`, `height`, `scale` |
-| `arch.room` | Room / Raum | points (polygon) | plan | name (text or `function`), area in m², tinted floor |
+| `arch.room` | Room / Raum | points (polygon) | plan | name (text or `function`), area in m², tinted floor; values A, h, V (see [Room values](#room-values)) |
 | `arch.beam` | Beam / Unterzug | points | plan | dashed outline + axis, `width` |
 | `arch.column` | Column / Stütze | box | plan | square/round; concrete (solid), masonry (hatched), steel (I-section) |
 | `arch.door.single` / `.double` / `.sliding` / `.opening` | Doors / Türen | box | plan, elevation | `hingeRight`, `swingOut`, swing arc |
 | `arch.window.single` / `.double` / `.french` | Windows / Fenster | box | plan, elevation | `hingeRight`, `flip` (inside/outside), sill |
 | `arch.stair.straight` / `.l` / `.u` / `.spiral` | Stairs / Treppen | box | plan | `steps`, `down` (walking line reversed) |
+| `arch.lift` | Lift (shaft with car) / Aufzug (Schacht mit Kabine) | box | plan | shaft outline, car with diagonal cross, `counterweight`, `door` (two-panel landing door); 2.0 x 2.2 m |
+| `arch.ramp` | Ramp / Rampe | box | plan | outline, arrow up the slope (start circle as on stairs), `slope` in % (6, shown as "6 %", decimal comma in German), `down`, `showSlope`; runs along the longer box side |
+| `arch.railing` | Railing / Geländer | points | plan | medium line with posts at the vertices and every `spacing` (1000 mm at the plan scale), `posts`, `scale`; rails per segment |
+| `arch.shaft` | Shaft (building) / Schacht (Gebäude) | box | plan | rectangle with solid diagonal cross (`cross`) |
+| `arch.void` | Slab opening (void) / Deckenöffnung (Luftraum) | box | plan | thin outline with dashed (hidden-line) diagonals |
+| `arch.roof` | Roof plan / Dachaufsicht | box | plan | `kind` gable / hip, `ridge` along the long or short side (gable), `arrows` (fall arrows), `walls` (outer walls below, dashed) |
 | `arch.furniture.*` | bed, sofa, table, desk, wardrobe, counter, sink, stove, fridge | box | plan | bed `pillows`, sofa `seats`, table `chairs`/`round`, sink `basins` |
 | `arch.sanitary.*` | WC, washbasin, shower, bathtub | box | plan | |
 | `arch.hvac.radiator` / `.heatpump` / `.boiler` | heating symbols | box | plan | heat pump label HP/WP by UI language |
@@ -101,6 +109,36 @@ steps).
   swinging leaves. Elevations show frames, glass and the dashed opening triangle whose apex points to the
   hinge side.
 
+## Lifts, ramps, railings, shafts, openings and roofs
+
+- **Lift:** the shaft outline (medium line), the car as a thin rectangle with a diagonal cross, the counterweight as a
+  grey block behind the car and a two-panel sliding landing door in front of it. Without counterweight or door the car
+  takes the space.
+- **Ramp:** outline, a walking line from a start circle to an arrow pointing up the slope (`down` reverses it) and the
+  slope in percent above it. Upright boxes run along y.
+- **Railing:** a point object like walls and pipes (corners, extending, rails per segment for snapping); posts are
+  small filled dots at every vertex and evenly spaced at about `spacing` real millimetres in between.
+- **Shaft / slab opening:** rectangle with a solid diagonal cross (shaft) or dashed diagonals (opening in the slab, void).
+- **Roof plan:** the eaves outline and the ridge; a hip roof adds the four hips at 45° in plan, i.e. equal pitches on
+  all faces, so its ridge runs along the longer side and is (length − width) long, a square gives a pyramid roof. Fall
+  arrows point down each face. The ridge of a gable roof can run along either side.
+
+None of these overlap with the building services or maps modules, so they carry no `Alternative`.
+
+## Room values
+
+Rooms are elements with values (`IValueType`, see the engineering calculations design): floor area `A` (m²), room
+height `h` (m) and volume `V` (m³) with the relation V = A·h. The area comes from the outline: the room reports a
+relation of its own (`IValueLinks`, "Floor area from the outline at the plan scale") that sets `A` to the polygon
+area times the plan scale squared (own `scale`, else `DocumentSettings.PlanScale`, else 1:100). The height is the
+optional number parameter `height` (m) without a default value, so that the value default h = 2.5 m applies until a
+height or a volume is entered; an entered volume (text parameter `volume`, e.g. "33 m³") then gives the height. An
+entered area that contradicts the outline is reported as a conflict. `showValues` draws the values label below the
+room. Example: a 40 x 30 mm outline at 1:100 is 4 m x 3 m, A = 12 m², with h = 2.5 m V = 30 m³.
+
+The keys and quantities (`A` area, `h` length, `V` volume) are those of the building services' room values (air
+terminal), so a later cross-module join (`NetKeys`) can pass them on; Core was not changed for this.
+
 ## Context actions
 
 | Type | Actions |
@@ -109,6 +147,8 @@ steps).
 | Doors | flip hinge side, flip swing direction, wider/narrower (±125 mm; hinged leaves grow with the width), "Width…" (input, mm), align to wall |
 | Windows | flip hinge side, swap inside/outside, wider/narrower, "Width…" (input, mm), align to wall |
 | Stairs | reverse walking direction, more/fewer steps |
+| Lift, ramp, railing, shaft | counterweight, landing door; reverse direction, show slope; posts; diagonal cross |
+| Roof plan | roof shape ▾ (choice), fall arrows, outer walls below |
 | Room | "Name…" (input), show area, tinted floor |
 | Column, tree, pipe | shape ▾ / material ▾, kind ▾, medium ▾ (choices; the medium options show their line); pipe flow arrow |
 | Section marker, site boundary | flip view direction; closed, boundary markers |
@@ -134,6 +174,9 @@ explicit hatch lines, so every host can draw it natively. Walls and openings ren
 
 `tests/InventaSketch.Modules.Architecture.Tests` covers registration, bilingual names, every box item inside
 its box (also stretched) and point items near their points, wall joints (L, T, closed), endpoint snapping of
-walls, opening hubs on wall axes, room area, level texts, context actions and the JSON round trip;
+walls, opening hubs on wall axes, room area, level texts, context actions and the JSON round trip; `BuildingTests`
+covers lift, ramp (slope text in both languages, direction, upright), railing posts at the spacing and plan scale,
+shaft and opening diagonals, gable and hip roofs, and the room values (12 m² and 30 m³ for a known rectangle at 1:100,
+entered height, document and own plan scale, entered volume giving the height, conflicting area, values label, JSON);
 `DocumentAwareTests` covers align to wall, dependents, the document plan scale, input actions and view sizes. The gallery
 test writes `gallery/*.html` (all types, presets, joint study and a sample house in English and German).

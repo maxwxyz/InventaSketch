@@ -62,6 +62,7 @@ namespace InventaSketch.Modules.Architecture.Tests
             "arch.sanitary.wc", "arch.sanitary.washbasin", "arch.sanitary.shower", "arch.sanitary.bathtub",
             "arch.hvac.radiator", "arch.hvac.heatpump", "arch.hvac.boiler", "arch.hvac.pipe",
             "arch.site.north", "arch.site.level", "arch.site.section", "arch.site.boundary", "arch.site.parking", "arch.site.tree",
+            "arch.lift", "arch.ramp", "arch.railing", "arch.shaft", "arch.void", "arch.roof",
         };
 
         [Fact]

@@ -7,7 +7,8 @@ namespace InventaSketch.Modules.Architecture
 {
     /// <summary>
     /// Floor plans and building module: walls with mitred joints, rooms with area, doors, windows, stairs, columns,
-    /// beams, furniture, sanitary, heating/plumbing symbols and site marks. Schematic house planning (not BIM):
+    /// beams, lifts, ramps, railings, shafts, slab openings, roof plans, furniture, sanitary, heating/plumbing symbols and site
+    /// marks. Rooms carry the values floor area A (outline at the plan scale), height h and volume V = A·h. Schematic house planning (not BIM):
     /// every object is insertable without parameters; real dimensions are optional and converted with the plan
     /// scale (default 1:100). Electrical symbols live in the electrical module, dimensions in the annotation module.
     /// </summary>
@@ -15,7 +16,7 @@ namespace InventaSketch.Modules.Architecture
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
             new ObjectType[] { new WallType(), new RoomType(), new BeamType() }
-                .Concat(Openings.Types()).Concat(Stairs.Types()).Concat(Furniture.Types()).Concat(Symbols.Types()).ToList());
+                .Concat(Openings.Types()).Concat(Stairs.Types()).Concat(Building.Types()).Concat(Furniture.Types()).Concat(Symbols.Types()).ToList());
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
 
@@ -28,7 +29,7 @@ namespace InventaSketch.Modules.Architecture
         {
             new LibraryCategory(ArchCategories.Structure, new I18nText("Walls, rooms & structure", "Wände, Räume & Tragwerk"), Id, 10),
             new LibraryCategory(ArchCategories.Openings, new I18nText("Doors & windows", "Türen & Fenster"), Id, 20),
-            new LibraryCategory(ArchCategories.Stairs, new I18nText("Stairs", "Treppen"), Id, 30),
+            new LibraryCategory(ArchCategories.Stairs, new I18nText("Stairs, ramps & lifts", "Treppen, Rampen & Aufzüge"), Id, 30),
             new LibraryCategory(ArchCategories.Furniture, new I18nText("Furniture & kitchen", "Möbel & Küche"), Id, 40),
             new LibraryCategory(ArchCategories.Sanitary, new I18nText("Sanitary", "Sanitär"), Id, 50),
             new LibraryCategory(ArchCategories.Services, new I18nText("Heating & plumbing", "Heizung & Leitungen"), Id, 60),
@@ -86,6 +87,10 @@ namespace InventaSketch.Modules.Architecture
 
             // Stairs
             Add("stair.straight.down", "arch.stair.straight", "Straight stair (down)", "Treppe gerade (abwärts)", P(("down", true)), kw: new[] { "down", "abwärts", "basement", "keller" });
+            Add("railing.l", "arch.railing", "Railing (corner)", "Geländer (Ecke)", pts: new[] { new Vec2(-20, -15), new Vec2(-20, 15), new Vec2(20, 15) }, kw: new[] { "corner", "ecke", "gallery", "galerie" });
+
+            // Building elements
+            Add("roof.hip", "arch.roof", "Hip roof (plan)", "Walmdach (Aufsicht)", P(("kind", "hip")), kw: new[] { "hip", "walmdach", "walm" });
 
             // Furniture
             Add("bed.single", "arch.furniture.bed", "Single bed", "Einzelbett", P(("pillows", 1)), size: new Size2(9, 20), kw: new[] { "single", "einzelbett" });

@@ -8,7 +8,9 @@ namespace InventaSketch.Modules.Geometry
     /// <summary>
     /// Math &amp; geometry module for teaching and explanation slides: coordinate systems (2D, number line, 3D, polar),
     /// function graphs, points and vectors (components, addition), angles with measured values, triangles with their
-    /// classic constructions, circles (radius, tangent, Thales, unit circle), regular polygons and compass constructions.
+    /// classic constructions, circles (radius, tangent, Thales, unit circle, sector and segment), regular polygons, the theorem of
+    /// Pythagoras, compass constructions, solids in oblique view (cube, cylinder, cone, sphere, pyramid), Venn diagrams and
+    /// probability trees.
     /// Every element is drawn with native primitives and insertable without parameters (see docs/en/modules/geometry.md).
     /// The 2D coordinate system and the function graphs are offered by the charts module (one axis system for all charts):
     /// their items here step back while the charts module is registered (<see cref="LibraryItem.Alternative"/>); the types stay
@@ -24,6 +26,18 @@ namespace InventaSketch.Modules.Geometry
             new AngleMarkType(),
             new TriangleType(), new RegularPolygonType(), new CircleType(), new TangentType(), new ThalesType(), new UnitCircleType(),
             new PerpendicularBisectorType(), new AngleBisectorType(), new ParallelLinesType(),
+            new SectorType(), new PythagorasType(),
+            new SolidType("math.solid.cube", new I18nText("Cube (cuboid)", "Würfel (Quader)"), SolidType.Shape.Cube, new Size2(44, 44),
+                "cube", "cuboid", "box", "würfel", "quader", "prism", "prisma"),
+            new SolidType("math.solid.cylinder", new I18nText("Cylinder", "Zylinder"), SolidType.Shape.Cylinder, new Size2(36, 44),
+                "cylinder", "zylinder", "walze", "circular"),
+            new SolidType("math.solid.cone", new I18nText("Cone", "Kegel"), SolidType.Shape.Cone, new Size2(36, 42),
+                "cone", "kegel", "kreiskegel", "apex", "spitze"),
+            new SolidType("math.solid.sphere", new I18nText("Sphere", "Kugel"), SolidType.Shape.Sphere, new Size2(40, 40),
+                "sphere", "ball", "kugel", "equator", "äquator"),
+            new SolidType("math.solid.pyramid", new I18nText("Square pyramid", "Quadratische Pyramide"), SolidType.Shape.Pyramid, new Size2(40, 40),
+                "pyramid", "pyramide", "apex", "spitze"),
+            new VennType(), new ProbabilityTreeType(),
         });
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
@@ -41,6 +55,8 @@ namespace InventaSketch.Modules.Geometry
             new LibraryCategory(MathCategories.Angles, new I18nText("Angles", "Winkel"), Id, 40),
             new LibraryCategory(MathCategories.Figures, new I18nText("Figures & circles", "Figuren & Kreise"), Id, 50),
             new LibraryCategory(MathCategories.Constructions, new I18nText("Constructions", "Konstruktionen"), Id, 60),
+            new LibraryCategory(MathCategories.Solids, new I18nText("Solids", "Körper"), Id, 70),
+            new LibraryCategory(MathCategories.Stochastics, new I18nText("Sets & probability", "Mengen & Wahrscheinlichkeit"), Id, 80),
         };
 
         public IEnumerable<LibraryItem> Library => Items.Value;
@@ -123,11 +139,31 @@ namespace InventaSketch.Modules.Geometry
             Default("math.circle.tangent");
             Default("math.circle.thales");
             Default("math.circle.unit");
+            Default("math.arc.sector");
+            Add("math.arc.sector.segment", "math.arc.sector", "Circle segment", "Kreissegment (Kreisabschnitt)", P(("kind", "segment"), ("angle", 110.0), ("start", 35.0)),
+                kw: new[] { "segment", "chord", "kreissegment", "kreisabschnitt", "sehne" });
+            Default("math.shape.pythagoras");
 
             // Constructions.
             Default("math.construct.perpendicular");
             Default("math.construct.anglebisector");
             Default("math.lines.parallel");
+
+            // Solids (oblique view).
+            Default("math.solid.cube");
+            Add("math.solid.cuboid", "math.solid.cube", "Cuboid", "Quader", size: new Size2(56, 36), kw: new[] { "cuboid", "quader", "box" });
+            Default("math.solid.cylinder");
+            Default("math.solid.cone");
+            Default("math.solid.sphere");
+            Default("math.solid.pyramid");
+
+            // Sets & probability.
+            Default("math.venn.diagram");
+            Add("math.venn.diagram.three", "math.venn.diagram", "Venn diagram (three sets)", "Venn-Diagramm (drei Mengen)", P(("sets", 3)), new Size2(56, 52),
+                kw: new[] { "three", "drei" });
+            Default("math.tree.probability");
+            Add("math.tree.probability.dice", "math.tree.probability", "Probability tree (one stage, three outcomes)", "Baumdiagramm (einstufig, drei Ergebnisse)",
+                P(("levels", 1), ("branches", 3), ("e1", "1; 2; 3"), ("p1", "1/6; 1/3; 1/2")), new Size2(60, 36), kw: new[] { "one stage", "einstufig", "dice", "würfeln" });
 
             // The charts module offers the 2D coordinate system and the function graphs in math style (charts v2 stage 4):
             // these items step back while it is registered (no duplicates in galleries and search).
