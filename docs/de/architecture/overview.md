@@ -153,3 +153,12 @@ Getriebezugs (lineares Gleichungssystem aus Eingriff, Willis, Welle, Stufenrad, 
 `Assemblies` zerlegt vordefinierte Baugruppen in gekoppelte Einzelteile. `Linkage` erkennt selbst gebaute
 Koppelgetriebe (an Gelenken angedockte Glieder, Gestellpunkte, Schieber, Gleitsteine in Schlitzen anderer Glieder),
 berechnet ihren Freiheitsgrad und zieht sie bei konstanten Gliedlängen.
+
+## Werte über Modulgrenzen
+
+Elementwerte (`ValueSolver`) werden je Modulnetz gelöst (`ValueNets`, je Modul eine `NetSpec`) und dort verknüpft, wo
+eine Leitung eines Moduls an einem Element oder einer Leitung eines anderen andockt: Die Netze halten diese
+Übergangsstellen fest, und der Löser verknüpft Größen mit gleichem physikalischem Schlüssel und gleicher Größenart
+(`NetKeys`: U, I, P, f, n, T, V̇, ṁ, p, θ). Verbindungsmedien, die dasselbe physikalische Medium aus zwei Modulen
+benennen, passen über eine kleine Gleichsetzungstabelle (`PortMedia.Equivalents`). Die Module bleiben unabhängig: Sie
+teilen nur Schlüsselnamen und Medien-IDs, nie Code. Einzelheiten: engineering-calculations.md, Abschnitt 6.1.

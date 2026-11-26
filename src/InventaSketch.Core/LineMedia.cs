@@ -52,8 +52,9 @@ namespace InventaSketch.Core
         /// by colours: L1 brown, L2 black, L3 grey, neutral and mid-point conductor blue, protective conductor green-yellow;
         /// a PEN conductor is green-yellow with blue marks at its ends). Pipeline colours by fluid follow the group colours of
         /// DIN 2403 (water green, steam red, air grey, flammable gases yellow, acids orange, alkalis violet, flammable liquids
-        /// brown, oxygen blue). Everything else is common practice and marked "convention": DC polarity, bus and signal lines,
-        /// heating flow/return, domestic water, air kinds and hydraulic pressure/return/pilot/drain lines.
+        /// brown, oxygen blue; compressed air takes the air colour). Everything else is common practice and marked "convention":
+        /// DC polarity, bus and signal lines, heating flow/return, domestic water, air kinds, refrigerant, vacuum, optical fibre
+        /// and hydraulic pressure/return/pilot/drain lines.
         /// </summary>
         public static readonly IReadOnlyList<MediumColour> Scheme = new[]
         {
@@ -87,6 +88,10 @@ namespace InventaSketch.Core
             C("air.outdoor", "Outdoor air", "Außenluft", "#2e7d32", Convention),
             C("air.exhaust", "Exhaust air", "Fortluft", "#6d4c41", Convention),
             C("gas", "Flammable gas (natural gas, hydrogen)", "Brennbares Gas (Erdgas, Wasserstoff)", "#fbc02d", Din2403),
+            C("air.compressed", "Compressed air", "Druckluft", "#9e9e9e", Din2403),
+            C("refrigerant", "Refrigerant", "Kältemittel", "#827717", Convention),
+            C("vacuum", "Vacuum", "Vakuum", "#455a64", Convention),
+            C("optical", "Optical fibre", "Lichtwellenleiter", "#00acc1", Convention),
             // Fluid power (convention)
             C("pressure", "Pressure line (P)", "Druckleitung (P)", "#d32f2f", Convention),
             C("tank", "Return line (T)", "Rücklaufleitung (T)", "#1976d2", Convention),
@@ -185,6 +190,7 @@ namespace InventaSketch.Core
             if (medium == PortMedia.Heat) return "heat";
             if (medium == PortMedia.Cooling) return "cooling";
             if (medium == PortMedia.Gas || medium == PortMedia.Hydrogen) return "gas";
+            if (medium == PortMedia.Refrigerant || medium == PortMedia.Vacuum || medium == PortMedia.Optical) return medium;
             if (medium.StartsWith(PortMedia.Air + ".", StringComparison.Ordinal)) return medium;
             return null;
         }

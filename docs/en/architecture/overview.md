@@ -135,3 +135,11 @@ part is placed facing it (robot flange → tool). `GearTrain` solves the angular
 (linear system over mesh, Willis, shaft, compound, belt, bevel pair and fixed constraints) and turns it; `Assemblies` explodes
 predefined assemblies into coupled parts. `Linkage` recognises self-built linkages (links docked on joints, fixed pivots,
 sliders, pins in the slots of other links), computes their degree of freedom and drags them with constant link lengths.
+
+## Values across modules
+
+Element values (`ValueSolver`) are solved per module net (`ValueNets`, one `NetSpec` per module) and joined where a line
+of one module docks on an element or line of another: the nets record these junctions, and the solver links variables of
+the same physical key and quantity kind (`NetKeys`: U, I, P, f, n, T, V̇, ṁ, p, θ). Connection media that name the same
+physical medium from two modules fit through a small equivalence table (`PortMedia.Equivalents`). Modules stay
+independent: they share only key names and media ids, never code. Details: engineering-calculations.md, section 6.1.

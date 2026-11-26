@@ -617,6 +617,73 @@ grip, and the link shows as a chain pictogram in the chart's bar with "Linked to
 a chain is the connected component of the selection. The background pass covers the slide. Nothing propagates across
 slides in the first versions.
 
+### 6.1 Joins across modules (Core, 2026-11-26)
+
+Each module builds its own nets (`ValueNets`, one `NetSpec` per module: Energy, Fluid, Process, Building services). Where a
+net reaches an element or a line of **another module** – the type id prefix differs from `NetSpec.Prefix` and the module
+gives no variable of that class there – the net records a **junction** (`ValueNets.Junctions`, `NetJunction`). The nets'
+own relations ignore junctions, so a drawing whose lines stay inside one module solves exactly as before.
+
+The solver (`ValueSolver`, step 1b) links junctions by a shared **physical key** (`NetKeys`):
+
+| Key | Quantity kind | Net classes read as the key | Variables looked up on an element without nets |
+|---|---|---|---|
+| `U` | voltage | `U`, `Uac` (energy AC), `Ustr` (string MPP voltage) | `U` |
+| `I` | current | `I` | `I` |
+| `P` | power | `P`, `Pac`, `Pdc` | `Pel`, then `P` |
+| `f` | frequency | `f` | `f` |
+| `n` | speed of rotation | `n` | `n` |
+| `T` | torque | `T` | `T` |
+| `Vdot` | volume flow | `Vdot`, `Q` (fluid power) | `Vdot`, `Q` |
+| `m` | mass flow | `m` | `m` |
+| `p` | pressure | `p` | `p` |
+| `theta` | temperature | `theta` | `theta` |
+
+- **Which variable of the foreign element.** If the foreign element's module has nets in the same solver pass, its own
+  `NetSpec.PortVars` name the variable at that port (a radiator's flow port gives `thf` for `theta`); exactly one must
+  match, otherwise nothing is linked. Otherwise (Electrical, Machines, Mechanical, Switchgear have no `NetSpec`) the first
+  variable of the key's list that the element has is taken (`Pel` before `P`, so a motor joins with its electrical side).
+- **Quantity check.** Every member of the net and the foreign variable must have the key's quantity kind; one mismatch
+  and the junction is left alone.
+- **Rules, conservatively.** A shared value (`NetRule.Equal`: voltage, pressure) joins the whole net. Flows, sums and
+  spreads join only an unbranched run with at most two elements in all (as `ValueNets` itself does); a branched sum (a
+  busbar with feeders) is not split across modules.
+- **Limits stay inside.** Classes without a key (`UocMax`, `UmppMin`, `Isc`, `pmax`) are never joined.
+- **Scope.** Lines of another module docked on an element in scope bring that module's elements with values into the
+  scope (following its lines docked on each other), so a value label of one lamp finds the PV string feeding it. The
+  relation is `net.cross.<key>` ("… passed on between modules"), values count as *linked*.
+- **Media** are checked when lines are built (`PortMedia.Fits`, with the equivalences below); the value join itself relies
+  on the docking, the key and the quantity kind.
+
+Tested with the default catalogue (`tests/InventaSketch.Engine.Tests/CrossModuleValueTests.cs`): a PV string feeding an
+electrical lamp through an energy cable (U = U_mpp,S, P = string power; I and R from the lamp's own relations), a process
+line passing V̇ and θ to a radiator, a building-services pipe on a process pump taking its V̇, and a busbar net that
+shares U but not the summed P. The drive shaft of a machine and a mechanical shaft were already joined through
+`Coupling` (Machines `EMachineOnAShaftDrivesAGearStage`).
+
+**Medium equivalences** (`PortMedia.Equivalents`, used by `PortMedia.Fits` only; `Covers` stays a prefix test):
+`thermal.heat` ≡ `heating` (heating flow and return still never fit each other, cooling never fits heating),
+`process.water` ≡ `water`, `process.air` ≡ `air`, `process.gas` ≡ `gas`, `process.hydrogen` ≡ `hydrogen` (hydrogen is not
+natural gas), `process.refrigerant` ≡ `refrigerant`, `process.vacuum` ≡ `vacuum`, `air.compressed` ≡ `fluid.pneumatic`.
+New media ids: `air.compressed`, `refrigerant`, `vacuum`, `optical` (fibre, separate from copper `data`), `mech.shaft`
+(vocabulary for shaft ends; shafts dock geometrically through hubs). The colour scheme "by medium" has entries for the
+first four (compressed air in the DIN 2403 air colour, the others marked convention).
+
+**What modules can adopt** to benefit (not changed here, other modules' files):
+
+- Process: declare port media by fluid where known (`process.water`, `process.air`, `process.gas`, `process.steam`, …)
+  instead of plain `process`, and add `theta` at pump ports (`Through` already passes it).
+- Fluid: pneumatic ports and lines as `fluid.pneumatic` (then compressed-air plant lines fit them); Fluid's `Q` is read as
+  volume flow already.
+- Building services: a cooling medium (`thermal.cooling` or `refrigerant`) for chillers/split units; heat pump ports may
+  declare `refrigerant` for the refrigerant circuit.
+- Energy: give the heat ports values (`Vdot`, `theta`) and add the heat pipe (`energy.line.pipe.heat`) to `IsLine` so
+  energy heat nets join building heating; consider `NetSpec.Keys` to state the keys explicitly.
+- Electrical / Switchgear: either a `NetSpec` with `PortVars` (pins with `U`, `I`, `P`) or keep the plain names `U`, `I`,
+  `P` on elements fed by other modules' lines; a motor's electrical input as `Pel`.
+- Machines / Mechanical: shaft ends may declare `PortMedia.MechShaft` for build "+" offers; values already pass through
+  `Coupling`.
+
 ---
 
 ## 7. Implementation plan
