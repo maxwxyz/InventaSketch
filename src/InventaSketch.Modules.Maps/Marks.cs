@@ -62,6 +62,8 @@ namespace InventaSketch.Modules.Maps
                 Params = new[] { LengthDef, UnitDef, SegmentsDef, StyleDef },
                 Uniform = false,
                 CompanionIds = new[] { NorthArrow.TypeId, Compass.TypeId, Legend.TypeId },
+                // Routes on the page measure their length with this scale bar; those showing their values redraw with it.
+                MoreDependents = RoutesShowingValues,
                 Extra = (o, lang) => new[]
                 {
                     ContextAction.WithInput("map.scalebar.length", new I18nText("Length…", "Länge…"), IconIds.QtyLength,
@@ -78,6 +80,15 @@ namespace InventaSketch.Modules.Maps
                 }.Concat(Prm.Choice(o, "map.scalebar.unit", UnitDef, new I18nText("Unit", "Einheit")))
                     .Concat(Prm.Choice(o, "map.scalebar.style", StyleDef, new I18nText("Style", "Stil"))),
             };
+        }
+
+        /// <summary>The routes on the page of the scale bar that show their values label.</summary>
+        private static IEnumerable<string> RoutesShowingValues(SketchObject o, RenderContext ctx)
+        {
+            var page = ctx.Doc.PageOf(o.Id);
+            if (page is null) yield break;
+            foreach (var x in ctx.Doc.ObjectsOn(page))
+                if (x.Type == RouteType.TypeId && ValueLabels.Shows(x)) yield return x.Id;
         }
 
         /// <summary>
@@ -249,7 +260,7 @@ namespace InventaSketch.Modules.Maps
             };
         }
 
-        private static readonly string[] FamilyOrder = { "route", "marker", "stop", "poi", "road", "rail", "river", "region", "place" };
+        private static readonly string[] FamilyOrder = { "route", "marker", "stop", "station", "poi", "road", "bridge", "tunnel", "rail", "river", "region", "contour", "place" };
 
         /// <summary>The entries the legend shows (manual text, page content or defaults), at most 16.</summary>
         public static IReadOnlyList<Entry> Entries(SketchObject o, RenderContext ctx)
@@ -297,6 +308,10 @@ namespace InventaSketch.Modules.Maps
                 case RegionType.TypeId: key = "region." + x.Str("kind", "area"); break;
                 case MarkerType.TypeId: key = "marker." + x.Str("kind", "start"); break;
                 case StopType.TypeId: key = "stop"; break;
+                case StationType.TypeId: key = "station." + x.Str("kind", "rail"); break;
+                case BridgeType.TypeId: key = "bridge"; break;
+                case TunnelType.TypeId: key = "tunnel"; break;
+                case ContourType.TypeId: key = "contour"; break;
                 case PoiType.TypeId: key = "poi." + x.Str("kind", "pin"); break;
                 case RouteType.TypeId:
                     {
@@ -323,6 +338,10 @@ namespace InventaSketch.Modules.Maps
                 "region" => Prm.OptionLabel(RegionType.KindDef, v),
                 "marker" => Prm.OptionLabel(MarkerType.KindDef, v),
                 "stop" => new I18nText("Stop", "Halt"),
+                "station" => Prm.OptionLabel(StationType.KindDef, v),
+                "bridge" => new I18nText("Bridge", "Brücke"),
+                "tunnel" => new I18nText("Tunnel", "Tunnel"),
+                "contour" => new I18nText("Contour line", "Höhenlinie"),
                 "poi" => Prm.OptionLabel(PoiType.KindDef, v),
                 "place" => Prm.OptionLabel(Place.RankDef, v),
                 _ => new I18nText(key),
@@ -369,6 +388,10 @@ namespace InventaSketch.Modules.Maps
                 "region" => PointSample(RegionType.TypeId, new[] { new Vec2(0, -3), new Vec2(12, -3), new Vec2(12, 3), new Vec2(0, 3) }, ("kind", v.Length == 0 ? "area" : v)),
                 "marker" => BoxSample(MarkerType.TypeId, "pin", ("kind", v.Length == 0 ? "start" : v)),
                 "stop" => BoxSample(StopType.TypeId, null),
+                "station" => StationType.Sample(v, cell),
+                "bridge" => PointSample(BridgeType.TypeId, line),
+                "tunnel" => PointSample(TunnelType.TypeId, line),
+                "contour" => PointSample(ContourType.TypeId, line, ("label", false), ("smooth", false)),
                 "poi" => BoxSample(PoiType.TypeId, "symbol", ("kind", v.Length == 0 ? "pin" : v)),
                 "place" => new Primitive[] { Prim.Circle(center.X, center.Y, Math.Min(cell.H * 0.25, 1.4), S.Black) },
                 _ => new Primitive[] { Prim.Circle(center.X, center.Y, Math.Min(cell.H * 0.18, 0.9), S.Black) },

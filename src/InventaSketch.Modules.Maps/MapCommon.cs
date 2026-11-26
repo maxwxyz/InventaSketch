@@ -54,6 +54,12 @@ namespace InventaSketch.Modules.Maps
         public const string Sample = "sample";
         public const string Tail = "tail";
         public const string Dot = "dot";
+        /// <summary>Land-coloured cover over a road section (tunnel); keeps its colour under style overrides.</summary>
+        public const string Mask = "mask";
+        public const string Parapet = "parapet";
+        public const string Portal = "portal";
+        public const string Contour = "contour";
+        public const string Station = "station";
     }
 
     /// <summary>
@@ -415,6 +421,40 @@ namespace InventaSketch.Modules.Maps
                 best = Math.Min(best, p.DistanceTo(q));
             }
             return best;
+        }
+
+        /// <summary>Arc length along <paramref name="line"/> of the point closest to <paramref name="p"/> and its distance.</summary>
+        public static (double S, double Distance) Project(IReadOnlyList<Vec2> line, Vec2 p)
+        {
+            if (line.Count == 0) return (0, double.MaxValue);
+            if (line.Count == 1) return (0, p.DistanceTo(line[0]));
+            double best = double.MaxValue, bestS = 0, acc = 0;
+            for (var i = 0; i + 1 < line.Count; i++)
+            {
+                var (q, _) = Geo.ClosestOnSegment(p, line[i], line[i + 1]);
+                var d = p.DistanceTo(q);
+                if (d < best) { best = d; bestS = acc + line[i].DistanceTo(q); }
+                acc += line[i].DistanceTo(line[i + 1]);
+            }
+            return (bestS, best);
+        }
+
+        /// <summary>The part of a polyline between arc lengths <paramref name="s0"/> and <paramref name="s1"/> (reversed when s1 &lt; s0).</summary>
+        public static List<Vec2> SubLine(IReadOnlyList<Vec2> line, double s0, double s1)
+        {
+            var reverse = s1 < s0;
+            if (reverse) (s0, s1) = (s1, s0);
+            var result = new List<Vec2> { At(line, s0).P };
+            double acc = 0;
+            for (var i = 0; i + 1 < line.Count; i++)
+            {
+                acc += line[i].DistanceTo(line[i + 1]);
+                if (acc > s0 + 1e-9 && acc < s1 - 1e-9) result.Add(line[i + 1]);
+            }
+            result.Add(At(line, s1).P);
+            var clean = Dedupe(result);
+            if (reverse) clean.Reverse();
+            return clean;
         }
 
         /// <summary>Text rotation (degrees, clockwise) along a direction, kept upright (between -90 and 90).</summary>

@@ -242,9 +242,22 @@ namespace InventaSketch.Modules.Automotive
                 Views.SymbolV(10, 10, Draw) with { Anchors = (p, o) => new[] { Anchor.Point(AnchorRole.Port, Vec2.Zero, "point") } });
         }
 
+        /// <summary>
+        /// The label text: the TTC computed from the entered gap and speeds ("TTC = 1.8 s", "TTC = ∞" when the ego vehicle
+        /// is not closing in), else the TTC parameter.
+        /// </summary>
+        public static string TtcText(SketchObject o)
+        {
+            var computed = AutoValues.EnteredTtc(o);
+            if (computed is double c) return double.IsPositiveInfinity(c) ? "TTC = ∞" : "TTC = " + Math.Min(c, 999).ToString("0.0", CultureInfo.InvariantCulture) + " s";
+            return "TTC = " + Geo.Clamp(o.Num("ttc", 2.4), 0, 99).ToString("0.0", CultureInfo.InvariantCulture) + " s";
+        }
+
         private static AutoType Ttc()
         {
-            var ttc = Prm.Num("ttc", "Time to collision", "Zeit bis zur Kollision", 2.4, 0, 99, "s", 0.1);
+            // No default value: an inserted label shows 2.4 s, but the TTC counts as entered only once it is set, so it can
+            // follow from entered speeds and gap.
+            var ttc = Prm.Num("ttc", "Time to collision", "Zeit bis zur Kollision", 2.4, 0, 99, "s", 0.1) with { Default = null };
             var frame = Prm.Bool("frame", "Frame", "Rahmen", true);
             void Draw(Pen p, SketchObject o)
             {
@@ -253,14 +266,17 @@ namespace InventaSketch.Modules.Automotive
                 p.Line(-13.2, -1.9, -13.2, -2.9, S.Fine, "watch");
                 p.Line(-14.0, -2.9, -12.4, -2.9, S.Fine, "watch");
                 p.Line(-13.2, 0.5, -12.1, -0.6, S.Fine, "watch");
-                var text = o.Text ?? "TTC = " + Geo.Clamp(o.Num("ttc", 2.4), 0, 99).ToString("0.0", CultureInfo.InvariantCulture) + " s";
+                var text = o.Text ?? TtcText(o);
                 p.Text(-10, 0, text, 4.5, 26, 7, TextAnchor.Start);
             }
             return new AutoType("auto.motion.ttc", T("TTC label", "TTC-Angabe"), AutoCategories.Motion,
                 new[] { "ttc", "time to collision", "label", "criticality", "zeit bis zur kollision", "kritikalität", "angabe" },
                 Views.SymbolV(34, 9, Draw))
             {
-                Params = new[] { ttc, frame },
+                Params = new[] { ttc, frame }.Concat(AutoValues.TtcParams).ToList(),
+                ValueVars = AutoValues.TtcVars,
+                ValueRelations = AutoValues.TtcRelations,
+                Checks = AutoValues.TtcChecks,
                 TextEditable = true,
                 Extra = o => Prm.PlusMinus("ttc", 2.4, 0, 99, 0.5, false, T("Increase TTC", "TTC erhöhen"), T("Decrease TTC", "TTC verringern"), "param"),
             };

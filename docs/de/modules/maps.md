@@ -1,7 +1,8 @@
 # Modul Karten & Routen (`maps`)
 
-Schematische Kartenskizzen für Folien: Kartenrahmen, Gebiete, Ortsbeschriftungen, Straßen, Bahnstrecken und
-Gewässer, eine Route mit Wegpunkten und Richtungspfeilen, Start-/Zielmarker, nummerierte Halte, Orte von Interesse
+Schematische Kartenskizzen für Folien: Kartenrahmen, Gebiete, Höhenlinien, Ortsbeschriftungen, Straßen, Bahnstrecken
+und Gewässer, Stationen auf Linien, Brücken und Tunnel auf Straßen, eine Route mit Wegpunkten, Richtungspfeilen und
+Werten (Länge im Kartenmaßstab, Geschwindigkeit, Reisezeit), Start-/Zielmarker, nummerierte Halte, Orte von Interesse
 (POI), Entfernungs-/Zeitangaben, Maßstabsleiste, Nordpfeil, Windrose und Legende. Es ist **kein GIS**: Hinter der
 Zeichnung stehen keine geografischen Koordinaten, Kartenprojektionen oder importierten Kartendaten, nur gut
 gezeichnete, editierbare Symbole. (Der Import von GeoJSON/GPX/KML aus der Spezifikation ist nicht Teil dieses Moduls.)
@@ -21,7 +22,11 @@ Seitenkoordinaten.
 | `map.road` | Road / Straße | Punkte (Achse) | Karte | `kind` Autobahn (4,2 mm, Mittellinie), Hauptstraße (3 mm), Nebenstraße (2 mm), Weg (gestrichelte Linie); `smooth`, `bridge`, optional `width`; Text = Straßennummer (Schild bei Autobahn/Hauptstraße) oder Name |
 | `map.rail` | Rail line / Bahnstrecke | Punkte | Karte | `kind` Eisenbahn (schwarz-weißes Band) oder Straßenbahn (Linie mit Schwellen); `smooth`; Text = Name |
 | `map.river` | River / Fluss | Punkte | Karte | `kind` Fluss (Band mit Wasserlinien), Bach (Linie), Kanal (gerades Band); `smooth` (Standard an); optional `width`; kursiver Name |
-| `map.route` | Route / Route | Punkte | Karte | `style` durchgezogen / gestrichelt (Alternative) / gepunktet (Fußweg), `arrows` entlang / am Ende / keine, `waypoints` (Punkte), `smooth`, `width`; weißer Halo; Text = Routenbeschriftung |
+| `map.route` | Route / Route | Punkte | Karte | `style` durchgezogen / gestrichelt (Alternative) / gepunktet (Fußweg), `arrows` entlang / am Ende / keine, `waypoints` (Punkte), `smooth`, `width`; weißer Halo; Text = Routenbeschriftung; Werte: `mode` zu Fuß / Fahrrad / Auto, `speed`, `length`, `time`, `scale` (1:N), `showValues` (siehe „Routenwerte“) |
+| `map.station` | Station / Station | Box | Symbol | `kind` Bahnhof (weiße Scheibe, schwarzer Ring), Umsteigebahnhof (weiße Kapsel), Straßenbahnhaltestelle (kleiner Ring), Bushaltestelle (dunkles Symbol mit Bus-Piktogramm); `name`; Text = Stationsname (Standard: die Art in der UI-Sprache), über der Linie rechts vom Symbol |
+| `map.bridge` | Bridge / Brücke | Punkte (Abschnitt einer Straße) | Karte | folgt der Straße unter ihren Endpunkten (auch um Kurven) mit deren Breite und Farben: Fahrbahn, Ränder und Brüstungen mit ausgestellten Flügeln; optional `width` (ohne Straße: 3 mm); Text = Name |
+| `map.tunnel` | Tunnel / Tunnel | Punkte (Abschnitt einer Straße) | Karte | wie die Brücke: der Abschnitt wird in Landfarbe abgedeckt, Ränder gestrichelt, Portalzeichen an beiden Enden; optional `width`; Text = Name |
+| `map.contour` | Contour line / Höhenlinie | Punkte (offen oder geschlossen) | Karte | `elevation` (m), `index` (Zählkurve, kräftiger), `smooth` (Standard an), `closed` (Kuppe oder Senke), `label` (Höhe aufrecht in eine Lücke der Linie geschrieben) |
 | `map.marker` | Route marker / Routenmarker | Box | Stecknadel, Symbol | `kind` Start (Startdreieck), Ziel (Zielflagge), Zwischenziel (helle Nadel); Text ersetzt das Piktogramm (z. B. „A“, „B“) |
 | `map.stop` | Numbered stop / Nummerierter Halt | Box | Symbol | `number`, `shape` Kreis / Quadrat; Text ersetzt die Nummer |
 | `map.callout` | Distance/time callout / Entfernungs-/Zeitangabe | Box | Karte | `distance` + `unit` (km, mi, m), `time` (Minuten, angezeigt als „1 h 35 min“), `mode` Auto / zu Fuß / Fahrrad / ÖPNV / keins, `tail` links / rechts / keiner; Text ersetzt die beiden Zeilen |
@@ -37,6 +42,48 @@ Ansichten tragen abstrakte Icons: `plan` verwendet `IconIds.Plan`, `symbol` `Ico
 Piktogramme (POIs, Marker, Verkehrsmittel) sind eigenständig aus einfachen Primitiven gezeichnet; es wird kein
 Icon-Satz Dritter verwendet. Das Krankenhaus zeigt ein „H“, bewusst nicht das Rote-Kreuz-Zeichen (nach den Genfer
 Abkommen geschützt).
+
+## Routenwerte und Kartenmaßstab (26.11.2026)
+
+Eine Route ist ein Werteelement (`IValueType`): **Routenlänge `s`** (km), **mittlere Geschwindigkeit `v`** (km/h) und
+**Reisezeit `t`** (min) mit der Beziehung `map.route.time`: t = s / v (Definition der mittleren Geschwindigkeit, Quelle
+S2), nach jeder der drei auflösbar. „Werte zeigen“ (`showValues`, Bibliothekseintrag „Route mit Länge und Reisezeit“)
+zeichnet „s = 4,72 km, v = 50 km/h, t = 5,66 min“ unter die Route.
+
+- **Länge:** die gezeichnete Länge (bei glatter Route entlang der Kurve) mal Kartenmaßstab, sofern keine Länge
+  eingegeben ist (eine Skizze ist selten maßstäblich; die eingegebene Straßenentfernung gewinnt). Die Karte hat keinen
+  eigenen Maßstab; er kommt in dieser Reihenfolge aus dem Parameter `scale` der Route (Kartenmaßstab 1:N), aus der
+  **ersten Maßstabsleiste der Seite** (ihre Boxbreite stellt ihre Länge dar; km, mi, m und ft werden umgerechnet) oder
+  aus dem Planmaßstab des Dokuments. Ohne all das bleibt die Länge (und damit die Reisezeit) unbekannt, bis sie
+  eingegeben wird.
+- **Geschwindigkeit:** die Vorgabe des Verkehrsmittels `mode` – zu Fuß 5 km/h, Fahrrad 15 km/h, Auto 50 km/h (übliche
+  Planungswerte, keine Norm) –, sofern keine Geschwindigkeit eingegeben ist oder eine eingegebene Zeit mit bekannter
+  Länge sie bestimmt. „Fußweg (gepunktet)“ ist auf zu Fuß voreingestellt, „Radroute“ auf Fahrrad.
+- **Reisezeit:** abgeleitet; eine eingegebene Zeit ergibt die Geschwindigkeit (oder mit der Vorgabe des Verkehrsmittels
+  die Länge).
+- Die Route hängt von Nachbarn ab (sie liest die Maßstabsleiste); die Maßstabsleiste meldet die Routen ihrer Seite, die
+  ihre Werte zeigen, als abhängige Objekte (`HasDependents`), sodass eine geänderte Leiste deren Beschriftung neu zeichnet.
+- Das Verkehrsmittel ist eine Auswahl in der schwebenden Leiste. Options-Piktogramme (Fußgänger, Fahrrad, Auto) brauchen
+  neue Ids im gemeinsamen `IconIds`-Vokabular (Core) und Zeichnungen in den Hosts; bis dahin werden die Optionen als Text
+  gezeigt.
+
+## Stationen, Brücken, Tunnel und Höhenlinien (26.11.2026)
+
+- **Station** (`map.station`): Die Symbolmitte ist ein `Port` (`loc`), der an beliebiger Stelle auf eine Bahnstrecke,
+  Straße oder Route andockt; der Name steht über der Linie, damit sie ihn nicht kreuzt. Stationen auf einer Route zählen
+  im Routenhalte-Export als Halte (Art „Station: Bahnhof“ …).
+- **Brücke / Tunnel** (`map.bridge`, `map.tunnel`): zwei Punkte (bei gekrümmten Abschnitten mehr), deren Enden auf eine
+  Straße andocken (Rail-Regel). Der Abschnitt folgt der Achse der Straße darunter zwischen den Lotfußpunkten seiner
+  Enden und übernimmt ihre Breite (Autobahn 4,2 mm, Hauptstraße 3 mm …). Die Brücke zeichnet die Fahrbahn in der
+  Straßenfarbe mit den Randlinien der Straße, sodass die Straße über ein darüber gezeichnetes Gewässer oder eine Bahn
+  führt, dazu Brüstungen 0,5 mm außerhalb der Ränder mit ausgestellten Flügeln. Der Tunnel deckt den Abschnitt in
+  Landfarbe ab (`MapTags.Mask`, bleibt bei Stil-Überschreibungen erhalten), zeichnet gestrichelte Ränder und an beiden
+  Enden einen Portalbalken mit Ohren. Beide hängen von Nachbarn ab; eine Straße meldet die Brücken und Tunnel in ihrer
+  Nähe als abhängige Objekte. (Der Schalter `bridge` der Straße bleibt für eine Straße über andere Straßen.)
+- **Höhenlinie** (`map.contour`): glatte Punktlinie in Geländefarbe, offen oder geschlossen; die Höhe („250“, ohne
+  Einheit wie auf Karten) steht aufrecht in einer Lücke in der Mitte der Linie (die Linie wird um die Beschriftung
+  geschnitten, eine native Freihandform). Die Linie ist eine Rail. Bibliothek: Höhenlinie, Zählkurve (500 m), Kuppe
+  (geschlossene Höhenlinie).
 
 ## Straßen und Knotenpunkte
 
@@ -60,6 +107,8 @@ anderen (über die gekreuzten Straßen legen). Straßen melden `DependsOnNeighbo
   oder auf den Port eines Markers/Halts/POIs; ein auf einen Port angedockter Punkt wird angeheftet (`Attachment` mit
   Anker-Id `loc`) und folgt dem Symbol, wenn es verschoben wird.
 - Gebiete bieten ihren Schwerpunkt als `Center`-Punkt an (für Beschriftungen und POIs).
+- Stationen bieten ihre Symbolmitte als `Port` `loc` an, Brücken und Tunnel ihre Enden als `End`-Punkte, Höhenlinien
+  ihre Linie als `Rail`-Segmente.
 
 ## Kontextaktionen
 
@@ -67,7 +116,9 @@ anderen (über die gekreuzten Straßen legen). Straßen melden `DependsOnNeighbo
 |---|---|
 | Straße | Straßenart ▾ (Auswahl: Autobahn, Hauptstraße, Nebenstraße, Weg; die aktuelle markiert), glatte Kurve, Brücke |
 | Bahn, Gewässer | Linien-/Gewässerart ▸, glatte Kurve |
-| Route | Routenstil ▸ (durchgezogen → gestrichelt → gepunktet), Richtungspfeile ▸, Wegpunkte zeigen, glatte Kurve, Richtung umkehren |
+| Route | Routenstil ▸ (durchgezogen → gestrichelt → gepunktet), Richtungspfeile ▸, Verkehrsmittel ▾ (zu Fuß, Fahrrad, Auto), Wegpunkte zeigen, glatte Kurve, Richtung umkehren |
+| Station | Name zeigen, Stationsart ▾ |
+| Höhenlinie | „Höhe…“ (Eingabe: `250`, `1250,5 m`), Zählkurve, Höhenangabe, glatte Kurve |
 | Gebiet | Flächenart ▸, Füllung ▸ (Farbton → Schraffur → keine), glatter Umriss |
 | Marker, POI | Marker ▸ / Ortsart ▸ |
 | Halt | Nummer +1 / −1 (nicht unter 0), Form ▾ |
@@ -104,9 +155,10 @@ Die Einträge stammen in dieser Rangfolge aus
 1. dem **Text** des Objekts: ein Eintrag pro Zeile, optional mit Musterschlüssel in eckigen Klammern
    (`[road.motorway] A8`, `[poi.parking] P+R`; Zeilen ohne Schlüssel erhalten einen Punkt). Schlüssel: `route`,
    `route.dashed`, `route.dotted`, `road.<kind>`, `rail.<kind>`, `river.<kind>`, `region.<kind>`, `marker.<kind>`,
-   `stop`, `poi.<kind>`, `place.<rank>`;
+   `stop`, `station.<kind>`, `bridge`, `tunnel`, `contour`, `poi.<kind>`, `place.<rank>`;
 2. den **Kartenobjekten derselben Seite** (`auto`, Standard): Routen (Routentext als Beschriftung), Marker, Halte,
-   POIs, Straßen, Bahn, Gewässer und Gebiete, jede Art einmal, zweisprachig beschriftet, höchstens 16;
+   Stationen, POIs, Straßen, Brücken, Tunnel, Bahn, Gewässer, Gebiete und Höhenlinien, jede Art einmal, zweisprachig
+   beschriftet, höchstens 16;
 3. einem Standardsatz (Route, Autobahn, Hauptstraße, Start, Ziel, Ort), wenn beides nicht greift.
 
 Die Muster werden von den echten Kartentypen gezeichnet (in die Musterzelle eingepasst), die Legende passt also
@@ -119,7 +171,8 @@ Jede Vollfüllung ist eindeutig dunkel (Leuchtdichte < 0,3, wird schwarz) oder e
 POI-/Marker-/Halt-Symbole werden schwarz mit weißem Piktogramm, der Zwischenziel-Marker weiß mit schwarzem
 Piktogramm. Linienobjekte bleiben über Breite, Strichelung und Aufbau unterscheidbar (Autobahn-Mittellinie,
 Bahnband, Wasserlinien). Gebiete ersetzen ihren Farbton durch die Schraffur ihrer Art (Wald: Punkte), wenn das
-Dokument oder der Render-Kontext schwarz-weiß ist.
+Dokument oder der Render-Kontext schwarz-weiß ist. Die Tunnelabdeckung ist hell (wird weiß); Brückenbrüstungen und
+Tunnelportale sind dunkle Linien.
 
 ## Fachexport: Routenhalte (CSV)
 
@@ -140,7 +193,9 @@ Freihandformen mit mehreren Teilpfaden für unterbrochene Ränder, Striche, Schw
 Freihandformen weichen auf Linienformen aus), Ellipsen, Rechtecke, kubische Pfade (glatte Linien) und Text. Ein
 Vektorbild ist nicht nötig. Gebietsschraffuren und Punktfüllungen verwenden die Füllarten des Kerns. Straßen und
 automatische Legenden hängen von Nachbarn ab; im PowerPoint-COM-Host werden sie mit den anderen Einheiten der Folie
-als Kontext gezeichnet (siehe Architekturüberblick).
+als Kontext gezeichnet (siehe Architekturüberblick). Auch Routen (sie lesen die Maßstabsleiste), Brücken und Tunnel
+(sie lesen die Straße darunter) hängen von Nachbarn ab. Die Tunnelabdeckung verwendet die Standard-Landfarbe; auf
+einem Kartenrahmen mit anderem `tint` oder über einem Gebiet erscheint sie als helles Band.
 
 ## Tests und Galerie
 
@@ -149,6 +204,11 @@ Ansichts-Icons, jedes Box-Element in jeder Ansicht innerhalb seiner Box (auch ge
 Punktelemente nahe ihren Punkten, Straßenbreiten und Knotenpunkte (Kreuzung, Einmündung, Brücke), Routendarstellung
 und Stil-Überschreibungen, Rails und Ports (Marker auf Straße, POI auf Route, Routenpunkt auf Straße und auf Halt mit
 Anheftung), alle Kontextaktionen samt Eingaben, Legendeneinträge und Abhängigkeiten, den Routenhalte-Export, den
-JSON-Rundlauf und die Schwarz-Weiß-Tauglichkeit. Der Galerietest schreibt `gallery-maps/*.html` (alle Typen,
+JSON-Rundlauf und die Schwarz-Weiß-Tauglichkeit; Routenwerte (Länge aus der Maßstabsleiste, eigener Maßstab und
+Planmaßstab, Einheitenumrechnung, glatte Routen, Vorrang eingegebener Werte, Vorgaben der Verkehrsmittel,
+Wertebeschriftung, Abhängigkeiten der Maßstabsleiste, Rundlauf), Stationen (Andocken, Arten, Namen), Brücken und
+Tunnel (folgen einer abknickenden Straße, Breite, Fahrbahnfarbe, Abdeckung, Portale, Abhängigkeiten), Höhenlinien
+(Lücke und Beschriftung, Zählkurve, geschlossen) und die neuen Legendenschlüssel. `structures.html`/`.svg` in
+`gallery-maps/` zeigt sie in einer Beispielkarte. Der Galerietest schreibt `gallery-maps/*.html` (alle Typen,
 Ansichten, gedehnte Varianten, Vorlagen und eine Beispiel-Routenkarte in Farbe, Schwarz-Weiß und Deutsch) zur
 Sichtprüfung.

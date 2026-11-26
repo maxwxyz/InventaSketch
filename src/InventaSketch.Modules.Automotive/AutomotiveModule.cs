@@ -7,9 +7,11 @@ namespace InventaSketch.Modules.Automotive
 {
     /// <summary>
     /// Vehicles, ADAS and HMI module: reduced black-and-white line drawings of vehicles (top/side/front/rear views),
-    /// vehicle subsystems, humans, road environment, ADAS sensors with fields of view, perception overlays,
-    /// trajectories and HMI elements for invention disclosures of vehicle functions. Illustrative scenes only; nothing
-    /// is simulated. Every object is insertable without parameters and drawn inside its box.
+    /// vehicle subsystems, humans, road environment, ADAS sensors with fields of view, V2X radio links, perception
+    /// overlays, trajectories and HMI elements for invention disclosures of vehicle functions. Illustrative scenes; nothing
+    /// is simulated, but the TTC label and the safety distance compute their values (time to collision, stopping distance)
+    /// from entered speeds and gaps (<see cref="AutoValues"/>). Every object is insertable without parameters and drawn
+    /// inside its box.
     /// </summary>
     public sealed class AutomotiveModule : IModule
     {
@@ -20,7 +22,7 @@ namespace InventaSketch.Modules.Automotive
                 .Concat(Road.Types())
                 .Concat(Traffic.Types())
                 .Concat(Adas.Types())
-                .Concat(new ObjectType[] { new FovType(), new LanePolyType(), new TrajectoryType(), new SafetyDistanceType() })
+                .Concat(new ObjectType[] { new FovType(), new V2xType(), new LanePolyType(), new TrajectoryType(), new SafetyDistanceType() })
                 .Concat(Hmi.Types())
                 .ToList());
 
@@ -28,7 +30,7 @@ namespace InventaSketch.Modules.Automotive
 
         public string Id => "automotive";
         public I18nText Name => new("Vehicles, ADAS & HMI", "Fahrzeuge, ADAS & HMI");
-        public string Version => "0.2.0";
+        public string Version => "0.3.0";
         public IEnumerable<ObjectType> Types => AllTypes.Value;
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -96,6 +98,7 @@ namespace InventaSketch.Modules.Automotive
             Views4("truck", "auto.vehicle.truck", "Truck", "Lkw");
             Views4("semi", "auto.vehicle.semi", "Tractor-trailer", "Sattelzug");
             Views4("bus", "auto.vehicle.bus", "Bus", "Bus");
+            Views4("tram", Tram.TypeId, "Tram", "Straßenbahn", rear: false);
             Views4("motorcycle", "auto.vehicle.motorcycle", "Motorcycle", "Motorrad", rear: false);
             Views4("bicycle", "auto.vehicle.bicycle", "Bicycle", "Fahrrad", rear: false);
             Views4("scooter", "auto.vehicle.scooter", "E-scooter", "E-Scooter", rear: false);
@@ -135,6 +138,9 @@ namespace InventaSketch.Modules.Automotive
             Add("passenger.top", "auto.human.seated", "Passenger (top view)", "Beifahrer (Draufsicht)", "top", P(("role", "passenger")));
             Add("child.front", "auto.human.child", "Child (front view)", "Kind (Vorderansicht)", "front");
             Add("child.side", "auto.human.child", "Child (side view)", "Kind (Seitenansicht)", "side");
+            Add("wheelchair.side", "auto.human.wheelchair", "Wheelchair user (side view)", "Person im Rollstuhl (Seitenansicht)", "side");
+            Add("wheelchair.front", "auto.human.wheelchair", "Wheelchair user (front view)", "Person im Rollstuhl (Vorderansicht)", "front");
+            Add("wheelchair.top", "auto.human.wheelchair", "Wheelchair user (top view)", "Person im Rollstuhl (Draufsicht)", "top");
             Add("hand", "auto.human.hand", "Hand touching", "Hand mit Berührung", "side");
             Add("head.top", "auto.human.head", "Head with gaze (top view)", "Kopf mit Blickrichtung (Draufsicht)", "top");
             Add("head.side", "auto.human.head", "Head with gaze (side view)", "Kopf mit Blickrichtung (Seitenansicht)", "side");
@@ -187,6 +193,9 @@ namespace InventaSketch.Modules.Automotive
             Add("fov.radar.corner", "auto.fov", "Corner radar field of view", "Eckradar-Sichtbereich", ps: P(("range", 50), ("angle", 150)));
             Add("fov.lidar", "auto.fov", "Lidar 360° field of view", "Lidar-Sichtbereich 360°", ps: P(("range", 60), ("angle", 360), ("rings", 2)));
             Add("fov.ultrasonic", "auto.fov", "Ultrasonic field of view", "Ultraschall-Sichtbereich", ps: P(("range", 15), ("angle", 70)));
+            Add("v2x", V2xType.TypeId, "V2V radio link", "V2V-Funkverbindung", kw: new[] { "car2car", "c2c" });
+            Add("v2x.v2i", V2xType.TypeId, "V2I radio link (to infrastructure)", "V2I-Funkverbindung (zur Infrastruktur)", ps: P(("kind", "v2i"), ("arrows", "both")), kw: new[] { "roadside unit", "rsu", "ampel" });
+            Add("v2x.v2p", V2xType.TypeId, "V2P radio link (to pedestrian)", "V2P-Funkverbindung (zum Fußgänger)", ps: P(("kind", "v2p"), ("course", "zigzag")), kw: new[] { "pedestrian", "smartphone", "fußgänger" });
 
             // perception
             Add("bbox2d", "auto.det.bbox2d", "Bounding box (vehicle)", "Begrenzungsrahmen (Fahrzeug)");
@@ -203,6 +212,10 @@ namespace InventaSketch.Modules.Automotive
             Add("conflict", "auto.motion.conflict", "Conflict point", "Konfliktpunkt");
             Add("safetydistance", "auto.motion.safetydistance", "Safety distance", "Sicherheitsabstand");
             Add("ttc", "auto.motion.ttc", "TTC label", "TTC-Angabe");
+            Add("ttc.computed", "auto.motion.ttc", "TTC from gap and speeds", "TTC aus Abstand und Geschwindigkeiten",
+                ps: P(("vEgo", "100 km/h"), ("vTarget", "60 km/h"), ("gap", "25 m")), kw: new[] { "time to collision", "relative speed", "relativgeschwindigkeit" });
+            Add("safetydistance.braking", "auto.motion.safetydistance", "Stopping distance check", "Anhalteweg-Prüfung",
+                ps: P(("speed", "50 km/h"), ("gap", "30 m"), ("showValues", true)), kw: new[] { "braking distance", "stopping distance", "reaction time", "bremsweg", "anhalteweg", "reaktionszeit" });
 
             // HMI
             Add("cluster", "auto.hmi.cluster", "Instrument cluster", "Kombiinstrument");

@@ -7,8 +7,9 @@ namespace InventaSketch.Modules.Maps
 {
     /// <summary>
     /// Maps and routes: schematic map sketches for presentations (no GIS). Map frames with grid or terrain hint, regions,
-    /// place labels, roads, rail lines and rivers (point objects with rails for docking), route lines with waypoints and
-    /// direction arrows, start/finish/via markers, numbered stops, points of interest (independently drawn pictograms),
+    /// contour lines, place labels, roads, rail lines and rivers (point objects with rails for docking), stations on lines,
+    /// bridges and tunnels on roads, route lines with waypoints, direction arrows and values (length at the map scale,
+    /// speed, travel time), start/finish/via markers, numbered stops, points of interest (independently drawn pictograms),
     /// distance/time callouts, scale bar, north arrow, compass rose and an automatic legend. Every object is insertable
     /// without parameters; box symbols are drawn inside their box and stretch with free scaling.
     /// </summary>
@@ -18,6 +19,7 @@ namespace InventaSketch.Modules.Maps
         {
             Frame.Create(), new RegionType(), Place.Create(),
             new RoadType(), new RailType(), new RiverType(),
+            StationType.Create(), new BridgeType(), new TunnelType(), new ContourType(),
             new RouteType(), MarkerType.Create(), StopType.Create(), Callout.Create(),
             PoiType.Create(),
             ScaleBar.Create(), NorthArrow.Create(), Compass.Create(), Legend.Create(),
@@ -28,7 +30,7 @@ namespace InventaSketch.Modules.Maps
 
         public string Id => "maps";
         public I18nText Name => new("Maps & routes", "Karten & Routen");
-        public string Version => "0.2.0";
+        public string Version => "0.3.0";
         public IEnumerable<ObjectType> Types => AllTypes.Value;
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -85,6 +87,10 @@ namespace InventaSketch.Modules.Maps
             Add("place.town", Place.TypeId, "Town", "Ort", ps: P(("rank", "town")), size: new Size2(30, 7));
             Add("place.village", Place.TypeId, "Village", "Dorf", ps: P(("rank", "village")), size: new Size2(28, 6));
             Add("place.locality", Place.TypeId, "Locality", "Ortsteil", ps: P(("rank", "locality")), size: new Size2(26, 6));
+            Add("contour", ContourType.TypeId, "Contour line", "Höhenlinie", kw: new[] { "isoline", "höhe", "elevation" });
+            Add("contour.index", ContourType.TypeId, "Index contour (500 m)", "Zählkurve (500 m)", ps: P(("index", true), ("elevation", 500.0)), kw: new[] { "index", "zählkurve" });
+            Add("contour.hill", ContourType.TypeId, "Hill (closed contour)", "Kuppe (geschlossene Höhenlinie)", ps: P(("closed", true), ("elevation", 250.0)),
+                pts: new[] { new Vec2(-22, 0), new Vec2(-8, -13), new Vec2(14, -10), new Vec2(24, 3), new Vec2(8, 13), new Vec2(-14, 10) }, kw: new[] { "hill", "summit", "hügel", "berg" });
 
             // Roads, rail and water
             Add("road.motorway", RoadType.TypeId, "Motorway", "Autobahn", ps: P(("kind", "motorway")), kw: new[] { "highway", "freeway" });
@@ -98,11 +104,20 @@ namespace InventaSketch.Modules.Maps
             Add("river", RiverType.TypeId, "River", "Fluss");
             Add("river.stream", RiverType.TypeId, "Stream", "Bach", ps: P(("kind", "stream")), kw: new[] { "brook", "creek" });
             Add("river.canal", RiverType.TypeId, "Canal", "Kanal", ps: P(("kind", "canal"), ("smooth", false)), pts: new[] { new Vec2(-50, 0), new Vec2(50, 0) });
+            Add("station", StationType.TypeId, "Railway station", "Bahnhof", kw: new[] { "train", "zug" });
+            Add("station.interchange", StationType.TypeId, "Interchange station", "Umsteigebahnhof", ps: P(("kind", "interchange")), kw: new[] { "transfer", "umsteigen" });
+            Add("station.tram", StationType.TypeId, "Tram stop", "Straßenbahnhaltestelle", ps: P(("kind", "tram")), kw: new[] { "light rail", "stadtbahn" });
+            Add("station.bus", StationType.TypeId, "Bus stop", "Bushaltestelle", ps: P(("kind", "bus")), kw: new[] { "bus", "haltestelle" });
+            Add("bridge", BridgeType.TypeId, "Bridge", "Brücke", kw: new[] { "viaduct", "viadukt" });
+            Add("tunnel", TunnelType.TypeId, "Tunnel", "Tunnel", kw: new[] { "portal", "unterführung" });
 
             // Routes and markers
             Add("route", RouteType.TypeId, "Route", "Route");
             Add("route.dashed", RouteType.TypeId, "Alternative route (dashed)", "Alternativroute (gestrichelt)", ps: P(("style", "dashed")), kw: new[] { "alternative", "alternativ" });
-            Add("route.dotted", RouteType.TypeId, "Walking route (dotted)", "Fußweg (gepunktet)", ps: P(("style", "dotted"), ("width", 0.9)), kw: new[] { "walk", "zu fuß" });
+            Add("route.dotted", RouteType.TypeId, "Walking route (dotted)", "Fußweg (gepunktet)", ps: P(("style", "dotted"), ("width", 0.9), ("mode", "walk")), kw: new[] { "walk", "zu fuß" });
+            Add("route.values", RouteType.TypeId, "Route with length and travel time", "Route mit Länge und Reisezeit", ps: P((ValueLabels.ShowParam, true)),
+                kw: new[] { "distance", "travel time", "duration", "speed", "entfernung", "reisezeit", "fahrzeit", "geschwindigkeit" });
+            Add("route.bike", RouteType.TypeId, "Cycle route", "Radroute", ps: P(("style", "dashed"), ("mode", "bike")), kw: new[] { "bicycle", "bike", "fahrrad", "radweg" });
             Add("route.smooth", RouteType.TypeId, "Route (smooth)", "Route (glatt)", ps: P(("smooth", true)));
             Add("marker.start", MarkerType.TypeId, "Start marker", "Startmarker", "pin", P(("kind", "start")));
             Add("marker.finish", MarkerType.TypeId, "Finish marker", "Zielmarker", "pin", P(("kind", "finish")), kw: new[] { "destination", "goal", "chequered flag", "zielflagge" });

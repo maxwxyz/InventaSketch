@@ -241,8 +241,12 @@ namespace InventaSketch.Modules.Automotive
         }
     }
 
-    /// <summary>Safety distance dimension (point object) between two points with an offset dimension line and label.</summary>
-    internal sealed class SafetyDistanceType : AutoPointType
+    /// <summary>
+    /// Safety distance dimension (point object) between two points with an offset dimension line and label. Element values
+    /// (<see cref="AutoValues"/>): the gap d (drawn length at the dimension scale unless entered), the ego speed v and the
+    /// stopping distance s = v·t_r + v²/(2a) with the check that s fits into d.
+    /// </summary>
+    internal sealed class SafetyDistanceType : AutoPointType, IValueType, IValueLinks, IValueChecks
     {
         private static I18nText T(string en, string de) => new(en, de);
 
@@ -256,7 +260,12 @@ namespace InventaSketch.Modules.Automotive
             "safety distance", "gap", "headway", "distance", "dimension", "sicherheitsabstand", "abstand", "zeitlücke", "maß") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-25, 0), new Vec2(25, 0) };
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Label, Offset, ShowValue, Scale, TextSize };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Label, Offset, ShowValue, Scale, TextSize }.Concat(AutoValues.BrakingParams).ToList();
+
+        public IReadOnlyList<VarDef> Variables => AutoValues.BrakingVars;
+        public IReadOnlyList<Relation> Relations => AutoValues.BrakingRelations;
+        public IEnumerable<ValueCheck> ValueChecks => AutoValues.BrakingChecks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => AutoValues.BrakingLinks(o, ctx);
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {
@@ -277,8 +286,9 @@ namespace InventaSketch.Modules.Automotive
             var text = o.Str("label", "d_safe");
             if (o.Flag("showValue", false))
             {
-                var scale = Math.Max(0.01, o.Num("scale", 10));
-                var value = ((b - a).Length / scale).ToString("0.0", CultureInfo.InvariantCulture) + " m";
+                // The entered gap wins over the drawn length.
+                var gap = ValueModel.ReadEntered(o, AutoValues.BrakingVars[2]).Value ?? AutoValues.DrawnGap(p, o);
+                var value = gap.ToString("0.0", CultureInfo.InvariantCulture) + " m";
                 text = string.IsNullOrEmpty(text) ? value : text + " = " + value;
             }
             if (!string.IsNullOrEmpty(text))

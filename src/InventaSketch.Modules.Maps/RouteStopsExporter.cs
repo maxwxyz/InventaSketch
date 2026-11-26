@@ -27,7 +27,7 @@ namespace InventaSketch.Modules.Maps
             "Reihenfolge von Start, Halten und Ziel mit den Namen der Marker, Halte und POIs auf der Route; Abschnitts- und Gesamtentfernungen entlang der gezeichneten Route (Einheit der Maßstabsleiste, sonst mm auf dem Blatt). Keine geografischen Koordinaten.");
 
         private static bool IsRoute(SketchObject o) => o.Type == RouteType.TypeId && o.Points is { Count: >= 2 };
-        private static bool IsSymbol(SketchObject o) => o.Type is MarkerType.TypeId or StopType.TypeId or PoiType.TypeId or Place.TypeId;
+        private static bool IsSymbol(SketchObject o) => o.Type is MarkerType.TypeId or StopType.TypeId or StationType.TypeId or PoiType.TypeId or Place.TypeId;
 
         public bool Applies(Registry registry, SketchDocument doc, IReadOnlyList<SketchObject> objects) => objects.Any(IsRoute);
 
@@ -54,7 +54,7 @@ namespace InventaSketch.Modules.Maps
                 routeNo++;
                 var routeName = !string.IsNullOrWhiteSpace(r.Text) ? r.Text!.Trim() : "Route " + Geom.I(routeNo);
                 var pts = doc.ResolvePoints(r);
-                var seg = SegmentLengths(r, pts);
+                var seg = MapScale.SegmentLengths(r, pts);
                 var no = 0;
                 double sinceLast = 0, total = 0;
                 for (var i = 0; i < pts.Count; i++)
@@ -78,21 +78,6 @@ namespace InventaSketch.Modules.Maps
 
         private static string F(double v) => Math.Round(v, 3).ToString("0.###", CultureInfo.InvariantCulture);
 
-        /// <summary>Length of each route segment as drawn (along the smooth curve when the route is smoothed).</summary>
-        private static double[] SegmentLengths(SketchObject r, IReadOnlyList<Vec2> pts)
-        {
-            var result = new double[Math.Max(0, pts.Count - 1)];
-            if (r.Flag("smooth", false) && pts.Count >= 3)
-            {
-                var segs = Geom.Spline(pts);
-                for (var i = 0; i < result.Length; i++)
-                    result[i] = Geom.Length(Geom.Sample(new[] { PathSeg.Move(pts[i]), segs[i + 1] }, 24));
-            }
-            else
-                for (var i = 0; i < result.Length; i++) result[i] = pts[i].DistanceTo(pts[i + 1]);
-            return result;
-        }
-
         /// <summary>The symbol at route point <paramref name="i"/>: the docked one, else the nearest location within 3 mm.</summary>
         private static SketchObject? Match(SketchObject route, int i, Vec2 p, List<(SketchObject Obj, Vec2 Loc)> symbols)
         {
@@ -114,6 +99,7 @@ namespace InventaSketch.Modules.Maps
                 StopType.TypeId => (lang == Lang.De ? "Halt " : "Stop ") + StopType.Label(o),
                 MarkerType.TypeId => Prm.OptionLabel(MarkerType.KindDef, o.Str("kind", "start")).Get(lang),
                 PoiType.TypeId => Prm.OptionLabel(PoiType.KindDef, o.Str("kind", "pin")).Get(lang),
+                StationType.TypeId => Prm.OptionLabel(StationType.KindDef, o.Str("kind", "rail")).Get(lang),
                 _ => Prm.OptionLabel(Place.RankDef, o.Str("rank", "city")).Get(lang),
             };
         }
@@ -125,6 +111,7 @@ namespace InventaSketch.Modules.Maps
             {
                 MarkerType.TypeId => typeName + ": " + Prm.OptionLabel(MarkerType.KindDef, o.Str("kind", "start")).Get(lang),
                 PoiType.TypeId => typeName + ": " + Prm.OptionLabel(PoiType.KindDef, o.Str("kind", "pin")).Get(lang),
+                StationType.TypeId => typeName + ": " + Prm.OptionLabel(StationType.KindDef, o.Str("kind", "rail")).Get(lang),
                 _ => typeName,
             };
         }

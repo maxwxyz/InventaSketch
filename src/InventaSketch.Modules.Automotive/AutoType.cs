@@ -48,9 +48,9 @@ namespace InventaSketch.Modules.Automotive
 
     /// <summary>
     /// Data-driven box type used for all automotive symbols: views (each with its own drawing and anchors), optional
-    /// parameters and context actions. Every view is drawn inside the object box.
+    /// parameters, context actions and optional element values with checks. Every view is drawn inside the object box.
     /// </summary>
-    internal sealed class AutoType : ObjectType
+    internal sealed class AutoType : ObjectType, IValueType, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -85,6 +85,15 @@ namespace InventaSketch.Modules.Automotive
         public bool CenterHub { get; init; }
         /// <summary>Type-specific context actions in addition to the view switches.</summary>
         public Func<SketchObject, IEnumerable<ContextAction>>? Extra { get; init; }
+
+        /// <summary>Element values (none for most symbols).</summary>
+        public IReadOnlyList<VarDef> ValueVars { get; init; } = Array.Empty<VarDef>();
+        public IReadOnlyList<Relation> ValueRelations { get; init; } = Array.Empty<Relation>();
+        public IReadOnlyList<ValueCheck> Checks { get; init; } = Array.Empty<ValueCheck>();
+
+        public IReadOnlyList<VarDef> Variables => ValueVars;
+        public IReadOnlyList<Relation> Relations => ValueRelations;
+        public IEnumerable<ValueCheck> ValueChecks => Checks;
 
         public IReadOnlyList<AutoView> ViewSpecs => _views;
 

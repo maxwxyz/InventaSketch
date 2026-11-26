@@ -54,6 +54,19 @@ namespace InventaSketch.Modules.Maps
 
         private static List<Vec2> Line(SketchObject o, IReadOnlyList<Vec2> pts) => Geom.Centerline(pts, o.Flag("smooth", false));
 
+        /// <summary>The drawn centre line of a road (sampled when smoothed); empty for fewer than two points.</summary>
+        public static List<Vec2> CenterlineOf(SketchObject o, SketchDocument doc)
+        {
+            var pts = Geom.Dedupe(doc.ResolvePoints(o));
+            return pts.Count < 2 ? new List<Vec2>() : Line(o, pts);
+        }
+
+        /// <summary>Band fill colour of a road (also used by bridge decks); null for paths.</summary>
+        public static string? FillOf(SketchObject o) => IsBand(o) ? Spec(KindOf(o)).Fill : null;
+
+        /// <summary>Edge (casing) colour of a road.</summary>
+        public static string CasingOf(SketchObject o) => Spec(KindOf(o)).Casing;
+
         /// <summary>Bands of other roads on the page that interrupt the edge lines of <paramref name="o"/>.</summary>
         private static List<(List<Vec2> Line, double Hw)> Holes(SketchObject o, RenderContext ctx)
         {
@@ -132,7 +145,7 @@ namespace InventaSketch.Modules.Maps
             foreach (var id in base.Dependents(o, ctx)) yield return id;
             if (ctx.Doc.PageOf(o.Id) is null) yield break;
             foreach (var other in ObjectsNear(ctx.Doc, o, WidthOf(o) + 15))
-                if (other.Type == TypeId) yield return other.Id;
+                if (other.Type is TypeId or BridgeType.TypeId or TunnelType.TypeId) yield return other.Id;
         }
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
@@ -290,7 +303,7 @@ namespace InventaSketch.Modules.Maps
     /// waypoint dots. Its segments are rails, so markers and stops dock onto the route, and route points dock onto roads
     /// (rails) and onto markers, stops and POIs (ports; the point then follows the symbol).
     /// </summary>
-    internal sealed class RouteType : MapPointType
+    internal sealed class RouteType : MapPointType, IValueType, IValueLinks
     {
         public const string TypeId = "map.route";
         public override bool InsertablePoints => true;
@@ -309,8 +322,15 @@ namespace InventaSketch.Modules.Maps
 
         public override bool HasText => true;
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-45, 12), new Vec2(-15, -10), new Vec2(15, 8), new Vec2(45, -12) };
-        public override IReadOnlyList<ParamDef> Parameters => new[] { StyleDef, ArrowsDef, WaypointsDef, SmoothDef, WidthDef };
-        public override IReadOnlyList<string> Companions => new[] { MarkerType.TypeId, StopType.TypeId, PoiType.TypeId, Callout.TypeId, Place.TypeId };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { StyleDef, ArrowsDef, WaypointsDef, SmoothDef, WidthDef }.Concat(RouteValues.Params).ToList();
+        public override IReadOnlyList<string> Companions => new[] { MarkerType.TypeId, StopType.TypeId, StationType.TypeId, PoiType.TypeId, Callout.TypeId, Place.TypeId };
+
+        /// <summary>The values (length at the map scale) read the scale bar on the page.</summary>
+        public override bool DependsOnNeighbours => true;
+
+        public IReadOnlyList<VarDef> Variables => RouteValues.Vars;
+        public IReadOnlyList<Relation> Relations => RouteValues.Rels;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => RouteValues.Links(o, ctx);
 
         public static List<Vec2> Line(SketchObject o, IReadOnlyList<Vec2> pts) => Geom.Centerline(pts, o.Flag("smooth", false));
 
@@ -389,6 +409,7 @@ namespace InventaSketch.Modules.Maps
         {
             foreach (var opt in Prm.Choice(o, "map.route.style", StyleDef, new I18nText("Route style", "Routenstil"))) yield return opt;
             foreach (var opt in Prm.Choice(o, "map.route.arrows", ArrowsDef, new I18nText("Direction arrows", "Richtungspfeile"))) yield return opt;
+            foreach (var opt in Prm.Choice(o, "map.route.mode", RouteValues.ModeDef, new I18nText("Travel mode", "Verkehrsmittel"))) yield return opt;
             yield return Prm.Toggle(o, "map.route.waypoints", "waypoints", true, new I18nText("Show waypoints", "Wegpunkte zeigen"), IconIds.PointsShow);
             yield return Prm.Toggle(o, "map.route.smooth", "smooth", false, new I18nText("Smooth curve", "Glatte Kurve"), IconIds.Smooth);
             yield return new ContextAction("map.route.reverse", new I18nText("Reverse direction", "Richtung umkehren"), IconIds.Reverse, Edits.ReversePoints) { Group = "points" };

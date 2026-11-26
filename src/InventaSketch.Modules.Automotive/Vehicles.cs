@@ -242,7 +242,7 @@ namespace InventaSketch.Modules.Automotive
         }
     }
 
-    /// <summary>Vehicle types: car, SUV, van, truck, tractor-trailer, bus, motorcycle, bicycle, e-scooter, trailer, box vehicle.</summary>
+    /// <summary>Vehicle types: car, SUV, van, bus, tram, truck, tractor-trailer, motorcycle, bicycle, e-scooter, trailer, box vehicle.</summary>
     internal static class Vehicles
     {
         public const string Cat = AutoCategories.Vehicles;
@@ -302,6 +302,7 @@ namespace InventaSketch.Modules.Automotive
                 new[] { "van", "minibus", "delivery van", "vehicle", "transporter", "kleinbus", "lieferwagen", "fahrzeug" });
             yield return CarLike("auto.vehicle.bus", T("Bus", "Bus"), Bus,
                 new[] { "bus", "coach", "city bus", "vehicle", "omnibus", "linienbus", "fahrzeug" });
+            yield return Tram.Create();
             yield return Truck("auto.vehicle.truck", T("Truck", "Lkw"), TruckSpec.Rigid,
                 new[] { "truck", "lorry", "box truck", "vehicle", "lkw", "lastwagen", "lastkraftwagen", "fahrzeug" });
             yield return Truck("auto.vehicle.semi", T("Tractor-trailer", "Sattelzug"), TruckSpec.Semi,
