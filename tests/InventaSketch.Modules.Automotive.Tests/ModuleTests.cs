@@ -64,7 +64,7 @@ namespace InventaSketch.Modules.Automotive.Tests
             "auto.det.bbox2d", "auto.det.bbox3d", "auto.det.grid", "auto.det.lanepoly",
             "auto.trajectory", "auto.motion.conflict", "auto.motion.safetydistance", "auto.motion.ttc",
             "auto.hmi.cluster", "auto.hmi.display", "auto.hmi.hud", "auto.hmi.button", "auto.hmi.knob", "auto.hmi.slider", "auto.hmi.warning", "auto.hmi.wireframe",
-            "auto.v2x", "auto.human.wheelchair", "auto.vehicle.tram",
+            "auto.v2x", "auto.human.wheelchair", "auto.vehicle.tram", "auto.motion.resistance", "auto.motion.turning",
         };
 
         [Fact]

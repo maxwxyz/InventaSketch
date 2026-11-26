@@ -11,7 +11,7 @@ namespace InventaSketch.Modules.Automotive
     /// axis points from point 0 to point 1, rotated by <c>heading</c> degrees (clockwise). When both points are attached
     /// to a sensor (see <see cref="Fov.AttachTo"/>), the field of view follows moving and rotating the sensor.
     /// </summary>
-    internal sealed class FovType : AutoPointType
+    internal sealed class FovType : AutoPointType, IValueType, IValueLinks, IValueChecks
     {
         public const string TypeId = "auto.fov";
 
@@ -29,8 +29,14 @@ namespace InventaSketch.Modules.Automotive
             "field of view", "fov", "detection range", "sensor coverage", "sector", "sichtbereich", "erfassungsbereich", "sichtfeld", "sektor", "reichweite") { }
 
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(0, 0), new Vec2(10, 0) };
-        public override IReadOnlyList<ParamDef> Parameters => new[] { Range, Angle, Heading, FillDef, Rings, Axis, Label };
+        public override IReadOnlyList<ParamDef> Parameters => new[] { Range, Angle, Heading, FillDef, Rings, Axis, Label }.Concat(DynValues.FovParams).ToList();
         protected override int MinPoints => 1;
+
+        // Element values (DynValues): the sensor range (drawn range at the scale unless entered) against the stopping distance.
+        public IReadOnlyList<VarDef> Variables => DynValues.FovVars;
+        public IReadOnlyList<Relation> Relations => DynValues.FovRelations;
+        public IEnumerable<ValueCheck> ValueChecks => DynValues.FovChecks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => DynValues.FovLinks(o);
 
         /// <summary>Apex and axis direction (radians, screen angle) of a FoV object from its resolved points.</summary>
         public static (Vec2 Apex, double Dir) Frame(SketchObject o, IReadOnlyList<Vec2> p)

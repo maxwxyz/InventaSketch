@@ -2,8 +2,9 @@
 
 Schematische Kartenskizzen für Folien: Kartenrahmen, Gebiete, Höhenlinien, Ortsbeschriftungen, Straßen, Bahnstrecken
 und Gewässer, Stationen auf Linien, Brücken und Tunnel auf Straßen, eine Route mit Wegpunkten, Richtungspfeilen und
-Werten (Länge im Kartenmaßstab, Geschwindigkeit, Reisezeit), Start-/Zielmarker, nummerierte Halte, Orte von Interesse
-(POI), Entfernungs-/Zeitangaben, Maßstabsleiste, Nordpfeil, Windrose und Legende. Es ist **kein GIS**: Hinter der
+Werten (Länge im Kartenmaßstab, Geschwindigkeit, Reisezeit, Anstieg und Abstieg aus Höhenlinien), Start-/Zielmarker,
+nummerierte Halte, Orte von Interesse (POI), Entfernungs-/Zeitangaben, Entfernungsmessungen mit Kurswinkel, ein
+Höhenprofil, Gebietsflächen, Maßstabsleiste, Nordpfeil, Windrose und Legende. Es ist **kein GIS**: Hinter der
 Zeichnung stehen keine geografischen Koordinaten, Kartenprojektionen oder importierten Kartendaten, nur gut
 gezeichnete, editierbare Symbole. (Der Import von GeoJSON/GPX/KML aus der Spezifikation ist nicht Teil dieses Moduls.)
 
@@ -17,12 +18,14 @@ Seitenkoordinaten.
 | Id | Name (EN / DE) | Geometrie | Ansichten | Hinweise |
 |---|---|---|---|---|
 | `map.frame` | Map frame / Kartenrahmen | Box | Karte | `style` schlicht / Planquadrate / Geländeandeutung, `cells` (Gitterspalten, Zeilen folgen dem Seitenverhältnis), `labels` (A, B … / 1, 2 …), `tint` (Landfarbe); doppelter Kartenrand |
-| `map.region` | Region / Gebiet | Punkte (geschlossenes Polygon) | Karte | `kind` Gebiet, Wald, See/Gewässer, Park, bebaute Fläche, Sperrzone (Geofence); `fill` Farbton / Schraffur / keine; `smooth`; Name als Text im Schwerpunkt |
+| `map.region` | Region / Gebiet | Punkte (geschlossenes Polygon) | Karte | `kind` Gebiet, Wald, See/Gewässer, Park, bebaute Fläche, Sperrzone (Geofence); `fill` Farbton / Schraffur / keine; `smooth`; Name als Text im Schwerpunkt; Werte `area`, `perimeter`, `scale`, `showValues` (siehe „Messungen“) |
 | `map.place` | Place label / Ortsbeschriftung | Box | Karte | `rank` Hauptstadt, Stadt, Ort, Dorf, Ortsteil (Punkt und Schrift nach Größe), `dot`; Text = Name, ohne Text der Name der Ortsgröße in der UI-Sprache |
 | `map.road` | Road / Straße | Punkte (Achse) | Karte | `kind` Autobahn (4,2 mm, Mittellinie), Hauptstraße (3 mm), Nebenstraße (2 mm), Weg (gestrichelte Linie); `smooth`, `bridge`, optional `width`; Text = Straßennummer (Schild bei Autobahn/Hauptstraße) oder Name |
 | `map.rail` | Rail line / Bahnstrecke | Punkte | Karte | `kind` Eisenbahn (schwarz-weißes Band) oder Straßenbahn (Linie mit Schwellen); `smooth`; Text = Name |
 | `map.river` | River / Fluss | Punkte | Karte | `kind` Fluss (Band mit Wasserlinien), Bach (Linie), Kanal (gerades Band); `smooth` (Standard an); optional `width`; kursiver Name |
-| `map.route` | Route / Route | Punkte | Karte | `style` durchgezogen / gestrichelt (Alternative) / gepunktet (Fußweg), `arrows` entlang / am Ende / keine, `waypoints` (Punkte), `smooth`, `width`; weißer Halo; Text = Routenbeschriftung; Werte: `mode` zu Fuß / Fahrrad / Auto, `speed`, `length`, `time`, `scale` (1:N), `showValues` (siehe „Routenwerte“) |
+| `map.route` | Route / Route | Punkte | Karte | `style` durchgezogen / gestrichelt (Alternative) / gepunktet (Fußweg), `arrows` entlang / am Ende / keine, `waypoints` (Punkte), `smooth`, `width`; weißer Halo; Text = Routenbeschriftung; Werte: `mode` zu Fuß / Fahrrad / Auto, `speed`, `length`, `time`, `scale` (1:N), `showValues` (siehe „Routenwerte“); Anstieg, Abstieg und größte Steigung aus den gekreuzten Höhenlinien (siehe „Messungen“) |
+| `map.measure` | Distance measure / Entfernungsmessung | Punkte (2) | Karte | gestrichelte Linie mit Pfeilspitzen und Endstrichen, beschriftet mit der Luftlinie im Kartenmaßstab („1,25 km“; ohne Maßstab „ohne Maßstab“); `showBearing` ergänzt den Kurswinkel („· 143°“); Text ersetzt die Beschriftung; Werte `distance`, `scale`; Enden docken an Markern, POIs und Ortspunkten an |
+| `map.profile` | Elevation profile / Höhenprofil | Box | Karte | Höhe über der Strecke entlang einer Route, aus den gekreuzten Höhenlinien; `route` (Objekt-ID, leer: die erste Route des Blatts, die zwei Höhenlinien kreuzt), `fill`; ohne solche Route leere Achsen mit Hinweis |
 | `map.station` | Station / Station | Box | Symbol | `kind` Bahnhof (weiße Scheibe, schwarzer Ring), Umsteigebahnhof (weiße Kapsel), Straßenbahnhaltestelle (kleiner Ring), Bushaltestelle (dunkles Symbol mit Bus-Piktogramm); `name`; Text = Stationsname (Standard: die Art in der UI-Sprache), über der Linie rechts vom Symbol |
 | `map.bridge` | Bridge / Brücke | Punkte (Abschnitt einer Straße) | Karte | folgt der Straße unter ihren Endpunkten (auch um Kurven) mit deren Breite und Farben: Fahrbahn, Ränder und Brüstungen mit ausgestellten Flügeln; optional `width` (ohne Straße: 3 mm); Text = Name |
 | `map.tunnel` | Tunnel / Tunnel | Punkte (Abschnitt einer Straße) | Karte | wie die Brücke: der Abschnitt wird in Landfarbe abgedeckt, Ränder gestrichelt, Portalzeichen an beiden Enden; optional `width`; Text = Name |
@@ -31,7 +34,7 @@ Seitenkoordinaten.
 | `map.stop` | Numbered stop / Nummerierter Halt | Box | Symbol | `number`, `shape` Kreis / Quadrat; Text ersetzt die Nummer |
 | `map.callout` | Distance/time callout / Entfernungs-/Zeitangabe | Box | Karte | `distance` + `unit` (km, mi, m), `time` (Minuten, angezeigt als „1 h 35 min“), `mode` Auto / zu Fuß / Fahrrad / ÖPNV / keins, `tail` links / rechts / keiner; Text ersetzt die beiden Zeilen |
 | `map.poi` | Point of interest / Ort von Interesse (POI) | Box | Symbol, Stecknadel | `kind` Ort, Gebäude, Parkplatz, Tankstelle, Ladestation, Krankenhaus, Flughafen, Hafen, Bahnhof |
-| `map.scalebar` | Scale bar / Maßstabsleiste | Box | Karte | `length` + `unit` (km, mi, m, ft), `segments` (1–10), `style` Wechselbalken / Linie mit Strichen; Beschriftungen werden automatisch ausgedünnt |
+| `map.scalebar` | Scale bar / Maßstabsleiste | Box | Karte | `length` + `unit` (km, mi, m, ft), `segments` (1–10), `style` Wechselbalken / Linie mit Strichen; Beschriftungen werden automatisch ausgedünnt; Werte: Kartenmaßstab 1:N, Prüfung gegen den Planmaßstab (siehe „Messungen“) |
 | `map.north` | North arrow / Nordpfeil | Box | Karte | geteilte Pfeilspitze, `letter` „N“ |
 | `map.compass` | Compass rose / Windrose | Box | Karte | `points` 8 / 4, `labels` (Deutsch: N, O, S, W) |
 | `map.legend` | Legend / Legende | Box | Karte | `title` (Standard „Legend“ / „Legende“), `auto`; Einträge siehe unten |
@@ -67,6 +70,36 @@ zeichnet „s = 4,72 km, v = 50 km/h, t = 5,66 min“ unter die Route.
   gemeinsamen `IconIds`-Vokabular: `travel-walk` (Fußgänger), `travel-bike` (Fahrrad), `travel-car` (Auto); das
   Verkehrsmittel der Entfernungsangabe nutzt zusätzlich `travel-transit` (Front eines Busses oder einer Straßenbahn) und
   `travel-none` (Kreis mit Schrägstrich). Die COM- und Web-Add-ins zeichnen sie; LibreOffice zeigt die Optionsnamen.
+
+## Messungen: Fläche, Entfernung, Höhe und Maßstab (Runde 7, 26.11.2026)
+
+Alle Längen kommen aus der Zeichnung im Kartenmaßstab (`scale` der Route, die erste Maßstabsleiste auf dem Blatt oder
+der Planmaßstab des Dokuments, wie bei Routen), sofern sie nicht eingegeben sind; ohne Maßstab bleiben sie unbekannt.
+
+| Element | Variablen | Beziehungen (aus der Zeichnung) | Prüfung |
+|---|---|---|---|
+| `map.region` | `A` Fläche (km²), `U` Umfang (km) | `map.region.area`: gezeichnete Fläche · (m/mm)²; `map.region.perimeter`: gezeichneter Umfang · m/mm (bei `smooth` der geglättete Umriss) | – |
+| `map.measure` | `d` Luftlinie (km), `θ` Kurswinkel (°, nur lesbar) | `map.measure.distance`: gezeichnete Länge · m/mm; `map.measure.bearing`: von Norden im Uhrzeigersinn | – |
+| `map.route` | Panel, nur lesbar: `Δh↑` Anstieg, `Δh↓` Abstieg (m), `q_max` größte Steigung (%) | `map.route.ascent`, `map.route.descent`: Σ Anstiege und Abstiege zwischen aufeinanderfolgenden Höhenlinienkreuzungen; `map.route.gradient`: max \|Δh\|/Δs (braucht einen Maßstab) | – |
+| `map.scalebar` | `N` Kartenmaßstab 1:N (nur lesbar); Panel: `N_Plan` Planmaßstab des Dokuments | `map.scalebar.scale`: dargestellte Länge / gezeichnete Breite; `map.scalebar.plan` | `map.scale.plan` (Hinweis): \|N/N_Plan − 1\| > 2 % |
+
+- **Gebiet:** „Gebiet mit Fläche und Umfang“ zeigt „A = 1,34 km², U = 4,68 km“ unter dem Gebiet. Eine eingegebene
+  Fläche oder ein eingegebener Umfang hat Vorrang vor der Zeichnung.
+- **Entfernungsmessung:** zwei Punkte, deren Enden an Markern, POIs und Ortspunkten andocken und ihnen folgen. Norden ist
+  die Blattoberkante oder, wenn er gedreht ist, die Richtung des ersten Nordpfeils auf dem Blatt. „Entfernung und
+  Kurswinkel“ zeigt beides.
+- **Höhe aus Höhenlinien:** Jede Kreuzung der Routenmittellinie mit einer Höhenlinie des Blatts liefert dort die Höhe
+  der Höhenlinie. Anstieg und Abstieg summieren die Anstiege und Abstiege zwischen aufeinanderfolgenden Kreuzungen; eine
+  Kuppe zwischen zwei Kreuzungen derselben Höhenlinie zählt nicht, die Werte sind also Untergrenzen. Die größte Steigung
+  teilt die Höhenstufe durch den Abstand der Kreuzungen im Kartenmaßstab. Höhenlinien melden die Routen mit
+  Wertebeschriftung und die Profile des Blatts als abhängig; Routen melden die Profile.
+- **Höhenprofil:** Höhe (niedrigste und höchste gekreuzte Höhenlinie) über der Strecke entlang der Route (0 bis zur
+  Routenlänge im Kartenmaßstab), Punkte an den Kreuzungen, helle Fläche darunter, „↑ 100 m ↓ 100 m“ in der Ecke;
+  Achsbeschriftungen in der Sprache der Oberfläche. Es hängt von seinen Nachbarn ab; Maßstabsleiste, Route und
+  Höhenlinien zeichnen es neu.
+- **Maßstabsleiste:** Für Kartenlängen hat die Maßstabsleiste Vorrang vor dem Planmaßstab; der Hinweis meldet, wenn
+  beide nicht übereinstimmen.
+- **Quellen:** Geometrie (Fläche, Umfang, Entfernung) und die Definition der Steigung; keine Katalogquelle zitiert.
 
 ## Stationen, Brücken, Tunnel und Höhenlinien (26.11.2026)
 

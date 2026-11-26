@@ -6,9 +6,9 @@ V2X-Funkverbindungen, Wahrnehmungs-Overlays, Trajektorien und HMI-Elemente. Alle
 
 > **Grenzen.** Das Modul zeichnet *illustrative Szenen*. Es wird nichts simuliert: Sichtbereiche erkennen nichts,
 > Trajektorien werden weder geplant noch auf Fahrbarkeit geprüft, und Abmessungen folgen keiner Fahrzeugnorm. Die
-> Proportionen sind plausibel, nicht vermessen. TTC-Angabe und Sicherheitsabstand berechnen Lehrbuchwerte (Zeit bis zur
-> Kollision, Anhalteweg) aus eingegebenen Geschwindigkeiten und Abständen (siehe „Werte und Prüfungen“); das sind
-> Skizzenabschätzungen, keine validierte Fahrfunktion.
+> Proportionen sind plausibel, nicht vermessen. TTC-Angabe, Sicherheitsabstand, Sichtbereich, Batteriepack und die
+> beiden Fahrdynamik-Figuren (Fahrwiderstand, Wendekreis) berechnen Lehrbuchwerte aus eingegebenen Geschwindigkeiten,
+> Massen und Abständen (siehe „Werte und Prüfungen“); das sind Skizzenabschätzungen, keine validierte Fahrfunktion.
 
 English version: [../../en/modules/automotive.md](../../en/modules/automotive.md)
 
@@ -46,7 +46,7 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 | | `auto.vehicle.box` (generisches Fahrzeug mit Richtungspfeil) | Draufsicht, Seite, Front | – |
 | Komponenten | `auto.sub.axles` (Achsen und Räder, passend zum Pkw-Umriss) | Draufsicht, Seite | `axles` 1–5, `steer` (°), `centerline` |
 | | `auto.sub.steering` | Front, Seite, Draufsicht | – |
-| | `auto.sub.battery` | Draufsicht, Seite | `modules` je Reihe |
+| | `auto.sub.battery` | Draufsicht, Seite | `modules` je Reihe; Werte `energy`, `consumption`, `range`, `trip`, `showValues` |
 | | `auto.sub.edrive` (Motor, Getriebe, Seitenwellen) | Draufsicht, Seite | `inverter` |
 | | `auto.sub.seat` | Seite, Draufsicht, Front | `headrest` |
 | | `auto.sub.door` | Seite, Draufsicht (geöffnet, Schwenkbogen) | `open` (°) |
@@ -70,7 +70,7 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 | | `auto.traffic.building` | Draufsicht, Seite | `floors` |
 | | `auto.traffic.obstacle` | Draufsicht, Seite | `kind` Kiste/Leitkegel/Trümmer |
 | Sensoren | `auto.sensor.camera`, `.radar`, `.lidar`, `.ultrasonic` | Symbol | – |
-| | `auto.fov` (**Punktobjekt**, Sichtbereichssektor) | – | `range` (mm), `angle` (°, 360 = Vollkreis), `heading` (°), `fill`, `rings`, `axis`, `label` |
+| | `auto.fov` (**Punktobjekt**, Sichtbereichssektor) | – | `range` (mm), `angle` (°, 360 = Vollkreis), `heading` (°), `fill`, `rings`, `axis`, `label`; Werte `sensorRange`, `speed`, `reaction`, `decel`, `friction`, `scale` (mm je m), `showValues` |
 | | `auto.v2x` (**Punktobjekt**, V2X-Funkverbindung zwischen zwei Teilnehmern) | – | `kind` V2V/V2I/V2P/V2N/V2X (Standardbeschriftung), `arrows` beide/Ende/keine, `course` gestrichelt/Zickzack (Options-Piktogramme), `waves`, `label`, `textSize` |
 | Wahrnehmung | `auto.det.bbox2d` | Bildebene | `label`, `confidence`, `showConfidence`, `dashed` |
 | | `auto.det.bbox3d` | isometrisch, Draufsicht | `label`, `confidence`, `showConfidence` |
@@ -80,6 +80,8 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 | | `auto.motion.conflict` | Symbol | – |
 | | `auto.motion.safetydistance` (**Punktobjekt**, Maß) | – | `label`, `offset`, `showValue`, `scale` (mm je m), `textSize`; Werte `speed`, `reaction`, `decel`, `gap`, `stopping`, `reactionDistance`, `brakingDistance`, `showValues` |
 | | `auto.motion.ttc` (Text ersetzt die Angabe) | Symbol | `ttc` (s, ohne Vorgabewert: die Angabe zeigt 2,4 s, bis er gesetzt ist), `frame`; Werte `vEgo`, `vTarget`, `gap`, `showValues` |
+| | `auto.motion.resistance` (Fahrwiderstand: Pkw auf der Fahrbahn mit Pfeilen für Luft-, Roll-, Steigungswiderstand und Zugkraft; die Fahrbahn neigt sich mit einer eingegebenen Steigung, in der Zeichnung höchstens 12°) | Seite | Werte `speed`, `mass`, `gradient`, `cw`, `frontalArea`, `rolling`, `airDensity`, `accel`, `powerMax`, `showValues` |
+| | `auto.motion.turning` (Wendekreis: Einspurskizze mit Momentanpol M, Radius R der Vorderachsmitte, Ackermann-Radachsen und Spur des kurvenäußeren Vorderrads; der gezeichnete Lenkwinkel folgt einem eingegebenen, 20 … 45°) | Draufsicht | Werte `wheelbase`, `steer`, `radius`, `circle`, `track`, `speed`, `friction`, `showValues` |
 | HMI | `auto.hmi.cluster` | Front | `layout` Rundinstrumente/digital, `value`, `speed` |
 | | `auto.hmi.display` | Front, Seite | `content` Kacheln/Karte/leer |
 | | `auto.hmi.hud` | Seite (Strahlengang, Auge, virtuelles Bild), Front (Fahrersicht, Trapez des virtuellen Bildes) | `speed` |
@@ -116,6 +118,39 @@ Werte-Solver, und „Werte zeigen“ (`showValues`) zeichnet die Wertebeschriftu
   Quellenkatalogs (`ValueSources`) passt, daher wird keiner zitiert.
 - Bibliotheksvorlagen: „TTC aus Abstand und Geschwindigkeiten“ (100 km/h, 60 km/h, 25 m → 2,25 s) und
   „Anhalteweg-Prüfung“ (50 km/h, Abstand 30 m, Wertebeschriftung an).
+
+### Fahrdynamik, Reichweite und Sensorreichweite (Runde 7, 26.11.2026)
+
+| Element | Variablen (Karte: die ersten) | Beziehungen | Prüfung |
+|---|---|---|---|
+| `auto.motion.resistance` | `v` (km/h), `m` (kg), `F_W` Fahrwiderstand gesamt (N), `P` Leistung an den Rädern (kW); Panel: `c_w` (Vorgabe 0,30), `A` Stirnfläche (Vorgabe 2,2 m²), `f_R` Rollwiderstandsbeiwert (Vorgabe 0,012), `q` Steigung (Vorgabe 0 %), `a` Beschleunigung (Vorgabe 0), `F_R`, `F_L`, `F_St`, `P_max`; Ingenieur: `ρ` (Vorgabe 1,2 kg/m³), `F_B` | `auto.resistance.roll`: F_R = m·g·f_R·cos α; `auto.resistance.air`: F_L = ½·ρ·c_w·A·v²; `auto.resistance.grade`: F_St = m·g·sin α (tan α = q); `auto.resistance.accel`: F_B = m·a; `auto.resistance.total`: F_W = ΣF; `auto.resistance.power`: P = F_W·v | `auto.drive.power` (Warnung): P > P_max |
+| `auto.motion.turning` | `L` Radstand, `δ` Lenkwinkel, `R` Radius der Vorderachsmitte, `D` Spurkreis (Spur des kurvenäußeren Vorderrads); Panel: `R_h` Radius der Hinterachsmitte, `b` Spurweite (Vorgabe 1,6 m), `v`, `a_y`, `μ` | `auto.turn.radius`: R = L/sin δ; `auto.turn.rear`: R_h = L/tan δ; `auto.turn.circle`: D = 2·√((R_h + b/2)² + L²); `auto.turn.lateral`: a_y = v²/R | `auto.turn.friction` (Warnung): a_y > μ·g |
+| `auto.sub.battery` | `E` nutzbare Energie (kWh), `c` Verbrauch je 100 km (als Energie eingegeben, kWh), `R` Reichweite (km); Panel: `d` geplante Fahrstrecke (km) | `auto.ev.range`: R = E/c·100 km | `auto.ev.range` (Warnung): R < d |
+| `auto.fov` | `v` (km/h), `r_S` Sensorreichweite (m), `s` Anhalteweg (m), `t_V` Vorausschauzeit (s); Panel: `t_R`, `a`, `s_R`, `s_B`, `μ` | die drei Bremsbeziehungen des Sicherheitsabstands; `auto.fov.preview`: t_V = r_S/v | `auto.fov.range` (Warnung): s > r_S; `auto.braking.friction` |
+| `auto.motion.safetydistance` | wie oben, zusätzlich Panel `μ` Haftreibungsbeiwert (ohne Vorgabe) | – | `auto.braking.friction` (Warnung): a > μ·g |
+
+- **Fahrwiderstand:** stationäre Fahrt (kein Wind, ohne rotierende Massen); die Vorgaben sind typische Werte eines Pkw
+  auf Asphalt, keine Normwerte – eigene Werte eingeben. Eine eingegebene Steigungskraft lässt den Solver die Steigung
+  berechnen (und so für jede Beziehung). Die Zeichnung zeigt F_air, F_roll und F_t (EN) bzw. F_L, F_R und F_Z (DE); der
+  Steigungspfeil F_grade / F_St und die Neigung mit ihrer Prozentangabe erscheinen nur bei einer eingegebenen Steigung
+  ungleich null. Lehrbuchprobe: 1500 kg bei 100 km/h → F_R = 176,5 N, F_L = 305,6 N, P = 13,4 kW (Unit-Test).
+- **Wendekreis:** Einspurmodell bei kleiner Geschwindigkeit (kinematische Lenkung, ohne Schräglaufwinkel); D ist der
+  Spurkreis des kurvenäußeren Vorderrads – der Wendekreis von Wand zu Wand kommt um den vorderen Überhang hinzu. Ein
+  eingegebener Spurkreis und Radstand ergeben den Lenkwinkel. Beispiel: L = 2,7 m, δ = 30° → R = 5,4 m, D = 12,2 m.
+- **Batteriereichweite:** Der Verbrauch je 100 km wird als Energie eingegeben („16 kWh“), weil das Wertemodell keine
+  Größenart Energie je Strecke hat; er ist der Mittelwert über die Fahrt (Geschwindigkeitsprofil, Temperatur und
+  Nebenverbraucher eingeschlossen).
+- **Sensorreichweite:** Die Sensorreichweite ist die gezeichnete Reichweite `range` geteilt durch `scale` (mm je m,
+  Vorgabe 10 wie beim Sicherheitsabstand), sofern sie nicht eingegeben ist (`sensorRange`). Mit einer Geschwindigkeit
+  berechnet der Sichtbereich den Anhalteweg und warnt, wenn der Sensor weniger weit sieht, als das Fahrzeug zum Anhalten
+  braucht; die Vorausschauzeit ist Sensorreichweite durch Geschwindigkeit.
+- **Reibung:** Der Haftreibungsbeiwert μ hat keine Vorgabe (die Vorgabeverzögerung von 8 m/s² steht schon für trockene
+  Fahrbahn), daher laufen `auto.braking.friction` und `auto.turn.friction` erst mit eingegebenem μ.
+- **Quellen:** Lehrbuch-Fahrzeugmechanik; der Quellenkatalog enthält noch kein Fahrdynamik-Lehrbuch, daher wird keines
+  zitiert (`g` = 9,80665 m/s², konventioneller Wert [S1]).
+- Bibliotheksvorlagen: „Fahrwiderstand“, „Fahrwiderstand und Leistung bei 100 km/h“ (1500 kg), „Fahrwiderstand bergauf
+  (8 %)“, „Wendekreis“, „Wendekreis eines Pkw (L = 2,7 m, δ = 30°)“, „Batteriepack mit Reichweite“ (60 kWh, 16 kWh je
+  100 km → 375 km) und „Radar-Sichtbereich mit Anhalteprüfung“ (160 m bei 130 km/h → s = 117,6 m, t_V = 4,4 s).
 
 ## Fangen und Anhängen
 

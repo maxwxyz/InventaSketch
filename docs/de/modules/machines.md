@@ -78,6 +78,7 @@ Standardständer.
 | `machines.drive.gearbox` | Gearbox / Getriebe | `block`, `symbol` (Zahnradpaar als Schema) |
 | `machines.drive.differential` | Differential / Differential | `block`, `symbol` (Schema) |
 | `machines.drive.wheel` | Wheel / Rad | `side`, `top`, `schematic` (siehe „Antriebsstrang“) |
+| `machines.drive.load` | Driven load / Arbeitsmaschine (Last) | `block` (Schwungrad-Glyphe), `symbol` (Schwungscheibe auf Welle mit „J“; Eingangsport `in` links, Wellenachse) |
 
 Die Blockbeschriftung folgt der Sprache des Hosts; ein Objekttext ersetzt die Beschriftung (z. B. „HV-Batterie“).
 
@@ -247,8 +248,33 @@ elektrische Leistung (*P*_el = η·*P*, `mach.efficiency.generator`). Eine Masch
 Verfahrenstechnik übernimmt die *P* der Turbine über die Welle und gibt *P*_el ab (Verfahrenstechnikmodul). Drehzahlen,
 Momente und Leistungen bleiben Beträge; das Vorzeichen des Schlupfs schaltet die Betriebsart nicht um.
 
-Noch nicht: Nut-/Polzahlen, Kloss-Kennlinie, Konstanten der
-Gleichstrommaschine, Werte für Batterie, Wechselrichter und Zwischenkreis (Calc 4 mit dem Energiemodul).
+**Frequenz, Klemmen, Last und Hochlauf** (Runde 7, 26.11.2026).
+
+| Element | Neue Variablen (Parameter) | Beziehungen [Quelle] |
+|---|---|---|
+| E-Motor-Block, Antriebsstrang-E-Maschine | Panel *f* (`frequency`), Polzahl 2*p* (`poles`, Vorgabe 4), *n*_s (`syncSpeed`); Ingenieur *s* (`slip`) | E-Motor-Block: *n*_s = 60·*f*/*p*, *s* = (*n*_s − *n*)/*n*_s [S15]; Antriebsstrang-E-Maschine nach `kind`: PMSM und EESM *n* = *n*_s (`mach.speed.synchronous`), ASM mit Schlupf, SRM ohne Netzfrequenzbeziehung |
+| Maschinen, E-Motor-Block, Antriebsstrang-E-Maschine | Panel *U* (`voltage`, verkettet), *I* (`current`); Ingenieur cos φ (`powerFactor`) | drei Phasen (Standard): *P*_el = √3·*U*·*I*·cos φ (`mach.power.el3`) [S15]; eine Phase (`phases` = 1): *P*_el = *U*·*I*·cos φ (`mach.power.el1`) [S7]; andere Phasenzahlen: keine |
+| Radial- und Axialflussmaschine | wie oben, dazu die Synchronbindung | Magnet- und fremderregte Läufer (`spm`, `ipm`, `spoke`, `eesm`; die Axialflussmaschine): *n* = *n*_s [S15] |
+| Maschinen, E-Motor-Block, Antriebsstrang-E-Maschine | Panel *J*_M (`rotorInertia`), *J*_L (`loadInertia`, aus dem Antriebsstrang oder eingegeben), *M*_M mittleres Motormoment während des Hochlaufs (`runUpTorque`), *t*_a Hochlaufzeit (`runUpTime`); Ingenieur *J* (`inertia`) | *J* = *J*_M + *J*_L (`mach.inertia.total`); *t*_a = *J*·2π·*n*/(*M*_M − *M*) (`mach.runup`, konstante Momente, aus dem Stillstand bis *n*; das Lastmoment ist das Wellenmoment *M*) [S15] |
+| Getriebe, Differential | Panel *J*₂ (`inertiaOut`), *J*₁ (`inertiaIn`) | *J*₁ = *J*₂/*i*² (`mach.gearbox.inertia`, Verluste und Eigenträgheit vernachlässigt) [S18] |
+| Rad | Panel *m* (`mass`, über das Rad oder die Achse angetriebene Fahrzeugmasse); Ingenieur *J* (`inertia`) | *J* = *m*·*r*² (`mach.wheel.inertia`) [S18] |
+| Arbeitsmaschine `machines.drive.load` (neu; Block und Schwungrad-Symbol) | *n*, *M* Lastmoment, *P*, *J* (`inertia`) | *P* = 2π·*n*·*M*; mechanischer Eingang links |
+
+- *Trägheit entlang des Strangs*: Die Verbindung, die *n* und *M* nach hinten weitergibt, gibt das Lastträgheitsmoment
+  nach vorn weiter: Das *J* der Last (oder die Fahrzeugmasse am Rad) wird zum *J*₂ des Getriebes, sein *J*₁ = *J*₂/*i*² zum
+  *J*_L des Motors. Beispiel: Last 2,5 kg·m² und 100 N·m hinter einem Getriebe *i* = 5 → *J*_L = 0,1 kg·m², *M* = 20 N·m;
+  mit *J*_M = 0,02 kg·m², 1500 min⁻¹ und *M*_M = 50 N·m dauert der Hochlauf 0,63 s (Unit-Test).
+- *Prüfung* `mach.runup.torque` (Warnung, [S15]): *M*_M ≤ *M* – der Antrieb kann die Last nicht beschleunigen.
+- *Modulübergreifende Verknüpfung*: Die Klemmenvariablen verwenden die gemeinsamen Schlüssel *U*, *I*, *f* und *P*_el
+  (`NetKeys`), so dass ein Abgang eines anderen Moduls, der diese Werte an den Motorklemmen meldet, sie ohne
+  Code-Abhängigkeit trifft. Der Frequenzumrichter der Schaltanlage meldet noch keine Ausgangsfrequenz; „Umrichterfrequenz →
+  Motordrehzahl“ braucht daher einen Werteport auf der Schaltanlagenseite (offen).
+- Bibliothek: „Arbeitsmaschine (Block)“, „Schwungmasse auf Welle (Symbol)“, „E-Motor mit Hochlaufzeit“ (1450 min⁻¹,
+  20 N·m Last, 60 N·m im Hochlauf, *J* = 0,01 + 0,09 kg·m² → *t*_a = 0,38 s).
+
+Noch nicht: Nut-/Polzahlen, Konstanten der Gleichstrommaschine, Effizienzklassen (IE-Codes brauchen die Grenzwerttabelle
+der IEC 60034-30-1, die nicht wiedergegeben wird), Betriebsarten S1–S10, Werte für Batterie, Wechselrichter und
+Zwischenkreis (Calc 4 mit dem Energiemodul).
 
 ## Bekannte Grenzen
 

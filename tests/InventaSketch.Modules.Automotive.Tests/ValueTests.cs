@@ -33,9 +33,9 @@ namespace InventaSketch.Modules.Automotive.Tests
             Assert.Equal(new[] { "vEgo", "vTarget", "gap", "ttc" }, ValueModel.Variables(ttc).Select(v => v.Key));
             Assert.Equal(new[] { "auto.ttc.low" }, ((IValueChecks)ttc).ValueChecks.Select(c => c.Id));
             var sd = r.Type("auto.motion.safetydistance")!;
-            Assert.Equal(new[] { "v", "s", "gap", "tr", "a", "sR", "sB" }, ValueModel.Variables(sd).Select(v => v.Key));
+            Assert.Equal(new[] { "v", "s", "gap", "tr", "a", "sR", "sB", "mu" }, ValueModel.Variables(sd).Select(v => v.Key));
             Assert.Equal(new[] { "auto.braking.reaction", "auto.braking.distance", "auto.braking.stopping" }, ValueModel.Relations(sd).Select(x => x.Id));
-            Assert.Equal(new[] { "auto.braking.gap" }, ((IValueChecks)sd).ValueChecks.Select(c => c.Id));
+            Assert.Equal(new[] { "auto.braking.gap", "auto.braking.friction" }, ((IValueChecks)sd).ValueChecks.Select(c => c.Id));
             foreach (var t in new[] { ttc, sd })
             {
                 Assert.Contains(t.Parameters, p => p.Key == ValueLabels.ShowParam);

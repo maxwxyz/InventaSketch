@@ -23,6 +23,7 @@ namespace InventaSketch.Modules.Automotive
                 .Concat(Traffic.Types())
                 .Concat(Adas.Types())
                 .Concat(new ObjectType[] { new FovType(), new V2xType(), new LanePolyType(), new TrajectoryType(), new SafetyDistanceType() })
+                .Concat(Dynamics.Types())
                 .Concat(Hmi.Types())
                 .ToList());
 
@@ -30,7 +31,7 @@ namespace InventaSketch.Modules.Automotive
 
         public string Id => "automotive";
         public I18nText Name => new("Vehicles, ADAS & HMI", "Fahrzeuge, ADAS & HMI");
-        public string Version => "0.3.0";
+        public string Version => "0.4.0";
         public IEnumerable<ObjectType> Types => AllTypes.Value;
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -118,6 +119,9 @@ namespace InventaSketch.Modules.Automotive
             Add("steering.top", "auto.sub.steering", "Steering wheel (top view)", "Lenkrad (Draufsicht)", "top");
             Add("battery.top", "auto.sub.battery", "Battery pack (top view)", "Batteriepack (Draufsicht)", "top");
             Add("battery.side", "auto.sub.battery", "Battery pack (side view)", "Batteriepack (Seitenansicht)", "side");
+            Add("battery.range", "auto.sub.battery", "Battery pack with range", "Batteriepack mit Reichweite", "top",
+                P(("energy", "60 kWh"), ("consumption", "16 kWh")),
+                kw: new[] { "range", "ev range", "consumption", "kwh/100 km", "reichweite", "verbrauch", "elektroauto" });
             Add("edrive.top", "auto.sub.edrive", "E-drive unit (top view)", "E-Antriebseinheit (Draufsicht)", "top");
             Add("edrive.side", "auto.sub.edrive", "E-drive unit (side view)", "E-Antriebseinheit (Seitenansicht)", "side");
             Add("seat.side", "auto.sub.seat", "Seat (side view)", "Sitz (Seitenansicht)", "side");
@@ -193,6 +197,9 @@ namespace InventaSketch.Modules.Automotive
             Add("fov.radar.corner", "auto.fov", "Corner radar field of view", "Eckradar-Sichtbereich", ps: P(("range", 50), ("angle", 150)));
             Add("fov.lidar", "auto.fov", "Lidar 360° field of view", "Lidar-Sichtbereich 360°", ps: P(("range", 60), ("angle", 360), ("rings", 2)));
             Add("fov.ultrasonic", "auto.fov", "Ultrasonic field of view", "Ultraschall-Sichtbereich", ps: P(("range", 15), ("angle", 70)));
+            Add("fov.radar.check", "auto.fov", "Radar field of view with stopping check", "Radar-Sichtbereich mit Anhalteprüfung",
+                ps: P(("range", 150), ("angle", 18), ("rings", 2), ("sensorRange", "160 m"), ("speed", "130 km/h"), (ValueLabels.ShowParam, true)),
+                kw: new[] { "sensor range", "stopping distance", "preview time", "sensorreichweite", "anhalteweg", "vorausschau" });
             Add("v2x", V2xType.TypeId, "V2V radio link", "V2V-Funkverbindung", kw: new[] { "car2car", "c2c" });
             Add("v2x.v2i", V2xType.TypeId, "V2I radio link (to infrastructure)", "V2I-Funkverbindung (zur Infrastruktur)", ps: P(("kind", "v2i"), ("arrows", "both")), kw: new[] { "roadside unit", "rsu", "ampel" });
             Add("v2x.v2p", V2xType.TypeId, "V2P radio link (to pedestrian)", "V2P-Funkverbindung (zum Fußgänger)", ps: P(("kind", "v2p"), ("course", "zigzag")), kw: new[] { "pedestrian", "smartphone", "fußgänger" });
@@ -216,6 +223,15 @@ namespace InventaSketch.Modules.Automotive
                 ps: P(("vEgo", "100 km/h"), ("vTarget", "60 km/h"), ("gap", "25 m")), kw: new[] { "time to collision", "relative speed", "relativgeschwindigkeit" });
             Add("safetydistance.braking", "auto.motion.safetydistance", "Stopping distance check", "Anhalteweg-Prüfung",
                 ps: P(("speed", "50 km/h"), ("gap", "30 m"), ("showValues", true)), kw: new[] { "braking distance", "stopping distance", "reaction time", "bremsweg", "anhalteweg", "reaktionszeit" });
+
+            Add("resistance", Dynamics.ResistanceId, "Driving resistance", "Fahrwiderstand", "side");
+            Add("resistance.values", Dynamics.ResistanceId, "Driving resistance and power at 100 km/h", "Fahrwiderstand und Leistung bei 100 km/h", "side",
+                P(("mass", "1500 kg"), ("speed", "100 km/h"), (ValueLabels.ShowParam, true)), kw: new[] { "power demand", "road load", "leistungsbedarf" });
+            Add("resistance.uphill", Dynamics.ResistanceId, "Driving resistance uphill (8 %)", "Fahrwiderstand bergauf (8 %)", "side",
+                P(("mass", "1500 kg"), ("speed", "80 km/h"), ("gradient", "8 %"), (ValueLabels.ShowParam, true)), kw: new[] { "gradient", "slope", "hill", "steigung", "berg" });
+            Add("turning", Dynamics.TurningId, "Turning circle", "Wendekreis", "top");
+            Add("turning.car", Dynamics.TurningId, "Turning circle of a car (L = 2.7 m, δ = 30°)", "Wendekreis eines Pkw (L = 2,7 m, δ = 30°)", "top",
+                P(("wheelbase", "2.7 m"), ("steer", "30°")), kw: new[] { "turning radius", "wendekreisradius" });
 
             // HMI
             Add("cluster", "auto.hmi.cluster", "Instrument cluster", "Kombiinstrument");

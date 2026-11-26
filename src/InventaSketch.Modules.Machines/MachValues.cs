@@ -43,6 +43,13 @@ namespace InventaSketch.Modules.Machines
             public (string N, string T)? Output { get; }
             /// <summary>Relations that depend on the object (the efficiency rule of its operating mode); null = none.</summary>
             public Func<SketchObject, IEnumerable<Relation>>? Local { get; init; }
+            /// <summary>
+            /// Variable key of the moment of inertia this element presents at its mechanical input (a load's own inertia, the
+            /// inertia reflected through a gearbox, a vehicle mass at the wheel); null if none.
+            /// </summary>
+            public string? InertiaIn { get; init; }
+            /// <summary>Variable key of the inertia of everything downstream of the output (a motor's load inertia); null if none.</summary>
+            public string? InertiaOut { get; init; }
         }
 
         // ------------------------------------------------------------------ parameters and variables
@@ -163,6 +170,133 @@ namespace InventaSketch.Modules.Machines
                 .Solve("T", "{F}·{r}", v => v("F") * v("r"))
                 .Solve("r", "{T}/{F}", v => v("T") / v("F"));
 
+        /// <summary>Synchronous machines run at the synchronous speed: n = n_s [S15].</summary>
+        private static readonly Relation SyncLock =
+            new Relation("mach.speed.synchronous", T("Synchronous machine: speed equals the synchronous speed", "Synchronmaschine: Drehzahl gleich Synchrondrehzahl"), "{n} = {ns}", "n", "ns")
+            {
+                Source = "S15",
+                Validity = T("steady state, synchronous machine (magnets or wound field)", "stationärer Betrieb, Synchronmaschine (Magnete oder Erregerwicklung)"),
+            }
+                .Solve("n", "{ns}", v => v("ns"))
+                .Solve("ns", "{n}", v => v("n"));
+
+        /// <summary>Three-phase electrical power at the terminals P_el = √3·U·I·cos φ [S14, S15].</summary>
+        private static readonly Relation ThreePhasePower =
+            new Relation("mach.power.el3", T("Three-phase electrical power", "Elektrische Drehstromleistung"), "{Pel} = √3·{U}·{I}·{cosphi}", "Pel", "U", "I", "cosphi") { Source = "S15" }
+                .Solve("Pel", "√3·{U}·{I}·{cosphi}", v => Math.Sqrt(3) * v("U") * v("I") * v("cosphi"))
+                .Solve("I", "{Pel}/(√3·{U}·{cosphi})", v => v("Pel") / (Math.Sqrt(3) * v("U") * v("cosphi")))
+                .Solve("U", "{Pel}/(√3·{I}·{cosphi})", v => v("Pel") / (Math.Sqrt(3) * v("I") * v("cosphi")))
+                .Solve("cosphi", "{Pel}/(√3·{U}·{I})", v => v("Pel") / (Math.Sqrt(3) * v("U") * v("I")));
+
+        /// <summary>Single-phase electrical power P_el = U·I·cos φ [S7].</summary>
+        private static readonly Relation SinglePhasePower =
+            new Relation("mach.power.el1", T("Single-phase electrical power", "Elektrische Wechselstromleistung"), "{Pel} = {U}·{I}·{cosphi}", "Pel", "U", "I", "cosphi") { Source = "S7" }
+                .Solve("Pel", "{U}·{I}·{cosphi}", v => v("U") * v("I") * v("cosphi"))
+                .Solve("I", "{Pel}/({U}·{cosphi})", v => v("Pel") / (v("U") * v("cosphi")))
+                .Solve("U", "{Pel}/({I}·{cosphi})", v => v("Pel") / (v("I") * v("cosphi")))
+                .Solve("cosphi", "{Pel}/({U}·{I})", v => v("Pel") / (v("U") * v("I")));
+
+        /// <summary>The terminal power rule of the phase count (three-phase by default; none for 2, 4, 5 or 6 phases).</summary>
+        private static IEnumerable<Relation> Terminal(SketchObject o) => o.Int("phases", 3) switch
+        {
+            1 => new[] { SinglePhasePower },
+            3 => new[] { ThreePhasePower },
+            _ => Array.Empty<Relation>(),
+        };
+
+        /// <summary>Total inertia at the motor shaft J = J_M + J_L [S15].</summary>
+        private static readonly Relation InertiaTotal =
+            new Relation("mach.inertia.total", T("Total inertia at the motor shaft", "Gesamtträgheitsmoment an der Motorwelle"), "{J} = {JM} + {JL}", "J", "JM", "JL") { Source = "S15" }
+                .Solve("J", "{JM} + {JL}", v => v("JM") + v("JL"))
+                .Solve("JL", "{J} − {JM}", v => v("J") - v("JM"))
+                .Solve("JM", "{J} − {JL}", v => v("J") - v("JL"));
+
+        /// <summary>Run-up time from standstill t_a = J·2π·n/(T_M − T_L) at a constant accelerating torque [S15].</summary>
+        private static readonly Relation RunUp =
+            new Relation("mach.runup", T("Run-up time", "Hochlaufzeit"), "{ta} = {J}·2π·{n}/({TM} − {T})", "ta", "J", "n", "TM", "T")
+            {
+                Source = "S15",
+                Validity = T("constant mean motor torque and constant load torque during the run-up, from standstill to n",
+                    "konstantes mittleres Motormoment und konstantes Lastmoment während des Hochlaufs, aus dem Stillstand bis n"),
+            }
+                .Solve("ta", "{J}·2π·{n}/({TM} − {T})", v => v("TM") > v("T") ? v("J") * v("n") / (v("TM") - v("T")) : double.NaN)
+                .Solve("TM", "{T} + {J}·2π·{n}/{ta}", v => v("T") + v("J") * v("n") / v("ta"))
+                .Solve("J", "{ta}·({TM} − {T})/(2π·{n})", v => v("ta") * (v("TM") - v("T")) / v("n"));
+
+        /// <summary>Inertia reflected through a gear stage J₁ = J₂/i² (losses neglected) [S18].</summary>
+        private static readonly Relation Reflect =
+            new Relation("mach.gearbox.inertia", T("Inertia reflected to the input", "Auf den Antrieb reduziertes Trägheitsmoment"), "{J1} = {J2}/{i}²", "J1", "J2", "i")
+            {
+                Source = "S18",
+                Validity = T("gear losses and the gearbox's own inertia neglected", "Getriebeverluste und Eigenträgheit des Getriebes vernachlässigt"),
+            }
+                .Solve("J1", "{J2}/{i}²", v => v("J2") / (v("i") * v("i")))
+                .Solve("J2", "{J1}·{i}²", v => v("J1") * v("i") * v("i"))
+                .Solve("i", "√({J2}/{J1})", v => Math.Sqrt(v("J2") / v("J1")));
+
+        /// <summary>Vehicle mass seen at the wheel J = m·r² (rolling without slip) [S18].</summary>
+        private static readonly Relation WheelInertia =
+            new Relation("mach.wheel.inertia", T("Vehicle mass as inertia at the wheel", "Fahrzeugmasse als Trägheitsmoment am Rad"), "{J} = {m}·{r}²", "J", "m", "r") { Source = "S18" }
+                .Solve("J", "{m}·{r}²", v => v("m") * v("r") * v("r"))
+                .Solve("m", "{J}/{r}²", v => v("J") / (v("r") * v("r")));
+
+        private static readonly I18nText FrequencyName = T("Supply frequency", "Speisefrequenz");
+        private static readonly I18nText PolesName = T("Pole count (default 4)", "Polzahl (Vorgabe 4)");
+
+        /// <summary>Supply frequency, pole count, synchronous speed and slip of the motor block and the drivetrain e-machine.</summary>
+        private static readonly VarDef[] FrequencyVars =
+        {
+            V("f", FrequencyName, T("f", "f"), Quantities.Frequency, "Hz", "frequency", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
+            V("poles", PolesName, T("2p", "2p"), Quantities.Count, null, "poles", VarRelevance.Panel) with { Default = 4, Min = 2, Max = 200 },
+            Speed("ns", "syncSpeed", T("Synchronous speed", "Synchrondrehzahl"), "n_s", VarRelevance.Panel),
+            V("s", T("Slip", "Schlupf"), T("s", "s"), Quantities.Ratio, "%", "slip", VarRelevance.Engineer) with { Min = -1, Max = 1 },
+        };
+
+        private static readonly ParamDef[] FrequencyParams =
+        {
+            Text("frequency", FrequencyName, "Hz"), Text("poles", PolesName, null),
+            Text("syncSpeed", T("Synchronous speed", "Synchrondrehzahl"), "min⁻¹"), Text("slip", T("Slip", "Schlupf"), "%"),
+        };
+
+        private static readonly I18nText VoltageName = T("Terminal voltage (line-to-line for three phases)", "Klemmenspannung (verkettet bei Drehstrom)");
+        private static readonly I18nText CurrentName = T("Line current", "Leiterstrom");
+        private static readonly I18nText CosName = T("Power factor cos φ", "Leistungsfaktor cos φ");
+
+        /// <summary>Electrical terminal values: they also meet the values of cables and feeders of other modules (keys U, I, f).</summary>
+        private static readonly VarDef[] TerminalVars =
+        {
+            V("U", VoltageName, T("U", "U"), Quantities.Voltage, "V", "voltage", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
+            V("I", CurrentName, T("I", "I"), Quantities.Current, "A", "current", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
+            V("cosphi", CosName, T("cos φ", "cos φ"), Quantities.Ratio, null, "powerFactor", VarRelevance.Engineer) with { Min = 0.05, Max = 1 },
+        };
+
+        private static readonly ParamDef[] TerminalParams =
+        {
+            Text("voltage", VoltageName, "V"), Text("current", CurrentName, "A"), Text("powerFactor", CosName, null),
+        };
+
+        private static readonly I18nText RotorInertiaName = T("Rotor inertia of the motor", "Läuferträgheitsmoment des Motors");
+        private static readonly I18nText LoadInertiaName = T("Load inertia at the motor shaft (from the drive chain, or entered)", "Lastträgheitsmoment an der Motorwelle (aus dem Antriebsstrang oder eingegeben)");
+        private static readonly I18nText TotalInertiaName = T("Total inertia at the motor shaft", "Gesamtträgheitsmoment an der Motorwelle");
+        private static readonly I18nText RunUpTorqueName = T("Mean motor torque during the run-up", "Mittleres Motormoment während des Hochlaufs");
+        private static readonly I18nText RunUpTimeName = T("Run-up time to the speed n", "Hochlaufzeit auf die Drehzahl n");
+
+        /// <summary>Inertia and run-up variables of motors (the load torque during the run-up is the shaft torque T).</summary>
+        private static readonly VarDef[] RunUpVars =
+        {
+            V("JM", RotorInertiaName, T("J_M", "J_M"), Quantities.Inertia, "kg·m²", "rotorInertia", VarRelevance.Panel) with { Min = 0, Max = 1e6 },
+            V("JL", LoadInertiaName, T("J_L", "J_L"), Quantities.Inertia, "kg·m²", "loadInertia", VarRelevance.Panel) with { Min = 0, Max = 1e7 },
+            V("J", TotalInertiaName, T("J", "J"), Quantities.Inertia, "kg·m²", "inertia", VarRelevance.Engineer) with { Min = 0, Max = 1e7 },
+            Torque("TM", "runUpTorque", RunUpTorqueName, "T_M", "M_M", VarRelevance.Panel),
+            V("ta", RunUpTimeName, T("t_a", "t_a"), Quantities.Time_, "s", "runUpTime", VarRelevance.Panel) with { Min = 0, Max = 1e6 },
+        };
+
+        private static readonly ParamDef[] RunUpParams =
+        {
+            Text("rotorInertia", RotorInertiaName, "kg·m²"), Text("loadInertia", LoadInertiaName, "kg·m²"), Text("inertia", TotalInertiaName, "kg·m²"),
+            Text("runUpTorque", RunUpTorqueName, "N·m"), Text("runUpTime", RunUpTimeName, "s"),
+        };
+
         // ------------------------------------------------------------------ specs per type
 
         private static readonly (string, string) Shaft = ("n", "T");
@@ -188,6 +322,7 @@ namespace InventaSketch.Modules.Machines
             "machines.drive.gearbox" => Box(T("Gear ratio", "Übersetzung")),
             "machines.drive.differential" => Box(T("Axle ratio", "Achsübersetzung")),
             "machines.drive.wheel" => Wheel(),
+            "machines.drive.load" => Load(),
             _ => Spec.Empty,
         };
 
@@ -201,12 +336,20 @@ namespace InventaSketch.Modules.Machines
                 V("s", T("Slip", "Schlupf"), T("s", "s"), Quantities.Ratio, "%", "slip", VarRelevance.Panel) with { Min = -1, Max = 1 },
                 V("poles", T("Pole count", "Polzahl"), T("2p", "2p"), Quantities.Count, null, "poles", VarRelevance.Panel) with { Default = 8, Min = 2, Max = 200 },
                 Eta(), ElPower(), RatedPower(), RatedTorque(),
-            };
-            var ps = WithShow(PSpeed, PTorque, PPower, Text("frequency", T("Supply frequency", "Speisefrequenz"), "Hz"),
+            }.Concat(TerminalVars).Concat(RunUpVars).ToArray();
+            var ps = WithShow(new[] { PSpeed, PTorque, PPower, Text("frequency", T("Supply frequency", "Speisefrequenz"), "Hz"),
                 Text("syncSpeed", T("Synchronous speed", "Synchrondrehzahl"), "min⁻¹"), Text("slip", T("Slip", "Schlupf"), "%"),
-                PEta, PElPower, PRatedPower, PRatedTorque);
-            return new Spec(vars, new[] { PowerRel, SyncSpeed, Slip }, ps, new[] { SlipSign(), Efficiency(), Overload() }, null, Shaft) { Local = ModeEfficiency };
+                PEta, PElPower, PRatedPower, PRatedTorque }.Concat(TerminalParams).Concat(RunUpParams).ToArray());
+            return new Spec(vars, new[] { PowerRel, SyncSpeed, Slip, InertiaTotal, RunUp }, ps, new[] { SlipSign(), Efficiency(), Overload(), RunUpTorque() }, null, Shaft)
+            {
+                Local = o => ModeEfficiency(o).Concat(Terminal(o)).Concat(IsSynchronousSection(o) ? new[] { SyncLock } : Array.Empty<Relation>()),
+                InertiaOut = "JL",
+            };
         }
+
+        /// <summary>A cross-section with a synchronous rotor (magnets or a wound field; the axial-flux machine has magnets).</summary>
+        private static bool IsSynchronousSection(SketchObject o)
+            => o.Type == "machines.axial" || Common.RotorKind(o) is "spm" or "ipm" or "spoke" or "eesm";
 
         /// <summary>
         /// Drive motor block and drivetrain e-machine: P = 2π·n·T and the efficiency rule of the operating mode (motor by default,
@@ -215,11 +358,31 @@ namespace InventaSketch.Modules.Machines
         /// </summary>
         private static Spec Motor(bool modeParam)
         {
-            var vars = new[] { Speed(), Torque(), Power(), Eta(VarRelevance.Card), ElPower(), RatedPower(), RatedTorque() };
+            var vars = new[] { Speed(), Torque(), Power(), Eta(VarRelevance.Card), ElPower(), RatedPower(), RatedTorque() }
+                .Concat(FrequencyVars).Concat(TerminalVars).Concat(RunUpVars).ToArray();
             var ps = new List<ParamDef> { PSpeed, PTorque, PPower, PEta, PElPower, PRatedPower, PRatedTorque };
+            ps.AddRange(FrequencyParams);
+            ps.AddRange(TerminalParams);
+            ps.AddRange(RunUpParams);
             if (modeParam) ps.Add(PMode);
-            return new Spec(vars, new[] { PowerRel }, WithShow(ps.ToArray()), new[] { Efficiency(), Overload() }, null, Shaft) { Local = ModeEfficiency };
+            // The drive motor block has no machine kind: synchronous speed and slip always apply. The drivetrain e-machine
+            // follows its kind: synchronous machines run at n = n_s, induction machines with slip, reluctance machines without
+            // a mains-frequency relation.
+            var fixedRels = modeParam ? new[] { PowerRel, InertiaTotal, RunUp } : new[] { PowerRel, SyncSpeed, Slip, InertiaTotal, RunUp };
+            return new Spec(vars, fixedRels, WithShow(ps.ToArray()), new[] { Efficiency(), Overload(), RunUpTorque() }, null, Shaft)
+            {
+                Local = modeParam ? o => ModeEfficiency(o).Concat(Terminal(o)).Concat(KindSpeed(o)) : o => ModeEfficiency(o).Concat(Terminal(o)),
+                InertiaOut = "JL",
+            };
         }
+
+        /// <summary>The speed rules of the drivetrain e-machine's kind (PMSM/EESM: n = n_s; ASM: slip; SRM: none).</summary>
+        private static IEnumerable<Relation> KindSpeed(SketchObject o) => o.Str("kind", "pmsm") switch
+        {
+            "asm" => new[] { SyncSpeed, Slip },
+            "srm" => Array.Empty<Relation>(),
+            _ => new[] { SyncSpeed, SyncLock },
+        };
 
         private static Spec Engine()
         {
@@ -244,7 +407,22 @@ namespace InventaSketch.Modules.Machines
                 Text("speedOut", T("Output speed", "Abtriebsdrehzahl"), "min⁻¹"), Text("torqueOut", T("Output torque", "Abtriebsmoment"), "N·m"),
                 Text("speedIn", T("Input speed", "Antriebsdrehzahl"), "min⁻¹"), Text("torqueIn", T("Input torque", "Antriebsmoment"), "N·m"),
                 Text("powerIn", T("Input power", "Antriebsleistung"), "W"), Text("powerOut", T("Output power", "Abtriebsleistung"), "W"));
-            return new Spec(vars, new[] { BoxSpeed, BoxTorque, BoxPowerIn, BoxPowerOut }, ps, new[] { Efficiency() }, ("n1", "T1"), ("n2", "T2"));
+            vars = vars.Concat(new[]
+            {
+                V("J2", T("Load inertia at the output", "Lastträgheitsmoment am Abtrieb"), T("J₂", "J₂"), Quantities.Inertia, "kg·m²", "inertiaOut", VarRelevance.Panel) with { Min = 0, Max = 1e7 },
+                V("J1", T("Load inertia reflected to the input", "Auf den Antrieb reduziertes Lastträgheitsmoment"), T("J₁", "J₁"), Quantities.Inertia, "kg·m²", "inertiaIn", VarRelevance.Panel) with { Min = 0, Max = 1e7 },
+            }).ToArray();
+            ps = ps.Take(ps.Length - 1).Concat(new[]
+            {
+                Text("inertiaOut", T("Load inertia at the output", "Lastträgheitsmoment am Abtrieb"), "kg·m²"),
+                Text("inertiaIn", T("Load inertia reflected to the input", "Auf den Antrieb reduziertes Lastträgheitsmoment"), "kg·m²"),
+                ValueLabels.ShowValues,
+            }).ToArray();
+            return new Spec(vars, new[] { BoxSpeed, BoxTorque, BoxPowerIn, BoxPowerOut, Reflect }, ps, new[] { Efficiency() }, ("n1", "T1"), ("n2", "T2"))
+            {
+                InertiaIn = "J1",
+                InertiaOut = "J2",
+            };
         }
 
         private static Spec Wheel()
@@ -257,9 +435,32 @@ namespace InventaSketch.Modules.Machines
                 V("F", T("Tractive force", "Zugkraft"), T("F", "F"), Quantities.Force, "N", "force", VarRelevance.Panel) with { Min = 0, Max = 1e8 },
                 Power(rel: VarRelevance.Panel),
             };
+            vars = vars.Concat(new[]
+            {
+                V("m", T("Vehicle mass driven through this wheel or axle", "Über dieses Rad oder diese Achse angetriebene Fahrzeugmasse"), T("m", "m"), Quantities.Mass_, "kg", "mass", VarRelevance.Panel) with { Min = 0, Max = 1e6 },
+                V("J", T("Inertia of the vehicle mass at the wheel", "Trägheitsmoment der Fahrzeugmasse am Rad"), T("J", "J"), Quantities.Inertia, "kg·m²", "inertia", VarRelevance.Engineer) with { Min = 0, Max = 1e7 },
+            }).ToArray();
             var ps = WithShow(Text("radius", T("Dynamic rolling radius", "Dynamischer Rollradius"), "mm"), PSpeed, PTorque,
-                Text("linSpeed", T("Vehicle speed", "Fahrgeschwindigkeit"), "km/h"), Text("force", T("Tractive force", "Zugkraft"), "N"), PPower);
-            return new Spec(vars, new[] { WheelSpeed, WheelForce, PowerRel }, ps, Array.Empty<ValueCheck>(), Shaft, null);
+                Text("linSpeed", T("Vehicle speed", "Fahrgeschwindigkeit"), "km/h"), Text("force", T("Tractive force", "Zugkraft"), "N"), PPower,
+                Text("mass", T("Vehicle mass driven through this wheel or axle", "Über dieses Rad oder diese Achse angetriebene Fahrzeugmasse"), "kg"),
+                Text("inertia", T("Inertia of the vehicle mass at the wheel", "Trägheitsmoment der Fahrzeugmasse am Rad"), "kg·m²"));
+            return new Spec(vars, new[] { WheelSpeed, WheelForce, PowerRel, WheelInertia }, ps, Array.Empty<ValueCheck>(), Shaft, null) { InertiaIn = "J" };
+        }
+
+        /// <summary>
+        /// Driven load (block): speed, load torque, power and moment of inertia at its input; the chain passes the inertia
+        /// upstream through gearboxes (J/i²) to the motor, which computes its run-up time.
+        /// </summary>
+        private static Spec Load()
+        {
+            var vars = new[]
+            {
+                Speed(), Torque(name: T("Load torque", "Lastmoment")), Power(name: T("Load power", "Lastleistung")),
+                V("J", T("Moment of inertia of the load", "Trägheitsmoment der Last"), T("J", "J"), Quantities.Inertia, "kg·m²", "inertia") with { Min = 0, Max = 1e7 },
+            };
+            var ps = WithShow(PSpeed, Text("torque", T("Load torque", "Lastmoment"), "N·m"), Text("power", T("Load power", "Lastleistung"), "W"),
+                Text("inertia", T("Moment of inertia of the load", "Trägheitsmoment der Last"), "kg·m²"));
+            return new Spec(vars, new[] { PowerRel }, ps, Array.Empty<ValueCheck>(), Shaft, null) { InertiaIn = "J" };
         }
 
         // ------------------------------------------------------------------ checks (section 4)
@@ -289,6 +490,15 @@ namespace InventaSketch.Modules.Machines
                  || c["P"] is double p && c["Pel"] is double pel && (IsGenerator(c.Object) ? pel > p * (1 + Rel) : p > pel * (1 + Rel)))
         { Source = "S1" };
 
+        /// <summary>mach.runup.torque: the mean motor torque during the run-up does not exceed the load torque [S15].</summary>
+        private static ValueCheck RunUpTorque() => new(
+            "mach.runup.torque", CheckSeverity.Warning,
+            T("The mean motor torque during the run-up is not above the load torque: the drive cannot accelerate the load. Choose a motor with more starting torque or a larger gear ratio.",
+              "Das mittlere Motormoment während des Hochlaufs liegt nicht über dem Lastmoment: Der Antrieb kann die Last nicht beschleunigen. Einen Motor mit mehr Anlaufmoment oder eine größere Übersetzung wählen."),
+            "T_M > T_L",
+            c => c["TM"] is double tm && c["T"] is double t && tm <= t * (1 + Rel))
+        { Source = "S15" };
+
         /// <summary>mach.overload: power or torque above the entered rating [S14].</summary>
         private static ValueCheck Overload() => new(
             "mach.overload", CheckSeverity.Warning,
@@ -308,6 +518,7 @@ namespace InventaSketch.Modules.Machines
         private static readonly Relation SameSpeed = Relation.Equality("mach.link.speed", T("Speed passed on", "Drehzahl weitergegeben"));
         private static readonly Relation SameTorque = Relation.Equality("mach.link.torque", T("Torque passed on", "Drehmoment weitergegeben"));
         private static readonly Relation ShaftSpeed = Relation.Equality("mach.shaft.speed", T("Same speed on one shaft", "Gleiche Drehzahl auf einer Welle"));
+        private static readonly Relation SameInertia = Relation.Equality("mach.link.inertia", T("Load inertia passed upstream", "Lastträgheitsmoment nach vorn weitergegeben"));
 
         /// <summary>Connectors between drive blocks, per document: (upstream, downstream).</summary>
         private static readonly ConditionalWeakTable<SketchDocument, List<(string Up, string Down)>> Chains = new();
@@ -350,6 +561,8 @@ namespace InventaSketch.Modules.Machines
                 var (ni, ti) = SpecOf(doc, down)!.Input!.Value;
                 list.Add(Eq(SameSpeed, up, no, down, ni));
                 list.Add(Eq(SameTorque, up, to, down, ti));
+                // The inertia downstream of an output is what the next element presents at its input (J/i² through gearboxes).
+                if (SpecOf(doc, up)!.InertiaOut is { } jo && SpecOf(doc, down)!.InertiaIn is { } ji) list.Add(Eq(SameInertia, up, jo, down, ji));
             }
 
             // Drivetrain parts on a mechanical shaft share the speed of its shaft line (Core ShaftLines; the torque along the

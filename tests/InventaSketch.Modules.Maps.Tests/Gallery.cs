@@ -56,6 +56,34 @@ namespace InventaSketch.Modules.Maps.Tests
             return svg.Replace("width=\"338.667mm\" height=\"190.5mm\"", "width=\"1354\" height=\"762\"");
         }
 
+        /// <summary>A hill (closed contours), a route over it with its values, a distance measure, an area with values and the profile.</summary>
+        private static (SketchDocument Doc, Page Page) HillMap(Registry r)
+        {
+            SketchObject Ring(double rx, double ry, double elevation)
+            {
+                var pts = Enumerable.Range(0, 8).Select(i => new Vec2(150 + rx * Math.Cos(i * Math.PI / 4), 80 + ry * Math.Sin(i * Math.PI / 4))).ToArray();
+                return Fx.Line(r, "map.contour", pts).WithParam("closed", true).WithParam("elevation", elevation);
+            }
+            var start = Fx.Item(r, "map.marker.start", new Vec2(70, 92));
+            var finish = Fx.Item(r, "map.marker.finish", new Vec2(235, 66));
+            var route = Fx.Line(r, "map.route", new Vec2(70, 100), new Vec2(120, 90), new Vec2(160, 78), new Vec2(200, 74), new Vec2(235, 74))
+                .WithParam(ValueLabels.ShowParam, true).WithParam("mode", "walk");
+            var objects = new List<SketchObject>
+            {
+                Fx.Item(r, "map.frame", new Vec2(169, 95)) with { Size = new Size2(320, 170) },
+                Ring(70, 45, 300), Ring(48, 30, 350), Ring(26, 16, 400),
+                Fx.Line(r, "map.region.values", new Vec2(30, 130), new Vec2(80, 125), new Vec2(90, 165), new Vec2(35, 170)).WithParam("kind", "forest"),
+                route, start, finish,
+                Fx.Line(r, "map.measure.bearing", new Vec2(70, 100), new Vec2(235, 74)) with { Points = new[] { new Vec2(70, 112), new Vec2(235, 86) } },
+                Fx.Item(r, "map.profile", new Vec2(250, 145)) with { Size = new Size2(100, 45) },
+                Fx.Item(r, "map.scalebar", new Vec2(60, 25)) with { Size = new Size2(40, 8) },
+                Fx.Item(r, "map.north", new Vec2(300, 25)),
+            };
+            var doc = SketchDocument.Create(PageSizes.Slide16x9, "Hill");
+            doc = Edits.Add(doc, doc.Pages[0].Id, objects.ToArray());
+            return (doc, doc.Pages[0]);
+        }
+
         [Fact]
         public void WriteGallery()
         {
@@ -92,6 +120,9 @@ namespace InventaSketch.Modules.Maps.Tests
             File.WriteAllText(Path.Combine(dir, "route-map-mono.html"), Page("Sample route map (monochrome)", MapSvg(r, doc, page, mono: true)), Encoding.UTF8);
             File.WriteAllText(Path.Combine(dir, "route-map-de.html"), Page("Beispiel-Routenkarte", MapSvg(r, doc, page, lang: Lang.De)), Encoding.UTF8);
             index.Append("<p><a href=\"route-map.html\">Sample route map</a> · <a href=\"route-map-mono.html\">monochrome</a> · <a href=\"route-map-de.html\">Deutsch</a></p>\n");
+            var (hill, hillPage) = HillMap(r);
+            File.WriteAllText(Path.Combine(dir, "hill-map.html"), Page("Measures and elevation profile", MapSvg(r, hill, hillPage)), Encoding.UTF8);
+            index.Append("<p><a href=\"hill-map.html\">Measures and elevation profile</a></p>\n");
             File.WriteAllText(Path.Combine(dir, "index.html"), Page("InventaSketch maps gallery", index.ToString()), Encoding.UTF8);
             Assert.True(File.Exists(Path.Combine(dir, "index.html")));
         }

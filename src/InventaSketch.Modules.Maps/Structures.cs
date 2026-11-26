@@ -272,6 +272,9 @@ namespace InventaSketch.Modules.Maps
         public override bool IsClosed(SketchObject o) => o.Flag("closed", false);
         protected override int MinPoints => 2;
 
+        /// <summary>Legends, elevation profiles and the routes showing their values (ascent, descent) redraw with the contour.</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => MapDeps.Legends(o, ctx).Concat(MapMeasure.ElevationReaders(o, ctx));
+
         /// <summary>The elevation text ("250", "1250"; no unit, as on maps).</summary>
         public static string Label(SketchObject o, Lang lang) => Fmt.Num(o.Num("elevation", 100), lang, 1);
 

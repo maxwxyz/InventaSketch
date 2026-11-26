@@ -2,8 +2,9 @@
 
 Schematic map sketches for slides: a map frame, regions, contour lines, place labels, roads, rail lines and rivers,
 stations on lines, bridges and tunnels on roads, a route with waypoints, direction arrows and values (length at the map
-scale, speed, travel time), start/finish markers, numbered stops, points of interest, distance/time callouts, scale
-bar, north arrow, compass rose and a legend. It is **not GIS**: there are no geographic coordinates, map
+scale, speed, travel time, ascent and descent from contour lines), start/finish markers, numbered stops, points of
+interest, distance/time callouts, distance measures with bearing, an elevation profile, region areas, scale bar, north
+arrow, compass rose and a legend. It is **not GIS**: there are no geographic coordinates, map
 projections or imported map data behind the drawing, only well-drawn, editable symbols. (Import of GeoJSON/GPX/KML
 from the specification is not part of this module.)
 
@@ -16,12 +17,14 @@ drawn length). Lines (roads, rail, rivers, routes, regions) are point objects in
 | Id | Name (EN / DE) | Geometry | Views | Notes |
 |---|---|---|---|---|
 | `map.frame` | Map frame / Kartenrahmen | box | plan | `style` plain / grid / terrain, `cells` (grid columns, rows follow the aspect), `labels` (A, B … / 1, 2 …), `tint` (land colour); double neat line |
-| `map.region` | Region / Gebiet | points (closed polygon) | plan | `kind` area, forest, water, park, urban, restricted (geofence); `fill` tint / hatch / none; `smooth`; name text at the centroid |
+| `map.region` | Region / Gebiet | points (closed polygon) | plan | `kind` area, forest, water, park, urban, restricted (geofence); `fill` tint / hatch / none; `smooth`; name text at the centroid; values `area`, `perimeter`, `scale`, `showValues` (see "Measures") |
 | `map.place` | Place label / Ortsbeschriftung | box | plan | `rank` capital, city, town, village, locality (dot and font by rank), `dot`; text = name, default = rank name in the UI language |
 | `map.road` | Road / Straße | points (centre line) | plan | `kind` motorway (4.2 mm, divider), main (3 mm), side (2 mm), path (dashed line); `smooth`, `bridge`, optional `width`; text = road number (shield for motorway/main) or name |
 | `map.rail` | Rail line / Bahnstrecke | points | plan | `kind` rail (black/white band) or tram (line with sleepers); `smooth`; text = name |
 | `map.river` | River / Fluss | points | plan | `kind` river (band with water lines), stream (line), canal (straight band); `smooth` (default on); optional `width`; italic name |
-| `map.route` | Route / Route | points | plan | `style` solid / dashed (alternative) / dotted (walk), `arrows` along / end / none, `waypoints` (dots), `smooth`, `width`; white halo; text = route label; values: `mode` walk / bike / car, `speed`, `length`, `time`, `scale` (1:N), `showValues` (see "Route values") |
+| `map.route` | Route / Route | points | plan | `style` solid / dashed (alternative) / dotted (walk), `arrows` along / end / none, `waypoints` (dots), `smooth`, `width`; white halo; text = route label; values: `mode` walk / bike / car, `speed`, `length`, `time`, `scale` (1:N), `showValues` (see "Route values"); ascent, descent and steepest gradient from the contour lines crossed (see "Measures") |
+| `map.measure` | Distance measure / Entfernungsmessung | points (2) | plan | dashed line with arrowheads and end ticks, labelled with the straight-line distance at the map scale ("1.25 km"; "no scale" without one); `showBearing` adds the bearing ("· 143°"); text replaces the label; values `distance`, `scale`; ends dock on markers, POIs and place dots |
+| `map.profile` | Elevation profile / Höhenprofil | box | plan | elevation over the distance along a route, from the contour lines it crosses; `route` (object id, empty: the first route of the page that crosses two contour lines), `fill`; without such a route the empty axes with a hint |
 | `map.station` | Station / Station | box | symbol | `kind` railway station (white disc, black ring), interchange (white capsule), tram stop (small ring), bus stop (dark badge with bus pictogram); `name`; text = station name (default: the kind in the UI language), drawn above the line right of the symbol |
 | `map.bridge` | Bridge / Brücke | points (section of a road) | plan | follows the road under its end points (also around bends) with the road's width and colours: deck, edges and parapets with flared wings; optional `width` (without a road: 3 mm); text = name |
 | `map.tunnel` | Tunnel / Tunnel | points (section of a road) | plan | like the bridge: the section is covered in the land colour, edges dashed, portal marks at both ends; optional `width`; text = name |
@@ -30,7 +33,7 @@ drawn length). Lines (roads, rail, rivers, routes, regions) are point objects in
 | `map.stop` | Numbered stop / Nummerierter Halt | box | symbol | `number`, `shape` circle / square; text overrides the number |
 | `map.callout` | Distance/time callout / Entfernungs-/Zeitangabe | box | plan | `distance` + `unit` (km, mi, m), `time` (minutes, shown as "1 h 35 min"), `mode` car / walk / bike / public transport / none, `tail` left / right / none; text replaces the two lines |
 | `map.poi` | Point of interest / Ort von Interesse (POI) | box | symbol, pin | `kind` pin (location), building, parking, fuel, charging, hospital, airport, harbour, station |
-| `map.scalebar` | Scale bar / Maßstabsleiste | box | plan | `length` + `unit` (km, mi, m, ft), `segments` (1–10), `style` alternating bar / ticked line; labels thinned out automatically |
+| `map.scalebar` | Scale bar / Maßstabsleiste | box | plan | `length` + `unit` (km, mi, m, ft), `segments` (1–10), `style` alternating bar / ticked line; labels thinned out automatically; values: map scale 1:N, check against the plan scale (see "Measures") |
 | `map.north` | North arrow / Nordpfeil | box | plan | split arrowhead, `letter` "N" |
 | `map.compass` | Compass rose / Windrose | box | plan | `points` 8 / 4, `labels` (German: N, O, S, W) |
 | `map.legend` | Legend / Legende | box | plan | `title` (default "Legend" / "Legende"), `auto`; entries see below |
@@ -63,6 +66,33 @@ t = 5.66 min" below the route.
   vocabulary: `travel-walk` (pedestrian), `travel-bike` (bicycle), `travel-car` (car); the distance callout's mode also
   uses `travel-transit` (front of a bus or tram) and `travel-none` (circle with a slash). The COM and web add-ins draw
   them; LibreOffice shows the option names.
+
+## Measures: area, distance, elevation and scale (round 7, 2026-11-26)
+
+All lengths come from the drawing at the map scale (route `scale`, the first scale bar on the page, or the document plan
+scale, as for routes) unless they are entered; without a scale they stay unknown.
+
+| Element | Variables | Relations (from the drawing) | Check |
+|---|---|---|---|
+| `map.region` | `A` area (km²), `U` perimeter (km) | `map.region.area`: drawn area · (m/mm)²; `map.region.perimeter`: drawn perimeter · m/mm (the smoothed outline when `smooth`) | – |
+| `map.measure` | `d` straight-line distance (km), `θ` bearing (°, read-only) | `map.measure.distance`: drawn length · m/mm; `map.measure.bearing`: clockwise from north | – |
+| `map.route` | panel, read-only: `Δh↑` ascent, `Δh↓` descent (m), `q_max` steepest gradient (%) | `map.route.ascent`, `map.route.descent`: Σ rises and falls between successive contour crossings; `map.route.gradient`: max \|Δh\|/Δs (needs a scale) | – |
+| `map.scalebar` | `N` map scale 1:N (read-only); panel: `N_plan` plan scale of the document | `map.scalebar.scale`: represented length / drawn width; `map.scalebar.plan` | `map.scale.plan` (hint): \|N/N_plan − 1\| > 2 % |
+
+- **Region:** "Area with size and perimeter" shows "A = 1.34 km², U = 4.68 km" below the region. An entered area or
+  perimeter wins over the drawing.
+- **Distance measure:** two points whose ends dock on markers, POIs and place dots and follow them. North is the page's
+  top, or the direction of the first north arrow on the page when it is rotated. "Distance and bearing" shows both.
+- **Elevation from contours:** every crossing of the route's centre line with a contour line of the page gives the
+  contour's elevation at that point. Ascent and descent sum the rises and falls between successive crossings; a hill top
+  between two crossings of the same contour is not counted, so the values are lower bounds. The steepest gradient divides
+  the elevation step by the distance between the crossings at the map scale. Contour lines report the routes that show
+  their values and the profiles of the page as dependents; routes report the profiles.
+- **Elevation profile:** elevation (lowest and highest contour crossed) over the distance along the route (0 to the route
+  length at the map scale), points at the crossings, light fill below, "↑ 100 m ↓ 100 m" in the corner; axis captions in
+  the UI language. It depends on its neighbours; the scale bar, the route and the contours redraw it.
+- **Scale bar:** the scale bar wins over the plan scale for map lengths; the hint tells when the two disagree.
+- **Sources:** geometry (area, perimeter, distance) and the definition of the gradient; no catalogued source is cited.
 
 ## Stations, bridges, tunnels and contour lines (2026-11-26)
 

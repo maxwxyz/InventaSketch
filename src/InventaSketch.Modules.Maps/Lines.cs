@@ -322,15 +322,21 @@ namespace InventaSketch.Modules.Maps
 
         public override bool HasText => true;
         public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-45, 12), new Vec2(-15, -10), new Vec2(15, 8), new Vec2(45, -12) };
-        public override IReadOnlyList<ParamDef> Parameters => new[] { StyleDef, ArrowsDef, WaypointsDef, SmoothDef, WidthDef }.Concat(RouteValues.Params).ToList();
+        public override IReadOnlyList<ParamDef> Parameters => new[] { StyleDef, ArrowsDef, WaypointsDef, SmoothDef, WidthDef }.Concat(RouteValues.Params).Concat(Elevation.Params).ToList();
         public override IReadOnlyList<string> Companions => new[] { MarkerType.TypeId, StopType.TypeId, StationType.TypeId, PoiType.TypeId, Callout.TypeId, Place.TypeId };
 
         /// <summary>The values (length at the map scale) read the scale bar on the page.</summary>
         public override bool DependsOnNeighbours => true;
 
-        public IReadOnlyList<VarDef> Variables => RouteValues.Vars;
+        private static readonly IReadOnlyList<VarDef> AllVars = RouteValues.Vars.Concat(Elevation.Vars).ToList();
+
+        /// <summary>Length, speed and travel time (<see cref="RouteValues"/>), ascent, descent and steepest gradient from the contour lines crossed (<see cref="Elevation"/>).</summary>
+        public IReadOnlyList<VarDef> Variables => AllVars;
         public IReadOnlyList<Relation> Relations => RouteValues.Rels;
-        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => RouteValues.Links(o, ctx);
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => RouteValues.Links(o, ctx).Concat(Elevation.Links(o, ctx));
+
+        /// <summary>Legends and the elevation profiles of the page redraw with the route.</summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => MapDeps.Legends(o, ctx).Concat(MapMeasure.ElevationReaders(o, ctx));
 
         public static List<Vec2> Line(SketchObject o, IReadOnlyList<Vec2> pts) => Geom.Centerline(pts, o.Flag("smooth", false));
 

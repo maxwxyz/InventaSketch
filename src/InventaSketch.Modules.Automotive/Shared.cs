@@ -111,6 +111,11 @@ namespace InventaSketch.Modules.Automotive
         public double Sx { get; }
         public double Sy { get; }
         public double K { get; }
+        /// <summary>Language of the host UI (drawings with bilingual symbols, e.g. force names).</summary>
+        public Lang Lang { get; init; } = Lang.En;
+
+        /// <summary>The text of <paramref name="t"/> in the pen's language.</summary>
+        public string L(I18nText t) => t.Get(Lang);
 
         public IReadOnlyList<Primitive> Items => _items;
 

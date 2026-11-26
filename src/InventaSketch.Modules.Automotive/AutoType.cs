@@ -105,7 +105,7 @@ namespace InventaSketch.Modules.Automotive
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
             var v = Spec(o);
-            var pen = PenFor(o, v);
+            var pen = new Pen(o.Size, v.Fluid ? o.Size : v.DesignFor(o)) { Lang = ctx.Lang };
             v.Draw(pen, o);
             return pen.Items;
         }
