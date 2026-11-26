@@ -35,6 +35,31 @@ namespace InventaSketch.Modules.Mechanical
         internal static Anchor MemberPort(Pen p, double x, string id) => Anchor.Point(AnchorRole.Hub, p.V(x, 0), id);
 
         /// <summary>
+        /// Hub point of a member of a gear unit on its outer contour (design x, y): the ring gear's or a carrier's drum, the
+        /// crown wheel of a differential case. In a stick diagram a drum or hollow shaft is a line at the member's radius: a
+        /// shaft whose axis passes through the port, or a part concentric with it, is docked on that member.
+        /// </summary>
+        internal static Anchor ContourPort(Pen p, double x, double y, string id) => Anchor.Point(AnchorRole.Hub, p.V(x, y), id);
+
+        /// <summary>Anchor id of the outer teeth of a gear set's ring gear (a pitch circle that meshes with the ring member).</summary>
+        internal const string OuterTeethId = "ring-teeth";
+
+        /// <summary>Outer teeth on the ring gear of a planetary or Ravigneaux set (parameter <c>outer</c>, default off).</summary>
+        private static bool Outer(SketchObject o) => o.Flag("outer", false);
+
+        private static readonly ParamDef OuterParam = Common.Flag("outer", T("Outer teeth on the ring gear", "Außenverzahnung am Hohlrad"), false);
+
+        private static ContextAction OuterToggle(SketchObject o)
+            => Common.Toggle(o, "outer", false, T("Outer teeth on the ring on/off", "Außenverzahnung am Hohlrad an/aus"), IconIds.Toggle);
+
+        /// <summary>Outer teeth of the ring in a stick schematic: a side pitch circle of design radius <paramref name="r"/> at x.</summary>
+        private static Anchor RingTeethSide(Pen p, double x, double r) => Anchor.SidePitch(p.V(x, 0), r * p.Sy, new Vec2(1, 0)) with { Id = OuterTeethId };
+
+        /// <summary>Outer teeth of the ring in the axial views (design: 66 teeth of the module <see cref="PM"/>).</summary>
+        private const int ZOuter = 66;
+        private const double POuter = PM * ZOuter / 2;
+
+        /// <summary>
         /// Pitch circle of a gear seen from the side or as a schematic stick (axis horizontal in the box): the radius is the
         /// vertical half extent of the pitch lines (stick: the symbol height), so gears on parallel shafts mesh, snap and
         /// stay coupled in these views as in the axial view.
@@ -369,9 +394,18 @@ namespace InventaSketch.Modules.Mechanical
             new ViewSpec("side", VSide, 60, 10, (p, o) => RackDraw(p, o, false)) { Fluid = true, Anchors = (p, o) => RackAnchors(p, "side") },
             new ViewSpec("stick", VStick, 60, 10, RackStick) { Fluid = true, Anchors = (p, o) => RackAnchors(p, "stick") })
         {
-            Params = new[] { Common.Module },
+            // Fixed rack (grounded): it stays and the pinion rolls along it (the moving gear train moves the pinion's centre).
+            Params = new[] { Common.Module, Common.Flag("fixed", T("Fixed rack (the pinion rolls along it)", "Feste Zahnstange (das Ritzel rollt daran ab)"), false) },
+            Extra = o => new[] { Common.Toggle(o, "fixed", false, T("Fixed rack on/off", "Feste Zahnstange an/aus"), IconIds.Ground) },
             Rotating = false,
         };
+
+        /// <summary>Ground strokes of a fixed rack along its back (the side away from the teeth), from local y outwards.</summary>
+        private static void RackGround(Pen p, SketchObject o, double y, double depth)
+        {
+            if (!o.Flag("fixed", false)) return;
+            Frag.GroundStrokes(p, new Vec2(-p.W / 2, y), new Vec2(p.W / 2, y), new Vec2(0, 1), depth, 1.6);
+        }
 
         /// <summary>
         /// The rack's ends and its pitch line (core <see cref="AnchorRole.PitchLine"/>, teeth towards −y): a pinion snaps tangent
@@ -434,6 +468,7 @@ namespace InventaSketch.Modules.Mechanical
                 p.LineP(new Vec2(-hw, rootY), new Vec2(hw, rootY), S.Thin, "root");
             }
             p.LineP(new Vec2(-hw, pitchY), new Vec2(hw, pitchY), S.Ctr, "pitch");
+            RackGround(p, o, hh, 1.6);
         }
 
         /// <summary>Rack schematic: body line with a row of tooth strokes.</summary>
@@ -451,6 +486,7 @@ namespace InventaSketch.Modules.Mechanical
                 p.LineP(new Vec2(x - step * 0.25, y), new Vec2(x, -hh * 0.8), S.Stick, "teeth");
                 p.LineP(new Vec2(x, -hh * 0.8), new Vec2(x + step * 0.25, y), S.Stick, "teeth");
             }
+            RackGround(p, o, y, Math.Min(1.6, hh - y));
         }
 
         // ------------------------------------------------------------------ planetary set
@@ -463,9 +499,9 @@ namespace InventaSketch.Modules.Mechanical
             new[] { "planetary", "epicyclic", "sun", "planet", "carrier", "ring", "planetengetriebe", "umlaufgetriebe", "sonnenrad", "planetenrad", "steg", "hohlrad" },
             // Axial views: the sun's bore (the set sits on the sun shaft). The schematic shows the members on separate
             // shafts and has no single bore: it keeps its size.
-            // Member ports at the ends of the sun and carrier shafts: a shaft docked there drives or takes that member
-            // (MechTopology, GearUnits).
-            new ViewSpec("stick", VStick, 30, 50, PlanetStick) { Anchors = (p, o) => new[] { MemberPort(p, 15, "sun"), MemberPort(p, -15, "carrier") } },
+            // Member ports at the ends of the sun and carrier shafts and on the ring bracket's outer contour: a shaft docked
+            // there drives or takes that member (MechTopology, GearUnits).
+            new ViewSpec("stick", VStick, 30, 50, PlanetStick) { Anchors = PlanetStickAnchors },
             new ViewSpec("axial", VAxial, 50, 50, (p, o) => PlanetAxial(p, o, false)) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K },
             new ViewSpec("teeth", VTeeth, 50, 50, (p, o) => PlanetAxial(p, o, true)) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K })
         {
@@ -473,9 +509,11 @@ namespace InventaSketch.Modules.Mechanical
             {
                 Common.Count("planets", T("Number of planets", "Anzahl Planeten"), 3, 2, 8),
                 Common.Flag("stepped", T("Stepped planets", "Stufenplaneten"), false),
+                OuterParam,
             },
             Extra = o => Common.Stepper(o, "planets", T("Planets", "Planeten"), 3, 1, 2, 8)
-                .Append(Common.Toggle(o, "stepped", false, T("Stepped planets on/off", "Stufenplaneten an/aus"), IconIds.Toggle)),
+                .Append(Common.Toggle(o, "stepped", false, T("Stepped planets on/off", "Stufenplaneten an/aus"), IconIds.Toggle))
+                .Append(OuterToggle(o)),
             // Built from parts (sun, planets, ring, carrier) with "Explode" in the hosts.
             CompanionTypes = new[] { "mech.shaft", "mech.carrier", "mech.gear.spur", "mech.gear.internal" },
             PartsOf = PlanetaryParts,
@@ -489,7 +527,8 @@ namespace InventaSketch.Modules.Mechanical
         private static IReadOnlyList<PartSpec>? PlanetaryParts(SketchObject o)
         {
             var view = o.View ?? "stick";
-            if (view is not ("axial" or "teeth") || Stepped(o)) return null;
+            // Outer teeth on the ring have no part (a ring gear part has inner teeth only): not exploded, as stepped planets.
+            if (view is not ("axial" or "teeth") || Stepped(o) || Outer(o)) return null;
             var k = Math.Min(o.Size.W, o.Size.H) / 50;
             var n = Planets(o);
             var list = new List<PartSpec>
@@ -506,11 +545,33 @@ namespace InventaSketch.Modules.Mechanical
             return list;
         }
 
+        /// <summary>
+        /// Axial views of the planetary and Ravigneaux sets: ring and sun pitch circles; with outer teeth on the ring their
+        /// pitch circle comes first (the one the coupling meshes with), id <see cref="OuterTeethId"/>: a gear meshing there meshes
+        /// with the ring member.
+        /// </summary>
         private static IEnumerable<Anchor> PlanetAnchors(Pen p, SketchObject o)
         {
+            if (Outer(o)) yield return Pitch(p, POuter) with { Id = OuterTeethId };
             yield return PitchIn(p, PRing);
             yield return Pitch(p, PSun);
         }
+
+        /// <summary>
+        /// Schematic ports: sun (right stub), carrier (left stub), ring (outer end of the ring bracket, its drum); with outer
+        /// teeth on the ring their side pitch circle comes first.
+        /// </summary>
+        private static IEnumerable<Anchor> PlanetStickAnchors(Pen p, SketchObject o)
+        {
+            var ringX = PlanetRingX(o);
+            if (Outer(o)) yield return RingTeethSide(p, ringX, PRim);
+            yield return MemberPort(p, 15, "sun");
+            yield return MemberPort(p, -15, "carrier");
+            yield return ContourPort(p, ringX, -PRim, "ring");
+        }
+
+        /// <summary>Middle of the ring bracket in the planetary schematic (design x; stepped planets shift it to the right).</summary>
+        private static double PlanetRingX(SketchObject o) => Stepped(o) ? 6.5 : 4;
 
         private static int Planets(SketchObject o) => Math.Max(2, Math.Min(8, o.Int("planets", 3)));
 
@@ -546,6 +607,8 @@ namespace InventaSketch.Modules.Mechanical
                     p.Line(x + 0.6, s * PRingStep, x + fw + 1.2, s * PRingStep, S.Stick, "planet");
                     p.Line(x + fw * 0.6 + 0.6, s * (PCarrier - PStep), x + fw * 0.6 + 0.6, s * PRingStep, S.Stick, "planet");
                     p.Poly(S.Stick, false, x, s * PRim, x, s * (PRingStep + 0.9), x + fw + 2, s * (PRingStep + 0.9), x + fw + 2, s * PRim);
+                    // Outer teeth on the ring: the gear line across the bracket's outer end.
+                    if (Outer(o)) p.Line(x, s * PRim, x + fw + 2, s * PRim, S.Stick, OuterTeethId);
                     continue;
                 }
                 p.Line(x - fw, s * PSun, x + fw, s * PSun, S.Stick, "planet");
@@ -553,6 +616,7 @@ namespace InventaSketch.Modules.Mechanical
                 Frag.Hub(p, p.V(x, s * PSun), p.V(x, yc), p.V(x, s * PRing), "loose", S.Stick);
                 // ring gear bracket
                 p.Poly(S.Stick, false, x - fw - 1, s * PRim, x - fw - 1, s * (PRing + 0.9), x + fw + 1, s * (PRing + 0.9), x + fw + 1, s * PRim);
+                if (Outer(o)) p.Line(x - fw - 1, s * PRim, x + fw + 1, s * PRim, S.Stick, OuterTeethId);
             }
             p.Axis(15);
         }
@@ -590,11 +654,11 @@ namespace InventaSketch.Modules.Mechanical
                     p.PolyD(GearMath.Outline(zr, PRing + 1.25 * PM, PRing - PM, PRing, rho), S.Vis, true, "ring");
                     _ = prr;
                 }
-                p.Circle(0, 0, PRim, S.Vis, "rim");
+                SetRingRim(p, o, true);
             }
             else
             {
-                p.Circle(0, 0, PRim, S.Vis, "rim");
+                SetRingRim(p, o, false);
                 p.Circle(0, 0, PRing - PM, S.Vis, "ring");
                 p.Circle(0, 0, PSun + PM, S.Vis, "sun");
                 p.Circle(0, 0, PSun, S.Ctr, "pitch");
@@ -613,6 +677,18 @@ namespace InventaSketch.Modules.Mechanical
             p.CenterCross(0, 0, 25, 25);
         }
 
+        /// <summary>
+        /// The ring's outer edge in the axial views: a plain rim, or with outer teeth their outline (teeth view) or the tip
+        /// circle with the pitch circle (axial view).
+        /// </summary>
+        private static void SetRingRim(Pen p, SketchObject o, bool teeth)
+        {
+            if (!Outer(o)) { p.Circle(0, 0, PRim, S.Vis, "rim"); return; }
+            if (teeth) p.PolyD(GearMath.Outline(ZOuter, POuter - 1.25 * PM, POuter + PM, POuter, 0), S.Vis, true, OuterTeethId);
+            else p.Circle(0, 0, POuter + PM, S.Vis, OuterTeethId);
+            p.Circle(0, 0, POuter, S.Ctr, "pitch");
+        }
+
         // ------------------------------------------------------------------ Ravigneaux set
 
         // Axial design 50 x 50, module PM: ring 52, large sun 20, long planet 16 (as the simple set), small sun 14, short
@@ -628,18 +704,32 @@ namespace InventaSketch.Modules.Mechanical
         private static MechType Ravigneaux() => new(
             "mech.gearset.ravigneaux", T("Ravigneaux gear set", "Ravigneaux-Radsatz"), Cat,
             new[] { "ravigneaux", "planet pairs", "compound planetary", "automatic transmission", "two suns", "planetenpaare", "ravigneaux-satz", "automatikgetriebe", "zwei sonnen" },
-            // Member ports at the ends of the small and the large sun's shafts (the carrier's hollow shaft shares the small
-            // sun's axis end and has no port of its own).
-            new ViewSpec("stick", VStick, 34, 50, RavigneauxStick) { Anchors = (p, o) => new[] { MemberPort(p, -17, "sun1"), MemberPort(p, 17, "sun2") } },
+            // Member ports at the ends of the small and the large sun's shafts; the carrier's hollow shaft ends where the small
+            // sun's shaft ends, so the carrier's port sits on its outer contour (top of the carrier, its drum), as the ring's
+            // (outer end of the ring bracket).
+            new ViewSpec("stick", VStick, 34, 50, RavigneauxStick) { Anchors = RavigneauxStickAnchors },
             new ViewSpec("axial", VAxial, 50, 50, RavigneauxAxial) { Anchors = PlanetAnchors, Bore = (p, o) => 2.6 * p.K })
         {
-            Params = new[] { Common.Count("pairs", T("Planet pairs", "Planetenpaare"), 3, 2, 3) },
-            Extra = o => Common.Stepper(o, "pairs", T("Planet pairs", "Planetenpaare"), 3, 1, 2, 3),
+            Params = new[] { Common.Count("pairs", T("Planet pairs", "Planetenpaare"), 3, 2, 3), OuterParam },
+            Extra = o => Common.Stepper(o, "pairs", T("Planet pairs", "Planetenpaare"), 3, 1, 2, 3).Append(OuterToggle(o)),
             CompanionTypes = new[] { "mech.shaft", "mech.carrier", "mech.gear.spur", "mech.gear.internal" },
             PartsOf = RavigneauxParts,
         };
 
         private static int Pairs(SketchObject o) => Math.Max(2, Math.Min(3, o.Int("pairs", 3)));
+
+        // Ravigneaux schematic (design): small sun at x = −7, large sun and ring bracket at x = 6, carrier bar at x = −12.5.
+        private const double RvSmallX = -7, RvLargeX = 6, RvFace = 2.5, RvCarrierX = -12.5;
+
+        /// <summary>Schematic ports: small sun (left stub), large sun (right stub), carrier (top of the carrier bar), ring (bracket).</summary>
+        private static IEnumerable<Anchor> RavigneauxStickAnchors(Pen p, SketchObject o)
+        {
+            if (Outer(o)) yield return RingTeethSide(p, RvLargeX, PRim);
+            yield return MemberPort(p, -17, "sun1");
+            yield return MemberPort(p, 17, "sun2");
+            yield return ContourPort(p, RvCarrierX, -PCarrier, "carrier");
+            yield return ContourPort(p, RvLargeX, -PRim, "ring");
+        }
 
         /// <summary>
         /// The set as parts in the axial view: a carrier with paired pins (long planets outside, short planets inside), the
@@ -648,7 +738,7 @@ namespace InventaSketch.Modules.Mechanical
         /// </summary>
         private static IReadOnlyList<PartSpec>? RavigneauxParts(SketchObject o)
         {
-            if ((o.View ?? "stick") != "axial") return null;
+            if ((o.View ?? "stick") != "axial" || Outer(o)) return null;
             var k = Math.Min(o.Size.W, o.Size.H) / 50;
             var n = Pairs(o);
             var list = new List<PartSpec>
@@ -677,7 +767,7 @@ namespace InventaSketch.Modules.Mechanical
 
         private static void RavigneauxAxial(Pen p, SketchObject o)
         {
-            p.Circle(0, 0, PRim, S.Vis, "rim");
+            SetRingRim(p, o, false);
             p.Circle(0, 0, PRing - PM, S.Vis, "ring");
             p.Circle(0, 0, PRing, S.Ctr, "pitch");
             // Large sun in front, small sun behind it (hidden).
@@ -709,7 +799,7 @@ namespace InventaSketch.Modules.Mechanical
         /// </summary>
         private static void RavigneauxStick(Pen p, SketchObject o)
         {
-            const double xs = -7, xl = 6, fw = 2.5, carrierX = -12.5;
+            const double xs = RvSmallX, xl = RvLargeX, fw = RvFace, carrierX = RvCarrierX;
             // Small sun on the central shaft to the left, large sun on the shaft to the right.
             p.Line(-17, 0, xs, 0, S.Heavy, "shaft");
             p.Line(xs - fw, -RvSmallSun, xs + fw, -RvSmallSun, S.Stick, "sun2");
@@ -739,6 +829,7 @@ namespace InventaSketch.Modules.Mechanical
                 Frag.Hub(p, p.V(xl, s * PSun), p.V(xl, yl), p.V(xl, s * PRing), "loose", S.Stick);
                 // Ring gear bracket.
                 p.Poly(S.Stick, false, xl - fw - 1, s * PRim, xl - fw - 1, s * (PRing + 0.9), xl + fw + 1, s * (PRing + 0.9), xl + fw + 1, s * PRim);
+                if (Outer(o)) p.Line(xl - fw - 1, s * PRim, xl + fw + 1, s * PRim, S.Stick, OuterTeethId);
             }
             p.Axis(17);
         }
@@ -854,7 +945,13 @@ namespace InventaSketch.Modules.Mechanical
             PartsOf = DifferentialParts,
         };
 
-        private static IEnumerable<Anchor> DiffPorts(Pen p, SketchObject o) => new[] { MemberPort(p, -20, "left"), MemberPort(p, 20, "right") };
+        /// <summary>
+        /// Half shafts at the outer ends (left: n₁, right: n₂) and the case at the crown wheel's outer edge (x = −13, the tip of
+        /// the crown in the schematic and on the crown flange in the section): its drum, or a drive docked there, turns with
+        /// the case (n_c, T_c).
+        /// </summary>
+        private static IEnumerable<Anchor> DiffPorts(Pen p, SketchObject o)
+            => new[] { MemberPort(p, -20, "left"), MemberPort(p, 20, "right"), ContourPort(p, -13, -19.5, "case") };
 
         /// <summary>
         /// The differential as parts in the stick view: the case (cage, cross pin, crown wheel), the two side gears on the

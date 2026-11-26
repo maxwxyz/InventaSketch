@@ -90,6 +90,28 @@ namespace InventaSketch.Core.Tests
             }
         }
 
+        /// <summary>
+        /// The fixed-ratio unit (ω_in = 3·ω_out) with outer teeth on its output member: a pitch circle of radius 20 at the centre
+        /// whose id "teeth" names a port of the member "out" (as a ring gear's outer teeth).
+        /// </summary>
+        private sealed class ToothedUnitType : ObjectType, IGearUnit, IShaftPart
+        {
+            public override string Id => "t.toothed";
+            public override I18nText Name => new(Id);
+            public override Size2 DefaultSize => new(40, 40);
+            public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx) => Array.Empty<Primitive>();
+            public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx) => new[]
+            {
+                Anchor.Circle(AnchorRole.Pitch, Vec2.Zero, 20) with { Id = "teeth" },
+                Anchor.Point(AnchorRole.Hub, new Vec2(-10, 0), "in"), Anchor.Point(AnchorRole.Hub, new Vec2(10, 0), "out"),
+            };
+            ShaftPart IShaftPart.ShaftPart(SketchObject o) => ShaftPart.Outside;
+            public IReadOnlyList<GearUnitPort> MemberPorts(SketchObject o)
+                => new[] { new GearUnitPort("in", "in"), new GearUnitPort("out", "out"), new GearUnitPort("teeth", "out") };
+            public IReadOnlyList<IReadOnlyDictionary<string, double>> SpeedRelations(SketchObject o)
+                => new[] { new Dictionary<string, double> { ["in"] = 1, ["out"] = -3 } };
+        }
+
         private sealed class TestModule : IModule
         {
             public string Id => "tg";
@@ -97,7 +119,7 @@ namespace InventaSketch.Core.Tests
             public string Version => "1.0";
             public IEnumerable<ObjectType> Types => new ObjectType[]
             {
-                new ShaftType(), new MachineType(), new GearType(), new RackType(), new UnitType(false), new UnitType(true),
+                new ShaftType(), new MachineType(), new GearType(), new RackType(), new UnitType(false), new UnitType(true), new ToothedUnitType(),
             };
             public IEnumerable<LibraryCategory> Categories => Array.Empty<LibraryCategory>();
             public IEnumerable<LibraryItem> Library => Array.Empty<LibraryItem>();
@@ -243,6 +265,67 @@ namespace InventaSketch.Core.Tests
             var turned = GearTrain.Turn(r, doc, "g", 90);
             Assert.Equal(100 - 10 * Math.PI / 2, turned.Get("rack")!.Transform.X, 6);
             Assert.Equal(100, turned.Get("rack")!.Transform.Y, 9);
+        }
+
+        // ------------------------------------------------------------------ round 6: outer teeth of a member, fixed rack
+
+        /// <summary>
+        /// A gear (r = 10) on the outer teeth (R = 20) of the toothed unit's output member: the input shaft turns the output by
+        /// 1/3, the gear meshes with that member (ω_g = −(R/r)·ω_out = −2/3), not with the unit as a whole.
+        /// </summary>
+        [Fact]
+        public void AGearOnAPitchCirclePortMeshesWithThatMember()
+        {
+            var r = Reg();
+            var doc = Doc(Make(r, "t.shaft", "s1", 50, 50), Make(r, "t.toothed", "u", 105, 50), Make(r, "t.gear", "g", 105, 20));
+            Assert.Contains(Coupling.Graph(r, doc), l => l.Kind == LinkKind.Mesh && (l.A == "g" || l.B == "g"));
+            var ctx = new RenderContext(doc).For(r);
+            Assert.Equal("out", GearUnitDocking.MeshPort(r, doc.Get("u")!, r.PageAnchors(doc.Get("u")!, ctx).ToList())!.Member);
+            Assert.Null(GearUnitDocking.MeshPort(r, doc.Get("g")!, r.PageAnchors(doc.Get("g")!, ctx).ToList()));
+            var w = GearTrain.Speeds(r, doc, "s1");
+            Assert.Equal(-2.0 / 3, w["g"], 9);
+            // Driven from the gear the other way round: the input shaft turns 3·(−r/R) = −1.5 times as fast.
+            Assert.Equal(-1.5, GearTrain.Speeds(r, doc, "g")["s1"], 9);
+        }
+
+        /// <summary>
+        /// A fixed rack stays; the pinion (r = 10, teeth of the rack up) rolls along it: a quarter turn clockwise on screen moves
+        /// its centre r·π/2 to the right, the opposite of the way a free rack would travel. A shaft hub bonded to the pinion
+        /// travels with it.
+        /// </summary>
+        [Fact]
+        public void APinionRollsAlongAFixedRack()
+        {
+            var r = Reg();
+            var rack = Make(r, "t.rack", "rack", 100, 100).WithParam("fixed", true);
+            var doc = Doc(rack, Make(r, "t.gear", "g", 100, 90), Make(r, "t.machine", "m", 100, 90));
+            var travel = GearTrain.Travel(r, doc, "g")!.Value;
+            Assert.Equal(10, travel.X, 9);
+            Assert.Equal(0, travel.Y, 9);
+            Assert.False(GearTrain.Speeds(r, doc, "g").ContainsKey("rack"));
+            var turned = GearTrain.Turn(r, doc, "g", 90);
+            Assert.Equal(100 + 10 * Math.PI / 2, turned.Get("g")!.Transform.X, 6);
+            Assert.Equal(100 + 10 * Math.PI / 2, turned.Get("m")!.Transform.X, 6);
+            Assert.Equal(100, turned.Get("rack")!.Transform.X, 9);
+            // The same through the coupling (turning the pinion in a host): the pinion keeps the user's angle and travels.
+            var edited = Coupling.Propagate(r, doc, Edits.Update(doc, new[] { "g" }, o => o with { Transform = o.Transform with { Rotation = 90 } }));
+            Assert.Equal(100 + 10 * Math.PI / 2, edited.Get("g")!.Transform.X, 6);
+            Assert.Equal(90, edited.Get("g")!.Transform.Rotation, 9);
+            Assert.Equal(100, edited.Get("rack")!.Transform.X, 9);
+            // A free rack is no carriage: nothing travels.
+            Assert.Null(GearTrain.Travel(r, RackAndGear(r), "g"));
+        }
+
+        /// <summary>The pinion grows from radius 10 to 12 next to a fixed rack: the pinion moves 2 mm away, the rack stays.</summary>
+        [Fact]
+        public void AGrownPinionMovesAwayFromAFixedRack()
+        {
+            var r = Reg();
+            var doc = Doc(Make(r, "t.rack", "rack", 100, 100).WithParam("fixed", true), Make(r, "t.gear", "g", 100, 90));
+            var after = Coupling.Propagate(r, doc, Edits.Update(doc, new[] { "g" }, o => o with { Size = new Size2(24, 24) }));
+            Assert.Equal(100, after.Get("rack")!.Transform.Y, 9);
+            Assert.Equal(88, after.Get("g")!.Transform.Y, 9);
+            Assert.Equal(100, after.Get("g")!.Transform.X, 9);
         }
 
         // ------------------------------------------------------------------ quantities and sources

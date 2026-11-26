@@ -7,7 +7,9 @@ namespace InventaSketch.Core
     /// <summary>
     /// A member port of a gear unit (<see cref="IGearUnit"/>): the id of a <see cref="AnchorRole.Hub"/> point of the unit and
     /// the member a part docked there sits on. <see cref="Centre"/> marks the centre bore, which yields to a port at a shaft
-    /// stub that the same part also touches.
+    /// stub that the same part also touches. The id may also name a pitch circle of the unit (<see cref="AnchorRole.Pitch"/>,
+    /// such as the outer teeth of a ring gear): a gear meshing there meshes with that member
+    /// (<see cref="GearUnitDocking.MeshPort"/>).
     /// </summary>
     public sealed record GearUnitPort(string AnchorId, string Member, bool Centre = false);
 
@@ -72,6 +74,21 @@ namespace InventaSketch.Core
             }
             var chosen = hits.Any(h => !h.Centre) ? hits.Where(h => !h.Centre).ToList() : hits;
             return chosen.Count > 0 && chosen.Select(h => h.Member).Distinct(StringComparer.Ordinal).Count() == 1 ? chosen[0] : null;
+        }
+
+        /// <summary>
+        /// The port whose teeth form the pitch circle the coupling meshes <paramref name="unit"/> with (its first
+        /// <see cref="AnchorRole.Pitch"/> or <see cref="AnchorRole.PitchInner"/> circle, as <see cref="Coupling"/> reads it), when
+        /// that circle's id names a port: a gear meshing there turns with that member (the outer teeth of a ring gear). Null
+        /// for other units and for pitch circles that belong to no single member. <paramref name="anchors"/> are the unit's
+        /// page anchors.
+        /// </summary>
+        public static GearUnitPort? MeshPort(Registry registry, SketchObject unit, IReadOnlyList<Anchor> anchors)
+        {
+            var ports = PortsOf(registry, unit);
+            if (ports.Count == 0) return null;
+            var pitch = anchors.FirstOrDefault(a => a.Kind == AnchorKind.Circle && a.Role is AnchorRole.Pitch or AnchorRole.PitchInner);
+            return pitch?.Id is { } id ? ports.FirstOrDefault(p => p.AnchorId == id) : null;
         }
 
         /// <summary><see cref="DockedPort(Registry, SketchObject, SketchObject, Func{SketchObject, IReadOnlyList{Anchor}})"/> with fresh page anchors.</summary>

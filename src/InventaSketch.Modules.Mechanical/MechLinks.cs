@@ -42,7 +42,8 @@ namespace InventaSketch.Modules.Mechanical
     /// signed speeds: use the planetary set element).</item>
     /// <item><b>Strands:</b> a belt or chain and the pulleys or sprockets it runs over; a screw and the nut on it.</item>
     /// <item><b>Gear units:</b> the members of gear sets and the CVT (<see cref="GearUnits"/>) share speed and torque with
-    /// the parts docked on their ports; a docked member counts as a torque part of the line.</item>
+    /// the parts docked on their ports; a docked member counts as a torque part of the line. A gear meshing with the outer
+    /// teeth of a set's ring gear meshes with the ring member.</item>
     /// <item><b>Rack and pinion:</b> the spur gear meshing with a rack's pitch line gives the rack its pinion values.</item>
     /// </list>
     /// Built once per document and registry (documents are immutable).
@@ -108,6 +109,7 @@ namespace InventaSketch.Modules.Mechanical
         private readonly Dictionary<string, string> _pinionOf = new(StringComparer.Ordinal);
         private readonly Dictionary<string, List<string>> _racksOf = new(StringComparer.Ordinal);
         private readonly Dictionary<string, List<(string Unit, string Member)>> _docked = new(StringComparer.Ordinal);
+        private readonly Dictionary<string, List<(string Gear, string Unit, GearUnits.Member Member)>> _unitMeshes = new(StringComparer.Ordinal);
 
         private MechTopology(Registry registry, SketchDocument doc)
         {
@@ -153,6 +155,7 @@ namespace InventaSketch.Modules.Mechanical
                 if (!l.Contains(v)) l.Add(v);
             }
             bool Joins(string id) => _has(id, "n") && !MechValues.IsBearing(TypeOf(id)) && TypeOf(id) != "mech.screwdrive.nut" && !MechValues.IsCarrierLike(TypeOf(id));
+            var unitMeshes = new List<(string A, string B)>();
 
             foreach (var (kind, a, b) in graph)
             {
@@ -165,6 +168,7 @@ namespace InventaSketch.Modules.Mechanical
                             Add(_mesh, a, b);
                             Add(_mesh, b, a);
                         }
+                        else if (GearUnits.IsUnit(ta) != GearUnits.IsUnit(tb)) unitMeshes.Add((a, b));
                         break;
                     case LinkKind.Carried:
                     case LinkKind.Bonded:
@@ -246,8 +250,33 @@ namespace InventaSketch.Modules.Mechanical
                 return anchors[id] = o is null || o.IsPointGeometry || registry.Type(o.Type) is null ? new List<Anchor>() : registry.PageAnchors(o, ctxA).ToList();
             }
             BuildUnits(registry, doc, graph, TypeOf, AnchorsOf);
+            BuildUnitMeshes(registry, doc, unitMeshes, TypeOf, AnchorsOf);
             BuildRacks(graph, TypeOf, Add);
         }
+
+        /// <summary>
+        /// Gears meshing with a pitch circle of a gear unit that belongs to one member (the outer teeth of a ring gear,
+        /// <see cref="GearUnitDocking.MeshPort"/>): the gear and that member keep z·n (and the torque ratio).
+        /// </summary>
+        private void BuildUnitMeshes(Registry registry, SketchDocument doc, List<(string A, string B)> meshes, Func<string, string> typeOf, Func<string, List<Anchor>> anchorsOf)
+        {
+            foreach (var (a, b) in meshes)
+            {
+                var (unit, gear) = GearUnits.IsUnit(typeOf(a)) ? (a, b) : (b, a);
+                if (!MechValues.GearTypes.Contains(typeOf(gear)) || !_has(gear, "n") || !_has(gear, "z")) continue;
+                if (doc.Get(unit) is not { } uo || GearUnits.PortsOf(typeOf(unit)) is not { } table) continue;
+                if (GearUnitDocking.MeshPort(registry, uo, anchorsOf(unit)) is not { } port || !table.TryGetValue(port.AnchorId, out var m) || m.Teeth is null) continue;
+                foreach (var id in new[] { unit, gear })
+                {
+                    if (!_unitMeshes.TryGetValue(id, out var l)) _unitMeshes[id] = l = new List<(string, string, GearUnits.Member)>();
+                    if (!l.Contains((gear, unit, m))) l.Add((gear, unit, m));
+                }
+            }
+        }
+
+        /// <summary>Gears meshing with the outer teeth of a gear unit member, as (gear, unit, member), for the gear or the unit <paramref name="id"/>.</summary>
+        public IReadOnlyList<(string Gear, string Unit, GearUnits.Member Member)> UnitMeshesOf(string id)
+            => _unitMeshes.TryGetValue(id, out var l) ? l : (IReadOnlyList<(string, string, GearUnits.Member)>)Array.Empty<(string, string, GearUnits.Member)>();
 
         /// <summary>
         /// Gear units (gear sets, CVT; <see cref="GearUnits"/>): a member port docked on a part (the part's shaft axis through
@@ -413,23 +442,31 @@ namespace InventaSketch.Modules.Mechanical
     {
         public const string RackId = "mech.gear.rack";
 
-        /// <summary>A member of a unit: its name, speed and torque variable; <see cref="Centre"/> for the centre bore.</summary>
-        internal sealed record Member(string Name, string Speed, string? Torque, bool Centre = false);
+        /// <summary>
+        /// A member of a unit: its name, speed and torque variable; <see cref="Centre"/> for the centre bore; <see cref="Teeth"/>
+        /// the teeth variable of a pitch circle port (outer teeth of a ring gear: a gear meshing there, <see cref="MechTopology"/>).
+        /// </summary>
+        internal sealed record Member(string Name, string Speed, string? Torque, bool Centre = false, string? Teeth = null);
 
         private static Dictionary<string, Member> Ports(params (string Anchor, Member M)[] ports)
             => ports.ToDictionary(p => p.Anchor, p => p.M, StringComparer.Ordinal);
 
-        private static readonly Member Sun = new("sun", "ns", "Ts"), Carrier = new("carrier", "nc", "Tc");
+        private static readonly Member Sun = new("sun", "ns", "Ts"), Carrier = new("carrier", "nc", "Tc"), Ring = new("ring", "nr", "Tr");
         private static readonly Member In = new("in", "n1", "T1"), Out = new("out", "n2", "T2");
+        private static readonly Member RvRing = new("ring", "nr", null);
 
         private static readonly Dictionary<string, Dictionary<string, Member>> Table = new(StringComparer.Ordinal)
         {
-            // Sun on the right shaft stub (and the bore of the axial views), carrier on the left one.
-            ["mech.gearset.planetary"] = Ports(("hub", Sun with { Centre = true }), ("sun", Sun), ("carrier", Carrier)),
-            // Small sun on the left stub, large sun on the right one and in the bore of the axial view; no torques.
-            ["mech.gearset.ravigneaux"] = Ports(("hub", new Member("sun2", "ns2", null, true)), ("sun1", new Member("sun1", "ns1", null)), ("sun2", new Member("sun2", "ns2", null))),
-            // Half shafts at the outer ends.
-            ["mech.gearset.differential"] = Ports(("left", new Member("left", "n1", "T1")), ("right", new Member("right", "n2", "T2"))),
+            // Sun on the right shaft stub (and the bore of the axial views), carrier on the left one, ring at the outer end of
+            // its bracket (its drum); the outer teeth of the ring (pitch circle "ring-teeth", parameter "outer") mesh with gears.
+            ["mech.gearset.planetary"] = Ports(("hub", Sun with { Centre = true }), ("sun", Sun), ("carrier", Carrier), ("ring", Ring),
+                (Gears.OuterTeethId, Ring with { Teeth = "zo" })),
+            // Small sun on the left stub, large sun on the right one and in the bore of the axial view, carrier on top of the
+            // carrier bar, ring at its bracket; no torques.
+            ["mech.gearset.ravigneaux"] = Ports(("hub", new Member("sun2", "ns2", null, true)), ("sun1", new Member("sun1", "ns1", null)), ("sun2", new Member("sun2", "ns2", null)),
+                ("carrier", new Member("carrier", "nc", null)), ("ring", RvRing), (Gears.OuterTeethId, RvRing with { Teeth = "zo" })),
+            // Half shafts at the outer ends, the case at the crown wheel.
+            ["mech.gearset.differential"] = Ports(("left", new Member("left", "n1", "T1")), ("right", new Member("right", "n2", "T2")), ("case", new Member("case", "nc", "Tc"))),
             // Input (wave generator, eccentric) left and in the bore, output right.
             ["mech.gearset.harmonic"] = Ports(("hub", In with { Centre = true }), ("in", In), ("out", Out)),
             ["mech.gearset.cycloidal"] = Ports(("hub", In with { Centre = true }), ("in", In), ("out", Out)),
@@ -642,6 +679,14 @@ namespace InventaSketch.Modules.Mechanical
                     : Bind(rel, ("a", s.Part.ObjectId, s.Part.Key), ("b", s.Member.ObjectId, s.Member.Key)));
             }
 
+            // A gear on the outer teeth of a set's member (ring gear): z·n and the torque ratio with the signed member.
+            foreach (var (gear, unit, m) in topo.UnitMeshesOf(id))
+            {
+                list.Add(Bind(UnitMeshSpeed, ("ng", gear, "n"), ("zg", gear, "z"), ("zo", unit, m.Teeth!), ("nm", unit, m.Speed)));
+                if (m.Torque is { } tm && topo.Has(gear, "T"))
+                    list.Add(Bind(UnitMeshTorque, ("Tg", gear, "T"), ("zg", gear, "z"), ("zo", unit, m.Teeth!), ("Tm", unit, tm)));
+            }
+
             // Rack and pinion: the rack's pinion values are those of the meshing gear.
             if (topo.PinionOf(id) is { } pinion) list.AddRange(RackMesh(id, pinion));
             foreach (var rack in topo.RacksOf(id)) list.AddRange(RackMesh(rack, id));
@@ -653,26 +698,56 @@ namespace InventaSketch.Modules.Mechanical
 
         /// <summary>
         /// A shaft at a member of a gear set with signed member speeds: n = |n_m| (shaft speeds are magnitudes); a member driven
-        /// from its shaft turns in the positive sense.
+        /// from its shaft turns in the positive sense. It passes the value on (only the sign is dropped), so a solved value
+        /// shows as linked, like the plain equalities of the other port relations.
         /// </summary>
         private static readonly Relation UnitSpeedMagnitude =
             new Relation("mech.unit.speed.magnitude", T("Shaft speed at a member of the set (magnitude)", "Wellendrehzahl an einem Glied des Satzes (Betrag)"), "{x} = |{m}|", "x", "m")
             {
+                IsLink = true,
                 Validity = T("shaft speeds are magnitudes; a member driven from its shaft turns in the positive sense",
                              "Wellendrehzahlen sind Beträge; ein von seiner Welle angetriebenes Glied dreht im positiven Sinn"),
             }
                 .Solve("x", "|{m}|", v => Math.Abs(v("m")))
                 .Solve("m", "{x}", v => v("x"));
 
-        /// <summary>A shaft at a member of a gear set with signed member torques: T = |T_m| (shaft torques are magnitudes).</summary>
+        /// <summary>A shaft at a member of a gear set with signed member torques: T = |T_m| (shaft torques are magnitudes); linked as the speed.</summary>
         private static readonly Relation UnitTorqueMagnitude =
             new Relation("mech.unit.torque.magnitude", T("Shaft torque at a member of the set (magnitude)", "Wellenmoment an einem Glied des Satzes (Betrag)"), "{x} = |{m}|", "x", "m")
             {
+                IsLink = true,
                 Validity = T("shaft torques are magnitudes; a member driven from its shaft takes the positive sense",
                              "Wellenmomente sind Beträge; ein von seiner Welle angetriebenes Glied nimmt den positiven Sinn an"),
             }
                 .Solve("x", "|{m}|", v => Math.Abs(v("m")))
                 .Solve("m", "{x}", v => v("x"));
+
+        /// <summary>
+        /// A gear meshing with the outer teeth of a member of a gear set (ring gear): z_g·n_g = z_o·|n_m| [S18]. The gear's speed
+        /// is a magnitude, the member's signed: a member driven by the gear takes the positive sense.
+        /// </summary>
+        private static readonly Relation UnitMeshSpeed =
+            new Relation("mech.unit.mesh.speed", T("Gear on the outer teeth of the set", "Rad an der Außenverzahnung des Satzes"), "{ng}·{zg} = {zo}·|{nm}|", "ng", "zg", "zo", "nm")
+            {
+                Source = "S18",
+                Validity = T("the gear's speed is a magnitude; a member driven by the gear turns in the positive sense",
+                             "die Drehzahl des Rads ist ein Betrag; ein vom Rad angetriebenes Glied dreht im positiven Sinn"),
+            }
+                .Solve("ng", "{zo}·|{nm}|/{zg}", v => v("zo") * Math.Abs(v("nm")) / v("zg"))
+                .Solve("nm", "{ng}·{zg}/{zo}", v => v("ng") * v("zg") / v("zo"))
+                .Solve("zg", "{zo}·|{nm}|/{ng}", v => v("zo") * Math.Abs(v("nm")) / v("ng"))
+                .Solve("zo", "{ng}·{zg}/|{nm}|", v => v("ng") * v("zg") / Math.Abs(v("nm")));
+
+        /// <summary>Torque across the outer teeth of a set's member, lossless: T_g·z_o = |T_m|·z_g [S18].</summary>
+        private static readonly Relation UnitMeshTorque =
+            new Relation("mech.unit.mesh.torque", T("Torque across the outer teeth of the set", "Drehmoment über die Außenverzahnung des Satzes"), "{Tg}·{zo} = |{Tm}|·{zg}", "Tg", "zg", "zo", "Tm")
+            {
+                Source = "S18",
+                Validity = T("lossless mesh; a member driven by the gear takes the positive sense",
+                             "verlustfreier Eingriff; ein vom Rad angetriebenes Glied nimmt den positiven Sinn an"),
+            }
+                .Solve("Tg", "|{Tm}|·{zg}/{zo}", v => Math.Abs(v("Tm")) * v("zg") / v("zo"))
+                .Solve("Tm", "{Tg}·{zo}/{zg}", v => v("Tg") * v("zo") / v("zg"));
 
         private static readonly Relation RackPinionSpeed = Relation.Equality("mech.rack.mesh.speed", T("The rack's pinion is the meshing gear: speed", "Das Ritzel der Zahnstange ist das kämmende Rad: Drehzahl"));
         private static readonly Relation RackPinionTorque = Relation.Equality("mech.rack.mesh.torque", T("The rack's pinion is the meshing gear: torque", "Das Ritzel der Zahnstange ist das kämmende Rad: Drehmoment"));
