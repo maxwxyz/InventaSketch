@@ -52,7 +52,9 @@ namespace InventaSketch.Modules.Switchgear
     /// current entered count in the totals. Every value is optional; derived values are never stored. The main switch
     /// estimates the short-circuit currents at the board (transformer and supply cable) and passes them to the overcurrent
     /// devices below; those also see the rated and instantaneous tripping currents of the device upstream (selectivity
-    /// hints), and RCDs check the type the frequency inverters below them need.
+    /// hints), and RCDs check the type the frequency inverters below them need. A frequency inverter also has a motor side
+    /// (output frequency, V/f output voltage, output power, efficiency) with a value port to the motor wired to its output
+    /// (<see cref="DrivePort"/>); its input power and current follow from the motor's power and count in the totals.
     /// </summary>
     internal static class SwValues
     {
@@ -164,14 +166,40 @@ namespace InventaSketch.Modules.Switchgear
             V("Iaup", T("Instantaneous tripping current of the device upstream", "Sofortauslösestrom des vorgeschalteten Schutzorgans"), "I_a,up", Quantities.Current, "A", "iaUp", VarRelevance.Engineer) with { ReadOnly = true },
         }).ToList();
 
-        private static IReadOnlyList<VarDef> LoadVariables(bool drive) => new[]
+        private static IReadOnlyList<VarDef> LoadVariables() => new[]
         {
-            drive
-                ? V("P", T("Rated power", "Bemessungsleistung"), "P", Quantities.Power, "kW", "power", VarRelevance.Card, 1e10) with { StoredUnit = "kW" }
-                : V("P", T("Power", "Leistung"), "P", Quantities.Power, "W", "power", VarRelevance.Card, 1e10),
+            V("P", T("Power", "Leistung"), "P", Quantities.Power, "W", "power", VarRelevance.Card, 1e10),
             V("I", T("Current (per phase)", "Strom (je Außenleiter)"), "I", Quantities.Current, "A", "current", VarRelevance.Card),
             V("U", T("Voltage phase to neutral", "Spannung Außenleiter–Neutralleiter"), "U", Quantities.Voltage, "V", "voltage", VarRelevance.Panel, 1e5) with { Default = 230 },
             V("pf", T("Power factor", "Leistungsfaktor"), "cos φ", Quantities.Ratio, null, "powerFactor", VarRelevance.Panel, 1) with { Default = 1 },
+        };
+
+        /// <summary>
+        /// Frequency inverter: the supply side (input power P, current I per phase, voltage U phase to neutral, cos φ; P and I are
+        /// what the circuit totals add up), the rated power, the efficiency and the motor side (output frequency with its set
+        /// range, output voltage after the V/f characteristic, output power and current, the rated power of the connected motor).
+        /// </summary>
+        private static IReadOnlyList<VarDef> DriveVariables() => new[]
+        {
+            V("PN", T("Rated power", "Bemessungsleistung"), "P_N", Quantities.Power, "kW", "power", VarRelevance.Card, 1e10) with { StoredUnit = "kW" },
+            V("f", T("Output frequency (set point)", "Ausgangsfrequenz (Sollwert)"), "f", Quantities.Frequency, "Hz", "frequency", VarRelevance.Card, 1e4),
+            V("Pout", T("Output power (to the motor)", "Ausgangsleistung (zum Motor)"), "P_out", Quantities.Power, "W", "powerOut", VarRelevance.Card, 1e10),
+            V("I", T("Input current (per phase)", "Eingangsstrom (je Außenleiter)"), "I", Quantities.Current, "A", "current", VarRelevance.Card),
+            V("P", T("Input power (from the supply)", "Eingangsleistung (aus dem Netz)"), "P", Quantities.Power, "W", "powerIn", VarRelevance.Panel, 1e10),
+            V("U", T("Supply voltage phase to neutral", "Netzspannung Außenleiter–Neutralleiter"), "U", Quantities.Voltage, "V", "voltage", VarRelevance.Panel, 1e5) with { Default = 230 },
+            V("pf", T("Input power factor", "Leistungsfaktor am Eingang"), "cos φ", Quantities.Ratio, null, "powerFactor", VarRelevance.Panel, 1) with { Default = 1 },
+            V("eta", T("Efficiency (default 100 %: losses neglected)", "Wirkungsgrad (Vorgabe 100 %: Verluste vernachlässigt)"), "η", Quantities.Efficiency, "%", "efficiency", VarRelevance.Panel, 1)
+                with { Default = 1 },
+            V("Uout", T("Output voltage (line-to-line, V/f characteristic)", "Ausgangsspannung (verkettet, U/f-Kennlinie)"), "U_out", Quantities.Voltage, "V", "voltageOut", VarRelevance.Panel, 1e5),
+            V("Iout", T("Output current (line current of the motor)", "Ausgangsstrom (Leiterstrom des Motors)"), "I_out", Quantities.Current, "A", "currentOut", VarRelevance.Panel),
+            V("fmin", T("Minimum output frequency (set range)", "Minimale Ausgangsfrequenz (Einstellbereich)"), "f_min", Quantities.Frequency, "Hz", "frequencyMin", VarRelevance.Panel, 1e4),
+            V("fmax", T("Maximum output frequency (set range)", "Maximale Ausgangsfrequenz (Einstellbereich)"), "f_max", Quantities.Frequency, "Hz", "frequencyMax", VarRelevance.Panel, 1e4),
+            V("PM", T("Rated power of the connected motor", "Bemessungsleistung des angeschlossenen Motors"), "P_N,M", Quantities.Power, "kW", "motorPower", VarRelevance.Panel, 1e10)
+                with { ReadOnly = true },
+            V("fb", T("Base frequency (end of the V/f line, default 50 Hz)", "Eckfrequenz (Ende der U/f-Geraden, Vorgabe 50 Hz)"), "f_b", Quantities.Frequency, "Hz", "baseFrequency", VarRelevance.Engineer, 1e4)
+                with { Default = 50 },
+            V("Ub", T("Output voltage at the base frequency (default 400 V; single-phase supply 230 V)", "Ausgangsspannung bei der Eckfrequenz (Vorgabe 400 V; einphasige Einspeisung 230 V)"),
+                "U_b", Quantities.Voltage, "V", "baseVoltage", VarRelevance.Engineer, 1e5) with { Default = 400 },
         };
 
         private static IReadOnlyList<VarDef> BoardVariables() => new[]
@@ -206,6 +234,72 @@ namespace InventaSketch.Modules.Switchgear
 
         private static readonly Relation SingleCurrent = LoadCurrent(false);
         private static readonly Relation ThreeCurrent = LoadCurrent(true);
+
+        /// <summary>Frequency inverter: P_out = η·P_in [S15].</summary>
+        private static readonly Relation DriveEfficiency =
+            new Relation("sw.vfd.efficiency", T("Efficiency of the inverter", "Wirkungsgrad des Umrichters"), "{Pout} = {eta}·{P}", "Pout", "eta", "P") { Source = "S15" }
+                .Solve("Pout", "{eta}·{P}", v => v("eta") * v("P"))
+                .Solve("P", "{Pout}/{eta}", v => v("Pout") / v("eta"))
+                .Solve("eta", "{Pout}/{P}", v => v("Pout") / v("P"));
+
+        /// <summary>
+        /// Linear V/f characteristic: U_out = U_b·f/f_b up to the base frequency, constant U_b above it (field weakening) [S15].
+        /// Solved for U_out and U_b only (above f_b the frequency does not follow from the voltage).
+        /// </summary>
+        private static readonly Relation VoltsPerHertz =
+            new Relation("sw.vfd.vf", T("V/f characteristic", "U/f-Kennlinie"), "{Uout} = {Ub}·min({f}, {fb})/{fb}", "Uout", "Ub", "f", "fb")
+            {
+                Source = "S15",
+                Validity = T("linear V/f characteristic without voltage boost; constant voltage above the base frequency (field weakening)",
+                    "lineare U/f-Kennlinie ohne Spannungsanhebung (Boost); konstante Spannung oberhalb der Eckfrequenz (Feldschwächung)"),
+            }
+                .Solve("Uout", "{Ub}·min({f}, {fb})/{fb}", v => v("Ub") * Math.Min(v("f"), v("fb")) / v("fb"))
+                .Solve("Ub", "{Uout}·{fb}/min({f}, {fb})", v => v("Uout") * v("fb") / Math.Min(v("f"), v("fb")));
+
+        /// <summary>Without a motor at its output, the inverter is taken at its rated power (a sizing assumption for the circuit).</summary>
+        private static readonly Relation RatedAsOutput =
+            new Relation("sw.vfd.rated", T("No motor power at the output: the rated power is taken as the output power", "Keine Motorleistung am Ausgang: die Bemessungsleistung gilt als Ausgangsleistung"),
+                "{Pout} = {PN}", "Pout", "PN")
+            {
+                Validity = T("sizing assumption: the inverter runs at its rated power", "Bemessungsannahme: der Umrichter läuft mit seiner Bemessungsleistung"),
+            }
+                .Solve("Pout", "{PN}", v => v("PN"))
+                .Solve("PN", "{Pout}", v => v("Pout"));
+
+        private static readonly I18nText SingleBaseName = T("Output voltage of an inverter fed single-phase (3 × 230 V)", "Ausgangsspannung eines einphasig gespeisten Umrichters (3 × 230 V)");
+
+        // The value port at the motor terminals: what the inverter passes to the motor and what it reads back.
+        private static readonly Relation PortFrequency = Relation.Equality("sw.vfd.port.f", T("Output frequency of the inverter at the motor", "Ausgangsfrequenz des Umrichters am Motor"));
+        private static readonly Relation PortVoltage = Relation.Equality("sw.vfd.port.u", T("Output voltage of the inverter at the motor", "Ausgangsspannung des Umrichters am Motor"));
+        private static readonly Relation PortPower = Relation.Equality("sw.vfd.port.p", T("Electrical power of the motor from the inverter", "Elektrische Leistung des Motors aus dem Umrichter"));
+        private static readonly Relation PortCurrent = Relation.Equality("sw.vfd.port.i", T("Line current of the motor from the inverter", "Leiterstrom des Motors aus dem Umrichter"));
+        private static readonly Relation PortRating = Relation.Equality("sw.vfd.port.pn", T("Rated power of the connected motor", "Bemessungsleistung des angeschlossenen Motors"));
+
+        /// <summary>
+        /// The port pairs: inverter variable, shared physical key (<see cref="NetKeys"/>: the motor's variable looked up by its
+        /// name list, "Pel" before "P") or the plain key "PN", and the link relation.
+        /// </summary>
+        private static readonly (string Own, string Key, Relation Rel)[] PortPairs =
+        {
+            ("f", NetKeys.Frequency, PortFrequency),
+            ("Uout", NetKeys.Voltage, PortVoltage),
+            ("Pout", NetKeys.Power, PortPower),
+            ("Iout", NetKeys.Current, PortCurrent),
+            ("PM", "PN", PortRating),
+        };
+
+        /// <summary>The motor's variable for a port key: by the NetKeys name list and quantity kind, or "PN" (power).</summary>
+        internal static VarDef? MotorVariable(IReadOnlyList<VarDef> vars, string key)
+        {
+            if (key == "PN") return vars.FirstOrDefault(v => v.Key == "PN" && v.Kind.Id == Quantities.Power.Id);
+            var kind = NetKeys.KindOf(key);
+            if (kind is null) return null;
+            foreach (var name in NetKeys.VariableNames(key))
+                if (vars.FirstOrDefault(v => v.Key == name) is { } v && v.Kind.Id == kind.Id) return v;
+            return null;
+        }
+
+        private static readonly string[] OwnPower = { "P", "I", "Pout" };
 
         /// <summary>Upper limit of the instantaneous tripping range: B 5·I_n, C 10·I_n, D 20·I_n [S11].</summary>
         public static double TripFactor(string characteristic) => characteristic switch { "C" => 10, "D" => 20, _ => 5 };
@@ -391,6 +485,18 @@ namespace InventaSketch.Modules.Switchgear
             "type ≥ required type of the loads",
             c => CircuitMap.Of(c.Context.Doc).RequiredRcdRank(c.Object.Id) > RcdRank(c.Object.Str("rcdType", "A"))) { Source = "S11" };
 
+        /// <summary>sw.vfd.rating: the connected motor is rated above the inverter, or draws more than its rated power.</summary>
+        public static readonly ValueCheck DriveRating = new("sw.vfd.rating", CheckSeverity.Warning,
+            T("The motor needs more than the rated power of the frequency inverter (the motor's rated power or its electrical power at the operating point). Choose a larger inverter.",
+              "Der Motor braucht mehr als die Bemessungsleistung des Frequenzumrichters (Bemessungsleistung des Motors oder seine elektrische Leistung im Betriebspunkt). Einen größeren Umrichter wählen."),
+            "P_N,M ≤ P_N; P_out ≤ P_N", c => Above(c["PM"], c["PN"]) || Above(c["Pout"], c["PN"]));
+
+        /// <summary>sw.vfd.range: the output frequency set point is outside the set range f_min … f_max (as entered).</summary>
+        public static readonly ValueCheck DriveRange = new("sw.vfd.range", CheckSeverity.Warning,
+            T("The output frequency is outside the set range f_min … f_max of the inverter. Change the set point or the range.",
+              "Die Ausgangsfrequenz liegt außerhalb des Einstellbereichs f_min … f_max des Umrichters. Sollwert oder Bereich ändern."),
+            "f_min ≤ f ≤ f_max", c => Above(c["f"], c["fmax"]) || Below(c["f"], c["fmin"]));
+
         // ------------------------------------------------------------------ specs per type
 
         private static readonly Dictionary<string, SwValueSpec> Specs = new(StringComparer.Ordinal);
@@ -420,11 +526,11 @@ namespace InventaSketch.Modules.Switchgear
                             new[] { LoadAboveRating, RcdTypeCheck }),
                         DeviceRole.MainSwitch => Make(SwValueKind.Switch, spec.Params, new[] { RatedCurrent(spec.Id), OperatingCurrent(), CircuitPower() }.Concat(SupplyVariables()).ToList(),
                             new[] { TrafoImpedance, LineImpedance, Loop, ShortCircuit1, ShortCircuit3 }, new[] { LoadAboveRating }),
-                        DeviceRole.Drive => Make(SwValueKind.Load, spec.Params, LoadVariables(true), Array.Empty<Relation>(), Array.Empty<ValueCheck>()),
+                        DeviceRole.Drive => Make(SwValueKind.Load, spec.Params, DriveVariables(), new[] { DriveEfficiency, VoltsPerHertz }, new[] { DriveRating, DriveRange }),
                         _ => SwValueSpec.Empty,
                     };
                 case HouseType:
-                    return Make(SwValueKind.Load, Array.Empty<ParamDef>(), LoadVariables(false), Array.Empty<Relation>(), Array.Empty<ValueCheck>());
+                    return Make(SwValueKind.Load, Array.Empty<ParamDef>(), LoadVariables(), Array.Empty<Relation>(), Array.Empty<ValueCheck>());
                 case RailType:
                     return Make(SwValueKind.Board, Array.Empty<ParamDef>(), BoardVariables(), new[] { Imbalance }, new[] { PhaseImbalance });
                 default:
@@ -456,20 +562,24 @@ namespace InventaSketch.Modules.Switchgear
         // ------------------------------------------------------------------ links
 
         /// <summary>Power and current of a load as entered: the same parameters on the room devices and on the installation symbols of other modules.</summary>
-        private static readonly IReadOnlyList<VarDef> EnteredLoad = LoadVariables(false).Where(v => v.Key is "P" or "I").ToList();
+        private static readonly IReadOnlyList<VarDef> EnteredLoad = LoadVariables().Where(v => v.Key is "P" or "I").ToList();
 
         /// <summary>
         /// True if a load has a power or a current entered (only those count in the totals). Installation symbols of other
         /// modules that take power (<see cref="HouseDevice.IsLoad"/>) are read through the same parameters; their own module
         /// declares the variables P and I the circuit totals refer to.
         /// </summary>
-        public static bool HasLoadValue(SketchObject load)
+        public static bool HasLoadValue(SketchDocument doc, SketchObject load)
         {
             if (Board.House(load) is { IsForeign: true } foreign)
                 return foreign.IsLoad && EnteredLoad.Any(v => ValueModel.ReadEntered(load, v).Value is not null);
             var spec = For(load.Type);
             if (spec.Kind != SwValueKind.Load) return false;
-            return spec.Variables.Where(v => v.Key is "P" or "I").Any(v => ValueModel.ReadEntered(load, v).Value is not null);
+            if (load.Type != Industrial.Vfd)
+                return spec.Variables.Where(v => v.Key is "P" or "I").Any(v => ValueModel.ReadEntered(load, v).Value is not null);
+            // A frequency inverter: its own input or output power, current or rating, or the power of the motor at its output.
+            return spec.Variables.Where(v => v.Key is "P" or "I" or "Pout" or "PN").Any(v => ValueModel.ReadEntered(load, v).Value is not null)
+                   || DrivePort.MotorPowerEntered(doc, load, null);
         }
 
         /// <summary>Default voltage phase to neutral of the loads (the room devices' U default; symbols of other modules in a circuit).</summary>
@@ -478,7 +588,7 @@ namespace InventaSketch.Modules.Switchgear
         private static readonly I18nText NominalVoltageName = T("Nominal voltage phase to neutral of the circuit (no voltage entered on the load)",
             "Nennspannung Außenleiter–Neutralleiter des Stromkreises (am Verbraucher keine Spannung eingetragen)");
 
-        private static readonly VarDef EnteredVoltage = LoadVariables(false).Single(v => v.Key == "U");
+        private static readonly VarDef EnteredVoltage = LoadVariables().Single(v => v.Key == "U");
 
         /// <summary>
         /// True for an installation symbol of another module in a circuit whose voltage is open: none entered, and not both power
@@ -518,6 +628,8 @@ namespace InventaSketch.Modules.Switchgear
                     {
                         var phase = CircuitMap.Of(ctx.Doc).PhaseOf(o.Id) ?? EffectivePhase(o, null);
                         yield return BoundRelation.Local(phase == ThreePhase ? ThreeCurrent : SingleCurrent, o.Id);
+                        if (o.Type == Industrial.Vfd)
+                            foreach (var b in DriveLinks(o, spec, ctx)) yield return b;
                         yield break;
                     }
                 case SwValueKind.Board:
@@ -570,6 +682,41 @@ namespace InventaSketch.Modules.Switchgear
                         yield break;
                     }
             }
+        }
+
+        /// <summary>
+        /// The value port of a frequency inverter at its motor terminals (<see cref="DrivePort"/>): the one motor wired to its
+        /// output pins U, V, W (through wires and cables of any module and through terminal blocks) takes the output frequency,
+        /// the output voltage and the output power (its electrical power: "Pel" before "P") and gives back its line current and
+        /// rated power. The power passes only when a power is known on one side: the motor has a power or current entered, or
+        /// the inverter an input or output power or current. Otherwise the inverter is taken at its rated power (as before),
+        /// and that assumption stays on the inverter (it is not passed to the motor as its power). A single-phase supply gives
+        /// 3 × 230 V at the base frequency.
+        /// </summary>
+        private static IEnumerable<BoundRelation> DriveLinks(SketchObject o, SwValueSpec spec, RenderContext ctx)
+        {
+            var registry = ctx.Registry ?? DrivePort.DefaultRegistry;
+            var ownEntered = spec.Variables.Where(v => OwnPower.Contains(v.Key)).Any(v => ValueModel.ReadEntered(o, v).Value is not null);
+            var powerKnown = ownEntered || DrivePort.MotorPowerEntered(ctx.Doc, o, registry);
+            var powerLinked = false;
+            if (DrivePort.MotorOf(ctx.Doc, o) is { } motorId && ctx.Doc.Get(motorId) is { } motor && registry is not null)
+            {
+                var vars = ValueModel.Variables(registry.Type(motor.Type));
+                foreach (var (own, key, rel) in PortPairs)
+                {
+                    if (MotorVariable(vars, key) is not { } mv || !spec.Has(own)) continue;
+                    if (own == "Pout")
+                    {
+                        if (!powerKnown) continue;
+                        powerLinked = true;
+                    }
+                    yield return Pass(rel, o.Id, own, motor.Id, mv.Key);
+                }
+            }
+            if (!powerLinked && !ownEntered)
+                yield return BoundRelation.Local(RatedAsOutput, o.Id);
+            if (!IsThreePhase(o) && spec.Variables.FirstOrDefault(v => v.Key == "Ub") is { } ub && ValueModel.ReadEntered(o, ub).Value is null)
+                yield return BindOne(Constant("sw.vfd.base1", SingleBaseName, NominalVoltage, "230 V"), o.Id, "Ub");
         }
     }
 
@@ -643,7 +790,7 @@ namespace InventaSketch.Modules.Switchgear
                 {
                     var phase = SwValues.EffectivePhase(l, feeder);
                     _phase[l.Id] = phase;
-                    if (SwValues.HasLoadValue(l)) list.Add(new Load(l.Id, phase));
+                    if (SwValues.HasLoadValue(doc, l)) list.Add(new Load(l.Id, phase));
                 }
                 direct[n] = list;
             }

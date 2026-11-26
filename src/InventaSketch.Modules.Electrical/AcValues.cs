@@ -276,8 +276,54 @@ namespace InventaSketch.Modules.Electrical
                 list.Add(StartingCurrent);
                 if (supply == "ac3" && o.Str("starting", "dol") == "stardelta") list.Add(StarDelta);
             }
-            return list.Select(r => BoundRelation.Local(r, o.Id));
+            var links = list.Select(r => BoundRelation.Local(r, o.Id)).ToList();
+            // A three-phase motor wired to a frequency inverter (switchgear) takes its output voltage; the inverter's own port
+            // passes frequency and power as well, this link lets the motor alone (its value label) find the inverter.
+            if (motor && supply == "ac3" && DriveSupplyOf(ctx.Doc, o) is { } vfd)
+                links.Add(new BoundRelation(DriveVoltage, new Dictionary<string, VarRef>(StringComparer.Ordinal) { ["a"] = new VarRef(o.Id, "U"), ["b"] = new VarRef(vfd, "Uout") }));
+            return links;
         };
+
+        private static readonly Relation DriveVoltage = Relation.Equality("elec.motor.drive.u", T("Terminal voltage from the frequency inverter", "Klemmenspannung vom Frequenzumrichter"));
+
+        /// <summary>Type id of the switchgear frequency inverter (modules do not reference each other; known by id).</summary>
+        internal const string InverterTypeId = "sw.drive.vfd";
+
+        private static readonly string[] MotorTerminals = { "U", "V", "W" };
+
+        /// <summary>
+        /// The one frequency inverter whose output pins (U, V, W) are wired to the motor's terminals U, V, W (lines of any module,
+        /// followed end to end and through lines docked on them), or null.
+        /// </summary>
+        internal static string? DriveSupplyOf(SketchDocument doc, SketchObject motor)
+        {
+            var lines = doc.Objects.Values.Where(x => x.IsPointGeometry && x.Attach is { Count: > 0 }).OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
+            var stack = new Stack<SketchObject>();
+            foreach (var l in lines)
+            {
+                var n = l.Attach!.Count;
+                foreach (var a in new[] { l.Attach[0], l.Attach[n - 1] })
+                    if (a is not null && a.ObjectId == motor.Id && MotorTerminals.Contains(a.AnchorId)) { stack.Push(l); break; }
+            }
+            if (stack.Count == 0) return null;
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var found = new HashSet<string>(StringComparer.Ordinal);
+            while (stack.Count > 0)
+            {
+                var line = stack.Pop();
+                if (!seen.Add(line.Id)) continue;
+                foreach (var other in lines)
+                    if (other.Attach!.Any(a => a is not null && a.ObjectId == line.Id)) stack.Push(other);
+                var n = line.Attach!.Count;
+                foreach (var a in new[] { line.Attach[0], line.Attach[n - 1] })
+                {
+                    if (a is null || a.ObjectId == motor.Id || doc.Get(a.ObjectId) is not { } x) continue;
+                    if (x.IsPointGeometry) stack.Push(x);
+                    else if (x.Type == InverterTypeId && MotorTerminals.Contains(a.AnchorId)) found.Add(x.Id);
+                }
+            }
+            return found.Count == 1 ? found.First() : null;
+        }
 
         // ------------------------------------------------------------------ cable (installation cable route)
 

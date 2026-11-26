@@ -162,5 +162,23 @@ namespace InventaSketch.Modules.Machines.Tests
             Assert.Equal(new[] { "n", "T", "P", "J" }, ValueModel.Variables(t).Select(v => v.Key));
             Assert.Contains(t.Parameters, p => p.Key == ValueLabels.ShowParam);
         }
+
+        // ------------------------------------------------------------------ maximum speed (round 8)
+
+        [Fact]
+        public void SupplyFrequencyAboveTheMaximumSpeedIsReported()
+        {
+            var r = Fx.Reg();
+            // 4 poles at 70 Hz: n_s = 2100 min⁻¹ above n_max = 1800 min⁻¹ (an inverter's frequency); at 50 Hz 1500: fine.
+            var fast = Make(r, "machines.block.motor", "m").WithParam("frequency", "70 Hz").WithParam("maxSpeed", "1800 rpm");
+            Assert.Contains(Checks(r, Doc(fast)), c => c.CheckId == "mach.speed.max" && c.ObjectId == "m");
+            Assert.DoesNotContain(Checks(r, Doc(fast.WithParam("frequency", "50 Hz"))), c => c.CheckId == "mach.speed.max");
+            // The speed itself above n_max on a machine cross-section; no maximum entered: no check.
+            var radial = Make(r, "machines.radial.asm", "a").WithParam("speed", "4000 rpm");
+            Assert.DoesNotContain(Checks(r, Doc(radial)), c => c.CheckId == "mach.speed.max");
+            Assert.Contains(Checks(r, Doc(radial.WithParam("maxSpeed", "3600 rpm"))), c => c.CheckId == "mach.speed.max");
+            foreach (var id in new[] { "machines.drive.motor", "machines.drivetrain.emachine", "machines.radial", "machines.axial" })
+                Assert.Equal("maxSpeed", ValueModel.Variable(r.Type(id), "nmax")!.ParamKey);
+        }
     }
 }

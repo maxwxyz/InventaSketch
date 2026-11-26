@@ -16,7 +16,9 @@ namespace InventaSketch.Modules.Machines
     /// Links (<see cref="MachLinks"/>): blocks joined by a connector (first docked end → last docked end) pass n and T from
     /// the output of one to the input of the next (motor → gearbox → differential → wheel); drivetrain parts on a mechanical
     /// shaft share its speed (the mechanical module passes the torque along the shaft line). Rotating elements of both modules
-    /// use the variable keys n, T and P, so the links meet without a code dependency between the modules.
+    /// use the variable keys n, T and P, so the links meet without a code dependency between the modules. A machine wired to
+    /// a switchgear frequency inverter (known by its type id) takes the inverter's output frequency; the inverter's own value
+    /// port passes voltage and power as well. The maximum permissible speed n_max is checked against n and n_s.
     /// </para>
     /// </summary>
     internal static class MachValues
@@ -258,6 +260,13 @@ namespace InventaSketch.Modules.Machines
             Text("syncSpeed", T("Synchronous speed", "Synchrondrehzahl"), "min⁻¹"), Text("slip", T("Slip", "Schlupf"), "%"),
         };
 
+        private static readonly I18nText MaxSpeedName = T("Maximum permissible speed (datasheet)", "Höchstzulässige Drehzahl (Datenblatt)");
+
+        /// <summary>The maximum permissible speed of a machine (check <c>mach.speed.max</c>; a converter's frequency can exceed it).</summary>
+        private static VarDef MaxSpeedVar() => Speed("nmax", "maxSpeed", MaxSpeedName, "n_max", VarRelevance.Panel);
+
+        private static readonly ParamDef PMaxSpeed = Text("maxSpeed", MaxSpeedName, "min⁻¹");
+
         private static readonly I18nText VoltageName = T("Terminal voltage (line-to-line for three phases)", "Klemmenspannung (verkettet bei Drehstrom)");
         private static readonly I18nText CurrentName = T("Line current", "Leiterstrom");
         private static readonly I18nText CosName = T("Power factor cos φ", "Leistungsfaktor cos φ");
@@ -335,12 +344,12 @@ namespace InventaSketch.Modules.Machines
                 Speed("ns", "syncSpeed", T("Synchronous speed", "Synchrondrehzahl"), "n_s", VarRelevance.Panel),
                 V("s", T("Slip", "Schlupf"), T("s", "s"), Quantities.Ratio, "%", "slip", VarRelevance.Panel) with { Min = -1, Max = 1 },
                 V("poles", T("Pole count", "Polzahl"), T("2p", "2p"), Quantities.Count, null, "poles", VarRelevance.Panel) with { Default = 8, Min = 2, Max = 200 },
-                Eta(), ElPower(), RatedPower(), RatedTorque(),
+                Eta(), ElPower(), RatedPower(), RatedTorque(), MaxSpeedVar(),
             }.Concat(TerminalVars).Concat(RunUpVars).ToArray();
             var ps = WithShow(new[] { PSpeed, PTorque, PPower, Text("frequency", T("Supply frequency", "Speisefrequenz"), "Hz"),
                 Text("syncSpeed", T("Synchronous speed", "Synchrondrehzahl"), "min⁻¹"), Text("slip", T("Slip", "Schlupf"), "%"),
-                PEta, PElPower, PRatedPower, PRatedTorque }.Concat(TerminalParams).Concat(RunUpParams).ToArray());
-            return new Spec(vars, new[] { PowerRel, SyncSpeed, Slip, InertiaTotal, RunUp }, ps, new[] { SlipSign(), Efficiency(), Overload(), RunUpTorque() }, null, Shaft)
+                PEta, PElPower, PRatedPower, PRatedTorque, PMaxSpeed }.Concat(TerminalParams).Concat(RunUpParams).ToArray());
+            return new Spec(vars, new[] { PowerRel, SyncSpeed, Slip, InertiaTotal, RunUp }, ps, new[] { SlipSign(), Efficiency(), Overload(), RunUpTorque(), MaxSpeed() }, null, Shaft)
             {
                 Local = o => ModeEfficiency(o).Concat(Terminal(o)).Concat(IsSynchronousSection(o) ? new[] { SyncLock } : Array.Empty<Relation>()),
                 InertiaOut = "JL",
@@ -359,9 +368,10 @@ namespace InventaSketch.Modules.Machines
         private static Spec Motor(bool modeParam)
         {
             var vars = new[] { Speed(), Torque(), Power(), Eta(VarRelevance.Card), ElPower(), RatedPower(), RatedTorque() }
-                .Concat(FrequencyVars).Concat(TerminalVars).Concat(RunUpVars).ToArray();
+                .Concat(FrequencyVars).Append(MaxSpeedVar()).Concat(TerminalVars).Concat(RunUpVars).ToArray();
             var ps = new List<ParamDef> { PSpeed, PTorque, PPower, PEta, PElPower, PRatedPower, PRatedTorque };
             ps.AddRange(FrequencyParams);
+            ps.Add(PMaxSpeed);
             ps.AddRange(TerminalParams);
             ps.AddRange(RunUpParams);
             if (modeParam) ps.Add(PMode);
@@ -369,7 +379,7 @@ namespace InventaSketch.Modules.Machines
             // follows its kind: synchronous machines run at n = n_s, induction machines with slip, reluctance machines without
             // a mains-frequency relation.
             var fixedRels = modeParam ? new[] { PowerRel, InertiaTotal, RunUp } : new[] { PowerRel, SyncSpeed, Slip, InertiaTotal, RunUp };
-            return new Spec(vars, fixedRels, WithShow(ps.ToArray()), new[] { Efficiency(), Overload(), RunUpTorque() }, null, Shaft)
+            return new Spec(vars, fixedRels, WithShow(ps.ToArray()), new[] { Efficiency(), Overload(), RunUpTorque(), MaxSpeed() }, null, Shaft)
             {
                 Local = modeParam ? o => ModeEfficiency(o).Concat(Terminal(o)).Concat(KindSpeed(o)) : o => ModeEfficiency(o).Concat(Terminal(o)),
                 InertiaOut = "JL",
@@ -499,6 +509,18 @@ namespace InventaSketch.Modules.Machines
             c => c["TM"] is double tm && c["T"] is double t && tm <= t * (1 + Rel))
         { Source = "S15" };
 
+        /// <summary>
+        /// mach.speed.max: the speed, or the synchronous speed the supply frequency gives (a frequency inverter's output), is above
+        /// the machine's maximum permissible speed [S14].
+        /// </summary>
+        private static ValueCheck MaxSpeed() => new(
+            "mach.speed.max", CheckSeverity.Warning,
+            T("The speed is above the maximum permissible speed of the machine (or the supply frequency drives its synchronous speed above it). Lower the frequency or choose a machine for higher speeds.",
+              "Die Drehzahl liegt über der höchstzulässigen Drehzahl der Maschine (oder die Speisefrequenz treibt ihre Synchrondrehzahl darüber). Frequenz senken oder eine Maschine für höhere Drehzahlen wählen."),
+            "n ≤ n_max; n_s ≤ n_max",
+            c => c["nmax"] is double m && (c["n"] is double n && n > m * (1 + Rel) || c["ns"] is double ns && ns > m * (1 + Rel)))
+        { Source = "S14" };
+
         /// <summary>mach.overload: power or torque above the entered rating [S14].</summary>
         private static ValueCheck Overload() => new(
             "mach.overload", CheckSeverity.Warning,
@@ -569,7 +591,54 @@ namespace InventaSketch.Modules.Machines
             // line comes from the shaft).
             if (registry is not null && (type.DrivesShaft || type.Id == "machines.drive.wheel"))
                 list.AddRange(ShaftLines.Of(registry, doc).Links(o.Id, ShaftSpeed, null));
+
+            // A machine wired to a frequency inverter takes its output frequency. The inverter's own port passes voltage and
+            // power as well; this link lets the machine alone (its value label) find the inverter.
+            if (MachValues.For(type.Id).Variables.Any(v => v.Key == "f") && DriveSupplyOf(doc, o) is { } vfd)
+                list.Add(Eq(SupplyFrequency, o.Id, "f", vfd, "f"));
             return list;
+        }
+
+        private static readonly Relation SupplyFrequency = Relation.Equality("mach.link.drive.f", T("Supply frequency from the frequency inverter", "Speisefrequenz vom Frequenzumrichter"));
+
+        /// <summary>Type id of the switchgear frequency inverter (modules do not reference each other; known by id).</summary>
+        internal const string InverterTypeId = "sw.drive.vfd";
+
+        private static readonly string[] PhaseTerminals = { "u", "v", "w" };
+        private static readonly string[] InverterOutputs = { "U", "V", "W" };
+
+        /// <summary>
+        /// The one frequency inverter whose output pins (U, V, W) are wired to the machine's phase terminals u, v, w (lines of any
+        /// module, followed end to end and through lines docked on them), or null.
+        /// </summary>
+        internal static string? DriveSupplyOf(SketchDocument doc, SketchObject machine)
+        {
+            var lines = doc.Objects.Values.Where(x => x.IsPointGeometry && x.Attach is { Count: > 0 }).OrderBy(x => x.Id, StringComparer.Ordinal).ToList();
+            var stack = new Stack<SketchObject>();
+            foreach (var l in lines)
+            {
+                var n = l.Attach!.Count;
+                foreach (var a in new[] { l.Attach[0], l.Attach[n - 1] })
+                    if (a is not null && a.ObjectId == machine.Id && PhaseTerminals.Contains(a.AnchorId)) { stack.Push(l); break; }
+            }
+            if (stack.Count == 0) return null;
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var found = new HashSet<string>(StringComparer.Ordinal);
+            while (stack.Count > 0)
+            {
+                var line = stack.Pop();
+                if (!seen.Add(line.Id)) continue;
+                foreach (var other in lines)
+                    if (other.Attach!.Any(a => a is not null && a.ObjectId == line.Id)) stack.Push(other);
+                var n = line.Attach!.Count;
+                foreach (var a in new[] { line.Attach[0], line.Attach[n - 1] })
+                {
+                    if (a is null || a.ObjectId == machine.Id || doc.Get(a.ObjectId) is not { } x) continue;
+                    if (x.IsPointGeometry) stack.Push(x);
+                    else if (x.Type == InverterTypeId && InverterOutputs.Contains(a.AnchorId)) found.Add(x.Id);
+                }
+            }
+            return found.Count == 1 ? found.First() : null;
         }
     }
 }

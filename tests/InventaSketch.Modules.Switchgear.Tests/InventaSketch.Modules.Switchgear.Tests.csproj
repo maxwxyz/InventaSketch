@@ -11,5 +11,8 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\InventaSketch.Modules.Switchgear\InventaSketch.Modules.Switchgear.csproj" />
+    <!-- Cross-module tests of the inverter's value port (motors of the machines and electrical modules). -->
+    <ProjectReference Include="..\..\src\InventaSketch.Modules.Machines\InventaSketch.Modules.Machines.csproj" />
+    <ProjectReference Include="..\..\src\InventaSketch.Modules.Electrical\InventaSketch.Modules.Electrical.csproj" />
   </ItemGroup>
 </Project>

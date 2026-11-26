@@ -223,6 +223,13 @@ not reduced.
   of it [S15]. In a circuit a single-phase or DC motor is a load with *U* and *I* (an AC load with a power factor of its
   own, so it is in phase with nothing else), a single-phase or DC generator a source; three-phase machines stay terminals
   of unknown current. Speed and torque stay in the Machines module.
+- **Motor on a frequency inverter** (2026-11-26). A three-phase motor (`supply` 3~) wired with its terminals U, V, W to
+  the output pins of the switchgear frequency inverter `sw.drive.vfd` (lines of any module) takes the inverter's V/f
+  output voltage as *U* and, when a power is known on either side, gives its electrical power *P* as the inverter's
+  output power (and its line current back); the inverter's input current then counts in the switchgear circuit totals
+  (switchgear module, "Value port at the motor terminals"). The motor also finds the inverter itself (by its type id,
+  relation `elec.motor.drive.u`), so its value label alone shows the inverter voltage. The motor has no frequency or
+  speed values; for the synchronous speed use a motor of the Machines module.
 - **Cable voltage drop.** The installation cable route has optional cable values (table above): from length,
   cross-section and current the conductor resistance, the voltage drop with cos *φ* (single-phase 2·*R*·*I*·cos *φ*,
   three-phase √3·*R*·*I*·cos *φ*, DC 2·*R*·*I*; line reactance neglected), the relative drop and the losses. Any three of

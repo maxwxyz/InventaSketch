@@ -240,6 +240,7 @@ Drehmomente *M* und Leistungen sind Beträge; *P* = 2π·*n*·*M*. Kartengröße
 | `mach.slip.sign` | Asynchronmaschine (`rotor` = `asm`) im Motorbetrieb mit *n* > *n*_s (Generatorbetrieb) | Info | [S15] |
 | `mach.efficiency` | η > 100 %, *P*₂ > *P*₁ (Getriebe, Differential), *P* > *P*_el (Motor) oder *P*_el > *P* (Generator) | Warnung | [S1] |
 | `mach.overload` | *P* > *P*_N oder *M* > *M*_N (Bemessung vom Nutzer eingetragen) | Warnung | [S14] |
+| `mach.speed.max` | *n* > *n*_max oder *n*_s > *n*_max (höchstzulässige Drehzahl `maxSpeed` eingetragen; z. B. treibt die Ausgangsfrequenz eines Frequenzumrichters die Synchrondrehzahl darüber) | Warnung | [S14] |
 
 **Generatorbetrieb** (26.11.2026). Die Betriebsart (`mode`: Standard Motor, Generator) bestimmt die
 Wirkungsgradbeziehung: ein Motor wandelt elektrische in mechanische Leistung (*P* = η·*P*_el, `mach.efficiency.motor`),
@@ -267,8 +268,16 @@ Momente und Leistungen bleiben Beträge; das Vorzeichen des Schlupfs schaltet di
 - *Prüfung* `mach.runup.torque` (Warnung, [S15]): *M*_M ≤ *M* – der Antrieb kann die Last nicht beschleunigen.
 - *Modulübergreifende Verknüpfung*: Die Klemmenvariablen verwenden die gemeinsamen Schlüssel *U*, *I*, *f* und *P*_el
   (`NetKeys`), so dass ein Abgang eines anderen Moduls, der diese Werte an den Motorklemmen meldet, sie ohne
-  Code-Abhängigkeit trifft. Der Frequenzumrichter der Schaltanlage meldet noch keine Ausgangsfrequenz; „Umrichterfrequenz →
-  Motordrehzahl“ braucht daher einen Werteport auf der Schaltanlagenseite (offen).
+  Code-Abhängigkeit trifft.
+- *Frequenzumrichter* (Runde 8, 2026-11-26): Der Frequenzumrichter `sw.drive.vfd` der Schaltanlage, an die
+  Phasenklemmen u, v, w angeschlossen (Symbolansichten), gibt seine Ausgangsfrequenz *f*, seine U/f-Ausgangsspannung als
+  *U* und, wenn eine Leistung bekannt ist, seine Ausgangsleistung als *P*_el weiter; *I* und *P*_N liest er zurück
+  (Schaltanlagenmodul, „Werte-Port an den Motorklemmen“). So folgen *n*_s und mit Drehzahl oder Schlupf *n* aus dem
+  Umrichter: 35 Hz an einem 4-poligen Motor ergeben *n*_s = 1050 min⁻¹. Die Maschine findet den Umrichter auch selbst
+  (Leitungen beliebiger Module von u, v, w zu den Ausgangsklemmen U, V, W des Umrichters; über seine Typ-ID,
+  `mach.link.drive.f`), sodass schon das Werte-Etikett des Motors die Umrichterfrequenz zeigt. Neu an Maschinen,
+  E-Motor-Block und Antriebsstrang-E-Maschine: Panel *n*_max (`maxSpeed`, höchstzulässige Drehzahl aus dem Datenblatt)
+  für die Prüfung `mach.speed.max`.
 - Bibliothek: „Arbeitsmaschine (Block)“, „Schwungmasse auf Welle (Symbol)“, „E-Motor mit Hochlaufzeit“ (1450 min⁻¹,
   20 N·m Last, 60 N·m im Hochlauf, *J* = 0,01 + 0,09 kg·m² → *t*_a = 0,38 s; die Wertebeschriftung zeigt *t*_a).
 
