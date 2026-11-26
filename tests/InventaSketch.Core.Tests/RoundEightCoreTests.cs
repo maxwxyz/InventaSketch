@@ -147,31 +147,30 @@ namespace InventaSketch.Core.Tests
         }
 
         [Fact]
-        public void ALabelWiderThanTheBoxIsStackedInLines()
+        public void ALabelUpToTheMinimumWrapWidthStaysOnOneLine()
         {
+            // "x = 1.25 m, y = 22.5 m, z = 333 m" is about 45 mm wide: below a 31 mm or an 8 mm box it stays one line, as
+            // electrical symbols always showed it.
             var (_, label) = Labelled(31, 20);
-            Assert.Equal(new[] { "x = 1.25 m, y = 22.5 m", "z = 333 m" }, label.Select(t => t.Text));
-            Assert.All(label, t => Assert.True(ValueLabels.Width(t.Text) <= 31));
-            Assert.All(label, t => Assert.Equal(0, t.Position.X, 9));
-            // Below the box, one line pitch apart.
+            Assert.Equal("x = 1.25 m, y = 22.5 m, z = 333 m", Assert.Single(label).Text);
+            Assert.True(ValueLabels.Width(label[0].Text) <= ValueLabels.MinWrapWidth);
+            Assert.Equal(0, label[0].Position.X, 9);
             Assert.True(label[0].Position.Y > 10);
-            Assert.Equal(ValueLabels.TextSize * ValueLabels.LineSpacing, label[1].Position.Y - label[0].Position.Y, 9);
-            // Very narrow: one entry per line.
             var (_, narrow) = Labelled(8, 20);
-            Assert.Equal(new[] { "x = 1.25 m", "y = 22.5 m", "z = 333 m" }, narrow.Select(t => t.Text));
-            // The lines together read as the one-line label.
-            Assert.Equal(Assert.Single(Labelled(60, 20).Label).Text, string.Join(", ", narrow.Select(t => t.Text)));
+            Assert.Equal(label[0].Text, Assert.Single(narrow).Text);
+            // Longer labels are packed into lines no wider than the minimum wrap width (or the box, if wider).
+            var entries = Enumerable.Range(1, 8).Select(i => "v" + i + " = 123.4 mm").ToArray();
+            var lines = ValueLabels.Wrap(entries, ValueLabels.MinWrapWidth);
+            Assert.True(lines.Count > 1);
+            Assert.All(lines, l => Assert.True(ValueLabels.Width(l) <= ValueLabels.MinWrapWidth));
+            Assert.Equal(string.Join(", ", entries), string.Join(", ", lines));
         }
 
         [Fact]
-        public void AWrappedLabelOfATurnedBoxStacksDownwardsOnThePage()
+        public void ALabelOfATurnedBoxStaysUprightBelowIt()
         {
-            // Turned by 90°: the box is 20 mm wide on the page, the lines stay upright and go down the page.
             var (o, label) = Labelled(60, 20, 90);
-            Assert.True(label.Count > 1);
             var m = o.Matrix();
-            var ys = label.Select(t => m.Apply(t.Position).Y).ToList();
-            Assert.True(ys.Zip(ys.Skip(1), (a, b) => b > a).All(x => x));
             Assert.All(label, t => Assert.Equal(0, Prim.Transform(t, m) is TextPrim p ? p.Rotation : 1, 9));
         }
 

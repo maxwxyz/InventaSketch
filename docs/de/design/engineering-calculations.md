@@ -1405,8 +1405,9 @@ Dieser Abschnitt hält die Entscheidungen fest, die der Plan offenließ. Maßgeb
     ganze Element);
   - zeigt eingegebene Texte mit Einheit wie getippt;
   - bricht um, wo sie breiter als das Element wäre (Runde 8 vom 26.11.2026): Ist die Beschriftung eines Kastenelements
-    breiter als sein Kasten und seine Zeichnung auf der Seite, werden die Einträge („R = 4.7 kΩ“) in mittige Zeilen
-    gepackt, die nicht breiter sind (Zeilenabstand 1,2 × Schriftgröße, `ValueLabels.Wrap`); ein Eintrag wird nie
+    breiter als sein Kasten, seine Zeichnung auf der Seite und 60 mm (`ValueLabels.MinWrapWidth`: ein kleines Symbol behält
+    die übliche einzeilige Beschriftung), werden die Einträge („R = 4.7 kΩ“) in mittige Zeilen gepackt, die nicht breiter
+    als das Größte davon sind (Zeilenabstand 1,2 × Schriftgröße, `ValueLabels.Wrap`); ein Eintrag wird nie
     geteilt. Passende Beschriftungen bleiben einzeilig, Punktelemente (Linien, Routen) ebenso. Jede Zeile ist ein Text
     des Teils `values`.
 

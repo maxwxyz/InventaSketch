@@ -1349,7 +1349,8 @@ This section records the choices made where the plan left them open. The code is
     element);
   - shows entered texts with a unit as typed;
   - wraps where it would be wider than the element (round 8 of 2026-11-26): for a box element whose label is wider than
-    both its box and its drawing on the page, the entries ("R = 4.7 kΩ") are packed into centred lines no wider than that,
+    its box, its drawing on the page and 60 mm (`ValueLabels.MinWrapWidth`: a small symbol keeps the usual one-line label),
+    the entries ("R = 4.7 kΩ") are packed into centred lines no wider than the largest of these,
     line pitch 1.2 × the text size (`ValueLabels.Wrap`); an entry is never split. Labels that fit stay one line, and
     point elements (lines, routes) keep one line. Each line is a text of the part `values`.
 

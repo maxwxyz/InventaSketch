@@ -27,6 +27,12 @@ namespace InventaSketch.Core
         /// <summary>Text size of the label in mm (as the designator/value labels of symbols).</summary>
         public const double TextSize = 2.5;
 
+        /// <summary>
+        /// Labels up to this width (mm) stay on one line even below a narrower box: a small symbol keeps the usual one-line
+        /// label ("R = 115 Ω, U = 230 V, I = 2 A, P = 460 W"); only longer labels wrap to the box width or this width.
+        /// </summary>
+        public const double MinWrapWidth = 60;
+
         /// <summary>The parameter definition of the switch, for types that list it in their inspector.</summary>
         public static readonly ParamDef ShowValues = new(ShowParam, new I18nText("Show values", "Werte zeigen"), ParamKind.Boolean) { Default = false };
 
@@ -163,7 +169,7 @@ namespace InventaSketch.Core
 
         /// <summary>
         /// The label primitives (tag <see cref="Part"/>) in the object's local coordinates, below the drawn bounds on the page:
-        /// one line, or for a box element whose label is wider than both its box and its drawing on the page, the entries
+        /// one line, or for a box element whose label is wider than its box, its drawing on the page and <see cref="MinWrapWidth"/>, the entries
         /// stacked in lines no wider than that (<see cref="Wrap"/>), each centred. Point elements (lines, routes) keep one line.
         /// </summary>
         internal static IReadOnlyList<TextPrim> Place(SketchObject o, IReadOnlyList<Primitive> local, IReadOnlyList<string> entries)
@@ -171,7 +177,7 @@ namespace InventaSketch.Core
             var m = o.IsPointGeometry ? Matrix2D.Identity : o.Matrix();
             var page = Prim.Bounds(o.IsPointGeometry ? local : local.Select(p => Prim.Transform(p, m)));
             if (page is not Rect b || entries.Count == 0) return Array.Empty<TextPrim>();
-            var lines = Wrap(entries, o.IsPointGeometry ? double.PositiveInfinity : Math.Max(b.W, BoxWidthOnPage(o, m)));
+            var lines = Wrap(entries, o.IsPointGeometry ? double.PositiveInfinity : Math.Max(MinWrapWidth, Math.Max(b.W, BoxWidthOnPage(o, m))));
             const double gap = 1.0;
             var mirrored = m.Determinant < 0;
             var rotation = o.IsPointGeometry || mirrored ? 0 : -m.RotationDegrees;
