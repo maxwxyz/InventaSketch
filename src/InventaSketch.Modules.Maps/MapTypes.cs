@@ -59,7 +59,7 @@ namespace InventaSketch.Modules.Maps
         /// </summary>
         public static Primitive Override(Primitive p, Style over, Func<Primitive, Style, Primitive> standard)
         {
-            if (p.Tag is MapTags.Halo or MapTags.Inlay or MapTags.Glyph or MapTags.Shield or MapTags.Sample)
+            if (p.Tag is MapTags.Halo or MapTags.Inlay or MapTags.Glyph or MapTags.Shield or MapTags.Sample or MapTags.Mask)
                 return over.Opacity is double op ? Prim.Restyle(p, s => s with { Opacity = op }) : p;
             return standard(p, over);
         }
@@ -99,9 +99,15 @@ namespace InventaSketch.Modules.Maps
         public override bool HasText => TextEditable;
         public override IReadOnlyList<string> Companions => CompanionIds;
         public override bool DependsOnNeighbours => NeedsNeighbours;
+        public override bool HasDependents => NeedsNeighbours || MoreDependents is not null;
 
         /// <summary>The rendering reads other objects of the page (legend).</summary>
         public bool NeedsNeighbours { get; init; }
+        /// <summary>
+        /// Further objects that read this one besides the legends (the routes whose length follows the scale bar); the type
+        /// then reports <see cref="ObjectType.HasDependents"/> while rendering on its own.
+        /// </summary>
+        public Func<SketchObject, RenderContext, IEnumerable<string>>? MoreDependents { get; init; }
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();
         public bool Uniform { get; init; } = true;
         public bool TextEditable { get; init; }
@@ -138,7 +144,8 @@ namespace InventaSketch.Modules.Maps
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
             => Extra is null ? Array.Empty<ContextAction>() : Extra(o, lang);
 
-        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => MapDeps.Legends(o, ctx);
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+            => MoreDependents is null ? MapDeps.Legends(o, ctx) : MapDeps.Legends(o, ctx).Concat(MoreDependents(o, ctx));
 
         public override Primitive ApplyOverride(Primitive p, Style over) => MapDeps.Override(p, over, base.ApplyOverride);
     }

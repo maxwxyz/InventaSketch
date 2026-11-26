@@ -45,6 +45,7 @@ namespace InventaSketch.Modules.Automotive
                 new[] { "child", "kid", "pedestrian", "vru", "kind", "fußgänger" },
                 Views.FrontV(6.4 * k, 17.5 * k, (p, o) => FrontFigure(p, k, head)),
                 Views.SideV(5 * k, 17.5 * k, (p, o) => SideFigure(p, k, head)));
+            yield return Wheelchair();
             yield return Hand();
             yield return new HeadType();
         }
@@ -186,6 +187,99 @@ namespace InventaSketch.Modules.Automotive
             }
             TopHead(p, -0.9, 1.0);
             foreach (var item in p.Items) pen.Add(item);
+        }
+
+        // ------------------------------------------------------------------ wheelchair user
+
+        /// <summary>
+        /// Person in a manual wheelchair (vulnerable road user), facing +x: large rear wheels with hand rims, front casters,
+        /// backrest with push handles and footrest. Scale 1:100 like the other people (1.3 m high, 1.1 m long, 0.65 m wide).
+        /// </summary>
+        private static AutoType Wheelchair()
+        {
+            return new AutoType("auto.human.wheelchair", T("Wheelchair user", "Person im Rollstuhl"), Cat,
+                new[] { "wheelchair", "wheelchair user", "disabled", "accessibility", "vru", "pedestrian", "rollstuhl", "rollstuhlfahrer", "barrierefrei", "fußgänger", "mensch" },
+                Views.SideV(11.6, 13.5, (p, o) => WheelchairSide(p)),
+                Views.FrontV(7.0, 13.5, (p, o) => WheelchairFront(p)),
+                Views.TopV(11.6, 7.0, (p, o) => WheelchairTop(p)));
+        }
+
+        /// <summary>Side view: design box x -5.8..5.8, y -6.75..6.75 (ground at +6.75).</summary>
+        private static void WheelchairSide(Pen p)
+        {
+            const double g = 6.75, seat = 1.6;
+            var frame = S.Fine with { StrokeWidth = 0.4 };
+            // backrest with push handle, seat, front frame with footrest and caster fork
+            p.PolyD(new[] { V(-4.9, -3.3), V(-3.9, -3.1), V(-3.3, seat), V(2.4, seat), V(3.5, 4.7), V(4.9, 4.7) }, frame, false, "frame");
+            p.PolyD(new[] { V(3.0, seat), V(3.9, 5.0) }, frame, false, "frame");
+            p.Circle(3.9, g - 0.8, 0.8, S.OpaqueFine, "caster");
+            // seated person
+            Cap(p, 1, -1.4, 0.8, 2.6, 0.6, 0.9, 0.65);
+            Cap(p, 1, 2.6, 0.6, 3.4, 4.1, 0.6, 0.42);
+            Cap(p, 1, 3.3, 4.3, 4.8, 4.2, 0.4, 0.36, "foot");
+            Cap(p, 1, -1.5, 0.6, -2.1, -4.3, 1.4, 1.2, "torso");
+            Cap(p, 1, -1.9, -3.8, -0.9, -1.0, 0.5, 0.42);
+            Cap(p, 1, -0.9, -1.0, -0.4, 1.2, 0.42, 0.34);
+            p.Circle(-0.35, 1.6, 0.45, S.OpaqueFine, "hand");
+            Cap(p, 1, -2.0, -5.0, -1.9, -5.4, 0.45, 0.45, "neck");
+            SideHead(p, -1.8, -5.6, 1.15);
+            // large wheel over the figure (outline only, so the person stays visible), hand rim and hub
+            p.Circle(-1.6, g - 3.0, 3.0, S.Vis, AutoTags.Wheel);
+            p.Circle(-1.6, g - 3.0, 2.5, S.Thin, "rim");
+            p.Circle(-1.6, g - 3.0, 0.3, S.Black, "hub");
+        }
+
+        /// <summary>Front view: design box x -3.5..3.5, y -6.75..6.75.</summary>
+        private static void WheelchairFront(Pen p)
+        {
+            const double g = 6.75;
+            foreach (var s in new[] { -1.0, 1.0 })
+            {
+                p.RBox(s * 2.9, g - 6.0, s * 3.5, g, 0.3, S.Opaque, AutoTags.Wheel);
+                p.Line(s * 2.75, g - 5.4, s * 2.75, g - 0.6, S.Thin, "rim");
+                p.Line(s * 2.6, -1.6, s * 2.6, 1.6, S.Fine, "frame");
+            }
+            p.Line(-2.6, 1.6, 2.6, 1.6, S.Fine with { StrokeWidth = 0.4 }, "frame");
+            foreach (var s in new[] { -1.0, 1.0 })
+            {
+                Cap(p, 1, s * 1.0, 1.6, s * 1.0, 5.0, 0.62, 0.42);
+                Cap(p, 1, s * 1.0, 5.2, s * 1.35, 5.3, 0.42, 0.38, "foot");
+                p.Circle(s * 0.9, g - 0.5, 0.45, S.OpaqueFine, "caster");
+            }
+            p.Rounded(new[] { V(-1.95, -4.1), V(1.95, -4.1), V(1.5, -0.4), V(1.75, 1.4), V(-1.75, 1.4), V(-1.5, -0.4) }, 0.8, S.OpaqueFine, "torso");
+            foreach (var s in new[] { -1.0, 1.0 })
+            {
+                Cap(p, 1, s * 1.85, -3.7, s * 2.35, -1.1, 0.5, 0.42);
+                Cap(p, 1, s * 2.35, -1.1, s * 2.45, 1.0, 0.42, 0.34);
+                p.Circle(s * 2.45, 1.45, 0.42, S.OpaqueFine, "hand");
+            }
+            Cap(p, 1, 0, -4.8, 0, -4.1, 0.45, 0.45, "neck");
+            p.Circle(0, -5.6, 1.15, S.OpaqueFine, "head");
+        }
+
+        /// <summary>Top view: design box x -5.8..5.8, y -3.5..3.5 (facing +x).</summary>
+        private static void WheelchairTop(Pen p)
+        {
+            foreach (var s in new[] { -1.0, 1.0 })
+            {
+                p.RBox(-4.6, s * 2.9, 1.4, s * 3.5, 0.3, S.Opaque, AutoTags.Wheel);
+                p.Ellipse(3.9, s * 2.1, 0.8, 0.3, S.OpaqueFine, "caster");
+                p.Line(-3.6, s * 2.6, 3.0, s * 2.6, S.Fine, "frame");
+            }
+            p.Box(3.6, -1.6, 5.2, 1.6, S.OpaqueFine, "footrest");
+            p.Line(-4.2, -2.6, -4.2, 2.6, S.Fine with { StrokeWidth = 0.4 }, "frame");
+            foreach (var s in new[] { -1.0, 1.0 })
+            {
+                p.Ellipse(4.6, s * 0.9, 0.7, 0.4, S.OpaqueFine, "foot");
+                p.Capsule(V(-1.2, s * 0.95), V(3.0, s * 1.0), 0.9, 0.7, null, "limb");
+            }
+            p.Ellipse(-2.4, 0, 1.15, 2.3, S.OpaqueFine, "shoulders");
+            foreach (var s in new[] { -1.0, 1.0 })
+            {
+                p.Capsule(V(-2.2, s * 1.9), V(-0.6, s * 2.3), 0.5, 0.42, null, "limb");
+                p.Circle(-0.4, s * 2.45, 0.42, S.OpaqueFine, "hand");
+            }
+            TopHead(p, -2.3, 1.0);
         }
 
         // ------------------------------------------------------------------ hand

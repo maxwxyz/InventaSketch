@@ -2,11 +2,13 @@
 
 Reduzierte Strichzeichnungen im Schwarzweiß-Strichstil für Erfindungsmeldungen zu Fahrzeugfunktionen: Fahrzeuge in
 mehreren Ansichten, Fahrzeugkomponenten, Personen, Straßenumgebung, ADAS-Sensoren mit Sichtbereichen,
-Wahrnehmungs-Overlays, Trajektorien und HMI-Elemente. Alle Darstellungen sind eigenständig, generisch und markenneutral.
+V2X-Funkverbindungen, Wahrnehmungs-Overlays, Trajektorien und HMI-Elemente. Alle Darstellungen sind eigenständig, generisch und markenneutral.
 
 > **Grenzen.** Das Modul zeichnet *illustrative Szenen*. Es wird nichts simuliert: Sichtbereiche erkennen nichts,
-> Trajektorien werden weder geplant noch auf Fahrbarkeit geprüft, TTC- und Sicherheitsabstandswerte sind
-> Beschriftungen, und Abmessungen folgen keiner Fahrzeugnorm. Die Proportionen sind plausibel, nicht vermessen.
+> Trajektorien werden weder geplant noch auf Fahrbarkeit geprüft, und Abmessungen folgen keiner Fahrzeugnorm. Die
+> Proportionen sind plausibel, nicht vermessen. TTC-Angabe und Sicherheitsabstand berechnen Lehrbuchwerte (Zeit bis zur
+> Kollision, Anhalteweg) aus eingegebenen Geschwindigkeiten und Abständen (siehe „Werte und Prüfungen“); das sind
+> Skizzenabschätzungen, keine validierte Fahrfunktion.
 
 English version: [../../en/modules/automotive.md](../../en/modules/automotive.md)
 
@@ -37,6 +39,7 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 | Kategorie | Typ-ID | Ansichten | Parameter (alle optional) |
 |---|---|---|---|
 | Fahrzeuge | `auto.vehicle.car`, `.suv`, `.van`, `.bus` | Draufsicht, Seite, Front, Heck | – |
+| | `auto.vehicle.tram` (Niederflur-Straßenbahn, zwei gelenkig verbundene Teile, 20 m × 2,65 m, Zweirichtungsfahrzeug, Halbscherenstromabnehmer) | Draufsicht, Seite, Front | – |
 | | `auto.vehicle.truck` (Lkw), `auto.vehicle.semi` (Sattelzug) | Draufsicht, Seite, Front, Heck | – |
 | | `auto.vehicle.motorcycle`, `.bicycle`, `.scooter` (E-Scooter) | Draufsicht, Seite, Front | – |
 | | `auto.vehicle.trailer` | Draufsicht, Seite, Heck | – |
@@ -51,6 +54,7 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 | | `auto.human.walking` | Seite, Draufsicht | – |
 | | `auto.human.seated` | Seite, Draufsicht | `role` Fahrer/Beifahrer |
 | | `auto.human.child` | Front, Seite | – |
+| | `auto.human.wheelchair` (Person im Greifreifen-Rollstuhl, 1,3 m hoch, 1,1 m lang) | Seite, Front, Draufsicht | – |
 | | `auto.human.hand` (Zeigefinger berührt) | Seite | `ripple` (Berührungsandeutung) |
 | | `auto.human.head` (**Punktobjekt**: Kopfmitte → Blickziel) | Draufsicht, Seite | `size` (mm), `cone` (°) |
 | Straße | `auto.road.straight` | Draufsicht | `lanes`, `markings` (gestrichelt/durchgezogen/Mittellinie durchgezogen/keine), `centerlines`, `dash`, `gap` |
@@ -67,14 +71,15 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 | | `auto.traffic.obstacle` | Draufsicht, Seite | `kind` Kiste/Leitkegel/Trümmer |
 | Sensoren | `auto.sensor.camera`, `.radar`, `.lidar`, `.ultrasonic` | Symbol | – |
 | | `auto.fov` (**Punktobjekt**, Sichtbereichssektor) | – | `range` (mm), `angle` (°, 360 = Vollkreis), `heading` (°), `fill`, `rings`, `axis`, `label` |
+| | `auto.v2x` (**Punktobjekt**, V2X-Funkverbindung zwischen zwei Teilnehmern) | – | `kind` V2V/V2I/V2P/V2N/V2X (Standardbeschriftung), `arrows` beide/Ende/keine, `course` gestrichelt/Zickzack (Options-Piktogramme), `waves`, `label`, `textSize` |
 | Wahrnehmung | `auto.det.bbox2d` | Bildebene | `label`, `confidence`, `showConfidence`, `dashed` |
 | | `auto.det.bbox3d` | isometrisch, Draufsicht | `label`, `confidence`, `showConfidence` |
 | | `auto.det.grid` (Belegungsgitter-Ausschnitt) | Draufsicht | `rows`, `cols`, `occupancy`, `seed` |
 | | `auto.det.lanepoly` (**Punktobjekt**, glatte Kurve) | – | `showPoints`, `label` |
 | Bewegung | `auto.trajectory` (**Punktobjekt**, Spline mit t0..tn) | – | `ticks`, `labels`, `prefix`, `corridor`, `width`, `arrow`, `dashed`, `textSize` |
 | | `auto.motion.conflict` | Symbol | – |
-| | `auto.motion.safetydistance` (**Punktobjekt**, Maß) | – | `label`, `offset`, `showValue`, `scale` (mm je m), `textSize` |
-| | `auto.motion.ttc` (Text ersetzt die Angabe) | Symbol | `ttc` (s), `frame` |
+| | `auto.motion.safetydistance` (**Punktobjekt**, Maß) | – | `label`, `offset`, `showValue`, `scale` (mm je m), `textSize`; Werte `speed`, `reaction`, `decel`, `gap`, `stopping`, `reactionDistance`, `brakingDistance`, `showValues` |
+| | `auto.motion.ttc` (Text ersetzt die Angabe) | Symbol | `ttc` (s, ohne Vorgabewert: die Angabe zeigt 2,4 s, bis er gesetzt ist), `frame`; Werte `vEgo`, `vTarget`, `gap`, `showValues` |
 | HMI | `auto.hmi.cluster` | Front | `layout` Rundinstrumente/digital, `value`, `speed` |
 | | `auto.hmi.display` | Front, Seite | `content` Kacheln/Karte/leer |
 | | `auto.hmi.hud` | Seite (Strahlengang, Auge, virtuelles Bild), Front (Fahrersicht, Trapez des virtuellen Bildes) | `speed` |
@@ -86,6 +91,31 @@ English version: [../../en/modules/automotive.md](../../en/modules/automotive.md
 
 Die Bibliothek enthält rund 140 Vorlagen (jede Ansicht jedes Fahrzeugs, sensortypische Sichtbereiche, Straße mit
 Mittellinie, Einmündung, Ladeparkplatz, prädizierte Trajektorie, …). Die Suche funktioniert auf Deutsch und Englisch.
+
+## Werte und Prüfungen (26.11.2026)
+
+Zwei Overlays tragen Elementwerte (`IValueType`, Engineering-Berechnungen Abschnitt 1): Sie werden als Text mit Einheit
+(„100 km/h“, „25 m“, „1,5 s“) in der Wertekarte oder im Inspektor eingegeben, abgeleitete Werte berechnet der
+Werte-Solver, und „Werte zeigen“ (`showValues`) zeichnet die Wertebeschriftung unter das Element.
+
+| Element | Variablen (Karte: die ersten) | Beziehungen | Prüfung |
+|---|---|---|---|
+| `auto.motion.ttc` | `v_ego` (km/h), `v_Ziel` (km/h), `d` Abstand (m), `TTC` (s) | `auto.ttc`: TTC = d / (v_ego − v_Ziel), nach jeder Variablen auflösbar | `auto.ttc.low` (Warnung): TTC < 2 s |
+| `auto.motion.safetydistance` | `v` (km/h), `s` Anhalteweg (m), `d` Abstand (m); Panel: `t_R` Reaktionszeit (Vorgabe 1 s), `a` Verzögerung (Vorgabe 8 m/s²), `s_R` Reaktionsweg, `s_B` Bremsweg | `auto.braking.reaction`: s_R = v·t_R; `auto.braking.distance`: s_B = v²/(2a); `auto.braking.stopping`: s = s_R + s_B | `auto.braking.gap` (Warnung): s > d |
+
+- **TTC-Angabe:** Mit eingegebenen Geschwindigkeiten und Abstand zeichnet die Angabe die berechnete TTC („TTC = 1.8 s“);
+  ist das Egofahrzeug nicht schneller als das vorausfahrende, gibt es keinen Kollisionskurs („TTC = ∞“, kein Wert,
+  keine Warnung). Ohne sie zeichnet sie weiter ihren Parameter `ttc` (Quick Sketch). Eine eingegebene TTC lässt den
+  Solver auch eine fehlende Geschwindigkeit oder den Abstand berechnen. Gültigkeit: konstante Geschwindigkeiten,
+  Folgefahrt im selben Fahrstreifen.
+- **Sicherheitsabstand:** Der Abstand `d` ist die gezeichnete Länge geteilt durch `scale` (mm je m, Vorgabe 10 = 1:100),
+  sofern er nicht eingegeben ist; der eigene Wertetext des Maßes („d_safe = 30.0 m“, `showValue`) zeigt den eingegebenen
+  Abstand. Reaktionszeit und Verzögerung sind übliche Vorgaben (1 s, 8 m/s² Vollbremsung auf trockener Fahrbahn), keine
+  Normwerte; eigene Werte eingeben. Lehrbuchprobe: 100 km/h, 1 s, 8 m/s² → s = 27,8 m + 48,2 m = 76,0 m (Unit-Test).
+- **Quellen:** Die Beziehungen sind elementare Kinematik und die 2-s-Schwelle ist ein Richtwert; kein Eintrag des
+  Quellenkatalogs (`ValueSources`) passt, daher wird keiner zitiert.
+- Bibliotheksvorlagen: „TTC aus Abstand und Geschwindigkeiten“ (100 km/h, 60 km/h, 25 m → 2,25 s) und
+  „Anhalteweg-Prüfung“ (50 km/h, Abstand 30 m, Wertebeschriftung an).
 
 ## Fangen und Anhängen
 
@@ -108,6 +138,11 @@ Mittellinie, Einmündung, Ladeparkplatz, prädizierte Trajektorie, …). Die Suc
   eine Boxlänge davor), so dass der Sichtbereich beim Verschieben, Drehen und Skalieren des Sensors mitgeht. Ohne
   Anhängen ist er ein freies Objekt.
 - Overlays (Achsen, Batterie, E-Antriebs-Abtrieb) haben `Hub`-Anker, die konzentrisch auf Fahrzeug-Hubs schnappen.
+- **V2X-Verbindung:** Beide Enden sind Punktobjekt-Enden (`p0`, `p1`), die an Fahrzeug-Hubs und Dach-Anbaupunkten,
+  Sensoren und Ampeln andocken; die Funkwellenbögen sitzen am sendenden Ende (bei Verbindungen in beide Richtungen an
+  beiden Enden).
+- **Straßenbahn:** wie die anderen Fahrzeuge ein `Hub` in der Mitte (schnappt auf Fahrstreifenmitten), Drehgestell-Hubs
+  (`axle.front`, `axle.rear`) und Anbaupunkte (`mount.front`, `mount.rear`, `mount.roof` am Stromabnehmer).
 
 ## Kontextaktionen
 
@@ -117,6 +152,7 @@ Mittellinie, Einmündung, Ladeparkplatz, prädizierte Trajektorie, …). Die Suc
 | Straßen | Fahrstreifen + / − (der gerade Abschnitt behält die Fahrstreifenbreite und wächst/schrumpft), Markierung ▾, Fahrstreifenmitten; Kreuzung: Kreuzung/Einmündung, Fußgängerüberwege |
 | Sichtbereich | Reichweite + / − (×1,25), Öffnungswinkel + / − (10°), um 15° drehen, Füllung ▾ |
 | Trajektorie | Fahrschlauch ein/aus, Fahrschlauchbreite + / −, Zeitmarken, gestrichelt (prädiziert) |
+| V2X-Verbindung | Verbindungsart ▾, Richtung ▾, Linie ▾ (Piktogramme gestrichelt / Zickzack), Funkwellen, Richtung umkehren |
 | Sonstige | Parameter-Schalter und Auswahlen ▾ (Signalzustand, Schildform, Absperrungsart, Türöffnung, Lenkwinkel, …) |
 
 Plus-/Minus-Aktionen verwenden die Piktogramm-IDs `cmd-increase`/`cmd-decrease`, die noch nicht zum gemeinsamen
