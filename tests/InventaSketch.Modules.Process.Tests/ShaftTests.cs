@@ -64,7 +64,7 @@ namespace InventaSketch.Modules.Process.Tests
         public static IEnumerable<object[]> Driven() => new[]
         {
             new object[] { "process.pump.centrifugal" }, new object[] { "process.pump.displacement" }, new object[] { "process.compressor" },
-            new object[] { "process.fan" }, new object[] { "process.fan.axial" },
+            new object[] { "process.fan" }, new object[] { "process.fan.axial" }, new object[] { "process.generator" },
         };
 
         [Theory]

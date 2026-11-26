@@ -314,11 +314,14 @@ namespace InventaSketch.Modules.Process
 
         /// <summary>
         /// Nozzles and pipe ports take a process line, instrument bubbles and actuator signal ports (S) a signal line (build
-        /// "+", <see cref="Building"/>). The drive shaft of a motor is a mechanical coupling, no line.
+        /// "+", <see cref="Building"/>), the generator terminal (el) a power cable. The drive shaft of a motor is a mechanical
+        /// coupling, no line.
         /// </summary>
         public override PortConnection? Connection(SketchObject o, Anchor port)
         {
             if (port.Id is null || port.Id == "shaft") return null;
+            // The generator terminal takes a power cable (the energy module's, when registered).
+            if (port.Id == "el") return PortConnection.Of(PortMedia.ElectricAc, "energy.line.cable");
             if (_id == Instruments.BubbleId || port.Id == "S" && (_id == "process.valve.control" || _id == "process.valve.threeway"))
                 return PortConnection.Of(PortMedia.Instrument, "process.line.signal");
             return PortConnection.Of(PortMedia.Process, "process.line");

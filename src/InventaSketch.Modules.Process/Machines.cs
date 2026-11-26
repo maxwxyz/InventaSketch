@@ -5,7 +5,7 @@ using static InventaSketch.Modules.Process.P;
 
 namespace InventaSketch.Modules.Process
 {
-    /// <summary>Pumps, compressors, turbines, fans and drives (flow sheet symbols drawn independently).</summary>
+    /// <summary>Pumps, compressors, turbines, fans, drives and the generator (flow sheet symbols drawn independently).</summary>
     internal static class Machines
     {
         public const string Cat = ProcessCategories.Machines;
@@ -64,7 +64,17 @@ namespace InventaSketch.Modules.Process
                 Ports = Fixed(new Port("I", -7, 0), new Port("O", 7, 0)),
                 // Output shaft stub below the casing: a driven compressor, pump or generator docks on its end.
                 Shaft = _ => new ShaftEnd(0, 6, 0, 5), Drive = true,
-                Block = true, TagPrefix = "TB-101", CompanionIds = new[] { "process.line", "process.motor", "process.hx.shelltube", "process.pump.centrifugal" },
+                Block = true, TagPrefix = "TB-101", CompanionIds = new[] { "process.line", "process.generator", "process.compressor", "process.hx.shelltube" },
+            };
+
+            yield return new ProcessType("process.generator", T("Generator (P&ID, driven)", "Generator (R&I, angetrieben)"), Cat, 10, 10, Generator,
+                "generator", "electric generator", "alternator", "turbine generator", "turbo generator", "power generation",
+                "generator", "stromerzeuger", "turbogenerator", "turbosatz", "stromerzeugung")
+            {
+                // Electrical terminal on the right; the shaft enters from the top, so the generator docks below a turbine.
+                Ports = Fixed(new Port("el", 5, 0)),
+                Shaft = _ => ShaftEnd.At(0, -4.5),
+                Block = true, TagPrefix = "G-101", CompanionIds = new[] { "process.turbine", "process.compressor" },
             };
 
             yield return new ProcessType("process.fan", T("Fan", "Ventilator"), Cat, 12, 12, Fan,
@@ -218,6 +228,13 @@ namespace InventaSketch.Modules.Process
             p.Circle(0, 0, 4.5, S.Sym, ProcessTags.Body);
             p.Line(4.5, 0, 5, 0, S.Bold, "shaft");
             p.Text(0, 0, "M", 4.2, TextAnchor.Middle, "symbol");
+        }
+
+        private static void Generator(Pen p, SketchObject o)
+        {
+            p.Circle(0, 0, 4.5, S.Sym, ProcessTags.Body);
+            p.Line(4.5, 0, 5, 0, S.Sym, "terminal");
+            p.Text(0, 0, "G", 4.2, TextAnchor.Middle, "symbol");
         }
     }
 }

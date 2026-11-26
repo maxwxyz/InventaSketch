@@ -230,6 +230,13 @@ Vorlauftemperatur weiter. Die Wasseranschlüsse `water` und `tail` der Wasserkra
 Wasserleitungen anderer Module. Wärmeanschlüsse der Energieelemente sind einfach (Einliniensicht): ein Vor- und ein
 Rücklaufrohr am selben Anschluss werden zu einem Netz der Gebäudetechnik verbunden; an einen Energie-Wärmeanschluss
 daher nur das Vorlaufrohr zeichnen.
+Der turbinengetriebene Generator des Prozessmoduls (`process.generator`) hat einen Leistungsanschluss `el`, der ein
+Energiekabel aufnimmt und seine elektrische Abgabe *P*_el für den Schlüssel `P` nennt: ein Kabel von dort zu einem
+Zähler (Anschluss a), einer Sammelschiene oder einem anderen einzelnen AC-Element gibt die elektrische Abgabe der
+Turbine weiter (unverzweigter Strang, wie das *P*_AC eines Wechselrichters; eine verzweigte Summe wird nicht über
+Modulgrenzen aufgeteilt). Das Energiemodul selbst hat keine Gas- oder Dampfturbine: thermodynamische Turbinen und
+Verdichter mit Gaswerten sind Prozesssymbole (process.md, „Gasmaschinen“); BHKW und Stromaggregat behalten ihre
+Gesamt-Kennwerte.
 
 Beispiele (Abnahmekriterien): 10 Module mit *U*_oc = 49,5 V, β = −0,27 %/K und θ_min = −10 °C ergeben
 *U*_oc,max = 10 · 49,5 V · 1,0945 = 541,8 V, und ein Wechselrichter mit *U*_DC,max = 500 V zeigt die Warnung
