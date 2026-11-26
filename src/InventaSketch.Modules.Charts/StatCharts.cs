@@ -302,7 +302,7 @@ namespace InventaSketch.Modules.Charts
         }
 
         /// <summary>Bars of series <paramref name="k"/>: solid colour with white seams; in monochrome the series pattern.</summary>
-        private static Style BarStyle(int k, bool mono)
+        internal static Style BarStyle(int k, bool mono)
         {
             var look = SeriesLook.Of(k);
             return mono

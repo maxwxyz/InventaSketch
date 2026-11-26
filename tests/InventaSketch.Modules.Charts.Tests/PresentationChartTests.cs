@@ -413,14 +413,24 @@ namespace InventaSketch.Modules.Charts.Tests
         }
 
         [Fact]
-        public void CodeExportsReportThePresentationCharts()
+        public void OnlyTheSankeyDiagramIsReportedByTheCodeExports()
         {
             var r = Fx.Reg();
-            foreach (var id in new[] { "chart.pie", "chart.polar", "chart.sankey", "chart.gantt", "chart.box", "chart.histogram" })
+            var sankey = Fx.Item(r, "chart.sankey");
+            Assert.Contains("could not be exported", ExportTests.Py(r, Lang.En, sankey));
+            Assert.Contains("could not be exported", ExportTests.Tex(r, Lang.De, sankey));
+            foreach (var id in new[] { "chart.pie", "chart.donut", "chart.polar", "chart.polar.radar", "chart.gantt", "chart.box", "chart.histogram" })
             {
                 var o = Fx.Item(r, id);
-                Assert.Contains("could not be exported", ExportTests.Py(r, Lang.En, o));
-                Assert.Contains("could not be exported", ExportTests.Tex(r, Lang.De, o));
+                foreach (var lang in new[] { Lang.En, Lang.De })
+                {
+                    var py = ExportTests.Py(r, lang, o);
+                    var tex = ExportTests.Tex(r, lang, o);
+                    Assert.DoesNotContain("could not be exported", py);
+                    Assert.DoesNotContain("could not be exported", tex);
+                    ExportTests.AssertPythonBalanced(py, id);
+                    ExportTests.AssertLatexBalanced(tex, id);
+                }
             }
             var doc0 = SketchDocument.Create();
             var pie = Fx.Item(r, "chart.pie");
@@ -529,7 +539,9 @@ ax.legend()
             Assert.Equal(PolarChart.TypeId, o.Type);
             var series = Assert.Single(ChartData.Xy(ChartData.Parse(o.Str("data", ""))));
             Assert.Equal("gain", series.Name);
-            Assert.Equal(new double[] { 0, 45, 90, 135, 180, 225, 270, 315, 360 }, series.Points.Select(p => Math.Round(p.X, 6)));
+            // The repeated closing point is left out: the chart closes the curve.
+            Assert.Equal(new double[] { 0, 45, 90, 135, 180, 225, 270, 315 }, series.Points.Select(p => Math.Round(p.X, 6)));
+            Assert.True(o.Flag("closed", false));
             Assert.Equal("area", o.Str("style", ""));
             Assert.Equal("top", o.Str("zero", ""));
             Assert.Equal("0;4", o.Str("rrange", ""));

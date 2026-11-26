@@ -53,7 +53,12 @@ namespace InventaSketch.Modules.Charts
                 : "% Charts exported from InventaSketch as pgfplots (pdfLaTeX/LuaLaTeX). Every chart is one tikzpicture (one page);\n% every text is LaTeX text in the document font and can be edited here.\n");
             sb.Append("\\documentclass[tikz,border=2mm]{standalone}\n");
             sb.Append("\\usepackage[T1]{fontenc}\n\\usepackage[utf8]{inputenc}\n\\usepackage{textcomp}\n\\usepackage{pgfplots}\n");
-            sb.Append("\\pgfplotsset{compat=1.18}\n\\usepgfplotslibrary{fillbetween,groupplots}\n\\usetikzlibrary{arrows.meta,patterns.meta}\n");
+            // Polar axes and box plots/histograms need their libraries (only then, so other documents stay as they were).
+            var figures = charts.Select(c => c.Figure).Where(f => f is not null).ToList();
+            var libs = "fillbetween,groupplots"
+                + (figures.Any(f => f!.Polar is not null) ? ",polar" : "")
+                + (figures.Any(f => f!.Boxes is not null || f.Hist is not null) ? ",statistics" : "");
+            sb.Append("\\pgfplotsset{compat=1.18}\n\\usepgfplotslibrary{" + libs + "}\n\\usetikzlibrary{arrows.meta,patterns.meta}\n");
             sb.Append("\\pgfplotsset{every axis/.append style={font=\\footnotesize}, every axis legend/.append style={font=\\footnotesize}}\n");
             foreach (var c in colors) sb.Append("\\definecolor{").Append(c.Value).Append("}{HTML}{").Append(c.Key).Append("}\n");
             sb.Append("\\begin{document}\n");
@@ -212,6 +217,8 @@ namespace InventaSketch.Modules.Charts
                 var n = f.Panels.Count;
                 L("% --- Chart " + Fmt.I(number) + ": " + Comment(f.Name) + " [" + Comment(f.Id) + "]");
                 foreach (var note in f.Notes) L("% Note: " + Comment(note));
+                if (f.Pie is { } pie) { Pie(pie); return; }
+                if (f.Polar is { } polar) { Polar(polar); return; }
                 L("\\begin{tikzpicture}");
                 var common = CommonOptions();
                 if (n > 1)
@@ -336,7 +343,8 @@ namespace InventaSketch.Modules.Charts
 
             private bool HasLegend(int i)
                 => _f.Items.Any(x => x.Panel == i && (x is XSeries { Legend: not null } || x is XFill { Legend: not null }))
-                   || i == 0 && _f.Bars is { } b && b.Series.Any(s => s.InLegend);
+                   || i == 0 && _f.Bars is { } b && b.Series.Any(s => s.InLegend)
+                   || i == 0 && (_f.Hist?.Series.Any(s => s.InLegend) == true || _f.Boxes?.Series.Any(s => s.InLegend) == true || _f.Gantt?.Groups.Any(g => g.InLegend) == true);
 
             private void SecondaryAxis(XAxis y2)
             {
@@ -370,6 +378,9 @@ namespace InventaSketch.Modules.Charts
                 var f = _f;
                 var single = f.Panels.Count == 1;
                 if (panel == 0 && f.Bars is { } bars) Bars(bars);
+                if (panel == 0 && f.Hist is { } hist) Hist(hist);
+                if (panel == 0 && f.Boxes is { } boxes) Boxes(boxes);
+                if (panel == 0 && f.Gantt is { } gantt) Gantt(gantt);
                 foreach (var item in f.Items)
                 {
                     switch (item)
@@ -591,6 +602,205 @@ namespace InventaSketch.Modules.Charts
                     L("};");
                     if (s.InLegend && _f.Legend != "none") L("\\addlegendentry{" + Tex(s.Name) + "}");
                 }
+            }
+
+            // ------------------------------------------------------------------ presentation charts
+
+            /// <summary>Fill and edge of an area (white under a pattern); no edge for "none".</summary>
+            private string AreaOpts(XFillStyle fill, string edge, double width, DashStyle dash = DashStyle.Solid)
+            {
+                var white = fill.Kind is "solid" or "none" ? "" : "fill=white, ";
+                return white + FillOpts(fill with { Edge = edge == "none" ? null : new XStroke(edge, width, dash) });
+            }
+
+            /// <summary>Numbers as an inline table column ("4.2\\ 5.1\\ …"), wrapped.</summary>
+            private static string Column(IEnumerable<double> values)
+            {
+                var sb = new StringBuilder();
+                var line = 0;
+                foreach (var v in values.Where(Fmt.Finite))
+                {
+                    var c = N(v) + "\\\\";
+                    if (line + c.Length > 100) { sb.Append("\n  "); line = 2; }
+                    else if (sb.Length > 0) { sb.Append(' '); line++; }
+                    sb.Append(c); line += c.Length;
+                }
+                return sb.ToString();
+            }
+
+            private void Hist(XHist h)
+            {
+                if (h.Series.Count == 0 || h.Edges.Count < 2) return;
+                var bins = h.Edges.Count - 1;
+                double lo = h.Edges[0], hi = h.Edges[bins];
+                var many = h.Series.Count > 1;
+                L("% histogram (statistics library): " + Fmt.I(bins) + " bins of equal width from " + N(lo) + " to " + N(hi));
+                if (many) L("% several series: pgfplots draws each over the whole bin (translucent); the chart puts them side by side");
+                foreach (var s in h.Series)
+                {
+                    L("% " + s.Key + ": " + Comment(s.Name));
+                    var legend = s.InLegend && _f.Legend != "none";
+                    var o = new List<string> { "hist={bins=" + Fmt.I(bins) + ", data min=" + N(lo) + ", data max=" + N(hi) + "}", AreaOpts(s.Fill, s.Fill.Kind is "solid" or "none" ? s.Edge : s.Fill.Color, s.EdgeWidth) };
+                    if (many) o.Add("fill opacity=0.6");
+                    o.Add(legend ? "area legend" : "forget plot");
+                    L("\\addplot[" + string.Join(", ", o) + "] table[row sep=\\\\, y index=0, header=false] {");
+                    L("  " + Column(s.Samples));
+                    L("};");
+                    if (legend) L("\\addlegendentry{" + Tex(s.Name) + "}");
+                }
+            }
+
+            private void Boxes(XBoxes b)
+            {
+                L("% box plots (statistics library, boxplot prepared): category i is centred at i; quartiles with linear interpolation, whiskers "
+                    + (b.Outliers ? "at the furthest samples within " + N(b.Whis) + " IQR beyond the box, outliers beyond" : "at the minimum and maximum"));
+                foreach (var s in b.Series)
+                {
+                    L("% " + s.Key + ": " + Comment(s.Name));
+                    var opts = AreaOpts(s.Fill, s.Line.Color, s.Line.Width, s.Line.Dash);
+                    var mark = "mark=o, mark size=" + Mm(0.22 * _f.FontMm) + ", mark options={solid, draw=" + C(s.OutlierColor) + ", fill=white}";
+                    if (b.Outliers && s.OutlierKey is { } ok && s.Stats.Any(st => st.Outliers.Count > 0)) L("% " + ok + ": the samples beyond the whiskers");
+                    for (var j = 0; j < s.Positions.Count; j++)
+                    {
+                        var st = s.Stats[j];
+                        var prepared = "boxplot prepared={draw position=" + N(s.Positions[j]) + ", box extend=" + N(s.Width) + ", lower whisker=" + N(st.Low) + ", lower quartile=" + N(st.Q1)
+                            + ", median=" + N(st.Median) + ", upper quartile=" + N(st.Q3) + ", upper whisker=" + N(st.High) + "}";
+                        var outliers = b.Outliers && s.OutlierKey is not null ? st.Outliers : Array.Empty<double>();
+                        var head = "\\addplot[" + prepared + ", " + opts + ", boxplot/every median/.style={line width=" + Mm(2 * s.Line.Width) + "}, " + mark + ", forget plot]";
+                        if (outliers.Count == 0) L(head + " coordinates {};");
+                        else
+                        {
+                            L(head + " table[row sep=\\\\, y index=0] {data\\\\ " + Column(outliers) + "};");
+                        }
+                    }
+                    if (s.InLegend && _f.Legend != "none")
+                    {
+                        L("\\addlegendimage{area legend, " + opts + "}");
+                        L("\\addlegendentry{" + Tex(s.Name) + "}");
+                    }
+                }
+            }
+
+            private void Gantt(XGantt g)
+            {
+                L("% Gantt chart: task i is centred at i (the first task on top); a bar runs from the start over the duration");
+                var half = g.Height / 2;
+                foreach (var grp in g.Groups)
+                {
+                    var opts = AreaOpts(grp.Fill, grp.Fill.Kind is "solid" or "none" ? grp.Edge : grp.Fill.Color, grp.EdgeWidth);
+                    var mark = "mark=diamond*, mark size=" + Mm(grp.MilestoneSize) + ", mark options={solid, draw=" + C(grp.MilestoneColor) + ", fill=" + C(grp.MilestoneColor) + "}";
+                    if (grp.Bars.Count > 0)
+                    {
+                        L("% " + grp.Key + ": " + Comment(grp.Name));
+                        foreach (var b in grp.Bars) L("\\fill[" + opts + "] " + P(b.Start, b.Row - half) + " rectangle " + P(b.Start + b.Duration, b.Row + half) + "; % " + Comment(b.Task));
+                    }
+                    if (grp.Milestones.Count > 0)
+                    {
+                        L("% " + grp.MilestoneKey + ": " + Comment(string.Join(", ", grp.Milestones.Select(m => m.Task))));
+                        L("\\addplot[only marks, " + mark + ", forget plot, clip=false] coordinates {" + Coords(grp.Milestones.Select(m => m.At).ToList(), grp.Milestones.Select(m => m.Row).ToList()) + "};");
+                    }
+                    if (grp.InLegend && _f.Legend != "none")
+                    {
+                        L(grp.Bars.Count > 0 ? "\\addlegendimage{area legend, " + opts + "}" : "\\addlegendimage{only marks, " + mark + "}");
+                        L("\\addlegendentry{" + Tex(grp.Name) + "}");
+                    }
+                }
+            }
+
+            /// <summary>A TikZ angle (counter-clockwise from 3 o'clock) of a clock angle (clockwise from 12 o'clock).</summary>
+            private static string Angle(double clock) => N(Math.Round(90 - clock, 4));
+
+            /// <summary>Pie or donut as TikZ arcs (pgfplots has no pie); texts and the legend where the chart draws them (mm, y up).</summary>
+            private void Pie(XPie p)
+            {
+                L("\\begin{tikzpicture}[x=1mm, y=1mm, font=\\footnotesize]");
+                L("% slices " + (p.Clockwise ? "clockwise" : "counter-clockwise") + " from " + N(Math.Round(p.Start, 3)) + " degrees clockwise from 12 o'clock (TikZ angles run counter-clockwise from 3 o'clock); radius "
+                    + N(p.RadiusMm) + " mm" + (p.Hole > 0 ? ", hole " + N(Math.Round(p.Hole * p.RadiusMm, 3)) + " mm" : ""));
+                var r = N(p.RadiusMm);
+                var ri = N(Math.Round(p.Hole * p.RadiusMm, 3));
+                foreach (var s in p.Slices)
+                {
+                    string a0 = Angle(s.Start), a1 = Angle(s.End);
+                    L("% " + s.Key + ": " + Comment(s.Name));
+                    var path = p.Hole > 0
+                        ? "(" + a0 + ":" + r + ") arc[start angle=" + a0 + ", end angle=" + a1 + ", radius=" + r + "] -- (" + a1 + ":" + ri + ") arc[start angle=" + a1 + ", end angle=" + a0 + ", radius=" + ri + "] -- cycle"
+                        : "(0,0) -- (" + a0 + ":" + r + ") arc[start angle=" + a0 + ", end angle=" + a1 + ", radius=" + r + "] -- cycle";
+                    L("\\fill[" + AreaOpts(s.Fill, s.Edge, s.EdgeWidth) + "] " + path + ";");
+                }
+                foreach (var (key, pts) in p.Leaders)
+                    L("\\draw[" + C(Palette.Ink) + ", line width=0.15mm] " + string.Join(" -- ", pts.Select(v => "(" + N(v.X) + "," + N(v.Y) + ")")) + "; % " + key);
+                foreach (var (key, x, y, w, h, fill) in p.Rects)
+                    L("\\fill[" + FillOpts(fill) + "] (" + N(x) + "," + N(y) + ") rectangle ++(" + N(w) + "," + N(h) + "); % " + key);
+                foreach (var t in p.Texts)
+                {
+                    var o = new List<string> { "anchor=" + Anchor(t.HAlign, "center") };
+                    var font = Font(t.Size, t.Bold, false);
+                    if (font.Length > 0) o.Add("font=" + font);
+                    o.Add("text=" + C(t.Color));
+                    if (t.Box) o.Add("fill=white");
+                    o.Add("inner sep=1pt");
+                    L("\\node[" + string.Join(", ", o) + "] at (" + N(t.X) + "," + N(t.Y) + ") {" + Tex(t.Text) + "}; % " + t.Key);
+                }
+                L("\\end{tikzpicture}");
+                L("");
+            }
+
+            /// <summary>Polar chart as a pgfplots polaraxis (polar library), angles in degrees.</summary>
+            private void Polar(XPolar p)
+            {
+                var f = _f;
+                L("\\begin{tikzpicture}");
+                L("\\begin{polaraxis}[");
+                var o = new List<string> { "scale only axis", "width=" + Mm(2 * p.RadiusMm), "height=" + Mm(2 * p.RadiusMm) };
+                var ticks = new List<string>();
+                for (var a = 0.0; a < 360 - 1e-9; a += p.AngleStep) ticks.Add(N(a));
+                o.Add("xtick={" + string.Join(",", ticks) + "}");
+                o.Add("ymin=" + N(p.RMin));
+                o.Add("ymax=" + N(p.RMax));
+                if (p.RStep > 0) o.Add("ytick distance=" + N(p.RStep));
+                if (p.Top)
+                {
+                    // 0 degrees up and angles clockwise (compass): reversed angles, the axis turned by 90 degrees.
+                    o.Add("rotate=90");
+                    o.Add("x dir=reverse");
+                    o.Add("xticklabel style={anchor=-\\tick-90}");
+                }
+                if (p.Grid) { o.Add("xmajorgrids"); o.Add("ymajorgrids"); o.Add("major grid style={" + StrokeOpts(f.GridStroke) + "}"); }
+                else o.Add("grid=none");
+                if (!p.AngleLabels) o.Add("xticklabel={}");
+                if (!p.RadiusLabels) o.Add("yticklabel={}");
+                o.Add("yticklabel style={font=\\scriptsize}");
+                if (f.Lang == Lang.De) o.Add("/pgf/number format/use comma");
+                if (f.Title is { } title) o.Add("title={\\bfseries " + Tex(title) + "}");
+                var legend = f.Legend != "none" && p.Series.Any(s => s.Legend is not null);
+                if (legend)
+                {
+                    o.Add("legend pos=outer north east");
+                    o.Add("legend cell align=left");
+                    o.Add("legend style={draw=" + C(Palette.LegendBorder) + ", fill=white}");
+                }
+                WriteOptions(o);
+                L("]");
+                foreach (var s in p.Series)
+                {
+                    L("% " + s.Key + (s.Legend is { } lg ? ": " + Comment(lg) : ""));
+                    if (s.Fill is { } fill)
+                    {
+                        L("\\addplot[" + FillOpts(fill) + ", forget plot] coordinates {");
+                        L("  " + Coords(s.Angles, s.R));
+                        L("};");
+                    }
+                    if (s.Line is null && s.Marker is null) continue;
+                    if (s.Marker is not null) L("% " + s.MarkerKey);
+                    var withLegend = legend && s.Legend is not null;
+                    L("\\addplot[" + SeriesOptions(new XSeries { Line = s.Line, Marker = s.Marker }) + (withLegend ? "" : ", forget plot") + "] coordinates {");
+                    L("  " + Coords(s.Angles, s.R));
+                    L("};");
+                    if (withLegend) L("\\addlegendentry{" + Tex(s.Legend!) + "}");
+                }
+                L("\\end{polaraxis}");
+                L("\\end{tikzpicture}");
+                L("");
             }
         }
     }

@@ -111,7 +111,7 @@ namespace InventaSketch.Modules.Charts.Tests
                 Assert.DoesNotContain("could not be exported", py);
                 AssertPythonBalanced(py, item.Id);
                 foreach (var key in VisibleKeys(r, o)) Assert.True(py.Contains("# " + key), item.Id + ": " + key + " missing");
-                Assert.True(py.Contains(".plot(") || py.Contains(".bar") || item.Id.StartsWith("chart.axes"), item.Id + ": nothing plotted");
+                Assert.True(py.Contains(".plot(") || py.Contains(".bar") || py.Contains(".pie(") || py.Contains(".hist(") || py.Contains(".boxplot(") || item.Id.StartsWith("chart.axes"), item.Id + ": nothing plotted");
             }
         }
 
@@ -129,7 +129,8 @@ namespace InventaSketch.Modules.Charts.Tests
                 Assert.False(string.IsNullOrWhiteSpace(tex), item.Id);
                 Assert.Contains("\\documentclass", tex);
                 Assert.Contains("\\usepackage{pgfplots}", tex);
-                Assert.True(Count(tex, "\\begin{axis}") + Count(tex, "\\begin{groupplot}") >= 1, item.Id);
+                // A pie is drawn with TikZ arcs (pgfplots has no pie), a polar chart in a polaraxis.
+                Assert.True(Count(tex, "\\begin{axis}") + Count(tex, "\\begin{groupplot}") + Count(tex, "\\begin{polaraxis}") >= 1 || item.TypeId == PieChart.TypeId && tex.Contains("% slice.0"), item.Id);
                 Assert.DoesNotContain("could not be exported", tex);
                 AssertLatexBalanced(tex, item.Id);
                 foreach (var key in VisibleKeys(r, o)) Assert.True(tex.Contains("% " + key), item.Id + ": " + key + " missing");

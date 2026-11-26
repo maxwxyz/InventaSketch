@@ -58,6 +58,16 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Angular grid step: 30° on a roomy chart, 45° or 90° when the circle is small.</summary>
         internal static double AngleStep(double radius, double fs) => radius > fs * 9 ? 30 : radius > fs * 4.5 ? 45 : 90;
 
+        /// <summary>Radius of the circle in the laid-out canvas (room for the angle labels around it).</summary>
+        internal static double Radius(Canvas cv)
+        {
+            var box = cv.Area;
+            var fs = cv.Fs * 0.85;
+            var labelW = Fmt.Width("315°", fs);
+            var r = Math.Max(Math.Min(box.W / 2 - labelW - cv.Gap * 2, box.H / 2 - fs - cv.Gap * 2), Math.Min(box.W, box.H) * 0.2);
+            return Math.Max(r, 0.5);
+        }
+
         protected override void Paint(SketchObject o, RenderContext ctx, Canvas cv)
         {
             var lang = ctx.Lang;
@@ -79,9 +89,7 @@ namespace InventaSketch.Modules.Charts
             var box = cv.Area;
             var c = box.Center;
             var fs = cv.Fs * 0.85;
-            var labelW = Fmt.Width("315°", fs);
-            var r = Math.Max(Math.Min(box.W / 2 - labelW - cv.Gap * 2, box.H / 2 - fs - cv.Gap * 2), Math.Min(box.W, box.H) * 0.2);
-            r = Math.Max(r, 0.5);
+            var r = Radius(cv);
             var axis = RadialAxis(o);
             var step = AngleStep(r, cv.Fs);
             double Rad(double v) => Geo.Clamp(axis.T(v), 0, 1) * r;
@@ -142,7 +150,7 @@ namespace InventaSketch.Modules.Charts
         }
 
         /// <summary>Fill of a filled series: its colour, translucent; in monochrome a hatch per series.</summary>
-        private static Style AreaStyle(int k, bool mono)
+        internal static Style AreaStyle(int k, bool mono)
         {
             var look = SeriesLook.Of(k);
             if (!mono) return new Style { Stroke = look.Color, StrokeWidth = 0.3, Role = LineRole.Visible, Fill = Fill.Solid(look.Color), Opacity = 0.3 };

@@ -30,7 +30,7 @@ follow the box. Text is sized by the smaller scale factor relative to the design
 | `chart.pie` | Pie chart / Kreisdiagramm | `data` (rows `label;value`), `hole` (donut: inner/outer radius, 0–0.9), `labels` percent / name / name and percent / value / none, `start` (° clockwise from 12 o'clock), `direction` clockwise / counter-clockwise, `center` (text in the hole), `legend`, `patterns`; see [Presentation charts](#presentation-charts-2026-11-26) |
 | `chart.polar` | Polar chart / Polardiagramm | `data` (rows `angle in °;r`, XY format), `style` line / line with markers / filled area / markers, `closed`, `zero` right counter-clockwise / up clockwise, `rrange`, `grid`, `legend` |
 | `chart.sankey` | Sankey diagram / Sankey-Diagramm | `data` (rows `source;target;value`), `values` (values at the nodes), `patterns` |
-| `chart.gantt` | Gantt chart / Gantt-Diagramm | `data` (rows `task;start;duration`, no duration = milestone, blocks = groups), `today` (today line), `xlabel`/`xunit`, `xrange`, `grid`, `legend` |
+| `chart.gantt` | Gantt chart / Gantt-Diagramm | `data` (rows `task;start;duration`, start a number or a date `yyyy-mm-dd` / `dd.mm.yyyy` with the duration in days, no duration = milestone, blocks = groups), `today` (today line, number or date), `xlabel`/`xunit`, `xrange` (numbers or dates), `grid`, `legend` |
 | `chart.box` | Box plot / Boxplot | `data` (rows `category;sample;sample…`), `whis` (whiskers × IQR, 1.5), `outliers`, `yrange`, `grid`, `legend` |
 | `chart.histogram` | Histogram / Histogramm | `data` (raw samples, blocks = series), `bins` (0 = automatic, Sturges), `xrange`, `yrange`, `grid`, `legend` |
 
@@ -82,7 +82,7 @@ Meaning of the columns:
 | Pie / donut | `label;value` (first value column; zero, negative and empty values get no slice) |
 | Polar chart | as the XY chart, x = angle in degrees, y = radius |
 | Sankey diagram | `source;target;value` (one flow per row; rows without a positive value are skipped) |
-| Gantt chart | `task;start;duration` (a row without duration is a milestone); a blank line or a header line starts a group |
+| Gantt chart | `task;start;duration` (a row without duration is a milestone); the start is a number or a calendar date (`2026-11-02` or `02.11.2026`), the duration then in days; a blank line or a header line starts a group |
 | Box plot | `category;sample;sample…`, or one column per category under a header row, or one block per category |
 | Histogram | any numbers (every value of a block is a sample); several blocks are several series |
 
@@ -150,7 +150,7 @@ All anchors are in local coordinates computed from the same layout as the drawin
 | Pie / donut | "Data…", donut (toggle), "Hole size…" (`30 %`), "Start angle…", "Centre text…", slice labels ▸, direction ▸, legend ▸ |
 | Polar chart | "Data…", style ▸, closed curves, 0° direction ▸, "Radial range…", grid, legend ▸ |
 | Sankey diagram | "Data…" (flow rows), add flow, remove last flow, values at the nodes |
-| Gantt chart | "Data…", add task, remove last task, "Today line…" (empty = none), grid, legend ▸ |
+| Gantt chart | "Data…", add task (with dates: starting at the last end as an ISO date), remove last task, "Today line…" (a number or a date; empty = none), grid, legend ▸ |
 | Box plot | "Data…", "Whisker length…", outliers, grid, legend ▸ |
 | Histogram | "Data…", "Bins…" (`auto` or a number), more bins, fewer bins, grid, legend ▸ |
 
@@ -558,7 +558,17 @@ drawn and a note says how many were left out.
 **Gantt chart.** Tasks top-down on a category axis (the first row on top), time on a linear axis in any unit (the
 x-axis title names it, default "Time"/"Zeit"). A row without duration is a milestone (a diamond); blocks are groups
 with their own colour and legend entry. `today` draws a dashed today line with its label "Today"/"Heute" and a rail
-anchor `today`.
+anchor `today`. A milestone at the end of an automatic time axis makes the axis one step longer, so its diamond sits at
+its time and inside the plot; with a fixed range ending at a milestone the diamond is moved inside by at most its half
+width.
+
+*Calendar dates (2026-11-26).* A start (and `today`, `xrange`) may be a date, ISO `2026-11-02` or German `02.11.2026`
+(in either language); the duration is then a number of days. Dates are read as day numbers (days since 1970-01-01, the
+date numbers of matplotlib), so plain numbers keep working and both may be mixed. With a date the axis shows dates: ticks
+on days (1 or 2), weeks (Mondays, 7 or 14 days), months (1, 2, 3 or 6) or years, the finest step with at most seven
+intervals; labels "Nov 9" / "9.11." for days, "Nov" / "Nov." for months and "2026" for years, the first tick and January
+with the year; the axis title defaults to "Date"/"Datum". "Add task" writes the new start as an ISO date. Cleaning
+slides turns dates into plain numbers (shifted to 0), only renaming texts keeps them.
 
 **Box plot.** Per category and series the quartiles with linear interpolation (Hyndman–Fan type 7, as numpy and
 matplotlib), a box from the lower to the upper quartile with the median, whiskers to the furthest samples within
@@ -588,14 +598,27 @@ shifted to 0 and scaled to 0…1 (normalised) or by a random factor, the today l
 the largest (normalised) or scaled and varied, the angles stay. Sankey: node names become A, B, C …, values divided by
 the largest flow or scaled by one random factor (in/out balances stay).
 
-**Code export and import.** These charts have no matplotlib or pgfplots export yet: both exports report "could not be
-exported" for them; the TikZ and SVG exports draw them from the primitives. The matplotlib import reads `pie` (values,
-`labels`, `autopct` → percent labels, `startangle` and `counterclock` converted to the clockwise-from-12-o'clock
-convention, `wedgeprops=dict(width=…)` → donut hole; `explode`, `colors` and `normalize=False` are reported) and polar
-axes (`subplot_kw={'projection': 'polar'}`, `add_subplot(…, projection='polar')` or `polar=True`, `plt.polar`):
-`plot` curves with the angles converted from radians to degrees, `fill` → filled style, `set_theta_zero_location('N')`
-with `set_theta_direction(-1)` → compass style, `set_rmax`/`set_rlim`/`set_ylim` → `rrange`; polar tick settings
-are reported. Other projections (3d) are still reported, `hist` and `boxplot` are not imported yet.
+**Code export and import (2026-11-26).** Pie, polar, box plot, histogram and Gantt charts are exported as matplotlib and
+pgfplots/TikZ code (see the table in [Export as matplotlib and pgfplots](#export-as-matplotlib-and-pgfplots-charts-v2-stage-4)).
+The Sankey diagram is still reported as "could not be exported" by both: `matplotlib.sankey` builds a diagram from
+flows that turn by fixed angles around one node at a time and places further nodes relative to earlier ones, so a
+column layout with nodes as high as their flows cannot be expressed without re-implementing the layout in the script,
+and pgfplots has no Sankey form; the TikZ and SVG exports draw it from the primitives. The matplotlib import reads `pie`
+(values, `labels`, `autopct` → percent labels, `labeldistance=None` → names only in the legend, `startangle` and
+`counterclock` converted to the clockwise-from-12-o'clock convention, `wedgeprops=dict(width=…)` → donut hole;
+`explode`, `colors` other than the chart colours and `normalize=False` are reported), polar axes
+(`subplot_kw={'projection': 'polar'}`, `add_subplot(…, projection='polar')` or `polar=True`, `plt.polar`): `plot`
+curves with the angles converted from radians to degrees (a repeated closing point is left out, the curve is closed),
+`fill` → filled style, `set_theta_zero_location('N')` with `set_theta_direction(-1)` → compass style,
+`set_rmax`/`set_rlim`/`set_ylim` → `rrange`; polar tick settings are reported), `hist` (one data set or a list of
+them → `chart.histogram` with one series each; `bins` as a count, or as edges → their count and range; `range` →
+`xrange`; `label` → series names; `density`, `weights`, `cumulative`, other `histtype`s, `orientation='horizontal'`,
+`stacked`, `log`, named bin rules and unequal bins are reported) and `boxplot` (raw samples → `chart.box`; categories
+from `tick_labels`/`labels`, the tick labels at the box positions or the positions; one call per series, named by a
+legend over the boxes; `whis` → `whis`, `whis=(0, 100)` or `showfliers=False` → whiskers to minimum and maximum
+(`showfliers=False` reported); horizontal boxes, notches and means are reported). A histogram or box plot next to other
+content in the same axes is reported. Other projections (3d) are still reported. The pgfplots import does not read
+the pie (TikZ arcs), `polaraxis`, `boxplot prepared` and `hist` forms.
 
 **Host notes.** Native primitives only: slices, rings and flows are closed freeforms (flows with cubic edges), nodes,
 bars and boxes rectangles, milestones closed freeforms, grids one freeform each, texts native text; no vector picture.
@@ -740,7 +763,8 @@ chart can be recreated as code in which every text stays editable:
   charts, `python script.py out/chart.pdf` saves `out/chart-1.pdf`, `out/chart-2.pdf` … (the extension picks the
   format). Texts are ordinary matplotlib texts, made mathtext-safe (`$` escaped).
 - **Charts as LaTeX (pgfplots)** (`chart.pgfplots`, `.tex`): a `standalone` document (pdfLaTeX or LuaLaTeX,
-  pgfplots 1.18 compatibility, libraries `fillbetween`, `groupplots`, `arrows.meta`, `patterns.meta`) with one
+  pgfplots 1.18 compatibility, libraries `fillbetween`, `groupplots`, `arrows.meta`, `patterns.meta`, plus `polar` for
+  polar charts and `statistics` for box plots and histograms only when the document contains them) with one
   `tikzpicture` per chart (one page each); the `tikzpicture` can be copied into any document. Every text — axis titles,
   named ticks, legend entries, titles, notes, numerals — is LaTeX text in the document font. Special characters are
   escaped, Greek letters and symbols become LaTeX commands (pdfLaTeX-safe), German tick labels use
@@ -774,13 +798,21 @@ override colour, width and dash.
 | Torque power curve | `twinx` | an overlaid axis with `axis y line=right` |
 | Tolerance band | `fill_between` lower/upper | `fill between` of both limit curves |
 | Title, caption, panel titles | `suptitle`, `supxlabel`, texts in the panels | `title`, a node below the picture, nodes |
+| Pie, donut | `pie` with the names (`labeldistance=None` when only the legend shows them), `autopct` percent labels (value labels by a function), `startangle` = 90° − start, `counterclock`, `wedgeprops=dict(width=1 − hole)`, slice colours, hatches in monochrome, centre text, legend | TikZ arcs in mm (pgfplots has no pie): slices, labels, leader lines and legend where the chart draws them |
+| Polar chart | polar axes (`projection='polar'`), angles in degrees converted with `rad`, `set_theta_zero_location('N')` and `set_theta_direction(-1)` for the compass style, `set_rlim`, angle and radius steps, `fill` for filled areas | `polaraxis` (library `polar`), angles in degrees; compass style as `rotate=90, x dir=reverse` |
+| Box plot | `boxplot` of the raw samples per series at the box positions, `whis` (or `whis=(0, 100)` for minimum/maximum), `showfliers`, box, median, whisker and outlier looks | `boxplot prepared` (library `statistics`) with the quartiles, whiskers and outliers as drawn |
+| Histogram | `hist` of the raw samples with `bins` and `range` as drawn, several series side by side (`rwidth=1`) | `hist={bins, data min, data max}` (library `statistics`); several series overlap translucently |
+| Gantt chart | `barh` with `left=` the starts per group, milestones as `D` markers, today line and label; dates as named ticks | filled rectangles in axis coordinates, milestones as `diamond*` marks, today line and label |
 
 Approximations: layout details (label positions shrunk to fit, the white backing of labels, maximum widths of notes,
 the exact spacing of hatch lines and arrowheads) follow each library's own layout; font sizes are relative (the
 chart font in matplotlib, `\footnotesize` and smaller in LaTeX). Stacked bars with negative values are stacked by
 pgfplots in data order. The positions of texts that only exist in the layout (region notes of the torque chart, the
 operating point label, the corner frequency label) are taken from the composed chart and converted to data
-coordinates. A figure whose specification cannot be read exports its message.
+coordinates. A figure whose specification cannot be read exports its message. Presentation charts: matplotlib places
+the pie labels itself (inside at the ring or 62 % of the radius, whole percentages; slice labels the chart moves
+outside stay inside), the polar radius labels and the today label follow the library's layout, and in pgfplots several
+histogram series overlap instead of standing side by side.
 
 Tests (`ExportTests`, `ExportRunTests`): every library item in English and German gives a plausible script (balanced
 brackets, every visible curve, bar, region, reference and numeral present) and a plausible document (balanced braces,
@@ -811,3 +843,8 @@ monochrome patterns, polar angle conventions and radial scale, Sankey node heigh
 ribbons filling each node, cycles reported, box plot quartiles, whiskers and outliers of a known sample, histogram
 counts and Sturges' rule, Gantt bars, milestones and today line, every action, rendering inside the box at extreme
 sizes, the JSON round trip, the export reports, cleaning and the import of matplotlib pie and polar scripts.
+`PresentationChartExportTests` covers their code forms: the matplotlib and pgfplots/TikZ texts of pie, donut, polar,
+box plot, histogram and Gantt charts (libraries only when needed), export → import round trips of pie, polar, histogram
+and box plot (slices and angles, points and conventions, samples, bins and counts, categories and whisker rules), the
+import of `hist` and `boxplot` scripts with their reports, calendar dates in Gantt charts (day numbers, date ticks, today
+line, actions, cleaning) and the milestone at the end of the time axis.

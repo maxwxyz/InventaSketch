@@ -77,15 +77,23 @@ namespace InventaSketch.Modules.Charts
         /// <summary>Gantt chart: task and group names with the texts; times shifted to start at 0 and scaled to 0…1 (normalised) or by a random factor.</summary>
         private static SketchObject Gantt(SketchObject o, Ctx c)
         {
-            var blocks = Read(o.Str("data", GanttChart.DefaultData));
+            // Calendar dates are read as day numbers; the cleaned chart keeps plain numbers (dates would tell the real schedule).
+            var dates = GanttChart.UsesDates(o);
+            var blocks = Read(ChartDates.ToDays(o.Str("data", GanttChart.DefaultData), out _));
             if (blocks.Count == 0) return o;
             if (c.Opt.ReplaceTexts) RenameSeries(blocks, c);
             if (c.Opt.RenameCategories) RenameCategories(blocks, false);
-            if (c.Opt.Mode == SanitizeMode.None) return c.Opt.ReplaceTexts || c.Opt.RenameCategories ? o.WithParam("data", Write(blocks)) : o;
+            if (c.Opt.Mode == SanitizeMode.None)
+                return c.Opt.ReplaceTexts || c.Opt.RenameCategories ? o.WithParam("data", dates ? DatesBack(Write(blocks)) : Write(blocks)) : o;
+            if (dates)
+            {
+                if (GanttChart.Today(o) is { } day) o = o.WithParam("today", ExportText.N(day));
+                if (GanttChart.Range(o) is { } xr) o = o.WithParam("xrange", ExportText.N(xr.Min) + ";" + ExportText.N(xr.Max));
+            }
             var starts = blocks.SelectMany(b => b.Column(0)).ToList();
             var ends = blocks.SelectMany(b => b.Rows.Where(r => r.V.Length > 1 && Fmt.Finite(r.V[0]) && Fmt.Finite(r.V[1])).Select(r => r.V[0] + r.V[1])).Concat(starts).ToList();
             if (starts.Count == 0) return o.WithParam("data", Write(blocks));
-            double t0 = c.Norm ? starts.Min() : 0, span = c.Norm ? Math.Max(1e-12, ends.Max() - starts.Min()) : 1 / c.Off();
+            double t0 = c.Norm || dates ? starts.Min() : 0, span = c.Norm ? Math.Max(1e-12, ends.Max() - starts.Min()) : 1 / c.Off();
             Func<double, double> time = v => (v - t0) / span, length = v => v / span;
             foreach (var b in blocks) { b.MapEach(0, time); b.MapEach(1, length); }
             o = o.WithParam("data", Write(blocks));
@@ -93,6 +101,18 @@ namespace InventaSketch.Modules.Charts
             o = WithRange(o, "xrange", time);
             return c.Norm ? NoUnits(o, "xunit") : o;
         }
+
+        /// <summary>Gantt data written by <see cref="Write"/> with the start column (day numbers) as ISO dates again.</summary>
+        private static string DatesBack(string text)
+            => string.Join("\n", text.Split('\n').Select(line =>
+            {
+                var sep = line.IndexOf('\t') >= 0 ? '\t' : ';';
+                var f = line.Split(sep);
+                var i = f.Length > 0 && f[0].StartsWith("\"", StringComparison.Ordinal) ? 1 : 0;
+                if (i >= f.Length || !long.TryParse(f[i], NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var day)) return line;
+                f[i] = ChartDates.Iso(day);
+                return string.Join(sep.ToString(), f);
+            }));
 
         /// <summary>Polar chart: the angles stay, the radii are divided by the largest one (normalised) or scaled and varied (randomised).</summary>
         private static SketchObject Polar(SketchObject o, Ctx c)
