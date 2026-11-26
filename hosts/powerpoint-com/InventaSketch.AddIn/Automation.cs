@@ -328,6 +328,27 @@ namespace InventaSketch.AddIn
         /// <summary>Screen rectangle "x,y,w,h" (device pixels) of the floating bar as last shown; "" if none yet.</summary>
         public string BarRect() => _connect.LastBarRect();
 
+        /// <summary>The plausibility warnings of an element as its value card lists them ("id|text" per line).</summary>
+        public string Checks(string shapeName)
+        {
+            try { return _connect.ChecksOf(shapeName); }
+            catch (Exception ex) { Log.Error("Automation.Checks", ex); return ""; }
+        }
+
+        /// <summary>Mutes (true) or unmutes a plausibility check in the presentation.</summary>
+        public bool MuteCheck(string checkId, bool mute)
+        {
+            try { return _connect.MuteCheckOf(checkId, mute); }
+            catch (Exception ex) { Log.Error("Automation.MuteCheck", ex); return false; }
+        }
+
+        /// <summary>Sets the preferred unit of a quantity kind ("pressure", "power" …) in the presentation; empty clears it.</summary>
+        public bool SetUnitPreference(string kind, string unit)
+        {
+            try { return _connect.SetUnitPreferenceOf(kind, unit); }
+            catch (Exception ex) { Log.Error("Automation.SetUnitPreference", ex); return false; }
+        }
+
         /// <summary>The calculation sheet of the selection or slide (mode csv, markdown, latex, table); <paramref name="insert"/> also inserts it as a table.</summary>
         public string CalcSheet(string mode, bool insert)
         {

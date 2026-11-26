@@ -90,6 +90,63 @@ namespace InventaSketch.AddIn.OnSlide
         }
     }
 
+    /// <summary>
+    /// Calc 6 settings of the presentation as tags: muted plausibility checks (<c>ISK_MUTED</c>, ids separated by ";") and
+    /// preferred display units (<c>ISK_UNITS</c>, "pressure=MPa;energy=MJ"). Applied to the document the values are solved in.
+    /// </summary>
+    internal static class ValueDocSettings
+    {
+        public const string MutedTag = "ISK_MUTED", UnitsTag = "ISK_UNITS";
+
+        /// <summary>The preferred units offered in the ribbon (quantity kind id, unit symbols; the first is the default).</summary>
+        public static readonly (string Kind, string[] Units)[] Offered =
+        {
+            ("pressure", new[] { "bar", "MPa", "kPa" }),
+            ("rotationalSpeed", new[] { "min⁻¹", "s⁻¹", "rad/s" }),
+            ("energy", new[] { "kWh", "MJ", "J" }),
+            ("power", new[] { "W", "kW" }),
+        };
+
+        private static string Get(PowerPoint.Presentation? p, string tag)
+        {
+            try { return p?.Tags[tag] ?? ""; } catch { return ""; }
+        }
+
+        private static void Set(PowerPoint.Presentation p, string tag, string value)
+        {
+            try { p.Tags.Delete(tag); } catch { /* not set */ }
+            if (value.Length > 0) p.Tags.Add(tag, value);
+        }
+
+        /// <summary><paramref name="s"/> with the presentation's muted checks and unit preferences.</summary>
+        public static DocumentSettings Apply(PowerPoint.Presentation? p, DocumentSettings s)
+        {
+            var result = s;
+            foreach (var id in Get(p, MutedTag).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)) result = result.WithMutedCheck(id.Trim(), true);
+            foreach (var pair in Get(p, UnitsTag).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var kv = pair.Split(new[] { '=' }, 2);
+                if (kv.Length == 2) result = result.WithUnitPreference(kv[0].Trim(), kv[1].Trim());
+            }
+            return result;
+        }
+
+        /// <summary>Mutes or unmutes check <paramref name="id"/> in the presentation.</summary>
+        public static void Mute(PowerPoint.Presentation p, string id, bool mute)
+            => Set(p, MutedTag, string.Join(";", Apply(p, new DocumentSettings()).WithMutedCheck(id, mute).MutedChecks ?? Array.Empty<string>()));
+
+        /// <summary>The preferred unit of <paramref name="kind"/> in the presentation, or null.</summary>
+        public static string? UnitOf(PowerPoint.Presentation? p, string kind)
+            => Apply(p, new DocumentSettings()).UnitPreferences is { } m && m.TryGetValue(kind, out var u) ? u : null;
+
+        /// <summary>Sets (or with null clears) the preferred unit of <paramref name="kind"/>.</summary>
+        public static void SetUnit(PowerPoint.Presentation p, string kind, string? unit)
+        {
+            var prefs = Apply(p, new DocumentSettings()).WithUnitPreference(kind, unit).UnitPreferences;
+            Set(p, UnitsTag, prefs is null ? "" : string.Join(";", prefs.Select(kv => kv.Key + "=" + kv.Value)));
+        }
+    }
+
     /// <summary>One row of the value card: a variable with its value, provenance and explanation.</summary>
     internal sealed record ValueRow(string Key, string Symbol, string Name, Provenance Provenance)
     {
@@ -120,8 +177,23 @@ namespace InventaSketch.AddIn.OnSlide
     /// line of derived values; Engineer adds the source and a fourth digit; Quick sketch (card opened from the pie) stays
     /// plain.
     /// </summary>
+    /// <summary>A plausibility warning of the element in the card: the check id (for muting), its severity and the line shown.</summary>
+    internal sealed record CardCheck(string Id, CheckSeverity Severity, string Text);
+
     internal sealed record ValueCardModel(string ObjectId, string Title, ValueLevel Level, IReadOnlyList<ValueRow> Rows, ValueStatus State, string Status, IReadOnlyList<string> Conflicts, bool ShowsLabel)
     {
+        /// <summary>The element's plausibility warnings (Calc 3/4 checks, gentle, with rule and source; Calc 6 mute).</summary>
+        public IReadOnlyList<CardCheck> Checks { get; init; } = Array.Empty<CardCheck>();
+
+        /// <summary>The card lines of <paramref name="findings"/> for <paramref name="objectId"/>: "⚠ message (rule) [S9]".</summary>
+        public static IReadOnlyList<CardCheck> CheckLines(IEnumerable<CheckFinding> findings, string objectId, Lang lang)
+            => findings.Where(f => f.ObjectId == objectId)
+                .Select(f => new CardCheck(f.CheckId, f.Severity,
+                    (f.Severity == CheckSeverity.Warning ? "⚠ " : "ⓘ ") + f.Message.Get(lang)
+                    + (string.IsNullOrWhiteSpace(f.Rule) ? "" : " (" + f.Rule + ")")
+                    + (string.IsNullOrWhiteSpace(f.Source) ? "" : " [" + f.Source + "]")))
+                .ToList();
+
         public static string Marker(Provenance p, bool conflict) => conflict ? "⚠" : p switch
         {
             Provenance.Entered => "✎",
@@ -155,7 +227,7 @@ namespace InventaSketch.AddIn.OnSlide
             var rows = new List<ValueRow>();
             foreach (var v in table.Of(objectId))
             {
-                var display = v.Value is double d ? ValueFormat.Format(d, v.Def.DisplayUnit, lang, digits) : "";
+                var display = v.Value is double d ? ValueFormat.Format(d, table.UnitOf(v), lang, digits) : "";
                 var field = v.Provenance == Provenance.Entered && v.Text is { } t ? t.Trim() : display;
                 // A stored text that could not be read stays visible so it can be corrected.
                 if (v.Value is null && v.Text is { } bad && bad.Trim().Length > 0) field = bad.Trim();
@@ -169,12 +241,12 @@ namespace InventaSketch.AddIn.OnSlide
                 string? problem = v.Error?.Get(lang);
                 var own = conflicts.FirstOrDefault(c => c.Var.ObjectId == objectId && c.Var.Key == v.Def.Key);
                 if (own is not null)
-                    problem = (de ? "Aus " : "From ") + table.Formula(own.Relation, lang) + ": " + ValueFormat.Format(own.Implied, v.Def.DisplayUnit, lang, digits);
+                    problem = (de ? "Aus " : "From ") + table.Formula(own.Relation, lang) + ": " + ValueFormat.Format(own.Implied, table.UnitOf(v), lang, digits);
                 rows.Add(new ValueRow(v.Def.Key, v.Def.Symbol.Get(lang), v.Def.Name.Get(lang), v.Provenance)
                 {
                     Marker = Marker(v.Provenance, v.InConflict),
                     Field = field,
-                    Unit = v.Def.DisplayUnit.Symbol,
+                    Unit = table.UnitOf(v).Symbol,
                     Formula = formula,
                     Problem = problem,
                     Conflict = v.InConflict,
@@ -187,7 +259,7 @@ namespace InventaSketch.AddIn.OnSlide
             var conflictLines = conflicts.Select(c =>
             {
                 var cv = table.Get(c.Var.ObjectId, c.Var.Key);
-                var unit = cv?.Def.DisplayUnit;
+                var unit = cv is null ? null : table.UnitOf(cv);
                 string F(double x) => unit is null ? ValueFormat.Number(x, lang, digits) : ValueFormat.Format(x, unit, lang, digits);
                 var sym = cv?.Def.Symbol.Get(lang) ?? c.Var.Key;
                 var involved = string.Join(", ", c.Involved.Where(r => r.ObjectId == objectId).Select(r => table.Get(r.ObjectId, r.Key)?.Def.Symbol.Get(lang) ?? r.Key));

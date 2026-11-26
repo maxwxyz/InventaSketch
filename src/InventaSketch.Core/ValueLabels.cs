@@ -79,16 +79,16 @@ namespace InventaSketch.Core
         /// How one value appears on the label: an entered text with a unit or letter code as typed ("4k7", "230 V"), else
         /// formatted with significant digits and the best SI prefix ("115 Ω").
         /// </summary>
-        public static string Display(VarValue v, Lang lang, int digits = 3)
+        public static string Display(VarValue v, Lang lang, int digits = 3, ValueTable? table = null)
         {
             if (v.Value is not double d) return "?";
             if (v.Provenance == Provenance.Entered && v.Text is { } t && t.Trim().Any(char.IsLetter) && v.Tolerance is null) return t.Trim();
-            return ValueFormat.Format(d, v.Def.DisplayUnit, lang, digits);
+            return ValueFormat.Format(d, table?.UnitOf(v) ?? v.Def.DisplayUnit, lang, digits);
         }
 
         /// <summary>The label text: "R = 4.7 kΩ, P = 0.25 W"; empty when nothing is known.</summary>
         public static string Text(SketchObject o, ValueTable table, Lang lang, int digits = 3)
-            => string.Join(", ", Shown(o, table).Select(v => v.Def.Symbol.Get(lang) + " = " + Display(v, lang, digits)));
+            => string.Join(", ", Shown(o, table).Select(v => v.Def.Symbol.Get(lang) + " = " + Display(v, lang, digits, table)));
 
         /// <summary>Solves the values of <paramref name="o"/> as it is now (also when the document holds an older copy of it).</summary>
         public static ValueTable SolveOne(Registry registry, SketchObject o, SketchDocument doc, Lang lang, ValueSolveOptions? options = null)

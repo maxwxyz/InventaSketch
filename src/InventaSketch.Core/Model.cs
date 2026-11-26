@@ -203,6 +203,33 @@ namespace InventaSketch.Core
 
         /// <summary>The settings with <paramref name="level"/> (Quick sketch is stored as "not set").</summary>
         public DocumentSettings WithValueLevel(ValueLevel level) => this with { ValueLevel = level == Core.ValueLevel.QuickSketch ? null : level };
+
+        /// <summary>Plausibility checks the user muted for this drawing (check ids such as "elec.r.power"; Calc 6). Null: none.</summary>
+        public IReadOnlyList<string>? MutedChecks { get; init; }
+
+        /// <summary>
+        /// Preferred display unit per quantity kind id ("pressure" → "MPa", "rotationalSpeed" → "s⁻¹", "energy" → "MJ"; Calc 6).
+        /// Null: each value's own display unit.
+        /// </summary>
+        public IReadOnlyDictionary<string, string>? UnitPreferences { get; init; }
+
+        /// <summary>The settings with check <paramref name="checkId"/> muted or not.</summary>
+        public DocumentSettings WithMutedCheck(string checkId, bool mute)
+        {
+            var list = (MutedChecks ?? Array.Empty<string>()).Where(x => x != checkId).ToList();
+            if (mute) list.Add(checkId);
+            list.Sort(StringComparer.Ordinal);
+            return this with { MutedChecks = list.Count == 0 ? null : list };
+        }
+
+        /// <summary>The settings with <paramref name="unit"/> preferred for <paramref name="kindId"/> (null or empty clears it).</summary>
+        public DocumentSettings WithUnitPreference(string kindId, string? unit)
+        {
+            var map = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var kv in UnitPreferences ?? new Dictionary<string, string>()) map[kv.Key] = kv.Value;
+            if (string.IsNullOrWhiteSpace(unit)) map.Remove(kindId); else map[kindId] = unit!.Trim();
+            return this with { UnitPreferences = map.Count == 0 ? null : new Dictionary<string, string>(map, StringComparer.Ordinal) };
+        }
     }
 
     /// <summary>
