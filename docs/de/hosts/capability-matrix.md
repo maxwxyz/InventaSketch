@@ -41,7 +41,7 @@
 | Import CSV (Diagrammdaten), GeoJSON/GPX (Karte) | geprüft 25.11.2026 (Szenario `import`) | Import-Knopf (Engine `importData`/`importGeo`), nicht in PowerPoint getestet | nicht angeboten |
 | Diagrammteile: jede Kurve, Achse, Gitter … auswählen, ausblenden, formatieren (auch mit den Formatwerkzeugen des Hosts) | geprüft 25.11.2026 (Szenario `chart-parts`: native Umfärbung einer Kurve bleibt nach Neuzeichnen, Klick wählt das Teil, Leiste zeigt Teilaktionen, Ausblenden) | umgesetzt 25.11.2026: Klick ins ausgewählte Diagramm wählt das Teil (Umriss aus Engine `partOutline`), Leiste und Kreismenü zeigen seine Aktionen, Liste „Teile …“; unit-getestet (`partlogic.test.ts`), noch nicht im Browser oder in PowerPoint ausgeführt | umgesetzt 25.11.2026: Menü „Diagrammteile ...“ (Dialog: Teile, ihre Aktionen, Wertfeld; Befehl `parts?part=&action=` für Automatisierung), Zeilen unit-getestet, noch nicht in LibreOffice ausgeführt |
 | Anschluss-„+“ (Kabel, Rohre, Kanäle an Anschlüssen und Leitungsenden; PV, TGA, Elektro, Fluid, Prozess, Maschinen) | geprüft 25.11.2026 (Szenario `connect-plus`: PV-String → DC-Kabel → Wechselrichter) | Engine `buildPorts` mit `medium`, Tooltips für Anschlüsse und Leitungsenden; nicht im Browser ausgeführt | Portnamen in der Bauliste; nicht in LibreOffice ausgeführt |
-| Kurve ins Diagramm skizzieren (erkannt oder geglättet; Stützpunkte, Detailgrad, Zeichengeschwindigkeit aus Spur mit Zeitstempeln) | geprüft 25.11.2026 (Szenario `chart-sketch`, echte Maus; Stützpunkte und Detailgrad noch nicht in PowerPoint ausgeführt) | Leistenbefehl und Spur auf der Bühne über Engine `sketchCurve`; nicht im Browser ausgeführt | noch nicht (braucht eine Zeicheninteraktion) |
+| Kurve ins Diagramm skizzieren (erkannt oder geglättet; Stützpunkte, Detailgrad, Zeichengeschwindigkeit aus Spur mit Zeitstempeln) | geprüft 25.11.2026 (Szenario `chart-sketch`, echte Maus; Stützpunkte und Detailgrad noch nicht in PowerPoint ausgeführt) | Leistenbefehl und Spur auf der Bühne mit Zeigerzeiten (`[x, y, t]`, Hinweis aus der Zeichengeschwindigkeit) über Engine `sketchCurve`; nicht im Browser ausgeführt | noch nicht (braucht eine Zeicheninteraktion) |
 | Diagramm aus Bild (Zwischenablage oder Datei) | geprüft 25.11.2026 (Szenario `chart-picture`) | Import-Knopf und Strg+V über Engine `chartFromPicture`; nicht im Browser ausgeführt | noch nicht (Engine-Methode vorhanden) |
 | Tabelleneditor für Diagrammdaten | geprüft 25.11.2026 (Szenario `chart-data-editor`) | Inspektor / einzeilige Dateneingabe | einzeilige Dateneingabe |
 | Achsenbrüche in XY-Diagrammen und Abbildungen; Koordinatensysteme und Funktionsgraphen als Diagrammtypen | geprüft 25.11.2026 (Szenario `chart-breaks-math`: Bruchzeichen als Teile, Koordinatensystem und Funktionsgraph nativ, Nächste Funktion) | von der Engine gezeichnet, in PowerPoint im Web nicht getestet | von der Engine gezeichnet, in LibreOffice nicht getestet |
@@ -52,6 +52,21 @@
 | Bewegungsmodus (Getriebezüge und Getriebe drehen, selbst gebaute Koppelgetriebe ziehen) | geprüft (`gear-motion`, `linkage-build`) | teilweise: umgesetzt 25.11.2026, Browser-Entwicklungsseite | teilweise: Getriebezüge um einen getippten Winkel drehen (`motionTurn`), geprüft 25.11.2026 (`integration_test.py`, `ui_smoke.py`); kein Ziehen |
 | Koppelkurve und Zwischenlagen selbst gebauter Koppelgetriebe | geprüft 24.11.2026 (`linkage-extras`) | teilweise: beides auf der Browser-Entwicklungsseite | geprüft 25.11.2026 (Auswahl-Panel, `integration_test.py`) |
 | Stückliste, die den Teilen folgt | geprüft 24.11.2026 (`parts-list`) | nicht getestet (Engine zeichnet Abhängige neu) | nicht getestet |
+
+### PowerPoint-Web-Add-in: Griffe in der Zeichnung (26.11.2026)
+
+Gleichstand mit der Überlagerung des COM-Add-ins; Einzelheiten in [office-web.md](office-web.md) („Griffe in der
+Zeichnung“). Tests: `test/handlelogic.test.ts`, Engine `WebHandleApiTests`; Typprüfung und Produktions-Build.
+
+| Fähigkeit | PowerPoint-Web-Add-in |
+|---|---|
+| Schrittweise Einblendung (ein wichtigstes „+“, der Rest blendet in Zeigernähe ein, Umschalt zeigt alle) | teilweise: umgesetzt 26.11.2026 auf der Bühne, Regeln mit Unit-Tests; nicht im Browser ausgeführt |
+| Schloss-Plaketten (Verbindung mit einem Klick lösen / koppeln) | teilweise: umgesetzt 26.11.2026 (Engine `links`, `toggleLink`, mit Unit-Tests); nicht im Browser ausgeführt |
+| Eckpunkte (Klick fügt ein, Ziehen knickt, Doppelklick entfernt), Abzweig-Griffe, Verbinden beim Ablegen | teilweise: umgesetzt 26.11.2026 (Engine `polylineHandles`, `insertCorner`, `removeCorner`, `branch`, `joinLines`, mit Unit-Tests); keine Knoten-Symbole, kein „+“ an freien Linienenden, kein Teilen in der Leiste; nicht im Browser ausgeführt |
+| Zwischen Tabellenzeilen/-spalten einfügen (`IInsertHandles`) | teilweise: „+“-Punkte auf der Bühne (Engine `insertHandles`/`applyInsertHandle`); nicht im Browser ausgeführt |
+| Gewählte Diagrammkurve ziehen (`byPart`-Griff) | teilweise: umgesetzt 26.11.2026 über `moveHandle`; nicht im Browser ausgeführt |
+| ↔-Griff der Wertekarte mit Live-Vorschau, Wertebereiche, ⚠-Plakette | teilweise: umgesetzt 26.11.2026 (`dragValue` mit Vorschau, `values` `range`); nicht im Browser ausgeführt |
+| Rechenblatt (CSV, Markdown, LaTeX; kopieren, herunterladen, als Tabelle einfügen) | teilweise: umgesetzt 26.11.2026 (Engine `calcSheet`, `insertCalcTable`, mit Unit-Tests); nicht im Browser ausgeführt |
 
 ### LibreOffice: Bedienkonzept (26.11.2026)
 

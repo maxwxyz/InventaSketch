@@ -1617,6 +1617,8 @@ export class Stage {
     }
     const d = this.drag;
     this.drag = undefined;
+    // The handles near the pointer stay shown after the edit.
+    this.revealPointer = this.toPage(e.clientX, e.clientY);
     // Alt edits freely: no mechanical coupling (gears in mesh, gears on shafts) for this edit.
     this.host.session().couple = !e.altKey;
     if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);

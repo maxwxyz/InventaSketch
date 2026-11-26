@@ -268,7 +268,9 @@ export class Session {
     return this.c("joinLines", { id, index, x, y, snap, tolerance });
   }
   /** Insert places of element `id` (between table rows and columns). */
-  insertHandles(id: string, lang: string): InsertHandleInfo[] { return this.c("insertHandles", { id, lang }); }
+  insertHandles(id: string, lang: string): InsertHandleInfo[] {
+    return this.c<{ id: string; handles: InsertHandleInfo[] }[]>("insertHandles", { id, lang }).find((x) => x.id === id)?.handles ?? [];
+  }
   /** Inserts at place `key` of element `id` (a row, a column); one undo step. */
   applyInsertHandle(id: string, key: string): EditorState { return this.c("applyInsertHandle", { id, key }); }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */

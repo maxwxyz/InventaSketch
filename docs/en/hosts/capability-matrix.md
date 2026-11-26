@@ -39,7 +39,7 @@
 | Import CSV (chart data), GeoJSON/GPX (map) | verified 2026-11-25 (scenario `import`) | import button (engine `importData`/`importGeo`), not tested in PowerPoint | not exposed |
 | Chart parts: select, hide and style each curve, axis, grid … (also with the host's own formatting) | verified 2026-11-25 (scenario `chart-parts`: native recolour of one curve kept after a redraw, click selects the part, bar shows part actions, hide) | implemented 2026-11-25: a click on the selected chart selects the part (outline from engine `partOutline`), bar and pie show its actions, "Parts …" list; unit-tested (`partlogic.test.ts`), not yet run in the browser or PowerPoint | implemented 2026-11-25: menu "Chart Parts..." (dialog: parts, their actions, value field; command `parts?part=&action=` for automation), unit-tested rows, not yet run in LibreOffice |
 | Connection "+" (cables, pipes, ducts at ports and line ends; PV, building services, electrical, fluid, process, machines) | verified 2026-11-25 (scenario `connect-plus`: PV string → DC cable → inverter) | engine `buildPorts` with `medium`, tooltips for connection ports and line ends; not run in the browser | port names in the build list; not run in LibreOffice |
-| Sketch a curve into a chart (recognised or smoothed; key points, detail, drawing speed from time-stamped trail) | verified 2026-11-25 (scenario `chart-sketch`, real mouse; key points and detail not yet run in PowerPoint) | bar command and stage trail through engine `sketchCurve`; not run in the browser | not yet (needs a drawing interaction) |
+| Sketch a curve into a chart (recognised or smoothed; key points, detail, drawing speed from time-stamped trail) | verified 2026-11-25 (scenario `chart-sketch`, real mouse; key points and detail not yet run in PowerPoint) | bar command and stage trail with pointer times (`[x, y, t]`, drawing speed hint) through engine `sketchCurve`; not run in the browser | not yet (needs a drawing interaction) |
 | Chart from picture (clipboard or file) | verified 2026-11-25 (scenario `chart-picture`) | import button and Ctrl+V through engine `chartFromPicture`; not run in the browser | not yet (engine method available) |
 | Chart data table editor | verified 2026-11-25 (scenario `chart-data-editor`) | inspector / one-line data input | one-line data input |
 | Axis breaks in XY charts and figures; coordinate systems and function graphs as chart types | verified 2026-11-25 (scenario `chart-breaks-math`: break marks as parts, coordinate system and function graph native, Next function) | engine-drawn, not tested in PowerPoint on the web | engine-drawn, not tested in LibreOffice |
@@ -50,6 +50,21 @@
 | Motion mode (turn gear trains and mechanisms, drag self-built linkages) | verified (`gear-motion`, `linkage-build`) | partial: implemented 2026-11-25, browser dev page | partial: gear trains turn by a typed angle (`motionTurn`), verified 2026-11-25 (`integration_test.py`, `ui_smoke.py`); no dragging |
 | Coupler curve and ghost positions of self-built linkages | verified 2026-11-24 (`linkage-extras`) | partial: both in the browser dev page | verified 2026-11-25 (selection panel, `integration_test.py`) |
 | Parts list table following the parts | verified 2026-11-24 (`parts-list`) | not tested (engine redraws dependents) | not tested |
+
+### Office web add-in: handles on the drawing (2026-11-26)
+
+Parity with the COM add-in's overlay; details in [office-web.md](office-web.md) ("Handles on the drawing"). Tests:
+`test/handlelogic.test.ts`, engine `WebHandleApiTests`; type check and production build.
+
+| Capability | PowerPoint web add-in |
+|---|---|
+| Progressive disclosure (one primary "+", the rest fades in near the pointer, Shift shows all) | partial: implemented 2026-11-26 on the stage, unit-tested rules; not run in the browser |
+| Lock badges (release / couple a link with one click) | partial: implemented 2026-11-26 (engine `links`, `toggleLink`, unit-tested); not run in the browser |
+| Corner dots (click adds, drag bends, double-click removes), branch handles, join on drop | partial: implemented 2026-11-26 (engine `polylineHandles`, `insertCorner`, `removeCorner`, `branch`, `joinLines`, unit-tested); no junction icons, no "+" at free line ends, no split in the bar; not run in the browser |
+| Insert between table rows/columns (`IInsertHandles`) | partial: "+" dots on the stage (engine `insertHandles`/`applyInsertHandle`); not run in the browser |
+| Drag a selected chart curve (`byPart` grip) | partial: implemented 2026-11-26 through `moveHandle`; not run in the browser |
+| Value card ↔ grip with live preview, value ranges, ⚠ badge | partial: implemented 2026-11-26 (`dragValue` preview, `values` `range`); not run in the browser |
+| Calculation sheet (CSV, Markdown, LaTeX; copy, download, insert as a table) | partial: implemented 2026-11-26 (engine `calcSheet`, `insertCalcTable`, unit-tested); not run in the browser |
 
 ### LibreOffice: interaction concept (2026-11-26)
 

@@ -58,17 +58,4 @@ namespace InventaSketch.Engine
         /// <summary>Corner indices where the line can be split (an outline opened).</summary>
         public List<int> Splittable { get; set; } = new();
     }
-
-    /// <summary>An insert place on an element (engine <c>insertHandles</c>, <see cref="InventaSketch.Core.InsertHandle"/>): a small "+" dot.</summary>
-    public sealed class InsertHandleInfo
-    {
-        public string Key { get; set; } = "";
-        /// <summary>Page mm.</summary>
-        public double X { get; set; }
-        public double Y { get; set; }
-        /// <summary>Unit direction away from the element.</summary>
-        public double Dx { get; set; }
-        public double Dy { get; set; }
-        public string Label { get; set; } = "";
-    }
 }

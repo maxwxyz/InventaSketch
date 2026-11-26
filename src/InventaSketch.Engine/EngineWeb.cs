@@ -23,8 +23,6 @@ namespace InventaSketch.Engine
     /// line's rail at (fx, fy) to (ex, ey), the end snapped and docked; one undo step, the branch selected.</item>
     /// <item><c>joinLines</c> {id, index, x, y, snap, tolerance}: the end <c>index</c> dropped at x/y joins a free end of a
     /// line of the same kind lying there: <c>{ joined, state }</c>; nothing changes when there is none.</item>
-    /// <item><c>insertHandles</c> {id}: the insert places of an element (<see cref="InsertHandles.Of"/>: between table rows and
-    /// columns); <c>applyInsertHandle</c> {id, key}: inserts there, one undo step.</item>
     /// <item><c>insertCalcTable</c> {ids, x, y, digits}: the calculation sheet of <c>ids</c> as an annotation table (cells of
     /// <c>calcSheet</c> mode "table") right of the elements (or at x/y); one undo step, the table selected.</item>
     /// </list>
@@ -41,8 +39,6 @@ namespace InventaSketch.Engine
             _methods["splitLine"] = SplitLineCore;
             _methods["branch"] = BranchCore;
             _methods["joinLines"] = JoinLinesCore;
-            _methods["insertHandles"] = InsertHandlesCore;
-            _methods["applyInsertHandle"] = ApplyInsertHandleCore;
             _methods["insertCalcTable"] = InsertCalcTableCore;
         }
 
@@ -222,31 +218,6 @@ namespace InventaSketch.Engine
             var joined = s.Apply("Join", d => Polylines.Join(Registry, Edits.SetPoint(d, o.Id, index, at), o.Id, index == 0, t.Id, t.AtStart, lang));
             if (joined) s.Select(new[] { o.Id });
             return new { joined, state = (EditorState?)StateOf(s, r) };
-        }
-
-        // ------------------------------------------------------------------ insert places ("+" between table rows and columns)
-
-        private object InsertHandlesCore(EngineRequest r)
-        {
-            var s = S(r);
-            var lang = LangOf(r, s);
-            var o = s.Doc.Get(r.Id ?? s.Selection.FirstOrDefault() ?? "") ?? throw new KeyNotFoundException($"Unknown object '{r.Id}'.");
-            return InsertHandles.Of(Registry, o, new RenderContext(s.Doc, lang)).Select(h => new InsertHandleInfo
-            {
-                Key = h.Key, X = h.Position.X, Y = h.Position.Y, Dx = h.Direction.X, Dy = h.Direction.Y, Label = h.Label.Get(lang),
-            }).ToList();
-        }
-
-        private object ApplyInsertHandleCore(EngineRequest r)
-        {
-            var s = S(r);
-            var lang = LangOf(r, s);
-            var o = s.Doc.Get(r.Id ?? s.Selection.FirstOrDefault() ?? "") ?? throw new KeyNotFoundException($"Unknown object '{r.Id}'.");
-            var key = r.Key ?? throw new ArgumentException("Missing 'key'.");
-            var ctx = new RenderContext(s.Doc, lang);
-            if (InsertHandles.Of(Registry, o, ctx).All(h => h.Key != key)) throw new ArgumentException("Unknown insert place: " + key);
-            s.Apply("Insert here", d => Edits.Update(d, new[] { o.Id }, x => InsertHandles.Apply(Registry, x, key, new RenderContext(d, lang))));
-            return StateOf(s, r);
         }
 
         // ------------------------------------------------------------------ calculation sheet as a table

@@ -9,7 +9,7 @@ namespace InventaSketch.Engine.Tests
     /// <summary>
     /// Engine methods for the web add-in's handles on the drawing (EngineWeb.cs): lock badges (<c>links</c>,
     /// <c>toggleLink</c>), corners and branches (<c>polylineHandles</c>, <c>insertCorner</c>, <c>removeCorner</c>,
-    /// <c>splitLine</c>, <c>branch</c>, <c>joinLines</c>), insert places (<c>insertHandles</c>, <c>applyInsertHandle</c>)
+    /// <c>splitLine</c>, <c>branch</c>, <c>joinLines</c>)
     /// and the calculation sheet as a table (<c>insertCalcTable</c>).
     /// </summary>
     public class WebHandleApiTests
@@ -120,25 +120,6 @@ namespace InventaSketch.Engine.Tests
             var st = hit.GetProperty("state");
             Assert.Single(st.GetProperty("objects").EnumerateArray());
             Assert.Equal(30, Points(st, a.Id).EnumerateArray().Max(p => p.GetProperty("x").GetDouble()), 6);
-        }
-
-        [Fact]
-        public void InsertPlacesOfATableAddARowWhereTheDotIs()
-        {
-            var session = Call("createSession", new { lang = "en" }).GetProperty("session").GetString()!;
-            var id = EngineApiTests.Insert(Api.Value, session, "ann.table", 80, 60);
-            var list = Call("insertHandles", new { session, id }).EnumerateArray().ToList();
-            Assert.Contains(list, h => h.GetProperty("key").GetString() == "row.1");
-            Assert.Contains(list, h => h.GetProperty("key").GetString() == "col.1");
-            var row = list.First(h => h.GetProperty("key").GetString() == "row.1");
-            Assert.Equal(-1, row.GetProperty("dx").GetDouble(), 6);
-            Assert.Contains("row", row.GetProperty("label").GetString());
-
-            var before = list.Count(h => h.GetProperty("key").GetString()!.StartsWith("row.", StringComparison.Ordinal));
-            Call("applyInsertHandle", new { session, id, key = "row.1" });
-            var after = Call("insertHandles", new { session, id }).EnumerateArray().Count(h => h.GetProperty("key").GetString()!.StartsWith("row.", StringComparison.Ordinal));
-            Assert.Equal(before + 1, after);
-            Assert.Contains("Unknown insert place", Api.Value.Call("applyInsertHandle", JsonSerializer.Serialize(new { session, id, key = "row.99" })));
         }
 
         [Fact]

@@ -78,6 +78,13 @@ undo step each (no step when nothing changes).
 | `motionPreview` | `id` and `degrees` (gear), or `id`, `index`, `x`, `y` (joint of a link) | `{ ids, svg }`: the objects the turn or drag would move, as SVG in page mm; nothing changes |
 | `motionTurn`, `motionDrag` | `id`, `degrees`; `id`, `index`, `x`, `y` | state (one undo step each): gear train turned (clockwise positive); chain moved with constant link lengths |
 | `update` | `object` (full document object as in `saveDocument`) | state |
+| `dragValue` | `id`, `key`, `value` (SI) or `text`, `preview`, `digits` | with `preview` the value table as if entered (nothing changes), else state (one undo step) – the value card's ↔ grip |
+| `calcSheet`, `insertCalcTable` | `ids` (default: the page), `mode` (csv, markdown, latex, table), `lang`, `digits`; `ids`, `lang`, `x`/`y` | `{ text, rows, sources }`; state with an annotation table of the sheet right of the elements, selected (one undo step) |
+| `links`, `toggleLink` | `id`, `lang`; `id`, `key` | lock badges `[{ key, kind, a, b, x, y, released, index, label }]`; state (release or couple, one undo step) |
+| `polylineHandles` | `id` | `{ corners, branch, closed, segments: [{ index, x, y, nx, ny, ax, ay, bx, by }], removable, splittable }` |
+| `insertCorner`, `removeCorner`, `splitLine` | `id`, `index` (segment), `points` [[x0, y0]] (the dot), `x`, `y`, `snap`, `tolerance`, `anchor`; `id`, `index`; `id`, `index` | state (one undo step each); branches docked on the line stay |
+| `branch`, `joinLines` | `id`, `points` [[from], [end]], `snap`, `tolerance`, `anchor`; `id`, `index` (an end), `x`, `y`, `snap`, `tolerance` | state with the new branch selected; `{ joined, state }` (nothing changes without a free end of the same kind there) |
+| `insertHandles`, `applyInsertHandle` | `id` or `ids`, `lang`; `id`, `key` | `[{ id, handles: [{ key, x, y, dx, dy, label }] }]`; state (one undo step) |
 | `exporters`, `export` | `ids` (selection with its groups, else the page), `lang`; `itemId` (exporter id) | domain exports that apply `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (default: document setting), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | draw plan in pt (black and white when the document is) |
@@ -307,11 +314,56 @@ Follows [interaction-ux.md](../design/interaction-ux.md) (sections 4–6a) and
   step, Esc cancels, a click selects the grip's part.
 
 Checked with unit tests, the type check and the production build; **not yet checked in a browser or in PowerPoint**.
-Known differences from the COM add-in: no progressive disclosure yet (every "+" is shown at once; no fade-in near the
-pointer, no Shift overview); the web stage draws no lock badges, junctions, corner dots or branch handles, so the layout
-places only "+"; pressing on a selected curve does not drag the whole curve (`byPart` grips); no ↔ grip in the value
-card and no ⚠ badge on the drawing; an unfilled closed shape keeps a faint glow inside its outline; the value level is a
-setting of the engine document (COM: a presentation tag) and `importCompact` does not carry it from a slide model.
+The gaps of this round are closed in "Handles on the drawing" below.
+
+## Handles on the drawing (2026-11-26, parity with the COM add-in)
+
+Pure rules in `src/ui/handlelogic.ts` (tests `test/handlelogic.test.ts`); the engine methods are in
+`src/InventaSketch.Engine/EngineWeb.cs` (tests `WebHandleApiTests`) plus `insertHandles`/`applyInsertHandle`.
+
+- **Progressive disclosure** (COM `Reveal`): right after a selection only the frame, the point diamonds, the grips of a
+  selected part and the one primary "+" show – a line's free end, a gear's right side, else a meshing side, a connection
+  port, a free axis end, any port; diagram nodes the quick-add triangle below. Every other handle (more "+", insert dots,
+  lock badges, corner dots, branch handles, grips, the other triangles) fades in as the pointer comes near (fully within
+  24 px, gone beyond 56 px, also near its anchor); Shift shows all. Faded-out handles take no clicks.
+- **One layout for all handles:** "+" (priority 90), insert dots (50, optional), lock badges (70, may orbit their contact
+  point), corner dots (40, optional, slide along their segment) and branch handles (30, optional, orbit) are placed by
+  `resolveHandles` around the fixed frame handles, point diamonds, triangles and grips. Elements smaller than 24 px and
+  segments shorter than 28 px get no corner dots or branch handles.
+- **Lock badges** (only while "Anchor" is on, like the COM toggle): every place where the element touches another and
+  follows it (meshing gears, a part on a shaft, concentric parts, belts, docked line ends; engine `links`) shows a tiny
+  dot on the contact point and a padlock badge beside it – closed: coupled, open and lighter: released; blue with its lead
+  under the pointer, the tooltip says what it is and what a click does. A click releases or couples it (`toggleLink`,
+  one undo step).
+- **Corner dots and branch handles** on wires, pipes, roads and polylines (`polylineHandles`): a click on the hollow dot
+  adds a corner where the dot is drawn, dragging bends the line there in one go (snapped and docked; `insertCorner`, one
+  undo step, branches stay docked). A double-click on a corner removes it (`removeCorner`). The branch handle beside the
+  dot draws a new line of the same kind from the line: drag it to a pin or anywhere (Shift: 15° steps), a click adds a
+  15 mm stub (`branch`, the branch selected). Dropping an end of a line on a free end of a line of the same kind joins both
+  (`joinLines`, one undo step). A click on a point diamond without moving no longer stores (or snaps) the point.
+- **Insert dots** between the rows and columns of a table (`insertHandles`): small "+" right on the line, the tooltip
+  names the row or column; a click inserts there (`applyInsertHandle`, one undo step).
+- **Dragging a whole curve:** pressing on the selected curve of a chart drags the curve (its `byPart` grip moves by the
+  pointer's offset, the dashed outline shows where it lands, the value label beside the pointer); release moves its data
+  (`moveHandle`, one undo step), a click without moving selects the part under the pointer. Point grips are small circles;
+  grips that do not belong to the selected part fade in near the pointer.
+- **Value card:** in Explore a ↔ grip beside every positive value: drag left or right and the value changes by a factor e
+  per 90 px (three significant digits) while every value that depends on it follows in the card (`dragValue` with
+  `preview`); release stores it (one undo step), Esc restores. A value with tolerances shows its range under its row
+  ("Range: 180 V … 220 V", `values` `range`). The ⚠ badge (amber triangle just outside the top right corner) marks a
+  selected element whose entered values conflict (Explore and Engineer); a click opens its value card.
+- **Calculation sheet …** (value card footer and Edit ▸ Values ▸): the sheet of the element (`calcSheet`) as CSV,
+  Markdown or LaTeX with copy (clipboard, else the text is selected for Ctrl+C) and download
+  (`inventasketch-calculation.csv|md|tex`); **Insert as table** adds it as an annotation table (`ann.table`) right of the
+  element, or below it when there is no room (`insertCalcTable`, one undo step, the table selected).
+- **Sketched curves** send the pointer time (ms since the press) with every trail point (`sketchCurve` `[x, y, t]`), so the
+  drawing speed hint works as in the COM add-in.
+
+Checked with unit tests (engine and TypeScript), the type check and the production build; **not yet checked in a
+browser or in PowerPoint**. Still different from the COM add-in: no junction icons where a wire crosses another, no "+"
+at free line ends without a port to keep drawing, no corner selection with split in the bar (the engine has `splitLine`);
+an unfilled closed shape keeps a faint glow inside its outline; the value level is a setting of the engine document
+(COM: a presentation tag) and `importCompact` does not carry it from a slide model.
 
 ## Build and run
 
