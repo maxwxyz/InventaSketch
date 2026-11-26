@@ -26,7 +26,10 @@ namespace InventaSketch.Modules.Switchgear
         public string L(string en, string de) => _lang == Lang.De ? de : en;
 
         public static DeviceType? Device(SketchObject o) => o.IsPointGeometry ? null : SwitchgearModule.TypeOf(o.Type) as DeviceType;
-        public static HouseType? House(SketchObject o) => o.IsPointGeometry ? null : SwitchgearModule.TypeOf(o.Type) as HouseType;
+
+        /// <summary>A room device of this module or a canonical installation symbol of another module (<see cref="HouseDevice"/>).</summary>
+        public static HouseDevice? House(SketchObject o)
+            => o.IsPointGeometry ? null : SwitchgearModule.TypeOf(o.Type) is HouseType t ? HouseDevice.Of(t) : HouseDevice.Foreign(o.Type);
 
         public IEnumerable<(SketchObject Obj, DeviceType Type)> Devices()
         {
@@ -34,7 +37,7 @@ namespace InventaSketch.Modules.Switchgear
                 if (Device(o) is { } t) yield return (o, t);
         }
 
-        public IEnumerable<(SketchObject Obj, HouseType Type)> HouseDevices()
+        public IEnumerable<(SketchObject Obj, HouseDevice Type)> HouseDevices()
         {
             foreach (var o in _objects)
                 if (House(o) is { } t) yield return (o, t);
@@ -128,11 +131,11 @@ namespace InventaSketch.Modules.Switchgear
         }
 
         /// <summary>Lines (wires and cables) docked at pin <paramref name="pin"/> of <paramref name="o"/>, with the index of the docked end.</summary>
-        public IEnumerable<(SketchObject Line, int End)> LinesAt(SketchObject o, string pin)
+        public IEnumerable<(SketchObject Line, int End)> LinesAt(SketchObject o, string pin, bool installationCables = false)
         {
             foreach (var x in _doc.Objects.Values)
             {
-                if (!x.IsPointGeometry || !Lines.IsLine(x.Type) || x.Attach is null) continue;
+                if (!x.IsPointGeometry || !(Lines.IsLine(x.Type) || installationCables && x.Type == HouseDevice.InstallationCableId) || x.Attach is null) continue;
                 for (var i = 0; i < x.Attach.Count; i++)
                     if (x.Attach[i] is { } a && a.ObjectId == o.Id && a.AnchorId == pin && (i == 0 || i == x.Attach.Count - 1)) yield return (x, i);
             }
@@ -199,7 +202,8 @@ namespace InventaSketch.Modules.Switchgear
                     }
                 }
             }
-            // Room devices and drives (loads): their circuit, else the protective device a cable or wire from them is docked on.
+            // Room devices (also the installation symbols of other modules, HouseDevice) and drives (loads): their circuit, else the
+            // protective device a cable or wire from them is docked on.
             foreach (var o in HouseDevices().Select(h => h.Obj).Concat(Devices().Where(d => d.Type.Spec.Role == DeviceRole.Drive).Select(d => d.Obj)))
             {
                 var feed = o.Str("feed", "").Trim();
@@ -235,14 +239,17 @@ namespace InventaSketch.Modules.Switchgear
 
         /// <summary>
         /// The device feeding <paramref name="o"/> through a wire or cable: the line docked at a top pin of a rail device
-        /// (any pin of a room device) whose other end is docked at a bottom pin of a feed-tree device.
+        /// (any pin of a room device) whose other end is docked at a bottom pin of a feed-tree device. Installation symbols of
+        /// other modules also count an installation cable of the electrical module (<see cref="HouseDevice.InstallationCableId"/>).
         /// </summary>
         private SketchObject? WiredUpstream(SketchObject o)
         {
             var dt = Device(o);
-            IEnumerable<string> pins = dt is not null ? dt.Pins(o).Where(p => p.V < 0).Select(p => p.Id) : new[] { "c" };
+            var house = dt is null ? House(o) : null;
+            IEnumerable<string> pins = dt is not null ? dt.Pins(o).Where(p => p.V < 0).Select(p => p.Id) : house?.Pins ?? new[] { "c" };
+            var cables = house is { IsForeign: true };
             foreach (var pin in pins)
-                foreach (var (line, end) in LinesAt(o, pin))
+                foreach (var (line, end) in LinesAt(o, pin, cables))
                 {
                     var other = line.Attach![Other(line, end)];
                     if (other is null || _doc.Get(other.ObjectId) is not { } up || up.Id == o.Id) continue;
@@ -251,5 +258,91 @@ namespace InventaSketch.Modules.Switchgear
                 }
             return null;
         }
+    }
+
+    /// <summary>
+    /// A room device of the reports and of the circuit values: a room device of this module (<see cref="HouseType"/>) or one
+    /// of the canonical installation symbols the room devices give way to in galleries and search (socket outlet, light
+    /// switch and luminaire of the electrical module, appliance outlet of the building services). Modules do not reference
+    /// each other: those symbols are known by their type ids and read through their parameters, which carry the same names
+    /// and meaning as on the room devices here (<c>room</c>, <c>feed</c>, <c>phase</c>, <c>power</c>, <c>current</c>; the
+    /// kind parameter names the device in the reports).
+    /// </summary>
+    internal sealed class HouseDevice
+    {
+        public const string InstallationCableId = "elec.house.cable";
+        public const string ElecSocketId = "elec.house.socket";
+        public const string ElecSwitchId = "elec.house.switch";
+        public const string ElecLightId = "elec.house.light";
+        public const string BsApplianceId = "bs.elec.appliance";
+
+        private readonly HouseType? _own;
+        private readonly Func<SketchObject, Lang, string> _describe;
+
+        private HouseDevice(string typeId, HouseType? own, bool load, bool threePhase, IReadOnlyList<string> pins, Func<SketchObject, Lang, string> describe)
+        {
+            TypeId = typeId; _own = own; IsLoad = load; CanBeThreePhase = threePhase; Pins = pins; _describe = describe;
+        }
+
+        public string TypeId { get; }
+        /// <summary>True for an installation symbol of another module.</summary>
+        public bool IsForeign => _own is null;
+        /// <summary>The device takes power: it counts in the circuit values when a power or current is entered on it.</summary>
+        public bool IsLoad { get; }
+        /// <summary>
+        /// The device may be a three-phase load. Symbols of other modules compute their current themselves, single-phase unless
+        /// their own phase says three-phase, so for them "from the circuit" never means three-phase (<see cref="SwValues.EffectivePhase"/>).
+        /// </summary>
+        public bool CanBeThreePhase { get; }
+        /// <summary>The connection points a feeding cable or wire docks on.</summary>
+        public IReadOnlyList<string> Pins { get; }
+
+        /// <summary>Display name of the device as placed ("Double socket outlet", "Two-way switch").</summary>
+        public string Describe(SketchObject o, Lang lang) => _describe(o, lang);
+
+        public static HouseDevice Of(HouseType t) => new(t.Id, t, true, true, OwnPins, t.Describe);
+
+        /// <summary>The installation symbol of another module with this type id, or null.</summary>
+        public static HouseDevice? Foreign(string typeId) => ForeignTypes.TryGetValue(typeId, out var d) ? d : null;
+
+        /// <summary>True if <paramref name="typeId"/> is an installation symbol of another module read as a room device.</summary>
+        public static bool IsForeignType(string typeId) => ForeignTypes.ContainsKey(typeId);
+
+        private static readonly string[] OwnPins = { "c" };
+
+        private static I18nText T(string en, string de) => new(en, de);
+
+        private static Func<SketchObject, Lang, string> ByKind(string key, string def, I18nText fallback, params (string Value, string En, string De)[] kinds)
+            => (o, lang) =>
+            {
+                var v = o.Str(key, def);
+                foreach (var k in kinds) if (k.Value == v) return lang == Lang.De ? k.De : k.En;
+                return fallback.Get(lang);
+            };
+
+        private static readonly I18nText[] Sockets =
+        {
+            T("Single socket outlet", "Einfachsteckdose"), T("Double socket outlet", "Zweifachsteckdose"),
+            T("Triple socket outlet", "Dreifachsteckdose"), T("Quadruple socket outlet", "Vierfachsteckdose"),
+        };
+
+        private static string Socket(SketchObject o, Lang lang)
+        {
+            var n = Math.Max(1, Math.Min(4, o.Int("gangs", 1)));
+            var name = Sockets[n - 1].Get(lang);
+            return o.Flag("protected", true) ? name : name + (lang == Lang.De ? " ohne Schutzkontakt" : " (no earth)");
+        }
+
+        private static readonly Dictionary<string, HouseDevice> ForeignTypes = new HouseDevice[]
+        {
+            new(ElecSocketId, null, true, false, new[] { "feed" }, Socket),
+            new(ElecSwitchId, null, false, false, new[] { "feed" }, ByKind("kind", "oneway", T("Light switch", "Lichtschalter"),
+                ("oneway", "One-way switch", "Ausschalter"), ("twoway", "Two-way switch", "Wechselschalter"),
+                ("intermediate", "Intermediate switch", "Kreuzschalter"), ("push", "Push button", "Taster"), ("dimmer", "Dimmer", "Dimmer"))),
+            new(ElecLightId, null, true, false, new[] { "n", "e", "s", "w" }, (_, lang) => T("Luminaire", "Leuchte").Get(lang)),
+            new(BsApplianceId, null, true, true, new[] { "cable" }, ByKind("kind", "cooker", T("Appliance outlet", "Geräteanschlussdose"),
+                ("cooker", "Cooker connection", "Herdanschluss"), ("washer", "Washing machine", "Waschmaschine"), ("dryer", "Tumble dryer", "Wäschetrockner"),
+                ("dishwasher", "Dishwasher", "Geschirrspüler"), ("generic", "Appliance", "Gerät"))),
+        }.ToDictionary(d => d.TypeId, StringComparer.Ordinal);
     }
 }

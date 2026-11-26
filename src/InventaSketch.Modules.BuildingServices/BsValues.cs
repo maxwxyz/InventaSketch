@@ -282,10 +282,57 @@ namespace InventaSketch.Modules.BuildingServices
             "bs.meter.water" => WaterMeter(),
             "bs.vent.terminal" => Terminal(),
             "bs.vent.unit" => VentUnit(),
+            "bs.elec.appliance" => Appliance(),
             PipeType.TypeId => Pipe(),
             DuctType.TypeId => Duct(),
             _ => Spec.Empty,
         };
+
+        // ------------------------------------------------------------------ electrical load (appliance outlet)
+
+        public const string PhaseKey = "phase";
+        public const string ThreePhase = "L123";
+
+        private static Relation LoadCurrent(bool three) => three
+            ? new Relation("bs.load.current3", T("Current per phase (three-phase)", "Strom je Außenleiter (dreiphasig)"), "{I} = {P}/(3·{U}·{pf})", "I", "P", "U", "pf")
+            {
+                Source = "S7", Validity = T("symmetrical three-phase load, U phase to neutral", "symmetrische Drehstromlast, U Außenleiter–Neutralleiter"),
+            }
+                .Solve("I", "{P}/(3·{U}·{pf})", v => v("P") / (3 * v("U") * v("pf")))
+                .Solve("P", "3·{U}·{I}·{pf}", v => 3 * v("U") * v("I") * v("pf"))
+                .Solve("U", "{P}/(3·{I}·{pf})", v => v("P") / (3 * v("I") * v("pf")))
+                .Solve("pf", "{P}/(3·{U}·{I})", v => v("P") / (3 * v("U") * v("I")))
+            : new Relation("bs.load.current1", T("Current (single-phase)", "Strom (einphasig)"), "{I} = {P}/({U}·{pf})", "I", "P", "U", "pf")
+            {
+                Source = "S7", Validity = T("U phase to neutral", "U Außenleiter–Neutralleiter"),
+            }
+                .Solve("I", "{P}/({U}·{pf})", v => v("P") / (v("U") * v("pf")))
+                .Solve("P", "{U}·{I}·{pf}", v => v("U") * v("I") * v("pf"))
+                .Solve("U", "{P}/({I}·{pf})", v => v("P") / (v("I") * v("pf")))
+                .Solve("pf", "{P}/({U}·{I})", v => v("P") / (v("U") * v("I")));
+
+        private static readonly Relation SingleCurrent = LoadCurrent(false);
+        private static readonly Relation ThreeCurrent = LoadCurrent(true);
+
+        /// <summary>
+        /// Appliance outlet as an electrical load: power, current per phase, voltage phase to neutral (default 230 V) and power
+        /// factor (default 1); single-phase unless its phase is three-phase [S7]. The parameters are those of the switchgear
+        /// room devices, so the feeding protective device sums this load into its operating current I_B.
+        /// </summary>
+        private static Spec Appliance()
+        {
+            var vars = new[]
+            {
+                V("P", T("Power", "Leistung"), T("P", "P"), Quantities.Power, "W", "power") with { Min = 0, Max = 1e10 },
+                V("I", T("Current (per phase)", "Strom (je Außenleiter)"), T("I", "I"), Quantities.Current, "A", "current") with { Min = 0, Max = 1e6 },
+                V("U", T("Voltage phase to neutral", "Spannung Außenleiter–Neutralleiter"), T("U", "U"), Quantities.Voltage, "V", "voltage", VarRelevance.Panel) with { Default = 230, Min = 0, Max = 1e5 },
+                V("pf", T("Power factor", "Leistungsfaktor"), T("cos φ", "cos φ"), Quantities.Ratio, null, "powerFactor", VarRelevance.Panel) with { Default = 1, Min = 0, Max = 1 },
+            };
+            return new Spec(vars, Array.Empty<Relation>(), Params(vars), Array.Empty<ValueCheck>())
+            {
+                Local = o => new[] { o.Str(PhaseKey, "circuit") == ThreePhase ? ThreeCurrent : SingleCurrent },
+            };
+        }
 
         /// <summary>A heat generator: the flow port supplies (total of the branches), the return port collects.</summary>
         private static IEnumerable<PortVar> GeneratorPort(string port) => port switch

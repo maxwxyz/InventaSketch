@@ -106,7 +106,8 @@ namespace InventaSketch.Modules.Switchgear
                 if (HasPhaseParam(feeder)) { var fp = feeder.Str(PhaseKey, "L1"); return IsSingle(fp) ? fp : "L1"; }
                 return IsSingle(own) ? own : "L1";
             }
-            if (feeder is not null) return own == FromCircuit ? ThreePhase : own;
+            // A symbol of another module computes its current single-phase unless it says three-phase itself.
+            if (feeder is not null) return own == FromCircuit ? (Board.House(load) is { IsForeign: true } ? "L1" : ThreePhase) : own;
             return own == FromCircuit ? "L1" : own;
         }
 
@@ -308,13 +309,39 @@ namespace InventaSketch.Modules.Switchgear
 
         // ------------------------------------------------------------------ links
 
-        /// <summary>True if a load has a power or a current entered (only those count in the totals).</summary>
+        /// <summary>Power and current of a load as entered: the same parameters on the room devices and on the installation symbols of other modules.</summary>
+        private static readonly IReadOnlyList<VarDef> EnteredLoad = LoadVariables(false).Where(v => v.Key is "P" or "I").ToList();
+
+        /// <summary>
+        /// True if a load has a power or a current entered (only those count in the totals). Installation symbols of other
+        /// modules that take power (<see cref="HouseDevice.IsLoad"/>) are read through the same parameters; their own module
+        /// declares the variables P and I the circuit totals refer to.
+        /// </summary>
         public static bool HasLoadValue(SketchObject load)
         {
+            if (Board.House(load) is { IsForeign: true } foreign)
+                return foreign.IsLoad && EnteredLoad.Any(v => ValueModel.ReadEntered(load, v).Value is not null);
             var spec = For(load.Type);
             if (spec.Kind != SwValueKind.Load) return false;
             return spec.Variables.Where(v => v.Key is "P" or "I").Any(v => ValueModel.ReadEntered(load, v).Value is not null);
         }
+
+        /// <summary>Default voltage phase to neutral of the loads (the room devices' U default; symbols of other modules in a circuit).</summary>
+        private const double NominalVoltage = 230;
+
+        private static readonly I18nText NominalVoltageName = T("Nominal voltage phase to neutral of the circuit (no voltage entered on the load)",
+            "Nennspannung Außenleiter–Neutralleiter des Stromkreises (am Verbraucher keine Spannung eingetragen)");
+
+        private static readonly VarDef EnteredVoltage = LoadVariables(false).Single(v => v.Key == "U");
+
+        /// <summary>
+        /// True for an installation symbol of another module in a circuit whose voltage is open: none entered, and not both power
+        /// and current (which would give the voltage themselves).
+        /// </summary>
+        private static bool NeedsNominalVoltage(SketchObject load)
+            => Board.House(load) is { IsForeign: true }
+               && ValueModel.ReadEntered(load, EnteredVoltage).Value is null
+               && !EnteredLoad.All(v => ValueModel.ReadEntered(load, v).Value is not null);
 
         /// <summary>The current-carrying capacity typed on a cable ("20 A", "20"), or null.</summary>
         public static double? EnteredCurrent(SketchObject o, string key)
@@ -374,6 +401,11 @@ namespace InventaSketch.Modules.Switchgear
                             var groups = three ? Phases.Select(ph => OnPhase(loads, ph)).Where(g => g.Length > 0).ToList() : new List<int[]> { all };
                             yield return Bind(Total("sw.circuit.current", three ? CurrentThreeName : CurrentSingleName, loads.Count, groups), o.Id, "IB", loads, "I");
                             yield return Bind(Total("sw.circuit.power", PowerName, loads.Count, new[] { all }), o.Id, "P", loads, "P");
+                            // Installation symbols of other modules have no default voltage of their own: in a circuit they are
+                            // on 230 V phase to neutral unless a voltage is entered on them (as the room devices here default to).
+                            foreach (var l in loads)
+                                if (ctx.Doc.Get(l.Id) is { } lo && NeedsNominalVoltage(lo))
+                                    yield return BindOne(Constant("sw.load.voltage", NominalVoltageName, NominalVoltage, "230 V"), l.Id, "U");
                         }
                         if (spec.Has("Iz") && map.CableCapacity(o.Id) is { } iz)
                             yield return BindOne(Constant("sw.cable.iz", CableName, iz.Value, iz.Text), o.Id, "Iz");
@@ -498,7 +530,7 @@ namespace InventaSketch.Modules.Switchgear
                 if (Board.Device(o) is { } t) Look(o, t.Pins(o).Where(p => p.V > 0).Select(p => p.Id));
             foreach (var l in n.Loads)
             {
-                if (Board.House(l) is not null) Look(l, new[] { "c" });
+                if (Board.House(l) is { } h) Look(l, h.Pins);
                 else if (Board.Device(l) is { } t) Look(l, t.Pins(l).Where(p => p.V < 0).Select(p => p.Id));
             }
             return best;

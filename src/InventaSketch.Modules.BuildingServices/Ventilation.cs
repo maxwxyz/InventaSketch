@@ -192,6 +192,16 @@ namespace InventaSketch.Modules.BuildingServices
             ("cooker", "Cooker", "Herd"), ("washer", "Washing machine", "Waschmaschine"), ("dryer", "Tumble dryer", "Wäschetrockner"),
             ("dishwasher", "Dishwasher", "Geschirrspüler"), ("generic", "Appliance (generic)", "Gerät (allgemein)"));
 
+        // Room, circuit and phase of the appliance outlet (optional): the same parameters as on the switchgear room devices, so
+        // the switchgear reports (house installation list, circuit plan) and circuit values (I_B and power of the feeding
+        // device) read this outlet too. "feed" names the protective device that feeds the circuit ("-F3").
+        private static readonly ParamDef Room = new("room", new I18nText("Room", "Raum"), ParamKind.Text);
+        private static readonly ParamDef Feed = new("feed", new I18nText("Circuit (fed from, e.g. -F3)", "Stromkreis (gespeist von, z. B. -F3)"), ParamKind.Text);
+
+        /// <summary>Phase of the appliance: from its circuit (single-phase), L1, L2, L3 or three-phase (a cooker); see <see cref="BsValues"/>.</summary>
+        internal static readonly ParamDef AppliancePhase = Pm.Choice(BsValues.PhaseKey, "Phase", "Phase", "circuit",
+            ("circuit", "From the circuit", "Vom Stromkreis"), ("L1", "L1", "L1"), ("L2", "L2", "L2"), ("L3", "L3", "L3"), (BsValues.ThreePhase, "Three-phase", "Dreiphasig"));
+
         public static IEnumerable<ObjectType> Types()
         {
             yield return new BsBoxType("bs.elec.data", new I18nText("Communication outlet", "Kommunikationsanschluss"), Cat,
@@ -222,9 +232,17 @@ namespace InventaSketch.Modules.BuildingServices
                 "herdanschluss", "herdanschlussdose", "waschmaschine", "geschirrspüler", "trockner", "installation", "tga")
             {
                 Mount = Mounting.Wall, ToScale = false, Uniform = true, DefaultHeight = 300,
-                Params = new[] { ApplianceKind },
+                Params = new[] { ApplianceKind, Room, Feed, AppliancePhase },
                 Ports = BsBoxType.Same((0, -0.5, "cable")),
-                Extra = o => Bs.Choice(o, "bs.appliance.kind", ApplianceKind, new I18nText("Appliance", "Gerät")),
+                Extra = o => Bs.Choice(o, "bs.appliance.kind", ApplianceKind, new I18nText("Appliance", "Gerät"))
+                    .Concat(Bs.Choice(o, "bs.appliance.phase", AppliancePhase))
+                    .Concat(new[]
+                    {
+                        ContextAction.WithInput("bs.appliance.room", new I18nText("Room …", "Raum …"), IconIds.Home, new I18nText("Room", "Raum"), o.Str("room", ""),
+                            (x, t) => x.WithParam("room", t.Trim())) with { Group = "label" },
+                        ContextAction.WithInput("bs.appliance.feed", new I18nText("Circuit …", "Stromkreis …"), IconIds.Name, new I18nText("Circuit (fed from)", "Stromkreis (gespeist von)"),
+                            o.Str("feed", ""), (x, t) => x.WithParam("feed", t.Trim())) with { Group = "label" },
+                    }),
             };
 
             yield return new BsBoxType("bs.elec.bonding", new I18nText("Equipotential bonding bar", "Potentialausgleichsschiene"), Cat,

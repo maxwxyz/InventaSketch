@@ -218,8 +218,20 @@ und Suche zurück (`LibraryItem.Alternative`):
 
 `sw.house.light.wall` hat kein Gegenstück und bleibt. Die Typen bleiben registriert: bestehende Folien mit Raumgeräten
 laden, zeichnen und speisen Hausinstallationsliste und Stromkreisplan wie bisher, und das Modul allein bietet weiterhin
-alle Einträge an. Offen: die Berichte lesen nur `sw.house.*`-Objekte; Raum und Stromkreis (`room`, `feed`) an den
-Elektrosymbolen sind ein Folgeauftrag für die Eigentümer von Elektro- und Verteilermodul.
+alle Einträge an.
+
+**Die maßgeblichen Symbole sind auch Raumgeräte der Berichte und Werte.** `elec.house.socket`, `elec.house.switch`,
+`elec.house.light` und `bs.elec.appliance` tragen dieselben optionalen Parameter `room`, `feed` und (Verbraucher)
+`phase`, `power`, `current`, `voltage` (die Geräteanschlussdose auch `powerFactor`). Hausinstallationsliste,
+Stromkreisplan, Einspeisebaum und Stromkreiswerte lesen sie über die Typ-Id (Module verweisen nicht aufeinander): die
+Namen in den Berichten folgen der Art („Zweifachsteckdose“, „Dimmer“, „Leuchte“, „Herdanschluss“); ein Kabel oder eine
+Ader vom Anschluss des Symbols (`feed`, `n`/`e`/`s`/`w`, `cable`) zu einem unteren Anschluss eines Schutzorgans legt den
+Stromkreis fest wie bei den Raumgeräten, eine Installationsleitung `elec.house.cable` eingeschlossen. Steckdose, Leuchte
+und Geräteanschlussdose sind Verbraucher (der Schalter nimmt keine Leistung auf); ihren Strom rechnet ihr eigenes Modul
+(*P* = *U*·*I*; Geräteanschlussdose mit cos φ). Ohne eingetragene Spannung liegen sie im Stromkreis an 230 V
+Außenleiter–Neutralleiter (Beziehung `sw.load.voltage`, wie die Vorgabe der Raumgeräte). Sie sind einphasig, außer ihre
+eigene `phase` ist dreiphasig (nur die Geräteanschlussdose bietet das an): an einem dreipoligen Gerät bedeutet „vom
+Stromkreis“ für sie L1, nicht dreiphasig.
 
 ## Speicherung
 

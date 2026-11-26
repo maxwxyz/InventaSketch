@@ -241,6 +241,12 @@ constants, battery, inverter and DC link values (Calc 4 with the energy module).
 
 ## Known limits
 
+- The motor symbol item (`machines.motor.symbol`, the `schematic` view of `machines.radial`) and the electrical
+  three-phase motor (`elec.motor.3ph`) draw the same circuit symbol but are kept as two items: the machines symbol is
+  the machine itself (shaft hub that couples to drive trains and pumps, machine values *n*, *T*, *P*, *f*, slip, η, 1–6
+  phases, motor/generator, switches to the cross-section views) and has no electrical pins; the electrical one is a
+  circuit component with U/V/W pins in a wired network and leaves the machine values to this module.
+
 - Drivetrain parts only translate with their shaft (the core coupling moves parts, it does not turn them): after turning
   a shaft, turn the parts on it as well (or turn them together).
 - Illustrative geometry only (see above); no winding schemes, no slot/pole combination checks.

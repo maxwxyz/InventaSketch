@@ -245,6 +245,13 @@ Gleichstrommaschine, Werte für Batterie, Wechselrichter und Zwischenkreis (Calc
 
 ## Bekannte Grenzen
 
+- Der Eintrag Motorsymbol (`machines.motor.symbol`, die Ansicht `schematic` von `machines.radial`) und der Drehstrommotor
+  des Elektromoduls (`elec.motor.3ph`) zeichnen dasselbe Schaltzeichen, bleiben aber zwei Einträge: das Maschinensymbol
+  ist die Maschine selbst (Wellennabe, die an Antriebsstränge und Pumpen koppelt, Maschinenwerte *n*, *T*, *P*, *f*,
+  Schlupf, η, 1–6 Phasen, Motor/Generator, wechselt in die Querschnittsansichten) und hat keine elektrischen Anschlüsse;
+  das elektrische ist ein Schaltungsbauteil mit Anschlüssen U/V/W in einem verdrahteten Netz und überlässt die
+  Maschinenwerte diesem Modul.
+
 - Antriebsstrangteile werden mit ihrer Welle nur verschoben (die Core-Kopplung verschiebt Teile, sie dreht sie nicht):
   Nach dem Drehen einer Welle die Teile darauf ebenfalls drehen (oder gemeinsam drehen).
 - Nur illustrative Geometrie (siehe oben); keine Wicklungsschemata, keine Prüfung von Nut-/Polzahlkombinationen.

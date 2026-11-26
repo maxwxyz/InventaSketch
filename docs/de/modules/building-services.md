@@ -28,7 +28,9 @@ Ein Element, ein Eintrag: die Raumgeräte des Verteilermoduls treten für diese 
 registriert sind (`LibraryItem.Alternative`): Steckdose, Schalter und Leuchte für `elec.house.*`, Herd- und
 Waschmaschinenanschluss (`sw.house.appliance`, `.washer`) für `bs.elec.appliance`, `bs.elec.appliance.washer`, die
 deshalb auch auf „cooker connection“, „Herdanschluss“, „washing machine connection“ und „Waschmaschinenanschluss“
-hören. Die RLT-Komponenten des Verfahrensmoduls (`process.hvac.*`, benannt „… (RLT)“) werden nicht mit den
+hören. Wie die Raumgeräte trägt die Geräteanschlussdose `room` (**Raum …**), `feed` (**Stromkreis …**, das speisende
+Schutzorgan, z. B. „-F3“) und `phase`, sodass Hausinstallationsliste, Stromkreisplan und der Betriebsstrom I_B ihres
+Leitungsschutzschalters sie einschließen. Die RLT-Komponenten des Verfahrensmoduls (`process.hvac.*`, benannt „… (RLT)“) werden nicht mit den
 Luftleitungsteilen hier zusammengelegt: sie sind Abschnitte eines RLT-Schemas, keine Teile einer Luftleitung im
 Gebäudeplan.
 
@@ -127,7 +129,7 @@ Größen: Grundriss / Schnitt / Schema bei 1:100 (B x H, mm auf der Seite).
 | `bs.cool.split` | Split air conditioner / Split-Klimagerät | 18x8 / 18x22 / 18x8 | Boden | waste (Kondensat der Inneneinheit), cable (Außeneinheit) | – |
 | `bs.elec.data` | Communication outlet / Kommunikationsanschluss | 4x4 (Symbol) | Wand | cable | `kind` Daten/Telefon/TV |
 | `bs.elec.detector` | Detector / Melder | 4x4 / 4x1,4 / 4x4 (Symbol) | Decke | cable | `kind` Rauch/Wärme/Bewegung |
-| `bs.elec.appliance` | Appliance outlet / Geräteanschlussdose | 4x4 (Symbol) | Wand | cable | `kind` Herd/Waschmaschine/Trockner/Geschirrspüler/allgemein |
+| `bs.elec.appliance` | Appliance outlet / Geräteanschlussdose | 4x4 (Symbol) | Wand | cable | `kind` Herd/Waschmaschine/Trockner/Geschirrspüler/allgemein; `room`, `feed`, `phase` (vom Stromkreis / L1–L3 / dreiphasig); Verbraucherwerte `power`, `current`, `voltage`, `powerFactor` |
 | `bs.elec.bonding` | Equipotential bonding bar / Potentialausgleichsschiene | 6x2 / 6x2 / 6x3 (Symbol) | Wand | earth + Schiene entlang der Schiene | – |
 
 Jeder Box-Typ hat außerdem `height` und den erweiterten Parameter `scale`. Beschriftungen in Zeichnungen folgen der
@@ -218,6 +220,7 @@ als Vorgaben; Luft: ρ·*c*_p = 0,34 W·h/(m³·K). Kartengrößen stehen vorn. 
 | Lüftungsgerät mit Wärmerückgewinnung | *V̇*_ZUL (`flowSupply`), η_t (`recovery`), θ_ZUL (`tempSupply`), Φ_WRG (`heatRecovered`); Panel *V̇*_ABL (`flowExtract`), θ_AUL (`tempOutdoor`), θ_ABL (`tempExtract`) | θ_ZUL = θ_AUL + η_t·(θ_ABL − θ_AUL); Φ = 0,34 W·h/(m³·K)·*V̇*_ZUL·(θ_ZUL − θ_AUL) [S30] |
 | Rohr | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); Panel DN (`dn`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN, wenn kein Innendurchmesser eingetragen ist (50 % Toleranz, DN ist eine Nennweite) [S30] |
 | Luftleitung | *V̇*, *d* (`width`, Durchmesser oder Breite), *v*, *A* (`crossSection`); Panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`) | *v* = *V̇*/*A*; rund: *A* = π·*d*²/4, *d*_h = *d*; mit einer Höhe *b* ist der Kanal rechteckig: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30] |
+| Geräteanschlussdose (elektrischer Verbraucher) | *P* (`power`), *I* (`current`, je Außenleiter); Panel *U* (`voltage`, Außenleiter–Neutralleiter, Vorgabe 230 V), cos φ (`powerFactor`, Vorgabe 1) | einphasig *I* = *P*/(*U*·cos φ); mit `phase` dreiphasig *I* = *P*/(3·*U*·cos φ) [S7] |
 
 Die Luftwechselzahl *n* ist eine reine Zahl je Stunde („1“ für 1 h⁻¹): Core hat noch keine Einheit h⁻¹. Die Raumwerte
 sitzen am Luftdurchlass, der den Raum versorgt; eine Verknüpfung mit einem Architekturraum (Fläche, Höhe) ist offen.

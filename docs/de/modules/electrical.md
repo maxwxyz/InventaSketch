@@ -108,7 +108,7 @@ Werte werden im Inspektor bearbeitet (`value`, `ref`); Kontextaktionen können n
 | Quellen & Verbraucher | `ground` (Erde/PE/Gehäuse), `source` (DC/AC/Strom), `battery` (1–4 Zellen), `lamp`, `motor` und `generator` (`supply` ohne/DC/AC/3~; 3~ mit U/V/W), `sensor`, `actuator` (allgemeiner Aktorblock, optional `label`), `solenoid` (Hubmagnet: zweipolige Betätigungsspule mit Anker), `meter` (Messgerät, `quantity` V/A/W/Ω), `speaker`, `microphone`, `antenna` |
 | Logik & ICs | `gate` (`gate` and/or/not/nand/nor/xor/xnor/buffer, `inputs` 2–4; IEC-Rechteck und ANSI-Form), `flipflop` (D/JK/RS/T), `opamp` (IEC / Dreieck), `regulator` (Spannungsregler mit drei Anschlüssen `IN`/`OUT`/`GND`), `block.ecu` (Steuergerät/IC/MCU-Block mit `pinsLeft`/`pinsRight` und `label`) |
 | Leitungen, Steckverbinder & Busse | `wire` (Punktobjekt, `route` frei/orthogonal/45), `junction`, `netlabel` (Text = Netzname), `connector` (Stecker/Buchse/Paar, 1–12 Pole), `terminal`, `testpoint`, `bus` (Punktobjekt; Beschriftung CAN/LIN/Ethernet/FlexRay/allgemein) |
-| Hausinstallation | `house.socket` (1–4 Steckdosen, Schutzkontakt), `house.switch` (Aus-/Wechselschalter/Taster), `house.light`, `house.junction`, `house.board`, `house.cable` (Punktobjekt mit Adernstrichen), `sld.busbar`, `sld.feeder` (Leistungsschalter/Sicherung/ohne), `sld.meter` |
+| Hausinstallation | `house.socket` (1–4 Steckdosen, Schutzkontakt), `house.switch` (Aus-/Wechsel-/Kreuzschalter/Taster/Dimmer), `house.light`, `house.junction`, `house.board`, `house.cable` (Punktobjekt mit Adernstrichen), `sld.busbar`, `sld.feeder` (Leistungsschalter/Sicherung/ohne), `sld.meter` |
 | Leistungselektronik | `pe.inverter`, `pe.rectifier` (AC-Seite 1- oder 3-phasig), `pe.dcdc`, `pe.dclink`, `pe.gatedriver`, `pe.module` (Halbbrücke mit Freilaufdioden) |
 | Leiterplatte (illustrativ) | `pcb.board`, `pcb.pad` (rechteckig/rund/langrund, THT), `pcb.via`, `pcb.track` (Punktobjekt, `width`, Führung frei/orthogonal/45), `pcb.copper`, `pcb.footprint` (SOIC-8, QFP-32, SOT-23, 0603, DIP-8; Pads sind Ports), `pcb.hole`, `pcb.silk` |
 
@@ -191,6 +191,15 @@ sie zurück, solange dieses Modul registriert ist (`LibraryItem.Alternative`, Zu
 Ihre Einträge tragen die Namen des Verteilermoduls als Suchwörter („Zweifachsteckdose“, „Lichtschalter“,
 „Deckenauslass“, „light outlet“), die Suche findet sie also auch so. Die Geräteanschlussdose kommt aus der TGA
 (`bs.elec.appliance`).
+
+Wie die Raumgeräte tragen sie die optionalen Parameter `room` (**Raum …**) und `feed` (**Stromkreis …**, das Kennzeichen
+des speisenden Schutzorgans, z. B. „-F3“, klein oben links am Installationsplansymbol); Steckdose und Leuchte zusätzlich
+`phase` (vom Stromkreis / L1 / L2 / L3). Die Berichte (Hausinstallationsliste, Stromkreisplan) und Stromkreiswerte des
+Verteilermoduls lesen sie: die an einer Steckdose oder Leuchte eingetragene Leistung oder der Strom zählt im
+Betriebsstrom I_B des in `feed` genannten (oder angeschlossenen) Leitungsschutzschalters, mit 230 V, wenn keine Spannung
+eingetragen ist. Die Schalterarten entsprechen dem Lichtschalter des Verteilermoduls: Ausschalter, Wechselschalter,
+Kreuzschalter (alle vier Hebel), Taster, Dimmer (Stellkeil; im Schnitt ein Drehknopf); die Auswahl der Art zeigt das
+Installationsplansymbol jeder Art als Piktogramm.
 
 ## Persistenz
 

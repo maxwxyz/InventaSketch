@@ -208,8 +208,19 @@ pins and circuit values), so while their module is registered the room device it
 
 `sw.house.light.wall` has no counterpart and stays. The types stay registered: existing slides with room devices load,
 render and feed the installation list and the circuit plan as before, and the module on its own still offers every
-item. Open: the reports read only `sw.house.*` objects; room and circuit (`room`, `feed`) on the electrical symbols are
-a follow-up for the electrical and switchgear owners.
+item.
+
+**The canonical symbols are room devices of the reports and values, too.** `elec.house.socket`, `elec.house.switch`,
+`elec.house.light` and `bs.elec.appliance` carry the same optional parameters `room`, `feed` and (loads) `phase`,
+`power`, `current`, `voltage` (the appliance outlet also `powerFactor`). The installation list, the circuit plan, the
+feed tree and the circuit values read them by type id (modules do not reference each other): names in the reports
+follow the kind ("Double socket outlet", "Dimmer", "Luminaire", "Cooker connection"); a cable or wire from the symbol's
+pin (`feed`, `n`/`e`/`s`/`w`, `cable`) to a bottom pin of a protective device decides the circuit like for room devices,
+an installation cable `elec.house.cable` included. Socket outlet, luminaire and appliance outlet are loads (the switch
+takes no power); their current comes from their own module (*P* = *U*·*I*; appliance outlet with cos φ). Without a
+voltage entered on them they are on 230 V phase to neutral in a circuit (relation `sw.load.voltage`, as the room devices'
+default). They are single-phase unless their own `phase` is three-phase (only the appliance outlet offers it): on a
+three-pole device "from the circuit" means L1 for them, not three-phase.
 
 ## Persistence
 

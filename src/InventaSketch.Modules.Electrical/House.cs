@@ -17,7 +17,18 @@ namespace InventaSketch.Modules.Electrical
         private static readonly ParamDef Gangs = Int("gangs", T("Number of outlets", "Anzahl Steckdosen"), 1, 1, 4);
         private static readonly ParamDef Protected = Flag("protected", T("Protective contact (earthed)", "Schutzkontakt"), true);
         private static readonly ParamDef SwitchKind = Choice("kind", T("Kind", "Art"), "oneway",
-            ("oneway", "One-way switch", "Ausschalter"), ("twoway", "Two-way switch", "Wechselschalter"), ("push", "Push button", "Taster"));
+            ("oneway", "One-way switch", "Ausschalter"), ("twoway", "Two-way switch", "Wechselschalter"),
+            ("intermediate", "Intermediate switch", "Kreuzschalter"), ("push", "Push button", "Taster"), ("dimmer", "Dimmer", "Dimmer"));
+
+        // Room and circuit (optional): the same parameters as on the switchgear room devices, so the switchgear reports (house
+        // installation list, circuit plan) and circuit values (operating current I_B and power of the feeding device) read
+        // these symbols too. "feed" names the protective device that feeds the circuit ("-F3").
+        private static readonly ParamDef Room = Text("room", T("Room", "Raum"), "");
+        private static readonly ParamDef Feed = Text("feed", T("Circuit (fed from, e.g. -F3)", "Stromkreis (gespeist von, z. B. -F3)"), "");
+
+        /// <summary>Phase of a single-phase load: from its circuit (default), L1, L2 or L3 (read by the switchgear circuit values).</summary>
+        private static readonly ParamDef Phase = Choice("phase", T("Phase", "Phase"), "circuit",
+            ("circuit", "From the circuit", "Vom Stromkreis"), ("L1", "L1", "L1"), ("L2", "L2", "L2"), ("L3", "L3", "L3"));
         private static readonly ParamDef FeederDevice = Choice("device", T("Protective device", "Schutzorgan"), "breaker",
             ("breaker", "Circuit breaker", "Leistungsschalter"), ("fuse", "Fuse", "Sicherung"), ("none", "None", "Ohne"));
         private static readonly ParamDef MeterLabel = Text("label", T("Label", "Beschriftung"), "kWh");
@@ -37,7 +48,7 @@ namespace InventaSketch.Modules.Electrical
         {
             yield return new ElecType("elec.house.socket", T("Socket outlet", "Steckdose"), Cat,
                 new[] { "socket outlet", "outlet", "receptacle", "socket", "steckdose", "schutzkontakt", "schuko", "doppelsteckdose", "installation" },
-                Views.Plan(10, 10, Socket),
+                Views.Plan(10, 10, Circuit(Socket)),
                 Views.Section(8, 8, (p, o) =>
                 {
                     var n = Count(o, "gangs", 1, 1, 4);
@@ -49,29 +60,39 @@ namespace InventaSketch.Modules.Electrical
                 }),
                 Views.Schematic(10, 10, Socket))
             {
-                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { Gangs, Protected, Height(300) }.Concat(ElecValues.LoadParams).ToList(), Labeled = false, Installation = true,
+                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { Gangs, Protected, Height(300), Room, Feed, Phase }.Concat(ElecValues.LoadParams).ToList(), Labeled = false, Installation = true,
                 Variables = ElecValues.LoadVariables, Relations = ElecValues.PowerRelations, Net = _ => new NetSpec { Sink = ("U", "I") },
-                Checks = new[] { ElecValues.RcdAdditional },
+                Checks = new[] { ElecValues.RcdAdditional }, Extra = o => CircuitActions(o, true),
             };
 
             yield return new ElecType("elec.house.switch", T("Light switch", "Lichtschalter"), Cat,
                 new[] { "light switch", "switch", "two-way", "push button", "schalter", "lichtschalter", "ausschalter", "wechselschalter", "taster", "installation" },
-                Views.Plan(10, 10, SwitchPlan),
+                Views.Plan(10, 10, Circuit(SwitchPlan)),
                 Views.Section(8, 8, (p, o) =>
                 {
                     Plate(p, 8, 8);
+                    var kind = o.Str("kind", "oneway");
+                    if (kind == "dimmer")
+                    {
+                        // Rotary knob with its pointer.
+                        p.Circle(0, 0, 2.4, null, "knob");
+                        p.Line(0, -0.6, 0, -2.0, S.Thin, "knob");
+                        return;
+                    }
                     p.Rect(-2, -2.6, 2, 2.6, null, "rocker");
-                    if (o.Str("kind", "oneway") == "twoway") p.Line(-2, 0, 2, 0, S.Thin, "rocker");
+                    if (kind is "twoway" or "intermediate") p.Line(-2, 0, 2, 0, S.Thin, "rocker");
+                    if (kind == "intermediate") p.Line(0, -2.6, 0, 2.6, S.Thin, "rocker");
+                    if (kind == "push") p.Circle(0, 0, 0.8, S.Thin, "rocker");
                 }),
                 Views.Schematic(10, 10, SwitchPlan))
             {
-                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { SwitchKind, Height(1050) }, Labeled = false, Installation = true, Net = _ => NetSpec.Open("feed"),
-                Extra = o => Choice(o, "elec.house.switch", T("Switch type", "Schalterart"), SwitchKind),
+                Pins = Fixed(new Pin("feed", 0, 0.5)), Params = new[] { SwitchKind, Height(1050), Room, Feed }, Labeled = false, Installation = true, Net = _ => NetSpec.Open("feed"),
+                Extra = o => Choice(o, "elec.house.switch", T("Switch type", "Schalterart"), SwitchKind, SwitchPreview).Concat(CircuitActions(o, false)),
             };
 
             yield return new ElecType("elec.house.light", T("Luminaire / light outlet", "Leuchte / Leuchtenauslass"), Cat,
                 new[] { "luminaire", "light", "lamp", "ceiling light", "leuchte", "lampe", "deckenleuchte", "auslass", "installation" },
-                Views.Plan(10, 10, LightPlan),
+                Views.Plan(10, 10, Circuit(LightPlan)),
                 Views.Section(12, 4, (p, o) =>
                 {
                     // Ceiling luminaire seen from the side: canopy, body, light cone hinted.
@@ -80,8 +101,8 @@ namespace InventaSketch.Modules.Electrical
                 }),
                 Views.Schematic(10, 10, LightPlan))
             {
-                Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2400) }.Concat(ElecValues.LoadParams).ToList(), Installation = true,
-                Variables = ElecValues.LoadVariables, Relations = ElecValues.PowerRelations, Net = _ => QuadrantNode(("U", "I")),
+                Pins = Fixed(Quadrants), Labeled = false, Params = new[] { Height(2400), Room, Feed, Phase }.Concat(ElecValues.LoadParams).ToList(), Installation = true,
+                Variables = ElecValues.LoadVariables, Relations = ElecValues.PowerRelations, Net = _ => QuadrantNode(("U", "I")), Extra = o => CircuitActions(o, true),
             };
 
             yield return new ElecType("elec.house.junction", T("Junction box", "Abzweigdose"), Cat,
@@ -148,6 +169,36 @@ namespace InventaSketch.Modules.Electrical
         private static IReadOnlyList<Pin> BusbarPins(SketchObject o)
             => Enumerable.Range(0, 5).Select(i => new Pin("tap" + N(i), -0.5 + i * 0.25, 0)).ToList();
 
+        /// <summary>Room, circuit and (for loads) phase typed or chosen directly (pie menu / bar), as on the switchgear room devices.</summary>
+        private static IEnumerable<ContextAction> CircuitActions(SketchObject o, bool load)
+        {
+            if (load)
+                foreach (var a in Choice(o, "elec.house.phase", T("Phase", "Phase"), Phase)) yield return a;
+            yield return ContextAction.WithInput("elec.house.room", T("Room …", "Raum …"), IconIds.Home, T("Room", "Raum"), o.Str("room", ""),
+                (x, t) => x.WithParam("room", t.Trim())) with { Group = "label" };
+            yield return ContextAction.WithInput("elec.house.feed", T("Circuit …", "Stromkreis …"), IconIds.Name, T("Circuit (fed from)", "Stromkreis (gespeist von)"),
+                o.Str("feed", ""), (x, t) => x.WithParam("feed", t.Trim())) with { Group = "label" };
+        }
+
+        /// <summary>
+        /// The plan symbol with its circuit ("-F3") small at the top left, outside the symbol (like a designator label), as
+        /// installation plans mark the circuit of an outlet. Nothing is added while no circuit is set.
+        /// </summary>
+        private static Action<Pen, SketchObject> Circuit(Action<Pen, SketchObject> draw) => (p, o) =>
+        {
+            draw(p, o);
+            var feed = o.Str("feed", "").Trim();
+            if (feed.Length > 0) p.Text(-5.2, -4.2, feed, 2.0, TextAnchor.End, false, "circuit");
+        };
+
+        /// <summary>Option pictogram of a switch kind: its plan symbol, about 6 mm.</summary>
+        private static IReadOnlyList<Primitive> SwitchPreview(string kind)
+        {
+            var p = new Pen(new Size2(6, 6), new Size2(10, 10));
+            SwitchPlan(p, kind);
+            return p.Items;
+        }
+
         private static void Socket(Pen p, SketchObject o)
         {
             // Cup open to the room side (top); the stem leads to the wall/feed (bottom).
@@ -178,15 +229,26 @@ namespace InventaSketch.Modules.Electrical
             p.Rect(-10, 0, 10, 5, S.Hatch(1.2), "fill");
         }
 
-        private static void SwitchPlan(Pen p, SketchObject o)
+        private static void SwitchPlan(Pen p, SketchObject o) => SwitchPlan(p, o.Str("kind", "oneway"));
+
+        /// <summary>
+        /// Switch in the plan: a small circle with a lever per switched direction; two-way adds the opposite lever, intermediate
+        /// all four (crossing), push button a dot inside, dimmer the one-way lever with an adjustment wedge beside it.
+        /// </summary>
+        private static void SwitchPlan(Pen p, string kind)
         {
-            var kind = o.Str("kind", "oneway");
             p.Round(0, 0, 1.4, null, "body");
             p.Line(0, 1.4, 0, 5, null, "stem");
             if (kind == "push") { p.Round(0, 0, 0.6, S.Black, "push"); return; }
             var c = 1.4 * Math.Sqrt(0.5);
             p.Poly(S.Sym, false, "lever", c, -c, 3.4, -3.4, 4.4, -2.4);
-            if (kind == "twoway") p.Poly(S.Sym, false, "lever", -c, c, -3.4, 3.4, -4.4, 2.4);
+            if (kind is "twoway" or "intermediate") p.Poly(S.Sym, false, "lever", -c, c, -3.4, 3.4, -4.4, 2.4);
+            if (kind == "intermediate")
+            {
+                p.Poly(S.Sym, false, "lever", -c, -c, -3.4, -3.4, -2.4, -4.4);
+                p.Poly(S.Sym, false, "lever", c, c, 3.4, 3.4, 2.4, 4.4);
+            }
+            if (kind == "dimmer") p.Poly(S.Thin, true, "dimmer", -4.6, -1.2, -1.2, -1.2, -1.2, -3.6);
         }
 
         private static void Feeder(Pen p, SketchObject o)
