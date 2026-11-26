@@ -88,6 +88,7 @@ namespace InventaSketch.Modules.Geometry.Tests
             "math.arc.sector", "math.shape.pythagoras",
             "math.solid.cube", "math.solid.cylinder", "math.solid.cone", "math.solid.sphere", "math.solid.pyramid",
             "math.venn.diagram", "math.tree.probability",
+            "math.free.triangle", "math.free.polygon", "math.free.bisector", "math.free.anglebisector", "math.free.tangents", "math.conic.section",
         };
 
         [Fact]
@@ -104,7 +105,7 @@ namespace InventaSketch.Modules.Geometry.Tests
             Assert.Equal("Math & geometry", m.Name.En);
             Assert.Equal("Mathematik & Geometrie", m.Name.De);
             Assert.False(string.IsNullOrWhiteSpace(m.Version));
-            Assert.InRange(r.Library.Count, 20, 60);
+            Assert.InRange(r.Library.Count, 20, 80);
         }
 
         [Fact]
@@ -231,6 +232,17 @@ namespace InventaSketch.Modules.Geometry.Tests
         [InlineData("venn", "math.venn.diagram.three")]
         [InlineData("baumdiagramm", "math.tree.probability")]
         [InlineData("probability tree", "math.tree.probability.dice")]
+        [InlineData("kosinussatz", "math.shape.triangle.values")]
+        [InlineData("law of sines", "math.shape.triangle.values")]
+        [InlineData("dreieck durch drei punkte", "math.free.triangle")]
+        [InlineData("umkreis", "math.free.triangle.circles")]
+        [InlineData("schwerpunkt", "math.free.polygon")]
+        [InlineData("mittelsenkrechte", "math.free.bisector")]
+        [InlineData("winkelhalbierende", "math.free.anglebisector")]
+        [InlineData("tangenten", "math.free.tangents")]
+        [InlineData("ellipse", "math.conic.section")]
+        [InlineData("hyperbel", "math.conic.section.hyperbola")]
+        [InlineData("leitlinie", "math.conic.section.parabola")]
         public void SearchFindsElementsInBothLanguages(string query, string itemId)
             => Assert.Contains(Fx.Reg().Search(query), i => i.Id == itemId);
 

@@ -8,14 +8,16 @@ namespace InventaSketch.Modules.Architecture
     /// <summary>
     /// Floor plans and building module: walls with mitred joints, rooms with area, doors, windows, stairs, columns,
     /// beams, lifts, ramps, railings, shafts, slab openings, roof plans, furniture, sanitary, heating/plumbing symbols and site
-    /// marks. Rooms carry the values floor area A (outline at the plan scale), height h and volume V = A·h. Schematic house planning (not BIM):
+    /// marks. Rooms carry the values floor area A (outline at the plan scale), height h and volume V = A·h; walls their length, area,
+    /// net area without doors and windows and the transmission heat loss U·A·Δθ; stairs riser, tread and the step rule; ramps the
+    /// rise; schedules list the rooms (with the floor area sums of the page) or the doors and windows. Schematic house planning (not BIM):
     /// every object is insertable without parameters; real dimensions are optional and converted with the plan
     /// scale (default 1:100). Electrical symbols live in the electrical module, dimensions in the annotation module.
     /// </summary>
     public sealed class ArchitectureModule : IModule
     {
         private static readonly Lazy<IReadOnlyList<ObjectType>> AllTypes = new(() =>
-            new ObjectType[] { new WallType(), new RoomType(), new BeamType() }
+            new ObjectType[] { new WallType(), new RoomType(), new BeamType(), new ScheduleType() }
                 .Concat(Openings.Types()).Concat(Stairs.Types()).Concat(Building.Types()).Concat(Furniture.Types()).Concat(Symbols.Types()).ToList());
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
@@ -71,6 +73,10 @@ namespace InventaSketch.Modules.Architecture
             // Rooms
             foreach (var (value, en, de) in RoomType.Functions.Where(f => f.Value != "room"))
                 Add("room." + value, "arch.room", "Room: " + en, "Raum: " + de, P(("function", value)), kw: new[] { en.ToLowerInvariant(), de.ToLowerInvariant() });
+
+            // Schedules of the page (storey): the default item lists the rooms, this one the doors and windows.
+            Add("schedule.openings", ScheduleType.TypeId, "Door and window schedule", "Tür- und Fensterliste", P(("list", "openings")),
+                kw: new[] { "door schedule", "window schedule", "türliste", "fensterliste", "öffnungen", "openings" });
 
             // Columns
             Add("column.round", "arch.column", "Round column", "Runde Stütze", P(("shape", "round")), kw: new[] { "round", "rund" });

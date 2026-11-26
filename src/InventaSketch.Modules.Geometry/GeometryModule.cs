@@ -10,7 +10,8 @@ namespace InventaSketch.Modules.Geometry
     /// function graphs, points and vectors (components, addition), angles with measured values, triangles with their
     /// classic constructions, circles (radius, tangent, Thales, unit circle, sector and segment), regular polygons, the theorem of
     /// Pythagoras, compass constructions, solids in oblique view (cube, cylinder, cone, sphere, pyramid), Venn diagrams and
-    /// probability trees.
+    /// probability trees; triangle values (law of sines and cosines), live constructions on points (triangle with its circles,
+    /// perpendicular and angle bisector, tangents from a point, polygon area and centroid) and conic sections.
     /// Every element is drawn with native primitives and insertable without parameters (see docs/en/modules/geometry.md).
     /// The 2D coordinate system and the function graphs are offered by the charts module (one axis system for all charts):
     /// their items here step back while the charts module is registered (<see cref="LibraryItem.Alternative"/>); the types stay
@@ -38,6 +39,8 @@ namespace InventaSketch.Modules.Geometry
             new SolidType("math.solid.pyramid", new I18nText("Square pyramid", "Quadratische Pyramide"), SolidType.Shape.Pyramid, new Size2(40, 40),
                 "pyramid", "pyramide", "apex", "spitze"),
             new VennType(), new ProbabilityTreeType(),
+            new FreeTriangleType(), new FreePolygonType(), new FreeBisectorType(), new FreeAngleBisectorType(), new FreeTangentsType(),
+            new ConicType(),
         });
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
@@ -143,11 +146,28 @@ namespace InventaSketch.Modules.Geometry
             Add("math.arc.sector.segment", "math.arc.sector", "Circle segment", "Kreissegment (Kreisabschnitt)", P(("kind", "segment"), ("angle", 110.0), ("start", 35.0)),
                 kw: new[] { "segment", "chord", "kreissegment", "kreisabschnitt", "sehne" });
             Default("math.shape.pythagoras");
+            Add("math.shape.triangle.values", "math.shape.triangle", "Triangle calculation (law of sines and cosines)", "Dreiecksberechnung (Sinus- und Kosinussatz)",
+                P(("kind", "values"), ("a", "5 cm"), ("b", "4 cm"), ("gamma", "60°"), ("angleMarks", true)), new Size2(54, 44),
+                kw: new[] { "law of cosines", "law of sines", "kosinussatz", "sinussatz", "sws", "sas", "berechnen", "calculate", "maßstäblich", "to scale" });
+            Default("math.free.triangle");
+            Add("math.free.triangle.circles", "math.free.triangle", "Triangle through three points (circumcircle)", "Dreieck durch drei Punkte (Umkreis)",
+                P(("construction", "circumcircle")), kw: new[] { "circumscribed circle", "umkreis", "circumcircle" });
+            Add("math.free.triangle.incircle", "math.free.triangle", "Triangle through three points (incircle)", "Dreieck durch drei Punkte (Inkreis)",
+                P(("construction", "incircle")), kw: new[] { "inscribed circle", "inkreis", "incircle" });
+            Default("math.free.polygon");
+            Default("math.conic.section");
+            Add("math.conic.section.hyperbola", "math.conic.section", "Hyperbola (foci, asymptotes)", "Hyperbel (Brennpunkte, Asymptoten)", P(("kind", "hyperbola")),
+                kw: new[] { "hyperbola", "hyperbel", "asymptote", "asymptoten" });
+            Add("math.conic.section.parabola", "math.conic.section", "Parabola (focus, directrix)", "Parabel (Brennpunkt, Leitlinie)", P(("kind", "parabola")), new Size2(50, 44),
+                kw: new[] { "parabola", "parabel", "focus", "brennpunkt", "directrix", "leitlinie" });
 
             // Constructions.
             Default("math.construct.perpendicular");
             Default("math.construct.anglebisector");
             Default("math.lines.parallel");
+            Default("math.free.bisector");
+            Default("math.free.anglebisector");
+            Default("math.free.tangents");
 
             // Solids (oblique view).
             Default("math.solid.cube");

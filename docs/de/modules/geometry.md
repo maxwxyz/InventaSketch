@@ -92,7 +92,7 @@ Größen sind Entwurfsgrößen (B x H, mm). „Punkte“ = Punktgeometrie (Seite
 | `math.vector.arrow` | Vector / Vektor | Punkte (2) | `label` („v“), `notation` Pfeil darüber / fett / ohne, `components` (gestrichelte x- und y-Komponente mit v<sub>x</sub>, v<sub>y</sub>), `tailLabel`, `tipLabel`, `points` (Punkte an beiden Enden), `textSize` |
 | `math.vector.sum` | Vector addition / Vektoraddition | Punkte (3) | `construction` Parallelogramm (Punkte O, Spitze von a, Spitze von b) / Aneinanderhängen (O, Spitze von a, Spitze des an a gehängten b), `labelA` („a“), `labelB` („b“), `notation`, `result` (Resultierende a + b, an), `textSize` |
 | `math.angle.mark` | Angle / Winkel | Punkte (3) | Punkt auf dem ersten Schenkel, Scheitel, Punkt auf dem zweiten Schenkel; `label` („α“), `mark` automatisch (Quadrat bei 90°) / Bogen / Doppelbogen / Rechter-Winkel-Quadrat, `value` (gemessener Wert, z. B. „α = 45°“), `rays` (an), `reflex` (andere Seite), `radius` (7 mm), `textSize` |
-| `math.shape.triangle` | Triangle / Dreieck | 50x40 | `kind` allgemein / rechtwinklig (γ = 90° bei C) / gleichschenklig / gleichseitig, `construction` keine / Inkreis (Winkelhalbierende) / Umkreis (Mittelsenkrechte) / Seitenhalbierende und Schwerpunkt / Höhen und Höhenschnittpunkt, `vertexLabels`, `sideLabels`, `angleMarks` (α, β, γ) |
+| `math.shape.triangle` | Triangle / Dreieck | 50x40 | `kind` allgemein / rechtwinklig (γ = 90° bei C) / gleichschenklig / gleichseitig / maßstäblich nach den Werten, Werte `a`, `b`, `c`, `alpha`, `beta`, `gamma`, `area` (siehe [Runde 7](#dreieckswerte-lebendige-konstruktionen-und-kegelschnitte-26112026-runde-7)), `showValues`, `construction` keine / Inkreis (Winkelhalbierende) / Umkreis (Mittelsenkrechte) / Seitenhalbierende und Schwerpunkt / Höhen und Höhenschnittpunkt, `vertexLabels`, `sideLabels`, `angleMarks` (α, β, γ) |
 | `math.shape.polygon` | Regular polygon / Regelmäßiges Vieleck | 40x40 | `sides` (6, 3–12; waagerechte Unterkante), `circumcircle`, `incircle`, `centre`, `labels` (A, B, C …) |
 | `math.circle.basic` | Circle with radius / Kreis mit Radius | 40x40 | `show` Radius / Durchmesser / beides / nur Kreis, `angle` (Richtung des Radius, 45°; der Durchmesser bei „beides“ liegt waagerecht), `centre`, `labels` |
 | `math.circle.tangent` | Tangent to a circle / Tangente an einen Kreis | 56x44 | `angle` (Lage des Berührpunkts, 60°), `radius` (Radius und rechter Winkel), `labels` |
@@ -165,9 +165,55 @@ Gegenereignis); Brüche bleiben exakt („1/3“, Produkt „1/12“), Prozente 
 „?“. Text, der keine Wahrscheinlichkeit ist, wird ignoriert. Kontextaktionen: mehr/weniger Stufen, zwei/drei Äste,
 „Wahrscheinlichkeiten Stufe n…“, „Ergebnisse Stufe n…“, Pfadwahrscheinlichkeiten.
 
+## Dreieckswerte, lebendige Konstruktionen und Kegelschnitte (26.11.2026, Runde 7)
+
+| Id | Name (EN / DE) | Größe | Parameter |
+|---|---|---|---|
+| `math.free.triangle` | Triangle through three points / Dreieck durch drei Punkte | Punkte (3) | `construction` (wie beim Dreieck), `vertexLabels`, `sideLabels`, `angleMarks`, `values` (gemessene Winkel „α = 63,4°“), `textSize` |
+| `math.free.polygon` | Polygon with area and centroid / Vieleck mit Fläche und Schwerpunkt | Punkte (3 oder mehr, Ecken einfügbar) | `area` (Beschriftung „A = 12 cm²“), `centroid` (S / G), `vertexLabels` (A, B, C …), `scale` (1 : n, Vorgabe 1:1), `textSize`, `showValues` |
+| `math.free.bisector` | Perpendicular bisector of two points / Mittelsenkrechte zu zwei Punkten | Punkte (2) | `segment` (AB), `arcs` (Zirkelbögen), `labels` (A, B, M, m), `textSize` |
+| `math.free.anglebisector` | Angle bisector of three points / Winkelhalbierende zu drei Punkten | Punkte (3: auf dem ersten Schenkel, Scheitel, auf dem zweiten Schenkel) | `arcs`, `values` (gemessene halbe Winkel), `labels` (S, w), `textSize` |
+| `math.free.tangents` | Tangents from a point to a circle / Tangenten von einem Punkt an einen Kreis | Punkte (3: Mittelpunkt M, ein Punkt auf dem Kreis, P) | `thales` (Thaleskreis über MP), `radii` (Radien und rechte Winkel), `labels` (M/O, P, B₁, B₂ / T₁, T₂), `textSize` |
+| `math.conic.section` | Conic section (foci) / Kegelschnitt (Brennpunkte) | 60x40 | `kind` Ellipse / Hyperbel / Parabel, `point` (P mit seinen Abständen), `position` von P (50°), `formula` (definierende Eigenschaft), `axes` (und Asymptoten), `labels` |
+
+**Dreieckswerte** (`math.shape.triangle`, Werte nach Calc, `IValueType`): Seiten `a`, `b`, `c` (cm), Winkel `alpha`,
+`beta`, `gamma` (°), Flächeninhalt `A` (cm², Parameter `area`) und Umfang `u`, alles optionale Textparameter wie
+eingegeben („5 cm“, „60°“). Relationen: Winkelsumme, dreimal der Kosinussatz (`math.triangle.cosine.a/b/c`: eine Seite
+aus zwei Seiten und dem eingeschlossenen Winkel, ein Winkel aus drei Seiten), dreimal der Sinussatz
+(`math.triangle.sine.*`: eine Seite aus einer Seite und zwei Winkeln, ein Winkel aus zwei Seiten und einem
+gegenüberliegenden Winkel, im mehrdeutigen Fall die spitze Lösung), der Flächeninhalt A = ½·a·b·sin γ und der Umfang.
+Drei unabhängige Werte mit mindestens einer Seite (SSS, SWS, SsW, WSW, SWW) ergeben den Rest; widersprüchliche Werte
+werden als Konflikt gemeldet. Eingegebene Seiten erscheinen in der Seitenbeschriftung („a = 5 cm“), eingegebene Winkel
+werden mit ihrem Wert markiert („γ = 60°“, auch ohne Winkelmarkierung), ein eingegebener Flächeninhalt steht im Dreieck
+(ohne Konstruktion). Die neue Art **„Maßstäblich nach den Werten“** (`values`) zeichnet die Form, die die eingegebenen
+Werte ergeben (zwei oder drei Winkel allein ergeben die Form; Werte, die kein Dreieck ergeben, fallen auf die
+allgemeine Form zurück), gleichmäßig in die Box eingepasst, sodass freies Skalieren sie behält. Element
+`math.shape.triangle.values`: a = 5 cm, b = 4 cm, γ = 60° (SWS).
+
+**Lebendige Konstruktionen auf Punkten:** Die freien Figuren sind Punktobjekte wie Vektor und Winkel. Ihre Punkte docken
+an Anschlüssen, Gitterpunkten und Flächen anderer Figuren an und folgen ihnen (`Attachments.Refresh`): Eine
+Mittelsenkrechte, deren Enden an den Ecken A und B eines Dreiecks angedockt sind, bleibt die Mittelsenkrechte von AB,
+wenn das Dreieck verschoben, gedreht oder gestreckt wird (getestet). Das Dreieck durch drei Punkte zeichnet dieselben
+Konstruktionen wie das Box-Dreieck (Inkreis mit Winkelhalbierenden, Umkreis mit Mittelsenkrechten, Seitenhalbierende
+und Schwerpunkt, Höhen und Höhenschnittpunkt; gemeinsamer Code `Tri.Construct`) aus seinen Ecken, sodass das Ziehen
+einer Ecke sie mitführt; Elemente `math.free.triangle.circles` (Umkreis) und `math.free.triangle.incircle`. Die
+Tangenten von P werden mit dem Thaleskreis über MP konstruiert: B₁, B₂ (englisch T₁, T₂) sind seine Schnittpunkte mit dem
+Kreis; liegt P im Kreis, werden nur Kreis und P gezeichnet. Das Vieleck misst seinen Flächeninhalt mit der Gaußschen
+Trapezformel (ein sich selbst schneidender Umriss zählt seine Schleifen mit Vorzeichen) und seinen
+Flächenschwerpunkt; die Werte `A` und `u` sind schreibgeschützt (aus der Zeichnung im Maßstab `scale`).
+
+**Kegelschnitte:** Die Kurve füllt die Box, freies (auch ungleichmäßiges) Skalieren ändert also die Halbachsen, die
+Brennpunkte folgen. Ellipse: a und b sind die halben Boxseiten, c² = a² − b² (Brennpunkte auf der längeren Achse),
+native Ellipse. Hyperbel: a = 0,4 der halben Breite, b so gewählt, dass beide Äste in der Box bleiben, c² = a² + b²,
+Asymptoten gestrichelt. Parabel: Leitlinie unten, Scheitel S (englisch V) und Brennpunkt F im Abstand p, die Kurve
+erreicht die oberen Ecken. Der Punkt P (`position`: der Parameterwinkel, bei Hyperbel und Parabel legt sein Sinus P
+entlang des Astes fest) zeigt die Abstände der definierenden Eigenschaft: |PF₁| + |PF₂| = 2a, ||PF₁| − |PF₂|| = 2a,
+|PF| = |PL| (L Lotfußpunkt auf der Leitlinie). Anschlüsse: `centre`, `F1`, `F2` (`F`, `vertex` bei der Parabel), `P`;
+Scheitel `V1`, `V2` (Quadrantenpunkte); Schienen entlang der Achse und der Leitlinie.
+
 ## Bibliothek
 
-45 Einträge: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (erster Quadrant 0…6 x 0…5), `math.axes.number`,
+56 Einträge: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (erster Quadrant 0…6 x 0…5), `math.axes.number`,
 `math.axes.spatial`, `math.axes.spatial.isometric`, `math.axes.polar`; Graphen `math.graph.function` (Parabel
 y = x²), `math.graph.function.linear` (y = 0,5x + 1), `math.graph.function.sine` (−2π…2π, π-Teilung, 90x45),
 `math.graph.function.exponential`; `math.point.labelled`, `math.vector.arrow`, `math.vector.arrow.position` (Ortsvektor
@@ -180,7 +226,10 @@ von O nach P mit Punkten), `math.vector.arrow.components`, `math.vector.sum` (Pa
 Konstruktionen `math.construct.perpendicular`, `math.construct.anglebisector`, `math.lines.parallel`; Körper
 `math.solid.cube`, `math.solid.cuboid` (56x36), `math.solid.cylinder`, `math.solid.cone`, `math.solid.sphere`,
 `math.solid.pyramid`; Mengen und Wahrscheinlichkeit `math.venn.diagram`, `math.venn.diagram.three`,
-`math.tree.probability`, `math.tree.probability.dice` (einstufig, Ergebnisse 1, 2, 3 mit 1/6, 1/3, 1/2).
+`math.tree.probability`, `math.tree.probability.dice` (einstufig, Ergebnisse 1, 2, 3 mit 1/6, 1/3, 1/2); Runde 7:
+`math.shape.triangle.values`, `math.free.triangle`, `math.free.triangle.circles`, `math.free.triangle.incircle`,
+`math.free.polygon`, `math.free.bisector`, `math.free.anglebisector`, `math.free.tangents`, `math.conic.section`
+(Ellipse), `math.conic.section.hyperbola`, `math.conic.section.parabola` (50x44).
 
 Kategorien: `math.axes` Coordinate systems / Koordinatensysteme, `math.graphs` Function graphs / Funktionsgraphen,
 `math.vectors` Points & vectors / Punkte & Vektoren, `math.angles` Angles / Winkel, `math.figures` Figures & circles /
@@ -190,7 +239,8 @@ Figuren & Kreise, `math.constructions` Constructions / Konstruktionen, `math.sol
 Suchbegriffe decken beide Sprachen ab, z. B. Koordinatensystem, Zahlenstrahl, Schrägbild, Parabel, Sinus, Ortsvektor,
 Kräfteparallelogramm, rechter Winkel, Dreieck, Inkreis, Umkreis, Höhe, Schwerpunkt, Thaleskreis, Einheitskreis,
 Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwinkel, Würfel, Quader, Zylinder,
-Kegel, Kugel, Pyramide, Kreisausschnitt, Kreisabschnitt, Satz des Pythagoras, Mengendiagramm, Baumdiagramm.
+Kegel, Kugel, Pyramide, Kreisausschnitt, Kreisabschnitt, Satz des Pythagoras, Mengendiagramm, Baumdiagramm,
+Sinussatz, Kosinussatz, Dreiecksberechnung, Tangenten, Kegelschnitt, Ellipse, Hyperbel, Brennpunkt, Leitlinie.
 
 ## Anker
 
@@ -229,6 +279,10 @@ Eckpunkte beschriften. Kreis: gezeigte Strecke ▾ (Radius/Durchmesser), Mittelp
 Berührpunkt verschieben (+30°), Radius und rechter Winkel. Thales: Lage von C…, C auf dem Kreis verschieben,
 Vollkreis. Einheitskreis: Winkel…, um 15° drehen, Tangensstrecke, Werte anzeigen. Konstruktionen: Zirkelbögen,
 Beschriftung, Winkel…; Parallelen: Winkelpaar ▾, Winkel…, Werte anzeigen.
+Runde 7: Dreieck durch drei Punkte: Konstruktion ▾, Ecken-/Seitenbeschriftung, Winkelmarkierungen, gemessene
+Winkel; Vieleck: Flächeninhalt, Schwerpunkt, Eckenbeschriftung; Mittelsenkrechte, Winkelhalbierende und Tangenten:
+Zirkelbögen / gemessene halbe Winkel / Thaleskreis / Radien, Beschriftung; Kegelschnitt: Kurve ▾, Lage von P…, Punkt P,
+definierende Eigenschaft, Achsen, Beschriftung. Die Dreiecksart ▾ bietet „Maßstäblich nach den Werten“.
 
 ## Griffe (Ziehgriffe)
 
@@ -269,7 +323,7 @@ keine Parameter, daher ohne Griff.
 
 ## Tests und Galerie
 
-`tests/InventaSketch.Modules.Geometry.Tests` (180 Tests): Registrierung, Id-Konventionen, zweisprachige Namen,
+`tests/InventaSketch.Modules.Geometry.Tests` (207 Tests): Registrierung, Id-Konventionen, zweisprachige Namen,
 Parameter, Optionen und Aktionen; Einfügen ohne Parameter; Bibliothekseinträge verweisen auf gültige Parameter; jeder
 Bibliothekseintrag in seiner Box in beiden Sprachen, gestreckt, gestaucht und mit jeder Parametervariante; jeder
 Parameter ändert die Zeichnung; freies Skalieren ändert `Size` und behält Parameter; Anker in der Box mit eindeutigen
@@ -289,6 +343,11 @@ und Pyramide, der Tiefenfaktor unter 45° beider Projektionen, Mantellinien des 
 den Grundkreis, runde Kugel, Umriss von Sektor/Segment, Winkelbeschriftung und Griff, Pythagoras-Flächen (a² + b² = c²)
 und Einheitsquadrate, Venn-Anordnung und Eingabe der Mengennamen, Gegenwahrscheinlichkeiten, Pfadprodukte, Brüche,
 Prozente und Anordnung im Baumdiagramm, Lesen von Wahrscheinlichkeiten und der JSON-Rundlauf.
+`ValueAndLiveFigureTests` (Runde 7): Dreieckswerte aus SSS, SWS, WSW und SsW (Sinus- und Kosinussatz, Fläche, Umfang),
+Konflikte, das Dreieck maßstäblich nach den Werten (Form, Beschriftung, nur Winkel, ungültige Werte), das Dreieck durch
+drei Punkte mit Inkreis und gemessenen Winkeln, eine an einem Dreieck angedockte Mittelsenkrechte folgt ihm, die
+Winkelhalbierende, Tangenten mit rechten Winkeln (und keine von innen), Fläche, Umfang, Maßstab und Schwerpunkt des
+Vielecks, Brennpunkte und definierende Eigenschaften von Ellipse, Hyperbel und Parabel.
 
 Der Galerietest schreibt `gallery/*.html` in den Testausgabeordner (eine Seite je Kategorie: jeder Bibliothekseintrag
 auf Englisch und Deutsch, gestreckt und gestaucht, dazu die Auswahlwerte der wichtigsten Parameter) und

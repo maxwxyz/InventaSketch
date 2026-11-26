@@ -97,6 +97,8 @@ namespace InventaSketch.Modules.Geometry.Tests
                 var item = r.Item(t.Id)!;
                 foreach (var p in t.Parameters)
                 {
+                    // The values label is drawn by the registry (RenderLocal), not by the type.
+                    if (p.Key == ValueLabels.ShowParam) continue;
                     var o = r.Create(item, Vec2.Zero);
                     // Some parameters only show in a state that is off by default.
                     if (t.Id == "math.vector.arrow" && p.Key is "notation" or "textSize") o = o.WithParam("components", true);

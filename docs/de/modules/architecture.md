@@ -2,7 +2,9 @@
 
 Schematische Hausplanung für Folien und schnelle technische Skizzen: Wände mit sauberen Anschlüssen, Räume mit
 Fläche, Türen, Fenster, Treppen, Rampen, Aufzüge, Geländer, Schächte, Deckenöffnungen, Dachaufsichten, Stützen,
-Unterzüge, Möbel, Sanitär, Heizungs-/Leitungssymbole und Lageplanzeichen. Es ist **kein BIM**:
+Unterzüge, Möbel, Sanitär, Heizungs-/Leitungssymbole, Lageplanzeichen und Listen (Raumflächen, Türen und Fenster).
+Räume, Wände, Treppen, Rampen und Listen tragen Werte (siehe [Werte der Bauteile](#werte-der-bauteile-26112026-runde-7)).
+Es ist **kein BIM**:
 Hinter dem Plan steht kein Gebäudemodell, nur gut gezeichnete, editierbare Symbole.
 
 Elektro-Grundrisssymbole liegen im Elektro-Modul, Bemaßungen im Beschriftungsmodul; dieses Modul dupliziert sie
@@ -25,6 +27,7 @@ Türen, Fenster), in einem Rückgängig-Schritt.
 | Größe | Umrechnung |
 |---|---|
 | Wanddicke, Unterzugbreite | `thickness / scale` mm auf dem Blatt (240 mm bei 1:100 = 2,4 mm) |
+| Wandlänge, Auftritt, Rampenlänge | mm auf dem Blatt x `scale` (Werte `l`, `g`, `l`) |
 | Raumfläche | Polygonfläche in mm² auf dem Blatt x `scale²`, Anzeige in m² (auch der Raumwert `A`) |
 | Pfostenabstand des Geländers | `spacing / scale` mm auf dem Blatt |
 | Tür-/Fensterbreite | Boxbreite x `scale` (in den Breiten-Aktionen und der Eingabe „Breite…“ angezeigt) |
@@ -35,15 +38,15 @@ Freies Skalieren von Box-Objekten ändert nur `Size`, nie Parameter.
 
 | Id | Name (EN / DE) | Geometrie | Ansichten | Hinweise |
 |---|---|---|---|---|
-| `arch.wall` | Wall / Wand | Punkte (Achse) | Grundriss, Ansicht | `thickness` (240), `kind` Außen-/Innen-/Trennwand, `closed`, `height`, `scale` |
+| `arch.wall` | Wall / Wand | Punkte (Achse) | Grundriss, Ansicht | `thickness` (240), `kind` Außen-/Innen-/Trennwand, `closed`, `height`, `scale`; Werte l, h, A, A_Öff, A_netto, U, Δθ, Φ_T (`uValue`, `deltaT`, `heatLoss`) |
 | `arch.room` | Room / Raum | Punkte (Polygon) | Grundriss | Name (Text oder `function`), Fläche in m², getönter Boden; Werte A, h, V (siehe [Raumwerte](#raumwerte)) |
 | `arch.beam` | Beam / Unterzug | Punkte | Grundriss | gestrichelter Umriss + Achse, `width` |
 | `arch.column` | Column / Stütze | Box | Grundriss | rechteckig/rund; Stahlbeton (schwarz), Mauerwerk (schraffiert), Stahl (I-Profil) |
 | `arch.door.single` / `.double` / `.sliding` / `.opening` | Türen | Box | Grundriss, Ansicht | `hingeRight`, `swingOut`, Aufschlagbogen |
 | `arch.window.single` / `.double` / `.french` | Fenster | Box | Grundriss, Ansicht | `hingeRight`, `flip` (innen/außen), Fensterbank |
-| `arch.stair.straight` / `.l` / `.u` / `.spiral` | Treppen | Box | Grundriss | `steps`, `down` (Lauflinie umgekehrt) |
+| `arch.stair.straight` / `.l` / `.u` / `.spiral` | Treppen | Box | Grundriss | `steps` (Steigungen), `down` (Lauflinie umgekehrt), `storeyHeight` (m), `riser`, `scale`; Werte H, s, a, 2s + a, n, α |
 | `arch.lift` | Lift (shaft with car) / Aufzug (Schacht mit Kabine) | Box | Grundriss | Schachtumriss, Kabine mit Diagonalkreuz, `counterweight` (Gegengewicht), `door` (zweiteilige Schachttür); 2,0 x 2,2 m |
-| `arch.ramp` | Ramp / Rampe | Box | Grundriss | Umriss, Pfeil bergauf (Startkreis wie bei Treppen), `slope` in % (6, angezeigt als „6 %“, Dezimalkomma auf Deutsch), `down`, `showSlope`; verläuft entlang der längeren Boxseite |
+| `arch.ramp` | Ramp / Rampe | Box | Grundriss | Umriss, Pfeil bergauf (Startkreis wie bei Treppen), `slope` in % (6, angezeigt als „6 %“, Dezimalkomma auf Deutsch), `down`, `showSlope`, `scale`; verläuft entlang der längeren Boxseite; Werte l, s, Δh, α |
 | `arch.railing` | Railing / Geländer | Punkte | Grundriss | mittlere Linie mit Pfosten an den Eckpunkten und alle `spacing` (1000 mm im Planmaßstab), `posts`, `scale`; Schienen je Segment |
 | `arch.shaft` | Shaft (building) / Schacht (Gebäude) | Box | Grundriss | Rechteck mit durchgezogenem Diagonalkreuz (`cross`) |
 | `arch.void` | Slab opening (void) / Deckenöffnung (Luftraum) | Box | Grundriss | dünner Umriss mit gestrichelten Diagonalen (verdeckte Linie) |
@@ -58,6 +61,7 @@ Freies Skalieren von Box-Objekten ändert nur `Size`, nie Parameter.
 | `arch.site.boundary` | Grundstücksgrenze | Punkte | Grundriss | Strich-Punkt-Punkt-Polygon, Grenzpunkte |
 | `arch.site.parking` | Stellplatz | Box | Grundriss | 2,5 x 5 m |
 | `arch.site.tree` | Baum | Box | Grundriss | Laubbaum, Nadelbaum, Strauch |
+| `arch.schedule` | Schedule (rooms, doors and windows) / Liste (Räume, Türen und Fenster) | Box | Grundriss | `list` Räume / Öffnungen, `title`, `textSize`; Element `arch.schedule.openings` (Tür- und Fensterliste); siehe [Listen](#listen) |
 
 Ansichten tragen abstrakte Icons: `plan` nutzt `IconIds.Plan`, `elevation` nutzt `IconIds.Front`.
 
@@ -152,6 +156,76 @@ Räumen der kleinste) übernehmen sie über das Enthaltensein, der Luftdurchlass
 (BsValues, Verknüpfung `bs.room.link`; engineering-calculations.md Abschnitt 6.1). Der Raum braucht dafür keine Leitung
 und kennt das Haustechnik-Modul nicht.
 
+## Werte der Bauteile (26.11.2026, Runde 7)
+
+Alle Werte sind optional: Jedes Element wird weiterhin ohne Parameter eingefügt, und Werte aus der Zeichnung sind
+schreibgeschützt (sie ändern sich mit der Zeichnung, nie umgekehrt). Jedes Element mit Werten bietet das Werte-Label
+(`showValues`).
+
+### Treppen: Steigung, Auftritt und Schrittmaßregel
+
+| Schlüssel | Größe (Symbol EN / DE) | Herkunft |
+|---|---|---|
+| `H` | Geschosshöhe (H) | Parameter `storeyHeight` (m), Vorgabe 2,75 m (die Vorgabe-Wandhöhe) |
+| `n` | Anzahl Steigungen (n) | Parameter `steps` (die gezeichneten Stufen) |
+| `h` | Steigungshöhe (h / s) | `H/n` oder eingegeben (`riser`, z. B. „17,5 cm“; dann H = n·s) |
+| `g` | Auftritt (g / a) | schreibgeschützt: der gezeichnete Auftritt entlang der Lauflinie im Planmaßstab (gerade: Breite/n; L und U: Auftritt des ersten Laufs; Wendeltreppe: Bogen je Stufe bei 60 % des Radius) |
+| `step` | Schrittmaß (2h + g / 2s + a) | schreibgeschützt, Relation `arch.stair.steplength` |
+| `alpha` | Steigungswinkel α | schreibgeschützt, tan α = s/a |
+
+Beispiel: Die gerade Treppe (36 x 10 mm bei 1:100, 14 Steigungen) hat a = 3,60 m/14 = 25,7 cm; mit H = 2,75 m ist
+s = 19,6 cm und 2s + a = 65 cm.
+
+Der Hinweis **`arch.stair.steprule`** meldet ein Schrittmaß außerhalb von 59 … 65 cm (Schrittmaßregel 2s + a ≈ 63 cm,
+eine alte Faustregel für bequeme Treppen; nationale Treppenregeln haben eigene Grenzen und werden nicht wiedergegeben).
+Er meldet sich erst, wenn eine Höhe gegeben ist (Geschosshöhe oder Steigung eingegeben oder verknüpft), weil die
+Vorgabehöhe nur geschätzt ist. Die Aktion **„Stufen nach Schrittmaßregel (n)“** setzt die Stufenzahl, deren Schrittmaß
+2·H/n + a(n) für die gezeichnete Treppe 63 cm am nächsten kommt (ausgegraut, wenn die aktuelle Zahl schon die beste ist).
+
+### Rampen: Höhenunterschied
+
+`l` Rampenlänge (schreibgeschützt, längere Boxseite im Planmaßstab), `s` Steigung (Parameter `slope` in %), `dh`
+Höhenunterschied Δh = s·l (schreibgeschützt), `alpha` Neigungswinkel α = arctan s. Beispiel: 60 mm bei 1:100 = 6 m bei
+6 % ergibt Δh = 0,36 m. Der Hinweis **`arch.ramp.slope`** meldet eine Steigung über 6 %, eine übliche Grenze für Rampen,
+die mit dem Rollstuhl befahren werden; nationale Regeln unterscheiden sich (lange Rampen brauchen zudem Zwischenpodeste),
+daher nennt die Meldung sie als üblichen Wert, nicht als Anforderung.
+
+### Wände: Flächen und Transmissionswärmeverlust
+
+| Schlüssel | Größe | Herkunft |
+|---|---|---|
+| `l` | Wandlänge | schreibgeschützt: Achslänge (geschlossene Wände: die Schleife) im Planmaßstab |
+| `h` | Wandhöhe | Parameter `height` (mm, 2750) |
+| `A` | Wandfläche (brutto) | `A = l·h` |
+| `Aopen` | Fläche der Türen und Fenster | schreibgeschützt: Σ Breite x Höhe der Türen und Fenster, deren Mitte auf der Wand liegt (Breite im Planmaßstab; Höhe der Ansichtsbox in der Ansicht, sonst die bevorzugte Ansichtshöhe: Türen 2,10 m, Fenster 1,25 m, Fenstertüren 2,20 m) |
+| `Anet` | Wandfläche (netto) | `A − A_Öff` |
+| `U` | U-Wert | Textparameter `uValue` (W/(m²·K)) |
+| `dT` | Temperaturdifferenz Δθ | Textparameter `deltaT` (K) |
+| `PhiT` | Transmissionswärmeverlust Φ_T | `U·A_netto·Δθ` [S29] oder eingegeben (`heatLoss`, dann folgt U oder Δθ) |
+
+Gültigkeit von `arch.wall.transmission`: stationär, ohne Wärmebrücken, Nettofläche ohne Türen und Fenster; keine
+Heizlastberechnung nach EN 12831. Beispiel: eine 6 m lange, 2,75 m hohe Wand mit einer Tür 0,90 x 2,10 m: A = 16,5 m²,
+A_Öff = 1,89 m², A_netto = 14,61 m²; mit U = 0,28 W/(m²·K) und Δθ = 32 K ist Φ_T = 131 W. Eine Tür oder ein Fenster nennt
+seine Wand als abhängiges Objekt, solange die Wand ihr Werte-Label zeigt, damit das Label folgt, wenn die Öffnung
+verschoben oder verbreitert wird.
+
+### Listen
+
+`arch.schedule` ist eine Tabelle, die aus der Seite gezeichnet wird, auf der sie liegt (eine Seite = ein Geschoss):
+
+- **Räume** (`list = rooms`, Vorgabe): Nummer, Name und Grundfläche jedes Raums der Seite (Umriss in seinem
+  Planmaßstab), die Summe „Grundfläche“ und, wenn die Seite geschlossene Außenwände hat, die **Brutto-Grundfläche**:
+  die Fläche innerhalb der Außenflächen der geschlossenen Außenwandschleifen. Werte: `Asum` (ΣA), `Agross`, `count`
+  (schreibgeschützt).
+- **Türen und Fenster** (`list = openings`, Element `arch.schedule.openings`): gleiche Öffnungen (gleicher Typ, Breite
+  auf 5 mm und Höhe) werden mit Anzahl, Typname und Breite x Höhe in Metern zusammengefasst; die Fußzeile nennt Anzahl
+  und Fläche insgesamt. Werte: `Aopen`, `count`.
+
+Räume, Türen, Fenster und Wände nennen die Listen ihrer Seite als abhängige Objekte, damit die Tabelle im selben
+Rückgängig-Schritt mit ihnen neu gezeichnet wird (`DependsOnNeighbours` der Liste). Die Zeilen teilen sich die
+Boxhöhe; bei vielen Zeilen wird die Schrift kleiner (Box vergrößern). Namen und Zahlen folgen der UI-Sprache
+(Dezimalkomma auf Deutsch).
+
 ## Kontextaktionen
 
 | Typ | Aktionen |
@@ -159,7 +233,8 @@ und kennt das Haustechnik-Modul nicht.
 | Wand | dicker/dünner (Standarddicken 75 ... 490 mm), „Dicke…“ (Eingabe, mm), Wandart ▾ (Auswahl), geschlossen |
 | Türen | Anschlagseite wechseln, Aufschlagrichtung wechseln, breiter/schmaler (±125 mm; Flügeltiefe wächst mit), „Breite…“ (Eingabe, mm), an Wand ausrichten |
 | Fenster | Anschlagseite wechseln, innen/außen tauschen, breiter/schmaler, „Breite…“ (Eingabe, mm), an Wand ausrichten |
-| Treppen | Laufrichtung umkehren, mehr/weniger Stufen |
+| Treppen | Laufrichtung umkehren, mehr/weniger Stufen, Stufen nach Schrittmaßregel |
+| Liste | Listet ▾ (Räume / Türen und Fenster), Titelzeile |
 | Aufzug, Rampe, Geländer, Schacht | Gegengewicht, Schachttür; Richtung umkehren, Steigung anzeigen; Pfosten; Diagonalkreuz |
 | Dachaufsicht | Dachform ▾ (Auswahl), Gefällepfeile, Außenwände darunter |
 | Raum | „Name…“ (Eingabe), Fläche anzeigen, getönter Boden |
@@ -195,6 +270,11 @@ Abstand und Planmaßstab, Diagonalen von Schacht und Deckenöffnung, Sattel- und
 30 m³ für ein bekanntes Rechteck bei 1:100, eingegebene Höhe, Dokument- und eigener Planmaßstab, eingegebenes Volumen
 ergibt die Höhe, widersprüchliche Fläche, Werte-Label, JSON);
 `DocumentAwareTests` prüft das Ausrichten an Wänden, abhängige Objekte, den Dokument-Planmaßstab, Eingabeaktionen
-und die Größen je Ansicht.
-Der Galerietest schreibt `gallery/*.html` (alle Typen, Vorlagen, Anschlussstudie und ein Beispielhaus auf Englisch
-und Deutsch).
+und die Größen je Ansicht. `ValueTests` (Runde 7) prüft Steigung, Auftritt, Schrittmaß und Steigungswinkel der Treppen
+(Vorgabe, eingegebene Geschosshöhe und Steigung, Planmaßstab), den Schrittmaß-Hinweis und die Aktion dazu, den
+Höhenunterschied und den Steigungshinweis der Rampe, Wandlänge, Brutto-, Öffnungs- und Nettofläche mit dem
+Transmissionswärmeverlust (und U zurück aus einem eingegebenen Verlust), die Wand als abhängiges Objekt einer Tür,
+beide Listen (Zeilen, Summen, Brutto-Grundfläche, Zusammenfassung, abhängige Objekte, viele Zeilen in der Box) und den
+JSON-Roundtrip der Wertparameter.
+Der Galerietest schreibt `gallery/*.html` (alle Typen, Vorlagen, Anschlussstudie und ein Beispielhaus mit beiden
+Listen auf Englisch und Deutsch).

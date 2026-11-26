@@ -30,14 +30,16 @@ namespace InventaSketch.Modules.Architecture
                     Arch.Toggle(o, "arch.lift.door", new I18nText("Landing door", "Schachttür"), IconIds.Toggle, "door", true),
                 },
             };
-            yield return new BoxType("arch.ramp", new I18nText("Ramp", "Rampe"), circ, new Size2(60, 12), Ramp,
-                "ramp", "rampe", "slope", "gefälle", "steigung", "incline", "barrier-free", "barrierefrei", "wheelchair", "rollstuhl")
+            yield return new RampType("arch.ramp", new I18nText("Ramp", "Rampe"), circ, new Size2(60, 12), Ramp,
+                "ramp", "rampe", "slope", "gefälle", "steigung", "incline", "barrier-free", "barrierefrei", "wheelchair", "rollstuhl", "rise", "höhenunterschied")
             {
                 Params = new[]
                 {
                     Pm.Num("slope", "Slope", "Steigung", 6, 0.5, 50, "%", 0.5),
                     Pm.Bool("down", "Arrow reversed", "Pfeil umgekehrt", false),
                     Pm.Bool("showSlope", "Show slope", "Steigung anzeigen", true),
+                    Pm.Scale,
+                    ValueLabels.ShowValues,
                 },
                 Extra = RampActions,
             };

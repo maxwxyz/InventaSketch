@@ -85,7 +85,7 @@ Sizes are design sizes (W x H, mm). "points" = point geometry (page coordinates,
 | `math.vector.arrow` | Vector / Vektor | points (2) | `label` ("v"), `notation` arrow above / bold / plain, `components` (dashed x and y components with v<sub>x</sub>, v<sub>y</sub>), `tailLabel`, `tipLabel`, `points` (dots at both ends), `textSize` |
 | `math.vector.sum` | Vector addition / Vektoraddition | points (3) | `construction` parallelogram (points O, tip of a, tip of b) / head to tail (O, tip of a, tip of b drawn from a), `labelA` ("a"), `labelB` ("b"), `notation`, `result` (resultant a + b, true), `textSize` |
 | `math.angle.mark` | Angle / Winkel | points (3) | point on the first ray, vertex, point on the second ray; `label` ("α"), `mark` automatic (square at 90°) / arc / double arc / right-angle square, `value` (measured value, e.g. "α = 45°"), `rays` (true), `reflex` (other side), `radius` (7 mm), `textSize` |
-| `math.shape.triangle` | Triangle / Dreieck | 50x40 | `kind` general / right-angled (γ = 90° at C) / isosceles / equilateral, `construction` none / incircle (angle bisectors) / circumcircle (perpendicular bisectors) / medians and centroid / altitudes and orthocentre, `vertexLabels`, `sideLabels`, `angleMarks` (α, β, γ) |
+| `math.shape.triangle` | Triangle / Dreieck | 50x40 | `kind` general / right-angled (γ = 90° at C) / isosceles / equilateral / true to the entered values, values `a`, `b`, `c`, `alpha`, `beta`, `gamma`, `area` (see [round 7](#triangle-values-live-constructions-and-conic-sections-2026-11-26-round-7)), `showValues`, `construction` none / incircle (angle bisectors) / circumcircle (perpendicular bisectors) / medians and centroid / altitudes and orthocentre, `vertexLabels`, `sideLabels`, `angleMarks` (α, β, γ) |
 | `math.shape.polygon` | Regular polygon / Regelmäßiges Vieleck | 40x40 | `sides` (6, 3–12; flat bottom edge), `circumcircle`, `incircle`, `centre`, `labels` (A, B, C …) |
 | `math.circle.basic` | Circle with radius / Kreis mit Radius | 40x40 | `show` radius / diameter / both / circle only, `angle` (direction of the radius, 45°; the diameter of "both" is horizontal), `centre`, `labels` |
 | `math.circle.tangent` | Tangent to a circle / Tangente an einen Kreis | 56x44 | `angle` (position of the point of contact, 60°), `radius` (radius and right angle), `labels` |
@@ -155,9 +155,53 @@ complement); fractions stay exact ("1/3", product "1/12"), percentages stay perc
 shows "?". Text that is no probability is ignored. Context actions: more/fewer stages, two/three branches,
 "Probabilities of stage n…", "Outcomes of stage n…", path probabilities.
 
+## Triangle values, live constructions and conic sections (2026-11-26, round 7)
+
+| Id | Name (EN / DE) | Size | Parameters |
+|---|---|---|---|
+| `math.free.triangle` | Triangle through three points / Dreieck durch drei Punkte | points (3) | `construction` (as the triangle), `vertexLabels`, `sideLabels`, `angleMarks`, `values` (measured angles "α = 63.4°"), `textSize` |
+| `math.free.polygon` | Polygon with area and centroid / Vieleck mit Fläche und Schwerpunkt | points (3 or more, corners can be inserted) | `area` (label "A = 12 cm²"), `centroid` (S / G), `vertexLabels` (A, B, C …), `scale` (1 : n, default 1:1), `textSize`, `showValues` |
+| `math.free.bisector` | Perpendicular bisector of two points / Mittelsenkrechte zu zwei Punkten | points (2) | `segment` (AB), `arcs` (compass marks), `labels` (A, B, M, m), `textSize` |
+| `math.free.anglebisector` | Angle bisector of three points / Winkelhalbierende zu drei Punkten | points (3: on the first ray, vertex, on the second ray) | `arcs`, `values` (measured half angles), `labels` (S, w), `textSize` |
+| `math.free.tangents` | Tangents from a point to a circle / Tangenten von einem Punkt an einen Kreis | points (3: centre M, a point on the circle, P) | `thales` (Thales circle over MP), `radii` (radii and right angles), `labels` (M/O, P, T₁, T₂ / B₁, B₂), `textSize` |
+| `math.conic.section` | Conic section (foci) / Kegelschnitt (Brennpunkte) | 60x40 | `kind` ellipse / hyperbola / parabola, `point` (P with its distances), `position` of P (50°), `formula` (defining property), `axes` (and asymptotes), `labels` |
+
+**Triangle values** (`math.shape.triangle`, Calc values, `IValueType`): sides `a`, `b`, `c` (cm), angles `alpha`, `beta`,
+`gamma` (°), area `A` (cm², parameter `area`) and perimeter `u`, all optional text parameters as typed ("5 cm", "60°").
+Relations: the angle sum, the law of cosines three times (`math.triangle.cosine.a/b/c`: a side from two sides and the
+included angle, an angle from three sides), the law of sines three times (`math.triangle.sine.*`: a side from a side and
+two angles, an angle from two sides and an opposite angle, the acute solution of the ambiguous case), the area
+A = ½·a·b·sin γ and the perimeter. Any three independent values with at least one side (SSS, SAS, SSA, ASA, AAS) give the
+rest; contradicting values are reported as a conflict. Entered sides appear in the side labels ("a = 5 cm"), entered
+angles are marked with their value ("γ = 60°", also without the angle marks), an entered area stands inside the triangle
+(without a construction). The new kind **"True to the entered values"** (`values`) draws the shape the entered values
+give (two or three angles alone give the shape; values that give no triangle fall back to the general shape), fitted
+uniformly into the box, so free scaling keeps it. Item `math.shape.triangle.values`: a = 5 cm, b = 4 cm, γ = 60° (SAS).
+
+**Live constructions on points:** the free figures are point objects like the vector and the angle. Their points dock
+on ports, grid points and surfaces of other figures and follow them (`Attachments.Refresh`): a perpendicular bisector
+whose ends dock on the vertices A and B of a triangle stays the bisector of AB when the triangle is moved, turned or
+stretched (tested). The triangle through three points draws the same constructions as the box triangle (incircle with
+the angle bisectors, circumcircle with the perpendicular bisectors, medians and centroid, altitudes and orthocentre;
+shared code `Tri.Construct`) from its vertices, so dragging a vertex updates them; items
+`math.free.triangle.circles` (circumcircle) and `math.free.triangle.incircle`. The tangents from P are constructed
+with the Thales circle over MP: T₁, T₂ (German B₁, B₂) are its intersections with the circle; for P inside the circle
+only the circle and P are drawn. The polygon measures its area with the shoelace formula (a self-intersecting outline
+counts its loops with sign) and its area centroid; values `A` and `u` are read-only (from the drawing at the scale
+`scale`).
+
+**Conic sections:** the curve fills the box, so free (also non-uniform) scaling changes the semi-axes and the foci
+follow. Ellipse: a and b are the half box sides, c² = a² − b² (foci on the longer axis), native ellipse. Hyperbola:
+a = 0.4 of the half width, b chosen so that both branches stay in the box, c² = a² + b², asymptotes dashed. Parabola:
+directrix at the bottom, vertex S (EN V) and focus F at the distance p, the curve reaching the top corners. The point P
+(`position`: the parameter angle, for hyperbola and parabola its sine places P along the branch) shows the distances
+of the defining property: |PF₁| + |PF₂| = 2a, ||PF₁| − |PF₂|| = 2a, |PF| = |PL| (L foot on the directrix). Ports:
+`centre`, `F1`, `F2` (`F`, `vertex` for the parabola), `P`; vertices `V1`, `V2` (quadrant points); rails along the
+axis and the directrix.
+
 ## Library
 
-45 items: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (first quadrant 0…6 x 0…5), `math.axes.number`,
+56 items: `math.axes.cartesian`, `math.axes.cartesian.quadrant` (first quadrant 0…6 x 0…5), `math.axes.number`,
 `math.axes.spatial`, `math.axes.spatial.isometric`, `math.axes.polar`; graphs `math.graph.function` (parabola y = x²),
 `math.graph.function.linear` (y = 0.5x + 1), `math.graph.function.sine` (−2π…2π, π ticks, 90x45),
 `math.graph.function.exponential`; `math.point.labelled`, `math.vector.arrow`, `math.vector.arrow.position` (position
@@ -170,7 +214,10 @@ vector from O to P with dots), `math.vector.arrow.components`, `math.vector.sum`
 constructions `math.construct.perpendicular`, `math.construct.anglebisector`, `math.lines.parallel`; solids
 `math.solid.cube`, `math.solid.cuboid` (56x36), `math.solid.cylinder`, `math.solid.cone`, `math.solid.sphere`,
 `math.solid.pyramid`; sets and probability `math.venn.diagram`, `math.venn.diagram.three`, `math.tree.probability`,
-`math.tree.probability.dice` (one stage, outcomes 1, 2, 3 with 1/6, 1/3, 1/2).
+`math.tree.probability.dice` (one stage, outcomes 1, 2, 3 with 1/6, 1/3, 1/2); round 7: `math.shape.triangle.values`,
+`math.free.triangle`, `math.free.triangle.circles`, `math.free.triangle.incircle`, `math.free.polygon`,
+`math.free.bisector`, `math.free.anglebisector`, `math.free.tangents`, `math.conic.section` (ellipse),
+`math.conic.section.hyperbola`, `math.conic.section.parabola` (50x44).
 
 Categories: `math.axes` Coordinate systems / Koordinatensysteme, `math.graphs` Function graphs / Funktionsgraphen,
 `math.vectors` Points & vectors / Punkte & Vektoren, `math.angles` Angles / Winkel, `math.figures` Figures & circles /
@@ -180,7 +227,8 @@ Figuren & Kreise, `math.constructions` Constructions / Konstruktionen, `math.sol
 Search keywords cover both languages, e.g. Koordinatensystem, Zahlenstrahl, Schrägbild, Parabel, Sinus, Ortsvektor,
 Kräfteparallelogramm, rechter Winkel, Dreieck, Inkreis, Umkreis, Höhe, Schwerpunkt, Thaleskreis, Einheitskreis,
 Tangente, Sechseck, Mittelsenkrechte, Winkelhalbierende, Stufenwinkel, Wechselwinkel, Würfel, Quader, Zylinder,
-Kegel, Kugel, Pyramide, Kreisausschnitt, Kreisabschnitt, Satz des Pythagoras, Mengendiagramm, Baumdiagramm.
+Kegel, Kugel, Pyramide, Kreisausschnitt, Kreisabschnitt, Satz des Pythagoras, Mengendiagramm, Baumdiagramm,
+Sinussatz, Kosinussatz, Dreiecksberechnung, Tangenten, Kegelschnitt, Ellipse, Hyperbel, Brennpunkt, Leitlinie.
 
 ## Anchors
 
@@ -214,7 +262,10 @@ draw the rays, other side, name…. Triangle: kind ▾, construction ▾, vertex
 more/fewer sides, circumcircle, incircle, vertex labels. Circle: line shown ▾ (radius/diameter), centre, labels. Tangent: point of
 contact at angle…, move the point of contact (+30°), radius and right angle. Thales: position of C…, move C along the
 circle, full circle. Unit circle: angle…, turn by 15°, tangent segment, show values. Constructions: compass marks,
-labels, angle…; parallel lines: angle pair ▾, angle…, show values.
+labels, angle…; parallel lines: angle pair ▾, angle…, show values. Round 7: triangle through points: construction ▾,
+vertex/side labels, angle marks, measured angles; polygon: area, centroid, vertex labels; bisectors and tangents:
+compass marks / measured half angles / Thales circle / radii, labels; conic section: curve ▾, position of P…, point P,
+defining property, axes, labels. The triangle's kind ▾ offers "true to the entered values".
 
 ## Grips (drag handles)
 
@@ -255,7 +306,7 @@ so they have no grip.
 
 ## Tests and gallery
 
-`tests/InventaSketch.Modules.Geometry.Tests` (180 tests): registration, id conventions, bilingual names, parameters,
+`tests/InventaSketch.Modules.Geometry.Tests` (207 tests): registration, id conventions, bilingual names, parameters,
 options and actions; insertion without parameters; library items resolve to valid parameters; every library item
 inside its box in both languages, stretched, squashed and with every parameter variant; every parameter changes the
 drawing; free scaling changes `Size` and keeps parameters; anchors inside the box with unique ids; ports at the key
@@ -273,6 +324,11 @@ moved and stretched. `NewFigureTests`: visible and hidden edges of cube and pyra
 projections, cylinder silhouettes, cone sides tangent to the base, round sphere, sector/segment outline, angle label
 and grip, Pythagoras areas (a² + b² = c²) and unit squares, Venn layout and set-name input, probability tree
 complements, products, fractions, percentages and layout, probability parsing and the JSON round trip.
+`ValueAndLiveFigureTests` (round 7): triangle values from SSS, SAS, ASA and SSA (law of sines and cosines, area,
+perimeter), conflicts, the triangle true to its values (shape, labels, angles alone, invalid values), the triangle
+through points with its incircle and measured angles, a perpendicular bisector docked on a triangle following it, the
+angle bisector, tangents at right angles (and none from inside), polygon area, perimeter, scale and centroid, the foci
+and defining properties of ellipse, hyperbola and parabola.
 
 The gallery test writes `gallery/*.html` into the test output folder (one page per category: every library item in
 English and German, stretched and squashed, plus the choices of the main parameters) and `gallery/index.html` with a

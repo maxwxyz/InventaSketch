@@ -300,9 +300,10 @@ namespace InventaSketch.Modules.Architecture
 
     /// <summary>
     /// Data-driven box object type used for openings, stairs, furniture, sanitary, services and site symbols.
-    /// The plan view is always present; an optional elevation view can be added.
+    /// The plan view is always present; an optional elevation view can be added. Elements with values (stairs, ramps)
+    /// derive from it.
     /// </summary>
-    internal sealed class BoxType : ObjectType
+    internal class BoxType : ObjectType
     {
         public static readonly ViewDef PlanView = new("plan", new I18nText("Plan", "Grundriss")) { Icon = IconIds.Plan };
         public static readonly ViewDef ElevationView = new("elevation", new I18nText("Elevation", "Ansicht")) { Icon = IconIds.Front };
@@ -332,6 +333,21 @@ namespace InventaSketch.Modules.Architecture
         public override bool HasText => TextEditable;
         public override bool UsesPlanScale => Params.Any(p => p.Key == Pm.Scale.Key);
         public override bool DependsOnNeighbours => NeighbourAware;
+
+        /// <summary>
+        /// Objects that render from this one are redrawn with it: schedules listing doors and windows, and the walls a door or
+        /// window sits in while they show their values label (the opening area counts there).
+        /// </summary>
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
+        {
+            if (!Openings.IsOpening(Id) || o.IsPointGeometry) return Array.Empty<string>();
+            var c = new Vec2(o.Transform.X, o.Transform.Y);
+            var walls = WallLine.OnPageOf(o, ctx.Doc)
+                .Where(w => ctx.Doc.Get(w.Id) is { } wall && ValueLabels.Shows(wall)
+                            && Enumerable.Range(0, w.SegCount).Any(k => Arch.DistanceToSegment(c, w.A(k), w.B(k)) <= Math.Max(w.Half, WallBuilder.JoinTolerance)))
+                .Select(w => w.Id);
+            return Schedules.On(o, ctx.Doc).Concat(walls).ToList();
+        }
 
         public IReadOnlyList<ParamDef> Params { get; init; } = Array.Empty<ParamDef>();
         public DrawFn? Elevation { get; init; }

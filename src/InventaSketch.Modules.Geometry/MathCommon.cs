@@ -261,6 +261,17 @@ namespace InventaSketch.Modules.Geometry
             return Math.Abs(d.X) * TextW(text, size) / 2 + Math.Abs(d.Y) * (size + extraHeight) / 2;
         }
 
+        /// <summary>
+        /// Distance from a vertex along the bisector at which a label fits into the angle (half angle <paramref name="half"/> in
+        /// radians): at least <paramref name="min"/>, and far enough that a circle around the text stays between the rays.
+        /// </summary>
+        public static double WedgeDistance(string text, double size, double half, double min)
+        {
+            if ((text ?? "").Length <= 1) return min;
+            var r = Math.Sqrt(Math.Pow(TextW(text!, size) / 2, 2) + Math.Pow(size / 2, 2)) * 0.85;
+            return Math.Max(min, (r + 0.3) / Math.Sin(Geo.Clamp(half, 0.15, Math.PI / 2)));
+        }
+
         /// <summary>Unit normal of a direction that points to the upper side (or to the left for vertical directions).</summary>
         public static Vec2 UpperNormal(Vec2 d)
         {
