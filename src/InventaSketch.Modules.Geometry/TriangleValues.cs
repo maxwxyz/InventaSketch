@@ -47,7 +47,7 @@ namespace InventaSketch.Modules.Geometry
 
         private static Relation CosineLaw(string side, string angle, string s1, string s2, string sym, string symAngle)
             => new Relation("math.triangle.cosine." + side, T("Law of cosines for " + sym, "Kosinussatz für " + sym),
-                    "{" + side + "}² = {" + s1 + "}² + {" + s2 + "}² − 2·{" + s1 + "}·{" + s2 + "}·cos {" + angle + "}", side, angle, s1, s2)
+                    "{" + side + "}² = {" + s1 + "}² + {" + s2 + "}² − 2·{" + s1 + "}·{" + s2 + "}·cos {" + angle + "}", side, angle, s1, s2) { Source = "S43" }
                 .Solve(side, "√({" + s1 + "}² + {" + s2 + "}² − 2·{" + s1 + "}·{" + s2 + "}·cos {" + angle + "})",
                     v => Math.Sqrt(Math.Max(0, v(s1) * v(s1) + v(s2) * v(s2) - 2 * v(s1) * v(s2) * Math.Cos(v(angle)))))
                 .Solve(angle, "arccos(({" + s1 + "}² + {" + s2 + "}² − {" + side + "}²)/(2·{" + s1 + "}·{" + s2 + "}))",
@@ -55,7 +55,7 @@ namespace InventaSketch.Modules.Geometry
 
         /// <summary>a·sin β = b·sin α (sides <paramref name="s1"/>, <paramref name="s2"/> opposite the angles <paramref name="w1"/>, <paramref name="w2"/>).</summary>
         private static Relation SineLaw(string s1, string w1, string s2, string w2)
-            => new Relation("math.triangle.sine." + s1 + s2, T("Law of sines", "Sinussatz"), "{" + s1 + "}/sin {" + w1 + "} = {" + s2 + "}/sin {" + w2 + "}", s1, w1, s2, w2)
+            => new Relation("math.triangle.sine." + s1 + s2, T("Law of sines", "Sinussatz"), "{" + s1 + "}/sin {" + w1 + "} = {" + s2 + "}/sin {" + w2 + "}", s1, w1, s2, w2) { Source = "S43" }
                 .Solve(s1, "{" + s2 + "}·sin {" + w1 + "}/sin {" + w2 + "}", v => v(s2) * Math.Sin(v(w1)) / Math.Sin(v(w2)))
                 .Solve(s2, "{" + s1 + "}·sin {" + w2 + "}/sin {" + w1 + "}", v => v(s1) * Math.Sin(v(w2)) / Math.Sin(v(w1)))
                 .Solve(w1, "arcsin({" + s1 + "}·sin {" + w2 + "}/{" + s2 + "})", v => Asin(v(s1) * Math.Sin(v(w2)) / v(s2)))
@@ -65,20 +65,20 @@ namespace InventaSketch.Modules.Geometry
         private static double Asin(double x) => x < -1 - 1e-9 || x > 1 + 1e-9 ? double.NaN : Math.Asin(Math.Max(-1, Math.Min(1, x)));
 
         private static readonly Relation AngleSum =
-            new Relation("math.triangle.anglesum", T("Angle sum in the triangle", "Winkelsumme im Dreieck"), "{alpha} + {beta} + {gamma} = 180°", "alpha", "beta", "gamma")
+            new Relation("math.triangle.anglesum", T("Angle sum in the triangle", "Winkelsumme im Dreieck"), "{alpha} + {beta} + {gamma} = 180°", "alpha", "beta", "gamma") { Source = "S43" }
                 .Solve("alpha", "180° − {beta} − {gamma}", v => Math.PI - v("beta") - v("gamma"))
                 .Solve("beta", "180° − {alpha} − {gamma}", v => Math.PI - v("alpha") - v("gamma"))
                 .Solve("gamma", "180° − {alpha} − {beta}", v => Math.PI - v("alpha") - v("beta"));
 
         private static readonly Relation Area =
-            new Relation("math.triangle.area", T("Area of the triangle", "Flächeninhalt des Dreiecks"), "{A} = ½·{a}·{b}·sin {gamma}", "A", "a", "b", "gamma")
+            new Relation("math.triangle.area", T("Area of the triangle", "Flächeninhalt des Dreiecks"), "{A} = ½·{a}·{b}·sin {gamma}", "A", "a", "b", "gamma") { Source = "S43" }
                 .Solve("A", "½·{a}·{b}·sin {gamma}", v => 0.5 * v("a") * v("b") * Math.Sin(v("gamma")))
                 .Solve("a", "2·{A}/({b}·sin {gamma})", v => 2 * v("A") / (v("b") * Math.Sin(v("gamma"))))
                 .Solve("b", "2·{A}/({a}·sin {gamma})", v => 2 * v("A") / (v("a") * Math.Sin(v("gamma"))))
                 .Solve("gamma", "arcsin(2·{A}/({a}·{b}))", v => Asin(2 * v("A") / (v("a") * v("b"))));
 
         private static readonly Relation Perimeter =
-            new Relation("math.triangle.perimeter", T("Perimeter of the triangle", "Umfang des Dreiecks"), "{u} = {a} + {b} + {c}", "u", "a", "b", "c")
+            new Relation("math.triangle.perimeter", T("Perimeter of the triangle", "Umfang des Dreiecks"), "{u} = {a} + {b} + {c}", "u", "a", "b", "c") { Source = "S43" }
                 .Solve("u", "{a} + {b} + {c}", v => v("a") + v("b") + v("c"))
                 .Solve("a", "{u} − {b} − {c}", v => v("u") - v("b") - v("c"))
                 .Solve("b", "{u} − {a} − {c}", v => v("u") - v("a") - v("c"))

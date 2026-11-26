@@ -614,6 +614,8 @@ in the document's check settings, because the binding limit is in a standard or 
 | `sw.selectivity` | overcurrent protective device | upstream *I*_n < 1.6·*I*_n (rule of thumb) | hint | [S11] |
 | `sw.selectivity.instant` | overcurrent protective device | *I*_k3 ≥ *I*_a of the upstream MCB (both trip instantaneously) | hint | [S11] |
 | `sw.rcd.type` | RCD, RCBO | a frequency converter below needs type F (single-phase) or B (three-phase) | hint | [S11] |
+| `arch.stair.steprule` | stair with an entered or linked storey or riser height | 2h + g outside 59 … 65 cm (step rule 2h + g ≈ 63 cm) | hint | [S42] |
+| `arch.ramp.slope` | ramp | *s* > 6 % (common limit for wheelchair ramps; national rules differ) | hint | – (national rules) |
 | `optics.light.none` | detector, lens, arrow | the page has traced rays, none ends at the element | info | – (consistency) |
 | `optics.light.nosource` | detector | only rays without a light source arrive (power unknown) | info | – (consistency) |
 | `optics.light.estimate` | detector | power passed a schematic splitter or grating (equal shares assumed) | hint | – (assumption) |
@@ -1004,6 +1006,10 @@ current editions.
 - **[S41]** Optics textbooks: E. Hecht, *Optics* (Pearson); F. L. Pedrotti, L. M. Pedrotti, L. S. Pedrotti,
   *Introduction to Optics* (Cambridge University Press) – thin lens and lensmaker's equations, magnification, two-lens
   systems, Fresnel equations (bibliographic data only).
+- **[S42]** E. Neufert, *Bauentwurfslehre* (Springer Vieweg); F. Blondel, *Cours d'architecture* (1675) – step rule
+  2h + g ≈ 63 cm for stairs (bibliographic data only).
+- **[S43]** I. N. Bronstein, K. A. Semendjajew et al., *Taschenbuch der Mathematik* (Europa-Lehrmittel) – plane
+  trigonometry: laws of sines and cosines, triangle area (bibliographic data only).
 
 The existing code relations reused here are: `Linkages.Grubler` and `Linkage.Dof` (Kinematics, Core),
 `GearTrain.Speeds` and `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Process) and

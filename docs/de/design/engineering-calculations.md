@@ -634,6 +634,8 @@ Datenblatt steht, das wir nicht übernehmen.
 | `sw.selectivity` | Überstromschutzgerät | vorgeschaltetes *I*_n < 1,6·*I*_n (Faustregel) | Hinweis | [S11] |
 | `sw.selectivity.instant` | Überstromschutzgerät | *I*_k3 ≥ *I*_a des vorgeschalteten LS (beide lösen unverzögert aus) | Hinweis | [S11] |
 | `sw.rcd.type` | FI, FI/LS | ein Frequenzumrichter darunter braucht Typ F (einphasig) oder B (dreiphasig) | Hinweis | [S11] |
+| `arch.stair.steprule` | Treppe mit eingegebener oder verknüpfter Geschoss- oder Steigungshöhe | 2s + a außerhalb 59 … 65 cm (Schrittmaßregel 2s + a ≈ 63 cm) | Hinweis | [S42] |
+| `arch.ramp.slope` | Rampe | *s* > 6 % (übliche Grenze für Rollstuhlrampen; nationale Regeln unterscheiden sich) | Hinweis | – (nationale Regeln) |
 | `optics.light.none` | Detektor, Linse, Pfeil | die Seite hat verfolgte Strahlen, keiner endet am Element | Info | – (Konsistenz) |
 | `optics.light.nosource` | Detektor | nur Strahlen ohne Lichtquelle kommen an (Leistung unbekannt) | Info | – (Konsistenz) |
 | `optics.light.estimate` | Detektor | Leistung lief über schematischen Strahlteiler oder Gitter (gleiche Anteile angenommen) | Hinweis | – (Annahme) |
@@ -1040,6 +1042,10 @@ ihrer jeweils aktuellen Auflage gemeint.
 - **[S41]** Lehrbücher der Optik: E. Hecht, *Optik* (De Gruyter); F. L. Pedrotti, L. M. Pedrotti, L. S. Pedrotti,
   *Introduction to Optics* (Cambridge University Press) – Linsengleichung und Linsenschleiferformel,
   Abbildungsmaßstab, Zwei-Linsen-Systeme, Fresnel-Gleichungen (nur bibliografische Angaben).
+- **[S42]** E. Neufert, *Bauentwurfslehre* (Springer Vieweg); F. Blondel, *Cours d'architecture* (1675) –
+  Schrittmaßregel 2s + a ≈ 63 cm für Treppen (nur bibliografische Angaben).
+- **[S43]** I. N. Bronstein, K. A. Semendjajew u. a., *Taschenbuch der Mathematik* (Europa-Lehrmittel) – ebene
+  Trigonometrie: Sinus- und Kosinussatz, Dreiecksfläche (nur bibliografische Angaben).
 
 Vorhandene Code-Beziehungen, die hier wiederverwendet werden: `Linkages.Grubler` und `Linkage.Dof` (Kinematik, Core),
 `GearTrain.Speeds` und `Links.Ratio` (Core), `Cycles.OttoEfficiency`/`DieselEfficiency` (Verfahrenstechnik) und

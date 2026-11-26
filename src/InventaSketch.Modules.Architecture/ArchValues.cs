@@ -57,7 +57,7 @@ namespace InventaSketch.Modules.Architecture
 
         /// <summary>Step length 2h + g (step rule).</summary>
         private static readonly Relation StepRelation =
-            new Relation("arch.stair.steplength", T("Step length", "Schrittmaß"), "{step} = 2·{h} + {g}", "step", "h", "g")
+            new Relation("arch.stair.steplength", T("Step length", "Schrittmaß"), "{step} = 2·{h} + {g}", "step", "h", "g") { Source = "S42" }
                 .Solve("step", "2·{h} + {g}", v => 2 * v("h") + v("g"))
                 .Solve("h", "({step} − {g})/2", v => (v("step") - v("g")) / 2)
                 .Solve("g", "{step} − 2·{h}", v => v("step") - 2 * v("h"));
@@ -95,7 +95,7 @@ namespace InventaSketch.Modules.Architecture
                 "2h + g ∉ [59 cm; 65 cm]",
                 // Only once the user gave a height (entered storey height or riser): the default storey height is a guess.
                 c => c["step"] is double s && c.Table.Get(c.Object.Id, "H") is { } h && h.Provenance != Provenance.Default
-                     && (s < StepMin - 5e-4 || s > StepMax + 5e-4)),
+                     && (s < StepMin - 5e-4 || s > StepMax + 5e-4)) { Source = "S42" },
         };
 
         /// <summary>The storey height entered for the stair (m), else the default 2.75 m.</summary>
