@@ -7,6 +7,25 @@ using InventaSketch.Core;
 namespace InventaSketch.Modules.Mechanical
 {
     /// <summary>
+    /// How mechanical elements take part in the core shaft lines (<see cref="ShaftLines"/>) and the coupling: shafts and
+    /// couplings pass the torque on, bearings take the speed only, carriers, cages, gear sets and nuts stay out; pulleys,
+    /// sprockets and idlers have a pitch circle that sizes the belt or chain but does not mesh (<see cref="IPitchMesh"/>).
+    /// </summary>
+    internal sealed partial class MechType : IShaftPart, IPitchMesh
+    {
+        ShaftPart IShaftPart.ShaftPart(SketchObject o)
+            => MechValues.PassThrough.Contains(Id) ? ShaftPart.PassThrough
+             : MechValues.IsBearing(Id) ? ShaftPart.Leaf
+             : MechValues.IsCarrierLike(Id) || Id == "mech.screwdrive.nut" ? ShaftPart.Outside
+             : ShaftPart.Member;
+
+        /// <summary>Belt pulleys, chain sprockets, idlers and tensioners: their pitch circle is no gear mesh.</summary>
+        private static readonly HashSet<string> StrandWheels = new(StringComparer.Ordinal) { "mech.pulley", "mech.sprocket", Drives.IdlerId, Drives.TensionerId };
+
+        bool IPitchMesh.MeshesAtPitch(SketchObject o) => !StrandWheels.Contains(Id);
+    }
+
+    /// <summary>
     /// How the machine elements of a document hang together for values (section 1.6), read from the core coupling relations
     /// (<see cref="Coupling.Graph"/>, the same relations "select connected – moves along" follows):
     /// <list type="bullet">
@@ -22,9 +41,18 @@ namespace InventaSketch.Modules.Mechanical
     {
         private static readonly ConditionalWeakTable<SketchDocument, ConditionalWeakTable<Registry, MechTopology>> Cache = new();
 
-        /// <summary>The topology of <paramref name="doc"/> (cached).</summary>
+        /// <summary>
+        /// The topology of <paramref name="doc"/> (cached). A request while the document's coupling graph is being built (a
+        /// linked chart solving its element from the graph's anchor pass, <see cref="Coupling.GraphPending"/>) sees an empty
+        /// graph: that topology is not cached.
+        /// </summary>
         public static MechTopology Of(Registry registry, SketchDocument doc)
-            => Cache.GetValue(doc, _ => new ConditionalWeakTable<Registry, MechTopology>()).GetValue(registry, r => new MechTopology(r, doc));
+        {
+            var perDoc = Cache.GetValue(doc, _ => new ConditionalWeakTable<Registry, MechTopology>());
+            if (perDoc.TryGetValue(registry, out var cached)) return cached;
+            if (Coupling.GraphPending(doc)) return new MechTopology(registry, doc);
+            return perDoc.GetValue(registry, r => new MechTopology(r, doc));
+        }
 
         /// <summary>A set of parts that turn together: members with a speed, torque members and pass-through members.</summary>
         public sealed class Line
@@ -34,7 +62,10 @@ namespace InventaSketch.Modules.Mechanical
             public readonly List<string> Torque = new();
             /// <summary>Shafts and couplings with a torque variable: they carry the line's torque unchanged.</summary>
             public readonly List<string> Pass = new();
+            /// <summary>Speed representative: a shaft or coupling, else a mechanical member (it links every member).</summary>
             public string Rep = "";
+            /// <summary>Torque representative: a shaft or coupling with a torque, else a mechanical torque member.</summary>
+            public string TorqueRep = "";
         }
 
         private readonly Dictionary<string, List<string>> _mesh = new(StringComparer.Ordinal);
@@ -154,11 +185,15 @@ namespace InventaSketch.Modules.Mechanical
             }
             _idler = (strand, part) => MechValues.IsIdler(TypeOf(part)) || _backSide.Contains((strand, part));
 
+            // The representatives are mechanical (a shaft or coupling where there is one): only mechanical types emit these
+            // links, so a representative of another module (an e-machine, a pump) would leave the other foreign members of the
+            // line unlinked. Mechanical members that are no representative link the representative.
+            bool Mechanical(string id) => doc.Get(id) is { } x && registry.Type(x.Type) is MechType;
             foreach (var g in parent.Keys.ToList().GroupBy(Find))
             {
                 var members = g.OrderBy(x => x, StringComparer.Ordinal).ToList();
                 if (members.Count < 2) continue;
-                var line = new Line { Rep = members[0] };
+                var line = new Line();
                 line.Members.AddRange(members);
                 foreach (var m in members)
                 {
@@ -166,6 +201,8 @@ namespace InventaSketch.Modules.Mechanical
                     if (MechValues.PassThrough.Contains(TypeOf(m))) line.Pass.Add(m);
                     else line.Torque.Add(m);
                 }
+                line.Rep = members.FirstOrDefault(m => MechValues.PassThrough.Contains(TypeOf(m))) ?? members.FirstOrDefault(Mechanical) ?? members[0];
+                line.TorqueRep = line.Pass.Count > 0 ? line.Pass[0] : line.Torque.FirstOrDefault(Mechanical) ?? line.Torque.FirstOrDefault() ?? "";
                 foreach (var m in members) _lineOf[m] = line;
             }
         }
@@ -287,7 +324,7 @@ namespace InventaSketch.Modules.Mechanical
                 else list.Add(Eq(SameSpeed, line.Rep, id, "n"));
                 if (line.Torque.Count <= 2 && line.Torque.Count + line.Pass.Count >= 2 && (line.Torque.Contains(id) || line.Pass.Contains(id)))
                 {
-                    var rep = line.Torque.Count > 0 ? line.Torque[0] : line.Pass[0];
+                    var rep = line.TorqueRep;
                     if (id == rep) { foreach (var m in line.Torque.Concat(line.Pass)) if (m != id) list.Add(Eq(SameTorque, id, m, "T")); }
                     else list.Add(Eq(SameTorque, rep, id, "T"));
                 }
