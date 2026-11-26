@@ -6,6 +6,7 @@ import type {
   SuggestionInfo, ExporterInfo, ExportResult, TransformEffect, ArrangeOption, TraceInfo, BuildPortInfo, CouplingPreview,
   MotionInfo, MotionPreview, PreflightResult, PartView, SanitizeMode, SanitizeOptions, SanitizeResult,
   CalcResult, CodeImportResult, ConnectOption, ConvertUnitResult, DragHandleInfo, ExplainResult, ObjectHandles, ValueLevel, ValuesResult,
+  CalcSheetMode, CalcSheetResult, InsertHandleInfo, LinkInfo, PolylineHandles, Vec2,
 } from "./types";
 
 export interface EngineBackend {
@@ -234,6 +235,44 @@ export class Session {
   }
   /** Drags grip `key` of element `id` to x/y (constrained and snapped by the element); one undo step. */
   moveHandle(id: string, key: string, x: number, y: number): EditorState { return this.c("moveHandle", { id, key, x, y }); }
+  /** Values of element `id` as if value `key` were `value` (SI), without changing the document (the value card's ↔ grip). */
+  dragValuePreview(id: string, key: string, value: number, lang: string, digits?: number): ValuesResult {
+    return this.c("dragValue", { id, key, value, lang, digits, preview: true });
+  }
+  /** Stores value `key` of element `id` as `value` (SI, formatted by the engine); one undo step. */
+  dragValue(id: string, key: string, value: number, digits?: number): EditorState { return this.c("dragValue", { id, key, value, digits }); }
+  /** The calculation sheet of `ids` (none: the page) as CSV, Markdown, LaTeX or table cells. */
+  calcSheet(ids: string[] | undefined, mode: CalcSheetMode, lang: string, digits?: number): CalcSheetResult { return this.c("calcSheet", { ids, mode, lang, digits }); }
+  /** The calculation sheet of `ids` as an annotation table right of the elements; one undo step, the table selected. */
+  insertCalcTable(ids: string[] | undefined, lang: string, digits?: number): EditorState { return this.c("insertCalcTable", { ids, lang, digits }); }
+  /** Where element `id` touches others and follows them (lock badges). */
+  links(id: string, lang: string): LinkInfo[] { return this.c("links", { id, lang }); }
+  /** Releases or couples the link `key` of element `id`; one undo step. */
+  toggleLink(id: string, key: string): EditorState { return this.c("toggleLink", { id, key }); }
+  /** Corner dots and branch handles of line `id`. */
+  polylineHandles(id: string): PolylineHandles { return this.c("polylineHandles", { id }); }
+  /** A new corner on segment `index` of line `id`, started at the dot `from` and moved to x/y (snapped, docked); one undo step. */
+  insertCorner(id: string, index: number, from: Vec2, x: number, y: number, snap: boolean, tolerance?: number, anchor = true): EditorState {
+    return this.c("insertCorner", { id, index, points: [[from.x, from.y]], x, y, snap, tolerance, anchor });
+  }
+  /** Removes corner `index` of line `id`; one undo step. */
+  removeCorner(id: string, index: number): EditorState { return this.c("removeCorner", { id, index }); }
+  /** Splits line `id` at corner `index` (opens an outline there); one undo step. */
+  splitLine(id: string, index: number): EditorState { return this.c("splitLine", { id, index }); }
+  /** A branch of line `id` from `from` (on the line) to `to` (snapped, docked); one undo step, the branch selected. */
+  branch(id: string, from: Vec2, to: Vec2, snap: boolean, tolerance?: number, anchor = true): EditorState {
+    return this.c("branch", { id, points: [[from.x, from.y], [to.x, to.y]], snap, tolerance, anchor });
+  }
+  /** End `index` of line `id` dropped at x/y: joins a free end of a line of the same kind there; nothing changes without one. */
+  joinLines(id: string, index: number, x: number, y: number, snap: boolean, tolerance?: number): { joined: boolean; state: EditorState | null } {
+    return this.c("joinLines", { id, index, x, y, snap, tolerance });
+  }
+  /** Insert places of element `id` (between table rows and columns). */
+  insertHandles(id: string, lang: string): InsertHandleInfo[] {
+    return this.c<{ id: string; handles: InsertHandleInfo[] }[]>("insertHandles", { id, lang }).find((x) => x.id === id)?.handles ?? [];
+  }
+  /** Inserts at place `key` of element `id` (a row, a column); one undo step. */
+  applyInsertHandle(id: string, key: string): EditorState { return this.c("applyInsertHandle", { id, key }); }
   /** Replaces one object with a full document object (as in saveDocument); one undo step. */
   update(object: unknown): EditorState { return this.c("update", { object }); }
 }

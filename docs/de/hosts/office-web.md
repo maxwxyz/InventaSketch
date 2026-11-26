@@ -80,6 +80,13 @@ Editorzustand und sind je ein Rückgängig-Schritt (kein Schritt, wenn sich nich
 | `motionPreview` | `id` und `degrees` (Zahnrad) oder `id`, `index`, `x`, `y` (Gelenk eines Glieds) | `{ ids, svg }`: die Objekte, die das Drehen oder Ziehen bewegen würde, als SVG in Seiten-mm; nichts wird geändert |
 | `motionTurn`, `motionDrag` | `id`, `degrees`; `id`, `index`, `x`, `y` | Zustand (je ein Rückgängig-Schritt): Getriebezug gedreht (im Uhrzeigersinn positiv); Kette mit gleichbleibenden Gliedlängen bewegt |
 | `update` | `object` (vollständiges Dokumentobjekt wie in `saveDocument`) | Zustand |
+| `dragValue` | `id`, `key`, `value` (SI) oder `text`, `preview`, `digits` | mit `preview` die Wertetabelle, als wäre der Wert eingegeben (nichts ändert sich), sonst Zustand (ein Rückgängig-Schritt) – der ↔-Griff der Wertekarte |
+| `calcSheet`, `insertCalcTable` | `ids` (Standard: die Seite), `mode` (csv, markdown, latex, table), `lang`, `digits`; `ids`, `lang`, `x`/`y` | `{ text, rows, sources }`; Zustand mit einer Beschriftungstabelle des Blatts rechts neben den Elementen, gewählt (ein Rückgängig-Schritt) |
+| `links`, `toggleLink` | `id`, `lang`; `id`, `key` | Schloss-Plaketten `[{ key, kind, a, b, x, y, released, index, label }]`; Zustand (lösen oder koppeln, ein Rückgängig-Schritt) |
+| `polylineHandles` | `id` | `{ corners, branch, closed, segments: [{ index, x, y, nx, ny, ax, ay, bx, by }], removable, splittable }` |
+| `insertCorner`, `removeCorner`, `splitLine` | `id`, `index` (Abschnitt), `points` [[x0, y0]] (der Punkt), `x`, `y`, `snap`, `tolerance`, `anchor`; `id`, `index`; `id`, `index` | Zustand (je ein Rückgängig-Schritt); an der Linie angedockte Abzweige bleiben |
+| `branch`, `joinLines` | `id`, `points` [[Start], [Ende]], `snap`, `tolerance`, `anchor`; `id`, `index` (ein Ende), `x`, `y`, `snap`, `tolerance` | Zustand mit dem neuen Abzweig gewählt; `{ joined, state }` (ohne freies Ende gleicher Art dort ändert sich nichts) |
+| `insertHandles`, `applyInsertHandle` | `id` oder `ids`, `lang`; `id`, `key` | `[{ id, handles: [{ key, x, y, dx, dy, label }] }]`; Zustand (ein Rückgängig-Schritt) |
 | `exporters`, `export` | `ids` (Auswahl mit ihren Gruppen, sonst die Seite), `lang`; `itemId` (Exporter-Id) | zutreffende Fachexporte `{ id, name, extension, mime, preserves }`; `{ id, name, extension, mime, text }` |
 | `renderPageSvg` | `ids`, `monochrome` (Standard: Dokumenteinstellung), `background`, `padding` | `{ svg, width, height }` |
 | `drawPlan` | `ids`, `capabilities` | Zeichenplan in pt (schwarz-weiß, wenn das Dokument es ist) |
@@ -329,12 +336,61 @@ Folgt [interaction-ux.md](../design/interaction-ux.md) (Abschnitte 4–6a) und
   wählt das Teil des Griffs.
 
 Geprüft mit Unit-Tests, Typprüfung und Produktions-Build; **noch nicht im Browser oder in PowerPoint geprüft**.
-Bekannte Unterschiede zum COM-Add-in: noch keine schrittweise Einblendung (jedes „+“ ist sofort sichtbar; kein
-Einblenden in Zeigernähe, keine Übersicht mit Umschalt); die Web-Bühne zeichnet keine Schloss-Plaketten, Knoten,
-Eckpunkte oder Abzweig-Griffe, daher ordnet das Layout nur „+“ an; Drücken auf eine gewählte Kurve zieht nicht die
-ganze Kurve (`byPart`-Griffe); kein ↔-Griff in der Wertekarte und keine ⚠-Plakette in der Zeichnung; eine ungefüllte
-geschlossene Form behält innerhalb ihres Umrisses einen schwachen Schein; die Wertestufe ist eine Einstellung des
-Engine-Dokuments (COM: ein Präsentations-Tag) und `importCompact` übernimmt sie nicht aus einem Folienmodell.
+Die Lücken dieser Runde schließt „Griffe in der Zeichnung“ unten.
+
+## Griffe in der Zeichnung (2026-11-26, Gleichstand mit dem COM-Add-in)
+
+Reine Regeln in `src/ui/handlelogic.ts` (Tests `test/handlelogic.test.ts`); die Engine-Methoden stehen in
+`src/InventaSketch.Engine/EngineWeb.cs` (Tests `WebHandleApiTests`), dazu `insertHandles`/`applyInsertHandle`.
+
+- **Schrittweise Einblendung** (COM `Reveal`): direkt nach dem Auswählen erscheinen nur der Rahmen, die Punkt-Rauten, die
+  Griffe eines gewählten Teils und das eine wichtigste „+“ – das freie Ende einer Linie, die rechte Seite eines Zahnrads,
+  sonst eine Eingriffsseite, ein Anschluss, ein freies Achsende, irgendein Anschluss; bei Diagrammknoten das
+  Schnell-Hinzufügen-Dreieck unten. Alle anderen Griffe (weitere „+“, Einfügepunkte, Schloss-Plaketten, Eckpunkte,
+  Abzweig-Griffe, Wertegriffe, die übrigen Dreiecke) blenden ein, wenn der Zeiger näher kommt (ganz innerhalb 24 px, weg
+  ab 56 px, auch nahe ihrem Bezugspunkt); Umschalt zeigt alle. Ausgeblendete Griffe nehmen keine Klicks an.
+- **Ein Layout für alle Griffe:** „+“ (Priorität 90), Einfügepunkte (50, optional), Schloss-Plaketten (70, dürfen ihren
+  Berührpunkt umkreisen), Eckpunkte (40, optional, gleiten entlang ihres Abschnitts) und Abzweig-Griffe (30, optional,
+  umkreisen) setzt `resolveHandles` um die festen Rahmengriffe, Punkt-Rauten, Dreiecke und Wertegriffe. Elemente unter
+  24 px und Abschnitte unter 28 px bekommen keine Eckpunkte und Abzweig-Griffe.
+- **Schloss-Plaketten** (nur bei eingeschaltetem „Andocken“, wie der COM-Schalter): jede Stelle, an der das Element ein
+  anderes berührt und ihm folgt (kämmende Zahnräder, ein Teil auf einer Welle, konzentrische Teile, Riemen, angedockte
+  Linienenden; Engine `links`), zeigt einen kleinen Punkt auf dem Berührpunkt und daneben eine Schloss-Plakette –
+  geschlossen: gekoppelt, offen und heller: gelöst; blau mit Führungslinie unter dem Zeiger, der Tooltip sagt, was es ist
+  und was ein Klick tut. Ein Klick löst oder koppelt (`toggleLink`, ein Rückgängig-Schritt).
+- **Eckpunkte und Abzweig-Griffe** an Leitungen, Rohren, Straßen und Polylinien (`polylineHandles`): ein Klick auf den
+  hohlen Punkt fügt eine Ecke dort ein, wo der Punkt gezeichnet ist, Ziehen knickt die Linie dort in einem Zug (gefangen
+  und angedockt; `insertCorner`, ein Rückgängig-Schritt, Abzweige bleiben angedockt). Ein Doppelklick auf eine Ecke
+  entfernt sie (`removeCorner`). Der Abzweig-Griff neben dem Punkt zeichnet eine neue Linie gleicher Art von der Linie
+  weg: zu einem Anschluss oder frei ziehen (Umschalt: 15°-Schritte), ein Klick setzt einen 15-mm-Stich (`branch`, der
+  Abzweig wird gewählt). Ein Linienende, das auf einem freien Ende einer Linie gleicher Art abgelegt wird, verbindet
+  beide (`joinLines`, ein Rückgängig-Schritt). Ein Klick auf eine Punkt-Raute ohne Bewegung speichert (oder fängt) den
+  Punkt nicht mehr.
+- **Einfügepunkte** zwischen den Zeilen und Spalten einer Tabelle (`insertHandles`): kleine „+“ direkt auf der Linie, der
+  Tooltip nennt Zeile oder Spalte; ein Klick fügt dort ein (`applyInsertHandle`, ein Rückgängig-Schritt).
+- **Ganze Kurve ziehen:** Drücken auf die gewählte Kurve eines Diagramms zieht die Kurve (ihr `byPart`-Griff wandert um
+  den Versatz des Zeigers, der gestrichelte Umriss zeigt, wo sie landet, die Wertebeschriftung steht neben dem Zeiger);
+  Loslassen verschiebt ihre Daten (`moveHandle`, ein Rückgängig-Schritt), ein Klick ohne Bewegung wählt das Teil unter
+  dem Zeiger. Punktgriffe sind kleine Kreise; Griffe, die nicht zum gewählten Teil gehören, blenden in Zeigernähe ein.
+- **Wertekarte:** in „Erkunden“ ein ↔-Griff neben jedem positiven Wert: nach links oder rechts ziehen ändert den Wert um
+  den Faktor e je 90 px (drei gültige Stellen), alle davon abhängigen Werte folgen in der Karte (`dragValue` mit
+  `preview`); Loslassen speichert (ein Rückgängig-Schritt), Esc stellt wieder her. Ein Wert mit Toleranzen zeigt seinen
+  Bereich unter der Zeile („Bereich: 180 V … 220 V“, `values` `range`). Die ⚠-Plakette (gelbes Dreieck knapp außerhalb
+  der oberen rechten Ecke) markiert ein gewähltes Element, dessen eingegebene Werte sich widersprechen (Erkunden und
+  Ingenieur); ein Klick öffnet seine Wertekarte.
+- **Rechenblatt …** (Fuß der Wertekarte und Bearbeiten ▸ Werte ▸): das Blatt des Elements (`calcSheet`) als CSV, Markdown
+  oder LaTeX mit Kopieren (Zwischenablage, sonst wird der Text für Strg+C markiert) und Herunterladen
+  (`inventasketch-calculation.csv|md|tex`); **Als Tabelle einfügen** setzt es als Beschriftungstabelle (`ann.table`)
+  rechts neben das Element, ohne Platz darunter (`insertCalcTable`, ein Rückgängig-Schritt, die Tabelle gewählt).
+- **Skizzierte Kurven** senden mit jedem Spurpunkt die Zeigerzeit (ms seit dem Drücken; `sketchCurve` `[x, y, t]`), damit
+  der Hinweis aus der Zeichengeschwindigkeit wie im COM-Add-in wirkt.
+
+Geprüft mit Unit-Tests (Engine und TypeScript), Typprüfung und Produktions-Build; **noch nicht im Browser oder in
+PowerPoint geprüft**. Weiterhin anders als im COM-Add-in: keine Knoten-Symbole, wo eine Leitung eine andere kreuzt, kein
+„+“ an freien Linienenden ohne Anschluss zum Weiterzeichnen, keine Eckenauswahl mit „Teilen“ in der Leiste (die Engine hat
+`splitLine`); eine ungefüllte geschlossene Form behält innerhalb ihres Umrisses einen schwachen Schein; die Wertestufe ist
+eine Einstellung des Engine-Dokuments (COM: ein Präsentations-Tag) und `importCompact` übernimmt sie nicht aus einem
+Folienmodell.
 
 ## Bauen und starten
 

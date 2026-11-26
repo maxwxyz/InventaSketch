@@ -20,7 +20,7 @@ import {
   pickBar, shortLabel, type ChoiceEntry,
 } from "./barlogic";
 import { ValueCard, visibleVars } from "./valuecard";
-import { Calculator, CodeImport, isCodeName } from "./tools";
+import { CalcSheet, Calculator, CodeImport, isCodeName } from "./tools";
 import { h, svgDataUrl } from "./dom";
 import { hasIcon, icon } from "./icons";
 import { canDrawGhosts } from "./buildlogic";
@@ -96,6 +96,7 @@ export class App {
   private readonly insertBox: InsertBox;
   private readonly valueCard: ValueCard;
   private readonly calculator: Calculator;
+  private readonly calcSheet: CalcSheet;
   private readonly codeImport: CodeImport;
   private readonly sync?: SlideSync | ComSync;
   private pending?: CatalogItem;
@@ -142,6 +143,8 @@ export class App {
         const info = this.sessionObj.parts(id, lang()).find((p) => p.key === key);
         if (info) this.setPart({ id, key, label: info.label });
       }),
+      valueConflict: (id) => this.valueConflict(id),
+      openValues: () => this.openValues(),
       report: (e) => this.report(e),
     });
     this.stage.onEditText = (o) => this.editText(o);
@@ -169,6 +172,7 @@ export class App {
     this.prompt = new InlinePrompt(this.root);
     const tools = { session: () => this.sessionObj, apply: (s: EditorState, live?: boolean) => this.apply(s, live), report: (e: unknown) => this.report(e) };
     this.calculator = new Calculator(this.root, tools);
+    this.calcSheet = new CalcSheet(this.root, tools);
     this.codeImport = new CodeImport(this.root, tools);
     this.valueCard = new ValueCard(this.root, {
       ...tools,
@@ -177,6 +181,7 @@ export class App {
       openCalculator: (text) => this.calculator.show(this.pointerClient(), text),
       showsValues: (id) => this.showsValues(id),
       setShowValues: (id, on) => this.edit((s) => s.setParam([id], "showValues", on)),
+      openCalcSheet: (id) => this.calcSheet.show([id], this.pointerClient()),
       closed: () => queueMicrotask(() => this.updateBar()),
     });
     this.insertBox = new InsertBox(this.root);
@@ -1314,6 +1319,25 @@ export class App {
   }
 
   /** The element's values label switch (parameter showValues), undefined when its type has none. */
+  /** Whether the entered values of element `id` conflict (Explore and Engineer), cached per revision: the ⚠ badge. */
+  private conflictCache = { key: "", value: false };
+
+  private valueConflict(id: string): boolean {
+    const level = this.st.valueLevel ?? "quick";
+    if (level === "quick") return false;
+    const key = `${id}@${this.st.revision}@${level}`;
+    if (this.conflictCache.key !== key) {
+      let value = false;
+      try {
+        value = this.sessionObj.values(id, lang()).objects.find((o) => o.id === id)?.status === "conflict";
+      } catch {
+        value = false;
+      }
+      this.conflictCache = { key, value };
+    }
+    return this.conflictCache.value;
+  }
+
   private showsValues(id: string): boolean | undefined {
     try {
       const p = this.sessionObj.inspector([id], lang()).params.find((x) => x.key === "showValues");
@@ -1650,9 +1674,11 @@ export class App {
       }
       const shows = this.showsValues(obj.id);
       if (shows !== undefined) items.push(this.menuEntry("valshow", t("val.show"), "cmd-label-show", t("pie.hint.valshow"), { active: shows }));
+      if (items.length) items.push(this.menuEntry("valsheet", t("val.sheet"), undefined, t("sheet.hint")));
       return this.showSubmenu("values", items, t("val.title"));
     }
     if (e.id.startsWith("val:")) return this.openValues(e.id.slice(4));
+    if (e.id === "valsheet" && sel.length === 1) return this.calcSheet.show([sel[0]], at);
     if (e.id === "valshow") {
       const id = sel[0];
       const shows = this.showsValues(id);

@@ -3,11 +3,14 @@
 // previews drags with SVG transforms and commits the result through the session.
 
 import type { Session } from "../engine/client";
-import type { BuildPortInfo, CatalogItem, DragHandleInfo, EditorState, MotionInfo, ObjectInfo, SnapGuide, Vec2 } from "../engine/types";
+import type { BuildPortInfo, CatalogItem, DragHandleInfo, EditorState, InsertHandleInfo, LinkInfo, MotionInfo, ObjectInfo, PolylineHandles, SegmentHandleInfo, SnapGuide, Vec2 } from "../engine/types";
 import { lang, t } from "../i18n";
 import { COUPLING_PREVIEW_MS, HUB_CORNER_PX, PORT_OFFSET_PX, PORT_RADIUS_PX, Throttle, portTipKey, stretchTarget } from "./buildlogic";
 import { PRIORITY, resolveHandles, type LayoutSpec } from "./handlelayout";
-import { gripShown } from "./partlogic";
+import {
+  BADGE_OFFSET_PX, BADGE_PX, BRANCH_OFFSET_PX, BRANCH_PX, CORNER_DOT_PX, GAP_SCALE, MIN_SEGMENT_PX, SMALL_ELEMENT_PX, VALUE_BADGE_PX,
+  bodyGrip, canRemoveCorner, cornerAt, primaryPort, revealOpacity, shownWith,
+} from "./handlelogic";
 import { clamp, s, svgChildren, svgDataUrl, viewBoxOf } from "./dom";
 import { TurnTracker, canMove, insideBounds, nearestJoint, stepTurn, turnLabel } from "./motionlogic";
 import { snapLabelAnchor } from "./uxlogic";
@@ -40,6 +43,10 @@ export interface StageHost {
   selectedPart?(id: string): string | undefined;
   /** A click on a grip: select its part of element `id`. */
   selectPart?(id: string, part: string): void;
+  /** The entered values of element `id` conflict (Explore and Engineer): the stage shows the ⚠ badge. */
+  valueConflict?(id: string): boolean;
+  /** A click on the ⚠ badge: the value card of the selected element. */
+  openValues?(): void;
   report(error: unknown): void;
 }
 
@@ -47,7 +54,11 @@ interface Frame { cx: number; cy: number; w: number; h: number; rot: number }
 
 export type ChainSide = "left" | "top" | "right" | "bottom";
 
-type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide } | { kind: "port"; index: number } | { kind: "grip"; index: number };
+type HandleSpec = { kind: "scale"; sx: number; sy: number } | { kind: "rotate" } | { kind: "point"; index: number } | { kind: "chain"; side: ChainSide } | { kind: "port"; index: number } | { kind: "grip"; index: number }
+  | { kind: "lock"; index: number } | { kind: "corner"; index: number } | { kind: "branch"; index: number } | { kind: "gap"; index: number } | { kind: "valuebadge" };
+
+/** A handle that fades in near the pointer (progressive disclosure): its element, where it is and where it belongs (page mm). */
+interface Revealable { el: SVGElement; at: Vec2; anchor?: Vec2; primary: boolean }
 
 /** Change shown by the motion preview (engine `motionPreview`): a gear turn or a joint dragged to a point. */
 type MotionChange = { degrees: number } | { index: number; x: number; y: number };
@@ -59,13 +70,19 @@ type Drag =
   | { kind: "move"; ids: string[]; start: Vec2; dx: number; dy: number; moved: boolean; startClient: Vec2; followers?: string[] }
   | { kind: "scale"; ids: string[]; frame: Frame; sx: number; sy: number; single?: ObjectInfo; centred: boolean; last?: { p: Vec2; client: Vec2; free: boolean; alt: boolean }; result?: ResizeResult }
   | { kind: "rotate"; ids: string[]; frame: Frame; startAngle: number; delta: number }
-  | { kind: "point"; obj: ObjectInfo; index: number; pos: Vec2 }
+  | { kind: "point"; obj: ObjectInfo; index: number; pos: Vec2; startClient: Vec2; moved: boolean }
   | { kind: "marquee"; start: Vec2; cur: Vec2; add: boolean }
   | { kind: "pan"; startClient: Vec2; ox: number; oy: number }
   | { kind: "chain"; id: string; side: ChainSide; from: Vec2; cur: Vec2; moved: boolean; centre: Vec2 }
   | { kind: "port"; id: string; port: BuildPortInfo; plus: Vec2; startClient: Vec2; moved: boolean; to?: { x: number; y: number; delta: number } }
   /** A grip on a value (chart limit line, value line, marker, data point) dragged to `to` (the element constrains and snaps it). */
-  | { kind: "grip"; id: string; grip: DragHandleInfo; startClient: Vec2; moved: boolean; to?: Vec2 }
+  | { kind: "grip"; id: string; grip: DragHandleInfo; startClient: Vec2; moved: boolean; to?: Vec2; offset?: Vec2; start?: Vec2 }
+  /** A corner dot dragged (or clicked): a new corner on segment `seg`, starting at `start`, moved to `pos`. */
+  | { kind: "corner"; obj: ObjectInfo; seg: SegmentHandleInfo; start: Vec2; pos: Vec2; startClient: Vec2; moved: boolean; snapped: boolean }
+  /** A branch dragged out of a line (a click adds a short stub). */
+  | { kind: "branch"; id: string; seg: SegmentHandleInfo; from: Vec2; end: Vec2; startClient: Vec2; moved: boolean; snapped: boolean }
+  /** A click target (lock badge, insert dot, ⚠ badge): runs on release when the pointer did not move away. */
+  | { kind: "tap"; run: () => void; startClient: Vec2 }
   /** Motion mode: a gear turned about its centre (`turn`), or joint `index` of a link pulled to `target`. */
   | { kind: "motion"; id: string; turn?: TurnTracker; degrees: number; index: number; from?: Vec2; target: Vec2; startClient: Vec2; moved: boolean; dimmed: string[] };
 
@@ -161,6 +178,24 @@ export class Stage {
   private grips?: { key: string; list: DragHandleInfo[] };
   /** The grips drawn now (shown ones, in `data-handle` index order). */
   private shownGrips: DragHandleInfo[] = [];
+  /** Lock badges of the single selected element (engine `links`), corner dots and branch handles of a selected line
+   * (`polylineHandles`) and insert dots (`insertHandles`), each fetched once per selection and revision. */
+  private links?: { key: string; list: LinkInfo[] };
+  private poly?: { key: string; info?: PolylineHandles };
+  private gaps?: { key: string; list: InsertHandleInfo[] };
+  /** What the drawn handles stand for, in `data-handle` index order, and where the corner dots were placed (page mm). */
+  private shownLinks: LinkInfo[] = [];
+  private shownSegs: SegmentHandleInfo[] = [];
+  private segPlaced: Vec2[] = [];
+  private shownGaps: InsertHandleInfo[] = [];
+  /** Progressive disclosure: the handles that fade in near the pointer, the pointer (page mm, none outside) and Shift. */
+  private revealables: Revealable[] = [];
+  private revealPointer?: Vec2;
+  private shiftHeld = false;
+  /** Last press on a point diamond (a double-click on a corner removes it). */
+  private lastPointDown?: { time: number; index: number; x: number; y: number };
+  /** Start time of the sketch trail (pointer times go with the points, for the drawing speed hint). */
+  private sketchStart = 0;
   /** Live preview of a dragged grip (engine `moveHandle` with preview), at the coupling preview rate. */
   private readonly gripThrottle = new Throttle((id: string, grip: DragHandleInfo, to: Vec2, client: Vec2) => this.showGrip(id, grip, to, client), COUPLING_PREVIEW_MS);
   private readonly scaleLabelEl: HTMLDivElement;
@@ -209,13 +244,21 @@ export class Stage {
     window.addEventListener("keydown", (e) => this.onModifier(e));
     window.addEventListener("keydown", (e) => { if (e.key === "Escape" && this.sketch) { this.cancelSketch(); e.preventDefault(); } });
     window.addEventListener("keyup", (e) => this.onModifier(e));
+    // Shift shows every handle of the selection; released, only those near the pointer stay.
+    for (const type of ["keydown", "keyup"] as const)
+      window.addEventListener(type, (e) => { if (e.key === "Shift" && this.shiftHeld !== e.shiftKey) { this.shiftHeld = e.shiftKey; this.updateReveal(); } });
 
     new ResizeObserver(() => this.resize()).observe(this.el);
     this.svg.addEventListener("pointerdown", (e) => this.onDown(e));
     this.svg.addEventListener("pointermove", (e) => this.onMove(e));
     this.svg.addEventListener("pointerup", (e) => this.onUp(e));
     this.svg.addEventListener("pointercancel", () => this.cancelDrag());
-    this.svg.addEventListener("pointerleave", () => { if (!this.drag) this.clearGhost(); });
+    this.svg.addEventListener("pointerleave", () => {
+      if (this.drag) return;
+      this.clearGhost();
+      this.revealPointer = undefined;
+      this.updateReveal();
+    });
     this.svg.addEventListener("contextmenu", (e) => e.preventDefault());
     this.svg.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
     window.addEventListener("keydown", (e) => { if (e.code === "Space" && document.activeElement === this.el) { this.spaceDown = true; e.preventDefault(); } });
@@ -405,7 +448,7 @@ export class Stage {
   drawHalo(): void {
     const st = this.host.state();
     const d = this.drag;
-    const hidden = !!d && d.kind !== "marquee" && d.kind !== "pan" && !(d.kind === "move" && !d.moved) && !(d.kind === "port" && !d.moved);
+    const hidden = !!d && d.kind !== "marquee" && d.kind !== "pan" && d.kind !== "tap" && !("moved" in d && !d.moved);
     const preview = this.haloPreview.filter((id) => !st.selection.includes(id));
     const partKey = this.partLines ? this.partLines.reduce((n, l) => n + l.length, 0) + ":" + (this.partLines[0]?.[0]?.join(",") ?? "") : "";
     const key = hidden ? "hidden" : `${st.revision}|${st.selection.join(",")}|${preview.join(",")}|${this.scale.toFixed(3)}|${partKey}`;
@@ -464,6 +507,17 @@ export class Stage {
   }
 
   drawOverlay(previewFrame?: Frame, previewPoints?: { obj: ObjectInfo; pts: Vec2[] }): void {
+    this.revealables = [];
+    this.shownLinks = [];
+    this.shownSegs = [];
+    this.segPlaced = [];
+    this.shownGaps = [];
+    this.drawOverlayCore(previewFrame, previewPoints);
+    if (!previewFrame && !previewPoints && !this.drag) this.drawValueBadge();
+    this.updateReveal();
+  }
+
+  private drawOverlayCore(previewFrame?: Frame, previewPoints?: { obj: ObjectInfo; pts: Vec2[] }): void {
     this.drawHalo();
     this.overlay.replaceChildren();
     this.portPlus = [];
@@ -487,7 +541,8 @@ export class Stage {
       });
       if (!previewPoints && !single.locked && !motion) {
         const grips = this.drawGrips(single);
-        this.drawPorts(single, [...pts.map((p) => ({ p, r: HANDLE_PX / 2 + 1 })), ...grips], { x: single.bounds.x + single.bounds.w, y: single.bounds.y });
+        const small = Math.max(single.bounds.w, single.bounds.h) * this.scale < SMALL_ELEMENT_PX;
+        this.drawMovable(single, [...pts.map((p) => ({ p, r: HANDLE_PX / 2 + 1 })), ...grips], { x: single.bounds.x + single.bounds.w, y: single.bounds.y }, small);
       }
       return;
     }
@@ -508,7 +563,9 @@ export class Stage {
     rot.dataset.handle = JSON.stringify({ kind: "rotate" } satisfies HandleSpec);
     this.overlay.append(rot);
     const size = HANDLE_PX * px;
+    const handles: { p: Vec2; r: number }[] = [{ p: rh, r: HANDLE_PX / 2 + 1 }];
     // Quick add: blue triangles outside each side of a chainable element (click: connected copy; drag: drop it there).
+    // The one below is the element's primary handle; the others fade in near the pointer (COM `TriangleReveal`).
     if (single?.chain && !previewFrame && !f.rot) {
       const sides: [ChainSide, number, number][] = [["left", -1, 0], ["top", 0, -1], ["right", 1, 0], ["bottom", 0, 1]];
       for (const [side, u, v] of sides) {
@@ -523,9 +580,11 @@ export class Stage {
         tri.dataset.handle = JSON.stringify({ kind: "chain", side } satisfies HandleSpec);
         tri.append(s("title", {}));
         this.overlay.append(tri);
+        // Quick-add triangles are fixed handles too: the "+" keep clear of them.
+        handles.push({ p: c, r: CHAIN_SIZE_PX / 2 + 1 });
+        this.revealables.push({ el: tri, at: c, primary: side === "bottom" });
       }
     }
-    const handles: { p: Vec2; r: number }[] = [{ p: rh, r: HANDLE_PX / 2 + 1 }];
     for (const [u, v] of [[-1, -1], [0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0]]) {
       const p = this.framePoint(f, u, v);
       handles.push({ p, r: HANDLE_PX / 2 + 1 });
@@ -538,14 +597,10 @@ export class Stage {
       r.dataset.handle = JSON.stringify({ kind: "scale", sx: u, sy: v } satisfies HandleSpec);
       this.overlay.append(r);
     }
-    // Quick-add triangles are fixed handles too: the "+" keep clear of them.
-    this.overlay.querySelectorAll<SVGPolygonElement>(".isk-chain").forEach((tri) => {
-      const pts = (tri.getAttribute("points") ?? "").split(" ").map((xy) => xy.split(",").map(Number));
-      if (pts.length === 3) handles.push({ p: { x: (pts[0][0] + pts[1][0] + pts[2][0]) / 3, y: (pts[0][1] + pts[1][1] + pts[2][1]) / 3 }, r: CHAIN_SIZE_PX / 2 + 1 });
-    });
     if (single && !previewFrame) {
       handles.push(...this.drawGrips(single));
-      this.drawPorts(single, handles, { x: Math.max(...corners.map((c) => c.x)), y: Math.min(...corners.map((c) => c.y)) });
+      const small = Math.max(f.w, f.h) * this.scale < SMALL_ELEMENT_PX;
+      this.drawMovable(single, handles, { x: Math.max(...corners.map((c) => c.x)), y: Math.min(...corners.map((c) => c.y)) }, small);
     }
   }
 
@@ -567,24 +622,30 @@ export class Stage {
 
   /**
    * Grips on values (interaction-ux.md section 4, like the COM add-in): a blue-rimmed square with small arrowheads in
-   * the directions it moves, at chart limit lines, value lines, markers; the grips of a curve's points come with the
-   * selected curve or point. Drag: the line follows (the element constrains and snaps), the new value shows beside the
-   * pointer, release is one undo step, Esc cancels; a click selects the grip's part. Returns them as layout obstacles.
+   * the directions it moves, at chart limit lines, value lines, markers; the point grips of a curve are smaller. The grip
+   * of the selected part and the grips that come with it (the points of a selected curve) are shown in full, every other
+   * one fades in near the pointer. A whole curve has no grip of its own: it is dragged by pressing on the selected curve.
+   * Drag: the line follows (the element constrains and snaps), the new value shows beside the pointer, release is one
+   * undo step, Esc cancels; a click selects the grip's part. Returns them as layout obstacles.
    */
   private drawGrips(obj: ObjectInfo): { p: Vec2; r: number }[] {
     const all = this.gripsOf(obj);
     const part = this.host.selectedPart?.(obj.id);
-    this.shownGrips = all.filter((g) => gripShown(g, part, all));
+    this.shownGrips = all.filter((g) => !g.byPart);
     const px = 1 / this.scale;
-    const size = 9 * px, a = 3 * px;
+    const a = 3 * px;
     return this.shownGrips.map((g, i) => {
-      const grp = s("g", { class: `isk-grip${g.part && g.part === part ? " is-selected" : ""}` });
+      const point = !!g.showWith;
+      const size = (point ? 7 : 9) * px;
+      const grp = s("g", { class: `isk-grip${point ? " isk-grip-point" : ""}${g.part && g.part === part ? " is-selected" : ""}` });
       grp.dataset.handle = JSON.stringify({ kind: "grip", index: i } satisfies HandleSpec);
       const title = s("title");
-      title.textContent = g.label;
-      grp.append(title, s("rect", { x: g.x - size / 2, y: g.y - size / 2, width: size, height: size, rx: 1.5 * px }));
+      title.textContent = `${g.label} · ${t("handle.gripDrag")}`;
+      grp.append(title, point
+        ? s("circle", { cx: g.x, cy: g.y, r: size / 2 })
+        : s("rect", { x: g.x - size / 2, y: g.y - size / 2, width: size, height: size, rx: 1.5 * px }));
       // Arrowheads show the allowed direction (both ways along it); a free grip has none.
-      if (g.constraint !== "free") {
+      if (g.constraint !== "free" && !point) {
         const len = Math.hypot(g.dx, g.dy) || 1;
         const d = { x: g.dx / len, y: g.dy / len }, n = { x: -d.y, y: d.x };
         for (const sgn of [1, -1]) {
@@ -594,7 +655,8 @@ export class Stage {
         }
       }
       this.overlay.append(grp);
-      return { p: { x: g.x, y: g.y }, r: 7 };
+      this.revealables.push({ el: grp, at: { x: g.x, y: g.y }, primary: shownWith(g, part, all) });
+      return { p: { x: g.x, y: g.y }, r: point ? 5 : 7 };
     });
   }
 
@@ -609,10 +671,16 @@ export class Stage {
     }
     if (!h) return;
     const size = 9 / this.scale;
-    this.ghost.replaceChildren(
-      s("line", { class: "isk-grip-lead", x1: grip.x, y1: grip.y, x2: h.x, y2: h.y }),
-      s("rect", { class: "isk-grip-ghost", x: h.x - size / 2, y: h.y - size / 2, width: size, height: size }),
-    );
+    if (grip.byPart) {
+      // A whole curve: its outline moved by the snapped offset (the values move along on release).
+      const dx = h.x - grip.x, dy = h.y - grip.y;
+      this.ghost.replaceChildren(...(this.partLines ?? []).map((l) => s("polyline", { class: "isk-part-ghost", points: l.map((p) => `${p[0] + dx},${p[1] + dy}`).join(" ") })));
+    } else {
+      this.ghost.replaceChildren(
+        s("line", { class: "isk-grip-lead", x1: grip.x, y1: grip.y, x2: h.x, y2: h.y }),
+        s("rect", { class: "isk-grip-ghost", x: h.x - size / 2, y: h.y - size / 2, width: size, height: size }),
+      );
+    }
     this.showScaleLabel(h.label, client);
   }
 
@@ -632,22 +700,73 @@ export class Stage {
     return this.ports.list;
   }
 
+  /** Lock badges of the selected element (engine `links`), only while "Anchor" is on (as the COM add-in). */
+  private linksOf(obj: ObjectInfo): LinkInfo[] {
+    if (!obj.known || !this.host.anchorEnabled()) return [];
+    const key = `${obj.id}@${this.host.state().revision}@${lang()}`;
+    if (this.links?.key !== key) {
+      let list: LinkInfo[] = [];
+      try {
+        list = this.host.session().links(obj.id, lang());
+      } catch {
+        list = [];
+      }
+      this.links = { key, list };
+    }
+    return this.links.list;
+  }
+
+  /** Corner dots and branch handles of a selected line with free corners (engine `polylineHandles`). */
+  private polyOf(obj: ObjectInfo): PolylineHandles | undefined {
+    if (!obj.known || obj.kind !== "points") return undefined;
+    const key = `${obj.id}@${this.host.state().revision}`;
+    if (this.poly?.key !== key) {
+      let info: PolylineHandles | undefined;
+      try {
+        info = this.host.session().polylineHandles(obj.id);
+      } catch {
+        info = undefined;
+      }
+      this.poly = { key, info: info?.corners ? info : undefined };
+    }
+    return this.poly.info;
+  }
+
+  /** Insert places of a selected element (engine `insertHandles`: between table rows and columns). */
+  private gapsOf(obj: ObjectInfo): InsertHandleInfo[] {
+    if (!obj.known || obj.kind !== "box") return [];
+    const key = `${obj.id}@${this.host.state().revision}@${lang()}`;
+    if (this.gaps?.key !== key) {
+      let list: InsertHandleInfo[] = [];
+      try {
+        list = this.host.session().insertHandles(obj.id, lang());
+      } catch {
+        list = [];
+      }
+      this.gaps = { key, list };
+    }
+    return this.gaps.list;
+  }
+
   /**
-   * Blue "+" circles at the free build ports of the selected element (like the COM add-in): about 15 px beyond the port
-   * along its outward direction; a free hub's "+" sits beyond the top right corner. One layout for all handles
-   * (`resolveHandles`, the COM HandleLayout): the frame handles, point diamonds, triangles and grips stay, every "+"
-   * takes the first free place around its preferred one with a 3 px gap, so no two handles lie on top of each other; a
-   * "+" that had to move keeps a thin dashed lead to its port. Click: insert box with what docks there; drag at a shaft
-   * end: stretch the shaft.
+   * Every movable handle of the selected element in one layout (`resolveHandles`, the COM HandleLayout): the frame
+   * handles, point diamonds, triangles and grips stay; then, by priority, the build "+" (about 15 px beyond its port; a
+   * free hub's beyond the top right corner), the insert dots between table rows and columns, the lock badges beside their
+   * contact point, the corner dots on the segments of a line (they may slide along their segment) and the branch handles
+   * beside them – each on the first free place around its preferred one with a 3 px gap; optional ones without room are
+   * left out, and none of the corner dots and branch handles on a very small element or a short segment. A "+" that had to
+   * move keeps a thin dashed lead to its port. Only the primary "+" is shown right away; the rest fades in near the pointer.
    */
-  private drawPorts(obj: ObjectInfo, obstacles: { p: Vec2; r: number }[], topRight: Vec2): void {
-    const list = this.portsOf(obj);
+  private drawMovable(obj: ObjectInfo, obstacles: { p: Vec2; r: number }[], topRight: Vec2, small: boolean): void {
+    const ports = this.portsOf(obj);
+    const gaps = this.gapsOf(obj);
+    const links = this.linksOf(obj);
+    const poly = small ? undefined : this.polyOf(obj);
     const px = 1 / this.scale;
-    this.portPlus = [];
     const toPx = (p: Vec2) => ({ x: p.x * this.scale, y: p.y * this.scale });
     const specs: LayoutSpec[] = obstacles.map((o, i) => ({ id: `fixed:${i}`, kind: "frame", anchor: toPx(o.p), dir: { x: 0, y: 0 }, offset: 0, radius: o.r, priority: 0, fixed: true }));
     const preferred: Vec2[] = [];
-    list.forEach((port, i) => {
+    ports.forEach((port, i) => {
       const hub = port.kind === "Hub";
       const anchor = hub ? toPx(topRight) : toPx(port);
       const dir = hub ? { x: 1, y: -1 } : { x: port.dx, y: port.dy };
@@ -656,21 +775,159 @@ export class Stage {
       preferred.push({ x: anchor.x + (dir.x / len) * offset, y: anchor.y + (dir.y / len) * offset });
       specs.push({ id: `port:${i}`, kind: "add", anchor, dir, offset, radius: PORT_RADIUS_PX, priority: PRIORITY.add, maxPush: 48 });
     });
-    const placed = resolveHandles(specs).slice(obstacles.length);
-    list.forEach((port, i) => {
-      const at = placed[i].at;
-      const c = { x: at.x * px, y: at.y * px };
+    gaps.forEach((g, i) => specs.push({ id: `gap:${i}`, kind: "add", anchor: toPx(g), dir: { x: g.dx, y: g.dy }, offset: 0, radius: PORT_RADIUS_PX * GAP_SCALE, priority: 50, optional: true, maxPush: 18 }));
+    links.forEach((l, i) => specs.push({ id: `lock:${i}`, kind: "lock", anchor: toPx(l), dir: { x: Math.SQRT1_2, y: -Math.SQRT1_2 }, offset: BADGE_OFFSET_PX * Math.SQRT2, radius: BADGE_PX, priority: PRIORITY.lock, orbit: true, maxPush: 48 }));
+    const segs: SegmentHandleInfo[] = [];
+    for (const seg of poly?.segments ?? []) {
+      const a = toPx({ x: seg.ax, y: seg.ay }), b = toPx({ x: seg.bx, y: seg.by });
+      const len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (len < MIN_SEGMENT_PX) continue;
+      const k = segs.length;
+      segs.push(seg);
+      // The corner dot stays on its segment: it may slide along it (a quarter of the length each way).
+      specs.push({ id: `corner:${k}`, kind: "corner", anchor: toPx(seg), dir: { x: (b.x - a.x) / len, y: (b.y - a.y) / len }, offset: 0, radius: CORNER_DOT_PX, priority: PRIORITY.corner, optional: true, along: true, maxPush: len / 4 });
+      if (poly?.branch) specs.push({ id: `branch:${k}`, kind: "branch", anchor: toPx(seg), dir: { x: seg.nx, y: seg.ny }, offset: BRANCH_OFFSET_PX, radius: BRANCH_PX, priority: PRIORITY.branch, optional: true, orbit: true, maxPush: 10 });
+    }
+    const placed = resolveHandles(specs);
+    const at = (id: string) => {
+      const h = placed.find((x) => x.spec.id === id);
+      return h ? { at: { x: h.at.x * px, y: h.at.y * px }, visible: h.visible } : undefined;
+    };
+    const primary = primaryPort(ports, obj.kind === "points" ? obj.points : undefined, !!obj.chain);
+    // Draw order: corner dots and branches lowest, then insert dots, lock badges and the "+" on top.
+    segs.forEach((seg, k) => {
+      const dot = at(`corner:${k}`);
+      if (dot?.visible) {
+        const c = s("circle", { class: "isk-corner", cx: dot.at.x, cy: dot.at.y, r: CORNER_DOT_PX * px });
+        c.dataset.handle = JSON.stringify({ kind: "corner", index: k } satisfies HandleSpec);
+        const title = s("title");
+        title.textContent = t("handle.corner");
+        c.append(title);
+        this.overlay.append(c);
+        this.revealables.push({ el: c, at: dot.at, anchor: { x: seg.x, y: seg.y }, primary: false });
+      }
+      this.segPlaced[k] = dot?.visible ? dot.at : { x: seg.x, y: seg.y };
+      const br = at(`branch:${k}`);
+      if (br?.visible) {
+        const r = BRANCH_PX * px, kk = r * 0.55, d = 1.3 * px;
+        const g = s("g", { class: "isk-branch" });
+        g.dataset.handle = JSON.stringify({ kind: "branch", index: k } satisfies HandleSpec);
+        const title = s("title");
+        title.textContent = t("handle.branch");
+        g.append(title, s("circle", { cx: br.at.x, cy: br.at.y, r }),
+          s("circle", { class: "isk-branch-dot", cx: br.at.x, cy: br.at.y + kk, r: d }),
+          s("path", { d: `M${br.at.x} ${br.at.y + kk}V${br.at.y - kk}` }));
+        this.overlay.append(g);
+        this.revealables.push({ el: g, at: br.at, anchor: { x: seg.x, y: seg.y }, primary: false });
+      }
+    });
+    this.shownSegs = segs;
+    gaps.forEach((gap, i) => {
+      const h = at(`gap:${i}`);
+      if (!h?.visible) return;
+      const r = PORT_RADIUS_PX * GAP_SCALE * px, k = r * 0.55;
+      const g = s("g", { class: "isk-port isk-gap" });
+      g.dataset.handle = JSON.stringify({ kind: "gap", index: i } satisfies HandleSpec);
+      const title = s("title");
+      title.textContent = gap.label;
+      g.append(title, s("circle", { cx: h.at.x, cy: h.at.y, r }), s("path", { d: `M${h.at.x - k} ${h.at.y}H${h.at.x + k}M${h.at.x} ${h.at.y - k}V${h.at.y + k}` }));
+      this.overlay.append(g);
+      this.revealables.push({ el: g, at: h.at, primary: false });
+    });
+    this.shownGaps = gaps;
+    links.forEach((link, i) => {
+      const h = at(`lock:${i}`);
+      if (!h) return;
+      // Quiet by default: a tiny dot on the contact point; the badge fades in near the pointer (or with Shift).
+      this.overlay.append(s("circle", { class: `isk-lock-contact${link.released ? " is-released" : ""}`, cx: link.x, cy: link.y, r: 2 * px }));
+      const g = s("g", { class: `isk-lock${link.released ? " is-released" : ""}` });
+      g.dataset.handle = JSON.stringify({ kind: "lock", index: i } satisfies HandleSpec);
+      const title = s("title");
+      title.textContent = link.label;
+      g.append(title, s("line", { class: "isk-lock-lead", x1: link.x, y1: link.y, x2: h.at.x, y2: h.at.y }), s("circle", { class: "isk-lock-ring", cx: h.at.x, cy: h.at.y, r: BADGE_PX * px }), this.lockGlyph(h.at, BADGE_PX * 0.58 * px, link.released));
+      this.overlay.append(g);
+      this.revealables.push({ el: g, at: h.at, anchor: { x: link.x, y: link.y }, primary: false });
+    });
+    this.shownLinks = links;
+    this.portPlus = [];
+    ports.forEach((port, i) => {
+      const h = at(`port:${i}`);
+      if (!h) return;
+      const c = h.at;
       this.portPlus.push(c);
-      if (Math.hypot(at.x - preferred[i].x, at.y - preferred[i].y) > 1) this.overlay.append(s("line", { class: "isk-port-lead", x1: port.x, y1: port.y, x2: c.x, y2: c.y }));
-      const r = PORT_RADIUS_PX * px, k = r * 0.55;
       const g = s("g", { class: `isk-port${port.stretch ? " isk-port-stretch" : ""}` });
+      if (Math.hypot(c.x * this.scale - preferred[i].x, c.y * this.scale - preferred[i].y) > 1) g.append(s("line", { class: "isk-port-lead", x1: port.x, y1: port.y, x2: c.x, y2: c.y }));
+      const r = PORT_RADIUS_PX * px, k = r * 0.55;
       g.dataset.handle = JSON.stringify({ kind: "port", index: i } satisfies HandleSpec);
       g.dataset.port = port.id;
       const title = s("title");
       title.textContent = t(portTipKey(port));
       g.append(title, s("circle", { cx: c.x, cy: c.y, r }), s("path", { d: `M${c.x - k} ${c.y}H${c.x + k}M${c.x} ${c.y - k}V${c.y + k}` }));
       this.overlay.append(g);
+      this.revealables.push({ el: g, at: c, anchor: { x: port.x, y: port.y }, primary: i === primary });
     });
+  }
+
+  /** A padlock centred at `c` (page mm): body and shackle, the shackle lifted and open when released (COM `DrawLock`). */
+  private lockGlyph(c: Vec2, size: number, open: boolean): SVGElement {
+    const bw = size * 1.5, bh = size * 1.05;
+    const top = c.y - bh * 0.15;
+    const sw = bw * 0.62, sh = size * 0.95, lift = open ? size * 0.35 : 0;
+    const arcTop = top - sh - lift;
+    const legTop = arcTop + sh * 0.8;
+    const x0 = c.x - sw / 2, x1 = c.x + sw / 2;
+    const shackle = `M${x0} ${top}V${legTop}A${sw / 2} ${sh * 0.8} 0 0 1 ${x1} ${legTop}${open ? "" : `V${top}`}`;
+    const g = s("g", { class: "isk-lock-glyph" });
+    g.append(s("rect", { x: c.x - bw / 2, y: top, width: bw, height: bh }), s("path", { d: shackle }));
+    return g;
+  }
+
+  /**
+   * The ⚠ badge (like the COM add-in): a small amber triangle just outside the top right corner of a selected element
+   * whose entered values conflict, in Explore and Engineer; a click opens its value card.
+   */
+  private drawValueBadge(): void {
+    const st = this.host.state();
+    if (st.selection.length !== 1 || !this.host.valueConflict) return;
+    const o = this.objects(st.selection)[0];
+    if (!o?.hasValues || !this.host.valueConflict(o.id)) return;
+    const f = o.kind === "box" ? this.frameOf(st.selection) : undefined;
+    const pts = f ? [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([u, v]) => this.framePoint(f, u, v)) : [{ x: o.bounds.x, y: o.bounds.y }, { x: o.bounds.x + o.bounds.w, y: o.bounds.y }];
+    const px = 1 / this.scale, off = VALUE_BADGE_PX * px, hgt = 11 * px;
+    const c = { x: Math.max(...pts.map((p) => p.x)) + off, y: Math.min(...pts.map((p) => p.y)) - off };
+    const g = s("g", { class: "isk-value-badge" });
+    g.dataset.handle = JSON.stringify({ kind: "valuebadge" } satisfies HandleSpec);
+    const title = s("title");
+    title.textContent = t("val.badge");
+    g.append(title,
+      s("path", { d: `M${c.x} ${c.y - hgt / 2}L${c.x + hgt * 0.58} ${c.y + hgt / 2}L${c.x - hgt * 0.58} ${c.y + hgt / 2}Z` }),
+      s("path", { class: "isk-value-badge-ink", d: `M${c.x} ${c.y - hgt * 0.18}V${c.y + hgt * 0.18}M${c.x} ${c.y + hgt * 0.3}V${c.y + hgt * 0.36}` }));
+    this.overlay.append(g);
+  }
+
+  /** The ⚠ badge as last drawn (UI checks): "conflict" or "". */
+  get valueBadge(): string {
+    return this.overlay.querySelector(".isk-value-badge") ? "conflict" : "";
+  }
+
+  /**
+   * Progressive disclosure (COM `Reveal`): right after a selection only the frame, the point diamonds, the one primary
+   * "+" and the grips of a selected part are shown; every other handle fades in within about 40 px of the pointer (fully
+   * within 24 px, gone beyond 56 px) and Shift shows all. Hidden handles take no clicks.
+   */
+  private updateReveal(): void {
+    const ptr = this.revealPointer ? { x: this.revealPointer.x * this.scale, y: this.revealPointer.y * this.scale } : undefined;
+    for (const r of this.revealables) {
+      const o = revealOpacity({ x: r.at.x * this.scale, y: r.at.y * this.scale }, r.anchor ? { x: r.anchor.x * this.scale, y: r.anchor.y * this.scale } : undefined, ptr, r.primary, this.shiftHeld);
+      r.el.style.opacity = o >= 0.98 ? "" : o.toFixed(2);
+      r.el.style.pointerEvents = o <= 0.05 ? "none" : "";
+    }
+  }
+
+  /** Ids of the handles shown at least half (UI checks: calm right after a selection). */
+  get shownHandles(): string[] {
+    return this.revealables.filter((r) => r.el.style.opacity === "" || Number(r.el.style.opacity) >= 0.5)
+      .map((r) => { try { const h = JSON.parse(r.el.dataset.handle ?? "{}") as { kind?: string; index?: number; side?: string }; return `${h.kind}:${h.index ?? h.side ?? ""}`; } catch { return ""; } });
   }
 
   private drawGuides(guides: SnapGuide[]): void {
@@ -915,7 +1172,9 @@ export class Stage {
     const p = this.toPage(e.clientX, e.clientY);
     if (this.sketch && e.button === 0) {
       this.sketch.drawing = true;
-      this.sketch.points = [[p.x, p.y]];
+      // Pointer times (ms) go with the trail: the engine reads the drawing speed as a detail hint (as in the COM add-in).
+      this.sketchStart = performance.now();
+      this.sketch.points = [[p.x, p.y, 0]];
       this.svg.setPointerCapture(e.pointerId);
       e.preventDefault();
       return;
@@ -956,6 +1215,10 @@ export class Stage {
       }
       if (handle) {
         this.startHandle(handle, p);
+        this.svg.setPointerCapture(e.pointerId);
+        return;
+      }
+      if (this.beginCurveDrag(p, e)) {
         this.svg.setPointerCapture(e.pointerId);
         return;
       }
@@ -1000,13 +1263,70 @@ export class Stage {
     }
   }
 
+  /**
+   * Pressing on the selected curve of a chart drags the whole curve (as in the COM add-in): its `byPart` grip moves by
+   * the pointer's offset and the values move along on release; a click without moving selects the part there.
+   */
+  private beginCurveDrag(p: Vec2, e: PointerEvent): boolean {
+    if (e.shiftKey || e.ctrlKey || e.metaKey) return false;
+    const sel = this.objects(this.host.state().selection);
+    const obj = sel.length === 1 ? sel[0] : undefined;
+    if (!obj || obj.locked) return false;
+    const part = this.host.selectedPart?.(obj.id);
+    const grip = bodyGrip(this.gripsOf(obj), part);
+    if (!grip || this.host.session().partAt(obj.id, p.x, p.y, 6 / this.scale) !== part) return false;
+    this.drag = { kind: "grip", id: obj.id, grip, startClient: { x: e.clientX, y: e.clientY }, moved: false, offset: { x: grip.x - p.x, y: grip.y - p.y }, start: p };
+    return true;
+  }
+
   private startHandle(h: HandleSpec, p: Vec2): void {
     const st = this.host.state();
     const ids = st.selection;
     const f = this.frameOf(ids);
     const objs = this.objects(ids);
+    const client = this.toClient(p);
     if (h.kind === "point" && objs.length === 1) {
-      this.drag = { kind: "point", obj: objs[0], index: h.index, pos: p };
+      // A double-click on a corner of a line with free corners removes it (as in the COM add-in).
+      const now = performance.now();
+      const last = this.lastPointDown;
+      this.lastPointDown = { time: now, index: h.index, x: client.x, y: client.y };
+      if (last && last.index === h.index && now - last.time < 450 && Math.hypot(client.x - last.x, client.y - last.y) < 6
+          && canRemoveCorner(this.polyOf(objs[0])?.removable, h.index)) {
+        this.lastPointDown = undefined;
+        this.drag = { kind: "tap", startClient: client, run: () => this.host.apply(this.host.session().removeCorner(objs[0].id, h.index), true) };
+        return;
+      }
+      this.drag = { kind: "point", obj: objs[0], index: h.index, pos: p, startClient: client, moved: false };
+      return;
+    }
+    if (h.kind === "lock" && objs.length === 1) {
+      const link = this.shownLinks[h.index];
+      if (link) this.drag = { kind: "tap", startClient: client, run: () => this.host.apply(this.host.session().toggleLink(objs[0].id, link.key), true) };
+      return;
+    }
+    if (h.kind === "gap" && objs.length === 1) {
+      const gap = this.shownGaps[h.index];
+      if (gap) this.drag = { kind: "tap", startClient: client, run: () => this.host.apply(this.host.session().applyInsertHandle(objs[0].id, gap.key), true) };
+      return;
+    }
+    if (h.kind === "valuebadge") {
+      this.drag = { kind: "tap", startClient: client, run: () => this.host.openValues?.() };
+      return;
+    }
+    if (h.kind === "corner" && objs.length === 1) {
+      const seg = this.shownSegs[h.index];
+      if (!seg) return;
+      // The corner starts where its dot is drawn (the layout may have slid it along its segment).
+      const start = cornerAt({ x: seg.ax, y: seg.ay }, { x: seg.bx, y: seg.by }, this.segPlaced[h.index] ?? seg, { x: seg.x, y: seg.y }, 1.5 / this.scale);
+      this.drag = { kind: "corner", obj: objs[0], seg, start, pos: start, startClient: client, moved: false, snapped: false };
+      return;
+    }
+    if (h.kind === "branch" && objs.length === 1) {
+      const seg = this.shownSegs[h.index];
+      if (!seg) return;
+      const from = { x: seg.x, y: seg.y };
+      // A click adds a short stub (15 mm) on the handle's side.
+      this.drag = { kind: "branch", id: objs[0].id, seg, from, end: { x: from.x + seg.nx * 15, y: from.y + seg.ny * 15 }, startClient: client, moved: false, snapped: false };
       return;
     }
     if (h.kind === "grip" && objs.length === 1) {
@@ -1043,13 +1363,16 @@ export class Stage {
     const p = this.toPage(e.clientX, e.clientY);
     if (this.sketch?.drawing) {
       const last = this.sketch.points[this.sketch.points.length - 1];
-      if (Math.hypot(p.x - last[0], p.y - last[1]) * this.scale >= 2) { this.sketch.points.push([p.x, p.y]); this.drawSketchTrail(); }
+      if (Math.hypot(p.x - last[0], p.y - last[1]) * this.scale >= 2) { this.sketch.points.push([p.x, p.y, Math.round(performance.now() - this.sketchStart)]); this.drawSketchTrail(); }
       return;
     }
     this.lastPointer = p;
     this.host.pointerMoved(e.clientX, e.clientY);
     const d = this.drag;
     if (!d) {
+      this.revealPointer = p;
+      this.shiftHeld = e.shiftKey;
+      this.updateReveal();
       const pending = this.host.pendingInsert();
       if (pending) this.showGhost(pending, p);
       return;
@@ -1070,8 +1393,8 @@ export class Stage {
         case "grip": {
           if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < 4) return;
           d.moved = true;
-          d.to = p;
-          this.gripThrottle.push(d.id, d.grip, p, { x: e.clientX, y: e.clientY });
+          d.to = d.offset ? { x: p.x + d.offset.x, y: p.y + d.offset.y } : p;
+          this.gripThrottle.push(d.id, d.grip, d.to, { x: e.clientX, y: e.clientY });
           return;
         }
         case "port": {
@@ -1154,7 +1477,50 @@ export class Stage {
           this.drawOverlay({ ...f, rot: f.rot + delta });
           break;
         }
+        case "tap":
+          return;
+        case "corner": {
+          if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < MOVE_THRESHOLD_PX) return;
+          d.moved = true;
+          let q = p;
+          d.snapped = this.host.snapEnabled() && !e.altKey;
+          if (d.snapped) {
+            const r = this.host.session().snapPoint(p.x, p.y, [d.obj.id], this.tolerance());
+            q = { x: r.x, y: r.y };
+            this.drawGuides(r.guides);
+          } else this.guides.replaceChildren();
+          d.pos = q;
+          const pts = [...(d.obj.points ?? [])];
+          pts.splice(d.seg.index + 1, 0, q);
+          this.drawOverlay(undefined, { obj: d.obj, pts });
+          return;
+        }
+        case "branch": {
+          if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < 5) return;
+          d.moved = true;
+          let q = p;
+          d.snapped = this.host.snapEnabled() && !e.altKey && !e.shiftKey;
+          if (e.shiftKey) {
+            // Shift: 15 degree steps from where the branch leaves the line.
+            const a = Math.round(Math.atan2(p.y - d.from.y, p.x - d.from.x) / (Math.PI / 12)) * (Math.PI / 12);
+            const len = Math.hypot(p.x - d.from.x, p.y - d.from.y);
+            q = { x: d.from.x + Math.cos(a) * len, y: d.from.y + Math.sin(a) * len };
+            this.guides.replaceChildren();
+          } else if (d.snapped) {
+            const r = this.host.session().snapPoint(p.x, p.y, [d.id], this.tolerance());
+            q = { x: r.x, y: r.y };
+            this.drawGuides(r.guides);
+          } else this.guides.replaceChildren();
+          d.end = q;
+          this.ghost.replaceChildren(
+            s("line", { class: "isk-branch-preview", x1: d.from.x, y1: d.from.y, x2: q.x, y2: q.y }),
+            s("circle", { class: "isk-stretch-end", cx: d.from.x, cy: d.from.y, r: 2 / this.scale }),
+          );
+          return;
+        }
         case "point": {
+          if (!d.moved && Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < MOVE_THRESHOLD_PX) return;
+          d.moved = true;
           let q = p;
           if (this.host.snapEnabled() && !e.altKey) {
             const r = this.host.session().snapPoint(p.x, p.y, [d.obj.id], this.tolerance());
@@ -1243,7 +1609,7 @@ export class Stage {
     if (sk?.drawing) {
       if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
       const p = this.toPage(e.clientX, e.clientY);
-      sk.points.push([p.x, p.y]);
+      sk.points.push([p.x, p.y, Math.round(performance.now() - this.sketchStart)]);
       const pts = sk.points;
       this.cancelSketch();
       if (pts.length >= 3) sk.done(pts);
@@ -1251,6 +1617,8 @@ export class Stage {
     }
     const d = this.drag;
     this.drag = undefined;
+    // The handles near the pointer stay shown after the edit.
+    this.revealPointer = this.toPage(e.clientX, e.clientY);
     // Alt edits freely: no mechanical coupling (gears in mesh, gears on shafts) for this edit.
     this.host.session().couple = !e.altKey;
     if (this.svg.hasPointerCapture(e.pointerId)) this.svg.releasePointerCapture(e.pointerId);
@@ -1266,6 +1634,7 @@ export class Stage {
           this.gripThrottle.cancel();
           this.ghost.replaceChildren();
           if (d.moved && d.to) this.host.apply(session.moveHandle(d.id, d.grip.key, d.to.x, d.to.y), true);
+          else if (d.grip.byPart && d.start) this.host.clickPart?.(d.id, d.start, 6 / this.scale);
           else if (d.grip.part) this.host.selectPart?.(d.id, d.grip.part);
           else this.drawOverlay();
           break;
@@ -1306,9 +1675,34 @@ export class Stage {
           if (Math.abs(d.delta) > 1e-6) this.host.apply(session.rotate(d.ids, d.delta, d.frame.cx, d.frame.cy), true);
           else this.resetPreview(d.ids);
           break;
-        case "point":
-          this.host.apply(session.setPoint(d.obj.id, d.index, d.pos.x, d.pos.y, this.host.snapEnabled() && !e.altKey, this.tolerance(), this.host.anchorEnabled()), true);
+        case "point": {
+          if (!d.moved) { this.drawOverlay(); break; }
+          const snap = this.host.snapEnabled() && !e.altKey;
+          const n = d.obj.points?.length ?? 0;
+          // An end dropped on a free end of a line of the same kind joins both lines (as in the COM add-in).
+          if (n >= 2 && (d.index === 0 || d.index === n - 1)) {
+            const j = session.joinLines(d.obj.id, d.index, d.pos.x, d.pos.y, snap, this.tolerance());
+            if (j.joined && j.state) { this.host.apply(j.state, true); break; }
+          }
+          this.host.apply(session.setPoint(d.obj.id, d.index, d.pos.x, d.pos.y, snap, this.tolerance(), this.host.anchorEnabled()), true);
           break;
+        }
+        case "tap": {
+          if (Math.hypot(e.clientX - d.startClient.x, e.clientY - d.startClient.y) < 6) d.run();
+          else this.drawOverlay();
+          break;
+        }
+        case "corner": {
+          // Click: a corner where the dot is drawn; drag: bent to the pointer (snapped, docked). One undo step.
+          const to = d.moved ? d.pos : d.start;
+          this.host.apply(session.insertCorner(d.obj.id, d.seg.index, d.start, to.x, to.y, d.moved && d.snapped, this.tolerance(), this.host.anchorEnabled()), true);
+          break;
+        }
+        case "branch": {
+          this.ghost.replaceChildren();
+          this.host.apply(session.branch(d.id, d.from, d.end, d.moved && d.snapped, this.tolerance(), this.host.anchorEnabled()), true);
+          break;
+        }
         case "marquee": {
           const w = d.cur.x - d.start.x, h = d.cur.y - d.start.y;
           if (Math.abs(w) * this.scale > 2 || Math.abs(h) * this.scale > 2)
@@ -1345,7 +1739,7 @@ export class Stage {
     this.guides.replaceChildren();
     this.hideScaleLabel();
     this.clearCoupling();
-    if (d?.kind === "port" || d?.kind === "grip") this.ghost.replaceChildren();
+    if (d?.kind === "port" || d?.kind === "grip" || d?.kind === "branch") this.ghost.replaceChildren();
     if (d?.kind === "grip") this.gripThrottle.cancel();
     if (d?.kind === "motion") this.clearMotionPreview(d);
     if (d && "ids" in d) this.resetPreview(d.ids);

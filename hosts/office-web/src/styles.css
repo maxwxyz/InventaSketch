@@ -316,7 +316,7 @@ textarea.isk-input { resize: vertical; }
 .isk-valuecard { width: min(360px, calc(100% - 12px)); }
 .isk-val-status { margin: 4px 0 6px; font-weight: 600; }
 .isk-val-status.is-conflict, .isk-val-mark.is-conflict { color: #b26a00; }
-.isk-val-rows { display: grid; grid-template-columns: 16px auto 1fr 96px auto 26px; align-items: center; column-gap: 6px; row-gap: 2px; }
+.isk-val-rows { display: grid; grid-template-columns: 16px auto 1fr 96px auto 18px 26px; align-items: center; column-gap: 6px; row-gap: 2px; }
 .isk-val-row { display: contents; }
 .isk-val-mark { text-align: center; color: var(--muted); }
 .isk-val-sym { font-style: italic; font-family: "Cambria Math", "Times New Roman", serif; }
@@ -343,5 +343,49 @@ textarea.isk-input { resize: vertical; }
 .isk-grip-arrow { fill: #1f5fbf; stroke: none; pointer-events: none; }
 .isk-grip-ghost { fill: rgba(31, 95, 191, 0.25); stroke: #1f5fbf; stroke-width: 1.6px; vector-effect: non-scaling-stroke; pointer-events: none; }
 .isk-grip-lead { stroke: #1f5fbf; stroke-width: 1px; stroke-dasharray: 3 2; vector-effect: non-scaling-stroke; pointer-events: none; }
+.isk-grip-point circle { fill: #ffffff; stroke: #1f5fbf; stroke-width: 1.4px; vector-effect: non-scaling-stroke; }
+.isk-grip-point:hover circle, .isk-grip-point.is-selected circle { fill: #1f5fbf; }
+.isk-part-ghost { fill: none; stroke: #1f5fbf; stroke-width: 2px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+/* Handles that fade in near the pointer (progressive disclosure): the opacity is set inline. */
+.isk-overlay [data-handle] { transition: opacity 90ms linear; }
+/* Lock badges: grey ring with a padlock beside the contact point; blue under the pointer; open and lighter when released. */
+.isk-lock { cursor: pointer; }
+.isk-lock-ring { fill: #ffffff; stroke: #6b6f76; stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.isk-lock-glyph rect { fill: #6b6f76; stroke: none; }
+.isk-lock-glyph path { fill: none; stroke: #6b6f76; stroke-width: 1.15px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
+.isk-lock-lead { stroke: transparent; stroke-width: 1px; vector-effect: non-scaling-stroke; pointer-events: none; }
+.isk-lock:hover .isk-lock-ring { fill: #1f5fbf; stroke: #1f5fbf; }
+.isk-lock:hover .isk-lock-glyph rect { fill: #ffffff; }
+.isk-lock:hover .isk-lock-glyph path { stroke: #ffffff; }
+.isk-lock:hover .isk-lock-lead { stroke: rgba(31, 95, 191, 0.65); }
+.isk-lock.is-released .isk-lock-ring { stroke: #a9adb3; }
+.isk-lock.is-released .isk-lock-glyph rect { fill: #a9adb3; }
+.isk-lock.is-released .isk-lock-glyph path { stroke: #a9adb3; }
+.isk-lock.is-released:hover .isk-lock-ring { fill: #ffffff; stroke: #6b6f76; }
+.isk-lock.is-released:hover .isk-lock-glyph rect { fill: #6b6f76; }
+.isk-lock.is-released:hover .isk-lock-glyph path { stroke: #6b6f76; }
+.isk-lock.is-released:hover .isk-lock-lead { stroke: rgba(107, 111, 118, 0.65); }
+.isk-lock-contact { fill: #6b6f76; pointer-events: none; }
+.isk-lock-contact.is-released { fill: #a9adb3; }
+/* Corner dots (hollow, no "+": not "add an element") and branch handles (a stub leaving a dot). */
+.isk-corner { fill: #ffffff; stroke: #1f5fbf; stroke-width: 1.3px; vector-effect: non-scaling-stroke; cursor: crosshair; }
+.isk-corner:hover { fill: #e1ecfc; }
+.isk-branch { cursor: crosshair; }
+.isk-branch circle { fill: #ffffff; stroke: #1f5fbf; stroke-width: 1.3px; vector-effect: non-scaling-stroke; }
+.isk-branch:hover circle { fill: #e1ecfc; }
+.isk-branch circle.isk-branch-dot { fill: #1f5fbf; stroke: none; }
+.isk-branch path { stroke: #1f5fbf; stroke-width: 1.4px; stroke-linecap: round; vector-effect: non-scaling-stroke; pointer-events: none; }
+.isk-branch-preview { stroke: #1f5fbf; stroke-width: 1.6px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; fill: none; pointer-events: none; }
+/* The ⚠ badge of conflicting values: amber triangle with a white rim. */
+.isk-value-badge { cursor: pointer; }
+.isk-value-badge path { fill: #f0a800; stroke: #ffffff; stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.isk-value-badge path.isk-value-badge-ink { fill: none; stroke: #3c2800; stroke-width: 1.4px; }
+/* Value card: the ↔ grip (drag left or right) and the range of a value with tolerances. */
+.isk-val-grip { cursor: ew-resize; color: var(--accent); text-align: center; user-select: none; touch-action: none; }
+.isk-val-range { grid-column: 2 / -1; font-size: 11px; margin: 0 0 3px; }
+.isk-sheet { width: min(460px, calc(100% - 12px)); }
+.isk-sheet-text { width: 100%; box-sizing: border-box; font-family: Consolas, "Cascadia Mono", monospace; font-size: 12px; resize: vertical; }
+.isk-sheet-actions { gap: 6px; flex-wrap: wrap; }
 /* Option pictures (engine previews, library thumbnails) are drawn dark on transparent: inverted on dark panels. */
 :root[data-theme="dark"] .isk-ctxbar img, :root[data-theme="dark"] .isk-dropdown img { filter: invert(1) hue-rotate(180deg); }
