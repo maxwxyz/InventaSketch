@@ -61,6 +61,7 @@ namespace InventaSketch.Modules.Kinematics.Tests
                 "kin.link.binary", "kin.link.ternary", "kin.link.crank", "kin.link.rocker", "kin.link.slider", "kin.link.piston",
                 "kin.cam.follower", "kin.spring", "kin.damper", "kin.rope.pulley", "kin.gripper",
                 "kin.mech.fourbar", "kin.mech.slidercrank", "kin.mech.scotchyoke", "kin.mech.toggle", "kin.mech.quickreturn",
+                "kin.mech.geneva", "kin.ratchet", "kin.mech.sixbar", "kin.mech.pantograph",
                 "kin.motion.path", "kin.motion.anglelimit", "kin.motion.dof",
             })
                 Assert.Contains(id, ids);
@@ -209,7 +210,8 @@ namespace InventaSketch.Modules.Kinematics.Tests
         public void MechanismsStayInsideTheirBoxOverAFullTurnWithGhostsAndPaths()
         {
             var r = Fx.Reg();
-            foreach (var id in new[] { "kin.mech.fourbar", "kin.mech.slidercrank", "kin.mech.scotchyoke", "kin.mech.toggle", "kin.mech.quickreturn", "kin.cam.follower" })
+            foreach (var id in new[] { "kin.mech.fourbar", "kin.mech.slidercrank", "kin.mech.scotchyoke", "kin.mech.toggle", "kin.mech.quickreturn", "kin.cam.follower",
+                "kin.mech.geneva", "kin.ratchet", "kin.mech.sixbar", "kin.mech.pantograph" })
             {
                 var t = r.Type(id)!;
                 foreach (var view in new[] { "schematic", "detailed" })

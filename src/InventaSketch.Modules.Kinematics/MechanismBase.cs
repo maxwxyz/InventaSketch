@@ -88,6 +88,19 @@ namespace InventaSketch.Modules.Kinematics
             else Add(Prim.Line(L(a), L(b), KS.Link), KinTags.Link);
         }
 
+        /// <summary>
+        /// Rigid plate with three or more joints (ternary link) through model points: hatched outline (schematic), rounded
+        /// white body (detailed), phantom outline (ghost).
+        /// </summary>
+        public void Plate(params Vec2[] model)
+        {
+            var pts = model.Select(L).ToList();
+            if (Ghost) { Add(Prim.Polygon(pts, KS.Ghost), KinTags.Link); return; }
+            if (Detailed && pts.Count == 3) { Add(Prim.Polygon(TernaryLinkType.RoundedHull(pts, 1.6 * R), KS.Body), KinTags.Link); return; }
+            var spacing = Geo.Clamp(Math.Sqrt(Math.Abs(Geo.PolygonArea(pts))) * 0.12, 0.8, 2.5);
+            Add(Prim.Polygon(pts, KS.Link with { Fill = Fill.Hatched(new HatchPattern(45, spacing, Width: 0.18)) }), KinTags.Link);
+        }
+
         /// <summary>Revolute joint circle at a model point.</summary>
         public void Joint(Vec2 a)
         {
@@ -273,7 +286,13 @@ namespace InventaSketch.Modules.Kinematics
         }
 
         public Scene SceneFor(SketchObject o, Pose current, Rect model)
-            => new(o.Size, model, ViewOf(o) == "detailed", o.Flag("dof", false), !current.Ok);
+            => new(o.Size, model, ViewOf(o) == "detailed", ReservesTop(o), !current.Ok);
+
+        /// <summary>True if a badge row is drawn at the top of the box (DOF badge; the four-bar adds its Grashof class).</summary>
+        protected virtual bool ReservesTop(SketchObject o) => o.Flag("dof", false);
+
+        /// <summary>Annotations drawn last (badges), after the DOF badge of width <paramref name="used"/> mm at the top left.</summary>
+        protected virtual void DrawAnnotations(Scene s, SketchObject o, Lang lang, double used) { }
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -301,7 +320,8 @@ namespace InventaSketch.Modules.Kinematics
                 var text = ctx.Lang == Lang.De ? "keine Montage möglich" : "no assembly possible";
                 s.Add(Frag.FitText(new Vec2(0, s.H / 2 - s.Bottom / 2), text, s.TextSize * 0.9, s.W / 2, s.H / 2, KinTags.NoAssembly, italic: true));
             }
-            if (o.Flag("dof", false)) Badge(s, ctx.Lang);
+            var used = o.Flag("dof", false) ? Badge(s, ctx.Lang) : 0;
+            DrawAnnotations(s, o, ctx.Lang, used);
             return s.Items;
         }
 
@@ -322,7 +342,8 @@ namespace InventaSketch.Modules.Kinematics
             Flush();
         }
 
-        private void Badge(Scene s, Lang lang)
+        /// <summary>The DOF badge at the top left; returns its width (mm).</summary>
+        private double Badge(Scene s, Lang lang)
         {
             var text = (lang == Lang.De ? "F = " : "DOF = ") + Dof.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var ts = s.TextSize;
@@ -331,6 +352,23 @@ namespace InventaSketch.Modules.Kinematics
             double x0 = -s.W / 2, y0 = -s.H / 2;
             s.Add(Prim.Rect(x0 + 0.1, y0 + 0.1, w - 0.2, h - 0.2, KS.Thin with { StrokeWidth = 0.25, Fill = Fill.Solid("#ffffff") }), KinTags.Dof);
             s.Add(Frag.FitText(new Vec2(x0 + w / 2, y0 + h / 2), text, ts, s.W / 2, s.H / 2, KinTags.Dof));
+            return w;
+        }
+
+        /// <summary>
+        /// A text badge at the top right of the box, in the width left of <paramref name="used"/> mm (the text shrinks to fit).
+        /// </summary>
+        protected static void RightBadge(Scene s, string text, string tag, double used)
+        {
+            var ts = s.TextSize;
+            var gap = used > 0 ? 0.6 : 0;
+            var avail = Math.Max(0.5, s.W - used - gap);
+            var w = Math.Min(text.Length * ts * 0.55 + ts, avail);
+            var h = ts * 1.6;
+            var size = Math.Max(0.4, Math.Min(ts, (w - 0.4 * ts) / Math.Max(1, text.Length * 0.55)));
+            double x1 = s.W / 2, y0 = -s.H / 2;
+            s.Add(Prim.Rect(x1 - w + 0.1, y0 + 0.1, w - 0.2, h - 0.2, KS.Thin with { StrokeWidth = 0.25, Fill = Fill.Solid("#ffffff") }), tag);
+            s.Add(new TextPrim(new Vec2(x1 - w / 2, y0 + h / 2), text, new TextStyle { Size = size }) { Tag = tag });
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)

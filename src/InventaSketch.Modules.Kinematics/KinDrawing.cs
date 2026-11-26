@@ -40,6 +40,18 @@ namespace InventaSketch.Modules.Kinematics
         public const string Label = "label";
         /// <summary>Spring / damper body.</summary>
         public const string Element = "element";
+        /// <summary>Grashof class badge of the four-bar.</summary>
+        public const string Grashof = "grashof";
+        /// <summary>Wheel of the Geneva drive and of the ratchet (outline with slots or teeth).</summary>
+        public const string Wheel = "wheel";
+        /// <summary>Locking disc of the Geneva drive.</summary>
+        public const string Disc = "disc";
+        /// <summary>Pin of the Geneva drive crank.</summary>
+        public const string Pin = "pin";
+        /// <summary>Pawl of the ratchet.</summary>
+        public const string Pawl = "pawl";
+        /// <summary>Pen and tracer points of the pantograph.</summary>
+        public const string Pen = "pen";
     }
 
     /// <summary>Shared line styles (ISO 128 line roles).</summary>
