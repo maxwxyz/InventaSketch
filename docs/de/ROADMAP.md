@@ -126,8 +126,8 @@ umsetzen, dann Web, dann LibreOffice.
 - Erledigt am 24.11.2026 (Engine, alle Hosts über die Bibliothek): Modul Diagramme/Kennlinien (`chart.*`, 25 Elemente,
   docs/de/modules/charts.md) und die fehlenden Mechanik-Elemente (Gewindetriebe mit Mutter auf der Spindel, Freilauf,
   Wandler, Parksperre, CVT, Well- und Zykloidgetriebe, Getriebegehäuse mit Lagersitzen, Ölwanne;
-  docs/de/modules/mechanical-drives.md). Dort offen: Wirkungsgradkennfelder aus Messrastern, Polar- und Flächendiagramme,
-  Histogramme, eine zweite y-Achse für eigene Daten; „um die Auswahl einfügen“ für Gehäuse.
+  docs/de/modules/mechanical-drives.md). Dort offen: Wirkungsgradkennfelder aus Messrastern, Flächendiagramme (Polardiagramme
+  und Histogramme erledigt 26.11.2026), eine zweite y-Achse für eigene Daten; „um die Auswahl einfügen“ für Gehäuse.
 - Seitdem in COM erledigt: Kegelradpaare in der Kopplung, Zerlegen von Schema-Planetensätzen (über die Stirnansicht),
   Fangbeschriftungen, Tab durch Baugruppen, Format übertragen für Semantik, Koppelkurven selbst gebauter Ketten,
   Strg+Leertaste ohne Auswahl, Anbau-„+“ und „Ändern in“ im Einfügefeld.
@@ -711,6 +711,56 @@ Differentials, Getriebe bewegen, das Differential in den Drehzahlen des Getriebe
 - **Beschriftung (P3):** Tabellen, vergrößerte Einzelheit mit Verknüpfung zur Quelle, Revisionswolken.
 
 ## Offene Punkte
+
+### Bibliotheksrunde vom 26.11.2026 (Lückenanalyse: Elemente, Verbindungen, Logik, Kombinationen)
+
+Eine Lückenanalyse über alle 21 Module (rund 660 Typen) führte zu zwei Runden von Ergänzungen, alle auf `main` mit
+Unit-Tests und Moduldoku EN/DE:
+
+- **Kombinationen über Modulgrenzen:** gleichwertige Medien (`PortMedia.Equivalents`: `thermal.heat`≡`heating`,
+  `process.water`≡`water`, …; neue Medien `air.compressed`, `refrigerant`, `vacuum`, `optical`, `mech.shaft`) und
+  Werte über Modulgrenzen (`NetKeys` U, I, P, f, n, T, V̇, ṁ, p, θ an Übergängen: PV-String → Kabel → Lampe,
+  Prozesspumpe → Heizkörper, Energie-Wärmepumpe → Gebäudeheizung). Antriebswellen an Pumpen, Lüftern, Verdichtern,
+  Turbinen und Hydromotoren aus Prozess und Fluidtechnik (ein Motor treibt eine Pumpe: n, T, P geteilt);
+  Wellenstränge im Kern (`ShaftLines`, wiedereintrittsfestes `Coupling.Graph`); Riemen über beliebig viele Scheiben
+  (`ISpanRoute`); Riemenscheiben kämmen nicht mehr wie Zahnräder; `ObjectType.HasDependents` (verschobene
+  Kennlinienquellen und Linsen behalten in PowerPoint ihre Form).
+- **Neue Elemente:** Elektronikbauteile (Heißleiter/Kaltleiter, LDR, Varistor, Schottky/TVS, Brücke, Quarz,
+  Optokoppler, Triac, Diac, JFET, Spannungsregler, Messgerät, Hubmagnet); Armaturen, Zähler, Pufferspeicher,
+  Solarkollektor, Klappen und Split-Klimagerät der Haustechnik; Ventile und Apparate in Prozess und Fluidtechnik;
+  Industriegeräte im Verteiler (Motorschutzschalter, Überlastrelais, NH-Trenner, Frequenzumrichter, SPS-Baugruppe,
+  Sicherheitsrelais, Phasenschiene, Abdeckstreifen); Fehlerbäume mit Wahrscheinlichkeiten, SFC/GRAFCET, Ishikawa,
+  Mindmaps; Umlenkrolle, Spanner, Sicherungsring, Stift, O-Ring; Form- und Lagetoleranz, Bezug, Oberflächen- und
+  Schweißzeichen, Änderungswolke, Kettenmaß; Kreis-/Ring-, Polar-, Sankey-, Gantt-, Box- und Histogrammdiagramme;
+  Malteserkreuz, Klinkengesperre, Sechsgelenk, Pantograph; Linearachse, Werkzeugwechsler, Kraft-Momenten-Sensor,
+  Kamera, Schweißzange, Klebedüse, Energiekette; dicke Linse, Scanspiegel, Lichtleiter, Polarisator und
+  Verzögerungsplatte (Jones-Vektoren), Spektrometer; Aufzug, Rampe, Geländer, Schacht, Deckenöffnung, Dach;
+  Körper im Schrägbild, Kreissektor, Venn-Diagramm, Wahrscheinlichkeitsbaum, Pythagoras-Figur; Wasserkraft und
+  Pumpspeicher.
+- **Neue Logik:** Lasten, Phasen und Prüfungen im Verteiler (`sw.load.rating`, `sw.rating.cable`,
+  `sw.phase.imbalance`); Auflagerkräfte mit Querkraft- und Momentenlinie; Werte an Viergelenk und Schubkurbel
+  (Grashof-Abstand, Übertragungswinkel, Schwingwinkel, Zeitverhältnis, Prüfung `kin.transmission`, Kennliniensatz
+  `transfer`); Traglast- und Reichweitenprüfung am Roboter; Raumfläche, -höhe und -volumen; Energie-Wärmeanschlüsse,
+  Elektrolyseur, Brennstoffzelle, BHKW und Ladezeit; Federrate der Drehfeder.
+- **Doppeltes zusammengelegt:** Hausinstallations-Elemente des Verteilers weichen `elec.house.*` /
+  `bs.elec.appliance`; der RLT-Ventilator weicht `process.fan`; RLT-Abschnitte und der R&I-Motor sind unterscheidbar
+  benannt.
+
+Aus dieser Runde noch offen:
+
+- **Hausgeräte in Verteiler-Berichten:** Steckdosen, Schalter und Leuchten aus der Galerie sind jetzt
+  `elec.house.*`; ihre Parameter `room`/`feed` und das Einlesen in die Verteiler-Berichte sind in Arbeit
+  (Folge-Agent).
+- **Kern:** Anschlusszuordnung über verträgliche Mount-Ids (Werkzeugwechsler und Kraft-Momenten-Sensor nutzen heute
+  eine Probe-Heuristik); eine Textgröße als Variablenart (Grashof-Klasse im Werte-Panel); Raumwerte (A, h, V) als
+  Netzschlüssel für die Haustechnik; ein fremder Anschluss mit angedocktem Vor- und Rücklaufrohr darf diese nicht
+  verbinden (Energie-Wärmeanschlüsse).
+- **Exporte:** Matplotlib-/pgfplots-Export der sechs neuen Diagrammarten; Import von `hist`/`boxplot`; Kalenderdaten
+  im Gantt-Diagramm.
+- **Noch fehlende Werte:** Malteserkreuz und Sechsgelenk, Beschleunigungen; Rutschkupplung; Gaseigenschaften für
+  Verdichter und Turbinen; Polarisation bei Reflexion, Fresnel-Verluste; Balkenlinien mit Momenten, Trapezlasten
+  und Gelenken.
+- **Sichtprüfung in PowerPoint:** die neuen Elemente sind nur per Unit-Test und gerasterter Galerie geprüft.
 
 ### Nach dem Lauf vom 26.11.2026 (Stand für den eigenen Test des Maintainers)
 

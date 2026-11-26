@@ -113,7 +113,7 @@ mechanism kept. Order: implement concept and findings in COM first, then web, th
 - Done 2026-11-24 (engine, all hosts via the library): charts module (`chart.*`, 25 items, docs/en/modules/charts.md)
   and the missing mechanical elements (screw drives with nut on the spindle, freewheel, torque converter, park lock, CVT,
   strain wave and cycloidal drives, gearbox housing with bearing seats, oil sump; docs/en/modules/mechanical-drives.md).
-  Open there: efficiency maps from measured grids, polar/area charts and histograms, a user secondary y-axis; "insert
+  Open there: efficiency maps from measured grids, area charts (polar charts and histograms done 2026-11-26), a user secondary y-axis; "insert
   around the selection" for housings.
 - Done since in COM: bevel pairs in coupling, exploding schematic planetary sets (through the axial view), snap labels,
   Tab through assemblies, format painter for semantics, coupler curves of self-built chains, Ctrl+Space without a
@@ -641,6 +641,46 @@ differential in the gear train speeds, planet pairs (Ravigneaux set, 2026-11-24/
 - **Annotation (P3):** tables, magnified detail view linked to its source, revision clouds.
 
 ## Open items
+
+### Library round of 2026-11-26 (gap analysis: elements, connections, logic, combinations)
+
+A gap analysis over all 21 modules (about 660 types) led to two rounds of additions, all on `main` with unit tests
+and EN/DE module docs:
+
+- **Combinations across modules:** equivalent media (`PortMedia.Equivalents`: `thermal.heat`≡`heating`,
+  `process.water`≡`water`, …; new media `air.compressed`, `refrigerant`, `vacuum`, `optical`, `mech.shaft`) and values
+  across module borders (`NetKeys` U, I, P, f, n, T, V̇, ṁ, p, θ at junctions: PV string → cable → lamp, process pump →
+  radiator, energy heat pump → building heating). Drive shafts on process and fluid pumps, fans, compressors,
+  turbines and hydraulic motors (a motor drives a pump: n, T, P shared); shaft lines in Core (`ShaftLines`,
+  re-entrancy-safe `Coupling.Graph`); serpentine belts over any number of pulleys (`ISpanRoute`); pulleys no longer
+  mesh like gears; `ObjectType.HasDependents` (moved chart sources and lenses keep their shapes in PowerPoint).
+- **New elements:** electronics parts (thermistors, LDR, varistor, Schottky/TVS, bridge, crystal, optocoupler, triac,
+  diac, JFET, regulator, meter, solenoid); building services fittings, meters, buffer, solar collector, dampers,
+  split unit; process/fluid valves and apparatus; switchgear industrial devices (MPCB, overload relay, NH fuse switch,
+  VFD, PLC module, safety relay, comb busbar, blanking plate); fault trees with probabilities, SFC/GRAFCET, Ishikawa,
+  mind maps; idlers, tensioners, circlip, pin, O-ring; GD&T frame, datum, surface and weld symbols, revision cloud,
+  chain dimension; pie/donut, polar, Sankey, Gantt, box plot and histogram charts; Geneva drive, ratchet, six-bar,
+  pantograph; robot track, tool changer, F/T sensor, camera, weld gun, dispenser, drag chain; thick lens, scanner
+  mirror, light guide, polarizer and wave plate (Jones vectors), spectrometer; lift, ramp, railing, shaft, void, roof;
+  oblique solids, sector, Venn diagram, probability tree, Pythagoras figure; hydro plant and pumped storage.
+- **New logic:** switchgear loads, phases and checks (`sw.load.rating`, `sw.rating.cable`, `sw.phase.imbalance`);
+  beam reactions with shear and moment diagrams; four-bar/slider-crank values (Grashof margin, transmission angle,
+  swing, time ratio, `kin.transmission` check, `transfer` chart set); robot payload and reach checks; room area,
+  height and volume; energy heat ports, electrolyser, fuel cell, CHP and charging time; torsion spring rate.
+- **Combined duplicates:** switchgear house-installation items give way to `elec.house.*` / `bs.elec.appliance`;
+  the AHU fan item to `process.fan`; AHU sections and the P&ID motor are named apart.
+
+Still open from this round:
+
+- **House devices in switchgear reports:** gallery sockets, switches and lights are now `elec.house.*`; their
+  `room`/`feed` parameters and the switchgear reports reading them are in progress (follow-up agent).
+- **Core:** port matching by compatible mount ids (robot tool changer/F-T sensor use a probing heuristic today);
+  a text-valued variable kind (Grashof class in the values panel); room values (A, h, V) as net keys for building
+  services; a foreign port with flow and return pipes docked must not join them (energy heat ports).
+- **Exports:** matplotlib/pgfplots export of the six new chart kinds; `hist`/`boxplot` import; calendar dates in Gantt.
+- **Values still missing:** Geneva and six-bar values, accelerations; slip clutch; compressor/turbine gas properties;
+  polarisation on reflection, Fresnel losses; beam diagrams with moments, trapezoid loads and hinges.
+- **Checks by eye in PowerPoint:** the new elements are unit-tested and checked in rasterised galleries only.
 
 ### After the run of 2026-11-26 (state for the maintainer's own test)
 
