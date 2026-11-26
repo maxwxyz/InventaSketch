@@ -186,8 +186,11 @@ namespace InventaSketch.Modules.Optics
     /// <summary>
     /// State of the light along a traced ray: wavelength (nm, 0 = white), relative intensity (1 at the source), polarisation
     /// (coherency matrix, also partial; null = unpolarised) and whether the ray belongs to the scan fan of a scanner mirror.
+    /// <see cref="Weight"/> is the share of the start ray's power this ray stands for apart from its intensity: a white ray
+    /// split into colours or grating orders, or a schematic splitter, divides it among the rays drawn (they keep their
+    /// drawn intensity); <see cref="Estimate"/> marks such an assumed division (detector values are then estimates).
     /// </summary>
-    internal sealed record RayState(double Lambda, double Intensity = 1, Coherency? Pol = null, bool Fan = false);
+    internal sealed record RayState(double Lambda, double Intensity = 1, Coherency? Pol = null, bool Fan = false, double Weight = 1, bool Estimate = false);
 
     /// <summary>One traced ray: its polyline, the wavelength and intensity of each segment and its virtual (dashed) extensions.</summary>
     internal sealed class TracedPath
@@ -205,6 +208,14 @@ namespace InventaSketch.Modules.Optics
         public bool Absorbed { get; set; }
         /// <summary>True for a ray of the scan fan of a scanner mirror (drawn dashed).</summary>
         public bool Fan { get; set; }
+        /// <summary>The element that ended the ray (detector, screen, stop, housing …), or null.</summary>
+        public string? AbsorbedBy { get; set; }
+        /// <summary>Share of the start ray's power the ray stands for at its end besides its intensity (<see cref="RayState.Weight"/>).</summary>
+        public double Weight { get; set; } = 1;
+        /// <summary>True if the power share went through an assumed division (schematic splitter, grating orders).</summary>
+        public bool Estimate { get; set; }
+        /// <summary>True for a ghost: light partially reflected at a glass face (traced only when ghost reflections are on).</summary>
+        public bool Ghost { get; set; }
 
         public void LineTo(Vec2 p, double lambda, double intensity = 1, Coherency? pol = null)
         {
@@ -224,6 +235,8 @@ namespace InventaSketch.Modules.Optics
         public List<TracedPath> Paths { get; } = new();
         /// <summary>True if white light was split into colours (prism dispersion, grating orders).</summary>
         public bool Dispersed { get; set; }
+        /// <summary>Number of start rays traced (the bundle the paths come from).</summary>
+        public int Starts { get; set; }
     }
 
     /// <summary>Wavelengths and colours used for dispersion (C, D, e, F, g lines of the visible spectrum).</summary>
@@ -277,7 +290,8 @@ namespace InventaSketch.Modules.Optics
     /// unpolarised, partially or fully polarised) that polarisers, wave plates and polarising splitters change. Glass faces
     /// and thin lenses with a coating other than ideal apply the Fresnel equations (losses for s and p, Brewster angle, phase
     /// shift on total internal reflection); ideal mirrors and ideal faces keep intensity and polarisation. Partial reflections
-    /// at glass faces lower the transmitted ray but are not drawn as rays of their own.
+    /// at glass faces lower the transmitted ray; with ghost reflections on they are also traced as rays of their own (in
+    /// practice first order only: a ghost of a ghost falls below <see cref="MinIntensity"/> for uncoated glass).
     /// </summary>
     internal static class RayTracer
     {
@@ -319,7 +333,7 @@ namespace InventaSketch.Modules.Optics
         /// Traces <paramref name="starts"/> through <paramref name="scene"/>. After the last element a ray runs on for
         /// <paramref name="tail"/> mm; a ray that meets nothing runs at least <paramref name="reach"/> mm.
         /// </summary>
-        public static TraceResult Trace(IReadOnlyList<SceneElement> scene, IEnumerable<StartRay> starts, double tail, double reach = 0, bool virtualRays = true)
+        public static TraceResult Trace(IReadOnlyList<SceneElement> scene, IEnumerable<StartRay> starts, double tail, double reach = 0, bool virtualRays = true, bool ghosts = false)
         {
             var result = new TraceResult();
             var work = new Stack<(Vec2 P, Vec2 D, RayState L, TracedPath Path, double Travelled, SceneElement? SkipE, int SkipK, double Reach)>();
@@ -329,6 +343,7 @@ namespace InventaSketch.Modules.Optics
                 var path = new TracedPath(s.P);
                 work.Push((s.P, s.D.Normalized(), new RayState(s.Lambda), path, 0, null, -1, reach));
             }
+            result.Starts = work.Count;
             // Paths in the order of their start rays (the stack pops the first one first).
             var order = work.Select(w => w.Path).ToList();
             result.Paths.AddRange(order);
@@ -350,21 +365,21 @@ namespace InventaSketch.Modules.Optics
                         // A free ray that meets nothing ends where it was drawn to.
                         var free = step == 0 && minReach > 0;
                         var len = free ? minReach : Math.Max(after, minReach - travelled);
-                        if (len > 1e-9) path.LineTo(p + d * len, lambda, st.Intensity, st.Pol);
+                        if (len > 1e-9) Segment(path, p + d * len, st);
                         if (!free && tail <= 0 && path.Points.Count >= 2) open.Add(path);
                         break;
                     }
                     var at = p + d * hit.T;
-                    path.LineTo(at, lambda, st.Intensity, st.Pol);
+                    Segment(path, at, st);
                     travelled += hit.T;
                     var e = hit.E;
                     var s = hit.S;
                     var ld = hit.LocalDir;
                     Vec2 Page(Vec2 local) => e.M.ApplyLinear(local).Normalized();
-                    void Branch(Vec2 localDir, RayState ls)
+                    void Branch(Vec2 localDir, RayState ls, bool ghost = false)
                     {
                         if (result.Paths.Count >= MaxPaths) return;
-                        var child = new TracedPath(at) { Fan = ls.Fan };
+                        var child = new TracedPath(at) { Fan = ls.Fan, Weight = ls.Weight, Estimate = ls.Estimate, Ghost = ghost || path.Ghost };
                         result.Paths.Add(child);
                         work.Push((at, Page(localDir), ls, child, travelled, e, hit.K, 0));
                     }
@@ -414,6 +429,8 @@ namespace InventaSketch.Modules.Optics
                                 var reflected = Mirror(ld, n);
                                 if (s.Split == SplitMode.Schematic)
                                 {
+                                    // Drawn at full intensity both ways; for the power balance each counts as one half.
+                                    st = st with { Weight = st.Weight / 2, Estimate = true };
                                     Branch(reflected, st);
                                     next = ld;
                                     break;
@@ -461,14 +478,16 @@ namespace InventaSketch.Modules.Optics
                         case SurfaceKind.Refract:
                             {
                                 var normal = s.Radius > 0 ? SphereNormal(s, hit.Local) : s.Normal;
+                                if (ghosts && s.Coating != Coating.Ideal) Ghost(ld, normal, s, st, lambda, Branch);
                                 if (lambda <= 0 && s.Dispersion > 0 && ld.Dot(normal) < 0)
                                 {
-                                    // White light entering a dispersing glass: one ray per colour from here on.
+                                    // White light entering a dispersing glass: one ray per colour from here on, each
+                                    // standing for an equal share of the power.
                                     result.Dispersed = true;
                                     foreach (var line in Spectrum.Lines)
                                     {
                                         var face = Interface(ld, normal, Spectrum.Index(s.Index, s.Dispersion, line));
-                                        var ls = st with { Lambda = line };
+                                        var ls = st with { Lambda = line, Weight = st.Weight / Spectrum.Lines.Length };
                                         if (Pass(ref ls, s, face, line)) Branch(face.Dir, ls);
                                     }
                                 }
@@ -502,6 +521,9 @@ namespace InventaSketch.Modules.Optics
                             {
                                 if (Math.Abs(ld.X) < 1e-9) { next = ld; break; }
                                 var sign = Math.Sign(ld.X);
+                                // The power is divided equally among the drawn directions (orders −m … +m), an assumption:
+                                // the efficiency of the orders is not modelled.
+                                st = st with { Weight = st.Weight / (2 * s.Orders + 1), Estimate = true };
                                 Vec2? Order(int m, double lam)
                                 {
                                     var sm = ld.Y + m * s.Sine * (lam <= 0 ? 550 : lam) / 550;
@@ -513,7 +535,7 @@ namespace InventaSketch.Modules.Optics
                                     if (lambda <= 0)
                                     {
                                         result.Dispersed = true;
-                                        foreach (var line in Spectrum.Lines) if (Order(m, line) is { } dl) Branch(dl, st with { Lambda = line });
+                                        foreach (var line in Spectrum.Lines) if (Order(m, line) is { } dl) Branch(dl, st with { Lambda = line, Weight = st.Weight / Spectrum.Lines.Length });
                                     }
                                     else if (Order(m, lambda) is { } dm) Branch(dm, st);
                                 }
@@ -528,6 +550,7 @@ namespace InventaSketch.Modules.Optics
                                 break;
                             }
                     }
+                    if (path.Absorbed) path.AbsorbedBy ??= e.Object.Id;
                     if (next is not Vec2 nl) break;
                     p = at;
                     d = Page(nl);
@@ -538,6 +561,38 @@ namespace InventaSketch.Modules.Optics
             }
             AlignEnds(result.Paths, open, axis);
             return result;
+        }
+
+        /// <summary>Adds a segment to <paramref name="path"/> in the state <paramref name="st"/> (its power share included).</summary>
+        private static void Segment(TracedPath path, Vec2 to, RayState st)
+        {
+            path.LineTo(to, st.Lambda, st.Intensity, st.Pol);
+            path.Weight = st.Weight;
+            path.Estimate |= st.Estimate;
+        }
+
+        /// <summary>
+        /// A ghost: the light a glass face reflects partially (not on total internal reflection, which the face handles
+        /// itself), traced as a branch with the Fresnel reflection factors (uncoated: r_p, r_s; anti-reflection coated: the
+        /// amplitudes √R of the layer). White light uses the d-line index.
+        /// </summary>
+        private static void Ghost(Vec2 ld, Vec2 normal, Surface s, RayState st, double lambda, Action<Vec2, RayState, bool> branch)
+        {
+            var face = Interface(ld, normal, Spectrum.Index(s.Index, s.Dispersion, lambda));
+            if (face.Total) return;
+            Complex rp, rs;
+            if (s.Coating == Coating.AntiReflection)
+            {
+                var (ts, tp) = Fresnel.CoatedTransmittance(face.N1, face.N2, face.CosI, Math.Sqrt(Math.Max(1, s.Index)), lambda);
+                (rp, rs) = (Math.Sqrt(Math.Max(0, 1 - tp)), Math.Sqrt(Math.Max(0, 1 - ts)));
+            }
+            else
+            {
+                var (a, b) = Fresnel.Amplitudes(face.N1, face.N2, face.CosI);
+                (rp, rs) = (b, a);
+            }
+            var gs = st;
+            if (Pass(ref gs, rp, rs)) branch(Mirror(ld, normal), gs, true);
         }
 
         /// <summary>

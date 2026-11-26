@@ -18,13 +18,27 @@ namespace InventaSketch.Modules.Optics
             => Surface.Chain(new Surface(SurfaceKind.Absorb, default, default), new[] { new Vec2(x0, y0), new Vec2(x1, y0), new Vec2(x1, y1), new Vec2(x0, y1), new Vec2(x0, y0) });
     }
 
+    /// <summary>
+    /// Base of the detectors and the screen: element values read from the traced light that ends on the element – received
+    /// power, share of the emitted light, degree and angle of polarisation (<see cref="OpticsValues.DetectorLinks"/>).
+    /// </summary>
+    internal abstract class DetectorBase : OpticsType, IValueType, IValueLinks, IValueChecks, ITraceValues
+    {
+        protected DetectorBase(string id, I18nText name, string category, params string[] keywords) : base(id, name, category, keywords) { }
+
+        public IReadOnlyList<VarDef> Variables => OpticsValues.DetectorVariables;
+        public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
+        public IEnumerable<ValueCheck> ValueChecks => OpticsValues.DetectorChecks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.DetectorLinks(o, ctx);
+    }
+
     /// <summary>Photodiode as an optical detector: housing with the dark active area on its front and two leads.</summary>
-    internal sealed class PhotodiodeType : OpticsType
+    internal sealed class PhotodiodeType : DetectorBase
     {
         public PhotodiodeType() : base(Detectors.PhotodiodeId, new I18nText("Photodiode (optical detector)", "Fotodiode (optischer Detektor)"), OpticsCategories.Detectors,
             "photodiode", "detector", "sensor", "receiver", "fotodiode", "photodiode", "detektor", "empfänger") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(12, 10);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Sources.LaserId, SplitterType.CubeId };
 
@@ -66,12 +80,12 @@ namespace InventaSketch.Modules.Optics
     }
 
     /// <summary>Camera with lens barrel and image sensor: the lens images onto the sensor (thin lens focused on it).</summary>
-    internal sealed class CameraType : OpticsType
+    internal sealed class CameraType : DetectorBase
     {
         public CameraType() : base(Detectors.CameraId, new I18nText("Camera (image sensor)", "Kamera (Bildsensor)"), OpticsCategories.Detectors,
             "camera", "image sensor", "imaging", "ccd", "cmos", "kamera", "bildsensor", "aufnahme") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(26, 16);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Sources.ObjectId, Sources.LampId };
 
@@ -133,12 +147,12 @@ namespace InventaSketch.Modules.Optics
     /// Eye (section): eyeball, cornea, iris, crystalline lens, retina and optic nerve, looking towards −x. Light through the
     /// pupil is focused on the retina (thin lens), light outside it ends on the eyeball.
     /// </summary>
-    internal sealed class EyeType : OpticsType
+    internal sealed class EyeType : DetectorBase
     {
         public EyeType() : base(Detectors.EyeId, new I18nText("Eye", "Auge"), OpticsCategories.Detectors,
             "eye", "retina", "observer", "vision", "auge", "netzhaut", "betrachter", "sehen") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(22, 20);
         public override bool PreferUniformScale => true;
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, LensType.DivergingId, Sources.ObjectId };
@@ -219,13 +233,13 @@ namespace InventaSketch.Modules.Optics
     /// detector line with the dispersed light drawn between them (schematic, in spectral colours). For the ray tracer it is a
     /// detector: rays end on the housing.
     /// </summary>
-    internal sealed class SpectrometerType : OpticsType
+    internal sealed class SpectrometerType : DetectorBase
     {
         public SpectrometerType() : base(Detectors.SpectrometerId, new I18nText("Spectrometer", "Spektrometer"), OpticsCategories.Detectors,
             "spectrometer", "spectrograph", "spectrum", "grating", "entrance slit", "spektrometer", "spektrograph", "spektrum", "eintrittsspalt")
         { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(40, 26);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, FibreType.TypeId, Sources.LampId, GratingType.TypeId };
 
@@ -301,12 +315,12 @@ namespace InventaSketch.Modules.Optics
     }
 
     /// <summary>Screen (projection screen, observation plane): a plate that ends every ray reaching it.</summary>
-    internal sealed class ScreenType : OpticsType
+    internal sealed class ScreenType : DetectorBase
     {
         public ScreenType() : base(Detectors.ScreenId, new I18nText("Screen", "Schirm"), OpticsCategories.Detectors,
             "screen", "projection", "image plane", "observation", "schirm", "projektionsschirm", "bildebene", "mattscheibe") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(3, 40);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Sources.ObjectId, Sources.LampId };
 

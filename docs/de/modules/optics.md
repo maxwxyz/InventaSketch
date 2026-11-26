@@ -35,7 +35,7 @@ Abbildungsfehleranalyse, keine Radiometrie in absoluten Einheiten).
 
 | Typ-Id | Element | Parameter (alle optional) |
 |---|---|---|
-| `optics.lens.converging` | Sammellinse; Ansichten `shape` (Schnitt) und `symbol` (Doppelpfeil, Spitzen nach außen) | `shape` bikonvex/plankonvex/Meniskus, `f` (40), `focal` (Marken F, F′), `rays`, `bundle`, `beam`, `coating` (ideal, nur im Inspektor), `label` |
+| `optics.lens.converging` | Sammellinse; Ansichten `shape` (Schnitt) und `symbol` (Doppelpfeil, Spitzen nach außen) | `shape` bikonvex/plankonvex/Meniskus, `f` (40), `focal` (Marken F, F′), `rays`, `bundle`, `beam`, `coating` (ideal, nur im Inspektor), `label`, Werte `g`, `b` (Inspektor), `showValues` |
 | `optics.lens.diverging` | Zerstreuungslinse; Ansichten `shape` und `symbol` (Spitzen nach innen) | `shape` bikonkav/plankonkav/Meniskus, wie oben |
 | `optics.mirror.plane` | Planspiegel mit schraffierter Rückseite | `label` |
 | `optics.mirror.concave` / `optics.mirror.convex` | Gekrümmte Spiegel | `f` (40), `focal` (F und Krümmungsmittelpunkt C/M), `label` |
@@ -45,23 +45,23 @@ Abbildungsfehleranalyse, keine Radiometrie in absoluten Einheiten).
 | `optics.grating.transmission` | Transmissionsgitter (Platte mit Furchen) | `angle` (Winkel 1. Ordnung bei 550 nm, 20°), `orders` (1–3), `label` |
 | `optics.filter.plate` | Filterplatte, neutral oder farbig | `tint` neutral/rot/grün/blau/gelb, `label` |
 | `optics.fibre.cable` | Lichtwellenleiter mit Steckern an beiden Enden | `spread` (halber Austrittskegel, 12°), `rays`, `label` |
-| `optics.source.lamp` | Lampe (Kolben, Wendel, Sockel) | `emission` Kegel/parallel/in alle Richtungen, `rays`, `spread` (0 = nächstes Element ausleuchten), `beam`, `label` |
-| `optics.source.led` | LED (Kuppel, Kragen, Anschlüsse) | `emission`, `rays`, `spread`, `beam`, `color` weiß/rot/grün/blau, `label` |
-| `optics.source.laser` | Laser (Gehäuse, Austrittsöffnung) | `rays` (1), `beam`, `color` 650/532/445 nm, `label` |
-| `optics.detector.photodiode` | Fotodiode als optischer Detektor | `label` |
-| `optics.detector.camera` | Kamera: Objektiv auf den Bildsensor fokussiert | `label` |
-| `optics.detector.eye` | Auge (Schnitt): Hornhaut, Iris, Linse, Netzhaut, Sehnerv | `label` |
-| `optics.screen.plain` | Schirm | `label` |
-| `optics.object.arrow` | Gegenstandspfeil auf der Achse (Abbildungsfiguren) | `bundle` Konstruktionsstrahlen/Fächer, `rays`, `image` aus/Bild/Konstruktion (Bild), `names` (false), `label` |
-| `optics.ray` | Lichtstrahl (Punktobjekt, Seitenkoordinaten) | `trace` (true), `arrows` Mitte/Ende/keine, `virtual` (true), `tail` (0 = automatisch), `showValues` (Intensität und Polarisation an den Strahlenden, false) |
+| `optics.source.lamp` | Lampe (Kolben, Wendel, Sockel) | `emission` Kegel/parallel/in alle Richtungen, `rays`, `spread` (0 = nächstes Element ausleuchten), `beam`, `label`, Wert `power`, `showValues` |
+| `optics.source.led` | LED (Kuppel, Kragen, Anschlüsse) | `emission`, `rays`, `spread`, `beam`, `color` weiß/rot/grün/blau, `label`, Werte `power`, `lambda`, `showValues` |
+| `optics.source.laser` | Laser (Gehäuse, Austrittsöffnung) | `rays` (1), `beam`, `color` 650/532/445 nm, `label`, Werte `power`, `lambda`, `showValues` |
+| `optics.detector.photodiode` | Fotodiode als optischer Detektor | `label`, `showValues` |
+| `optics.detector.camera` | Kamera: Objektiv auf den Bildsensor fokussiert | `label`, `showValues` |
+| `optics.detector.eye` | Auge (Schnitt): Hornhaut, Iris, Linse, Netzhaut, Sehnerv | `label`, `showValues` |
+| `optics.screen.plain` | Schirm | `label`, `showValues` |
+| `optics.object.arrow` | Gegenstandspfeil auf der Achse (Abbildungsfiguren) | `bundle` Konstruktionsstrahlen/Fächer, `rays`, `image` aus/Bild/Konstruktion (Bild), `names` (false), `label`, `showValues` |
+| `optics.ray` | Lichtstrahl (Punktobjekt, Seitenkoordinaten) | `trace` (true), `arrows` Mitte/Ende/keine, `virtual` (true), `tail` (0 = automatisch), `showValues` (Intensität und Polarisation an den Strahlenden, false), `ghosts` (Geisterreflexe, false) |
 | `optics.axis.line` | Optische Achse (Strichpunktlinie, Punktobjekt) | `label` |
-| `optics.lens.thick` | Dicke Linse: zwei Kugelflächen, an beiden verfolgt (Boxbreite = Dicke, Boxhöhe = Apertur) | `shape` bikonvex/plankonvex/bikonkav/plankonkav, `n` (1,5), `sag` (Wölbungstiefe als Anteil der Breite, 0,35), `focal` (F, F′, Hauptebenen H, H′), `rays`, `beam`, `coating` (ideal), `label` |
+| `optics.lens.thick` | Dicke Linse: zwei Kugelflächen, an beiden verfolgt (Boxbreite = Dicke, Boxhöhe = Apertur) | `shape` bikonvex/plankonvex/bikonkav/plankonkav, `n` (1,5), `sag` (Wölbungstiefe als Anteil der Breite, 0,35), `focal` (F, F′, Hauptebenen H, H′), `rays`, `beam`, `coating` (ideal), `label`, `showValues` |
 | `optics.mirror.scanner` | Galvo-Scannerspiegel: Planspiegel auf einer Drehachse, in seiner Box gedreht | `angle` (Spiegelwinkel, 45°; 0° = aufrecht wie ein Planspiegel), `scan` (mechanischer Scanbereich ±, 10°), `fan` (Endlagen und Strahlenfächer, false), `label` |
 | `optics.polarizer` | Linearpolarisator: Platte mit der Durchlassrichtung als Doppelpfeil | `angle` (Durchlassrichtung, 0°), `label` |
 | `optics.waveplate` | Verzögerungsplatte: Platte mit schneller Achse (gestrichelter Doppelpfeil) und „λ/4“/„λ/2“ | `retardance` Viertel/Halb (Viertel), `angle` (schnelle Achse, 45°), `label` |
 | `optics.lightguide` | Lichtleitstab (rechteckiger Glasstab, Totalreflexion) | `n` (1,5), `coating` (ideal), `label` |
 | `optics.window.plate` | Glasplatte (Fenster): planparallele Platte, in ihrer Box geneigt; die Kanten halten Licht auf | `n` (1,5), `tilt` (Einfallswinkel entlang der Achse, 0°, −80° … 80°), `brewster` (Neigung = arctan n, false), `coating` (standardmäßig **unvergütet**), `label` |
-| `optics.detector.spectrometer` | Spektrometer: Gehäuse mit Eintrittsspalt, Reflexionsgitter, Detektorzeile und darin gezeichnetem zerlegtem Licht | `label` |
+| `optics.detector.spectrometer` | Spektrometer: Gehäuse mit Eintrittsspalt, Reflexionsgitter, Detektorzeile und darin gezeichnetem zerlegtem Licht | `label`, `showValues` |
 
 Die 48 Bibliothekselemente umfassen die Linsenformen und -symbole, dicke bikonvexe und plankonvexe Linse, drei Spiegel,
 den Scannerspiegel mit und ohne Scanbereich, ablenkendes, Dispersions- und Umlenkprisma, beide Strahlteiler
@@ -190,8 +190,72 @@ Die Physik (`Fresnel`, alle Winkel gegen die Flächennormale, verlustfreie Medie
   unvergüteten Flächen macht linear unter 45° polarisiertes Licht daher elliptisch.
 - Eine dünne Linse gilt als zwei ebene Flächen aus Glas n = 1,5 quer zu ihrer Achse, getroffen unter dem Winkel des
   Strahls zur Achse.
-- Teilreflexionen an Glasflächen schwächen den durchgelassenen Strahl; sie werden nicht als eigene Strahlen verfolgt
-  (keine Geisterbilder). Licht, das (praktisch) verschwunden ist, unter 0,5 %, beendet den Strahl.
+- Teilreflexionen an Glasflächen schwächen den durchgelassenen Strahl. Licht, das (praktisch) verschwunden ist, unter
+  0,5 %, beendet den Strahl.
+- **Geisterreflexe** (`ghosts` am Strahl, Schalter **Geisterreflexe**, standardmäßig aus): Das Licht, das eine nicht
+  ideale Glasfläche teilweise reflektiert, wird als eigener Strahl verfolgt, mit den Reflexionsfaktoren r_p, r_s der
+  Fläche (unvergütet) bzw. den Amplituden √R der Entspiegelungsschicht, samt Polarisation. Eine Platte mit n = 1,5 bei
+  senkrechtem Einfall schickt 4 % von der Vorderfläche gerade zurück und 0,96 · 0,04 · 0,96 = 3,7 % von der Rückfläche;
+  die durchgelassenen 92,16 % bleiben unverändert. Ein Geist eines Geistes (0,16 %) liegt unter 0,5 % und wird nicht
+  gezeichnet, Geister sind also praktisch erster Ordnung. Dünne Linsen (als zwei ebene Flächen gerechnet) erzeugen keine
+  Geister, Totalreflexion ist kein Geist. Geister werden wie anderes schwaches Licht gezeichnet (Deckkraft = Intensität,
+  mindestens 0,2).
+
+## Elementwerte (Wertekarte)
+
+Optikelemente sind Werttypen (`IValueType`, `IValueLinks`, `IValueChecks`; Konventionen der Ingenieurberechnungen: intern
+SI, Anzeigeeinheiten wie angegeben). Jeder Wert ist optional; die Zeichnung braucht keinen. `showValues` (**Werte
+zeigen**) schreibt die bekannten Kartenwerte unter das Element. Werte, die Ergebnisse der Verfolgung oder der Zeichnung
+sind, sind abgeleitet; wer einen davon überschreibt, erhält auf der Karte einen Widerspruch.
+
+| Element | Kartenwerte | Werte im Bereich „Werte“ | Beziehungen |
+|---|---|---|---|
+| Lampe | optische Leistung P (mW; leer = 1 mW, der Vorgabewert) | – | – |
+| LED, Laser | P; Wellenlänge λ (nm; eingegeben in `lambda`, sonst aus der Farbe, bei weißem Licht keine) | Photonenenergie E_ph (eV) | E_ph = h·c/λ (h, c exakte SI-Werte [S1]) |
+| Fotodiode, Kamera, Auge, Schirm, Spektrometer | empfangene Leistung P_E (mW), Anteil des ausgesandten Lichts η (%), Polarisationsgrad V (%), Polarisationswinkel θ (°, 0° = in der Zeichenebene) | Polarisation (unpolarisiert, linear, zirkular, elliptisch, teilweise polarisiert) | siehe unten |
+| Sammel-/Zerstreuungslinse | Brennweite f (der Parameter `f`, mm; die Zerstreuungslinse zeigt ihren Betrag), Brechkraft D in Dioptrien (1/m), Gegenstandsweite g, Bildweite b (nur Werte, Parameter `g`, `b`) | Abbildungsmaßstab β, mit einer zweiten dünnen Linse voraus auf der Achse: Systembrennweite f_s, Abstand d, bildseitige Schnittweite s′_F | D = ±1/f; 1/f = 1/g + 1/b (f mit Vorzeichen); β = −b/g; Gullstrand |
+| Dicke Linse | f (Linsenschleiferformel aus `n` und den gezeichneten Flächen), D | n, bildseitige Schnittweite s′_F | 1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)] |
+| Gegenstandspfeil | g, b, β, Bild reell/virtuell (des gezeichneten Bildes) | Brennweite des abbildenden Elements, Gegenstandsgröße G, Bildgröße B = β·G | 1/f = 1/g + 1/b, β = −b/g |
+
+**Empfangenes Licht.** Jedes verfolgte Strahlobjekt der Seite wird wie gezeichnet verfolgt; die Wege, die auf einem
+Element enden, werden summiert. Ein Bündel an einer Lampe, LED oder einem Laser trägt deren Leistung P, gleich verteilt auf
+seine Startstrahlen (mehrere Bündel an einer Quelle teilen sie sich). Ein Weg trägt k = I · w / N bei: seine relative
+Intensität I am Element (Polarisatoren, Strahlteiler, Fresnel-Verluste), seinen Leistungsanteil w (1, geteilt auf die
+Farben zerlegten weißen Lichts und auf die gezeichneten Gitterordnungen, halbiert an einem schematischen Strahlteiler,
+dessen Strahlen mit voller Intensität gezeichnet werden) und die Zahl N der Strahlen des Bündels. Dann gilt:
+
+- P_E = Σ kᵢ·Pᵢ über die Quellen; auch nach einer Quellenleistung aufgelöst (empfangene Leistung eingeben → die
+  Quellenleistung folgt, ihr Vorgabewert 1 mW tritt zurück). P_E = 0, wenn kein verfolgter Strahl das Element erreicht;
+  unbekannt, wenn nur Strahlen ohne Quelle ankommen (ein freier Strahl, das Bündel einer Linse oder eines Gegenstands).
+- η = Σ kᵢ·Pᵢ / Σ Pᵢ über die ankommenden Bündel (Bündel ohne Quelle zählen mit Leistung 1).
+- Die Polarisation ist die inkohärente Summe der Kohärenzmatrizen allen ankommenden Lichts, gewichtet wie η: V =
+  √((A − B)² + 4|C|²), θ = ½·atan2(2·Re C, A − B) (kein Winkel bei unpolarisiertem oder zirkularem Licht).
+
+Beispiele: ein 5-mW-Laser durch einen Polarisator unter 30° auf eine Fotodiode: P_E = 2,5 mW, η = 50 %, V = 100 %,
+θ = 30°, linear; Polarisator 0° und Analysator 60°: η = ½·cos² 60° = 12,5 %; ein nicht polarisierender Würfel mit
+`reflectance` 0,3 schickt 7 und 3 mW von 10 mW auf seine beiden Detektoren; eine unvergütete Platte bei senkrechtem
+Einfall lässt 92,16 % durch.
+
+**Linsen.** f = 40 mm ergibt D = 25 dpt (die Zerstreuungslinse −25 dpt). Mit g = 60 mm ergibt die Sammellinse b = 120 mm
+und β = −2, die Zerstreuungslinse b = −24 mm und β = 0,4. Jeder der Werte f, g, b folgt aus den beiden anderen (`f` auf
+der Karte löschen, damit er aus g und b folgt; die Zeichnung verwendet dann ihren Vorgabewert 40 mm). Zwei dünne Linsen
+auf einer Achse (die Mitte der zweiten höchstens die halbe größere Kastenseite von der Achse der ersten entfernt, Achsen
+parallel; die nächste voraus zählt) ergeben f_s = f₁·f₂ / (f₁ + f₂ − d) und s′_F = f₂·(f₁ − d) / (f₁ + f₂ − d), gemessen
+von der zweiten Linse (f₁ = 40, f₂ = 20, d = 50 mm: f_s = 80 mm, s′_F = −20 mm, was die verfolgten Strahlen bestätigen).
+
+**Prüfungen** (Hinweise auf der Karte, sie ändern nie Werte): virtuelles Bild (b < 0) an Linsen und am Gegenstandspfeil;
+Gegenstand in der Brennebene (g = f, Bild im Unendlichen); afokales Paar (f₁ + f₂ = d, ein Fernrohr mit der
+Winkelvergrößerung −f₁/f₂); kein verfolgter Strahl der Seite erreicht einen Detektor (nur, wenn die Seite Strahlen hat);
+es kommen nur Strahlen ohne Quelle an; die Leistung lief über einen schematischen Strahlteiler oder ein Gitter (angenommene
+gleiche Anteile, ein Hinweis); eine Wellenlänge außerhalb von etwa 380 bis 780 nm (in der nächsten Farbe gezeichnet).
+
+Die an einem Laser oder einer LED eingegebene Wellenlänge verwendet auch die Strahlverfolgung (405 nm wird violett
+gezeichnet, und ein Dispersionsprisma bricht es mit n(405 nm)); die Wahl einer Farbe in der Kontextleiste löscht sie. Die
+Einheit Dioptrie und die Größe „Brechkraft“ fehlen noch im Größenkatalog der Engine; D erscheint deshalb als reine Zahl in
+1/m.
+
+Solange seine Werteschrift gezeigt wird, meldet jedes Optikelement seiner Seite einen Detektor, eine Linse oder einen
+Gegenstandspfeil als abhängiges Objekt, die Beschriftung folgt also jeder Änderung des Strahlengangs.
 
 ## Bildkonstruktion
 
@@ -279,6 +343,8 @@ Freitext-Beschriftungen (Kennzeichen wie `L1` bleiben). Brennweiten, Brechzahlen
 Der gesamte Zustand liegt im Dokumentmodell: Parameter, `Size`, `Transform`, die Punkte des Strahls und die Anbindung
 seines ersten Punkts (`AnchorId` = `exit`/`o`/`tip`). Die verfolgten Wege, Bilder, Konstruktionsstrahlen und Griffe
 werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen werden deshalb identisch gezeichnet.
+Eingegebene Werte sind ebenfalls Parameter (Text wie eingegeben: `power` „5 mW“, `lambda` „532 nm“, `g`, `b`; die
+Brennweite in `f`, die Brechzahl in `n`); abgeleitete Werte werden nie gespeichert.
 
 ## Hinweise für Hosts
 
@@ -308,11 +374,15 @@ werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen we
 ## Grenzen und nächste Schritte
 
 - Zweidimensional, sequenziell; dünne Linsen und gekrümmte Spiegel sind paraxiale Ideale. Keine Interferenz.
-  Fresnel-Verluste nur, wo `coating` nicht ideal ist; Teilreflexionen an Glasflächen werden nicht als Strahlen gezeichnet
-  (keine Geisterbilder). Spiegel sind ideal (keine Metallreflexion oder -phase), Strahlteiler ideal (kein
-  Auslöschungsverhältnis, keine Absorption). Die Entspiegelung ist eine idealisierte Einzelschicht (Brechzahl √n).
-- Die Strahlwerte sind eine Beschriftung an den Strahlenden; Optikelemente haben keine Wertekarte (Detektoren melden die
-  empfangene Intensität noch nicht als Wert).
+  Fresnel-Verluste nur, wo `coating` nicht ideal ist; Teilreflexionen an Glasflächen werden nur mit `ghosts` als
+  Strahlen gezeichnet (praktisch erster Ordnung, nicht an dünnen Linsen). Spiegel sind ideal (keine Metallreflexion oder
+  -phase), Strahlteiler ideal (kein Auslöschungsverhältnis, keine Absorption). Die Entspiegelung ist eine idealisierte
+  Einzelschicht (Brechzahl √n).
+- Elementwerte: Die empfangene Leistung zählt nur die gezeichneten Strahlen (eine Stichprobe des Bündels, keine
+  Radiometrie: keine Bestrahlungsstärke, kein Lichtleitwert); Ergebnisse der Verfolgung (empfangene Leistung, Anteil,
+  Polarisation, das Bild des Pfeils) lassen sich auf der Wertekarte überschreiben, die dann einen Widerspruch meldet, weil
+  die Engine noch keine Kennzeichnung „nur lesen“ für Variablen hat. Gekrümmte Spiegel, Prisma und Gitter haben noch keine
+  Werte; die Systembrennweite gilt für zwei dünne Linsen (nicht die dicke Linse).
 - Die Bildkonstruktion des Gegenstandspfeils verwendet nur dünne Linsen und gekrümmte Spiegel (nicht die dicke Linse; ihre
   verfolgten Strahlen durchlaufen sie dagegen). Die dicke Linse hat keinen Brennweitengriff.
 - Das Spektrometer verfolgt das Licht in seinem Inneren nicht; sein Spektrum ist eine schematische Zeichnung.
@@ -322,4 +392,4 @@ werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen we
 - Die Bildkonstruktion verwendet nur die erste Linse bzw. den ersten gekrümmten Spiegel auf der Achse des Pfeils (kein Bild
   eines Bildes durch ein zweites Element); das verfolgte Strahlenbündel durchläuft dagegen alle Elemente.
 - Mögliche nächste Schritte: Bilder durch mehrere Elemente, Abbildung durch die dicke Linse für den Gegenstandspfeil,
-  empfangene Intensität als Detektorwert, Geisterreflexe, Vorlagen für Michelson/Mach-Zehnder.
+  Werte gekrümmter Spiegel, Geister dünner Linsen, Vorlagen für Michelson/Mach-Zehnder.

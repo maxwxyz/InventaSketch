@@ -33,7 +33,7 @@ does not design or optimise optical systems (no aberration analysis or radiometr
 
 | Type id | Element | Parameters (all optional) |
 |---|---|---|
-| `optics.lens.converging` | Converging lens; views `shape` (section) and `symbol` (double arrow, heads outward) | `shape` biconvex/planoconvex/meniscus, `f` (40), `focal` (F, F′ markers), `rays`, `bundle`, `beam`, `coating` (ideal, inspector only), `label` |
+| `optics.lens.converging` | Converging lens; views `shape` (section) and `symbol` (double arrow, heads outward) | `shape` biconvex/planoconvex/meniscus, `f` (40), `focal` (F, F′ markers), `rays`, `bundle`, `beam`, `coating` (ideal, inspector only), `label`, values `g`, `b` (inspector), `showValues` |
 | `optics.lens.diverging` | Diverging lens; views `shape` and `symbol` (heads inward) | `shape` biconcave/planoconcave/meniscus, as above |
 | `optics.mirror.plane` | Plane mirror with hatched back | `label` |
 | `optics.mirror.concave` / `optics.mirror.convex` | Curved mirrors | `f` (40), `focal` (F and centre of curvature C/M), `label` |
@@ -43,23 +43,23 @@ does not design or optimise optical systems (no aberration analysis or radiometr
 | `optics.grating.transmission` | Transmission grating (plate with grooves) | `angle` (first-order angle at 550 nm, 20°), `orders` (1–3), `label` |
 | `optics.filter.plate` | Filter plate, neutral or coloured | `tint` neutral/red/green/blue/yellow, `label` |
 | `optics.fibre.cable` | Optical fibre with connectors at both ends | `spread` (output half cone, 12°), `rays`, `label` |
-| `optics.source.lamp` | Lamp (bulb, filament, socket) | `emission` cone/parallel/all directions, `rays`, `spread` (0 = fill the next element), `beam`, `label` |
-| `optics.source.led` | LED (dome, flange, leads) | `emission`, `rays`, `spread`, `beam`, `color` white/red/green/blue, `label` |
-| `optics.source.laser` | Laser (housing, output aperture) | `rays` (1), `beam`, `color` 650/532/445 nm, `label` |
-| `optics.detector.photodiode` | Photodiode as optical detector | `label` |
-| `optics.detector.camera` | Camera: lens barrel focused on the image sensor | `label` |
-| `optics.detector.eye` | Eye (section): cornea, iris, lens, retina, optic nerve | `label` |
-| `optics.screen.plain` | Screen | `label` |
-| `optics.object.arrow` | Object arrow standing on the axis (imaging figures) | `bundle` principal rays/fan, `rays`, `image` off/image/construction (image), `names` (false), `label` |
-| `optics.ray` | Light ray (point object, page coordinates) | `trace` (true), `arrows` middle/end/none, `virtual` (true), `tail` (0 = automatic), `showValues` (intensity and polarisation at the ray ends, false) |
+| `optics.source.lamp` | Lamp (bulb, filament, socket) | `emission` cone/parallel/all directions, `rays`, `spread` (0 = fill the next element), `beam`, `label`, value `power`, `showValues` |
+| `optics.source.led` | LED (dome, flange, leads) | `emission`, `rays`, `spread`, `beam`, `color` white/red/green/blue, `label`, values `power`, `lambda`, `showValues` |
+| `optics.source.laser` | Laser (housing, output aperture) | `rays` (1), `beam`, `color` 650/532/445 nm, `label`, values `power`, `lambda`, `showValues` |
+| `optics.detector.photodiode` | Photodiode as optical detector | `label`, `showValues` |
+| `optics.detector.camera` | Camera: lens barrel focused on the image sensor | `label`, `showValues` |
+| `optics.detector.eye` | Eye (section): cornea, iris, lens, retina, optic nerve | `label`, `showValues` |
+| `optics.screen.plain` | Screen | `label`, `showValues` |
+| `optics.object.arrow` | Object arrow standing on the axis (imaging figures) | `bundle` principal rays/fan, `rays`, `image` off/image/construction (image), `names` (false), `label`, `showValues` |
+| `optics.ray` | Light ray (point object, page coordinates) | `trace` (true), `arrows` middle/end/none, `virtual` (true), `tail` (0 = automatic), `showValues` (intensity and polarisation at the ray ends, false), `ghosts` (ghost reflections, false) |
 | `optics.axis.line` | Optical axis (dash-dot centre line, point object) | `label` |
-| `optics.lens.thick` | Thick lens: two spherical faces, traced at both (box width = thickness, box height = aperture) | `shape` biconvex/planoconvex/biconcave/planoconcave, `n` (1.5), `sag` (depth of the curved faces as a share of the width, 0.35), `focal` (F, F′, principal planes H, H′), `rays`, `beam`, `coating` (ideal), `label` |
+| `optics.lens.thick` | Thick lens: two spherical faces, traced at both (box width = thickness, box height = aperture) | `shape` biconvex/planoconvex/biconcave/planoconcave, `n` (1.5), `sag` (depth of the curved faces as a share of the width, 0.35), `focal` (F, F′, principal planes H, H′), `rays`, `beam`, `coating` (ideal), `label`, `showValues` |
 | `optics.mirror.scanner` | Galvo scanner mirror: plane mirror on a pivot, turned inside its box | `angle` (mirror angle, 45°; 0° = upright like a plane mirror), `scan` (mechanical scan range ±, 10°), `fan` (end positions and ray fan, false), `label` |
 | `optics.polarizer` | Linear polariser: plate with its transmission axis as a double arrow | `angle` (transmission axis, 0°), `label` |
 | `optics.waveplate` | Wave plate: plate with its fast axis (dashed double arrow) and "λ/4"/"λ/2" | `retardance` quarter/half (quarter), `angle` (fast axis, 45°), `label` |
 | `optics.lightguide` | Light guide (rectangular glass rod, total internal reflection) | `n` (1.5), `coating` (ideal), `label` |
 | `optics.window.plate` | Glass plate (window): plane-parallel plate tilted in its box; the edges stop light | `n` (1.5), `tilt` (angle of incidence along the axis, 0°, −80° … 80°), `brewster` (tilt = arctan n, false), `coating` (**uncoated** by default), `label` |
-| `optics.detector.spectrometer` | Spectrometer: housing with entry slit, reflection grating, detector line and the dispersed light drawn inside | `label` |
+| `optics.detector.spectrometer` | Spectrometer: housing with entry slit, reflection grating, detector line and the dispersed light drawn inside | `label`, `showValues` |
 
 Library items (48) include the lens shapes and symbols, thick biconvex and plano-convex lenses, three mirrors, the
 scanner mirror with and without its scan range, deviating/dispersing/right-angle prisms, both splitters (schematic), the
@@ -174,8 +174,69 @@ The physics (`Fresnel`, all angles from the face normal, loss-free media n1 → 
   in n = 1.51 add up to a quarter wave (the Fresnel rhomb). A right-angle prism with uncoated faces therefore turns linear
   45° light elliptical.
 - A thin lens is taken as two plane faces of glass n = 1.5 across its axis, met at the ray's angle to the axis.
-- Partial reflections at glass faces lower the transmitted ray; they are not traced as rays of their own (no ghost
-  images). Light that is (practically) gone, below 0.5 %, ends the ray.
+- Partial reflections at glass faces lower the transmitted ray. Light that is (practically) gone, below 0.5 %, ends the
+  ray.
+- **Ghost reflections** (`ghosts` on the ray, toggle **Ghost reflections**, off by default): the light a non-ideal glass
+  face reflects partially is traced as a ray of its own, with the reflection factors r_p, r_s of the face (uncoated) or
+  the amplitudes √R of the anti-reflection layer, polarisation included. A plate of n = 1.5 at normal incidence sends
+  4 % straight back from its front face and 0.96 · 0.04 · 0.96 = 3.7 % from its back face; the transmitted 92.16 % are
+  unchanged. A ghost of a ghost (0.16 %) is below 0.5 % and not drawn, so ghosts are first order in practice. Thin
+  lenses (taken as two plane faces) send no ghosts, and total internal reflection is not a ghost. Ghosts are drawn like
+  other weak light (opacity = intensity, at least 0.2).
+
+## Element values (value card)
+
+Optics elements are value types (`IValueType`, `IValueLinks`, `IValueChecks`; engineering-calculations conventions: SI
+internally, display units as listed). Every value is optional; the drawing never needs one. `showValues` (**Show
+values**) draws the known card values below the element. Values that are results of the trace or of the drawing are
+derived; typing over one of them gives a conflict on the card.
+
+| Element | Card values | Panel values | Relations |
+|---|---|---|---|
+| Lamp | optical power P (mW; empty = 1 mW, the default) | – | – |
+| LED, laser | P; wavelength λ (nm; entered in `lambda`, else from the colour, none for white light) | photon energy E_ph (eV) | E_ph = h·c/λ (h, c exact SI values [S1]) |
+| Photodiode, camera, eye, screen, spectrometer | received power P_e (mW), share of the emitted light η (%), degree of polarisation V (%), polarisation angle θ (°, 0° = in the drawing plane) | polarisation (unpolarised, linear, circular, elliptical, partially polarised) | see below |
+| Converging / diverging lens | focal length f (the parameter `f`, mm; the diverging lens shows its amount), refractive power D in dioptres (1/m), object distance g, image distance b (values only, parameters `g`, `b`) | magnification β, with a second thin lens ahead on the axis: system focal length f_s, distance d, back focal distance s′_F | D = ±1/f; 1/f = 1/g + 1/b (signed f); β = −b/g; Gullstrand |
+| Thick lens | f (lensmaker's equation from `n` and the drawn faces), D | n, back focal distance s′_F | 1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)] |
+| Object arrow | g, b, β, image real/virtual (of the drawn image) | focal length of the imaging element, object size G, image size B = β·G | 1/f = 1/g + 1/b, β = −b/g |
+
+**Received light.** Every traced ray object of the page is traced as drawn; the paths that end on an element are summed.
+A bundle docked on a lamp, LED or laser carries that source's power P, divided equally among its start rays (several
+bundles on one source share it). A path contributes k = I · w / N: its relative intensity I at the element (polarisers,
+splitters, Fresnel losses), its power share w (1, divided among the colours of dispersed white light and among the drawn
+grating orders, and halved at a schematic splitter, whose rays are drawn at full intensity) and the number N of rays of
+the bundle. Then:
+
+- P_e = Σ kᵢ·Pᵢ over the sources; solved for a source power too (enter the received power → the source power follows,
+  its 1 mW default gives way). P_e = 0 when no traced ray reaches the element; unknown when only rays without a source
+  arrive (a free ray, the bundle of a lens or an object arrow).
+- η = Σ kᵢ·Pᵢ / Σ Pᵢ over the bundles that arrive (bundles without a source count as power 1).
+- The polarisation is the incoherent sum of the coherency matrices of all arriving light, weighted like η: V =
+  √((A − B)² + 4|C|²), θ = ½·atan2(2·Re C, A − B) (no angle for unpolarised or circular light).
+
+Examples: a 5 mW laser through a polariser at 30° onto a photodiode: P_e = 2.5 mW, η = 50 %, V = 100 %, θ = 30°, linear;
+polariser 0° and analyser 60°: η = ½·cos² 60° = 12.5 %; a 50:50 non-polarising cube with `reflectance` 0.3 sends 7 and 3
+mW of 10 mW to its two detectors; an uncoated plate at normal incidence passes 92.16 %.
+
+**Lenses.** f = 40 mm gives D = 25 dpt (the diverging lens −25 dpt). With g = 60 mm the converging lens gives b = 120 mm
+and β = −2, the diverging lens b = −24 mm and β = 0.4. Each of f, g, b follows from the other two (clear `f` on the card
+to let it follow from g and b; the drawing then uses its default 40 mm). Two thin lenses on one axis (the second one's
+centre within half its larger box side of the first one's axis, axes parallel; the nearest ahead counts) give
+f_s = f₁·f₂ / (f₁ + f₂ − d) and s′_F = f₂·(f₁ − d) / (f₁ + f₂ − d), measured from the second lens (f₁ = 40, f₂ = 20,
+d = 50 mm: f_s = 80 mm, s′_F = −20 mm, which the traced rays confirm).
+
+**Checks** (notes on the card, they never change values): virtual image (b < 0) on lenses and the object arrow; object
+in the focal plane (g = f, image at infinity); afocal pair (f₁ + f₂ = d, a telescope with angular magnification −f₁/f₂);
+no traced ray of the page reaches a detector (only when the page has rays); only rays without a source arrive; the power
+went through a schematic splitter or a grating (assumed equal shares, a hint); a wavelength outside about 380 to 780 nm
+(drawn in the nearest colour).
+
+The wavelength entered on a laser or LED is also what the tracer uses (405 nm is drawn violet, and a dispersing prism
+refracts it with n(405 nm)); choosing a colour in the context bar clears it. The unit dioptre and the quantity "optical
+power" are not in the engine's quantity catalogue yet, so D is shown as a plain number in 1/m.
+
+While its values label is shown, a detector, a lens or an object arrow is reported as a dependent of every optics element
+of its page, so the label follows any change of the beam path.
 
 ## Image construction
 
@@ -256,7 +317,8 @@ Clean slides (`Sanitize`): optics elements carry no values worth hiding; the gen
 
 All state is in the document model: parameters, `Size`, `Transform`, the ray's points and the attachment of its first
 point (`AnchorId` = `exit`/`o`/`tip`). The traced paths, images, construction rays and grips are not stored; they are
-recomputed from the document, so JSON round trips render identically.
+recomputed from the document, so JSON round trips render identically. Entered values are parameters too (text as typed:
+`power` "5 mW", `lambda` "532 nm", `g`, `b`; the focal length in `f`, the index in `n`); derived values are never stored.
 
 ## Host notes
 
@@ -282,11 +344,13 @@ recomputed from the document, so JSON round trips render identically.
 ## Limits and next steps
 
 - Two-dimensional, sequential; thin lenses and curved mirrors are paraxial ideals. No interference. Fresnel losses only
-  where `coating` is not ideal; partial reflections at glass faces are not drawn as rays (no ghosts). Mirrors are ideal
-  (no metal reflectance or phase), splitters ideal (no extinction ratio, no absorption). The anti-reflection coating is
-  an idealised single layer (index √n).
-- The ray readout is a label at the ray ends; optics elements have no value card (detectors do not yet report the
-  received intensity as a value).
+  where `coating` is not ideal; partial reflections at glass faces are drawn as rays only with `ghosts` (first order in
+  practice, not at thin lenses). Mirrors are ideal (no metal reflectance or phase), splitters ideal (no extinction ratio,
+  no absorption). The anti-reflection coating is an idealised single layer (index √n).
+- Element values: the received power counts only the drawn rays (a sample of the bundle, not radiometry: no irradiance,
+  no étendue); results of the trace (received power, share, polarisation, the arrow's image) can be typed over on the
+  value card, which then reports a conflict, because the engine has no read-only flag for variables yet. Curved mirrors,
+  the prism and the grating have no values yet; the system focal length covers two thin lenses (not the thick lens).
 - The object arrow's image construction uses thin lenses and curved mirrors only (not the thick lens; its traced rays do
   pass it). The thick lens has no focal-length grip.
 - The spectrometer does not trace the light inside; its spectrum is a schematic drawing.
@@ -295,5 +359,5 @@ recomputed from the document, so JSON round trips render identically.
   element's single optical surface.
 - The image construction uses the first lens or curved mirror on the arrow's axis only (no image of an image through a
   second element); the traced ray bundle does pass every element.
-- Possible next steps: images through several elements, thick-lens imaging for the object arrow, received intensity as
-  a detector value, ghost reflections, Michelson/Mach-Zehnder templates.
+- Possible next steps: images through several elements, thick-lens imaging for the object arrow, values of curved
+  mirrors, ghosts of thin lenses, Michelson/Mach-Zehnder templates.

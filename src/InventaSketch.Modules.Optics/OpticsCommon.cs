@@ -357,8 +357,10 @@ namespace InventaSketch.Modules.Optics
             var page = ctx.Doc.PageOf(o.Id);
             if (page is null) return Array.Empty<string>();
             var optical = !o.IsPointGeometry && Surfaces(o).Count > 0;
+            // Elements whose values label shows values of the traced light or of their neighbours follow too.
             return ctx.Doc.ObjectsOn(page)
-                .Where(x => x.Id != o.Id && (x.Type == RayType.TypeId || optical && x.Type == Sources.ObjectId && Imaging.Shown(x)))
+                .Where(x => x.Id != o.Id && (x.Type == RayType.TypeId || optical && x.Type == Sources.ObjectId && Imaging.Shown(x)
+                    || ValueLabels.Shows(x) && OpticsModule.TypeOf(x.Type) is ITraceValues))
                 .Select(x => x.Id).ToList();
         }
 
