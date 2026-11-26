@@ -40,7 +40,9 @@ namespace InventaSketch.AddIn.Tests
             Assert.True(cls.ReadOnly);
             Assert.False(cls.CanDrag);
             Assert.False(string.IsNullOrEmpty(cls.Field));
-            Assert.All(card.Rows.Where(r => r.Key != "cls"), r => Assert.False(r.ReadOnly));
+            // Results of the position analysis are read-only too (VarDef.ReadOnly); everything else can be typed.
+            var readOnly = new[] { "cls", "w3", "alpha3", "alpha4", "vP", "aP" };
+            Assert.All(card.Rows, r => Assert.Equal(readOnly.Contains(r.Key), r.ReadOnly));
         }
 
         [Fact]
