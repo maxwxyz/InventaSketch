@@ -41,6 +41,7 @@ anchor snaps onto a shaft axis, the shaft carries them when it moves or turns, a
 | `mech.cvt` | CVT variator / CVT-Variator | Belt & chain drives | `stick` (two cone-pulley pairs on parallel shafts), `axial` (pulleys with belt loop) | `ratio` (0.4–2.5, default 1), `chain` | `hub` and `hub2` (Hub, one per shaft) |
 | `mech.gearset.harmonic` | Strain wave gear / Wellgetriebe | Gears | `stick` (wave generator, flexspline cup, grounded circular spline), `axial` | — | `ground` (Mount) |
 | `mech.gearset.cycloidal` | Cycloidal drive / Zykloidgetriebe | Gears | `stick` (eccentric, disc, pin ring, output pins), `axial` (cycloid disc in the pin ring) | `lobes` (5–29, default 11; pins = lobes + 1) | `ground` (Mount) |
+| `mech.clutch.slip` | Slip clutch (torque limiter) / Rutschkupplung (2026-11-26) | Couplings | `stick` (two friction discs with the lining between them, pressure spring against a collar), `side` (discs, lining, hubs, spring pack, adjusting nut) | — (value parameter `slipTorque`, see below) | — |
 
 All of them except the CVT have their `hub` anchor at the box centre on the shaft axis. The CVT has one hub per pulley,
 so it sits on two shafts at once; the running radii of the belt follow the ratio (their sum stays constant).
@@ -50,7 +51,11 @@ Context actions: freewheel "reverse locking direction", converter "lock-up clutc
 Library items: `mech.freewheel`, `mech.freewheel.section`, `mech.freewheel.axial`, `mech.converter`,
 `mech.converter.lockup`, `mech.converter.section`, `mech.parklock`, `mech.parklock.axial`, `mech.cvt.stick`,
 `mech.cvt.axial`, `mech.cvt.chain`, `mech.harmonic.stick`, `mech.harmonic.axial`, `mech.cycloidal.stick`,
-`mech.cycloidal.axial`.
+`mech.cycloidal.axial`, `mech.clutch.slip`, `mech.clutch.slip.side` (keywords also "torque limiter", "Überlastkupplung").
+
+The slip clutch is drawn independently in the style of the disc clutch of the module; no standard symbol is claimed. Its
+bores match the disc clutch (2.5 in the 20 high schematic, 3 in the 24 high side view), so it fits onto a shaft and keeps
+the fit after a view switch.
 
 ## Belt and chain drives over several pulleys (category "Belt & chain drives")
 
@@ -127,9 +132,16 @@ Speeds *n*, torques *T* (German symbol *M*) and powers *P* are magnitudes; *P* =
 |---|---|---|
 | Spur/helical, ring, bevel gear, worm wheel | *z* (`teeth`), *m* (`module`, mm), *n* (`speed`), *T* (`torque`); panel *P* (`power`), *d* (`diameter`); engineer η (`efficiency`, default 100 %) | *d* = *m*·*z* [S16]; *P* = 2π·*n*·*T* [S18] |
 | Worm | *z* = number of starts (`starts`), *m*, *n*, *T*; *P*, η | *P* = 2π·*n*·*T* |
-| Rack | *m*, *v* (`linSpeed`), *F* (`force`), *P* | *P* = *F*·*v* [S1] |
+| Rack | *m*, *v* (`linSpeed`), *F* (`force`); panel *P*, pinion *z*_p (`pinionTeeth`), *d*_p (`pinionDiameter`, mm), *n*_p (`pinionSpeed`), *T*_p (`pinionTorque`) | *P* = *F*·*v* [S1]; *d*_p = *m*·*z*_p [S16]; *v* = ω·*r* = π·*d*_p·*n*_p; *F* = *T*/*r* = 2·*T*_p/*d*_p [S18] |
 | Planetary set | *z*_s (`zs`, default 20), *z*_r (`zr`, default 52), *n*_s (`speeds`), *n*_c (`speedc`); panel *n*_r (`speedr`), *T*_s, *T*_r, *T*_c (`torques`, `torquer`, `torquec`); engineer *k* = *z*_p1/*z*_p2 for stepped planets (`stepRatio`, default 1) | Willis *n*_s − *n*_c = −(*z*_r/*z*_s)·*k*·(*n*_r − *n*_c); *T*_r = *T*_s·*k*·*z*_r/*z*_s; *T*_s + *T*_r + *T*_c = 0 [S39]. Speeds and torques are signed here (same sense positive) |
+| Ravigneaux set | *n*_s1 (`speeds1`, small sun), *n*_s2 (`speeds2`, large sun), *n*_r (`speedr`), *n*_c (`speedc`); panel *z*_s1 (`zs1`, default 14), *z*_s2 (`zs2`, default 20), *z*_r (`zr`, default 52) | *n*_s2 − *n*_c = −(*z*_r/*z*_s2)·(*n*_r − *n*_c) (long planets); *n*_s1 − *n*_c = +(*z*_r/*z*_s1)·(*n*_r − *n*_c) (planet pairs: two external meshes, the planet teeth cancel) [S39]. Signed speeds. No torque relations (two degrees of freedom: the split depends on which members are held) |
+| Bevel differential (`mech.gearset.differential`) | *n*_c (`speedc`, case/crown wheel), *n*₁, *n*₂ (`speed1`, `speed2`, half shafts), *T*_c (`torquec`); panel *T*₁, *T*₂ (`torque1`, `torque2`) | *n*_c = (*n*₁ + *n*₂)/2 [S39] (signed); *T*₁ = *T*₂ = *T*_c/2 (open differential, friction neglected) [S18] |
+| Strain wave gear | *z*_f (`flexTeeth`, default 200), *z*_c (`circularTeeth`, default 202), *i* (`ratio`), *n*₂ (`speedOut`); panel *n*₁ (`speedIn`), *T*₁ (`torqueIn`), *T*₂ (`torqueOut`); engineer η (`efficiency`, default 100 %) | *i* = *n*₁/*n*₂ = −*z*_f/(*z*_c − *z*_f) (circular spline fixed, wave generator in, flexspline out; Willis with the wave generator as carrier) [S39]; *n*₁ = *i*·*n*₂; *T*₂ = \|*i*\|·η·*T*₁ [S18]. Signed speeds: *i* < 0, the output turns against the input |
+| Cycloidal drive | *z*_d (lobes, the type's `lobes`, default 11), *i* (`ratio`), *n*₂ (`speedOut`); panel *z*_p (`pins`), *n*₁, *T*₁, *T*₂; engineer η | *z*_p = *z*_d + 1 (as drawn); *i* = −*z*_d/(*z*_p − *z*_d) (pin ring fixed, eccentric in, disc rotation out through the output pins) [S39]; *n*₁ = *i*·*n*₂; *T*₂ = \|*i*\|·η·*T*₁ [S18] |
+| CVT variator | *i* (the type's `ratio`, default 1), *n*₁ (`speedIn`), *n*₂ (`speedOut`); panel *T*₁, *T*₂; engineer η | *n*₁ = *i*·*n*₂; *T*₂ = *i*·η·*T*₁ [S18]. The drawing follows an entered `ratio`; a ratio derived from the speeds is checked against the spread 0.4 … 2.5 |
+| Flywheel | *n* (`speed`), *m* (`mass`, kg), *D* (`diameter`, outer, mm), *E* (`energy`, kJ); panel *J* (`inertia`, kg·m²), *d*_i (`innerDiameter`, mm, default 0), Δ*E* (`energyFluctuation`, kJ), Δ*n* (`speedFluctuation`); engineer δ (`fluctuationCoefficient`) | *J* = *m*·(*D*² + *d*_i²)/8: solid disc *d*_i = 0 (*J* = ½·*m*·*r*²), rim between *d*_i and *D* (thin rim *J* → *m*·*r*²; hub and spokes neglected); *E* = ½·*J*·ω²; Δ*E* = *J*·ω·Δω = 4π²·*J*·*n*·Δ*n* (*n* the mean speed); δ = Δ*n*/*n* [S18] |
 | Shaft, spline shaft, rigid and flexible coupling, universal joint | *n*, *T*, *P* | *P* = 2π·*n*·*T* |
+| Slip clutch | *n*, *T*, *P*, *T*_slip (`slipTorque`, German symbol *M*_R) | *P* = 2π·*n*·*T*; check `mech.clutch.slip` |
 | Pulley | *d* (`diameter`, effective diameter), *n*, *T*, *P* | *P* = 2π·*n*·*T* |
 | Idler pulley, tensioner (its idler) | *d* (`diameter`), *n* | – (an idler passes no torque) |
 | Sprocket | *z* (`teeth`), *n*, *T*, *P* | *P* = 2π·*n*·*T* |
@@ -147,7 +159,9 @@ along"):
 
 - *Shaft line*: a shaft, couplings on it and the parts fixed on it (hub fixed, sliding or none) share *n*; a loose hub
   turns freely. Bearings take the speed of their shaft. The torque passes along the line unchanged when at most two
-  parts on it take or give torque; with a branch (three or more) no torque is passed.
+  parts on it take or give torque; with a branch (three or more) no torque is passed. A slip clutch passes *n* and *T*
+  like a coupling (while it holds; `mech.clutch.slip` warns above *T*_slip). A flywheel takes the speed only: it has no
+  torque variable, so it never counts as a branch.
 - *Mesh*: *z*_a·*n*_a = *z*_b·*n*_b and *T*_b = *T*_a·(*z*_b/*z*_a)·(η_b/η_a) [S18]. η of a gear is the efficiency of
   the mesh in which it is the driven gear (enter it on the driven gear of each stage); with an input and an output
   torque entered, η is derived. Planets on a carrier pin are not linked (use the planetary set).
@@ -162,7 +176,7 @@ along"):
 - Drivetrain parts of the machines module (e-machine, engine, wheel) on a shaft join the shaft line with the same keys.
 
 **Shaft lines across modules.** The shaft line rule is shared by all modules (core `ShaftLines`, built on the coupling
-relations): shafts, spline shafts, couplings and universal joints pass the torque on unchanged, bearings take the speed
+relations): shafts, spline shafts, couplings, slip clutches and universal joints pass the torque on unchanged, bearings take the speed
 only, planet carriers, differential cases, gear sets and the screw-drive nut stay out. Elements of any module with a
 speed *n* (and a torque *T*) whose hub sits on a shaft axis or on another hub join the line. Every module links its
 elements as a star around the line's shaft or coupling, so an e-machine of the machines module, a mechanical shaft and a
@@ -179,12 +193,16 @@ or chain only: two of them whose pitch circles touch do not mesh like gears (no 
 | `mech.planetary.assembly` | (*z*_s + *z*_r)/*N* not an integer or *z*_r − *z*_s odd (simple planets) | warning | [S18, S39] |
 | `mech.bearing.life` | *L*₁₀h below the entered required life | hint | [S19] |
 | `mech.screw.selflock` | lead screw with an entered or derived η > 50 % (back-driving possible) | info | [S18] |
+| `mech.harmonic.teeth` | strain wave gear with *z*_c − *z*_f not a positive even number (two-lobe wave generator) | warning | [S39] |
+| `mech.cvt.range` | CVT ratio (entered or derived from *n*₁/*n*₂) outside the spread of its `ratio` parameter (0.4 … 2.5) | warning | [S18] |
+| `mech.clutch.slip` | torque through a slip clutch (its own *T*, linked from the shaft line) above *T*_slip | warning | [S18] |
 
-Value relations not yet available (the elements themselves exist and can be drawn; only their values are missing):
-the CVT variator, the Ravigneaux set, the differential gear set, the strain wave and cycloidal drives, the energy of the
-flywheel and the link between rack and pinion (the rack has its own values). Not available at all: a slip clutch,
-Willis across separate planetary parts, torque split at branches (shaft lines and strands with three or more parts
-taking torque). No strength verification (ISO 6336, DIN 743, EN 13906 beyond *F* = *c*·*s* and *T* = *c*_φ·φ).
+Not yet available: torque relations of the Ravigneaux set (speeds only); a link between the rack and a drawn pinion gear
+(enter the pinion's teeth, speed and torque on the rack); the gear-set elements (planetary, Ravigneaux, differential,
+strain wave, cycloidal, CVT) are not linked to the shafts they sit on (their member speeds are their own values); Willis
+across separate planetary parts; torque split at branches (shaft lines and strands with three or more parts taking
+torque). No strength verification (ISO 6336, DIN 743, EN 13906 beyond *F* = *c*·*s* and *T* = *c*_φ·φ), no slip
+torque design (friction radius, number of faces, spring force).
 
 ## Host notes
 

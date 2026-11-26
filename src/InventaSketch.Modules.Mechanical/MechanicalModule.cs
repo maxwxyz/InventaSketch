@@ -16,7 +16,7 @@ namespace InventaSketch.Modules.Mechanical
         private static readonly Lazy<IReadOnlyList<MechType>> AllTypes = new(() =>
             Gears.Types().Concat(Shafts.Types()).Concat(Bearings.Types()).Concat(Couplings.Types())
                 .Concat(Drives.Types()).Concat(Fasteners.Types()).Concat(Springs.Types()).Concat(Arrows.Types())
-                .Concat(ScrewDrives.Types()).Concat(Transmissions.Types()).Concat(Housings.Types()).ToList());
+                .Concat(ScrewDrives.Types()).Concat(Transmissions.Types()).Concat(Housings.Types()).Concat(SlipClutch.Types()).ToList());
 
         private static readonly Lazy<IReadOnlyList<LibraryItem>> Items = new(BuildLibrary);
 
@@ -133,6 +133,8 @@ namespace InventaSketch.Modules.Mechanical
             Add("clutch.multidisc", "mech.clutch.multidisc", "Multi-disc clutch", "Lamellenkupplung", "stick");
             Add("brake", "mech.brake", "Brake", "Bremse", "stick");
             Add("brake.side", "mech.brake", "Disc brake (side view)", "Scheibenbremse (Seitenansicht)", "side");
+            Add("clutch.slip", SlipClutch.Id, "Slip clutch", "Rutschkupplung", "stick", null, "torque limiter", "überlastkupplung");
+            Add("clutch.slip.side", SlipClutch.Id, "Slip clutch (side view)", "Rutschkupplung (Seitenansicht)", "side", null, "torque limiter", "überlastkupplung");
             Add("sync", "mech.sync", "Synchroniser", "Synchronisierung", "stick");
             Add("flywheel", "mech.flywheel", "Flywheel", "Schwungrad", "stick");
             Add("flywheel.axial", "mech.flywheel", "Flywheel (axial view)", "Schwungrad (Stirnansicht)", "axial");
