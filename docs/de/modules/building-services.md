@@ -207,22 +207,23 @@ als Vorgaben; Luft: ρ·*c*_p = 0,34 W·h/(m³·K). Kartengrößen stehen vorn. 
 
 | Element | Größen (Parameter) | Eigene Beziehungen [Quelle] |
 |---|---|---|
-| Heizkessel | Φ (`heatOutput`), θ_VL (`flowTemp`), θ_RL (`returnTemp`), *V̇* (`flowRate`, l/h); Ingenieur ρ (`density`), *c* (`specificHeat`) | Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
-| Wärmepumpe (Außeneinheit) | Φ, *P*_el (`powerEl`), COP (`cop`), θ_VL; Panel θ_Q (`sourceTemp`), θ_RL, *V̇*; Ingenieur ρ, *c* | Φ = COP·*P*_el [S32]; Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
-| Heizkörper | Φ, Φ₅₀ (`phi50`), θ_VL, θ_RL; Panel *V̇*, θ_i (`roomTemp`, Vorgabe 20 °C), *n* (`exponent`, Vorgabe 1,3), Δθ_ln (`excessTemp`), Φ_HL (`roomHeatLoad`, aus dem Raum); Ingenieur ρ, *c* | Δθ_ln = (θ_VL − θ_RL)/ln((θ_VL − θ_i)/(θ_RL − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (Kennlinie nach EN 442-2 [S31]); Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); Betriebspunkt ρ·*c*·*V̇*·(θ_VL − θ_RL) = Φ₅₀·(Δθ_ln/50 K)^*n*, numerisch nach θ_RL gelöst [S31] |
-| Fußbodenheizung (Heizkreis) | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; Panel θ_VL, θ_RL, *s* (`spacing`), *L* (`loopLength`); Ingenieur ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); *L* ≈ *A*/*s* [S30] |
-| Umwälzpumpe | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); Panel *P*_hyd (`powerHyd`); Ingenieur ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
-| Mischventil (3-Wege) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); Panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
-| Warmwasserspeicher | *V* (`volume`), Δθ (`deltaT`), *V*_M (`mixedVolume`, Mischwasser bei Zapftemperatur), *P* (`power`); Panel *Q* (`heat`), *t* (`heatUpTime`), θ_Sp (`storeTemp`), θ_KW (`coldTemp`, Vorgabe 10 °C), θ_Z (`tapTemp`, Vorgabe 40 °C), *V̇*_Z (`continuousFlow`, l/min); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (ohne Verluste); Δθ = θ_Sp − θ_KW; *V*_M = *V*·(θ_Sp − θ_KW)/(θ_Z − θ_KW); *V̇*_Z = *P*/(ρ·*c*·(θ_Z − θ_KW)) [S29] |
+| Heizkessel | Φ (`heatOutput`), θ_VL (`flowTemp`), θ_RL (`returnTemp`), *V̇* (`flowRate`, l/h); Panel Δ*p* (`pressureDrop`, kPa, wasserseitig); Ingenieur ρ (`density`), *c* (`specificHeat`) | Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
+| Wärmepumpe (Außeneinheit) | Φ, *P*_el (`powerEl`), COP (`cop`), θ_VL; Panel θ_Q (`sourceTemp`), θ_RL, *V̇*, Δ*p* (`pressureDrop`, wasserseitig); Ingenieur ρ, *c* | Φ = COP·*P*_el [S32]; Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
+| Heizkörper | Φ, Φ₅₀ (`phi50`), θ_VL, θ_RL; Panel *V̇*, θ_i (`roomTemp`, Vorgabe 20 °C), *n* (`exponent`, Vorgabe 1,3), Δθ_ln (`excessTemp`), Φ_HL (`roomHeatLoad`, aus dem Raum), Δ*p* (`pressureDrop`, Heizkörper mit Ventil); Ingenieur ρ, *c* | Δθ_ln = (θ_VL − θ_RL)/ln((θ_VL − θ_i)/(θ_RL − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (Kennlinie nach EN 442-2 [S31]); Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); Betriebspunkt ρ·*c*·*V̇*·(θ_VL − θ_RL) = Φ₅₀·(Δθ_ln/50 K)^*n*, numerisch nach θ_RL gelöst [S31] |
+| Fußbodenheizung (Heizkreis) | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; Panel θ_VL, θ_RL, *s* (`spacing`), *L* (`loopLength`), *d*_i (`innerDiameter`, Heizrohr), Δ*p* (`pressureDrop`); Ingenieur *v*, *Re*, λ, ν, *k*, ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); *L* ≈ *A*/*s* [S30]; mit *d*_i der Druckverlust des Heizkreises wie beim Rohr über *L* [S27] |
+| Umwälzpumpe | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); Panel *P*_hyd (`powerHyd`), ΣΔ*p* (`circuitPressureDrop`, ungünstigster Kreis) und *H*_erf (`headRequired`), beide berechnet; Ingenieur ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η; *H*_erf = ΣΔ*p*/(ρ·*g*) [S28]; ΣΔ*p* siehe „Kreise“ unten |
+| Mischventil (3-Wege) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); Panel *V̇*_A (`flowA`), *V̇*_B (`flowB`), Δ*p* (`pressureDrop`), *k*_v (`kvValue`); Ingenieur ρ | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29]; Δ*p* = 1 bar·(ρ/1000 kg/m³)·(*V̇*_AB/*k*_v)² [S30] |
+| Warmwasserspeicher | *V* (`volume`), Δθ (`deltaT`), *V*_M (`mixedVolume`, Mischwasser bei Zapftemperatur), *P* (`power`); Panel *Q* (`heat`), *t* (`heatUpTime`), θ_Sp (`storeTemp`), θ_KW (`coldTemp`, Vorgabe 10 °C), θ_Z (`tapTemp`, Vorgabe 40 °C), *V̇*_Z (`continuousFlow`, l/min), Δ*p* (`pressureDrop`, Heizwendel); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ; *t* = *Q*/*P* (ohne Verluste); Δθ = θ_Sp − θ_KW; *V*_M = *V*·(θ_Sp − θ_KW)/(θ_Z − θ_KW); *V̇*_Z = *P*/(ρ·*c*·(θ_Z − θ_KW)) [S29] |
 | Ausdehnungsgefäß | *V*_A (`systemVolume`), *e* (`expansion`, %), *V*_n (`nominalVolume`, erforderlich), *V*_n,gew (`chosenVolume`); Panel *V*_e (`expansionVolume`), *V*_V (`waterSeal`), *p*₀ (`prePressure`), *p*_e (`finalPressure`, beide Überdruck) | *V*_e = *e*·*V*_A; *V*_n = (*V*_e + *V*_V)·(*p*_e + *p*_amb)/(*p*_e − *p*₀), *p*_amb = 1,013 bar [S30] |
 | Hydraulische Weiche | *V̇*_P (`flowPrimary`), *V̇*_S (`flowSecondary`), θ_VL2 (`flowTemp2`), θ_RL1 (`returnTemp1`); Panel θ_VL1 (`flowTemp1`), θ_RL2 (`returnTemp2`), Φ (`heatOutput`); Ingenieur ρ, *c* | *V̇*_P ≥ *V̇*_S: θ_VL2 = θ_VL1, θ_RL1 = (*V̇*_S·θ_RL2 + (*V̇*_P − *V̇*_S)·θ_VL1)/*V̇*_P; *V̇*_P < *V̇*_S: θ_RL1 = θ_RL2, θ_VL2 = (*V̇*_P·θ_VL1 + (*V̇*_S − *V̇*_P)·θ_RL2)/*V̇*_S [S30]; Φ = ρ·*c*·*V̇*_S·(θ_VL2 − θ_RL2) [S29] |
 | Pufferspeicher | *V* (`volume`, l), Δθ (`deltaT`, Temperaturspreizung), *Q* (`heat`, kWh); Ingenieur ρ, *c* | *Q* = ρ·*V*·*c*·Δθ [S29] |
-| Wärmemengenzähler | Φ (`heatOutput`, Wärmeleistung), *V̇* (`flowRate`), θ_VL (`flowTemp`), θ_RL (`returnTemp`); Ingenieur ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
-| Wasserzähler | *V̇* (`flowRate`, m³/h) | – (der Volumenstrom seines Strangs) |
+| Wärmemengenzähler | Φ (`heatOutput`, Wärmeleistung), *V̇* (`flowRate`), θ_VL (`flowTemp`), θ_RL (`returnTemp`); Panel Δ*p* (`pressureDrop`), *k*_v (`kvValue`); Ingenieur ρ, *c* | Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29]; Δ*p* = 1 bar·(ρ/1000 kg/m³)·(*V̇*/*k*_v)² [S30] |
+| Wasserzähler | *V̇* (`flowRate`, m³/h); Panel Δ*p*, *k*_v; Ingenieur ρ | der Volumenstrom seines Strangs; Δ*p* aus *k*_v wie beim Wärmemengenzähler [S30] |
+| Thermostatventil, Kugelhahn, Rückschlagventil, Schmutzfänger (Runde 6) | Δ*p* (`pressureDrop`, kPa), *k*_v (`kvValue`, m³/h bei 1 bar), ζ (`lossCoefficient`); Panel *V̇* (`flowRate`, vom Rohr an `in`, sonst `out`); Ingenieur *v* (`velocity`, vom Rohr), ρ (`density`, vom Rohr) | Δ*p* = ζ·ρ·*v*²/2 [S27]; Δ*p* = 1 bar·(ρ/1000 kg/m³)·(*V̇*/*k*_v)² (wasserähnliche Flüssigkeiten, turbulent) [S30] |
 | Luftdurchlass | *V̇* (`flowRate`, m³/h), *A* (`roomArea`), *n* (`airChange`, je Stunde), *V* (`roomVolume`); Panel *h* (`roomHeight`, Vorgabe 2,5 m) | *V* = *A*·*h*; *V̇* = *n*·*V*/1 h [S30] |
 | Lüftungsgerät mit Wärmerückgewinnung | *V̇*_ZUL (`flowSupply`), η_t (`recovery`), θ_ZUL (`tempSupply`), Φ_WRG (`heatRecovered`); Panel *V̇*_ABL (`flowExtract`), θ_AUL (`tempOutdoor`), θ_ABL (`tempExtract`) | θ_ZUL = θ_AUL + η_t·(θ_ABL − θ_AUL); Φ = 0,34 W·h/(m³·K)·*V̇*_ZUL·(θ_ZUL − θ_AUL) [S30] |
-| Rohr | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); Panel DN (`dn`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); Ingenieur *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, Vorgabe 1,0 mm²/s: Wasser bei 20 °C), *k* (`roughness`, Vorgabe 0,0015 mm: Kupfer, Kunststoff; Stahl ≈ 0,045 mm), ρ (`density`) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN, wenn kein Innendurchmesser eingetragen ist (50 % Toleranz, DN ist eine Nennweite) [S30]; Druckverlust wie bei der Luftleitung mit *d*_i |
-| Luftleitung | *V̇*, *d* (`width`, Durchmesser oder Breite), *v*, *A* (`crossSection`); Panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); Ingenieur *Re*, λ, ν (Vorgabe 15 mm²/s: Luft bei 20 °C), *k* (Vorgabe 0,15 mm: verzinktes Blech), ρ (Vorgabe 1,2 kg/m³) | *v* = *V̇*/*A*; rund: *A* = π·*d*²/4, *d*_h = *d*; mit einer Höhe *b* ist der Kanal rechteckig: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30]; *Re* = *v*·*d*_h/ν; λ = 64/*Re* unter *Re* = 2320, darüber die explizite Näherung nach Haaland für Colebrook–White; Δ*p* = λ·(*L*/*d*_h)·ρ·*v*²/2 (gerade Strecke, Formteile nicht gerechnet) [S27] |
+| Rohr | *V̇* (`flowRate`), *d*_i (`innerDiameter`), *v* (`velocity`), θ (`temperature`); Panel DN (`dn`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); Ingenieur *Re* (`reynolds`), λ (`friction`), ν (`viscosity`, Vorgabe 1,0 mm²/s: Wasser bei 20 °C), *k* (`roughness`, Vorgabe 0,0015 mm: Kupfer, Kunststoff; Stahl ≈ 0,045 mm), ρ (`density`); Panel Σζ (`lossCoefficient`, Bögen und T-Stücke des Strangs) und Δ*p*_ζ (`pressureDropSingle`, Pa) | *v* = 4·*V̇*/(π·*d*_i²) [S27]; *d*_i ≈ DN, wenn kein Innendurchmesser eingetragen ist (50 % Toleranz, DN ist eine Nennweite) [S30]; Druckverlust wie bei der Luftleitung mit *d*_i; Δ*p*_ζ = Σζ·ρ·*v*²/2 [S27]; mit einer eingetragenen Wassertemperatur θ: ρ = 1000 kg/m³ − 0,0178·\|θ − 4 °C\|^1,7 [S27] und ν aus der Vogel-Gleichung (siehe unten) [S29] |
+| Luftleitung | *V̇*, *d* (`width`, Durchmesser oder Breite), *v*, *A* (`crossSection`); Panel *b* (`ductHeight`), *d*_h (`hydraulicDiameter`), *L* (`length`), Δ*p* (`pressureDrop`, Pa); Ingenieur *Re*, λ, ν (Vorgabe 15 mm²/s: Luft bei 20 °C), *k* (Vorgabe 0,15 mm: verzinktes Blech), ρ (Vorgabe 1,2 kg/m³); Panel Σζ (`lossCoefficient`), Δ*p*_ζ (`pressureDropSingle`) | *v* = *V̇*/*A*; rund: *A* = π·*d*²/4, *d*_h = *d*; mit einer Höhe *b* ist der Kanal rechteckig: *A* = *d*·*b*, *d*_h = 2·*d*·*b*/(*d* + *b*) [S27, S30]; *Re* = *v*·*d*_h/ν; λ = 64/*Re* unter *Re* = 2320, darüber die explizite Näherung nach Haaland für Colebrook–White; Δ*p* = λ·(*L*/*d*_h)·ρ·*v*²/2 (gerade Strecke) [S27]; Δ*p*_ζ = Σζ·ρ·*v*²/2 [S27] |
 | Geräteanschlussdose (elektrischer Verbraucher) | *P* (`power`), *I* (`current`, je Außenleiter); Panel *U* (`voltage`, Außenleiter–Neutralleiter, Vorgabe 230 V), cos φ (`powerFactor`, Vorgabe 1) | einphasig *I* = *P*/(*U*·cos φ); mit `phase` dreiphasig *I* = *P*/(3·*U*·cos φ) [S7] |
 
 Die Luftwechselzahl *n* ist eine reine Zahl je Stunde („1“ für 1 h⁻¹): Core hat noch keine Einheit h⁻¹. Die Raumwerte
@@ -249,8 +250,8 @@ Brandschutzklappen und Schalldämpfer geben den Luftvolumenstrom weiter. Der Puf
 Vorlauftemperatur, `r1` gibt ihre Rücklauftemperatur) und Quelle des Verbraucherkreises (`f2` gibt die
 Vorlauftemperatur und den Summenvolumenstrom der Verbraucher, `r2` übernimmt deren Rücklauftemperatur); ein Kessel mit
 70 °C, eine Weiche und Heizkörper geben Volumenströme und Temperaturen so durch sie hindurch.
-Wärmeverluste der Rohre werden nicht abgebildet; Druckverluste sind Werte jedes Rohrs und jeder Luftleitung (nicht über
-einen Kreis aufsummiert); Mischung an einer Zusammenführung rechnen nur das Mischventil und die Weiche. An einem
+Wärmeverluste der Rohre werden nicht abgebildet; Druckverluste sind Werte jedes Rohrs, jeder Luftleitung und jedes
+Elements, je Umwälzpumpe summiert (siehe „Kreise“); Mischung an einer Zusammenführung rechnen nur das Mischventil und die Weiche. An einem
 Anschluss eines Elements eines anderen Moduls (ein Wärmeanschluss der Energietechnik nimmt Vor- und Rücklauf) bleiben
 Rohre verschiedener Medien getrennte Netze; nur der Heizungsvorlauf übernimmt die Werte dieses Anschlusses
 (engineering-calculations.md Abschnitt 6.1).
@@ -259,6 +260,37 @@ Beispiele (Abnahmekriterien): ein Heizkessel mit 55 °C speist über ein Rohr mi
 *n* = 1,3, Raum 20 °C): die Rücklauftemperatur ergibt sich aus dem Betriebspunkt (θ_RL ≈ 46,0 °C, Φ ≈ 521 W), Rücklaufrohr
 und Kessel übernehmen θ_RL. Ein Raum mit 20 m² (2,5 m hoch) und *n* = 1 h⁻¹ ergibt 50 m³/h am Luftdurchlass, in der
 Luftleitung und am Zuluftstutzen des Geräts; eine Leitung mit 80 mm hat dann 2,76 m/s.
+
+**Stoffwerte des Wassers** (Runde 6). Ein Rohr mit einer eingetragenen Wassertemperatur θ nimmt daraus die Dichte und
+die kinematische Viskosität von flüssigem Wasser, die Reynolds-Zahl,
+Rohrreibungszahl und Druckverlust verwenden: die Dichte nach der Lehrbuchnäherung ρ ≈ 1000 kg/m³ − 0,0178·|θ − 4 °C|^1,7
+(±0,2 % zwischen 0 und 100 °C) [S27]; die dynamische Viskosität nach der Vogel-Gleichung
+μ = 2,414·10⁻⁵ Pa·s·10^(247,8 K/(*T* − 140 K)) mit ν = μ/ρ, auf 1 % an den Wassertafeln aus [S29] zwischen 10 und 100 °C
+(Unit-Tests vergleichen 20, 50, 70 und 80 °C mit den Tafelwerten). 70 °C ergeben ρ = 977,8 kg/m³ und ν = 0,41 mm²/s.
+Ohne eingetragene Temperatur bleiben die Vorgaben für 20 °C (1000 kg/m³, 1,0 mm²/s), auch wenn das θ des Rohrs über das
+Netz weitergegeben wird: Eine solche Temperatur kann erst bekannt werden, während der Löser Vorgaben einsetzt, und das
+Ergebnis darf nicht von dieser Reihenfolge abhängen. Ein eingetragenes ρ oder ν, das um mehr als 1 %
+(ν: 3 %) von der Näherung abweicht, ist ein Konflikt. Das ρ der Pumpe (für *H*_erf) behält seinen eigenen Wert (Vorgabe
+1000 kg/m³).
+
+**Kreise** (Runde 6, `BsCircuits`). Jede Umwälzpumpe summiert die Druckverluste ihrer Kreise: die Wege des Wassers von
+ihrem Anschluss `out` zurück zu `in` über Rohre (auch auf Rohren angedockte Rohre, mehrere Rohre an einem Anschluss und
+die Schienen einer Steigleitung) und durch die Elemente auf dem Weg in Fließrichtung – Erzeuger (Kessel, Wärmepumpe,
+Solarkollektor) Rücklauf → Vorlauf, Heizkörper, Fußbodenheizkreise und die Heizwendel des Speichers Vorlauf → Rücklauf,
+die Pumpe in → out, das Mischventil A oder B → AB, der Verteiler Vorlauf → jeder Abgang `f1…` und jedes `r1…` → Rücklauf,
+hydraulische Weiche und Pufferspeicher primär `f1` → `r1` und sekundär `r2` → `f2`; Ventile, Schmutzfänger und Zähler
+in beide Richtungen. Ein Weg zählt den Druckverlust jedes Teils mit eingegebenem Verlust: Rohre mit eingegebener *L*
+oder Δ*p* (ihr Δ*p*) oder Σζ (ihr Δ*p*_ζ), Elemente mit eingegebenem Δ*p*, *k*_v oder ζ (der Fußbodenheizkreis auch mit
+*d*_i); andere Teile zählen null. ΣΔ*p* der Pumpe ist die größte Wegsumme, der ungünstigste Kreis (Beziehung
+`bs.circuit.sum`, [S30]); sie ist bekannt, sobald jeder gezählte Verlust auf jedem Weg bekannt ist (ein Stammrohr an
+einem Abzweig erhält keinen Volumenstrom aus seinem Netz: seinen Volumenstrom oder sein Δ*p* eintragen).
+*H*_erf = ΣΔ*p*/(ρ·*g*). Eine Pumpe ohne geschlossenen Weg zurück zu ihrem Eintritt hat keine Summe; Elemente anderer
+Module beenden einen Weg; die Suche endet nach 256 Wegen oder 50 000 Schritten (dann keine Summe). Beispiel
+(Abnahmekriterium): Kessel 5 kPa, Pumpe, ein Vorlauf-Stammrohr (2 kPa) zu Thermostatventil 1 (8 kPa) und Heizkörper 1
+(1 kPa), ein Abzweig (3 kPa) zu Ventil 2 (1 kPa) und Heizkörper 2 (1 kPa), Rückläufe 2 und 3 kPa und 1 kPa vom Kessel zur
+Pumpe: Kreis 1 = 19 kPa, Kreis 2 = 18 kPa, also ΣΔ*p* = 19 kPa und *H*_erf = 1,94 m (eine Pumpe mit 1,5 m erhält
+`heat.pump.head`); Ventil 1 mit 30 kPa macht Kreis 1 zu 41 kPa, und Kreis 2 (18 kPa) ergibt `heat.circuit.balance`. Ein
+Thermostatventil mit *k*_v = 0,5 m³/h und 200 l/h hat Δ*p* = 16 kPa.
 
 **Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
 
@@ -271,6 +303,8 @@ Luftleitung und am Zuluftstutzen des Geräts; eine Leitung mit 80 mm hat dann 2,
 | `heat.roomload` | die Heizkörper und Fußbodenheizkreise in einem Raum geben weniger ab als die Heizlast-Schätzung Φ_HL des Raums (nur beurteilt, wenn alle ihre Leistungen bekannt sind) | Hinweis | [S30] |
 | `heat.expansion.size` | Ausdehnungsgefäß: das gewählte Nennvolumen liegt unter dem erforderlichen | Warnung | [S30] |
 | `heat.separator.flow` | hydraulische Weiche: Erzeugervolumenstrom kleiner als der Verbrauchervolumenstrom (Rücklaufwasser mischt sich in den Verbrauchervorlauf) | Hinweis | [S30] |
+| `heat.pump.head` | Umwälzpumpe: *H* < *H*_erf = ΣΔ*p*/(ρ·*g*) des ungünstigsten Kreises | Warnung | [S28] |
+| `heat.circuit.balance` | Umwälzpumpe: je Verbraucher (Heizkörper, Fußbodenheizkreis, Heizwendel) die größte vollständig bekannte Kreissumme; die kleinste liegt mehr als 25 % unter der größten (Schwelle von InventaSketch gewählt, nicht aus einer Norm): hydraulisch abgleichen, Ventile voreinstellen | Hinweis | [S30] |
 
 **Auslegungsbeispiele (Runde 5, Abnahmekriterien):** 1 m³/h in einem 26-mm-Rohr ergibt 0,52 m/s und über 20 m den
 Druckverlust nach Darcy; eine Luftleitung 300 × 200 mm mit 1000 m³/h hat 4,6 m/s bei *d*_h = 240 mm; 200 l Anlagenwasser
