@@ -67,7 +67,14 @@ namespace InventaSketch.Core
             value = null; error = null;
             var t = Clean(text);
             if (t.Length == 0) { error = new I18nText("Enter a value.", "Bitte einen Wert eingeben."); return false; }
-            var display = (displayUnit is null ? null : UnitCatalog.Find(displayUnit, kind)) ?? kind.DefaultUnit;
+            if (kind.IsText)
+            {
+                // A text-valued variable (a class such as the Grashof class) is only ever computed from other values.
+                error = new I18nText("This value is determined from other values and cannot be entered.",
+                                     "Dieser Wert ergibt sich aus anderen Werten und lässt sich nicht eingeben.");
+                return false;
+            }
+            var display =(displayUnit is null ? null : UnitCatalog.Find(displayUnit, kind)) ?? kind.DefaultUnit;
 
             // Tolerance at the end.
             var main = t;
@@ -377,6 +384,8 @@ namespace InventaSketch.Core
         /// <summary>An SI value in <paramref name="unit"/> (with the best prefix if the unit takes prefixes).</summary>
         public static string Format(double si, Unit unit, Lang lang, int digits = 3, bool keepZeros = false)
         {
+            // A text-valued kind shows the label of the value ("Crank-rocker"), never the number behind it.
+            if (unit.Kind.IsText) return unit.Kind.LabelOf(si)?.Get(lang) ?? "–";
             var (number, shown) = Scale(si, unit, digits);
             var n = Number(number, lang, digits, keepZeros);
             return shown.Symbol.Length == 0 ? n : n + " " + shown.Symbol;

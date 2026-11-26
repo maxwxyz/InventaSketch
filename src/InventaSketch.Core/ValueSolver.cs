@@ -131,6 +131,7 @@ namespace InventaSketch.Core
             var local = (RelationsByObject.TryGetValue(objectId, out var rl) ? rl : new List<int>())
                 .Select(i => Relations[i]).Where(r => r.LocalObject == objectId || r.Map.Values.All(v => v.ObjectId == objectId)).Select(r => r.Relation).ToList();
             var known = new HashSet<string>(vars.Where(v => v.Value is not null).Select(v => v.Def.Key));
+            var text = new HashSet<string>(vars.Where(v => v.Def.Kind.IsText).Select(v => v.Def.Key));
             bool Closes(IEnumerable<string> extra)
             {
                 var k = new HashSet<string>(known);
@@ -142,14 +143,17 @@ namespace InventaSketch.Core
                     foreach (var r in local)
                     {
                         var u = r.Vars.Where(x => !k.Contains(x)).ToList();
-                        if (u.Count == 1 && r.CanSolve(u[0])) { k.Add(u[0]); progress = true; }
+                        // As in the solver: a relation with a text-valued variable is solved only for that variable.
+                        if (u.Count == 1 && r.CanSolve(u[0]) && (text.Contains(u[0]) || !r.Vars.Any(text.Contains))) { k.Add(u[0]); progress = true; }
                     }
                 }
                 return unknown.All(k.Contains);
             }
             var result = new List<IReadOnlyList<string>>();
-            for (var size = 1; size <= Math.Min(3, unknown.Count) && result.Count == 0; size++)
-                foreach (var set in Combinations(unknown, size))
+            // Text-valued variables are never entered: they are not offered, only required.
+            var candidates = vars.Where(v => v.Value is null && !v.Def.Kind.IsText).Select(v => v.Def.Key).ToList();
+            for (var size = 1; size <= Math.Min(3, candidates.Count) && result.Count == 0; size++)
+                foreach (var set in Combinations(candidates, size))
                     if (Closes(set)) result.Add(set);
             return result;
         }
@@ -360,7 +364,7 @@ namespace InventaSketch.Core
                     if (table.Index.ContainsKey(r)) continue;
                     var (value, text, tol, error) = ValueModel.ReadEntered(o, v);
                     var vv = new VarValue { Ref = r, Def = v, Text = text, Tolerance = tol, Error = error };
-                    if (opt.Overrides is not null && opt.Overrides.TryGetValue(r, out var ov)) { value = ov; vv.Text = null; vv.Error = null; }
+                    if (opt.Overrides is not null && !v.Kind.IsText && opt.Overrides.TryGetValue(r, out var ov)) { value = ov; vv.Text = null; vv.Error = null; }
                     if (value is double d) { vv.Value = d; vv.Provenance = Provenance.Entered; }
                     table.Index[r] = table.Vars.Count;
                     list.Add(table.Vars.Count);
@@ -421,7 +425,7 @@ namespace InventaSketch.Core
             if (opt.UseDefaults && !truncated)
                 for (var i = 0; i < table.Vars.Count; i++)
                 {
-                    if (st.Known[i] || table.Vars[i].Def.Default is not double def) continue;
+                    if (st.Known[i] || table.Vars[i].Def.Kind.IsText || table.Vars[i].Def.Default is not double def) continue;
                     var before = st.Clone();
                     st.Value[i] = def; st.Known[i] = true; st.Prov[i] = Provenance.Default; st.Roots[i] = new[] { i };
                     Propagate(table, relVars, varRels, st, varRels[i], sw, opt.BudgetMs, ref truncated);
@@ -651,6 +655,8 @@ namespace InventaSketch.Core
                 var count = 0;
                 foreach (var v in vars) if (!st.Known[v]) { unknown = v; if (++count > 1) break; }
                 if (count != 1) continue;
+                // A text-valued variable never enters arithmetic: a relation with one is solved only for it.
+                if (!table.Vars[unknown].Def.Kind.IsText && HasText(table, vars)) continue;
                 var b = table.Relations[r];
                 var key = KeyOf(b, vars, unknown);
                 if (!b.Relation.CanSolve(key)) continue;
@@ -698,7 +704,7 @@ namespace InventaSketch.Core
             foreach (var k in st.Order)
             {
                 var inputs = st.Inputs[k];
-                if (inputs is null || inputs.Length == 0 || st.Via[k] < 0) continue;
+                if (inputs is null || inputs.Length == 0 || st.Via[k] < 0 || table.Vars[k].Def.Kind.IsText) continue;
                 var wide = inputs.Where(v => hi[v] > lo[v]).ToList();
                 if (wide.Count == 0 || wide.Count > 6) continue;
                 var b = table.Relations[st.Via[k]];
@@ -775,7 +781,8 @@ namespace InventaSketch.Core
                 var vars = relVars[r];
                 var complete = true;
                 foreach (var v in vars) if (!st.Known[v]) { complete = false; break; }
-                if (!complete) continue;
+                // Text-valued results (a class) are never checked: they carry no number to compare.
+                if (!complete || HasText(table, vars)) continue;
                 var b = table.Relations[r];
                 int chosen = -1;
                 for (var i = 0; i < vars.Length && chosen < 0; i++)
@@ -798,6 +805,13 @@ namespace InventaSketch.Core
                 found.Add(new Found(r, v0, implied, Union(vars.Select(v => st.Roots[v]))));
             }
             return found;
+        }
+
+        /// <summary>True if one of the variables is text-valued (<see cref="QuantityKind.IsText"/>).</summary>
+        private static bool HasText(ValueTable table, int[] vars)
+        {
+            foreach (var v in vars) if (table.Vars[v].Def.Kind.IsText) return true;
+            return false;
         }
 
         /// <summary>True if variable <paramref name="i"/> of a relation rests on a value none of the other variables rests on.</summary>

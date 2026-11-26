@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using InventaSketch.Core;
 
 namespace InventaSketch.Modules.Kinematics
@@ -104,6 +105,22 @@ namespace InventaSketch.Modules.Kinematics
                 Validity = T("s shortest, l longest, p and q the other two links; ≥ 0: one link turns fully", "s kürzestes, l längstes, p und q die anderen Glieder; ≥ 0: ein Glied läuft um"),
             }
                 .Solve("dG", "(p + q) − (s + l)", v => Linkages.GrashofMargin(v("d"), v("a"), v("b"), v("c")));
+
+        /// <summary>
+        /// The Grashof class as a text-valued quantity (<see cref="Quantities.Text"/>): one label per <see cref="GrashofClass"/>,
+        /// in enum order (the value is the enum's index).
+        /// </summary>
+        internal static readonly QuantityKind GrashofClassKind = Quantities.Text("kin.grashofClass", T("Grashof class", "Grashof-Klasse"),
+            ((GrashofClass[])Enum.GetValues(typeof(GrashofClass))).Select(Linkages.ClassName).ToArray());
+
+        /// <summary>Grashof class from the four link lengths (shortest link and s + l against p + q) [S24].</summary>
+        private static readonly Relation GrashofClassRelation =
+            new Relation("kin.fourbar.class", T("Grashof class", "Grashof-Klasse"), "{cls} = class(s + l ≶ p + q, shortest link)", "cls", "a", "b", "c", "d")
+            {
+                Source = "S24",
+                Validity = T("crank-driven four-bar: frame d, crank a, coupler b, rocker c", "kurbelgetriebenes Viergelenk: Gestell d, Kurbel a, Koppel b, Schwinge c"),
+            }
+                .Solve("cls", "class(s + l ≶ p + q, shortest link)", v => (int)Linkages.Classify(v("d"), v("a"), v("b"), v("c")));
 
         private static readonly Relation MuMin =
             new Relation("kin.fourbar.mumin", T("Smallest transmission angle", "Kleinster Übertragungswinkel"), "{mumin} = arccos(({b}² + {c}² − max(|{d} − {a}|, |{b} − {c}|)²)/(2·{b}·{c}))", "mumin", "a", "b", "c", "d") { Source = "S24" }
@@ -273,6 +290,9 @@ namespace InventaSketch.Modules.Kinematics
                 InputSpeed(),
                 new VarDef("dG", T("Grashof margin (p + q) − (s + l)", "Grashof-Reserve (p + q) − (s + l)"), T("Δ_G", "Δ_G"), Quantities.Length)
                     { Unit = "mm", Relevance = VarRelevance.Panel, Min = -100, Max = 100 },
+                // Text-valued: shown as "Crank-rocker", never entered (the parameter key is not a parameter of the type).
+                new VarDef("cls", T("Grashof class", "Grashof-Klasse"), T("Class", "Klasse"), GrashofClassKind)
+                    { Param = "grashofClass", Relevance = VarRelevance.Panel },
                 Angle("mumin", T("Smallest transmission angle", "Kleinster Übertragungswinkel"), T("μ_min", "μ_min"), VarRelevance.Card),
                 Angle("mumax", T("Largest transmission angle", "Größter Übertragungswinkel"), T("μ_max", "μ_max"), VarRelevance.Card),
                 Angle("psi", T("Swing angle of the rocker", "Schwingwinkel der Schwinge"), T("ψ", "ψ"), VarRelevance.Card),
@@ -283,7 +303,7 @@ namespace InventaSketch.Modules.Kinematics
                 new VarDef("w", T("Output angular velocity at this position", "Abtriebswinkelgeschwindigkeit in dieser Stellung"), T("ω₄", "ω₄"), Quantities.RotationalSpeed)
                     { Unit = "rad/s", Param = "outputSpeed", Relevance = VarRelevance.Panel, Min = -1e5, Max = 1e5 },
             },
-            new[] { GrashofMargin, MuMin, MuMax, Swing, FourBarAlpha, TimeRatio, OutputSpeed },
+            new[] { GrashofMargin, GrashofClassRelation, MuMin, MuMax, Swing, FourBarAlpha, TimeRatio, OutputSpeed },
             WithShow(PInputSpeed, POutputSpeed),
             new[] { Transmission, Grashof });
 

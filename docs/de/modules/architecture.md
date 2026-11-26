@@ -141,9 +141,16 @@ Volumen eingegeben wird; ein eingegebenes Volumen (Textparameter `volume`, z. B.
 eingegebene Fläche, die dem Umriss widerspricht, wird als Widerspruch gemeldet. `showValues` zeichnet das Werte-Label
 unter den Raum. Beispiel: Ein Umriss von 40 x 30 mm bei 1:100 ist 4 m x 3 m, A = 12 m², mit h = 2,5 m ist V = 30 m³.
 
-Schlüssel und Größenarten (`A` Fläche, `h` Länge, `V` Volumen) entsprechen den Raumwerten der Haustechnik
-(Luftdurchlass), sodass eine spätere modulübergreifende Verknüpfung (`NetKeys`) sie weitergeben kann; Core wurde dafür
-nicht geändert.
+Optionale Heizlast-Schätzung (seit 26.11.2026): `Φ_HL` = q·A (W, Kartenwert) aus der spezifischen Heizlast `q`
+(W/m², Panel; Textparameter `heatLoadDensity` und `heatLoad`, beide erweitert), Beziehung `arch.room.heatload` [S30].
+Sie ist eine grobe Auslegungsschätzung mit Handbuchwerten, keine Heizlastberechnung nach EN 12831; eine eingegebene
+Φ_HL ergibt q.
+
+Schlüssel und Größenarten (`A` Fläche, `h` Länge, `V` Volumen, `PhiHL` Wärmestrom) entsprechen den Raumwerten der
+Haustechnik: Elemente der Haustechnik im Raum (Mitte innerhalb des Umrisses auf derselben Seite, bei verschachtelten
+Räumen der kleinste) übernehmen sie über das Enthaltensein, der Luftdurchlass A, h und V, der Heizkörper Φ_HL
+(BsValues, Verknüpfung `bs.room.link`; engineering-calculations.md Abschnitt 6.1). Der Raum braucht dafür keine Leitung
+und kennt das Haustechnik-Modul nicht.
 
 ## Kontextaktionen
 

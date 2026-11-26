@@ -157,15 +157,18 @@ The values label (`showValues`) shows the card values.
 
 | Element | Variables (card values in **bold**) | Relations |
 |---|---|---|
-| Four-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄ | Δ_G = (p + q) − (s + l); μ from the cosine rule cos μ = (b² + c² − x²)/(2bc) with x = \|A O4\| over [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; crank-rocker only: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) at the current position and assembly mode; ω₄ = i·n |
+| Four-bar | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, class (text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄ | Δ_G = (p + q) − (s + l); μ from the cosine rule cos μ = (b² + c² − x²)/(2bc) with x = \|A O4\| over [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; crank-rocker only: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) at the current position and assembly mode; ω₄ = i·n |
 | Slider-crank | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v** | H = √((l + r)² − e²) − √((l − r)² − e²) (2r without offset); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ |
 | Quick-return | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 for r/d = 1/2); H from the position analysis over a turn |
 | Scotch yoke | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
 
-The Grashof class is a text, which the value system (numbers only) cannot hold: it is shown as the four-bar's badge
-(`grashof`) and by the sign of Δ_G; `Linkages.Classify` names it (crank-rocker, double-crank, rocker-crank,
-double-rocker with the coupler turning, change point, double-rocker non-Grashof). Swing angle and time ratio exist only
-for a crank-rocker (unknown otherwise).
+The Grashof class is also an element value (since 2026-11-26): the text-valued panel variable `cls` ("Class" /
+"Klasse", kind `kin.grashofClass`, relation `kin.fourbar.class` [S24]) holds the class `Linkages.Classify` gives
+(crank-rocker, double-crank, rocker-crank, double-rocker with the coupler turning, change point, double-rocker
+non-Grashof) and is shown as that text in the values panel, on the values label (when chosen) and in the calculation
+sheet. It is computed only, never entered and never used in arithmetic (engineering-calculations.md section 1.2,
+"Text-valued variables"); the badge (`grashof`) and the sign of Δ_G remain. Swing angle and time ratio exist only for a
+crank-rocker (unknown otherwise).
 
 **Checks** (section 4 of engineering-calculations.md):
 

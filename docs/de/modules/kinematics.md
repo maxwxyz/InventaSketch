@@ -163,15 +163,18 @@ ihr folgen die Geschwindigkeiten in der aktuellen Stellung. Das Werteetikett (`s
 
 | Element | Variablen (Kartenwerte **fett**) | Beziehungen |
 |---|---|---|
-| Viergelenk | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄ | Δ_G = (p + q) − (s + l); μ aus dem Kosinussatz cos μ = (b² + c² − x²)/(2bc) mit x = \|A O4\| über [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; nur Kurbelschwinge: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) in der aktuellen Stellung und Montagelage; ω₄ = i·n |
+| Viergelenk | a, b, c, d (`crank`, `coupler`, `rocker`, `ground`), φ (`angle`), n, Δ_G, Klasse (Text), **μ_min**, **μ_max**, **ψ**, α, **Q**, i, ω₄ | Δ_G = (p + q) − (s + l); μ aus dem Kosinussatz cos μ = (b² + c² − x²)/(2bc) mit x = \|A O4\| über [max(\|d − a\|, \|b − c\|), min(d + a, b + c)]; nur Kurbelschwinge: ψ = arccos((d² + c² − (b + a)²)/(2dc)) − arccos((d² + c² − (b − a)²)/(2dc)), α = arccos((d² + (b − a)² − c²)/(2d(b − a))) − arccos((d² + (b + a)² − c²)/(2d(b + a))); Q = (180° + α)/(180° − α); i = ω₄/ω₂ = a·sin(φ − θ₃)/(c·sin(θ₄ − θ₃)) in der aktuellen Stellung und Montagelage; ω₄ = i·n |
 | Schubkurbel | r, l, e (`crank`, `rod`, `offset`), φ, n, **H**, α, **Q**, **μ_min**, **v** | H = √((l + r)² − e²) − √((l − r)² − e²) (ohne Versatz 2r); α = arcsin(\|e\|/(l − r)) − arcsin(\|e\|/(l + r)); μ_min = 90° − arcsin((r + \|e\|)/l); v = n·dx_B/dφ |
 | Schnellrücklauf | d, r, L, l, h (`ground`, `crank`, `lever`, `link`, `ram`), φ, **ψ**, α, **Q**, **H** | ψ = 2·arcsin(r/d); α = 180° − 2·arccos(r/d) (Q = 2 für r/d = 1/2); H aus der Lageanalyse über eine Umdrehung |
 | Kreuzschubkurbel | r, φ, n, **H**, **v** | H = 2r; v = −n·r·sin φ |
 
-Die Grashof-Klasse ist ein Text, den das Wertesystem (nur Zahlen) nicht aufnehmen kann: sie erscheint als Plakette
-des Viergelenks (`grashof`) und am Vorzeichen von Δ_G; `Linkages.Classify` benennt sie (Kurbelschwinge, Doppelkurbel,
-Schwingkurbel, Doppelschwinge mit umlaufender Koppel, Durchschlaggetriebe, Doppelschwinge Nicht-Grashof).
-Schwingwinkel und Zeitverhältnis gibt es nur bei der Kurbelschwinge (sonst unbekannt).
+Die Grashof-Klasse ist seit 26.11.2026 auch ein Elementwert: die textwertige Panel-Variable `cls` („Class“ /
+„Klasse“, Art `kin.grashofClass`, Beziehung `kin.fourbar.class` [S24]) enthält die Klasse aus `Linkages.Classify`
+(Kurbelschwinge, Doppelkurbel, Schwingkurbel, Doppelschwinge mit umlaufender Koppel, Durchschlaggetriebe,
+Doppelschwinge Nicht-Grashof) und erscheint als dieser Text im Wertefenster, im Werteetikett (wenn gewählt) und im
+Rechenblatt. Sie wird nur berechnet, nie eingegeben und nie in einer Rechnung verwendet (engineering-calculations.md
+Abschnitt 1.2, „Textwertige Größen“); die Plakette (`grashof`) und das Vorzeichen von Δ_G bleiben. Schwingwinkel und
+Zeitverhältnis gibt es nur bei der Kurbelschwinge (sonst unbekannt).
 
 **Prüfungen** (Abschnitt 4 von engineering-calculations.md):
 

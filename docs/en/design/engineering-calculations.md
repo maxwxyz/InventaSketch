@@ -73,6 +73,19 @@ significant digits), motion and formulas, while Engineer shows units, precision,
 - **Geometry stays independent.** Values never move or resize the drawing on their own (Quick Sketch first: scaling
   changes `Size`, never parameters). Where values imply a size, an explicit action applies it. Examples: "True size
   from module" (exists for gears), "Centre distance from values", "Duct width from flow".
+- **Text-valued variables** (2026-11-26). A variable whose quantity kind is text-valued (`Quantities.Text(id, name,
+  labels)`, `QuantityKind.IsText`) holds the index of one of the kind's bilingual labels, for example the Grashof class of
+  the four-bar (`cls`, kind `kin.grashofClass`: crank-rocker, double-crank, rocker-crank, double-rocker with turning
+  coupler, change point, non-Grashof double-rocker). It is shown as its label wherever values are formatted
+  (`ValueFormat.Format`: values panel and card `display`, value labels, explanation, calculation sheet), so the engine
+  API is unchanged: `display` is "Crank-rocker", `kind` the kind id, `number`/`value` the index. The rules keep it out of
+  arithmetic: it is only computed by a relation of its element (a relation with a text-valued variable is solved only
+  for that variable and never checked), never entered (the parser refuses it; anything stored under its key is
+  ignored; drag previews skip it), never given a default, a tolerance range or a "missing value" offer, and it never
+  joins a net (no physical key has a text kind). Text-valued kinds are not listed in `Quantities.All`, so the calculator
+  never names a result by them. Host note: hosts should not offer a drag handle or an input field for a variable whose
+  `kind` is not one of the `units` kinds (the COM card offers dragging for positive derived values; a drag on the class
+  is ignored by the engine).
 
 ### 1.3 Quantities, units, precision
 
@@ -569,6 +582,7 @@ in the document's check settings, because the binding limit is in a standard or 
 | `heat.cross` | heat exchanger | temperature cross (cold outlet above hot inlet; parallel flow: cold outlet above hot outlet) | warning (impossible) | [S29] |
 | `heat.cop.carnot` | heat pump | COP > COP_Carnot | warning (impossible) | [S29] |
 | `heat.balance` | heat source ↔ consumers | Σ*Φ*_consumers > *Φ*_source | hint | [S29] |
+| `heat.roomload` | radiator ↔ room | Σ*Φ* of the heating surfaces in the room < *Φ*_HL of the room (estimate *q*·*A*) | hint | [S30] |
 | `pv.voc.max` | string ↔ inverter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | warning | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | string ↔ inverter | *N*_s·*U*_mpp(*θ*_max) < MPPT minimum | hint | [S33, S34] |
 | `pv.isc.max` | array ↔ inverter input | *N*_p·*I*_sc > *I*_DC,max | warning | [S33] |
@@ -660,6 +674,31 @@ electrical lamp through an energy cable (U = U_mpp,S, P = string power; I and R 
 line passing V̇ and θ to a radiator, a building-services pipe on a process pump taking its V̇, and a busbar net that
 shares U but not the summed P. The drive shaft of a machine and a mechanical shaft were already joined through
 `Coupling` (Machines `EMachineOnAShaftDrivesAGearStage`).
+
+**Several media at one foreign port (follow-up, 2026-11-26).** A port of another module's element is not a junction node
+that merges lines of different media. Each module names the medium of its lines (`NetSpec.Medium`; unset: the line's
+type id); at a foreign port the module's lines of one medium meet (a branch), lines of different media stay separate
+nets. Where several media reach the same foreign port, only the net of the single **leading** medium
+(`NetSpec.Leads`) is joined with that port's values; without exactly one leading medium none of them is. Ports the spec
+itself describes (a variable or a passage of the class there) are members as before. Building services: pipes by their
+medium (`heating.flow`, `heating.return`, water kinds), ducts by their air kind; the heating flow leads, since the
+energy heat ports (single ports for flow and return) give the flow temperature and the volume flow. So an energy heat
+pump with a building flow pipe and a return pipe on its heat port passes *V̇* and *θ*_F to the radiator's flow side,
+while the radiator's return temperature stays its own (before, both pipes formed one net and *θ*_R was spread from
+*θ*_F). Tests: `tests/InventaSketch.Core.Tests/ForeignPortMediaTests.cs`,
+`tests/InventaSketch.Engine.Tests/ValueNetFollowUpTests.cs`.
+
+**Room values by containment (follow-up, 2026-11-26).** Building services elements take the values of the architecture
+room (`arch.room`: *A*, *h*, *V*, and the optional heating load estimate *Φ*_HL = *q*·*A*) they stand in. No new Core
+concept: the building services types' own `IValueLinks` find the room whose outline contains the element's centre on
+the same page (the smallest one when rooms are nested; rooms are looked up by type id, modules do not reference each
+other) and link the variables named in the element's spec by an equality `bs.room.link` ("taken from the room"), when
+the room has a variable of the same key and quantity kind; the room then joins the solver scope. The air terminal takes
+*A*, *h* and *V*, so its air change rate *n* gives *V̇* = *n*·*V* without re-entering the room; the radiator takes
+*Φ*_HL, and the hint `heat.roomload` reports a room whose heating surfaces (radiators, underfloor loops) give less than
+*Φ*_HL when all their outputs are known. *Φ*_HL = *q*·*A* (*q* in W/m², optional on the room) is a rough sizing
+estimate from handbook values [S30], not a heating load calculation to EN 12831. Solving the room alone does not pull
+in the elements inside it (the link points from the element to the room).
 
 **Medium equivalences** (`PortMedia.Equivalents`, used by `PortMedia.Fits` only; `Covers` stays a prefix test):
 `thermal.heat` ≡ `heating` (heating flow and return still never fit each other, cooling never fits heating),
@@ -1374,7 +1413,7 @@ is the reference; the module docs list every variable, relation, link and check
   single-phase (phase to neutral) *I* = *P*/((*U*/√3)·cos φ). Boards (busbar, meter) assume a symmetrical three-phase
   load.
 - **Checks** run in `ValueSolver.Checks`: `fluid.cyl.force`, `fluid.velocity`, `fluid.pressure.relief` [S25, S26];
-  `heat.cross` [S29]; `heat.velocity`, `air.velocity` [S30], `heat.cop.carnot`, `heat.balance` [S29]; `pv.voc.max`,
+  `heat.cross` [S29]; `heat.velocity`, `air.velocity` [S30], `heat.cop.carnot`, `heat.balance` [S29], `heat.roomload` [S30]; `pv.voc.max`,
   `pv.mpp.min`, `pv.isc.max` [S33], `pv.dcac` [S34], `bat.crate` [S35]. **`wind.betz`** [S36] (*c*_p above 16/27) is new:
   section 4 does not list it, but the Betz limit of section 2.10 makes higher values impossible. The textbook velocity
   ranges are the defaults of section 4 until user limits exist (Calc 6). `fluid.velocity` takes the line function from
