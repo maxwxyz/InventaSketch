@@ -635,6 +635,9 @@ Datenblatt steht, das wir nicht übernehmen.
 | `sw.selectivity` | Überstromschutzgerät | vorgeschaltetes *I*_n < 1,6·*I*_n (Faustregel) | Hinweis | [S11] |
 | `sw.selectivity.instant` | Überstromschutzgerät | *I*_k3 ≥ *I*_a des vorgeschalteten LS (beide lösen unverzögert aus) | Hinweis | [S11] |
 | `sw.rcd.type` | FI, FI/LS | ein Frequenzumrichter darunter braucht Typ F (einphasig) oder B (dreiphasig) | Hinweis | [S11] |
+| `sw.vfd.rating` | Frequenzumrichter | Bemessungsleistung des angeschlossenen Motors *P*_N,M oder Ausgangsleistung *P*_aus über der Bemessung *P*_N des Umrichters | Warnung | – (Konsistenz) |
+| `sw.vfd.range` | Frequenzumrichter | *f* außerhalb des eingegebenen *f*_min … *f*_max | Warnung | – (Nutzergrenzen) |
+| `mach.speed.max` | Maschine, E-Motor-Block, Antriebsstrang-E-Maschine | *n* oder *n*_s über dem eingegebenen *n*_max (z. B. aus einer Umrichterfrequenz) | Warnung | [S14] |
 | `arch.stair.steprule` | Treppe mit eingegebener oder verknüpfter Geschoss- oder Steigungshöhe | 2s + a außerhalb 59 … 65 cm (Schrittmaßregel 2s + a ≈ 63 cm) | Hinweis | [S42] |
 | `arch.ramp.slope` | Rampe | *s* > 6 % (übliche Grenze für Rollstuhlrampen; nationale Regeln unterscheiden sich) | Hinweis | – (nationale Regeln) |
 | `robot.moment` | Roboter | statisches Lastmoment *M*_L = *m*_L·*g*·*d* > *M*_max | Warnung | [S1] |

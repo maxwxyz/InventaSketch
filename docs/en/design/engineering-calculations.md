@@ -615,6 +615,9 @@ in the document's check settings, because the binding limit is in a standard or 
 | `sw.selectivity` | overcurrent protective device | upstream *I*_n < 1.6·*I*_n (rule of thumb) | hint | [S11] |
 | `sw.selectivity.instant` | overcurrent protective device | *I*_k3 ≥ *I*_a of the upstream MCB (both trip instantaneously) | hint | [S11] |
 | `sw.rcd.type` | RCD, RCBO | a frequency converter below needs type F (single-phase) or B (three-phase) | hint | [S11] |
+| `sw.vfd.rating` | frequency inverter | rated power of the connected motor *P*_N,M or output power *P*_out above the inverter rating *P*_N | warning | – (consistency) |
+| `sw.vfd.range` | frequency inverter | *f* outside the entered *f*_min … *f*_max | warning | – (user limits) |
+| `mach.speed.max` | machine, e-motor block, drivetrain e-machine | *n* or *n*_s above the entered *n*_max (e.g. from an inverter frequency) | warning | [S14] |
 | `arch.stair.steprule` | stair with an entered or linked storey or riser height | 2h + g outside 59 … 65 cm (step rule 2h + g ≈ 63 cm) | hint | [S42] |
 | `arch.ramp.slope` | ramp | *s* > 6 % (common limit for wheelchair ramps; national rules differ) | hint | – (national rules) |
 | `robot.moment` | robots | static load moment *M*_L = *m*_L·*g*·*d* > *M*_max | warning | [S1] |

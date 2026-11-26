@@ -723,11 +723,12 @@ Still open from this round:
   slip, run-up time with reflected inertia; units kWh/m² and kWh/kWp for PV; flowchart exit labels and step numbers
   (`RendersFromNeighbours`: boxes are redrawn from neighbours only while numbering is on); BPMN quick add with
   sequence flows.
-- **Also still open after round seven:** a VFD value port feeding f/U/P to motor terminals (switchgear → machines);
-  IE efficiency classes; an "energy per distance" kind for EV consumption; driving resistance → motor power and route
+- **Done in an eighth round:** a VFD value port feeding f, U and P to the driven motor (checks `sw.vfd.rating`,
+  `sw.vfd.range`, `mach.speed.max`); wrapping value labels in narrow boxes; kinds `angularAcceleration` (α₃, α₄ of the
+  four-bar) and `energyPerDistance` (kWh/100 km for EV consumption, old "kWh" texts still load).
+- **Also still open after round seven:** IE efficiency classes; group drives on one inverter; driving resistance → motor power and route
   length → EV range across modules; wall-aware dimension chains, window U-values feeding the room heating load;
-  theorem figures; cycle time of robots from axis speeds; an angular-acceleration kind; wrapping value labels in narrow
-  boxes.
+  theorem figures; cycle time of robots from axis speeds.
 - **Checks by eye in PowerPoint:** the new elements are unit-tested and checked in rasterised galleries; the
   PowerPoint scenarios cover docking, values and linked charts, not every new symbol.
 

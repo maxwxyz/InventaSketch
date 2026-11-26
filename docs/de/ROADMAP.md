@@ -807,11 +807,13 @@ Aus dieser Runde noch offen:
   Hochlaufzeit mit reduzierter Trägheit; Einheiten kWh/m² und kWh/kWp für PV; Ausgangsbeschriftungen und
   Schrittnummern im Flussdiagramm (`RendersFromNeighbours`: Kästen zeichnen nur bei eingeschalteter Nummerierung aus
   ihren Nachbarn neu); BPMN-Schnellhinzufügen mit Sequenzflüssen.
-- **Nach Runde sieben außerdem noch offen:** ein Werteanschluss am Frequenzumrichter, der f/U/P an die Motorklemmen
-  gibt (Verteiler → Maschinen); IE-Effizienzklassen; eine Größenart „Energie je Strecke“ für den Verbrauch;
+- **In einer achten Runde erledigt:** ein Werteanschluss am Frequenzumrichter, der f, U und P an den angetriebenen Motor
+  gibt (Prüfungen `sw.vfd.rating`, `sw.vfd.range`, `mach.speed.max`); Umbruch der Wertebeschriftung in schmalen Kästen;
+  Größenarten `angularAcceleration` (α₃, α₄ am Viergelenk) und `energyPerDistance` (kWh/100 km für den Verbrauch, alte
+  „kWh“-Texte laden weiter).
+- **Nach Runde sieben außerdem noch offen:** IE-Effizienzklassen; Gruppenantriebe an einem Umrichter;
   Fahrwiderstand → Motorleistung und Routenlänge → Reichweite über Modulgrenzen; wandbezogene Maßketten,
-  Fenster-U-Werte in der Raumheizlast; Satzfiguren der Geometrie; Taktzeit von Robotern aus Achsgeschwindigkeiten;
-  eine Größenart Winkelbeschleunigung; Umbruch der Wertebeschriftung in schmalen Kästen.
+  Fenster-U-Werte in der Raumheizlast; Satzfiguren der Geometrie; Taktzeit von Robotern aus Achsgeschwindigkeiten.
 - **Sichtprüfung in PowerPoint:** die neuen Elemente sind per Unit-Test und gerasterter Galerie geprüft; die
   PowerPoint-Szenarien decken Andocken, Werte und verknüpfte Diagramme ab, nicht jedes neue Symbol.
 
