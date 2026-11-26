@@ -27,7 +27,7 @@ namespace InventaSketch.Modules.Optics
         protected DetectorBase(string id, I18nText name, string category, params string[] keywords) : base(id, name, category, keywords) { }
 
         public IReadOnlyList<VarDef> Variables => OpticsValues.DetectorVariables;
-        public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
+        public IReadOnlyList<Relation> Relations => OpticsValues.DetectorRelations;
         public IEnumerable<ValueCheck> ValueChecks => OpticsValues.DetectorChecks;
         public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.DetectorLinks(o, ctx);
     }
@@ -38,7 +38,7 @@ namespace InventaSketch.Modules.Optics
         public PhotodiodeType() : base(Detectors.PhotodiodeId, new I18nText("Photodiode (optical detector)", "Fotodiode (optischer Detektor)"), OpticsCategories.Detectors,
             "photodiode", "detector", "sensor", "receiver", "fotodiode", "photodiode", "detektor", "empfänger") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, OpticsValues.AreaParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(12, 10);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Sources.LaserId, SplitterType.CubeId };
 
@@ -85,7 +85,7 @@ namespace InventaSketch.Modules.Optics
         public CameraType() : base(Detectors.CameraId, new I18nText("Camera (image sensor)", "Kamera (Bildsensor)"), OpticsCategories.Detectors,
             "camera", "image sensor", "imaging", "ccd", "cmos", "kamera", "bildsensor", "aufnahme") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, OpticsValues.AreaParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(26, 16);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Sources.ObjectId, Sources.LampId };
 
@@ -152,7 +152,7 @@ namespace InventaSketch.Modules.Optics
         public EyeType() : base(Detectors.EyeId, new I18nText("Eye", "Auge"), OpticsCategories.Detectors,
             "eye", "retina", "observer", "vision", "auge", "netzhaut", "betrachter", "sehen") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, OpticsValues.AreaParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(22, 20);
         public override bool PreferUniformScale => true;
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, LensType.DivergingId, Sources.ObjectId };
@@ -239,7 +239,7 @@ namespace InventaSketch.Modules.Optics
             "spectrometer", "spectrograph", "spectrum", "grating", "entrance slit", "spektrometer", "spektrograph", "spektrum", "eintrittsspalt")
         { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, OpticsValues.AreaParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(40, 26);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, FibreType.TypeId, Sources.LampId, GratingType.TypeId };
 
@@ -320,7 +320,7 @@ namespace InventaSketch.Modules.Optics
         public ScreenType() : base(Detectors.ScreenId, new I18nText("Screen", "Schirm"), OpticsCategories.Detectors,
             "screen", "projection", "image plane", "observation", "schirm", "projektionsschirm", "bildebene", "mattscheibe") { }
 
-        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, ValueLabels.ShowValues };
+        public override IReadOnlyList<ParamDef> Parameters { get; } = new[] { Pm.Label, OpticsValues.AreaParam, ValueLabels.ShowValues };
         public override Size2 DefaultSize => new(3, 40);
         public override IReadOnlyList<string> Companions => new[] { LensType.ConvergingId, Sources.ObjectId, Sources.LampId };
 

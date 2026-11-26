@@ -38,20 +38,20 @@ Abbildungsfehleranalyse, keine Radiometrie in absoluten Einheiten).
 | `optics.lens.converging` | Sammellinse; Ansichten `shape` (Schnitt) und `symbol` (Doppelpfeil, Spitzen nach außen) | `shape` bikonvex/plankonvex/Meniskus, `f` (40), `focal` (Marken F, F′), `rays`, `bundle`, `beam`, `coating` (ideal, nur im Inspektor), `label`, Werte `g`, `b` (Inspektor), `showValues` |
 | `optics.lens.diverging` | Zerstreuungslinse; Ansichten `shape` und `symbol` (Spitzen nach innen) | `shape` bikonkav/plankonkav/Meniskus, wie oben |
 | `optics.mirror.plane` | Planspiegel mit schraffierter Rückseite | `label` |
-| `optics.mirror.concave` / `optics.mirror.convex` | Gekrümmte Spiegel | `f` (40), `focal` (F und Krümmungsmittelpunkt C/M), `label` |
-| `optics.prism.triangle` | Prisma, gleichseitig (ablenkend) oder rechtwinklig (umlenkend) | `shape`, `n` (1,5, d-Linie), `dispersion`, `dn` = n(F) − n(C) (0,03), `coating` (ideal), `label` |
+| `optics.mirror.concave` / `optics.mirror.convex` | Gekrümmte Spiegel | `f` (40), `focal` (F und Krümmungsmittelpunkt C/M), `label`, Werte `g`, `b` (Inspektor), `showValues` |
+| `optics.prism.triangle` | Prisma, gleichseitig (ablenkend) oder rechtwinklig (umlenkend) | `shape`, `n` (1,5, d-Linie), `dispersion`, `dn` = n(F) − n(C) (0,03), `coating` (ideal), `label`, `showValues` |
 | `optics.splitter.cube` / `optics.splitter.plate` | Strahlteiler: die Diagonale (links unten nach rechts oben) lässt durch und reflektiert; der polarisierende zeichnet seine Teilerfläche doppelt (Würfel) bzw. mit Mittellinie (Platte) | `split` schematisch/nicht polarisierend/polarisierend (schematisch), `reflectance` (reflektierter Anteil, nicht polarisierend, 0,5), `label` |
 | `optics.stop.aperture` | Blende / Spalt (zwei Backen) | `opening` (Anteil der Höhe, 0,35), `label` |
-| `optics.grating.transmission` | Transmissionsgitter (Platte mit Furchen) | `angle` (Winkel 1. Ordnung bei 550 nm, 20°), `orders` (1–3), `label` |
+| `optics.grating.transmission` | Transmissionsgitter (Platte mit Furchen) | `angle` (Winkel 1. Ordnung bei 550 nm, 20°), `orders` (1–3), `label`, Werte `lines` (Striche pro mm; eingegeben bestimmt sie statt `angle` die gezeichneten Ordnungen), `lambda` (Wellenlänge für die Werte), `showValues` |
 | `optics.filter.plate` | Filterplatte, neutral oder farbig | `tint` neutral/rot/grün/blau/gelb, `label` |
 | `optics.fibre.cable` | Lichtwellenleiter mit Steckern an beiden Enden | `spread` (halber Austrittskegel, 12°), `rays`, `label` |
 | `optics.source.lamp` | Lampe (Kolben, Wendel, Sockel) | `emission` Kegel/parallel/in alle Richtungen, `rays`, `spread` (0 = nächstes Element ausleuchten), `beam`, `label`, Wert `power`, `showValues` |
 | `optics.source.led` | LED (Kuppel, Kragen, Anschlüsse) | `emission`, `rays`, `spread`, `beam`, `color` weiß/rot/grün/blau, `label`, Werte `power`, `lambda`, `showValues` |
 | `optics.source.laser` | Laser (Gehäuse, Austrittsöffnung) | `rays` (1), `beam`, `color` 650/532/445 nm, `label`, Werte `power`, `lambda`, `showValues` |
-| `optics.detector.photodiode` | Fotodiode als optischer Detektor | `label`, `showValues` |
-| `optics.detector.camera` | Kamera: Objektiv auf den Bildsensor fokussiert | `label`, `showValues` |
-| `optics.detector.eye` | Auge (Schnitt): Hornhaut, Iris, Linse, Netzhaut, Sehnerv | `label`, `showValues` |
-| `optics.screen.plain` | Schirm | `label`, `showValues` |
+| `optics.detector.photodiode` | Fotodiode als optischer Detektor | `label`, Wert `area` (Empfangsfläche), `showValues` |
+| `optics.detector.camera` | Kamera: Objektiv auf den Bildsensor fokussiert | `label`, `area`, `showValues` |
+| `optics.detector.eye` | Auge (Schnitt): Hornhaut, Iris, Linse, Netzhaut, Sehnerv | `label`, `area`, `showValues` |
+| `optics.screen.plain` | Schirm | `label`, `area`, `showValues` |
 | `optics.object.arrow` | Gegenstandspfeil auf der Achse (Abbildungsfiguren) | `bundle` Konstruktionsstrahlen/Fächer, `rays`, `image` aus/Bild/Konstruktion (Bild), `names` (false), `label`, `showValues` |
 | `optics.ray` | Lichtstrahl (Punktobjekt, Seitenkoordinaten) | `trace` (true), `arrows` Mitte/Ende/keine, `virtual` (true), `tail` (0 = automatisch), `showValues` (Intensität und Polarisation an den Strahlenden, false), `ghosts` (Geisterreflexe, false) |
 | `optics.axis.line` | Optische Achse (Strichpunktlinie, Punktobjekt) | `label` |
@@ -61,7 +61,7 @@ Abbildungsfehleranalyse, keine Radiometrie in absoluten Einheiten).
 | `optics.waveplate` | Verzögerungsplatte: Platte mit schneller Achse (gestrichelter Doppelpfeil) und „λ/4“/„λ/2“ | `retardance` Viertel/Halb (Viertel), `angle` (schnelle Achse, 45°), `label` |
 | `optics.lightguide` | Lichtleitstab (rechteckiger Glasstab, Totalreflexion) | `n` (1,5), `coating` (ideal), `label` |
 | `optics.window.plate` | Glasplatte (Fenster): planparallele Platte, in ihrer Box geneigt; die Kanten halten Licht auf | `n` (1,5), `tilt` (Einfallswinkel entlang der Achse, 0°, −80° … 80°), `brewster` (Neigung = arctan n, false), `coating` (standardmäßig **unvergütet**), `label` |
-| `optics.detector.spectrometer` | Spektrometer: Gehäuse mit Eintrittsspalt, Reflexionsgitter, Detektorzeile und darin gezeichnetem zerlegtem Licht | `label`, `showValues` |
+| `optics.detector.spectrometer` | Spektrometer: Gehäuse mit Eintrittsspalt, Reflexionsgitter, Detektorzeile und darin gezeichnetem zerlegtem Licht | `label`, `area`, `showValues` |
 
 Die 48 Bibliothekselemente umfassen die Linsenformen und -symbole, dicke bikonvexe und plankonvexe Linse, drei Spiegel,
 den Scannerspiegel mit und ohne Scanbereich, ablenkendes, Dispersions- und Umlenkprisma, beide Strahlteiler
@@ -213,9 +213,12 @@ Leistung bleibt eingebbar, sodass eine gewünschte Detektorleistung die Quellenl
 |---|---|---|---|
 | Lampe | optische Leistung P (mW; leer = 1 mW, der Vorgabewert) | – | – |
 | LED, Laser | P; Wellenlänge λ (nm; eingegeben in `lambda`, sonst aus der Farbe, bei weißem Licht keine) | Photonenenergie E_ph (eV) | E_ph = h·c/λ (h, c exakte SI-Werte [S1]) |
-| Fotodiode, Kamera, Auge, Schirm, Spektrometer | empfangene Leistung P_E (mW), Anteil des ausgesandten Lichts η (%), Polarisationsgrad V (%), Polarisationswinkel θ (°, 0° = in der Zeichenebene) | Polarisation (unpolarisiert, linear, zirkular, elliptisch, teilweise polarisiert) | siehe unten |
-| Sammel-/Zerstreuungslinse | Brennweite f (der Parameter `f`, mm; die Zerstreuungslinse zeigt ihren Betrag), Brechkraft D in Dioptrien (1/m), Gegenstandsweite g, Bildweite b (nur Werte, Parameter `g`, `b`) | Abbildungsmaßstab β, mit einer zweiten dünnen Linse voraus auf der Achse: Systembrennweite f_s, Abstand d, bildseitige Schnittweite s′_F | D = ±1/f; 1/f = 1/g + 1/b (f mit Vorzeichen); β = −b/g; Gullstrand |
-| Dicke Linse | f (Linsenschleiferformel aus `n` und den gezeichneten Flächen), D | n, bildseitige Schnittweite s′_F | 1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)] |
+| Fotodiode, Kamera, Auge, Schirm, Spektrometer | empfangene Leistung P_E (mW), Anteil des ausgesandten Lichts η (%), Polarisationsgrad V (%), Polarisationswinkel θ (°, 0° = in der Zeichenebene) | Polarisation (unpolarisiert, linear, zirkular, elliptisch, teilweise polarisiert); Empfangsfläche A (mm², eingegeben in `area`, sonst ein Beispiel) und Bestrahlungsstärke E_e (W/m², eine Beispielschätzung) | siehe unten; E_e = P_E / A |
+| Sammel-/Zerstreuungslinse | Brennweite f (der Parameter `f`, mm; die Zerstreuungslinse zeigt ihren Betrag), Brechkraft D in Dioptrien (1/m), Gegenstandsweite g, Bildweite b (nur Werte, Parameter `g`, `b`) | Abbildungsmaßstab β, mit einer zweiten (dünnen oder dicken) Linse voraus auf der Achse: Systembrennweite f_s, Abstand d zwischen den Hauptebenen, bildseitige Schnittweite s′_F | D = ±1/f; 1/f = 1/g + 1/b (f mit Vorzeichen); β = −b/g; Gullstrand |
+| Dicke Linse | f (Linsenschleiferformel aus `n` und den gezeichneten Flächen), D | n, bildseitige Schnittweite s′_F, Hauptebenen s_H (ab dem vorderen Scheitel) und s′_H (ab dem hinteren Scheitel), mit einer nächsten Linse auf der Achse f_s, e, s′_F des Systems | 1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)]; s_H = −f·(n − 1)·d/(n·R2), s′_H = −f·(n − 1)·d/(n·R1); Gullstrand |
+| Hohl-/Wölbspiegel | f (der Parameter `f`; der Wölbspiegel zeigt seinen Betrag), Krümmungsradius R (gezeichnet: M bei 2f), g, b (nur Werte, `g`, `b`; b > 0 vor dem Spiegel) | β | f = R/2; 1/f = 1/g + 1/b (Hohlspiegel f > 0, Wölbspiegel f < 0); β = −b/g |
+| Prisma | brechender Winkel γ (gezeichnet, an der oberen Ecke), n (der Parameter `n`, d-Linie), minimale Ablenkung δ_min | n_F − n_C (`dn`); mit eingeschalteter `dispersion`: n_F, n_C (Cauchy-Näherung der Strahlverfolgung), Abbe-Zahl ν_d, Winkelaufspreizung Δδ_FC | n = sin((γ + δ_min)/2)/sin(γ/2); ν_d = (n_d − 1)/(n_F − n_C) |
+| Beugungsgitter | Strichdichte N (Striche pro mm, eingegeben in `lines`), Gitterkonstante d (µm), Wellenlänge λ (eingegeben in `lambda`, sonst die des verfolgten Lichts am Gitter, wenn es eine einzige ist, sonst 550 nm), Winkel θ₁ der ersten Ordnung | θ₂, θ₃ (wenn gezeichnet), gezeichneter Winkel 1. Ordnung bei 550 nm, höchste Ordnung m_max | d = 1 mm / N; d·sin θ₁(550 nm) = 550 nm; d·sin θ_m = m·λ (senkrechter Einfall) |
 | Gegenstandspfeil | g, b, β, Bild reell/virtuell (des gezeichneten Bildes) | Brennweite des abbildenden Elements, Gegenstandsgröße G, Bildgröße B = β·G | 1/f = 1/g + 1/b, β = −b/g |
 
 **Empfangenes Licht.** Jedes verfolgte Strahlobjekt der Seite wird wie gezeichnet verfolgt; die Wege, die auf einem
@@ -243,20 +246,69 @@ der Karte löschen, damit er aus g und b folgt; die Zeichnung verwendet dann ihr
 auf einer Achse (die Mitte der zweiten höchstens die halbe größere Kastenseite von der Achse der ersten entfernt, Achsen
 parallel; die nächste voraus zählt) ergeben f_s = f₁·f₂ / (f₁ + f₂ − d) und s′_F = f₂·(f₁ − d) / (f₁ + f₂ − d), gemessen
 von der zweiten Linse (f₁ = 40, f₂ = 20, d = 50 mm: f_s = 80 mm, s′_F = −20 mm, was die verfolgten Strahlen bestätigen).
+Die zweite Linse darf eine dicke Linse sein, und eine dicke Linse hat dieselben Werte mit der Linse hinter ihr: d (an der
+dicken Linse: e) wird dann zwischen der Hauptebene H′ der ersten und H der zweiten Linse gemessen (verallgemeinerte
+Gullstrand-Formel), s′_F hinter H′ der zweiten Linse. Eine umgedrehte dicke Linse trifft das Licht mit ihrer H′. Beispiel:
+eine dünne Linse f = 40 mm und 60 mm dahinter die dicke Linse mit Vorgabewerten (n = 1,5, 10 × 34 mm, f ≈ 44,8 mm); die
+verfolgten Strahlen bestätigen f_s auf 0,2 % (die dicke Linse wird exakt verfolgt, nicht paraxial).
 
-**Prüfungen** (Hinweise auf der Karte, sie ändern nie Werte): virtuelles Bild (b < 0) an Linsen und am Gegenstandspfeil;
-Gegenstand in der Brennebene (g = f, Bild im Unendlichen); afokales Paar (f₁ + f₂ = d, ein Fernrohr mit der
-Winkelvergrößerung −f₁/f₂); kein verfolgter Strahl der Seite erreicht einen Detektor (nur, wenn die Seite Strahlen hat);
-es kommen nur Strahlen ohne Quelle an; die Leistung lief über einen schematischen Strahlteiler oder ein Gitter (angenommene
-gleiche Anteile, ein Hinweis); eine Wellenlänge außerhalb von etwa 380 bis 780 nm (in der nächsten Farbe gezeichnet).
+**Hauptebenen der dicken Linse.** s_H = −f·(n − 1)·d/(n·R₂) ab dem vorderen und s′_H = −f·(n − 1)·d/(n·R₁) ab dem
+hinteren Scheitel (positiv in Lichtrichtung), dieselben Ebenen H, H′, die die Brennpunktmarken zeichnen.
+
+**Gekrümmte Spiegel.** f = 40 mm ergibt R = 80 mm; mit g = 60 mm ergibt der Hohlspiegel b = 120 mm (ein reelles Bild vor
+ihm) und β = −2; ein Wölbspiegel mit f = 30 mm ergibt mit g = 60 mm b = −20 mm (virtuell, hinter ihm) und β = 1/3. Wie bei
+Linsen folgt jeder der Werte f, g, b aus den beiden anderen (zuerst `f` löschen). R ist schreibgeschützt: Er ist, was die
+Zeichnung zeigt (den Krümmungsmittelpunkt C/M bei 2f).
+
+**Prisma.** Der brechende Winkel γ wird aus der Zeichnung gelesen: der Winkel an der oberen Ecke zwischen den beiden
+dort zusammentreffenden Flächen (60° bei einem gleichseitigen Prisma, dessen Höhe √3/2 seiner Breite ist, 45° bei einem
+quadratischen rechtwinkligen Prisma; er folgt dem Kasten, wenn das Prisma skaliert wird). δ_min = 2·asin(n·sin(γ/2)) − γ:
+n = 1,5, γ = 60° ergibt 37,18°, und ein Strahl, der unter θ₁ = asin(n·sin(γ/2)) = 48,59° einfällt, wird parallel zur
+Basis verfolgt und genau um diesen Winkel abgelenkt. Ein gemessenes δ_min ergibt n (zuerst `n` löschen: die
+Spektrometermethode). Mit eingeschalteter `dispersion` kommen n_F und n_C aus der zweigliedrigen Cauchy-Näherung der
+Strahlverfolgung durch n_d und `dn` (n_F − n_C = `dn` genau), ν_d = (n_d − 1)/(n_F − n_C) (mit Vorgabewerten 0,5/0,03 =
+16,7), und Δδ_FC ist der Winkel zwischen der verfolgten F- und C-Linie, wenn das Licht unter dem Einfallswinkel der
+minimalen Ablenkung für die d-Linie einfällt (2,62° mit Vorgabewerten).
+
+**Beugungsgitter.** Die Gitterkonstante folgt aus dem gezeichneten Winkel 1. Ordnung bei 550 nm (`angle`): 20° ergibt
+d = 550 nm / sin 20° = 1,608 µm, N = 622 Striche/mm. Eine eingegebene Strichdichte (`lines`, z. B. „600“) bestimmt
+stattdessen die Gitterkonstante, und die Strahlverfolgung zeichnet die Ordnungen damit (sin θ_m = sin θ_i + m·λ/d); die
+Winkeleingabe wird dann nicht angeboten. Die Wellenlänge ist die des verfolgten Lichts am Gitter, wenn es eine einzige ist
+(ein Laser oder eine einfarbige LED), sonst 550 nm (weißes Licht, kein Licht), außer es ist eine in `lambda` eingegeben.
+θ_m = asin(m·λ/d) für die gezeichneten Ordnungen (senkrechter Einfall; `orders` 1–3): 600 Striche/mm mit einem roten
+Laser (650 nm) ergeben θ₁ = asin 0,39 = 22,95°, θ₂ = asin 0,78 = 51,26° und keine dritte Ordnung (m·λ/d = 1,17), die
+auch die Strahlverfolgung nicht zeichnet; m_max = ⌈d/λ⌉ − 1 = 2.
+
+**Bestrahlungsstärke (Beispielschätzung).** E_e = P_E / A, die empfangene Leistung gleichmäßig über die Empfangsfläche
+verteilt. Die Fläche wird in `area` eingegeben (Wert A); ohne Eingabe ist sie ein Beispiel: eine quadratische Fläche so
+hoch wie das gezeichnete Element (eine 10 mm hohe Fotodiode: 100 mm², 1 mW ergibt also 10 W/m²). Beide sind als
+Schätzung gekennzeichnet: Die gezeichneten Strahlen sind eine Stichprobe des Bündels, es gibt kein Strahlprofil, und die
+Zeichnung ist schematisch.
+
+**Prüfungen** (Hinweise auf der Karte, sie ändern nie Werte): virtuelles Bild (b < 0) an Linsen, gekrümmten Spiegeln und
+am Gegenstandspfeil; Gegenstand in der Brennebene (g = f, Bild im Unendlichen) an Sammellinsen und Hohlspiegeln; afokales
+Paar (f₁ + f₂ = d, ein Fernrohr mit der Winkelvergrößerung −f₁/f₂, auch mit einer dicken Linse); kein verfolgter Strahl
+der Seite erreicht einen Detektor (nur, wenn die Seite Strahlen hat); es kommen nur Strahlen ohne Quelle an; die Leistung
+lief über einen schematischen Strahlteiler oder ein Gitter (angenommene gleiche Anteile, ein Hinweis); eine Wellenlänge
+außerhalb von etwa 380 bis 780 nm (in der nächsten Farbe gezeichnet); keine minimale Ablenkung (n·sin(γ/2) ≥ 1:
+Totalreflexion an der zweiten Fläche); eine gezeichnete Gitterordnung, die es bei der Wellenlänge nicht gibt (m·λ ≥ d,
+jenseits von 90°; sie wird nicht gezeichnet). Prüfungskennungen: `optics.mirror.virtual`, `optics.mirror.focalplane`,
+`optics.prism.nominimum`, `optics.grating.beyond` (neben den bisherigen `optics.lens.*`, `optics.image.*`,
+`optics.light.*`, `optics.source.invisible`).
 
 Die an einem Laser oder einer LED eingegebene Wellenlänge verwendet auch die Strahlverfolgung (405 nm wird violett
 gezeichnet, und ein Dispersionsprisma bricht es mit n(405 nm)); die Wahl einer Farbe in der Kontextleiste löscht sie. D verwendet
-die Größenart „Brechkraft“ (`opticalPower`, Einheit dpt = 1/m). Die Linsenbeziehungen zitieren [S41]
-(Lehrbücher der Optik).
+die Größenart „Brechkraft“ (`opticalPower`, Einheit dpt = 1/m). Die Beziehungen von Linsen, Spiegeln, Prisma, Gitter
+und Bestrahlungsstärke zitieren [S41] (Lehrbücher der Optik). Die Strichdichte ist eine reine Zahl von Strichen pro mm
+(der Größenkatalog hat dafür keine Größenart).
 
-Solange seine Werteschrift gezeigt wird, meldet jedes Optikelement seiner Seite einen Detektor, eine Linse oder einen
-Gegenstandspfeil als abhängiges Objekt, die Beschriftung folgt also jeder Änderung des Strahlengangs.
+Schreibgeschützt (Ergebnisse der Verfolgung oder der Zeichnung): η, V, θ, die Polarisation, E_e; die Bildwerte des
+Pfeils; f, s′_F, s_H, s′_H der dicken Linse; die Systemwerte f_s, d/e, s′_F; R des Spiegels; γ, n_F, n_C, ν_d, Δδ_FC des
+Prismas; d, θ_m, der gezeichnete Winkel bei 550 nm und m_max des Gitters.
+
+Solange seine Werteschrift gezeigt wird, meldet jedes Optikelement seiner Seite einen Detektor, eine (dünne oder dicke)
+Linse, ein Gitter oder einen Gegenstandspfeil als abhängiges Objekt, die Beschriftung folgt also jeder Änderung des
+Strahlengangs.
 
 ## Bildkonstruktion
 
@@ -344,8 +396,9 @@ Freitext-Beschriftungen (Kennzeichen wie `L1` bleiben). Brennweiten, Brechzahlen
 Der gesamte Zustand liegt im Dokumentmodell: Parameter, `Size`, `Transform`, die Punkte des Strahls und die Anbindung
 seines ersten Punkts (`AnchorId` = `exit`/`o`/`tip`). Die verfolgten Wege, Bilder, Konstruktionsstrahlen und Griffe
 werden nicht gespeichert, sondern aus dem Dokument berechnet; JSON-Rundreisen werden deshalb identisch gezeichnet.
-Eingegebene Werte sind ebenfalls Parameter (Text wie eingegeben: `power` „5 mW“, `lambda` „532 nm“, `g`, `b`; die
-Brennweite in `f`, die Brechzahl in `n`); abgeleitete Werte werden nie gespeichert.
+Eingegebene Werte sind ebenfalls Parameter (Text wie eingegeben: `power` „5 mW“, `lambda` „532 nm“, `g`, `b`, `area`
+„5 mm²“, `lines` „600“; die Brennweite in `f`, die Brechzahl in `n`, die Dispersion in `dn`); abgeleitete Werte werden
+nie gespeichert.
 
 ## Hinweise für Hosts
 
@@ -380,10 +433,12 @@ Brennweite in `f`, die Brechzahl in `n`); abgeleitete Werte werden nie gespeiche
   -phase), Strahlteiler ideal (kein Auslöschungsverhältnis, keine Absorption). Die Entspiegelung ist eine idealisierte
   Einzelschicht (Brechzahl √n).
 - Elementwerte: Die empfangene Leistung zählt nur die gezeichneten Strahlen (eine Stichprobe des Bündels, keine
-  Radiometrie: keine Bestrahlungsstärke, kein Lichtleitwert); Ergebnisse der Verfolgung und der Zeichnung sind
-  schreibgeschützt (Anteil, Polarisation, das Bild des Pfeils, die Brennweite der dicken Linse; die empfangene Leistung
-  bleibt eingebbar). Gekrümmte Spiegel, Prisma und Gitter haben noch keine
-  Werte; die Systembrennweite gilt für zwei dünne Linsen (nicht die dicke Linse).
+  Radiometrie: die Bestrahlungsstärke ist eine Beispielschätzung über eine angenommene Fläche, kein Lichtleitwert, kein
+  Strahlprofil); Ergebnisse der Verfolgung und der Zeichnung sind schreibgeschützt (die empfangene Leistung bleibt
+  eingebbar). Die Systembrennweite gilt für zwei Linsen (dünn oder dick), nicht für Ketten aus drei oder mehr. Gitterwerte
+  setzen senkrechten Einfall voraus (die Strahlverfolgung behandelt schräges Licht) und übernehmen die Wellenlänge des
+  Lichts nur, wenn eine einzige das Gitter erreicht; die Aufspreizung des Prismas gilt für die F- und C-Linie beim
+  Einfallswinkel der minimalen Ablenkung der d-Linie; Spiegel haben keine Werte für schrägen (außeraxialen) Gebrauch.
 - Die Bildkonstruktion des Gegenstandspfeils verwendet nur dünne Linsen und gekrümmte Spiegel (nicht die dicke Linse; ihre
   verfolgten Strahlen durchlaufen sie dagegen). Die dicke Linse hat keinen Brennweitengriff.
 - Das Spektrometer verfolgt das Licht in seinem Inneren nicht; sein Spektrum ist eine schematische Zeichnung.
@@ -393,4 +448,4 @@ Brennweite in `f`, die Brechzahl in `n`); abgeleitete Werte werden nie gespeiche
 - Die Bildkonstruktion verwendet nur die erste Linse bzw. den ersten gekrümmten Spiegel auf der Achse des Pfeils (kein Bild
   eines Bildes durch ein zweites Element); das verfolgte Strahlenbündel durchläuft dagegen alle Elemente.
 - Mögliche nächste Schritte: Bilder durch mehrere Elemente, Abbildung durch die dicke Linse für den Gegenstandspfeil,
-  Werte gekrümmter Spiegel, Geister dünner Linsen, Vorlagen für Michelson/Mach-Zehnder.
+  Systemwerte für Ketten aus Linsen und Spiegeln, Geister dünner Linsen, Vorlagen für Michelson/Mach-Zehnder.
