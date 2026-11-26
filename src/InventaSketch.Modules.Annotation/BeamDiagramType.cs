@@ -49,55 +49,106 @@ namespace InventaSketch.Modules.Annotation
     {
         public List<BeamSupport> Supports { get; } = new();
         public List<(double At, LoadAmount Amount)> PointLoads { get; } = new();
-        public List<(double From, double To, LoadAmount Amount)> LineLoads { get; } = new();
+
+        /// <summary>
+        /// Line loads from <c>From</c> to <c>To</c>; the intensity is <c>Amount</c> times <c>StartShare</c> at <c>From</c> and
+        /// times <c>EndShare</c> at <c>To</c> (1 and 1: uniform; 0 and 1: triangle).
+        /// </summary>
+        public List<(double From, double To, LoadAmount Amount, double StartShare, double EndShare)> LineLoads { get; } = new();
+
+        /// <summary>Applied couples (clockwise positive, see <see cref="BeamCouple"/>).</summary>
+        public List<(double At, LoadAmount Amount)> Couples { get; } = new();
+
+        /// <summary>Internal hinges (shares of the length).</summary>
+        public List<double> Hinges { get; } = new();
+
         /// <summary>Real length of the beam; null: symbolic "L".</summary>
         public double? Length { get; set; }
         public string LengthUnit { get; set; } = "m";
 
-        /// <summary>True if any support or load was found (a beam without either is not a load case yet).</summary>
-        public bool HasContent => Supports.Count > 0 || PointLoads.Count > 0 || LineLoads.Count > 0;
+        /// <summary>True if any support, load or hinge was found (a beam without any is not a load case yet).</summary>
+        public bool HasContent => Supports.Count > 0 || PointLoads.Count > 0 || LineLoads.Count > 0 || Couples.Count > 0 || Hinges.Count > 0;
+
+        /// <summary>Adds a uniform line load.</summary>
+        public void AddLineLoad(double from, double to, LoadAmount amount) => LineLoads.Add((from, to, amount, 1, 1));
 
         /// <summary>The model with lengths <paramref name="length"/> and the load values (symbols count as their sign and component).</summary>
         public BeamModel Model(double length)
             => new(length,
                 Supports.Select(s => s with { X = s.X * length }).ToList(),
                 PointLoads.Select(p => new BeamPointLoad(p.At * length, p.Amount.Value)).ToList(),
-                LineLoads.Select(l => new BeamLineLoad(l.From * length, l.To * length, l.Amount.Value)).ToList());
+                LineLoads.Select(l => new BeamLineLoad(l.From * length, l.To * length, l.Amount.Value * l.StartShare, l.Amount.Value * l.EndShare)).ToList())
+            {
+                Couples = Couples.Select(c => new BeamCouple(c.At * length, c.Amount.Value)).ToList(),
+                Hinges = Hinges.Select(h => h * length).ToList(),
+            };
+
+        /// <summary>Static classification of the drawn beam (determinate, indeterminate with its degree, unstable).</summary>
+        public BeamCheck Check() => BeamStatics.Check(Model(Length ?? 1));
 
         /// <summary>The solution to draw (real length or 1), null when not statically determinate.</summary>
         public BeamSolution? Solve() => BeamStatics.Solve(Model(Length ?? 1));
 
+        private enum Kind { Point, Line, Couple }
+
         /// <summary>
-        /// Texts of the largest shear force and bending moment ("12.5 kN·m", "F·L/4"), or null when the drawing does not
-        /// determine them (mixed symbols, symbols together with numbers, line loads on a beam without length).
+        /// Texts of the largest shear force and bending moment ("12.5 kN·m", "F·L/4", "q·L²/(9√3)"), or null when the drawing
+        /// does not determine them (mixed symbols, symbols together with numbers, line loads on a beam without length).
         /// </summary>
         public (string? Shear, string? Moment) Labels(BeamSolution s)
         {
-            var amounts = PointLoads.Select(p => p.Amount).Concat(LineLoads.Select(l => l.Amount)).ToList();
+            var amounts = PointLoads.Select(p => (Kind: Kind.Point, p.Amount))
+                .Concat(LineLoads.Select(l => (Kind: Kind.Line, l.Amount)))
+                .Concat(Couples.Select(c => (Kind: Kind.Couple, c.Amount))).ToList();
             if (amounts.Count == 0) return ("0", "0");
-            if (amounts.All(a => !a.IsSymbolic))
+            if (amounts.All(a => !a.Amount.IsSymbolic))
             {
+                var coupleUnit = Couples.Select(c => c.Amount.Unit).FirstOrDefault(u => u.Length > 0);
                 var force = PointLoads.Select(p => p.Amount.Unit).FirstOrDefault(u => u.Length > 0)
-                    ?? LineLoads.Select(l => StripPerLength(l.Amount.Unit)).FirstOrDefault(u => u.Length > 0) ?? "";
-                if (Length is not null)
-                {
-                    var mUnit = force.Length > 0 ? force + "·" + LengthUnit : "";
-                    return (WithUnit(s.MaxShear.Value, force), WithUnit(s.MaxMoment.Value, mUnit));
-                }
-                // Without a real length point loads still give the shear force; the moment is a multiple of L.
-                if (LineLoads.Count > 0) return (null, null);
+                    ?? LineLoads.Select(l => StripPerLength(l.Amount.Unit)).FirstOrDefault(u => u.Length > 0)
+                    ?? (coupleUnit is null ? null : StripLength(coupleUnit)) ?? "";
+                var mUnit = force.Length > 0 ? force + "·" + LengthUnit : coupleUnit ?? "";
+                if (Length is not null) return (WithUnit(s.MaxShear.Value, force), WithUnit(s.MaxMoment.Value, mUnit));
+                // Without a real length point loads still give the shear force (the moment is a multiple of L), couples alone
+                // give the moment (the shear force is a multiple of 1/L).
+                if (LineLoads.Count > 0 || (Couples.Count > 0 && PointLoads.Count > 0)) return (null, null);
+                if (Couples.Count > 0) return (Math.Abs(s.MaxShear.Value) < 1e-12 ? "0" : null, WithUnit(s.MaxMoment.Value, coupleUnit ?? ""));
                 return (WithUnit(s.MaxShear.Value, force), Ann.Fmt(Clean(s.MaxMoment.Value), 3).Replace("-", "−") + " " + (force.Length > 0 ? force + "·" : "") + "L");
             }
-            var symbols = amounts.Select(a => a.Symbol).Distinct().ToList();
-            var onlyPoints = LineLoads.Count == 0;
-            var onlyLines = PointLoads.Count == 0;
-            if (symbols.Count != 1 || amounts.Any(a => !a.IsSymbolic) || !(onlyPoints || onlyLines)) return (null, null);
-            // One symbol of one kind: exact multiples of F, F·L (point loads) or q·L, q·L² (line loads), with L = 1.
+            var symbols = amounts.Select(a => a.Amount.Symbol).Distinct().ToList();
+            var kinds = amounts.Select(a => a.Kind).Distinct().ToList();
+            if (symbols.Count != 1 || amounts.Any(a => !a.Amount.IsSymbolic) || kinds.Count != 1) return (null, null);
+            // One symbol of one kind: exact multiples of F, F·L (point loads), q·L, q·L² (line loads) or M/L, M (couples), with L = 1.
             var unit = Length is null ? s : BeamStatics.Solve(Model(1))!;
             var sym = symbols[0]!;
-            return onlyPoints
-                ? (BeamStatics.Symbolic(unit.MaxShear.Value, sym), BeamStatics.Symbolic(unit.MaxMoment.Value, sym + "·L"))
-                : (BeamStatics.Symbolic(unit.MaxShear.Value, sym + "·L"), BeamStatics.Symbolic(unit.MaxMoment.Value, sym + "·L²"));
+            return kinds[0] switch
+            {
+                Kind.Point => (BeamStatics.Symbolic(unit.MaxShear.Value, sym), BeamStatics.Symbolic(unit.MaxMoment.Value, sym + "·L")),
+                Kind.Line => (BeamStatics.Symbolic(unit.MaxShear.Value, sym + "·L"), BeamStatics.Symbolic(unit.MaxMoment.Value, sym + "·L²")),
+                _ => (PerLength(unit.MaxShear.Value, sym), BeamStatics.Symbolic(unit.MaxMoment.Value, sym)),
+            };
+        }
+
+        /// <summary>
+        /// The position of the largest bending moment: "x = 2.31 m" with a real length, else a multiple of L ("x = L/2",
+        /// "x = L/√3"); null when there is no bending moment.
+        /// </summary>
+        public string? MomentPosition(BeamSolution s)
+        {
+            if (Math.Abs(s.MaxMoment.Value) < 1e-12) return null;
+            var x = s.MaxMoment.X;
+            return "x = " + (Length is not null ? Ann.Fmt(Clean(x), 3) + " " + LengthUnit : BeamStatics.Symbolic(x / s.Model.Length, "L"));
+        }
+
+        /// <summary>"M/L", "−M/(2·L)", "0.123·M/L".</summary>
+        private static string PerLength(double c, string sym)
+        {
+            if (Math.Abs(c) < 1e-12) return "0";
+            var sign = c < 0 ? "−" : "";
+            var a = Math.Abs(c);
+            if (BeamStatics.Fraction(a) is { } f)
+                return sign + (f.Num == 1 ? sym : f.Num.ToString(CultureInfo.InvariantCulture) + "·" + sym) + "/" + (f.Den == 1 ? "L" : "(" + f.Den.ToString(CultureInfo.InvariantCulture) + "·L)");
+            return sign + Ann.Fmt(a, 3) + "·" + sym + "/L";
         }
 
         private static double Clean(double v) => Math.Abs(v) < 1e-12 ? 0 : v;
@@ -108,6 +159,17 @@ namespace InventaSketch.Modules.Annotation
         {
             var i = unit.IndexOf('/');
             return i > 0 ? unit.Substring(0, i).Trim() : unit;
+        }
+
+        /// <summary>The force unit of a moment unit: "kN·m", "kN m", "kNm" → "kN"; null when none is recognisable.</summary>
+        private string? StripLength(string unit)
+        {
+            foreach (var sep in new[] { "·", "*", " ", "" })
+            {
+                var tail = sep + LengthUnit;
+                if (unit.EndsWith(tail, StringComparison.Ordinal) && unit.Length > tail.Length) return unit.Substring(0, unit.Length - tail.Length).Trim();
+            }
+            return null;
         }
 
         /// <summary>A share of the length snapped to a simple fraction (halves … twentieths) when it is within 0.5 % of one.</summary>
@@ -131,10 +193,10 @@ namespace InventaSketch.Modules.Annotation
 
         private static readonly HashSet<string> SceneTypes = new(StringComparer.Ordinal)
         {
-            "ann.beam", "ann.support.pin", "ann.support.roller", "ann.support.fixed", "ann.force", "ann.load.distributed",
+            "ann.beam", "ann.support.pin", "ann.support.roller", "ann.support.fixed", "ann.force", "ann.load.distributed", "ann.moment", BeamHingeType.TypeId,
         };
 
-        /// <summary>True for the types a beam diagram reads (beam, supports, forces, distributed loads).</summary>
+        /// <summary>True for the types a beam diagram reads (beam, supports, forces, distributed loads, moments, hinges).</summary>
         public static bool IsSceneType(string type) => SceneTypes.Contains(type);
 
         /// <summary>The page holding <paramref name="o"/>.</summary>
@@ -242,12 +304,36 @@ namespace InventaSketch.Modules.Annotation
                             var (t1, _) = Local(p1);
                             if (Math.Abs(Local(mid).D) > half + Touch || Math.Abs(d0) > half + Touch) break;
                             double lo = Math.Max(0, Math.Min(t0, t1)), hi = Math.Min(len, Math.Max(t0, t1));
-                            if (hi - lo < Geo.Eps) break;
+                            if (hi - lo < Geo.Eps || Math.Abs(t1 - t0) < Geo.Eps) break;
                             var comp = om.ApplyLinear(new Vec2(0, 1)).Normalized().Dot(n);
                             if (Math.Abs(comp) < 0.2) break;
                             if (Math.Abs(Math.Abs(comp) - 1) < 1e-6) comp = Math.Sign(comp);
                             var amount = LoadAmount.Read(o.Text ?? o.Str("label", "q"), Magnitude(o), "q");
-                            c.LineLoads.Add((Share(lo), Share(hi), amount.Times(comp)));
+                            // Triangular and trapezoidal loads: the intensity runs linearly from the box's left to its right edge
+                            // (wherever they lie along the beam), cut to the part standing on the beam.
+                            var (sl, sr) = DistributedLoadType.Shares(o);
+                            double At(double t) => sl + (sr - sl) * (t - t0) / (t1 - t0);
+                            c.LineLoads.Add((Share(lo), Share(hi), amount.Times(comp), At(lo), At(hi)));
+                            break;
+                        }
+                    case "ann.moment":
+                        {
+                            var om = o.Matrix();
+                            var centre = om.Apply(Vec2.Zero);
+                            if (!OnBeam(centre)) break;
+                            // Clockwise as seen in the beam's own frame (axis along u, lower side n): mirroring the moment
+                            // symbol or the beam reverses the sense.
+                            var clockwise = !o.Flag("ccw", true);
+                            if (om.Determinant < 0) clockwise = !clockwise;
+                            if (u.X * n.Y - u.Y * n.X < 0) clockwise = !clockwise;
+                            var amount = LoadAmount.Read(o.Text ?? o.Str("label", "M"), Magnitude(o), "M");
+                            c.Couples.Add((Share(Local(centre).T), amount.Times(clockwise ? 1 : -1)));
+                            break;
+                        }
+                    case BeamHingeType.TypeId:
+                        {
+                            var centre = o.Matrix().Apply(Vec2.Zero);
+                            if (OnBeam(centre)) c.Hinges.Add(Share(Local(centre).T));
                             break;
                         }
                 }
@@ -260,9 +346,11 @@ namespace InventaSketch.Modules.Annotation
 
     /// <summary>
     /// Shear force and bending moment diagrams of a beam (<c>ann.beam.diagram</c>), drawn as two bands under the beam with
-    /// the largest values labelled. Placed below an <c>ann.beam</c> that carries supports and loads it shows that beam's
-    /// diagrams (computed by <see cref="BeamStatics"/>); otherwise its own load case from its parameters (simply supported
-    /// beam with a centre load by default). The box width stands for the beam length.
+    /// the largest values (and the position of the largest bending moment) labelled, hinges marked on the moment axis.
+    /// Placed below an <c>ann.beam</c> that carries supports and loads it shows that beam's diagrams (computed by
+    /// <see cref="BeamStatics"/>); otherwise its own load case from its parameters (simply supported beam with a centre
+    /// load by default). Beams that are not statically determinate show their status instead. The box width stands for the
+    /// beam length.
     /// </summary>
     public sealed class BeamDiagramType : AnnBoxType
     {
@@ -281,20 +369,23 @@ namespace InventaSketch.Modules.Annotation
         {
             ("simple", "Simply supported", "Einfeldträger"), ("cantilever", "Cantilever (wall left)", "Kragträger (Wand links)"),
             ("cantileverRight", "Cantilever (wall right)", "Kragträger (Wand rechts)"),
+            ("gerber", "Gerber beam (wall left, hinge at the middle, roller right)", "Gerberträger (Einspannung links, Gelenk in der Mitte, Loslager rechts)"),
         };
 
         private static readonly (string, string, string)[] LoadOptions =
         {
             ("point", "Point load F", "Einzellast F"), ("uniform", "Uniform load q", "Streckenlast q"), ("both", "F and q", "F und q"),
+            ("triangle", "Triangular load q (rising to the right)", "Dreieckslast q (nach rechts steigend)"), ("moment", "Moment M₀ (clockwise)", "Moment M₀ (im Uhrzeigersinn)"),
         };
 
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             P.Choice("support", "Supports (without a beam above)", "Lagerung (ohne Balken darüber)", "simple", SupportOptions),
             P.Choice("load", "Load (without a beam above)", "Belastung (ohne Balken darüber)", "point", LoadOptions),
-            P.Num("at", "Position of F (share of the length)", "Lage von F (Anteil der Länge)", 0.5, 0, 1, null, 0.05),
+            P.Num("at", "Position of F or M₀ (share of the length)", "Lage von F oder M₀ (Anteil der Länge)", 0.5, 0, 1, null, 0.05),
             P.Num("force", "Point load F", "Einzellast F", null, -1e9, 1e9, "kN", advanced: true),
-            P.Num("lineLoad", "Uniform load q", "Streckenlast q", null, -1e9, 1e9, "kN/m", advanced: true),
+            P.Num("lineLoad", "Line load q (peak)", "Streckenlast q (Größtwert)", null, -1e9, 1e9, "kN/m", advanced: true),
+            P.Num("couple", "Moment M₀ (clockwise)", "Moment M₀ (im Uhrzeigersinn)", null, -1e9, 1e9, "kN·m", advanced: true),
             P.Num("length", "Beam length L", "Balkenlänge L", null, 0.001, 1e6, "m", advanced: true),
             P.Bool("momentBelow", "Positive moment below the axis (tension side)", "Positives Moment unter der Achse (Zugseite)", true),
             P.TextSize(Dim.TextSize),
@@ -308,22 +399,47 @@ namespace InventaSketch.Modules.Annotation
             {
                 case "cantilever": c.Supports.Add(new BeamSupport(BeamSupportKind.Fixed, 0)); break;
                 case "cantileverRight": c.Supports.Add(new BeamSupport(BeamSupportKind.Fixed, 1)); break;
+                case "gerber":
+                    c.Supports.Add(new BeamSupport(BeamSupportKind.Fixed, 0)); c.Supports.Add(new BeamSupport(BeamSupportKind.Roller, 1)); c.Hinges.Add(0.5);
+                    break;
                 default: c.Supports.Add(new BeamSupport(BeamSupportKind.Pin, 0)); c.Supports.Add(new BeamSupport(BeamSupportKind.Roller, 1)); break;
             }
             var load = o.Str("load", "point");
             double? Num(string k) => o.Params.TryGetValue(k, out var v) && v.Number is double x ? x : null;
+            var at = Geo.Clamp(o.Num("at", 0.5), 0, 1);
             if (load is "point" or "both")
             {
-                var at = Geo.Clamp(o.Num("at", 0.5), 0, 1);
                 var f = Num("force");
                 c.PointLoads.Add((at, f is double fv ? new LoadAmount(fv, null, "kN") : new LoadAmount(1, "F", "")));
             }
-            if (load is "uniform" or "both")
+            var q = Num("lineLoad");
+            var qAmount = q is double qv ? new LoadAmount(qv, null, "kN/m") : new LoadAmount(1, "q", "");
+            if (load is "uniform" or "both") c.AddLineLoad(0, 1, qAmount);
+            if (load == "triangle") c.LineLoads.Add((0, 1, qAmount, 0, 1));
+            if (load == "moment")
             {
-                var q = Num("lineLoad");
-                c.LineLoads.Add((0, 1, q is double qv ? new LoadAmount(qv, null, "kN/m") : new LoadAmount(1, "q", "")));
+                var m = Num("couple");
+                c.Couples.Add((at, m is double mv ? new LoadAmount(mv, null, "kN·m") : new LoadAmount(1, "M₀", "")));
             }
             return c;
+        }
+
+        /// <summary>
+        /// The note shown instead of the diagrams when the beam is not statically determinate: "statically indeterminate
+        /// (degree 1)", "unstable (mechanism)", "no supports".
+        /// </summary>
+        public static string StatusNote(BeamCheck check, int supports, Lang lang)
+        {
+            var de = lang == Lang.De;
+            var n = check.Degree.ToString(CultureInfo.InvariantCulture);
+            return check.Status switch
+            {
+                BeamStatus.Indeterminate => de ? n + "-fach statisch unbestimmt" : "statically indeterminate (degree " + n + ")",
+                BeamStatus.Unstable when supports == 0 => de ? "keine Lager (verschieblich)" : "no supports (unstable)",
+                BeamStatus.Unstable => de ? "kinematisch verschieblich" : "unstable (mechanism)",
+                BeamStatus.Invalid => de ? "keine Balkenlänge" : "no beam length",
+                _ => "",
+            };
         }
 
         /// <summary>The load case shown: that of the beam above when it has supports or loads, else the own parameters.</summary>
@@ -360,20 +476,27 @@ namespace InventaSketch.Modules.Annotation
             list.Add(Ann.Text(new Vec2(-hw - 1.2, yM), "M", ts, "symbol", TextAnchor.End, italic: true));
             if (sol is null)
             {
-                list.Add(Ann.Text(new Vec2(0, 0), de ? "nicht statisch bestimmt" : "not statically determinate", ts, "note"));
+                list.Add(Ann.Text(new Vec2(0, 0), StatusNote(bc.Check(), bc.Supports.Count, ctx.Lang), ts, "note"));
                 return list;
             }
             var L = sol.Model.Length;
             var below = o.Flag("momentBelow", true);
             var (vText, mText) = bc.Labels(sol);
             AddBand(list, sol.ShearCurve(), sol.MaxShear, L, hw, yV, amp, up: true, "shear", (de ? "max Q" : "max V") + (vText is null ? "" : " = " + vText), "vmax", ts);
-            AddBand(list, sol.MomentCurve(), sol.MaxMoment, L, hw, yM, amp, up: !below, "moment", "max M" + (mText is null ? "" : " = " + mText), "mmax", ts);
+            AddBand(list, sol.MomentCurve(), sol.MaxMoment, L, hw, yM, amp, up: !below, "moment", "max M" + (mText is null ? "" : " = " + mText), "mmax", ts,
+                bc.MomentPosition(sol), "mpos");
+            // Internal hinges: small open circles on the moment axis, where the bending moment is zero.
+            foreach (var x in sol.Hinges)
+                list.Add(Prim.Circle(-hw + 2 * hw * x / L, yM, 0.7, Style.Visible with { StrokeWidth = 0.25, Fill = Fill.Solid("#ffffff") }) with { Tag = "hinge" });
             return list;
         }
 
-        /// <summary>One diagram band: the curve closed to the axis (hatched across), the extreme value labelled beyond the curve.</summary>
+        /// <summary>
+        /// One diagram band: the curve closed to the axis (hatched across), the extreme value labelled beyond the curve and,
+        /// when given, its position written on the other side of the axis under the extreme.
+        /// </summary>
         private static void AddBand(List<Primitive> list, IReadOnlyList<Vec2> curve, BeamExtreme max, double length, double hw, double y0, double amp, bool up,
-            string tag, string label, string labelTag, double ts)
+            string tag, string label, string labelTag, double ts, string? position = null, string? positionTag = null)
         {
             var scale = Math.Abs(max.Value) > 1e-12 ? amp / Math.Abs(max.Value) : 0;
             var sign = up ? -1 : 1;
@@ -388,6 +511,11 @@ namespace InventaSketch.Modules.Annotation
             var width = Ann.TextExtent(label, ts).X;
             var x = Geo.Clamp(at.X, -hw + width / 2, hw - width / 2);
             list.Add(Ann.Text(new Vec2(x, at.Y + outward * ts * 0.75), label, ts, labelTag));
+            if (position is null) return;
+            var ps = ts * 0.8;
+            var pw = Ann.TextExtent(position, ps).X;
+            var px = Geo.Clamp(at.X, -hw + pw / 2, hw - pw / 2);
+            list.Add(Ann.Text(new Vec2(px, y0 - outward * ps * 0.8), position, ps, positionTag));
         }
 
         public override IEnumerable<Anchor> Anchors(SketchObject o, RenderContext ctx)
@@ -424,6 +552,10 @@ namespace InventaSketch.Modules.Annotation
             {
                 case "cantilever": list.Add(Prim.Line(-3, -2, -3, 2, s)); break;
                 case "cantileverRight": list.Add(Prim.Line(3, -2, 3, 2, s)); break;
+                case "gerber":
+                    list.Add(Prim.Line(-3, -2, -3, 2, s)); list.Add(Tri(2.4));
+                    list.Add(Prim.Circle(0, 0, 0.6, s with { Fill = Fill.Solid("#ffffff") }));
+                    break;
                 default: list.Add(Tri(-2.4)); list.Add(Tri(2.4)); break;
             }
             return list;
@@ -441,6 +573,12 @@ namespace InventaSketch.Modules.Annotation
                 foreach (var x in new[] { -3.0, -1.5, 0.0, 1.5, 3.0 }) if (value == "uniform" || Math.Abs(x) > 0.1) list.Add(Prim.Line(x, -1, x, 1.3, arrow));
             }
             if (value is "point" or "both") list.Add(Prim.Line(0, -2.5, 0, 1.3, arrow with { StrokeWidth = 0.45 }));
+            if (value == "triangle")
+            {
+                list.Add(Prim.Line(-3, 1.5, 3, -1.5, s));
+                foreach (var x in new[] { -1.5, 0.0, 1.5, 3.0 }) list.Add(Prim.Line(x, 1.5 - (x + 3) / 2, x, 1.3, arrow));
+            }
+            if (value == "moment") list.Add(Prim.Arc(0, 1.5, 1.8, 1.8, Math.PI * 0.85, Math.PI * 1.3, s with { ArrowEnd = ArrowHead.Triangle, ArrowSize = ArrowSize.Small }));
             return list;
         }
     }

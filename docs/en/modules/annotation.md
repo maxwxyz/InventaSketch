@@ -29,7 +29,7 @@ says which kind of mark is meant.
 | `ann.dimensions` Dimensions | linear, aligned, angle, radius/diameter, **chain**; **geometric tolerance frame, datum feature, surface texture symbol, weld symbol** |
 | `ann.hatching` Hatching | hatched rectangles, ellipses and polygons with material patterns |
 | `ann.patent` Figure marks | leaders with numerals, figure label, section line, detail circle and view, centre line, break line, brackets, view arrow, **revision cloud** |
-| `ann.mechanics` Technical mechanics | force, moment, coordinate system, centre of gravity, ground, supports, distributed load, beam, spring, damper, mass, **shear and moment diagrams** |
+| `ann.mechanics` Technical mechanics | force, moment, coordinate system, centre of gravity, ground, supports, distributed load (uniform, triangular, trapezoidal), beam, internal hinge, spring, damper, mass, **shear and moment diagrams** |
 | `ann.flow` Flowchart | flowchart symbols and connectors (see [diagrams.md](diagrams.md)) |
 
 ## Technical drawing indications
@@ -51,8 +51,11 @@ or `;` ("A B C").
 ## Shear force and bending moment diagrams (`ann.beam.diagram`)
 
 A box with two bands: the shear force (top, symbol V in English and Q in German drawings) and the bending moment
-(bottom), each hatched across, with the largest value by magnitude labelled ("max V = F/2", "max M = F·L/4"). The box
-width stands for the beam length.
+(bottom), each hatched across, with the largest value by magnitude labelled ("max V = F/2", "max M = F·L/4") and the
+position of the largest bending moment written on the other side of the axis ("x = L/2", "x = L/√3", "x = 2.31 m").
+Applied couples show as jumps of the moment line, uniform loads as parabolas, triangular and trapezoidal loads as
+parabolic shear and cubic moment lines; internal hinges are marked by small open circles on the moment axis, where the
+moment is zero. The box width stands for the beam length.
 
 **Reading a drawn beam.** Placed below an `ann.beam` (the nearest beam above the diagram whose width covers the
 diagram's centre, at most 40 mm or 1.5 diagram heights above it), the diagram reads that beam:
@@ -61,41 +64,64 @@ diagram's centre, at most 40 mm or 1.5 diagram heights above it), the diagram re
 - fixed supports (`ann.support.fixed`) whose wall touches the left or right end of the beam;
 - forces (`ann.force`) whose tip touches the beam; slanted forces count with their component across the beam, forces
   pointing away from the beam's lower side count negative, forces along the beam are ignored;
-- distributed loads (`ann.load.distributed`) whose lower edge stands on the beam (uniform over their width).
+- distributed loads (`ann.load.distributed`) whose lower edge stands on the beam, uniform, triangular or trapezoidal as
+  drawn (the intensity runs from the box's left to its right edge, so a mirrored load falls the other way; a load
+  reaching beyond the beam counts with the part standing on it);
+- moments (`ann.moment`) whose centre lies on the beam, as applied couples: the symbol's sense of rotation
+  (counter-clockwise by default; mirroring the symbol or the beam reverses it) gives the sign, clockwise as seen being
+  positive;
+- internal hinges (`ann.beam.hinge`) whose centre lies on the beam (Gerber beams); hinges at the beam ends are ignored.
 
 Positions are shares of the beam length; shares within 0.5 % of a simple fraction (halves to twentieths) are taken as
 that fraction, positions within 3 mm of an end as the end.
 
 **Values.** A load label such as "10 kN", "F = 10 kN" or "q = 2.5 kN/m" is a number with a unit; the optional
-`value` parameter of a force or distributed load ("Magnitude (beam diagrams)") wins over the label. Any other label
-("F", "q", "F₁") is a symbol. The beam's optional `length` parameter (m) gives the real length.
+`value` parameter of a force, distributed load (its peak intensity) or moment ("Magnitude (beam diagrams)") wins over
+the label. A moment label such as "6 kN·m" gives the moment unit, from which the force unit of the shear force is taken.
+Any other label ("F", "q", "F₁", "M₀") is a symbol. The beam's optional `length` parameter (m) gives the real length.
 
 | Loads and length | Labels |
 |---|---|
 | all loads numbers, length given | numbers with units: "max V = 5 kN", "max M = 10 kN·m" |
 | point loads as numbers, no length | "max V = 5 kN", "max M = 2.5 kN·L" |
-| one symbol of one kind (all point loads "F", or all line loads "q") | exact multiples: "F/2", "F·L/4", "q·L/2", "q·L²/8", "−F·L"; short fractions up to 1/64, otherwise three decimals |
-| mixed symbols, symbols together with numbers, line loads as numbers without a length | "max V", "max M" without a value (the curves are drawn with unit values) |
+| only couples as numbers, no length | "max M = −6 kN·m"; the shear force only when it is zero ("max V = 0") |
+| one symbol of one kind (all point loads "F", all line loads "q" or all couples "M₀") | exact multiples: "F/2", "F·L/4", "q·L/2", "q·L²/8", "−F·L", "M₀/L", "−M₀"; short fractions up to 1/64, short fractions over √3 ("q·L²/(9√3)", "L/√3"), otherwise three decimals |
+| mixed symbols or kinds, symbols together with numbers, line loads as numbers without a length | "max V", "max M" without a value (the curves are drawn with unit values) |
 
 **Without a beam** (or above a beam that has neither supports nor loads), the diagram shows its own load case:
-`support` (simply supported (default) / cantilever with the wall left / wall right), `load` (point load F (default) /
-uniform load q / both), `at` (position of F as a share, 0.5), and optionally `force` (kN), `lineLoad` (kN/m) and
-`length` (m) for values. Presets: `ann.beam.diagram.cantilever` (end load) and `ann.beam.diagram.uniform`.
+`support` (simply supported (default) / cantilever with the wall left / wall right / Gerber beam with the wall left, a
+hinge at the middle and a roller right), `load` (point load F (default) / uniform load q / both / triangular load q
+rising to the right / clockwise moment M₀), `at` (position of F or M₀ as a share, 0.5), and optionally `force` (kN),
+`lineLoad` (kN/m, peak), `couple` (kN·m) and `length` (m) for values. Presets: `ann.beam.diagram.cantilever` (end load),
+`ann.beam.diagram.uniform`, `ann.beam.diagram.triangle` (max M = q·L²/(9√3) at x = L/√3), `ann.beam.diagram.moment`
+(cantilever with an end moment: max M = −M₀) and `ann.beam.diagram.gerber` (uniform load: max M = −q·L²/4 at the wall).
 
 **Other parameters:** `momentBelow` (true: positive, sagging moments are drawn below the axis, on the tension side, as
 usual in German textbooks; false: above), `textSize` (3.5).
 
-**Statics** (`BeamStatics`, pure computation, no host): statically determinate straight beams under transverse loads –
-two hinged supports (pin and roller; overhangs allowed; two pins are accepted because only transverse loads are
-considered) or one fixed support. Reactions from the equilibrium conditions, shear force as the sum of the upward forces
-left of the section, bending moment positive when it sags the beam; the moment's extreme inside a loaded stretch is
-found where the shear force passes zero. Other support arrangements (none, one hinge, three supports, fixed plus roller)
-are not statically determinate: the diagram then shows its axes and the note "not statically determinate". Unit tests
-cover the textbook cases (simply supported beam with centre load: reactions F/2, M_max = F·L/4; uniform load:
-M_max = q·L²/8; cantilever with end load: M = −F·L at the wall; off-centre load F·a·b/L; overhang; equilibrium checks).
+**Statics** (`BeamStatics`, pure computation, no host): straight beams under transverse loads – point loads, uniform,
+triangular and trapezoidal line loads (`BeamLineLoad` with an intensity at each end) and applied couples (`BeamCouple`,
+clockwise positive) – on pin, roller and fixed supports, with internal hinges (`BeamModel.Hinges`). Unknowns are one
+force per pin or roller and a force and a clamping couple per fixed support; conditions are the two equilibrium
+conditions (vertical forces, moments) plus zero bending moment at each internal hinge. `BeamStatics.Check` compares
+them by the rank of the condition matrix: **determinate** (the reactions follow from the conditions), **indeterminate**
+of degree n (n more unknowns than independent conditions, e.g. fixed plus roller: 1, three supports: 1, clamped at both
+ends: 2) or **unstable** (a condition cannot be met: no or one hinged support, two supports at one place, a hinge in a
+simply supported beam). Two pins are accepted because only transverse loads are considered. Only determinate beams are
+solved; otherwise the diagram shows its axes and the status instead of numbers: "statically indeterminate (degree 1)",
+"unstable (mechanism)" or "no supports (unstable)". Shear force as the sum of the upward forces left of the section,
+bending moment positive when it sags the beam; a clockwise couple makes the moment jump up by its value. Inside a
+stretch the shear force is a polynomial of degree two at most; the moment's extremes lie where it passes zero (solved
+exactly; the drawn curve passes through these vertices). A couple placed exactly on a hinge acts on the part right of
+it. Unit tests cover the textbook cases (simply supported beam with centre load: reactions F/2, M_max = F·L/4; uniform
+load: M_max = q·L²/8; triangular load: reactions q·L/6 and q·L/3, M_max = q·L²/(9√3) at x = L/√3; trapezoidal load as
+uniform plus triangle; cantilever with end load: M = −F·L at the wall; cantilever with an end moment: constant
+M = −M₀; cantilever with a triangular load: M = −q·L²/6; couple on a simply supported beam with its jump; Gerber beam
+with one hinge (wall, hinge, roller) and a two-span Gerber beam on three supports; off-centre load F·a·b/L; overhang;
+the classification; equilibrium checks).
 
-Redrawing: the diagram depends on its neighbours; beams, supports, forces and distributed loads name the diagrams on
-their page as dependents, so moving a load redraws the diagram.
+Redrawing: the diagram depends on its neighbours; beams, supports, forces, distributed loads, moments and hinges name
+the diagrams on their page as dependents, so moving a load redraws the diagram.
 
 ## Other additions
 
@@ -103,8 +129,10 @@ their page as dependents, so moving a load redraws the diagram.
 |---|---|---|
 | `ann.cloud` | Revision cloud: a closed chain of outward arcs inside the box, marking a changed area | `arc` (arc length, 5 mm) |
 | `ann.dimension.chain` | Chain dimension: several points measured one after another along one dimension line, one value per stretch; points are taken in their order along the measuring direction | `offset` (−8 mm), `axis` (auto / horizontal / vertical), `terminator`, `prefix`, `unit`, `decimals`, `scale`, `textSize` (no common override text) |
-| `ann.beam` | gains an optional `length` (m) for beam diagram values and companions (supports, force, distributed load, diagram) | |
-| `ann.force` / `ann.load.distributed` | gain an optional `value` (magnitude / load per length) for beam diagrams | |
+| `ann.beam` | gains an optional `length` (m) for beam diagram values and companions (supports, force, distributed load, moment, hinge, diagram) | |
+| `ann.force` / `ann.load.distributed` / `ann.moment` | gain an optional `value` (magnitude / peak load per length / moment) for beam diagrams | |
+| `ann.load.distributed` | arrows follow the intensity; the "Shape" choice (with pictures) switches between the shapes | `shape` (uniform (default) / triangle rising to the right / triangle falling to the right / trapezoid), `low` (low end of the trapezoid as a share of q, 0.4). Presets `ann.load.distributed.triangle` and `ann.load.distributed.trapezoid` |
+| `ann.beam.hinge` | Internal hinge (Gerber hinge): a small open circle centred on the beam axis; beam diagrams read it as a moment-free joint | none (5 mm × 5 mm) |
 
 ## Host notes
 
@@ -118,5 +146,6 @@ choices (`Preview`) are shown by hosts that render previews; others list the opt
 - Modifiers in tolerance frames (maximum material, projected zone, free state), composite frames and tolerance
   indications on dimension values are not modelled.
 - Weld symbols: no supplementary symbols (flush, convex, concave), no tail with process number, no staggered welds.
-- Beam diagrams: only transverse point and uniform loads; no concentrated moments (`ann.moment`), no trapezoidal loads,
-  no hinges inside the beam, no axial forces; the diagram does not stretch to the beam's page width automatically.
+- Beam diagrams: only transverse loads (no axial forces, no normal force diagram), line loads at most linear, fixed
+  supports only at the beam ends, no deflection and therefore no solution of statically indeterminate beams (they are
+  reported, not solved); the diagram does not stretch to the beam's page width automatically.

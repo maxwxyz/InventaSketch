@@ -31,7 +31,7 @@ ist.
 | `ann.dimensions` Bemaßung | lineares, paralleles, Winkel-, Radius-/Durchmessermaß, **Kettenmaß**; **Toleranzrahmen, Bezugselement, Oberflächensymbol, Schweißsymbol** |
 | `ann.hatching` Schraffur | schraffierte Rechtecke, Ellipsen und Polygone mit Werkstoffmustern |
 | `ann.patent` Zeichen für Abbildungen | Bezugslinien mit Bezugszeichen, Abbildungsbezeichnung, Schnittverlauf, Einzelheit-Kreis und -Ansicht, Mittellinie, Bruchlinie, Klammern, Ansichtspfeil, **Änderungswolke** |
-| `ann.mechanics` Technische Mechanik | Kraft, Moment, Koordinatensystem, Schwerpunkt, Boden, Lager, Streckenlast, Balken, Feder, Dämpfer, Masse, **Querkraft- und Momentenverlauf** |
+| `ann.mechanics` Technische Mechanik | Kraft, Moment, Koordinatensystem, Schwerpunkt, Boden, Lager, Streckenlast (gleichmäßig, Dreieck, Trapez), Balken, Zwischengelenk, Feder, Dämpfer, Masse, **Querkraft- und Momentenverlauf** |
 | `ann.flow` Ablaufdiagramm | Ablaufdiagramm-Symbole und Verbinder (siehe [diagrams.md](diagrams.md)) |
 
 ## Technische Zeichnungsangaben
@@ -53,8 +53,11 @@ Kommas, `|` oder `;` („A B C“).
 ## Querkraft- und Momentenverlauf (`ann.beam.diagram`)
 
 Ein Kasten mit zwei Bändern: oben die Querkraft (Formelzeichen Q in deutschen, V in englischen Zeichnungen), unten das
-Biegemoment, jeweils quer schraffiert, mit dem betragsgrößten Wert beschriftet („max Q = F/2“, „max M = F·L/4“). Die
-Kastenbreite steht für die Balkenlänge.
+Biegemoment, jeweils quer schraffiert, mit dem betragsgrößten Wert beschriftet („max Q = F/2“, „max M = F·L/4“); die
+Stelle des größten Biegemoments steht auf der anderen Seite der Achse („x = L/2“, „x = L/√3“, „x = 2.31 m“).
+Einzelmomente zeigen sich als Sprünge der Momentenlinie, Gleichlasten als Parabeln, Dreiecks- und Trapezlasten als
+parabelförmige Querkraft- und kubische Momentenlinien; Zwischengelenke sind als kleine offene Kreise auf der
+Momentenachse markiert, wo das Moment null ist. Die Kastenbreite steht für die Balkenlänge.
 
 **Einen gezeichneten Balken lesen.** Unter einem `ann.beam` platziert (dem nächsten Balken über dem Verlauf, dessen
 Breite die Mitte des Verlaufs überdeckt, höchstens 40 mm oder 1,5 Verlaufshöhen darüber), liest der Verlauf diesen
@@ -64,43 +67,67 @@ Balken:
 - Einspannungen (`ann.support.fixed`), deren Wand das linke oder rechte Balkenende berührt;
 - Kräfte (`ann.force`), deren Spitze den Balken berührt; schräge Kräfte zählen mit ihrer Komponente quer zum Balken,
   Kräfte, die von der Balkenunterseite weg zeigen, negativ, Kräfte längs des Balkens gar nicht;
-- Streckenlasten (`ann.load.distributed`), deren Unterkante auf dem Balken steht (gleichmäßig über ihre Breite).
+- Streckenlasten (`ann.load.distributed`), deren Unterkante auf dem Balken steht, gleichmäßig, dreieck- oder
+  trapezförmig wie gezeichnet (die Intensität verläuft von der linken zur rechten Kastenkante, eine gespiegelte Last
+  fällt also andersherum; eine Last, die über den Balken hinausreicht, zählt mit dem Teil, der auf ihm steht);
+- Momente (`ann.moment`), deren Mitte auf dem Balken liegt, als Einzelmomente: der Drehsinn des Symbols (Vorgabe gegen
+  den Uhrzeigersinn; Spiegeln des Symbols oder des Balkens kehrt ihn um) gibt das Vorzeichen, im Uhrzeigersinn wie
+  gesehen positiv;
+- Zwischengelenke (`ann.beam.hinge`), deren Mitte auf dem Balken liegt (Gerberträger); Gelenke an den Balkenenden
+  werden nicht beachtet.
 
 Lagen sind Anteile der Balkenlänge; Anteile, die höchstens 0,5 % von einem einfachen Bruch (Halbe bis Zwanzigstel)
 abweichen, gelten als dieser Bruch, Lagen bis 3 mm vor einem Ende als das Ende.
 
 **Werte.** Eine Lastbeschriftung wie „10 kN“, „F = 10 kN“ oder „q = 2,5 kN/m“ ist eine Zahl mit Einheit; der optionale
-Parameter `value` einer Kraft oder Streckenlast („Betrag (Schnittgrößenverläufe)“) hat Vorrang vor der Beschriftung.
-Jede andere Beschriftung („F“, „q“, „F₁“) ist ein Formelzeichen. Der optionale Balkenparameter `length` (m) gibt die
-wirkliche Länge.
+Parameter `value` einer Kraft, Streckenlast (ihr Größtwert) oder eines Moments („Betrag (Schnittgrößenverläufe)“) hat
+Vorrang vor der Beschriftung. Eine Momentbeschriftung wie „6 kN·m“ gibt die Momenteinheit, aus der die Krafteinheit der
+Querkraft genommen wird. Jede andere Beschriftung („F“, „q“, „F₁“, „M₀“) ist ein Formelzeichen. Der optionale
+Balkenparameter `length` (m) gibt die wirkliche Länge.
 
 | Lasten und Länge | Beschriftung |
 |---|---|
 | alle Lasten Zahlen, Länge angegeben | Zahlen mit Einheiten: „max Q = 5 kN“, „max M = 10 kN·m“ |
 | Einzellasten als Zahlen, keine Länge | „max Q = 5 kN“, „max M = 2.5 kN·L“ |
-| ein Formelzeichen einer Art (alle Einzellasten „F“ oder alle Streckenlasten „q“) | exakte Vielfache: „F/2“, „F·L/4“, „q·L/2“, „q·L²/8“, „−F·L“; kurze Brüche bis 1/64, sonst drei Nachkommastellen |
-| gemischte Formelzeichen, Formelzeichen mit Zahlen, Streckenlasten als Zahlen ohne Länge | „max Q“, „max M“ ohne Wert (die Verläufe mit Einheitswerten gezeichnet) |
+| nur Einzelmomente als Zahlen, keine Länge | „max M = −6 kN·m“; die Querkraft nur, wenn sie null ist („max Q = 0“) |
+| ein Formelzeichen einer Art (alle Einzellasten „F“, alle Streckenlasten „q“ oder alle Einzelmomente „M₀“) | exakte Vielfache: „F/2“, „F·L/4“, „q·L/2“, „q·L²/8“, „−F·L“, „M₀/L“, „−M₀“; kurze Brüche bis 1/64, kurze Brüche über √3 („q·L²/(9√3)“, „L/√3“), sonst drei Nachkommastellen |
+| gemischte Formelzeichen oder Arten, Formelzeichen mit Zahlen, Streckenlasten als Zahlen ohne Länge | „max Q“, „max M“ ohne Wert (die Verläufe mit Einheitswerten gezeichnet) |
 
 **Ohne Balken** (oder über einem Balken ohne Lager und Lasten) zeigt der Verlauf seinen eigenen Lastfall: `support`
-(Einfeldträger (Vorgabe) / Kragträger mit Wand links / Wand rechts), `load` (Einzellast F (Vorgabe) / Streckenlast q /
-beides), `at` (Lage von F als Anteil, 0,5) und optional `force` (kN), `lineLoad` (kN/m) und `length` (m) für Werte.
-Vorlagen: `ann.beam.diagram.cantilever` (Endlast) und `ann.beam.diagram.uniform`.
+(Einfeldträger (Vorgabe) / Kragträger mit Wand links / Wand rechts / Gerberträger mit Einspannung links, Gelenk in der
+Mitte und Loslager rechts), `load` (Einzellast F (Vorgabe) / Streckenlast q / beides / Dreieckslast q nach rechts
+steigend / Moment M₀ im Uhrzeigersinn), `at` (Lage von F oder M₀ als Anteil, 0,5) und optional `force` (kN), `lineLoad`
+(kN/m, Größtwert), `couple` (kN·m) und `length` (m) für Werte. Vorlagen: `ann.beam.diagram.cantilever` (Endlast),
+`ann.beam.diagram.uniform`, `ann.beam.diagram.triangle` (max M = q·L²/(9√3) bei x = L/√3), `ann.beam.diagram.moment`
+(Kragträger mit Endmoment: max M = −M₀) und `ann.beam.diagram.gerber` (Gleichlast: max M = −q·L²/4 an der Einspannung).
 
 **Weitere Parameter:** `momentBelow` (true: positive, durchbiegende Momente unter der Achse, auf der Zugseite, wie in
 deutschen Lehrbüchern üblich; false: darüber), `textSize` (3,5).
 
-**Statik** (`BeamStatics`, reine Berechnung ohne Host): statisch bestimmte gerade Balken unter Querlasten – zwei
-gelenkige Lager (Fest- und Loslager; Kragarme erlaubt; zwei Festlager werden akzeptiert, weil nur Querlasten betrachtet
-werden) oder eine Einspannung. Lagerkräfte aus den Gleichgewichtsbedingungen, Querkraft als Summe der aufwärts
-gerichteten Kräfte links vom Schnitt, Biegemoment positiv, wenn es den Balken durchbiegt; das Extremum des Moments in
-einem belasteten Abschnitt liegt dort, wo die Querkraft null wird. Andere Lagerungen (keine, ein Gelenk, drei Lager,
-Einspannung plus Loslager) sind nicht statisch bestimmt: Der Verlauf zeigt dann seine Achsen und den Hinweis „nicht
-statisch bestimmt“. Unit-Tests decken die Lehrbuchfälle ab (Einfeldträger mit Mittellast: Lagerkräfte F/2,
-M_max = F·L/4; Gleichlast: M_max = q·L²/8; Kragträger mit Endlast: M = −F·L an der Einspannung; außermittige Last
-F·a·b/L; Kragarm; Gleichgewichtsproben).
+**Statik** (`BeamStatics`, reine Berechnung ohne Host): gerade Balken unter Querlasten – Einzellasten, Gleich-,
+Dreiecks- und Trapezlasten (`BeamLineLoad` mit einer Intensität an jedem Ende) und Einzelmomente (`BeamCouple`, im
+Uhrzeigersinn positiv) – auf Fest-, Los- und Einspannlagern, mit Zwischengelenken (`BeamModel.Hinges`). Unbekannte sind
+eine Kraft je Fest- oder Loslager und eine Kraft und ein Einspannmoment je Einspannung; Bedingungen sind die zwei
+Gleichgewichtsbedingungen (senkrechte Kräfte, Momente) und ein verschwindendes Biegemoment an jedem Zwischengelenk.
+`BeamStatics.Check` vergleicht sie über den Rang der Bedingungsmatrix: **statisch bestimmt** (die Lagerreaktionen folgen
+aus den Bedingungen), **n-fach statisch unbestimmt** (n Unbekannte mehr als unabhängige Bedingungen, z. B. Einspannung
+plus Loslager: 1, drei Lager: 1, beidseitig eingespannt: 2) oder **kinematisch verschieblich** (eine Bedingung ist nicht
+erfüllbar: kein oder ein gelenkiges Lager, zwei Lager an einer Stelle, ein Gelenk im Einfeldträger). Zwei Festlager
+werden akzeptiert, weil nur Querlasten betrachtet werden. Nur statisch bestimmte Balken werden gelöst; sonst zeigt der
+Verlauf seine Achsen und statt Zahlen den Zustand: „1-fach statisch unbestimmt“, „kinematisch verschieblich“ oder
+„keine Lager (verschieblich)“. Querkraft als Summe der aufwärts gerichteten Kräfte links vom Schnitt, Biegemoment
+positiv, wenn es den Balken durchbiegt; ein Moment im Uhrzeigersinn lässt das Biegemoment um seinen Wert nach oben
+springen. In einem Abschnitt ist die Querkraft ein Polynom höchstens zweiten Grades; die Extrema des Moments liegen, wo
+sie null wird (exakt gelöst; die gezeichnete Linie geht durch diese Scheitel). Ein Moment genau auf einem Gelenk wirkt
+auf den Teil rechts davon. Unit-Tests decken die Lehrbuchfälle ab (Einfeldträger mit Mittellast: Lagerkräfte F/2,
+M_max = F·L/4; Gleichlast: M_max = q·L²/8; Dreieckslast: Lagerkräfte q·L/6 und q·L/3, M_max = q·L²/(9√3) bei
+x = L/√3; Trapezlast als Gleich- plus Dreieckslast; Kragträger mit Endlast: M = −F·L an der Einspannung; Kragträger mit
+Endmoment: konstant M = −M₀; Kragträger mit Dreieckslast: M = −q·L²/6; Moment am Einfeldträger mit seinem Sprung;
+Gerberträger mit einem Gelenk (Einspannung, Gelenk, Loslager) und Zweifeld-Gerberträger auf drei Lagern; außermittige
+Last F·a·b/L; Kragarm; die Einstufung; Gleichgewichtsproben).
 
-Neuzeichnen: Der Verlauf hängt von seinen Nachbarn ab; Balken, Lager, Kräfte und Streckenlasten nennen die Verläufe auf
-ihrer Seite als abhängige Objekte, sodass das Verschieben einer Last den Verlauf neu zeichnet.
+Neuzeichnen: Der Verlauf hängt von seinen Nachbarn ab; Balken, Lager, Kräfte, Streckenlasten, Momente und Gelenke nennen
+die Verläufe auf ihrer Seite als abhängige Objekte, sodass das Verschieben einer Last den Verlauf neu zeichnet.
 
 ## Weitere Ergänzungen
 
@@ -108,8 +135,10 @@ ihrer Seite als abhängige Objekte, sodass das Verschieben einer Last den Verlau
 |---|---|---|
 | `ann.cloud` | Änderungswolke: eine geschlossene Kette nach außen gewölbter Bögen im Kasten, die einen geänderten Bereich markiert | `arc` (Bogenlänge, 5 mm) |
 | `ann.dimension.chain` | Kettenmaß: mehrere Punkte nacheinander auf einer Maßlinie bemaßt, ein Wert je Abschnitt; die Punkte werden in ihrer Reihenfolge längs der Messrichtung genommen | `offset` (−8 mm), `axis` (automatisch / waagerecht / senkrecht), `terminator`, `prefix`, `unit`, `decimals`, `scale`, `textSize` (kein gemeinsamer Ersatztext) |
-| `ann.beam` | erhält eine optionale Länge `length` (m) für die Werte der Verläufe sowie Begleiter (Lager, Kraft, Streckenlast, Verlauf) | |
-| `ann.force` / `ann.load.distributed` | erhalten einen optionalen Betrag `value` (Kraft / Last je Länge) für die Verläufe | |
+| `ann.beam` | erhält eine optionale Länge `length` (m) für die Werte der Verläufe sowie Begleiter (Lager, Kraft, Streckenlast, Moment, Gelenk, Verlauf) | |
+| `ann.force` / `ann.load.distributed` / `ann.moment` | erhalten einen optionalen Betrag `value` (Kraft / größte Last je Länge / Moment) für die Verläufe | |
+| `ann.load.distributed` | die Pfeile folgen der Intensität; die Auswahl „Form“ (mit Bildern) wechselt die Form | `shape` (gleichmäßig (Vorgabe) / Dreieck nach rechts steigend / Dreieck nach rechts fallend / Trapez), `low` (niedriges Ende des Trapezes als Anteil von q, 0,4). Vorlagen `ann.load.distributed.triangle` und `ann.load.distributed.trapezoid` |
+| `ann.beam.hinge` | Zwischengelenk (Gerbergelenk): ein kleiner offener Kreis, mittig auf der Balkenachse; die Verläufe lesen es als momentenfreies Gelenk | keine (5 mm × 5 mm) |
 
 ## Hinweise zu den Hosts
 
@@ -124,5 +153,6 @@ Optionsnamen.
 - Modifikatoren im Toleranzrahmen (Maximum-Material, projizierte Toleranzzone, freier Zustand), kombinierte Rahmen und
   Toleranzangaben an Maßzahlen sind nicht abgebildet.
 - Schweißsymbole: keine Zusatzsymbole (flach, gewölbt, hohl), kein Gabelende mit Prozessnummer, keine versetzten Nähte.
-- Schnittgrößenverläufe: nur Einzel- und Gleichlasten quer zum Balken; keine Einzelmomente (`ann.moment`), keine
-  Trapezlasten, keine Gelenke im Balken, keine Normalkräfte; der Verlauf passt sich nicht automatisch der Balkenbreite an.
+- Schnittgrößenverläufe: nur Querlasten (keine Normalkräfte, kein Normalkraftverlauf), Streckenlasten höchstens linear,
+  Einspannungen nur an den Balkenenden, keine Durchbiegung und daher keine Lösung statisch unbestimmter Balken (sie werden
+  gemeldet, nicht gelöst); der Verlauf passt sich nicht automatisch der Balkenbreite an.
