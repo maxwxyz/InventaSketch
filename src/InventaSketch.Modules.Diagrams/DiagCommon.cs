@@ -684,7 +684,9 @@ namespace InventaSketch.Modules.Diagrams
 
         /// <summary>
         /// Quick add with the connector of the diagram kind: crow's-foot relations for ER, associations for class diagrams,
-        /// note links for notes, directed flows for activity, state, BPMN, use case and system diagrams.
+        /// note links for notes, BPMN sequence flows between BPMN flow objects (events, tasks, gateways) and data associations
+        /// from BPMN data objects and stores (BPMN 2.0: sequence flows never touch data), directed UML relations for activity,
+        /// state, use case and system diagrams.
         /// </summary>
         public override string? ChainConnector(SketchObject o)
         {
@@ -692,6 +694,7 @@ namespace InventaSketch.Modules.Diagrams
             if (Id == "diag.uml.note") return "diag.uml.relation.link";
             return Category switch
             {
+                DiagCategories.Bpmn => Id is "diag.bpmn.dataobject" or "diag.bpmn.datastore" ? "diag.bpmn.flow.data" : "diag.bpmn.flow",
                 DiagCategories.Er => "diag.er.connector",
                 DiagCategories.Structure => "diag.uml.relation",
                 DiagCategories.Sequence or DiagCategories.Relations => null,

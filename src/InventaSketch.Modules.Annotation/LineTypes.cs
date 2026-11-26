@@ -179,6 +179,16 @@ namespace InventaSketch.Modules.Annotation
         /// <summary>The label drawn at the start: the element text, else the translated exit label.</summary>
         public static string LabelOf(SketchObject o, Lang lang) => !string.IsNullOrWhiteSpace(o.Text) ? o.Text! : ExitText(o.Str("exit", ""), lang);
 
+        /// <summary>
+        /// The label drawn at the start in a document: <see cref="LabelOf(SketchObject, Lang)"/>, else the automatic exit label
+        /// of a decision with automatic exit labels (<see cref="FlowNumbering.AutoExit"/>).
+        /// </summary>
+        public static string LabelOf(SketchObject o, RenderContext ctx)
+        {
+            var own = LabelOf(o, ctx.Lang);
+            return !string.IsNullOrWhiteSpace(own) ? own : FlowNumbering.AutoExit(o, ctx) is { } auto ? ExitText(auto, ctx.Lang) : own;
+        }
+
         /// <summary>The drawn route of an elbow-routed line through its resolved points (side-aware when both ends are docked).</summary>
         public static List<Vec2> PathOf(SketchObject o, IReadOnlyList<Vec2> p)
         {
@@ -306,7 +316,7 @@ namespace InventaSketch.Modules.Annotation
             var pts = PathOf(o, p);
             var style = Style.ThinLine with { StrokeWidth = 0.35, ArrowStart = Ann.Head(o, "headStart", ArrowHead.None), ArrowEnd = Ann.Head(o, "headEnd", ArrowHead.Triangle), ArrowSize = Ann.HeadSize(o) };
             var list = new List<Primitive> { AnnConnectors.MainPath(pts, AnnConnectors.Hops(o, pts, ctx, this, true), style) };
-            var label = LabelOf(o, ctx.Lang);
+            var label = LabelOf(o, ctx);
             if (!string.IsNullOrWhiteSpace(label) && pts.Count >= 2)
             {
                 // Label beside the first run, just after the start ("ja" right of a line leaving downwards, "nein" above a
@@ -333,9 +343,13 @@ namespace InventaSketch.Modules.Annotation
             if (ConnectorPath(o, ctx) is { } path) foreach (var r in AnnConnectors.Rails(path)) yield return r;
         }
 
-        /// <summary>Connectors crossing this one (their hops depend on where it runs).</summary>
+        /// <summary>
+        /// Connectors crossing this one (their hops depend on where it runs), and in a flowchart the numbered steps and the
+        /// other exits of the decision it leaves (<see cref="FlowNumbering.DependentsOfConnector"/>).
+        /// </summary>
         public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx)
-            => ConnectorPath(o, ctx) is { Count: >= 2 } p ? AnnConnectors.Find(o, p, ctx, this).Select(c => c.Other).Distinct().ToList() : Enumerable.Empty<string>();
+            => (ConnectorPath(o, ctx) is { Count: >= 2 } p ? AnnConnectors.Find(o, p, ctx, this).Select(c => c.Other) : Enumerable.Empty<string>())
+                .Concat(FlowNumbering.DependentsOfConnector(o, ctx)).Distinct().ToList();
 
         public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
         {

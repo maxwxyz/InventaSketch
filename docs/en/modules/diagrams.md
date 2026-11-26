@@ -113,6 +113,28 @@ labels in quick-add order; the preset "Decision (compare: < = >)" (`ann.flow.dec
 Core hook: `ObjectType.ChainConnectorParams(o, index)` returns parameters for the index-th connector leaving an
 element; `Flow.QuickAdd` counts the connectors already leaving it and applies them.
 
+**Exit labels and step numbers from the flow (round 7, 2026-11-26).** Both are off by default, so existing drawings
+stay unchanged. The flow is read from the drawing: flowchart symbols (`ann.flow.*`) joined by connectors whose first
+and last points are docked on them, from the first to the last.
+
+- *Exit label style* (`exitStyle` on a decision, action "Exit labels ▸ yes / no | 1 / 2 / 3"): `yesno` (default) or
+  `numbers`, which labels the exits "1", "2", "3" … in quick-add order (any number of exits). `exitLabels` still wins.
+- *Label exits automatically* (`autoExits` on a decision, toggle in the bar): every elbow connector leaving the
+  decision without its own text or `exit` shows the label of its position among the decision's exits in drawing order
+  ("yes"/"no" translated, or the numbers), so connectors drawn by hand are labelled too. The decision redraws its exits,
+  and an exit redraws its siblings (`Dependents`).
+- *Number steps along the flow* (`numberSteps`, offered on the first element of a flow, i.e. no connector leads
+  into it and one leads out, usually the start): the steps reachable from it get `stepPrefix` + `stepFirst`, then
+  + `stepIncrement` ("S100", "S110", "S120" …; advanced parameters, defaults "S", 100, 10), written outside the upper
+  right corner like an entered `step`. Order: depth first along the exits in drawing order, loop-backs ignored, and a
+  step where branches meet only after all of them (a yes/no branch pair gets consecutive numbers before the joining
+  step). Process, decision, data, document, predefined process, manual operation, preparation, delay and loop limit
+  are numbered; start/end, connectors, off-page connectors, stored data and the parallel bar are passed through. An
+  entered `step` wins (its automatic number stays reserved, so the others do not shift). A step reached from two
+  numbered starts keeps the number of the first start in drawing order.
+- Flow boxes now read their neighbours (`DependsOnNeighbours`), and the elbow connector names the numbered steps of its
+  flow as dependents, so hosts that keep elements apart (PowerPoint) redraw the numbers when the flow changes.
+
 ## Connectors and marks for technical figures (2026-11-25)
 
 Annotation module additions for technical figures; all are insertable without parameters, black and white, and drawn
@@ -253,8 +275,9 @@ A catching marker is outlined, a throwing one filled: end events always throw, i
 input/output arrow, collection bars; presets `.input`, `.output`, `.collection`) and `diag.bpmn.datastore` (cylinder).
 **Flows:** `diag.bpmn.flow` with kind sequence (solid, filled arrowhead), default (slash at the start), conditional
 (hollow diamond at the start), message (dashed, small circle at the start, hollow arrowhead), association (dotted, no
-head) and data association (dotted, open arrowhead); presets `diag.bpmn.flow.<kind>`. Quick add from BPMN shapes still
-uses the directed UML relation.
+head) and data association (dotted, open arrowhead); presets `diag.bpmn.flow.<kind>`. Quick add ("+") from BPMN events,
+tasks and gateways adds a sequence flow (`diag.bpmn.flow`), from data objects and stores a data association
+(`diag.bpmn.flow.data`; BPMN sequence flows never touch data); round 7, 2026-11-26. UML shapes keep their UML relations.
 
 **State machine pseudo states:** `diag.state.pseudo` with kind shallow history (H), deep history (H*), junction
 (small filled dot), choice (diamond, diamond ports), entry point (open circle), exit point (circle with a cross) and

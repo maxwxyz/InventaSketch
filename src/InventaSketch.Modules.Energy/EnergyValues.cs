@@ -25,7 +25,7 @@ namespace InventaSketch.Modules.Energy
     /// <para>
     /// Also: CHP (η_el, η_th), thermal storage (Q = ρ·V·c·Δθ), electrolyser and fuel cell (η, P_el, P_H2, ṁ), hydro power plant
     /// (P = ρ·g·Q·H·η), pumped storage (E = ρ·g·V·H) and the EV charging time t = E/P. Round 6: battery state of charge,
-    /// time left and round-trip efficiency; PV annual yield (Y_f = H_POA·PR, E_a = P·Y_f); the utility grid as grid
+    /// time left and round-trip efficiency; PV annual yield (Y_f = H_POA/(1 kW/m²)·PR, E_a = P·Y_f); the utility grid as grid
     /// connection point (inverters' AC power against the feed-in limit, annual self-consumption share and self-sufficiency).
     /// </para>
     /// </summary>
@@ -212,9 +212,20 @@ namespace InventaSketch.Modules.Energy
         private static readonly Relation BatRoundTrip = Product("bat.roundtrip", T("Round-trip efficiency", "Zyklus-Wirkungsgrad (Laden und Entladen)"), "Eus", "etart", "Ein", "S35",
             T("one full cycle: E_in charged from empty, E_nutz delivered back", "ein voller Zyklus: E_in von leer geladen, E_nutz wieder abgegeben"));
 
-        /// <summary>PV specific yield Y_f = H_POA·PR (H_POA as peak-sun hours) [S33].</summary>
-        private static readonly Relation PvSpecific = Product("pv.yield.specific", T("Specific yield", "Spezifischer Ertrag"), "Ysp", "Hpoa", "PR", "S33",
-            T("H_POA in peak-sun hours (kWh/m² ÷ 1 kW/m²); PR covers all losses (IEC 61724-1)", "H_POA in Volllaststunden der Sonne (kWh/m² ÷ 1 kW/m²); PR enthält alle Verluste (IEC 61724-1)"));
+        /// <summary>Standard test condition irradiance G_STC = 1 kW/m² [S33].</summary>
+        private const double GStc = 1000;
+
+        /// <summary>PV specific yield Y_f = (H_POA/G_STC)·PR, H_POA in kWh/m², G_STC = 1 kW/m² [S33].</summary>
+        private static readonly Relation PvSpecific =
+            new Relation("pv.yield.specific", T("Specific yield", "Spezifischer Ertrag"), "{Ysp} = {Hpoa}/(1 kW/m²)·{PR}", "Ysp", "Hpoa", "PR")
+            {
+                Source = "S33",
+                Validity = T("H_POA in the module plane relative to the STC irradiance 1 kW/m²; PR covers all losses (IEC 61724-1)",
+                    "H_POA in Modulebene bezogen auf die STC-Bestrahlungsstärke 1 kW/m²; PR enthält alle Verluste (IEC 61724-1)"),
+            }
+                .Solve("Ysp", "{Hpoa}/(1 kW/m²)·{PR}", v => v("Hpoa") / GStc * v("PR"))
+                .Solve("Hpoa", "{Ysp}·1 kW/m²/{PR}", v => v("Ysp") * GStc / v("PR"))
+                .Solve("PR", "{Ysp}·1 kW/m²/{Hpoa}", v => v("Ysp") * GStc / v("Hpoa"));
 
         /// <summary>PV annual yield E_a = P_STC·Y_f [S33].</summary>
         private static readonly Relation PvAnnual = Product("pv.yield.annual", T("Annual yield", "Jahresertrag"), "Ea", "P", "Ysp", "S33",
@@ -441,14 +452,18 @@ namespace InventaSketch.Modules.Energy
             return new Spec(vars, new[] { ArrayPower, ArrayCurrent, PvSpecific, PvAnnual }, Params(vars, "power"), Array.Empty<ValueCheck>()) { Ports = (_, p) => PvPort(p, "P", false) };
         }
 
-        /// <summary>Yield estimate of a PV string or array: irradiation as peak-sun hours, performance ratio, specific and annual yield.</summary>
+        /// <summary>
+        /// Yield estimate of a PV string or array: annual irradiation in the module plane (kWh/m²), performance ratio, specific
+        /// yield (kWh/kWp) and annual yield. Texts stored before round 7 in h (peak-sun or full-load hours) still parse: both
+        /// kinds accept "h", and a bare number reads the same in kWh/m² and kWh/kWp as it did in h.
+        /// </summary>
         private static VarDef[] YieldVars() => new[]
         {
             V("Ea", T("Annual yield (estimate)", "Jahresertrag (Schätzung)"), T("E_a", "E_a"), Quantities.Energy, "kWh", "annualYield", VarRelevance.Panel) with { Min = 0, Max = 1e18 },
-            V("Ysp", T("Specific yield (kWh/kWp per year, full-load hours)", "Spezifischer Ertrag (kWh/kWp im Jahr, Volllaststunden)"), T("Y_f", "Y_f"), Quantities.Time_, "h",
+            V("Ysp", T("Specific yield (per year)", "Spezifischer Ertrag (im Jahr)"), T("Y_f", "Y_f"), Quantities.SpecificYield, "kWh/kWp",
                 "specificYield", VarRelevance.Panel) with { Min = 0, Max = 8760 * 3600.0 },
-            V("Hpoa", T("Annual irradiation in the module plane as peak-sun hours (kWh/m² ÷ 1 kW/m²)", "Jahreseinstrahlung in Modulebene als Volllaststunden (kWh/m² ÷ 1 kW/m²)"),
-                T("H_POA", "H_POA"), Quantities.Time_, "h", "irradiation", VarRelevance.Panel) with { Min = 0, Max = 8760 * 3600.0 },
+            V("Hpoa", T("Annual irradiation in the module plane", "Jahreseinstrahlung in Modulebene"),
+                T("H_POA", "H_POA"), Quantities.Irradiation, "kWh/m²", "irradiation", VarRelevance.Panel) with { Min = 0, Max = 8760 * 3.6e6 },
             V("PR", T("Performance ratio", "Performance Ratio"), T("PR", "PR"), Quantities.Efficiency, "%", "performanceRatio", VarRelevance.Panel) with { Default = 0.8, Min = 0, Max = 1 },
         };
 

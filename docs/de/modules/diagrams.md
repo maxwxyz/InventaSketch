@@ -120,6 +120,33 @@ Bibliothekseinträge „Verbinder „ja““ / „Verbinder „nein““ trage
 `ObjectType.ChainConnectorParams(o, index)` liefert Parameter für den index-ten Verbinder, der ein Element verlässt;
 `Flow.QuickAdd` zählt die schon abgehenden Verbinder und setzt sie.
 
+**Ausgangsbeschriftungen und Schrittnummern aus dem Ablauf (Runde 7, 26.11.2026).** Beides ist standardmäßig aus, damit
+bestehende Zeichnungen unverändert bleiben. Der Ablauf wird aus der Zeichnung gelesen: Ablaufdiagramm-Symbole
+(`ann.flow.*`), verbunden durch Verbinder, deren erster und letzter Punkt an ihnen angedockt sind, vom ersten zum letzten.
+
+- *Art der Ausgangsbeschriftung* (`exitStyle` an einer Verzweigung, Aktion „Ausgangsbeschriftung ▸ ja / nein |
+  1 / 2 / 3“): `yesno` (Standard) oder `numbers`, das die Ausgänge in der Reihenfolge des Hinzufügens mit „1“, „2“,
+  „3“ … beschriftet (beliebig viele Ausgänge). `exitLabels` geht weiterhin vor.
+- *Ausgänge automatisch beschriften* (`autoExits` an einer Verzweigung, Schalter in der Leiste): Jeder
+  Winkelverbinder, der die Verzweigung ohne eigenen Text oder `exit` verlässt, zeigt die Beschriftung seiner Position
+  unter den Ausgängen der Verzweigung in Zeichenreihenfolge („ja“/„nein“ übersetzt oder die Nummern); so werden auch von
+  Hand gezeichnete Verbinder beschriftet. Die Verzweigung zeichnet ihre Ausgänge neu, ein Ausgang seine Geschwister
+  (`Dependents`).
+- *Schritte automatisch nummerieren* (`numberSteps`, angeboten am ersten Element eines Ablaufs, d. h. kein
+  Verbinder führt hinein und einer hinaus, meist der Start): Die von dort erreichbaren Schritte bekommen `stepPrefix` +
+  `stepFirst`, dann + `stepIncrement` („S100“, „S110“, „S120“ …; erweiterte Parameter, Vorgaben „S“, 100, 10), außen
+  an der oberen rechten Ecke wie eine eingegebene `step`-Nummer. Reihenfolge: zuerst in die Tiefe entlang der Ausgänge
+  in Zeichenreihenfolge, Rücksprünge ignoriert, und ein Schritt, an dem Zweige zusammenlaufen, erst nach allen Zweigen
+  (ein Ja/Nein-Zweigpaar bekommt aufeinanderfolgende Nummern vor dem zusammenführenden Schritt). Nummeriert werden
+  Verarbeitungsschritt, Verzweigung, Daten, Dokument, vordefinierter Prozess, manuelle Verarbeitung, Vorbereitung,
+  Verzögerung und Schleifenbegrenzung; Start/Ende, Verbindungsstellen, Seitenverbinder, Datenspeicher und der
+  Parallelbalken werden durchlaufen. Eine eingegebene `step`-Nummer geht vor (ihre automatische Nummer bleibt
+  reserviert, die anderen verschieben sich nicht). Ein Schritt, der von zwei nummerierten Starts erreicht wird, behält
+  die Nummer des in Zeichenreihenfolge ersten Starts.
+- Ablaufkästen lesen jetzt ihre Nachbarn (`DependsOnNeighbours`), und der Winkelverbinder nennt die nummerierten
+  Schritte seines Ablaufs als abhängig, damit Hosts mit getrennten Elementen (PowerPoint) die Nummern neu zeichnen,
+  wenn sich der Ablauf ändert.
+
 ## Verbinder und Zeichen für technische Abbildungen (25.11.2026)
 
 Ergänzungen des Beschriftungsmoduls für technische Abbildungen; alle sind ohne Parameter einfügbar, schwarz-weiß und mit
@@ -273,7 +300,9 @@ Sammlung als drei Striche; Vorlagen `.input`, `.output`, `.collection`) und `dia
 **Flüsse:** `diag.bpmn.flow` mit Art Sequenzfluss (durchgezogen, gefüllte Pfeilspitze), Standardfluss (Schrägstrich am
 Anfang), bedingter Fluss (hohle Raute am Anfang), Nachrichtenfluss (gestrichelt, kleiner Kreis am Anfang, hohle
 Pfeilspitze), Assoziation (gepunktet, ohne Spitze) und Datenassoziation (gepunktet, offene Pfeilspitze); Vorlagen
-`diag.bpmn.flow.<kind>`. Schnelles Hinzufügen an BPMN-Formen nutzt weiterhin die gerichtete UML-Beziehung.
+`diag.bpmn.flow.<kind>`. Schnelles Hinzufügen („+“) an BPMN-Ereignissen, -Aufgaben und -Gateways fügt einen
+Sequenzfluss (`diag.bpmn.flow`) an, an Datenobjekten und Datenspeichern eine Datenassoziation (`diag.bpmn.flow.data`;
+Sequenzflüsse berühren in BPMN nie Daten); Runde 7, 26.11.2026. UML-Formen behalten ihre UML-Beziehungen.
 
 **Pseudozustände:** `diag.state.pseudo` mit Art flache Historie (H), tiefe Historie (H*), Kreuzung (kleiner gefüllter
 Punkt), Auswahl (Raute, Rautenanschlüsse), Eintrittspunkt (offener Kreis), Austrittspunkt (Kreis mit Kreuz) und

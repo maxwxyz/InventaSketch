@@ -205,5 +205,46 @@ namespace InventaSketch.Modules.Diagrams.Tests
             Assert.Contains(r.Categories, c => c.Id == DiagCategories.Network && c.Name.De == "Netzplan (kritischer Pfad)");
             Assert.Contains("netzplan", r.Type(Cpm.NodeType)!.Keywords);
         }
+
+        [Fact]
+        public void QuickAddOnBpmnShapesUsesTheSequenceFlowWhileUmlShapesKeepTheirRelation()
+        {
+            var r = T.Reg();
+            // BPMN flow objects chain with a sequence flow (kind sequence, filled arrowhead).
+            foreach (var item in new[] { "diag.bpmn.task", "diag.bpmn.start", "diag.bpmn.intermediate", "diag.bpmn.gateway", "diag.bpmn.gateway.parallel", "diag.bpmn.task.subprocess" })
+            {
+                var (doc, o) = T.Insert(r, item, new Vec2(60, 60));
+                Assert.Equal("diag.bpmn.flow", r.TypeOf(o).ChainConnector(o));
+                var res = Flow.QuickAdd(r, doc, o.Id, FlowSide.Right);
+                var line = res.Doc.Get(res.ConnectorId!)!;
+                Assert.Equal("diag.bpmn.flow", line.Type);
+                Assert.Equal("sequence", line.Str("kind", "sequence"));
+                Assert.Equal(o.Id, line.Attach![0]!.ObjectId);
+                Assert.Equal(res.ObjectId, line.Attach![1]!.ObjectId);
+            }
+            // Data objects and stores: a data association (sequence flows never touch data).
+            foreach (var item in new[] { "diag.bpmn.dataobject", "diag.bpmn.datastore" })
+            {
+                var (doc, o) = T.Insert(r, item, new Vec2(60, 60));
+                var res = Flow.QuickAdd(r, doc, o.Id, FlowSide.Right, itemId: "diag.bpmn.task");
+                var line = res.Doc.Get(res.ConnectorId!)!;
+                Assert.Equal("diag.bpmn.flow", line.Type);
+                Assert.Equal("data", line.Str("kind", "sequence"));
+            }
+            // The pool still has no quick add; UML shapes keep the UML relations.
+            var (_, pool) =T.Insert(r, "diag.bpmn.pool", new Vec2(60, 60));
+            Assert.Null(r.TypeOf(pool).ChainConnector(pool));
+            foreach (var (item, connector) in new[]
+            {
+                ("diag.activity.action", "diag.uml.relation.directed"), ("diag.state.state", "diag.uml.relation.directed"),
+                ("diag.uml.class", "diag.uml.relation"), ("diag.uml.note", "diag.uml.relation.link"),
+            })
+            {
+                var (doc, o) = T.Insert(r, item, new Vec2(60, 60));
+                Assert.Equal(connector, r.TypeOf(o).ChainConnector(o));
+                var res = Flow.QuickAdd(r, doc, o.Id, FlowSide.Right);
+                Assert.Equal("diag.uml.relation", res.Doc.Get(res.ConnectorId!)!.Type);
+            }
+        }
     }
 }

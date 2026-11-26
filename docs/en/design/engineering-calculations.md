@@ -410,7 +410,7 @@ adoptions DIN VDE 0100-520 and -430 [S8, S9]. The user enters *I*_z and the perm
 | String / array | *U*_string = *N*_s·*U*_mod; *I*_array = *N*_p·*I*_string; *P* = *N*_s·*N*_p·*P*_mod | *N*_s (exists: `modules`)*, N*_p | – | [S34] |
 | Max string voltage | *U*_oc,max = *N*_s·*U*_oc(*θ*_min); min MPP voltage *U*_mpp,min = *N*_s·*U*_mpp(*θ*_max) | *θ*_min (user, site), *θ*_max | – | [S33] (IEC 62548-1, operating temperature) |
 | DC/AC ratio | *R* = *P*_DC,STC/*P*_AC,rated | – | typically 1.0 … 1.3 | [S34] |
-| Yield estimate | *E* = *P*_STC·(*H*_POA/1 kW/m²)·PR; specific yield *E*/*P*_STC | *H*_POA (input), PR (input, typ. 0.75 … 0.9) | – | [S33] (PR: IEC 61724-1) |
+| Yield estimate | *E* = *P*_STC·(*H*_POA/1 kW/m²)·PR; specific yield *Y*_f = *E*/*P*_STC = (*H*_POA/1 kW/m²)·PR | *H*_POA (input, kWh/m², kind `irradiation`), PR (input, typ. 0.75 … 0.9); *Y*_f in kWh/kWp (kind `specificYield`) | – | [S33] (PR: IEC 61724-1) |
 | Inverter | *P*_AC = *η*·*P*_DC; *I*_AC = *P*_AC/(√3·*U*·cos *φ*) (3~) | *η, P, U, I* | *η* 0.95 … 0.98 | [S33] (EN 50530) |
 | Battery | *E* = *U*_nom·*Q*_n; *E*_usable = *E*·DoD; C-rate = *I*/(*Q*_n/1 h); *t* = *E*_usable/*P*; round trip *η*_rt | *U, Q*_n [Ah]*, E* [kWh]*, DoD, I, P, t* | 0.2 … 2 C | [S35] (current notation: IEC 61434) |
 | EV charging | *P* = √3·*U*·*I* (3~, e.g. 400 V · 16 A ≈ 11 kW); *t* ≈ Δ*E*/(*P*·*η*) (taper ignored, stated) | *P, U, I, E, t* | – | [S7] |
@@ -1039,7 +1039,13 @@ This section records the choices made where the concept left them open. The code
   force, torque, energy, speed, acceleration, pressure, volume flow, mass flow, temperature, temperature difference,
   density, specific heat, heat transfer coefficient, irradiance, kinematic viscosity, moment of inertia, spring rate
   (later also torsional spring rate, temperature coefficient and, since round 4 of 2026-11-26, **specific energy**:
-  kJ/kg (default), J/kg, MJ/kg, kWh/kg, for the specific work of compressors and turbines).
+  kJ/kg (default), J/kg, MJ/kg, kWh/kg, for the specific work of compressors and turbines; since round 7 of 2026-11-26
+  **irradiation** (radiant exposure, energy per area: kWh/m² (default), MJ/m², Wh/m², J/m², and `h` as peak-sun hours at
+  1 kW/m²) and **specific yield** (energy per rated power: kWh/kWp (default), also `h` as full-load hours)).
+  Specific yield is dimensionally a time (kWh/kWp = h) but a kind of its own, so time fields do not offer kWh/kWp and a
+  yield reads "950 kWh/kWp"; *E* = *P*·*Y*_f stays a plain product. Irradiation shares its dimension (kg·s⁻²) with the
+  spring rate. Both new kinds come after the existing ones in the preference order, so a calculated time stays a time
+  and a calculated N/m stays a spring rate.
   Torque and energy, power and heat flow, temperature and temperature difference share a dimension and are separate
   kinds. The first unit of a kind is its default display unit (charge: Ah, speed of rotation: min⁻¹, temperature: °C).
 - **Units** have a factor and an offset to SI and an explicit list of SI prefixes they accept and show (Ω takes µ m k M
