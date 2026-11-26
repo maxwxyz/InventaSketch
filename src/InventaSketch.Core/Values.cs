@@ -43,6 +43,8 @@ namespace InventaSketch.Core
         /// <summary>Unit of a number parameter (e.g. "kV" for Energy voltages); null = <see cref="Unit"/>.</summary>
         public string? StoredUnit { get; init; }
         public VarRelevance Relevance { get; init; } = VarRelevance.Card;
+        /// <summary>True if the variable is text-valued (its kind is <see cref="QuantityKind.IsText"/>): computed, shown as a label.</summary>
+        public bool IsText => Kind.IsText;
         /// <summary>Default value (SI), used only when nothing determines the variable.</summary>
         public double? Default { get; init; }
         /// <summary>Typical range (SI), also the bracket of a numeric root search.</summary>
@@ -223,7 +225,8 @@ namespace InventaSketch.Core
         /// </summary>
         public static (double? Value, string? Text, Tolerance? Tolerance, I18nText? Error) ReadEntered(SketchObject o, VarDef v)
         {
-            if (!o.Params.TryGetValue(v.ParamKey, out var p)) return (null, null, null, null);
+            // A text-valued variable (Quantities.Text) is only ever computed: whatever is stored under its key is ignored.
+            if (v.Kind.IsText || !o.Params.TryGetValue(v.ParamKey, out var p)) return (null, null, null, null);
             if (p.Number is double n)
             {
                 var unit = (v.StoredUnit ?? v.Unit) is string s ? UnitCatalog.Find(s, v.Kind) ?? v.Kind.DefaultUnit : v.Kind.DefaultUnit;

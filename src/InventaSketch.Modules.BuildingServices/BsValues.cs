@@ -17,7 +17,13 @@ namespace InventaSketch.Modules.BuildingServices
     /// unbranched run and summed at a branch (the generator's port, the pump's outlet, the ventilation unit's spigot and the
     /// mixer outlet are the totals of the radiators, loops and terminals on the branches). The stream temperature (<c>theta</c>)
     /// is passed on an unbranched run and from the single supplying outlet to every inlet of a split. Thermostatic valves pass
-    /// both; pumps pass the temperature. Heat losses of pipes are not modelled.
+    /// both; pumps pass the temperature. Heat losses of pipes are not modelled. Pipes of different media (flow, return,
+    /// water kinds) and ducts of different air kinds stay separate nets where they meet only at a port of another module's
+    /// element; the heating flow takes that port's values (an energy heat port).
+    /// </para>
+    /// <para>
+    /// Room values by containment: an air terminal (A, h, V) or radiator (Φ_HL) standing inside an architecture room
+    /// (<see cref="RoomTypeId"/>, same page) takes the room's values (<see cref="RoomLinks"/>).
     /// </para>
     /// </summary>
     internal static class BsValues
@@ -40,6 +46,11 @@ namespace InventaSketch.Modules.BuildingServices
             public Func<SketchObject, string, IEnumerable<PortVar>> Ports { get; init; } = (_, _) => Array.Empty<PortVar>();
             /// <summary>Relations that depend on what is entered (round or rectangular duct).</summary>
             public Func<SketchObject, IEnumerable<Relation>>? Local { get; init; }
+            /// <summary>
+            /// Variables taken from the room the element stands in (<see cref="RoomLinks"/>): linked to the room's variable of
+            /// the same key and quantity kind.
+            /// </summary>
+            public IReadOnlyList<string> RoomKeys { get; init; } = Array.Empty<string>();
         }
 
         // ------------------------------------------------------------------ parameters and variables
@@ -381,8 +392,13 @@ namespace InventaSketch.Modules.BuildingServices
                 V("n", T("Radiator exponent", "Heizkörperexponent"), T("n", "n"), Quantities.Ratio, null, "exponent", VarRelevance.Panel) with { Default = 1.3, Min = 0.5, Max = 3 },
                 V("dT", T("Logarithmic excess temperature", "Logarithmische Übertemperatur"), T("Δθ_ln", "Δθ_ln"), Quantities.TemperatureDifference, "K", "excessTemp", VarRelevance.Panel) with { Min = 0.01, Max = 200 },
                 Rho(), Cp(),
+                V("PhiHL", T("Heating load of the room (estimate)", "Heizlast des Raums (Schätzwert)"), T("Φ_HL", "Φ_HL"), Quantities.HeatFlow, "W", "roomHeatLoad", VarRelevance.Panel) with { Min = 0, Max = 1e9 },
             };
-            return new Spec(vars, new[] { Excess, Characteristic, Carrier, Operating }, Params(vars), Array.Empty<ValueCheck>()) { Ports = (_, p) => ConsumerPort(p) };
+            return new Spec(vars, new[] { Excess, Characteristic, Carrier, Operating }, Params(vars), new[] { RoomLoad() })
+            {
+                Ports = (_, p) => ConsumerPort(p),
+                RoomKeys = new[] { "PhiHL" },
+            };
         }
 
         private static Spec FloorLoop()
@@ -511,6 +527,8 @@ namespace InventaSketch.Modules.BuildingServices
             return new Spec(vars, new[] { RoomVolume, AirChange }, Params(vars), Array.Empty<ValueCheck>())
             {
                 Ports = (_, p) => p == "duct" ? new[] { new PortVar("Vdot", "Vdot", PortRole.Part) } : Array.Empty<PortVar>(),
+                // Placed inside a room (arch.room), the terminal takes its floor area, height and volume.
+                RoomKeys = new[] { "A", "h", "V" },
             };
         }
 
@@ -589,6 +607,10 @@ namespace InventaSketch.Modules.BuildingServices
                 ? new[] { new PortVar("Vdot", "Vdot"), new PortVar("theta", "theta") }
                 : new[] { new PortVar("Vdot", "Vdot") },
             Through = Through,
+            // Flow and return (and the air kinds) stay apart where they meet only at a port of another module's element;
+            // there the heating flow takes the port's values (an energy heat port gives V̇ and the flow temperature).
+            Medium = o => o.Type == PipeType.TypeId ? PipeType.MediumOf(o.Str("medium", "cold")) : PortMedia.AirOf(o.Str("kind", "supply")),
+            Leads = m => m == PortMedia.HeatingFlow,
             Classes = new[] { "Vdot", "theta" },
             Rule = c => c == "Vdot" ? NetRule.Sum : NetRule.Spread,
             Name = c => c == "Vdot" ? T("Volume flow passed on", "Volumenstrom weitergegeben") : T("Temperature passed on", "Temperatur weitergegeben"),
@@ -600,6 +622,80 @@ namespace InventaSketch.Modules.BuildingServices
             if (spec.Local is not null)
                 foreach (var r in spec.Local(o)) yield return BoundRelation.Local(r, o.Id);
             foreach (var b in ValueNets.Of(ctx.Doc, Nets).For(o.Id)) yield return b;
+            foreach (var b in RoomLinks(o, spec, ctx)) yield return b;
+        }
+
+        // ------------------------------------------------------------------ room values by containment
+
+        /// <summary>Type id of the architecture room (A, h, V, Φ_HL); referenced by id only, modules do not depend on each other.</summary>
+        public const string RoomTypeId = "arch.room";
+
+        private static readonly Relation RoomLink = Relation.Equality("bs.room.link", T("Taken from the room", "Aus dem Raum übernommen"));
+
+        private sealed record Room(string Id, string? Page, IReadOnlyList<Vec2> Outline, double Area);
+
+        private sealed class RoomIndex
+        {
+            public readonly List<Room> Rooms = new();
+            public readonly Dictionary<string, string> PageOf = new(StringComparer.Ordinal);
+        }
+
+        /// <summary>Rooms and the page of every object, per document (documents are immutable).</summary>
+        private static readonly System.Runtime.CompilerServices.ConditionalWeakTable<SketchDocument, RoomIndex> RoomsOf = new();
+
+        private static RoomIndex Index(SketchDocument doc) => RoomsOf.GetValue(doc, d =>
+        {
+            var index = new RoomIndex();
+            foreach (var page in d.Pages)
+                foreach (var id in page.Order)
+                    if (!index.PageOf.ContainsKey(id)) index.PageOf[id] = page.Id;
+            foreach (var o in d.Objects.Values.OrderBy(x => x.Id, StringComparer.Ordinal))
+            {
+                if (o.Type != RoomTypeId || !o.IsPointGeometry) continue;
+                var p = d.ResolvePoints(o);
+                if (p.Count < 3) continue;
+                index.Rooms.Add(new Room(o.Id, index.PageOf.TryGetValue(o.Id, out var pg) ? pg : null, p, Math.Abs(Geo.PolygonArea(p))));
+            }
+            return index;
+        });
+
+        /// <summary>
+        /// The room (<see cref="RoomTypeId"/>) an element stands in: its centre inside the room's outline on the same page;
+        /// the smallest such room when rooms overlap (ties by id). Null for lines and elements outside every room.
+        /// </summary>
+        internal static string? ContainingRoom(SketchDocument doc, SketchObject o)
+        {
+            if (o.IsPointGeometry) return null;
+            var index = Index(doc);
+            if (index.Rooms.Count == 0) return null;
+            var page = index.PageOf.TryGetValue(o.Id, out var pg) ? pg : null;
+            var c = new Vec2(o.Transform.X, o.Transform.Y);
+            Room? best = null;
+            foreach (var r in index.Rooms)
+                if (r.Page == page && r.Id != o.Id && Geo.PointInPolygon(c, r.Outline) && (best is null || r.Area < best.Area)) best = r;
+            return best?.Id;
+        }
+
+        /// <summary>
+        /// Room values by containment (engineering-calculations.md, section 6.1): an element placed inside a room takes the
+        /// room's variables named in <see cref="Spec.RoomKeys"/> through an equality, when the room's type has a variable of
+        /// the same key and quantity kind. The room is not joined by a line; it joins the solver scope through the link.
+        /// </summary>
+        private static IEnumerable<BoundRelation> RoomLinks(SketchObject o, Spec spec, RenderContext ctx)
+        {
+            if (spec.RoomKeys.Count == 0 || ctx.Registry is not { } registry) yield break;
+            if (ContainingRoom(ctx.Doc, o) is not { } roomId || ctx.Doc.Get(roomId) is not { } room) yield break;
+            var roomVars = ValueModel.Variables(registry.Type(room.Type));
+            foreach (var key in spec.RoomKeys)
+            {
+                var mine = spec.Variables.FirstOrDefault(v => v.Key == key);
+                var theirs = roomVars.FirstOrDefault(v => v.Key == key);
+                if (mine is null || theirs is null || mine.Kind.Id != theirs.Kind.Id) continue;
+                yield return new BoundRelation(RoomLink, new Dictionary<string, VarRef>(StringComparer.Ordinal)
+                {
+                    ["a"] = new VarRef(o.Id, key), ["b"] = new VarRef(roomId, key),
+                });
+            }
         }
 
         // ------------------------------------------------------------------ checks (section 4)
@@ -652,6 +748,29 @@ namespace InventaSketch.Modules.BuildingServices
                 return sum > source * (1 + Rel);
             })
         { Source = "S29" };
+
+        /// <summary>
+        /// heat.roomload: the heating surfaces (radiators, underfloor loops) standing in the room give less than the room's
+        /// heating load estimate Φ_HL. Judged only when the output of every heating surface in the room is known [S30].
+        /// </summary>
+        private static ValueCheck RoomLoad() => new(
+            "heat.roomload", CheckSeverity.Hint,
+            T("The heating surfaces in this room give less heat than the room's heating load estimate. Check the outputs.",
+              "Die Heizflächen in diesem Raum geben weniger Wärme ab als der Schätzwert der Heizlast des Raums. Leistungen prüfen."),
+            "ΣΦ_room < Φ_HL",
+            c =>
+            {
+                if (c["PhiHL"] is not double load || !(load > 0) || ContainingRoom(c.Context.Doc, c.Object) is not { } room) return false;
+                var sum = 0.0;
+                foreach (var x in c.Context.Doc.Objects.Values)
+                {
+                    if (!Consumers.Contains(x.Type) || ContainingRoom(c.Context.Doc, x) != room) continue;
+                    if (c.Table.Get(x.Id, "Phi")?.Value is not double phi) return false;
+                    sum += phi;
+                }
+                return sum < load * (1 - Rel);
+            })
+        { Source = "S30" };
 
         /// <summary>Elements joined to <paramref name="id"/> by heating pipes (through every element on the way).</summary>
         internal static IReadOnlyCollection<string> HeatingCircuit(SketchDocument doc, string id)

@@ -104,6 +104,31 @@ namespace InventaSketch.Core
         public IReadOnlyList<Unit> Units => _units;
         public Unit DefaultUnit => _units[0];
 
+        /// <summary>
+        /// The labels of a text-valued kind (<see cref="Quantities.Text"/>): the value is the index of a label, shown as the
+        /// label and never used in arithmetic. Null for physical quantities.
+        /// </summary>
+        public IReadOnlyList<I18nText>? Labels { get; internal set; }
+
+        /// <summary>True for a text-valued kind (a class such as the Grashof class of a four-bar).</summary>
+        public bool IsText => Labels is not null;
+
+        /// <summary>The label of a value of a text-valued kind (an index), or null (not text-valued, not an index in range).</summary>
+        public I18nText? LabelOf(double value)
+        {
+            if (Labels is null || double.IsNaN(value) || double.IsInfinity(value)) return null;
+            var i = Math.Round(value);
+            return Math.Abs(value - i) < 1e-9 && i >= 0 && i < Labels.Count ? Labels[(int)i] : null;
+        }
+
+        /// <summary>The value (index) of a label of a text-valued kind, or −1.</summary>
+        public int IndexOf(I18nText label)
+        {
+            if (Labels is null) return -1;
+            for (var i = 0; i < Labels.Count; i++) if (Labels[i].En == label.En && Labels[i].De == label.De) return i;
+            return -1;
+        }
+
         internal Unit Add(string symbol, double factor, string[]? spellings = null, double offset = 0, string? prefixes = null)
         {
             var u = new Unit(symbol, factor, offset, this, spellings ?? Array.Empty<string>(), prefixes ?? "");
@@ -339,6 +364,21 @@ namespace InventaSketch.Core
                 Energy, Torque, Speed, Acceleration, Pressure, VolumeFlow, MassFlow, Temperature, TemperatureDifference, Density,
                 SpecificHeat, HeatTransfer, Irradiance, Viscosity, Inertia, SpringRate, TorsionalRate, TemperatureCoefficient,
             });
+        }
+
+        /// <summary>
+        /// A text-valued kind (engineering-calculations.md, "Text-valued variables"): a variable of this kind holds the index of
+        /// one of <paramref name="labels"/>, is computed by a relation of its element only, and is shown as the label in
+        /// panels, cards, value labels and the calculation sheet ("Crank-rocker"). It is never entered (the parser refuses
+        /// it), never derives another value, never takes a default and never joins a net. Not listed in <see cref="All"/>
+        /// (results of the calculator are never named by it).
+        /// </summary>
+        public static QuantityKind Text(string id, I18nText name, IReadOnlyList<I18nText> labels)
+        {
+            if (labels is null || labels.Count == 0) throw new ArgumentException("A text-valued kind needs at least one label.", nameof(labels));
+            var kind = new QuantityKind(id, name, Dimension.None) { Labels = labels.ToArray() };
+            kind.Add("", 1);
+            return kind;
         }
 
         /// <summary>All kinds in preference order (the first kind with a dimension names calculation results).</summary>

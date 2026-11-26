@@ -208,7 +208,7 @@ als Vorgaben; Luft: ρ·*c*_p = 0,34 W·h/(m³·K). Kartengrößen stehen vorn. 
 |---|---|---|
 | Heizkessel | Φ (`heatOutput`), θ_VL (`flowTemp`), θ_RL (`returnTemp`), *V̇* (`flowRate`, l/h); Ingenieur ρ (`density`), *c* (`specificHeat`) | Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
 | Wärmepumpe (Außeneinheit) | Φ, *P*_el (`powerEl`), COP (`cop`), θ_VL; Panel θ_Q (`sourceTemp`), θ_RL, *V̇*; Ingenieur ρ, *c* | Φ = COP·*P*_el [S32]; Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL) [S29] |
-| Heizkörper | Φ, Φ₅₀ (`phi50`), θ_VL, θ_RL; Panel *V̇*, θ_i (`roomTemp`, Vorgabe 20 °C), *n* (`exponent`, Vorgabe 1,3), Δθ_ln (`excessTemp`); Ingenieur ρ, *c* | Δθ_ln = (θ_VL − θ_RL)/ln((θ_VL − θ_i)/(θ_RL − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (Kennlinie nach EN 442-2 [S31]); Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); Betriebspunkt ρ·*c*·*V̇*·(θ_VL − θ_RL) = Φ₅₀·(Δθ_ln/50 K)^*n*, numerisch nach θ_RL gelöst [S31] |
+| Heizkörper | Φ, Φ₅₀ (`phi50`), θ_VL, θ_RL; Panel *V̇*, θ_i (`roomTemp`, Vorgabe 20 °C), *n* (`exponent`, Vorgabe 1,3), Δθ_ln (`excessTemp`), Φ_HL (`roomHeatLoad`, aus dem Raum); Ingenieur ρ, *c* | Δθ_ln = (θ_VL − θ_RL)/ln((θ_VL − θ_i)/(θ_RL − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (Kennlinie nach EN 442-2 [S31]); Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); Betriebspunkt ρ·*c*·*V̇*·(θ_VL − θ_RL) = Φ₅₀·(Δθ_ln/50 K)^*n*, numerisch nach θ_RL gelöst [S31] |
 | Fußbodenheizung (Heizkreis) | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; Panel θ_VL, θ_RL, *s* (`spacing`), *L* (`loopLength`); Ingenieur ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_VL − θ_RL); *L* ≈ *A*/*s* [S30] |
 | Umwälzpumpe | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); Panel *P*_hyd (`powerHyd`); Ingenieur ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
 | Mischventil (3-Wege) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); Panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
@@ -223,7 +223,14 @@ als Vorgaben; Luft: ρ·*c*_p = 0,34 W·h/(m³·K). Kartengrößen stehen vorn. 
 | Geräteanschlussdose (elektrischer Verbraucher) | *P* (`power`), *I* (`current`, je Außenleiter); Panel *U* (`voltage`, Außenleiter–Neutralleiter, Vorgabe 230 V), cos φ (`powerFactor`, Vorgabe 1) | einphasig *I* = *P*/(*U*·cos φ); mit `phase` dreiphasig *I* = *P*/(3·*U*·cos φ) [S7] |
 
 Die Luftwechselzahl *n* ist eine reine Zahl je Stunde („1“ für 1 h⁻¹): Core hat noch keine Einheit h⁻¹. Die Raumwerte
-sitzen am Luftdurchlass, der den Raum versorgt; eine Verknüpfung mit einem Architekturraum (Fläche, Höhe) ist offen.
+sitzen am Luftdurchlass, der den Raum versorgt.
+
+**Raumwerte über Enthaltensein** (seit 26.11.2026). Ein Luftdurchlass oder Heizkörper, dessen Mitte in einem Raum der
+Architektur (`arch.room`) auf derselben Seite liegt, übernimmt die Werte des Raums über die Verknüpfung `bs.room.link`
+(„Aus dem Raum übernommen“; bei verschachtelten Räumen der kleinste): der Luftdurchlass *A*, *h* und *V*, sodass *n*
+allein *V̇* = *n*·*V* ergibt; der Heizkörper die Heizlast-Schätzung Φ_HL des Raums (Panel, `roomHeatLoad`; am Raum
+Φ_HL = *q*·*A*). Eine Leitung ist nicht nötig; der Raum wird über seine Typ-Id gefunden (das Modul referenziert die
+Architektur nicht). Ein eingegebener Wert, der dem Raum widerspricht, ist wie überall ein Widerspruch.
 
 **Werte über Anschlüsse.** Rohre und Luftleitungen verbinden Anschlüsse zu Netzen. Der Volumenstrom wird auf einem
 unverzweigten Strang weitergegeben; an einer Verzweigung erhält der Summenanschluss die Summe der Teile: Vor- und
@@ -236,7 +243,10 @@ beides weiter; Umwälzpumpen, Wärmemengen- und Wasserzähler die Temperatur, ih
 tragen einen eigenen Volumenstrom, sodass ein Zähler den Volumenstrom seines Strangs zeigt; Lüftungsklappen,
 Brandschutzklappen und Schalldämpfer geben den Luftvolumenstrom weiter. Der Pufferspeicher entkoppelt seine Kreise
 (keine Werte an seinen Anschlüssen).
-Wärmeverluste der Rohre werden nicht abgebildet; Mischung an einer Zusammenführung rechnet nur das Mischventil.
+Wärmeverluste der Rohre werden nicht abgebildet; Mischung an einer Zusammenführung rechnet nur das Mischventil. An einem
+Anschluss eines Elements eines anderen Moduls (ein Wärmeanschluss der Energietechnik nimmt Vor- und Rücklauf) bleiben
+Rohre verschiedener Medien getrennte Netze; nur der Heizungsvorlauf übernimmt die Werte dieses Anschlusses
+(engineering-calculations.md Abschnitt 6.1).
 
 Beispiele (Abnahmekriterien): ein Heizkessel mit 55 °C speist über ein Rohr mit 50 l/h einen Heizkörper (Φ₅₀ = 1000 W,
 *n* = 1,3, Raum 20 °C): die Rücklauftemperatur ergibt sich aus dem Betriebspunkt (θ_RL ≈ 46,0 °C, Φ ≈ 521 W), Rücklaufrohr
@@ -251,6 +261,7 @@ Luftleitung und am Zuluftstutzen des Geräts; eine Leitung mit 80 mm hat dann 2,
 | `air.velocity` | Luftgeschwindigkeit außerhalb 2–4 m/s (Wohnbau, Lehrbuch) | Hinweis | [S30] |
 | `heat.cop.carnot` | Leistungszahl der Wärmepumpe > *T*_VL/(*T*_VL − *T*_Q) in Kelvin (unmöglich) | Warnung | [S29] |
 | `heat.balance` | eingetragene Erzeugerleistung unter der Summe Φ der Heizkörper und Fußbodenheizkreise, die über Heizungsrohre mit ihm verbunden sind | Hinweis | [S29] |
+| `heat.roomload` | die Heizkörper und Fußbodenheizkreise in einem Raum geben weniger ab als die Heizlast-Schätzung Φ_HL des Raums (nur beurteilt, wenn alle ihre Leistungen bekannt sind) | Hinweis | [S30] |
 
 ## Hinweise für Hosts
 

@@ -470,8 +470,9 @@ namespace InventaSketch.Modules.Architecture
     /// <summary>
     /// Room: polygon point object with name and area (computed from the points and the plan scale). Element values: floor
     /// area <c>A</c> (m², from the outline at the plan scale, a marking relation of the room itself), room height <c>h</c>
-    /// (m, optional parameter, default 2.5 m) and volume <c>V = A·h</c> (m³). The keys and quantities match the building
-    /// services' room values (air terminal), so a cross-module join can pass them on later.
+    /// (m, optional parameter, default 2.5 m), volume <c>V = A·h</c> (m³) and an optional heating load estimate
+    /// <c>Φ_HL = q·A</c> (W, from a specific heating load q in W/m²). Building services elements placed inside the room take
+    /// these values by containment (the air terminal A, h and V, the radiator Φ_HL; BsValues), keys and quantities match.
     /// </summary>
     internal sealed class RoomType : PointType, IValueType, IValueLinks
     {
@@ -502,6 +503,8 @@ namespace InventaSketch.Modules.Architecture
             // No default on purpose: unset, the value default h = 2.5 m applies (and gives way to an entered volume).
             new ParamDef(HeightParam, new I18nText("Room height (default 2.5 m)", "Raumhöhe (Vorgabe 2,5 m)"), ParamKind.Number) { Min = 0.5, Max = 100, Unit = "m", Step = 0.05 },
             new ParamDef(VolumeParam, new I18nText("Room volume", "Raumvolumen"), ParamKind.Text) { Unit = "m³", Advanced = true },
+            new ParamDef(HeatLoadDensityParam, new I18nText("Specific heating load (W/m²)", "Spezifische Heizlast (W/m²)"), ParamKind.Text) { Unit = "W/m²", Advanced = true },
+            new ParamDef(HeatLoadParam, new I18nText("Heating load", "Heizlast"), ParamKind.Text) { Unit = "W", Advanced = true },
             ValueLabels.ShowValues,
         };
 
@@ -519,7 +522,13 @@ namespace InventaSketch.Modules.Architecture
             new("A", T("Floor area", "Grundfläche"), T("A", "A"), Quantities.Area) { Unit = "m²", Param = "area", Min = 1e-4, Max = 1e7 },
             new("h", T("Room height", "Raumhöhe"), T("h", "h"), Quantities.Length) { Unit = "m", Param = HeightParam, Default = DefaultHeight, Min = 0.1, Max = 1000 },
             new("V", T("Room volume", "Raumvolumen"), T("V", "V"), Quantities.Volume) { Unit = "m³", Param = VolumeParam, Min = 1e-4, Max = 1e10 },
+            new("PhiHL", T("Heating load (estimate)", "Heizlast (Schätzwert)"), T("Φ_HL", "Φ_HL"), Quantities.HeatFlow) { Unit = "W", Param = HeatLoadParam, Min = 0, Max = 1e9 },
+            new("q", T("Specific heating load per floor area", "Spezifische Heizlast je Grundfläche"), T("q", "q"), Quantities.Irradiance)
+                { Unit = "W/m²", Param = HeatLoadDensityParam, Relevance = VarRelevance.Panel, Min = 0, Max = 1e4 },
         };
+
+        public const string HeatLoadParam = "heatLoad";
+        public const string HeatLoadDensityParam = "heatLoadDensity";
 
         /// <summary>Room volume V = A·h [S1].</summary>
         private static readonly Relation VolumeRelation =
@@ -528,7 +537,18 @@ namespace InventaSketch.Modules.Architecture
                 .Solve("A", "{V}/{h}", v => v("V") / v("h"))
                 .Solve("h", "{V}/{A}", v => v("V") / v("A"));
 
-        private static readonly Relation[] Rels = { VolumeRelation };
+        /// <summary>Heating load estimate Φ_HL = q·A from a specific heating load per floor area (handbook values [S30]).</summary>
+        private static readonly Relation HeatLoadRelation =
+            new Relation("arch.room.heatload", T("Heating load from the floor area", "Heizlast aus der Grundfläche"), "{PhiHL} = {q}·{A}", "PhiHL", "q", "A")
+            {
+                Source = "S30",
+                Validity = T("rough estimate for sizing; not a heating load calculation to EN 12831",
+                             "grobe Schätzung zur Auslegung; keine Heizlastberechnung nach EN 12831"),
+            }
+                .Solve("PhiHL", "{q}·{A}", v => v("q") * v("A"))
+                .Solve("q", "{PhiHL}/{A}", v => v("PhiHL") / v("A"));
+
+        private static readonly Relation[] Rels = { VolumeRelation, HeatLoadRelation };
 
         private static readonly I18nText OutlineName = T("Floor area from the outline at the plan scale", "Grundfläche aus dem Umriss im Planmaßstab");
 

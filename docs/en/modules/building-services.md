@@ -204,7 +204,7 @@ Card variables come first. Design notes:
 |---|---|---|
 | Boiler | Φ (`heatOutput`), θ_F (`flowTemp`), θ_R (`returnTemp`), *V̇* (`flowRate`, l/h); engineer ρ (`density`), *c* (`specificHeat`) | Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
 | Heat pump (outdoor unit) | Φ, *P*_el (`powerEl`), COP (`cop`), θ_F; panel θ_Q (`sourceTemp`), θ_R, *V̇*; engineer ρ, *c* | Φ = COP·*P*_el [S32]; Φ = ρ·*c*·*V̇*·(θ_F − θ_R) [S29] |
-| Radiator | Φ, Φ₅₀ (`phi50`), θ_F, θ_R; panel *V̇*, θ_i (`roomTemp`, default 20 °C), *n* (`exponent`, default 1.3), Δθ_ln (`excessTemp`); engineer ρ, *c* | Δθ_ln = (θ_F − θ_R)/ln((θ_F − θ_i)/(θ_R − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (EN 442-2 characteristic [S31]); Φ = ρ·*c*·*V̇*·(θ_F − θ_R); operating point ρ·*c*·*V̇*·(θ_F − θ_R) = Φ₅₀·(Δθ_ln/50 K)^*n*, solved numerically for θ_R [S31] |
+| Radiator | Φ, Φ₅₀ (`phi50`), θ_F, θ_R; panel *V̇*, θ_i (`roomTemp`, default 20 °C), *n* (`exponent`, default 1.3), Δθ_ln (`excessTemp`), Φ_HL (`roomHeatLoad`, from the room); engineer ρ, *c* | Δθ_ln = (θ_F − θ_R)/ln((θ_F − θ_i)/(θ_R − θ_i)); Φ = Φ₅₀·(Δθ_ln/50 K)^*n* (EN 442-2 characteristic [S31]); Φ = ρ·*c*·*V̇*·(θ_F − θ_R); operating point ρ·*c*·*V̇*·(θ_F − θ_R) = Φ₅₀·(Δθ_ln/50 K)^*n*, solved numerically for θ_R [S31] |
 | Underfloor heating loop | Φ, *A* (`area`), *q* (`heatFlux`), *V̇*; panel θ_F, θ_R, *s* (`spacing`), *L* (`loopLength`); engineer ρ, *c* | Φ = *q*·*A*; Φ = ρ·*c*·*V̇*·(θ_F − θ_R); *L* ≈ *A*/*s* [S30] |
 | Circulator pump | *V̇*, *H* (`head`), *P*_el (`powerEl`), η (`efficiency`); panel *P*_hyd (`powerHyd`); engineer ρ | *P*_hyd = ρ·*g*·*H*·*V̇*; *P*_el = *P*_hyd/η [S28] |
 | Mixing valve (3-way) | θ_AB (`tempAB`), θ_A (`tempA`), θ_B (`tempB`), *V̇*_AB (`flowAB`); panel *V̇*_A (`flowA`), *V̇*_B (`flowB`) | *V̇*_AB = *V̇*_A + *V̇*_B [S1]; θ_AB = (*V̇*_A·θ_A + *V̇*_B·θ_B)/*V̇*_AB [S29] |
@@ -219,7 +219,14 @@ Card variables come first. Design notes:
 | Appliance outlet (electrical load) | *P* (`power`), *I* (`current`, per phase); panel *U* (`voltage`, phase to neutral, default 230 V), cos φ (`powerFactor`, default 1) | single-phase *I* = *P*/(*U*·cos φ); with `phase` three-phase *I* = *P*/(3·*U*·cos φ) [S7] |
 
 The air change rate *n* is a plain number per hour ("1" for 1 h⁻¹): Core has no h⁻¹ unit yet. The room values sit on
-the air terminal that serves the room; a link to an architecture room (area, height) is open.
+the air terminal that serves the room.
+
+**Room values by containment** (since 2026-11-26). An air terminal or radiator whose centre lies inside an architecture
+room (`arch.room`) on the same page takes the room's values through the link `bs.room.link` ("Taken from the room";
+the smallest room when rooms are nested): the air terminal its *A*, *h* and *V*, so *n* alone gives *V̇* = *n*·*V*; the
+radiator the room's heating load estimate Φ_HL (panel, `roomHeatLoad`; the room's Φ_HL = *q*·*A*). No line is needed;
+the room is found by its type id (the module does not reference Architecture). An entered value that disagrees with the
+room is a conflict, as everywhere.
 
 **Port flows.** Pipes and ducts join ports into nets. The volume flow is passed on an unbranched run; at a branch the
 total port gets the sum of the parts: the generator's flow and return ports, the circulator's outlet, the mixer's AB port
@@ -229,7 +236,8 @@ generator's flow port, a consumer's return port, the mixer's AB port) to every i
 valves, check valves and strainers pass both; circulators, heat meters and water meters pass the temperature, and their
 inlet (part) and outlet (total) carry their own volume flow, so a meter shows the flow of its run; dampers, fire dampers
 and silencers pass the air flow. The buffer tank decouples its circuits (no values at its ports). Heat losses of pipes are not modelled; mixing at a merge is only computed in the
-mixing valve.
+mixing valve. At a port of another module's element (an energy heat port takes flow and return), pipes of different
+media stay separate nets; only the heating flow takes that port's values (engineering-calculations.md section 6.1).
 
 Examples (accept criteria): a boiler at 55 °C feeding a radiator (Φ₅₀ = 1000 W, *n* = 1.3, room 20 °C) over a pipe
 with 50 l/h: the radiator's return temperature solves the operating point (θ_R ≈ 46.0 °C, Φ ≈ 521 W), and the return
@@ -244,6 +252,7 @@ and at the unit's supply spigot; an 80 mm duct then runs at 2.76 m/s.
 | `air.velocity` | duct velocity outside 2–4 m/s (residential, textbook) | hint | [S30] |
 | `heat.cop.carnot` | heat pump COP > *T*_F/(*T*_F − *T*_Q) in kelvin (impossible) | warning | [S29] |
 | `heat.balance` | entered generator output below the sum of Φ of the radiators and floor loops joined to it by heating pipes | hint | [S29] |
+| `heat.roomload` | the radiators and floor loops standing in a room give less than the room's heating load estimate Φ_HL (judged only when all their outputs are known) | hint | [S30] |
 
 ## Host notes
 

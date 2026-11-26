@@ -79,6 +79,20 @@ Quellen.
 - **Geometrie bleibt unabhängig.** Werte verschieben oder skalieren die Zeichnung nie von selbst (Schnellskizze
   zuerst: Skalieren ändert `Size`, nie Parameter). Wo Werte eine Größe ergeben, wendet eine ausdrückliche Aktion sie an.
   Beispiele: „Wahre Größe aus Modul" (gibt es für Zahnräder), „Achsabstand aus Werten", „Kanalbreite aus Volumenstrom".
+- **Textwertige Größen** (26.11.2026). Eine Größe mit textwertiger Größenart (`Quantities.Text(id, name, labels)`,
+  `QuantityKind.IsText`) enthält den Index einer der zweisprachigen Bezeichnungen der Art, etwa die Grashof-Klasse des
+  Viergelenks (`cls`, Art `kin.grashofClass`: Kurbelschwinge, Doppelkurbel, Schwingkurbel, Doppelschwinge mit
+  umlaufender Koppel, Durchschlaggetriebe, Nicht-Grashof-Doppelschwinge). Überall, wo Werte formatiert werden
+  (`ValueFormat.Format`: `display` in Werte-Panel und Karte, Wertebeschriftung, Erklärung, Rechenblatt), erscheint die
+  Bezeichnung; die Engine-API bleibt daher unverändert: `display` ist „Kurbelschwinge", `kind` die Art-Id,
+  `number`/`value` der Index. Die Regeln halten sie aus der Rechnung heraus: Sie wird nur von einer Beziehung ihres
+  Elements berechnet (eine Beziehung mit textwertiger Größe wird nur nach dieser aufgelöst und nie geprüft), nie
+  eingegeben (der Parser lehnt sie ab; unter ihrem Schlüssel Gespeichertes wird ignoriert; Zieh-Vorschauen überspringen
+  sie), bekommt keine Vorgabe, keinen Toleranzbereich und kein Angebot „fehlender Wert" und nimmt an keinem Netz teil
+  (kein physikalischer Schlüssel hat eine Textart). Textwertige Arten stehen nicht in `Quantities.All`; der Rechner
+  benennt also kein Ergebnis danach. Host-Hinweis: Hosts sollten für eine Größe, deren `kind` keine der `units`-Arten
+  ist, weder Ziehgriff noch Eingabefeld anbieten (die COM-Karte bietet Ziehen für positive abgeleitete Werte an; die
+  Engine ignoriert ein Ziehen an der Klasse).
 
 ### 1.3 Größen, Einheiten, Genauigkeit
 
@@ -588,6 +602,7 @@ Datenblatt steht, das wir nicht übernehmen.
 | `heat.cross` | Wärmeübertrager | Temperaturkreuzung (kalter Austritt über heißem Eintritt; Gleichstrom: kalter Austritt über heißem Austritt) | Warnung (unmöglich) | [S29] |
 | `heat.cop.carnot` | Wärmepumpe | COP > COP_Carnot | Warnung (unmöglich) | [S29] |
 | `heat.balance` | Wärmeerzeuger ↔ Verbraucher | Σ*Φ*_Verbraucher > *Φ*_Erzeuger | Hinweis | [S29] |
+| `heat.roomload` | Heizkörper ↔ Raum | Σ*Φ* der Heizflächen im Raum < *Φ*_HL des Raums (Schätzung *q*·*A*) | Hinweis | [S30] |
 | `pv.voc.max` | Strang ↔ Wechselrichter | *N*_s·*U*_oc(*θ*_min) > *U*_DC,max | Warnung | [S33] (IEC 62548-1) |
 | `pv.mpp.min` | Strang ↔ Wechselrichter | *N*_s·*U*_mpp(*θ*_max) < MPPT-Minimum | Hinweis | [S33, S34] |
 | `pv.isc.max` | Feld ↔ Wechselrichtereingang | *N*_p·*I*_sc > *I*_DC,max | Warnung | [S33] |
@@ -684,6 +699,33 @@ ein Energiekabel eine Lampe der Elektrotechnik (U = U_mpp,S, P = Stringleistung;
 eine Prozessleitung gibt V̇ und θ an einen Heizkörper, ein Rohr der Gebäudetechnik an einer Prozesspumpe übernimmt deren
 V̇, und ein Sammelschienennetz teilt U, aber nicht die summierte P. Die Antriebswelle einer Maschine und eine mechanische
 Welle waren bereits über `Coupling` verknüpft (Maschinen `EMachineOnAShaftDrivesAGearStage`).
+
+**Mehrere Medien an einem fremden Anschluss (Nacharbeit, 26.11.2026).** Ein Anschluss eines Elements eines anderen Moduls
+ist kein Netzknoten, der Leitungen verschiedener Medien verbindet. Jedes Modul nennt das Medium seiner Leitungen
+(`NetSpec.Medium`; ohne Angabe: die Typ-Id der Leitung); an einem fremden Anschluss treffen sich die Leitungen eines
+Mediums (eine Verzweigung), Leitungen verschiedener Medien bleiben getrennte Netze. Erreichen mehrere Medien denselben
+fremden Anschluss, wird nur das Netz des einen **führenden** Mediums (`NetSpec.Leads`) mit den Werten dieses Anschlusses
+verknüpft; ohne genau ein führendes Medium keines. Anschlüsse, die die Spec selbst beschreibt (eine Größe oder ein
+Durchgang der Klasse dort), sind wie bisher Mitglieder. Gebäudetechnik: Rohre nach ihrem Medium (`heating.flow`,
+`heating.return`, Wasserarten), Kanäle nach ihrer Luftart; der Heizungsvorlauf führt, denn die Wärmeanschlüsse der
+Energietechnik (ein Anschluss für Vor- und Rücklauf) geben die Vorlauftemperatur und den Volumenstrom. Eine
+Wärmepumpe der Energietechnik mit Vorlauf- und Rücklaufrohr der Gebäudetechnik am Wärmeanschluss gibt also *V̇* und
+*θ*_VL an die Vorlaufseite des Heizkörpers, seine Rücklauftemperatur bleibt seine eigene (vorher bildeten beide Rohre
+ein Netz und *θ*_RL wurde aus *θ*_VL verteilt). Tests: `tests/InventaSketch.Core.Tests/ForeignPortMediaTests.cs`,
+`tests/InventaSketch.Engine.Tests/ValueNetFollowUpTests.cs`.
+
+**Raumwerte über Enthaltensein (Nacharbeit, 26.11.2026).** Elemente der Gebäudetechnik übernehmen die Werte des Raums
+der Architektur (`arch.room`: *A*, *h*, *V* und die optionale Heizlast-Schätzung *Φ*_HL = *q*·*A*), in dem sie stehen.
+Kein neues Core-Konzept: die eigenen `IValueLinks` der Gebäudetechnik-Typen finden den Raum, dessen Umriss die Mitte des
+Elements auf derselben Seite enthält (bei verschachtelten Räumen den kleinsten; Räume werden über die Typ-Id gefunden,
+Module referenzieren einander nicht), und verknüpfen die in der Spec des Elements genannten Größen über die Gleichung
+`bs.room.link` („aus dem Raum übernommen"), wenn der Raum eine Größe mit gleichem Schlüssel und gleicher Größenart hat;
+der Raum kommt dann in den Löserumfang. Der Luftdurchlass übernimmt *A*, *h* und *V*, seine Luftwechselzahl *n* ergibt
+also *V̇* = *n*·*V*, ohne den Raum erneut einzugeben; der Heizkörper übernimmt *Φ*_HL, und der Hinweis `heat.roomload`
+meldet einen Raum, dessen Heizflächen (Heizkörper, Fußbodenheizkreise) weniger als *Φ*_HL abgeben, wenn alle ihre
+Leistungen bekannt sind. *Φ*_HL = *q*·*A* (*q* in W/m², optional am Raum) ist eine grobe Auslegungsschätzung mit
+Handbuchwerten [S30], keine Heizlastberechnung nach EN 12831. Wird der Raum allein gelöst, kommen die Elemente darin
+nicht mit (die Verknüpfung zeigt vom Element zum Raum).
 
 **Gleichgesetzte Medien** (`PortMedia.Equivalents`, nur von `PortMedia.Fits` genutzt; `Covers` bleibt ein Präfixtest):
 `thermal.heat` ≡ `heating` (Vor- und Rücklauf passen weiterhin nie zueinander, Kälte nie zu Heizung),
@@ -1436,7 +1478,7 @@ ist der Code; die Moduldokumente nennen jede Größe, Beziehung, Verknüpfung un
   einphasig (Außenleiter gegen Neutralleiter) *I* = *P*/((*U*/√3)·cos φ). Verteiler (Sammelschiene, Zähler) setzen eine
   symmetrische Drehstromlast voraus.
 - **Prüfungen** laufen in `ValueSolver.Checks`: `fluid.cyl.force`, `fluid.velocity`, `fluid.pressure.relief` [S25, S26];
-  `heat.cross` [S29]; `heat.velocity`, `air.velocity` [S30], `heat.cop.carnot`, `heat.balance` [S29]; `pv.voc.max`,
+  `heat.cross` [S29]; `heat.velocity`, `air.velocity` [S30], `heat.cop.carnot`, `heat.balance` [S29], `heat.roomload` [S30]; `pv.voc.max`,
   `pv.mpp.min`, `pv.isc.max` [S33], `pv.dcac` [S34], `bat.crate` [S35]. **`wind.betz`** [S36] (*c*_p über 16/27) ist neu:
   Abschnitt 4 nennt sie nicht, aber die Betz-Grenze aus Abschnitt 2.10 macht höhere Werte unmöglich. Die
   Lehrbuch-Geschwindigkeitsbereiche sind die Vorgaben aus Abschnitt 4, bis es Nutzergrenzen gibt (Calc 6). `fluid.velocity`

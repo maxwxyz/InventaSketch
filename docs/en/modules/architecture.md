@@ -136,8 +136,15 @@ height or a volume is entered; an entered volume (text parameter `volume`, e.g. 
 entered area that contradicts the outline is reported as a conflict. `showValues` draws the values label below the
 room. Example: a 40 x 30 mm outline at 1:100 is 4 m x 3 m, A = 12 m², with h = 2.5 m V = 30 m³.
 
-The keys and quantities (`A` area, `h` length, `V` volume) are those of the building services' room values (air
-terminal), so a later cross-module join (`NetKeys`) can pass them on; Core was not changed for this.
+Optional heating load estimate (since 2026-11-26): `Φ_HL` = q·A (W, card value) from the specific heating load `q`
+(W/m², panel; text parameters `heatLoadDensity` and `heatLoad`, both advanced), relation `arch.room.heatload` [S30].
+It is a rough sizing estimate from handbook values, not a heating load calculation to EN 12831; an entered Φ_HL gives q.
+
+The keys and quantities (`A` area, `h` length, `V` volume, `PhiHL` heat flow) are those of the building services' room
+values: building services elements placed inside the room (centre inside the outline on the same page, the smallest
+room when nested) take them by containment, the air terminal A, h and V, the radiator Φ_HL (BsValues, link
+`bs.room.link`; engineering-calculations.md section 6.1). The room needs no line for this and knows nothing of the
+building services module.
 
 ## Context actions
 

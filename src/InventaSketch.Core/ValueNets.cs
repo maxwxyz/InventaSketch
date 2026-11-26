@@ -60,6 +60,19 @@ namespace InventaSketch.Core
         /// unset = the shared vocabulary <see cref="NetKeys.ForClass"/>.
         /// </summary>
         public Func<string, string?>? Keys { get; init; }
+        /// <summary>
+        /// The medium of a line of this module ("heating.flow", "heating.return", "air.supply"). Lines of different media
+        /// that meet only at a port of another module's element are not joined into one net there (a flow and a return pipe
+        /// on the single heat port of an energy heat pump stay two nets). Unset = the line's type id.
+        /// </summary>
+        public Func<SketchObject, string>? Medium { get; init; }
+        /// <summary>
+        /// Where lines of several media of this module meet at one port of another module's element: the medium whose net
+        /// takes that port's values in the join across modules (true for exactly one of them, e.g. the heating flow at an
+        /// energy heat port, which gives the flow temperature). Unset, or not exactly one leading medium at the port: none
+        /// of these nets is joined there.
+        /// </summary>
+        public Func<string, bool>? Leads { get; init; }
 
         /// <summary>The nets built for this spec, per document (documents are immutable).</summary>
         internal ConditionalWeakTable<SketchDocument, ValueNets> Cache { get; } = new();
@@ -134,6 +147,24 @@ namespace InventaSketch.Core
 
         private static string PortNode(string obj, string port) => "P\u0001" + obj + "\u0001" + port;
         private static string LineNode(string obj) => "L\u0001" + obj;
+        /// <summary>A port of another module's element as reached by the lines of one medium (one node per medium).</summary>
+        private static string ForeignPortNode(string obj, string port, string medium) => PortNode(obj, port) + "\u0001" + medium;
+
+        /// <summary>True if the spec gives the element a variable or a passage at the port (a member then, not a junction).</summary>
+        private static bool Describes(NetSpec spec, SketchObject o, string port)
+            => spec.Classes.Any(c => spec.PortVars(o, port).Any(pv => pv.Class == c) || spec.Through(o, c).Any(g => g.Contains(port)));
+
+        /// <summary>
+        /// True if the net of a foreign port node takes part in the join across modules: always where lines of one medium of
+        /// this module reach the port, else only the net of the single leading medium (<see cref="NetSpec.Leads"/>).
+        /// </summary>
+        private static bool JoinsAt(NetSpec spec, Dictionary<string, List<string>> foreignMedia, string[] parts)
+        {
+            if (parts.Length < 4 || !foreignMedia.TryGetValue(parts[1] + "\u0001" + parts[2], out var media) || media.Count < 2) return true;
+            if (spec.Leads is not { } leads) return false;
+            var leading = media.Where(leads).ToList();
+            return leading.Count == 1 && leading[0] == parts[3];
+        }
 
         private ValueNets(SketchDocument doc, NetSpec spec)
         {
@@ -146,6 +177,8 @@ namespace InventaSketch.Core
             var known = new HashSet<string>(StringComparer.Ordinal);
             var degree = new Dictionary<string, int>(StringComparer.Ordinal);
             var tees = new HashSet<string>(StringComparer.Ordinal);
+            // Media of this module's lines per port of a foreign element (element + "\u0001" + port), in docking order.
+            var foreignMedia = new Dictionary<string, List<string>>(StringComparer.Ordinal);
             void Node(string n) { if (known.Add(n)) nodes.Add(n); }
 
             foreach (var line in lines)
@@ -169,7 +202,18 @@ namespace InventaSketch.Core
                         continue;
                     }
                     var port = a.AnchorId is { } id && !id.StartsWith("rail", StringComparison.Ordinal) && !id.StartsWith("bar", StringComparison.Ordinal) ? id : "*";
-                    var pn = PortNode(target.Id, port);
+                    string pn;
+                    if (IsForeign(spec, target) && !Describes(spec, target, port))
+                    {
+                        // A port of another module's element joins only lines of the same medium: a flow and a return pipe
+                        // docked on one heat port are two nets, each with its own junction.
+                        var medium = spec.Medium?.Invoke(line) ?? line.Type;
+                        pn = ForeignPortNode(target.Id, port, medium);
+                        var fk = target.Id + "\u0001" + port;
+                        if (!foreignMedia.TryGetValue(fk, out var media)) foreignMedia[fk] = media = new List<string>();
+                        if (!media.Contains(medium)) media.Add(medium);
+                    }
+                    else pn = PortNode(target.Id, port);
                     Node(pn);
                     edges.Add((ln, pn));
                     degree[pn] = degree.TryGetValue(pn, out var d) ? d + 1 : 1;
@@ -266,7 +310,8 @@ namespace InventaSketch.Core
                             member = true;
                             if (!elementMembers.Any(m => m.Obj == o.Id && m.Key == pv.Key)) elementMembers.Add((o.Id, pv.Key, pv.Role));
                         }
-                        if (!member && IsForeign(spec, o)) foreignPorts.Add((o.Id, parts[2]));
+                        if (!member && IsForeign(spec, o) && JoinsAt(spec, foreignMedia, parts) && !foreignPorts.Contains((o.Id, parts[2])))
+                            foreignPorts.Add((o.Id, parts[2]));
                     }
                     portsOf[c] = portList;
                     elementMembers.Sort((x, y) => string.CompareOrdinal(x.Obj + "\u0001" + x.Key, y.Obj + "\u0001" + y.Key));
