@@ -439,3 +439,17 @@ export interface PreflightResult {
   disclaimer: string;
   findings: PreflightFinding[];
 }
+
+/** A reference numeral of another slide (engine `numeralsOf`): numeral, part name and part kind (parts-list identity). */
+export interface NumeralInfo {
+  numeral: string;
+  label?: string | null;
+  /** The kind of part it points at; null for a numeral without a part or a reference list entry. */
+  kind?: string | null;
+}
+
+/** The numerals of another slide (`page`: its 1-based number), passed as `elsewhere`. */
+export interface OtherPageNumerals {
+  page: string;
+  numerals: NumeralInfo[];
+}

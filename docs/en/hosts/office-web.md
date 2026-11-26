@@ -137,8 +137,16 @@ the units on the slide.
   selection needed; `uxlogic.pageMenus`; the engine gives the pictogram as `choiceBarIcon`). On a page without parts, or
   once every part is numbered, there is no button (context-only). The button opens the menu "Number all parts" with
   *10, 20, 30 …* and *1, 2, 3 …*; a row runs `applyPageAction` (one undo step, live sync redraws the slide). A selected
-  numeral offers the same menu. Numbering covers the editor's page; the session does not know the numerals of other
-  slides.
+  numeral offers the same menu.
+- **Numerals across slides** (2026-11-26, round 5): before "Number all parts" (the top bar menu and a numeral's menu,
+  `numerals.isNumberingAction`) and before the compatibility check the add-in reads the units of every slide
+  (`readSlideUnits`), lets the engine summarise the other slides' numerals in one call (`numeralsOf` over their compact
+  models; `office/numerals.ts` `slideNumerals`) and passes them as `elsewhere` to `applyPageAction` / `applyAction` /
+  `preflight` (with `pageName: "slide"`). Numbering then continues after the other slides' numerals and identical parts
+  keep their numeral and name; the check reports a numeral naming another part on another slide and the same part with
+  unrelated numerals ("slide 3"). "All slides" checks every slide against the others. Needs PowerPointApi 1.3 (tags)
+  and 1.5 (selected slide); without them, or in the COM add-in's sidebar (no slide access of its own), the editor's page
+  counts alone. Unit-tested; not yet run in the browser.
 - **Option pictograms of the travel modes and phases** (round 4): `travel-walk`, `travel-bike`, `travel-car`,
   `travel-transit`, `travel-none`, `phase-l1`, `phase-l2`, `phase-l3`, `phase-3`, `phase-circuit` are in the table
   shared with the COM add-in (`src/ui/icons.ts`, `test/icons.test.ts` compares both).

@@ -829,6 +829,11 @@ def apply_action(engine, controller, action_id, text=None, label=None):
     params = {"action": action_id}
     if text is not None:
         params["input"] = text
+    if drawing.is_numbering_action(action_id):
+        # A numeral's "Number all parts ▸": like the page command, with the numerals of the other pages/sheets.
+        others = page_numerals(engine, controller)
+        if others:
+            params["elsewhere"] = others
     return run_op(engine, controller, "applyAction", params, force_selected=True,
                   title=i18n.text("undoAction") % (label or action_id))
 
@@ -1102,8 +1107,82 @@ def apply_page_action(engine, controller, action_id, label=None):
     with PageSession(engine, controller, shapes=[]) as ps:
         if not ps.units:
             raise HostError(i18n.text("noUnitsOnPage"))
-        state = ps.call("applyPageAction", {"action": action_id})
+        params = {"action": action_id}
+        # The numerals of the other pages/sheets: numbering continues after them, identical parts keep their numeral.
+        others = page_numerals(engine, controller)
+        if others:
+            params["elsewhere"] = others
+        state = ps.call("applyPageAction", params)
         return ps.commit(label or action_id, state, title=i18n.text("undoAction") % (label or action_id))
+
+
+_NUMERALS = {}
+
+
+def payload_numerals(engine, payloads):
+    """The numerals of each compact model (engine ``numeralsOf``: [{numeral, label, kind}], cached per model)."""
+    keys = [hashlib.sha1(p.encode("utf-8")).hexdigest() for p in payloads]
+    missing = [(k, p) for k, p in zip(keys, payloads) if k not in _NUMERALS]
+    if missing:
+        result = engine.call("numeralsOf", {"json": json.dumps([p for _, p in missing])}) or []
+        if len(_NUMERALS) + len(missing) > _DESIGNATIONS_MAX:
+            _NUMERALS.clear()
+        for (k, _), found in zip(missing, result):
+            _NUMERALS[k] = list(found or [])
+    return [_NUMERALS.get(k, []) for k in keys]
+
+
+def _page_payloads(doc, page):
+    """The compact models of the units on ``page``."""
+    payloads = []
+    for shape in page_unit_shapes(page):
+        try:
+            unit = render.read_unit(doc, shape)
+        except Exception:
+            unit = None
+        if unit is not None:
+            payloads.append(unit["payload"])
+    return payloads
+
+
+def _labelled_pages(doc):
+    """[(label, draw page)] of the document: Impress/Draw pages by number, Calc sheets by name; [] otherwise."""
+    kind = doc_kind(doc)
+    if kind in ("impress", "draw"):
+        pages = doc.getDrawPages()
+        return [(str(i + 1), pages.getByIndex(i)) for i in range(pages.getCount())]
+    if kind == "calc":
+        sheets = doc.getSheets()
+        return [(sheets.getByIndex(i).getName(), sheets.getByIndex(i).getDrawPage()) for i in range(sheets.getCount())]
+    return []
+
+
+def all_page_numerals(engine, doc):
+    """[(label, [numeral lists of its units])] of every page/sheet with units (see ``_labelled_pages``)."""
+    listed = []
+    for label, page in _labelled_pages(doc):
+        payloads = _page_payloads(doc, page)
+        if payloads:
+            listed.append((label, payload_numerals(engine, payloads)))
+    return listed
+
+
+def page_numerals(engine, controller):
+    """The numerals of the other pages (Impress/Draw) or sheets (Calc) of the document, as the engine's ``elsewhere``;
+    [] when there are none or they cannot be read (the page then counts alone)."""
+    try:
+        doc = controller.getModel()
+        kind = doc_kind(doc)
+        if kind in ("impress", "draw"):
+            current = str(controller.getCurrentPage().Number)
+        elif kind == "calc":
+            current = controller.getActiveSheet().getName()
+        else:
+            return []
+        return drawing.numerals_elsewhere(all_page_numerals(engine, doc), current)
+    except Exception as ex:
+        log("numerals of other pages skipped: %s" % ex)
+        return []
 
 
 _DESIGNATIONS = {}
@@ -1275,13 +1354,23 @@ def patent_check(engine, controller, profile):
         raise HostError(i18n.text("pcNotHere"))
     pages = doc.getDrawPages()
     findings, disclaimer, checked = [], None, 0
+    # The numerals of every page, so each page is also compared with the others (one numeral per part throughout).
+    try:
+        numerals = all_page_numerals(engine, doc)
+    except Exception as ex:
+        log("numerals of the pages skipped: %s" % ex)
+        numerals = []
     for index in range(pages.getCount()):
         page = pages.getByIndex(index)
         if not page_unit_shapes(page):
             continue
         checked += 1
         with PageSession(engine, controller, shapes=[], page=page) as ps:
-            result = ps.call("preflight", {"text": profile, "lang": i18n.language()})
+            params = {"text": profile, "lang": i18n.language()}
+            others = drawing.numerals_elsewhere(numerals, str(index + 1))
+            if others:
+                params["elsewhere"], params["pageName"] = others, drawing.page_word(doc_kind(doc))
+            result = ps.call("preflight", params)
             disclaimer = result.get("disclaimer") or disclaimer
             shapes = {e["id"]: e["shape"] for e in ps.units}
             units = ps.unit_map()

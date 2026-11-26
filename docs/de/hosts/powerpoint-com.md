@@ -223,8 +223,18 @@
   nur „Auf dieser Folie gibt es keine Teile“ ohne Teile. Die Einheiten der Folie bilden eine Seite; die Bezugszeichen der
   anderen Folien zählen als belegt, neue Bezugszeichen schließen also an. Teile, die ein Bezugszeichen erhalten, werden
   in ihren Einheiten neu gezeichnet (die Stückliste folgt), jedes neue Bezugszeichen wird eine eigene Einheit (es folgt
-  seinem Teil wie ein von Hand gesetztes), ein Rückgängig-Schritt. Gleiche Teile teilen sich ein Bezugszeichen; dass
-  gleiche Teile auf anderen Folien deren Bezugszeichen übernehmen, gibt es noch nicht.
+  seinem Teil wie ein von Hand gesetztes), ein Rückgängig-Schritt. Gleiche Teile teilen sich ein Bezugszeichen.
+- **Bezugszeichen über Folien hinweg** (26.11.2026, Runde 5): `SlideNumbering.OtherSlides` fasst die Bezugszeichen aller
+  anderen Folien zusammen (`OtherPage.Of`: Bezugszeichen, Teilename, Teileart) und übergibt sie dem Seitenbefehl der
+  Engine; ein Teil, das einem auf einer anderen Folie nummerierten gleicht (gleicher Typ, Text und Parameter, Bezeichnung
+  eingeschlossen), übernimmt dessen Bezugszeichen und Namen; in die Einheiten dieser Folie kommen nur die Einträge der hier
+  vergebenen Bezugszeichen. Das eigene Menü *Alle Teile nummerieren ▸* eines Bezugszeichens führt denselben Folienbefehl
+  aus (`act:patent.numerals.auto=…` wird an `SlideNumbering.Run` geleitet). Die Kompatibilitätsprüfung
+  (`PatentCheck.Run`) übergibt jeder Folie die Bezugszeichen der anderen (`PreflightOptions.Elsewhere`, „Folie n“): ein
+  Bezugszeichen, das auf einer anderen Folie ein anderes Teil bezeichnet (`PF-REF-DUPLICATE`), und dasselbe Teil mit
+  unabhängigen Bezugszeichen auf zwei Folien (`PF-REF-LABEL`) werden gemeldet. Die Prüfung übernimmt jetzt auch die
+  Bezugszeichenlisten der Einheiten in das Folienmodell (vorher prüfte sie die Objekte ohne ihre Listeneinträge).
+  Unit-getestet; in PowerPoint noch nicht ausgeführt.
 - **Options-Piktogramme** (Runde 4): Verkehrsmittel der Route und der Entfernungsangabe (`travel-walk`, `travel-bike`,
   `travel-car`, `travel-transit`, `travel-none`) und Phasen der Schaltgeräte und Raumgeräte (`phase-l1`, `phase-l2`,
   `phase-l3`, `phase-3`, `phase-circuit`) in `IconPainter.SharedPaths`; diese Auswahlen erscheinen damit als Klappliste

@@ -11,17 +11,16 @@ namespace InventaSketch.AddIn
 {
     /// <summary>
     /// The engine's page commands (<see cref="PageActions"/>: "Number all parts ▸ 10, 20, 30 … / 1, 2, 3 …") on a slide,
-    /// without a selected element ("More" menu). The slide's units form one page; the numerals of the other slides count as
-    /// used, so new numerals continue after them. Parts that get a numeral are redrawn in their units, every new numeral
-    /// becomes a unit of its own (it moves on its own and follows its part, like a numeral placed by hand), one undo step.
+    /// without a selected element ("More" menu, and the same menu of a numeral). The slide's units form one page; the
+    /// numerals of the other slides are passed to the engine (<see cref="OtherPage"/>), so new numerals continue after them
+    /// and a part identical to one numbered on another slide takes over its numeral. Parts that get a numeral are redrawn in
+    /// their units, every new numeral becomes a unit of its own (it moves on its own and follows its part, like a numeral
+    /// placed by hand), one undo step.
     /// </summary>
     internal static class SlideNumbering
     {
-        /// <summary>
-        /// The slide as one page for the page commands: every unit's objects (slide size) with the units' reference lists,
-        /// plus the numerals and reference entries of the other slides of the presentation as reference entries.
-        /// </summary>
-        public static SketchDocument SlideDoc(PowerPoint.Slide slide, IReadOnlyList<SketchUnit> units, bool otherSlides = true)
+        /// <summary>The slide as one page for the page commands: every unit's objects (slide size) with the units' reference lists.</summary>
+        public static SketchDocument SlideDoc(PowerPoint.Slide slide, IReadOnlyList<SketchUnit> units)
         {
             var doc = SketchUnits.Combined(units);
             try
@@ -29,32 +28,43 @@ namespace InventaSketch.AddIn
                 var setup = ((PowerPoint.Presentation)slide.Parent).PageSetup;
                 var size = new Size2(setup.SlideWidth / Geo.PtPerMm, setup.SlideHeight / Geo.PtPerMm);
                 doc = doc with { Pages = doc.Pages.Select((p, i) => i == 0 ? p with { Size = size } : p).ToList() };
-                if (!otherSlides) return doc;
-                foreach (PowerPoint.Slide other in ((PowerPoint.Presentation)slide.Parent).Slides)
-                {
-                    if (other.SlideID == slide.SlideID) continue;
-                    var others = SketchUnits.All(other);
-                    if (others.Count == 0) continue;
-                    doc = WithUsedNumerals(doc, SketchUnits.Combined(others));
-                }
             }
             catch (Exception ex)
             {
-                // The slide alone still numbers correctly; only the continuation after other slides is lost.
-                Log.Error("Number all parts: other slides", ex);
+                Log.Error("Number all parts: slide size", ex);
             }
             return doc;
         }
 
-        /// <summary><paramref name="doc"/> with the reference entries and the numerals used in <paramref name="other"/> as reference entries.</summary>
-        internal static SketchDocument WithUsedNumerals(SketchDocument doc, SketchDocument other)
+        /// <summary>
+        /// The numerals of the other slides of the presentation with InventaSketch elements (labels: slide numbers); empty
+        /// when they cannot be read (the slide alone still numbers correctly, only the continuation is lost).
+        /// </summary>
+        public static IReadOnlyList<OtherPage> OtherSlides(PowerPoint.Slide slide)
         {
-            var refs = doc.References.ToDictionary(kv => kv.Key, kv => kv.Value);
-            foreach (var kv in other.References)
-                if (!refs.ContainsKey(kv.Key)) refs[kv.Key] = kv.Value;
-            foreach (var use in ReferenceNumerals.Uses(other))
-                if (!refs.ContainsKey(use.Numeral)) refs[use.Numeral] = new ReferenceEntry(use.Numeral, use.Label ?? "");
-            return refs.Count == doc.References.Count ? doc : doc with { References = refs };
+            var list = new List<OtherPage>();
+            try
+            {
+                foreach (PowerPoint.Slide other in ((PowerPoint.Presentation)slide.Parent).Slides)
+                {
+                    if (other.SlideID == slide.SlideID) continue;
+                    var units = SketchUnits.All(other);
+                    if (units.Count == 0) continue;
+                    if (Of(other.SlideIndex, units) is { } page) list.Add(page);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Number all parts: other slides", ex);
+            }
+            return list;
+        }
+
+        /// <summary>The numerals of slide <paramref name="slideIndex"/> (its units) as another page; null without any.</summary>
+        internal static OtherPage? Of(int slideIndex, IReadOnlyList<SketchUnit> units)
+        {
+            var page = OtherPage.Of(slideIndex.ToString(System.Globalization.CultureInfo.InvariantCulture), SketchUnits.Combined(units));
+            return page.Numerals.Count > 0 ? page : null;
         }
 
         /// <summary>The page commands of the slide (empty without parts); whether they apply depends on this slide only.</summary>
@@ -62,7 +72,7 @@ namespace InventaSketch.AddIn
         {
             var units = SketchUnits.All(slide);
             if (units.Count == 0) return Array.Empty<PageCommand>();
-            var doc = SlideDoc(slide, units, otherSlides: false);
+            var doc = SlideDoc(slide, units);
             return PageActions.For(registry, doc, doc.Pages[0].Id);
         }
 
@@ -75,7 +85,7 @@ namespace InventaSketch.AddIn
             var units = SketchUnits.All(slide);
             if (units.Count == 0) return 0;
             var doc = SlideDoc(slide, units);
-            var ran = PageActions.Run(registry, doc, doc.Pages[0].Id, actionId, lang);
+            var ran = PageActions.Run(registry, doc, doc.Pages[0].Id, actionId, lang, OtherSlides(slide));
             if (ReferenceEquals(ran, doc)) return 0;
             var (changed, added) = Split(doc, ran, units);
             if (changed.Count == 0 && added.Count == 0) return 0;

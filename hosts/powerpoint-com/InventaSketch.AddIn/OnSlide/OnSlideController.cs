@@ -2264,6 +2264,13 @@ namespace InventaSketch.AddIn.OnSlide
                 if (owner is null) return;
                 doc = Edits.Update(doc, new[] { owner.Id }, o => InsertHandles.Apply(registry, o, key, ctx));
             }
+            else if (id.StartsWith("act:", StringComparison.Ordinal) && InventaSketch.Engine.PageActions.IsPageCommandId(id.Substring(4)))
+            {
+                // "Number all parts" from a numeral's menu: the slide's page command, as in the "More" menu (every unit of the
+                // slide, continuing after the numerals of the other slides; identical parts there keep their numeral).
+                SlideNumbering.Run(_app, registry, _lang(), slide, id.Substring(4));
+                return;
+            }
             else if (id.StartsWith("act:", StringComparison.Ordinal))
             {
                 var ran = RunTypeAction(slide, unit, id.Substring(4));

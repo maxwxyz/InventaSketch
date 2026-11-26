@@ -211,8 +211,16 @@
   "Every part on this slide has a numeral" when there is nothing to do, only "No parts on this slide" without parts. The
   slide's units form one page; the numerals of the other slides count as used, so new numerals continue after them.
   Parts that get a numeral are redrawn in their units (the parts list follows), every new numeral becomes a unit of its
-  own (it follows its part like one placed by hand), one undo step. Identical parts share a numeral; identical parts on
-  other slides do not yet take over their numeral.
+  own (it follows its part like one placed by hand), one undo step. Identical parts share a numeral.
+- **Numerals across slides** (2026-11-26, round 5): `SlideNumbering.OtherSlides` summarises the numerals of every other
+  slide (`OtherPage.Of`: numeral, part name, part kind) and passes them to the engine's page command, so a part identical
+  to one numbered on another slide (same type, text and parameters, designation included) takes over its numeral and
+  name; only the entries of the numerals given out on this slide go into its units. A numeral's own menu *Number all
+  parts ▸* runs the same slide command (`act:patent.numerals.auto=…` is routed to `SlideNumbering.Run`). The
+  compatibility check (`PatentCheck.Run`) passes every slide the numerals of the others (`PreflightOptions.Elsewhere`,
+  "slide n"): a numeral naming a different part on another slide (`PF-REF-DUPLICATE`) and the same part with unrelated
+  numerals on two slides (`PF-REF-LABEL`) are reported. The check now also takes the units' reference lists into the
+  slide model (before, it checked the objects without their reference entries). Unit-tested; not yet run in PowerPoint.
 - **Option pictograms** (round 4): travel modes of the route and the distance callout (`travel-walk`, `travel-bike`,
   `travel-car`, `travel-transit`, `travel-none`) and phases of switchgear and room devices (`phase-l1`, `phase-l2`,
   `phase-l3`, `phase-3`, `phase-circuit`) in `IconPainter.SharedPaths`; these choices now appear as dropdowns with

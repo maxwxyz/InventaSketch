@@ -2,6 +2,7 @@
 LibreOffice needed) and, if the engine is built, of the engine answers they are built from: choices of real elements,
 the values of a resistor, the insert places of a table, select connected, the calculator and the code import."""
 
+import json
 import os
 import sys
 import tempfile
@@ -12,7 +13,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "oxt", "pythonpath"))
 sys.path.insert(0, HERE)
 os.environ.setdefault("INVENTASKETCH_LOG_DIR", os.path.join(tempfile.gettempdir(), "inventasketch-lo-tests"))
 
-from inventasketch_lo import choices, glow, i18n, ux, values  # noqa: E402
+from inventasketch_lo import choices, drawing, glow, i18n, ux, values  # noqa: E402
 from inventasketch_lo.engine import Engine  # noqa: E402
 from test_engine import built_engine  # noqa: E402
 
@@ -380,6 +381,31 @@ class EngineAnswers(unittest.TestCase):
             self.assertEqual(choices.page_choices(self.call("pageActions", s)), [])
         finally:
             self.call("closeSession", s)
+
+    def test_number_all_parts_continues_after_the_other_pages(self):
+        """host.page_numerals: the other pages' unit models through numeralsOf, passed as ``elsewhere``."""
+        gear = next(i["id"] for i in self.items if i["typeId"] == "mech.gear.spur")
+        first, second = self.session(), self.session()
+        try:
+            # Page 1: a gear with numeral 10.
+            self.insert(first, gear, 60, 60)
+            state = self.call("applyPageAction", first, action="patent.numerals.auto=tens")
+            payload = self.call("exportCompact", first, ids=[o["id"] for o in state["objects"]])["payload"]
+            found = self.engine.call("numeralsOf", {"json": json.dumps([payload])})
+            others = drawing.numerals_elsewhere([("1", found), ("2", [])], "2")
+            self.assertEqual([p["page"] for p in others], ["1"])
+            self.assertEqual([n["numeral"] for n in others[0]["numerals"]], ["10"])
+            # Page 2: the same gear keeps 10 (alone it would get 10 as well, so the "ones" scheme tells them apart: it
+            # would give 1); the check compares both pages and finds nothing.
+            self.insert(second, gear, 60, 60)
+            state = self.call("applyPageAction", second, action="patent.numerals.auto=ones", elsewhere=others)
+            numerals = sorted(o.get("ref") for o in state["objects"] if o["type"] == "patent.numeral")
+            self.assertEqual(numerals, ["10"])
+            result = self.call("preflight", second, text="common-safe", lang="en", elsewhere=others, pageName="page")
+            self.assertFalse([f for f in result["findings"] if f["rule"].startswith("PF-REF")])
+        finally:
+            self.call("closeSession", first)
+            self.call("closeSession", second)
 
     def test_every_choice_of_sampled_elements_is_a_proper_dropdown(self):
         s = self.session()

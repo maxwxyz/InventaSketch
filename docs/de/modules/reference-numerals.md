@@ -61,6 +61,26 @@ an), Web-Add-in eine Schaltfläche der oberen Leiste mit dem Umnummerieren-Pikto
 Bezugszeichen fehlt, LibreOffice Klappliste *Alle Teile nummerieren ▸* im Bereich *Zeichnung, Rechner und Code* (siehe
 die Host-Dokumente).
 
+**Über Seiten und Folien hinweg** (Runde 5, 26.11.2026): Alle drei Hosts halten jede Folie oder Seite in einem eigenen
+Modell, die Nummerierung einer Seite begann daher wieder bei 10. Die Hosts übergeben jetzt die Bezugszeichen der anderen
+Folien/Seiten (`OtherPage`: Seitenbezeichnung und `OtherNumeral` = Bezugszeichen, Teilename, Teileart) als
+`NumberingOptions.Elsewhere` / `PageCommandContext.Elsewhere` (Engine-Anfragefeld `elsewhere`, Zusammenfassungen aus der
+Engine-Methode `numeralsOf` über die Einheitenmodelle der anderen Seiten, im COM-Add-in `OtherPage.Of`):
+
+- Bezugszeichen und Listeneinträge der anderen Seiten zählen als belegt, `NextFree` liefert also die erste im ganzen
+  Dokument freie Nummer (Lücken werden wie auf einer einzelnen Seite gefüllt: ist anderswo nur 40 belegt, erhält ein neues
+  Teil 10);
+- ein Teil derselben Art wie ein auf einer anderen Seite nummeriertes Teil übernimmt dessen Bezugszeichen und Namen
+  (gemeinsame Nummerierung; mit Varianten erhält es die nächste Variante dieser Nummer). „Dieselbe Art“ ist die schon auf
+  einer Seite genutzte Identität der Stückliste (`ReferenceNumerals.PartKind`: Typ, Text und alle Parameter – die
+  Bezeichnung `ref`/`tag`/`name` eingeschlossen; Größe, Lage und Ansicht zählen nicht);
+- Namen bleiben über Seiten hinweg eindeutig („Block 2“, wenn eine andere Nummer auf einer anderen Seite „Block“ nutzt);
+- der Seite werden nur die Listeneinträge der hier vergebenen Bezugszeichen hinzugefügt; die Einträge der anderen Seiten
+  bleiben, wo sie sind.
+
+Das eigene Menü *Alle Teile nummerieren ▸* eines Bezugszeichens verhält sich genauso: COM leitet es an den Folienbefehl
+weiter, Web und LibreOffice übergeben `elsewhere` mit `applyAction`, und die Engine führt dann den Seitenbefehl aus.
+
 ## Bezugszeichenliste
 
 `ReferenceNumerals.Export` schreibt die Liste als Text, eine Zeile je Teil mit gruppierten Varianten („10, 10a, 10′
@@ -78,9 +98,15 @@ Neben den Prüfungen zu Blatt, Farbe, Text und Figuren (Recherchedokument, Absch
 | `PF-LEAD-TARGET` | Warnung | **Bezugszeichen zeigt ins Leere**: die Bezugslinie endet auf keinem Element oder ist mit einem Element verbunden, das es nicht mehr gibt | P11: EP-16, US-20 |
 | `PF-REF-CONFLICT` | Fehler | Ein Bezugszeichen für verschieden benannte Teile | P19 |
 | `PF-REF-DUPLICATE` | Fehler | **Ein Bezugszeichen an Teilen verschiedener Art** (anderer Typ, Text oder Parameter; gleiche Kopien dürfen ein Bezugszeichen teilen) | P19: DE-12, EP-15, PCT-13, US-19 |
-| `PF-REF-LABEL` | Warnung | Ein Teilename mit verschiedenen Nummern (Varianten einer Nummer sind zulässig) | P19 |
+| `PF-REF-LABEL` | Warnung | Ein Teilename mit verschiedenen Nummern (Varianten einer Nummer sind zulässig); **über Seiten hinweg** auch dieselbe Teileart (`PartKind`), deren Bezugszeichen auf einer Seite keine Nummer mit ihren Bezugszeichen auf einer anderen Seite teilen (`ReferenceIssueKind.SamePartDifferentNumerals`) – außer beide Seiten benennen die Teile verschieden (ein schraffiertes Gehäuse und ein schraffierter Deckel sind eine Art, aber verschiedene Teile); absichtlich getrennt nummerierte Teile (10 und 20 für zwei gleiche Zahnräder) sind in Ordnung, solange die andere Seite eine ihrer Nummern nutzt | P19 |
+| `PF-REF-DUPLICATE` (über Seiten) | Fehler | Ein Bezugszeichen, das auf einer anderen, getrennt gehaltenen Folie/Seite ein anderes Teil bezeichnet („Bezugszeichen 10 bezeichnet auf Folie 3 ein anderes Teil (Welle)“) | P19: DE-12, EP-15, PCT-13, US-19 |
 | `PF-REF-MISSING` / `PF-REF-UNUSED` | Fehler / Warnung | Bezugszeichen nicht in der Liste / Listeneintrag nie gezeichnet | P19 |
 | `PF-PART-UNNUMBERED` | Info | **Teil ohne Bezugszeichen** (kein Bezugszeichen zeigt darauf und es trägt keines; ein Bezugszeichen mit Pfeil deckt seine ganze Gruppe ab). Zeichenhilfe für jedes Profil: Keine Amtsvorschrift verlangt ein Bezugszeichen an jedem Teil, der Befund zitiert daher keine. | Zeichenhilfe |
+
+Die Prüfungen über Seiten hinweg (`ReferenceNumerals.CheckAcrossPages`) vergleichen die Seiten eines Dokuments
+untereinander und über `PreflightOptions.Elsewhere` (Engine `preflight` mit `elsewhere` und `pageName` „slide“/„page“)
+jede geprüfte Folie oder Seite mit den anderen, die der Host getrennt hält. Die Prüfung „alle Folien/Seiten“ jedes Hosts
+übergibt sie; ein Befund wird auf jeder beteiligten Seite gemeldet und zeigt auf deren Teile und Bezugszeichen.
 
 ## Hinweise zu den Hosts
 
@@ -88,12 +114,14 @@ Neben den Prüfungen zu Blatt, Farbe, Text und Figuren (Recherchedokument, Absch
   native Formen.
 - „Alle Teile nummerieren“ und „Montageachse zum nächsten Teil“ sind Dokumentaktionen (`ContextAction.ApplyInDocument`),
   die Objekte hinzufügen; Hosts, die Dokumentaktionen ausführen, wenden sie als eine Änderung an. Sie werden an einem
-  Bezugszeichen, am Blattrahmen und an der Blattnummer angeboten; ein Seitenbefehl (ohne ausgewähltes Objekt) braucht
-  einen Einstiegspunkt in Host oder Engine.
+  Bezugszeichen, am Blattrahmen und an der Blattnummer angeboten; ohne ausgewähltes Objekt führt sie der Seitenbefehl
+  oben aus (Engine `applyPageAction`).
 
 ## Offene Punkte
 
-- „Alle Teile nummerieren“ als Seitenbefehl ohne ausgewähltes Bezugszeichen oder Blattobjekt (Engine-/Host-Befehl).
+- Das Web-Add-in in der Seitenleiste des COM-Add-ins hat keinen eigenen Folienzugriff: Nummerierung und Prüfung sehen dort
+  nur die gezeigte Folie (das COM-Add-in selbst mit *Mehr ▸ Alle Teile nummerieren* und seiner Kompatibilitätsprüfung
+  sieht alle Folien).
 - Die Platzierung der Bezugszeichen meidet nur die Blattränder, noch nicht andere Bezugszeichen oder Kreuzungen von
   Bezugslinien (der Preflight meldet Kreuzungen).
 - Klammern um auseinandergezogene Teile für das US-Profil (Recherche P20) werden noch nicht gezeichnet oder geprüft.
