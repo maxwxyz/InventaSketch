@@ -36,20 +36,20 @@ does not design or optimise optical systems (no aberration analysis or radiometr
 | `optics.lens.converging` | Converging lens; views `shape` (section) and `symbol` (double arrow, heads outward) | `shape` biconvex/planoconvex/meniscus, `f` (40), `focal` (F, F′ markers), `rays`, `bundle`, `beam`, `coating` (ideal, inspector only), `label`, values `g`, `b` (inspector), `showValues` |
 | `optics.lens.diverging` | Diverging lens; views `shape` and `symbol` (heads inward) | `shape` biconcave/planoconcave/meniscus, as above |
 | `optics.mirror.plane` | Plane mirror with hatched back | `label` |
-| `optics.mirror.concave` / `optics.mirror.convex` | Curved mirrors | `f` (40), `focal` (F and centre of curvature C/M), `label` |
-| `optics.prism.triangle` | Prism, equilateral (deviating) or right-angle (reflecting) | `shape`, `n` (1.5, d line), `dispersion`, `dn` = n(F) − n(C) (0.03), `coating` (ideal), `label` |
+| `optics.mirror.concave` / `optics.mirror.convex` | Curved mirrors | `f` (40), `focal` (F and centre of curvature C/M), `label`, values `g`, `b` (inspector), `showValues` |
+| `optics.prism.triangle` | Prism, equilateral (deviating) or right-angle (reflecting) | `shape`, `n` (1.5, d line), `dispersion`, `dn` = n(F) − n(C) (0.03), `coating` (ideal), `label`, `showValues` |
 | `optics.splitter.cube` / `optics.splitter.plate` | Beam splitter: the diagonal (bottom left to top right) transmits and reflects; the polarising one draws its splitting surface double (cube) or a centre line (plate) | `split` schematic/nonpolarizing/polarizing (schematic), `reflectance` (reflected share when non-polarising, 0.5), `label` |
 | `optics.stop.aperture` | Aperture stop / slit (two blades) | `opening` (fraction of the height, 0.35), `label` |
-| `optics.grating.transmission` | Transmission grating (plate with grooves) | `angle` (first-order angle at 550 nm, 20°), `orders` (1–3), `label` |
+| `optics.grating.transmission` | Transmission grating (plate with grooves) | `angle` (first-order angle at 550 nm, 20°), `orders` (1–3), `label`, values `lines` (lines per mm; when entered it sets the drawn orders instead of `angle`), `lambda` (wavelength for the values), `showValues` |
 | `optics.filter.plate` | Filter plate, neutral or coloured | `tint` neutral/red/green/blue/yellow, `label` |
 | `optics.fibre.cable` | Optical fibre with connectors at both ends | `spread` (output half cone, 12°), `rays`, `label` |
 | `optics.source.lamp` | Lamp (bulb, filament, socket) | `emission` cone/parallel/all directions, `rays`, `spread` (0 = fill the next element), `beam`, `label`, value `power`, `showValues` |
 | `optics.source.led` | LED (dome, flange, leads) | `emission`, `rays`, `spread`, `beam`, `color` white/red/green/blue, `label`, values `power`, `lambda`, `showValues` |
 | `optics.source.laser` | Laser (housing, output aperture) | `rays` (1), `beam`, `color` 650/532/445 nm, `label`, values `power`, `lambda`, `showValues` |
-| `optics.detector.photodiode` | Photodiode as optical detector | `label`, `showValues` |
-| `optics.detector.camera` | Camera: lens barrel focused on the image sensor | `label`, `showValues` |
-| `optics.detector.eye` | Eye (section): cornea, iris, lens, retina, optic nerve | `label`, `showValues` |
-| `optics.screen.plain` | Screen | `label`, `showValues` |
+| `optics.detector.photodiode` | Photodiode as optical detector | `label`, value `area` (receiving area), `showValues` |
+| `optics.detector.camera` | Camera: lens barrel focused on the image sensor | `label`, `area`, `showValues` |
+| `optics.detector.eye` | Eye (section): cornea, iris, lens, retina, optic nerve | `label`, `area`, `showValues` |
+| `optics.screen.plain` | Screen | `label`, `area`, `showValues` |
 | `optics.object.arrow` | Object arrow standing on the axis (imaging figures) | `bundle` principal rays/fan, `rays`, `image` off/image/construction (image), `names` (false), `label`, `showValues` |
 | `optics.ray` | Light ray (point object, page coordinates) | `trace` (true), `arrows` middle/end/none, `virtual` (true), `tail` (0 = automatic), `showValues` (intensity and polarisation at the ray ends, false), `ghosts` (ghost reflections, false) |
 | `optics.axis.line` | Optical axis (dash-dot centre line, point object) | `label` |
@@ -59,7 +59,7 @@ does not design or optimise optical systems (no aberration analysis or radiometr
 | `optics.waveplate` | Wave plate: plate with its fast axis (dashed double arrow) and "λ/4"/"λ/2" | `retardance` quarter/half (quarter), `angle` (fast axis, 45°), `label` |
 | `optics.lightguide` | Light guide (rectangular glass rod, total internal reflection) | `n` (1.5), `coating` (ideal), `label` |
 | `optics.window.plate` | Glass plate (window): plane-parallel plate tilted in its box; the edges stop light | `n` (1.5), `tilt` (angle of incidence along the axis, 0°, −80° … 80°), `brewster` (tilt = arctan n, false), `coating` (**uncoated** by default), `label` |
-| `optics.detector.spectrometer` | Spectrometer: housing with entry slit, reflection grating, detector line and the dispersed light drawn inside | `label`, `showValues` |
+| `optics.detector.spectrometer` | Spectrometer: housing with entry slit, reflection grating, detector line and the dispersed light drawn inside | `label`, `area`, `showValues` |
 
 Library items (48) include the lens shapes and symbols, thick biconvex and plano-convex lenses, three mirrors, the
 scanner mirror with and without its scan range, deviating/dispersing/right-angle prisms, both splitters (schematic), the
@@ -196,9 +196,12 @@ enterable, so a wanted detector power gives the source power.
 |---|---|---|---|
 | Lamp | optical power P (mW; empty = 1 mW, the default) | – | – |
 | LED, laser | P; wavelength λ (nm; entered in `lambda`, else from the colour, none for white light) | photon energy E_ph (eV) | E_ph = h·c/λ (h, c exact SI values [S1]) |
-| Photodiode, camera, eye, screen, spectrometer | received power P_e (mW), share of the emitted light η (%), degree of polarisation V (%), polarisation angle θ (°, 0° = in the drawing plane) | polarisation (unpolarised, linear, circular, elliptical, partially polarised) | see below |
-| Converging / diverging lens | focal length f (the parameter `f`, mm; the diverging lens shows its amount), refractive power D in dioptres (1/m), object distance g, image distance b (values only, parameters `g`, `b`) | magnification β, with a second thin lens ahead on the axis: system focal length f_s, distance d, back focal distance s′_F | D = ±1/f; 1/f = 1/g + 1/b (signed f); β = −b/g; Gullstrand |
-| Thick lens | f (lensmaker's equation from `n` and the drawn faces), D | n, back focal distance s′_F | 1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)] |
+| Photodiode, camera, eye, screen, spectrometer | received power P_e (mW), share of the emitted light η (%), degree of polarisation V (%), polarisation angle θ (°, 0° = in the drawing plane) | polarisation (unpolarised, linear, circular, elliptical, partially polarised); receiving area A (mm², entered in `area`, else a sample) and irradiance E_e (W/m², a sample estimate) | see below; E_e = P_e / A |
+| Converging / diverging lens | focal length f (the parameter `f`, mm; the diverging lens shows its amount), refractive power D in dioptres (1/m), object distance g, image distance b (values only, parameters `g`, `b`) | magnification β, with a second lens (thin or thick) ahead on the axis: system focal length f_s, distance d between the principal planes, back focal distance s′_F | D = ±1/f; 1/f = 1/g + 1/b (signed f); β = −b/g; Gullstrand |
+| Thick lens | f (lensmaker's equation from `n` and the drawn faces), D | n, back focal distance s′_F, principal planes s_H (from the front vertex) and s′_H (from the rear vertex), with a next lens on the axis f_s, e, s′_F of the system | 1/f = (n − 1)·[1/R1 − 1/R2 + (n − 1)·d / (n·R1·R2)]; s_H = −f·(n − 1)·d/(n·R2), s′_H = −f·(n − 1)·d/(n·R1); Gullstrand |
+| Concave / convex mirror | f (the parameter `f`; the convex mirror shows its amount), radius of curvature R (drawn: C at 2f), g, b (values only, `g`, `b`; b > 0 in front of the mirror) | β | f = R/2; 1/f = 1/g + 1/b (concave f > 0, convex f < 0); β = −b/g |
+| Prism | apex angle A (drawn, at the top corner), n (the parameter `n`, d line), minimum deviation δ_min | n_F − n_C (`dn`); with `dispersion` on: n_F, n_C (Cauchy fit of the tracer), Abbe number ν_d, angular spread Δδ_FC | n = sin((A + δ_min)/2)/sin(A/2); ν_d = (n_d − 1)/(n_F − n_C) |
+| Diffraction grating | line density N (lines per mm, entered in `lines`), period d (µm), wavelength λ (entered in `lambda`, else of the traced light reaching the grating when it is one wavelength, else 550 nm), angle θ₁ of the first order | θ₂, θ₃ (when drawn), drawn first-order angle at 550 nm, highest order m_max | d = 1 mm / N; d·sin θ₁(550 nm) = 550 nm; d·sin θ_m = m·λ (normal incidence) |
 | Object arrow | g, b, β, image real/virtual (of the drawn image) | focal length of the imaging element, object size G, image size B = β·G | 1/f = 1/g + 1/b, β = −b/g |
 
 **Received light.** Every traced ray object of the page is traced as drawn; the paths that end on an element are summed.
@@ -224,20 +227,64 @@ and β = −2, the diverging lens b = −24 mm and β = 0.4. Each of f, g, b fol
 to let it follow from g and b; the drawing then uses its default 40 mm). Two thin lenses on one axis (the second one's
 centre within half its larger box side of the first one's axis, axes parallel; the nearest ahead counts) give
 f_s = f₁·f₂ / (f₁ + f₂ − d) and s′_F = f₂·(f₁ − d) / (f₁ + f₂ − d), measured from the second lens (f₁ = 40, f₂ = 20,
-d = 50 mm: f_s = 80 mm, s′_F = −20 mm, which the traced rays confirm).
+d = 50 mm: f_s = 80 mm, s′_F = −20 mm, which the traced rays confirm). The partner may be a thick lens, and a thick lens
+has the same values with the lens behind it: d (on the thick lens: e) is then measured between the principal planes H′
+of the first and H of the second lens (generalised Gullstrand formula), and s′_F behind H′ of the second lens. A thick
+lens turned round meets the light with its H′. Example: a thin lens f = 40 mm and the default thick lens (n = 1.5, 10 × 34
+mm, f ≈ 44.8 mm) 60 mm behind it; the traced rays confirm f_s within 0.2 % (the thick lens is traced exactly, not
+paraxially).
 
-**Checks** (notes on the card, they never change values): virtual image (b < 0) on lenses and the object arrow; object
-in the focal plane (g = f, image at infinity); afocal pair (f₁ + f₂ = d, a telescope with angular magnification −f₁/f₂);
-no traced ray of the page reaches a detector (only when the page has rays); only rays without a source arrive; the power
-went through a schematic splitter or a grating (assumed equal shares, a hint); a wavelength outside about 380 to 780 nm
-(drawn in the nearest colour).
+**Thick lens principal planes.** s_H = −f·(n − 1)·d/(n·R₂) from the front vertex and s′_H = −f·(n − 1)·d/(n·R₁) from the
+rear vertex (positive in the direction of the light), the same planes H, H′ the focal-point marks draw.
+
+**Curved mirrors.** f = 40 mm gives R = 80 mm; with g = 60 mm the concave mirror gives b = 120 mm (a real image in front
+of it) and β = −2; a convex mirror of f = 30 mm with g = 60 mm gives b = −20 mm (virtual, behind it) and β = 1/3. As with
+lenses, each of f, g, b follows from the other two (clear `f` first). R is read-only: it is what the drawing shows (the
+centre of curvature C/M at 2f).
+
+**Prism.** The apex angle A is read from the drawing: the angle at the top corner between the two faces meeting there
+(60° for an equilateral prism whose height is √3/2 of its width, 45° for a square right-angle prism; it follows the box
+when the prism is scaled). δ_min = 2·asin(n·sin(A/2)) − A: n = 1.5, A = 60° gives 37.18°, and a ray entering at
+θ₁ = asin(n·sin(A/2)) = 48.59° is traced parallel to the base and leaves deviated by exactly that. A measured δ_min gives
+n (clear `n` first: the spectrometer method). With `dispersion` on, n_F and n_C come from the tracer's two-term Cauchy
+fit through n_d and `dn` (n_F − n_C = `dn` exactly), ν_d = (n_d − 1)/(n_F − n_C) (0.5/0.03 = 16.7 by default), and Δδ_FC
+is the angle between the traced F and C lines when the light enters at the incidence of minimum deviation for the d line
+(2.62° for the defaults).
+
+**Diffraction grating.** The period follows from the drawn first-order angle at 550 nm (`angle`): 20° gives d = 550 nm /
+sin 20° = 1.608 µm, N = 622 lines/mm. An entered line density (`lines`, e.g. "600") sets the period instead, and the
+tracer draws the orders with it (sin θ_m = sin θ_i + m·λ/d); the angle input is then not offered. The wavelength is the
+one of the traced light reaching the grating when that is a single wavelength (a laser or an LED of one colour), else
+550 nm (white light, no light), unless one is entered in `lambda`. θ_m = asin(m·λ/d) for the orders drawn (normal
+incidence; `orders` 1–3): 600 lines/mm with a red laser (650 nm) gives θ₁ = asin 0.39 = 22.95°, θ₂ = asin 0.78 =
+51.26°, and no third order (m·λ/d = 1.17), which the tracer does not draw either; m_max = ⌈d/λ⌉ − 1 = 2.
+
+**Irradiance (sample estimate).** E_e = P_e / A, the received power spread evenly over the receiving area. The area is
+entered in `area` (value A); without one it is a sample: a square face as high as the drawn element (a 10 mm photodiode:
+100 mm², so 1 mW gives 10 W/m²). Both are marked as estimates: the drawn rays are a sample of the bundle, there is no beam
+profile, and the drawing is schematic.
+
+**Checks** (notes on the card, they never change values): virtual image (b < 0) on lenses, curved mirrors and the object
+arrow; object in the focal plane (g = f, image at infinity) on converging lenses and concave mirrors; afocal pair
+(f₁ + f₂ = d, a telescope with angular magnification −f₁/f₂, also with a thick lens); no traced ray of the page reaches a
+detector (only when the page has rays); only rays without a source arrive; the power went through a schematic splitter
+or a grating (assumed equal shares, a hint); a wavelength outside about 380 to 780 nm (drawn in the nearest colour); no
+minimum deviation (n·sin(A/2) ≥ 1: total internal reflection at the second face); a grating order drawn that does not
+exist at the wavelength (m·λ ≥ d, beyond 90°; it is not drawn). Check ids: `optics.mirror.virtual`,
+`optics.mirror.focalplane`, `optics.prism.nominimum`, `optics.grating.beyond` (besides the earlier `optics.lens.*`,
+`optics.image.*`, `optics.light.*`, `optics.source.invisible`).
 
 The wavelength entered on a laser or LED is also what the tracer uses (405 nm is drawn violet, and a dispersing prism
 refracts it with n(405 nm)); choosing a colour in the context bar clears it. D uses the quantity kind "refractive power"
-(`opticalPower`, unit dpt = 1/m). The lens relations cite [S41] (optics textbooks).
+(`opticalPower`, unit dpt = 1/m). The lens, mirror, prism, grating and irradiance relations cite [S41] (optics
+textbooks). The line density is a plain number of lines per mm (the quantity catalogue has no kind for it).
 
-While its values label is shown, a detector, a lens or an object arrow is reported as a dependent of every optics element
-of its page, so the label follows any change of the beam path.
+Read-only (results of the trace or of the drawing): η, V, θ, the polarisation, E_e; the arrow's image values; the thick
+lens's f, s′_F, s_H, s′_H; the system values f_s, d/e, s′_F; the mirror's R; the prism's A, n_F, n_C, ν_d, Δδ_FC; the
+grating's d, θ_m, the drawn angle at 550 nm and m_max.
+
+While its values label is shown, a detector, a lens (thin or thick), a grating or an object arrow is reported as a
+dependent of every optics element of its page, so the label follows any change of the beam path.
 
 ## Image construction
 
@@ -319,7 +366,8 @@ Clean slides (`Sanitize`): optics elements carry no values worth hiding; the gen
 All state is in the document model: parameters, `Size`, `Transform`, the ray's points and the attachment of its first
 point (`AnchorId` = `exit`/`o`/`tip`). The traced paths, images, construction rays and grips are not stored; they are
 recomputed from the document, so JSON round trips render identically. Entered values are parameters too (text as typed:
-`power` "5 mW", `lambda` "532 nm", `g`, `b`; the focal length in `f`, the index in `n`); derived values are never stored.
+`power` "5 mW", `lambda` "532 nm", `g`, `b`, `area` "5 mm²", `lines` "600"; the focal length in `f`, the index in `n`,
+the dispersion in `dn`); derived values are never stored.
 
 ## Host notes
 
@@ -348,10 +396,12 @@ recomputed from the document, so JSON round trips render identically. Entered va
   where `coating` is not ideal; partial reflections at glass faces are drawn as rays only with `ghosts` (first order in
   practice, not at thin lenses). Mirrors are ideal (no metal reflectance or phase), splitters ideal (no extinction ratio,
   no absorption). The anti-reflection coating is an idealised single layer (index √n).
-- Element values: the received power counts only the drawn rays (a sample of the bundle, not radiometry: no irradiance,
-  no étendue); results of the trace and of the drawing are read-only (share, polarisation, the arrow's image, the thick
-  lens's focal length; the received power stays enterable). Curved mirrors,
-  the prism and the grating have no values yet; the system focal length covers two thin lenses (not the thick lens).
+- Element values: the received power counts only the drawn rays (a sample of the bundle, not radiometry: the irradiance
+  is a sample estimate over an assumed area, no étendue, no beam profile); results of the trace and of the drawing are
+  read-only (the received power stays enterable). The system focal length covers two lenses (thin or thick), not chains
+  of three or more. Grating values assume normal incidence (the tracer handles oblique light) and take the wavelength of
+  the light only when one wavelength reaches the grating; the prism's spread covers the F and C lines at the d-line
+  incidence of minimum deviation; mirrors have no values for oblique (off-axis) use.
 - The object arrow's image construction uses thin lenses and curved mirrors only (not the thick lens; its traced rays do
   pass it). The thick lens has no focal-length grip.
 - The spectrometer does not trace the light inside; its spectrum is a schematic drawing.
@@ -360,5 +410,5 @@ recomputed from the document, so JSON round trips render identically. Entered va
   element's single optical surface.
 - The image construction uses the first lens or curved mirror on the arrow's axis only (no image of an image through a
   second element); the traced ray bundle does pass every element.
-- Possible next steps: images through several elements, thick-lens imaging for the object arrow, values of curved
-  mirrors, ghosts of thin lenses, Michelson/Mach-Zehnder templates.
+- Possible next steps: images through several elements, thick-lens imaging for the object arrow, system values for
+  chains of lenses and mirrors, ghosts of thin lenses, Michelson/Mach-Zehnder templates.

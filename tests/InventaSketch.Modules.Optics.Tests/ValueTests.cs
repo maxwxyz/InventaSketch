@@ -59,7 +59,8 @@ namespace InventaSketch.Modules.Optics.Tests
             {
                 "optics.source.lamp", "optics.source.led", "optics.source.laser", "optics.detector.photodiode", "optics.detector.camera",
                 "optics.detector.eye", "optics.screen.plain", "optics.detector.spectrometer", "optics.lens.converging", "optics.lens.diverging",
-                "optics.lens.thick", "optics.object.arrow",
+                "optics.lens.thick", "optics.object.arrow", "optics.mirror.concave", "optics.mirror.convex", "optics.prism.triangle",
+                "optics.grating.transmission",
             };
             foreach (var id in ids)
             {

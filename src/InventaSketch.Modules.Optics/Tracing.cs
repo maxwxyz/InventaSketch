@@ -300,6 +300,8 @@ namespace InventaSketch.Modules.Optics
         public const double MaxLength = 20000;
         /// <summary>A ray with less than this share of its intensity left (crossed polarisers) ends.</summary>
         public const double MinIntensity = 0.005;
+        /// <summary>A grating order with |sin θ_m| at or above this (practically 90°) does not leave the grating and is not drawn.</summary>
+        public const double MaxGratingSine = 0.999;
 
         private sealed class Hit
         {
@@ -527,7 +529,7 @@ namespace InventaSketch.Modules.Optics
                                 Vec2? Order(int m, double lam)
                                 {
                                     var sm = ld.Y + m * s.Sine * (lam <= 0 ? 550 : lam) / 550;
-                                    return Math.Abs(sm) >= 0.999 ? null : new Vec2(sign * Math.Sqrt(1 - sm * sm), sm);
+                                    return Math.Abs(sm) >= MaxGratingSine ? null : new Vec2(sign * Math.Sqrt(1 - sm * sm), sm);
                                 }
                                 for (var m = -s.Orders; m <= s.Orders; m++)
                                 {

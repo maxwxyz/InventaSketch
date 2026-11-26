@@ -50,8 +50,8 @@ namespace InventaSketch.Modules.Optics
         public IReadOnlyList<Relation> Relations { get; }
         public IEnumerable<ValueCheck> ValueChecks { get; }
 
-        /// <summary>Distance and system focal length with the next thin lens on the axis.</summary>
-        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.LensLinks(o, ctx, Converging);
+        /// <summary>Distance and system focal length with the next lens (thin or thick) on the axis.</summary>
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.LensLinks(o, ctx, Converging ? 1 : -1);
 
         public static readonly ParamDef Bundle = Pm.Choice("bundle", "Incoming bundle", "Einfallendes Bündel", "parallel",
             ("parallel", "Parallel to the axis", "Parallel zur Achse"), ("point", "From a point at 2f", "Von einem Punkt bei 2f"));
@@ -219,9 +219,10 @@ namespace InventaSketch.Modules.Optics
 
     /// <summary>
     /// Plane, concave or convex mirror: the reflecting surface (front, local −x side) with short hatching on the back.
-    /// Curved mirrors reflect paraxially with focal length f (centre of curvature at 2f).
+    /// Curved mirrors reflect paraxially with focal length f (centre of curvature at 2f); they have values (f = R/2, mirror
+    /// equation, magnification), the plane mirror has none.
     /// </summary>
-    internal sealed class MirrorType : OpticsType
+    internal sealed class MirrorType : OpticsType, IValueType, IValueChecks
     {
         public const string PlaneId = "optics.mirror.plane";
         public const string ConcaveId = "optics.mirror.concave";
@@ -245,10 +246,18 @@ namespace InventaSketch.Modules.Optics
             _kind = kind;
             Parameters = kind == "plane"
                 ? new[] { Pm.Label }
-                : new[] { Pm.FocalLength(40), Pm.Focal, Pm.Label };
+                : new[] { Pm.FocalLength(40), Pm.Focal, Pm.Label, OpticsValues.ObjectDistanceParam, OpticsValues.ImageDistanceParam, ValueLabels.ShowValues };
+            Variables = kind == "plane" ? Array.Empty<VarDef>() : OpticsValues.MirrorVariables(kind == "concave");
+            Relations = kind == "plane" ? Array.Empty<Relation>() : OpticsValues.MirrorRelations(kind == "concave");
+            ValueChecks = kind == "plane" ? Array.Empty<ValueCheck>() : OpticsValues.MirrorChecks(kind == "concave");
         }
 
         public override IReadOnlyList<ParamDef> Parameters { get; }
+
+        /// <summary>Curved mirrors: f (the parameter), radius of curvature R = 2f, g, b (values only), β; none for the plane mirror.</summary>
+        public IReadOnlyList<VarDef> Variables { get; }
+        public IReadOnlyList<Relation> Relations { get; }
+        public IEnumerable<ValueCheck> ValueChecks { get; }
         public override Size2 DefaultSize => new(5, 34);
         public override IReadOnlyList<string> Companions => new[] { PlaneId, ConcaveId, Beams.AxisId, Sources.LaserId, Sources.LampId, Detectors.ScreenId };
 
@@ -378,9 +387,10 @@ namespace InventaSketch.Modules.Optics
     /// <summary>
     /// Glass prism (equilateral deviating prism or right-angle reflecting prism) traced with Snell's law at every face and
     /// total internal reflection. With dispersion, white light is split into five colours (n from a two-term Cauchy fit
-    /// through the d-line index and n(F) − n(C)).
+    /// through the d-line index and n(F) − n(C)). Values: the drawn apex angle, n, the minimum deviation and, with
+    /// dispersion, n at the F and C lines, the Abbe number and the angular spread (<see cref="OpticsValues"/>).
     /// </summary>
-    internal sealed class PrismType : OpticsType
+    internal sealed class PrismType : OpticsType, IValueType, IValueLinks, IValueChecks
     {
         public const string TypeId = "optics.prism.triangle";
 
@@ -398,19 +408,38 @@ namespace InventaSketch.Modules.Optics
             Pm.Num("dn", "Dispersion n(F) − n(C)", "Dispersion n(F) − n(C)", 0.03, 0, 0.3, null, 0.005, advanced: true),
             CoatingDef,
             Pm.Label,
+            ValueLabels.ShowValues,
         };
 
         public static readonly ParamDef CoatingDef = Pm.Coating("ideal");
 
+        public IReadOnlyList<VarDef> Variables => OpticsValues.PrismVariables;
+        public IReadOnlyList<Relation> Relations => OpticsValues.PrismRelations;
+        public IEnumerable<ValueCheck> ValueChecks => OpticsValues.PrismChecks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.PrismLinks(o);
+
         public override Size2 DefaultSize => new(30, 26);
         public override IReadOnlyList<string> Companions => new[] { Sources.LampId, Sources.LaserId, Detectors.ScreenId, Beams.AxisId };
 
+        /// <summary>The corners: the top corner (apex) first, then bottom right and bottom left.</summary>
         private static List<Vec2> Corners(SketchObject o)
         {
             double hw = o.Size.W / 2, hh = o.Size.H / 2;
             return o.Str("shape", "equilateral") == "rightangle"
                 ? new List<Vec2> { new(-hw, -hh), new(hw, hh), new(-hw, hh) }
                 : new List<Vec2> { new(0, -hh), new(hw, hh), new(-hw, hh) };
+        }
+
+        /// <summary>
+        /// The drawn apex angle (rad): the angle at the top corner between the two faces meeting there (60° for an equilateral
+        /// prism of height √3/2 of its width; 45° for a square right-angle prism); 0 for a degenerate box.
+        /// </summary>
+        internal static double ApexAngle(SketchObject o)
+        {
+            if (o.Size.W < 1e-9 || o.Size.H < 1e-9) return 0;
+            var c = Corners(o);
+            Vec2 u = c[1] - c[0], v = c[2] - c[0];
+            return Math.Abs(Math.Atan2(u.Cross(v), u.Dot(v)));
         }
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
@@ -634,8 +663,12 @@ namespace InventaSketch.Modules.Optics
         }
     }
 
-    /// <summary>Transmission grating: a plate with grooves; orders ±1 … ±3 leave at sin θm = sin θ + m·sin θ1·λ/550 nm.</summary>
-    internal sealed class GratingType : OpticsType
+    /// <summary>
+    /// Transmission grating: a plate with grooves; orders ±1 … ±3 leave at sin θm = sin θ + m·λ/d with the period
+    /// d = 550 nm / sin θ1 (first-order angle at 550 nm), or d = 1 mm / N when a line density N is entered. Values: N, d, the
+    /// wavelength of the light reaching it and the angles of the orders drawn (<see cref="OpticsValues"/>).
+    /// </summary>
+    internal sealed class GratingType : OpticsType, IValueType, IValueLinks, IValueChecks, ITraceValues
     {
         public const string TypeId = "optics.grating.transmission";
 
@@ -647,7 +680,21 @@ namespace InventaSketch.Modules.Optics
             Pm.Num("angle", "First-order angle at 550 nm", "Winkel 1. Ordnung bei 550 nm", 20, 1, 70, "°", 1),
             Pm.Int("orders", "Orders on each side", "Ordnungen je Seite", 1, 1, 3),
             Pm.Label,
+            OpticsValues.LinesParam, OpticsValues.GratingLambdaParam, ValueLabels.ShowValues,
         };
+
+        public IReadOnlyList<VarDef> Variables => OpticsValues.GratingVariables;
+        public IReadOnlyList<Relation> Relations => OpticsValues.GratingRelations;
+        public IEnumerable<ValueCheck> ValueChecks => OpticsValues.GratingChecks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => OpticsValues.GratingLinks(o, ctx);
+
+        /// <summary>
+        /// Sine of the first-order angle at 550 nm (normal incidence) = 550 nm / d: from the entered line density N
+        /// (N·550 nm), else from the parameter <c>angle</c> (1° … 70°).
+        /// </summary>
+        internal static double Sine(SketchObject o) => OpticsValues.EnteredLines(o) is double n
+            ? n * OpticsValues.GratingReferenceNm * 1e-6
+            : Math.Sin(Geo.DegToRad(Geo.Clamp(o.Num("angle", 20), 1, 70)));
 
         public override Size2 DefaultSize => new(4, 34);
         public override IReadOnlyList<string> Companions => new[] { Sources.LaserId, Sources.LampId, Detectors.ScreenId, LensType.ConvergingId };
@@ -673,7 +720,7 @@ namespace InventaSketch.Modules.Optics
             {
                 new Surface(SurfaceKind.Grating, new Vec2(0, -hh), new Vec2(0, hh))
                 {
-                    Sine = Math.Sin(Geo.DegToRad(Geo.Clamp(o.Num("angle", 20), 1, 70))),
+                    Sine = Sine(o),
                     Orders = Ox.ClampInt(o.Int("orders", 1), 1, 3),
                 },
             };
@@ -686,7 +733,9 @@ namespace InventaSketch.Modules.Optics
 
         protected override IEnumerable<ContextAction> OwnActions(SketchObject o, SketchDocument? doc)
         {
-            yield return Ox.NumberInput(o, "optics.grating.angle", new I18nText("First-order angle", "Winkel 1. Ordnung"), Parameters[0], "grating");
+            // An entered line density sets the orders; the angle then has no effect and is not offered.
+            if (OpticsValues.EnteredLines(o) is null)
+                yield return Ox.NumberInput(o, "optics.grating.angle", new I18nText("First-order angle", "Winkel 1. Ordnung"), Parameters[0], "grating");
             yield return new ContextAction("optics.grating.orders", new I18nText("More orders", "Mehr Ordnungen"), IconIds.CountMore,
                 x => x.WithParam("orders", x.Int("orders", 1) % 3 + 1)) { Group = "grating", ParamKeys = new[] { "orders" } };
         }
