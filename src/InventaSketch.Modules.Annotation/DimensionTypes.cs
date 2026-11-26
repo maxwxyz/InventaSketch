@@ -416,4 +416,98 @@ namespace InventaSketch.Modules.Annotation
                 : new Primitive[] { circle, Prim.Circle(0, 0, 0.4, s with { Fill = Fill.Solid("#000000") }), new LinePrim(Vec2.Zero, new Vec2(3.5, -3.5), arrow) };
         }
     }
+
+    /// <summary>
+    /// Chain dimension (<c>ann.dimension.chain</c>): several points measured one after the other along one dimension line
+    /// (horizontal or vertical, automatic by default), each stretch with its own value. The points are taken in their order
+    /// along the measuring direction.
+    /// </summary>
+    public sealed class ChainDimensionType : AnnPointType
+    {
+        public ChainDimensionType() : base("ann.dimension.chain", new I18nText("Chain dimension", "Kettenmaß"), AnnCategories.Dimensions,
+            "chain dimension", "dimension", "series", "continuous", "kettenmaß", "kettenbemaßung", "bemaßung", "maßkette")
+        { }
+
+        public override IReadOnlyList<Vec2> DefaultPoints => new[] { new Vec2(-20, 0), new Vec2(0, 0), new Vec2(15, 0) };
+
+        public override IReadOnlyList<ParamDef> Parameters
+        {
+            get
+            {
+                var list = new List<ParamDef>
+                {
+                    P.Num("offset", "Offset", "Abstand", -8, -500, 500),
+                    P.Choice("axis", "Direction", "Richtung", "auto", ("auto", "Automatic", "Automatisch"), ("horizontal", "Horizontal", "Waagerecht"), ("vertical", "Vertical", "Senkrecht")),
+                };
+                // One value per stretch: no common override text.
+                list.AddRange(Dim.Common().Where(d => d.Key != "text"));
+                return list;
+            }
+        }
+
+        /// <summary>Measuring direction: horizontal or vertical (automatic: along the larger extent of the points).</summary>
+        public static Vec2 Axis(SketchObject o, IReadOnlyList<Vec2> p)
+        {
+            var b = Rect.FromPoints(p);
+            return o.Str("axis", "auto") switch
+            {
+                "horizontal" => new Vec2(1, 0),
+                "vertical" => new Vec2(0, 1),
+                _ => b.W >= b.H ? new Vec2(1, 0) : new Vec2(0, 1),
+            };
+        }
+
+        /// <summary>The stretch lengths in mm (before the scale factor), in order along the measuring direction.</summary>
+        public static IReadOnlyList<double> Measure(SketchObject o, IReadOnlyList<Vec2> p)
+        {
+            var u = Axis(o, p);
+            var s = p.Select(x => x.Dot(u)).OrderBy(x => x).ToList();
+            return Enumerable.Range(0, Math.Max(0, s.Count - 1)).Select(i => s[i + 1] - s[i]).ToList();
+        }
+
+        private static string Label(SketchObject o, double measured)
+        {
+            var unit = o.Str("unit", "");
+            return o.Str("prefix", "") + Ann.Fmt(measured * o.Num("scale", 1), o.Int("decimals", 1)) + (string.IsNullOrEmpty(unit) ? "" : " " + unit);
+        }
+
+        protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
+        {
+            var u = Axis(o, p);
+            var n = u.Perp;
+            var offset = o.Num("offset", -8);
+            var sides = p.Select(x => x.Dot(n)).ToList();
+            var line = (offset < 0 ? sides.Min() : sides.Max()) + offset;
+            var ordered = p.OrderBy(x => x.Dot(u)).ToList();
+            var size = TextSizeOf(o, Dim.TextSize);
+            var textSide = offset < 0 ? -n : n;
+            if (Math.Abs(offset) < Geo.Eps) textSide = n.Y > 0 ? -n : n;
+            var list = new List<Primitive>();
+            var feet = new List<Vec2>();
+            foreach (var pt in ordered)
+            {
+                var sp = pt.Dot(n);
+                var q = pt + n * (line - sp);
+                feet.Add(q);
+                var dist = line - sp;
+                if (Math.Abs(dist) < Dim.Gap + 0.1) continue;
+                var sign = Math.Sign(dist);
+                list.Add(new LinePrim(pt + n * (Dim.Gap * sign), q + n * (Dim.Overshoot * sign), Style.ThinLine));
+            }
+            for (var i = 0; i + 1 < feet.Count; i++)
+            {
+                var len = (feet[i + 1] - feet[i]).Dot(u);
+                if (len < Geo.Eps) continue;
+                list.Add(new LinePrim(feet[i], feet[i + 1], Dim.LineStyle(o)) { Tag = AnnTags.Main });
+                list.Add(Ann.Text(Vec2.Lerp(feet[i], feet[i + 1], 0.5) + textSide * (0.8 + size * 0.45), Label(o, len), size, AnnTags.DimText, rotation: Ann.ReadableAngle(u)));
+            }
+            return list;
+        }
+
+        public override IEnumerable<ContextAction> Actions(SketchObject o, Lang lang)
+        {
+            foreach (var a in Dim.TerminatorActions(o)) yield return a;
+            yield return new ContextAction("ann.dim.flip", new I18nText("Put on other side", "Auf die andere Seite"), IconIds.SideSwap, x => x.WithParam("offset", -x.Num("offset", -8))) { Group = "side" };
+        }
+    }
 }

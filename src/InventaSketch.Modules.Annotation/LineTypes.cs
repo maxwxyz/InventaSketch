@@ -483,8 +483,14 @@ namespace InventaSketch.Modules.Annotation
         public override IReadOnlyList<ParamDef> Parameters => new[]
         {
             P.Text("label", "Label", "Beschriftung", "F"),
+            P.Num("value", "Magnitude (beam diagrams)", "Betrag (Schnittgrößenverläufe)", null, -1e9, 1e9, null, advanced: true),
             P.TextSize(Ann.TextSize),
         };
+
+        /// <summary>Beam diagrams on the page read forces touching a beam (<see cref="BeamScene"/>).</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => BeamScene.DiagramsNear(o, ctx.Doc);
 
         protected override IReadOnlyList<Primitive> RenderPoints(SketchObject o, RenderContext ctx, IReadOnlyList<Vec2> p)
         {

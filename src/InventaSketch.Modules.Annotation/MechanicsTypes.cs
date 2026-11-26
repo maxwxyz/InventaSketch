@@ -193,6 +193,11 @@ namespace InventaSketch.Modules.Annotation
 
         public override Size2 DefaultSize => new(16, _roller ? 16 : 14);
 
+        /// <summary>Beam diagrams on the page read this element (<see cref="BeamScene"/>).</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => BeamScene.DiagramsNear(o, ctx.Doc);
+
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
             double w = o.Size.W, h = o.Size.H, hw = w / 2, hh = h / 2;
@@ -232,6 +237,11 @@ namespace InventaSketch.Modules.Annotation
         public override Size2 DefaultSize => new(5, 26);
         protected override bool EdgePorts => false;
 
+        /// <summary>Beam diagrams on the page read this element (<see cref="BeamScene"/>).</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => BeamScene.DiagramsNear(o, ctx.Doc);
+
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
             double hw = o.Size.W / 2, hh = o.Size.H / 2;
@@ -261,8 +271,14 @@ namespace InventaSketch.Modules.Annotation
         {
             P.Int("count", "Arrows", "Pfeile", 7, 2, 50),
             P.Text("label", "Label", "Beschriftung", "q"),
+            P.Num("value", "Load per length (beam diagrams)", "Last je Länge (Schnittgrößenverläufe)", null, -1e9, 1e9, null, advanced: true),
             P.TextSize(Ann.TextSize),
         };
+
+        /// <summary>Beam diagrams on the page read this element (<see cref="BeamScene"/>).</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => BeamScene.DiagramsNear(o, ctx.Doc);
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
         {
@@ -290,13 +306,23 @@ namespace InventaSketch.Modules.Annotation
         }
     }
 
-    /// <summary>Beam (bar) for free-body diagrams.</summary>
+    /// <summary>Beam (bar) for free-body diagrams; a <see cref="BeamDiagramType"/> below it shows its shear force and bending moment.</summary>
     public sealed class BeamType : AnnBoxType
     {
         public BeamType() : base("ann.beam", new I18nText("Beam", "Balken"), AnnCategories.Mechanics, "beam", "balken", "bar", "träger", "stab") { }
 
         public override Size2 DefaultSize => new(60, 4);
         protected override bool EdgePorts => false;
+
+        /// <summary>Real length for the values of beam diagrams (<see cref="BeamDiagramType"/>); without it they are multiples of L.</summary>
+        public override IReadOnlyList<ParamDef> Parameters => new[] { P.Num("length", "Length L (beam diagrams)", "Länge L (Schnittgrößenverläufe)", null, 0.001, 1e6, "m", advanced: true) };
+
+        public override IReadOnlyList<string> Companions => new[] { "ann.support.pin", "ann.support.roller", "ann.support.fixed", "ann.force", "ann.load.distributed", BeamDiagramType.TypeId };
+
+        /// <summary>Beam diagrams on the page read this element (<see cref="BeamScene"/>).</summary>
+        public override bool HasDependents => true;
+
+        public override IEnumerable<string> Dependents(SketchObject o, RenderContext ctx) => BeamScene.DiagramsNear(o, ctx.Doc);
 
         public override IReadOnlyList<Primitive> Render(SketchObject o, RenderContext ctx)
             => new Primitive[] { Prim.Rect(-o.Size.W / 2, -o.Size.H / 2, o.Size.W, o.Size.H, Style.Visible with { Fill = Fill.Solid("#ffffff") }) with { Tag = AnnTags.Main } };
