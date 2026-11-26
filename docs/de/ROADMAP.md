@@ -759,11 +759,30 @@ Aus dieser Runde noch offen:
   Fahrzeit, Haltestellen, Brücken, Tunnel, Höhenlinien; TTC und Anhalteweg mit Prüfungen, V2X, Rollstuhl,
   Straßenbahn; automatische Bezugszeichen, Varianten (10a, 10'), Achsen für Explosionsansichten, Oberflächen-
   schraffur und drei neue Vorabprüfungen.
-- **Noch offen:** Getriebesätze, CVT und Zahnstange mit ihren Wellen und Zahnrädern verknüpfen (`MechLinks`); ein
-  Befehl „Alle Teile nummerieren“ auf Seitenebene in den Hosts; Piktogramme für die Verkehrsmittel der Route und die
-  Phasen im Verteiler (neue `IconIds` und Zeichnungen in den Hosts); Gaseigenschaften für Verdichter und Turbinen;
-  Polarisation bei Reflexion, Fresnel-Verluste; Balkenlinien mit Momenten, Trapezlasten und Gelenken;
-  Sankey-Export; pgfplots-Import der neuen Diagrammformen.
+- Am selben Tag in einer vierten und fünften Runde erledigt: Getriebesätze, CVT und Zahnstange mit ihren Wellen und
+  Ritzeln verknüpft (Glied-Anschlüsse, Bewegung über `IGearUnit` mit Willis-Gleichung/Übersetzungen, Verschiebung der
+  Zahnstange, Einrasten an der Wälzgerade `AnchorRole.PitchLine`, angedockte Glieder in `ShaftLines` im Kern);
+  Gaswerte für Verdichter und Turbinen (Gastabelle κ/R, π, isentroper Wirkungsgrad, Austrittstemperatur, Leistung und
+  spezifische Arbeit `w`, Prüfungen `gas.*`, `process.efficiency`; Quelle [S40]), ein Prozess-Generator und ein
+  Generatorbetrieb für E-Maschinen; Fresnel-Verluste und Vergütung, teilweise Polarisation (Kohärenzmatrix),
+  Brewster-Winkel und Totalreflexion, Strahlteiler und Glasplatte/Brewster-Fenster, Geisterreflexe; Wertekarten der
+  Optik (Leistung und Wellenlänge der Quelle, Leistung/Anteil/Polarisation am Detektor, Linsengleichung und Zwei-Linsen-
+  System, dicke Linse; Ergebnisse der Strahlverfolgung schreibgeschützt über `VarDef.ReadOnly`; Größenart
+  `opticalPower` in dpt; Quelle [S41]); Balken mit Momenten, Dreiecks- und Trapezlasten, Gerber-Gelenken, statisch
+  unbestimmte Träger (Steifigkeitsverfahren, EI konstant), Biegelinie und Normalkräfte, „An Träger anpassen“;
+  Sankey-Codeexport und Import aller Präsentationsdiagramme (matplotlib und pgfplots/TikZ); Piktogramme für
+  Verkehrsmittel und Phasen im Verteiler; „Alle Teile nummerieren“ ohne Auswahl in allen Hosts, fortlaufend über
+  Folien/Seiten, gleiche Teile behalten ihre Nummer, Vorabprüfung über Seiten; Werte für RC/RL, Spannungsteiler,
+  Operationsverstärker und Transistor als Schalter; Leitungsverluste, Drosselblende, Hydraulikaggregat und
+  Luftverbrauch in der Fluidtechnik; Druckverlust in Rohr und Kanal, Ausdehnungsgefäß, Warmwasserauslegung und
+  hydraulische Weiche in der Haustechnik.
+- **Noch offen:** Anschlüsse für Hohlrad und Differentialkorb, ein Ritzel, das auf einer festen Zahnstange abrollt; ein
+  Kern-Hook, der ein Objekt mitwachsen lässt, wenn sich sein Nachbar ändert (Kasten der Balkenlinie unter einem
+  breiteren Träger); Radiometrie (Bestrahlungsstärke) und Werte für gewölbte Spiegel, Prismen und Gitter;
+  Wechselstrom-Netzberechnung (RLC-Impedanz, Resonanz, Phase), Drehstromleistung und Stern-Dreieck; aufsummierte
+  Druckverluste gegen die Pumpenförderhöhe (Fluid- und Heizkreise), Einzelwiderstände; Ausführen des exportierten
+  Diagrammcodes mit LaTeX/matplotlib (weder auf dem Build-Rechner noch in der CI vorhanden); das Web-Add-in in der
+  COM-Seitenleiste sieht beim Nummerieren nur die angezeigte Folie.
 - **Sichtprüfung in PowerPoint:** die neuen Elemente sind per Unit-Test und gerasterter Galerie geprüft; die
   PowerPoint-Szenarien decken Andocken, Werte und verknüpfte Diagramme ab, nicht jedes neue Symbol.
 

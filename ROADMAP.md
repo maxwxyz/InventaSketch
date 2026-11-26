@@ -681,10 +681,26 @@ Still open from this round:
   CVT and rack values, slip clutch, Geneva and six-bar values; route length and travel time, stations, bridges,
   tunnels, contours; TTC and stopping distance with checks, V2X, wheelchair, tram; automatic reference numerals,
   variants (10a, 10'), exploded-view axes, surface shading and three new preflight rules.
-- **Still open:** linking gear sets, the CVT and the rack to the shafts and gears they sit on (`MechLinks`); a
-  page-level "Number all parts" command in the hosts; pictograms for the route travel modes and the switchgear phases
-  (new `IconIds` plus host drawings); compressor/turbine gas properties; polarisation on reflection, Fresnel losses;
-  beam diagrams with moments, trapezoid loads and hinges; Sankey export; pgfplots import of the new chart forms.
+- Done in rounds four and five the same day: gear sets, the CVT and the rack linked to their shafts and pinions
+  (member ports, `IGearUnit` motion with Willis/ratios, rack travel, `AnchorRole.PitchLine` snapping, docked members in
+  Core `ShaftLines`); gas values for compressors and turbines (gas table κ/R, π, isentropic efficiency, outlet
+  temperature, power and specific work `w`, checks `gas.*`, `process.efficiency`; source [S40]), a process generator
+  and a generator mode for e-machines; Fresnel losses and coatings, partial polarisation (coherency matrix), Brewster
+  and total reflection, beam splitters and a glass plate/Brewster window, ghost reflections; optics value cards
+  (source power and wavelength, detector power/share/polarisation, thin-lens and two-lens equations, thick lens; trace
+  results read-only via `VarDef.ReadOnly`; kind `opticalPower` in dpt; source [S41]); beams with couples, triangular
+  and trapezoidal loads, Gerber hinges, statically indeterminate beams (stiffness method, EI constant), deflection line
+  and axial forces, "Fit to the beam"; Sankey code export and import of every presentation chart form (matplotlib and
+  pgfplots/TikZ); pictograms for travel modes and switchgear phases; "Number all parts" without a selection in all
+  hosts, continuing across slides/pages, identical parts keep their numeral, cross-page preflight; RC/RL, voltage
+  divider, op-amp and transistor-switch values; fluid line losses, orifice, hydraulic power unit, air consumption;
+  pipe and duct pressure drop, expansion vessel, hot-water sizing, hydraulic separator.
+- **Still open:** ring-gear and differential-case ports, a pinion rolling on a fixed rack; a Core hook that resizes an
+  object when its neighbour changes (beam diagram box under a wider beam); radiometry (irradiance) and values for curved
+  mirrors, prisms and gratings; AC network analysis (RLC impedance, resonance, phase), three-phase power and
+  star-delta; summed pressure drops against the pump head (fluid and heating circuits), fitting losses; LaTeX/matplotlib
+  execution of the exported chart code (no matplotlib/pdflatex on the build machine or CI); the web add-in inside the
+  COM sidebar sees only the shown slide for numbering.
 - **Checks by eye in PowerPoint:** the new elements are unit-tested and checked in rasterised galleries; the
   PowerPoint scenarios cover docking, values and linked charts, not every new symbol.
 
