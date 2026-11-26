@@ -48,8 +48,9 @@ namespace InventaSketch.Modules.Robotics.Tests
     {
         public static readonly string[] AllTypeIds =
         {
-            "robot.arm.articulated", "robot.arm.cobot", "robot.arm.scara", "robot.arm.delta", "robot.arm.gantry", "robot.mobile.agv",
+            "robot.arm.articulated", "robot.arm.cobot", "robot.arm.scara", "robot.arm.delta", "robot.arm.gantry", "robot.mobile.agv", "robot.track.linear",
             "robot.gripper.parallel", "robot.gripper.vacuum", "robot.gripper.magnetic", "robot.gripper.threefinger", "robot.tool.torch", "robot.tool.spindle",
+            "robot.tool.weldgun", "robot.tool.dispenser", "robot.tool.changer", "robot.sensor.ft", "robot.sensor.vision", "robot.cable.dragchain",
             "robot.frame.coordinate", "robot.frame.tcp", "robot.reach.envelope",
             "robot.cell.workpiece", "robot.cell.conveyor", "robot.cell.pallet", "robot.cell.pedestal", "robot.safety.fence", "robot.safety.door",
             "robot.safety.curtain", "robot.safety.scanner", "robot.safety.zone", "robot.safety.estop",
@@ -161,6 +162,16 @@ namespace InventaSketch.Modules.Robotics.Tests
         [InlineData("koordinatensystem", "robot.frame.coordinate")]
         [InlineData("tcp", "robot.frame.tcp")]
         [InlineData("förderband", "robot.cell.conveyor")]
+        [InlineData("linearachse", "robot.track.linear")]
+        [InlineData("7th axis", "robot.track.linear")]
+        [InlineData("werkzeugwechsler", "robot.tool.changer")]
+        [InlineData("tool changer", "robot.tool.changer")]
+        [InlineData("kraft-momenten-sensor", "robot.sensor.ft")]
+        [InlineData("kamera", "robot.sensor.vision")]
+        [InlineData("schweißzange", "robot.tool.weldgun")]
+        [InlineData("klebedüse", "robot.tool.dispenser")]
+        [InlineData("energiekette", "robot.cable.dragchain")]
+        [InlineData("drag chain", "robot.cable.dragchain")]
         public void SearchFindsElementsInBothLanguages(string query, string itemId)
             => Assert.Contains(Fx.Reg().Search(query), i => i.Id == itemId);
     }

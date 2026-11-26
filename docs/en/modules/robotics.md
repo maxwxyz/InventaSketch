@@ -115,6 +115,31 @@ Defaults: articulated `j1lim` 170°, J2 −70 … 110°, J3 −80 … 70°; cobo
 The envelope is shown with the parameter `envelope` (tinted area with a blue outline) or as the stand-alone element
 `robot.reach.envelope` (articulated-arm parameters, fill tint/hatch/none, radius labels "R …" in mm).
 
+**Along a linear axis** (`travel` > 0 on `robot.reach.envelope`): the range swept when the base moves by 0 … travel along
+x, drawn by its outer limit. Top view: convex hull of the area at both ends of the travel (exact for the convex sector of
+the default limits; a notch behind the robot is closed). Side view: row by row from the leftmost to the rightmost
+reachable point plus the travel (inner unreachable pockets are filled). The base's travel is drawn as a centre line.
+
+## Values and checks
+
+Engineering-calculation values (optional; entered as text with units, German or English number format):
+
+| Element | Variable | Meaning |
+|---|---|---|
+| tools, tool changer, force-torque sensor, vision sensor, workpiece | `mass` m (kg) | mass of the part |
+| robots | `payload` m_max (kg) | rated payload from the datasheet (no default) |
+| robots | `load` m_L (kg) | sum of the masses entered on the tool chain docked at the flange (flange → changer → sensor → gripper …) and on the workpiece whose port `grip` sits on the chain's TCP; parts without a mass are left out |
+| robots | `reach` R (mm) | from the geometry: the largest distance of the top-view reach envelope from the base axis (wrist centre for the articulated arm, J4 axis for the cobot, flange for SCARA and delta); none for the gantry; an entered value wins |
+
+Checks (warnings, bilingual messages):
+
+- `robot.payload` – m_L > m_max (only when both are known). The datasheet's load diagram also limits the
+  centre-of-gravity offset; that is not checked.
+- `robot.reach` – a workpiece (port `grip`) or TCP marker on the same page and in the same view, assigned to the nearest
+  robot by base distance, lies outside that robot's reach envelope as drawn by more than the wrist length (articulated:
+  d6; cobot: d5 + d6), the docked tool length (flange to the chain's TCP) and 1 % of the envelope size. A sketch-level
+  plausibility check, not a reachability analysis (orientation, collisions and singularities are ignored).
+
 ## Library categories and object types
 
 Robots have the views `side` (`IconIds.Side`) and `top` (`IconIds.Top`); SCARA opens in the top view. Tools have `side`
@@ -128,20 +153,27 @@ TCP marker have one drawing; fence and zone are point (polyline) elements.
 | `robot.arm.scara` | SCARA robot / SCARA-Roboter | top, side | same | `j1`, `j2` (°), `j3` (mm), `j4`, `height`, `inner`, `outer`, `stroke`, … `motion` (J2), `j1lim`, `j2lim` |
 | `robot.arm.delta` | Delta robot (parallel) / Delta-Roboter (Parallelkinematik) | side, top | same (base on top) | `j1`…`j3`, `height`, `baseRadius`, `upper`, `fore`, `platform`, … `motion` (J1) |
 | `robot.arm.gantry` | Cartesian / gantry robot / Linear- / Portalroboter | side, top | same | `x`, `y`, `z` (mm), `strokeX/Y/Z`, `height`, … `motion` (X) |
-| `robot.mobile.agv` | Mobile robot (AGV / AMR) / Mobiler Roboter (FTF / AMR) | top, side | mounts `deck`, `scanner1`, `scanner2` | `arrow` |
+| `robot.mobile.agv` | Mobile robot (AGV / AMR) / Mobiler Roboter (FTF / AMR) | top, side | mounts `deck` (+ carrier mount), `scanner1`, `scanner2` | `arrow` |
+| `robot.track.linear` | Linear axis (7th axis) / Linearachse (7. Achse) | side, top | mount `carriage` (+ carrier mount), port `chain` on the carriage, rail `rail` and mount `floor` (side view) | `pos` (0 … 1, 0.25), `ends` |
 | `robot.gripper.parallel` | Parallel gripper / Parallelgreifer | side, axial | mount `flange`, port `tcp` | `open` (0…1), `arrows` |
 | `robot.gripper.vacuum` | Vacuum gripper / Vakuumgreifer (Sauggreifer) | side, axial | same | `cups` (1–4) |
 | `robot.gripper.magnetic` | Magnetic gripper / Magnetgreifer | side, axial | same | – |
 | `robot.gripper.threefinger` | Three-finger gripper / Dreifingergreifer | side, axial | same | `open` |
 | `robot.tool.torch` | Welding torch / Schweißbrenner | side, axial | mount `flange`, port `tcp` at the wire tip | – |
 | `robot.tool.spindle` | Spindle (milling / drilling) / Spindel (Fräsen / Bohren) | side, axial | mount `flange`, port `tcp` | `arrow` |
+| `robot.tool.weldgun` | Welding gun / torch / Schweißzange / Schweißbrenner | side, axial | mount `flange`, port `tcp` between the electrode tips (spot) or at the wire tip (arc) | `kind` spot/arc |
+| `robot.tool.dispenser` | Adhesive dispenser / Klebedüse (Dosierventil) | side, axial | mount `flange`, port `tcp` at the nozzle tip | `bead` |
+| `robot.tool.changer` | Tool changer / Werkzeugwechsler | side, axial | mount `flange` (robot side, top), mount `tool` (tool side, bottom) | `utility` (media module) |
+| `robot.sensor.ft` | Force-torque sensor / Kraft-Momenten-Sensor | side, axial | mount `flange` (top), mount `tool` (bottom) | `label` (F/T) |
+| `robot.sensor.vision` | Vision sensor (camera) / Bildverarbeitungssensor (Kamera) | side, axial | mount `flange`, port `view` at the end of the field of view | `angle` (50°), `cone` |
 | `robot.frame.coordinate` | Coordinate frame / Koordinatensystem | – | port `origin` | `kind` world/base/tool/user/object, `axes` xz/xy/yz, `name` |
 | `robot.frame.tcp` | Tool centre point (TCP) / Werkzeugarbeitspunkt (TCP) | – | port `tcp` | `name` |
-| `robot.reach.envelope` | Reach envelope (working range) / Arbeitsraum (Reichweite) | side, top | mount `base` | articulated geometry and limits, `fill`, `labels` |
+| `robot.reach.envelope` | Reach envelope (working range) / Arbeitsraum (Reichweite) | side, top | mount `base` | articulated geometry and limits, `fill`, `labels`, `travel` (mm, 0) |
 | `robot.cell.workpiece` | Workpiece / Werkstück | top, side | port `grip` (+ `bottom` in side view) | `shape` box/cylinder |
 | `robot.cell.conveyor` | Belt conveyor / Gurtförderer (Förderband) | top, side | ports `in`, `out`, rail `belt` (+ mount `floor`) | `dir`, `arrow`, `legs` |
 | `robot.cell.pallet` | Pallet / Palette | top, side | port `load` (+ rail `deck`, mount `floor`) | – |
 | `robot.cell.pedestal` | Robot pedestal / Robotersockel | side, top | mount `top` (+ `floor`) | – |
+| `robot.cable.dragchain` | Energy chain (drag chain) / Energiekette (Schleppkette) | points | its ends (dock like line ends) | `radius` (4), `width` (2.4), `pitch` (2.4) (page mm) |
 | `robot.safety.fence` | Safety fence / Schutzzaun | points | rails along every segment | `closed`, `panel` (page mm), `mesh` |
 | `robot.safety.door` | Safety fence door / Schutztür (Schutzzaun) | top, side | ports `hinge`, `latch` | `kind` hinged/sliding |
 | `robot.safety.curtain` | Safety light curtain / Sicherheits-Lichtvorhang | top, side | ports `emitter`, `receiver` | `beams`, `field` |
@@ -153,13 +185,16 @@ Library (`robot.robots`, `robot.tools`, `robot.frames`, `robot.cell`, `robot.saf
 plus every robot in its second view (`<id>.top` / `<id>.side`), articulated with envelope (side and top), articulated and
 cobot as kinematic schematic with labels, SCARA with working range, closed parallel gripper, vacuum gripper with 4 cups,
 cylindrical workpiece, closed fence, sliding door, scanner with rectangular fields, zones (warning, protective,
-restricted, collaborative), tool and world frames, envelope in top view. Keywords in both languages (roboter, knickarm,
-greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, …).
+restricted, collaborative), tool and world frames, envelope in top view, dispenser with bead, linear axis in top view, envelope
+swept along a linear axis (top view, `travel` 2000 mm). Keywords in both languages (roboter, knickarm,
+greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, not-halt, linearachse, werkzeugwechsler,
+kraft-momenten-sensor, kamera, schweißzange, klebedüse, energiekette, …).
 
 ## Anchors (docking)
 
 - Robot base: **mount** `base` (foot on the floor; on top of the delta's base plate). It snaps onto the mount `top` of
-  the pedestal or the mount `deck` of the mobile robot (mobile manipulator).
+  the pedestal, the mount `deck` of the mobile robot (mobile manipulator, e.g. a cobot on an AGV) or the mount
+  `carriage` of the linear axis (see "Robots on carriers" below).
 - Robot flange: **mount** `flange` – a gripper's or tool's own mount `flange` snaps there (mount onto mount); and
   **port** `tcp` at the same point for TCP markers and frames (port onto port). Since 2026-11-25 the flange mount is
   **directed** along the tool axis (`Anchor.Directed`, where the axis shows in the view) and the tools' mounts face
@@ -169,7 +204,24 @@ greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, no
   give their radius), and a tool docked on the flange **follows** when a joint turns or the robot moves
   (`Coupling.Propagate` turns and moves parts docked on a directed mount; checked in PowerPoint: J5 + 15° turns the
   gripper from −30° to −15° on the flange).
-- Tools: port `tcp` at the gripping point / wire tip / tool tip; the TCP marker's port `tcp` snaps there.
+- **Tool chain** (since 2026-11-26): tool changers and force-torque sensors sit between flange and tool. Their mount
+  `flange` (top, directed to the robot) docks on the robot flange or on another part's tool side; their mount `tool`
+  (bottom, directed to the tool) takes the next part. Each offers a "+" (build port `mount.tool`) with grippers, tools,
+  sensors and changers, so arm → tool changer → force-torque sensor → gripper is built with three clicks, every part
+  turned to the tool axis and scaled to the robot's flange (all flange plates span the same design width). The whole
+  chain follows when a joint turns (each part's directed mount sits on the previous one, facing it). Core matches build
+  ports by mount id only, so a part offers its flange also as `tool` while it is a build-port candidate (not in the
+  document, or probed in a temporary copy: centred on the page origin or with a flange/tool mount of another part well
+  inside its box); placed parts keep unique mount ids, as `Coupling` finds docked parts by id.
+- Tools: port `tcp` at the gripping point / wire tip / tool tip; the TCP marker's port `tcp` snaps there, and so does a
+  workpiece's port `grip` (the workpiece counts as held: its mass is part of the robot's load).
+- **Robots on carriers:** floor-standing robots (articulated, cobot, SCARA) have, besides the mount `base`, a directed
+  mount without an id at the base (facing down); the mobile robot's deck and the linear axis's carriage have a matching
+  one (facing up). A robot whose base snaps onto the deck or the carriage (mount onto mount) therefore rides along when
+  the mobile robot drives or turns or the carriage moves (`pos`, also by its grip), and – as with tools on the flange –
+  the carrier follows when the docked robot is moved. Without an id these mounts offer no "+".
+- Linear axis: port `chain` on the carriage and rail `rail` along the rail top for the ends of an energy chain; a docked
+  chain end follows the carriage (attachment with the anchor id).
 - Fence: rails along every segment; door ports `hinge`/`latch` and light-curtain ports dock anywhere on them.
 - Conveyor: rail `belt` along the belt surface (workpiece ports dock anywhere on it).
 
@@ -178,7 +230,9 @@ greifer, sauggreifer, schutzzaun, lichtvorhang, arbeitsraum, reichweite, ftf, no
 Robots: `J… +15°` / `J… −15°` (50 mm for linear axes) on the moved joint, joint ▾ (choice of the moved joint),
 "Home position", "Ghost positions" (0 ↔ 4, over the moved joint's range), "Reach envelope", drawing style body ↔
 kinematic schematic (option pictograms detailed/schematic), "Joint labels" (J1… / A1… by UI language, coinciding joints
-share a label "J5/J6"). Grippers: open/close, stroke arrows, more/fewer cups. Others: kind ▾ / shape ▾ / axes ▾ (choices), toggles for
+share a label "J5/J6"). Grippers: open/close, stroke arrows, more/fewer cups. Tool changer: media module; force-torque
+sensor: label F/T; vision sensor: field of view; welding gun: process ▾ (spot welding gun / arc welding torch);
+dispenser: adhesive bead; linear axis: end positions (phantom lines). Others: kind ▾ / shape ▾ / axes ▾ (choices), toggles for
 names, arrows, mesh band, field tint, closed fence, reverse conveyor.
 
 ## Grips (drag handles)
@@ -190,6 +244,7 @@ names, arrows, mesh band, field tint, closed fence, reverse conveyor.
 | Robots: revolute joint whose axis faces the viewer (side view: shoulder, elbow, wrist bend; top view: base axis, SCARA arms) | `joint.j1` … | free; the joint turns towards the pointer about its axis (on the projected pose, so tilted axes work too) | `j1` … | 1°, wrapped into and clamped to the joint limits |
 | Robots: linear axis moving across the view (gantry X/Y/Z, SCARA quill in the side view) | `joint.x`, `joint.j3` … | along the projected axis | `x`, `y`, `z`, `j3` | 5 mm, clamped to the stroke |
 | Parallel and three-finger gripper (side and axial view) | `open` | along the jaw stroke | `open` | 5 %, 0 … 1 |
+| Linear axis (side and top view) | `pos` | along the rail ("Carriage position: 25 %" / "Schlittenposition: 25 %") | `pos` | 5 %, 0 … 1 |
 
 The grip sits on the first point further down the chain that moves with the joint (next joint, else the flange), so
 dragging it feels like taking the arm by that point. Joints whose motion does not show in the view have no grip (base
@@ -214,6 +269,11 @@ every view in both languages inside its box (also stretched, squashed, every cho
 values beyond the limits); scaling changes `Size` only; forward kinematics of every robot at known angles, delta loop
 closure for random angles, joint clamping; reach radii from the link lengths (two-link, articulated, SCARA, gantry,
 annulus); framing contains every position of the moved joint; scale and base kept on parameter changes and view
-switches; animation frames share the box; ghosts are phantom groups; actions; fence posts and zone fills. The gallery
+switches; animation frames share the box; ghosts are phantom groups; actions; fence posts and zone fills; the tool chain
+arm → tool changer → force-torque sensor → gripper built with "+", unique mount ids, the chain following a joint, the
+chain and held workpiece found in order; a cobot snapping onto and riding on the mobile robot, a robot riding on the
+linear axis's carriage, an energy chain end following the carriage, the energy chain's bend radius, the swept envelope;
+load sum, payload and reach checks, reach from the geometry or entered, nearest-robot assignment, JSON round trip of
+masses and carriage position (`ToolChainTests`, `ValueTests`). The gallery
 test writes `gallery/*.html` (every type in each view, stretched, schematic/envelope/ghost variants, presets, pose
 sequences, animation frames and a sample work cell).

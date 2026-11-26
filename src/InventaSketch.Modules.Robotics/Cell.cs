@@ -58,6 +58,7 @@ namespace InventaSketch.Modules.Robotics
             Params = new[] { ShapeParam },
             Extra = o => Rb.Choice(o, "robot.workpiece.shape", ShapeParam),
             CompanionIds = new[] { "robot.cell.conveyor", "robot.cell.pallet", "robot.gripper.parallel" },
+            HasMass = true,
         };
 
         // ------------------------------------------------------------------ belt conveyor
@@ -374,7 +375,7 @@ namespace InventaSketch.Modules.Robotics
                     p.Round(x, y, 1.4, RS.Dark, RoboTags.Base);
                     p.Round(x, y, 0.7, RS.White, RoboTags.Base);
                 }
-            }, (p, o) => new[] { RoboBoxType.Mount(p, 0, 0, "deck"), RoboBoxType.Mount(p, 13, -8, "scanner1"), RoboBoxType.Mount(p, -13, 8, "scanner2") }),
+            }, (p, o) => new[] { RoboBoxType.Mount(p, 0, 0, "deck"), RoboBoxType.Carrier(p, 0, 0), RoboBoxType.Mount(p, 13, -8, "scanner1"), RoboBoxType.Mount(p, -13, 8, "scanner2") }),
             new SymView(RoboViews.SideView, new Size2(30, 10), (p, o) =>
             {
                 p.RoundBox(-15, -4, 15, 3, 1.2, RS.Body, RoboTags.Base);
@@ -384,7 +385,7 @@ namespace InventaSketch.Modules.Robotics
                 p.Round(0, 3, 0.5, RS.White, RoboTags.Joint);
                 foreach (var x in new[] { -11.5, 11.5 }) p.Round(x, 4, 1, RS.White, RoboTags.Joint);
                 if (o.Flag("arrow", true)) p.Arrow(-4, -0.6, 5, -0.6, 1.6, RS.Medium with { Stroke = RoboColors.Blue }, RoboTags.Axis);
-            }, (p, o) => new[] { RoboBoxType.Mount(p, 0, -5, "deck"), RoboBoxType.Mount(p, 14.2, -0.5, "scanner1") }))
+            }, (p, o) => new[] { RoboBoxType.Mount(p, 0, -5, "deck"), RoboBoxType.Carrier(p, 0, -5), RoboBoxType.Mount(p, 14.2, -0.5, "scanner1") }))
         {
             Params = new[] { Pm.Bool("arrow", "Direction arrow", "Fahrtrichtungspfeil", true) },
             Extra = o => new[] { Rb.Toggle(o, "robot.agv.arrow", new I18nText("Direction arrow", "Fahrtrichtungspfeil"), IconIds.FlowArrow, "arrow", true) },

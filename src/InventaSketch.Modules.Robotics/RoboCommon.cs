@@ -70,6 +70,10 @@ namespace InventaSketch.Modules.Robotics
         public const string Axis = "axis";
         /// <summary>Note shown when a pose cannot be reached.</summary>
         public const string NoReach = "noreach";
+        /// <summary>Field of view of a camera.</summary>
+        public const string Fov = "fov";
+        /// <summary>Links of an energy chain.</summary>
+        public const string Chain = "chain";
     }
 
     /// <summary>Shared colours (common practice, not a cited standard).</summary>

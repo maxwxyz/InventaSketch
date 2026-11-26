@@ -53,7 +53,7 @@ namespace InventaSketch.Modules.Robotics
     /// framing is computed from link lengths and joint limits only, so the robot does not move or rescale inside its box
     /// when the angles change (joint values are clamped to the limits). Parameters are optional; scaling changes Size.
     /// </summary>
-    internal abstract class RobotArmType : ObjectType
+    internal abstract class RobotArmType : ObjectType, IValueType, IValueLinks, IValueChecks
     {
         private readonly string _id;
         private readonly I18nText _name;
@@ -111,8 +111,89 @@ namespace InventaSketch.Modules.Robotics
         public override bool PreferUniformScale => true;
         public override IReadOnlyList<string> Companions => new[]
         {
-            "robot.gripper.parallel", "robot.gripper.vacuum", "robot.tool.torch", "robot.frame.tcp", "robot.cell.pedestal", "robot.cell.conveyor",
+            "robot.gripper.parallel", "robot.gripper.vacuum", "robot.tool.torch", "robot.tool.changer", "robot.sensor.ft", "robot.frame.tcp",
+            "robot.cell.pedestal", Track.TrackId, "robot.cell.conveyor",
         };
+
+        // ------------------------------------------------------------------ values (RoboValues)
+
+        public IReadOnlyList<VarDef> Variables => RoboValues.ArmVars;
+        public IReadOnlyList<Relation> Relations => Array.Empty<Relation>();
+        public IEnumerable<ValueCheck> ValueChecks => RoboValues.ArmChecks;
+        public IEnumerable<BoundRelation> ValueLinks(SketchObject o, RenderContext ctx) => RoboValues.ArmLinks(this, o, ctx);
+
+        /// <summary>
+        /// Reach (model mm) from the geometry: the largest distance of the top-view reach envelope from the base axis; null
+        /// for robots without one.
+        /// </summary>
+        public virtual double? ReachOf(SketchObject o)
+        {
+            var env = Envelope(o, RoboViews.Top, Q(o));
+            if (env is null || env.Fill.Count == 0) return null;
+            return env.Fill.Max(p => p.Length);
+        }
+
+        /// <summary>Largest distance (model mm) from the point the reach envelope describes (wrist centre, J4 axis) to the flange.</summary>
+        protected virtual double EnvelopeToFlange(SketchObject o) => 0;
+
+        /// <summary>
+        /// True if a workpiece (port "grip") or a TCP marker on the same page and in the same view, nearer to this robot's base
+        /// than to any other robot's, lies outside the reach envelope (as drawn) by more than the wrist and the docked tool
+        /// length (plus 1 % of the envelope size).
+        /// </summary>
+        public bool TargetOutOfReach(SketchObject o, RenderContext ctx)
+        {
+            if (ctx.Registry is not { } reg || ctx.Doc.PageOf(o.Id) is not { } page) return false;
+            var view = ViewOf(o);
+            var s = SceneFor(o, out var pose, out var q);
+            if (!pose.Ok || Envelope(o, view, q) is not { } env || env.Fill.Count < 3) return false;
+            var objects = ctx.Doc.ObjectsOn(page).ToList();
+            Vec2 BaseOf(SketchObject arm) => reg.PageAnchors(arm, ctx).First(a => a.Role == AnchorRole.Mount && a.Id == "base").P;
+            var arms = objects.Where(x => x.Id != o.Id && reg.Type(x.Type) is RobotArmType t && t.ViewOf(x) == view).Select(BaseOf).ToList();
+            var myBase = BaseOf(o);
+            var chain = RoboValues.Chain(reg, ctx.Doc, o, ctx);
+            var flange = reg.PageAnchors(o, ctx).First(a => a.Role == AnchorRole.Mount && a.Id == "flange").P;
+            var tool = chain.Tcp is Vec2 tcp ? tcp.DistanceTo(flange) : 0;
+            var b = Rect.FromPoints(env.Fill);
+            var tol = EnvelopeToFlange(o) + tool / s.S + 0.01 * Math.Max(b.W, b.H);
+            var inv = o.Matrix().Invert();
+            foreach (var x in objects)
+            {
+                Vec2 at;
+                if (x.Type == RoboValues.WorkpieceId && reg.Type(x.Type) is { } wt && wt.ViewOf(x) == view)
+                    at = reg.PageAnchors(x, ctx).FirstOrDefault(a => a.Role == AnchorRole.Port && a.Id == "grip")?.P ?? new Vec2(x.Transform.X, x.Transform.Y);
+                else if (x.Type == RoboValues.TcpMarkerId)
+                    at = reg.PageAnchors(x, ctx).FirstOrDefault(a => a.Role == AnchorRole.Port && a.Id == "tcp")?.P ?? new Vec2(x.Transform.X, x.Transform.Y);
+                else continue;
+                var mine = at.DistanceTo(myBase);
+                if (arms.Any(other => other.DistanceTo(at) < mine)) continue;
+                var local = inv.Apply(at);
+                var model = local * (1 / s.S) + s.C;
+                if (Inside(env.Fill, model)) continue;
+                if (DistanceToOutline(env.Fill, model) > tol) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Even-odd point in polygon.</summary>
+        private static bool Inside(IReadOnlyList<Vec2> poly, Vec2 p)
+        {
+            var inside = false;
+            for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+            {
+                Vec2 a = poly[i], c = poly[j];
+                if ((a.Y > p.Y) != (c.Y > p.Y) && p.X < (c.X - a.X) * (p.Y - a.Y) / (c.Y - a.Y) + a.X) inside = !inside;
+            }
+            return inside;
+        }
+
+        private static double DistanceToOutline(IReadOnlyList<Vec2> poly, Vec2 p)
+        {
+            var d = double.MaxValue;
+            for (int i = 0, j = poly.Count - 1; i < poly.Count; j = i++)
+                d = Math.Min(d, Geo.ClosestOnSegment(p, poly[j], poly[i]).Point.DistanceTo(p));
+            return d;
+        }
 
         public abstract IReadOnlyList<JointDef> Joints { get; }
         /// <summary>Link length parameters (mm).</summary>
@@ -136,7 +217,8 @@ namespace InventaSketch.Modules.Robotics
             Joints.Select(j => Pm.Num(j.Key, j.Label.En, j.Label.De ?? j.Label.En, j.Default, j.Min, j.Max, j.Unit, j.Step / 3))
                 .Concat(GeometryParams)
                 .Concat(new[] { StyleParam, EnvelopeParam, LabelsParam, GhostsParam, MotionParam })
-                .Concat(LimitParams).ToList();
+                .Concat(LimitParams)
+                .Concat(RoboValues.ArmParams).ToList();
 
         /// <summary>Limits of a joint for this object (parameters may narrow or widen them within the joint's range).</summary>
         public virtual (double Min, double Max) Limit(SketchObject o, JointDef j) => (j.Min, j.Max);
@@ -392,11 +474,15 @@ namespace InventaSketch.Modules.Robotics
             var view = ViewOf(o);
             var s = SceneFor(o, out var pose, out _);
             var f = s.L(Proj.To2(pose.Flange, view));
-            yield return Anchor.Point(AnchorRole.Mount, s.L(Proj.To2(pose.Base, view)), "base");
+            var b = s.L(Proj.To2(pose.Base, view));
+            yield return Anchor.Point(AnchorRole.Mount, b, "base");
             // The flange faces along the tool axis where that axis shows in the view (tools docked with "+" turn with it).
             var td = s.L(Proj.To2(pose.Flange + pose.ToolDir, view)) - f;
             yield return td.Length > 0.3 * s.S ? Anchor.Directed(AnchorRole.Mount, f, td, "flange", pose.FlangeRadius * s.S) : Anchor.Point(AnchorRole.Mount, f, "flange");
             yield return Anchor.Point(AnchorRole.Port, f, "tcp");
+            // Floor-standing robots: the base also faces down to a carrier (AGV deck, carriage of a linear axis; their
+            // directed mount without an id), so the robot follows when the carrier moves (Coupling). No id: no "+" here.
+            if (pose.Ground && !pose.BaseUp) yield return Anchor.Directed(AnchorRole.Mount, b, new Vec2(0, 1));
         }
 
         /// <summary>Frames of the moved joint: from the current value to one limit, to the other and back (first = current).</summary>
