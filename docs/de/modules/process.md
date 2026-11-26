@@ -64,6 +64,7 @@ des Blocks.
 | `process.turbine` | Turbine / expander / Turbine / Entspannungsmaschine | 14x12 | I, O; Abtriebswellenstumpf unten (Achse + Nabe) | – |
 | `process.fan` | Fan / Ventilator | 12x12 | I, O; Wellennabe rechts (radial) oder oben (axial) | `kind` radial/axial |
 | `process.motor` | Electric motor (drive) / Elektromotor (Antrieb) | 10x10 | shaft (Anschluss, bleibt für alte Anbindungen); Wellenstumpf rechts (Achse + Nabe) | – |
+| `process.generator` | Generator (P&ID, driven) / Generator (R&I, angetrieben) | 10x10 | el (Leistungsanschluss, rechts); Wellennabe oben | – |
 | `process.valve.manual` | Valve (manual) / Armatur (handbetätigt) | 10x6 | 1, 2 | `kind` gate/globe/ball/butterfly, `closed` |
 | `process.valve.control` | Control valve / Stellventil (Regelventil) | 12x13 | 1, 2, S (Signal am Antrieb) | `actuator` diaphragm/motor/solenoid/piston, `fail` none/open/close/last (FO/FC/FL) |
 | `process.valve.check` | Check valve / Rückschlagarmatur | 10x6 | 1, 2 (Durchfluss 1 → 2) | – |
@@ -102,7 +103,7 @@ Pumpen, Ventilatoren, Verdichter, Turbinen und der Antriebsmotor haben eine echt
 Vertrag wie die Wellen und Antriebe des Mechanik- und des Maschinenmoduls ([mechanical-drives.md](mechanical-drives.md)):
 
 - **Angetriebene Maschinen** (`process.pump.centrifugal`, `process.pump.displacement`, `process.compressor`,
-  `process.fan`) haben einen `Hub`-Anker (Id `hub`), wo die Welle den Körper verlässt. Eine Wellenachse durch diesen
+  `process.fan`, `process.generator`) haben einen `Hub`-Anker (Id `hub`), wo die Welle den Körper verlässt. Eine Wellenachse durch diesen
   Punkt trägt die Maschine: eine mechanische Welle (`mech.shaft`), die Welle einer E-Maschine, der Wellenstumpf des
   Motorsymbols im Maschinenmodul oder der Stumpf des Prozessmotors oder der Turbine.
 - **Antriebe** (`process.motor`, `process.turbine`; `ObjectType.DrivesShaft`) bieten ihren Wellenstumpf als
@@ -113,8 +114,8 @@ Vertrag wie die Wellen und Antriebe des Mechanik- und des Maschinenmoduls ([mech
   normalen Fangen (Nabe auf Achse) und der Kopplung des Kerns („bewegt sich mit“). In der Blockansicht rückt die Nabe an
   den nächsten Blockrand.
 - Die Wellenseiten folgen den Symbolen: Kreiselpumpe und Radialventilator rechts (gegenüber dem axialen Saugstutzen), die
-  übrigen angetriebenen Maschinen oben, die Turbinenwelle unten (ein Verdichter oder eine Pumpe unter der Turbine dockt
-  ohne Drehen an), die Motorwelle rechts. Zum Andocken auf der anderen Seite das Symbol spiegeln.
+  übrigen angetriebenen Maschinen oben, die Turbinenwelle unten (ein Verdichter, eine Pumpe oder ein Generator unter der
+  Turbine dockt ohne Drehen an), die Motorwelle rechts. Zum Andocken auf der anderen Seite das Symbol spiegeln.
 - **Werte:** jede Maschine mit Welle führt Drehzahl *n* (`speed`), Drehmoment *M* (`torque`) und Wellenleistung *P*
   (`power`) mit *P* = 2π·*n*·*M* [S18]. Eine Maschine teilt *n* mit dem Element, mit dem sie gekoppelt ist (getragen oder
   konzentrisch). *M* geht über eine direkte Eins-zu-eins-Kupplung (Motor an der Pumpennabe, keines von beiden mit einem
@@ -123,6 +124,12 @@ Vertrag wie die Wellen und Antriebe des Mechanik- und des Maschinenmoduls ([mech
   einer Verzweigung wird kein Moment weitergegeben). So wird die Leistung des Antriebs zur Wellenleistung der Pumpe: ein
   Motor mit 1450 min⁻¹ und 50 N·m gibt der Pumpe *P* = 7,59 kW; mit *V̇* = 100 m³/h und *H* = 20 m folgt der
   Pumpenwirkungsgrad η = 71,8 %.
+- **Leistung ohne Drehzahl:** auf einem Wellenstrang mit genau zwei Gliedern, die Moment aufnehmen oder abgeben (Antrieb
+  und angetriebene Maschine, Wellen und Kupplungen dazwischen), wird auch die Wellenleistung *P* selbst weitergegeben
+  (`process.shaft.power`), wenn das andere Glied eine mechanische Leistung *P* hat (Prozessmaschinen, Motoren und
+  E-Maschinen des Maschinenmoduls). So erreicht der Leistungsbedarf eines Verdichters seinen Motor und die Abgabe einer
+  Turbine ihren Generator, bevor eine Drehzahl eingetragen ist. Mit einer Verzweigung oder einer Getriebestufe auf dem
+  Strang wird nichts weitergegeben (die Leistung teilt sich unbekannt auf).
 
 ## Thermodynamische Diagramme
 
@@ -174,6 +181,9 @@ Wärmepumpenprozess (log p-h) sowie ein Silo mit Füllstand (`process.silo.level
 - `process.motor` ist das R&I-Antriebssymbol, das an eine Pumpen- oder Ventilatorwelle andockt, weder der
   Antriebsstrang-Block des Maschinenmoduls (`machines.block.motor`, „E-Motor (Block)“) noch das Schaltzeichen
   (`elec.motor`): es bleibt und heißt „Elektromotor (R&I-Antrieb)“ / „Electric motor (P&ID drive)“.
+- `process.generator` ist der R&I-Generator, der unter einer Turbine andockt, weder das Stromaggregat des Energiemoduls
+  (`energy.gen.genset`, Motor und Generator in einem) noch eine E-Maschine des Maschinenmoduls: er heißt „Generator (R&I,
+  angetrieben)“ / „Generator (P&ID, driven)“.
 
 ## Leitungen
 
@@ -186,7 +196,9 @@ Begleitheizung neben der Linie; die Leitungsnummer steht entlang des längsten A
 Kreuze, Kreise) haben 8 mm Abstand und meiden die Ecken.
 
 **Weiterbauen mit „+“ (Anschlüsse).** Stutzen und Rohranschlüsse bieten eine Prozessleitung an (`process`),
-Messstellen und der Stellantriebsanschluss S von Stellventilen eine Signalleitung (`instrument`), danach die Apparate,
+Messstellen und der Stellantriebsanschluss S von Stellventilen eine Signalleitung (`instrument`), der
+Generatoranschluss `el` ein Energiekabel (`electric.ac`, das `energy.line.cable` des Energiemoduls, wenn es registriert
+ist), danach die Apparate,
 Armaturen oder Messstellen, die dort anschließen. Die Antriebswelle eines Motors oder einer Turbine ist eine
 mechanische Kupplung ohne Leitung (siehe „Antriebswellen“); die freie Nabe einer angetriebenen Maschine bietet eine Welle
 durch sie an. Das freie Ende einer Prozess- oder Signalleitung bietet „+“ zum Verlängern oder zum Andocken des nächsten
@@ -213,8 +225,10 @@ optionalen Textparametern (Ingenieurabschnitt des Inspektors). Wasser ist das vo
 |---|---|---|
 | Kreiselpumpe | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, Welle), η (`efficiency`); Panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`), *n* (`speed`), *M* (`torque`); Ingenieur ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*M* [S18] |
 | Verdrängerpumpe, Ventilator | *V̇*, Δ*p*, *P*, η; Panel *P*_hyd, *n*, *M* | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*M* [S18] |
-| Verdichter, Turbine | *P* (`power`, Wellenleistung: Antrieb des Verdichters, Abgabe der Turbine), *n* (`speed`); Panel *M* (`torque`) | *P* = 2π·*n*·*M* [S18] |
-| Antriebsmotor | *P* (`power`, Abgabe), *n*, *M* | *P* = 2π·*n*·*M* [S18] |
+| Verdichter | *P* (`power`, Antrieb), ṁ (`massFlow`, kg/s), π = *p*₂/*p*₁ (`pressureRatio`), θ₂ (`tempOut`); Panel θ₁ (`tempIn`, Vorgabe 20 °C), *p*₁ (`pressureIn`, absolut, Vorgabe 1,01325 bar), *p*₂ (`pressureOut`), η_s (`efficiency`, isentrop), Δ*T* (`deltaT`, Erhöhung), *V̇*₁ (`flowIn`), θ_max (`tempMax`, zulässige Austrittstemperatur), *n*, *M*; Ingenieur θ₂s (`tempOutIs`), *P*_s (`powerIs`), *V̇*₂ (`flowOut`), κ (`kappa`), *R*_s (`gasConstant`), *c*_p (`specificHeat`); Auswahl Gas (`gas`, Luft) | siehe „Gasmaschinen“ [S29]; *P* = 2π·*n*·*M* [S18] |
+| Turbine / Entspannungsmaschine | *P* (`power`, Abgabe), ṁ, π = *p*₁/*p*₂, θ₁; Panel θ₂, *p*₁, *p*₂, η_s, Δ*T* (Absenkung), *V̇*₁, θ_max (zulässige Eintrittstemperatur), *n*, *M*; Ingenieur wie beim Verdichter; keine Vorgaben am Eintritt | siehe „Gasmaschinen“ [S29]; *P* = 2π·*n*·*M* [S18] |
+| Antriebsmotor | *P* (`power`, Abgabe), *n*, *M*; Panel η (`efficiency`), *P*_el (`powerEl`, elektrische Aufnahme) | *P* = 2π·*n*·*M* [S18]; *P* = η·*P*_el [S15] |
+| Generator | *P*_el (`powerEl`, elektrische Abgabe), *P* (`power`, Wellenaufnahme), η (`efficiency`), *n*; Panel *M* | *P* = 2π·*n*·*M* [S18]; *P*_el = η·*P* [S15] |
 | Rohrbündel-, Platten-, allgemeiner Wärmeübertrager | Φ (`duty`), *k* (`u`), *A* (`area`), Δθ_m (`lmtd`); Panel ṁ₁ (`massFlow1`), θ₁,ein (`temp1In`), θ₁,aus (`temp1Out`), ṁ₂, θ₂,ein, θ₂,aus; Ingenieur *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,ein − θ₁,aus); Φ = ṁ₂·*c*₂·(θ₂,aus − θ₂,ein); Gegenstrom Δθ_m = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) mit Δθ_a = θ₁,ein − θ₂,aus, Δθ_b = θ₁,aus − θ₂,ein; Φ = *k*·*A*·Δθ_m [S29] |
 | Luftkühler, Kühlturm | Φ, ṁ (`massFlow`), θ_ein (`tempIn`), θ_aus (`tempOut`); Ingenieur *c* | Φ = ṁ·*c*·(θ_ein − θ_aus) [S29] |
 | Behälter, Tank, Reaktor, Kolonne | *V* (`volume`), *D* (`diameter`), *h* (`length`, zylindrischer Teil), *Q* (`heat`); Panel Δθ (`deltaT`); Ingenieur ρ, *c* | *V* = π·*D*²·*h*/4 (Böden nicht mitgerechnet); *Q* = ρ·*V*·*c*·Δθ [S29] |
@@ -231,19 +245,79 @@ unverzweigten Strang. Die Leitung rechnet *V̇* und ṁ ineinander um. Hand-, St
 Schmutzfänger, Reduzierstücke, Durchflussmessglieder und Schaugläser geben alle drei weiter, Luftfilter und Luftklappen
 (A1–A2) ebenso; Pumpen und Ventilatoren geben die Temperatur weiter. Eine Pumpe, die über eine Armatur einen
 Wärmeübertrager speist, setzt so ṁ₁, und die Austrittstemperatur der Seite 1 wird zur Eintrittstemperatur des nächsten
-Elements. Wärmeverluste und die Erwärmung in Pumpen werden nicht abgebildet. Verdichter und Turbinen haben nur
-Wellenwerte (Verdichtungs- und Entspannungsarbeit brauchen Gaseigenschaften); Kondensatableiter, Berstscheiben, Zyklone
-und Silos haben keine Werte.
+Elements. Wärmeverluste und die Erwärmung in Pumpen werden nicht abgebildet. Verdichter und Turbinen geben ṁ, θ und den
+absoluten Druck *p* an ihren Stutzen (Saugseite S / Eintritt I: θ₁, *p*₁; Druckseite D / Austritt O: θ₂, *p*₂). Die
+Druckklasse `p` gilt für alle Stutzen an verbundenen Leitungen gemeinsam (kein Druckverlust abgebildet) und geht durch
+nichts hindurch: eine Armatur, ein Schmutzfänger oder ein Durchflussmessglied zwischen zwei Maschinen hält sie auf. Der
+Volumenstrom eines Gases wird nicht weitergegeben (er ändert sich mit *p* und *T*; Armaturen geben *V̇* unverändert
+weiter, was nur für Flüssigkeiten stimmt); eine Prozessleitung an einer Gasmaschine rechnet ṁ daher mit ihrer eigenen
+Dichte um (voreingestellt Wasser: für ein Gas ρ an der Leitung eintragen). Kondensatableiter, Berstscheiben, Zyklone und
+Silos haben keine Werte.
+
+**Gasmaschinen (Verdichter, Turbine).** Ideales Gas mit konstanten Stoffwerten, adiabate Maschine, absolute Drücke und
+Temperaturen [S29]:
+
+| Beziehung | Verdichter | Turbine / Entspannungsmaschine |
+|---|---|---|
+| Druckverhältnis | *p*₂ = π·*p*₁ | *p*₁ = π·*p*₂ |
+| Gas | *c*_p = κ·*R*_s/(κ − 1) | ebenso |
+| Isentroper Austritt | *T*₂s = *T*₁·π^((κ−1)/κ) | *T*₂s = *T*₁·π^(−(κ−1)/κ) |
+| Isentroper Wirkungsgrad | η_s = (*T*₂s − *T*₁)/(*T*₂ − *T*₁) | η_s = (*T*₁ − *T*₂)/(*T*₁ − *T*₂s) |
+| Temperaturänderung | Δ*T* = *T*₂ − *T*₁ | Δ*T* = *T*₁ − *T*₂ |
+| Leistung (Antrieb / Expansionsarbeit je Sekunde) | *P* = ṁ·*c*_p·Δ*T* | *P* = ṁ·*c*_p·Δ*T* |
+| Isentrope Leistung | *P*_s = ṁ·*c*_p·(*T*₂s − *T*₁) = η_s·*P* | *P*_s = ṁ·*c*_p·(*T*₁ − *T*₂s) = *P*/η_s |
+| Volumenströme | *V̇*₁ = ṁ·*R*_s·*T*₁/*p*₁, *V̇*₂ = ṁ·*R*_s·*T*₂/*p*₂ | ebenso |
+
+Jede Beziehung wird nach jeder ihrer Größen gelöst: eine gemessene Austrittstemperatur ergibt η_s, eine bekannte Leistung
+ergibt ṁ. Die spezifische Arbeit (*w* = *c*_p·Δ*T*, in kJ/kg) ist keine eigene Größe: der Kern hat noch keine Größenart für
+J/kg; sie folgt aus Δ*T* und *c*_p. Mechanische Verluste, Gehäusekühlung, Realgasverhalten und Nassdampf werden nicht
+abgebildet. Luft bei 20 °C und π = 4 mit η_s = 80 %: *T*₂s = 435,6 K, θ₂ = 198,1 °C, *P* = 178,9 kW je kg/s. Eine Turbine
+mit 900 °C, 10 bar → 1 bar, η_s = 88 %: θ₂ = 402,3 °C, *P* = 2,50 MW bei 5 kg/s.
+
+Das Gas (`gas`, Ingenieurabschnitt) liefert κ und *R*_s als Werte ohne Eingänge; ein eingetragenes κ oder *R*_s geht der
+Tabelle vor, „Anderes Gas“ überlässt beide dem Anwender. Werte für das ideale Gas bei etwa 300 K und niedrigem Druck
+(*R*_s = *R*_m/*M* mit *R*_m = 8,314 J/(mol·K)), wie in den Stoffwerttabellen idealer Gase der Thermodynamik-Lehrbücher
+angegeben (Y. A. Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach*, McGraw-Hill, Tabelle der spezifischen
+Wärmekapazitäten gebräuchlicher idealer Gase bei 300 K; H. D. Baehr, S. Kabelac, *Thermodynamik*, Springer; Stoffwerte
+auch im VDI-Wärmeatlas [S29]):
+
+| Gas (`gas`) | κ | *R*_s in J/(kg·K) | *c*_p in kJ/(kg·K) (= κ·*R*_s/(κ − 1)) |
+|---|---|---|---|
+| Luft (`air`, Vorgabe) | 1,400 | 287,0 | 1,005 |
+| Stickstoff N₂ (`nitrogen`) | 1,400 | 296,8 | 1,039 |
+| Sauerstoff O₂ (`oxygen`) | 1,395 | 259,8 | 0,918 |
+| Kohlenstoffdioxid CO₂ (`co2`) | 1,289 | 188,9 | 0,843 |
+| Methan CH₄, ≈ Erdgas (`methane`) | 1,299 | 518,2 | 2,251 |
+| Wasserstoff H₂ (`hydrogen`) | 1,405 | 4124,0 | 14,307 |
+| Helium He (`helium`) | 1,667 | 2076,9 | 5,191 |
+| Argon Ar (`argon`) | 1,667 | 208,1 | 0,520 |
+| Wasserdampf, überhitzt, als ideales Gas (`steam`) | 1,327 | 461,5 | 1,873 |
+| Anderes Gas (`custom`) | eingetragen | eingetragen | eingetragen oder aus κ, *R*_s |
+
+κ sinkt mit der Temperatur (Luft ≈ 1,34 bei 1000 K): heiße Turbinenstufen fallen daher etwas günstig aus;
+Dampfturbinen im Nassdampfgebiet brauchen Dampftafeln (nicht abgebildet).
 
 **Wellenverknüpfungen.** Drehzahl, Drehmoment und Leistung gehen über Antriebswellen wie unter „Antriebswellen“
-beschrieben (Beziehungen `process.shaft.speed`, `process.shaft.torque`); das Lösen einer Maschine holt ihren Antrieb und
-ihren Wellenstrang in den Umfang.
+beschrieben (Beziehungen `process.shaft.speed`, `process.shaft.torque`, `process.shaft.power`); das Lösen einer Maschine
+holt ihren Antrieb und ihren Wellenstrang in den Umfang. Ein Motor, der einen Verdichter antreibt, zeigt dessen
+Antriebsleistung (und mit seinem Wirkungsgrad die elektrische Aufnahme); eine Turbine, die den Generator antreibt, gibt
+ihm ihre Wellenleistung, *P*_el = η·*P*.
+
+**Modulübergreifend.** Der Generatoranschluss `el` nennt *P*_el für den physikalischen Schlüssel *P*
+([engineering-calculations.md, Abschnitt 6.1](../design/engineering-calculations.md#61-verknüpfung-über-modulgrenzen-core-26112026)):
+ein Energiekabel vom Anschluss zu einem Zähler, einer Sammelschiene oder einem Verbraucher gibt die elektrische Abgabe
+weiter (unverzweigter Strang), und der Motor des Maschinenmoduls an einer Verdichterwelle übernimmt die Leistung des
+Verdichters als seine mechanische *P* (sein *P*_el = *P*/η).
 
 **Prüfungen** (nur Hinweise, Overlay, nichts wird geändert):
 
 | Id | Regel | Schwere | Quelle |
 |---|---|---|---|
 | `heat.cross` | Wärmeübertrager mit allen vier Temperaturen: (θ₁,ein − θ₂,aus)·(θ₁,aus − θ₂,ein) ≤ 0, eine Temperaturkreuzung, die im Gegenstrom nicht erreichbar ist | Warnung | [S29] |
+| `process.efficiency` | Pumpen, Ventilatoren, Motor, Generator, Verdichter und Turbine (isentrop): η ≤ 0 oder η > 1 (auch wenn η aus den Temperaturen folgt, z. B. ein Austritt kälter als der isentrope) | Warnung | [S1] |
+| `gas.ratio` | Verdichter *p*₂ < *p*₁, Turbine *p*₂ > *p*₁ (π < 1) | Warnung | [S29] |
+| `gas.temperature` | Verdichter θ₂ > θ_max, Turbine θ₁ > θ_max (die zulässige Temperatur wird aus dem Datenblatt eingetragen; es wird kein Grenzwert angenommen) | Warnung | [S29] |
+| `gas.kappa` | κ ≤ 1 oder κ > 5/3 (kein Gas) | Warnung | [S29] |
 
 ## Hinweise für Hosts
 
@@ -264,6 +338,10 @@ Leitungen folgen dem Apparat und verlassen Stutzen senkrecht, Schienen, Brücken
 JSON-Rundlauf eines Beispiel-Fließschemas und die Kreisprozess-Formeln (Otto, Diesel, Carnot p-v und T-s, Rankine,
 Kältekreis). `ShaftTests` docken Pumpen, Verdichter und Ventilatoren an eine mechanische Welle, das Motorsymbol des
 Maschinenmoduls, einen Wellenstrang mit E-Maschine, den Prozessmotor und eine Turbine an (Kopplung und gemeinsame *n*,
-*M*, *P*); sie nutzen das Mechanik- und das Maschinenmodul nur als Testabhängigkeiten (das Modul selbst hängt allein vom
-Kern ab). Der Galerie-Test schreibt `gallery/*.html` in den Testausgabeordner (jeder Typ in jeder Ansicht,
+*M*, *P*). `GasMachineTests` prüfen die Gasformeln gegen Handrechnungen (Luftverdichter, Gasturbine, Wirkungsgrad aus
+einer gemessenen Austrittstemperatur, jedes Gas der Auswahl, eingetragenes κ, „Anderes Gas“), die Prüfungen, ṁ/θ/*p* vom
+Verdichteraustritt zum Turbineneintritt und den an einer Armatur gestoppten Druck, einen Motor des Maschinenmoduls, der
+die Leistung eines Verdichters ohne Drehzahl sieht, und eine Turbine, die den Generator antreibt, dessen Anschluss über
+ein Energiekabel einen Zähler speist. Die Tests nutzen das Mechanik-, das Maschinen- und das Energiemodul nur als
+Testabhängigkeiten (das Modul selbst hängt allein vom Kern ab). Der Galerie-Test schreibt `gallery/*.html` in den Testausgabeordner (jeder Typ in jeder Ansicht,
 gestreckt, Vorlagen, ein Destillations- und ein Lüftungsgeräte-Beispiel).

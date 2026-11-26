@@ -59,6 +59,7 @@ nozzle that lies inside the symbol box (on a dished head) moves to the nearest e
 | `process.turbine` | Turbine / expander / Turbine / Entspannungsmaschine | 14x12 | I, O; output shaft stub below (axis + hub) | – |
 | `process.fan` | Fan / Ventilator | 12x12 | I, O; shaft hub right (radial) or on top (axial) | `kind` radial/axial |
 | `process.motor` | Electric motor (drive) / Elektromotor (Antrieb) | 10x10 | shaft (port, kept for old attachments); shaft stub right (axis + hub) | – |
+| `process.generator` | Generator (P&ID, driven) / Generator (R&I, angetrieben) | 10x10 | el (power terminal, right); shaft hub on top | – |
 | `process.valve.manual` | Valve (manual) / Armatur (handbetätigt) | 10x6 | 1, 2 | `kind` gate/globe/ball/butterfly, `closed` |
 | `process.valve.control` | Control valve / Stellventil (Regelventil) | 12x13 | 1, 2, S (signal on the actuator) | `actuator` diaphragm/motor/solenoid/piston, `fail` none/open/close/last (FO/FC/FL) |
 | `process.valve.check` | Check valve / Rückschlagarmatur | 10x6 | 1, 2 (flow 1 → 2) | – |
@@ -96,8 +97,8 @@ computer function = hexagon, PLC = diamond in a square.
 Pumps, fans, compressors, turbines and the drive motor have a real mechanical shaft with the same contract as the shafts
 and drives of the mechanical and machines modules ([mechanical-drives.md](mechanical-drives.md)):
 
-- **Driven machines** (`process.pump.centrifugal`, `process.pump.displacement`, `process.compressor`, `process.fan`)
-  expose a `Hub` anchor (id `hub`) where the shaft leaves the body. A shaft axis through this point carries the machine:
+- **Driven machines** (`process.pump.centrifugal`, `process.pump.displacement`, `process.compressor`, `process.fan`,
+  `process.generator`) expose a `Hub` anchor (id `hub`) where the shaft leaves the body. A shaft axis through this point carries the machine:
   a mechanical shaft (`mech.shaft`), the shaft of an e-machine, the shaft stub of the machines motor symbol, or the stub
   of the process motor or turbine.
 - **Drives** (`process.motor`, `process.turbine`; `ObjectType.DrivesShaft`) expose their shaft stub as an `Axis` segment
@@ -107,8 +108,8 @@ and drives of the mechanical and machines modules ([mechanical-drives.md](mechan
 - The hub has no bore radius (0), so a machine seated on a shaft keeps its size. Docking uses the normal snapping (hub
   onto an axis) and the core coupling ("moves along"). In the block view the hub moves to the nearest block edge.
 - The shaft sides follow the symbols: centrifugal pump and radial fan on the right (opposite the axial suction), the other
-  driven machines on top, the turbine shaft below (a compressor or pump below the turbine docks without turning), the
-  motor shaft to the right. Flip a symbol to dock on the other side.
+  driven machines on top, the turbine shaft below (a compressor, pump or generator below the turbine docks without
+  turning), the motor shaft to the right. Flip a symbol to dock on the other side.
 - **Values:** every machine with a shaft carries speed *n* (`speed`), torque *T* (`torque`) and shaft power *P* (`power`)
   with *P* = 2π·*n*·*T* [S18]. A machine shares *n* with the element it is coupled to (carried or concentric). *T* is passed
   over a direct one-to-one coupling (a motor on the pump hub, neither coupled to a third element with a torque) and from
@@ -116,6 +117,11 @@ and drives of the mechanical and machines modules ([mechanical-drives.md](mechan
   torque (the rule of the mechanical module; with a branch no torque is passed). The drive's power thus becomes the
   pump's shaft power: a motor at 1450 min⁻¹ and 50 N·m gives the pump *P* = 7.59 kW; with *V̇* = 100 m³/h and *H* = 20 m
   the pump efficiency follows as η = 71.8 %.
+- **Power without a speed:** on a shaft line with exactly two members that take or give torque (the drive and the driven
+  machine, shafts and couplings between them) the shaft power *P* itself is passed as well (`process.shaft.power`), when
+  the other member has a mechanical power *P* (process machines, the machines motors and e-machines). A compressor's power
+  demand thus reaches its motor, and a turbine's output its generator, before any speed is entered. With a branch or a
+  gear stage on the line nothing is passed (the power splits in an unknown way).
 
 ## Thermodynamic diagrams
 
@@ -164,6 +170,9 @@ Carnot p-v and a heat pump cycle (log p-h), and a silo with fill level (`process
 - `process.motor` is the P&ID drive symbol that docks on a pump or fan shaft, not the drive train block of the machines
   module (`machines.block.motor`, "E-motor (block)") nor the circuit symbol (`elec.motor`): kept and named "Electric
   motor (P&ID drive)" / "Elektromotor (R&I-Antrieb)".
+- `process.generator` is the P&ID generator that docks below a turbine, not the energy module's generator set
+  (`energy.gen.genset`, engine and generator in one) nor an e-machine of the machines module: named "Generator (P&ID,
+  driven)" / "Generator (R&I, angetrieben)".
 
 ## Lines
 
@@ -175,7 +184,9 @@ The heat-traced kind adds a dashed tracer beside the line; the line number is wr
 Signal marks (slashes, crosses, circles) are spaced 8 mm and kept off the corners.
 
 **Build "+" (connections).** Nozzles and pipe ports offer a process line (`process`), instrument bubbles and the actuator
-port S of control valves a signal line (`instrument`), then the equipment, valves or instruments that connect there. The
+port S of control valves a signal line (`instrument`), the generator terminal `el` a power cable (`electric.ac`, the
+energy module's `energy.line.cable` when that module is registered), then the equipment, valves or instruments that
+connect there. The
 drive shaft of a motor or turbine is a mechanical coupling without a line (see "Drive shafts"); a driven machine's free
 hub offers a shaft through it. The free end of a process or signal line offers "+" to
 continue it or to dock the next element.
@@ -200,8 +211,10 @@ entered values). Card variables come first. Design notes:
 |---|---|---|
 | Centrifugal pump | *V̇* (`flowRate`, m³/h), *H* (`head`), *P* (`power`, shaft), η (`efficiency`); panel Δ*p* (`pressureRise`), *P*_hyd (`powerHyd`), *n* (`speed`), *T* (`torque`); engineer ρ (`density`) | Δ*p* = ρ·*g*·*H*; *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*T* [S18] |
 | Displacement pump, fan | *V̇*, Δ*p*, *P*, η; panel *P*_hyd, *n*, *T* | *P*_hyd = Δ*p*·*V̇*; *P* = *P*_hyd/η [S28]; *P* = 2π·*n*·*T* [S18] |
-| Compressor, turbine | *P* (`power`, shaft power: drive of the compressor, output of the turbine), *n* (`speed`); panel *T* (`torque`) | *P* = 2π·*n*·*T* [S18] |
-| Drive motor | *P* (`power`, output), *n*, *T* | *P* = 2π·*n*·*T* [S18] |
+| Compressor | *P* (`power`, drive), ṁ (`massFlow`, kg/s), π = *p*₂/*p*₁ (`pressureRatio`), θ₂ (`tempOut`); panel θ₁ (`tempIn`, default 20 °C), *p*₁ (`pressureIn`, absolute, default 1.01325 bar), *p*₂ (`pressureOut`), η_s (`efficiency`, isentropic), Δ*T* (`deltaT`, rise), *V̇*₁ (`flowIn`), θ_max (`tempMax`, permissible outlet temperature), *n*, *T*; engineer θ₂s (`tempOutIs`), *P*_s (`powerIs`), *V̇*₂ (`flowOut`), κ (`kappa`), *R* (`gasConstant`), *c*_p (`specificHeat`); choice gas (`gas`, air) | see "Gas machines" [S29]; *P* = 2π·*n*·*T* [S18] |
+| Turbine / expander | *P* (`power`, output), ṁ, π = *p*₁/*p*₂, θ₁; panel θ₂, *p*₁, *p*₂, η_s, Δ*T* (drop), *V̇*₁, θ_max (permissible inlet temperature), *n*, *T*; engineer as the compressor; no defaults at the inlet | see "Gas machines" [S29]; *P* = 2π·*n*·*T* [S18] |
+| Drive motor | *P* (`power`, output), *n*, *T*; panel η (`efficiency`), *P*_el (`powerEl`, electrical input) | *P* = 2π·*n*·*T* [S18]; *P* = η·*P*_el [S15] |
+| Generator | *P*_el (`powerEl`, electrical output), *P* (`power`, shaft input), η (`efficiency`), *n*; panel *T* | *P* = 2π·*n*·*T* [S18]; *P*_el = η·*P* [S15] |
 | Shell-and-tube, plate, general heat exchanger | Φ (`duty`), *U* (`u`), *A* (`area`), Δθ_lm (`lmtd`); panel ṁ₁ (`massFlow1`), θ₁,in (`temp1In`), θ₁,out (`temp1Out`), ṁ₂, θ₂,in, θ₂,out; engineer *c*₁, *c*₂ (`specificHeat1/2`) | Φ = ṁ₁·*c*₁·(θ₁,in − θ₁,out); Φ = ṁ₂·*c*₂·(θ₂,out − θ₂,in); counter-flow Δθ_lm = (Δθ_a − Δθ_b)/ln(Δθ_a/Δθ_b) with Δθ_a = θ₁,in − θ₂,out, Δθ_b = θ₁,out − θ₂,in; Φ = *U*·*A*·Δθ_lm [S29] |
 | Air cooler, cooling tower | Φ, ṁ (`massFlow`), θ_in (`tempIn`), θ_out (`tempOut`); engineer *c* | Φ = ṁ·*c*·(θ_in − θ_out) [S29] |
 | Vessels, tank, reactor, column | *V* (`volume`), *D* (`diameter`), *h* (`length`, cylindrical part), *Q* (`heat`); panel Δθ (`deltaT`); engineer ρ, *c* | *V* = π·*D*²·*h*/4 (heads not counted); *Q* = ρ·*V*·*c*·Δθ [S29] |
@@ -217,17 +230,74 @@ are shared when at most two elements carry them in a net; lines take them on an 
 and ṁ. Manual, control and check valves, strainers, reducers, flow elements and sight glasses pass all three, filters and
 dampers (A1–A2) as well; pumps and fans pass the temperature. A pump feeding a heat exchanger through a valve thus sets
 ṁ₁, and the outlet temperature of side 1 becomes the inlet temperature of the next element. Heat losses and the
-temperature rise in pumps are not modelled. Compressors and turbines have shaft values only (compression and expansion
-work need gas properties); steam traps, rupture discs, cyclones and silos have no values.
+temperature rise in pumps are not modelled. Compressors and turbines give ṁ, θ and the absolute pressure *p* at their
+nozzles (suction S / inlet I: θ₁, *p*₁; discharge D / outlet O: θ₂, *p*₂). The pressure class `p` is shared by every
+nozzle on connected lines (no pressure drop modelled) and passes through nothing: a valve, strainer or flow element
+between two machines stops it. The volume flow of a gas is not passed (it changes with *p* and *T*; valves pass *V̇*
+unchanged, which is right for liquids only), so a process line next to a gas machine converts ṁ with its own density
+(water by default: enter ρ on the line for a gas). Steam traps, rupture discs, cyclones and silos have no values.
+
+**Gas machines (compressor, turbine).** An ideal gas with constant properties, adiabatic machine, absolute pressures and
+temperatures [S29]:
+
+| Relation | Compressor | Turbine / expander |
+|---|---|---|
+| Pressure ratio | *p*₂ = π·*p*₁ | *p*₁ = π·*p*₂ |
+| Gas | *c*_p = κ·*R*/(κ − 1) | same |
+| Isentropic outlet | *T*₂s = *T*₁·π^((κ−1)/κ) | *T*₂s = *T*₁·π^(−(κ−1)/κ) |
+| Isentropic efficiency | η_s = (*T*₂s − *T*₁)/(*T*₂ − *T*₁) | η_s = (*T*₁ − *T*₂)/(*T*₁ − *T*₂s) |
+| Temperature change | Δ*T* = *T*₂ − *T*₁ | Δ*T* = *T*₁ − *T*₂ |
+| Power (drive / expansion work per second) | *P* = ṁ·*c*_p·Δ*T* | *P* = ṁ·*c*_p·Δ*T* |
+| Isentropic power | *P*_s = ṁ·*c*_p·(*T*₂s − *T*₁) = η_s·*P* | *P*_s = ṁ·*c*_p·(*T*₁ − *T*₂s) = *P*/η_s |
+| Volume flows | *V̇*₁ = ṁ·*R*·*T*₁/*p*₁, *V̇*₂ = ṁ·*R*·*T*₂/*p*₂ | same |
+
+Every relation is solved for each of its variables, so a measured outlet temperature gives η_s, a known power gives ṁ.
+The specific work (*w* = *c*_p·Δ*T*, in kJ/kg) is not a variable of its own: Core has no quantity kind for J/kg yet; it
+follows from Δ*T* and *c*_p. Mechanical losses, cooling of the casing, real-gas behaviour and wet steam are not modelled.
+Air at 20 °C and π = 4 with η_s = 80 %: *T*₂s = 435.6 K, θ₂ = 198.1 °C, *P* = 178.9 kW per kg/s. A turbine with 900 °C,
+10 bar → 1 bar, η_s = 88 %: θ₂ = 402.3 °C, *P* = 2.50 MW for 5 kg/s.
+
+The gas (`gas`, engineering section) gives κ and *R* as values without inputs; an entered κ or *R* takes precedence over
+the table, "Other gas" leaves both to the user. Values for the ideal gas at about 300 K and low pressure (*R* = *R*_m/*M*
+with *R*_m = 8.314 J/(mol·K)), as tabulated in the ideal-gas property tables of the thermodynamics textbooks (Y. A.
+Çengel, M. A. Boles, *Thermodynamics: An Engineering Approach*, McGraw-Hill, table of ideal-gas specific heats of common
+gases at 300 K; H. D. Baehr, S. Kabelac, *Thermodynamik*, Springer; property data also in the VDI Heat Atlas [S29]):
+
+| Gas (`gas`) | κ | *R* in J/(kg·K) | *c*_p in kJ/(kg·K) (= κ·*R*/(κ − 1)) |
+|---|---|---|---|
+| Air (`air`, default) | 1.400 | 287.0 | 1.005 |
+| Nitrogen N₂ (`nitrogen`) | 1.400 | 296.8 | 1.039 |
+| Oxygen O₂ (`oxygen`) | 1.395 | 259.8 | 0.918 |
+| Carbon dioxide CO₂ (`co2`) | 1.289 | 188.9 | 0.843 |
+| Methane CH₄, ≈ natural gas (`methane`) | 1.299 | 518.2 | 2.251 |
+| Hydrogen H₂ (`hydrogen`) | 1.405 | 4124.0 | 14.307 |
+| Helium He (`helium`) | 1.667 | 2076.9 | 5.191 |
+| Argon Ar (`argon`) | 1.667 | 208.1 | 0.520 |
+| Steam, superheated, as ideal gas (`steam`) | 1.327 | 461.5 | 1.873 |
+| Other gas (`custom`) | entered | entered | entered or from κ, *R* |
+
+κ falls with temperature (air ≈ 1.34 at 1000 K), so hot turbine stages come out somewhat optimistic; steam turbines in
+the wet region need steam tables (not modelled).
 
 **Shaft links.** Speed, torque and power pass across drive shafts as described in "Drive shafts" (relations
-`process.shaft.speed`, `process.shaft.torque`); solving one machine pulls its drive and shaft line into the scope.
+`process.shaft.speed`, `process.shaft.torque`, `process.shaft.power`); solving one machine pulls its drive and shaft line
+into the scope. A motor driving a compressor shows the compressor's drive power (and, with its efficiency, the electrical
+input); a turbine driving the generator gives it its shaft power, *P*_el = η·*P*.
+
+**Joins across modules.** The generator terminal `el` names *P*_el for the physical key *P*
+([engineering-calculations.md, section 6.1](../design/engineering-calculations.md#61-joins-across-modules-core-2026-11-26)):
+an energy cable from the terminal to a meter, busbar or load passes the electrical output on (unbranched run), and the
+machines motor on a compressor shaft takes the compressor's power as its mechanical *P* (its *P*_el = *P*/η).
 
 **Checks** (hints only, overlay, nothing changes):
 
 | Id | Rule | Severity | Source |
 |---|---|---|---|
 | `heat.cross` | heat exchanger with all four temperatures: (θ₁,in − θ₂,out)·(θ₁,out − θ₂,in) ≤ 0, a temperature cross that counter-flow cannot reach | warning | [S29] |
+| `process.efficiency` | pumps, fans, motor, generator, compressor and turbine (isentropic): η ≤ 0 or η > 1 (also when η follows from the temperatures, e.g. an outlet colder than the isentropic one) | warning | [S1] |
+| `gas.ratio` | compressor *p*₂ < *p*₁, turbine *p*₂ > *p*₁ (π < 1) | warning | [S29] |
+| `gas.temperature` | compressor θ₂ > θ_max, turbine θ₁ > θ_max (the permissible temperature is entered from the datasheet; no limit is assumed) | warning | [S29] |
+| `gas.kappa` | κ ≤ 1 or κ > 5/3 (no gas) | warning | [S29] |
 
 ## Host notes
 
@@ -246,7 +316,11 @@ mostly on the edge, same ids in every view, scaled with the box), snapping a lin
 equipment and leaving nozzles perpendicular, rails, hops, line kinds, signal marks, the JSON round trip of a sample
 flow sheet, and the cycle formulas (Otto, Diesel, Carnot p-v and T-s, Rankine, refrigeration). `ShaftTests` dock pumps,
 compressors and fans on a mechanical shaft, the machines motor symbol, an e-machine shaft line, the process motor and a
-turbine (coupling and shared *n*, *T*, *P*); they reference the mechanical and machines modules as test dependencies only
+turbine (coupling and shared *n*, *T*, *P*). `GasMachineTests` check the gas formulas against hand calculations (air
+compressor, gas turbine, efficiency from a measured outlet temperature, every gas of the choice, entered κ, "other gas"),
+the checks, ṁ/θ/*p* from a compressor outlet to a turbine inlet and the pressure stopped by a valve, a machines motor
+that sees a compressor's power without a speed, and a turbine driving the generator whose terminal feeds an energy
+meter through an energy cable. The tests reference the mechanical, machines and energy modules as test dependencies only
 (the module itself depends on Core alone). The gallery test writes
 `gallery/*.html` into the test output folder (every type in each view, stretched, presets, a distillation sample and
 an air handling unit sample).

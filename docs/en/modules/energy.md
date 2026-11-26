@@ -214,6 +214,11 @@ building-services heat pump stay two types (system view vs. building installatio
 thermal storage passes its flow temperature. The water ports `water` and `tail` of the hydro power plant give its flow
 *Q* to water lines of other modules. Energy heat ports are single (single-line view): a flow and a return pipe docked
 on the same port are joined into one building-services net, so draw only the flow pipe to an energy heat port.
+The process module's turbine-driven generator (`process.generator`) has a power terminal `el` that takes an energy cable
+and names its electrical output *P*_el for the key `P`: a cable from it to a meter (port a), a busbar or another single
+AC element passes the turbine's electrical output on (unbranched run, like an inverter's *P*_AC; a branched sum is not
+split across modules). The energy module itself has no gas or steam turbine: thermodynamic turbines and compressors with
+gas values are process symbols (process.md, "Gas machines"); the CHP unit and the genset keep their overall ratings.
 
 Examples (accept criteria): 10 modules with *U*_oc = 49.5 V, β = −0.27 %/K and θ_min = −10 °C give
 *U*_oc,max = 10 · 49.5 V · 1.0945 = 541.8 V, and an inverter with *U*_DC,max = 500 V shows the warning `pv.voc.max`.

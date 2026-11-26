@@ -40,7 +40,7 @@ namespace InventaSketch.Modules.Process.Tests
         public void ValueTypesDeclareBilingualVariablesWithParametersAndSources()
         {
             var r = Fx.Reg();
-            foreach (var id in new[] { "process.pump.centrifugal", "process.pump.displacement", "process.fan", "process.compressor", "process.turbine", "process.motor", "process.hx.shelltube", "process.hx.plate", "process.hx.general", "process.hx.aircooler", "process.hx.coolingtower", "process.vessel.vertical", "process.vessel.tank", "process.line" })
+            foreach (var id in new[] { "process.pump.centrifugal", "process.pump.displacement", "process.fan", "process.compressor", "process.turbine", "process.motor", "process.generator", "process.hx.shelltube", "process.hx.plate", "process.hx.general", "process.hx.aircooler", "process.hx.coolingtower", "process.vessel.vertical", "process.vessel.tank", "process.line" })
             {
                 var t = r.Type(id)!;
                 Assert.True(ValueModel.HasValues(t), id);

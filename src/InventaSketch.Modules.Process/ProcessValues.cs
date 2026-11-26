@@ -17,8 +17,14 @@ namespace InventaSketch.Modules.Process
     /// three; pumps and fans pass the temperature. Heat losses of lines and the temperature rise in pumps are not modelled.
     /// </para>
     /// <para>
-    /// Shaft (<see cref="ShaftLinks"/>): pumps, fans, compressors, turbines and the drive motor carry speed n, torque T and
-    /// shaft power P = 2π·n·T; a machine docked on a drive or a mechanical shaft shares n (and T over a direct coupling).
+    /// Shaft (<see cref="ShaftLinks"/>): pumps, fans, compressors, turbines, the drive motor and the generator carry speed n,
+    /// torque T and shaft power P = 2π·n·T; a machine docked on a drive or a mechanical shaft shares n (and T and P over a
+    /// direct coupling).
+    /// </para>
+    /// <para>
+    /// Gas machines (compressor, turbine): an ideal gas with constant properties (κ, R from the selected gas, c_p = κ·R/(κ − 1)),
+    /// pressure ratio, isentropic outlet temperature T₂s = T₁·π^(±(κ−1)/κ), isentropic efficiency, actual outlet temperature,
+    /// power P = ṁ·c_p·ΔT and the volume flows ṁ·R·T/p. The nozzles pass ṁ, θ and p; not V̇, which changes with p and T along a gas line (a valve passes V̇ unchanged, right for liquids only).
     /// </para>
     /// </summary>
     internal static class ProcessValues
@@ -38,8 +44,10 @@ namespace InventaSketch.Modules.Process
             public IReadOnlyList<Relation> Relations { get; }
             public IReadOnlyList<ParamDef> Params { get; }
             public IReadOnlyList<ValueCheck> Checks { get; }
-            /// <summary>Variables at a nozzle (net classes Vdot, m, theta).</summary>
+            /// <summary>Variables at a nozzle (net classes Vdot, m, theta, p; the generator terminal: P for the joins across modules).</summary>
             public Func<SketchObject, string, IEnumerable<PortVar>> Ports { get; init; } = (_, _) => Array.Empty<PortVar>();
+            /// <summary>Relations that depend on the object (the property values of the selected gas); null = none.</summary>
+            public Func<SketchObject, IEnumerable<Relation>>? Local { get; init; }
         }
 
         // ------------------------------------------------------------------ parameters and variables
@@ -171,6 +179,217 @@ namespace InventaSketch.Modules.Process
                 .Solve("Vdot", "π·{di}²·{v}/4", v => Math.PI * v("di") * v("di") * v("v") / 4)
                 .Solve("di", "√(4·{Vdot}/(π·{v}))", v => Math.Sqrt(4 * v("Vdot") / (Math.PI * v("v"))));
 
+        /// <summary>P_el = η·P: a generator turns shaft power into electrical power [S15].</summary>
+        private static readonly Relation GeneratorEfficiency =
+            new Relation("process.generator.efficiency", T("Generator efficiency", "Generatorwirkungsgrad"), "{Pel} = {eta}·{P}", "Pel", "eta", "P")
+            {
+                Source = "S15",
+                Validity = T("generator operation (mechanical power in, electrical power out)", "Generatorbetrieb (mechanische Leistung hinein, elektrische heraus)"),
+            }
+                .Solve("Pel", "{eta}·{P}", v => v("eta") * v("P"))
+                .Solve("P", "{Pel}/{eta}", v => v("Pel") / v("eta"))
+                .Solve("eta", "{Pel}/{P}", v => v("Pel") / v("P"));
+
+        /// <summary>P = η·P_el: a motor turns electrical power into shaft power [S15].</summary>
+        private static readonly Relation MotorEfficiency =
+            new Relation("process.motor.efficiency", T("Motor efficiency", "Motorwirkungsgrad"), "{P} = {eta}·{Pel}", "P", "eta", "Pel")
+            {
+                Source = "S15",
+                Validity = T("motor operation (electrical power in, mechanical power out)", "Motorbetrieb (elektrische Leistung hinein, mechanische heraus)"),
+            }
+                .Solve("P", "{eta}·{Pel}", v => v("eta") * v("Pel"))
+                .Solve("Pel", "{P}/{eta}", v => v("P") / v("eta"))
+                .Solve("eta", "{P}/{Pel}", v => v("P") / v("Pel"));
+
+        // ------------------------------------------------------------------ gas machines (compressor, turbine)
+
+        /// <summary>
+        /// An ideal gas with constant properties: isentropic exponent κ = c_p/c_v and specific gas constant R = R_m/M, values at
+        /// about 300 K and low pressure from the ideal-gas property tables of the thermodynamics textbooks (module docs).
+        /// </summary>
+        internal sealed record Gas(string Id, I18nText Name, double Kappa, double R);
+
+        /// <summary>The gases of the choice (R in J/(kg·K)); "custom" = no gas: κ and R are entered.</summary>
+        internal static readonly IReadOnlyList<Gas> Gases = new[]
+        {
+            new Gas("air", T("Air", "Luft"), 1.400, 287.0),
+            new Gas("nitrogen", T("Nitrogen (N₂)", "Stickstoff (N₂)"), 1.400, 296.8),
+            new Gas("oxygen", T("Oxygen (O₂)", "Sauerstoff (O₂)"), 1.395, 259.8),
+            new Gas("co2", T("Carbon dioxide (CO₂)", "Kohlenstoffdioxid (CO₂)"), 1.289, 188.9),
+            new Gas("methane", T("Methane (CH₄, ≈ natural gas)", "Methan (CH₄, ≈ Erdgas)"), 1.299, 518.2),
+            new Gas("hydrogen", T("Hydrogen (H₂)", "Wasserstoff (H₂)"), 1.405, 4124.0),
+            new Gas("helium", T("Helium (He)", "Helium (He)"), 1.667, 2076.9),
+            new Gas("argon", T("Argon (Ar)", "Argon (Ar)"), 1.667, 208.1),
+            new Gas("steam", T("Steam (superheated, as ideal gas)", "Wasserdampf (überhitzt, als ideales Gas)"), 1.327, 461.5),
+        };
+
+        public const string GasKey = "gas";
+        public const string CustomGas = "custom";
+
+        /// <summary>The gas choice of compressors and turbines (air by default; "other" leaves κ and R to the user).</summary>
+        internal static readonly ParamDef GasParam = new ParamDef(GasKey, T("Gas", "Gas"), ParamKind.Choice)
+        {
+            Default = "air",
+            Options = Gases.Select(g => new ParamOption(g.Id, g.Name))
+                .Append(new ParamOption(CustomGas, T("Other gas (enter κ and R)", "Anderes Gas (κ und R eingeben)"))).ToList(),
+            Advanced = true,
+        };
+
+        /// <summary>The selected gas, or null for "other".</summary>
+        internal static Gas? GasOf(SketchObject o)
+        {
+            var id = o.Str(GasKey, "air");
+            return Gases.FirstOrDefault(g => g.Id == id) ?? (id == CustomGas ? null : Gases[0]);
+        }
+
+        private static readonly Dictionary<string, Relation> GasRelations = new(StringComparer.Ordinal);
+
+        /// <summary>
+        /// The property values of the selected gas as markings (relations without inputs): κ and R, unless the user entered
+        /// them (an entered value wins over the table, no conflict) or chose "other".
+        /// </summary>
+        private static IEnumerable<Relation> GasProperties(SketchObject o)
+        {
+            if (GasOf(o) is not { } gas) yield break;
+            if (!Entered(o, "kappa")) yield return GasRelation(gas, "kappa", gas.Kappa, gas.Kappa.ToString("0.000", System.Globalization.CultureInfo.InvariantCulture));
+            if (!Entered(o, "gasConstant")) yield return GasRelation(gas, "R", gas.R, gas.R.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture) + " J/(kg·K)");
+        }
+
+        private static bool Entered(SketchObject o, string param)
+            => o.Params.TryGetValue(param, out var p) && (p.Number.HasValue || !string.IsNullOrWhiteSpace(p.Text));
+
+        private static Relation GasRelation(Gas gas, string key, double value, string text)
+        {
+            lock (GasRelations)
+            {
+                var id = gas.Id + "." + key;
+                if (!GasRelations.TryGetValue(id, out var rel))
+                    GasRelations[id] = rel = new Relation("process.gas." + key, T("Gas property: " + gas.Name.En, "Stoffwert: " + gas.Name.De), "{" + key + "} = " + text, key)
+                    {
+                        Source = "S29",
+                        Validity = T("ideal gas, about 300 K, low pressure", "ideales Gas, etwa 300 K, niedriger Druck"),
+                    }.Solve(key, text, _ => value);
+                return rel;
+            }
+        }
+
+        /// <summary>NaN for an infinite or undefined result (a pressure ratio of 1 in a logarithm, an efficiency of 1 in a divisor).</summary>
+        private static double Fin(double x) => double.IsNaN(x) || double.IsInfinity(x) ? double.NaN : x;
+
+        /// <summary>c_p = κ·R/(κ − 1) [S29].</summary>
+        private static readonly Relation GasCp =
+            new Relation("process.gas.cp", T("Specific heat capacity of an ideal gas", "Spezifische Wärmekapazität eines idealen Gases"), "{cp} = {kappa}·{R}/({kappa} − 1)", "cp", "kappa", "R") { Source = "S29" }
+                .Solve("cp", "{kappa}·{R}/({kappa} − 1)", v => Fin(v("kappa") * v("R") / (v("kappa") - 1)))
+                .Solve("R", "{cp}·({kappa} − 1)/{kappa}", v => v("cp") * (v("kappa") - 1) / v("kappa"))
+                .Solve("kappa", "{cp}/({cp} − {R})", v => Fin(v("cp") / (v("cp") - v("R"))));
+
+        /// <summary>Compressor p₂ = π·p₁; turbine p₁ = π·p₂ (π ≥ 1 for both) [S29].</summary>
+        private static Relation PressureRatio(bool turbine)
+        {
+            var (hi, lo) = turbine ? ("p1", "p2") : ("p2", "p1");
+            return new Relation(turbine ? "process.gas.ratio.expansion" : "process.gas.ratio",
+                    turbine ? T("Pressure ratio (expansion)", "Druckverhältnis (Entspannung)") : T("Pressure ratio (compression)", "Druckverhältnis (Verdichtung)"),
+                    "{" + hi + "} = {pi}·{" + lo + "}", hi, "pi", lo) { Source = "S29" }
+                .Solve(hi, "{pi}·{" + lo + "}", v => v("pi") * v(lo))
+                .Solve(lo, "{" + hi + "}/{pi}", v => v(hi) / v("pi"))
+                .Solve("pi", "{" + hi + "}/{" + lo + "}", v => v(hi) / v(lo));
+        }
+
+        /// <summary>
+        /// Isentropic outlet temperature: compression T₂s = T₁·π^((κ−1)/κ), expansion T₂s = T₁·π^(−(κ−1)/κ) (absolute
+        /// temperatures) [S29].
+        /// </summary>
+        private static Relation Isentropic(bool turbine)
+        {
+            var sign = turbine ? -1.0 : 1.0;
+            var exp = turbine ? "^(−({kappa} − 1)/{kappa})" : "^(({kappa} − 1)/{kappa})";
+            double X(Func<string, double> v) => (v("kappa") - 1) / v("kappa");
+            return new Relation(turbine ? "process.gas.isentropic.expansion" : "process.gas.isentropic",
+                    turbine ? T("Isentropic expansion", "Isentrope Entspannung") : T("Isentropic compression", "Isentrope Verdichtung"),
+                    "{th2s} = {th1}·{pi}" + exp, "th2s", "th1", "pi", "kappa")
+                {
+                    Source = "S29",
+                    Validity = T("ideal gas, constant κ; absolute temperatures", "ideales Gas, konstantes κ; absolute Temperaturen"),
+                }
+                .Solve("th2s", "{th1}·{pi}" + exp, v => v("th1") * Math.Pow(v("pi"), sign * X(v)))
+                .Solve("th1", "{th2s}·{pi}" + (turbine ? "^(({kappa} − 1)/{kappa})" : "^(−({kappa} − 1)/{kappa})"), v => v("th2s") * Math.Pow(v("pi"), -sign * X(v)))
+                .Solve("pi", turbine ? "({th1}/{th2s})^({kappa}/({kappa} − 1))" : "({th2s}/{th1})^({kappa}/({kappa} − 1))",
+                    v => Fin(Math.Pow(Math.Pow(v("th2s") / v("th1"), sign), 1 / X(v))))
+                .Solve("kappa", turbine ? "1/(1 − ln({th1}/{th2s})/ln {pi})" : "1/(1 − ln({th2s}/{th1})/ln {pi})",
+                    v => Fin(1 / (1 - sign * Math.Log(v("th2s") / v("th1")) / Math.Log(v("pi")))));
+        }
+
+        /// <summary>
+        /// Isentropic efficiency: compression η_s = (T₂s − T₁)/(T₂ − T₁), expansion η_s = (T₁ − T₂)/(T₁ − T₂s) [S29].
+        /// </summary>
+        private static Relation IsentropicEfficiency(bool turbine) => turbine
+            ? new Relation("process.gas.efficiency.expansion", T("Isentropic efficiency (expansion)", "Isentroper Wirkungsgrad (Entspannung)"),
+                    "{eta} = ({th1} − {th2})/({th1} − {th2s})", "eta", "th1", "th2", "th2s") { Source = "S29" }
+                .Solve("eta", "({th1} − {th2})/({th1} − {th2s})", v => Fin((v("th1") - v("th2")) / (v("th1") - v("th2s"))))
+                .Solve("th2", "{th1} − {eta}·({th1} − {th2s})", v => v("th1") - v("eta") * (v("th1") - v("th2s")))
+                .Solve("th2s", "{th1} − ({th1} − {th2})/{eta}", v => Fin(v("th1") - (v("th1") - v("th2")) / v("eta")))
+                .Solve("th1", "({th2} − {eta}·{th2s})/(1 − {eta})", v => Fin((v("th2") - v("eta") * v("th2s")) / (1 - v("eta"))))
+            : new Relation("process.gas.efficiency", T("Isentropic efficiency (compression)", "Isentroper Wirkungsgrad (Verdichtung)"),
+                    "{eta} = ({th2s} − {th1})/({th2} − {th1})", "eta", "th1", "th2", "th2s") { Source = "S29" }
+                .Solve("eta", "({th2s} − {th1})/({th2} − {th1})", v => Fin((v("th2s") - v("th1")) / (v("th2") - v("th1"))))
+                .Solve("th2", "{th1} + ({th2s} − {th1})/{eta}", v => Fin(v("th1") + (v("th2s") - v("th1")) / v("eta")))
+                .Solve("th2s", "{th1} + {eta}·({th2} − {th1})", v => v("th1") + v("eta") * (v("th2") - v("th1")))
+                .Solve("th1", "({th2s} − {eta}·{th2})/(1 − {eta})", v => Fin((v("th2s") - v("eta") * v("th2")) / (1 - v("eta"))));
+
+        /// <summary>Temperature rise of a compressor ΔT = T₂ − T₁, drop of a turbine ΔT = T₁ − T₂ [S29].</summary>
+        private static Relation GasDeltaT(bool turbine)
+        {
+            var (a, b) = turbine ? ("th1", "th2") : ("th2", "th1");
+            return new Relation(turbine ? "process.gas.drop" : "process.gas.rise",
+                    turbine ? T("Temperature drop", "Temperaturabsenkung") : T("Temperature rise", "Temperaturerhöhung"),
+                    "{dT} = {" + a + "} − {" + b + "}", "dT", a, b) { Source = "S29" }
+                .Solve("dT", "{" + a + "} − {" + b + "}", v => v(a) - v(b))
+                .Solve(a, "{" + b + "} + {dT}", v => v(b) + v("dT"))
+                .Solve(b, "{" + a + "} − {dT}", v => v(a) - v("dT"));
+        }
+
+        /// <summary>
+        /// Power of the gas stream P = ṁ·c_p·ΔT: the compressor's drive power, the turbine's output (its expansion work per
+        /// second); mechanical losses not counted [S29].
+        /// </summary>
+        private static Relation GasPower(bool turbine) =>
+            new Relation(turbine ? "process.gas.power.expansion" : "process.gas.power",
+                    turbine ? T("Expansion work (power)", "Expansionsarbeit (Leistung)") : T("Compression power", "Verdichtungsleistung"),
+                    "{P} = {m}·{cp}·{dT}", "P", "m", "cp", "dT")
+                {
+                    Source = "S29",
+                    Validity = T("ideal gas, constant c_p, adiabatic machine, mechanical losses not counted", "ideales Gas, konstantes c_p, adiabate Maschine, mechanische Verluste nicht gerechnet"),
+                }
+                .Solve("P", "{m}·{cp}·{dT}", v => v("m") * v("cp") * v("dT"))
+                .Solve("m", "{P}/({cp}·{dT})", v => Fin(v("P") / (v("cp") * v("dT"))))
+                .Solve("dT", "{P}/({m}·{cp})", v => Fin(v("P") / (v("m") * v("cp"))))
+                .Solve("cp", "{P}/({m}·{dT})", v => Fin(v("P") / (v("m") * v("dT"))));
+
+        /// <summary>Isentropic (ideal) power: compression P_s = ṁ·c_p·(T₂s − T₁), expansion P_s = ṁ·c_p·(T₁ − T₂s) [S29].</summary>
+        private static Relation GasIsentropicPower(bool turbine)
+        {
+            var (a, b) = turbine ? ("th1", "th2s") : ("th2s", "th1");
+            var d = "({" + a + "} − {" + b + "})";
+            return new Relation(turbine ? "process.gas.power.isentropic.expansion" : "process.gas.power.isentropic",
+                    T("Isentropic power", "Isentrope Leistung"), "{Ps} = {m}·{cp}·" + d, "Ps", "m", "cp", a, b) { Source = "S29" }
+                .Solve("Ps", "{m}·{cp}·" + d, v => v("m") * v("cp") * (v(a) - v(b)))
+                .Solve("m", "{Ps}/({cp}·" + d + ")", v => Fin(v("Ps") / (v("cp") * (v(a) - v(b)))))
+                .Solve(a, "{" + b + "} + {Ps}/({m}·{cp})", v => Fin(v(b) + v("Ps") / (v("m") * v("cp"))))
+                .Solve(b, "{" + a + "} − {Ps}/({m}·{cp})", v => Fin(v(a) - v("Ps") / (v("m") * v("cp"))));
+        }
+
+        /// <summary>Volume flow of an ideal gas V̇ = ṁ·R·T/p (inlet: V1, T1, p1; outlet: V2, T2, p2) [S29].</summary>
+        private static Relation GasVolumeFlow(string vk, string tk, string pk, I18nText name) =>
+            new Relation("process.gas.flow." + vk, name, "{" + vk + "} = {m}·{R}·{" + tk + "}/{" + pk + "}", vk, "m", "R", tk, pk)
+                {
+                    Source = "S29",
+                    Validity = T("ideal gas, absolute pressure and temperature", "ideales Gas, absoluter Druck und absolute Temperatur"),
+                }
+                .Solve(vk, "{m}·{R}·{" + tk + "}/{" + pk + "}", v => Fin(v("m") * v("R") * v(tk) / v(pk)))
+                .Solve("m", "{" + vk + "}·{" + pk + "}/({R}·{" + tk + "})", v => Fin(v(vk) * v(pk) / (v("R") * v(tk))))
+                .Solve(pk, "{m}·{R}·{" + tk + "}/{" + vk + "}", v => Fin(v("m") * v("R") * v(tk) / v(vk)))
+                .Solve(tk, "{" + vk + "}·{" + pk + "}/({m}·{R})", v => Fin(v(vk) * v(pk) / (v("m") * v("R"))));
+
         // ------------------------------------------------------------------ specs per type
 
         private static readonly Dictionary<string, Spec> Specs = new(StringComparer.Ordinal);
@@ -190,9 +409,10 @@ namespace InventaSketch.Modules.Process
             "process.pump.centrifugal" => CentrifugalPump(),
             "process.pump.displacement" => Machine(("S", "D")),
             "process.fan" => Machine(("I", "O")),
-            "process.compressor" => ShaftOnly(T("Shaft power (drive)", "Wellenleistung (Antrieb)")),
-            "process.turbine" => ShaftOnly(T("Shaft power (output)", "Wellenleistung (Abgabe)")),
-            "process.motor" => ShaftOnly(T("Shaft power (output)", "Wellenleistung (Abgabe)"), VarRelevance.Card),
+            "process.compressor" => GasMachine(false),
+            "process.turbine" => GasMachine(true),
+            "process.motor" => Motor(),
+            "process.generator" => Generator(),
             "process.hx.shelltube" => Exchanger(("T1", "T2"), ("S1", "S2")),
             "process.hx.plate" => Exchanger(("A1", "A2"), ("B1", "B2")),
             "process.hx.general" => Exchanger(("P1", "P2"), ("S1", "S2")),
@@ -215,14 +435,95 @@ namespace InventaSketch.Modules.Process
                 PowerVar("Phyd", T("Hydraulic power", "Hydraulische Leistung"), "P_hyd", "powerHyd", VarRelevance.Panel),
                 Speed(VarRelevance.Panel), Torque(VarRelevance.Panel), Rho(),
             };
-            return new Spec(vars, new[] { HeadRel, HydPower, ShaftPower, RotPower }, Params(vars), Array.Empty<ValueCheck>()) { Ports = FlowPorts("S", "D") };
+            return new Spec(vars, new[] { HeadRel, HydPower, ShaftPower, RotPower }, Params(vars), new[] { EfficiencyRange() }) { Ports = FlowPorts("S", "D") };
         }
 
-        /// <summary>Machines with a shaft but no flow model (compressor, turbine: gas properties needed; drive motor): P = 2π·n·T.</summary>
-        private static Spec ShaftOnly(I18nText powerName, VarRelevance torque = VarRelevance.Panel)
+        /// <summary>The drive motor: shaft power P = 2π·n·T and, optionally, its electrical input P = η·P_el.</summary>
+        private static Spec Motor()
         {
-            var vars = new[] { PowerVar("P", powerName, "P", "power", VarRelevance.Card), Speed(VarRelevance.Card), Torque(torque) };
-            return new Spec(vars, new[] { RotPower }, Params(vars), Array.Empty<ValueCheck>());
+            var vars = new[]
+            {
+                PowerVar("P", T("Shaft power (output)", "Wellenleistung (Abgabe)"), "P", "power", VarRelevance.Card), Speed(VarRelevance.Card), Torque(VarRelevance.Card),
+                Eta() with { Name = T("Motor efficiency", "Motorwirkungsgrad") },
+                PowerVar("Pel", T("Electrical power (input)", "Elektrische Leistung (Aufnahme)"), "P_el", "powerEl", VarRelevance.Panel),
+            };
+            return new Spec(vars, new[] { RotPower, MotorEfficiency }, Params(vars), new[] { EfficiencyRange() });
+        }
+
+        /// <summary>
+        /// The generator driven by a turbine (or any drive): shaft power P = 2π·n·T and the electrical output P_el = η·P. Its
+        /// terminal <c>el</c> gives P_el to an energy cable (join across modules, key P).
+        /// </summary>
+        private static Spec Generator()
+        {
+            var vars = new[]
+            {
+                PowerVar("Pel", T("Electrical power (output)", "Elektrische Leistung (Abgabe)"), "P_el", "powerEl", VarRelevance.Card),
+                PowerVar("P", T("Shaft power (input)", "Wellenleistung (Aufnahme)"), "P", "power", VarRelevance.Card),
+                Eta() with { Name = T("Generator efficiency", "Generatorwirkungsgrad"), Relevance = VarRelevance.Card },
+                Speed(VarRelevance.Card), Torque(VarRelevance.Panel),
+            };
+            return new Spec(vars, new[] { RotPower, GeneratorEfficiency }, Params(vars), new[] { EfficiencyRange() })
+            {
+                Ports = (_, port) => port == "el" ? new[] { new PortVar("P", "Pel") } : Array.Empty<PortVar>(),
+            };
+        }
+
+        /// <summary>
+        /// Compressor (<paramref name="turbine"/> false) or turbine / expander: gas values on top of the shaft values. Nothing
+        /// is required; air and, for the compressor, ambient suction (20 °C, 1.01325 bar) are defaults that give way.
+        /// </summary>
+        private static Spec GasMachine(bool turbine)
+        {
+            var inlet = turbine ? "I" : "S";
+            var outlet = turbine ? "O" : "D";
+            var th1 = Temp("th1", T("Inlet temperature", "Eintrittstemperatur"), "θ₁", "tempIn", turbine ? VarRelevance.Card : VarRelevance.Panel) with
+            {
+                Symbol = T("θ₁", "θ₁"), Default = turbine ? (double?)null : 293.15,
+            };
+            var th2 = Temp("th2", T("Outlet temperature", "Austrittstemperatur"), "θ₂", "tempOut", turbine ? VarRelevance.Panel : VarRelevance.Card);
+            var vars = new[]
+            {
+                PowerVar("P", turbine ? T("Shaft power (output)", "Wellenleistung (Abgabe)") : T("Shaft power (drive)", "Wellenleistung (Antrieb)"), "P", "power", VarRelevance.Card),
+                V("m", T("Mass flow", "Massenstrom"), T("ṁ", "ṁ"), Quantities.MassFlow, "kg/s", "massFlow", VarRelevance.Card) with { Min = 0, Max = 1e5 },
+                V("pi", turbine ? T("Pressure ratio p₁/p₂", "Druckverhältnis p₁/p₂") : T("Pressure ratio p₂/p₁", "Druckverhältnis p₂/p₁"), T("π", "π"),
+                    Quantities.Ratio, null, "pressureRatio", VarRelevance.Card) with { Min = 1, Max = 1e3 },
+                turbine ? th1 : th2,
+                turbine ? th2 : th1,
+                V("p1", T("Inlet pressure (absolute)", "Eintrittsdruck (absolut)"), T("p₁", "p₁"), Quantities.Pressure, "bar", "pressureIn", VarRelevance.Panel)
+                    with { Min = 1, Max = 1e9, Default = turbine ? (double?)null : 101325 },
+                V("p2", T("Outlet pressure (absolute)", "Austrittsdruck (absolut)"), T("p₂", "p₂"), Quantities.Pressure, "bar", "pressureOut", VarRelevance.Panel) with { Min = 1, Max = 1e9 },
+                V("eta", T("Isentropic efficiency", "Isentroper Wirkungsgrad"), T("η_s", "η_s"), Quantities.Efficiency, "%", "efficiency", VarRelevance.Panel) with { Min = 0, Max = 1 },
+                V("dT", turbine ? T("Temperature drop", "Temperaturabsenkung") : T("Temperature rise", "Temperaturerhöhung"), T("ΔT", "ΔT"),
+                    Quantities.TemperatureDifference, "K", "deltaT", VarRelevance.Panel) with { Min = -2000, Max = 2000 },
+                V("V1", T("Inlet volume flow", "Ansaug-/Eintrittsvolumenstrom"), T("V̇₁", "V̇₁"), Quantities.VolumeFlow, "m³/h", "flowIn", VarRelevance.Panel) with { Min = 0, Max = 1e5 },
+                Temp("thmax", turbine ? T("Permissible inlet temperature", "Zulässige Eintrittstemperatur") : T("Permissible outlet temperature", "Zulässige Austrittstemperatur"),
+                    "θ_max", "tempMax", VarRelevance.Panel),
+                Speed(VarRelevance.Panel), Torque(VarRelevance.Panel),
+                Temp("th2s", T("Isentropic outlet temperature", "Isentrope Austrittstemperatur"), "θ₂s", "tempOutIs", VarRelevance.Engineer),
+                PowerVar("Ps", T("Isentropic power", "Isentrope Leistung"), "P_s", "powerIs", VarRelevance.Engineer),
+                V("V2", T("Outlet volume flow", "Austrittsvolumenstrom"), T("V̇₂", "V̇₂"), Quantities.VolumeFlow, "m³/h", "flowOut", VarRelevance.Engineer) with { Min = 0, Max = 1e5 },
+                V("kappa", T("Isentropic exponent", "Isentropenexponent"), T("κ", "κ"), Quantities.Ratio, null, "kappa", VarRelevance.Engineer) with { Min = 1, Max = 2 },
+                V("R", T("Specific gas constant", "Spezifische Gaskonstante"), T("R", "R_s"), Quantities.SpecificHeat, "J/(kg·K)", "gasConstant", VarRelevance.Engineer) with { Min = 1, Max = 1e5 },
+                V("cp", T("Specific heat capacity (constant pressure)", "Spezifische Wärmekapazität (isobar)"), T("c_p", "c_p"), Quantities.SpecificHeat, "kJ/(kg·K)", "specificHeat", VarRelevance.Engineer) with { Min = 1, Max = 1e5 },
+            };
+            var rels = new[]
+            {
+                PressureRatio(turbine), GasCp, Isentropic(turbine), IsentropicEfficiency(turbine), GasDeltaT(turbine), GasPower(turbine),
+                GasIsentropicPower(turbine),
+                GasVolumeFlow("V1", "th1", "p1", T("Inlet volume flow", "Ansaug-/Eintrittsvolumenstrom")),
+                GasVolumeFlow("V2", "th2", "p2", T("Outlet volume flow", "Austrittsvolumenstrom")),
+                RotPower,
+            };
+            var ps = vars.Select(v => Text(v.ParamKey, v.Name, v.Unit)).Append(GasParam).Append(ValueLabels.ShowValues).ToArray();
+            return new Spec(vars, rels, ps, new[] { EfficiencyRange(), RatioBelowOne(turbine), TemperatureLimit(turbine), KappaRange() })
+            {
+                Ports = (_, port) =>
+                    port == inlet ? new[] { new PortVar("m", "m"), new PortVar("theta", "th1"), new PortVar("p", "p1") }
+                    : port == outlet ? new[] { new PortVar("m", "m"), new PortVar("theta", "th2"), new PortVar("p", "p2") }
+                    : Array.Empty<PortVar>(),
+                Local = GasProperties,
+            };
         }
 
         private static Spec Machine((string In, string Out) ports)
@@ -234,7 +535,7 @@ namespace InventaSketch.Modules.Process
                 PowerVar("Phyd", T("Hydraulic power", "Hydraulische Leistung"), "P_hyd", "powerHyd", VarRelevance.Panel),
                 Speed(VarRelevance.Panel), Torque(VarRelevance.Panel),
             };
-            return new Spec(vars, new[] { HydPower, ShaftPower, RotPower }, Params(vars), Array.Empty<ValueCheck>()) { Ports = FlowPorts(ports.In, ports.Out) };
+            return new Spec(vars, new[] { HydPower, ShaftPower, RotPower }, Params(vars), new[] { EfficiencyRange() }) { Ports = FlowPorts(ports.In, ports.Out) };
         }
 
         private static Spec Exchanger((string In, string Out) side1, (string In, string Out) side2)
@@ -316,7 +617,11 @@ namespace InventaSketch.Modules.Process
 
         // ------------------------------------------------------------------ net description
 
-        private static IEnumerable<string[]> Through(SketchObject o, string cls) => o.Type switch
+        /// <summary>
+        /// Passages per class. The pressure class <c>p</c> passes nothing: valves, strainers and flow elements drop the pressure
+        /// (not modelled), so a pressure is shared only along lines between two nozzles.
+        /// </summary>
+        private static IEnumerable<string[]> Through(SketchObject o, string cls) => cls == "p" ? Array.Empty<string[]>() : o.Type switch
         {
             "process.valve.manual" or "process.valve.control" or "process.valve.check" or "process.fitting.reducer" or "process.fitting.strainer"
                 or "process.instrument.orifice" or "process.sightglass" => new[] { new[] { "1", "2" } },
@@ -333,17 +638,25 @@ namespace InventaSketch.Modules.Process
             PortVars = (o, port) => For(o.Type).Ports(o, port),
             LineVars = _ => new[] { new PortVar("Vdot", "Vdot"), new PortVar("m", "m"), new PortVar("theta", "theta") },
             Through = Through,
-            Classes = new[] { "Vdot", "m", "theta" },
-            Rule = _ => NetRule.Flow,
+            Classes = new[] { "Vdot", "m", "theta", "p" },
+            // A pressure is the same everywhere along connected lines (no pressure drop modelled); flows and temperatures are
+            // through quantities.
+            Rule = c => c == "p" ? NetRule.Equal : NetRule.Flow,
             Name = c => c switch
             {
                 "Vdot" => T("Volume flow passed on", "Volumenstrom weitergegeben"),
                 "m" => T("Mass flow passed on", "Massenstrom weitergegeben"),
+                "p" => T("Pressure passed on", "Druck weitergegeben"),
                 _ => T("Temperature passed on", "Temperatur weitergegeben"),
             },
         };
 
-        public static IEnumerable<BoundRelation> Links(SketchObject o, RenderContext ctx) => ValueNets.Of(ctx.Doc, Nets).For(o.Id);
+        public static IEnumerable<BoundRelation> Links(SketchObject o, RenderContext ctx)
+        {
+            if (For(o.Type).Local is { } local)
+                foreach (var r in local(o)) yield return BoundRelation.Local(r, o.Id);
+            foreach (var b in ValueNets.Of(ctx.Doc, Nets).For(o.Id)) yield return b;
+        }
 
         // ------------------------------------------------------------------ checks (section 4)
 
@@ -358,6 +671,51 @@ namespace InventaSketch.Modules.Process
             "(θ₁,in − θ₂,out)·(θ₁,out − θ₂,in) ≤ 0",
             c => c["th1in"] is double a && c["th1out"] is double b && c["th2in"] is double x && c["th2out"] is double y
                  && (a - y) * (b - x) <= 0 && !(Math.Abs(a - y) < 1e-9 && Math.Abs(b - x) < 1e-9))
+        { Source = "S29" };
+
+        /// <summary>process.efficiency: an efficiency (pumps, fans, motor, generator; isentropic of compressors and turbines) outside 0 … 1.</summary>
+        private static ValueCheck EfficiencyRange() => new(
+            "process.efficiency", CheckSeverity.Warning,
+            T("The efficiency lies outside 0 … 100 %: no machine gives out more power than it takes in. Check the powers, temperatures or the efficiency entered.",
+              "Der Wirkungsgrad liegt außerhalb von 0 … 100 %: keine Maschine gibt mehr Leistung ab, als sie aufnimmt. Leistungen, Temperaturen oder den eingegebenen Wirkungsgrad prüfen."),
+            "0 < η ≤ 1",
+            c => c["eta"] is double e && (e <= 0 || e > 1 + 1e-9))
+        { Source = "S1" };
+
+        /// <summary>gas.ratio: a compressor must raise the pressure, a turbine lower it (π ≥ 1 for both) [S29].</summary>
+        private static ValueCheck RatioBelowOne(bool turbine) => new(
+            "gas.ratio", CheckSeverity.Warning,
+            turbine
+                ? T("The outlet pressure is above the inlet pressure: a turbine expands the gas (pressure ratio p₁/p₂ at least 1). Check the pressures.",
+                    "Der Austrittsdruck liegt über dem Eintrittsdruck: eine Turbine entspannt das Gas (Druckverhältnis p₁/p₂ mindestens 1). Die Drücke prüfen.")
+                : T("The outlet pressure is below the inlet pressure: a compressor raises the pressure (pressure ratio p₂/p₁ at least 1). Check the pressures.",
+                    "Der Austrittsdruck liegt unter dem Eintrittsdruck: ein Verdichter erhöht den Druck (Druckverhältnis p₂/p₁ mindestens 1). Die Drücke prüfen."),
+            "π ≥ 1",
+            c => c["pi"] is double x && x < 1 - 1e-9)
+        { Source = "S29" };
+
+        /// <summary>
+        /// gas.temperature: the compressor's outlet temperature (the turbine's inlet temperature) above the permissible
+        /// temperature θ_max the user entered (oil, seals, blades; the limit comes from the datasheet) [S29].
+        /// </summary>
+        private static ValueCheck TemperatureLimit(bool turbine) => new(
+            "gas.temperature", CheckSeverity.Warning,
+            turbine
+                ? T("The inlet temperature is above the permissible temperature entered (θ_max). Lower the inlet temperature or check the limit.",
+                    "Die Eintrittstemperatur liegt über der eingegebenen zulässigen Temperatur (θ_max). Eintrittstemperatur senken oder Grenzwert prüfen.")
+                : T("The outlet temperature is above the permissible temperature entered (θ_max). Use a lower pressure ratio per stage (intercooling) or check the limit.",
+                    "Die Austrittstemperatur liegt über der eingegebenen zulässigen Temperatur (θ_max). Kleineres Druckverhältnis je Stufe (Zwischenkühlung) oder Grenzwert prüfen."),
+            turbine ? "θ₁ ≤ θ_max" : "θ₂ ≤ θ_max",
+            c => c[turbine ? "th1" : "th2"] is double t && c["thmax"] is double max && t > max + 1e-9)
+        { Source = "S29" };
+
+        /// <summary>gas.kappa: the isentropic exponent of a gas is above 1 (5/3 for monatomic ideal gases at most) [S29].</summary>
+        private static ValueCheck KappaRange() => new(
+            "gas.kappa", CheckSeverity.Warning,
+            T("The isentropic exponent κ of a gas lies between 1 and 5/3 (monatomic gases). Check κ, R or c_p.",
+              "Der Isentropenexponent κ eines Gases liegt zwischen 1 und 5/3 (einatomige Gase). κ, R oder c_p prüfen."),
+            "1 < κ ≤ 5/3",
+            c => c["kappa"] is double k && (k <= 1 || k > 5.0 / 3 + 1e-3))
         { Source = "S29" };
     }
 }

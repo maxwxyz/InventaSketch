@@ -67,8 +67,10 @@ namespace InventaSketch.Modules.Process.Tests
         {
             var r = Fx.Reg();
             foreach (var t in r.Types.Where(t => t.Geometry == GeometryKind.Box))
-                // The values label (Calc 4) shows nothing until values are entered.
-                foreach (var p in t.Parameters.Where(p => p.Kind is ParamKind.Choice or ParamKind.Boolean or ParamKind.Integer or ParamKind.Number && p.Key != ValueLabels.ShowParam))
+                // The values label (Calc 4) shows nothing until values are entered; the gas of a compressor or turbine is a
+                // value setting (its properties), not a drawing parameter.
+                foreach (var p in t.Parameters.Where(p => p.Kind is ParamKind.Choice or ParamKind.Boolean or ParamKind.Integer or ParamKind.Number
+                             && p.Key != ValueLabels.ShowParam && p.Key != ProcessValues.GasKey))
                 {
                     var values = p.Kind switch
                     {
