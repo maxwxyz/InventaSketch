@@ -8,7 +8,8 @@ namespace InventaSketch.Modules.Diagrams
     /// <summary>
     /// Diagrams module: UML (class, use case, activity, state, sequence, deployment, relationships), ER (entities,
     /// Chen notation, crow's-foot connectors), system/architecture blocks, BPMN-lite with pools and lanes, control loops,
-    /// computer systems and communication, data layouts, GUI wireframes and state circles. Every box symbol exposes
+    /// computer systems and communication, data layouts, GUI wireframes, state circles, fault trees, sequential function
+    /// charts (SFC/GRAFCET), Ishikawa diagrams and mind maps. Every box symbol exposes
     /// connector ports; connectors are point objects whose ends attach to those ports. Simple flowchart starters
     /// remain in the annotation module (<c>ann.flow.*</c>).
     /// </summary>
@@ -18,7 +19,7 @@ namespace InventaSketch.Modules.Diagrams
 
         public string Id => "diagrams";
         public I18nText Name => new("Diagrams (UML, ER, flow)", "Diagramme (UML, ER, Ablauf)");
-        public string Version => "0.3.0";
+        public string Version => "0.4.0";
         public IEnumerable<ObjectType> Types => AllTypes;
 
         private static ObjectType[] CreateTypes() => new ObjectType[]
@@ -55,6 +56,14 @@ namespace InventaSketch.Modules.Diagrams
             // GUI wireframes
             new UiScreenType(), new UiButtonType(), new UiFieldType(), new UiListType(), new UiCheckboxType(), new UiToggleType(), new UiSliderType(),
             new UiImageType(), new UiIconType(), new UiTabsType(), new UiTouchType(), new UiCursorType(),
+            // Fault tree analysis
+            new FtaEventType(FtaEventKind.Top), new FtaEventType(FtaEventKind.Intermediate), new FtaGateType(FtaGateKind.And), new FtaGateType(FtaGateKind.Or),
+            new FtaGateType(FtaGateKind.Vote), new FtaGateType(FtaGateKind.Inhibit), new FtaEventType(FtaEventKind.Basic), new FtaEventType(FtaEventKind.Undeveloped),
+            new FtaEventType(FtaEventKind.House), new FtaEventType(FtaEventKind.Conditioning), new FtaTransferType(), new FtaLinkType(),
+            // Sequential function charts (SFC / GRAFCET)
+            new SfcStepType(true), new SfcStepType(false), new SfcTransitionType(), new SfcActionType(), new SfcBranchType(), new SfcLinkType(),
+            // Ishikawa and mind maps
+            new IshikawaType(), new MindMapNodeType(), new MindMapLinkType(),
         };
 
         public IEnumerable<LibraryCategory> Categories => new[]
@@ -72,6 +81,9 @@ namespace InventaSketch.Modules.Diagrams
             new LibraryCategory(DiagCategories.Computer, new I18nText("Computer systems & communication", "Rechnersysteme & Kommunikation"), Id, 85),
             new LibraryCategory(DiagCategories.Data, new I18nText("Data layouts (packets, registers, memory)", "Datenformate (Pakete, Register, Speicher)"), Id, 110),
             new LibraryCategory(DiagCategories.Ui, new I18nText("GUI wireframes", "GUI-Wireframes"), Id, 120),
+            new LibraryCategory(DiagCategories.Fta, new I18nText("Fault tree analysis (FTA)", "Fehlerbaumanalyse (FTA)"), Id, 130),
+            new LibraryCategory(DiagCategories.Sfc, new I18nText("Sequential function chart (SFC, GRAFCET)", "Ablaufsprache (SFC, GRAFCET)"), Id, 140),
+            new LibraryCategory(DiagCategories.Maps, new I18nText("Ishikawa & mind map", "Ishikawa & Mindmap"), Id, 150),
         };
 
         private static Dictionary<string, ParamValue> Ps(params (string Key, ParamValue Value)[] kv) => kv.ToDictionary(x => x.Key, x => x.Value);
@@ -210,6 +222,18 @@ namespace InventaSketch.Modules.Diagrams
                 yield return Item("diag.ui.field.dropdown", "diag.ui.field", "Drop-down (GUI)", "Auswahlliste (GUI)", DiagCategories.Ui, "dropdown", "combobox") with { Params = Ps(("kind", "dropdown")) };
                 yield return Item("diag.ui.checkbox.radio", "diag.ui.checkbox", "Radio button (GUI)", "Optionsfeld (GUI)", DiagCategories.Ui, "radio", "optionsfeld") with { Params = Ps(("kind", "radio")) };
                 yield return Item("diag.ui.touch.swipe", "diag.ui.touch", "Swipe gesture", "Wischgeste", DiagCategories.Ui, "swipe", "wischen") with { Params = Ps(("gesture", "swipe")) };
+
+                // Sequential function charts
+                yield return Item("diag.sfc.branch.alternative", "diag.sfc.branch", "Alternative branch (SFC)", "Alternativverzweigung (SFC)", DiagCategories.Sfc, "alternative", "selection", "auswahl", "oder")
+                    with { Params = Ps(("kind", "alternative")) };
+                yield return Item("diag.sfc.action.stored", "diag.sfc.action", "Stored action (SFC, S)", "Gespeicherte Aktion (SFC, S)", DiagCategories.Sfc, "stored", "gespeichert", "set", "setzen")
+                    with { Params = Ps(("qualifier", "S")) };
+
+                // Mind maps
+                yield return Item("diag.mindmap.node.central", "diag.mindmap.node", "Central topic (mind map)", "Zentrales Thema (Mindmap)", DiagCategories.Maps, "central", "zentral", "topic", "thema", "root")
+                    with { Params = Ps(("shape", "ellipse"), ("bold", true)), Size = new Size2(44, 22), Text = null };
+                yield return Item("diag.mindmap.node.line", "diag.mindmap.node", "Branch text (mind map)", "Zweigtext (Mindmap)", DiagCategories.Maps, "underlined", "unterstrichen", "branch", "zweig")
+                    with { Params = Ps(("shape", "line")), Size = new Size2(28, 8) };
             }
         }
     }

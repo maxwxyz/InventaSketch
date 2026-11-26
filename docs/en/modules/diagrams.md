@@ -49,6 +49,9 @@ symbol is insertable without parameters; free scaling changes only the box size.
 | Computer systems & communication | system block presets by role, `diag.sys.bus`, `diag.sys.phone`, `.basestation`, `.router`, `.switch`, `.satellite`, `.iot`, `diag.sys.wireless` |
 | Data layouts | `diag.data.fields` (row, wrapped rows, memory map) |
 | GUI wireframes | `diag.ui.screen`, `.button`, `.field`, `.list`, `.checkbox`, `.toggle`, `.slider`, `.image`, `.icon`, `.tabs`, `.touch`, `.cursor` |
+| Fault tree analysis (FTA) | `diag.fta.event.top`, `.intermediate` (rectangles), `diag.fta.gate.and`, `.or`, `.vote` (k-out-of-n), `.inhibit`, `diag.fta.event.basic` (circle), `.undeveloped` (diamond), `.house`, `.conditioning` (ellipse), `diag.fta.transfer` (triangle), `diag.fta.link` |
+| Sequential function chart (SFC, GRAFCET) | `diag.sfc.step.initial` (double frame), `diag.sfc.step`, `diag.sfc.transition`, `diag.sfc.action` (optional qualifier cell), `diag.sfc.branch` (parallel double line / alternative single line), `diag.sfc.link` |
+| Ishikawa & mind map | `diag.ishikawa` (fishbone), `diag.mindmap.node` (rounded, ellipse, box, underlined), `diag.mindmap.link` (curved branch) |
 
 ## Text conventions
 
@@ -251,6 +254,71 @@ the name, 8 ports on the outline; the size adapts when switching). Library: "Sta
   scale with the pool). A frame `End` mark keeps the lane lines from offering mechanical build ports.
 - Limits (Core): only nodes centred on a lane line are carried; elements placed elsewhere in a lane or other modules'
   elements (`ann.flow.*`) do not follow a moved pool. A general containment relation would need Core support.
+## Fault trees, sequential function charts, Ishikawa diagrams and mind maps (2026-11-26)
+
+All symbols are drawn independently after the usual textbook conventions (fault trees as described e.g. in IEC 61025,
+step-transition charts in the style of GRAFCET, IEC 60848); no compliance with these standards is claimed. Every element
+is insertable without parameters; texts are the object text (double-click or the host's text field), as for other
+diagram nodes.
+
+**Fault trees** (category "Fault tree analysis (FTA)"):
+
+- Events: top event (rectangle, heavier outline, bold text), intermediate event (rectangle), basic event (circle),
+  undeveloped event (diamond), house event (house outline), conditioning event (ellipse; the condition of an inhibit
+  gate). Gates: AND (flat base, round top), OR (curved base, pointed top), k-out-of-n (OR shape with `k/n`, parameters
+  `k` and `n`, action "k out of n" asks for `2/3`), inhibit (hexagon). Gates have an output stem at the top (port `top`)
+  and an input stem at the bottom (ports `bottom`, `bottom.q1`, `bottom.q3`); the gate text (e.g. `G1`) stands to the
+  right of the gate. Transfer symbol: triangle with a label (`A`).
+- `diag.fta.link` joins a gate or event (start) to one of its inputs (end): a plain line, orthogonal by default. Quick add
+  ("+") chains every fault tree element with such a link; "+" below a gate gives the right direction. A link drawn from a
+  leaf event (basic, undeveloped, house, conditioning) up to a gate or event is read the other way round.
+- **Probabilities (optional):** leaf events and the transfer symbol take a probability `p` (parameter or action
+  "Probability", e.g. `1e-4`, `0.001`, `0,001`, `0.5 %`). Every gate and event above them gets its probability, computed
+  while drawing (never stored): AND and inhibit = product, OR = 1 − Π(1 − p), k-out-of-n = probability that at least k of
+  the inputs occur (independent events; exact, not the rare-event approximation); an event or transfer with several
+  inputs reads them as OR. Leaves show `p = …` below the symbol, event rectangles inside under the text, a gate only when
+  no event stands directly above it (to the right). The value is shown only when every input below is known. German
+  output uses a decimal comma. Changing a `p`, a gate or a link redraws everything above it (`Dependents`).
+- **Arrange tree** (action on every linked fault tree element): the whole tree holding the element is laid out top-down
+  from its top event as a tidy tree (levels 8 mm apart, top-aligned; siblings 6 mm apart; each parent centred over its
+  inputs); the top event keeps its top edge and centre unless the tree would run past the page edge. The links are
+  docked again on the facing bottom/top ports. Elements reached twice are placed at their first visit. The general
+  multi-selection layout (Core `DiagramLayout`) also works on fault trees.
+
+**Sequential function charts** (category "Sequential function chart (SFC, GRAFCET)"):
+
+- `diag.sfc.step` (square, step number as text, placeholder `1`), `diag.sfc.step.initial` (double frame, placeholder
+  `0`); option `active` draws a token dot. `diag.sfc.transition`: thick bar across the link line, which runs through the
+  element from port `top` to port `bottom`; the receptivity (object text) is written to the right of the bar.
+  `diag.sfc.action`: action box (dock it on the step's `right` port), optional `qualifier` (N, S, R, D, L, P …, as in
+  IEC 61131-3 SFC) in its own cell; preset "Stored action (S)". `diag.sfc.branch`: parallel branch (double line) or
+  alternative branch (single line) with `branches` (2–8) docking points `b1.top`, `b1.bottom` … plus `top`/`bottom` in
+  the middle; "Add/Remove branch" grows/shrinks the bar by one branch spacing.
+- `diag.sfc.link`: plain line, orthogonal by default. A link whose end lies above its start (loop back from the last
+  transition to the initial step) runs around on the left, `clearance` (10 mm) beyond its ends and 4 mm clear of every
+  element it would otherwise cross, and carries a direction arrow in the middle of its rising run (switchable).
+
+**Ishikawa diagram** `diag.ishikawa` (one element): effect in a head box on the right (object text, placeholder
+"Effect"), a spine with an arrow into the head, one diagonal bone per category alternately above and below the spine,
+each category in a frame (switchable). `categories` holds one category per line; causes follow a colon, separated by
+semicolons (`Machine: wear; vibration`) and are drawn as ribs on the bone. While the parameter is not set, the six
+classic categories are shown in the user's language (Man, Machine, Method, Material, Measurement, Environment /
+Mensch, Maschine, Methode, Material, Messung, Mitwelt). Actions: add/remove category (up to 8), add cause (input
+`2: wear`), rename category n, category frames.
+
+**Mind map:** `diag.mindmap.node` (shapes rounded box, ellipse, box, underlined text; bold), preset "Central topic"
+(ellipse, bold) and "Branch text" (underlined); `diag.mindmap.link` is a curved branch (cubic, leaving and entering
+along the main direction; switchable to straight). Quick add chains nodes with branches. **Arrange map ▸** (on a node
+with branches): *Both sides* (branches already on the left stay left, otherwise the lower half goes left), *To the
+right*, or *Radial* (depth d on a circle d·R, every subtree in a wedge in proportion to its leaves). Links are read
+without direction; the node the action runs on is the centre and keeps its place (unless the map would run past the
+page edge); the branches are docked again on the facing ports.
+
+Open: values of other kinds than probabilities (failure rates over a mission time, minimal cut sets), common-cause
+handling of shared basic events (a shared event is counted as independent in each gate), SFC macro steps and
+enclosing steps, mind map branch colours per main branch, a dedicated "+" that adds a child of another type (quick add
+copies the element; "next element" replaces it).
+
 ## Context actions
 
 | Type | Actions |
@@ -270,6 +338,10 @@ the name, 8 ports on the outline; the size adapts when switching). Library: "Sta
 | Sequence message | sync/async/reply/create, swap direction |
 | Block | add/remove port left/right |
 | Lifeline, container, lollipop, task, gateway | destroyed / actor head, dashed frame / title band, required socket, sub-process, gateway marker ▾ |
+| Fault tree elements | probability (leaves, transfer), k out of n (voting gate), arrange tree |
+| SFC step, branch, link | active (token) / branch ▾ (parallel, alternative), add/remove branch / upward arrow, reverse direction, routing ▾ |
+| Ishikawa diagram | add/remove category, add cause, rename category n, category frames |
+| Mind map node, branch | shape ▾, bold, arrange map ▸ (both sides, to the right, radial) / curved, reverse direction |
 
 Adding a row grows the box downwards by one row (top edge stays in place); removing a row shrinks it.
 
@@ -279,4 +351,7 @@ All symbols are built from native primitives (rectangles, ellipses, lines, paths
 with the host's formatting tools. Rounded corners are emitted as paths. Lane headers of horizontal swimlanes use
 text rotated by −90°. BPMN event and gateway labels are written below the symbol, outside its box (BPMN
 convention). Notation sources: UML 2.5.1 (OMG) for UML shapes, BPMN 2.0.2 (OMG) for BPMN shapes, Chen (1976) and
-the crow's-foot notation (Information Engineering) for ER; all symbols are drawn independently.
+the crow's-foot notation (Information Engineering) for ER; all symbols are drawn independently. Fault tree gates are
+closed paths (cubic curves), the SFC upward arrow and the Ishikawa spine head are native shapes/arrowheads, and mind map
+branches are single cubic paths, so every host draws them as native freeforms. Fault tree values are text primitives;
+hosts that keep shapes apart (PowerPoint COM) redraw the elements above a changed event through `Dependents`.
