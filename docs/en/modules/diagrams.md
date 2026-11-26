@@ -39,12 +39,12 @@ symbol is insertable without parameters; free scaling changes only the box size.
 | UML class & structure | `diag.uml.class`, `diag.uml.interface`, `diag.uml.enum` (views `full`/`compact`), `diag.uml.package`, `diag.uml.component`, `diag.uml.node`, `diag.uml.note` |
 | UML use case | `diag.uml.actor`, `diag.uml.usecase` |
 | UML activity | `diag.activity.action`, `.initial`, `.final`, `.flowfinal`, `.decision`, `.bar` (fork/join), `.swimlane` |
-| UML state machine | `diag.state.state` (entry/do/exit), `diag.state.composite` (regions); initial/final states are presets of the activity nodes |
+| UML state machine | `diag.state.state` (entry/do/exit), `diag.state.composite` (regions), `diag.state.pseudo` (shallow/deep history, junction, choice, entry/exit point, terminate); initial/final states are presets of the activity nodes |
 | UML sequence | `diag.seq.lifeline` (box or actor head, dashed tail, optional destruction X), `diag.seq.activation`, `diag.seq.message` (sync, async, reply, create; self message when both ends lie on one vertical) |
 | UML relationships | `diag.uml.relation`: association, directed association, aggregation, composition, generalization, realization, dependency, link; multiplicities and role names at both ends, label in the middle |
 | ER | `diag.er.entity` (views `diagram`/`table`/`chen`, weak entity), `diag.er.attribute` (key, multivalued, derived), `diag.er.relationship` (Chen diamond, identifying), `diag.er.connector` (crow's foot) |
 | System & architecture | `diag.sys.block` (ports per side), `diag.sys.container` (group frame with title tab or band), `diag.sys.cloud`, `diag.sys.database`, `diag.sys.queue`, `diag.sys.server`, `diag.sys.client` (browser window), `diag.sys.user`, `diag.sys.lollipop` (provided ball / required socket) |
-| BPMN-lite | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (sub-process marker), `diag.bpmn.gateway` (exclusive, parallel, inclusive, event-based), `diag.bpmn.pool` (pool with lanes) |
+| BPMN-lite | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (sub-process marker), `diag.bpmn.gateway` (exclusive, parallel, inclusive, event-based), `diag.bpmn.pool` (pool with lanes), event triggers, `diag.bpmn.dataobject`, `diag.bpmn.datastore`, `diag.bpmn.flow` (sequence, default, conditional, message, association, data association) |
 | Control loops | `diag.ctrl.sum`, `diag.ctrl.tf`, `diag.ctrl.branch`, `diag.ctrl.mult`, `diag.ctrl.signal`, `diag.ctrl.loop` (explodable) |
 | Computer systems & communication | system block presets by role, `diag.sys.bus`, `diag.sys.phone`, `.basestation`, `.router`, `.switch`, `.satellite`, `.iot`, `diag.sys.wireless` |
 | Data layouts | `diag.data.fields` (row, wrapped rows, memory map) |
@@ -52,6 +52,7 @@ symbol is insertable without parameters; free scaling changes only the box size.
 | Fault tree analysis (FTA) | `diag.fta.event.top`, `.intermediate` (rectangles), `diag.fta.gate.and`, `.or`, `.vote` (k-out-of-n), `.inhibit`, `diag.fta.event.basic` (circle), `.undeveloped` (diamond), `.house`, `.conditioning` (ellipse), `diag.fta.transfer` (triangle), `diag.fta.link` |
 | Sequential function chart (SFC, GRAFCET) | `diag.sfc.step.initial` (double frame), `diag.sfc.step`, `diag.sfc.transition`, `diag.sfc.action` (optional qualifier cell), `diag.sfc.branch` (parallel double line / alternative single line), `diag.sfc.link` |
 | Ishikawa & mind map | `diag.ishikawa` (fishbone), `diag.mindmap.node` (rounded, ellipse, box, underlined), `diag.mindmap.link` (curved branch) |
+| Network diagram (critical path) | `diag.net.node` (activity on node with ES, D, EF / number, name / LS, TF, LF), `diag.net.link` (finish-to-start dependency) |
 
 ## Text conventions
 
@@ -240,6 +241,39 @@ underlined), and the pointers `diag.ui.touch` (finger with ripples: tap, double 
 the name, 8 ports on the outline; the size adapts when switching). Library: "State (circle)" and "Transition (event
 [guard] / action)" (`diag.state.transition`, a directed UML relation with that label template).
 
+## BPMN triggers, data and flows; state pseudo states; network diagrams (2026-11-26)
+
+**BPMN events** have a `trigger` choice (message, timer, conditional, signal, error, escalation, compensation, link,
+terminate; start events: no link or terminate; end events: no timer, conditional or link; terminate only at the end).
+A catching marker is outlined, a throwing one filled: end events always throw, intermediate events throw when
+`throwing` is set. `interrupting` = false draws a dashed circle (non-interrupting start or boundary event). Presets:
+`diag.bpmn.start.message`, `.start.timer`, `.start.signal`, `.intermediate.message` (catching), `.intermediate.message.throw`,
+`.intermediate.timer`, `.intermediate.boundary.timer` (non-interrupting), `.intermediate.error` (boundary),
+`.end.message`, `.end.error`, `.end.terminate`. **Data:** `diag.bpmn.dataobject` (page with a folded corner; role
+input/output arrow, collection bars; presets `.input`, `.output`, `.collection`) and `diag.bpmn.datastore` (cylinder).
+**Flows:** `diag.bpmn.flow` with kind sequence (solid, filled arrowhead), default (slash at the start), conditional
+(hollow diamond at the start), message (dashed, small circle at the start, hollow arrowhead), association (dotted, no
+head) and data association (dotted, open arrowhead); presets `diag.bpmn.flow.<kind>`. Quick add from BPMN shapes still
+uses the directed UML relation.
+
+**State machine pseudo states:** `diag.state.pseudo` with kind shallow history (H), deep history (H*), junction
+(small filled dot), choice (diamond, diamond ports), entry point (open circle), exit point (circle with a cross) and
+terminate (cross); presets `diag.state.pseudo.<kind>`. Fork and join use the activity bar, initial and final states the
+activity nodes; transitions with event [guard] / action stay the UML relation preset `diag.state.transition`.
+
+**Network diagrams (critical path method).** `diag.net.node` is an activity on node: top row earliest start ES,
+duration D, earliest finish EF; middle the optional number (`no`) and the name (object text); bottom row latest start
+LS, total float TF, latest finish LF. `diag.net.link` joins an activity (start) to its successor (end), finish-to-start
+without lag; quick add chains activities with it. The duration (`duration`, e.g. "5", "2,5", "3 weeks": the leading
+number, one unit for the whole network) is optional; when every activity of a connected network has one and the
+links form no cycle, the forward pass gives ES = max EF of the predecessors (0 at the start) and EF = ES + D, the
+backward pass LF = min LS of the successors (the project end for the last activities) and LS = LF − D, the total float
+TF = LS − ES and the free float FF = min ES of the successors − EF (textbook method of project planning, drawn
+independently). Critical activities (TF = 0) have a heavy outline, links between two critical activities without free
+float are heavy. Values are computed while drawing and never stored; a changed duration redraws the whole network
+(`Dependents`). Actions: *Duration…*, *Number…*, *Arrange network* (columns by the longest chain of predecessors).
+Example: A (3) → B (2) → D (4), A → C (5) → D: critical path A–C–D with 12 units, B has 3 units of float.
+
 ## Interactive pools and lanes (2026-11-25)
 
 `diag.bpmn.pool` (new: horizontal lanes, pool name band on the left, localised lane placeholders) and
@@ -339,6 +373,9 @@ copies the element; "next element" replaces it).
 | Block | add/remove port left/right |
 | Lifeline, container, lollipop, task, gateway | destroyed / actor head, dashed frame / title band, required socket, sub-process, gateway marker ▾ |
 | Fault tree elements | probability (leaves, transfer), k out of n (voting gate), arrange tree |
+| BPMN event, data object, flow | trigger ▾, throwing, interrupting / role ▾, collection / kind ▾, reverse direction, routing ▾ |
+| Pseudo state | kind ▾ |
+| Network activity, dependency | duration…, number…, arrange network / reverse direction, routing ▾ |
 | SFC step, branch, link | active (token) / branch ▾ (parallel, alternative), add/remove branch / upward arrow, reverse direction, routing ▾ |
 | Ishikawa diagram | add/remove category, add cause, rename category n, category frames |
 | Mind map node, branch | shape ▾, bold, arrange map ▸ (both sides, to the right, radial) / curved, reverse direction |

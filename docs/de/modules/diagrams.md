@@ -39,12 +39,12 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
 | UML-Klassen & Struktur | `diag.uml.class`, `diag.uml.interface`, `diag.uml.enum` (Ansichten `full`/`compact`), `diag.uml.package`, `diag.uml.component`, `diag.uml.node`, `diag.uml.note` |
 | UML-Anwendungsfall | `diag.uml.actor`, `diag.uml.usecase` |
 | UML-Aktivität | `diag.activity.action`, `.initial`, `.final`, `.flowfinal`, `.decision`, `.bar` (Gabelung/Vereinigung), `.swimlane` |
-| UML-Zustandsautomat | `diag.state.state` (entry/do/exit), `diag.state.composite` (Regionen); Start-/Endzustand sind Vorlagen der Aktivitätsknoten |
+| UML-Zustandsautomat | `diag.state.state` (entry/do/exit), `diag.state.composite` (Regionen), `diag.state.pseudo` (flache/tiefe Historie, Kreuzung, Auswahl, Ein-/Austrittspunkt, Terminierung); Start-/Endzustand sind Vorlagen der Aktivitätsknoten |
 | UML-Sequenz | `diag.seq.lifeline` (Kasten- oder Akteur-Kopf, gestrichelte Linie, optionales Zerstörungs-X), `diag.seq.activation`, `diag.seq.message` (synchron, asynchron, Antwort, Erzeugen; Selbstaufruf, wenn beide Enden auf einer Senkrechten liegen) |
 | UML-Beziehungen | `diag.uml.relation`: Assoziation, gerichtete Assoziation, Aggregation, Komposition, Generalisierung, Realisierung, Abhängigkeit, Verbindung; Multiplizitäten und Rollen an beiden Enden, Beschriftung in der Mitte |
 | ER | `diag.er.entity` (Ansichten `diagram`/`table`/`chen`, schwache Entität), `diag.er.attribute` (Schlüssel, mehrwertig, abgeleitet), `diag.er.relationship` (Chen-Raute, identifizierend), `diag.er.connector` (Krähenfuß) |
 | System & Architektur | `diag.sys.block` (Ports je Seite), `diag.sys.container` (Gruppenrahmen mit Titelreiter oder -band), `diag.sys.cloud`, `diag.sys.database`, `diag.sys.queue`, `diag.sys.server`, `diag.sys.client` (Browserfenster), `diag.sys.user`, `diag.sys.lollipop` (bereitgestellt Kugel / benötigt Buchse) |
-| BPMN-light | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (Teilprozess-Markierung), `diag.bpmn.gateway` (exklusiv, parallel, inklusiv, ereignisbasiert), `diag.bpmn.pool` (Pool mit Bahnen) |
+| BPMN-light | `diag.bpmn.start`, `diag.bpmn.intermediate`, `diag.bpmn.end`, `diag.bpmn.task` (Teilprozess-Markierung), `diag.bpmn.gateway` (exklusiv, parallel, inklusiv, ereignisbasiert), `diag.bpmn.pool` (Pool mit Bahnen), Ereignisauslöser, `diag.bpmn.dataobject`, `diag.bpmn.datastore`, `diag.bpmn.flow` (Sequenz-, Standard-, bedingter, Nachrichtenfluss, Assoziation, Datenassoziation) |
 | Regelkreise | `diag.ctrl.sum`, `diag.ctrl.tf`, `diag.ctrl.branch`, `diag.ctrl.mult`, `diag.ctrl.signal`, `diag.ctrl.loop` (zerlegbar) |
 | Rechnersysteme & Kommunikation | Systemblock-Vorlagen nach Rolle, `diag.sys.bus`, `diag.sys.phone`, `.basestation`, `.router`, `.switch`, `.satellite`, `.iot`, `diag.sys.wireless` |
 | Datenformate | `diag.data.fields` (Zeile, Zeilen fester Bitbreite, Speicherbelegung) |
@@ -52,6 +52,7 @@ Symbol lässt sich ohne Parameter einfügen; freies Skalieren ändert nur die Bo
 | Fehlerbaumanalyse (FTA) | `diag.fta.event.top`, `.intermediate` (Rechtecke), `diag.fta.gate.and`, `.or`, `.vote` (k aus n), `.inhibit`, `diag.fta.event.basic` (Kreis), `.undeveloped` (Raute), `.house`, `.conditioning` (Ellipse), `diag.fta.transfer` (Dreieck), `diag.fta.link` |
 | Ablaufsprache (SFC, GRAFCET) | `diag.sfc.step.initial` (Doppelrahmen), `diag.sfc.step`, `diag.sfc.transition`, `diag.sfc.action` (optionales Feld für das Bestimmungszeichen), `diag.sfc.branch` (parallel Doppellinie / alternativ Einzellinie), `diag.sfc.link` |
 | Ishikawa & Mindmap | `diag.ishikawa` (Fischgräte), `diag.mindmap.node` (abgerundet, Ellipse, Rechteck, unterstrichen), `diag.mindmap.link` (geschwungener Zweig) |
+| Netzplan (kritischer Pfad) | `diag.net.node` (Vorgangsknoten mit FAZ, D, FEZ / Nummer, Name / SAZ, GP, SEZ), `diag.net.link` (Normalfolge Ende–Anfang) |
 
 ## Textkonventionen
 
@@ -258,6 +259,42 @@ mit dem Namen, 8 Ports auf dem Umriss; die Größe passt sich beim Umschalten an
 „Transition (Ereignis [Bedingung] / Aktion)“ (`diag.state.transition`, eine gerichtete UML-Beziehung mit dieser
 Beschriftungsvorlage).
 
+## BPMN-Auslöser, Daten und Flüsse; Pseudozustände; Netzpläne (26.11.2026)
+
+**BPMN-Ereignisse** haben eine Auswahl `trigger` (Nachricht, Zeit, Bedingung, Signal, Fehler, Eskalation, Kompensation,
+Link, Terminierung; Startereignisse: kein Link und keine Terminierung; Endereignisse: keine Zeit, Bedingung und kein
+Link; Terminierung nur am Ende). Eine eintretende Markierung ist umrandet, eine auslösende gefüllt: Endereignisse lösen
+immer aus, Zwischenereignisse mit `throwing`. `interrupting` = false zeichnet einen gestrichelten Kreis (nicht
+unterbrechendes Start- oder Randereignis). Vorlagen: `diag.bpmn.start.message`, `.start.timer`, `.start.signal`,
+`.intermediate.message` (eintretend), `.intermediate.message.throw`, `.intermediate.timer`,
+`.intermediate.boundary.timer` (nicht unterbrechend), `.intermediate.error` (Randereignis), `.end.message`, `.end.error`,
+`.end.terminate`. **Daten:** `diag.bpmn.dataobject` (Blatt mit Eselsohr; Rolle Eingabe/Ausgabe als Pfeil,
+Sammlung als drei Striche; Vorlagen `.input`, `.output`, `.collection`) und `diag.bpmn.datastore` (Zylinder).
+**Flüsse:** `diag.bpmn.flow` mit Art Sequenzfluss (durchgezogen, gefüllte Pfeilspitze), Standardfluss (Schrägstrich am
+Anfang), bedingter Fluss (hohle Raute am Anfang), Nachrichtenfluss (gestrichelt, kleiner Kreis am Anfang, hohle
+Pfeilspitze), Assoziation (gepunktet, ohne Spitze) und Datenassoziation (gepunktet, offene Pfeilspitze); Vorlagen
+`diag.bpmn.flow.<kind>`. Schnelles Hinzufügen an BPMN-Formen nutzt weiterhin die gerichtete UML-Beziehung.
+
+**Pseudozustände:** `diag.state.pseudo` mit Art flache Historie (H), tiefe Historie (H*), Kreuzung (kleiner gefüllter
+Punkt), Auswahl (Raute, Rautenanschlüsse), Eintrittspunkt (offener Kreis), Austrittspunkt (Kreis mit Kreuz) und
+Terminierung (Kreuz); Vorlagen `diag.state.pseudo.<kind>`. Gabelung und Vereinigung nutzen den Aktivitätsbalken, Start-
+und Endzustand die Aktivitätsknoten; Transitionen mit Ereignis [Bedingung] / Aktion bleiben die UML-Beziehungsvorlage
+`diag.state.transition`.
+
+**Netzpläne (Methode des kritischen Pfads).** `diag.net.node` ist ein Vorgangsknoten: oben frühester Anfang FAZ, Dauer D,
+frühestes Ende FEZ; in der Mitte die optionale Nummer (`no`) und der Name (Objekttext); unten spätester Anfang SAZ,
+Gesamtpuffer GP, spätestes Ende SEZ. `diag.net.link` verbindet einen Vorgang (Anfang) mit seinem Nachfolger (Ende),
+Normalfolge ohne Zeitabstand; schnelles Hinzufügen verkettet Vorgänge damit. Die Dauer (`duration`, z. B. „5“, „2,5“,
+„3 Wochen“: die führende Zahl, eine Einheit für den ganzen Netzplan) ist optional; haben alle Vorgänge eines
+zusammenhängenden Netzplans eine und bilden die Verbindungen keinen Zyklus, ergibt die Vorwärtsrechnung FAZ = max FEZ der
+Vorgänger (0 am Anfang) und FEZ = FAZ + D, die Rückwärtsrechnung SEZ = min SAZ der Nachfolger (das Projektende für die
+letzten Vorgänge) und SAZ = SEZ − D, den Gesamtpuffer GP = SAZ − FAZ und den freien Puffer FP = min FAZ der Nachfolger −
+FEZ (Lehrbuchverfahren der Projektplanung, eigenständig gezeichnet). Kritische Vorgänge (GP = 0) haben einen kräftigen
+Rahmen, Verbindungen zwischen zwei kritischen Vorgängen ohne freien Puffer sind kräftig. Die Werte werden beim Zeichnen
+berechnet und nie gespeichert; eine geänderte Dauer zeichnet den ganzen Netzplan neu (`Dependents`). Aktionen:
+*Dauer…*, *Nummer…*, *Netzplan anordnen* (Spalten nach der längsten Vorgängerkette). Beispiel: A (3) → B (2) → D (4),
+A → C (5) → D: kritischer Pfad A–C–D mit 12 Einheiten, B hat 3 Einheiten Puffer.
+
 ## Interaktive Pools und Bahnen (25.11.2026)
 
 `diag.bpmn.pool` (neu: waagerechte Bahnen, Poolname im Band links, übersetzte Bahn-Platzhalter) und
@@ -367,6 +404,9 @@ ein Kind eines anderen Typs anlegt (schnelles Hinzufügen kopiert das Element; �
 | Block | Port links/rechts hinzufügen/entfernen |
 | Lebenslinie, Container, Lolli, Aufgabe, Gateway | zerstört / Akteur-Kopf, gestrichelter Rahmen / Titelband, benötigte Buchse, Teilprozess, Gateway-Markierung ▾ |
 | Fehlerbaumelemente | Wahrscheinlichkeit (Blätter, Übertrag), k aus n (Mehrheitsgatter), Baum anordnen |
+| BPMN-Ereignis, Datenobjekt, Fluss | Auslöser ▾, auslösend, unterbrechend / Rolle ▾, Sammlung / Art ▾, Richtung umkehren, Führung ▾ |
+| Pseudozustand | Art ▾ |
+| Netzplan-Vorgang, Anordnungsbeziehung | Dauer…, Nummer…, Netzplan anordnen / Richtung umkehren, Führung ▾ |
 | SFC-Schritt, -Verzweigung, -Verbindung | aktiv (Marke) / Verzweigung ▾ (parallel, alternativ), Zweig hinzufügen/entfernen / Aufwärtspfeil, Richtung umkehren, Führung ▾ |
 | Ishikawa-Diagramm | Kategorie hinzufügen/entfernen, Ursache hinzufügen, Kategorie n umbenennen, Kategorierahmen |
 | Mindmap-Knoten, -Zweig | Form ▾, fett, Mindmap anordnen ▸ (beidseitig, nach rechts, radial) / geschwungen, Richtung umkehren |

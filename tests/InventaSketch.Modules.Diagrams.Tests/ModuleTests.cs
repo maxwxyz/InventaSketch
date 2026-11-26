@@ -87,7 +87,7 @@ namespace InventaSketch.Modules.Diagrams.Tests
         {
             var r = T.Reg();
             var cats = new HashSet<string>(r.Categories.Select(c => c.Id));
-            Assert.Equal(16, cats.Count);
+            Assert.Equal(17, cats.Count);
             foreach (var t in r.Types) Assert.Contains(r.Library, i => i.TypeId == t.Id);
             foreach (var i in r.Library) Assert.Contains(i.Category, cats);
             Assert.Equal(r.Library.Count, r.Library.Select(i => i.Id).Distinct().Count());
