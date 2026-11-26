@@ -11,7 +11,10 @@ operation runs, and exactly the units whose objects changed (plus their dependen
 replaced on the page in one undo step.
 """
 
-from . import i18n, metadata, render, ux
+import hashlib
+import json
+
+from . import drawing, i18n, metadata, render, ux
 from .log import log
 
 IMPRESS = "com.sun.star.presentation.PresentationDocument"
@@ -230,6 +233,9 @@ def insert(engine, controller, item_id, x_mm=None, y_mm=None, name=None):
     session = _session(engine, (max(size[0], x * 2), max(size[1], y * 2)))
     try:
         state = engine.call("insert", {"session": session, "itemId": item_id, "x": x, "y": y, "includeSvg": False})
+        # A page coloured by medium colours the new unit too.
+        if page_color_mode(controller, page) == "medium":
+            engine.call("setColorBy", {"session": session, "text": "medium"})
         plan = engine.call("drawPlan", {"session": session, "ids": state["selection"]})
     finally:
         _close(engine, session)
@@ -324,6 +330,7 @@ class PageSession:
         self.native_selected = native_selected
         self.units = []
         self.known = set()
+        self.designations, self.continuations = [], {}
         self.state = None
         self.session = _session(engine, self.size)
         try:
@@ -421,7 +428,44 @@ class PageSession:
                 request.update(metadata.host_transform(bounds, current))
                 self.call("hostTransform", request)
                 entry["moved"] = True
+        self._apply_settings()
+        self._continuations()
         self.state = self.call("select", {"ids": self.selected_ids()})
+
+    def _apply_settings(self):
+        """The document settings that are not stored with the units (muted checks, preferred units: document
+        properties ``ISK_MUTED`` and ``ISK_UNITS``, like the value level ``ISK_VALUES``) go into the session."""
+        try:
+            muted = render.get_doc_property(self.doc, drawing.MUTED_PROPERTY)
+            units = render.get_doc_property(self.doc, drawing.UNITS_PROPERTY)
+        except Exception as ex:
+            log("document settings not readable: %s" % ex)
+            return
+        for method, params in drawing.settings_calls(muted, units):
+            try:
+                self.call(method, params)
+            except Exception as ex:
+                log("document setting %s %s not applied: %s" % (method, params, ex))
+
+    def _continuations(self):
+        """Designations of this page that also occur on other pages (Impress/Draw) become continuation markers
+        "→ W3, slide 4" (engine ``setContinuations``); ``designations`` and ``continuations`` are kept (describe)."""
+        self.designations, self.continuations = [], {}
+        kind = doc_kind(self.doc)
+        if kind not in ("impress", "draw") or not self.units:
+            return
+        try:
+            self.designations = self.call("designations") or []
+            if not self.designations:
+                return
+            mine = {d["key"] for d in self.designations}
+            cmap = page_continuations(self.engine, self.doc, self.page)
+            self.continuations = {k: v for k, v in cmap.items() if k in mine}
+            if self.continuations:
+                self.call("setContinuations", {"json": json.dumps(self.continuations, ensure_ascii=False),
+                                               "text": drawing.page_word(kind)})
+        except Exception as ex:
+            log("continuations skipped: %s" % ex)
 
     # -------------------------------------------------------------- queries
 
@@ -450,15 +494,15 @@ class PageSession:
 
     # -------------------------------------------------------------- committing
 
-    def commit(self, label, state=None, force_selected=False, title=None, select=True):
+    def commit(self, label, state=None, force_selected=False, title=None, select=True, extra=()):
         """Redraws the units touched by the last engine operation in one undo step (``title``, default "edit
         <label>"); returns the drawn shapes. The selection follows the engine's selection (``select`` False: the
         document selection is left alone, e.g. for pages that are not shown). ``force_selected`` redraws the selected
-        units anyway."""
+        units anyway, ``extra`` the units with these ids (a drawing-wide setting changed how they look)."""
         state = state if state is not None and "objects" in state else self.call("state")
         existing = {o["id"] for o in state["objects"]}
         units = self.unit_map()
-        force = {e["id"] for e in self.units if e["selected"] and (e["moved"] or force_selected)}
+        force = {e["id"] for e in self.units if e["selected"] and (e["moved"] or force_selected)} | set(extra or ())
         # "changed" describes the last document change: without a new revision the operation changed nothing (the
         # last change was loading the page).
         changed, dependents = (state.get("changed"), state.get("dependents")) \
@@ -737,10 +781,15 @@ def describe(engine, controller):
         actions = ps.call("contextActions", {"ids": ids, "lang": lang}) or []
         numeral = any(a.get("id") == "numeral" and a.get("enabled") for a in actions)
         connect = _quiet(lambda: ps.call("connectOptions", {"ids": ids, "lang": lang}), [])
+        # The selection's designations on other pages ("Same name on slide 4").
+        elsewhere = drawing.elsewhere(ps.designations, ids, ps.continuations)
+        kind = doc_kind(ps.doc)
+        colour = "medium" if (ps.state or {}).get("colorBy") == "medium" else "off"
         if len(chosen) >= 2:
             return {"count": len(chosen), "units": [e["unit"] for e in chosen], "unitIds": [e["id"] for e in chosen],
                     "arrange": ps.call("arrangeOptions", {"ids": ids, "lang": lang}), "assemblyExtra": extra,
-                    "actions": actions, "connect": connect, "numeral": numeral}
+                    "actions": actions, "connect": connect, "numeral": numeral, "elsewhere": elsewhere,
+                    "kind": kind, "colorBy": colour}
         unit = chosen[0]["unit"]
         first = chosen[0]["own"][0]
         obj = _selected_object(ps.state, first)
@@ -759,7 +808,7 @@ def describe(engine, controller):
             "assemblyExtra": extra, "actions": actions, "params": info.get("params") or [],
             "mainText": obj.get("mainText"), "hasValues": bool(obj.get("hasValues")), "connect": connect,
             "insertPlaces": (places[0].get("handles") if places else []) or [], "parts": parts, "numeral": numeral,
-            "objectId": first}
+            "objectId": first, "elsewhere": elsewhere, "kind": kind, "colorBy": colour}
 
 
 def _quiet(work, fallback):
@@ -861,7 +910,8 @@ def set_value_level(doc, level):
 def element_values(engine, controller):
     """What the Values panel shows for the selected element: None without exactly one unit, else {"name", "id",
     "level", "values" (engine ``values`` of the element), "explained": key -> formula line, "checks", "showValues"
-    (True/False/None), "hasValues"}. All units of the page take part, so values linked across elements are known."""
+    (True/False/None), "hasValues", "muted" (muted check ids), "units" (ISK_UNITS)}. All units of the page take part,
+    so values linked across elements are known; the muted checks and preferred units of the document apply."""
     from . import values
     shapes = selected_unit_shapes(controller)
     if len(shapes) != 1:
@@ -876,7 +926,8 @@ def element_values(engine, controller):
         info = ps.call("inspector", {"ids": [first], "lang": lang})
         out = {"name": info.get("typeName") or obj.get("type") or "", "id": first, "level": level,
                "hasValues": bool(obj.get("hasValues")), "values": None, "explained": {}, "checks": [],
-               "showValues": values.shows_values_switch(info.get("params"))}
+               "showValues": values.shows_values_switch(info.get("params")), "muted": muted_checks(doc),
+               "units": unit_preferences(doc)}
         if not out["hasValues"]:
             return out
         result = ps.call("values", {"id": first, "lang": lang, "digits": digits})
@@ -909,6 +960,244 @@ def clear_value(engine, controller, key):
 def show_values(engine, controller, on):
     """Switches the values label on the drawing (parameter ``showValues``)."""
     return set_param(engine, controller, "showValues", bool(on), label=i18n.text("valShow"))
+
+
+def muted_checks(doc):
+    """The muted plausibility checks of the document (property ``ISK_MUTED``)."""
+    try:
+        return drawing.parse_muted(render.get_doc_property(doc, drawing.MUTED_PROPERTY))
+    except Exception:
+        return []
+
+
+def unit_preferences(doc):
+    """The raw ``ISK_UNITS`` text of the document ("" when nothing is set)."""
+    try:
+        return render.get_doc_property(doc, drawing.UNITS_PROPERTY) or ""
+    except Exception:
+        return ""
+
+
+def _store(doc, name, value):
+    if value:
+        render.set_doc_property(doc, name, value)
+    else:
+        render.remove_doc_property(doc, name)
+
+
+def mute_check(doc, check_id, mute=True):
+    """Mutes (or unmutes) the plausibility check ``check_id`` for the document: stored in ``ISK_MUTED`` and applied
+    to every page session (engine ``muteCheck``). Returns the muted ids."""
+    if not check_id:
+        raise HostError(i18n.text("noUnit"))
+    text = drawing.with_muted(render.get_doc_property(doc, drawing.MUTED_PROPERTY), check_id, mute)
+    _store(doc, drawing.MUTED_PROPERTY, text)
+    return drawing.parse_muted(text)
+
+
+def unmute_all(doc):
+    _store(doc, drawing.MUTED_PROPERTY, "")
+
+
+def set_unit_preference(engine, controller, kind, unit):
+    """The preferred display unit of quantity ``kind`` for the document ("Show values in"; the first offered unit
+    clears it): checked by the engine (``setUnitPreference`` refuses a unit of another kind), stored in ``ISK_UNITS``,
+    and the units of the page whose drawing changes with it (a values label) are redrawn in one undo step. Returns the
+    redrawn shapes."""
+    doc = controller.getModel()
+    stored = drawing.with_unit(unit_preferences(doc), kind, unit)
+    clear = not unit or unit == drawing.default_unit(kind)
+    shapes = selected_unit_shapes(controller)
+    try:
+        page_units = page_unit_shapes(target(controller)[1])
+    except HostError:
+        page_units = []
+    if not page_units:
+        session = _session(engine, (297.0, 210.0))
+        try:
+            engine.call("setUnitPreference", {"session": session, "quantityKind": kind, "unit": "" if clear else unit})
+        finally:
+            _close(engine, session)
+        _store(doc, drawing.UNITS_PROPERTY, stored)
+        return []
+    with PageSession(engine, controller, shapes=shapes) as ps:
+        before = ps.call("drawPlan", {})
+        ps.call("setUnitPreference", {"quantityKind": kind, "unit": "" if clear else unit})
+        after = ps.call("drawPlan", {})
+        _store(doc, drawing.UNITS_PROPERTY, stored)
+        changed = drawing.changed_plan_units(before, after)
+        if not changed:
+            return []
+        return ps.commit(i18n.text("valUnitsTitle"), None, title=_title("valUnitsTitle"), extra=changed)
+
+
+# ------------------------------------------------------------------ colour by medium, designations across pages
+
+
+def page_color_mode(controller, page=None):
+    """The colour mode of the page ("medium" or "off"): the mode stored in its units' models (no engine call)."""
+    doc = controller.getModel()
+    try:
+        page = page if page is not None else target(controller)[1]
+    except HostError:
+        return "off"
+    for shape in page_unit_shapes(page):
+        try:
+            unit = render.read_unit(doc, shape)
+        except Exception:
+            unit = None
+        if unit is not None:
+            return drawing.color_mode_of(unit["payload"])
+    return "off"
+
+
+def set_color_by(engine, controller, mode):
+    """Colour by medium for the current page (``mode`` "medium" or "off", engine ``setColorBy``): every unit of the
+    page is redrawn in the mode, one undo step; new units on the page take it. Returns the drawn shapes."""
+    try:
+        mode = drawing.parse_color_mode(mode)
+    except ValueError as ex:
+        raise HostError(str(ex))
+    with PageSession(engine, controller) as ps:
+        if not ps.units:
+            raise HostError(i18n.text("noUnitsOnPage"))
+        state = ps.call("setColorBy", {"text": mode})
+        # Units drawn in another mode than the page session adopted are redrawn too (a page with mixed units).
+        stale = [e["id"] for e in ps.units if e["unit"] is not None
+                 and drawing.color_mode_of(e["unit"]["payload"]) != mode]
+        return ps.commit(i18n.text("colorByLabel"), state, title=_title("colorByLabel"), extra=stale)
+
+
+def medium_colours(engine, controller):
+    """The medium colours used on the current page (engine ``mediumColours`` mode "used")."""
+    with PageSession(engine, controller, shapes=[]) as ps:
+        return ps.call("mediumColours", {"mode": "used", "lang": i18n.language()}) or []
+
+
+def insert_legend(engine, controller):
+    """A legend of the medium colours used on the page (engine ``insertLegend``) as one unit at the top right, one
+    undo step, selected. Returns the drawn shapes."""
+    with PageSession(engine, controller, shapes=[]) as ps:
+        if not ps.units:
+            raise HostError(i18n.text("noUnitsOnPage"))
+        state = ps.call("insertLegend", {"lang": i18n.language()})
+        return ps.commit(i18n.text("legendRun"), state, title=_title("legendRun"))
+
+
+_DESIGNATIONS = {}
+_DESIGNATIONS_MAX = 4096
+
+
+def payload_designations(engine, payloads):
+    """Designation keys of each compact model (engine ``designationsOf``, cached per model)."""
+    keys = [hashlib.sha1(p.encode("utf-8")).hexdigest() for p in payloads]
+    missing = [(k, p) for k, p in zip(keys, payloads) if k not in _DESIGNATIONS]
+    if missing:
+        result = engine.call("designationsOf", {"json": json.dumps([p for _, p in missing]),
+                                                "lang": i18n.language()}) or []
+        if len(_DESIGNATIONS) + len(missing) > _DESIGNATIONS_MAX:
+            _DESIGNATIONS.clear()
+        for (k, _), found in zip(missing, result):
+            _DESIGNATIONS[k] = list(found or [])
+    return [_DESIGNATIONS.get(k, []) for k in keys]
+
+
+def page_continuations(engine, doc, page):
+    """{designation key: [labels of the other pages with it]} (Impress/Draw; labels are page numbers)."""
+    try:
+        pages = doc.getDrawPages()
+        current = str(page.Number)
+    except Exception:
+        return {}
+    listed = []
+    for index in range(pages.getCount()):
+        label = str(index + 1)
+        if label == current:
+            continue
+        payloads = []
+        for shape in page_unit_shapes(pages.getByIndex(index)):
+            try:
+                unit = render.read_unit(doc, shape)
+            except Exception:
+                unit = None
+            if unit is not None:
+                payloads.append(unit["payload"])
+        if payloads:
+            keys = set()
+            for found in payload_designations(engine, payloads):
+                keys.update(found)
+            listed.append((label, sorted(keys)))
+    return drawing.continuation_map(listed, current)
+
+
+def go_same_name(engine, controller, key, page_label):
+    """Shows page ``page_label`` and selects the units there that carry designation ``key`` ("Same name on slide 4").
+    Returns the selected shapes."""
+    doc = controller.getModel()
+    kind = doc_kind(doc)
+    if kind not in ("impress", "draw"):
+        raise HostError(i18n.text("notSupported"))
+    try:
+        page = doc.getDrawPages().getByIndex(int(page_label) - 1)
+    except Exception:
+        raise HostError(i18n.text("sameNameMissing") % (key, i18n.text(drawing.page_word(kind)), page_label))
+    with PageSession(engine, controller, shapes=[], page=page) as ps:
+        found = next((d for d in ps.call("designations") or [] if d.get("key") == key), None)
+        shapes = []
+        if found:
+            by_id = {e["id"]: e["shape"] for e in ps.units}
+            shapes = [by_id[u] for u in ux.units_containing(ps.unit_map(), found.get("ids") or [])]
+    if not shapes:
+        raise HostError(i18n.text("sameNameMissing") % (key, i18n.text(drawing.page_word(kind)), page_label))
+    go_to(controller, int(page_label))
+    _select(controller, shapes)
+    return shapes
+
+
+# ------------------------------------------------------------------ calculation sheet
+
+
+def _sheet_params(ps, kind, mode, digits):
+    ids = ps.selected_ids()
+    params = {"mode": mode, "lang": i18n.language(), "digits": digits}
+    if ids:
+        params["ids"] = ids
+    elif kind == "calc":
+        params["ids"] = [i for e in ps.units for i in e["own"]]
+    return params, bool(ids)
+
+
+def calc_sheet(engine, controller, mode):
+    """The calculation sheet of the selected elements, else of every element of the page (engine ``calcSheet``, mode
+    csv, markdown or latex; digits by the value level). Returns {"text", "rows", "sources", "selection", "count",
+    "kind"}."""
+    from . import values
+    doc = controller.getModel()
+    kind = doc_kind(doc)
+    shapes = selected_unit_shapes(controller)
+    with PageSession(engine, controller, shapes=shapes) as ps:
+        if not ps.units:
+            raise HostError(i18n.text("noUnitsOnPage"))
+        params, selection = _sheet_params(ps, kind, mode, values.digits(value_level(doc)))
+        result = ps.call("calcSheet", params) or {}
+        count = sum(1 for e in ps.units if e["selected"])
+    result.update({"selection": selection, "count": count, "kind": kind, "mode": mode})
+    return result
+
+
+def insert_calc_table(engine, controller):
+    """The calculation sheet of the selection (else the page) as an annotation table beside the elements (engine
+    ``insertCalcTable``), one undo step, selected. Returns the drawn shapes."""
+    from . import values
+    doc = controller.getModel()
+    shapes = selected_unit_shapes(controller)
+    with PageSession(engine, controller, shapes=shapes) as ps:
+        if not ps.units:
+            raise HostError(i18n.text("noUnitsOnPage"))
+        params, _ = _sheet_params(ps, doc_kind(doc), "table", values.digits(value_level(doc)))
+        params.pop("mode")
+        state = ps.call("insertCalcTable", params)
+        return ps.commit(i18n.text("sheetTitle"), state, title=_title("sheetTitle"))
 
 
 # ------------------------------------------------------------------ calculator and code import

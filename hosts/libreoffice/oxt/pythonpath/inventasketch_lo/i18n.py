@@ -266,6 +266,70 @@ TEXTS = {
     "codeRun": ("Import", "Importieren"),
     "codeFilter": ("Code (Python, LaTeX)", "Code (Python, LaTeX)"),
     "codeEmpty": ("Paste code or open a file first.", "Zuerst Code einfügen oder eine Datei öffnen."),
+    # Drawing-wide settings (Tools panel, menu): colour by medium, legend, calculation sheet
+    "drawingTitle": ("Drawing", "Zeichnung"),
+    "colorByLabel": ("Colour by medium", "Farben nach Medium"),
+    "colorBy_off": ("Off (own colours)", "Aus (eigene Farben)"),
+    "colorBy_medium": ("By medium", "Nach Medium"),
+    "colorByTip": ("Colours every cable, wire, pipe and line of this slide/page by its medium and role (IEC 60445, "
+                   "DIN 2403); Off restores the own colours.",
+                   "Färbt alle Kabel, Leitungen, Rohre und Linien dieser Folie/Seite nach Medium und Rolle (IEC 60445, "
+                   "DIN 2403); Aus stellt die eigenen Farben wieder her."),
+    "colorByUnknown": ("Unknown colour mode '%s' (off, medium).", "Unbekannter Farbmodus „%s“ (off, medium)."),
+    "legendRun": ("Insert legend", "Legende einfügen"),
+    "legendTip": ("Inserts a legend of the medium colours used on this slide/page (one line and name per colour, with "
+                  "its source).",
+                  "Fügt eine Legende der auf dieser Folie/Seite verwendeten Medienfarben ein (je Farbe eine Linie und "
+                  "ihr Name, mit Quelle)."),
+    "noUnitsOnPage": ("There is no InventaSketch element on this slide/page.",
+                      "Auf dieser Folie/Seite ist kein InventaSketch-Element."),
+    "slide": ("slide", "Folie"),
+    "page": ("page", "Seite"),
+    "slides": ("slides", "Folien"),
+    "pages": ("pages", "Seiten"),
+    "sameNameOn": ("Same name on %s %s: %s", "Gleicher Name auf %s %s: %s"),
+    "sameNameAlso": ("Same name: also on %s %s", "Gleicher Name: auch auf %s %s"),
+    "sameNameMissing": ("'%s' is not on %s %s any more.", "„%s“ ist nicht mehr auf %s %s."),
+    # Values panel: plausibility warnings and preferred units
+    "valMute": ("Mute", "Stumm"),
+    "valMuteTip": ("Mute this check for the whole document (saved with it)",
+                   "Diese Prüfung für das ganze Dokument stummschalten (wird mitgespeichert)"),
+    "valUnmuteAll": ("Unmute %d muted check(s)", "%d stumme Prüfung(en) wieder einschalten"),
+    "valUnitsTitle": ("Show values in", "Werte anzeigen in"),
+    "valUnitsTip": ("Preferred unit for this document: the panel, the values on the drawing and the calculation sheet "
+                    "use it.",
+                    "Bevorzugte Einheit für dieses Dokument: das Panel, die Werte in der Zeichnung und das Rechenblatt "
+                    "verwenden sie."),
+    "qty_pressure": ("Pressure", "Druck"),
+    "qty_rotationalSpeed": ("Speed of rotation", "Drehzahl"),
+    "qty_energy": ("Energy", "Energie"),
+    "qty_power": ("Power", "Leistung"),
+    # Calculation sheet
+    "sheetOpen": ("Calculation sheet …", "Rechenblatt …"),
+    "sheetTitle": ("Calculation sheet", "Rechenblatt"),
+    "sheetTip": ("Every value of the selection (else of the slide/page) with formula, origin and source: CSV, Markdown or "
+                 "LaTeX to copy or save, or as a table on the slide/page.",
+                 "Alle Werte der Auswahl (sonst der Folie/Seite) mit Formel, Herkunft und Quelle: CSV, Markdown oder "
+                 "LaTeX zum Kopieren oder Speichern, oder als Tabelle auf der Folie/Seite."),
+    "sheetFormat": ("Format", "Format"),
+    "sheet_csv": ("CSV (spreadsheet)", "CSV (Tabellenkalkulation)"),
+    "sheet_markdown": ("Markdown", "Markdown"),
+    "sheet_latex": ("LaTeX (booktabs)", "LaTeX (booktabs)"),
+    "sheetUnknown": ("Unknown format '%s' (csv, markdown, latex, table).",
+                     "Unbekanntes Format „%s“ (csv, markdown, latex, table)."),
+    "sheetSelection": ("Calculation sheet of %d selected element(s)", "Rechenblatt von %d ausgewählten Element(en)"),
+    "sheetSlide": ("Calculation sheet of the slide", "Rechenblatt der Folie"),
+    "sheetPage": ("Calculation sheet of the page", "Rechenblatt der Seite"),
+    "sheetSheet": ("Calculation sheet of the elements on this sheet", "Rechenblatt der Elemente auf diesem Blatt"),
+    "sheetCounts": ("%d rows, %d sources", "%d Zeilen, %d Quellen"),
+    "sheetCopy": ("Copy", "Kopieren"),
+    "sheetSave": ("Save …", "Speichern …"),
+    "sheetTable": ("Insert as table", "Als Tabelle einfügen"),
+    "sheetClose": ("Close", "Schließen"),
+    "sheetCopied": ("Copied to the clipboard.", "In die Zwischenablage kopiert."),
+    "sheetSaved": ("Saved: %s", "Gespeichert: %s"),
+    "sheetNoValues": ("The elements have no values for a calculation sheet yet.",
+                      "Die Elemente haben noch keine Werte für ein Rechenblatt."),
 }
 
 _STATE = {"lang": "en"}

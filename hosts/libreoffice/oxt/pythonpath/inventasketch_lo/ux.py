@@ -354,6 +354,13 @@ def command_url(command, **args):
     return "inventasketch.libreoffice:%s%s" % (command, "?" + query if query else "")
 
 
+def parse_query(url):
+    """The arguments of a command URL as a dict (the reverse of ``command_url``)."""
+    from urllib.parse import parse_qs
+    query = (url or "").partition("?")[2]
+    return {k: v[-1] for k, v in parse_qs(query, keep_blank_values=True).items()}
+
+
 CHECKED_ARG = "on=1"
 
 

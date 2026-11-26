@@ -19,10 +19,13 @@ select connected. Short bilingual text labels with tooltips (the extension has n
 
 Values: the values of the selected element (engine ``values``): one row per value with marker, symbol, name, the entry
 field, unit and × for an entered value, the formula step by step under derived values (Explore and Engineer), the
-status line and conflicts; the value level of the document; "Show values on the drawing"; "Calculator …".
+status line and conflicts; the element's plausibility warnings with rule and source, each with "Mute" (a document
+setting, ``ISK_MUTED``), "Unmute" for the muted ones; the value level of the document; "Show values in" (preferred
+units of pressure, speed of rotation, energy and power, ``ISK_UNITS``); "Show values on the drawing"; "Calculator …".
 
-Calculator and code: the calculator with units (``calc``, ``convertUnit``) and the code import (``importCode``:
-matplotlib, pgfplots, TikZ – pasted or from a file).
+Calculator and code (Tools): the drawing-wide settings of the page (colour by medium, insert legend, calculation sheet
+…), the calculator with units (``calc``, ``convertUnit``) and the code import (``importCode``: matplotlib, pgfplots,
+TikZ – pasted or from a file).
 
 Panel plumbing (XUIElement + XToolPanel + XSidebarPanel + XComponent, container window, control helpers) ported from
 the Slidemax LibreOffice host (seitenleiste.py), translated and simplified.
@@ -39,13 +42,14 @@ from com.sun.star.ui import XSidebarPanel, XToolPanel, XUIElement, XUIElementFac
 from com.sun.star.ui.UIElementType import TOOLPANEL
 from com.sun.star.view import XSelectionChangeListener
 
-from . import choices, i18n, library, ux, values
+from . import choices, drawing, i18n, library, ux, values
 from .log import log
 
 MARGIN = 6
 ACTION_SLOTS = 16
 CHOICE_SLOTS = 10
 VALUE_SLOTS = 12
+CHECK_SLOTS = 4
 ERROR_COLOR = 0xC00000
 MUTED_COLOR = 0x606060
 _PANELS = []
@@ -223,6 +227,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self.actions = []
         self.choice_list = []
         self.connect = []
+        self.connect_rows = []
         self.places = []
         self.ports = []
         self.build_items = []
@@ -230,6 +235,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         self.value_rows = []
         self.value_starts = {}
         self.value_errors = {}
+        self.check_list = []
+        self.unit_list = []
         self.updating = False
         self.pending = False
         self.controller = None
@@ -284,6 +291,8 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self.load_selection(quiet=True)
         elif self.mode == "values":
             self._run("loadValues", None)
+        elif self.mode == "tools":
+            self.show_color_mode(None)
 
     def _listen_selection(self):
         """The selection and values panels follow the document selection."""
@@ -415,13 +424,30 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                          HelpText=t("valClearTip"))
             self._add("vDetail%d" % i, "FixedText", Label="", MultiLine=True, TextColor=MUTED_COLOR)
         self._add("conflicts", "FixedText", Label="", MultiLine=True, TextColor=ERROR_COLOR)
+        for i in range(CHECK_SLOTS):
+            self._add("chk%d" % i, "FixedText", Label="", MultiLine=True)
+            self._button("mute%d" % i, lambda i=i: self._mute(i), Label=t("valMute"), HelpText=t("valMuteTip"))
         self._add("checks", "FixedText", Label="", MultiLine=True)
+        self._button("unmute", lambda: self._run("muteCheck", {"mute": "0"}), Label="")
+        self._add("unitsLabel", "FixedText", Label=t("valUnitsTitle"), HelpText=t("valUnitsTip"))
+        for i, (kind, offered) in enumerate(drawing.OFFERED_UNITS):
+            self._add("unitLabel%d" % i, "FixedText", Label=t("qty_" + kind), HelpText=t("valUnitsTip"))
+            box = self._add("unit%d" % i, "ListBox", Dropdown=True, StringItemList=tuple(offered),
+                            HelpText=t("valUnitsTip"))
+            box.addItemListener(_Listener(lambda e, i=i: self._unit_chosen(i)))
         show = self._add("showValues", "CheckBox", Label=t("valShow"), State=0)
         show.addItemListener(_Listener(self._show_values_changed))
         self._button("valCalc", self._open_calculator, Label=t("valCalculator"))
 
     def _build_tools(self):
         t = lambda k: i18n.text(k, self.lang)  # noqa: E731
+        self._add("drawingTitle", "FixedText", Label=t("drawingTitle"), FontWeight=150.0)
+        self._add("colorByLabel", "FixedText", Label=t("colorByLabel"), HelpText=t("colorByTip"))
+        colour = self._add("colorBy", "ListBox", Dropdown=True, StringItemList=tuple(drawing.color_labels(self.lang)),
+                           HelpText=t("colorByTip"))
+        colour.addItemListener(_Listener(self._color_chosen))
+        self._button("legend", lambda: self._run("legend", None), Label=t("legendRun"), HelpText=t("legendTip"))
+        self._button("sheet", lambda: self._run("calcSheet", None), Label=t("sheetOpen"), HelpText=t("sheetTip"))
         self._add("calcTitle", "FixedText", Label=t("calcTitle"), FontWeight=150.0)
         self._add("calcExprLabel", "FixedText", Label=t("calcExpr"))
         expr = self._add("calcExpr", "Edit", Text="", HelpText=t("calcExamples"))
@@ -486,7 +512,7 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         # Short own labels two per row; engine labels and the selection-wide operations need the full width.
         for key in self._paired(slots):
             rows.append((key, "button"))
-        if self.connect:
+        if self.connect_rows:
             rows.append((["connected"], "control"))
         if self.places:
             rows += [(["placesLabel"], "label"), (["places", "placeRun"], "control", (3, 1))]
@@ -536,17 +562,29 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             detail = self.controls["vDetail%d" % i].getModel().Label
             if detail:
                 rows.append((["vDetail%d" % i], self._multiline_kind(detail)))
-        for key in ("conflicts", "checks"):
-            text = self.controls[key].getModel().Label
-            if text:
-                rows.append(([key], self._multiline_kind(text)))
+        text = self.controls["conflicts"].getModel().Label
+        if text:
+            rows.append((["conflicts"], self._multiline_kind(text)))
+        for i in range(min(len(self.check_list), CHECK_SLOTS)):
+            # The text shares its row with "Mute": it wraps earlier than a full-width line.
+            text = self.controls["chk%d" % i].getModel().Label
+            rows.append((["chk%d" % i, "mute%d" % i], "three" if len(text) > 60 else "two", (4, 1)))
+        text = self.controls["checks"].getModel().Label
+        if text:
+            rows.append((["checks"], self._multiline_kind(text)))
+        if data.get("muted"):
+            rows.append((["unmute"], "button"))
+        rows.append((["unitsLabel"], "label"))
+        for i in range(len(self.unit_list)):
+            rows.append((["unitLabel%d" % i, "unit%d" % i], "control", (3, 2)))
         if data.get("showValues") is not None:
             rows.append((["showValues"], "control"))
         rows.append((["valCalc"], "button"))
         return rows
 
     def _rows_tools(self):
-        rows = [(["calcTitle"], "label"), (["calcExprLabel"], "label"), (["calcExpr"], "control"),
+        rows = [(["drawingTitle"], "label"), (["colorByLabel", "colorBy"], "control", (1, 1)), (["legend"], "button"),
+                (["sheet"], "button"), (["calcTitle"], "label"), (["calcExprLabel"], "label"), (["calcExpr"], "control"),
                 (["calcUnitLabel", "calcUnit"], "control", (3, 2)), (["calcRun"], "button")]
         if self.controls["calcResult"].getModel().Label:
             rows.append((["calcResult"], "label"))
@@ -729,6 +767,9 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             if post is not None:
                 post(lambda: self.disposed or self._run("loadValues", None))
             return
+        if self.mode == "tools":
+            self.show_color_mode((info or {}).get("colorBy"))
+            return
         if self.mode != "selection":
             return
         name = self.controls["unitName"].getModel()
@@ -742,6 +783,11 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self.actions = ux.panel_actions(info)
             self.choice_list = choices.element_choices(info)[0][:CHOICE_SLOTS]
             self.connect = (info or {}).get("connect") or []
+            # Select connected ▸ the kinds that apply, then "Same name on slide 4: W3" (other pages).
+            self.connect_rows = [(choices.connect_label(c, self.lang), "connected", {"mode": c.get("kind")})
+                                 for c in self.connect]
+            self.connect_rows += [(label, "sameName", ux.parse_query(url)) for label, url in
+                                  choices.same_name_rows(info, self.lang)]
             self.places = choices.insert_rows(info) if (info or {}).get("count", 1) == 1 else []
             self.ports = (info or {}).get("ports") or [] if ux.show_build(info) else []
             if info is None:
@@ -777,10 +823,10 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                         model.State = 1 if on else 0
                     except Exception:
                         pass
-            if self.connect:
+            if self.connect_rows:
                 box = self.controls["connected"]
                 box.getModel().StringItemList = tuple([i18n.text("ctxConnected", self.lang) + " ▸"] +
-                                                      [choices.connect_label(c, self.lang) for c in self.connect])
+                                                      [label for label, _, _ in self.connect_rows])
                 box.selectItemPos(0, True)
             if self.places:
                 self.controls["places"].getModel().StringItemList = tuple(label for _, label in self.places)
@@ -856,14 +902,14 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         if self.updating:
             return
         pos = self.controls["connected"].getSelectedItemPos()
-        if 1 <= pos <= len(self.connect):
-            mode = self.connect[pos - 1].get("kind")
+        if 1 <= pos <= len(self.connect_rows):
+            _, command, argument = self.connect_rows[pos - 1]
             self.updating = True
             try:
                 self.controls["connected"].selectItemPos(0, True)
             finally:
                 self.updating = False
-            self._run("connected", {"mode": mode})
+            self._run(command, dict(argument))
 
     def _insert_place(self):
         pos = self.controls["places"].getSelectedItemPos()
@@ -938,10 +984,20 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
                         (r["detail"] and r["detail"] == next((v.get("error") for v in (obj or {}).get("vars") or []
                                                               if v.get("key") == r["key"]), None)) else MUTED_COLOR
                 self.controls["conflicts"].getModel().Label = "\n".join(values.conflict_lines(obj))
-                checks = data.get("checks") or []
-                self.controls["checks"].getModel().Label = "\n".join(
-                    "%s %s" % ("⚠" if c.get("severity") in ("error", "warning") else "ℹ", c.get("message") or "")
-                    for c in checks)
+                rows = drawing.check_rows(data.get("checks"), data.get("id"), self.lang)
+                self.check_list = rows[:CHECK_SLOTS]
+                for i, row in enumerate(self.check_list):
+                    self.controls["chk%d" % i].getModel().Label = row["text"]
+                    self.controls["chk%d" % i].getModel().HelpText = row["id"]
+                    self.controls["mute%d" % i].getModel().Enabled = bool(row["id"])
+                # Warnings beyond the slots are listed without their own button.
+                self.controls["checks"].getModel().Label = "\n".join(r["text"] for r in rows[CHECK_SLOTS:])
+                muted = data.get("muted") or []
+                self.controls["unmute"].getModel().Label = t("valUnmuteAll") % len(muted)
+                self.controls["unmute"].getModel().HelpText = ", ".join(muted)
+                self.unit_list = drawing.unit_rows(data.get("units"), self.lang)
+                for i, row in enumerate(self.unit_list):
+                    self.controls["unit%d" % i].selectItemPos(row["selected"], True)
                 if data.get("showValues") is not None:
                     self.controls["showValues"].getModel().State = 1 if data["showValues"] else 0
         finally:
@@ -981,6 +1037,19 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
         if i < len(self.value_rows):
             self._run("clearValue", {"key": self.value_rows[i]["key"]})
 
+    def _mute(self, i):
+        if i < len(self.check_list) and self.check_list[i]["id"]:
+            self._run("muteCheck", {"key": self.check_list[i]["id"], "mute": "1"})
+
+    def _unit_chosen(self, i):
+        if self.updating or i >= len(self.unit_list):
+            return
+        row = self.unit_list[i]
+        pos = self.controls["unit%d" % i].getSelectedItemPos()
+        if 0 <= pos < len(row["units"]) and pos != row["selected"]:
+            row["selected"] = pos
+            self._run("unitPref", {"kind": row["kind"], "unit": row["units"][pos]})
+
     def _level_chosen(self, event):
         if self.updating:
             return
@@ -1003,6 +1072,31 @@ class Panel(unohelper.Base, XUIElement, XToolPanel, XSidebarPanel, XComponent):
             self._run("tools", None)
 
     # ------------------------------------------------------------ calculator and code import
+
+    def show_color_mode(self, mode):
+        """The page's colour mode in the dropdown (``mode`` from describe; None: read from the page's units)."""
+        if self.mode != "tools":
+            return
+        if mode is None:
+            try:
+                from . import host
+                mode = host.page_color_mode(self.frame.getController())
+            except Exception as ex:
+                log("colour mode of the page: %s" % ex)
+                mode = "off"
+        self.updating = True
+        try:
+            self.controls["colorBy"].selectItemPos(drawing.COLOR_MODES.index(mode if mode in drawing.COLOR_MODES
+                                                                            else "off"), True)
+        finally:
+            self.updating = False
+
+    def _color_chosen(self, event):
+        if self.updating:
+            return
+        pos = self.controls["colorBy"].getSelectedItemPos()
+        if 0 <= pos < len(drawing.COLOR_MODES):
+            self._run("colorBy", {"mode": drawing.COLOR_MODES[pos]})
 
     def focus_calculator(self, text=None):
         expr = self.controls["calcExpr"]

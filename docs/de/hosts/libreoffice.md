@@ -19,13 +19,17 @@ LibreOffice (Impress/Draw/Calc)
          plan.py      Zeichenplan (pt) -> Formbeschreibungen (1/100 mm), ohne UNO, mit Unit-Tests
          render.py    Formbeschreibungen -> native UNO-Formen, Gruppen, Linienenden, Metadaten
          metadata.py  Name der Einheit, Attribute, Dokumenteigenschaften in Teilstücken, Erkennen nativer Änderungen
-         sidebar.py   Deck „InventaSketch“, Panels „Auswahl“, „Werte“, „Bibliothek“, „Rechner und Code“;
+         sidebar.py   Deck „InventaSketch“, Panels „Auswahl“, „Werte“, „Bibliothek“, „Zeichnung, Rechner und
+                      Code“;
                       library.py: Katalogfilter, Vorschaubilder
          ux.py        Regeln des Auswahl-Panels, zuletzt benutzte Elemente, Buchführung der Seitensitzung, Regeln der
                       Bedienung auf der Folie (ohne UNO)
          choices.py   Bedienkonzept: Auswahlen als Klapplisten, die acht Plätze des Kontextmenüs, Verbundene
                       auswählen, Einfügestellen (ohne UNO, getestet)
          values.py    Zeilen des Werte-Panels, Wertestufe, Rechner und Bericht des Code-Imports (ohne UNO, getestet)
+         drawing.py   zeichnungsweite Einstellungen: Farben nach Medium, Bezeichnungen über Seiten hinweg, stumme
+                      Prüfungen und bevorzugte Einheiten (Dokumenteigenschaften), Rechenblatt (ohne UNO, getestet);
+                      calcsheetdialog.py: der Dialog des Rechenblatts (Kopieren, Speichern, Als Tabelle einfügen)
          canvas.py    Bedienung auf der Folie: Einrasten nach dem Ziehen, Strg+Leertaste, Kontextmenü mit den acht
                       Plätzen, Strg+Doppelklick, Auswahlschein (UNO-Eingabe-Abfang); glow.py: der Schein selbst
          inputdialog.py  einzeiliger Eingabedialog (Haupttext, Aktionen, die nach einem Wert fragen)
@@ -90,7 +94,8 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
 
 - **Menü „InventaSketch“** (Impress, Draw, Calc): *Aus Bibliothek einfügen …* (öffnet das Deck der Seitenleiste),
   *Modell der ausgewählten Einheit bearbeiten*, *Ausgewählte Einheit aus dem Modell neu zeichnen*, *Werte des
-  ausgewählten Elements …*, *Rechner mit Einheiten …*, *Bezugszeichen hinzufügen*, *Kompatibilität
+  ausgewählten Elements …*, *Rechner mit Einheiten …*, *Rechenblatt …*, *Farben nach Medium ▸ Aus (eigene Farben) /
+  Nach Medium / Legende einfügen*, *Bezugszeichen hinzufügen*, *Kompatibilität
   (Zeichnungsregeln) …*, *Mit vorheriger Folie vergleichen (Varianten)*, *Folien bereinigen …*, *Zeichnung importieren
   (SVG, DXF) …*, *Code importieren (matplotlib, pgfplots, TikZ) …*, *Diagramm aus Bild …*, *Exportieren …*,
   *Daten gelöschter Einheiten entfernen*, *Über InventaSketch*.
@@ -148,7 +153,9 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
     *Vorschläge*: die zur Auswahl passenden Teile, dann die zuletzt benutzten), die Elementliste mit Vorschau
     (SVG-Vorschaubild der Engine); Doppelklick oder *Einfügen* fügt das Element ein – ein zur ausgewählten Einheit
     passendes Teil dort, wo es passt, alles andere in der Mitte der Folie/Seite (Calc: des sichtbaren Zellbereichs).
-  - *Rechner und Code* (26.11.2026): der Rechner mit Einheiten und der Code-Import (matplotlib, pgfplots, TikZ).
+  - *Zeichnung, Rechner und Code* (26.11.2026): Farben nach Medium der Seite mit *Legende einfügen* und
+    *Rechenblatt …* (siehe Runde „Zeichnungsweite Einstellungen“ unten), der Rechner mit Einheiten und der Code-Import
+    (matplotlib, pgfplots, TikZ).
 - **Auf der Folie/Seite** (Impress, Draw; siehe Runde „Bedienung auf der Folie“ unten): Eine mit der Maus gezogene
   Einheit rastet beim Loslassen ein (Zahneingriff, Achsen, Anbaustellen, Flansche …), gekoppelte Teile folgen;
   Strg+Leertaste öffnet das Bibliotheks-Panel mit dem Cursor im Suchfeld (tippen, Eingabe fügt ein); das Kontextmenü
@@ -171,7 +178,11 @@ Die Version stammt aus `Directory.Build.props`. Das Packskript braucht ein .NET-
   `text[?text=<Text>]`, `duplicate`, `delete`, `connected[?mode=auto|net|coupled|chain|loop|walls]`,
   `insertPlace?key=<k>`, `menu` (protokolliert das Kontextmenü der Auswahl, auch als JSON), `values`,
   `setValue?key=<k>&text=<t>`, `clearValue?key=<k>`, `valueLevel?level=quick|explore|engineer`, `showValues?on=0|1`,
-  `tools`, `calc?text=<t>[&unit=<u>]`, `importCode[?path=<Datei>|&text=<Code>]`; `panel?…&enter=1` drückt Eingabe in
+  `tools`, `calc?text=<t>[&unit=<u>]`, `importCode[?path=<Datei>|&text=<Code>]`; seit 26.11.2026 (zeichnungsweite
+  Einstellungen): `colorBy?mode=medium|off`, `legend`, `sameName?key=<Bezeichnung>&page=<n>`,
+  `muteCheck?key=<Prüfungs-Id>[&mute=0]` (`mute=0` ohne Schlüssel schaltet alle wieder ein),
+  `unitPref?kind=<Größenart>&unit=<Einheit>`, `calcSheet[?mode=csv|markdown|latex|table&path=<Datei>&copy=1]` (Dialog
+  ohne Argumente, ohne Oberfläche protokolliert); `panel?…&enter=1` drückt Eingabe in
   einem Feld, `control=choice:<Beschriftung oder Schlüssel>` benennt die Klappliste einer Auswahl. Integrations- und
   UI-Smoke-Test benutzen diese Befehle.
 - **Zuletzt benutzte Elemente** (die letzten 12 eingefügten Bibliothekselemente, je Anwender) stehen in
@@ -390,6 +401,61 @@ zweite Vorlage. Jede Entscheidung kommt weiter von der Engine; die reinen Regeln
   zeichnet keine Griffe; wo das Element einen Wert hat, ersetzt ihn ein getippter Wert (Werte-Panel, Teile-Dialog).
   Keine schwebende Leiste (kein Overlay), keine Vorschau beim Überfahren, keine Options-Piktogramme (siehe oben).
 
+## Runde „Zeichnungsweite Einstellungen“ (LibreOffice, 26.11.2026)
+
+Die Bedienung der Engine-Funktionen aus [interaction-ux.md](../design/interaction-ux.md) Abschnitt 6b (Farben nach
+Medium, Namen, die zusammengehören) und [engineering-calculations.md](../design/engineering-calculations.md) Abschnitt
+10.11 (Calc 6: Prüfeinstellungen, bevorzugte Einheiten, Rechenblatt), mit den Worten des COM-Add-ins. Reine Regeln in
+`drawing.py` (`tests/test_drawing.py`); jede Entscheidung kommt von der Engine.
+
+- **Farben nach Medium.** *Zeichnung, Rechner und Code ▸ Farben nach Medium* (Klappliste *Aus (eigene Farben)* / *Nach
+  Medium*) und das Menü *Farben nach Medium ▸ Aus / Nach Medium*: Die Seitensitzung führt `setColorBy` aus, und jede
+  Einheit der Folie/Seite wird in einem Rückgängig-Schritt („InventaSketch: Farben nach Medium“) neu gezeichnet;
+  Einheiten, die in einem anderen Modus gezeichnet sind als dem von der Sitzung übernommenen, ebenfalls. Der Modus steckt
+  in den gespeicherten Modellen der Einheiten (die Engine übernimmt ihn aus jeder importierten Einheit, wie die
+  Folienvorlage im COM-Add-in), daher zeigt eine Seite den Modus ihrer Einheiten, und die Klappliste liest ihn ohne
+  Engine aus dem gespeicherten Modell einer Einheit; eine auf einer gefärbten Seite eingefügte Einheit übernimmt ihn
+  (`insert` setzt ihn vor dem Zeichnen). *Legende einfügen* (Panel und Menü) fügt die auf der Seite verwendeten Farben
+  als eine Einheit oben rechts ein (neue Engine-Methode `insertLegend`: `LineMedia.Used` und `LineMedia.Legend`,
+  gruppiert; ein Rückgängig-Schritt, ausgewählt). LibreOffice-Textfelder brechen nicht um, daher schiebt die Engine die
+  Legende nach links, bis ihr längster Name, geschätzt mit 0,6 em je Zeichen, innerhalb der Seite endet. Ohne gefärbte
+  Linie auf der Seite erscheint die Meldung der Engine.
+- **Bezeichnungen über Seiten hinweg (Impress, Draw).** Jede Seitensitzung fragt die Engine nach den Bezeichnungen der
+  Seite (`designations`); gibt es welche, werden die Bezeichnungen der Einheiten der anderen Seiten aus deren
+  gespeicherten Modellen gelesen (neue Engine-Methode `designationsOf`: die Bezeichnungen jedes kompakten Modells ohne
+  Sitzung; in der Erweiterung je Modell zwischengespeichert) und mit den Seitennummern und „slide“/„page“ an
+  `setContinuations` gegeben. So zeichnen Linien, deren Bezeichnung auch auf einer anderen Seite vorkommt, „→ W3, Folie
+  2“, wann immer sie gezeichnet werden. Hinweise auf anderen Seiten werden aufgefrischt, wenn deren Einheiten neu
+  gezeichnet werden (wie in COM). Die Bezeichnungs-Aktionen selbst (*Bezeichnung …*, *Wertangabe …*, *Endmarken*,
+  *Leiter ▸*, *Leitungsrolle ▸*, *Medium (DIN 2403) ▸*) sind die allgemeinen Engine-Aktionen `line.ref`, `line.value`,
+  `line.ref.ends`, `elem.ref`, `line.role` und erscheinen bereits als Schaltflächen und Klapplisten des Auswahl-Panels
+  und in den Plätzen Bearbeiten und Stil.
+- **Gleicher Name.** *Verbundene auswählen ▸ Gleicher Name* (Engine-Modus `samename`) erscheint mit den anderen Arten,
+  wo die Engine ihn anbietet. Für jede andere Seite mit der Bezeichnung der Auswahl ergänzen die Liste (Auswahl-Panel)
+  und das Untermenü Anordnen ▸ Verbundene auswählen „Gleicher Name auf Folie 2: W3“; die Wahl zeigt diese Folie und
+  wählt dort die Einheiten mit dieser Bezeichnung aus (Befehl `sameName`). Das ersetzt die Meldung „Gleicher Name: auch
+  auf Folien 2, 4“ des COM-Add-ins durch einen Eintrag, der dorthin führt.
+- **Plausibilitätswarnungen im Werte-Panel.** Bis zu vier Zeilen „⚠ Meldung (Regel) [Quelle]“ (die `checks` der Engine
+  für das Element, wie in der Werte-Karte von COM), jede mit *Stumm*; weitere Warnungen stehen darunter ohne
+  Schaltfläche. *Stumm* legt die Prüfungs-Id in der benutzerdefinierten Dokumenteigenschaft `ISK_MUTED` ab (Ids durch
+  „;“ getrennt, das Format des Präsentations-Tags im COM-Add-in); *n stumme Prüfung(en) wieder einschalten* leert sie.
+- **Werte anzeigen in.** Klapplisten für Druck (bar, MPa, kPa), Drehzahl (min⁻¹, rev/s, rad/s), Energie (kWh, MJ, J)
+  und Leistung (W, kW); die erste Einheit ist die Vorgabe und wird als „nicht gesetzt“ abgelegt. Die Wahl prüft die
+  Engine (`setUnitPreference`), sie steht in der Dokumenteigenschaft `ISK_UNITS` („pressure=MPa;power=kW“), und die
+  Einheiten der Seite, deren Zeichnung sich damit ändert (eine Werteangabe in der Zeichnung: zwei Zeichenpläne
+  verglichen), werden in einem Rückgängig-Schritt („InventaSketch: Werte anzeigen in“) neu gezeichnet. Das COM-Add-in
+  bietet für die Drehzahl „s⁻¹“ an, das die Engine nicht kennt; LibreOffice bietet das „rev/s“ der Engine an.
+- **Dokumenteinstellungen.** `ISK_MUTED` und `ISK_UNITS` werden in jede Seitensitzung übernommen (`muteCheck`,
+  `setUnitPreference` nach dem Import der Einheiten); wie die Wertestufe `ISK_VALUES` sind sie Dokumenteigenschaften und
+  reisen mit .odp und .pptx (geprüft: beide überstehen Speichern und Neuladen).
+- **Rechenblatt.** *Rechenblatt …* (Werkzeug-Panel und Menü) öffnet einen Dialog mit dem Blatt der ausgewählten
+  Elemente, sonst aller Elemente der Folie/Seite (Calc: der Elemente des Tabellenblatts): Format *CSV
+  (Tabellenkalkulation)*, *Markdown* oder *LaTeX (booktabs)* (Engine `calcSheet`, Stellen nach der Wertestufe), der Text
+  (nur lesbar), die Zahl der Zeilen und Quellen, *Kopieren* (Systemzwischenablage, reiner Text), *Speichern …*
+  (Speicherdialog von LibreOffice mit der Endung des Formats; CSV mit Byte-Order-Mark) und *Als Tabelle einfügen*
+  (Engine `insertCalcTable`: eine Beschriftungstabelle neben den Elementen, ein Rückgängig-Schritt „InventaSketch:
+  Rechenblatt“, ausgewählt).
+
 ## Verifizierte Funktionen
 
 Verifiziert unter Windows 11 mit LibreOffice 26.8.2.2 am 2026-11-20 (`tests/integration_test.py`, 43 Prüfungen
@@ -477,12 +543,28 @@ bestanden; `tests/ui_smoke.py`, Bildschirmfotos gesichtet):
   Bildschirmfotos angesehen (das Deck wird mit dem Mausrad zum Werte-Panel gescrollt; das Panel „Rechner und Code“
   unter dem Bibliotheks-Panel wurde bedient, aber nicht ins Bildschirmfoto gebracht).
 
+- 26.11.2026 (Runde „Zeichnungsweite Einstellungen“, Windows 11, LibreOffice 26.8.2.2, deutsche Oberfläche):
+  `integration_test.py --only drawing` 22 Prüfungen bestanden: Eine Leitung mit *Leiter ▸ L1* und der Bezeichnung W3
+  wird mit Farben nach Medium in einem Rückgängig-Schritt („Farben nach Medium“) braun (#8d5524), eine danach eingefügte
+  Leitung übernimmt den Modus, die Legende ist eine Einheit mit „Außenleiter L1 (IEC 60445)“, *Aus* stellt die eigenen
+  Farben wieder her; dieselbe Bezeichnung auf Folie 2 zeichnet auf Folie 1 „→ W3, Folie 2“, und „Gleicher Name auf Folie
+  2: W3“ im Kontextmenü zeigt Folie 2 mit dieser Leitung ausgewählt; ein Widerstand mit 529 W bei 0,25 W zeigt
+  `elec.r.power`, Stummschalten legt `ISK_MUTED` ab und die Warnung verschwindet, Wiedereinschalten bringt sie zurück;
+  Leistung in kW legt `ISK_UNITS` ab, zeichnet die Werteangabe des Widerstands („P = 0,529 kW“) in einem
+  Rückgängig-Schritt neu und lässt alles andere unberührt (Drehzahl: 0 Einheiten neu gezeichnet); das Rechenblatt als
+  CSV-Datei (Byte-Order-Mark, kW), Markdown (in die Zwischenablage kopiert und zurückgelesen), LaTeX (`\toprule`) und als
+  Beschriftungstabelle (ein Rückgängig-Schritt); `ISK_MUTED` und `ISK_UNITS` überstehen Speichern und Neuladen als .odp
+  und .pptx (Warnung weiter stumm, Leistung weiter in kW). Seiten als `drawing-medium.png` und `drawing.png` exportiert
+  und angesehen (Legende innerhalb der Seite, nachdem die Engine sie nach links geschoben hat).
+
 ## Tests
 
 ```powershell
 python -m unittest discover -s hosts/libreoffice/tests -p "test_*.py"     # Unit-Tests, ohne LibreOffice
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt <oxt> --out <Ordner> --only concept
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt <oxt> --out <Ordner> --concept-only
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt <oxt> --out <Ordner> --only drawing
+"C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt <oxt> --out <Ordner> --drawing-only
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/integration_test.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <Ordner>
 "C:\Program Files\LibreOffice\program\python.exe" hosts/libreoffice/tests/ui_smoke.py --oxt dist/InventaSketch-LibreOffice-0.1.0.oxt --out <Ordner>
 ```
@@ -503,7 +585,14 @@ Widersprüche, die Zeilen von Rechner und Code-Bericht, den Schein (Signatur, Sc
 und gegen die gebaute Engine, dass jede Auswahl einer Stichprobe des Katalogs eine richtige Klappliste ist, eine Option
 über `applyAction` läuft, die Werte eines Widerstands, die Einfügestellen einer Tabelle, Verbundene auswählen bei
 kämmenden Zahnrädern, den Rechner und einen matplotlib-Import. `integration_test.py --only concept` und
-`ui_smoke.py --concept-only` führen die LibreOffice-Prüfungen dieser Runde aus. Der UI-Smoke-Test bedient die Bedienelemente des Panels mit dem Befehl `panel` (Tippen ins
+`ui_smoke.py --concept-only` führen die LibreOffice-Prüfungen dieser Runde aus. `test_drawing.py` deckt die
+zeichnungsweiten Einstellungen ab: Farbmodi und den Modus in einem gespeicherten Modell, geänderte Planeinheiten, die
+Karte der Fortsetzungen und die Zeilen „Gleicher Name“, stumme Prüfungen und bevorzugte Einheiten (Lesen, Ändern, die
+Vorgabe löscht, die Engine-Aufrufe einer Seitensitzung), die Prüfungszeilen, Formate und Namen des Rechenblatts und gegen
+die gebaute Engine den Farbmodus, der mit einem gespeicherten Modell reist, die Legende, Bezeichnungen gespeicherter
+Modelle als Fortsetzungshinweise, die Dokumenteinstellungen in einer frischen Sitzung (jede angebotene Einheit von der
+Engine angenommen) und das Rechenblatt in jedem Format und als Tabelle. `integration_test.py --only drawing` und
+`ui_smoke.py --drawing-only` führen die LibreOffice-Prüfungen dieser Runde aus. Der UI-Smoke-Test bedient die Bedienelemente des Panels mit dem Befehl `panel` (Tippen ins
 Suchfeld und die Wahl eines Listeneintrags laufen über die Bedienelemente und rufen dieselben Listener auf wie ein
 Anwender; Schaltflächen führen ihre Klick-Behandlung aus); echte Mausklicks werden nicht nachgestellt, weil die Peers
 der Bedienelemente über die Fernbrücke nur generische Fenster ohne Listenfeld- oder Barrierefreiheits-Schnittstellen

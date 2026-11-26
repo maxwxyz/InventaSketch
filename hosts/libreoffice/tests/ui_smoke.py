@@ -726,6 +726,158 @@ def compatibility_dialog_phase(office, out):
     office.close(doc)
 
 
+def stored_colour_mode(shape):
+    """The colour mode in a unit's stored model."""
+    import base64
+    import gzip
+    payload = attribute(shape, ATTR_MODEL) or ""
+    try:
+        settings = json.loads(gzip.decompress(base64.b64decode(payload[5:])).decode("utf-8")).get("settings") or {}
+    except Exception:
+        return None
+    return settings.get("colorBy") or "off"
+
+
+def doc_property(doc, name):
+    props = doc.getDocumentProperties().getUserDefinedProperties()
+    return str(props.getPropertyValue(name)) if props.getPropertySetInfo().hasPropertyByName(name) else None
+
+
+VK_TAB = 0x09
+
+
+def soft_wheel(p, clicks):
+    """Scrolls the deck for a screenshot; when another application holds the foreground nothing is sent."""
+    try:
+        wheel(p, clicks)
+    except ForeignWindow as ex:
+        print("NOTE screenshot not scrolled: %s" % ex, flush=True)
+
+
+def drawing_panels_phase(office, out, logs):
+    """The drawing-wide settings in the sidebar of a visible window: colour by medium and the legend from the Tools
+    panel, the Values panel's plausibility warning muted with its "Mute" button and "Show values in" power in kW,
+    "Same name on slide 2" from the Selection panel's "Select connected" list, and the calculation sheet dialog (opened
+    from the Tools panel, operated with real keys: Tab to "Insert as table" and Space inserts the table). Screenshots
+    of the panels and the dialog."""
+    import threading
+    doc = office.desktop.loadComponentFromURL("private:factory/simpress", "_blank", 0, ())
+    office.docs.append(doc)
+    controller = doc.getCurrentController()
+    window = controller.getFrame().getContainerWindow()
+    window.setPosSize(40, 40, 1500, 950, 15)
+    time.sleep(2)
+    pages = doc.getDrawPages()
+    page = pages.getByIndex(0)
+    for i in reversed(range(page.getCount())):
+        page.remove(page.getByIndex(i))
+    # Slide 2: a wire -W3; slide 1: a wire L1 W3 and a resistor with too much power.
+    pages.insertNewByIndex(0)
+    page2 = pages.getByIndex(1)
+    controller.setCurrentPage(page2)
+    office.run(doc, "insert?item=elec.wire&x=100&y=60")
+    time.sleep(1)
+    select_shapes(office, doc, list(units_of(page2).values()))
+    office.run(doc, "action?id=t%3Aline.ref&input=-W3")
+    controller.setCurrentPage(page)
+    office.run(doc, "insert?item=elec.wire&x=170&y=60")
+    wire_name = next(iter(units_of(page)))
+    select_shapes(office, doc, [units_of(page)[wire_name]])
+    office.run(doc, "action?id=t%3Aline.role%3DL1")
+    office.run(doc, "action?id=t%3Aline.ref&input=W3")
+    office.run(doc, "insert?item=elec.resistor&x=70&y=110")
+    rname = next(n for n in units_of(page) if n != wire_name)
+    office.run(doc, "param?key=prated&value=0.25%20W")
+    office.run(doc, "setValue?key=U&text=230%20V")
+    office.run(doc, "setValue?key=R&text=100")
+    select_shapes(office, doc, [units_of(page)[wire_name]])
+    office.run(doc, "editModel")
+    time.sleep(4)
+    r = window.getPosSize()
+    over_deck = (r.X + r.Width - 80, r.Y + r.Height * 0.6)
+    GUARD["window"] = window
+    try:
+        # Selection panel: "Same name on slide 2" in the Select connected list.
+        screenshot(window, os.path.join(out, "drawing-sidebar-selection.png"))
+        office.run(doc, "panel?control=connected&item=2:%20W3")
+        ok = wait_for(lambda: controller.getCurrentPage().Number == 2, 5)
+        sel = controller.getSelection()
+        names = [sel.getByIndex(i).Name for i in range(sel.getCount())] if sel is not None and \
+            hasattr(sel, "getCount") else []
+        check("drawingPanel.sameName", ok and names == list(units_of(page2)), "page %s, %s" % (
+            controller.getCurrentPage().Number, names))
+        controller.setCurrentPage(page)
+        select_shapes(office, doc, [units_of(page)[wire_name]])
+        time.sleep(2)
+        # Tools panel: colour by medium, then the legend.
+        for label in ("Nach Medium", "By medium"):
+            office.run(doc, "panel?control=colorBy&item=" + label.replace(" ", "%20"))
+            if wait_for(lambda: stored_colour_mode(units_of(page)[wire_name]) == "medium", 4):
+                break
+        check("drawingPanel.colorBy", stored_colour_mode(units_of(page)[wire_name]) == "medium",
+              str(stored_colour_mode(units_of(page)[wire_name])))
+        known = set(units_of(page))
+        office.run(doc, "panel?press=legend")
+        wait_for(lambda: len(set(units_of(page)) - known) == 1, 5)
+        check("drawingPanel.legend", len(set(units_of(page)) - known) == 1, ", ".join(set(units_of(page)) - known))
+        soft_wheel(over_deck, -40)
+        time.sleep(1)
+        screenshot(window, os.path.join(out, "drawing-sidebar-tools.png"))
+        # Values panel of the resistor: the warning with "Mute", then power in kW.
+        select_shapes(office, doc, [units_of(page)[rname]])
+        time.sleep(3)
+        soft_wheel(over_deck, 40)
+        soft_wheel(over_deck, -6)
+        screenshot(window, os.path.join(out, "drawing-sidebar-values.png"))
+        office.run(doc, "panel?press=mute0")
+        wait_for(lambda: doc_property(doc, "ISK_MUTED") == "elec.r.power", 4)
+        check("drawingPanel.mute", doc_property(doc, "ISK_MUTED") == "elec.r.power", str(doc_property(doc, "ISK_MUTED")))
+        office.run(doc, "panel?control=unit3&item=kW")
+        wait_for(lambda: doc_property(doc, "ISK_UNITS") == "power=kW", 4)
+        time.sleep(2)
+        line = (log_lines(logs, "values (") or [""])[-1]
+        check("drawingPanel.units", doc_property(doc, "ISK_UNITS") == "power=kW" and "kW" in line, line[-120:])
+        screenshot(window, os.path.join(out, "drawing-sidebar-values-muted.png"))
+        # The calculation sheet dialog from the Tools panel (modal: in a thread); Tab x4 + Space = Insert as table.
+        known = set(units_of(page))
+        runner = threading.Thread(target=lambda: office.run(doc, "panel?press=sheet"), daemon=True)
+        runner.start()
+        titles = ("InventaSketch – Rechenblatt", "InventaSketch – Calculation sheet")
+        dialog = None
+        end = time.time() + 20
+        while dialog is None and time.time() < end:
+            dialog = _window_titled(titles)
+            time.sleep(0.5)
+        check("drawingPanel.sheetDialog", dialog is not None)
+        if dialog is not None:
+            time.sleep(1.5)
+            screenshot(dialog, os.path.join(out, "drawing-calc-sheet.png"))
+            GUARD["window"] = dialog
+            try:
+                for _ in range(4):
+                    keys(VK_TAB)
+                keys(VK_SPACE)
+            except ForeignWindow as ex:
+                # Another application holds the foreground: no input is sent; the dialog is closed with a message
+                # to its own window and the table is inserted with the command instead.
+                check("drawingPanel.sheetKeys", False, "no input sent: %s" % ex)
+                user32().PostMessageW(dialog.hwnd, 0x0010, 0, 0)
+                runner.join(15)
+                office.run(doc, "calcSheet?mode=table")
+            GUARD["window"] = window
+            runner.join(15)
+            wait_for(lambda: len(set(units_of(page)) - known) == 1, 5)
+            table = [n for n in units_of(page) if n not in known]
+            check("drawingPanel.sheetTable", len(table) == 1 and table[0].split(":")[1] == "ann.table", str(table))
+            time.sleep(1)
+            screenshot(window, os.path.join(out, "drawing-table.png"))
+    except ForeignWindow as ex:
+        check("drawingPanel.foreground", False, "stopped, no input sent: %s" % ex)
+    finally:
+        GUARD["window"] = None
+    office.close(doc)
+
+
 class _Done(Exception):
     pass
 
@@ -739,6 +891,9 @@ def main():
     ap.add_argument("--canvas-only", action="store_true", help="only the real mouse/keyboard input (canvas_phase)")
     ap.add_argument("--concept-only", action="store_true",
                     help="only the interaction concept (real input: glow, context menu, Ctrl+double-click; panels)")
+    ap.add_argument("--drawing-only", action="store_true",
+                    help="only the drawing-wide settings (colour by medium, legend, same name, mute, units, "
+                         "calculation sheet dialog)")
     args = ap.parse_args()
     dpi_aware()
     soffice = find_soffice(args.soffice)
@@ -764,6 +919,9 @@ def main():
             time.sleep(0.5)
     office = Office(ctx)
     try:
+        if args.drawing_only:
+            drawing_panels_phase(office, args.out, logs)
+            raise _Done()
         if not args.skip_canvas and not args.concept_only:
             canvas_phase(office, args.out, logs)
             compatibility_dialog_phase(office, args.out)
@@ -850,6 +1008,7 @@ def main():
         check("panel.turn", model is not None and turned is not None and turned != model, "partner redrawn")
         office.close(doc)
         concept_panels_phase(office, args.out, logs)
+        drawing_panels_phase(office, args.out, logs)
     except _Done:
         pass
     except Exception:
